@@ -33,12 +33,16 @@ import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
 import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit } from './modell';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
 import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, type KapaAuskunft } from './aufraeumen';
-import { WOCHEN_STANDARD, type KapaDatei, type KapaStand, type PersonEingabe, type PostenEingabe, type KapaKennzahlen } from './typen';
+import { planFesthalten, planOhnePersonen, sauberPlanDatei, planAufbewahrenAb } from './plan';
+import { WOCHEN_STANDARD, type KapaDatei, type KapaStand, type PersonEingabe, type PostenEingabe, type KapaKennzahlen, type PlanDatei } from './typen';
 
 const KONTO = 'konto-';
 
 /** Der Bestandsname eines Haushalts (ohne gültigen Haushalt: der Inhaber-Bestand). */
 export const kapaSpeicherFuer = (h: string | null | undefined) => (h && HAUSHALT_OK.test(h) ? `kapazitaet--${h}` : 'kapazitaet--inhaber');
+
+/** Bestand der festgehaltenen Wochenpläne eines Haushalts (Kevin 05.10., lib/kapazitaet/plan.ts). */
+export const kapaPlanSpeicherFuer = (h: string | null | undefined) => (h && HAUSHALT_OK.test(h) ? `kapazitaet-plan--${h}` : 'kapazitaet-plan--inhaber');
 
 /** Der Bestandsname des Haushalts des Inhabers (ohne Haushalt: der Inhaber-Bestand). */
 export async function kapaSpeicher(): Promise<string> {
@@ -87,7 +91,7 @@ const sicher = async <T>(f: () => Promise<T>, rueck: T): Promise<T> => { try { r
 async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[] }> {
   const ende = tagPlus(montagVon(heute), 7 * WOCHEN_STANDARD);
   const istAb = tagPlus(montagVon(heute), -28);
-  const [personen, konten, datei, msDatei, zieleDatei, aufgaben, crm] = await Promise.all([
+  const [personen, konten, datei, msDatei, zieleDatei, aufgaben, crm, planDatei] = await Promise.all([
     kapaPersonen(),
     ladeKonten().then(k => k.konten),
     ladeKapaDatei(),
@@ -95,6 +99,7 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
     loadJson<ZieleDatei>('ziele'),
     sicher(() => ladeAufgaben(), { tasks: [], projects: [] } as unknown as Awaited<ReturnType<typeof ladeAufgaben>>),
     sicher(() => ladeCrm(), null),
+    sicher(async () => sauberPlanDatei(await loadJson<PlanDatei>(kapaPlanSpeicherFuer(await haushaltDesInhabers()))), { wochen: [] } as PlanDatei),
   ]);
   const ms = (msDatei?.meilensteine ?? []).filter(m => meilensteinSpace(m) === 'business');
   // Teilen-Regel gegen ALLE Konten des Haushalts (auch solche, die gerade nicht im aktiven Team stehen) — jedes davon darf
@@ -157,7 +162,7 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
     ...Array.from(new Map(mandate.filter(m => m.aktiv && m.firmaId).map(m => [m.firmaId as string, { art: 'kunde' as const, id: m.firmaId as string, label: m.firma }])).values()),
   ];
 
-  return { stand: kapazitaetRechnen({ heute, personen: eingaben, datei, posten, ist, bezugNamen }), bezuege };
+  return { stand: kapazitaetRechnen({ heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen }), bezuege };
 }
 
 /** Gemerkt (60 s) — jede Schreibung über local-db setzt den Speicher zurück. Schlüssel: Haushalt + Tag (ungefiltert, gefiltert wird danach). */
@@ -178,6 +183,34 @@ export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaK
   try { return ohneGesundheit(fuerBetrachter((await gemerkt(heute)).stand, null).kennzahlen); } catch { return null; }
 }
 
+// ── Wochenplan festhalten (Kevin 05.10.: „Jeden Montag wird der Wochenplan festgehalten“) — Regeln rein in ./plan.ts ──
+
+export interface PlanBericht { neu: boolean; woche: string; personen: number; entfernt: number }
+
+/**
+ * Morgenlauf-Schritt „Wochenplan festhalten“: fehlt für die laufende Woche noch ein Schnappschuss, wird der Plan je Person
+ * (verplante Stunden je Meilenstein/Ziel und Zuweisung, verfügbare Zeit ohne Kopf & Energie) im Bestand
+ * `kapazitaet-plan--<haushalt>` abgelegt — montags bzw. beim ersten Lauf der Woche, idempotent. Dazu die Löschfrist (24 Monate).
+ * Liest erst ohne Sperre; schreibt nur, wenn sich etwas ändert. Protokoll „System“ (nur die Woche als Kennung).
+ */
+export async function kapaPlanFesthalten(haushalt: string, heute = localDay(), jetzt = new Date()): Promise<PlanBericht> {
+  const name = kapaPlanSpeicherFuer(haushalt);
+  const woche = montagVon(heute);
+  const vorab = planFesthalten(await loadJson<PlanDatei>(name), null, heute, jetzt.toISOString());
+  const fehlt = !vorab.datei.wochen.some(s => s.woche === woche);
+  if (!fehlt && !vorab.geaendert) return { neu: false, woche, personen: 0, entfernt: 0 };
+  const plan = fehlt ? (await gemerkt(heute)).stand.wochenPlan ?? null : null;
+  let bericht: PlanBericht = { neu: false, woche, personen: 0, entfernt: 0 };
+  await updateJson<PlanDatei>(name, alt => {
+    const r = planFesthalten(alt, plan, heute, jetzt.toISOString());
+    bericht = { neu: r.neu, woche, personen: r.neu ? plan?.personen.length ?? 0 : 0, entfernt: r.entfernt };
+    return r.geaendert ? r.datei : (alt as PlanDatei);
+  });
+  if (bericht.neu) await protokolliere(name, [{ op: 'neu' as const, id: woche }], { art: 'system' });
+  if (bericht.entfernt) await protokolliere(name, [{ op: 'geloescht' as const, id: `vor-${planAufbewahrenAb(heute)}` }], { art: 'system' });
+  return bericht;
+}
+
 // ── DSGVO-Nachtrag 04.10.: Löschfrist deaktivierter Team-Personen + Auskunft (Regeln rein in ./aufraeumen.ts) ──
 
 export interface KapaAufraeumBericht { gestempelt: number; personen: number; teile: number }
@@ -191,10 +224,12 @@ export async function kapaDeaktivierteAufraeumen(haushalt: string, jetzt = new D
   const iso = jetzt.toISOString();
   const teamName = teamSpeicherName(haushalt);
   const kapaName = kapaSpeicherFuer(haushalt);
+  const planName = kapaPlanSpeicherFuer(haushalt);
   const vorab = kapaLoeschPlan((await loadJson<TeamDatei>(teamName))?.team ?? [], iso);
   if (!vorab.stempeln.length && !vorab.faellig.length) return { gestempelt: 0, personen: 0, teile: 0 };
   const bericht: KapaAufraeumBericht = { gestempelt: 0, personen: 0, teile: 0 };
   let geloescht: string[] = [];
+  let planGeloescht: string[] = [];
   let gestempelt: string[] = [];
   await updateJsonAsync<TeamDatei>(teamName, async cur => {
     if (!cur || !Array.isArray(cur.team)) return cur as TeamDatei;
@@ -207,12 +242,19 @@ export async function kapaDeaktivierteAufraeumen(haushalt: string, jetzt = new D
         bericht.personen = r.personen.length; bericht.teile = r.teile; geloescht = r.personen;
         return r.teile ? r.datei : (alt as KapaDatei);
       });
+      // Festgehaltene Wochenpläne der Person fallen mit (Kevin 05.10.: die Team-Personen-Löschfrist gilt mit).
+      await updateJson<PlanDatei>(planName, alt => {
+        const r = planOhnePersonen(alt, ids);
+        if (r.teile) { bericht.teile += r.teile; planGeloescht = Array.from(ids); }
+        return r.teile ? r.datei : (alt as PlanDatei);
+      });
     }
     bericht.gestempelt = stempeln.size; gestempelt = plan.stempeln;
     return stempeln.size ? { ...cur, team: cur.team.map(e => (stempeln.has(e.id) ? { ...e, deaktiviertAm: iso } : e)) } : cur;
   });
   if (bericht.gestempelt) await protokolliere(teamName, gestempelt.map(id => ({ op: 'geaendert' as const, id, felder: ['deaktiviertAm'] })), { art: 'system' });
   if (geloescht.length) await protokolliere(kapaName, geloescht.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' });
+  if (planGeloescht.length) await protokolliere(planName, planGeloescht.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' });
   return bericht;
 }
 
@@ -224,6 +266,9 @@ async function postenMitPersonen() {
     ...(ziele?.jahr ?? []).filter(z => z.space !== 'privat' && z.personen?.length).map(z => ({ art: 'ziel' as const, id: z.id, titel: z.titel, personen: z.personen })),
   ];
 }
+
+/** Festgehaltene Wochenpläne des Haushalts — nur für die Auskunft (Fehler → leer). */
+const planLaden = (h: string | null) => sicher(async () => sauberPlanDatei(await loadJson<PlanDatei>(kapaPlanSpeicherFuer(h))), { wochen: [] } as PlanDatei);
 
 /** Anzeigenamen der Mandate/Kunden (CRM) — nur für die Auskunft. */
 async function bezugNamenLaden(): Promise<Record<string, string>> {
@@ -243,8 +288,8 @@ export async function kapaAuskunftLaden(personId: string, jetzt = new Date()): P
   const { team } = await teamStand(h);
   const e = team.find(t => t.quelle !== 'platzhalter' && t.id === personId);
   if (!e) return null;
-  const [datei, posten, bezugNamen] = await Promise.all([ladeKapaDatei(), postenMitPersonen(), bezugNamenLaden()]);
-  return { auskunft: kapaAuskunft({ eintrag: e, datei, posten, bezugNamen, jetzt: jetzt.toISOString() }), konto: e.quelle === 'konto' };
+  const [datei, posten, bezugNamen, plaene] = await Promise.all([ladeKapaDatei(), postenMitPersonen(), bezugNamenLaden(), planLaden(h)]);
+  return { auskunft: kapaAuskunft({ eintrag: e, datei, posten, bezugNamen, plaene, jetzt: jetzt.toISOString() }), konto: e.quelle === 'konto' };
 }
 
 /**
@@ -258,7 +303,7 @@ export async function kapaAuskunftFuerAdressen(adressen: readonly string[], jetz
     const { team } = await teamStand(await haushaltDesInhabers());
     const treffer = team.filter(t => t.quelle === 'daten' && t.email && a.has(t.email.toLowerCase()));
     if (!treffer.length) return [];
-    const [datei, posten, bezugNamen] = await Promise.all([ladeKapaDatei(), postenMitPersonen(), bezugNamenLaden()]);
-    return treffer.map(e => kapaAuskunft({ eintrag: e, datei, posten, bezugNamen, jetzt: jetzt.toISOString() }));
+    const [datei, posten, bezugNamen, plaene] = await Promise.all([ladeKapaDatei(), postenMitPersonen(), bezugNamenLaden(), planLaden(await haushaltDesInhabers())]);
+    return treffer.map(e => kapaAuskunft({ eintrag: e, datei, posten, bezugNamen, plaene, jetzt: jetzt.toISOString() }));
   } catch { return []; }
 }

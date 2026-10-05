@@ -73,6 +73,18 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
 
+## Demo-Instanz (05.10., nur lokal, Branch `demo-schnappschuss`; Anleitung `DEMO.md`)
+- **Saat** `scripts/demo-saat.mjs` → `lib/demo/server.ts` `demoSaenInLeerenOrdner` → `lib/demo/saat.ts` `demoSaen`: erfundener Haushalt
+  `demo` (Lena/Jonas `@example.invalid`, Team-Person Mira), CRM, Unternehmen mit Holding + Gründungsfahrplan, Ziele/Meilensteine,
+  Aufgaben, Termine (`calendar-cache`), Kapazität mit festgehaltenen Wochenplänen, Finanzplanung, Familie/Gesundheit minimal, Wissen.
+  Geschrieben über die ROUTEN in-process (`rufe(…)`, Kopf `x-make-user`) — neue Bereiche ebenso anschließen, nie an der Datenschicht vorbei
+  (Ausnahmen stehen im Kopf von saat.ts). Keine echten Namen/Firmen/Beträge (Wächter `tests/demo.test.ts` liest jede Datei der Demo).
+- **Riegel** `lib/demo/schutz.ts` (rein, getestet): eigener `MAKE_OS_DATEN_DIR`, nie `.data` im Pfad, säen nur leer; Zurücksetzen nur
+  `MAKE_OS_DEMO=1` (sonst `/api/demo` 404), Inhaber mit Sitzung, Demo-Marke `demo-instanz`, nur `@example.invalid`-Konten, Umgebung ohne
+  echte Quellen (`umgebungGruende`). Knopf: `components/os/DemoKarte.tsx` unter System (Rückfrage). Zurücksetzen behält Hash/Salz der Konten.
+- **Namen je Instanz:** `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (lib/einheiten.ts, Anzeigenamen kdc/kdv/ug) und `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`
+  (lib/crm/team.ts `TEAM`) — ohne Variable alles wie bisher. Im Docker-Bild als Build-Args.
+
 ## Eiserne Regeln
 1. **Privates bleibt hier.** Gesundheits-, Journal- und Finanzdaten gehören
    Kevin & Malin. `.env.local` und `.data/` sind gitignored und bleiben es —
@@ -475,6 +487,14 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Meilenstein- und Ziel-Detail (Ziel: „Eigener Aufwand“). Browser nur über `useKapazitaet` (`kapazitaetNeu()` nach dem Speichern).
 - Tests `tests/kapazitaet.test.ts` (30-h/Tag-Fall, Reihenfolge, Urlaub/Block/Termine, Kopf & Energie, Andock, Rechte, alte Daten,
   Säule ohne Messung = alter Index), `tests/kapazitaet-route.test.ts` (Testkunde 403, Privatfilter, Rechte).
+- **Wochenplan festhalten (05.10., Kevin: „Jeden Montag wird der Wochenplan festgehalten“):** die Rechnung liefert `KapaStand.wochenPlan`
+  (laufende Woche ab heute, je Person verfügbar = Netto OHNE Kopf & Energie, geplant = Bedarf, gebunden, je Posten/Zuweisung nur Kennungen).
+  Der Morgenlauf (Schritt „Wochenplan festhalten“, `kapaPlanFesthalten`) legt ihn einmal je Woche in `kapazitaet-plan--<haushalt>` ab
+  (idempotent, `ab` = Tag des ersten Laufs) und löscht Wochen älter als 24 Monate. Regeln rein in `lib/kapazitaet/plan.ts`
+  (`planFesthalten`, `treueAusPlaenen`, `planOhnePersonen`, `planFuerPerson`). **Plan-Treue** = Σ Ist ÷ Σ geplant der abgeschlossenen,
+  festgehaltenen Wochen (letzte 4, nur Konten, Ist ab `ab`); ohne Schnappschuss die alte Näherung, immer mit `planTreueQuelle`
+  beschriftet. Team-Löschfrist (30 Tage) und Art. 15 (`wochenplaene` in der Auskunft) gelten mit. Nie einen Gesundheitswert oder
+  Titel/Namen in den Schnappschuss schreiben. Tests `tests/kapazitaet-plan.test.ts`.
 
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste

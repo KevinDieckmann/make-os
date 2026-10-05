@@ -23,8 +23,9 @@ import type { Verfuegbarkeit } from '@/lib/kalender/verfuegbarkeit-regeln';
 import {
   ANNAHME_STUNDEN_WOCHE, UMSCHALTEN_STUNDEN, KOPF_TAGE, MACHBAR_BIS, ENG_BIS, WOCHEN_STANDARD,
   type KapaEingabe, type KapaStand, type PersonStand, type WochePerson, type WocheTeam, type Machbarkeit, type PostenEingabe,
-  type KapaKennzahlen, type LastStufe, type Ausnahme, type MachbarStatus, type Zuweisung, type TagEingabe,
+  type KapaKennzahlen, type LastStufe, type Ausnahme, type MachbarStatus, type Zuweisung, type TagEingabe, type PlanPerson,
 } from './typen';
+import { treueAusPlaenen } from './plan';
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const zahl = (n: number) => r1(n).toLocaleString('de-DE', { maximumFractionDigits: 1 });
@@ -103,7 +104,11 @@ export function stufeVon(belastbar: number, bedarf: number): LastStufe {
 
 // ── Die Rechnung ────────────────────────────────────────────────────────────
 
-interface PersonRechnung { id: string; soll: number[]; abw: number[]; term: number[]; anz: number[]; umsch: number[]; block: number[]; netto: number[]; belastbar: number[]; gebunden: number[]; alloc: number[]; rest: number[]; arbeitstag: boolean[] }
+interface PersonRechnung {
+  id: string; soll: number[]; abw: number[]; term: number[]; anz: number[]; umsch: number[]; block: number[]; netto: number[]; belastbar: number[]; gebunden: number[]; alloc: number[]; rest: number[]; arbeitstag: boolean[];
+  /** Laufende Woche (für den festgehaltenen Wochenplan): verplante Stunden je Posten und gebundene je Zuweisung. */
+  planPosten: Map<string, { art: 'meilenstein' | 'ziel'; id: string; stunden: number }>; planZuweisung: Map<string, number>;
+}
 
 export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
   const heute = e.heute;
@@ -138,7 +143,7 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
       return 0;
     };
     const arbeitstageMuster = Math.max(1, [1, 2, 3, 4, 5, 6, 7].filter(w => (quelle === 'vorlage' ? muster[w] > 0 : w <= 5)).length);
-    const r: PersonRechnung = { id: p.id, soll: [], abw: [], term: [], anz: [], umsch: [], block: [], netto: [], belastbar: [], gebunden: [], alloc: [], rest: [], arbeitstag: [] };
+    const r: PersonRechnung = { id: p.id, soll: [], abw: [], term: [], anz: [], umsch: [], block: [], netto: [], belastbar: [], gebunden: [], alloc: [], rest: [], arbeitstag: [], planPosten: new Map(), planZuweisung: new Map() };
     const eigeneZ = zuweisungen.filter(z => z.person === p.id);
     tage.forEach((tag, d) => {
       const ti = tagMap.get(tag);
@@ -154,7 +159,9 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
       const block = Math.min(soll - term - umsch, bloeckeAm(ausnahmen, tag) * werktagAnteil);
       const netto = Math.max(0, soll - term - umsch - block);
       const belastbar = netto * (d < KOPF_TAGE ? kopfFaktor : 1);
-      const gebunden = soll > 0 ? eigeneZ.filter(z => zuweisungAm(z, tag)).reduce((s, z) => s + z.stundenWoche / arbeitstageMuster, 0) : 0;
+      const aktiv = soll > 0 ? eigeneZ.filter(z => zuweisungAm(z, tag)) : [];
+      const gebunden = aktiv.reduce((s, z) => s + z.stundenWoche / arbeitstageMuster, 0);
+      if (wocheIdx[d] === 0) for (const z of aktiv) r.planZuweisung.set(z.id, (r.planZuweisung.get(z.id) ?? 0) + z.stundenWoche / arbeitstageMuster);
       r.soll.push(soll); r.abw.push(weg ? roh : 0); r.term.push(term); r.anz.push(anz); r.umsch.push(umsch); r.block.push(block);
       r.netto.push(netto); r.belastbar.push(belastbar); r.gebunden.push(gebunden); r.alloc.push(0);
       r.rest.push(Math.max(0, belastbar - gebunden)); r.arbeitstag.push(soll > 0);
@@ -177,6 +184,14 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
   const ergebnis = new Map<string, Machbarkeit>();
   const schluessel = (p: PostenEingabe) => `${p.art}:${p.id}`;
   const einheit = (n: number) => (n > 1 ? 'h je Person und Arbeitstag' : 'h/Tag');
+  /** Stunden eines Postens auf einen Tag legen — in der laufenden Woche zusätzlich je Posten gemerkt (Wochenplan). */
+  const buchen = (r: PersonRechnung, d: number, p: PostenEingabe, a: number) => {
+    r.alloc[d] += a;
+    if (wocheIdx[d] !== 0 || !(a > 0)) return;
+    const k = schluessel(p);
+    const alt = r.planPosten.get(k);
+    r.planPosten.set(k, { art: p.art, id: p.id, stunden: (alt?.stunden ?? 0) + a });
+  };
 
   for (const p of reihe) {
     const P = (p.personen ?? []).filter(id => mitKapa.has(id));
@@ -189,7 +204,7 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     if (termin < heute) {
       // Überfällig: der Rest gehört in die Tage ab heute — sichtbar als Last, ehrlich als Status.
       const tageAb = Math.min(T, 5);
-      for (const r of wer) for (let d = 0; d < tageAb; d++) r.alloc[d] += rest / (wer.length * tageAb);
+      for (const r of wer) for (let d = 0; d < tageAb; d++) buchen(r, d, p, rest / (wer.length * tageAb));
       ergebnis.set(schluessel(p), { ...basis, status: 'ueberfaellig', text: `überfällig seit ${tagKurz(termin)} — Rest ${zahl(rest)} h` });
       continue;
     }
@@ -208,13 +223,13 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
       for (const r of wer) for (let d = 0; d <= dEnde; d++) {
         if (r.rest[d] <= 0) continue;
         const a = rest * r.rest[d] / frei;
-        r.alloc[d] += a;
+        buchen(r, d, p, a);
         r.rest[d] = Math.max(0, r.rest[d] - a);
       }
     } else {
       const ziele: [PersonRechnung, number][] = [];
       for (const r of wer) for (let d = 0; d <= dEnde; d++) if (r.arbeitstag[d] || !arbeitstage) ziele.push([r, d]);
-      for (const [r, d] of ziele) r.alloc[d] += rest / ziele.length;
+      for (const [r, d] of ziele) buchen(r, d, p, rest / ziele.length);
     }
     const e1 = einheit(wer.length);
     const zusatz = jenseits ? ' (Termin hinter dem Rechenfenster — gezählt bis dorthin)' : !arbeitstage ? ' — bis zum Termin ist kein Arbeitstag mehr' : '';
@@ -268,6 +283,11 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
   m.bewertet = m.machbar + m.eng + m.nicht + m.ueberfaellig;
   const istVor = (e.ist ?? []).filter(x => x.tag >= tagPlus(start, -28) && x.tag < start).reduce((s, x) => s + x.stunden, 0);
   const planWoche = bedarf4 / 4;
+  // Plan-Treue: festgehaltene Wochen (Montag-Schnappschuss) vor der Näherung (lib/kapazitaet/plan.ts).
+  const treueWochen = treueAusPlaenen(e.plaene ?? [], e.ist ?? [], heute);
+  const tw = treueWochen.length;
+  const twPlan = treueWochen.reduce((s, w) => s + w.geplant, 0), twIst = treueWochen.reduce((s, w) => s + w.ist, 0);
+  const naeherung = planWoche > 0 && istVor > 0 ? Math.min(200, r1(istVor / 4 / planWoche * 100)) : null;
   const kritisch = posten.filter(p => ['nicht-machbar', 'ueberfaellig', 'eng'].includes(p.status))
     .sort((a, b) => STATUS_RANG[a.status] - STATUS_RANG[b.status] || (a.termin ?? '').localeCompare(b.termin ?? '')).slice(0, 5)
     .map(p => ({ id: p.id, art: p.art, titel: p.titel, status: p.status, text: p.text }));
@@ -276,9 +296,10 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     bedarf4: r1(bedarf4), belastbar4: r1(belastbar4),
     machbar: m,
     machbarAnteil: m.bewertet ? r1((m.machbar + m.eng / 2) / m.bewertet * 100) : null,
-    planTreue: planWoche > 0 && istVor > 0 ? Math.min(200, r1(istVor / 4 / planWoche * 100)) : null,
-    istStdWoche: istVor > 0 ? r1(istVor / 4) : null,
-    planStdWoche: r1(planWoche),
+    ...(tw
+      ? { planTreue: Math.min(200, r1(twIst / twPlan * 100)), istStdWoche: r1(twIst / tw), planStdWoche: r1(twPlan / tw), planTreueQuelle: 'festgehalten' as const }
+      : { planTreue: naeherung, istStdWoche: istVor > 0 ? r1(istVor / 4) : null, planStdWoche: r1(planWoche), planTreueQuelle: 'naeherung' as const }),
+    treueWochen,
     pufferStdWoche: bedarf4 > 0 ? r1((belastbar4 - bedarf4) / 4) : null,
     erholung: mitErholung.length ? Math.round(kopfFaktor * 100) : null,
     erholungPersonen: mitErholung.length,
@@ -286,10 +307,22 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     kritisch,
   };
 
+  // ── Der Plan der laufenden Woche (ab heute) — hält der Morgenlauf fest. Verfügbar = Netto, OHNE Kopf & Energie (Art. 9). ──
+  const planPersonen: PlanPerson[] = personen.flatMap((p, i) => {
+    if (p.ohneKapa) return [];
+    const r = rechnungen[i], w0 = p.wochen[0];
+    return [{
+      id: p.id, quelle: p.quelle, verfuegbar: w0?.netto ?? 0, geplant: w0?.bedarf ?? 0, gebunden: w0?.gebunden ?? 0,
+      posten: Array.from(r.planPosten.values()).map(x => ({ ...x, stunden: r1(x.stunden) })).filter(x => x.stunden > 0),
+      zuweisungen: Array.from(r.planZuweisung.entries()).map(([id, h]) => ({ id, stunden: r1(h) })).filter(x => x.stunden > 0),
+    }];
+  });
+
   return {
     heute, wochen, personen,
     team: { wochen: teamWochen, kopf: { faktor: kopfFaktor, personen: mitErholung.length, tage: KOPF_TAGE } },
     posten,
+    wochenPlan: { woche: start, ab: heute, personen: planPersonen },
     zuweisungen: zuweisungen.map(z => ({ ...z, label: e.bezugNamen?.[z.bezugId] ?? (z.art === 'mandat' ? 'Mandat' : 'Kunde') })),
     kennzahlen,
   };

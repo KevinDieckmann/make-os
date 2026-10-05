@@ -84,6 +84,8 @@ export const LOESCHREGELN = [
   { id: 'papierkorb', titel: 'Papierkorb (CRM-Listen, Produkte, Aufgaben, Gesellschafts-Register)', frist: '30 Tage nach dem Löschen', aktion: 'Löschen (Morgenlauf; mit Verweisen bleibt der Eintrag im Papierkorb)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO' },
   // DSGVO-Nachtrag 04.10. (Kevin): Kapazitätsdaten deaktivierter Team-Personen (lib/kapazitaet/aufraeumen.ts).
   { id: 'kapazitaet-team', titel: 'Kapazität deaktivierter Team-Personen (Grundwert, Urlaub/Blöcke, Zuweisungen, Einwilligung Erholung)', frist: '30 Tage nach dem Deaktivieren', aktion: 'Löschen (Morgenlauf; Reaktivieren davor erhält alles)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
+  // Kevin 05.10.: festgehaltene Wochenpläne der Kapazität (lib/kapazitaet/plan.ts).
+  { id: 'kapazitaet-plan', titel: 'Festgehaltene Wochenpläne (Kapazität: verfügbar, geplant je Meilenstein/Zuweisung)', frist: '24 Monate je Woche', aktion: 'Löschen (Morgenlauf „Wochenplan festhalten“; Team-Personen ohne Konto mit ihren Kapazitätsdaten 30 Tage nach dem Deaktivieren)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
   // DSGVO-Nachtrag 04.10. (Kevin): Unterlagen gelöschter Gesellschaften/Verträge bleiben (Aufbewahrungspflicht).
   { id: 'unterlagen-register', titel: 'Unterlagen einer endgültig gelöschten Gesellschaft bzw. eines Vertrags (Dateiablage)', frist: '6 bzw. 10 Jahre ab Jahresende', aktion: 'Aufbewahren (Ablage, Bezug „(gelöscht)“ bleibt lesbar)', norm: '§ 257 HGB, § 147 AO' },
 ] as const;
@@ -195,13 +197,15 @@ export const VV_ORGANISATION_NAMEN: Record<string, string> = {
 export const VV_ORGANISATION_IDS = Object.keys(VV_ORGANISATION_NAMEN);
 
 /** Löschfrist der Kapazitätsplanung (seit dem DSGVO-Nachtrag 04.10. mit der 30-Tage-Frist für deaktivierte Team-Personen). */
-const KAPA_LOESCHFRIST = 'bis zur Löschung durch Person bzw. Inhaber; Team-Personen ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf; Reaktivieren davor erhält alles); Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s)';
+const KAPA_LOESCHFRIST_0410 = 'bis zur Löschung durch Person bzw. Inhaber; Team-Personen ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf; Reaktivieren davor erhält alles); Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s)';
+/** Seit 05.10. mit den festgehaltenen Wochenplänen (24 Monate). */
+const KAPA_LOESCHFRIST = `${KAPA_LOESCHFRIST_0410}; festgehaltene Wochenpläne (montags) 24 Monate je Woche`;
 /** Löschfrist des Registers (DSGVO-Nachtrag 04.10.: Unterlagen bleiben nach dem endgültigen Löschen in der Ablage). */
 const GES_LOESCHFRIST = 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Unterlagen in der Dateiablage bleiben auch nach dem endgültigen Löschen einer Gesellschaft bzw. eines Vertrags erhalten (Aufbewahrungspflicht, Bezug als „(gelöscht)“ lesbar); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben';
 /** Fassungen, die der Nachtrag ersetzt, solange niemand sie von Hand geändert hat (vorhandene Verzeichnisse). */
-const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: string; neu: string }>>> = {
+const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: string | string[]; neu: string }>>> = {
   'vv-gesellschaften': { loeschfrist: { alt: 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben', neu: GES_LOESCHFRIST } },
-  'vv-kapazitaet': { loeschfrist: { alt: 'bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen', neu: KAPA_LOESCHFRIST } },
+  'vv-kapazitaet': { loeschfrist: { alt: ['bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen', KAPA_LOESCHFRIST_0410], neu: KAPA_LOESCHFRIST } },
 };
 
 export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
@@ -223,7 +227,7 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
       id: 'vv-kapazitaet', name: VV_ORGANISATION_NAMEN['vv-kapazitaet'],
       zweck: 'Realistische Planung: verfügbare Arbeitszeit je Person gegen den Aufwand von Meilensteinen/Zielen und wiederkehrende Mandats-/Kundenzeit; Engpässe sichtbar machen',
       personen: 'Personen des Teams (Konten des Haushalts, Team-Personen ohne Konto wie Mitarbeitende/Freie)',
-      daten: 'Stunden je Woche, Urlaub und feste Blöcke (Titel nur für die Person selbst sichtbar), Zuweisungen Person × Mandat/Kunde (Kennung), Termine im Arbeitsfenster (nur Dauer/Anzahl, aus dem Kalender), gemessene Business-Fokuszeit; aus Gesundheitsdaten NUR ein Team-Faktor (Erholung), wenn die Person in der Kapazität selbst eingewilligt hat (Vorgabe aus, Zeitpunkt als Nachweis) UND ihre Gesundheit mit allen Konten des Haushalts teilt — der Wert nie gespeichert, nie im Business-Index, nie an ZOE',
+      daten: 'Stunden je Woche, Urlaub und feste Blöcke (Titel nur für die Person selbst sichtbar), Zuweisungen Person × Mandat/Kunde (Kennung), Termine im Arbeitsfenster (nur Dauer/Anzahl, aus dem Kalender), gemessene Business-Fokuszeit, montags festgehaltener Wochenplan (verfügbar ohne Erholungs-Faktor, geplant je Meilenstein/Zuweisung — nur Kennungen); aus Gesundheitsdaten NUR ein Team-Faktor (Erholung), wenn die Person in der Kapazität selbst eingewilligt hat (Vorgabe aus, Zeitpunkt als Nachweis) UND ihre Gesundheit mit allen Konten des Haushalts teilt — der Wert nie gespeichert, nie im Business-Index, nie an ZOE',
       rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitszeitplanung im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (realistische Planung); Erholungs-Faktor: Art. 9 Abs. 2 lit. a (ausdrückliche, widerrufbare Einwilligung der Person in der Kapazität) — Einwilligungstext und Freiwilligkeit bei Beschäftigten (§ 26 Abs. 2 BDSG) prüfen',
       empfaenger: 'Personen des Haushalts (Einzelwerte der Erholung und Ausnahme-Titel nur die Person selbst); Hetzner (Hosting)',
       drittland: 'keines',
@@ -245,8 +249,8 @@ export function verarbeitungenOrganisationNachtragen(vorhanden: readonly Verarbe
     const f = ALTE_FASSUNGEN[v.id];
     if (!f) return v;
     let x = v;
-    for (const [k, w] of Object.entries(f) as [keyof Verarbeitung, { alt: string; neu: string }][]) {
-      if (x[k] === w.alt) { x = { ...x, [k]: w.neu }; gehoben = true; }
+    for (const [k, w] of Object.entries(f) as [keyof Verarbeitung, { alt: string | string[]; neu: string }][]) {
+      if ((Array.isArray(w.alt) ? w.alt : [w.alt]).includes(String(x[k]))) { x = { ...x, [k]: w.neu }; gehoben = true; }
     }
     return x;
   });

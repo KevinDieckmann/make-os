@@ -31,6 +31,38 @@ Kevin 04.10.: „80 % Seriosität und Souveränität, höchstens 20 % Akzente, k
 - **Gemessen:** Rechner 60 fps (längstes Bild 16,8 ms), Handy CPU × 4 59,5 fps; Konsole leer; 375/820/1440 px ohne waagerechtes Scrollen.
 - **Online:** nichts — Caddy-Block und Ordner bestehen seit 04.10. (Vorschau, noindex); Upload nur auf Kevins Wort. **Rückweg:** Branch
   verwerfen; nichts am Server, keine Daten.
+## Demo-Instanz: Saat + „Demo zurücksetzen“ (05.10.2026, nur lokal — Branch `demo-schnappschuss`; Anleitung DEMO.md)
+
+Kevin 04.10.: „Wir müssen alles anpassbar haben, auch wenn wir mal einen Demo-Account machen.“
+- **Saat** `node scripts/demo-saat.mjs` (lib/demo/saat.ts): vollständig erfundene Demo über die bestehenden Schreibwege — nur in einen
+  leeren, eigenen Datenordner, nie `.data`. Was gesät wird: DEMO.md.
+- **Zurücksetzen** unter System (nur Demo-Instanz `MAKE_OS_DEMO=1`, nur Inhaber, Rückfrage) — `GET/POST /api/demo`; in jeder anderen
+  Instanz 404 (Wächtertest). Riegel: lib/demo/schutz.ts.
+- **Namen je Instanz** (`NEXT_PUBLIC_MAKE_OS_EINHEITEN`, `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`, Dockerfile-Build-Args) — ohne Variablen
+  unverändert; Startbestand der alten Finanz-Seite nimmt sie mit. System: doppelte React-Kennung der Liste behoben.
+- **Tests:** `tests/demo.test.ts` (Riegel, Saat, keine echten Namen in den Dateien der Demo, Zurücksetzen nur Inhaber/nur Demo).
+- **Rückweg:** Für unsere Instanz ändert sich nichts (keine Variable gesetzt, `/api/demo` → 404). Code-Rückweg: Branch nicht mergen bzw.
+  `lib/demo/`, `app/api/demo/`, `components/os/DemoKarte.tsx`, `scripts/demo-saat.mjs` entfernen; die Build-Args im Dockerfile sind leer
+  harmlos. Kein Bestand unserer Instanz wird angelegt oder verändert.
+
+## Kapazität: Wochenplan festhalten → echte Plan-Treue „geplant vs. Ist“ (05.10.2026, nur lokal — Branch `demo-schnappschuss`)
+
+Kevin 05.10.: „Jeden Montag wird der Wochenplan festgehalten → echte Plan-Treue ‚geplant vs. Ist‘.“
+
+- **Morgenlauf-Schritt „Wochenplan festhalten“** (`kapaPlanFesthalten`, lib/kapazitaet/server.ts; Regeln rein in lib/kapazitaet/plan.ts):
+  montags bzw. beim ersten Lauf der Woche je Person den Plan der laufenden Woche ablegen — verfügbar (Netto, OHNE Kopf & Energie: kein
+  Gesundheitswert), geplant (= Bedarf), gebunden (Zuweisungen), je Meilenstein/Ziel und je Zuweisung (nur Kennungen). Idempotent (ein
+  Schnappschuss je Woche; ein späterer erster Lauf hält ab diesem Tag fest, `ab`). Bestand `kapazitaet-plan--<haushalt>`, Protokoll „System“.
+- **Plan-Treue `kp_treue`:** mit festgehaltenen Wochen Σ gemessene Business-Fokuszeit ÷ Σ geplant der abgeschlossenen Wochen (letzte 4,
+  Personen mit Konto, Ist ab `ab`); ohne sie die bisherige Näherung — in Kennzahl und Kapazität als „Näherung“ beschriftet. Details je
+  Woche, alle mit Link auf die Kapazität (`#plan-treue`). Kapazität: fünfte Zahl „Plan-Treue“ + Karte „Plan-Treue“ (Wochen geplant vs. Ist).
+- **DSGVO:** Speicher-Register `kapazitaet-plan--*` (Beschäftigtendaten, Art. 6 Abs. 1 lit. b / § 26 BDSG), Löschfrist 24 Monate je Woche
+  (im selben Morgenlauf-Schritt), Team-Personen ohne Konto: ihre Zeilen mit den übrigen Kapazitätsdaten 30 Tage nach dem Deaktivieren;
+  Art. 15 über die Kapazitäts-Auskunft (`wochenplaene`). Löschkonzept `kapazitaet-plan`, Verzeichnis `vv-kapazitaet` (Fassung vom 04.10.
+  wird gehoben, von Hand Geändertes bleibt).
+- **Tests:** `tests/kapazitaet-plan.test.ts`.
+- **Rückweg:** Der alte Stand liest `kapazitaet-plan--*` nicht (Bestand bleibt liegen, schadet nicht; bei Bedarf löschen) und rechnet die
+  Näherung wie bisher. Die optionalen Felder (`wochenPlan`, `planTreueQuelle`, `treueWochen`) ignoriert er.
 
 ## DSGVO-Nachtrag: Kapazität deaktivierter Team-Personen + Unterlagen gelöschter Gesellschaften/Verträge (04.10.2026 spät, nur lokal — Branch `dsgvo-2`; UMBAU_ABEND_0410.md › 12)
 

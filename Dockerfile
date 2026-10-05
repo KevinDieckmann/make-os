@@ -8,6 +8,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
+# Namen je Instanz (05.10., Demo-Instanz — DEMO.md): NEXT_PUBLIC_ wird beim Bauen eingesetzt. Leer = wie bisher (unsere Instanz).
+ARG NEXT_PUBLIC_MAKE_OS_EINHEITEN=""
+ARG NEXT_PUBLIC_MAKE_OS_CRM_TEAM=""
+ENV NEXT_PUBLIC_MAKE_OS_EINHEITEN=$NEXT_PUBLIC_MAKE_OS_EINHEITEN NEXT_PUBLIC_MAKE_OS_CRM_TEAM=$NEXT_PUBLIC_MAKE_OS_CRM_TEAM
 # pdf.js-Worker nach public/ (sonst macht das postinstall)
 RUN node scripts/pdf-worker.mjs && node node_modules/next/dist/bin/next build && npm prune --omit=dev
 

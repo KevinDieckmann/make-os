@@ -25,6 +25,14 @@ Eure echte Instanz zeigt private Daten — für Vorführungen ungeeignet. Deshal
 - Voraussetzung: die Beispieldaten müssen die heute fest eingebauten Personen (`kevin`/`malin`) nutzen — Stufe 0
   geht also **vor** dem großen Umbau, mit zwei erfundenen Demo-Personen auf diesen Kennungen.
 
+**Stand 05.10.: Stufe 0 gebaut (lokal, Branch `demo-schnappschuss`) — Anleitung `DEMO.md`.** Seed `scripts/demo-saat.mjs`
+(lib/demo/saat.ts, über die bestehenden Schreibwege, nur in einen leeren eigenen Ordner, nie `.data`), Knopf „Demo zurücksetzen“
+unter System (nur `MAKE_OS_DEMO=1`, sonst 404; nur Inhaber; Riegel in lib/demo/schutz.ts). Abweichend von oben: die Demo-Personen
+heißen **nicht** `kevin`/`malin` (Speicher `lena`/`jonas`) — `kevin` trägt Altstellen mit echten Rückfällen (z. B. Whoop-Konstanten);
+dafür sind die Namen der drei festen Gesellschaften und das Markttraktion-Team je Instanz einstellbar (`NEXT_PUBLIC_MAKE_OS_EINHEITEN`,
+`NEXT_PUBLIC_MAKE_OS_CRM_TEAM`, Dockerfile-Build-Args). Offen: nächtliches Zurücksetzen per Takt, ZOE-Prompts ohne unseren Kontext,
+Container/Adresse auf dem Server (nur beschrieben).
+
 ## Testkunden & Interessenten (Kevin, 01.10.: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen können“)
 - **Nie ein Konto auf unserer Instanz.** Unsere Instanz (app.makeinnovation.de) bleibt nur für Kevin & Malin. Grund: Die
   Software ist heute auf einen Haushalt gebaut; die Prüfung S1 hat noch ~50 Lese-Stellen mit Rückfall auf „kevin“ gefunden —

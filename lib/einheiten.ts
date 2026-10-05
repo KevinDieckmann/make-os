@@ -31,10 +31,36 @@ export type GesellschaftId = Gesellschaftskennung | RegisterKennung;
 export const REGISTER_KENNUNG = /^g-[a-z0-9][a-z0-9-]{3,62}$/;
 export const istRegisterKennung = (v: unknown): v is RegisterKennung => typeof v === 'string' && REGISTER_KENNUNG.test(v);
 
+// ─── Namen je Instanz (05.10., Demo-Instanz — Plattform-Regel „Namen aus der Umgebung, nie fest im Code“) ─────────────
+// `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (JSON, z. B. `{"kdc":{"label":"Beispiel Beratung","kurz":"Beratung"},"kdv":{…},"ug":{…}}`)
+// ersetzt die ANZEIGENAMEN der drei festen Gesellschaften — die Kennungen bleiben. Ohne Variable gilt alles wie bisher (unsere
+// Instanz). NEXT_PUBLIC_, weil Oberfläche und Server dieselben Namen zeigen müssen (Next setzt den Wert beim Bauen bzw. im
+// Dev-Server ein). Ungültiges wird ignoriert (Vorgabe bleibt). Doku: DEMO.md.
+type NamenUeberschreibung = Partial<Record<Gesellschaftskennung, { label?: string; kurz?: string }>>;
+function namenAusUmgebung(): NamenUeberschreibung {
+  const roh = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN : undefined;
+  if (!roh) return {};
+  try {
+    const o = JSON.parse(roh) as Record<string, { label?: unknown; kurz?: unknown }>;
+    const aus: NamenUeberschreibung = {};
+    for (const id of ['kdc', 'kdv', 'ug'] as const) {
+      const e = o?.[id];
+      if (!e || typeof e !== 'object') continue;
+      const label = typeof e.label === 'string' && e.label.trim() ? e.label.trim().slice(0, 80) : undefined;
+      const kurz = typeof e.kurz === 'string' && e.kurz.trim() ? e.kurz.trim().slice(0, 20) : undefined;
+      if (label || kurz) aus[id] = { ...(label ? { label } : {}), ...(kurz ? { kurz } : {}) };
+    }
+    return aus;
+  } catch { return {}; }
+}
+const NAMEN = namenAusUmgebung();
+/** Die Namen, die diese Instanz über die Umgebung setzt (leer = unsere Instanz) — für Startbestände mit eigenen Langnamen. */
+export const EINHEITEN_UEBERSCHRIEBEN: Readonly<NamenUeberschreibung> = NAMEN;
+
 /** Anzeigename der Gesellschaft mit der Kennung `ug` — EINZIGE Stelle (seit 30.09., vorher „MAKE OS UG“). */
-export const UG_NAME = 'MAKE Innovation GmbH';
+export const UG_NAME = NAMEN.ug?.label ?? 'MAKE Innovation GmbH';
 /** Kurzname für enge Stellen (Pillen, Chips, Spaltenköpfe) — „MAKE“, damit er nicht mit anderen GmbHs verwechselt wird. */
-export const UG_KURZ = 'MAKE';
+export const UG_KURZ = NAMEN.ug?.kurz ?? 'MAKE';
 /**
  * Frühere und abweichende Namen der Gesellschaft `ug` — werden beim Lesen erkannt, nie still verworfen.
  * Nur hier stehen die Altnamen (Wächter: tests/umbenennung-make.test.ts).
@@ -45,8 +71,8 @@ export const UG_ALTNAMEN: readonly string[] = [
 ];
 
 export const KERN_EINHEITEN: readonly { id: Gesellschaftskennung; label: string; kurz: string }[] = [
-  { id: 'kdc', label: 'Selbstständigkeit', kurz: 'Selbst.' },
-  { id: 'kdv', label: 'KD Ventures', kurz: 'KDV' },
+  { id: 'kdc', label: NAMEN.kdc?.label ?? 'Selbstständigkeit', kurz: NAMEN.kdc?.kurz ?? 'Selbst.' },
+  { id: 'kdv', label: NAMEN.kdv?.label ?? 'KD Ventures', kurz: NAMEN.kdv?.kurz ?? 'KDV' },
   { id: 'ug', label: UG_NAME, kurz: UG_KURZ },
 ];
 

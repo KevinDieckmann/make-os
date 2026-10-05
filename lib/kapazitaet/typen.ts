@@ -103,8 +103,32 @@ export interface PostenEingabe {
   istStunden?: number;
 }
 
+// ── Der festgehaltene Wochenplan (Kevin 05.10., lib/kapazitaet/plan.ts) ──────
+
+/** Plan einer Person für eine Woche: verfügbar (Netto, ohne Kopf & Energie), geplant (= Bedarf), davon gebunden (Zuweisungen). */
+export interface PlanPerson {
+  id: string;
+  quelle: 'konto' | 'team';
+  verfuegbar: number;
+  geplant: number;
+  gebunden: number;
+  /** Verplante Stunden je Meilenstein/Ziel (nur Kennungen). */
+  posten: { art: 'meilenstein' | 'ziel'; id: string; stunden: number }[];
+  /** Gebundene Stunden je Zuweisung (Kennung der Zuweisung). */
+  zuweisungen: { id: string; stunden: number }[];
+}
+/** Der Plan der laufenden Woche aus der Rechnung (`ab` = heute; am Montag die ganze Woche). */
+export interface WochenPlan { woche: string; ab: string; personen: PlanPerson[] }
+/** Festgehalten im Bestand `kapazitaet-plan--<haushalt>`; `erstellt` = Zeitpunkt (ISO). */
+export interface PlanSchnappschuss extends WochenPlan { erstellt: string }
+export interface PlanDatei { wochen: PlanSchnappschuss[] }
+/** Eine abgeschlossene, festgehaltene Woche: geplant (Personen mit Konto) gegen gemessen. */
+export interface TreueWoche { woche: string; geplant: number; ist: number; personen: number }
+
 export interface KapaEingabe {
   heute: string;
+  /** Festgehaltene Wochenpläne (Bestand `kapazitaet-plan--<haushalt>`) — für die echte Plan-Treue. */
+  plaene?: PlanSchnappschuss[];
   wochen?: number;
   personen: PersonEingabe[];
   datei: KapaDatei;
@@ -206,10 +230,19 @@ export interface KapaKennzahlen {
   machbar: { machbar: number; eng: number; nicht: number; ueberfaellig: number; ohneAufwand: number; ohneTermin: number; bewertet: number };
   /** Anteil machbarer Posten in % (eng zählt halb). */
   machbarAnteil: number | null;
-  /** Ø Ist (gemessen, 4 Wochen) ÷ Ø Plan-Bedarf je Woche (nächste 4 Wochen), in %. */
+  /**
+   * Plan-Treue in %: mit festgehaltenen Wochen Σ Ist ÷ Σ geplant der abgeschlossenen Wochen (`planTreueQuelle` 'festgehalten'),
+   * sonst die Näherung Ø Ist (4 Wochen) ÷ Ø Plan-Bedarf je Woche (nächste 4 Wochen) ('naeherung').
+   */
   planTreue: number | null;
+  /** Ø gemessen je Woche (festgehalten: der verglichenen Wochen; Näherung: letzte 4 Wochen). */
   istStdWoche: number | null;
+  /** Ø geplant je Woche (festgehalten: der verglichenen Wochen; Näherung: nächste 4 Wochen). */
   planStdWoche: number;
+  /** Woher die Plan-Treue kommt — fehlt bei alten Ständen (= Näherung). */
+  planTreueQuelle?: 'festgehalten' | 'naeherung';
+  /** Die verglichenen, festgehaltenen Wochen (älteste zuerst) — leer = Näherung. */
+  treueWochen?: TreueWoche[];
   /** Ø freie Stunden je Woche (nächste 4 Wochen) — null, solange nichts verplant ist. */
   pufferStdWoche: number | null;
   /** Kopf & Energie (Team): Faktor × 100 — null ohne geteilte Messung. */
@@ -228,4 +261,6 @@ export interface KapaStand {
   posten: Machbarkeit[];
   zuweisungen: (Zuweisung & { label: string })[];
   kennzahlen: KapaKennzahlen;
+  /** Plan der laufenden Woche (ab heute) — das, was der Morgenlauf festhält (lib/kapazitaet/plan.ts). */
+  wochenPlan?: WochenPlan;
 }

@@ -8,6 +8,7 @@ import { FARBE as C } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { MeldenKnopf } from './Leiste';
+import { DemoKarte } from './DemoKarte';
 import { TYP } from '@/lib/make-one/design';
 
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
@@ -49,14 +50,16 @@ export function SystemView() {
     <Seite titel="System" unter="Alles, was nicht täglich ist: ZOE, Zugang, Bauen."
       // Am Handy steht in der Leiste unten jetzt Netzwerken — „Problem oder Idee melden“ bleibt hier und im Blatt von Privat/Business erreichbar.
       rechts={<MeldenKnopf zu={false} stil={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600 }} />}>
+      {/* Nur in einer Demo-Instanz und nur für ihren Inhaber (GET /api/demo — sonst 404, die Karte bleibt weg). */}
+      <DemoKarte />
       <Flaeche seite="system">
       {GRUPPEN.map((g, i) => (
         <Kachel key={g.titel} id={g.titel.toLowerCase().replace(/[^a-z0-9]+/g, '-')} titel={g.titel} breite={2}>
         <Karte i={i}>
           <Ueberschrift>{g.titel}</Ueberschrift>
           <Liste>
-            {g.eintraege.map(e => (
-              <Link key={e.href} href={e.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+            {g.eintraege.map((e, j) => (
+              <Link key={`${e.href}#${j}`} href={e.href} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <Zeile onClick={() => {}} titel={e.label} unter={e.was} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
               </Link>
             ))}

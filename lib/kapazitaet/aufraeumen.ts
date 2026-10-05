@@ -18,7 +18,8 @@
 import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { KONTO_PRAEFIX, type TeamEintrag } from '@/lib/make-one/team-typen';
 import { sauberKapaDatei } from './aendern';
-import type { KapaDatei, Ausnahme, Zuweisung } from './typen';
+import { planFuerPerson, PLAN_LOESCHEN_NACH_MONATEN } from './plan';
+import type { KapaDatei, Ausnahme, Zuweisung, PlanDatei } from './typen';
 
 /** Nach so vielen Tagen Deaktivierung gehen die Kapazitätsdaten einer Team-Person (Kevin 04.10.). */
 export const KAPA_LOESCHEN_NACH_TAGEN = 30;
@@ -75,6 +76,8 @@ export interface KapaAuskunft {
   erholungEinwilligungAm: string | null;
   /** Meilensteine/Ziele, an denen die Person laut Planung mitarbeitet (nur Verweis: Art, Kennung, Titel). */
   arbeitetAn: { art: 'meilenstein' | 'ziel'; id: string; titel: string }[];
+  /** Festgehaltene Wochenpläne der Person (montags, Kevin 05.10.): verfügbar, geplant, gebunden, je Posten/Zuweisung. */
+  wochenplaene: ReturnType<typeof planFuerPerson>;
   hinweise: string[];
 }
 
@@ -84,6 +87,8 @@ export function kapaAuskunft(o: {
   datei: KapaDatei | null | undefined;
   posten?: readonly { art: 'meilenstein' | 'ziel'; id: string; titel: string; personen?: readonly string[] }[];
   bezugNamen?: Readonly<Record<string, string>>;
+  /** Festgehaltene Wochenpläne des Haushalts (Bestand `kapazitaet-plan--<haushalt>`). */
+  plaene?: PlanDatei | null;
   jetzt: string;
 }): KapaAuskunft {
   const d = sauberKapaDatei(o.datei);
@@ -103,11 +108,13 @@ export function kapaAuskunft(o: {
     zuweisungen: d.zuweisungen.filter(z => z.person === e.id).map(z => ({ ...z, bezug: o.bezugNamen?.[z.bezugId] ?? z.bezugId })),
     erholungEinwilligungAm: einst?.erholungAm ?? null,
     arbeitetAn: (o.posten ?? []).filter(p => p.personen?.includes(e.id)).map(p => ({ art: p.art, id: p.id, titel: p.titel })),
+    wochenplaene: planFuerPerson(o.plaene, e.id),
     hinweise: [
       'Gespeichert im Bestand der Kapazitätsplanung des Haushalts (verschlüsselt, Server in Deutschland).',
       'Ein Gesundheitswert wird nie gespeichert; die Erholung zählt nur mit eigener Einwilligung als gemeinsamer Team-Faktor.',
       ...(loeschAb ? [`Die Person ist deaktiviert — ihre Kapazitätsdaten werden ab ${loeschAb} automatisch gelöscht (Reaktivieren davor erhält sie).`] : []),
       'Termine und gemessene Fokus-Zeit werden nur beim Rechnen gelesen (Kalender, Zeit & Fokus) und hier nicht gespeichert.',
+      `Der Wochenplan wird montags festgehalten (verfügbare Zeit ohne Erholungs-Faktor, geplante Stunden je Meilenstein/Zuweisung) und nach ${PLAN_LOESCHEN_NACH_MONATEN} Monaten gelöscht.`,
     ],
   };
 }

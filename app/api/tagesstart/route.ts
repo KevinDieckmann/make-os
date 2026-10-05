@@ -164,6 +164,21 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Kapazität deaktivierter Personen', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0h) Wochenplan festhalten (Kevin 05.10.): montags bzw. beim ersten Lauf der Woche den Plan je Person ablegen — Grundlage der
+  //     echten Plan-Treue „geplant vs. Ist“ (lib/kapazitaet/plan.ts). Idempotent; Wochen älter als 24 Monate fallen weg.
+  try {
+    const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
+    if (!h) schritte.push({ name: 'Wochenplan festhalten', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { kapaPlanFesthalten } = await import('@/lib/kapazitaet/server');
+      const p = await kapaPlanFesthalten(h, today);
+      const was = [p.neu ? `Woche ab ${p.woche.slice(8, 10)}.${p.woche.slice(5, 7)}. festgehalten (${p.personen} Person${p.personen === 1 ? '' : 'en'})` : 'diese Woche schon festgehalten', p.entfernt ? `${p.entfernt} alte Woche${p.entfernt === 1 ? '' : 'n'} gelöscht` : ''].filter(Boolean).join(' · ');
+      schritte.push({ name: 'Wochenplan festhalten', ok: true, info: was });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Wochenplan festhalten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read
   //    ist zäh (bis ~55s), das muss nicht jeden Morgen sein.
   if (st.kalenderAlterStd == null || st.kalenderAlterStd > 12) {
