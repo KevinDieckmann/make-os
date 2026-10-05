@@ -6,7 +6,8 @@
 2. Kopiere jeweils alles zwischen `--- PROMPT P… START ---` und `--- PROMPT P… ENDE ---`.
 3. Wenn Gemini vorab einen Rechercheplan zeigt: prüfen, ob alle nummerierten Fragen drin sind, sonst „bitte alle Fragen 1–n abdecken“ antworten, dann starten.
 4. Ergebnisse als Google Doc exportieren und als `research/ai-ceo/P01-markt.md` … `P10-gtm.md` ablegen (oder mir die Docs geben).
-5. Zum Schluss den **Bonus-Prompt P11** mit allen 10 Ergebnissen laufen lassen (oder ich mache die Synthese mit dir).
+5. Zusätzlich **P12** und **P13** (Stimme der Kunden, Weg zu 100 Kunden) — sie machen aus guter Recherche einen klaren Fahrplan.
+6. Zum Schluss den **Bonus-Prompt P11** mit allen zwölf Ergebnissen laufen lassen (oder ich mache die Synthese mit dir).
 
 **Die 10 Läufe im Überblick**
 | Nr. | Thema | Wofür wir es brauchen |
@@ -21,7 +22,9 @@
 | P8 | Arbeit, Fokus, Gesundheit und Leistungsfähigkeit von Gründern | Belege für Balance als Funktion |
 | P9 | Geschäftsmodell, Preise, Kosten der KI, Kennzahlen | Wie wir Geld verdienen, ohne Marge zu verlieren |
 | P10 | Weg in den Markt, Positionierung, Marke, Vertrieb (DACH) | Wie wir es extrem gut verkaufen |
-| P11 | Bonus: Synthese aller zehn Ergebnisse | Ein Bauplan mit Prioritäten |
+| P12 | Stimme der Kunden: Worte, Schmerzen, Wechselauslöser, Aha-Moment | Richtige Reihenfolge der Funktionen und die Sprache, die verkauft |
+| P13 | Vom Plan zu 100 Kunden: Fallstudien, Reihenfolge, Betriebsmodell | Ein belastbarer Fahrplan mit Meilensteinen und Abbruchkriterien |
+| P11 | Bonus: Synthese aller zwölf Ergebnisse (zuletzt laufen lassen) | Ein Bauplan mit Prioritäten |
 
 ---
 
@@ -383,20 +386,96 @@ Du bist eine Go-to-Market- und Markenstrategin für B2B-Software im DACH-Raum mi
 
 ---
 
+--- PROMPT P12 START ---
+
+Du bist eine Forscherin für Kundenverständnis (Jobs-to-be-done, qualitative Marktforschung, Social Listening) mit Schwerpunkt Solo- und Kleinunternehmer. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (unser Produkt):** MAKE OS ist ein Betriebssystem für Menschen, die ihr Unternehmen ohne oder fast ohne Mitarbeiter mit KI führen („AI CEO“) und Privat + Business in einem System steuern: Fokus & Zeit (Kalender, Ziele → Meilensteine → Aufgaben, Kapazität), Business (CRM, Vertrieb, Marketing, Events, Finanzplanung, Steuern), Privat (Haushaltsfinanzen, Gesundheit, Familie), ein KI-Chief-of-Staff und KI-Abteilungsleiter, die vorschlagen, während der Mensch entscheidet. Eigene verschlüsselte Instanz je Kunde in Deutschland. Geplant: CEO-Cockpit, vollständiges KI-Führungsteam, Führungsrhythmus, Delegation, Balance als Führungsgröße.
+
+**Ziel dieses Laufs:** Die **echte Stimme der Zielgruppe** einfangen — in ihren eigenen Worten —, damit wir (a) die Funktionen in der richtigen Reihenfolge bauen und (b) mit der Sprache verkaufen, die Kunden selbst benutzen. Keine Analystenmeinungen, sondern belegte Aussagen von Betroffenen.
+
+**Quellen, die du systematisch auswerten sollst:** Reddit (z. B. r/Entrepreneur, r/solopreneur, r/smallbusiness, r/freelance, r/productivity, r/Notion, r/ObsidianMD, r/ChatGPT, r/ClaudeAI, r/AI_Agents, r/selbststaendig, r/de_EDV), Hacker News, Indie Hackers, Product Hunt-Kommentare, G2/Capterra/Trustpilot-Bewertungen (Notion, ClickUp, Motion, Reclaim, Sunsama, Lindy, HubSpot, Pipedrive, lexoffice, sevDesk, YNAB, Whoop), YouTube-Kommentare unter „AI solopreneur“/„one person business“-Videos, LinkedIn-Beiträge, deutschsprachige Foren und Gruppen (Gründerszene, t3n-Kommentare, VGSD, Facebook-/Xing-Gruppen für Selbstständige), Podcasts mit Solo-Gründern, veröffentlichte Interview-Studien.
+
+**Beantworte ausführlich, jeweils mit wörtlichen Zitaten (Original + deutsche Übersetzung, Quelle, Datum, Link):**
+1. **Jobs-to-be-done:** Welche Aufgaben will ein AI CEO „erledigt haben“ — funktional (z. B. „nie wieder einen Lead vergessen“), emotional („abends abschalten können“), sozial („professionell wirken, obwohl ich allein bin“)? Rangliste nach Häufigkeit und Dringlichkeit.
+2. **Schmerzen in ihren Worten:** Die 30 häufigsten Klagen über Arbeit, Werkzeuge, KI, Zeit, Geld, Familie — mit Zitaten und Häufigkeitsschätzung (Methode offenlegen).
+3. **Werkzeug-Müdigkeit:** Wie viele Werkzeuge nutzen sie, was nervt am Zusammenstecken (Zapier-Ketten, Notion-Vorlagen), wann geben sie auf?
+4. **Wechselauslöser:** Was bringt Menschen dazu, ein neues System auszuprobieren (Ereignisse wie Gründung, Kind, Burnout, erster großer Kunde, Steuer-Schock)? Was hält sie beim alten (Datenumzug, Lernaufwand, Vertrauen)?
+5. **Abbruchgründe:** Warum verlassen Menschen Produktivitäts- und KI-Werkzeuge nach Tagen/Wochen (Einrichtungsaufwand, zu viel Pflege, KI-Fehler, Preis)? Zitate und Muster.
+6. **KI-Vertrauen:** Was sagen Solo-Unternehmer über KI-Agenten — Begeisterung, Angst, schlechte Erfahrungen, Grenzen („das würde ich nie automatisieren“)? Wo wollen sie Kontrolle, wo Entlastung?
+7. **Privat + Business:** Wie sprechen sie über die Vermischung (Kalender, Geld, Steuern, Familie, Gesundheit)? Wünschen sie ein gemeinsames System oder strikte Trennung — und warum?
+8. **Aha-Moment und Wert:** Welche Erlebnisse beschreiben Nutzer als „das hat mein Arbeiten verändert“ bei vergleichbaren Produkten? Daraus: Hypothesen für unseren Aha-Moment in den ersten 10 Minuten / 7 Tagen.
+9. **Kaufsprache:** Welche Wörter und Bilder benutzen sie selbst (z. B. „Kopf frei“, „Überblick“, „Chief of Staff“, „zweites Gehirn“, „Betriebssystem“, „AI CEO“)? Welche Begriffe wirken abschreckend? Unterschiede DACH vs. USA.
+10. **Funktionswert:** Bewerte unsere geplanten Bausteine (CEO-Cockpit, KI-Abteilungsleiter, Freigabe-Stapel, Führungsrhythmus, Kapazitätsplanung, Balance/Energie, Finanzplanung mit Privat, CRM/Vertrieb, Events, eigene Instanz/Datenschutz) nach Kano-Logik (Basis / Leistung / Begeisterung / egal / abschreckend) — begründet mit Zitaten.
+
+**Arbeitsweise:** Nur echte, verlinkte Aussagen; keine erfundenen Zitate (wenn du ein Zitat nicht wörtlich belegen kannst, kennzeichne es als Zusammenfassung). Aktuelle Quellen (letzte 12–18 Monate) bevorzugen, Datum je Quelle. Deutsch und Englisch getrennt auswerten. Häufigkeiten als Schätzung mit Methode kennzeichnen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Erkenntnisse, die uns überraschen sollten)
+2. Jobs-to-be-done-Karte (funktional / emotional / sozial) mit Rangliste
+3. Schmerz-Rangliste mit Zitaten
+4. Wechsel- und Abbruch-Muster (Tabelle: Auslöser × Häufigkeit × Zitat)
+5. Kano-Tabelle unserer Bausteine
+6. Wörterbuch der Kundensprache (sagen sie / sagen sie nicht / wirkt abschreckend), DACH und USA getrennt
+7. Aha-Moment-Hypothesen + Test-Ideen
+8. „Was das für MAKE OS heißt“: Reihenfolge der Funktionen (begründet), Onboarding-Ablauf, 5 Website-Überschriften in Kundensprache, 10 Interviewfragen für Pilotkunden
+9. Quellenliste
+
+--- PROMPT P12 ENDE ---
+
+---
+
+--- PROMPT P13 START ---
+
+Du bist eine Beraterin für Unternehmensaufbau von Software-Firmen (0 → 1 → 100 Kunden) mit Erfahrung in KI-Anwendungen, kleinen Teams und Betrieb vieler Kunden-Instanzen. Führe eine gründliche, belegte Tiefenrecherche durch. Heute ist Oktober 2026.
+
+**Kontext (wir):** Zwei Gründer (Kevin und Malin), MAKE Innovation (Marke der KEMARIS Innovation GmbH, künftig MAKE Innovation GmbH), bauen MAKE OS — das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System). Das Produkt läuft bereits produktiv für uns selbst (rund 70 Seiten, 250 Schnittstellen, 5.400 automatische Tests, eigener Server in Deutschland), gebaut mit KI-Programmier-Agenten. Betrieb als **eigene Instanz je Kunde**. Geplant: AI-CEO-Modul in Phasen (Plattform-Schulden → CEO-Cockpit → KI-Führungsteam → Delegation → Balance → Instanz-Fabrik, Lizenzen, Demo, 3–5 Piloten → Markt). Eigene Event-Reihe „Fokus Innovation“ als Bühne.
+
+**Ziel dieses Laufs:** Aus echten Fallstudien ableiten, **in welcher Reihenfolge** wir bauen, testen, verkaufen und betreiben sollten — mit Meilensteinen, Kennzahlen und Abbruchkriterien —, damit unser Fahrplan belastbar ist.
+
+**Beantworte ausführlich und mit Quellen:**
+1. **Fallstudien 0 → 100 Kunden:** Analysiere 10–15 vergleichbare Unternehmen (KI-Anwendungen für Kleinunternehmen, Produktivitäts-/Planungs-Software, vertikale SaaS, „AI employees“, Produkte mit eigener Instanz/Self-Hosting — z. B. Motion, Reclaim, Sunsama, Superhuman, Linear, Notion früh, Lindy, Fyxer, Granola, Basecamp/HEY, Plausible, Cal.com, Nextcloud, n8n, deutsche Beispiele wie Personio/lexoffice/sevDesk in der Frühphase). Je Fall: Ausgangslage, erste 10 Kunden (woher, wie), Zeit bis 100 Kunden, was zuerst gebaut wurde, was weggelassen wurde, Preis am Anfang, größte Fehler, Wendepunkte.
+2. **Reihenfolge:** Welche Muster zeigen die Fälle — erst eine Edition/ein Kernproblem oder sofort Plattform? Wann Onboarding automatisieren, wann Preise erhöhen, wann Partner? Belegte „Gesetze“ der Frühphase (z. B. „Do things that don't scale“, Concierge-Onboarding, Design-Partner).
+3. **Pilot- und Design-Partner-Programme:** Auswahl, Vertrag, Preis, Feedback-Rhythmus, Erfolgskriterien, Übergang zu zahlenden Kunden — beste Praxis mit Beispielen.
+4. **Meilensteine und Kennzahlen je Stufe:** Was sind belastbare Schwellen (Aktivierung, wöchentliche Nutzung, Bindung nach 4/12 Wochen, Weiterempfehlung, Umsatz) für „weiter zur nächsten Stufe“ — und Abbruch-/Umsteuer-Kriterien? Benchmarks mit Quellen.
+5. **Kleines Team + KI-Programmierung:** Wie arbeiten 1–3-Personen-Softwarefirmen 2025/2026 mit KI-Coding-Agenten produktiv (Qualitätssicherung, Tests, Reviews, Release-Takt, technische Schulden, Support)? Belege, Erfahrungsberichte, Risiken.
+6. **Viele Kunden-Instanzen betreiben:** Wie organisieren Anbieter mit eigener Instanz je Kunde Bereitstellung, Updates (gestaffelt), Überwachung, Sicherung, Notfall, Support, Kosten — ab wann lohnt welche Automatisierung (Instanz-Fabrik)? Beispiele (z. B. Nextcloud-Partner, Plausible, Mattermost, GitLab Dedicated, Basecamp ONCE).
+7. **Onboarding und Aktivierung:** Was führt bei komplexen „Betriebssystem“-Produkten zur schnellen Aktivierung (Vorlagen/Playbooks, geführte Einrichtung, Import, Concierge, Demo-Daten)? Belegte Zahlen.
+8. **Bindung:** Was hält Kunden bei Alltags-Software dauerhaft (Rituale, tägliche Berichte, Wechselkosten durch Daten, Gemeinschaft)? Was davon ist fair, was manipulativ?
+9. **Typische Todesursachen** junger Software-Firmen dieser Art (zu breit, zu früh skaliert, kein Kanal, Support erdrückt das Team, KI-Kosten) — mit Beispielen und Frühwarnzeichen.
+10. **Fahrplan-Vorlage:** Leite einen konkreten Stufenplan für MAKE OS ab: Stufe 0 „Kunde 0 (wir)“, Stufe 1 „3–5 Design-Partner“, Stufe 2 „10 zahlende Kunden“, Stufe 3 „100 Kunden“, Stufe 4 „1.000 Kunden“ — je Stufe Ziel, Produktumfang, Vertrieb, Betrieb, Team, Kennzahlen, Eintrittskriterium, Abbruchkriterium, typische Dauer laut Fallstudien.
+
+**Arbeitsweise:** Primärquellen bevorzugen (Gründer-Interviews, Blogposts der Firmen, Podcasts, Vorträge, Geschäftsberichte), aktuelle Quellen (letzte 12–18 Monate) für Methoden, ältere für Fallgeschichten mit Datum. Jede Quelle mit Datum und Link. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Ausgabeformat (Deutsch):**
+1. Kurzfassung (10 Gesetze der Frühphase, belegt)
+2. Fallstudien-Tabelle (Firma × erste Kunden × Zeit bis 100 × Erstes Produkt × Fehler × Wendepunkt) + Steckbriefe
+3. Muster und Gegenmuster
+4. Kennzahlen-Schwellen je Stufe (Tabelle mit Quellen)
+5. Betriebsmodell für viele Instanzen (Ablauf, Werkzeuge, Kosten, Automatisierungsstufen)
+6. Arbeitsweise kleines Team + KI-Programmierung (Regeln, Risiken)
+7. **Fahrplan-Vorlage für MAKE OS** (Stufen 0–4, Tabelle) + 90-Tage-Plan für Stufe 1 im Wochenraster
+8. Frühwarnzeichen und Abbruchkriterien
+9. Quellenliste
+
+--- PROMPT P13 ENDE ---
+
+---
+
 --- PROMPT P11 (BONUS: SYNTHESE) START ---
 
-Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen zehn Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
+Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen zwölf Recherche-Berichte vor (P1 Markt & Zielgruppe, P2 Wettbewerb Produktivität, P3 Wettbewerb Agenten-Plattformen, P4 Privat-Bereich, P5 KI-Entwicklung 2026–2030, P6 Agenten-Architektur, P7 Recht & Vertrauen, P8 Arbeit & Wohlbefinden, P9 Geschäftsmodell & Preise, P10 Go-to-Market, P12 Stimme der Kunden, P13 Weg zu 100 Kunden). Sie betreffen MAKE OS, das Betriebssystem für „AI CEOs“ (Unternehmen ohne Mitarbeiter mit KI-Führungsteam, Privat + Business in einem System, eigene Instanz in Deutschland, Mensch entscheidet). Heute ist Oktober 2026.
 
 **Aufgabe:** Führe die Berichte zu **einer** Entscheidungsgrundlage zusammen.
 
-1. Die 15 wichtigsten Erkenntnisse über alle Berichte (mit Verweis auf Bericht und Quelle).
+1. Die 15 wichtigsten Erkenntnisse über alle Berichte (mit Verweis auf Bericht und Quelle). Wo Kundenstimme (P12) und Analysten-/Marktsicht (P1–P10) auseinandergehen, gewinnt die belegte Kundenstimme — markiere diese Stellen.
 2. Widersprüche zwischen den Berichten und wie man sie auflöst.
 3. Die erste Zielgruppe (eine), die erste Edition und der erste Preis — mit Begründung.
 4. Die 10 Funktionen mit dem höchsten Wert für die erste Zielgruppe, sortiert nach Wirkung/Aufwand, mit Verweis auf die Belege.
 5. Die 10 KI-Trends, die wir jetzt einbauen müssen, und 5 Dinge, die wir nicht bauen sollten.
 6. Pflichten aus Recht und Sicherheit vor dem ersten Kunden.
 7. Positionierung in einem Satz, Kernbotschaft, drei Belege, Einwandbehandlung.
-8. 90-Tage-Plan (Produkt, Recht, Vertrieb, Events) und 12-Monats-Plan mit Kennzahlen.
+8. Fahrplan in Stufen nach dem Muster aus P13 (z. B. Kunde 0 → 10 Piloten → 100 Kunden): je Stufe Ziel, Funktionen, Recht, Vertrieb, Events, Betrieb, Kennzahlen, Eintritts- und Abbruchkriterien; dazu 90-Tage-Plan im Wochenraster.
 9. Die 10 größten Risiken mit Gegenmitteln und Frühindikatoren.
 10. Offene Fragen, die nur Kundeninterviews oder Tests klären — mit Testdesign.
 
