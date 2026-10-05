@@ -7,6 +7,7 @@
 
 import { resolveAgent } from '@/lib/agent-config';
 import { localDay } from '@/lib/zeit';
+import { hintergrundKopf, laufImKontext } from '@/lib/datenschutz/ki-lauf';
 
 /** Agenten, die ZOE selbst starten darf. */
 export const AUSFUEHRBAR = [
@@ -101,7 +102,7 @@ const gut = (text: string): AgentLauf => ({ ok: true, text });
 const fehl = (text: string): AgentLauf => ({ ok: false, text });
 
 /** `person` = für wen der Lauf arbeitet (Sitzung bzw. Auftrag). Ohne Person ist es ein Systemlauf des Takts (26.09.). */
-export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string, person?: string): Promise<AgentLauf> {
+export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string, person?: string, opt: { hintergrund?: boolean } = {}): Promise<AgentLauf> {
   // Der Agenten-Schalter unter /os/agenten gilt weiterhin. Ausgeschaltet ist
   // ausgeschaltet — auch für ZOE.
   if (!SYSTEM.has(id)) {
@@ -113,7 +114,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
     if (!cfg.enabled) return fehl(`${cfg.name} ist ausgeschaltet (unter /os/agenten aktivierbar).`);
   }
 
-  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) };
+  // Datenschutz (05.10.): ein Lauf des Takts trägt `x-make-lauf: hintergrund` mit — die Routen geben das dem KI-Tor weiter
+  // (Schalter „Hintergrund-KI“, Pseudonymisierung). Vom Gespräch/Knopf ausgelöst bleibt es ein Aufruf.
+  const hintergrund = opt.hintergrund || laufImKontext() === 'hintergrund';
+  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}), ...hintergrundKopf(hintergrund) };
   // Ein „person:x“ im Auftragstext darf nur der Takt setzen (Systemlauf ohne Person) — sonst könnte
   // ein Konto als jemand anderes laufen lassen (26.09.).
   const personAusText = (text: string) => person ?? /person:([a-z0-9-]{1,40})/.exec(text)?.[1];

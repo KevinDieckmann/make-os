@@ -188,6 +188,7 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - **Gesundheit in der Kapazität:** Erholung zählt nur mit eigener Einwilligung (`PersonEinstellung.erholungAm`, Op `erholung` nur die
   Person selbst, auch nicht der Inhaber; Vorgabe AUS) UND Teilen mit allen Konten des Haushalts; nie im Business-Index (keine
   Kennzahl `kp_kopf`, `ohneGesundheit` in `kapaKennzahlenFuerIndex`), nie an ZOE/Protokolle. Andere sehen nicht einmal `erholungAm`.
+  Seit 05.10. zusätzlich die Art.-9-Einwilligung je Person (Abschnitt „KI, Gesundheit, Telegram“) — `erholungAm` bleibt eigene Einwilligung.
 - **Papierkorb und Art. 15/17:** `ladeCrm` blendet Papierkorb aus — `lib/crm/person-bestaende.ts` liest deshalb IMMER
   `ladeCrmMitPapierkorb` (Auskunft, Löschlauf, Zusammenführen, Verknüpfungs-Prüfung). Neue Art.-15/17-Leser ebenso.
 - **Gesellschafts-Register:** Art. 15 `registerAuskunft` (lib/gesellschaften/auskunft.ts) in `personAufzaehlen.gesellschaften`;
@@ -202,6 +203,36 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   erhält alles); Art. 15 `GET /api/kapazitaet?auskunft=<person>` (Konto nur selbst, Team-Person nur Inhaber) + `personAufzaehlen.kapazitaet`.
   Gesellschaft/Vertrag endgültig → Unterlagen bleiben (§ 257 HGB): Rückfrage `UnterlagenBleiben` mit `WEG.unterlagen(g, v?)`, Register vermerkt
   Gelöschtes (`RegisterDatei.geloescht`, `geloeschtVermerken` — neue Schreibwege auf das Register IMMER darüber), Bezüge „„Name“ (gelöscht)“.
+
+## Sicherheit & DSGVO — S3: Grundlagen im Code (05.10., Branch `dsgvo-grund`, nur lokal; Dokumente `datenschutz/`)
+- **System › Datenschutz** (`/os/datenschutz`, `components/os/DatenschutzView.tsx` + `components/os/datenschutz/*`): Selbstprüfung,
+  Verantwortlicher, Empfänger/AVV, Verzeichnis-Export, Pannen-Register (nur Inhaber), Dokumente. CRM-Datenschutz bleibt unter Stammdaten.
+- **Einrichtung** `lib/datenschutz/einrichtung.ts` (rein, client-sicher) + `einrichtung-server.ts`; Bestand `datenschutz-einrichtung`;
+  Route `/api/datenschutz/einrichtung` (GET Haushalt, `?nur=angaben` für die Danke-Mail; POST nur Inhaber, nie Dienstweg, `bauPruefen`).
+  **Verantwortlicher NIE fest im Code**: überall `verantwortlicherLaden()`/`verantwortlicherWirksam()`; im Verzeichnis-Feld `verantwortlich`
+  steht `VERANTWORTLICH_EINRICHTUNG` (Anzeige/Export über `verantwortlichAufloesen`), ohne Eintrag `VERANTWORTLICHER_FEHLT`. Wächter in
+  `tests/datenschutz-einrichtung.test.ts` (kein Personenname in den Datenschutz-Dateien).
+- **Empfänger/AVV-Register** (`EMPFAENGER_START`, je Instanz bearbeitbar): Rolle, Zweck, Daten, Drittland + Garantie, AVV-Status (offen /
+  bestätigt am + Unterlage), `dritte` (→ Auskunft Art. 15 Abs. 1 lit. c `empfaengerAuskunft`). Neuer Dienst = Eintrag dort (Startwert) UND
+  `empfaengerIds` an der Verarbeitung.
+- **Verzeichnis**: EINE Stelle `verzeichnisVervollstaendigen` (lib/crm/datenschutz.ts) — Start, Netzwerken, Organisation, Google,
+  Plattform (`verarbeitungenPlattform`, 13 Einträge), `alteFassungenHeben`, `verantwortlichHeben`. Neue Verarbeitung: dort ergänzen; alte
+  Fassung eines Textes in `ALTE_FASSUNGEN` eintragen, damit unveränderte Bestände gehoben werden. Export `/api/datenschutz/verzeichnis`
+  (`lib/datenschutz/verzeichnis-export.ts`, HTML escaped, CSP ohne Skripte).
+- **Selbstprüfung** `selbstpruefung(…, umfeld)`; Umfeld `lib/datenschutz/umfeld.ts` (Einrichtung, 2FA im Haushalt, `system/sicherung.json`,
+  Agenten-Schalter, Pannen). Ohne Umfeld nie „erfüllt“ für ki/zugang. Jeder Punkt mit `weg` zum Beheben. Route `/api/datenschutz/pruefung`.
+- **Sicherungen**: `SICHERUNG_GENERATIONEN` (14/8/12) + `SICHERUNG_SATZ` (lib/crm/loeschfristen.ts) müssen zu `deploy/sicherung.sh` /
+  `sicherung-abholen.sh` passen — Wächter `tests/datenschutz-sicherungsfrist.test.ts` (auch: Grabstein-Frist > älteste Sicherung).
+  Generationen ändern → Satz, Buchungs-Hinweis-Fassung und Grabstein-Minimum prüfen.
+- **Bauplan-Bilder** `<daten>/bauplan-bilder`, verschlüsselt (AAD `bauplan-bilder/<name>`), Frist `bauplan-bilder` (lib/bauplan/bilder-frist.ts),
+  Umschlüsseln/Ein-Aus-Skript stellen sie mit um. Bildschirmfotos nie an ZOE.
+- **Pannen-Register** `lib/datenschutz/pannen.ts`, Bestand `datenschutz-pannen`, `/api/datenschutz/pannen` — nur Inhaber (GET und POST).
+  Keine Namen Betroffener, nur Kategorien/Anzahl. Prozess `datenschutz/DATENPANNEN.md`.
+- **Löschfristen neu**: `bauplan-bilder` (90 T.), `loeschprotokoll` (36 M.), `pannen` (36 M. ab Abschluss); Kapazität entfernter Konten:
+  `kapaEntfernteKontenAufraeumen` im Morgenlauf (nur `konto-*` ohne Konto, nie bei leerem Konten-Bestand).
+- **Offen (nicht in diesem Paket):** globaler Schalter „KI im Hintergrund aus“ (heute je Agent unter /os/agenten); Buchungsseiten haben
+  weiter ihr eigenes Feld „Verantwortlich“ (Pflicht je Seite); Website-Erklärung nennt einen anderen Verantwortlichen; Verzeichnis-Einträge,
+  die man löscht, kommen beim nächsten Öffnen wieder (Nachtrag nach `id`).
 
 ## Sicherheit — Zugang & Schlüssel, Prüfung S3 (05.10., Branch `sicher-zugang`, nur lokal; Anleitung UPDATES.md)
 - **Dienstschlüssel nur von innen:** `MAKE_OS_KEY` (`x-make-key`) gilt nur, wenn `anfrageIntern` (lib/zugang/intern.ts) —
@@ -232,6 +263,49 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
 - **Caddy/Compose:** Software-Block entfernt `x-middleware-subrequest` und setzt `X-Make-Vorbau "1"`; `pids_limit` für app
   (512) und arbeiter (128), Arbeiter `read_only` + tmpfs. App `read_only` offen (Next schreibt `.next/cache`).
 - Tests: `tests/sicher-zugang-*.test.ts` (dienst, riegel, einrichten, zwei-faktor, passwort, protokoll, sitzung, json, caddy).
+
+## Verschlüsselung lückenlos + Protokolle nachweisfest (05.10., Branch `verschluesselung`, nur lokal — UPDATES.md 05.10.)
+- **Brain-Index nie im Klartext auf der Platte:** Ort nur über `indexOrt()` (`lib/brain/index-ort.ts`, rein): mit Datenschlüssel tmpfs
+  (Server: compose `/brain-index`, `MAKE_OS_BRAIN_INDEX=/brain-index/index/brain-index.sqlite`, 256 MB) oder `:memory:`; ein Plattenpfad wird
+  verworfen (Notweg `MAKE_OS_BRAIN_INDEX_PLATTE=1` = HOI rot); ohne Schlüssel (lokal) Datei wie bisher. Nach dem Start leer → `indexNachStart`
+  (betrieb.ts, +20 s) löscht den alten Klartext-Index (Nullen + unlink) und baut neu. Nie wieder eine Index-Datei in den Datenordner legen.
+- **Bilder** nur über `lib/store/bild-ablage.ts` (`bildAblegen`/`bildOeffnen`/`bildEntfernen`, Ordner in `BILD_ORDNER` aus datei-huelle.mjs):
+  Hülle `binImModus` mit AAD `<ordner>/<name>`, atomar, Migration alter Klartext-Bilder beim Lesen. Neuer Bilder-Ordner → in `BILD_ORDNER`
+  (Rotation, Skript, Sicherungsprüfung nehmen ihn dann mit). Nie `fs.writeFile` für Nutzerdateien.
+- **Lese-Protokoll** (`lib/store/leseprotokoll.ts`): GET-Routen mit Gesundheit/Erholung, Finanzplan/Haushalt/Rechnungen, Kontakten, Firmen/CRM
+  oder dem Gesellschafts-Register rufen nach der Zugangsprüfung `leseZugriff(req, bereich, { betroffen?, ids?, anzahl? })` — nie Inhalte,
+  Suchbegriffe oder Abfragen, Kennungen nur über `leseKennung`. Neue Route auf solchen Daten: Zeile dazunehmen. 12 Monate, Ansicht nur
+  Inhaber: System › Nachweise (`/os/datenschutz/nachweise`, `/api/datenschutz/nachweise`, Karten `NachweiseKarten` auch einbettbar).
+- **Hash-Kette** (`lib/store/protokoll-kette.ts`): Änderungs-, Lese- und Anmeldeprotokoll hängen NUR über `anhaengenVerkettet` an (nie
+  `updateJson` mit eigenem `{ eintraege }` — das ließe `kette`/`h` fallen). Neue Protokoll-Familie = `MONATS_FAMILIEN`/`ROLLENDE_FAMILIEN`.
+  Rechtmäßige Umschreibungen (Art. 17, Fingerabdruck-Umrechnung, Umzug, Löschfrist mit `bereinigt`) bleiben gültig; jede andere Änderung
+  an Protokolldateien ist ein Bruch (HOI rot). Prüfung nächtlich in der Durchsicht, Siegel `protokoll-siegel`, Ergebnis `protokoll-pruefung`.
+- **Format v2** stellt nur Kevin um (Anleitung UPDATES.md 05.10.); System › Nachweise zeigt Modus und Bereitschaft (`v2Bereitschaft`).
+
+## KI, Gesundheit, Telegram — DSGVO-Paket 05.10. (Branch `dsgvo-ki`; Doku `DATENSCHUTZ_APP.md`)
+- **EINE Stelle für Daten an das Modell:** `askText` (lib/anthropic.ts) ruft vor jedem Aufruf das KI-Tor (`lib/datenschutz/ki-tor.ts`).
+  **Jeder neue Aufrufer gibt `ki: { lauf, person, kategorien[, anzahl, pseudonym] }` an** — in Routen `kiAus(req, [...])`
+  (lib/datenschutz/ki-lauf.ts). Kategorien: crm · kalender · aufgaben · finanzen · brain · gesundheit · postfach · web · konto · allgemein —
+  nur, was WIRKLICH im Prompt steht (`brainKategorien` für promptBrain). Wächter-Scan in tests/ki-datenschutz.test.ts. Gesperrt →
+  `error: 'ki-gesperrt:<grund>'` (`kiGesperrt`, `kiSperrText`) — Läufe fallen dann aufs Regelwerk zurück bzw. melden „übersprungen“.
+- **Gesundheit (Art. 9):** Einwilligung je Person in drei Zwecken (`lib/datenschutz/gesundheit-einwilligung.ts`): (a) verarbeiten,
+  (b) an die KI, (c) Partner inkl. dessen ZOE; Nachweis nur anhängend; nur die Person selbst (403 sonst). Gesundheitswerte gehen nur
+  über `gatherBrain` (`gesundheitFrei`), `eigenerGesundheitsKontext`, `lib/datenschutz/gesundheit-ki.ts` (`indexFuerKi`, `profileFuerKi`)
+  in Prompts — neue Leser NUR darüber. Neue Schreibwege für Gesundheitsdaten: `gesundheitSchreibSperre(person)` zuerst.
+  Der Kompass-Regler „Körperdaten an Agenten“ ist weg (ersetzt durch (b)); `/api/state/kompass` nur im Haushalt des Inhabers.
+- **KI-Schalter** (`lib/datenschutz/ki-einstellungen.ts`): Instanz (Inhaber) UND Person (nur einschränken): Hintergrund-KI, Web-Suche,
+  Bereiche. Vorgabe neue Instanz „sparsam“ (Hintergrund-KI/Web-Suche aus), Altbestand (Kevin: `ki-verbrauch` vorhanden oder Konten vor
+  06.10.) „kompatibel“ — einmal festgeschrieben; `MAKE_OS_KI_VORGABE` erzwingt. ZOE-Werkzeuge: Gruppe → Kategorie in
+  `lib/datenschutz/ki-werkzeuge.ts` (neue Werkzeug-Gruppe dort eintragen); `fuehreAus` sperrt, kimmi bietet gesperrte nicht an.
+  Hintergrund = Takt: Arbeiter (`imHintergrund`, AsyncLocalStorage) + Kopf `x-make-lauf` (nur Dienstweg); `KI_LAEUFE` (lib/zoe/takt.ts)
+  reiht der Takt bei ausgeschalteter Hintergrund-KI gar nicht ein.
+- **KI-Protokoll** (`ki-protokoll--JJJJ-MM`, 12 Monate): nur Metadaten, schreibt allein `askText`. Art. 15: `/api/datenschutz/ki-protokoll
+  ?auskunft=1`, Kontakte `personAufzaehlen.kiEmpfaenger`. **Pseudonymisierung** in Hintergrund-Läufen automatisch (Kontaktnamen →
+  `[K17]`); `ki.pseudonym: false` nur mit Begründung im Code (Research).
+- **Telegram:** nur neutrale Hinweise mit Link (`lib/datenschutz/telegram-text.ts`); Inhalte nur mit der Ausnahme je Person
+  (`telegramVollFuer`); `sendeAnPerson` hat ein Sicherheitsnetz (`telegramSicher`). Neue Telegram-Texte: ohne Werte, Beträge, Namen.
+- **KI-VO Art. 50:** Routen mit KI-Text, der an Dritte gehen kann, liefern `ki: kiKennzeichen()`; die Oberfläche zeigt `<KiMarke />`.
+- **Oberfläche:** System › Datenschutz (`/os/datenschutz`, components/os/DatenschutzView.tsx); Hinweis im Bereich Gesundheit.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
@@ -1129,7 +1203,7 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - **Offen/Befund:** `/api/oauth/callback` (Whoop/M365) wird von der Cross-Site-Regel (`middleware` → `crossSiteVerboten`) bei einer Navigation vom Anbieter blockiert — siehe Bericht; nicht geändert.
 
 ## Brain (lib/brain, seit 27.09.)
-- Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.
+- Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
 - Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.
 - ZOE schreibt ins Brain nur über `lib/brain/inbox.ts vorschlagAblegen` (plus Zoe_Log). Menschen: Regeln (`lib/brain/regeln.ts`) und Freigaben. Nie Notizen überschreiben.
 - Regeln (`00. Fundament/Regeln`) und Konstitution sind ANWEISUNGEN an ZOE — nur `status: aktiv` mit `freigegeben_von` einer BEKANNTEN Person (Konten) wird geladen (`regelnFuerPrompt` → `regelFreigegeben`, 29.09. D-B #100). Ein Kopf, den `leseKopf` nicht sicher versteht (verschachtelt, Blocktext `|`/`>`), liefert `warnungen` — solche Regeln werden nie geladen; mehrzeilige Listen (`key:` + `  - a`) liest er. Alles andere aus dem Vault bleibt Daten (`fremd()`).

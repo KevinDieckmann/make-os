@@ -31,6 +31,7 @@ import { tagVon, ausWandzeit, wandzeit } from './zeit';
 import { suchNorm } from '@/lib/text/such-norm';
 import { schluesselPasst } from './bezug';
 import type { FollowUp } from '@/lib/crm/typen';
+import { SICHERUNG_SATZ } from '@/lib/crm/loeschfristen';
 
 // ── Texte mit Fassung (Nachweis der Kenntnisnahme) ───────────────────────────
 // S1 #8 (29.09.): EINE Rechtsgrundlage, konsistent in Hinweis und Häkchen — Art. 6 Abs. 1 lit. b DSGVO (Maßnahmen vor
@@ -42,7 +43,7 @@ import type { FollowUp } from '@/lib/crm/typen';
 // Hinweis, keine Rechtsberatung — den Text einmal anwaltlich gegenlesen.
 
 /** Grundfassung des Hinweis- und Häkchentextes. Text ändern → hochzählen; die Fristen hängt `hinweisFassung` an. */
-export const EINWILLIGUNG_VERSION = 'buchung-2026-09-29-3';
+export const EINWILLIGUNG_VERSION = 'buchung-2026-10-05-4';
 /** Wortlaut des Pflicht-Häkchens — Kenntnisnahme, keine Einwilligung (so steht er als Nachweis an der Buchung und im CRM). */
 export const EINWILLIGUNG_WORTLAUT = 'Ich habe den Datenschutzhinweis oben zur Kenntnis genommen.';
 /** Wie der Nachweis im CRM heißt (Einwilligungs-Liste, Grundlage „Antwort auf Anfrage“). */
@@ -70,6 +71,8 @@ export function datenschutzHinweis(f: HinweisFristen): string[] {
     `Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir ${tageText(f.buchungen)} nach der letzten Änderung, bestätigte Buchungen ${tageText(f.buchungen)} nach dem Termin.`,
     `Erst wenn wir den Termin bestätigen, legen wir Sie als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen, Termin) und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender ein. Den Geschäftskontakt prüfen wir spätestens ${monateText(f.kontakte)} nach dem letzten Kontakt auf Löschung. Den Kalendereintrag behalten wir, solange die Geschäftsbeziehung ihn braucht; die Zwischenkopie vergangener Termine in unserer Software löschen wir nach ${monateText(f.kalenderCaches)}.`,
     `Nach dem Absenden führt Sie die Seite zu Ihrer persönlichen Status-Seite (die Adresse mit Ihrem Schlüssel kennen nur Sie — bitte aufbewahren). Gegebenenfalls schicken wir Ihnen per E-Mail einen Link, mit dem Sie bestätigen, dass die Adresse Ihnen gehört; jeder solche Link gilt ${tageText(MAIL_LINK_TAGE)} und nur einmal. Darüber hinaus schicken wir Ihnen keine E-Mails und keine Werbung.`,
+    // 05.10. (Fassung 4): die Sicherungen wahrheitsgemäß (bis zu 12 Monate, SICHERUNG_SATZ in lib/crm/loeschfristen.ts).
+    SICHERUNG_SATZ,
     'Sie können jederzeit Auskunft, Berichtigung, Einschränkung oder Löschung verlangen und sich bei einer Datenschutz-Aufsichtsbehörde beschweren — Ihr Ansprechpartner ist der Verantwortliche unten.',
     'Die Seite setzt keine Cookies und lädt nichts von fremden Servern.',
   ];

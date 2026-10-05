@@ -10,7 +10,7 @@ import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { askJson, askWithSearch, hasAnthropicKey, fremd, FREMD_REGEL, extractJson } from '@/lib/anthropic';
+import { askJson, askWithSearch, hasAnthropicKey, fremd, FREMD_REGEL, extractJson, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { vitalsHint } from '@/lib/vitals';
 import { gatherBrain, blockIndex } from '@/lib/brain';
@@ -26,6 +26,7 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 /** Interner Hop: nur eine ausdrücklich benannte Person (S1, Regel 5/7) — ohne sie ein Systemlauf, nie „kevin“. */
 const personKopf = (req: Request): Record<string, string> => { const p = personStreng(req); return p ? { 'x-make-person': p } : {}; };
@@ -163,7 +164,9 @@ export async function POST(req: Request) {
       user: `Heute ist ${wd}, ${heute}. Was ist die Lage?`,
       maxTokens: 5000,
       timeoutMs: 150_000,
+      ki: kiAus(req, ['allgemein']),
     });
+    if (kiGesperrt(r)) return { stand: 'uebersprungen' as const, kurz: kiSperrText(r) };
     if (!r.ok || !r.text) return { stand: 'fehler' as const, kurz: r.error ?? 'Keine Antwort' };
     const d = extractJson<{ welt?: string[]; business?: string[]; wettbewerb?: string[] }>(r.text);
     if (!d) return { stand: 'fehler' as const, kurz: 'Keine strukturierte Antwort' };
@@ -197,7 +200,9 @@ export async function POST(req: Request) {
         `TERMINE HEUTE: ${heutigeTermine.map(e => e.title).join(' · ') || '(keine)'}`,
       ].join('\n'),
       maxTokens: 3000,
+      ki: kiAus(req, ['postfach', 'aufgaben', 'kalender']),
     });
+    if (kiGesperrt(r)) return { stand: 'uebersprungen' as const, kurz: kiSperrText(r) };
     if (!r.ok || !r.data) return { stand: 'fehler' as const, kurz: r.error ?? 'Keine Antwort' };
     const v = r.data.vorziehen ?? [];
     if (v.length) alarm = r.data.satz ?? `${v.length} Sache(n) sollten vorgezogen werden`;
@@ -216,6 +221,9 @@ export async function POST(req: Request) {
     const vorher = schritte.map(s => `- ${s.name}: ${s.kurz}`).join('\n');
     // S1 #9: Gesundheitskontext nur aus dem eigenen Profil der ausdrücklich benannten Person (Systemlauf: keiner).
     const eigeneAngaben = await eigenerGesundheitsKontext(personStreng(req));
+    // Vitalwerte nur mit Einwilligung (b) der Person, deren Lage das Brain trägt (`b.gesundheitFrei`) — das Protokoll
+    // nennt deshalb genau diese Person, auch im Systemlauf.
+    const mitGesundheit = b.gesundheitFrei;
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'tageslauf',
       system: [
@@ -231,7 +239,8 @@ export async function POST(req: Request) {
       ].join('\n'),
       user: [
         `Heute ${wd}, ${heute}, ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2, '0')} Uhr. Lauf-Art: ${art}.`,
-        `Recovery ${vit.rec}%, Schlaf ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}`,
+        // Art. 9 (05.10.): nur mit Einwilligung (b) — sonst steht in `b.vitals` ohnehin nichts (gatherBrain).
+        mitGesundheit ? `Recovery ${vit.rec}%, Schlaf ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}` : 'Keine Gesundheitswerte (keine Einwilligung) — Tagesform „gelb“ annehmen.',
         eigeneAngaben,
         blockIndex(b),
         '',
@@ -241,7 +250,9 @@ export async function POST(req: Request) {
         alarm ? `WÄCHTER SCHLÄGT AN: ${alarm}` : 'Der Wächter meldet nichts Dringendes.',
       ].filter(Boolean).join('\n'),
       maxTokens: 3500,
+      ki: kiAus(req, mitGesundheit || eigeneAngaben ? ['aufgaben', 'finanzen', 'kalender', 'postfach', 'gesundheit'] : ['aufgaben', 'finanzen', 'kalender', 'postfach'], { person: personAus(req) }),
     });
+    if (kiGesperrt(r)) return { stand: 'uebersprungen' as const, kurz: kiSperrText(r) };
     if (!r.ok || !r.data) return { stand: 'fehler' as const, kurz: r.error ?? 'Keine Antwort' };
     ausrichtung = r.data;
 

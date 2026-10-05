@@ -19,6 +19,7 @@ import type { RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { ablegen, entfernen, AblageFehler } from '@/lib/dateien/ablage';
 import { MAX_DATEI_BYTES, dateinameSaeubern, endung, typErkennen } from '@/lib/dateien/regeln';
 import { alleGesellschaften, gesellschaftAnwenden, gesellschaftenName, gesellschaftFuerAnzeige, gesellschaftLuecken, istGesellschaftId, type Gesellschaft, type GesellschaftenDatei, type GesellschaftFehler } from '@/lib/crm/gesellschaften';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,7 @@ async function liste(haushalt: string) {
 export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  leseZugriff(req, 'gesellschaften'); // Lese-Protokoll (05.10.)
   return NextResponse.json({ ok: true, gesellschaften: await liste(z.haushalt) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

@@ -17,6 +17,7 @@ import { ladeFinanzplan, dateiStand, patchen, kennzahlenVon } from '@/lib/finanz
 import { fuerSicht, kennzahlenFuerSicht } from '@/lib/finanzen/plan/sicht';
 import { planZugangVon } from '@/lib/finanzen/haushalt/zugriff';
 import { MAX_OPS, type Operation } from '@/lib/finanzen/plan/operationen';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,7 @@ const MAX_BODY = 2_000_000;
 export async function GET(req: Request) {
   const z = await planZugangVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  leseZugriff(req, 'finanzplan'); // Lese-Protokoll (05.10.)
   const url = new URL(req.url);
   const nur = url.searchParams.get('nur');
   const sicht = z.sicht;

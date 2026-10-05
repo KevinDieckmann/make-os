@@ -11,6 +11,8 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
     String(body.icp ?? '').slice(0, 900),
   ].filter(Boolean).join('\n');
 
-  const r = await askJson<{ betreff?: string; email?: string; linkedin?: string }>({ zweck: 'outreach',
+  const r = await askJson<{ betreff?: string; email?: string; linkedin?: string }>({ zweck: 'outreach', ki: kiAus(req, ['crm'], { anzahl: 1 }),
     system, user, maxTokens: 3500, model: agent.model, timeoutMs: 120_000,
   });
   if (!r.ok || !r.data?.email) return NextResponse.json({ error: r.error ?? 'Kein Entwurf erhalten.' }, { status: 200 });
@@ -66,6 +68,7 @@ export async function POST(req: Request) {
   await logRun('outreach', `Ansprache entworfen: ${p.company}`, { company: p.company, score: p.score ?? null });
 
   return NextResponse.json({
+    ki: kiKennzeichen(), // KI-VO Art. 50 (05.10.)
     betreff: String(r.data.betreff ?? `POINCAP × ${p.company}`).slice(0, 140),
     email: String(r.data.email).slice(0, 2000),
     linkedin: String(r.data.linkedin ?? '').slice(0, 800),

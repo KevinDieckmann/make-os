@@ -39,6 +39,7 @@ import {
   vertragsErinnerungen, type Ergebnis,
 } from '@/lib/gesellschaften/server';
 import type { Kontakt } from '@/lib/make-one/crm';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,7 @@ async function personenImHaushalt(haushalt: string) {
 export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  leseZugriff(req, 'gesellschaften'); // Lese-Protokoll (05.10.)
   const q = new URL(req.url).searchParams;
   const d = await ladeRegister(z.haushalt);
   const kopf = { headers: { 'Cache-Control': 'no-store' } };

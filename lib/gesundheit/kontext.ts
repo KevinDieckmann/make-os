@@ -34,6 +34,9 @@ export function kontextAusProfilen(profile: readonly Partial<Profil>[] | undefin
  */
 export async function eigenerGesundheitsKontext(person: string | null | undefined): Promise<string> {
   if (!person) return '';
+  // Art. 9 (05.10.): nur mit der Einwilligung (b) „An die KI geben“ der Person — sonst steht im Prompt nichts.
+  const { gesundheitAnKi } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+  if (!(await gesundheitAnKi(person).catch(() => false))) return '';
   const f = await loadJson<Partial<ErnaehrungFile>>('ernaehrung').catch(() => null);
   return kontextAusProfilen(f?.profile, person);
 }

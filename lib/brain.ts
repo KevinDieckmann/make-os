@@ -38,6 +38,9 @@ import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
 import { feiertageIm } from '@/lib/zeit/kalender-kern';
 import { termineFuerZoe, type ZoeTermin } from '@/lib/kalender/zoe-sicht-server';
 import { fremd } from '@/lib/anthropic';
+import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { VITALS_GESPERRT, indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
+import type { KiBereich, KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 
 // ── Formen ──
@@ -52,6 +55,12 @@ export interface MsMail { id?: string; subject?: string; senderName?: string; se
 
 export interface Brain {
   heute: string;
+  /**
+   * Gesundheitswerte dürfen an die KI (Art.-9-Einwilligung (b) der Person, 05.10.) — sonst stehen in `vitals` nur
+   * Nullen (`VITALS_GESPERRT`) und im `index` fehlt die Gesundheits-Säule samt Gesamtzahl. Ersetzt den globalen
+   * Kompass-Regler „Körper an Agenten“.
+   */
+  gesundheitFrei: boolean;
   vitals: ResolvedVitals;
   index: PerfIndex | null;
   tasks: {
@@ -123,6 +132,8 @@ export function aufgabenFuerBrain(state: { tasks: readonly (StoredTask & { paren
  * Gesundheitstermine der ANDEREN Person nur als „Belegt“, nur im Haushalt des Inhabers.
  */
 export async function gatherBrain(heute = localDay(), person: string = 'kevin'): Promise<Brain> {
+  // Art. 9 (05.10.): Gesundheitswerte nur mit Einwilligung (b) der Person — ohne sie werden sie gar nicht erst gelesen.
+  const gesundheitFrei = await gesundheitAnKi(person).catch(() => false);
   const [tasksR, finR, prospectsR, zoeKalR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
     // Aufgaben (29.09., B4): die übernommene Sicht (`ladeAufgaben` — Space, Unteraufgaben aus `subTasks` …), nur für
     // Personen im Haushalt des Inhabers (wie die Mandate), Papierkorb (`geloeschtAm`) ausgeblendet, gezählt nur Hauptaufgaben.
@@ -132,7 +143,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     // Kalender (29.09., #K4): iCloud/Mac + KEMARIS (M365), je Person gefiltert — nie mehr der rohe `calendar-cache`.
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
     loadJson<{ emails: MsMail[]; at?: string }>('microsoft-inbox'),
-    resolveVitals(heute, person),
+    gesundheitFrei ? resolveVitals(heute, person) : Promise.resolve(VITALS_GESPERRT),
     computeIndex(heute, person),
     recentRuns(undefined, 10),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
@@ -190,8 +201,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
 
   return {
     heute,
-    vitals: val(vitalsR) ?? vitalsFallback,
-    index: val(indexR),
+    gesundheitFrei,
+    vitals: gesundheitFrei ? (val(vitalsR) ?? vitalsFallback) : VITALS_GESPERRT,
+    index: indexFuerKi(val(indexR), gesundheitFrei),
     tasks: {
       alle,
       offen,
@@ -284,7 +296,6 @@ function await0Schwellen(): Schwellen {
     runwayRot: m.werte['runway-warnung'], runwayAmber: m.werte['runway-warnung'] * 2,
     nachtruheAb: m.werte['nachtruhe-ab'],
     tagesstartAuto: m.werte['tagesstart-auto'] >= 50,
-    koerperAnAgenten: m.werte['koerper-an-agenten'] >= 50,
   };
 }
 
@@ -456,21 +467,38 @@ export function blockAuftrag(): string {
   ].join('\n');
 }
 
-export function promptBrain(b: Brain, teile?: { koerper?: boolean; ziele?: boolean; gedaechtnis?: boolean }): string {
+/**
+ * Datenkategorien, die `promptBrain(b, teile)` in den Prompt schreibt (05.10., KI-Protokoll/KI-Tor) — dieselbe Auswahl
+ * wie unten, damit das Protokoll nie mehr oder weniger behauptet als gesendet wird.
+ */
+export function brainKategorien(b: Brain, teile?: { koerper?: boolean; bereiche?: Partial<Record<KiBereich, boolean>> }): KiKategorie[] {
+  const an = (x: KiBereich) => teile?.bereiche?.[x] !== false;
+  const k: KiKategorie[] = ['allgemein'];
+  if (an('aufgaben')) k.push('aufgaben');
+  if (an('finanzen')) k.push('finanzen');
+  if (an('crm')) k.push('crm');
+  if (an('kalender')) k.push('kalender');
+  if ((teile?.koerper ?? true) && b.gesundheitFrei === true) k.push('gesundheit');
+  return k;
+}
+
+export function promptBrain(b: Brain, teile?: { koerper?: boolean; ziele?: boolean; gedaechtnis?: boolean; bereiche?: Partial<Record<KiBereich, boolean>> }): string {
   const t = { koerper: true, ziele: true, gedaechtnis: true, ...teile };
-  // Der Kompass-Schalter schlägt den Wunsch des Aufrufers: steht er auf
-  // „bleiben privat", sehen Agenten die Körperdaten gar nicht erst.
-  const koerper = t.koerper && b.lage.schwellen.koerperAnAgenten;
+  // KI-Schalter je Bereich (05.10., System › Datenschutz): ein ausgeschalteter Bereich steht gar nicht erst im Prompt.
+  const an = (x: KiBereich) => teile?.bereiche?.[x] !== false;
+  // Die Einwilligung (b) der Person schlägt den Wunsch des Aufrufers (05.10., ersetzt den Kompass-Regler
+  // „Körper an Agenten“): ohne sie sehen Agenten und ZOE die Körperdaten gar nicht erst.
+  const koerper = t.koerper && b.gesundheitFrei === true;
   return [
     blockAuftrag(),
     DATEN_REGEL,
     blockLage(b),
-    shieldZeilen(b.shields),
-    blockAufgaben(b),
-    blockZahlen(b),
-    blockPipeline(b),
-    blockTermine(b),
-    blockIndex(b),
+    an('finanzen') ? shieldZeilen(b.shields) : '',
+    an('aufgaben') ? blockAufgaben(b) : '',
+    an('finanzen') ? blockZahlen(b) : '',
+    an('crm') ? blockPipeline(b) : '',
+    an('kalender') ? blockTermine(b) : '',
+    an('finanzen') ? blockIndex(b) : '',
     koerper ? blockVitals(b) : '',
     t.gedaechtnis ? blockGedaechtnis(b) : '',
     t.ziele ? blockZiele(b) : '',

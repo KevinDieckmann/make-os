@@ -9,6 +9,7 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 
 import { localDay } from '@/lib/zeit';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,8 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();
@@ -62,6 +65,8 @@ export async function PUT(req: Request) {
  *  auf der Gesundheitsseite: ein Feld, ein Aufruf — der Schrumpf-Wächter des
  *  PUT ist hier überflüssig, weil nie ein ganzer Bestand geschickt wird. */
 export async function PATCH(req: Request) {
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let b: { datum?: string; eintrag?: Partial<JournalEntry> };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();

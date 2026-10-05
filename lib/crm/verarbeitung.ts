@@ -37,6 +37,7 @@ export const KONTAKTE_LESER_ERLAUBT: Readonly<Record<string, string>> = {
   'app/api/crm/import/route.ts': 'Import — Abgleich gegen die ganze Kartei (sonst entstünde eine eingeschränkte Person doppelt).',
   'app/api/crm/umzug/route.ts': 'Umzugs-Kopie des ganzen Bestands ins Archiv (Frist 30 Tage).',
   'app/api/crm/stammdaten/route.ts': 'Stammdaten › Datenschutz: Löschfristen, Verbindungsprüfung, Qualität — mit Kennzeichnung.',
+  'app/api/datenschutz/pruefung/route.ts': 'System › Datenschutz: Selbstprüfung (Art. 30/32) — zählt nur (Rechtsgrundlage, Herkunft, Fristen), gibt keine Personendaten aus.',
   'app/api/state/aenderungen/route.ts': 'Fingerabdrücke im Änderungsprotokoll auflösen — nur Kennungen.',
   'lib/crm/produkte-server.ts': 'Morgenlauf Papierkorb (04.10.): zählt nur, welche Personen auf eine Firma zeigen (Verweis-Sperre vor dem endgültigen Löschen) — auch eingeschränkte zählen, gelesen wird nichts weiter.',
   'lib/crm/firma-umhaengen-server.ts': 'Firma wechseln/zusammenführen: braucht die ganze Kartei, um Art. 18 selbst zu prüfen — eine eingeschränkte Person lehnt den Vorgang ab (409), sie wird nie umgehängt.',

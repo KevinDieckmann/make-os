@@ -35,6 +35,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/verbindungen', label: 'Verbindungen', was: 'Whoop, Microsoft, Miro' },
     { href: '/os/datenbasis', label: 'Datenbasis', was: 'wo welche Zahl herkommt' },
     { href: '/os/stammdaten', label: 'Stammdaten', was: 'Firmen, Konten, Adressen' },
+    { href: '/os/datenschutz', label: 'Datenschutz', was: 'Verantwortlicher, Gesundheits-Einwilligung, KI-Schalter, Telegram, AVV, Verzeichnis, Nachweise' },
   ] },
   { titel: 'Bauen', eintraege: [
     { href: '/os/bauplan', label: 'Bauplan', was: 'was als Nächstes gebaut wird' },

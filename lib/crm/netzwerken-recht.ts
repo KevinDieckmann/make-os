@@ -42,6 +42,16 @@ export function datenschutzAngaben(): DatenschutzAngaben {
   };
 }
 
+/**
+ * Die Angaben aus der Datenschutz-Einrichtung (05.10., EINE Quelle — System › Datenschutz): Verantwortlicher = Name/Firma, Kontaktweg =
+ * Datenschutzbeauftragter, sonst die Kontakt-Mail; Seite = Datenschutzhinweis der Einrichtung. Ohne Einrichtung der Standard oben (Umgebung
+ * bzw. MAKE) — Kunden-Instanzen brauchen dafür KEINE Build-Variable mehr (der Server liest die Einrichtung zur Laufzeit).
+ */
+export function datenschutzAngabenAus(v: { name: string; mail: string; dsb?: { mail?: string }; seite?: string } | null | undefined): DatenschutzAngaben {
+  const basis = datenschutzAngaben();
+  return v ? { mail: v.dsb?.mail || v.mail, seite: v.seite || basis.seite, verantwortlich: v.name } : basis;
+}
+
 /** Der Hinweis überall dort, wo Kontakte für Kunden entstehen oder übergeben werden (Akte, „Für Kunden“, Dialog, Netzwerken-Auswahl). */
 export const UEBERGABE_HINWEIS = 'Kontakte, die wir für einen Kunden kennenlernen, gehören auch uns: wir sind eigener Verantwortlicher (berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO). Die Weitergabe an den Kunden ist eine Übermittlung an einen Dritten — die Person wird in der Danke-Mail darüber informiert (Art. 13), die Übergabe steht mit Empfänger im Protokoll (Auskunft Art. 15, Mitteilung bei Löschung Art. 19). Gesperrte Personen (Art. 18, Werbesperre) gehen nie mit.';
 /** Dezenter Zusatz: die Rollenverteilung (eigener Verantwortlicher / gemeinsam / Auftrag) hängt vom Einzelfall und der Vereinbarung ab. */

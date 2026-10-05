@@ -264,7 +264,6 @@ export function KompassView() {
     if (id === 'runway-warnung') return `rot unter ${v} Monaten, gelb unter ${v * 2} — gilt in Shields, Controlling und Board`;
     if (id === 'nachtruhe-ab') return `zwischen ${v} und 7 Uhr läuft nichts von selbst`;
     if (id === 'tagesstart-auto') return v >= 50 ? 'startet beim Öffnen von selbst (bis zu 4 Minuten)' : 'wartet auf deinen Knopfdruck';
-    if (id === 'koerper-an-agenten') return v >= 50 ? 'Agenten sehen Erholung, Schlaf und Symptome' : 'Gesundheitswerte bleiben aus allen Agenten-Aufträgen draußen';
     if (id === 'tuersteher') {
       const n = offeneAbsender;
       if (v >= 88) return n ? `nur die ${n} entschiedenen Absender kommen durch` : 'noch niemand entschieden — Postfach bleibt offen';

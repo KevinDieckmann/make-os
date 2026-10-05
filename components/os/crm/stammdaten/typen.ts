@@ -42,7 +42,9 @@ export interface StammdatenDaten {
   speicherbegrenzung: { id: string; name: string; seit: string; netzwerken?: boolean }[];
   /** Löschfristen je Datenart (U2 #52): Tabelle, wirksame Werte, gespeicherte Abweichungen, letzter Takt-Lauf. */
   loeschfristen: { tabelle: FristDef[]; wirksam: Record<FristArt, number>; gespeichert: Partial<Record<FristArt, number>>; lauf: LoeschfristenBestand['lauf'] | null };
-  antraege: Antrag[]; verarbeitungen: Verarbeitung[]; loeschprotokoll: { id: string; datum: string; grund: string; von: string }[];
+  antraege: Antrag[]; verarbeitungen: Verarbeitung[];
+  /** Verantwortlicher aus der Einrichtung (05.10.): eine Zeile bzw. „fehlt — eintragen“ (fehlt = true). Optional: ältere Antworten ohne. */
+  verantwortlicher?: { text: string; fehlt: boolean; quelle: 'einrichtung' | 'umgebung' | null }; loeschprotokoll: { id: string; datum: string; grund: string; von: string }[];
 }
 
 /** POST an /api/crm/stammdaten — die Antwort trägt `ok` und bei Ablehnung `fehler`. */

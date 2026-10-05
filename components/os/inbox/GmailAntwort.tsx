@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT, useRueckfrage } from '../ui';
 import type { Adr, GmailAlias } from '@/lib/gmail/typen';
+import { KiMarke } from '../KiMarke';
 
 export interface AntwortDaten {
   antwortAuf: string;
@@ -41,6 +42,8 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
   const [schreibt, setSchreibt] = useState(false);
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState('');
+  // KI-VO Art. 50 (05.10.): stammt der Text von ZOE, steht die Marke „KI-Entwurf“ über dem Feld (bis die Person neu ansetzt).
+  const [vonKi, setVonKi] = useState(false);
   const anfrageId = useRef(neueId());
   const feld = useRef<HTMLTextAreaElement>(null);
   const { bestaetigen, dialog } = useRueckfrage();
@@ -54,7 +57,7 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
     const r = await fetch('/api/gmail/entwurf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: d.antwortAuf, ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) }) })
       .then(async x => ({ status: x.status, d: await x.json().catch(() => ({})) as { ok?: boolean; draft?: string; fehler?: string; quellen?: string[] } })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung.' } as { ok?: boolean; draft?: string; fehler?: string; quellen?: string[] } }));
     setSchreibt(false);
-    if (r.d.ok && r.d.draft) { setText(r.d.draft); meldung(`ZOE-Entwurf eingefügt${r.d.quellen?.length ? ` (Brain: ${r.d.quellen.join(', ')})` : ''} — bitte lesen und anpassen; gesendet wird erst mit „Senden“.`); }
+    if (r.d.ok && r.d.draft) { setText(r.d.draft); setVonKi(true); meldung(`ZOE-Entwurf eingefügt${r.d.quellen?.length ? ` (Brain: ${r.d.quellen.join(', ')})` : ''} — bitte lesen und anpassen; gesendet wird erst mit „Senden“.`); }
     else setFehler(r.d.fehler ?? 'ZOE konnte keinen Entwurf schreiben.');
   };
 
@@ -84,7 +87,8 @@ export function GmailAntwort({ d, allen, onGesendet, onZu, meldung }: { d: Antwo
       </label>
       <label><span style={label}>An</span><input value={an} onChange={e => setAn(e.target.value)} style={eingabe} aria-label="An" inputMode="email" autoComplete="off" /></label>
       {(cc || allen) && <label><span style={label}>Cc</span><input value={cc} onChange={e => setCc(e.target.value)} style={eingabe} aria-label="Cc" inputMode="email" autoComplete="off" /></label>}
-      <textarea ref={feld} value={text} onChange={e => setText(e.target.value)} rows={9} placeholder="Deine Antwort …" aria-label="Antwort" style={{ ...eingabe, resize: 'vertical', lineHeight: 1.55 }} />
+      {vonKi && text.trim() && <KiMarke />}
+      <textarea ref={feld} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setVonKi(false); }} rows={9} placeholder="Deine Antwort …" aria-label="Antwort" style={{ ...eingabe, resize: 'vertical', lineHeight: 1.55 }} />
       <details style={{ fontSize: 13, color: C.inkLeise }}>
         <summary style={{ cursor: 'pointer', minHeight: 32 }}>Hinweis für ZOE (optional)</summary>
         <input value={hinweis} onChange={e => setHinweis(e.target.value)} placeholder="z. B. Termin vorschlagen, höflich absagen, Preis nicht nennen" style={{ ...eingabe, marginTop: 6 }} aria-label="Hinweis für ZOE" />

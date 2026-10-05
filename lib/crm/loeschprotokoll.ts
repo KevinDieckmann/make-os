@@ -62,3 +62,12 @@ export async function loeschprotokollBereinigen(): Promise<number> {
   await updateJson<LoeschprotokollDatei>(LOESCHPROTOKOLL, cur => { const r = ohneKlartext(Array.isArray(cur?.eintraege) ? cur.eintraege : []); n = r.n; return n ? { eintraege: r.eintraege } : (cur as LoeschprotokollDatei); });
   return n;
 }
+
+/**
+ * Löschfrist des Löschprotokolls selbst (05.10., DSGVO-Grundlagen): abgeschlossene Einträge (nicht „läuft“/„unvollständig“ — die braucht
+ * die Wiederaufnahme) fallen nach der Frist „loeschprotokoll“ weg. Rein; `grenze` = Stichtag (JJJJ-MM-TT).
+ */
+export function protokollUeberFrist(eintraege: readonly LoeschEintrag[], grenze: string): { eintraege: LoeschEintrag[]; n: number } {
+  const bleibt = eintraege.filter(e => e.status === 'laeuft' || e.status === 'unvollstaendig' || e.datum.slice(0, 10) >= grenze);
+  return { eintraege: bleibt, n: eintraege.length - bleibt.length };
+}

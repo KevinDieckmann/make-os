@@ -97,14 +97,22 @@ Legende Status: **umgesetzt** · **teilweise** (gebaut, aber nicht überall akti
 
 | Protokoll | Inhalt | Aufbewahrung |
 |---|---|---|
-| Änderungsprotokoll (`aenderungsprotokoll--*`) | wer, wann, Bestand, Feldnamen, Kontakt nur als HMAC-Fingerabdruck — **nie Werte** | 36 Monate (Monatsdateien) |
-| Anmelde-Protokoll (`anmeldungen`) | Zeit, Konto, Gerät, **gekürzte** IP (/24), Erfolg | letzte 300 Einträge |
+| Änderungsprotokoll (`aenderungsprotokoll--*`) | wer, wann, Bestand, Feldnamen, Kontakt nur als HMAC-Fingerabdruck — **nie Werte**; Hash-Kette + Siegel | 36 Monate (Monatsdateien) |
+| **Lese-Protokoll** (`leseprotokoll--*`, seit 05.10.) | wer (Konto · ZOE im Auftrag · System), wann, Bereich (Gesundheit, Erholung, Finanzplan, Haushalt, Rechnungen, Kontakte, Firmen/CRM, Gesellschafts-Register), wessen Daten (Konto), Kennungen nur als Fingerabdruck, Pfad ohne Abfrage — **nie Inhalte**; gleicher Zugriff höchstens alle 10 Min.; Hash-Kette + Siegel; Ansicht nur Inhaber (System › Nachweise) — `lib/store/leseprotokoll.ts` | 12 Monate |
+| Anmelde-Protokoll (`anmeldungen`) | Zeit, Konto, Gerät, **gekürzte** IP (/24), Erfolg; Hash-Kette (rollend) + Siegel | letzte 300 Einträge |
 | ZOE-Entscheidungen / -Protokoll | Freigaben/Ablehnungen mit Person; Protokoll nur Kennungen + Feldnamen | 36 Monate / 90 Tage |
 | Löschprotokoll (`crm-loeschprotokoll`) | Protokoll-ID `lp-…`, Tag, Grund, wer — nie die Kennung | — [[KEVIN: Frist festlegen]] |
 | Übergabe-Journal | Übermittlungen an Kunden (Empfänger, Anzahl, Kennungen) | 36 Monate |
 | Absichtsprotokoll | Mehr-Bestand-Vorgänge (Art. 17, Import …) bis zum Abschluss | fertige nach 30 Tagen weg |
 | Sicherungsstatus `daten/system/sicherung.json` | nur Zahlen und Dateinamen | laufend überschrieben |
 | Docker-Logs | App/Arbeiter/Caddy, je Dienst 3 × 10 MB; keine Mail-Inhalte, keine Tokens (Regel im Code); Caddy ohne Zugriffs-Log | rollierend |
+
+**Nachweisfestigkeit (seit 05.10., `lib/store/protokoll-kette.ts`):** Änderungs-, Lese- und Anmeldeprotokoll tragen eine fortlaufende
+Hash-Kette (HMAC-SHA-256 mit dem Pepper; je Eintrag ein Glied, je Monatsdatei Anfang = Dateiname + Kopf des Vormonats) und ein Siegel
+je Datei (Anzahl + letzter Hash, nur steigend). Erkannt werden veränderte, eingeschobene, gelöschte und abgeschnittene Einträge, vertauschte
+oder zurückgespielte Dateien. Rechtmäßige Umschreibungen (Art. 17, Umrechnung der Fingerabdrücke, Kennungs-Umzug, Löschfrist) bleiben gültig.
+Prüfung nächtlich (Durchsicht) und auf Knopfdruck; Head of IT „Protokoll unverändert ✓“ bzw. rot. Grenze: wer Datenschlüssel UND Pepper
+hat, kann neu rechnen — das Siegel in den Sicherungen (Mac, bis 12 Monate) macht spätere Änderungen gegenüber älteren Ständen sichtbar.
 
 ### 2.6 Auftragskontrolle (Dienstleister)
 
@@ -144,11 +152,13 @@ KI-Abschrift von Sprachnotizen bleibt **aus**, bis AVV/Drittland geklärt sind (
 |---|---|---|---|
 | Alle Bestände im Ruhezustand (`/srv/make-os/daten`) | **AES-256-GCM** je Datei (`lib/store/local-db.ts`, `huelle.mjs`). Standard „kompatibel“ = Hülle v1; `MAKE_OS_FORMAT=v2` = mit Schlüssel-ID und AAD (Bestandsname). Klartext bei gesetztem Schlüssel wird abgelehnt. | Server: Schlüssel-Datei `/srv/make-os/schluessel/daten` (0400) **oder** `.env`; Kopie im Passwort-Manager + Papier | umgesetzt; v2 und Schlüssel-Datei: [[KEVIN: Stand am Server bestätigen]] |
 | Dateiablage (Verträge, Fotos, Sprachnotizen) | AES-256-GCM („MKOSDAT1/2“) | wie oben | umgesetzt |
+| Bilder (Fotos zu Gerichten, Bauplan-Bildschirmfotos) — seit 05.10. | dieselbe Hülle wie die Dateiablage, AAD `<ordner>/<name>`, atomar geschrieben; alte Klartext-Bilder werden beim ersten Lesen verschlüsselt (`lib/store/bild-ablage.ts`) | wie oben | umgesetzt |
+| Brain-Index (Such-Index: Vault-Abschnitte + Aufgaben/Notizen/Angebote/Mandate) — seit 05.10. | **nicht auf der Platte**: nur im tmpfs (Server, 256 MB) bzw. im Arbeitsspeicher, nach jedem Start neu gebaut; alter Klartext-Index wird überschrieben und gelöscht (`lib/brain/index-ort.ts`) | — | umgesetzt (Restrisiko: Swap des Hosts, Hetzner-Abbilder ≤ 7 Tage alt) |
 | OAuth-Tokens (Google, Microsoft, Whoop) | in verschlüsselten Beständen | wie oben | umgesetzt |
 | Offline-Warteschlange im Browser (Netzwerken) | AES-GCM, nicht exportierbarer WebCrypto-Schlüssel, 30 Tage Höchstalter | Browser | umgesetzt |
 | **Nachtarchive** | **age** (öffentlicher Schlüssel am Server, privater nur beim Inhaber) — **Übergang:** ohne age `openssl enc -aes-256-cbc -pbkdf2` mit Passwortdatei `/srv/make-os/.sicherung-passwort` | age: Identität nur offline; openssl: **Passwort liegt auf demselben Server** | **teilweise** — age am Server ist laut README noch einzurichten; bis dahin schützt die äußere Hülle nicht gegen einen Angreifer mit Server-Zugriff |
 | Transport | TLS 1.2+/1.3 (Caddy), HSTS | — | umgesetzt |
-| **Nicht** verschlüsselt im Ruhezustand | Brain-Index `brain-index.sqlite` (abgeleitet, nicht im Nachtarchiv), Bilder `bauplan-bilder`, Obsidian-Vault (`/srv/make-os/vault` + privates GitHub-Repo), Grabsteine (enthalten nur HMACs) | — | bewusst/offen (siehe Lücken) |
+| **Nicht** verschlüsselt im Ruhezustand | Obsidian-Vault (`/srv/make-os/vault` + privates GitHub-Repo), Grabsteine (enthalten nur HMACs), Lagebericht `system/*.json` (nur Zähler) | — | bewusst/offen (siehe Lücken L9) |
 | Schlüsselwechsel | Rotation im laufenden Betrieb (`deploy/datenschluessel-rotieren-live.sh`), alter Schlüssel 15 Tage aufbewahren | — | umgesetzt (einmal am 26.09. mit Anhalten) |
 
 **Wichtig (Bedrohungsmodell):** Ein Hetzner-Abbild enthält Daten **und** Schlüssel (Datei bzw. `.env`) — es ist so schutzwürdig
@@ -185,7 +195,8 @@ Absichtsprotokoll. Docker-Härtung: `no-new-privileges`, alle Kernel-Fähigkeite
 |---|---|---|
 | CI vor jedem Ausrollen: Typprüfung, Tests (inkl. Datenschutz-Wächter), Lint | jeder Push auf `main` | GitHub Action |
 | Wächtertests Datenschutz (Speicher-Register, Rechte, Repo ohne Daten, Sicht-Trennung, Demo ohne echte Daten) | jeder Testlauf | `tests/datenschutz-register.test.ts`, `tests/sicher-s1.test.ts`, `tests/repo-sauber.test.ts`, `tests/demo.test.ts` u. a. |
-| Head of IT (Lage, Sicherung, Abholung, CSP, Anmeldungen, Schreibformat, Pepper, Schlüssel) | täglich ab 07:45, stündlich auf neues Rot | `/os/hoi`, `lib/hoi/` |
+| Head of IT (Lage, Sicherung, Abholung, CSP, Anmeldungen, Schreibformat, Pepper, Schlüssel, Brain-Index-Ort, Protokoll-Kette) | täglich ab 07:45, stündlich auf neues Rot | `/os/hoi`, `lib/hoi/` |
+| Protokoll-Kette (Änderungs-, Lese-, Anmeldeprotokoll) und Lese-Protokoll-Ansicht | nächtlich ab 04:00 + auf Knopfdruck | System › Nachweise (`/os/datenschutz/nachweise`, nur Inhaber) |
 | Durchsicht aller Bestände (lesbar?) | nächtlich ab 04:00 | `lib/store/durchsicht.ts` |
 | Selbstprüfung DSGVO (VVT, Rechtsgrundlagen, Art. 13/14, Widersprüche, Fristen, Zugang) | aus den echten Beständen gerechnet | Markttraktion › Stammdaten › Datenschutz (`lib/crm/datenschutz.ts` `selbstpruefung`) |
 | Abhängigkeiten | wöchentlich | Dependabot |
@@ -224,7 +235,9 @@ Absichtsprotokoll. Docker-Härtung: `no-new-privileges`, alle Kernel-Fähigkeite
 | L6 | **Telegram offen** — ohne Boten kommen Anmelde-Alarm und HOI-Rot nicht aufs Handy; mit Boten ein weiterer Drittland-Dienst | Erkennung von Vorfällen verzögert | Entscheidung: Telegram (Texte neutral, AVV-Lage klären) oder Alternative (Mail/Push) | [[KEVIN]] |
 | L7 | Pepper, Schlüssel-Datei statt `.env`, `MAKE_OS_FORMAT=v2`, Healthchecks-Adresse — Stand am Server nicht im Repo belegt | Schwächere Pseudonymisierung / Schlüssel in `docker inspect` sichtbar / keine AAD | HOI-Befunde ablesen und abarbeiten | [[KEVIN]] |
 | L8 | `sudo` ohne Passwort für `make` | SSH-Schlüssel = root | sudo mit Passwort oder Hardware-Schlüssel für SSH | [[KEVIN]] |
-| L9 | Unverschlüsselt im Ruhezustand: Vault (Server + GitHub inkl. Historie), Bauplan-Bilder, Brain-Index | Notizen/Bilder können Personendaten tragen | Vault-Inhalte prüfen, Bauplan-Bilder in die verschlüsselte Ablage, Brain-Index im verschlüsselten Volume | Bau / [[KEVIN]] |
+| L9 | Unverschlüsselt im Ruhezustand: Vault (Server + GitHub inkl. Historie). ~~Bauplan-Bilder, Brain-Index~~ **erledigt 05.10.** (Bilder in der Hülle, Index nur im tmpfs/Arbeitsspeicher) | Notizen können Personendaten tragen | Vault-Inhalte prüfen; Vault-Repo ggf. verschlüsseln (git-crypt/age) — eigene Entscheidung | [[KEVIN]] |
+| L18 | ✓ **erledigt 05.10.:** Lesezugriffe auf Art.-9-Daten, Finanzen, Kontakt-/Firmenakten und das Gesellschafts-Register waren nicht protokolliert; Protokolle ohne Manipulationsschutz | Nachweis Art. 5 Abs. 2 | Lese-Protokoll (12 Monate) + Hash-Kette mit Siegel über Änderungs-, Lese- und Anmeldeprotokoll | — |
+| L19 | `MAKE_OS_FORMAT=v2` (Schlüssel-ID + AAD) noch nicht aktiv — Code bereit, Bereitschaftsliste unter System › Nachweise | vertauschte Dateien fallen im Kompatibilitätsmodus nicht auf (die Protokoll-Kette schon) | Umstellung nach stabilen Tagen (UPDATES.md 05.10.) | [[KEVIN]] |
 | L10 | Hetzner-Abbilder enthalten Daten + Schlüssel | Kompromittiertes Hoster-Konto = Klartext | 2FA am Hoster, Zugriff auf das Projekt minimal halten, Schlüssel nur als Datei mit getrenntem Volume prüfen | [[KEVIN]] |
 | L11 | Mac als Sicherungsort ohne dokumentierte Geräteschutz-Maßnahmen | Verlust/Diebstahl des Mac | FileVault, Sperre, Notiz im Notfall-Dokument | [[KEVIN]] |
 | L12 | Nur ein Server, 1 vCPU / 1,9 GB | Verfügbarkeit, Belastbarkeit | Server vergrößern (Empfehlung DEPLOY.md: 2 vCPU / 4 GB) | [[KEVIN]] |

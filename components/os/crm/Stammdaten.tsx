@@ -31,6 +31,7 @@ import { KennungenUmzug } from './stammdaten/KennungenUmzug';
 import { Loeschfristen } from './stammdaten/Loeschfristen';
 import { NachweisOffenKarte } from './stammdaten/NachweisOffen';
 import { WEG } from '@/lib/wege';
+import { VERANTWORTLICH_EINRICHTUNG } from '@/lib/datenschutz/einrichtung';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'gesellschaften' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'gesellschaften', label: 'Gesellschaften' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
@@ -85,7 +86,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             <Liste>
               {d.selbstpruefung.map(p => (
                 <Zeile key={p.id} links={<Punkt farbe={P_FARBE[p.status]} />} titel={p.titel} unter={`${p.befund} · ${p.norm}`}
-                  rechts={p.status !== 'erfuellt' && (p.id === 'rechtsgrundlage' || p.id === 'herkunft' || p.id === 'art14' || p.id === 'antraege') ? <Knopf leise onClick={() => waehle('datenschutz')}>Beheben</Knopf> : <Chip farbe={P_FARBE[p.status]}>{p.status === 'erfuellt' ? 'erfüllt' : p.status}</Chip>} />
+                  rechts={p.status !== 'erfuellt' && (p.id === 'rechtsgrundlage' || p.id === 'herkunft' || p.id === 'art14' || p.id === 'antraege') ? <Knopf leise onClick={() => waehle('datenschutz')}>Beheben</Knopf> : p.status !== 'erfuellt' && p.weg ? <Knopf leise href={p.weg.href} titel={p.weg.text}>Beheben</Knopf> : <Chip farbe={P_FARBE[p.status]}>{p.status === 'erfuellt' ? 'erfüllt' : p.status}</Chip>} />
               ))}
             </Liste>
           </Karte>
@@ -170,7 +171,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>Aufbewahrungspflichten (HGB/AO) gehen vor. Die Fristen je Datenart und wer darüber liegt: nächste Karte.</div>
           </Karte>
           <Loeschfristen d={d} i={2} laden={() => void laden()} zuKontakt={zuKontakt} />
-          <Verzeichnis liste={d.verarbeitungen} api={api} laden={laden} />
+          <Verzeichnis liste={d.verarbeitungen} api={api} laden={laden} verantwortlicher={d.verantwortlicher} />
           {d.loeschprotokoll.length > 0 && (
             <Karte i={4}>
               <Ueberschrift>Löschprotokoll</Ueberschrift>
@@ -269,13 +270,17 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
   );
 }
 
-function Verzeichnis({ liste, api, laden }: { liste: Verarbeitung[]; api: CrmApi; laden: () => void }) {
+function Verzeichnis({ liste, api, laden, verantwortlicher }: { liste: Verarbeitung[]; api: CrmApi; laden: () => void; verantwortlicher?: Daten['verantwortlicher'] }) {
   const [offen, setOffen] = useState<string | null>(null);
   const setze = async (v: Verarbeitung) => { await api.setze('verarbeitungen', v as unknown as { id: string } & Record<string, unknown>); laden(); };
   const FELDER: [keyof Verarbeitung, string][] = [['zweck', 'Zweck'], ['personen', 'Betroffene'], ['daten', 'Datenkategorien'], ['rechtsgrundlage', 'Rechtsgrundlage'], ['empfaenger', 'Empfänger'], ['drittland', 'Drittland'], ['loeschfrist', 'Löschfrist'], ['toms', 'Schutzmaßnahmen'], ['verantwortlich', 'Verantwortlich']];
   return (
     <Karte i={3}>
-      <Ueberschrift rechts={<Knopf leise onClick={() => { const id = neueId('vv'); void setze({ id, name: 'Neue Verarbeitung', zweck: '', personen: '', daten: '', rechtsgrundlage: '', empfaenger: '', drittland: '', loeschfrist: '', toms: '', verantwortlich: 'Kevin Dieckmann', stand: '' }); setOffen(id); }}>+ Verarbeitung</Knopf>}>Verzeichnis der Verarbeitungen (Art. 30)</Ueberschrift>
+      <Ueberschrift rechts={<Knopf leise onClick={() => { const id = neueId('vv'); void setze({ id, name: 'Neue Verarbeitung', zweck: '', personen: '', daten: '', rechtsgrundlage: '', empfaenger: '', drittland: '', loeschfrist: '', toms: '', verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: '' }); setOffen(id); }}>+ Verarbeitung</Knopf>}>Verzeichnis der Verarbeitungen (Art. 30)</Ueberschrift>
+      {/* Verantwortlicher aus EINER Quelle (05.10.): Einrichtung unter System › Datenschutz; dort auch Export (HTML/JSON) und Empfänger. */}
+      <div style={{ fontSize: TYP.bedien, color: verantwortlicher?.fehlt ? LEUCHT.achtung : C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>
+        Verantwortlich: {verantwortlicher?.text ?? '—'} · <a href={WEG.datenschutz('verantwortlicher')} style={{ color: 'inherit' }}>System › Datenschutz</a>
+      </div>
       <Liste>
         {liste.map(v => (
           <div key={v.id}>
@@ -284,6 +289,7 @@ function Verzeichnis({ liste, api, laden }: { liste: Verarbeitung[]; api: CrmApi
               <div style={{ padding: '8px 2px 14px' }}>
                 <Feldzeile label="Bezeichnung"><Feld wert={v.name} onFertig={name => name.trim() && setze({ ...v, name: name.trim() })} /></Feldzeile>
                 {FELDER.map(([f, l]) => <Feldzeile key={f} label={l}><Feld wert={String(v[f] ?? '')} onFertig={x => setze({ ...v, [f]: x })} /></Feldzeile>)}
+                {(!v.verantwortlich || v.verantwortlich === VERANTWORTLICH_EINRICHTUNG) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Verantwortlich wirkt als: {verantwortlicher?.text ?? '—'}</div>}
               </div>
             )}
           </div>

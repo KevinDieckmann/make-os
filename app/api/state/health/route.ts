@@ -7,6 +7,8 @@ import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,11 +20,14 @@ export async function GET(req: Request) {
   // Lesen dürfen sich beide gegenseitig (?fuer=, seit 23.09.).
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
+  leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const log = (await loadJson<HealthLog>(speicherFuer('health-log', person))) ?? {};
   return NextResponse.json({ log });
 }
 
 export async function PUT(req: Request) {
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();

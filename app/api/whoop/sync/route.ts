@@ -8,7 +8,8 @@ import { NextResponse } from 'next/server';
 import { gueltigesToken, PROVIDER, konfiguriert } from '@/lib/oauth';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { nurInhaber, inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,8 @@ const API = 'https://api.prod.whoop.com/developer/v1';
 
 export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(await inhaberSpeicher()); if (sperre) return sperre; }
   if (!konfiguriert(PROVIDER.whoop)) {
     return NextResponse.json({ error: 'Whoop ist nicht konfiguriert — Client-ID/Secret in .env.local, dann /os/verbindungen.' }, { status: 200 });
   }

@@ -16,6 +16,7 @@ import {
   rechnungenSchutzVoll, stornoAnwenden, stornoBuchungFuer, buchungsId, stornoBuchungsId,
   type FinanzplanFile, type BezahltErgebnis, type RechnungsBuchung, type FpErgebnis, type StornoErgebnis,
 } from '@/lib/finanzen/finanzplan-bestand';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,8 @@ const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen â€
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
+  leseZugriff(req, 'finanzplan'); // Lese-Protokoll (05.10.)
+  leseZugriff(req, 'rechnungen'); // der Altweg liefert die Rechnungen mit
   let f = await loadJson<FinanzplanFile>('finanzplan');
   if (!f || !Array.isArray(f.firmen) || !f.firmen.length) {
     f = await updateJson<FinanzplanFile>('finanzplan', () => SEED);

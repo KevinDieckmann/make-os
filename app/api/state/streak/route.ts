@@ -12,6 +12,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { saeubereStreak, streakStand, type StreakLog } from '@/lib/gesundheit/eintraege';
 import { localDay } from '@/lib/zeit';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,8 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let b: { datum?: string; eintrag?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();

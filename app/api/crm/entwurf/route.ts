@@ -7,8 +7,10 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { hasAnthropicKey } from '@/lib/anthropic';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { entwurfFuer } from '@/lib/ansprache';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +25,8 @@ export async function POST(req: Request) {
   // Art. 18 zentral (29.09.): kein Entwurf für eingeschränkte Personen.
   const k = (await kontakteFuerVerarbeitung()).find(x => x.id === String(b.id ?? ''));
   if (!k) return NextResponse.json({ error: 'Kontakt nicht gefunden oder Verarbeitung eingeschränkt (Art. 18).' }, { status: 404 });
-  const r = await entwurfFuer(k);
+  const r = await entwurfFuer(k, kiAus(req, ['crm'], { anzahl: 1 }));
   if (!r.ok) return NextResponse.json({ error: r.fehler }, { status: 200 });
-  return NextResponse.json(r.entwurf);
+  // KI-VO Art. 50 (05.10.): maschinenlesbar als KI-erzeugt gekennzeichnet — die Oberfläche zeigt „KI-Entwurf“.
+  return NextResponse.json({ ...r.entwurf, ki: kiKennzeichen() });
 }

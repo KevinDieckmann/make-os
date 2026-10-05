@@ -260,9 +260,10 @@ Zahlen, keine Inhalte), prüft die Dateiablage und löscht den Temp-Ordner. „P
 |---|---|---|---|---|
 | — | — | — | — | noch nie gemacht |
 
-Im Ruhezustand NICHT verschlüsselt (bewusst, Stand 29.09.): Bilder unter `daten/bauplan-bilder`, der Brain-Index
-`daten/brain-index.sqlite` (abgeleitet, wird neu gebaut — seit 29.09. nicht mehr in der Nachtsicherung) und das
-Obsidian-Hirn (eigenes Git-Repo). Das Archiv `daten/archiv` ist seit 28.09. verschlüsselt (lib/store/archiv.ts).
+Im Ruhezustand NICHT verschlüsselt (bewusst): nur noch das Obsidian-Hirn (eigenes Git-Repo). Seit 05.10. (UPDATES.md): Bilder
+(`daten/bilder-gerichte`, `daten/bauplan-bilder`) in der Hülle der Dateiablage; der Brain-Index liegt nur im tmpfs `/brain-index`
+(compose.yml, 256 MB, nach jedem Start neu gebaut — ≈ 2–3 s CPU), ein alter `daten/brain-index.sqlite` wird beim Start überschrieben
+und gelöscht (HOI „Brain-Index (Suche)“). Das Archiv `daten/archiv` ist seit 28.09. verschlüsselt (lib/store/archiv.ts).
 Die Nachtarchive selbst sind als Ganzes mit age verschlüsselt.
 
 ## Sicherung, Offsite, Wiederherstellung (29.09., Paket D-A)

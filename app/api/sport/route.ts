@@ -18,6 +18,8 @@ import { saeubere, wendeAn, type Op, type SportStand } from '@/lib/sport/modell'
 import { UEBUNGEN, VORLAGEN } from '@/lib/sport/gym';
 import { tagPlus } from '@/lib/sport/pace';
 import type { VitalsLog } from '@/lib/vitals';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,6 +49,7 @@ async function vitalsFuer(person: string, heute: string): Promise<Record<string,
 export async function GET(req: Request) {
   const person = personStreng(req);
   if (!person) return KEINE_PERSON;
+  leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9: Sport mit Körperwerten, 05.10.)
   const heute = localDay();
   const namen = [speicherFuer('sport', person), speicherFuer('vitals', person)];
   const etag = etagAus('sport', await speicherStand(namen), heute, person);
@@ -59,6 +62,8 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   const person = personStreng(req);
   if (!person) return KEINE_PERSON;
+  // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
+  { const sperre = await gesundheitSchreibSperre(person); if (sperre) return sperre; }
   if (zuGross(req, 1_000_000)) return ZU_GROSS(1_000_000);
   let body: { ops?: unknown };
   try { body = await jsonBegrenzt(req, 1_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }

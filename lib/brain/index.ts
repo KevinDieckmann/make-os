@@ -1,21 +1,28 @@
 // ─── Brain-Index: SQLite FTS5 neben dem Vault (Server, 27.09.) ──────────────
 // Kevins Entscheidung 27.09.: Volltext-Index lokal (dazu Embeddings, lib/brain/
 // einbettung.ts). Der Vault bleibt die Wahrheit — der Index ist abgeleitet und
-// jederzeit neu baubar (Datei löschen genügt). Er liegt unter <daten>/brain-index.
-// sqlite: Klartext wie der Vault selbst (Git-Repo), außerhalb der verschlüsselten
-// JSON-Bestände und außerhalb des Vault-Repos (sonst würde vault-abgleich.sh ihn
-// einchecken). Inkrementell: je Notiz ein Hash — nur Geändertes wird neu zerlegt.
+// jederzeit neu baubar. Inkrementell: je Notiz ein Hash — nur Geändertes wird neu zerlegt.
 // Sicht (scope/owner) wird VOR dem Ranking angewandt (lib/zoe/vault.ts darfSehen).
 // 29.09. (Paket D-B #99): `secure_delete=ON` — gelöschte Zeilen (entfernte Notizen, nach Art. 17 nachgezogene
 // Arbeitsbestände in `app_chunks`) werden mit Nullen überschrieben, statt in freien Seiten lesbar zu bleiben. Nach einer
 // Löschung zieht lib/crm/person-bestaende.ts den Such-Index sofort nach (nicht erst im 30-Minuten-Takt).
+//
+// 05.10. (Paket „Verschlüsselung lückenlos“): der Index enthält Vault-Abschnitte UND die Arbeitsbestände (`app_chunks`:
+// Aufgaben, Notizen, Angebote, Mandate) — er liegt NIE MEHR im Klartext auf der Platte, sobald ein Datenschlüssel gesetzt
+// ist. Wo er liegt, entscheidet `indexOrtWaehlen` (lib/brain/index-ort.ts): tmpfs (Server: compose.yml `/brain-index`,
+// Größenlimit) oder der Arbeitsspeicher des Prozesses. Nach jedem Start ist er leer und wird neu gebaut (`indexNachStart`,
+// lib/store/betrieb.ts); bis dahin sucht lib/zoe/vault.ts über die Dateien (Rückfall wie bisher). Ein alter Klartext-Index
+// unter <daten>/brain-index.sqlite wird beim Start überschrieben und gelöscht. Ohne Schlüssel (lokale Entwicklung mit
+// Wegwerfdaten) bleibt er wie bisher als Datei im Datenordner. Begründung und Rückweg: UPDATES.md (05.10.).
 
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, chmodSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { datenOrdner } from '@/lib/store/local-db';
+import { schluesselRing } from '@/lib/store/huelle.mjs';
+import { indexOrtWaehlen, ramDateisystem, type IndexOrt } from './index-ort';
 import { bestand, leseKopf, darfSehen, type Sicht, type Treffer } from '@/lib/zoe/vault';
 import { abschnitte, verweise, ftsAnfrage } from './chunks';
 
@@ -27,14 +34,24 @@ let db: DatabaseSync | null = null;
 let dbPfad = '';
 const HASH = (t: string) => createHash('sha1').update(t).digest('hex');
 
-export function indexPfad(): string { return process.env.MAKE_OS_BRAIN_INDEX?.trim() || path.join(datenOrdner(), 'brain-index.sqlite'); }
+/** Der alte Ort des Index (bis 05.10.) — dort darf er bei gesetztem Datenschlüssel nicht mehr liegen. */
+export const alterIndexPfad = (): string => path.join(datenOrdner(), 'brain-index.sqlite');
+
+/** Wo der Index liegt (tmpfs, Arbeitsspeicher oder — nur ohne Datenschlüssel — Platte). */
+export function indexOrt(): IndexOrt {
+  return indexOrtWaehlen({ env: process.env, schluessel: !!schluesselRing().aktiv, ramDateisystem, datenOrdner: datenOrdner() });
+}
+/** Der Pfad für SQLite (`:memory:` im Arbeitsspeicher). */
+export function indexPfad(): string { return indexOrt().pfad; }
 
 /** Die Datenbank (einmal je Prozess). */
 export function oeffneIndex(): DatabaseSync {
   const pfad = indexPfad();
   if (db && dbPfad === pfad) return db;
-  mkdirSync(path.dirname(pfad), { recursive: true });
+  if (db) schliesseIndex(); // Ort gewechselt (Schlüssel neu gesetzt, Tests): alte Verbindung zu
+  if (pfad !== ':memory:') mkdirSync(path.dirname(pfad), { recursive: true, mode: 0o700 });
   db = new DatabaseSync(pfad); dbPfad = pfad;
+  if (pfad !== ':memory:') { try { chmodSync(pfad, 0o600); } catch { /* tmpfs ohne chmod: egal, nur der Container-Nutzer */ } }
   db.exec(`
     PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA secure_delete=ON;
     CREATE TABLE IF NOT EXISTS notizen(id TEXT PRIMARY KEY, wurzel TEXT, titel TEXT, bereich TEXT, typ TEXT, scope TEXT, owner TEXT, stand TEXT, tags TEXT, geaendert TEXT, hash TEXT, zeichen INTEGER);
@@ -52,6 +69,90 @@ export function oeffneIndex(): DatabaseSync {
 
 /** Für Tests: Verbindung schließen (danach öffnet der nächste Aufruf neu). */
 export function schliesseIndex(): void { try { db?.close(); } catch { /* egal */ } db = null; dbPfad = ''; }
+
+/** Die Dateien einer SQLite-Datenbank samt WAL/SHM/Journal. */
+const sqliteDateien = (pfad: string) => [pfad, `${pfad}-wal`, `${pfad}-shm`, `${pfad}-journal`];
+
+/**
+ * Eine Klartext-Datei bestmöglich unlesbar machen: mit Nullen überschreiben, fsync, löschen. Auf SSD/ext4 ohne Garantie
+ * (Copy-on-Write, Journale, Abbilder des Hosters) — aber die Datei liegt danach nicht mehr lesbar im Datenordner, und
+ * jede Sicherung ab jetzt enthält sie nicht. Liefert, ob etwas zu tun war.
+ */
+async function ueberschreibenUndLoeschen(pfad: string): Promise<boolean> {
+  const { open, unlink } = await import('node:fs/promises');
+  let fh: Awaited<ReturnType<typeof open>>;
+  try { fh = await open(pfad, 'r+'); } catch (e) { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') return false; throw e; }
+  try {
+    const groesse = (await fh.stat()).size;
+    const null1mb = Buffer.alloc(Math.min(1_048_576, Math.max(1, groesse)));
+    for (let pos = 0; pos < groesse; pos += null1mb.length) await fh.write(null1mb, 0, Math.min(null1mb.length, groesse - pos), pos);
+    await fh.sync();
+  } finally { await fh.close().catch(() => {}); }
+  await unlink(pfad).catch(e => { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') throw e; });
+  return true;
+}
+
+/** Liegt (bei gesetztem Schlüssel) noch ein alter Klartext-Index im Datenordner? Für den Head of IT. */
+export async function alterIndexDa(): Promise<boolean> {
+  const ort = indexOrt();
+  if (ort.art === 'platte') return false;
+  const { access } = await import('node:fs/promises');
+  for (const p of [...sqliteDateien(alterIndexPfad()), ...(ort.verworfen ? sqliteDateien(ort.verworfen) : [])]) {
+    try { await access(p); return true; } catch { /* nächste */ }
+  }
+  return false;
+}
+
+/** Alte Klartext-Indexdateien (Datenordner bzw. ein verworfener Plattenpfad) entfernen — nur, wenn der Index nicht dort liegen darf. */
+export async function alterIndexEntfernen(): Promise<number> {
+  const ort = indexOrt();
+  if (ort.art === 'platte') return 0;
+  let n = 0;
+  for (const p of [...sqliteDateien(alterIndexPfad()), ...(ort.verworfen ? sqliteDateien(ort.verworfen) : [])]) {
+    try { if (await ueberschreibenUndLoeschen(p)) n++; }
+    catch (e) { console.error(`[brain-index] ${path.basename(p)} nicht entfernt:`, e instanceof Error ? e.message : e); }
+  }
+  if (n) console.log(`[brain-index] alter Klartext-Index entfernt (${n} Datei${n === 1 ? '' : 'en'} überschrieben und gelöscht) — der Index liegt jetzt ${ort.art === 'tmpfs' ? 'im tmpfs' : 'im Arbeitsspeicher'}.`);
+  return n;
+}
+
+/** Stand des letzten Neubaus nach dem Start (für den Head of IT) — nur Zahlen. */
+export interface NeubauStand { gestartet: string | null; fertig: string | null; dauerMs: number | null; notizen: number; appZeilen: number; fehler: string | null }
+const neubau: NeubauStand = { gestartet: null, fertig: null, dauerMs: null, notizen: 0, appZeilen: 0, fehler: null };
+export const neubauStand = (): NeubauStand => ({ ...neubau });
+
+/**
+ * Nach dem Start (lib/store/betrieb.ts, verzögert): alten Klartext-Index entfernen und — liegt der Index im tmpfs bzw.
+ * Arbeitsspeicher, also leer — Vault und Arbeitsbestände neu einlesen. Wirft nie. Bis der Neubau fertig ist, sucht
+ * lib/zoe/vault.ts über die Dateien (`indexBereit` ist false) und `suche_arbeit` baut `app_chunks` vor der Suche selbst.
+ */
+export async function indexNachStart(): Promise<NeubauStand> {
+  try { await alterIndexEntfernen(); } catch { /* gemeldet */ }
+  if (process.env.MAKE_OS_BRAIN_INDEX === 'aus') return neubauStand();
+  const t0 = Date.now();
+  neubau.gestartet = new Date(t0).toISOString(); neubau.fehler = null;
+  try {
+    const l = await aktualisieren(true);
+    const a = await (await import('./app-index')).appIndexAktualisieren(true);
+    neubau.notizen = l.neu + l.geaendert + l.unveraendert; neubau.appZeilen = a.neu + a.geaendert + a.unveraendert;
+    neubau.dauerMs = Date.now() - t0; neubau.fertig = new Date().toISOString();
+    console.log(`[brain-index] Neubau nach dem Start: ${neubau.notizen} Notizen, ${neubau.appZeilen} App-Zeilen in ${(neubau.dauerMs / 1000).toFixed(1)} s (${indexOrt().art}).`);
+  } catch (e) {
+    neubau.fehler = e instanceof Error ? e.message.slice(0, 160) : 'unbekannt';
+    console.error('[brain-index] Neubau nach dem Start gescheitert:', neubau.fehler);
+  }
+  return neubauStand();
+}
+
+/** Größe der Datenbank in MB (Seiten × Seitengröße — gilt für Datei, tmpfs und Arbeitsspeicher). */
+export function indexGroesseMb(): number {
+  try {
+    const d = oeffneIndex();
+    const n = (d.prepare('PRAGMA page_count').get() as { page_count: number }).page_count;
+    const g = (d.prepare('PRAGMA page_size').get() as { page_size: number }).page_size;
+    return Math.round((n * g) / 104_857.6) / 10;
+  } catch { return 0; }
+}
 
 const meta = (d: DatabaseSync, k: string): string | null => (d.prepare('SELECT v FROM meta WHERE k = ?').get(k) as { v: string } | undefined)?.v ?? null;
 const setzeMeta = (d: DatabaseSync, k: string, v: string) => d.prepare('INSERT INTO meta(k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').run(k, v);

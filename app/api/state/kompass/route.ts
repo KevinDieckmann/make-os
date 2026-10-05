@@ -6,6 +6,7 @@
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,19 +24,27 @@ const REGLER = new Set([
   'tageslast', 'kritisch-grenze', 'vorschau-tage', 'wochenlast',
   'tuersteher', 'triage-tiefe',
   'agenten-leine', 'auto-takt', 'nachtruhe-ab', 'tagesstart-auto',
-  'schutzzeit', 'recovery-gruen', 'runway-warnung', 'koerper-an-agenten',
+  'schutzzeit', 'recovery-gruen', 'runway-warnung',
+  // 'koerper-an-agenten' entfällt seit 05.10. — ersetzt durch die Art.-9-Einwilligung (b) je Person (System › Datenschutz).
 ]);
 
-export async function GET() {
+// Der Kompass stellt das System des Haushalts ein (05.10., DSGVO-Prüfung): lesen nur im Haushalt des Inhabers bzw. der
+// Systemlauf ohne Person, ändern nur eine Person dieses Haushalts — ein Konto aus einem anderen Haushalt → 403.
+const GESPERRT = () => NextResponse.json({ ok: false, error: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+
+export async function GET(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return GESPERRT();
   const f = await loadJson<KompassFile>('kompass');
   return NextResponse.json({
     modus: f?.modus && MODI.has(f.modus) ? f.modus : 'aufbau',
-    eigene: f?.eigene && typeof f.eigene === 'object' ? f.eigene : {},
+    // Nur bekannte Regler — ein alter Wert „koerper-an-agenten“ bleibt im Bestand liegen, wirkt aber nirgends mehr.
+    eigene: f?.eigene && typeof f.eigene === 'object' ? Object.fromEntries(Object.entries(f.eigene).filter(([k]) => REGLER.has(k))) : {},
     seit: f?.seit ?? null,
   });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return GESPERRT();
   let body: Partial<KompassFile> & { zuruecksetzen?: boolean };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 

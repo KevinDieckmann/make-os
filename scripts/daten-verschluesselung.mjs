@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ─── MAKE OS · Bestände auf einmal ver- oder entschlüsseln (26.09., seit 29.09. v2-Hülle) ─
 // Der Store verschlüsselt beim SCHREIBEN. Damit nach dem Einschalten nichts im Klartext liegen
-// bleibt (auch Tagessicherungen, Archiv, Dateiablage), läuft dieses Skript einmal:
+// bleibt (auch Tagessicherungen, Archiv, Dateiablage, seit 05.10. Bilder), läuft dieses Skript einmal:
 //   node scripts/daten-verschluesselung.mjs --verschluesseln   (alles in die Hülle des Schreibformats MAKE_OS_FORMAT mit
 //                                                                dem aktiven Schlüssel: kompatibel (Standard) = v1 wie der
 //                                                                alte Online-Stand aeb4964, v2 = Schlüssel-ID + AAD; Hüllen
@@ -23,7 +23,7 @@ import path from 'node:path';
 import net from 'node:net';
 import { atomarSchreiben } from '../lib/store/atomar.mjs';
 import { schluesselRing, huellenVersion, huelleImModus, huelleOeffnen, huelleAktuell, formatModus } from '../lib/store/huelle.mjs';
-import { binVersion, binOeffnen, binImModus, binAktuell } from '../lib/store/datei-huelle.mjs';
+import { binVersion, binOeffnen, binImModus, binAktuell, BILD_ORDNER, BILD_NAME } from '../lib/store/datei-huelle.mjs';
 import { skriptSperreOderAbbruch } from '../lib/store/schreiber.mjs';
 
 const modus = process.argv[2];
@@ -110,6 +110,11 @@ async function ablageDatei(p, haushalt, id) {
 for (const h of await fs.readdir(path.join(DATEN, 'dateien')).catch(() => [])) {
   const ordner = path.join(DATEN, 'dateien', h);
   for (const n of await fs.readdir(ordner).catch(() => [])) if (/^d-[a-z0-9-]+\.bin$/.test(n)) await ablageDatei(path.join(ordner, n), h, n.slice(0, -4));
+}
+// Bilder (05.10., lib/store/bild-ablage.ts): <ordner>/<name> — dieselbe Hülle, AAD <ordner>/<name>. Alte Klartext-Fotos werden
+// hier auf einmal verschlüsselt (die App täte es beim ersten Lesen); --entschluesseln vor einem Rückweg auf den alten Stand.
+for (const o of BILD_ORDNER) {
+  for (const n of await fs.readdir(path.join(DATEN, o)).catch(() => [])) if (BILD_NAME.test(n)) await ablageDatei(path.join(DATEN, o, n), o, n);
 }
 console.log(`${modus.slice(2)}: ${getan} Dateien umgestellt, ${gelassen} schon passend, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);

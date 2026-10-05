@@ -25,6 +25,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt,
 import { GmailDetail } from './inbox/GmailDetail';
 import { GmailVerbinden, type GmailMeta } from './inbox/GmailVerbinden';
 import { threadsAus, zeileMitNachricht, gmailIdAus, type ListeNachricht, type ThreadZeile } from '@/lib/gmail/liste';
+import { KiMarke } from './KiMarke';
 
 type Source = 'apple' | 'ms' | 'gmail';
 interface Msg { id: string; source: Source; account: string; sender: string; senderEmail?: string; subject: string; preview?: string; receivedAt: string; isRead: boolean; importance?: string; mbIndex?: number; /** Gmail: der Thread dieser Zeile. */ gm?: ThreadZeile }
@@ -263,6 +264,7 @@ export function InboxSchlank() {
       </div>
       {entwurf?.id === m.id && (
         <div style={{ marginTop: 14, borderTop: `1px solid ${C.linie}`, paddingTop: 12 }}>
+          <div style={{ marginBottom: 8 }}><KiMarke /></div>
           <textarea value={entwurf.text} onChange={e => setEntwurf({ id: m.id, text: e.target.value })} rows={8} aria-label="Antwort-Entwurf" style={{ ...feld, padding: 12, lineHeight: 1.55, resize: 'vertical', minHeight: 180 }} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Knopf onClick={() => inMail(m)}>In Mail öffnen</Knopf>

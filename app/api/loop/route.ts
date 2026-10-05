@@ -33,13 +33,25 @@ import { localDay as localKey } from '@/lib/zeit';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
 import { delegierbar } from '@/lib/make-one/team-typen';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
+
+/** Frühere Loop-Ergebnisse ohne Gesundheits-Ableitungen (rein): kein Gesundheits-Loop, im Morgen-Loop ohne Tagesform/Schutz. */
+function ohneGesundheit<T extends { agent: string; payload?: unknown }>(l: T[]): T[] {
+  return l.filter(e => e.agent !== 'loop-gesundheit').map(e => {
+    if (e.agent !== 'loop-morgen' || !e.payload || typeof e.payload !== 'object') return e;
+    const { tagesform: _t, warum: _w, schutz: _s, ...rest } = e.payload as Record<string, unknown>;
+    return { ...e, payload: rest };
+  });
+}
 
 // ── Gemeinsame Datensammlung: kommt jetzt aus dem Brain ──
 // Gleiche Rückgabeform wie früher, damit die Loop-Zweige unverändert bleiben.
 async function gather(today: string, person: string) {
   const b = await gatherBrain(today, person);
   // Für den Rückblick brauchen wir die vollen Payloads der Loop-Läufe.
-  const loopLog = await recentRuns(undefined, 30, 'loop-').then(l => [...l].reverse());
+  // Ohne Einwilligung (b) keine Gesundheits-Ableitungen aus früheren Läufen in neuen Prompts (Rückblick, Vergleich).
+  const loopLog = await recentRuns(undefined, 30, 'loop-').then(l => [...l].reverse()).then(l => (b.gesundheitFrei ? l : ohneGesundheit(l)));
   return {
     open: b.tasks.offen,
     overdue: b.tasks.overdue,
@@ -51,6 +63,8 @@ async function gather(today: string, person: string) {
     weekEvents: b.kalender.woche,
     perf: b.index ?? { index: null, label: 'noch keine Datenbasis', saeulen: [], abdeckung: 0, hebel: null, stand: today },
     vitals: b.vitals,
+    /** Art. 9 (05.10.): Vitalwerte/Gesundheits-Säule dürfen an die KI (Einwilligung (b)). */
+    gesundheitFrei: b.gesundheitFrei,
     calAt: b.kalender.at ?? undefined,
     calAgeH: b.kalender.alterH,
     calStale: b.kalender.stale,
@@ -101,7 +115,9 @@ export async function POST(req: Request) {
     const user = [
       `Heute: ${wd}, ${today}.`,
       eigeneAngaben,
-      `Recovery ${vit.rec}%, Ruhepuls ${vit.rhr}, HRV ${vit.hrv}, Schlaf letzte Nacht ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ""}`,
+      g.gesundheitFrei
+        ? `Recovery ${vit.rec}%, Ruhepuls ${vit.rhr}, HRV ${vit.hrv}, Schlaf letzte Nacht ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}`
+        : 'KEINE GESUNDHEITSWERTE (keine Einwilligung, dass sie an die KI gehen): Tagesform „gelb“ annehmen, nicht nach Werten fragen, unter „schutz“ nur ein allgemeiner Satz.',
       '',
       // Ehrlich über die Datenlage: der Kalender-Cache wird nur beim Öffnen von
       // /os/kalender erneuert. Ohne diesen Hinweis behauptet der Loop „dein Tag
@@ -120,7 +136,8 @@ export async function POST(req: Request) {
         : 'PERFORMANCE-INDEX: noch nicht berechenbar — sag Kevin, was ihm dafür fehlt.',
     ].join('\n');
 
-    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000,
+      ki: kiAus(req, g.gesundheitFrei || eigeneAngaben ? ['aufgaben', 'kalender', 'finanzen', 'gesundheit'] : ['aufgaben', 'kalender', 'finanzen'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop, stats: { open: g.open.length, termine: g.todaysEvents.length } });
     await logRun('loop-morgen', `Morgen-Loop ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, overdue: g.overdue.length, dueToday: g.dueToday.length, termine: g.todaysEvents.length } });
@@ -170,7 +187,7 @@ export async function POST(req: Request) {
       g.loopLog.length ? `FRÜHERE LOOP-ERGEBNISSE (zum Vergleich, neueste zuletzt):\n${g.loopLog.slice(-4).map(e => `- ${e.ts.slice(0, 10)} ${e.title}`).join('\n')}` : '',
     ].filter(Boolean).join('\n');
 
-    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 4000 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 4000, ki: kiAus(req, ['finanzen', 'aufgaben', 'kalender', 'crm'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
     await logRun('loop-woche', `Wochen-Loop ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, critical: g.critical.length, pipeline: g.prospects.length, hot } });
@@ -190,7 +207,7 @@ export async function POST(req: Request) {
       'Antworte NUR als JSON: {"muster":["<wiederkehrendes Muster in den Empfehlungen>"],"blindeFlecken":["<was dem System an Daten/Fähigkeit fehlt>"],"verbesserungen":[{"was":"<konkrete Verbesserung am System>","warum":"<1 Satz>"}]}',
     ].join('\n');
     const user = g.loopLog.slice(-12).map(e => `[${e.ts.slice(0, 16)}] ${e.agent} — ${e.title}\n${JSON.stringify(e.payload).slice(0, 900)}`).join('\n\n');
-    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000, ki: kiAus(req, g.gesundheitFrei ? ['allgemein', 'gesundheit'] : ['allgemein'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
     await logRun('loop-rueckblick', `Rückblick ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data, anzahl: g.loopLog.length });
@@ -217,6 +234,8 @@ export async function POST(req: Request) {
     const formatJson = 'Antworte NUR als JSON: {"lage":"<2-3 Sätze ehrliche Lage>","punkte":[{"titel":"<konkret>","warum":"<1 Satz>"}],"eineSache":"<DIE eine Handlung — klein genug, dass sie wirklich passiert>","warnung":"<optional, sonst leer>"} — maximal 4 punkte.';
     const kopf = 'Du bist ZOE, Kevins Chief of Staff. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.';
 
+    // Gesundheits-Loop nur mit Einwilligung (b) — sonst geht kein Wert an die KI (Art. 9, 05.10.).
+    if (loop === 'gesundheit' && !g.gesundheitFrei) return NextResponse.json({ error: 'Der Gesundheits-Loop braucht deine Einwilligung „An die KI geben“ (System › Datenschutz).', loop, einwilligung: 'gesundheit' });
     let system = '', user = '', label = '';
     if (loop === 'finanzen') {
       label = 'Finanz-Loop';
@@ -308,7 +327,8 @@ export async function POST(req: Request) {
       ].join('\n');
     }
 
-    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3500 });
+    const KAT: Record<string, KiKategorie[]> = { finanzen: ['finanzen'], sales: ['crm'], marketing: ['crm'], operations: ['aufgaben', 'kalender'], kunden: ['crm', 'finanzen'], gesundheit: ['gesundheit'] };
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3500, ki: kiAus(req, KAT[loop] ?? ['allgemein'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
     await logRun(`loop-${loop}`, `${label} ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data });

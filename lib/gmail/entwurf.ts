@@ -9,6 +9,7 @@
 //   · Kein Mailtext in Logs; das Modell bekommt höchstens `MAIL_MAX` Zeichen der Mail und `BRAIN_MAX` Zeichen Brain-Kontext.
 
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
+import type { KiKontext } from '@/lib/datenschutz/ki-tor';
 import { resolveAgent } from '@/lib/agent-config';
 import { suche, type Treffer } from '@/lib/zoe/vault';
 import { trefferText } from '@/lib/zoe/brain-chat';
@@ -46,7 +47,7 @@ export function brainKontext(treffer: Treffer[], durchsucht: number): string {
 
 export interface EntwurfErgebnis { draft: string; quellen: string[] }
 
-export async function gmailEntwurf(person: string, nachrichtId: string, hinweis?: string): Promise<EntwurfErgebnis> {
+export async function gmailEntwurf(person: string, nachrichtId: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach'], anzahl: 1 }): Promise<EntwurfErgebnis> {
   const stand = await ladeGmailStand(person);
   const kopf = stand?.koepfe[nachrichtId];
   if (!stand || !kopf) throw new EntwurfFehler('Diese Mail gibt es im Spiegel nicht (mehr).', 404);
@@ -82,7 +83,7 @@ export async function gmailEntwurf(person: string, nachrichtId: string, hinweis?
     hinweis?.trim() ? `Hinweis der Person für die Antwort: ${hinweis.trim().slice(0, 500)}` : 'Schreibe eine passende, knappe Antwort.',
   ].join('\n');
 
-  const r = await askText({ zweck: 'inbox-draft', system: entwurfSystem(person, z?.anrede, regeln), user, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'inbox-draft', system: entwurfSystem(person, z?.anrede, regeln), user, maxTokens: 4000, model: agent.model, ki });
   if (!r.ok || !r.text) throw new EntwurfFehler(r.error === 'guthaben-leer' ? 'Das KI-Guthaben ist leer.' : 'ZOE konnte gerade keinen Entwurf schreiben — bitte noch einmal versuchen.', 502);
   return { draft: r.text.trim(), quellen };
 }

@@ -11,6 +11,8 @@ import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
 
   const user = [`Thema: ${thema}`, notizen ? `Zusätzliche Notizen/Fakten (nutze sie, erfinde nichts dazu):\n${notizen}` : ''].filter(Boolean).join('\n\n');
 
-  const r = await askText({ zweck: 'content', system, user, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'content', ki: kiAus(req, ['allgemein']), system, user, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Entwurf erzeugen — nochmal versuchen.' });
 
   await logRun('content', `${fmt.label}: ${thema.slice(0, 80)}`, { format: fmt.label, thema, entwurf: r.text.slice(0, 2000) });
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
       abgelegt = true;
     } catch { abgelegt = false; }
   }
-  return NextResponse.json({ reply: r.text, format: fmt.label, abgelegt });
+  return NextResponse.json({ reply: r.text, format: fmt.label, abgelegt, ki: kiKennzeichen() }); // KI-VO Art. 50 (05.10.)
 }
 
 /** Die abgelegten Entwürfe (Content › Entwürfe von ZOE). */

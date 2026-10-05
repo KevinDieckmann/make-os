@@ -160,7 +160,10 @@ export async function POST(req: Request) {
     else {
       const { kapaDeaktivierteAufraeumen } = await import('@/lib/kapazitaet/server');
       const k = await kapaDeaktivierteAufraeumen(h);
-      const was = [k.personen ? `gelöscht: Kapazität von ${k.personen} Person${k.personen === 1 ? '' : 'en'}` : '', k.gestempelt ? `Frist begonnen für ${k.gestempelt}` : ''].filter(Boolean).join(' · ');
+      // 05.10. (DSGVO-Grundlagen): auch die Kapazitätsdaten entfernter Konten (vorher ohne Löschfrist).
+      const { kapaEntfernteKontenAufraeumen } = await import('@/lib/kapazitaet/server');
+      const e = await kapaEntfernteKontenAufraeumen(h);
+      const was = [k.personen ? `gelöscht: Kapazität von ${k.personen} Person${k.personen === 1 ? '' : 'en'}` : '', e.personen ? `entfernte Konten: ${e.personen}` : '', k.gestempelt ? `Frist begonnen für ${k.gestempelt}` : ''].filter(Boolean).join(' · ');
       schritte.push({ name: 'Kapazität deaktivierter Personen', ok: true, info: was || 'nichts fällig' });
     }
   } catch (err) {

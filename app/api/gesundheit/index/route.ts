@@ -10,6 +10,7 @@ import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ansichtPerson, personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { gesundheitStand, speichereGesundheitSchwelle } from '@/lib/gesundheit/speicher';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ ok: false, fehler: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
+  leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const st = await gesundheitStand(person);
   if (new URL(req.url).searchParams.get('kompakt') === '1') {
     return NextResponse.json({ ok: true, person, index: st.pi.index, label: st.pi.label, saeulen: st.pi.saeulen.map(s => ({ id: s.id, label: s.label, score: s.score })) }, { headers: { 'Cache-Control': 'no-store' } });

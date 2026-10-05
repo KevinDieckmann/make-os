@@ -31,8 +31,8 @@ export interface Schwellen {
   nachtruheAb: number;
   /** Läuft der Tageslauf beim Öffnen von selbst? */
   tagesstartAuto: boolean;
-  /** Dürfen Gesundheitswerte in Agenten-Aufträge? */
-  koerperAnAgenten: boolean;
+  // `koerperAnAgenten` (Kompass-Regler, global) ist seit 05.10. durch die Art.-9-Einwilligung (b) je Person ersetzt
+  // (lib/datenschutz/gesundheit-einwilligung.ts, `Brain.gesundheitFrei`).
 }
 
 /** Fällt auf die Lage zurück, wenn nichts eingestellt ist. */
@@ -58,6 +58,5 @@ export async function schwellen(): Promise<Schwellen> {
     runwayAmber: runway * 2,
     nachtruheAb: w('nachtruhe-ab'),
     tagesstartAuto: w('tagesstart-auto') >= 50,
-    koerperAnAgenten: w('koerper-an-agenten') >= 50,
   };
 }

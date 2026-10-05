@@ -4,6 +4,31 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## DSGVO-Grundlagen im Code (05.10.2026, nur lokal — Branch `dsgvo-grund`)
+
+Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch Kundendaten aufnehmen können.“ Aus dem
+DSGVO-Audit vom 05.10. (Dokumente: `datenschutz/`):
+- **System › Datenschutz** (`/os/datenschutz`, neu): Selbstprüfung · Verantwortlicher · Empfänger und Auftragsverarbeiter (AVV) ·
+  Verzeichnis-Export · Pannen-Register (nur Inhaber) · Dokumente. Nur Haushalt des Inhabers (403 sonst); ändern nur der Inhaber, nie ZOE.
+- **Verantwortlicher aus der Einrichtung** statt fest im Code (Bestand `datenschutz-einrichtung`; Rückfall `MAKE_OS_VERANTWORTLICHER_*`,
+  `MAKE_OS_DSB_*`). Ohne Eintrag zeigen Auskunft, Verzeichnis und Selbstprüfung „Verantwortlicher fehlt — eintragen“. Das Verzeichnis
+  trägt den Platzhalter „laut Einrichtung …“; alte feste Namen werden beim ersten Öffnen gehoben. Danke-Mail (Netzwerken) holt
+  Verantwortlichen, Kontakt-Mail (DSB vor Kontakt) und Datenschutz-Seite aus der Einrichtung.
+- **Sicherungsfrist wahrheitsgemäß:** „bis zu 12 Monate“ statt „14 Tage“ (Generationen 14/8/12 aus `deploy/generationen.sh`) in Löschfrist,
+  Löschkonzept, Auskunft (`sicherungen`) und Buchungs-Hinweis (Fassung `buchung-2026-10-05-4`); Wächter vergleicht mit der Grabstein-Frist.
+- **Selbstprüfung echt:** Verantwortlicher, AVV je Auftragsverarbeiter + Drittland-Garantie, KI (AVV Anthropic + Agenten-Schalter),
+  zweiter Faktor im Haushalt, Sicherungs-Verschlüsselung (`system/sicherung.json`: age / Übergang / unbekannt), Datenpannen — je mit Weg.
+- **Verzeichnis (Art. 30)** um 13 Plattform-Verarbeitungen ergänzt, Export HTML (drucken/PDF) und JSON: `/api/datenschutz/verzeichnis`.
+- **Bauplan-Bildschirmfotos** verschlüsselt (wie Dateiablage), Löschfrist 90 Tage nach Abschluss / verwaist 7 Tage, im Register mit Personenbezug.
+- **Neue Löschfristen:** Löschprotokoll 36 Monate, Pannen-Register 36 Monate ab Abschluss, Kapazität entfernter Konten beim nächsten Morgenlauf.
+- **Vor dem Hochladen (Kevin):** Verantwortlichen unter System › Datenschutz eintragen; AVVs prüfen und je Dienst „bestätigt am“ +
+  Unterlage eintragen; Website-Erklärung (`website/datenschutz.html`) an denselben Verantwortlichen angleichen (nicht Teil dieses Pakets).
+- **Rückweg:** Commits zurücknehmen. Neue Bestände `datenschutz-einrichtung`, `datenschutz-pannen` bleiben unbenutzt liegen (alter Code liest
+  sie nicht). Im Verzeichnis gehobene Einträge (Platzhalter statt Name, neue TOMs, `empfaengerIds`, 13 neue Verarbeitungen) bleiben —
+  alter Code zeigt den Platzhalter als Text; bei Bedarf von Hand ändern. Bauplan-Bilder, die schon verschlüsselt abgelegt wurden, kann
+  der alte Stand NICHT lesen: vorher `node scripts/daten-verschluesselung.mjs --entschluesseln` (stellt auch `bauplan-bilder/` um) — oder
+  die Bilder gehen für den alten Stand verloren (die Karten bleiben). Buchungs-Hinweis: alte Fassung gilt wieder für neue Buchungen.
+
 ## Zugang & Schlüssel härten (05.10.2026, nur lokal — Branch `sicher-zugang`, Sicherheits-Audit S3)
 
 Kevin 05.10.: „Die Software muss auf allen Standards der DSGVO sein, damit wir Kundendaten aufnehmen können.“ Neun Punkte,
@@ -72,6 +97,113 @@ das Anmeldeprotokoll wird nur beim nächsten Eintrag gekürzt (kein eigener Lös
 Frist für `anmeldungen` noch nicht (Datei des DSGVO-Pakets — dort nachtragen). Die Leerlauf-Uhr lebt im Prozess: nach
 einem Neustart beginnt sie für bestehende Sitzungen neu (gewollt: keine Abmelde-Welle); ein offener Tab, der regelmäßig
 nachlädt, gilt als aktiv.
+
+## Verschlüsselung lückenlos + Protokolle nachweisfest (05.10.2026, nur lokal — Branch `verschluesselung`)
+
+Aus dem Sicherheits-Audit 05.10. (Kevin: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können“). Lücke L9 der TOM
+(`datenschutz/TOM.md`) für Brain-Index und Bilder geschlossen, Lese-Protokoll neu, Hash-Kette über alle Protokolle, Format v2 vorbereitet.
+
+**1 · Brain-Index nie mehr im Klartext auf der Platte.** `daten/brain-index.sqlite` hielt Vault-Abschnitte UND `app_chunks` (Aufgaben,
+Notizen, Angebote, Mandate) im Klartext. Abgewogen:
+- (a) **SQLCipher** (`better-sqlite3-multiple-ciphers`): verworfen. Neue native Abhängigkeit; das Dockerfile baut mit
+  `npm ci --ignore-scripts` — Prebuilds/`node-gyp` liefen gar nicht, der Bau bräuchte Python/Compiler im Bild oder eine Ausnahme für
+  Install-Skripte (Lieferkette); andere API als `node:sqlite` (alle Abfragen umbauen); Schlüssel läge ohnehin im selben Prozess. Höchstes
+  Deploy-Risiko für keinen Gewinn gegenüber (b).
+- (c) **Inhalts-Spalten anwendungsseitig verschlüsseln**: verworfen. FTS5 braucht Klartext — es bliebe nur ein eigener Such-Ersatz
+  (Token-Hashes), der Ranking, Präfixe und Umlaute verliert.
+- (b) **Index nur im Arbeitsspeicher** — gewählt: keine neue Abhängigkeit, kein Bau-Risiko, der Index ist abgeleitet und schnell gebaut.
+  Server: tmpfs `/brain-index` mit `size=256m` (compose.yml, zählt zur Speichergrenze des Containers), `MAKE_OS_BRAIN_INDEX=/brain-index/
+  index/brain-index.sqlite`; WAL/SHM liegen daneben ebenfalls im tmpfs. Ohne tmpfs (oder Pfad auf der Platte) mit Datenschlüssel →
+  `:memory:` im Prozess. Ohne Datenschlüssel (lokal, Wegwerfdaten) wie bisher als Datei. Regeln rein in `lib/brain/index-ort.ts`.
+  `secure_delete=ON` bleibt. 20 s nach dem Start (`lib/store/betrieb.ts` → `indexNachStart`): alter Klartext-Index im Datenordner wird mit
+  Nullen überschrieben und gelöscht, dann Vault + Arbeitsbestände neu eingelesen; bis dahin sucht ZOE über die Dateien (bisheriger Rückfall).
+  **Gemessen** (Mac M3, synthetischer Vault): 700 Notizen/11 MB → 0,5 s, Index 24 MB; 2 000 Notizen/31 MB → 1,5 s, 69 MB; Suche 12–30 ms.
+  Echter Vault heute ≈ 660 Notizen/6 MB → auf 1 vCPU (Faktor 3–5) **≈ 2–3 s CPU nach jedem Start**, ≈ 15–25 MB im tmpfs. Embeddings sind
+  auf dem Server aus (1 vCPU) — mit `MAKE_OS_EMBEDDINGS=an` müssten die Vektoren nach jedem Start neu gerechnet werden (Minuten CPU).
+  HOI-Befund „Brain-Index (Suche)“: Ort, Größe/Grenze, Notizen, Neubau-Dauer; rot nur beim Notweg `MAKE_OS_BRAIN_INDEX_PLATTE=1`
+  (Klartext auf der Platte), gelb bei Altdatei/vollem tmpfs/gescheitertem Neubau.
+  **Restrisiko (dokumentiert):** Hetzner-Abbilder der letzten 7 Tage enthalten den alten Index noch; Swap des Hosts kann Speicherseiten
+  (auch tmpfs) auf die Platte legen — wie für alle entschlüsselten Daten im Arbeitsspeicher.
+
+**2 · Bilder verschlüsselt und atomar** (`lib/store/bild-ablage.ts`): Fotos zu Gerichten (`bilder-gerichte/`) und Bauplan-Bildschirmfotos
+(`bauplan-bilder/`, vorher unter `process.cwd()/.data` statt im Datenordner) über die Hülle der Dateiablage (`binImModus`: kompatibel
+„MKOSDAT1“, v2 „MKOSDAT2“ mit AAD `<ordner>/<name>`) und `atomarSchreiben`; Lesen über den Schlüsselring; alte Klartext-Bilder werden beim
+ersten Lesen einmal verschlüsselt (oder alle auf einmal: `scripts/daten-verschluesselung.mjs --verschluesseln`). Rotation
+(`/api/intern/umschluesseln`), das Verschlüsselungs-Skript und `scripts/sicherung-pruefen.mjs` nehmen die Bilder mit. Register: Fotos
+bei `ernaehrung`/`backlog` vermerkt.
+
+**3 · Lese-Protokoll** (`lib/store/leseprotokoll.ts`, Art. 5 Abs. 2/32): wer Gesundheit/Erholung (Art. 9), Finanzplan, Haushalt,
+Rechnungen, Kontakte, Firmen/CRM und das Gesellschafts-Register gelesen hat — Person (bzw. ZOE im Auftrag/System), Bereich, wessen Daten
+(Konto), Kennungen nur als Fingerabdruck, Weg ohne Abfrage, Zeit; nie Inhalte. Eine Zeile `leseZugriff(req, bereich, …)` nach der
+Zugangsprüfung in 16 GET-Routen (vitals, health, haut, gesundheit/stand + index, sport, kapazitaet (nur mit eigenem Erholungswert),
+state/finanzplan, finanzplan, haushalt, state/kontakte, state/kunden, crm/bestand, gesellschaften, gesellschaften/unterlagen,
+crm/gesellschaften); gedrosselt (gleicher Zugriff ≤ 1× je 10 Min.), hält die Antwort nicht auf. Speicher
+`leseprotokoll--<haushalt>--<JJJJ-MM>`, Aufbewahrung **12 Monate** (ältere Monate leert die nächtliche Durchsicht, Vermerk bleibt), Register
+mit Rechtsgrundlage/Art. 15/Löschfrist, Art. 17 tilgt Fingerabdrücke. Ansicht **System › Nachweise** (`/os/datenschutz/nachweise`,
+`GET/POST /api/datenschutz/nachweise`) nur für den Inhaber selbst (nicht Dienstweg, nicht andere Konten) — Filter Zeitraum/Bereich/„nur auf
+Daten anderer“.
+
+**4 · Hash-Kette über die Protokolle** (`lib/store/protokoll-kette.ts`): Änderungsprotokoll, Lese-Protokoll und Anmeldeprotokoll
+(rollend, 300) — je Eintrag `h` (HMAC-SHA-256 mit dem Pepper, ohne Pepper SHA-256), je Datei `kette` (Anfang bindet den Dateinamen und den
+Kopf des Vormonats), dazu das Siegel `protokoll-siegel` (Anzahl + letzter Hash je Datei, nur steigend → abgeschnittene Enden fallen auf).
+Erkannt: veränderte, eingeschobene, gelöschte Einträge, abgeschnittenes Ende, vertauschte/zurückgespielte Monatsdateien, gelöschte Dateien.
+Erlaubt (bleibt „unverändert“): Art. 17 / Umrechnung v1→v2 / Kennungs-Umzug (Kontakt-Fingerabdrücke gehen nur normalisiert in den Hash),
+„[gelöscht]“ (zählt als getilgt), Löschfrist-Leerung. Altbestand wird nachts sichtbar „nachversiegelt“. Prüfung nächtlich in der
+Durchsicht (Ergebnis `protokoll-pruefung`), auf Knopfdruck unter System › Nachweise; HOI „Protokolle (Hash-Kette)“: grün
+„Protokoll unverändert ✓“, rot bei Bruch. **Grenze:** wer Datenschlüssel UND Pepper hat (root), kann neu rechnen — das Siegel in den
+Sicherungen (Mac, 12 Monate) macht spätere Änderungen gegenüber älteren Ständen trotzdem sichtbar.
+
+**5 · Format v2 vorbereitet** (nicht umgestellt): Code-seitig fehlte für `MAKE_OS_FORMAT=v2` nur noch, dass Bilder und Brain-Index unter
+die Hülle bzw. von der Platte kommen — beides erledigt. System › Nachweise zeigt den Modus und eine Bereitschaftsliste (Schlüssel als
+Datei, Pepper, Bestände/Bilder ohne Klartext, Brain-Index). **Anleitung für Kevin (erst nach stabilen Tagen, nur auf dein Wort):**
+```bash
+# 0. Vorher: Pepper gesetzt? (HOI „Fingerabdrücke … HMAC mit Pepper (v2)“ grün) — sonst bleiben Sperrliste/Protokoll-Kennungen v1.
+cd /srv/make-os/app
+echo 'MAKE_OS_FORMAT=v2' >> .env                     # bzw. eine vorhandene Zeile MAKE_OS_FORMAT=… ändern
+docker compose stop app arbeiter
+docker compose run --rm -T --no-deps app node scripts/daten-verschluesselung.mjs --verschluesseln </dev/null
+docker compose up -d
+# Prüfen: HOI „Schreibformat der Daten: v2“ grün; System › Nachweise › Format v2 „v2 ist aktiv“; Durchsicht am nächsten Morgen
+#         „0 alte Hüllen“; Protokolle „unverändert ✓“.
+```
+Danach geht es zum alten Stand **nur noch per Sicherung von vor der Umstellung** (DEPLOY.md › Schreibformat).
+
+**Rückweg (dieses Pakets, solange `MAKE_OS_FORMAT` kompatibel ist):**
+- Brain-Index: nichts zu tun — der alte Code nimmt `MAKE_OS_BRAIN_INDEX` ebenfalls und läge damit weiter im tmpfs; ohne die compose-Zeilen
+  schriebe er wieder `daten/brain-index.sqlite` (Klartext).
+- Bilder: bleiben verschlüsselt — der alte Code liest sie roh und zeigt ein kaputtes Bild, verloren geht nichts; nach dem erneuten
+  Hochladen sind sie wieder da (Fotos, die der alte Stand dazwischen speichert, liegen im Klartext und werden dann beim ersten Lesen
+  verschlüsselt). Wer sie für den alten Stand braucht: einzeln über die App neu hochladen.
+- Protokolle: der alte Code liest `eintraege` weiter (zusätzliche Felder `h`/`kette` stören nicht); beim Anhängen schreibt er nur
+  `{ eintraege }` — die Kette des laufenden Monats fällt weg. Nach dem erneuten Hochladen wird sie beim nächsten Anhängen sichtbar
+  „nachversiegelt“ (gleiche Hashes für unveränderte Einträge, das Siegel passt wieder) — der Rückweg bleibt im Protokoll erkennbar.
+  Lese-Protokoll-Monate bleiben liegen (der alte Stand kennt sie nicht). Ausnahme Anmeldeprotokoll: der alte Stand schneidet bei 300 ohne
+  Zähler ab — rollt er in der Zwischenzeit über, meldet die Kette `anmeldungen` danach als „gekürzt“ (rot). Das ist dann erklärt (Rückweg
+  im Protokoll belegt) und kein Angriff; der Befund bleibt als Nachweis stehen.
+- Tests: `tests/brain-index-ort`, `tests/bilder-verschluesselt`, `tests/leseprotokoll`, `tests/protokoll-kette`, `tests/hoi-verschluesselung`.
+
+## DSGVO-Paket „KI, Gesundheit (Art. 9) und Telegram datenschutzfest“ (05.10.2026, nur lokal — Branch `dsgvo-ki`)
+
+Aus dem DSGVO-Audit 05.10.; Kevin: „Die Software muss auf allen Standards der DSGVO sein, damit wir auch Kundendaten aufnehmen können.“
+Doku: `DATENSCHUTZ_APP.md` (Abschnitt 2 „KI, Gesundheit, Telegram“), CLAUDE.md (Abschnitt „KI, Gesundheit, Telegram — DSGVO-Paket 05.10.“).
+- **Art.-9-Einwilligung** je Person, drei Zwecke (verarbeiten · an die KI · Partner inkl. dessen ZOE), Nachweis unveränderlich
+  (`gesundheit-einwilligungen`); Vorgabe (b)/(c) AUS. **Wirkung beim Upload:** Kevin und Malin (Bestand) sehen im Bereich Gesundheit
+  „Bitte bestätigen“ — bis dahin wie bisher, ABER ZOE und alle KI-Läufe bekommen ab sofort keine Gesundheitswerte mehr (auch der
+  Morgenlauf nicht), bis jeweils „An die KI geben“ eingeschaltet ist. Der Kompass-Regler „Körperdaten an Agenten“ ist weg.
+- **KI-Schalter** (System › Datenschutz): Kevins Instanz bekommt beim ersten Lesen die Vorgabe „kompatibel“ (alles an wie bisher, weil
+  `ki-verbrauch` existiert) — festgeschrieben in `ki-einstellungen`. Neue/Demo-Instanzen: „sparsam“ (Hintergrund-KI und Web-Suche aus).
+- **KI-Protokoll** `ki-protokoll--JJJJ-MM` (nur Metadaten, 12 Monate) — wächst je Modellaufruf um eine Zeile (wie `ki-verbrauch`).
+- **Pseudonymisierung** der Kontaktnamen in Hintergrund-Läufen (Morgen-/Abendlauf vom Takt, Heads/Head of Finance vom Takt,
+  ZOE-Aufgaben, Konsolidierung, Tageslauf vom Takt). Research bewusst nicht (offen).
+- **Telegram:** Gesundheits-Takt und ZOE-Antworten nur noch als neutraler Hinweis mit Link (`MAKE_OS_ADRESSE` muss gesetzt sein, sonst
+  steht nur der Pfad `/os`); ZOE-Antworten aus Telegram stehen im ZOE-Verlauf („Telegram · …“). Wer es wie früher will: Ausnahme
+  „ZOE-Antworten vollständig über Telegram“ selbst einschalten.
+- **KI-VO Art. 50:** Marke „KI-Entwurf“ an Entwürfen, „· KI“ an ZOE-Antworten, Kennzeichen `ki` in den Routen.
+- **Kompatibilitätsmodus:** nur neue Bestände (`gesundheit-einwilligungen`, `ki-einstellungen`, `ki-protokoll--*`), alle über
+  `updateJson` im Format des Modus; nichts an vorhandenen Beständen umgebaut. Neue optionale Ausgabefelder (`ki`, `kiEmpfaenger`).
+- **Rückweg:** Commits zurücknehmen; die drei neuen Bestände bleiben harmlos liegen (oder löschen). Achtung: wer nach dem Upload
+  Einwilligungen erklärt hat, verliert mit dem Rückweg nur die Wirkung, nicht den Nachweis (Bestand bleibt). Der alte Kompass-Wert
+  `koerper-an-agenten` steht weiter im Bestand `kompass` und wirkt nach einem Rückweg wieder wie vorher.
 
 ## Kugeln 2 · „Solaris“-Überarbeitung von ZOE und Brain (05.10.2026, nur lokal — Branch `kugeln-2`)
 

@@ -26,7 +26,7 @@ import { problemMelden } from './bauplan/IdeeErfassen';
 import { WEG } from '@/lib/wege';
 import { useWartezahl, wartezahlText } from '@/lib/netzwerken/zaehler';
 
-const SYSTEM: SpaceEintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/bauplan', '/os/roadmap', '/os/onboarding'] };
+const SYSTEM: SpaceEintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/datenschutz', '/os/bauplan', '/os/roadmap', '/os/onboarding'] };
 /** Unter Home (Kevin 26.09.): Wachstum — die Gesamtansicht, das zentrale Stück. */
 // Der Wachstum-Knopf stand vom 26.09. abends bis spät hier unter Home — seitdem ist der Score
 // oben im Kopf als Zahl (Kevin), und /os/wachstum öffnet sich über diese Zahl oder ⌘K.

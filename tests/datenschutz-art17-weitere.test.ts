@@ -235,11 +235,11 @@ describe('Löschklassen (#73/#93)', () => {
     // Pepper-Migration lief einmal und ist vermerkt
     expect((await db.loadJson<{ v2?: { pepper: string } }>('datenschutz-migration'))?.v2?.pepper).toMatch(/^[0-9a-f]{12}$/);
   });
-  it('die Tabelle kennt die neuen Klassen; „Sicherungen“ ist fest (14 Tage)', async () => {
+  it('die Tabelle kennt die neuen Klassen; „Sicherungen“ ist fest (bis zu 12 Monate, seit 05.10. wahrheitsgemäß)', async () => {
     const lf = await import('@/lib/crm/loeschfristen');
     for (const id of ['zoe-arbeitslisten', 'zoe-entscheidungen', 'zoe-verlauf', 'zoe-gedaechtnis', 'postfach-caches', 'kalender-caches', 'archiv-umzug', 'netzwerk', 'grabsteine', 'sicherungen'] as const) expect(lf.LOESCHFRISTEN.some(f => f.id === id)).toBe(true);
     expect(lf.fristenWirksam({})['zoe-arbeitslisten']).toBe(90);
-    expect(lf.fristText('sicherungen', 14)).toBe('14 Tage');
+    expect(lf.fristText('sicherungen', 12)).toBe('bis zu 12 Monate');
     expect(lf.fristText('aktivitaeten-geloeschte', 0)).toBe('sofort');
     expect(lf.fristenSpeichern({}, { sicherungen: 20 }).ok).toBe(false);
     expect(lf.istUmzugsKopie('crm-vor-brain-umzug-x.json')).toBe(true);

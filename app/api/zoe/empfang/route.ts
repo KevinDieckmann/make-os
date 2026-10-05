@@ -10,7 +10,7 @@
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
-import { gatherBrain, promptBrain } from '@/lib/brain';
+import { gatherBrain, promptBrain, brainKategorien } from '@/lib/brain';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
@@ -18,6 +18,8 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
 import { personAus, type Person } from '@/lib/zoe/raum';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,11 +78,14 @@ export async function GET(req: Request) {
 
   const offen = await offeneAnzahl().catch(() => 0);
   let lage = '';
-  try { lage = promptBrain(await gatherBrain(undefined, person)); } catch { /* ohne Lage geht es auch */ }
-  try { const hz = await haushaltVon(req); if (hz) lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; } catch { /* ohne Haushalt geht es auch */ }
+  // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b) — `kategorien` = was drinsteht.
+  const kiS = await kiSchalterFuer(person);
+  let kategorien: KiKategorie[] = ['allgemein'];
+  try { const b = await gatherBrain(undefined, person); lage = promptBrain(b, { bereiche: kiS.bereiche }); kategorien = brainKategorien(b, { bereiche: kiS.bereiche }); } catch { /* ohne Lage geht es auch */ }
+  try { const hz = kiS.bereiche.finanzen ? await haushaltVon(req) : null; if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen']; } } catch { /* ohne Haushalt geht es auch */ }
 
   const r = await askText({
-    zweck: 'empfang',
+    zweck: 'empfang', ki: kiAus(req, kategorien, { person }),
     system: anweisung(person, offen),
     user: lage ? `LAGE:\n${lage}` : 'Begrüße kurz, die Lage ist gerade nicht lesbar.',
     maxTokens: 300,
