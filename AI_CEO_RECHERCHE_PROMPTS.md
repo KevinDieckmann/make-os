@@ -10,6 +10,10 @@
 6. Zum Schluss den **Bonus-Prompt P11** mit allen achtzehn Ergebnissen laufen lassen (oder ich mache die Synthese mit dir). Mehr Prompts lohnen danach nicht — der nächste Erkenntnissprung kommt aus Gesprächen mit Pilotkunden (Leitfaden aus P12).
 **Wichtig (Erkenntnis aus den ersten Läufen):** Gemini **keine weiteren Dateien als Kontext mitgeben** (vor allem nicht `AI_CEO_MODUL.md`) — sonst zitiert Gemini unseren eigenen Plan als „Beleg“. Der nötige Kontext steht schon in jedem Prompt.
 
+**Reihenfolge für die nächsten Läufe (Kevin 05.10. spät: erst für uns + 3–4 Personen, kein Markteintritt jetzt):**
+- **Jetzt zuerst:** P5 (KI-Entwicklung), P19 (KI-Brain), P16 (Gestaltung KI-Aufsicht), P14 (Integrationen), P12 (Stimme der Kunden — liefert den Leitfaden für Gespräche mit den 3–4 Testpersonen), P13 (Weg zu den ersten Nutzern, Betrieb mehrerer Instanzen), P15 (Förderung des Baus).
+- **Später, wenn der Markt dran ist:** P17 (Homepage), P18 (Umsatzströme). P1–P10 werden nicht neu gestartet, sondern von uns mit eigener Prüfung nachgeschärft (`research/ai-ceo/VERIFIZIERT.md`).
+
 **Die 10 Läufe im Überblick**
 | Nr. | Thema | Wofür wir es brauchen |
 |---|---|---|
@@ -67,6 +71,13 @@ Du bist eine erfahrene Marktanalystin für Software und Arbeitswelt mit Schwerpu
 
 **Arbeitsweise:** Aktuelle Quellen bevorzugen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Primärquellen vor Sekundärquellen. Jede Aussage als Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen — wenn nichts belegt ist, „nicht belegt“ schreiben.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Kernaussagen mit Beleg)
 2. Je Frage ein Kapitel mit Tabellen
@@ -103,6 +114,13 @@ Du bist eine Produktstrategin und Wettbewerbsanalystin für Arbeits- und Produkt
 10. Was können wir von den Besten übernehmen (Bedienung, Onboarding, Preisgestaltung, Vorlagen, Community)? Konkrete Beispiele mit Screenshots-Beschreibung/Links.
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Anbieterseiten und Preislisten direkt prüfen. Jede Aussage als Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen — sonst „nicht belegt“.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (Lücke in 5 Sätzen + 10 Kernaussagen)
@@ -141,6 +159,13 @@ Du bist Analystin für KI-Agenten und Automatisierungsplattformen. Führe eine g
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, unabhängige Tests vor Herstellerangaben. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Kernaussagen)
 2. Vergleichstabelle (Anbieter × Autonomie × Kontrolle × Preis × Zielgruppe × Datenschutz)
@@ -178,6 +203,13 @@ Du bist Analystin für Verbraucher-Software rund um Gesundheit, Familie, persön
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Studien vor Marketing. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Kernaussagen)
 2. Vergleichstabellen je Kategorie
@@ -211,6 +243,13 @@ Du bist eine führende Technologie-Analystin für künstliche Intelligenz mit Bl
 10. **Konkrete Bau-Empfehlungen:** Welche 15–20 Architektur- und Produktentscheidungen sollten wir **jetzt** treffen, damit MAKE OS mit jeder Modellgeneration besser wird (z. B. Modelle austauschbar kapseln, Evals als Fundament, Regeln-Rückfall, Daten- und Rechte-Schicht als Vorsprung, Gedächtnis in eigener Hand, Budgets, Protokolle)? Welche Fehler sollten wir vermeiden (Dinge bauen, die das nächste Modell gratis kann)?
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate; Grundlagenarbeiten älter mit Hinweis), jede Quelle mit Datum und Link, Deutsch und Englisch, Primärquellen (Forschungsarbeiten, Labor-Veröffentlichungen, Benchmarks) vor Medien. Prognosen immer mit Urheber und Bandbreite. Keine erfundenen Zahlen.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (15 Kernaussagen)
@@ -246,6 +285,13 @@ Du bist eine Software-Architektin für KI-Agenten-Systeme in Produktion. Führe 
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Englisch und Deutsch, Primärquellen (Labor-Leitfäden, Forschungsarbeiten, Engineering-Blogs) vor Meinungsartikeln. Fakt / Schätzung / Meinung kennzeichnen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Kernaussagen)
 2. Kapitel je Frage mit Mustern, Beispielen, Fallstricken
@@ -279,6 +325,13 @@ Du bist eine Expertin für europäisches Digitalrecht, Datenschutz und Informati
 10. **Checkliste:** Was müssen wir vor dem Verkauf an die ersten Kunden haben (Dokumente, Verträge, technische Maßnahmen), was später?
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate; Gesetzestexte in aktueller Fassung), jede Quelle mit Datum und Link (EUR-Lex, gesetze-im-internet.de, EDPB, DSK, BfDI, Landesdatenschutzbehörden, BSI, Kommission), Fachliteratur und Kanzlei-Analysen mit Angabe. Unsicherheiten offen benennen.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Pflichten, 5 Risiken, 5 Verkaufsargumente)
@@ -314,6 +367,13 @@ Du bist eine Forscherin für Arbeitspsychologie, Unternehmertum und Leistungsfä
 
 **Arbeitsweise:** Peer-reviewte Studien und Metaanalysen bevorzugen, Effektgrößen nennen, aktuelle Arbeiten (letzte 3–5 Jahre) mit Grundlagenarbeiten ergänzen, jede Quelle mit Datum und Link (DOI). Evidenzstärke je Aussage (hoch/mittel/gering). Populärliteratur nur mit Hinweis.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Kernaussagen mit Evidenzstärke)
 2. Kapitel je Frage
@@ -347,6 +407,13 @@ Du bist eine SaaS-Geschäftsmodell- und Preisstrategin mit Schwerpunkt KI-Produk
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Anbieter-Preisseiten direkt prüfen, Benchmarks mit Stichprobe/Herkunft. Fakt / Schätzung / Meinung kennzeichnen; Rechnungen mit offengelegten Annahmen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (Empfehlung in 10 Punkten)
 2. Kapitel je Frage mit Tabellen
@@ -379,6 +446,13 @@ Du bist eine Go-to-Market- und Markenstrategin für B2B-Software im DACH-Raum mi
 10. Investoren- und Presse-Geschichte: Wie erzählt man „AI CEO“ glaubwürdig, welche Medien/Investoren in DACH interessieren sich dafür?
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link, Deutsch und Englisch, Fallbeispiele mit Zahlen vor allgemeinen Ratschlägen. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Empfehlungen)
@@ -417,6 +491,13 @@ Du bist eine Forscherin für Kundenverständnis (Jobs-to-be-done, qualitative Ma
 
 **Arbeitsweise:** Nur echte, verlinkte Aussagen; keine erfundenen Zitate (wenn du ein Zitat nicht wörtlich belegen kannst, kennzeichne es als Zusammenfassung). Aktuelle Quellen (letzte 12–18 Monate) bevorzugen, Datum je Quelle. Deutsch und Englisch getrennt auswerten. Häufigkeiten als Schätzung mit Methode kennzeichnen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Erkenntnisse, die uns überraschen sollten)
 2. Jobs-to-be-done-Karte (funktional / emotional / sozial) mit Rangliste
@@ -453,6 +534,13 @@ Du bist eine Beraterin für Unternehmensaufbau von Software-Firmen (0 → 1 → 
 10. **Fahrplan-Vorlage:** Leite einen konkreten Stufenplan für MAKE OS ab: Stufe 0 „Kunde 0 (wir)“, Stufe 1 „3–5 Design-Partner“, Stufe 2 „10 zahlende Kunden“, Stufe 3 „100 Kunden“, Stufe 4 „1.000 Kunden“ — je Stufe Ziel, Produktumfang, Vertrieb, Betrieb, Team, Kennzahlen, Eintrittskriterium, Abbruchkriterium, typische Dauer laut Fallstudien.
 
 **Arbeitsweise:** Primärquellen bevorzugen (Gründer-Interviews, Blogposts der Firmen, Podcasts, Vorträge, Geschäftsberichte), aktuelle Quellen (letzte 12–18 Monate) für Methoden, ältere für Fallgeschichten mit Datum. Jede Quelle mit Datum und Link. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Gesetze der Frühphase, belegt)
@@ -491,6 +579,13 @@ Du bist eine Produktmanagerin für Integrationen und Software-Ökosysteme im DAC
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), Entwicklerdokumentation und Preisseiten direkt prüfen, Gesetzestexte/BMF-Schreiben für E-Rechnung und GoBD, jede Quelle mit Datum und Link. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Kernaussagen, davon die 5 Pflicht-Integrationen)
 2. Kapitel je Frage mit Vergleichstabellen (Anbieter × API × Kosten × Abdeckung × Datenschutz × Aufwand)
@@ -524,6 +619,13 @@ Du bist eine Fördermittel- und Finanzierungsberaterin für Software- und KI-Unt
 10. **Finanzierungsfahrplan:** Konkreter Vorschlag für MAKE OS über 24 Monate: welche Programme in welcher Reihenfolge, Beträge (Bandbreiten), Fristen/Stichtage 2026/2027, Eigenanteil, Abhängigkeiten zum Produktfahrplan (Phasen: Plattform-Schulden, CEO-Cockpit, KI-Führungsteam, Instanz-Fabrik, Piloten, Markt).
 
 **Arbeitsweise:** Nur aktuelle, offizielle Quellen (Förderdatenbank des Bundes foerderdatenbank.de, Programmseiten ILB/WFBB/KfW/EU-Portale, Richtlinientexte mit Datum), Fristen und Beträge mit Stand angeben, Unsicherheiten benennen. Keine erfundenen Programme oder Beträge — nicht Gefundenes als „nicht belegt“ kennzeichnen.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (die 5 besten Hebel mit Betrag, Frist, Aufwand)
@@ -560,6 +662,13 @@ Du bist eine Design-Direktorin für Software, die Menschen und KI-Agenten zusamm
 
 **Arbeitsweise:** Primärquellen (Leitlinien der Hersteller, Forschungsarbeiten mit DOI, Design-Fallstudien der Firmen), aktuelle Beispiele (letzte 12–18 Monate) mit Link und Datum. Belegte Wirkung von Geschmack trennen (kennzeichnen).
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Prinzipien mit Beleg)
 2. Kapitel je Frage mit Beispielen (Link, was gut ist, was wir übernehmen)
@@ -594,6 +703,13 @@ Du bist eine Kreativdirektorin und Conversion-Strategin, die für die besten Sof
 10. **Bauplan unserer neuen Website:** Seitenstruktur (Sitemap), Startseite Abschnitt für Abschnitt (Ziel, Inhalt, Beweis, Gestaltung, Bewegung), Texte-Entwürfe für die wichtigsten Abschnitte in Kundensprache, Preisseite, Demo-/Rundgang-Konzept, Seiten je Edition und je Zielgruppe, Vergleichsseiten, Trust Center, Kennzahlen (Besuch → Demo → Pilot), Testplan (was zuerst A/B-testen).
 
 **Arbeitsweise:** Aktuelle Beispiele (letzte 12–18 Monate) mit Link und Datum, Studien und Tests mit Quelle, Geschmack klar von belegter Wirkung trennen. Keine erfundenen Zahlen.
+
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
 
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Prinzipien, die unsere Website von „gut“ zu „herausragend“ bringen)
@@ -636,6 +752,13 @@ Du bist eine Umsatz- und Vertriebsstrategin (Revenue Architect) für Software- u
 
 **Arbeitsweise:** Aktuelle Quellen (letzte 12–18 Monate), Fallstudien mit Zahlen vor allgemeinen Ratschlägen, Benchmarks mit Herkunft, jede Quelle mit Datum und Link, Deutsch und Englisch. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Zahlen.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (die 10 stärksten Umsatzhebel)
 2. Landkarte aller Umsatzströme (Tabelle: Strom × Beispiele × Marge × Skalierbarkeit × Aufwand × Passung)
@@ -677,6 +800,13 @@ Du bist eine Software-Architektin für Wissenssysteme, Suche (Retrieval) und KI-
 
 **Arbeitsweise:** Primärquellen (Forschungsarbeiten mit DOI/arXiv, Benchmarks wie MTEB/BEIR, Herstellerdokumentation, Engineering-Blogs) vor Meinungen, aktuelle Quellen (letzte 12–18 Monate), jede Quelle mit Datum und Link. Zahlen zu Leistung/RAM immer mit Messumgebung. Fakt / Schätzung / Meinung kennzeichnen. Keine erfundenen Benchmarks.
 
+**Belastbarkeit (verbindlich — Ergebnisse ohne diese Regeln sind für uns wertlos):**
+1. Nur öffentlich abrufbare Quellen. Jede Zahl und jede Kernaussage mit **direktem Link auf die Seite, auf der sie steht**, und einem **wörtlichen Kurzzitat** (höchstens 25 Wörter) als Beleg.
+2. **Keine hochgeladenen Dateien und nicht den Kontext dieses Prompts als Beleg verwenden.** Der Kontext beschreibt nur unser Produkt; Aussagen über MAKE OS sind nie Belege, sondern nur Empfehlungen.
+3. Kein Beleg gefunden → „nicht belegt“ schreiben. Schätzungen nur ausdrücklich als Schätzung mit offengelegtem Rechenweg.
+4. Datum jeder Quelle angeben; Quellen älter als 24 Monate nur mit Hinweis. Keine Blogartikel von Anbietern als Beleg für Marktzahlen.
+5. Am Ende eine **Beleg-Prüfliste** (Tabelle): Kernaussage × Quelle (Link) × Zitat × Datum × Belastbarkeit (hoch = amtlich/peer-reviewed/Primärquelle des Unternehmens, mittel = seriöse Sekundärquelle, gering = Blog/Werbung).
+
 **Ausgabeformat (Deutsch):**
 1. Kurzfassung (10 Empfehlungen: behalten / ändern / neu)
 2. Kapitel je Frage mit Vergleichstabellen (Modell/Speicher × Qualität × RAM × Geschwindigkeit × Lizenz × Datenschutz)
@@ -706,6 +836,8 @@ Du bist eine Chief-Strategy-Officer-Beraterin. Dir liegen achtzehn Recherche-Ber
 8. Fahrplan in Stufen nach dem Muster aus P13 (z. B. Kunde 0 → 10 Piloten → 100 Kunden): je Stufe Ziel, Funktionen, Recht, Vertrieb, Events, Betrieb, Kennzahlen, Eintritts- und Abbruchkriterien; dazu 90-Tage-Plan im Wochenraster.
 9. Die 10 größten Risiken mit Gegenmitteln und Frühindikatoren.
 10. Offene Fragen, die nur Kundeninterviews oder Tests klären — mit Testdesign.
+
+**Belastbarkeit (verbindlich):** Übernimm aus den Berichten nur Aussagen, die dort mit Link und Zitat belegt sind und mindestens „mittel“ belastbar sind. Markiere jede Empfehlung als „belegt“ (mit Verweis) oder „Annahme“. Widersprechen sich Berichte, nenne beide Belege. Nichts aus hochgeladenen Dateien als Beleg.
 
 **Ausgabe:** Deutsch, klar, Tabellen, jede Aussage mit Verweis auf den Ursprungsbericht. Keine neuen Behauptungen ohne Beleg.
 

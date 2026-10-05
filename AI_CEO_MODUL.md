@@ -2,6 +2,11 @@
 
 **Stand:** 05.10.2026 · Online-Stand `6b10a5ba` (app.makeinnovation.de)
 **Auftrag (Kevin, 05.10.2026):** „Als Nächstes bauen wir ein AI-CEO-Modul. Wir bauen das Produkt und alle Funktionen selbst — mit der Software — und mit einem klaren Plan dahinter. Wir bauen auf der Software auf und bauen die erste Plattform für AI CEOs, die Privat und Business zusammen bekommen wollen.“
+**Rahmen (Kevin, 05.10.2026 spät — gilt für alles in dieser Datei):**
+1. **Erst für uns** (Kevin & Malin, MAKE Innovation GmbH und KD Ventures als Kunde 0), **dann 3–4 ausgewählte Personen** auf eigenen Instanzen. **Kein Markteintritt jetzt**, keine öffentliche Website für das Modul, kein Vertrieb.
+2. **Trotzdem marktreif gebaut:** jede Zeile so, als würden wir morgen verkaufen (eigene Instanz, Trennung serverseitig, nichts fest auf uns verdrahtet, Datenschutz und Recht wie für zahlende Kunden).
+3. **Nur Belastbares zählt:** Keine Zahl und keine Aussage geht in eine Entscheidung, die nicht mit Primärquelle und Fundstelle geprüft ist (`research/ai-ceo/VERIFIZIERT.md`). Ungeprüftes steht als „Annahme“ da.
+
 **Begleitdatei:** `AI_CEO_RECHERCHE_PROMPTS.md` — 18 Recherche-Aufträge (P1–P10, P12–P19) für parallele Gemini-Deep-Research-Läufe + Synthese-Prompt P11.
 
 > Diese Datei ist Planung. Was gebaut ist, steht in Teil B mit Belegstellen im Code. Was geplant ist, steht in Teil C–F und ist ausdrücklich als Plan, Hypothese oder offene Entscheidung markiert. Marktzahlen stehen hier bewusst **nicht** — sie kommen aus der Recherche (Teil H), nicht aus dem Bauch.
@@ -462,17 +467,17 @@ Wir bauen das AI-CEO-Modul **in MAKE OS, mit MAKE OS**. Die MAKE Innovation GmbH
 | 4.1 Balance-Steuerung | D7: geschützte Zeit, Frühwarnung, Energie mit Einwilligung | Kein Head verschiebt geschützte Zeit |
 | 4.2 CEO-Index | D8, Erklärung, Verlauf | ohne Daten „keine Daten“; Gewichte je Instanz |
 
-## Phase 5 — Plattform und erste Kunden · ca. 3–4 Wochen
+## Phase 5 — Plattform und 3–4 Testpersonen · ca. 3–4 Wochen
 | Paket | Inhalt | Abnahme |
 |---|---|---|
 | 5.1 Geführte Einrichtung | Personen, Gesellschaften, Ziele, Kalender, KI-Schlüssel, Playbook | Fremde Person kommt ohne uns zum ersten Cockpit |
 | 5.2 Playbooks | D10, erste 3–4 Vorlagen | Einrichtung mit Vorlage < 30 Minuten |
 | 5.3 Instanz-Fabrik v1 | neue Instanz per Skript, Updates an alle, Sicherung je Instanz | 3 Instanzen parallel auf einem Server |
 | 5.4 Lizenzen v1 | signierte Lizenz, Modul-Schalter folgen ihr, Schonfrist, nur lesen nach Ablauf | Ablauf sperrt nie Daten |
-| 5.5 Demo-Instanz live | eigene Adresse, nächtlich zurückgesetzt, Rundgang (10 Minuten) | Investoren-/Kundenrundgang ohne echte Daten |
-| 5.6 Pilotkunden | 3–5 ausgewählte AI CEOs, eigene Instanz, wöchentliches Feedback in den Bauplan | Nutzung ≥ 4 Tage/Woche, Rückmeldungen strukturiert |
+| 5.5 Demo-Instanz | eigene Adresse, nächtlich zurückgesetzt, Rundgang (10 Minuten) — nur für Gespräche mit den Testpersonen, nicht öffentlich | Rundgang ohne echte Daten |
+| 5.6 Testpersonen | **3–4 ausgewählte Personen** (Kevins Wahl), je eigene Instanz, AVV/Verschwiegenheit vorher, wöchentliches Feedback in den Bauplan, Gesprächsleitfaden aus P12 | Nutzung ≥ 4 Tage/Woche, Rückmeldungen strukturiert, kein Vorfall |
 
-## Phase 6 — Markt · fortlaufend
+## Phase 6 — Markt · erst auf Kevins Wort (nicht jetzt)
 Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innovation-Abende als Bühne, Partnerschaften, Preisprüfung mit Piloten, rechtliche Unterlagen final (AVV-Vorlage, Datenschutzhinweis, KI-VO).
 
 ## F1 · Abhängigkeiten in Kürze
@@ -490,7 +495,7 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 
 ---
 
-# Teil G — Geschäftsmodell und Weg in den Markt (Hypothesen)
+# Teil G — Geschäftsmodell und Weg in den Markt (Hypothesen — erst relevant, wenn Kevin den Markteintritt beschließt)
 
 ## G1 · Editionen (Arbeitsstand, aus PLATTFORM_PLAN.md weitergedacht)
 | Edition | Inhalt | Für wen |
@@ -528,6 +533,11 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 5. **Recht:** KI-VO (Pflichten, Zeitplan, Einstufung), DSGVO (Art. 9, Art. 22, AVV, Drittland USA), Haftung bei Agenten-Handlungen, Berufsrecht (Steuerberatung) bei Finanzfunktionen.
 6. **Preis und Geschäftsmodell:** Zahlungsbereitschaft, Preismodelle vergleichbarer Werkzeuge, Kosten der KI je Nutzer.
 7. **Weg in den Markt:** Kanäle, die bei Solo-Unternehmern in DACH wirken.
+
+## H1a · Belastbarkeitsregel (Kevin 05.10. spät)
+- Gemini-Berichte sind **Rohmaterial**, keine Belege. Jede entscheidungsrelevante Aussage wird von uns selbst mit Primärquelle geprüft (Status ✅ / ⚠️ / ❌ / ⏳) und in `research/ai-ceo/VERIFIZIERT.md` geführt.
+- In dieser Datei steht bei Zahlen und Marktaussagen entweder ein Verweis auf VERIFIZIERT.md oder das Wort „Annahme“.
+- Recherche-Prompts enthalten harte Beleg-Regeln (Link auf Fundstelle, wörtliches Kurzzitat, „nicht belegt“ statt schätzen, keine hochgeladene Datei als Beleg).
 
 ## H2 · Wie wir die Ergebnisse einarbeiten
 - Ergebnis als Datei in `research/ai-ceo/` (mit Datum und Quellen), Zusammenfassung in diese Datei (Teil C/G aktualisieren, Hypothesen als bestätigt/verworfen markieren).
@@ -677,11 +687,12 @@ Website-Bereich für das Modul (erst nach Marktreife, Kevins Regel), Fokus-Innov
 - P10 über uns: „zwei Gesellschaften profitabel ohne Angestellte“, „15 h → 3 h Verwaltung“, „Bruttomarge > 80 %“ — **unbelegt, nicht nach außen verwenden** (Business-Zahlen stehen seit 05.10. auf 0).
 - „Zertifizierte europäische Datenhoheit“ — wir haben **keine** Zertifizierung.
 
-## K7 · Nächste Schritte
-1. Morgen: P5 und P12–P19 laufen lassen (ohne diese Datei als Kontext).
-2. Danach endgültige Synthese P11 über alle 18 Berichte; Teil K und die Teile C/D/F/G/I nachziehen.
-3. Klickrunde mit Kevin zu I1 (jetzt 13 Punkte).
-4. KI-Kosten je Head aus dem KI-Protokoll messen (für Preis und Budget).
-5. Start Phase 0 + Cockpit v1 (mit „sicher entnehmbarem Unternehmerlohn“).
+## K7 · Nächste Schritte (angepasst an den Rahmen „erst für uns + 3–4“)
+1. **Eigene Faktenprüfung** der 10 vorhandenen Berichte → `research/ai-ceo/VERIFIZIERT.md` (läuft); Teil K danach auf „nur Verifiziertes“ umstellen.
+2. Nächste Gemini-Läufe mit harten Beleg-Regeln, **ohne Datei als Kontext**, in dieser Reihenfolge: **P5** (KI-Entwicklung), **P19** (KI-Brain), **P16** (Gestaltung), **P14** (Integrationen), **P12** (Gesprächsleitfaden für die 3–4 Testpersonen), **P13** (erste Nutzer, mehrere Instanzen betreiben), **P15** (Förderung). P17/P18 erst, wenn der Markt dran ist.
+3. Jeden neuen Bericht wieder selbst prüfen, bevor er in den Plan geht.
+4. Synthese über alle **verifizierten** Ergebnisse; Klickrunde mit Kevin zu I1.
+5. KI-Kosten je Head aus dem KI-Protokoll messen (Grundlage für Budget, später Preis).
+6. Start Phase 0 + Cockpit v1 (mit „sicher entnehmbarem Unternehmerlohn“) — für uns.
 
 *Erstellt am 05.10.2026 aus dem Code-Stand `6b10a5ba`, PLATTFORM_PLAN.md, UMBAU_ABEND_0410.md, CLAUDE.md und Kevins Entscheidungen; Teil K ergänzt am 05.10.2026 aus 10 Recherche-Berichten (`research/ai-ceo/`). Nächster Schritt: restliche Recherche (P5, P12–P19), Synthese P11, Klickrunde zu Teil I1, Start mit Phase 0.*
