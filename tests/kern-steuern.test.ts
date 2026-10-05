@@ -263,11 +263,12 @@ describe('Selbstständigkeit auf eigener Monatsachse', () => {
     expect(e[0].konto).toBeCloseTo(2000, 9); expect(e[1].konto).toBeCloseTo(-1000, 9); expect(e[26].konto).toBeCloseTo(-1000, 9);
     expect(e.every(k => k.st.summe === 0)).toBe(true);   // Verlust: keine Steuer
   });
-  it('finanzplan-5: dasselbe mit Abschluss (Gewinn Jan–Sep 16.000) und Altdarlehen — EIN Steuerjahr 2026, das Darlehen geht hin und zurück', () => {
+  it('finanzplan-5: dasselbe mit Abschluss (Gewinn Jan–Sep 16.000) und Altdarlehen — EIN Steuerjahr 2026; das Altdarlehen berührt die Selbstständigkeit nicht', () => {
     const e = rechneSelbstAchse(planFix());
-    // Konto: 5.000 − 3.000 (Gehalt 2 Okt) − 3.000 (Altdarlehen an MAKE, Okt) = −1.000; Nov −3.000 → −4.000; Monat 14 (Nov 27) +3.000 zurück.
-    expect(e[0].darlehenAus).toBe(3000); expect(e[0].konto).toBeCloseTo(-1000, 9); expect(e[1].konto).toBeCloseTo(-4000, 9);
-    expect(e[13].darlehenEin).toBe(3000); expect(e[26].konto).toBeCloseTo(-1000, 9);
+    // Konto: 5.000 − 3.000 (Gehalt 2 Okt) = 2.000; Nov −3.000 → −1.000. Gegenprüfung 05.10.: das Altdarlehen (3.000) hat den Geber außerhalb des
+    // Plans — finanzplan-5 nahm es hier heraus (Okt −1.000, Nov −4.000, Monat 14 +3.000 zurück); am Ende gleich (−1.000).
+    expect(e[0].darlehenAus).toBe(0); expect(e[0].konto).toBeCloseTo(2000, 9); expect(e[1].konto).toBeCloseTo(-1000, 9);
+    expect(e[13].darlehenEin).toBe(0); expect(e[26].konto).toBeCloseTo(-1000, 9);
     // Steuer 2026: Gewinn 16.000 − 3.000 − 3.000 = 10.000; Lohneinkünfte 4.770; Abzüge 3.500 → zvE 11.270 ≤ 12.348 → 0 €.
     // Am Jahresanfang stand die Steuer auf Jan–Sep allein (zvE 17.270 → 910 €) in der Rücklage, Okt (zvE 14.270 → 302 €) und Nov (0 €)
     // nehmen sie zurück: Aufwand −608 und −302, zusammen −910; keine Zahlung 2027.

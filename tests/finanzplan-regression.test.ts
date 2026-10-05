@@ -51,13 +51,14 @@ describe('Goldwerte nach dem Kern-Umbau 02.10. (Vorher c83cb1f → nachher, Abwe
     nah(kennwerte(planFix(14000), arbeitsplanFix()), { umsatz: 259140, steuer: 29345.4, gewinn: -12323, konto27: -56967, frei27: -57168.4, kdv27: 17322, ruecklage12: 19364.52, ust5: 657.4, luftSum: 57952, angespart27: 63352, ausschuettung: 8832, ausStr: 3168, minFrei: -57168.4 });
   });
   it('Selbstständigkeit 2026 (Abschluss) wie vorher — ohne Gehalt; mit Gehalt gemeinsam versteuert (finanzplan-5, 05.10.)', () => {
-    // Ohne Lohn (Aufruf ohne `lohn`) dieselben Zahlen wie vorher; neu nur die Felder lohn/steuer/korr/darlehen/vorausgezahlt. Das Altdarlehen 3.000
-    // zieht der Abschluss jetzt aus `annahmen.darlehenKevin` (dieselbe Zahl wie das Altfeld `darlehenAnUG` im Fixture) — frei unverändert −3.021.
-    expect(rechneSelbst(planFix())).toEqual({ ein: 20000, aus: 4000, gewinn: 16000, lohn: 0, zve: 12500, est: 21, steuer: 21, korr: 0, darlehen: 3000, vorausgezahlt: 0, frei: -3021, nachConsors: -5021 });
+    // Ohne Lohn (Aufruf ohne `lohn`) dieselben Zahlen wie vorher; neu nur die Felder lohn/steuer/korr/darlehen/vorausgezahlt. Gegenprüfung 05.10.
+    // (Kevin: „Es gibt kein Gesellschafterdarlehen“): das Altdarlehen hat keinen Geber im Plan, das Altfeld `darlehenAnUG` zählt nicht — der Abschluss
+    // zieht nichts ab. frei −3.021 (vor finanzplan-5 und in finanzplan-5) → −21.
+    expect(rechneSelbst(planFix())).toEqual({ ein: 20000, aus: 4000, gewinn: 16000, lohn: 0, zve: 12500, est: 21, steuer: 21, korr: 0, darlehen: 0, vorausgezahlt: 0, frei: -21, nachConsors: -2021 });
     // Mit Gehalt 1 (3.000 € ab Nov 26 → 6.000 € − 1.230 € Pauschbetrag = 4.770 € Lohneinkünfte 2026): zvE = 16.000 + 4.770 − 3.500 = 17.270
     // → Zone 1: y = 0,4922; (914,51·y + 1.400)·y = 910,63 → 910 €; auf den Lohn allein (4.770 − 3.500 = 1.270) 0 € → Anteil Jan–Sep 910 € (vorher 21 €).
     const r = rechneSelbst(planFix(), undefined, { 2026: 4770 });
-    expect(r.zve).toBe(17270); expect(r.est).toBe(910); expect(r.steuer).toBe(910); expect(r.frei).toBe(5000 - 4000 - 3000 - 910 - 1000);
+    expect(r.zve).toBe(17270); expect(r.est).toBe(910); expect(r.steuer).toBe(910); expect(r.frei).toBe(5000 - 4000 - 910 - 1000);
   });
 });
 
@@ -90,9 +91,10 @@ describe('Nicht betroffene Teile bleiben exakt gleich (Gold aus c83cb1f)', () =>
     // finanzplan-5 (05.10., bewusst geändert) 2.000 → −1.302: (1) das Altdarlehen 3.000 geht im Okt 26 aus der Selbstständigkeit an MAKE;
     // (2) EINE Einkommensteuer 2026: der Gewinn Jan–Sep (16.000) steht am Jahresanfang, Okt bringt −3.000 → 13.000; Lohneinkünfte 2026 4.770
     // (Gehalt 1 Nov+Dez 6.000 − 1.230) → zvE 13.000 + 4.770 − 3.500 = 14.270 → y = 0,1922; (914,51·y + 1.400)·y = 302,86 → 302 € Rücklage.
+    // Gegenprüfung 05.10. (finanzplan-5b): (1) zurückgenommen — das Altdarlehen hat den Geber außerhalb des Plans: −1.302 → 1.698.
     const a = planGold().annahmen;
     expect(aw.m0).toBe(1);
-    expect(aw.frei.kdc).toBeCloseTo(planGold().selbst.kontoStart - a.malinBrutto * (1 + a.agAnteil) - a.darlehenKevin - 302, 9);
+    expect(aw.frei.kdc).toBeCloseTo(planGold().selbst.kontoStart - a.malinBrutto * (1 + a.agAnteil) - 302, 9);
   });
 });
 

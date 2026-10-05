@@ -111,9 +111,10 @@ describe('Business-Sicht: Privat wird gar nicht ausgeliefert', () => {
     expect(b.steuern).toEqual({ ug: { zeilen: { gewst: { hebesatz: 400 } } } });
     expect(b.planszenarien?.[0].annahmen.entnahme).toBeUndefined();
     expect(b.planszenarien?.[0].annahmen.steuern).toEqual({ ug: { zeilen: { gewst: { hebesatz: 410 } } } });
-    // Darlehen: rein privat (Privat → Selbstständigkeit) fehlt ganz; Privat → KDV nur von der Gesellschaft aus (Geber „außerhalb“, ohne Notiz); MAKE → KDV voll.
+    // Darlehen: rein privat (Privat → Selbstständigkeit) fehlt ganz; Privat → KDV nur von der Gesellschaft aus (Geber „außerhalb“, ohne Notiz,
+    // neutraler Name — Gegenprüfung 05.10., der frei gewählte Name ist privat); MAKE → KDV voll.
     expect(b.darlehen).toEqual([
-      { id: 'dl-k', name: 'Gesellschafterdarlehen an KDV', geber: 'extern', nehmer: 'kdv', betrag: 1500, aus: 0, zurueck: 6 },
+      { id: 'dl-k', name: 'Darlehen (privat)', geber: 'extern', nehmer: 'kdv', betrag: 1500, aus: 0, zurueck: 6 },
       { id: 'dl-b', name: 'Zwischen den Gesellschaften', geber: 'ug', nehmer: 'kdv', betrag: 2000, aus: 2, zurueck: 8 },
     ]);
     // 05.10.: `ab.est:0` (Abschluss der Selbstständigkeit) und alle kdc-Werte sind privat.
