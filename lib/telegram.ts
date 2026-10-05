@@ -1,6 +1,8 @@
 // ─── MAKE OS — Der Bote (Telegram) ──────────────────────────────────────────
 // Kevins Entscheidung vom 23.09.: ZOE erreicht ihn über Telegram, wenn
-// die App nicht offen ist. Ein Bot, zwei Chats — Kevin und Malin.
+// die App nicht offen ist. Ein Bot, ein Chat je gekoppelter Person.
+// Seit 05.10. (DSGVO): nur neutrale Hinweise mit Link — Inhalte nur mit der
+// ausdrücklichen Ausnahme je Person (lib/datenschutz/telegram-text.ts).
 //
 // Sicherheit, weil ein Bot im Netz von jedem angeschrieben werden kann:
 //   · Ein Chat wird erst durch einen Kopplungscode zu einer Person. Den Code
@@ -130,11 +132,27 @@ export async function sendeAnChat(chatId: number, text: string): Promise<{ ok: b
   }
 }
 
+/**
+ * Sicherheitsnetz (05.10., DSGVO): trägt ein Text an eine Person Gesundheitswerte, Beträge oder Adressen
+ * (`telegramInhalteFinden`) und hat die Person die Ausnahme „vollständig über Telegram“ NICHT eingeschaltet, geht statt
+ * des Textes nur der neutrale Hinweis mit Link hinaus. Die Absender bauen ihre Texte ohnehin neutral — das hier fängt,
+ * was ein künftiger Absender vergisst.
+ */
+export async function telegramSicher(person: Person, text: string): Promise<string> {
+  const { telegramInhalteFinden, hinweisNeueNachricht, appLink } = await import('@/lib/datenschutz/telegram-text');
+  if (!telegramInhalteFinden(text).length) return text;
+  const { telegramVollFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  if (await telegramVollFuer(person).catch(() => false)) return text;
+  const { aussenAdresse } = await import('@/lib/innen');
+  return hinweisNeueNachricht(appLink(aussenAdresse(), '/os'));
+}
+
 /** An alle Chats einer Person. Liefert, wie viele erreicht wurden. */
 export async function sendeAnPerson(person: Person, text: string): Promise<{ erreicht: number; fehler?: string }> {
   const stand = await ladeStand();
   const chats = chatsFuerPerson(stand, person);
   if (!chats.length) return { erreicht: 0, fehler: `${person} ist nicht gekoppelt.` };
+  text = await telegramSicher(person, text);
   let erreicht = 0; let fehler: string | undefined;
   for (const c of chats) { const r = await sendeAnChat(c, text); if (r.ok) erreicht++; else fehler = r.fehler; }
   return { erreicht, ...(fehler ? { fehler } : {}) };
