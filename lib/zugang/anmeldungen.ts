@@ -11,7 +11,9 @@ import { anhaengenVerkettet } from '@/lib/store/protokoll-kette';
 
 export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden' | 'zweiter-faktor-an' | 'zweiter-faktor-aus'
   /** Anmelde-Adressen (03.10.): hinzugefügt, zur Hauptadresse gemacht, entfernt — `detail` nennt die Adresse nur maskiert. */
-  | 'adresse-hinzu' | 'adresse-haupt' | 'adresse-weg';
+  | 'adresse-hinzu' | 'adresse-haupt' | 'adresse-weg'
+  /** Betroffenenrechte (05.10.): eigene Daten heruntergeladen, Konto gelöscht (danach steht `speicher` als „[gelöscht]“), Instanz exportiert. */
+  | 'daten-export' | 'konto-loeschen' | 'instanz-export';
 export interface Anmeldung { zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string; /** Nur bei Adress-Änderungen: die betroffene Adresse maskiert (k***@example.invalid). */ detail?: string }
 const STORE = 'anmeldungen';
 /** Aufbewahrungsfrist des Anmeldeprotokolls in Monaten (Sicherheitszweck, Art. 6 Abs. 1 lit. f — danach gelöscht). */

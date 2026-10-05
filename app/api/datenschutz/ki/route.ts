@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import {
   KI_BEREICHE, KI_BEREICH_LABEL, aendereKiEinstellungen, instanzSchalter, ladeKiEinstellungen, schalterSaeubern, vorgabeSchalter, wirksameSchalter,
@@ -53,7 +54,7 @@ export async function PUT(req: Request) {
   if (!person) return VERBOTEN('Nur mit Anmeldung — der Dienstweg stellt keine Datenschutz-Schalter.');
   if (zuGross(req, 8_000)) return ZU_GROSS(8_000);
   let b: { ebene?: unknown; schalter?: unknown; telegramVoll?: unknown; fassung?: unknown; person?: unknown };
-  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  try { b = await jsonBegrenzt(req, 8_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.person !== undefined && b.person !== person) return VERBOTEN('Schalter einer anderen Person stellt nur sie selbst.');
   const neu = schalterSaeubern(b.schalter);
 

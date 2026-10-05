@@ -540,6 +540,28 @@ export async function mitBestandSperre<T>(name: string, fn: () => Promise<T>): P
 }
 
 /**
+ * Einen Bestand GANZ entfernen (05.10., Paket „Betroffenenrechte v2“ — Konto löschen, Art. 17): in seiner Schreibsperre die Datei
+ * löschen, den Lesecache räumen und mit `tageskopien` auch die Tagessicherungen dieses Bestands in `backup/` (sonst lägen die
+ * persönlichen Daten dort noch bis zu 14 Tage). Danach liest `loadJson` null — als hätte es den Bestand nie gegeben.
+ * NUR für Bestände, die einer einzelnen Person gehören; geteilte Bestände werden über updateJson bereinigt. Liefert, ob es ihn gab.
+ */
+export async function bestandEntfernen(name: string, opt: { tageskopien?: boolean } = {}): Promise<boolean> {
+  pruefeName(name);
+  return mitSperre(name, async () => {
+    aenderungFertig();
+    let war = true;
+    await fs.unlink(path.join(ordner(), `${name}.json`)).catch(e => { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') war = false; else throw e; });
+    cacheWeg(name);
+    if (opt.tageskopien) {
+      const dateien = await fs.readdir(backupOrdner()).catch(() => [] as string[]);
+      for (const f of sicherungenVon(name, dateien)) await fs.unlink(path.join(backupOrdner(), f)).catch(e => { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') throw e; });
+    }
+    Z.gesichertHeute.delete(name);
+    return war;
+  });
+}
+
+/**
  * Zum Schreiben, ohne Einrückung (#76 — Lesen bleibt tolerant). Format v2: Schemaversion `_v` dran; kompatibel: `_v`
  * heraus — der alte Stand aeb4964 kennt es nicht (Bestände mit Personen-/Tages-Schlüsseln sähen einen Eintrag „_v“).
  */

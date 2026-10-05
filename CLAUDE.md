@@ -230,8 +230,8 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Keine Namen Betroffener, nur Kategorien/Anzahl. Prozess `datenschutz/DATENPANNEN.md`.
 - **Löschfristen neu**: `bauplan-bilder` (90 T.), `loeschprotokoll` (36 M.), `pannen` (36 M. ab Abschluss); Kapazität entfernter Konten:
   `kapaEntfernteKontenAufraeumen` im Morgenlauf (nur `konto-*` ohne Konto, nie bei leerem Konten-Bestand).
-- **Offen (nicht in diesem Paket):** globaler Schalter „KI im Hintergrund aus“ (heute je Agent unter /os/agenten); Buchungsseiten haben
-  weiter ihr eigenes Feld „Verantwortlich“ (Pflicht je Seite); Website-Erklärung nennt einen anderen Verantwortlichen; Verzeichnis-Einträge,
+- **Offen (nicht in diesem Paket):** globaler Schalter „KI im Hintergrund aus“ (heute je Agent unter /os/agenten); Buchungsseiten: seit 05.10.
+  (Betroffenenrechte v2) Verantwortlicher aus der Einrichtung, das Feld der Seite nur noch Abweichung; Website-Erklärung nennt einen anderen Verantwortlichen; Verzeichnis-Einträge,
   die man löscht, kommen beim nächsten Öffnen wieder (Nachtrag nach `id`).
 
 ## Sicherheit — Zugang & Schlüssel, Prüfung S3 (05.10., Branch `sicher-zugang`, nur lokal; Anleitung UPDATES.md)
@@ -306,6 +306,29 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   (`telegramVollFuer`); `sendeAnPerson` hat ein Sicherheitsnetz (`telegramSicher`). Neue Telegram-Texte: ohne Werte, Beträge, Namen.
 - **KI-VO Art. 50:** Routen mit KI-Text, der an Dritte gehen kann, liefern `ki: kiKennzeichen()`; die Oberfläche zeigt `<KiMarke />`.
 - **Oberfläche:** System › Datenschutz (`/os/datenschutz`, components/os/DatenschutzView.tsx); Hinweis im Bereich Gesundheit.
+
+## Betroffenenrechte v2 (05.10., Branch `betroffenenrechte`, nur lokal; Doku `DATENSCHUTZ_APP.md` › 2b, Wächter `tests/betroffenenrechte.test.ts`)
+- **Art. 15 an EINER Stelle:** `lib/datenschutz/art15.ts` (rein: `art15Angaben`, `auskunftHtml`, `HTML_KOPF`) + `auskunft-server.ts`
+  (`auskunftAngaben('kontakt'|'konto', …)` — Verzeichnis, Einrichtung, Löschfristen). Neue Auskunft = darüber, nie eigene Texte. Empfänger
+  NUR aus dem Register (`empfaengerFuer`: Kontakt = in Gebrauch + `dritte`, Konto = in Gebrauch). Neue Verarbeitung, die Kontakte betrifft →
+  Bereich in `kontaktBereiche`/`KONTAKT_JE_BEREICH`, die Konten betrifft → `KONTO_VERARBEITUNGEN`.
+- **Konto-Bestände** (`lib/datenschutz/konto-daten.ts`): neuer Bestand je Person (`<basis>--<speicher>`) → `PERSON_BESTAENDE` (Export + Löschen),
+  sonst jedes neue `…--*`-Muster mit Grund in `NICHT_PERSOENLICH` (Wächter). Geteilte Bestände mit Personen-Feld → in `kontoExport` und
+  `kontoLoeschen` aufnehmen. Ganze Bestände nur über `bestandEntfernen` (lib/store/local-db.ts, Sperre + Cache + Tagessicherungen) löschen.
+- **Erneut bestätigen:** folgenschwere Schritte für die eigene Person (Konto löschen, Instanz-Export) nur über `erneutPruefen`
+  (lib/zugang/erneut.ts: Passwort-Bremse `pw:<person>`, zweiter Faktor mit `letzteStufe`/Wiederherstellungscode, Fehlversuch ins Anmeldeprotokoll).
+  Person nur aus `x-make-user`, Dienstweg → 403.
+- **Grabstein für Konten:** `kontoGrabsteinKennung(konto.id)` (zufällige Konto-Kennung, nie Speichername/Adresse, `m: []` — trifft nie einen
+  Kontakt); `grabsteineAnwenden` löscht zurückgespielte Konten erneut (`kontenNachGrabstein`).
+- **Protokolle beim Konto-Löschen:** Felder `person`/`speicher`/`betroffen`/`von` = Speichername → „[gelöscht]“ (`eintragTilgen`); die Kette
+  zählt das als „getilgt“. Nie Einträge entfernen.
+- **Instanz-Export** nur `app/api/datenschutz/instanz-export` (Inhaber-Sitzung + `erneutPruefen`, Strom aus `instanzExportTeile`, Lese-Bereich
+  `export`). **Instanz löschen** nur `scripts/instanz-loeschen.mjs` (Trockenlauf, Code je Tag und Stand, nie `.data`, nie Sicherungen) — nie aus der App.
+- **Art. 14:** Uhr `art14Frist` (1 Monat, „bald“ ab Tag 25), Vorlage `Einrichtung.art14` bzw. `ART14_STANDARD` (Platzhalter, Pflicht
+  `{{verantwortlicher}}`/`{{herkunft}}`), Entwurf `POST /api/crm/datenschutz { aktion: 'art14-entwurf' }` versendet NICHTS; `art14-raus` stempelt.
+- **Abmeldelink:** `lib/datenschutz/abmelden.ts` (Token = HMAC über die Adresse, NIE Kennung/Adresse im Link; `ABMELDE_ANTWORT` immer gleich).
+  Jeder neue Massen-Mail-Export bekommt `AbmeldeLinkFn` (lib/crm/marketing.ts). Offene Pfade `ABMELDE_OFFEN` in middleware.ts — nur Token-Form.
+- **Buchungsseiten:** Verantwortlicher über `verantwortlichFuerSeite(seite, datenschutzOeffentlichLaden())` — eigener Eintrag nur Abweichung.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),

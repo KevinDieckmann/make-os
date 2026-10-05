@@ -9,6 +9,7 @@ import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber
 import { istDienst } from '@/lib/zugang/dienst';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { bauPruefen } from '@/lib/bau/pruefen';
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { zuGross } from '@/lib/zugang/umfang';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
   if (zuGross(req, 64_000)) return nein('Anfrage zu groß.', 413);
   let b: { aktion?: string; panne?: Record<string, unknown>; id?: unknown };
-  try { b = await req.json(); } catch { return nein('Kein JSON.', 400); }
+  try { b = await jsonBegrenzt(req, 64_000); } catch (e) { return jsonZuGross(e) ?? nein('Kein JSON.', 400); }
   const jetzt = new Date().toISOString();
   if (b.aktion === 'panne') {
     const id = typeof b.panne?.id === 'string' && /^pn-[a-z0-9-]{4,60}$/.test(b.panne.id) ? b.panne.id : null;

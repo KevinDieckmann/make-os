@@ -52,6 +52,7 @@ import { kalenderQuelleDa } from '@/lib/kalender/google/namen';
 import { terminAendernServer } from '@/lib/kalender/termin-server';
 import { localDay } from '@/lib/zeit';
 import { loadJson } from '@/lib/store/local-db';
+import { datenschutzOeffentlichLaden } from '@/lib/datenschutz/einrichtung-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,6 +88,8 @@ export async function GET(req: Request) {
     seiten: bestand.seiten.map(s => ({ ...s, pfad: `/buchen/${s.slug}` })),
     buchungen: [...bestand.buchungen].sort((a, b) => a.start.localeCompare(b.start)).map(sicht),
     vorschlaege,
+    // Datenschutz der Instanz (05.10.): Verantwortlicher und Hinweis-Adresse aus System › Datenschutz — gilt für jede Seite ohne eigenen Eintrag.
+    datenschutz: await datenschutzOeffentlichLaden(),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
@@ -117,6 +120,8 @@ export async function POST(req: Request) {
     const fuer = typeof roh.person === 'string' ? roh.person.trim() : '';
     if (!(await personImHaushaltDesInhabers(fuer))) return nein('Für wen ist die Seite? Nur für eine Person des Haushalts.', 400);
     let fehler = '', status = 400, gespeichert: BuchungsSeite | null = null;
+    // Verantwortlicher (05.10.): steht er in der Einrichtung (System › Datenschutz), ist das Feld der Seite nur noch eine Abweichung.
+    const einrichtung = !!(await datenschutzOeffentlichLaden()).verantwortlich;
     await aendereBuchungBestand(bs => {
       const vorher = id ? bs.seiten.find(s => s.id === id) : undefined;
       if (id && !vorher) { fehler = 'Buchungsseite nicht gefunden.'; status = 404; return bs; }
@@ -125,7 +130,7 @@ export async function POST(req: Request) {
       if (!vorher && bs.seiten.length >= GRENZEN.seiten) { fehler = `Höchstens ${GRENZEN.seiten} Buchungsseiten.`; status = 413; return bs; }
       const titel = typeof roh.titel === 'string' ? roh.titel : '';
       const fest = vorher ? { id: vorher.id, slug: vorher.slug, angelegt: vorher.angelegt } : { id: neueKennung('bs'), slug: neuerSlug(titel), angelegt: jetztIso };
-      const r = seiteSauber(roh, fest, person, jetztIso);
+      const r = seiteSauber(roh, fest, person, jetztIso, { einrichtung });
       if (!r.ok) { fehler = r.fehler; return bs; }
       gespeichert = r.seite;
       return { ...bs, seiten: vorher ? bs.seiten.map(s => (s.id === vorher.id ? r.seite : s)) : [...bs.seiten, r.seite] };

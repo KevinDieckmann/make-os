@@ -8,6 +8,7 @@
 // POST { aktion: 'empfaenger', empfaenger }        → einfügen/ersetzen (nach id; erster Schreibzugriff übernimmt die Vorgabe-Liste)
 // POST { aktion: 'empfaenger-archiv', id, archiviert } → nicht (mehr) in Gebrauch bzw. zurückholen
 // POST { aktion: 'empfaenger-weg', id }            → entfernen (die Oberfläche fragt vorher; Archivieren ist meist besser)
+// POST { aktion: 'art14-vorlage', vorlage: { betreff, text } } / { aktion: 'art14-vorlage-leeren' } → Vorlage der Information nach Art. 14 (05.10.)
 // Schreiben: NUR der Inhaber (Rolle), NUR von Hand (Dienstweg/ZOE → 403), nur aus dem aktuellen Bau (bauPruefen);
 // Protokoll nur mit Feldnamen (nie Werte). Lib: lib/datenschutz/einrichtung.ts (rein) + einrichtung-server.ts.
 
@@ -21,6 +22,8 @@ import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { EINRICHTUNG_SPEICHER, verantwortlicherPruefen, verantwortlicherWirksam, empfaengerPruefen, empfaengerSetzen, empfaengerWirksam, empfaengerArchivieren } from '@/lib/datenschutz/einrichtung';
 import { einrichtungAendern, ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
 import { datenschutzAngabenAus } from '@/lib/crm/netzwerken-recht';
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { art14VorlagePruefen, ART14_STANDARD, ART14_PLATZHALTER } from '@/lib/datenschutz/art14';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
   const e = await ladeEinrichtung();
   const wirksam = verantwortlicherWirksam(e);
   if (new URL(req.url).searchParams.get('nur') === 'angaben') return NextResponse.json({ ok: true, ...datenschutzAngabenAus(wirksam.v) }, { headers: { 'Cache-Control': 'no-store' } });
-  return NextResponse.json({ ok: true, verantwortlicher: e.verantwortlicher ?? null, wirksam, empfaenger: empfaengerWirksam(e), darf: !w.dienst && (await istInhaber(w.person)) }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ok: true, verantwortlicher: e.verantwortlicher ?? null, wirksam, empfaenger: empfaengerWirksam(e), art14: e.art14 ?? null, art14Wirksam: e.art14 ?? ART14_STANDARD, platzhalter: ART14_PLATZHALTER, darf: !w.dienst && (await istInhaber(w.person)) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
@@ -44,8 +47,8 @@ export async function POST(req: Request) {
   const person = personStreng(req);
   if (!person || !(await istInhaber(person))) return nein('Nur der Inhaber ändert die Datenschutz-Einrichtung.', 403);
   if (zuGross(req, 64_000)) return nein('Anfrage zu groß.', 413);
-  let b: { aktion?: string; verantwortlicher?: unknown; empfaenger?: unknown; id?: unknown; archiviert?: unknown };
-  try { b = await req.json(); } catch { return nein('Kein JSON.', 400); }
+  let b: { aktion?: string; verantwortlicher?: unknown; empfaenger?: unknown; id?: unknown; archiviert?: unknown; vorlage?: unknown };
+  try { b = await jsonBegrenzt(req, 64_000); } catch (e) { return jsonZuGross(e) ?? nein('Kein JSON.', 400); }
   const jetzt = new Date().toISOString();
 
   if (b.aktion === 'verantwortlicher') {
@@ -86,6 +89,19 @@ export async function POST(req: Request) {
     if (!gefunden) return nein('Empfänger nicht gefunden.', 404);
     await protokolliere(EINRICHTUNG_SPEICHER, [{ liste: 'empfaenger', op: b.aktion === 'empfaenger-weg' ? 'geloescht' : 'geaendert', id, ...(b.aktion === 'empfaenger-weg' ? {} : { felder: ['archiviert'] }) }], werAus(req));
     return NextResponse.json({ ok: true, empfaenger: empfaengerWirksam(neu) });
+  }
+  // Art. 14 (05.10., Betroffenenrechte v2): Vorlage der Information für Kontakte aus Dritt-Quellen — Platzhalter, nie versendet.
+  if (b.aktion === 'art14-vorlage') {
+    const r = art14VorlagePruefen(b.vorlage);
+    if (!r.ok) return nein(r.fehler, 400);
+    const neu = await einrichtungAendern(e => ({ ...e, art14: { ...r.v, geaendert: jetzt, von: person } }));
+    await protokolliere(EINRICHTUNG_SPEICHER, [{ op: 'geaendert', id: 'art14', felder: ['betreff', 'text'] }], werAus(req));
+    return NextResponse.json({ ok: true, art14: neu.art14 ?? null, art14Wirksam: neu.art14 ?? ART14_STANDARD });
+  }
+  if (b.aktion === 'art14-vorlage-leeren') {
+    await einrichtungAendern(e => { const { art14: _weg, ...rest } = e; return rest; });
+    await protokolliere(EINRICHTUNG_SPEICHER, [{ op: 'geloescht', id: 'art14' }], werAus(req));
+    return NextResponse.json({ ok: true, art14: null, art14Wirksam: ART14_STANDARD });
   }
   return nein('aktion unbekannt.', 400);
 }

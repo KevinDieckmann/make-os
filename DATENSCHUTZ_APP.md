@@ -23,6 +23,7 @@ Anwendung“ — den gibt es noch nicht. Abschnitt 4 ist ein **Entwurf** dafür;
 | KI-Tor (Schalter, Art.-9-Einwilligung, Pseudonymisierung, Protokoll) | `lib/datenschutz/ki-tor.ts` über `askText` (lib/anthropic.ts), Werkzeuge `fuehreAus` | `tests/ki-datenschutz.test.ts` |
 | Gesundheits-Einwilligung (a/b/c) | `lib/datenschutz/gesundheit-einwilligung.ts`, Route `/api/datenschutz/gesundheit` | dieselben |
 | Telegram-Texte | `lib/datenschutz/telegram-text.ts`, `telegramSicher` in `lib/telegram.ts` | dieselben |
+| **Betroffenenrechte v2 (05.10.)**: Art.-15-Angaben a–h + HTML · Konto-Export/-Löschung · Instanz-Export · Art. 14 · Abmeldelink | `lib/datenschutz/art15.ts`, `auskunft-server.ts`, `konto-daten.ts`, `instanz-export.ts`, `art14.ts`, `abmelden*.ts`; `scripts/instanz-loeschen.mjs` | `tests/betroffenenrechte.test.ts` |
 
 ## 2. Neue Verarbeitungen seit dem Online-Stand 5aca6f5
 
@@ -109,6 +110,35 @@ auch für `?nur=kennzahlen`.
 - **Telegram** (`lib/datenschutz/telegram-text.ts`): nur neutrale Hinweise mit Link; ZOE-Antworten im ZOE-Verlauf; Ausnahme je Person
   „ZOE-Antworten vollständig über Telegram (unverschlüsselt, Drittland)“ mit Hinweistext, Vorgabe aus; Sicherheitsnetz in `sendeAnPerson`.
 - **KI-VO Art. 50:** Kennzeichen `ki` in Antworten mit KI-Text, Marke „KI-Entwurf“ (`components/os/KiMarke.tsx`), „· KI“ an ZOE.
+
+## 2b. Betroffenenrechte v2 (05.10., Branch `betroffenenrechte`)
+
+- **Art. 15 vollständig** — Kontakt-Auskunft (`GET /api/crm/datenschutz?id=…`, Akte › Betroffenenrechte) und Konto-Auskunft
+  (`GET /api/konto/daten`, Konto › Meine Daten) liefern neben der Kopie die Angaben nach Abs. 1 a–h: Zwecke + Rechtsgrundlagen und
+  Kategorien (aus dem Verzeichnis, Art. 30 — für Kontakte je nach Bereich, in dem Daten gefunden wurden), **Empfänger aus dem Register**
+  (Kontakt: alle in Gebrauch mit Daten Dritter; Konto: alle in Gebrauch — je mit Drittland + Garantie), Speicherdauer (Verzeichnis +
+  Löschfristen + Sicherungssatz), Rechte (16/17/18/20/21, Widerruf), Beschwerde (Art. 77, zuständige Behörde optional in der
+  Einrichtung: `Verantwortlicher.aufsicht`), Herkunft, automatisierte Entscheidungen (Lead-Score und KI ehrlich beschrieben: keine
+  Entscheidung nach Art. 22, nur Reihenfolge bzw. Entwürfe mit Freigabe). Kopie Abs. 3 als JSON und als druckbares HTML
+  (`format=html`, CSP ohne Skripte). Die Kontakt-Auskunft steht jetzt im Lese-Protokoll; der Dateiname trägt keine Kennung mehr.
+- **Konto: Meine Daten herunterladen (Art. 20) und Mein Konto löschen (Art. 17)** — für jede Person selbst. Export = alle Bestände mit
+  Bezug zur Person laut Speicher-Register (`PERSON_BESTAENDE` ganz, geteilte Bestände nur eigene Einträge, Protokolle nur eigene Zeilen;
+  nie Hash/Salz/2FA/Token). Löschen = Rückfrage + Passwort + zweiter Faktor + „LÖSCHEN“; Grabstein (HMAC der Konto-Kennung), Bestände je
+  Person samt Tagessicherungen entfernt, Protokolle mit „[gelöscht]“ (Hash-Kette bleibt gültig). Inhaber nur ohne andere Konten (409).
+  Details: `datenschutz/LOESCHKONZEPT.md` › 3a.
+- **Instanz-Export bei Vertragsende** (nur Inhaber-Sitzung + Passwort/2FA, Strom, Lese-/Anmeldeprotokoll) und **Löschskript**
+  `scripts/instanz-loeschen.mjs` (Trockenlauf, Bestätigungs-Code, nennt Sicherungen, nie automatisch) — `LOESCHKONZEPT.md` › 6,
+  `KUNDEN_ONBOARDING_DATENSCHUTZ.md` › E.
+- **Art. 14** — Vorlage in der Einrichtung (System › Datenschutz, Platzhalter, Pflicht `{{verantwortlicher}}`/`{{herkunft}}`), Entwurf in der
+  Akte (`art14-entwurf`, nie versendet → Mail-Programm per Klick → „ist raus“ = `art14InformiertAm` + Verlauf). Uhr `art14Frist`: spätestens
+  1 Monat nach der Aufnahme; Selbstprüfung „bald“ ab Tag 25, „überfällig“ danach. Pflicht bei `fremddaten` oder Herkunft Recherche/Empfehlung.
+- **Buchungsseiten** — Verantwortlicher kommt aus der Einrichtung (das Feld der Seite ist nur noch eine Abweichung; ohne Einrichtung weiter
+  Pflicht), Link zum Datenschutzhinweis (`Verantwortlicher.seite`) und ein Satz direkt vor „Termin anfragen“.
+- **Abmeldelink** — jede Massen-Mail aus dem Newsletter-/Segment-Export trägt je Empfänger `abmeldelink` + `list_unsubscribe` +
+  `list_unsubscribe_post` (RFC 8058). Token = HMAC(Pepper, Adresse), ohne Kennung/Adresse; Seite `/abmelden/<token>` + `POST
+  /api/abmelden/<token>` ohne Anmeldung; Antwort immer gleich (verrät nicht, ob die Adresse existiert); Wirkung: Werbesperre + Widerruf der
+  Werbe-Einwilligungen + Sperrliste + Verlauf/Protokoll. Ohne Pepper oder `MAKE_OS_ADRESSE` bleiben die Spalten leer.
+- **Register:** `anmeldungen` (12 Monate) und `konten` mit Angaben; jedes `…--*`-Muster ist für Konto-Export/-Löschung eingeordnet (Wächter).
 
 ## 3. Offene Punkte (Entscheidung Kevin)
 **Aus dem Paket 05.10. (KI/Gesundheit/Telegram):** Einwilligungstexte (a)/(b)/(c) und der Telegram-Hinweis anwaltlich gegenlesen;

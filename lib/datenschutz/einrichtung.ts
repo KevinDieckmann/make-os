@@ -28,6 +28,11 @@ export interface Verantwortlicher {
   dsb?: Datenschutzbeauftragter;
   /** Adresse des Datenschutzhinweises (z. B. „example.de/datenschutz“) — steht in der Danke-Mail (Art. 13). Ohne: Standard der Instanz. */
   seite?: string;
+  /**
+   * Zuständige Datenschutz-Aufsichtsbehörde (optional, 05.10. „Betroffenenrechte v2“) — steht in jeder Auskunft nach Art. 15 Abs. 1 lit. f
+   * neben dem allgemeinen Hinweis auf das Beschwerderecht (Art. 77). Ohne Eintrag nur der allgemeine Hinweis.
+   */
+  aufsicht?: string;
   /** Wann/wer zuletzt geändert (setzt nur der Server). */
   geaendert?: string;
   von?: string;
@@ -81,6 +86,11 @@ export interface Empfaenger {
 
 export interface DatenschutzEinrichtung {
   verantwortlicher?: Verantwortlicher;
+  /**
+   * Vorlage der Information nach Art. 14 (05.10., optional): Betreff und Text mit Platzhaltern (`ART14_PLATZHALTER`, lib/datenschutz/art14.ts).
+   * Fehlt das Feld, gilt die Vorlage aus dem Code (`ART14_STANDARD`). Schreibt nur der Inhaber.
+   */
+  art14?: { betreff: string; text: string; geaendert?: string; von?: string };
   /** Fehlt das Feld, gilt die Vorgabe-Liste (`EMPFAENGER_START`); eine leere Liste ist eine bewusste Entscheidung. */
   empfaenger?: Empfaenger[];
 }
@@ -113,10 +123,11 @@ export function verantwortlicherPruefen(roh: unknown): { ok: true; v: Verantwort
   if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return { ok: false, fehler: 'Verantwortlicher: Objekt erwartet.' };
   const r = roh as Record<string, unknown>;
   const name = zeile(r.name, 200), anschrift = mehrzeilig(r.anschrift, 300), mail = zeile(r.mail, 160).toLowerCase();
-  const telefon = zeile(r.telefon, 40), vertretung = zeile(r.vertretung, 200), seite = zeile(r.seite, 200).replace(/^https?:\/\//i, '');
+  const telefon = zeile(r.telefon, 40), vertretung = zeile(r.vertretung, 200), seite = zeile(r.seite, 200).replace(/^https?:\/\//i, ''), aufsicht = mehrzeilig(r.aufsicht, 300);
   if (seite && (seite.length > 200 || /\s/.test(seite) || !/^[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i.test(seite))) return { ok: false, fehler: 'Datenschutzhinweis: eine Adresse wie „example.de/datenschutz“.' };
   const d = r.dsb && typeof r.dsb === 'object' ? r.dsb as Record<string, unknown> : {};
   const dsbName = zeile(d.name, 200), dsbMail = zeile(d.mail, 160).toLowerCase();
+  if (aufsicht.length > 300) return { ok: false, fehler: 'Aufsichtsbehörde: höchstens 300 Zeichen.' };
   if (name.length > 200 || anschrift.length > 300 || mail.length > 160 || telefon.length > 40 || vertretung.length > 200 || dsbName.length > 200 || dsbMail.length > 160) return { ok: false, fehler: 'Eine Angabe ist zu lang (Name 200, Anschrift 300, Mail 160, Telefon 40 Zeichen).' };
   const luecken = verantwortlicherLuecken({ name, anschrift, mail });
   if (luecken.length) return { ok: false, fehler: `Es fehlt: ${luecken.join(', ')}.` };
@@ -124,7 +135,7 @@ export function verantwortlicherPruefen(roh: unknown): { ok: true; v: Verantwort
   if (dsbMail && !MAIL.test(dsbMail)) return { ok: false, fehler: 'Die Mail des Datenschutzbeauftragten sieht nicht wie eine Adresse aus.' };
   if (telefon && !/^[+\d][\d\s/()-]{3,39}$/.test(telefon)) return { ok: false, fehler: 'Telefon: nur Ziffern, Leerzeichen, +, /, ( ) und -.' };
   const dsb = dsbName || dsbMail ? { ...(dsbName ? { name: dsbName } : {}), ...(dsbMail ? { mail: dsbMail } : {}) } : undefined;
-  return { ok: true, v: { name, anschrift, mail, ...(telefon ? { telefon } : {}), ...(vertretung ? { vertretung } : {}), ...(dsb ? { dsb } : {}), ...(seite ? { seite } : {}) } };
+  return { ok: true, v: { name, anschrift, mail, ...(telefon ? { telefon } : {}), ...(vertretung ? { vertretung } : {}), ...(dsb ? { dsb } : {}), ...(seite ? { seite } : {}), ...(aufsicht ? { aufsicht } : {}) } };
 }
 
 /** Rückfall aus der Umgebung (Instanz ohne Einrichtung, z. B. Kunden-Instanz per Deploy) — nur, wenn die Pflichtangaben da sind. */
@@ -132,6 +143,7 @@ export function verantwortlicherAusUmgebung(env: Record<string, string | undefin
   const r = verantwortlicherPruefen({
     name: env.MAKE_OS_VERANTWORTLICHER_NAME, anschrift: (env.MAKE_OS_VERANTWORTLICHER_ANSCHRIFT ?? '').replace(/\\n/g, '\n'), mail: env.MAKE_OS_VERANTWORTLICHER_MAIL,
     telefon: env.MAKE_OS_VERANTWORTLICHER_TELEFON, vertretung: env.MAKE_OS_VERANTWORTLICHER_VERTRETUNG, seite: env.MAKE_OS_VERANTWORTLICHER_SEITE,
+    aufsicht: (env.MAKE_OS_AUFSICHTSBEHOERDE ?? '').replace(/\\n/g, '\n'),
     dsb: { name: env.MAKE_OS_DSB_NAME, mail: env.MAKE_OS_DSB_MAIL },
   });
   return r.ok ? r.v : null;

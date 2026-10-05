@@ -316,20 +316,29 @@ export function kanalText(k: Kontakt, ctx: Kontext = {}): string {
   return (['mail', 'telefon', 'linkedin', 'newsletter'] as Kanal[]).map(kanal => { const s = kanalStatus(k, kanal, ctx); return s.grund === 'keine Adresse' ? null : `${KANAL_TEXT[kanal]} ${FARB_TEXT[s.farbe]}`; }).filter(Boolean).join(', ') || 'keine Adresse';
 }
 
+/**
+ * Abmeldelink je Empfänger (05.10., Betroffenenrechte v2 — lib/datenschutz/abmelden.ts): jede Massen-Mail aus einem Export trägt ihn.
+ * Die Route gibt `abmeldeLink` mit; ohne (Tests, Instanz ohne Pepper/Adresse) bleibt der Export wie bisher.
+ */
+export type AbmeldeLinkFn = (email: string | undefined) => { link: string; listUnsubscribe: string; listUnsubscribePost: string } | null;
+const ABMELDE_SPALTEN = ['abmeldelink', 'list_unsubscribe', 'list_unsubscribe_post'];
+const abmeldeZellen = (f: AbmeldeLinkFn | undefined, email: string | undefined) => { const a = email && f ? f(email) : null; return a ? [a.link, a.listUnsubscribe, a.listUnsubscribePost] : ['', '', '']; };
+
 /** Segment-Export: nur Mitglieder (nie Gesperrte), Mail-Adresse nur bei grüner Mail-Ampel, keine Privatnotiz. */
-export function segmentCsv(kontakte: Kontakt[], kriterien: SegmentKriterien, ctx: SegmentKontext): string {
+export function segmentCsv(kontakte: Kontakt[], kriterien: SegmentKriterien, ctx: SegmentKontext, abmelde?: AbmeldeLinkFn): string {
   const a = segmentAuswerten(kontakte, kriterien, ctx);
   const zeilen = a.mitglieder.filter(k => !ausgenommen(k)).map(k => {
     const c: Kontext = { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) };
     const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
-    return [anzeigename(k), f?.name ?? k.firma, kanalStatus(k, 'mail', c).farbe === 'gruen' ? k.email : '', k.telefon ?? k.sms, k.kreis, PHASE_TEXT[k.lebensphase ?? 'kontakt'], kanalText(k, c)];
+    const mail = kanalStatus(k, 'mail', c).farbe === 'gruen' ? k.email : '';
+    return [anzeigename(k), f?.name ?? k.firma, mail, k.telefon ?? k.sms, k.kreis, PHASE_TEXT[k.lebensphase ?? 'kontakt'], kanalText(k, c), ...(abmelde ? abmeldeZellen(abmelde, mail || undefined) : [])];
   });
-  return csvText(['name', 'firma', 'email', 'telefon', 'kreis', 'phase', 'kanal_status'], zeilen);
+  return csvText(['name', 'firma', 'email', 'telefon', 'kreis', 'phase', 'kanal_status', ...(abmelde ? ABMELDE_SPALTEN : [])], zeilen);
 }
 
-/** Newsletter-Empfänger: ausschließlich Double-Opt-in, nur Name und Adresse. */
-export function newsletterCsv(kontakte: Kontakt[]): string {
-  return csvText(['name', 'email'], newsletterEmpfaenger(kontakte).map(k => [anzeigename(k), k.email]));
+/** Newsletter-Empfänger: ausschließlich Double-Opt-in, nur Name und Adresse (+ Abmeldelink und List-Unsubscribe-Köpfe je Empfänger). */
+export function newsletterCsv(kontakte: Kontakt[], abmelde?: AbmeldeLinkFn): string {
+  return csvText(['name', 'email', ...(abmelde ? ABMELDE_SPALTEN : [])], newsletterEmpfaenger(kontakte).map(k => [anzeigename(k), k.email, ...(abmelde ? abmeldeZellen(abmelde, k.email) : [])]));
 }
 
 // ── Zu zweit: Autor, Stimme, Freigabe (25.09.) ─────────────────────────────
