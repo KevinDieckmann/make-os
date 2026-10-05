@@ -72,8 +72,9 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
   }, [router, pfad, sicht, bereich, eingebettet]);
 
   // Hat der Bereich ein eigenes Planszenario, gehört „Arbeitsplan setzen“ zu diesem Bereich (/bereiche/<b>/arbeitsplan), nicht zum gemeinsamen.
+  // Business IMMER (05.10. spät): der gemeinsame Arbeitsplan gilt auch für Privat — der Server lehnt /arbeitsplan aus Business ab.
   const aendere = useCallback(async (ops: Operation[], feld: string) => {
-    const umgelenkt = eigen ? ops.map(o => (o.pfad === '/arbeitsplan' ? { ...o, pfad: `/bereiche/${bereich}/arbeitsplan`, ...(o.neu === undefined ? { neu: null } : {}) } : o)) : ops;
+    const umgelenkt = eigen || bereich === 'business' ? ops.map(o => (o.pfad === '/arbeitsplan' ? { ...o, pfad: `/bereiche/${bereich}/arbeitsplan`, ...(o.neu === undefined ? { neu: null } : {}) } : o)) : ops;
     const ok = await aendern(umgelenkt, feld); if (ok) gespeichert(feld); return ok;
   }, [aendern, gespeichert, eigen, bereich]);
 

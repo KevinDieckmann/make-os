@@ -256,12 +256,15 @@ describe('Prüfstand finanzplan-5: Darlehen hin und zurück (Geber und Nehmer fr
     // Abschluss: das Darlehen geht noch hinaus → frei nach Abschluss −2.000.
     nah(rechneSelbst(g.d, undefined, g.lohn).darlehen, 2000, 'abschluss darlehen');
   });
-  it('Altes Gesellschafterdarlehen (Annahme 3.000, zurück Monat 14): Geber ist die Selbstständigkeit — die Rückzahlung verschwindet nicht mehr', () => {
+  it('Altes Gesellschafterdarlehen (Annahme 3.000, zurück Monat 14): Geber außerhalb des Plans — Selbstständigkeit und Privat unberührt (Gegenprüfung 05.10.)', () => {
+    // finanzplan-5 hatte den Geber als Selbstständigkeit gedeutet (−3.000 dort im Okt 26). Kevin: „Es gibt kein Gesellschafterdarlehen“ — das Feld
+    // bleibt nur für ein echtes Darlehen von außen: hinein in die GmbH, zurück nach außen; die Gruppe hat das Geld so lange (wie vor finanzplan-5).
     const d = { ...pruefPlan(), annahmen: { ...pruefPlan().annahmen, darlehenKevin: 3000, darlehenRueckMonat: 14 } };
     const g = lauf(d);
-    nah(g.ug[0].kapital, 25000 + 3000, 'ug okt (Stammkapital + Darlehen)'); nah(g.kdc[0].darlehenAus, 3000, 'kdc zahlt aus');
-    nah(g.ug[13].darlehen, 3000, 'ug zahlt zurück'); nah(g.kdc[13].darlehenEin, 3000, 'kdc bekommt zurück');
-    g.gruppe.forEach((x, i) => nah(x, basis.gruppe[i], `gruppe ${i + 1} (nur umgebucht)`));
+    nah(g.ug[0].kapital, 25000 + 3000, 'ug okt (Stammkapital + Darlehen)'); nah(g.kdc[0].darlehenAus, 0, 'kdc zahlt nichts aus');
+    nah(g.ug[13].darlehen, 3000, 'ug zahlt zurück'); nah(g.kdc[13].darlehenEin, 0, 'kdc bekommt nichts');
+    g.kdc.forEach((k, i) => nah(k.konto, basis.kdc[i].konto, `kdc ${i + 1}`));
+    g.gruppe.forEach((x, i) => nah(x, basis.gruppe[i] + (i + 1 < 14 ? 3000 : 0), `gruppe ${i + 1} (von außen hinein, im Monat 14 hinaus)`));
   });
   it('Säuberer: Geber = Nehmer oder unbekannte Seite → abgelehnt; Rückzahlung vor Auszahlung → offen', () => {
     const d = pruefPlan();

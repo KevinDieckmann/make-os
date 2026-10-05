@@ -244,11 +244,12 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: null, formel: 'Finanzplanung › Selbstständigkeit › Einkommensteuer gemeinsam', luecke: `Die Finanzplanung rechnet ${jahr} nicht (kein Plan oder Jahr außerhalb des Plans) — keine Schätzung`, href: PLAN });
     if (e.kdc.gewerbe) z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: null, formel: '(Gewinn − Freibetrag) × Messzahl × Hebesatz, aus der Finanzplanung', luecke: `Die Finanzplanung rechnet ${jahr} nicht — keine Schätzung`, href: PLAN });
   } else {
-    // Mehrsteuer über der Lohnsteuer (die steckt in der Netto-Tabelle) nach Anrechnung § 35, mit Soli — minus die bis heute gezahlten Vorauszahlungen.
-    const estSoll = est.est - est.anrechnung + est.soli;
+    // Mehrsteuer über der Lohnsteuer (die steckt in der Netto-Tabelle) nach Anrechnung § 35, mit Soli und Handwert-Korrekturen der Finanzplanung
+    // (`summe` = Steuer des Jahres wie in Rücklage und Zahlung, ohne die Gewerbesteuer) — minus die bis heute gezahlten Vorauszahlungen.
+    const estSoll = est.summe - est.gewst;
     const vzEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]);
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: Math.max(0, estSoll - vzEst),
-      formel: `zvE ${zahl(est.zve)} € (Gewinn ${zahl(est.gewinn)} € + Lohneinkünfte ${zahl(est.lohn)} €${est.splitting ? ', Splitting' : ''}) → Mehrsteuer ${zahl(est.est)} €${est.anrechnung ? ` − ${zahl(est.anrechnung)} € Anrechnung § 35` : ''}${est.soli ? ` + ${zahl(est.soli)} € Soli` : ''} − ${zahl(vzEst)} € gezahlte Vorauszahlungen${e.vorauszahlung.est ? ` (Jahr: ${zahl(e4(e.vorauszahlung.est))} €)` : ''} · Finanzplanung${est.plan ? ` „${est.plan}“` : ''}`, href: PLAN });
+      formel: `zvE ${zahl(est.zve)} € (Gewinn ${zahl(est.gewinn)} € + Lohneinkünfte ${zahl(est.lohn)} €${est.splitting ? ', Splitting' : ''}) → Mehrsteuer ${zahl(est.est)} €${est.anrechnung ? ` − ${zahl(est.anrechnung)} € Anrechnung § 35` : ''}${est.soli ? ` + ${zahl(est.soli)} € Soli` : ''}${est.korr ? ` ${est.korr > 0 ? '+' : '−'} ${zahl(Math.abs(est.korr))} € von Hand` : ''} − ${zahl(vzEst)} € gezahlte Vorauszahlungen${e.vorauszahlung.est ? ` (Jahr: ${zahl(e4(e.vorauszahlung.est))} €)` : ''} · Finanzplanung${est.plan ? ` „${est.plan}“` : ''}`, href: PLAN });
     if (est.gewerbe) {
       const vzGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
       z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: Math.max(0, est.gewst - vzGew),

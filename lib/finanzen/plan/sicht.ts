@@ -27,6 +27,7 @@ import type { Aenderung, Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rech
 import type { Steuern } from '@/lib/finanzen/steuern';
 import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { lies } from './operationen';
+import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { darlehenBusinessAenderbar, darlehenFuerBusiness } from '@/lib/finanzen/darlehen';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 
@@ -49,7 +50,7 @@ export function wirksameSicht(recht: PlanSicht, anfrage: string | null | undefin
 
 /** Business = nur die Gesellschaften (seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat; Zuordnung aus lib/einheiten.ts `BUSINESS_GESELLSCHAFTEN`). */
 const BUSINESS_EINHEITEN: Einheit[] = BUSINESS_GESELLSCHAFTEN.filter(g => g !== 'kdc');   // die Achse `kdc` ist hier fest privat (selbst, ab.*, Entnahme)
-const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && (BUSINESS_EINHEITEN as string[]).includes(e);
+export const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && (BUSINESS_EINHEITEN as string[]).includes(e);
 
 /** Planzeilen, die zum Business gehören (Sachkosten der Gesellschaften — die der Selbstständigkeit sind seit 05.10. privat). */
 const businessZeilen = (d: Pick<FinanzDaten, 'sachkosten'>): Set<string> => new Set(d.sachkosten.filter(z => istBusinessEinheit(z.einheit)).map(z => z.id));
@@ -73,7 +74,7 @@ const NETTO_PLATZHALTER: [number, number][] = [[0, 0], [1, 1]];
 /** Die Selbstständigkeit ist privat — die Business-Sicht trägt einen leeren Abschluss (rechenbar, ohne Wert). */
 const SELBST_LEER: FinanzDaten['selbst'] = { posten: [], vorsorge: 0, sonderausgaben: 0, sicherheit: 0, darlehenAnUG: 0, consorsAbloesung: 0, kontoStart: 0 };
 /** Bausteine der Gesellschaften (MAKE, KD Ventures) — private und die der Selbstständigkeit fallen weg. */
-const BUSINESS_BAUSTEIN = (e: unknown): boolean => e === 'ug' || e === 'kdv';
+export const BUSINESS_BAUSTEIN = (e: unknown): boolean => e === 'ug' || e === 'kdv';
 /** Steuerprofile nur der Gesellschaften (Privat und Selbstständigkeit fallen weg); leer → undefined. */
 function nurBusinessSteuern(st: Steuern | undefined): Steuern | undefined {
   if (!st) return undefined;
@@ -83,16 +84,17 @@ function nurBusinessSteuern(st: Steuern | undefined): Steuern | undefined {
 const istObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /** Ziele, die nur Business messen (MAKE frei, Partnerdarlehen) — „Privat angespart“ und „Gruppe“ enthalten Privat. */
-const ZIEL_QUELLEN_BUSINESS = ['ug.frei', 'kdv.bjoern'];
+export const ZIEL_QUELLEN_BUSINESS = ['ug.frei', 'kdv.bjoern'];
 
 /**
  * Das Dokument für die Business-Sicht: alles Private entfernt, Business vollständig (Rechnung der Gesellschaften unverändert).
  * Rein — der Aufrufer bekommt eine neue Struktur, das Original bleibt.
  */
 export function businessSicht(d: FinanzDaten): FinanzDaten {
-  const protokoll = d.protokoll.filter(p => typeof p.pfad === 'string' && pfadIstBusiness(p.pfad, d));
+  const protokoll = d.protokoll.filter(p => protokollBusiness(p, d));
   // Ampel-Schwellen sind gemeinsam mit Privat (Luft, Notgroschen) — nicht in der Business-Sicht; Steuern und Darlehen nur gefiltert.
-  const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, ...rest } = d;
+  // Alte Handwerte (`handAlt`, nur Abschluss/Selbstständigkeit) sind privat.
+  const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, handAlt: _handAlt, ...rest } = d;
   const steuern = nurBusinessSteuern(d.steuern);
   const darlehen = (d.darlehen ?? []).map(darlehenFuerBusiness).filter((l): l is NonNullable<typeof l> => !!l);
   return {
@@ -150,11 +152,19 @@ const teileVon = (pfad: string): string[] => (typeof pfad === 'string' && pfad.s
 const finde = <T extends { id: string }>(liste: T[] | undefined, teil: string | undefined): T | undefined => (teil?.startsWith('id=') ? (liste ?? []).find(x => x.id === teil.slice(3)) : undefined);
 
 /** Bereiche, die nur Privat sind — in der Business-Sicht weder lesbar noch schreibbar. */
-const NUR_PRIVAT = new Set(['privatEinnahmen', 'privatBudget', 'privatSchulden', 'check', 'fokus', 'abschluesse', 'regeln', 'schwellen', 'selbst']);
+const NUR_PRIVAT = new Set(['privatEinnahmen', 'privatBudget', 'privatSchulden', 'check', 'fokus', 'abschluesse', 'regeln', 'schwellen', 'selbst', 'handAlt']);
+/** Annahmen eines Planszenarios, die privat sind (wirken nur auf Privat bzw. die Selbstständigkeit). */
+const PRIVATE_PS_ANNAHMEN = ['ausschuettungSteuer', 'entnahme'];
+/** Enthalten Szenario-Annahmen etwas Privates (Steuer auf die Ausschüttung, Entnahme, Steuerprofil Privat/Selbstständigkeit)? */
+export const psAnnahmenPrivat = (a: unknown): boolean => istObj(a) && (PRIVATE_PS_ANNAHMEN.some(k => k in a) || (istObj(a.steuern) && ('privat' in a.steuern || 'kdc' in a.steuern)));
 
 /**
  * Darf ein Pfad in der Business-Sicht geändert werden? Geprüft gegen das gespeicherte Dokument (bestehende Einträge) und den neuen Wert
  * (angehängte/ersetzte Einträge). Liefert null (erlaubt) oder den Grund.
+ * Gegenprüfung 05.10. (Fund 4): Ganze Objekte/Listen, die Privates enthalten können (`/annahmen`, `/szenarien`, `/szenarien/id=…`,
+ * `/planszenarien`, `/planszenarien/id=…`, `…/annahmen`, `/steuern`, jede ganze Liste), ersetzt die Business-Sicht NIE — sie kennt den privaten
+ * Teil nicht und würde ihn überschreiben. Erlaubt sind Blattpfade und reine Business-Teilbäume. Wächter-Tabelle: tests/finanzplan-gegenpruefung.test.ts.
+ * Zusätzlich prüft der Schreibweg nach dem Anwenden, dass sich am privaten Teil nichts geändert hat (`privatTeil`, lib/finanzen/plan/business-schreiben.ts).
  */
 export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown): string | null {
   const t = teileVon(pfad);
@@ -167,6 +177,7 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
     case 'plan': case 'ist': case 'notizen': case 'meta':
       return t.length === 2 && schluesselIstBusiness(t[1], d) ? null : 'Diese Zelle gehört zu Privat.';
     case 'annahmen':
+      if (t.length === 1) return 'Die Annahmen ganz ersetzen geht nur in der Privat-Sicht (die Netto-Tabelle ist privat).';
       return t[1] === 'nettoTabelle' ? 'Die Netto-Tabelle gehört zu Privat.' : null;
     case 'sachkosten': {
       // Neue Zeilen ohne Einheit sind MAKE-Zeilen (wie im Kern); Privat und Selbstständigkeit gehören zu Privat.
@@ -180,17 +191,28 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
       return null;
     }
     case 'szenarien': {
+      // Ein Treiber trägt private Lebensereignisse — ganz ersetzen nie, löschen nur ohne private Ereignisse, neu nur ohne private.
+      if (t.length === 1) return 'Die ganze Liste gehört auch zu Privat.';
+      const privatE = (l: unknown) => Array.isArray(l) && l.some(e => istObj(e) && e.einheit === 'privat');
+      if (t[1] === '-') return t.length === 2 && neuObj && privatE(neuObj.ereignisse) ? 'Privates Ereignis.' : null;
+      if (t.length === 2) {
+        if (neu !== undefined) return 'Einen Treiber ganz ersetzen geht nur in der Privat-Sicht.';
+        return privatE(finde(d.szenarien, t[1])?.ereignisse) ? 'Dieser Treiber hat private Ereignisse — löschen nur in der Privat-Sicht.' : null;
+      }
       if (t[2] === 'ereignisse') {
         const e = finde(finde(d.szenarien, t[1])?.ereignisse, t[3]);
         if (e?.einheit === 'privat') return 'Privates Ereignis.';
-        if (t[3] === '-' && neuEinheit === 'privat') return 'Privates Ereignis.';
+        if ((t[3] === '-' || t.length === 4) && neuEinheit === 'privat') return 'Privates Ereignis.';
         if (t[4] === 'einheit' && neu === 'privat') return 'Privates Ereignis.';
         if (t.length === 3) return 'Ereignisse ganz ersetzen geht nur in der Privat-Sicht.';
       }
       return null;
     }
     case 'planszenarien': {
+      if (t.length === 1) return 'Die ganze Liste gehört auch zu Privat.';
       const ps = finde(d.planszenarien, t[1]);
+      if (t.length === 2 && t[1] !== '-' && neu === undefined && ps && (ps.bausteine.some(x => !BUSINESS_BAUSTEIN(x.einheit) && x.einheit !== undefined) || psAnnahmenPrivat(ps.annahmen)))
+        return 'Dieses Planszenario enthält Privates — löschen nur in der Privat-Sicht.';
       if (t[2] === 'annahmen' && t[3] === 'ausschuettungSteuer') return 'Die Steuer auf die Ausschüttung gehört zu Privat.';
       if (t[2] === 'annahmen' && t[3] === 'entnahme') return 'Die Entnahme der Selbstständigkeit gehört zu Privat.';
       if (t[2] === 'annahmen' && t[3] === 'steuern' && (t.length === 4 || t[4] === 'privat' || t[4] === 'kdc')) return 'Diese Steuern gehören zu Privat.';
@@ -205,9 +227,11 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
         if (t[4] === 'einheit' && !BUSINESS_BAUSTEIN(neu)) return 'Privater Baustein.';
         if (t.length === 3) return 'Bausteine ganz ersetzen geht nur in der Privat-Sicht.';
       }
-      if (t.length === 2 && t[1] !== '-') return 'Ein Planszenario ganz ersetzen geht nur in der Privat-Sicht.';
-      if (t[1] === '-' && neuObj && Array.isArray(neuObj.bausteine) && (neuObj.bausteine as { einheit?: string }[]).some(x => privatB(x.einheit))) return 'Privater Baustein.';
-      if (t[1] === '-' && neuObj && istObj(neuObj.annahmen) && ('entnahme' in neuObj.annahmen || 'ausschuettungSteuer' in neuObj.annahmen)) return 'Diese Annahme gehört zu Privat.';
+      if (t.length === 2 && t[1] !== '-' && neu !== undefined) return 'Ein Planszenario ganz ersetzen geht nur in der Privat-Sicht.';
+      if (t[1] === '-' && neuObj && Array.isArray(neuObj.bausteine) && (neuObj.bausteine as { einheit?: string }[]).some(x => !istObj(x) || privatB(x.einheit))) return 'Privater Baustein.';
+      // Neues Planszenario mit privaten Annahmen (Entnahme, Steuer auf die Ausschüttung, Steuerprofil Privat/Selbstständigkeit) → Privat.
+      if (t[1] === '-' && neuObj && psAnnahmenPrivat(neuObj.annahmen)) return 'Diese Annahme gehört zu Privat.';
+      if (t[1] === '-' && !neuObj) return 'Ein neues Planszenario ist ein Objekt.';
       return null;
     }
     case 'steuern':
@@ -251,17 +275,35 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
     }
     case 'bereiche':
       return t[1] === 'business' ? null : 'Die Einstellung des Privat-Bereichs gehört zu Privat.';
-    case 'aktiv': case 'arbeitsplan': case 'einstellungen':
-      return null;
+    // Gemeinsame Wahl (Kevin 05.10. spät: Business ändert NIE etwas, das Privat rechnet): das aktive Szenario fließt in die ESt aufs Gehalt
+    // (lohnJahre), der gemeinsame Arbeitsplan gilt für Privat, solange Privat keinen eigenen hat. Business setzt seinen Plan nur über
+    // /bereiche/business/arbeitsplan (die Oberfläche lenkt dorthin um). Erlaubt: die Reserve (nur Töpfe der GmbH, toepfeUG) und der
+    // Stichtag „auf heute setzen“ — nur auf den echten heutigen Tag (Europe/Berlin).
+    case 'aktiv': case 'arbeitsplan':
+      return 'Gilt auch für Privat — im Business-Bereich wird das eigene Planszenario gesetzt.';
+    case 'einstellungen':
+      return t.length === 2 && (t[1] === 'reserveMonate' || (t[1] === 'heute' && neu === heuteBerlin())) ? null : 'Diese Einstellung gilt auch für Privat — bitte im Privat-Bereich ändern.';
     default:
       return `„${b}“ ist in der Business-Sicht nicht änderbar.`;
   }
 }
 
-/** Ist ein (protokollierter) Pfad Business? — für das Protokoll der Business-Sicht. Ohne Pfad (ältere Einträge): nein. */
-export function pfadIstBusiness(pfad: string, d: FinanzDaten): boolean {
-  const t = teileVon(pfad);
+/**
+ * Ist ein (protokollierter) Pfad Business? — für das Protokoll der Business-Sicht. Ohne Pfad (ältere Einträge): nein.
+ * Angehängte Einträge (`…/-`, Gegenprüfung 05.10., Fund 3): geprüft wird der NEUE Eintrag — `eintrag` (Kennung, schreibt der Server seit 05.10.
+ * ins Protokoll) ersetzt das `-` durch `id=<eintrag>`, dann gelten Einheit/Bereich des Eintrags. Ohne Kennung (ältere Einträge) oder wenn der Eintrag
+ * nicht mehr da ist: nein — vom Unbekannten weiß man nicht, ob es privat war (Name und Preis stehen im Protokoll).
+ */
+export function pfadIstBusiness(pfad: string, d: FinanzDaten, eintrag?: string): boolean {
+  let t = teileVon(pfad);
   if (!t.length || NUR_PRIVAT.has(t[0])) return false;
+  if (t.includes('-')) {
+    if (typeof eintrag !== 'string' || !eintrag || t.indexOf('-') !== t.length - 1) return false;
+    t = [...t.slice(0, -1), `id=${eintrag}`];
+    pfad = `/${t.join('/')}`;
+  }
+  // Ganze Treiber/Planszenarien (angehängt oder ersetzt) sind gemischt — ihr Protokolltext kann private Ereignisse/Bausteine von damals tragen.
+  if ((t[0] === 'szenarien' || t[0] === 'planszenarien') && t.length === 2) return false;
   // Jeder Listenschritt muss im Dokument noch auffindbar sein — von Gelöschtem weiß man nicht mehr sicher, ob es privat war.
   for (let i = 1; i < t.length; i++) if (t[i].startsWith('id=') && lies(d, t.slice(0, i + 1)) === undefined) return false;
   // Gelöschte Einträge kennt das Dokument nicht mehr — dann zählt nur der Bereich.
@@ -279,7 +321,7 @@ export function pfadIstBusiness(pfad: string, d: FinanzDaten): boolean {
 /** Ist eine Planzeile privat? (Oberfläche: Zeilenlisten in der Business-Sicht.) */
 export const zeileIstPrivat = (z: Pick<Zeile, 'einheit'>): boolean => z.einheit === 'privat';
 /** Protokoll-Eintrag der Business-Sicht? (für Tests und die Oberfläche) */
-export const protokollBusiness = (p: Aenderung, d: FinanzDaten): boolean => typeof p.pfad === 'string' && pfadIstBusiness(p.pfad, d);
+export const protokollBusiness = (p: Aenderung, d: FinanzDaten): boolean => typeof p.pfad === 'string' && pfadIstBusiness(p.pfad, d, p.eintrag);
 
 /** Punkte aus „Was jetzt zu entscheiden ist“ / „Noch offen“, die Privat betreffen — die Business-Sicht zeigt sie nicht. */
 export const PRIVATE_PUNKTE = new Set(['privat-minus', 'privat-runway', 'konten', 'netto', 'umsatz-kdc']);   // umsatz-kdc: die Selbstständigkeit gehört seit 05.10. zu Privat

@@ -35,8 +35,12 @@ describe('Umzug Selbstständigkeit → Privat: Speichern und Lesen verlieren nic
     const p = pruefeDokument(json(d));
     expect(p.ok).toBe(true);
     if (!p.ok) return;
-    expect(p.dokument.plan).toEqual(d.plan);
-    expect(Object.keys(p.dokument.plan).filter(k => k.startsWith('kdc.') || k.startsWith('ab.'))).toEqual(['kdc.konto:5', 'kdc.est:3', 'kdc.kosten:6', 'kdc.umsatz@ps2:4', 'kdc.entnahme@ps2:7', 'ab.est:0']);
+    // Gegenprüfung 05.10. (finanzplan-5b): Handwerte, deren BEDEUTUNG sich mit finanzplan-5 geändert hat (ab.est, kdc.est …), gehen nicht verloren,
+    // wandern aber nach `handAlt` (gerechnet wird damit erst nach „übernehmen“ in Privat › Selbstständigkeit). Alles andere bleibt im Plan.
+    const { 'ab.est:0': abEst, 'kdc.est:3': kdcEst, ...bleibt } = d.plan;
+    expect(p.dokument.plan).toEqual(bleibt);
+    expect(p.dokument.handAlt).toEqual({ 'ab.est:0': abEst, 'kdc.est:3': kdcEst });
+    expect(Object.keys(p.dokument.plan).filter(k => k.startsWith('kdc.') || k.startsWith('ab.'))).toEqual(['kdc.konto:5', 'kdc.kosten:6', 'kdc.umsatz@ps2:4', 'kdc.entnahme@ps2:7']);
     expect(p.dokument.bereiche).toEqual(d.bereiche);
     expect(p.dokument.steuern).toEqual(d.steuern);
     expect(p.dokument.meta).toEqual(d.meta);
@@ -49,7 +53,7 @@ describe('Umzug Selbstständigkeit → Privat: Speichern und Lesen verlieren nic
     // Eine beliebige Änderung schreibt alles unverändert mit (nur der geänderte Pfad ändert sich).
     const r = wendeOperationenAn(p.dokument, [{ pfad: '/plan/ug.konto:8', neu: 1 }], 'kevin', '2026-10-05T10:00:00.000Z').dokument;
     const { 'ug.konto:8': _neu, ...rest } = r.plan;
-    expect(rest).toEqual(d.plan);
+    expect(rest).toEqual(bleibt); expect(r.handAlt).toEqual(p.dokument.handAlt);
     expect(r.bereiche).toEqual(d.bereiche); expect(r.steuern).toEqual(d.steuern); expect(r.planszenarien).toEqual(p.dokument.planszenarien);
   });
   it('die Kennungen bleiben: dieselben Handwert-Schlüssel wirken wie vorher (allgemein, nur im Szenario, Bestand)', () => {
@@ -73,19 +77,20 @@ describe('Umzug Selbstständigkeit → Privat: Zahlen vorher → nachher', () =>
       const ohneRunwayPrivat = (aw: unknown) => { const a = json(aw) as { runway: Record<string, unknown> }; return { ...a, runway: { ...a.runway, privat: 'gewollt anders' } }; };
       gleich(ohneRunwayPrivat(g.aw), ohneRunwayPrivat(v.aw), 'aw');
     });
-    it(`${ps}, voller Alt-Plan: MAKE, KD Ventures und Privat exakt wie vorher — die Selbstständigkeit ändert nur Steuer, Darlehen und was daraus folgt`, () => {
+    it(`${ps}, voller Alt-Plan: MAKE, KD Ventures und Privat exakt wie vorher — die Selbstständigkeit ändert nur die Steuer und was daraus folgt`, () => {
       const g = lauf(planAltMigration(), ps), v = vorher.voll[ps];
       gleich(json(g.ug), v.ug, 'ug'); gleich(json(g.pr), v.pr, 'pr');
       // Selbstständigkeit: Leistung, Kosten, Eingang, USt, Entnahme (fester Betrag) unverändert.
       const fest = ['m', 'umsatz', 'eingang', 'ustEin', 'personal', 'sach', 'kosten', 'malinBrutto', 'gewinn', 'entnahme', 'ustZahlung', 'ustOffen'];
       g.kdc.forEach((k, i) => { for (const f of fest) expect((k as unknown as Record<string, number>)[f], `kdc[${i}].${f}`).toBeCloseTo((v.kdc[i] as Record<string, number>)[f], 9); });
-      // Konto: Unterschied = Altdarlehen (−3.000 ab Okt 26, +3.000 zurück im Monat 14) − Unterschied der Steuerzahlungen; ab dem Handwert im Monat 5
-      // (12.345, in beiden Ständen) zählt nur, was danach anders fließt.
+      // Konto: Unterschied = − Unterschied der Steuerzahlungen; ab dem Handwert im Monat 5 (12.345, in beiden Ständen) zählt nur, was danach anders
+      // fließt. (finanzplan-5 hatte zusätzlich das Altdarlehen −3.000/+3.000 aus der Selbstständigkeit genommen — seit der Gegenprüfung 05.10. ist sein
+      // Geber außerhalb des Plans, wie vorher.)
       let delta = 0;
       g.kdc.forEach((k, i) => {
         const m = i + 1, alt = v.kdc[i] as unknown as { konto: number; st: { zahlung: number } };
         if (m === 5) delta = 0;
-        else delta += -(k.st.zahlung - alt.st.zahlung) - (m === 1 ? 3000 : 0) + (m === 14 ? 3000 : 0);
+        else delta += -(k.st.zahlung - alt.st.zahlung);
         expect(k.konto - alt.konto, `Konto Monat ${m}`).toBeCloseTo(delta, 6);
       });
       // Gruppe und Kennzahlen: nur über „frei“ der Selbstständigkeit.

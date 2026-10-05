@@ -81,7 +81,7 @@ describe('Rücklage & Prognose', () => {
   // 05.10.: Einkommensteuer gemeinsam (Gehalt + Selbstständigkeit) und Gewerbesteuer der Selbstständigkeit kommen aus der Finanzplanung
   // (`est`, lib/finanzen/est-gemeinsam.ts) — vorher „hochgerechneter Consulting-Gewinn × Steuerquote“, ohne Gewerbesteuer.
   const est: EstGemeinsam = {
-    jahr: 2026, gewinn: 40000, vorab: 30000, lohn: 10770, zve: 50770, estGesamt: 12000, estLohn: 1000, est: 11000, soli: 0, gewst: 1500, anrechnung: 1400, summe: 11100,
+    jahr: 2026, gewinn: 40000, vorab: 30000, lohn: 10770, zve: 50770, estGesamt: 12000, estLohn: 1000, est: 11000, soli: 0, gewst: 1500, anrechnung: 1400, korr: 0, summe: 11100, vorausgezahlt: 0, zahlung: 11100,
     gewerbe: true, hebesatz: 410, freibetrag: 24500, anrechnungFaktor: 4, splitting: false, plan: 'Arbeitsplan',
   };
   it('ESt gemeinsam und GewSt der Selbstständigkeit aus der Finanzplanung, KSt+Soli+GewSt für KD Ventures, Vorauszahlungen abgezogen', () => {
