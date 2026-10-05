@@ -3,6 +3,7 @@
 // Hebel: Firma + Gesundheit in EINER Empfehlung. Braucht ANTHROPIC_API_KEY.
 
 import { NextResponse } from 'next/server';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -17,6 +18,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   const b = await gatherBrain(undefined, personAus(req));
   const v = b.vitals;

@@ -7,6 +7,7 @@
 // Basis: Absender + Betreff (+ Vorschau wenn da) — keine Mail-Bodies im Prompt.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
@@ -26,12 +27,14 @@ interface NachrichtIn { fp: string; sender: string; subject: string; account?: s
 
 const STUFEN: Stufe[] = ['wichtig', 'normal', 'rauschen'];
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const f = (await loadJson<TriageFile>('inbox-triage')) ?? {};
   return NextResponse.json({ triage: f });
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { nachrichten?: NachrichtIn[] };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }

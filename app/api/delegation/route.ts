@@ -10,6 +10,7 @@
 // (lib/make-one/team-speicher.ts) — nie aus dem Code; leerer Speicher → Rollen-Platzhalter.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -39,13 +40,15 @@ interface DelegationRunde { zeit: string; vorschlaege: Vorschlag[]; privatAnzahl
 const RUNDE = 'delegation-runde';
 
 /** Die letzte abgelegte Runde (höchstens 7 Tage alt) — für die Aufgaben-Seite. */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const r = await loadJson<DelegationRunde>(RUNDE);
   const frisch = r && Date.now() - Date.parse(r.zeit) < 7 * 864e5 ? r : null;
   return NextResponse.json({ ok: true, runde: frisch }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   // Hintergrundlauf (ZOE, Takt) legt die Runde ab — die Aufgaben-Seite zeigt sie dann als „von ZOE“ (27.09.).
   let ablegen = false;
   try { ablegen = (await jsonBegrenzt(req))?.ablegen === true; } catch { /* ohne Rumpf: nicht ablegen */ }

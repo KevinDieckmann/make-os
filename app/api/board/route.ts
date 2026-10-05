@@ -4,6 +4,7 @@
 // KI. Read-only Synthese über die anderen Agenten.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { gatherBrain } from '@/lib/brain';
@@ -23,6 +24,7 @@ interface ProspectLite { status?: string; score?: number; company?: string; }
 interface TaskLite { title?: string; status?: string; priority?: string; dueDate?: string; }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let p: { finance?: FinanceState; prospects?: ProspectLite[]; tasks?: TaskLite[]; today?: string };
   try { p = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

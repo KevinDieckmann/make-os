@@ -6,6 +6,7 @@
 // ohne Rückfall auf eine Person).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
+import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
@@ -65,6 +66,7 @@ async function umfangVon(req: Request, wunsch: string | null): Promise<{ haushal
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const u = await umfangVon(req, new URL(req.url).searchParams.get('umfang'));
   const [stand, { bild, einstellung }] = await Promise.all([
     loadJson<ChefStand>(standName(u.haushalt)),
@@ -92,6 +94,7 @@ import { kontoName } from '@/lib/einheiten';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const agentCfg = await resolveAgent('finanzchef'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
