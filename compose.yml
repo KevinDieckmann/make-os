@@ -47,6 +47,14 @@ services:
       # Grabsteine (29.09., Paket D-B/D-C): eigenes Volume neben den Daten. Nur die App braucht sie (Art. 17, Löschfristen-
       # Lauf, Restore); der Arbeiter spricht nur HTTP mit der App und bekommt das Volume bewusst NICHT.
       MAKE_OS_GRABSTEINE_DIR: /grabsteine
+      # Brain-Index (05.10., Verschlüsselung lückenlos): der Such-Index (Vault + Aufgaben/Notizen/Angebote/Mandate im Klartext,
+      # FTS5) liegt NUR im tmpfs unten — nie auf der Platte, nicht in Sicherungen oder Hetzner-Abbildern. Nach jedem Start leer,
+      # die App baut ihn 20 s nach dem Start neu (lib/brain/index.ts `indexNachStart`); bis dahin sucht ZOE über die Dateien.
+      MAKE_OS_BRAIN_INDEX: /brain-index/index/brain-index.sqlite
+    # tmpfs mit Größenlimit (zählt zur Speichergrenze des Containers; siehe UPDATES.md 05.10.). Die App legt darin index/ mit 0700 an.
+    # Rückweg: die zwei Zeilen (tmpfs + MAKE_OS_BRAIN_INDEX) entfernen — dann liegt der Index im Arbeitsspeicher des Prozesses.
+    tmpfs:
+      - /brain-index:size=256m,mode=1777,noexec,nosuid,nodev
     volumes:
       - ${MAKE_OS_DATEN:-/srv/make-os/daten}:/app/.data
       - ${MAKE_OS_VAULT:-/srv/make-os/vault}:/vault

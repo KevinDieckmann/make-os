@@ -9,6 +9,7 @@
 //     neue Schreibungen mit 503 ab (`SchreibenGesperrt`). Next schließt parallel den Server und
 //     wartet auf offene Anfragen. Beim Beenden verschwindet das Lockfile (nur das eigene).
 //   · 5 s nach dem Start: offene Absichten fertigstellen (lib/store/absichten-fortsetzen.ts, Paket D-C #17).
+//   · 20 s nach dem Start: Brain-Index im tmpfs/Arbeitsspeicher neu bauen, alten Klartext-Index löschen (lib/brain/index.ts).
 
 import { datenOrdner, abschaltungBeginnen, warteBisStill, datenschichtLage } from './local-db';
 import { schreiberSetzen, schreiberHerz, schreiberEntfernenSync, HERZ_MS, type SchreiberEintrag } from './schreiber.mjs';
@@ -42,6 +43,13 @@ export async function betriebStarten(): Promise<void> {
     }).catch(e => console.error('[MAKE OS] Absichten beim Start nicht fertiggestellt:', e instanceof Error ? e.message : e));
   }, 5_000);
   nachStart.unref?.();
+
+  // Brain-Index (05.10., Paket „Verschlüsselung lückenlos“): liegt nur noch im tmpfs bzw. Arbeitsspeicher — nach dem Start
+  // leer. 20 s nach dem Start (Seiten zuerst) alten Klartext-Index entfernen und neu bauen; bis dahin sucht ZOE über die Dateien.
+  const brainNachStart = setTimeout(() => {
+    void import('@/lib/brain/index').then(m => m.indexNachStart()).catch(e => console.error('[MAKE OS] Brain-Index nach dem Start:', e instanceof Error ? e.message : e));
+  }, 20_000);
+  brainNachStart.unref?.();
 
   const beenden = (signal: string) => {
     abschaltungBeginnen();
