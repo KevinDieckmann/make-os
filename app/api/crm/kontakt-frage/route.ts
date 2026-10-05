@@ -17,6 +17,7 @@ import { askText, hasAnthropicKey, guthabenLeer, fremd, FREMD_REGEL } from '@/li
 import { ladeCrm } from '@/lib/crm/speicher';
 import { kontaktPaket } from '@/lib/crm/zusammenfassung';
 import { localDay } from '@/lib/zeit';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
   const auftrag = frage
     ? `Frage zu dieser Person: ${frage}`
     : 'Formuliere aus der Zusammenfassung zwei bis vier flüssige Sätze: wo wir mit der Person stehen und was als Nächstes sinnvoll ist. Behalte die Quellen-Nummern bei.';
-  const r = await askText({ system, user: `${auftrag}\n\n${fremd('kontakt', JSON.stringify(paket))}`, maxTokens: 1500, zweck: frage ? 'crm-kontakt-frage' : 'crm-kontakt-zusammenfassung', model: agent.model, timeoutMs: 60_000, effort: 'low' });
+  const r = await askText({ system, user: `${auftrag}\n\n${fremd('kontakt', JSON.stringify(paket))}`, maxTokens: 1500, zweck: frage ? 'crm-kontakt-frage' : 'crm-kontakt-zusammenfassung', ki: kiAus(req, ['crm'], { anzahl: 1 }), model: agent.model, timeoutMs: 60_000, effort: 'low' });
   if (!r.ok) {
     if (r.status === 402 || r.error === 'guthaben-leer') return NextResponse.json({ ok: false, grund: 'guthaben', text: 'Das KI-Guthaben ist gerade aufgebraucht — die Zusammenfassung oben ist aus den Daten gerechnet und gilt weiter.' }, { status: 402 });
     return NextResponse.json({ ok: false, grund: 'fehler', text: 'ZOE ist gerade nicht erreichbar — bitte gleich noch einmal.' }, { status: 200 });

@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { ALLE_SEITEN } from '@/lib/make-one/bereiche';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
     `AUFGELAUFENE FEHLER: ${fehlerZeilen.join(' | ') || 'keine'}`,
   ].join('\n');
 
-  const r = await askText({ zweck: 'loop-verbesserung', system, user, maxTokens: 1400, timeoutMs: 120_000 });
+  const r = await askText({ zweck: 'loop-verbesserung', ki: kiAus(req, ['allgemein']), system, user, maxTokens: 1400, timeoutMs: 120_000 });
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error?.slice(0, 200) ?? 'Analyse fehlgeschlagen' }, { status: 200 });
 
   let vorschlaege: { titel: string; warum: string; prio?: number }[] = [];

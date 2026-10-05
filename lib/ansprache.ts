@@ -8,6 +8,7 @@
 // Entwurf oder in die Zwischenablage — Kevin schickt.
 
 import { askJson } from '@/lib/anthropic';
+import type { KiKontext } from '@/lib/datenschutz/ki-tor';
 import { resolveAgent } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
@@ -21,7 +22,7 @@ export const RECHT =
 
 export interface Entwurf { betreff: string; email: string; linkedin: string; hinweis: string }
 
-export async function entwurfFuer(k: Kontakt): Promise<{ ok: true; entwurf: Entwurf } | { ok: false; fehler: string }> {
+export async function entwurfFuer(k: Kontakt, ki: KiKontext = { lauf: 'aufruf', person: null, kategorien: ['crm'], anzahl: 1 }): Promise<{ ok: true; entwurf: Entwurf } | { ok: false; fehler: string }> {
   if (k.eingeschraenkt) return { ok: false, fehler: `Verarbeitung eingeschränkt (Art. 18) seit ${k.eingeschraenkt.seit} — kein Entwurf.` };
   if (k.werbesperre) return { ok: false, fehler: `Werbesperre seit ${k.werbesperre.seit} — kein Entwurf.` };
   const agent = await resolveAgent('outreach');
@@ -58,7 +59,7 @@ export async function entwurfFuer(k: Kontakt): Promise<{ ok: true; entwurf: Entw
   ].filter(Boolean).join('\n');
 
   const r = await askJson<{ betreff?: string; email?: string; linkedin?: string }>({
-    zweck: 'outreach', system, user, maxTokens: 3500, model: agent.model, timeoutMs: 120_000,
+    zweck: 'outreach', system, user, maxTokens: 3500, model: agent.model, timeoutMs: 120_000, ki,
   });
   if (!r.ok || !r.data?.email) return { ok: false, fehler: r.error ?? 'Kein Entwurf erhalten.' };
 

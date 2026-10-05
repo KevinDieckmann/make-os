@@ -41,6 +41,19 @@ export async function fuehreAus(
     return { text: `${name} ist gesperrt und wird nicht ausgeführt.`, ok: false, gestapelt: false };
   }
 
+  // Datenschutz (05.10.): ein für ZOE ausgeschalteter Bereich und Gesundheit ohne Einwilligung (b) — hier, an der EINEN
+  // Stelle zur Wirkung, damit kein Weg (Gespräch, Auftrag, Hintergrund) daran vorbeiführt. Die Freigabe aus dem Stapel
+  // (`erzwingen`) gibt nichts an das Modell zurück und bleibt erlaubt — außer Gesundheit ohne Einwilligung.
+  {
+    const { werkzeugSperreFuer, kategorieVonWerkzeug } = await import('@/lib/datenschutz/ki-werkzeuge');
+    const k = kategorieVonWerkzeug(name, gruppe);
+    const sperre = k && (!opt.erzwingen || k === 'gesundheit') ? await werkzeugSperreFuer(k, opt.person) : null;
+    if (sperre) {
+      await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: 'gesperrt (Datenschutz)', ok: false, quelle: 'zoe', person: opt.person });
+      return { text: sperre, ok: false, gestapelt: false };
+    }
+  }
+
   // Der Trockenlauf liest denselben Bestand wie die Ausführung. Er läuft immer
   // — bei freien Werkzeugen, damit das Protokoll eine lesbare Zeile bekommt,
   // bei freigabepflichtigen, weil er das Vorher/Nachher im Stapel ist.

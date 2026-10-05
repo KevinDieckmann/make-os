@@ -12,6 +12,9 @@ import { logRun } from '@/lib/agent-log';
 import { computeIndex } from '@/lib/performance';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { speicherFuer } from '@/lib/zoe/raum';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -89,8 +92,11 @@ export async function POST(req: Request) {
   if (!hasAnthropicKey()) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: 'Kein Anthropic-Key.' });
 
   // ── Einordnung: nur interpretieren, nicht rechnen ──
-  const vorher = file.snapshots.filter(s => s.date < snap.date).slice(-1)[0];
-  const saeulenText = aktuell.saeulen.map(s => {
+  // Art. 9 (05.10.): ohne Einwilligung (b) gehen weder die Gesundheits-Säule noch die Gesamtzahl (die sie enthält) an die KI.
+  const frei = await gesundheitAnKi(personAus(req)).catch(() => false);
+  const fuerKi = indexFuerKi(aktuell, frei) ?? aktuell;
+  const vorher = frei ? file.snapshots.filter(s => s.date < snap.date).slice(-1)[0] : undefined;
+  const saeulenText = fuerKi.saeulen.map(s => {
     const faktoren = s.faktoren.map(f => `    · ${f.label}: ${f.echt ? `${f.wert} (${f.quelle})` : `KEINE DATEN (${f.quelle})`}`).join('\n');
     return `- ${s.label} (Gewicht ${Math.round(s.gewicht * 100)}%): ${s.score ?? 'keine Daten'}${s.score != null ? `, Datenbasis ${Math.round(s.abdeckung * 100)}%` : ''}\n${faktoren}`;
   }).join('\n');
@@ -106,7 +112,7 @@ export async function POST(req: Request) {
   ].join('\n');
 
   const user = [
-    `Stand ${aktuell.stand}. Index: ${aktuell.index ?? 'nicht berechenbar'} (${aktuell.label}).`,
+    frei ? `Stand ${aktuell.stand}. Index: ${aktuell.index ?? 'nicht berechenbar'} (${aktuell.label}).` : `Stand ${aktuell.stand}. Gesamtindex und Gesundheits-Säule bleiben privat (keine Einwilligung) — ordne nur die Säulen unten ein.`,
     `Datenbasis insgesamt: ${Math.round(aktuell.abdeckung * 100)}% — so viel des Index steht auf echten Daten.`,
     vorher ? `Vorheriger Stand (${vorher.date}): ${vorher.index}.` : 'Kein früherer Stand zum Vergleich.',
     '',
@@ -114,7 +120,7 @@ export async function POST(req: Request) {
     saeulenText,
   ].join('\n');
 
-  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000 });
+  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000, ki: kiAus(req, frei ? ['aufgaben', 'finanzen', 'gesundheit'] : ['aufgaben', 'finanzen'], { person: personAus(req) }) });
   if (!r.ok || !r.data) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: r.error ?? 'Analyse fehlgeschlagen.' });
 
   await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data });

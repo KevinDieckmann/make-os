@@ -959,7 +959,12 @@ export async function personAufzaehlen(id: string) {
   // als Kopie — auch deaktiviert, bis zur Löschung 30 Tage nach dem Deaktivieren (lib/kapazitaet/aufraeumen.ts).
   const { kapaAuskunftFuerAdressen } = await import('@/lib/kapazitaet/server');
   const kapazitaet = await kapaAuskunftFuerAdressen(m.emails);
-  return { ...verweise, uebergaben, terminFollowups, gesellschaften, kapazitaet, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  // KI-Empfänger (05.10., Art. 15 Abs. 1 lit. c): Kontakte stehen nie einzeln im KI-Protokoll (keine Kennungen) — die
+  // Auskunft nennt deshalb den Empfänger (Anthropic, USA) und die Aufrufe der Kategorie „crm“ mit Zeitraum und dem Anteil
+  // pseudonymisierter Läufe (lib/datenschutz/ki-protokoll.ts).
+  const { kiEmpfaengerFuerKontakte } = await import('@/lib/datenschutz/ki-protokoll');
+  const kiEmpfaenger = await kiEmpfaengerFuerKontakte().catch(() => null);
+  return { ...verweise, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

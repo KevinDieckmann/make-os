@@ -13,9 +13,9 @@
 // Was ZOE nachts allein erarbeitet, soll Kevin einmal gesehen haben.
 
 import { NextResponse } from 'next/server';
-import { askText, hasAnthropicKey, guthabenLeer } from '@/lib/anthropic';
+import { askText, hasAnthropicKey, guthabenLeer, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { regelBericht } from '@/lib/zoe/regelwerk';
-import { gatherBrain, promptBrain } from '@/lib/brain';
+import { gatherBrain, promptBrain, brainKategorien } from '@/lib/brain';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
@@ -25,6 +25,8 @@ import { personAus, type Person } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -144,16 +146,22 @@ export async function POST(req: Request) {
   const zeit: Tageszeit = body.zeit === 'abend' ? 'abend' : 'morgen';
 
   let lage = '';
+  let regel = '';
+  const kiS = await kiSchalterFuer(person);
+  let kategorien: KiKategorie[] = ['allgemein'];
   try {
     const brain = await gatherBrain(undefined, person);
+    regel = regelBericht(brain, zeit);
     // Regelwerk statt Fehlschlag, wenn die KI nicht kann (27.09.).
     if (!hasAnthropicKey() || guthabenLeer()) {
       return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: !hasAnthropicKey() ? 'kein Schlüssel' : 'Guthaben leer', bericht: regelBericht(brain, zeit), gestapelt: 0, offen: await offeneAnzahl().catch(() => 0) });
     }
-    lage = promptBrain(brain);
+    // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b).
+    lage = promptBrain(brain, { bereiche: kiS.bereiche });
+    kategorien = brainKategorien(brain, { bereiche: kiS.bereiche });
     // Haushalt (24.09.): Kevin hat Beträge im Briefing ausdrücklich erlaubt — nur mit benannter Person.
-    const hz = await haushaltVon(req).catch(() => null);
-    if (hz) lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`;
+    const hz = kiS.bereiche.finanzen ? await haushaltVon(req).catch(() => null) : null;
+    if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen']; }
   } catch {
     return NextResponse.json({ ok: false, error: 'Lage nicht lesbar.' }, { status: 200 });
   }
@@ -176,7 +184,10 @@ export async function POST(req: Request) {
     tools: WERKZEUGE,
     timeoutMs: 150_000,
     zweck: zeit === 'abend' ? 'abendlauf' : 'morgenlauf',
+    ki: kiAus(req, [...kategorien, 'aufgaben'], { person }),
   });
+  // Gesperrt (Hintergrund-KI aus, Bereich aus): Regelwerk statt Fehlschlag — wie ohne Schlüssel (05.10.).
+  if (kiGesperrt(r)) return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: kiSperrText(r), bericht: regel, gestapelt: 0, offen: await offeneAnzahl().catch(() => 0) });
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error?.slice(0, 200) ?? 'Modell nicht erreichbar.' }, { status: 200 });
 
   interface Block { type: string; name?: string; input?: Record<string, unknown> }

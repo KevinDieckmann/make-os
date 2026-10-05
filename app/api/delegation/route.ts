@@ -19,6 +19,7 @@ import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
 import { delegierbar, personZuKurz, teamZeilenAus } from '@/lib/make-one/team-typen';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
     ...joint.slice(0, 6).map(t => zeile(t, ' [MAKE.One]')),
   ].join('\n');
 
-  const r = await askJson<{ vorschlaege?: Partial<Vorschlag>[] }>({ zweck: 'delegation', system, user, maxTokens: 6000, model: agent.model, timeoutMs: 150_000 });
+  const r = await askJson<{ vorschlaege?: Partial<Vorschlag>[] }>({ zweck: 'delegation', ki: kiAus(req, ['aufgaben']), system, user, maxTokens: 6000, model: agent.model, timeoutMs: 150_000 });
   if (!r.ok || !Array.isArray(r.data?.vorschlaege)) {
     return NextResponse.json({ error: r.error ?? 'Keine Vorschläge erhalten.' }, { status: 200 });
   }

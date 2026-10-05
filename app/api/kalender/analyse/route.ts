@@ -31,6 +31,7 @@ import { legeKalenderVorschlaege, vorschlagsKalender, type KalenderBlock } from 
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { nameVon } from '@/lib/zoe/raum';
 import { loadJson } from '@/lib/store/local-db';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -148,7 +149,8 @@ export async function POST(req: Request) {
     conflicts.length ? `Erkannte Konflikte:\n${fremd(KALENDER_QUELLE, conflicts.map(c => `- ${c.date}: "${c.a}" ⨯ "${c.b}" (${c.overlap})`).join('\n'))}` : 'Keine Terminkonflikte erkannt.',
   ].join('\n');
 
-  const r = await askJson<{ briefing?: string; vorschlaege?: KalenderBlock[] }>({ zweck: 'kalender-analyse', system, user, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ briefing?: string; vorschlaege?: KalenderBlock[] }>({ zweck: 'kalender-analyse', system, user, maxTokens: 4000, model: agent.model,
+    ki: kiAus(req, eigeneAngaben ? ['kalender', 'aufgaben', 'gesundheit'] : ['kalender', 'aufgaben'], { person: zugang.person }) });
   if (!r.ok || !r.data) return NextResponse.json({ briefing: r.error ?? 'Analyse gerade nicht möglich — Konflikte sind geprüft.', conflicts, vorschlaege: [], eingetragen: false, gestapelt: 0 });
 
   const vorschlaege: KalenderBlock[] = (Array.isArray(r.data.vorschlaege) ? r.data.vorschlaege : []).slice(0, 5)

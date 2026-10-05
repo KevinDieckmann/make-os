@@ -13,6 +13,8 @@ import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveVitals, vitalsHint } from '@/lib/vitals';
+import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { nameVon } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
@@ -63,7 +65,8 @@ export async function POST(req: Request) {
     termineFuerZoe(person, tage[0], tagePlus(tage[6], 1)),
     ladeAufgabenSicht(person), // Sichtfilter „nur ich“ (29.09.)
     loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean }[]> & { fokus?: Record<string, string> }>('ziele'),
-    resolveVitals(undefined, person),
+    // Art. 9 (05.10.): Vitalwerte nur mit Einwilligung (b) der Person an die KI — sonst gar nicht erst lesen.
+    gesundheitAnKi(person).then(frei => (frei ? resolveVitals(undefined, person) : null)).catch(() => null),
     loadJson<{ routinen: RoutineDef[] }>('routinen'),
     loadJson<{ regler: Record<string, number> }>('fokus-regler'),
     eigenerGesundheitsKontext(person),
@@ -122,7 +125,7 @@ export async function POST(req: Request) {
 
   const user = [
     `Woche: ${tage[0]} bis ${tage[6]}. Heute ist ${localDay()}.`,
-    `Recovery ${vitals.rec}%, Schlaf ${vitals.sleep}h${vitalsHint(vitals)}.`,
+    vitals ? `Recovery ${vitals.rec}%, Schlaf ${vitals.sleep}h${vitalsHint(vitals)}.` : 'Keine Gesundheitswerte (keine Einwilligung) — plane mit mittlerer Last.',
     eigeneAngaben,
     '',
     `FESTE TERMINE (unverrückbar):`,
@@ -147,7 +150,8 @@ export async function POST(req: Request) {
     body.hinweis ? `\nHinweis von ${name}: ${body.hinweis}` : '',
   ].filter(Boolean).join('\n');
 
-  const r = await askJson<{ begruendung?: string; bloecke?: Block[] }>({ zweck: 'planung-vorschlag', system, user, maxTokens: 6000, timeoutMs: 150_000 });
+  const r = await askJson<{ begruendung?: string; bloecke?: Block[] }>({ zweck: 'planung-vorschlag', system, user, maxTokens: 6000, timeoutMs: 150_000,
+    ki: kiAus(req, vitals || eigeneAngaben ? ['kalender', 'aufgaben', 'gesundheit'] : ['kalender', 'aufgaben']) });
   if (!r.ok || !r.data) return NextResponse.json({ error: r.error ?? 'Kein Vorschlag.' }, { status: 200 });
 
   // Server-seitige Härtung: Raster, Grenzen, gültige Tage/Arten/taskIds — und

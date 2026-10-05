@@ -14,6 +14,7 @@ import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-d
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
     'Je Sektion 2-4 Punkte, max 4 Risiken, 3 Fokus-Punkte für nächste Woche. Beziehe dich auf die echten Zahlen/Aufgaben.',
   ].join('\n');
 
-  const r = await askJson<{ headline?: string; sektionen?: unknown[]; risiken?: string[]; naechsteWoche?: string[] }>({ zweck: 'board', system, user: context, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ headline?: string; sektionen?: unknown[]; risiken?: string[]; naechsteWoche?: string[] }>({ zweck: 'board', ki: kiAus(req, ['finanzen', 'aufgaben', 'crm']), system, user: context, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ headline: r.error ?? 'Analyse gerade nicht möglich — Kennzahlen stehen.', stats, sektionen: [], risiken: [], naechsteWoche: [] });
 
   const out = {

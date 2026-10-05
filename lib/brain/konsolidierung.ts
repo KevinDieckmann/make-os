@@ -90,7 +90,9 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
     'Antworte NUR als JSON: {"vorschlaege":[{"titel":"…","text":"… (Markdown, knapp)","ziel":"neu|ergaenzung|regel","ziel_notiz":"…","begruendung":"…","quelle":"…","vertraulichkeit":"gemeinsam|privat-kevin|privat-malin","prioritaet":2,"gilt_fuer":"beide"}]}',
     FREMD_REGEL,
   ].join('\n');
-  const r = await askText({ zweck: 'brain-konsolidierung', system, user: fremd('tagesmaterial', material), maxTokens: 3000, timeoutMs: 150_000 });
+  // Datenschutz (05.10.): der nächtliche Lauf ist Hintergrund-KI (Schalter, Pseudonymisierung der Kontaktnamen); gesperrt → Regelwerk.
+  const r = await askText({ zweck: 'brain-konsolidierung', system, user: fremd('tagesmaterial', material), maxTokens: 3000, timeoutMs: 150_000,
+    ki: { lauf: erzwingen ? 'aufruf' : 'hintergrund', person: null, kategorien: ['brain', 'allgemein'] } });
   if (!r.ok) {
     const v = regelVorschlag(neu, heute);
     const a = v ? await vorschlagAblegen(v) : null;

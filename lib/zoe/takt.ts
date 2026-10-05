@@ -74,8 +74,21 @@ interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des 
  * nicht eine eigene Buchführung — sonst gäbe es zwei Wahrheiten darüber,
  * wann etwas zuletzt lief.
  */
+/**
+ * Läufe des Takts, die NUR mit dem Modell etwas tun (05.10., Datenschutz): mit ausgeschalteter Hintergrund-KI (System ›
+ * Datenschutz) reiht der Takt sie gar nicht erst ein, und der Arbeiter führt einen schon eingereihten nicht aus.
+ * Alle anderen laufen weiter — ohne KI (Gesundheit/Markttraktion-Nachrichten, HOI, Löschfristen, Durchsicht, Absichten,
+ * Tagesstart) bzw. mit Regelwerk statt Modell, weil das KI-Tor den Aufruf sperrt (Morgen-/Abendlauf, Tageslauf-Schritte
+ * „übersprungen“, Heads, Brain-Konsolidierung). Kein Byte geht in beiden Fällen an das Modell.
+ */
+export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef']);
+
 export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
-  const roh = await faelligOhnePause(jetzt);
+  const roh0 = await faelligOhnePause(jetzt);
+  if (!roh0.length) return roh0;
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const kiAn = (await kiSchalterFuer(null)).hintergrund;
+  const roh = kiAn ? roh0 : roh0.filter(f => !KI_LAEUFE.has(f.auftrag.name));
   if (!roh.length) return roh;
   const auftraege = (await loadJson<{ auftraege?: AuftragSpur[] }>('zoe-auftraege'))?.auftraege ?? [];
   const heute = localDay(jetzt);

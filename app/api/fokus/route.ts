@@ -6,12 +6,13 @@ import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
-import { zoneOf, vitalsHint } from '@/lib/vitals';
+import { resolveVitals, zoneOf, vitalsHint } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
 import { personAus } from '@/lib/zoe/raum';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   const b = await gatherBrain(undefined, personAus(req));
-  const v = b.vitals;
+  // Anzeige (eigene Werte der Person, bleiben im Haus) getrennt vom Prompt: an die KI gehen Vitalwerte nur mit
+  // Einwilligung (b) — `b.gesundheitFrei` (Art. 9, 05.10.).
+  const v = b.gesundheitFrei ? b.vitals : await resolveVitals(undefined, personAus(req));
   const rec = v.rec;
   const zone = zoneOf(rec);
 
@@ -47,11 +50,16 @@ export async function POST(req: Request) {
   ].join('\n');
 
   const eigeneAngaben = await eigenerGesundheitsKontext(personStreng(req));
-  const message = `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Notiz: "${v.note}"` : ""}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
+  const koerper = b.gesundheitFrei
+    ? `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Notiz: "${v.note}"` : ''}`
+    : 'KEINE GESUNDHEITSWERTE: Die Person hat nicht eingewilligt, dass sie an die KI gehen. Plane nach den Aufgaben mit mittlerer Last (wie GELB) und frag nicht nach Werten; unter **Tagesform** und **Körper** nur ein allgemeiner Satz.';
+  const message = `${koerper}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
 
-  const r = await askText({ zweck: 'fokus', system, user: message, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'fokus', system, user: message, maxTokens: 4000, model: agent.model,
+    ki: kiAus(req, b.gesundheitFrei || eigeneAngaben ? ['aufgaben', 'gesundheit'] : ['aufgaben']) });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });
 
-  await logRun('fokus', `Tagesform ${zone} (${rec}%)`, { zone, recovery: rec, reply: r.text.slice(0, 1500) });
+  // Der Titel des Laufs geht später als Gedächtnis in andere Prompts (blockGedaechtnis) — deshalb ohne Gesundheitswert.
+  await logRun('fokus', 'Tagesplan erstellt', { ...(b.gesundheitFrei ? { zone, recovery: rec } : {}), reply: r.text.slice(0, 1500) });
   return NextResponse.json({ reply: r.text, recovery: rec, zone, stand: v.stand, heute: v.heute });
 }

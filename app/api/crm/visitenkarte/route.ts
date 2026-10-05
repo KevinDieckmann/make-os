@@ -20,6 +20,7 @@ import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
 import { pruefeBild, saeubereKarte, hatInhalt, ROH_FELDER, MAX_BILD_MB } from '@/lib/crm/visitenkarte';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
     maxTokens: 1200,
     timeoutMs: 45_000,
     retries: 1,
-    zweck: 'crm-visitenkarte',
+    zweck: 'crm-visitenkarte', ki: kiAus(req, ['crm'], { anzahl: 1 }),
   });
   if (!r.ok) {
     // Nur Status und Kurztext ins Log — nie das Bild.

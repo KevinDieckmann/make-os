@@ -32,6 +32,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
   ] },
   { titel: 'Zugang & Daten', eintraege: [
     { href: '/os/konto', label: 'Konto', was: 'Name, Passwort, Telegram, Einladen, Gesundheit teilen' },
+    { href: '/os/datenschutz', label: 'Datenschutz', was: 'Gesundheits-Einwilligung, KI-Schalter, Telegram, KI-Protokoll' },
     { href: '/os/verbindungen', label: 'Verbindungen', was: 'Whoop, Microsoft, Miro' },
     { href: '/os/datenbasis', label: 'Datenbasis', was: 'wo welche Zahl herkommt' },
     { href: '/os/stammdaten', label: 'Stammdaten', was: 'Firmen, Konten, Adressen' },
