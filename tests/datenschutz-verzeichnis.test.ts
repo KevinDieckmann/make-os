@@ -45,6 +45,16 @@ describe('Verzeichnis vollständig', () => {
   });
 });
 
+describe('Speichern von Hand kürzt nichts (Säuberer der CRM-Liste)', () => {
+  it('jede Verarbeitung übersteht saeubern() unverändert (außer „stand“), samt empfaengerIds', async () => {
+    const { saeubern } = await import('@/lib/crm/speicher');
+    for (const v of verzeichnisVervollstaendigen([], J).liste) {
+      const s = saeubern('verarbeitungen', v as unknown as Record<string, unknown>, J, 'pa');
+      expect({ ...s, stand: v.stand }, v.id).toEqual(v);
+    }
+  });
+});
+
 describe('Export', () => {
   const liste = verzeichnisVervollstaendigen([], J).liste;
   it('ohne Verantwortlichen: deutlich „fehlt“; mit: aufgelöst, Empfänger mit AVV-Status', () => {

@@ -305,8 +305,11 @@ function antrag(o: Record<string, unknown>, jetzt: string, person: string): Antr
 function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung | null {
   if (!idOk(o.id) || !txt(o.name)) return null;
   return {
-    id: String(o.id), name: txt(o.name, 160), zweck: txt(o.zweck, 1500), personen: txt(o.personen, 600), daten: txt(o.daten, 800), rechtsgrundlage: txt(o.rechtsgrundlage, 300),
-    empfaenger: txt(o.empfaenger, 800), drittland: txt(o.drittland, 300), loeschfrist: txt(o.loeschfrist, 300), toms: txt(o.toms, 1500), verantwortlich: txt(o.verantwortlich, 200), stand: jetzt.slice(0, 10),
+    // 05.10. (DSGVO-Grundlagen): Rechtsgrundlage/Löschfrist länger (die Texte des Verzeichnisses brauchen es — vorher kürzte ein Speichern
+    // von Hand still), dazu die Kennungen aus dem Empfänger-Register (`empfaengerIds`, höchstens 20).
+    id: String(o.id), name: txt(o.name, 160), zweck: txt(o.zweck, 1500), personen: txt(o.personen, 600), daten: txt(o.daten, 800), rechtsgrundlage: txt(o.rechtsgrundlage, 800),
+    empfaenger: txt(o.empfaenger, 800), drittland: txt(o.drittland, 300), loeschfrist: txt(o.loeschfrist, 800), toms: txt(o.toms, 1500), verantwortlich: txt(o.verantwortlich, 200), stand: jetzt.slice(0, 10),
+    ...(Array.isArray(o.empfaengerIds) ? { empfaengerIds: Array.from(new Set(o.empfaengerIds.map(x => String(x)).filter(x => /^[a-z0-9][a-z0-9-]{1,40}$/.test(x)))).slice(0, 20) } : {}),
   };
 }
 

@@ -7,6 +7,7 @@
 import type { Verarbeitung } from '@/lib/crm/typen';
 import { avvText, garantieText, rolleText, verantwortlichAufloesen, verantwortlicherAuskunft, VERANTWORTLICHER_FEHLT, type Empfaenger, type Verantwortlicher } from './einrichtung';
 import { LOESCHFRISTEN, SICHERUNG_SATZ, fristText, type Fristen } from '@/lib/crm/loeschfristen';
+import { tagVon } from '@/lib/zeit';
 
 export interface VerzeichnisDokument {
   titel: string; stand: string; hinweis: string;
@@ -21,7 +22,7 @@ export function verzeichnisDokument(a: { verarbeitungen: readonly Verarbeitung[]
   const nachId = new Map(a.empfaenger.map(e => [e.id, e]));
   return {
     titel: 'Verzeichnis von Verarbeitungstätigkeiten (Art. 30 Abs. 1 DSGVO)',
-    stand: a.jetzt.slice(0, 10),
+    stand: tagVon(a.jetzt),
     hinweis: 'Aus MAKE OS erzeugt. Entwurf — keine Rechtsberatung, einmal anwaltlich gegenlesen.',
     verantwortlicher: verantwortlicherAuskunft(a.verantwortlicher),
     verarbeitungen: a.verarbeitungen.map(({ empfaengerIds, ...v }) => ({
