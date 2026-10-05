@@ -4,6 +4,33 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Selbstständigkeit überall unter Privat · Steuern gewerblich · Runway Privat (05.10.2026, nur lokal — Branch `selbst-privat`)
+
+Kevin 05.10.: „Selbstständigkeit raus aus Business“ — „Ich habe in der Selbstständigkeit einfach ein Gewerbe angemeldet“ — „Ja, überall unter
+Privat“ — „Runway Privat zählt das Konto der Selbstständigkeit mit“. EINE Zuordnung je Einheit (lib/einheiten.ts `bereichVon`, Vorgabe aus der
+Rechtsart, je Instanz umstellbar über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`). Regel: CLAUDE.md › „Bereich je Einheit“.
+- **Business-Index/Cockpit:** Sichten Gesamt · KD Ventures · MAKE (keine Sicht „Selbstständigkeit“, nicht in Gesamt); der Server liefert Konten,
+  Posten, Abschlüsse, Einstellungen, Deals/Mandate der Selbstständigkeit nicht aus (`?scope=kdc` → 400). **Scores ändern sich gewollt** —
+  Beispiel mit erfundenen Zahlen (tests/selbst-privat.test.ts): Index 78 → 64, Finanzielle Gesundheit 73 → 64, Personal 85 → 33, Markttraktion
+  100 → 86; Auslastung 80 % und Tagessatz 1.250 € → „keine Daten“ (sie hatten nur die Selbstständigkeit als Basis). Head of Finance und ZOE ebenso.
+- **Aufgaben/Spaces:** Space „Selbstständigkeit“ (`kdc`) steht unter Privat (eigener Reiter neben „Privat“); Aufgaben behalten Space, Einheit,
+  Projekte, Listen; das Feld `space` wird beim nächsten Schreiben `privat` (abgeleitet). Business-Filter/-Einheiten ohne „Selbstständigkeit“.
+- **Liquidität, Zahlen › Business, Fluss „Für dich“, Lichtfäden, Kalender-Fristen, Brain-Kugel:** Posten/Konten/Fristen der Selbstständigkeit
+  zählen unter Privat (Business-Vorschau ohne sie; in der Liquiditäts-Liste bleiben sie sichtbar mit „Privat · Selbstständigkeit“).
+- **Steuern:** gewerblich mit Gewerbesteuer; ESt gemeinsam + GewSt aus der Finanzplanung (EINE Rechenquelle); Steuer-Seite auch unter Privat;
+  unter Business nur KD Ventures/MAKE (serverseitig). Jörg-Frage 2 beantwortet (FINANZPLANUNG_JETZT.md).
+- **Runway Privat** (Finanzplanung) zählt das freie Geld der Selbstständigkeit mit.
+- Keine neue Route; `/api/steuern` kann jetzt `?space=business` (Routen-Register-Text ergänzt). Keine Datenänderung beim Laden, keine neuen Felder.
+- **Vor dem Upload für Kevin:** Monatsabschlüsse der Selbstständigkeit im Business-Cockpit (falls je eingetragen) bleiben gespeichert, werden aber
+  nirgends mehr gezeigt — Entscheidung offen. Ziele/Meilensteine mit Einheit „Selbstständigkeit“ bleiben im Business, bis Kevin entscheidet.
+
+**Rückweg:** alten Stand zurückspielen — es gibt keine neuen gespeicherten Felder; der alte Stand liest alles weiter. Einzige gespeicherte Änderung:
+Aufgaben im Space `kdc` tragen nach dem ersten Schreiben `space: 'privat'` — der alte Stand leitet `space` aus `spaceId` neu ab (`uebernehmen`)
+und schreibt beim nächsten Schreiben wieder `business`. Neue Steuer-Aufgaben tragen zusätzlich `spaceId` (vom alten Stand verstanden). Die
+Steuer-Seite schreibt die Steuerquote nicht mehr — der alte Stand nutzt den zuletzt gespeicherten Wert. Ohne Rückweg im Code:
+`NEXT_PUBLIC_MAKE_OS_EINHEITEN='{"kdc":{"bereich":"business"}}'` stellt die Zuordnung auf „Selbstständigkeit im Business“ zurück (Steuern bleiben
+gewerblich/aus der Finanzplanung).
+
 ## Finanzplanung: Selbstständigkeit zu Privat · EINE Einkommensteuer · Darlehen (05.10.2026, nur lokal — Branches `finanzplan-5` + `finanzplan-5b`)
 
 > **Rückweg nur mit Sicherung von vor dem Upload** — sonst gehen Darlehen, Gehalt Jan–Sep (1 und 2), Vorauszahlungen 2026, Veranlagung/Pauschbetrag

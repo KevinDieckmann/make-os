@@ -413,8 +413,10 @@ Erstattungen kommen im Konto der Selbstständigkeit an · keine Kirchensteuer ·
 ### Fragen an Jörg (Steuerberater)
 1. **Vorsteuer:** Der Plan zieht keine Vorsteuer auf Kosten ab (USt-Zahllast = volle USt auf die Eingänge) — bei MAKE, KD Ventures und der Selbstständigkeit.
    Welche Kosten sind vorsteuerabzugsfähig, soll der Plan sie abziehen?
-2. **Selbstständigkeit gewerblich oder freiberuflich?** Der Plan rechnet heute Gewerbesteuer (Freibetrag, Anrechnung). Der Steuern-Bereich (`lib/steuern`)
-   führt sie als Freiberuf ohne Gewerbesteuer — eins von beiden stimmt nicht. Bei Freiberuf: Gewerbesteuer-Zeile der Selbstständigkeit ausschalten.
+2. ~~**Selbstständigkeit gewerblich oder freiberuflich?**~~ **Beantwortet (Kevin 05.10.: „Ich habe in der Selbstständigkeit einfach ein Gewerbe
+   angemeldet“) → gewerblich mit Gewerbesteuer.** Der Steuern-Bereich rechnet seit `selbst-privat` genauso (Abschnitt „selbst-privat“ unten): Rechtsform
+   und Gewerbesteuer kommen aus „Welche Steuern gelten?“ der Selbstständigkeit, Einkommen- und Gewerbesteuer aus der Finanzplanung (EINE Rechenquelle).
+   Für Jörg bleibt nur: bestätigen, dass kein Freiberuf vorliegt (sonst die Gewerbesteuer-Zeile der Selbstständigkeit ausschalten — wirkt dann überall).
 3. **Ankermandat ohne USt:** Grund bestätigen (Kunde im Ausland/Reverse Charge, steuerfreie Leistung …?) — der Plan rechnet es bewusst ohne USt.
 4. **Runway Privat** zählt Sparen als ausgegeben: liegen die Sparkonten in den Kontoständen (dann ist der Runway zu kurz) oder nicht?
 5. **Gemeinsame Einkommensteuer:** Einzel- oder Zusammenveranlagung (Splitting; dann zählt auch Gehalt 2)? Reicht der Pauschbetrag oder gibt es
@@ -432,6 +434,22 @@ Siehe UPDATES.md (Eintrag finanzplan-5). Kurz: neue Felder optional (`darlehen`,
 `steuern.kdc.param.{lohnEinbeziehen,veranlagung,werbungskosten}`); der alte Stand liest das Dokument weiter und lässt sie beim nächsten Schreiben fallen
 (`pruefeDokument`, `pruefeSteuern` verwerfen Unbekanntes), rechnet dann wieder getrennt (Abschluss für sich, ESt ohne Gehalt) und zeigt die
 Selbstständigkeit wieder unter Business. Handwerte bleiben erhalten (gleiche Kennungen).
+
+## selbst-privat (05.10.): die Selbstständigkeit überall unter Privat · Steuern gewerblich aus EINER Rechenquelle · Runway Privat mit Selbstständigkeit
+Kevin 05.10.: „Selbstständigkeit raus aus Business“ (auch Business-Cockpit, Business-Index, Finanzielle Gesundheit, Sichten) — „Ich habe in der
+Selbstständigkeit einfach ein Gewerbe angemeldet“ — „Ja, überall unter Privat“ (Spaces, Aufgaben, Liquiplan, Lichtfäden …) — „Runway Privat zählt das
+Konto der Selbstständigkeit mit“. Technik und Regel: CLAUDE.md › „Bereich je Einheit“. Kernformeln der Finanzplanung unverändert, außer Runway Privat.
+- **Steuern-Bereich (lib/steuern):** vorher Freiberuf ohne Gewerbesteuer und „Einkommensteuer (Anteil Consulting) = hochgerechneter Ist-Gewinn × Steuerquote“.
+  Jetzt: gewerblich; Einkommensteuer gemeinsam (Gehalt + Selbstständigkeit, Differenzmethode, § 35, Soli) und Gewerbesteuer (Freibetrag 24.500 €, Hebesatz
+  aus „Welche Steuern gelten?“) aus `estGemeinsamFuer` = `estJahre` des Arbeitsplans — dieselbe Zahl wie die Karte „Einkommensteuer gemeinsam“
+  (Prüfstand 2026: 8.559 €, davon GewSt 1.246, zvE 44.170). Abgezogen werden die bis heute fälligen Vorauszahlungen aus den Steuer-Einstellungen.
+  Ohne Finanzplanung für das Jahr: Zeile „fehlt“ statt Schätzung. Die Steuerquote bleibt gespeichert, zählt aber nicht mehr.
+- **Steuer-Seite unter Privat und Business:** Privat zeigt alles (Privat · Selbstständigkeit, dann KD Ventures · MAKE), Business nur KD Ventures · MAKE —
+  serverseitig (`?space=business` oder `finanzRecht: 'business'`). Fristen-Links von Privat/Selbstständigkeit führen in die Privat-Sicht.
+- **Runway Privat (Finanzplanung):** Privatkonten + aufgelaufene Luft + `frei` der Selbstständigkeit (Konto − Steuerrücklage − offene USt) je Monat.
+  planFix: vorher 0 Monate (Privat allein sofort unter null) → nachher „im Plan nie“. Die Entnahme zählt nicht doppelt.
+- **Vorher → Nachher Steuern (Regression `finanz-einheiten-summen`, erfundene Zahlen):** Fristen 26 → 30 (Selbstständigkeit +4 Gewerbesteuer-
+  Vorauszahlungen), Soll Privat 15.900 € (Steuerquote 30 %) → 0 € mit „fehlt“ (der Testfall hat keinen Plan), Summe 17.400 → 1.500 €.
 
 ## Gegenprüfung finanzplan-5 (05.10.) — Funde und Status (Branch `finanzplan-5b`)
 

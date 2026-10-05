@@ -73,6 +73,31 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
 
+## Bereich je Einheit — die Selbstständigkeit gehört zu Privat (05.10., Branch `selbst-privat`, nur lokal; UPDATES.md)
+Kevin 05.10.: „Selbstständigkeit raus aus Business“ — „Ja, überall unter Privat“ — „Ich habe in der Selbstständigkeit einfach ein Gewerbe
+angemeldet“ — „Runway Privat zählt das Konto der Selbstständigkeit mit“. **EINE Zuordnung** in `lib/einheiten.ts`: `RECHTSART` (kdc =
+Einzelunternehmen, kdv/ug = Kapitalgesellschaft) → `BEREICH_JE_EINHEIT` (Vorgabe: Einzelunternehmen → privat, Kapitalgesellschaft → business; je
+Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` umstellbar). Lesen NUR über `bereichVon`, `BUSINESS_GESELLSCHAFTEN`,
+`PRIVAT_GESELLSCHAFTEN`, `istBusinessGesellschaft`, `gehoertZuPrivat`, `bereichVonFirma` (Firmen-Posten: ohne Firma/unbekannt = Business wie bisher),
+`bereichVonGesellschaft` (CRM: „offen“ = Business), `BUSINESS_EINHEITEN_NAMEN`, `GEHOERT_ZU_PRIVAT` — **nie `kdc` als Sonderfall abfragen.**
+- **Business-Index:** Sichten = Gesamt + Business-Gesellschaften; `ladeRoh` filtert serverseitig (Konten, Rechnungen, Zahlungen, Merk-/Planposten,
+  Abschlüsse, Einstellungen, Deals/Mandate einer Privat-Einheit kommen nicht an; Grundlage/V1 nur, wenn die Selbstständigkeit Business ist);
+  `?scope=kdc` → 400, Abschluss/Einstellungen für kdc → 400 „gehört zu Privat“; gespeicherte kdc-Werte bleiben im Speicher. Operative Kennzahlen in
+  Gesamt (`firmenFuerKennzahl`): die Business-Firmen, die die Kennzahl nicht ausnimmt — Auslastung/Tagessatz bei uns „keine Daten“.
+- **Spaces/Aufgaben:** `spaceBereich`/`bereichVonSpace` (lib/make-one/space-regeln.ts, lib/aufgaben/struktur.ts): Space `kdc` ist ein Firmen-Space im
+  Privat-Bereich — `uebernehmen` setzt `space: 'privat'`, Kennung/Einheit/Projekte bleiben; Leiste: eigener Reiter neben Privat, „Firmen ▾“ nur Business;
+  `einheitErlaubt` (Einheit auch in Firmen-Spaces unter Privat); Fluss `aufgaben` mit `space` serverseitig gefiltert; Brain-Kugel: kdc-Aufgaben privat.
+- **Liquidität:** `nurBusiness`/`businessFirmen`/`vorschau(…, ohnePrivat)` lassen Privat-Einheiten weg (ausdrücklich `nurFirma` kdc rechnet weiter);
+  `ohnePrivatPosten` = nur „ausdrücklich privat“ (Steuern, CRM-Umsatz). Lichtfäden/Kalender/Fristen: `bereichVonFirma`/`gehoertZuPrivat`.
+- **Steuern:** gewerblich (STANDARD kdc `einzel` + Gewerbesteuer); mit Finanzplanung kommen Rechtsform/GewSt aus deren Steuerprofil
+  (`mitFinanzplanung`), ESt gemeinsam + GewSt aus `estGemeinsamFuer` (lib/finanzen/est-gemeinsam.ts → `estJahre`, EINE Rechenquelle; die Steuerquote
+  zählt nicht mehr). Seite unter Privat (alles) und Business (`?space=business` bzw. `finanzRecht: 'business'` → `steuernNurBusiness`, Schreiben auf
+  Privates → 403 `businessSchreibenErlaubt`). Aufgaben-Abgleich immer über alle Fristen.
+- **Finanzplanung:** Runway Privat = Privatkonten + Luft + `frei` der Selbstständigkeit (lib/finanzen/szenarien.ts); `sicht.ts` liest die Liste aus
+  `BUSINESS_GESELLSCHAFTEN` (die Achse `kdc` bleibt dort fest privat).
+- **Tests:** tests/selbst-privat.test.ts (Vorher → Nachher, Umzug Altbestand, Plattform-Umstellung). Mechanik-Tests mit der Selbstständigkeit im Business
+  setzen die Instanz-Einstellung per `vi.hoisted` (business-index, business-modell, business-verankert, finanz-einheiten-summen, kapazitaet).
+
 ## Demo-Instanz (05.10., nur lokal, Branch `demo-schnappschuss`; Anleitung `DEMO.md`)
 - **Saat** `scripts/demo-saat.mjs` → `lib/demo/server.ts` `demoSaenInLeerenOrdner` → `lib/demo/saat.ts` `demoSaen`: erfundener Haushalt
   `demo` (Lena/Jonas `@example.invalid`, Team-Person Mira), CRM, Unternehmen mit Holding + Gründungsfahrplan, Ziele/Meilensteine,
