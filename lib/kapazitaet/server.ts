@@ -32,7 +32,7 @@ import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
 import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit } from './modell';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
-import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, type KapaAuskunft } from './aufraeumen';
+import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, kapaVerwaisteKonten, type KapaAuskunft } from './aufraeumen';
 import { planFesthalten, planOhnePersonen, sauberPlanDatei, planAufbewahrenAb } from './plan';
 import { WOCHEN_STANDARD, type KapaDatei, type KapaStand, type PersonEingabe, type PostenEingabe, type KapaKennzahlen, type PlanDatei } from './typen';
 
@@ -256,6 +256,26 @@ export async function kapaDeaktivierteAufraeumen(haushalt: string, jetzt = new D
   if (geloescht.length) await protokolliere(kapaName, geloescht.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' });
   if (planGeloescht.length) await protokolliere(planName, planGeloescht.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' });
   return bericht;
+}
+
+/**
+ * Morgenlauf-Schritt „Kapazität entfernter Konten“ (05.10., DSGVO-Grundlagen): Kapazitätsdaten und Plan-Zeilen von `konto-*`, zu denen
+ * es kein Konto mehr gibt, löschen. Idempotent; schreibt nur, wenn etwas fällig ist; Protokoll „System“ (nur Kennungen).
+ */
+export async function kapaEntfernteKontenAufraeumen(haushalt: string): Promise<{ personen: number; teile: number }> {
+  const kapaName = kapaSpeicherFuer(haushalt);
+  const planName = kapaPlanSpeicherFuer(haushalt);
+  const { konten } = await ladeKonten();
+  const speicher = new Set(konten.map(k => k.speicher));
+  const inhaberDa = konten.some(k => k.rolle === 'inhaber');
+  const ids = kapaVerwaisteKonten(await loadJson<KapaDatei>(kapaName), await loadJson<PlanDatei>(planName), speicher, inhaberDa);
+  if (!ids.length) return { personen: 0, teile: 0 };
+  const weg = new Set(ids);
+  let teile = 0;
+  await updateJson<KapaDatei>(kapaName, alt => { const r = kapaOhnePersonen(alt, weg); teile += r.teile; return r.teile ? r.datei : (alt as KapaDatei); });
+  await updateJson<PlanDatei>(planName, alt => { const r = planOhnePersonen(alt, weg); teile += r.teile; return r.teile ? r.datei : (alt as PlanDatei); });
+  if (teile) await protokolliere(kapaName, ids.map(id => ({ op: 'geloescht' as const, id })), { art: 'system' });
+  return { personen: ids.length, teile };
 }
 
 /** Meilensteine (Business) und Jahresziele mit `personen` — nur Verweise für die Auskunft. */

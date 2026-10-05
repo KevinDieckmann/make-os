@@ -118,3 +118,17 @@ export function kapaAuskunft(o: {
     ],
   };
 }
+
+// ── Entfernte Konten (05.10., DSGVO-Grundlagen — vorher „offen“ im Register) ──
+// Konten werden nicht deaktiviert, sondern entfernt. Danach blieben ihre Kapazitätsdaten (`konto-<speicher>`) und Plan-Zeilen
+// ohne Löschfrist liegen. Jetzt: beim nächsten Morgenlauf weg (das Entfernen des Kontos ist die bewusste, endgültige Handlung).
+// Schutz: nur, wenn die Konten-Liste einen Inhaber enthält (ein leerer/kaputter Konten-Bestand löscht nie etwas).
+
+/** Kennungen `konto-*` in Kapazität und Plan, zu denen es kein Konto mehr gibt. */
+export function kapaVerwaisteKonten(kapa: unknown, plan: unknown, speicher: ReadonlySet<string>, inhaberDa: boolean): string[] {
+  if (!inhaberDa || !speicher.size) return [];
+  const d = sauberKapaDatei(kapa as KapaDatei | null);
+  const p = (plan && typeof plan === 'object' && Array.isArray((plan as PlanDatei).wochen)) ? (plan as PlanDatei).wochen : [];
+  const ids = new Set<string>([...Object.keys(d.personen), ...d.zuweisungen.map(z => z.person), ...p.flatMap(w => (Array.isArray(w.personen) ? w.personen.map(x => x.id) : []))]);
+  return Array.from(ids).filter(id => id.startsWith(KONTO_PRAEFIX) && !speicher.has(id.slice(KONTO_PRAEFIX.length))).sort();
+}

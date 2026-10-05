@@ -13,6 +13,7 @@ import type { AgentConfigMap } from '@/lib/agent-config';
 import type { DatenschutzUmfeld } from '@/lib/crm/datenschutz';
 import { empfaengerWirksam, verantwortlicherWirksam } from './einrichtung';
 import { ladeEinrichtung } from './einrichtung-server';
+import { PANNEN_SPEICHER, panneOffen, type PannenDatei } from './pannen';
 
 /** Die Statusdatei der Nachtsicherung (Klartext, nur Zahlen) — null, wenn es keine gibt. */
 export async function sicherungsStatus(): Promise<DatenschutzUmfeld['sicherung']> {
@@ -37,5 +38,14 @@ export async function datenschutzUmfeld(): Promise<DatenschutzUmfeld> {
     zweiterFaktor: { konten: haushalt.length, mit: haushalt.filter(k => !!k.zweiterFaktor).length },
     sicherung: await sicherungsStatus(),
     agenten: { aktiv: ALL_AGENTS.filter(a => cfg[a.id]?.enabled !== false).length, gesamt: ALL_AGENTS.length },
+    pannen: await pannenLage(),
   };
+}
+
+/** Offene und dringende Pannen (nur Zahlen). */
+async function pannenLage(): Promise<{ offen: number; dringend: number }> {
+  const d = await loadJson<PannenDatei>(PANNEN_SPEICHER).catch(() => null);
+  const jetzt = new Date().toISOString();
+  const offen = (d?.pannen ?? []).filter(p => !p.abgeschlossenAm);
+  return { offen: offen.length, dringend: (d?.pannen ?? []).filter(p => panneOffen(p, jetzt).some(x => x.dringend)).length };
 }

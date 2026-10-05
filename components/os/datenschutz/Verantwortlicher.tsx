@@ -12,19 +12,19 @@ import { verantwortlicherPruefen, verantwortlicherText, type Verantwortlicher as
 
 export interface EinrichtungAntwort { ok: boolean; verantwortlicher: V | null; wirksam: VerantwortlicherWirksam; empfaenger: Empfaenger[]; darf: boolean; fehler?: string }
 
-const LEER = { name: '', anschrift: '', mail: '', telefon: '', vertretung: '', dsbName: '', dsbMail: '' };
+const LEER = { name: '', anschrift: '', mail: '', telefon: '', vertretung: '', dsbName: '', dsbMail: '', seite: '' };
 
 export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: EinrichtungAntwort; onGeaendert: () => void; i?: number }) {
   const [f, setF] = useState(LEER);
   const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
   useEffect(() => {
     const v = d.verantwortlicher;
-    setF(v ? { name: v.name, anschrift: v.anschrift, mail: v.mail, telefon: v.telefon ?? '', vertretung: v.vertretung ?? '', dsbName: v.dsb?.name ?? '', dsbMail: v.dsb?.mail ?? '' } : LEER);
+    setF(v ? { name: v.name, anschrift: v.anschrift, mail: v.mail, telefon: v.telefon ?? '', vertretung: v.vertretung ?? '', dsbName: v.dsb?.name ?? '', dsbMail: v.dsb?.mail ?? '', seite: v.seite ?? '' } : LEER);
   }, [d.verantwortlicher]);
   const w = d.wirksam;
   const setze = (k: keyof typeof LEER) => (e: { target: { value: string } }) => setF(x => ({ ...x, [k]: e.target.value }));
   const speichern = async () => {
-    const roh = { name: f.name, anschrift: f.anschrift, mail: f.mail, telefon: f.telefon, vertretung: f.vertretung, dsb: { name: f.dsbName, mail: f.dsbMail } };
+    const roh = { name: f.name, anschrift: f.anschrift, mail: f.mail, telefon: f.telefon, vertretung: f.vertretung, dsb: { name: f.dsbName, mail: f.dsbMail }, seite: f.seite };
     const p = verantwortlicherPruefen(roh);
     if (!p.ok) { setMeldung({ text: p.fehler, gut: false }); return; }
     const r = await fetch('/api/datenschutz/einrichtung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'verantwortlicher', verantwortlicher: roh }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
@@ -47,6 +47,7 @@ export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: Einrichtun
         {ein('telefon', 'Telefon (optional)', { typ: 'tel' })}
         {ein('dsbName', 'Datenschutzbeauftragter (optional)')}
         {ein('dsbMail', 'Mail des Datenschutzbeauftragten (optional)', { typ: 'email' })}
+        {ein('seite', 'Datenschutzhinweis — Adresse (optional)', { platz: 'example.de/datenschutz' })}
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
         {d.darf ? <Knopf onClick={speichern}>Speichern</Knopf> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ändern kann nur der Inhaber.</span>}

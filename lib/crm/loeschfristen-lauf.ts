@@ -333,6 +333,27 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('bauplan-bilder', await bauplanBilderAufraeumen(stichtag('bauplan-bilder', f['bauplan-bilder'], heute), jetzt));
   });
 
+  // 17 · Löschprotokoll selbst (05.10., Zusatz): abgeschlossene Einträge nach der Frist (laufende/unvollständige bleiben).
+  await schritt('loeschprotokoll', async () => {
+    const { LOESCHPROTOKOLL, protokollUeberFrist } = await import('@/lib/crm/loeschprotokoll');
+    const grenze = stichtag('loeschprotokoll', f.loeschprotokoll, heute);
+    const vorab = await loadJson<{ eintraege: import('@/lib/crm/loeschprotokoll').LoeschEintrag[] }>(LOESCHPROTOKOLL);
+    if (!vorab || !protokollUeberFrist(vorab.eintraege ?? [], grenze).n) return;
+    let n = 0;
+    await updateJson<{ eintraege: import('@/lib/crm/loeschprotokoll').LoeschEintrag[] }>(LOESCHPROTOKOLL, cur => { const r = protokollUeberFrist(cur?.eintraege ?? [], grenze); n = r.n; return r.n ? { ...(cur ?? {}), eintraege: r.eintraege } : (cur ?? { eintraege: [] }); });
+    zaehle('loeschprotokoll', n);
+  });
+  // 18 · Pannen-Register (05.10., Zusatz): abgeschlossene Pannen nach der Frist ab Abschluss.
+  await schritt('pannen', async () => {
+    const { PANNEN_SPEICHER, pannenUeberFrist } = await import('@/lib/datenschutz/pannen');
+    const grenze = stichtag('pannen', f.pannen, heute);
+    const vorab = await loadJson<import('@/lib/datenschutz/pannen').PannenDatei>(PANNEN_SPEICHER);
+    if (!vorab || !pannenUeberFrist(vorab, grenze).n) return;
+    let n = 0;
+    await updateJson<import('@/lib/datenschutz/pannen').PannenDatei>(PANNEN_SPEICHER, cur => { const r = pannenUeberFrist(cur, grenze); n = r.n; return r.n ? r.datei : (cur ?? { pannen: [] }); });
+    zaehle('pannen', n);
+  });
+
   await updateJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER, cur => ({ ...(cur ?? {}), lauf: { tag: heute, am: jetztIso, ueberFrist: ueber.length, bereinigt } }));
   const summe = Object.values(bereinigt).reduce((a, x) => a + x, 0);
   return {

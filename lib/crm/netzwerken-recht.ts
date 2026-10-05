@@ -44,11 +44,12 @@ export function datenschutzAngaben(): DatenschutzAngaben {
 
 /**
  * Die Angaben aus der Datenschutz-Einrichtung (05.10., EINE Quelle — System › Datenschutz): Verantwortlicher = Name/Firma, Kontaktweg =
- * Datenschutzbeauftragter, sonst die Kontakt-Mail. Ohne Einrichtung der Standard oben (Umgebung bzw. MAKE).
+ * Datenschutzbeauftragter, sonst die Kontakt-Mail; Seite = Datenschutzhinweis der Einrichtung. Ohne Einrichtung der Standard oben (Umgebung
+ * bzw. MAKE) — Kunden-Instanzen brauchen dafür KEINE Build-Variable mehr (der Server liest die Einrichtung zur Laufzeit).
  */
-export function datenschutzAngabenAus(v: { name: string; mail: string; dsb?: { mail?: string } } | null | undefined): DatenschutzAngaben {
+export function datenschutzAngabenAus(v: { name: string; mail: string; dsb?: { mail?: string }; seite?: string } | null | undefined): DatenschutzAngaben {
   const basis = datenschutzAngaben();
-  return v ? { ...basis, mail: v.dsb?.mail || v.mail, verantwortlich: v.name } : basis;
+  return v ? { mail: v.dsb?.mail || v.mail, seite: v.seite || basis.seite, verantwortlich: v.name } : basis;
 }
 
 /** Der Hinweis überall dort, wo Kontakte für Kunden entstehen oder übergeben werden (Akte, „Für Kunden“, Dialog, Netzwerken-Auswahl). */

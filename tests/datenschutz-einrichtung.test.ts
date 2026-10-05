@@ -123,11 +123,11 @@ describe('Route — nur Haushalt sieht, nur Inhaber ändert, nie über den Diens
   });
   it('Inhaber trägt ein; Angaben für die Danke-Mail kommen daraus; Leeren → wieder „fehlt“', async () => {
     expect((await route.POST(post('pa', { aktion: 'verantwortlicher', verantwortlicher: { ...BEISPIEL, mail: 'x' } }))).status).toBe(400);
-    const r = await (await route.POST(post('pa', { aktion: 'verantwortlicher', verantwortlicher: { ...BEISPIEL, dsb: { mail: 'dsb@example.invalid' } } }))).json();
+    const r = await (await route.POST(post('pa', { aktion: 'verantwortlicher', verantwortlicher: { ...BEISPIEL, dsb: { mail: 'dsb@example.invalid' }, seite: 'https://example.invalid/datenschutz' } }))).json();
     expect(r.ok).toBe(true);
     expect(r.wirksam.quelle).toBe('einrichtung');
     const a = await (await route.GET(get('pb', '?nur=angaben'))).json();
-    expect(a).toMatchObject({ ok: true, verantwortlich: 'Beispiel GmbH', mail: 'dsb@example.invalid' });
+    expect(a).toMatchObject({ ok: true, verantwortlich: 'Beispiel GmbH', mail: 'dsb@example.invalid', seite: 'example.invalid/datenschutz' });
     const l = await (await route.POST(post('pa', { aktion: 'verantwortlicher-leeren' }))).json();
     expect(l.wirksam.v).toBeNull();
   });

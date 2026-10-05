@@ -66,6 +66,8 @@ export interface DatenschutzUmfeld {
   sicherung: { verfahren: 'age' | 'openssl' | null; zeit?: string } | null;
   /** Agenten (automatische KI-Läufe), je einzeln abschaltbar unter Agenten (agents-config). */
   agenten: { aktiv: number; gesamt: number };
+  /** Pannen-Register (05.10., Zusatz): offene Pannen und davon dringende (Meldung/Benachrichtigung fällig). Optional. */
+  pannen?: { offen: number; dringend: number };
 }
 
 const W = {
@@ -135,6 +137,11 @@ export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: stri
   raus.push({ id: 'sicherung', titel: 'Sicherungen verschlüsselt (age)', status: s?.verfahren === 'age' ? 'erfuellt' : 'teilweise',
     befund: !s ? 'unbekannt — keine Statusdatei vom Server (lokal normal; auf dem Server schreibt deploy/sicherung.sh system/sicherung.json)' : s.verfahren === 'age' ? `age (privater Schlüssel nicht auf dem Server)${s.zeit ? ` · letzte ${tagVon(s.zeit)}` : ''}` : s.verfahren === 'openssl' ? 'Übergangsverfahren (openssl mit Passwort auf demselben Server) — age einrichten' : 'Verfahren nicht gemeldet',
     norm: 'Art. 32 Abs. 1 lit. a, c DSGVO', ...(s?.verfahren === 'age' ? {} : { weg: W.hoi }) });
+  // ── Datenpannen (Art. 33/34): Meldung binnen 72 h, Benachrichtigung bei hohem Risiko ──
+  if (umfeld.pannen) {
+    const p = umfeld.pannen;
+    raus.push({ id: 'pannen', titel: 'Datenpannen dokumentiert und gemeldet', status: p.dringend ? 'offen' : p.offen ? 'teilweise' : 'erfuellt', befund: p.dringend ? `${p.dringend} Panne(n) mit fälliger Meldung bzw. Benachrichtigung` : p.offen ? `${p.offen} Panne(n) noch nicht abgeschlossen` : 'keine offene Panne im Register', norm: 'Art. 33, 34 DSGVO', ...(p.offen ? { weg: { text: 'Pannen-Register', href: WEG.datenschutz('pannen') } } : {}) });
+  }
   return raus;
 }
 
@@ -152,6 +159,9 @@ export const LOESCHREGELN = [
   // Kevin 05.10.: festgehaltene Wochenpläne der Kapazität (lib/kapazitaet/plan.ts).
   { id: 'kapazitaet-plan', titel: 'Festgehaltene Wochenpläne (Kapazität: verfügbar, geplant je Meilenstein/Zuweisung)', frist: '24 Monate je Woche', aktion: 'Löschen (Morgenlauf „Wochenplan festhalten“; Team-Personen ohne Konto mit ihren Kapazitätsdaten 30 Tage nach dem Deaktivieren)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
   // DSGVO-Nachtrag 04.10. (Kevin): Unterlagen gelöschter Gesellschaften/Verträge bleiben (Aufbewahrungspflicht).
+  { id: 'kapazitaet-konto', titel: 'Kapazität eines entfernten Kontos (Grundwert, Ausnahmen, Zuweisungen, Wochenplan-Zeilen)', frist: 'beim nächsten Morgenlauf nach dem Entfernen', aktion: 'Löschen (Morgenlauf)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
+  { id: 'loeschprotokoll', titel: 'Löschprotokoll (nur Protokoll-ID, Tag, Grund, wer)', frist: '36 Monate (abgeschlossene Einträge)', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 2, Art. 17 DSGVO' },
+  { id: 'pannen', titel: 'Pannen-Register (Art. 33 Abs. 5)', frist: '36 Monate ab Abschluss der Panne', aktion: 'Löschen (Morgenlauf, Frist einstellbar — anwaltlich bestätigen)', norm: 'Art. 33 Abs. 5, Art. 5 Abs. 2 DSGVO' },
   { id: 'bauplan-bilder', titel: 'Bauplan: Bildschirmfotos (können Personendaten zeigen)', frist: '90 Tage nach Abschluss der Karte, nicht zugeordnete 7 Tage', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO' },
   // 05.10. (DSGVO-Grundlagen): Sicherungen wahrheitsgemäß — Generationen bis ~12 Monate (deploy/generationen.sh), nicht 14 Tage.
   { id: 'sicherungen', titel: 'Verschlüsselte Sicherungen (Tages-, Wochen-, Monatsgenerationen)', frist: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate, danach überschrieben`, aktion: 'Überschreiben (gelöschte Daten nicht mehr verwendet; nach einem Zurückspielen löschen die Grabsteine erneut)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO' },
@@ -287,13 +297,15 @@ export const VV_ORGANISATION_IDS = Object.keys(VV_ORGANISATION_NAMEN);
 /** Löschfrist der Kapazitätsplanung (seit dem DSGVO-Nachtrag 04.10. mit der 30-Tage-Frist für deaktivierte Team-Personen). */
 const KAPA_LOESCHFRIST_0410 = 'bis zur Löschung durch Person bzw. Inhaber; Team-Personen ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf; Reaktivieren davor erhält alles); Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s)';
 /** Seit 05.10. mit den festgehaltenen Wochenplänen (24 Monate). */
-const KAPA_LOESCHFRIST = `${KAPA_LOESCHFRIST_0410}; festgehaltene Wochenpläne (montags) 24 Monate je Woche`;
+const KAPA_LOESCHFRIST_0510 = `${KAPA_LOESCHFRIST_0410}; festgehaltene Wochenpläne (montags) 24 Monate je Woche`;
+/** Seit 05.10. (DSGVO-Grundlagen) auch für entfernte Konten. */
+const KAPA_LOESCHFRIST = `${KAPA_LOESCHFRIST_0510}; Konto entfernt: Kapazitätsdaten und Plan-Zeilen beim nächsten Morgenlauf`;
 /** Löschfrist des Registers (DSGVO-Nachtrag 04.10.: Unterlagen bleiben nach dem endgültigen Löschen in der Ablage). */
 const GES_LOESCHFRIST = 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Unterlagen in der Dateiablage bleiben auch nach dem endgültigen Löschen einer Gesellschaft bzw. eines Vertrags erhalten (Aufbewahrungspflicht, Bezug als „(gelöscht)“ lesbar); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben';
 /** Fassungen, die der Nachtrag ersetzt, solange niemand sie von Hand geändert hat (vorhandene Verzeichnisse). */
 const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: string | string[]; neu: string }>>> = {
   'vv-gesellschaften': { loeschfrist: { alt: 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben', neu: GES_LOESCHFRIST } },
-  'vv-kapazitaet': { loeschfrist: { alt: ['bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen', KAPA_LOESCHFRIST_0410], neu: KAPA_LOESCHFRIST } },
+  'vv-kapazitaet': { loeschfrist: { alt: ['bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen', KAPA_LOESCHFRIST_0410, KAPA_LOESCHFRIST_0510], neu: KAPA_LOESCHFRIST } },
 };
 
 export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
