@@ -11,6 +11,9 @@
 // Abgleich vor X Min.“; übersprungene Kalender (403, gekürzte Antwort) stehen in `hinweise`.
 // S1 #20 (29.09.): Apple-Erinnerungen (Mac des Inhabers) nur für den Inhaber, private Fristen nur für Personen mit
 // Haushalt — serverseitig (`fuerPersonFiltern`, lib/kalender/eintraege.ts), nicht erst im Browser.
+// iCloud je Person (06.10., lib/kalender/icloud-person.ts): die Kalender aus der eigenen Verbindung einer Person kommen bei ihr
+// mit Namen, bei allen anderen nur als EIN neutraler Eintrag „iCloud · <Vorname>“ (nur lesen); ihre Termine sind dort „Belegt“
+// (`maskieren`). `icloudEigen` = Stand der eigenen Verbindung (maskierte Apple-ID, letzter Abgleich, Anmeldung abgelehnt?).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -32,6 +35,8 @@ import { localDay } from '@/lib/zeit';
 import type { Termin } from '@/lib/kalender/ics';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
 import { mitBezug, maskieren, type BezugBestand } from '@/lib/kalender/bezug';
+import { hauptZugangAuffrischen, ladePersonStand, ladeVerbindung, personAbgleichen, personAbgleichLaeuft, personenMitIcloud } from '@/lib/kalender/icloud-person';
+import { einstellungenFuerPerson } from '@/lib/kalender/einstellungen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,12 +53,14 @@ export async function GET(req: Request) {
   if (bis <= von) bis = tagPlus(von, 1);
   if (bis > tagPlus(von, 120)) bis = tagPlus(von, 120);
 
+  // Der Zugang des Haushalts-Kalenders kann aus der Oberfläche kommen (06.10.) — vor `verbunden()` frisch laden.
+  await hauptZugangAuffrischen();
   const einst = await ladeEinstellungen();
   let termine: Termin[] = [];
   let stand: string | null = null;
   let fehler: string | undefined;
   let quelle: 'icloud' | 'mac' | 'leer' = 'leer';
-  let kalender: { name: string; farbe?: string; schreibbar: boolean; wer: string; quelle?: 'google' }[] = [];
+  let kalender: { name: string; farbe?: string; schreibbar: boolean; wer: string; quelle?: 'google' | 'icloud' }[] = [];
   let abgleich: ReturnType<typeof abgleichAlter> | undefined;
 
   // Google (03.10.): die verbundenen Google-Kalender (Business/MAKE je Person) liegen im selben Stand wie iCloud (`ladeStand`
@@ -68,17 +75,35 @@ export async function GET(req: Request) {
     if (g && a) googleAbgleiche.push({ person: p, kalender: g.kalenderName, abgleich: a });
   }
 
-  if (verbunden() || googlePersonen.length) {
+  // iCloud je Person (06.10.): die EIGENE Verbindung der ansehenden Person — fälligen Abgleich im Hintergrund anstoßen.
+  const eigenIcloud = await ladeVerbindung(zugang.person).catch(() => null);
+  const eigenStand = eigenIcloud ? await ladePersonStand(zugang.person).catch(() => null) : null;
+  if (eigenIcloud && !personAbgleichLaeuft(zugang.person) && (!eigenStand?.at || Date.now() - Date.parse(eigenStand.at) > 2 * 60_000) && (!eigenStand || naechsterVersuchFaellig(eigenStand))) {
+    void personAbgleichen(zugang.person).catch(() => { /* Fehler steht im Stand */ });
+  }
+
+  const persoenlichDa = !!eigenIcloud || (await personenMitIcloud().catch(() => [] as string[])).length > 0;
+  if (verbunden() || googlePersonen.length || persoenlichDa) {
     // Tempo (27.09.): nicht auf iCloud warten — Stand ausliefern, fälligen Abgleich im Hintergrund anstoßen (der Takt hält ihn alle 5 Min. frisch).
     const s0 = await ladeStand();
     let s = s0;
     if (verbunden() && naechsterVersuchFaellig(s0)) { const lauf = abgleichen().catch(() => ladeStand()); if (!s0.at) s = await lauf; else void lauf; }
     termine = termineImZeitraum(s, von, bis);
-    stand = s.at ?? googleAbgleiche.map(g => g.abgleich.letzter).filter((x): x is string => !!x).sort().pop() ?? null;
+    stand = s.at ?? [...googleAbgleiche.map(g => g.abgleich.letzter), eigenStand?.at].filter((x): x is string => !!x).sort().pop() ?? null;
     fehler = verbunden() && s.fehler && (!s.at || (s.fehlerAt ?? '') > s.at) ? s.fehler : undefined;
     quelle = stand ? 'icloud' : 'leer';
     abgleich = verbunden() ? abgleichAlter(s) : undefined;
-    kalender = s.kalender.map(k => ({ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar, wer: wemGehoert(einst, k.name), ...(k.quelle ? { quelle: k.quelle } : {}) }));
+    // Kalender je Person (06.10.): eigene mit Namen, die der anderen nur als EIN neutraler Eintrag je Person (nur lesen).
+    const neutral = new Map<string, { name: string; schreibbar: false; wer: string; quelle: 'icloud' }>();
+    kalender = s.kalender.flatMap(k => {
+      if (k.quelle === 'icloud' && k.person && k.person !== zugang.person) {
+        const n = k.neutral ?? 'Belegt';
+        if (!neutral.has(n)) neutral.set(n, { name: n, schreibbar: false, wer: wemGehoert(einst, n), quelle: 'icloud' });
+        return [];
+      }
+      return [{ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar, wer: wemGehoert(einst, k.name), ...(k.quelle ? { quelle: k.quelle } : {}) }];
+    });
+    kalender.push(...neutral.values());
   } else {
     // Ohne iCloud: der zuletzt vom Mac gelieferte Stand — nur lesen, EINE Abbildung (`macTermine`, K6a).
     const c = await loadJson<{ events?: MacEv[]; at?: string }>(CACHE);
@@ -101,9 +126,10 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}), ...(abgleich ? { abgleich } : {}),
     icloud: verbunden(), konto: kontoAnzeige(),
+    ...(eigenIcloud ? { icloudEigen: { abgleich: abgleichAlter(eigenStand ?? {}) } } : {}),
     // Google (03.10.): je verbundenem Google-Kalender „letzter Abgleich vor X Min.“ (Name + Alter, nie Tokens/Adressen).
     ...(googleAbgleiche.length ? { google: googleAbgleiche } : {}),
-    kalender, einstellungen: einst,
+    kalender, einstellungen: einstellungenFuerPerson(einst, zugang.person),
     // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
     termine: termine.map(t => maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person)),
     fristen: sicht.fristen,
@@ -120,10 +146,14 @@ export async function POST(req: Request) {
   if (b.aktion !== 'abgleichen') return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion.' }, { status: 400 });
   // Google (03.10.): der eigene Google-Kalender der Person (falls verbunden) wird mit abgeglichen — nie der einer anderen Person.
   const googleEigen = zugang.person && (await googleKalenderNamen())[zugang.person] ? zugang.person : null;
-  if (!verbunden() && !googleEigen) return NextResponse.json({ ok: false, fehler: 'Weder iCloud noch Google ist verbunden.' }, { status: 409 });
+  // iCloud je Person (06.10.): ebenso die EIGENE iCloud-Verbindung — nie die einer anderen Person.
+  await hauptZugangAuffrischen();
+  const icloudEigen = zugang.person && await ladeVerbindung(zugang.person).catch(() => null) ? zugang.person : null;
+  if (!verbunden() && !googleEigen && !icloudEigen) return NextResponse.json({ ok: false, fehler: 'Weder iCloud noch Google ist verbunden.' }, { status: 409 });
   try {
     const google = googleEigen ? await googleAbgleichen(googleEigen).catch(e => { throw Object.assign(new Error(e instanceof Error ? e.message : 'Google nicht erreichbar.'), { quelle: 'Google' }); }) : null;
-    if (!verbunden()) return NextResponse.json({ ok: true, stand: new Date().toISOString(), kalender: 1, google });
+    const eigen = icloudEigen ? await personAbgleichen(icloudEigen, { erzwingen: true }).catch(e => { throw Object.assign(new Error(e instanceof Error ? e.message : 'iCloud nicht erreichbar.'), { quelle: 'iCloud' }); }) : null;
+    if (!verbunden()) return NextResponse.json({ ok: true, stand: new Date().toISOString(), kalender: (eigen?.kalender.length ?? 0) + (google ? 1 : 0), google });
     const s = await abgleichen({ erzwingen: true });
     return NextResponse.json({ ok: true, stand: s.at, kalender: s.kalender.length, ...(s.hinweise?.length ? { hinweise: s.hinweise } : {}), ...(google ? { google } : {}) });
   } catch (e) {

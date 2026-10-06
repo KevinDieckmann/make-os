@@ -3,12 +3,28 @@
 // Mehrere Kalender; Termine als ICS-Text. Alles erfunden (@example.invalid), nie echtes iCloud.
 export interface IcsObjekt { ics: string; etag: string }
 export class IcloudFake {
-  readonly HOME = 'https://p42-caldav.icloud.com/123/calendars/';
+  /** Kontonummer im Pfad (`/<nr>/principal/`, `/<nr>/calendars/`) — je Konto verschieden (iCloud je Person, 06.10.). */
+  readonly nr: string;
+  readonly HOME: string;
   kalender: Record<string, { name: string; objekte: Record<string, IcsObjekt> }> = {};
   ctag = 1;
   etagNr = 1;
-  aufrufe: { methode: string; url: string; body?: string }[] = [];
+  aufrufe: { methode: string; url: string; body?: string; auth?: string }[] = [];
   adresse = 'kevin.konto@example.invalid';
+  /** Mit Zugang (06.10.): nur diese Apple-ID + dieses Passwort kommen durch, sonst 401 — wie iCloud bei ungültigem App-Passwort. */
+  zugang?: { id: string; passwort: string };
+
+  constructor(o: { nr?: string; adresse?: string; zugang?: { id: string; passwort: string } } = {}) {
+    this.nr = o.nr ?? '123';
+    this.HOME = `https://p42-caldav.icloud.com/${this.nr}/calendars/`;
+    if (o.adresse) this.adresse = o.adresse;
+    if (o.zugang) this.zugang = o.zugang;
+  }
+
+  /** Passt die Anmeldung (Authorization: Basic …) zu diesem Konto? Ohne festen Zugang: ja. */
+  passt(auth: string | undefined): boolean {
+    return !this.zugang || auth === `Basic ${Buffer.from(`${this.zugang.id}:${this.zugang.passwort}`).toString('base64')}`;
+  }
 
   add(id: string, name: string): this { this.kalender[id] = { name, objekte: {} }; return this; }
   setze(kal: string, datei: string, ics: string): void { this.kalender[kal].objekte[datei] = { ics, etag: `e${this.etagNr++}` }; this.ctag++; }
@@ -20,17 +36,19 @@ export class IcloudFake {
   handle = async (url: string, init: RequestInit = {}): Promise<Response | null> => {
     if (!/icloud\.com/.test(url)) return null;
     const methode = String(init.method ?? 'GET').toUpperCase();
-    this.aufrufe.push({ methode, url, ...(typeof init.body === 'string' ? { body: init.body } : {}) });
     const kopf = (init.headers ?? {}) as Record<string, string>;
-    if (url === 'https://caldav.icloud.com/' && methode === 'PROPFIND') return this.ms('<d:response><d:href>/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/123/principal/</d:href></d:current-user-principal></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>');
-    if (url === 'https://caldav.icloud.com/123/principal/') return this.ms(`<d:response><d:href>/123/principal/</d:href><d:propstat><d:prop><c:calendar-home-set><d:href>${this.HOME}</d:href></c:calendar-home-set><c:calendar-user-address-set><d:href>mailto:${this.adresse}</d:href></c:calendar-user-address-set></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`);
+    this.aufrufe.push({ methode, url, ...(typeof init.body === 'string' ? { body: init.body } : {}), ...(kopf.Authorization ? { auth: kopf.Authorization } : {}) });
+    if (!this.passt(kopf.Authorization)) return new Response('', { status: 401 });
+    const nr = this.nr;
+    if (url === 'https://caldav.icloud.com/' && methode === 'PROPFIND') return this.ms(`<d:response><d:href>/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/${nr}/principal/</d:href></d:current-user-principal></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`);
+    if (url === `https://caldav.icloud.com/${nr}/principal/`) return this.ms(`<d:response><d:href>/${nr}/principal/</d:href><d:propstat><d:prop><c:calendar-home-set><d:href>${this.HOME}</d:href></c:calendar-home-set><c:calendar-user-address-set><d:href>mailto:${this.adresse}</d:href></c:calendar-user-address-set></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`);
     if (url === this.HOME && methode === 'PROPFIND') {
-      return this.ms(Object.entries(this.kalender).map(([id, k]) => `<d:response><d:href>/123/calendars/${id}/</d:href><d:propstat><d:prop><d:displayname>${k.name}</d:displayname><d:resourcetype><d:collection/><c:calendar/></d:resourcetype><cs:getctag>${this.ctag}</cs:getctag><c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`).join(''));
+      return this.ms(Object.entries(this.kalender).map(([id, k]) => `<d:response><d:href>/${nr}/calendars/${id}/</d:href><d:propstat><d:prop><d:displayname>${k.name}</d:displayname><d:resourcetype><d:collection/><c:calendar/></d:resourcetype><cs:getctag>${this.ctag}</cs:getctag><c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`).join(''));
     }
     for (const [id, k] of Object.entries(this.kalender)) {
       const basis = `${this.HOME}${id}/`;
       if (url === basis && methode === 'REPORT') {
-        return this.ms(Object.entries(k.objekte).map(([n, o]) => `<d:response><d:href>/123/calendars/${id}/${n}</d:href><d:propstat><d:prop><d:getetag>"${o.etag}"</d:getetag><c:calendar-data>${this.esc(o.ics)}</c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`).join(''));
+        return this.ms(Object.entries(k.objekte).map(([n, o]) => `<d:response><d:href>/${nr}/calendars/${id}/${n}</d:href><d:propstat><d:prop><d:getetag>"${o.etag}"</d:getetag><c:calendar-data>${this.esc(o.ics)}</c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`).join(''));
       }
       if (url.startsWith(basis)) {
         const n = decodeURIComponent(url.slice(basis.length));

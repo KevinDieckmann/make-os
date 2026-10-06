@@ -43,6 +43,12 @@ export interface KalenderEinstellungen {
    * lässt es fallen. Wirkt auf die Zuordnung (`zuordnung`) und den Space (Business).
    */
   google?: Record<string, string>;
+  /**
+   * iCloud je Person (06.10.): Kalendername → Person für die Kalender aus den eigenen iCloud-Verbindungen (lib/kalender/icloud-person.ts),
+   * dazu der neutrale Name „iCloud · <Vorname>“. NIE gespeichert — wie `google` beim Lesen dazugelegt; die Kalender-Route gibt jeder
+   * Person nur ihre eigenen Namen heraus (die anderen verrieten Kalendernamen).
+   */
+  persoenlich?: Record<string, string>;
 }
 
 export interface SteuerVorlage { an: boolean }
@@ -112,11 +118,26 @@ export async function ladeEinstellungen(): Promise<KalenderEinstellungen> {
   return mitGoogleNamen(einstellungenSauber(await loadJson<KalenderEinstellungen>('kalender-einstellungen')));
 }
 
-/** Die Google-Kalender (Name → Person) zur Laufzeit dazulegen — gespeichert wird das nie. */
+/** Die Google-Kalender und die Kalender je Person aus iCloud (Name → Person) zur Laufzeit dazulegen — gespeichert wird das nie. */
 export async function mitGoogleNamen(e: KalenderEinstellungen): Promise<KalenderEinstellungen> {
   const { googleNamenZuPerson } = await import('./google/namen');
   const g = await googleNamenZuPerson();
-  return Object.keys(g).length ? { ...e, google: g } : e;
+  const p = await import('./icloud-person').then(m => m.persoenlicheNamen()).catch(() => ({} as Record<string, string>));
+  return { ...e, ...(Object.keys(g).length ? { google: g } : {}), ...(Object.keys(p).length ? { persoenlich: p } : {}) };
+}
+
+/** Vorsatz des neutralen Namens, unter dem andere Personen die Kalender je Person sehen („iCloud · <Vorname>“). */
+export const NEUTRAL_VORSATZ = 'iCloud · ';
+
+/**
+ * Die Einstellungen, wie EINE Person sie bekommt (06.10., Plattform-Regel „Trennung serverseitig“): aus `persoenlich` nur
+ * ihre eigenen Kalendernamen und die neutralen Namen der anderen — echte Kalendernamen anderer Personen nie. Rein.
+ */
+export function einstellungenFuerPerson(e: KalenderEinstellungen, person: string | null | undefined): KalenderEinstellungen {
+  if (!e.persoenlich) return e;
+  const p = Object.fromEntries(Object.entries(e.persoenlich).filter(([name, wer]) => wer === person || name.startsWith(NEUTRAL_VORSATZ)));
+  const { persoenlich: _p, ...rest } = e;
+  return Object.keys(p).length ? { ...rest, persoenlich: p } : rest;
 }
 
 /**

@@ -54,6 +54,7 @@ import { useVerschieben } from './verschieben';
 import { EinstellungenBelegt } from './EinstellungenBelegt';
 import { AbgleichStand } from './AbgleichStand';
 import { GoogleVerbindung } from './GoogleVerbindung';
+import { IcloudVerbindung } from './IcloudVerbindung';
 import type { FreierTag } from '@/lib/kalender/freie-tage';
 import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
 import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
@@ -363,6 +364,7 @@ export function Kalender() {
         <Ueberschrift rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>
         {zeigeEinst && einst && (
           <div style={{ display: 'grid', gap: 10 }}>
+            <IcloudVerbindung onGeaendert={() => void laden()} />
             <GoogleVerbindung onGeaendert={() => void laden()} />
             {(['kevin', 'malin', 'beide'] as Wer[]).map(w => (
               <label key={w} style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span>
@@ -380,7 +382,7 @@ export function Kalender() {
               ); })}
             </div>
             <EinstellungenBelegt kalender={daten?.kalender ?? []} einst={einst} setzen={einstSetzen} />
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: System › Konto.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: oben unter „iCloud Kalender“.</div>
           </div>
         )}
       </Karte>
@@ -393,7 +395,7 @@ export function Kalender() {
         <Knopf leise onClick={() => setAnker(heute)}>Heute</Knopf>
         <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>‹</button>
         <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>›</button>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}{daten?.icloud && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.abgleich} /></span>}{(daten?.google ?? []).map(g => <span key={g.person} style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={g.abgleich} quelle="Google" bezeichnung={g.kalender} /></span>)}</span>
+        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}{daten?.icloud && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.abgleich} /></span>}{daten?.icloudEigen && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.icloudEigen.abgleich} bezeichnung="Meine iCloud" /></span>}{(daten?.google ?? []).map(g => <span key={g.person} style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={g.abgleich} quelle="Google" bezeichnung={g.kalender} /></span>)}</span>
         {/* Umschalter Kalender | Aufgaben (Kevin 29.09., wie Google) — vor der Suche, damit er am Handy in der ersten Zeile bleibt. */}
         <KalenderAufgabenSchalter aktiv={modus === 'aufgaben' ? 'aufgaben' : 'kalender'} kalender={{ onClick: () => setModus(modus === 'planen' ? 'planen' : 'kalender') }} aufgaben={{ onClick: () => setModus('aufgaben') }} tasten={{ kalender: 'k', aufgaben: 'u' }} />
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'aufgaben' ? 'Aufgaben suchen …' : 'Suchen …'} aria-label={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />

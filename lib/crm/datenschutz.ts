@@ -187,6 +187,7 @@ const START_EMPFAENGER: Record<string, string[]> = {
   'vv-besuche-kunde': ['hetzner'],
   'vv-kunden-export': ['hetzner'],
   'vv-kalender-google': ['google-workspace', 'hetzner'],
+  'vv-kalender-icloud': ['apple-icloud', 'hetzner'],
   'vv-email-google': ['google-workspace', 'hetzner', 'anthropic'],
   'vv-gesellschaften': ['hetzner', 'anthropic'],
   'vv-kapazitaet': ['hetzner'],
@@ -262,6 +263,31 @@ export function verarbeitungKalenderGoogle(jetzt: string): Verarbeitung {
 /** Die Verarbeitung „Kalender (Google Workspace)“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
 export function verarbeitungKalenderNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
   return vorhanden.some(v => v.id === VV_KALENDER_GOOGLE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungKalenderGoogle(jetzt)];
+}
+
+// ── Verarbeitung „Kalender (Apple iCloud)“ (06.10., iCloud je Person) — idempotent nachgetragen, sobald iCloud genutzt wird ──
+// Kevin 06.10.: jede Person verbindet ihren eigenen iCloud-Kalender selbst. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_KALENDER_ICLOUD_ID = 'vv-kalender-icloud';
+
+export function verarbeitungKalenderIcloud(jetzt: string): Verarbeitung {
+  return {
+    id: VV_KALENDER_ICLOUD_ID, name: 'Kalender (Apple iCloud)',
+    zweck: 'Termine des Haushalts und die eigenen iCloud-Kalender der Personen in MAKE OS zeigen, planen und abgleichen (Lesen und Schreiben über CalDAV); Verknüpfung mit CRM-Meetings, Aufgaben und Follow-ups',
+    personen: 'Personen des Haushalts; Gesprächspartner, Gäste und Organisatoren, die in Terminen genannt oder eingeladen sind',
+    daten: 'Terminzeit, Titel, Ort, Notiz, Teilnehmer-Adressen mit Antwortstatus, Erinnerungen; je Person Apple-ID und app-spezifisches Passwort (nur verschlüsselt auf dem Server, nie im Browser, nie in Protokollen)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (eigene Termine, Termine mit Vertragspartnern) bzw. lit. f (Termine abstimmen); Einladungen nur nach ausdrücklichem Klick',
+    empfaenger: 'Apple (iCloud — für private Konten ohne AVV, siehe Empfänger-Register); die Person selbst (Termine aus der eigenen Verbindung sehen andere Konten nur als „Belegt“); Hetzner (Hosting, Spiegel der Termine)',
+    drittland: 'Apple: Data Privacy Framework — prüfen',
+    loeschfrist: 'Wahrheit ist iCloud (Löschung dort, Art. 17); der Spiegel in MAKE OS (−90 … +400 Tage) baut sich bei jedem Abgleich neu auf und fällt beim Trennen samt Tageskopien weg; der Löschlauf meldet Termine, die eine Person nennen',
+    toms: 'Zugang nur mit Anmeldung (zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, Zugangsdaten je Person getrennt und nur an *.icloud.com, Verbinden/Trennen nur durch die Person selbst (nie Dienstweg), Anmeldung vor dem Speichern geprüft, Fehlversuche gedrosselt',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt), empfaengerIds: ['apple-icloud', 'hetzner'],
+  };
+}
+
+/** Die Verarbeitung „Kalender (Apple iCloud)“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungIcloudNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_KALENDER_ICLOUD_ID) ? [...vorhanden] : [...vorhanden, verarbeitungKalenderIcloud(jetzt)];
 }
 
 // ── Verarbeitung „E-Mail (Google Workspace)“ (03.10., gmail) — idempotent nachgetragen ──
@@ -383,11 +409,13 @@ export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbe
  * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet),
  * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
  */
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
   if (opt.google) { l = verarbeitungKalenderNachtragen(l, jetzt); l = verarbeitungEmailNachtragen(l, jetzt); }
+  // iCloud (06.10.): sobald der Haushalts-Kalender oder eine Verbindung je Person besteht (`icloudInGebrauch`).
+  if (opt.icloud) l = verarbeitungIcloudNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);

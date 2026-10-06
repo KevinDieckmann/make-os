@@ -240,8 +240,12 @@ export function mitBezug(t: Termin, bestand: BezugBestand | null | undefined): T
   };
 }
 
-/** Wem gehört der Termin für „privat“? Wer ihn angelegt hat, sonst der Inhaber des Kalenders (nicht beim gemeinsamen). */
-export function eigentuemer(t: { von?: string; wer?: string }): string | undefined {
+/**
+ * Wem gehört der Termin für „privat“? Ein Termin aus der eigenen iCloud-Verbindung einer Person (06.10., `persoenlich`) gehört
+ * immer ihr; sonst wer ihn angelegt hat, sonst der Inhaber des Kalenders (nicht beim gemeinsamen).
+ */
+export function eigentuemer(t: { von?: string; wer?: string; persoenlich?: string }): string | undefined {
+  if (t.persoenlich) return t.persoenlich;
   if (t.von) return t.von;
   return t.wer && t.wer !== 'beide' ? t.wer : undefined;
 }
@@ -249,16 +253,20 @@ export function eigentuemer(t: { von?: string; wer?: string }): string | undefin
 /**
  * Privat in geteilten Sichten (Kevin 29.09.): die andere Person sieht nur „Belegt“ — Zeit ja, sonst nichts (kein Titel,
  * Ort, Notiz, Bezug, keine Erinnerungen), nie änderbar. Ohne bekannten Eigentümer bleibt der Termin sichtbar.
+ * iCloud je Person (06.10.): Termine aus der EIGENEN iCloud-Verbindung einer Person (`persoenlich`) gelten für alle anderen
+ * immer als privat — auch ohne CLASS:PRIVATE — und tragen nach außen nur den neutralen Kalendernamen („iCloud · <Vorname>“).
  */
 export function maskieren<T extends TerminMitBezug & { wer?: string }>(t: T, betrachter: string | null | undefined): T {
-  if (t.sichtbarkeit !== 'privat') return t;
+  if (t.sichtbarkeit !== 'privat' && !t.persoenlich) return t;
   const e = eigentuemer(t);
   if (!e || e === betrachter) return t;
   const { ort: _o, notiz: _n, bezug: _b, gastKontakte: _g, teilnehmer: _t, organisator: _og, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, stand: _s, link: _l, ...rest } = t as T & { link?: string };
   // R-K1 #96: nach außen keine echte UID (mit ihr ließe sich der Termin per API ansprechen) — eine Kennung, die nur für
   // die Anzeige eindeutig ist; die Route lehnt Ändern/Löschen fremd-privater Termine ohnehin mit 403 ab.
   const verdeckt = verdeckteKennung(t.id);
-  return { ...rest, id: verdeckt, uid: verdeckt, href: '', titel: 'Belegt', bearbeitbar: false, maskiert: true } as T;
+  // Persönliche Verbindung: auch der Kalendername und die Kalender-Adresse bleiben verborgen (sie können Inhalte verraten).
+  const kal = t.persoenlich ? { kalender: t.persoenlichName ?? 'Belegt', kalenderId: '', farbe: undefined } : {};
+  return { ...rest, ...kal, id: verdeckt, uid: verdeckt, href: '', titel: 'Belegt', bearbeitbar: false, maskiert: true } as T;
 }
 
 /** Anzeige-Kennung eines maskierten Termins („belegt-…“) — nie die echte UID (R-K1 #96). */

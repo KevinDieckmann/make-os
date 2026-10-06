@@ -32,6 +32,9 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'streak' }, { basis: 'health-log' }, { basis: 'journal' }, { basis: 'ziele-eigen' }, { basis: 'visitenkarten' },
   { basis: 'meldungen' }, { basis: 'performance' }, { basis: 'flaeche' }, { basis: 'kalender-google' }, { basis: 'gmail-stand' }, { basis: 'gmail-text' },
   { basis: 'google-verbindung', export: false, grund: 'Zugangsschlüssel zu Google (verschlüsselte Token) — nie in einer Datei; beim Löschen widerrufen und entfernt' },
+  // iCloud je Person (06.10.): der Spiegel der eigenen Kalender gehört der Person; der Zugang (App-Passwort) nie in eine Datei.
+  { basis: 'kalender-icloud' },
+  { basis: 'icloud-verbindung', export: false, grund: 'Zugang zu iCloud (Apple-ID + app-spezifisches Passwort, verschlüsselt) — nie in einer Datei; beim Löschen entfernt (das App-Passwort bitte zusätzlich bei Apple widerrufen)' },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */

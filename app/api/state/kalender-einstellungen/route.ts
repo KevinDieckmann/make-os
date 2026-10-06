@@ -20,7 +20,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { EINSTELLUNGEN_LEER, einstellungenSauber, einstellungenTeilMischen, mitGoogleNamen, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
+import { EINSTELLUNGEN_LEER, einstellungenSauber, einstellungenTeilMischen, mitGoogleNamen, einstellungenFuerPerson, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,8 +32,10 @@ const sauber = einstellungenSauber;
 const istObjekt = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
 export async function GET(req: Request) {
-  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
-  return NextResponse.json(await mitGoogleNamen(sauber(await loadJson<Datei>('kalender-einstellungen'))));
+  const z = await kalenderZugang(req);
+  if (!z) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  // iCloud je Person (06.10.): echte Kalendernamen anderer Personen nie (`einstellungenFuerPerson`).
+  return NextResponse.json(einstellungenFuerPerson(await mitGoogleNamen(sauber(await loadJson<Datei>('kalender-einstellungen'))), z.person));
 }
 
 export async function PUT(req: Request) {

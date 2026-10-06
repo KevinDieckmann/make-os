@@ -240,7 +240,7 @@ export function kalenderBefunde(k: KalenderLage | null | undefined, jetzt: strin
   b.push({
     id: 'kalender', bereich: 'app', label: 'iCloud-Kalender', ampel,
     wert: `${alt === null ? 'noch nie abgeglichen' : `letzter Abgleich vor ${alt < 120 ? `${alt} min` : `${Math.round(alt / 60)} h`}`}${k.hinweise ? ` · ${k.hinweise} Kalender übersprungen` : ''}${k.tz ? ` · tz ${k.tz}` : ''}`,
-    satz: k.anmeldung ? 'iCloud lehnt die Anmeldung ab — app-spezifisches Passwort neu einrichten (deploy/icloud-verbinden.sh)'
+    satz: k.anmeldung ? 'iCloud lehnt die Anmeldung ab (App-Passwort ungültig) — Kalender › Einstellungen › iCloud: Verbindung erneuern (oder deploy/icloud-verbinden.sh)'
       : k.veraltet ? `Abgleich steht${k.fehler ? `: ${k.fehler.slice(0, 100)}` : ''} — Heute, Buchungsseite und ZOE rechnen mit einem alten Stand`
       : k.hinweise ? 'ein Kalender ist gesperrt (403) oder kam gekürzt — sein letzter Stand bleibt; Freigabe in Apple prüfen'
       : 'Abgleich läuft (alle 5 Minuten)',

@@ -18,6 +18,11 @@
 # nicht im Log, nicht im Repo.
 #
 # Trennen: das Passwort bei Apple widerrufen und dieses Skript mit --trennen.
+#
+# Seit 06.10.2026 (iCloud je Person): Jede Person verbindet ihren Kalender auch selbst in MAKE OS (Kalender › Einstellungen ›
+# iCloud Kalender). Diese .env-Verbindung gilt als Verbindung der Haupt-Person (ICLOUD_PERSON, sonst der Inhaber), bis sie dort
+# ein App-Passwort einträgt — dann gewinnt der Eintrag in der Oberfläche. „Trennen“ in der Oberfläche schaltet auch diese Werte
+# ab; ein NEUER Lauf dieses Skripts (andere Werte) gilt wieder.
 set -euo pipefail
 cd /srv/make-os/app
 ENV_DATEI=/srv/make-os/app/.env

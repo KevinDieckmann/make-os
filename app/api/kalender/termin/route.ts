@@ -34,11 +34,14 @@
 //   · CRM: Kontakt + Gäste aus dem CRM am Termin → je Kontakt EINE Aktivität „Meeting“ mit `terminUid` (Zeit liest die
 //     Akte aus dem Termin, lib/crm/termin-aktivitaet.ts). Kontakt gelöst oder Termin gelöscht, solange er in der Zukunft
 //     lag → die Meeting-Aktivität fällt weg (mit Löschmarke). Serien: die Vorkommen legt der Signal-Lauf an.
+// Seit 06.10. (iCloud je Person, lib/kalender/icloud-person.ts): in einen Kalender aus der EIGENEN iCloud-Verbindung einer
+// Person schreibt nur diese Person (POST in ihren Kalender → 403); ihre Termine sind für alle anderen fremd-privat (403).
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
+import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, ladeStand, kalenderNachName, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
+import { hauptZugangAuffrischen, personenMitIcloud, persoenlichFremd } from '@/lib/kalender/icloud-person';
 import { kalenderZiel, googleKalenderNamen } from '@/lib/kalender/google/ziel';
 import { ladeEinstellungen, wemGehoert, type Wer } from '@/lib/kalender/einstellungen';
 import { anlegenPruefen, aendernPruefen, text } from '@/lib/kalender/eingabe';
@@ -78,8 +81,10 @@ async function vorab(req: Request): Promise<{ person: string } | NextResponse> {
   if (!z) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
-  // iCloud ODER ein verbundener Google-Kalender (03.10.) — welcher, entscheidet der Kalender des Termins.
-  if (!verbunden() && !Object.keys(await googleKalenderNamen()).length) return NextResponse.json({ ok: false, fehler: 'Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).' }, { status: 409 });
+  // iCloud ODER ein verbundener Google-Kalender (03.10.) ODER eine iCloud-Verbindung je Person (06.10.) — welcher, entscheidet
+  // der Kalender des Termins.
+  await hauptZugangAuffrischen();
+  if (!verbunden() && !Object.keys(await googleKalenderNamen()).length && !(await personenMitIcloud().catch(() => [] as string[])).length) return NextResponse.json({ ok: false, fehler: 'Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).' }, { status: 409 });
   return { person: z.person };
 }
 
@@ -93,6 +98,11 @@ async function fremdPrivatFuer(t: Termin | null, person: string): Promise<boolea
   return fremdPrivat({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, person);
 }
 const nichtDeiner = () => NextResponse.json({ ok: false, fehler: 'Privater Termin der anderen Person — nur sie kann ihn ändern oder löschen.' }, { status: 403 });
+
+/** Der Kalender (Eintrag im Stand) zu einem Namen — Lesefehler → unbekannt (das Anlegen scheitert dann ohnehin). */
+async function kalenderEintrag(name: string) {
+  try { return kalenderNachName(await ladeStand(), name); } catch { return undefined; }
+}
 
 /** Einladungen, Post an Gäste und Antworten nur von Hand — nie über den Dienstweg (ZOE, Takt, Skripte). */
 const nurVonHand = () => NextResponse.json({ ok: false, fehler: 'Einladungen, Änderungen an Gäste und Antworten nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
@@ -124,6 +134,8 @@ export async function POST(req: Request) {
   // Ohne gewählten Kalender: `bereich` (Standard „privat“ wie bisher) → EINE Zuordnung (`kalenderZiel`): Business → Google Kalender der Person, sonst iCloud.
   const kalender = e.kalender || (await kalenderZiel(wer!, e.bereich ?? 'privat', einst)).kalender;
   if (!kalender) return NextResponse.json({ ok: false, fehler: 'Für diese Person ist kein Kalender hinterlegt — bitte einen Kalender wählen.' }, { status: 400 });
+  // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer anderen Person schreibt niemand sonst.
+  if (persoenlichFremd(await kalenderEintrag(kalender), z.person)) return NextResponse.json({ ok: false, fehler: 'Dieser Kalender gehört zur iCloud-Verbindung einer anderen Person — nur sie kann dort Termine anlegen.' }, { status: 403 });
   try {
     const r = await anlegen({
       ...(e.uid ? { uid: e.uid } : {}),
