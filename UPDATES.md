@@ -4,6 +4,44 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 06.10.2026 — Aufgaben nach Malins Bauplan-Karte (nur lokal, Branch `aufgaben-struktur`; Kevin: „komplett nach Malins Liste“)
+
+**Was sich ändert:** Projekt › Liste › Aufgabe › Unteraufgabe — die Ebene „Gruppe“ gibt es nicht mehr. Malins Fehleintrag (die
+LISTE „2 diese Woche bezahlen, 1 nächste Woche + Vertrag …“ in der GRUPPE „offene RE-Onebanking“, Projekt Rechnungswesen, KD Ventures)
+ist nach dem Upload automatisch eine AUFGABE in der Liste „offene RE-Onebanking“ (ihr Punkt 2).
+- **Umbau v3** (`lib/aufgaben/umbau-gruppen.ts`, läuft in der Übernahme beim Lesen, geschrieben beim ersten Speichern): jede Gruppe wird
+  eine Liste (Titel, Farbe, vorne im Projekt wie bisher im Baum; Kennung = Gruppe), jede Liste darin eine Aufgabe dieser Liste (Kennung =
+  Liste), deren Aufgaben ihre Unteraufgaben (alles eine Ebene tiefer). Zu tief (> 5 Ebenen) → flach unter dem tiefsten erlaubten Vorfahren,
+  Hinweis in der Notiz + Bericht. Laufende Serien-AUFGABEN bleiben Hauptaufgaben in der neuen Liste (eine Serie läuft nur an Hauptaufgaben).
+  Serien-LISTEN in Gruppen: Regel, nächster Termin und Titel-Muster stehen in der Notiz der neuen Aufgabe (eine Aufgaben-Serie entsteht beim
+  Erledigen, eine Listen-Serie nach Kalender — nicht 1:1 abbildbar); **diese Listen-Serie läuft danach nicht mehr von selbst** — bei Bedarf an
+  der Aufgabe „Wiederholt“ einstellen. Meilenstein-Listen bleiben Listen. Archiv („Neu anfangen“) und Papierkorb ziehen konsistent mit.
+- **Vor dem ersten Schreiben** legt der Server EINMAL die Archiv-Kopie `archiv/tasks-vor-umbau-v3-<zeit>.json` (Rohstand mit Gruppen) und
+  den Bericht `archiv/tasks-umbau-v3-bericht-<zeit>.json` (was woraus wurde, was zu tief lag, Serien) ab; Log nur Zahlen. Merker `umbauVersion: 3`.
+- **Oberfläche:** pro Ebene genau ein Feld — „+ Neue Liste“ (Überschrift-Stil, unten im Projekt), „+ Neue Aufgabe“ (Haken-Zeile, unten in
+  jeder Liste), „+ Unteraufgabe“ (eingerückt, in der aufgeklappten Aufgabe). Menü „…“ an jeder Zeile: Liste → Aufgabe, Aufgabe → Liste
+  (die Hülle geht ins Archiv, nicht in den Papierkorb), Aufgabe ↔ Unteraufgabe, „Verschieben nach …“ — immer mit „Rückgängig“ (10 s).
+  Ziehen & Ablegen im Baum (Maus ziehen; Handy lange drücken). Schnelleingabe legt IMMER eine Aufgabe an: „Wohin?“ (Firma › Projekt › Liste,
+  mit Suche) oder `#Projekt/Liste`; unbekannte Liste → nichts angelegt, Hinweis mit Vorschlag. „+ Projekt“ je Space = ein Dialog (Name, Farbe,
+  optional Vorlage), auch auf jeder Karte im Überblick.
+- **Server:** neue Gruppen (Op-Art `gruppen`, Liste mit `gruppeId`) → 400 mit Text; Ort-Prüfung beim Umhängen/Ziehen (Liste gehört zum Projekt,
+  Projekt im Space, Unteraufgabe bleibt im Space) → 400; Tiefe/Kreise wie bisher. Vorlagen mit Gruppen werden beim Anwenden nach derselben
+  Regel umgesetzt; die Startvorlage „Launch-Projekt“ hat jetzt Listen Marketing/Sales/Operations. Alte Links `&g=` führen auf die Liste,
+  `&l=` einer Liste, die eine Aufgabe wurde, öffnet die Aufgabe.
+- **Neue Felder (alle optional):** `AufgabenListe.farbe`, Vorlagen-Liste `farbe`. `gruppen`/`gruppeId`/`AufgabenGruppe` nur noch lesen. Keine
+  neue Route.
+- **Rückweg:** Der alte Stand liest den neuen Bestand ohne Fehler (nur Felder weg: `farbe`, keine Pflichtfelder neu) — er zeigt die früheren
+  Gruppen-Listen dann als normale Listen und die früheren Listen als Aufgaben (keine Gruppen). **Die Gruppen-Ordnung gibt es nur aus der
+  Archiv-Kopie zurück:** bei angehaltener App die Kopie `archiv/tasks-vor-umbau-v3-<zeit>.json` lesen (`archivLesen`, lib/store/archiv.ts —
+  Hülle mit AAD `archiv/<datei>`) und als Bestand `tasks` neu schreiben (Hülle im Modus, AAD = `tasks`; nie die Datei einfach kopieren). Ein
+  fertiges Skript dafür gibt es nicht — zusammen mit Claude. Änderungen nach dem Upload gehen dabei verloren (vorher Aufgaben › Export).
+- **Für Kevin/Malin nach dem Upload:** Unter Rechnungswesen steht „offene RE-Onebanking“ als Liste mit Malins Eintrag als Aufgabe (abhakbar).
+  Frühere Gruppen (z. B. „Belege“) sind Listen, die früheren Listen darin (Januar, Februar …) Aufgaben mit Fortschritt „n/m“ — wer lieber wieder
+  Listen will: Menü „…“ › „In Liste umwandeln“. Serien-Listen in Gruppen bitte einmal prüfen (Notiz der Aufgabe nennt die alte Regel).
+- Tests: `tests/aufgaben-umbau-v3.test.ts` (Umbau, Malins Fall, Tiefe, Serien, Meilenstein, Papierkorb, Archiv, idempotent, Kopie + Bericht,
+  Links, Vorlagen, 400), `tests/aufgaben-umwandeln.test.ts` (Umwandeln + Rückgängig, Ziehen, Server-Prüfung, Pakete, Schnelleingabe, Wächter);
+  angepasste Tests mit Vorher-Kommentar (vertiefung, navigation, serie, vorlagen-t2, ansichten, export, speichern-sicher, t1-server, neustart).
+
 ## 05.10.2026 — Business-Zahlen auf 0 (Kevin: „nur die Zahlen in dem Business-Bereich auf 0 setzen“)
 - Einmal-Werkzeug `scripts/business-auf-null.mjs` (Trockenlauf Vorgabe, `--ausfuehren` schreibt; nie bei laufender App).
 - Wirkung: KD Ventures, MAKE Innovation GmbH (und Register-Gesellschaften `g-…`) Kontostand 0; ihre Rechnungen, Zahlungen,

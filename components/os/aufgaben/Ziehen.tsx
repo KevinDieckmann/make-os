@@ -87,12 +87,32 @@ export function useZiehen({ pruefen, ablegen }: { pruefen: (quelle: string, abla
     return () => { document.removeEventListener('touchmove', touch); document.removeEventListener('keydown', taste); document.removeEventListener('click', klick, true); };
   }, [ende]);
 
-  const starten = (z: Zug) => {
+  function starten(z: Zug) {
     z.aktiv = true;
     try { z.el.setPointerCapture(z.zeiger); } catch { /* ältere Browser */ }
     if (z.art === 'finger') { try { navigator.vibrate?.(15); } catch { /* egal */ } }
     bewegen(z.x, z.y);
-  };
+  }
+
+  /** Bewegung/Loslassen — am Fenster in der Capture-Phase (06.10.): ein schneller Zug verlässt die Zeile, bevor sie die erste
+   *  Bewegung sieht, und die Zeile hält die Ereignisse vom Wischen fern (stopPropagation) — das Fenster hört sie vorher. */
+  const fensterZug = useRef<(() => void) | null>(null);
+  const zugBewegt = useCallback((e: PointerEvent) => {
+    const z = zug.current;
+    if (!z || e.pointerId !== z.zeiger) return;
+    if (z.aktiv) { bewegen(e.clientX, e.clientY); return; }
+    const weg = Math.hypot(e.clientX - z.x, e.clientY - z.y);
+    if (z.art === 'maus' && weg >= MAUS_AB_PX) { starten(z); bewegen(e.clientX, e.clientY); return; }
+    // Finger bewegt sich vor dem langen Druck: scrollen/wischen — kein Ziehen.
+    if (z.art === 'finger' && weg > RUHIG_PX) { if (z.timer) clearTimeout(z.timer); zug.current = null; fensterZug.current?.(); }
+  }, [bewegen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zugEnde = useCallback((e: PointerEvent) => {
+    const z = zug.current;
+    if (z && e.pointerId !== z.zeiger) return;
+    fensterZug.current?.();
+    if (z) ende(e.type === 'pointerup');
+  }, [ende]);
+  useEffect(() => () => fensterZug.current?.(), []);
 
   /** Props für eine ziehbare Zeile. */
   const griff = (id: string, titel: string) => ({
@@ -103,19 +123,21 @@ export function useZiehen({ pruefen, ablegen }: { pruefen: (quelle: string, abla
       if (ziel.closest('input, textarea, select, [data-nicht-ziehen]')) return;
       const z: Zug = { id, titel, x: e.clientX, y: e.clientY, zeiger: e.pointerId, art: e.pointerType === 'mouse' ? 'maus' : 'finger', aktiv: false, el: e.currentTarget };
       zug.current = z;
+      fensterZug.current?.();
+      window.addEventListener('pointermove', zugBewegt, true);
+      window.addEventListener('pointerup', zugEnde, true);
+      window.addEventListener('pointercancel', zugEnde, true);
+      fensterZug.current = () => {
+        window.removeEventListener('pointermove', zugBewegt, true);
+        window.removeEventListener('pointerup', zugEnde, true);
+        window.removeEventListener('pointercancel', zugEnde, true);
+        fensterZug.current = null;
+      };
       if (z.art === 'finger') z.timer = setTimeout(() => { if (zug.current === z) starten(z); }, LANG_MS);
     },
-    onPointerMove: (e: RPointerEvent<HTMLElement>) => {
-      const z = zug.current;
-      if (!z || e.pointerId !== z.zeiger) return;
-      if (z.aktiv) { e.stopPropagation(); bewegen(e.clientX, e.clientY); return; }
-      const weg = Math.hypot(e.clientX - z.x, e.clientY - z.y);
-      if (z.art === 'maus' && weg >= MAUS_AB_PX) { z.x = e.clientX; z.y = e.clientY; starten(z); return; }
-      // Finger bewegt sich vor dem langen Druck: scrollen/wischen — kein Ziehen.
-      if (z.art === 'finger' && weg > RUHIG_PX) { if (z.timer) clearTimeout(z.timer); zug.current = null; }
-    },
-    onPointerUp: (e: RPointerEvent<HTMLElement>) => { const z = zug.current; if (!z || e.pointerId !== z.zeiger) return; if (z.aktiv) e.stopPropagation(); ende(true); },
-    onPointerCancel: () => ende(false),
+    // Während des Ziehens sieht das Wischen (`ZeileAktionen`, Eltern-Element) die Bewegung nicht.
+    onPointerMove: (e: RPointerEvent<HTMLElement>) => { if (zug.current?.aktiv) e.stopPropagation(); },
+    onPointerUp: (e: RPointerEvent<HTMLElement>) => { if (zug.current?.aktiv) e.stopPropagation(); },
     onContextMenu: (e: { preventDefault: () => void }) => { if (zug.current) e.preventDefault(); },
   });
 

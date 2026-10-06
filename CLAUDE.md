@@ -746,6 +746,24 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
 
 ## Aufgaben wie Monday/ClickUp (28.09. abends, nur lokal — Plan: AUFGABEN_PLAN.md)
+- **Bauplan-Karte (06.10., Malin; Kevin: „komplett nach Malins Liste“, Branch `aufgaben-struktur`, UPDATES.md 06.10.):** Projekt › Liste ›
+  Aufgabe › Unteraufgabe — **keine Gruppen mehr**. Umbau v3 (`lib/aufgaben/umbau-gruppen.ts` `gruppenAufloesen`, Schritt 0 von `uebernehmen`,
+  rein + deterministisch): Gruppe → Liste (Kennung, Titel, Farbe `AufgabenListe.farbe`, vorne), Liste darin → Aufgabe (Kennung = Liste), deren
+  Aufgaben → Unteraufgaben; zu tief → flach + Notiz/Bericht; laufende Serien-Aufgaben bleiben Hauptaufgaben (`serieLaeuftHier`); Serien-Listen →
+  Notiz; Meilenstein-Listen (`lm-`) bleiben. `UMBAU_VERSION = 3`: Kopie `tasks-vor-umbau-v3-…` + Bericht `tasks-umbau-v3-bericht-…` VOR dem
+  ersten Schreiben (`vorUmbauSichern`). Typ `AufgabenGruppe`/`gruppen`/`gruppeId` NUR LESEN; neue Gruppen → 400 `GRUPPEN_ABGELEHNT` (speicher.ts,
+  auch Server-Schreiber); der Browser kennt die Op-Art nicht mehr (abgleich.ts `LISTEN`). Vorlagen mit Gruppen: `vorlageOhneGruppen` beim
+  Anwenden/Zählen. Alte Links: `alteAdresseUmleiten` (`&g=` → Liste, `&l=` einer Aufgabe gewordenen Liste → `a=`), `aufgabenLink` schreibt kein `g`.
+  **Ein Feld je Ebene** (`NeuFelder.tsx`: `NeueListeFeld` · `NeueAufgabeFeld` · `NeueUnteraufgabeFeld` — nie zwei gleich aussehende Felder).
+  **Umwandeln** rein in `lib/aufgaben/umwandeln.ts` (`listeZuAufgabe`, `aufgabeZuListe` → Hülle ins Einzel-Archiv, `umhaengen`;
+  `zeilenAenderungen` → `ZEILEN_SETZEN` + „Rückgängig“ mit den alten Zeilen), Menü „…“ `ZeilenMenue.tsx` (Portal; die Rand-Knöpfe von
+  `ZeileAktionen` rücken per `.ui-za:has(.aufgaben-zeilenmenue)` links daneben). **Ziehen & Ablegen**: Regel `lib/aufgaben/ziehen.ts` `ablegen`
+  (vor/nach/in/Listenende, lückenlose `sortOrder`), Oberfläche `Ziehen.tsx` (Maus ab 6 px, Finger lange drücken 0,45 s, Fenster-Hörer in der
+  Capture-Phase — React-`stopPropagation` an der Zeile hält das Wischen fern), Tastatur = „Verschieben nach …“. Server: `ortPruefen` (Liste gehört
+  zum Projekt, Projekt im Space, umgehängte Unteraufgabe bleibt im Space; nur bei Änderung, nicht für Server-Schreiber) + `elternPruefen` wie bisher;
+  `pakete`/`einzeln` schicken Eltern vor Kindern und Struktur vor Aufgaben (`elternZuerst`). **Schnelleingabe** legt nur Aufgaben an („Wohin?“,
+  `#Projekt/Liste` über `zielAmAnfang`/`zielVorschlag`, unbekannt → `zielUnbekannt`, nichts angelegt). **„+ Projekt“** nur über `NeuesProjektDialog`
+  (Name, Farbe, Vorlage; Raum + Überblick-Karten). Tests `tests/aufgaben-umbau-v3.test.ts`, `tests/aufgaben-umwandeln.test.ts`.
 - **Ebenen:** Bereich (Privat | Business) → Space → Projekt → Liste → Aufgabe → Unteraufgabe. Spaces fest `privat` · `kdc` · `kdv` · `ug`
   (= `FINANZ_ORTE` aus `lib/einheiten.ts`, keine eigene Liste) + Mandanten `m-<firmaId>` (CRM-Firma mit aktivem Mandat; beendet/pausiert
   oder Firma weg → „Archiv“, Aufgaben bleiben lesbar). Ohne Projekt → virtuelles Projekt `sonstige-<space>`, ohne Liste → „Sonstige“ (nie gespeichert).
@@ -815,8 +833,8 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Deadline = Start + `versatzTage`, Mandanten-Space → Firma vorbelegt), drei Startvorlagen im Code (`vorlagen-start.ts`, `start-…`, nie im Bestand).
   Oberfläche: `WiederholungWahl` (+ `SerienZeichen` ↻), `SerienListeEinstellen` (+ `ListeSerieKnopf`), `VorlagenDialog` (+ `VorlagenKnopf`);
   eingehängt in `AufgabeDetail` (Feld „Wiederholt“ über `wiederholungSetzen`) und `AufgabenRaum`. Test `tests/aufgaben-serie.test.ts`.
-- **Vertiefung (28.09. spät, C1 — AUFGABEN_PLAN.md „Vertiefung“):** Projekt → **Gruppe** (`gruppen[]` {projektId, titel, farbe, sortOrder,
-  eingeklappt}; `Liste.gruppeId`, ohne = direkt im Projekt) → Liste → Aufgabe → Unteraufgabe. `Project`: notiz, beschreibung, status
+- **Vertiefung (28.09. spät, C1 — AUFGABEN_PLAN.md „Vertiefung“):** ~~Projekt → Gruppe → Liste~~ (Gruppen seit 06.10. aufgelöst, siehe
+  „Bauplan-Karte“ oben) → Liste → Aufgabe → Unteraufgabe. `Project`: notiz, beschreibung, status
   (aktiv|pausiert|abgeschlossen), start/ende, mitglieder, felder (`EigenesFeld` text|zahl|betrag|datum|auswahl|link|person). `Task`: notiz,
   felder (Werte typgerecht gegen die Projektfelder im Schreibweg — `feldWerteTypisieren`, Betrag in ganzen Cent; Werte gelöschter Felder bleiben
   stehen), **`abhaengigVon` führt** (`dependencies` wird abgeleitet, `lib/aufgaben/abhaengig.ts`; wer sich geändert hat, gewinnt; Kreise → 409
@@ -825,10 +843,10 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Bestand `vorlagen[]` (C3; `VorlageAufgabe.notiz`/`felder` werden beim Anlegen übernommen). Neue Texte über der Grenze → 413 (Notiz 50.000 Zeichen), nie kürzen. PUT nur beim leeren Erststart (seit 29.09.; sonst 409 `neuLaden`).
 - **Navigation wie im CRM (28.09. spät):** Adressen NUR über `WEG.aufgaben({ s, p, g, l, a, t, b })` / `aufgabenLink` (lib/aufgaben/adresse.ts):
   ohne Angabe Überblick (`Ueberblick.tsx`: Kacheln meine/heute/überfällig/wartet auf Freigabe + Karten je Privat/Firma/Mandant), `b=archiv`,
-  `s` Space, `p` Projektseite (`ProjektSeite.tsx`, Reiter `t` aufgaben|notizen|dateien|felder|verlauf), `g`/`l` Fokus, `a` Aufgabe,
+  `s` Space, `p` Projektseite (`ProjektSeite.tsx`, Reiter `t` aufgaben|notizen|dateien|felder|verlauf), `l` Fokus (`g` nur noch alte Links), `a` Aufgabe,
   `ansicht=board|tabelle|kalender`; `space=` für die Seitenleiste wird mitgeführt. Alt bleibt gültig: `?offen=` (WEG.aufgabe — springt in den Space der Aufgabe),
   `r=`, `space=privat` (Privat-Space), `space=business` (Überblick Business). Leiste/Brotkrumen/Mandanten-Kopf in `Navigation.tsx` (alles `Wahl`).
-- **Bausteine:** Baum `BaumAnsicht.tsx` (Gruppen farbig/einklappbar, Liste „Gruppe ▾“, Unteraufgaben inline, blockiert = „wartet“), Notiz
+- **Bausteine:** Baum `BaumAnsicht.tsx` (seit 06.10. Listen mit Farbe, ein Feld je Ebene, Menü „…“, Ziehen; Unteraufgaben inline, blockiert = „wartet“), Notiz
   `Notiz.tsx` (Regeln `lib/aufgaben/notiz.ts`: Überschriften, fett/kursiv, Listen, `- [ ]` abhakbar, Links nur http(s) und /os/ — React-Elemente,
   nie `dangerouslySetInnerHTML`), `EigeneFelder.tsx`, `VerlaufListe.tsx`, Dateien `ProjektDateien.tsx` (C2). Zeit je Aufgabe:
   `GET /api/aufgaben/zeit?ids=` (Fokus-Blöcke mit `aufgabeId`, Haushalt, `lib/aufgaben/zeit.ts`). Überblick-Zahlen `lib/aufgaben/uebersicht.ts`.
