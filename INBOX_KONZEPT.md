@@ -95,3 +95,65 @@ Verschlüsselt im Ruhezustand · Zugangsdaten je Person getrennt · Bereichstren
 4. **Aufräumen + Malins iCloud-Kalender.**
 5. **WhatsApp** (nach Entscheidung + Meta-Konto/Nummer).
 Alles lokal mit erfundenen Demo-Postfächern geprüft; hochladen nur auf Kevins Wort.
+
+## 12. Schärfung beim Bau (06.10., vor dem ersten Strich Code)
+Kevin: „nochmal nacharbeiten, dass es wirklich gut und sinnig wird.“ Vorbilder: Superhuman (Tempo, Tasten, Zero), HEY (Screener,
+Fächer statt Ordner), Front (Gespräch + Kontext daneben). Übersetzt in unsere CI und Sprache — 80 % Ruhe, 20 % Akzent.
+
+**1. Was zuerst kommt (eine Spalte, feste Reihenfolge).**
+- **Oben das Lagebild:** je Bereich EINE Zeile (`Privat · 2 brauchen Antwort · 1 wartet · 1 Termin`), Zahlen anklickbar = Filter. Bereiche ohne
+  Postfach erscheinen nicht. Darunter der **ZOE-Satz** (ohne Modell aus dem Strom abgeleitet, nur Vorschlag, ein Klick öffnet das Gespräch).
+- **Darunter die Arbeitsliste**, nur Fächer mit Inhalt: Wiedervorlage fällig → **Antworten** → **Nachfassen fällig** → **Termine** →
+  **Geld & Papier** → **Neue Absender** (kompakt: Zulassen · Blocken direkt in der Zeile) → **Info & Rundschreiben** (eingeklappt, „alle
+  erledigen“). „Warten auf“ (noch nicht fällig) steht nur als Zahl im Lagebild und als eigener Filter — es ist nichts zu tun.
+- **Bereichs-Umschalter** (Alle · je Bereich) oben in der Seite; `?space=privat|business` aus dem Kopf filtert auf dem Server mit.
+
+**2. „Antwort nötig“ vs. „Warten auf“ — zuverlässig, ohne Modell.**
+- Maßgeblich ist die **jüngste echte Nachricht** des Gesprächs: von außen → *Antworten*; von uns (eigene Adresse/Alias oder Gesendet-Ordner)
+  → *Warten auf*. **Automatische Antworten** (Kopf `Auto-Submitted` ≠ `no`, `X-Autoreply`, Betreff „Automatische Antwort/Abwesend/Out of
+  Office“) zählen nicht als Antwort — das Gespräch bleibt in „Warten auf“.
+- **Rundschreiben** am Kopf, nie am Inhalt: `List-Unsubscribe`, `List-Id`, `Precedence: bulk|list|junk`, `Auto-Submitted`, Absender
+  `noreply/no-reply/mailer-daemon`, bei Gmail zusätzlich die Kategorien. Eine zugeordnete Person ist nie Rundschreiben.
+- **Nachfassen fällig** ab 3 Tagen ohne Antwort; nach 30 Tagen fällt ein Gespräch aus „Warten auf“ (bleibt in der Quelle und im Verlauf).
+- **Termine:** Anhang `text/calendar` oder Einladungs-Wörter im Betreff. **Geld & Papier:** Rechnung/Mahnung/Vertrag/Finanzamt/Beleg im
+  Betreff oder PDF mit solchem Namen. Beides nur für Gespräche, deren jüngste Nachricht von außen kommt.
+- **Neue Absender:** keine Kontaktakte mit der Adresse, nie zugelassen, nie von uns angeschrieben, kein Rundschreiben. Die Entscheidung gilt
+  **je Person** (nicht je Haushalt) für alle ihre Postfächer. Blocken blendet aus (nichts wird gelöscht oder beim Anbieter verschoben),
+  Rückgängig unter „Postfächer & Absender“.
+
+**3. Erledigt, Später, Gelesen — eine Stelle, zurückgeschrieben.**
+- Erledigt = Gmail archivieren / IMAP in den Archiv-Ordner (fehlt er, legt MAKE OS „Archiv“ an). Für „Warten auf“ merkt sich MAKE OS
+  „erledigt bis Nachricht X“ — kommt Neues, ist das Gespräch wieder da.
+- Später = Wiedervorlage mit Datum (Morgen · Montag · in einer Woche); eine neue Nachricht holt das Gespräch sofort zurück.
+- Öffnen = gelesen (`UNREAD` weg bzw. `\Seen`).
+
+**4. Leere Zustände.**
+- Kein Postfach: ein großer Leerzustand „Verbinde dein erstes Postfach“ mit der einen Hauptaktion.
+- Alles erledigt: ruhiger Smaragd-Haken „Inbox leer“ + was als Nächstes kommt (nächste Wiedervorlage, wartende Gespräche).
+- Ein Fach ohne Inhalt erscheint nicht — keine leeren Karten.
+
+**5. Fehler und Verbindungen — immer sichtbar, nie laut.**
+- Unter dem Lagebild eine Leiste **Postfächer**: je Postfach ein Chip mit Punkt — Smaragd = aktuell, gelb = verzögert (> 30 Min.), Granat =
+  Anmeldung gescheitert. Nur im letzten Fall zusätzlich eine Hinweis-Karte oben mit **„Verbindung erneuern“** (Apple macht App-Passwörter bei
+  jedem Passwortwechsel ungültig). Nach gescheiterter Anmeldung fragt MAKE OS nicht weiter an (Sperrgefahr), bis die Person erneuert.
+- Senden scheitert → der Text bleibt stehen, Hinweis „kritisch“ mit „Noch einmal senden“; nichts geht doppelt raus (Anfrage-Kennung).
+
+**6. Gespräch und Kontext.**
+- Rechner: Liste links, Gespräch rechts (klebend), darunter bzw. daneben die **Kontext-Spalte** (Person/Firma mit Link in die Akte, offene
+  Deals, offene Aufgaben zur Person, letzter/nächster Termin). Handy: Liste zuerst, das Gespräch als eigene Ansicht mit „Zurück“, Kontext
+  unter dem Gespräch eingeklappt.
+- **„ZOE schlägt vor“** — höchstens drei ruhige Knöpfe, ohne Modell abgeleitet, alles erst auf Klick über die bestehenden Schreibwege:
+  Frist im Text („bis Freitag“, „bis 12.10.“) → *Aufgabe bis …* · Einladung/Terminwort → *Termin vorschlagen* · PDF in Geld & Papier →
+  *Beleg ablegen* · bekannte Person, noch nicht bestätigt → *Zuordnen* · offener Deal der Person → *Deal-Berührung*.
+- **Zuordnung:** „gehört zu …“ wird angezeigt, sobald die Adresse in der Kartei steht. In den **Verlauf der Kontaktakte** kommt ein Gespräch
+  erst nach dem Klick „Zuordnen“ — danach auch seine neuen Nachrichten. (Gilt jetzt auch für Gmail; bisher schrieb Gmail automatisch.)
+
+**7. Antworten.** Immer aus dem Postfach, in dem das Gespräch liegt (Absender und Signatur des Postfachs, sichtbar im Editor). ZOE-Entwurf
+nur auf Klick; „Senden“ ist ein Einzelklick der Person. iCloud: Hinweis „nur 1:1“.
+
+**8. Tempo.** Die Liste kommt aus dem Spiegel auf dem Server (nie live beim Anbieter), mit ETag — der 60-s-Abgleich im Browser kostet
+meist nur ein 304. Text lädt erst beim Öffnen. Aktionen wirken sofort in der Liste und werden bei Fehler zurückgenommen. Abgleich im Takt:
+IMAP alle 2 Min., mit IDLE alle 15 Min. + sofort bei neuer Post; höchstens eine IDLE-Verbindung je Postfach.
+
+**9. Tasten und Wischen.** j/k wandern · Enter öffnen · e erledigt · s später · a Aufgabe · r antworten · Esc zurück. Handy: Zeile nach
+rechts wischen = erledigt, nach links = später (mit „Rückgängig“).
