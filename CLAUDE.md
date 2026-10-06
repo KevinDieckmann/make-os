@@ -473,16 +473,49 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
   (Browser) bzw. `lib/kalender/termin-server.ts` (Server); `/api/apple-calendar/{create,termin}` antworten 410. GET
   `/api/apple-calendar` bleibt nur für den Mac-Zulieferer/Abgleich-Anstoß (liefert `calendar-cache` UNMASKIERT — Oberflächen
   lesen `/api/kalender`). Der Abgleich schreibt `calendar-cache` für die übrigen Server-Leser (ZOE, Morgenlauf; K6).
-- Zugang: `ICLOUD_APPLE_ID`/`ICLOUD_APP_PASSWORT` (app-spezifisch) NUR in der Server-.env —
+- Zugang (bis 06.10.): `ICLOUD_APPLE_ID`/`ICLOUD_APP_PASSWORT` (app-spezifisch) NUR in der Server-.env —
   einrichten/trennen mit `deploy/icloud-verbinden.sh <apple-id>` (Kevin, per `ssh -t`; fragt nur das App-Passwort). Zugangsdaten
   gehen nur an *.icloud.com. Nach abgelehnter Anmeldung erst nach 30 Min. neu (Apple sperrt sonst).
+- **iCloud je Person (06.10., Branch `icloud-je-person`, nur lokal; UPDATES.md 06.10.)** — Kevin: „Malins iCloud-Kalender soll in MAKE OS
+  erscheinen.“ Jede Person hinterlegt Apple-ID + app-spezifisches Passwort SELBST unter Kalender › Einstellungen › „iCloud Kalender“
+  (`components/os/kalender/IcloudVerbindung.tsx`, Route `/api/kalender/icloud` — Klasse `person`, Tor `eigenePerson`, Dienstweg 403).
+  - **Zwei Rollen:** Die Verbindung der **Haupt-Person** (`ICLOUD_PERSON`, sonst der Inhaber — nie fest „kevin“) speist weiter den
+    Haushalts-Kalender `kalender-icloud` (geteilte Sicht wie bisher). **Übergang:** ohne Eintrag in der Oberfläche gilt die Umgebung als ihre
+    Verbindung; ein Eintrag ersetzt sie; „Trennen“ schaltet auch die Umgebung ab (Grabstein mit Fingerabdruck der Umgebungswerte — eine NEUE
+    Einrichtung per Skript gilt wieder). Sync lesbar über `lib/kalender/icloud-haupt.ts` (Ablage am `globalThis`, geladen beim Start
+    (instrumentation.ts), vor jedem Kalender-Lesen der Routen, im Takt, nach Verbinden/Trennen); ohne Ablage gilt die Umgebung = Verhalten von
+    vorher. `zugang()`/`verbunden()` bleiben synchron — neue Leser des Haushalts-Zugangs nur darüber, Verbindungen je Person nur über `personZugang`.
+  - **Je Person** (alle anderen): Bestände `icloud-verbindung--<person>` (Apple-ID, Passwort, `ausgeblendet`; verschlüsselt, nie an den
+    Browser/ins Log/ins Protokoll; Status nur `adresseMaskiert`) und Spiegel `kalender-icloud--<person>` (`PersonStand`, nur gezeigte Kalender).
+    `ladeStand()` legt sie über den Stand (`mitUeberlagerung` = Google + `persoenlicheUeberlagerung`): `KalenderEintrag.quelle: 'icloud'` +
+    `person` + `ich` + `neutral`, Name „<Kalender> · <Vorname>“; Objekte, deren UID im Haushalts-Stand steht (geteilte Kalender), zählen
+    nur dort. Termine tragen `Termin.persoenlich` (+ `persoenlichName`) — gesetzt NUR in `persoenlichMarkieren` (icloud.ts, auch
+    `aktuellerTermin`). **Sicht:** `eigentuemer` = `persoenlich` zuerst; `maskieren` behandelt `persoenlich` wie privat und verbirgt dazu
+    Kalendername/-adresse („iCloud · <Vorname>“) — damit gilt „andere sehen nur Belegt“ in Kalender, Jahr, Heute, ZOE, Auswertung, Blöcken,
+    `calendar-cache` (`privat`, `von`, `persoenlich`, neutraler Name) und im Systemlauf von `/api/apple-calendar`. GET `/api/kalender`: fremde
+    Kalender je Person nur als EIN neutraler, nicht schreibbarer Eintrag; `einstellungenFuerPerson` gibt nur eigene Namen + neutrale heraus
+    (auch `/api/state/kalender-einstellungen`). Zuordnung `KalenderEinstellungen.persoenlich` (Name → Person, nie gespeichert, wie `google`).
+  - **Schreiben:** `ortVon(kal)` (icloud.ts) — Kalender je Person mit DEREN Zugang/Adressen, nachziehen über `personAbgleichen`. In den
+    Kalender einer anderen Person: Termin-Route POST 403 (`persoenlichFremd`), PATCH/DELETE 403 (fremd-privat), `terminAnlegenServer` 403.
+    Blöcke/Spiegel/Familie/ZOE schreiben weiter in den Haushalts-Kalender (Zuordnung `kalender.kevin/malin/beide`), nicht in Konten je Person.
+  - **Verbinden:** Eingaben `appleIdSauber`/`passwortSauber` (16 Buchstaben — das normale Apple-Passwort geht gar nicht erst an Apple), dann
+    `entdecke(zugang)` — abgelehnt (401) → nichts gespeichert, 400 `anmeldung` (nie 401 an den Browser); Drossel `icloud-verbinden:<person>`
+    (3 Fehlversuche). Abgleich je Person `personAbgleichen` (gemeinsamer Kern `standHolen`/`fehlerStand` mit dem Haushalt), Takt
+    `icloudPersonenImTakt` (5 Min., Pause nach Fehler). **401 = App-Passwort ungültig** (Apple macht es beim Wechsel des Apple-Passworts
+    ungültig): `ANMELDUNG_ABGELEHNT`, EINE Glocke (`MELDUNG_ANMELDUNG`, `anmeldungGemeldet`), Einstellungen „Verbindung erneuern“.
+    **Trennen** = `bestandEntfernen` (samt Tageskopien) von Zugang + Spiegel, Zwischenspeicher neu; Haupt-Person: Haushalts-Spiegel leer.
+  - Server-Adresse `caldav.icloud.com` ist von Apple NICHT offiziell dokumentiert — bewährt seit 25.09., so im Code vermerkt.
+  - Recht: Register `kalender-icloud--*` (ausgenommen, Löschung in Apple, Art. 17 zählt `inAppleZaehlen`) und `icloud-verbindung--*` (mit Angaben);
+    `PERSON_BESTAENDE` (Spiegel exportierbar, Zugang `export: false`); VVT „Kalender (Apple iCloud)“ `vv-kalender-icloud` (nachgetragen, sobald
+    `icloudInGebrauch`). Tests `tests/kalender-icloud-person.test.ts` (Fake je Konto: `IcloudFake({ nr, zugang })`).
 - **Termine mit Gästen (seit 30.09., K3 — ersetzt „nie mit Teilnehmern“):** Serien ändert MAKE OS weiter nicht („in Apple
   ändern“). Gäste gibt es nur nach Klick: **Organisator = wir** (ORGANIZER = Adresse des iCloud-Kontos): Einladen, Ändern,
   Gäste ändern und Löschen erst nach der Rückfrage „Einladung/Änderung/Absage an n Personen über iCloud senden?“ (mit den
   Adressen) — iCloud verschickt. **Wir sind Gast**: nur Zusagen · Vielleicht · Absagen (PARTSTAT), ebenfalls nach Klick;
   Titel/Zeit nie. Ohne `einladungBestaetigt: true` schreibt KEIN Weg ein ATTENDEE oder ändert/löscht einen Termin mit Gästen
   (409, `lib/kalender/icloud.ts` — gilt für jeden Schreiber); der Dienstweg (ZOE, Takt, Skripte) darf nie einladen (403).
-- Sehen darf den Kalender nur der Haushalt des Inhabers (+ Dienstweg), kein anderes Konto.
+- Sehen darf den Kalender nur der Haushalt des Inhabers (+ Dienstweg), kein anderes Konto. Termine aus der eigenen iCloud-Verbindung
+  einer Person (06.10.) sehen die anderen nur als „Belegt“.
 - **Google (seit 03.10.):** Business-/MAKE-Termine liegen im Google Kalender der Person (Abschnitt „Kalender — Google Workspace“ unten); iCloud bleibt für Privat, Familie, Gemeinsam und den Plan.
 - Apple-Erinnerungen gibt iCloud nicht per CalDAV heraus — die kommen nur, wenn der Mac
   zuliefert (`zulieferer.mjs`); den Kalender vom Mac nimmt der Server nicht mehr an.
