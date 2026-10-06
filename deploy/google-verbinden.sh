@@ -54,11 +54,15 @@ SECRET=""
 for versuch in 1 2 3; do
   read -rsp "Client-Geheimnis einfügen, dann Enter (man sieht nichts): " ROH; echo
   ROH="$(printf '%s' "$ROH" | tr -d '[:space:]')"
-  if [[ "$ROH" =~ ^[A-Za-z0-9_-]{16,}$ ]]; then SECRET="$ROH"; echo "Erkannt: ••••${SECRET: -4}"; break; fi
+  # 06.10.: Im unsichtbaren Feld wurde mehrfach eingefügt → sechs Geheimnisse aneinander, Google lehnte die Anmeldung ab.
+  # Darum: genau EIN Geheimnis (heutige Google-Form „GOCSPX-…“, sonst plausible Länge 16–64), sonst neu fragen.
+  ANZ="$(printf '%s' "$ROH" | grep -o 'GOCSPX-' | wc -l | tr -d ' ')"
+  if [[ "$ANZ" -gt 1 ]]; then echo "Da kam das Geheimnis ${ANZ}× hintereinander an — bitte nur EINMAL einfügen (Cmd+V), dann Enter."; continue; fi
+  if [[ "$ROH" =~ ^[A-Za-z0-9_-]{16,64}$ ]]; then SECRET="$ROH"; echo "Erkannt: ${#SECRET} Zeichen, endet auf ••••${SECRET: -4}"; break; fi
   if [[ -z "$ROH" ]]; then echo "Da kam nichts an — bitte das Geheimnis einfügen (Cmd+V), dann Enter."
   else echo "Das sieht nicht wie ein Client-Geheimnis aus (Buchstaben, Ziffern, - und _)."; fi
 done
-unset ROH
+unset ROH ANZ
 if [[ -z "$SECRET" ]]; then echo "Abbruch nach drei Versuchen — nichts gespeichert."; exit 1; fi
 
 read -rp "Erlaubte Domain für die Google-Konten [makeinnovation.de]: " DOMAIN
