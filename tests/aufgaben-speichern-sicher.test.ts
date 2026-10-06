@@ -195,7 +195,7 @@ describe('A9 — Übernahme beim ersten Schreiben', () => {
     const { archivLesen } = await import('@/lib/store/archiv');
     expect(await archivLesen(archiv()[0])).toEqual(roh);
     const g = await gespeichert();
-    expect(g.umbauVersion).toBe(2); // seit 29.09. (Paket T1) Version 2
+    expect(g.umbauVersion).toBe(3); // Vorher 2 (29.09., Paket T1) — seit 06.10. Version 3 (Gruppen aufgelöst)
     // Übernommen: alte subTasks sind echte Unteraufgaben.
     expect(g.tasks.some(x => x.parentId === 'alt')).toBe(true);
     const t2 = (await lesen()).state.tasks.find(x => x.id === 'alt')!;

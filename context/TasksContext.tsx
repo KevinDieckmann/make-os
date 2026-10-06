@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react';
 import { personLesen, aufAnmeldeseite } from '@/lib/make-one/arbeitsplatz-browser';
-import type { TasksState, TasksAction, Project, Task, SubTask, AufgabenListe, AufgabenStatus, AufgabenGruppe, AufgabenVorlage, VerlaufEintrag } from '@/types/tasks';
+import type { TasksState, TasksAction, Project, Task, SubTask, AufgabenListe, AufgabenStatus, AufgabenVorlage, VerlaufEintrag } from '@/types/tasks';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
 import { abhaengigAngleichen } from '@/lib/aufgaben/abhaengig';
 import { aufgabenSicht, aufgabeInPapierkorb, projektInPapierkorb, wiederherstellen, endgueltigEntfernen, papierkorbEintraege, type PapierkorbEintrag } from '@/lib/aufgaben/papierkorb';
@@ -32,10 +32,7 @@ export type AufgabenAktion =
   | { type: 'ADD_STATUS'; payload: AufgabenStatus }
   | { type: 'UPDATE_STATUS'; payload: Partial<AufgabenStatus> & { id: string } }
   | { type: 'DELETE_STATUS'; payload: { id: string } }
-  // Vertiefung (28.09. spät): Gruppen, Vorlagen, Verlauf aus der Server-Antwort
-  | { type: 'ADD_GRUPPE'; payload: AufgabenGruppe }
-  | { type: 'UPDATE_GRUPPE'; payload: Partial<AufgabenGruppe> & { id: string } }
-  | { type: 'DELETE_GRUPPE'; payload: { id: string } }
+  // Vertiefung (28.09. spät): Vorlagen, Verlauf aus der Server-Antwort. Gruppen gibt es seit 06.10. nicht mehr (Umbau v3).
   | { type: 'ADD_VORLAGE'; payload: AufgabenVorlage }
   | { type: 'UPDATE_VORLAGE'; payload: Partial<AufgabenVorlage> & { id: string } }
   | { type: 'DELETE_VORLAGE'; payload: { id: string } }
@@ -46,7 +43,8 @@ export type AufgabenAktion =
   // Einzel-Archiv (04.10., Wischen › Archivieren): ausblenden samt Teilbaum, zurück genau diese Kette (lib/aufgaben/archiv-einzeln.ts).
   | { type: 'ARCHIVIEREN'; payload: { id: string } }
   | { type: 'AUS_ARCHIV'; payload: { id: string } }
-  // Abgleich (29.09., A1/A4): neuer Serverstand + ausstehende Änderungen wieder darauf; einzelne Zeilen setzen.
+  // Abgleich (29.09., A1/A4): neuer Serverstand + ausstehende Änderungen wieder darauf; einzelne Zeilen setzen (seit 06.10. auch
+  // Umwandeln, Ziehen & Ablegen und deren „Rückgängig“ — lib/aufgaben/umwandeln.ts `zeilenAenderungen`).
   | { type: 'ABGLEICH'; payload: { basis: TasksState; altServer: TasksState; serverGewinnt?: readonly string[] } }
   | { type: 'ZEILEN_SETZEN'; payload: { liste: ListenArt; id: string; eintrag: Zeile | null }[] };
 
@@ -66,18 +64,17 @@ function verlaufNachtragen(tasks: Task[], neu: readonly { id: string; verlauf: V
   return tasks.map(t => (m.has(t.id) ? mitTeil(t, { verlauf: m.get(t.id) }) : t));
 }
 
-const vollstaendig = (s: TasksState): TasksState => ({ ...s, listen: s.listen ?? [], statusEigen: s.statusEigen ?? [], gruppen: s.gruppen ?? [], vorlagen: s.vorlagen ?? [] });
+const vollstaendig = (s: TasksState): TasksState => ({ ...s, listen: s.listen ?? [], statusEigen: s.statusEigen ?? [], vorlagen: s.vorlagen ?? [] });
 
 /** Der Reducer (exportiert für die Tests der Verlust-Szenarien, tests/aufgaben-abgleich.test.ts). */
 export function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
   const now = new Date().toISOString();
   const listen = state.listen ?? [];
   const statusEigen = state.statusEigen ?? [];
-  const gruppen = state.gruppen ?? [];
   const vorlagen = state.vorlagen ?? [];
   switch (action.type) {
     case 'HYDRATE':
-      return { ...action.payload, listen: action.payload.listen ?? [], statusEigen: action.payload.statusEigen ?? [], gruppen: action.payload.gruppen ?? [], vorlagen: action.payload.vorlagen ?? [] };
+      return { ...action.payload, listen: action.payload.listen ?? [], statusEigen: action.payload.statusEigen ?? [], vorlagen: action.payload.vorlagen ?? [] };
     case 'ADD_PROJECT': {
       const project: Project = { ...action.payload, id: generateId(), createdAt: now, updatedAt: now };
       return { ...state, projects: [...state.projects, project] };
@@ -212,13 +209,6 @@ export function tasksReducer(state: TasksState, action: AufgabenAktion): TasksSt
     }
     case 'DELETE_STATUS':
       return { ...state, statusEigen: statusEigen.filter(s => s.id !== action.payload.id), tasks: state.tasks.map(t => (t.statusId === action.payload.id ? mitTeil(t, { statusId: undefined, updatedAt: now }) : t)) };
-    case 'ADD_GRUPPE':
-      return { ...state, gruppen: [...gruppen.filter(g => g.id !== action.payload.id), action.payload] };
-    case 'UPDATE_GRUPPE':
-      return { ...state, gruppen: gruppen.map(g => (g.id === action.payload.id ? mitTeil(g, action.payload) : g)) };
-    case 'DELETE_GRUPPE':
-      // Listen bleiben — sie stehen danach direkt im Projekt.
-      return { ...state, gruppen: gruppen.filter(g => g.id !== action.payload.id), listen: listen.map(l => (l.gruppeId === action.payload.id ? mitTeil(l, { gruppeId: undefined }) : l)) };
     case 'ADD_VORLAGE':
       return { ...state, vorlagen: [...vorlagen.filter(v => v.id !== action.payload.id), action.payload] };
     case 'UPDATE_VORLAGE':

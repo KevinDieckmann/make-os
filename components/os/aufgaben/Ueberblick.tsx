@@ -4,6 +4,7 @@
 // Ein Klick auf eine Kachel zeigt ihre Aufgaben darunter. Dann je Bereich eine Karte — Privat, die Firmen
 // (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH), die Mandanten — mit offenen/fälligen Aufgaben und den Projekten.
 // Jede Karte öffnet ihren Space, jedes Projekt seine Projektseite. Rechnung rein in lib/aufgaben/uebersicht.ts.
+// 06.10. (Malins Bauplan-Karte): „+ Projekt“ je Firma/Space — ein Dialog mit Name, Farbe und optional Vorlage (NeuesProjekt.tsx).
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
@@ -19,6 +20,7 @@ import { tagKurz, spaceLabel, projektTitel } from './hilfe';
 import { Papierkorb } from './Papierkorb';
 import { NeustartArchiv } from './NeustartArchiv';
 import { EinzelArchiv } from './EinzelArchiv';
+import { NeuesProjektDialog } from './NeuesProjekt';
 import { useHandlung } from './Handlung';
 import { NurIchZeichen, PrioZeichen } from './Zeichen';
 
@@ -45,6 +47,7 @@ function Zahlen({ s }: { s: SpaceStand }) {
 
 function SpaceKarte({ s, i, gehe }: { s: SpaceStand; i: number; gehe: Gehe }) {
   const projekte = s.projekte.slice(0, 5);
+  const [neu, setNeu] = useState(false);
   return (
     <Karte i={i} akzent={s.space.farbe}>
       <button onClick={() => gehe({ ansicht: 'space', s: s.space.id })} className="fassbar" style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', marginBottom: 10 }}>
@@ -64,7 +67,9 @@ function SpaceKarte({ s, i, gehe }: { s: SpaceStand; i: number; gehe: Gehe }) {
         ))}
         {!s.projekte.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingTop: 4 }}>Noch kein Projekt.</span>}
         {s.projekte.length > projekte.length && <button onClick={() => gehe({ ansicht: 'space', s: s.space.id })} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, textAlign: 'left', padding: '6px 0', fontFamily: SCHRIFT.text }}>+ {s.projekte.length - projekte.length} weitere Projekte ›</button>}
+        {!s.space.archiv && <button onClick={() => setNeu(true)} className="fassbar" style={{ background: 'none', border: 'none', borderTop: '1px solid rgba(255,255,255,.05)', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600, textAlign: 'left', padding: '10px 0 2px', minHeight: 44, fontFamily: SCHRIFT.text }}>+ Projekt in {s.space.label}</button>}
       </div>
+      {neu && <NeuesProjektDialog space={s.space} onZu={() => setNeu(false)} onAngelegt={id => gehe({ ansicht: 'space', s: s.space.id, p: id })} />}
     </Karte>
   );
 }

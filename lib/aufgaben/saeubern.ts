@@ -229,10 +229,13 @@ export function listeSauber(o: unknown): AufgabenListe | null {
   const l = o as Record<string, unknown>;
   const id = kennung(l.id), projektId = kennung(l.projektId), titel = S(l.titel, 80)?.trim();
   if (!id || !projektId || !titel) return null;
+  // `gruppeId` nur noch lesen (Altbestand/Exporte, 06.10.) — der Schreibweg lehnt eine Liste mit Gruppe ab (speicher.ts `GRUPPEN_ABGELEHNT`).
   const gruppeId = kennung(l.gruppeId), wiederholung = wiederholungSauber(l.wiederholung), vorlageId = kennung(l.vorlageId);
   const titelMuster = S(l.titelMuster, 80)?.trim();
+  const farbe = typeof l.farbe === 'string' && FARBE.test(l.farbe) ? l.farbe : undefined;
   return {
     id, projektId, titel, sortOrder: Number(l.sortOrder) || 0, ...(l.archiviert === true ? { archiviert: true } : {}),
+    ...(farbe ? { farbe } : {}),
     ...(gruppeId ? { gruppeId } : {}), ...(wiederholung ? { wiederholung } : {}), ...(vorlageId ? { vorlageId } : {}), ...(titelMuster ? { titelMuster } : {}),
   };
 }
@@ -424,7 +427,7 @@ export function zoeSauber(v: unknown): ZoeAuftrag | undefined {
   return { status: z.status as ZoeStatus, ...(stapelId ? { stapelId } : {}), ...(von ? { von } : {}), ...(hinweis ? { hinweis } : {}) };
 }
 
-/** Eine Gruppe im Projekt (Marketing, Sales …). */
+/** NUR LESEN (Altbestand/Exporte, 06.10.): eine Gruppe im Projekt. Neue Gruppen lehnt der Schreibweg ab (speicher.ts). */
 export function gruppeSauber(o: unknown): AufgabenGruppe | null {
   if (!o || typeof o !== 'object') return null;
   const g = o as Record<string, unknown>;
@@ -472,7 +475,7 @@ export function vorlageSauber(o: unknown): AufgabenVorlage | null {
   }
   if (Array.isArray(roh.listen)) {
     const gi = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) < (inhalt.gruppen?.length ?? 0) ? { gruppeIndex: v as number } : {});
-    const l = roh.listen.map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : {})).map(x => ({ titel: S(x.titel, 80)?.trim() ?? '', ...(S(x.gruppe, 60)?.trim() ? { gruppe: S(x.gruppe, 60)!.trim() } : {}), ...gi(x.gruppeIndex), aufgaben: aufgaben(x.aufgaben) })).filter(x => x.titel);
+    const l = roh.listen.map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : {})).map(x => ({ titel: S(x.titel, 80)?.trim() ?? '', ...(S(x.gruppe, 60)?.trim() ? { gruppe: S(x.gruppe, 60)!.trim() } : {}), ...gi(x.gruppeIndex), ...(typeof x.farbe === 'string' && FARBE.test(x.farbe) ? { farbe: x.farbe } : {}), aufgaben: aufgaben(x.aufgaben) })).filter(x => x.titel);
     if (l.length) inhalt.listen = l;
   }
   const a = aufgaben(roh.aufgaben); if (a.length) inhalt.aufgaben = a;

@@ -53,11 +53,11 @@ export const STARTVORLAGEN: readonly AufgabenVorlage[] = [
         { id: 'budget', name: 'Budget', typ: 'betrag' },
         { id: 'kanal', name: 'Kanal', typ: 'auswahl', optionen: ['Web', 'Messe', 'Netzwerk', 'Presse'] },
       ],
-      gruppen: [{ titel: 'Marketing', farbe: '#E27FD0' }, { titel: 'Sales', farbe: '#6E7EF5' }, { titel: 'Operations', farbe: '#58D9CD' }],
+      // Seit 06.10. (Malins Bauplan-Karte): Projekt › Liste › Aufgabe › Unteraufgabe — die früheren Gruppen sind die Listen.
       listen: [
-        { titel: 'Botschaft & Kanäle', gruppe: 'Marketing', aufgaben: [{ titel: 'Positionierung schärfen', versatzTage: 7 }, { titel: 'Landingpage', versatzTage: 14, unter: [{ titel: 'Text' }, { titel: 'Bilder' }, { titel: 'Freigabe' }] }, { titel: 'Launch-Beitrag vorbereiten', versatzTage: 21 }] },
-        { titel: 'Pipeline', gruppe: 'Sales', aufgaben: [{ titel: 'Zielkunden-Liste', versatzTage: 7 }, { titel: 'Angebot und Preisblatt', versatzTage: 14 }, { titel: 'Demo-Termine planen', versatzTage: 21 }] },
-        { titel: 'Bereitschaft', gruppe: 'Operations', aufgaben: [{ titel: 'Zuständigkeiten klären', versatzTage: 5 }, { titel: 'Onboarding-Ablauf testen', versatzTage: 18 }, { titel: 'Launch-Checkliste abhaken', versatzTage: 25, prioritaet: 'high' }] },
+        { titel: 'Marketing', farbe: '#E27FD0', aufgaben: [{ titel: 'Positionierung schärfen', versatzTage: 7 }, { titel: 'Landingpage', versatzTage: 14, unter: [{ titel: 'Text' }, { titel: 'Bilder' }, { titel: 'Freigabe' }] }, { titel: 'Launch-Beitrag vorbereiten', versatzTage: 21 }] },
+        { titel: 'Sales', farbe: '#6E7EF5', aufgaben: [{ titel: 'Zielkunden-Liste', versatzTage: 7 }, { titel: 'Angebot und Preisblatt', versatzTage: 14 }, { titel: 'Demo-Termine planen', versatzTage: 21 }] },
+        { titel: 'Operations', farbe: '#58D9CD', aufgaben: [{ titel: 'Zuständigkeiten klären', versatzTage: 5 }, { titel: 'Onboarding-Ablauf testen', versatzTage: 18 }, { titel: 'Launch-Checkliste abhaken', versatzTage: 25, prioritaet: 'high' }] },
       ],
     },
   },

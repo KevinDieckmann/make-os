@@ -28,6 +28,7 @@ import { berlinerTag } from './wiederholung';
 import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe-server';
 import { dateienBereichNachziehen } from './umzug-dateien';
 import { elternPruefen, nachIdKarte, kinderKarte, vorfahren } from './ebenen';
+import { ortPruefen } from './ziehen';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -103,6 +104,12 @@ export interface Konflikt { liste: ListenArt; id: string; grund: 'inzwischen ge�
 
 export type LeseErgebnis = { ok: true; ops: AufgabenOps } | { ok: false; status: 400 | 413; fehler: string };
 
+/**
+ * Seit 06.10. (Umbau v3, Malins Bauplan-Karte): Projekt › Liste › Aufgabe › Unteraufgabe — Gruppen werden nicht mehr angelegt,
+ * geändert oder an Listen gehängt. Der Typ bleibt zum LESEN (Altbestand); jede neue Gruppen-Änderung lehnt der Server ab.
+ */
+export const GRUPPEN_ABGELEHNT = 'Abgelehnt: Gruppen gibt es seit dem 06.10. nicht mehr — Projekt › Liste › Aufgabe › Unteraufgabe. Bitte eine Liste anlegen (unten im Projekt „+ Neue Liste“). Nichts gespeichert.';
+
 const SAEUBERER = { tasks: taskSauber, projects: projektSauber, listen: listeSauber, statusEigen: statusSauber, gruppen: gruppeSauber, vorlagen: vorlageSauber } as const;
 const GRENZE: Record<ListenArt, number> = { tasks: AUFGABEN_GRENZEN.ops, projects: AUFGABEN_GRENZEN.ops, listen: AUFGABEN_GRENZEN.ops, statusEigen: AUFGABEN_GRENZEN.ops, gruppen: AUFGABEN_GRENZEN.ops, vorlagen: AUFGABEN_GRENZEN.ops };
 
@@ -149,6 +156,7 @@ export function opsLesen(body: Record<string, unknown>): LeseErgebnis {
     throw e;
   }
   const n = Object.values(ops).reduce((s, l) => s + (l as unknown[]).length, 0);
+  if (ops.gruppen.length || ops.listen.some(o => o.op === 'upsert' && !!o.eintrag?.gruppeId)) return { ok: false, status: 400, fehler: GRUPPEN_ABGELEHNT };
   if (!n) return { ok: false, status: 400, fehler: 'Keine gültigen Änderungen.' };
   return { ok: true, ops };
 }
@@ -238,6 +246,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
         if (alt && !darfSehen(alt, echtePerson ? opt.person : null, alleVorher)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
       }
     }
+    // Gruppen (Umbau v3, 06.10.): auch Server-Schreiber legen keine mehr an.
+    if (ops.gruppen.length || ops.listen.some(o => o.op === 'upsert' && !!o.eintrag?.gruppeId)) { erg = { ok: false, status: 400, fehler: GRUPPEN_ABGELEHNT, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
     const konflikte: Konflikt[] = [];
     let angewandt = 0;
     const listen = {
@@ -380,6 +390,17 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
           ? { ok: false, status: 409, fehler: f.text, kreis: [t.id, ...vorfahren(nachIdE.get(t.parentId)!, nachIdE).map(x => x.id).filter(x => x !== t.id)].slice(0, 10), angewandt: 0, zeilen: [] }
           : { ok: false, status: 400, fehler: f.text, angewandt: 0, zeilen: [] };
         throw ABBRUCH;
+      }
+      // Ort (06.10., Ziehen & Ablegen, Umwandeln): wer Liste, Projekt oder Elternteil WECHSELT, bleibt im Space, und die Liste
+      // gehört zum Projekt (lib/aufgaben/ziehen.ts `ortPruefen`). Server-Schreiber setzen ihren Ort selbst (ausgenommen).
+      if (!opt.system) {
+        for (const o of ops.tasks) {
+          if (o.op !== 'upsert') continue;
+          const t = nachIdE.get(o.eintrag!.id);
+          if (!t) continue;
+          const grund = ortPruefen(t, altE.get(t.id), { projekte: roh2.projects, listen: roh2.listen ?? [], nachId: nachIdE });
+          if (grund) { erg = { ok: false, status: 400, fehler: grund, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+        }
       }
     }
     const loesch = ops.tasks.filter(o => o.op === 'delete').length;

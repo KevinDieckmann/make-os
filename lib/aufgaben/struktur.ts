@@ -21,6 +21,7 @@ import { abhaengigAngleichen } from './abhaengig';
 import { beideAufloesen, anlegerinVon } from './zustaendig';
 import { berlinerTag, istTag } from './wiederholung';
 import { elternOrdnen, ebeneVon, wurzelVon, kinderKarte, nachfahren } from './ebenen';
+import { gruppenAufloesen, type UmbauBerichtEintrag } from './umbau-gruppen';
 
 // ── Spaces ─────────────────────────────────────────────────────────────────
 
@@ -213,6 +214,8 @@ export interface UebernahmeErgebnis {
   state: TasksState; geaendert: boolean;
   /** „both“ ohne bekannte Anlegerin/Schreiberin — die erste Person des Haushalts wurde verantwortlich (Hinweis-Liste, 29.09.). */
   geraten: string[];
+  /** Umbau v3 (06.10.): was aus Gruppen und ihren Listen wurde — leer, wenn es keine Gruppen (mehr) gab. */
+  umbau: UmbauBerichtEintrag[];
 }
 
 /** Deadline als Zeitstempel aus alten Ständen („2026-10-01T23:30:00.000Z“) → Berliner Tag (29.09., #14). Sonst unverändert. */
@@ -234,8 +237,9 @@ export function deadlineAlsTag(d: string | undefined): string | undefined {
  *  5. Liste passt nicht zum Projekt → keine Liste („Sonstige“); eigener Status fehlt, liegt in einem anderen Space
  *     oder passt nicht zum Grundstatus (jemand hat `status` direkt gesetzt) → entfernt.
  *  6. `space`/`einheit` aus dem Space.
- *  7. (28.09. spät) Gruppen/Vorlagen sind Listen im Bestand; eine Liste mit Gruppe eines anderen Projekts (oder einer
- *     gelöschten) steht wieder direkt im Projekt; `abhaengigVon` führt, `dependencies` wird daraus abgeleitet,
+ *  0. (06.10., Umbau v3) Gruppen auflösen: Gruppe → Liste, ihre Listen → Aufgaben, deren Aufgaben → Unteraufgaben
+ *     (lib/aufgaben/umbau-gruppen.ts). Danach ist `gruppen` leer und keine Liste trägt `gruppeId`.
+ *  7. (28.09. spät) Vorlagen sind Listen im Bestand; `abhaengigVon` führt, `dependencies` wird daraus abgeleitet,
  *     Verweise auf nicht mehr vorhandene Aufgaben fallen weg.
  *  8. (29.09., Paket T1) Mit `personen` (Speichernamen des Haushalts): „both“ → eine Verantwortliche + Beteiligte
  *     (lib/aufgaben/zustaendig.ts, Status bleibt), fehlende `angelegtVon` aus dem Verlauf „angelegt“; Deadlines als
@@ -250,22 +254,23 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}, 
     return { ...p, spaceId: spaceFuerAltProjekt(p) };
   });
   const projektNach = new Map(projects.map(p => [p.id, p]));
-  const gruppen = Array.isArray(roh.gruppen) ? roh.gruppen : [];
-  const gruppeNach = new Map(gruppen.map(g => [g.id, g]));
-  const listen = (Array.isArray(roh.listen) ? roh.listen : []).map(l => {
+  // 0. Umbau v3 (06.10., Malins Bauplan-Karte): Gruppen werden Listen, ihre Listen Aufgaben, deren Aufgaben Unteraufgaben
+  //    (lib/aufgaben/umbau-gruppen.ts, rein + deterministisch). Danach gibt es keine Gruppe mehr — jede übrige `gruppeId` fällt.
+  const umbau = gruppenAufloesen({ ...roh, projects }, personen);
+  if (umbau.geaendert) geaendert = true;
+  const listen = (Array.isArray(umbau.state.listen) ? umbau.state.listen : []).map(l => {
     if (!l.gruppeId) return l;
-    const g = gruppeNach.get(l.gruppeId);
-    if (g && g.projektId === l.projektId) return l;
     geaendert = true;
     const { gruppeId: _g, ...rest } = l;
     return rest;
   });
+  const gruppen: TasksState['gruppen'] = [];
   const listeNach = new Map(listen.map(l => [l.id, l]));
   const statusEigen = Array.isArray(roh.statusEigen) ? roh.statusEigen : [];
 
   // 1–3: Space je Aufgabe, alte Unteraufgaben herauslösen.
   const alle: Task[] = [];
-  const rohTasks = Array.isArray(roh.tasks) ? roh.tasks : [];
+  const rohTasks = Array.isArray(umbau.state.tasks) ? umbau.state.tasks : [];
   const ids = new Set<string>(rohTasks.map(t => t.id));
   for (const t0 of rohTasks) {
     let t = t0;
@@ -345,7 +350,7 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}, 
   const vorlagen = Array.isArray(roh.vorlagen) ? roh.vorlagen : [];
   const state: TasksState = { ...roh, projects, tasks, listen, statusEigen, gruppen, vorlagen };
   if (!Array.isArray(roh.listen) || !Array.isArray(roh.statusEigen) || !Array.isArray(roh.gruppen) || !Array.isArray(roh.vorlagen)) geaendert = true;
-  return { state, geaendert, geraten };
+  return { state, geaendert, geraten, umbau: umbau.bericht };
 }
 
 /** Eine einzelne Aufgabe gegen den Bestand ableiten (Schreibweg, neue Aufgaben) — dieselben Regeln wie `uebernehmen`. */
@@ -357,13 +362,10 @@ export function aufgabeAbleiten(t: Task, state: TasksState, orgs: Record<string,
 // ── Baum ───────────────────────────────────────────────────────────────────
 
 export interface BaumAufgabe { task: Task; unter: Task[] }
-export interface BaumListe { id: string; titel: string; virtuell: boolean; aufgaben: BaumAufgabe[]; offen: number; /** Gruppe im Projekt (28.09. spät) — fehlt = direkt im Projekt. */ gruppeId?: string }
-/** Gruppe im Baum (28.09. spät): ihre Listen stehen in `BaumProjekt.listen` mit `gruppeId`. */
-export interface BaumGruppe { id: string; titel: string; farbe: string; eingeklappt: boolean; offen: number }
+export interface BaumListe { id: string; titel: string; virtuell: boolean; aufgaben: BaumAufgabe[]; offen: number; /** Farbe der Liste (06.10., z. B. aus einer aufgelösten Gruppe). */ farbe?: string }
 export interface BaumProjekt {
   id: string; titel: string; farbe: string; virtuell: boolean; /** Projekt gehört zu einem anderen Space, trägt aber Aufgaben dieses Space. */ fremd: boolean;
-  /** Alle Listen (auch die in Gruppen — `gruppeId`), dann „Sonstige“. */ listen: BaumListe[]; offen: number;
-  /** Gruppen des Projekts in Reihenfolge (auch leere). */ gruppen: BaumGruppe[];
+  /** Listen in Reihenfolge, dann „Sonstige“ (seit 06.10. ohne Gruppen — Projekt › Liste › Aufgabe › Unteraufgabe). */ listen: BaumListe[]; offen: number;
 }
 
 /** Reihenfolge (sortOrder, createdAt, id) — die Kennung entscheidet zuletzt, nie die Array-Reihenfolge (#56, 29.09.). */
@@ -396,28 +398,25 @@ export function baum(state: TasksState, spaceId: string, zeigen: (t: Task) => bo
     const eigene = listenAlle.filter(l => l.projektId === projektId).sort(nachReihe);
     const listenIds = new Set(eigene.map(l => l.id));
     const zu = (l: Task[]) => l.sort(nachReihe).map(task => ({ task, unter: (kinder.get(task.id) ?? []).sort(nachReihe) }));
-    const gruppenIds = new Set((state.gruppen ?? []).filter(g => g.projektId === projektId).map(g => g.id));
-    const raus: BaumListe[] = eigene.map(l => { const a = zu(aufgaben.filter(t => t.listeId === l.id)); return { id: l.id, titel: l.titel, virtuell: false, aufgaben: a, offen: offen(a), ...(l.gruppeId && gruppenIds.has(l.gruppeId) ? { gruppeId: l.gruppeId } : {}) }; });
+    const raus: BaumListe[] = eigene.map(l => { const a = zu(aufgaben.filter(t => t.listeId === l.id)); return { id: l.id, titel: l.titel, virtuell: false, aufgaben: a, offen: offen(a), ...(l.farbe ? { farbe: l.farbe } : {}) }; });
     const rest = zu(aufgaben.filter(t => !t.listeId || !listenIds.has(t.listeId)));
     if (rest.length || !raus.length) raus.push({ id: SONSTIGE_LISTE, titel: 'Sonstige', virtuell: true, aufgaben: rest, offen: offen(rest) });
     return raus;
   };
-  const gruppenVon = (projektId: string, listen: BaumListe[]): BaumGruppe[] => (state.gruppen ?? []).filter(g => g.projektId === projektId).sort(nachReihe)
-    .map(g => ({ id: g.id, titel: g.titel, farbe: g.farbe, eingeklappt: !!g.eingeklappt, offen: listen.filter(l => l.gruppeId === g.id).reduce((s, l) => s + l.offen, 0) }));
   const raus: BaumProjekt[] = [];
   for (const p of [...projekte.sort((a, b) => a.title.localeCompare(b.title, 'de')), ...fremde]) {
     const listen = baueListen(p.id, sichtbar.filter(t => t.projectId === p.id));
     const n = listen.reduce((s, l) => s + l.offen, 0);
     const leer = listen.every(l => !l.aufgaben.length);
     if (leer && (fremdeIds.has(p.id) || !leereZeigen)) continue;
-    raus.push({ id: p.id, titel: p.title, farbe: p.color, virtuell: false, fremd: fremdeIds.has(p.id), listen, offen: n, gruppen: fremdeIds.has(p.id) ? [] : gruppenVon(p.id, listen) });
+    raus.push({ id: p.id, titel: p.title, farbe: p.color, virtuell: false, fremd: fremdeIds.has(p.id), listen, offen: n });
   }
   const sonst = sichtbar.filter(t => !projektIds.has(t.projectId));
   const sid = sonstigeProjektId(spaceId);
   const sonstListen = (state.listen ?? []).some(l => l.projektId === sid && !l.archiviert);
   if (sonst.length || sonstListen || !raus.length) {
     const listen = baueListen(sid, sonst);
-    raus.push({ id: sid, titel: 'Sonstige', farbe: '#6E7A7D', virtuell: true, fremd: false, listen, offen: listen.reduce((s, l) => s + l.offen, 0), gruppen: gruppenVon(sid, listen) });
+    raus.push({ id: sid, titel: 'Sonstige', farbe: '#6E7A7D', virtuell: true, fremd: false, listen, offen: listen.reduce((s, l) => s + l.offen, 0) });
   }
   return raus;
 }

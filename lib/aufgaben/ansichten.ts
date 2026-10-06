@@ -70,7 +70,7 @@ export const FESTE_SPALTEN: readonly SpalteDef[] = [
   { id: 'zustaendig', label: 'Zuständig', breite: 120 },
   { id: 'deadline', label: 'Deadline', breite: 150 },
   { id: 'prioritaet', label: 'Priorität', breite: 120 },
-  { id: 'ort', label: 'Liste / Gruppe', breite: 180 },
+  { id: 'ort', label: 'Liste', breite: 180 },
   { id: 'crm', label: 'CRM-Bezug', breite: 180 },
   { id: 'wartet', label: 'Wartet auf', breite: 180 },
 ];

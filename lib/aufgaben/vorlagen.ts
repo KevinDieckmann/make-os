@@ -6,11 +6,13 @@
 // „Aus Vorlage anlegen“: Space/Projekt + Startdatum → Projekt/Gruppen/Listen/Aufgaben mit Deadline = Start + Versatz.
 // Die Ergebnisse gehen im Browser über den Aufgaben-Kontext (Einzeländerungen mit Stand), serverseitig über den
 // Morgenlauf der Serien (lib/aufgaben/serie.ts). Tests: tests/aufgaben-serie.test.ts.
-// 29.09. (#69/#70): Listen zeigen per `gruppeIndex` auf ihre Gruppe (gleichnamige Gruppen fallen nicht mehr zusammen);
-// Versatz optional in Werktagen ohne Feiertage NRW (`versatzArt: 'werktage'`, Start auf dem nächsten Werktag); Vorlagen
-// tragen `version`, angelegte Aufgaben/Projekte `vorlageVersion`.
+// 29.09. (#69/#70): Versatz optional in Werktagen ohne Feiertage NRW (`versatzArt: 'werktage'`, Start auf dem nächsten Werktag);
+// Vorlagen tragen `version`, angelegte Aufgaben/Projekte `vorlageVersion`.
+// 06.10. (Umbau v3, Malins Bauplan-Karte): keine Gruppen mehr. Vorlagen von vorher (`gruppen`, Listen mit `gruppeIndex`/`gruppe`)
+// werden beim Anwenden nach derselben Regel umgesetzt wie der Bestand (`vorlageOhneGruppen`): Gruppe → Liste (mit Farbe), ihre
+// Listen → Aufgaben, deren Aufgaben → Unteraufgaben (zu tief → flach unter der tiefsten erlaubten Ebene, nie weggelassen).
 
-import type { Task, TasksState, Project, AufgabenListe, AufgabenGruppe, AufgabenVorlage, VorlageAufgabe, VorlageInhalt } from '@/types/tasks';
+import type { Task, TasksState, Project, AufgabenListe, AufgabenVorlage, VorlageAufgabe, VorlageInhalt } from '@/types/tasks';
 import type { Owner } from '@/types/common';
 import { AUFGABEN_GRENZEN } from './saeubern';
 import { bereichVonSpace, einheitVonSpace, firmaVonSpace, istSonstigeProjekt, sonstigeProjektId, SONSTIGE_PRAEFIX, nachReihe } from './struktur';
@@ -22,7 +24,38 @@ import { AUFGABEN_EBENEN_MAX, nachfahren } from './ebenen';
 export { STARTVORLAGEN };
 
 const OWNER: readonly string[] = ['kevin', 'malin', 'both'];
-const GRUPPEN_FARBEN = ['#E27FD0', '#6E7EF5', '#58D9CD', '#FFC93C', '#3DE28B', '#FF8A5C'];
+/** Farben der Listen aus früheren Gruppen ohne Farbe (der Reihe nach). */
+const LISTEN_FARBEN_VORLAGE = ['#E27FD0', '#6E7EF5', '#58D9CD', '#FFC93C', '#3DE28B', '#FF8A5C'];
+
+// ── Vorlagen von vor dem 06.10. (mit Gruppen) ──────────────────────────────
+
+/** Ab `ebene` (1 = Hauptaufgabe) höchstens bis `AUFGABEN_EBENEN_MAX`: was tiefer läge, steht flach auf der tiefsten Ebene (Reihenfolge bleibt). */
+export function vorlageKappen(liste: readonly VorlageAufgabe[], ebene: number): VorlageAufgabe[] {
+  const flach = (a: VorlageAufgabe): VorlageAufgabe[] => (a.unter ?? []).flatMap(u => { const { unter: _u, ...ohne } = u; return [ohne, ...flach(u)]; });
+  if (ebene >= AUFGABEN_EBENEN_MAX) return liste.flatMap(a => { const { unter: _u, ...ohne } = a; return [ohne, ...flach(a)]; });
+  return liste.map(a => (a.unter?.length ? { ...a, unter: vorlageKappen(a.unter, ebene + 1) } : a));
+}
+
+type VorlageListe = NonNullable<VorlageInhalt['listen']>[number];
+
+/**
+ * Eine Vorlage ohne Gruppen (06.10.): jede Gruppe wird eine Liste (Titel, Farbe, Reihenfolge: Gruppen vorne wie früher im Baum),
+ * jede Liste in einer Gruppe eine Aufgabe dieser Liste, deren Aufgaben ihre Unteraufgaben. Listen ohne Gruppe bleiben Listen.
+ * Ohne Gruppen: nur die alten Felder `gruppe`/`gruppeIndex` fallen weg.
+ */
+export function vorlageOhneGruppen(inhalt: VorlageInhalt): VorlageInhalt {
+  const { gruppen, listen, ...rest } = inhalt;
+  const ohneMarke = (l: VorlageListe): VorlageListe => { const { gruppe: _g, gruppeIndex: _i, ...r } = l; return r; };
+  if (!gruppen?.length) return listen ? { ...rest, listen: listen.map(ohneMarke) } : rest;
+  const gruppeVon = (l: VorlageListe): number => (typeof l.gruppeIndex === 'number' && gruppen[l.gruppeIndex] ? l.gruppeIndex : l.gruppe ? gruppen.findIndex(g => g.titel === l.gruppe) : -1);
+  const alle = listen ?? [];
+  const ausGruppen: VorlageListe[] = gruppen.map((g, gi) => ({
+    titel: g.titel.slice(0, 80), farbe: g.farbe ?? LISTEN_FARBEN_VORLAGE[gi % LISTEN_FARBEN_VORLAGE.length],
+    aufgaben: alle.filter(l => gruppeVon(l) === gi).map(l => ({ titel: l.titel, ...(l.aufgaben.length ? { unter: vorlageKappen(l.aufgaben, 2) } : {}) })),
+  }));
+  const direkt = alle.filter(l => gruppeVon(l) < 0).map(ohneMarke);
+  return { ...rest, listen: [...ausGruppen, ...direkt] };
+}
 // Reihenfolge (sortOrder, createdAt, id) — eine Regel, lib/aufgaben/struktur.ts (#56, 29.09.).
 const tagDer = (d: string | undefined): string | undefined => (d && istTag(d.slice(0, 10)) ? d.slice(0, 10) : undefined);
 
@@ -55,11 +88,14 @@ export function vorlagenFuer(eigene: readonly AufgabenVorlage[] | undefined, art
 }
 
 /** Kennzahlen einer Vorlage (Vorschau im Dialog). */
-export function vorlageUmfang(v: Pick<AufgabenVorlage, 'inhalt'>): { gruppen: number; listen: number; aufgaben: number; unter: number; letzterVersatz: number | null } {
-  const alle = [...(v.inhalt.aufgaben ?? []), ...(v.inhalt.listen ?? []).flatMap(l => l.aufgaben)];
-  const unter = alle.reduce((s, a) => s + (a.unter?.length ?? 0), 0);
-  const versatz = [...alle, ...alle.flatMap(a => a.unter ?? [])].map(a => a.versatzTage).filter((x): x is number => typeof x === 'number');
-  return { gruppen: v.inhalt.gruppen?.length ?? 0, listen: v.inhalt.listen?.length ?? 0, aufgaben: alle.length, unter, letzterVersatz: versatz.length ? Math.max(...versatz) : null };
+export function vorlageUmfang(v: Pick<AufgabenVorlage, 'inhalt'>): { listen: number; aufgaben: number; unter: number; letzterVersatz: number | null } {
+  // So, wie die Vorlage angelegt würde (06.10.: ohne Gruppen) — Unteraufgaben aller Ebenen.
+  const inhalt = vorlageOhneGruppen(v.inhalt);
+  const alle = [...(inhalt.aufgaben ?? []), ...(inhalt.listen ?? []).flatMap(l => l.aufgaben)];
+  const tiefer = (a: VorlageAufgabe): VorlageAufgabe[] => (a.unter ?? []).flatMap(u => [u, ...tiefer(u)]);
+  const unterAlle = alle.flatMap(tiefer);
+  const versatz = [...alle, ...unterAlle].map(a => a.versatzTage).filter((x): x is number => typeof x === 'number');
+  return { listen: inhalt.listen?.length ?? 0, aufgaben: alle.length, unter: unterAlle.length, letzterVersatz: versatz.length ? Math.max(...versatz) : null };
 }
 
 /** Passt die Vorlage unter die Grenzen des Servers (sonst 413)? Liefert den Grund oder null. */
@@ -103,7 +139,7 @@ function kinderVon(tasks: readonly Task[]): Map<string, Task[]> {
 
 export interface SpeichernOptionen { id: string; titel?: string; bezugsTag?: string; spaceId?: string; jetzt?: string; /** Versatz in Werktagen ohne Feiertage NRW (#70). */ werktage?: boolean }
 
-/** Ein Projekt als Vorlage (Struktur): Gruppen, Listen (nicht archiviert), Aufgaben + Unteraufgaben, Felder, Notiz. */
+/** Ein Projekt als Vorlage (Struktur): Listen (nicht archiviert, mit Farbe), Aufgaben + Unteraufgaben, Felder, Notiz. */
 export function vorlageAusProjekt(state: TasksState, projektId: string, o: SpeichernOptionen): AufgabenVorlage | null {
   const p = state.projects.find(x => x.id === projektId);
   if (!p) return null;
@@ -111,16 +147,11 @@ export function vorlageAusProjekt(state: TasksState, projektId: string, o: Speic
   const kinder = kinderVon(tasks);
   const oben = tasks.filter(t => !t.parentId || !tasks.some(x => x.id === t.parentId)).sort(nachReihe);
   const bezug = o.bezugsTag ?? tagDer(p.start) ?? bezugsTagVon(tasks);
-  const gruppen = (state.gruppen ?? []).filter(g => g.projektId === p.id).sort(nachReihe);
   const listen = (state.listen ?? []).filter(l => l.projektId === p.id && !l.archiviert).sort(nachReihe);
   const listenIds = new Set(listen.map(l => l.id));
   const inhalt: VorlageInhalt = {};
-  if (gruppen.length) inhalt.gruppen = gruppen.map(g => ({ titel: g.titel, farbe: g.farbe }));
   if (o.werktage) inhalt.versatzArt = 'werktage';
-  if (listen.length) inhalt.listen = listen.map(l => {
-    const gi = l.gruppeId ? gruppen.findIndex(x => x.id === l.gruppeId) : -1;
-    return { titel: l.titel, ...(gi >= 0 ? { gruppe: gruppen[gi].titel, gruppeIndex: gi } : {}), aufgaben: oben.filter(t => t.listeId === l.id).map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage)) };
-  });
+  if (listen.length) inhalt.listen = listen.map(l => ({ titel: l.titel, ...(l.farbe ? { farbe: l.farbe } : {}), aufgaben: oben.filter(t => t.listeId === l.id).map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage)) }));
   const ohneListe = oben.filter(t => !t.listeId || !listenIds.has(t.listeId)).map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage));
   if (ohneListe.length) inhalt.aufgaben = ohneListe;
   if (p.felder?.length) inhalt.felder = p.felder.map(f => ({ ...f, ...(f.optionen ? { optionen: [...f.optionen] } : {}) }));
@@ -202,7 +233,6 @@ export interface AnlageZiel {
   spaceId: string;
   /** Nur Listen-Vorlagen: das Projekt (fehlt = „Sonstige“ des Space). */
   projektId?: string;
-  gruppeId?: string;
   start?: string;
   /** Titel des neuen Projekts bzw. der neuen Liste (Platzhalter {Monat} … werden zum Start ausgefüllt). */
   titel?: string;
@@ -212,7 +242,7 @@ export interface AnlageZiel {
   jetzt: string;
   farbe?: string;
 }
-export interface AnlageErgebnis { projekt?: Project; gruppen: AufgabenGruppe[]; listen: AufgabenListe[]; tasks: Task[] }
+export interface AnlageErgebnis { projekt?: Project; listen: AufgabenListe[]; tasks: Task[] }
 
 /** Aus einer Vorlage anlegen (rein): Projekt-Vorlage → neues Projekt im Space; Listen-Vorlage → neue Liste im Projekt. */
 export function ausVorlageAnlegen(v: AufgabenVorlage, state: TasksState, z: AnlageZiel): AnlageErgebnis {
@@ -221,30 +251,28 @@ export function ausVorlageAnlegen(v: AufgabenVorlage, state: TasksState, z: Anla
   if (v.art === 'liste') {
     const projektId = z.projektId && (state.projects.some(p => p.id === z.projektId) || istSonstigeProjekt(z.projektId)) ? z.projektId : sonstigeProjektId(z.spaceId);
     const spaceId = state.projects.find(p => p.id === projektId)?.spaceId ?? (istSonstigeProjekt(projektId) ? projektId.slice(SONSTIGE_PRAEFIX.length) : z.spaceId);
-    const gruppe = z.gruppeId ? (state.gruppen ?? []).find(g => g.id === z.gruppeId && g.projektId === projektId) : undefined;
     const sortOrder = (state.listen ?? []).filter(l => l.projektId === projektId).reduce((m, l) => Math.max(m, l.sortOrder), -1) + 1;
-    const liste: AufgabenListe = { id: z.praefix, projektId, titel: titel.slice(0, 80), sortOrder, ...(gruppe ? { gruppeId: gruppe.id } : {}) };
+    const liste: AufgabenListe = { id: z.praefix, projektId, titel: titel.slice(0, 80), sortOrder };
     const tasks = aufgabenAusVorlage(v.inhalt.aufgaben ?? [], { spaceId, projectId: projektId, listeId: liste.id, start, praefix: z.praefix, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, versatzArt: v.inhalt.versatzArt, vorlageVersion: v.version ?? 1 });
-    return { gruppen: [], listen: [liste], tasks };
+    return { listen: [liste], tasks };
   }
+  // Vorlagen von vor dem 06.10. mit Gruppen: nach der Regel des Umbaus v3 (Gruppe → Liste, Liste → Aufgabe).
+  const inhalt = vorlageOhneGruppen(v.inhalt);
   const projektId = z.praefix;
   const projekt: Project = {
     id: projektId, title: titel.slice(0, 120), category: z.spaceId === 'privat' ? 'joint' : 'business', owner: 'both', color: z.farbe ?? '#58D9CD',
     tags: [], archived: false, spaceId: z.spaceId, createdAt: z.jetzt, updatedAt: z.jetzt, status: 'aktiv', vorlageId: v.id, vorlageVersion: v.version ?? 1,
     ...(start ? { start } : {}),
-    ...(v.inhalt.notiz ? { notiz: v.inhalt.notiz } : {}),
-    ...(v.inhalt.felder?.length ? { felder: v.inhalt.felder.map(f => ({ ...f, ...(f.optionen ? { optionen: [...f.optionen] } : {}) })) } : {}),
+    ...(inhalt.notiz ? { notiz: inhalt.notiz } : {}),
+    ...(inhalt.felder?.length ? { felder: inhalt.felder.map(f => ({ ...f, ...(f.optionen ? { optionen: [...f.optionen] } : {}) })) } : {}),
   };
-  const gruppen: AufgabenGruppe[] = (v.inhalt.gruppen ?? []).map((g, i) => ({ id: `${projektId}-g${i + 1}`, projektId, titel: g.titel.slice(0, 60), farbe: g.farbe ?? GRUPPEN_FARBEN[i % GRUPPEN_FARBEN.length], sortOrder: i }));
   const listen: AufgabenListe[] = [];
   const tasks: Task[] = [];
-  (v.inhalt.listen ?? []).forEach((l, i) => {
-    // Gruppe per Index (#69) — Titel nur noch für Vorlagen von vor dem 29.09.
-    const g = typeof l.gruppeIndex === 'number' && gruppen[l.gruppeIndex] ? gruppen[l.gruppeIndex] : l.gruppe ? gruppen.find(x => x.titel === l.gruppe) : undefined;
-    const liste: AufgabenListe = { id: `${projektId}-l${i + 1}`, projektId, titel: titelMitPlatzhaltern(l.titel, start ?? '').slice(0, 80), sortOrder: i, ...(g ? { gruppeId: g.id } : {}) };
+  (inhalt.listen ?? []).forEach((l, i) => {
+    const liste: AufgabenListe = { id: `${projektId}-l${i + 1}`, projektId, titel: titelMitPlatzhaltern(l.titel, start ?? '').slice(0, 80), sortOrder: i, ...(l.farbe ? { farbe: l.farbe } : {}) };
     listen.push(liste);
-    tasks.push(...aufgabenAusVorlage(l.aufgaben, { spaceId: z.spaceId, projectId: projektId, listeId: liste.id, start, praefix: liste.id, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, versatzArt: v.inhalt.versatzArt, vorlageVersion: v.version ?? 1 }));
+    tasks.push(...aufgabenAusVorlage(l.aufgaben, { spaceId: z.spaceId, projectId: projektId, listeId: liste.id, start, praefix: liste.id, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, versatzArt: inhalt.versatzArt, vorlageVersion: v.version ?? 1 }));
   });
-  tasks.push(...aufgabenAusVorlage(v.inhalt.aufgaben ?? [], { spaceId: z.spaceId, projectId: projektId, start, praefix: `${projektId}-s`, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, sortStart: tasks.length, versatzArt: v.inhalt.versatzArt, vorlageVersion: v.version ?? 1 }));
-  return { projekt, gruppen, listen, tasks };
+  tasks.push(...aufgabenAusVorlage(inhalt.aufgaben ?? [], { spaceId: z.spaceId, projectId: projektId, start, praefix: `${projektId}-s`, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, sortStart: tasks.length, versatzArt: inhalt.versatzArt, vorlageVersion: v.version ?? 1 }));
+  return { projekt, listen, tasks };
 }

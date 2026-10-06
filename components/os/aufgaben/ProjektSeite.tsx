@@ -1,8 +1,8 @@
 'use client';
 // ─── Projektseite (Kevin 28.09. ~22:20: „die zweite Ebene komplett ausbauen“) ─
 // Kopf: Titel, Status, Zeitraum, Mitglieder, Beschreibung, Fortschritt (offen/erledigt, überfällig, heute, blockiert,
-// nächste Deadline, wer wie viel hat). Reiter (Adresse `t`): Aufgaben (Gruppen → Listen → Aufgaben → Unteraufgaben,
-// Fokus auf Gruppe/Liste über die Brotkrumen) · Notizen · Dateien (Paket C2) · Felder · Verlauf (aller Aufgaben).
+// nächste Deadline, wer wie viel hat). Reiter (Adresse `t`): Aufgaben (Listen → Aufgaben → Unteraufgaben — seit 06.10. ohne
+// Gruppen; Fokus auf eine Liste über die Brotkrumen) · Notizen · Dateien (Paket C2) · Felder · Verlauf (aller Aufgaben).
 // „Sonstige“ ist virtuell (nie gespeichert) — dort gibt es nur die Aufgaben.
 
 import { useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
@@ -158,12 +158,12 @@ export function ProjektSeite({ projektId, baumProjekt, state, dispatch, space, a
 
       {!virtuell && (
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none', margin: '4px 0 12px' }}>
-          <Segmente liste={PROJEKT_REITER} aktiv={reiter} onWahl={t => gehe({ ansicht: 'space', s: space.id, p: projektId, t, ...(adresse.g ? { g: adresse.g } : {}), ...(adresse.l ? { l: adresse.l } : {}) })} />
+          <Segmente liste={PROJEKT_REITER} aktiv={reiter} onWahl={t => gehe({ ansicht: 'space', s: space.id, p: projektId, t, ...(adresse.l ? { l: adresse.l } : {}) })} />
         </div>
       )}
 
       {reiter === 'aufgaben' && (baumProjekt
-        ? <BaumAnsicht projekte={[baumProjekt]} state={state} dispatch={dispatch} raumId={space.id} offenId={offenId} onOeffnen={onOeffnen} breit={breit} personen={personen} heute={heute} fokus={{ g: adresse.g, l: adresse.l }} projektKopf={false} />
+        ? <BaumAnsicht projekte={[baumProjekt]} state={state} dispatch={dispatch} raumId={space.id} offenId={offenId} onOeffnen={onOeffnen} breit={breit} personen={personen} heute={heute} fokus={{ l: adresse.l }} projektKopf={false} />
         : <Karte i={2}><div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nichts passt zum Filter.</div></Karte>)}
       {reiter === 'notizen' && p && <Karte i={2}><NotizEditor key={p.id} wert={p.notiz} max={AUFGABEN_GRENZEN.notiz} zeile={{ liste: 'projects', id: p.id }} onSpeichern={n => aendern({ notiz: n })} /></Karte>}
       {reiter === 'dateien' && <Karte i={2}><ProjektDateien projektId={projektId} space={space.bereich} /></Karte>}

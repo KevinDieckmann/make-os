@@ -2,8 +2,10 @@
 // ─── MAKE OS — Aufgaben wie Monday/ClickUp (28.09. abends, Kevin + Malin; Vertiefung 28.09. spät) ───
 // Navigation wie in der Markttraktion (Kevin ~22:30): Start ist der Überblick (Kacheln + Karten je Privat/Firma/
 // Mandant), oben die Leiste Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv, im Space die Brotkrumen
-// Space ▾ › Projekt ▾ › Gruppe ▾ › Liste ▾. Ein Projekt öffnet seine Projektseite (Reiter Aufgaben · Notizen · Dateien ·
-// Felder · Verlauf). Ebenen: Projekt → Gruppe → Liste → Aufgabe → Unteraufgabe; ohne Liste/Projekt „Sonstige“.
+// Space ▾ › Projekt ▾ › Liste ▾. Ein Projekt öffnet seine Projektseite (Reiter Aufgaben · Notizen · Dateien ·
+// Felder · Verlauf). Ebenen seit 06.10. (Malins Bauplan-Karte): Projekt › Liste › Aufgabe › Unteraufgabe; ohne Liste/Projekt
+// „Sonstige“. „+ Projekt“ öffnet EINEN Dialog (Name, Farbe, optional Vorlage — NeuesProjekt.tsx); alte Links mit `&g=` (Gruppe)
+// bzw. `&l=` einer Liste, die eine Aufgabe wurde, leitet `alteAdresseUmleiten` weiter.
 // Jeder Zustand steht in der Adresse (lib/aufgaben/adresse.ts, `WEG.aufgaben`) — alte Links (?offen=, ?r=, ?space=)
 // gelten weiter. Regeln rein in lib/aufgaben/*; Schreiben über den Aufgaben-Kontext (Einzeländerungen mit Stand).
 // Andere Pakete hängen sich mit wenigen Zeilen ein: Dateien (C2) über ProjektDateien, Wiederkehrend/Vorlagen (C3),
@@ -22,7 +24,7 @@ import { useTasks } from '@/context/TasksContext';
 import { useSpace } from '@/hooks/useSpace';
 import { localDay } from '@/lib/zeit';
 import { baum, passtFilter, statusListe, bereichVonSpace, FILTER_STANDARD, sonstigeProjektId, istSonstigeProjekt, type AufgabenFilter, type FaelligFilter } from '@/lib/aufgaben/struktur';
-import { adresseLesen, aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
+import { adresseLesen, aufgabenLink, alteAdresseUmleiten, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import type { Task } from '@/types/tasks';
 import { SchnellAnlegen } from './SchnellAnlegen';
 import { AufgabeDetail } from './AufgabeDetail';
@@ -41,7 +43,8 @@ import { HandlungProvider } from './Handlung';
 import { suchPasst } from '@/lib/text/such-norm';
 import { kette, nachIdKarte } from '@/lib/aufgaben/ebenen';
 import { imArchiv } from '@/lib/aufgaben/neustart';
-import { projektAnlegen, spacesOderFest, usePersonen, useIch } from './hilfe';
+import { spacesOderFest, usePersonen, useIch } from './hilfe';
+import { NeuesProjektDialog } from './NeuesProjekt';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { kalenderLink } from '@/lib/kalender/modus';
 
@@ -68,7 +71,7 @@ export function AufgabenRaum() {
   const [filter, setFilterRoh] = useState<AufgabenFilter>(FILTER_STANDARD);
   const [raumGemerkt, setRaumGemerkt] = useState<string | null>(null);
   const [statusZeigen, setStatusZeigen] = useState(false);
-  const [neuProjekt, setNeuProjekt] = useState<string | null>(null);
+  const [neuProjekt, setNeuProjekt] = useState(false);
 
   useEffect(() => {
     try { const f = JSON.parse(lies(FILTER_MERKER) ?? 'null') as Partial<AufgabenFilter> | null; if (f) setFilterRoh({ ...FILTER_STANDARD, ...f }); } catch { /* egal */ }
@@ -100,6 +103,12 @@ export function AufgabenRaum() {
     setOffen(null);
     if (war) setTimeout(() => document.getElementById(`oeffnen-${war}`)?.focus(), 80);
   };
+  // Alte Links (06.10., Umbau v3): Gruppe → ihre Liste; Liste, die eine Aufgabe wurde → die Aufgabe (ersetzt den Eintrag).
+  useEffect(() => {
+    if (!ready) return;
+    const neu = alteAdresseUmleiten(adresse, state);
+    if (neu) router.replace(aufgabenLink(neu), { scroll: false });
+  }, [ready, adresse.g, adresse.l, state.listen, state.tasks]); // eslint-disable-line react-hooks/exhaustive-deps
   // Toter Link (#45): Aufgabe gelöscht, im Papierkorb oder archiviert → Hinweis statt stillem Überblick.
   const tot = ready && offenId && !offen ? (() => {
     const v = voll.tasks.find(t => t.id === offenId);
@@ -141,15 +150,15 @@ export function AufgabenRaum() {
   const darstellung = adresse.darstellung === 'board' || adresse.darstellung === 'tabelle' || adresse.darstellung === 'kalender' || adresse.darstellung === 'zoe' ? adresse.darstellung : 'liste';
   const zoeSicht = <ZoeAufgabenSicht state={state} personen={personen} ich={ich} offenId={offenId} onOeffnen={id => setOffen(offenId === id ? null : id)} />;
   const board = darstellung === 'board';
-  // Tabelle/Kalender (C5): Kontext = Space bzw. Projekt, dazu Gruppe/Liste aus der Adresse.
-  const imKontext = imRaum.filter(t => (!adresse.l || t.listeId === adresse.l) && (!adresse.g || (state.listen ?? []).some(l => l.id === t.listeId && l.gruppeId === adresse.g)));
+  // Tabelle/Kalender (C5): Kontext = Space bzw. Projekt, dazu die Liste aus der Adresse.
+  const imKontext = imRaum.filter(t => !adresse.l || t.listeId === adresse.l);
 
   const detail = (t: Task) => (
     <AufgabeDetail task={t} state={state} dispatch={dispatch} spaces={spaces} personen={personen} ich={ich} onSchliessen={schliessen} onOeffnen={id => setOffen(id)} />
   );
 
   const vorbelegt = raumId
-    ? { spaceId: raumId, ...(projektId ? { projectId: projektId } : {}), ...(adresse.g ? { gruppeId: adresse.g } : {}), ...(adresse.l ? { listeId: adresse.l } : {}) }
+    ? { spaceId: raumId, ...(projektId ? { projectId: projektId } : {}), ...(projektId && adresse.l ? { listeId: adresse.l } : {}) }
     // Gemerkter Raum nur, wenn er zum Bereich passt (05.10.: die Selbstständigkeit steht im Privat-Bereich); sonst der erste Firmen-Space
     // des Business-Bereichs bzw. Privat.
     : { spaceId: raumGemerkt && spaces.some(s => s.id === raumGemerkt && !s.archiv) && (adresse.bereich !== 'business' || bereichVonSpace(raumGemerkt) === 'business') ? raumGemerkt : adresse.bereich === 'business' ? (spaces.find(s => s.art === 'firma' && s.bereich === 'business' && !s.archiv)?.id ?? 'kdv') : 'privat' };
@@ -163,15 +172,11 @@ export function AufgabenRaum() {
       <Wahl klein label="Fällig" liste={FAELLIG} wert={filter.faellig} onWahl={f => setFilter({ faellig: f })} />
       <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
         {projektId && <button onClick={() => gehe({ ansicht: 'space', s: raum.id })} style={leiseKnopf}>‹ alle Projekte</button>}
-        {!raum.archiv && <button onClick={() => setNeuProjekt(n => (n === null ? '' : null))} style={{ ...leiseKnopf, color: C.aktiv }}>+ Projekt</button>}
+        {!raum.archiv && <button onClick={() => setNeuProjekt(true)} style={{ ...leiseKnopf, color: C.aktiv }}>+ Projekt</button>}
         {!raum.archiv && <VorlagenKnopf spaceId={raum.id} projektId={projektId && !istSonstigeProjekt(projektId) ? projektId : undefined} />}
         <button onClick={() => setStatusZeigen(z => !z)} style={leiseKnopf}>{statusZeigen ? 'Status schließen' : 'Status verwalten'}</button>
       </span>
-      {neuProjekt !== null && (
-        <input autoFocus value={neuProjekt} onChange={e => setNeuProjekt(e.target.value)} aria-label="Neues Projekt"
-          onKeyDown={e => { if (e.key === 'Escape') setNeuProjekt(null); if (e.key === 'Enter' && neuProjekt.trim()) { const id = projektAnlegen(dispatch, raum.id, neuProjekt.trim().slice(0, 120), raum.farbe); setNeuProjekt(null); gehe({ ansicht: 'space', s: raum.id, p: id }); } }}
-          placeholder={`Neues Projekt in ${raum.label} (Enter)`} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px', flexBasis: '100%' }} />
-      )}
+      {neuProjekt && <NeuesProjektDialog space={raum} onZu={() => setNeuProjekt(false)} onAngelegt={id => gehe({ ansicht: 'space', s: raum.id, p: id })} />}
     </div>
   );
 
@@ -188,7 +193,7 @@ export function AufgabenRaum() {
       : <>
           <BaumAnsicht projekte={projekteBaum} state={state} dispatch={dispatch} raumId={raum.id} offenId={offenId} onOeffnen={setOffen} onProjekt={id => gehe({ ansicht: 'space', s: raum.id, p: id })} breit={breit} personen={personen} heute={heute} />
           {ready && (!projekteBaum.length || projekteBaum.every(p => p.virtuell && p.listen.every(l => !l.aufgaben.length))) && (
-            <Karte i={2}><Leer>{!standard ? 'Nichts passt zum Filter.' : `Noch nichts in ${raum.label}. Oben eine Zeile tippen — oder „+ Projekt“ (z. B. Launch) mit Gruppen wie Marketing, Sales, Operations.`}</Leer></Karte>
+            <Karte i={2}><Leer>{!standard ? 'Nichts passt zum Filter.' : `Noch nichts in ${raum.label}. Oben eine Aufgabe tippen — oder „+ Projekt“ (z. B. Launch) mit Listen wie Marketing, Sales, Operations.`}</Leer></Karte>
           )}
         </>);
 

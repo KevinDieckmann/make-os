@@ -1,11 +1,11 @@
-// ─── Aufgaben: Adressen, Notiz, Zeit je Aufgabe, Überblick, Baum mit Gruppen (28.09. spät, rein) ──
+// ─── Aufgaben: Adressen, Notiz, Zeit je Aufgabe, Überblick, Baum (28.09. spät, rein; seit 06.10. ohne Gruppen) ──
 import { describe, it, expect } from 'vitest';
 import { adresseLesen, aufgabenLink } from '@/lib/aufgaben/adresse';
 import { WEG } from '@/lib/wege';
 import { notizBloecke, checkUmschalten, checkStand, inline, sichererLink } from '@/lib/aufgaben/notiz';
 import { zeitJeAufgabe, dauerText } from '@/lib/aufgaben/zeit';
 import { kachelAufgaben, spaceStaende, projektStand } from '@/lib/aufgaben/uebersicht';
-import { baum, FESTE_SPACES } from '@/lib/aufgaben/struktur';
+import { baum, uebernehmen, FESTE_SPACES } from '@/lib/aufgaben/struktur';
 import type { Task, TasksState } from '@/types/tasks';
 
 const q = (s: string) => new URLSearchParams(s.split('?')[1] ?? '');
@@ -15,7 +15,9 @@ describe('Adressen', () => {
     expect(adresseLesen(q(''))).toEqual({ ansicht: 'ueberblick' });
     const a = adresseLesen(q('?s=kdv&p=p-launch&g=g-mkt&l=l-w1&t=notizen&a=t-1&ansicht=board'));
     expect(a).toEqual({ ansicht: 'space', s: 'kdv', p: 'p-launch', g: 'g-mkt', l: 'l-w1', t: 'notizen', a: 't-1', darstellung: 'board' });
-    expect(adresseLesen(q(aufgabenLink(a)))).toEqual({ ...a, bereich: 'business' });
+    // Vorher: der Link trug `g` weiter. Seit 06.10. (Umbau v3) wird `g` nur noch gelesen (alte Links) und nie wieder geschrieben.
+    const { g: _g, ...ohneGruppe } = a;
+    expect(adresseLesen(q(aufgabenLink(a)))).toEqual({ ...ohneGruppe, bereich: 'business' });
   });
   it('alte Adressen: offen = a, r = s, space=privat allein = Privat-Space, space=business allein = Überblick', () => {
     expect(adresseLesen(q('?offen=t-9'))).toEqual({ ansicht: 'ueberblick', a: 't-9' });
@@ -108,11 +110,15 @@ describe('Überblick', () => {
   });
 });
 
-describe('Baum mit Gruppen', () => {
-  it('Gruppen in Reihenfolge (auch leere), Listen tragen ihre Gruppe', () => {
-    const b = baum(state, 'kdv');
+describe('Baum seit dem Umbau v3 (06.10.) — Projekt › Liste › Aufgabe › Unteraufgabe', () => {
+  // Vorher: Gruppen „Marketing“ (mit Liste „Woche 1“) und „Sales“ (leer) im Baum, Listen trugen `gruppeId`.
+  it('die Gruppen sind Listen (vorne, mit Farbe, auch leere), „Woche 1“ ist eine Aufgabe in „Marketing“, ihre Aufgabe deren Unteraufgabe', () => {
+    const b = baum(uebernehmen(state).state, 'kdv');
     const p = b.find(x => x.id === 'p1')!;
-    expect(p.gruppen.map(g => [g.titel, g.offen])).toEqual([['Marketing', 1], ['Sales', 0]]);
-    expect(p.listen.map(l => [l.titel, l.gruppeId ?? null])).toEqual([['Woche 1', 'g1'], ['Direkt', null], ['Sonstige', null]]);
+    expect('gruppen' in p).toBe(false);
+    expect(p.listen.map(l => [l.titel, l.farbe ?? null])).toEqual([['Marketing', '#FF7EB6'], ['Sales', '#FF9F43'], ['Direkt', null], ['Sonstige', null]]);
+    const mk = p.listen[0];
+    expect(mk.aufgaben.map(x => [x.task.id, x.task.title, x.unter.map(u => u.id)])).toEqual([['l1', 'Woche 1', ['a']]]);
+    expect(p.listen[2].aufgaben.map(x => x.task.id)).toEqual(['b']);
   });
 });

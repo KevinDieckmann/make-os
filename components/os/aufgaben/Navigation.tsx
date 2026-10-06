@@ -1,7 +1,7 @@
 'use client';
 // ─── Aufgaben-Navigation wie in der Markttraktion (Kevin 28.09. ~22:30) ─────
 // Oben die Leiste: Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv (Firmen/Mandanten als Auswahl mit Suche —
-// dieselbe `Wahl` wie im CRM). Im Space die Brotkrumen Space ▾ › Projekt ▾ › Gruppe ▾ › Liste ▾: jede Stufe springt
+// dieselbe `Wahl` wie im CRM). Im Space die Brotkrumen Space ▾ › Projekt ▾ › Liste ▾ (seit 06.10. ohne Gruppe): jede Stufe springt
 // direkt zu einem Geschwister. Mandanten-Space: Kopf mit Firma (→ Firmenakte), Mandat (→ Mandat) und Zuständig.
 // Jeder Zustand steckt in der Adresse (lib/aufgaben/adresse.ts, `WEG.aufgaben`).
 
@@ -9,7 +9,7 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
-import { firmaVonSpace, sonstigeProjektId, istSonstigeProjekt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
+import { firmaVonSpace, sonstigeProjektId, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import { WEG } from '@/lib/wege';
 import type { TasksState } from '@/types/tasks';
@@ -66,7 +66,7 @@ export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: Au
   );
 }
 
-/** Brotkrumen im Space: Space ▾ › Projekt ▾ › Gruppe ▾ › Liste ▾ — jede Stufe springt zu einem Geschwister. */
+/** Brotkrumen im Space: Space ▾ › Projekt ▾ › Liste ▾ — jede Stufe springt zu einem Geschwister. */
 export function Brotkrumen({ adresse, state, spaces, gehe }: { adresse: AufgabenAdresse; state: TasksState; spaces: readonly AufgabenSpace[]; gehe: Gehe }) {
   const sid = adresse.s ?? 'privat';
   const raum = spaces.find(s => s.id === sid);
@@ -74,8 +74,7 @@ export function Brotkrumen({ adresse, state, spaces, gehe }: { adresse: Aufgaben
   const projekte = projekteImSpace(state, sid);
   const projektWahl: WahlEintrag<string>[] = [{ id: ALLE, label: 'Alle Projekte' }, ...projekte.map(p => ({ id: p.id, label: p.title, punkt: p.color, ...(p.status && p.status !== 'aktiv' ? { hinweis: p.status } : {}) })), { id: sonstigeProjektId(sid), label: 'Sonstige' }];
   const p = adresse.p;
-  const gruppen = p ? (state.gruppen ?? []).filter(g => g.projektId === p).sort((a, b) => a.sortOrder - b.sortOrder) : [];
-  const listen = p ? (state.listen ?? []).filter(l => l.projektId === p && !l.archiviert && (!adresse.g || l.gruppeId === adresse.g)).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+  const listen = p ? (state.listen ?? []).filter(l => l.projektId === p && !l.archiviert).sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const trenner = <span aria-hidden style={{ color: C.inkLeise }}>›</span>;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '2px 0 12px', fontSize: TYP.bedien }}>
@@ -83,16 +82,11 @@ export function Brotkrumen({ adresse, state, spaces, gehe }: { adresse: Aufgaben
       {trenner}
       <Wahl klein label="Projekt" liste={projektWahl} wert={p ?? ALLE} farbe={p ? state.projects.find(x => x.id === p)?.color ?? C.inkDim : C.inkDim}
         onWahl={id => gehe({ ansicht: 'space', s: sid, ...(id === ALLE ? {} : { p: id }) })} />
-      {p && !istSonstigeProjekt(p) && gruppen.length > 0 && <>
-        {trenner}
-        <Wahl klein label="Gruppe" liste={[{ id: ALLE, label: 'Alle Gruppen' }, ...gruppen.map(g => ({ id: g.id, label: g.titel, punkt: g.farbe }))]} wert={adresse.g ?? ALLE}
-          farbe={gruppen.find(g => g.id === adresse.g)?.farbe ?? C.inkDim} onWahl={id => gehe({ ansicht: 'space', s: sid, p, t: adresse.t, ...(id === ALLE ? {} : { g: id }) })} />
-      </>}
       {p && listen.length > 0 && <>
         {trenner}
-        <Wahl klein label="Liste" liste={[{ id: ALLE, label: adresse.g ? 'Alle Listen der Gruppe' : 'Alle Listen' }, ...listen.map(l => ({ id: l.id, label: l.titel, ...(l.gruppeId && !adresse.g ? { hinweis: gruppen.find(g => g.id === l.gruppeId)?.titel } : {}) }))]}
-          wert={adresse.l ?? ALLE} farbe={C.inkDim}
-          onWahl={id => gehe({ ansicht: 'space', s: sid, p, t: adresse.t, ...(adresse.g ? { g: adresse.g } : {}), ...(id === ALLE ? {} : { l: id }) })} />
+        <Wahl klein label="Liste" liste={[{ id: ALLE, label: 'Alle Listen' }, ...listen.map(l => ({ id: l.id, label: l.titel, ...(l.farbe ? { punkt: l.farbe } : {}) }))]}
+          wert={adresse.l ?? ALLE} farbe={listen.find(l => l.id === adresse.l)?.farbe ?? C.inkDim}
+          onWahl={id => gehe({ ansicht: 'space', s: sid, p, t: adresse.t, ...(id === ALLE ? {} : { l: id }) })} />
       </>}
     </div>
   );

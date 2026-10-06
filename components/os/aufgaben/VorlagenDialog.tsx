@@ -29,7 +29,8 @@ const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C
 
 function Umfang({ v }: { v: Pick<AufgabenVorlage, 'inhalt'> }) {
   const u = vorlageUmfang(v);
-  const teile = [u.gruppen ? `${u.gruppen} Gruppe${u.gruppen === 1 ? '' : 'n'}` : '', u.listen ? `${u.listen} Liste${u.listen === 1 ? '' : 'n'}` : '', `${u.aufgaben} Aufgabe${u.aufgaben === 1 ? '' : 'n'}`, u.unter ? `${u.unter} Unteraufgabe${u.unter === 1 ? '' : 'n'}` : ''].filter(Boolean);
+  // Seit 06.10. ohne Gruppen: alte Vorlagen zählen so, wie sie angelegt würden (Gruppe → Liste, Liste → Aufgabe, `vorlageUmfang`).
+  const teile = [u.listen ? `${u.listen} Liste${u.listen === 1 ? '' : 'n'}` : '', `${u.aufgaben} Aufgabe${u.aufgaben === 1 ? '' : 'n'}`, u.unter ? `${u.unter} Unteraufgabe${u.unter === 1 ? '' : 'n'}` : ''].filter(Boolean);
   return <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{teile.join(' · ')}</span>;
 }
 
@@ -69,7 +70,7 @@ function Speichern({ art, id, onSchliessen }: { art: 'projekt' | 'liste'; id: st
   return (
     <Fenster titel={art === 'projekt' ? 'Projekt als Vorlage speichern' : 'Liste als Vorlage speichern'} onZu={onSchliessen} breit={580}>
       <p style={{ margin: 0, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-        Gespeichert wird nur die Struktur{art === 'projekt' ? ': Gruppen, Listen, Aufgaben, Unteraufgaben, eigene Felder und die Notiz' : ': Aufgaben und Unteraufgaben'} —
+        Gespeichert wird nur die Struktur{art === 'projekt' ? ': Listen, Aufgaben, Unteraufgaben, eigene Felder und die Notiz' : ': Aufgaben und Unteraufgaben'} —
         ohne Verknüpfungen ins CRM, Kommentare, Dateien und Verlauf. Deadlines werden zum Abstand in Tagen ab dem Bezugstag.
       </p>
       <label style={zeile}><span style={mikro}>Name</span>
@@ -100,7 +101,6 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
   const [art, setArt] = useState<'projekt' | 'liste'>(artStart ?? (startProjekt ? 'liste' : 'projekt'));
   const [spaceId, setSpaceId] = useState(startSpace);
   const [projektId, setProjektId] = useState(startProjekt ?? sonstigeProjektId(startSpace));
-  const [gruppeId, setGruppeId] = useState('');
   const [start, setStart] = useState(berlinerTag());
   const liste = vorlagenFuer(state.vorlagen, art, spaceId);
   const [gewaehlt, setGewaehlt] = useState<string>('');
@@ -109,7 +109,6 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
   const [fertig, setFertig] = useState<string | null>(null);
   const { bestaetigen, dialog } = useRueckfrage();
   const projekte = projekteImSpace(state, spaceId);
-  const gruppen = (state.gruppen ?? []).filter(g => g.projektId === projektId);
   const space = spaces.find(s => s.id === spaceId);
   const titelJetzt = titel ?? v?.titel ?? '';
   const u = v ? vorlageUmfang(v) : null;
@@ -117,11 +116,10 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
   const anlegen = () => {
     if (!v) return;
     const r = ausVorlageAnlegen(v, state, {
-      spaceId, projektId: art === 'liste' ? projektId : undefined, gruppeId: art === 'liste' && gruppeId ? gruppeId : undefined, start, titel: titelJetzt,
+      spaceId, projektId: art === 'liste' ? projektId : undefined, start, titel: titelJetzt,
       owner: ich === 'kevin' || ich === 'malin' ? ich : 'kevin', praefix: neueKennung(art === 'projekt' ? 'p' : 'l'), jetzt: new Date().toISOString(), farbe: space?.farbe,
     });
     if (r.projekt) { const { createdAt: _c, updatedAt: _u, ...p } = r.projekt; dispatch({ type: 'ADD_PROJECT_MIT_ID', payload: p }); }
-    for (const g of r.gruppen) dispatch({ type: 'ADD_GRUPPE', payload: g });
     for (const l of r.listen) dispatch({ type: 'ADD_LISTE', payload: l });
     for (const t of r.tasks) { const { createdAt: _c, updatedAt: _u, ...rest } = t; dispatch({ type: 'ADD_TASK_MIT_ID', payload: rest }); }
     setFertig(`Angelegt: „${r.projekt?.title ?? r.listen[0]?.titel ?? v.titel}“ mit ${r.tasks.length} Aufgabe${r.tasks.length === 1 ? '' : 'n'}.`);
@@ -153,18 +151,13 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
       {v && (
         <div style={{ display: 'grid', gap: 8 }}>
           <label style={zeile}><span style={mikro}>Space</span>
-            <select value={spaceId} onChange={e => { setSpaceId(e.target.value); setProjektId(sonstigeProjektId(e.target.value)); setGruppeId(''); }} style={eingabe} aria-label="Space">
+            <select value={spaceId} onChange={e => { setSpaceId(e.target.value); setProjektId(sonstigeProjektId(e.target.value)); }} style={eingabe} aria-label="Space">
               {spaces.map(s => <option key={s.id} value={s.id}>{s.label}{s.archiv ? ' (Archiv)' : ''}</option>)}
             </select></label>
           {art === 'liste' && <label style={zeile}><span style={mikro}>Projekt</span>
-            <select value={projektId} onChange={e => { setProjektId(e.target.value); setGruppeId(''); }} style={eingabe} aria-label="Projekt">
+            <select value={projektId} onChange={e => setProjektId(e.target.value)} style={eingabe} aria-label="Projekt">
               {projekte.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
               <option value={sonstigeProjektId(spaceId)}>Sonstige</option>
-            </select></label>}
-          {art === 'liste' && gruppen.length > 0 && <label style={zeile}><span style={mikro}>Gruppe</span>
-            <select value={gruppeId} onChange={e => setGruppeId(e.target.value)} style={eingabe} aria-label="Gruppe">
-              <option value="">direkt im Projekt</option>
-              {gruppen.map(g => <option key={g.id} value={g.id}>{g.titel}</option>)}
             </select></label>}
           <label style={zeile}><span style={mikro}>Start</span>
             <input type="date" value={start} onChange={e => setStart(e.target.value || berlinerTag())} style={eingabe} aria-label="Startdatum" /></label>

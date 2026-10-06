@@ -121,12 +121,13 @@ describe('Eine Verantwortliche + Beteiligte (Server)', () => {
     expect((await patch('kevin', upsert(a('b2', { assignee: 'irgendwer' as Task['assignee'] })))).status).toBe(400);
     expect((await patch('kevin', upsert(a('b3', { beteiligte: ['irgendwer'] })))).status).toBe(400);
   });
-  it('Übernahme des Altbestands: „both“ → Anlegerin/Beteiligte, Status bleibt; Archiv-Kopie v2 einmal; idempotent', async () => {
+  it('Übernahme des Altbestands: „both“ → Anlegerin/Beteiligte, Status bleibt; Archiv-Kopie einmal (seit 06.10. v3); idempotent', async () => {
     await db.saveJson('tasks', { projects: [], tasks: [a('alt1', { assignee: 'both', status: 'in-progress', verlauf: [{ am: T0, von: 'malin', was: 'angelegt' }] }), a('alt2', { assignee: 'both' })], umbauVersion: 1 });
-    const archiv = () => (existsSync(path.join(ordner, 'archiv')) ? readdirSync(path.join(ordner, 'archiv')).filter(n => n.startsWith('tasks-vor-umbau-v2-')) : []);
+    // Vorher: Kopie `tasks-vor-umbau-v2-…`, Merker 2. Seit 06.10. (Umbau v3) ist die aktuelle Version 3 — die Kopie heißt `…-v3-…`.
+    const archiv = () => (existsSync(path.join(ordner, 'archiv')) ? readdirSync(path.join(ordner, 'archiv')).filter(n => n.startsWith('tasks-vor-umbau-v3-')) : []);
     expect((await patch('kevin', upsert(a('anderes')))).status).toBe(200);
     const g = await gespeichert();
-    expect(g.umbauVersion).toBe(2);
+    expect(g.umbauVersion).toBe(3);
     expect(g.tasks.find(t => t.id === 'alt1')).toMatchObject({ assignee: 'malin', beteiligte: ['kevin'], status: 'in-progress', angelegtVon: 'malin' });
     expect(g.tasks.find(t => t.id === 'alt2')).toMatchObject({ assignee: 'kevin', beteiligte: ['malin'] }); // geraten → erste Person (Inhaber)
     expect(archiv()).toHaveLength(1);

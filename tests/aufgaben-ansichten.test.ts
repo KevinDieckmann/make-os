@@ -206,8 +206,9 @@ describe('Kalender / Zeitachse', () => {
 const PERSONEN = [{ speicher: 'kevin', name: 'Kevin', namen: ['Kevin', 'kevin'] }, { speicher: 'malin', name: 'Malin', namen: ['Malin', 'malin'] }];
 const STATE: TasksState = {
   projects: [P_MK],
-  listen: [{ id: 'l-jan', projektId: 'p-mk', titel: 'Januar', sortOrder: 0, gruppeId: 'g-sales' }],
-  gruppen: [{ id: 'g-sales', projektId: 'p-mk', titel: 'Sales', farbe: '#FF9F43', sortOrder: 0 }],
+  // Vorher (bis 06.10.): Liste „Januar“ in der Gruppe „Sales“ → Ort „Sales › Januar“. Seit dem Umbau v3 gibt es keine Gruppen; die
+  // Liste trägt die Farbe selbst, der Ort ist nur noch die Liste.
+  listen: [{ id: 'l-jan', projektId: 'p-mk', titel: 'Januar', sortOrder: 0, farbe: '#FF9F43' }],
   statusEigen: [{ id: 's-pruef', spaceId: 'kdv', label: 'In Prüfung', farbe: '#C77DFF', basis: 'in-progress', sortOrder: 0 }],
   vorlagen: [],
   tasks: [
@@ -222,10 +223,11 @@ describe('Ansichten zeichnen', () => {
   it('Tabelle: Kopf sortierbar, Status/Zuständig/Priorität als Wahl, Deadline-Feld, Felder typgerecht, wartet auf, Summenzeile, eigener Querlauf', async () => {
     const { AnsichtTabelle } = await import('@/components/os/aufgaben/AnsichtTabelle');
     const html = renderToStaticMarkup(h(AnsichtTabelle, { state: STATE, dispatch: () => {}, spaceId: 'kdv', aufgaben: STATE.tasks, personen: PERSONEN, heute: '2026-09-28', ich: 'kevin', offenId: null, onOeffnen: () => {} }));
-    for (const k of ['Aufgabe', 'Status', 'Zuständig', 'Deadline', 'Priorität', 'Liste / Gruppe', 'CRM-Bezug', 'Wartet auf', 'Budget', 'Stück', 'Kanal', 'Verantwortet', 'Termin']) expect(html).toContain(`>${k}<`);
+    for (const k of ['Aufgabe', 'Status', 'Zuständig', 'Deadline', 'Priorität', 'Liste', 'CRM-Bezug', 'Wartet auf', 'Budget', 'Stück', 'Kanal', 'Verantwortet', 'Termin']) expect(html).toContain(`>${k}<`);
     expect(html).toContain('aria-sort="none"');
     expect(html).toContain('Messestand buchen');
-    expect(html).toContain('Sales › Januar');
+    expect(html).toContain('>Januar<'); // Vorher: 'Sales › Januar' (Gruppe › Liste)
+    expect(html).not.toContain('Sales');
     expect(html).toContain('In Prüfung');
     expect(html).toContain('Status: In Prüfung — ändern');
     expect(html).toContain('Zuständig: Kevin — ändern');

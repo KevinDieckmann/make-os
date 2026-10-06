@@ -207,10 +207,12 @@ describe('Wiederkehrende Liste im Morgenlauf', () => {
 });
 
 describe('Vorlagen speichern und anlegen', () => {
+  // Vorher (bis 06.10.): „Woche 1“ lag in der Gruppe „Marketing“ (Farbe an der Gruppe), die Vorlage trug `gruppen` + `gruppeIndex`.
+  // Seit dem Umbau v3 gibt es keine Gruppen — die Liste trägt ihre Farbe selbst, die Vorlage auch (alte Vorlagen mit Gruppen:
+  // tests/aufgaben-vorlagen-t2.test.ts und tests/aufgaben-umbau-v3.test.ts).
   const stand = (): TasksState => ({
     projects: [{ id: 'p-launch', title: 'Launch', category: 'business', owner: 'both', color: '#DE9E63', tags: [], archived: false, createdAt: T0, updatedAt: T0, spaceId: 'kdv', start: '2026-10-01', notiz: '## Plan', felder: [{ id: 'budget', name: 'Budget', typ: 'betrag' }] }],
-    gruppen: [{ id: 'g1', projektId: 'p-launch', titel: 'Marketing', farbe: '#E27FD0', sortOrder: 0 }],
-    listen: [{ id: 'l1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0, gruppeId: 'g1' }, { id: 'l2', projektId: 'p-launch', titel: 'Woche 2', sortOrder: 1 }],
+    listen: [{ id: 'l1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0, farbe: '#E27FD0' }, { id: 'l2', projektId: 'p-launch', titel: 'Woche 2', sortOrder: 1 }],
     statusEigen: [], vorlagen: [],
     tasks: [
       aufgabe('t1', { projectId: 'p-launch', listeId: 'l1', dueDate: '2026-10-04', bezug: { kontaktId: 'c-anna1' }, kommentare: [{ id: 'k', von: 'kevin', text: 'geheim', am: T0 }], felder: { budget: 5000 }, zoe: { status: 'offen' } }),
@@ -225,9 +227,8 @@ describe('Vorlagen speichern und anlegen', () => {
     expect(v).toEqual({
       id: 'v-1', art: 'projekt', titel: 'Launch', angelegt: JETZT, version: 1,
       inhalt: {
-        gruppen: [{ titel: 'Marketing', farbe: '#E27FD0' }],
         listen: [
-          { titel: 'Woche 1', gruppe: 'Marketing', gruppeIndex: 0, aufgaben: [{ titel: 'Aufgabe t1', zustaendig: 'kevin', versatzTage: 3, unter: [{ titel: 'Entwurf', zustaendig: 'kevin', versatzTage: 1 }] }] },
+          { titel: 'Woche 1', farbe: '#E27FD0', aufgaben: [{ titel: 'Aufgabe t1', zustaendig: 'kevin', versatzTage: 3, unter: [{ titel: 'Entwurf', zustaendig: 'kevin', versatzTage: 1 }] }] },
           { titel: 'Woche 2', aufgaben: [{ titel: 'Aufgabe t2', beschreibung: 'Kurz beschrieben', zustaendig: 'kevin' }] },
         ],
         aufgaben: [{ titel: 'Aufgabe t3', prioritaet: 'high', zustaendig: 'malin', versatzTage: 10 }],
@@ -243,27 +244,29 @@ describe('Vorlagen speichern und anlegen', () => {
     const v = vorlageAusListe(stand(), 'l1', { id: 'v-2', bezugsTag: '2026-10-01', jetzt: JETZT })!;
     expect(v.inhalt).toEqual({ aufgaben: [{ titel: 'Aufgabe t1', zustaendig: 'kevin', versatzTage: 3, unter: [{ titel: 'Entwurf', zustaendig: 'kevin', versatzTage: 1 }] }] });
   });
-  it('Vorlage → Projekt im Mandanten-Space: Gruppen, Listen, Aufgaben, Deadlines ab Start, Firma vorbelegt', () => {
+  it('Vorlage → Projekt im Mandanten-Space: Listen (mit Farbe), Aufgaben, Deadlines ab Start, Firma vorbelegt', () => {
     const v = vorlageAusProjekt(stand(), 'p-launch', { id: 'v-1', jetzt: JETZT })!;
     const r = ausVorlageAnlegen(v, stand(), { spaceId: 'm-f-muster', start: '2026-11-02', praefix: 'p-neu', owner: 'kevin', jetzt: JETZT, titel: 'Launch {Monat}' });
     expect(r.projekt).toMatchObject({ id: 'p-neu', title: 'Launch November', spaceId: 'm-f-muster', start: '2026-11-02', vorlageId: 'v-1', notiz: '## Plan', felder: [{ id: 'budget', name: 'Budget', typ: 'betrag' }] });
-    expect(r.gruppen).toEqual([{ id: 'p-neu-g1', projektId: 'p-neu', titel: 'Marketing', farbe: '#E27FD0', sortOrder: 0 }]);
-    expect(r.listen.map(l => [l.id, l.titel, l.gruppeId])).toEqual([['p-neu-l1', 'Woche 1', 'p-neu-g1'], ['p-neu-l2', 'Woche 2', undefined]]);
+    expect('gruppen' in r).toBe(false); // Vorher: r.gruppen = [Marketing]
+    expect(r.listen.map(l => [l.id, l.titel, l.farbe, l.gruppeId])).toEqual([['p-neu-l1', 'Woche 1', '#E27FD0', undefined], ['p-neu-l2', 'Woche 2', undefined, undefined]]);
     expect(r.tasks.map(t => [t.id, t.parentId, t.dueDate, t.assignee])).toEqual([
       ['p-neu-l1-a1', undefined, '2026-11-05', 'kevin'], ['p-neu-l1-a1-u1', 'p-neu-l1-a1', '2026-11-03', 'kevin'],
       ['p-neu-l2-a1', undefined, undefined, 'kevin'], ['p-neu-s-a1', undefined, '2026-11-12', 'malin'],
     ]);
     expect(r.tasks.every(t => t.bezug?.firmaId === 'f-muster' && t.spaceId === 'm-f-muster')).toBe(true);
-    const s: TasksState = { ...stand(), projects: [...stand().projects, r.projekt!], gruppen: [...stand().gruppen!, ...r.gruppen], listen: [...stand().listen!, ...r.listen], tasks: [...stand().tasks, ...r.tasks] };
+    const s: TasksState = { ...stand(), projects: [...stand().projects, r.projekt!], listen: [...stand().listen!, ...r.listen], tasks: [...stand().tasks, ...r.tasks] };
     const ueb = uebernehmen(s);
     expect(ueb.state.tasks.filter(t => t.projectId === 'p-neu')).toHaveLength(4);
-    expect(ueb.state.listen!.find(l => l.id === 'p-neu-l1')!.gruppeId).toBe('p-neu-g1');
+    expect(ueb.state.listen!.find(l => l.id === 'p-neu-l1')!.farbe).toBe('#E27FD0');
     for (const t of r.tasks) expect(taskSauber(t)).not.toBeNull();
   });
   it('mitgelieferte Startvorlagen: sauber, ohne echte Daten; Listen-Vorlage in ein Projekt', () => {
     expect(STARTVORLAGEN.map(v => v.titel)).toEqual(['Monatsabschluss Buchhaltung', 'Mandats-Onboarding', 'Launch-Projekt']);
     for (const v of STARTVORLAGEN) expect(vorlageSauber(v)).toEqual(v);
-    expect(STARTVORLAGEN[2].inhalt.gruppen!.map(g => g.titel)).toEqual(['Marketing', 'Sales', 'Operations']);
+    // Vorher: Launch-Projekt mit Gruppen Marketing/Sales/Operations — seit 06.10. sind das die Listen (mit Farbe).
+    expect(STARTVORLAGEN[2].inhalt.gruppen).toBeUndefined();
+    expect(STARTVORLAGEN[2].inhalt.listen!.map(l => [l.titel, !!l.farbe])).toEqual([['Marketing', true], ['Sales', true], ['Operations', true]]);
     const r = ausVorlageAnlegen(STARTVORLAGEN[0], stand(), { spaceId: 'kdv', projektId: 'p-launch', start: '2026-10-01', titel: 'Monatsabschluss {Monat} {Jahr}', praefix: 'l-neu', owner: 'malin', jetzt: JETZT });
     expect(r.listen).toEqual([{ id: 'l-neu', projektId: 'p-launch', titel: 'Monatsabschluss Oktober 2026', sortOrder: 2 }]);
     expect(r.tasks).toHaveLength(9);

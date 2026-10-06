@@ -15,11 +15,21 @@ const stand = (): TasksState => ({
 });
 
 describe('Vorlagen T2', () => {
-  it('#69: zwei Gruppen mit gleichem Titel — jede Liste landet in ihrer eigenen', () => {
-    const v = vorlageAusProjekt(stand(), 'p', { id: 'v1', bezugsTag: '2026-10-01', jetzt: T0 })!;
-    expect(v.inhalt.listen!.map(l => l.gruppeIndex)).toEqual([0, 1]);
+  it('#69: zwei Gruppen mit gleichem Titel — jede Liste landet in ihrer eigenen (seit 06.10. nach der Regel des Umbaus v3)', () => {
+    // Vorher: `vorlageAusProjekt` schrieb `gruppen` + `gruppeIndex`, `ausVorlageAnlegen` legte Gruppen an (neu-g1, neu-g2) und hängte die
+    // Listen hinein. Seit 06.10. gibt es keine Gruppen mehr: eine Vorlage von damals (mit Gruppen) wird beim Anwenden umgesetzt —
+    // Gruppe → Liste (mit Farbe), ihre Liste → Aufgabe, deren Aufgaben → Unteraufgaben; der Index hält gleichnamige Gruppen weiter auseinander.
+    const v = { id: 'v1', art: 'projekt' as const, titel: 'Launch', inhalt: {
+      gruppen: [{ titel: 'Team', farbe: '#FF7EB6' }, { titel: 'Team', farbe: '#4FC3F7' }],
+      listen: [{ titel: 'Eins', gruppe: 'Team', gruppeIndex: 0, aufgaben: [{ titel: 'A a', versatzTage: 1 }] }, { titel: 'Zwei', gruppe: 'Team', gruppeIndex: 1, aufgaben: [{ titel: 'A b', versatzTage: 5 }] }],
+    } };
+    expect(vorlageAusProjekt(stand(), 'p', { id: 'v-neu', jetzt: T0 })!.inhalt.gruppen).toBeUndefined();
     const r = ausVorlageAnlegen(v, stand(), { spaceId: 'kdc', start: '2026-11-02', owner: 'kevin', praefix: 'neu', jetzt: T0 });
-    expect(r.listen.map(l => l.gruppeId)).toEqual(['neu-g1', 'neu-g2']);
+    expect(r.listen.map(l => [l.id, l.titel, l.farbe, l.gruppeId])).toEqual([['neu-l1', 'Team', '#FF7EB6', undefined], ['neu-l2', 'Team', '#4FC3F7', undefined]]);
+    expect(r.tasks.map(t => [t.id, t.title, t.listeId, t.parentId ?? null])).toEqual([
+      ['neu-l1-a1', 'Eins', 'neu-l1', null], ['neu-l1-a1-u1', 'A a', 'neu-l1', 'neu-l1-a1'],
+      ['neu-l2-a1', 'Zwei', 'neu-l2', null], ['neu-l2-a1-u1', 'A b', 'neu-l2', 'neu-l2-a1'],
+    ]);
     // Die Säuberung behält den Index (nur gültige).
     const s = vorlageSauber({ ...v, inhalt: { ...v.inhalt, listen: [{ ...v.inhalt.listen![0], gruppeIndex: 7 }, v.inhalt.listen![1]] } })!;
     expect(s.inhalt.listen!.map(l => l.gruppeIndex)).toEqual([undefined, 1]);

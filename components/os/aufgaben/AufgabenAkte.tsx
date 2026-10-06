@@ -51,7 +51,7 @@ export function AufgabenAkte(b: AkteBezug) {
       <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} aria-label="Neue Aufgabe zu dieser Akte"
         placeholder="+ Aufgabe (Enter)" style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', marginTop: 6, fontFamily: SCHRIFT.text }} />
       {b.mandantFirmaId
-        ? <Link href={WEG.aufgaben({ s: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.aktiv, textDecoration: 'none', marginTop: 6 }}>Mandanten-Space öffnen — Projekte, Gruppen, Listen ›</Link>
+        ? <Link href={WEG.aufgaben({ s: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.aktiv, textDecoration: 'none', marginTop: 6 }}>Mandanten-Space öffnen — Projekte, Listen, Aufgaben ›</Link>
         : <Link href={WEG.aufgaben({ b: 'ueberblick' })} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', marginTop: 4 }}>Alle Aufgaben ›</Link>}
     </div>
   );

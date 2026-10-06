@@ -114,24 +114,19 @@ export function projektAnlegen(dispatch: Dispatch<AufgabenAktion>, spaceId: stri
   return id;
 }
 
-export function listeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, projektId: string, titel: string, gruppeId?: string): string {
+/**
+ * Eine Liste im Projekt anlegen (am Ende). Seit 06.10. (Malins Bauplan-Karte) die einzige Ebene zwischen Projekt und Aufgabe —
+ * Gruppen gibt es nicht mehr; eine Liste darf eine Farbe tragen (`LISTEN_FARBEN`).
+ */
+export function listeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, projektId: string, titel: string, farbe?: string): string {
   const id = neueKennung('l');
   const n = (state.listen ?? []).filter(l => l.projektId === projektId).reduce((m, l) => Math.max(m, l.sortOrder), -1) + 1;
-  dispatch({ type: 'ADD_LISTE', payload: { id, projektId, titel, sortOrder: n, ...(gruppeId ? { gruppeId } : {}) } });
+  dispatch({ type: 'ADD_LISTE', payload: { id, projektId, titel: titel.slice(0, 80), sortOrder: n, ...(farbe ? { farbe } : {}) } });
   return id;
 }
 
-/** Farben für Gruppen (Marketing, Sales, Operations …) — der Reihe nach vergeben. */
-export const GRUPPEN_FARBEN = ['#FF7EB6', '#FF9F43', '#4FC3F7', '#3DE28B', '#C77DFF', '#FFC93C', '#58D9CD', '#8F86FF'] as const;
-
-/** Eine Gruppe im Projekt anlegen (Farbe der Reihe nach). */
-export function gruppeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, projektId: string, titel: string, farbe?: string): string {
-  const id = neueKennung('g');
-  const im = (state.gruppen ?? []).filter(g => g.projektId === projektId);
-  const n = im.reduce((m, g) => Math.max(m, g.sortOrder), -1) + 1;
-  dispatch({ type: 'ADD_GRUPPE', payload: { id, projektId, titel: titel.slice(0, 60), farbe: farbe ?? GRUPPEN_FARBEN[im.length % GRUPPEN_FARBEN.length], sortOrder: n } });
-  return id;
-}
+/** Farben für Listen und Projekte (Marketing, Sales, Operations …) — zur Auswahl bzw. der Reihe nach. */
+export const LISTEN_FARBEN = ['#FF7EB6', '#FF9F43', '#4FC3F7', '#3DE28B', '#C77DFF', '#FFC93C', '#58D9CD', '#8F86FF'] as const;
 
 /** Datum kurz: 2026-10-03 → 03.10. */
 export const tagKurz = (d?: string): string => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.` : '');

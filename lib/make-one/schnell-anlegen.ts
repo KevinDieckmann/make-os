@@ -11,6 +11,10 @@
 // Umlaut-tolerant: @jürgen = @juergen = @jurgen) statt fest @kevin/@malin. Die erste erkannte Person ist verantwortlich,
 // weitere sind beteiligt; „@beide“/„@alle“ = ich verantwortlich + alle anderen beteiligt (es gibt keine „beide“-Zuständigkeit
 // mehr, lib/aufgaben/zustaendig.ts). Unbekannte @Wörter bleiben im Titel. Ohne @ = ich (`schnellZustaendigkeit`).
+// Seit 06.10. (Malins Bauplan-Karte): die Schnelleingabe legt IMMER eine Aufgabe an. Ziel per `#Projekt/Liste` (Groß/Klein egal,
+// Leerzeichen erlaubt bis zum Ende des Treffers — der längste passende Name gewinnt, bei Gleichstand der aktuelle Space). `#projekt`
+// (ein Wort, Teil des Projektnamens) gilt weiter. Ein unbekanntes `#…/…` legt NICHT an: `zielUnbekannt` mit Vorschlag
+// („Liste nicht gefunden — meintest du …?“).
 
 import { localDay } from '@/lib/zeit';
 import { istTag, kurzTag, tagPlus, wochentag } from '@/lib/aufgaben/wiederholung';
@@ -44,6 +48,51 @@ export interface SchnellErgebnis {
   zustaendigGetippt: boolean;
   /** Ein getipptes Datum, das es nicht gibt (z. B. „31.02.“) — bleibt im Titel. */
   datumUngueltig?: string;
+  /** `#Projekt/Liste` erkannt (06.10.): dort entsteht die Aufgabe. */
+  ziel?: SchnellZiel;
+  /** `#…/…` ohne Treffer (06.10.): nicht anlegen — Hinweis „Liste nicht gefunden“ mit Vorschlag. */
+  zielUnbekannt?: { text: string; vorschlag?: SchnellZiel };
+}
+
+/** Ein mögliches Ziel der Schnelleingabe: Liste in einem Projekt eines Space (Firma › Projekt › Liste). */
+export interface SchnellZiel { spaceId: string; projektId: string; projektTitel: string; listeId: string; listeTitel: string }
+
+const klein = (x: string) => x.toLocaleLowerCase('de-DE');
+/** So schreibt man ein Ziel als Kürzel: `#Projekt/Liste`. */
+export const zielKuerzel = (z: Pick<SchnellZiel, 'projektTitel' | 'listeTitel'>): string => `#${z.projektTitel}/${z.listeTitel}`;
+
+/**
+ * `#Projekt/Liste` am Anfang von `rest` (dem Text hinter „#“) — der längste passende Name, der an einer Wortgrenze endet; bei
+ * Gleichstand das erste Ziel (die Aufrufer legen den aktuellen Space nach vorn). Liefert das Ziel und die Länge des Treffers.
+ */
+export function zielAmAnfang(rest: string, ziele: readonly SchnellZiel[]): { ziel: SchnellZiel; laenge: number } | null {
+  const r = klein(rest);
+  let best: { ziel: SchnellZiel; laenge: number } | null = null;
+  for (const z of ziele) {
+    const k = klein(`${z.projektTitel}/${z.listeTitel}`);
+    if (!r.startsWith(k)) continue;
+    const danach = rest.charAt(k.length);
+    if (danach && !/\s/.test(danach)) continue;
+    if (!best || k.length > best.laenge) best = { ziel: z, laenge: k.length };
+  }
+  return best;
+}
+
+/** Vorschlag zu einem unbekannten `#…/…`: das Ziel, dessen Projekt und Liste am besten zum Getippten passen (oder keins). */
+export function zielVorschlag(rest: string, ziele: readonly SchnellZiel[]): SchnellZiel | undefined {
+  const i = rest.indexOf('/');
+  const p = klein(rest.slice(0, i < 0 ? undefined : i).trim());
+  const l = klein(i < 0 ? '' : rest.slice(i + 1).trim());
+  const lWort = l.split(/\s+/)[0] ?? '';
+  let best: { z: SchnellZiel; punkte: number } | undefined;
+  for (const z of ziele) {
+    const zp = klein(z.projektTitel), zl = klein(z.listeTitel);
+    let punkte = 0;
+    if (p && (zp === p || zp.startsWith(p) || p.startsWith(zp))) punkte += 3; else if (p && zp.includes(p)) punkte += 2;
+    if (l && l.startsWith(zl)) punkte += 4; else if (lWort && zl.startsWith(lWort)) punkte += 2; else if (lWort && zl.includes(lWort)) punkte += 1;
+    if (punkte > 0 && (!best || punkte > best.punkte)) best = { z, punkte };
+  }
+  return best?.z;
 }
 
 /** Eine Person mit Konto für „@Name“ — aus dem Team (`usePersonen`: Vorname, Kurzname, Speichername). */
@@ -69,9 +118,23 @@ export function personZuName(name: string, personen: readonly SchnellPerson[]): 
   return treffer.length === 1 ? treffer[0].speicher : undefined;
 }
 
-/** Schnell-Anlegen mit Kürzeln: !! kritisch · ! hoch · heute/morgen/übermorgen · [am|bis] mo–so · freitag · TT.MM.[JJJJ] · #projekt · @Name/@beide */
-export function parseSchnell(rein: string, projekte: { id: string; title: string }[], heute: string = localDay(), personen: readonly SchnellPerson[] = STANDARD_PERSONEN): SchnellErgebnis {
+/** Schnell-Anlegen mit Kürzeln: !! kritisch · ! hoch · heute/morgen/übermorgen · [am|bis] mo–so · freitag · TT.MM.[JJJJ] · #Projekt/Liste · #projekt · @Name/@beide */
+export function parseSchnell(rein: string, projekte: { id: string; title: string }[], heute: string = localDay(), personen: readonly SchnellPerson[] = STANDARD_PERSONEN, ziele: readonly SchnellZiel[] = []): SchnellErgebnis {
   let s = ` ${rein.trim()} `;
+  // `#Projekt/Liste` (06.10.) zuerst — Namen dürfen Leerzeichen, „!“ und Ziffern enthalten, die sonst als Kürzel gälten.
+  let ziel: SchnellZiel | undefined;
+  let zielUnbekannt: SchnellErgebnis['zielUnbekannt'];
+  const raute = s.search(/\s#[^\s#]/);
+  if (raute >= 0 && s.slice(raute + 2).includes('/')) {
+    const rest = s.slice(raute + 2);
+    const t = zielAmAnfang(rest, ziele);
+    if (t) { ziel = t.ziel; s = `${s.slice(0, raute + 1)}${rest.slice(t.laenge)}`; }
+    else {
+      const text = rest.trim().slice(0, 120);
+      const vorschlag = zielVorschlag(rest, ziele);
+      zielUnbekannt = { text: `#${text}`, ...(vorschlag ? { vorschlag } : {}) };
+    }
+  }
   let priority: Priority = 'medium';
   if (s.includes('!!')) { priority = 'critical'; s = s.replace('!!', ' '); }
   else if (s.includes('!')) { priority = 'high'; s = s.replace('!', ' '); }
@@ -90,7 +153,7 @@ export function parseSchnell(rein: string, projekte: { id: string; title: string
   const beteiligte = getippt.slice(1);
   const zustaendigGetippt = !!zustaendig || alleBeteiligt;
   let projectId: string | undefined;
-  s = s.replace(/\s#(\S+)/, (_, w) => {
+  if (!ziel && !zielUnbekannt) s = s.replace(/\s#(\S+)/, (_, w) => {
     const p = projekte.find(x => x.title.toLowerCase().includes(String(w).toLowerCase()));
     if (p) { projectId = p.id; return ' '; }
     return ` #${w}`;
@@ -117,7 +180,10 @@ export function parseSchnell(rein: string, projekte: { id: string; title: string
     if (!wahl) { datumUngueltig = ganz.trim(); return ganz; }
     dueDate = wahl; return ' ';
   });
-  return { title: s.replace(/\s+/g, ' ').trim(), priority, dueDate, projectId, ...(zustaendig ? { zustaendig } : {}), beteiligte, alleBeteiligt, zustaendigGetippt, ...(datumUngueltig ? { datumUngueltig } : {}) };
+  return {
+    title: s.replace(/\s+/g, ' ').trim(), priority, dueDate, projectId, ...(zustaendig ? { zustaendig } : {}), beteiligte, alleBeteiligt, zustaendigGetippt,
+    ...(datumUngueltig ? { datumUngueltig } : {}), ...(ziel ? { ziel } : {}), ...(zielUnbekannt ? { zielUnbekannt } : {}),
+  };
 }
 
 /**
@@ -142,5 +208,6 @@ export function schnellVorschau(p: SchnellErgebnis, projekte: { id: string; titl
   for (const b of p.beteiligte) teile.push(`+${namen[b] ?? b}`);
   if (p.alleBeteiligt) teile.push('+ alle beteiligt');
   if (p.projectId) teile.push(`#${projekte.find(x => x.id === p.projectId)?.title ?? p.projectId}`);
+  if (p.ziel) teile.push(`in ${p.ziel.projektTitel} › ${p.ziel.listeTitel}`);
   return teile;
 }

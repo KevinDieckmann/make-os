@@ -1,45 +1,48 @@
 'use client';
-// ─── Aufgaben-Baum: Projekt → Gruppe → Liste → Aufgabe → Unteraufgabe (28.09. spät) ─
-// Kevin: „Unteraufgaben erstellen, in Gruppen unterteilbar (Marketing, Sales, Operations …).“ Gruppen farbig und
-// einklappbar (`eingeklappt` liegt an der Gruppe — gilt für beide), Listen per „Gruppe ▾“ in eine Gruppe verschieben,
-// Unteraufgaben inline (Enter = nächste). Blockierte Aufgaben („wartet auf …“) sind markiert.
-// Genutzt vom Space (alle Projekte) und von der Projektseite (ein Projekt, ohne Kopf, optional Fokus auf Gruppe/Liste).
-// Paket T2 (29.09.): 🔒 „nur ich“, „abgebrochen“ grau/durchgestrichen, Priorität/überfällig auch als Zeichen (#88), Haken mit
-// Titel (#62), Erledigen/Löschen über den HandlungProvider (Rückfrage bei offenen Unteraufgaben, „Rückgängig“), Wartende
-// über EINE Karte je Render (#84), lange Listen in Stücken zu 200 Zeilen („weitere zeigen“).
-// Mehrstufig (01.10., Kevin: „Unteraufgaben bei dem HOS unter Produkten“): jede Ebene klappt auf, zeigt n/m ihrer direkten
-// Unteraufgaben und hat „+ Unteraufgabe“ bis zur Grenze `AUFGABEN_EBENEN_MAX` (lib/aufgaben/ebenen.ts); tiefer eingerückt.
-// Löschen & Archivieren (04.10., Kevin: „nach links swiped: dann kommt da Löschen oder Archivieren“): jede Zeile hängt am
-// Baustein `ZeileAktionen` — Handy wischen, Rechner Knöpfe am Rand; Papierkorb/Archiv mit „Rückgängig“ über den HandlungProvider.
-// 04.10. auch die Köpfe: Projekt (Archivieren = `archived`, Löschen = Papierkorb 30 Tage mit Umfang in der Rückfrage), Gruppe
-// und Liste (Löschen mit „Rückgängig“ — Ordner: ihr Inhalt bleibt, Listen rutschen direkt ins Projekt, Aufgaben unter
-// „Sonstige“). Ein Archiv für Listen/Gruppen gibt es bewusst nicht: die Aufgaben einer abgelegten Liste stünden sonst lose da.
+// ─── Aufgaben-Baum: Projekt › Liste › Aufgabe › Unteraufgabe (06.10., Malins Bauplan-Karte) ─
+// Vorher (28.09. spät) gab es zwischen Projekt und Liste noch „Gruppen“ und vier gleich aussehende Eingabefelder — Malin tippte
+// eine Aufgabe ins Listenfeld. Seit 06.10. (Umbau v3, lib/aufgaben/umbau-gruppen.ts): keine Gruppen, und pro Ebene GENAU EIN
+// Feld, das aussieht wie das, was es anlegt (NeuFelder.tsx): im Projekt unten „+ Neue Liste“ (Überschrift-Stil), in jeder Liste
+// unten „+ Neue Aufgabe“ (Haken-Zeile), in einer aufgeklappten Aufgabe „+ Unteraufgabe“ (eingerückt).
+// Menü „…“ je Zeile (ZeilenMenue.tsx): Liste → Aufgabe, Aufgabe → Liste, Aufgabe ↔ Unteraufgabe, „Verschieben nach …“ — jeweils
+// mit „Rückgängig“ (lib/aufgaben/umwandeln.ts, über die bestehenden Ops; der Server prüft Eltern, Tiefe, Kreise und Ort).
+// Ziehen & Ablegen (Ziehen.tsx, Regel lib/aufgaben/ziehen.ts): Aufgaben zwischen Listen, Unteraufgaben zwischen Aufgaben,
+// Reihenfolge — Maus ziehen, Handy lange drücken; Tastatur über „Verschieben nach …“.
+// Weiter wie bisher: 🔒 „nur ich“, „abgebrochen“ grau, Zeichen für Priorität/überfällig, Erledigen/Löschen über den
+// HandlungProvider, Wartende über EINE Karte je Render (#84), lange Listen in Stücken zu 200 Zeilen, mehrstufige Unteraufgaben bis
+// `AUFGABEN_EBENEN_MAX` (n/m je Ebene), Wischen = Archivieren/Löschen (`ZeileAktionen`, Kevin 04.10.).
+// Genutzt vom Space (alle Projekte), der Projektseite und dem Meilenstein (ein Projekt, ohne Kopf, optional Fokus auf eine Liste).
 
-import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, HakenZiel, Punkt, feld, prioFarbe, ZielChip, useZielBezug, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { Karte, HakenZiel, Punkt, prioFarbe, ZielChip, useZielBezug, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { dateienZaehlen } from './Papierkorb';
 import { projektUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import { istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
-import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { statusVon, fortschritt, sonstigeProjektId, nachReihe, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
-import { kinderKarte, vorfahren, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
+import { kinderKarte, vorfahren, nachIdKarte, elternKandidaten, pfadText, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
+import { listeZuAufgabe, aufgabeZuListe, umhaengen, zeilenAenderungen, istFehler, type Ergebnis } from '@/lib/aufgaben/umwandeln';
+import { ablegen, type Ablage } from '@/lib/aufgaben/ziehen';
 import { useHandlung } from './Handlung';
 import { NurIchZeichen, PrioZeichen, FristZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
 import type { Task, TasksState } from '@/types/tasks';
-import type { AufgabenAktion } from '@/context/TasksContext';
-import { aufgabeAnlegen, listeAnlegen, gruppeAnlegen, ownerLabel, GRUPPEN_FARBEN, type Person } from './hilfe';
+import { useTasks, type AufgabenAktion } from '@/context/TasksContext';
+import { aufgabeAnlegen, listeAnlegen, ownerLabel, LISTEN_FARBEN, useIch, type Person } from './hilfe';
 import { SerienZeichen } from './WiederholungWahl';
 import { ListeSerieKnopf } from './SerienListeEinstellen';
+import { NeueListeFeld, NeueAufgabeFeld, NeueUnteraufgabeFeld } from './NeuFelder';
+import { ZeilenMenue, type MenuePunkt } from './ZeilenMenue';
+import { useZiehen } from './Ziehen';
 
 const ZU_MERKER = 'make-aufgaben-zu';
 const lies = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
 const merke = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* egal */ } };
 export const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '8px 10px', minHeight: 40, borderRadius: 10 };
-const DIREKT = '__direkt__';
 /** Fensterung (#84): so viele Zeilen je Liste auf einmal, dann „weitere zeigen“. */
 export const FENSTER_ZEILEN = 200;
+/** Ziehbare Zeilen: kein Textmarkieren/Kontextmenü beim langen Drücken (iOS). */
+const ZIEHBAR: CSSProperties = { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as CSSProperties;
 
 /** Umbenennen/Löschen: breit in der Zeile, schmal hinter „⋯“. */
 export function Aktionen({ breit, children }: { breit: boolean; children: ReactNode }) {
@@ -50,16 +53,6 @@ export function Aktionen({ breit, children }: { breit: boolean; children: ReactN
       {auf && children}
       <button onClick={() => setAuf(a => !a)} aria-label={auf ? 'Aktionen schließen' : 'Aktionen'} aria-expanded={auf} className="fassbar" style={{ ...leiseKnopf, minWidth: 44, minHeight: 44, fontSize: 18, lineHeight: 1 }}>{auf ? '×' : '⋯'}</button>
     </span>
-  );
-}
-
-/** Eine Eingabezeile „+ …“, die bei Enter anlegt und für die nächste offen bleibt. */
-export function NeuZeile({ platzhalter, onNeu, einzug = 0 }: { platzhalter: string; onNeu: (text: string) => void; einzug?: number }) {
-  const [text, setText] = useState('');
-  return (
-    <input value={text} onChange={e => setText(e.target.value)} aria-label={platzhalter}
-      onKeyDown={e => { if (e.key === 'Enter' && text.trim()) { onNeu(text.trim()); setText(''); } if (e.key === 'Escape') setText(''); }}
-      placeholder={platzhalter} style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', background: 'transparent', border: '1px dashed rgba(255,255,255,.08)', margin: `6px 0 2px ${einzug}px`, width: `calc(100% - ${einzug}px)` }} />
   );
 }
 
@@ -78,8 +71,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   breit: boolean;
   personen: readonly Person[];
   heute: string;
-  /** Nur diese Gruppe / Liste zeigen (Projektseite, Brotkrumen). */
-  fokus?: { g?: string; l?: string };
+  /** Nur diese Liste zeigen (Projektseite, Brotkrumen, Meilenstein). */
+  fokus?: { l?: string };
   projektKopf?: boolean;
   iStart?: number;
 }) {
@@ -88,7 +81,38 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const handlung = useHandlung(dispatch, state.statusEigen);
   const { melden, hinweis } = useRueckgaengig();
   const { bestaetigen, dialog } = useRueckfrage();
-  // ── Köpfe: Liste · Gruppe · Projekt (04.10.) — der Inhalt bleibt immer; „Rückgängig“ stellt die Zuordnung wieder her. ──
+  const ich = useIch();
+  // Umwandeln/Ziehen rechnen auf dem VOLLEN Stand (mit Papierkorb/Archiv) — sonst blieben verborgene Zeilen an einer gelöschten Liste hängen.
+  const { voll } = useTasks();
+  const vollRef = useRef(voll);
+  vollRef.current = voll;
+
+  /** Ein Ergebnis anwenden: Zeilen setzen (gehen als Einzeländerungen an den Server), Hinweis mit „Rückgängig“. */
+  const anwenden = (r: Ergebnis): boolean => {
+    if (istFehler(r)) { if (r.fehler) melden(r.fehler); return false; }
+    const d = zeilenAenderungen(vollRef.current, r.state);
+    if (!d.zeilen.length) return false;
+    dispatch({ type: 'ZEILEN_SETZEN', payload: d.zeilen });
+    melden(r.text, () => dispatch({ type: 'ZEILEN_SETZEN', payload: d.rueck }));
+    return true;
+  };
+  const jetzt = () => new Date().toISOString();
+
+  // ── Ziehen & Ablegen ──
+  const pruefMerker = useRef<{ k: string; f: string | null } | null>(null);
+  const ziehen = useZiehen({
+    pruefen: (q, a) => {
+      const k = `${q}|${a.art}|${'zielId' in a ? a.zielId : `${a.projektId}/${a.listeId ?? ''}`}`;
+      if (pruefMerker.current?.k === k) return pruefMerker.current.f;
+      const r = ablegen(vollRef.current, q, a, jetzt());
+      const f = istFehler(r) ? (r.fehler || null) : null;
+      pruefMerker.current = { k, f };
+      return f;
+    },
+    ablegen: (q: string, a: Ablage) => { pruefMerker.current = null; anwenden(ablegen(vollRef.current, q, a, jetzt())); },
+  });
+
+  // ── Köpfe: Liste · Projekt (04.10.) — der Inhalt bleibt immer; „Rückgängig“ stellt die Zuordnung wieder her. ──
   const listeLoeschen = (id: string) => {
     const l = (state.listen ?? []).find(x => x.id === id);
     if (!l) return;
@@ -97,16 +121,6 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     melden(`Liste „${l.titel}“ gelöscht — ${aufgaben.length ? `${aufgaben.length} Aufgabe${aufgaben.length === 1 ? '' : 'n'} unter „Sonstige“` : 'sie war leer'}`, () => {
       dispatch({ type: 'ADD_LISTE', payload: l });
       for (const tid of aufgaben) dispatch({ type: 'UPDATE_TASK', payload: { id: tid, listeId: id } });
-    });
-  };
-  const gruppeLoeschen = (id: string) => {
-    const g = (state.gruppen ?? []).find(x => x.id === id);
-    if (!g) return;
-    const listen = (state.listen ?? []).filter(l => l.gruppeId === id).map(l => l.id);
-    dispatch({ type: 'DELETE_GRUPPE', payload: { id } });
-    melden(`Gruppe „${g.titel}“ gelöscht — ${listen.length ? `${listen.length} Liste${listen.length === 1 ? '' : 'n'} direkt im Projekt` : 'sie war leer'}`, () => {
-      dispatch({ type: 'ADD_GRUPPE', payload: g });
-      for (const lid of listen) dispatch({ type: 'UPDATE_LISTE', payload: { id: lid, gruppeId: id } });
     });
   };
   const projektArchivieren = (id: string, titel: string) => {
@@ -123,7 +137,7 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   // Ziel-Bezug (03.10.): liegt eine Aufgabe in der Liste eines Meilensteins, zeigt ihre Zeile das Ziel — nur lesen, nur wenn es solche Listen gibt.
   const ziel = useZielBezug(useMemo(() => state.tasks.some(t => istMeilensteinListe(t.listeId)), [state.tasks]));
   // Einmal je Render (#84): Kennung → Aufgabe, für „wartet auf …“ jeder Zeile.
-  const nachId = useMemo(() => new Map(state.tasks.map(x => [x.id, x])), [state.tasks]);
+  const nachId = useMemo(() => nachIdKarte(state.tasks), [state.tasks]);
   // Kinder je Aufgabe (alle Ebenen, einmal je Render), sortiert wie die Liste.
   const kinder = useMemo(() => { const k = kinderKarte(state.tasks); for (const l of Array.from(k.values())) l.sort(nachReihe); return k; }, [state.tasks]);
   const wartetAuf = (t: Task): Task[] => (t.abhaengigVon ?? []).map(id => nachId.get(id)).filter((x): x is Task => !!x && x.status !== 'done');
@@ -138,6 +152,39 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const umschalten = (menge: Set<string>, setze: (s: Set<string>) => void, id: string, merker?: string) => {
     const n = new Set(menge); if (n.has(id)) n.delete(id); else n.add(id);
     setze(n); if (merker) merke(merker, JSON.stringify(Array.from(n)));
+  };
+
+  // Ziele für „Verschieben nach …“: alle Listen der Projekte in diesem Baum (+ „Sonstige“ je Projekt).
+  const listenZiele = useMemo(() => projekte.filter(p => !p.fremd).flatMap(p => {
+    const pid = p.virtuell ? sonstigeProjektId(raumId) : p.id;
+    return p.listen.map(l => ({ id: `${pid}|${l.virtuell ? '' : l.id}`, label: `${p.titel} › ${l.titel}`, ...(l.farbe ? { punkt: l.farbe } : { punkt: p.farbe }) }));
+  }), [projekte, raumId]);
+  const verschiebenNach = (t: Task): MenuePunkt => ({
+    label: 'Verschieben nach', hinweis: 'in eine andere Liste (auch ohne Maus)',
+    auswahl: { titel: 'Verschieben nach …', eintraege: listenZiele, waehlen: k => { const [projektId, listeId] = k.split('|'); anwenden(ablegen(vollRef.current, t.id, { art: 'liste', projektId, listeId: listeId || null }, jetzt())); } },
+  });
+  const aufgabenMenue = (t: Task, tiefe: number): MenuePunkt[] => {
+    const punkte: MenuePunkt[] = [verschiebenNach(t)];
+    const eltern = elternKandidaten(t, state.tasks).map(x => ({ id: x.id, label: pfadText(x, nachId) })).sort((a, b) => a.label.localeCompare(b.label, 'de'));
+    if (tiefe === 0) {
+      punkte.push({ label: 'In Liste umwandeln', hinweis: (kinder.get(t.id)?.length ?? 0) ? 'Unteraufgaben werden ihre Aufgaben; die Aufgabe selbst kommt ins Archiv' : 'Die Aufgabe selbst kommt ins Archiv (zurückholbar)', tun: () => { anwenden(aufgabeZuListe(vollRef.current, t.id, { jetzt: jetzt() })); } });
+      punkte.push({ label: 'Zur Unteraufgabe machen', hinweis: 'unter eine andere Aufgabe hängen', auswahl: { titel: 'Unteraufgabe von …', eintraege: eltern, waehlen: id => { anwenden(umhaengen(vollRef.current, t.id, id, jetzt())); }, leer: 'Keine passende Aufgabe in diesem Projekt.' } });
+    } else {
+      punkte.push({ label: 'Zur Hauptaufgabe machen', hinweis: 'steht dann direkt in der Liste', tun: () => { anwenden(umhaengen(vollRef.current, t.id, null, jetzt())); } });
+      if (eltern.length) punkte.push({ label: 'Umhängen unter', auswahl: { titel: 'Umhängen unter …', eintraege: eltern, waehlen: id => { anwenden(umhaengen(vollRef.current, t.id, id, jetzt())); } } });
+    }
+    return punkte;
+  };
+  const listenMenue = (p: BaumProjekt, l: BaumListe): MenuePunkt[] => {
+    const punkte: MenuePunkt[] = [
+      { label: 'Umbenennen', tun: () => { const v = window.prompt('Liste umbenennen', l.titel)?.trim(); if (v && v !== l.titel) dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, titel: v.slice(0, 80) } }); } },
+      { label: 'Farbe', auswahl: { titel: 'Farbe der Liste', eintraege: [{ id: '', label: 'ohne Farbe' }, ...LISTEN_FARBEN.map(f => ({ id: f, label: f, punkt: f }))], waehlen: f => dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, farbe: f || undefined } }) } },
+    ];
+    if (!istMeilensteinListe(l.id)) {
+      const ziele = [...p.listen.filter(x => !x.virtuell && x.id !== l.id).map(x => ({ id: x.id, label: x.titel, ...(x.farbe ? { punkt: x.farbe } : {}) })), { id: '', label: 'Sonstige (ohne Liste)' }];
+      punkte.push({ label: 'In Aufgabe umwandeln', hinweis: 'die Liste wird eine Aufgabe, ihre Aufgaben deren Unteraufgaben', auswahl: { titel: 'Als Aufgabe in Liste …', eintraege: ziele, waehlen: z => { anwenden(listeZuAufgabe(vollRef.current, l.id, z || null, { jetzt: jetzt(), ich })); } } });
+    }
+    return punkte;
   };
 
   const meta = (t: Task, unter: Task[], schmal: boolean) => {
@@ -176,10 +223,12 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     const darfUnter = tiefe + 1 < AUFGABEN_EBENEN_MAX;
     const klappbar = a.unter.length > 0 || darfUnter;
     const weiter = new Set(gesehen).add(t.id);
+    const einzug = 4 + tiefe * (breit ? 26 : 16);
+    const gezogen = ziehen.zieht === t.id;
     return (
       <div key={t.id}>
         <ZeileAktionen titel={t.title} onArchivieren={() => handlung.archivieren(t)} onLoeschen={() => { void handlung.loeschen(t).then(weg => { if (weg && istOffen) onOeffnen(null); }); }}>
-        <div className="zeile" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 4px', paddingLeft: 4 + tiefe * (breit ? 26 : 16), borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0 }}>
+        <div className="zeile" {...ziehen.griff(t.id, t.title)} style={{ ...ZIEHBAR, display: 'flex', alignItems: 'center', gap: 6, padding: '7px 4px', paddingLeft: einzug, borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0, opacity: gezogen ? 0.45 : 1 }}>
           {klappbar ? (
             <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? `Unteraufgaben von „${t.title}“ zuklappen` : `Unteraufgaben von „${t.title}“ aufklappen`} aria-expanded={aufgeklappt} className="fassbar"
               style={{ ...klappKnopf, color: a.unter.length ? C.inkDim : 'rgba(255,255,255,.18)' }}>{chevron(!aufgeklappt)}</button>
@@ -191,35 +240,35 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
             {!breit && meta(t, a.unter, true)}
           </button>
           {breit && meta(t, a.unter, false)}
+          <span data-nicht-ziehen><ZeilenMenue titel={t.title} punkte={aufgabenMenue(t, tiefe)} /></span>
         </div>
         </ZeileAktionen>
         {aufgeklappt && <>
           {a.unter.filter(u => !weiter.has(u.id)).map(u => zeile({ task: u, unter: kinder.get(u.id) ?? [] }, tiefe + 1, weiter))}
           {darfUnter
-            ? <NeuZeile einzug={46 + tiefe * (breit ? 26 : 16)} platzhalter="+ Unteraufgabe (Enter)" onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, parentId: t.id }, { title, assignee: t.assignee, bezug: t.bezug })} />
+            ? <NeueUnteraufgabeFeld elternTitel={t.title} einzug={46 + tiefe * (breit ? 26 : 16)} onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, parentId: t.id }, { title, assignee: t.assignee, bezug: t.bezug })} />
             : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: `4px 0 6px ${46 + tiefe * (breit ? 26 : 16)}px` }}>Tiefste Ebene ({AUFGABEN_EBENEN_MAX}) — weitere Schritte als Checkliste in der Notiz.</div>}
         </>}
       </div>
     );
   };
 
-  const listeBlock = (p: BaumProjekt, l: BaumListe, zeigeKopf: boolean, gruppenWahl: WahlEintrag<string>[]) => {
+  const listeBlock = (p: BaumProjekt, l: BaumListe, zeigeKopf: boolean) => {
     const lk = `l:${p.id}:${l.id}`;
     const lz = zu.has(lk);
+    const pid = p.virtuell ? sonstigeProjektId(raumId) : p.id;
+    const zielListe = { 'data-ziel-liste': l.virtuell ? '' : l.id, 'data-ziel-projekt': pid };
     return (
-      <div key={lk} style={{ marginTop: zeigeKopf ? 10 : 0 }}>
+      <div key={lk} style={{ marginTop: zeigeKopf ? 12 : 0 }}>
         {zeigeKopf && (
           <ZeileAktionen titel={`Liste ${l.titel}`} darf={!l.virtuell} onLoeschen={() => listeLoeschen(l.id)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.07)', flexWrap: 'wrap' }}>
-            <button onClick={() => umschalten(zu, setZu, lk, ZU_MERKER)} aria-label={lz ? 'Liste aufklappen' : 'Liste zuklappen'} aria-expanded={!lz} className="fassbar" style={{ ...klappKnopf, color: C.inkLeise, width: 32, height: 32 }}>{chevron(lz, 14)}</button>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: l.virtuell ? C.inkLeise : C.inkDim }}>{l.titel}</span>
+          <div {...zielListe} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: `1px solid ${l.farbe ? `${l.farbe}55` : 'rgba(255,255,255,.07)'}`, flexWrap: 'wrap' }}>
+            <button onClick={() => umschalten(zu, setZu, lk, ZU_MERKER)} aria-label={lz ? `Liste „${l.titel}“ aufklappen` : `Liste „${l.titel}“ zuklappen`} aria-expanded={!lz} className="fassbar" style={{ ...klappKnopf, color: C.inkLeise, width: 32, height: 32 }}>{chevron(lz, 14)}</button>
+            {l.farbe && <Punkt farbe={l.farbe} groesse={8} />}
+            <span style={{ fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: l.virtuell ? C.inkLeise : (l.farbe ?? C.inkDim) }}>{l.titel}</span>
             <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{l.offen || ''}</span>
             {!l.virtuell && <ListeSerieKnopf listeId={l.id} />}
-            {!l.virtuell && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><Aktionen breit={breit}>
-              {gruppenWahl.length > 1 && <Wahl klein label="Gruppe" liste={gruppenWahl} wert={l.gruppeId ?? DIREKT} onWahl={g => dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, gruppeId: g === DIREKT ? undefined : g } })} />}
-              <button onClick={() => { const v = window.prompt('Liste umbenennen', l.titel)?.trim(); if (v && v !== l.titel) dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, titel: v.slice(0, 80) } }); }} style={leiseKnopf}>Umbenennen</button>
-              <button onClick={() => listeLoeschen(l.id)} style={leiseKnopf}>Löschen</button>
-            </Aktionen></span>}
+            {!l.virtuell && !p.fremd && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><ZeilenMenue titel={`Liste ${l.titel}`} punkte={listenMenue(p, l)} /></span>}
           </div>
           </ZeileAktionen>
         )}
@@ -230,8 +279,10 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
               weitere {Math.min(FENSTER_ZEILEN, l.aufgaben.length - (mehr[lk] ?? FENSTER_ZEILEN))} von {l.aufgaben.length - (mehr[lk] ?? FENSTER_ZEILEN)} zeigen
             </button>
           )}
-          {!l.aufgaben.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 4px' }}>Noch keine Aufgabe.</div>}
-          <NeuZeile platzhalter="+ Aufgabe (Enter)" onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, projectId: p.virtuell ? sonstigeProjektId(raumId) : p.id, listeId: l.virtuell ? undefined : l.id }, { title })} />
+          <div {...zielListe}>
+            {!l.aufgaben.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '8px 4px 2px 42px' }}>Noch keine Aufgabe.</div>}
+            {!p.fremd && <NeueAufgabeFeld listeTitel={l.titel} onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, projectId: pid, listeId: l.virtuell ? undefined : l.id }, { title })} />}
+          </div>
         </>}
       </div>
     );
@@ -240,13 +291,9 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const projektKarte = (p: BaumProjekt, i: number) => {
     const pz = projektKopf && zu.has(p.id);
     const pid = p.virtuell ? sonstigeProjektId(raumId) : p.id;
-    const gruppenWahl: WahlEintrag<string>[] = [{ id: DIREKT, label: 'Direkt im Projekt' }, ...p.gruppen.map(g => ({ id: g.id, label: g.titel, punkt: g.farbe }))];
-    const nurGruppe = fokus?.g && p.gruppen.some(g => g.id === fokus.g) ? fokus.g : undefined;
     const nurListe = fokus?.l && p.listen.some(l => l.id === fokus.l) ? fokus.l : undefined;
-    const listenSichtbar = p.listen.filter(l => (!nurListe || l.id === nurListe) && (!nurGruppe || l.gruppeId === nurGruppe));
-    const direkt = listenSichtbar.filter(l => !l.gruppeId);
-    const gruppen = p.gruppen.filter(g => (!nurGruppe || g.id === nurGruppe) && (!nurListe || listenSichtbar.some(l => l.gruppeId === g.id)));
-    const zeigeKopf = (l: BaumListe) => p.listen.length > 1 || !l.virtuell || p.gruppen.length > 0;
+    const listenSichtbar = p.listen.filter(l => !nurListe || l.id === nurListe);
+    const zeigeKopf = (l: BaumListe) => p.listen.length > 1 || !l.virtuell;
     return (
       <Karte key={p.id} i={i + iStart}>
         {projektKopf && (
@@ -263,41 +310,12 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
           </ZeileAktionen>
         )}
         {!pz && <>
-          {gruppen.map(g => {
-            const gl = listenSichtbar.filter(l => l.gruppeId === g.id);
-            return (
-              <div key={g.id} style={{ marginTop: 12, borderLeft: `3px solid ${g.farbe}`, paddingLeft: 10, borderRadius: 2 }}>
-                <ZeileAktionen titel={`Gruppe ${g.titel}`} darf={!p.fremd} onLoeschen={() => gruppeLoeschen(g.id)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', flexWrap: 'wrap' }}>
-                  <button onClick={() => dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, eingeklappt: g.eingeklappt ? undefined : true } })} aria-label={g.eingeklappt ? 'Gruppe aufklappen' : 'Gruppe zuklappen'} aria-expanded={!g.eingeklappt} className="fassbar" style={{ ...klappKnopf, color: g.farbe }}>{chevron(g.eingeklappt)}</button>
-                  <span style={{ fontFamily: SCHRIFT.display, fontSize: 15, fontWeight: 700, color: g.farbe }}>{g.titel}</span>
-                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{g.offen ? `${g.offen} offen` : ''}</span>
-                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><Aktionen breit={breit}>
-                    <button onClick={() => { const n = GRUPPEN_FARBEN[(GRUPPEN_FARBEN.indexOf(g.farbe as typeof GRUPPEN_FARBEN[number]) + 1) % GRUPPEN_FARBEN.length]; dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, farbe: n } }); }} style={leiseKnopf} aria-label="Farbe wechseln"><Punkt farbe={g.farbe} groesse={8} /> Farbe</button>
-                    <button onClick={() => { const v = window.prompt('Gruppe umbenennen', g.titel)?.trim(); if (v && v !== g.titel) dispatch({ type: 'UPDATE_GRUPPE', payload: { id: g.id, titel: v.slice(0, 60) } }); }} style={leiseKnopf}>Umbenennen</button>
-                    <button onClick={() => gruppeLoeschen(g.id)} style={leiseKnopf}>Löschen</button>
-                  </Aktionen></span>
-                </div>
-                </ZeileAktionen>
-                {!g.eingeklappt && <>
-                  {gl.map(l => listeBlock(p, l, true, gruppenWahl))}
-                  {!gl.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 4px' }}>Noch keine Liste in {g.titel}.</div>}
-                  {!p.fremd && !nurListe && <NeuZeile platzhalter="+ Liste (Enter)" onNeu={titel => { listeAnlegen(dispatch, state, pid, titel.slice(0, 80), g.id); }} />}
-                </>}
-              </div>
-            );
-          })}
-          {direkt.map(l => listeBlock(p, l, zeigeKopf(l), gruppenWahl))}
-          {!p.fremd && !nurGruppe && !nurListe && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ flex: '2 1 220px' }}><NeuZeile platzhalter="+ Liste, z. B. Januar" onNeu={titel => { listeAnlegen(dispatch, state, pid, titel.slice(0, 80)); }} /></span>
-              {!p.virtuell && <span style={{ flex: '1 1 180px' }}><NeuZeile platzhalter="+ Gruppe, z. B. Marketing" onNeu={titel => { gruppeAnlegen(dispatch, state, pid, titel); }} /></span>}
-            </div>
-          )}
+          {listenSichtbar.map(l => listeBlock(p, l, zeigeKopf(l)))}
+          {!p.fremd && !nurListe && <NeueListeFeld projektTitel={p.titel} onNeu={titel => { listeAnlegen(dispatch, state, pid, titel); }} />}
         </>}
       </Karte>
     );
   };
 
-  return <>{projekte.map((p, i) => projektKarte(p, i))}{dialog}{hinweis}</>;
+  return <>{projekte.map((p, i) => projektKarte(p, i))}{dialog}{hinweis}{ziehen.anzeige}</>;
 }

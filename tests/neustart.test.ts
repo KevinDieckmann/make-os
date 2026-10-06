@@ -165,7 +165,9 @@ describe('Route /api/neustart', () => {
 
   it('Vorschau zählt Ziele (geteilt + persönlich), Meilensteine, Projekte, Aufgaben', async () => {
     const d = await (await route.GET(anfrage(sitzung('kevin')))).json() as { vorschau: Record<string, unknown> };
-    expect(d.vorschau).toMatchObject({ ziele: 4, meilensteine: 1, projekte: 2, aufgaben: 4, unteraufgaben: 1, fokus: 1 });
+    // Vorher 4 Aufgaben. Seit dem Umbau v3 (06.10.) liest der Server die Gruppe „Marketing“ als Liste und die Liste „September“
+    // als Aufgabe darin (l1) — eine Aufgabe mehr; a2 läuft als Serie und bleibt Hauptaufgabe.
+    expect(d.vorschau).toMatchObject({ ziele: 4, meilensteine: 1, projekte: 2, aufgaben: 5, unteraufgaben: 1, fokus: 1 });
   });
 
   it('ohne getipptes „NEU ANFANGEN“ passiert nichts', async () => {
@@ -182,7 +184,7 @@ describe('Route /api/neustart', () => {
     expect(r.status).toBe(200);
     const d = await r.json() as { schon: boolean; bericht: Record<string, unknown> };
     expect(d.schon).toBe(false);
-    expect(d.bericht).toMatchObject({ projekte: 2, aufgaben: 4, unteraufgaben: 1, ziele: 4, meilensteine: 1, fokus: 1, meldungenGelesen: 1 });
+    expect(d.bericht).toMatchObject({ projekte: 2, aufgaben: 5, unteraufgaben: 1, ziele: 4, meilensteine: 1, fokus: 1, meldungenGelesen: 1 }); // vorher aufgaben: 4 (Umbau v3: l1)
     // Leser sehen nichts mehr außer der offenen Steuer-Frist.
     const { ladeAufgaben } = await import('@/lib/aufgaben/sicht');
     const sicht = aufgabenSicht(await ladeAufgaben());
@@ -201,7 +203,7 @@ describe('Route /api/neustart', () => {
     // Archiv-Ansicht
     const a = await (await route.GET(anfrage(sitzung('malin'), 'GET', undefined, '?archiv=1'))).json() as { laeufe: { id: string; projekte: { id: string; aufgaben: number }[]; aufgaben: { id: string }[]; ziele: unknown[]; serien: unknown[]; offen: number }[] };
     expect(a.laeufe).toHaveLength(1);
-    expect(a.laeufe[0].projekte.map(p => [p.id, p.aufgaben]).sort()).toEqual([['p1', 1], ['p2', 1]]);
+    expect(a.laeufe[0].projekte.map(p => [p.id, p.aufgaben]).sort()).toEqual([['p1', 1], ['p2', 2]]); // vorher p2: 1 (Umbau v3: + l1)
     expect(a.laeufe[0].aufgaben.map(x => x.id).sort()).toEqual(['a3', 'steuer-kdc-ust-2026-08']);
     expect(a.laeufe[0].ziele).toHaveLength(4);
     expect(a.laeufe[0].serien).toHaveLength(2);
@@ -226,7 +228,7 @@ describe('Route /api/neustart', () => {
     expect((await db.loadJson<{ meilensteine: { id: string }[] }>('meilensteine'))!.meilensteine.map(m => m.id)).toEqual(['m1']);
     expect((await post({ art: 'projekt', id: 'p2' })).status).toBe(200);
     const { ladeAufgaben } = await import('@/lib/aufgaben/sicht');
-    expect(aufgabenSicht(await ladeAufgaben()).tasks.map(t => t.id).sort()).toEqual(['a2', 'steuer-kdc-ust-2026-10']);
+    expect(aufgabenSicht(await ladeAufgaben()).tasks.map(t => t.id).sort()).toEqual(['a2', 'l1', 'steuer-kdc-ust-2026-10']); // vorher ohne l1 (Umbau v3)
     expect((await post({ art: 'quatsch', id: 'x' })).status).toBe(400);
     expect((await route.POST(anfrage(sitzung('kevin'), 'POST', { aktion: 'zurueck', laufId: 'na-gibtsnicht', auswahl: { art: 'alles' } }))).status).toBe(404);
   });

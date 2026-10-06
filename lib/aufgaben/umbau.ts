@@ -10,13 +10,21 @@ import { promises as fs } from 'fs';
 import { updateJsonAsync } from '@/lib/store/local-db';
 import { archivOrdner, archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import type { TasksState } from '@/types/tasks';
+import { uebernehmen } from './struktur';
+import { berichtZahlen } from './umbau-gruppen';
 
 export const AUFGABEN_BESTAND = 'tasks';
 /**
  * Versionen der Übernahme: 1 = Modell wie Monday/ClickUp (28.09., Kopie `tasks-vor-umbau-<zeit>`); 2 = Paket T1 (29.09.:
- * „both“ → eine Verantwortliche + Beteiligte, Anlegerin aus dem Verlauf, Deadlines als Tag — Kopie `tasks-vor-umbau-v2-<zeit>`).
+ * „both“ → eine Verantwortliche + Beteiligte, Anlegerin aus dem Verlauf, Deadlines als Tag — Kopie `tasks-vor-umbau-v2-<zeit>`);
+ * 3 = Malins Bauplan-Karte (06.10.: Gruppen aufgelöst — Gruppe → Liste, Liste → Aufgabe, Aufgabe → Unteraufgabe,
+ * lib/aufgaben/umbau-gruppen.ts — Kopie `tasks-vor-umbau-v3-<zeit>`, daneben der Bericht `tasks-umbau-v3-bericht-<zeit>`).
+ * Rückweg (alter Stand vor v3): liest den neuen Bestand (nur Felder weg, nichts Neues Pflicht) — die Gruppen-Ordnung gibt es nur
+ * aus der Kopie zurück (UPDATES.md › Bauplan-Karte).
  */
-export const UMBAU_VERSION = 2;
+export const UMBAU_VERSION = 3;
+/** Präfix des Umbau-Berichts v3 (was aus welcher Gruppe/Liste wurde, was zu tief lag) — verschlüsselt im Archiv wie die Kopie. */
+export const UMBAU_BERICHT_PRAEFIX = 'tasks-umbau-v3-bericht-';
 export const UMBAU_ARCHIV_PRAEFIX = 'tasks-vor-umbau-';
 /** Präfix der Archiv-Kopie je Version (v1 ohne Versionskennung — so heißen die schon abgelegten Kopien). */
 export const umbauPraefix = (version: number): string => (version <= 1 ? UMBAU_ARCHIV_PRAEFIX : `${UMBAU_ARCHIV_PRAEFIX}v${version}-`);
@@ -32,7 +40,14 @@ async function kopieDa(version: number): Promise<boolean> {
 export async function vorUmbauSichern(roh: TasksState | null, jetzt = new Date().toISOString()): Promise<string | null> {
   if (!roh || (roh.umbauVersion ?? 0) >= UMBAU_VERSION) return null;
   if (await kopieDa(UMBAU_VERSION)) return null;
-  return archivSchreiben(`${umbauPraefix(UMBAU_VERSION)}${archivZeit(jetzt)}.json`, roh);
+  const datei = await archivSchreiben(`${umbauPraefix(UMBAU_VERSION)}${archivZeit(jetzt)}.json`, roh);
+  // v3 (06.10.): der Bericht des Gruppen-Umbaus daneben — Titel nur hier (verschlüsselt), ins Log nur die Zahlen.
+  if (Array.isArray(roh.gruppen) && roh.gruppen.length) {
+    const bericht = uebernehmen({ ...roh, tasks: Array.isArray(roh.tasks) ? roh.tasks : [], projects: Array.isArray(roh.projects) ? roh.projects : [] }).umbau;
+    await archivSchreiben(`${UMBAU_BERICHT_PRAEFIX}${archivZeit(jetzt)}.json`, { version: 3, am: jetzt, kopie: datei, bericht });
+    console.info(`[aufgaben] Umbau v3 (Gruppen aufgelöst): ${berichtZahlen(bericht)} — Kopie ${datei}`);
+  }
+  return datei;
 }
 
 const NICHTS = Symbol('aufgaben-nichts-zu-schreiben');

@@ -1,7 +1,7 @@
 'use client';
 // ─── Aufgaben als Kalender / Zeitachse (28.09. spät, Paket C5 — Kevin: „Kalender/Zeitachse nach Deadline“) ─
 // Monat (Standard) und Woche. Jede Aufgabe mit Deadline steht an ihrem Tag; mit Start läuft ein Balken von Start
-// bis Deadline (über Wochengrenzen weiter). Farbe nach Status oder nach Gruppe (sonst Projektfarbe), überfällig rot
+// bis Deadline (über Wochengrenzen weiter). Farbe nach Status oder nach Liste (Listenfarbe, sonst Projektfarbe), überfällig rot
 // markiert, wiederkehrende mit ↻. Klick öffnet das Detail. Ziehen auf einen anderen Tag verschiebt die Deadline
 // (der Start wandert mit, die Dauer bleibt); für Tastatur und Handy dasselbe über „verschieben auf …“ an der
 // geöffneten Aufgabe. Aufgaben ohne Datum stehen in der Seitenliste (auch von dort auf einen Tag ziehbar).
@@ -31,7 +31,7 @@ const MONAT_BAHNEN = 3;
 const BAHN_HOEHE = 24;
 const KOPF_HOEHE = 30;
 
-type FarbeNach = 'status' | 'gruppe';
+type FarbeNach = 'status' | 'liste';
 const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '6px 8px', borderRadius: 8 };
 const rundKnopf: CSSProperties = { ...leiseKnopf, width: 32, height: 32, display: 'grid', placeItems: 'center', padding: 0, border: '1px solid rgba(255,255,255,.08)', color: C.inkDim };
 const pille = (an: boolean): CSSProperties => ({ ...leiseKnopf, border: `1px solid ${an ? `${C.aktiv}66` : 'rgba(255,255,255,.08)'}`, color: an ? C.aktiv : C.inkDim, borderRadius: 999, padding: '4px 10px' });
@@ -52,7 +52,7 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
   const [ueber, setUeber] = useState<string | null>(null);
   const [verschieben, setVerschieben] = useState(false);
   useEffect(() => {
-    try { const m = JSON.parse(lies(MERKER) ?? 'null') as { ansicht?: unknown; farbe?: unknown } | null; if (m?.ansicht === 'woche' || m?.ansicht === 'monat') setAnsichtRoh(m.ansicht); if (m?.farbe === 'gruppe' || m?.farbe === 'status') setFarbeNachRoh(m.farbe); } catch { /* egal */ }
+    try { const m = JSON.parse(lies(MERKER) ?? 'null') as { ansicht?: unknown; farbe?: unknown } | null; if (m?.ansicht === 'woche' || m?.ansicht === 'monat') setAnsichtRoh(m.ansicht); if (m?.farbe === 'liste' || m?.farbe === 'gruppe' || m?.farbe === 'status') setFarbeNachRoh(m.farbe === 'status' ? 'status' : 'liste'); } catch { /* egal */ }
   }, []);
   const sichern = (a: KalenderAnsicht, f: FarbeNach) => merke(MERKER, JSON.stringify({ ansicht: a, farbe: f }));
   const setAnsicht = (a: KalenderAnsicht) => { setAnsichtRoh(a); sichern(a, farbeNach); };
@@ -65,12 +65,11 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
   const ohne = useMemo(() => ohneDatum(aufgaben), [aufgaben]);
   const monat = Number(anker.slice(5, 7));
 
-  // ── Farbe: Status (fest/eigen des Space) oder Gruppe der Liste (sonst Projektfarbe) ──
+  // ── Farbe: Status (fest/eigen des Space) oder Farbe der Liste (06.10.: die früheren Gruppen-Farben; sonst Projektfarbe) ──
   const farbe = (t: Task): string => {
     if (farbeNach === 'status') return statusVon(t, eigene).farbe;
     const l = t.listeId ? (state.listen ?? []).find(x => x.id === t.listeId) : undefined;
-    const g = l?.gruppeId ? (state.gruppen ?? []).find(x => x.id === l.gruppeId) : undefined;
-    return g?.farbe ?? state.projects.find(p => p.id === t.projectId)?.color ?? C.inkLeise;
+    return l?.farbe ?? state.projects.find(p => p.id === t.projectId)?.color ?? C.inkLeise;
   };
   const legende = useMemo(() => {
     if (farbeNach === 'status') {
@@ -81,11 +80,10 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
     const m = new Map<string, { id: string; label: string; farbe: string }>();
     for (const t of aufgaben) {
       const l = t.listeId ? (state.listen ?? []).find(x => x.id === t.listeId) : undefined;
-      const g = l?.gruppeId ? (state.gruppen ?? []).find(x => x.id === l.gruppeId) : undefined;
-      if (g) m.set(g.id, { id: g.id, label: g.titel, farbe: g.farbe });
+      if (l?.farbe) m.set(l.id, { id: l.id, label: l.titel, farbe: l.farbe });
     }
     return Array.from(m.values());
-  }, [farbeNach, aufgaben, state.listen, state.gruppen, eigene]);
+  }, [farbeNach, aufgaben, state.listen, eigene]);
 
   // Seit 29.09. über den HandlungProvider: „Rückgängig“ (#87) und „Unteraufgaben mitverschieben?“ (#68).
   const handlung = useHandlung(dispatch, state.statusEigen);
@@ -237,7 +235,7 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
         <h2 aria-live="polite" style={{ margin: '0 4px', fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, letterSpacing: '-.01em', color: C.ink }}>{kalenderTitel(ansicht, anker)}</h2>
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Segmente liste={[{ id: 'monat', label: 'Monat' }, { id: 'woche', label: 'Woche' }]} aktiv={ansicht} onWahl={a => setAnsicht(a)} />
-          <Segmente liste={[{ id: 'status', label: 'Farbe: Status' }, { id: 'gruppe', label: 'Gruppe' }]} aktiv={farbeNach} onWahl={f => setFarbeNach(f)} />
+          <Segmente liste={[{ id: 'status', label: 'Farbe: Status' }, { id: 'liste', label: 'Liste' }]} aktiv={farbeNach} onWahl={f => setFarbeNach(f)} />
         </span>
       </div>
       {leiste}

@@ -87,9 +87,13 @@ describe('Übernahme (idempotent, nie Verlust)', () => {
     expect(zwei.geaendert).toBe(false);
     expect(zwei.state).toEqual(r.state);
   });
-  it('Gruppe des eigenen Projekts bleibt an der Liste', () => {
+  it('Gruppe des eigenen Projekts wird eine Liste, ihre Liste eine Aufgabe darin (Umbau v3, 06.10.)', () => {
+    // Vorher: die Gruppe blieb an der Liste (`gruppeId: 'g-weg'`). Seit 06.10. gibt es keine Gruppen mehr.
     const s = { ...alt(), gruppen: [{ id: 'g-weg', projektId: 'p-launch', titel: 'Marketing', farbe: '#FF0000', sortOrder: 0 }], vorlagen: [] };
-    expect(uebernehmen(s).state.listen![0].gruppeId).toBe('g-weg');
+    const r = uebernehmen(s).state;
+    expect(r.gruppen).toEqual([]);
+    expect(r.listen).toEqual([{ id: 'g-weg', projektId: 'p-launch', titel: 'Marketing', farbe: '#FF0000', sortOrder: 0 }]);
+    expect(r.tasks.find(t => t.id === 'l1')).toMatchObject({ title: 'Woche 1', listeId: 'g-weg', projectId: 'p-launch' });
   });
 });
 
@@ -181,25 +185,27 @@ beforeEach(async () => {
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
 describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
-  it('Gruppen + Liste in Gruppe + Projektfelder in einem Aufruf; Feldwert typgerecht; Verlauf entsteht', async () => {
+  it('Liste + Projektfelder in einem Aufruf; Feldwert typgerecht; Verlauf entsteht — neue Gruppen lehnt der Server ab (06.10.)', async () => {
     const d = await lesen();
     const p = d.state.projects.find(x => x.id === 'p-launch')!;
     const a1 = d.state.tasks.find(x => x.id === 'a1')!;
     expect(a1.abhaengigVon).toEqual(['a2']);
-    const r = await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', {
-      struktur: {
-        projekte: [{ op: 'upsert', eintrag: { ...p, felder: [{ id: 'f-budget', name: 'Budget', typ: 'betrag' }], status: 'aktiv', notiz: '## Ziel\n- [x] Termin' }, stand: p.stand }],
-        gruppen: [{ op: 'upsert', eintrag: { id: 'g-mkt', projektId: 'p-launch', titel: 'Marketing', farbe: '#E36A6A', sortOrder: 0 } }],
-        listen: [{ op: 'upsert', eintrag: { id: 'l-w1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0, gruppeId: 'g-mkt' } }],
-      },
-      ops: [{ op: 'upsert', task: { ...a1, listeId: 'l-w1', status: 'in-progress', felder: { 'f-budget': 150040 } }, stand: a1.stand }],
-    }));
+    const projekte = [{ op: 'upsert', eintrag: { ...p, felder: [{ id: 'f-budget', name: 'Budget', typ: 'betrag' }], status: 'aktiv', notiz: '## Ziel\n- [x] Termin' }, stand: p.stand }];
+    const ops = [{ op: 'upsert', task: { ...a1, listeId: 'l-w1', status: 'in-progress', felder: { 'f-budget': 150040 } }, stand: a1.stand }];
+    // Vorher (bis 06.10.): Gruppe „Marketing“ + Liste darin in einem Aufruf → 200. Seit dem Umbau v3: 400 mit klarem Text, nichts gespeichert.
+    const gruppe = await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { projekte, gruppen: [{ op: 'upsert', eintrag: { id: 'g-mkt', projektId: 'p-launch', titel: 'Marketing', farbe: '#E36A6A', sortOrder: 0 } }], listen: [{ op: 'upsert', eintrag: { id: 'l-w1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0 } }] }, ops }));
+    expect(gruppe.status).toBe(400);
+    expect(((await gruppe.json()) as { error: string }).error).toMatch(/Gruppen gibt es seit dem 06\.10\. nicht mehr/);
+    const listeMitGruppe = await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { listen: [{ op: 'upsert', eintrag: { id: 'l-w1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0, gruppeId: 'g-mkt' } }] } }));
+    expect(listeMitGruppe.status).toBe(400);
+    expect((await gespeichert()).listen ?? []).toEqual([]);
+    const r = await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { projekte, listen: [{ op: 'upsert', eintrag: { id: 'l-w1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0 } }] }, ops }));
     expect(r.status).toBe(200);
     const antwort = await r.json() as { zeilen: { liste: string; id: string; verlauf?: { was: string }[] }[] };
     expect(antwort.zeilen.find(z => z.id === 'a1')!.verlauf!.map(v => v.was)).toEqual(['status', 'verschoben', 'feld']);
     const g = await gespeichert();
-    expect(g.gruppen).toHaveLength(1);
-    expect(g.listen![0].gruppeId).toBe('g-mkt');
+    expect(g.gruppen ?? []).toHaveLength(0);
+    expect(g.listen![0].gruppeId).toBeUndefined();
     const t = g.tasks.find(x => x.id === 'a1')!;
     expect(t.felder).toEqual({ 'f-budget': 150040 });
     expect(t.verlauf![0]).toMatchObject({ von: 'kevin', was: 'status', vorher: 'Offen', nachher: 'In Arbeit' });
@@ -236,10 +242,11 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
     const viele = Array.from({ length: 201 }, (_, i) => ({ op: 'upsert', eintrag: { id: `g${i}`, projektId: 'p-launch', titel: 'G', farbe: '#000000', sortOrder: i } }));
     expect((await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { gruppen: viele } }))).status).toBe(413);
   });
-  it('PUT über einen vorhandenen Bestand: 409 „neu laden“, Verlauf, Gruppen und Vorlagen bleiben (29.09., A2)', async () => {
+  it('PUT über einen vorhandenen Bestand: 409 „neu laden“, Verlauf, Listen und Vorlagen bleiben (29.09., A2)', async () => {
     const d = await lesen();
     const a1 = d.state.tasks.find(x => x.id === 'a1')!;
-    await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { gruppen: [{ op: 'upsert', eintrag: { id: 'g-ops', projektId: 'p-launch', titel: 'Operations', farbe: '#3DE28B', sortOrder: 0 } }], vorlagen: [{ op: 'upsert', eintrag: { id: 'v-1', art: 'liste', titel: 'Monatsabschluss', inhalt: { aufgaben: [{ titel: 'Belege' }] } } }] }, ops: [{ op: 'upsert', task: { ...a1, status: 'done' }, stand: a1.stand }] }));
+    // Vorher legte dieser Aufruf noch eine Gruppe „Operations“ an — seit 06.10. eine Liste mit Farbe.
+    await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { listen: [{ op: 'upsert', eintrag: { id: 'l-ops', projektId: 'p-launch', titel: 'Operations', farbe: '#3DE28B', sortOrder: 1 } }], vorlagen: [{ op: 'upsert', eintrag: { id: 'v-1', art: 'liste', titel: 'Monatsabschluss', inhalt: { aufgaben: [{ titel: 'Belege' }] } } }] }, ops: [{ op: 'upsert', task: { ...a1, status: 'done' }, stand: a1.stand }] }));
     const g = await gespeichert();
     // Ein altes Fenster schickt den ganzen Stand (ohne Verlauf, ohne Gruppen) — früher ersetzte das alles.
     const r = await route.PUT(anfrage(sitzung('kevin'), 'PUT', { projects: g.projects, tasks: g.tasks.map(t => ({ ...t, verlauf: undefined, title: 'alt' })) }));
@@ -248,7 +255,8 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
     const n = await gespeichert();
     expect(n).toEqual(g);
     expect(n.tasks.find(t => t.id === 'a1')!.verlauf!.length).toBeGreaterThan(0);
-    expect(n.gruppen!.map(x => x.id)).toEqual(['g-ops']);
+    expect(n.listen!.map(x => x.id)).toContain('l-ops');
+    expect(n.gruppen ?? []).toEqual([]);
     expect(n.vorlagen!.map(x => x.id)).toEqual(['v-1']);
   });
   it('zoe.status per PATCH wird ignoriert (nur /api/aufgaben/zoe, T1 #78); zoe.von setzt der Server (die schreibende Person)', async () => {

@@ -907,6 +907,8 @@ nav a:hover { transform: translateX(2px); }
 .ui-za-schnell { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; padding: 2px; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 2; box-shadow: 0 8px 24px -10px rgba(0, 0, 0, .7); }
 .ui-za:hover > .ui-za-schnell, .ui-za-schnell:focus-within { opacity: 1; pointer-events: auto; }
 .ui-za-offen > .ui-za-schnell { opacity: 0 !important; pointer-events: none !important; }
+/* Aufgaben-Zeilen mit Menü „…“ (06.10., components/os/aufgaben/ZeilenMenue.tsx): die Rand-Knöpfe stehen links daneben, „…“ bleibt frei. */
+.ui-za:has(.aufgaben-zeilenmenue) > .ui-za-schnell { right: 52px; }
 .ui-za-knopf { width: 40px; height: 40px; display: grid; place-items: center; border: none; background: none; border-radius: 10px; cursor: pointer; }
 .ui-za-knopf:hover { background: rgba(255, 255, 255, .07); }
 .ui-za-knopf:focus-visible, .ui-za-aktion:focus-visible { outline: 2px solid #58D9CD; outline-offset: -2px; }

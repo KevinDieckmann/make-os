@@ -15,9 +15,10 @@
 
 import type { TasksState } from '@/types/tasks';
 
-export type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen' | 'gruppen' | 'vorlagen';
-export const LISTEN: readonly ListenArt[] = ['tasks', 'projects', 'listen', 'statusEigen', 'gruppen', 'vorlagen'];
-export const STRUKTUR: readonly Exclude<ListenArt, 'tasks'>[] = ['projects', 'listen', 'statusEigen', 'gruppen', 'vorlagen'];
+// Seit 06.10. (Umbau v3, Malins Bauplan-Karte) ohne „gruppen“: der Browser schickt nie eine Gruppen-Änderung (der Server lehnt sie ab).
+export type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen' | 'vorlagen';
+export const LISTEN: readonly ListenArt[] = ['tasks', 'projects', 'listen', 'statusEigen', 'vorlagen'];
+export const STRUKTUR: readonly Exclude<ListenArt, 'tasks'>[] = ['projects', 'listen', 'statusEigen', 'vorlagen'];
 export type Staende = Map<string, string>;
 export type Zeile = { id: string } & Record<string, unknown>;
 export const schluessel = (art: ListenArt, id: string) => `${art}:${id}`;
@@ -25,8 +26,8 @@ export const ausSchluessel = (k: string): { liste: ListenArt; id: string } => { 
 
 export type Op = { op: 'upsert'; eintrag: Zeile; stand?: string } | { op: 'delete'; id: string; stand?: string };
 export type OpsJe = Record<ListenArt, Op[]>;
-export const leereOps = (): OpsJe => ({ tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
-export const leererStand = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
+export const leereOps = (): OpsJe => ({ tasks: [], projects: [], listen: [], statusEigen: [], vorlagen: [] });
+export const leererStand = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], vorlagen: [] });
 const zeilenVon = (s: TasksState, art: ListenArt) => ((s[art] ?? []) as unknown as Zeile[]);
 export const opId = (o: Op): string => (o.op === 'delete' ? o.id : o.eintrag.id);
 export const anzahl = (ops: OpsJe): number => LISTEN.reduce((n, a) => n + ops[a].length, 0);
@@ -83,13 +84,35 @@ export function aufOps(basis: TasksState, ops: OpsJe): TasksState {
   return raus as unknown as TasksState;
 }
 
+/**
+ * Neue/umgehängte Eltern vor ihren Kindern (06.10., Umwandeln „Liste → Aufgabe“ mit vielen Aufgaben): zeigt eine Aufgabe per
+ * `parentId` auf eine andere Aufgabe DIESER Änderungen, reist die andere zuerst — sonst käme das Kind bei mehr als einem Paket
+ * vor seinem Elternteil an (400 „Elternteil fehlt“). Sonst bleibt die Reihenfolge (stabil).
+ */
+export function elternZuerst(tasks: readonly Op[]): Op[] {
+  const nach = new Map(tasks.filter(o => o.op === 'upsert').map(o => [opId(o), o]));
+  const tiefe = (o: Op): number => {
+    let n = 0;
+    let x: Op | undefined = o;
+    const gesehen = new Set<string>();
+    while (x && x.op === 'upsert' && typeof x.eintrag.parentId === 'string' && !gesehen.has(x.eintrag.parentId) && n < 64) {
+      gesehen.add(x.eintrag.parentId);
+      x = nach.get(x.eintrag.parentId);
+      if (x) n++;
+    }
+    return n;
+  };
+  return tasks.map((o, i) => ({ o, i, t: tiefe(o) })).sort((a, b) => a.t - b.t || a.i - b.i).map(x => x.o);
+}
+
 /** Pakete an den Server: Aufgaben zu höchstens `groesse` (Server-Grenze 200), die Struktur reist im ersten. */
 export function pakete(ops: OpsJe, groesse = 150): OpsJe[] {
   const n = Math.max(1, Math.ceil(ops.tasks.length / groesse));
   const raus: OpsJe[] = [];
+  const aufgaben = elternZuerst(ops.tasks);
   for (let i = 0; i < n; i++) {
     const p = leereOps();
-    p.tasks = ops.tasks.slice(i * groesse, i * groesse + groesse);
+    p.tasks = aufgaben.slice(i * groesse, i * groesse + groesse);
     if (i === 0) for (const a of STRUKTUR) p[a] = ops[a].slice(0, 190);
     if (anzahl(p)) raus.push(p);
   }
@@ -101,14 +124,15 @@ export function pakete(ops: OpsJe, groesse = 150): OpsJe[] {
 /** Ein Paket in Einzeländerungen zerlegen (nach 400/413 — so bleibt nur die schuldige Zeile liegen). */
 export function einzeln(ops: OpsJe): OpsJe[] {
   const raus: OpsJe[] = [];
-  for (const a of LISTEN) for (const o of ops[a]) { const p = leereOps(); p[a] = [o]; raus.push(p); }
+  // Struktur zuerst (06.10.): eine neue Liste muss vor den Aufgaben ankommen, die in sie umziehen (Umwandeln „Aufgabe → Liste“).
+  for (const a of [...STRUKTUR, 'tasks'] as const) for (const o of (a === 'tasks' ? elternZuerst(ops.tasks) : ops[a])) { const p = leereOps(); p[a] = [o]; raus.push(p); }
   return raus;
 }
 
 /** Der Körper des PATCH an /api/state/tasks. */
 export function koerper(p: OpsJe): Record<string, unknown> {
   const k: Record<string, unknown> = { ops: p.tasks };
-  if (STRUKTUR.some(a => p[a].length)) k.struktur = { projekte: p.projects, listen: p.listen, status: p.statusEigen, gruppen: p.gruppen, vorlagen: p.vorlagen };
+  if (STRUKTUR.some(a => p[a].length)) k.struktur = { projekte: p.projects, listen: p.listen, status: p.statusEigen, vorlagen: p.vorlagen };
   return k;
 }
 

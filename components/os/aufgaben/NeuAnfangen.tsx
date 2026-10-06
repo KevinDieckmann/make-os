@@ -107,7 +107,7 @@ export function NeuAnfangenFenster({ onZu }: { onZu: () => void }) {
                 ))}
               </div>
               <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>
-                dazu {zahl(v.unteraufgaben, 'Unteraufgabe', 'Unteraufgaben')}, {zahl(v.listen, 'Liste', 'Listen')}, {zahl(v.gruppen, 'Gruppe', 'Gruppen')}
+                dazu {zahl(v.unteraufgaben, 'Unteraufgabe', 'Unteraufgaben')}, {zahl(v.listen, 'Liste', 'Listen')}
                 {v.fokus ? `, ${zahl(v.fokus, 'Fokus-Satz', 'Fokus-Sätze')}` : ''} · davon {v.erledigt} schon erledigt/abgebrochen · Ziele je Ebene:{' '}
                 {(['jahr', 'quartal', 'monat', 'woche', 'tag'] as const).map(h => `${h === 'jahr' ? 'Jahr' : h === 'quartal' ? 'Quartal' : h === 'monat' ? 'Monat' : h === 'woche' ? 'Woche' : 'Tag'} ${v.zieleJe[h]}`).join(' · ')}
               </span>

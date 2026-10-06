@@ -1,7 +1,7 @@
 'use client';
 // ─── Aufgaben als Tabelle (28.09. spät, Paket C5 — Kevin: „Spalten sortierbar“) ─
 // Zeilen = Aufgaben des aktuellen Kontexts (Space/Projekt/Filter wie in der Liste), Unteraufgaben aufklappbar und
-// eingerückt. Spalten: Aufgabe, Status, Zuständig, Deadline, Priorität, Liste/Gruppe, CRM-Bezug, Wartet auf und die
+// eingerückt. Spalten: Aufgabe, Status, Zuständig, Deadline, Priorität, Liste, CRM-Bezug, Wartet auf und die
 // eigenen Felder der Projekte (typgerecht, Betrag aus Cent). Spalten ein-/ausblenden und die Sortierung merkt sich
 // der Browser je Person (localStorage, still bei Fehlern). Kopfklick sortiert (auf → ab → wie die Liste).
 // Status/Zuständig/Deadline/Priorität/Felder sind direkt änderbar — jede Änderung ist eine Einzeländerung über den
@@ -121,8 +121,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
   const projekteImKontext = useMemo(() => new Set(aufgaben.map(t => t.projectId)), [aufgaben]);
   const ortText = (t: Task): string => {
     const l = t.listeId ? (state.listen ?? []).find(x => x.id === t.listeId) : undefined;
-    const g = l?.gruppeId ? (state.gruppen ?? []).find(x => x.id === l.gruppeId) : undefined;
-    return [projekteImKontext.size > 1 ? projektTitel(state, t.projectId) : null, g?.titel, l?.titel ?? 'Sonstige'].filter(Boolean).join(' › ');
+    return [projekteImKontext.size > 1 ? projektTitel(state, t.projectId) : null, l?.titel ?? 'Sonstige'].filter(Boolean).join(' › ');
   };
   const crmTeile = (t: Task) => BEZUG_ARTEN.filter(a => t.bezug?.[a]).map(a => ({ art: a, id: t.bezug![a]!, name: bezugName(verweise, a, t.bezug![a]!) ?? BEZUG_LABEL[a] }));
   const kontext: SortKontext = {

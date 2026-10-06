@@ -204,14 +204,19 @@ export interface AufgabeKommentar {
   entfernt?: { am: string; von: string };
 }
 
-/** Eine Liste im Projekt (z. B. Januar, Februar, März). */
+/**
+ * Eine Liste im Projekt (z. B. Januar, Februar, März). Seit 06.10. (Malins Bauplan-Karte): Projekt › Liste › Aufgabe ›
+ * Unteraufgabe — die Ebene „Gruppe“ gibt es nicht mehr (Umbau v3, lib/aufgaben/umbau-gruppen.ts).
+ */
 export interface AufgabenListe {
   id: ID;
   projektId: ID;
   titel: string;
   sortOrder: number;
   archiviert?: boolean;
-  /** Gruppe im Projekt (Marketing, Sales …) — fehlt = direkt im Projekt. */
+  /** Farbe der Liste (#rrggbb, 06.10.) — aus einer aufgelösten Gruppe übernommen oder gewählt; fehlt = ohne Farbe. */
+  farbe?: string;
+  /** NUR LESEN (Altbestand bis 06.10.): Gruppe im Projekt. Der Umbau v3 löst sie auf; neue Listen tragen das Feld nie. */
   gruppeId?: ID;
   /** Wiederkehrende Liste (z. B. jeden Monat „Monatsabschluss“) — Datenfeld für Paket C3. */
   wiederholung?: Wiederholung;
@@ -224,7 +229,11 @@ export interface AufgabenListe {
   archivId?: ID;
 }
 
-/** Gruppe im Projekt (28.09. spät): Projekt → Gruppe → Liste → Aufgabe → Unteraufgabe. */
+/**
+ * NUR LESEN (Altbestand, Vorlagen, Neustart-Archive, Exporte): Gruppe im Projekt (28.09. spät bis 06.10.). Seit dem Umbau v3
+ * (Malins Bauplan-Karte) wird keine Gruppe mehr angelegt — jede Gruppe wurde eine Liste, ihre Listen Aufgaben
+ * (lib/aufgaben/umbau-gruppen.ts). Der Server lehnt neue Gruppen mit 400 ab.
+ */
 export interface AufgabenGruppe {
   id: ID;
   projektId: ID;
@@ -252,11 +261,15 @@ export interface VorlageAufgabe {
   /** Unteraufgaben — seit 01.10. mehrstufig bis `AUFGABEN_EBENEN_MAX` (lib/aufgaben/ebenen.ts; Hauptaufgabe = Ebene 1). */
   unter?: VorlageAufgabe[];
 }
-/** Inhalt einer Vorlage: bei `projekt` Gruppen, Listen, Felder, Notiz; bei `liste` nur `aufgaben`. */
+/**
+ * Inhalt einer Vorlage: bei `projekt` Listen, Felder, Notiz; bei `liste` nur `aufgaben`. `gruppen`/`gruppe`/`gruppeIndex` nur
+ * noch LESEN (Vorlagen von vor dem 06.10.) — beim Anwenden nach derselben Regel wie der Umbau v3 umgesetzt (Gruppe → Liste,
+ * ihre Listen → Aufgaben, deren Aufgaben → Unteraufgaben; lib/aufgaben/vorlagen.ts `vorlageOhneGruppen`).
+ */
 export interface VorlageInhalt {
   gruppen?: { titel: string; farbe?: string }[];
-  /** `gruppeIndex` (29.09., #69) zeigt auf `gruppen[i]` — zwei Gruppen mit gleichem Titel fallen nicht mehr zusammen; `gruppe` (Titel) bleibt für Altbestand. */
-  listen?: { titel: string; gruppe?: string; gruppeIndex?: number; aufgaben: VorlageAufgabe[] }[];
+  /** `gruppeIndex` (29.09., #69) zeigt auf `gruppen[i]` — zwei Gruppen mit gleichem Titel fallen nicht mehr zusammen; `gruppe` (Titel) bleibt für Altbestand. `farbe` (06.10.) = Farbe der Liste. */
+  listen?: { titel: string; gruppe?: string; gruppeIndex?: number; farbe?: string; aufgaben: VorlageAufgabe[] }[];
   /** Versatz der Deadlines in Kalendertagen (Standard) oder in Werktagen ohne Feiertage NRW (29.09., #70). */
   versatzArt?: 'tage' | 'werktage';
   aufgaben?: VorlageAufgabe[];
@@ -332,11 +345,11 @@ export interface TasksState {
   listen?: AufgabenListe[];
   /** Eigene Status je Space (28.09. abends). */
   statusEigen?: AufgabenStatus[];
-  /** Gruppen je Projekt (28.09. spät). */
+  /** NUR LESEN (Altbestand): Gruppen je Projekt (28.09. spät bis 06.10.) — nach dem Umbau v3 immer leer. */
   gruppen?: AufgabenGruppe[];
   /** Vorlagen für Projekte und Listen (28.09. spät, Paket C3). */
   vorlagen?: AufgabenVorlage[];
-  /** Merker der Übernahme (29.09., A9): gesetzt, sobald der Bestand einmal im neuen Modell geschrieben wurde — davor liegt eine Archiv-Kopie `tasks-vor-umbau-<zeit>`. */
+  /** Merker der Übernahme (29.09., A9): gesetzt, sobald der Bestand einmal im neuen Modell geschrieben wurde — davor liegt eine Archiv-Kopie `tasks-vor-umbau-<zeit>` (v2: `…-v2-…`, v3 = Gruppen aufgelöst, 06.10.: `…-v3-…`). */
   umbauVersion?: number;
 }
 

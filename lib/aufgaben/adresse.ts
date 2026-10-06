@@ -6,7 +6,9 @@
 //     ?b=ueberblick | archiv                       ausdrücklich Überblick bzw. Archiv (beendete Mandate, archivierte Projekte)
 //     &s=<Space>                                   privat · kdc · kdv · ug · m-<firmaId>
 //     &p=<Projekt>                                 Projektseite, &t=aufgaben (Start) · notizen · dateien · felder · verlauf
-//     &g=<Gruppe> &l=<Liste>                        Fokus auf eine Gruppe/Liste im Projekt
+//     &l=<Liste>                                   Fokus auf eine Liste im Projekt
+//     &g=<Gruppe>                                  NUR noch lesen (bis 06.10.): leitet auf die Liste, die aus der Gruppe wurde
+//                                                  (`alteAdresseUmleiten`); `&l=` einer Liste, die eine Aufgabe wurde, öffnet die Aufgabe.
 //     &a=<Aufgabe>                                 Detail offen
 //     &ansicht=board | tabelle | kalender          Board, Tabelle, Kalender (C5) statt Liste
 //     &space=privat|business                       die Seitenleiste (Privat/Business) — wird aus dem Space mitgeführt
@@ -14,6 +16,8 @@
 // `space=privat` allein öffnet den Privat-Space, `space=business` allein den Überblick (nur Business).
 
 import { istSpaceId, bereichVonSpace } from './struktur';
+import { listeAusGruppe, aufgabeAusListe } from './umbau-gruppen';
+import type { TasksState } from '@/types/tasks';
 
 export type ProjektReiter = 'aufgaben' | 'notizen' | 'dateien' | 'felder' | 'verlauf';
 export const PROJEKT_REITER: { id: ProjektReiter; label: string }[] = [
@@ -27,6 +31,7 @@ export interface AufgabenAdresse {
   /** Space (nur bei `space`). */
   s?: string;
   p?: string;
+  /** NUR LESEN (Links von vor dem 06.10.): Gruppe — `alteAdresseUmleiten` macht daraus die Liste. Neue Links tragen sie nie. */
   g?: string;
   l?: string;
   /** Offene Aufgabe (auch im Überblick möglich — dann springt die Seite in ihren Space). */
@@ -88,7 +93,7 @@ export function aufgabenLink(z: Partial<AufgabenAdresse> = {}): string {
     const p = kennung(z.p);
     if (p) {
       q.set('p', p);
-      if (kennung(z.g)) q.set('g', z.g!);
+      // `g` (Gruppe) schreibt seit 06.10. niemand mehr — alte Links leitet `alteAdresseUmleiten` um.
       if (kennung(z.l)) q.set('l', z.l!);
       if (z.t && z.t !== 'aufgaben' && PROJEKT_REITER.some(r => r.id === z.t)) q.set('t', z.t);
     }
@@ -97,4 +102,31 @@ export function aufgabenLink(z: Partial<AufgabenAdresse> = {}): string {
   if (z.darstellung && DARSTELLUNG.test(z.darstellung) && z.darstellung !== 'liste') q.set('ansicht', z.darstellung);
   const t = q.toString();
   return t ? `${AUFGABEN_PFAD}?${t}` : AUFGABEN_PFAD;
+}
+
+/**
+ * Alte Links (06.10., Umbau v3): `&g=<Gruppe>` → die Liste, die aus der Gruppe wurde (gleiche Kennung); `&l=<Liste>`, die im
+ * Umbau eine Aufgabe wurde → ihre neue Liste + die Aufgabe offen (`a`). Liefert die neue Adresse oder null (nichts zu tun).
+ */
+export function alteAdresseUmleiten(a: AufgabenAdresse, state: Pick<TasksState, 'listen' | 'tasks'>): AufgabenAdresse | null {
+  if (a.ansicht !== 'space' || (!a.g && !a.l)) return null;
+  const listen = state.listen ?? [];
+  const n: AufgabenAdresse = { ...a };
+  let geaendert = false;
+  if (a.g) {
+    delete n.g;
+    geaendert = true;
+    const l = listeAusGruppe(a.g, listen);
+    if (l && !a.l) n.l = l;
+  }
+  if (n.l && !listen.some(x => x.id === n.l)) {
+    const id = aufgabeAusListe(n.l, state.tasks);
+    const t = id ? state.tasks.find(x => x.id === id) : undefined;
+    if (t) {
+      geaendert = true;
+      if (t.listeId) n.l = t.listeId; else delete n.l;
+      if (!a.a) n.a = t.id;
+    }
+  }
+  return geaendert ? n : null;
 }

@@ -33,7 +33,7 @@ import { suchPasst } from '@/lib/text/such-norm';
 import type { Task, TasksState, AufgabeKommentar } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
-import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, umhaengenTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
+import { aufgabeAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, umhaengenTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
 import { kette, nachIdKarte, kinderKarte, nachfahren, elternKandidaten, pfadText, darfUnteraufgabe, ebeneVon, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 import { NotizEditor } from './Notiz';
 import { FeldWerte } from './EigeneFelder';
@@ -110,7 +110,6 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   const fremdesProjekt = !projekte.some(p => p.id === t.projectId) && state.projects.some(p => p.id === t.projectId);
 
   const projekt = state.projects.find(p => p.id === t.projectId);
-  const gruppe = (() => { const l = listen.find(x => x.id === t.listeId); return l?.gruppeId ? (state.gruppen ?? []).find(g => g.id === l.gruppeId) : undefined; })();
   const wartet = t.status !== 'done' ? wartetAuf(t, state.tasks) : [];
   // Neues Elternteil (jede Ebene): gleicher Space + Projekt, offen, kein eigener Nachfahre, Teilbaum passt unter die Grenze.
   const elternWahl: WahlEintrag<string>[] = elternKandidaten(t, state.tasks)
@@ -127,7 +126,6 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>
         <span style={{ color: space?.farbe ?? C.inkDim, fontWeight: 600 }}>{space?.label ?? 'Space'}</span>
         <span aria-hidden>›</span><span>{state.projects.find(p => p.id === t.projectId)?.title ?? 'Sonstige'}</span>
-        {gruppe && <><span aria-hidden>›</span><span style={{ color: gruppe.farbe }}>{gruppe.titel}</span></>}
         <span aria-hidden>›</span><span>{listen.find(l => l.id === t.listeId)?.titel ?? 'Sonstige'}</span>
         {vorKette.map(v => <span key={v.id} style={{ display: 'contents' }}><span aria-hidden>›</span><button onClick={() => onOeffnen(v.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</button></span>)}
         <span style={{ marginLeft: 'auto' }}><SymbolKnopf onClick={onSchliessen} ariaLabel="Schließen">×</SymbolKnopf></span>
@@ -201,8 +199,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
           <Feld label="Ort">
             <Wahl klein label="Space" liste={spaceWahl} wert={t.spaceId} farbe={space?.farbe} onWahl={id => handlung.umziehen(t, umzugTeil(state, t, { spaceId: id }))} />
             <Wahl klein label="Projekt" liste={fremdesProjekt ? [{ id: t.projectId, label: state.projects.find(p => p.id === t.projectId)?.title ?? '' }, ...projektWahl] : projektWahl} wert={t.projectId}
-              onWahl={id => aendern(umzugTeil(state, t, { projectId: id, listeId: null }))}
-              onNeu={async titel => projektAnlegen(dispatch, t.spaceId ?? 'privat', titel, space?.farbe ?? '#58D9CD')} neuMax={80} />
+              onWahl={id => aendern(umzugTeil(state, t, { projectId: id, listeId: null }))} />
             <Wahl klein label="Liste" liste={listenWahl} wert={t.listeId && listen.some(l => l.id === t.listeId) ? t.listeId : SONST}
               onWahl={id => aendern(umzugTeil(state, t, { listeId: id === SONST ? null : id }))}
               onNeu={async titel => listeAnlegen(dispatch, state, t.projectId, titel)} neuMax={80} />

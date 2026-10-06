@@ -59,9 +59,13 @@ describe('GET /api/aufgaben/export', () => {
   it('vollständig: Hierarchie, Serien, Abhängigkeiten, Kommentare, Dateiliste — ohne fremde „nur ich“-Aufgaben', async () => {
     const d = await (await holen('kevin')).json();
     expect(d).toMatchObject({ format: 'make-os-aufgaben', version: 1, von: 'kevin' });
-    expect(d.zahlen).toMatchObject({ projekte: 1, gruppen: 1, listen: 1, aufgaben: 4, unteraufgaben: 1, dateien: 1, serien: 1, abhaengigkeiten: 1 });
+    // Vorher (bis 06.10.): gruppen 1 (Garten) mit Liste „Oktober“, 4 Aufgaben. Seit dem Umbau v3: die Gruppe „Garten“ ist eine Liste,
+    // die Liste „Oktober“ eine Aufgabe darin (Kennung l-1); „a“ läuft als Serie und bleibt deshalb Hauptaufgabe in „Garten“.
+    expect(d.zahlen).toMatchObject({ projekte: 1, gruppen: 0, listen: 1, aufgaben: 5, unteraufgaben: 1, dateien: 1, serien: 1, abhaengigkeiten: 1 });
     const ids = d.aufgaben.map((t: Task) => t.id).sort();
-    expect(ids).toEqual(['a', 'a-u', 'archiv', 'b', 'korb']);
+    expect(ids).toEqual(['a', 'a-u', 'archiv', 'b', 'korb', 'l-1']);
+    expect(d.listen).toEqual([expect.objectContaining({ id: 'g-1', titel: 'Garten', farbe: '#3DE28B' })]);
+    expect(d.aufgaben.find((t: Task) => t.id === 'a').listeId).toBe('g-1');
     expect(d.aufgaben.find((t: Task) => t.id === 'korb').geloeschtAm).toBe(T0);
     expect(d.aufgaben.find((t: Task) => t.id === 'archiv').archivId).toBe('na-test-archiv');
     const a = d.aufgaben.find((t: Task) => t.id === 'a');
