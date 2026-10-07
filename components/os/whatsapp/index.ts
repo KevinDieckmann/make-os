@@ -5,10 +5,13 @@
 //   <WhatsappAntwort gespraech={g.id} fenster={g.whatsapp.fenster} />   Antworten: frei bei offenem Fenster, sonst Vorlage (Einzelklick)
 //   <VorlagenWaehler gespraech={g.id} onGesendet={…} />                 nur der Vorlagen-Wähler (z. B. für „Nachfassen“)
 //   <WhatsappKarte />                                                   Verbinden-/Status-Karte (Verbindungen)
-// Medien einer Nachricht: Anhang `teil: 'wa'` → Download über GET /api/whatsapp/medien?id=<Nachrichten-Kennung> (nicht /api/inbox/anhang).
+// Medien einer Nachricht: Anhang `teil: 'wa'` → <WaMedium …/> (Bild-Vorschau/Audio nur auf Klick, sonst Download) über
+// GET /api/whatsapp/medien?id=<Nachrichten-Kennung> (nicht /api/inbox/anhang). Eingehängt in der Inbox seit 07.10. abends
+// (components/os/inbox/Gespraech.tsx + WhatsappTeile.tsx).
 // Gelesen/Erledigt/Später/Zuordnen laufen über den gewohnten Weg POST /api/inbox (lib/inbox/aktionen.ts kennt WhatsApp).
 
 export { FensterUhr, fensterJetzt } from './FensterUhr';
 export { VorlagenWaehler } from './VorlagenWaehler';
 export { WhatsappAntwort } from './WhatsappAntwort';
 export { WhatsappKarte } from './WhatsappKarte';
+export { WaMedium, WaSymbol, waMediumLink } from './WaMedium';

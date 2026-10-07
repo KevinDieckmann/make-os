@@ -4,7 +4,8 @@
 //   gespraeche[id].spaeter    Wiedervorlage `{ bis, seit }` (eine neue Nachricht nach `seit` holt das Gespräch zurück)
 //   gespraeche[id].erledigt   „erledigt bis Nachricht X“ — für „Warten auf“ (da gibt es im Postfach nichts zu archivieren)
 //   gespraeche[id].zuordnung  „Zuordnen“ bestätigt → das Gespräch steht im Verlauf der Kontaktakte (lib/inbox/verlauf.ts)
-//   absender[adresse]         Screener: `zugelassen` | `geblockt` — je PERSON, gilt für alle ihre Postfächer
+//   absender[adresse]         Screener: `zugelassen` | `geblockt` — je PERSON, gilt für alle ihre Postfächer. Schlüssel = Mail-Adresse
+//                             (klein) oder — WhatsApp, 07.10. — Telefonnummer als „+<Ziffern>“ (`absenderSchluessel`)
 // Übernahme aus dem alten Bau (einmal, beim ersten Schreiben der Person; Lesen schreibt nie):
 //   · `inbox-status` (eine Karte für alle): nur Gmail-Wiedervorlagen (`gmail-<Nachricht>` mit `snoozed` + `bis` ≥ heute), deren
 //     Nachricht im EIGENEN Gmail-Spiegel steht → `spaeter` am Gespräch. Gmail-„erledigt“ lebte schon immer in Gmail (Archiv).
@@ -110,10 +111,27 @@ export async function gespraechSetzen(person: string, id: string, teil: { [K in 
   });
 }
 
-/** Screener-Entscheidung (oder `null` = wieder offen). */
+/** Telefonnummer als Screener-Schlüssel: „+“ und 6–20 Ziffern (die wa_id von WhatsApp, international). */
+const TELEFON_SCHLUESSEL = /^\+?[0-9]{6,20}$/;
+
+/**
+ * Schlüssel einer Screener-Entscheidung (rein, getestet): Mail-Adresse klein — oder (WhatsApp, 07.10.) eine Telefonnummer, immer als
+ * „+<Ziffern>“ (so steht sie als `absender` am WhatsApp-Gespräch). Nationale Schreibweisen („0151 …“) gelten nicht — die Nummer kommt
+ * immer aus einem Gespräch. Leer, wenn es weder das eine noch das andere ist.
+ */
+export function absenderSchluessel(v: string): string {
+  const t = String(v ?? '').trim();
+  if (TELEFON_SCHLUESSEL.test(t)) return `+${t.replace(/^\+/, '')}`;
+  const a = adresseKlein(t);
+  return adresseGueltig(a) ? a : '';
+}
+/** Ist der Schlüssel eine Telefonnummer (WhatsApp)? Rein. */
+export const istTelefonSchluessel = (k: string): boolean => /^\+[0-9]{6,20}$/.test(k);
+
+/** Screener-Entscheidung (oder `null` = wieder offen) — Mail-Adresse oder Telefonnummer. */
 export async function absenderSetzen(person: string, adresse: string, status: 'zugelassen' | 'geblockt' | null): Promise<InboxZustand> {
-  const a = adresseKlein(adresse);
-  if (!adresseGueltig(a)) throw new ZustandFehler('Keine gültige Adresse.');
+  const a = absenderSchluessel(adresse);
+  if (!a) throw new ZustandFehler('Keine gültige Adresse oder Telefonnummer.');
   return aendereInboxZustand(person, z => {
     const absender = { ...z.absender };
     if (status) absender[a] = { status, seit: localDay() }; else delete absender[a];

@@ -20,6 +20,8 @@ export interface PostfaecherAntwort {
   anbieter: { id: string; name: string; passwortWort: string; anleitung: string[]; link?: { text: string; url: string }; sendeHinweis?: string; eigeneServer: boolean }[];
   demo: boolean; absender: { adresse: string; status: 'zugelassen' | 'geblockt'; seit: string }[];
   google: StromAntwort['google']; fehler?: string;
+  /** Business-Sicht (07.10. abends): der Server hat auf Business-Postfächer gefiltert. */
+  nurBusiness?: boolean;
 }
 
 export interface Ergebnis<T = Record<string, unknown>> { status: number; d: T & { ok?: boolean; fehler?: string; code?: string; text?: string } }
@@ -65,8 +67,9 @@ export function naechsterMontag(): string { const d = new Date(); const n = ((8 
 /** Name der Gegenseite für Zeilen und Sätze. */
 export const nameVon = (g: Pick<GespraechZeile, 'zuordnung' | 'gegenueber'>) => g.zuordnung?.name ?? g.gegenueber.name ?? g.gegenueber.email;
 
-/** Wohin ein Anhang zeigt (Gmail: eigener Weg; IMAP: /api/inbox/anhang). */
+/** Wohin ein Anhang zeigt (Gmail: eigener Weg; IMAP: /api/inbox/anhang; WhatsApp: /api/whatsapp/medien — eigener Server, nie Meta). */
 export function anhangLink(quelle: string, nachricht: string, teil: string): string {
+  if (quelle === 'whatsapp') return `/api/whatsapp/medien?id=${encodeURIComponent(nachricht)}`;
   return quelle === 'gmail'
     ? `/api/gmail/anhang?id=${encodeURIComponent(nachricht)}&teil=${encodeURIComponent(teil)}`
     : `/api/inbox/anhang?nachricht=${encodeURIComponent(nachricht)}&teil=${encodeURIComponent(teil)}`;

@@ -35,12 +35,21 @@ export async function POST(req: Request) {
   let roh: Buffer;
   try { roh = Buffer.from(await req.arrayBuffer()); } catch { return leer(400); }
   const r = await webhookVerarbeiten(roh, req.headers.get('x-hub-signature-256'), k, adresseNetz(req));
-  if (r.status === 200 && r.medien.length) {
+  if (r.status === 200 && (r.medien.length || r.neu)) {
     const medien = r.medien;
+    const neu = r.neu;
     const laden = async () => {
-      const { medienNachladen } = await import('@/lib/whatsapp/medien');
-      await import('@/lib/whatsapp/server'); // Glocke bei ungültigem Schlüssel (Graph-Haken)
-      await medienNachladen(k, medien.length, medien).catch(e => console.warn(`[whatsapp] Medien: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`));
+      if (medien.length) {
+        const { medienNachladen } = await import('@/lib/whatsapp/medien');
+        await import('@/lib/whatsapp/server'); // Glocke bei ungültigem Schlüssel (Graph-Haken)
+        await medienNachladen(k, medien.length, medien).catch(e => console.warn(`[whatsapp] Medien: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`));
+      }
+      // Verlauf der Akte (07.10. abends): Gespräche, die eine Person per Klick „Zugeordnet“ hat, bekommen neue Nachrichten sofort in
+      // den Verlauf (vorher erst beim nächsten Senden bzw. Mail-Abgleich). Nur bestätigte Gespräche — nie automatisch zugeordnet.
+      if (neu) {
+        const [{ personenMitZugang }, { verlaufNachziehen }] = await Promise.all([import('@/lib/whatsapp/server'), import('@/lib/inbox/verlauf')]);
+        for (const p of await personenMitZugang()) await verlaufNachziehen(p).catch(e => console.warn(`[whatsapp] Verlauf: ${e instanceof Error ? e.name : 'Fehler'}`));
+      }
     };
     // Nach der Antwort (Next `after`); außerhalb einer Anfrage (Tests) einfach im Hintergrund — der Takt holt Verpasstes nach.
     try { after(laden); } catch { void laden().catch(() => {}); }

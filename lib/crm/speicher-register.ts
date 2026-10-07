@@ -100,7 +100,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     loeschfrist: '„Trennen“ bzw. Konto löschen entfernt es sofort',
     kategorie: ['vertraulich'],
   }),
-  mit(T('inbox-zustand--*', 'Inbox-Zustand je Person: Wiedervorlagen und „erledigt bis“ je Gespräch (nur Kennungen), bestätigte Zuordnung (Kontakt-Kennung), Screener-Entscheidungen je Absender-Adresse — Adresse der Person fällt weg, Kennungen werden getilgt.'), {
+  mit(T('inbox-zustand--*', 'Inbox-Zustand je Person: Wiedervorlagen und „erledigt bis“ je Gespräch (nur Kennungen — bei WhatsApp trägt die Kennung die Nummer der Gegenseite), bestätigte Zuordnung (Kontakt-Kennung), Screener-Entscheidungen je Absender-Adresse bzw. WhatsApp-Nummer („+<Ziffern>“) — Adresse und Nummer der Person fallen weg (samt Zustand ihrer WhatsApp-Gespräche), Kennungen werden getilgt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Post ordnen (Screener, Wiedervorlage)',
     art15: 'Kontakt: Auskunft nennt Screener-Entscheidung und Zuordnung; Konto: Konto › Meine Daten',
     loeschfrist: 'mit dem Konto bzw. „Trennen“ (Gespräche dieses Postfachs); Absender-Entscheidungen bis die Person sie zurücknimmt',

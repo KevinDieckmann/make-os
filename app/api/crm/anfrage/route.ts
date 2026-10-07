@@ -82,6 +82,6 @@ export async function POST(req: Request) {
     ...(fertig.kampagne ? { kampagnen: c.kampagnen.map(x => (x.id === fertig.kampagne!.id ? { ...x, kontaktIds: fertig.kampagne!.kontaktIds, ergebnisse: [...x.ergebnisse, fertig.kampagne!.ergebnis], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
     ...(fertig.firmaLead ? { firmen: c.firmen.map(x => (x.id === fertig.firmaLead!.firmaId ? { ...x, lead: fertig.firmaLead!.lead, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
   }));
-  const text = `${fertig.neuePerson ? 'Neu in der Kartei: ' : ''}Anfrage bei ${fertig.kontakt.vorname || fertig.kontakt.nachname ? `${fertig.kontakt.vorname} ${fertig.kontakt.nachname}`.trim() : fertig.kontakt.firma ?? fertig.kontakt.email} festgehalten — Follow-up „${fertig.followUp.text}“ steht heute bei ${fertig.followUp.zustaendig}.`;
+  const text = `${fertig.neuePerson ? 'Neu in der Kartei: ' : ''}Anfrage bei ${fertig.kontakt.vorname || fertig.kontakt.nachname ? `${fertig.kontakt.vorname} ${fertig.kontakt.nachname}`.trim() : fertig.kontakt.firma ?? fertig.kontakt.email ?? fertig.kontakt.telefon ?? 'der Person'} festgehalten — Follow-up „${fertig.followUp.text}“ steht heute bei ${fertig.followUp.zustaendig}.`;
   return NextResponse.json({ ok: true, kontakt: fuerPerson(fertig.kontakt, person), kontaktId: fertig.kontakt.id, neuePerson: fertig.neuePerson, followUpId: fertig.followUp.id, ...(fertig.hinweis ? { hinweis: fertig.hinweis } : {}), text });
 }

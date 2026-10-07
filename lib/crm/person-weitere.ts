@@ -137,6 +137,26 @@ const eintraegeRaus = (feld: string): Wirkung => (cur, m) => {
 /** Eintrag bleibt, Person wird getilgt. */
 const tilgen: Wirkung = (cur, m) => { const t = tilgeTief(cur, m); return { neu: t.wert, n: t.n }; };
 
+/**
+ * Inbox-Zustand je Person (Inbox 2; WhatsApp-Screener 07.10. abends): wie `tilgen` (Adresse der Person als Schlüssel fällt weg, Kennung
+ * getilgt) — dazu fallen die Screener-Entscheidung zu einer NUMMER der Person („+<Ziffern>“) und der Zustand ihrer WhatsApp-Gespräche
+ * (Schlüssel `wa~<postfach>~<Nummer>`) weg: dort steht die Nummer nur im Schlüssel, die Freitext-Suche fände sie nicht.
+ */
+export const inboxZustandOhne: Wirkung = (cur, m) => {
+  const nummern = new Set((m.telefone ?? []).filter(Boolean));
+  let n = 0;
+  let basis = cur;
+  if (nummern.size) {
+    const map = (v: unknown): Obj => (v && typeof v === 'object' && !Array.isArray(v) ? v as Obj : {});
+    const raus = (o: Obj, nummerVon: (k: string) => string | null): Obj => Object.fromEntries(Object.entries(o).filter(([k]) => { const nr = nummerVon(k); const weg = !!nr && nummern.has(nr); if (weg) n++; return !weg; }));
+    const absender = raus(map(cur?.absender), k => /^\+([0-9]{6,20})$/.exec(k)?.[1] ?? null);
+    const gespraeche = raus(map(cur?.gespraeche), k => /^wa~[^~]+~([0-9]{6,20})$/.exec(k)?.[1] ?? null);
+    if (n) basis = { ...cur, absender, gespraeche };
+  }
+  const t = tilgeTief(basis, m);
+  return { neu: t.wert, n: n + t.n };
+};
+
 /** Altbestand Netzwerk: Kontakte der Person (Adresse/Name) samt ihrer Chancen raus, Rest getilgt. */
 export const netzwerkOhne: Wirkung = (cur, m) => {
   const kontakte = liste(cur, 'kontakte') as { id?: string; name?: string; email?: string }[];
@@ -274,7 +294,7 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Inbox 2 (06.10.): IMAP-Spiegel je Person (Köpfe, Texte) wie Gmail; Inbox-Zustand: Absender-Adresse fällt weg, Kontakt-Kennung getilgt.
   { name: 'imap-stand--*', muster: /^imap-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'imap-text--*', muster: /^imap-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
-  { name: 'inbox-zustand--*', muster: /^inbox-zustand--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'inbox-zustand--*', muster: /^inbox-zustand--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: inboxZustandOhne, zaehlen: (cur, m) => inboxZustandOhne(cur, m).n },
   // WhatsApp Business (07.10.): Spiegel der Business-Nummer — Nachrichten mit einer Nummer der Person bzw. die sie nennen raus; bei Meta
   // liegen Nachrichten höchstens 30 Tage (kein „dort löschen“). Medien dieser Nachrichten löscht der nächste Takt (Dateien ohne Nachricht).
   { name: 'whatsapp-spiegel', muster: /^whatsapp-spiegel$/, behandlung: 'entfernen', wirkung: (cur, m) => waOhnePerson(cur, m, nenntPerson), zaehlen: (cur, m) => waZaehlen(cur, m, nenntPerson) },

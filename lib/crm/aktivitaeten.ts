@@ -66,7 +66,7 @@ export const FILTER_ARTEN: readonly { id: Exclude<Kategorie, 'system'>; label: s
 ];
 
 export const KATEGORIE_VON_ART: Record<AktivitaetArt, Kategorie> = {
-  notiz: 'notizen', mail: 'emails', antwort: 'emails', linkedin: 'emails', anruf: 'anrufe',
+  notiz: 'notizen', mail: 'emails', antwort: 'emails', linkedin: 'emails', whatsapp: 'emails', anruf: 'anrufe',
   termin: 'meetings', gespraech: 'meetings', event: 'meetings', stufe: 'system', system: 'system', uebergabe: 'system',
 };
 
@@ -77,7 +77,7 @@ export function unterAus(s?: string | null): Unter {
 
 // ── Beschriftung ─────────────────────────────────────────────────────────────
 export const ART_TITEL: Record<AktivitaetArt, string> = {
-  notiz: 'Notiz', mail: 'E-Mail', antwort: 'Antwort erhalten', linkedin: 'LinkedIn-Nachricht', anruf: 'Anruf',
+  notiz: 'Notiz', mail: 'E-Mail', antwort: 'Antwort erhalten', linkedin: 'LinkedIn-Nachricht', whatsapp: 'WhatsApp-Nachricht', anruf: 'Anruf',
   termin: 'Meeting', gespraech: 'Gespräch', event: 'Event', stufe: 'Stufe geändert', system: 'Systemereignis', uebergabe: 'Übergabe',
 };
 /** Ergebnis im Titel („Anruf · Gespräch geführt“). */

@@ -31,7 +31,20 @@ export function telefonIndex(kontakte: readonly Kontakt[]): Map<string, Kontakt>
 /** Zuordnung einer WhatsApp-Nummer für die Anzeige — null, wenn niemand (eindeutig) in der Kartei ist. Rein. */
 export function waZuordnen(nummer: string, index: Map<string, Kontakt>, crm: Pick<CrmBestand, 'chancen' | 'firmen'>): Zuordnung | null {
   const c = index.get(nummer);
-  if (!c) return null;
+  return c ? zuordnungAus(c, crm) : null;
+}
+
+/**
+ * Alle Akten, die diese Nummer tragen (Telefon oder SMS/Mobil) — für „Zuordnen zu …“, wenn die Nummer mehrdeutig ist (07.10. abends).
+ * Nie automatisch: die Inbox zeigt die Auswahl, die Person klickt. Eingeschränkte Personen (Art. 18) und Werbesperren fallen heraus. Rein.
+ */
+export function telefonKandidaten(nummer: string, kontakte: readonly Kontakt[], max = 5): Kontakt[] {
+  if (!nummer) return [];
+  return kontakte.filter(k => !k.eingeschraenkt && !k.werbesperre && (telefonSchluessel(k.telefon) === nummer || telefonSchluessel(k.sms) === nummer)).slice(0, max);
+}
+
+/** Zuordnung für eine bestimmte Akte (Anzeige: Name, Firma, offener Deal, Sperre, Anrede). Rein. */
+export function zuordnungAus(c: Kontakt, crm: Pick<CrmBestand, 'chancen' | 'firmen'>): Zuordnung {
   const deal = crm.chancen.find(x => OFFENE_STUFEN.includes(x.stufe) && x.kontaktIds.includes(c.id));
   const firma = c.firmaId ? crm.firmen.find(f => f.id === c.firmaId) : undefined;
   return {

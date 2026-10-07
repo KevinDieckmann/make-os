@@ -23,7 +23,7 @@ import { kurzHash } from '@/lib/postfach/rfc822';
 import { abgleichAlter } from '@/lib/kalender/icloud';
 import { bereichName, GMAIL_POSTFACH, type Postfach, type PostfachOeffentlich, type PostfachZustand } from '@/lib/postfach/typen';
 import { whatsappImStrom } from '@/lib/whatsapp/strom';
-import { ladeInboxZustand, type InboxZustand } from './zustand';
+import { absenderSchluessel, ladeInboxZustand, type InboxZustand } from './zustand';
 import { gespraecheBauen, lageBauen, zoeSatz, type Gespraech, type LageZeile, type PostfachKurz, type StromKopf, type ZoeSatz } from './strom';
 
 export interface StromFilter { bereich?: string; space?: 'privat' | 'business' }
@@ -106,9 +106,26 @@ export async function stromRoh(person: string, heute = localDay(), zustand?: Inb
   const gespraeche = gespraecheBauen({ postfaecher: kurz, koepfe, zuordnung: zu, zustand: z.gespraeche, absender: z.absender, heute, hash: kurzHash });
   // WhatsApp (07.10., lib/whatsapp/strom.ts): die Business-Nummer der INSTANZ — nur für Personen mit Zugang (Haushalt des Inhabers,
   // ggf. WHATSAPP_PERSONEN), Bereich immer Business; der Filter `imBereich` unten gilt genauso (Sicht „Privat“ sieht sie nie).
-  const wa = await whatsappImStrom(person, z.gespraeche, heute, namen).catch(e => { console.warn(`[whatsapp] Strom: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); return null; });
+  const wa = await whatsappImStrom(person, z.gespraeche, heute, namen, Date.now(), z.absender).catch(e => { console.warn(`[whatsapp] Strom: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); return null; });
   if (wa) { mitOeffentlich.push(wa.postfach); gespraeche.push(...wa.gespraeche); }
   return { gespraeche, postfaecher: mitOeffentlich, google: { konfiguriert: gs.konfiguriert, verbunden: gs.verbunden, bereit, ...(gs.konto ? { konto: gs.konto } : {}), ...(gs.getrennt ? { getrennt: true } : {}) }, namen };
+}
+
+/**
+ * Die Postfach-Verwaltung in einer Sicht (rein, getestet; 07.10. abends, Kevin-Regel „Business sieht nie Privat“): unter `business` nur
+ * Postfächer mit Business-Bereich (wie der Strom: `imBereich`, ein Postfach ohne Bereich zählt nicht), nur Business-Bereiche zur Wahl und
+ * nur Absender-Entscheidungen, deren Adresse/Nummer in einem Gespräch dieser Postfächer vorkommt — ein Privat-Absender bleibt draußen.
+ * Ohne Sicht (`null`): alles Eigene.
+ */
+export function postfaecherSicht<P extends { id: string; bereich: string | null }, A extends { adresse: string }>(
+  d: { postfaecher: P[]; gespraeche: readonly Pick<Gespraech, 'postfachId' | 'absender'>[]; bereiche: { id: string; name: string }[]; absender: A[] },
+  space: 'business' | null,
+): { postfaecher: P[]; bereiche: { id: string; name: string }[]; absender: A[] } {
+  if (space !== 'business') return { postfaecher: d.postfaecher, bereiche: d.bereiche, absender: d.absender };
+  const postfaecher = d.postfaecher.filter(p => imBereich(p.bereich, { space }));
+  const ids = new Set(postfaecher.map(p => p.id));
+  const bekannt = new Set(d.gespraeche.filter(g => ids.has(g.postfachId)).map(g => absenderSchluessel(g.absender)).filter(Boolean));
+  return { postfaecher, bereiche: d.bereiche.filter(b => imBereich(b.id, { space })), absender: d.absender.filter(a => bekannt.has(absenderSchluessel(a.adresse))) };
 }
 
 /** Der Strom für die Oberfläche — serverseitig nach Bereich gefiltert. */

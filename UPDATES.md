@@ -66,8 +66,31 @@ Sitzung durch. Umgebung: `WHATSAPP_*` (deploy/env.server.beispiel).
 der alte Stand nicht (bleiben verschlüsselt liegen; bei Bedarf Ordner `whatsapp-medien` löschen). Bei Meta: Webhook-Abo entfernen,
 System-User-Schlüssel widerrufen.
 
-**Zusammenführen mit `inbox-2`:** geänderte gemeinsame Dateien stehen in CLAUDE.md › „WhatsApp Business“. Für die Oberfläche der Inbox:
-Bausteine in `components/os/whatsapp/` (FensterUhr, WhatsappAntwort, VorlagenWaehler) — einhängen, wenn `gespraech.quelle === 'whatsapp'`.
+**Zusammenführen mit `inbox-2`:** erledigt (`entwicklung` @ 944b2108); die Oberfläche hängt seit dem Abend in der Inbox (nächster Absatz).
+
+**In der Inbox sichtbar (07.10. abends, Branch `inbox-whatsapp-ui` auf `entwicklung`, nur lokal):**
+- **Liste:** WhatsApp-Gespräche tragen das Sprechblasen-Symbol, den Namen (Akte bzw. Profilname) + die Nummer und den Stand des 24-h-Fensters
+  („noch 3 Std.“ bzw. „nur Vorlage“). Lagebild und Fächer zählen WhatsApp mit (Bereich der Nummer, z. B. MAKE Innovation).
+- **Gespräch:** Etikett „WhatsApp“, Profilname + Nummer, Fenster-Uhr, je gesendeter Nachricht „zugestellt/gelesen/nicht zugestellt + Grund“.
+  **Medien nur auf Klick** — Bild ansehen (Vorschau), Sprachnachricht abspielen (Audio), Dokumente als Download; nichts lädt von selbst.
+  **Antworten** über WhatsApp statt Mail-Editor: frei nur bei offenem Fenster, sonst Vorlage mit Vorschau; „ZOE-Entwurf“ legt nur einen
+  Vorschlag ins Feld; gesendet wird nur mit dem Klick. Erledigt/Gelesen/Später wie bei Mail (Erledigt = bis zur nächsten Nachricht der Person).
+- **Neue Absender gelten jetzt auch für Nummern:** wer der Business-Nummer zum ersten Mal schreibt (keine Akte, nie zugelassen), steht im
+  Fach „Neue Absender“ — Zulassen oder Blocken (je Person; Blocken blendet nur aus, die Person erfährt nichts). Rückgängig unter Postfächer ›
+  Absender-Entscheidungen („WhatsApp +49 …“).
+- **Kontakt aus WhatsApp:** „Kontakt anlegen“ legt die Person mit der **Telefonnummer** an (Anfrage über WhatsApp, zählt als Marketing-Lead;
+  steht die Nummer schon bei genau einer Person, hängt es dort an). Steht die Nummer bei **mehreren** Personen, ordnet MAKE OS nichts zu —
+  das Gespräch zeigt „Wem gehört diese Nummer?“ zur Wahl. Im Verlauf der Akte (erst nach „Zuordnen“): gesendete Nachrichten als eigene Art
+  „WhatsApp-Nachricht“, erhaltene als „Antwort erhalten“ — neue Nachrichten bestätigter Gespräche kommen sofort dazu.
+- **Postfächer unter Business** zeigen nur noch Business-Postfächer, Business-Bereiche und deren Absender (der Server filtert); unter Privat
+  bzw. ohne Sicht weiter alle eigenen.
+- **HOI:** neuer Befund „WhatsApp Business“ (nur Zahlen): rot bei abgelehntem Schlüssel („Verbindung erneuern“) oder niedriger Qualität, gelb
+  ohne erste Meldung von Meta, bei Aufrufen ohne gültige Signatur, gescheiterten Medien oder „nicht zugestellt“; nicht eingerichtet → kein Befund.
+- **Neu im Code (optional, kein neuer Bestand):** Aktivitäts-Art `whatsapp`, Anfrage-Kanal `whatsapp` (erscheint auch im Anfrage-Formular
+  unter Marketing), Screener-Schlüssel `+<Ziffern>` im bestehenden `inbox-zustand--<person>`, HOI-Feld `whatsapp`.
+- **Rückweg:** Der alte Stand kennt die Aktivitäts-Art `whatsapp` nicht — speichert jemand dort eine Akte mit einer solchen Zeile, fällt die Zeile
+  weg; nach dem erneuten Upload stellt „Zuordnen“-Nachziehen sie aus dem WhatsApp-Spiegel wieder her (idempotent). Anfragen mit Kanal
+  „WhatsApp“ zeigt der alte Stand mit dem Kanal-Text aus der Aktivität (kein Fehler). Nummer-Entscheidungen im Screener ignoriert der alte Stand.
 
 ## 07.10.2026 — Malins Blöcke landen in IHREM iCloud (nur lokal; Kevin: „Malins eigenes iCloud“, „Belegt“ bleibt)
 - Fokus- und Plan-Blöcke aus Planen, ZOE und der Wochenplan-Übernahme gehen für Personen mit eigener iCloud-Verbindung in deren eigenes Konto (erscheinen damit auf ihrem iPhone); Kevin (Haushalts-Kalender) unverändert.

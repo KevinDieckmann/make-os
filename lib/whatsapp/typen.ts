@@ -113,6 +113,34 @@ export interface WaNachricht {
   antwortAuf?: string;
 }
 
+/**
+ * Was die Inbox über eine WhatsApp-Nachricht zusätzlich zum Kopf erfährt (07.10., Inbox-Oberfläche): Art, Zustellstand (nur
+ * ausgehend, mit Fehlersatz), Zustand des Mediums (die Oberfläche lädt es nur auf Klick über /api/whatsapp/medien), Standort als Text.
+ * Nie die Medien-ID von Meta, nie ein Dateiname auf der Platte.
+ */
+export interface WaKopfInfo {
+  art: WaArt;
+  status?: WaStatus;
+  fehler?: string;
+  medium?: WaMedium['zustand'];
+  vorlage?: string;
+}
+
+/** Bild-Arten, die die Oberfläche als Vorschau zeigen darf (nie SVG — das könnte Skript tragen). Rein. */
+export const WA_BILD_TYPEN = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
+/** Audio-Arten für das Audio-Element (Sprachnachrichten kommen laut Meta als audio/ogg mit Opus). Rein. */
+export const WA_AUDIO_TYPEN = ['audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/amr', 'audio/opus', 'audio/webm'] as const;
+const grundTyp = (mime: string) => mime.split(';')[0].trim().toLowerCase();
+/** Wie die Oberfläche ein Medium zeigt (rein): Bild-Vorschau, Audio-Element oder nur Download. */
+export function mediumAnzeige(mime: string): 'bild' | 'audio' | 'download' {
+  const t = grundTyp(mime);
+  if ((WA_BILD_TYPEN as readonly string[]).includes(t)) return 'bild';
+  if ((WA_AUDIO_TYPEN as readonly string[]).includes(t)) return 'audio';
+  return 'download';
+}
+/** Der sichere Inhaltstyp für die Vorschau im Browser (rein) — nur aus der Liste oben, sonst null (dann nur Download). */
+export const mediumVorschauTyp = (mime: string): string | null => (mediumAnzeige(mime) === 'download' ? null : grundTyp(mime));
+
 export interface WaKontakt {
   nummer: string;
   /** Profilname aus WhatsApp (`contacts[].profile.name`) — von der Person selbst gewählt. */

@@ -6,8 +6,10 @@
 //     für Termine/Geld, weil es keinen Betreff gibt), dazu `whatsapp: { nummer, fenster }` mit dem 24-h-Fenster;
 //   · Nachrichten als Köpfe (`StromKopf`) — damit Gespräch öffnen, Verlauf der Akte nach „Zuordnen“, ZOE-Entwurf und Vorschläge
 //     ohne Sonderweg laufen.
-// „Neue Absender“ (Screener) gibt es für WhatsApp nicht: Zulassen/Blocken hängt an Mail-Adressen (lib/inbox/zustand.ts) — eine
-// Business-Nummer bekommt Anfragen bewusst; wer schreibt, landet in „Antworten“.
+// „Neue Absender“ (Screener, seit 07.10. abends auch für WhatsApp): eine Nummer ohne Akte, nie zugelassen und nie von uns angeschrieben
+// landet dort (Zulassen · Blocken je Person, Schlüssel „+<Ziffern>“ in lib/inbox/zustand.ts) — dieselbe Regel wie bei Mail-Adressen.
+// Zuordnung: eindeutige Nummer der Akte (Anzeige) — oder die Person, die jemand per Klick „Zuordnen“ gewählt hat (gewinnt; so lässt
+// sich auch eine Nummer zuordnen, die mehrere Akten tragen — nie automatisch).
 
 import { ladeCrm } from '@/lib/crm/speicher';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
@@ -17,8 +19,8 @@ import type { Zuordnung } from '@/lib/gmail/typen';
 import type { PostfachOeffentlich, Postfach } from '@/lib/postfach/typen';
 import { whatsappFuer } from './server';
 import { ladeWaSpiegel, ladeWaZustand, type WaSpiegel, type WaZustand } from './spiegel';
-import { fensterBerechnen, nummerAnzeige, WA_ART_WORT, WA_GRENZEN, type WaKontakt, type WaNachricht } from './typen';
-import { telefonIndex, telefonSchluessel, waZuordnen } from './zuordnung';
+import { fensterBerechnen, nummerAnzeige, WA_ART_WORT, WA_GRENZEN, type WaKontakt, type WaKopfInfo, type WaNachricht } from './typen';
+import { telefonIndex, telefonSchluessel, waZuordnen, zuordnungAus } from './zuordnung';
 
 export const BETREFF = 'WhatsApp';
 export const gespraechIdFuer = (postfachId: string, nummer: string): string => `wa~${postfachId}~${nummer}`;
@@ -35,6 +37,18 @@ export function kopfAus(n: WaNachricht, k: WaKontakt | undefined, eigene: string
     betreff: BETREFF, ausschnitt: text,
     labels: n.richtung === 'aus' ? ['SENT'] : ['INBOX', ...(ungelesen ? ['UNREAD'] : [])],
     anhaenge: n.medium ? [{ teil: 'wa', name: n.medium.name || WA_ART_WORT[n.art], typ: n.medium.mime, groesse: n.medium.groesse ?? 0 }] : [],
+    wa: kopfInfo(n),
+  };
+}
+
+/** Was die Gesprächsansicht zusätzlich braucht (rein): Art, Zustellstand + Fehlersatz, Zustand des Mediums, Vorlagen-Name. */
+export function kopfInfo(n: WaNachricht): WaKopfInfo {
+  return {
+    art: n.art,
+    ...(n.richtung === 'aus' && n.status ? { status: n.status } : {}),
+    ...(n.richtung === 'aus' && n.fehler ? { fehler: n.fehler.text } : {}),
+    ...(n.medium ? { medium: n.medium.zustand } : {}),
+    ...(n.vorlage ? { vorlage: n.vorlage.name } : {}),
   };
 }
 
@@ -46,6 +60,8 @@ export interface WaStromEingabe {
   eigene: string;
   zuordnung: Record<string, Zuordnung>;
   zustand: Record<string, GespraechZustand>;
+  /** Screener-Entscheidungen der Person (Schlüssel „+<Ziffern>“, lib/inbox/zustand.ts). */
+  absender?: Record<string, { status: 'zugelassen' | 'geblockt' }>;
   heute: string;
   jetzt: number;
 }
@@ -75,7 +91,8 @@ export function waGespraecheBauen(e: WaStromEingabe): Gespraech[] {
     const koepfe = n.map(x => kopfAus(x, k, e.eigene, e.postfachId));
     const fachN: FachNachricht[] = n.map((x, i) => ({ am: x.am, von: koepfe[i].von, betreff: koepfe[i].ausschnitt.slice(0, 200), ausschnitt: koepfe[i].ausschnitt, labels: koepfe[i].labels, anhaenge: koepfe[i].anhaenge, vonUns: x.richtung === 'aus' }));
     const z = e.zuordnung[nummer];
-    const f = fachVon({ nachrichten: fachN, zugeordnet: !!z && !z.sperre, angeschrieben: true, heute: e.heute });
+    // Screener wie bei Mail: unbekannte Nummer (keine Akte, nie zugelassen, nie von uns angeschrieben) → „Neue Absender“.
+    const f = fachVon({ nachrichten: fachN, zugeordnet: !!z && !z.sperre, absender: e.absender?.[nummerAnzeige(nummer)]?.status, angeschrieben: false, heute: e.heute });
     const massgeblich = n[f.massgeblich] ?? n[n.length - 1];
     const juengste = n[n.length - 1];
     const st = e.zustand[id] ?? {};
@@ -111,14 +128,30 @@ export function waPostfachZustand(z: WaZustand, nachrichten: number): PostfachOe
   return { stufe: 'aktuell', at: z.webhook.zuletzt, nachrichten };
 }
 
-/** Zuordnungen aller Nummern des Spiegels (Anzeige — auch eingeschränkte Personen, gekennzeichnet). */
-async function zuordnungen(s: WaSpiegel): Promise<Record<string, Zuordnung>> {
+/**
+ * Zuordnungen aller Nummern des Spiegels (Anzeige — auch eingeschränkte Personen, gekennzeichnet). `bestaetigt` (Nummer → Kontakt aus
+ * „Zuordnen“ der Person) gewinnt vor dem Telefon-Index — so steht auch eine mehrdeutige Nummer nach dem Klick bei der gewählten Person.
+ */
+async function zuordnungen(s: WaSpiegel, bestaetigt: Record<string, string>): Promise<Record<string, Zuordnung>> {
   const nummern = Object.keys(s.kontakte);
   if (!nummern.length) return {};
   const [kontakte, crm] = await Promise.all([kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), ladeCrm()]);
   const index = telefonIndex(kontakte);
+  const je = new Map(kontakte.map(k => [k.id, k]));
   const raus: Record<string, Zuordnung> = {};
-  for (const n of nummern) { const z = waZuordnen(n, index, crm); if (z) raus[n] = z; }
+  for (const n of nummern) {
+    const gewaehlt = bestaetigt[n] ? je.get(bestaetigt[n]) : undefined;
+    const z = gewaehlt ? zuordnungAus(gewaehlt, crm) : waZuordnen(n, index, crm);
+    if (z) raus[n] = z;
+  }
+  return raus;
+}
+
+/** Nummer → bestätigter Kontakt aus dem Inbox-Zustand der Person (rein): nur Gespräche dieses Postfachs. */
+export function bestaetigteNummern(zustand: Record<string, GespraechZustand>, postfachId: string): Record<string, string> {
+  const raus: Record<string, string> = {};
+  const vor = `wa~${postfachId}~`;
+  for (const [id, z] of Object.entries(zustand)) if (id.startsWith(vor) && z.zuordnung?.kontaktId) raus[id.slice(vor.length)] = z.zuordnung.kontaktId;
   return raus;
 }
 
@@ -126,13 +159,13 @@ async function zuordnungen(s: WaSpiegel): Promise<Record<string, Zuordnung>> {
  * Für `stromRoh`: das Postfach der Business-Nummer und seine Gespräche — null, wenn WhatsApp nicht eingerichtet ist oder diese
  * Person keinen Zugang hat (fremder Haushalt, nicht in WHATSAPP_PERSONEN).
  */
-export async function whatsappImStrom(person: string, gespraechZustand: Record<string, GespraechZustand>, heute: string, namen: Record<string, string>, jetzt = Date.now()): Promise<{ postfach: Postfach & { oeffentlich: PostfachOeffentlich }; gespraeche: Gespraech[] } | null> {
+export async function whatsappImStrom(person: string, gespraechZustand: Record<string, GespraechZustand>, heute: string, namen: Record<string, string>, jetzt = Date.now(), absender: Record<string, { status: 'zugelassen' | 'geblockt' }> = {}): Promise<{ postfach: Postfach & { oeffentlich: PostfachOeffentlich }; gespraeche: Gespraech[] } | null> {
   const k = await whatsappFuer(person);
   if (!k) return null;
   const [s, z] = await Promise.all([ladeWaSpiegel(), ladeWaZustand()]);
   const eigene = telefonSchluessel(z.telefon?.nummer);
-  const zu = await zuordnungen(s);
-  const gespraeche = waGespraecheBauen({ spiegel: s, postfachId: k.postfachId, bereich: k.bereich, eigene, zuordnung: zu, zustand: gespraechZustand, heute, jetzt });
+  const zu = await zuordnungen(s, bestaetigteNummern(gespraechZustand, k.postfachId));
+  const gespraeche = waGespraecheBauen({ spiegel: s, postfachId: k.postfachId, bereich: k.bereich, eigene, zuordnung: zu, zustand: gespraechZustand, absender, heute, jetzt });
   const anzeigename = `WhatsApp · ${z.telefon?.anzeigename ?? 'Business'}`;
   const adresse = eigene ? nummerAnzeige(eigene) : '';
   return {

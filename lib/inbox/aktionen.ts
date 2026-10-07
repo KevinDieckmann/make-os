@@ -6,7 +6,9 @@
 //   spaeter    Wiedervorlage (Datum) im Inbox-Zustand
 //   zurueck    Wiedervorlage/„erledigt“ weg; archivierte Post wieder in den Posteingang
 //   zuordnen   bestätigt die Person zum Gespräch → Verlauf der Kontaktakte (lib/inbox/verlauf.ts); `loesen` nimmt das zurück
-//   zulassen / blocken / offen   Screener je Adresse (Person)
+//   zulassen / blocken / offen   Screener je Adresse bzw. — WhatsApp — je Telefonnummer (Person)
+//   WhatsApp (07.10.): erledigt = „erledigt bis Nachricht X“ (bei Meta gibt es nichts zu archivieren), gelesen = „gelesen bis“ im
+//   geteilten Spiegel der Business-Nummer (keine Lesebestätigung an die Person)
 // Gesprächs- und Nachrichten-Kennungen kommen NIE aus dem Browser in die Postfächer: das Gespräch wird aus den EIGENEN Spiegeln der
 // Person neu gebaut und nur dessen Nachrichten werden angefasst.
 
@@ -44,7 +46,7 @@ export async function aktionAusfuehren(person: string, id: string, aktion: Inbox
       }
       // Auch nach dem Archivieren: „erledigt bis zur jüngsten Nachricht“ — ein Warten-Gespräch verschwindet so, bis Neues kommt.
       await gespraechSetzen(person, id, { erledigt: { bis: g.juengste, am: new Date().toISOString() }, spaeter: null });
-      return { text: g.fach === 'warten' ? 'Erledigt — kommt eine Antwort, ist das Gespräch wieder da.' : 'Erledigt — im Postfach archiviert.' };
+      return { text: g.fach === 'warten' ? 'Erledigt — kommt eine Antwort, ist das Gespräch wieder da.' : g.quelle === 'whatsapp' ? 'Erledigt — schreibt die Person wieder, ist das Gespräch wieder da.' : 'Erledigt — im Postfach archiviert.' };
     }
     case 'gelesen':
     case 'ungelesen': {
@@ -85,7 +87,10 @@ export async function aktionAusfuehren(person: string, id: string, aktion: Inbox
     case 'blocken':
     case 'offen': {
       await absenderSetzen(person, g.absender, aktion === 'zulassen' ? 'zugelassen' : aktion === 'blocken' ? 'geblockt' : null);
-      return { text: aktion === 'zulassen' ? 'Zugelassen — Post von dieser Adresse kommt direkt in die Fächer.' : aktion === 'blocken' ? 'Geblockt — Post von dieser Adresse erscheint nicht mehr (nichts wird gelöscht).' : 'Entscheidung zurückgenommen.' };
+      const wa = g.quelle === 'whatsapp';
+      return { text: aktion === 'zulassen' ? (wa ? 'Zugelassen — WhatsApp von dieser Nummer kommt direkt in die Fächer.' : 'Zugelassen — Post von dieser Adresse kommt direkt in die Fächer.')
+        : aktion === 'blocken' ? (wa ? 'Geblockt — WhatsApp von dieser Nummer erscheint nicht mehr (nichts wird gelöscht, die Person erfährt nichts).' : 'Geblockt — Post von dieser Adresse erscheint nicht mehr (nichts wird gelöscht).')
+        : 'Entscheidung zurückgenommen.' };
     }
   }
 }

@@ -203,11 +203,18 @@ export function ausgehendMerken(s: WaSpiegel, m: WaNachricht): WaSpiegel {
   return { v: 1, nachrichten: { ...s.nachrichten, [m.id]: m }, kontakte: { ...s.kontakte, [m.nummer]: k } };
 }
 
-/** Gelesen/ungelesen für ein Gespräch (rein). Gilt für alle, die das geteilte Business-Postfach sehen. */
+/**
+ * Gelesen/ungelesen für ein Gespräch (rein). Gilt für alle, die das geteilte Business-Postfach sehen.
+ * „Gelesen bis“ = Zeitpunkt der jüngsten EINGEHENDEN Nachricht, die schon da ist (nicht „jetzt“): Meta stempelt eine Nachricht mit dem
+ * Sendezeitpunkt der Person (Sekunden) — käme sie erst nach dem Öffnen an, wäre sie mit „jetzt“ fälschlich gelesen (07.10. abends).
+ */
 export function gelesenSetzen(s: WaSpiegel, nummer: string, gelesen: boolean, jetzt: string): WaSpiegel {
   const k = s.kontakte[nummer];
   if (!k) return s;
-  if (gelesen) return { ...s, kontakte: { ...s.kontakte, [nummer]: { ...k, gelesenBis: jetzt } } };
+  if (gelesen) {
+    const juengste = Object.values(s.nachrichten).filter(n => n.nummer === nummer && n.richtung === 'ein').reduce((m, n) => (n.am > m ? n.am : m), '');
+    return { ...s, kontakte: { ...s.kontakte, [nummer]: { ...k, gelesenBis: juengste && juengste < jetzt ? juengste : jetzt } } };
+  }
   const { gelesenBis: _g, ...rest } = k;
   return { ...s, kontakte: { ...s.kontakte, [nummer]: rest } };
 }

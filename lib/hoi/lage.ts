@@ -82,6 +82,8 @@ export interface InnenLage {
   gmail?: GmailLage | null;
   /** Inbox 2 (06.10.): IMAP-Postfächer aller Personen — nur Zähler. */
   postfaecher?: PostfachLage | null;
+  /** WhatsApp Business (07.10.): Zustand der Business-Nummer — nur Zahlen und Zustände, nie Nummern oder Namen. null = nicht eingerichtet. */
+  whatsapp?: WhatsappLage | null;
   /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
   brainIndex?: BrainIndexLage | null;
   /** Protokolle (05.10.): Hash-Kette über Änderungs-, Lese- und Anmeldeprotokoll — Ergebnis der letzten Prüfung. */
@@ -216,6 +218,58 @@ export function postfachBefunde(p: PostfachLage | null | undefined): Befund[] {
     satz: p.anmeldung ? `${p.anmeldung} Postfach${p.anmeldung === 1 ? '' : 'fächer'} braucht eine neue Anmeldung — die Person trägt in der Inbox › Postfächer „Verbindung erneuern“ ein (MAKE OS fragt bis dahin nicht weiter an)`
       : p.fehler || p.veraltet ? 'Ein Abgleich steht oder ist verzögert — der Takt versucht es mit Pause weiter' : 'Abgleich läuft (IDLE sofort, sonst alle 2 Minuten)',
   }];
+}
+
+/**
+ * Zustand der WhatsApp-Business-Nummer (07.10. abends, lib/whatsapp/lage.ts) — NUR aus dem eigenen Zustand (kein Aufruf bei Meta): Alter
+ * der letzten Meldung von Meta, abgelehnte Aufrufe ohne gültige Signatur, Schlüssel abgelehnt, Qualität/Durchsatz laut Meta (Cache),
+ * Medien und Zustellung. Nie Nummern, nie Profilnamen, nie Texte.
+ */
+export interface WhatsappLage {
+  /** Minuten seit der letzten Meldung von Meta (Webhook) — null: noch nie eine. */
+  webhookVorMin: number | null;
+  /** Aufrufe ohne gültige Signatur — gesamt und ob der letzte jünger als 24 Stunden ist. */
+  abgelehnt: number;
+  abgelehntFrisch: boolean;
+  /** Meta hat den Zugriffsschlüssel abgelehnt (seit dem letzten Erfolg) → „Verbindung erneuern“. */
+  token: boolean;
+  /** Qualität laut Meta (GREEN · YELLOW · RED · UNKNOWN) — nur, wenn bekannt. */
+  qualitaet?: string;
+  /** Durchsatz laut Meta (z. B. STANDARD) — nur, wenn bekannt. */
+  durchsatz?: string;
+  /** Gespräche im Spiegel (Zahl). */
+  gespraeche: number;
+  /** Medien, die noch geladen werden bzw. endgültig scheiterten. */
+  medienOffen: number;
+  medienFehler: number;
+  /** Ausgehende Nachrichten der letzten 7 Tage, die Meta als „nicht zugestellt“ meldete. */
+  fehlgeschlagen7d: number;
+}
+
+/** Befund zur WhatsApp-Business-Nummer (rein): Schlüssel abgelehnt oder Qualität niedrig = rot; Auffälliges gelb; sonst grün. */
+export function whatsappBefunde(w: WhatsappLage | null | undefined): Befund[] {
+  if (!w) return [];
+  const alt = w.webhookVorMin;
+  const q = (w.qualitaet ?? '').toUpperCase();
+  const qText = q === 'GREEN' ? 'Qualität hoch' : q === 'YELLOW' ? 'Qualität mittel' : q === 'RED' ? 'Qualität niedrig' : null;
+  const ampel: Ampel = w.token || q === 'RED' ? 'rot'
+    : alt === null || w.abgelehntFrisch || q === 'YELLOW' || w.medienFehler > 0 || w.fehlgeschlagen7d > 0 ? 'gelb' : 'gruen';
+  const teile = [
+    `${w.gespraeche} ${w.gespraeche === 1 ? 'Gespräch' : 'Gespräche'}`,
+    alt === null ? 'noch keine Meldung von Meta' : `letzte Meldung vor ${alt < 120 ? `${alt} min` : alt < 48 * 60 ? `${Math.round(alt / 60)} h` : `${Math.round(alt / 1440)} Tagen`}`,
+    ...(qText ? [qText] : []), ...(w.durchsatz ? [`Durchsatz ${w.durchsatz}`] : []),
+    ...(w.medienOffen ? [`${w.medienOffen} Medien offen`] : []), ...(w.medienFehler ? [`${w.medienFehler} Medien gescheitert`] : []),
+    ...(w.fehlgeschlagen7d ? [`${w.fehlgeschlagen7d} nicht zugestellt (7 Tage)`] : []),
+  ];
+  const satz = w.token ? 'Meta lehnt den Zugriffsschlüssel ab — „Verbindung erneuern“: neuen dauerhaften Schlüssel des System-Users erzeugen und deploy/whatsapp-verbinden.sh erneut ausführen (Verify-Token behalten); bis dahin geht nichts raus'
+    : q === 'RED' ? 'Meta stuft die Qualität der Nummer niedrig ein — Vorlagen und Ansprache prüfen, sonst drosselt Meta die Nummer'
+    : alt === null ? 'Noch keine Meldung von Meta angekommen — Webhook bei Meta gespeichert und „messages“ abonniert? Eine Test-Nachricht an die Nummer zeigt es'
+    : w.abgelehntFrisch ? `${w.abgelehnt} Aufruf${w.abgelehnt === 1 ? '' : 'e'} ohne gültige Signatur abgelehnt (zuletzt in den letzten 24 h) — stimmt das App-Geheimnis auf dem Server? Sonst klopft jemand an`
+    : w.fehlgeschlagen7d ? 'Meta hat gesendete Nachrichten als nicht zugestellt gemeldet — Grund steht im Gespräch'
+    : w.medienFehler ? 'Medien ließen sich nicht laden (Meta hält sie 7 Tage) — in WhatsApp ansehen'
+    : q === 'YELLOW' ? 'Meta stuft die Qualität der Nummer mittel ein — im Auge behalten'
+    : 'Webhook kommt an, Senden möglich (ruhige Zeiten ohne Meldung sind normal)';
+  return [{ id: 'whatsapp', bereich: 'app', label: 'WhatsApp Business', ampel, wert: teile.join(' · '), satz }];
 }
 
 /** Zustand der Google-Kalender (HOI): worst case über alle verbundenen Personen. */
@@ -398,6 +452,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...icloudPersonenBefunde(innen.kalenderIcloudPersonen));
   b.push(...gmailBefunde(innen.gmail));
   b.push(...postfachBefunde(innen.postfaecher));
+  b.push(...whatsappBefunde(innen.whatsapp));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));

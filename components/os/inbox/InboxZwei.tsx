@@ -8,6 +8,8 @@
 // (klebend, mit Kontext); Handy: Liste zuerst, das Gespräch als eigene Ansicht. Tasten: j/k · Enter · e erledigt · s später · a Aufgabe
 // · r antworten · Esc. Handy: Zeile nach rechts wischen = erledigt, nach links = später (mit „Rückgängig“).
 // Alles kommt gefiltert vom Server (/api/inbox) — die Oberfläche blendet nie bloß aus. Nichts wird ohne Klick zugeordnet oder gesendet.
+// WhatsApp (07.10. abends): Zeilen mit Symbol, Name (Akte bzw. Profilname) + Nummer und dem Stand des 24-h-Fensters; „Neue Absender“
+// gilt auch für Nummern (Zulassen · Blocken); Lagebild und Fächer zählen WhatsApp mit (derselbe Strom).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -23,9 +25,13 @@ import { useLinkAuswahl } from '../Verlauf';
 import { GespraechAnsicht } from './Gespraech';
 import { Postfaecher, STUFE_FARBE, STUFE_TEXT } from './Postfaecher';
 import { Antwort } from './Antwort';
+import { WaSymbol, fensterJetzt } from '../whatsapp';
+import { fensterText, nummerAnzeige, type Fenster } from '@/lib/whatsapp/typen';
 import { aktion, holen, nameVon, senden, tagIn, zeitKurz, type GespraechZeile, type StromAntwort } from './daten';
 
 type Filter = { fach: FachId | 'nachfassen' | 'wiedervorlage'; bereich: string | null } | null;
+/** WhatsApp-Zeile: Rest des 24-h-Fensters („noch 3 Std.“) bzw. „nur Vorlage“ (rein bis auf die Uhrzeit). */
+const fensterKurz = (f: Fenster) => { const x = fensterJetzt(f, Date.now()); return x.offen ? fensterText(x).replace('Fenster offen · ', '') : 'nur Vorlage'; };
 const LAGE_TEILE: { feld: keyof Omit<LageZeile, 'bereich'>; text: (n: number) => string; fach: NonNullable<Filter>['fach'] }[] = [
   { feld: 'antworten', text: n => `${n} ${n === 1 ? 'braucht' : 'brauchen'} Antwort`, fach: 'antworten' },
   { feld: 'warten', text: n => `${n} ${n === 1 ? 'wartet' : 'warten'} auf andere`, fach: 'warten' },
@@ -165,13 +171,18 @@ export function InboxZwei() {
   const bereichWort = (b: string | null) => (b ? namen[b] ?? b : 'Ohne Bereich');
 
   const zeile = (g: GespraechZeile, gruppe: string) => {
+    const wa = g.quelle === 'whatsapp' && g.whatsapp ? g.whatsapp : null;
     const unter = g.fach === 'warten'
       ? `${g.vonUns ? 'Du hast geschrieben' : 'Automatische Antwort'} · seit ${g.wartetTage} ${g.wartetTage === 1 ? 'Tag' : 'Tagen'} keine Antwort`
-      : `${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${g.zuordnung?.firma ? `${g.zuordnung.firma} — ` : g.fach === 'neu' ? `${g.gegenueber.email} — ` : ''}${handy ? g.ausschnitt.slice(0, 80) + (g.ausschnitt.length > 80 ? ' …' : '') : g.ausschnitt}`;
+      : `${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${wa ? `WhatsApp · ${fensterKurz(wa.fenster)} — ` : ''}${g.zuordnung?.firma ? `${g.zuordnung.firma} — ` : g.fach === 'neu' && !wa ? `${g.gegenueber.email} — ` : ''}${handy ? g.ausschnitt.slice(0, 80) + (g.ausschnitt.length > 80 ? ' …' : '') : g.ausschnitt}`;
+    // WhatsApp: der „Betreff“ ist der Anfang der Nachricht (steht schon unten) — oben stattdessen die Nummer.
+    const titel = wa
+      ? <><span style={{ color: KUGEL.smaragd, marginRight: 6 }}><WaSymbol groesse={14} /></span><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span>{nameVon(g) !== g.gegenueber.email ? <span style={{ color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}> · {nummerAnzeige(wa.nummer)}</span> : null}<span style={{ color: C.inkLeise }}>{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>
+      : <><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span><span style={{ color: C.inkLeise }}> · {g.betreff}{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>;
     const inhalt = (
       <Zeile onClick={() => setOffenId(offenId === g.id ? null : g.id)} aktiv={offenId === g.id}
         links={<Punkt farbe={g.ungelesen ? KUGEL.granat : g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.linie} />}
-        titel={<><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span><span style={{ color: C.inkLeise }}> · {g.betreff}{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>}
+        titel={titel}
         unter={unter}
         rechts={gruppe === 'neu' && !handy ? (
           <span style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
@@ -208,7 +219,7 @@ export function InboxZwei() {
   if (ansicht === 'postfaecher') {
     return (
       <Seite titel="Postfächer" unter="Verbinden, Bereich festlegen, Verbindung erneuern — Passwörter liegen verschlüsselt auf dem Server." rechts={kopfRechts}>
-        <Postfaecher onGeaendert={() => void laden()} meldung={t => melden(t)} />
+        <Postfaecher space={space} onGeaendert={() => void laden()} meldung={t => melden(t)} />
         {hinweis}
       </Seite>
     );

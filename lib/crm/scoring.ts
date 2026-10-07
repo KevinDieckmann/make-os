@@ -173,7 +173,7 @@ function waermeMessen(personen: readonly Kontakt[], k: MessKontext): Messwert {
     if (t <= WAERME_VERFALL_TAGEN) return { stufe: 'antwort', grund: 'Hat geantwortet' };
     verblasst.push({ stufe: 'antwort_alt', grund: `Antwort liegt ${t} Tage zurück — abgekühlt` });
   }
-  const angesprochenAm = zuletzt(akt.filter(a => a.von !== 'system' && (a.art === 'mail' || a.art === 'linkedin' || a.art === 'anruf')));
+  const angesprochenAm = zuletzt(akt.filter(a => a.von !== 'system' && (a.art === 'mail' || a.art === 'linkedin' || a.art === 'whatsapp' || a.art === 'anruf')));
   if (angesprochenAm) {
     const t = tage(angesprochenAm, k.heute);
     if (t <= WAERME_VERFALL_TAGEN) return { stufe: 'ansprache', grund: 'Angesprochen, noch keine Antwort' };

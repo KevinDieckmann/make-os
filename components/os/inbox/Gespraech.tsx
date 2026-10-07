@@ -5,6 +5,9 @@
 // Deals, offene Aufgaben zur Person (Aufgaben-Stand im Browser), letzter/nächster Termin (/api/kalender/bezug). Alle Vorschläge sind
 // Knöpfe — nichts passiert ohne Klick, und jeder Klick nutzt den bestehenden Schreibweg des Moduls (Aufgaben, Kalender, CRM-Follow-up,
 // Kontakt-Anfrage, Beleg lesen → übernehmen, Zuordnen). Text ist reiner Text (nie HTML), Bilder nie geladen, Anhänge nur als Download.
+// WhatsApp (07.10. abends): Etikett, Profilname + Nummer, Uhr des 24-h-Fensters, Zustellstand; Medien nur auf Klick (Bild-Vorschau,
+// Audio-Element, sonst Download — WaMedium); Antworten über WaAntwortInbox statt des Mail-Editors; „Kontakt anlegen“ mit der Nummer,
+// „Zuordnen zu …“, wenn mehrere Akten die Nummer tragen (nie automatisch).
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -21,6 +24,8 @@ import { NeuerTermin } from '../kalender/NeuerTermin';
 import { GmailText } from './GmailText';
 import { Antwort } from './Antwort';
 import { BelegAusMail } from './BelegAusMail';
+import { WaMedium } from '../whatsapp';
+import { WaAntwortInbox, WaEtikett, WaKopf, WaZustell } from './WhatsappTeile';
 import { aktion, anhangLink, datumLang, groesse, holen, naechsterMontag, senden, tagIn, type Ansicht } from './daten';
 
 interface AkteTermin { titel: string; start: string; ganztags?: boolean; abgesagt?: boolean }
@@ -68,6 +73,8 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   const g = a.gespraech;
   const z = g.zuordnung;
   const space = spaceVon(g);
+  const wa = g.quelle === 'whatsapp' && g.whatsapp ? g.whatsapp : null;
+  const kandidaten = a.kontext.kandidaten ?? [];
   const tu = async (was: string, extra: Record<string, unknown> = {}, rueck?: string) => {
     const r = await aktion(id, was, extra);
     meldung(r.d.ok ? String(r.d.text ?? 'Erledigt.') : String(r.d.fehler ?? 'Das ging nicht.'), r.d.ok && rueck ? () => { void aktion(id, rueck).then(() => onGeaendert()); } : undefined);
@@ -93,9 +100,11 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   const kontaktAnlegen = async () => {
     const n = [...a.nachrichten].reverse().find(x => !x.vonUns);
     const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', ...kontaktAusGespraech({ ...g, gegenueber: { ...g.gegenueber, name: n?.von.name ?? g.gegenueber.name } }, (n?.text ?? '').slice(0, 300), heute) });
-    meldung(r.d.ok ? String(r.d.text ?? 'Kontakt angelegt.') : String(r.d.fehler ?? 'Kontakt nicht angelegt.'));
+    meldung(r.d.ok ? `${String(r.d.text ?? 'Kontakt angelegt.')}${wa ? ' Jetzt „Zuordnen“, damit das Gespräch im Verlauf der Akte steht.' : ''}` : String(r.d.fehler ?? 'Kontakt nicht angelegt.'));
     if (r.d.ok) { await laden(); onGeaendert(); }
   };
+  /** Mehrdeutige Nummer: die Person wählt die Akte (nie automatisch) — derselbe Weg wie „Zuordnen“. */
+  const zuordnenZu = (kontaktId: string) => void tu('zuordnen', { kontaktId }, 'loesen').then(() => laden());
   const vorschlag = (v: Ansicht['vorschlaege'][number]) => {
     if (v.art === 'aufgabe') return aufgabe(v.datum);
     if (v.art === 'termin') return setTermin(true);
@@ -108,13 +117,21 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
 
   const aufgabenZurPerson = z ? state.tasks.filter(t => t.status !== 'done' && t.bezug?.kontaktId === z.kontaktId).slice(0, 4) : [];
   const anhaenge = (n: Ansicht['nachrichten'][number]) => n.anhaenge.filter(x => !x.eingebettet);
-  const kopf = (n: Ansicht['nachrichten'][number]) => (
+  const kopf = (n: Ansicht['nachrichten'][number]) => (wa ? (
+    <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6, overflowWrap: 'anywhere' }}>
+      <b style={{ color: n.vonUns ? C.inkDim : C.ink }}>{n.vonUns ? 'Du' : n.von.name ?? n.von.email}</b> · {datumLang(n.am)}
+      {n.wa?.vorlage && <> · Vorlage „{n.wa.vorlage}“</>}
+      {n.vonUns && <WaZustell wa={n.wa} />}
+    </div>
+  ) : (
     <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6, overflowWrap: 'anywhere' }}>
       <b style={{ color: n.vonUns ? C.inkDim : C.ink }}>{n.vonUns ? 'Du' : n.von.name ?? n.von.email}</b>{!n.vonUns && n.von.name ? ` <${n.von.email}>` : ''} · {datumLang(n.am)}
       {n.automatisch && <> · <span style={{ color: LEUCHT.achtung }}>automatische Antwort</span></>}
       {n.an.length > 0 && <> · an {n.an.slice(0, 3).map(x => x.name ?? x.email).join(', ')}{n.an.length > 3 ? ` +${n.an.length - 3}` : ''}{n.cc.length ? ` (Cc ${n.cc.length})` : ''}</>}
     </div>
-  );
+  ));
+  /** WhatsApp: „[Bild]“ & Co. ist nur der Platzhalter für die Liste — im Gespräch steht das Medium selbst. */
+  const nurPlatzhalter = (n: Ansicht['nachrichten'][number]) => !!wa && n.anhaenge.length > 0 && /^\[[^\]]{1,40}\]$/.test(n.text.trim());
 
   const kontext: ReactNode = (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -156,10 +173,21 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{g.betreff}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Chip umbrechen farbe={C.inkDim}>{a.antwort.postfach}{a.antwort.bereichName && !a.antwort.postfach.includes(a.antwort.bereichName) ? ` · ${a.antwort.bereichName}` : ''}</Chip>
+          {wa && <WaEtikett />}
           {g.fach !== 'geblockt' && <Chip farbe={g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.inkLeise}>{FACH_LABEL[g.fach]}{g.fach === 'warten' && g.wartetTage !== undefined ? ` · ${g.wartetTage} T.` : ''}</Chip>}
           {z && <Chip umbrechen farbe={z.sperre ? LEUCHT.achtung : LEUCHT.gut}>gehört zu {z.name}{z.firma ? ` · ${z.firma}` : ''}</Chip>}
         </div>
+        {wa && <WaKopf nummer={wa.nummer} profilname={wa.profilname} akte={z?.name} fenster={wa.fenster} />}
       </div>
+
+      {kandidaten.length > 1 && !z && (
+        <Hinweis art="info" titel="Wem gehört diese Nummer?">
+          Die Nummer steht bei {kandidaten.length} Personen in der Kartei — MAKE OS ordnet sie nicht von selbst zu. Wähle die richtige:
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            {kandidaten.map(k => <Knopf key={k.id} leise onClick={() => zuordnenZu(k.id)}>{k.name}{k.firma ? ` · ${k.firma}` : ''}</Knopf>)}
+          </span>
+        </Hinweis>
+      )}
 
       {a.vorschlaege.length > 0 && (
         <div role="group" aria-label="ZOE schlägt vor" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, padding: 12, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
@@ -171,22 +199,23 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
         {a.nachrichten.map((n, i) => {
           const letzte = i === a.nachrichten.length - 1;
-          const auf = letzte || offen === n.id;
+          // WhatsApp ist ein Chat aus kurzen Nachrichten (oft mit Bild/Sprachnachricht) — alle offen, nicht nur die jüngste.
+          const auf = letzte || offen === n.id || !!wa;
           return (
             <div key={n.id} style={{ borderTop: i ? `1px solid ${C.linie}` : undefined, paddingTop: i ? 10 : 0 }}>
-              <div onClick={() => !letzte && setOffen(auf ? null : n.id)} style={{ cursor: letzte ? 'default' : 'pointer' }}>
+              <div onClick={() => !letzte && !wa && setOffen(auf ? null : n.id)} style={{ cursor: letzte || wa ? 'default' : 'pointer' }}>
                 {kopf(n)}
                 {!auf && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.text.replace(/\s+/g, ' ').slice(0, 200)}</div>}
               </div>
-              {auf && <div style={{ maxHeight: letzte ? 480 : 300, overflow: 'auto' }}><GmailText text={n.text} bilder={n.bilder} gekuerzt={n.gekuerzt} /></div>}
+              {auf && !nurPlatzhalter(n) && <div style={{ maxHeight: letzte ? 480 : 300, overflow: 'auto' }}><GmailText text={n.text} bilder={n.bilder} gekuerzt={n.gekuerzt} /></div>}
               {auf && anhaenge(n).length > 0 && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                  {anhaenge(n).map(x => (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, minWidth: 0 }}>
+                  {anhaenge(n).map(x => (x.teil === 'wa' && wa ? <WaMedium key={x.teil} nachricht={n.id} name={x.name} typ={x.typ} groesse={x.groesse} zustand={n.wa?.medium} art={n.wa?.art} /> : (
                     <a key={x.teil} href={anhangLink(g.quelle, n.id, x.teil)} download rel="noopener noreferrer"
                       style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,.05)', color: C.ink, fontSize: TYP.bedien, textDecoration: 'none', fontFamily: SCHRIFT.text, overflowWrap: 'anywhere' }}>
                       {x.name} <span style={{ color: C.inkLeise, marginLeft: 6 }}>{groesse(x.groesse)}</span>
                     </a>
-                  ))}
+                  )))}
                 </div>
               )}
             </div>
@@ -201,7 +230,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           <Knopf leise onClick={() => void tu('erledigt', {}, 'zurueck').then(ok => { if (ok && onZurueck) onZurueck(); })}>Erledigt</Knopf>
           <Knopf leise onClick={() => setSpaeterAuf(x => !x)}>Später ▾</Knopf>
           <Knopf leise onClick={() => void tu(g.ungelesen ? 'gelesen' : 'ungelesen')}>{g.ungelesen ? 'Gelesen' : 'Ungelesen'}</Knopf>
-          {!z && g.fach !== 'info' && <Knopf leise onClick={() => void kontaktAnlegen()}>Kontakt anlegen</Knopf>}
+          {!z && g.fach !== 'info' && kandidaten.length < 2 && <Knopf leise onClick={() => void kontaktAnlegen()}>Kontakt anlegen</Knopf>}
           {!(a.vorschlaege.some(v => v.art === 'aufgabe')) && <Knopf leise onClick={() => aufgabe()}>Aufgabe</Knopf>}
           {!(a.vorschlaege.some(v => v.art === 'termin')) && <Knopf leise onClick={() => setTermin(t => !t)}>Termin</Knopf>}
         </div>
@@ -218,7 +247,11 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           onAngelegt={x => { setTermin(false); meldung(x.uid ? (x.gaeste ? `Termin angelegt — Einladung an ${x.gaeste} ${x.gaeste === 1 ? 'Person' : 'Personen'} verschickt.` : 'Termin angelegt.') : 'Angelegt.'); }} />
       )}
       {beleg && <BelegAusMail quelle={g.quelle} bereich={g.bereich} vorschlag={a.vorschlaege.find(v => v.art === 'beleg')?.anhang} onZu={() => setBeleg(false)} meldung={meldung} />}
-      {antwort && (
+      {antwort && wa && (
+        <WaAntwortInbox key={`${id}-wa`} gespraech={id} fenster={wa.fenster} hinweis={antwort.zoe} meldung={t => meldung(t)} onZu={() => setAntwort(null)}
+          onGesendet={() => { setAntwort(null); void laden(); onGeaendert(); }} />
+      )}
+      {antwort && !wa && (
         <Antwort key={`${id}-${antwort.allen}`} allen={antwort.allen} onZu={() => setAntwort(null)} meldung={t => meldung(t)}
           onGesendet={() => { setAntwort(null); void laden(); onGeaendert(); }}
           v={{ gespraech: id, betreff: g.betreff, empfaenger: a.antwort.empfaenger, von: a.antwort.von, signatur: a.antwort.signatur, hinweis: a.antwort.hinweis, postfach: a.antwort.postfach, bereichName: a.antwort.bereichName, ...(antwort.zoe ? { start: { zoeHinweis: antwort.zoe } } : {}) }} />
