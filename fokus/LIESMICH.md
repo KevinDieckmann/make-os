@@ -9,6 +9,14 @@ Browser, keine Formulare, Schriften selbst gehostet). Stand **„Klar 2“ (07.1
 **„Du“** wie auf makeinnovation.de; Impressum und Datenschutz förmlich („Sie“). Online geht sie nur auf Kevins Wort
 (Abschnitt „Online-Gang“ unten).
 
+## v3 · Der Weg (07.10. abends) — gleiche Ruhe-Regeln wie makeinnovation.de
+
+Wie makeinnovation.de (`website/LIESMICH.md` › „v3 · Der Weg“, dort auch die Tabelle der Ruhe-Regeln): Rhythmus aus **zwei dunklen
+Abschnitten** (01 Der Abend, 04 Die Städte) und **EINER Farbfläche** (05 Teilnahme, Granat). Der Ablauf des Abends ist eine Strecke mit
+vier Halten (`.strecke.vier`), der Knoten ist das Gespräch am Tisch; sie zeichnet sich einmal beim ersten Erscheinen (`js/weg.js`,
+Byte-Kopie aus `website/js/`). Im Einstieg rechts ein **Beispiel** einer Einladung (beschriftet „Beispiel ·“, kein echter Termin).
+Die Tabelle unten beschreibt den Stand „Klar 2“; wo sie „dunkel“ für Teilnahme sagt, gilt seit v3 die Farbfläche.
+
 ## „Klar 2“ — dieselbe Gestaltungsgrundlage wie makeinnovation.de (Kevin 07.10.)
 
 „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien — das soll sich auch so durchziehen.“
@@ -48,7 +56,7 @@ Mengen wie „40 Gäste“, Prozentzahlen, Preiswörter fallen auf).
 | `index.html`, `impressum.html`, `datenschutz.html`, `404.html` | Seiten (404 mit absoluten Pfaden, erscheint unter jeder Adresse) |
 | `css/seite.css` | **Byte-Kopie** der Gestaltungsgrundlage aus `website/css/seite.css` — nie hier ändern |
 | `css/fokus.css` | nur diese Seite: Wortmarke im Kopf, großer Titel, Städte-Liste, Karte, Teilnahme, Absender im Fuß (keine Tokens) |
-| `js/menue.js` | **Byte-Kopie** aus `website/js/menue.js` (Handy-Menü schließen) |
+| `js/menue.js`, `js/weg.js` | **Byte-Kopien** aus `website/js/` (Handy-Menü schließen; v3: die Strecke zeichnet sich einmal) |
 | `assets/logo/fokus-wortmarke.svg` | Wortmarke FOKUS INNOVATION (Fuß; erzeugt aus `scripts/website-logo.mjs` › `fokusWortmarke`) |
 | `assets/logo/make-quer.svg`, `assets/fonts/` | **Kopien** aus `website/` (Logo quer, Archivo + Public Sans) |
 | `favicon.svg` | der Knoten (erzeugt) |

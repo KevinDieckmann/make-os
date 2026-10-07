@@ -1,7 +1,7 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
-Statische Seite (HTML + zwei CSS-Dateien + zwei kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
-Schriften selbst gehostet). Stand **„Klar 2“ (07.10.2026)** — Kevin: „Das sieht alles noch scheiße aus. Ich will, dass du die
+Statische Seite (HTML + zwei CSS-Dateien + drei kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
+Schriften selbst gehostet). Stand **„v3 · Der Weg“ (07.10.2026 abends, Branch `websites-v3`, nicht online)** auf der Grundlage von **„Klar 2“ (07.10.2026)** — Kevin: „Das sieht alles noch scheiße aus. Ich will, dass du die
 Homepages richtig sauber machst.“ und „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien —
 das soll sich auch so durchziehen.“ Weiter gilt: 80 % Seriosität und Souveränität, höchstens 20 % Akzente, klare Linien, kein Gewusel —
 „wenn ein Investor draufschaut, soll er sagen: oh Gott“.
@@ -18,7 +18,45 @@ Sie liegt im Repo, Caddy liest sie auf dem Server read-only aus `/srv/make-os/ap
 Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robots.txt` sperrt, jede Seite trägt
 `<meta name="robots" content="noindex">`). Die CSP bleibt unverändert (`script-src 'self'`, keine Inline-Skripte, kein eval).
 
+## v3 · Der Weg (07.10. abends) — was sich gegenüber „Klar 2“ ändert
+
+Kevin 07.10. abends: „Nimm die Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“
+Die Grundlage von „Klar 2“ bleibt (Papier, Tinte, Raster, Typo, Knöpfe, keine Spielereien); geändert wird, **wie** Innovation sichtbar wird:
+durch ein eigenes Leitmotiv und gezeichnete Arbeit statt eines dekorativen Bilds.
+
+- **Kugel raus.** `assets/bild/kugel.svg` und `.licht` sind weg; `pruefen.mjs` lässt kein Kugel-Bild und kein dekoratives Licht mehr zu
+  (in der Software bleibt die Kugel).
+- **Leitmotiv Linienplan** „Der Weg der Innovation“ (aus dem Logo: rote Linie = Idee und Strategie, der Knoten = Umsetzung, grüne Linie =
+  Vertrieb und Markt). Im Einstieg als SVG-Grafik (`role="img"`, Titel und Beschreibung), im Abschnitt **03 Der Weg** als Strecke mit sechs
+  Etappen (`.strecke`), im Kontakt als Halt vor dem Erstgespräch („Der erste Halt ist ein Gespräch“).
+- **Rhythmus statt EINES dunklen Abschnitts:** höchstens **zwei dunkle Abschnitte** (`.dunkel`: Der Weg, Kontakt) und **EINE Farbfläche**
+  (`.farbflaeche`, Granat auf Papier, Weiß darauf 6,4 : 1: „Was Innovation bei uns heißt“). Der Rest bleibt Papier — 80 % Seriosität.
+- **Arbeits-Schemata statt Behauptungen:** je Leistung Ausgangslage · Was wir tun · Was danach steht · Dauer & Form und daneben ein
+  gezeichnetes Schema (Woche im Mandat, Vertriebs-Strecke, Botschaft in einem Satz, Einladung, Umsetzungs-Board). Jedes trägt „Schema ·“
+  bzw. „Beispiel ·“ in der Beschriftung — keine echten Zahlen, Kunden oder Termine.
+- **Neue Leistung „Sichtbarkeit & Marketing“** (aus den früheren Beratungsfeldern Botschaft, Unterlagen, Kanäle), gleichwertig mit „Erstgespräch anfragen“.
+- **Gründer** (`#ueber-uns`, „Zwei Linien. Ein Knoten.“) und **Häufige Fragen** (`#fragen`, 5–7 aufklappbare `<details>`, ohne Skript).
+- **Bewegung genau einmal:** die Linie im Einstieg zeichnet sich beim Laden, die Strecke weiter unten beim ersten Erscheinen (`js/weg.js`:
+  ein Beobachter, der jede Linie danach abmeldet; nichts hängt am Scrollen). Nur unter `prefers-reduced-motion: no-preference`; ohne Skript
+  und bei „Bewegung reduzieren“ steht alles sofort fertig da.
+
+**Ruhe-Regeln v3** (`pruefeRuhe` in `pruefen.mjs`, gilt auch für fokusinnovation.de; Wächter `tests/website-landingpage.test.ts` › Ruhe (v3),
+`tests/fokus-seite.test.ts` › Rhythmus (v3)):
+
+| Regel | „Klar 2“ | v3 |
+|---|---|---|
+| Scroll-Film (Spur, Bühne, Szene, Leinwand), scroll-gebundene Skripte, `setInterval`, `requestAnimationFrame` | verboten | verboten (unverändert) |
+| Dunkle Abschnitte · Farbflächen | höchstens 1 · keine | höchstens **2** · höchstens **1** |
+| Licht/Standbild | genau ein Licht (Kugel-Standbild) | **kein** Kugel-Bild, kein `.licht` |
+| CSS-Animation | keine | nur in `@media (prefers-reduced-motion: no-preference)`, nie `infinite`, nie öfter als einmal, nie Scroll-Timeline |
+| Verborgener Inhalt | — | nur im Bewegungs-Block, nur unter `.wartet` (setzt `js/weg.js`, ohne Skript nie) oder als Anfang eines `@keyframes` |
+| Skript mit `IntersectionObserver` | — | nur mit `unobserve`/`disconnect` (einmal) und mit Rücksicht auf „Bewegung reduzieren“ |
+| „Bewegung reduzieren“ | `@media (prefers-reduced-motion: reduce)` Pflicht | unverändert Pflicht (schaltet Übergänge und Animationen ab) |
+
 ## Klar 2 (07.10.) — Gestaltungsplan
+
+> Seit v3 gelten die Abschnitte unten nur noch, wo der Abschnitt oben nichts anderes sagt (Kugel/Licht, „EIN dunkler Abschnitt“,
+> „keine Animation“ und die Abschnittsliste sind durch v3 ersetzt).
 
 **Entscheidungen (Klickrunde 07.10.):** Richtung „innovativ UND seriös, keine Spielereien“ · Grundton **hell → dunkel** (Off-White mit
 dunkler Schrift, EIN dunkler Abschnitt für die Wirkung) · Belege **nur als Prinzipien** (keine Statistiken, Prozentzahlen, Marktgrößen).
@@ -106,11 +144,11 @@ Weiß), Kontrast AA (siehe Farben), Tippziele ≥ 44 px am Handy (gemessen), Men
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Kopf, Einstieg, Beratung, Vorgehen, Netzwerk, Warum MAKE, dunkler Schlussakt (Kontakt), Fuß |
+| `index.html` | Kopf, Einstieg mit Linienplan, 01 Farbfläche, 02 Leistungen, 03 Der Weg (dunkel), 04 Netzwerk, 05 Beteiligungen, 06 Gründer, 07 Fragen, 08 Kontakt (dunkel), Fuß |
 | `css/seite.css` | **Gestaltungsgrundlage** (Tokens, Bausteine) — Original; `fokus/css/seite.css` ist eine Byte-Kopie (`node scripts/fokus-seite.mjs`) |
 | `css/start.css` | nur die Startseite (Development-Zeile, Rhythmus, Netzwerk-Raster, Fokus-Kasten, Beteiligungen, Grundsätze, Gründer, Schlussakt) |
 | `js/menue.js`, `js/erstgespraech.js` | Handy-Menü schließen; Ziel des Erstgesprächs für alle Knöpfe mit `data-erstgespraech` |
-| `assets/bild/kugel.svg` | das eine Licht: Standbild der Kugel (eingefroren aus der früheren Szene; neu rechnen nur über den alten Stand, siehe Rückweg) |
+| `js/weg.js` | v3: die Linie zeichnet sich einmal (setzt `.wartet` nur an Linien unter dem Bild, entfernt es beim ersten Erscheinen) — Byte-Kopie in `fokus/js/` |
 | `impressum.html`, `datenschutz.html`, `404.html` | Rechtstexte auf Papier mit dunklem Fuß (Inhalt unverändert; Datenschutz: Skript-Satz angepasst, „Links zu Quellen“ entfällt) |
 | `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — `assets/logo/LOGO.md`. Kopf: `quer-hell`/`kompakt-hell`, Fuß: `wortmarke` |
 | `logo-entwuerfe.html`, `pruefen.mjs`, `stempeln.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
@@ -147,9 +185,9 @@ Weiß), Kontrast AA (siehe Farben), Tippziele ≥ 44 px am Handy (gemessen), Men
    von selbst). Prüfen: `curl -sI https://makeinnovation.de` → 200 mit `content-security-policy`,
    `curl -sI https://www.makeinnovation.de` → 301 auf `https://makeinnovation.de/`.
 
-## Offene Platzhalter (Stand 07.10.2026, „Klar 2“)
+## Offene Platzhalter (Stand 07.10.2026, v3)
 
-- **Startseite › Warum MAKE › Vertrieb aus der Praxis:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
+- **Startseite › 06 Gründer › Kevin Dieckmann:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
 
 ## Später auf Buchungsseite umstellen
 
@@ -186,9 +224,9 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
   Grundsatz „Struktur, die bleibt“ (mit dem Satz zur eigenen Software), Schlussakt-Satz. Die belegten Zahlen (KfW, Bitkom) stehen nur noch im
   Git-Verlauf (Commit e008ebfc) — falls sie später wieder gebraucht werden, mit Quelle prüfen.
 
-## Gewicht (gemessen 07.10., gzip)
-Startseite (HTML + zwei CSS + zwei Skripte) ≈ **16 KB** (vorher ≈ 64 KB); dazu Schriften ≈ 60 KB und das Standbild der Kugel (55 KB roh,
-lädt `lazy` erst vor dem Schlussakt). `pruefen.mjs`: Grenze 80 KB. Konsole leer; kein waagerechtes Scrollen bei 1440 / 1024 / 768 / 390 px.
+## Gewicht (gemessen 07.10. abends, v3, gzip)
+Startseite (HTML + zwei CSS + drei Skripte) ≈ **22 KB** („Klar 2“ ≈ 16 KB, davor ≈ 64 KB); dazu Schriften ≈ 60 KB. Kein Standbild mehr — die
+Grafiken sind Inline-SVG in `index.html`. fokusinnovation.de ≈ 18 KB. `pruefen.mjs`: Grenze 80 KB. Konsole leer; kein waagerechtes Scrollen bei 1440 / 1024 / 768 / 390 px.
 
 ## Stempel für Stile und Skripte (04.10.2026)
 Caddy liefert Seiten immer frisch, `css/` und `js/` bleiben einen Tag im Browser. Nach dem ersten v5-Upload sah deshalb wer
@@ -197,6 +235,8 @@ Datei (`css/seite.css?v=…`). **Nach jeder Änderung an `css/` oder `js/`: `nod
 fehlende oder veraltete Stempel (Wächter: tests/website-landingpage.test.ts › Stempel).
 
 ## Rückweg
+v3 liegt auf Branch `websites-v3` (Commits ab `32f3807c`); der Stand davor („Klar 2“) ist `000da837` (Branch `websites-klar-2`) — `git checkout 000da837 -- website fokus scripts tests`
+holt ihn vollständig zurück (mit Prüfer und Tests der „Klar 2“-Regeln).
 Der Stand vor „Klar 2“ (Showreel mit Szene) ist Commit `e008ebfc` auf `entwicklung` — z. B. `git checkout e008ebfc -- website fokus scripts tests`
 holt ihn vollständig zurück (Prüfer, Generatoren und Tests gehören dazu).
 

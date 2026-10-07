@@ -4,6 +4,29 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 07.10.2026 abends — makeinnovation.de + fokusinnovation.de „v3 · Der Weg“ (nur lokal — Branch `websites-v3`, nicht zusammengeführt)
+
+Kevin 07.10. abends: „Nimm die Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“
+
+**Was Kevin sieht** (lokal: `python3 -m http.server 3016 -d website` bzw. `3017 -d fokus`):
+- **Kugel raus.** Statt des Standbilds ein eigenes Leitmotiv: der **Linienplan „Der Weg der Innovation“** aus dem Logo — rot Signal und
+  Strategie, der Knoten Umsetzung, grün Vertrieb, Sichtbarkeit, Markt. Im Einstieg als Grafik, in „03 Der Weg“ als Strecke mit sechs
+  Etappen, im Kontakt als Halt vor dem Erstgespräch („Der erste Halt ist ein Gespräch“).
+- **Erster Bildschirm sagt WER · WAS · FÜR WEN.** Danach eine kräftige **Farbfläche** (Granat: „Was Innovation bei uns heißt“), vier Leistungen
+  (neu: **Sichtbarkeit & Marketing**) je mit Ausgangslage · Was wir tun · Was danach steht · Dauer & Form und einem gezeichneten
+  **Arbeits-Schema** (als „Schema“/„Beispiel“ beschriftet, keine echten Zahlen, Kunden, Termine), **Gründer** und **Häufige Fragen**.
+- **Rhythmus:** zwei dunkle Abschnitte und eine Farbfläche je Seite, sonst Papier. **Bewegung genau einmal** — die Linie zeichnet sich; nie
+  endlos, nichts hängt am Scrollen, ohne Skript und bei „Bewegung reduzieren“ steht alles sofort da.
+- fokusinnovation.de genauso: der Abend als Strecke (dunkel), Städte mit Karte (dunkel), Teilnahme auf der Farbfläche, Einladung als Beispiel.
+- **Prüfer** (`pruefeRuhe`, beide Seiten): kein Kugel-Bild, höchstens 2 dunkle Abschnitte + 1 Farbfläche, Animation nur im Block
+  „Bewegung nicht reduziert“, nie endlos/scroll-gebunden, verborgener Inhalt nur unter `.wartet` (setzt `js/weg.js`). Gegenüberstellung
+  „Klar 2“ ↔ v3: `website/LIESMICH.md` › „v3 · Der Weg“.
+
+**Offen für Kevin:** ansehen (Fotos folgen), neue Texte bestätigen (Farbfläche, Leistungs-Steckbriefe, Schemata, Fragen, Gründer), Platzhalter
+„Ein Satz zu deiner Vertriebserfahrung“. Nicht nach `entwicklung` zusammengeführt, nicht hochgeladen.
+
+**Rückweg:** Stand „Klar 2“ = Commit `000da837` (Branch `websites-klar-2`, auch nicht auf `entwicklung`) — `git checkout 000da837 -- website fokus scripts tests`.
+
 ## 07.10.2026 — makeinnovation.de + fokusinnovation.de „Klar 2“: ruhige Dokument-Seiten (nur lokal — Branch `websites-klar-2`)
 
 Kevin 07.10.: „Das sieht alles noch scheiße aus. Ich will, dass du die Homepages richtig sauber machst.“ — „Wir wollen innovativ UND seriös
