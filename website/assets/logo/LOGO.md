@@ -59,10 +59,9 @@ rechts — nie tauschen.
 | `kachel.svg` (= `website/favicon.svg`) | App-Kachel und Favicon (Monogramm auf dunklem, abgerundetem Quadrat) |
 | `favicon-32.png`, `apple-touch-icon.png` (180, ohne Rundung — iOS rundet selbst), `icon-512.png` | Raster-Fassungen der Kachel |
 
-Die Bühne der Startseite trägt die Wortmarke **inline** (`node scripts/website-logo.mjs --buehne`): Rot zeichnet sich von
-links, Grün von rechts ein, dann erscheint der Knoten; bei `prefers-reduced-motion` steht alles sofort. Die Klassen
-`strich-ma`, `strich-ke`, `knoten`, `make` liest auch `js/neuronen.js` — dort setzen sich die Neuronen genau auf diese
-Formen. `website/pruefen.mjs` prüft, dass die Formen mit `wortmarke.svg` übereinstimmen.
+**Einsatz auf der Seite („Klar 2“, 07.10.2026):** Kopf hell — `quer-hell.svg` (Rechner) bzw. `kompakt-hell.svg` (Handy); Fuß dunkel —
+`wortmarke.svg` (176 px breit). fokusinnovation.de: `make-quer.svg` (= `quer.svg`) als Kopie, eigene Wortmarke FOKUS INNOVATION im Fuß.
+Keine Animation des Logos mehr (die frühere Einzeichnen-Bühne ist entfernt).
 
 ## Schutzzone und Mindestgröße
 - **Schutzzone:** rundum 40 (Einheiten der Wortmarke). Nichts ragt hinein.

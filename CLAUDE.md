@@ -638,8 +638,8 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
   (`fokus.ts`), gesammelt NUR in `sammeln-server.ts` (vorhandene Lesefunktionen, `sicher()`, `merken` 60 s) und ausgeliefert über `GET /api/lichtfaeden`
   (Haushalts-Tor, Dienstweg 403). **Privat-Regel:** private Stränge der anderen Person nur über `fuerBetrachter` als anonymes „Belegt“ (kein Titel/Link/
   Thema/Ziel) — neue Quellen setzen `privat`, nie selbst maskieren. Oberfläche nur `<Lichtfaeden wurzel=… />` (components/os/lichtfaeden): Planung Jahr,
-  Ziel, Meilenstein, Fokus. Zeichner `faedenband.ts` auf `band.ts` + `zeichnen.ts` (dieselben Dateien laufen auf website/ UND fokus/:
-  `node scripts/lichtfaeden-website.mjs` schreibt beide, Wächter `tests/lichtfaeden.test.ts`). Ziel-Farben rechnet NUR der Server
+  Ziel, Meilenstein, Fokus. Zeichner `faedenband.ts` auf `band.ts` + `zeichnen.ts` (nur die App — die Websites tragen seit „Klar 2“, 07.10., keine
+  Lichtfäden mehr; Wächter `tests/lichtfaeden.test.ts`). Ziel-Farben rechnet NUR der Server
   (`lib/planung/ziel-farben-server.ts`, Feld `farbe` in `GET /api/state/ziele` und an den Ziel-Knoten); Space ohne Angabe, Wurzel-Ziel und Thema
   je EINE Regel in `lib/lichtfaeden/modell.ts`; Planungsdaten im Browser nur über `lib/planung/ziele-client.ts` (Wächter `tests/ziele-eine-quelle.test.ts`). Nie im Zeichner Daten rechnen. Der schlichte `Zeitstrahl` bleibt für Monat/Quartal/Aufgaben/Bauplan.
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
@@ -1024,8 +1024,9 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
 - **Kennzahlen je Reihe nur in `lib/crm/reihen.ts`** (`reihenUebersicht`, `reihenFilter`, `zahlenSumme` über `eventZahlen`); Leads nach `alsMarketingAnmeldung` (marke.ts) — dieselbe
   Regel nutzt `marketingHerkunft` (scoring.ts). Nie eine zweite Event-Summe bauen. Oberfläche: `ReiheWahl`/`ReiheAbzeichen` (events/gemeinsam.tsx), Kachel `reihen` (flaechen.ts).
 - **Event-Seite `fokus/`** (fokusinnovation.de, statisch, nicht online): Regeln wie `website/` (keine Inline-Skripte/-Stile, keine Tracker/Formulare, noindex). Gemeinsames NIE von Hand
-  kopieren: `node scripts/fokus-seite.mjs` (Schriften, MAKE-Logo, Lichtfäden-Zeichner über `scripts/lichtfaeden-website.mjs`, Karte inline zwischen KARTE_ANFANG/ENDE, Standbild,
-  Favicon), Prüfung `node fokus/pruefen.mjs` (nutzt die Regeln aus `website/pruefen.mjs`, vergleicht Impressum-Block und geteilte Tokens). Keine erfundenen Termine/Zahlen/Preise
+  kopieren: `node scripts/fokus-seite.mjs` (Gestaltungsgrundlage `css/seite.css`, Schriften, MAKE-Logo, Menü, Karte inline zwischen KARTE_ANFANG/ENDE,
+  Favicon, Wortmarke), Prüfung `node fokus/pruefen.mjs` (nutzt die Regeln aus `website/pruefen.mjs` inkl. `pruefeRuhe`, vergleicht Impressum-Block und Grundlage).
+  Seit „Klar 2“ (07.10., Kevin: „keine Spielereien“) beide Seiten ruhige Dokument-Seiten ohne Szene/Scroll-Film — Plan in `website/LIESMICH.md` › „Klar 2“. Keine erfundenen Termine/Zahlen/Preise
   („Termin in Planung“). Online-Gang (Caddy-Vorschlag, IONOS-DNS, compose-Mount) in `fokus/LIESMICH.md` — nur auf Kevins Wort. Tests `fokus-innovation-reihe`, `fokus-seite`.
 
 ## Netzwerken ↔ Events ↔ Make.One — die Verbindungen (03.10., nur lokal, Branch `netz-verbind`)

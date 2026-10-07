@@ -145,9 +145,8 @@ Antwort (Schlüssel Ebene|Person|Zeitraum, `lichtSchluessel`) und wird nach dem 
 `faedenband.ts` (`faedenband(canvas, beobachte, ruhig)` → `setze(bild, übergang?)`, `treffer(x, y)`, `fortschritt()`): Leitkurven
 und Fäden aus `band.ts`, Striche gebündelt aus `zeichnen.ts` (Path2D-Eimer, additiv). Übergang 720 ms (`UEBERGANG_MS`,
 sanftes Ein-/Ausschwingen); bei „Bewegung reduzieren“ kein Übergang und keine Eigenbewegung (Standbild). Der Lauf pausiert
-außerhalb des Bildes und im verborgenen Tab. Die Website nutzt `band.ts` + `zeichnen.ts` unverändert (übersetzt nach
-`website/js/lichtfaeden.js` — `node scripts/lichtfaeden-website.mjs`, Liste `ZIELE` (fokus/ seit 04.10. mit der WebGL-Szene), Wächter
-`tests/lichtfaeden.test.ts`). Der Messpunkt am Band (`data-bilder`, `data-mittel-ms` …) läuft nur außerhalb der Produktion oder
+außerhalb des Bildes und im verborgenen Tab. Die Websites nutzen die Lichtfäden seit „Klar 2“ (07.10., Kevin: „keine Spielereien“) nicht
+mehr — die übersetzte Kopie `website/js/lichtfaeden.js` und `scripts/lichtfaeden-website.mjs` sind entfernt (Wächter `tests/lichtfaeden.test.ts`). Der Messpunkt am Band (`data-bilder`, `data-mittel-ms` …) läuft nur außerhalb der Produktion oder
 mit `data-messen` an der Seite.
 
 ## Strahl v3 (04.10.) und FadenLinie
@@ -166,8 +165,7 @@ Kevin: „Der Strahl läuft im Grunde genommen immer von links nach rechts — g
 - **fadenlinie.ts (FadenLinie, Mini-Strahl):** `fadenLinienProben` (rein: Leitkurve aus normalisierten Werten, Normale aus der Steigung, Spreizung/Helligkeit
   aus dem Wert, Ausfransen ab `heute`), `fadenlinie(canvas, beobachte, ruhig)` mit 12 Fäden (Handy 8), ~30 Bilder je Sekunde, Aufbau 1,4 s.
 - **reihen.ts:** `jeTag`, `jeWoche`, `summeJeMonat`, `summeJeTagZurueck`, `normalisiere`, `reiheGueltig`, `reiheText` + Beschriftungen — rein, `heute` vom Aufrufer.
-- Die Website (`website/js/lichtfaeden.js`, `fokus/js/lichtfaeden.js`) bekommt dieselbe Fließrichtung und den feineren Strich über
-  `node scripts/lichtfaeden-website.mjs` (Partikel, Aufbau und Glühen nutzt sie nicht — ihre Bündel bleiben, wie sie sind).
+- (Bis 06.10. bekam die Website dieselbe Fließrichtung über eine übersetzte Kopie — seit „Klar 2“, 07.10., tragen die Websites keine Lichtfäden mehr.)
 
 ## Strahl ruhig (04.10. abends) — gegliederte Stränge, Ausschlag nur bei Abweichung
 
@@ -196,8 +194,8 @@ Planungsband ab; FadenLinie und Website bleiben unverändert.
 - **Zeichner/Oberfläche:** keine Partikel, kein Glühen, kein Netz, keine Hilfs-/Mittellinie, kein Puls-Punkt und kein Schein am HEUTE-Punkt (eine
   ruhige 1-px-Linie); Aufbau von links ohne leuchtende Spitze; Marker mit Stiel laufen weiter in ihren Strang. Unter der Legende ein Satz:
   „Alle Stränge laufen ruhig — im Plan.“ bzw. „Ausschlag = Abweichung vom Plan“ mit den Gründen.
-- **Website:** `scripts/lichtfaeden-website.mjs` übersetzt weiter nur `band.ts` + `zeichnen.ts` — beide unverändert, `website/js/lichtfaeden.js`
-  und `fokus/js/lichtfaeden.js` bleiben, wie sie sind (`strahl.ts`/`abweichung.ts` gehören nur der App).
+- **Website:** (bis 06.10.) `scripts/lichtfaeden-website.mjs` übersetzte nur `band.ts` + `zeichnen.ts`; seit „Klar 2“ (07.10.) tragen die
+  Websites keine Lichtfäden mehr (`strahl.ts`/`abweichung.ts` gehören ohnehin nur der App).
 - Wächter: `tests/strahl-ruhig.test.ts` (Höchstwerte, glatt ohne Abweichung, Spuren, Zusammenlauf, Ausschlag nur aus Abweichungen, Privat-Regel,
   angedockte Quelle, Deal verschoben, Zeichner ohne `lighter`/Partikel/Weichzeichner/Radialschein, Website-Quellen).
 

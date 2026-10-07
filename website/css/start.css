@@ -49,12 +49,13 @@
 @media (max-width: 699px) { .grundsaetze { grid-template-columns: 1fr; } }
 .personen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--l); margin-top: var(--xxl); }
 .person { display: flex; align-items: center; gap: var(--l); padding: var(--l) 0; border-top: 1px solid var(--haar); }
+/* Kürzel wie in der Software (TIEF): die Farbe trägt die Aussage, aber nie grell — getönte Scheibe, Kontur und Schrift in der Personenfarbe. */
 .person .bild {
   flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
-  font-family: var(--schrift-display); font-size: 1.25rem; font-weight: 600; color: var(--papierHell);
+  font-family: var(--schrift-display); font-size: 1.25rem; font-weight: 600;
 }
-.person.malin .bild { background: var(--granatPapier); }
-.person.kevin .bild { background: var(--smaragdPapier); }
+.person.malin .bild { color: var(--granatPapier); background: color-mix(in srgb, var(--granatPapier) 9%, var(--papierHell)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--granatPapier) 45%, transparent); }
+.person.kevin .bild { color: var(--smaragdPapier); background: color-mix(in srgb, var(--smaragdPapier) 9%, var(--papierHell)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--smaragdPapier) 45%, transparent); }
 .person div:last-child { display: grid; gap: 2px; }
 .person span { color: var(--tinteDim); font-size: .9375rem; line-height: 1.5; }
 @media (max-width: 699px) { .personen { grid-template-columns: 1fr; } }

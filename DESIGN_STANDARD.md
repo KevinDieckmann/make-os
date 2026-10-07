@@ -133,7 +133,7 @@ Legende (je Bündel ein Knopf „eine Ebene tiefer“), Engstellen als aufklappb
 | Band (App) | `lib/lichtfaeden/faedenband.ts`, `components/os/lichtfaeden/Faedenband.tsx` | Bündel einer Ansicht, Auf-/Zufächern, HEUTE, Engstellen-Säulen, Verbinder, `treffer`; Maße `BAND_MASSE` |
 | Daten | `lib/lichtfaeden/{modell,baum,fokus}.ts`, `quellen/*`, `GET /api/lichtfaeden` | Stränge → Baum → Ansicht (LOD) + Engstellen |
 | Farben | `FADEN_FARBEN`, `LICHT_GLAS` (design.ts), `THEMEN` (modell.ts) | Ziel je Space fortlaufend (Business orange → lila → pink, Privat grün → türkis → violett — nie Gelb/Rot, die gehören Engstellen und Zuständen; feste Töne `FADEN_TOENE`), Themen in Bereichsfarben, „ohne Ziel“ Zeit-Cyan, „Belegt“ Grau |
-| Website | `website/js/lichtfaeden.js` (erzeugt), `website/js/faden.js` | Granat/Smaragd, Charakter je Kapitel |
+| Website | — (seit „Klar 2“, 07.10., tragen die Websites keine Lichtfäden mehr) | — |
 
 **Strahl ruhig (04.10. abends, ersetzt die Parameter unten im Planungsband):** je Bündel EIN Strang auf eigener Spur, ab HEUTE zum Ziel zusammenlaufend, ausschlagen NUR bei echter Abweichung (Meilenstein überfällig, Ziel-Frist überschritten, Frist gerissen, Deal ≥ 2× verschoben; Kapazität dockt an) — Parameter `STRAHL` (`lib/lichtfaeden/strahl.ts`), Gründe `lib/lichtfaeden/abweichung.ts`, Details `LICHTFAEDEN.md` › Strahl ruhig. Keine Partikel, kein Glühen, kein Netz, kein Licht am HEUTE-Punkt; Themen in der Farbe ihres ersten Ziels.
 
@@ -163,8 +163,8 @@ haben.“)** — Vorbild: Data-Viz-Strahl mit hunderten feiner Fäden.
 **Regeln:** 1. Bewegung nur als ruhiges Fließen und beim Ebenenwechsel; bei `prefers-reduced-motion` ein Standbild ohne Übergang. 2. Lauf pausiert
 außerhalb des Bildes und im verborgenen Tab. 3. Zeichnen < 4 ms je Bild am Rechner. 4. Vergangenes gedämpft, HEUTE leuchtet, Engstellen als ruhige
 Säule + KW-Knopf (Bedeutung „achtung“, nie Alarmrot). 5. Farben nur aus `FADEN_FARBEN`/`THEMEN` (App) bzw. den Logo-Farben (Website). 6. Private Stränge der
-anderen Person nur als „Belegt“ (grau, ohne Titel/Link). 7. Wer `band.ts`/`zeichnen.ts` ändert, ruft `node scripts/lichtfaeden-website.mjs`
-— es schreibt `website/js/lichtfaeden.js` (Liste `ZIELE`; Wächter `tests/lichtfaeden.test.ts`; fokus/ zeichnet seit 04.10. mit der Szene aus `website/js/szene/`). 8. Nie im Zeichner Daten rechnen.
+anderen Person nur als „Belegt“ (grau, ohne Titel/Link). 7. `band.ts`/`zeichnen.ts` gehören nur der App
+(die Website-Kopie ist seit „Klar 2“, 07.10., entfernt; Wächter `tests/lichtfaeden.test.ts`). 8. Nie im Zeichner Daten rechnen.
 9. Ziel-Farben rechnet nur der Server (`lib/planung/ziel-farben-server.ts`, Feld `farbe` an jedem Ziel) — Oberflächen nehmen sie, wie sie kommen.
 
 ## Umgestellt: Kern — Shell · Aufgaben · Kalender · Inbox (03.10.)
