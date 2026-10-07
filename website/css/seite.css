@@ -196,7 +196,14 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 @media (max-width: 899px) { .held-steckbrief { grid-template-columns: 1fr; } .held-steckbrief > div + div { border-top: 1px solid var(--haar); margin-top: 16px; } }
 
 /* ── Der Weg der Innovation als Linienplan (Einstieg) — Inline-SVG, Farben und Schrift über Klassen ── */
-.wegkarte svg { width: 100%; height: auto; overflow: visible; }
+.wegkarte { position: relative; isolation: isolate; }
+/* Ein leises Punktraster wie auf einem Planblatt — statisch, nur Hintergrund, zu den Rändern hin auslaufend. */
+.wegkarte::before {
+  content: ''; position: absolute; inset: -24px -16px; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, var(--haarStark) 1px, transparent 1.6px) 0 0 / 24px 24px;
+  -webkit-mask-image: radial-gradient(ellipse at 55% 50%, #000 35%, transparent 72%); mask-image: radial-gradient(ellipse at 55% 50%, #000 35%, transparent 72%);
+}
+.wegkarte svg { position: relative; width: 100%; height: auto; overflow: visible; }
 .wk-linie { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
 .wk-rot { stroke: var(--granatPapier); }
 .wk-gruen { stroke: var(--smaragdPapier); }

@@ -20,14 +20,14 @@
 @media (max-width: 899px) { .leistung-text, .leistung .schema { grid-column: 1 / -1; } }
 
 /* Schema · eine Woche im Mandat */
-.woche { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.tag { display: grid; grid-template-rows: auto 1fr; gap: 6px; min-height: 132px; padding: 8px; border: 1px solid var(--haar); border-radius: 10px; background: var(--papier); }
+/* Wie ein Wochenplan: je Tag eine Zeile, die zwei Mandatstage als volle Balken, Call und Kennzahlen als Kontur. */
+.woche { display: grid; gap: 6px; }
+.tag { display: grid; grid-template-columns: 2.6em minmax(0, 1fr); align-items: center; gap: var(--m); min-height: 44px; padding: 6px 8px 6px 12px; border: 1px solid var(--haar); border-radius: 10px; background: var(--papier); }
 .tag span { font-size: var(--t-mikro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--tinteLeise); }
-.tag { min-width: 0; }
-.tag .block { min-width: 0; overflow-wrap: anywhere; align-self: stretch; display: flex; align-items: flex-end; padding: 8px; border-radius: 8px; font-size: .8125rem; line-height: 1.25; font-weight: 600; hyphens: manual;
-  color: var(--papierHell); background: var(--granatPapier); }
-.tag .block.call { align-self: start; background: transparent; color: var(--granatPapier); border: 1.5px solid var(--granatPapier); }
-.tag .block.kz { align-self: end; background: transparent; color: var(--smaragdPapier); border: 1.5px solid var(--smaragdPapier); }
+.tag .block { padding: 7px 12px; border-radius: 8px; font-size: .875rem; line-height: 1.25; font-weight: 600; color: var(--papierHell); background: var(--granatPapier); }
+.tag .block.call { justify-self: start; background: transparent; color: var(--granatPapier); box-shadow: inset 0 0 0 1.5px var(--granatPapier); }
+.tag .block.kz { justify-self: end; background: transparent; color: var(--smaragdPapier); box-shadow: inset 0 0 0 1.5px var(--smaragdPapier); }
+.tag .frei { font-style: normal; font-size: .8125rem; color: var(--tinteLeise); }
 
 /* Schema · die Vertriebs-Strecke: vier Halte auf einer grünen Linie */
 .vstrecke { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding-top: 6px; }
