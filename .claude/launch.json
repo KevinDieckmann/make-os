@@ -38,6 +38,30 @@
         "/Users/kevindieckmann/Claude/Projects/MakeOS/homepage"
       ],
       "port": 3012
+    },
+    {
+      "name": "website-makeinnovation",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3014",
+        "-d",
+        "/Users/kevindieckmann/Claude/Projects/MakeOS/website"
+      ],
+      "port": 3014
+    },
+    {
+      "name": "website-fokus",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3015",
+        "-d",
+        "/Users/kevindieckmann/Claude/Projects/MakeOS/fokus"
+      ],
+      "port": 3015
     }
   ]
 }

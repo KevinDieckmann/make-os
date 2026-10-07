@@ -15,12 +15,16 @@
 - Rückweg-Werkzeug Aufgaben v3 `scripts/aufgaben-rueckweg-v3.mjs` — 874abc9a, 34c8f993
 - **Inbox 2** (eine Inbox, Postfächer je Person per IMAP/SMTP + Gmail, Lagebild, Fächer, Gespräch mit Kontext, ZOE nur Vorschlag; alte Inbox/M365/Apple-Mail raus) — Merge 0c603030; neue Abhängigkeiten imapflow 2.2.6, nodemailer 10.0.15
 - **WhatsApp Business** (Cloud API: Webhook mit Signatur, Senden 24-h-Fenster/Vorlagen, Registrieren mit Speicherort DE, `deploy/whatsapp-verbinden.sh`, VVT) — Merge 944b2108
+- **WhatsApp in der Inbox-Oberfläche** (Liste, Fenster-Uhr, Antworten/Vorlagen, Medien auf Klick, Kontakt per Nummer, Screener für Nummern, HOI-Befund, Business-Postfächer ohne Privat) — Merge nach d7db5b76
+- WhatsApp-Spiegel 7 Jahre (§ 257 HGB, Kevin 07.10.) — e008ebfc
+- Offene Fragen an Kevin (WhatsApp-UI): unbekannte Nummern → „Neue Absender“ oder direkt „Antworten“? · Einwilligungs-Kanal „WhatsApp“? · Nummern-Dubletten auch beim Kanal „Telefon“?
 - Bewusst NICHT: nächtliche ICS-Sicherung der persönlichen iCloud-Konten (Apple hält die Daten; MAKE OS schreibt dort nur Blöcke; „Trennen löscht alles“ bleibt wahr)
 
-## In Arbeit (07.10.)
+## In Arbeit (07.10. nachmittags)
 | Paket | Ort | Stand |
 |---|---|---|
-| WhatsApp in die Inbox-Oberfläche einhängen + Kontakt per Telefonnummer + Screener für Nummern + HOI-Befund WhatsApp + Business-Postfächer ohne Privat | Branch `inbox-whatsapp-ui` (Worktree) auf 944b2108 | läuft |
+| Websites „Klar 2“: makeinnovation.de + fokusinnovation.de neu — normale Seite statt Scroll-Film, hell → dunkel, nur Prinzipien, keine Spielereien (Kevin 07.10.) | Branch `websites-klar-2` (Worktree) | läuft |
+| Zeitstrahl „Seil“: Planungsjahr + Aufgaben-Zeitstrahl — sichtbare Stränge, die zum Seil am Ziel verdrillen (Fokus/Momentum), Abhängigkeiten Karten/Ziele, Verbindungen (Kevin 07.10.) | Branch `zeitstrahl-seil` (Worktree) | läuft |
 
 ## Als Nächstes
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
