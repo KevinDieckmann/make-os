@@ -11,6 +11,9 @@
 - Inbox-Fakten + Konzept — 22adfc7c, 2ffdd933 (`INBOX_KONZEPT.md`, `research/inbox/`)
 - `deploy/google-verbinden.sh` erkennt mehrfach eingefügtes Geheimnis — dfe84c0e
 - iCloud-Kalender je Person (Malin verbindet selbst; andere sehen nur „Belegt“) + Karten „<Firma> verbinden“ (Business, Google) / iCloud (Privat) im Kalender — Merge 7d4e69d7 (Branch icloud-je-person). Kevin 07.10.: „Belegt“ bleibt; Blöcke für Malin ins eigene iCloud — gebaut e919ccd5.
+- HOI-Befund „iCloud-Kalender je Person“ — 0743b335
+- Rückweg-Werkzeug Aufgaben v3 `scripts/aufgaben-rueckweg-v3.mjs` — 874abc9a, 34c8f993
+- Bewusst NICHT: nächtliche ICS-Sicherung der persönlichen iCloud-Konten (Apple hält die Daten; MAKE OS schreibt dort nur Blöcke; „Trennen löscht alles“ bleibt wahr)
 
 ## In Arbeit (07.10., Agenten in Worktrees unter `.claude/worktrees/`)
 | Paket | Worktree | Stand |
