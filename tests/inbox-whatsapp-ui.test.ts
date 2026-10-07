@@ -370,6 +370,10 @@ describe('Oberfläche: WhatsApp in der Inbox', () => {
     const g = lies('components/os/inbox/Gespraech.tsx');
     expect(g).toMatch(/antwort && wa && \(\s*<WaAntwortInbox/); expect(g).toMatch(/antwort && !wa && \(\s*<Antwort/);
     expect(g).toContain('<WaMedium '); expect(g).toContain('<WaKopf '); expect(g).toContain("tu('zuordnen', { kontaktId }");
+    // Befund der Sandbox-Prüfung: im Chat stehen ALLE Nachrichten offen (Bild/Sprachnachricht älterer Nachrichten sonst unsichtbar).
+    expect(g).toContain('offen === n.id || !!wa');
+    // Tailwind setzt svg auf block — das Symbol muss inline bleiben (Zeile der Liste).
+    expect(lies('components/os/whatsapp/WaMedium.tsx')).toContain("display: 'inline-block'");
     const l = lies('components/os/inbox/InboxZwei.tsx');
     expect(l).toContain('<WaSymbol'); expect(l).toContain('<Postfaecher space={space}');
     expect(lies('components/os/inbox/Postfaecher.tsx')).toContain("space === 'business' ? '?space=business' : ''");

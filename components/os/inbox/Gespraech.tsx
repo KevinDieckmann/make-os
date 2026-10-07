@@ -199,10 +199,11 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
         {a.nachrichten.map((n, i) => {
           const letzte = i === a.nachrichten.length - 1;
-          const auf = letzte || offen === n.id;
+          // WhatsApp ist ein Chat aus kurzen Nachrichten (oft mit Bild/Sprachnachricht) — alle offen, nicht nur die jüngste.
+          const auf = letzte || offen === n.id || !!wa;
           return (
             <div key={n.id} style={{ borderTop: i ? `1px solid ${C.linie}` : undefined, paddingTop: i ? 10 : 0 }}>
-              <div onClick={() => !letzte && setOffen(auf ? null : n.id)} style={{ cursor: letzte ? 'default' : 'pointer' }}>
+              <div onClick={() => !letzte && !wa && setOffen(auf ? null : n.id)} style={{ cursor: letzte || wa ? 'default' : 'pointer' }}>
                 {kopf(n)}
                 {!auf && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.text.replace(/\s+/g, ' ').slice(0, 200)}</div>}
               </div>

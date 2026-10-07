@@ -77,7 +77,7 @@ export function WaMedium({ nachricht, name, typ, groesse, zustand, art }: { nach
 /** Das Etikett „WhatsApp“ (Sprechblase + Wort) — ruhig, in der Farbe der Quelle. */
 export function WaSymbol({ groesse = 14, farbe = 'currentColor' }: { groesse?: number; farbe?: string }) {
   return (
-    <svg aria-hidden width={groesse} height={groesse} viewBox="0 0 24 24" fill="none" stroke={farbe} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, verticalAlign: '-2px' }}>
+    <svg aria-hidden width={groesse} height={groesse} viewBox="0 0 24 24" fill="none" stroke={farbe} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', flexShrink: 0, verticalAlign: '-2px' }}>
       <path d="M20 11.5a8 8 0 0 1-11.9 7l-4.1 1.1 1.1-4A8 8 0 1 1 20 11.5z" />
       <path d="M9 9.5c.3 1.6 1.9 3.6 3.9 4.4" />
     </svg>
