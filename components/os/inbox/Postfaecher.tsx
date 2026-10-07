@@ -6,9 +6,12 @@
 // klappt, wird gespeichert (sonst eine klare Fehlerkarte, nichts gespeichert). Passwörter gehen nie zurück an den Browser.
 // Je Postfach: Bereich, Name, Absendername, Signatur · „Verbindung erneuern“ (Apple macht App-Passwörter bei jedem Passwortwechsel
 // ungültig) · „Trennen“ (Rückfrage; löscht die Kopie in MAKE OS, beim Anbieter bleibt alles). Gmail: über die Google-Verbindung (eigener
-// Knopf), hier nur der Bereich. WhatsApp: vorbereitet (eigene Business-Nummer über die Cloud API — Adapter folgt).
+// Knopf), hier nur der Bereich. WhatsApp (07.10.): die Business-Nummer der Instanz — Zustand hier, Einrichten/Prüfen unter System ›
+// Verbindungen; Absender-Entscheidungen gelten auch für Nummern. Business-Sicht (`space=business`, 07.10. abends): der SERVER liefert nur
+// Postfächer mit Business-Bereich, nur Business-Bereiche zur Wahl und nur Absender aus diesen Postfächern („Business sieht nie Privat“).
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Pillen, Feldzeile, eingabe, auswahl, Leer, Punkt, LEUCHT, useRueckfrage } from '../ui';
 import { KUGEL } from '@/lib/make-one/design';
@@ -120,7 +123,12 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
             </form>
           )}
           {z.stufe === 'fehler' && z.fehler && <Hinweis art="achtung">{z.fehler}</Hinweis>}
-          {p.quelle === 'whatsapp' ? <Leer>WhatsApp ist vorbereitet — der Adapter für die eigene Business-Nummer (Cloud API) folgt.</Leer> : (
+          {p.quelle === 'whatsapp' ? (
+            <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
+              <span>Die Business-Nummer gehört der Instanz (Bereich {p.bereichName}) — alle mit Zugang sehen dieselben Gespräche. Antworten nur per Klick; frei schreiben 24 Stunden nach der letzten Nachricht der Person, danach nur mit genehmigter Vorlage.</span>
+              <Link href="/os/verbindungen#whatsapp" style={{ color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Einrichten und prüfen unter Verbindungen ›</Link>
+            </div>
+          ) : (
             <>
               <Feldzeile label="Bereich">
                 <select value={f.bereich} onChange={e => setF({ ...f, bereich: e.target.value })} style={{ ...auswahl, minHeight: 44, width: '100%' }} aria-label="Bereich">
@@ -144,21 +152,23 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
   );
 }
 
-export function Postfaecher({ onGeaendert, meldung }: { onGeaendert: () => void; meldung: (t: string) => void }) {
+export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () => void; meldung: (t: string) => void; space?: 'privat' | 'business' | null }) {
   const [d, setD] = useState<PostfaecherAntwort | null>(null);
   const [fehler, setFehler] = useState('');
   const [neu, setNeu] = useState(false);
   const laden = useCallback(async () => {
-    const r = await holen<PostfaecherAntwort>('/api/inbox/postfaecher');
+    const r = await holen<PostfaecherAntwort>(`/api/inbox/postfaecher${space === 'business' ? '?space=business' : ''}`);
     if (r.d.ok) { setD(r.d as PostfaecherAntwort); setFehler(''); } else setFehler(String(r.d.fehler ?? 'Die Postfächer ließen sich nicht laden.'));
-  }, []);
+  }, [space]);
   useEffect(() => { void laden(); }, [laden]);
   const geaendert = () => { void laden(); onGeaendert(); };
   if (fehler) return <Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal</Knopf>}>{fehler}</Hinweis>;
   if (!d) return <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</div>;
+  const waPostfach = d.postfaecher.find(p => p.quelle === 'whatsapp');
   const gmailMeta: GmailMeta = { konfiguriert: d.google.konfiguriert, verbunden: d.google.verbunden, bereit: d.google.bereit, ...(d.google.konto ? { konto: d.google.konto } : {}), ...(d.google.getrennt ? { getrennt: { grund: 'getrennt' } } : {}) };
   return (
     <div style={{ display: 'grid', gap: 14 }} data-inbox="postfaecher">
+      {d.nurBusiness && <Hinweis art="info">Business-Sicht: hier stehen nur Postfächer mit einem Business-Bereich. Private Postfächer verwaltest du in der Sicht Privat.</Hinweis>}
       <Karte i={0}>
         <Ueberschrift rechts={!neu ? <Knopf leise onClick={() => setNeu(true)}>+ Postfach</Knopf> : <Knopf leise onClick={() => setNeu(false)}>Schließen</Knopf>}>Deine Postfächer</Ueberschrift>
         {!d.postfaecher.length && !neu && <Leer>Noch kein Postfach verbunden.</Leer>}
@@ -166,10 +176,13 @@ export function Postfaecher({ onGeaendert, meldung }: { onGeaendert: () => void;
         {neu && <div style={{ marginTop: 14 }}><Hinzufuegen d={d} onFertig={t => { setNeu(false); meldung(t); geaendert(); }} /></div>}
       </Karte>
       {(d.google.konfiguriert || d.google.verbunden) && <GmailVerbinden meta={gmailMeta} onGeaendert={geaendert} meldung={meldung} />}
-      <Karte i={1} flach>
-        <Ueberschrift>WhatsApp Business</Ueberschrift>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Vorbereitet: eine eigene Business-Nummer über die WhatsApp Cloud API (Meta). Sobald das Meta-Konto und die Nummer eingerichtet sind, kommen Chats hier als Gespräche an — Antworten innerhalb von 24 Stunden frei, danach nur mit genehmigter Vorlage. Private WhatsApp-Konten lassen sich nicht anbinden.</div>
-      </Karte>
+      {!waPostfach && (
+        <Karte i={1} flach>
+          <Ueberschrift>WhatsApp Business</Ueberschrift>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Eine eigene Business-Nummer über die WhatsApp Cloud API (Meta) — Chats kommen hier als Gespräche an, Antworten innerhalb von 24 Stunden frei, danach nur mit genehmigter Vorlage. Private WhatsApp-Konten lassen sich nicht anbinden. Für dieses Konto ist noch keine Nummer freigegeben.</div>
+          <Link href="/os/verbindungen#whatsapp" style={{ color: C.aktiv, fontSize: TYP.bedien, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Anleitung unter Verbindungen ›</Link>
+        </Karte>
+      )}
       <Karte i={2} flach>
         <Ueberschrift rechts={`${d.absender.length}`}>Absender-Entscheidungen</Ueberschrift>
         {!d.absender.length ? <Leer>Noch keine — neue Absender entscheidest du im Fach „Neue Absender“.</Leer> : (
@@ -177,7 +190,7 @@ export function Postfaecher({ onGeaendert, meldung }: { onGeaendert: () => void;
             {d.absender.slice(0, 50).map(x => (
               <div key={x.adresse} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, flexWrap: 'wrap' }}>
                 <Punkt farbe={x.status === 'geblockt' ? KUGEL.granat : KUGEL.smaragd} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, overflowWrap: 'anywhere' }}>{x.adresse} · {x.status === 'geblockt' ? 'geblockt' : 'zugelassen'}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, overflowWrap: 'anywhere' }}>{x.adresse.startsWith('+') ? `WhatsApp ${x.adresse}` : x.adresse} · {x.status === 'geblockt' ? 'geblockt' : 'zugelassen'}</span>
                 <Knopf leise onClick={async () => { await senden('/api/inbox/postfaecher', { aktion: 'absender', adresse: x.adresse, status: x.status === 'geblockt' ? 'zugelassen' : 'geblockt' }); geaendert(); }}>{x.status === 'geblockt' ? 'Zulassen' : 'Blocken'}</Knopf>
                 <Knopf leise onClick={async () => { await senden('/api/inbox/postfaecher', { aktion: 'absender', adresse: x.adresse, status: null }); geaendert(); }}>Vergessen</Knopf>
               </div>
