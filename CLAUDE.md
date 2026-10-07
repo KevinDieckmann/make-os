@@ -1377,10 +1377,22 @@ Code-Kopf), sonst „Annahme“ im Kommentar.
   **Der Spiegel ist die einzige dauerhafte Kopie** (Meta ≤ 30 Tage) — nie nach Anzahl kürzen, nur Frist `whatsapp-spiegel` (180 T., bis 3650;
   § 257 HGB offen) und `whatsapp-medien` (90 T.), Morgenlauf Schritt 11c (`lib/whatsapp/aufraeumen.ts`). Dateien ohne Nachricht löscht der Takt.
 - **Strom** (`lib/whatsapp/strom.ts`): EIN Postfach `pf-<uuid aus der Telefonnummer-ID>` (`postfachIdFuer`) mit dem Bereich der Nummer; je wa_id ein
-  Gespräch `wa~<postfach>~<wa_id>`; Fach über `fachVon` (Text statt Betreff), nie „Neue Absender“; `Gespraech.whatsapp = { nummer, fenster,
-  profilname? }` (24-h-Fenster: `fensterBerechnen`, lib/whatsapp/typen.ts). Köpfe als `StromKopf` (ganzer Text in `ausschnitt`) — Gespräch öffnen,
-  Verlauf nach „Zuordnen“ („WhatsApp gesendet/erhalten“, Bezug `wa-<WAMID>`), ZOE-Entwurf laufen ohne Sonderweg. Zuordnung: Telefon/SMS der
-  Akte (`telefonIndex`, mehrdeutige Nummern nie), nur Anzeige bis zum Klick.
+  Gespräch `wa~<postfach>~<wa_id>`; Fach über `fachVon` (Text statt Betreff); `Gespraech.whatsapp = { nummer, fenster,
+  profilname? }` (24-h-Fenster: `fensterBerechnen`, lib/whatsapp/typen.ts). Köpfe als `StromKopf` (ganzer Text in `ausschnitt`, dazu `wa` = Art,
+  Zustellstand, Medien-Zustand — `kopfInfo`) — Gespräch öffnen, Verlauf nach „Zuordnen“ (Bezug `wa-<WAMID>`), ZOE-Entwurf laufen ohne Sonderweg.
+  Zuordnung: Telefon/SMS der Akte (`telefonIndex`, mehrdeutige Nummern nie), nur Anzeige bis zum Klick; eine per „Zuordnen“ GEWÄHLTE Akte
+  (`kontaktId`, auch bei mehrdeutiger Nummer — Auswahl `kontext.kandidaten`, `telefonKandidaten`) gewinnt (`bestaetigteNummern`).
+- **Screener für Nummern (07.10. abends, Branch `inbox-whatsapp-ui`):** unbekannte Nummer (keine Akte, nie zugelassen, nie von uns angeschrieben)
+  → „Neue Absender“ wie bei Mail; Schlüssel im Inbox-Zustand `+<Ziffern>` (`absenderSchluessel`, lib/inbox/zustand.ts) — je Person, Blocken blendet
+  nur aus. Art. 17: `inboxZustandOhne` (lib/crm/person-weitere.ts) nimmt Nummer-Entscheidungen und den Zustand der WhatsApp-Gespräche der Person
+  (Schlüssel `wa~…~<Nummer>`) heraus, Art. 15 zählt sie. „Gelesen bis“ = jüngste vorhandene eingehende Nachricht (nicht „jetzt“).
+- **Verlauf/CRM (07.10. abends):** gesendet = eigene Aktivitäts-Art **`whatsapp`** („WhatsApp-Nachricht“, Ansprache wie `linkedin`: Stufe
+  angesprochen, Wiedervorlage +5, Kategorie „E-Mails & Nachrichten“, Scoring `angesprochenAm`, Zusammenfassung), eingehend `antwort` (kanal-neutral,
+  Text „WhatsApp erhalten“). Der Webhook zieht den Verlauf bestätigter Gespräche sofort nach (`after` → `verlaufNachziehen` je Person mit Zugang).
+  „Kontakt anlegen“ = `/api/crm/anfrage` mit Kanal **`whatsapp`** (`ANFRAGE_KANAELE`, Person mit `telefon`, keine Mail, keine Einwilligung
+  „Anfrage“ — es gibt keinen Einwilligungs-Kanal WhatsApp): Dublette über die Nummer (eine Akte → dort anhängen, mehrere → 400). Rückweg: der
+  alte Stand kennt die Art `whatsapp` nicht und verwirft solche Zeilen beim nächsten Speichern der Akte — nach dem erneuten Upload stellt
+  `verlaufNachziehen` sie aus dem Spiegel wieder her (idempotent über den Bezug).
 - **Senden** (`lib/whatsapp/senden.ts`): frei nur bei offenem Fenster (sonst 409 `fenster`, nichts an Meta), Vorlage jederzeit aber nur APPROVED
   (Name+Sprache, Platzhalter vollständig), Art. 18 → 409, Werbesperre → keine MARKETING-Vorlage, `einmalig` + Bremse 2 s je Person, immer EIN
   Gespräch. Fehlercodes → `metaFehler` (lib/whatsapp/fehler.ts); `erneuern` (190, 0, 3, 10, 200–299, 131005) → EINE Glocke `postfach`
@@ -1388,8 +1400,14 @@ Code-Kopf), sonst „Annahme“ im Kommentar.
 - **Recht:** Speicher-Register `whatsapp-spiegel` (Art. 17 `waOhnePerson` über `PersonMerkmale.telefone` + Nennung; Art. 15 `zaehlen`),
   `whatsapp-zustand`, `whatsapp-medien` (ausgenommen, über die Nachricht); VVT `vv-whatsapp` (`verzeichnisVervollstaendigen({ whatsapp })`),
   Empfänger `meta-whatsapp` (Start archiviert), Art. 15 Bereich `whatsapp`, Konto löschen → `von` „[gelöscht]“, Konto-Export eigene gesendete.
-- **Oberfläche** `components/os/whatsapp/` (eigene Dateien, nicht in Inbox*): `WhatsappKarte` (System › Verbindungen), `FensterUhr`,
-  `WhatsappAntwort`, `VorlagenWaehler` (Export über index.ts zum Einhängen in die Inbox). Medien-Download `/api/whatsapp/medien?id=<WAMID>`.
+- **Oberfläche** `components/os/whatsapp/`: `WhatsappKarte` (System › Verbindungen), `FensterUhr`, `WhatsappAntwort`, `VorlagenWaehler`,
+  `WaMedium` (Medien NUR auf Klick aus dem eigenen Server: Bild-Vorschau über blob: nur jpeg/png/webp/gif — nie SVG —, Audio-Element ohne
+  Autoplay, sonst Download; `mediumAnzeige`), `WaSymbol`. **In der Inbox eingehängt (07.10. abends):** `components/os/inbox/WhatsappTeile.tsx`
+  (`WaEtikett`, `WaKopf` = Profilname + Nummer + Fenster-Uhr, `WaZustell`, `WaAntwortInbox` = WhatsappAntwort + ZOE-Entwurf als Vorschlag),
+  Gespräch/Liste/Postfächer erkennen `quelle === 'whatsapp'`; `anhangLink` führt WhatsApp auf `/api/whatsapp/medien?id=<WAMID>` (auch Beleg ablegen).
+- **HOI** `whatsappBefunde` (lib/hoi/lage.ts) aus `lib/whatsapp/lage.ts` (nur eigener Zustand, kein Aufruf bei Meta): nicht eingerichtet → kein
+  Befund; Schlüssel abgelehnt bzw. Qualität RED → rot („Verbindung erneuern“); noch nie Webhook, frische Aufrufe ohne Signatur, Qualität YELLOW,
+  Medien gescheitert, „nicht zugestellt“ (7 Tage) → gelb. Nur Zahlen, nie Nummern/Namen.
 - **Gemeinsame Dateien, die dieses Paket geändert hat (beim Zusammenführen mit `inbox-2` beachten):** `lib/inbox/strom.ts` (Feld `whatsapp?`),
   `lib/inbox/strom-server.ts` (`whatsappImStrom` in `stromRoh`), `lib/inbox/verlauf.ts` (WhatsApp in `nachrichtenVon`/`gespraechSignale`),
   `lib/inbox/aktionen.ts` (gelesen/ungelesen), `app/api/inbox/route.ts` (ETag), `lib/zugang/routen-register.ts`, `middleware.ts`,
@@ -1397,7 +1415,7 @@ Code-Kopf), sonst „Annahme“ im Kommentar.
   `lib/crm/{speicher-register,person-weitere,loeschfristen,loeschfristen-lauf,datenschutz}.ts`, `lib/datenschutz/{art15,einrichtung,
   konto-daten,auskunft-server}.ts`, `app/api/{datenschutz/verzeichnis,crm/stammdaten}/route.ts`, `components/os/{VerbindungenView,SystemView}.tsx`,
   `deploy/env.server.beispiel`, UPDATES.md.
-- Tests: `tests/whatsapp-{kern,route,oberflaeche,skript}.test.ts` (nachgebautes Meta, kein Netz).
+- Tests: `tests/whatsapp-{kern,route,oberflaeche,skript}.test.ts`, `tests/inbox-whatsapp-ui.test.ts` (Inbox × WhatsApp; nachgebautes Meta, kein Netz).
 
 ## Inbox 2 — EINE Inbox für alle Postfächer (06./07.10., nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` mit Abschnitt 12, UPDATES.md)
 Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus alles ableiten können, schnell was passiert“ — „ZOE macht alles nur als Vorschlag“.
@@ -1436,7 +1454,12 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   schreiben“ aus Akte/Prospecting über `lib/inbox/neue-mail.ts` (Sitzungsspeicher, nie Adresse/Text in der URL).
 - **Oberfläche** `components/os/inbox/`: `InboxZwei` (Lagebild-Karte mit anklickbaren Zahlen + ZOE-Satz, Postfach-Leiste mit Punkt Smaragd/gelb/Granat, Hinweis
   „Verbindung erneuern“, Fächer, Wischen am Handy, Tasten j/k/e/s/a/r/Esc, `?neu=1`), `Gespraech` (Kontext rechts bzw. eingeklappt, „ZOE schlägt vor“), `Antwort`,
-  `Postfaecher`, `BelegAusMail` (Anhang → `/api/beleg` → `/api/beleg/uebernehmen` in die Gesellschaft des Bereichs), `GmailText`, `GmailVerbinden`, `daten.ts`.
+  `Postfaecher`, `BelegAusMail` (Anhang → `/api/beleg` → `/api/beleg/uebernehmen` in die Gesellschaft des Bereichs), `GmailText`, `GmailVerbinden`, `daten.ts`,
+  `WhatsappTeile` (WhatsApp im Gespräch, Abschnitt „WhatsApp Business“).
+- **Postfächer-Verwaltung unter Business (07.10. abends):** `GET /api/inbox/postfaecher?space=business` filtert auf dem SERVER (`postfaecherSicht`,
+  lib/inbox/strom-server.ts, dieselbe Stelle `imBereich`): nur Postfächer mit Business-Bereich (ohne Bereich zählt nicht), nur Business-Bereiche zur
+  Wahl, nur Absender-Entscheidungen aus Gesprächen dieser Postfächer. Ohne Parameter bzw. `space=privat`: alles Eigene. Wächter in
+  `tests/inbox-whatsapp-ui.test.ts`.
 - **Recht:** Speicher-Register (5 neue Bestände mit Angaben), Art. 15/17 (`imap-stand/-text` wie Gmail, `inbox-zustand` getilgt), Konto-Export/-Löschen
   (`postfach-zugang` nie im Export), VVT `vv-email-imap` (immer nachgetragen), Empfänger-Vorgaben `ionos`/`apple-icloud-mail`, HOI `postfachBefunde`.
 - **Tests:** `tests/inbox2-rein.test.ts` (Lesen, Fächer, Fristen, Gespräche, Filter, Übernahme, Anbieter, Fehler, Vorschläge), `tests/inbox2-postfach.test.ts` (von Ende
