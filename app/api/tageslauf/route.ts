@@ -6,7 +6,7 @@
 // der Ausfall wird ehrlich ausgewiesen statt still verschluckt.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -53,6 +53,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Inbox 2 (06.10.): vorher hing die einzige Prüfung am Mac-Postfach (nurInhaber) — jetzt ausdrücklich: Haushalt bzw. Systemlauf
+  // (Takt); die Post liest der Lauf nur für die Person, für die er läuft (Schritt „postfach“).
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { art?: LaufArt } = {};
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch { /* ohne Body ok */ }

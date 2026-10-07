@@ -187,7 +187,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'fokus': r('POST', 'haushalt', 'Tagesform-Agent aus Brain des Haushalts und eigenen Werten.'),
   'loop': r('POST', 'haushalt', 'Loops des Haushalts (S1).'),
   'loop/verbesserung': r('POST', 'inhaber', 'Verbesserungs-Loop (Software) — Inhaber bzw. Systemlauf.'),
-  'tageslauf': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Tageslauf: Verlauf im Haushalt; auslösen nur Inhaber bzw. Systemlauf.'),
+  'tageslauf': r('GET,POST', 'haushalt', 'Tageslauf: Verlauf und Auslösen im Haushalt bzw. als Systemlauf; Post liest der Lauf nur für die eigene Person (Inbox 2).'),
   'tagesstart': r('GET,POST', 'haushalt', 'Tagesstart des Haushalts; Systemlauf erlaubt.'),
   'heads/[head]': r('GET,POST', 'haushalt', 'Heads (Agenten-Leitungen) des Haushalts.'),
   'heads/eval': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Bewertung der Heads: ansehen im Haushalt, auslösen nur Inhaber.'),

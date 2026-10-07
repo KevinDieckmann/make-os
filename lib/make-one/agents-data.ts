@@ -30,9 +30,9 @@ export const DEPARTMENTS: Department[] = [
   {
     id: 'ops', name: 'Operations', mission: 'Alles am Laufen halten — Inbox, Aufgaben, Zeit, Wissen.', color: '#58D9CD', lead: 'Ops Lead',
     agents: [
-      { id: 'inbox', name: 'Inbox-Agent', role: 'Postfach triagieren & Antworten entwerfen', status: 'live', autonomy: 'entwurf', model: 'ausgewogen', gate: 'Versand ✋', href: '/os/inbox',
-        funktionen: ['Triage nach Dringlichkeit', 'Zusammenfassung + Kontext', 'Antwort-Entwurf in deiner Stimme', 'In Aufgabe/Delegation wandeln'],
-        bauplan: 'Apple Mail (osascript) + M365 lesen; Anthropic für Triage & Draft; Entwurf öffnet in Mail.app (Versand = du). Läuft.' },
+      { id: 'inbox', name: 'Inbox-Agent', role: 'Lage der Postfächer & Antworten entwerfen', status: 'live', autonomy: 'entwurf', model: 'ausgewogen', gate: 'Versand ✋', href: '/os/inbox',
+        funktionen: ['Lagebild je Bereich (ohne KI)', 'Kontext zur Person', 'Antwort-Entwurf in deiner Stimme (auf Klick)', 'Vorschläge: Aufgabe, Termin, Beleg, Zuordnen'],
+        bauplan: 'Inbox 2 (06.10.): eigene Postfächer per IMAP/SMTP und Gmail, Fächer ohne Modell; Anthropic nur für den Entwurf auf Klick; Versand per Einzelklick. Läuft.' },
       { id: 'task', name: 'Task-Agent', role: 'Aus allem Aufgaben machen & nachhalten', status: 'live', autonomy: 'freigabe', model: 'schnell', href: '/os/aufgaben',
         funktionen: ['Aus Zuruf/Mail Aufgabe anlegen', 'Priorität & Owner setzen', 'Fällig & Erinnern'],
         bauplan: 'Tool-Use create_task → lokaler Store, Bestätigungs-Button. Läuft.' },
@@ -64,7 +64,7 @@ export const DEPARTMENTS: Department[] = [
         funktionen: ['Power Hour vorbereiten (werktags 7 Uhr)', 'Deal-Review: was hängt, welche Qualifizierungsfrage fehlt', 'Kundenreview: Laufzeit, Health, Widersprüche (Monatsanfang)', 'Wochenreview (freitags)'],
         bauplan: 'LIVE (24.09.): lib/heads/ — Datenpaket aus Kartei + CRM (Code rechnet), Prompt nach Recherche, Prüfer streicht erfundene IDs, unzulässige Kanäle, Werbesperren und Vollzug; Freigabe-Liste mit Dedup. → /os/markttraktion?s=deals' },
       { id: 'outreach', name: 'Outreach-Agent', role: 'Personalisierte Ansprache-Entwürfe', status: 'live', autonomy: 'entwurf', model: 'ausgewogen', gate: 'Versand ✋', href: '/os/prospecting',
-        funktionen: ['E-Mail + LinkedIn-Erstansprache in Kevins Stimme', 'Aufhänger aus dem Scoring', 'Übergabe an Apple Mail — Versand bei Kevin'],
+        funktionen: ['E-Mail + LinkedIn-Erstansprache in Kevins Stimme', 'Aufhänger aus dem Scoring', 'Übergabe an die Inbox — Versand per Einzelklick'],
         bauplan: 'Läuft: /api/outreach aus Score/Fit/Aufhänger + ICP; Entwurf in der Zielliste, Versand nur durch Kevin.' },
     ],
   },

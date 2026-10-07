@@ -513,10 +513,10 @@ export async function POST(req: Request) {
       },
       {
         name: 'lies_postfach',
-        description: 'Liest Kevins Apple-Mail-Postfach DIREKT und gibt dir die Nachrichten zurück. Nutze das IMMER selbst, wenn Kevin etwas aus seinen Mails wissen will („was steht in der Mail von X", „hol die Zahlen aus der Rechnung", „was ist heute reingekommen") — verweise ihn NIE auf den Inbox-Agenten, wenn du selbst nachsehen kannst. Mit „suche" bekommst du den vollen Text der passenden Mails, ohne nur die Betreffzeilen. Read-only: du liest, antwortest aber nie und löschst nie.',
+        description: 'Liest die Inbox der Person, mit der du sprichst (alle IHRE Postfächer: Gmail, IMAP), und gibt dir die offenen Gespräche bzw. die Treffer zu „suche“ zurück — nur Absender, Betreff und Ausschnitt (den vollen Text gibt es nur beim Antwort-Entwurf auf Klick in der Inbox). Nutze das selbst, wenn die Person etwas aus ihren Mails wissen will. Read-only: du liest, antwortest aber nie, ordnest nie zu und löschst nie.',
         input_schema: { type: 'object', properties: {
-          suche: { type: 'string', description: 'Suchwort in Absender oder Betreff (z. B. „whoop", „Rechnung", „Finanzamt"). Ohne Angabe kommt nur die Übersicht der neuesten Betreffzeilen.' },
-          anzahl: { type: 'number', description: 'Wie viele Treffer mit Volltext, 1–5 (Standard 1)' },
+          suche: { type: 'string', description: 'Suchwort in Absender oder Betreff (z. B. „whoop", „Rechnung", „Finanzamt"). Ohne Angabe kommen die offenen Gespräche mit der Lage je Bereich.' },
+          anzahl: { type: 'number', description: 'Wie viele Gespräche höchstens, 1–20 (Standard 5 mit Suchwort, 20 ohne)' },
         }, required: [] },
       },
       {

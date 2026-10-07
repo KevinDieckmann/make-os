@@ -27,7 +27,7 @@ function dateien(dir: string, ende = /\.tsx$/): string[] {
 const RASTER = ['Zeitraster', 'Monat', 'Jahr', 'VierTage'].map(n => `components/os/kalender/${n}.tsx`);
 const BEREICH = [
   ...dateien('components/os/aufgaben'), ...dateien('components/os/kalender'), ...dateien('components/os/inbox'),
-  'components/os/AufgabenView.tsx', 'components/os/AufgabenBoard.tsx', 'components/os/InboxSchlank.tsx', 'components/os/InboxView.tsx', 'components/os/KalenderAufgabenSchalter.tsx',
+  'components/os/AufgabenView.tsx', 'components/os/AufgabenBoard.tsx', 'components/os/KalenderAufgabenSchalter.tsx',
 ];
 const SHELL = ['components/os/Kopf.tsx', 'components/os/Leiste.tsx', 'components/os/Glocke.tsx', 'components/os/ZoePanel.tsx'];
 /** Ohne eigene schlank-Importe (auch der Zeitstrahl — Achsenbeschriftung darf aber klein bleiben wie Rasterzellen). */
@@ -205,16 +205,20 @@ describe('Kalender', () => {
   });
 });
 
-describe('Inbox', () => {
-  it('Thread bricht lange Adressen um (kein Überlauf) und das Mehr-Menü ist eine Fläche mit ganzen Knöpfen', () => {
-    const g = lies('components/os/inbox/GmailDetail.tsx');
-    expect(g).toContain("gridTemplateColumns: 'minmax(0, 1fr)'");
-    expect(g).toContain('aria-label="Weitere Aktionen"');
+describe('Inbox (Inbox 2, 06.10.)', () => {
+  it('Gespräch bricht lange Adressen um (kein Überlauf), Vorschläge sind eine ruhige Fläche mit ganzen Knöpfen', () => {
+    const g = lies('components/os/inbox/Gespraech.tsx');
+    expect(g).toContain("overflowWrap: 'anywhere'");
+    expect(g).toContain('aria-label="ZOE schlägt vor"');
   });
-  it('Antwort-Entwurf im Standard-Feld, Meldungen als Hinweis-Karte', () => {
-    const i = lies('components/os/InboxSchlank.tsx');
-    expect(i).toContain('aria-label="Antwort-Entwurf"');
-    expect(i).toContain('<Hinweis art="info"');
+  it('Antwort im Standard-Feld (`eingabe`), Meldungen als Hinweis-Karte bzw. Rückgängig-Leiste, Fehler kritisch mit Weg', () => {
+    const a = lies('components/os/inbox/Antwort.tsx');
+    expect(a).toContain('aria-label="Text"');
+    expect(a).toContain('<Hinweis art="kritisch" rolle="alert"');
+    const i = lies('components/os/inbox/InboxZwei.tsx');
+    expect(i).toContain('useRueckgaengig');
+    expect(i).toContain('<Hinweis art="kritisch" rolle="alert"');
+    expect(i).toContain('<Leerzustand');
   });
 });
 
