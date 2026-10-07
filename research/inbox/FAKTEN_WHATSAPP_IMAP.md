@@ -84,3 +84,8 @@ Kennzeichnung: **belegt** = offizielle Primärquelle · **Messung** = eigene Ser
 - ✅ iCloud Mail (support.apple.com/102525): IMAP imap.mail.me.com:993 SSL, SMTP smtp.mail.me.com:587, Passwort = app-spezifisches Passwort.
 - ⚠️ On-Premises-API-Abschaltung 23.10.2025: im Changelog NICHT gefunden → bis zur Prüfung „Annahme“.
 - ⚠️ FAQ 1217634902127718 (inoffizielle Apps): Seite ließ sich nicht vollständig laden → Aussage stützt sich auf die Bedingungen oben.
+
+## Gegenprüfung 2 (Claude, 07.10.2026)
+- ✅ Startlimit (messaging-limits): neue Business-Portfolios 250 eindeutige Nummern je 24 h, nur für Nachrichten AUSSERHALB des Kundenservice-Fensters; auf 2.000 per Unternehmensverifizierung, Partner-Verifizierung oder 2.000 zugestellte Vorlagen in 30 Tagen; danach automatisch 10.000/100.000/unbegrenzt.
+- ✅ Preise (pricing): seit 01.07.2025 pro zugestellter Vorlage; Nicht-Vorlagen im offenen 24-h-Fenster kostenlos; Utility-Vorlagen im offenen Fenster kostenlos; Preisliste je Land: business.whatsapp.com/products/platform-pricing#rates (Stand der Karten 01.07.2026) — DE-Preis dort ablesen, nicht hier behauptet.
+- ⚠️ Anzeigename (display-names): Prüfung erfolgt automatisch beim Erreichen höherer Limits, Ergebnis per Webhook APPROVED/REJECTED; die inhaltlichen Regeln stehen in einem eigenen Help-Center-Artikel → vor Registrierung lesen.
