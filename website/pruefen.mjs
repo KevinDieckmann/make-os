@@ -27,7 +27,8 @@
 //   · Ruhe (Kevin 07.10.: „keine Spielereien“; „v3“ abends: „Nimm die Kugel raus … bring Innovation nach vorne“ — gemeinsam mit
 //     fokus/pruefen.mjs, pruefeRuhe): normale Dokument-Seite ohne Scroll-Film (keine Spur, Bühne, Leinwand, scroll-gebundenen
 //     Skripte, keine Dauer-Animation), kein Kugel-Bild, höchstens zwei dunkle Abschnitte und eine Farbfläche, Bewegung nur einmal und
-//     nur unter „prefers-reduced-motion: no-preference“, „Bewegung reduzieren“ beachtet, keine toten Bilder.
+//     nur unter „prefers-reduced-motion: no-preference“, „Bewegung reduzieren“ beachtet, keine toten Bilder; verborgen (bis die
+//     Linie sich zeichnet) nur in diesen Bewegungs-Blöcken unter .wartet — im Ruhezustand ist alles sichtbar.
 //     Gewicht der Startseite (HTML + CSS + Skripte, gzip) höchstens GEWICHT_GRENZE.
 //   · Fokus Innovation: Menüpunkt und Kapitel verlinken auf FOKUS_SEITE, das Kapitel nennt alle STAEDTE.
 //   · Stempel (04.10.): jeder Verweis auf css/ und js/ trägt ?v=<Prüfsumme der Datei> (Caddy hält Stile/Skripte einen Tag,
@@ -114,7 +115,8 @@ export const STATISTIK = /\d\s?%|\bProzent\b|\b(?:Mio|Mrd)\.|\bMillion(?:en)?\b|
 // Kevin 07.10.: „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien.“ — abends: „Nimm die
 // Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne.“ Deshalb gilt weiter: kein Scroll-Film, keine Leinwand, keine
 // Dauer-Animation; neu erlaubt (v3): Rhythmus aus höchstens zwei dunklen Abschnitten und EINER Farbfläche, und Bewegung genau EINMAL
-// (die Linie zeichnet sich) — nur unter „prefers-reduced-motion: no-preference“, nie endlos, nie an den Scroll gebunden.
+// (die Linie zeichnet sich) — nur unter „prefers-reduced-motion: no-preference“, nie endlos, nie an den Scroll gebunden, und was
+// bis dahin verborgen ist, trägt .wartet (setzt nur js/weg.js): ohne Skript und bei „Bewegung reduzieren“ steht alles fertig da.
 /** Höchstens so viele dunkle Abschnitte (class="dunkel") und kräftige Farbflächen (class="farbflaeche") je Seite. */
 export const DUNKEL_HOECHSTENS = 2;
 export const FARBFLAECHE_HOECHSTENS = 1;
@@ -126,6 +128,10 @@ export const KUGEL = /kugel|\sclass="(?:[^"]*\s)?licht(?:\s[^"]*)?"/i;
 export const RUHE_SKRIPT = /addEventListener\(\s*['"](?:scroll|wheel|touchmove)['"]|\bonscroll\b|requestAnimationFrame|getContext\s*\(|scrollTo\s*\(|scrollBy\s*\(|setInterval\s*\(/;
 /** Nie endlos, nie an den Scroll gebunden. */
 export const RUHE_CSS = /\binfinite\b|animation-timeline|scroll-timeline|view-timeline/;
+/** Was Inhalt unsichtbar macht (für die einmalige Linie): durchsichtig, auf null gestaucht, versteckt. */
+export const VERSTECKT_CSS = /\bopacity\s*:\s*0(?![.\d])|\bscale[XY]?\(\s*0\s*\)|\bvisibility\s*:\s*hidden/;
+/** Die einzige Klasse, unter der eine Linie vor dem Zeichnen verborgen sein darf — setzt nur js/weg.js (ohne Skript nie gesetzt). */
+export const WARTET = /\.wartet\b/;
 
 /** Die Blöcke `@media (prefers-reduced-motion: no-preference…) { … }` einer CSS-Datei (Klammern gezählt) — und der Rest ohne sie. */
 export function bewegungsBloecke(css) {
@@ -175,6 +181,19 @@ export function pruefeRuhe({ seiten, stile, skripte, dateien }) {
     const draussen = /@keyframes|\banimation(?:-name)?\s*:(?!\s*none\b)/.exec(rest);
     if (draussen) fehler.push(`${d}: „${draussen[0]}“ außerhalb von @media (prefers-reduced-motion: no-preference) — Bewegung nur, wer sie nicht abgeschaltet hat`);
     if (bloecke.some(b => /\banimation-iteration-count\s*:\s*(?!1\b)/.test(b))) fehler.push(`${d}: Animation öfter als einmal — die Linie zeichnet sich genau einmal`);
+    // v3: Ruhezustand vollständig lesbar — verborgen wird nur vor dem einmaligen Zeichnen: im Bewegungs-Block, unter .wartet
+    // (setzt js/weg.js, ohne Skript nie) oder als Anfang eines @keyframes. Außerhalb wäre Inhalt ohne Skript/Bewegung weg.
+    for (const regel of rest.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      const v = VERSTECKT_CSS.exec(regel[2]);
+      if (v) fehler.push(`${d}: „${regel[1].trim().slice(0, 50)} { ${v[0]} }“ außerhalb von @media (prefers-reduced-motion: no-preference) — im Ruhezustand ist alles sichtbar`);
+    }
+    for (const b of bloecke) {
+      const innen = b.slice(b.indexOf('{') + 1, -1).replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+      for (const regel of innen.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+        const v = VERSTECKT_CSS.exec(regel[2]);
+        if (v && !regel[1].split(',').every(s => WARTET.test(s))) fehler.push(`${d}: „${regel[1].trim().slice(0, 50)} { ${v[0]} }“ — verborgen nur unter .wartet (js/weg.js), sonst bleibt Inhalt ohne Skript unsichtbar`);
+      }
+    }
     if (/@media \(prefers-reduced-motion: reduce\)/.test(text)) reduziert = true;
   }
   if (stile.size && !reduziert) fehler.push('css/: kein @media (prefers-reduced-motion: reduce) — „Bewegung reduzieren“ muss beachtet werden');
@@ -418,6 +437,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   console.log(freigabefaehig
     ? '\n✓ freigabefähig — Caddyfile darf auf die Freigabe-Fassung umgestellt werden (website/LIESMICH.md).'
-    : '\n✗ nicht freigabefähig — erst Platzhalter füllen und Fehler beheben.');
+    : fehler.length ? '\n✗ nicht freigabefähig — erst Platzhalter füllen und Fehler beheben.' : '\n✗ nicht freigabefähig — nur noch die Platzhalter füllen (Bau-Regeln erfüllt).');
   process.exit(freigabefaehig ? 0 : 1);
 }

@@ -262,6 +262,27 @@ describe('website/pruefen.mjs', () => {
     expect(pruefeWebsite(k2).fehler.join('\n')).toMatch(/kein @media \(prefers-reduced-motion: reduce\)/);
   });
 
+  it('Ruhe (v3): im Ruhezustand ist alles sichtbar — verborgen nur vor dem einmaligen Zeichnen, im Bewegungs-Block unter .wartet', () => {
+    // „Klar 2“ verbot jede Animation; v3 lässt die Linie EINMAL zeichnen (Kevin 07.10. abends: „bring Innovation nach vorne“). Dafür
+    // muss sie kurz verborgen sein. Damit daraus kein „Aufdecken beim Scrollen“ wird, gilt: nur in @media (prefers-reduced-motion:
+    // no-preference), nur unter .wartet (setzt js/weg.js, ohne Skript nie gesetzt) oder als Anfang eines @keyframes.
+    const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
+    expect(bewegungsBloecke(css).bloecke.join('\n')).toMatch(/\.strecke\.zeichnen\.wartet li::before \{ transform: scaleX\(0\); \}/);
+    const weg = readFileSync(join(ORDNER, 'js/weg.js'), 'utf8');
+    expect(weg).toContain("classList.add('wartet')");
+    expect(weg).toMatch(/prefers-reduced-motion: reduce/);
+    expect(pruefeWebsite(ORDNER).fehler.filter(f => /verborgen|Ruhezustand/.test(f))).toEqual([]);
+    const k = kopie();
+    fuellen(k);
+    // Außerhalb des Bewegungs-Blocks verborgen (Inhalt wäre ohne Skript weg) und im Block ohne .wartet (Aufdecken für alle): beides fällt auf.
+    writeFileSync(join(k, 'css/start.css'), readFileSync(join(k, 'css/start.css'), 'utf8')
+      + '\n.person { opacity: 0; }\n@media (prefers-reduced-motion: no-preference) {\n  .fragen details { transform: scaleY(0); }\n  .strecke.zeichnen.wartet .halt { opacity: 0; }\n}\n');
+    const f = pruefeWebsite(k).fehler.join('\n');
+    expect(f).toMatch(/css\/start\.css: „\.person \{ opacity: 0 \}“ außerhalb von @media \(prefers-reduced-motion: no-preference\)/);
+    expect(f).toMatch(/css\/start\.css: „\.fragen details \{ scaleY\(0\) \}“ — verborgen nur unter \.wartet/);
+    expect(f).not.toMatch(/„\.strecke\.zeichnen\.wartet \.halt/);
+  });
+
   it('Stempel: jeder Verweis auf css/ und js/ trägt die Prüfsumme der Datei — geänderte Datei ohne neuen Stempel fällt auf', () => {
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
     const verweise = Array.from(index.matchAll(STEMPEL_VERWEIS));
