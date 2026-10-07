@@ -10,7 +10,7 @@
 - Relay-Notiz aus `website/` nach `research/website/` — 6c65ee0b
 - Inbox-Fakten + Konzept — 22adfc7c, 2ffdd933 (`INBOX_KONZEPT.md`, `research/inbox/`)
 - `deploy/google-verbinden.sh` erkennt mehrfach eingefügtes Geheimnis — dfe84c0e
-- iCloud-Kalender je Person (Malin verbindet selbst; andere sehen nur „Belegt“) + Karten „<Firma> verbinden“ (Business, Google) / iCloud (Privat) im Kalender — Merge 7d4e69d7 (Branch icloud-je-person). Offene Fragen: Blöcke/ZOE für Malin ins eigene iCloud? Malins Termine für Kevin „Belegt“ oder gar nicht?
+- iCloud-Kalender je Person (Malin verbindet selbst; andere sehen nur „Belegt“) + Karten „<Firma> verbinden“ (Business, Google) / iCloud (Privat) im Kalender — Merge 7d4e69d7 (Branch icloud-je-person). Kevin 07.10.: „Belegt“ bleibt; Blöcke für Malin ins eigene iCloud — gebaut e919ccd5.
 
 ## In Arbeit (07.10., Agenten in Worktrees unter `.claude/worktrees/`)
 | Paket | Worktree | Stand |
