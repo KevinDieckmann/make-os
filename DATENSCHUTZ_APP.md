@@ -67,8 +67,17 @@ bleibt der Eintrag). Für alle Leser unsichtbar — **aber** Art. 15/17 und das 
 **Finanzplanung Privat/Business**: Business-Sicht serverseitig gefiltert (`lib/finanzen/plan/sicht.ts`), seit der Prüfung
 auch für `?nur=kennzahlen`.
 
-**Inbox-Status** (alt, jetzt geschlossen): `/api/state/inbox` nur im Haushalt des Inhabers; je Postfach getrennt
+**Inbox-Status** (alt, seit 06.10. entfernt): `/api/state/inbox` nur im Haushalt des Inhabers; je Postfach getrennt
 (eigenes Gmail; Apple/M365 nur der Inhaber).
+
+**Inbox 2 — eigene Postfächer über IMAP/SMTP (06./07.10., Branch `inbox-2`):** neue Verarbeitung „E-Mail (eigene Postfächer über
+IMAP/SMTP)“ (`vv-email-imap`, wird im Verzeichnis immer nachgetragen). Je Person Register, verschlüsselte Zugangsdaten (nie im Export),
+Spiegel (Frist „Mail-Spiegel“ 180 Tage, höchstens 1.500 je Postfach, „Trennen“ löscht sofort) und Inbox-Zustand (Wiedervorlagen,
+Zuordnungen, Screener-Entscheidungen je Absender-Adresse). Trennung serverseitig: jede Person sieht nur ihre Postfächer, ein Business-Bereich
+nie Privates. KI sieht nur Kopf + Ausschnitt (ZOE-Werkzeug, Tageslauf); Volltext nur beim Antwort-Entwurf auf Klick. Verlauf der Kontaktakte
+nur nach „Zuordnen“ (auch für Gmail). Empfänger: IONOS (AVV im Kundenbereich, EU) und Apple iCloud Mail (kein AVV, nur private Post) —
+Vorgaben für neue Instanzen; bei uns von Hand unter System › Datenschutz › Empfänger ergänzen. WhatsApp ist nur vorbereitet (Cloud API,
+Meta als Auftragsverarbeiter, Speicherort „DE“/„No Storage“ VOR der Registrierung der Nummer wählen) — VVT-Eintrag erst mit dem Adapter.
 
 ## 2a. DSGVO-Grundlagen im Code (05.10., Branch `dsgvo-grund`)
 

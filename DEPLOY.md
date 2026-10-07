@@ -29,10 +29,13 @@ Produktions-Build läuft (geprüft 24.09.).
    (`deploy/de.makeos.zulieferer.plist`), Vault-Abgleich per Cron.
 9. Malin einladen (Konto → Einladung), Haushalt „kevin-malin“ zuweisen.
 
-**Mac liefert zu (Kevins Entscheidung):** Kalender, Mail, Erinnerungen und
-Kontakte liest nur der Mac. Auf dem Server zeigen die Apple-Routen den zuletzt
-zugelieferten Stand (Kopfzeile `X-Stand`); Termin anlegen und Mail-Entwürfe
-gehen nur am Mac. Die lokale Instanz dient danach NUR noch als Zulieferer.
+**Mac liefert zu (Kevins Entscheidung):** Erinnerungen und Kontakte liest nur der Mac (der Kalender kommt seit 25.09. direkt aus
+iCloud). Auf dem Server zeigen die Apple-Routen den zuletzt zugelieferten Stand (Kopfzeile `X-Stand`). Die lokale Instanz dient danach
+NUR noch als Zulieferer. **Mail seit 06.10. (Inbox 2) nicht mehr vom Mac:** der Server holt die Postfächer selbst — Gmail über die
+Google-Verbindung, alle anderen per IMAP (Port 993, TLS) und SMTP (465/587) direkt beim Anbieter. Dafür braucht der Server ausgehend
+nur diese Ports (ufw lässt Ausgehendes zu). Neue Pakete `imapflow`/`nodemailer` kommen über `npm ci` ins Bild; neue Umgebung nur optional:
+`MAKE_OS_IMAP_IDLE=aus` (ohne IDLE-Verbindungen, Abfrage alle 2 Min.). Zugangsdaten der Postfächer trägt jede Person in der Inbox ein
+(verschlüsselt im Datenordner) — nie in die `.env`.
 
 
 Was wohin gehört, damit Kevin und Malin zusammen arbeiten können — und was

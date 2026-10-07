@@ -244,8 +244,8 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
 - **Gesellschafts-Register:** Art. 15 `registerAuskunft` (lib/gesellschaften/auskunft.ts) in `personAufzaehlen.gesellschaften`;
   Art. 17 tilgt (`WEITERE_SPEICHER`), „[gelöscht]“ bleibt speicherbar (`bezugAus`, `GETILGT`). Telegram-Text der Vertrags-Erinnerung
   neutral, auch bei Fälligkeit der Aufgabe `vte-…`.
-- **Inbox-Status:** `/api/state/inbox` nur Haushalt des Inhabers (403) und je Postfach (`lib/inbox/status-sicht.ts`: eigenes Gmail,
-  Apple/M365 nur Inhaber); fremde Einträge nie in der Antwort, beim Schreiben unberührt.
+- **Inbox-Status:** seit 06.10. (Inbox 2) je Person im Bestand `inbox-zustand--<person>` (Abschnitt „Inbox 2“); `/api/state/inbox` und
+  `lib/inbox/status-sicht.ts` sind entfernt, der alte Bestand `inbox-status` bleibt nur liegen (Übernahme beim ersten Schreiben).
 - **Finanzplanung:** `?nur=kennzahlen&sicht=business` ohne Privat-/Gruppenwerte (`kennzahlenFuerSicht`).
 - **Verzeichnis (Art. 30):** `vv-gesellschaften`, `vv-kapazitaet` (`verarbeitungenOrganisationNachtragen`); Löschkonzept nennt den Papierkorb.
 - **Nachtrag (04.10. spät, Branch `dsgvo-2`):** Team-Person deaktiviert → `deaktiviertAm` NUR vom Server (Team-Route `deaktivierungStempeln`),
@@ -739,8 +739,8 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   (`HeuteView`) · `/os/wachstum` = Gesamtansicht + Score · `/os/uebersicht?space=` = Dashboard je Space (`SpaceUebersichtView`) ·
   `/os/menschen` = Kontakte privat. Leiste `components/os/Leiste.tsx` (einklappbar, Merker `make-leiste`), Kopf `components/os/Kopf.tsx`.
 - Je Space 6 Punkte: Übersicht · Finanzen · Aufgaben · Ziele & Planung + (Privat: Gesundheit · Familie · Kontakte | Business:
-  Markttraktion · Mandate). Agenten eigener Kasten. Inbox/Kalender im Kopf folgen dem Space (`?space=`). Postfächer → Space in
-  `spaces.json` (`lib/make-one/space-einstellungen.ts`), Kalender → Space in den Kalender-Einstellungen (`lib/kalender/space.ts`, client-sicher).
+  Markttraktion · Mandate). Agenten eigener Kasten. Inbox/Kalender im Kopf folgen dem Space (`?space=`). Postfächer → Bereich je Postfach im
+  Register `postfaecher--<person>` (Inbox 2, serverseitig gefiltert), Kalender → Space in den Kalender-Einstellungen (`lib/kalender/space.ts`, client-sicher).
 - Neue Bereiche: Space aus der Adresse lesen (`useSpace().ausAdresse`), nie stumm mischen; Adressen in `lib/wege.ts` eintragen;
   neue Seite in `lib/make-one/spaces.ts` (passt) und `components/os/Schnellsuche.tsx` (SEITEN) anschließen. Keine Weiterleitung
   in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
@@ -1308,10 +1308,57 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - **Echtzeit optional** (`lib/gmail/meldung.ts`, `POST /api/google/gmail/meldung`, ohne Sitzung — Middleware nur für diesen Pfad): `users.watch` auf Pub/Sub, Push mit **OIDC-Token von Google** (RS256 gegen die öffentlichen Schlüssel, `iss`, `aud` = `GMAIL_PUSH_AUDIENCE`/Webhook-Adresse, `email` = `GMAIL_PUSH_DIENSTKONTO`, `exp`); ohne Einrichtung IMMER 403, Fehlversuche je Netz gedrosselt, ein Anstoß je Person alle 5 s, nie Daten. Umgebung `GMAIL_PUBSUB_THEMA`, `GMAIL_PUSH_DIENSTKONTO`, `GMAIL_PUSH_AUDIENCE` (`deploy/google-verbinden.sh` fragt optional).
 - **Nie fremd lesbar / nie automatisch senden:** alle Routen (`/api/gmail`, `/nachricht`, `/anhang`, `/senden`, `/entwurf`) nur über `eigenePerson` (Sitzung, Haushalt; **Dienstweg 403**, ZOE/Takt/Skripte können weder lesen noch senden; Malin liest nie Kevins Mails, der Spiegel trägt die Person im Namen). Senden: `anfrageId` + `einmalig`, Absender nur eigene Adresse/verifizierter „Senden als“-Alias, Antwort im Thread (`threadId`, `In-Reply-To`, `References`, `Re:`), Empfänger geprüft (kein Zeilenumbruch, ≤ 20), **Art. 18 → 409**, **§ 7 UWG:** werbliche Wörter (`werbeWoerter`) + rote Mail-Ampel/Werbesperre → Rückfrage 409 `uwg`, die Person entscheidet. Gesendete Mail sofort im Spiegel + Verlauf. Kein Mailtext in Protokollen (`protokolliere('gmail', …)` nur Kennung).
 - **MIME/HTML (`mime.ts`, `html.ts`, ohne Paket):** Nachrichtenbaum (`format=full`) → Kopf + Text (text/plain bevorzugt), Zeichensätze (UTF-8, Latin-1, **Windows-1252 selbst gelesen** — Node-TextDecoder liefert 0x80–0x9F falsch), RFC 2047, Quoted-Printable; Senden: UTF-8-QP, Header ohne Umbrüche. **HTML wird nie gerendert:** nur Text (Skripte/Styles/Frames weg, Bilder nie geladen und gezählt, Links `Text (echte Adresse)`, nur http(s)/mailto, Tracking-Parameter weg); die Oberfläche macht nur `http(s)`-Adressen anklickbar (`rel="noopener noreferrer nofollow"`). Anhänge nur als Download auf Klick (`application/octet-stream`, `attachment`, `nosniff`, `sandbox`, ≤ 25 MB, frisch aus Gmail).
-- **Zuordnung & Verlauf (`zuordnung.ts`):** Absender/Empfänger → Kontakt über ALLE Adressen (`alleAdressen`; Sammeladressen nie) → Firma/offener Deal, mit Mail-Ampel; **Anzeige auch für eingeschränkte/gesperrte Personen (gekennzeichnet), Verlauf nur über `kontakteFuerVerarbeitung` + `ausgenommen`.** Verlauf der Kontaktakte: je Mail EINE Zeile (`antwort` = vorhandenes Wärme-Signal, gesendet `mail`) mit Betreff + `Aktivitaet.mailLink` (`/os/inbox?offen=gmail-<id>`, gesäubert in `saeubereKontakt`; eine Zeile in `aktivitaeten-teile.tsx`), idempotent über `bezugMail`. Unbekannter Absender: „Kontakt anlegen“ = `/api/crm/anfrage` (Kanal Mail → Herkunft „selbst“, Vertrag/Anbahnung, „Antwort auf Anfrage“, zählt als Marketing-Lead über „Anfrage über …“).
-- **Inbox-Oberfläche:** Gmail als Quelle in `InboxSchlank.tsx` (Quelle filterbar), Liste = Threads (`lib/gmail/liste.ts`), Einstufung **ohne Modell** (Gmail-Kategorien/Listen = Rauschen, zugeordnet/markiert = Wichtig — Gmail geht nie in die gemeinsame ZOE-Einstufung `inbox-triage`), `GmailDetail` (Thread, „gehört zu …“, Antworten/Allen antworten, Aufgabe, Follow-up, Termin über `NeuerTermin` mit `kalenderZiel` Business → Google, Kontakt anlegen, Gelesen/Archivieren → Label INBOX weg), `GmailAntwort` (Editor, Alias-Wahl, **ZOE-Entwurf** = `lib/gmail/entwurf.ts`: Brain-Kontext ohne 🔒-Privates, Anrede Du/Sie, Fremdtext als `fremd()`, nie bei Art. 18). `Vorgabe.notiz` neu (vorbelegte Termin-Notiz).
+- **Zuordnung & Verlauf (`zuordnung.ts`):** Absender/Empfänger → Kontakt über ALLE Adressen (`alleAdressen`; Sammeladressen nie) → Firma/offener Deal, mit Mail-Ampel; **Anzeige auch für eingeschränkte/gesperrte Personen (gekennzeichnet), Verlauf nur über `kontakteFuerVerarbeitung` + `ausgenommen`.** Verlauf der Kontaktakte (seit 06.10. NUR nach „Zuordnen“, lib/inbox/verlauf.ts): je Mail EINE Zeile (`antwort` = vorhandenes Wärme-Signal, gesendet `mail`) mit Betreff + `Aktivitaet.mailLink` (`/os/inbox?offen=gmail-<id>`, gesäubert in `saeubereKontakt`; eine Zeile in `aktivitaeten-teile.tsx`), idempotent über `bezugMail`. Unbekannter Absender: „Kontakt anlegen“ = `/api/crm/anfrage` (Kanal Mail → Herkunft „selbst“, Vertrag/Anbahnung, „Antwort auf Anfrage“, zählt als Marketing-Lead über „Anfrage über …“).
+- **Inbox-Oberfläche:** seit 06.10. die EINE Inbox 2 (Abschnitt „Inbox 2“) — Gmail ist dort eine Quelle neben IMAP; Gespräch, Antworten, ZOE-Entwurf
+  (`lib/inbox/entwurf.ts`), Aufgabe/Follow-up/Termin/Kontakt (`lib/inbox/aus-gespraech.ts`) gelten für alle Quellen. `/api/gmail` (Stand, Abgleich,
+  Markieren, Ausschalten) und `/api/gmail/anhang` bleiben; `/api/gmail/{nachricht,senden,entwurf}` sind entfernt (→ `/api/inbox/*`). **Verlauf der
+  Kontaktakte nicht mehr automatisch**, nur nach „Zuordnen“ (`lib/inbox/verlauf.ts`).
 - **Recht:** Register `gmail-stand--*`/`gmail-text--*` (entfernen, Frist Mail-Spiegel; Art. 15/17 über `mapEintraegeRaus`, die Antwort des Löschlaufs zählt „dort in Gmail löschen“ über `nurInApple`), VVT „E-Mail (Google Workspace)“ (`verarbeitungEmailNachtragen`), HOI-Befund `gmail`. Tests: `tests/gmail-*.test.ts` (mime, abgleich, zuordnung, route, webhook, verbinden), Fake `tests/fixtures/gmail-fake.ts`. **Rückweg:** nur neue Bestände + optionale Felder (`Aktivitaet.mailLink`, Frist `mail-spiegel`) — Details `GO_LIVE_CHECKLISTE.md` › „Gmail in der Inbox“.
 - **Offen/Befund:** `/api/oauth/callback` (Whoop/M365) wird von der Cross-Site-Regel (`middleware` → `crossSiteVerboten`) bei einer Navigation vom Anbieter blockiert — siehe Bericht; nicht geändert.
+
+## Inbox 2 — EINE Inbox für alle Postfächer (06./07.10., nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` mit Abschnitt 12, UPDATES.md)
+Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus alles ableiten können, schnell was passiert“ — „ZOE macht alles nur als Vorschlag“.
+- **Postfach-Register je Person** (`lib/postfach/register.ts`, Bestand `postfaecher--<person>`; Typen `lib/postfach/typen.ts`): Quelle `gmail` (Eintrag `gmail`,
+  nur Bereich/Name/Signatur — die Verbindung bleibt `google-verbindung--<p>`; ohne Eintrag erscheint Gmail mit `bereich: null` nur unter „Alle“) · `imap` (`pf-<uuid>`) ·
+  `whatsapp` (nur vorbereitet: Typ, Kennung `wa~…`, Zustand „vorbereitet“, Platzhalter-Karte; Adapter folgt). **Bereich** = `privat` | feste Gesellschaft | `g-…` aus
+  dem Gesellschafts-Register (sonst 400). **Passwörter NUR in `postfach-zugang--<p>`** (Hülle, nie in Antwort/Export/Protokoll; `zugangLesen` nur serverseitig).
+  Anbieter-Voreinstellungen + Anleitungen `lib/postfach/anbieter.ts` (iCloud 993/587 + App-Passwort, IMAP-Benutzer ohne Domain; IONOS 993/465; „eigen“ mit `hostOk`).
+- **Leitung** `lib/postfach/transport.ts`: imapflow/nodemailer (fest gepinnt, `logger: false`, TLS ≥ 1.2), `zielPruefen` (DNS → nie Loopback/privat/link-lokal/CGNAT),
+  `fehlerUebersetzen` (nie Zugangsdaten im Text). Tests/Demo setzen Leitungen (`transportSetzen`, `lib/postfach/post-speicher.ts` = IMAP/SMTP im Speicher; Demo-Post
+  `lib/postfach/demo-post.ts` nur mit `MAKE_OS_DEMO=1` + Anbieter `demo`, Passwort „falsch“ = Fehlerfall). Verbinden prüft ZUERST (`lib/postfach/pruefen.ts`: LOGIN,
+  Ordner per SPECIAL-USE/Namen, IDLE gemessen), erst dann speichern (`lib/postfach/verwalten.ts`: hinzufügen · erneuern · einstellen · trennen).
+- **Spiegel** `lib/postfach/spiegel.ts` (`imap-stand--<p>` Köpfe + Zustand je Postfach, `imap-text--<p>` Texte): Kopf = Gmail-Form + `postfachId/ordner/uidValidity/uid/
+  wurzel/automatisch`; Kennung `<pf>:<e|g|a>:<UIDVALIDITY>:<UID>`. Rohnachricht → Gmail-Nachrichtenbaum (`lib/postfach/rfc822.ts`) → `nachrichtAus` — EIN MIME-Leser.
+  Abgleich `lib/postfach/abgleich.ts` (Posteingang + Gesendet, Fenster 30 Tage, ≤ 300 neue je Lauf, Quelle ≤ 256 KB, BODYSTRUCTURE für Anhänge, Flags nachziehen,
+  verschwundene UIDs raus, UIDVALIDITY neu → Ordner neu). Anmeldung abgelehnt → Zustand „anmeldung“, EINE Glocke (Art `postfach`), **keine weiteren Versuche** bis
+  „Verbindung erneuern“ (`imapFaellig` false). Takt `lib/postfach/takt.ts` (im `/api/zoe/takt`: alle 2 Min., mit IDLE 15; IDLE-Wächter je Postfach im App-Prozess,
+  `globalThis`-Register, höchstens 8; `MAKE_OS_IMAP_IDLE=aus`). Aufbewahrung Frist „Mail-Spiegel“ + 1.500/Postfach, Morgenlauf `imapAufraeumen`.
+- **EIN Strom** `lib/inbox/strom.ts` (rein): Gespräche `gm~<thread>` / `im~<pf>~<20 hex>` (Union-Find über Message-ID/In-Reply-To/References, Schlüssel = Wurzel der
+  ältesten Nachricht) / `wa~…`; Fächer `lib/inbox/faecher.ts` (ohne Modell: jüngste ECHTE Nachricht von uns → warten, Nachfassen ab 3 Tagen, > 30 verjährt;
+  Rundschreiben am Kopf; Screener; Termine; Geld & Papier; `fristAus`), `lageBauen`, `zoeSatz`, `sortieren`. Server `lib/inbox/strom-server.ts` `stromFuer(person, filter)`
+  mit EINER Filterstelle `imBereich` (bereich=X · space=business nur Business-Bereiche · space=privat nur Privat · ohne Filter alles Eigene; `null`-Bereich nur in „Alle“).
+- **Zustand je Person** `lib/inbox/zustand.ts` (`inbox-zustand--<p>`: `spaeter`, `erledigt` bis Nachricht X, `zuordnung`, Screener `absender` je Adresse) — Übernahme aus
+  `inbox-status`/`inbox-absender` (rein `uebernahme`, beim ersten Schreiben; Lesen schreibt nie). Aktionen `lib/inbox/aktionen.ts` (erledigt = Gmail archivieren / IMAP
+  verschieben, gelesen = UNREAD/`\Seen`, später, zurück, zuordnen/lösen, zulassen/blocken/offen) — das Gespräch wird IMMER aus den eigenen Spiegeln neu gebaut.
+- **Zuordnen nur per Klick** (`lib/inbox/verlauf.ts`): erst „Zuordnen“ schreibt den Verlauf der Akte (Betreff + Link, nie Text; nie Art. 18/Werbesperre/Sammeladresse),
+  danach auch neue Nachrichten des Gesprächs (nach jedem Abgleich/Senden). Gilt auch für Gmail (bis 06.10. automatisch). Link `/os/inbox?offen=<Gespräch>` (Säuberer
+  in `lib/make-one/crm.ts` kennt beide Formen); alter Link `?offen=gmail-<Nachricht>` wird auf das Gespräch umgelenkt.
+- **Routen** (alle `person`/`eigenePerson` mit `NUR_EIGENE_POST`, Dienstweg 403, keine Personen-Parameter): `/api/inbox` (GET Strom mit ETag; POST Aktionen,
+  `alle-erledigen` ≤ 200, `abgleichen`), `/api/inbox/gespraech` (Nachrichten, Antwort-Daten, Kontext, Vorschläge `vorschlaegeFuer`), `/api/inbox/senden` (Gmail-API bzw.
+  SMTP des Postfachs; Absender = Postfach, fremde Absenderadresse → 400; `einmalig`; § 7 UWG/Art. 18 über `pruefeEmpfaenger`; Kopie in „Gesendet“ nur, wenn der
+  Anbieter sie nicht selbst ablegt), `/api/inbox/entwurf` (ZOE-Entwurf auf Klick, `lib/inbox/entwurf.ts`, Bereich im Systemtext statt fester Firma),
+  `/api/inbox/postfaecher`, `/api/inbox/anhang` (Download, `nosniff`/`sandbox`).
+- **Ableiten:** Tageslauf (Schritt „postfach“ nur für die eigene Person), ZOE-Werkzeug `lies_postfach` und Inbox-Agent lesen `lib/inbox/zoe-sicht.ts` (nur Kopf +
+  Ausschnitt); CRM-Signale nur noch Kalender; Fluss „Inbox“ aus den eigenen Spiegeln; Widget „ZOE & Inbox“ aus `/api/inbox`; Onboarding zählt Postfächer; „In der Inbox
+  schreiben“ aus Akte/Prospecting über `lib/inbox/neue-mail.ts` (Sitzungsspeicher, nie Adresse/Text in der URL).
+- **Oberfläche** `components/os/inbox/`: `InboxZwei` (Lagebild-Karte mit anklickbaren Zahlen + ZOE-Satz, Postfach-Leiste mit Punkt Smaragd/gelb/Granat, Hinweis
+  „Verbindung erneuern“, Fächer, Wischen am Handy, Tasten j/k/e/s/a/r/Esc, `?neu=1`), `Gespraech` (Kontext rechts bzw. eingeklappt, „ZOE schlägt vor“), `Antwort`,
+  `Postfaecher`, `BelegAusMail` (Anhang → `/api/beleg` → `/api/beleg/uebernehmen` in die Gesellschaft des Bereichs), `GmailText`, `GmailVerbinden`, `daten.ts`.
+- **Recht:** Speicher-Register (5 neue Bestände mit Angaben), Art. 15/17 (`imap-stand/-text` wie Gmail, `inbox-zustand` getilgt), Konto-Export/-Löschen
+  (`postfach-zugang` nie im Export), VVT `vv-email-imap` (immer nachgetragen), Empfänger-Vorgaben `ionos`/`apple-icloud-mail`, HOI `postfachBefunde`.
+- **Tests:** `tests/inbox2-rein.test.ts` (Lesen, Fächer, Fristen, Gespräche, Filter, Übernahme, Anbieter, Fehler, Vorschläge), `tests/inbox2-postfach.test.ts` (von Ende
+  zu Ende mit `PostSpeicher`: Prüfen vor Speichern, Trennung, Passwörter nie in Antworten, stabile Kennungen, Zurückschreiben, Senden, abgelehnte Anmeldung, Zuordnen,
+  Screener, Trennen); Gmail-Tests laufen über die neuen Wege.
 
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
@@ -1552,7 +1599,7 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
   neuester Export aus ~/Downloads, je Person). Knopf unter Gesundheit und
   Verbindungen. Neue Seiten: nie THEME, nie
   Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
-  `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
+  `/os/uebersicht` und `/os/aufgaben/board` (`/os/inbox/voll` leitet seit 06.10. auf die eine Inbox).
 - **Haushaltsfinanzen (24.09.2026): Malins MAKE.ORGA zieht nach MAKE OS.**
   Zahlen = Privat | Business | Gesamt. Logik in `lib/finanzen/haushalt/`
   (Cent, EINE Einordnung `einordnung.ts`, Monate über `monat.ts` — nie

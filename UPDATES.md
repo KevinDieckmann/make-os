@@ -4,6 +4,56 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 06./07.10.2026 — Inbox 2: EINE Inbox für alle Postfächer (nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` inkl. Abschnitt 12)
+
+**Was sich ändert:** Die Inbox holt die Post selbst auf dem Server — Gmail (wie bisher über die Google-Verbindung) und jetzt jedes Postfach
+per IMAP/SMTP (iCloud mit App-spezifischem Passwort, IONOS, andere Anbieter). Jede Person trägt IHRE Postfächer ein (Inbox › Postfächer),
+jedes Postfach hat genau einen Bereich (Privat oder eine Gesellschaft). Oben das **Lagebild** je Bereich (anklickbar) + ein ZOE-Satz
+(ohne KI), darunter die **Fächer** Antworten · Nachfassen fällig · Termine · Geld & Papier · Neue Absender (Zulassen/Blocken) · Info &
+Rundschreiben; ein Gespräch öffnet sich mit **Kontext** (Person/Firma, Deals, Aufgaben, Termine) und **„ZOE schlägt vor“** (Aufgabe mit Frist,
+Termin, Beleg ablegen, Zuordnen, Deal nachfassen — alles nur auf Klick). Antworten gehen über das Postfach des Gesprächs (Absender +
+Signatur des Postfachs), Senden ist immer ein Einzelklick. Tasten j/k/e/s/a/r, am Handy Wischen (rechts erledigt, links morgen).
+- **Erledigt/Gelesen werden zurückgeschrieben:** Gmail archivieren bzw. IMAP in den Archiv-Ordner (fehlt er, legt MAKE OS „Archiv“ an);
+  Öffnen = gelesen (`\Seen`). Später = Wiedervorlage in MAKE OS; neue Post holt das Gespräch zurück.
+- **Bewusst geändert (Kevin 06.10.: „ZOE macht alles nur als Vorschlag“):** Gmail schreibt den Verlauf der Kontaktakte NICHT mehr
+  automatisch — erst „Zuordnen“ am Gespräch (danach auch neue Nachrichten darin). Folge: Wer nur gemailt hat, ohne zugeordnet zu sein, gilt
+  für die § 7 UWG-Ampel als unbekannt (Rückfrage bei werblichen Wörtern).
+- **Entfernt:** alte volle Inbox (`/os/inbox/voll` leitet auf `/os/inbox`), Apple-Mail per osascript (`/api/apple-mail*`), Mail im
+  Mac-Zulieferer (Kalender/Erinnerungen/Kontakte bleiben), Microsoft-365-Postfach (`/api/microsoft`, nur noch der KEMARIS-Kalender-Bestand
+  bleibt unberührt), `/api/eingang` (iCloud-Datei, auf dem Server tot), `/api/inbox/{triage,draft}`, `/api/state/{inbox,inbox-absender,spaces}`,
+  `/api/netzwerk/vorschlaege`, `/api/gmail/{nachricht,senden,entwurf}` (jetzt `/api/inbox/{gespraech,senden,entwurf}`).
+- **Übernahme alter Daten (einmal, beim ersten Schreiben der Person):** Gmail-Wiedervorlagen aus `inbox-status` (nur eigene, nur ab heute)
+  → Wiedervorlage am Gespräch; Gmail-„erledigt“ lebte schon immer in Gmail. **Apple-Mail-Status wird verworfen** (die alten Kennungen hingen
+  an der Position im Postfach und trafen falsche Mails). Screener-Entscheidungen aus `inbox-absender` übernimmt nur der Inhaber. Die alten
+  Bestände (`inbox-status`, `inbox-absender`, `inbox-triage`, `apple-mail-cache`, `m365-postfach`, `microsoft-inbox`, `spaces`) bleiben liegen
+  (Rückweg), werden nicht mehr geschrieben; die Löschfristen räumen die Zwischenspeicher wie bisher.
+- **Neue Abhängigkeiten (fest gepinnt):** `imapflow` 2.2.6 (IMAP) und `nodemailer` 10.0.15 (SMTP) — Begründung: IMAP/SMTP mit TLS,
+  Literalen, IDLE und SASL sind sicherheitskritisch; beide vom selben gepflegten Autor (MIT/MIT-0), nodemailer ohne weitere Abhängigkeiten.
+  Das Docker-Bild installiert sie über `npm ci` mit (package-lock.json).
+- **Neue Umgebung (optional):** `MAKE_OS_IMAP_IDLE=aus` schaltet die ruhenden IDLE-Verbindungen ab (dann nur Abfrage alle 2 Min.). Sonst nichts
+  Neues — die Passwörter liegen verschlüsselt im Datenordner (Hülle), nicht in der `.env`.
+- **Neue Bestände (alle je Person):** `postfaecher--<p>` (Register), `postfach-zugang--<p>` (Passwörter, nie im Export), `imap-stand--<p>` /
+  `imap-text--<p>` (Spiegel, Frist „Mail-Spiegel“ 180 Tage, höchstens 1.500 je Postfach), `inbox-zustand--<p>` (Wiedervorlagen, Zuordnungen,
+  Screener). Speicher-Register, Art. 15/17, Konto-Export/Löschen, Verzeichnis (VVT „E-Mail (eigene Postfächer über IMAP/SMTP)“) und HOI-Befund
+  „Postfächer (IMAP)“ sind nachgezogen.
+- **Datenschutz:** Neue Empfänger-Vorgaben „IONOS (E-Mail-Postfach)“ und „Apple iCloud Mail“ gelten nur für neue Instanzen — bei uns bitte unter
+  System › Datenschutz › Empfänger von Hand ergänzen (IONOS: AVV im Kundenbereich abschließen und ablegen; iCloud: kein AVV, nur private Post).
+  Microsoft 365 dort auf „archiviert“ setzen, sobald der KEMARIS-Kalender nicht mehr gebraucht wird.
+- **Rückweg:** Der alte Stand liest die neuen Bestände nie; seine alten Bestände sind unverändert da. Nach einem Rückweg fehlen nur die Wiedervorlagen/
+  Screener-Entscheidungen, die nach dem Upload entstanden sind, und die alte Inbox zeigt Apple Mail erst wieder, wenn der Mac-Zulieferer in der
+  alten Fassung läuft.
+
+**Für Kevin und Malin nach dem Upload (je Person, angemeldet, in der Inbox › Postfächer):**
+1. **Kevin — Privat (iCloud):** auf appleid.apple.com › Anmeldung und Sicherheit › App-spezifische Passwörter ein neues anlegen („MAKE OS Inbox“),
+   in MAKE OS „+ Postfach“ › iCloud-Mail › `kevindieckmann@icloud.com` › dieses Passwort › Bereich **Privat** › Verbinden.
+2. **Kevin — KD Ventures (IONOS):** „+ Postfach“ › IONOS › `22@kevindieckmann.de` › Passwort des Postfachs › Bereich **KD Ventures** › Verbinden.
+3. **Malin — Privat (IONOS):** „+ Postfach“ › IONOS › `11@malinwuerriehausen.de` › Passwort des Postfachs › Bereich **Privat** › Verbinden.
+4. **Gmail (MAKE Innovation) wie gehabt:** In Inbox › Postfächer bei „Google Workspace“ den Bereich **MAKE Innovation** wählen und speichern
+   (ohne Bereich erscheint Gmail nur unter „Alle“).
+5. Einmal durch „Neue Absender“ gehen (Zulassen/Blocken) und wichtige Gespräche „Zuordnen“, damit sie im Verlauf der Akte stehen.
+6. **Mac:** den Zulieferer einmal neu starten (`node zulieferer.mjs`), damit er keine Mail mehr schickt (sonst steht im Log „art muss eins sein …“).
+7. Ändert jemand sein Apple-Passwort, wird das App-Passwort ungültig — die Inbox zeigt dann „Verbindung erneuern“ (neues App-Passwort eintragen).
+
 ## 06.10.2026 — Aufgaben nach Malins Bauplan-Karte (nur lokal, Branch `aufgaben-struktur`; Kevin: „komplett nach Malins Liste“)
 
 **Was sich ändert:** Projekt › Liste › Aufgabe › Unteraufgabe — die Ebene „Gruppe“ gibt es nicht mehr. Malins Fehleintrag (die
