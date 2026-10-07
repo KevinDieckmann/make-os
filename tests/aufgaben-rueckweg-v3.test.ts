@@ -34,12 +34,13 @@ describe('aufgaben-rueckweg-v3: Skript', () => {
       process.env.MAKE_OS_DATEN_SCHLUESSEL = SCHLUESSEL;
       const ring = schluesselRing();
       process.env.MAKE_OS_DATEN_SCHLUESSEL = alt;
+      const aktiv = ring.aktiv!;
       mkdirSync(join(d, 'archiv'));
       const kopie = { projekte: [{ id: 'p1', titel: 'Rechnungswesen' }], gruppen: [{ id: 'g1', titel: 'Belege' }], listen: [{ id: 'l1', gruppeId: 'g1' }], umbauVersion: 2 };
       const heute = { projekte: [{ id: 'p1', titel: 'Rechnungswesen' }], listen: [{ id: 'g1' }], umbauVersion: 3 };
       const name = 'tasks-vor-umbau-v3-2026-10-08T08-00-00-000Z.json';
-      writeFileSync(join(d, 'archiv', name), huelleImModus(JSON.stringify(kopie), ring.aktiv, `archiv/${name}`));
-      writeFileSync(join(d, 'tasks.json'), huelleImModus(JSON.stringify(heute), ring.aktiv, 'tasks'));
+      writeFileSync(join(d, 'archiv', name), huelleImModus(JSON.stringify(kopie), aktiv, `archiv/${name}`));
+      writeFileSync(join(d, 'tasks.json'), huelleImModus(JSON.stringify(heute), aktiv, 'tasks'));
       const vorher = readFileSync(join(d, 'tasks.json'), 'utf8');
 
       const trocken = execFileSync(process.execPath, ['scripts/aufgaben-rueckweg-v3.mjs'], { env, encoding: 'utf8' });
