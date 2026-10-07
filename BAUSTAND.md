@@ -10,15 +10,15 @@
 - Relay-Notiz aus `website/` nach `research/website/` — 6c65ee0b
 - Inbox-Fakten + Konzept — 22adfc7c, 2ffdd933 (`INBOX_KONZEPT.md`, `research/inbox/`)
 - `deploy/google-verbinden.sh` erkennt mehrfach eingefügtes Geheimnis — dfe84c0e
+- iCloud-Kalender je Person (Malin verbindet selbst; andere sehen nur „Belegt“) + Karten „<Firma> verbinden“ (Business, Google) / iCloud (Privat) im Kalender — Merge 7d4e69d7 (Branch icloud-je-person). Offene Fragen: Blöcke/ZOE für Malin ins eigene iCloud? Malins Termine für Kevin „Belegt“ oder gar nicht?
 
 ## In Arbeit (07.10., Agenten in Worktrees unter `.claude/worktrees/`)
 | Paket | Worktree | Stand |
 |---|---|---|
 | Inbox 2 (Pakete 1–4) | `agent-a3244adcf608fa028` | Fundament b78f7696 (Postfach-Register, IMAP/SMTP, Strom /api/inbox, alte Quellen raus); Oberfläche/Tests/Doku laufen |
-| iCloud-Kalender je Person + „MAKE Innovation verbinden“ im Business-Kalender | `agent-a2a1be51507dd3b7f` | 4186f468, 43c306bd, 921c44ed; Browser-Prüfung läuft |
+| WhatsApp (Cloud API, eigene Business-Nummer) | Branch `whatsapp` auf Basis `inbox-2` b78f7696 | gestartet 07.10.: Webhook mit Signaturprüfung, Senden (24-h-Fenster/Vorlagen), Verbinden-Skript, VVT, Tests |
 
 ## Als Nächstes
-1. WhatsApp (Cloud API, eigene Business-Nummer) — nach Inbox-Fundament, Fakten in `research/inbox/FAKTEN_WHATSAPP_IMAP.md`
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
 
 ## Regeln (Kurz)
