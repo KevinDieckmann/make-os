@@ -123,5 +123,8 @@
 
 /* 08 · Kontakt: das Erstgespräch im dunklen Schlussakt */
 .schlussakt .abschnitt-kopf { margin-bottom: 0; }
-.ruf-block { display: grid; gap: var(--l); margin-top: var(--s); padding-top: var(--xl); border-top: 1px solid var(--haarDunkel); }
+/* „Der erste Halt ist ein Gespräch“: die grüne Linie läuft auf den Halt vor dem Erstgespräch zu. */
+.ruf-block { position: relative; display: grid; gap: var(--l); margin-top: var(--s); padding-top: calc(var(--xl) + var(--halt) / 2); }
+.ruf-block::before { content: ''; position: absolute; left: 0; right: 0; top: calc(var(--halt) / 2 - var(--linie-dick) / 2); height: var(--linie-dick); border-radius: 3px; background: var(--smaragd); }
+.ruf-block::after { content: ''; position: absolute; left: 0; top: 0; width: var(--halt); height: var(--halt); border-radius: 50%; background: var(--grund); border: 4px solid var(--smaragd); }
 .ruf-block .klein a { color: var(--ink); }
