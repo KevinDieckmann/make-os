@@ -20,11 +20,14 @@
 - Kevin 07.10.: unbekannte WhatsApp-Nummern direkt in „Antworten“ (4035022e) · Einwilligungs-Kanal „WhatsApp“, Werbe-Vorlagen nur damit (062d7811) · Nummern-Dubletten auch bei „Telefon“ (8a571a9c)
 - Bewusst NICHT: nächtliche ICS-Sicherung der persönlichen iCloud-Konten (Apple hält die Daten; MAKE OS schreibt dort nur Blöcke; „Trennen löscht alles“ bleibt wahr)
 
-## In Arbeit (07.10. nachmittags)
+## In Arbeit (07.10. abends)
 | Paket | Ort | Stand |
 |---|---|---|
-| Websites „Klar 2“: makeinnovation.de + fokusinnovation.de neu — normale Seite statt Scroll-Film, hell → dunkel, nur Prinzipien, keine Spielereien (Kevin 07.10.) | Branch `websites-klar-2` (Worktree) | läuft |
-| Zeitstrahl „Seil“: Stränge → Seil am Ziel, Abhängigkeiten (Kevin 07.10.) | Branch `zeitstrahl-seil` (Worktree agent-ac60a1ed…) | **PAUSIERT** 07.10. (Wochenlimit 94 %): Schritt 1–2/5 fertig (ed5f7bd5 Konzept in LICHTFAEDEN.md, ba19bae5 Bezüge als Daten + Tests); weiter ab „reines Seil-Modell“ nach dem Reset Do. 09.10. abends |
+| Websites v3: Kevin „gefällt mir gar nicht, keine 0815-KI-Homepage“ → Hero „Innovation braucht Umsetzung“ bleibt, ganze Seite besser aufgebaut, Eye-Catcher mit Bedeutung (Weg der Innovation), Innovation nach vorne, „Seite muss alles aussagen“, Kugel raus (nur Websites) | Branch `websites-v3` auf `websites-klar-2` (Worktree agent-a930ae…) | läuft |
+| Zeitstrahl „Seil“ | Branch `zeitstrahl-seil` (Worktree agent-ac60a1ed…) | läuft wieder ab 3/5 |
+
+Hinweis: `websites-klar-2` wurde aus `entwicklung` wieder herausgenommen (Kevin 07.10.: „lass uns das rauslassen“) — online/entwicklung zeigen weiter die alte „Klar“-Seite.
+Bereit zum Upload (auf Kevins Wort): `entwicklung` @ 354a8076 — Aufgaben v3, Inbox 2 + WhatsApp, iCloud je Person, Blöcke ins eigene iCloud, HOI-Befunde; volle Suite 5.643 grün.
 
 ## Als Nächstes
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
