@@ -50,6 +50,17 @@ export interface WaStromEingabe {
   jetzt: number;
 }
 
+/**
+ * „Betreff“ eines Chats (rein): der Anfang der jüngsten Nachricht der Gegenseite (sonst der jüngsten überhaupt), höchstens 60 Zeichen —
+ * so lesen sich Liste und ZOE-Satz („Erika braucht „Können wir bis Freitag …“ bis Freitag“) statt eines leeren „WhatsApp“.
+ */
+export function betreffAus(n: readonly WaNachricht[]): string {
+  const m = [...n].reverse().find(x => x.richtung === 'ein' && x.text.trim()) ?? [...n].reverse().find(x => x.text.trim()) ?? n[n.length - 1];
+  const t = (m?.text ?? '').replace(/\s+/g, ' ').trim();
+  if (!t) return m ? `${BETREFF} · ${WA_ART_WORT[m.art]}` : BETREFF;
+  return t.length > 60 ? `${t.slice(0, 59).replace(/\s+\S*$/, '')}…` : t;
+}
+
 const tageZwischen = (iso: string, heute: string) => Math.max(0, Math.floor((Date.parse(`${heute}T12:00:00Z`) - Date.parse(`${iso.slice(0, 10)}T12:00:00Z`)) / 86_400_000));
 
 /** Gespräche aus dem Spiegel (rein, getestet). */
@@ -77,7 +88,7 @@ export function waGespraecheBauen(e: WaStromEingabe): Gespraech[] {
     const fenster = fensterBerechnen(k?.zuletztEingehend, e.jetzt);
     const ausschnitt = koepfe[koepfe.length - 1].ausschnitt.replace(/\s+/g, ' ').slice(0, WA_GRENZEN.ausschnitt);
     raus.push({
-      id, quelle: 'whatsapp', postfachId: e.postfachId, bereich: e.bereich, betreff: BETREFF,
+      id, quelle: 'whatsapp', postfachId: e.postfachId, bereich: e.bereich, betreff: betreffAus(n),
       gegenueber: { ...(z?.name ? { name: z.name } : k?.name ? { name: k.name } : {}), email: nummerAnzeige(nummer) },
       anzahl: n.length, am: juengste.am, ausschnitt, vonUns, ungelesen: koepfe.some(x => x.labels.includes('UNREAD')), offen: !erledigt,
       anhaenge: n.filter(x => x.medium).length, fach: f.fach,

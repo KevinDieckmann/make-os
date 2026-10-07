@@ -7,7 +7,7 @@ import { signaturGueltig, verifizieren, gleichZeitkonstant } from '@/lib/whatsap
 import { fensterBerechnen, fensterText, fensterKnapp, statusWeiter, platzhalter, vorlageFuellen, FENSTER_MS, type WaNachricht } from '@/lib/whatsapp/typen';
 import { metaFehler, FENSTER_ZU } from '@/lib/whatsapp/fehler';
 import { webhookAnwenden, leererSpiegel, ausgehendMerken, gelesenSetzen, waAufbewahren, nachrichtAus, type WebhookKoerper } from '@/lib/whatsapp/spiegel';
-import { waGespraecheBauen, kopfAus, gespraechIdFuer, waPostfachZustand } from '@/lib/whatsapp/strom';
+import { waGespraecheBauen, kopfAus, gespraechIdFuer, waPostfachZustand, betreffAus } from '@/lib/whatsapp/strom';
 import { telefonIndex, waZuordnen, telefonSchluessel } from '@/lib/whatsapp/zuordnung';
 import { waOhnePerson } from '@/lib/whatsapp/art17';
 import { vorlageAus, sendbareVorlage } from '@/lib/whatsapp/vorlagen';
@@ -203,6 +203,7 @@ describe('Gespräche im Strom der Inbox', () => {
     const a = g.find(x => x.whatsapp?.nummer === KUNDE)!;
     expect(a).toMatchObject({ quelle: 'whatsapp', bereich: 'ug', fach: 'antworten', ungelesen: true, inArbeit: true, gegenueber: { name: 'Erika Beispiel', email: `+${KUNDE}` } });
     expect(a.whatsapp!.fenster.offen).toBe(true);
+    expect(a.betreff).toBe('Können wir bis Freitag sprechen?');
     expect(a.frist?.text).toMatch(/bis Freitag/);
     const w = g.find(x => x.whatsapp?.nummer === '4917700000000')!;
     expect(w).toMatchObject({ fach: 'warten', nachfassen: true });
@@ -219,6 +220,12 @@ describe('Gespräche im Strom der Inbox', () => {
     expect(k.labels).toEqual(['INBOX']);
     expect(k.ausschnitt).toBe('[Bild]');
     expect(k.anhaenge).toEqual([{ teil: 'wa', name: 'Bild', typ: 'image/jpeg', groesse: 10 }]);
+  });
+  it('Betreff eines Chats: Anfang der jüngsten eingehenden Nachricht, gekürzt an einer Wortgrenze; ohne Text die Art', () => {
+    const n = (id: string, text: string, richtung: 'ein' | 'aus' = 'ein', art: WaNachricht['art'] = 'text'): WaNachricht => ({ id, nummer: KUNDE, richtung, am: J, art, text });
+    expect(betreffAus([n('a', 'Erste Frage'), n('b', 'Unsere Antwort', 'aus')])).toBe('Erste Frage');
+    expect(betreffAus([n('a', 'Wort '.repeat(30))]).length).toBeLessThanOrEqual(60);
+    expect(betreffAus([n('a', '', 'ein', 'bild')])).toBe('WhatsApp · Bild');
   });
   it('Zustand des Postfachs: Schlüssel abgelehnt → „anmeldung“, noch kein Webhook → „neu“', () => {
     expect(waPostfachZustand({ v: 1, token: { fehlerAt: J } }, 0).stufe).toBe('anmeldung');
