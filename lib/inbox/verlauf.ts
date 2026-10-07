@@ -31,6 +31,8 @@ export async function nachrichtenVon(person: string, id: string): Promise<{ koep
     const koepfe = Object.values(s.koepfe).filter(k => k.threadId === t.schluessel).sort((a, b) => a.am.localeCompare(b.am));
     return koepfe.length ? { koepfe, eigene: eigeneAdressen(s), postfach: 'gmail' } : null;
   }
+  // WhatsApp (07.10.): Köpfe aus dem Spiegel der Business-Nummer — nur mit Zugang (lib/whatsapp/strom.ts).
+  if (t.quelle === 'whatsapp') { const { whatsappNachrichtenVon } = await import('@/lib/whatsapp/strom'); return whatsappNachrichtenVon(person, t.postfach, t.schluessel); }
   if (t.quelle !== 'imap') return null;
   const p = (await ladePostfaecher(person)).find(x => x.id === t.postfach && x.quelle === 'imap');
   if (!p) return null;
@@ -48,11 +50,14 @@ export function gespraechSignale(person: string, id: string, koepfe: readonly St
   for (const k of koepfe) {
     const vonMir = k.labels.includes('SENT') || k.ordner === 'g' || eigene.includes(k.von.email);
     const gmail = id.startsWith('gm~');
-    const bezug = gmail ? gmailBezug(k.id) : bezugMail(`imap-${k.id}`);
+    // WhatsApp (07.10.): eigener Bezug je Nachricht (WAMID), Text ohne Inhalt — „WhatsApp gesendet/erhalten“ (art wie bei Mail:
+    // gesendet = `mail` (angesprochen), eingehend = `antwort` (Wärme-Signal); eine eigene Aktivitäts-Art gibt es (noch) nicht).
+    const wa = id.startsWith('wa~');
+    const bezug = gmail ? gmailBezug(k.id) : bezugMail(`${wa ? 'wa' : 'imap'}-${k.id}`);
     const link = gmail ? mailLinkFuer(k.id) : gespraechPfad(id);
     const a: Aktivitaet = vonMir
-      ? { am: k.am, art: 'mail', text: `E-Mail gesendet · Betreff: ${betreffZeile(k.betreff)}`, von: person, bezug, mailLink: link }
-      : { am: k.am, art: 'antwort', text: `Betreff: ${betreffZeile(k.betreff)}`, von: 'system', bezug, mailLink: link };
+      ? { am: k.am, art: 'mail', text: wa ? 'WhatsApp gesendet' : `E-Mail gesendet · Betreff: ${betreffZeile(k.betreff)}`, von: person, bezug, mailLink: link }
+      : { am: k.am, art: 'antwort', text: wa ? 'WhatsApp erhalten' : `Betreff: ${betreffZeile(k.betreff)}`, von: 'system', bezug, mailLink: link };
     // Automatische Antworten (Abwesenheit) sind kein Wärme-Signal.
     if (!vonMir && k.automatisch) continue;
     raus.push({ kontaktId: kontakt.id, aktivitaet: a });

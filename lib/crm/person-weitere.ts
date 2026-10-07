@@ -20,6 +20,8 @@ import path from 'path';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import { protokollKennungen, KENNUNG_GELOESCHT } from '@/lib/store/aenderungsprotokoll';
 import { emailsVon } from './emails';
+import { telefonSchluessel } from '@/lib/whatsapp/zuordnung';
+import { waOhnePerson, waZaehlen } from '@/lib/whatsapp/art17';
 import type { EmailAdresse } from './emails';
 
 export const GELOESCHT = '[gelöscht]';
@@ -33,6 +35,11 @@ export interface PersonMerkmale {
   emails: string[];
   /** Protokoll-Fingerabdrücke der Kennung (v2 und v1). */
   fingerabdruecke: string[];
+  /**
+   * Telefonnummern der Akte (Telefon, SMS/Mobil) als Ziffern international ohne „+“ — wie die wa_id von WhatsApp (07.10.). Nur der
+   * WhatsApp-Spiegel nutzt sie (lib/whatsapp/art17.ts); Freitext-Suche in anderen Speichern bleibt wie bisher.
+   */
+  telefone?: string[];
 }
 
 const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -42,10 +49,11 @@ const mailRe = (m: string, f = '') => new RegExp(`(?<![A-Za-z0-9._%+-])${esc(m)}
 const fpRe = (fp: string, f = '') => new RegExp(`${esc(fp)}(?![0-9a-f])`, f);
 
 /** Merkmale aus Kennung und (falls noch bekannt) Kontakt. */
-export function merkmaleVon(id: string, k?: { vorname?: string; nachname?: string; email?: string; emails?: EmailAdresse[] } | null): PersonMerkmale {
+export function merkmaleVon(id: string, k?: { vorname?: string; nachname?: string; email?: string; emails?: EmailAdresse[]; telefon?: string; sms?: string } | null): PersonMerkmale {
   const v = (k?.vorname ?? '').trim(), n = (k?.nachname ?? '').trim();
   const emails = k ? Array.from(new Set(emailsVon(k).map(a => a.adresse.trim().toLowerCase()).filter(a => a.includes('@')))) : [];
-  return { id, name: v && n.length >= 3 ? `${v} ${n}` : null, emails, fingerabdruecke: protokollKennungen(id).filter(f => f !== id) };
+  const telefone = k ? Array.from(new Set([telefonSchluessel(k.telefon), telefonSchluessel(k.sms)].filter(Boolean))) : [];
+  return { id, name: v && n.length >= 3 ? `${v} ${n}` : null, emails, fingerabdruecke: protokollKennungen(id).filter(f => f !== id), ...(telefone.length ? { telefone } : {}) };
 }
 
 /** Nennt dieser Text die Person? */
@@ -205,6 +213,8 @@ export interface WeitererSpeicher {
   name: string; muster: RegExp; behandlung: 'entfernen' | 'tilgen' | 'nur-in-apple'; wirkung: Wirkung;
   /** Spiegel eines Originals bei einem Anbieter (Gmail, 03.10.): im Spiegel wird entfernt, die entfernten Einträge zählen zusätzlich in „dort löschen“ (`nurInApple`) — das Original bleibt beim Anbieter. */
   original?: true;
+  /** Art. 15: eigene Zählung statt der Freitext-Suche (`tilgeTief`) — z. B. WhatsApp, wo die Telefonnummer die Person nennt (07.10.). */
+  zaehlen?: (cur: Obj, m: PersonMerkmale) => number;
 }
 
 /** Einträge eines Apple-Spiegels, die die Person nennen — gezählt, nie geändert. `{events}`, `{daten}`, `{objekte: {kal: [...]}}`. */
@@ -265,6 +275,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'imap-stand--*', muster: /^imap-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'imap-text--*', muster: /^imap-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
   { name: 'inbox-zustand--*', muster: /^inbox-zustand--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // WhatsApp Business (07.10.): Spiegel der Business-Nummer — Nachrichten mit einer Nummer der Person bzw. die sie nennen raus; bei Meta
+  // liegen Nachrichten höchstens 30 Tage (kein „dort löschen“). Medien dieser Nachrichten löscht der nächste Takt (Dateien ohne Nachricht).
+  { name: 'whatsapp-spiegel', muster: /^whatsapp-spiegel$/, behandlung: 'entfernen', wirkung: (cur, m) => waOhnePerson(cur, m, nenntPerson), zaehlen: (cur, m) => waZaehlen(cur, m, nenntPerson) },
   { name: 'kemaris-calendar', muster: /^kemaris-calendar$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },
@@ -348,8 +361,9 @@ export async function weitereAufzaehlen(m: PersonMerkmale): Promise<Record<strin
     if (!weitererSpeicher(name)) continue;
     const cur = await loadJson<unknown>(name).catch(() => null);
     if (cur === null) continue;
-    const t = tilgeTief(cur, m);
-    if (t.n) raus[name] = t.n;
+    const s = weitererSpeicher(name)!;
+    const n = s.zaehlen && typeof cur === 'object' ? s.zaehlen(cur as Obj, m) : tilgeTief(cur, m).n;
+    if (n) raus[name] = n;
   }
   return raus;
 }

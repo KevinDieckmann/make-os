@@ -167,6 +167,9 @@ export const LOESCHREGELN = [
   { id: 'kapazitaet-konto', titel: 'Kapazität eines entfernten Kontos (Grundwert, Ausnahmen, Zuweisungen, Wochenplan-Zeilen)', frist: 'beim nächsten Morgenlauf nach dem Entfernen', aktion: 'Löschen (Morgenlauf)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO, § 26 BDSG' },
   { id: 'loeschprotokoll', titel: 'Löschprotokoll (nur Protokoll-ID, Tag, Grund, wer)', frist: '36 Monate (abgeschlossene Einträge)', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 2, Art. 17 DSGVO' },
   { id: 'pannen', titel: 'Pannen-Register (Art. 33 Abs. 5)', frist: '36 Monate ab Abschluss der Panne', aktion: 'Löschen (Morgenlauf, Frist einstellbar — anwaltlich bestätigen)', norm: 'Art. 33 Abs. 5, Art. 5 Abs. 2 DSGVO' },
+  // 07.10. (WhatsApp Business): Spiegel und Medien der Business-Nummer (lib/whatsapp/aufraeumen.ts).
+  { id: 'whatsapp-spiegel', titel: 'WhatsApp-Spiegel der Business-Nummer (einzige dauerhafte Kopie)', frist: '180 Tage (einstellbar; § 257 HGB für Geschäftsbriefe prüfen)', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 1 lit. e DSGVO, § 257 HGB' },
+  { id: 'whatsapp-medien', titel: 'WhatsApp-Medien (Bilder, Dokumente, Audio)', frist: '90 Tage (einstellbar)', aktion: 'Löschen (Morgenlauf; Nachricht bleibt mit Hinweis)', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO' },
   { id: 'bauplan-bilder', titel: 'Bauplan: Bildschirmfotos (können Personendaten zeigen)', frist: '90 Tage nach Abschluss der Karte, nicht zugeordnete 7 Tage', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO' },
   // 05.10. (DSGVO-Grundlagen): Sicherungen wahrheitsgemäß — Generationen bis ~12 Monate (deploy/generationen.sh), nicht 14 Tage.
   { id: 'sicherungen', titel: 'Verschlüsselte Sicherungen (Tages-, Wochen-, Monatsgenerationen)', frist: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate, danach überschrieben`, aktion: 'Überschreiben (gelöschte Daten nicht mehr verwendet; nach einem Zurückspielen löschen die Grabsteine erneut)', norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO' },
@@ -337,6 +340,33 @@ export function verarbeitungEmailImapNachtragen(vorhanden: readonly Verarbeitung
   return vorhanden.some(v => v.id === VV_EMAIL_IMAP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailImap(jetzt)];
 }
 
+// ── Verarbeitung „WhatsApp Business (Meta, Auftragsverarbeiter)“ (07.10., Inbox 2 Paket 5) — idempotent nachgetragen ──
+// Kevin 06.10.: eigene Business-Nummer direkt bei Meta (Cloud API). Fakten: research/inbox/FAKTEN_WHATSAPP_IMAP.md (A4). Hinweis, keine
+// Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung ist ein To-do.
+
+export const VV_WHATSAPP_ID = 'vv-whatsapp';
+
+export function verarbeitungWhatsapp(jetzt: string): Verarbeitung {
+  return {
+    id: VV_WHATSAPP_ID, name: 'WhatsApp Business (Meta, Auftragsverarbeiter)',
+    zweck: 'Geschäftliche Gespräche über die eigene WhatsApp-Business-Nummer: Anfragen empfangen, in der Inbox den Kontakten, Firmen und Deals zuordnen (nur auf Klick), beantworten (nur auf Klick; außerhalb des 24-Stunden-Fensters nur mit bei Meta genehmigten Vorlagen)',
+    personen: 'Personen, die der Business-Nummer schreiben bzw. denen wir antworten (Interessenten, Kunden, Partner); Kevin, Malin',
+    daten: 'Telefonnummer (WhatsApp-ID), Profilname, Nachrichten (Text, Bilder, Dokumente, Sprachnachrichten, Standort, geteilte Kontakte), Zeitpunkte, Zustellstand (gesendet/zugestellt/gelesen), wer bei uns gesendet hat, Verknüpfung zu Kontakt/Firma/Deal',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anfragen, Anbahnung und Durchführung von Verträgen) bzw. lit. f (Geschäftsbetrieb); Werbe-Vorlagen nur mit Einwilligung (§ 7 UWG) und nie bei Werbesperre; Art. 18 → nichts senden',
+    empfaenger: 'WhatsApp Ireland Limited / Meta (Cloud API — Auftragsverarbeiter nach den WhatsApp Business Data Processing Terms, gelten automatisch); Kevin, Malin (Business-Bereich); Hetzner (Hosting, Spiegel); Anthropic (ZOE-Entwurf nur auf Klick, gekapselt, nie bei eingeschränkten Personen)',
+    empfaengerIds: ['meta-whatsapp', 'hetzner', 'anthropic'],
+    drittland: 'Meta: Verarbeitung in Meta-Rechenzentren; mit Local Storage „DE“ bleiben gespeicherte Daten in Deutschland, während der Verarbeitung bis zu 60 Minuten weltweit; Data Transfer Addendum (EU) der Data Processing Terms; Anthropic: Standardvertragsklauseln/Data Privacy Framework — prüfen',
+    loeschfrist: 'Bei Meta höchstens 30 Tage (mit „No Storage“ keine dauerhafte Speicherung); in MAKE OS Spiegel 180 Tage (Frist „WhatsApp-Spiegel“, einstellbar; Geschäftsbriefe § 257 HGB prüfen), Medien 90 Tage (Frist „WhatsApp-Medien“); Art. 17 sofort über die Telefonnummer der Akte',
+    toms: 'Webhook nur mit gültiger Signatur (HMAC-SHA256 mit dem App-Geheimnis) bzw. Verify-Token, Zugriffsschlüssel und App-Geheimnis nur in der Umgebung des Servers (nie im Browser, nie im Log), Bestände und Medien verschlüsselt auf der Platte, Server in Deutschland (Hetzner), Zugang nur Business-Bereich im Haushalt (serverseitig gefiltert), Senden nur per Einzelklick (nie Dienstweg/automatisch), keine Lesebestätigungen, Transport-Verschlüsselung von Meta (Signal-Protokoll, Schlüssel bei Meta)',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „WhatsApp Business“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungWhatsappNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_WHATSAPP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungWhatsapp(jetzt)];
+}
+
 // ── Verarbeitungen „Gesellschafts-Register“ und „Kapazität“ (DSGVO-Prüfung 04.10.) — idempotent nachgetragen ──
 // Kevin 04.10.: „DSGVO und Datenschutz — alles verbessern, anpassen.“ Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
 
@@ -427,16 +457,17 @@ export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbe
 
 /**
  * Das Verzeichnis vollständig machen — EINE Stelle für alle Nachträge (Stammdaten, System › Datenschutz, Export):
- * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet),
+ * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet), WhatsApp (wenn eingerichtet),
  * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
  */
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
   if (opt.google) { l = verarbeitungKalenderNachtragen(l, jetzt); l = verarbeitungEmailNachtragen(l, jetzt); }
   // iCloud (06.10.): sobald der Haushalts-Kalender oder eine Verbindung je Person besteht (`icloudInGebrauch`).
   if (opt.icloud) l = verarbeitungIcloudNachtragen(l, jetzt);
+  if (opt.whatsapp) l = verarbeitungWhatsappNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = alteFassungenHeben(l);

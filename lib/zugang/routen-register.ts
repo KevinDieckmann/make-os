@@ -113,6 +113,12 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'inbox/anhang': r('GET', 'person', 'Anhang aus dem eigenen IMAP-Postfach, nur als Download (eigenePerson).'),
   'gmail/anhang': r('GET', 'person', 'Anhang aus dem eigenen Gmail (eigenePerson).'),
   'google/gmail/meldung': r('POST', 'offen', 'Gmail-Pub/Sub-Push: ohne Sitzung, prüft das OIDC-Token von Google selbst, liefert nie Daten.'),
+  // WhatsApp Business (07.10., lib/whatsapp/*): die Business-Nummer der Instanz.
+  'whatsapp/webhook': r('GET,POST', 'offen', 'Webhook der WhatsApp Cloud API — offen, aber selbst geprüft: GET nur mit dem Verify-Token (zeitkonstant, gedrosselt), POST nur mit gültiger X-Hub-Signature-256 über den Rohkörper (App-Geheimnis), Körper ≤ 512 KB, idempotent; ohne Einrichtung 404; liefert nie Daten.'),
+  'whatsapp/senden': r('POST', 'person', 'Senden NUR per Einzelklick der Person mit Zugang zur Business-Nummer, an EIN Gespräch (eigenePerson; Dienstweg 403).'),
+  'whatsapp/vorlagen': r('GET', 'person', 'Vorlagen des Business-Kontos lesen (Cache) — nur die Person mit Zugang (eigenePerson).'),
+  'whatsapp/status': r('GET,POST', 'person', 'Zustand der WhatsApp-Verbindung (nie Schlüssel) — angemeldete Person im Haushalt (eigenePerson), Einzelheiten nur mit Zugang.'),
+  'whatsapp/medien': r('GET', 'person', 'Medium einer WhatsApp-Nachricht als Download — nur die Person mit Zugang (eigenePerson).'),
   'google/rueckruf': r('GET', 'person', 'Rückruf der eigenen Google-Anmeldung (eigenePerson).'),
   'google/status': r('GET', 'person', 'Stand der eigenen Google-Verbindung (eigenePerson).'),
   'google/trennen': r('POST', 'person', 'Eigene Google-Verbindung trennen (eigenePerson).'),

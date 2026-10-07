@@ -28,6 +28,9 @@ const CSP_MELDEWEG = /^\/api\/hoi\/csp$/;
 // Gmail (03.10.): die Pub/Sub-Push-Subscription ruft `POST /api/google/gmail/meldung` — ebenfalls ohne Sitzung und ohne Origin; die Route prüft
 // das OIDC-Token von Google (Signatur, Aussteller, Audience, Dienstkonto) selbst und liefert nie Daten (lib/gmail/meldung.ts).
 const GOOGLE_MELDEWEG = /^\/api\/(kalender\/google|google\/gmail)\/meldung$/;
+// WhatsApp (07.10.): der Webhook der Cloud API (lib/whatsapp/webhook.ts) — Meta ruft ohne Sitzung und ohne Origin: GET zur
+// Verifizierung (prüft das Verify-Token selbst), POST mit Meldungen (prüft X-Hub-Signature-256 über den Rohkörper selbst). Liefert nie Daten.
+const WHATSAPP_WEBHOOK = /^\/api\/whatsapp\/webhook$/;
 // Öffentliche Buchungsseite (29.09., K4): NUR diese Pfade sind ohne Sitzung offen — die Seite einer Buchungsadresse,
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
@@ -62,7 +65,7 @@ export async function middleware(req: NextRequest) {
   if (riegel) { if (!riegelGemeldet) { riegelGemeldet = true; console.error(`[MAKE OS] Middleware: ${riegel} — alle Anfragen 503.`); } return new NextResponse(`MAKE OS ist nicht eingerichtet (${riegel}).`, { status: 503 }); }
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
-  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST')) {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST') && !(WHATSAPP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST')) {
     const origin = req.headers.get('origin');
     if (origin) {
       // Die eigene Adresse ist, was der Browser als Host schickt — hinter einem
@@ -119,6 +122,8 @@ export async function middleware(req: NextRequest) {
   }
   if (CSP_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
   if (GOOGLE_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
+  // WhatsApp-Webhook: nie als jemand (Köpfe oben gelöscht) — die Route handelt für niemanden.
+  if (WHATSAPP_WEBHOOK.test(pfad) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
   // Abmeldelink: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
   if (ABMELDE_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
 

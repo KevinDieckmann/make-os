@@ -4,6 +4,71 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 07.10.2026 — WhatsApp Business in der Inbox (Inbox 2, Paket 5; nur lokal, Branch `whatsapp` auf `inbox-2`)
+
+**Entschieden (Kevin 06.10.):** eigene, neue Business-Nummer direkt bei Meta (Cloud API — kein Coexistence, kein Drittanbieter, keine
+inoffiziellen Bibliotheken), Bereich MAKE Innovation, ZOE nur Vorschlag + Klick. Fakten: `research/inbox/FAKTEN_WHATSAPP_IMAP.md`.
+
+**Was gebaut ist:** Webhook `/api/whatsapp/webhook` (Verify-Token beim Einrichten, jede Meldung nur mit gültiger Signatur
+`X-Hub-Signature-256` über den Rohkörper, idempotent), Spiegel der Nummer (verschlüsselt, Frist), Medien (verschlüsselt, Frist), je
+Gesprächspartner ein Gespräch in der Inbox mit 24-h-Fenster, Senden frei (nur bei offenem Fenster) bzw. mit genehmigter Vorlage (jederzeit)
+— immer nur per Klick, Vorlagen-Liste, Fehler von Meta als klare Sätze, Glocke „Verbindung erneuern“, Karte unter System › Verbindungen
+(auch: Nummer registrieren mit Speicherort Deutschland), Zuordnung über die Telefonnummer der Akte (nur Vorschlag), Art. 15/17, Konto löschen,
+VVT. Ohne Einrichtung passiert nichts (der Webhook antwortet 404).
+
+**Schritte für Kevin — in dieser Reihenfolge** (jede Aussage über Meta mit Beleg; wo keiner da ist: „bei Meta prüfen“):
+1. **Nummer vorbereiten:** eine eigene Nummer mit Ländervorwahl, die SMS oder Anrufe empfangen kann. Sie darf **nicht in der WhatsApp-App
+   aktiv sein** (eine Nummer, die schon in WhatsApp läuft, muss dort vorher gelöscht werden). Neue Portfolios: höchstens 2 Nummern und
+   250 vom Unternehmen gestartete Gespräche je 24 h, nach der Unternehmensverifizierung 2.000 — Antworten im 24-h-Fenster zählen nicht
+   (Beleg: https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started).
+2. **Meta-Business-Portfolio** auf die Gesellschaft (MAKE Innovation GmbH, vormals KEMARIS Innovation GmbH — Name wie im Handelsregister)
+   unter https://business.facebook.com/ anlegen bzw. öffnen; Unternehmensverifizierung anstoßen (hebt das Limit, siehe 1.).
+3. **App anlegen (Typ „Business“)** im App-Dashboard https://developers.facebook.com/apps/ und das Produkt **WhatsApp** hinzufügen — dabei
+   entsteht bzw. verknüpft sich das WhatsApp-Business-Konto (WABA) (Anleitung: https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started).
+4. **Nummer hinzufügen** (WhatsApp › API-Einrichtung) und per SMS/Anruf bestätigen — **noch nicht registrieren.** Registriert wird in
+   MAKE OS (Schritt 9), weil Meta eine Nummer nur über die Schnittstelle registriert und der **Speicherort nur vor bzw. mit der
+   Registrierung** festgelegt werden kann: MAKE OS sendet dabei `data_localization_region: DE` (Local Storage „EU (Germany): DE“;
+   Belege: https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/registration und
+   https://developers.facebook.com/documentation/business-messaging/whatsapp/local-storage). **„No Storage“** gibt es laut Faktendatei seit
+   01.12.2025 — wie man es einschaltet, steht in der Registrierungs-Doku nicht: **bei Meta prüfen**, falls ihr das statt DE wollt.
+5. **System-User + dauerhafter Zugriffsschlüssel:** in den Unternehmenseinstellungen unter „Systemnutzer“ einen System-User anlegen, ihm die
+   App zuweisen und einen Schlüssel mit den Rechten **whatsapp_business_messaging** und **whatsapp_business_management** erzeugen (Metas
+   Anleitung nennt zusätzlich business_management); als Ablauf die dauerhafte Option wählen — wie sie heißt: bei Meta prüfen
+   (https://developers.facebook.com/documentation/business-messaging/whatsapp/access-tokens). Ob das WhatsApp-Konto dem System-User
+   zusätzlich als Asset zugewiesen werden muss: bei Meta prüfen.
+6. **Werte heraussuchen** (nicht in den Chat): Telefonnummer-ID und WABA-ID (App-Dashboard › WhatsApp › API-Einrichtung), App-Geheimnis
+   (App-Einstellungen › Allgemein — bei Meta prüfen, falls das Menü anders heißt).
+7. **Auf dem Server eintragen:** `ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/whatsapp-verbinden.sh` — fragt Telefonnummer-ID,
+   WABA-ID, den Schlüssel (verdeckt, genau EINMAL einfügen), das App-Geheimnis (verdeckt), den Bereich (Vorgabe `ug` = MAKE Innovation) und
+   optional die Konten; erzeugt den **Verify-Token** und zeigt ihn an. Entfernen: `… whatsapp-verbinden.sh --entfernen`.
+8. **Webhook bei Meta eintragen** (App-Dashboard › WhatsApp › Konfiguration): Rückruf-URL `https://app.makeinnovation.de/api/whatsapp/webhook`,
+   Verify-Token aus Schritt 7, „Überprüfen und speichern“, dann das Feld **messages** abonnieren
+   (https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/create-webhook-endpoint). Ob die App dafür im
+   Live-Modus sein muss (mit Datenschutz-URL): bei Meta prüfen.
+9. **In MAKE OS:** System › Verbindungen › „WhatsApp Business“ › **Nummer registrieren** (nur der Inhaber; 6-stellige PIN = Zwei-Schritt-PIN
+   der Nummer, wird nicht gespeichert; „Speicherort Deutschland“; höchstens 10 Versuche in 72 h) → „Verbindung prüfen“ (zeigt Nummer,
+   Anzeigename, Qualität). Dann vom eigenen Handy eine Test-Nachricht an die Nummer: sie steht in der Inbox unter MAKE Innovation.
+10. **Vorlagen** (für Erstkontakt und alles nach 24 h) im WhatsApp Manager anlegen und genehmigen lassen; Werbe-Vorlagen kosten immer,
+    Service-Antworten im Fenster sind frei (Faktendatei A3). MAKE OS liest die genehmigten unter „Vorlage“.
+11. **Datenschutz-To-dos:** System › Datenschutz › Empfänger: „WhatsApp Business (Meta, Cloud API)“ zurückholen (liegt archiviert) und die
+    WhatsApp Business Data Processing Terms (gelten automatisch, Vertragspartner WhatsApp Ireland Limited) mit Datum ablegen; der
+    VVT-Eintrag „WhatsApp Business (Meta, Auftragsverarbeiter)“ erscheint von selbst, sobald die Werte auf dem Server stehen; Datenschutz-
+    erklärung der Website um WhatsApp ergänzen (anwaltlich gegenlesen); **Frist „WhatsApp-Spiegel“** (Vorgabe 180 Tage) mit der
+    Steuerberatung klären — der Spiegel ist die einzige dauerhafte Kopie (Meta hält Nachrichten höchstens 30 Tage), Geschäftsbriefe
+    ggf. 6 Jahre (§ 257 HGB).
+
+**Neu im Code (alles optional, nur neue Bestände):** `whatsapp-spiegel`, `whatsapp-zustand`, Ordner `<daten>/whatsapp-medien/` (in
+`BILD_ORDNER`, Rotation/Sicherungsprüfung nehmen ihn mit), Fristen `whatsapp-spiegel`/`whatsapp-medien`, Empfänger `meta-whatsapp`,
+VVT `vv-whatsapp`, Routen `/api/whatsapp/{webhook,senden,vorlagen,status,medien}`, Middleware lässt genau den Webhook (GET/POST) ohne
+Sitzung durch. Umgebung: `WHATSAPP_*` (deploy/env.server.beispiel).
+
+**Rückweg:** Der alte Stand kennt die Bestände nicht und fasst sie nicht an; ohne `WHATSAPP_*` ist alles aus. Medien-Dateien `.bin` liest
+der alte Stand nicht (bleiben verschlüsselt liegen; bei Bedarf Ordner `whatsapp-medien` löschen). Bei Meta: Webhook-Abo entfernen,
+System-User-Schlüssel widerrufen.
+
+**Zusammenführen mit `inbox-2`:** geänderte gemeinsame Dateien stehen in CLAUDE.md › „WhatsApp Business“. Für die Oberfläche der Inbox:
+Bausteine in `components/os/whatsapp/` (FensterUhr, WhatsappAntwort, VorlagenWaehler) — einhängen, wenn `gespraech.quelle === 'whatsapp'`.
+
 ## 07.10.2026 — Malins Blöcke landen in IHREM iCloud (nur lokal; Kevin: „Malins eigenes iCloud“, „Belegt“ bleibt)
 - Fokus- und Plan-Blöcke aus Planen, ZOE und der Wochenplan-Übernahme gehen für Personen mit eigener iCloud-Verbindung in deren eigenes Konto (erscheinen damit auf ihrem iPhone); Kevin (Haushalts-Kalender) unverändert.
 - Malin wählt in Kalender › Einstellungen › iCloud unter „Blöcke aus Planen und ZOE landen in“ den Kalender (Standard: erster gezeigter, schreibbarer).

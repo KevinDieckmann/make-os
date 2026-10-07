@@ -280,6 +280,15 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('imap-spiegel', await imapAufraeumen(stichtag('mail-spiegel', f['mail-spiegel'], heute)));
   });
 
+  // 11c · WhatsApp (07.10.): Nachrichten der Business-Nummer vor der Frist (Vorgabe 180 Tage) weg, ihre Dateien mit; Medien vor der
+  //       Medien-Frist (Vorgabe 90 Tage) — die Nachricht bleibt („abgelaufen“). Ohne Spiegel: nichts.
+  await schritt('whatsapp', async () => {
+    const { whatsappAufraeumen } = await import('@/lib/whatsapp/aufraeumen');
+    const r = await whatsappAufraeumen(stichtag('whatsapp-spiegel', f['whatsapp-spiegel'], heute), stichtag('whatsapp-medien', f['whatsapp-medien'], heute));
+    zaehle('whatsapp-spiegel', r.nachrichten);
+    zaehle('whatsapp-medien', r.medien);
+  });
+
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
   await schritt('archiv-umzug', async () => {
     const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);

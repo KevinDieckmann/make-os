@@ -40,6 +40,7 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'konto/status': ['GET'], 'konto/anmelden': ['POST'], 'konto/einrichten': ['POST'], 'konto/beitreten': ['POST'],
   'buchung/[slug]': ['GET', 'POST'], 'buchung/[slug]/status': ['POST'],
   'kalender/google/meldung': ['POST'], 'google/gmail/meldung': ['POST'], 'hoi/csp': ['POST'],
+  'whatsapp/webhook': ['GET', 'POST'], // Meta: Verify-Token bzw. X-Hub-Signature-256 — prüft die Route selbst (tests/whatsapp-webhook.test.ts)
   'jarvis/[...pfad]': ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // nur 308 → /api/zoe/*
   'kemaris-calendar': ['GET'], // fester Leerstand
   'state/aenderungen': ['POST'], // nur 405
@@ -92,7 +93,7 @@ describe('Routen-Register (statisch)', () => {
 
   it('öffentliche Wege der Middleware sind im Register „offen“ (und nur die)', () => {
     const mw = readFileSync(path.join(WURZEL, 'middleware.ts'), 'utf8');
-    for (const p of ['konto\\/(status|anmelden|einrichten|beitreten)', 'hoi\\/csp', '(kalender\\/google|google\\/gmail)\\/meldung']) expect(mw).toContain(p);
+    for (const p of ['konto\\/(status|anmelden|einrichten|beitreten)', 'hoi\\/csp', '(kalender\\/google|google\\/gmail)\\/meldung', 'whatsapp\\/webhook']) expect(mw).toContain(p);
     expect(ROUTEN_REGISTER['hoi/csp'].methoden.GET).toBe('haushalt');
   });
 
