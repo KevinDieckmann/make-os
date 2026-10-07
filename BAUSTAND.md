@@ -21,14 +21,11 @@
 - Kevin 07.10.: unbekannte WhatsApp-Nummern direkt in „Antworten“ (4035022e) · Einwilligungs-Kanal „WhatsApp“, Werbe-Vorlagen nur damit (062d7811) · Nummern-Dubletten auch bei „Telefon“ (8a571a9c)
 - Bewusst NICHT: nächtliche ICS-Sicherung der persönlichen iCloud-Konten (Apple hält die Daten; MAKE OS schreibt dort nur Blöcke; „Trennen löscht alles“ bleibt wahr)
 
-## In Arbeit (07.10. abends)
-| Paket | Ort | Stand |
-|---|---|---|
-| Websites v3: Kevin „gefällt mir gar nicht, keine 0815-KI-Homepage“ → Hero „Innovation braucht Umsetzung“ bleibt, ganze Seite besser aufgebaut, Eye-Catcher mit Bedeutung (Weg der Innovation), Innovation nach vorne, „Seite muss alles aussagen“, Kugel raus (nur Websites) | Branch `websites-v3` auf `websites-klar-2` (Worktree agent-a930ae…) | läuft |
-| Zeitstrahl „Seil“ | Branch `zeitstrahl-seil` (Worktree agent-ac60a1ed…) | läuft wieder ab 3/5 |
-
-Hinweis: `websites-klar-2` wurde aus `entwicklung` wieder herausgenommen (Kevin 07.10.: „lass uns das rauslassen“) — online/entwicklung zeigen weiter die alte „Klar“-Seite.
-Hochgeladen 07.10. ~18:28 (siehe „Online“).
+## Pausiert (07.10. abends, Kevin: „wir müssen runterfahren“) — Zwischenstände gesichert, NICHT online
+| Paket | Branch / Worktree | Stand | Weiter mit |
+|---|---|---|---|
+| Websites v3 „Der Weg“ (Kugel raus, Innovation nach vorne, Linienplan, Farbfläche, Arbeits-Schemata, Gründer, FAQ) | `websites-v3` · `.claude/worktrees/agent-a930ae2991317f9aa` | 32f3807c, 54ff6ab6 + Zwischenstand 5af8012d (unfertig: Ruhe-Regeln für v3 wurden gerade umgeschrieben) | Ruhe-Prüfer/Tests auf v3 anpassen, Sichtprüfung, Fotos, Kevin zeigen |
+| Zeitstrahl „Seil“ | `zeitstrahl-seil` · `.claude/worktrees/agent-ac60a1ed809782024` | 4/5: Konzept, Bezüge, Seil-Modell, Adapter + /api/seil, Zeichnung (Canvas, Fokus-Modus, Handy) + Zwischenstand 94638d5f (unfertig: Beschriftungs-Spalte links im Gantt-Stil) | Beschriftungs-Spalte fertig, Merge `entwicklung`, volle Suite, Sandbox-Prüfung, Fotos, Doku (5/5) |
 
 ## Als Nächstes
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
