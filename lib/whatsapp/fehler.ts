@@ -33,7 +33,9 @@ export function metaFehler(code: number | undefined | null, _sub?: number | null
   if (c === 131047) return FENSTER_ZU; // „More than 24 hours have passed since the recipient last replied.“
   if ([132001, 132015, 132016, 132007].includes(c)) return VORLAGE; // nicht vorhanden/nicht genehmigt · pausiert · deaktiviert · Richtlinie
   if ([132000, 132012, 132005, 131008, 131009].includes(c)) return PARAMETER;
-  if (c === 133010 || c === 133000) return NUMMER; // „Phone number not registered on the WhatsApp Business Platform.“
+  if (c === 133010 || c === 133000) return NUMMER;
+  // Registrierung: höchstens 10 Versuche je Nummer in 72 Stunden (https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/registration).
+  if (c === 133016) return T('limit', 429, 'Zu viele Registrierungs-Versuche: Meta erlaubt höchstens 10 je Nummer in 72 Stunden — bitte später noch einmal.'); // „Phone number not registered on the WhatsApp Business Platform.“
   if (c === 131026 || c === 131051) return c === 131051 ? T('parameter', 400, 'Diese Art Nachricht unterstützt WhatsApp nicht.') : EMPFAENGER;
   if ([4, 80007, 130429, 131056, 131048, 131049].includes(c)) return LIMIT;
   if (c === 190 || c === 0 || c === 3 || c === 10 || c === 131005 || (c >= 200 && c <= 299)) return TOKEN;

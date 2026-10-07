@@ -5,7 +5,7 @@
 // Skripte) liest und sendet nie (die Routen nehmen `eigenePerson`).
 
 import { ladeKonten } from '@/lib/zugang/konten';
-import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { istInhaber, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { melde } from '@/lib/meldungen/melden';
 import { graph, tokenHakenSetzen, WhatsappFehler } from './graph';
 import { whatsappKonfig, whatsappFehlend, webhookAdresse, type WaKonfig } from './konfig';
@@ -88,5 +88,21 @@ export async function whatsappStatus(person: string, o: { pruefen?: boolean } = 
     verbindung: tokenKaputt ? 'token' : z.fehler && (!z.telefon?.nummer || z.fehler.at >= (z.telefon.at ?? '')) ? 'fehler' : z.telefon?.nummer ? 'ok' : 'ungeprueft',
     ...(tokenKaputt ? { fehler: 'Der Zugriffsschlüssel wurde von Meta abgelehnt.' } : z.fehler ? { fehler: z.fehler.text } : {}),
     gespraeche: Object.keys(s.kontakte).length, medienOffen,
+    ...(z.registriert ? { registriert: z.registriert } : {}), inhaber: await istInhaber(person),
   };
+}
+
+// ── Nummer registrieren (einmalig, nur der Inhaber, per Klick) ─────────────────────────────────────────────
+// Meta: „You can only register a number via the API“ — POST /<PHONE_NUMBER_ID>/register mit messaging_product, pin (6 Ziffern, die
+// Zwei-Schritt-PIN — neu, wenn noch keine gesetzt ist) und optional data_localization_region (Local Storage, u. a. „DE“ = EU/Deutschland);
+// höchstens 10 Anfragen je Nummer in 72 Stunden
+// (https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/registration, abgerufen 07.10.2026).
+// Local Storage geht NUR vor bzw. mit der Registrierung (Faktendatei A4). „No Storage“ ist hier nicht belegt → bei Meta prüfen.
+// Die PIN wird nirgends gespeichert und nie protokolliert.
+
+/** Die Nummer bei der Cloud API registrieren — mit Speicherort Deutschland (Vorgabe) oder ohne Local Storage. Wirft `WhatsappFehler`. */
+export async function nummerRegistrieren(k: WaKonfig, pin: string, speicherort: 'DE' | 'ohne'): Promise<void> {
+  if (!/^[0-9]{6}$/.test(pin)) throw new WhatsappFehler('parameter', 'Die PIN hat genau 6 Ziffern.', 400);
+  await graph<{ success?: boolean }>(k, `/${k.telefonnummerId}/register`, { method: 'POST', body: { messaging_product: 'whatsapp', pin, ...(speicherort === 'DE' ? { data_localization_region: 'DE' } : {}) } });
+  await aendereWaZustand(cur => ({ ...cur, registriert: { am: new Date().toISOString(), speicherort } }));
 }

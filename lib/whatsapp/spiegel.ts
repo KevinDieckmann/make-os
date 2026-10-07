@@ -25,6 +25,8 @@ export interface WaZustand {
   vorlagen?: { at: string; liste: Vorlage[] };
   /** Zugriffsschlüssel: zuletzt abgelehnt (→ „Verbindung erneuern“) und ob die Glocke schon geläutet hat. */
   token?: { fehlerAt?: string; gemeldet?: boolean; okAt?: string };
+  /** Registrierung der Nummer aus MAKE OS (nur Zeitpunkt + gewählter Speicherort — nie die PIN). */
+  registriert?: { am: string; speicherort: 'DE' | 'ohne' };
   /** Letzter Fehler beim Prüfen der Verbindung (deutscher Satz, kein Rohtext von Meta). */
   fehler?: { at: string; text: string };
 }

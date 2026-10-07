@@ -203,4 +203,8 @@ export interface WhatsappStatus {
   fehler?: string;
   gespraeche?: number;
   medienOffen?: number;
+  /** Aus MAKE OS registriert (Zeitpunkt, Speicherort) — nur Anzeige. */
+  registriert?: { am: string; speicherort: 'DE' | 'ohne' };
+  /** Darf diese Person registrieren (Inhaber)? */
+  inhaber?: boolean;
 }
