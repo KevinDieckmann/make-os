@@ -174,7 +174,8 @@ describe('Webhook → Spiegel', () => {
   it('gelesen setzen/zurücknehmen und Aufbewahren (Frist) samt Dateien', () => {
     let s = webhookAnwenden(leererSpiegel(), webhook({ messages: [text('wamid.ALT11111', 'alt', Date.parse('2026-01-01T10:00:00Z')), text('wamid.NEU11111', 'neu', T0, '4915199999999')] }), NR_ID, J).spiegel;
     s = { ...s, nachrichten: { ...s.nachrichten, 'wamid.ALT11111': { ...s.nachrichten['wamid.ALT11111'], medium: { mediaId: '1', mime: 'image/jpeg', zustand: 'abgelegt', datei: 'x'.repeat(40) + '.bin' } } } };
-    expect(gelesenSetzen(s, KUNDE, true, J).kontakte[KUNDE].gelesenBis).toBe(J);
+    // „Gelesen bis“ = jüngste schon vorhandene eingehende Nachricht (nicht „jetzt“ — eine später eintreffende bleibt ungelesen).
+    expect(gelesenSetzen(s, KUNDE, true, J).kontakte[KUNDE].gelesenBis).toBe(s.nachrichten['wamid.ALT11111'].am);
     expect(gelesenSetzen(gelesenSetzen(s, KUNDE, true, J), KUNDE, false, J).kontakte[KUNDE].gelesenBis).toBeUndefined();
     const r = waAufbewahren(s, '2026-04-10');
     expect(r.weg).toBe(1); expect(r.dateien).toEqual(['x'.repeat(40) + '.bin']);
