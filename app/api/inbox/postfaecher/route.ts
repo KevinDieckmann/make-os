@@ -1,5 +1,8 @@
 // ─── Inbox 2 — eigene Postfächer verbinden, einstellen, erneuern, trennen (06.10.2026) ─────────────────────────
-// GET  → { ok, postfaecher, bereiche (wählbar), anbieter (Voreinstellungen + Anleitung), demo, absender (Screener), google }
+// GET  ?space=business → { ok, postfaecher, bereiche (wählbar), anbieter (Voreinstellungen + Anleitung), demo, absender (Screener), google }
+//      `space=business` (07.10. abends, Kevin-Regel „Business sieht nie Privat“): NUR Postfächer mit Business-Bereich, nur Business-Bereiche
+//      zur Wahl, nur Absender-Entscheidungen zu Gesprächen dieser Postfächer — serverseitig gefiltert (`postfaecherSicht`, dieselbe Stelle
+//      `imBereich` wie der Strom). Ohne Parameter bzw. `space=privat`: alle EIGENEN Postfächer (die Person verwaltet ihre Postfächer).
 // POST { aktion: 'hinzufuegen', anbieter, adresse, passwort, bereich, anzeigename?, absenderName?, signatur?, imap?, smtp? }
 //        → prüft die Anmeldung beim Anbieter ZUERST; nur wenn sie klappt, werden Register + Passwort gespeichert (sonst 409, nichts gespeichert)
 //      { aktion: 'einstellen', id, bereich?, anzeigename?, absenderName?, signatur? }   (auch Gmail: Bereich festlegen)
@@ -16,7 +19,7 @@ import { bereichNamen, RegisterFehler } from '@/lib/postfach/register';
 import { demoErlaubt, postfachEinstellen, postfachErneuern, postfachHinzufuegen, postfachTrennen } from '@/lib/postfach/verwalten';
 import { PostfachFehler } from '@/lib/postfach/transport';
 import { POSTFACH_ID } from '@/lib/postfach/typen';
-import { stromRoh } from '@/lib/inbox/strom-server';
+import { stromRoh, postfaecherSicht } from '@/lib/inbox/strom-server';
 import { absenderEntscheiden, absenderListe } from '@/lib/inbox/aktionen';
 import { ZustandFehler } from '@/lib/inbox/zustand';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
@@ -27,14 +30,19 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const z = await eigenePerson(req, false, NUR_EIGENE_POST);
   if (z instanceof NextResponse) return z;
-  const [roh, namen, absender] = await Promise.all([stromRoh(z.person), bereichNamen(), absenderListe(z.person)]);
+  const space = new URL(req.url).searchParams.get('space');
+  if (space && space !== 'privat' && space !== 'business') return NextResponse.json({ ok: false, fehler: 'space ist ungültig.' }, { status: 400 });
+  const [roh, namen, absenderAlle] = await Promise.all([stromRoh(z.person), bereichNamen(), absenderListe(z.person)]);
   const demo = demoErlaubt();
+  const alleBereiche = [{ id: 'privat', name: 'Privat' }, ...KERN_EINHEITEN.map(e => ({ id: e.id, name: e.label })), ...Object.entries(namen).filter(([id]) => id.startsWith('g-')).map(([id, name]) => ({ id, name }))];
+  const sicht = postfaecherSicht({ postfaecher: roh.postfaecher.map(p => p.oeffentlich), gespraeche: roh.gespraeche, bereiche: alleBereiche, absender: absenderAlle }, space === 'business' ? 'business' : null);
   return NextResponse.json({
     ok: true,
-    postfaecher: roh.postfaecher.map(p => p.oeffentlich),
-    bereiche: [{ id: 'privat', name: 'Privat' }, ...KERN_EINHEITEN.map(e => ({ id: e.id, name: e.label })), ...Object.entries(namen).filter(([id]) => id.startsWith('g-')).map(([id, name]) => ({ id, name }))],
+    postfaecher: sicht.postfaecher,
+    bereiche: sicht.bereiche,
+    ...(space === 'business' ? { nurBusiness: true } : {}),
     anbieter: anbieterFuerFormular(demo).map(a => { const v = VOREINSTELLUNGEN[a]; return { id: a, name: v.name, passwortWort: v.passwortWort, anleitung: v.anleitung, ...(v.link ? { link: v.link } : {}), ...(v.sendeHinweis ? { sendeHinweis: v.sendeHinweis } : {}), eigeneServer: a === 'eigen' }; }),
-    demo, absender, google: roh.google,
+    demo, absender: sicht.absender, google: roh.google,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

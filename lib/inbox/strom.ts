@@ -10,12 +10,15 @@
 
 import { fachVon, fristAus, type FachId, type FachNachricht } from './faecher';
 import type { Adr, GmailKopf, Zuordnung } from '@/lib/gmail/typen';
-import type { Fenster } from '@/lib/whatsapp/typen';
+import type { Fenster, WaKopfInfo } from '@/lib/whatsapp/typen';
 
 export type GespraechQuelle = 'gmail' | 'imap' | 'whatsapp';
 
-/** Ein Kopf im Strom (Gmail- oder IMAP-Kopf, plus die Stellen, die nur IMAP hat). */
-export type StromKopf = GmailKopf & { postfachId?: string; ordner?: 'e' | 'g' | 'a'; automatisch?: boolean; wurzel?: string };
+/**
+ * Ein Kopf im Strom (Gmail- oder IMAP-Kopf, plus die Stellen, die nur IMAP hat). `wa` nur bei WhatsApp (07.10.): Art der Nachricht,
+ * Zustellstand (ausgehend) und Zustand des Mediums — damit die Gesprächsansicht Medien nur auf Klick lädt und „zugestellt/gelesen“ zeigt.
+ */
+export type StromKopf = GmailKopf & { postfachId?: string; ordner?: 'e' | 'g' | 'a'; automatisch?: boolean; wurzel?: string; wa?: WaKopfInfo };
 
 export interface PostfachKurz { id: string; quelle: GespraechQuelle; bereich: string | null; anzeigename: string; eigene: string[] }
 

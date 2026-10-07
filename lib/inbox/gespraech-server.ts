@@ -14,6 +14,7 @@ import type { Adr, Anhang, GmailAlias, Zuordnung } from '@/lib/gmail/typen';
 import { ladeImapTexte } from '@/lib/postfach/spiegel';
 import { VOREINSTELLUNGEN } from '@/lib/postfach/anbieter';
 import { fristAus } from './faecher';
+import type { WaKopfInfo } from '@/lib/whatsapp/typen';
 import { stromRoh } from './strom-server';
 import { nachrichtenVon } from './verlauf';
 import type { Gespraech, StromKopf } from './strom';
@@ -21,6 +22,8 @@ import type { Gespraech, StromKopf } from './strom';
 export interface NachrichtAnsicht {
   id: string; am: string; von: Adr; an: Adr[]; cc: Adr[]; betreff: string; text: string; vonUns: boolean; ungelesen: boolean;
   anhaenge: Anhang[]; bilder?: number; gekuerzt?: boolean; automatisch?: boolean;
+  /** Nur WhatsApp (07.10.): Art, Zustellstand, Zustand des Mediums (lib/whatsapp/strom.ts `kopfInfo`). */
+  wa?: WaKopfInfo;
 }
 
 export type VorschlagArt = 'aufgabe' | 'termin' | 'beleg' | 'zuordnen' | 'deal' | 'kontakt' | 'nachfassen';
@@ -38,7 +41,15 @@ export interface GespraechAnsicht {
     postfach: string;
     bereichName: string;
   };
-  kontext: { kontakt?: { id: string; name: string; firma?: string; firmaId?: string; sperre?: Zuordnung['sperre'] }; deals: { id: string; titel: string; stufe: string }[] };
+  kontext: {
+    kontakt?: { id: string; name: string; firma?: string; firmaId?: string; sperre?: Zuordnung['sperre'] };
+    deals: { id: string; titel: string; stufe: string }[];
+    /**
+     * Nur WhatsApp ohne Zuordnung (07.10. abends): Akten, die diese Nummer tragen, wenn es MEHRERE sind — „Zuordnen zu …“ nur per Klick,
+     * nie automatisch. Nur Kennung, Name, Firma (die Person sieht ihre Kartei ohnehin).
+     */
+    kandidaten?: { id: string; name: string; firma?: string }[];
+  };
   vorschlaege: Vorschlag[];
 }
 
@@ -62,6 +73,7 @@ export function vorschlaegeFuer(g: Gespraech, nachrichten: readonly NachrichtAns
 const ohneIntern = (k: StromKopf, text: string, vonUns: boolean): NachrichtAnsicht => ({
   id: k.id, am: k.am, von: k.von, an: k.an, cc: k.cc, betreff: k.betreff, text, vonUns, ungelesen: k.labels.includes('UNREAD') && !vonUns,
   anhaenge: k.anhaenge, ...(k.bilder ? { bilder: k.bilder } : {}), ...(k.gekuerzt ? { gekuerzt: true } : {}), ...(k.automatisch ? { automatisch: true } : {}),
+  ...(k.wa ? { wa: k.wa } : {}),
 });
 
 /** Ein Gespräch der Person öffnen — `null`, wenn es das (für diese Person) nicht gibt. */
@@ -73,7 +85,8 @@ export async function gespraechLesen(person: string, id: string): Promise<Gespra
   if (!g || !p) return null;
   const n = await nachrichtenVon(person, id);
   if (!n) return null;
-  const texte = g.quelle === 'gmail' ? (await ladeGmailTexte(person)).texte : (await ladeImapTexte(person)).texte;
+  // WhatsApp: der ganze Text steht schon im Kopf (`ausschnitt`) — kein Textbestand daneben.
+  const texte: Record<string, { t: string }> = g.quelle === 'gmail' ? (await ladeGmailTexte(person)).texte : g.quelle === 'imap' ? (await ladeImapTexte(person)).texte : {};
   const vonUns = (k: StromKopf) => k.labels.includes('SENT') || k.ordner === 'g' || n.eigene.includes(k.von.email);
   const nachrichten = n.koepfe.map(k => ohneIntern(k, texte[k.id]?.t ?? k.ausschnitt, vonUns(k)));
   // Antwort bezieht sich auf die jüngste echte Nachricht von außen (sonst die jüngste überhaupt).
@@ -84,9 +97,12 @@ export async function gespraechLesen(person: string, id: string): Promise<Gespra
     const aliase: GmailAlias[] = s ? await aliaseSicherstellen(person).catch(() => s.aliase ?? []) : [];
     const eigen = s?.email ?? '';
     von = [{ email: eigen }, ...aliase.filter(a => a.verifiziert && a.email !== eigen).map(a => ({ email: a.email, ...(a.name ? { name: a.name } : {}) }))].filter(a => a.email);
-  } else von = [{ email: p.adresse, ...(p.absenderName ? { name: p.absenderName } : {}) }];
+  } else von = [{ email: p.adresse || p.anzeigename, ...(p.absenderName ? { name: p.absenderName } : {}) }];
   const crm = g.zuordnung ? await ladeCrm() : null;
   const deals = g.zuordnung && crm ? crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(g.zuordnung!.kontaktId)).map(c => ({ id: c.id, titel: c.titel, stufe: c.stufe })) : [];
+  // WhatsApp ohne Zuordnung: trägt die Nummer mehr als eine Akte, wählt die Person (nie automatisch).
+  const kandidaten = g.quelle === 'whatsapp' && !g.zuordnung && g.whatsapp ? await waKandidaten(g.whatsapp.nummer) : [];
+  const vorschlaege = vorschlaegeFuer(g, nachrichten, heute).filter(v => !(kandidaten.length && v.art === 'kontakt'));
   return {
     gespraech: g,
     nachrichten,
@@ -100,9 +116,17 @@ export async function gespraechLesen(person: string, id: string): Promise<Gespra
     kontext: {
       ...(g.zuordnung ? { kontakt: { id: g.zuordnung.kontaktId, name: g.zuordnung.name, ...(g.zuordnung.firma ? { firma: g.zuordnung.firma } : {}), ...(g.zuordnung.firmaId ? { firmaId: g.zuordnung.firmaId } : {}), ...(g.zuordnung.sperre ? { sperre: g.zuordnung.sperre } : {}) } } : {}),
       deals,
+      ...(kandidaten.length ? { kandidaten } : {}),
     },
-    vorschlaege: vorschlaegeFuer(g, nachrichten, heute),
+    vorschlaege,
   };
+}
+
+/** Mehrere Akten mit dieser Nummer → Auswahl „Zuordnen zu …“ (nur, wenn es mindestens zwei sind; eine eindeutige ordnet der Strom zu). */
+async function waKandidaten(nummer: string): Promise<{ id: string; name: string; firma?: string }[]> {
+  const [{ kontakteFuerVerarbeitung }, { telefonKandidaten }, { anzeigename }] = await Promise.all([import('@/lib/crm/verarbeitung'), import('@/lib/whatsapp/zuordnung'), import('@/lib/make-one/crm')]);
+  const l = telefonKandidaten(nummer, await kontakteFuerVerarbeitung());
+  return l.length > 1 ? l.map(k => ({ id: k.id, name: anzeigename(k), ...(k.firma ? { firma: k.firma } : {}) })) : [];
 }
 
 /** Die Gespräch-Kennung zu einer Gmail-Nachricht (Link `?offen=gmail-<Nachricht>` aus dem alten Verlauf). */
