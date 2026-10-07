@@ -71,3 +71,12 @@ export function anhangLink(quelle: string, nachricht: string, teil: string): str
     ? `/api/gmail/anhang?id=${encodeURIComponent(nachricht)}&teil=${encodeURIComponent(teil)}`
     : `/api/inbox/anhang?nachricht=${encodeURIComponent(nachricht)}&teil=${encodeURIComponent(teil)}`;
 }
+
+/** Wie lang ist es her — „vor 5 Min.“, „vor 2 Std.“, „vor 3 Tagen“ (Statuszeile der Postfächer; rein). */
+export function vorText(min: number | null | undefined): string {
+  if (min === null || min === undefined) return 'noch nie';
+  if (min < 1) return 'gerade eben';
+  if (min < 120) return `vor ${min} Min.`;
+  if (min < 48 * 60) return `vor ${Math.round(min / 60)} Std.`;
+  return `vor ${Math.round(min / 1440)} Tagen`;
+}

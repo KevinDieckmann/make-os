@@ -12,16 +12,16 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
-import { bereichVon } from '@/lib/einheiten';
 import { gespraechPfad } from '@/lib/inbox/strom';
+import { aufgabeAusGespraech, followUpAusGespraech, kontaktAusGespraech, spaceVon, terminVorgabe } from '@/lib/inbox/aus-gespraech';
 import { FACH_LABEL } from '@/lib/inbox/faecher';
 import type { Owner } from '@/types/common';
-import { Knopf, Chip, Hinweis, Ueberschrift, Karte, Leer, LEUCHT, Spalten, Spalte, useBreit } from '../ui';
+import { Knopf, Chip, Hinweis, Ueberschrift, Karte, Leer, LEUCHT, useBreit } from '../ui';
 import { NeuerTermin } from '../kalender/NeuerTermin';
 import { GmailText } from './GmailText';
 import { Antwort } from './Antwort';
 import { BelegAusMail } from './BelegAusMail';
-import { aktion, anhangLink, datumLang, groesse, holen, nameVon, naechsterMontag, senden, tagIn, type Ansicht } from './daten';
+import { aktion, anhangLink, datumLang, groesse, holen, naechsterMontag, senden, tagIn, type Ansicht } from './daten';
 
 interface AkteTermin { titel: string; start: string; ganztags?: boolean; abgesagt?: boolean }
 
@@ -67,7 +67,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
 
   const g = a.gespraech;
   const z = g.zuordnung;
-  const space = g.bereich ? bereichVon(g.bereich) : 'business';
+  const space = spaceVon(g);
   const tu = async (was: string, extra: Record<string, unknown> = {}, rueck?: string) => {
     const r = await aktion(id, was, extra);
     meldung(r.d.ok ? String(r.d.text ?? 'Erledigt.') : String(r.d.fehler ?? 'Das ging nicht.'), r.d.ok && rueck ? () => { void aktion(id, rueck).then(() => onGeaendert()); } : undefined);
@@ -75,27 +75,24 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
     return r.d.ok;
   };
   const aufgabe = (faellig?: string, titel?: string) => {
-    const t = (titel ?? g.betreff).slice(0, 300);
+    const v = aufgabeAusGespraech(g, faellig);
+    const t = (titel ?? v.title).slice(0, 300);
     const link = gespraechPfad(id);
     const schonDa = state.tasks.find(x => x.status !== 'done' && (x.description ?? '').includes(link));
     if (!schonDa) dispatch({ type: 'ADD_TASK', payload: {
-      projectId: state.projects[0]?.id ?? '', title: t, description: `Aus der Inbox · ${nameVon(g)} <${g.gegenueber.email}>\n${link}`.slice(0, 4000),
-      status: 'todo', priority: 'medium', assignee: person as Owner, tags: [], subTasks: [], dependencies: [], sortOrder: 0, space,
-      ...(faellig ? { dueDate: faellig } : {}),
-      ...(z ? { bezug: { kontaktId: z.kontaktId, ...(z.firmaId ? { firmaId: z.firmaId } : {}), ...(z.dealId ? { dealId: z.dealId } : {}) } } : {}),
+      projectId: state.projects[0]?.id ?? '', ...v, title: t, status: 'todo', assignee: person as Owner, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
     } });
-    meldung(schonDa ? `Aufgabe gab es schon: ${schonDa.title}` : `Aufgabe angelegt${faellig ? ` bis ${faellig.slice(8, 10)}.${faellig.slice(5, 7)}.` : ''}: ${t}`);
+    meldung(schonDa ? `Aufgabe gab es schon: ${schonDa.title}` : `Aufgabe angelegt${v.dueDate ? ` bis ${v.dueDate.slice(8, 10)}.${v.dueDate.slice(5, 7)}.` : ''}: ${t}`);
   };
   const followUp = async (faellig: string, text: string) => {
-    if (!z) { meldung('Ein Follow-up hängt an einer Person — erst „Kontakt anlegen“.'); return; }
-    const r = await senden('/api/crm/followup', { aktion: 'anlegen', bezug: { art: 'kontakt', id: z.kontaktId }, kontaktId: z.kontaktId, art: 'mail', text: text.slice(0, 300), faellig, notiz: `Aus der Inbox\n${gespraechPfad(id)}` });
+    const f = followUpAusGespraech(g, faellig, text);
+    if (!f) { meldung('Ein Follow-up hängt an einer Person — erst „Kontakt anlegen“.'); return; }
+    const r = await senden('/api/crm/followup', f);
     meldung(r.d.ok ? `Follow-up am ${faellig.slice(8, 10)}.${faellig.slice(5, 7)}. angelegt.` : String(r.d.fehler ?? 'Follow-up nicht angelegt.'));
   };
   const kontaktAnlegen = async () => {
     const n = [...a.nachrichten].reverse().find(x => !x.vonUns);
-    const name = (n?.von.name ?? '').replace(/["<>]/g, '').trim();
-    const teile = name && !name.includes('@') ? name.split(/\s+/) : [];
-    const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', kanal: 'mail', neu: { vorname: teile.slice(0, -1).join(' '), nachname: teile.slice(-1)[0] ?? '', email: g.gegenueber.email }, text: `${g.betreff}${n?.text ? ` — ${n.text.replace(/\s+/g, ' ').slice(0, 300)}` : ''}`.slice(0, 600), datum: heute });
+    const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', ...kontaktAusGespraech({ ...g, gegenueber: { ...g.gegenueber, name: n?.von.name ?? g.gegenueber.name } }, (n?.text ?? '').slice(0, 300), heute) });
     meldung(r.d.ok ? String(r.d.text ?? 'Kontakt angelegt.') : String(r.d.fehler ?? 'Kontakt nicht angelegt.'));
     if (r.d.ok) { await laden(); onGeaendert(); }
   };
@@ -153,25 +150,25 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   );
 
   const inhalt = (
-    <div data-inbox="gespraech" style={{ display: 'grid', gap: 12, minWidth: 0 }}>
+    <div data-inbox="gespraech" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, minWidth: 0 }}>
       {onZurueck && !breit && <div><Knopf leise onClick={onZurueck}>‹ Zurück zur Liste</Knopf></div>}
       <div style={{ display: 'grid', gap: 6 }}>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{g.betreff}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Chip farbe={C.inkDim}>{a.antwort.postfach}{a.antwort.bereichName ? ` · ${a.antwort.bereichName}` : ''}</Chip>
+          <Chip umbrechen farbe={C.inkDim}>{a.antwort.postfach}{a.antwort.bereichName && !a.antwort.postfach.includes(a.antwort.bereichName) ? ` · ${a.antwort.bereichName}` : ''}</Chip>
           {g.fach !== 'geblockt' && <Chip farbe={g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.inkLeise}>{FACH_LABEL[g.fach]}{g.fach === 'warten' && g.wartetTage !== undefined ? ` · ${g.wartetTage} T.` : ''}</Chip>}
-          {z && <Chip farbe={z.sperre ? LEUCHT.achtung : LEUCHT.gut}>gehört zu {z.name}{z.firma ? ` · ${z.firma}` : ''}</Chip>}
+          {z && <Chip umbrechen farbe={z.sperre ? LEUCHT.achtung : LEUCHT.gut}>gehört zu {z.name}{z.firma ? ` · ${z.firma}` : ''}</Chip>}
         </div>
       </div>
 
       {a.vorschlaege.length > 0 && (
-        <div role="group" aria-label="ZOE schlägt vor" style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
+        <div role="group" aria-label="ZOE schlägt vor" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, padding: 12, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
           <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>ZOE schlägt vor · nur auf Klick</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{a.vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)}>{v.text}</Knopf>)}</div>
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
         {a.nachrichten.map((n, i) => {
           const letzte = i === a.nachrichten.length - 1;
           const auf = letzte || offen === n.id;
@@ -216,7 +213,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
         </div>
       )}
       {termin && (
-        <NeuerTermin vorgabe={{ tag: heute, wer: person as never, titel: g.betreff.slice(0, 200), notiz: `Aus der Inbox · ${nameVon(g)}\n${typeof window === 'undefined' ? '' : window.location.origin}${gespraechPfad(id)}`.slice(0, 2000), ...(z ? { crm: { kontaktId: z.kontaktId, ...(z.firmaId ? { firmaId: z.firmaId } : {}), ...(z.dealId ? { dealId: z.dealId } : {}) } } : {}) }}
+        <NeuerTermin vorgabe={terminVorgabe(g, heute, person, typeof window === 'undefined' ? '' : window.location.origin)}
           heute={heute} standardDauer={60} kalender={[]} bereich={space} onZu={() => setTermin(false)}
           onAngelegt={x => { setTermin(false); meldung(x.uid ? (x.gaeste ? `Termin angelegt — Einladung an ${x.gaeste} ${x.gaeste === 1 ? 'Person' : 'Personen'} verschickt.` : 'Termin angelegt.') : 'Angelegt.'); }} />
       )}
@@ -229,7 +226,8 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
     </div>
   );
 
-  if (breit) return <Spalten verhaeltnis="3:2"><Spalte>{inhalt}</Spalte><Spalte><Karte flach i={0}>{kontext}</Karte></Spalte></Spalten>;
+  // Eigenes Raster mit minmax(0, …): lange Zeilen (Adressen, Ausschnitte) dürfen die Kontext-Spalte nie überlappen.
+  if (breit) return <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: 16, alignItems: 'start' }}>{inhalt}<Karte flach i={0}>{kontext}</Karte></div>;
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       {inhalt}

@@ -13,9 +13,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, KUGEL, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
-import { bereichVon } from '@/lib/einheiten';
 import { FACH_LABEL, type FachId } from '@/lib/inbox/faecher';
 import { gespraechPfad, sortieren, type LageZeile } from '@/lib/inbox/strom';
+import { aufgabeAusGespraech } from '@/lib/inbox/aus-gespraech';
 import { neueMailHolen, type NeueMail } from '@/lib/inbox/neue-mail';
 import type { Owner } from '@/types/common';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
@@ -125,10 +125,12 @@ export function InboxZwei() {
     void laden();
   }, [offenId, reihe, setOffenId, melden, laden]);
   const aufgabeAus = useCallback((g: GespraechZeile) => {
+    if (!ich) { melden('Dein Konto lädt noch — gleich noch einmal.'); return; }
     const link = gespraechPfad(g.id);
     if (state.tasks.some(t => t.status !== 'done' && (t.description ?? '').includes(link))) { melden(`Aufgabe gab es schon: ${g.betreff}`); return; }
-    dispatch({ type: 'ADD_TASK', payload: { projectId: state.projects[0]?.id ?? '', title: g.betreff.slice(0, 300), description: `Aus der Inbox · ${nameVon(g)} <${g.gegenueber.email}>\n${link}`, status: 'todo', priority: 'medium', assignee: (ich || 'kevin') as Owner, tags: [], subTasks: [], dependencies: [], sortOrder: 0, space: g.bereich ? bereichVon(g.bereich) : 'business', ...(g.frist ? { dueDate: g.frist.datum } : {}), ...(g.zuordnung ? { bezug: { kontaktId: g.zuordnung.kontaktId, ...(g.zuordnung.firmaId ? { firmaId: g.zuordnung.firmaId } : {}), ...(g.zuordnung.dealId ? { dealId: g.zuordnung.dealId } : {}) } } : {}) } });
-    melden(`Aufgabe angelegt: ${g.betreff}`);
+    const v = aufgabeAusGespraech(g, g.frist?.datum);
+    dispatch({ type: 'ADD_TASK', payload: { projectId: state.projects[0]?.id ?? '', ...v, status: 'todo', assignee: ich as Owner, tags: [], subTasks: [], dependencies: [], sortOrder: 0 } });
+    melden(`Aufgabe angelegt: ${v.title}`);
   }, [state, dispatch, ich, melden]);
   const screener = async (g: GespraechZeile, was: 'zulassen' | 'blocken') => {
     setWeg(w => new Set(w).add(g.id));
@@ -165,7 +167,7 @@ export function InboxZwei() {
   const zeile = (g: GespraechZeile, gruppe: string) => {
     const unter = g.fach === 'warten'
       ? `${g.vonUns ? 'Du hast geschrieben' : 'Automatische Antwort'} · seit ${g.wartetTage} ${g.wartetTage === 1 ? 'Tag' : 'Tagen'} keine Antwort`
-      : `${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${g.zuordnung ? `${g.zuordnung.name}${g.zuordnung.firma ? ` · ${g.zuordnung.firma}` : ''} — ` : g.fach === 'neu' ? `${g.gegenueber.email} — ` : ''}${g.ausschnitt}`;
+      : `${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${g.zuordnung?.firma ? `${g.zuordnung.firma} — ` : g.fach === 'neu' ? `${g.gegenueber.email} — ` : ''}${handy ? g.ausschnitt.slice(0, 80) + (g.ausschnitt.length > 80 ? ' …' : '') : g.ausschnitt}`;
     const inhalt = (
       <Zeile onClick={() => setOffenId(offenId === g.id ? null : g.id)} aktiv={offenId === g.id}
         links={<Punkt farbe={g.ungelesen ? KUGEL.granat : g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.linie} />}
@@ -199,7 +201,7 @@ export function InboxZwei() {
   const kopfRechts = (
     <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       {ansicht === 'liste' ? <Knopf leise onClick={() => setAnsicht('postfaecher')}>Postfächer</Knopf> : <Knopf leise onClick={() => setAnsicht('liste')}>‹ Zur Inbox</Knopf>}
-      {ansicht === 'liste' && <Knopf leise onClick={async () => { melden('Gleicht ab …'); const r = await senden<{ fehler?: number }>('/api/inbox', { aktion: 'abgleichen' }); melden(r.d.ok ? 'Abgeglichen.' : String(r.d.fehler ?? 'Abgleich ging nicht.')); void laden(); }}>Abgleichen</Knopf>}
+      {ansicht === 'liste' && <span className="ui-nur-breit"><Knopf leise onClick={async () => { melden('Gleicht ab …'); const r = await senden<{ fehler?: number }>('/api/inbox', { aktion: 'abgleichen' }); melden(r.d.ok ? 'Abgeglichen.' : String(r.d.fehler ?? 'Abgleich ging nicht.')); void laden(); }}>Abgleichen</Knopf></span>}
     </span>
   );
 
@@ -243,10 +245,10 @@ export function InboxZwei() {
     <Karte i={1} akzent={KUGEL.granat}>
       <GespraechAnsicht key={`${offen.id}-${antwortStart === offen.id ? 'r' : ''}`} id={offen.id} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} startAntwort={antwortStart === offen.id} />
     </Karte>
-  ) : breit ? <Karte i={1}><Leer>Ein Gespräch anklicken — es öffnet sich hier. j/k wandern · e erledigt · s später · a Aufgabe · r antworten.</Leer></Karte> : null;
+  ) : null;
 
   return (
-    <Seite titel={<>Inbox {lageZahl > 0 && <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{lageZahl} brauchen Antwort</span>}</>} rechts={kopfRechts}>
+    <Seite titel="Inbox" unter={lageZahl > 0 ? `${lageZahl} ${lageZahl === 1 ? 'Gespräch braucht' : 'Gespräche brauchen'} eine Antwort.` : undefined} rechts={kopfRechts}>
       {fehler && <div style={{ marginBottom: 12 }}><Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal</Knopf>}>{fehler}</Hinweis></div>}
       {!s && !fehler && <Karte i={0}><Leer>lädt …</Leer></Karte>}
       {s && !s.postfaecher.length && (
@@ -254,7 +256,8 @@ export function InboxZwei() {
           iCloud, IONOS, Google Workspace oder ein anderer Anbieter — MAKE OS holt die Post selbst, sortiert sie in Fächer und zeigt, was gerade passiert.
         </Leerzustand>
       )}
-      {s && s.postfaecher.length > 0 && !(offen && !breit) && (
+      {/* Mit offenem Gespräch tritt das Lagebild zurück (Esc bzw. „Zurück“ holt es wieder) — das Gespräch steht oben. */}
+      {s && s.postfaecher.length > 0 && !offen && (
         <div style={{ display: 'grid', gap: 14, marginBottom: 14 }}>
           {(s.bereiche.length > 1 || bereich !== 'alle') && (
             <Segmente umbrechen liste={[{ id: 'alle', label: 'Alle' }, ...s.bereiche.map(b => ({ id: b.id, label: b.name }))]} aktiv={bereich} onWahl={b => { setBereich(b); setFilter(null); setOffenId(null); }} />
@@ -300,7 +303,8 @@ export function InboxZwei() {
           )}
         </div>
       )}
-      {s && s.postfaecher.length > 0 && (breit ? (
+      {/* Rechner: ohne offenes Gespräch die Liste in voller Breite; mit Gespräch Liste ⅓ · Gespräch + Kontext ⅔ (Front-Muster). */}
+      {s && s.postfaecher.length > 0 && (breit && offen ? (
         <Spalten verhaeltnis="1:2"><Spalte>{liste}</Spalte><Spalte klebt>{detail}</Spalte></Spalten>
       ) : offen ? detail : liste)}
       {s && s.postfaecher.length > 0 && !offen && <div style={{ marginTop: 18 }}><FlussKarte bereich="inbox" farbe={KUGEL.granat} /></div>}

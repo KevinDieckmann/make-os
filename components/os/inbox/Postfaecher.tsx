@@ -13,9 +13,8 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Pillen, Feldzeile, eingabe, auswahl, Leer, Punkt, LEUCHT, useRueckfrage } from '../ui';
 import { KUGEL } from '@/lib/make-one/design';
 import { GmailVerbinden, type GmailMeta } from './GmailVerbinden';
-import { holen, senden, type PostfaecherAntwort } from './daten';
 import type { PostfachOeffentlich } from '@/lib/postfach/typen';
-import { vorText } from '@/lib/gmail/liste';
+import { holen, senden, vorText, type PostfaecherAntwort } from './daten';
 
 export const STUFE_FARBE: Record<PostfachOeffentlich['zustand']['stufe'], string> = {
   aktuell: KUGEL.smaragd, verzoegert: LEUCHT.achtung, anmeldung: KUGEL.granat, fehler: LEUCHT.achtung, neu: C.inkLeise, aus: C.inkLeise, vorbereitet: C.inkLeise,

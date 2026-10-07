@@ -90,26 +90,9 @@ describe('Gmail verbinden — inkrementell', () => {
 });
 
 describe('Die Liste der Inbox', () => {
-  it('Threads: eine Zeile je Thread (jüngste vorn), ungelesen wenn eine Nachricht ungelesen ist, offen = im Posteingang; Einstufung ohne Modell', async () => {
-    const { threadsAus, stufeVon, zeileMitNachricht, gmailIdAus, vorText } = await import('@/lib/gmail/liste');
-    const n = (id: string, threadId: string, min: number, x: Record<string, unknown> = {}) => ({ id, threadId, am: new Date(Date.now() - min * 60_000).toISOString(), von: { email: 'a@b.example.invalid' }, an: [{ email: 'kevin@makeinnovation.test' }], betreff: id, ausschnitt: '', labels: ['INBOX'], ungelesen: false, posteingang: true, gesendet: false, anhaenge: 0, ...x });
-    const zeilen = threadsAus([
-      n('t1a', 't1', 60), n('t1b', 't1', 10, { labels: [], posteingang: false, gesendet: true, von: { email: 'kevin@makeinnovation.test' }, an: [{ name: 'Anna', email: 'anna@firma.example.invalid' }] }), n('t1c', 't1', 30, { ungelesen: true }),
-      n('t2a', 't2', 5, { labels: ['INBOX', 'CATEGORY_PROMOTIONS'] }), n('t3a', 't3', 90, { labels: ['SENT'], posteingang: false, gesendet: true }),
-      n('t4a', 't4', 20, { labels: ['INBOX', 'STARRED'] }), n('t5a', 't5', 25, { labels: ['INBOX', 'CATEGORY_UPDATES'], zuordnung: { kontaktId: 'c-x', name: 'X' } }), n('t6a', 't6', 26, { liste: true }),
-    ] as never);
-    expect(zeilen.map(z => z.threadId)).toEqual(['t2', 't1', 't4', 't5', 't6', 't3']);   // jüngste Nachricht je Thread bestimmt die Reihenfolge
-    const t1 = zeilen.find(z => z.threadId === 't1')!;
-    expect(t1).toMatchObject({ id: 't1b', anzahl: 3, ungelesen: true, offen: true });
-    expect(t1.nachrichten.map(x => x.id)).toEqual(['t1b', 't1c', 't1a']);
-    expect(t1.gegenueber).toEqual({ name: 'Anna', email: 'anna@firma.example.invalid' });   // bei gesendeten Mails der Empfänger
-    expect(zeilen.find(z => z.threadId === 't3')).toMatchObject({ offen: false });
-    expect(zeilen.map(z => `${z.threadId}:${z.stufe}`)).toEqual(['t2:rauschen', 't1:normal', 't4:wichtig', 't5:wichtig', 't6:rauschen', 't3:normal']);
-    expect(stufeVon([n('x', 'x', 1, { labels: ['INBOX', 'IMPORTANT'] })] as never)).toBe('wichtig');
-    expect(zeileMitNachricht(zeilen, 't1a')?.id).toBe('t1b');           // Link aus dem Verlauf auf eine ältere Nachricht → die Zeile des Threads
-    expect(zeileMitNachricht(zeilen, 'gibts-nicht')).toBeUndefined();
-    expect(gmailIdAus('gmail-18c0000001ab')).toBe('18c0000001ab');
-    for (const bose of ['18c0000001ab', 'gmail-', 'gmail-../x', 'gmail-a b']) expect(gmailIdAus(bose)).toBeNull();
+  // Seit Inbox 2 (06.10.) baut der Strom die Gespräche für alle Quellen (lib/inbox/strom.ts, Tests: inbox2-rein) — die Gmail-eigene Liste ist weg.
+  it('„vor X“ für die Statuszeile der Postfächer', async () => {
+    const { vorText } = await import('@/components/os/inbox/daten');
     expect(vorText(0)).toBe('gerade eben'); expect(vorText(5)).toBe('vor 5 Min.'); expect(vorText(180)).toBe('vor 3 Std.'); expect(vorText(null)).toBe('noch nie');
   });
   it('Gmail geht NIE in die gemeinsame ZOE-Einstufung der Inbox (Betreff/Absender stünden im Schlüssel für das andere Konto)', async () => {
