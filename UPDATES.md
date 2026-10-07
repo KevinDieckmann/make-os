@@ -4,6 +4,54 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 06.10.2026 — iCloud-Kalender je Person (nur lokal, Branch `icloud-je-person`; Kevin: „Malins iCloud-Kalender soll in MAKE OS erscheinen“)
+
+**Was sich ändert:** Jede Person verbindet ihren iCloud-Kalender SELBST — Kalender › Einstellungen › „iCloud Kalender“: Apple-ID +
+app-spezifisches Passwort. Bisher ging iCloud nur über EINE Apple-ID in der Server-.env (Kevins).
+- **Kevins bisherige Verbindung läuft unverändert weiter.** Sein Konto bleibt der Kalender des Haushalts (Gemeinsam, Familie, Planen) mit den
+  bisherigen Sichtregeln. Übergang: Solange Kevin in der Oberfläche nichts einträgt, gilt die Server-Einrichtung (`ICLOUD_APPLE_ID`/
+  `ICLOUD_APP_PASSWORT`, deploy/icloud-verbinden.sh) als SEINE Verbindung — die Karte zeigt „über die Server-Einrichtung“. Trägt er dort ein
+  App-Passwort ein, ersetzt es die Server-Einrichtung; „Trennen“ in der Oberfläche schaltet auch die Server-Einrichtung ab (bis jemand sie per
+  Skript NEU einrichtet). Wem der Haushalts-Kalender gehört: `ICLOUD_PERSON` in der .env, sonst dem Inhaber (kein fester Name im Code).
+- **Malin (und jede weitere Person)** verbindet ihr EIGENES Konto: ihre Termine erscheinen im Kalender als „<Kalender> · Malin“ — bei Kevin nur
+  als „Belegt“ (Zeit ja; kein Titel, Ort, Kalendername). Das gilt überall, wo heute schon „privat → Belegt“ gilt (Kalender, Jahr, Heute, ZOE,
+  Glocke, Auswertung, Zwischenspeicher). Einzelne Kalender lassen sich ausblenden; geteilte Kalender (stehen in beiden Konten) erscheinen nur
+  einmal. In Malins Kalender schreibt nur Malin (Kevin → 403), MAKE OS mit IHREM Zugang.
+- **App-Passwort ungültig** (Apple macht App-Passwörter ungültig, sobald das Apple-Passwort geändert oder das App-Passwort widerrufen wird):
+  rote Marke „App-Passwort ungültig“ in den Einstellungen + EINE Glocke an die Person, Knopf „Verbindung erneuern“. Kalender-Kopf: „Meine iCloud: …“.
+- **Sicherheit:** Anmeldung wird bei Apple geprüft, BEVOR etwas gespeichert wird (falsch → nichts gespeichert); das normale Apple-Passwort
+  geht gar nicht erst raus (Formatprüfung). Zugangsdaten nur im verschlüsselten Bestand `icloud-verbindung--<person>`, nie an den Browser
+  (nur „m***@…“), nie ins Protokoll/Log, nur an *.icloud.com. Verbinden/Trennen nur die Person selbst (Dienstweg/ZOE 403), 3 Fehlversuche →
+  Pause. „Trennen“ löscht Zugang und Spiegel samt Tageskopien.
+- **Neu (alles optional):** Route `/api/kalender/icloud` (im Routen-Register), Bestände `icloud-verbindung--*`, `kalender-icloud--*` (Speicher-
+  Register, Art. 15/17, Konto löschen), Verzeichnis-Eintrag „Kalender (Apple iCloud)“ (wird nachgetragen, sobald iCloud genutzt wird), Felder
+  `Termin.persoenlich`, `KalenderEintrag.quelle: 'icloud'` (nur zur Laufzeit, nie im Haushalts-Bestand). Server-Adresse `caldav.icloud.com` wie
+  bisher (von Apple nicht offiziell dokumentiert, bewährt).
+- **Bewusst nicht:** Blöcke aus Planen, ZOE-Blöcke, Familie/Events-Spiegel schreiben weiter in den Haushalts-Kalender (wie bisher), nicht in
+  Malins eigenes Konto. Die tägliche ICS-Sicherung umfasst nur den Haushalts-Kalender (Wahrheit der eigenen Konten bleibt iCloud).
+- **Rückweg:** Der alte Stand kennt die neuen Bestände nicht und liest sie nie — Malins Termine sind dann einfach wieder weg (in iCloud
+  bleiben sie). Er liest nur die Server-.env: hat Kevin bis dahin in der Oberfläche verbunden UND die .env-Zeilen entfernt, vorher
+  `deploy/icloud-verbinden.sh <apple-id>` erneut ausführen. Der `calendar-cache` trägt zusätzlich `persoenlich` (der alte Stand übersieht es,
+  maskiert aber über `privat`/`von` weiter richtig).
+
+- **Verbinden sichtbar im Bereich (07.10., Kevin):** Kalender › Bereich **Business** zeigt „MAKE Innovation verbinden“ (Google Workspace,
+  derselbe Weg wie in den Einstellungen, nur Freigabe Kalender), solange die eigene Person nicht verbunden ist; Fehler wie in den Einstellungen
+  (nicht eingerichtet → Hinweis, getrennt → „Neu verbinden“). Bereich **Privat** zeigt die iCloud-Karte. Verbunden → nur ein kleiner Hinweis.
+
+**Schritte nach dem Upload**
+1. **Kevin:** nichts nötig — der Haushalts-Kalender läuft über die Server-Einrichtung weiter. Optional: Kalender › Einstellungen › „iCloud
+   Kalender“ › „Verbindung erneuern“ mit einem NEUEN App-Passwort (dann braucht es die .env-Zeilen nicht mehr; das alte App-Passwort bei Apple
+   widerrufen und auf dem Server `deploy/icloud-verbinden.sh --trennen` ausführen — erst NACH dem Eintrag in der Oberfläche).
+2. **Malin — App-Passwort anlegen:** am Mac oder iPhone appleid.apple.com öffnen → mit der eigenen Apple-ID anmelden → „Anmelden und
+   Sicherheit“ → „App-spezifische Passwörter“ → „+“ → Name „MAKE OS“ → das angezeigte Passwort (xxxx-xxxx-xxxx-xxxx) kopieren. (Nie das normale
+   Apple-Passwort; die Zwei-Faktor-Anmeldung bei Apple muss an sein.)
+3. **Malin — in MAKE OS verbinden:** Kalender öffnen → rechts „Einstellungen“ › öffnen → Karte „iCloud Kalender“ → Apple-ID (E-Mail) und das
+   App-Passwort einfügen → „iCloud verbinden“. Nach ein paar Sekunden stehen ihre Kalender in der Liste („Welche Kalender zeigen?“); Kalender,
+   die schon gemeinsam mit Kevin geteilt sind, erscheinen nur einmal. Nicht gewünschte Kalender dort ausschalten.
+4. **Prüfen:** Malin sieht ihre Termine mit Titel; Kevin sieht in derselben Woche an diesen Stellen nur „Belegt“ (Kalender „iCloud · Malin“).
+5. **Wenn Malin ihr Apple-Passwort ändert:** die Glocke meldet „App-Passwort nicht angenommen“ → neues App-Passwort anlegen (Schritt 2) →
+   Kalender › Einstellungen › „Verbindung erneuern“.
+
 ## 06.10.2026 — Aufgaben nach Malins Bauplan-Karte (nur lokal, Branch `aufgaben-struktur`; Kevin: „komplett nach Malins Liste“)
 
 **Was sich ändert:** Projekt › Liste › Aufgabe › Unteraufgabe — die Ebene „Gruppe“ gibt es nicht mehr. Malins Fehleintrag (die

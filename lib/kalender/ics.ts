@@ -96,6 +96,15 @@ export interface Termin {
   // ── seit 03.10. (Google) ──
   /** Link zum Termin (ICS `URL`, nur https) — bei Google Kalender der Meet-Link; nur lesen. */
   link?: string;
+  // ── seit 06.10. (iCloud je Person) ──
+  /**
+   * Der Termin stammt aus der EIGENEN iCloud-Verbindung dieser Person (lib/kalender/icloud-person.ts), nicht aus dem
+   * Haushalts-Kalender. Für alle anderen Personen gilt er als privat — sie sehen nur „Belegt“ (`maskieren`, lib/kalender/bezug.ts),
+   * ohne Titel, Ort, Notiz und ohne den Namen des Kalenders. Gesetzt nur beim Lesen (`termineImZeitraum`), nie gespeichert.
+   */
+  persoenlich?: string;
+  /** Neutraler Kalendername für die Maskierung („iCloud · <Vorname>“) — der echte Name verrät sonst Inhalte. */
+  persoenlichName?: string;
 }
 
 /** Was ein VEVENT selbst über Art, Farbe und Sichtbarkeit sagt (X-MAKE-ART, COLOR, CLASS). */

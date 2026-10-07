@@ -256,6 +256,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'apple-contacts-cache', muster: /^apple-contacts-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   // Google Kalender (03.10.): Spiegel der Termine je Person — Wahrheit ist Google (Löschung dort), hier nur gezählt.
   { name: 'kalender-google--*', muster: /^kalender-google--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inGoogleZaehlen },
+  // iCloud je Person (06.10.): Spiegel der eigenen iCloud-Kalender — Wahrheit ist Apple (Löschung dort), hier nur gezählt.
+  { name: 'kalender-icloud--*', muster: /^kalender-icloud--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   // Gmail in der Inbox (03.10.): Spiegel je Person (Köpfe, Texte) — Nachrichten, die die Person nennen, raus; das Original bleibt in Gmail.
   { name: 'gmail-stand--*', muster: /^gmail-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'gmail-text--*', muster: /^gmail-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },

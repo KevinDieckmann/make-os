@@ -5,11 +5,17 @@
 // Server (lib/kalender/einstellungen.ts re-exportiert) und Oberfläche (Einstellungen im Kalender) rechnen hiermit.
 
 export type KalenderWer = 'kevin' | 'malin' | 'beide';
-export interface BelegtEinstellungen { kalender: Record<KalenderWer, string>; belegt?: Record<string, boolean>; /** Google (03.10.): Kalendername → Person — gehört dem Kalender der Person, nie „beide“. */ google?: Record<string, string> }
+export interface BelegtEinstellungen {
+  kalender: Record<KalenderWer, string>; belegt?: Record<string, boolean>;
+  /** Google (03.10.): Kalendername → Person — gehört dem Kalender der Person, nie „beide“. */
+  google?: Record<string, string>;
+  /** iCloud je Person (06.10.): Kalendername (auch der neutrale „iCloud · <Vorname>“) → Person — gehört ihr, nie „beide“. */
+  persoenlich?: Record<string, string>;
+}
 
 /** Zugeordnet (Einstellungen oder eindeutiger Name wie „Kevin Dieckmann“) — sonst null („nicht zugeordnet“). */
-export function zuordnung(e: Pick<BelegtEinstellungen, 'kalender' | 'google'>, kalenderName: string): KalenderWer | null {
-  const g = e.google?.[kalenderName.trim()];
+export function zuordnung(e: Pick<BelegtEinstellungen, 'kalender' | 'google' | 'persoenlich'>, kalenderName: string): KalenderWer | null {
+  const g = e.google?.[kalenderName.trim()] ?? e.persoenlich?.[kalenderName.trim()];
   if (g === 'kevin' || g === 'malin') return g;
   const n = kalenderName.trim().toLowerCase();
   if (n === e.kalender.kevin.trim().toLowerCase()) return 'kevin';

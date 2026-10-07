@@ -111,7 +111,8 @@ function runOsascript(script: string): Promise<string> {
  * „Belegt“ (`cacheFuerPerson`, dieselbe Regel wie `fuerZoe`). Vorher gingen Rohtitel und Orte an jede Sitzung im Haushalt.
  */
 async function sichtFuer(person: string | null): Promise<(events: object[]) => object[]> {
-  if (person === null) return events => events;
+  // iCloud je Person (06.10.): Termine aus der EIGENEN Verbindung einer Person gehen auch an den Systemlauf nur als „Belegt“.
+  if (person === null) return events => (events as CacheEreignis[]).map(e => (e.persoenlich ? cacheFuerPerson(e, '', undefined) : e));
   const einst = await ladeEinstellungen().catch(() => null);
   return events => (events as CacheEreignis[]).map(e => {
     const wer = einst && e.calendarName ? wemGehoert(einst, e.calendarName) : e.owner === 'kevin' || e.owner === 'malin' ? e.owner : undefined;

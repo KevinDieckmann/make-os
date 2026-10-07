@@ -25,7 +25,7 @@ export function AbgleichStand({ a, quelle = 'iCloud', bezeichnung }: { a?: Abgle
   const warn = a.veraltet || !!a.fehler || !!a.anmeldung;
   const titel = [
     a.letzter ? `Stand ${new Date(a.letzter).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : '',
-    a.anmeldung ? (quelle === 'iCloud' ? 'iCloud lehnt die Anmeldung ab — neu verbinden (System › Konto).' : `${quelle} lehnt die Anmeldung ab — neu verbinden (Kalender › Einstellungen).`) : a.fehler ? `Abgleich gescheitert: ${a.fehler}` : '',
+    a.anmeldung ? (quelle === 'iCloud' ? 'iCloud lehnt die Anmeldung ab (App-Passwort ungültig) — Kalender › Einstellungen › iCloud: Verbindung erneuern.' : `${quelle} lehnt die Anmeldung ab — neu verbinden (Kalender › Einstellungen).`) : a.fehler ? `Abgleich gescheitert: ${a.fehler}` : '',
     a.naechsterVersuch ? `Nächster Versuch ${new Date(a.naechsterVersuch).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : '',
   ].filter(Boolean).join(' · ');
   return (

@@ -13,5 +13,11 @@ export async function register(): Promise<void> {
     }
     const { betriebStarten } = await import('./lib/store/betrieb');
     await betriebStarten();
+    // iCloud je Person (06.10.): der Zugang des Haushalts-Kalenders kann aus der Oberfläche kommen (verschlüsselter Bestand) —
+    // einmal laden, damit `verbunden()` schon beim ersten Takt stimmt (lib/kalender/icloud-haupt.ts). Fehler stören nie.
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      const { hauptZugangAuffrischen } = await import('./lib/kalender/icloud-person');
+      await hauptZugangAuffrischen();
+    }
   }
 }

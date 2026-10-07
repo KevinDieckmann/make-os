@@ -94,6 +94,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'kalender/gaeste': r('GET', 'haushalt', 'Gäste-Vorschläge aus dem Haushalts-Kalender.'),
   'kalender/google': r('GET,POST', 'person', 'Eigene Google-Verbindung (Kalender) — nur die Person selbst im Haushalt (eigenePerson).'),
   'abmelden/[token]': r('GET,POST', 'offen', 'Newsletter-Abmeldung ohne Login: signiertes Token (Fingerabdruck, keine Adresse/Kennung), wirkt nur als Werbesperre, Antwort verrät nie, ob die Adresse existiert.'),
+  'kalender/icloud': r('GET,POST', 'person', 'Eigene iCloud-Verbindung (Apple-ID + App-Passwort, Kalender zeigen/ausblenden, trennen) — nur die Person selbst im Haushalt (eigenePerson); nie Zugangsdaten in der Antwort.'),
   'kalender/google/meldung': r('POST', 'offen', 'Google-Push (events.watch): ohne Sitzung, prüft Kanal-Kennung + Token + Ressourcen-ID selbst, liefert nie Daten.'),
   'kalender/google/umzug': r('GET,POST', 'person', 'Umzug der eigenen Google-Termine — nur die Person selbst (eigenePerson).'),
   'kalender/jahr': r('GET', 'haushalt', 'Jahresansicht des Haushalts-Kalenders.'),

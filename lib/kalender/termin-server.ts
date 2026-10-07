@@ -12,7 +12,8 @@
 // Seit R-K1 (#46): Bezug und Protokoll unter dem Schlüssel `kalender|uid`; `uid` der Aufrufer darf auch die alte reine
 // UID sein (die Spiegel tragen ihre feste UID) — der alte Bezug-Eintrag zieht dabei mit um, wenn die UID eindeutig ist.
 
-import { verbunden, anlegen, aendern, loeschen, terminAufloesen, KalenderFehler } from './icloud';
+import { verbunden, anlegen, aendern, loeschen, terminAufloesen, ladeStand, kalenderNachName, KalenderFehler, type KalenderEintrag } from './icloud';
+import { persoenlichFremd } from './icloud-person';
 import { kalenderZiel, googleKalenderNamen } from './google/ziel';
 import type { KalenderBereich } from './bereich';
 import { ladeEinstellungen, type Wer } from './einstellungen';
@@ -40,10 +41,17 @@ export interface ServerTermin {
   von: string;
 }
 
+/** Der Kalender (Eintrag im Stand) zu einem Namen — Lesefehler → unbekannt (das Anlegen selbst scheitert dann ohnehin). */
+async function zielKalender(name: string): Promise<KalenderEintrag | undefined> {
+  try { return kalenderNachName(await ladeStand(), name); } catch { return undefined; }
+}
+
 /** Mindestens eine Quelle da: iCloud oder ein verbundener Google-Kalender (03.10.). */
 async function nurVerbunden(): Promise<void> {
   if (verbunden()) return;
   if (Object.keys(await googleKalenderNamen()).length) return;
+  // iCloud je Person (06.10.): eine eigene Verbindung reicht auch.
+  if ((await import('./icloud-person').then(m => m.personenMitIcloud()).catch(() => [] as string[])).length) return;
   throw new KalenderFehler('Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).', 409);
 }
 
@@ -55,8 +63,10 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
   const ziel = t.kalender ? null : await kalenderZiel(t.wer, t.bereich ?? 'privat', einst);
   const kalender = t.kalender || ziel?.kalender;
   if (!kalender) throw new KalenderFehler('Für diese Person ist kein Kalender hinterlegt — der Termin wurde nicht angelegt.', 409);
+  // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer Person schreibt nur sie selbst (auch kein Systemlauf für andere).
+  if (persoenlichFremd(await zielKalender(kalender), t.von)) throw new KalenderFehler('Dieser Kalender gehört zur iCloud-Verbindung einer anderen Person — dort legt MAKE OS nichts an.', 403);
   // Liegt der Zielkalender in iCloud, braucht es iCloud (ein Google-Ziel braucht es nicht).
-  if (!verbunden() && ziel?.quelle !== 'google' && !Object.values(await googleKalenderNamen()).includes(kalender)) throw new KalenderFehler('iCloud ist noch nicht verbunden (deploy/icloud-verbinden.sh).', 409);
+  if (!verbunden() && ziel?.quelle !== 'google' && !Object.values(await googleKalenderNamen()).includes(kalender) && (await zielKalender(kalender))?.quelle !== 'icloud') throw new KalenderFehler('iCloud ist noch nicht verbunden (Kalender › Einstellungen › iCloud).', 409);
   const r = await anlegen({
     titel: t.titel, kalender, start: t.start, ende: t.ende, ganztags: !!t.ganztags,
     art, ...(art === 'block' && t.blockArt ? { blockArt: t.blockArt } : {}),

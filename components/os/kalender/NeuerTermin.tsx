@@ -46,7 +46,7 @@ const schreibe = (e: Entwurf | null) => { try { if (e) window.sessionStorage.set
 
 export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, kalender, kalenderStandard, bereich, onZu, onAngelegt }: {
   vorgabe: Vorgabe; heute: string; standardDauer: number; fokusDauer?: number;
-  kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string; quelle?: 'google' }[];
+  kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string; quelle?: 'google' | 'icloud' }[];
   /** Welcher Kalender gehört wem (Einstellungen) — für die Farbe „Standard“. */
   kalenderStandard?: Partial<Record<Wer, string>>;
   /** Aktiver Bereich der Kalenderseite: im Business-Bereich ist der Standard der Google Kalender der Person (03.10.), sofern verbunden. */

@@ -75,7 +75,7 @@ export function fuerZoe<T extends TerminMitBezug & { wer?: string }>(t: T, betra
 // Person (Mac-Zulieferer) — dort geht er unverändert an den eigenen Server.
 
 /** Ein Eintrag des Zwischenspeichers `calendar-cache` (lib/kalender/icloud.ts `cacheFormat` bzw. Mac-Lieferung). */
-export interface CacheEreignis { id?: string; uid?: string; title?: string; location?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; category?: string; owner?: string; source?: string; privat?: boolean; von?: string; abgesagt?: boolean; maskiert?: true }
+export interface CacheEreignis { id?: string; uid?: string; title?: string; location?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; category?: string; owner?: string; source?: string; privat?: boolean; von?: string; abgesagt?: boolean; maskiert?: true; /** iCloud je Person (06.10.): aus der eigenen Verbindung dieser Person. */ persoenlich?: string }
 
 /**
  * Ein Zwischenspeicher-Eintrag, wie `betrachter` ihn sehen darf. `wer` = wem der Kalender gehört (Einstellungen,
