@@ -23,6 +23,7 @@ import { ladeHaushalt } from '../haushalt/speicher';
 import { buchungenSuchen } from '../haushalt/zoe';
 import { heuteBerlin, tagPlus, tageZwischen } from '../haushalt/monat';
 import { baueFinanzbild, type Finanzbild, type FinanzplanStand } from './finanzbild';
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { SYSTEM, aufgabe, SCHEMA, DEFINITIONEN, MODUS_NAME, type Modus } from './prompt';
 import { normalisiere, pruefe, sauber, korrekturAuftrag, type Antwort, type Pruefung } from './pruefer';
 import { zahlenImText } from './pruefung';
@@ -48,8 +49,10 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
     ladeEinstellung(),
   ]);
   const hh = haushalt ? await ladeHaushalt(haushalt) : null;
+  // 0-Punkt (05.10.): Konten und Business-Posten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
+  const ab = await mitEroeffnung({ ...(plan ?? {}), planposten: liqui?.posten ?? [] });
   const bild = baueFinanzbild({
-    heute, finance, plan, planposten: liqui?.posten ?? [],
+    heute, finance, plan: plan ? ab : null, planposten: ab.planposten,
     grundlage: grund?.roh ? { g: lesen(grund.roh, grund.stand), stand: grund.stand } : null,
     steuer: { ...einstellung.steuer, ruecklageQuote: einstellung.ruecklageQuote },
     haushalt: hh,

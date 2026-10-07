@@ -1,4 +1,5 @@
 // ─── MAKE OS — Controlling-Zustand persistieren (lokal) ─────────────────────
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -17,7 +18,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const [roh, plan, grenzen, ab] = await Promise.all([
     loadJson<FinanceState>('finance'),
-    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan'),
+    // 0-Punkt (05.10.): die Kasse aus den Konten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts).
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),
     schwellen(),
     loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse'),
   ]);

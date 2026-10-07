@@ -22,6 +22,7 @@ import { istStand } from '@/lib/finanzen/chef/ist-stand';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { pruefliste, type Businessbestand } from '@/lib/finanzen/haushalt/entflechtung';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 
 /** Die Checkliste „Ist-Stand“ — jeder Punkt aus den Daten abgeleitet. */
 async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<typeof ladeFinanzbild>>['bild'], einstellung: ChefEinstellung) {
@@ -30,7 +31,9 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
     loadJson<Businessbestand['buchungen']>('buchungen'),
     loadJson<{ posten?: { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string }[] }>('liquiplan'),
   ]);
-  const business = (lp?.posten ?? []).filter(p => p.firmaId !== 'privat');
+  // 0-Punkt (05.10.): Konten, offene Rechnungen und Planposten ab der Eröffnung (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
+  const ab = await mitEroeffnung({ firmen: fp?.firmen ?? [], rechnungen: fp?.rechnungen ?? [], planposten: (lp?.posten ?? []) as { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string; ab: string; rhythmus: string; bis?: string }[] });
+  const business = ab.planposten.filter(p => p.firmaId !== 'privat');
   let hh = null as Parameters<typeof istStand>[0]['haushalt'];
   if (haushalt && bild.haushalt) {
     const h = await ladeHaushalt(haushalt);
@@ -46,8 +49,8 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
   }
   return istStand({
     heute: bild.stichtag,
-    firmen: (fp?.firmen ?? []).map(f => ({ id: f.id, name: kontoName(f.id, f.name), kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
-    offeneRechnungen: (fp?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.firmaId !== 'privat').map(r => ({ kunde: r.kunde, faellig: r.faellig })),
+    firmen: ab.firmen.map(f => ({ id: f.id, name: kontoName(f.id, f.name), kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
+    offeneRechnungen: ab.rechnungen.filter(r => r.status === 'gestellt' && r.firmaId !== 'privat').map(r => ({ kunde: r.kunde, faellig: r.faellig })),
     leereControllingMonate: bild.business.controlling ? bild.business.controlling.leere_monate : null,
     grundlageStand: bild.business.grundlage?.stand ?? null,
     planposten: business.length, zuKlaeren: business.filter(p => !p.sicher && (p.notiz ?? '').startsWith('Zu klären')).length,

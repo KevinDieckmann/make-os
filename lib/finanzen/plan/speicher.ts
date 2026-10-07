@@ -14,23 +14,34 @@ import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, Ope
 import { offeneBuchungen, faelligeZahl } from './hilfen';
 import { fuerSicht, type PlanSicht } from './sicht';
 import { schreibeAlsBusiness } from './business-schreiben';
+import { EROEFFNUNG_BESTAND, kontoStartFuerPlan } from '@/lib/business/eroeffnung';
+import { geltendeLaden } from '@/lib/business/eroeffnung-server';
 
 export function speicherName(haushalt: string): string {
   if (!HAUSHALT_OK.test(haushalt)) throw new Error(`Ungültiger Haushalt: ${haushalt}`);
   return `finanzen-plan--${haushalt}`;
 }
 
-/** Das Dokument des Haushalts — null, wenn noch keins hochgeladen wurde. */
+/** Das Dokument des Haushalts — null, wenn noch keins hochgeladen wurde. Mit dem 0-Punkt der Gesellschaften (`eroeffnung`, nie gespeichert). */
 export async function ladeFinanzplan(haushalt: string): Promise<FinanzDaten | null> {
   const roh = await loadJson<unknown>(speicherName(haushalt));
   if (!roh) return null;
   const p = pruefeDokument(roh);
   if (!p.ok) { console.error(`[finanzplan] ${speicherName(haushalt)}: ${p.fehler}`); return null; }
-  return p.dokument;
+  return mitKontoStart(p.dokument);
 }
 
-/** Stand der Datei (Änderungszeit + Größe) — für das ETag der GET-Antwort. */
-export const dateiStand = (haushalt: string) => speicherStand([speicherName(haushalt)]);
+/**
+ * 0-Punkt (05.10.): Kontostand-Startwert der Gesellschaften aus der Eröffnung (lib/business/eroeffnung.ts) ans Dokument hängen — beim Lesen,
+ * nie gespeichert (der Schreibweg liest die Datei selbst und kennt das Feld nicht; Operationen auf `/eroeffnung` → 400). Ohne Eröffnung: unverändert.
+ */
+export async function mitKontoStart(d: FinanzDaten): Promise<FinanzDaten> {
+  const eroeffnung = kontoStartFuerPlan(await geltendeLaden(), d.monate.length);
+  return eroeffnung ? { ...d, eroeffnung } : d;
+}
+
+/** Stand der Datei (Änderungszeit + Größe) samt Eröffnung — für das ETag der GET-Antwort. */
+export const dateiStand = (haushalt: string) => speicherStand([speicherName(haushalt), EROEFFNUNG_BESTAND]);
 
 export type PatchErgebnis =
   | { ok: true; stand: string; protokoll: Aenderung[]; meta: Record<string, { wer: string; wann: string } | null>; nachladen: boolean }
@@ -43,6 +54,8 @@ export type PatchErgebnis =
  */
 export async function patchen(haushalt: string, basisStand: unknown, ops: Operation[], person: string, sicht: PlanSicht = 'privat'): Promise<PatchErgebnis> {
   const jetzt = new Date();
+  // Für die 409-Antwort (das Dokument geht zurück an die Oberfläche): der 0-Punkt wie beim Lesen — außerhalb der Sperre geladen.
+  const geltend = await geltendeLaden();
   let ergebnis: PatchErgebnis = { ok: false, status: 404, fehler: 'Noch kein Finanzplan — erst den Startbestand hochladen oder leer beginnen.' };
   await updateJson<unknown>(speicherName(haushalt), aktuell => {
     if (!aktuell) return aktuell;
@@ -51,7 +64,8 @@ export async function patchen(haushalt: string, basisStand: unknown, ops: Operat
     const d = p.dokument;
     if (typeof basisStand !== 'string' || basisStand !== d.stand) {
       // Die 409-Antwort trägt das Dokument — in der Business-Sicht nur den Business-Teil (Privat verlässt den Server nie).
-      ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: fuerSicht(d, sicht) };
+      const start = kontoStartFuerPlan(geltend, d.monate.length);
+      ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: fuerSicht(start ? { ...d, eroeffnung: start } : d, sicht) };
       return aktuell;
     }
     // Business-Sicht (04.10.; Gegenprüfung 05.10.): jeder Schritt muss Business sein UND der private Teil bleibt unverändert — sonst 403, nichts

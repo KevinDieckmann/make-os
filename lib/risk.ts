@@ -4,6 +4,7 @@
 // nennt die Zahl, den Grund und den direkten Absprung.
 // NIEMALS aus Client-Komponenten importieren (zieht fs über local-db).
 
+import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
@@ -29,7 +30,7 @@ const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', c
  */
 export async function computeShields(today = localDay(), person?: string | null): Promise<Shield[]> {
   const fuer = person ?? await inhaberSpeicher();
-  const [fplan, fin, tasksF, msF, wplanF] = await Promise.all([
+  const [fplanRoh, fin, tasksF, msF, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
@@ -38,6 +39,8 @@ export async function computeShields(today = localDay(), person?: string | null)
     fuer ? planBloeckeLesen({ person: fuer, von: today, bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
   ]);
 
+  // 0-Punkt (05.10.): Posten vor der Eröffnung einer Gesellschaft sind archiviert — sie lösen keinen Alarm mehr aus (lib/business/eroeffnung.ts).
+  const fplan = fplanRoh ? await mitEroeffnung(fplanRoh) : null;
   const shields: Shield[] = [];
 
   // ── Geld: überfällige Forderungen (rein) und überfällige Zahlungen (raus) ──

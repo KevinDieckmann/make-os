@@ -74,10 +74,13 @@ const ZELLE_MIN = 74;
 /** Kennung der bearbeitbaren Zelle einer Zeile: Planzelle (`edit`) oder eigene Zelle (`zelle.id`). */
 const eid = (r: DatenZeile): string | undefined => r.edit ?? r.zelle?.id;
 
-export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDrill, werkzeuge }: {
+export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDrill, werkzeuge, abMonat }: {
   zeilen: BlattZeile[]; titel: string; hist?: boolean; extra?: ExtraSpalte[];
   onZeile?: (id: string) => void; onNeueZeile?: (liste: ZeilenListe, gruppe?: string, einheit?: Zeile['einheit']) => void; onDrill?: (histIdx: number, zeile: string) => void; werkzeuge?: ReactNode;
+  /** 0-Punkt (05.10.): Plan-Monat der Eröffnung dieser Gesellschaft — Monate davor heißen „vor Eröffnung“ (gedämpft) und zählen nicht in „Plan gesamt“. */
+  abMonat?: number;
 }) {
+  const vorEroeffnung = (m: number) => !!abMonat && m < abMonat;
   const { d, aendere, verbergen, person, formel, melde, ps, bereich = 'privat' } = usePlan();
   const [modus, setModus] = useState<Modus>('plan');
   const [jahr, setJahr] = useState<Jahr>('alle');
@@ -350,7 +353,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
       const gewaehlt = !!eid(r) && !!sel && sel.e === eid(r) && sel.m === m;
       const bearb = !!eid(r) && !!bearbeitet && bearbeitet.e === eid(r) && bearbeitet.m === m;
       const hatNotiz = !!k && !!d.notizen[k];
-      if (modus === 'plan' && v != null && !Number.isNaN(v)) { summe += v; letzter = v; n++; }
+      if (modus === 'plan' && v != null && !Number.isNaN(v) && !vorEroeffnung(m)) { summe += v; letzter = v; n++; }
       let farbe: string | undefined = v == null ? C.inkLeise : vorzeichenFarbe(v);
       if (modus === 'delta' && v != null) farbe = v > 0.5 ? (r.aus ? LEUCHT.kritisch : LEUCHT.gut) : v < -0.5 ? (r.aus ? LEUCHT.gut : LEUCHT.kritisch) : C.inkDim;
       const fw = modus === 'plan' && ueberschrieben ? formelWert(r, m) : null;
@@ -422,7 +425,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
             <tr>
               <th style={{ ...kopfStil, textAlign: 'left', left: 0, zIndex: 3, paddingLeft: 4 }}><span style={nameText} title={titel}>{titel}</span></th>
               {extra?.map((x, i) => <th key={`x${i}`} title={x.t} style={kopfStil}>{x.h}</th>)}
-              {spalten.map((c, j) => <th key={c.h ? `h${c.i}` : `m${c.m}`} style={{ ...kopfStil, color: c.h ? LILA : j === erstPlan && erstPlan > 0 ? C.aktiv : C.inkLeise }}>{c.label}</th>)}
+              {spalten.map((c, j) => <th key={c.h ? `h${c.i}` : `m${c.m}`} title={!c.h && vorEroeffnung(c.m) ? 'vor Eröffnung — zählt nicht in „Plan gesamt“ (0-Punkt unter Zahlen › Business)' : undefined} style={{ ...kopfStil, color: c.h ? LILA : j === erstPlan && erstPlan > 0 ? C.aktiv : C.inkLeise, ...(!c.h && vorEroeffnung(c.m) ? { opacity: 0.55 } : {}) }}>{c.label}{!c.h && vorEroeffnung(c.m) ? <span style={{ display: 'block', fontSize: 11, letterSpacing: 0 }}>vor Eröffnung</span> : null}{!c.h && abMonat === c.m ? <span style={{ display: 'block', fontSize: 11, letterSpacing: 0, color: LEUCHT.business }}>0-Punkt</span> : null}</th>)}
               <th style={kopfStil}>{jahr === 'alle' ? 'Plan gesamt' : `Plan ${jahr}`}</th>
             </tr>
           </thead>

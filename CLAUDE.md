@@ -123,6 +123,31 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
   - **Plattform-Schuld (nicht gebaut):** Zuordnung je Einheit (Bereich, Arbeit) kommt heute nur aus der Build-Variable; aus Register/Inhaber-Einstellung braucht
     sie eine Laufzeit-Zuordnung statt Modul-Konstanten (Bauplan in UPDATES.md › selbst-privat-2).
 
+## 0-Punkt (Eröffnung) je Business-Gesellschaft (05.10., Branch `nullpunkt`, nur lokal; UPDATES.md, FINANZPLANUNG_JETZT.md)
+Kevin 05.10.: „Bring in Business einen 0-Punkt rein. Ich lade alles hoch an Zahlen.“ Je Gesellschaft mit Bereich Business (`BUSINESS_GESELLSCHAFTEN`):
+Stichtag + Anfangsbestand (Kontostand, offene Forderungen/Verbindlichkeiten). Ab dem Stichtag rechnet die Gesellschaft neu; Älteres bleibt gespeichert und
+sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird gelöscht.
+- **EINE Quelle:** Bestand `business-eroeffnung` (`{ eintraege: Eroeffnung[] }`, Speicher-Register). Jede Änderung = neuer Eintrag (`er-<uuid>`), „Rückgängig“
+  setzt `zurueckgenommenAm` am jüngsten → der vorige gilt. Geltend = jüngster nicht zurückgenommener je Gesellschaft (`geltendeEroeffnungen`). Rein:
+  `lib/business/eroeffnung.ts` (Server UND Browser), Server: `lib/business/eroeffnung-server.ts`, Route `/api/business/eroeffnung` (GET/POST `setzen` |
+  `zuruecknehmen`, optional `basis` = Kennung der gesehenen Eröffnung → 409). Rechte: Haushalt des Inhabers lesen; schreiben Inhaber oder Konto mit Haushalt
+  (volles oder `finanzRecht: 'business'`), nie Dienstweg/ZOE; Privat-Einheit/`privat` → 400 (`GEHOERT_ZU_PRIVAT`). Protokoll über `protokolliere`, Lesen `leseZugriff`.
+- **EINE Wirkungsstelle:** `abEroeffnung(bundle, geltende)` (Server: `mitEroeffnung(bundle)`) — Konten: Anfangsbestand, außer Kontostand-Datum NACH dem Stichtag
+  (`kontoQuelle`), fehlendes Konto entsteht; Rechnungen (Datum → Fälligkeit → bezahlt am), Zahlungen (Fälligkeit), Planposten (einmalig `ab` / `bis` vor dem
+  Stichtag) davor → `archiv`; offene Posten der Eröffnung als Rechnung „gestellt“/Zahlung „offen“ mit Kennung `er-…` und `eroeffnung: true` (Links `WEG.rechnung/
+  zahlung` führen dann zu `WEG.eroeffnung()`). Abschlüsse (`abschlussVor`, Monat < Stichtag-Monat), Buchungen (`buchungVor`, Firma aus `ort`), Controlling-Monate nur
+  wenn JEDE Business-Gesellschaft eröffnet ist (`gesamtAbMonat`). Ohne Eröffnung: dieselben Listen (bit-gleich). **Neue Stelle, die Firmen-Konten oder Business-
+  Posten summiert → durch `abEroeffnung`/`mitEroeffnung` ziehen, nie eigene Stichtag-Sonderfälle.** Heute: `ladeRoh` (Business-Index/Cockpit, ZOE, HoF-Index,
+  Wachstums-Score), Fluss „Für dich“ Business, Head of Finance (`ladeFinanzbild`, Checkliste), Schilde (`risk.ts`), Brain-Kontext, Startfläche, `state/finance`
+  (Kasse), Controlling-Analyse; Browser: Zahlen › Business, Liquidität (+ Kennzeichen an Planposten/Kontoständen), Controlling, Rechnungen & Zahlungen (Summen +
+  Kennzeichen). Bewusst nicht: Steuern, CRM-Umsatz je Kunde, Lichtfäden/Kalender-Fristen, Privat.
+- **Finanzplanung:** `FinanzDaten.eroeffnung` (Lese-Feld, `ladeFinanzplan` → `mitKontoStart`, nie gespeichert, nicht in `ERLAUBT`) → `rechneUG`: im Stichtag-Monat
+  startet `konto`/`kdv` beim Anfangsbestand, Handwert gewinnt; ETag von GET `/api/finanzplan` umfasst den Bestand. Blatt: `abMonat` (Monate davor „vor Eröffnung“,
+  „Plan gesamt“ ab Stichtag). Die zwei Kern-Zeilen sind Kevins Auftrag vom 05.10. (sonst gilt „Formeln unverändert bis Kevins Wort“).
+- **Oberfläche:** `components/os/business/Eroeffnung.tsx` (`EroeffnungKarte` im Business-Cockpit vor dem Monatsabschluss, `useGeltendeEroeffnung` für Ansichten,
+  Ereignis `make-eroeffnung-geaendert`); Monatsabschluss-Karte kennzeichnet archivierte Monate (`stichtage`); Unternehmen › Steckbrief verlinkt.
+- Tests: tests/nullpunkt.test.ts (rein, Kern, Route, Index vorher → nachher, Rechte, Historie/Rückgängig, bit-gleich ohne Eröffnung).
+
 ## Demo-Instanz (05.10., nur lokal, Branch `demo-schnappschuss`; Anleitung `DEMO.md`)
 - **Saat** `scripts/demo-saat.mjs` → `lib/demo/server.ts` `demoSaenInLeerenOrdner` → `lib/demo/saat.ts` `demoSaen`: erfundener Haushalt
   `demo` (Lena/Jonas `@example.invalid`, Team-Person Mira), CRM, Unternehmen mit Holding + Gründungsfahrplan, Ziele/Meilensteine,

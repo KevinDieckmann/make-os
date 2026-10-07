@@ -25,6 +25,9 @@ import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
 import { useMandate } from './zeit/useMandate';
 import { neueKennung } from '@/lib/kennung';
+import { WEG } from '@/lib/wege';
+import { useGeltendeEroeffnung } from './business/Eroeffnung';
+import { abEroeffnung, kontoQuelle, planpostenVor } from '@/lib/business/eroeffnung';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
@@ -145,16 +148,19 @@ export function LiquiditaetView() {
   }
 
   const firmaFilter = nurFirma === 'alle' ? undefined : nurFirma;
+  // 0-Punkt (05.10.): die Vorschau rechnet ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts); die Listen unten bleiben vollständig.
+  const eroeffnung = useGeltendeEroeffnung();
+  const ab = useMemo(() => (plan ? abEroeffnung({ ...plan, planposten: posten }, eroeffnung) : null), [plan, posten, eroeffnung]);
   const v = useMemo(
-    () => plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, wochen, false, posten, szenario, firmaFilter, true) : null,
-    [plan, posten, heute, wochen, szenario, firmaFilter],
+    () => ab ? vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, wochen, false, ab.planposten, szenario, firmaFilter, true) : null,
+    [ab, heute, wochen, szenario, firmaFilter],
   );
   /** Dieselbe Rechnung in allen drei Szenarien — für den Vergleich. */
   const dreiFaelle = useMemo(() => {
-    if (!plan) return null;
-    const f = (sz: Szenario) => vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, wochen, false, posten, sz, firmaFilter, true);
+    if (!ab) return null;
+    const f = (sz: Szenario) => vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, wochen, false, ab.planposten, sz, firmaFilter, true);
     return { schlecht: f('schlecht'), real: f('real'), gut: f('gut') };
-  }, [plan, posten, heute, wochen, firmaFilter]);
+  }, [ab, heute, wochen, firmaFilter]);
   /** Aufschlüsselung nach Kategorie über den ganzen Zeitraum. */
   const nachKategorie = useMemo(() => {
     if (!v) return [];
@@ -185,6 +191,7 @@ export function LiquiditaetView() {
         <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf} titel={p.titel} unter={RHYTHMUS_LABEL[p.rhythmus]}
           rechts={<>
             {!p.sicher && <Chip farbe={LEUCHT.achtung}>unsicher</Chip>}
+            {planpostenVor(p, eroeffnung) && <Chip farbe={C.inkLeise}>vor dem 0-Punkt</Chip>}
             {/* 05.10.: Posten einer Privat-Einheit (Selbstständigkeit) bleiben hier sichtbar und änderbar, zählen aber nicht in die Business-Vorschau. */}
             {p.firmaId && p.firmaId !== 'privat' && bereichVonFirma(p.firmaId) === 'privat' && <Chip farbe={LEUCHT.geld}>Privat · {istGesellschaft(p.firmaId) ? finanzOrtName(p.firmaId) : p.firmaId}</Chip>}
             <span style={{ ...geld, color: raus ? LEUCHT.achtung : LEUCHT.gut }}>{raus ? '−' : '+'}{eur(Math.abs(p.betrag))}</span>
@@ -335,12 +342,17 @@ export function LiquiditaetView() {
             <Karte i={2} id="kontostaende">
               <Ueberschrift farbe={LEUCHT.geld} rechts="der Startpunkt">Kontostände</Ueberschrift>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {plan.firmen.map(f => (
-                  <Feld key={f.id} label={f.name}>
-                    <input type="number" value={f.kontostand ?? ''} onChange={e => kontostand(f.id, e.target.value)}
-                      placeholder="—" aria-label={`Kontostand ${f.name}`} style={{ ...eingabe, width: 150, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }} />
-                  </Feld>
-                ))}
+                {plan.firmen.map(f => {
+                  const e = istGesellschaft(f.id) ? eroeffnung[f.id] : undefined;
+                  return (
+                    <Feld key={f.id} label={f.name}>
+                      <input type="number" value={f.kontostand ?? ''} onChange={ev => kontostand(f.id, ev.target.value)}
+                        placeholder="—" aria-label={`Kontostand ${f.name}`} style={{ ...eingabe, width: 150, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }} />
+                      {/* 0-Punkt: welcher Stand gilt — der Anfangsbestand, bis ein Kontostand nach dem Stichtag eingetragen ist. */}
+                      {e && <Link href={WEG.eroeffnung()} style={{ ...leise, display: 'block', marginTop: 4, textDecoration: 'none' }}>{kontoQuelle(f, e) === 'eroeffnung' ? `gilt: 0-Punkt ${e.stichtag.slice(8, 10)}.${e.stichtag.slice(5, 7)}. · ${eur(e.kontostand)} ›` : 'gilt: dieser Kontostand (nach dem 0-Punkt)'}</Link>}
+                    </Feld>
+                  );
+                })}
               </div>
             </Karte>
           )}

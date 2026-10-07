@@ -153,6 +153,9 @@ export interface Aenderung {
   eintrag?: string;
 }
 
+/** Kontostand-Startwert einer Gesellschaft aus der Eröffnung: Plan-Monat (1 = Okt 26; ein Stichtag vor dem Plan → 1) und Betrag. */
+export interface KontoStart { monat: number; betrag: number; stichtag: string }
+
 export interface FinanzDaten {
   version: 3; stand: string; monate: string[]; aktiv: string;
   /** Szenario-Baukasten (27.09.): eigene Szenarien aus Bausteinen über dem Treiber-Szenario. Fehlt in älteren Dokumenten → leer. */
@@ -178,6 +181,12 @@ export interface FinanzDaten {
   kernStand?: number;
   /** Handwerte aus dem Stand vor finanzplan-5 (Schlüssel wie in `plan`), mit denen NICHT gerechnet wird, bis jemand sie übernimmt oder verwirft. Optional. */
   handAlt?: Record<string, number>;
+  /**
+   * 0-Punkt (Eröffnung, 05.10., Kevin: „Bring in Business einen 0-Punkt rein“): Kontostand-Startwert der Gesellschaften im Stichtag-Monat aus
+   * dem Bestand `business-eroeffnung` (lib/business/eroeffnung.ts). NIE gespeichert — der Server setzt das Feld beim Lesen (`ladeFinanzplan`),
+   * Operationen darauf gibt es nicht (`ERLAUBT`). Fehlt es, rechnet der Kern bit-genau wie vorher. Ein Handwert `ug.konto:<m>`/`kdv.konto:<m>` gewinnt.
+   */
+  eroeffnung?: Partial<Record<'ug' | 'kdv', KontoStart>>;
   schulden: Schuld[];
   /** Wer hat eine Planzelle zuletzt geändert: key → {wer, wann}. */
   meta: Record<string, { wer: string; wann: string }>;
@@ -426,6 +435,8 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
     const auszahlungen = h('ug.auszahlungen', m, kevin + malin + unterstuetzung + stellen + sach + gruendung + ustZahlung + steuer + bjoern + holding + darlehen + bA + dPers + dLauf + dKost);
 
     const saldo = einzahlungen - auszahlungen;
+    // 0-Punkt (05.10.): im Stichtag-Monat startet das Konto beim Anfangsbestand der Eröffnung (Handwert `ug.konto:<m>` gewinnt weiter).
+    if (d.eroeffnung?.ug && m === d.eroeffnung.ug.monat) konto = d.eroeffnung.ug.betrag;
     konto = h('ug.konto', m, konto + saldo);
     gew[i] = gewinn;
     const ytd = gew.reduce((s, g, j) => s + (jahrVon(j + 1) === jahrVon(m) ? g : 0), 0);
@@ -451,6 +462,8 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
     const kdvGewinn = (kdvUmlage - kdvHolding) + (kdvBjoernEin - kdvTilgung) + (kdvEin - kdvAus) + dE - dA + dErg;
     const kdvSt0 = stKdv(m, kdvGewinn, steuerHand(h, 'kdv', m));
     const kdvDarlehenEin = h('kdv.darlehenEin', m, dl.kdv.ein[i]), kdvDarlehenAus = h('kdv.darlehenAus', m, dl.kdv.aus[i]);
+    // 0-Punkt (05.10.): KD Ventures startet im Stichtag-Monat beim Anfangsbestand der Eröffnung (Handwert `kdv.konto:<m>` gewinnt weiter).
+    if (d.eroeffnung?.kdv && m === d.eroeffnung.kdv.monat) kdv = d.eroeffnung.kdv.betrag;
     kdv = h('kdv.konto', m, kdv + (kdvUmlage + kdvBjoernEin + ex - kdvHolding - kdvTilgung - abloesung - exSteuer + kdvEin - kdvAus - kdvSt0.zahlung + dE - dA + kdvDarlehenEin - kdvDarlehenAus));
     rest = h('kdv.darlehenOffen', m, abloesung > 0 ? 0 : Math.max(0, rest - (m === a.bjoernSchlussMonat ? a.bjoernSchluss - a.bjoernZinsDeckel : kdvTilgung)));
     const kdvRuecklage = h('kdv.steuerRuecklage', m, kdvSt0.ruecklage);

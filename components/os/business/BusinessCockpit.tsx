@@ -21,6 +21,7 @@ import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
 import { MonatsabschlussKarte, EinstellungenKarte } from './Abschluss';
+import { EroeffnungKarte } from './Eroeffnung';
 import { VerlaufKarte } from './Verlauf';
 import { ModellKarte } from './Modell';
 import { useZuZiel } from '../ziel';
@@ -39,6 +40,8 @@ interface Antwort {
   wechsel: { id: string; von: string; nach: string; seit: string }[];
   verlauf: { tag: string; index: number | null; saeulen: Record<string, number | null>; werte: Record<string, number | null> }[];
   abschluesse: Monatsabschluss[];
+  /** 0-Punkt je Gesellschaft (Stichtag) — Abschlüsse davor sind archiviert. */
+  stichtage?: Partial<Record<Gesellschaftskennung, string>>;
   einstellungen: { fte: Partial<Record<Gesellschaftskennung, number>>; ziele?: Partial<Record<Gesellschaftskennung, number>>; kapazitaet?: Partial<Record<Gesellschaftskennung, number>> };
   modell?: Geschaeftsmodell;
   fehler?: string;
@@ -167,7 +170,9 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
 
       {darunter}
 
-      {d && <MonatsabschlussKarte eintraege={d.abschluesse} onGespeichert={() => void laden()} />}
+      {/* 0-Punkt (05.10.): Stichtag + Anfangsbestand je Gesellschaft — ab dort rechnet alles neu, Älteres bleibt archiviert. */}
+      {d && <EroeffnungKarte onGeaendert={() => void laden()} />}
+      {d && <MonatsabschlussKarte eintraege={d.abschluesse} stichtage={d.stichtage} onGespeichert={() => void laden()} />}
       {d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
 
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>

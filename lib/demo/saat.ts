@@ -64,6 +64,7 @@ const R = {
   crm: () => import('@/app/api/crm/bestand/route') as Promise<Modul>,
   deal: () => import('@/app/api/crm/deal/route') as Promise<Modul>,
   gesellschaften: () => import('@/app/api/gesellschaften/route') as Promise<Modul>,
+  eroeffnung: () => import('@/app/api/business/eroeffnung/route') as Promise<Modul>,
   ziele: () => import('@/app/api/state/ziele/route') as Promise<Modul>,
   meilensteine: () => import('@/app/api/state/meilensteine/route') as Promise<Modul>,
   aufgabe: () => import('@/app/api/tasks/create/route') as Promise<Modul>,
@@ -325,6 +326,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { pfad: '/arbeitsplan', neu: 'ps-demo-wachstum' },
   ] });
   schritt('Finanzplanung', 1);
+  // 0-Punkt (05.10.): Beispiel-Eröffnung der MAKE-Gesellschaft zum Monatsersten — Anfangsbestand und je ein offener Posten (erfunden).
+  await rufe(R.eroeffnung(), 'POST', '/api/business/eroeffnung', LENA, { aktion: 'setzen', firma: 'ug', stichtag: `${heute.slice(0, 7)}-01`, kontostand: 48000,
+    forderungen: [{ name: 'Nordwerk (Beispiel)', betrag: 4165, faellig: tagPlus(heute, 10) }], verbindlichkeiten: [{ name: 'Kanzlei (Beispiel)', betrag: 535.5, faellig: tagPlus(heute, 20) }], notiz: 'Beispiel-Eröffnung (Demo)' });
+  schritt('0-Punkt (Eröffnung)', 1);
 
   // 14) Familie & Gesundheit — harmlos und minimal.
   await rufe(R.familie(), 'PATCH', '/api/familie', LENA, { ops: [

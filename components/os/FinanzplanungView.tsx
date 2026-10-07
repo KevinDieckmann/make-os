@@ -7,6 +7,8 @@
 // (z. B. Partnerdarlehen). Oben die Verknüpfung zum Umsatzziel aus dem Controlling.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
+import { useGeltendeEroeffnung } from './business/Eroeffnung';
+import { abEroeffnung, rechnungVor, zahlungVor } from '@/lib/business/eroeffnung';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
@@ -76,6 +78,8 @@ function Zeichen({ onClick, aus, label, children }: { onClick: () => void; aus?:
 export function FinanzplanungView() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [finance, setFinance] = useState<FinanceState | null>(null);
+  // 0-Punkt (05.10.): Summen ab der Eröffnung je Gesellschaft; ältere Posten bleiben in den Listen (Kennzeichen „vor dem 0-Punkt“).
+  const eroeffnung = useGeltendeEroeffnung();
   const [neu, setNeu] = useState({ kunde: '', titel: '', betrag: '', firmaId: 'kdc' });
   const [neuZ, setNeuZ] = useState({ an: '', titel: '', betrag: '', faellig: '', firmaId: 'kdc' });
   /** Rückfrage an einer Rechnung: löschen (nur geplant) oder stornieren (ab gestellt, mit Grund). */
@@ -112,12 +116,13 @@ export function FinanzplanungView() {
 
   const m = finance ? computeMetrics(finance) : null;
   // Privat zählt hier nicht mit — die privaten Konten stehen unter Zahlen → Privat.
-  const cash = plan.firmen.filter(f => f.id !== 'privat').reduce((s, f) => s + (f.kontostand ?? 0), 0);
-  const gestellt = plan.rechnungen.filter(r => r.status === 'gestellt');
-  const geplant = plan.rechnungen.filter(r => r.status === 'geplant');
+  const ab = abEroeffnung(plan, eroeffnung);
+  const cash = ab.firmen.filter(f => f.id !== 'privat').reduce((s, f) => s + (f.kontostand ?? 0), 0);
+  const gestellt = ab.rechnungen.filter(r => r.status === 'gestellt');
+  const geplant = ab.rechnungen.filter(r => r.status === 'geplant');
   const sum = (list: Rechnung[]) => list.reduce((s, r) => s + r.betrag, 0);
   const kredite = plan.merkposten.filter(x => x.art === 'kredit').reduce((s, x) => s + x.betrag, 0);
-  const zuZahlen = plan.zahlungen.filter(z => z.status === 'offen');
+  const zuZahlen = ab.zahlungen.filter(z => z.status === 'offen');
   const firmaName = (id: string) => plan.firmen.find(f => f.id === id)?.name ?? id;
 
   function rechnungAendern(id: string, patch: Partial<Rechnung>) {
@@ -227,7 +232,7 @@ export function FinanzplanungView() {
       {/* Firmen & Konten */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
         {plan.firmen.map((f, fi) => {
-          const offen = plan.rechnungen.filter(r => r.firmaId === f.id && r.status === 'gestellt');
+          const offen = ab.rechnungen.filter(r => r.firmaId === f.id && r.status === 'gestellt');
           return (
             <Karte key={f.id} i={3 + fi}>
               <Ueberschrift farbe={offen.length ? LEUCHT.achtung : LEUCHT.gut} rechts={f.bank}>{f.name}</Ueberschrift>
@@ -264,6 +269,7 @@ export function FinanzplanungView() {
                 <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, minWidth: 0 }}><MandantLink mandatId={r.mandatId} name={r.kunde} nachName zeichen={false} /></span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
                 <span style={leise}>{firmaName(r.firmaId)}</span>
+                {rechnungVor(r, eroeffnung) && <Link href={WEG.eroeffnung()} title="vor dem 0-Punkt — gespeichert, zählt nicht mehr" style={{ ...leise, textDecoration: 'none' }}>vor dem 0-Punkt (archiviert)</Link>}
                 {r.faellig && <span style={{ ...leise, color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet ? 'überfällig ' : 'fällig '}{datum(r.faellig)}</span>}
                 <input type="number" step="0.01" value={r.betrag || ''} placeholder="0" aria-label="Betrag (brutto)" readOnly={fest(r, r.betrag)}
                   title={fest(r, r.betrag) ? 'Ab „gestellt“ steht der Betrag fest — stornieren und neu stellen' : 'Betrag brutto'}
@@ -340,6 +346,7 @@ export function FinanzplanungView() {
             return (
               <div key={z.id} id={`ziel-${z.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', opacity: z.status === 'bezahlt' ? 0.5 : 1, ...zielRahmen(zielZ === z.id, LEUCHT.achtung) }}>
                 <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: i === 0 && z.status === 'offen' ? LEUCHT.kritisch : C.inkLeise, width: 24, textAlign: 'right' }}>{i + 1}.</span>
+                {zahlungVor(z, eroeffnung) && <Link href={WEG.eroeffnung()} title="vor dem 0-Punkt — gespeichert, zählt nicht mehr" style={{ ...leise, textDecoration: 'none' }}>vor dem 0-Punkt</Link>}
                 <span style={{ display: 'flex', gap: 3 }}>
                   <Zeichen onClick={() => zahlungBewegen(z.id, -1)} aus={i === 0} label="nach oben">▲</Zeichen>
                   <Zeichen onClick={() => zahlungBewegen(z.id, 1)} aus={i === plan.zahlungen.length - 1} label="nach unten">▼</Zeichen>

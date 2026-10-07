@@ -19,6 +19,8 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } fr
 import { BUSINESS_GESELLSCHAFTEN, finanzOrtAus, finanzOrtKurz, finanzOrtName, gehoertZuPrivat, istBusinessGesellschaft, istFinanzOrt } from '@/lib/einheiten';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
+import { useGeltendeEroeffnung } from './business/Eroeffnung';
+import { abEroeffnung, buchungVor } from '@/lib/business/eroeffnung';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort?: string }
@@ -37,7 +39,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
   const heute = localDay();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [posten, setPosten] = useState<Planposten[]>([]);
-  const [buchungen, setBuchungen] = useState<Buchung[]>([]);
+  const [alleBuchungen, setBuchungen] = useState<Buchung[]>([]);
   const [grund, setGrund] = useState<{ vorhanden: boolean; stand?: string; kennzahlen?: Kennzahlen } | null>(null);
 
   useEffect(() => {
@@ -49,13 +51,17 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
     fetch('/api/state/grundlage').then(r => r.json()).then(setGrund).catch(() => {});
   }, []);
 
-  const v = useMemo(() => (plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, 12, false, posten, 'real', undefined, true) : null), [plan, posten, heute]);
-  const konten = businessFirmen(plan?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
-  const mussRaus = nurBusiness(plan?.zahlungen ?? []).filter(z => z.status === 'offen');
-  const kommtRein = nurBusiness((plan?.rechnungen ?? []) as (Rechnung & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.status !== 'storniert' && r.betrag > 0);
+  // 0-Punkt (05.10.): Konten, Posten und Buchungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
+  const eroeffnung = useGeltendeEroeffnung();
+  const ab = useMemo(() => (plan ? abEroeffnung({ ...plan, planposten: posten }, eroeffnung) : null), [plan, posten, eroeffnung]);
+  const v = useMemo(() => (ab ? vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, 12, false, ab.planposten, 'real', undefined, true) : null), [ab, heute]);
+  const konten = businessFirmen(ab?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
+  const mussRaus = nurBusiness(ab?.zahlungen ?? []).filter(z => z.status === 'offen');
+  const kommtRein = nurBusiness((ab?.rechnungen ?? []) as (Rechnung & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.status !== 'storniert' && r.betrag > 0);
   const faellig = mussRaus.slice().sort((a, b) => (a.faellig ?? '9999').localeCompare(b.faellig ?? '9999')).slice(0, 6);
 
   const monat = useMemo(() => {
+    const buchungen = alleBuchungen.filter(b => !buchungVor(b, eroeffnung));
     const dieser = heute.slice(0, 7);
     const alle = Array.from(new Set(buchungen.map(b => b.datum.slice(0, 7)))).sort();
     const zeige = buchungen.some(b => b.datum.startsWith(dieser)) ? dieser : alle.at(-1) ?? dieser;
@@ -65,7 +71,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
     const kat = new Map<string, number>(); im.filter(b => b.betrag < 0).forEach(b => kat.set(b.kategorie, (kat.get(b.kategorie) ?? 0) + Math.abs(b.betrag)));
     const top = Array.from(kat.entries()).map(([k, s]) => ({ k, s })).sort((a, b) => b.s - a.s).slice(0, 6);
     return { zeige, im, ein, aus, top, label: new Date(`${zeige}-01T12:00:00`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }) };
-  }, [buchungen, heute]);
+  }, [alleBuchungen, eroeffnung, heute]);
 
   const stand12 = v?.wochen.at(-1)?.stand;
   const datum = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.` : '—');
@@ -103,7 +109,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
       {monat.im.length > 0 && (
         <Kachel id="monat" titel="Dieser Monat" breite={4}>
         <Karte i={3}>
-          <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{buchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{alleBuchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
           <div style={{ display: 'flex', gap: 18, padding: '4px 0 12px', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>
             <span style={{ color: LEUCHT.gut }}>+{eur(monat.ein)}</span><span style={{ color: LEUCHT.achtung }}>−{eur(monat.aus)}</span>
             <span style={{ color: monat.ein - monat.aus >= 0 ? LEUCHT.gut : LEUCHT.kritisch }}>= {monat.ein - monat.aus >= 0 ? '+' : ''}{eur(monat.ein - monat.aus)}</span>
