@@ -10,24 +10,25 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/fokus.css?v=095880cdb5">
+<link rel="stylesheet" href="css/seite.css?v=06b9a2e08b">
+<link rel="stylesheet" href="css/fokus.css?v=46f62ecc40">
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
 
 <header class="kopf">
-  <div class="pille">
+  <div class="wrap kopf-innen">
     <a class="marke" href="index.html" aria-label="Fokus Innovation — Startseite">
-      <svg class="marke-knoten" viewBox="0 0 40 12" aria-hidden="true" focusable="false"><rect x="0" y="5" width="13" height="2" fill="#C9465C"/><rect x="27" y="5" width="13" height="2" fill="#2FA878"/><path d="M20 1A5 5 0 0 0 20 11Z" fill="#C9465C"/><path d="M20 1A5 5 0 0 1 20 11Z" fill="#2FA878"/></svg>
+      <svg class="marke-knoten" viewBox="0 0 40 12" aria-hidden="true" focusable="false"><rect x="0" y="5" width="13" height="2" fill="#A82E44"/><rect x="27" y="5" width="13" height="2" fill="#167A55"/><path d="M20 1A5 5 0 0 0 20 11Z" fill="#A82E44"/><path d="M20 1A5 5 0 0 1 20 11Z" fill="#167A55"/></svg>
       <span class="marke-text">Fokus Innovation</span>
     </a>
-    <a class="ruf-kachel" href="index.html#teilnahme">Teilnahme anfragen <span aria-hidden="true">→</span></a>
+    <a class="knopf ruf" href="index.html#teilnahme">Teilnahme anfragen <span class="pfeil" aria-hidden="true">→</span></a>
   </div>
 </header>
 
 <main id="inhalt" class="recht">
   <div class="wrap">
-    <span class="mikro">Rechtliches</span>
+    <p class="mikro">Rechtliches</p>
     <h1>Datenschutz</h1>
 
     <p class="absender"><b>Fokus Innovation — ein Format von Make.One</b><small>MAKE Innovation · eine Marke der KEMARIS Innovation GmbH</small></p>
@@ -56,7 +57,7 @@
     <p>Unser Webserver (Caddy) führt <strong>kein Zugriffsprotokoll</strong>. Technische Fehler- und Betriebsmeldungen, etwa zu abgebrochenen Verbindungen, können eine IP-Adresse enthalten. Sie bleiben auf dem Server, werden nicht ausgewertet und rollierend überschrieben, sobald sie zusammen 30 MB erreichen.</p>
 
     <h2>Cookies und Speicher im Browser</h2>
-    <p>Diese Seite setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Sie lädt sieben kleine Skripte von unserem eigenen Server: eines schließt auf dem Handy das Menü nach einem Klick wieder, sechs steuern die Bewegung beim Scrollen über die Startseite und zeichnen ihre Lichter (einen ruhigen Farbverlauf und ein räumliches Bild aus Lichtpunkten — eine Tafel, eine Deutschlandkarte —, gerechnet allein in Ihrem Browser über dessen Grafikschnittstelle WebGL). Alle sieben lesen nichts aus, speichern nichts und senden nichts. Haben Sie in Ihrem Gerät „Bewegung reduzieren“ eingestellt, stehen statt der Bewegung ruhige Bilder.</p>
+    <p>Diese Seite setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Sie lädt zwei kleine Skripte von unserem eigenen Server: eines schließt auf dem Handy das Menü nach einem Klick wieder, eines lässt eine Linie auf der Startseite sich einmal zeichnen, wenn sie zum ersten Mal ins Bild kommt (bei „Bewegung reduzieren“ steht sie sofort fertig da). Beide lesen nichts aus, speichern nichts und senden nichts.</p>
 
     <h2>Anfragen per E-Mail (Teilnahme, Gastgeber, Partner)</h2>
     <p>Die Knöpfe „Teilnahme anfragen“, „Gastgeber werden“ und „Partner werden“ öffnen eine vorbereitete E-Mail in Ihrem eigenen Mail-Programm; erst wenn Sie sie absenden, erreicht uns etwas. Dann verarbeiten wir Ihre Adresse und was Sie uns schreiben — etwa Name, Unternehmen, Rolle und Stadt oder Angaben zu Ihren Räumen beziehungsweise Ihrem Beitrag —, um Ihre Anfrage zu beantworten und Sie gegebenenfalls zu einem Abend einzuladen. Rechtsgrundlage ist die Durchführung vorvertraglicher Maßnahmen auf Ihre Anfrage (Art. 6 Abs. 1 lit. b DSGVO), sonst unser berechtigtes Interesse, Anfragen zu beantworten (Art. 6 Abs. 1 lit. f DSGVO). Wir löschen die Nachricht, wenn sie erledigt ist, es sei denn, gesetzliche Aufbewahrungspflichten verlangen mehr.</p>
@@ -82,12 +83,22 @@
 
 <footer class="fuss">
   <div class="wrap">
-    <div class="fuss-oben">
-      <p class="absender-zeile"><b>Fokus Innovation</b><br>Ein Format von Make.One · MAKE Innovation · eine Marke der KEMARIS Innovation GmbH</p>
-      <nav class="fuss-nav" aria-label="Rechtliches und Kontakt">
+    <div class="fuss-spalten">
+      <div class="fuss-marke">
+        <img src="assets/logo/fokus-wortmarke.svg" width="293" height="107" alt="Fokus Innovation">
+        <p class="absender"><b>Fokus Innovation</b><small>Ein Format von Make.One · MAKE Innovation · eine Marke der KEMARIS Innovation GmbH</small></p>
+      </div>
+      <div class="fuss-absender">
+        <p class="fuss-titel mikro">Absender</p>
+        <p>Make.One ist das Netzwerk von MAKE Innovation für junge und erfahrene Entscheider der Wirtschaft. Fokus Innovation ist seine Reihe rund um Innovation — gegründet von Malin und Kevin, mit dem Ziel, Innovation in Deutschland nach vorne zu bringen.</p>
+        <p><a href="https://makeinnovation.de">MAKE Innovation kennenlernen <span aria-hidden="true">↗</span></a></p>
+      </div>
+    </div>
+    <div class="fuss-unten">
+      <p class="absender"><span>© 2026 MAKE Innovation</span><small>eine Marke der KEMARIS Innovation GmbH</small></p>
+      <nav aria-label="Rechtliches und Kontakt">
         <a href="impressum.html">Impressum</a>
         <a href="datenschutz.html" aria-current="page">Datenschutz</a>
-        <a href="https://makeinnovation.de">makeinnovation.de <span class="aussen" aria-hidden="true">↗</span></a>
         <a href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>
       </nav>
     </div>

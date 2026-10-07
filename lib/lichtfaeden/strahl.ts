@@ -14,8 +14,7 @@
 //   · Ruhig: keine Partikel, kein Glühen, kein Netz, kein Licht am HEUTE-Punkt (eine ruhige senkrechte Linie), keine
 //     additive Mischung (sonst entstehen rosa/violette Mischtöne, wo Farben sich kreuzen).
 // ALLE Parameter des Strahls stehen in `STRAHL` (eine Stelle; Wächter tests/strahl-ruhig.test.ts hält die Höchstwerte fest).
-// Diese Datei ist rein und wird NICHT auf die Website übersetzt (die nutzt band.ts + zeichnen.ts unverändert —
-// scripts/lichtfaeden-website.mjs), damit makeinnovation.de und fokusinnovation.de bleiben, wie sie sind.
+// Diese Datei ist rein und gehört der App (die Websites tragen seit „Klar 2“, 07.10., keine Lichtfäden mehr).
 
 /** Die Parameter des Planungs-Strahls — EINE Stelle (DESIGN_STANDARD.md › Lichtfäden, LICHTFAEDEN.md › Strahl ruhig). */
 export const STRAHL = {

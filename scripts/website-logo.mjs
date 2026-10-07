@@ -19,10 +19,6 @@
 // Konstruktion, Farben, Schutzzone, Mindestgröße: website/assets/logo/LOGO.md.
 //
 //   node scripts/website-logo.mjs          (braucht `sharp` aus node_modules für die PNGs)
-//   node scripts/website-logo.mjs --buehne (gibt den Inline-Block für die Bühne von website/index.html aus)
-//
-// website/pruefen.mjs prüft, dass das Bühnen-Zeichen in website/index.html dieselben Formen trägt wie
-// assets/logo/wortmarke.svg — nach einer Änderung hier also auch den Bühnen-Block übernehmen.
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -52,7 +48,6 @@ const rechteck = (x, y, b, h) => flaeche([[x, y], [x + b, y], [x + b, y + h], [x
 /** Viereck mit waagerechter Ober- und Unterkante: oben [x0, x1] bei y0, unten [x2, x3] bei y1. */
 const schraeg = (x0, x1, y0, x2, x3, y1) => flaeche([[x0, y0], [x1, y0], [x3, y1], [x2, y1]]);
 const verschieben = (polys, dx, dy = 0) => polys.map(p => p.map(([x, y]) => [x + dx, y + dy]));
-const skalieren = (polys, k) => polys.map(p => p.map(([x, y]) => [x * k, y * k]));
 const dPoly = polys => polys.map(p => 'M' + p.map(([x, y], i) => `${i ? 'L' : ''}${r(x)} ${r(y)}`).join('') + 'Z').join('');
 /** Kreisring (O) — außen im, innen gegen den Uhrzeigersinn: das Innere bleibt frei. */
 const ringD = (cx, cy, ra, ri) => `M${r(cx)} ${r(cy - ra)}A${r(ra)} ${r(ra)} 0 1 1 ${r(cx)} ${r(cy + ra)}A${r(ra)} ${r(ra)} 0 1 1 ${r(cx)} ${r(cy - ra)}Z` +
@@ -182,35 +177,35 @@ const wortInnen = (w, f, dx = 0, dy = 0) => {
   return { tinte: dPoly(tinte) + ringe, rot: dPoly(verschieben(w.rot, dx, dy)), gruen: dPoly(verschieben(w.gruen, dx, dy)) };
 };
 
-/** Die zwei Personenstriche je Entwurf. `klassen` = Klassen für die Einzeichnen-Animation der Bühne. */
-function striche(variante, f, { klassen = false, y = Y_LINIE } = {}) {
-  const h = MASS.linie, k = n => (klassen ? ` class="${n}"` : '');
+/** Die zwei Personenstriche je Entwurf. */
+function striche(variante, f, { y = Y_LINIE } = {}) {
+  const h = MASS.linie;
   if (variante === 'C') return '';
   if (variante === 'A') {
     const [ma0, ma1] = [MAKE.kanten[0][0], MAKE.kanten[1][1]], [ke0, ke1] = [MAKE.kanten[2][0], MAKE.kanten[3][1]];
-    return `<rect${k('strich strich-ma')} x="${r(ma0)}" y="${r(y)}" width="${r(ma1 - ma0)}" height="${h}" fill="${f.rot}"/>` +
-      `<rect${k('strich strich-ke')} x="${r(ke0)}" y="${r(y)}" width="${r(ke1 - ke0)}" height="${h}" fill="${f.gruen}"/>`;
+    return `<rect x="${r(ma0)}" y="${r(y)}" width="${r(ma1 - ma0)}" height="${h}" fill="${f.rot}"/>` +
+      `<rect x="${r(ke0)}" y="${r(y)}" width="${r(ke1 - ke0)}" height="${h}" fill="${f.gruen}"/>`;
   }
   // B „Synapse“: Rot läuft von links, Grün von rechts auf den Knoten in der Fuge zu (mit schmalem Spalt —
   // wie an einer Synapse). Der Knoten: linke Hälfte Rot, rechte Grün — hier verbinden sich die beiden.
   const kn = MASS.knoten, sp = MASS.spalt, cy = y + h / 2;
   const rotEnde = FUGE - kn - sp, gruenStart = FUGE + kn + sp;
-  return `<rect${k('strich strich-ma')} x="0" y="${r(y)}" width="${r(rotEnde)}" height="${h}" fill="${f.rot}"/>` +
-    `<rect${k('strich strich-ke')} x="${r(gruenStart)}" y="${r(y)}" width="${r(BREITE_WORT - gruenStart)}" height="${h}" fill="${f.gruen}"/>` +
-    `<g${k('knoten')}>` +
+  return `<rect x="0" y="${r(y)}" width="${r(rotEnde)}" height="${h}" fill="${f.rot}"/>` +
+    `<rect x="${r(gruenStart)}" y="${r(y)}" width="${r(BREITE_WORT - gruenStart)}" height="${h}" fill="${f.gruen}"/>` +
+    `<g>` +
     `<path d="M${r(FUGE)} ${r(cy - kn)}A${kn} ${kn} 0 0 0 ${r(FUGE)} ${r(cy + kn)}Z" fill="${f.rot}"/>` +
     `<path d="M${r(FUGE)} ${r(cy - kn)}A${kn} ${kn} 0 0 1 ${r(FUGE)} ${r(cy + kn)}Z" fill="${f.gruen}"/></g>`;
 }
 
 /** Wortmarke gestapelt: MAKE · Striche · INNOVATION (Blocksatz auf Breite von MAKE). */
-function blockInnen(variante, f, { mitZusatz = true, klassen = false } = {}) {
+function blockInnen(variante, f, { mitZusatz = true } = {}) {
   const w = wortInnen(variante === 'C' ? MAKE_C : MAKE, f);
-  let s = pfad(w.tinte, f.ink, klassen ? ' class="make"' : '');
+  let s = pfad(w.tinte, f.ink);
   if (variante === 'C') s += pfad(w.rot, f.rot) + pfad(w.gruen, f.gruen);
-  s += striche(variante, f, { klassen });
+  s += striche(variante, f);
   if (mitZusatz) {
     const z = blocksatz('INNOVATION', MASS.zusatzH, MASS.zusatzS, BREITE_WORT);
-    s += pfad(wortInnen(z, f, 0, Y_ZUSATZ).tinte, f.zusatz, klassen ? ' class="zusatz"' : '');
+    s += pfad(wortInnen(z, f, 0, Y_ZUSATZ).tinte, f.zusatz);
   }
   return s;
 }
@@ -272,27 +267,22 @@ export function kachel({ rund = true } = {}) {
   return svg(240, 240, `${grund}<g transform="translate(${r(120 - m.b * k / 2)} ${r(120 - m.h * k / 2)}) scale(${r(k)})">${m.innen}</g>`);
 }
 
-/** Inline-Fassung für die Bühne (Klassen für die Einzeichnen-Animation, dekorativ: aria-hidden). */
-export function buehne() {
-  return `<svg class="zeichen" viewBox="0 0 ${r(BREITE_WORT)} ${HOEHE_BLOCK}" aria-hidden="true" focusable="false">${blockInnen(GEWAEHLT, FARBEN.dunkel, { klassen: true })}</svg>`;
-}
-
 // ── Fokus Innovation (fokusinnovation.de, 04.10.2026; „Klar“ 05.10.2026) ─────────────────────────────────────────
 // Dieselbe Konstruktion wie MAKE: FOKUS als Wort, darunter die Synapse (Rot unter FO, Knoten unter der Fuge zwischen O und K,
 // Grün unter KUS — die Fuge bleibt eng, damit FOKUS als ein Wort liest), darunter INNOVATION im Blocksatz. Wird NICHT von
 // `schreiben()` geschrieben (website/ bleibt unverändert): scripts/fokus-seite.mjs schreibt fokus/assets/logo/fokus-wortmarke.svg
-// (Schlussblock des Showreels auf fokusinnovation.de).
+// (Fuß von fokusinnovation.de).
 // O und S stehen wie üblich ein wenig über Versal- und Grundlinie hinaus — die Wortmarke beginnt deshalb 1 tiefer.
 const FOKUS_SPERR = [8, 13, 10, 8], FOKUS_OBEN = 1, FOKUS_HOEHE = HOEHE_BLOCK + FOKUS_OBEN;
 function fokusInnen(f) {
   const w = wort('FOKUS', MASS.H, MASS.s, FOKUS_SPERR), b = w.breite, fuge = (w.kanten[1][1] + w.kanten[2][0]) / 2;
-  const k = () => '', h = MASS.linie, kn = MASS.knoten, sp = MASS.spalt, y = Y_LINIE + FOKUS_OBEN, cy = y + h / 2;
-  let s = pfad(wortInnen(w, f, 0, FOKUS_OBEN).tinte, f.ink, k('make'));
-  s += `<rect${k('strich strich-ma')} x="0" y="${r(y)}" width="${r(fuge - kn - sp)}" height="${h}" fill="${f.rot}"/>` +
-    `<rect${k('strich strich-ke')} x="${r(fuge + kn + sp)}" y="${r(y)}" width="${r(b - fuge - kn - sp)}" height="${h}" fill="${f.gruen}"/>` +
-    `<g${k('knoten')}><path d="M${r(fuge)} ${r(cy - kn)}A${kn} ${kn} 0 0 0 ${r(fuge)} ${r(cy + kn)}Z" fill="${f.rot}"/>` +
+  const h = MASS.linie, kn = MASS.knoten, sp = MASS.spalt, y = Y_LINIE + FOKUS_OBEN, cy = y + h / 2;
+  let s = pfad(wortInnen(w, f, 0, FOKUS_OBEN).tinte, f.ink);
+  s += `<rect x="0" y="${r(y)}" width="${r(fuge - kn - sp)}" height="${h}" fill="${f.rot}"/>` +
+    `<rect x="${r(fuge + kn + sp)}" y="${r(y)}" width="${r(b - fuge - kn - sp)}" height="${h}" fill="${f.gruen}"/>` +
+    `<g><path d="M${r(fuge)} ${r(cy - kn)}A${kn} ${kn} 0 0 0 ${r(fuge)} ${r(cy + kn)}Z" fill="${f.rot}"/>` +
     `<path d="M${r(fuge)} ${r(cy - kn)}A${kn} ${kn} 0 0 1 ${r(fuge)} ${r(cy + kn)}Z" fill="${f.gruen}"/></g>`;
-  s += pfad(wortInnen(blocksatz('INNOVATION', MASS.zusatzH, MASS.zusatzS, b), f, 0, Y_ZUSATZ + FOKUS_OBEN).tinte, f.zusatz, k('zusatz'));
+  s += pfad(wortInnen(blocksatz('INNOVATION', MASS.zusatzH, MASS.zusatzS, b), f, 0, Y_ZUSATZ + FOKUS_OBEN).tinte, f.zusatz);
   return { innen: s, breite: b };
 }
 /** Wortmarke „FOKUS INNOVATION“ als eigene Datei (dunkel). */
@@ -382,6 +372,5 @@ async function schreiben() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  if (process.argv.includes('--buehne')) console.log(buehne());
-  else await schreiben();
+  await schreiben();
 }

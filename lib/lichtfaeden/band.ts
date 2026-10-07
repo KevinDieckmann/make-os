@@ -4,8 +4,8 @@
 // und leuchtet und an ruhigen eng liegt.
 //
 // Diese Datei ist REIN (kein DOM, keine Importe, deterministisch): gleiche Saat = gleiche Fäden, gleiche Zeit = gleiches
-// Bild. Sie wird zusammen mit `zeichnen.ts` per `node scripts/lichtfaeden-website.mjs` nach website/js/lichtfaeden.js
-// übersetzt (Wächter: tests/lichtfaeden.test.ts) — deshalb hier keine Importe und keine Namen.
+// Bild (Wächter: tests/lichtfaeden.test.ts). Bis 06.10. wurde sie zusammen mit `zeichnen.ts` für die Website übersetzt — seit
+// „Klar 2“ (07.10.) tragen die Websites keine Lichtfäden mehr; die Regel „keine Importe, keine Namen“ bleibt trotzdem.
 //
 // Bauprinzip eines Bündels: Eine Leitkurve (Mitte des Bündels) mit Normalen; jeder Faden liegt um `versatz × spreizung`
 // neben ihr. `versatz` mischt eine feste Lage im Bündel mit zwei langsamen Sinuswellen eigener Frequenz — so kreuzen sich

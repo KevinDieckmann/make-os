@@ -1,27 +1,25 @@
 #!/usr/bin/env node
-// ─── Fokus Innovation · Event-Seite (fokusinnovation.de): Freigabe-Prüfung (03.10.2026; „Klar“ 05.10.2026) ──────────────
+// ─── Fokus Innovation · Event-Seite (fokusinnovation.de): Freigabe-Prüfung (03.10.2026; „Klar 2“ 07.10.2026) ────────────
 // Nach dem Vorbild von website/pruefen.mjs — die gemeinsamen Regeln (Sperrliste, Firmierung, Wortregeln, Preise, Skript-
 // und Tracker-Muster) kommen von dort, damit beide Seiten nie auseinanderlaufen. Die Seite geht erst online, wenn Kevin sie
 // gesehen und freigegeben hat. Geprüft wird:
 //   · Platzhalter „[[KEVIN: …]]“ → NICHT freigabefähig (Datenschutz-Bestätigungen).
-//   · Bau-Regeln der strengen CSP: keine Inline-Skripte/-Stile/Handler, Skripte nur aus js/ oder js/szene/ (lesen, speichern,
+//   · Bau-Regeln der strengen CSP: keine Inline-Skripte/-Stile/Handler, Skripte nur aus js/ (lesen, speichern,
 //     senden nichts), keine fremden Quellen, keine Tracker, keine Formulare. Stempel: jeder Verweis auf css/ und js/ trägt
 //     ?v=<Prüfsumme der Datei> (wie makeinnovation.de — node scripts/fokus-seite.mjs oder node website/stempeln.mjs fokus).
 //   · Pflichtteile je Seite: lang="de", Titel, Beschreibung, genau eine H1, noindex solange robots.txt sperrt, Firmierung
 //     „eine Marke der KEMARIS Innovation GmbH“, Impressum + Datenschutz verlinkt; jeder eigene Link/Anker existiert.
 //   · Externe Links nur zu makeinnovation.de (Startseite, Datenschutzhinweis). Mail nur an die MAKE-Adresse; jede Mail mit
 //     Betreff beginnt mit „Fokus Innovation“.
-//   · Inhalt: Absender „Ein Format von Make.One“, die H1 „Fokus Innovation“, die sechs Städte mit „Termin in Planung“ (Liste,
-//     ruhige Karte, Beschriftungen der Szene, Drehbuch), Hauptweg „Teilnahme anfragen“ (#teilnahme-link, vorbereitete Mail),
-//     „Gastgeber werden“ und „Partner werden“ (je eine vorbereitete Mail mit Betreff) — und KEINE erfundenen Termine, Preise
-//     oder Zahlen zu Gästen, Plätzen, Partnern.
-//   · Showreel und Szene nach DENSELBEN Regeln wie makeinnovation.de (pruefeShowreel aus website/pruefen.mjs): Szene rein
-//     dekorativ, Spur mit Bühne, Zustände mit Lage p, Standbilder ohne tote Dateien, Buchstaben-Bewegung nur an H1 und H2 des
-//     dunklen Raums, Schluss mit der Wortmarke — hier strenger: Lichter an höchstens LICHTER Stellen.
-//   · Gemeinsame Dateien gleich wie in website/: Schriften, MAKE-Logo, Handy-Menü und die Szene (js/szene/*) Byte für Byte,
-//     Impressum (Block von „Angaben gemäß § 5 DDG“ bis „Stand“), die geteilten Tokens im :root der CSS.
-//   · Größe (Begründung bei GROESSE_MAX): alles Ausgelieferte ohne die Byte-Kopie der Szene ≤ 250 KB; die Kopie der Szene
-//     ≤ SZENE_MAX; die Startseite (HTML + CSS + Skripte, gzip) ≤ GEWICHT_GRENZE.
+//   · Inhalt: Absender „Ein Format von Make.One“, die H1 „Fokus Innovation“, die sechs Städte mit „Termin in Planung“ (Liste
+//     und ruhige Karte), Hauptweg „Teilnahme anfragen“ (#teilnahme-link, vorbereitete Mail), „Gastgeber werden“ und „Partner
+//     werden“ (je eine vorbereitete Mail mit Betreff) — und KEINE erfundenen Termine, Preise, Statistiken oder Zahlen zu Gästen,
+//     Plätzen, Partnern.
+//   · Ruhe nach DENSELBEN Regeln wie makeinnovation.de (pruefeRuhe aus website/pruefen.mjs, „Klar 2“ 07.10.): kein Scroll-Film,
+//     höchstens ein dunkler Abschnitt und ein Licht, keine Animationen, „Bewegung reduzieren“ beachtet; der Fuß zeigt die Wortmarke.
+//   · Gemeinsame Dateien gleich wie in website/: die Gestaltungsgrundlage (css/seite.css), Schriften, MAKE-Logo und Handy-Menü
+//     Byte für Byte, Impressum (Block von „Angaben gemäß § 5 DDG“ bis „Stand“); css/fokus.css überschreibt keine Tokens.
+//   · Größe: alles Ausgelieferte ≤ GROESSE_MAX; die Startseite (HTML + CSS + Skripte, gzip) ≤ GEWICHT_GRENZE.
 // Aufruf: node fokus/pruefen.mjs → Ausgang 0 = freigabefähig, 1 = nicht freigabefähig (Fehler oder offene Platzhalter).
 // Ohne Abhängigkeiten außer website/pruefen.mjs (läuft so auch auf dem Server oder in der CI).
 
@@ -29,7 +27,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { SPERRLISTE, FIRMIERUNG, ALTER_NAME, SOFTWARE_NAME, PREISE, VERBOTENE_WOERTER, SKRIPT_VERBOTEN, TRACKER, SKRIPT_PFAD, STEMPEL_VERWEIS, stempelVon, pruefeShowreel, alleDateien } from '../website/pruefen.mjs';
+import { SPERRLISTE, FIRMIERUNG, ALTER_NAME, SOFTWARE_NAME, PREISE, STATISTIK, VERBOTENE_WOERTER, SKRIPT_VERBOTEN, TRACKER, SKRIPT_PFAD, STEMPEL_VERWEIS, stempelVon, pruefeRuhe, alleDateien } from '../website/pruefen.mjs';
 
 const PLATZHALTER = /\[\[KEVIN:([^\]]*)\]\]/g;
 // Zusammengesetzt, damit tests/repo-sauber.test.ts (keine echten Adressen im Code) die Adresse nicht als Fund meldet.
@@ -55,41 +53,30 @@ const BETREFF = /^mailto:hello@makeinnovation\.de\?subject=Fokus%20Innovation(?:
 export const TERMIN = /\b\d{1,2}\.\s?\d{1,2}\.(?:\d{2,4})?(?!\d)|\b\d{1,2}\.\s?(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\b|\b(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+20\d\d\b/;
 /** Keine erfundenen Mengen zu Gästen, Plätzen, Partnern oder Abenden (z. B. „40 Gäste“, „12 Plätze“). */
 export const MENGEN = /\b(?!0\d)\d+\s*(?:Gäste|Gästen|Plätze|Teilnehmer(?:innen)?|Partner|Abende|Unternehmen|Entscheider(?:innen)?)\b/i;
-/** Gemeinsame Dateien: fokus-Pfad → website-Pfad (Byte-gleich; erzeugt von scripts/fokus-seite.mjs und scripts/szene-website.mjs). */
+/** Gemeinsame Dateien: fokus-Pfad → website-Pfad (Byte-gleich; erzeugt von scripts/fokus-seite.mjs). */
 export const GLEICH_WIE_WEBSITE = {
+  'css/seite.css': 'css/seite.css',
   'assets/fonts/archivo-latin.woff2': 'assets/fonts/archivo-latin.woff2',
   'assets/fonts/public-sans-latin.woff2': 'assets/fonts/public-sans-latin.woff2',
   'assets/logo/make-quer.svg': 'assets/logo/quer.svg',
   'js/menue.js': 'js/menue.js',
-  'js/szene/kern.js': 'js/szene/kern.js',
-  'js/szene/formationen.js': 'js/szene/formationen.js',
-  'js/szene/motor.js': 'js/szene/motor.js',
-  'js/szene/spur.js': 'js/szene/spur.js',
-  'js/szene/verlauf.js': 'js/szene/verlauf.js',
+  'js/weg.js': 'js/weg.js',
 };
-/** Die Wortmarke „FOKUS INNOVATION“ (Schlussblock; erzeugt von scripts/fokus-seite.mjs aus scripts/website-logo.mjs). */
+/** Die Wortmarke „FOKUS INNOVATION“ (Fuß; erzeugt von scripts/fokus-seite.mjs aus scripts/website-logo.mjs). */
 export const WORTMARKE = 'assets/logo/fokus-wortmarke.svg';
-/** Lichter (Kevin 04.10.: höchstens 20 % Akzente): Leinwände auf der Startseite — die Szene und der Verlauf im Schluss. */
-export const LICHTER = 2;
-/** Tokens, die beide Seiten teilen (:root) — gleiche Werte. */
+/** Tokens der Grundlage (css/seite.css, beide Seiten) — css/fokus.css setzt keinen davon neu (sonst laufen die Seiten auseinander). */
 export const GETEILTE_TOKENS = ['--grund', '--grundTief', '--flaeche', '--flaecheHoch', '--linie', '--ink', '--inkDim', '--inkLeise', '--aktiv', '--aktivSanft', '--achtung', '--granat', '--smaragd', '--schrift-display', '--schrift-text', '--breite', '--kopf'];
-/**
- * Größe. Bis zur Fassung v1 (zwei kleine Skripte) galt „alles Ausgelieferte zusammen ≤ 250 KB“. Seit „Klar“ (05.10.2026) steht
- * die Seite auf der Szene von makeinnovation.de — fünf Dateien, Byte für Byte kopiert (≈ 104 KB roh, ≈ 40 KB gzip), bewacht von
- * website/pruefen.mjs und tests/szene-website.test.ts. Deshalb: die 250 KB gelten unverändert für alles Eigene der Seite
- * (Seiten, CSS, Drehbuch, Bilder, Schriften), die Kopie der Szene hat eine eigene Grenze, und was ein Besuch der Startseite
- * wirklich lädt (HTML + CSS + Skripte, gzip, ohne Schriften und Bilder) misst GEWICHT_GRENZE.
- */
+/** Größe: alles, was ausgeliefert wird (Seiten, CSS, Skript, Bilder, Schriften). */
 export const GROESSE_MAX = 250 * 1024;
-export const SZENE_MAX = 120 * 1024;
+/** Was ein Besuch der Startseite lädt (HTML + CSS + Skripte, gzip, ohne Schriften und Bilder). */
 export const GEWICHT_GRENZE = 80 * 1024;
 
 const zeileVon = (text, index) => text.slice(0, index).split('\n').length;
 const anker = html => new Set(Array.from(html.matchAll(/\sid="([^"]+)"/g), m => m[1]));
 const sichtbar = html => html.replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ');
+/** Alle Tokens (--name: Wert), die eine CSS-Datei setzt — egal in welchem Block. */
 function tokens(css) {
-  const root = /:root\s*\{([\s\S]*?)\}/.exec(css)?.[1] ?? '';
-  return Object.fromEntries(Array.from(root.matchAll(/(--[A-Za-z-]+)\s*:\s*([^;]+);/g), m => [m[1], m[2].trim()]));
+  return Object.fromEntries(Array.from(css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[A-Za-z-]+)\s*:\s*([^;}]+)[;}]/g), m => [m[1], m[2].trim()]));
 }
 /** Der Kern des Impressums: von „Angaben gemäß § 5 DDG“ bis vor „Stand“. */
 export function impressumKern(html) {
@@ -150,7 +137,7 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     if (h1 !== 1) fehler.push(`${d}: ${h1} × <h1> (genau eine erwartet)`);
     for (const m of text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
       const src = /\ssrc="([^"]*)"/.exec(m[1])?.[1];
-      if (!src || !SKRIPT_PFAD.test(src) || m[2].trim() !== '') fehler.push(`${d}: <script> — nur eigene Dateien aus js/ oder js/szene/, nie Inline-Skript`);
+      if (!src || !SKRIPT_PFAD.test(src) || m[2].trim() !== '') fehler.push(`${d}: <script> — nur eigene Dateien aus js/, nie Inline-Skript`);
     }
     for (const m of text.matchAll(STEMPEL_VERWEIS)) {
       const datei = join(ordner, m[2].replace(/^\//, ''));
@@ -203,24 +190,19 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(index)?.[1] ?? '';
     if (h1.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() !== 'Fokus Innovation') fehler.push('index.html: H1 „Fokus Innovation“ fehlt');
     const wort = ZAHLWORT[Object.keys(STAEDTE).length];
-    const drehbuch = inhalt.get('js/drehbuch.js') ?? '';
-    const beschreibung = /<div class="szene"[\s\S]*?<p class="unsichtbar">([\s\S]*?)<\/p>/.exec(index)?.[1] ?? '';
     if (!text.includes(`in ${wort} Städte.`)) fehler.push(`index.html: Überschrift der Städte — „in ${wort} Städte.“ erwartet (${Object.keys(STAEDTE).length} Städte)`);
     if (!index.includes(`Fokus Innovation in ${wort} Städten`)) fehler.push(`index.html: Kartentitel nennt nicht ${wort} Städte (node scripts/fokus-seite.mjs)`);
     for (const [id, name] of Object.entries(STAEDTE)) {
       const zeile = new RegExp(`<li data-stadt="${id}"><b>${name}</b><span>Termin in Planung</span>`).test(index);
       if (!zeile) fehler.push(`index.html: Stadt ${name} — Zeile mit „Termin in Planung“ fehlt`);
       if (!new RegExp(`<g class="stadt[^"]*" data-stadt="${id}">`).test(index)) fehler.push(`index.html: Stadt ${name} fehlt in der Karte (node scripts/fokus-seite.mjs)`);
-      if (!new RegExp(`<span class="marke stadt[^"]*" data-zustand="staedte" data-nr="\\d+">${name}</span>`).test(index)) fehler.push(`index.html: Stadt ${name} fehlt in den Beschriftungen der Szene (node scripts/fokus-seite.mjs)`);
-      if (!drehbuch.includes(`{ name: '${name}', lat: `)) fehler.push(`js/drehbuch.js: Stadt ${name} fehlt auf der Karte der Szene (node scripts/fokus-seite.mjs)`);
-      if (!beschreibung.includes(name)) fehler.push(`index.html: Beschreibung der Szene (p.unsichtbar) nennt ${name} nicht`);
     }
     for (const [name, betreff] of Object.entries(MAIL_BETREFFE)) {
       if (!new RegExp(`<a class="knopf[^"]*" href="${KONTAKT}\\?subject=${betreff}&amp;body=[^"]+">${name} `).test(index)) fehler.push(`index.html: Knopf „${name}“ (vorbereitete Mail, Betreff ${decodeURIComponent(betreff)}) fehlt`);
     }
-    // Showreel und Szene: dieselben Regeln wie makeinnovation.de, Lichter hier an höchstens LICHTER Stellen.
-    fehler.push(...pruefeShowreel({ index, drehbuch, dateien, wortmarke: WORTMARKE, lichter: LICHTER, standbildBefehl: 'node website/standbild.mjs fokus' }));
+    // Der Fuß zeigt die Wortmarke FOKUS INNOVATION.
     if (!dateien.includes(WORTMARKE)) fehler.push(`${WORTMARKE}: fehlt (node scripts/fokus-seite.mjs)`);
+    if (!new RegExp(`<footer class="fuss">[\\s\\S]*?src="${WORTMARKE}"[\\s\\S]*?</footer>`).test(index)) fehler.push(`index.html: Fuß ohne Wortmarke (${WORTMARKE})`);
     // Gewicht: HTML + CSS + Skripte der Startseite (gzip), ohne Schriften und Bilder.
     const teile = ['index.html', ...Array.from(index.matchAll(/<link rel="stylesheet" href="([^"]+)"/g), m => m[1]), ...Array.from(index.matchAll(/<script src="([^"]+)"/g), m => m[1])];
     const gewicht = teile.map(t => t.split('?')[0]).filter(t => dateien.includes(t)).reduce((summe, t) => summe + gzipSync(readFileSync(join(ordner, t))).length, 0);
@@ -231,8 +213,16 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     if (p) fehler.push(`index.html: „${p[0]}“ — keine Preise`);
     const z = MENGEN.exec(text);
     if (z) fehler.push(`index.html: „${z[0]}“ — keine erfundenen Zahlen zu Gästen, Plätzen oder Partnern`);
+    const st = STATISTIK.exec(text);
+    if (st) fehler.push(`index.html: „${st[0]}“ — keine Statistiken oder Prozentzahlen, nur Prinzipien (Kevin 07.10.)`);
     if (/<video\b(?![^>]*\spreload="none")/.test(index.replace(/<!--[\s\S]*?-->/g, ''))) fehler.push('index.html: <video> nur mit preload="none" (und Standbild als poster)');
   }
+
+  // Ruhe („Klar 2“, dieselben Regeln wie makeinnovation.de): kein Scroll-Film, ein Licht, ein dunkler Abschnitt, keine Animationen.
+  fehler.push(...pruefeRuhe({
+    seiten: new Map(html.map(d => [d, inhalt.get(d)])),
+    stile: new Map(css.map(d => [d, inhalt.get(d)])), skripte: new Map(js.map(d => [d, inhalt.get(d)])), dateien,
+  }));
 
   for (const d of svg) {
     const text = inhalt.get(d);
@@ -265,30 +255,27 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     const kernHier = impressumKern(inhalt.get('impressum.html') ?? ''), kernDort = impressumKern(readFileSync(join(website, 'impressum.html'), 'utf8'));
     if (!kernHier || kernHier !== kernDort) fehler.push('impressum.html: Pflichtangaben weichen von website/impressum.html ab (Block „Angaben gemäß § 5 DDG“ bis „Stand“ übernehmen)');
     const tHier = tokens(inhalt.get('css/fokus.css') ?? ''), tDort = tokens(readFileSync(join(website, 'css', 'seite.css'), 'utf8'));
-    for (const n of GETEILTE_TOKENS) if (tHier[n] !== tDort[n]) fehler.push(`css/fokus.css: Token ${n} = ${tHier[n] ?? '—'}, auf makeinnovation.de ${tDort[n] ?? '—'} — gleich halten`);
+    for (const n of new Set([...GETEILTE_TOKENS, ...Object.keys(tDort)])) if (n in tHier) fehler.push(`css/fokus.css: Token ${n} = ${tHier[n]} — die Grundlage (css/seite.css) setzt ${tDort[n] ?? 'ihn'}; hier nicht überschreiben`);
   } else fehler.push('website/: fehlt — gemeinsame Dateien nicht prüfbar');
 
-  // Größe: alles Eigene, was ausgeliefert wird, und die Kopie der Szene (Begründung bei GROESSE_MAX).
+  // Größe: alles, was ausgeliefert wird.
   const oeffentlich = dateien.filter(d => !NICHT_OEFFENTLICH.includes(d));
-  const groesse = d => statSync(join(ordner, d)).size;
-  const szene = oeffentlich.filter(d => d.startsWith('js/szene/')).reduce((a, d) => a + groesse(d), 0);
-  const summe = oeffentlich.filter(d => !d.startsWith('js/szene/')).reduce((a, d) => a + groesse(d), 0);
-  if (summe > GROESSE_MAX) fehler.push(`Größe: ${Math.round(summe / 1024)} KB ausgeliefert (ohne die Kopie der Szene) — höchstens ${GROESSE_MAX / 1024} KB`);
-  if (szene > SZENE_MAX) fehler.push(`Größe: Kopie der Szene js/szene/ ${Math.round(szene / 1024)} KB — höchstens ${SZENE_MAX / 1024} KB`);
+  const summe = oeffentlich.reduce((a, d) => a + statSync(join(ordner, d)).size, 0);
+  if (summe > GROESSE_MAX) fehler.push(`Größe: ${Math.round(summe / 1024)} KB ausgeliefert — höchstens ${GROESSE_MAX / 1024} KB`);
   for (const d of NICHT_OEFFENTLICH) if (!dateien.includes(d)) fehler.push(`${d}: fehlt`);
 
-  return { fehler, platzhalter, groesse: summe, szene, freigabefaehig: fehler.length === 0 && platzhalter.length === 0 };
+  return { fehler, platzhalter, groesse: summe, freigabefaehig: fehler.length === 0 && platzhalter.length === 0 };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const ordner = dirname(fileURLToPath(import.meta.url));
-  const { fehler, platzhalter, groesse, szene, freigabefaehig } = pruefeFokus(ordner);
+  const { fehler, platzhalter, groesse, freigabefaehig } = pruefeFokus(ordner);
   for (const f of fehler) console.log(`✗ ${f}`);
   if (platzhalter.length) {
     console.log(`\n${platzhalter.length} Platzhalter offen:`);
     for (const p of platzhalter) console.log(`  · ${p.datei}:${p.zeile}  ${p.text}`);
   }
-  console.log(`\nAusgeliefert: ${Math.round(groesse / 1024)} KB, dazu die Kopie der Szene ${Math.round(szene / 1024)} KB.`);
+  console.log(`\nAusgeliefert: ${Math.round(groesse / 1024)} KB.`);
   console.log(freigabefaehig
     ? '✓ freigabefähig — Caddy-Block aus fokus/LIESMICH.md darf übernommen werden (nur auf Kevins Wort).'
     : fehler.length ? '✗ nicht freigabefähig — Fehler beheben.' : '✗ nicht freigabefähig — nur noch die Platzhalter füllen (Bau-Regeln erfüllt).');

@@ -4,6 +4,55 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 07.10.2026 abends — makeinnovation.de + fokusinnovation.de „v3 · Der Weg“ (nur lokal — Branch `websites-v3`, nicht zusammengeführt)
+
+Kevin 07.10. abends: „Nimm die Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“
+
+**Was Kevin sieht** (lokal: `python3 -m http.server 3016 -d website` bzw. `3017 -d fokus`):
+- **Kugel raus.** Statt des Standbilds ein eigenes Leitmotiv: der **Linienplan „Der Weg der Innovation“** aus dem Logo — rot Signal und
+  Strategie, der Knoten Umsetzung, grün Vertrieb, Sichtbarkeit, Markt. Im Einstieg als Grafik, in „03 Der Weg“ als Strecke mit sechs
+  Etappen, im Kontakt als Halt vor dem Erstgespräch („Der erste Halt ist ein Gespräch“).
+- **Erster Bildschirm sagt WER · WAS · FÜR WEN.** Danach eine kräftige **Farbfläche** (Granat: „Was Innovation bei uns heißt“), vier Leistungen
+  (neu: **Sichtbarkeit & Marketing**) je mit Ausgangslage · Was wir tun · Was danach steht · Dauer & Form und einem gezeichneten
+  **Arbeits-Schema** (als „Schema“/„Beispiel“ beschriftet, keine echten Zahlen, Kunden, Termine), **Gründer** und **Häufige Fragen**.
+- **Rhythmus:** zwei dunkle Abschnitte und eine Farbfläche je Seite, sonst Papier. **Bewegung genau einmal** — die Linie zeichnet sich; nie
+  endlos, nichts hängt am Scrollen, ohne Skript und bei „Bewegung reduzieren“ steht alles sofort da.
+- fokusinnovation.de genauso: der Abend als Strecke (dunkel), Städte mit Karte (dunkel), Teilnahme auf der Farbfläche, Einladung als Beispiel.
+- **Prüfer** (`pruefeRuhe`, beide Seiten): kein Kugel-Bild, höchstens 2 dunkle Abschnitte + 1 Farbfläche, Animation nur im Block
+  „Bewegung nicht reduziert“, nie endlos/scroll-gebunden, verborgener Inhalt nur unter `.wartet` (setzt `js/weg.js`). Gegenüberstellung
+  „Klar 2“ ↔ v3: `website/LIESMICH.md` › „v3 · Der Weg“.
+
+**Offen für Kevin:** ansehen (Fotos folgen), neue Texte bestätigen (Farbfläche, Leistungs-Steckbriefe, Schemata, Fragen, Gründer), Platzhalter
+„Ein Satz zu deiner Vertriebserfahrung“. Nicht nach `entwicklung` zusammengeführt, nicht hochgeladen.
+
+**Rückweg:** Stand „Klar 2“ = Commit `000da837` (Branch `websites-klar-2`, auch nicht auf `entwicklung`) — `git checkout 000da837 -- website fokus scripts tests`.
+
+## 07.10.2026 — makeinnovation.de + fokusinnovation.de „Klar 2“: ruhige Dokument-Seiten (nur lokal — Branch `websites-klar-2`)
+
+Kevin 07.10.: „Das sieht alles noch scheiße aus. Ich will, dass du die Homepages richtig sauber machst.“ — „Wir wollen innovativ UND seriös
+wirken. Wir haben auch im MAKE OS keine Spielereien — das soll sich auch so durchziehen.“ Klickrunde: hell → dunkel, Belege nur als Prinzipien.
+
+**Was Kevin sieht** (lokal: `python3 -m http.server 3016 -d website` bzw. `3017 -d fokus`):
+- **Kein Scroll-Film mehr.** Beide Seiten sind normale Dokument-Seiten: kein Vorhang, keine stehende Bühne, kein Karussell, kein Laufband, keine
+  WebGL-Kugel, die sich beim Scrollen bewegt. Jeder Abschnitt steht ruhig da und ist sofort lesbar (auch ohne Skript, auch bei „Bewegung reduzieren“).
+- **Typografie trägt:** großer Titel in zwei Sätzen („Innovation braucht Umsetzung / und Sichtbarkeit.“), darunter ein Index der Angebote; jeder
+  Abschnitt mit Linie, Nummer und Name links („01 Beratung“), Titel rechts; Haarlinien statt Kartenwand; Off-White mit dunkler Schrift.
+- **EIN dunkler Schlussakt**, der in den dunklen Fuß übergeht: auf makeinnovation.de „Wachstum scheitert selten an Ideen. / Meist an der
+  Umsetzung.“ mit dem Erstgespräch und dem einen Licht (Standbild der Kugel, ohne Bewegung); auf fokusinnovation.de die Städte mit der ruhigen
+  Deutschlandkarte und die Teilnahme.
+- **Keine Zahlen mehr** (die vier Statistik-Kacheln mit KfW/Bitkom-Fußnoten sind weg; Datenschutz: Abschnitt „Links zu Quellen“ entfällt).
+- **Eine Grundlage für beide Seiten** (`website/css/seite.css`, Farben und Ecken wie die Software), gemeinsamer Kopf/Fuß/Knöpfe; jede Startseite
+  lädt nur noch ≈ 15 KB (vorher ≈ 60 KB mit Szene).
+- Prüfer verschärft: kein Scroll-Film, höchstens ein Licht und ein dunkler Abschnitt, keine Animationen, keine Statistiken — Firmierung,
+  Software-Name, CSP, noindex, Erstgespräch-Ziel und Datenschutz unverändert streng. Plan und Begründungen: `website/LIESMICH.md` › „Klar 2“.
+
+**Offen für Kevin:** Seiten ansehen und freigeben; neu formulierte Sätze bestätigen (Vorzeile, Index-Sätze, Vorgehen-Einleitung, Fokus-Kasten,
+„Struktur, die bleibt“ mit dem Satz zur eigenen Software, Schlussakt; fokus: Index-Sätze, „Absender“); Platzhalter „Vertrieb aus der Praxis“.
+Nicht hochgeladen.
+
+**Rückweg:** der Stand davor (Showreel mit Szene) ist Commit `e008ebfc` auf `entwicklung` — die Ordner `website`, `fokus`, `scripts`, `tests`
+aus diesem Commit zurückholen (dazu nur Text: Kommentare in `lib/lichtfaeden/*.ts`, `CLAUDE.md`, `DESIGN_STANDARD.md`, `LICHTFAEDEN.md`).
+
 ## 07.10.2026 — Entscheidungen Kevin zu Inbox/WhatsApp
 - WhatsApp-Spiegel: Aufbewahrung wie Handelsbriefe (§ 257 HGB) — Vorgabe jetzt 2.557 Tage (7 Jahre), damit 6 Jahre ab Schluss des Kalenderjahres für jede Nachricht sicher gedeckt sind. Medien bleiben bei 90 Tagen (einstellbar unter Datenschutz › Löschfristen).
 - WhatsApp: unbekannte Nummern landen direkt in „Antworten“ (24-h-Fenster läuft); im Gespräch „Nummer blocken“ (mit Rückgängig).

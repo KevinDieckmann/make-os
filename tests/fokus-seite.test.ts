@@ -1,11 +1,13 @@
-// Event-Seite fokusinnovation.de (fokus/, 03.10.; „Klar“ 05.10.): Bau-Regeln, gemeinsame Dateien aus EINER Quelle, Inhalt ohne
-// Erfundenes, Showreel nach denselben Regeln wie makeinnovation.de.
+// Event-Seite fokusinnovation.de (fokus/, 03.10.; „Klar 2“ 07.10.): Bau-Regeln, gemeinsame Dateien aus EINER Quelle, Inhalt ohne
+// Erfundenes, Ruhe nach denselben Regeln wie makeinnovation.de.
+// 07.10. Kevin: „keine Spielereien“ — die WebGL-Szene (Tafel, Karte als Lichtpunkte, Showreel) ist entfernt; die Tests dazu sind durch
+// die Ruhe-Regeln und die gemeinsame Gestaltungsgrundlage (css/seite.css) ersetzt. Firmierung, CSP, noindex, Teilnahme-Mail unverändert.
 import { describe, it, expect } from 'vitest';
-import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeFokus, TERMIN, MENGEN, EXTERN_ERLAUBT, impressumKern, GROESSE_MAX, SZENE_MAX } from '../fokus/pruefen.mjs';
-import { pruefen, STAEDTE, UMRISS, projiziere, karteSvg, markenHtml, staedteJs } from '../scripts/fokus-seite.mjs';
+import { pruefeFokus, TERMIN, MENGEN, EXTERN_ERLAUBT, GLEICH_WIE_WEBSITE, impressumKern, GROESSE_MAX } from '../fokus/pruefen.mjs';
+import { pruefen, STAEDTE, UMRISS, projiziere, karteSvg, KOPIEN } from '../scripts/fokus-seite.mjs';
 
 const wurzel = process.cwd();
 const FOKUS = join(wurzel, 'fokus');
@@ -24,7 +26,6 @@ describe('fokus/ — Freigabe-Prüfung', () => {
     expect(r.fehler).toEqual([]);
     expect(r.platzhalter.every((p: { datei: string }) => p.datei === 'datenschutz.html')).toBe(true);
     expect(r.groesse).toBeLessThan(GROESSE_MAX);
-    expect(r.szene).toBeLessThan(SZENE_MAX);
   });
 
   it('gemeinsame und erzeugte Dateien passen zur Quelle (node scripts/fokus-seite.mjs)', async () => {
@@ -47,14 +48,17 @@ describe('fokus/ — Freigabe-Prüfung', () => {
     } finally { k.weg(); }
   });
 
-  it('gemeinsame Dateien: weicht Schrift, Impressum oder ein Token von makeinnovation.de ab, ist die Seite nicht freigabefähig', () => {
+  it('gemeinsame Dateien: weicht Schrift, Grundlage, Impressum oder ein Token von makeinnovation.de ab, ist die Seite nicht freigabefähig', () => {
     const k = kopie();
     try {
       writeFileSync(join(k.fokus, 'assets/fonts/archivo-latin.woff2'), 'kaputt');
       k.aendern('impressum.html', t => t.replace('HRB 19873', 'HRB 1'));
-      k.aendern('css/fokus.css', t => t.replace('--aktiv: #58D9CD;', '--aktiv: #FF0000;'));
+      // 07.10. Kevin („Klar 2“): die Tokens stehen in der gemeinsamen Grundlage css/seite.css (Byte-Kopie) — css/fokus.css setzt keine.
+      k.aendern('css/fokus.css', t => `${t}\n:root { --aktiv: #FF0000; }\n`);
+      k.aendern('css/seite.css', t => t.replace('--granat: #C9465C;', '--granat: #FF0000;'));
       const f = pruefeFokus(k.fokus).fehler.join('\n');
       expect(f).toMatch(/archivo-latin\.woff2: weicht von website/);
+      expect(f).toMatch(/css\/seite\.css: weicht von website\/css\/seite\.css ab/);
       expect(f).toMatch(/Pflichtangaben weichen von website\/impressum\.html ab/);
       expect(f).toMatch(/Token --aktiv/);
     } finally { k.weg(); }
@@ -134,58 +138,63 @@ describe('Karte — echte Positionen', () => {
   });
 });
 
-describe('Showreel „Klar“ (05.10.) — dieselben Regeln wie makeinnovation.de', () => {
-  it('Standbild, Lichter, Buchstaben-Bewegung, Schluss mit Wortmarke, Stempel und H1 fallen auf, wenn sie nicht stimmen', () => {
+describe('„Klar 2“ (07.10.) — dieselben Ruhe-Regeln wie makeinnovation.de', () => {
+  it('Fuß ohne Wortmarke, eine Leinwand, eine Animation, ein falscher Stempel und eine falsche H1 fallen auf', () => {
     const k = kopie();
     try {
-      rmSync(join(k.fokus, 'assets/szene/abend.svg'));
-      k.aendern('index.html', t => t.replace('<canvas class="verlauf" aria-hidden="true"></canvas>', '<canvas class="verlauf" aria-hidden="true"></canvas><canvas></canvas>')
-        .replace('<h2 id="themen-titel">', '<h2 id="themen-titel" data-aufstieg>')
+      k.aendern('index.html', t => t.replace('<section class="abschnitt" id="themen"', '<canvas></canvas><section class="abschnitt" id="themen"')
         .replace('src="assets/logo/fokus-wortmarke.svg"', 'src="assets/logo/make-quer.svg"')
         .replace(/css\/fokus\.css\?v=[a-f0-9]{10}/, 'css/fokus.css?v=0000000000')
         .replace('Fokus <span class="ruhig">Innovation</span></h1>', 'Fokus</h1>'));
+      k.aendern('css/fokus.css', t => `${t}\n@keyframes kerze { from { opacity: 0; } }\n`);
       const f = pruefeFokus(k.fokus).fehler.join('\n');
-      expect(f).toMatch(/assets\/szene\/abend\.svg: fehlt \(node website\/standbild\.mjs fokus\)/);
-      expect(f).toMatch(/3 Leinwände — die Lichter stehen an höchstens 2 Stellen/);
-      expect(f).toMatch(/Buchstaben-Bewegung nur an der H1/);
-      expect(f).toMatch(/Schlussblock ohne Wortmarke \(assets\/logo\/fokus-wortmarke\.svg\)/);
+      expect(f).toMatch(/Fuß ohne Wortmarke \(assets\/logo\/fokus-wortmarke\.svg\)/);
+      expect(f).toMatch(/„<canvas“ — kein Scroll-Film mehr/);
+      expect(f).toMatch(/css\/fokus\.css: „@keyframes“/);
       expect(f).toMatch(/css\/fokus\.css ohne aktuellen Stempel/);
       expect(f).toMatch(/H1 „Fokus Innovation“ fehlt/);
     } finally { k.weg(); }
   });
 
-  it('eine geänderte Kopie der Szene oder eine Stadt, die in Drehbuch oder Beschriftung fehlt, fällt auf', () => {
+  it('Rhythmus (v3): Der Abend und die Städte dunkel, die Teilnahme auf der Farbfläche; keine Statistiken; eine fehlende Stadt fällt auf', () => {
+    // 07.10. abends Kevin („bring Innovation nach vorne“): höchstens zwei dunkle Abschnitte und eine Farbfläche (website/LIESMICH.md › v3).
+    const index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
+    expect(Array.from(index.matchAll(/<section class="abschnitt dunkel" id="([a-z]+)"/g), m => m[1])).toEqual(['abend', 'staedte']);
+    expect(index).toMatch(/<section class="abschnitt farbflaeche" id="teilnahme"[\s\S]*id="teilnahme-link"/);
+    expect(index).toMatch(/<ol class="strecke vier zeichnen"[\s\S]*<li class="knoten">/);
     const k = kopie();
     try {
-      k.aendern('js/szene/spur.js', t => `${t}\n// eigene Fassung\n`);
-      k.aendern('js/drehbuch.js', t => t.replace("{ name: 'Dresden', lat: ", "{ name: 'Leipzig', lat: "));
-      k.aendern('index.html', t => t.replace('data-nr="5">Dresden</span>', 'data-nr="5">Leipzig</span>'));
+      k.aendern('index.html', t => t.replace('<li data-stadt="dresden"><b>Dresden</b><span>Termin in Planung</span></li>', '')
+        .replace('Ein Tisch, ein Thema, Gespräche mit Substanz.', 'Ein Tisch, ein Thema — 90 % kommen wieder.')
+        .replace('<section class="abschnitt" id="mitwirken"', '<section class="dunkel" id="mitwirken"'));
       const f = pruefeFokus(k.fokus).fehler.join('\n');
-      expect(f).toMatch(/js\/szene\/spur\.js: weicht von website\/js\/szene\/spur\.js ab/);
-      expect(f).toMatch(/js\/drehbuch\.js: Stadt Dresden fehlt auf der Karte der Szene/);
-      expect(f).toMatch(/Stadt Dresden fehlt in den Beschriftungen der Szene/);
+      expect(f).toMatch(/Stadt Dresden — Zeile mit „Termin in Planung“ fehlt/);
+      expect(f).toMatch(/keine Statistiken oder Prozentzahlen/);
+      expect(f).toMatch(/3 dunkle Abschnitte — höchstens 2/);
     } finally { k.weg(); }
   });
 
-  it('die Szene zählt nicht in die 250 KB, hat aber ihre eigene Grenze; das Eigene der Seite bleibt bei 250 KB', () => {
+  it('alles Ausgelieferte bleibt unter 250 KB', () => {
     const k = kopie();
     try {
-      writeFileSync(join(k.fokus, 'assets/szene/abend.svg'), `<svg xmlns="http://www.w3.org/2000/svg">${' '.repeat(260 * 1024)}</svg>`);
-      expect(pruefeFokus(k.fokus).fehler.join('\n')).toMatch(/KB ausgeliefert \(ohne die Kopie der Szene\) — höchstens 250 KB/);
+      writeFileSync(join(k.fokus, 'assets/logo/zu-gross.svg'), `<svg xmlns="http://www.w3.org/2000/svg">${' '.repeat(260 * 1024)}</svg>`);
+      expect(pruefeFokus(k.fokus).fehler.join('\n')).toMatch(/KB ausgeliefert — höchstens 250 KB/);
     } finally { k.weg(); }
   });
 
-  it('die Städte stehen aus EINER Liste im Drehbuch und in den Beschriftungen der Szene (node scripts/fokus-seite.mjs)', () => {
-    const drehbuch = readFileSync(join(FOKUS, 'js', 'drehbuch.js'), 'utf8'), index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
-    for (const zeile of staedteJs().split('\n')) expect(drehbuch).toContain(zeile.trim());
-    for (const zeile of markenHtml().split('\n')) expect(index).toContain(zeile);
-    expect(markenHtml()).toContain('class="marke stadt start" data-zustand="staedte" data-nr="0">Berlin</span>');
+  it('die Städte stehen aus EINER Liste in der ruhigen Karte (node scripts/fokus-seite.mjs)', () => {
+    const index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
+    for (const zeile of karteSvg().split('\n')) expect(index).toContain(zeile);
+    for (const s of STAEDTE as { id: string; name: string }[]) expect(index).toContain(`<li data-stadt="${s.id}"><b>${s.name}</b><span>Termin in Planung</span>`);
   });
 
-  it('kein Vorhang, kein Laufband, kein Kachel-Flug — und die Szene ruht erst, wenn der Schluss sie verdeckt', () => {
-    const drehbuch = readFileSync(join(FOKUS, 'js', 'drehbuch.js'), 'utf8'), index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
-    expect(drehbuch).toMatch(/vorhang: false/);
-    expect(index).not.toMatch(/class="(?:laufband|flug|kacheln|karussell)/);
-    expect(drehbuch).toMatch(/ruht: p => p > \.9/);
+  it('keine Szene mehr: kein js/szene, kein Drehbuch, kein Standbild, keine Kugel; Menü und Linie kommen wie die Grundlage aus website/', () => {
+    for (const weg of ['js/szene', 'js/drehbuch.js', 'assets/szene']) expect(existsSync(join(FOKUS, weg)), weg).toBe(false);
+    expect(readdirSync(join(FOKUS, 'js')).sort()).toEqual(['menue.js', 'weg.js']);
+    expect((GLEICH_WIE_WEBSITE as Record<string, string>)['js/weg.js']).toBe('js/weg.js');
+    const index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
+    expect(index).not.toMatch(/class="(?:laufband|flug|kacheln|karussell|spur|buehne|szene)\b|data-zustand|<canvas/);
+    expect((GLEICH_WIE_WEBSITE as Record<string, string>)['css/seite.css']).toBe('css/seite.css');
+    expect((KOPIEN as string[][]).map(([q, z]) => `${q} → ${z}`)).toContain('website/css/seite.css → fokus/css/seite.css');
   });
 });

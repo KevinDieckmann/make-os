@@ -1,13 +1,14 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
-Statische Seite (HTML + eine CSS-Datei + acht eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
-Schriften selbst gehostet). Stand **„Klar“ (04.10.2026)** — Kevin: „Das ist too much. Das muss klarer sein … Basis
-Superconscious … ein bisschen von unserer futuristischen Sache mitnehmen, maximal 20 % — 80 % Seriosität und Souveränität.
-Wenn ein Investor draufschaut, soll er sagen: oh Gott. Klare Linien, kein Gewusel.“
+Statische Seite (HTML + zwei CSS-Dateien + drei kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
+Schriften selbst gehostet). Stand **„v3 · Der Weg“ (07.10.2026 abends, Branch `websites-v3`, nicht online)** auf der Grundlage von **„Klar 2“ (07.10.2026)** — Kevin: „Das sieht alles noch scheiße aus. Ich will, dass du die
+Homepages richtig sauber machst.“ und „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien —
+das soll sich auch so durchziehen.“ Weiter gilt: 80 % Seriosität und Souveränität, höchstens 20 % Akzente, klare Linien, kein Gewusel —
+„wenn ein Investor draufschaut, soll er sagen: oh Gott“.
 
-**Botschaft:** Umsetzung & Sichtbarkeit (Beratung) und Fokus & Klarheit (eigene Software — ohne Namen, ohne Bilder, ohne
-Kaufangebot). Ton seriös und beratend, Anrede „Du“; Impressum und Datenschutz „Sie“. Der Name der Software steht nirgends
-im Ordner; oben rechts nur „Login“.
+**Botschaft:** Umsetzung & Sichtbarkeit für Unternehmen, die Innovation in den Markt bringen — Interim CSO, Interim Head of Sales,
+Events & Netzwerk-Strategie, Make.One, Fokus Innovation. EIN Haupt-Ruf: „Erstgespräch anfragen“. Ton seriös und beratend, Anrede
+„Du“; Impressum und Datenschutz „Sie“. Der Name der Software steht nirgends im Ordner; oben rechts nur „Login“.
 
 **Firmierung (Kevin 03.10., rechtlich):** Eine GmbH unter dem Namen „MAKE Innovation“ ist nicht eingetragen. Überall steht
 „MAKE Innovation“ und darunter klein „eine Marke der KEMARIS Innovation GmbH“; Impressum und Datenschutz nennen die
@@ -15,95 +16,148 @@ Kemaris Innovation GmbH (Schönefeld, HRB 19873, AG Cottbus). `pruefen.mjs` häl
 
 Sie liegt im Repo, Caddy liest sie auf dem Server read-only aus `/srv/make-os/app/website` (compose.yml → `/srv/website`).
 Sie ist als **nicht indexierte Vorschau** aktiv (`X-Robots-Tag: noindex`, `robots.txt` sperrt, jede Seite trägt
-`<meta name="robots" content="noindex">`). Die CSP bleibt unverändert (`script-src 'self'` reicht: eigenes WebGL, kein eval, keine Worker).
+`<meta name="robots" content="noindex">`). Die CSP bleibt unverändert (`script-src 'self'`, keine Inline-Skripte, kein eval).
 
-## Aufbau „Klar“ — hell → dunkel, 80 / 20
+## v3 · Der Weg (07.10. abends) — was sich gegenüber „Klar 2“ ändert
 
-Die Seite beginnt auf **Off-White** (`--papier` #F4F3EF) mit dunkler Schrift wie eine Beteiligungsgesellschaft; beim Scrollen
-öffnet sich der **dunkle Raum** mit unseren Lichtern. **80 %** sind Typografie, Weißraum, Haarlinien, ruhige Bewegung; die
-**20 %** Lichter (Verlauf, Kugel, Aurora) stehen an genau drei Stellen: Titelkarte, dunkler Raum, Schlussblock (`pruefen.mjs`:
-höchstens drei Leinwände). Keine Dauer-Animation hinter Lesetext, keine konkurrierenden Bewegungen, keine Neon-Effekte.
+Kevin 07.10. abends: „Nimm die Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“
+Die Grundlage von „Klar 2“ bleibt (Papier, Tinte, Raster, Typo, Knöpfe, keine Spielereien); geändert wird, **wie** Innovation sichtbar wird:
+durch ein eigenes Leitmotiv und gezeichnete Arbeit statt eines dekorativen Bilds.
 
-**Showreel** (Vorlage „Superconscious“, in unsere CI übersetzt): eine hohe Spur (`.spur`, Rechner 1150vh · Tablet hoch 1000vh ·
-Handy 900vh — kürzer als die Vorlage, Klarheit vor Länge) mit stehender Bühne (`.buehne`, sticky). EIN Fortschritt p (0 → 1),
-geglättet durch eine kritisch gedämpfte Feder; **jeder bewegte Wert ist eine reine Funktion von p** (Phasen mit clamp/smoothstep),
-gerechnet in jedem Bild — keine Keyframes für Scroll-Dinge (Keyframes nur für Vorhang, Laufband und den Rand beim Zeigen).
+- **Kugel raus.** `assets/bild/kugel.svg` und `.licht` sind weg; `pruefen.mjs` lässt kein Kugel-Bild und kein dekoratives Licht mehr zu
+  (in der Software bleibt die Kugel).
+- **Leitmotiv Linienplan** „Der Weg der Innovation“ (aus dem Logo: rote Linie = Idee und Strategie, der Knoten = Umsetzung, grüne Linie =
+  Vertrieb und Markt). Im Einstieg als SVG-Grafik (`role="img"`, Titel und Beschreibung), im Abschnitt **03 Der Weg** als Strecke mit sechs
+  Etappen (`.strecke`), im Kontakt als Halt vor dem Erstgespräch („Der erste Halt ist ein Gespräch“).
+- **Rhythmus statt EINES dunklen Abschnitts:** höchstens **zwei dunkle Abschnitte** (`.dunkel`: Der Weg, Kontakt) und **EINE Farbfläche**
+  (`.farbflaeche`, Granat auf Papier, Weiß darauf 6,4 : 1: „Was Innovation bei uns heißt“). Der Rest bleibt Papier — 80 % Seriosität.
+- **Arbeits-Schemata statt Behauptungen:** je Leistung Ausgangslage · Was wir tun · Was danach steht · Dauer & Form und daneben ein
+  gezeichnetes Schema (Woche im Mandat, Vertriebs-Strecke, Botschaft in einem Satz, Einladung, Umsetzungs-Board). Jedes trägt „Schema ·“
+  bzw. „Beispiel ·“ in der Beschriftung — keine echten Zahlen, Kunden oder Termine.
+- **Neue Leistung „Sichtbarkeit & Marketing“** (aus den früheren Beratungsfeldern Botschaft, Unterlagen, Kanäle), gleichwertig mit „Erstgespräch anfragen“.
+- **Gründer** (`#ueber-uns`, „Zwei Linien. Ein Knoten.“) und **Häufige Fragen** (`#fragen`, 5–7 aufklappbare `<details>`, ohne Skript).
+- **Bewegung genau einmal:** die Linie im Einstieg zeichnet sich beim Laden, die Strecke weiter unten beim ersten Erscheinen (`js/weg.js`:
+  ein Beobachter, der jede Linie danach abmeldet; nichts hängt am Scrollen). Nur unter `prefers-reduced-motion: no-preference`; ohne Skript
+  und bei „Bewegung reduzieren“ steht alles sofort fertig da.
 
-| p | Phase | Was geschieht |
+**Ruhe-Regeln v3** (`pruefeRuhe` in `pruefen.mjs`, gilt auch für fokusinnovation.de; Wächter `tests/website-landingpage.test.ts` › Ruhe (v3),
+`tests/fokus-seite.test.ts` › Rhythmus (v3)):
+
+| Regel | „Klar 2“ | v3 |
 |---|---|---|
-| — | **Vorhang** | Knoten aus dem Logo (links Granat, rechts Smaragd) fügt sich über einer sanften Blüte zusammen, nach 1,9 s hebt der Vorhang ab (Bewegung reduzieren: 0,7 s ohne Bewegung). Wer scrollt oder eine Taste drückt, hebt ihn sofort. Ohne Skript gibt es ihn nicht. |
-| 0,00–0,10 | **1 · Titelkarte** | dunkle Karte auf Off-White, ruhiger Mesh-Gradient (Anthrazit, dezente Granat/Smaragd-Lichter, folgt leicht der Maus, Auflösung 1, 36 fps). H1 „Innovation braucht Umsetzung / und Sichtbarkeit.“ (zweite Zeile 42 %), rechts ein Bildkarte mit dem Standbild der Kugel (neigt sich mit der Maus). Unten Satz, „Erstgespräch anfragen“ / „Den Weg ansehen“, Haarlinie, Fakten (Aus Berlin für Deutschland · Interim CSO · Interim Head of Sales · Fokus Innovation). Beim Scrollen gleiten die Buchstaben verschwommen nach unten weg. |
-| 0,09–0,17 | **2 · Karussell** | die Karte schrumpft zur Marken-Karte (Wortmarke) und wird Teil eines Karussells aus vier Karten, dahinter das Laufband „Umsetzung · Sichtbarkeit · Vertrieb · Netzwerk · Fokus · Klarheit“ (25 s, 6 % Tinte). |
-| 0,17–0,37 | | rotateY 0 → −270°, nach cos sortiert, mit **Rasten** (jede Karte steht vorn still — Lesezeit): **Umsetzung & Sichtbarkeit** (Beratung: Interim CSO, Interim Head of Sales, Events & Netzwerk-Strategie) · **Fokus & Klarheit** (eigene Software) · das **Tor** (Knoten). Darunter „Erstgespräch anfragen“. |
-| 0,37–0,45 | **3 · Tor** | der Knoten teilt sich, ein Kreis öffnet das Papier in den dunklen Raum. |
-| 0,44–0,60 | **4 · Dunkler Raum** | die **Kugel** aus der Szene (Smaragd/Granat, additiv, hohle Mitte, heller Rand — ruhig), Aurora sehr dezent an den Rändern. „Wachstum scheitert selten an Ideen. / Meist an der Umsetzung.“ steigt Buchstabe für Buchstabe auf, dazu der Absatz. Rechner: Text links, Kugel rechts; hochkant: Kugel oben, Text unten. |
-| 0,60–0,80 | **5 · Band** | ruhige Karten ziehen von rechts nach links vorbei (Handy: rastet je Karte mittig ein): **Fokus Innovation** (sechs Städte, Berlin Ausgangspunkt, Link fokusinnovation.de) · **Make.One** · zwei Karten mit den **vier belegten Zahlen** (Zahlen-Trommel am Fortschritt, Fußnoten unverändert). Die Kugel steht klein und gedimmt oben rechts. |
-| 0,79–0,91 | **6 · Flug** | die Kamera fliegt ruhig in die Kugel; sechs typografische Kacheln kommen aus der Tiefe (Wiederholung der Inhalte, `aria-hidden`). |
-| 0,90–1,00 | **7 · Schluss** | Wortmarke über eigenem Verlauf, „Sprechen wir über dein Vorhaben.“ + „Erstgespräch anfragen“; der Rand aus Papier und der weiße Innenrahmen schnappen ein. |
-| danach | **Im Detail** (Off-White) | Beratung im Detail (drei Angebote, drei Phasen, Beratungsfelder, Development „Coming Soon“) · Make.One + Make.Beteiligungen · Warum MAKE · Kontakt mit dem Erstgespräch (`#erstgespraech-link`) und den Quellen · ruhiger dunkler Fuß mit großer Wortmarke. |
+| Scroll-Film (Spur, Bühne, Szene, Leinwand), scroll-gebundene Skripte, `setInterval`, `requestAnimationFrame` | verboten | verboten (unverändert) |
+| Dunkle Abschnitte · Farbflächen | höchstens 1 · keine | höchstens **2** · höchstens **1** |
+| Licht/Standbild | genau ein Licht (Kugel-Standbild) | **kein** Kugel-Bild, kein `.licht` |
+| CSS-Animation | keine | nur in `@media (prefers-reduced-motion: no-preference)`, nie `infinite`, nie öfter als einmal, nie Scroll-Timeline |
+| Verborgener Inhalt | — | nur im Bewegungs-Block, nur unter `.wartet` (setzt `js/weg.js`, ohne Skript nie) oder als Anfang eines `@keyframes` |
+| Skript mit `IntersectionObserver` | — | nur mit `unobserve`/`disconnect` (einmal) und mit Rücksicht auf „Bewegung reduzieren“ |
+| „Bewegung reduzieren“ | `@media (prefers-reduced-motion: reduce)` Pflicht | unverändert Pflicht (schaltet Übergänge und Animationen ab) |
 
-**Navigation:** Kachel-Pille (dunkel auf jedem Grund): Logo-Kachel · Beratung · Make.One · Fokus Innovation ↗ · Warum wir · Kontakt ·
-„Login“ · Ruf-Kachel „Erstgespräch“ (Off-White). Unter 1100 px ein Menü-Knopf (`<details>`, geht ohne Skript), unter 560 px ohne Ruf-Kachel.
-Anker in der Spur fahren an die passende Stelle (Blöcke tragen `data-spur-p`); springt der **Tastatur-Fokus** in einen Block der Bühne,
-fährt die Seite dorthin — nichts ist unerreichbar, auch wenn es gerade unsichtbar ist.
+## Klar 2 (07.10.) — Gestaltungsplan
 
-**Ruhige Fassung** (ohne Skript, „Bewegung reduzieren“, ohne WebGL, oder wenn die Szene scheitert): dieselben Blöcke stehen
-untereinander — Titelkarte mit stehendem Verlauf (CSS), die zwei Karten nebeneinander, der dunkle Raum mit dem **Standbild der Kugel**,
-das Band als Raster, der Schlussblock; der Flug entfällt. Versteckt (Deckkraft 0) wird nur unter `html.spur-an`, das allein
-`js/szene/spur.js` setzt — nach der Prüfung auf „Bewegung reduzieren“ und WebGL. Bis das Skript entscheidet, deckt ein dunkler Grund die
-Startseite (nur mit Skript, spätestens nach 2,5 s weg).
+> Seit v3 gelten die Abschnitte unten nur noch, wo der Abschnitt oben nichts anderes sagt (Kugel/Licht, „EIN dunkler Abschnitt“,
+> „keine Animation“ und die Abschnittsliste sind durch v3 ersetzt).
 
-**Barrierefreiheit:** eine H1; zerlegte Überschriften tragen vorn eine unsichtbare Kopie, die Buchstaben sind `aria-hidden`
-(`MakeSzene.buehne.zerlegen`); Zahlen der Trommel mit unsichtbarer Kopie; Szene und Flug `aria-hidden`, die Szene in einem Satz
-beschrieben; Fokus sichtbar (auf Papier Tinte, auf Dunkel Türkis); Tippziele ≥ 44 px; 375 px ohne waagerechtes Scrollen; kein
-Scrollbalken-Trick, kein Scroll-Sperren.
+**Entscheidungen (Klickrunde 07.10.):** Richtung „innovativ UND seriös, keine Spielereien“ · Grundton **hell → dunkel** (Off-White mit
+dunkler Schrift, EIN dunkler Abschnitt für die Wirkung) · Belege **nur als Prinzipien** (keine Statistiken, Prozentzahlen, Marktgrößen).
+
+**Innovativ durch Präzision, nicht durch Effekte.** Eine normale Dokument-Seite: kein Scroll-Jacking, keine Bühne, keine scroll-gebundenen
+Phasen. Jeder Abschnitt ist im Ruhezustand vollständig lesbar — ohne Skript und bei „Bewegung reduzieren“ genauso. Die Höhe richtet sich
+nach dem Inhalt (Rechner ≈ 8,5 Bildschirme statt 11 Bildschirme Scroll-Film).
+
+### Was entfällt und warum
+
+| Entfällt | Warum |
+|---|---|
+| Showreel (Spur 1150vh, stehende Bühne, Feder, Phasen p) | Scroll-Jacking und leere Zwischenzustände — genau die „Spielerei“, die Kevin nicht will |
+| WebGL-Szene (Kugel aus Lichtpunkten live, Mesh-Verläufe, Aurora), `js/szene/*`, `js/drehbuch.js`, `standbild.mjs` | Dauer-Animation hinter Lesetext; drei Leinwände; ≈ 100 KB Skript. Das eine Licht ist jetzt ein **Standbild** derselben Kugel |
+| Vorhang, Karussell, Laufband, Flug-Kacheln, Buchstaben-Zerfall/-Aufstieg, Zahlen-Trommel, laufender Rand an Knöpfen | Choreografie ohne Inhalt; abgeschnittene Karten; Ablenkung vom Lesen |
+| Vier Zahlen-Kacheln mit Fußnoten (KfW, Bitkom) und die Quellenliste | Kevin 07.10.: Belege nur als Prinzipien. Der Datenschutzhinweis nennt deshalb keine Quellenlinks mehr |
+| Karte „Fokus & Klarheit — eigene Software“ | aufgegangen im Grundsatz „Struktur, die bleibt“ (ein Satz, ohne Namen) |
+| Riesige Wortmarke im Fuß, dunkle Kachel-Pille als Kopf | zu laut; der Kopf ist hell und ruhig, die Wortmarke steht klein im dunklen Fuß |
+| `js/lichtfaeden.js` (+ `scripts/lichtfaeden-website.mjs`) | war schon seit „Klar“ nicht eingebunden — tote Datei |
+
+### Farben (Tokens in `css/seite.css`, Werte wie `lib/make-one/design.ts`)
+
+| Rolle | Token | Wert |
+|---|---|---|
+| Papier (Grund) · Papier hell (Flächen, Menü) | `--papier` · `--papierHell` | #F4F3EF · #FAF9F6 |
+| Tinte (Titel) · Lesetext · Beschriftung | `--tinte` · `--tinteDim` · `--tinteLeise` | #0B0E10 (17,4 : 1) · #4F5A5D (6,4 : 1) · #5C6669 (5,3 : 1) |
+| Haarlinien auf Papier | `--haar` · `--haarStark` | Tinte 12 % · 28 % |
+| Dunkler Schlussakt und Fuß | `--grund`, Text `--ink` · `--inkDim` · `--inkLeise` | #0B0E10, #E8ECEA · #A2ADB0 · #86918F (= FARBE) |
+| Akzente (sparsam) | `--granat` · `--smaragd`, auf Papier `--granatPapier` · `--smaragdPapier` | #C9465C · #2FA878, #A82E44 · #167A55 |
+
+Granat und Smaragd erscheinen nur als Knoten-Zeichen (Vorzeile, Fokus-Kasten), in „MA/KE“, in den Kürzeln der Gründer (getönt wie in der
+Software), als „Ausgangspunkt“ und im einen Licht. Knöpfe sind Tinte (hell) bzw. Weiß (dunkel) — nie farbig.
+
+### Typo-Skala (Archivo für Titel, Public Sans für Text; selbst gehostet)
+
+| Stufe | Token | Größe (390 → 1440 px) | Schnitt |
+|---|---|---|---|
+| H1 | `--t-held` | 40 → 76 px (fokusinnovation.de: 52 → 120 px) | Archivo 600, −0,035 em, Zeilenhöhe 1,02 |
+| H2 | `--t-titel` | 30 → 50 px | Archivo 600, −0,03 em |
+| H3 / Kartentitel | `--t-unter` | 20 → 24 px | Archivo 600 |
+| Einleitung | `--t-lead` | 17 → 21 px | Public Sans 400, Tinte-Dim, höchstens 62 Zeichen |
+| Fließtext · Listen | `--t-body` · 15 px | 16 px · 15 px | Public Sans 400, Zeilenhöhe 1,65 |
+| Bedienung · Kleintext | `--t-bedien` | 14 px | Public Sans 500 |
+| Beschriftung | `--t-mikro` | 12 px, GROSSBUCHSTABEN, +0,12 em | Public Sans 600 |
+
+Überschriften bestehen aus zwei Sätzen: der zweite (`.ruhig`) steht in eigener Zeile in Tinte-Dim — „Verantwortung auf Zeit. / Mit klarer Agenda.“
+
+### Raster, Abstände, Ecken
+- **12 Spalten**, Inhalt höchstens 1168 px (`--breite` 1280 inkl. Rand), Rand 20 → 56 px, Rinne 16 → 32 px.
+- **Abschnitt:** starke Linie (1 px Tinte) oben; links „01 Beratung“ (Spalten 1–3), rechts Titel + Einleitung (4–12); darunter der Inhalt.
+  Abstand zwischen Abschnitten 80 → 144 px (`--abschnitt`).
+- **Haarlinien statt Kartenwand:** Angebote als gleichwertige Spalten mit senkrechten Haarlinien, Listen mit Haarlinien je Zeile, Schritte als
+  Linie mit Knoten. Genau EINE hervorgehobene Fläche je Seite (`.kasten`, Fokus Innovation).
+- **Ecken wie die Software (ECKE):** Knopf 14, flache Fläche 16, Karte 20, Pille 999. Tippziele: Hauptknopf 48/52 px, alles andere ≥ 44 px.
+
+### Bausteine (`css/seite.css` — EINE Quelle für beide Seiten)
+Kopf (hell, sticky, Handy-Menü als `<details>`) · Knöpfe (`.knopf` Tinte = die Hauptaktion, `.knopf.zweit` Kontur, `.textlink`) · Vorzeile mit
+Knoten · Held mit **Index** (vier Einträge mit Nummer und Haarlinie) · Abschnitt-Kopf · `.angebote` · `.schritte` · `.eintraege` · `.kasten` ·
+`.liste` · `.dunkel` (der eine dunkle Abschnitt) · `.licht` (das eine Standbild) · Fuß (dunkel) · Rechtstexte · „Bewegung reduzieren“.
+Seitenspezifisch: `css/start.css` (hier) bzw. `fokus/css/fokus.css` — beide setzen **keine** Tokens.
+
+### Abschnitte — makeinnovation.de
+1. **Einstieg** (Papier): Vorzeile „MAKE Innovation · Aus Berlin, für Deutschland“ mit Knoten · H1 „Innovation braucht Umsetzung / und
+   Sichtbarkeit.“ · Satz · „Erstgespräch anfragen“ + „Was wir tun“ · Index: Interim CSO · Interim Head of Sales · Events & Netzwerk-Strategie ·
+   Make.One & Fokus Innovation (je mit Satz, verlinkt).
+2. **01 Beratung** (`#markttraktion`): „Verantwortung auf Zeit. / Mit klarer Agenda.“, für wen (drei Pillen), drei Angebote mit
+   „Erstgespräch anfragen“, darunter „MAKE Innovation Development — Coming Soon“.
+3. **02 Vorgehen** (`#so-arbeiten-wir`): drei Phasen auf einer Linie, der Wochenrhythmus, sechs Beratungsfelder.
+4. **03 Netzwerk** (`#make-one`): Make.One (Formate, Merkmale, „Einladung anfragen“), der Kasten **Fokus Innovation** (`#fokus-innovation`,
+   sechs Städte, Link fokusinnovation.de), **Make.Beteiligungen** (`#beteiligungen`, „Projekt einreichen“, Hinweis keine Anlageberatung).
+5. **04 Warum MAKE** (`#ueber-uns`): „Zwei Linien. / Ein Knoten.“, MA/KE, „Warum du mit uns arbeiten solltest.“ (vier Grundsätze), Malin und Kevin.
+6. **05 Kontakt** (`#kontakt`, **der dunkle Schlussakt**): „Wachstum scheitert selten an Ideen. / Meist an der Umsetzung.“, das Erstgespräch
+   (`#erstgespraech`, `#erstgespraech-link`), „Pitch-Deck anfordern“, rechts das **eine Licht**: das Standbild der Kugel (`assets/bild/kugel.svg`,
+   statisch, dekorativ). Der dunkle Grund geht in den Fuß über (eine Haarlinie trennt).
+7. **Fuß** (dunkel): Wortmarke, Firmierung, Beratung · MAKE · Kontakt (inkl. Impressum, Datenschutz, Login), „© 2026 MAKE Innovation / eine Marke
+   der KEMARIS Innovation GmbH“.
+
+**Bewegung:** nur Übergänge beim Zeigen/Fokus (Pfeil rückt 3 px, die Linie über einem Index-Eintrag zieht sich auf, Farbwechsel ≤ 0,35 s);
+keine Animation, kein Parallax, nichts hängt am Scrollen. Bei „Bewegung reduzieren“ entfallen auch die Übergänge.
+
+**Barrierefreiheit:** eine H1 je Seite, Abschnitte mit `aria-labelledby`, Sprung-Link „Zum Inhalt“, sichtbarer Fokus (2 px Tinte, auf Dunkel
+Weiß), Kontrast AA (siehe Farben), Tippziele ≥ 44 px am Handy (gemessen), Menü per Tastatur (`<details>`, Esc schließt), das Licht `aria-hidden`.
 
 ## Dateien
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Kopf (Kachel-Pille), die Spur mit Bühne (Szene, Papier mit Laufband, Karussell, dunkler Raum, Band, Flug, Schluss), die Abschnitte im Detail, Fuß |
-| `js/szene/spur.js` | **wiederverwendbar — der Showreel-Baukasten:** p über die Spur + Feder, Stufen (rechner/tablet/handy wie `--sr-*`), Vorhang, Werkzeuge (`sicht`, `stil`, Buchstaben-Zerfall/-Aufstieg, Karussell nach cos, Rasten, Trommel am Fortschritt, Maus, Szene steuern, Verlauf), Anker/Tastatur-Fokus, ruhige Fassung. Kennt keine Inhalte. |
-| `js/szene/verlauf.js` | **wiederverwendbar:** ruhiger Mesh-Gradient (WebGL 1, Auflösung 1, höchstens 36 fps, nur sichtbar und gebraucht) |
-| `js/szene/kern.js` | **wiederverwendbar:** Mathematik ohne DOM (Zufall, Matrizen, Pfad, Kamera, Feder, Optionen) |
-| `js/szene/formationen.js` | **wiederverwendbar:** Formationen als Punkte + Linien — neu `kugel` (dichte Hülle, links Granat, rechts Smaragd, heller Rand, hohle Mitte, eigener fester Zufall: mehrere Zustände = dieselbe Kugel); `netz: false` / `pfad: false` im Drehbuch stellen Netz, Lichtfäden und Staub ab; `tafel` nur für fokusinnovation.de |
-| `js/szene/motor.js` | **wiederverwendbar:** WebGL-1-Motor der Szene — neu: `fortschritt: 'extern'` (folgt `MakeSzene.fortschritt` statt Abschnitten), `teilchen` je Gerät, `hell` je Zustand, `handy()` aus dem Drehbuch, `.szene[data-ruht]` (zeichnet nicht, solange verdeckt), kein Teilchen-Bogen, wenn die Formation gleich bleibt |
-| `js/drehbuch.js` | **nur diese Seite:** Zustände der Szene (raum · band · flug mit p/bis) und die Choreografie (`MakeSzene.showreel`: was bei welchem p geschieht) |
+| `index.html` | Kopf, Einstieg mit Linienplan, 01 Farbfläche, 02 Leistungen, 03 Der Weg (dunkel), 04 Netzwerk, 05 Beteiligungen, 06 Gründer, 07 Fragen, 08 Kontakt (dunkel), Fuß |
+| `css/seite.css` | **Gestaltungsgrundlage** (Tokens, Bausteine) — Original; `fokus/css/seite.css` ist eine Byte-Kopie (`node scripts/fokus-seite.mjs`) |
+| `css/start.css` | nur die Startseite (Development-Zeile, Rhythmus, Netzwerk-Raster, Fokus-Kasten, Beteiligungen, Grundsätze, Gründer, Schlussakt) |
 | `js/menue.js`, `js/erstgespraech.js` | Handy-Menü schließen; Ziel des Erstgesprächs für alle Knöpfe mit `data-erstgespraech` |
-| `js/lichtfaeden.js` | Lichtfäden-Zeichner (Canvas 2D) — **erzeugt** aus der App (`node scripts/lichtfaeden-website.mjs`), auf der Startseite nicht eingebunden; gemeinsame Quelle mit fokus/ |
-| `css/seite.css` | Tokens (das erste `:root` gleich `fokus/css/fokus.css`), neu `--papier`/`--tinte*` (Off-White, siehe Kommentar) und `--sr-*` je Stufe; ruhige Fassung + Showreel (`.spur-an`) aus einem HTML |
-| `assets/szene/raum.svg` | Standbild der Kugel (`node website/standbild.mjs`) — Titelkarte und ruhige Fassung |
-| `impressum.html`, `datenschutz.html`, `404.html` | Rechtstexte auf Off-White (Inhalt unverändert; Datenschutz: Satz zu den acht Skripten angepasst) |
-| `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — `assets/logo/LOGO.md` |
-| `logo-entwuerfe.html`, `pruefen.mjs`, `stempeln.mjs`, `standbild.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
-
-**Off-White (neu 04.10.):** Die CI von MAKE hatte bisher kein Off-White. `--papier` #F4F3EF ist ein warmes, leicht gebrochenes Weiß
-(ruhiger als reines Weiß, passt zum warmen Granat); Tinte darauf = dunkler Grund der Marke #0B0E10 (wie MAKE im hellen Logo, 17,4 : 1),
-Lesetext `--tinteDim` #4F5A5D (INNOVATION im hellen Logo, 6,4 : 1), Beschriftungen `--tinteLeise` #5C6669 (5,3 : 1).
+| `js/weg.js` | v3: die Linie zeichnet sich einmal (setzt `.wartet` nur an Linien unter dem Bild, entfernt es beim ersten Erscheinen) — Byte-Kopie in `fokus/js/` |
+| `impressum.html`, `datenschutz.html`, `404.html` | Rechtstexte auf Papier mit dunklem Fuß (Inhalt unverändert; Datenschutz: Skript-Satz angepasst, „Links zu Quellen“ entfällt) |
+| `assets/logo/` | Logo v5 „Synapse“ aus `scripts/website-logo.mjs` (nie von Hand ändern) — `assets/logo/LOGO.md`. Kopf: `quer-hell`/`kompakt-hell`, Fuß: `wortmarke` |
+| `logo-entwuerfe.html`, `pruefen.mjs`, `stempeln.mjs`, `LIESMICH.md` | Arbeitsdateien (werden nie ausgeliefert) |
 
 ### Ändern
-- **Text:** `index.html`. **Zeitplan / Bewegung:** `js/drehbuch.js` › `bild(p, w)` (je Phase ein Block). **Bild der Szene:** `js/drehbuch.js`
-  › `S.drehbuch.zustaende` (Kamera, `hell`, `p`/`bis`), danach `node website/standbild.mjs`. **Größen je Stufe:** `--sr-*` in `css/seite.css`.
-- **Danach immer:** `node website/stempeln.mjs` und `node website/pruefen.mjs`.
-- **Lokal ansehen:** `python3 -m http.server 3013 -d website` über einen Eintrag in `.claude/launch.json` (nicht per Bash).
-
-### Andocken für fokus/ (seit 05.10.2026, eine Quelle)
-`js/szene/spur.js`, `verlauf.js`, `kern.js`, `formationen.js`, `motor.js` kennen keine Inhalte und sind das **Original** auch für
-fokusinnovation.de: `node scripts/fokus-seite.mjs` (über `scripts/szene-website.mjs`, Liste `ZIELE`) kopiert sie byte-gleich nach
-`fokus/js/szene/` und stempelt fokus/ (Wächter `tests/szene-website.test.ts`, `fokus/pruefen.mjs` › `GLEICH_WIE_WEBSITE`). fokus/ bringt
-nur ein eigenes `js/drehbuch.js` (Zustände, `bild(p, w)`), dieselbe Spur-Struktur (`.spur > .buehne`, `data-spur-p`) und eigene `--sr-*`.
-**Nach jeder Änderung hier:** `node website/stempeln.mjs`, `node website/standbild.mjs` (darf sich für diese Seite nicht ändern),
-`node scripts/fokus-seite.mjs`, `node website/standbild.mjs fokus`. Was fokus/ dazu brauchte, ist **freiwillig** — ohne Angabe im
-Drehbuch bleibt diese Seite unverändert: die Formation `tafel` (ein Abend in kleiner Runde, eigener fester Zufall wie `kugel`).
-`standbild.mjs` nimmt einen Ordner und liest die Beschriftungen aus `index.html` (`span.marke[data-zustand][data-nr]`); die Prüfung des
-Showreels steht als `pruefeShowreel()` in `pruefen.mjs` und gilt für beide Seiten (fokus/: höchstens zwei Lichter).
-
-### Gewicht, Tempo (gemessen 04.10., headless Chrome, Apple M3)
-- **Startseite** (HTML + CSS + acht Skripte, gzip) ≈ 64 KB; ausgeliefert ohne Schriften ≈ 82 KB (mit Standbild der Kugel 17 KB),
-  mit Schriften ≈ 142 KB (`pruefen.mjs`: Grenze 400 KB).
-- **Bildrate** beim Scrollen über die ganze Seite: Rechner 1440 × 900 **60 fps**, längstes Bild 16,8 ms; Handy 375 × 812 mit 4× gedrosselter
-  CPU **60 fps**, längstes Bild 16,8 ms (drei Läufe; ein früherer kalter Lauf hatte einmal 417 ms beim ersten Erscheinen der Karten).
-  Aufbau der Szene einmalig ≈ 85–200 ms (gedrosselt). Konsole leer, kein waagerechtes Scrollen (375 / 820 / 1440 px).
+- **Text:** `index.html`. **Aussehen beider Seiten:** `css/seite.css`, danach `node scripts/fokus-seite.mjs` (Kopie nach fokus/ + Stempel).
+  **Nur diese Seite:** `css/start.css`.
+- **Danach immer:** `node website/stempeln.mjs` und `node website/pruefen.mjs` (und `node fokus/pruefen.mjs`, wenn `seite.css` geändert wurde).
+- **Lokal ansehen:** `python3 -m http.server 3016 -d website` (bzw. über einen Eintrag in `.claude/launch.json`).
 
 ## Freigabe — in dieser Reihenfolge
 
@@ -112,14 +166,15 @@ Showreels steht als `pruefeShowreel()` in `pruefen.mjs` und gilt für beide Seit
    die Prüfung meldet das). Abschnitte, die nicht zutreffen (z. B. USt-IdNr.), ganz streichen.
 2. **Prüfen:** `node website/pruefen.mjs` → muss **„freigabefähig“** melden (Ausgang 0). Er prüft außerdem: Firmierung
    „eine Marke der KEMARIS Innovation GmbH“ auf jeder Seite und **nirgends eine GmbH namens MAKE Innovation**, Beschreibung und — solange
-   `robots.txt` sperrt — `noindex` je Seite, keine
-   Skripte, keine Inline-Stile, keine fremden Quellen/Tracker, eine H1 je Seite, Login-Knopf, Impressum- und
-   Datenschutz-Link, alle eigenen Links und Anker — dazu: Skripte nur aus `js/` und ohne Speichern/Senden, Logo-Dateien
-   vollständig, Schlussblock mit `assets/logo/wortmarke.svg`, Showreel (Spur + Bühne, Zustände mit Lage p, Standbild ohne tote Dateien, Lichter an höchstens drei Stellen, Buchstaben-Bewegung nur an H1 und Raum-Überschrift), Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau
-   ein „Coming Soon“ bei Development), Mail-Knöpfe Make.One/Make.Beteiligungen, **Ziel des Erstgesprächs an genau einer Stelle**
-   (`#erstgespraech-link`: vorbereitete Mail oder Buchungsseite mit gültigem Slug), **keine Preise**, **Sperrliste**: keine anderen Firmen-, Marken- oder
-   Projektnamen (nur MAKE; KEMARIS nur in der Firmierung), der Name der Software nirgends im Ordner, Wortregeln (kein „Dashboard“, „Tool“,
-   „Reporting“, „Disruption“, „einfach zu bedienen“).
+   `robots.txt` sperrt — `noindex` je Seite, keine Inline-Skripte, keine Inline-Stile, keine fremden Quellen/Tracker, eine H1 je Seite,
+   Login-Knopf, Impressum- und Datenschutz-Link, alle eigenen Links und Anker — dazu: Skripte nur aus `js/` und ohne Speichern/Senden,
+   Logo-Dateien vollständig (Kopf `quer-hell`, Fuß `wortmarke`), Navigation, Angebote (drei mit „Erstgespräch anfragen“, genau ein
+   „Coming Soon“ bei Development), Mail-Knöpfe Make.One/Make.Beteiligungen, **Ziel des Erstgesprächs an genau einer Stelle**
+   (`#erstgespraech-link`: vorbereitete Mail oder Buchungsseite mit gültigem Slug), **keine Preise**, **keine Statistiken/Prozentzahlen**,
+   **Ruhe** (`pruefeRuhe`, gemeinsam mit fokus/: kein Scroll-Film, keine Leinwand, höchstens ein Licht und ein dunkler Abschnitt, keine
+   CSS-Animationen, keine scroll-gebundenen Skripte, „Bewegung reduzieren“ beachtet, keine toten Bilder), Gewicht der Startseite ≤ 80 KB gzip,
+   **Sperrliste**: keine anderen Firmen-, Marken- oder Projektnamen (nur MAKE; KEMARIS nur in der Firmierung), der Name der Software
+   nirgends im Ordner, Wortregeln (kein „Dashboard“, „Tool“, „Reporting“, „Disruption“, „einfach zu bedienen“).
 3. **Kevin sieht die Seite lokal an** und gibt sie ausdrücklich frei.
 4. **Vorschau beenden** (erst, wenn die Seite beworben wird): in `deploy/caddy/Caddyfile` die Zeile `X-Robots-Tag` entfernen,
    `website/robots.txt` öffnen (`Disallow:` leer) und in allen Seiten `<meta name="robots" content="noindex">` streichen
@@ -130,16 +185,16 @@ Showreels steht als `pruefeShowreel()` in `pruefen.mjs` und gilt für beide Seit
    von selbst). Prüfen: `curl -sI https://makeinnovation.de` → 200 mit `content-security-policy`,
    `curl -sI https://www.makeinnovation.de` → 301 auf `https://makeinnovation.de/`.
 
-## Offene Platzhalter (Stand 04.10.2026, „Klar“)
+## Offene Platzhalter (Stand 07.10.2026, v3)
 
-- **Startseite › Warum MAKE › Vertrieb aus der Praxis:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
+- **Startseite › 06 Gründer › Kevin Dieckmann:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
 
 ## Später auf Buchungsseite umstellen
 
 Hauptweg ist vorerst **„Erstgespräch anfragen“ → vorbereitete Mail** an `hello@makeinnovation.de` (Betreff
 „Erstgespräch – Markttraktion“, Text: Firma, worum es geht, 2–3 Terminvorschläge), weil die Buchungsseite der Software
 noch nicht so weit ist. Das Ziel steht an **genau einer Stelle**: `index.html`, Knopf `id="erstgespraech-link"`
-(Abschnitt „Erstgespräch“). Alle anderen Knöpfe tragen `data-erstgespraech` und übernehmen es über `js/erstgespraech.js`.
+(dunkler Schlussakt „05 Kontakt“). Alle anderen Knöpfe tragen `data-erstgespraech` und übernehmen es über `js/erstgespraech.js`.
 **Umstellen:** nur dieses eine `href` durch `https://app.makeinnovation.de/buchen/<slug>` ersetzen (Slug der
 Buchungsseite, Form `name-<24 Hex-Zeichen>`), dann `node website/pruefen.mjs`. Dazu im Datenschutzhinweis einen
 Abschnitt „Termin buchen“ ergänzen (Buchungsseite unter app.makeinnovation.de, verarbeitet Name, E-Mail, ggf. Firma und
@@ -159,33 +214,33 @@ Anliegen, eigener Hinweis vor dem Absenden) und im Abschnitt „Cookies und Spei
 - **Make.Beteiligungen:** bewusst vorsichtig formuliert („Kooperation oder Beteiligung im Einzelfall“, Hinweis „keine
   Anlageberatung, kein Finanzierungsangebot, keine Rendite- oder Finanzierungszusage“). Vor der Freigabe juristisch
   gegenlesen lassen.
-- Die Seite nennt keine Preise, Kundennamen, Kundenzahlen oder Erfolgsversprechen — bewusst. Die Fakten zu den Mandaten
+- Die Seite nennt keine Preise, Kundennamen, Kundenzahlen, Statistiken oder Erfolgsversprechen — bewusst. Die Fakten zu den Mandaten
   (ca. 2 Tage pro Woche, wöchentliche Calls, 6–12 Monate, Make.One-Zugang beim Interim CSO) sind Kevins Vorgaben vom 01.10.
 - Die Make.One-Formate (Stammtisch, Dinner, Workshop, Webinar) haben je einen allgemeinen Satz, keine Termine oder Orte.
-- Gründer-Texte: MAKE = Malin + Kevin, Malins Zeile aus v2 (Kevins Worte, 27.09.). Ohne Fotos — Initialen in
-  Personenfarbe. Fotos nur, wenn ihr sie freigebt (dann als Datei in `assets/`, `img-src 'self'` erlaubt das).
-- Anrede auf der Startseite **„Du“** (Kevin 03.10.: unter Unternehmern üblich, natürlich und souverän; Überschrift „Warum du mit uns arbeiten solltest.“). **Impressum und Datenschutz bleiben förmlich („Sie“)** — Rechtstexte.
-- **Belegte Zahlen** (Kevin 03.10.): vier Kacheln in zwei Karten des Bands („Ideen gibt es genug.“, „KI macht aus Ideen schneller Ergebnisse.“),
-  jede mit Fußnote; die Quellenliste steht im Abschnitt Kontakt (`#quellen`). Nur Originalquellen, direkt am Dokument geprüft (Stand der Prüfung 03.10.2026). Neue Zahl = neue Quelle in
-  `QUELLEN_LINKS` (`pruefen.mjs`) eintragen — der Prüfer verlangt je Kachel eine Fußnote mit genau einem dieser Links.
-  Jährlich neu prüfen, ob eine jüngere Ausgabe erschienen ist:
+- Gründer-Texte: MAKE = Malin + Kevin, Malins Zeile aus v2 (Kevins Worte, 27.09.). Ohne Fotos — Kürzel in Personenfarbe.
+  Fotos nur, wenn ihr sie freigebt (dann als Datei in `assets/`, `img-src 'self'` erlaubt das).
+- Anrede auf der Startseite **„Du“** (Kevin 03.10.); **Impressum und Datenschutz bleiben förmlich („Sie“)** — Rechtstexte.
+- Neu formuliert (07.10.): Vorzeile „MAKE Innovation · Aus Berlin, für Deutschland“, Index-Sätze, Einleitung „Vorgehen“, Fokus-Kasten-Satz,
+  Grundsatz „Struktur, die bleibt“ (mit dem Satz zur eigenen Software), Schlussakt-Satz. Die belegten Zahlen (KfW, Bitkom) stehen nur noch im
+  Git-Verlauf (Commit e008ebfc) — falls sie später wieder gebraucht werden, mit Quelle prüfen.
 
-  | Zahl | Aussage | Quelle |
-  |---|---|---|
-  | 57 % | der Inhaber:innen mittelständischer Unternehmen sind 55+ (über 2 Mio.; 2003: 20 %) | KfW Research, Nachfolge-Monitoring Mittelstand 2025, Fokus Nr. 526, 9.1.2026 |
-  | 7 % | der Arbeitszeit im Mittelstand für Bürokratie (Ø 32 Std./Monat und Unternehmen) | KfW Research, Fokus Nr. 495, 25.4.2025 |
-  | 41 % | Innovatorenquote im Mittelstand 2022–2024; 80 % der Innovatoren ohne eigene FuE | KfW-Innovationsbericht Mittelstand 2025, März 2026 |
-  | 66 % | der KI-Anwender: Wettbewerbsposition verbessert (57 % setzen KI ein, vor zwei Jahren 20 %) | Bitkom, Presseinformation 14.9.2026 (603 Unternehmen ab 20 Beschäftigten) |
-
-  Die Fußnoten verlinken auf kfw.de und bitkom.org; der Datenschutzhinweis nennt das (Abschnitt „Links zu Quellen“).
-
-> **Hinweis, keine Rechtsberatung:** Impressum und Datenschutzhinweis sind nach bestem Wissen aus dem tatsächlichen
-> Verhalten der Seite und des Servers abgeleitet (Stand Oktober 2026: § 5 DDG, DSGVO, TDDDG; die frühere Pflicht zum
-> Link auf die EU-OS-Plattform ist mit deren Abschaltung im Juli 2025 entfallen). Vor der Freigabe von einer
-> fachkundigen Person prüfen lassen.
+## Gewicht (gemessen 07.10. abends, v3, gzip)
+Startseite (HTML + zwei CSS + drei Skripte) ≈ **22 KB** („Klar 2“ ≈ 16 KB, davor ≈ 64 KB); dazu Schriften ≈ 60 KB. Kein Standbild mehr — die
+Grafiken sind Inline-SVG in `index.html`. fokusinnovation.de ≈ 18 KB. `pruefen.mjs`: Grenze 80 KB. Konsole leer; kein waagerechtes Scrollen bei 1440 / 1024 / 768 / 390 px.
 
 ## Stempel für Stile und Skripte (04.10.2026)
 Caddy liefert Seiten immer frisch, `css/` und `js/` bleiben einen Tag im Browser. Nach dem ersten v5-Upload sah deshalb wer
 die Seite vorher besucht hatte, die neue Seite mit alten Stilen/Skripten (kaputt). Seitdem trägt jeder Verweis die Prüfsumme der
 Datei (`css/seite.css?v=…`). **Nach jeder Änderung an `css/` oder `js/`: `node website/stempeln.mjs`** — `pruefen.mjs` meldet
 fehlende oder veraltete Stempel (Wächter: tests/website-landingpage.test.ts › Stempel).
+
+## Rückweg
+v3 liegt auf Branch `websites-v3` (Commits ab `32f3807c`); der Stand davor („Klar 2“) ist `000da837` (Branch `websites-klar-2`) — `git checkout 000da837 -- website fokus scripts tests`
+holt ihn vollständig zurück (mit Prüfer und Tests der „Klar 2“-Regeln).
+Der Stand vor „Klar 2“ (Showreel mit Szene) ist Commit `e008ebfc` auf `entwicklung` — z. B. `git checkout e008ebfc -- website fokus scripts tests`
+holt ihn vollständig zurück (Prüfer, Generatoren und Tests gehören dazu).
+
+> **Hinweis, keine Rechtsberatung:** Impressum und Datenschutzhinweis sind nach bestem Wissen aus dem tatsächlichen
+> Verhalten der Seite und des Servers abgeleitet (Stand Oktober 2026: § 5 DDG, DSGVO, TDDDG; die frühere Pflicht zum
+> Link auf die EU-OS-Plattform ist mit deren Abschaltung im Juli 2025 entfallen). Vor der Freigabe von einer
+> fachkundigen Person prüfen lassen.
