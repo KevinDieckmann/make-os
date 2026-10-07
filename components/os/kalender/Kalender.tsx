@@ -55,6 +55,7 @@ import { EinstellungenBelegt } from './EinstellungenBelegt';
 import { AbgleichStand } from './AbgleichStand';
 import { GoogleVerbindung } from './GoogleVerbindung';
 import { IcloudVerbindung } from './IcloudVerbindung';
+import { BereichVerbindungen } from './VerbindenKarten';
 import type { FreierTag } from '@/lib/kalender/freie-tage';
 import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
 import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
@@ -277,7 +278,9 @@ export function Kalender() {
   const sichten: { id: 'alle' | Wer; label: string }[] = [{ id: 'alle', label: 'Alle' }, { id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Gemeinsam' }];
   // Quellen (03.10.): iCloud und/oder Google — je nachdem, was verbunden ist.
   const mitGoogle = !!daten?.google?.length;
-  const live = !!daten?.icloud || mitGoogle;
+  // iCloud je Person (06.10.): die eigene Verbindung zählt auch als Live-Quelle.
+  const icloudLive = !!daten?.icloud || !!daten?.icloudEigen;
+  const live = icloudLive || mitGoogle;
   const quelleText = daten?.quelle === 'icloud' ? [daten.icloud ? `iCloud${daten.konto ? ` · ${daten.konto}` : ''}` : '', mitGoogle ? 'Google' : ''].filter(Boolean).join(' + ') : daten?.quelle === 'mac' ? 'Stand vom Mac (nur lesen)' : 'noch keine Quelle';
 
   const leiste = (
@@ -332,7 +335,7 @@ export function Kalender() {
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{quelleText}{daten?.stand ? ` · Stand ${new Date(daten.stand).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : ''}{daten?.fehler ? ` · ${daten.fehler}` : ''}</div>
         <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-          {live && <Knopf leise aus={abgleich} onClick={() => void jetztAbgleichen()}>{abgleich ? 'gleicht ab …' : daten?.icloud && mitGoogle ? '↻ Abgleichen' : mitGoogle ? '↻ Mit Google abgleichen' : '↻ Mit iCloud abgleichen'}</Knopf>}
+          {live && <Knopf leise aus={abgleich} onClick={() => void jetztAbgleichen()}>{abgleich ? 'gleicht ab …' : icloudLive && mitGoogle ? '↻ Abgleichen' : mitGoogle ? '↻ Mit Google abgleichen' : '↻ Mit iCloud abgleichen'}</Knopf>}
           {modus !== 'planen' && <button type="button" onClick={() => setModus('planen')} style={{ fontSize: TYP.bedien, color: C.inkDim, alignSelf: 'center', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Woche planen (Blöcke) ›</button>}
         </div>
       </Karte>
@@ -423,10 +426,12 @@ export function Kalender() {
   );
 
   return (
-    <Seite titel="Kalender" unter={modus === 'aufgaben' ? 'Aufgaben nach Fälligkeit — abhaken, öffnen, einplanen (Datum wählen oder auf einen Tag ziehen). Tastatur: k Kalender · u Aufgaben.' : modus === 'planen' ? 'Planen: Bausteine, Routinen und Aufgaben antippen und in den Kalender klicken — jeder Block ist ein Termin in iCloud. Tastatur: p Kalender/Planen · t heute · ← → blättern.' : 'Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · c erstellen · p planen.'} rechts={<Chip farbe={LEUCHT.puls}>{daten?.icloud && mitGoogle ? 'iCloud + Google · live' : mitGoogle ? 'Google · live' : daten?.icloud ? 'iCloud · live' : 'nur lesen'}</Chip>}>
+    <Seite titel="Kalender" unter={modus === 'aufgaben' ? 'Aufgaben nach Fälligkeit — abhaken, öffnen, einplanen (Datum wählen oder auf einen Tag ziehen). Tastatur: k Kalender · u Aufgaben.' : modus === 'planen' ? 'Planen: Bausteine, Routinen und Aufgaben antippen und in den Kalender klicken — jeder Block ist ein Termin in iCloud. Tastatur: p Kalender/Planen · t heute · ← → blättern.' : 'Tag, 4 Tage, Woche, Monat, Jahr, Termine — iCloud direkt, dazu Feiertage NRW, Geburtstage, Fristen, Erinnerungen und Aufgaben mit Datum. Tastatur: t heute · ← → blättern · d/x/w/m/y/a Ansicht · c erstellen · p planen.'} rechts={<Chip farbe={LEUCHT.puls}>{icloudLive && mitGoogle ? 'iCloud + Google · live' : mitGoogle ? 'Google · live' : icloudLive ? 'iCloud · live' : 'nur lesen'}</Chip>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<span style={{ marginLeft: 'auto' }}><SymbolKnopf onClick={() => setMeldung(null)} ariaLabel="Hinweis schließen">✕</SymbolKnopf></span></div>}
       {!daten && !laedt && <Leer>Kalender wird geladen …</Leer>}
       {planen.kopf && <div style={{ marginBottom: 12 }}>{planen.kopf}</div>}
+      {/* 06.10.: „<Firma> verbinden“ (Business, Google) bzw. iCloud (Privat) — für die eigene Person, dort wo es hingehört. */}
+      {(bereich === 'business' || bereich === 'privat') && <BereichVerbindungen key={bereich} bereich={bereich} onGeaendert={() => void laden()} />}
       <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>
         {breit && leiste}
         {haupt}

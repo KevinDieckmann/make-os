@@ -38,9 +38,11 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   const [arbeit, setArbeit] = useState<string | null>(null);
   const { bestaetigen, dialog } = useRueckfrage();
 
+  const [ladeFehler, setLadeFehler] = useState(false);
   const laden = useCallback(async () => {
     const d: Stand | null = await fetch('/api/kalender/icloud', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    setS(d);
+    setLadeFehler(!d);
+    if (d) setS(d);
     return d;
   }, []);
   useEffect(() => { void laden(); }, [laden]);
@@ -107,7 +109,8 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
       </div>
 
       {meldung && <Hinweis art={meldung.art} rolle="status">{meldung.text}</Hinweis>}
-      {!s && <div style={klein}>lädt …</div>}
+      {!s && !ladeFehler && <div style={klein}>lädt …</div>}
+      {!s && ladeFehler && <Hinweis art="achtung" aktion={<Knopf leise onClick={() => laden()}>Noch einmal laden</Knopf>}>Der Stand der iCloud-Verbindung ließ sich gerade nicht laden.</Hinweis>}
 
       {s?.anmeldung && (
         <Hinweis art="kritisch" titel="Apple nimmt das App-Passwort nicht mehr an">

@@ -20,6 +20,8 @@ const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-icloud-person-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
 process.env.MAKE_OS_DATEN_SCHLUESSEL = 'pruef-datenschluessel-icloud-person';
 process.env.MAKE_OS_KEY = 'dienst-test-icloud-person';
+// Echter, verschlüsselter Datenspeicher + mehrere Abgleiche je Test: unter Last (paralleler Bau) mehr Zeit als die üblichen 5 s.
+vi.setConfig({ testTimeout: 20_000 });
 
 type R = { GET?: (r: Request) => Promise<Response>; POST?: (r: Request) => Promise<Response>; PATCH?: (r: Request) => Promise<Response>; DELETE?: (r: Request) => Promise<Response> };
 let icloudRoute: R, kalenderRoute: R, termin: R, appleCal: R, einstRoute: R;

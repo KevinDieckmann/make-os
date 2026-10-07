@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { LEUCHT, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
+import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, GOOGLE_NICHT_EINGERICHTET } from './google-verbinden';
 
 interface Stand {
   ok: boolean; konfiguriert: boolean; verbunden: boolean; konto?: string; seit?: string; erlaubteDomain?: boolean;
@@ -37,16 +38,8 @@ interface Vorschau {
 }
 interface Ergebnis { ok: boolean; umgezogen?: number; schonDa?: number; fehler?: { schluessel: string; grund: string }[] | string; uebrig?: number }
 
-const HINWEISE: Record<string, { text: string; achtung?: boolean }> = {
-  verbunden: { text: 'Google ist verbunden — der erste Abgleich läuft.' },
-  abgebrochen: { text: 'Die Anmeldung bei Google wurde abgebrochen.', achtung: true },
-  domain: { text: 'Dieses Google-Konto gehört nicht zur erlaubten Domain — bitte mit dem Workspace-Konto anmelden.', achtung: true },
-  'scope-fehlt': { text: 'Bei Google fehlt eine Freigabe — bitte noch einmal verbinden und alle Häkchen lassen.', achtung: true },
-  state: { text: 'Die Anmeldung war abgelaufen — bitte noch einmal starten.', achtung: true },
-  person: { text: 'Diese Anmeldung gehörte einer anderen Person.', achtung: true },
-  token: { text: 'Google hat die Anmeldung nicht angenommen — bitte noch einmal versuchen.', achtung: true },
-  fehler: { text: 'Die Verbindung zu Google ließ sich nicht abschließen.', achtung: true },
-};
+// Rückkehr-Texte, Stand und Anmeldung: EIN Weg mit der Business-Karte (./google-verbinden.ts, 06.10.).
+const HINWEISE = GOOGLE_HINWEISE;
 
 const post = (url: string, body?: unknown) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) }).then(async r => ({ status: r.status, d: await r.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung.' } }));
 
@@ -77,7 +70,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   const { bestaetigen, dialog } = useRueckfrage();
 
   const laden = useCallback(async (liste = false) => {
-    const d: Stand | null = await fetch(`/api/kalender/google${liste ? '?liste=1' : ''}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    const d = await googleKalenderStandLaden<Stand>(liste);
     setS(d);
     return d;
   }, []);
@@ -94,10 +87,9 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
 
   const verbinden = async () => {
     setArbeit('verbinden'); setHinweis(null);
-    const r = await post('/api/google/verbinden', { funktionen: ['kalender'] });
+    const f = await googleKalenderVerbinden();
     setArbeit(null);
-    if (r.d.ok && typeof r.d.url === 'string') { window.location.href = r.d.url; return; }
-    setHinweis({ text: r.d.fehler ?? 'Google ließ sich nicht starten.', achtung: true });
+    if (f) setHinweis({ text: f.fehler, achtung: true });
   };
   const trennen = async () => {
     if (!(await bestaetigen({ titel: 'Google trennen?', text: 'Der Zugriff wird bei Google widerrufen, die Google-Termine verschwinden aus MAKE OS (sie bleiben in Google). Neue Business-Termine landen wieder in iCloud.', ja: 'Trennen', gefahr: true }))) return;
@@ -157,7 +149,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
 
       {!s && <div style={klein}>lädt …</div>}
       {s && !s.konfiguriert && (
-        <div style={{ ...klein, color: LEUCHT.achtung }}>Noch nicht eingerichtet: Auf dem Server fehlen die Zugangsdaten der Google-Anwendung (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET). Schritt für Schritt: GOOGLE_KALENDER_EINRICHTEN.md.</div>
+        <div style={{ ...klein, color: LEUCHT.achtung }}>{GOOGLE_NICHT_EINGERICHTET}</div>
       )}
       {s?.konfiguriert && !s.verbunden && (
         <>
