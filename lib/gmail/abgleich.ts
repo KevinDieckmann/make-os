@@ -9,7 +9,8 @@
 //     (mit Push alle 15 Minuten als Rückfall).
 //   · Fehler: 401 → Token erneuern (lib/google/http.ts), `invalid_grant` → Verbindung „getrennt“ (EINE Glocke), 403-Kontingent/
 //     429 → Pause nach `Retry-After`, 5xx/Netz → Backoff. Alles landet im Stand, nie ein Betreff im Protokoll.
-//   · Nach jedem Lauf: Aufbewahrung (Frist „Mail-Spiegel“) und der Verlauf der Kontaktakten (lib/gmail/zuordnung.ts).
+//   · Nach jedem Lauf: Aufbewahrung (Frist „Mail-Spiegel“) und der Verlauf der Kontaktakten — seit 06.10. nur für zugeordnete Gespräche
+//     (lib/inbox/verlauf.ts).
 // Mail-INHALT steht nie in Logs: Fehlerzeilen tragen Statuscodes und Zähler.
 
 import { localDay } from '@/lib/zeit';
@@ -23,7 +24,6 @@ import { LOESCHFRISTEN_SPEICHER, fristenWirksam, stichtag, type LoeschfristenBes
 import { nachrichtAus, type GMessage } from './mime';
 import { aendereGmailStand, aendereGmailTexte, aufbewahren, ladeGmailStand, setzeGmailStand, adressenText } from './stand';
 import { GMAIL_GRENZEN, PERSON_OK, type GmailAlias, type GmailKopf, type GmailStand } from './typen';
-import { gmailVerlaufSchreiben } from './zuordnung';
 
 export const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 /** Was im Spiegel liegt: Posteingang und Gesendet. */
@@ -210,7 +210,8 @@ async function einmal(person: string, voll: boolean): Promise<GmailAbgleichErgeb
   // Verlauf der Kontaktakten (Betreff + Link, nie der Text) — Fehler hier stören den Abgleich nie.
   // „Senden als“-Aliase (Cache 6 Std.) — gehören zu den eigenen Adressen (Zuordnung, Antwort an alle) und zur Absenderwahl.
   await aliaseSicherstellen(person).catch(() => { /* später */ });
-  await gmailVerlaufSchreiben(person, (await ladeGmailStand(person)) ?? neuerStand).catch(e => console.warn(`[gmail] Verlauf: ${e instanceof Error ? e.name : 'Fehler'}`));
+  // Inbox 2 (06.10., Kevin: „jede Übernahme braucht einen Klick“): nur Gespräche, die die Person „Zugeordnet“ hat (lib/inbox/verlauf.ts).
+  await import('@/lib/inbox/verlauf').then(v => v.verlaufNachziehen(person)).catch(e => console.warn(`[gmail] Verlauf: ${e instanceof Error ? e.name : 'Fehler'}`));
   return { voll: wirklichVoll, neu: neuZahl, geaendert, entfernt: weg, nachrichten: Object.keys(neuerStand.koepfe).length };
 }
 

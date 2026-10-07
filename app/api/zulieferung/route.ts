@@ -1,6 +1,6 @@
 // ─── Zulieferung vom Mac (24.09., Kevins Entscheidung „Mac liefert zu“) ────
-// Auf dem Server gibt es kein Apple. Kevins Mac liest Kalender, Mail,
-// Erinnerungen und Kontakte (zulieferer.mjs) und schiebt den Stand hierher.
+// Auf dem Server gibt es kein Apple. Kevins Mac liest Kalender, Erinnerungen und
+// Kontakte (zulieferer.mjs) und schiebt den Stand hierher. Mail seit 06.10. nicht mehr (Inbox 2: IMAP vom Server; `art: 'mail'` → 400).
 // Nur mit dem Zulieferer-Schlüssel (MAKE_OS_ZULIEFERER_KEY, seit 05.10.) oder dem Dienstweg von innen — eine Anmeldung
 // im Browser reicht nicht, denn wer hier schreibt, bestimmt, was ZOE für Kevins Kalender hält. Übergang: ohne
 // Zulieferer-Schlüssel auf dem Server lässt die Middleware MAKE_OS_KEY von außen NUR hierher durch (`alt`, HOI gelb).

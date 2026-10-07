@@ -1,5 +1,5 @@
 // ─── Mac oder Server? (24.09., Vorbereitung Hetzner) ────────────────────────
-// Kalender, Mail, Erinnerungen und Kontakte liest MAKE OS über osascript — das
+// Kalender, Erinnerungen und Kontakte liest MAKE OS über osascript (Mail seit 06.10. nicht mehr — Inbox 2 holt sie per IMAP) — das
 // gibt es nur auf Kevins Mac. Kevins Entscheidung: „Mac liefert zu.“ Auf dem
 // Mac lesen die Apple-Routen wie bisher direkt und merken sich den Stand; auf
 // dem Server liefern sie, was der Mac zuletzt hochgeschoben hat
@@ -15,11 +15,13 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 export const AUF_DEM_MAC = process.platform === 'darwin' && !process.env.MAKE_OS_DATEN_DIR && !/^(1|ja|true)$/i.test(process.env.MAKE_OS_OHNE_APPLE ?? '');
 export const NUR_MAC = 'Das geht nur direkt auf Kevins Mac (Apple). Auf dem Server siehst du den zuletzt zugelieferten Stand.';
 
-export type Zulieferung = 'kalender' | 'mail' | 'erinnerungen' | 'kontakte';
-export const ZULIEFERUNGEN: Zulieferung[] = ['kalender', 'mail', 'erinnerungen', 'kontakte'];
+// Mail kommt seit 06.10. (Inbox 2) nicht mehr vom Mac: der Server holt die Postfächer selbst (IMAP/Gmail, lib/postfach/*). Der alte
+// Bestand `apple-mail-cache` bleibt liegen (Löschfrist „Postfach-Zwischenspeicher“), wird aber nicht mehr geschrieben.
+export type Zulieferung = 'kalender' | 'erinnerungen' | 'kontakte';
+export const ZULIEFERUNGEN: Zulieferung[] = ['kalender', 'erinnerungen', 'kontakte'];
 /** Der Kalender hat seinen Speicher schon (calendar-cache, Format {events, at}). */
 export const SPEICHER: Record<Zulieferung, string> = {
-  kalender: 'calendar-cache', mail: 'apple-mail-cache', erinnerungen: 'apple-reminders-cache', kontakte: 'apple-contacts-cache',
+  kalender: 'calendar-cache', erinnerungen: 'apple-reminders-cache', kontakte: 'apple-contacts-cache',
 };
 export interface Gemerkt { daten: unknown; at: string; quelle: 'mac' | 'zulieferung' }
 

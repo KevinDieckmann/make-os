@@ -1,4 +1,6 @@
-// ─── CRM — Signale aus Mail und Kalender (rein, getestet) ──────────────────
+// ─── CRM — Signale aus dem Kalender (rein, getestet) ──────────────────────
+// Seit 06.10. (Inbox 2) kommen Mail-Zeilen NICHT mehr von hier: ein Gespräch kommt erst nach „Zuordnen“ in den Verlauf
+// (lib/inbox/verlauf.ts, `bezugMail` + `signaleAnwenden` von hier). Der alte Mail-Weg (`mailSignale`) ist entfernt.
 // Wenn ein Kontakt schreibt oder ein Termin mit ihm im Kalender steht, gehört
 // das in seinen Verlauf — sonst veraltet die Kartei, und die Power Hour sieht
 // nicht, wer auf eine Antwort wartet. Nur GESCHÄFTLICHE Quellen (das private
@@ -15,7 +17,6 @@ import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { ausWandzeit } from '@/lib/kalender/zeit';
 import { uidVonSchluessel } from '@/lib/kalender/bezug';
 
-export interface MailEin { id: string; email: string; betreff: string; am: string }
 /**
  * Ein Termin für die Signale. `start`: Berliner Wandzeit (iCloud) oder ISO mit Zone (Beispiel-Quellen). `uid` = die
  * echte iCloud-UID (für „gibt es schon ein Meeting dazu?“), `kontaktIds` = Bezug + Gäste aus `kalender-bezug`.
@@ -39,30 +40,6 @@ function hash(t: string): string { let h = 2166136261; for (let i = 0; i < t.len
 export const bezugMail = (id: string) => `mail-${hash(id)}`;
 export const bezugTermin = (id: string) => `termin-${hash(id)}`;
 const norm = (t: string) => t.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-
-/** Absender „Name <mail@x.de>“ → mail@x.de */
-export function mailAdresse(absender: string): string | null {
-  const m = absender.match(/<([^>]+)>/) ?? absender.match(/([^\s<>"]+@[^\s<>"]+)/);
-  return m ? m[1].trim().toLowerCase() : null;
-}
-
-/** Funktionspostfächer (info@, events@, newsletter@ …) sind keine Person, die auf uns wartet. */
-export const ROLLENPOSTFACH = /^(no-?reply|do-?not-?reply|newsletter|news|info|events?|marketing|mailer|support|service|hello|hallo|kontakt|contact|office|team|presse|press|buchhaltung|rechnung|billing|notifications?)@/i;
-
-export function mailSignale(kontakte: Kontakt[], mails: MailEin[]): Signal[] {
-  const nachMail = new Map<string, Kontakt>();
-  for (const k of kontakte) if (k.email && !ausgenommen(k) && !ROLLENPOSTFACH.test(k.email) && (k.vorname || k.nachname)) nachMail.set(k.email.toLowerCase(), k);
-  const raus: Signal[] = [];
-  for (const m of mails) {
-    const k = nachMail.get(m.email.toLowerCase());
-    if (!k) continue;
-    const bezug = bezugMail(m.id);
-    if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug) || raus.some(r => r.aktivitaet.bezug === bezug)) continue;
-    // Betreff ist Text eines Dritten: gekürzt, in einer Zeile, als „Betreff“ gekennzeichnet (26.09.).
-    raus.push({ kontaktId: k.id, aktivitaet: { am: m.am, art: 'antwort', text: `Betreff: ${m.betreff.replace(/\s+/g, ' ').trim().slice(0, 120)}`, von: 'system', bezug } });
-  }
-  return raus;
-}
 
 /** Person im Termintitel: Vor- UND Nachname (Nachname ≥ 3 Zeichen) als ganze Wörter. */
 export function personImTitel(k: Kontakt, titel: string): boolean {

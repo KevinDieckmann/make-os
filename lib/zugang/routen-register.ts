@@ -80,10 +80,6 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Kalender, Mail, Mac-Zulieferer ──────────────────────────────────────────────────────────────────────────
   'apple-calendar': r('GET', 'haushalt', 'Kalender des Inhabers: Personen bekommen ihn maskiert, roh nur der Systemlauf (Mac-Zulieferer) — kalenderLesen.', undefined, 'Zwischenspeicher: `?refresh=1` legt den frisch gelesenen Kalender als Cache ab.'),
   'apple-contacts': r('GET', 'inhaber', 'Adressbuch des Inhabers (Mac).'),
-  'apple-mail': r('GET', 'inhaber', 'Mac-Postfach des Inhabers.'),
-  'apple-mail/body': r('GET', 'inhaber', 'Mailtext aus dem Mac-Postfach des Inhabers.'),
-  'apple-mail/draft': r('POST', 'inhaber', 'Entwurf im Mac-Postfach des Inhabers.'),
-  'apple-mail/inhalt': r('GET', 'inhaber', 'Mailinhalt aus dem Mac-Postfach des Inhabers.'),
   'apple-reminders': r('GET', 'haushalt', 'Erinnerungen des Inhaber-Kalenders; Systemlauf (Zulieferer) erlaubt.'),
   'kalender': r('GET,POST', 'haushalt', 'Kalender des Haushalts; Apple-Erinnerungen nur für den Inhaber, private Fristen nur mit Haushalt (S1).'),
   'kalender/analyse': r('POST', 'haushalt', 'Kalender-Agent über den Kalender des Haushalts.'),
@@ -106,12 +102,15 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'planung/uebernahme': r('GET,POST', 'haushalt', 'Übernahme des alten Wochenplans in den Kalender; Ausführen nur von Hand (S1).'),
   'state/kalender-einstellungen': r('GET,PUT', 'haushalt', 'Kalender-Zuordnung des Haushalts.'),
   'zulieferung': rm({ POST: 'dienst', GET: 'haushalt' }, 'POST: nur der Mac-Zulieferer (eigener Schlüssel) bzw. Dienstweg; GET: Stand der Zulieferungen für den Haushalt.'),
-  'microsoft': rm({ GET: 'inhaber', PUT: 'inhaber' }, 'M365-Postfach des Inhabers (KEMARIS) — Lesen und Ablegen nur Inhaber bzw. Systemlauf.', undefined, 'Write-through: ein frischer Postfach-Stand geht als Cache ins Brain (`microsoft-inbox`), ein veralteter nie.'),
   'gmail': r('GET,POST', 'person', 'Eigenes Gmail — nur die Person selbst (eigenePerson).'),
+  // Inbox 2 (06.10.): EIN Strom aller eigenen Postfächer (Gmail + IMAP; WhatsApp vorbereitet) — nur die Person selbst, nie der Dienstweg.
+  'inbox': r('GET,POST', 'person', 'Strom der EIGENEN Postfächer, serverseitig nach Bereich gefiltert; Aktionen gehen an die eigenen Postfächer zurück (eigenePerson).'),
+  'inbox/gespraech': r('GET', 'person', 'Ein Gespräch aus den eigenen Spiegeln (eigenePerson).'),
+  'inbox/senden': r('POST', 'person', 'Senden NUR per Einzelklick der Person über das Postfach des Gesprächs (eigenePerson; Dienstweg 403).'),
+  'inbox/entwurf': r('POST', 'person', 'ZOE-Entwurf (Vorschlag) zu einem eigenen Gespräch (eigenePerson).'),
+  'inbox/postfaecher': r('GET,POST', 'person', 'Eigene Postfächer verbinden/einstellen/erneuern/trennen; Passwörter nie in der Antwort (eigenePerson).'),
+  'inbox/anhang': r('GET', 'person', 'Anhang aus dem eigenen IMAP-Postfach, nur als Download (eigenePerson).'),
   'gmail/anhang': r('GET', 'person', 'Anhang aus dem eigenen Gmail (eigenePerson).'),
-  'gmail/entwurf': r('POST', 'person', 'Entwurf im eigenen Gmail (eigenePerson).'),
-  'gmail/nachricht': r('GET', 'person', 'Nachricht aus dem eigenen Gmail (eigenePerson).'),
-  'gmail/senden': r('POST', 'person', 'Senden aus dem eigenen Gmail (eigenePerson).'),
   'google/gmail/meldung': r('POST', 'offen', 'Gmail-Pub/Sub-Push: ohne Sitzung, prüft das OIDC-Token von Google selbst, liefert nie Daten.'),
   'google/rueckruf': r('GET', 'person', 'Rückruf der eigenen Google-Anmeldung (eigenePerson).'),
   'google/status': r('GET', 'person', 'Stand der eigenen Google-Verbindung (eigenePerson).'),
@@ -120,11 +119,6 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'oauth/callback': r('GET', 'inhaber', 'M365-Anmeldung des Inhabers.'),
   'oauth/start': r('GET', 'inhaber', 'M365-Anmeldung des Inhabers.'),
   'oauth/status': r('GET,POST', 'inhaber', 'M365-Verbindung des Inhabers.'),
-  'inbox/draft': r('POST', 'haushalt', 'Antwort-Entwurf (KI) für das Postfach des Haushalts.'),
-  'inbox/triage': r('GET,POST', 'haushalt', 'Einstufung der Postfach-Mails des Haushalts; POST auch als Systemlauf (ZOE-Agent).'),
-  'state/inbox': r('GET,PUT,PATCH', 'haushalt', 'Inbox-Status je Postfach (S2: eigenes Gmail, Apple/M365 nur Inhaber).'),
-  'state/inbox-absender': r('GET,POST', 'haushalt', 'Absender-Register (Screener) des Haushalts-Postfachs.'),
-  'netzwerk/vorschlaege': r('GET', 'inhaber', 'Kontakt-Vorschläge aus dem M365-Postfach des Inhabers.'),
 
   // ── Aufgaben, Planung, Ziele ────────────────────────────────────────────────────────────────────────────────
   'aufgaben/crm': r('GET', 'haushalt', 'Aufgaben mit CRM-Bezug des Haushalts; Systemlauf erlaubt.'),
@@ -159,7 +153,6 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/ordnung': r('GET,PUT', 'haushalt', 'Themen-Reihenfolge und Zuordnungen des Haushalts.'),
   'state/filter': r('GET,PUT', 'haushalt', 'Gespeicherte Filter und Stichworte des Haushalts.'),
   'state/labels': r('GET,PUT', 'haushalt', 'Eigene Bezeichnungen des Haushalts.'),
-  'state/spaces': r('GET,PUT', 'haushalt', 'Space-Zuordnung der Postfächer des Haushalts.'),
   'state/dashboard': r('GET,PUT', 'haushalt', 'Widget-Board des Haushalts.'),
   'state/willkommen': r('GET,POST,DELETE', 'haushalt', 'Willkommens-Haken des Haushalts.'),
   'state/meetings': r('GET,POST,DELETE', 'haushalt', 'Meeting-Verlauf (Wortlaut Dritter) des Haushalts.'),
@@ -169,7 +162,6 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'performance': r('GET,POST', 'haushalt', 'MAKE Score je Person aus Beständen des Haushalts; POST auch als Systemlauf (Tagesstart).', undefined, 'Idempotenter Tagespunkt im EIGENEN Verlauf der Person (erster Aufruf des Tages) — der Systemlauf kennt nur den Inhaber.'),
   'state/flaeche': r('GET,PUT', 'person', 'Flächen-Layout je Person (speicherFuer).'),
   'state/rituale': r('GET,PUT', 'person', 'Rituale-Log je Person.'),
-  'eingang': r('GET,POST', 'haushalt', 'Eingang aus dem gemeinsamen Ordner des Haushalts; Systemlauf erlaubt.'),
   'heute/anstehend': r('GET', 'haushalt', '„Heute“ aus Kalender, Fristen, Follow-ups des Haushalts.'),
   'meldungen': r('GET,POST', 'haushalt', 'Glocke je Person im Haushalt.'),
 
@@ -346,4 +338,12 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
 };
 
 /** Entfernte Routen (05.10.): alte 410-Wege, auf die nichts mehr zeigt — dürfen nicht wiederkommen. */
-export const ENTFERNTE_ROUTEN = ['apple-calendar/create', 'apple-calendar/termin', 'state/wochenplan'] as const;
+export const ENTFERNTE_ROUTEN = ['apple-calendar/create', 'apple-calendar/termin', 'state/wochenplan',
+  // Inbox 2 (06.10.): Apple-Mail per osascript, Microsoft-365-Bestand, iCloud-Eingangsdatei, alte Inbox-Status/-Triage/-Entwurf und die
+  // Gmail-Einzelwege für Nachricht/Senden/Entwurf (jetzt /api/inbox/*).
+  'apple-mail', 'apple-mail/body', 'apple-mail/draft', 'apple-mail/inhalt', 'microsoft', 'eingang', 'inbox/draft', 'inbox/triage', 'state/inbox', 'state/inbox-absender',
+  'gmail/nachricht', 'gmail/senden', 'gmail/entwurf',
+  // Kontakt-Vorschläge aus dem M365-Bestand (ohne Aufrufer; die Inbox schlägt „Kontakt anlegen“ je Gespräch vor).
+  'netzwerk/vorschlaege',
+  // Postfach → Space-Zuordnung der alten Inbox (jetzt: Bereich je Postfach im Register `postfaecher--<person>`).
+  'state/spaces'] as const;

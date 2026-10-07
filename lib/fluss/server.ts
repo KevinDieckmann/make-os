@@ -236,17 +236,22 @@ async function netzwerken(heute: string): Promise<FlussReihe> {
   return flussNetzwerken({ heute, erfasst, nachfassen, link: WEG.netzwerken() });
 }
 
-// ── Inbox (nur das eigene Postfach) ──────────────────────────────────────────
+// ── Inbox (nur die eigenen Postfächer, Inbox 2 seit 06.10.) ──────────────────
 async function inbox(person: string, heute: string): Promise<FlussReihe> {
-  const [{ ladeGmailStand }, { gmailSchluessel }] = await Promise.all([import('@/lib/gmail/stand'), import('@/lib/inbox/status-sicht')]);
-  const g = await ladeGmailStand(person).catch(() => null);
-  const koepfe = Object.values(g?.koepfe ?? {});
-  const eingang = koepfe.filter(k => k.labels.includes('INBOX')).map(k => tag(k.am)).filter((t): t is string => !!t);
-  // Wiedervorlagen: der Status-Bestand ist EIN Bestand für alle — gezählt wird nur, was zu Nachrichten DIESES Postfachs gehört.
-  const status = await loadJson<Record<string, { status?: string; bis?: string }>>('inbox-status').catch(() => null);
-  // Schlüssel der Inbox-Zeilen: `gmail-<Thread>` (components/os/InboxSchlank.tsx) — dieselbe Regel wie /api/state/inbox.
-  const eigene = gmailSchluessel(g?.koepfe);
-  const wiedervorlagen = Object.entries(status ?? {}).filter(([id, s]) => eigene.has(id) && s?.status === 'snoozed' && tag(s.bis)).map(([, s]) => s.bis!.slice(0, 10));
-  const offen = koepfe.filter(k => k.labels.includes('INBOX') && k.labels.includes('UNREAD')).length;
-  return flussInbox({ heute, eingang, wiedervorlagen, offen, verbunden: !!g, link: WEG.inbox() });
+  const [{ ladeGmailStand }, { ladeImapStand }, { ladePostfaecher }, { ladeInboxZustand }, { stromRoh }] = await Promise.all([
+    import('@/lib/gmail/stand'), import('@/lib/postfach/spiegel'), import('@/lib/postfach/register'), import('@/lib/inbox/zustand'), import('@/lib/inbox/strom-server'),
+  ]);
+  const [g, imap, register, zustand] = await Promise.all([ladeGmailStand(person).catch(() => null), ladeImapStand(person).catch(() => null), ladePostfaecher(person).catch(() => []), ladeInboxZustand(person).catch(() => null)]);
+  const eigeneImap = new Set(register.filter(p => p.quelle === 'imap').map(p => p.id));
+  // Eingang = Nachrichten von außen (Gmail: Posteingang; IMAP: Posteingang/Archiv) — je Tag gezählt, ohne Inhalte.
+  const eingang = [
+    ...Object.values(g?.koepfe ?? {}).filter(k => !k.labels.includes('SENT')).map(k => tag(k.am)),
+    ...Object.values(imap?.koepfe ?? {}).filter(k => eigeneImap.has(k.postfachId) && k.ordner !== 'g').map(k => tag(k.am)),
+  ].filter((t): t is string => !!t);
+  // Wiedervorlagen: die eigenen (Inbox-Zustand der Person) — nie die einer anderen Person.
+  const wiedervorlagen = Object.values(zustand?.gespraeche ?? {}).filter(x => x.spaeter && tag(x.spaeter.bis)).map(x => x.spaeter!.bis.slice(0, 10));
+  const verbunden = !!g || eigeneImap.size > 0;
+  const offen = verbunden ? (await stromRoh(person, heute).catch(() => null))?.gespraeche.filter(x => x.inArbeit && x.fach !== 'info' && x.fach !== 'warten').length ?? 0 : 0;
+  return flussInbox({ heute, eingang, wiedervorlagen, offen, verbunden, link: WEG.inbox() });
 }
+

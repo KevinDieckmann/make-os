@@ -26,7 +26,7 @@ export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 
  * an das Konto selbst, damit eine fremde Änderung auffällt. Der Titel nennt die Adresse nur maskiert.
  */
 /** `vertrag` (04.10. Nachtrag): „kündigen bis“ eines Vertrags im Gesellschafts-Register naht (Bezug = die Erinnerungs-Aufgabe). */
-export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag';
+export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach';
 
 export interface MeldungEingabe {
   /** Empfänger: Speichername der Person (z. B. „malin“). Nie an sich selbst melden. */

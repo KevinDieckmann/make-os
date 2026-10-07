@@ -1,7 +1,8 @@
 // ─── CRM — Signale aus Mail und Kalender übernehmen ─────────────────────────
-// POST → liest nur geschäftliche Quellen (M365-Postfach, Apple-Mail außer dem
-//        privaten Konto, KEMARIS-Kalender, Holding-Kalender) und hängt Mails und
-//        vergangene Termine bekannter Personen an deren Verlauf. Höchstens alle 5 Minuten (sonst „frisch“).
+// POST → liest die Kalender (KEMARIS, Holding, Termine mit Bezug) und hängt vergangene Termine bekannter Personen an deren
+//        Verlauf. Höchstens alle 5 Minuten (sonst „frisch“). Mails seit 06.10. (Inbox 2) NICHT mehr hier: ein Gespräch kommt erst
+//        nach „Zuordnen“ in der Inbox in den Verlauf (lib/inbox/verlauf.ts — Kevin: „jede Übernahme braucht einen Klick“); die alten
+//        Quellen (M365-Bestand, Apple-Mail-Zwischenspeicher) gibt es nicht mehr.
 // GET  → wann der Lauf zuletzt lief.
 // F3 (29.09.): Die kommenden Termine je Person (`kommend`) merkt sich der Lauf nicht mehr — der „nächste Termin“ kommt
 // aus dem Kalender-Leser der Akte (GET /api/kalender/bezug, über den Bezug, abgesagte nie). Ein alter `kommend` im
@@ -23,7 +24,7 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import type { Kontakt } from '@/lib/make-one/crm';
-import { mailAdresse, mailSignale, terminSignale, signaleAnwenden, type MailEin, type TerminEin } from '@/lib/crm/signale';
+import { terminSignale, signaleAnwenden, type TerminEin } from '@/lib/crm/signale';
 import { terminAktivitaeten, terminKontaktNachziehen, terminVorbei, type TerminFuerCrm } from '@/lib/crm/termin-aktivitaet';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
 import { kontakteVon, bezugVon as bezugFuer, altSchluessel, type BezugBestand } from '@/lib/kalender/bezug';
@@ -48,20 +49,11 @@ export async function POST(req: Request) {
   const alt = (await loadJson<Stand>(NAME)) ?? {};
   if (!erzwingen && alt.letzter && Date.now() - Date.parse(alt.letzter) < 5 * 60_000) return NextResponse.json({ ok: true, frisch: true, neu: 0 });
 
-  const [ms, apple, kalender] = await Promise.all([
-    loadJson<{ emails?: { id: string; senderEmail?: string; subject?: string; receivedAt?: string }[] }>('microsoft-inbox'),
-    loadJson<{ daten?: { id: string; account?: string; sender?: string; subject?: string; receivedAt?: string }[] }>('apple-mail-cache'),
-    loadJson<{ events?: { id: string; uid?: string; title?: string; startDate?: string; category?: string; privat?: boolean; abgesagt?: boolean }[] }>('calendar-cache'),
-  ]);
+  const kalender = await loadJson<{ events?: { id: string; uid?: string; title?: string; startDate?: string; category?: string; privat?: boolean; abgesagt?: boolean }[] }>('calendar-cache');
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
   const bezugVon = (e: { id: string; uid?: string }) => bezugFuer(bezuege, e);
   // Abgesagt/abgelehnt (R-K1 #100): fand nicht statt — weder Signal noch Meeting noch „letzter Kontakt“.
   const kalTermine = (kalender?.events ?? []).filter(t => t.title && t.startDate && !t.abgesagt);
-  const mails: MailEin[] = [
-    ...(ms?.emails ?? []).filter(m => m.senderEmail && m.receivedAt).map(m => ({ id: `ms-${m.id}`, email: m.senderEmail!, betreff: m.subject ?? '', am: m.receivedAt! })),
-    // Das private Apple-Postfach bleibt draußen — nur Geschäftskonten.
-    ...(apple?.daten ?? []).filter(m => m.account && !/privat/i.test(m.account) && m.receivedAt).map(m => ({ id: `ap-${m.id}`, email: mailAdresse(m.sender ?? '') ?? '', betreff: m.subject ?? '', am: m.receivedAt! })).filter(m => m.email),
-  ];
   const termine: TerminEin[] = [
     // KEMARIS/M365: bis zur echten Anbindung keine Termine (die Beispieldaten sind seit 29.09., K5, raus).
     // Apple-Kalender: mit Bezug aus jedem Kalender; über den Namen im Titel nur die geschäftliche Kategorie (Holding).
@@ -79,7 +71,7 @@ export async function POST(req: Request) {
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     const t = terminSignale(f.kontakte, termine, jetzt);
-    const r = signaleAnwenden(f.kontakte, [...mailSignale(f.kontakte, mails), ...t.vergangen]);
+    const r = signaleAnwenden(f.kontakte, t.vergangen);
     let kontakte = r.kontakte;
     let n = r.neu;
     for (const m of mitBezug) {
@@ -95,5 +87,5 @@ export async function POST(req: Request) {
     return n || nach.geaendert ? { ...f, kontakte: nach.kontakte } : f;
   }, werAus(req));
   await saveJson<Stand>(NAME, { letzter: jetzt, neu });
-  return NextResponse.json({ ok: true, neu, mails: mails.length, termine: termine.length });
+  return NextResponse.json({ ok: true, neu, mails: 0, termine: termine.length });
 }

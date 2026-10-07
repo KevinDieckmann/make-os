@@ -18,6 +18,7 @@ import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreign
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Punkt, feld, LEUCHT, useRueckfrage } from '../ui';
 import { WEG } from '@/lib/wege';
+import { neueMailVorbereiten, NEUE_MAIL_PFAD } from '@/lib/inbox/neue-mail';
 import { STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
@@ -274,7 +275,7 @@ export function EntwurfTeil({ k, mailOk, ohneTitel }: { k: Kontakt; mailOk: bool
           <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55 }}>{entwurf.email}</pre>
           {entwurf.linkedin && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 8 }}>{entwurf.linkedin}</pre>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {mailOk && <Knopf onClick={() => fetch('/api/apple-mail/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: k.email ?? '', subject: entwurf.betreff, body: entwurf.email }) })}>In Mail öffnen</Knopf>}
+            {mailOk && <Knopf href={NEUE_MAIL_PFAD} onClick={() => { neueMailVorbereiten({ an: k.email ?? '', name: [k.vorname, k.nachname].filter(Boolean).join(' '), betreff: entwurf.betreff, text: entwurf.email }); }}>In der Inbox schreiben</Knopf>}
             <Knopf leise onClick={() => { try { void navigator.clipboard.writeText(entwurf.linkedin || entwurf.email); } catch { /* egal */ } }}>Text kopieren</Knopf>
             <Knopf leise onClick={() => setEntwurf(null)}>Verwerfen</Knopf>
           </div>
