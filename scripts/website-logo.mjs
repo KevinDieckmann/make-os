@@ -48,7 +48,6 @@ const rechteck = (x, y, b, h) => flaeche([[x, y], [x + b, y], [x + b, y + h], [x
 /** Viereck mit waagerechter Ober- und Unterkante: oben [x0, x1] bei y0, unten [x2, x3] bei y1. */
 const schraeg = (x0, x1, y0, x2, x3, y1) => flaeche([[x0, y0], [x1, y0], [x3, y1], [x2, y1]]);
 const verschieben = (polys, dx, dy = 0) => polys.map(p => p.map(([x, y]) => [x + dx, y + dy]));
-const skalieren = (polys, k) => polys.map(p => p.map(([x, y]) => [x * k, y * k]));
 const dPoly = polys => polys.map(p => 'M' + p.map(([x, y], i) => `${i ? 'L' : ''}${r(x)} ${r(y)}`).join('') + 'Z').join('');
 /** Kreisring (O) — außen im, innen gegen den Uhrzeigersinn: das Innere bleibt frei. */
 const ringD = (cx, cy, ra, ri) => `M${r(cx)} ${r(cy - ra)}A${r(ra)} ${r(ra)} 0 1 1 ${r(cx)} ${r(cy + ra)}A${r(ra)} ${r(ra)} 0 1 1 ${r(cx)} ${r(cy - ra)}Z` +
