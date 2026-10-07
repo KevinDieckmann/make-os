@@ -48,7 +48,9 @@ export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'head
   // 05.10. (DSGVO-Grundlagen): Bildschirmfotos im Bauplan (können Personendaten zeigen).
   | 'bauplan-bilder'
   // 05.10. (Zusatz): das Löschprotokoll selbst und das Pannen-Register (Art. 33 Abs. 5).
-  | 'loeschprotokoll' | 'pannen';
+  | 'loeschprotokoll' | 'pannen'
+  // 07.10. (WhatsApp Business): der Spiegel der Business-Nummer (einzige dauerhafte Kopie) und seine Medien.
+  | 'whatsapp-spiegel' | 'whatsapp-medien';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -97,6 +99,9 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'uebergabe-protokolle', titel: 'Übergabe-Protokolle (Kunden-Events)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 15, Art. 19 DSGVO', hinweis: 'Nachweis, wann welche Personen an welchen Kunden übergeben wurden (am Event bzw. im Übergabe-Journal) — danach weg.' },
   // 03.10. (gmail): Gmail-Spiegel je Person — nur eine Kopie zum Lesen/Zuordnen/Antworten in MAKE OS; das Original bleibt bei Google.
   { id: 'mail-spiegel', titel: 'Mail-Spiegel (Gmail in der Inbox)', einheit: 'tage', standard: 180, min: 30, max: 730, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Kopie der Gmail-Nachrichten je Person (Kopf, Ausschnitt, Text) — ältere fallen im Spiegel weg, in Gmail bleiben sie (dort gilt die Aufbewahrung des Postfachs). Anhänge liegen nie im Spiegel.' },
+  // 07.10. (WhatsApp Business, lib/whatsapp/*): anders als beim Mail-Spiegel ist das die EINZIGE dauerhafte Kopie (Meta hält höchstens 30 Tage).
+  { id: 'whatsapp-spiegel', titel: 'WhatsApp-Spiegel (Business-Nummer)', einheit: 'tage', standard: 180, min: 30, max: 3650, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO; § 257 HGB (Handelsbriefe) prüfen', hinweis: 'Nachrichten der Business-Nummer (Text, Zustellstand, Gesprächspartner) — ältere fallen weg, auch bei Meta gibt es dann keine Kopie mehr (dort höchstens 30 Tage). Geschäftsbriefe ggf. länger aufbewahren (§ 257 HGB: 6 Jahre) — Frist mit Steuerberatung festlegen.' },
+  { id: 'whatsapp-medien', titel: 'WhatsApp-Medien (Bilder, Dokumente, Audio)', einheit: 'tage', standard: 90, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Verschlüsselt abgelegte Dateien zu WhatsApp-Nachrichten — nach der Frist wird die Datei gelöscht, die Nachricht bleibt mit dem Hinweis „abgelaufen“. Belege daraus vorher in Finanzen ablegen.' },
   // 05.10. (DSGVO-Grundlagen): Bildschirmfotos im Bauplan — lib/bauplan/bilder-frist.ts.
   { id: 'bauplan-bilder', titel: 'Bauplan: Bildschirmfotos', einheit: 'tage', standard: 90, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Bildschirmfotos können Personendaten zeigen: an fertigen oder verworfenen Karten fallen sie nach der Frist ab Abschluss weg, nicht zugeordnete nach 7 Tagen; an offenen Karten bleiben sie.' },
   { id: 'loeschprotokoll', titel: 'Löschprotokoll (Nachweis der Löschungen)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 17 DSGVO', hinweis: 'Nur Protokoll-ID, Tag, Grund, wer — abgeschlossene Einträge fallen nach der Frist weg; laufende/unvollständige bleiben, bis sie fertig sind.' },

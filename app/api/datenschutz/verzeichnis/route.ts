@@ -9,6 +9,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { verzeichnisVervollstaendigen } from '@/lib/crm/datenschutz';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
+import { whatsappEingerichtet } from '@/lib/whatsapp/konfig';
 import { LOESCHFRISTEN_SPEICHER, fristenWirksam, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { empfaengerWirksam, verantwortlicherWirksam } from '@/lib/datenschutz/einrichtung';
 import { ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const jetzt = new Date().toISOString();
   let crm = await ladeCrm();
-  if (verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { google: googleKonfiguriert() }).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, jetzt, { google: googleKonfiguriert() }); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
+  if (verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { google: googleKonfiguriert(), whatsapp: whatsappEingerichtet() }).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, jetzt, { google: googleKonfiguriert(), whatsapp: whatsappEingerichtet() }); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
   const e = await ladeEinrichtung();
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {}).fristen);
   const d = verzeichnisDokument({ verarbeitungen: crm.verarbeitungen, verantwortlicher: verantwortlicherWirksam(e).v, empfaenger: empfaengerWirksam(e), fristen, jetzt });

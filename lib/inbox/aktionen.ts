@@ -50,6 +50,8 @@ export async function aktionAusfuehren(person: string, id: string, aktion: Inbox
     case 'ungelesen': {
       if (g.quelle === 'gmail') await gmailMarkieren(person, g.juengste, aktion);
       else if (g.quelle === 'imap') await imapAktion(person, g.postfachId, g.nachrichten, aktion);
+      // WhatsApp (07.10.): „gelesen bis“ im Spiegel der Business-Nummer (geteiltes Postfach) — keine Lesebestätigung an die Person.
+      else if (g.quelle === 'whatsapp' && g.whatsapp) { const { whatsappGelesen } = await import('@/lib/whatsapp/aktion'); await whatsappGelesen(person, g.whatsapp.nummer, aktion === 'gelesen'); }
       return { text: aktion === 'gelesen' ? 'Als gelesen markiert.' : 'Als ungelesen markiert.' };
     }
     case 'spaeter': {

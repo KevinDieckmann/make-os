@@ -22,6 +22,7 @@ import { ladeImapStand, type ImapStand } from '@/lib/postfach/spiegel';
 import { kurzHash } from '@/lib/postfach/rfc822';
 import { abgleichAlter } from '@/lib/kalender/icloud';
 import { bereichName, GMAIL_POSTFACH, type Postfach, type PostfachOeffentlich, type PostfachZustand } from '@/lib/postfach/typen';
+import { whatsappImStrom } from '@/lib/whatsapp/strom';
 import { ladeInboxZustand, type InboxZustand } from './zustand';
 import { gespraecheBauen, lageBauen, zoeSatz, type Gespraech, type LageZeile, type PostfachKurz, type StromKopf, type ZoeSatz } from './strom';
 
@@ -103,6 +104,10 @@ export async function stromRoh(person: string, heute = localDay(), zustand?: Inb
   }
   const zu = await zuordnungen(koepfe, eigene);
   const gespraeche = gespraecheBauen({ postfaecher: kurz, koepfe, zuordnung: zu, zustand: z.gespraeche, absender: z.absender, heute, hash: kurzHash });
+  // WhatsApp (07.10., lib/whatsapp/strom.ts): die Business-Nummer der INSTANZ — nur für Personen mit Zugang (Haushalt des Inhabers,
+  // ggf. WHATSAPP_PERSONEN), Bereich immer Business; der Filter `imBereich` unten gilt genauso (Sicht „Privat“ sieht sie nie).
+  const wa = await whatsappImStrom(person, z.gespraeche, heute, namen).catch(e => { console.warn(`[whatsapp] Strom: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); return null; });
+  if (wa) { mitOeffentlich.push(wa.postfach); gespraeche.push(...wa.gespraeche); }
   return { gespraeche, postfaecher: mitOeffentlich, google: { konfiguriert: gs.konfiguriert, verbunden: gs.verbunden, bereit, ...(gs.konto ? { konto: gs.konto } : {}), ...(gs.getrennt ? { getrennt: true } : {}) }, namen };
 }
 

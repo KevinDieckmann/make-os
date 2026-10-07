@@ -4,12 +4,13 @@
 //   Gmail  `gm~<threadId>`                      (Thread von Google)
 //   IMAP   `im~<postfach>~<20 hex>`             (Gespräch über Message-ID · In-Reply-To · References, Schlüssel aus der Wurzel der
 //                                                ältesten Nachricht — bleibt beim Abgleich stabil)
-//   WhatsApp `wa~<postfach>~<Gesprächspartner>` (vorbereitet, Adapter folgt)
+//   WhatsApp `wa~<postfach>~<Gesprächspartner>` (Adapter lib/whatsapp/strom.ts, 07.10. — Postfach = Business-Nummer der Instanz)
 // Die Bereichstrennung passiert NICHT hier, sondern auf dem Server vor der Antwort (lib/inbox/strom-server.ts `nurBereich`) — diese
 // Datei rechnet nur. Kein Mailtext: nur Kopf, Betreff, Ausschnitt.
 
 import { fachVon, fristAus, type FachId, type FachNachricht } from './faecher';
 import type { Adr, GmailKopf, Zuordnung } from '@/lib/gmail/typen';
+import type { Fenster } from '@/lib/whatsapp/typen';
 
 export type GespraechQuelle = 'gmail' | 'imap' | 'whatsapp';
 
@@ -57,6 +58,11 @@ export interface Gespraech {
   nachrichten: string[];
   /** In der Arbeitsliste (offen bzw. wartend, nicht ruhend, nicht erledigt). */
   inArbeit: boolean;
+  /**
+   * Nur WhatsApp (07.10., lib/whatsapp/strom.ts): Nummer der Gegenseite (wa_id), Profilname und das 24-h-Kundenservice-Fenster
+   * (frei schreiben nur, solange `fenster.offen`; sonst Vorlage). Uhr/Vorlagen-Wähler: components/os/whatsapp/.
+   */
+  whatsapp?: { nummer: string; fenster: Fenster; profilname?: string };
 }
 
 // ── Gesprächs-Kennungen ─────────────────────────────────────────────────────

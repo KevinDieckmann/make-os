@@ -134,6 +134,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   merke('gesundheit-einwilligungen', liste(ge, 'ereignisse').filter(x => (x as Obj).person === speicher));
   const ki = await loadJson<{ personen?: Record<string, unknown> }>('ki-einstellungen');
   if (ki?.personen?.[speicher]) eintraege['ki-einstellungen'] = [ki.personen[speicher]];
+  // WhatsApp (07.10.): selbst gesendete Nachrichten der Business-Nummer (Zeit, Art, Text, Zustellstand — ohne Nummer der Gegenseite).
+  const wa = await loadJson<{ nachrichten?: Record<string, Obj> }>('whatsapp-spiegel').catch(() => null);
+  merke('whatsapp-spiegel', Object.values(wa?.nachrichten ?? {}).filter(n => n.von === speicher).map(n => ({ am: n.am, art: n.art, text: n.text, status: n.status, ...(n.vorlage ? { vorlage: n.vorlage } : {}) })));
   const tasks = await loadJson<Obj>('tasks');
   merke('tasks', liste(tasks, 'tasks').filter(t => { const x = t as Obj; return x.assignee === speicher || x.angelegtVon === speicher || (Array.isArray(x.beteiligte) && x.beteiligte.includes(speicher)); }));
   if (k.haushalt) {
@@ -233,6 +236,13 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
   await nurWenn('gesundheit-einwilligungen', async () => { let n = 0; await updateJson<Obj>('gesundheit-einwilligungen', cur => {
     const l = liste(cur, 'ereignisse'); const r = l.map(e => eintragTilgen(e, speicher)); n = r.filter((x, i) => x !== l[i]).length;
     return n ? { ...(cur ?? {}), ereignisse: r } : (cur as Obj);
+  }); return n; });
+  // WhatsApp (07.10.): gesendete Nachrichten bleiben (Geschäftskorrespondenz der Instanz), „wer gesendet hat“ wird „[gelöscht]“.
+  await nurWenn('whatsapp-spiegel', async () => { let n = 0; await updateJson<Obj>('whatsapp-spiegel', cur => {
+    const alt = (cur?.nachrichten ?? {}) as Record<string, Obj>;
+    const neu: Record<string, Obj> = {};
+    for (const [id, m] of Object.entries(alt)) { const x = m.von === speicher ? { ...m, von: GELOESCHT } : m; if (x !== m) n++; neu[id] = x; }
+    return n ? { ...(cur ?? {}), nachrichten: neu } : (cur as Obj);
   }); return n; });
   // Private Aufgaben der Person („nur ich“) gehen mit — sonst sähe sie niemand mehr. Alle anderen bleiben (Arbeit des Haushalts).
   await nurWenn('tasks', async () => { let weg: string[] = [], beteiligt: string[] = []; await updateJson<Obj>('tasks', cur => {

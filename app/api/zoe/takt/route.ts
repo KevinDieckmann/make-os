@@ -15,6 +15,7 @@ import { reihe } from '@/lib/zoe/auftraege';
 import { alleSichten } from '@/lib/business/speicher';
 import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
 import { gmailJobsImTakt } from '@/lib/gmail/takt';
+import { whatsappJobsImTakt } from '@/lib/whatsapp/takt';
 import { localDay } from '@/lib/zeit';
 import { istDienst } from '@/lib/zugang/dienst';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
   await kalenderJobsImTakt().catch(() => {});
   // Gmail (03.10.): Abgleich je verbundener Person (alle 2 Min., mit Push alle 15) — nie blockierend, Fehler als eine Zeile `[gmail] …`.
   void gmailJobsImTakt().catch(() => {});
+  // WhatsApp (07.10.): Medien nachladen, die der Webhook nicht laden konnte, und Dateien ohne Nachricht entfernen — ohne Einrichtung nichts.
+  void whatsappJobsImTakt().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

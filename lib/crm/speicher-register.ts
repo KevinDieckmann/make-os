@@ -82,6 +82,18 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Verbindung zu Google (03.10.): Token-Bestand und Anmelde-Zustand — gehören der Person des Haushalts, keine Dritten.
   H('google-verbindung--*', 'Google-Verbindung je Person (Adresse des Google-Kontos, verschlüsselte Token) — nur serverseitig, Trennen widerruft bei Google und löscht den Inhalt; Art. 17 über das Konto.'),
   K('google-oauth-zustand', 'Kurzlebiger Anmelde-Zustand der Google-Verbindung (state-Hash, PKCE-Verifier, 15 Minuten) — keine Personendaten.'),
+  // WhatsApp Business (07.10., lib/whatsapp/*): die Business-Nummer der Instanz über die Cloud API von Meta (Auftragsverarbeiter).
+  mit(E('whatsapp-spiegel', 'WhatsApp-Spiegel der Business-Nummer (je Instanz): Nachrichten (WAMID, wa_id der Gegenseite, Zeit, Art, Text/Bildunterschrift, Standort, geteilte Kontakte, Medien-Metadaten, Zustellstand, wer gesendet hat) und Gesprächspartner (wa_id, Profilname, letzte eingehende Nachricht, gelesen bis). Art. 17: Nachrichten mit einer Nummer der Person bzw. die sie nennen raus (lib/whatsapp/art17.ts), ihre Medien löscht der nächste Takt. Anders als Mail die EINZIGE dauerhafte Kopie (Meta hält Nachrichten höchstens 30 Tage).', 'whatsapp-spiegel'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anfragen und Verträge über WhatsApp) bzw. lit. f (Geschäftsbetrieb); Antworten nur 1:1 auf Klick, außerhalb des 24-h-Fensters nur genehmigte Vorlagen; Werbe-Vorlagen nie bei Werbesperre; Art. 18 → nichts senden',
+    art15: 'Kontakt-Auskunft (Art. 15) zählt die Einträge über die Telefonnummer der Akte; die Nachrichten selbst sieht der Haushalt in der Inbox (Business-Bereich); Konto-Export: selbst gesendete Nachrichten',
+    loeschfrist: 'Frist „WhatsApp-Spiegel“ (Vorgabe 180 Tage, einstellbar 30–3650 — Aufbewahrung von Handelsbriefen nach § 257 HGB prüfen); Art. 17 sofort; Konto gelöscht → „wer gesendet hat“ wird „[gelöscht]“',
+  }),
+  K('whatsapp-zustand', 'Zustand der WhatsApp-Verbindung (je Instanz): Webhook zuletzt/Zähler, Angaben der eigenen Business-Nummer (Cache), Vorlagen-Liste des Kontos (Cache), Zustand des Zugriffsschlüssels (nur Zeitpunkte) — keine Personendaten Dritter, nie der Schlüssel selbst.'),
+  mit({ muster: 'whatsapp-medien', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'whatsapp-medien', grund: 'Medien der WhatsApp-Nachrichten (Dateien <daten>/whatsapp-medien, verschlüsselt wie die Dateiablage, Name = Fingerabdruck der WAMID): Bilder, Dokumente, Audio/Sprachnachrichten Dritter. Kein Bestand und nicht durchsuchbar — Art. 17 wirkt über die Nachricht (whatsapp-spiegel): fällt sie weg, löscht der nächste Takt die Datei ohne Nachricht (lib/whatsapp/medien.ts `medienWaisenEntfernen`).' }, {
+    rechtsgrundlage: 'wie whatsapp-spiegel (Art. 6 Abs. 1 lit. b/f DSGVO)',
+    art15: 'über die Nachricht in der Inbox (Download auf Klick); in der Kontakt-Auskunft über die Nachricht gezählt',
+    loeschfrist: 'Frist „WhatsApp-Medien“ (Vorgabe 90 Tage, einstellbar 7–365) — danach nur noch der Hinweis an der Nachricht; größer als 25 MB wird nie abgelegt',
+  }),
   T('kemaris-calendar', 'Kalender-Zwischenspeicher (KEMARIS) — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
   // Kalender K1 (29.09., KALENDER_VERBINDUNGEN.md 4a/4f):
   E('kalender-bezug', 'Bezüge der Termine zu MAKE OS (nur Kennungen: Kontakt, Firma, Mandat, Deal, Aufgabe, Event) — die Kontakt-Kennung der Person fällt weg, der Eintrag bleibt (lib/crm/person-weitere.ts kalenderBezugOhne).'),

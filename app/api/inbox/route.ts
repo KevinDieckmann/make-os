@@ -19,6 +19,7 @@ import { istGespraechId } from '@/lib/inbox/strom';
 import { zustandName } from '@/lib/inbox/zustand';
 import { registerName, imapStandName } from '@/lib/postfach/typen';
 import { gmailStandName } from '@/lib/gmail/typen';
+import { WA_SPIEGEL, WA_ZUSTAND } from '@/lib/whatsapp/spiegel'; // WhatsApp (07.10.): neue Nachrichten ändern den ETag sofort
 import { ladePostfaecher } from '@/lib/postfach/register';
 import { imapAbgleichen } from '@/lib/postfach/abgleich';
 import { gmailAbgleichen, gmailBereit } from '@/lib/gmail/abgleich';
@@ -47,7 +48,7 @@ export async function GET(req: Request) {
   const f = filterAus(req);
   if (!f) return NextResponse.json({ ok: false, fehler: 'bereich bzw. space ist ungültig.' }, { status: 400 });
   const p = z.person;
-  const etag = etagAus('inbox2', p, f.bereich ?? '', f.space ?? '', await speicherStand([registerName(p), imapStandName(p), gmailStandName(p), zustandName(p), 'kontakte', 'crm', `google-verbindung--${p}`]), localDay(), String(Math.floor(Date.now() / 60_000)));
+  const etag = etagAus('inbox2', p, f.bereich ?? '', f.space ?? '', await speicherStand([registerName(p), imapStandName(p), gmailStandName(p), zustandName(p), 'kontakte', 'crm', `google-verbindung--${p}`, WA_SPIEGEL, WA_ZUSTAND]), localDay(), String(Math.floor(Date.now() / 60_000)));
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const s = await stromFuer(p, f);
