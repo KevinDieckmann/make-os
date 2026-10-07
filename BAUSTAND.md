@@ -24,7 +24,7 @@
 | Paket | Ort | Stand |
 |---|---|---|
 | Websites „Klar 2“: makeinnovation.de + fokusinnovation.de neu — normale Seite statt Scroll-Film, hell → dunkel, nur Prinzipien, keine Spielereien (Kevin 07.10.) | Branch `websites-klar-2` (Worktree) | läuft |
-| Zeitstrahl „Seil“: Planungsjahr + Aufgaben-Zeitstrahl — sichtbare Stränge, die zum Seil am Ziel verdrillen (Fokus/Momentum), Abhängigkeiten Karten/Ziele, Verbindungen (Kevin 07.10.) | Branch `zeitstrahl-seil` (Worktree) | läuft |
+| Zeitstrahl „Seil“: Stränge → Seil am Ziel, Abhängigkeiten (Kevin 07.10.) | Branch `zeitstrahl-seil` (Worktree agent-ac60a1ed…) | **PAUSIERT** 07.10. (Wochenlimit 94 %): Schritt 1–2/5 fertig (ed5f7bd5 Konzept in LICHTFAEDEN.md, ba19bae5 Bezüge als Daten + Tests); weiter ab „reines Seil-Modell“ nach dem Reset Do. 09.10. abends |
 
 ## Als Nächstes
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
