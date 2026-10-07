@@ -220,7 +220,7 @@ describe('Baustein & Wächter', () => {
       ['components/os/business/BusinessCockpit.tsx', 'bereich="finanzen-business"'], ['components/os/HorizontView.tsx', 'bereich="planung"'],
       ['components/os/aufgaben/Ueberblick.tsx', 'bereich="aufgaben"'], ['components/os/kalender/Kalender.tsx', 'bereich="kalender"'],
       ['components/os/GesundheitView.tsx', 'bereich="gesundheit"'], ['components/os/familie/FamilieView.tsx', 'bereich="familie"'],
-      ['components/os/netzwerken/Netzwerken.tsx', 'bereich="netzwerken"'], ['components/os/InboxSchlank.tsx', 'bereich="inbox"'],
+      ['components/os/netzwerken/Netzwerken.tsx', 'bereich="netzwerken"'], ['components/os/inbox/InboxZwei.tsx', 'bereich="inbox"'],
     ];
     for (const [f, bereich] of seiten) {
       const t = lies(f);

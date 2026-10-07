@@ -59,6 +59,10 @@ describe('Zuordnung und Verlauf', () => {
     const z = await Z.zuordnungenFuer(Object.values(s.koepfe), s);
     expect(z.m1).toMatchObject({ kontaktId: 'c-anna-schmidt', name: 'Anna Schmidt', firma: 'Beispiel GmbH', firmaId: 'f-beispiel', dealId: 'd-1', dealTitel: 'Rahmenvertrag' });
     expect(z.m2.kontaktId).toBe('c-anna-schmidt');
+    // Inbox 2 (06.10.): angezeigt wird sofort, in den Verlauf kommt es erst nach „Zuordnen“ (je Gespräch, ein Klick).
+    expect((await kontakte()).find(c => c.id === 'c-anna-schmidt')!.aktivitaeten).toHaveLength(0);
+    const inbox = await import('../app/api/inbox/route') as R;
+    for (const id of ['gm~m1', 'gm~m2']) expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id })).d.ok, id).toBe(true);
     const a = (await kontakte()).find(c => c.id === 'c-anna-schmidt')!.aktivitaeten;
     expect(a).toHaveLength(2);
     expect(a.find(x => x.mailLink === '/os/inbox?offen=gmail-m1')).toMatchObject({ art: 'antwort', text: 'Betreff: Rahmenvertrag — Rückfrage', von: 'system' });
@@ -73,6 +77,10 @@ describe('Zuordnung und Verlauf', () => {
     g.mail({ id: 'i1', von: 'Info <info@sammel.example.invalid>', betreff: 'Newsletter', text: 'x' });
     g.mail({ id: 'u1', von: 'fremd@nirgends.example.invalid', betreff: 'Unbekannt', text: 'x' });
     await A.gmailAbgleichen('kevin');
+    const inbox = await import('../app/api/inbox/route') as R;
+    expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~s1' })).d.ok).toBe(true);
+    // Sammeladresse: es gibt keine Person zum Zuordnen.
+    expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~i1' })).status).toBe(400);
     const ks = await kontakte();
     expect(ks.find(c => c.id === 'c-anna-schmidt')!.aktivitaeten[0]).toMatchObject({ art: 'mail', von: 'kevin', text: 'E-Mail gesendet · Betreff: Re: Rahmenvertrag', mailLink: '/os/inbox?offen=gmail-s1' });
     expect(ks.find(c => c.id === 'c-info-sammel')!.aktivitaeten).toHaveLength(0);

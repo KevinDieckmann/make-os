@@ -113,11 +113,11 @@ describe('Die Liste der Inbox', () => {
     expect(vorText(0)).toBe('gerade eben'); expect(vorText(5)).toBe('vor 5 Min.'); expect(vorText(180)).toBe('vor 3 Std.'); expect(vorText(null)).toBe('noch nie');
   });
   it('Gmail geht NIE in die gemeinsame ZOE-Einstufung der Inbox (Betreff/Absender stünden im Schlüssel für das andere Konto)', async () => {
-    const quelle = (await import('node:fs')).readFileSync(path.resolve(__dirname, '../components/os/InboxSchlank.tsx'), 'utf8');
-    expect(quelle).toMatch(/msgs\.filter\(m => !m\.gm && !triage\[fpOf\(m\)\]/);
-    expect(quelle).not.toMatch(/inbox\/triage.*gmail|gmail.*inbox\/triage/);
+    // Seit Inbox 2 (06.10.) gibt es die gemeinsame ZOE-Einstufung gar nicht mehr: die Fächer stehen ohne Modell fest (lib/inbox/faecher.ts).
+    const quelle = (await import('node:fs')).readFileSync(path.resolve(__dirname, '../components/os/inbox/InboxZwei.tsx'), 'utf8');
+    expect(quelle).not.toMatch(/inbox\/triage|inbox-triage/);
     // Und im Gmail-Code kommt die gemeinsame Einstufung gar nicht vor.
     const fs = await import('node:fs');
-    for (const f of ['lib/gmail', 'components/os/inbox']) for (const d of fs.readdirSync(path.resolve(__dirname, '..', f))) expect(fs.readFileSync(path.resolve(__dirname, '..', f, d), 'utf8'), `${f}/${d}`).not.toMatch(/inbox\/triage|inbox-triage|\/api\/inbox\/draft/);
+    for (const f of ['lib/gmail', 'lib/inbox', 'lib/postfach', 'components/os/inbox']) for (const d of fs.readdirSync(path.resolve(__dirname, '..', f))) expect(fs.readFileSync(path.resolve(__dirname, '..', f, d), 'utf8'), `${f}/${d}`).not.toMatch(/inbox\/triage|inbox-triage|\/api\/inbox\/draft/);
   });
 });

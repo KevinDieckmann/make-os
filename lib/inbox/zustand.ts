@@ -45,7 +45,7 @@ export function uebernahme(o: {
 }): InboxZustand {
   const z = leer();
   for (const [k, s] of Object.entries(o.alterStatus ?? {})) {
-    const m = /^gmail-([A-Za-z0-9]{6,40})$/.exec(k);
+    const m = /^gmail-([A-Za-z0-9]{1,40})$/.exec(k);
     const thread = m ? o.gmailThreads[m[1]] ?? (Object.values(o.gmailThreads).includes(m[1]) ? m[1] : undefined) : undefined;
     if (!thread || s?.status !== 'snoozed' || !s.bis || !/^\d{4}-\d{2}-\d{2}$/.test(s.bis) || s.bis < o.heute) continue;
     z.gespraeche[`gm~${thread}`] = { spaeter: { bis: s.bis, seit: o.jetzt } };

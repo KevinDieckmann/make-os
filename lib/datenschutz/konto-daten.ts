@@ -31,6 +31,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'zeit' }, { basis: 'fokus-laufend' }, { basis: 'wochenplan' }, { basis: 'sport' }, { basis: 'vitals' }, { basis: 'haut' },
   { basis: 'streak' }, { basis: 'health-log' }, { basis: 'journal' }, { basis: 'ziele-eigen' }, { basis: 'visitenkarten' },
   { basis: 'meldungen' }, { basis: 'performance' }, { basis: 'flaeche' }, { basis: 'kalender-google' }, { basis: 'gmail-stand' }, { basis: 'gmail-text' },
+  { basis: 'imap-stand' }, { basis: 'imap-text' }, { basis: 'postfaecher' }, { basis: 'inbox-zustand' },
+  { basis: 'postfach-zugang', export: false, grund: 'Passwörter der Postfächer (verschlüsselt) — nie in einer Datei; beim Löschen entfernt' },
   { basis: 'google-verbindung', export: false, grund: 'Zugangsschlüssel zu Google (verschlüsselte Token) — nie in einer Datei; beim Löschen widerrufen und entfernt' },
 ];
 

@@ -78,6 +78,33 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Gmail in der Inbox (03.10.2026): Spiegel je Person — Nachrichten, die die Person nennen, raus (Art. 17), das Original bleibt in Gmail (der Löschlauf zählt es als „dort löschen“).
   E('gmail-stand--*', 'Gmail-Spiegel je Person (Köpfe: Absender, Empfänger, Betreff, Ausschnitt, Labels, Anhang-Metadaten) — Nachrichten, die die Person nennen, raus (person-weitere.ts); das Original bleibt in Gmail (Hinweis „dort löschen“); Aufbewahrung: Frist Mail-Spiegel (180 Tage).', 'mail-spiegel'),
   E('gmail-text--*', 'Gmail-Spiegel je Person (Textkörper, nur Text) — Texte, die die Person nennen (Adresse oder Name), raus; Aufbewahrung wie der Spiegel.', 'mail-spiegel'),
+  // Inbox 2 (06.10.2026): Postfächer je Person über IMAP/SMTP (iCloud, IONOS, beliebige Anbieter) — Register, Zugang, Spiegel, Inbox-Zustand.
+  mit(E('imap-stand--*', 'IMAP-Spiegel je Person × Postfach (Köpfe: Absender, Empfänger, Betreff, Ausschnitt, Anhang-Metadaten, Ordner/UID) — Nachrichten, die die Person nennen, raus (person-weitere.ts); das Original bleibt beim Anbieter (Hinweis „dort löschen“).', 'mail-spiegel'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Korrespondenz lesen, ordnen und beantworten (Geschäftspostfächer zusätzlich lit. b: Anbahnung/Vertrag)',
+    art15: 'Kontakt: Auskunft nennt die gespiegelten Nachrichten (Kopf, Betreff); Konto: Konto › Meine Daten exportiert den eigenen Spiegel',
+    loeschfrist: 'Frist „Mail-Spiegel“ (Standard 180 Tage) und höchstens 1.500 Nachrichten je Postfach; „Trennen“ löscht sofort',
+  }),
+  mit(E('imap-text--*', 'IMAP-Spiegel je Person (Textkörper, nur Text, nie HTML/Anhänge) — Texte, die die Person nennen, raus; Aufbewahrung wie der Spiegel.', 'mail-spiegel'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Korrespondenz lesen und beantworten',
+    art15: 'wie imap-stand (Kontakt-Auskunft bzw. Konto-Export)',
+    loeschfrist: 'wie imap-stand',
+  }),
+  mit(H('postfaecher--*', 'Postfach-Register je Person (Anbieter, Server, Anmeldename, Adresse, Bereich, Absendername, Signatur) — keine Dritten, keine Passwörter.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Nutzung der Software durch die Kontoperson',
+    art15: 'die Person sieht und ändert es unter Inbox › Postfächer; Konto › Meine Daten exportiert es',
+    loeschfrist: 'bis die Person das Postfach trennt bzw. ihr Konto löscht',
+  }),
+  mit(H('postfach-zugang--*', 'Zugangsdaten der Postfächer je Person (App-/Postfach-Passwörter) — verschlüsselt, nur serverseitig, nie in einer Antwort, nie im Export, nie im Protokoll.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — von der Person selbst hinterlegt, um ihr Postfach abzuholen',
+    art15: 'nur der Hinweis, DASS ein Zugang hinterlegt ist (Inbox › Postfächer) — das Passwort selbst wird nie ausgegeben',
+    loeschfrist: '„Trennen“ bzw. Konto löschen entfernt es sofort',
+    kategorie: ['vertraulich'],
+  }),
+  mit(T('inbox-zustand--*', 'Inbox-Zustand je Person: Wiedervorlagen und „erledigt bis“ je Gespräch (nur Kennungen), bestätigte Zuordnung (Kontakt-Kennung), Screener-Entscheidungen je Absender-Adresse — Adresse der Person fällt weg, Kennungen werden getilgt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Post ordnen (Screener, Wiedervorlage)',
+    art15: 'Kontakt: Auskunft nennt Screener-Entscheidung und Zuordnung; Konto: Konto › Meine Daten',
+    loeschfrist: 'mit dem Konto bzw. „Trennen“ (Gespräche dieses Postfachs); Absender-Entscheidungen bis die Person sie zurücknimmt',
+  }),
   A('kalender-umzug-sicherung--*', 'Sicherung der iCloud-Texte beim Umzug Business → Google (Notizen können Dritte nennen) — verschlüsselt, 30 Tage, dann räumt der Takt sie weg (lib/kalender/google/umzug.ts); Wahrheit ist der Termin in Google.', 'kalender-caches'),
   // Verbindung zu Google (03.10.): Token-Bestand und Anmelde-Zustand — gehören der Person des Haushalts, keine Dritten.
   H('google-verbindung--*', 'Google-Verbindung je Person (Adresse des Google-Kontos, verschlüsselte Token) — nur serverseitig, Trennen widerruft bei Google und löscht den Inhalt; Art. 17 über das Konto.'),
@@ -284,7 +311,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('fokus-regler', 'Regler-Stand.'),
   K('hoi-meldung', 'Riegel des Head of IT.'),
   K('hoi-durchsicht', 'Nächtliche Durchsicht der Bestände (lib/store/durchsicht.ts) — nur Zähler je Bestand.'),
-  K('inbox-status', 'Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen. Eine Karte, aber je Postfach getrennt ausgeliefert/geschrieben (lib/inbox/status-sicht.ts: eigenes Gmail, Apple/M365 nur Inhaber; Haushalt des Inhabers).'),
+  K('inbox-status', 'Altbestand der alten Inbox (bis 06.10.): Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen. Wird nicht mehr geschrieben; Gmail-Wiedervorlagen übernimmt `inbox-zustand--<person>` beim ersten Schreiben (lib/inbox/zustand.ts).'),
   K('kalender-einstellungen', 'Kalender-Einstellungen.'),
   K('labels', 'Beschriftungen.'),
   K('onboarding', 'Einrichtungs-Haken.'),

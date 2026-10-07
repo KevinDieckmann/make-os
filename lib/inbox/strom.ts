@@ -61,7 +61,7 @@ export interface Gespraech {
 
 // ── Gesprächs-Kennungen ─────────────────────────────────────────────────────
 
-export const GESPRAECH_ID = /^(gm~[A-Za-z0-9]{6,40}|im~pf-[0-9a-f-]{36}~[0-9a-f]{20}|wa~pf-[0-9a-f-]{36}~[0-9]{6,20})$/;
+export const GESPRAECH_ID = /^(gm~[A-Za-z0-9]{1,40}|im~pf-[0-9a-f-]{36}~[0-9a-f]{20}|wa~pf-[0-9a-f-]{36}~[0-9]{6,20})$/;
 export const istGespraechId = (v: unknown): v is string => typeof v === 'string' && GESPRAECH_ID.test(v);
 export const gespraechTeile = (id: string): { quelle: GespraechQuelle; postfach: string; schluessel: string } | null => {
   if (!istGespraechId(id)) return null;
@@ -214,7 +214,7 @@ export function zoeSatz(g: readonly Gespraech[]): ZoeSatz {
 }
 
 /** Sortierung je Fach (rein): Wiedervorlage fällig zuerst; Warten: am längsten wartend zuerst; sonst jüngste zuerst. */
-export function sortieren(l: readonly Gespraech[]): Gespraech[] {
+export function sortieren<T extends Pick<Gespraech, 'wiedervorlage' | 'fach' | 'wartetTage' | 'am'>>(l: readonly T[]): T[] {
   return [...l].sort((a, b) =>
     Number(b.wiedervorlage === 'faellig') - Number(a.wiedervorlage === 'faellig')
     || (a.fach === 'warten' && b.fach === 'warten' ? (b.wartetTage ?? 0) - (a.wartetTage ?? 0) : 0)

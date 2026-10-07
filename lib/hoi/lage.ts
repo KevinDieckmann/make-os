@@ -78,6 +78,8 @@ export interface InnenLage {
   kalenderGoogle?: GoogleKalenderLage | null;
   /** Gmail in der Inbox (03.10.): je verbundener Person Alter/Fehler des Abgleichs und Push — nur Zähler und Zustände, nie Adressen oder Betreffs. null = niemand verbunden. */
   gmail?: GmailLage | null;
+  /** Inbox 2 (06.10.): IMAP-Postfächer aller Personen — nur Zähler. */
+  postfaecher?: PostfachLage | null;
   /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
   brainIndex?: BrainIndexLage | null;
   /** Protokolle (05.10.): Hash-Kette über Änderungs-, Lese- und Anmeldeprotokoll — Ergebnis der letzten Prüfung. */
@@ -196,6 +198,21 @@ export function gmailBefunde(g: GmailLage | null | undefined): Befund[] {
     satz: g.getrennt ? `${g.getrennt} Google-Verbindung${g.getrennt === 1 ? '' : 'en'} getrennt — in der Inbox („Gmail verbinden“) neu verbinden`
       : g.veraltet || g.fehler ? `Abgleich steht${g.fehler ? `: ${g.fehler.slice(0, 100)}` : ''} — die Inbox zeigt einen alten Stand`
       : g.push.moeglich ? 'Abgleich läuft (Push von Google, Rückfall alle 15 Minuten)' : 'Abgleich läuft alle 2 Minuten (kein Push: Pub/Sub nicht eingerichtet oder keine öffentliche HTTPS-Adresse)',
+  }];
+}
+
+/** Zustand der IMAP-Postfächer (Inbox 2, 06.10.) — nur Zähler, nie Adressen oder Anbieter. */
+export interface PostfachLage { postfaecher: number; anmeldung: number; fehler: number; veraltet: number; idle: number }
+
+/** Befund zu den IMAP-Postfächern (rein): abgelehnte Anmeldung = rot (Person muss erneuern), Fehler/verzögert = gelb. */
+export function postfachBefunde(p: PostfachLage | null | undefined): Befund[] {
+  if (!p || !p.postfaecher) return [];
+  const ampel: Ampel = p.anmeldung ? 'rot' : p.fehler || p.veraltet ? 'gelb' : 'gruen';
+  return [{
+    id: 'postfaecher', bereich: 'app', label: 'Postfächer (IMAP)', ampel,
+    wert: `${p.postfaecher} ${p.postfaecher === 1 ? 'Postfach' : 'Postfächer'} · ${p.idle} mit IDLE${p.anmeldung ? ` · ${p.anmeldung} Anmeldung abgelehnt` : ''}${p.fehler ? ` · ${p.fehler} Fehler` : ''}`,
+    satz: p.anmeldung ? `${p.anmeldung} Postfach${p.anmeldung === 1 ? '' : 'fächer'} braucht eine neue Anmeldung — die Person trägt in der Inbox › Postfächer „Verbindung erneuern“ ein (MAKE OS fragt bis dahin nicht weiter an)`
+      : p.fehler || p.veraltet ? 'Ein Abgleich steht oder ist verzögert — der Takt versucht es mit Pause weiter' : 'Abgleich läuft (IDLE sofort, sonst alle 2 Minuten)',
   }];
 }
 
@@ -353,6 +370,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...kalenderBefunde(innen.kalender, jetzt));
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));
   b.push(...gmailBefunde(innen.gmail));
+  b.push(...postfachBefunde(innen.postfaecher));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));

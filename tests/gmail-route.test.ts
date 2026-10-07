@@ -1,4 +1,4 @@
-// Gmail-Routen: nur die eigene Person (Dienstweg 403, Malin sieht nie Kevins Mails), Liste/Thread/Anhang (nur Download, nosniff,
+// Gmail-Routen (+ seit 06.10. die Inbox-2-Wege für Gespräch/Senden/Entwurf, die Gmail als Quelle bedienen): nur die eigene Person (Dienstweg 403, Malin sieht nie Kevins Mails), Liste/Thread/Anhang (nur Download, nosniff,
 // Größengrenze), Markieren/Archivieren geht an Gmail zurück, Antwort im Thread mit richtigen Köpfen und Absender-Alias, Senden NUR per
 // Einzelklick (ZOE/Takt/Skripte 403), § 7 UWG-Rückfrage, Art. 18, Idempotenz, kein Header-Injection, ZOE-Entwurf (Fremdtext als
 // Daten, Du/Sie, Art. 18). Echter Datenspeicher (Temp, verschlüsselt), Google/Gmail und die KI nachgebaut.
@@ -31,8 +31,8 @@ const POST = (route: R, url: string, body: unknown, h: Record<string, string> = 
 
 beforeAll(async () => {
   V = await import('@/lib/google/verbindung'); A = await import('@/lib/gmail/abgleich'); S = await import('@/lib/gmail/stand'); db = await import('@/lib/store/local-db'); M = await import('@/lib/gmail/mime');
-  liste = await import('../app/api/gmail/route') as R; nachricht = await import('../app/api/gmail/nachricht/route') as R; anhang = await import('../app/api/gmail/anhang/route') as R;
-  senden = await import('../app/api/gmail/senden/route') as R; entwurf = await import('../app/api/gmail/entwurf/route') as R;
+  liste = await import('../app/api/gmail/route') as R; nachricht = await import('../app/api/inbox/gespraech/route') as R; anhang = await import('../app/api/gmail/anhang/route') as R;
+  senden = await import('../app/api/inbox/senden/route') as R; entwurf = await import('../app/api/inbox/entwurf/route') as R;
 });
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));
 
@@ -69,17 +69,17 @@ beforeEach(async () => {
 
 describe('Zugang: nur die eigene Person — nie der Dienstweg, nie das andere Konto', () => {
   it('Dienstweg (ZOE, Takt, Skripte) bekommt auf JEDEM Gmail-Weg 403 — auch mit Person im Kopf', async () => {
-    for (const [r, u] of [[liste, '/api/gmail'], [nachricht, '/api/gmail/nachricht?id=mail01'], [anhang, '/api/gmail/anhang?id=mail01&teil=0.1']] as const) expect((await GET(r, u, dienst())).status, u).toBe(403);
-    for (const [r, u, b] of [[liste, '/api/gmail', { aktion: 'abgleichen' }], [senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x' }], [entwurf, '/api/gmail/entwurf', { id: 'mail01' }]] as const) expect((await POST(r, u, b, dienst())).status, u).toBe(403);
+    for (const [r, u] of [[liste, '/api/gmail'], [nachricht, '/api/inbox/gespraech?id=gm~mail01'], [anhang, '/api/gmail/anhang?id=mail01&teil=0.1']] as const) expect((await GET(r, u, dienst())).status, u).toBe(403);
+    for (const [r, u, b] of [[liste, '/api/gmail', { aktion: 'abgleichen' }], [senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x' }], [entwurf, '/api/inbox/entwurf', { gespraech: 'gm~mail01' }]] as const) expect((await POST(r, u, b, dienst())).status, u).toBe(403);
     expect(g.gesendet).toHaveLength(0);
     expect(anthropic).toHaveLength(0);
   });
   it('ohne Sitzung gar nichts (Middleware) — und Malin sieht nie Kevins Mails: eigener Spiegel, fremde Kennung → 404, Senden/Anhang/Markieren auf Kevins Mail scheitern', async () => {
     const m = await GET(liste, '/api/gmail', sitzung('malin'));
     expect(m.d).toMatchObject({ ok: true, bereit: false, nachrichten: [] });
-    expect((await GET(nachricht, '/api/gmail/nachricht?id=mail01', sitzung('malin'))).status).toBe(404);
+    expect((await GET(nachricht, '/api/inbox/gespraech?id=gm~mail01', sitzung('malin'))).status).toBe(404);
     expect((await GET(anhang, '/api/gmail/anhang?id=mail01&teil=0.1', sitzung('malin'))).status).toBe(404);
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x' }, sitzung('malin'))).status).toBe(409);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x' }, sitzung('malin'))).status).toBe(404);
     expect((await POST(liste, '/api/gmail', { aktion: 'markieren', id: 'mail01', was: 'gelesen' }, sitzung('malin'))).status).toBe(404);
     // Malin verbindet sich selbst: eigener Spiegel — Kevins Kennungen kennt er nicht.
     await verbinden('malin');
@@ -87,12 +87,12 @@ describe('Zugang: nur die eigene Person — nie der Dienstweg, nie das andere Ko
     const ml = await GET(liste, '/api/gmail', sitzung('malin'));
     expect(ml.d.nachrichten.map((n: { id: string }) => n.id)).toEqual(['z9']);
     expect(JSON.stringify(ml.d)).not.toMatch(/Rahmenvertrag|anna@firma/);
-    expect((await GET(nachricht, '/api/gmail/nachricht?id=mail01', sitzung('malin'))).status).toBe(404);
+    expect((await GET(nachricht, '/api/inbox/gespraech?id=gm~mail01', sitzung('malin'))).status).toBe(404);
     const kl = await GET(liste, '/api/gmail');
     expect(JSON.stringify(kl.d)).not.toContain('Malins Mail');
   });
   it('Antworten enthalten nie Tokens', async () => {
-    const roh = JSON.stringify([(await GET(liste, '/api/gmail')).d, (await GET(nachricht, '/api/gmail/nachricht?id=mail01')).d]);
+    const roh = JSON.stringify([(await GET(liste, '/api/gmail')).d, (await GET(nachricht, '/api/inbox/gespraech?id=gm~mail01')).d]);
     expect(roh).not.toMatch(/erneuerung-geheim|zugriff-\d|refreshToken|accessToken/);
   });
 });
@@ -115,14 +115,14 @@ describe('Liste, Thread, Anhang', () => {
     expect(b.status).toBe(304);
   });
   it('Thread: alle Nachrichten (alt → neu) mit Text, Standard-Empfänger der Antwort/„allen“ ohne die eigenen Adressen', async () => {
-    const r = await GET(nachricht, '/api/gmail/nachricht?id=mail01');
-    expect(r.d.thread.map((n: { kopf: { id: string } }) => n.kopf.id)).toEqual(['mail01', 'mail02']);
-    expect(r.d.thread[0].text).toContain('Bitte um Rückruf');
-    expect(r.d.empfaenger.antworten).toEqual({ an: [{ name: 'Anna Schmidt', email: 'anna@firma.example.invalid' }], cc: [] });
-    expect(r.d.empfaenger.allen.an.map((a: { email: string }) => a.email)).toEqual(['anna@firma.example.invalid']);
-    expect(r.d.empfaenger.allen.cc.map((a: { email: string }) => a.email)).toEqual(['bert@firma.example.invalid']);   // hello@ (Alias) fehlt: das sind wir
-    expect((await GET(nachricht, '/api/gmail/nachricht?id=../x')).status).toBe(400);
-    expect((await GET(nachricht, '/api/gmail/nachricht?id=gibtsnicht1')).status).toBe(404);
+    const r = await GET(nachricht, '/api/inbox/gespraech?id=gm~mail01');
+    expect(r.d.nachrichten.map((n: { id: string }) => n.id)).toEqual(['mail01', 'mail02']);
+    expect(r.d.nachrichten[0].text).toContain('Bitte um Rückruf');
+    expect(r.d.antwort.empfaenger.antworten).toEqual({ an: [{ name: 'Anna Schmidt', email: 'anna@firma.example.invalid' }], cc: [] });
+    expect(r.d.antwort.empfaenger.allen.an.map((a: { email: string }) => a.email)).toEqual(['anna@firma.example.invalid']);
+    expect(r.d.antwort.empfaenger.allen.cc.map((a: { email: string }) => a.email)).toEqual(['bert@firma.example.invalid']);   // hello@ (Alias) fehlt: das sind wir
+    expect((await GET(nachricht, '/api/inbox/gespraech?id=../x')).status).toBe(400);
+    expect((await GET(nachricht, '/api/inbox/gespraech?id=gm~gibtsnicht1')).status).toBe(404);
   });
   it('Anhang: nur als Download (octet-stream, attachment, nosniff, sandbox), sauberer Dateiname, Inhalt frisch aus Gmail; zu groß 413; falsche Teile 404/400', async () => {
     const s = (await S.ladeGmailStand('kevin'))!;
@@ -179,7 +179,7 @@ describe('Markieren und Archivieren gehen an Gmail zurück', () => {
 
 describe('Antwort im Thread und Senden NUR per Einzelklick', () => {
   it('Antwort auf mail01: threadId, In-Reply-To, References (bisherige + diese), Re:, Absender = der Alias, an den die Mail ging, Empfänger = Absender; erscheint sofort im Thread und im Verlauf', async () => {
-    const r = await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'Hallo Frau Schmidt,\n\ngern rufe ich Sie zurück — Grüße, Kevin', anfrageId: 'anfrage-0001' });
+    const r = await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'Hallo Frau Schmidt,\n\ngern rufe ich Sie zurück — Grüße, Kevin', anfrageId: 'anfrage-0001' });
     expect(r.status).toBe(200);
     expect(r.d).toMatchObject({ ok: true, von: 'hello@makeinnovation.test', an: ['anna@firma.example.invalid'] });
     expect(g.gesendet).toHaveLength(1);
@@ -192,19 +192,22 @@ describe('Antwort im Thread und Senden NUR per Einzelklick', () => {
     expect(M.adressenLesen(m.kopf.from[0])).toEqual([{ name: 'MAKE Hello', email: 'hello@makeinnovation.test' }]);
     expect(M.adressenLesen(m.kopf.to[0])).toEqual([{ name: 'Anna Schmidt', email: 'anna@firma.example.invalid' }]);
     expect(m.text).toBe('Hallo Frau Schmidt,\n\ngern rufe ich Sie zurück — Grüße, Kevin');
-    // sofort im Spiegel (Thread) und im Verlauf der Kontaktakte
-    const thread = await GET(nachricht, '/api/gmail/nachricht?id=mail01');
-    expect(thread.d.thread).toHaveLength(3);
-    const ks = (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte;
-    expect(ks.find(c => c.id === 'c-anna-schmidt')!.aktivitaeten.some(a => a.art === 'mail' && a.von === 'kevin' && a.text?.startsWith('E-Mail gesendet'))).toBe(true);
+    // sofort im Spiegel (Thread); im Verlauf der Kontaktakte erst nach „Zuordnen“ (Inbox 2, 06.10.: jede Übernahme per Klick)
+    const thread = await GET(nachricht, '/api/inbox/gespraech?id=gm~mail01');
+    expect(thread.d.nachrichten).toHaveLength(3);
+    const akte = async () => (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.find(c => c.id === 'c-anna-schmidt')!.aktivitaeten;
+    expect(await akte()).toHaveLength(0);
+    const inbox = await import('../app/api/inbox/route') as R;
+    expect((await POST(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~mail01' })).d.ok).toBe(true);
+    expect((await akte()).some(a => a.art === 'mail' && a.von === 'kevin' && a.text?.startsWith('E-Mail gesendet'))).toBe(true);
     // Protokoll ohne Inhalt
     const proto = JSON.stringify(await db.loadJson(`aenderungsprotokoll--h--2026-10`));
     expect(proto).not.toContain('gern rufe ich');
   });
   it('Allen antworten: Empfänger An + Cc ohne die eigenen Adressen; Netz-Retry mit derselben anfrageId sendet nichts zweimal', async () => {
-    const b = { ausNachricht: 'mail01', text: 'Danke an alle', an: [{ email: 'anna@firma.example.invalid' }], cc: [{ email: 'bert@firma.example.invalid' }], anfrageId: 'anfrage-0002' };
-    const r1 = await POST(senden, '/api/gmail/senden', b);
-    const r2 = await POST(senden, '/api/gmail/senden', b);
+    const b = { gespraech: 'gm~mail01', text: 'Danke an alle', an: [{ email: 'anna@firma.example.invalid' }], cc: [{ email: 'bert@firma.example.invalid' }], anfrageId: 'anfrage-0002' };
+    const r1 = await POST(senden, '/api/inbox/senden', b);
+    const r2 = await POST(senden, '/api/inbox/senden', b);
     expect(r1.status).toBe(200); expect(r2.status).toBe(200);
     expect(r2.d.id).toBe(r1.d.id);
     expect(g.gesendet).toHaveLength(1);
@@ -212,61 +215,65 @@ describe('Antwort im Thread und Senden NUR per Einzelklick', () => {
   });
   it('Absender: nur eigene Adresse oder verifizierter Alias — fremde und unbestätigte → 400, nichts gesendet', async () => {
     for (const von of ['ceo@evil.example.invalid', 'alt@makeinnovation.test']) {
-      const r = await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', von });
+      const r = await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', von });
       expect(r.status, von).toBe(400); expect(r.d.code).toBe('absender');
     }
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', von: 'kevin@makeinnovation.test' })).status).toBe(200);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', von: 'kevin@makeinnovation.test' })).status).toBe(200);
     expect(M.adressenLesen(M.rfc822Lesen(g.gesendet[0].raw).kopf.from[0])[0].email).toBe('kevin@makeinnovation.test');
   });
   it('Eingaben: kein Text, ungültige Adressen (auch mit Zeilenumbruch), zu viele Empfänger, neue Mail ohne Betreff/Empfänger, unbekannte Mail → klare Fehler; kein Header-Injection', async () => {
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: '   ' })).d.code).toBe('kein-text');
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', an: [{ email: 'a@b.example.invalid\r\nBcc: e@x.example.invalid' }] })).d.code).toBe('adresse');
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', an: Array.from({ length: 21 }, (_, i) => ({ email: `p${i}@x.example.invalid` })) })).d.code).toBe('zu-viele');
-    expect((await POST(senden, '/api/gmail/senden', { text: 'x', an: [{ email: 'a@b.example.invalid' }] })).d.code).toBe('betreff');
-    expect((await POST(senden, '/api/gmail/senden', { text: 'x', betreff: 'Hallo' })).d.code).toBe('kein-empfaenger');
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'gibtsnicht1', text: 'x' })).status).toBe(404);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: '   ' })).d.code).toBe('kein-text');
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', an: [{ email: 'a@b.example.invalid\r\nBcc: e@x.example.invalid' }] })).d.code).toBe('adresse');
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', an: Array.from({ length: 21 }, (_, i) => ({ email: `p${i}@x.example.invalid` })) })).d.code).toBe('zu-viele');
+    expect((await POST(senden, '/api/inbox/senden', { neu: { postfach: 'gmail', betreff: '' }, text: 'x', an: [{ email: 'a@b.example.invalid' }] })).d.code).toBe('betreff');
+    expect((await POST(senden, '/api/inbox/senden', { neu: { postfach: 'gmail', betreff: 'Hallo' }, text: 'x' })).d.code).toBe('kein-empfaenger');
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~gibtsnicht1', text: 'x' })).status).toBe(404);
     expect(g.gesendet).toHaveLength(0);
-    const neu = await POST(senden, '/api/gmail/senden', { text: 'Hallo', betreff: 'Neu\r\nBcc: evil@example.invalid', an: [{ email: 'a@b.example.invalid', name: 'A\r\nBcc: e@x.example.invalid' }] });
+    const neu = await POST(senden, '/api/inbox/senden', { neu: { postfach: 'gmail', betreff: 'Neu\r\nBcc: evil@example.invalid' }, text: 'Hallo', an: [{ email: 'a@b.example.invalid', name: 'A\r\nBcc: e@x.example.invalid' }] });
     expect(neu.status).toBe(200);
     const kopf = g.gesendet[0].raw.split('\r\n\r\n')[0];
     expect(kopf).not.toMatch(/^Bcc:/im);
     expect(g.gesendet[0].threadId).toBeUndefined();
   });
   it('§ 7 UWG: werblicher Text an eine Person mit Werbesperre → Rückfrage (409), nichts gesendet; bestätigt → gesendet; eine sachliche 1:1-Antwort geht ohne Rückfrage', async () => {
-    const werblich = { ausNachricht: 'ben001', text: 'Gern schicke ich Ihnen ein Angebot und lade Sie zu unserem Webinar ein.' };
-    const r = await POST(senden, '/api/gmail/senden', werblich);
+    const werblich = { gespraech: 'gm~ben001', text: 'Gern schicke ich Ihnen ein Angebot und lade Sie zu unserem Webinar ein.' };
+    const r = await POST(senden, '/api/inbox/senden', werblich);
     expect(r.status).toBe(409);
     expect(r.d).toMatchObject({ code: 'uwg', uwg: { woerter: expect.arrayContaining(['angebot', 'webinar']), empfaenger: [{ name: 'Ben Sperre' }] } });
     expect(g.gesendet).toHaveLength(0);
-    expect((await POST(senden, '/api/gmail/senden', { ...werblich, uwgBestaetigt: true })).status).toBe(200);
+    expect((await POST(senden, '/api/inbox/senden', { ...werblich, uwgBestaetigt: true })).status).toBe(200);
     expect(g.gesendet).toHaveLength(1);
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'ben001', text: 'Ihre Frage beantworte ich so: ja.' })).status).toBe(200);
-    // Eine Person mit gelber Ampel (bekannt) bekommt auch werbliche Wörter ohne Rückfrage — gewarnt wird nur ohne Grundlage (rot).
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'Anbei das Angebot.' })).status).toBe(200);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~ben001', text: 'Ihre Frage beantworte ich so: ja.' })).status).toBe(200);
+    // Eine Person mit gelber Ampel (bekannt: Verlauf in der Akte) bekommt auch werbliche Wörter ohne Rückfrage — gewarnt wird nur ohne
+    // Grundlage (rot). Seit Inbox 2 (06.10.) entsteht der Verlauf erst nach „Zuordnen“ — vorher ist Anna für § 7 UWG noch unbekannt.
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'Anbei das Angebot.' })).status).toBe(409);
+    const inbox = await import('../app/api/inbox/route') as R;
+    expect((await POST(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~mail01' })).d.ok).toBe(true);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'Anbei das Angebot.' })).status).toBe(200);
   });
   it('Art. 18: an eingeschränkte Personen nie (409) — auch nicht, wenn die Adresse frei eingegeben wird', async () => {
-    const r = await POST(senden, '/api/gmail/senden', { ausNachricht: 'eva001', text: 'Hallo' });
+    const r = await POST(senden, '/api/inbox/senden', { gespraech: 'gm~eva001', text: 'Hallo' });
     expect(r.status).toBe(409); expect(r.d.code).toBe('eingeschraenkt');
-    expect((await POST(senden, '/api/gmail/senden', { text: 'Hallo', betreff: 'Frei', an: [{ email: 'EVA@y.example.invalid' }] })).d.code).toBe('eingeschraenkt');
+    expect((await POST(senden, '/api/inbox/senden', { neu: { postfach: 'gmail', betreff: 'Frei' }, text: 'Hallo', an: [{ email: 'EVA@y.example.invalid' }] })).d.code).toBe('eingeschraenkt');
     expect(g.gesendet).toHaveLength(0);
   });
   it('Google lehnt ab: 403 → Hinweis „erneut verbinden“, 400 → 502 — und die Mail steht NICHT im Spiegel', async () => {
     g.fehler.push({ teil: '/messages/send', status: 403 });
-    const r = await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', anfrageId: 'anfrage-0003' });
+    const r = await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', anfrageId: 'anfrage-0003' });
     expect(r.status).toBe(409); expect(r.d.fehler).toMatch(/Gmail verbinden/);
     g.fehler.push({ teil: '/messages/send', status: 400 });
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', anfrageId: 'anfrage-0003' })).status).toBe(502);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', anfrageId: 'anfrage-0003' })).status).toBe(502);
     expect(Object.keys((await S.ladeGmailStand('kevin'))!.koepfe)).toHaveLength(4);
     // Ein neuer Versuch mit derselben anfrageId darf laufen (die Ablehnung hat nichts bewirkt).
-    expect((await POST(senden, '/api/gmail/senden', { ausNachricht: 'mail01', text: 'x', anfrageId: 'anfrage-0003' })).status).toBe(200);
+    expect((await POST(senden, '/api/inbox/senden', { gespraech: 'gm~mail01', text: 'x', anfrageId: 'anfrage-0003' })).status).toBe(200);
   });
 });
 
 describe('ZOE-Entwurf — nur ein Vorschlag', () => {
   it('ohne Key: 503 needsKey; mit Key: der Entwurf; die fremde Mail geht als DATEN (fremde_daten), Anrede aus der Karte, nichts wird gesendet', async () => {
-    expect((await POST(entwurf, '/api/gmail/entwurf', { id: 'mail01' })).d).toMatchObject({ ok: false, needsKey: true });
+    expect((await POST(entwurf, '/api/inbox/entwurf', { gespraech: 'gm~mail01' })).d).toMatchObject({ ok: false, needsKey: true });
     vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test-nur-im-test');
-    const r = await POST(entwurf, '/api/gmail/entwurf', { id: 'mail01', hinweis: 'Rückruf anbieten' });
+    const r = await POST(entwurf, '/api/inbox/entwurf', { gespraech: 'gm~mail01', hinweis: 'Rückruf anbieten' });
     expect(r.status).toBe(200);
     expect(r.d.draft).toContain('Guten Tag Frau Schmidt');
     expect(anthropic).toHaveLength(1);
@@ -281,14 +288,14 @@ describe('ZOE-Entwurf — nur ein Vorschlag', () => {
   });
   it('Art. 18: für eine eingeschränkte Person kein Entwurf (409), kein Modellaufruf; Dienstweg 403', async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test-nur-im-test');
-    const r = await POST(entwurf, '/api/gmail/entwurf', { id: 'eva001' });
+    const r = await POST(entwurf, '/api/inbox/entwurf', { gespraech: 'gm~eva001' });
     expect(r.status).toBe(409);
     expect(anthropic).toHaveLength(0);
-    expect((await POST(entwurf, '/api/gmail/entwurf', { id: 'mail01' }, dienst())).status).toBe(403);
-    expect((await POST(entwurf, '/api/gmail/entwurf', { id: 'gibtsnicht1' })).status).toBe(404);
+    expect((await POST(entwurf, '/api/inbox/entwurf', { gespraech: 'gm~mail01' }, dienst())).status).toBe(403);
+    expect((await POST(entwurf, '/api/inbox/entwurf', { gespraech: 'gm~gibtsnicht1' })).status).toBe(404);
   });
   it('Brain-Kontext: Privates nie in die Mail an Dritte; der Systemtext trägt Stimme, Anrede und die Regel „nur Entwurf“', async () => {
-    const { brainKontext, entwurfSystem } = await import('@/lib/gmail/entwurf');
+    const { brainKontext, entwurfSystem } = await import('@/lib/inbox/entwurf');
     const t = (id: string, scope?: string) => ({ id, titel: `Notiz ${id}`, wurzel: 'x', bereich: 'Business', scope, punkte: 1, ausschnitt: `Inhalt ${id}`, ueberschriften: [], geaendert: '2026-10-01' });
     const ctx = brainKontext([t('a'), t('b', 'privat'), t('c')], 40);
     expect(ctx).toContain('Notiz a'); expect(ctx).toContain('Notiz c'); expect(ctx).not.toContain('Notiz b');

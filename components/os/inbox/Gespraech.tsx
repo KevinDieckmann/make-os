@@ -27,8 +27,8 @@ interface AkteTermin { titel: string; start: string; ganztags?: boolean; abgesag
 
 const KONTEXT_TERMIN = (iso: string, ganztags?: boolean) => new Date(iso.length === 19 ? `${iso}` : iso).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', ...(ganztags ? {} : { hour: '2-digit', minute: '2-digit' }) });
 
-export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck }: {
-  id: string; person: string; meldung: (t: string, rueck?: () => void) => void; onGeaendert: () => void; onZurueck?: () => void;
+export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, startAntwort }: {
+  id: string; person: string; meldung: (t: string, rueck?: () => void) => void; onGeaendert: () => void; onZurueck?: () => void; startAntwort?: boolean;
 }) {
   const { state, dispatch } = useTasks();
   const breit = useBreit();
@@ -50,7 +50,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck }
   }, [id]);
 
   useEffect(() => {
-    setA(null); setOffen(null); setAntwort(null); setTermin(false); setBeleg(false); setSpaeterAuf(false); setTermine(null);
+    setA(null); setOffen(null); setAntwort(startAntwort ? { allen: false } : null); setTermin(false); setBeleg(false); setSpaeterAuf(false); setTermine(null);
     void laden().then(x => {
       // Öffnen = gelesen (zurückgeschrieben an Gmail bzw. IMAP \Seen).
       if (x?.gespraech.ungelesen) void aktion(id, 'gelesen').then(() => onGeaendert());

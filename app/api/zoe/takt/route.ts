@@ -15,6 +15,7 @@ import { reihe } from '@/lib/zoe/auftraege';
 import { alleSichten } from '@/lib/business/speicher';
 import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
 import { gmailJobsImTakt } from '@/lib/gmail/takt';
+import { postfachJobsImTakt } from '@/lib/postfach/takt';
 import { localDay } from '@/lib/zeit';
 import { istDienst } from '@/lib/zugang/dienst';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
   await kalenderJobsImTakt().catch(() => {});
   // Gmail (03.10.): Abgleich je verbundener Person (alle 2 Min., mit Push alle 15) — nie blockierend, Fehler als eine Zeile `[gmail] …`.
   void gmailJobsImTakt().catch(() => {});
+  // Inbox 2 (06.10.): IMAP-Postfächer je Person (alle 2 Min., mit IDLE alle 15 + sofort bei neuer Post) — nie blockierend, `[postfach] …`.
+  void postfachJobsImTakt().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

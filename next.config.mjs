@@ -90,6 +90,8 @@ const nextConfig = {
       { source: '/dog', destination: '/os/familie', permanent: false },
       // 04.10. (Aufräumen): /os/okr lief neben „Ziele & Planung“ — ein Ort für Ziele. Der OKR-Agent bleibt (ZOE, /api/okr).
       { source: '/os/okr', destination: '/os/planung/jahr?space=business', permanent: false },
+      // 06.10. (Inbox 2): die volle alte Inbox (Fächer/Screener/Zero) ist in der einen Inbox aufgegangen.
+      { source: '/os/inbox/voll', destination: '/os/inbox', permanent: false },
     ];
   },
 };

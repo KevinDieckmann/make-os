@@ -290,6 +290,27 @@ export function verarbeitungEmailNachtragen(vorhanden: readonly Verarbeitung[], 
   return vorhanden.some(v => v.id === VV_EMAIL_GOOGLE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailGoogle(jetzt)];
 }
 
+// ── Verarbeitung „E-Mail (eigene Postfächer per IMAP/SMTP)“ — Inbox 2, 06.10.2026 ─────────────────────────────────────
+export const VV_EMAIL_IMAP_ID = 'vv-email-imap';
+export function verarbeitungEmailImap(jetzt: string): Verarbeitung {
+  return {
+    id: VV_EMAIL_IMAP_ID, name: 'E-Mail (eigene Postfächer über IMAP/SMTP)',
+    zweck: 'Die eigenen Postfächer der Personen (z. B. iCloud, IONOS) in EINER Inbox lesen, nach Bereich (Privat bzw. Gesellschaft) trennen, in Fächer sortieren (ohne KI), beantworten (nur auf Klick) und daraus — nur auf Klick — Aufgaben, Termine, Belege und Einträge im Verlauf der Kontaktakte machen',
+    personen: 'Absender und Empfänger der Mails (Interessenten, Kunden, Partner, Dienstleister, private Kontakte); die Konto-Personen selbst',
+    daten: 'Absender, Empfänger, Betreff, Datum, Ausschnitt, Textkörper (reiner Text), Anhang-Metadaten (Name, Typ, Größe), Ordner/UID, Message-ID-Bezüge; je Person und Postfach ein Spiegel der letzten 30 Tage beim Verbinden, danach laufend; Anhänge nur auf Klick frisch vom Anbieter (nie im Spiegel); Screener-Entscheidungen je Absender-Adresse; Zugangsdaten (App-/Postfach-Passwort) nur verschlüsselt auf dem Server',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (eigene Korrespondenz ordnen und beantworten); Geschäftspostfächer zusätzlich lit. b (Anbahnung/Vertrag); private Postfächer überwiegend persönlich (Art. 2 Abs. 2 lit. c); Antworten nur 1:1 auf Klick, Werbung nur mit Einwilligung (§ 7 UWG); Art. 18 und Werbesperre greifen',
+    empfaenger: 'der jeweilige Mail-Anbieter der Person (z. B. IONOS, Apple iCloud — Auftragsverarbeiter bzw. eigener Vertrag der Person); Hetzner (Hosting, Spiegel); Anthropic nur für den ZOE-Entwurf auf Klick (gekapselt, nie bei eingeschränkten Personen); jede Person sieht nur ihre eigenen Postfächer',
+    empfaengerIds: ['hetzner', 'ionos', 'apple-icloud-mail', 'anthropic'],
+    drittland: 'IONOS: keines (EU); Apple, Anthropic: USA (Data Privacy Framework bzw. Standardvertragsklauseln) — prüfen',
+    loeschfrist: 'Wahrheit ist das Postfach beim Anbieter (Löschung dort, Art. 17); Spiegel in MAKE OS 180 Tage (Löschfrist „Mail-Spiegel“, einstellbar) und höchstens 1.500 Nachrichten je Postfach; „Trennen“ löscht Spiegel, Zugang und Inbox-Zustand sofort; Mails einer Person fallen mit Art. 17 im Spiegel weg',
+    toms: 'nur TLS (IMAP 993, SMTP 465/587), Zertifikat geprüft, keine Ziele im eigenen Netz; Zugangsdaten verschlüsselt je Person, nie im Browser/Export/Protokoll; Bereichstrennung auf dem Server (Business sieht nie Privates, andere Konten sehen nie fremde Postfächer); HTML nie gerendert, Bilder nie geladen, Anhänge nur als Download; Senden nie über den Dienstweg; nach abgelehnter Anmeldung keine weiteren Versuche bis zum Erneuern; keine Mail-Inhalte in Logs',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+export function verarbeitungEmailImapNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_EMAIL_IMAP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailImap(jetzt)];
+}
+
 // ── Verarbeitungen „Gesellschafts-Register“ und „Kapazität“ (DSGVO-Prüfung 04.10.) — idempotent nachgetragen ──
 // Kevin 04.10.: „DSGVO und Datenschutz — alles verbessern, anpassen.“ Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
 
@@ -389,6 +410,7 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
   if (opt.google) { l = verarbeitungKalenderNachtragen(l, jetzt); l = verarbeitungEmailNachtragen(l, jetzt); }
   l = verarbeitungenPlattformNachtragen(l, jetzt);
+  l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);
   const geaendert = l.length !== vorhanden.length || l.some((v, i) => v !== vorhanden[i] && JSON.stringify(v) !== JSON.stringify(vorhanden[i]));
