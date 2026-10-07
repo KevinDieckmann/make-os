@@ -145,11 +145,11 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     if (!vorname && !nachname && !firma && !email && !(e.kanal === 'whatsapp' && telSchluessel(n.telefon))) return { ok: false, fehler: 'Wer hat angefragt? Name, Firma oder E-Mail.' };
     // Dublette über ALLE Adressen der Person (28.09., Ablaufprüfung i) — nicht nur die Haupt-Adresse.
     const doppelt = email ? ctx.kontakte.find(k => alleAdressen(k).includes(email)) : undefined;
-    // WhatsApp (07.10. abends): ohne Mail ist die NUMMER der Schlüssel (Telefon oder SMS/Mobil der Akte). Eine Akte → dort anhängen;
-    // mehrere → ablehnen (nie raten — im Gespräch „Zuordnen zu …“ wählen).
-    const tel = e.kanal === 'whatsapp' && !email ? telSchluessel(n.telefon) : '';
+    // WhatsApp (07.10. abends) und Telefon (Kevin 07.10.): die NUMMER ist ein zweiter Schlüssel (Telefon oder SMS/Mobil der Akte) —
+    // greift, wenn keine Akte mit gleicher Mail gefunden wurde. Eine Akte → dort anhängen; mehrere → ablehnen (nie raten).
+    const tel = (e.kanal === 'whatsapp' || e.kanal === 'telefon') && !doppelt ? telSchluessel(n.telefon) : '';
     const gleicheNummer = tel ? ctx.kontakte.filter(k => telSchluessel(k.telefon) === tel || telSchluessel(k.sms) === tel) : [];
-    if (gleicheNummer.length > 1) return { ok: false, fehler: 'Diese Nummer steht bei mehreren Personen in der Kartei — bitte im Gespräch „Zuordnen zu …“ die richtige wählen.' };
+    if (gleicheNummer.length > 1) return { ok: false, fehler: e.kanal === 'whatsapp' ? 'Diese Nummer steht bei mehreren Personen in der Kartei — bitte im Gespräch „Zuordnen zu …“ die richtige wählen.' : 'Diese Nummer steht bei mehreren Personen in der Kartei — bitte die Person oben auswählen statt neu anzulegen.' };
     if (doppelt) { basis = doppelt; hinweis = `${anzeigename(doppelt)} steht schon in der Kartei (gleiche Mail) — die Anfrage hängt jetzt dort.`; }
     else if (gleicheNummer.length === 1) { basis = gleicheNummer[0]; hinweis = `${anzeigename(gleicheNummer[0])} steht schon in der Kartei (gleiche Nummer) — die Anfrage hängt jetzt dort.`; }
     else {

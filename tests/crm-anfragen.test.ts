@@ -51,6 +51,17 @@ describe('Anfrage — neue Person', () => {
     expect(x.ok && !x.bau.neuePerson && x.bau.kontakt.id === 'c-alt' && !!x.bau.hinweis).toBe(true);
     if (x.ok) { expect(x.bau.kontakt.stufe).toBe('gespraech'); expect(x.bau.followUp.zustaendig).toBe('kevin'); }
   });
+  // Kevin 07.10.: Dubletten über die Telefonnummer auch beim Kanal „Telefon“ (nicht nur WhatsApp).
+  it('Telefon: gleiche Nummer = dieselbe Person (Hinweis); mehrere Akten mit der Nummer → klare Ablehnung; gleiche Mail hat Vorrang', () => {
+    const mitNr = k('alt', { email: 'anna@beispiel.de', stufe: 'gespraech', besitzer: 'kevin', telefon: '+49 151 12345678' });
+    const x = anfrageBauen({ neu: { nachname: 'Unbekannt', telefon: '0151 12345678' }, kanal: 'telefon', text: 'Rückruf' }, ctx([mitNr]));
+    expect(x.ok && !x.bau.neuePerson && x.bau.kontakt.id === 'c-alt' && /gleiche Nummer/.test(x.bau.hinweis ?? '')).toBe(true);
+    const zwei = [mitNr, { ...mitNr, id: 'c-zwei', email: 'zwei@beispiel.de' } as Kontakt];
+    const y = anfrageBauen({ neu: { nachname: 'Unbekannt', telefon: '+4915112345678' }, kanal: 'telefon', text: 'Rückruf' }, ctx(zwei));
+    expect(y.ok).toBe(false); if (!y.ok) expect(y.fehler).toMatch(/mehreren Personen/);
+    const z = anfrageBauen({ neu: { vorname: 'Zwei', email: 'zwei@beispiel.de', telefon: '+4915112345678' }, kanal: 'telefon', text: 'Rückruf' }, ctx(zwei));
+    expect(z.ok && z.bau.kontakt.id === 'c-zwei').toBe(true);
+  });
   it('ordnet eine bekannte Firma per Namen zu und stellt deren Lead auf kontaktiert', () => {
     const x = anfrageBauen({ neu: { nachname: 'Müller', firma: 'kunde gmbh' }, kanal: 'telefon', text: 'Rückruf erbeten' }, ctx([]));
     expect(x.ok).toBe(true);
