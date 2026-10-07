@@ -17,7 +17,7 @@
 - **WhatsApp Business** (Cloud API: Webhook mit Signatur, Senden 24-h-Fenster/Vorlagen, Registrieren mit Speicherort DE, `deploy/whatsapp-verbinden.sh`, VVT) — Merge 944b2108
 - **WhatsApp in der Inbox-Oberfläche** (Liste, Fenster-Uhr, Antworten/Vorlagen, Medien auf Klick, Kontakt per Nummer, Screener für Nummern, HOI-Befund, Business-Postfächer ohne Privat) — Merge nach d7db5b76
 - WhatsApp-Spiegel 7 Jahre (§ 257 HGB, Kevin 07.10.) — e008ebfc
-- Offene Fragen an Kevin (WhatsApp-UI): unbekannte Nummern → „Neue Absender“ oder direkt „Antworten“? · Einwilligungs-Kanal „WhatsApp“? · Nummern-Dubletten auch beim Kanal „Telefon“?
+- Kevin 07.10.: unbekannte WhatsApp-Nummern direkt in „Antworten“ (4035022e) · Einwilligungs-Kanal „WhatsApp“, Werbe-Vorlagen nur damit (062d7811) · Nummern-Dubletten auch bei „Telefon“ (8a571a9c)
 - Bewusst NICHT: nächtliche ICS-Sicherung der persönlichen iCloud-Konten (Apple hält die Daten; MAKE OS schreibt dort nur Blöcke; „Trennen löscht alles“ bleibt wahr)
 
 ## In Arbeit (07.10. nachmittags)
