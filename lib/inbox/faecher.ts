@@ -68,6 +68,11 @@ export interface FachEingabe {
   absender?: 'zugelassen' | 'geblockt';
   /** Wurde die Adresse je von uns angeschrieben (irgendein Postfach der Person)? */
   angeschrieben: boolean;
+  /**
+   * Kevin 07.10.: Quellen, über die Anfragen ausdrücklich kommen sollen (WhatsApp-Business-Nummer), überspringen den Screener —
+   * eine unbekannte Nummer landet direkt in „Antworten“ (das 24-h-Fenster läuft ab der ersten Nachricht). Blocken bleibt möglich.
+   */
+  ohneScreener?: boolean;
   heute: string;
 }
 
@@ -99,7 +104,7 @@ export function fachVon(e: FachEingabe): FachErgebnis {
     return { fach: 'warten', massgeblich: i, wartetTage: t, ...(t >= NACHFASSEN_TAGE ? { nachfassen: true } : {}), ...(t > WARTEN_MAX_TAGE ? { verjaehrt: true } : {}) };
   }
   if (!e.zugeordnet && eingehend.length && eingehend.every(istRundschreiben)) return { fach: 'info', massgeblich: i };
-  if (!e.zugeordnet && e.absender !== 'zugelassen' && !e.angeschrieben && !n.some(x => x.vonUns)) return { fach: 'neu', massgeblich: i };
+  if (!e.ohneScreener && !e.zugeordnet && e.absender !== 'zugelassen' && !e.angeschrieben && !n.some(x => x.vonUns)) return { fach: 'neu', massgeblich: i };
   if (istTermin(m)) return { fach: 'termine', massgeblich: i };
   if (istGeld(m)) return { fach: 'geld', massgeblich: i };
   return { fach: 'antworten', massgeblich: i };

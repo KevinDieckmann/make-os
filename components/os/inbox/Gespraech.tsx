@@ -231,6 +231,8 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           <Knopf leise onClick={() => setSpaeterAuf(x => !x)}>Später ▾</Knopf>
           <Knopf leise onClick={() => void tu(g.ungelesen ? 'gelesen' : 'ungelesen')}>{g.ungelesen ? 'Gelesen' : 'Ungelesen'}</Knopf>
           {!z && g.fach !== 'info' && kandidaten.length < 2 && <Knopf leise onClick={() => void kontaktAnlegen()}>Kontakt anlegen</Knopf>}
+          {/* Kevin 07.10.: unbekannte WhatsApp-Nummern kommen direkt in „Antworten“ — Blocken bleibt hier möglich (mit Rückgängig). */}
+          {wa && !z && <Knopf leise onClick={() => void tu('blocken', {}, 'offen').then(ok => { if (ok && onZurueck) onZurueck(); })}>Nummer blocken</Knopf>}
           {!(a.vorschlaege.some(v => v.art === 'aufgabe')) && <Knopf leise onClick={() => aufgabe()}>Aufgabe</Knopf>}
           {!(a.vorschlaege.some(v => v.art === 'termin')) && <Knopf leise onClick={() => setTermin(t => !t)}>Termin</Knopf>}
         </div>

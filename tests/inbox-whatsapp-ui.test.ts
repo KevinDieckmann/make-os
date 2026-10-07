@@ -104,12 +104,13 @@ beforeEach(async () => {
 const waGespraech = async (person = 'kevin', q = '') => (await GET(inbox, `/api/inbox${q}`, person)).d.gespraeche.find((g: { id: string }) => g.id === GID());
 
 describe('Screener auch für Telefonnummern (früher 400)', () => {
-  it('unbekannte Nummer → „Neue Absender“ (Lagebild zählt sie); Zulassen → Antworten; Blocken → aus der Arbeit; „offen“ → zurück — je Person', async () => {
+  // Kevin 07.10. (Klickrunde): unbekannte Nummern direkt in „Antworten“; Zulassen/Blocken bleiben (Blocken im Gespräch: „Nummer blocken“).
+  it('unbekannte Nummer → direkt „Antworten“ (Lagebild zählt sie); Zulassen merkt die Entscheidung; Blocken → aus der Arbeit; „offen“ → zurück — je Person', async () => {
     expect((await post(koerper(text('wamid.S1000001', 'Hallo, ich hätte eine Frage zu Ihrem Angebot.')))).status).toBe(200);
     const a = await GET(inbox, '/api/inbox');
     const g = a.d.gespraeche.find((x: { id: string }) => x.id === GID());
-    expect(g).toMatchObject({ quelle: 'whatsapp', fach: 'neu', absender: `+${KUNDE}`, inArbeit: true, bereich: 'ug', whatsapp: { nummer: KUNDE, profilname: 'Erika Beispiel', fenster: { offen: true } } });
-    expect(a.d.lage).toEqual([expect.objectContaining({ bereich: 'ug', neu: 1, antworten: 0 })]);
+    expect(g).toMatchObject({ quelle: 'whatsapp', fach: 'antworten', absender: `+${KUNDE}`, inArbeit: true, bereich: 'ug', whatsapp: { nummer: KUNDE, profilname: 'Erika Beispiel', fenster: { offen: true } } });
+    expect(a.d.lage).toEqual([expect.objectContaining({ bereich: 'ug', neu: 0, antworten: 1 })]);
 
     const z = await POST(inbox, '/api/inbox', { aktion: 'zulassen', id: GID() });
     expect(z.status).toBe(200); expect(z.d.text).toMatch(/WhatsApp von dieser Nummer/);
@@ -118,13 +119,13 @@ describe('Screener auch für Telefonnummern (früher 400)', () => {
     expect(b.d.gespraeche.find((x: { id: string }) => x.id === GID()).fach).toBe('antworten');
     expect(b.d.lage[0]).toMatchObject({ antworten: 1, neu: 0 });
     // Malin hat nicht entschieden — die Entscheidung gilt je Person.
-    expect((await waGespraech('malin')).fach).toBe('neu');
+    expect((await waGespraech('malin')).fach).toBe('antworten');
 
     expect((await POST(inbox, '/api/inbox', { aktion: 'blocken', id: GID() })).d.text).toMatch(/erscheint nicht mehr/);
     expect(await waGespraech()).toMatchObject({ fach: 'geblockt', inArbeit: false });
     expect((await GET(inbox, '/api/inbox')).d.lage).toEqual([]);
     expect((await POST(inbox, '/api/inbox', { aktion: 'offen', id: GID() })).status).toBe(200);
-    expect((await waGespraech()).fach).toBe('neu');
+    expect((await waGespraech()).fach).toBe('antworten');
   });
   it('Absender-Liste in „Postfächer“: Nummer zulassen/blocken/vergessen; ungültiges → 400', async () => {
     await post(koerper(text('wamid.S2000001', 'Hallo')));

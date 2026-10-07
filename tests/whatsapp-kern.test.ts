@@ -210,10 +210,11 @@ describe('Gespräche im Strom der Inbox', () => {
     expect(w).toMatchObject({ fach: 'warten', nachfassen: true });
     expect(w.whatsapp!.fenster.offen).toBe(false);
   });
-  it('Screener (07.10. abends): unbekannte Nummer → „Neue Absender“; zugeordnet/zugelassen → Antworten; geblockt → aus der Arbeit; von uns angeschrieben nie neu', () => {
+  // Kevin 07.10. (Klickrunde): unbekannte Nummern der Business-Nummer direkt in „Antworten“ (24-h-Fenster läuft) — Blocken bleibt.
+  it('Screener: unbekannte Nummer → direkt „Antworten“ (nie „Neue Absender“); zugeordnet/zugelassen → Antworten; geblockt → aus der Arbeit; von uns angeschrieben → warten', () => {
     const bau = (o: Partial<Parameters<typeof waGespraecheBauen>[0]> = {}) => waGespraecheBauen({ spiegel: spiegel(), postfachId: PF, bereich: 'ug', eigene: '', zuordnung: {}, zustand: {}, heute: '2026-10-07', jetzt: T0, ...o });
     const erika = (g: ReturnType<typeof bau>) => g.find(x => x.whatsapp?.nummer === KUNDE)!;
-    expect(erika(bau())).toMatchObject({ fach: 'neu', absender: `+${KUNDE}`, inArbeit: true });
+    expect(erika(bau())).toMatchObject({ fach: 'antworten', absender: `+${KUNDE}`, inArbeit: true });
     expect(erika(bau({ zuordnung: { [KUNDE]: { kontaktId: 'c-erika', name: 'Erika Beispiel' } } })).fach).toBe('antworten');
     expect(erika(bau({ absender: { [`+${KUNDE}`]: { status: 'zugelassen' } } })).fach).toBe('antworten');
     expect(erika(bau({ absender: { [`+${KUNDE}`]: { status: 'geblockt' } } }))).toMatchObject({ fach: 'geblockt', inArbeit: false });

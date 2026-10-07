@@ -92,7 +92,7 @@ export function waGespraecheBauen(e: WaStromEingabe): Gespraech[] {
     const fachN: FachNachricht[] = n.map((x, i) => ({ am: x.am, von: koepfe[i].von, betreff: koepfe[i].ausschnitt.slice(0, 200), ausschnitt: koepfe[i].ausschnitt, labels: koepfe[i].labels, anhaenge: koepfe[i].anhaenge, vonUns: x.richtung === 'aus' }));
     const z = e.zuordnung[nummer];
     // Screener wie bei Mail: unbekannte Nummer (keine Akte, nie zugelassen, nie von uns angeschrieben) → „Neue Absender“.
-    const f = fachVon({ nachrichten: fachN, zugeordnet: !!z && !z.sperre, absender: e.absender?.[nummerAnzeige(nummer)]?.status, angeschrieben: false, heute: e.heute });
+    const f = fachVon({ nachrichten: fachN, zugeordnet: !!z && !z.sperre, absender: e.absender?.[nummerAnzeige(nummer)]?.status, angeschrieben: false, ohneScreener: true, heute: e.heute });
     const massgeblich = n[f.massgeblich] ?? n[n.length - 1];
     const juengste = n[n.length - 1];
     const st = e.zustand[id] ?? {};
