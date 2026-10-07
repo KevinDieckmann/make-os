@@ -18,7 +18,7 @@
 // Die Liste offener Anfragen liest die Aktivitäten der letzten 30 Tage und hängt
 // das Follow-up derselben Person daran: offen, solange es offen ist.
 
-import { STUFEN, wendeAktivitaetAn, anzeigename, type Kontakt, type Einwilligung, type AktivitaetArt } from '@/lib/make-one/crm';
+import { STUFEN, wendeAktivitaetAn, anzeigename, normTelefon, type Kontakt, type Einwilligung, type AktivitaetArt } from '@/lib/make-one/crm';
 import type { Beitrag, CrmBestand, FollowUp, FollowUpArt, Kampagne, Lead } from './typen';
 import { neuesFollowUp, tagPlus } from './followup';
 import { leadSaeubern } from './lead-form';
@@ -29,7 +29,7 @@ import { OFFENE_STUFEN } from './pipeline';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { alleAdressen } from './emails';
 
-export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event';
+export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event' | 'whatsapp';
 export type AnfrageBezugArt = 'beitrag' | 'kampagne' | 'event';
 export interface AnfrageKanalInfo {
   id: AnfrageKanal; label: string;
@@ -45,6 +45,10 @@ export const ANFRAGE_KANAELE: AnfrageKanalInfo[] = [
   { id: 'telefon', label: 'Telefon', followUp: 'anruf', einwilligung: 'telefon' },
   { id: 'empfehlung', label: 'Empfehlung', followUp: 'anruf' },
   { id: 'event', label: 'Event', followUp: 'nachricht' },
+  // WhatsApp (07.10. abends): „Kontakt anlegen“ aus einem WhatsApp-Gespräch der Inbox — Person mit Telefonnummer statt Mail. Keine
+  // Einwilligung „Antwort auf Anfrage“: einen eigenen Einwilligungs-Kanal WhatsApp gibt es (noch) nicht, und Antworten regelt das
+  // 24-h-Fenster der Business-Nummer (danach nur genehmigte Vorlagen, Werbe-Vorlagen nie bei Werbesperre). Dublette über die Nummer.
+  { id: 'whatsapp', label: 'WhatsApp', followUp: 'nachricht' },
 ];
 export const kanalInfo = (id: string): AnfrageKanalInfo | undefined => ANFRAGE_KANAELE.find(k => k.id === id);
 export const ANFRAGE_TAGE = 30;
@@ -93,6 +97,8 @@ const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
 const txt = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
 const mailNorm = (v: unknown) => { const m = txt(v, GRENZEN.email).toLowerCase(); return m.includes('@') ? m : ''; };
+/** Telefonnummer als Vergleichsschlüssel (Ziffern international, wie die wa_id von WhatsApp) — leer, wenn zu kurz. */
+const telSchluessel = (v: unknown) => normTelefon(String(v ?? '')).replace(/^\+/, '');
 /** Vor der Anfrage „neu“, „ansprechen“ oder abgelegt (verloren/ruht) — jetzt angesprochen. Wer weiter ist, bleibt, wo er ist. */
 export function stufeNachAnfrage(stufe: Kontakt['stufe']): Kontakt['stufe'] {
   return STUFEN.indexOf(stufe) < STUFEN.indexOf('angesprochen') || stufe === 'verloren' || stufe === 'ruht' ? 'angesprochen' : stufe;
@@ -136,10 +142,16 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   if (!basis) {
     const n = e.neu ?? {};
     const vorname = txt(n.vorname, GRENZEN.name), nachname = txt(n.nachname, GRENZEN.name), firma = txt(n.firma, GRENZEN.firma), email = mailNorm(n.email);
-    if (!vorname && !nachname && !firma && !email) return { ok: false, fehler: 'Wer hat angefragt? Name, Firma oder E-Mail.' };
+    if (!vorname && !nachname && !firma && !email && !(e.kanal === 'whatsapp' && telSchluessel(n.telefon))) return { ok: false, fehler: 'Wer hat angefragt? Name, Firma oder E-Mail.' };
     // Dublette über ALLE Adressen der Person (28.09., Ablaufprüfung i) — nicht nur die Haupt-Adresse.
     const doppelt = email ? ctx.kontakte.find(k => alleAdressen(k).includes(email)) : undefined;
+    // WhatsApp (07.10. abends): ohne Mail ist die NUMMER der Schlüssel (Telefon oder SMS/Mobil der Akte). Eine Akte → dort anhängen;
+    // mehrere → ablehnen (nie raten — im Gespräch „Zuordnen zu …“ wählen).
+    const tel = e.kanal === 'whatsapp' && !email ? telSchluessel(n.telefon) : '';
+    const gleicheNummer = tel ? ctx.kontakte.filter(k => telSchluessel(k.telefon) === tel || telSchluessel(k.sms) === tel) : [];
+    if (gleicheNummer.length > 1) return { ok: false, fehler: 'Diese Nummer steht bei mehreren Personen in der Kartei — bitte im Gespräch „Zuordnen zu …“ die richtige wählen.' };
     if (doppelt) { basis = doppelt; hinweis = `${anzeigename(doppelt)} steht schon in der Kartei (gleiche Mail) — die Anfrage hängt jetzt dort.`; }
+    else if (gleicheNummer.length === 1) { basis = gleicheNummer[0]; hinweis = `${anzeigename(gleicheNummer[0])} steht schon in der Kartei (gleiche Nummer) — die Anfrage hängt jetzt dort.`; }
     else {
       const f = firmaNachName(ctx.crm.firmen, firma);
       neuePerson = true;

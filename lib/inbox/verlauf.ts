@@ -3,7 +3,8 @@
 // Die Inbox ZEIGT „gehört zu …“, sobald eine Adresse in der Kartei steht. In den Verlauf der Akte kommt ein Gespräch erst, wenn die
 // Person „Zuordnen“ klickt (`inbox-zustand--<person>.gespraeche[id].zuordnung`) — danach auch jede neue Nachricht dieses Gesprächs
 // (die Entscheidung gilt für das Gespräch). Gilt für ALLE Quellen; Gmail schrieb bis 06.10. automatisch (UPDATES.md).
-// Je Nachricht EINE Zeile (Betreff + Link, nie der Text), eingehend „Antwort erhalten“ (`antwort`), gesendet „E-Mail“ (`mail`).
+// Je Nachricht EINE Zeile (Betreff + Link, nie der Text), eingehend „Antwort erhalten“ (`antwort`), gesendet „E-Mail“ (`mail`) bzw.
+// bei WhatsApp „WhatsApp-Nachricht“ (`whatsapp`, seit 07.10. abends — vorher stand eine gesendete WhatsApp fälschlich als E-Mail da).
 // Nie für eingeschränkte Personen/Werbesperre (`ausgenommen`), nie für Sammeladressen. Idempotent über den Bezug je Nachricht.
 
 import type { Aktivitaet, Kontakt } from '@/lib/make-one/crm';
@@ -50,13 +51,13 @@ export function gespraechSignale(person: string, id: string, koepfe: readonly St
   for (const k of koepfe) {
     const vonMir = k.labels.includes('SENT') || k.ordner === 'g' || eigene.includes(k.von.email);
     const gmail = id.startsWith('gm~');
-    // WhatsApp (07.10.): eigener Bezug je Nachricht (WAMID), Text ohne Inhalt — „WhatsApp gesendet/erhalten“ (art wie bei Mail:
-    // gesendet = `mail` (angesprochen), eingehend = `antwort` (Wärme-Signal); eine eigene Aktivitäts-Art gibt es (noch) nicht).
+    // WhatsApp (07.10.): eigener Bezug je Nachricht (WAMID), Text ohne Inhalt — gesendet = eigene Art `whatsapp` (Ansprache wie
+    // LinkedIn, „E-Mails & Nachrichten“), eingehend = `antwort` (kanal-neutrales Wärme-Signal, Text „WhatsApp erhalten“).
     const wa = id.startsWith('wa~');
     const bezug = gmail ? gmailBezug(k.id) : bezugMail(`${wa ? 'wa' : 'imap'}-${k.id}`);
     const link = gmail ? mailLinkFuer(k.id) : gespraechPfad(id);
     const a: Aktivitaet = vonMir
-      ? { am: k.am, art: 'mail', text: wa ? 'WhatsApp gesendet' : `E-Mail gesendet · Betreff: ${betreffZeile(k.betreff)}`, von: person, bezug, mailLink: link }
+      ? { am: k.am, art: wa ? 'whatsapp' : 'mail', text: wa ? 'WhatsApp gesendet' : `E-Mail gesendet · Betreff: ${betreffZeile(k.betreff)}`, von: person, bezug, mailLink: link }
       : { am: k.am, art: 'antwort', text: wa ? 'WhatsApp erhalten' : `Betreff: ${betreffZeile(k.betreff)}`, von: 'system', bezug, mailLink: link };
     // Automatische Antworten (Abwesenheit) sind kein Wärme-Signal.
     if (!vonMir && k.automatisch) continue;

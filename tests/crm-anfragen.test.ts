@@ -114,7 +114,7 @@ describe('Anfrage — vorhandene Person und Bezüge', () => {
     expect(leadNachAnfrage({ status: 'neu', kriterien: { schmerz: 'ja', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' }, notiz: 'alt' }, 'neu', JETZT, 'kevin')).toMatchObject({ status: 'kontaktiert', notiz: 'alt\nneu', kriterien: { schmerz: 'ja' } });
     expect(leadNachAnfrage({ status: 'sql', kriterien: { schmerz: 'ja', entscheider: 'ja', budget: 'ja', zeitpunkt: 'ja', wirkung: 'ja', alternative: 'ja' } }, 'n', JETZT, 'kevin')).toBeUndefined();
     expect(anfrageText('linkedin', 'Hallo')).toBe('Anfrage über LinkedIn: Hallo');
-    expect(ANFRAGE_KANAELE.map(x => x.id)).toEqual(['website', 'mail', 'linkedin', 'telefon', 'empfehlung', 'event']);
+    expect(ANFRAGE_KANAELE.map(x => x.id)).toEqual(['website', 'mail', 'linkedin', 'telefon', 'empfehlung', 'event', 'whatsapp']);
   });
 });
 

@@ -53,7 +53,7 @@ function vor(d: string, heute: string): string {
 }
 const kurz = (t: string | undefined, n: number) => { const x = (t ?? '').replace(/\s+/g, ' ').trim(); return x.length > n ? `${x.slice(0, n - 1)}…` : x; };
 
-const GESPRAECH_ART: Partial<Record<Aktivitaet['art'], string>> = { gespraech: 'Gespräch', termin: 'Meeting', anruf: 'Anruf', mail: 'Mail', linkedin: 'LinkedIn', event: 'Event', notiz: 'Notiz' };
+const GESPRAECH_ART: Partial<Record<Aktivitaet['art'], string>> = { gespraech: 'Gespräch', termin: 'Meeting', anruf: 'Anruf', mail: 'Mail', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', event: 'Event', notiz: 'Notiz' };
 function gespraechArt(a: Aktivitaet): string {
   if (a.art === 'anruf' && a.ergebnis === 'termin') return 'Anruf, Termin vereinbart';
   if (a.art === 'anruf') return 'Anruf';

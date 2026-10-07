@@ -42,8 +42,13 @@ export const STUFE_LABEL: Record<Stufe, string> = {
 /** Stufen, in denen ein Kontakt für die Tagesliste nicht mehr in Frage kommt. */
 export const ABGESCHLOSSEN: readonly Stufe[] = ['gewonnen', 'verloren', 'ruht'];
 
-export type AktivitaetArt = 'mail' | 'linkedin' | 'anruf' | 'antwort' | 'termin' | 'notiz' | 'stufe' | 'gespraech' | 'event' | 'system' | 'uebergabe';
-export const AKTIVITAET_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe', 'gespraech', 'event', 'system', 'uebergabe'];
+/**
+ * `whatsapp` (07.10. abends): eine GESENDETE WhatsApp-Nachricht über die Business-Nummer — wie `linkedin` eine Nachricht auf einem eigenen
+ * Kanal (Ansprache, Kategorie „E-Mails & Nachrichten“). Eingehende WhatsApp bleiben `antwort` (kanal-neutral „Antwort erhalten“, Text
+ * „WhatsApp erhalten“) — wie bei LinkedIn. Der alte Stand kennt die Art nicht (Rückweg: UPDATES.md 07.10.).
+ */
+export type AktivitaetArt = 'mail' | 'linkedin' | 'anruf' | 'antwort' | 'termin' | 'notiz' | 'stufe' | 'gespraech' | 'event' | 'system' | 'uebergabe' | 'whatsapp';
+export const AKTIVITAET_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe', 'gespraech', 'event', 'system', 'uebergabe', 'whatsapp'];
 
 /** Ergebnis eines Anrufs oder Gesprächsversuchs (Power Hour). */
 export type Ergebnis = 'gespraech' | 'termin' | 'mailbox' | 'nicht_erreicht' | 'rueckruf' | 'kein_bedarf' | 'sperre';
@@ -898,7 +903,7 @@ export function tagesliste(kontakte: Kontakt[], heute: string, n = 10): Tagespos
  * es. Nach einer Antwort oder einem Termin entscheidet Kevin selbst.
  */
 export function wiedervorlageNach(art: AktivitaetArt, heute: string, tagePlus: (d: string, n: number) => string): string | undefined {
-  if (art === 'mail' || art === 'linkedin') return tagePlus(heute, 5);
+  if (art === 'mail' || art === 'linkedin' || art === 'whatsapp') return tagePlus(heute, 5);
   if (art === 'anruf') return tagePlus(heute, 3);
   return undefined;
 }
@@ -907,7 +912,7 @@ export function wiedervorlageNach(art: AktivitaetArt, heute: string, tagePlus: (
 export function stufeNach(art: AktivitaetArt, aktuell: Stufe): Stufe {
   const rang = (st: Stufe) => STUFEN.indexOf(st);
   let ziel: Stufe = aktuell;
-  if (art === 'mail' || art === 'linkedin' || art === 'anruf') ziel = 'angesprochen';
+  if (art === 'mail' || art === 'linkedin' || art === 'whatsapp' || art === 'anruf') ziel = 'angesprochen';
   if (art === 'antwort') ziel = 'gespraech';
   if (art === 'termin') ziel = 'termin';
   return rang(ziel) > rang(aktuell) && !ABGESCHLOSSEN.includes(aktuell) ? ziel : aktuell;

@@ -12,15 +12,15 @@ import type { Adr, Zuordnung } from '@/lib/gmail/typen';
 import { bereichVon } from '@/lib/einheiten';
 import { gespraechPfad } from './strom';
 
-/** Was die Bausteine von einem Gespräch brauchen. */
-export interface GespraechKurz { id: string; betreff: string; gegenueber: Adr; zuordnung?: Zuordnung | null; bereich: string | null }
+/** Was die Bausteine von einem Gespräch brauchen. `whatsapp`: Nummer der Gegenseite (wa_id) — dann ist `gegenueber.email` die Nummer. */
+export interface GespraechKurz { id: string; betreff: string; gegenueber: Adr; zuordnung?: Zuordnung | null; bereich: string | null; whatsapp?: { nummer: string; profilname?: string } }
 
 /** `Re:`/`AW:`/`Fwd:` vorne weg, eine Zeile. */
 export const betreffOhneRe = (b: string): string => b.replace(/\s+/g, ' ').trim().replace(/^((re|aw|antw|wg|fwd?)\s*:\s*)+/i, '').trim();
 
 const absender = (a: Adr): string => `${a.name ? `${a.name} ` : ''}<${a.email}>`;
 const kurz = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
-const herkunft = (g: GespraechKurz) => `Aus der Inbox · ${absender(g.gegenueber)}`;
+const herkunft = (g: GespraechKurz) => (g.whatsapp ? `Aus WhatsApp · ${g.gegenueber.name ? `${g.gegenueber.name} ` : ''}${g.gegenueber.email}` : `Aus der Inbox · ${absender(g.gegenueber)}`);
 /** Privat- oder Business-Bereich des Postfachs (ohne Bereich: Business, wie bisher bei Gmail). */
 export const spaceVon = (g: Pick<GespraechKurz, 'bereich'>): 'privat' | 'business' => (g.bereich ? bereichVon(g.bereich) : 'business');
 const bezugVon = (z: Zuordnung | null | undefined) => (z ? { kontaktId: z.kontaktId, ...(z.firmaId ? { firmaId: z.firmaId } : {}), ...(z.dealId ? { dealId: z.dealId } : {}) } : undefined);
@@ -38,22 +38,22 @@ export interface AufgabeAusGespraech {
 export function aufgabeAusGespraech(g: GespraechKurz, faellig?: string): AufgabeAusGespraech {
   const b = bezugVon(g.zuordnung);
   return {
-    title: kurz(betreffOhneRe(g.betreff) || `Mail von ${g.gegenueber.name ?? g.gegenueber.email}`, 300), priority: 'medium', space: spaceVon(g),
+    title: kurz(betreffOhneRe(g.betreff) || `${g.whatsapp ? 'WhatsApp' : 'Mail'} von ${g.gegenueber.name ?? g.gegenueber.email}`, 300), priority: 'medium', space: spaceVon(g),
     description: kurz(`${herkunft(g)}\n${gespraechPfad(g.id)}`, 4000),
     ...(faellig && /^\d{4}-\d{2}-\d{2}$/.test(faellig) ? { dueDate: faellig } : {}),
     ...(b ? { bezug: b } : {}),
   };
 }
 
-export interface FollowUpAusGespraech { aktion: 'anlegen'; bezug: { art: 'kontakt'; id: string }; kontaktId: string; art: 'mail'; text: string; faellig: string; notiz: string }
+export interface FollowUpAusGespraech { aktion: 'anlegen'; bezug: { art: 'kontakt'; id: string }; kontaktId: string; art: 'mail' | 'nachricht'; text: string; faellig: string; notiz: string }
 
 /** Follow-up (nur mit zugeordneter Person — ein Follow-up hängt immer an jemandem). */
 export function followUpAusGespraech(g: GespraechKurz, faellig: string, text?: string): FollowUpAusGespraech | null {
   const z = g.zuordnung;
   if (!z) return null;
   return {
-    aktion: 'anlegen', bezug: { art: 'kontakt', id: z.kontaktId }, kontaktId: z.kontaktId, art: 'mail',
-    text: kurz(text ?? `Mail beantworten: ${betreffOhneRe(g.betreff) || '(kein Betreff)'}`, 300), faellig,
+    aktion: 'anlegen', bezug: { art: 'kontakt', id: z.kontaktId }, kontaktId: z.kontaktId, art: g.whatsapp ? 'nachricht' : 'mail',
+    text: kurz(text ?? `${g.whatsapp ? 'WhatsApp' : 'Mail'} beantworten: ${betreffOhneRe(g.betreff) || '(kein Betreff)'}`, 300), faellig,
     notiz: kurz(`${herkunft(g)}\n${gespraechPfad(g.id)}`, 1000),
   };
 }
@@ -77,9 +77,19 @@ export function nameTeilen(name?: string): { vorname: string; nachname: string }
   return teile.length === 1 ? { vorname: '', nachname: teile[0] } : { vorname: teile.slice(0, -1).join(' '), nachname: teile[teile.length - 1] };
 }
 
-/** Eingabe für `/api/crm/anfrage` (Kanal Mail): zählt als Marketing-Lead („Anfrage über …“). Nur Betreff + Kurzfassung. */
+/**
+ * Eingabe für `/api/crm/anfrage` (Kanal Mail): zählt als Marketing-Lead („Anfrage über …“). Nur Betreff + Kurzfassung.
+ * WhatsApp (07.10. abends): Kanal „whatsapp“, die Person mit TELEFONNUMMER statt Mail-Adresse (Name aus dem Profilnamen, den die Person
+ * selbst gewählt hat) — der Server hängt die Anfrage an eine vorhandene Akte mit derselben Nummer bzw. lehnt mehrdeutige Nummern ab.
+ */
 export function kontaktAusGespraech(g: GespraechKurz, text: string, heute: string): AnfrageEingabe {
   const auszug = text.replace(/\s+/g, ' ').trim();
+  if (g.whatsapp) {
+    return {
+      kanal: 'whatsapp', neu: { ...nameTeilen(g.whatsapp.profilname ?? g.gegenueber.name), telefon: `+${g.whatsapp.nummer}` },
+      text: kurz(auszug || betreffOhneRe(g.betreff) || 'Nachricht über WhatsApp', 600), datum: heute,
+    };
+  }
   return {
     kanal: 'mail', neu: { ...nameTeilen(g.gegenueber.name), email: g.gegenueber.email },
     text: kurz(`${betreffOhneRe(g.betreff) || '(kein Betreff)'}${auszug ? ` — ${auszug}` : ''}`, 600), datum: heute,
