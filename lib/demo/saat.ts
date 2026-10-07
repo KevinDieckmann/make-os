@@ -68,6 +68,7 @@ const R = {
   ziele: () => import('@/app/api/state/ziele/route') as Promise<Modul>,
   meilensteine: () => import('@/app/api/state/meilensteine/route') as Promise<Modul>,
   aufgabe: () => import('@/app/api/tasks/create/route') as Promise<Modul>,
+  aufgaben: () => import('@/app/api/state/tasks/route') as Promise<Modul>,
   routinen: () => import('@/app/api/state/routinen/route') as Promise<Modul>,
   kapazitaet: () => import('@/app/api/kapazitaet/route') as Promise<Modul>,
   zeit: () => import('@/app/api/state/zeit/route') as Promise<Modul>,
@@ -241,6 +242,40 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     await rufe(R.aufgabe(), 'POST', '/api/tasks/create', person, { ...rest, description: 'Beispiel-Aufgabe (Demo).' });
   }
   schritt('Aufgaben', aufgaben.length);
+
+  // 7b) Seil (07.10., LICHTFAEDEN.md › Seil): Stränge, die auf die Ziele einzahlen — ein Unterziel, Meilensteine mit Kette und
+  //     Erledigtem, Projekte mit „zahlt ein auf …“, Karten mit „wartet auf …“ (eine Blockade) und Erledigtes fürs Momentum.
+  //     Über dieselben Schreibwege (Bereich, Kreis und Ziel werden dort geprüft).
+  await rufe(R.ziele(), 'PATCH', '/api/state/ziele', LENA, { horizont: 'quartal', ops: [upsert({ id: 'z-demo-piloten', titel: 'Zwei Pilotkunden live', fortschritt: 50, space: 'business', einheit: opsLabel, termin: tagPlus(heute, 60), oberzielId: 'z-demo-produkt' })] });
+  const msSeil = [
+    { id: 'ms-demo-referenz', titel: 'Referenzfall veröffentlicht', zielId: 'z-demo-umsatz', faellig: tagPlus(heute, -10), erledigt: true, erledigtAm: tagPlus(heute, -12), fortschritt: 100 },
+    { id: 'ms-demo-handbuch', titel: 'Handbuch Cockpit 2.0', zielId: 'z-demo-produkt', faellig: tagPlus(heute, 40), erledigt: false, fortschritt: 0, wartetAuf: ['ms-demo-cockpit'] },
+    { id: 'ms-demo-einarbeitung', titel: 'Einarbeitung neue Beratung', zielId: 'z-demo-team', faellig: tagPlus(heute, 95), erledigt: false, fortschritt: 0, wartetAuf: ['ms-demo-recruiting'] },
+  ].map((m, i) => ({ ...m, space: 'business', rang: 20 + i }));
+  await rufe(R.meilensteine(), 'PATCH', '/api/state/meilensteine', LENA, { ops: msSeil.map(upsert) });
+  const projektSeil = (id: string, title: string, spaceId: string, zielId: string, start: number, ende: number, color: string) => ({ id, title, spaceId, category: spaceId === 'privat' ? 'joint' : 'business', owner: 'both', color, tags: [], archived: false, zielId, start: tagPlus(heute, start), ende: tagPlus(heute, ende) });
+  const karte = (id: string, title: string, projectId: string, spaceId: string, faellig: number, extra: Record<string, unknown> = {}) => ({ id, title, projectId, spaceId, status: 'todo', priority: 'medium', assignee: LENA, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: tagPlus(heute, faellig), description: 'Beispiel-Aufgabe (Demo).', ...extra });
+  const karten = [
+    karte('t-demo-case', 'Case Study schreiben', 'p-demo-vertrieb', 'ug', -8, { status: 'done' }),
+    karte('t-demo-serie', 'LinkedIn-Serie planen', 'p-demo-vertrieb', 'ug', 5, { assignee: JONAS }),
+    karte('t-demo-webinar', 'Webinar vorbereiten', 'p-demo-vertrieb', 'ug', 16, { abhaengigVon: ['t-demo-serie'] }),
+    karte('t-demo-live', 'Webinar durchführen', 'p-demo-vertrieb', 'ug', 24, { abhaengigVon: ['t-demo-webinar'], priority: 'high' }),
+    karte('t-demo-teamtag', 'Teamtag organisieren', 'p-demo-team', 'ug', 30, { assignee: JONAS }),
+    karte('t-demo-werte', 'Werte-Workshop', 'p-demo-team', 'ug', 12, { status: 'done' }),
+    karte('t-demo-preise', 'Preisliste aktualisieren', 'sonstige-ug', 'ug', 7, { zielId: 'z-demo-umsatz' }),
+    karte('t-demo-reise', 'Reiseziel auswählen', 'p-demo-urlaub', 'privat', -3, { status: 'done' }),
+    karte('t-demo-unterkunft', 'Unterkunft buchen', 'p-demo-urlaub', 'privat', 21, { abhaengigVon: ['t-demo-reise'] }),
+    karte('t-demo-vertretung', 'Vertretung im Büro klären', 'p-demo-urlaub', 'privat', 35),
+  ];
+  await rufe(R.aufgaben(), 'PATCH', '/api/state/tasks', LENA, {
+    struktur: { projekte: [
+      projektSeil('p-demo-vertrieb', 'Vertrieb & Sichtbarkeit', 'ug', 'z-demo-umsatz', -20, 45, '#E0A84E'),
+      projektSeil('p-demo-team', 'Team & Kultur', 'ug', 'z-demo-team', -10, 60, '#A79BFF'),
+      projektSeil('p-demo-urlaub', 'Urlaub planen', 'privat', 'z-demo-ruhe', -15, 50, '#3DE28B'),
+    ].map(upsert) },
+    ops: karten.map(task => ({ op: 'upsert', task })),
+  });
+  schritt('Seil (Bezüge)', 1 + msSeil.length + 3 + karten.length);
 
   // 8) Wochenvorlage (Arbeitszeit) je Person — Grundlage von Kalender-Verfügbarkeit und Kapazität.
   for (const [person, tage, von, bis] of [[LENA, [1, 2, 3, 4, 5], '08:30', '17:30'], [JONAS, [1, 2, 3, 4], '09:00', '17:00']] as const) {

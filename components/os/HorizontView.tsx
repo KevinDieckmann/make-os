@@ -47,6 +47,7 @@ import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
 import { useMeilensteinFenster } from './planung/MeilensteinFenster';
 import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
 import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
+import { Seil } from './seil/Seil';
 import { useKapazitaet } from './kapazitaet/useKapazitaet';
 import { LastBand } from './kapazitaet/teile';
 import { wirksamerSpace } from '@/lib/planung/bereich';
@@ -124,8 +125,12 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     ...(imBusiness && einheitFilter !== 'alle' ? { einheit: einheitFilter } : {}),
   });
 
-  // ── Zeitstrahl: im Jahr die Lichtfäden (eigenes Fenster zum Blättern), in Monat/Quartal der schlichte Strahl ──
+  // ── Zeitstrahl: im Jahr das Seil (07.10., Standard) bzw. die Lichtfäden („Alle Stränge“) — ein Fenster zum Blättern; in Monat/Quartal der schlichte Strahl ──
   const fensterJahr = useStrahlFenster(planJahr);
+  const [jahrSicht, setJahrSicht] = useState<'seil' | 'faeden'>('seil');
+  useEffect(() => { try { const v = localStorage.getItem('make-planung-jahr-sicht'); if (v === 'seil' || v === 'faeden') setJahrSicht(v); } catch { /* ohne Speicher: Seil */ } }, []);
+  const jahrSichtSetzen = (v: 'seil' | 'faeden') => { setJahrSicht(v); try { localStorage.setItem('make-planung-jahr-sicht', v); } catch { /* egal */ } };
+  const sichtWahl = <Segmente liste={[{ id: 'seil' as const, label: 'Seil' }, { id: 'faeden' as const, label: 'Alle Stränge' }]} aktiv={jahrSicht} onWahl={jahrSichtSetzen} />;
   // Kapazität (04.10.): Last je Woche als dezentes Band UNTER dem Strahl (eigene Komponente — der Strahl selbst bleibt unberührt).
   const kapa = useKapazitaet(istJahr && spaceFilter !== 'privat');
   const MON_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
@@ -208,11 +213,16 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       </Karte>
 
       {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
-      {istJahr ? (
-        <Lichtfaeden wurzel={spaceFilter === 'alle' ? 'gesamt' : `space:${spaceFilter}`} fenster={fensterJahr} titel="Lichtfäden" i={1}
-          onTag={tag => msFenster.oeffneNeu(vorgabe(tag))}
+      {istJahr ? (jahrSicht === 'seil' ? (
+        // Seil (07.10., Kevin: „Am Ende müssen sie irgendwo alle ineinander greifen, wie ein Kabel oder ein Seil“): Stränge je Ziel,
+        // Abhängigkeiten, Fokus mit kritischem Pfad — LICHTFAEDEN.md › Seil. Die Lichtfäden bleiben als „Alle Stränge“ (Last über alles).
+        <Seil ebene="jahr" bereich={spaceFilter} fenster={fensterJahr} titel="Ziele als Seil" i={1} kopfRechts={sichtWahl}
           aktion={<Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein</Knopf>} />
       ) : (
+        <Lichtfaeden wurzel={spaceFilter === 'alle' ? 'gesamt' : `space:${spaceFilter}`} fenster={fensterJahr} titel="Lichtfäden" i={1}
+          onTag={tag => msFenster.oeffneNeu(vorgabe(tag))} kopfRechts={sichtWahl}
+          aktion={<Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein</Knopf>} />
+      )) : (
         <Zeitstrahl von={zr.von} bis={zr.bis} ticks={ticks} marker={strahlMarker} />
       )}
       {istJahr && spaceFilter !== 'privat' && kapa.stand && (

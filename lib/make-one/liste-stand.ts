@@ -67,6 +67,8 @@ export interface SchreibErgebnis<E> {
   fehler?: string;
   /** Es gab nichts zu senden. */
   nichts?: boolean;
+  /** Die ganze Antwort des Servers (07.10.: z. B. `bezuegeGeloest` beim Löschen eines Ziels — Grundlage für „Rückgängig“). */
+  antwort?: Record<string, unknown>;
 }
 
 export interface SchreiberOptionen<E> {
@@ -135,6 +137,6 @@ export class ListenSchreiber<E extends MitStand> {
     // Serverfehler (5xx): die Änderungen bleiben offen für den nächsten Versuch. 409/4xx: verworfen — die Sicht zeigt den aktuellen Stand.
     if (!ok && r.status >= 500) zurueck();
     const fehler = typeof d.error === 'string' ? d.error : typeof d.fehler === 'string' ? d.fehler : undefined;
-    return { ok, status: r.status, sicht: this.sicht(), ...(fehler ? { fehler } : {}) };
+    return { ok, status: r.status, sicht: this.sicht(), antwort: d, ...(fehler ? { fehler } : {}) };
   }
 }

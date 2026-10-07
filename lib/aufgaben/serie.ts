@@ -149,6 +149,8 @@ function instanzAm(t: Task, alle: readonly Task[], serie: string, basis: string,
       ...(q.notiz ? { notiz: q.notiz } : {}),
       ...(q.felder ? { felder: { ...q.felder } } : {}),
       ...(q.bezug ? { bezug: { ...q.bezug } } : {}),
+      // Seil (07.10.): die nächste Instanz zahlt auf dasselbe Ziel ein (Abhängigkeiten bleiben bewusst draußen).
+      ...(q.zielId ? { zielId: q.zielId } : {}),
       ...extra,
     };
     for (const k of Object.keys(n) as (keyof Task)[]) if (n[k] === undefined) delete n[k];

@@ -26,7 +26,7 @@ import { einschaetzen, dauerText, WER_LABEL, WER_FARBE, type Wer } from '@/lib/m
 import { useTeam } from '@/hooks/useTeam';
 import { delegierbar, delegiertAn as delegiertAnTeam, personZuKurz } from '@/lib/make-one/team-typen';
 import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-data';
-import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
+import { Seil } from './seil/Seil';
 import { parseSchnell, tagInT, schnellZustaendigkeit } from '@/lib/make-one/schnell-anlegen';
 import { usePersonen } from '@/components/os/aufgaben/hilfe';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
@@ -389,6 +389,8 @@ export function AufgabenView() {
     datumFilter !== 'alle', werFilter !== 'alle', !!stichFilter, !!aktiverFilter,
   ].filter(Boolean).length;
 
+  // Seil (07.10.): ändert sich Status, Datum, „wartet auf“ oder „zahlt ein auf“ einer Aufgabe, lädt der Zeitstrahl nach (verzögert).
+  const seilSchluessel = useMemo(() => state.tasks.map(t => `${t.id}:${t.status}:${t.dueDate ?? ''}:${t.zielId ?? ''}:${(t.abhaengigVon ?? []).join(',')}`).join('|'), [state.tasks]);
   const ohneDatumAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && !t.dueDate && imSpace(t)).length, [state.tasks, spaceFilter, orgZuord]); // eslint-disable-line react-hooks/exhaustive-deps
   const ueberfaelligAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < heute && imSpace(t)).length, [state.tasks, heute, spaceFilter, orgZuord]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1122,48 +1124,11 @@ export function AufgabenView() {
         </div>
       )}
 
-      {/* ── ZEITSTRAHL: alle Themen parallel, 60 Tage voraus ── */}
-      {ready && !!list.length && ansicht === 'zeit' && (() => {
-        const von = heute;
-        const bis = tagInT(60);
-        const p2 = (n: number) => String(n).padStart(2, '0');
-        const ticks = [14, 28, 42, 56].map(o => {
-          const d = new Date(); d.setDate(d.getDate() + o);
-          return { date: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, label: `${d.getDate()}.${d.getMonth() + 1}.` };
-        });
-        const ohneDatum = list.filter(t => !t.dueDate).length;
-        return (
-          <>
-            {themen.map(b => {
-              const drin = list.filter(t => meinThema(t) === b.id && t.dueDate);
-              const marker: StrahlMarker[] = drin.map(t => ({
-                date: t.dueDate!,
-                label: t.title,
-                farbe: t.priority === 'critical' ? LEUCHT.kritisch : b.farbe,
-                symbol: t.priority === 'critical' ? '◆' : '●',
-                titel: `${t.title} · ${PRIO[t.priority].t} · ${OWNER[t.assignee] ?? t.assignee}`,
-              }));
-              const spaet = drin.filter(t => t.dueDate! < heute).length;
-              return (
-                <Karte key={b.id} i={ki++}>
-                  <Ueberschrift farbe={b.farbe} rechts={<>
-                    <span>{drin.length ? `${drin.length} terminiert` : 'nichts terminiert'}</span>
-                    {spaet > 0 && <span className="krit-puls" style={{ color: LEUCHT.kritisch, fontWeight: 700 }}>{spaet} überfällig</span>}
-                  </>}>{b.label}</Ueberschrift>
-                  <Zeitstrahl von={von} bis={bis} ticks={ticks} marker={marker} />
-                </Karte>
-              );
-            })}
-            {ohneDatum > 0 && (
-              <Karte i={ki++}>
-                <Leer>
-                  <b style={{ color: LEUCHT.achtung }}>{ohneDatum} Aufgaben ohne Datum</b> — sie erscheinen erst auf dem Zeitstrahl, wenn ihr ihnen einen Tag gebt. Aufgabe aufklappen → „Fällig“.
-                </Leer>
-              </Karte>
-            )}
-          </>
-        );
-      })()}
+      {/* ── ZEITSTRAHL (07.10., Seil — LICHTFAEDEN.md): je Projekt bzw. Meilenstein-Liste ein Strang, Karten am Strang, „wartet auf“ als
+           Kurven, Stränge laufen auf ihr Ziel zu und verdrillen sich dort zum Seil; Fokus mit kritischem Pfad. Vorher: je Thema ein Strahl mit Pillen. ── */}
+      {ready && ansicht === 'zeit' && (
+        <Seil ebene="aufgaben" bereich={spaceFilter} titel="Zeitstrahl · Stränge zum Ziel" i={ki++} schluessel={seilSchluessel} />
+      )}
 
       {/* ── LISTE: nach Fälligkeit gruppiert ── */}
       {ready && !!list.length && ansicht === 'liste' && (

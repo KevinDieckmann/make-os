@@ -11,6 +11,7 @@ import type {
 import type { Owner, Priority } from '@/types/common';
 import { istSpaceId, istSonstigeProjekt, TASK_STATUS } from './struktur';
 import { AUFGABEN_EBENEN_MAX } from './ebenen';
+import { istBezugKennung } from '@/lib/planung/bezuege';
 
 /** Grenzen je Aufgabe/Bestand — darüber 413 mit Text. */
 export const AUFGABEN_GRENZEN = {
@@ -171,6 +172,8 @@ export function taskSauber(o: unknown): Task | null {
     notiz: notizSauber(t.notiz, 'Notiz'),
     felder: feldWerteSauber(t.felder),
     abhaengigVon: abhaengigSauber(t.abhaengigVon, id),
+    // „Zahlt ein auf …“ (07.10., Seil): nur die Form der Kennung — ob es das Ziel gibt und der Bereich passt, prüft der Schreibweg.
+    zielId: istBezugKennung(t.zielId) ? t.zielId : undefined,
     wiederholung: wiederholungSauber(t.wiederholung),
     vorlageId: kennung(t.vorlageId),
     vorlageVersion: Number.isInteger(t.vorlageVersion) && (t.vorlageVersion as number) >= 1 && (t.vorlageVersion as number) <= 99_999 ? (t.vorlageVersion as number) : undefined,
@@ -217,6 +220,8 @@ export function projektSauber(o: unknown): Project | null {
     vorlageId: kennung(p.vorlageId),
     vorlageVersion: Number.isInteger(p.vorlageVersion) && (p.vorlageVersion as number) >= 1 && (p.vorlageVersion as number) <= 99_999 ? (p.vorlageVersion as number) : undefined,
     geloeschtAm: zeitpunkt(p.geloeschtAm),
+    // „Zahlt ein auf …“ (07.10., Seil): nur die Form — Existenz und Bereich prüft der Schreibweg.
+    zielId: istBezugKennung(p.zielId) ? p.zielId : undefined,
   };
   if (raus.start && raus.ende && raus.ende < raus.start) delete raus.ende;
   for (const k of Object.keys(raus) as (keyof Project)[]) if (raus[k] === undefined) delete raus[k];

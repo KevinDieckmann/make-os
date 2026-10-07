@@ -667,6 +667,14 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   Lichtfäden mehr; Wächter `tests/lichtfaeden.test.ts`). Ziel-Farben rechnet NUR der Server
   (`lib/planung/ziel-farben-server.ts`, Feld `farbe` in `GET /api/state/ziele` und an den Ziel-Knoten); Space ohne Angabe, Wurzel-Ziel und Thema
   je EINE Regel in `lib/lichtfaeden/modell.ts`; Planungsdaten im Browser nur über `lib/planung/ziele-client.ts` (Wächter `tests/ziele-eine-quelle.test.ts`). Nie im Zeichner Daten rechnen. Der schlichte `Zeitstrahl` bleibt für Monat/Quartal/Aufgaben/Bauplan.
+- **Seil (07.10., Branch `zeitstrahl-seil`, nur lokal; LICHTFAEDEN.md › Seil, UPDATES.md 07.10.):** Stränge (Meilenstein, Unterziel, Projekt mit Ziel,
+  Einzelne Karten bzw. Projekt/Meilenstein-Liste) laufen je oberstem Ziel als Fasern in ein Seil bis zum Anker; Standard im Planungsjahr („Alle Stränge“ =
+  Lichtfäden) und Ansicht „Zeitstrahl“ der Aufgaben. Bezüge als Daten (`Task.zielId`, `Project.zielId`, `Ziel.oberzielId`, additiv), Regeln NUR in
+  `lib/planung/bezuege.ts` (Bereiche getrennt, Kreise 409, „nur ich“), wirksames Ziel einer Aufgabe NUR `zielVonAufgabe`. Modell `lib/lichtfaeden/seil.ts`,
+  Lage/Maße NUR `seil-geometrie.ts` (`SEIL_FORM`, Spalte links per `seilSpalte`), Zeichner `seilband.ts` rechnet nichts; Adapter `seil-quellen.ts`, Sammeln
+  `seil-server.ts` + `GET /api/seil` (Bereich SERVERSEITIG, `finanzRecht: 'business'` = nur Business, Dienstweg 403). Oberfläche `components/os/seil`
+  (`SeilBand` Rechner mit Beschriftungs-Spalte, `SeilHandy` bis 720 px). Wächter `tests/seil-route.test.ts` („Sicht Business bekommt nichts aus Privat“),
+  `seil-{modell,bezuege,oberflaeche}.test.ts`. Demo-Saat zeigt ein Seil (Unterziel, Kette, Blockade, Erledigtes).
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 

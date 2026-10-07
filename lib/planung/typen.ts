@@ -45,6 +45,12 @@ export interface Ziel {
   abgeleitetVon?: string;
   /** Abgeleitet, aber von Hand geändert — die Kaskade rechnet es nicht mehr neu. */
   angepasst?: boolean;
+  /**
+   * Oberziel (07.10., Seil — LICHTFAEDEN.md): das Ziel des geteilten Bestands, auf das dieses Ziel einzahlt (von Hand gewählt,
+   * nicht die Kaskade `abgeleitetVon`). Optional; gleicher Bereich, keine Kreise, höchstens 8 Ebenen — geprüft im Schreibweg
+   * (lib/planung/bezuege.ts `oberzielPruefen`). Wird das Oberziel gelöscht, fällt der Verweis weg („Rückgängig“ setzt ihn zurück).
+   */
+  oberzielId?: string;
   /** Archiv (04.10., optional): archiviert am (ISO) — aus der Planungsliste ausgeblendet, zurückholbar; zählt nirgends als erledigt. */
   archiviertAm?: string;
   /**

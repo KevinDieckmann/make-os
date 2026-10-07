@@ -10,6 +10,7 @@ import { neueKennung } from '@/lib/kennung';
 import { istPlanJahr, zielJahr } from './zeitstrahl';
 import { aufwandSaeubern } from './meilensteine';
 import { speicherSpace } from './bereich';
+import { istBezugKennung } from './bezuege';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 /** Länge der Notiz/Beschreibung eines Ziels (wie bisher — der alte Stand kürzt nicht anders). */
@@ -48,6 +49,8 @@ export function sauberZiel(roh: unknown): Ziel | null {
   if (istPlanJahr(z.jahr)) aus.jahr = z.jahr;
   if (typeof z.abgeleitetVon === 'string' && z.abgeleitetVon) aus.abgeleitetVon = z.abgeleitetVon.slice(0, 80);
   if (aus.abgeleitetVon && z.angepasst === true) aus.angepasst = true;
+  // Oberziel (07.10., Seil): nur die Form — ob es das Ziel gibt, der Bereich passt und kein Kreis entsteht, prüft der Schreibweg.
+  if (istBezugKennung(z.oberzielId) && z.oberzielId !== aus.id) aus.oberzielId = z.oberzielId;
   // Archiv (04.10.): nur ein gültiger ISO-Zeitpunkt (Planungsliste blendet es aus, zurückholbar).
   if (typeof z.archiviertAm === 'string' && ISO_ZEIT.test(z.archiviertAm)) aus.archiviertAm = z.archiviertAm;
   // Mandat an Zielen (28.09.): nur im Business, nur die Form der Kennungen — Firma/Einheit leitet der Schreibweg ab.

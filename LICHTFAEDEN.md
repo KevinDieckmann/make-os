@@ -199,11 +199,126 @@ Planungsband ab; FadenLinie und Website bleiben unverändert.
 - Wächter: `tests/strahl-ruhig.test.ts` (Höchstwerte, glatt ohne Abweichung, Spuren, Zusammenlauf, Ausschlag nur aus Abweichungen, Privat-Regel,
   angedockte Quelle, Deal verschoben, Zeichner ohne `lighter`/Partikel/Weichzeichner/Radialschein, Website-Quellen).
 
+## Seil (07.10.) — Stränge, die ineinandergreifen
+
+Kevin (07.10.): „Der Zeitstrahl muss in der Software auch noch viel besser gemacht werden. Die einzelnen Strahle sind nicht
+wirklich sichtbar. Am Ende müssen sie irgendwo alle ineinander greifen, wie ein Kabel oder ein Seil. Erst dann kommt Fokus und
+Momentum … Es braucht einfach Effekte. Die Karten und Ziele brauchen Abhängigkeiten.“ — „Verbindungen fehlen.“ Leitplanke
+bleibt 80/20: Effekte nur mit Bedeutung (Verknüpfung, Fortschritt, Zusammenlauf), keine Spielereien.
+
+Befund: Das Planungsjahr zeigt Bündel je Space › Thema › Ziel als je EINEN ruhigen Strang aus 3–8 Fäden mit Deckkraft 0,17 —
+ohne Fortschritt, ohne Abhängigkeiten, Ziele laufen nicht sichtbar zusammen. Der Aufgaben-Zeitstrahl (`/os/aufgaben/board`,
+Ansicht „Zeitstrahl“) ist eine Karte je Thema mit Pillen — ohne Bezug zu Zielen, ohne „wartet auf“. Die Bezüge selbst gibt es
+großteils schon (siehe Tabelle), sie wurden nur nirgends gezeichnet.
+
+### Datenmodell — additiv, je Bezug EINE Quelle
+
+| Bezug | Feld | Bestand | Stand |
+|---|---|---|---|
+| Aufgabe wartet auf Aufgabe | `Task.abhaengigVon[]` (≤ 200) | `tasks` | vorhanden (28.09.) |
+| Aufgabe gehört zu Meilenstein | Liste `lm-<ms>` (kein Feld) | `tasks` | vorhanden (30.09.) |
+| **Aufgabe zahlt ein auf Ziel** | `Task.zielId` | `tasks` | **neu** |
+| **Projekt zahlt ein auf Ziel** | `Project.zielId` | `tasks` | **neu** |
+| Meilenstein wartet auf Meilenstein | `Meilenstein.wartetAuf[]` (≤ 10) | `meilensteine` | vorhanden (01.10.) |
+| Meilenstein zahlt ein auf Ziel | `Meilenstein.zielId` | `meilensteine` | vorhanden (30.09.) |
+| **Ziel zahlt ein auf Oberziel** | `Ziel.oberzielId` | `ziele` (geteilt) | **neu** |
+| Kaskade (abgeleitet) | `Ziel.abgeleitetVon` | `ziele` | vorhanden, bleibt automatisch |
+
+- **Wirksames Ziel einer Aufgabe** — EINE Regel `zielVonAufgabe` (lib/aufgaben/ziel-bezug.ts), alle Leser nur darüber:
+  1. Liste eines Meilensteins → dessen Ziel · 2. eigenes `zielId` · 3. nächster Vorfahre mit Ziel (Unteraufgaben erben) ·
+  4. `Project.zielId`. Ein unbekanntes oder gelöschtes Ziel ist kein Ziel. Gespeichert wird nur, was jemand ausdrücklich wählt.
+- **Wurzel eines Ziels im Seil:** `oberzielId` (von Hand, Kette bis oben) bzw. `abgeleitetVon` (Kaskade → Jahresziel) —
+  `seilWurzel` (lib/planung/bezuege.ts), kreisfest. Die Lichtfäden-Regel `zielWurzeln` (nur Kaskade) bleibt unverändert.
+- Neue Felder nur im Schreibweg gesäubert (`taskSauber`, `projektSauber`, `sauberZiel`), alles optional. **Rückweg:** der alte
+  Stand verwirft `zielId`/`oberzielId` beim nächsten Speichern genau dieses Eintrags (UPDATES.md 07.10.); nichts anderes geht verloren.
+
+### Regeln — serverseitig, nur NEU gesetzte Bezüge (ein alter Verweis blockiert keine andere Änderung)
+
+- **Kreise:** Ziel-Kette (`oberzielId` + `abgeleitetVon`) → 409; Aufgaben (`kreisBei`, vorhanden) → 409; Meilensteine
+  (`kettePruefen`, vorhanden) → 409. Ziel-Kette höchstens 8 Ebenen (`ZIEL_KETTE_MAX`).
+- **Bereiche getrennt:** Bezüge nur innerhalb eines Bereichs — Privat ↔ Privat, Business ↔ Business (Aufgabe: `bereichVonSpace`,
+  Ziel/Meilenstein: `wirksamerSpace`). Ein Ziel ohne Space ist gemeinsam und passt zu beiden. Sonst 400 „Bereiche bleiben getrennt“.
+- **„nur ich“:** Eine für den Haushalt sichtbare Aufgabe wartet nie auf eine „nur ich“-Aufgabe (ihr Titel stünde sonst bei der
+  anderen Person) → 400. „Nur ich“ auf die eigene „nur ich“ geht.
+- **Existenz:** `zielId`/`oberzielId` nennen ein Ziel des geteilten Bestands (alle Horizonte, nicht archiviert) → sonst 400.
+- **Löschen räumt auf:** Ziel gelöscht → `oberzielId` der anderen Ziele, `Meilenstein.zielId` (vorhanden), `Task.zielId`,
+  `Project.zielId` werden im selben Durchgang gelöst; die Antwort nennt die Kennungen (`bezuegeGeloest`). „Rückgängig“ legt das Ziel
+  wieder an und setzt die Bezüge über `POST /api/planung/bezuege` zurück — nur dort, wo das Feld noch leer ist. Aufgabe im Papierkorb
+  blockiert niemanden mehr (das Seil zählt sie nicht), endgültig gelöscht → `abhaengigVon` geräumt (vorhanden). Meilenstein gelöscht
+  → `wartetAuf` geräumt (vorhanden).
+- **Bedienung:** Aufgabe (Detail) „Wartet auf …“ und „Zahlt ein auf …“ per Suche, Projekt (Projektseite) „Zahlt ein auf …“, Ziel
+  (Ziel-Seite) „Zahlt ein auf …“, Meilenstein (Fenster, vorhanden) — Kandidaten nur aus dem eigenen Bereich, ohne Kreise; setzen
+  und lösen mit „Rückgängig“ (10 s, `useHandlung().verknuepfen` bzw. `useRueckgaengig`).
+- **ZOE schlägt nur vor:** Werkzeug `verknuepfe` (Register: freigabepflichtig → Stapel). Erst der Klick schreibt — über denselben
+  Schreibweg mit denselben Prüfungen.
+
+### Das Bild
+
+```
+ ◎ Umsatz 2027 · 62 % · 3 von 5 Strängen fertig                                   (Fokus: Ziel antippen)
+   Vertrag ━━━━━━━━━━━━━━━━━━━━━━━●╮
+   Website ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮
+   Launch  ┄┄🔒┄┄┄┄┄┄┄┄━━━━━━━━──────────────────── ╲         (wartet auf „Vertrag“ — unterbrochen, gedämpft)
+   Team    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━────────────╲
+                                   ╰╮ ╰╮               ╲ ╲
+                                    ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈▶ ◎  (Seil: je erledigter Faser dichter/heller)
+        ‿ ‿  Abhängigkeiten als ruhige Kurven zwischen Karten/Meilensteinen;   ○ Termin  € Deal  ◇ Meilenstein  am Strang
+```
+
+- **Strang** = Meilenstein, Unterziel, Projekt mit Ziel, „lose Karten“ eines Ziels (Jahr) bzw. Projekt/Meilenstein-Liste
+  (Aufgaben). Eigene Spur, Ziel-Farbe (vom Server), Röhre mit Kontur; erledigter Anteil gefüllt, offener Rest nur Kontur.
+  Beschriftung in einer festen **Spalte links (wie ein Gantt)**, je Spur eine Zeile — siehe „Beschriftungs-Spalte“. Karten als Punkte
+  am Strang (erledigt gefüllt, offen Ring).
+- **Einmündung:** Am Ende eines Strangs (frühestens HEUTE, spätestens am Anker) biegt er in einer S-Kurve ins Seil seines Ziels.
+- **Seil** = je Ziel die eingemündeten Stränge als verdrillte Fasern bis zum Anker (Ziel-Frist, sonst Fensterende ▶). Je mehr
+  erledigt ist, desto dichter und heller das Seil (Momentum), je mehr in den letzten 14 Tagen erledigt wurde, desto straffer der
+  Drall (Schwung). Unterziele münden als Faser ins Seil ihres Oberziels.
+- **Blockiert:** gestrichelt und gedämpft bis zum Ende des Vorgängers, Schloss an der Stelle; Zeigen/Fokus nennt den Grund.
+- **Abhängigkeiten** als ruhige Bézier-Kurven vom Vorgänger zum Nachfolger (offen in Achtung-Gelb, erfüllt leise grau).
+- **Fokus-Modus:** Ziel antippen → nur seine Stränge, Karten und Abhängigkeiten voll, alles andere zurückgenommen (25 %); der
+  **kritische Pfad** (längste Kette offener Abhängigkeiten bis zum Ziel) kräftig nachgezogen und als Text genannt, dazu der
+  **Engpass** (offene Karte, auf die am meisten wartet).
+- **Beschriftungs-Spalte (07.10. abends):** links steht jeder Strang auf einen Blick benannt, rechts läuft die Zeit. Je Spur eine Zeile
+  über die ganze Spur-Höhe (Tippfläche): Marke in Strang-Farbe (gefüllt = erledigt, Schloss in Achtung-Gelb = blockiert), Titel
+  (Unterziel-Fasern mit „›“), Fortschritt in Prozent (überfällig in Achtung-Gelb). Link zum Meilenstein/Projekt/Ziel, der volle Name
+  (Art, Titel, Fortschritt, Ende, Grund) steht für Vorleser und als Hinweis. Zeigen auf die Zeile hebt den Strang auf der Leinwand hervor
+  und umgekehrt. Eine leise gepunktete Führungslinie läuft vom linken Rand der Zeit bis zum Beginn des Strangs (wächst mit dem Aufbau).
+  Kopf „STRÄNGE“ über der Spalte, Monate nur über der Zeit, eine Haarlinie trennt beide; Blättern verschiebt nur die Zeit. Breite nach
+  EINER Regel `seilSpalte` (Maße `SEIL_FORM.spalte`: breit ab 980 px, mittel ab 720 px, sonst schmal — schmal ohne Prozent-Zahl; die
+  Zeit behält mindestens 200 px). Die Ziel-Köpfe laufen über die ganze Breite.
+- **Handy (`useHandy`, bis 720 px):** ohne Querlauf — je Ziel eine Zeile mit Seil-Balken (Fasern, Momentum) und darunter die Stränge als
+  Zeilen (Fortschritt, Ende, „wartet auf …“); Fokus = Ziel antippen.
+
+### Rechenregeln — rein in `lib/` (der Zeichner rechnet nichts)
+
+- `lib/planung/bezuege.ts` — Bezugsregeln (Bereich, Kreis, Ziel-Kette, „nur ich“, Aufräumen/Zurück) für Schreibwege und Auswahl.
+- `lib/lichtfaeden/seil.ts` — das Modell: Strang-Zeitraum (Start = spätestes Ende der Vorgänger, sonst früheste Karte, sonst
+  Ende − 6 Wochen), Fortschritt, Status/Grund, Seil je Ziel (Fasern, Einmündung, Anker, Momentum = Mittel des Strang-Fortschritts,
+  Schwung = 1 − 2^(−n/3) mit n = Erledigtes der letzten 14 Tage), kritischer Pfad, Engpass, Spuren/Lage (Ziele nach Rang).
+- `lib/lichtfaeden/seil-geometrie.ts` — Spur-Höhen, Einmündungs-Kurve, Fasern des Seils (Helix), Abhängigkeits-Kurve — rein, getestet.
+- `lib/lichtfaeden/seil-quellen.ts` — Adapter: Planungsjahr und Aufgaben-Zeitstrahl → neutrales Modell.
+- `lib/lichtfaeden/seil-server.ts` + `GET /api/seil` — sammelt mit den vorhandenen Lesefunktionen (Ziele mit Farbe, Meilensteine,
+  `ladeAufgabenSicht(person)`, Kalender `termineFuerZoe`, CRM-Deals), filtert den Bereich SERVERSEITIG (`space=privat|business|alle`;
+  Konten mit `finanzRecht: 'business'` immer nur Business), nur geteilte Ziele, Dienstweg 403. Kein neuer Bestand.
+- Zeichner `lib/lichtfaeden/seilband.ts` auf `zeichnen.ts` (`leinwand`, `starteLauf`, `rgb`) — Canvas 2D, Path2D-Eimer; die
+  Bedienung steckt in echten Knöpfen darüber (Ziel-Köpfe, Strang-Beschriftungen, Legende), Text-Äquivalent für Vorleser.
+- **Bewegung mit Bedeutung:** Aufbau von links (wie die Lichtfäden), Strang füllt sich bis zu seinem Fortschritt (0,7 s), Seil zieht
+  sich an, wenn sich das Momentum ändert (0,9 s), Fasern fließen sehr ruhig zum Anker. `prefers-reduced-motion` = Standbild.
+
+### Was bleibt, was entfällt
+
+- **Bleibt:** Lichtfäden-Modell, Route und Karte (Ziel- und Meilenstein-Seite, Fokus; im Jahr als zweite Ansicht „Alle Stränge“),
+  `band.ts`/`zeichnen.ts` unverändert (Website), Kaskade, Meilenstein-Kette, schlichter `Zeitstrahl` (Monat, Quartal, Bauplan).
+- **Neu:** Seil als Standard-Ansicht im Planungsjahr, Seil im Aufgaben-Zeitstrahl, Fokus-Modus, Auswahl „zahlt ein auf …“.
+- **Entfällt:** im Aufgaben-Zeitstrahl die Karte je Thema mit Pillen (sie zeigte keine Bezüge).
+
 ## Tests
 
 `tests/lichtfaeden-modell.test.ts` · `-quelle-{planung,kalender,markttraktion,finanzen,beziehung,gesundheit}.test.ts` ·
 `-baum.test.ts` (Pfade, Summen, LOD-Deckel, Dichte deterministisch, Navigation) · `-fokus.test.ts` (Engstellen) ·
-`-route.test.ts` (Haushalts-Tor, Dienstweg 403, Privat-Regel, abgeleitetes Ziel) · `fokus-signatur.test.ts` (Strahl v3: Fließrichtung, Aufbau,
+`-route.test.ts` (Haushalts-Tor, Dienstweg 403, Privat-Regel, abgeleitetes Ziel) · Seil: `seil-modell.test.ts` (Modell, Geometrie, Maße an
+einer Stelle) · `seil-bezuege.test.ts` (Bezüge, Kreise, Bereiche) · `seil-route.test.ts` (Wächter „Sicht Business bekommt nichts aus Privat“,
+`finanzRecht` business, „nur ich“) · `seil-oberflaeche.test.ts` (Beschriftungs-Spalte, Token statt Literale, Zeichner bei reduzierter Bewegung) · `fokus-signatur.test.ts` (Strahl v3: Fließrichtung, Aufbau,
 Partikel, Ausfransen, Spitzen; FadenLinie, Reihen, Fokus-Karte, Segmentbalken, Wächter) · `-datenschutz.test.ts` („nur ich“ über die
 Kette, Altaufgabe, Familie, Engstellen-top, Zwischenspeicher an) · `-oberflaeche.test.ts` (Render, Brotkrumen, Legende,
 Engstellen, Zeichner mit/ohne Bewegung, Übergang-Schlüssel) · `lichtfaeden.test.ts` (Mathematik, Markierungen, Lauf, Website-

@@ -109,7 +109,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   // Der jüngste Stand für „Rückgängig“ (das Zurückholen läuft später, nach anderen Änderungen).
   const stand = useRef(p); stand.current = p;
   // Meilenstein ↔ Aufgaben (30.09.): Fortschritt aus den Aufgaben, sobald es welche gibt; Ziel aus seinen Meilensteinen.
-  const { state: tasksState } = useTasks();
+  const { state: tasksState, rehydrate } = useTasks();
   const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
   const [spaceEigen, setSpaceEigen] = useState<SpaceFilter>('alle');
   useEffect(() => { if (!spaceProp) setSpaceEigen(spaceAusAdresse ?? aktiverSpace); }, [spaceProp, spaceAusAdresse, aktiverSpace]);
@@ -204,7 +204,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   // ── Ändern ──
   const zPatch = (id: string, patch: Partial<Ziel>, angepasst = false) => p.persistZiele(p.ziele.map(z => (z.id === id ? { ...z, ...patch, ...(angepasst && z.abgeleitetVon ? { angepasst: true } : {}) } : z)));
   const zErledigen = (z: Ziel) => zPatch(z.id, z.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 });
-  const zLoeschen = (id: string) => { loescheZiel(stand, id, rueck); };
+  // Seil (07.10.): Aufgaben/Projekte, die direkt einzahlten, verlieren den Bezug am Server — nach „Rückgängig“ die Aufgaben neu laden.
+  const zLoeschen = (id: string) => { void loescheZiel(stand, id, rueck, { aufgabenNeu: () => { void rehydrate(); } }); };
   const zBewegen = (id: string, r: 'auf' | 'ab') => p.persistZiele(verschiebe(p.ziele, id, r, zOffen.map(z => z.id)));
   const mPatch = (id: string, patch: Partial<Meilenstein>, angepasst = false) => p.persistMs(p.ms.map(m => (m.id === id ? { ...m, ...patch, ...(angepasst && m.abgeleitetVon ? { angepasst: true } : {}) } : m)));
   const mErledigen = (m: Meilenstein) => mPatch(m.id, m.erledigt ? { erledigt: false, erledigtAm: undefined } : { erledigt: true, erledigtAm: heute, fortschritt: 100 }, true);

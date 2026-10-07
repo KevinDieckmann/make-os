@@ -44,6 +44,11 @@ export interface PatchOptionen<E, T = Record<string, unknown>> {
   neu?: (eintrag: E) => E;
   /** Läuft INNERHALB der Sperre über der aktuellen Liste — ein Text lehnt die ganze Änderung ab (Massen-Wache). */
   pruefen?: (liste: E[], ops: ListenOp<E>[]) => string | null;
+  /**
+   * Läuft INNERHALB der Sperre über dem GANZEN Bestand nach den Änderungen (vor `danach`) — ein Text lehnt alles ab (07.10.,
+   * Seil: Bezüge über alle Horizonte der Ziele prüfen). `vorher` = der Bestand vor den Änderungen.
+   */
+  pruefenNachher?: (nachher: T, vorher: T) => string | null;
   /** Läuft INNERHALB der Sperre nach einer erfolgreichen Änderung über dem ganzen Bestand (z. B. die Ziel-Kaskade, 28.09.). */
   danach?: (bestand: T) => T;
   /** Wer schreibt — fürs Änderungsprotokoll (28.09., K1 #44). Fehlt es, gilt die laufende Anfrage (next/headers). */
@@ -161,6 +166,8 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
     // Ein Konflikt lehnt die ganze Änderung ab — halbe Stände sind schlimmer als eine Nachfrage.
     if (konflikte.length) { angewandt = 0; return f; }
     const fertig = { ...f, [feld]: Array.from(neuListe.values()) } as T;
+    const nachGrund = opt.pruefenNachher?.(fertig, f);
+    if (nachGrund) { fehler = nachGrund; angewandt = 0; return f; }
     return opt.danach ? opt.danach(fertig) : fertig;
   });
 

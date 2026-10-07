@@ -74,7 +74,7 @@ export function ZielDetail({ id }: { id: string }) {
 
 function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
   const p = usePlanung(horizont);
-  const { state: tasksState } = useTasks();
+  const { state: tasksState, rehydrate } = useTasks();
   const heute = localDay();
   const laufend = Number(heute.slice(0, 4));
   const rueck = useRueckgaengig();
@@ -250,7 +250,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           {abgeleitet
             ? <Knopf leise onClick={() => zPatch({ angepasst: true })}>vom Jahresziel lösen</Knopf>
-            : <Knopf leise onClick={() => { loescheZiel(stand, z.id, rueck); }}>Ziel löschen</Knopf>}
+            : <Knopf leise onClick={() => { void loescheZiel(stand, z.id, rueck, { aufgabenNeu: () => { void rehydrate(); } }); }}>Ziel löschen</Knopf>}
         </div>
       </Karte>
 

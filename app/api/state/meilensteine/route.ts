@@ -21,6 +21,8 @@ import { kettePruefen, listeNachOps, ohneToteVerweise } from '@/lib/planung/meil
 import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { ladeAufgaben } from '@/lib/aufgaben/speicher';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { BEREICH_GETRENNT, ZIEL_FEHLT, meilensteinBezugPruefen } from '@/lib/planung/bezuege';
+import { zieleFuerBezug } from '@/lib/planung/bezuege-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -92,6 +94,8 @@ export async function PATCH(req: Request) {
   // Fortschritt-Regel (30.09., lib/planung/meilenstein-aufgaben.ts): hat ein Meilenstein Aufgaben, gilt der errechnete
   // Wert — ein mitgeschickter Wert von Hand wird in derselben Sperre überschrieben.
   const aufgaben = await ladeAufgaben();
+  // Bezüge (07.10., Seil): ein neu gesetztes Ziel muss im geteilten Bestand stehen und zum Bereich passen — nur geladen, wenn eins genannt ist.
+  const zieleBezug = ops.some(o => (o.op === 'upsert' && !!o.eintrag?.zielId) || (o.op === 'teil' && !!o.felder?.zielId)) ? await zieleFuerBezug() : null;
   const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6, undefined, {
     // Ein gelöschter Meilenstein verschwindet auch aus „wartet auf“ der anderen (01.10.) — Rückgängig legt den Verweis wieder an.
     danach: f => ({ ...f, meilensteine: ohneToteVerweise(fortschrittAnwenden(Array.isArray(f.meilensteine) ? f.meilensteine : [], aufgaben).liste).liste }),
@@ -101,14 +105,15 @@ export async function PATCH(req: Request) {
       if (neu && liste.length + neu > GRENZE) return `Abgelehnt: höchstens ${GRENZE} Meilensteine.`;
       // Kette (01.10.): über der Liste NACH den Änderungen — Grenze, unbekannte Vorgänger, Kreise.
       const { nachher, beruehrt } = listeNachOps(liste, o);
-      return kettePruefen(nachher, beruehrt, liste);
+      // Seil (07.10.): Privat und Business bleiben getrennt (Ziel und Vorgänger), das Ziel steht im geteilten Bestand.
+      return kettePruefen(nachher, beruehrt, liste) ?? meilensteinBezugPruefen(nachher, beruehrt, new Map(liste.map(m => [m.id, m])), zieleBezug);
     },
     // `teil`-Änderungen laufen durch dieselbe Säuberung wie ganze Einträge (vorher ungeprüft).
     teil: (alt, felder) => sauberListe([{ ...alt, ...felder }])[0] ?? null,
   });
   if (!r.ok) {
     const aktuell = await loadJson<MeilensteinFile>('meilensteine');
-    const status = r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
+    const status = r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
     return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], meilensteine: mitStand(Array.isArray(aktuell?.meilensteine) ? aktuell!.meilensteine : []) }, { status });
   }
   // Meilenstein ↔ Aufgaben (30.09.): neue/geänderte bekommen ihre Liste (Space, Titel, Reihenfolge nachgezogen), gelöschte

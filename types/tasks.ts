@@ -89,6 +89,11 @@ export interface Task extends Timestamps {
   felder?: Record<string, FeldWert>;
   /** „Wartet auf …“: Kennungen der Aufgaben, die vorher fertig sein müssen. Führend; `dependencies` wird daraus abgeleitet. Kreise lehnt der Server ab (409). */
   abhaengigVon?: ID[];
+  /**
+   * „Zahlt ein auf …“ (07.10., Seil): ein Ziel des geteilten Bestands, von Hand gewählt — gleicher Bereich, geprüft im Schreibweg.
+   * Gelesen wird NUR über `zielVonAufgabe` (lib/aufgaben/ziel-bezug.ts): Meilenstein-Liste vor `zielId` vor Elternaufgabe vor Projekt.
+   */
+  zielId?: ID;
   /** Wiederkehrend (Datenfeld — die Logik baut Paket C3). */
   wiederholung?: Wiederholung;
   /** Aus welcher Vorlage die Aufgabe entstand (Paket C3). */
@@ -334,6 +339,8 @@ export interface Project extends Timestamps {
   /** „Neu anfangen“ (29.09.): archiviert seit / Lauf — nicht zu verwechseln mit `archived` (von Hand abgelegt). */
   archiviertAm?: string;
   archivId?: ID;
+  /** „Zahlt ein auf …“ (07.10., Seil): Ziel des geteilten Bestands, auf das das ganze Projekt einzahlt — seine Aufgaben erben es. */
+  zielId?: ID;
 }
 
 export type ProjektStatus = 'aktiv' | 'pausiert' | 'abgeschlossen';

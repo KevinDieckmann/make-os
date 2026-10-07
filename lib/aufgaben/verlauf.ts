@@ -43,6 +43,8 @@ export function verlaufFuer(alt: Task | undefined, neu: Task, wer: VerlaufWer, j
   for (const k of Array.from(new Set([...Object.keys(fa), ...Object.keys(fn)]))) if (!gleichJson(fa[k], fn[k])) raus.push(e('feld', { feld: k }));
   if (!gleichJson(alt.abhaengigVon ?? [], neu.abhaengigVon ?? [])) raus.push(e('abhaengigkeit', { anzahl: (neu.abhaengigVon ?? []).length }));
   if (!gleichJson(alt.bezug, neu.bezug)) raus.push(e('verknuepfung'));
+  // „Zahlt ein auf …“ (07.10., Seil): eigene Zeile, nur die Tatsache (keine Titel).
+  if ((alt.zielId ?? '') !== (neu.zielId ?? '')) raus.push(e('verknuepfung', { feld: 'ziel' }));
   if (!gleichJson(alt.wiederholung, neu.wiederholung)) raus.push(e('wiederholung'));
   // Seit 29.09.: Beteiligte (Personen = Kurzwerte) und Sichtbarkeit.
   if (!gleichJson(alt.beteiligte ?? [], neu.beteiligte ?? [])) raus.push(e('beteiligte', { ...(alt.beteiligte?.length ? { vorher: alt.beteiligte.join(', ') } : {}), ...(neu.beteiligte?.length ? { nachher: neu.beteiligte.join(', ') } : {}) }));
@@ -85,7 +87,7 @@ export function verlaufText(v: VerlaufEintrag, feldName: (id: string) => string 
     case 'datei': return v.feld === 'entfernt' ? 'Datei entfernt' : 'Datei hinzugefügt';
     case 'feld': return `Feld „${(v.feld && feldName(v.feld)) ?? 'Feld'}“ geändert`;
     case 'abhaengigkeit': return v.anzahl ? `wartet jetzt auf ${v.anzahl} Aufgabe${v.anzahl === 1 ? '' : 'n'}` : 'wartet auf nichts mehr';
-    case 'verknuepfung': return 'CRM-Verknüpfung geändert';
+    case 'verknuepfung': return v.feld === 'ziel' ? 'Ziel-Bezug geändert („zahlt ein auf“)' : 'CRM-Verknüpfung geändert';
     case 'wiederholung': return 'Wiederholung geändert';
     case 'beteiligte': return `Beteiligte: ${v.vorher ? v.vorher.split(', ').map(person).join(', ') : '—'} → ${v.nachher ? v.nachher.split(', ').map(person).join(', ') : '—'}`;
     case 'sichtbarkeit': return `Sichtbar${pfeil}`;

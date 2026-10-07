@@ -52,6 +52,29 @@ Nicht hochgeladen.
 
 **Rückweg:** der Stand davor (Showreel mit Szene) ist Commit `e008ebfc` auf `entwicklung` — die Ordner `website`, `fokus`, `scripts`, `tests`
 aus diesem Commit zurückholen (dazu nur Text: Kommentare in `lib/lichtfaeden/*.ts`, `CLAUDE.md`, `DESIGN_STANDARD.md`, `LICHTFAEDEN.md`).
+## 07.10.2026 — Zeitstrahl „Seil“: Stränge, die ins Ziel einmünden (nur lokal, Branch `zeitstrahl-seil`; Konzept LICHTFAEDEN.md › Seil)
+
+Kevin (07.10.): „Die einzelnen Strahle sind nicht wirklich sichtbar. Am Ende müssen sie irgendwo alle ineinander greifen, wie ein Kabel
+oder ein Seil … Die Karten und Ziele brauchen Abhängigkeiten.“
+
+**Was gebaut ist (5 Schritte):** 1. Bezüge als Daten — Aufgabe/Projekt „zahlt ein auf“ ein Ziel (`zielId`), Ziel „zahlt ein auf“ ein
+Oberziel (`oberzielId`); Bereiche bleiben getrennt, Kreise werden abgelehnt, Ziel löschen löst die Bezüge (mit Rückgängig). 2. Das reine
+Modell: Strang mit Zeitraum, Fortschritt, Status/Grund; je oberstem Ziel ein Seil mit Anker, Momentum, Schwung, kritischem Pfad und Engpass.
+3. Adapter + `GET /api/seil` (Bereich serverseitig; Konten mit Finanz-Recht „Business“ bekommen nur Business). 4. Zeichnung: Röhre mit
+gefülltem Anteil, Blockade gestrichelt mit Schloss, Einmündung in verdrillte Fasern, „wartet auf“-Kurven, Fokus-Modus; **Beschriftungs-Spalte
+links wie ein Gantt** (je Strang eine Zeile mit Marke, Titel, Prozent; Zeigen hebt den Strang hervor). Handy: Seil-Balken je Ziel, Stränge als
+Zeilen. „Bewegung reduzieren“ = Standbild. 5. Doku (CLAUDE.md › Ziele & Planung, LICHTFAEDEN.md) und Tests.
+
+**Wo zu sehen:** Planung › Jahr (Seil ist Standard, „Alle Stränge“ = die Lichtfäden) und Aufgaben › Ansicht „Zeitstrahl“. Mit der
+Demo-Saat (`DEMO.md`) gibt es ein vorführbares Seil (Unterziel, Meilenstein-Kette, Blockade, Erledigtes) — ohne echte Daten.
+
+**Zum Prüfen im Browser (Rechner, dann Handy):** Stehen links alle Stränge lesbar untereinander, auch bei schmalem Fenster (Titel
+gekürzt, voller Name beim Zeigen)? Führt die gepunktete Linie von der Zeile zum Strang? Fokus auf ein Ziel: Rest zurückgenommen, kritischer
+Pfad genannt? Blättern verschiebt nur die Zeit, die Spalte bleibt stehen? Mit „Bewegung reduzieren“ (macOS › Bedienungshilfen) sofort
+das fertige Bild?
+
+**Rückweg:** Der alte Stand verwirft `zielId` (Aufgabe, Projekt) und `oberzielId` (Ziel) beim nächsten Speichern genau dieses Eintrags;
+nichts anderes geht verloren. Kein neuer Bestand.
 
 ## 07.10.2026 — Entscheidungen Kevin zu Inbox/WhatsApp
 - WhatsApp-Spiegel: Aufbewahrung wie Handelsbriefe (§ 257 HGB) — Vorgabe jetzt 2.557 Tage (7 Jahre), damit 6 Jahre ab Schluss des Kalenderjahres für jede Nachricht sicher gedeckt sind. Medien bleiben bei 90 Tagen (einstellbar unter Datenschutz › Löschfristen).

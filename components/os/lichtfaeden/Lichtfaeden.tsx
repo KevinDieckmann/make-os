@@ -38,10 +38,12 @@ export interface LichtfaedenProps {
   /** Aktion rechts neben dem Zeitraum (z. B. „+ Meilenstein“). */
   aktion?: ReactNode;
   titel?: string;
+  /** Rechts in der Überschrift vor der Personen-Wahl (07.10.: der Umschalter Seil · Alle Stränge im Planungsjahr). */
+  kopfRechts?: ReactNode;
   i?: number;
 }
 
-export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenster: fensterAussen, onTag, aktion, titel = 'Lichtfäden', i = 0 }: LichtfaedenProps) {
+export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenster: fensterAussen, onTag, aktion, titel = 'Lichtfäden', kopfRechts, i = 0 }: LichtfaedenProps) {
   const eigenesFenster = useStrahlFenster(new Date().getFullYear());
   const fenster = fensterAussen ?? eigenesFenster;
   const [nav, setNav] = useState<NavStand>(() => navStart(wurzel));
@@ -81,7 +83,7 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
   const heute = daten?.heute ?? null;
   return (
     <Karte i={i} className="licht-karte" style={{ background: LICHT_GLAS.karte }} ariaLabel={titel}>
-      <Ueberschrift rechts={personWahl.length ? <Segmente liste={personWahl} aktiv={person} onWahl={setPerson} /> : undefined}>{titel}</Ueberschrift>
+      <Ueberschrift rechts={personWahl.length || kopfRechts ? <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{kopfRechts}{personWahl.length ? <Segmente liste={personWahl} aktiv={person} onWahl={setPerson} /> : null}</span> : undefined}>{titel}</Ueberschrift>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
         {aktuell && <Brotkrumen pfad={aktuell.pfad} onWahl={onKrume} oben={oben} />}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

@@ -16,9 +16,10 @@ import { EINHEITEN_STANDARD } from '@/lib/planung/einheiten';
 import { zeitraum, type Zeitraum } from '@/lib/planung/zeitraum';
 import { ZIEL_HORIZONTE, type Meilenstein, type Ziel, type ZielHorizont } from '@/lib/planung/typen';
 import { NEU_ANGEFANGEN } from '@/components/os/aufgaben/NeuAnfangen';
+import type { BezuegeGeloest } from '@/lib/planung/bezuege';
 
 /** Ein Ziel aus irgendeinem Horizont, kurz — für Brotkrumen, Auswahl und das Ziel-Detail (01.10.). */
-export interface ZielKurz { id: string; titel: string; horizont: ZielHorizont; fortschritt: number; erledigt: boolean }
+export interface ZielKurz { id: string; titel: string; horizont: ZielHorizont; fortschritt: number; erledigt: boolean; /** Für Bezüge (07.10., Seil): Bereich, Kette, Archiv. */ space?: Ziel['space']; einheit?: string; oberzielId?: string; abgeleitetVon?: string; archiviertAm?: string }
 
 export interface PlanungStand {
   heute: string;
@@ -34,8 +35,15 @@ export interface PlanungStand {
   persistMs: (next: Meilenstein[]) => void;
   /** Wie persistMs, aber sofort gesendet und abwartbar (true = gespeichert) — für „Speichern & öffnen“. */
   persistMsJetzt: (next: Meilenstein[]) => Promise<boolean>;
+  /**
+   * Wie persistZiele, aber sofort gesendet und abwartbar (07.10., Seil): liefert, ob gespeichert, und beim Löschen, welche Bezüge
+   * der Server gelöst hat (`bezuegeGeloest` — Meilensteine, Unterziele, Aufgaben, Projekte), damit „Rückgängig“ sie zurücksetzen kann.
+   */
+  persistZieleJetzt: (next: Ziel[]) => Promise<{ ok: boolean; bezuegeGeloest: BezuegeGeloest[] }>;
   /** Meilensteine frisch vom Server holen (z. B. nachdem ein gelöschtes Ziel ihren Ziel-Bezug gelöst hat). */
   msNeuLaden: () => Promise<void>;
+  /** Die Ziele dieses Horizonts frisch holen (07.10.: nachdem „Rückgängig“ Unterzielen ihr Oberziel zurückgegeben hat). */
+  zieleNeuLaden: () => Promise<void>;
   fokusSetzen: (schluessel: string, wert: string) => void;
   einheitAnlegen: (name: string) => Promise<string | null>;
   /** Hinweis nach einem abgelehnten Speichern (z. B. „inzwischen geändert“) — sonst null. */
@@ -43,7 +51,11 @@ export interface PlanungStand {
 }
 
 type ZielZeile = Ziel & { stand?: string };
-const kurzVon = (z: Ziel, horizont: ZielHorizont): ZielKurz => ({ id: z.id, titel: z.titel, horizont, fortschritt: z.erledigt ? 100 : z.fortschritt, erledigt: !!z.erledigt });
+const kurzVon = (z: Ziel, horizont: ZielHorizont): ZielKurz => ({
+  id: z.id, titel: z.titel, horizont, fortschritt: z.erledigt ? 100 : z.fortschritt, erledigt: !!z.erledigt,
+  ...(z.space ? { space: z.space } : {}), ...(z.einheit ? { einheit: z.einheit } : {}), ...(z.oberzielId ? { oberzielId: z.oberzielId } : {}),
+  ...(z.abgeleitetVon ? { abgeleitetVon: z.abgeleitetVon } : {}), ...(z.archiviertAm ? { archiviertAm: z.archiviertAm } : {}),
+});
 type MsZeile = Meilenstein & { stand?: string };
 
 /** Text für die Ansicht, wenn ein Speichern nicht durchging. */
@@ -150,6 +162,20 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     }, 500);
   }, [horizont, kurzSetzen, ladeMs, zieleSchreiber, zieleZeigen]);
 
+  const persistZieleJetzt = useCallback(async (next: Ziel[]) => {
+    if (!zieleSchreiber.geladen) return { ok: false, bezuegeGeloest: [] };
+    zieleSchreiber.aendern(zieleRef.current, next as ZielZeile[]);
+    zieleZeigen(next as ZielZeile[]);
+    kurzSetzen(next);
+    clearTimeout(zieleTimer.current);
+    const e = await zieleSchreiber.senden();
+    setHinweis(hinweisAus(e));
+    if (e.sicht && !e.nichts) { zieleZeigen(e.sicht); kurzSetzen(e.sicht); }
+    if (e.ok && !e.nichts) void ladeMs();
+    const g = e.antwort?.bezuegeGeloest;
+    return { ok: e.ok, bezuegeGeloest: Array.isArray(g) ? (g as BezuegeGeloest[]) : [] };
+  }, [kurzSetzen, ladeMs, zieleSchreiber, zieleZeigen]);
+
   const persistMs = useCallback((next: Meilenstein[]) => {
     if (!msSchreiber.geladen) return;
     msSchreiber.aendern(msRef.current, next as MsZeile[]);
@@ -201,5 +227,5 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true): PlanungStand {
     } catch { return null; }
   }, []);
 
-  return { heute, zr, geladen, ziele, alleZiele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, msNeuLaden: ladeMs, fokusSetzen, einheitAnlegen, hinweis };
+  return { heute, zr, geladen, ziele, alleZiele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, persistZieleJetzt, msNeuLaden: ladeMs, zieleNeuLaden: ladeZiele, fokusSetzen, einheitAnlegen, hinweis };
 }

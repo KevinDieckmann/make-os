@@ -15,7 +15,7 @@ import { WEG } from '@/lib/wege';
 import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeKommentar, AufgabenGruppe, AufgabenVorlage } from '@/types/tasks';
 import { uebernehmen, alleSpaces, type AufgabenSpace } from './struktur';
 import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, auswahlUmbenennungen, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
-import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen } from './sicht';
+import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen, nurIchBesitzer } from './sicht';
 import { beideAufloesen, anlegerinVon, alleZustaendigen, SYSTEM } from './zustaendig';
 import { aufgabePruefen } from './pruefen';
 import { archivMarkeSchuetzen } from './archiv-einzeln';
@@ -29,6 +29,8 @@ import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe-server';
 import { dateienBereichNachziehen } from './umzug-dateien';
 import { elternPruefen, nachIdKarte, kinderKarte, vorfahren } from './ebenen';
 import { ortPruefen } from './ziehen';
+import { aufgabenBezugPruefen, projektBezugPruefen } from '@/lib/planung/bezuege';
+import { zieleFuerBezug } from '@/lib/planung/bezuege-server';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -221,6 +223,9 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   const personen = personenListe.map(p => p.speicher);
   const echtePerson = !!opt.person && opt.person !== SYSTEM;
   let ops: AufgabenOps = typeof opsOderRechnen === 'function' ? leereOps() : opsOderRechnen;
+  // Bezüge (07.10., Seil): genannte Ziele aus dem geteilten Bestand — nur geladen, wenn eine Änderung ein Ziel nennen kann.
+  const nenntZiel = typeof opsOderRechnen === 'function' || [...ops.tasks, ...ops.projects].some(o => o.op === 'upsert' && !!(o.eintrag as { zielId?: string } | undefined)?.zielId);
+  const zieleBezug = nenntZiel ? await zieleFuerBezug() : null;
   let erg: SchreibErgebnis = { ok: false, status: 409, angewandt: 0, zeilen: [] };
   let vorher: TasksState = leer();
   let nachher: TasksState = leer();
@@ -416,6 +421,15 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
       const titel = (id: string) => nachher.tasks.find(t => t.id === id)?.title ?? id;
       erg = { ok: false, status: 409, kreis, fehler: `Abgelehnt: „${titel(kreis[0])}“ würde über ${kreis.length - 1 === 1 ? 'eine Abhängigkeit' : `${kreis.length - 1} Abhängigkeiten`} auf sich selbst warten. Nichts gespeichert.`, angewandt: 0, zeilen: [] };
       throw ABBRUCH;
+    }
+    // Bezüge (07.10., Seil — lib/planung/bezuege.ts): nur NEU gesetzte „wartet auf“/„zahlt ein auf“ — Privat und Business bleiben
+    // getrennt, eine geteilte Aufgabe wartet nie auf eine „nur ich“-Aufgabe, das Ziel steht im geteilten Bestand. Sonst 400, nichts gespeichert.
+    {
+      const nachIdB = new Map(nachher.tasks.map(t => [t.id, t]));
+      const vorIdB = new Map(vorher.tasks.map(t => [t.id, t]));
+      const grund = aufgabenBezugPruefen(nachIdB, upserts, vorIdB, { besitzer: t => nurIchBesitzer(t as Task, nachIdB), ziele: zieleBezug })
+        ?? projektBezugPruefen(nachher.projects, ops.projects.filter(o => o.op === 'upsert').map(o => o.eintrag!.id), new Map(vorher.projects.map(p => [p.id, p.zielId])), zieleBezug);
+      if (grund) { erg = { ok: false, status: 400, fehler: grund, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
     }
     // Paket C3: wiederkehrende Aufgabe erledigt → nächste Instanz (idempotent, höchstens eine offene je Serie).
     // „nur ich“: auch eine NEUE Aufgabe unter einer fremden „nur ich“-Aufgabe gibt es nicht (Unteraufgaben erben).

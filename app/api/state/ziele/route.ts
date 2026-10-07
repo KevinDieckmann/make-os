@@ -29,6 +29,8 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ohneToteVerweise, zielVerweiseLoesen } from '@/lib/planung/meilenstein-kette';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-server';
+import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
+import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -141,6 +143,9 @@ export async function PATCH(req: Request) {
   const ops = opsLesen<Ziel>(body.ops, e => { const z = sauberZiel(e); return z && mitMandatBezug(z, mandate, z.space === 'business'); }, JE_HORIZONT * 2);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, JE_HORIZONT * 2) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const jahr = laufendesJahr();
+  // Oberziel (07.10., Seil): Ziele, deren „zahlt ein auf“ mit einem gelöschten Ziel wegfiel — für die Antwort und „Rückgängig“.
+  let oberGeloest = new Map<string, string[]>();
+  const alleIn = (f: ZieleDatei | Record<string, unknown>): Ziel[] => ZIEL_HORIZONTE.flatMap(x => (Array.isArray((f as ZieleDatei)[x]) ? (f as ZieleDatei)[x] : []));
 
   const r = await listePatchen<Ziel, ZieleDatei & Record<string, unknown>>(sp.name, h, ops, 6, undefined, {
     // Grenze je Horizont: ablehnen, nie kürzen.
@@ -149,12 +154,31 @@ export async function PATCH(req: Request) {
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id));
       return liste.length + neu.size > JE_HORIZONT && neu.size > 0 ? `Abgelehnt: höchstens ${JE_HORIZONT} Ziele je Horizont.` : null;
     },
+    // Oberziel (07.10., Seil — lib/planung/bezuege.ts): über ALLEN Horizonten nach der Änderung — nur neu gesetzte „zahlt ein auf“:
+    // Ziel vorhanden (im selben Bestand), Bereich passt, kein Kreis, höchstens 8 Ebenen.
+    pruefenNachher: (nachher, vorher) => oberzielPruefen(alleIn(nachher), ops.filter(o => o.op === 'upsert').map(o => o.eintrag!.id), new Map(alleIn(vorher).map(z => [z.id, z.oberzielId]))),
     // Jahresziele ohne `jahr` bekommen es beim Schreiben (30.09., lib/planung/ziele.ts) — erst dann die Kaskade (nur das laufende Jahr).
-    danach: f => { const d = datei(f); if (h === 'jahr') d.jahr = jahrStempeln(d.jahr, jahr); return kaskadeAnwenden(d, jahr) as ZieleDatei & Record<string, unknown>; },
+    // Danach (07.10.): wer auf ein Ziel einzahlte, das es nicht mehr gibt (gelöscht oder von der Kaskade entfernt), verliert nur den Verweis.
+    danach: f => {
+      const d = datei(f); if (h === 'jahr') d.jahr = jahrStempeln(d.jahr, jahr);
+      const k = kaskadeAnwenden(d, jahr) as ZieleDatei;
+      const ids = new Set(alleIn(k).map(z => z.id));
+      const tot = new Set(alleIn(k).map(z => z.oberzielId).filter((x): x is string => !!x && !ids.has(x)));
+      const je = new Map<string, string[]>();
+      if (tot.size) for (const x of ZIEL_HORIZONTE) {
+        const vor = new Map(k[x].map(z => [z.id, z.oberzielId]));
+        const rr = oberzielLoesen(k[x], tot);
+        for (const id of rr.geloest) { const o = vor.get(id)!; je.set(o, [...(je.get(o) ?? []), id]); }
+        k[x] = rr.liste;
+      }
+      oberGeloest = je;
+      return k as ZieleDatei & Record<string, unknown>;
+    },
   });
   if (!r.ok) {
     const aktuell = datei(await loadJson<ZieleDatei>(sp.name));
-    const status = r.konflikte?.length ? 409 : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
+    // Bereich/Ziel fehlt (07.10.) = 400; Kreis und andere Ablehnungen 409; Grenzen 413.
+    const status = r.konflikte?.length ? 409 : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
     return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], fuer: sp.fuer, horizont: h, ...await mitStaenden(aktuell) }, { status });
   }
   const next = datei(r.next);
@@ -174,26 +198,38 @@ export async function PATCH(req: Request) {
   }
   // Gelöschte Ziele (01.10., Ziel ↔ Meilenstein): ihre Meilensteine bleiben stehen und verlieren nur den Ziel-Bezug (`zielId`) —
   // nie mitlöschen. Rückgängig im Browser legt Ziel und Bezug wieder an. Nur der geteilte Bestand hat Meilensteine als Kinder.
+  // Seit 07.10. (Seil) genauso: Aufgaben und Projekte, die direkt darauf einzahlen (`zielId`), und Unterziele (`oberzielId`, oben in
+  // `danach`). Die Antwort nennt je Ziel die Kennungen (`bezuegeGeloest`) — „Rückgängig“ setzt sie über POST /api/planung/bezuege zurück.
   let zielBezugGeloest = 0;
-  if (sp.fuer === 'wir') {
+  const bezuegeGeloest: BezuegeGeloest[] = [];
+  {
     const lebend = new Set(ZIEL_HORIZONTE.flatMap(x => next[x].map(z => z.id)));
     const tot = new Set(ops.filter(o => o.op === 'delete' && o.id && !lebend.has(o.id)).map(o => o.id!));
-    if (tot.size) {
+    const msJe = new Map<string, string[]>();
+    let aufJe = new Map<string, { aufgaben: string[]; projekte: string[] }>();
+    if (tot.size && sp.fuer === 'wir') {
       let geloest: string[] = [];
       await updateJson<{ meilensteine?: Meilenstein[] } & Record<string, unknown>>('meilensteine', cur => {
         const l = Array.isArray(cur?.meilensteine) ? cur!.meilensteine : [];
+        msJe.clear();
+        for (const m of l) if (m.zielId && tot.has(m.zielId)) msJe.set(m.zielId, [...(msJe.get(m.zielId) ?? []), m.id]);
         const r = zielVerweiseLoesen(l, tot);
         geloest = r.geloest;
         return geloest.length ? { ...(cur ?? {}), meilensteine: r.liste } : (cur ?? { meilensteine: l });
       });
       zielBezugGeloest = geloest.length;
       if (geloest.length) await protokolliere('meilensteine', geloest.map(id => ({ op: 'geaendert' as const, id, felder: ['zielId'] })), werAus(req));
+      aufJe = await zielBezuegeInAufgabenLoesen(tot, personStreng(req) ?? 'system');
+    }
+    for (const id of tot) {
+      const g: BezuegeGeloest = { zielId: id, ziele: oberGeloest.get(id) ?? [], meilensteine: msJe.get(id) ?? [], aufgaben: aufJe.get(id)?.aufgaben ?? [], projekte: aufJe.get(id)?.projekte ?? [] };
+      if (g.ziele.length || g.meilensteine.length || g.aufgaben.length || g.projekte.length) bezuegeGeloest.push(g);
     }
   }
   // Ziel-Fortschritt aus Meilensteinen (30.09.): hat ein Ziel Meilensteine, gilt ihr Mittelwert (auch nach einer Änderung von Hand).
   if (sp.fuer === 'wir' && await zieleNachziehen()) {
     const f = datei(await loadJson<ZieleDatei>(sp.name));
-    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...await mitStaenden(f) });
+    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(f) });
   }
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, ...await mitStaenden(next) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(next) });
 }

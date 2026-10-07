@@ -167,6 +167,12 @@ anderen Person nur als „Belegt“ (grau, ohne Titel/Link). 7. `band.ts`/`zeich
 (die Website-Kopie ist seit „Klar 2“, 07.10., entfernt; Wächter `tests/lichtfaeden.test.ts`). 8. Nie im Zeichner Daten rechnen.
 9. Ziel-Farben rechnet nur der Server (`lib/planung/ziel-farben-server.ts`, Feld `farbe` an jedem Ziel) — Oberflächen nehmen sie, wie sie kommen.
 
+**Seil (07.10., LICHTFAEDEN.md › Seil):** Stränge laufen je Ziel als Fasern in ein Seil. Wie ein Gantt: links eine feste **Beschriftungs-Spalte**
+(je Spur eine Zeile über die ganze Spur-Höhe — Marke in Strang-Farbe, gefüllt = erledigt, Schloss = blockiert; Titel `TYP.bedien`; Prozent;
+überfällig in `LEUCHT.achtung`), rechts die Zeit; Kopf „STRÄNGE“ in `TYP.mikro`, Trennung `RAND.haar`, Hervorhebung `TIEF.flaeche(farbe)`, aktiver
+Fokus-Knopf `TIEF.knopf(farbe)` — keine Farb-Literale. Breite NUR über `seilSpalte` (`SEIL_FORM.spalte`); Blättern verschiebt nur die Zeit. Handy
+(bis 720 px) ohne Querlauf (`SeilHandy`). „Bewegung reduzieren“ und verborgener Tab = sofort das fertige Bild. Wächter `tests/seil-oberflaeche.test.ts`.
+
 ## Umgestellt: Kern — Shell · Aufgaben · Kalender · Inbox (03.10.)
 Reine Darstellung und Struktur; Funktion, Daten und Abgleich (iCloud/Google/Gmail) unverändert. Wächter: `tests/design-kern.test.ts`.
 
