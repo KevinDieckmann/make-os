@@ -6,7 +6,7 @@
 // der Ausfall wird ehrlich ausgewiesen statt still verschluckt.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -24,7 +24,8 @@ import { personAus } from '@/lib/zoe/raum';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { stromFuer } from '@/lib/inbox/strom-server';
+import { lageText } from '@/lib/inbox/zoe-sicht';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
@@ -52,6 +53,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Inbox 2 (06.10.): vorher hing die einzige Prüfung am Mac-Postfach (nurInhaber) — jetzt ausdrücklich: Haushalt bzw. Systemlauf
+  // (Takt); die Post liest der Lauf nur für die Person, für die er läuft (Schritt „postfach“).
+  if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { art?: LaufArt } = {};
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch { /* ohne Body ok */ }
@@ -89,30 +93,22 @@ export async function POST(req: Request) {
   }
 
   // ── 1. Postfächer ──
+  // Inbox 2 (06.10.): der EINE Strom der eigenen Postfächer (Gmail + IMAP, lib/inbox/zoe-sicht.ts) — nur für die Person, für die der
+  // Lauf läuft; ein Systemlauf ohne Person liest keine Post. Nur Kopf + Betreff (KI-Grundsatz: Volltext nur beim Entwurf auf Klick).
   let neueMails: Mail[] = [];
   await schritt('postfach', async () => {
-    // Kevins Mac-Postfach gehört dem Inhaber (26.09.): andere Konten bekommen nur den M365-Spiegel.
-    const darfPostfach = await nurInhaber(req);
-    const r = darfPostfach
-      ? await fetch(`${origin}/api/apple-mail`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(personKopf(req)) }, signal: AbortSignal.timeout(70_000) })
-      : new Response('[]', { headers: { 'Content-Type': 'application/json' } });
-    const d = await r.json();
-    // Beide Postfächer: Apple live + KEMARIS/M365 aus dem Brain-Snapshot.
-    const apple = Array.isArray(d) ? (d as Mail[]).filter(m => !m.isRead) : [];
-    const m365: Mail[] = b.msMails.ungelesen.map(m => ({
-      id: m.id ?? 'ms', account: 'KEMARIS (M365)', sender: `${m.senderName ?? ''} <${m.senderEmail ?? ''}>`,
-      subject: m.subject, receivedAt: m.receivedAt, isRead: false,
-    }));
-    if (!Array.isArray(d) && !m365.length) return { stand: 'fehler' as const, kurz: 'Kein Zugriff auf Apple Mail, kein M365-Snapshot' };
-    const ungelesen = [...m365, ...apple]; // M365 zuerst — dort liegt das Geschäft.
-    neueMails = ungelesen.slice(0, 25);
-    const alterHinweis = b.msMails.stale ? ` · M365-Snapshot ${b.msMails.alterH ?? '?'} Std. alt` : '';
+    const person = personStreng(req);
+    if (!person) return { stand: 'uebersprungen' as const, kurz: 'Die Inbox gehört je Person — ohne Person keine Post' };
+    const s = await stromFuer(person);
+    if (!s.postfaecher.length) return { stand: 'leer' as const, kurz: 'Noch kein Postfach verbunden' };
+    const namen = Object.fromEntries(s.bereiche.map(x => [x.id, x.name]));
+    const wichtig = s.gespraeche.filter(g => g.inArbeit && (g.fach === 'antworten' || g.fach === 'termine' || g.fach === 'geld')).sort((a, c) => c.am.localeCompare(a.am));
+    neueMails = wichtig.slice(0, 25).map(g => ({ id: g.id, account: g.bereich ? namen[g.bereich] ?? g.bereich : 'Ohne Bereich', sender: g.zuordnung?.name ?? g.gegenueber.name ?? g.gegenueber.email, subject: g.betreff, receivedAt: g.am, isRead: !g.ungelesen }));
+    const lage = s.lage.map(l => lageText(l, l.bereich ? namen[l.bereich] ?? l.bereich : 'Ohne Bereich'));
     return {
-      stand: ungelesen.length ? ('ok' as const) : ('leer' as const),
-      kurz: ungelesen.length
-        ? `${ungelesen.length} ungelesen (${m365.length} KEMARIS/M365, ${apple.length} Apple)${alterHinweis}`
-        : `Alles gelesen${alterHinweis}`,
-      detail: ungelesen.slice(0, 12).map(m => ({ von: m.sender, betreff: m.subject, konto: m.account })),
+      stand: wichtig.length ? ('ok' as const) : ('leer' as const),
+      kurz: wichtig.length ? `${wichtig.length} offen · ${s.zoe.text}` : 'Nichts offen — die Inbox ist im Griff',
+      detail: [...lage.map(l => ({ lage: l })), ...wichtig.slice(0, 12).map(m => ({ von: m.zuordnung?.name ?? m.gegenueber.name ?? m.gegenueber.email, betreff: m.betreff, konto: m.bereich ? namen[m.bereich] ?? m.bereich : 'Ohne Bereich' }))],
     };
   });
 
@@ -191,8 +187,8 @@ export async function POST(req: Request) {
       ].join('\n'),
       user: [
         `Heute ${wd}, ${heute}.`,
-        `NEUE, UNGELESENE NACHRICHTEN (${neueMails.length}):`,
-        fremd('apple-mail', neueMails.slice(0, 15).map(m => `- [${m.account ?? ''}] ${m.sender ?? ''}: ${m.subject ?? ''}`).join('\n') || '(keine)'),
+        `OFFENE GESPRÄCHE IN DER INBOX (${neueMails.length}, nur Absender und Betreff):`,
+        fremd('postfach', neueMails.slice(0, 15).map(m => `- [${m.account ?? ''}] ${m.sender ?? ''}: ${m.subject ?? ''}`).join('\n') || '(keine)'),
         '',
         `ÜBERFÄLLIG: ${overdue.map(t => t.title).join(' · ') || '(keine)'}`,
         `HEUTE FÄLLIG: ${dueToday.map(t => t.title).join(' · ') || '(keine)'}`,

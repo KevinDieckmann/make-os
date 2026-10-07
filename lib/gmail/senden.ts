@@ -9,7 +9,7 @@
 //     eigenen Adressen; Adressen werden geprüft (kein Zeilenumbruch, kein `<`), höchstens 20
 //   · § 7 UWG / Art. 18 (`pruefeEmpfaenger`): eingeschränkte Personen nie (409); bei Werbesperre/roter Mail-Ampel und werblichen
 //     Wörtern im Text eine Rückfrage (409 `uwg`) — die Person entscheidet, MAKE OS blockiert nie die 1:1-Antwort
-//   · danach die gesendete Mail sofort im Spiegel und im Verlauf der Kontaktakte
+//   · danach die gesendete Mail sofort im Spiegel (Verlauf der Kontaktakte nur für zugeordnete Gespräche, lib/inbox/verlauf.ts)
 // Der Text bleibt außerhalb von Protokollen: das Änderungsprotokoll trägt nur die Nachrichten-Kennung.
 
 import { googleAnfrage } from '@/lib/google/http';
@@ -20,7 +20,7 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { anzeigename } from '@/lib/make-one/crm';
 import { GMAIL_API, aliaseSicherstellen, nachrichtHolen } from './abgleich';
 import { adresseGueltig, adresseKlein, antwortBetreff, bytesBase64url, mimeBauen, referenzenFuer, zeilenfrei, nachrichtAus } from './mime';
-import { adressIndex, eigeneAdressen, gmailVerlaufSchreiben } from './zuordnung';
+import { adressIndex, eigeneAdressen } from './zuordnung';
 import { aendereGmailStand, aendereGmailTexte, adressenText, ladeGmailStand } from './stand';
 import type { Adr, GmailAlias, GmailKopf, GmailStand } from './typen';
 import { GMAIL_GRENZEN } from './typen';
@@ -28,7 +28,7 @@ import { GMAIL_GRENZEN } from './typen';
 export const TEXT_MAX = 100_000;
 export const EMPFAENGER_MAX = 20;
 
-export type SendenCode = 'nicht-verbunden' | 'kein-text' | 'zu-lang' | 'kein-empfaenger' | 'adresse' | 'zu-viele' | 'absender' | 'nicht-gefunden' | 'betreff' | 'eingeschraenkt' | 'uwg' | 'google';
+export type SendenCode = 'nicht-verbunden' | 'kein-text' | 'zu-lang' | 'kein-empfaenger' | 'adresse' | 'zu-viele' | 'absender' | 'nicht-gefunden' | 'betreff' | 'eingeschraenkt' | 'uwg' | 'google' | 'versand';
 export class SendenFehler extends Error {
   constructor(public code: SendenCode, message: string, public status = 400, public extra?: Record<string, unknown>) { super(message); }
 }
@@ -161,9 +161,10 @@ async function gesendetSpiegeln(person: string, id: string): Promise<void> {
   const m = await nachrichtHolen(person, id);
   if (!m) return;
   const { kopf, text } = nachrichtAus(m);
-  const neu = await aendereGmailStand(person, s => ({ ...s, koepfe: { ...s.koepfe, [kopf.id]: kopf } }));
+  await aendereGmailStand(person, s => ({ ...s, koepfe: { ...s.koepfe, [kopf.id]: kopf } }));
   await aendereGmailTexte(person, t => ({ v: 1, texte: { ...t.texte, [kopf.id]: { adressen: adressenText(kopf), t: text.slice(0, GMAIL_GRENZEN.textMax) } } }));
-  if (neu) await gmailVerlaufSchreiben(person, neu).catch(() => { /* nachgezogen beim nächsten Lauf */ });
+  // Verlauf nur für zugeordnete Gespräche (Inbox 2, 06.10.).
+  await import('@/lib/inbox/verlauf').then(v => v.verlaufNachziehen(person)).catch(() => { /* nachgezogen beim nächsten Lauf */ });
 }
 
 // Für Tests/Oberfläche: die Standard-Empfänger zu einer Nachricht aus dem Stand.

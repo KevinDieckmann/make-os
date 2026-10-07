@@ -11,6 +11,8 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 export const NUR_SELBST = { ok: false, fehler: 'Die Google-Verbindung verwaltet nur die Person selbst — angemeldet, nie über den Dienstweg.' } as const;
+/** Inbox 2 (06.10.): die eigenen Postfächer — nur die Person selbst, nie der Dienstweg, nie ein anderes Konto. */
+export const NUR_EIGENE_POST = { ok: false, fehler: 'Die Inbox zeigt nur die eigenen Postfächer — angemeldet, nie über den Dienstweg.' } as const;
 
 /**
  * Die Person der Sitzung — oder die fertige Antwort (403). `schreibend`: zusätzlich die Build-Prüfung (409 `neuLaden`).

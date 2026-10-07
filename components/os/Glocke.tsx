@@ -104,6 +104,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   sicherheit: { Icon: ShieldCheck, label: 'Sicherheit', farbe: C.achtung },
   // 04.10.: „kündigen bis“ eines Vertrags naht (Gesellschafts-Register).
   vertrag: { Icon: Hourglass, label: 'Vertragsfrist', farbe: C.achtung },
+  // 06.10. (Inbox 2): ein Postfach braucht eine neue Anmeldung („Verbindung erneuern“).
+  postfach: { Icon: Mail, label: 'Postfach', farbe: C.achtung },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {

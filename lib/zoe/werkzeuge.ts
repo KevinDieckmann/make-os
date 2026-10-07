@@ -446,43 +446,20 @@ async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: 
 }
 
 /**
- * Postfach lesen — Kevins Ansage: „Wenn ich ihm sage, hol dir die Infos, soll
- * er den Agenten wirklich angreifen und die Information rausholen."
- *
- * Vorher hat ZOE auf den Inbox-Agenten verwiesen. Jetzt liest er selbst:
- * erst der Kopf (billig), Text nur bei Treffern. Read-only — es wird nie
- * geantwortet, verschoben oder gelöscht.
+ * Postfach lesen — Kevins Ansage: „Wenn ich ihm sage, hol dir die Infos, soll er den Agenten wirklich angreifen und die Information
+ * rausholen.“ Seit 06.10. (Inbox 2) aus dem EINEN Strom der eigenen Postfächer der Person (Gmail + IMAP, lib/inbox/zoe-sicht.ts) — nie
+ * die Post einer anderen Person, nie ohne Person. Nur Kopf und Ausschnitt (KI-Grundsatz: Volltext nur beim Entwurf auf Klick).
+ * Read-only — es wird nie geantwortet, verschoben oder gelöscht.
  */
-async function liesPostfach(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
+async function liesPostfach(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON;
   const suche = String(input.suche ?? '').trim().slice(0, 60);
-  const anzahl = Math.min(5, Math.max(1, Number(input.anzahl) || 1));
-  // Die Person reist mit: das Postfach gehört dem Inhaber, die Route prüft das (26.09.).
-  const H = { 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) };
-
+  const anzahl = Math.min(20, Math.max(1, Number(input.anzahl) || (suche ? 5 : 20)));
   try {
-    if (!suche) {
-      // Ohne Suchbegriff reicht die Übersicht — Betreffzeilen, kein Text.
-      const r = await fetch(`${origin}/api/apple-mail`, { headers: H, signal: AbortSignal.timeout(60_000) });
-      const d = await r.json();
-      if (!Array.isArray(d)) return `Postfach nicht lesbar: ${String(d?.error ?? 'unbekannt').slice(0, 160)}`;
-      const zeilen = d.slice(0, 20).map((m: { sender?: string; subject?: string; receivedAt?: string }) =>
-        `• ${String(m.sender ?? '').replace(/<.*>/, '').trim().slice(0, 40)} — ${String(m.subject ?? '').slice(0, 80)}`).join('\n');
-      return `POSTFACH (neueste ${Math.min(20, d.length)} von ${d.length}):\n${zeilen}`;
-    }
-
-    const r = await fetch(
-      `${origin}/api/apple-mail/inhalt?suche=${encodeURIComponent(suche)}&anzahl=${anzahl}&laenge=3000`,
-      { headers: H, signal: AbortSignal.timeout(100_000) },
-    );
-    const d = await r.json();
-    if (!d.ok) return `Postfach nicht lesbar: ${String(d.error ?? '').slice(0, 200)}`;
-    if (!d.gefunden) return `Keine Mail zu „${suche}" unter den ${d.durchsucht} neuesten Nachrichten.`;
-    return `MAIL-TREFFER zu „${suche}" (${d.gefunden}):\n` + d.mails
-      .map((m: { sender: string; betreff: string; datum: string; text: string }) =>
-        `VON ${m.sender}\nBETREFF ${m.betreff}\nDATUM ${m.datum}\n---\n${m.text.slice(0, 2500)}`)
-      .join('\n\n═══\n\n');
+    const { postfachFuerZoe } = await import('@/lib/inbox/zoe-sicht');
+    return (await postfachFuerZoe(person, suche, anzahl)).text;
   } catch (err) {
-    return `Postfach nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`;
+    return `Postfach nicht lesbar: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`;
   }
 }
 

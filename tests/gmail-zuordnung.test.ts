@@ -17,7 +17,9 @@ process.env.MAKE_OS_PEPPER = 'pruef-pepper-gmail-zuordnung-0123456789abcdef';
 
 type R = { GET?: (r: Request) => Promise<Response>; POST?: (r: Request) => Promise<Response>; PATCH?: (r: Request) => Promise<Response> };
 let V: typeof import('@/lib/google/verbindung'), A: typeof import('@/lib/gmail/abgleich'), S: typeof import('@/lib/gmail/stand'), Z: typeof import('@/lib/gmail/zuordnung'), db: typeof import('@/lib/store/local-db');
-let AM: typeof import('@/lib/gmail/aus-mail'), anfrage: R, followup: R, tasks: R;
+let AM: typeof import('@/lib/inbox/aus-gespraech'), anfrage: R, followup: R, tasks: R;
+// Inbox 2 (06.10.): die Bausteine arbeiten auf dem Gespräch (jede Quelle) — hier aus Gmail-Kopf + Zuordnung gebaut.
+const gz = (kopf: { threadId: string; betreff: string; von: { email: string; name?: string } }, z?: unknown) => ({ id: `gm~${kopf.threadId}`, betreff: kopf.betreff, gegenueber: kopf.von, zuordnung: (z ?? null) as never, bereich: null });
 let g: GmailFake;
 
 const k = (id: string, vorname: string, nachname: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname, nachname, stufe: 'kontakt', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', anrede: 'Sie', ...x } as Kontakt);
@@ -26,7 +28,7 @@ const post = (route: R, url: string, body: unknown, h: Record<string, string> = 
 
 beforeAll(async () => {
   V = await import('@/lib/google/verbindung'); A = await import('@/lib/gmail/abgleich'); S = await import('@/lib/gmail/stand'); Z = await import('@/lib/gmail/zuordnung'); db = await import('@/lib/store/local-db');
-  AM = await import('@/lib/gmail/aus-mail');
+  AM = await import('@/lib/inbox/aus-gespraech');
   anfrage = await import('../app/api/crm/anfrage/route') as R; followup = await import('../app/api/crm/followup/route') as R; tasks = await import('../app/api/tasks/create/route') as R;
 });
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));
@@ -59,6 +61,10 @@ describe('Zuordnung und Verlauf', () => {
     const z = await Z.zuordnungenFuer(Object.values(s.koepfe), s);
     expect(z.m1).toMatchObject({ kontaktId: 'c-anna-schmidt', name: 'Anna Schmidt', firma: 'Beispiel GmbH', firmaId: 'f-beispiel', dealId: 'd-1', dealTitel: 'Rahmenvertrag' });
     expect(z.m2.kontaktId).toBe('c-anna-schmidt');
+    // Inbox 2 (06.10.): angezeigt wird sofort, in den Verlauf kommt es erst nach „Zuordnen“ (je Gespräch, ein Klick).
+    expect((await kontakte()).find(c => c.id === 'c-anna-schmidt')!.aktivitaeten).toHaveLength(0);
+    const inbox = await import('../app/api/inbox/route') as R;
+    for (const id of ['gm~m1', 'gm~m2']) expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id })).d.ok, id).toBe(true);
     const a = (await kontakte()).find(c => c.id === 'c-anna-schmidt')!.aktivitaeten;
     expect(a).toHaveLength(2);
     expect(a.find(x => x.mailLink === '/os/inbox?offen=gmail-m1')).toMatchObject({ art: 'antwort', text: 'Betreff: Rahmenvertrag — Rückfrage', von: 'system' });
@@ -73,6 +79,10 @@ describe('Zuordnung und Verlauf', () => {
     g.mail({ id: 'i1', von: 'Info <info@sammel.example.invalid>', betreff: 'Newsletter', text: 'x' });
     g.mail({ id: 'u1', von: 'fremd@nirgends.example.invalid', betreff: 'Unbekannt', text: 'x' });
     await A.gmailAbgleichen('kevin');
+    const inbox = await import('../app/api/inbox/route') as R;
+    expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~s1' })).d.ok).toBe(true);
+    // Sammeladresse: es gibt keine Person zum Zuordnen.
+    expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~i1' })).status).toBe(400);
     const ks = await kontakte();
     expect(ks.find(c => c.id === 'c-anna-schmidt')!.aktivitaeten[0]).toMatchObject({ art: 'mail', von: 'kevin', text: 'E-Mail gesendet · Betreff: Re: Rahmenvertrag', mailLink: '/os/inbox?offen=gmail-s1' });
     expect(ks.find(c => c.id === 'c-info-sammel')!.aktivitaeten).toHaveLength(0);
@@ -91,15 +101,16 @@ describe('Zuordnung und Verlauf', () => {
     expect(ks.find(c => c.id === 'c-ben-sperre')!.aktivitaeten).toHaveLength(0);
     expect(ks.find(c => c.id === 'c-eva-eingeschraenkt')!.aktivitaeten).toHaveLength(0);
   });
-  it('die Zeile steht auch dann, wenn die Person erst NACH der Mail in die Kartei kommt (nächster Lauf zieht nach)', async () => {
+  it('kommt die Person erst NACH der Mail in die Kartei: „Zuordnen“ geht dann (vorher 400), die Zeile steht genau einmal', async () => {
     g.mail({ id: 'n1', von: 'Neu Person <neu@spaeter.example.invalid>', betreff: 'Anfrage zum Produkt', text: 'Guten Tag' });
     await A.gmailAbgleichen('kevin');
-    const s = (await S.ladeGmailStand('kevin'))!;
-    expect(await Z.gmailVerlaufSchreiben('kevin', s)).toBe(0);
+    const inbox = await import('../app/api/inbox/route') as R;
+    const { verlaufNachziehen } = await import('@/lib/inbox/verlauf');
+    expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~n1' })).status).toBe(400);
     await db.saveJson('kontakte', { kontakte: [...(await kontakte()), k('c-neu-person', 'Neu', 'Person', { email: 'neu@spaeter.example.invalid' })] });
-    expect(await Z.gmailVerlaufSchreiben('kevin', s)).toBe(1);
+    expect((await post(inbox, '/api/inbox', { aktion: 'zuordnen', id: 'gm~n1' })).d.ok).toBe(true);
     expect((await kontakte()).find(c => c.id === 'c-neu-person')!.aktivitaeten[0].mailLink).toBe('/os/inbox?offen=gmail-n1');
-    expect(await Z.gmailVerlaufSchreiben('kevin', s)).toBe(0);
+    expect(await verlaufNachziehen('kevin')).toBe(0);
   });
   it('die Link-Form wird gesäubert (nur /os/inbox?offen=gmail-<Kennung>) und überlebt die Kartei-Säuberung', async () => {
     const { saeubereKontakt } = await import('@/lib/make-one/crm');
@@ -114,7 +125,7 @@ describe('Unbekannter Absender → Kontakt anlegen (Anfrage über Mail) — Mark
     g.mail({ id: 'n1', von: '"Schulz, Petra" <petra@neu.example.invalid>', betreff: 'Re: Anfrage Beratung', text: 'Guten Tag, wir interessieren uns für Ihre Beratung. Das hier ist ein sehr langer Text …'.repeat(20) });
     await A.gmailAbgleichen('kevin');
     const kopf = (await S.ladeGmailStand('kevin'))!.koepfe.n1;
-    const e = AM.kontaktAusMail(kopf, '2026-10-03');
+    const e = AM.kontaktAusGespraech(gz(kopf), kopf.ausschnitt, '2026-10-03');
     expect(e).toMatchObject({ kanal: 'mail', neu: { vorname: 'Petra', nachname: 'Schulz', email: 'petra@neu.example.invalid' }, datum: '2026-10-03' });
     expect(e.text.length).toBeLessThanOrEqual(600);
     expect(e.text.startsWith('Anfrage Beratung')).toBe(true);
@@ -152,9 +163,9 @@ describe('Aufgabe, Follow-up, Termin aus der Mail — über die vorhandenen Schr
   }
   it('Aufgabe: Titel aus dem Betreff (ohne AW:), Beschreibung mit Absender + Link zurück zur Mail, Bezug Kontakt/Firma/Deal — angelegt über /api/tasks/create', async () => {
     const { kopf, z } = await mail();
-    const a = AM.aufgabeAusMail(kopf, z);
+    const a = AM.aufgabeAusGespraech(gz(kopf, z));
     expect(a).toMatchObject({ title: 'Rahmenvertrag — Rückfrage', space: 'business', bezug: { kontaktId: 'c-anna-schmidt', firmaId: 'f-beispiel', dealId: 'd-1' } });
-    expect(a.description).toBe('Aus Gmail · Anna Schmidt <anna@firma.example.invalid>\n/os/inbox?offen=gmail-m1');
+    expect(a.description).toBe('Aus der Inbox · Anna Schmidt <anna@firma.example.invalid>\n/os/inbox?offen=gm~m1');
     expect(a.description).not.toContain('Bitte um Rückruf');   // nie der Mailtext
     const r = await post(tasks, '/api/tasks/create', { title: a.title, description: a.description, space: a.space, bezug: a.bezug, owner: 'kevin' });
     expect(r.status).toBe(200);
@@ -162,18 +173,18 @@ describe('Aufgabe, Follow-up, Termin aus der Mail — über die vorhandenen Schr
     const { aufgabenSicht } = await import('@/lib/aufgaben/papierkorb');
     void aufgabenSicht;
     const roh = JSON.stringify(await db.loadJson('tasks'));
-    expect(roh).toContain('/os/inbox?offen=gmail-m1');
+    expect(roh).toContain('/os/inbox?offen=gm~m1');
     expect(roh).toContain('c-anna-schmidt');
     // zweites Mal: nicht doppelt
     expect((await post(tasks, '/api/tasks/create', { title: a.title, description: a.description, owner: 'kevin' })).d.duplikat).toBe(true);
   });
   it('Follow-up: nur mit zugeordneter Person; Text = „Mail beantworten: Betreff“, Notiz mit Link; über /api/crm/followup', async () => {
     const { kopf, z } = await mail();
-    expect(AM.followUpAusMail(kopf, null, '2026-10-04')).toBeNull();
-    const f = AM.followUpAusMail(kopf, z, '2026-10-04')!;
+    expect(AM.followUpAusGespraech(gz(kopf, null), '2026-10-04')).toBeNull();
+    const f = AM.followUpAusGespraech(gz(kopf, z), '2026-10-04')!;
     expect(f).toMatchObject({ aktion: 'anlegen', bezug: { art: 'kontakt', id: 'c-anna-schmidt' }, kontaktId: 'c-anna-schmidt', art: 'mail', faellig: '2026-10-04' });
     expect(f.text).toBe('Mail beantworten: Rahmenvertrag — Rückfrage');
-    expect(f.notiz).toContain('/os/inbox?offen=gmail-m1');
+    expect(f.notiz).toContain('/os/inbox?offen=gm~m1');
     const r = await post(followup, '/api/crm/followup', f);
     expect(r.status).toBe(200);
     const crm = await db.loadJson<{ followups: { text: string; kontaktId: string; faellig: string; notiz?: string }[] }>('crm');
@@ -181,9 +192,9 @@ describe('Aufgabe, Follow-up, Termin aus der Mail — über die vorhandenen Schr
   });
   it('Termin: Vorgabe für den Termin-Dialog mit Titel, Bezug und Notiz mit Link; Business landet über kalenderZiel im Google Kalender der Person', async () => {
     const { kopf, z } = await mail();
-    const v = AM.terminVorgabe(kopf, z, '2026-10-03', 'kevin', 'https://app.makeinnovation.test');
+    const v = AM.terminVorgabe(gz(kopf, z), '2026-10-03', 'kevin', 'https://app.makeinnovation.test');
     expect(v).toMatchObject({ tag: '2026-10-03', wer: 'kevin', titel: 'Rahmenvertrag — Rückfrage', crm: { kontaktId: 'c-anna-schmidt', firmaId: 'f-beispiel', dealId: 'd-1' } });
-    expect(v.notiz).toBe('Aus Gmail · Anna Schmidt <anna@firma.example.invalid>\nhttps://app.makeinnovation.test/os/inbox?offen=gmail-m1');
+    expect(v.notiz).toBe('Aus der Inbox · Anna Schmidt <anna@firma.example.invalid>\nhttps://app.makeinnovation.test/os/inbox?offen=gm~m1');
     const { formularStart } = await import('@/lib/kalender/formular');
     expect(formularStart(v, 60).notiz).toBe(v.notiz);
     expect(formularStart(v, 60).crm).toEqual(v.crm);

@@ -103,7 +103,7 @@ export function DatenbasisView() {
   const ampel = fehltN ? LEUCHT.kritisch : achtN ? LEUCHT.achtung : LEUCHT.gut;
 
   const verbindungen: { name: string; status: string; ton: Ton; href: string }[] = [
-    { name: 'Apple Mail', status: 'läuft — beide Postfächer live in der Inbox', ton: 'ok', href: '/os/inbox' },
+    { name: 'Postfächer (IMAP/Gmail)', status: 'je Person in der Inbox › Postfächer — Stand am Punkt je Postfach', ton: 'ok', href: '/os/inbox?postfaecher=1' },
     { name: 'Apple Kalender', status: 'iCloud direkt — Termine lesen & schreiben (Stand oben im Kalender)', ton: 'ok', href: '/os/kalender?modus=planen' },
     { name: 'Apple Erinnerungen', status: 'braucht einmalige macOS-Freigabe (Systemeinstellungen → Datenschutz)', ton: 'acht', href: '/os/aufgaben' },
     ...verb.map(v => ({

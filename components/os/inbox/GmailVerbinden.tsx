@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Knopf, LEUCHT, useRueckfrage } from '../ui';
-import { vorText } from '@/lib/gmail/liste';
+import { vorText } from './daten';
 
 export interface GmailMeta {
   konfiguriert: boolean; verbunden: boolean; bereit: boolean; konto?: string; getrennt?: { grund: string };

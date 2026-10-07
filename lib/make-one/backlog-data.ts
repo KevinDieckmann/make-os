@@ -94,7 +94,7 @@ export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
   },
   {
     id: 'm365-live', titel: 'M365 live (Postfach + Firmenkalender)', kategorie: 'anbindung', status: 'offen', prio: 2, block: 'kevin',
-    warum: 'Der Inbox-Agent arbeitet auf Apple Mail; das Firmenpostfach und der KEMARIS-Kalender fehlen noch.',
+    warum: 'Seit Inbox 2 (06.10.) ist Microsoft 365 als Postfach-Quelle raus; offen ist nur noch der KEMARIS-Kalender.',
     brauche: 'Azure App-Registrierung (Client-ID/Secret + Graph-Berechtigungen Mail.Read, Calendars.Read).',
     quelle: 'Audit',
   },

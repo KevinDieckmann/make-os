@@ -187,8 +187,8 @@ describe('Laufzeit: Haushalt des Inhabers (fremder Haushalt, Testkunde, Dienstwe
   const STICHPROBE: [string, Methode, unknown?][] = [
     ['state/meetings', 'GET'], ['state/ziele', 'GET'], ['state/labels', 'GET'], ['state/backlog', 'GET'], ['zoe/protokoll', 'GET'],
     ['zoe/gedaechtnis', 'GET'], ['zoe/verbrauch', 'GET'], ['delegation', 'GET'], ['onboarding', 'GET'], ['risk', 'GET'],
-    ['bauplan', 'GET'], ['state/inbox-absender', 'GET'], ['state/routinen', 'GET'], ['state/meilensteine', 'GET'],
-    ['zoe/selbstbild', 'GET'], ['inbox/triage', 'GET'], ['state/agent-log', 'GET'],
+    ['bauplan', 'GET'], ['state/routinen', 'GET'], ['state/meilensteine', 'GET'],
+    ['zoe/selbstbild', 'GET'], ['state/agent-log', 'GET'],
     ['state/meetings', 'POST', { titel: 'Fremd', zusammenfassung: 'x' }], ['state/backlog', 'POST', { titel: 'Fremd' }],
     ['zoe/protokoll', 'POST', { id: 'x' }],
   ];
@@ -256,7 +256,7 @@ describe('Laufzeit: Finanzplanung (Sicht aus dem Konto)', () => {
 });
 
 describe('Laufzeit: nur der Inhaber', () => {
-  it.each([['microsoft', 'GET'], ['netzwerk/vorschlaege', 'GET'], ['client-fehler', 'GET']] as [string, Methode][])('%s %s', async (pfad, m) => {
+  it.each([['apple-contacts', 'GET'], ['client-fehler', 'GET']] as [string, Methode][])('%s %s', async (pfad, m) => {
     expect(await status(pfad, sitzung('malin'), m)).toBe(403);
     expect(await status(pfad, sitzung('gast'), m)).toBe(403);
     expect(await status(pfad, sitzung('kevin'), m)).toBe(200);

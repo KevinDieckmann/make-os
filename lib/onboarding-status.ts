@@ -11,6 +11,7 @@ import { hasAnthropicKey } from "@/lib/anthropic";
 import { lesen, type MalinExport } from "@/lib/make-one/grundlage";
 import { SCHRITTE } from "@/lib/make-one/onboarding-data";
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { postfaecherGezaehlt } from '@/lib/postfach/register';
 
 export interface Handisch { erledigt: Record<string, { at: string; von: string }> }
 export interface Befund { erfuellt: boolean; wert: string }
@@ -24,7 +25,8 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
   const [netz, cal, inbox, tasks, kompass, ziele, finance, plan, health, agenten, verlauf, grund] = await Promise.all([
     loadJson<{ kontakte?: unknown[] }>('netzwerk'),
     loadJson<{ events?: unknown[] }>('calendar-cache'),
-    loadJson<{ messages?: unknown[]; nachrichten?: unknown[] }>('microsoft-inbox'),
+    // Inbox 2 (06.10.): verbundene Postfächer aller Konten (IMAP-Register + Gmail) — nur gezählt, nie gelesen.
+    postfaecherGezaehlt(),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     loadJson<{ modus?: string; eigene?: Record<string, unknown> }>('kompass'),
     loadJson<{ fokus?: Record<string, string>; jahr?: unknown[] }>('ziele'),
@@ -65,7 +67,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
 
   const letzte7 = Object.keys(health ?? {}).filter(d => d >= tagePlus(localDay(), -7)).length;
   const reglerEigen = Object.keys(kompass?.eigene ?? {}).length;
-  const postfach = (inbox?.messages?.length ?? inbox?.nachrichten?.length ?? 0);
+  const postfach = inbox;
 
   return {
     schluessel: process.env.MAKE_OS_KEY && hasAnthropicKey()
@@ -74,7 +76,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
     sicherung,
     grundlage: g ? ja(`Stand ${grund!.stand}, ${g.umsatz.length + g.kosten.length + g.entnahmen.length} Positionen`) : nein('noch kein Export geladen'),
     kalender: (cal?.events?.length ?? 0) > 0 ? ja(`${cal!.events!.length} Termine`) : nein('kein Kalender verbunden'),
-    postfach: postfach > 0 ? ja(`${postfach} Nachrichten`) : nein('kein Postfach verbunden'),
+    postfach: postfach > 0 ? ja(`${postfach} ${postfach === 1 ? 'Postfach' : 'Postfächer'} verbunden`) : nein('kein Postfach verbunden'),
     kontakte: (netz?.kontakte?.length ?? 0) > 0 ? ja(`${netz!.kontakte!.length} Kontakte`) : nein('keine Kontakte'),
     aufgaben: ueberfaellig === 0 ? ja(`${offen.length} offen, nichts überfällig`) : nein(`${ueberfaellig} überfällig von ${offen.length}`),
     kompass: kompass?.modus && reglerEigen >= 3

@@ -19,14 +19,14 @@ import { empfaengerAuskunft, garantieText, rolleText, verantwortlicherAuskunft, 
 export type AuskunftArt = 'kontakt' | 'konto';
 
 /** Verarbeitungen (Verzeichnis-Kennungen), die jede KONTO-Person betreffen können. */
-export const KONTO_VERARBEITUNGEN = ['vv-konten', 'vv-aufgaben-zeit', 'vv-kapazitaet', 'vv-gesundheit', 'vv-familie', 'vv-finanzen', 'vv-zoe', 'vv-ki', 'vv-telegram', 'vv-brain', 'vv-kalender-google', 'vv-kalender-icloud', 'vv-email-google', 'vv-mac-m365', 'vv-bauplan', 'vv-sicherungen'] as const;
+export const KONTO_VERARBEITUNGEN = ['vv-konten', 'vv-aufgaben-zeit', 'vv-kapazitaet', 'vv-gesundheit', 'vv-familie', 'vv-finanzen', 'vv-zoe', 'vv-ki', 'vv-telegram', 'vv-brain', 'vv-kalender-google', 'vv-kalender-icloud', 'vv-email-google', 'vv-email-imap', 'vv-mac-m365', 'vv-bauplan', 'vv-sicherungen'] as const;
 /** Verarbeitungen, die jede Person der Kartei betreffen. */
 export const KONTAKT_IMMER = ['vv-kontakte', 'vv-vertrieb', 'vv-zoe', 'vv-ki', 'vv-sicherungen'] as const;
 /** Weitere Verarbeitungen je Bereich, in dem die Auskunft Daten der Person gefunden hat (`kontaktBereiche`). */
 export const KONTAKT_JE_BEREICH: Readonly<Record<string, readonly string[]>> = {
   mandate: ['vv-mandate'], events: ['vv-events'], netzwerken: ['vv-netzwerken'], uebergaben: ['vv-besuche-kunde', 'vv-kunden-export'],
   buchungen: ['vv-buchung'], gesellschaften: ['vv-gesellschaften'], kapazitaet: ['vv-kapazitaet'], kampagnen: ['vv-kampagnen'],
-  kalender: ['vv-kalender-google', 'vv-kalender-icloud', 'vv-mac-m365'], postfach: ['vv-email-google', 'vv-mac-m365'], aufgaben: ['vv-aufgaben-zeit'],
+  kalender: ['vv-kalender-google', 'vv-kalender-icloud', 'vv-mac-m365'], postfach: ['vv-email-google', 'vv-email-imap', 'vv-mac-m365'], aufgaben: ['vv-aufgaben-zeit'],
 };
 
 const gefuellt = (v: unknown): boolean => Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v as object).length > 0 : !!v;

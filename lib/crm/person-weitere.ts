@@ -261,6 +261,10 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Gmail in der Inbox (03.10.): Spiegel je Person (Köpfe, Texte) — Nachrichten, die die Person nennen, raus; das Original bleibt in Gmail.
   { name: 'gmail-stand--*', muster: /^gmail-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'gmail-text--*', muster: /^gmail-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
+  // Inbox 2 (06.10.): IMAP-Spiegel je Person (Köpfe, Texte) wie Gmail; Inbox-Zustand: Absender-Adresse fällt weg, Kontakt-Kennung getilgt.
+  { name: 'imap-stand--*', muster: /^imap-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
+  { name: 'imap-text--*', muster: /^imap-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
+  { name: 'inbox-zustand--*', muster: /^inbox-zustand--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kemaris-calendar', muster: /^kemaris-calendar$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },

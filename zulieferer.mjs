@@ -2,7 +2,8 @@
 // ─── MAKE OS · Zulieferer (läuft auf Kevins Mac) ────────────────────────────
 // Kevins Entscheidung 24.09.: „Mac liefert zu.“ Der Server kennt kein Apple.
 // Dieses Skript fragt die lokale MAKE-OS-Instanz auf dem Mac (die osascript
-// kann) nach Kalender, Mail, Erinnerungen und Kontakten und schiebt den Stand
+// — Mail seit 06.10. nicht mehr: der Server holt die Postfächer selbst per IMAP/Gmail, Inbox 2 —
+// kann) nach Kalender, Erinnerungen und Kontakten und schiebt den Stand
 // an den Server. Ist der Mac aus, zeigt der Server den letzten Stand — mit
 // Datum, nie still.
 //
@@ -44,7 +45,6 @@ if (!SERVER || !SERVER_KEYS.length || !LOKAL_KEY) {
 /** Was, woher, wie oft (Minuten). */
 const PLAN = [
   { art: 'kalender', pfad: '/api/apple-calendar?refresh=1', alle: 10 },
-  { art: 'mail', pfad: '/api/apple-mail', alle: 10 },
   { art: 'erinnerungen', pfad: '/api/apple-reminders', alle: 30 },
   { art: 'kontakte', pfad: '/api/apple-contacts', alle: 24 * 60 },
 ];

@@ -52,7 +52,6 @@ interface StoredProject { id: string; title: string }
  * der anderen Person), `fremd` = Text möglicherweise von Dritten (Einladung, Abo, Buchungsseite — gekapselt im Prompt).
  */
 interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; maskiert?: boolean; fremd?: boolean; abgesagt?: boolean }
-export interface MsMail { id?: string; subject?: string; senderName?: string; senderEmail?: string; preview?: string; receivedAt?: string; isRead?: boolean; importance?: string }
 
 export interface Brain {
   heute: string;
@@ -92,7 +91,6 @@ export interface Brain {
    */
   anlaesse?: { feiertage: { tag: string; name: string }[]; geburtstage: { name: string; tag: string; alter?: number; herkunft: string }[] };
   /** M365-Postfach-Snapshot (KEMARIS) — Team-Mails gehören ins Bild. */
-  msMails: { ungelesen: MsMail[]; at: string | null; alterH: number | null; stale: boolean };
   laeufe: AgentLogEntry[];
   /** Business-Meilensteine aus dem Store (gesundheit bleibt hier bewusst draußen). */
   meilensteine: string[];
@@ -135,7 +133,7 @@ export function aufgabenFuerBrain(state: { tasks: readonly (StoredTask & { paren
 export async function gatherBrain(heute = localDay(), person: string = 'kevin'): Promise<Brain> {
   // Art. 9 (05.10.): Gesundheitswerte nur mit Einwilligung (b) der Person — ohne sie werden sie gar nicht erst gelesen.
   const gesundheitFrei = await gesundheitAnKi(person).catch(() => false);
-  const [tasksR, finR, prospectsR, zoeKalR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
+  const [tasksR, finR, prospectsR, zoeKalR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
     // Aufgaben (29.09., B4): die übernommene Sicht (`ladeAufgaben` — Space, Unteraufgaben aus `subTasks` …), nur für
     // Personen im Haushalt des Inhabers (wie die Mandate), Papierkorb (`geloeschtAm`) ausgeblendet, gezählt nur Hauptaufgaben.
     personImHaushaltDesInhabers(person).then(ja => (ja ? ladeAufgabenSicht(person).then(aufgabenFuerBrain) : null)), // Sichtfilter „nur ich“ (29.09.)
@@ -143,7 +141,6 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     loadJson<{ prospects: Prospect[] }>('prospects'),
     // Kalender (29.09., #K4): iCloud/Mac + KEMARIS (M365), je Person gefiltert — nie mehr der rohe `calendar-cache`.
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
-    loadJson<{ emails: MsMail[]; at?: string }>('microsoft-inbox'),
     gesundheitFrei ? resolveVitals(heute, person) : Promise.resolve(VITALS_GESPERRT),
     computeIndex(heute, person),
     recentRuns(undefined, 10),
@@ -193,8 +190,6 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   const events: CalEvent[] = [...calEvents, ...kemEvents.filter(e => !bekannt.has(schluessel(e)))].filter(e => !e.abgesagt)
     .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
 
-  const ms = val(msR);
-  const msAlterH = alterStunden(ms?.at ?? null);
 
   const vitalsFallback: ResolvedVitals = {
     rec: 0, sleep: 0, hrv: 0, rhr: 0, stand: '—', heute: false, alterTage: 999, fallback: true,
@@ -235,12 +230,6 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
         apple: { alterH: calAlterH == null ? null : Math.round(calAlterH), stale: calAlterH == null || calAlterH > 12 },
         kemaris: { alterH: kemAlterH == null ? null : Math.round(kemAlterH), stale: kemAlterH == null || kemAlterH > 12 },
       },
-    },
-    msMails: {
-      ungelesen: (ms?.emails ?? []).filter(m => !m.isRead),
-      at: ms?.at ?? null,
-      alterH: msAlterH == null ? null : Math.round(msAlterH),
-      stale: msAlterH == null || msAlterH > 24,
     },
     anlaesse: { feiertage: feiertageIm(heute, anlaesseBis), geburtstage: geburtstage.map(g => ({ name: g.name, tag: g.tag, ...(g.alter !== undefined ? { alter: g.alter } : {}), herkunft: g.herkunft })) },
     laeufe: val(laeufeR) ?? [],

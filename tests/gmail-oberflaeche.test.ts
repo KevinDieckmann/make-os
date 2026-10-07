@@ -55,20 +55,24 @@ describe('GmailVerbinden — die Zustände', () => {
   });
 });
 
-describe('Inbox: Quelle Gmail', () => {
+describe('Inbox 2: Antworten und Gespräch (alle Quellen, auch Gmail)', () => {
   it('Antworten sendet nur der Einzelklick — im Editor kein automatisches Senden, Verwerfen fragt, Aufgabe/Follow-up/Termin/Kontakt über die vorhandenen Wege', () => {
-    const antwort = quelle('components/os/inbox/GmailAntwort.tsx');
+    const antwort = quelle('components/os/inbox/Antwort.tsx');
     expect(antwort).toMatch(/Gesendet wird nur mit dem Klick auf „Senden“/);
-    expect(antwort.match(/\/api\/gmail\/senden/g)?.length).toBe(1);        // genau EIN Sendeweg, ausgelöst vom Knopf
-    expect(antwort).toMatch(/onClick=\{\(\) => senden\(false\)\}/);
-    expect(antwort).not.toMatch(/useEffect\([^)]*senden/);
-    const detail = quelle('components/os/inbox/GmailDetail.tsx');
+    expect(antwort.match(/\/api\/inbox\/senden/g)?.length).toBe(1);        // genau EIN Sendeweg, ausgelöst vom Knopf
+    expect(antwort).toMatch(/onClick=\{\(\) => los\(false\)\}/);
+    expect(antwort).not.toMatch(/useEffect\([^)]*los\(/);
+    expect(antwort).toMatch(/titel: 'Entwurf verwerfen\?'/);
+    const detail = quelle('components/os/inbox/Gespraech.tsx');
     expect(detail).toMatch(/\/api\/crm\/followup/); expect(detail).toMatch(/\/api\/crm\/anfrage/); expect(detail).toMatch(/NeuerTermin/); expect(detail).toMatch(/type: 'ADD_TASK'/);
     expect(detail).not.toMatch(/dangerouslySetInnerHTML/);
-    for (const f of ['GmailText', 'GmailAntwort', 'GmailDetail', 'GmailVerbinden']) expect(quelle(`components/os/inbox/${f}.tsx`), f).not.toMatch(/dangerouslySetInnerHTML|innerHTML|document\.write/);
+    for (const f of ['GmailText', 'Antwort', 'Gespraech', 'GmailVerbinden', 'InboxZwei', 'Postfaecher', 'BelegAusMail']) expect(quelle(`components/os/inbox/${f}.tsx`), f).not.toMatch(/dangerouslySetInnerHTML|innerHTML|document\.write/);
   });
-  it('Tasten und Tippziele: Knöpfe der Mail ≥ 44 px (schlank.Knopf) bzw. eigene Felder 16 px', () => {
-    const antwort = quelle('components/os/inbox/GmailAntwort.tsx');
-    expect(antwort).toMatch(/fontSize: 16, minHeight: 44/);
+  it('Tippziele und Eingaben: Felder über den Baustein `eingabe` (48 px, 16 px), Passwort nie vorbelegt und nie angezeigt', () => {
+    const antwort = quelle('components/os/inbox/Antwort.tsx');
+    expect(antwort).toMatch(/style=\{eingabe\}/);
+    const pf = quelle('components/os/inbox/Postfaecher.tsx');
+    expect(pf).toMatch(/type="password" autoComplete="new-password"/);
+    expect(pf).not.toMatch(/passwort: p\.|\.passwort\b(?! *:)/);
   });
 });

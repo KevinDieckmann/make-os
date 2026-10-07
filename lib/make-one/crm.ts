@@ -1098,7 +1098,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     // Termin-Verweis (K3): Schlüssel `uid` bzw. `uid::RECURRENCE-ID` — eine Zeile, begrenzt.
     const terminUid = typeof x.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(x.terminUid) ? x.terminUid : undefined;
     const aktFirma = typeof x.firmaId === 'string' && /^f-[a-z0-9-]{2,63}$/.test(x.firmaId) ? x.firmaId : undefined;
-    const mailLink = typeof x.mailLink === 'string' && /^\/os\/inbox\?offen=gmail-[A-Za-z0-9]{6,40}$/.test(x.mailLink) ? x.mailLink : undefined;
+    const mailLink = typeof x.mailLink === 'string' && /^\/os\/inbox\?offen=(gmail-[A-Za-z0-9]{6,40}|im~pf-[0-9a-f-]{36}~[0-9a-f]{20})$/.test(x.mailLink) ? x.mailLink : undefined;
     return {
       am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
       ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),

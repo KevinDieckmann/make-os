@@ -275,6 +275,9 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
   await schritt('mail-spiegel', async () => {
     const { gmailAufraeumen } = await import('@/lib/gmail/aufraeumen');
     zaehle('gmail-spiegel', await gmailAufraeumen(stichtag('mail-spiegel', f['mail-spiegel'], heute)));
+    // Inbox 2 (06.10.): dieselbe Frist für die IMAP-Spiegel (alle Personen, auch ruhende Postfächer).
+    const { imapAufraeumen } = await import('@/lib/postfach/aufraeumen');
+    zaehle('imap-spiegel', await imapAufraeumen(stichtag('mail-spiegel', f['mail-spiegel'], heute)));
   });
 
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)

@@ -138,7 +138,7 @@ export const SCHRITTE: Schritt[] = [
     id: 'kevin-postfach', spur: 'kevin', minuten: 10,
     titel: 'Postfach verbinden',
     warum: 'Die Inbox ist dein täglicher Einstieg — Türsteher, Fächer und die Zuordnung zu Aufgaben hängen daran.',
-    wie: ['KEMARIS-Postfach (Microsoft 365) verbinden.', 'Apple Mail als zweite Quelle prüfen.', 'Einmal durch die Fächer gehen und den Türsteher einstellen.'],
+    wie: ['In der Inbox › Postfächer das eigene Postfach verbinden (iCloud mit App-Passwort, IONOS, Google Workspace …) und einen Bereich wählen.', 'Weitere Postfächer je Bereich dazunehmen.', 'Einmal durch die Fächer gehen und neue Absender zulassen oder blocken.'],
     wo: { href: '/os/inbox', label: 'Inbox' },
     pruefung: 'postfach',
   },

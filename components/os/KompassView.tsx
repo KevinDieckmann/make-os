@@ -21,7 +21,7 @@ import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { THEMEN, STANDARD_ORDNUNG, sortierteThemen, themenMit, themaVon } from '@/lib/make-one/ordnung-data';
 import { ORGS } from '@/lib/make-one/organisation-data';
 import { STICHWORTE, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
-import { FAECHER } from '@/lib/make-one/inbox-data';
+import { FAECHER } from '@/lib/inbox/faecher';
 import { WER_LABEL, einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
 import {
   MODI, MODUS, STANDARD_MODUS, BEREICHE, REGLER, wertVon, abweichungen, stufeText,
@@ -224,7 +224,8 @@ export function KompassView() {
   // ── Türsteher-Stand fürs Wirkungs-Feedback ──
   const [offeneAbsender, setOffeneAbsender] = useState<number | null>(null);
   useEffect(() => {
-    fetch('/api/state/inbox-absender').then(r => r.json()).then(d => setOffeneAbsender(Object.keys(d.bekannt ?? {}).length)).catch(() => {});
+    // Inbox 2 (06.10.): Screener je Person — die eigenen Entscheidungen (/api/inbox/postfaecher › absender).
+    fetch('/api/inbox/postfaecher').then(r => r.json()).then(d => setOffeneAbsender(Array.isArray(d.absender) ? d.absender.length : null)).catch(() => {});
   }, []);
 
   // ── WIRKUNG: was der Regler gerade bewirkt, in echten Zahlen ──
@@ -563,7 +564,7 @@ export function KompassView() {
                         {reihe('Wer', (['kevin', 'malin', 'both'] as const).map(p => chip(f.besitzer === p, C.aktiv, p === 'both' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin', () => patch(f.id, { besitzer: f.besitzer === p ? undefined : p }), p)))}
                       </>
                     ) : (
-                      reihe('Fach', FAECHER.map(fa => chip((f.faecher ?? []).includes(fa.id), fa.farbe, fa.label, () => patch(f.id, { faecher: kippen(f.faecher, fa.id) }), fa.id)))
+                      reihe('Fach', FAECHER.map(fa => chip((f.faecher ?? []).includes(fa.id), C.aktiv, fa.label, () => patch(f.id, { faecher: kippen(f.faecher, fa.id) }), fa.id)))
                     )}
                     {reihe('Text', (
                       <input value={f.suche ?? ''} onChange={e => patch(f.id, { suche: e.target.value })}

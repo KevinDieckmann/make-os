@@ -4,8 +4,8 @@
 // bekannt ist, und einen Aufhänger, den Kevin selbst hat recherchieren
 // lassen. Daraus wird eine Ansprache, die nicht nach Serienbrief klingt.
 //
-// Versendet wird hier nichts. Nie. Der Entwurf geht in Apple Mail als
-// Entwurf oder in die Zwischenablage — Kevin schickt.
+// Versendet wird hier nichts. Nie. Der Entwurf geht in die Inbox (neue Mail,
+// Postfach wählen) oder in die Zwischenablage — gesendet wird per Einzelklick.
 
 import { askJson } from '@/lib/anthropic';
 import type { KiKontext } from '@/lib/datenschutz/ki-tor';

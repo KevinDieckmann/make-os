@@ -175,16 +175,14 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
 
       // ── Neu ab 07.09.: die Agenten, die ZOE bisher nicht erreichte ──
       case 'inbox': {
-        // Triage braucht die Nachrichten — ZOE holt sie selbst, statt Kevin
-        // erst auf /os/inbox zu schicken.
-        const mails = await get('/api/apple-mail', 60_000);
-        if (!Array.isArray(mails)) return fehl(`Postfach nicht lesbar: ${kuerze((mails as { error?: string })?.error, 160)}`);
-        const d = await post('/api/inbox/triage', { nachrichten: mails.slice(0, 40) }, 150_000);
-        if (!d.ok) return fehl(`Triage fehlgeschlagen: ${kuerze(d.error, 200)}`);
-        const t = d.triage ?? {};
-        const zaehl = { wichtig: 0, normal: 0, rauschen: 0 } as Record<string, number>;
-        for (const k of Object.keys(t)) { const s = String((t[k] as { stufe?: string })?.stufe ?? 'normal'); zaehl[s] = (zaehl[s] ?? 0) + 1; }
-        return gut(`POSTFACH EINGESTUFT (${d.neu ?? 0} neu bewertet):\nwichtig ${zaehl.wichtig} · normal ${zaehl.normal} · Rauschen ${zaehl.rauschen}. Steht in der Inbox, Zero-Durchlauf startet dort.`);
+        // Inbox 2 (06.10.): kein Modell, keine Triage — die Fächer stehen fest (lib/inbox/faecher.ts). Der Agent liest die Lage der
+        // eigenen Postfächer der Person, für die er läuft; ohne Person (Systemlauf) liest er keine Post.
+        const wer = person ?? null;
+        if (!wer) return gut('INBOX: läuft je Person — ohne Person wird keine Post gelesen.');
+        const { inboxLage, lageText } = await import('@/lib/inbox/zoe-sicht');
+        const l = await inboxLage(wer);
+        if (!l.postfaecher) return gut('INBOX: noch kein Postfach verbunden (Inbox › Postfach verbinden).');
+        return gut(`INBOX-LAGE:\n${l.lage.map(z => lageText(z, z.bereich ? l.bereichNamen[z.bereich] ?? z.bereich : 'Ohne Bereich')).join('\n')}\nZOE: ${l.zoe}\n(Alles nur Vorschlag — erledigt, beantwortet und zugeordnet wird in der Inbox per Klick.)`);
       }
       case 'task': {
         const d = await post('/api/delegation', { ablegen: true }, 120_000);

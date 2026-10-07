@@ -6,6 +6,7 @@
 // Versand bleibt bei ihm.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Zahl aus schlank).
 
+import { neueMailVorbereiten } from '@/lib/inbox/neue-mail';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
@@ -120,14 +121,10 @@ export function ProspectingView() {
     setEntwurfBusy(null);
   }
 
-  async function inMailOeffnen() {
+  // Inbox 2 (06.10.): statt Apple Mail (osascript) die neue Mail in der Inbox — Postfach wählen, Empfänger eintragen, prüfen, selbst senden.
+  function inMailOeffnen() {
     if (!entwurf) return;
-    setMailInfo('öffne …');
-    try {
-      const r = await fetch('/api/apple-mail/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: '', subject: entwurf.betreff, body: entwurf.email }) });
-      const d = await r.json();
-      setMailInfo(d.ok ? '✓ In Apple Mail geöffnet — Empfänger eintragen, prüfen, selbst senden.' : (d.error ?? 'Konnte Mail nicht öffnen.'));
-    } catch { setMailInfo('Apple Mail nicht erreichbar.'); }
+    window.location.href = neueMailVorbereiten({ betreff: entwurf.betreff, text: entwurf.email });
   }
 
   function addManual() {
@@ -234,7 +231,7 @@ export function ProspectingView() {
                             </>
                           )}
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <Knopf onClick={inMailOeffnen} farbe={LEUCHT.business}>In Apple Mail öffnen</Knopf>
+                            <Knopf onClick={inMailOeffnen} farbe={LEUCHT.business}>In der Inbox schreiben</Knopf>
                             <Knopf leise onClick={() => { try { navigator.clipboard.writeText(`${entwurf.betreff}\n\n${entwurf.email}`); } catch { /* egal */ } }}>E-Mail kopieren</Knopf>
                             {entwurf.linkedin && <Knopf leise onClick={() => { try { navigator.clipboard.writeText(entwurf.linkedin); } catch { /* egal */ } }}>LinkedIn kopieren</Knopf>}
                             <Knopf leise onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: 'kontaktiert' } : x))}>→ als kontaktiert markieren</Knopf>

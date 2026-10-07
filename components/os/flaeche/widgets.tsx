@@ -410,7 +410,8 @@ function FinanzenPrivatWidget({ titel, i }: WidgetProps) {
 function ZoeWidget({ e, titel, i }: WidgetProps) {
   const stapel = useDaten<number>('/api/zoe/stapel', x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
   const mitInbox = e.inbox === true;
-  const inbox = useDaten<number>(mitInbox ? '/api/state/inbox' : '/api/state/inbox?leer=1', x => Object.values(((x as { status?: Record<string, { status: string }> }).status ?? {})).filter(s => s.status === 'offen' || s.status === 'warten').length);
+  // Inbox 2 (06.10.): offen = Gespräche in Arbeit ohne Rundschreiben (EIN Strom, nur die eigenen Postfächer, /api/inbox).
+  const inbox = useDaten<number>(mitInbox ? '/api/inbox' : '/api/zoe/stapel', x => (mitInbox ? ((x as { gespraeche?: { inArbeit?: boolean; fach?: string }[] }).gespraeche ?? []).filter(g => g.inArbeit && g.fach !== 'info' && g.fach !== 'warten').length : null));
   const n = stapel ?? null;
   return (
     <Karte i={i} akzent={n ? LEUCHT.achtung : undefined}>
