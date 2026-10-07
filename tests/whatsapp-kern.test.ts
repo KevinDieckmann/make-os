@@ -301,13 +301,13 @@ describe('Medien, Hosts, Version', () => {
 });
 
 describe('Einrichtung aus der Umgebung', () => {
-  const env = (o: Record<string, string> = {}) => ({ [WA_ENV.telefonnummerId]: NR_ID, [WA_ENV.wabaId]: '200300400500600', [WA_ENV.zugriff]: 'EAAG' + 'x'.repeat(120), [WA_ENV.appGeheimnis]: GEHEIM, [WA_ENV.verifyToken]: 'v'.repeat(48), ...o }) as NodeJS.ProcessEnv;
+  const env = (o: Record<string, string> = {}) => ({ [WA_ENV.telefonnummerId]: NR_ID, [WA_ENV.wabaId]: '200300400500600', [WA_ENV.zugriff]: 'EAAG' + 'x'.repeat(120), [WA_ENV.appGeheimnis]: GEHEIM, [WA_ENV.verifyToken]: 'v'.repeat(48), ...o }) as unknown as NodeJS.ProcessEnv;
   it('vollständig → Konfig mit Vorgabe-Bereich ug, Postfach-Kennung', () => {
     const k = whatsappKonfig(env())!;
     expect(k).toMatchObject({ telefonnummerId: NR_ID, bereich: 'ug', personen: null, postfachId: postfachIdFuer(NR_ID) });
   });
   it('fehlende Werte → nur Namen; Privat ist nie ein zulässiger Bereich', () => {
-    expect(whatsappFehlend({} as NodeJS.ProcessEnv)).toEqual(expect.arrayContaining([WA_ENV.telefonnummerId, WA_ENV.zugriff, WA_ENV.appGeheimnis, WA_ENV.verifyToken]));
+    expect(whatsappFehlend({} as unknown as NodeJS.ProcessEnv)).toEqual(expect.arrayContaining([WA_ENV.telefonnummerId, WA_ENV.zugriff, WA_ENV.appGeheimnis, WA_ENV.verifyToken]));
     expect(whatsappKonfig(env({ [WA_ENV.bereich]: 'privat' }))).toBeNull();
     expect(whatsappFehlend(env({ [WA_ENV.bereich]: 'kdc' }))).toContain(WA_ENV.bereich);
     expect(bereichZulaessig('privat')).toBe(false);

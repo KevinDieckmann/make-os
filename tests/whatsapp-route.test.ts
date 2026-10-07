@@ -38,7 +38,7 @@ let middleware: typeof import('@/middleware').middleware;
 let aufrufe: { methode: string; url: string; body?: unknown; auth: boolean }[] = [];
 let antwortSenden: (body: unknown) => { status: number; json: unknown } = () => ({ status: 200, json: { messaging_product: 'whatsapp', contacts: [{ wa_id: KUNDE }], messages: [{ id: `wamid.OUT${aufrufe.length}abcdef` }] } });
 const BILD = Buffer.from('ein-erfundenes-bild-nur-fuer-den-test');
-let VORLAGEN = [
+const VORLAGEN = [
   { name: 'termin_erinnerung', language: 'de', status: 'APPROVED', category: 'UTILITY', components: [{ type: 'BODY', text: 'Hallo {{1}}, wir sehen uns am {{2}}.' }] },
   { name: 'angebot_neu', language: 'de', status: 'PENDING', category: 'MARKETING', components: [{ type: 'BODY', text: 'Neu: {{1}}' }] },
 ];
@@ -215,7 +215,7 @@ describe('Strom der Inbox: Bereichstrennung und Zugang', () => {
 
 describe('Senden: frei vs. Vorlage, Einzelklick', () => {
   beforeEach(async () => { await post(koerper(textNachricht('wamid.T3000001', 'Bitte um Rückruf'))); aufrufe = []; });
-  const sende = (person: string, body: Record<string, unknown>, kopf = ich(person)) => senden.POST(anfrage('/api/whatsapp/senden', kopf, 'POST', body));
+  const sende = (person: string, body: Record<string, unknown>, kopf: Record<string, string> = ich(person)) => senden.POST(anfrage('/api/whatsapp/senden', kopf, 'POST', body));
   it('frei im offenen Fenster → an Meta (Text, eine Nummer), im Spiegel als ausgehend; Antwort ohne Schlüssel', async () => {
     const r = await sende('kevin', { gespraech: GID(), art: 'frei', text: 'Gern, ich rufe heute an.', anfrageId: 'anfrage-wa-0001' });
     const t = await r.text();
