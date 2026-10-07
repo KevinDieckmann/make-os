@@ -1,15 +1,18 @@
-// ─── Landingpage makeinnovation.de: Freigabe-Prüfung (01.10., v3: Markttraktion, Make.One, Beteiligungen; „Klar 2“ 07.10.: ruhige Seite) ───
+// ─── Landingpage makeinnovation.de: Freigabe-Prüfung (01.10.; „Klar 2“ 07.10.: ruhige Seite; „v3 · Der Weg“ 07.10. abends) ───
 // website/pruefen.mjs entscheidet, ob die Seite online darf. Hier wird geprüft, dass der Prüfer selbst stimmt:
 // Bau-Regeln heute grün (nur die Platzhalter halten die Freigabe auf), Platzhalter und Regelbrüche werden erkannt.
 // Ob heute noch Platzhalter offen sind, prüft dieser Test bewusst NICHT — das ist Kevins Freigabe, kein Fehler.
 // 07.10. Kevin: „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien.“ Der Scroll-Film
 // (Spur, Bühne, WebGL-Szene, Zahlen-Trommel) ist entfernt; die Tests dazu sind durch die Ruhe-Regeln ersetzt (pruefeRuhe).
-// Die Regeln zu Firmierung, Software-Name, CSP, noindex, Erstgespräch und Datenschutz sind unverändert.
+// 07.10. abends Kevin: „Nimm die Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“
+// → v3: Linienplan „Der Weg der Innovation“, eine Farbfläche, zwei dunkle Abschnitte, Arbeits-Schemata, Bewegung genau einmal; kein
+// Kugel-Bild mehr. Die Ruhe-Tests sind entsprechend angepasst. Die Regeln zu Firmierung, Software-Name, CSP, noindex, Erstgespräch und
+// Datenschutz sind unverändert.
 import { describe, it, expect, afterAll } from 'vitest';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE, LICHT_HOECHSTENS, DUNKEL_HOECHSTENS, STATISTIK, STEMPEL_VERWEIS, stempelVon, stempeln } from '../website/pruefen.mjs';
+import { pruefeWebsite, ANMELDEN, NICHT_OEFFENTLICH, VERSTECKT, LOGO_DATEIEN, ANGEBOTE, BUCHUNG_MUSTER, ERSTGESPRAECH_MAIL, MAIL_BETREFFE, NAVIGATION, STAEDTE, FOKUS_SEITE, GEWICHT_GRENZE, DUNKEL_HOECHSTENS, FARBFLAECHE_HOECHSTENS, STATISTIK, STEMPEL_VERWEIS, stempelVon, stempeln, bewegungsBloecke } from '../website/pruefen.mjs';
 import { ECKE, FARBE, KUGEL } from '@/lib/make-one/design';
 
 const ORDNER = join(process.cwd(), 'website');
@@ -70,8 +73,9 @@ describe('website/pruefen.mjs', () => {
     expect(f).toMatch(/assets\/logo\/kompakt-hell\.svg: fehlt/);
   });
 
-  it('Angebote: Interim CSO, Interim Head of Sales, Events gleichwertig mit „Erstgespräch anfragen“, genau ein „Coming Soon“', () => {
-    expect(ANGEBOTE).toEqual({ 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales': 'aktiv', 'angebot-events': 'aktiv', 'angebot-development': 'bald' });
+  it('Angebote: Interim CSO, Interim Head of Sales, Sichtbarkeit, Events gleichwertig mit „Erstgespräch anfragen“, genau ein „Coming Soon“', () => {
+    // 07.10. abends (v3): „Sichtbarkeit & Marketing“ als eigene Leistung (aus den Beratungsfeldern Botschaft, Unterlagen, Kanäle).
+    expect(ANGEBOTE).toEqual({ 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales': 'aktiv', 'angebot-sichtbarkeit': 'aktiv', 'angebot-events': 'aktiv', 'angebot-development': 'bald' });
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
     expect(index.match(/Coming Soon/g)).toHaveLength(1);
     expect(index).toContain('href="mailto:hello@makeinnovation.de?subject=Make.One%20%E2%80%93%20Einladung"');
@@ -81,9 +85,9 @@ describe('website/pruefen.mjs', () => {
     fuellen(k);
     // Ein Angebot ohne Termin-Knopf, ein zweites „Coming Soon“, ein fehlender Beteiligungen-Knopf und ein Preis fallen auf.
     ersetze(k, 'index.html', /(<article[^>]*id="angebot-events"[\s\S]*?)<a class="knopf zweit" href="#erstgespraech" data-erstgespraech>Erstgespräch anfragen(?: <span class="pfeil" aria-hidden="true">→<\/span>)?<\/a>/, '$1');
-    ersetze(k, 'index.html', '<p class="rolle mikro">Sales-Aufbau auf Zeit</p>', '<span class="abzeichen bald">Coming Soon</span>');
+    ersetze(k, 'index.html', '<p class="rolle mikro"><span class="halt-marke gruen" aria-hidden="true"></span>Sales-Aufbau auf Zeit</p>', '<span class="abzeichen bald">Coming Soon</span>');
     ersetze(k, 'index.html', 'subject=Make.Beteiligungen%20%E2%80%93%20Projekt', 'subject=Projekt');
-    ersetze(k, 'index.html', '<li>Laufzeit 6–12 Monate</li>', '<li>Laufzeit 6–12 Monate, ab 1.500 € pro Tag</li>');
+    ersetze(k, 'index.html', '<dd>6–12 Monate, mit Kevin Dieckmann.</dd>', '<dd>6–12 Monate, ab 1.500 € pro Tag.</dd>');
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/#angebot-events — Knopf „Erstgespräch anfragen“/);
     expect(f).toMatch(/2 × „Coming Soon“/);
@@ -210,53 +214,58 @@ describe('website/pruefen.mjs', () => {
     for (const nein of ['ca. 2 Tage pro Woche', 'Laufzeit 6–12 Monate', '2–3 Terminvorschläge', 'Phase 01']) expect(STATISTIK.test(nein), nein).toBe(false);
     const k = kopie();
     fuellen(k);
-    ersetze(k, 'index.html', '<p class="rhythmus">', '<p>41 % der Unternehmen <a href="https://www.kfw.de/x.pdf">Quelle</a></p><p class="rhythmus">');
+    ersetze(k, 'index.html', '<article class="angebot bald"', '<p>41 % der Unternehmen <a href="https://www.kfw.de/x.pdf">Quelle</a></p><article class="angebot bald"');
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/keine Statistiken oder Prozentzahlen/);
     expect(f).toMatch(/unerwarteter externer Link https:\/\/www\.kfw\.de/);
   });
 
-  it('Ruhe: normale Dokument-Seite ohne Scroll-Film — ein Licht, ein dunkler Abschnitt, keine Animationen, keine scroll-gebundenen Skripte', () => {
-    expect([LICHT_HOECHSTENS, DUNKEL_HOECHSTENS]).toEqual([1, 1]);
+  it('Ruhe (v3): kein Scroll-Film, keine Kugel, zwei dunkle Abschnitte und eine Farbfläche, Bewegung nur einmal und nie scroll-gebunden', () => {
+    // 07.10. abends Kevin: „Nimm die Kugel raus.“ — und Rhythmus statt EINES dunklen Abschnitts (begründet in website/LIESMICH.md › v3).
+    expect([DUNKEL_HOECHSTENS, FARBFLAECHE_HOECHSTENS]).toEqual([2, 1]);
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
-    expect(index).not.toMatch(/<canvas\b|class="(?:spur|buehne|szene|karussell|laufband|flug|vorhang)\b|data-spur-p|data-zerfall|data-aufstieg/);
-    expect(index.match(/class="licht"/g)).toHaveLength(1);
-    expect(index).toMatch(/<figure class="licht" aria-hidden="true"><img src="assets\/bild\/kugel\.svg" width="800" height="800" alt="" loading="lazy" decoding="async"><\/figure>/);
-    expect(index.match(/\sclass="dunkel"/g)).toHaveLength(1);
-    // Nur zwei kleine Skripte (Menü, Erstgespräch) — keine Szene mehr im Ordner.
-    expect(Array.from(index.matchAll(/<script src="(js\/[a-z-]+\.js)/g), m => m[1])).toEqual(['js/menue.js', 'js/erstgespraech.js']);
-    expect(existsSync(join(ORDNER, 'js/szene'))).toBe(false);
-    expect(readdirSync(join(ORDNER, 'js')).sort()).toEqual(['erstgespraech.js', 'menue.js']);
+    expect(index).not.toMatch(/<canvas\b|class="(?:spur|buehne|szene|karussell|laufband|flug|vorhang)\b|data-spur-p|data-zerfall|data-aufstieg|kugel|class="licht"/i);
+    expect(index.match(/\sclass="[^"]*\bdunkel\b[^"]*"/g)).toHaveLength(2);
+    expect(index.match(/\sclass="[^"]*\bfarbflaeche\b[^"]*"/g)).toHaveLength(1);
+    expect(existsSync(join(ORDNER, 'assets/bild'))).toBe(false);
+    // Drei kleine Skripte (Menü, Erstgespräch, die Linie zeichnet sich einmal) — keine Szene mehr im Ordner.
+    expect(Array.from(index.matchAll(/<script src="(js\/[a-z-]+\.js)/g), m => m[1])).toEqual(['js/menue.js', 'js/erstgespraech.js', 'js/weg.js']);
+    expect(readdirSync(join(ORDNER, 'js')).sort()).toEqual(['erstgespraech.js', 'menue.js', 'weg.js']);
     const k = kopie();
     fuellen(k);
-    // Leinwand, zweites Licht, zweiter dunkler Abschnitt, totes Bild, Animation, Scroll-Skript, Skript aus fremdem Ordner: alles fällt auf.
-    ersetze(k, 'index.html', '<section class="abschnitt" id="ueber-uns"', '<canvas></canvas><figure class="licht" aria-hidden="true"><img src="assets/bild/kugel.svg" alt=""></figure><section class="dunkel" id="noch-dunkel"></section><section class="abschnitt" id="ueber-uns"');
+    // Leinwand, Kugel-Bild, dritter dunkler Abschnitt, zweite Farbfläche, totes Bild, Animation außerhalb der Bewegungs-Blöcke,
+    // endlose Animation, Scroll-Skript, Beobachter ohne Abmelden, Skript aus fremdem Ordner: alles fällt auf.
+    ersetze(k, 'index.html', '<section class="abschnitt" id="ueber-uns"', '<canvas></canvas><figure class="licht" aria-hidden="true"><img src="assets/bild/kugel.svg" alt=""></figure><section class="dunkel" id="noch-dunkel"></section><section class="farbflaeche" id="noch-bunt"></section><section class="abschnitt" id="ueber-uns"');
+    mkdirSync(join(k, 'assets/bild'), { recursive: true });
+    writeFileSync(join(k, 'assets/bild/kugel.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
     writeFileSync(join(k, 'assets/bild/alt.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
-    writeFileSync(join(k, 'css/start.css'), readFileSync(join(k, 'css/start.css'), 'utf8') + '\n@keyframes schweben { from { opacity: 0; } }\n');
+    writeFileSync(join(k, 'css/start.css'), readFileSync(join(k, 'css/start.css'), 'utf8') + '\n@keyframes schweben { from { opacity: 0; } }\n.x { animation: schweben 2s infinite; }\n');
     writeFileSync(join(k, 'js/erstgespraech.js'), readFileSync(join(k, 'js/erstgespraech.js'), 'utf8') + "\nwindow.addEventListener('scroll', () => {});\n");
+    ersetze(k, 'js/weg.js', 'beobachter.unobserve(e.target);', '');
     ersetze(k, 'index.html', /<script src="js\/menue\.js\?v=[a-f0-9]+" defer><\/script>/, '<script src="js/szene/motor.js" defer></script>');
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/„<canvas“ — kein Scroll-Film mehr/);
-    expect(f).toMatch(/2 Lichter — höchstens 1/);
-    expect(f).toMatch(/2 dunkle Abschnitte — höchstens 1/);
+    expect(f).toMatch(/assets\/bild\/kugel\.svg: kein Kugel-Bild/);
+    expect(f).toMatch(/index\.html: „[^“]*“ — kein Kugel-Bild, kein dekoratives Licht/);
+    expect(f).toMatch(/3 dunkle Abschnitte — höchstens 2/);
+    expect(f).toMatch(/2 Farbflächen — höchstens 1/);
     expect(f).toMatch(/assets\/bild\/alt\.svg: von keiner Seite gezeigt — tote Datei/);
-    expect(f).toMatch(/css\/start\.css: „@keyframes“/);
+    expect(f).toMatch(/css\/start\.css: „infinite“ — keine Dauer-Animation/);
+    expect(f).toMatch(/css\/start\.css: „@keyframes“ außerhalb von @media \(prefers-reduced-motion: no-preference\)/);
     expect(f).toMatch(/js\/erstgespraech\.js: „addEventListener\('scroll'/);
+    expect(f).toMatch(/js\/weg\.js: IntersectionObserver ohne unobserve\/disconnect/);
     expect(f).toMatch(/<script> — nur eigene Dateien aus js\//);
-    // „Bewegung reduzieren“ muss in den Stilen stehen; ein Licht nur als dekoratives Standbild.
+    // „Bewegung reduzieren“ muss in den Stilen stehen.
     const k2 = kopie();
     fuellen(k2);
     ersetze(k2, 'css/seite.css', '@media (prefers-reduced-motion: reduce) {\n  *, *::before', '@media print {\n  *, *::before');
-    ersetze(k2, 'index.html', '<figure class="licht" aria-hidden="true">', '<figure class="licht">');
-    const f2 = pruefeWebsite(k2).fehler.join('\n');
-    expect(f2).toMatch(/kein @media \(prefers-reduced-motion: reduce\)/);
-    expect(f2).toMatch(/Licht nur als dekoratives Standbild/);
+    expect(pruefeWebsite(k2).fehler.join('\n')).toMatch(/kein @media \(prefers-reduced-motion: reduce\)/);
   });
 
   it('Stempel: jeder Verweis auf css/ und js/ trägt die Prüfsumme der Datei — geänderte Datei ohne neuen Stempel fällt auf', () => {
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
     const verweise = Array.from(index.matchAll(STEMPEL_VERWEIS));
-    expect(verweise.length).toBe(4); // css/seite.css, css/start.css, js/menue.js, js/erstgespraech.js
+    expect(verweise.length).toBe(5); // css/seite.css, css/start.css, js/menue.js, js/erstgespraech.js, js/weg.js
     for (const m of verweise) expect(m[3]).toBe(stempelVon(readFileSync(join(ORDNER, m[2]))));
     const k = kopie();
     fuellen(k);
@@ -279,7 +288,7 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     ersetze(k, 'index.html', '<li><b>Dresden</b></li>', '');
-    ersetze(k, 'index.html', `<a class="textlink karte-link" href="${FOKUS_SEITE}">`, '<a class="textlink karte-link" href="#kontakt">');
+    ersetze(k, 'index.html', `<a class="knopf zweit karte-link" href="${FOKUS_SEITE}">`, '<a class="knopf zweit karte-link" href="#kontakt">');
     ersetze(k, 'index.html', `<a href="${FOKUS_SEITE}">Fokus Innovation <span class="aussen" aria-hidden="true">↗</span></a>\n      <a href="#ueber-uns">`, '<a href="#ueber-uns">');
     const f = pruefeWebsite(k).fehler.join('\n');
     expect(f).toMatch(/Stadt Dresden fehlt/);
@@ -308,7 +317,7 @@ describe('website/pruefen.mjs', () => {
     expect(readFileSync(join(ORDNER, 'css/start.css'), 'utf8')).not.toMatch(/--[a-zA-Z-]+\s*:/);
   });
 
-  it('Knöpfe: nur CI-Farben über Tokens, eine Hauptaktion (dunkel), Bewegung nur als Übergang beim Zeigen', () => {
+  it('Knöpfe: nur CI-Farben über Tokens, eine Hauptaktion (dunkel); Animation nur in den Bewegungs-Blöcken (v3: die Linie zeichnet sich einmal)', () => {
     const css = readFileSync(join(ORDNER, 'css/seite.css'), 'utf8');
     const teil = css.slice(css.indexOf('/* ── Knöpfe'), css.indexOf('/* ── Held'));
     expect(teil.length).toBeGreaterThan(500);
@@ -317,16 +326,31 @@ describe('website/pruefen.mjs', () => {
     for (const m of teil.matchAll(/rgba\((\d+, \d+, \d+),/g)) expect(erlaubt, m[0]).toContain(m[1]);
     expect(teil).toMatch(/\.knopf \{[^}]*background: var\(--tinte\); color: var\(--papier\);/);
     expect(teil).toMatch(/\.knopf:hover \.pfeil \{ transform: translateX\(3px\); \}/);
-    expect(css).not.toMatch(/\banimation(?:-[a-z]+)?\s*:|@keyframes|#ff4c33|#3366ff|'Inter'|fonts\.googleapis/i);
+    expect(css).not.toMatch(/#ff4c33|#3366ff|'Inter'|fonts\.googleapis|\binfinite\b/i);
+    const { bloecke, rest } = bewegungsBloecke(css);
+    expect(bloecke.length).toBeGreaterThanOrEqual(1);
+    expect(rest).not.toMatch(/@keyframes|\banimation(?:-name)?\s*:(?!\s*none)/);
+    expect(bloecke.join('\n')).toMatch(/@keyframes wk-zeichnen/);
     // Der Knoten aus dem Logo steht klein in der Vorzeile (Inline-SVG, aria-hidden, Farben über Klassen).
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
     expect(index).toMatch(/<p class="vorzeile mikro"><svg class="knoten-zeichen"[^>]*aria-hidden="true"/);
   });
 
-  it('Einstieg und Fuß: eine H1 in zwei Sätzen, Index der Angebote; Fuß vollständig (Firmierung, Recht, Login, Kontakt)', () => {
+  it('Einstieg: WER · WAS · FÜR WEN auf dem ersten Bildschirm, der Linienplan als Leitmotiv; Fuß vollständig (Firmierung, Recht, Login, Kontakt)', () => {
     const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
     expect(index).toContain('<h1 id="titel">Innovation braucht Umsetzung <span class="ruhig">und Sichtbarkeit.</span></h1>');
-    expect(Array.from(index.matchAll(/<ol class="index"[\s\S]*?<\/ol>/g))[0]?.[0].match(/<li>/g)).toHaveLength(4);
+    const held = /<section class="held"[\s\S]*?<\/section>/.exec(index)?.[0] ?? '';
+    expect(held).toMatch(/gegründet von Malin &amp; Kevin/);
+    for (const wort of ['Wer', 'Was', 'Für wen']) expect(held).toContain(`<dt class="mikro">${wort}</dt>`);
+    // Der Linienplan: eine Grafik mit Titel und Beschreibung, fünf Halte und der Knoten aus dem Logo.
+    expect(held).toMatch(/<figure class="wegkarte">\s*<svg [^>]*role="img" aria-labelledby="wk-titel wk-text"/);
+    for (const halt of ['Signal', 'Strategie', 'Umsetzung', 'Vertrieb', 'Sichtbarkeit', 'Markt']) expect(held).toContain(`>${halt}</text>`);
+    expect(held).toMatch(/class="wk-k-rot"[\s\S]*class="wk-k-gruen"/);
+    // Der Weg (dunkel) führt das Motiv aus: sechs Etappen, der Knoten in der Mitte, die Linie zeichnet sich einmal (.zeichnen).
+    const weg = /<section class="abschnitt dunkel" id="weg"[\s\S]*?<\/section>/.exec(index)?.[0] ?? '';
+    expect(weg).toMatch(/<ol class="strecke zeichnen"/);
+    expect(weg.match(/<li class="[^"]*"><span class="halt"/g)).toHaveLength(6);
+    expect(weg).toContain('<li class="knoten">');
     const fuss = /<footer class="fuss">[\s\S]*<\/footer>/.exec(index)?.[0] ?? '';
     expect(fuss).toContain('eine Marke der KEMARIS Innovation GmbH');
     expect(fuss).toContain('href="impressum.html"');
@@ -334,7 +358,27 @@ describe('website/pruefen.mjs', () => {
     expect(fuss).toContain(`href="${ANMELDEN}"`);
     expect(fuss).toContain('href="mailto:hello@makeinnovation.de"');
     expect(fuss).toContain('src="assets/logo/wortmarke.svg"');
-    // Der Fuß steht ruhig im Fluss.
     expect(index).not.toMatch(/class="(?:aufdecken|riesen)"/);
+  });
+
+  it('Die Seite sagt alles: je Leistung Ausgangslage · Was wir tun · Was danach steht · Dauer & Form und ein Schema; Gründer; 5–7 Fragen', () => {
+    const index = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    for (const id of ['angebot-interim-cso', 'angebot-head-of-sales', 'angebot-sichtbarkeit', 'angebot-events']) {
+      const art = new RegExp(`<article class="leistung raster" id="${id}"[\\s\\S]*?</article>`).exec(index)?.[0] ?? '';
+      for (const begriff of ['Ausgangslage', 'Was wir tun', 'Was danach steht', 'Dauer &amp; Form']) expect(art, `${id} ${begriff}`).toContain(`<dt class="mikro">${begriff}</dt>`);
+      // Jedes Schema sagt, dass es eins ist (oder ein Beispiel) — keine echten Zahlen, Kunden oder Termine.
+      expect(art, id).toMatch(/<figure class="schema">\s*<figcaption class="mikro">(?:Schema|Beispiel) · /);
+    }
+    const reihenfolge = ['id="haltung"', 'id="markttraktion"', 'id="weg"', 'id="make-one"', 'id="beteiligungen"', 'id="ueber-uns"', 'id="fragen"', 'id="kontakt"'].map(a => index.indexOf(a));
+    expect(reihenfolge.every((w, i) => w > 0 && (i === 0 || w > reihenfolge[i - 1]))).toBe(true);
+    const fragen = /<div class="fragen[^"]*">[\s\S]*?<\/div>/.exec(index)?.[0] ?? '';
+    const zahl = (fragen.match(/<details>/g) ?? []).length;
+    expect(zahl).toBeGreaterThanOrEqual(5);
+    expect(zahl).toBeLessThanOrEqual(7);
+    // Gründer: nur belegte Angaben (Malin, Kevin Dieckmann; Platzhalter für die Vertriebserfahrung bleibt Kevins Sache).
+    const gruender = /<section class="abschnitt" id="ueber-uns"[\s\S]*?<\/section>/.exec(index)?.[0] ?? '';
+    expect(gruender).toContain('<h3>Malin</h3>');
+    expect(gruender).toContain('<h3>Kevin Dieckmann</h3>');
+    expect(gruender).toContain('[[KEVIN: Ein Satz zu deiner Vertriebserfahrung');
   });
 });

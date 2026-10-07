@@ -11,7 +11,7 @@
 //   · Pflichtteile je Seite: lang="de", Titel, genau eine H1, Login-Knopf, Impressum + Datenschutz im Fuß.
 //   · Jeder eigene Link, jedes srcset und jede url() in CSS zeigt auf eine vorhandene Datei bzw. einen Anker.
 //   · Logo: alle Dateien aus assets/logo/ da (scripts/website-logo.mjs), der Kopf zeigt das Logo, der Fuß die Wortmarke.
-//   · Angebote: Interim CSO, Interim Head of Sales, Events & Netzwerk gleichwertig mit „Erstgespräch anfragen“, genau
+//   · Angebote: Interim CSO, Interim Head of Sales, Sichtbarkeit & Marketing, Events & Netzwerk gleichwertig mit „Erstgespräch anfragen“, genau
 //     EIN „Coming Soon“ — bei Development. Make.One und Make.Beteiligungen mit ihrem Mail-Knopf (Betreff).
 //   · Erstgespräch: das Ziel steht an GENAU einer Stelle (#erstgespraech-link) — heute die vorbereitete Mail, später
 //     die Buchungsseite. Alle anderen Knöpfe zeigen auf #erstgespraech (data-erstgespraech; js/erstgespraech.js
@@ -24,9 +24,10 @@
 //     Titel/Beschreibung). KEMARIS steht nur in dieser Firmierung (und in der Adresse @kemaris.de im Impressum).
 //   · Vorschau: solange robots.txt alles sperrt, trägt jede Seite <meta name="robots" content="noindex">; jede Seite
 //     hat eine Beschreibung (<meta name="description">).
-//   · Ruhe („Klar 2“, Kevin 07.10.: „keine Spielereien“ — gemeinsam mit fokus/pruefen.mjs, pruefeRuhe): normale Dokument-Seite
-//     ohne Scroll-Film (keine Spur, Bühne, Leinwand, scroll-gebundenen Skripte, keine CSS-Animationen), höchstens EIN dunkler
-//     Abschnitt und EIN Licht (Standbild aus assets/bild/, dekorativ), „Bewegung reduzieren“ beachtet, keine toten Bilder.
+//   · Ruhe (Kevin 07.10.: „keine Spielereien“; „v3“ abends: „Nimm die Kugel raus … bring Innovation nach vorne“ — gemeinsam mit
+//     fokus/pruefen.mjs, pruefeRuhe): normale Dokument-Seite ohne Scroll-Film (keine Spur, Bühne, Leinwand, scroll-gebundenen
+//     Skripte, keine Dauer-Animation), kein Kugel-Bild, höchstens zwei dunkle Abschnitte und eine Farbfläche, Bewegung nur einmal und
+//     nur unter „prefers-reduced-motion: no-preference“, „Bewegung reduzieren“ beachtet, keine toten Bilder.
 //     Gewicht der Startseite (HTML + CSS + Skripte, gzip) höchstens GEWICHT_GRENZE.
 //   · Fokus Innovation: Menüpunkt und Kapitel verlinken auf FOKUS_SEITE, das Kapitel nennt alle STAEDTE.
 //   · Stempel (04.10.): jeder Verweis auf css/ und js/ trägt ?v=<Prüfsumme der Datei> (Caddy hält Stile/Skripte einen Tag,
@@ -64,8 +65,8 @@ export const MAIL_BETREFFE = {
   'Make.One – Einladung': 'Make.One%20%E2%80%93%20Einladung',
   'Make.Beteiligungen – Projekt': 'Make.Beteiligungen%20%E2%80%93%20Projekt',
 };
-/** Navigation im Kopf der Startseite (Kevin 01.10.; 04.10.: Fokus Innovation als eigener Menüpunkt). */
-export const NAVIGATION = ['#markttraktion', '#make-one', FOKUS_SEITE, '#ueber-uns', '#kontakt'];
+/** Navigation im Kopf der Startseite (Kevin 01.10.; 04.10.: Fokus Innovation als eigener Menüpunkt; v3 07.10.: Der Weg). */
+export const NAVIGATION = ['#markttraktion', '#weg', '#make-one', FOKUS_SEITE, '#ueber-uns', '#kontakt'];
 /** Städte von Fokus Innovation (Kevin 04.10.: Dresden dazu) — stehen im Kapitel #fokus-innovation. */
 export const STAEDTE = ['Berlin', 'Hamburg', 'Bielefeld', 'Köln', 'München', 'Dresden'];
 /** Höchstgewicht der Startseite: index.html + CSS + alle Skripte der Seite, gzip, ohne Schriften und Bilder („Klar 2“: ≈ 15 KB). */
@@ -85,7 +86,7 @@ export const stempeln = (ordner, text) => text.replace(STEMPEL_VERWEIS, (ganz, v
 export const LOGO_DATEIEN = ['bildmarke.svg', 'bildmarke-hell.svg', 'wortmarke.svg', 'wortmarke-hell.svg', 'kachel.svg', 'quer.svg', 'quer-hell.svg', 'kompakt.svg', 'kompakt-hell.svg',
   'gross.svg', 'gross-hell.svg', 'visitenkarte-make.svg', 'visitenkarte-make-hell.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-512.png', 'LOGO.md'].map(d => `assets/logo/${d}`);
 /** Angebote auf der Startseite: Kennung des <article> → aktiv (mit „Erstgespräch anfragen“) oder „Coming Soon“. */
-export const ANGEBOTE = { 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales': 'aktiv', 'angebot-events': 'aktiv', 'angebot-development': 'bald' };
+export const ANGEBOTE = { 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales': 'aktiv', 'angebot-sichtbarkeit': 'aktiv', 'angebot-events': 'aktiv', 'angebot-development': 'bald' };
 /**
  * Auf der Seite steht nur MAKE: keine anderen Firmen, Marken oder Projekte (Kevin 01.10.). Die Muster sind absichtlich
  * mit Zeichenklassen geschrieben, damit eine Textsuche über website/ die Namen nirgends findet — auch hier nicht.
@@ -109,52 +110,80 @@ export const TRACKER = /google-analytics|googletagmanager|gtag\(|fonts\.googleap
 /** Belege (Kevin 07.10.): nur Prinzipien — keine Statistiken, Prozentzahlen oder Marktgrößen im sichtbaren Text der Startseite. */
 export const STATISTIK = /\d\s?%|\bProzent\b|\b(?:Mio|Mrd)\.|\bMillion(?:en)?\b|\bMilliarde(?:n)?\b/;
 
-// ── Ruhe („Klar 2“, Kevin 07.10.: „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien.“) ──
-/** Höchstens so viele Lichter (dekoratives Standbild, class="licht") und dunkle Abschnitte (class="dunkel") je Seite. */
-export const LICHT_HOECHSTENS = 1;
-export const DUNKEL_HOECHSTENS = 1;
+// ── Ruhe („Klar 2“ 07.10.; „v3 · Der Weg“ 07.10. abends) ──────────────────────────────────────────────────────────────────
+// Kevin 07.10.: „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien.“ — abends: „Nimm die
+// Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne.“ Deshalb gilt weiter: kein Scroll-Film, keine Leinwand, keine
+// Dauer-Animation; neu erlaubt (v3): Rhythmus aus höchstens zwei dunklen Abschnitten und EINER Farbfläche, und Bewegung genau EINMAL
+// (die Linie zeichnet sich) — nur unter „prefers-reduced-motion: no-preference“, nie endlos, nie an den Scroll gebunden.
+/** Höchstens so viele dunkle Abschnitte (class="dunkel") und kräftige Farbflächen (class="farbflaeche") je Seite. */
+export const DUNKEL_HOECHSTENS = 2;
+export const FARBFLAECHE_HOECHSTENS = 1;
 /** Reste des Scroll-Films (bis 06.10.): Spur, Bühne, Szene, Karussell, Laufband, Flug, Vorhang, Lagen im Showreel, Leinwände. */
 export const SHOWREEL_RESTE = /\sclass="(?:[^"]*\s)?(?:spur|buehne|szene|karussell|laufband|flug|vorhang)(?:\s[^"]*)?"|\sdata-(?:spur-p|zerfall|aufstieg|zustand)\b|<canvas\b/;
-/** Was ein Skript der Seite nicht mehr tut: an Scroll, Rad oder Wischen hängen, Bild für Bild zeichnen, die Seite fahren. */
-export const RUHE_SKRIPT = /addEventListener\(\s*['"](?:scroll|wheel|touchmove)['"]|\bonscroll\b|requestAnimationFrame|getContext\s*\(|scrollTo\s*\(|scrollBy\s*\(|IntersectionObserver/;
-/** Keine CSS-Animationen (nur Übergänge beim Zeigen/Fokus), nichts scroll-gebunden. */
-export const RUHE_CSS = /@keyframes|\banimation(?:-name|-timeline)?\s*:|scroll-timeline|view-timeline/;
+/** Kein Kugel-Bild und kein dekoratives „Licht“ mehr (Kevin 07.10. abends: „Nimm die Kugel raus.“ — in der Software bleibt sie). */
+export const KUGEL = /kugel|\sclass="(?:[^"]*\s)?licht(?:\s[^"]*)?"/i;
+/** Was ein Skript der Seite nicht tut: an Scroll, Rad oder Wischen hängen, Bild für Bild zeichnen, die Seite fahren, endlos takten. */
+export const RUHE_SKRIPT = /addEventListener\(\s*['"](?:scroll|wheel|touchmove)['"]|\bonscroll\b|requestAnimationFrame|getContext\s*\(|scrollTo\s*\(|scrollBy\s*\(|setInterval\s*\(/;
+/** Nie endlos, nie an den Scroll gebunden. */
+export const RUHE_CSS = /\binfinite\b|animation-timeline|scroll-timeline|view-timeline/;
+
+/** Die Blöcke `@media (prefers-reduced-motion: no-preference…) { … }` einer CSS-Datei (Klammern gezählt) — und der Rest ohne sie. */
+export function bewegungsBloecke(css) {
+  const ohne = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const bloecke = [];
+  let rest = '', i = 0;
+  const kopf = /@media \(prefers-reduced-motion: no-preference\)[^{]*\{/g;
+  for (let m; (m = kopf.exec(ohne));) {
+    let tiefe = 1, j = m.index + m[0].length;
+    while (j < ohne.length && tiefe) { if (ohne[j] === '{') tiefe++; else if (ohne[j] === '}') tiefe--; j++; }
+    rest += ohne.slice(i, m.index);
+    bloecke.push(ohne.slice(m.index, j));
+    i = j; kopf.lastIndex = j;
+  }
+  return { bloecke, rest: rest + ohne.slice(i) };
+}
 
 /**
- * Ruhige Dokument-Seite („Klar 2“, gemeinsam mit fokus/pruefen.mjs): jeder Abschnitt ist im Ruhezustand vollständig lesbar —
- * ohne Skript und bei „Bewegung reduzieren“. Prüft alle Seiten, Stile und Skripte eines Ordners; gibt die Fehler zurück.
+ * Ruhige Dokument-Seite (gemeinsam mit fokus/pruefen.mjs): jeder Abschnitt ist im Ruhezustand vollständig lesbar — ohne Skript und
+ * bei „Bewegung reduzieren“. Prüft alle Seiten, Stile und Skripte eines Ordners; gibt die Fehler zurück.
  * @param {{ seiten: Map<string,string>, stile: Map<string,string>, skripte: Map<string,string>, dateien: string[] }} o
  */
 export function pruefeRuhe({ seiten, stile, skripte, dateien }) {
   const fehler = [];
   const bilder = dateien.filter(d => d.startsWith('assets/bild/'));
   const genutzt = new Set();
+  for (const d of dateien) if (/kugel/i.test(d)) fehler.push(`${d}: kein Kugel-Bild auf den Websites (Kevin 07.10. abends: „Nimm die Kugel raus.“)`);
   for (const [d, html] of seiten) {
     const ohneKommentar = html.replace(/<!--[\s\S]*?-->/g, '');
     const rest = SHOWREEL_RESTE.exec(ohneKommentar);
     if (rest) fehler.push(`${d}: „${rest[0].trim().slice(0, 40)}“ — kein Scroll-Film mehr (Spur, Bühne, Szene, Leinwand; Kevin 07.10.: keine Spielereien)`);
-    const lichter = Array.from(ohneKommentar.matchAll(/<(\w+)\b[^>]*\sclass="(?:[^"]*\s)?licht(?:\s[^"]*)?"[^>]*>/g));
-    if (lichter.length > LICHT_HOECHSTENS) fehler.push(`${d}: ${lichter.length} Lichter — höchstens ${LICHT_HOECHSTENS} (80 % Seriosität)`);
-    for (const l of lichter) {
-      const ab = ohneKommentar.slice(l.index, l.index + 400);
-      if (l[1] !== 'figure' || !/\saria-hidden="true"/.test(l[0]) || !/^<figure\b[^>]*>\s*<img\b[^>]*\ssrc="\/?assets\/bild\/[a-z0-9-]+\.svg"[^>]*\salt=""/.test(ab))
-        fehler.push(`${d}: Licht nur als dekoratives Standbild (<figure class="licht" aria-hidden="true"><img src="assets/bild/….svg" alt="">)`);
-    }
-    const dunkel = (ohneKommentar.match(/\sclass="(?:[^"]*\s)?dunkel(?:\s[^"]*)?"/g) ?? []).length;
-    if (dunkel > DUNKEL_HOECHSTENS) fehler.push(`${d}: ${dunkel} dunkle Abschnitte — höchstens ${DUNKEL_HOECHSTENS} (hell → dunkel, Kevin 07.10.)`);
+    const kugel = KUGEL.exec(ohneKommentar);
+    if (kugel) fehler.push(`${d}: „${kugel[0].trim()}“ — kein Kugel-Bild, kein dekoratives Licht (Kevin 07.10. abends)`);
+    const zaehle = name => (ohneKommentar.match(new RegExp(`\\sclass="(?:[^"]*\\s)?${name}(?:\\s[^"]*)?"`, 'g')) ?? []).length;
+    const dunkel = zaehle('dunkel'), flaeche = zaehle('farbflaeche');
+    if (dunkel > DUNKEL_HOECHSTENS) fehler.push(`${d}: ${dunkel} dunkle Abschnitte — höchstens ${DUNKEL_HOECHSTENS} (Rhythmus, kein Dauer-Dunkel)`);
+    if (flaeche > FARBFLAECHE_HOECHSTENS) fehler.push(`${d}: ${flaeche} Farbflächen — höchstens ${FARBFLAECHE_HOECHSTENS} (80 % Seriosität)`);
     for (const m of html.matchAll(/\ssrc="\/?(assets\/bild\/[^"]+)"/g)) genutzt.add(m[1]);
   }
   for (const b of bilder) if (!genutzt.has(b)) fehler.push(`${b}: von keiner Seite gezeigt — tote Datei`);
   let reduziert = false;
   for (const [d, text] of stile) {
+    const { bloecke, rest } = bewegungsBloecke(text);
     const m = RUHE_CSS.exec(text.replace(/\/\*[\s\S]*?\*\//g, ''));
-    if (m) fehler.push(`${d}: „${m[0]}“ — keine Animationen, nur Übergänge beim Zeigen und beim Fokus`);
+    if (m) fehler.push(`${d}: „${m[0]}“ — keine Dauer-Animation, nichts an den Scroll gebunden`);
+    // Außerhalb der Bewegungs-Blöcke nur „animation: none“ (zum Abschalten); @keyframes nur darin.
+    const draussen = /@keyframes|\banimation(?:-name)?\s*:(?!\s*none\b)/.exec(rest);
+    if (draussen) fehler.push(`${d}: „${draussen[0]}“ außerhalb von @media (prefers-reduced-motion: no-preference) — Bewegung nur, wer sie nicht abgeschaltet hat`);
+    if (bloecke.some(b => /\banimation-iteration-count\s*:\s*(?!1\b)/.test(b))) fehler.push(`${d}: Animation öfter als einmal — die Linie zeichnet sich genau einmal`);
     if (/@media \(prefers-reduced-motion: reduce\)/.test(text)) reduziert = true;
   }
   if (stile.size && !reduziert) fehler.push('css/: kein @media (prefers-reduced-motion: reduce) — „Bewegung reduzieren“ muss beachtet werden');
   for (const [d, text] of skripte) {
-    const m = RUHE_SKRIPT.exec(text.replace(/^\s*\/\/.*$/gm, ''));
-    if (m) fehler.push(`${d}: „${m[0]}“ — Skripte fahren, zeichnen und beobachten nichts beim Scrollen`);
+    const code = text.replace(/^\s*\/\/.*$/gm, '');
+    const m = RUHE_SKRIPT.exec(code);
+    if (m) fehler.push(`${d}: „${m[0]}“ — Skripte fahren, zeichnen und takten nichts beim Scrollen`);
+    if (/IntersectionObserver/.test(code) && !/\.(?:unobserve|disconnect)\s*\(/.test(code)) fehler.push(`${d}: IntersectionObserver ohne unobserve/disconnect — Bewegung nur EINMAL beim ersten Erscheinen`);
+    if (/IntersectionObserver/.test(code) && !/prefers-reduced-motion: reduce/.test(code)) fehler.push(`${d}: IntersectionObserver ohne Rücksicht auf „Bewegung reduzieren“`);
   }
   return fehler;
 }
@@ -342,7 +371,7 @@ export function pruefeWebsite(ordner) {
     if (gewicht > GEWICHT_GRENZE) fehler.push(`index.html: Startseite wiegt ${(gewicht / 1024).toFixed(0)} KB gzip (höchstens ${GEWICHT_GRENZE / 1024} KB)`);
   }
 
-  // Ruhe („Klar 2“, gemeinsam mit fokus/pruefen.mjs): kein Scroll-Film, ein Licht, ein dunkler Abschnitt, keine Animationen.
+  // Ruhe (gemeinsam mit fokus/pruefen.mjs): kein Scroll-Film, keine Kugel, Rhythmus begrenzt, Bewegung nur einmal.
   fehler.push(...pruefeRuhe({
     seiten: new Map(html.filter(d => !NICHT_OEFFENTLICH.includes(d)).map(d => [d, inhalt.get(d)])),
     stile: new Map(css.map(d => [d, inhalt.get(d)])), skripte: new Map(js.map(d => [d, inhalt.get(d)])), dateien,

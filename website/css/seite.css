@@ -1,8 +1,10 @@
-/* ─── MAKE Innovation — Gestaltungsgrundlage „Klar 2“ (07.10.2026) ─────────────────────────────────────────────────
-   Kevin 07.10.: „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien — das soll sich auch so
-   durchziehen.“ Deshalb: eine normale Dokument-Seite. Kein Scroll-Film, keine Bühne, keine Leinwand, keine Dauer-Animation.
-   Typografie trägt, ein klares 12er-Raster, Haarlinien, viel Weißraum. Hell → dunkel: Off-White mit dunkler Schrift, EIN dunkler
-   Schlussakt (der in den dunklen Fuß übergeht). Granat und Smaragd nur als sparsame Akzente.
+/* ─── MAKE Innovation — Gestaltungsgrundlage „v3 · Der Weg“ (07.10.2026 abends) ──────────────────────────────────────
+   Kevin 07.10.: „Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“ — „Die Seite muss
+   einfach alles aussagen.“ Leitmotiv ist DER WEG DER INNOVATION als Linienplan: Rot (Idee, Strategie) → der Knoten aus dem Logo
+   (Umsetzung) → Grün (Vertrieb, Sichtbarkeit, Markt). Jeder Abschnitt ist ein Halt auf dieser Linie (Punkt auf der Abschnittslinie,
+   rot bis zum Knoten, danach grün). Dazu: EINE kräftige Farbfläche (Granat), höchstens zwei dunkle Abschnitte im Rhythmus,
+   gezeichnete Arbeits-Schemata statt Behauptungen. Weiter gilt: kein Scroll-Film, keine Leinwand, keine Dauer-Animation — Bewegung
+   nur einmal (die Linie zeichnet sich) und nur unter „prefers-reduced-motion: no-preference“.
    EINE Quelle für beide Seiten: diese Datei ist das Original (makeinnovation.de); fokusinnovation.de bekommt eine Byte-Kopie
    (fokus/css/seite.css, node scripts/fokus-seite.mjs; fokus/pruefen.mjs vergleicht). Seitenspezifisches steht in
    css/start.css (makeinnovation.de) bzw. css/fokus.css (fokusinnovation.de) — dort werden keine Tokens überschrieben.
@@ -25,9 +27,10 @@
   --granat: #C9465C;
   --smaragd: #2FA878;
   /* Papier (Off-White) und Tinte: Tinte 17,4 : 1, Tinte-Dim 6,4 : 1, Tinte-Leise 5,3 : 1 auf Papier. Granat/Smaragd auf Papier in den
-     dunkleren Logo-Tönen (assets/logo/LOGO.md). */
+     dunkleren Logo-Tönen (assets/logo/LOGO.md) — auch die Farbfläche (Weiß darauf 6,4 : 1). */
   --papier: #F4F3EF;
   --papierHell: #FAF9F6;
+  --papierTief: #E4E1D8;
   --tinte: #0B0E10;
   --tinteDim: #4F5A5D;
   --tinteLeise: #5C6669;
@@ -36,6 +39,10 @@
   --haar: rgba(11, 14, 16, .12);
   --haarStark: rgba(11, 14, 16, .28);
   --haarDunkel: rgba(255, 255, 255, .1);
+  /* Die Linie: Strichstärke und Halte (wie im Logo: Strich, Spalt, Knoten) */
+  --linie-dick: 6px;
+  --halt: 18px;
+  --knoten: 30px;
   /* Schrift: Archivo (Anzeige) + Public Sans (Text), selbst gehostet */
   --schrift-display: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --schrift-text: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -43,6 +50,7 @@
   --t-titel: clamp(1.875rem, 1.25rem + 2.1vw, 3.25rem);
   --t-unter: clamp(1.25rem, 1.12rem + .4vw, 1.5rem);
   --t-lead: clamp(1.0625rem, .98rem + .38vw, 1.3125rem);
+  --t-nr: clamp(3.5rem, 2rem + 6vw, 8.5rem);
   --t-body: 1rem;
   --t-bedien: .875rem;
   --t-mikro: .75rem;
@@ -80,7 +88,7 @@ h1 { font-size: var(--t-held); line-height: 1.02; letter-spacing: -.035em; }
 h2 { font-size: var(--t-titel); line-height: 1.06; letter-spacing: -.03em; }
 h3 { font-size: var(--t-unter); line-height: 1.2; letter-spacing: -.015em; }
 p { margin: 0; text-wrap: pretty; }
-ul, ol { margin: 0; padding: 0; }
+ul, ol, dl, dd, figure { margin: 0; padding: 0; }
 img, svg { display: block; max-width: 100%; }
 b, strong { font-weight: 600; color: var(--tinte); }
 .wrap { width: 100%; max-width: var(--breite); margin-inline: auto; padding-inline: var(--rand); }
@@ -89,7 +97,7 @@ b, strong { font-weight: 600; color: var(--tinte); }
 h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 .einleitung { font-size: var(--t-lead); line-height: 1.55; color: var(--tinteDim); max-width: 62ch; }
 .klein { font-size: var(--t-bedien); line-height: 1.6; color: var(--tinteLeise); }
-.mikro, .etikett {
+.mikro {
   display: flex; align-items: center; gap: 10px; margin: 0;
   font-family: var(--schrift-text); font-size: var(--t-mikro); font-weight: 600; line-height: 1.3;
   letter-spacing: .12em; text-transform: uppercase; color: var(--tinteLeise);
@@ -103,15 +111,18 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 .knoten-zeichen { width: 24px; height: 10px; flex: none; }
 .k-ma { fill: var(--granatPapier); }
 .k-ke { fill: var(--smaragdPapier); }
+/* Ein Halt der Linie als kleines Zeichen vor einer Beschriftung (rot: Idee/Strategie · grün: Vertrieb/Markt). */
+.halt-marke { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--granatPapier); background: var(--papier); }
+.halt-marke.gruen { border-color: var(--smaragdPapier); }
 
-/* ── Kopf: hell und deckend (kein Glas-Effekt), immer oben (Logo · Abschnitte · Login · eine Hauptaktion) ── */
+/* ── Kopf: hell und deckend, immer oben (Logo · Abschnitte · Login · eine Hauptaktion) ── */
 .kopf { position: sticky; top: 0; z-index: 40; background: var(--papier); border-bottom: 1px solid var(--haar); }
 .kopf-innen { display: flex; align-items: center; gap: var(--s); min-height: var(--kopf); }
 .marke { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-right: auto; color: var(--tinte); text-decoration: none; }
 .marke img { height: 26px; width: auto; }
 .kopf .haupt { display: flex; align-items: center; gap: 2px; margin-right: var(--s); }
 .kopf .haupt a, .menue summary {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px;
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 11px; border-radius: 10px;
   color: var(--tinteDim); text-decoration: none; font-size: var(--t-bedien); font-weight: 500; white-space: nowrap;
   transition: color .2s ease, background-color .2s ease;
 }
@@ -128,13 +139,13 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 .menue summary::-webkit-details-marker { display: none; }
 .menue .striche { width: 16px; height: 10px; border-top: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; }
 .menue nav {
-  position: absolute; right: 0; top: calc(100% + 10px); width: min(300px, calc(100vw - 2 * var(--rand)));
+  position: absolute; right: 0; top: calc(100% + 10px); width: min(320px, calc(100vw - 2 * var(--rand)));
   display: grid; padding: 8px; background: var(--papierHell); border: 1px solid var(--haar); border-radius: var(--r-flach);
   box-shadow: 0 24px 48px -24px rgba(11, 14, 16, .28);
 }
 .menue nav a { display: flex; align-items: center; min-height: 48px; padding: 0 12px; border-radius: 10px; color: var(--tinte); text-decoration: none; font-weight: 500; }
 .menue nav a:hover { background: rgba(11, 14, 16, .05); }
-@media (max-width: 1099px) { .kopf .haupt { display: none; } .menue { display: block; } }
+@media (max-width: 1179px) { .kopf .haupt { display: none; } .menue { display: block; } }
 @media (max-width: 559px) { .kopf .ruf { display: none; } .marke img { height: 24px; } :root { --kopf: 64px; } }
 
 /* ── Knöpfe: EINE Hauptaktion (dunkel), sonst Kontur oder Text. Nur Tokens, keine fremden Farben. ── */
@@ -147,11 +158,10 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 .knopf:hover { background: var(--flaecheHoch); }
 .knopf .pfeil { display: inline-block; transition: transform .25s var(--sanft); }
 .knopf:hover .pfeil { transform: translateX(3px); }
-.knopf:hover .pfeil.runter { transform: translateY(2px); }
 .knopf.gross { min-height: 52px; padding: 0 26px; font-size: var(--t-body); }
 .knopf.zweit { background: transparent; color: var(--tinte); border-color: var(--haarStark); }
 .knopf.zweit:hover { border-color: var(--tinte); background: rgba(11, 14, 16, .03); }
-.knoepfe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m); }
+.knoepfe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m) var(--l); }
 .textlink {
   display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: var(--tinte);
   text-decoration: underline; text-decoration-color: var(--haarStark); text-underline-offset: 6px; transition: text-decoration-color .2s ease;
@@ -162,53 +172,69 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
   border-radius: var(--r-pille); font-size: var(--t-mikro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--tinteDim);
 }
 
-/* ── Held (Einstieg): Typografie trägt. Vorzeile · H1 · Satz · Knöpfe · Index ── */
-.held { padding-top: clamp(56px, 9vw, 128px); }
-.vorzeile { margin-bottom: var(--xl); }
-.held-unten { display: grid; gap: var(--xxl); margin-top: clamp(28px, 3.4vw, 48px); max-width: 720px; }
-/* Index: der Inhalt der Seite als ruhige Zeile unter dem Einstieg (Haarlinien, Nummern). */
-.index { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: clamp(56px, 8vw, 112px); border-top: 1px solid var(--haarStark); }
-.index li { display: flex; }
-.index li > a, .index li > div { flex: 1; display: grid; align-content: start; gap: 6px; padding: 20px 24px 28px 0; text-decoration: none; color: inherit; }
-.index li + li > a, .index li + li > div { padding-left: 24px; border-left: 1px solid var(--haar); }
-.index b { font-family: var(--schrift-display); font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; }
-.index .text { font-size: .9375rem; line-height: 1.5; color: var(--tinteDim); }
-.index .nr { font-size: var(--t-mikro); font-weight: 600; color: var(--tinteLeise); }
-.index a { position: relative; transition: background-color .2s ease; }
-.index a::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 1px; background: var(--tinte); transform: scaleX(0); transform-origin: left; transition: transform .35s var(--sanft); }
-.index li + li a::before { left: 0; }
-.index a:hover::before { transform: scaleX(1); }
-.index a:hover .nr { color: var(--granatPapier); }
-@media (max-width: 899px) {
-  .index { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .index li:nth-child(3) > a, .index li:nth-child(3) > div { padding-left: 0; border-left: 0; }
-  .index li:nth-child(n+3) { border-top: 1px solid var(--haar); }
-}
-@media (max-width: 559px) {
-  .index { grid-template-columns: 1fr; }
-  .index li + li > a, .index li + li > div { padding-left: 0; border-left: 0; }
-  .index li + li { border-top: 1px solid var(--haar); }
-  .index li > a, .index li > div { padding: 16px 0 18px; }
-}
+/* ── Held (Einstieg): links WER · WAS · FÜR WEN in Worten, rechts das Bild; darunter der Steckbrief ── */
+.held { padding-block: clamp(40px, 6vw, 88px) clamp(48px, 6vw, 96px); }
+.held-raster { row-gap: clamp(32px, 4vw, 56px); align-items: center; }
+.held-text { grid-column: 1 / span 7; display: grid; gap: var(--xl); }
+.held-text .knoepfe { margin-top: var(--s); }
+.held-bild, .wegkarte { grid-column: 8 / -1; }
+.held-steckbrief { grid-column: 1 / -1; }
+@media (max-width: 899px) { .held-text, .held-bild, .wegkarte, .held-steckbrief { grid-column: 1 / -1; } .wegkarte { width: 100%; max-width: 560px; } }
+.vorzeile { align-items: flex-start; }
+.vorzeile .knoten-zeichen { margin-top: 2px; }
 
-/* ── Abschnitte: starke Linie, links Nummer und Name, rechts Titel und Satz ── */
+/* Steckbrief: Begriff links (Beschriftung), Satz rechts — im Einstieg als drei Spalten unter einer starken Linie. */
+.steckbrief { display: grid; gap: 0; }
+.steckbrief > div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 4px var(--l); padding: 12px 0; border-top: 1px solid var(--haar); }
+.steckbrief > div:last-child { border-bottom: 1px solid var(--haar); }
+.steckbrief dt { align-self: start; padding-top: 5px; }
+.steckbrief dd { color: var(--tinteDim); }
+.held-steckbrief { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--rinne); border-top: 2px solid var(--tinte); }
+.held-steckbrief > div, .held-steckbrief > div:last-child { grid-template-columns: 1fr; padding: 16px 0 0; border: 0; }
+.held-steckbrief dd { font-size: .9375rem; line-height: 1.55; }
+@media (max-width: 559px) { .steckbrief > div { grid-template-columns: 1fr; } }
+@media (max-width: 899px) { .held-steckbrief { grid-template-columns: 1fr; } .held-steckbrief > div + div { border-top: 1px solid var(--haar); margin-top: 16px; } }
+
+/* ── Der Weg der Innovation als Linienplan (Einstieg) — Inline-SVG, Farben und Schrift über Klassen ── */
+.wegkarte svg { width: 100%; height: auto; overflow: visible; }
+.wk-linie { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+.wk-rot { stroke: var(--granatPapier); }
+.wk-gruen { stroke: var(--smaragdPapier); }
+.wk-ende { fill: var(--smaragdPapier); }
+.wk-halt circle { fill: var(--papier); stroke: var(--granatPapier); stroke-width: 6; }
+.wk-halt.gruen circle { stroke: var(--smaragdPapier); }
+.wk-k-rot { fill: var(--granatPapier); }
+.wk-k-gruen { fill: var(--smaragdPapier); }
+.wk-nr { font-family: var(--schrift-text); font-size: 14px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; fill: var(--tinteLeise); }
+.wk-name { font-family: var(--schrift-display); font-size: 25px; font-weight: 600; letter-spacing: -.01em; fill: var(--tinte); }
+.wk-name.gross { font-size: 32px; }
+.wk-legende { font-family: var(--schrift-text); font-size: 15px; fill: var(--tinteDim); }
+
+/* ── Abschnitte: die starke Linie ist ein Stück der Strecke, links ein Halt mit großer Nummer ── */
 .abschnitt { padding-block: var(--abschnitt); }
-.abschnitt + .abschnitt { padding-top: 0; }
+.abschnitt:not(.dunkel):not(.farbflaeche) + .abschnitt:not(.dunkel):not(.farbflaeche) { padding-top: 0; }
 .raster { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--rinne); }
-.abschnitt-kopf { row-gap: var(--xl); padding-top: var(--l); border-top: 1px solid var(--tinte); margin-bottom: clamp(48px, 6vw, 88px); }
-.abschnitt-kopf .etikett { grid-column: 1 / span 3; align-self: start; }
+.abschnitt-kopf { position: relative; row-gap: var(--xl); padding-top: var(--xl); border-top: 2px solid var(--tinte); margin-bottom: clamp(48px, 6vw, 88px); }
+.abschnitt-kopf::before {
+  content: ''; position: absolute; left: 0; top: calc(var(--halt) / -2 - 1px); width: var(--halt); height: var(--halt); border-radius: 50%;
+  background: var(--papier); border: 4px solid var(--halt-farbe, var(--smaragdPapier));
+}
+.abschnitt-kopf .etikett { grid-column: 1 / span 3; align-self: start; display: grid; gap: var(--m); }
 .abschnitt-kopf .kopf-text { grid-column: 4 / -1; display: grid; gap: var(--xl); }
+.gross-nr { font-family: var(--schrift-display); font-size: var(--t-nr); font-weight: 600; line-height: .82; letter-spacing: -.05em; color: var(--papierTief); font-variant-numeric: tabular-nums; }
 .rechts { grid-column: 4 / -1; }
 .breit { grid-column: 1 / -1; }
 @media (max-width: 899px) {
   .abschnitt-kopf .etikett, .abschnitt-kopf .kopf-text, .rechts { grid-column: 1 / -1; }
+  .abschnitt-kopf .etikett { grid-template-columns: auto 1fr; align-items: end; }
 }
+/* Halt-Farbe je Abschnitt: rot bis zum Knoten, der Knoten zweifarbig, danach grün (wie die Linie im Einstieg). */
+.halt-rot { --halt-farbe: var(--granatPapier); }
+.halt-knoten::before { border-color: var(--granatPapier) var(--smaragdPapier) var(--smaragdPapier) var(--granatPapier); transform: rotate(-45deg); }
 .zwischen { margin-top: clamp(56px, 7vw, 96px); }
 .zwischen-titel { margin-bottom: var(--xl); }
-.fuer { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
-.fuer li { display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border: 1px solid var(--haar); border-radius: var(--r-pille); font-size: var(--t-bedien); color: var(--tinteDim); background: var(--papierHell); }
 
-/* Angebote: gleichwertige Spalten mit Haarlinien statt Kartenwand. */
+/* Angebote (zwei- oder dreispaltig): gleichwertige Spalten mit Haarlinien statt Kartenwand. */
 .angebote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--haar); }
 .angebote.zwei-spaltig { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .angebot { display: flex; flex-direction: column; gap: var(--l); padding: var(--xxl) var(--xxl) 0 0; }
@@ -224,7 +250,7 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
   .angebot + .angebot { border-top: 1px solid var(--haar); }
 }
 
-/* Schritte: eine Linie mit Knoten, je Schritt Nummer, Titel, Satz. */
+/* Schritte: eine Linie mit Halt, je Schritt Nummer, Titel, Satz. */
 .schritte { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--xxl); }
 .schritte.vier { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .schritte li { position: relative; display: grid; align-content: start; gap: 10px; padding-top: var(--xl); border-top: 1px solid var(--tinte); }
@@ -244,20 +270,87 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 @media (max-width: 899px) { .eintraege, .eintraege.vier { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 559px) { .eintraege, .eintraege.zwei, .eintraege.vier { grid-template-columns: 1fr; } }
 
-/* Kasten: die eine hervorgehobene Fläche eines Abschnitts (flach, Haarlinie, Ecke der Karte). */
+/* Kasten: die eine hervorgehobene helle Fläche eines Abschnitts (flach, Haarlinie, Ecke der Karte). */
 .kasten { background: var(--papierHell); border: 1px solid var(--haar); border-radius: var(--r-karte); padding: clamp(24px, 4vw, 56px); }
 .liste { list-style: none; border-top: 1px solid var(--haar); }
 .liste li { padding: 12px 0; border-bottom: 1px solid var(--haar); color: var(--tinteDim); }
 .liste b { color: var(--tinte); }
 .fussnote { font-size: var(--t-bedien); color: var(--tinteLeise); }
 
-/* ── Der dunkle Schlussakt: EIN dunkler Abschnitt, er geht in den Fuß über ── */
-.dunkel { background: var(--grund); color: var(--ink); --fokus: var(--ink); padding-block: var(--abschnitt) clamp(64px, 7vw, 104px); }
-.dunkel .abschnitt-kopf { margin-bottom: clamp(32px, 4vw, 56px); }
-.dunkel b, .dunkel strong, .dunkel .nr { color: var(--ink); }
+/* ── Schema: ein gezeichnetes Arbeits-Artefakt (ausdrücklich Schema/Beispiel, ohne Zahlen, ohne Kunden) ── */
+.schema { display: grid; align-content: start; gap: var(--l); padding: clamp(20px, 2.6vw, 32px); background: var(--papierHell); border: 1px solid var(--haar); border-radius: var(--r-flach); }
+.schema-fuss { font-size: var(--t-bedien); color: var(--tinteDim); }
+/* Beispiel einer Einladung (Make.One · Fokus Innovation): wie eine gedruckte Karte. */
+.einladung {
+  position: relative; display: grid; gap: var(--l); padding: clamp(22px, 3vw, 34px); background: var(--papierHell);
+  border: 1px solid var(--haarStark); border-radius: 6px; box-shadow: 0 1px 0 var(--haar), 0 24px 48px -32px rgba(11, 14, 16, .35);
+}
+.einladung::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; border-radius: 0 0 6px 6px; background: linear-gradient(90deg, var(--granatPapier) 0 48%, transparent 48% 52%, var(--smaragdPapier) 52% 100%); }
+.einladung-kopf { display: flex; align-items: center; justify-content: space-between; gap: var(--m); font-size: var(--t-mikro); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinteLeise); }
+.einladung-titel { font-family: var(--schrift-display); font-size: clamp(1.375rem, 1.1rem + 1vw, 1.875rem); font-weight: 600; line-height: 1.15; letter-spacing: -.02em; }
+.einladung dl { display: grid; border-top: 1px solid var(--haar); }
+.einladung dl > div { display: grid; grid-template-columns: 6em 1fr; gap: var(--m); padding: 8px 0; border-bottom: 1px solid var(--haar); font-size: .9375rem; }
+.einladung dt { color: var(--tinteLeise); }
+.einladung dd { font-weight: 600; }
+.einladung-fuss { font-size: var(--t-bedien); color: var(--tinteDim); padding-bottom: 6px; }
+
+/* ── Die Strecke: der Weg in Etappen als Linie mit Halten (waagerecht am Rechner, senkrecht am Handy) ── */
+.strecke { list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: var(--rinne); }
+.strecke.vier { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.strecke li { position: relative; display: grid; align-content: start; gap: 8px; padding-top: calc(var(--knoten) + var(--xl)); }
+.strecke li::before {
+  content: ''; position: absolute; top: calc(var(--knoten) / 2 - var(--linie-dick) / 2); left: 0; right: calc(-1 * var(--rinne));
+  height: var(--linie-dick); border-radius: 3px; background: var(--granatPapier); transform-origin: left center;
+}
+.strecke li.gruen::before { background: var(--smaragdPapier); }
+.strecke li.ende::before { right: auto; width: var(--halt); }
+/* Vor dem Knoten endet Rot mit Spalt; nach dem Knoten beginnt Grün mit Spalt (wie im Logo). */
+.strecke li:has(+ .knoten)::before { right: calc(-1 * var(--rinne) + 6px); }
+.strecke li.knoten::before { left: calc(var(--knoten) + 6px); background: var(--smaragdPapier); }
+.strecke .halt {
+  position: absolute; top: calc(var(--knoten) / 2 - var(--halt) / 2); left: 0; width: var(--halt); height: var(--halt); border-radius: 50%;
+  background: var(--papier); border: 4px solid var(--granatPapier); z-index: 1;
+}
+.strecke li.gruen .halt { border-color: var(--smaragdPapier); }
+.strecke li.knoten .halt { top: 0; width: var(--knoten); height: var(--knoten); border: 0; background: linear-gradient(90deg, var(--granatPapier) 0 50%, var(--smaragdPapier) 50% 100%); }
+.strecke li.ende .halt { width: var(--halt); border-radius: 4px; }
+.strecke h3 { font-size: 1.25rem; }
+.strecke li > p:not(.mikro) { color: var(--tinteDim); font-size: .9375rem; }
+@media (max-width: 899px) {
+  .strecke, .strecke.vier { grid-template-columns: 1fr; row-gap: 0; }
+  .strecke li { padding: 0 0 var(--xxl) calc(var(--knoten) + var(--l)); }
+  .strecke li::before { top: calc(var(--halt) / 2); bottom: 0; left: calc(var(--knoten) / 2 - var(--linie-dick) / 2); right: auto; width: var(--linie-dick); height: auto; transform-origin: center top; }
+  .strecke li .halt { top: 2px; left: calc(var(--knoten) / 2 - var(--halt) / 2); }
+  .strecke li.knoten .halt { top: 0; left: 0; }
+  .strecke li:has(+ .knoten)::before { right: auto; bottom: 6px; }
+  .strecke li.knoten::before { left: calc(var(--knoten) / 2 - var(--linie-dick) / 2); top: calc(var(--knoten) + 6px); }
+  .strecke li.ende::before { display: none; }
+}
+
+/* ── Die eine Farbfläche (Granat): Weiß darauf, Halte und Linien in Weiß ── */
+.farbflaeche { background: var(--granatPapier); color: var(--papierHell); --fokus: var(--papierHell); }
+.farbflaeche h2, .farbflaeche h3, .farbflaeche b, .farbflaeche .nr { color: var(--papierHell); }
+.farbflaeche .ruhig, .farbflaeche .einleitung, .farbflaeche p, .farbflaeche .mikro { color: rgba(250, 249, 246, .82); }
+.farbflaeche .abschnitt-kopf { border-top-color: rgba(250, 249, 246, .7); }
+.farbflaeche .abschnitt-kopf::before { background: var(--granatPapier); border-color: var(--papierHell); }
+.farbflaeche .gross-nr { color: rgba(250, 249, 246, .26); }
+.farbflaeche .knopf { background: var(--papierHell); color: var(--granatPapier); }
+.farbflaeche .knopf:hover { background: var(--papier); }
+.farbflaeche .knopf.zweit { background: transparent; color: var(--papierHell); border-color: rgba(250, 249, 246, .5); }
+.farbflaeche .knopf.zweit:hover { border-color: var(--papierHell); background: rgba(250, 249, 246, .06); }
+.farbflaeche a { color: var(--papierHell); }
+.farbflaeche .k-ma, .farbflaeche .k-ke { fill: var(--papierHell); }
+
+/* ── Dunkle Abschnitte (höchstens zwei je Seite): heller Text, Linie und Halte in den leuchtenden Logo-Tönen ── */
+.dunkel { background: var(--grund); color: var(--ink); --fokus: var(--ink); }
+.dunkel b, .dunkel strong, .dunkel .nr, .dunkel h2, .dunkel h3 { color: var(--ink); }
 .dunkel .ruhig, .dunkel .einleitung, .dunkel p { color: var(--inkDim); }
-.dunkel .mikro, .dunkel .etikett, .dunkel .klein { color: var(--inkLeise); }
-.dunkel .abschnitt-kopf { border-top-color: rgba(255, 255, 255, .32); }
+.dunkel .mikro, .dunkel .klein { color: var(--inkLeise); }
+.dunkel .abschnitt-kopf { border-top-color: rgba(255, 255, 255, .4); }
+.dunkel .abschnitt-kopf::before { background: var(--grund); border-color: var(--halt-farbe-dunkel, var(--smaragd)); }
+.dunkel .halt-rot { --halt-farbe-dunkel: var(--granat); }
+.dunkel .halt-knoten::before { border-color: var(--granat) var(--smaragd) var(--smaragd) var(--granat); }
+.dunkel .gross-nr { color: var(--linie); }
 .dunkel .k-ma { fill: var(--granat); }
 .dunkel .k-ke { fill: var(--smaragd); }
 .dunkel .knopf { background: var(--ink); color: var(--grund); }
@@ -265,21 +358,20 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 .dunkel .knopf.zweit { background: transparent; color: var(--ink); border-color: rgba(255, 255, 255, .24); }
 .dunkel .knopf.zweit:hover { border-color: var(--ink); background: rgba(255, 255, 255, .04); }
 .dunkel .textlink { color: var(--ink); text-decoration-color: rgba(255, 255, 255, .3); }
-.dunkel .textlink:hover { text-decoration-color: currentColor; }
-.dunkel .liste, .dunkel .liste li { border-color: var(--haarDunkel); }
-.dunkel .liste li { color: var(--inkDim); }
-/* Das eine Licht: ein Standbild (kein Skript, keine Bewegung), dekorativ. */
-.licht { position: relative; margin: 0; width: 100%; max-width: 500px; aspect-ratio: 1; justify-self: center; align-self: center; }
-.licht::before {
-  content: ''; position: absolute; inset: 14%; border-radius: 50%;
-  background: radial-gradient(circle at 34% 46%, rgba(201, 70, 92, .2), transparent 62%), radial-gradient(circle at 68% 56%, rgba(47, 168, 120, .18), transparent 64%);
-  filter: blur(36px);
-}
-.licht img { position: relative; width: 100%; height: auto; }
+.dunkel .liste, .dunkel .liste li, .dunkel .eintraege li { border-color: var(--haarDunkel); }
+.dunkel .liste li, .dunkel .eintraege span { color: var(--inkDim); }
+.dunkel .strecke li::before { background: var(--granat); }
+.dunkel .strecke li.gruen::before, .dunkel .strecke li.knoten::before { background: var(--smaragd); }
+.dunkel .strecke .halt { background: var(--grund); border-color: var(--granat); }
+.dunkel .strecke li.gruen .halt { border-color: var(--smaragd); }
+.dunkel .strecke li.knoten .halt { background: linear-gradient(90deg, var(--granat) 0 50%, var(--smaragd) 50% 100%); }
+.dunkel .strecke li > p:not(.mikro) { color: var(--inkDim); }
+.dunkel .schema { background: var(--flaeche); border-color: var(--haarDunkel); }
+.dunkel .schema-fuss { color: var(--inkDim); }
 
 /* ── Fuß (dunkel) ── */
 .fuss { background: var(--grund); color: var(--inkDim); --fokus: var(--ink); font-size: var(--t-bedien); line-height: 1.6; padding: var(--riesig) 0 var(--xxl); }
-/* Folgt der Fuß dem dunklen Schlussakt, trennt ihn eine Haarlinie davon (ein dunkler Grund, kein zweiter Abschnitt). */
+/* Folgt der Fuß einem dunklen Schlussakt, trennt ihn eine Haarlinie davon (ein dunkler Grund, kein weiterer Abschnitt). */
 main:has(> .dunkel:last-child) + .fuss { padding-top: 0; }
 main:has(> .dunkel:last-child) + .fuss .fuss-spalten { padding-top: var(--riesig); border-top: 1px solid var(--haarDunkel); }
 .fuss-spalten { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--xxl); }
@@ -339,7 +431,36 @@ main:has(> .dunkel:last-child) + .fuss .fuss-spalten { padding-top: var(--riesig
 .ent-dunkel { background: var(--grund); border: 1px solid var(--linie); }
 .ent-hell { background: var(--papierHell); border: 1px solid var(--haar); }
 
-/* ── Bewegung: nur Übergänge beim Zeigen und beim Fokus; bei „Bewegung reduzieren“ keine. ── */
+/* ── Bewegung: EINMAL und nur, wer sie nicht abgeschaltet hat ──
+   · Der Linienplan im Einstieg zeichnet sich beim Laden einmal (Rot, dann der Knoten, dann Grün, dann die Halte) — 2,4 s, danach steht er.
+   · Die Strecke weiter unten zeichnet sich einmal, wenn sie zum ersten Mal ins Bild kommt (js/weg.js entfernt .wartet, dann Übergang).
+   · Sonst nur Übergänge beim Zeigen und beim Fokus. Ohne Skript und bei „Bewegung reduzieren“ steht alles sofort fertig da. */
+@media (prefers-reduced-motion: no-preference) {
+  .wk-linie { stroke-dasharray: 1; stroke-dashoffset: 0; animation: wk-zeichnen .9s var(--sanft) both; }
+  .wk-gruen { animation-delay: 1.15s; }
+  .wk-knoten { animation: wk-auftauchen .5s var(--sanft) .8s both; }
+  .wk-halt, .wk-ende, .wk-legende { animation: wk-auftauchen .5s var(--sanft) both; }
+  .wk-h1 { animation-delay: .15s; }
+  .wk-h2 { animation-delay: .45s; }
+  .wk-h3 { animation-delay: 1.4s; }
+  .wk-h4 { animation-delay: 1.65s; }
+  .wk-h5, .wk-ende { animation-delay: 1.9s; }
+  .wk-legende { animation-delay: 2.1s; }
+  @keyframes wk-zeichnen { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes wk-auftauchen { from { opacity: 0; } to { opacity: 1; } }
+  .strecke.zeichnen li::before { transition: transform .7s var(--sanft); }
+  .strecke.zeichnen .halt, .strecke.zeichnen li > :not(.halt) { transition: opacity .5s var(--sanft); }
+  .strecke.zeichnen li:nth-child(2)::before, .strecke.zeichnen li:nth-child(2) > * { transition-delay: .35s; }
+  .strecke.zeichnen li:nth-child(3)::before, .strecke.zeichnen li:nth-child(3) > * { transition-delay: .7s; }
+  .strecke.zeichnen li:nth-child(4)::before, .strecke.zeichnen li:nth-child(4) > * { transition-delay: 1.05s; }
+  .strecke.zeichnen li:nth-child(5)::before, .strecke.zeichnen li:nth-child(5) > * { transition-delay: 1.4s; }
+  .strecke.zeichnen li:nth-child(6)::before, .strecke.zeichnen li:nth-child(6) > * { transition-delay: 1.75s; }
+  .strecke.zeichnen.wartet li::before { transform: scaleX(0); }
+  .strecke.zeichnen.wartet .halt, .strecke.zeichnen.wartet li > :not(.halt) { opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899px) {
+  .strecke.zeichnen.wartet li::before { transform: scaleY(0); }
+}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
 }

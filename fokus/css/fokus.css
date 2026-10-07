@@ -1,25 +1,29 @@
-/* ─── fokusinnovation.de — nur diese Seite („Klar 2“, 07.10.2026) ────────────────────────────────────────────────────
-   Grundlage, Tokens und Bausteine stehen in css/seite.css — eine Byte-Kopie von website/css/seite.css (EINE Quelle,
-   node scripts/fokus-seite.mjs). Hier nur, was es allein auf fokusinnovation.de gibt: Wortmarke im Kopf, der große Titel,
-   die Städte mit der ruhigen Karte im dunklen Schlussakt, die Teilnahme. Keine Tokens überschreiben (fokus/pruefen.mjs). */
+/* ─── fokusinnovation.de — nur diese Seite („v3 · Der Weg“, 07.10.2026 abends) ───────────────────────────────────────
+   Grundlage, Tokens und gemeinsame Bausteine (Strecke, Schema, Einladung, Farbfläche, Dunkel, Fuß) stehen in css/seite.css — eine
+   Byte-Kopie von website/css/seite.css (EINE Quelle, node scripts/fokus-seite.mjs). Hier nur, was es allein auf fokusinnovation.de
+   gibt: Wortmarke im Kopf, der große Titel, Themen, Städte mit der ruhigen Karte, die Teilnahme auf der Farbfläche, der Absender im
+   Fuß. Keine Tokens überschreiben (fokus/pruefen.mjs). */
 
 /* Kopf: Knoten + „Fokus Innovation“ statt Logo-Bild. */
 .marke-knoten { width: 34px; height: 11px; flex: none; }
 .marke-text { font-family: var(--schrift-display); font-size: var(--t-mikro); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
 @media (max-width: 339px) { .marke-text { display: none; } }
 
-/* Einstieg: der Name groß, Satz und Knöpfe rechts daneben (am Handy darunter). */
-.held-raster { align-items: end; row-gap: var(--xxl); }
-.held-raster h1 { grid-column: 1 / span 7; font-size: clamp(3.25rem, 1.4rem + 7.2vw, 7.5rem); line-height: .96; letter-spacing: -.045em; }
-.held-raster .held-unten { grid-column: 8 / -1; margin-top: 0; padding-bottom: 10px; }
-@media (max-width: 899px) { .held-raster h1, .held-raster .held-unten { grid-column: 1 / -1; } }
+/* Einstieg: der Name groß, rechts die Einladung als Beispiel. */
+.held-text h1 { font-size: clamp(3.25rem, 1.4rem + 7.2vw, 7.5rem); line-height: .96; letter-spacing: -.045em; }
+.held-bild { align-self: center; }
 
-/* Themen und Hinweis unter dem Ablauf. */
+/* Der Abend: Hinweis unter der Strecke. */
 .hinweis { margin-top: var(--xxl); }
 
-/* Dunkler Schlussakt: zwei Teile (Städte, Teilnahme) auf einem Grund. */
-.dunkel-teil + .dunkel-teil { margin-top: var(--abschnitt); }
-.orte { row-gap: var(--xxxl); align-items: start; }
+/* Formate & Themen: Formate links, Themen rechts. */
+.themen-raster { row-gap: var(--xxxl); align-items: start; }
+.formate-block { grid-column: 1 / span 4; }
+.themen-block { grid-column: 6 / -1; }
+@media (max-width: 899px) { .formate-block, .themen-block { grid-column: 1 / -1; } }
+
+/* Die Städte (dunkel): Liste links, die ruhige Karte rechts. */
+.orte { row-gap: var(--xxxl); align-items: center; }
 .orte .orte-text { grid-column: 1 / span 6; display: grid; gap: var(--xl); }
 .orte .karte-rahmen { grid-column: 8 / -1; width: 100%; max-width: 440px; justify-self: center; }
 @media (max-width: 899px) { .orte .orte-text, .orte .karte-rahmen { grid-column: 1 / -1; } .orte .karte-rahmen { max-width: 340px; } }
@@ -33,22 +37,22 @@
 /* Die ruhige Karte (erzeugt, scripts/fokus-seite.mjs): Umriss als Haarlinie, Fäden von Berlin in Granat und Smaragd. */
 .karte { width: 100%; height: auto; overflow: visible; }
 .karte .land { fill: rgba(255, 255, 255, .025); stroke: rgba(255, 255, 255, .2); stroke-width: 1; stroke-linejoin: round; }
-.karte .faden { fill: none; stroke-width: 1.2; stroke-linecap: round; stroke-opacity: .85; }
+.karte .faden { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-opacity: .9; }
 .karte .stadt circle { fill: var(--ink); }
 .karte .stadt text { fill: var(--inkDim); font-family: var(--schrift-display); font-size: 13px; font-weight: 600; letter-spacing: .03em; }
 .karte .stadt.knoten text { fill: var(--ink); }
 
-/* Teilnahme: was in die Mail gehört (links), die vorbereitete Mail (rechts). */
+/* Teilnahme auf der Farbfläche: was in die Mail gehört (links), die vorbereitete Mail (rechts). */
 .teilnahme-raster { row-gap: var(--xxl); align-items: start; }
-.mail-inhalt-block { display: grid; gap: var(--xl); }
-.teilnahme-raster .mail-inhalt { grid-column: 1 / span 6; }
-.teilnahme-raster .aktion-spalte { grid-column: 8 / -1; display: grid; gap: var(--l); }
+.teilnahme-raster .mail-inhalt { grid-column: 4 / span 5; }
+.teilnahme-raster .aktion-spalte { grid-column: 10 / -1; display: grid; gap: var(--l); }
+@media (max-width: 1099px) { .teilnahme-raster .mail-inhalt { grid-column: 4 / -1; } .teilnahme-raster .aktion-spalte { grid-column: 4 / -1; } }
 @media (max-width: 899px) { .teilnahme-raster .mail-inhalt, .teilnahme-raster .aktion-spalte { grid-column: 1 / -1; } }
-.mail-inhalt { list-style: none; border-top: 1px solid var(--haarDunkel); }
-.mail-inhalt li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px var(--m); padding: 14px 0; border-bottom: 1px solid var(--haarDunkel); }
-.mail-inhalt .nr { grid-row: 1 / span 2; font-size: var(--t-mikro); font-weight: 600; color: var(--inkLeise); padding-top: 4px; }
-.mail-inhalt span:last-child { color: var(--inkDim); font-size: .9375rem; }
-.aktion-spalte .klein a { color: var(--ink); }
+.mail-inhalt { list-style: none; border-top: 1px solid rgba(250, 249, 246, .4); }
+.mail-inhalt li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px var(--m); padding: 14px 0; border-bottom: 1px solid rgba(250, 249, 246, .3); }
+.mail-inhalt .nr { grid-row: 1 / span 2; font-size: var(--t-mikro); font-weight: 600; padding-top: 4px; }
+.mail-inhalt span:last-child { font-size: .9375rem; }
+.aktion-spalte .klein a { text-decoration-color: rgba(250, 249, 246, .6); }
 
 /* Fuß: Absender Make.One neben der Wortmarke. */
 .fuss-absender { grid-column: 7 / -1; display: grid; align-content: start; gap: var(--m); max-width: 520px; }

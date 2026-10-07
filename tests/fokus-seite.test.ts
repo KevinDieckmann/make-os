@@ -156,21 +156,21 @@ describe('„Klar 2“ (07.10.) — dieselben Ruhe-Regeln wie makeinnovation.de'
     } finally { k.weg(); }
   });
 
-  it('ein dunkler Abschnitt (Städte + Teilnahme), keine Statistiken, eine Stadt, die in der Liste fehlt, fällt auf', () => {
+  it('Rhythmus (v3): Der Abend und die Städte dunkel, die Teilnahme auf der Farbfläche; keine Statistiken; eine fehlende Stadt fällt auf', () => {
+    // 07.10. abends Kevin („bring Innovation nach vorne“): höchstens zwei dunkle Abschnitte und eine Farbfläche (website/LIESMICH.md › v3).
     const index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
-    expect(index.match(/\sclass="dunkel"/g)).toHaveLength(1);
-    const dunkel = index.slice(index.indexOf('<div class="dunkel">'), index.indexOf('</main>'));
-    expect(dunkel).toContain('id="staedte"');
-    expect(dunkel).toContain('id="teilnahme-link"');
+    expect(Array.from(index.matchAll(/<section class="abschnitt dunkel" id="([a-z]+)"/g), m => m[1])).toEqual(['abend', 'staedte']);
+    expect(index).toMatch(/<section class="abschnitt farbflaeche" id="teilnahme"[\s\S]*id="teilnahme-link"/);
+    expect(index).toMatch(/<ol class="strecke vier zeichnen"[\s\S]*<li class="knoten">/);
     const k = kopie();
     try {
       k.aendern('index.html', t => t.replace('<li data-stadt="dresden"><b>Dresden</b><span>Termin in Planung</span></li>', '')
-        .replace('Ein Tisch statt eines Saals.', 'Ein Tisch statt eines Saals — 90 % kommen wieder.')
+        .replace('Ein Tisch, ein Thema, Gespräche mit Substanz.', 'Ein Tisch, ein Thema — 90 % kommen wieder.')
         .replace('<section class="abschnitt" id="mitwirken"', '<section class="dunkel" id="mitwirken"'));
       const f = pruefeFokus(k.fokus).fehler.join('\n');
       expect(f).toMatch(/Stadt Dresden — Zeile mit „Termin in Planung“ fehlt/);
       expect(f).toMatch(/keine Statistiken oder Prozentzahlen/);
-      expect(f).toMatch(/2 dunkle Abschnitte — höchstens 1/);
+      expect(f).toMatch(/3 dunkle Abschnitte — höchstens 2/);
     } finally { k.weg(); }
   });
 
@@ -188,9 +188,10 @@ describe('„Klar 2“ (07.10.) — dieselben Ruhe-Regeln wie makeinnovation.de'
     for (const s of STAEDTE as { id: string; name: string }[]) expect(index).toContain(`<li data-stadt="${s.id}"><b>${s.name}</b><span>Termin in Planung</span>`);
   });
 
-  it('keine Szene mehr: kein js/szene, kein Drehbuch, kein Standbild, nur das Menü-Skript; die Grundlage kommt aus website/', () => {
+  it('keine Szene mehr: kein js/szene, kein Drehbuch, kein Standbild, keine Kugel; Menü und Linie kommen wie die Grundlage aus website/', () => {
     for (const weg of ['js/szene', 'js/drehbuch.js', 'assets/szene']) expect(existsSync(join(FOKUS, weg)), weg).toBe(false);
-    expect(readdirSync(join(FOKUS, 'js'))).toEqual(['menue.js']);
+    expect(readdirSync(join(FOKUS, 'js')).sort()).toEqual(['menue.js', 'weg.js']);
+    expect((GLEICH_WIE_WEBSITE as Record<string, string>)['js/weg.js']).toBe('js/weg.js');
     const index = readFileSync(join(FOKUS, 'index.html'), 'utf8');
     expect(index).not.toMatch(/class="(?:laufband|flug|kacheln|karussell|spur|buehne|szene)\b|data-zustand|<canvas/);
     expect((GLEICH_WIE_WEBSITE as Record<string, string>)['css/seite.css']).toBe('css/seite.css');

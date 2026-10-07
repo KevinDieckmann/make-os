@@ -3,7 +3,8 @@
 // Die Seite fokusinnovation.de (Ordner fokus/) ist statisch wie website/ und steht auf derselben Gestaltungsgrundlage. Nichts
 // davon wird von Hand kopiert — dieses Skript erzeugt es aus EINER Quelle:
 //   · Gestaltungsgrundlage (css/seite.css: Tokens, Kopf, Knöpfe, Abschnitte, dunkler Schlussakt, Fuß, Rechtstexte), Schriften
-//     (Archivo, Public Sans), das MAKE-Logo (quer) und das Handy-Menü (js/menue.js): Byte für Byte aus website/.
+//     (Archivo, Public Sans), das MAKE-Logo (quer), das Handy-Menü (js/menue.js) und die einmal gezeichnete Linie (js/weg.js):
+//     Byte für Byte aus website/.
 //   · Die Wortmarke „FOKUS INNOVATION“ (fokus/assets/logo/fokus-wortmarke.svg, Fuß) — gebaut in scripts/website-logo.mjs aus
 //     derselben Schrift wie MAKE — und das Favicon (fokus/favicon.svg, der Knoten).
 //   · Die ruhige Karte der Städte aus EINER Liste (`STAEDTE`, echte Koordinaten) in fokus/index.html (KARTE_ANFANG/KARTE_ENDE).
@@ -38,6 +39,8 @@ export const KOPIEN = [
   ['website/assets/logo/quer.svg', 'fokus/assets/logo/make-quer.svg'],
   // Handy-Menü (<details>, geht ohne Skript; das Skript schließt es nur nach einem Klick).
   ['website/js/menue.js', 'fokus/js/menue.js'],
+  // Der Weg: die Linie zeichnet sich einmal, wenn sie zum ersten Mal ins Bild kommt (Strecke „Der Abend“).
+  ['website/js/weg.js', 'fokus/js/weg.js'],
 ];
 export const FAVICON = 'fokus/favicon.svg';
 export const WORTMARKE = 'fokus/assets/logo/fokus-wortmarke.svg';

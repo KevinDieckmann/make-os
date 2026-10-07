@@ -60,6 +60,7 @@ export const GLEICH_WIE_WEBSITE = {
   'assets/fonts/public-sans-latin.woff2': 'assets/fonts/public-sans-latin.woff2',
   'assets/logo/make-quer.svg': 'assets/logo/quer.svg',
   'js/menue.js': 'js/menue.js',
+  'js/weg.js': 'js/weg.js',
 };
 /** Die Wortmarke „FOKUS INNOVATION“ (Fuß; erzeugt von scripts/fokus-seite.mjs aus scripts/website-logo.mjs). */
 export const WORTMARKE = 'assets/logo/fokus-wortmarke.svg';

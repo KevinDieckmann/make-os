@@ -10,9 +10,10 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/seite.css?v=d113b0fe36">
-<link rel="stylesheet" href="css/fokus.css?v=6ec21f8f55">
+<link rel="stylesheet" href="css/seite.css?v=763aad1899">
+<link rel="stylesheet" href="css/fokus.css?v=46f62ecc40">
 <script src="js/menue.js?v=bbd943c68b" defer></script>
+<script src="js/weg.js?v=8fada2473a" defer></script>
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
@@ -46,42 +47,50 @@
 
 <main id="inhalt">
 
+  <!-- Einstieg: WER · WAS · FÜR WEN, rechts ein Beispiel der Einladung (Schema, kein echter Termin) -->
   <section class="held" id="start" aria-labelledby="titel">
-    <div class="wrap">
-      <p class="vorzeile mikro"><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="4.25" width="7" height="1.5"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="17" y="4.25" width="7" height="1.5"/></svg>Ein Format von Make.One</p>
-      <div class="raster held-raster">
+    <div class="wrap raster held-raster">
+      <div class="held-text">
+        <p class="vorzeile mikro"><svg class="knoten-zeichen" viewBox="0 0 24 10" aria-hidden="true" focusable="false"><rect class="k-ma" x="0" y="4.25" width="7" height="1.5"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="17" y="4.25" width="7" height="1.5"/></svg>Ein Format von Make.One</p>
         <h1 id="titel">Fokus <span class="ruhig">Innovation</span></h1>
-        <div class="held-unten">
-          <p class="einleitung">Ausgewählte Abende für Menschen, die Neues in den Markt bringen — und für die, die dort entscheiden. Eine kleine Runde, ein besonderer Ort, Gespräche mit Substanz.</p>
-          <div class="knoepfe">
-            <a class="knopf gross" href="#teilnahme">Teilnahme anfragen <span class="pfeil" aria-hidden="true">→</span></a>
-            <a class="textlink" href="#abend">Den Abend ansehen</a>
-          </div>
+        <p class="einleitung">Ausgewählte Abende für Menschen, die Neues in den Markt bringen — und für die, die dort entscheiden. Eine kleine Runde, ein besonderer Ort, Gespräche mit Substanz.</p>
+        <div class="knoepfe">
+          <a class="knopf gross" href="#teilnahme">Teilnahme anfragen <span class="pfeil" aria-hidden="true">→</span></a>
+          <a class="textlink" href="#abend">Den Abend ansehen</a>
         </div>
       </div>
-      <ul class="index" aria-label="Kurz">
-        <li><div><span class="nr">01</span><b>Kleine Runden</b><span class="text">Ein Tisch statt eines Saals.</span></div></li>
-        <li><div><span class="nr">02</span><b>Sechs Städte</b><span class="text">Berlin ist der Ausgangspunkt.</span></div></li>
-        <li><div><span class="nr">03</span><b>Offen für alle</b><span class="text">Solange Plätze frei sind.</span></div></li>
-        <li><div><span class="nr">04</span><b>Ein Thema je Abend</b><span class="text">Erst ein Impuls, dann das Gespräch.</span></div></li>
-      </ul>
+      <figure class="held-bild schema">
+        <figcaption class="mikro">Beispiel · so sieht eine Einladung aus</figcaption>
+        <div class="einladung" aria-hidden="true">
+          <div class="einladung-kopf"><span>Fokus Innovation · Abendrunde</span><svg class="knoten-zeichen" viewBox="0 0 24 10" focusable="false"><rect class="k-ma" x="0" y="4.25" width="7" height="1.5"/><path class="k-ma" d="M12 0A5 5 0 0 0 12 10Z"/><path class="k-ke" d="M12 0A5 5 0 0 1 12 10Z"/><rect class="k-ke" x="17" y="4.25" width="7" height="1.5"/></svg></div>
+          <p class="einladung-titel">Ein Tisch, ein Thema, Gespräche mit Substanz.</p>
+          <dl><div><dt>Thema</dt><dd>KI im Unternehmen</dd></div><div><dt>Format</dt><dd>Abendrunde mit Impuls</dd></div><div><dt>Stadt</dt><dd>Berlin</dd></div><div><dt>Termin</dt><dd>in Planung</dd></div></dl>
+          <p class="einladung-fuss">Offen für alle — solange Plätze frei sind</p>
+        </div>
+      </figure>
+      <dl class="steckbrief held-steckbrief">
+        <div><dt class="mikro">Wer</dt><dd><b>Make.One</b> — das Netzwerk von MAKE Innovation aus Berlin, gegründet von Malin und Kevin.</dd></div>
+        <div><dt class="mikro">Was</dt><dd><b>Abende in kleiner Runde</b> — ein Thema, ein kurzer Impuls, dann das Gespräch am Tisch.</dd></div>
+        <div><dt class="mikro">Für wen</dt><dd><b>Menschen, die Neues in den Markt bringen</b> — und die, die dort entscheiden. Junge und erfahrene.</dd></div>
+      </dl>
     </div>
   </section>
 
-  <section class="abschnitt" id="abend" aria-labelledby="abend-titel">
+  <!-- 01 · Der Abend (dunkel): der Weg des Abends als Strecke — der Knoten ist das Gespräch am Tisch -->
+  <section class="abschnitt dunkel" id="abend" aria-labelledby="abend-titel">
     <div class="wrap">
-      <header class="abschnitt-kopf raster">
-        <p class="etikett"><span class="nr">01</span> Der Abend</p>
+      <header class="abschnitt-kopf raster halt-knoten">
+        <div class="etikett"><span class="gross-nr" aria-hidden="true">01</span><span class="mikro">Der Abend</span></div>
         <div class="kopf-text">
           <h2 id="abend-titel">Eine kleine Runde. <span class="ruhig">Gespräche mit Substanz.</span></h2>
           <p class="einleitung">Kein Saal, keine Bühne, kein Programm im Minutentakt: ein Tisch an einem besonderen Ort. Menschen, die Neues in den Markt bringen, neben denen, die dort entscheiden — junge und erfahrene, gemischt nach Erfahrung und Branche.</p>
         </div>
       </header>
-      <ol class="schritte vier" aria-label="Ablauf eines Abends">
-        <li><span class="mikro"><span class="nr">01</span></span><h3>Ankommen</h3><p>Ein ruhiger Beginn, die ersten Gespräche.</p></li>
-        <li><span class="mikro"><span class="nr">02</span></span><h3>Impuls</h3><p>Ein kurzer Anstoß aus der Praxis — eine Frage, an der jemand gerade wirklich arbeitet.</p></li>
-        <li><span class="mikro"><span class="nr">03</span></span><h3>Gespräche am Tisch</h3><p>Offen und vertraulich, mit Zeit für das, was sonst zwischen zwei Terminen untergeht.</p></li>
-        <li><span class="mikro"><span class="nr">04</span></span><h3>Ausklang</h3><p>Für die Gespräche, die bleiben — und die Verabredung danach.</p></li>
+      <ol class="strecke vier zeichnen" aria-label="Ablauf eines Abends">
+        <li class="rot"><span class="halt" aria-hidden="true"></span><p class="mikro"><span class="nr">01</span></p><h3>Ankommen</h3><p>Ein ruhiger Beginn, die ersten Gespräche.</p></li>
+        <li class="rot"><span class="halt" aria-hidden="true"></span><p class="mikro"><span class="nr">02</span></p><h3>Impuls</h3><p>Ein kurzer Anstoß aus der Praxis — eine Frage, an der jemand gerade wirklich arbeitet.</p></li>
+        <li class="knoten"><span class="halt" aria-hidden="true"></span><p class="mikro">Der Knoten</p><h3>Gespräche am Tisch</h3><p>Offen und vertraulich, mit Zeit für das, was sonst zwischen zwei Terminen untergeht.</p></li>
+        <li class="gruen ende"><span class="halt" aria-hidden="true"></span><p class="mikro"><span class="nr">03</span></p><h3>Ausklang</h3><p>Für die Gespräche, die bleiben — und die Verabredung danach.</p></li>
       </ol>
       <p class="hinweis klein">Ablauf, Ort und Gäste stimmen wir für jede Stadt eigens ab.</p>
     </div>
@@ -90,19 +99,28 @@
   <section class="abschnitt" id="themen" aria-labelledby="themen-titel">
     <div class="wrap">
       <header class="abschnitt-kopf raster">
-        <p class="etikett"><span class="nr">02</span> Formate &amp; Themen</p>
+        <div class="etikett"><span class="gross-nr" aria-hidden="true">02</span><span class="mikro">Formate &amp; Themen</span></div>
         <div class="kopf-text">
           <h2 id="themen-titel">Jeder Abend hat ein Thema. <span class="ruhig">Zum Beispiel:</span></h2>
-          <p class="einleitung">Zwei Formate: die <b>Abendrunde mit Impuls</b> — ein kurzer Anstoß, danach das Gespräch — und das <b>Tischgespräch</b>: eine Frage, offen gesprochen, ohne Vortrag.</p>
         </div>
       </header>
-      <div class="raster">
-        <ul class="eintraege zwei rechts" aria-label="Themen">
-          <li><b>KI im Unternehmen</b><span>Wo sie heute trägt, wo noch nicht — und wer im Haus die Verantwortung übernimmt.</span></li>
-          <li><b>Vertrieb &amp; Markteintritt</b><span>Vom guten Produkt zum zahlenden Kunden: Zielgruppe, Weg in den Markt, erste Abschlüsse.</span></li>
-          <li><b>Sichtbarkeit</b><span>Gesehen werden, wo entschieden wird: eine klare Botschaft, die richtige Bühne, die richtigen Menschen.</span></li>
-          <li><b>Umsetzung im Mittelstand</b><span>Neues einführen, ohne den Betrieb zu bremsen — und Erfahrung an die nächste Generation weitergeben.</span></li>
-        </ul>
+      <div class="raster themen-raster">
+        <div class="formate-block">
+          <p class="mikro zwischen-titel">Zwei Formate</p>
+          <ul class="liste" aria-label="Formate">
+            <li><b>Abendrunde mit Impuls</b> — ein kurzer Anstoß, danach das Gespräch.</li>
+            <li><b>Tischgespräch</b> — eine Frage, offen gesprochen, ohne Vortrag.</li>
+          </ul>
+        </div>
+        <div class="themen-block">
+          <p class="mikro zwischen-titel">Vier Themen</p>
+          <ul class="eintraege zwei" aria-label="Themen">
+            <li><b>KI im Unternehmen</b><span>Wo sie heute trägt, wo noch nicht — und wer im Haus die Verantwortung übernimmt.</span></li>
+            <li><b>Vertrieb &amp; Markteintritt</b><span>Vom guten Produkt zum zahlenden Kunden: Zielgruppe, Weg in den Markt, erste Abschlüsse.</span></li>
+            <li><b>Sichtbarkeit</b><span>Gesehen werden, wo entschieden wird: eine klare Botschaft, die richtige Bühne, die richtigen Menschen.</span></li>
+            <li><b>Umsetzung im Mittelstand</b><span>Neues einführen, ohne den Betrieb zu bremsen — und Erfahrung an die nächste Generation weitergeben.</span></li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
@@ -110,14 +128,14 @@
   <section class="abschnitt" id="mitwirken" aria-labelledby="mitwirken-titel">
     <div class="wrap">
       <header class="abschnitt-kopf raster">
-        <p class="etikett"><span class="nr">03</span> Gastgeber &amp; Partner</p>
+        <div class="etikett"><span class="gross-nr" aria-hidden="true">03</span><span class="mikro">Gastgeber &amp; Partner</span></div>
         <div class="kopf-text">
           <h2 id="mitwirken-titel">Einen Abend mittragen. <span class="ruhig">Als Gastgeber oder als Partner.</span></h2>
         </div>
       </header>
       <div class="angebote zwei-spaltig">
         <article class="angebot" id="gastgeber" aria-labelledby="gastgeber-titel">
-          <p class="rolle mikro">Ein Raum mit Blick</p>
+          <p class="rolle mikro"><span class="halt-marke rot" aria-hidden="true"></span>Ein Raum mit Blick</p>
           <h3 id="gastgeber-titel">Gastgeber werden</h3>
           <p>Ein Abend von Fokus Innovation braucht einen besonderen Ort: ruhig, hochwertig, mit Platz für eine Tafel. Wenn du solche Räume hast oder mit deinem Unternehmen einen Abend ausrichten möchtest, sprich uns an.</p>
           <ul>
@@ -128,7 +146,7 @@
           <div class="aktionen"><a class="knopf zweit" href="mailto:hello@makeinnovation.de?subject=Fokus%20Innovation%20%E2%80%93%20Gastgeber&amp;body=Hallo%20Malin%2C%20hallo%20Kevin%2C%0A%0AName%3A%0AUnternehmen%3A%0AStadt%3A%0ADer%20Raum%20(Art%2C%20Lage%2C%20wie%20viel%20Platz)%3A%0AWann%20es%20passen%20k%C3%B6nnte%3A%0A%0AViele%20Gr%C3%BC%C3%9Fe%0A">Gastgeber werden <span class="pfeil" aria-hidden="true">→</span></a></div>
         </article>
         <article class="angebot" id="partner" aria-labelledby="partner-titel">
-          <p class="rolle mikro">Für Unternehmen, die etwas beitragen</p>
+          <p class="rolle mikro"><span class="halt-marke gruen" aria-hidden="true"></span>Für Unternehmen, die etwas beitragen</p>
           <h3 id="partner-titel">Partner werden</h3>
           <p>Für Unternehmen, die Innovation im Mittelstand voranbringen wollen und zu den Themen der Reihe etwas beizutragen haben — mit einem Impuls, mit Wissen aus der Praxis, mit ihrem Netzwerk.</p>
           <ul>
@@ -142,27 +160,28 @@
     </div>
   </section>
 
-  <!-- Der eine dunkle Abschnitt: die Städte mit der ruhigen Karte und die Teilnahme — er geht in den Fuß über. -->
-  <div class="dunkel">
-    <section class="dunkel-teil" id="staedte" aria-labelledby="staedte-titel">
-      <div class="wrap">
-        <div class="abschnitt-kopf raster">
-          <p class="etikett"><span class="nr">04</span> Die Städte</p>
+  <!-- 04 · Die Städte (dunkel): die ruhige Karte, Fäden von Berlin -->
+  <section class="abschnitt dunkel" id="staedte" aria-labelledby="staedte-titel">
+    <div class="wrap">
+      <header class="abschnitt-kopf raster">
+        <div class="etikett"><span class="gross-nr" aria-hidden="true">04</span><span class="mikro">Die Städte</span></div>
+        <div class="kopf-text">
+          <h2 id="staedte-titel">Aus Berlin <span class="ruhig">in sechs Städte.</span></h2>
+          <p class="einleitung">MAKE kommt aus Berlin. Von hier aus ist Fokus Innovation dort zu Gast, wo Entscheiderinnen und Entscheider arbeiten. Die Termine stehen noch nicht fest — wer anfragt, hört als Erstes von uns.</p>
         </div>
-        <div class="raster orte">
-          <div class="orte-text">
-            <h2 id="staedte-titel">Aus Berlin <span class="ruhig">in sechs Städte.</span></h2>
-            <p class="einleitung">MAKE kommt aus Berlin. Von hier aus ist Fokus Innovation dort zu Gast, wo Entscheiderinnen und Entscheider arbeiten. Die Termine stehen noch nicht fest — wer anfragt, hört als Erstes von uns.</p>
-            <ul class="staedte" aria-label="Städte">
-              <li data-stadt="berlin"><b>Berlin</b><span>Termin in Planung</span><em>Ausgangspunkt</em></li>
-              <li data-stadt="hamburg"><b>Hamburg</b><span>Termin in Planung</span></li>
-              <li data-stadt="bielefeld"><b>Bielefeld</b><span>Termin in Planung</span></li>
-              <li data-stadt="koeln"><b>Köln</b><span>Termin in Planung</span></li>
-              <li data-stadt="muenchen"><b>München</b><span>Termin in Planung</span></li>
-              <li data-stadt="dresden"><b>Dresden</b><span>Termin in Planung</span></li>
-            </ul>
-          </div>
-          <div class="karte-rahmen">
+      </header>
+      <div class="raster orte">
+        <div class="orte-text">
+          <ul class="staedte" aria-label="Städte">
+            <li data-stadt="berlin"><b>Berlin</b><span>Termin in Planung</span><em>Ausgangspunkt</em></li>
+            <li data-stadt="hamburg"><b>Hamburg</b><span>Termin in Planung</span></li>
+            <li data-stadt="bielefeld"><b>Bielefeld</b><span>Termin in Planung</span></li>
+            <li data-stadt="koeln"><b>Köln</b><span>Termin in Planung</span></li>
+            <li data-stadt="muenchen"><b>München</b><span>Termin in Planung</span></li>
+            <li data-stadt="dresden"><b>Dresden</b><span>Termin in Planung</span></li>
+          </ul>
+        </div>
+        <div class="karte-rahmen">
 <!-- KARTE_ANFANG: erzeugt mit node scripts/fokus-seite.mjs — nicht von Hand ändern -->
 <svg class="karte" viewBox="0 0 362.8 489" role="img" aria-labelledby="karte-titel karte-text" focusable="false">
 <title id="karte-titel">Deutschlandkarte: Fokus Innovation in sechs Städten</title>
@@ -192,36 +211,36 @@
 <text x="305.9" y="270" text-anchor="middle">Dresden</text></g>
 </svg>
 <!-- KARTE_ENDE -->
-          </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="dunkel-teil" id="teilnahme" aria-labelledby="teilnahme-titel">
-      <div class="wrap">
-        <div class="abschnitt-kopf raster">
-          <p class="etikett"><span class="nr">05</span> Teilnahme</p>
+  <!-- 05 · Teilnahme: die eine Farbfläche (Granat) — der Hauptweg #teilnahme-link -->
+  <section class="abschnitt farbflaeche" id="teilnahme" aria-labelledby="teilnahme-titel">
+    <div class="wrap">
+      <header class="abschnitt-kopf raster">
+        <div class="etikett"><span class="gross-nr" aria-hidden="true">05</span><span class="mikro">Teilnahme</span></div>
+        <div class="kopf-text">
+          <h2 id="teilnahme-titel">Offen für alle — <span class="ruhig">solange Plätze frei sind.</span></h2>
+          <p class="einleitung">Fokus Innovation steht allen offen, die Neues in den Markt bringen oder dort entscheiden. Melde dich mit einer kurzen Mail an. Die Runden bleiben bewusst klein — wer zuerst kommt, ist dabei; sobald ein Termin feststeht, hörst du von uns.</p>
         </div>
-        <div class="raster teilnahme-raster">
-          <div class="mail-inhalt-block breit">
-            <h2 id="teilnahme-titel">Offen für alle — <span class="ruhig">solange Plätze frei sind.</span></h2>
-            <p class="einleitung">Fokus Innovation steht allen offen, die Neues in den Markt bringen oder dort entscheiden. Melde dich mit einer kurzen Mail an. Die Runden bleiben bewusst klein — wer zuerst kommt, ist dabei; sobald ein Termin feststeht, hörst du von uns.</p>
-          </div>
-          <ol class="mail-inhalt" aria-label="Was in die Mail gehört">
-            <li><span class="nr" aria-hidden="true">01</span><b>Name</b><span>damit wir dich persönlich ansprechen.</span></li>
-            <li><span class="nr" aria-hidden="true">02</span><b>Unternehmen und Rolle</b><span>damit die Runde gut gemischt ist.</span></li>
-            <li><span class="nr" aria-hidden="true">03</span><b>Stadt</b><span>Berlin, Hamburg, Bielefeld, Köln, München oder Dresden.</span></li>
-            <li><span class="nr" aria-hidden="true">04</span><b>Woran du gerade arbeitest</b><span>ein, zwei Sätze genügen.</span></li>
-          </ol>
-          <div class="aktion-spalte">
-            <p class="klein">Die Mail ist schon vorbereitet.</p>
-            <p><a class="knopf gross" id="teilnahme-link" href="mailto:hello@makeinnovation.de?subject=Fokus%20Innovation%20%E2%80%93%20Teilnahme&amp;body=Hallo%20Malin%2C%20hallo%20Kevin%2C%0A%0AName%3A%0AUnternehmen%20und%20Rolle%3A%0AStadt%20(Berlin%2C%20Hamburg%2C%20Bielefeld%2C%20K%C3%B6ln%2C%20M%C3%BCnchen%20oder%20Dresden)%3A%0AWoran%20ich%20gerade%20arbeite%3A%0A%0AViele%20Gr%C3%BC%C3%9Fe%0A">Teilnahme anfragen <span class="pfeil" aria-hidden="true">→</span></a></p>
-            <p class="klein">Kein Formular, kein Konto — nur eine Mail an <a href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>.</p>
-          </div>
+      </header>
+      <div class="raster teilnahme-raster">
+        <ol class="mail-inhalt" aria-label="Was in die Mail gehört">
+          <li><span class="nr" aria-hidden="true">01</span><b>Name</b><span>damit wir dich persönlich ansprechen.</span></li>
+          <li><span class="nr" aria-hidden="true">02</span><b>Unternehmen und Rolle</b><span>damit die Runde gut gemischt ist.</span></li>
+          <li><span class="nr" aria-hidden="true">03</span><b>Stadt</b><span>Berlin, Hamburg, Bielefeld, Köln, München oder Dresden.</span></li>
+          <li><span class="nr" aria-hidden="true">04</span><b>Woran du gerade arbeitest</b><span>ein, zwei Sätze genügen.</span></li>
+        </ol>
+        <div class="aktion-spalte">
+          <p class="klein">Die Mail ist schon vorbereitet.</p>
+          <p><a class="knopf gross" id="teilnahme-link" href="mailto:hello@makeinnovation.de?subject=Fokus%20Innovation%20%E2%80%93%20Teilnahme&amp;body=Hallo%20Malin%2C%20hallo%20Kevin%2C%0A%0AName%3A%0AUnternehmen%20und%20Rolle%3A%0AStadt%20(Berlin%2C%20Hamburg%2C%20Bielefeld%2C%20K%C3%B6ln%2C%20M%C3%BCnchen%20oder%20Dresden)%3A%0AWoran%20ich%20gerade%20arbeite%3A%0A%0AViele%20Gr%C3%BC%C3%9Fe%0A">Teilnahme anfragen <span class="pfeil" aria-hidden="true">→</span></a></p>
+          <p class="klein">Kein Formular, kein Konto — nur eine Mail an <a href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>.</p>
         </div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 </main>
 
 <footer class="fuss">

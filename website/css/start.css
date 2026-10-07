@@ -1,72 +1,127 @@
-/* ─── makeinnovation.de — nur die Startseite („Klar 2“, 07.10.2026) ──────────────────────────────────────────────────
-   Grundlage, Tokens und Bausteine stehen in css/seite.css (EINE Quelle mit fokusinnovation.de). Hier nur, was es allein auf der
-   Startseite von MAKE Innovation gibt. Keine Tokens überschreiben, keine Farb-Literale außer den CI-Tönen über Tokens. */
+/* ─── makeinnovation.de — nur die Startseite („v3 · Der Weg“, 07.10.2026 abends) ──────────────────────────────────────
+   Grundlage, Tokens und gemeinsame Bausteine (Linienplan, Strecke, Schema, Einladung, Farbfläche, Dunkel) stehen in css/seite.css
+   (EINE Quelle mit fokusinnovation.de). Hier nur, was es allein auf der Startseite gibt. Keine Tokens überschreiben. */
 
-/* Beratung: „Coming Soon“ als schmale Zeile unter den Angeboten (ohne Knopf). */
+/* 01 · Grundsätze auf der Farbfläche: große Ziffern, drei Spalten. */
+.grundsaetze { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--xxl); }
+.grundsaetze li { display: grid; align-content: start; gap: var(--m); padding-top: var(--l); border-top: 1px solid rgba(250, 249, 246, .4); }
+.grundsaetze .gross-nr.klein { font-size: clamp(3rem, 2rem + 3vw, 5rem); color: rgba(250, 249, 246, .4); }
+.grundsaetze h3 { font-size: clamp(1.375rem, 1.2rem + .6vw, 1.75rem); }
+@media (max-width: 899px) { .grundsaetze { grid-template-columns: 1fr; } }
+
+/* 02 · Leistungen: je eine Zeile — links Steckbrief, rechts das Schema. */
+.leistung { row-gap: var(--xxl); align-items: center; padding-block: clamp(40px, 5vw, 64px); border-top: 1px solid var(--haar); }
+.leistung:first-of-type { padding-top: 0; border-top: 0; }
+.leistung-text { grid-column: 1 / span 6; display: grid; gap: var(--l); }
+.leistung-text h3 { font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem); letter-spacing: -.025em; }
+.leistung-text .steckbrief { margin-top: var(--s); }
+.leistung-text .aktionen { margin-top: var(--s); }
+.leistung .schema { grid-column: 8 / -1; }
+@media (max-width: 899px) { .leistung-text, .leistung .schema { grid-column: 1 / -1; } }
+
+/* Schema · eine Woche im Mandat */
+.woche { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.tag { display: grid; grid-template-rows: auto 1fr; gap: 6px; min-height: 132px; padding: 8px; border: 1px solid var(--haar); border-radius: 10px; background: var(--papier); }
+.tag span { font-size: var(--t-mikro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--tinteLeise); }
+.tag { min-width: 0; }
+.tag .block { min-width: 0; overflow-wrap: anywhere; align-self: stretch; display: flex; align-items: flex-end; padding: 8px; border-radius: 8px; font-size: .8125rem; line-height: 1.25; font-weight: 600; hyphens: manual;
+  color: var(--papierHell); background: var(--granatPapier); }
+.tag .block.call { align-self: start; background: transparent; color: var(--granatPapier); border: 1.5px solid var(--granatPapier); }
+.tag .block.kz { align-self: end; background: transparent; color: var(--smaragdPapier); border: 1.5px solid var(--smaragdPapier); }
+
+/* Schema · die Vertriebs-Strecke: vier Halte auf einer grünen Linie */
+.vstrecke { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding-top: 6px; }
+.vstrecke li { position: relative; display: grid; gap: 4px; padding: 30px 8px 4px 0; }
+.vstrecke li::before { content: ''; position: absolute; top: 8px; left: 0; right: 0; height: 5px; border-radius: 3px; background: var(--smaragdPapier); }
+.vstrecke li:last-child::before { right: auto; width: 16px; }
+.vstrecke li::after { content: ''; position: absolute; top: 2px; left: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--papierHell); border: 4px solid var(--smaragdPapier); }
+.vstrecke b { font-family: var(--schrift-display); font-size: 1rem; }
+.vstrecke span { font-size: .8125rem; line-height: 1.35; color: var(--tinteDim); hyphens: manual; }
+@media (max-width: 559px) { .vstrecke { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--m); } }
+
+/* Schema · die Botschaft in einem Satz */
+.satz-schema { font-family: var(--schrift-display); font-size: clamp(1.25rem, 1rem + 1vw, 1.625rem); line-height: 1.6; letter-spacing: -.01em; }
+.luecke { padding: 0 2px; border-bottom: 2px solid var(--granatPapier); color: var(--granatPapier); }
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.chips li { padding: 4px 12px; border: 1px solid var(--haarStark); border-radius: var(--r-pille); font-size: .8125rem; font-weight: 600; color: var(--tinteDim); background: var(--papier); }
+
+/* Development „Coming Soon“: schmale Zeile unter den Leistungen (ohne Knopf). */
 .angebot.bald {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s) var(--xl);
-  margin-top: var(--xxxl); padding: var(--xl) 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar);
+  margin-top: var(--xl); padding: var(--xl) 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar);
 }
 .angebot.bald h3 { font-size: 1.125rem; }
 .angebot.bald p { grid-column: 1; color: var(--tinteDim); }
 .angebot.bald .abzeichen { grid-column: 2; grid-row: 1 / span 2; }
 
-/* Vorgehen: der Wochenrhythmus als ruhige Zeile unter den Phasen. */
-.rhythmus { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-top: var(--xxxl); padding: var(--l) 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar); color: var(--tinteDim); }
-.rhythmus .mikro { display: inline-flex; }
+/* 03 · Der Weg: das Board als Schema unter der Strecke */
+.board-raster { row-gap: var(--xxl); align-items: start; margin-top: clamp(56px, 7vw, 96px); padding-top: var(--xxl); border-top: 1px solid var(--haarDunkel); }
+.board-text { grid-column: 1 / span 4; display: grid; gap: var(--l); }
+.board-schema { grid-column: 6 / -1; }
+@media (max-width: 899px) { .board-text, .board-schema { grid-column: 1 / -1; } }
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.spalte { display: grid; align-content: start; gap: 8px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid var(--haarDunkel); }
+.spalte-kopf { font-size: var(--t-mikro); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--inkLeise); padding: 2px 2px 4px; }
+.karte-b { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--flaecheHoch); border: 1px solid var(--haarDunkel); font-size: .875rem; line-height: 1.35; color: var(--ink); }
+.dunkel .karte-b { color: var(--ink); }
+.karte-b.fertig { color: var(--inkLeise); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .25); }
+.dunkel .karte-b.fertig { color: var(--inkLeise); }
+.karte-b i { justify-self: start; font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pille); text-decoration: none; }
+.tag-rot { color: var(--granat); background: rgba(201, 70, 92, .14); }
+.tag-gruen { color: var(--smaragd); background: rgba(47, 168, 120, .14); }
+@media (max-width: 559px) { .board { grid-template-columns: 1fr; } }
 
-/* Netzwerk: Formate links, Merkmale und Einladung rechts. */
+/* 04 · Netzwerk: Formate links, Merkmale rechts; Fokus Innovation als Kasten mit der Städte-Linie */
 .netz { row-gap: var(--xxxl); }
 .netz .formate { grid-column: 1 / span 6; }
 .netz .merkmale-block { grid-column: 8 / -1; display: grid; align-content: start; gap: var(--xl); }
 @media (max-width: 899px) { .netz .formate, .netz .merkmale-block { grid-column: 1 / -1; } }
-
-/* Fokus Innovation: der Kasten des Abschnitts — links Text, rechts die Städte. */
-.fokus-kasten { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--xl); }
+.fokus-kasten { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--xxl); margin-top: clamp(56px, 7vw, 96px); }
+.fokus-kasten .fokus-fakten { grid-column: 8 / -1; align-self: start; }
 .fokus-kasten .fokus-text { grid-column: 1 / span 6; display: grid; align-content: start; gap: var(--l); }
-.fokus-kasten .fokus-staedte { grid-column: 8 / -1; display: grid; align-content: start; gap: var(--m); }
+.fokus-kasten .fokus-text h3 { font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem); letter-spacing: -.025em; }
 .fokus-kasten p { color: var(--tinteDim); }
-.staedte { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--xl); border-top: 1px solid var(--haar); }
-.staedte li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--haar); }
-.staedte b { font-family: var(--schrift-display); font-weight: 600; letter-spacing: -.01em; }
-.staedte span { font-size: var(--t-mikro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--smaragdPapier); }
-@media (max-width: 899px) { .fokus-kasten .fokus-text, .fokus-kasten .fokus-staedte { grid-column: 1 / -1; } }
+.staedte-linie { grid-column: 1 / -1; list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.staedte-linie li { position: relative; display: grid; gap: 2px; padding: 34px 8px 0 0; }
+.staedte-linie li::before { content: ''; position: absolute; top: 10px; left: 0; right: 0; height: 5px; border-radius: 3px; background: var(--smaragdPapier); }
+.staedte-linie li:last-child::before { right: auto; width: 18px; }
+.staedte-linie li::after { content: ''; position: absolute; top: 3px; left: 0; width: 18px; height: 18px; border-radius: 50%; background: var(--papierHell); border: 4px solid var(--smaragdPapier); }
+.staedte-linie li.start::after { border: 0; background: linear-gradient(90deg, var(--granatPapier) 0 50%, var(--smaragdPapier) 50% 100%); }
+.staedte-linie b { font-family: var(--schrift-display); font-size: 1.0625rem; }
+.staedte-linie span { font-size: var(--t-mikro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--granatPapier); }
+@media (max-width: 899px) { .fokus-kasten .fokus-text, .fokus-kasten .fokus-fakten { grid-column: 1 / -1; } .staedte-linie { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--l); } }
+@media (max-width: 459px) { .staedte-linie { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* Make.Beteiligungen: zweispaltig unter einer Haarlinie. */
-.beteiligung { row-gap: var(--xxl); padding-top: var(--xxl); border-top: 1px solid var(--haar); }
-.beteiligung .links { grid-column: 1 / span 6; display: grid; align-content: start; gap: var(--l); }
-.beteiligung .links p { color: var(--tinteDim); }
-.beteiligung .rechts-spalte { grid-column: 8 / -1; display: grid; align-content: start; gap: var(--xl); }
-@media (max-width: 899px) { .beteiligung .links, .beteiligung .rechts-spalte { grid-column: 1 / -1; } }
+/* 05 · Beteiligungen */
+.beteiligung-fuss { display: grid; justify-items: start; gap: var(--l); margin-top: var(--xl); }
 
-/* Warum MAKE: die zwei Linien im Satz (MA rot, KE grün), Grundsätze, die beiden Gründer. */
+/* 06 · Gründer: das Logo groß, darunter Malin (rote Linie) und Kevin (grüne Linie) */
 .ma { color: var(--granatPapier); }
 .ke { color: var(--smaragdPapier); }
-.grundsaetze { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rinne); }
-.grundsaetze li { display: grid; align-content: start; gap: 10px; padding: var(--xl) 0 var(--xxl); border-top: 1px solid var(--haar); }
-.grundsaetze h4 { font-size: 1.25rem; letter-spacing: -.015em; line-height: 1.25; }
-.grundsaetze p { color: var(--tinteDim); }
-@media (max-width: 699px) { .grundsaetze { grid-template-columns: 1fr; } }
-.personen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--l); margin-top: var(--xxl); }
-.person { display: flex; align-items: center; gap: var(--l); padding: var(--l) 0; border-top: 1px solid var(--haar); }
-/* Kürzel wie in der Software (TIEF): die Farbe trägt die Aussage, aber nie grell — getönte Scheibe, Kontur und Schrift in der Personenfarbe. */
-.person .bild {
-  flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
-  font-family: var(--schrift-display); font-size: 1.25rem; font-weight: 600;
-}
-.person.malin .bild { color: var(--granatPapier); background: color-mix(in srgb, var(--granatPapier) 9%, var(--papierHell)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--granatPapier) 45%, transparent); }
-.person.kevin .bild { color: var(--smaragdPapier); background: color-mix(in srgb, var(--smaragdPapier) 9%, var(--papierHell)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--smaragdPapier) 45%, transparent); }
-.person div:last-child { display: grid; gap: 2px; }
-.person span { color: var(--tinteDim); font-size: .9375rem; line-height: 1.5; }
-@media (max-width: 699px) { .personen { grid-template-columns: 1fr; } }
+.gruender { row-gap: var(--xxl); }
+.gruender-zeichen { margin-bottom: var(--s); }
+.gruender-zeichen img { width: min(100%, 520px); height: auto; }
+.person { display: grid; align-content: start; gap: var(--m); padding-top: var(--l); border-top: 2px solid var(--granatPapier); }
+.person.malin { grid-column: 4 / span 4; }
+.person.kevin { grid-column: 8 / -1; border-top-color: var(--smaragdPapier); }
+.person h3 { font-size: clamp(1.5rem, 1.25rem + 1vw, 2rem); letter-spacing: -.02em; }
+.person > p:not(.mikro) { color: var(--tinteDim); }
+@media (max-width: 899px) { .person.malin, .person.kevin { grid-column: 1 / -1; } }
 
-/* Schlussakt: links Satz und Erstgespräch, rechts das eine Licht (Standbild der Kugel). */
-.schluss { row-gap: var(--xxxl); align-items: center; }
-.schluss .schluss-text { grid-column: 1 / span 7; display: grid; gap: var(--xl); }
-.schluss .licht { grid-column: 8 / -1; }
-.ruf-block { display: grid; gap: var(--l); margin-top: var(--l); padding-top: var(--xl); border-top: 1px solid var(--haarDunkel); }
-.ruf-block .klein a { color: var(--ink); }
-@media (max-width: 899px) {
-  .schluss .schluss-text, .schluss .licht { grid-column: 1 / -1; }
-  .schluss .licht { grid-row: 1; max-width: 300px; }
+/* 07 · Häufige Fragen: aufklappbar (<details>, ohne Skript) */
+.fragen { border-top: 2px solid var(--tinte); }
+.fragen details { border-bottom: 1px solid var(--haar); }
+.fragen summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: var(--l); min-height: 64px; padding: 14px 0;
+  font-family: var(--schrift-display); font-size: clamp(1.0625rem, 1rem + .4vw, 1.25rem); font-weight: 600; letter-spacing: -.01em;
 }
+.fragen summary::-webkit-details-marker { display: none; }
+.fragen summary::after { content: '+'; flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--haarStark); font-family: var(--schrift-text); font-weight: 500; transition: transform .25s var(--sanft); }
+.fragen details[open] summary::after { transform: rotate(45deg); }
+.fragen summary:hover::after { border-color: var(--tinte); }
+.fragen details p { max-width: 68ch; padding: 0 0 20px; color: var(--tinteDim); }
+
+/* 08 · Kontakt: das Erstgespräch im dunklen Schlussakt */
+.schlussakt .abschnitt-kopf { margin-bottom: 0; }
+.ruf-block { display: grid; gap: var(--l); margin-top: var(--s); padding-top: var(--xl); border-top: 1px solid var(--haarDunkel); }
+.ruf-block .klein a { color: var(--ink); }
