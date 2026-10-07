@@ -13,7 +13,7 @@
 // UID sein (die Spiegel tragen ihre feste UID) — der alte Bezug-Eintrag zieht dabei mit um, wenn die UID eindeutig ist.
 
 import { verbunden, anlegen, aendern, loeschen, terminAufloesen, ladeStand, kalenderNachName, KalenderFehler, type KalenderEintrag } from './icloud';
-import { persoenlichFremd } from './icloud-person';
+import { persoenlichFremd, eigenesBlockZiel } from './icloud-person';
 import { kalenderZiel, googleKalenderNamen } from './google/ziel';
 import type { KalenderBereich } from './bereich';
 import { ladeEinstellungen, type Wer } from './einstellungen';
@@ -35,6 +35,11 @@ export interface ServerTermin {
   art?: IcsArt; blockArt?: BlockArt; beschaeftigt?: boolean; ort?: string; notiz?: string;
   /** Feste, echte UID für idempotente Vorgänge (siehe icloud.ts `anlegen`). */
   uid?: string;
+  /**
+   * Kevin 07.10.: Blöcke (Planen, ZOE, Wochenplan) einer Person mit EIGENER iCloud-Verbindung gehen in deren eigenes Konto
+   * (`eigenesBlockZiel`) statt in den Haushalts-Kalender. Nur ohne `kalender` und im Bereich privat; sonst wie bisher.
+   */
+  eigenesIcloud?: boolean;
   /** Kennungen → `kalender-bezug` (nie in den Termin). */
   bezug?: BezugKennungen;
   /** Wer ihn in MAKE OS anlegt (Speichername) — Eigentümer im Neben-Bestand. */
@@ -60,8 +65,9 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
   await nurVerbunden();
   const einst = await ladeEinstellungen();
   const art: IcsArt = t.art ?? 'termin';
-  const ziel = t.kalender ? null : await kalenderZiel(t.wer, t.bereich ?? 'privat', einst);
-  const kalender = t.kalender || ziel?.kalender;
+  const eigen = !t.kalender && t.eigenesIcloud && (t.bereich ?? 'privat') === 'privat' && t.wer !== 'beide' ? await eigenesBlockZiel(t.wer).catch(() => undefined) : undefined;
+  const ziel = t.kalender || eigen ? null : await kalenderZiel(t.wer, t.bereich ?? 'privat', einst);
+  const kalender = t.kalender || eigen || ziel?.kalender;
   if (!kalender) throw new KalenderFehler('Für diese Person ist kein Kalender hinterlegt — der Termin wurde nicht angelegt.', 409);
   // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer Person schreibt nur sie selbst (auch kein Systemlauf für andere).
   if (persoenlichFremd(await zielKalender(kalender), t.von)) throw new KalenderFehler('Dieser Kalender gehört zur iCloud-Verbindung einer anderen Person — dort legt MAKE OS nichts an.', 403);

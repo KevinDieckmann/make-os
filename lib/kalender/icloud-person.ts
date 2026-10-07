@@ -57,6 +57,11 @@ export interface IcloudVerbindung {
   erneuertAm?: string;
   /** Kalender (Kennung wie `kalenderKennung`), die NICHT gezeigt werden — Standard: alle zeigen. Nur Verbindungen je Person. */
   ausgeblendet?: string[];
+  /**
+   * Kevin 07.10.: Blöcke aus Planen und ZOE für diese Person landen im EIGENEN iCloud-Konto (dann auch auf ihrem iPhone).
+   * Kennung des Zielkalenders; ohne Angabe der erste gezeigte, schreibbare Kalender des Kontos. Nur Verbindungen je Person.
+   */
+  blockKalender?: string;
 }
 /** Nach „Trennen“: kein Zugang mehr. Bei der Haupt-Person zusätzlich der Fingerabdruck der Umgebung, die damit aus ist. */
 interface VerbindungGrabstein { v: 0; getrenntAm: string; umgebungAus?: string }
@@ -170,6 +175,7 @@ export async function icloudVerbinden(person: string, appleIdRoh: unknown, passw
     v: 1, appleId, passwort, verbundenAm: gleichesKonto && alt ? alt.verbundenAm : jetzt,
     ...(gleichesKonto ? { erneuertAm: jetzt } : {}),
     ...(gleichesKonto && alt?.ausgeblendet?.length ? { ausgeblendet: alt.ausgeblendet } : {}),
+    ...(gleichesKonto && alt?.blockKalender ? { blockKalender: alt.blockKalender } : {}),
   };
   await saveJson(verbindungName(person), neu);
   const haupt = (await hauptPerson()) === person;
@@ -234,6 +240,38 @@ export async function kalenderZeigen(person: string, kennung: string, zeigen: bo
   });
   await personAbgleichen(person, zeigen ? { erzwingen: true } : {}).catch(() => { /* Fehler steht im Stand */ });
   return true;
+}
+
+/** Zielkalender für Blöcke im eigenen Konto wählen (Kennung) — nur ein gezeigter, schreibbarer Kalender des eigenen Kontos. */
+export async function blockKalenderSetzen(person: string, kennung: string): Promise<boolean> {
+  if (!(await ladeVerbindung(person)) || !/^[\w.@%+-]{1,200}$/.test(kennung)) return false;
+  const s = await ladePersonStand(person);
+  if (!s?.kalender.some(k => kalenderKennung(k.id) === kennung && k.schreibbar)) return false;
+  await updateJson<IcloudVerbindung | VerbindungGrabstein | null>(verbindungName(person), cur => (cur && cur.v === 1 ? { ...cur, blockKalender: kennung } : cur));
+  return true;
+}
+
+/** Rein: Zielkalender (Kennung) für Blöcke — gewählter, sonst erster gezeigter und schreibbarer Kalender des Kontos. */
+export function blockZielKennung(kalender: readonly { kennung: string; schreibbar: boolean }[], ausgeblendet: readonly string[], gewaehlt?: string): string | undefined {
+  const aus = new Set(ausgeblendet);
+  const moeglich = kalender.filter(k => k.schreibbar && !aus.has(k.kennung));
+  return (gewaehlt && moeglich.find(k => k.kennung === gewaehlt)?.kennung) ?? moeglich[0]?.kennung;
+}
+
+/**
+ * Kevin 07.10.: wohin ein Block (Planen, ZOE `plan_block`, Wochenplan-Übernahme) einer Person geschrieben wird — der Name des
+ * Kalenders aus ihrer EIGENEN iCloud-Verbindung (wie im Stand, „<Kalender> · <Vorname>“). `undefined` = wie bisher (Haushalts-
+ * Kalender aus den Einstellungen): die Haupt-Person, keine eigene Verbindung, Anmeldung abgelehnt oder kein schreibbarer Kalender.
+ */
+export async function eigenesBlockZiel(person: string): Promise<string | undefined> {
+  if (!istPerson(person) || (await hauptPerson()) === person) return undefined;
+  const [v, s] = await Promise.all([ladeVerbindung(person), ladePersonStand(person)]);
+  if (!v || !s || s.fehlerAnmeldung) return undefined;
+  const kennung = blockZielKennung(s.kalender.map(k => ({ kennung: kalenderKennung(k.id), schreibbar: k.schreibbar })), v.ausgeblendet ?? [], v.blockKalender);
+  if (!kennung) return undefined;
+  const id = s.kalender.find(k => kalenderKennung(k.id) === kennung)?.id;
+  const p = await persoenlicheUeberlagerung(await ladeStandIcloud()).catch(() => null);
+  return p?.kalender.find(k => k.person === person && k.id === id)?.name;
 }
 
 // ── Abgleich je Person ──────────────────────────────────────────────────────
@@ -384,6 +422,8 @@ export interface IcloudStatus {
   anmeldung?: true;
   /** Nur je Person: die Kalender des Kontos zum Zeigen/Ausblenden (Kennung, Name, gezeigt, schreibbar, Termine im Spiegel). */
   kalender?: { kennung: string; name: string; gezeigt: boolean; schreibbar: boolean; termine: number }[];
+  /** Nur je Person (07.10.): Kennung des Kalenders, in den Blöcke aus Planen/ZOE geschrieben werden. */
+  blockKalender?: string;
 }
 
 const maskiert = (id: string | undefined): string | undefined => (id ? adresseMaskiert(id) : undefined);
@@ -413,6 +453,7 @@ export async function icloudStatus(person: string): Promise<IcloudStatus> {
     haupt, quelle: 'oberflaeche', verbunden: true, konto: maskiert(v.appleId), seit: v.verbundenAm, ...(v.erneuertAm ? { erneuert: v.erneuertAm } : {}),
     ...(a ? { abgleich: a } : {}), ...(a?.anmeldung ? { anmeldung: true as const } : {}),
     kalender: (s?.kalender ?? []).map(k => ({ kennung: kalenderKennung(k.id), name: k.name, gezeigt: !aus.has(kalenderKennung(k.id)), schreibbar: k.schreibbar, termine: (s?.objekte[k.id] ?? []).length })),
+    ...((): { blockKalender?: string } => { const b = blockZielKennung((s?.kalender ?? []).map(k => ({ kennung: kalenderKennung(k.id), schreibbar: k.schreibbar })), v.ausgeblendet ?? [], v.blockKalender); return b ? { blockKalender: b } : {}; })(),
   };
 }
 

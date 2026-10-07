@@ -253,7 +253,7 @@ async function blockUebernehmen(person: string, blockId: string, wer: WerP): Pro
     try {
       const r = await terminAnlegenServer({
         ...soll, wer: kalenderWer, art, ...(blockArt ? { blockArt } : {}), beschaeftigt: true,
-        uid: uidFuerBlock(person, b.id), von: person, ...(b.taskId ? { bezug: { aufgabeId: b.taskId } } : {}),
+        uid: uidFuerBlock(person, b.id), von: person, eigenesIcloud: true, ...(b.taskId ? { bezug: { aufgabeId: b.taskId } } : {}),
         notiz: 'Aus dem MAKE-OS-Wochenplan übernommen.',
       }, wer);
       uid = r.uid;

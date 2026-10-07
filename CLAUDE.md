@@ -513,6 +513,7 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
     zeigt keine Karte; verbunden → nur kleiner Hinweis. Welche Anzeige: `verbindenAnzeige` (lib/kalender/verbinden-anzeige.ts, rein);
     Oberfläche `components/os/kalender/VerbindenKarten.tsx` (`BereichVerbindungen`). Google-Anmeldung für Karte UND Einstellungen über
     EINEN Weg `components/os/kalender/google-verbinden.ts` (`googleKalenderVerbinden`, `GOOGLE_HINWEISE`). Tests `tests/kalender-verbinden-karten.test.ts`.
+  - **Blöcke ins eigene Konto (07.10., Kevin):** Blöcke aus Planen/ZOE (`blockAnlegen`) und der Wochenplan-Übernahme tragen `eigenesIcloud: true` → `terminAnlegenServer` schreibt sie für eine Person mit EIGENER Verbindung (nicht Haupt-Person) in ihr eigenes Konto (`eigenesBlockZiel`: gewählter `blockKalender`, sonst erster gezeigter + schreibbarer Kalender), sonst wie bisher in den Haushalts-Kalender. Wahl in der iCloud-Karte („Blöcke aus Planen und ZOE landen in“), Route-Aktion `blockkalender`. Andere sehen die Blöcke nur „Belegt“ (Kevin 07.10.: „Belegt“ bleibt).
 - **Termine mit Gästen (seit 30.09., K3 — ersetzt „nie mit Teilnehmern“):** Serien ändert MAKE OS weiter nicht („in Apple
   ändern“). Gäste gibt es nur nach Klick: **Organisator = wir** (ORGANIZER = Adresse des iCloud-Kontos): Einladen, Ändern,
   Gäste ändern und Löschen erst nach der Rückfrage „Einladung/Änderung/Absage an n Personen über iCloud senden?“ (mit den

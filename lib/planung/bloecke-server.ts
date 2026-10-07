@@ -46,7 +46,7 @@ export async function blockAnlegen(person: string, b: BlockNeu, wer: ProtokollWe
   const a = blockAnfrage(b, kalenderWer);
   const { art, blockArt } = icsVonPlanArt(b.art);
   const r = await terminAnlegenServer({
-    titel: String(a.titel), start: String(a.start), ende: String(a.ende), wer: kalenderWer, art, ...(blockArt ? { blockArt } : {}), beschaeftigt: true, von: person,
+    titel: String(a.titel), start: String(a.start), ende: String(a.ende), wer: kalenderWer, art, ...(blockArt ? { blockArt } : {}), beschaeftigt: true, von: person, eigenesIcloud: true,
     ...(b.taskId ? { bezug: { aufgabeId: b.taskId } } : {}),
   }, wer);
   return { uid: r.uid };

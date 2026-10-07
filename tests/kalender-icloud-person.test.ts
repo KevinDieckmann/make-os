@@ -259,6 +259,57 @@ describe('Schreiben', () => {
   });
 });
 
+describe('Blöcke ins eigene Konto (Kevin 07.10.)', () => {
+  const SYS = { art: 'system', id: 'test' } as never;
+  it('rein: gewählter Kalender, sonst erster gezeigter und schreibbarer — ausgeblendete und nur lesbare nie', () => {
+    const k = [{ kennung: 'a', schreibbar: false }, { kennung: 'b', schreibbar: true }, { kennung: 'c', schreibbar: true }];
+    expect(P.blockZielKennung(k, [])).toBe('b');
+    expect(P.blockZielKennung(k, ['b'])).toBe('c');
+    expect(P.blockZielKennung(k, [], 'c')).toBe('c');
+    expect(P.blockZielKennung(k, [], 'a')).toBe('b'); // nur lesbar → Rückfall
+    expect(P.blockZielKennung(k, ['b', 'c'])).toBeUndefined();
+  });
+
+  it('Malins Block (Planen/ZOE) landet in IHREM iCloud — mit ihrem Zugang, nicht im Haushalts-Kalender', async () => {
+    await verbindeMalin();
+    const { blockAnlegen } = await import('@/lib/planung/bloecke-server');
+    await blockAnlegen('malin', { date: TAG, startMin: 14 * 60, dauerMin: 60, titel: 'Fokus Buchhaltung', art: 'fokus' as never }, SYS);
+    expect(Object.values(mal.kalender.home.objekte).some(o => o.ics.includes('Fokus Buchhaltung'))).toBe(true);
+    expect(kev.aufrufe.some(a => a.methode === 'PUT')).toBe(false);
+    const put = mal.aufrufe.find(a => a.methode === 'PUT')!;
+    expect(put.auth).toBe(`Basic ${Buffer.from(`malin@example.invalid:${MALIN_PW}`).toString('base64')}`);
+    // Kevin sieht den Block nur als „Belegt“.
+    const k = await kalender('kevin');
+    expect(k.text).not.toContain('Fokus Buchhaltung');
+  });
+
+  it('Zielkalender wählbar (nur eigene, schreibbare); der Status nennt ihn; erneuern behält die Wahl', async () => {
+    await verbindeMalin();
+    const st = await icloud('malin');
+    const arzt = (st.d.kalender as { kennung: string; name: string }[]).find(k => k.name === 'Arzttermine')!.kennung;
+    expect(st.d.blockKalender).not.toBe(arzt);
+    expect((await icloud('malin', { aktion: 'blockkalender', kennung: 'gibt-es-nicht' })).status).toBe(409);
+    const r = await icloud('malin', { aktion: 'blockkalender', kennung: arzt });
+    expect(r.status).toBe(200);
+    expect(r.d.blockKalender).toBe(arzt);
+    const { terminAnlegenServer } = await import('@/lib/kalender/termin-server');
+    await terminAnlegenServer({ titel: 'Plan-Block', start: `${TAG}T16:00:00`, ende: `${TAG}T17:00:00`, wer: 'malin', art: 'block', eigenesIcloud: true, von: 'malin' }, SYS);
+    expect(Object.values(mal.kalender.arzt.objekte).some(o => o.ics.includes('Plan-Block'))).toBe(true);
+    await verbindeMalin(); // „Verbindung erneuern“ mit demselben Konto
+    expect((await icloud('malin')).d.blockKalender).toBe(arzt);
+    expect((await icloud('kevin', { aktion: 'blockkalender', kennung: arzt })).status).toBe(409); // Kevin ist Haupt-Person, keine eigene Wahl
+  });
+
+  it('ohne eigene Verbindung, für die Haupt-Person und ohne den Schalter: wie bisher der Haushalts-Kalender', async () => {
+    const { terminAnlegenServer } = await import('@/lib/kalender/termin-server');
+    await terminAnlegenServer({ titel: 'Kevin Block', start: `${TAG}T11:00:00`, ende: `${TAG}T12:00:00`, wer: 'kevin', art: 'block', eigenesIcloud: true, von: 'kevin' }, SYS);
+    expect(Object.values(kev.kalender.home.objekte).some(o => o.ics.includes('Kevin Block'))).toBe(true);
+    await verbindeMalin();
+    await expect(P.eigenesBlockZiel('kevin')).resolves.toBeUndefined();
+    await expect(P.eigenesBlockZiel('malin')).resolves.toBe('Kalender · Malin');
+  });
+});
+
 describe('Übergang Server-Einrichtung → Oberfläche (Haupt-Person)', () => {
   it('ohne Eintrag gilt die Umgebung als Kevins Verbindung (Haushalts-Kalender, Quelle „Server-Einrichtung“)', async () => {
     const s = await icloud('kevin');

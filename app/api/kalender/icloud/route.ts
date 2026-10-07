@@ -6,6 +6,7 @@
 //      { aktion: 'trennen' }                       → Zugang und Spiegel dieser Person weg
 //      { aktion: 'abgleichen' }                    → jetzt abgleichen
 //      { aktion: 'kalender', kennung, zeigen }     → einen Kalender des eigenen Kontos zeigen/ausblenden
+//      { aktion: 'blockkalender', kennung }        → (07.10.) Zielkalender für Blöcke aus Planen/ZOE im eigenen Konto
 // Nur die eigene Person (Sitzung, Haushalt des Inhabers) — Dienstweg und andere Konten 403 (`eigenePerson`). Die Antwort
 // trägt nie das Passwort und nie die volle Apple-ID; das Protokoll nur Feldnamen. Fehlversuche beim Verbinden gedrosselt
 // (Apple sperrt Konten nach wiederholt falschen Anmeldungen). Logik: lib/kalender/icloud-person.ts.
@@ -13,7 +14,7 @@
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { eigenePerson } from '@/lib/google/zugang';
-import { icloudStatus, icloudVerbinden, icloudTrennen, kalenderZeigen, personAbgleichen, hauptPerson, IcloudEingabeFehler } from '@/lib/kalender/icloud-person';
+import { icloudStatus, icloudVerbinden, icloudTrennen, kalenderZeigen, blockKalenderSetzen, personAbgleichen, hauptPerson, IcloudEingabeFehler } from '@/lib/kalender/icloud-person';
 import { abgleichen, KalenderFehler, KalenderUeberlastet } from '@/lib/kalender/icloud';
 import { pruefe, fehlschlag, erfolg } from '@/lib/zugang/drossel';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
@@ -75,6 +76,12 @@ export async function POST(req: Request) {
       await protokolliere('kalender', [{ liste: 'icloud', op: 'geaendert', id: 'kalender', felder: [b.zeigen ? 'gezeigt' : 'ausgeblendet'] }], wer).catch(() => { /* nur Protokoll */ });
       return NextResponse.json({ ok: true, ...(await icloudStatus(person)) });
     }
-    return NextResponse.json({ ok: false, fehler: 'aktion = verbinden | trennen | abgleichen | kalender' }, { status: 400 });
+    if (b.aktion === 'blockkalender') {
+      if (typeof b.kennung !== 'string') return NextResponse.json({ ok: false, fehler: 'kennung fehlt.' }, { status: 400 });
+      if (!(await blockKalenderSetzen(person, b.kennung))) return NextResponse.json({ ok: false, fehler: 'In diesen Kalender kann MAKE OS nicht schreiben (nicht in deiner Verbindung oder nur lesbar).' }, { status: 409 });
+      await protokolliere('kalender', [{ liste: 'icloud', op: 'geaendert', id: 'kalender', felder: ['blockKalender'] }], wer).catch(() => { /* nur Protokoll */ });
+      return NextResponse.json({ ok: true, ...(await icloudStatus(person)) });
+    }
+    return NextResponse.json({ ok: false, fehler: 'aktion = verbinden | trennen | abgleichen | kalender | blockkalender' }, { status: 400 });
   } catch (e) { return fehlerAntwort(e); }
 }

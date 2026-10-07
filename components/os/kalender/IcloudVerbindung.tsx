@@ -20,6 +20,8 @@ interface Stand {
   ok: boolean; haupt: boolean; quelle: 'oberflaeche' | 'umgebung' | 'getrennt' | 'keine'; verbunden: boolean;
   konto?: string; seit?: string; erneuert?: string; abgleich?: AbgleichInfo; anmeldung?: true;
   kalender?: { kennung: string; name: string; gezeigt: boolean; schreibbar: boolean; termine: number }[];
+  /** 07.10.: Kalender (Kennung), in den Blöcke aus Planen und ZOE geschrieben werden. */
+  blockKalender?: string;
   fehler?: string; hinweis?: string;
 }
 
@@ -90,6 +92,13 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
     if (r.d.ok) { setS(r.d as Stand); onGeaendert?.(); } else setMeldung({ text: r.d.fehler ?? 'Ging nicht.', art: 'achtung' });
   };
 
+  const blockZiel = async (kennung: string) => {
+    setArbeit(`block:${kennung}`);
+    const r = await post({ aktion: 'blockkalender', kennung });
+    setArbeit(null);
+    if (r.d.ok) { setS(r.d as Stand); onGeaendert?.(); } else setMeldung({ text: r.d.fehler ?? 'Ging nicht.', art: 'achtung' });
+  };
+
   const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 };
   const box: CSSProperties = { display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' };
   const offen = formular || (s !== null && !s.verbunden);
@@ -145,6 +154,15 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
             </div>
           ))}
           <span style={klein}>Kalender, die schon im Haushalts-Kalender stehen (geteilt), erscheinen nur einmal.</span>
+          {s.kalender.some(k => k.gezeigt && k.schreibbar) && (
+            <label style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+              <span style={{ ...klein, fontWeight: 600 }}>Blöcke aus Planen und ZOE landen in</span>
+              <select value={s.blockKalender ?? ''} disabled={!!arbeit} onChange={e => void blockZiel(e.target.value)} style={{ ...eingabe, minHeight: 44 }} aria-label="Kalender für Blöcke">
+                {s.kalender.filter(k => k.gezeigt && k.schreibbar).map(k => <option key={k.kennung} value={k.kennung}>{k.name}</option>)}
+              </select>
+              <span style={klein}>So erscheinen deine Fokus- und Plan-Blöcke auch auf deinem iPhone. Andere sehen sie nur als „Belegt“.</span>
+            </label>
+          )}
         </div>
       )}
 

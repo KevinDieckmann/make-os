@@ -4,6 +4,11 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 07.10.2026 — Malins Blöcke landen in IHREM iCloud (nur lokal; Kevin: „Malins eigenes iCloud“, „Belegt“ bleibt)
+- Fokus- und Plan-Blöcke aus Planen, ZOE und der Wochenplan-Übernahme gehen für Personen mit eigener iCloud-Verbindung in deren eigenes Konto (erscheinen damit auf ihrem iPhone); Kevin (Haushalts-Kalender) unverändert.
+- Malin wählt in Kalender › Einstellungen › iCloud unter „Blöcke aus Planen und ZOE landen in“ den Kalender (Standard: erster gezeigter, schreibbarer).
+- Bestehende Blöcke bleiben, wo sie sind. Rückweg: alter Stand ignoriert das Feld `blockKalender`; neue Blöcke gingen dann wieder in den Haushalts-Kalender.
+
 ## 06.10.2026 — iCloud-Kalender je Person (nur lokal, Branch `icloud-je-person`; Kevin: „Malins iCloud-Kalender soll in MAKE OS erscheinen“)
 
 **Was sich ändert:** Jede Person verbindet ihren iCloud-Kalender SELBST — Kalender › Einstellungen › „iCloud Kalender“: Apple-ID +
