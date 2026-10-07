@@ -1,0 +1,71 @@
+/* ─── makeinnovation.de — nur die Startseite („Klar 2“, 07.10.2026) ──────────────────────────────────────────────────
+   Grundlage, Tokens und Bausteine stehen in css/seite.css (EINE Quelle mit fokusinnovation.de). Hier nur, was es allein auf der
+   Startseite von MAKE Innovation gibt. Keine Tokens überschreiben, keine Farb-Literale außer den CI-Tönen über Tokens. */
+
+/* Beratung: „Coming Soon“ als schmale Zeile unter den Angeboten (ohne Knopf). */
+.angebot.bald {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s) var(--xl);
+  margin-top: var(--xxxl); padding: var(--xl) 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar);
+}
+.angebot.bald h3 { font-size: 1.125rem; }
+.angebot.bald p { grid-column: 1; color: var(--tinteDim); }
+.angebot.bald .abzeichen { grid-column: 2; grid-row: 1 / span 2; }
+
+/* Vorgehen: der Wochenrhythmus als ruhige Zeile unter den Phasen. */
+.rhythmus { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-top: var(--xxxl); padding: var(--l) 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar); color: var(--tinteDim); }
+.rhythmus .mikro { display: inline-flex; }
+
+/* Netzwerk: Formate links, Merkmale und Einladung rechts. */
+.netz { row-gap: var(--xxxl); }
+.netz .formate { grid-column: 1 / span 6; }
+.netz .merkmale-block { grid-column: 8 / -1; display: grid; align-content: start; gap: var(--xl); }
+@media (max-width: 899px) { .netz .formate, .netz .merkmale-block { grid-column: 1 / -1; } }
+
+/* Fokus Innovation: der Kasten des Abschnitts — links Text, rechts die Städte. */
+.fokus-kasten { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--xl); }
+.fokus-kasten .fokus-text { grid-column: 1 / span 6; display: grid; align-content: start; gap: var(--l); }
+.fokus-kasten .fokus-staedte { grid-column: 8 / -1; display: grid; align-content: start; gap: var(--m); }
+.fokus-kasten p { color: var(--tinteDim); }
+.staedte { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--xl); border-top: 1px solid var(--haar); }
+.staedte li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--haar); }
+.staedte b { font-family: var(--schrift-display); font-weight: 600; letter-spacing: -.01em; }
+.staedte span { font-size: var(--t-mikro); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--smaragdPapier); }
+@media (max-width: 899px) { .fokus-kasten .fokus-text, .fokus-kasten .fokus-staedte { grid-column: 1 / -1; } }
+
+/* Make.Beteiligungen: zweispaltig unter einer Haarlinie. */
+.beteiligung { row-gap: var(--xxl); padding-top: var(--xxl); border-top: 1px solid var(--haar); }
+.beteiligung .links { grid-column: 1 / span 6; display: grid; align-content: start; gap: var(--l); }
+.beteiligung .links p { color: var(--tinteDim); }
+.beteiligung .rechts-spalte { grid-column: 8 / -1; display: grid; align-content: start; gap: var(--xl); }
+@media (max-width: 899px) { .beteiligung .links, .beteiligung .rechts-spalte { grid-column: 1 / -1; } }
+
+/* Warum MAKE: die zwei Linien im Satz (MA rot, KE grün), Grundsätze, die beiden Gründer. */
+.ma { color: var(--granatPapier); }
+.ke { color: var(--smaragdPapier); }
+.grundsaetze { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rinne); }
+.grundsaetze li { display: grid; align-content: start; gap: 10px; padding: var(--xl) 0 var(--xxl); border-top: 1px solid var(--haar); }
+.grundsaetze h4 { font-size: 1.25rem; letter-spacing: -.015em; line-height: 1.25; }
+.grundsaetze p { color: var(--tinteDim); }
+@media (max-width: 699px) { .grundsaetze { grid-template-columns: 1fr; } }
+.personen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: var(--l); margin-top: var(--xxl); }
+.person { display: flex; align-items: center; gap: var(--l); padding: var(--l) 0; border-top: 1px solid var(--haar); }
+.person .bild {
+  flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
+  font-family: var(--schrift-display); font-size: 1.25rem; font-weight: 600; color: var(--papierHell);
+}
+.person.malin .bild { background: var(--granatPapier); }
+.person.kevin .bild { background: var(--smaragdPapier); }
+.person div:last-child { display: grid; gap: 2px; }
+.person span { color: var(--tinteDim); font-size: .9375rem; line-height: 1.5; }
+@media (max-width: 699px) { .personen { grid-template-columns: 1fr; } }
+
+/* Schlussakt: links Satz und Erstgespräch, rechts das eine Licht (Standbild der Kugel). */
+.schluss { row-gap: var(--xxxl); align-items: center; }
+.schluss .schluss-text { grid-column: 1 / span 7; display: grid; gap: var(--xl); }
+.schluss .licht { grid-column: 8 / -1; }
+.ruf-block { display: grid; gap: var(--l); margin-top: var(--l); padding-top: var(--xl); border-top: 1px solid var(--haarDunkel); }
+.ruf-block .klein a { color: var(--ink); }
+@media (max-width: 899px) {
+  .schluss .schluss-text, .schluss .licht { grid-column: 1 / -1; }
+  .schluss .licht { grid-row: 1; max-width: 300px; }
+}

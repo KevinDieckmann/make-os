@@ -1,88 +1,51 @@
-// ─── Szene: EINE Quelle für makeinnovation.de und fokusinnovation.de (04.10.2026; „Klar“ 05.10.2026) ──────────────────────
-// website/js/szene/ (kern · formationen · motor · spur · verlauf) ist das Original; fokus/js/szene/ ist eine Byte-gleiche Kopie
-// (scripts/szene-website.mjs). Neue Fähigkeiten (die Formation „tafel“) sind freiwillig je Drehbuch — makeinnovation.de bleibt
-// unverändert. Hier wird beides bewacht.
+// ─── EINE Gestaltungsgrundlage für makeinnovation.de und fokusinnovation.de („Klar 2“, 07.10.2026) ─────────────────────────
+// Bis 06.10. bewachte dieser Test die WebGL-Szene beider Seiten (website/js/szene/ → fokus/js/szene/, Byte-Kopien über
+// scripts/szene-website.mjs). 07.10. Kevin: „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine
+// Spielereien — das soll sich auch so durchziehen.“ Die Szene ist entfernt (Rückweg: Commit e008ebfc auf `entwicklung`).
+// Was beide Seiten jetzt teilen, ist die Gestaltungsgrundlage css/seite.css (dazu Schriften, Logo, Menü): Original in website/,
+// Byte-Kopie in fokus/ (scripts/fokus-seite.mjs). Hier wird bewacht, dass die Szene nicht zurückkommt und die Grundlage eine bleibt.
 import { describe, it, expect } from 'vitest';
-import { readFileSync, mkdtempSync, cpSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import vm from 'node:vm';
-import { pruefen, kopien, ZIELE, DATEIEN, QUELLE } from '../scripts/szene-website.mjs';
-import { GLEICH_WIE_WEBSITE } from '../fokus/pruefen.mjs';
+import { pruefen, KOPIEN } from '../scripts/fokus-seite.mjs';
 
 const wurzel = process.cwd();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Szene = any;
-/** Die Szene einer Seite ohne DOM laden (wie website/standbild.mjs). */
-function szene(ordner: string): Szene {
-  const ctx: Record<string, unknown> = {};
-  vm.createContext(ctx);
-  for (const d of ['js/szene/kern.js', 'js/szene/formationen.js', 'js/drehbuch.js']) vm.runInContext(readFileSync(join(wurzel, ordner, d), 'utf8'), ctx);
-  return ctx.MakeSzene;
-}
+const SEITEN = ['website', 'fokus'];
 
-describe('fokus/js/szene/ = website/js/szene/ (Byte für Byte)', () => {
-  it('jede Kopie gleicht dem Original (sonst: node scripts/szene-website.mjs oder node scripts/fokus-seite.mjs)', () => {
-    expect(ZIELE).toEqual(['fokus/js/szene']);
-    expect(DATEIEN).toEqual(['kern.js', 'formationen.js', 'motor.js', 'spur.js', 'verlauf.js']);
-    expect(pruefen(wurzel)).toEqual([]);
-    for (const [q, z] of kopien() as [string, string][]) expect(readFileSync(join(wurzel, z)).equals(readFileSync(join(wurzel, q))), z).toBe(true);
+describe('keine Szene mehr (07.10.)', () => {
+  it('weder makeinnovation.de noch fokusinnovation.de haben Leinwand, WebGL, Drehbuch oder Standbild-Rechner', () => {
+    for (const weg of ['website/js/szene', 'fokus/js/szene', 'website/js/drehbuch.js', 'fokus/js/drehbuch.js', 'website/js/lichtfaeden.js', 'website/standbild.mjs', 'scripts/szene-website.mjs', 'scripts/lichtfaeden-website.mjs'])
+      expect(existsSync(join(wurzel, weg)), weg).toBe(false);
+    for (const seite of SEITEN) {
+      for (const d of readdirSync(join(wurzel, seite, 'js'))) expect(readFileSync(join(wurzel, seite, 'js', d), 'utf8'), `${seite}/js/${d}`).not.toMatch(/getContext|webgl|requestAnimationFrame/i);
+      for (const d of readdirSync(join(wurzel, seite)).filter(n => n.endsWith('.html'))) expect(readFileSync(join(wurzel, seite, d), 'utf8'), `${seite}/${d}`).not.toMatch(/<canvas\b/);
+    }
+  });
+});
+
+describe('eine Gestaltungsgrundlage für beide Seiten', () => {
+  it('fokus/css/seite.css ist Byte für Byte website/css/seite.css; alle Kopien passen (node scripts/fokus-seite.mjs)', async () => {
+    expect(KOPIEN).toContainEqual(['website/css/seite.css', 'fokus/css/seite.css']);
+    expect(readFileSync(join(wurzel, 'fokus/css/seite.css')).equals(readFileSync(join(wurzel, 'website/css/seite.css')))).toBe(true);
+    expect(await pruefen(wurzel)).toEqual([]);
   });
 
-  it('fokus/pruefen.mjs vergleicht dieselben Dateien (ohne Abhängigkeiten)', () => {
-    for (const d of DATEIEN) expect((GLEICH_WIE_WEBSITE as Record<string, string>)[`js/szene/${d}`]).toBe(`js/szene/${d}`);
-  });
-
-  it('eine geänderte Kopie fällt auf', () => {
-    const d = mkdtempSync(join(tmpdir(), 'szene-website-'));
+  it('eine geänderte Kopie der Grundlage fällt auf', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'grundlage-'));
     try {
-      mkdirSync(join(d, 'fokus/js'), { recursive: true });
-      cpSync(join(wurzel, QUELLE), join(d, QUELLE), { recursive: true });
-      cpSync(join(wurzel, 'fokus/js/szene'), join(d, 'fokus/js/szene'), { recursive: true });
-      writeFileSync(join(d, 'fokus/js/szene/motor.js'), readFileSync(join(d, 'fokus/js/szene/motor.js'), 'utf8') + '\n// eigene Fassung\n');
-      expect(pruefen(d)).toEqual(['fokus/js/szene/motor.js: weicht von website/js/szene/motor.js ab']);
+      for (const seite of SEITEN) cpSync(join(wurzel, seite), join(d, seite), { recursive: true });
+      writeFileSync(join(d, 'fokus/css/seite.css'), readFileSync(join(d, 'fokus/css/seite.css'), 'utf8') + '\n/* eigene Fassung */\n');
+      expect(await pruefen(d)).toContain('fokus/css/seite.css: passt nicht zur Quelle');
     } finally { rmSync(d, { recursive: true, force: true }); }
   });
-});
 
-describe('Szene von fokusinnovation.de — Geometrie ohne DOM', () => {
-  const S = szene('fokus');
-
-  it('die Tafel ist in allen drei Zuständen Punkt für Punkt gleich (nur die Kamera fährt); die Karte nennt die sechs Städte', () => {
-    for (const handy of [false, true]) {
-      const welt = S.formationen.bauen(S.drehbuch, { handy, anzahl: handy ? 3200 : 6000 });
-      const name = (n: string) => S.drehbuch.zustaende.findIndex((z: Szene) => z.name === n);
-      const tafel = ['abend', 'gespraech', 'themen'].map(n => Array.from(welt.formationen[name(n)].punkte as Float32Array));
-      expect(tafel[1]).toEqual(tafel[0]);
-      expect(tafel[2]).toEqual(tafel[0]);
-      // Jedes Teilchen der Tafel ist zu sehen (kein Füllpunkt mit Helligkeit 0) — der Boden nimmt die übrigen.
-      expect(tafel[0].filter((_, i) => i % 4 === 3).every(w => w % 1 > 0)).toBe(true);
-      expect(welt.formationen[name('staedte')].marken).toHaveLength(6);
+  it('jede Seite lädt zuerst die Grundlage, dann höchstens ihre eigene Datei — und die setzt keine Tokens', () => {
+    const eigene: Record<string, string> = { website: 'css/start.css', fokus: 'css/fokus.css' };
+    for (const seite of SEITEN) {
+      const index = readFileSync(join(wurzel, seite, 'index.html'), 'utf8');
+      expect(Array.from(index.matchAll(/<link rel="stylesheet" href="([^"?]+)/g), m => m[1]), seite).toEqual(['css/seite.css', eigene[seite]]);
+      expect(readFileSync(join(wurzel, seite, eigene[seite]), 'utf8'), eigene[seite]).not.toMatch(/--[a-zA-Z-]+\s*:/);
     }
-  });
-
-  it('Karte: die Städte der Reihe in der Reihenfolge von scripts/fokus-seite.mjs, Berlin ist der Start', async () => {
-    const { STAEDTE } = await import('../scripts/fokus-seite.mjs');
-    const karte = S.drehbuch.zustaende.find((z: Szene) => z.formation === 'karte');
-    expect(karte.optionen.start).toBe('Berlin');
-    expect(karte.optionen.staedte.map((s: Szene) => [s.name, s.lat, s.lon])).toEqual((STAEDTE as Szene[]).map(s => [s.name, s.breite, s.laenge]));
-  });
-
-  it('Kamera: endliche Werte für jeden Scroll-Stand, Rechner und Handy; ruhig gestellt (ohne Netz und Pfad)', () => {
-    const Z = S.kern.zustaende(S.drehbuch.zustaende);
-    for (let T = 0; T <= Z.length - 1; T += .25) for (const handy of [false, true]) {
-      const kam = S.kern.kamera(Z, T, 0, 0, handy ? .46 : 1.6, { handy });
-      expect([...kam.auge, ...kam.ziel, kam.D].every(Number.isFinite)).toBe(true);
-    }
-    expect(S.drehbuch.netz).toBe(false);
-    expect(S.drehbuch.pfad).toBe(false);
-    expect(S.drehbuch.fortschritt).toBe('extern');
-  });
-});
-
-describe('makeinnovation.de bleibt unverändert', () => {
-  it('das Drehbuch nutzt die neue Formation nicht (Kugel wie bisher)', () => {
-    const S = szene('website');
-    for (const z of S.drehbuch.zustaende) expect(z.formation).toBe('kugel');
   });
 });

@@ -1,13 +1,11 @@
-// ─── Lichtfäden (03.10.): Mathematik, Markierungs-Layout, Helligkeit, reduzierte Bewegung, Website-Kopie ─
+// ─── Lichtfäden (03.10.): Mathematik, Markierungs-Layout, Helligkeit, reduzierte Bewegung ─
+// (Die Website-Kopie website/js/lichtfaeden.js ist seit „Klar 2“ entfernt — 07.10. Kevin: „keine Spielereien“; Wächter tests/szene-website.test.ts.)
 // Modell, Quellen, Baum, Engstellen, Route und Oberfläche der v2 prüfen tests/lichtfaeden-*.test.ts.
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { fadenSaaten, versatz, gauss, saettigen, wertBei, kurve, textSaat, zufall, spreizung, LICHTFAEDEN } from '@/lib/lichtfaeden/band';
 import { starteLauf } from '@/lib/lichtfaeden/zeichnen';
 import { BAND_MASSE, bandMasse, hellBei, dichteBei, sanft, engstellenGruppen, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { stapeln } from '@/lib/planung/zeitstrahl';
-import { erzeugen, ZIELE } from '../scripts/lichtfaeden-website.mjs';
 
 describe('Lichtfäden — Mathematik', () => {
   it('Saaten und Versatz sind deterministisch und begrenzt', () => {
@@ -132,22 +130,5 @@ describe('Lauf — Bewegung und reduzierte Bewegung', () => {
     uhr.tick(1050); uhr.tick(1066);
     expect(zeiten).toEqual([0, 16, 33]);
     expect(lauf.messung().bilder).toBe(3);
-  });
-});
-
-describe('Website-Kopie der Lichtfäden', () => {
-  it('das Skript schreibt website/ (fokus/ zeichnet seit 04.10. mit der Szene aus website/js/szene/)', () => {
-    expect(ZIELE).toEqual(['website/js/lichtfaeden.js']);
-  });
-  it.each(ZIELE as string[])('%s entspricht band.ts + zeichnen.ts (sonst: node scripts/lichtfaeden-website.mjs)', (ziel: string) => {
-    expect(readFileSync(join(__dirname, '..', ziel), 'utf8')).toBe(erzeugen());
-  });
-  it('dieselben Parameter wie in der App, ohne Verbotenes', () => {
-    const js = readFileSync(join(__dirname, '..', ZIELE[0]), 'utf8');
-    expect(js).toContain(`tempo: ${LICHTFAEDEN.tempo}`);
-    expect(js).toContain(`rechner: ${LICHTFAEDEN.faeden.rechner}`);
-    expect(js).not.toMatch(/\b(?:fetch|XMLHttpRequest|localStorage|sessionStorage|eval|Function)\b|innerHTML|import\s*\(/);
-    expect(js).not.toMatch(/MAKE[ ]?O[S]/i);
-    expect(js.length).toBeLessThan(20000);
   });
 });

@@ -1,27 +1,24 @@
 #!/usr/bin/env node
-// ─── Fokus Innovation · Event-Seite: gemeinsame und erzeugte Dateien (03.10.2026; „Klar“ 05.10.2026) ──────────────────
-// Die Seite fokusinnovation.de (Ordner fokus/) ist statisch wie website/ und steht auf denselben Bausteinen. Nichts davon wird
-// von Hand kopiert — dieses Skript erzeugt es aus EINER Quelle:
-//   · Schriften (Archivo, Public Sans), das MAKE-Logo (quer) und das Handy-Menü (js/menue.js): Byte für Byte aus website/.
-//   · Szene und Showreel-Baukasten fokus/js/szene/ (kern · formationen · motor · spur · verlauf): Byte für Byte aus
-//     website/js/szene/ (Liste in scripts/szene-website.mjs).
-//   · Die Wortmarke „FOKUS INNOVATION“ (fokus/assets/logo/fokus-wortmarke.svg, Schlussblock) — gebaut in
-//     scripts/website-logo.mjs aus derselben Schrift wie MAKE — und das Favicon (fokus/favicon.svg, der Knoten).
-//   · Die Städte aus EINER Liste (`STAEDTE`, echte Koordinaten) an drei Stellen: im Drehbuch fokus/js/drehbuch.js (Karte der
-//     Szene, zwischen STAEDTE_ANFANG/STAEDTE_ENDE), als Beschriftungen der Szene in fokus/index.html (MARKEN_ANFANG/MARKEN_ENDE)
-//     und als ruhige SVG-Karte in fokus/index.html (KARTE_ANFANG/KARTE_ENDE — ohne Szene, ohne Skript, „Bewegung reduzieren“).
+// ─── Fokus Innovation · Event-Seite: gemeinsame und erzeugte Dateien (03.10.2026; „Klar 2“ 07.10.2026) ────────────────
+// Die Seite fokusinnovation.de (Ordner fokus/) ist statisch wie website/ und steht auf derselben Gestaltungsgrundlage. Nichts
+// davon wird von Hand kopiert — dieses Skript erzeugt es aus EINER Quelle:
+//   · Gestaltungsgrundlage (css/seite.css: Tokens, Kopf, Knöpfe, Abschnitte, dunkler Schlussakt, Fuß, Rechtstexte), Schriften
+//     (Archivo, Public Sans), das MAKE-Logo (quer) und das Handy-Menü (js/menue.js): Byte für Byte aus website/.
+//   · Die Wortmarke „FOKUS INNOVATION“ (fokus/assets/logo/fokus-wortmarke.svg, Fuß) — gebaut in scripts/website-logo.mjs aus
+//     derselben Schrift wie MAKE — und das Favicon (fokus/favicon.svg, der Knoten).
+//   · Die ruhige Karte der Städte aus EINER Liste (`STAEDTE`, echte Koordinaten) in fokus/index.html (KARTE_ANFANG/KARTE_ENDE).
 //   · Am Ende die Stempel: jeder Verweis auf css/ und js/ in den Seiten bekommt ?v=<Prüfsumme> (stempeln() aus website/pruefen.mjs).
-// Das Standbild der Szene (fokus/assets/szene/abend.svg) rechnet `node website/standbild.mjs fokus` (dieselbe Geometrie).
+// (Bis 06.10. kopierte es auch die WebGL-Szene und schrieb Städte ins Drehbuch — „Klar 2“ hat keine Szene mehr, Kevin 07.10.:
+// „keine Spielereien“.)
 //
 //   node scripts/fokus-seite.mjs            → schreibt alles
 //   node scripts/fokus-seite.mjs --pruefen  → Ausgang 1, wenn eine Datei nicht zur Quelle passt
-// Wächter: tests/fokus-seite.test.ts (ruft `pruefen()`) und tests/szene-website.test.ts; fokus/pruefen.mjs vergleicht
-// zusätzlich ohne Abhängigkeiten die Schriften, das Logo, das Menü und die Szene mit website/.
+// Wächter: tests/fokus-seite.test.ts (ruft `pruefen()`) und tests/szene-website.test.ts (eine Grundlage für beide Seiten);
+// fokus/pruefen.mjs vergleicht zusätzlich ohne Abhängigkeiten die Grundlage, die Schriften, das Logo und das Menü mit website/.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { kopien as szeneKopien } from './szene-website.mjs';
 import { fokusWortmarke } from './website-logo.mjs';
 import { stempeln, alleDateien } from '../website/pruefen.mjs';
 
@@ -33,6 +30,8 @@ export const SMARAGD = '#2FA878';
 
 /** Byte-gleiche Kopien aus website/ (Quelle → Ziel). */
 export const KOPIEN = [
+  // Die Gestaltungsgrundlage (Tokens und Bausteine) — EINE Datei für beide Seiten.
+  ['website/css/seite.css', 'fokus/css/seite.css'],
   ['website/assets/fonts/archivo-latin.woff2', 'fokus/assets/fonts/archivo-latin.woff2'],
   ['website/assets/fonts/public-sans-latin.woff2', 'fokus/assets/fonts/public-sans-latin.woff2'],
   // Absender im Fuß: das MAKE-Logo (quer) aus scripts/website-logo.mjs — nie eine eigene Fassung.
@@ -43,18 +42,12 @@ export const KOPIEN = [
 export const FAVICON = 'fokus/favicon.svg';
 export const WORTMARKE = 'fokus/assets/logo/fokus-wortmarke.svg';
 export const SEITE = 'fokus/index.html';
-export const DREHBUCH = 'fokus/js/drehbuch.js';
 export const KARTE_ANFANG = '<!-- KARTE_ANFANG: erzeugt mit node scripts/fokus-seite.mjs — nicht von Hand ändern -->';
 export const KARTE_ENDE = '<!-- KARTE_ENDE -->';
-export const MARKEN_ANFANG = '<!-- MARKEN_ANFANG: erzeugt mit node scripts/fokus-seite.mjs — nicht von Hand ändern -->';
-export const MARKEN_ENDE = '<!-- MARKEN_ENDE -->';
-export const STAEDTE_ANFANG = '// STAEDTE_ANFANG: erzeugt mit node scripts/fokus-seite.mjs aus STAEDTE — nicht von Hand ändern';
-export const STAEDTE_ENDE = '// STAEDTE_ENDE';
 
 /**
  * Die Städte der Reihe (Kevin 03.10., Dresden 04.10.) mit echten Koordinaten (WGS84, Stadtmitte). Berlin ist der
- * Ausgangspunkt — von dort gehen die Fäden aus (Szene „staedte“ und ruhige Karte). `anker` = wohin der Name in der ruhigen
- * Karte rückt (links · rechts · unten).
+ * Ausgangspunkt — von dort gehen die Fäden der ruhigen Karte aus. `anker` = wohin der Name in der Karte rückt (links · rechts · unten).
  */
 export const STAEDTE = [
   { id: 'berlin', name: 'Berlin', breite: 52.520, laenge: 13.405, anker: 'rechts' },
@@ -147,19 +140,10 @@ export function faviconSvg() {
   ].join('\n');
 }
 
-/** Die Städte als Zeilen für das Drehbuch (Szene „staedte“: Formation `karte` mit eigener Liste). */
-export function staedteJs() {
-  return `const STAEDTE = [\n${STAEDTE.map(s => `  { name: '${s.name}', lat: ${s.breite}, lon: ${s.laenge} },`).join('\n')}\n];`;
-}
-/** Die Beschriftungen der Karte in der Szene (der Motor legt sie über die Leinwand; Reihenfolge = Marken der Formation). */
-export function markenHtml() {
-  return STAEDTE.map((s, i) => `<span class="marke stadt${s.id === 'berlin' ? ' start' : ''}" data-zustand="staedte" data-nr="${i}">${s.name}</span>`).join('\n');
-}
-
 /** Soll-Inhalt jeder erzeugten Datei (Pfad → Buffer|String). */
 export async function sollDateien(wurzel = WURZEL) {
   const soll = new Map();
-  for (const [q, z] of [...KOPIEN, ...szeneKopien()]) soll.set(z, readFileSync(join(wurzel, q)));
+  for (const [q, z] of KOPIEN) soll.set(z, readFileSync(join(wurzel, q)));
   soll.set(FAVICON, faviconSvg());
   soll.set(WORTMARKE, `<?xml version="1.0" encoding="UTF-8"?>\n${fokusWortmarke()}\n`);
   return soll;
@@ -174,8 +158,6 @@ export function mitBlock(text, anfang, ende, inhalt, datei = '') {
 }
 /** Erzeugte Blöcke: [Datei, Anfang, Ende, Inhalt]. */
 export const BLOECKE = () => [
-  [DREHBUCH, STAEDTE_ANFANG, STAEDTE_ENDE, staedteJs()],
-  [SEITE, MARKEN_ANFANG, MARKEN_ENDE, markenHtml()],
   [SEITE, KARTE_ANFANG, KARTE_ENDE, karteSvg()],
 ];
 

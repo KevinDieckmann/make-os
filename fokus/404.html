@@ -10,23 +10,24 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/fokus.css?v=095880cdb5">
+<link rel="stylesheet" href="/css/seite.css?v=d08b11dcd6">
+<link rel="stylesheet" href="/css/fokus.css?v=6ec21f8f55">
 </head>
 <body>
 <a class="sprung" href="#inhalt">Zum Inhalt</a>
 
 <header class="kopf">
-  <div class="pille">
+  <div class="wrap kopf-innen">
     <a class="marke" href="/" aria-label="Fokus Innovation — Startseite">
-      <svg class="marke-knoten" viewBox="0 0 40 12" aria-hidden="true" focusable="false"><rect x="0" y="5" width="13" height="2" fill="#C9465C"/><rect x="27" y="5" width="13" height="2" fill="#2FA878"/><path d="M20 1A5 5 0 0 0 20 11Z" fill="#C9465C"/><path d="M20 1A5 5 0 0 1 20 11Z" fill="#2FA878"/></svg>
+      <svg class="marke-knoten" viewBox="0 0 40 12" aria-hidden="true" focusable="false"><rect x="0" y="5" width="13" height="2" fill="#A82E44"/><rect x="27" y="5" width="13" height="2" fill="#167A55"/><path d="M20 1A5 5 0 0 0 20 11Z" fill="#A82E44"/><path d="M20 1A5 5 0 0 1 20 11Z" fill="#167A55"/></svg>
       <span class="marke-text">Fokus Innovation</span>
     </a>
-    <a class="ruf-kachel" href="/#teilnahme">Teilnahme anfragen <span aria-hidden="true">→</span></a>
+    <a class="knopf ruf" href="/#teilnahme">Teilnahme anfragen <span class="pfeil" aria-hidden="true">→</span></a>
   </div>
 </header>
 <main id="inhalt" class="recht">
   <div class="wrap">
-    <span class="mikro">404</span>
+    <p class="mikro">404</p>
     <h1>Diese Seite gibt es nicht.</h1>
     <p>Zurück zur <a href="/">Startseite von Fokus Innovation</a> — oder direkt zur <a href="/#teilnahme">Teilnahme</a>.</p>
   </div>
@@ -34,12 +35,22 @@
 
 <footer class="fuss">
   <div class="wrap">
-    <div class="fuss-oben">
-      <p class="absender-zeile"><b>Fokus Innovation</b><br>Ein Format von Make.One · MAKE Innovation · eine Marke der KEMARIS Innovation GmbH</p>
-      <nav class="fuss-nav" aria-label="Rechtliches und Kontakt">
+    <div class="fuss-spalten">
+      <div class="fuss-marke">
+        <img src="/assets/logo/fokus-wortmarke.svg" width="293" height="107" alt="Fokus Innovation">
+        <p class="absender"><b>Fokus Innovation</b><small>Ein Format von Make.One · MAKE Innovation · eine Marke der KEMARIS Innovation GmbH</small></p>
+      </div>
+      <div class="fuss-absender">
+        <p class="fuss-titel mikro">Absender</p>
+        <p>Make.One ist das Netzwerk von MAKE Innovation für junge und erfahrene Entscheider der Wirtschaft. Fokus Innovation ist seine Reihe rund um Innovation — gegründet von Malin und Kevin, mit dem Ziel, Innovation in Deutschland nach vorne zu bringen.</p>
+        <p><a href="https://makeinnovation.de">MAKE Innovation kennenlernen <span aria-hidden="true">↗</span></a></p>
+      </div>
+    </div>
+    <div class="fuss-unten">
+      <p class="absender"><span>© 2026 MAKE Innovation</span><small>eine Marke der KEMARIS Innovation GmbH</small></p>
+      <nav aria-label="Rechtliches und Kontakt">
         <a href="/impressum.html">Impressum</a>
         <a href="/datenschutz.html">Datenschutz</a>
-        <a href="https://makeinnovation.de">makeinnovation.de <span class="aussen" aria-hidden="true">↗</span></a>
         <a href="mailto:hello@makeinnovation.de">hello@makeinnovation.de</a>
       </nav>
     </div>

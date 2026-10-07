@@ -5,7 +5,7 @@
 // Größe, deterministisch), Höchstwerte der Parameter, Spuren gegliedert und zusammenlaufend, keine additive Mischung, kein
 // Glühen/Netz/Partikel im Zeichner, Privat-Regel der Abweichungen, Website unverändert.
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { STRAHL, spurAbstand, spurVersatz, strangMitte, strangBreite, zusammenlauf, wocheWeich, strahlHell, ausbruchRichtung, type StrahlBuehne } from '@/lib/lichtfaeden/strahl';
 import {
@@ -16,7 +16,6 @@ import { baueBaum, rechneAnsicht, raster, FAEDEN, type Baum } from '@/lib/lichtf
 import { faedenband, BAND_MASSE, type BandBild } from '@/lib/lichtfaeden/faedenband';
 import { versatz, fadenSaaten } from '@/lib/lichtfaeden/band';
 import { BEIDE, GESAMT, type Knoten, type Strang } from '@/lib/lichtfaeden/modell';
-import { QUELLEN as WEBSITE_QUELLEN } from '../scripts/lichtfaeden-website.mjs';
 
 const wurzel = path.resolve(__dirname, '..');
 const lies = (p: string) => readFileSync(path.join(wurzel, p), 'utf8');
@@ -255,7 +254,9 @@ describe('Zeichner ruhig', () => {
     for (const v of ['zeichneNetz', 'glanzPuffer', 'punkte:', "'lighter'", 'createRadialGradient']) expect(band).not.toContain(v);
     expect(lies('components/os/lichtfaeden/Faedenband.tsx')).not.toContain('zeit-puls');
   });
-  it('Website bleibt unverändert: der Generator übersetzt weiter nur band.ts + zeichnen.ts (strahl.ts/abweichung.ts gehören der App)', () => {
-    expect(WEBSITE_QUELLEN).toEqual(['lib/lichtfaeden/band.ts', 'lib/lichtfaeden/zeichnen.ts']);
+  it('strahl.ts/abweichung.ts gehören der App — die Websites tragen seit „Klar 2“ (07.10.) keine Lichtfäden mehr', () => {
+    // 07.10. Kevin: „keine Spielereien“ — die übersetzte Kopie website/js/lichtfaeden.js und ihr Generator sind entfernt.
+    expect(existsSync(path.join(wurzel, 'website/js/lichtfaeden.js'))).toBe(false);
+    expect(existsSync(path.join(wurzel, 'scripts/lichtfaeden-website.mjs'))).toBe(false);
   });
 });
