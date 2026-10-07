@@ -20,7 +20,8 @@
 
 import type { Einwilligung, EinwilligungKanal, Grundlage } from '@/lib/make-one/crm';
 
-export const EW_KANAELE: readonly EinwilligungKanal[] = ['mail', 'telefon', 'social', 'newsletter', 'einladung'];
+// 07.10. (Kevin): eigener Kanal „whatsapp“ — Werbe-Vorlagen über die Business-Nummer nur mit nachgewiesener WhatsApp-Einwilligung.
+export const EW_KANAELE: readonly EinwilligungKanal[] = ['mail', 'telefon', 'social', 'newsletter', 'einladung', 'whatsapp'];
 export const EW_GRUNDLAGEN: readonly Grundlage[] = ['einwilligung', 'bestandskunde_7_3', 'mutmasslich_b2b_tel', 'anfrage', 'vertrag', 'intro_akzeptiert'];
 
 /** Mindestlängen für eine NEUE Einwilligung (Grundlage „einwilligung“): Wortlaut und Beleg sind Pflicht. */

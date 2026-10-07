@@ -41,6 +41,7 @@ const BILD = Buffer.from('ein-erfundenes-bild-nur-fuer-den-test');
 const VORLAGEN = [
   { name: 'termin_erinnerung', language: 'de', status: 'APPROVED', category: 'UTILITY', components: [{ type: 'BODY', text: 'Hallo {{1}}, wir sehen uns am {{2}}.' }] },
   { name: 'angebot_neu', language: 'de', status: 'PENDING', category: 'MARKETING', components: [{ type: 'BODY', text: 'Neu: {{1}}' }] },
+  { name: 'abend_einladung', language: 'de', status: 'APPROVED', category: 'MARKETING', components: [{ type: 'BODY', text: 'Einladung: {{1}}' }] },
 ];
 
 async function metaFake(url: string, init: RequestInit): Promise<Response> {
@@ -252,6 +253,25 @@ describe('Senden: frei vs. Vorlage, Einzelklick', () => {
     expect(b.status).toBe(400);
     expect(aufrufe.filter(x => x.methode === 'POST')).toEqual([]);
   });
+  // Kevin 07.10.: Werbe-Vorlagen (MARKETING) nur mit nachgewiesener Einwilligung „WhatsApp“ — ohne zugeordnete Akte nie.
+  it('Werbe-Vorlage: ohne Akte 409, Akte ohne WhatsApp-Einwilligung 409 (Mail-Einwilligung zählt nicht), mit Einwilligung → gesendet', async () => {
+    const vorl = { gespraech: GID(), art: 'vorlage', vorlage: { name: 'abend_einladung', sprache: 'de', parameter: ['Fokus Innovation Berlin'] } };
+    const bremse = async () => (await import('@/lib/whatsapp/senden'))._bremseZuruecksetzen();
+    const a = await sende('kevin', vorl);
+    expect(a.status).toBe(409); expect((await a.json() as { fehler: string }).fehler).toMatch(/zugeordnete Person mit Einwilligung „WhatsApp“/);
+    const ew = (kanal: string) => ({ kanal, grundlage: 'einwilligung', erteiltAm: '2026-10-01', nachweis: 'Formular', zeitpunkt: '2026-10-01T09:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Ja, ich möchte Einladungen per WhatsApp erhalten.', belegRef: 'd-1' });
+    const akte = (einwilligungen: unknown[]) => ({ id: 'c-erika', vorname: 'Erika', nachname: 'Beispiel', telefon: `+${KUNDE}`, stufe: 'gespraech', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', anrede: 'Sie', einwilligungen });
+    await db.saveJson('kontakte', { kontakte: [akte([ew('mail')])] });
+    await bremse();
+    const b = await sende('kevin', vorl);
+    expect(b.status).toBe(409); expect((await b.json() as { fehler: string }).fehler).toMatch(/Einwilligung „WhatsApp“/);
+    expect(aufrufe.filter(x => x.methode === 'POST')).toEqual([]);
+    await db.saveJson('kontakte', { kontakte: [akte([ew('whatsapp')])] });
+    await bremse();
+    const c = await sende('kevin', vorl);
+    expect(c.status).toBe(200);
+    expect(aufrufe.filter(x => x.methode === 'POST')).toHaveLength(1);
+  });
   it('Dienstweg (ZOE/Takt) → 403; fremder Haushalt → 403; zwei Klicks binnen 2 s → 429', async () => {
     expect((await sende('kevin', { gespraech: GID(), art: 'frei', text: 'x' }, dienst('kevin'))).status).toBe(403);
     expect((await sende('gast', { gespraech: GID(), art: 'frei', text: 'x' })).status).toBe(403);
@@ -285,8 +305,8 @@ describe('Vorlagen und Status', () => {
   it('Vorlagen: nur mit Zugang; genehmigte zuerst; Cache', async () => {
     const r = await vorlagen.GET(anfrage('/api/whatsapp/vorlagen', ich('kevin')));
     const j = await r.json() as { vorlagen: { name: string; status: string; parameter: string[] }[] };
-    expect(j.vorlagen.map(v => [v.name, v.status])).toEqual([['termin_erinnerung', 'APPROVED'], ['angebot_neu', 'PENDING']]);
-    expect(j.vorlagen[0].parameter).toEqual(['1', '2']);
+    expect(j.vorlagen.map(v => [v.name, v.status])).toEqual([['abend_einladung', 'APPROVED'], ['termin_erinnerung', 'APPROVED'], ['angebot_neu', 'PENDING']]);
+    expect(j.vorlagen.find(v => v.name === 'termin_erinnerung')!.parameter).toEqual(['1', '2']);
     await vorlagen.GET(anfrage('/api/whatsapp/vorlagen', ich('kevin')));
     expect(aufrufe.filter(a => a.url.endsWith('/message_templates'))).toHaveLength(1);
     await vorlagen.GET(anfrage('/api/whatsapp/vorlagen?neu=1', ich('kevin')));

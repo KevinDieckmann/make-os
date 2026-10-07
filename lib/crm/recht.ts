@@ -22,7 +22,7 @@ import type { Kontakt, EinwilligungKanal, Einwilligung } from '@/lib/make-one/cr
 import { hatTyp } from './mehrfach';
 import { nachweisLuecken } from './einwilligung';
 
-export type Kanal = 'mail' | 'linkedin' | 'telefon' | 'newsletter' | 'einladung' | 'vernetzen';
+export type Kanal = 'mail' | 'linkedin' | 'telefon' | 'newsletter' | 'einladung' | 'vernetzen' | 'whatsapp';
 export type Farbe = 'gruen' | 'gelb' | 'rot';
 export interface KanalStatus { kanal: Kanal; farbe: Farbe; grund: string; grundlage?: string }
 
@@ -49,7 +49,7 @@ export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalS
   if (k.eingeschraenkt) return { kanal, farbe: 'rot', grund: `Verarbeitung eingeschränkt (Art. 18) seit ${k.eingeschraenkt.seit}` };
   if (k.werbesperre) return { kanal, farbe: 'rot', grund: `Werbesperre seit ${k.werbesperre.seit}` };
   const hat = (x: string | undefined) => !!(x ?? '').trim();
-  const erreichbar = kanal === 'mail' || kanal === 'newsletter' || kanal === 'einladung' ? hat(k.email) : kanal === 'telefon' ? hat(k.telefon) || hat(k.sms) : hat(k.linkedin);
+  const erreichbar = kanal === 'mail' || kanal === 'newsletter' || kanal === 'einladung' ? hat(k.email) : kanal === 'telefon' || kanal === 'whatsapp' ? hat(k.telefon) || hat(k.sms) : hat(k.linkedin);
   if (!erreichbar) return { kanal, farbe: 'rot', grund: 'keine Adresse' };
   const mandat = ctx.hatMandat || k.lebensphase === 'kunde';
 
@@ -66,8 +66,10 @@ export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalS
     // Eine Vernetzungsanfrage ohne Werbebotschaft ist keine elektronische Werbung.
     return { kanal, farbe: 'gruen', grund: 'Vernetzung ohne Werbebotschaft' };
   }
-  if (kanal === 'mail' || kanal === 'linkedin' || kanal === 'einladung') {
-    const e = gueltig(k, kanal === 'linkedin' ? 'social' : kanal === 'einladung' ? 'einladung' : 'mail') ?? (kanal === 'einladung' ? gueltig(k, 'mail') : undefined);
+  // WhatsApp (07.10., Kevin: eigener Einwilligungs-Kanal): Werbung über die Business-Nummer ist elektronische Post (§ 7 Abs. 2 Nr. 2
+  // UWG) — dieselben Regeln wie Mail, aber nur mit der Einwilligung „whatsapp“ (keine Übertragung von der Mail-Einwilligung).
+  if (kanal === 'mail' || kanal === 'linkedin' || kanal === 'einladung' || kanal === 'whatsapp') {
+    const e = gueltig(k, kanal === 'linkedin' ? 'social' : kanal === 'einladung' ? 'einladung' : kanal === 'whatsapp' ? 'whatsapp' : 'mail') ?? (kanal === 'einladung' ? gueltig(k, 'mail') : undefined);
     // Eine Anfrage erlaubt die Antwort (Vertragsanbahnung), keine Werbung — die braucht weiter die Einwilligung (27.09.).
     if (e && e.grundlage === 'anfrage') return { kanal, farbe: 'gelb', grund: 'Antwort auf Anfrage: antworten ja, Werbung erst mit Einwilligung', grundlage: e.grundlage };
     // Voller Nachweis (U2 #55): ohne Zeitpunkt, wer, Wortlaut und Beleg nicht grün — Altbestand bleibt gültig, aber nicht „frei“.
@@ -78,7 +80,7 @@ export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalS
     if (e) return { kanal, farbe: 'gelb', grund: `Einwilligung vom ${e.erteiltAm} — Nachweis unvollständig (fehlt: ${fehlt.join(', ')}), vor Werbung ergänzen`, grundlage: e.grundlage };
     if (mandat) return { kanal, farbe: 'gelb', grund: 'Bestandskunde: Hinweis bei Erhebung fehlt (§ 7 Abs. 3 Nr. 4 UWG) — Vermerk setzen oder Einwilligung einholen', grundlage: 'bestandskunde_7_3' };
     if (bekannt(k)) return { kanal, farbe: 'gelb', grund: 'persönlich bekannt: persönliche Nachricht ja, Werbung erst mit Einwilligung' };
-    return { kanal, farbe: 'rot', grund: kanal === 'linkedin' ? 'LinkedIn-Nachricht zählt als elektronische Post — ohne Einwilligung nur Vernetzen' : 'Werbe-Mail ohne Einwilligung ist abmahnfähig — Grundlage klären' };
+    return { kanal, farbe: 'rot', grund: kanal === 'linkedin' ? 'LinkedIn-Nachricht zählt als elektronische Post — ohne Einwilligung nur Vernetzen' : kanal === 'whatsapp' ? 'WhatsApp-Werbung ohne Einwilligung ist abmahnfähig — Antworten im 24-h-Fenster gehen, Werbe-Vorlagen erst mit Einwilligung „WhatsApp“' : 'Werbe-Mail ohne Einwilligung ist abmahnfähig — Grundlage klären' };
   }
   // Telefon
   const t = gueltig(k, 'telefon');

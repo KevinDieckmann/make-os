@@ -58,7 +58,7 @@ const KONTAKT_ROLLEN_WAHL = KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL
 const VON_HAND: { id: 'partner' | 'multiplikator'; label: string }[] = [{ id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }];
 const PRIOS: { id: Exclude<Kontakt['prio'], ''>; label: string }[] = [{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }];
 const EIGNUNGEN: { id: Exclude<Kontakt['eignung'], ''>; label: string }[] = [{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }];
-const EW_KANAL: { id: EinwilligungKanal; label: string }[] = [{ id: 'mail', label: 'Mail' }, { id: 'telefon', label: 'Telefon' }, { id: 'social', label: 'LinkedIn/Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'einladung', label: 'Einladungen' }];
+const EW_KANAL: { id: EinwilligungKanal; label: string }[] = [{ id: 'mail', label: 'Mail' }, { id: 'telefon', label: 'Telefon' }, { id: 'social', label: 'LinkedIn/Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'einladung', label: 'Einladungen' }, { id: 'whatsapp', label: 'WhatsApp' }];
 const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', label: 'Einwilligung' }, { id: 'anfrage', label: 'Anfrage' }, { id: 'intro_akzeptiert', label: 'Intro akzeptiert' }, { id: 'vertrag', label: 'Vertrag' }];
 const RECHTSGRUNDLAGEN_WAHL = RECHTSGRUNDLAGEN.map(r => ({ id: r.id, label: r.label, hinweis: r.norm }));
 const HERKUNFT_WAHL = HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }));

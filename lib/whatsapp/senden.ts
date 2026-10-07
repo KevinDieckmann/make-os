@@ -12,6 +12,7 @@ import { einmalig } from '@/lib/store/anfragen';
 import { gespraechTeile } from '@/lib/inbox/strom';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { ladeCrm } from '@/lib/crm/speicher';
+import { kanalStatus } from '@/lib/crm/recht';
 import { FENSTER_ZU } from './fehler';
 import { graph, WhatsappFehler } from './graph';
 import { whatsappFuer } from './server';
@@ -90,6 +91,12 @@ export async function whatsappSenden(person: string, e: SendeEingabe, jetzt = Da
     const p = w.parameter ?? [];
     if (p.length !== v.parameter.length) throw new WhatsappFehler('parameter', `Die Vorlage braucht ${v.parameter.length} Platzhalter — ${p.length} ausgefüllt.`, 400);
     if (v.kategorie === 'MARKETING' && z?.sperre === 'werbesperre') throw new WhatsappFehler('unbekannt', 'Für diese Person gilt eine Werbesperre — keine Werbe-Vorlage (Kategorie MARKETING).', 409);
+    // Kevin 07.10.: Werbe-Vorlagen nur mit nachgewiesener Einwilligung „WhatsApp“ (§ 7 UWG) — ohne zugeordnete Akte nie.
+    if (v.kategorie === 'MARKETING') {
+      const akte = z ? kontakte.find(c => c.id === z.kontaktId) : undefined;
+      const st = akte ? kanalStatus(akte, 'whatsapp') : null;
+      if (!st || st.farbe !== 'gruen') throw new WhatsappFehler('unbekannt', akte ? `Werbe-Vorlage nur mit Einwilligung „WhatsApp“ — ${st!.grund}.` : 'Werbe-Vorlage nur an eine zugeordnete Person mit Einwilligung „WhatsApp“ — erst zuordnen und die Einwilligung im Kontakt erfassen.', 409);
+    }
     // Benannte Platzhalter ({{vorname}}): Meta erwartet dann `parameter_name` je Wert (Annahme — die Sende-Doku nennt nur `components`).
     const benannt = v.parameter.some(x => !/^\d+$/.test(x));
     text = vorlageFuellen(v.text, p) || `Vorlage „${v.name}“`;

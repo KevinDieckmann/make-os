@@ -147,7 +147,7 @@ export const RECHTSGRUNDLAGEN: { id: Rechtsgrundlage; label: string; norm: strin
 
 /** Rechtsgrundlage je Kanal (DSGVO/§ 7 UWG). Keine Rechtsberatung — einmal anwaltlich gegenlesen. */
 export type Grundlage = 'einwilligung' | 'bestandskunde_7_3' | 'mutmasslich_b2b_tel' | 'anfrage' | 'vertrag' | 'intro_akzeptiert';
-export type EinwilligungKanal = 'mail' | 'telefon' | 'social' | 'newsletter' | 'einladung';
+export type EinwilligungKanal = 'mail' | 'telefon' | 'social' | 'newsletter' | 'einladung' | 'whatsapp';
 export interface Einwilligung {
   kanal: EinwilligungKanal; grundlage: Grundlage; erteiltAm: string;
   /** Kurzer Nachweis (Altbestand: Wortlaut oder Beleg in einem, „DOI 12.03.“, „im Gespräch am …: … — ja“). */

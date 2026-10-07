@@ -45,10 +45,10 @@ export const ANFRAGE_KANAELE: AnfrageKanalInfo[] = [
   { id: 'telefon', label: 'Telefon', followUp: 'anruf', einwilligung: 'telefon' },
   { id: 'empfehlung', label: 'Empfehlung', followUp: 'anruf' },
   { id: 'event', label: 'Event', followUp: 'nachricht' },
-  // WhatsApp (07.10. abends): „Kontakt anlegen“ aus einem WhatsApp-Gespräch der Inbox — Person mit Telefonnummer statt Mail. Keine
-  // Einwilligung „Antwort auf Anfrage“: einen eigenen Einwilligungs-Kanal WhatsApp gibt es (noch) nicht, und Antworten regelt das
-  // 24-h-Fenster der Business-Nummer (danach nur genehmigte Vorlagen, Werbe-Vorlagen nie bei Werbesperre). Dublette über die Nummer.
-  { id: 'whatsapp', label: 'WhatsApp', followUp: 'nachricht' },
+  // WhatsApp (07.10.): „Kontakt anlegen“ aus einem WhatsApp-Gespräch der Inbox — Person mit Telefonnummer statt Mail; Dublette über die
+  // Nummer. Einwilligung „Antwort auf Anfrage“ im eigenen Kanal „whatsapp“ (Kevin 07.10.) — antworten ja, Werbe-Vorlagen erst mit echter
+  // Einwilligung (lib/crm/recht.ts, lib/whatsapp/senden.ts).
+  { id: 'whatsapp', label: 'WhatsApp', followUp: 'nachricht', einwilligung: 'whatsapp' },
 ];
 export const kanalInfo = (id: string): AnfrageKanalInfo | undefined => ANFRAGE_KANAELE.find(k => k.id === id);
 export const ANFRAGE_TAGE = 30;
