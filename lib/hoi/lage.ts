@@ -76,6 +76,8 @@ export interface InnenLage {
   kalender?: KalenderLage | null;
   /** Google Kalender (03.10.): je verbundener Person Alter/Fehler des Abgleichs — nur Zähler und Zustände, nie Adressen oder Titel. null = niemand verbunden. */
   kalenderGoogle?: GoogleKalenderLage | null;
+  /** 07.10.: iCloud-Verbindungen je Person (nicht der Haushalts-Kalender) — nur Zähler und Alter, nie Namen/Titel. */
+  kalenderIcloudPersonen?: IcloudPersonenLage | null;
   /** Gmail in der Inbox (03.10.): je verbundener Person Alter/Fehler des Abgleichs und Push — nur Zähler und Zustände, nie Adressen oder Betreffs. null = niemand verbunden. */
   gmail?: GmailLage | null;
   /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
@@ -226,6 +228,30 @@ export function googleKalenderBefunde(g: GoogleKalenderLage | null | undefined):
   }];
 }
 
+/** Zustand der iCloud-Verbindungen je Person (HOI, 07.10.): worst case über alle Personen — nie Namen, Titel oder Apple-IDs. */
+export interface IcloudPersonenLage {
+  personen: number;
+  /** Älteste Frische (Minuten seit dem letzten gelungenen Abgleich) — null: eine Person noch nie. */
+  vorMin: number | null;
+  veraltet: number;
+  /** Personen, deren App-Passwort Apple ablehnt. */
+  anmeldung: number;
+}
+
+/** Befund zu den iCloud-Verbindungen je Person (rein): App-Passwort abgelehnt = rot, steht still = gelb/rot, sonst grün. */
+export function icloudPersonenBefunde(g: IcloudPersonenLage | null | undefined): Befund[] {
+  if (!g || !g.personen) return [];
+  const alt = g.vorMin;
+  const ampel: Ampel = g.anmeldung ? 'rot' : alt === null || alt >= 180 ? 'rot' : g.veraltet ? 'gelb' : 'gruen';
+  return [{
+    id: 'kalender-icloud-personen', bereich: 'app', label: 'iCloud-Kalender je Person', ampel,
+    wert: `${g.personen} ${g.personen === 1 ? 'Person' : 'Personen'} · ${alt === null ? 'noch nie abgeglichen' : `ältester Abgleich vor ${alt < 120 ? `${alt} min` : `${Math.round(alt / 60)} h`}`}`,
+    satz: g.anmeldung ? `${g.anmeldung} ${g.anmeldung === 1 ? 'Person' : 'Personen'}: Apple lehnt das App-Passwort ab — die Person selbst: Kalender › Einstellungen › iCloud „Verbindung erneuern“ (sie hat eine Glocke)`
+      : alt === null || g.veraltet ? 'Abgleich steht bei mindestens einer Person — ihre Termine (und „Belegt“ für andere) sind alt'
+      : 'Abgleich läuft je Person (alle 5 Minuten)',
+  }];
+}
+
 export interface KalenderLage {
   vorMin: number | null; veraltet: boolean; fehler?: string; anmeldung?: boolean; hinweise: number; tz?: string;
   sicherung?: { letzter: string | null; kalender: number; fehler: number };
@@ -352,6 +378,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   // ── iCloud-Kalender (R-K1 #51/#K5) ──
   b.push(...kalenderBefunde(innen.kalender, jetzt));
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));
+  b.push(...icloudPersonenBefunde(innen.kalenderIcloudPersonen));
   b.push(...gmailBefunde(innen.gmail));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──

@@ -14,7 +14,7 @@ import { fremderSchreiber } from '@/lib/store/betrieb';
 import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
-import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage } from './lage';
+import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage, type IcloudPersonenLage } from './lage';
 import { verbunden as kalenderVerbunden, ladeStand as kalenderStand, abgleichAlter, tzVersion } from '@/lib/kalender/icloud';
 import { ladeSicherungStand } from '@/lib/kalender/sicherung-server';
 import { googleLage } from '@/lib/kalender/google/lage';
@@ -95,6 +95,22 @@ async function kalenderLage(jetzt: string): Promise<KalenderLage | null> {
   } catch { return null; }
 }
 
+/** iCloud je Person (07.10.): nur Zähler und Alter — nie Namen, Apple-IDs oder Titel. null = niemand mit eigener Verbindung. */
+async function icloudPersonenLage(jetzt: string): Promise<IcloudPersonenLage | null> {
+  const P = await import('@/lib/kalender/icloud-person');
+  const personen = await P.personenMitIcloud();
+  if (!personen.length) return null;
+  let vorMin: number | null = 0; let veraltet = 0; let anmeldung = 0;
+  for (const p of personen) {
+    const s = await P.ladePersonStand(p).catch(() => null);
+    const a = s ? abgleichAlter(s, Date.parse(jetzt)) : null;
+    if (!a || a.vorMin === null) vorMin = null; else if (vorMin !== null) vorMin = Math.max(vorMin, a.vorMin);
+    if (!a || a.veraltet) veraltet++;
+    if (a?.anmeldung) anmeldung++;
+  }
+  return { personen: personen.length, vorMin, veraltet, anmeldung };
+}
+
 async function durchsichtKurz(): Promise<DurchsichtKurz | null> {
   const d = (await loadJson<{ letzter?: DurchsichtErgebnis }>(DURCHSICHT_SPEICHER).catch(() => null))?.letzter;
   if (!d) return null;
@@ -149,6 +165,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     absichten: await absichtenLage(new Date(jetzt), MINDEST_ALTER_MS),
     kalender: await kalenderLage(jetzt),
     kalenderGoogle: await googleLage(Date.parse(jetzt)).catch((): GoogleKalenderLage | null => null),
+    kalenderIcloudPersonen: await icloudPersonenLage(jetzt).catch((): IcloudPersonenLage | null => null),
     gmail: await gmailLage(Date.parse(jetzt)).catch((): GmailLage | null => null),
     zugang: {
       zuliefererSchluessel: zuliefererSchluessel() !== null, zuliefererAltZuletzt: await altSchluesselZuletzt(),

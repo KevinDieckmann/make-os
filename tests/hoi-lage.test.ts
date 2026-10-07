@@ -55,3 +55,19 @@ describe('HOI · Lage', () => {
     expect(b.find(x => x.id === 'aussen')?.ampel).toBe('gelb');
   });
 });
+
+describe('HOI: iCloud-Verbindungen je Person (07.10.)', async () => {
+  const { icloudPersonenBefunde } = await import('../lib/hoi/lage');
+  it('niemand verbunden → kein Befund; frisch → grün; still → gelb/rot; App-Passwort abgelehnt → rot mit „Verbindung erneuern“', () => {
+    expect(icloudPersonenBefunde(null)).toEqual([]);
+    expect(icloudPersonenBefunde({ personen: 0, vorMin: null, veraltet: 0, anmeldung: 0 })).toEqual([]);
+    expect(icloudPersonenBefunde({ personen: 1, vorMin: 4, veraltet: 0, anmeldung: 0 })[0].ampel).toBe('gruen');
+    expect(icloudPersonenBefunde({ personen: 2, vorMin: 40, veraltet: 1, anmeldung: 0 })[0].ampel).toBe('gelb');
+    expect(icloudPersonenBefunde({ personen: 1, vorMin: null, veraltet: 1, anmeldung: 0 })[0].ampel).toBe('rot');
+    const rot = icloudPersonenBefunde({ personen: 2, vorMin: 3, veraltet: 0, anmeldung: 1 })[0];
+    expect(rot.ampel).toBe('rot');
+    expect(rot.satz).toContain('Verbindung erneuern');
+    // nie Namen oder Adressen — nur Zähler
+    expect(JSON.stringify(rot)).not.toMatch(/@|malin|kevin/i);
+  });
+});
