@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Verbindungen ─────────────────────────────────────────────────
-// Der eine Ort für externe Anbindungen (Whoop, Microsoft 365). Drei ehrliche
+// Der eine Ort für externe Anbindungen (Whoop, Microsoft 365, seit 07.10. WhatsApp Business). Drei ehrliche
 // Zustände je Anbieter: nicht konfiguriert (mit Anleitung) → bereit
 // (Verbinden) → verbunden (seit wann, Trennen). Tokens sieht diese Seite nie.
 // Seit 24.09. im lebendigen Muster; der Bote (Telegram) wohnt unter Konto.
@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
+import { WhatsappKarte } from './whatsapp/WhatsappKarte';
 import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, Hinweis, LEUCHT, Raster } from './ui';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
@@ -70,7 +71,9 @@ export function VerbindungenView() {
           </Karte>
         );
       })}
-      <Karte i={liste.length + 1}>
+      {/* WhatsApp Business (07.10.): Business-Nummer der Instanz — eigene Karte (components/os/whatsapp/WhatsappKarte.tsx). */}
+      <WhatsappKarte i={liste.length + 1} />
+      <Karte i={liste.length + 2}>
         <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
         <Liste>
           <Link href="/os/konto" style={{ textDecoration: 'none', color: 'inherit' }}>

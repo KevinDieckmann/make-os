@@ -1313,6 +1313,50 @@ Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) �
 - **Recht:** Register `gmail-stand--*`/`gmail-text--*` (entfernen, Frist Mail-Spiegel; Art. 15/17 über `mapEintraegeRaus`, die Antwort des Löschlaufs zählt „dort in Gmail löschen“ über `nurInApple`), VVT „E-Mail (Google Workspace)“ (`verarbeitungEmailNachtragen`), HOI-Befund `gmail`. Tests: `tests/gmail-*.test.ts` (mime, abgleich, zuordnung, route, webhook, verbinden), Fake `tests/fixtures/gmail-fake.ts`. **Rückweg:** nur neue Bestände + optionale Felder (`Aktivitaet.mailLink`, Frist `mail-spiegel`) — Details `GO_LIVE_CHECKLISTE.md` › „Gmail in der Inbox“.
 - **Offen/Befund:** `/api/oauth/callback` (Whoop/M365) wird von der Cross-Site-Regel (`middleware` → `crossSiteVerboten`) bei einer Navigation vom Anbieter blockiert — siehe Bericht; nicht geändert.
 
+## WhatsApp Business in der Inbox (07.10., Inbox 2 Paket 5, Branch `whatsapp` auf `inbox-2`, nur lokal; Schritte für Kevin: UPDATES.md 07.10.)
+Kevin 06.10.: eigene Business-Nummer direkt bei Meta (Cloud API — kein Coexistence, kein Drittanbieter, keine inoffiziellen Bibliotheken),
+Bereich MAKE Innovation, ZOE nur Vorschlag + Klick. Fakten NUR aus `research/inbox/FAKTEN_WHATSAPP_IMAP.md` bzw. offizieller Meta-Doku (URL im
+Code-Kopf), sonst „Annahme“ im Kommentar.
+- **Nummer = Instanz, nicht Person** (`lib/whatsapp/konfig.ts`): `WHATSAPP_TELEFONNUMMER_ID`, `_WABA_ID`, `_ZUGRIFFSSCHLUESSEL`, `_APP_GEHEIMNIS`,
+  `_VERIFY_TOKEN`, `_BEREICH` (Vorgabe `ug`; nur Business — `bereichZulaessig`, Privat nie), `_PERSONEN` (optional) — gesetzt NUR über
+  `deploy/whatsapp-verbinden.sh` (verdeckt, Schlüssel genau einmal, Verify-Token aus Zufall, `--entfernen`). Fehlt etwas: alles aus (Webhook 404).
+  Graph-API-Version NUR in `lib/whatsapp/graph.ts` (`GRAPH_VERSION`); alle Anfragen an Meta nur über `graph`/`graphUrl`/`medienLaden`
+  (Schlüssel nur im Kopf, Medien nur an Meta-Hosts `MEDIEN_HOSTS`, keine Umleitungen; Tests: `_fetchSetzen`).
+- **Zugang** `whatsappFuer(person)` (lib/whatsapp/server.ts): Haushalt des Inhabers (+ `WHATSAPP_PERSONEN`). Routen `/api/whatsapp/{senden,vorlagen,
+  status,medien}` nur `eigenePerson` (Dienstweg 403 — ZOE/Takt/Skripte lesen und senden nie). Registrieren (`status` POST `registrieren`, PIN nie
+  gespeichert, `data_localization_region: DE`) nur der Inhaber.
+- **Webhook** `/api/whatsapp/webhook` = Register-Klasse `offen` (in `OFFEN_ERLAUBT`), Middleware `WHATSAPP_WEBHOOK` (GET+POST, ohne Origin-Prüfung):
+  GET nur mit Verify-Token (zeitkonstant, gedrosselt), POST nur mit `X-Hub-Signature-256` über den ROHKÖRPER (`signaturGueltig`), ≤ 512 KB,
+  idempotent über die WAMID (`webhookAnwenden`, rein), nur Meldungen der eigenen Telefonnummer-ID, schnell 200 leer; Medien danach (`after`,
+  Rückfall Takt `whatsappJobsImTakt`). Schreiben scheitert → 500 (Meta wiederholt bis 36 h).
+- **Bestände** (beide je Instanz): `whatsapp-spiegel` (Nachrichten WAMID → `WaNachricht`, Gesprächspartner wa_id → Profilname, `zuletztEingehend`,
+  `gelesenBis` — geteiltes Postfach), `whatsapp-zustand` (Webhook-Zähler, Telefon-Angaben/Vorlagen als Cache, Schlüssel-Zustand; keine
+  Personendaten, in `RAUSCHEN`). Medien: `bildAblegen('whatsapp-medien', …)` (Name = Fingerabdruck der WAMID, `.bin`), nie Klartext.
+  **Der Spiegel ist die einzige dauerhafte Kopie** (Meta ≤ 30 Tage) — nie nach Anzahl kürzen, nur Frist `whatsapp-spiegel` (180 T., bis 3650;
+  § 257 HGB offen) und `whatsapp-medien` (90 T.), Morgenlauf Schritt 11c (`lib/whatsapp/aufraeumen.ts`). Dateien ohne Nachricht löscht der Takt.
+- **Strom** (`lib/whatsapp/strom.ts`): EIN Postfach `pf-<uuid aus der Telefonnummer-ID>` (`postfachIdFuer`) mit dem Bereich der Nummer; je wa_id ein
+  Gespräch `wa~<postfach>~<wa_id>`; Fach über `fachVon` (Text statt Betreff), nie „Neue Absender“; `Gespraech.whatsapp = { nummer, fenster,
+  profilname? }` (24-h-Fenster: `fensterBerechnen`, lib/whatsapp/typen.ts). Köpfe als `StromKopf` (ganzer Text in `ausschnitt`) — Gespräch öffnen,
+  Verlauf nach „Zuordnen“ („WhatsApp gesendet/erhalten“, Bezug `wa-<WAMID>`), ZOE-Entwurf laufen ohne Sonderweg. Zuordnung: Telefon/SMS der
+  Akte (`telefonIndex`, mehrdeutige Nummern nie), nur Anzeige bis zum Klick.
+- **Senden** (`lib/whatsapp/senden.ts`): frei nur bei offenem Fenster (sonst 409 `fenster`, nichts an Meta), Vorlage jederzeit aber nur APPROVED
+  (Name+Sprache, Platzhalter vollständig), Art. 18 → 409, Werbesperre → keine MARKETING-Vorlage, `einmalig` + Bremse 2 s je Person, immer EIN
+  Gespräch. Fehlercodes → `metaFehler` (lib/whatsapp/fehler.ts); `erneuern` (190, 0, 3, 10, 200–299, 131005) → EINE Glocke `postfach`
+  „Verbindung erneuern“ je Person mit Zugang (`tokenZustand`). Keine Lesebestätigungen an Meta.
+- **Recht:** Speicher-Register `whatsapp-spiegel` (Art. 17 `waOhnePerson` über `PersonMerkmale.telefone` + Nennung; Art. 15 `zaehlen`),
+  `whatsapp-zustand`, `whatsapp-medien` (ausgenommen, über die Nachricht); VVT `vv-whatsapp` (`verzeichnisVervollstaendigen({ whatsapp })`),
+  Empfänger `meta-whatsapp` (Start archiviert), Art. 15 Bereich `whatsapp`, Konto löschen → `von` „[gelöscht]“, Konto-Export eigene gesendete.
+- **Oberfläche** `components/os/whatsapp/` (eigene Dateien, nicht in Inbox*): `WhatsappKarte` (System › Verbindungen), `FensterUhr`,
+  `WhatsappAntwort`, `VorlagenWaehler` (Export über index.ts zum Einhängen in die Inbox). Medien-Download `/api/whatsapp/medien?id=<WAMID>`.
+- **Gemeinsame Dateien, die dieses Paket geändert hat (beim Zusammenführen mit `inbox-2` beachten):** `lib/inbox/strom.ts` (Feld `whatsapp?`),
+  `lib/inbox/strom-server.ts` (`whatsappImStrom` in `stromRoh`), `lib/inbox/verlauf.ts` (WhatsApp in `nachrichtenVon`/`gespraechSignale`),
+  `lib/inbox/aktionen.ts` (gelesen/ungelesen), `app/api/inbox/route.ts` (ETag), `lib/zugang/routen-register.ts`, `middleware.ts`,
+  `tests/routen-register.test.ts`, `app/api/zoe/takt/route.ts`, `lib/store/{datei-huelle.mjs,datei-huelle.d.mts,memo.ts}`,
+  `lib/crm/{speicher-register,person-weitere,loeschfristen,loeschfristen-lauf,datenschutz}.ts`, `lib/datenschutz/{art15,einrichtung,
+  konto-daten,auskunft-server}.ts`, `app/api/{datenschutz/verzeichnis,crm/stammdaten}/route.ts`, `components/os/{VerbindungenView,SystemView}.tsx`,
+  `deploy/env.server.beispiel`, UPDATES.md.
+- Tests: `tests/whatsapp-{kern,route,oberflaeche,skript}.test.ts` (nachgebautes Meta, kein Netz).
+
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
 - Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.
