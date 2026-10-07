@@ -104,9 +104,8 @@ h1 .ruhig, h2 .ruhig, h3 .ruhig { display: block; }
 .k-ma { fill: var(--granatPapier); }
 .k-ke { fill: var(--smaragdPapier); }
 
-/* ── Kopf: hell, ruhig, immer oben (Logo · Abschnitte · Login · eine Hauptaktion) ── */
-.kopf { position: sticky; top: 0; z-index: 40; background: rgba(244, 243, 239, .96); border-bottom: 1px solid var(--haar); }
-@supports (backdrop-filter: blur(1px)) { .kopf { background: rgba(244, 243, 239, .88); backdrop-filter: saturate(1.3) blur(14px); } }
+/* ── Kopf: hell und deckend (kein Glas-Effekt), immer oben (Logo · Abschnitte · Login · eine Hauptaktion) ── */
+.kopf { position: sticky; top: 0; z-index: 40; background: var(--papier); border-bottom: 1px solid var(--haar); }
 .kopf-innen { display: flex; align-items: center; gap: var(--s); min-height: var(--kopf); }
 .marke { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-right: auto; color: var(--tinte); text-decoration: none; }
 .marke img { height: 26px; width: auto; }
