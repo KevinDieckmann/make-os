@@ -3,7 +3,8 @@
 > Zweck: Jede Sitzung (auch andere Claude-Code-Fenster) sieht hier, was gerade gebaut wird, wo der Stand liegt und was als Nächstes kommt. Online-Stand = `main` auf dem Server; gebaut wird auf `entwicklung`; hochladen NUR auf Kevins ausdrückliches Wort.
 
 ## Online
-- Server: `6b10a5ba` (05.10.) — Google-Client-Geheimnis am 06.10. auf dem Server korrigiert (Env, kein Code).
+- Server: **`38f88dc0` (07.10. ~18:28)** — Aufgaben v3 (Malin), Inbox 2 + WhatsApp (ohne Einrichtung aus), iCloud je Person, Blöcke ins eigene iCloud, Verbinden-Karten im Kalender, HOI-Befunde, Einwilligung WhatsApp, Telefon-Dubletten. Websites unverändert (alte „Klar“).
+- Sicherung `vor-upload-2026-10-07-1618.tar.gz`, Rückweg-Bild `make-os:6b10a5ba` (ALTES-BILD-OK). Platte danach 5,3 GB frei — alte Bilder 70603154/db93e88/5aca6f5 nur auf Kevins Wort löschen.
 
 ## Auf `entwicklung` (lokal fertig, wartet auf Upload)
 - Aufgaben nach Malins Bauplan (Umbau v3: Projekt › Liste › Aufgabe › Unteraufgabe) — 16329127, b1670fbc
@@ -27,7 +28,7 @@
 | Zeitstrahl „Seil“ | Branch `zeitstrahl-seil` (Worktree agent-ac60a1ed…) | läuft wieder ab 3/5 |
 
 Hinweis: `websites-klar-2` wurde aus `entwicklung` wieder herausgenommen (Kevin 07.10.: „lass uns das rauslassen“) — online/entwicklung zeigen weiter die alte „Klar“-Seite.
-Bereit zum Upload (auf Kevins Wort): `entwicklung` @ 354a8076 — Aufgaben v3, Inbox 2 + WhatsApp, iCloud je Person, Blöcke ins eigene iCloud, HOI-Befunde; volle Suite 5.643 grün.
+Hochgeladen 07.10. ~18:28 (siehe „Online“).
 
 ## Als Nächstes
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
