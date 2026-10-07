@@ -13,13 +13,14 @@
 - iCloud-Kalender je Person (Malin verbindet selbst; andere sehen nur „Belegt“) + Karten „<Firma> verbinden“ (Business, Google) / iCloud (Privat) im Kalender — Merge 7d4e69d7 (Branch icloud-je-person). Kevin 07.10.: „Belegt“ bleibt; Blöcke für Malin ins eigene iCloud — gebaut e919ccd5.
 - HOI-Befund „iCloud-Kalender je Person“ — 0743b335
 - Rückweg-Werkzeug Aufgaben v3 `scripts/aufgaben-rueckweg-v3.mjs` — 874abc9a, 34c8f993
+- **Inbox 2** (eine Inbox, Postfächer je Person per IMAP/SMTP + Gmail, Lagebild, Fächer, Gespräch mit Kontext, ZOE nur Vorschlag; alte Inbox/M365/Apple-Mail raus) — Merge 0c603030; neue Abhängigkeiten imapflow 2.2.6, nodemailer 10.0.15
+- **WhatsApp Business** (Cloud API: Webhook mit Signatur, Senden 24-h-Fenster/Vorlagen, Registrieren mit Speicherort DE, `deploy/whatsapp-verbinden.sh`, VVT) — Merge 944b2108
 - Bewusst NICHT: nächtliche ICS-Sicherung der persönlichen iCloud-Konten (Apple hält die Daten; MAKE OS schreibt dort nur Blöcke; „Trennen löscht alles“ bleibt wahr)
 
-## In Arbeit (07.10., Agenten in Worktrees unter `.claude/worktrees/`)
-| Paket | Worktree | Stand |
+## In Arbeit (07.10.)
+| Paket | Ort | Stand |
 |---|---|---|
-| Inbox 2 (Pakete 1–4) | `agent-a3244adcf608fa028` | Fundament b78f7696 (Postfach-Register, IMAP/SMTP, Strom /api/inbox, alte Quellen raus); Oberfläche/Tests/Doku laufen |
-| WhatsApp (Cloud API, eigene Business-Nummer) | Branch `whatsapp` auf Basis `inbox-2` b78f7696 | gestartet 07.10.: Webhook mit Signaturprüfung, Senden (24-h-Fenster/Vorlagen), Verbinden-Skript, VVT, Tests |
+| WhatsApp in die Inbox-Oberfläche einhängen + Kontakt per Telefonnummer + Screener für Nummern + HOI-Befund WhatsApp + Business-Postfächer ohne Privat | Branch `inbox-whatsapp-ui` (Worktree) auf 944b2108 | läuft |
 
 ## Als Nächstes
 2. Zusammenführen → volle Suite → Prüfbau + Browser → Kevin zeigen → Upload auf Wort
