@@ -508,6 +508,11 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
   - Recht: Register `kalender-icloud--*` (ausgenommen, Löschung in Apple, Art. 17 zählt `inAppleZaehlen`) und `icloud-verbindung--*` (mit Angaben);
     `PERSON_BESTAENDE` (Spiegel exportierbar, Zugang `export: false`); VVT „Kalender (Apple iCloud)“ `vv-kalender-icloud` (nachgetragen, sobald
     `icloudInGebrauch`). Tests `tests/kalender-icloud-person.test.ts` (Fake je Konto: `IcloudFake({ nr, zugang })`).
+  - **Verbinden dort, wo es hingehört (07.10., Kevin):** Im Kalender-Bereich **Business** steht „<Firma> verbinden“ (Google Workspace,
+    Firma = `UG_NAME` ohne Rechtsform, `firmaOhneRechtsform`), im Bereich **Privat** die iCloud-Karte — nur für die eigene Person, „Alles“
+    zeigt keine Karte; verbunden → nur kleiner Hinweis. Welche Anzeige: `verbindenAnzeige` (lib/kalender/verbinden-anzeige.ts, rein);
+    Oberfläche `components/os/kalender/VerbindenKarten.tsx` (`BereichVerbindungen`). Google-Anmeldung für Karte UND Einstellungen über
+    EINEN Weg `components/os/kalender/google-verbinden.ts` (`googleKalenderVerbinden`, `GOOGLE_HINWEISE`). Tests `tests/kalender-verbinden-karten.test.ts`.
 - **Termine mit Gästen (seit 30.09., K3 — ersetzt „nie mit Teilnehmern“):** Serien ändert MAKE OS weiter nicht („in Apple
   ändern“). Gäste gibt es nur nach Klick: **Organisator = wir** (ORGANIZER = Adresse des iCloud-Kontos): Einladen, Ändern,
   Gäste ändern und Löschen erst nach der Rückfrage „Einladung/Änderung/Absage an n Personen über iCloud senden?“ (mit den

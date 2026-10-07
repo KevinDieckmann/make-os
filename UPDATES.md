@@ -34,6 +34,10 @@ app-spezifisches Passwort. Bisher ging iCloud nur über EINE Apple-ID in der Ser
   `deploy/icloud-verbinden.sh <apple-id>` erneut ausführen. Der `calendar-cache` trägt zusätzlich `persoenlich` (der alte Stand übersieht es,
   maskiert aber über `privat`/`von` weiter richtig).
 
+- **Verbinden sichtbar im Bereich (07.10., Kevin):** Kalender › Bereich **Business** zeigt „MAKE Innovation verbinden“ (Google Workspace,
+  derselbe Weg wie in den Einstellungen, nur Freigabe Kalender), solange die eigene Person nicht verbunden ist; Fehler wie in den Einstellungen
+  (nicht eingerichtet → Hinweis, getrennt → „Neu verbinden“). Bereich **Privat** zeigt die iCloud-Karte. Verbunden → nur ein kleiner Hinweis.
+
 **Schritte nach dem Upload**
 1. **Kevin:** nichts nötig — der Haushalts-Kalender läuft über die Server-Einrichtung weiter. Optional: Kalender › Einstellungen › „iCloud
    Kalender“ › „Verbindung erneuern“ mit einem NEUEN App-Passwort (dann braucht es die .env-Zeilen nicht mehr; das alte App-Passwort bei Apple

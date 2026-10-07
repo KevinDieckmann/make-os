@@ -151,7 +151,7 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
       {s && offen && (
         <form onSubmit={e => void verbinden(e)} style={{ display: 'grid', gap: 10 }}>
           <Feldzeile label="Apple-ID (E-Mail-Adresse)">
-            <input type="email" inputMode="email" autoComplete="username" value={appleId} onChange={e => setAppleId(e.target.value)} placeholder="name@icloud.com" style={eingabe} required />
+            <input type="email" inputMode="email" autoComplete="username" value={appleId} onChange={e => setAppleId(e.target.value)} placeholder="E-Mail-Adresse deiner Apple-ID" style={eingabe} required />
           </Feldzeile>
           <Feldzeile label="App-spezifisches Passwort">
             <input type="password" autoComplete="off" value={passwort} onChange={e => setPasswort(e.target.value)} placeholder="xxxx-xxxx-xxxx-xxxx" style={eingabe} required />
