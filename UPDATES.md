@@ -4,6 +4,10 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 07.10.2026 — Entscheidungen Kevin zu Inbox/WhatsApp
+- WhatsApp-Spiegel: Aufbewahrung wie Handelsbriefe (§ 257 HGB) — Vorgabe jetzt 2.557 Tage (7 Jahre), damit 6 Jahre ab Schluss des Kalenderjahres für jede Nachricht sicher gedeckt sind. Medien bleiben bei 90 Tagen (einstellbar unter Datenschutz › Löschfristen).
+- Speicherort bei Meta: Deutschland (beim Registrieren in MAKE OS wählen). Werbe-Vorlagen nur mit dokumentierter Einwilligung, nie bei Werbesperre (so gebaut). Fehlt im Postfach ein Archiv-Ordner, legt MAKE OS „Archiv“ an (so gebaut).
+
 ## 07.10.2026 — WhatsApp Business in der Inbox (Inbox 2, Paket 5; nur lokal, Branch `whatsapp` auf `inbox-2`)
 
 **Entschieden (Kevin 06.10.):** eigene, neue Business-Nummer direkt bei Meta (Cloud API — kein Coexistence, kein Drittanbieter, keine
