@@ -86,8 +86,10 @@ ist nach dem Upload automatisch eine AUFGABE in der Liste „offene RE-Onebankin
 - **Rückweg:** Der alte Stand liest den neuen Bestand ohne Fehler (nur Felder weg: `farbe`, keine Pflichtfelder neu) — er zeigt die früheren
   Gruppen-Listen dann als normale Listen und die früheren Listen als Aufgaben (keine Gruppen). **Die Gruppen-Ordnung gibt es nur aus der
   Archiv-Kopie zurück:** bei angehaltener App die Kopie `archiv/tasks-vor-umbau-v3-<zeit>.json` lesen (`archivLesen`, lib/store/archiv.ts —
-  Hülle mit AAD `archiv/<datei>`) und als Bestand `tasks` neu schreiben (Hülle im Modus, AAD = `tasks`; nie die Datei einfach kopieren). Ein
-  fertiges Skript dafür gibt es nicht — zusammen mit Claude. Änderungen nach dem Upload gehen dabei verloren (vorher Aufgaben › Export).
+  Hülle mit AAD `archiv/<datei>`) und als Bestand `tasks` neu schreiben (Hülle im Modus, AAD = `tasks`; nie die Datei einfach kopieren).
+  **Seit 07.10. als Werkzeug:** `scripts/aufgaben-rueckweg-v3.mjs` (Trockenlauf Vorgabe, `--ausfuehren` sichert den heutigen Stand als
+  `archiv/tasks-vor-rueckweg-v3-<zeit>.json` und spielt die Kopie zurück; nie bei laufender App; nur zusammen mit dem alten Image sinnvoll).
+  Änderungen nach dem Upload gehen dabei verloren (vorher Aufgaben › Export).
 - **Für Kevin/Malin nach dem Upload:** Unter Rechnungswesen steht „offene RE-Onebanking“ als Liste mit Malins Eintrag als Aufgabe (abhakbar).
   Frühere Gruppen (z. B. „Belege“) sind Listen, die früheren Listen darin (Januar, Februar …) Aufgaben mit Fortschritt „n/m“ — wer lieber wieder
   Listen will: Menü „…“ › „In Liste umwandeln“. Serien-Listen in Gruppen bitte einmal prüfen (Notiz der Aufgabe nennt die alte Regel).
