@@ -280,7 +280,9 @@ export function gerichtZuName(gerichte: Gericht[], name: string): Gericht | unde
  * Regel für jeden Modell-Text aus den Profilen (08.10.): Wochenvorschlag und Rezept kochen für alle (die Rechnung nutzt alle
  * Profile), aber die Antwort lesen alle im Haushalt — Profile sieht sonst nur die Person selbst. Also keine Gründe aus Profilen.
  */
-export const PROFIL_DISKRET = '- Die Antwort lesen alle im Haushalt: nenne nie Bedürfnisse, Unverträglichkeiten, Ziele oder Gründe aus einem Profil (auch nicht in Begründung, Namen oder Schritten). Eine Variante steht nur als Küchenhinweis da („… (für <Name> ohne Feta)“), ohne Warum.';
+export const PROFIL_DISKRET = '- Die Antwort lesen alle im Haushalt: nenne nie Bedürfnisse, Unverträglichkeiten, Vorlieben, Ziele oder Gründe aus einem Profil — weder in Begründung, Gerichtnamen, Zutaten, Schritten noch Tags. Nenne NIE einen Personennamen (auch nicht „für <Name> ohne …“) und schreibe KEINE Varianten je Person: jedes Gericht passt so, wie es ist, für alle (was eine Person nicht verträgt oder nie isst, kommt gar nicht hinein).';
+// Serverseitige Absicherung derselben Regel (08.10., Kevin): lib/ernaehrung/neutral.ts (`gerichtNeutral`, `begruendungNeutral`) —
+// Namen der Haushaltspersonen/Gäste fallen aus Gerichtnamen, Varianten, Zutaten-Hinweisen, Schritten, Tags und Begründung.
 
 /**
  * Welche Profile eine Person sieht (08.10., Kevin): Einkauf, Plan und Gerichte bleiben gemeinsam — die Profile (Bedarf, Ziel,

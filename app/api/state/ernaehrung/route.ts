@@ -17,6 +17,7 @@ import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { heuteBerlin, monatVon } from '@/lib/finanzen/haushalt/monat';
 import { sauberDatei, wendeAn, gefuellt, profileFuerBetrachter, type ErnaehrungFile, type Op } from '@/lib/ernaehrung/modell';
 import { darfGesundheitSehen } from '@/lib/zoe/raum';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
@@ -61,12 +62,23 @@ async function personen(): Promise<{ id: string; name: string }[]> {
   return konten.filter(k => k.speicher === inhaber?.speicher || (!!inhaber?.haushalt && k.haushalt === inhaber.haushalt)).map(k => ({ id: k.speicher, name: k.name.split(' ')[0] }));
 }
 
-/** Die Datei für die anfragende Person: fremde Konto-Profile nur, wenn deren Inhaberin Gesundheit mit ihr teilt. */
+/**
+ * Die Datei für die anfragende Person: fremde Konto-Profile nur, wenn deren Inhaberin Gesundheit mit ihr teilt.
+ * Lese-Protokoll (08.10., Kevin): wird das Profil einer ANDEREN Person tatsächlich ausgeliefert (geteilt), notiert jede Antwort
+ * `leseZugriff(req, 'gesundheit', { betroffen })` — gedrosselt, ohne Inhalte. Eigene Profile und Gäste-Profile nie.
+ */
 async function ausliefern(req: Request, ich: string, f: ErnaehrungFile): Promise<ErnaehrungFile> {
   const fremde = [...new Set(f.profile.filter(p => p.konto && p.person !== ich).map(p => p.person))];
   const teilt = new Set<string>();
   for (const p of fremde) if (await darfGesundheitSehen(req, p).catch(() => false)) teilt.add(p);
-  return { ...f, profile: profileFuerBetrachter(f.profile, ich, teilt) };
+  const profile = profileFuerBetrachter(f.profile, ich, teilt);
+  for (const p of fremdeAusgeliefert(profile, ich)) leseZugriff(req, 'gesundheit', { betroffen: p });
+  return { ...f, profile };
+}
+
+/** Wessen Konto-Profil (nicht das eigene) in einer Antwort steht — die Betroffenen fürs Lese-Protokoll. Rein. */
+function fremdeAusgeliefert(profile: ErnaehrungFile['profile'], ich: string): string[] {
+  return [...new Set(profile.filter(p => p.konto && p.person !== ich).map(p => p.person))];
 }
 
 const FREMD = { ok: false, error: 'Nicht erlaubt: das Profil einer anderen Person pflegt nur sie selbst. Nichts gespeichert.' };

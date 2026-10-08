@@ -9,7 +9,7 @@ import { OWNER_BEIDE, istRhythmus, type Block, type Routine, type SpaceId, type 
 import { faelligkeit, type Faelligkeit } from './rhythmus';
 import { sauberEinheit } from './einheiten';
 import { neueKennung } from '@/lib/kennung';
-import { speicherSpace, wirksamerSpace } from './bereich';
+import { speicherSpace, wirksamerSpace, hatPrivatEinheit } from './bereich';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 const UHR = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -118,6 +118,34 @@ export function routineBelegt(r: Routine): Routine {
 export function routinenFuerBetrachter(routinen: readonly Routine[], betrachter: string | null): Routine[] {
   if (betrachter === null) return [...routinen];
   return routinen.map(r => (istFremdeRoutine(r, betrachter) ? routineBelegt(r) : r));
+}
+
+/**
+ * Die verdeckte Form eines fremden Blocks der Wochenvorlage (08.10., Kevin: „Blöcke der anderen Person nur als Belegt“).
+ * Bleibt, was Kapazität, Verfügbarkeit und der Planer brauchen: Kennung, Besitz, Wochentag, von/bis, `art` und Rang.
+ * `art` (privat | business) verrät nur den Bereich des Zeitfensters — genau das, wofür die Wochenvorlage da ist („wann ist
+ * Arbeit, wann Privat“); Kapazität/Verfügbarkeit zählen Business-Blöcke als Soll-Arbeitszeit (wie ein „Belegt“-Termin seine
+ * Zeit und frei/beschäftigt behält). Fällt weg: Titel (freier Text) und eine Business-Einheit. Eine Privat-Einheit (bei uns
+ * die Selbstständigkeit) bleibt, weil ohne sie der abgeleitete Bereich und „zählt als Arbeit“ kippten (lib/planung/bereich.ts:
+ * gespeichert ist sie als `business` + Einheit). `belegt: true` sagt der Oberfläche: grau „Belegt“, keine Bedienung.
+ */
+export function blockBelegt(b: Block): Block {
+  return {
+    id: b.id, owner: b.owner, wochentag: b.wochentag, von: b.von, bis: b.bis, art: b.art,
+    ...(b.rang ? { rang: b.rang } : {}),
+    ...(b.einheit && hatPrivatEinheit(b) ? { einheit: b.einheit } : {}),
+    belegt: true,
+  };
+}
+
+/**
+ * DIE Filterstelle für Blöcke in Antworten an eine Person (08.10.): eigene voll, fremde nur als „Belegt“ (`blockBelegt`).
+ * `betrachter` null = Systemlauf ohne Person → unverändert. Rein; genutzt von GET/PATCH/PUT `/api/state/routinen`.
+ * Tests: tests/malin-sicht-2.test.ts.
+ */
+export function bloeckeFuerBetrachter(bloecke: readonly Block[], betrachter: string | null): Block[] {
+  if (betrachter === null) return [...bloecke];
+  return bloecke.map(b => (b.owner === betrachter ? b : blockBelegt(b)));
 }
 
 /** Ablehnungstext für Schreiben auf fremde Routinen (Route → 403). */

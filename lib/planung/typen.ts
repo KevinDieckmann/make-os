@@ -184,6 +184,11 @@ export interface Block {
   rang?: number;
   /** Business-Einheit (28.09., wie bei Zielen und Routinen) — nur bei `art: 'business'`, optional. */
   einheit?: string;
+  /**
+   * Nur in Antworten, nie gespeichert (08.10., Kevin): ein Block der ANDEREN Person, für den Betrachter auf „Belegt“ verdeckt
+   * (`bloeckeFuerBetrachter`, lib/planung/routinen.ts). Der Schreibweg (`sauberBlock`) übernimmt das Feld nie.
+   */
+  belegt?: true;
 }
 
 export interface RoutinenDatei { routinen: Routine[]; bloecke?: Block[] }
