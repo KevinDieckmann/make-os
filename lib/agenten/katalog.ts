@@ -249,11 +249,11 @@ export const KATALOG: readonly HeadDef[] = [
   {
     id: 'familie', name: 'Familie & Partnerschaft', kurz: 'Familie', bereich: 'privat', ebene: 'haushalt', ton: 'warm', farbe: 'beziehung',
     auftrag: 'Hält Dates, wichtige Tage, Urlaube und Gesprächsthemen im Blick — „nur ich“ bleibt „nur ich“.',
-    kategorien: ['allgemein', 'kalender', 'aufgaben'],
+    kategorien: ['familie', 'kalender', 'aufgaben'],
     werkzeugGruppen: ['kalender', 'aufgaben'],
     werkzeuge: ['freie_zeit', 'create_task'],
     kontext: 'brain', kennzahlen: [], stufe: 'schnell', aufwand: 'low',
-    offen: 'Die KI-Kategorie `familie` fehlt im KI-Tor (Schalter, ggf. Einwilligung) — vorerst `allgemein` (C6, Paket 4).',
+    offen: 'KI-Kategorie `familie` (Anbieter-Tor 09.10.: Mindeststufe EU) — ohne eingerichteten EU-Weg bleibt der Familien-Kontext aus dem Prompt.',
     mitarbeiter: [
       { id: 'familie-anlaesse', name: 'Dates & Anlässe', rolle: 'Erinnert an Dates, Geburtstage und wichtige Tage und schlägt Zeitfenster vor.',
         werkzeuge: ['freie_zeit', 'create_task'], stufe: 'schnell' },
@@ -266,7 +266,7 @@ export const KATALOG: readonly HeadDef[] = [
   {
     id: 'finanzen-privat', name: 'Finanzen privat', kurz: 'Finanzen privat', bereich: 'privat', ebene: 'person', ton: 'sorgfaeltig', farbe: 'geld',
     auftrag: 'Hält Budget, Fixkosten, offene Rechnungen und private Steuerfristen im Blick — auch eine Einheit, die zu Privat gehört.',
-    kategorien: ['finanzen', 'aufgaben'],
+    kategorien: ['finanzen-privat', 'finanzen', 'aufgaben'],  // Werkzeuge wie haushalt_stand tragen heute noch `finanzen` (lib/datenschutz/ki-werkzeuge.ts) — Paket 4 ordnet sie `finanzen-privat` zu.
     werkzeugGruppen: ['haushalt', 'aufgaben'],
     werkzeuge: ['haushalt_stand', 'haushalt_buchungen', 'haushalt_zuordnen', 'haushalt_rechnung_bezahlt', 'haushalt_rechnung_erfassen', 'create_task'],
     kontext: 'finanzchef', eingebaut: { quelle: 'finanzchef', modi: FINANZCHEF_MODI }, voraussetzung: 'privat-finanzen',
