@@ -92,8 +92,8 @@ function BausteinKarten({ ort }: { ort: Gesellschaftskennung }) {
         </div>
         <Hinweis>
           {ps ? <>Gespeichert im Arbeitsplan „{ps.name}“. </> : <>Es gibt noch keinen Arbeitsplan — das erste Produkt legt ihn an (Basis: aktiver Treiber). </>}
-          Ein Produkt ohne Preis bringt keinen Umsatz. Produkte aus dem CRM-Katalog und Ist-Basis aus Mandaten: Planen › Szenarien bauen. Im Blatt unten lässt sich jeder Monat überschreiben.
-          {anz('umsatz') > 0 && ' Zahlungsziel je Produkt: Planen › Szenarien bauen.'}
+          Ein Produkt ohne Preis bringt keinen Umsatz. Produkte aus dem CRM-Katalog und Ist-Basis aus Mandaten: Planen. Im Blatt unten lässt sich jeder Monat überschreiben.
+          {anz('umsatz') > 0 && ' Zahlungsziel je Produkt: Planen.'}
         </Hinweis>
       </Karte>
       <Karte i={2}>
@@ -116,7 +116,10 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
   const [dialog, setDialog] = useState<string | null>(null);
   const rf = rechtsformVon(dd, ort);
   const sp = steuerParameter(dd, ort);
-  const steuerOffen = params.get('steuern') === '1';
+  // Steuerkarte offen aus dem Link: `steuern=<ort>` (08.10.: MAKE und KD Ventures stehen auf EINEM Blatt — sonst gingen beide auf);
+  // alte Links `steuern=1` öffnen sie wie bisher auf dem Blatt der Gesellschaft (MAKE bzw. Selbstständigkeit), nicht bei KD Ventures.
+  const steuernParam = params.get('steuern');
+  const steuerOffen = steuernParam === ort || (steuernParam === '1' && ort !== 'kdv');
   const label = finanzOrtName(ort);
 
   const zelleVon = (b: Baustein, faktor = 1): DatenZeile['zelle'] => ({

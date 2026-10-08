@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Finanzplanung jetzt — Planen › Szenarien bauen (der Baukasten) ──────────
+// ─── Finanzplanung jetzt — Planen (der Baukasten; seit 08.10. abends Kopf des Blatts Planen, darunter die Ziele) ──
 // Kevin 27.09.: „Szenarien selbst bauen können — mit Kunden, Produkten und
 // Preisen dahinter.“ Ein Szenario = Basis (Zeilen, Fixkosten, Treiber) +
 // Umsatzbausteine (Produkt × Kunde × Preis × Menge × Start × Laufzeit) +
@@ -312,7 +312,7 @@ export function Baukasten() {
                 <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{s.erreichtMonat ? monatLabel(d, s.erreichtMonat) : '—'}</span>
                 <StatusPille status={s.status === 'verfehlt' ? 'gekippt' : s.status} />
               </div>
-            )) : <Nichts>Keine Ziele — unter Ziele &amp; Töpfe anlegen.</Nichts>}
+            )) : <Nichts>Keine Ziele — unten unter Ziele anlegen.</Nichts>}
             <div style={{ marginTop: 10, display: 'flex', gap: 10, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
               <span>Mindestumsatz {UG_KURZ} Ø 12 M: <Geld v={g.aw.mindestumsatz.schnitt12} /> €</span>
               <span>· Umsatz Ø 12 M: <Geld v={g.aw.mindestumsatz.umsatzSchnitt12} farbe={g.aw.mindestumsatz.umsatzSchnitt12 < g.aw.mindestumsatz.schnitt12 ? LEUCHT.achtung : LEUCHT.gut} /> €</span>

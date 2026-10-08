@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { FinanzDaten } from '../lib/finanzen/rechenkern';
 import { rechneMit } from '../lib/finanzen/szenarien';
 import { businessSicht, businessPfadErlaubt, pfadIstBusiness, bereichAus, fuerSicht, nurBusinessPunkte, wirksameSicht } from '../lib/finanzen/plan/sicht';
-import { bereicheFuer, unterseiteFuer, finanzplanAdresse, NUR_PRIVAT_UNTERSEITEN } from '../lib/finanzen/plan/hilfen';
+import { blaetterFuer, abschnitteFuer, unterseiteFuer, finanzplanAdresse, NUR_PRIVAT_UNTERSEITEN, NUR_PRIVAT_ABSCHNITTE, ZAHNRAD, type Unterseite } from '../lib/finanzen/plan/hilfen';
 import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
 import { aktiverSpaceEintrag, leisteFuer } from '../lib/make-one/spaces';
 import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
@@ -279,17 +279,21 @@ describe('Navigation und Deep-Links', () => {
     expect(finanzplanAdresse('business', { u: 'ug', steuern: '1', leer: '' })).toBe('/os/finanzen?s=finanzplanung&space=business&u=ug&steuern=1');
     expect(finanzplanAdresse('privat', new URLSearchParams('s=x&space=business&u=lage'))).toBe('/os/finanzen?s=finanzplanung&space=privat&u=lage');
   });
-  it('Business-Sicht: keine privaten Bereiche; private Unterseite fällt auf die Lage zurück', () => {
-    const alle = bereicheFuer('business').flatMap(b => b.unter.map(u => u.id));
-    expect(bereicheFuer('business').some(b => b.id === 'privat')).toBe(false);
-    for (const u of NUR_PRIVAT_UNTERSEITEN) expect(alle).not.toContain(u);
-    expect(alle).toEqual(expect.arrayContaining(['lage', 'planen', 'szenarien', 'ug', 'kdv', 'gesamt', 'buchungen', 'posten', 'kalender', 'schulden', 'ziele', 'toepfe', 'protokoll']));
-    // finanzplan-5 (05.10.): die Selbstständigkeit ist eine Unterseite von Privat — in Business gibt es sie nicht.
-    expect(alle).not.toContain('selbst'); expect(unterseiteFuer('selbst', 'business')).toBe('lage');
-    expect(bereicheFuer('privat').find(b => b.id === 'privat')?.unter.map(u => u.id)).toEqual(['privat', 'selbst']);
-    expect(unterseiteFuer('privat', 'business')).toBe('lage'); expect(unterseiteFuer('budget', 'business')).toBe('lage'); expect(unterseiteFuer('ug', 'business')).toBe('ug');
+  it('Business-Sicht: keine privaten Blätter oder Abschnitte; ein privates Ziel fällt auf die Lage zurück', () => {
+    // 08.10. abends (Fragebogen Teil 3 Frage 10): Blätter mit Abschnitten statt 19 Unterseiten.
+    const blaetter = blaetterFuer('business').map(b => b.id);
+    const abschnitte = blaetter.flatMap(u => abschnitteFuer(u, 'business').map(a => a.id));
+    for (const u of NUR_PRIVAT_UNTERSEITEN) expect(blaetter).not.toContain(u);
+    for (const a of NUR_PRIVAT_ABSCHNITTE) expect(abschnitte).not.toContain(a);
+    expect(blaetter).toEqual(['lage', 'planen', 'monat', 'gesellschaften', 'gesamt', 'faellig']);
+    expect([...abschnitte, ...abschnitteFuer(ZAHNRAD.id, 'business').map(a => a.id)]).toEqual(expect.arrayContaining(['ziele', 'buchungen', 'ug', 'toepfe', 'kdv', 'posten', 'kalender', 'schulden', 'protokoll']));
+    // finanzplan-5 (05.10.): die Selbstständigkeit ist ein Blatt unter Privat — in Business gibt es sie nicht.
+    expect(blaetter).not.toContain('selbst'); expect(unterseiteFuer('selbst', 'business')).toBe('lage');
+    expect(blaetterFuer('privat').map(b => b.id)).toEqual(expect.arrayContaining(['privat', 'selbst', 'check']));
+    expect(unterseiteFuer('privat', 'business')).toBe('lage'); expect(unterseiteFuer('budget', 'business')).toBe('lage'); expect(unterseiteFuer('ug', 'business')).toBe('gesellschaften');
+    expect(unterseiteFuer('check', 'business')).toBe('lage'); expect(unterseiteFuer('geldfluss', 'business')).toBe('lage');
     expect(unterseiteFuer('privat', 'privat')).toBe('privat'); expect(unterseiteFuer('quatsch', 'privat')).toBe('lage');
-    expect(bereicheFuer('privat').length).toBe(8);
+    expect(blaetterFuer('privat').length).toBe(9);
     expect(wirksameSicht('privat', 'business')).toBe('business'); expect(wirksameSicht('business', 'privat')).toBe('business'); expect(wirksameSicht('privat', null)).toBe('privat');
     expect(bereichAus('business')).toBe('business'); expect(bereichAus(null)).toBe('privat'); expect(bereichAus('admin')).toBe('privat');
   });
@@ -312,5 +316,21 @@ describe('Oberfläche der Business-Sicht zeigt kein Privat', () => {
       for (const g of GEHEIM) expect(html.includes(g), `${name}: ${g}`).toBe(false);
       for (const t of ['Privat angespart', 'Privat Luft', 'Runway Privat', 'Notgroschen', 'Gruppe Dez 28', 'Privat schuldenfrei', 'Privat-Konto', 'Netto-Tabelle fehlt', 'Selbstständigkeit', 'Selbst.', 'Entnahme']) expect(html.includes(t), `${name}: ${t}`).toBe(false);
     }
+  });
+  it('08.10. abends: jedes Blatt der Business-Sicht — alle Abschnitte offen — zeigt kein privates Merkmal und rendert keinen privaten Abschnitt', async () => {
+    const { FinanzplanKontext, rechne } = await import('@/components/os/finanzplan/daten');
+    const { BlattSeite } = await import('@/components/os/finanzplan/Blaetter');
+    const d = businessSicht(planMitPrivat());
+    const kontext = { d, ...rechne(d), sicht: 'business' as const, bereich: 'business' as const, person: 'kevin', verbergen: false, aendere: async () => true, melde: () => {}, geh: () => {}, params: new URLSearchParams() };
+    const seiten: Unterseite[] = [...blaetterFuer('business').map(b => b.id), ZAHNRAD.id];
+    for (const u of seiten) {
+      const html = renderToStaticMarkup(h(FinanzplanKontext.Provider, { value: kontext }, h(BlattSeite, { u, alleOffen: true })));
+      for (const g of GEHEIM) expect(html.includes(g), `${u}: ${g}`).toBe(false);
+      for (const t of ['Privat angespart', 'Privat Luft', 'Runway Privat', 'Notgroschen', 'Gruppe Dez 28', 'Privat schuldenfrei', 'Privat-Konto', 'Netto-Tabelle fehlt', 'Selbstständigkeit', 'Selbst.', 'Entnahme']) expect(html.includes(t), `${u}: ${t}`).toBe(false);
+      for (const a of NUR_PRIVAT_ABSCHNITTE) expect(html.includes(`data-abschnitt="${a}"`), `${u}: Abschnitt ${a}`).toBe(false);
+    }
+    // Auch ein privates Blatt, das jemand von Hand anfragt, rendert in der Business-Sicht seine privaten Abschnitte nicht.
+    const monat = renderToStaticMarkup(h(FinanzplanKontext.Provider, { value: kontext }, h(BlattSeite, { u: 'monat', alleOffen: true })));
+    expect(monat).toContain('data-abschnitt="buchungen"'); expect(monat).not.toContain('data-abschnitt="budget"');
   });
 });

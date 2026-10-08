@@ -15,7 +15,7 @@ import { sauberFile, UG_FIRMA } from '../lib/finanzen/finanzplan-bestand';
 import { sauberEinstellungen } from '../lib/flaeche/modell';
 import { firmierungNochUG, firmierungVorschlag, mitVorgaben } from '../lib/crm/gesellschaften';
 import { UG_NICHT_HINTERLEGT, EINHEIT_LABEL as STEUER_LABEL } from '../lib/steuern/rechnen';
-import { BEREICHE } from '../lib/finanzen/plan/hilfen';
+import { ABSCHNITTE } from '../lib/finanzen/plan/hilfen';
 
 describe('eine Quelle: lib/einheiten.ts', () => {
   it('ug heißt MAKE Innovation GmbH, kurz MAKE — Kennungen und KD Ventures bleiben', () => {
@@ -31,8 +31,9 @@ describe('eine Quelle: lib/einheiten.ts', () => {
     expect(STEUER_LABEL.ug).toBe(UG_NAME);
     expect(UG_NICHT_HINTERLEGT).toContain(UG_NAME);
     expect(UG_NICHT_HINTERLEGT).not.toContain('MAKE OS UG');
-    expect(BEREICHE.find(b => b.id === 'business')?.unter.find(u => u.id === 'ug')?.label).toBe(UG_NAME);
-    expect(BEREICHE.find(b => b.id === 'ziele')?.unter.find(u => u.id === 'toepfe')?.label).toBe('Töpfe MAKE');
+    // 08.10. abends: MAKE und die Töpfe sind Abschnitte des Blatts „Gesellschaften“ — Titel aus lib/einheiten.ts.
+    expect(ABSCHNITTE.gesellschaften.find(a => a.id === 'ug')?.label).toBe(UG_NAME);
+    expect(ABSCHNITTE.gesellschaften.find(a => a.id === 'toepfe')?.label).toBe('Töpfe MAKE');
     expect(UG_FIRMA).toEqual({ id: 'ug', name: UG_NAME, bank: '', kontostand: null, stand: null });
   });
 });

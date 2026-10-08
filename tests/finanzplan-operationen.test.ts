@@ -1,7 +1,7 @@
 // ─── Finanzplanung jetzt — Operationen, Pfade, Prüfung, leeres Dokument ──────
 import { describe, it, expect } from 'vitest';
 import { wendeOperationenAn, pfadTeile, lies, setze, neuerStand, pruefeDokument, leeresDokument, OperationUngueltig, nettoTabellePlatzhalter } from '../lib/finanzen/plan/operationen';
-import { parseBetrag, eur, faelligeZahl, zeileName, achse, heuteIndex, tageIm, planMonatAus, bereichVon } from '../lib/finanzen/plan/hilfen';
+import { parseBetrag, eur, faelligeZahl, zeileName, achse, heuteIndex, tageIm, planMonatAus, blattAus } from '../lib/finanzen/plan/hilfen';
 import { rechneUG, rechnePrivat, kennzahlen } from '../lib/finanzen/rechenkern';
 
 const HEUTE = '2026-09-27';
@@ -154,6 +154,7 @@ describe('Helfer', () => {
     d.posten.push({ id: 'p1', art: 'rechnung', einheit: 'privat', name: 'Strom', betrag: 10, status: 'offen', faellig: '2026-09-30' }, { id: 'p2', art: 'rechnung', einheit: 'privat', name: 'Später', betrag: 10, status: 'offen', faellig: '2026-12-01' }, { id: 'p3', art: 'konto', einheit: 'privat', name: 'Konto', betrag: null, status: 'eintragen', faellig: '2026-09-01' });
     expect(faelligeZahl(d)).toBe(1);
     expect(zeileName(d, 'p.b.a')).toBe('Lebensmittel'); expect(zeileName(d, 'x.offen')).toBe('Noch nicht zugeordnet'); expect(zeileName(d, 'ug.ob')).toBe('Ankermandat');
-    expect(bereichVon('toepfe')).toBe('ziele'); expect(bereichVon('ug')).toBe('business'); expect(bereichVon('check')).toBe('buchungen');
+    // 08.10. abends: die früheren Blätter sind Abschnitte (Töpfe unter Gesellschaften); der Wochen-Check bleibt ein eigenes Blatt.
+    expect(blattAus('toepfe', 'privat')).toMatchObject({ u: 'gesellschaften', abschnitt: 'toepfe' }); expect(blattAus('ug', 'privat').u).toBe('gesellschaften'); expect(blattAus('check', 'privat')).toEqual({ u: 'check', alt: false });
   });
 });

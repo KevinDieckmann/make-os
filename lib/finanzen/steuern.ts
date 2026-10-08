@@ -265,7 +265,7 @@ export function steuerZeilen(d: Pick<FinanzDaten, 'steuern' | 'annahmen'> & Part
       case 'est': return { art, info, an, schaltbar: true, quelle: 'profil', hinweis: ort === 'kdc' ? 'Vorsorge und Sonderausgaben stehen im Abschluss 2026 der Selbstständigkeit' : undefined };
       case 'ust': return { art, info, an, schaltbar: true, satz: a.ust, quelle: 'annahmen', hinweis: 'Schalter nur für die Anzeige — Durchlauf, ändert den Gewinn nicht. Kleinunternehmer: Satz 0' };
       case 'exit': return { art, info, an, schaltbar: true, satz: a.exitSteuer, quelle: 'annahmen', hinweis: 'Aus = Satz 0; der alte Satz bleibt gemerkt' };
-      case 'ausschuettung': return { art, info, an: true, schaltbar: false, satz: ausschuettungSatz, quelle: 'szenario', hinweis: 'gilt je Szenario (Planen › Szenarien bauen); ohne Ausschüttung steht die Zeile nicht im Blatt' };
+      case 'ausschuettung': return { art, info, an: true, schaltbar: false, satz: ausschuettungSatz, quelle: 'szenario', hinweis: 'gilt je Szenario (Planen); ohne Ausschüttung steht die Zeile nicht im Blatt' };
       case 'netto': return { art, info, an: true, schaltbar: false, quelle: 'annahmen', hinweis: 'Netto-Tabelle unten' };
     }
   });

@@ -2,11 +2,10 @@
 
 // ─── Finanzplanung jetzt — der Rahmen ────────────────────────────────────────
 // Kopf: Stand, Arbeitsplan (Szenario-Baukasten) bzw. Treiber, wer plant (aus
-// dem Konto — kein Umschalter), Verbergen, Rückgängig. Darunter die acht
-// Bereiche (Kevin 27.09.: Lage · Planen · Privat · Business · Gesamt ·
-// Buchungen & Check · Ziele & Töpfe · Protokoll) als Leiste und die
-// Unterseiten als Pillen; Adresse trägt die Unterseite (?u=…), alte Werte
-// lösen weiter auf. Sprünge tragen Monat/Zeile (Buchungen) oder sz/feld (Planen).
+// dem Konto — kein Umschalter), Verbergen, Rückgängig. Darunter die Blätter als
+// EINE Pillenreihe und das Zahnrad (Treiber, Annahmen & Steuern); die Adresse
+// trägt das Blatt (?u=…) und den Abschnitt (#…), alte Werte lösen weiter auf.
+// Sprünge tragen Monat/Zeile (Buchungen) oder sz/feld (Planen).
 // Cmd+Z macht die letzte Änderung rückgängig, solange kein Feld den Fokus hat.
 //
 // Seit 04.10. (Kevin: „Teile die Finanzplanung … bei Privat und bei Business“) ist das EINE Komponente mit `sicht`:
@@ -15,36 +14,25 @@
 // in die Privat-Sicht weiter.
 //
 // 08.10. (Aufräumen Etappe 2, Kevin: „unaufgeräumt und überladen“): Finanzen hat höchstens zwei Ebenen — die Finanzplanung ist der
-// Reiter „Planung“ (Ebene 1), ihre Blätter stehen in EINER Pillenreihe darunter (Ebene 2, `blaetterFuer`). Die acht Bereiche bleiben
-// als Reihenfolge, nicht mehr als eigene Leiste.
+// Reiter „Planung“ (Ebene 1), ihre Blätter stehen in EINER Pillenreihe darunter (Ebene 2, `blaetterFuer`).
+//
+// 08.10. abends (Fragebogen Teil 3 Frage 10, Kevin: „Vorschlag so übernehmen“): Privat 9 Blätter, Business 6; was zusammengehört, steht als
+// Abschnitt auf einer Seite (components/os/finanzplan/Blaetter.tsx); „Treiber, Annahmen & Steuern“ samt Protokoll hinter dem Zahnrad.
+// Alte Adressen (?u=buchungen …) schreibt die Seite auf das neue Blatt + Abschnitt um (`blattAus`, router.replace) — Parameter bleiben.
 
-import { Suspense, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, Undo2 } from 'lucide-react';
+import { Eye, EyeOff, Settings, Undo2 } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Seite, Knopf, Pillen, LEUCHT } from '../ui';
-import { FRAGE, FRAGE_BUSINESS, offeneBuchungen, faelligeZahl, datumLang, blaetterFuer, unterseiteFuer, finanzplanAdresse, type Unterseite } from '@/lib/finanzen/plan/hilfen';
+import { FRAGE, FRAGE_BUSINESS, ZAHNRAD, offeneBuchungen, faelligeZahl, datumLang, blaetterFuer, blattAus, istAbschnittId, alteAdresseUmschreiben, finanzplanAdresse, type AbschnittId, type Sprung, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { mitBereich, bereichEigen, type Bereich } from '@/lib/finanzen/szenarien';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import { FinanzplanKontext, useFinanzplanDaten, useGerechnet, type PlanKontext } from './daten';
 import { Meldungen, PersonMarke, personName, Auswahl } from './teile';
 import { Einrichtung } from './Einrichtung';
-import { Lage, Check, LageBusiness } from './Ueberblick';
-import { Privat, UG, Toepfe, KDV, Selbst, Szenarien, Ziele } from './Planen';
-import { Budget, Buchungen } from './Monat';
-import { Schulden, ZuErledigen, Kalender } from './Verpflichtungen';
-import { Entwicklung, Geldfluss, Protokoll } from './Auswerten';
-import { Baukasten } from './Baukasten';
-import { Gesamt } from './Gesamt';
-
-const ANSICHT: Record<Unterseite, () => JSX.Element> = {
-  lage: Lage, check: Check, budget: Budget, buchungen: Buchungen,
-  privat: Privat, ug: UG, toepfe: Toepfe, kdv: KDV, selbst: Selbst, szenarien: Szenarien, ziele: Ziele,
-  schulden: Schulden, posten: ZuErledigen, kalender: Kalender,
-  entwicklung: Entwicklung, geldfluss: Geldfluss, protokoll: Protokoll,
-  planen: Baukasten, gesamt: Gesamt,
-};
+import { BlattSeite } from './Blaetter';
 
 /**
  * `bereich`: Privat oder Business (aus der Adresse) — wählt NUR das eigene Szenario, die eigene Ansicht und die eigenen Kennzahlen.
@@ -62,17 +50,43 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
   const d = useMemo(() => (roh ? mitBereich(roh, bereich) : null), [roh, bereich]);
   const eigen = !!roh && bereichEigen(roh, bereich);
   const g = useGerechnet(d);
-  const u: Unterseite = unterseiteFuer(params.get('u'), sicht);
+  const uRoh = params.get('u');
+  const u: Unterseite = blattAus(uRoh, sicht).u;
   const blaetter = blaetterFuer(sicht);
 
-  const geh = useCallback((ziel: Unterseite, extra?: Record<string, string | number | undefined>) => {
-    const z = unterseiteFuer(ziel, sicht);
-    // Eingebettet: Reiter und Bereich der Finanzen-Seite bleiben in der Adresse (s=finanzplanung&space=…).
-    if (eingebettet || pfad.startsWith('/os/finanzen')) { router.push(finanzplanAdresse(bereich, { u: z, ...(extra ?? {}) }), { scroll: false }); return; }
-    const q = new URLSearchParams(); q.set('u', z);
-    for (const [k, v] of Object.entries(extra ?? {})) if (v !== undefined && v !== '') q.set(k, String(v));
-    router.push(`${pfad}?${q.toString()}`, { scroll: false });
-  }, [router, pfad, sicht, bereich, eingebettet]);
+  // Sprung zu einem Abschnitt (#buchungen): der Abschnitt klappt auf und kommt ins Bild (Blaetter.tsx). `n` zählt, damit derselbe Sprung erneut greift.
+  const [anker, setAnker] = useState<{ id: AbschnittId; n: number } | null>(null);
+  const springe = useCallback((id?: AbschnittId) => setAnker(a => (id ? { id, n: (a?.n ?? 0) + 1 } : null)), []);
+  useEffect(() => {
+    const lies = () => { const h = window.location.hash.slice(1); if (istAbschnittId(h)) springe(h); };
+    window.addEventListener('hashchange', lies);
+    return () => window.removeEventListener('hashchange', lies);
+  }, [springe]);
+
+  /** Adresse eines Blatts mit Parametern und Anker. Eingebettet: Reiter und Bereich der Finanzen-Seite bleiben in der Adresse (s=finanzplanung&space=…). */
+  const adresse = useCallback((blatt: Unterseite, extra: URLSearchParams | Record<string, string | number | undefined>, abschnitt?: AbschnittId) => {
+    const q = new URLSearchParams(extra instanceof URLSearchParams ? extra : undefined);
+    if (!(extra instanceof URLSearchParams)) for (const [k, v] of Object.entries(extra)) if (v !== undefined && v !== '') q.set(k, String(v));
+    q.set('u', blatt);
+    if (eingebettet || pfad.startsWith('/os/finanzen')) return finanzplanAdresse(bereich, q, abschnitt);
+    return `${pfad}?${q.toString()}${abschnitt ? `#${abschnitt}` : ''}`;
+  }, [pfad, bereich, eingebettet]);
+
+  // Blatt wechseln oder zu einem Abschnitt springen — auch mit alten Blatt-Kennungen ('buchungen' → Monat #buchungen).
+  const geh = useCallback((ziel: Sprung, extra?: Record<string, string | number | undefined>) => {
+    const z = blattAus(ziel, sicht);
+    router.push(adresse(z.u, extra ?? {}, z.abschnitt), { scroll: false });
+    springe(z.abschnitt);
+  }, [router, sicht, adresse, springe]);
+
+  // Alte Adresse (?u=<früheres Blatt>, Lesezeichen, Links von früher): auf das neue Blatt + Abschnitt umschreiben, alle Parameter bleiben.
+  // Höchstens einmal: das Ziel ist ein Blatt, danach liefert `alteAdresseUmschreiben` null (Wächter tests/aufraeumen-etappe2.test.ts).
+  useEffect(() => {
+    const z = zustand === 'da' ? alteAdresseUmschreiben(uRoh, sicht) : null;
+    if (!z) return;
+    router.replace(adresse(z.u, new URLSearchParams(params.toString()), z.abschnitt), { scroll: false });
+    springe(z.abschnitt);
+  }, [zustand, uRoh, sicht, params, adresse, router, springe]);
 
   // Hat der Bereich ein eigenes Planszenario, gehört „Arbeitsplan setzen“ zu diesem Bereich (/bereiche/<b>/arbeitsplan), nicht zum gemeinsamen.
   // Business IMMER (05.10. spät): der gemeinsame Arbeitsplan gilt auch für Privat — der Server lehnt /arbeitsplan aus Business ab.
@@ -93,7 +107,7 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
     return () => window.removeEventListener('keydown', k);
   }, [rueckgaengig]);
 
-  const kontext = useMemo<PlanKontext | null>(() => (d && g ? { d, ...g, sicht, bereich, person, verbergen, aendere, melde, geh, params } : null), [d, g, sicht, bereich, person, verbergen, aendere, melde, geh, params]);
+  const kontext = useMemo<PlanKontext | null>(() => (d && g ? { d, ...g, sicht, bereich, person, verbergen, aendere, melde, geh, params, anker } : null), [d, g, sicht, bereich, person, verbergen, aendere, melde, geh, params, anker]);
 
   const titel = bereich === 'business' ? 'Finanzplanung Business' : 'Finanzplanung';
   if (zustand === 'laedt') { const l = <div style={{ color: C.inkDim, fontSize: TYP.bedien }} role="status">Lädt …</div>; return eingebettet ? l : <Seite titel={titel}>{l}</Seite>; }
@@ -101,11 +115,10 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
   if (sicht === 'business' && zustand === 'leer') return <div style={{ color: C.inkDim, fontSize: TYP.bedien }} role="status">Noch keine Finanzplanung — eingerichtet wird sie unter Finanzen › Privat › Planung.</div>;
   if (!d || !g || !kontext) return <Einrichtung zustand={zustand === 'kein' ? 'kein' : zustand === 'fehler' ? 'fehler' : 'leer'} onFertig={() => void laden()} />;
 
-  // Lage je Bereich: Business mit den Business-Kennzahlen (MAKE frei, Runway, Tiefpunkt), Privat mit den privaten.
-  const Ansicht = (bereich === 'business' || sicht === 'business') && u === 'lage' ? LageBusiness : ANSICHT[u];
   const offen = offeneBuchungen(d), faellig = faelligeZahl(d);
-  // Zähler stehen am Blatt, das sie auflöst: offene Ist-Buchungen bzw. fällige Posten.
-  const zaehler: Partial<Record<Unterseite, number>> = { buchungen: offen, posten: faellig };
+  // Zähler stehen am Blatt, das sie auflöst: offene Ist-Buchungen (Monat) bzw. fällige Posten (Fällig & Schulden).
+  const zaehler: Partial<Record<Unterseite, number>> = { monat: offen, faellig };
+  const zahnradAn = u === ZAHNRAD.id;
 
   // Szenario dieses Bereichs: gemeinsam (wie der andere Bereich) oder ein eigenes (auch „Basis“ = reiner Treiber).
   const anderer = bereich === 'business' ? 'Privat' : 'Business';
@@ -137,11 +150,19 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
       <div className="ui-karten">
         {eingebettet && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}><div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{unter}</div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{knoepfe}</div></div>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{szenarioWahl}</div>
-        <nav aria-label="Blätter der Finanzplanung">
-          <Pillen einzeilig liste={blaetter.map(b => ({ id: b.id, label: zaehler[b.id] ? `${b.label} · ${zaehler[b.id]}` : b.label }))} aktiv={u} onWahl={geh} />
-        </nav>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{(sicht === 'business' && FRAGE_BUSINESS[u]) || (bereich === 'business' && u === 'lage' && FRAGE_BUSINESS.lage) || FRAGE[u]}</div>
-        <Ansicht />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+          <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+            <nav aria-label="Blätter der Finanzplanung">
+              <Pillen einzeilig liste={blaetter.map(b => ({ id: b.id, label: zaehler[b.id] ? `${b.label} · ${zaehler[b.id]}` : b.label }))} aktiv={zahnradAn ? null : u} onWahl={geh} />
+            </nav>
+          </div>
+          {/* Zahnrad (Vorbild Markttraktion › Stammdaten): Treiber, Annahmen & Steuern samt Protokoll — selten gebraucht, deshalb keine eigene Pille. */}
+          <Knopf leise onClick={() => geh(ZAHNRAD.id)} farbe={zahnradAn ? C.aktiv : undefined} ariaLabel={`${ZAHNRAD.label} · Protokoll`} titel={`${ZAHNRAD.label} · Protokoll`}>
+            <Settings size={16} aria-hidden /><span className="ui-nur-breit">Annahmen &amp; Steuern</span>
+          </Knopf>
+        </div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{zahnradAn && <b style={{ color: C.ink }}>{ZAHNRAD.label} · </b>}{(sicht === 'business' && FRAGE_BUSINESS[u]) || (bereich === 'business' && u === 'lage' && FRAGE_BUSINESS.lage) || FRAGE[u]}</div>
+        <BlattSeite key={u} u={u} />
       </div>
     </div>
   );

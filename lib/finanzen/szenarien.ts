@@ -27,7 +27,7 @@
 import type { Annahmen, FinanzDaten, MonatPrivat, MonatSelbst, MonatUG, Szenario, ZielStand, Zusatz } from './rechenkern';
 import { rechneUG, rechnePrivat, rechneSelbstAchse, kennzahlen, zielStaende, planMonat, kalMonat, gruppeReihe, lohnJahre } from './rechenkern';
 import { pruefeSteuern, steuernMit, type Steuern } from './steuern';
-import type { Unterseite } from './plan/hilfen';
+import type { Sprung } from './plan/hilfen';
 import { schwellenVon } from './schwellen';
 import { planMitSzenario, type Formeln } from './handwerte';
 import { eur } from './plan/hilfen';
@@ -317,7 +317,7 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc
 }
 
 // ── Was jetzt zu entscheiden ist ─────────────────────────────────────────────
-export interface Entscheidung { id: string; stufe: 'kritisch' | 'achtung' | 'info'; text: string; hinweis?: string; ziel: { u: Unterseite; params?: Record<string, string> } }
+export interface Entscheidung { id: string; stufe: 'kritisch' | 'achtung' | 'info'; text: string; hinweis?: string; ziel: { u: Sprung; params?: Record<string, string> } }
 
 const RANG: Record<Entscheidung['stufe'], number> = { kritisch: 0, achtung: 1, info: 2 };
 

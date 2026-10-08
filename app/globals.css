@@ -724,6 +724,15 @@ nav a:hover { transform: translateX(2px); }
 .ui-abschnitt-titel { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 700; color: #A2ADB0; letter-spacing: .09em; text-transform: uppercase; min-width: 0; }
 .ui-abschnitt-punkt { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .ui-abschnitt-rechts { min-width: 0; max-width: 100%; font-size: 13px; color: #86918F; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; text-align: right; }
+/* Klappbar (08.10., components/os/ui/klappbar.tsx): Abschnitt einer Seite zum Auf- und Zuklappen — zugeklappt ohne Inhalt, Anker mit Abstand zum Kopf. */
+.ui-klappbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; scroll-margin-top: 80px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .06); }
+.ui-klappbar-kopf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; min-width: 0; }
+.ui-klappbar-titel { margin: 0; min-width: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; line-height: 1.25; }
+.ui-klappbar-knopf { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; max-width: 100%; padding: 0 6px 0 0; background: none; border: none; cursor: pointer; font: inherit; text-align: left; }
+.ui-klappbar-pfeil { flex: 0 0 auto; transition: transform .18s ease; }
+.ui-klappbar-zu .ui-klappbar-pfeil { transform: rotate(-90deg); }
+.ui-klappbar-rechts { font-size: 13px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+@media (prefers-reduced-motion: reduce) { .ui-klappbar-pfeil { transition: none; } }
 .ui-titel { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .ui-beschriftung { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #86918F; margin: 2px 0 6px; }
 .ui-beschriftung-rechts { text-transform: none; letter-spacing: 0; font-weight: 500; }
