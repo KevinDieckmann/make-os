@@ -971,7 +971,7 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
 - **Browser:** `TasksContext` schickt nur Unterschiede je Liste mit Stand aus der letzten Serverantwort (nie `stand` im Zustand), 409 →
   nur die Konflikt-Zeile nimmt den Server-Stand, die eigene bleibt als „Deine Fassung“ (seit 29.09., Datenschicht „Ausstehende Änderungen nie verwerfen“) + Ereignis `make-aufgaben-konflikt`. Seite `/os/aufgaben` = `components/os/aufgaben/AufgabenRaum.tsx` (Adresse seit 28.09. spät über
   `WEG.aufgaben` — siehe „Navigation wie im CRM“ unten; alte `space`/`r`/`offen` gelten weiter), Schnell-Anlegen ganz oben (`SchnellAnlegen`, Kürzel aus `schnell-anlegen.ts`),
-  Detail (`AufgabeDetail`), Board nach Status (`StatusBoard`), eigene Status (`StatusVerwalten`). `/os/aufgaben/board` = alter Zeitstrahl/Delegation.
+  Detail (`AufgabeDetail`), Board nach Status (`StatusBoard`), eigene Status (`StatusVerwalten`). `/os/aufgaben/board` leitet seit 08.10. auf `/os/aufgaben` (Zeitstrahl = `ansicht=zeitstrahl`).
 - **CRM:** Kachel „Aufgaben“ in Kontakt öffnen (`KontaktRechts`) und Firmenakte (`AufgabenAkte`, bei aktivem Mandat im Mandanten-Space).
   Art. 17 löst `bezug.kontaktId` und tilgt Namen auch in Kommentaren, Dubletten biegen `bezug.kontaktId` um, Verbindungsprüfung
   `aufgabe-bezug-tot` (Reparatur entfernt nur tote Einzelverweise), Übergabe setzt `bezug`. Fokus-Block auf eine Aufgabe mit Mandat übernimmt es.
@@ -1078,10 +1078,16 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
   `markeVon` = gesetzt oder Make.One, `eventName` = „Make.One · Titel“); `Event.marke` optional, Vorgabe beim Anlegen, alte Events gelten
   abgeleitet — nie zurückschreiben. Wo ein Event nach außen genannt wird (ICS, Nachfass-/Follow-up-Text), `markeVon`/`eventName` nehmen, nie den Text streuen.
-- **Reiter** (`lib/crm/adresse.ts` `BEREICHE`): ueberblick · kontakte · firmen (a=leads) · deals (a=board|liste|akte|kunden|auswertung) ·
-  followup (a=faellig|woche|powerhour|kadenz) · marketing · besuche (Events, 03.10.) · event (Make.One) · stammdaten. `aufloesen()` übersetzt den alten Sales-Reiter — alte
-  Links NIE umschreiben, sondern dort ergänzen. `WEG.deal(id)` öffnet die Deal-Akte.
-- **Leiste mit Schnellknöpfen + Bereich Angebot (28.09. abends):** Reihenfolge nur in `LEISTE` (lib/crm/adresse.ts: links · mitte · rechts, jeder Bereich genau einmal — Test `markttraktion-angebot.test.ts`). Mitte = Qualifizierung (orange, `LEUCHT.business`) + Angebot (grün, `LEUCHT.gut`), Puls von hinten per `.mt-schnell::before` in globals.css (aus bei reduced-motion); passt die Zeile nicht (Container `.mt-leistenrahmen` < 1.100 px), stehen die Schnellknöpfe als eigene Zeile über den wischbaren Reitern. Angebot: `?s=angebot&k=<angebot>&kontakt=&firma=&deal=` — Links nur über `angebotLink`/`WEG.angebot`, lesen über `angebotAusAdresse` (ungültige Kennungen fallen weg); gerendert wird `AngebotStart` (components/os/crm/angebot). Der Kopf-Knopf heißt „+ Aktivität hinzufügen“ (vorher „+ Gespräch festhalten“).
+- **Reiter (Aufräumen Etappe 3, 08.10. — Kevin: „unaufgeräumt und überladen“; vorher zwölf):** EINE Stelle `REITER_ZEILE` in `lib/crm/adresse.ts` —
+  sechs Reiter **Überblick · Kontakte & Firmen** (Bereiche `kontakte` = Personen, `firmen`) **· Deals** (a=board|liste|auswertung|akte; Auswertung = Kanal-Leistung
+  + Kunden kurz + Pipeline, der Head of Sales steht am Board) **· Follow-up** (a=faellig|woche|powerhour|kadenz — Power Hour NUR hier) **· Marketing** (a=uebersicht|
+  anfragen|segmente|kampagnen|redaktion|newsletter|positionierung — Kampagnen NUR hier) **· Events** (Bereiche `besuche` = Besuchte Events mit Kalender · Wirkung ·
+  Im Kundenauftrag, `event` = Make.One); dazu die zwei Schnellknöpfe Qualifizierung (a=leads|scoring|scoring-sales, Runde ohne a — Leads NUR hier) und Angebot;
+  die Stammdaten öffnet das Zahnrad im Kopf (`REITER_ZEILE.zahnrad`, auch Einstellungen › Daten & Datenschutz › „Kartei-Pflege“). Den Reiter „Sales“, Firmen › Leads,
+  Deals › Kunden und die alte Qualifizierungs-Runde der Kartei (`runde-chancen`) gibt es nicht mehr — `aufloesen()` übersetzt JEDE alte Kombination (Wächter
+  `tests/aufraeumen-etappe3.test.ts`), die Seite schreibt alte Adressen still auf den neuen Ort um. Alte Links NIE umschreiben, sondern dort ergänzen; neue Ansicht =
+  genau EIN Ort in `REITER_ZEILE`/den `…_ANSICHTEN`. `WEG.deal(id)` öffnet die Deal-Akte.
+- **Leiste mit Schnellknöpfen + Bereich Angebot (28.09. abends, seit 08.10. `REITER_ZEILE`):** Reihenfolge nur in `REITER_ZEILE` (lib/crm/adresse.ts: links · mitte · rechts · zahnrad, jeder Bereich genau einmal — Tests `markttraktion-angebot`, `aufraeumen-etappe3`). Mitte = Qualifizierung (orange, `LEUCHT.business`) + Angebot (grün, `LEUCHT.gut`), Puls von hinten per `.mt-schnell::before` in globals.css (aus bei reduced-motion); passt die Zeile nicht (Container `.mt-leistenrahmen` < 1.100 px), stehen die Schnellknöpfe als eigene Zeile über den wischbaren Reitern. Angebot: `?s=angebot&k=<angebot>&kontakt=&firma=&deal=` — Links nur über `angebotLink`/`WEG.angebot`, lesen über `angebotAusAdresse` (ungültige Kennungen fallen weg); gerendert wird `AngebotStart` (components/os/crm/angebot). Der Kopf-Knopf heißt „+ Aktivität hinzufügen“ (vorher „+ Gespräch festhalten“).
 - **Firma per Kennung:** `Chance.firmaId`, `Mandat.firmaId` (`lib/crm/firmen-bezug.ts`: `firmaVonDeal`, `dealZuFirma`, `firmenName`,
   `firmaIdsErgaenzen` beim Laden in `ladeCrm`). Neue Stellen vergleichen nie mehr `c.firma === f.name`.
 - **Mandanten überall über `MandantLink` (28.09.):** wo außerhalb des CRM ein Mandant/eine CRM-Firma/ein Mandat als Text steht, rendert `components/os/crm/MandantLink.tsx` (`{ mandatId?, firmaId?, name?, klein?, privat?, mandatDa?, firmaDa?, nachName? }`) den Link — Ziel NUR über `mandantZiel` (lib/crm/adresse.ts: Mandat vor Firma, gelöscht → Text „(gelöscht)“, `privat` → nichts, ohne CRM-Zugang → Text). Existenz/Namen aus der Mandat-Kurzform (`components/os/zeit/useMandate.ts`, ein Abruf je Minute); Text-Kunde ohne Kennung nur per eindeutigem Namen (`mandantAusName`), Liquiplan-Posten über `mandatAusPlanposten` (lib/crm/mandant-link.ts). Genutzt: Zeit je Mandat, Mandat-Chip („›“, beim Anlegen `ohneLink`), Ziele/Meilensteine, Finanzplanung-Rechnungen, Liquidität-Posten, Mandatsakte → Firmenakte; Kalender-Mandatsfristen und Schnellsuche verlinken `WEG.mandat`/`WEG.firma`. Tests `tests/mandant-link.test.ts`.
@@ -1830,8 +1836,8 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
 - **Whoop-Export:** `lib/whoop-export.ts` + `/api/import/whoop` (ZIP, CSV oder
   neuester Export aus ~/Downloads, je Person). Knopf unter Gesundheit und
   Verbindungen. Neue Seiten: nie THEME, nie
-  Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
-  `/os/uebersicht` und `/os/aufgaben/board` (`/os/inbox/voll` leitet seit 06.10. auf die eine Inbox).
+  Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Die alten Ansichten `/os/uebersicht`, `/os/aufgaben/board`, `/os/inbox/voll`,
+  `/os/roadmap` und `/os/saeule/*` leiten weiter (next.config.mjs, Aufräumen 08.10.).
 - **Haushaltsfinanzen (24.09.2026): Malins MAKE.ORGA zieht nach MAKE OS.**
   Zahlen = Privat | Business | Gesamt. Logik in `lib/finanzen/haushalt/`
   (Cent, EINE Einordnung `einordnung.ts`, Monate über `monat.ts` — nie
