@@ -57,3 +57,38 @@
 - **R8 Zuerst nach dem Onboarding:** Bank-Anbindung vorziehen · „Markttraktion weiter ausbauen, damit wir Kunden generieren können — es muss am Ende jetzt alles gut laufen, damit das funktioniert.“
 - **R9 Vertretung:** Malin wird gleichwertige zweite Inhaberin · Server-Zugang (SSH) auch für Malin.
 - **R10 Verantwortlicher (Datenschutz):** MAKE Innovation GmbH.
+
+## Agenten-Bereich — Antworten (08.10.2026 spät) — Grundlage AGENTEN_KONZEPT.md
+Kevin: „Den ganzen Agent-Bereich im Business wie im Privaten aufs nächste Level bringen … Grundstruktur von Claude nehmen, aber individuell anpassen.“
+1. **Überblick über dem ZOE-Chat:** was ist passiert (seit dem letzten Besuch) · woran wird gearbeitet (je Head) · nächste Tage (Läufe, Fristen, Termine) ·
+   Freigaben mit einem Klick · Bezug zu den Jahreszielen · Kurz-Briefing als Text von ZOE oben.
+2. **Business-Heads:** Sales · Marketing · Event · Finance · IT/Betrieb (Lagebild + Chat) · Operations/Projekte & Aufgaben · Kundenerfolg/Mandate ·
+   Strategie/CEO-Office (Ziele, Board, OKR) · Produkt (MAKE OS als Produkt) · Recht & Datenschutz · Research (Markt, Wettbewerb).
+3. **Privat-Heads (je Person getrennt):** Gesundheit & Sport (nur mit Einwilligung, Malin Beauftragte) · Ernährung & Einkauf · Familie & Partnerschaft ·
+   Finanzen privat · Persönliche Assistenz (Termine, Erinnerungen).
+4. **Mitarbeiter:** feste Grundausstattung (Vorlagen) · selbst anlegen (Name, Rolle, Anleitung, Werkzeuge) · ZOE/Head schlägt neue vor · geteilt über
+   mehrere Heads · eigener Thread je Mitarbeiter · Head beauftragt selbst und berichtet zurück · eigenes Gedächtnis. Idee: „Mitarbeiter können anderen
+   helfen — bitte im Internet checken und Best Practice holen für das System.“
+5. **Zuerst:** Marketing · Design, Kampagnen, Social Media/LinkedIn · Sales · Recherche/Prospecting, Qualifizierung, Angebote, Nachfassen & Power Hour,
+   CRM-Pflege · Finance · Rechnungen & Mahnungen, Liquidität & Planung.
+6. **Kopfleiste:** + Skill · + Hintergrundaufgabe (jetzt/geplant/wiederkehrend) · + Mitarbeiter · Freigaben (mit Zahl) · Auftrag an mehrere Heads ·
+   Regeln & Leitplanken · Modell und Aufwand · Not-Aus.
+7. **Skills:** Anleitung mit Beispielen · „Das als Skill speichern“ aus dem Chat · erlaubte Werkzeuge · Zeitplan · Auslöser durch Ereignis · Eingabe-Felder ·
+   Freigabe-Pflicht je Skill · Testlauf vor dem Einschalten · Erfolgsquote · Import SKILL.md.
+8. **Hintergrundaufgaben:** Läuft/Fertig/Fehler mit Dauer · Ergebnis als Thread · abbrechen/neu starten · einmalig/geplant/wiederkehrend · Fortschritt in
+   Schritten · Kostengrenze je Aufgabe · auch Takt-Läufe.
+9. **Als Nächstes:** geplante Läufe mit Uhrzeit · offene Freigaben · nach Eisenhower sortiert.
+10. **Head im Chat:** nur Daten seines Bereichs (Server) · beauftragt Mitarbeiter („an … gesendet“) · fasst zusammen · fragt andere Heads über ZOE ·
+    eigenes Gedächtnis + Ziele/Kennzahlen · Aufgaben/Termine/Entwürfe nur als Vorschlag · eigener Ton + Farbe · Dateien/Bilder in den Chat.
+11. **ZOE als Chefin:** Aufträge verteilen · zusammenfassen und priorisieren · Tages-Briefing aus allen Heads · Konflikte lösen · neue Mitarbeiter/Skills
+    vorschlagen · eskalieren · sieht Business und Privat nur für die fragende Person.
+12. **Autonomie:** nach außen nie ohne Klick · Stufen je Head · mehr Freiheit erst nach guter Annahmequote · Budget je Head und Monat · Not-Aus ·
+    Business-frei gilt für alle Agenten · Protokoll.
+13. **Daten:** je Head nur seine KI-Kategorien · Privat-Heads gehören einer Person · gemeinsame Privat-Heads (Familie) für beide · „nur Business“ sieht nur
+    Business-Heads · Gesundheit nur mit Einwilligung (b) · Chats/Threads in Art. 15/17.
+14. **Modelle:** Modell und Aufwand je Head · Kostenschätzung vor großen Aufträgen · Monatsgrenze mit Warnung · Streaming · Mitarbeiter parallel.
+    Idee: „Andere KI für andere Sachen anbinden — z. B. Gemini für Research über die Google-API, Nano Banana für Bilder, Google für Videos … ausarbeiten,
+    welche wir für welche Aufgaben nehmen und welche Schnittstellen gebaut werden müssen.“
+15. **Handy:** Heads-Liste → Chat · Diktat und Vorlesen · Freigaben mit einem Daumen.
+16. **Über Nacht:** Seite mit drei Spalten + ZOE-Chat + Heads links · Chat je Head · Mitarbeiter mit Threads · Skills · Hintergrundaufgaben + Als Nächstes.
+**Frei:** „Lass uns nochmal eine Fragerunde machen, nachdem du eine umfangreiche Marktrecherche gemacht hast, wie man das noch am besten bauen kann.“
