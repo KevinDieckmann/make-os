@@ -4,6 +4,61 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Zweite gleichwertige Inhaberin (R9) + Onboarding B1 „Ebenen statt Namen“ (nur lokal — Branch `zweite-inhaberin`, für Update 2 am 16.10.)
+
+Kevin 08.10. (R9): „Malin wird gleichwertige zweite Inhaberin · Server-Zugang (SSH) auch für Malin.“ ONBOARDING_PLAN.md › L35 („nur ein Inhaber,
+keine Vertretung“) und › A5 B1/B5. Plattform-Regel: keine Namen — „zweite Person“ ist irgendein Konto der Instanz.
+
+- **Rolle statt Person:** `rolle: 'inhaber'` dürfen mehrere Konten tragen. Regeln rein an EINER Stelle `lib/zugang/inhaber.ts`: jeder
+  **wirksame** Inhaber (Rolle Inhaber im Haushalt der Inhaber) hat alle Inhaber-Rechte (`nurInhaber`, `istInhaber`, Einladen, Zugang der Instanz,
+  2FA-Pflicht, Datenschutz-Einrichtung, Pannen, Nachweise, Agenten-Regler, HOI-Bote …). Mehrere Inhaber teilen immer EINEN Haushalt.
+- **Haupt-Inhaber** (`hauptInhaber`, die einzige Stelle für „genau einer“): `konten.json › einstellungen.hauptInhaber`, festgeschrieben bei der
+  ersten Ernennung — sonst das älteste Inhaber-Konto (erstes im Bestand = dieselbe Wahl wie der alte Stand). Bei ihm bleibt: Altbestand ohne Suffix
+  (`eigenerSpeicher` über `inhaberSpeicher()`, Stammdaten-Altbestand, Altbestand-Übernahme Körper/Nordstern nur für ihn), Systemlauf-Person
+  (`laufPerson`), Kalender-Haupt-Person ohne `ICLOUD_PERSON`, die eine Verantwortliche der Löschfrist-Aufgabe, „Inhaber zuerst“ in
+  `haushaltsSpeicher`, der delegierende Inhaber im Team (`delegierbar`), Mac-Adressbuch, Mac-Zulieferer und Apple-Erinnerungen (sein Gerät).
+- **Ernennen / abgeben** (`POST /api/konto/haushalt { aktion: 'inhaber' | 'abgeben' }`): nur ein Inhaber per Sitzung (Dienstweg 403), erst nach
+  Passwort + zweitem Faktor (`erneutPruefen`); Ziel im selben Haushalt (sonst 400) mit zweitem Faktor und ohne „nur Business“ (sonst 409); der
+  letzte und der Haupt-Inhaber geben nie ab (409). Geschrieben über `aendereKonten` (Änderungsprotokoll „rolle“), Anmeldeprotokoll
+  (`inhaber-ernennen`/`inhaber-abgeben`), Glocke an alle Inhaber (Art `sicherheit`). Solange es mehrere gibt, bleibt ihr Haushalt fest (PUT → 409).
+  Ein weiterer Inhaber löscht sein Konto erst nach dem Abgeben. Oberfläche: **Konto › Inhaber** (`components/os/InhaberVerwaltung.tsx`).
+- **Inhaber heißt Verwaltung, nicht Einsicht:** Einzel-Wiederherstellung öffnet keine persönlichen Bestände einer anderen Person (403, auch
+  zwischen Inhabern), Visitenkarten eines anderen Inhabers pflegt nur er selbst, WHOOP-Export-Import prüft die Einwilligung der Person der
+  Anfrage (vorher die des Inhabers; POST jetzt mit `gesundheitSchreibSperre`). Messlatte läuft zusätzlich mit der zweiten Person als Inhaberin.
+- **Meldungen an jeden Inhaber:** HOI-Bote (rote Befunde, Tagesbericht) und „ZOE-Nummer braucht neuen Schlüssel“.
+- **SSH:** `deploy/ssh-schluessel-hinzufuegen.sh` (eigener Schlüssel je Person, kein Doppel, `--liste`, `--entfernen`, nie den letzten,
+  Ausroll-Schlüssel unberührt) — DEPLOY.md › Härtung, NOTFALL.md. Nichts davon läuft von selbst am Server.
+- **Onboarding B1:** `SPUREN` sind weg — drei Ebenen `EBENEN` (instanz · gemeinsam · ich) aus den Konten, Seiten `/os/onboarding/{ich,gemeinsam,instanz}`
+  (`EbeneView`; Instanz zeigt ihre Schritte nur Inhabern — jedem), `/os/onboarding/kevin` → `/os/onboarding`, `/malin` → `/os/onboarding/ich` (nur
+  next.config.mjs). „Einladung annehmen“ = `nurEingeladen` (jedes Konto außer dem Haupt-Inhaber). Alte Häkchen `<speicher>-<schritt>` bleiben liegen
+  und erscheinen weiter nur der Person mit genau diesem Speichernamen als „früher abgehakt — bitte bestätigen“ (`altePerson` liest das Präfix, kein
+  Name im Code). Neue Schritte **1.11** „Zweite Person zur gleichwertigen Inhaberin machen“ (Prüfung `inhaber`: Zähler) und **1.12** „Eigener
+  Server-Zugang“ (SSH-Befehl) — beide „einzeln“, nur mit mehreren Konten. Der Altbestand-Befund (0.5) gilt nur der Sitzung des Haupt-Inhabers.
+- **B5:** `WillkommenMalin` → `components/os/Willkommen.tsx`: neutraler Gruß für jede neu eingeladene Person (Vorname vom Server, `GET
+  /api/state/willkommen › zeigen`), nie für den Haupt-Inhaber, genau einmal; Knopf „Zur Einrichtung“.
+- **Nebenbei neutralisiert:** `HaushaltZuordnung` schaltet frei auf den Haushalt der Inhaber (vom Server) statt auf einen festen Namen.
+- Tests: `tests/zweite-inhaberin.test.ts` (20: Regeln, Route, „zweiter Inhaber darf alles, was der erste darf“ über das Routen-Register,
+  Mitglied 403, Wiederherstellung, Haupt-Inhaber-Stellen, SSH-Skript), `tests/onboarding-ebenen.test.ts` (12), Messlatte (+ zweite Inhaberin),
+  onboarding-stand, routen-register, aufraeumen-etappe1.
+
+**So testet ihr (in Klicks):**
+1. Als zweite Person: Konto › „Zweiter Faktor“ einrichten (falls noch nicht).
+2. Als Inhaber: Konto › Karte „Inhaber“ → bei der zweiten Person „Zum Inhaber machen“ → Rückfrage → Passwort + Code → „Zum Inhaber machen“.
+   Beide bekommen eine Glocke; „Zuletzt“ im Konto zeigt „Inhaber-Rolle vergeben“.
+3. Als zweite Person neu laden: Konto zeigt „Inhaber“, die Karten Einladen, Haushalt, Inhaber, Zugang der Instanz; Einstellungen › Datenschutz
+   lässt sich pflegen; /os/onboarding zeigt jetzt auch die Instanz-Schritte. Gesundheit, Journal, „nur ich“-Aufgaben des Inhabers bleiben unsichtbar.
+4. /os/onboarding/kevin und /os/onboarding/malin öffnen → landen auf /os/onboarding bzw. /os/onboarding/ich.
+5. Als zweite Person: Konto › Inhaber › „Rolle abgeben“ → Rückfrage → Passwort + Code → wieder Mitglied. Beim Haupt-Inhaber gibt es den Knopf nicht.
+
+**Einmal-Schritte nach dem Upload (Update 2):** zweite Person 2FA → zum Inhaber machen (Konto › Inhaber) → ihren SSH-Schlüssel eintragen
+(Onboarding 1.12) → Notfallmappe ergänzen (wer hat welchen Schlüssel).
+
+**Rückweg:** Der alte Stand kennt nur EINEN Inhaber. Vor einem Rückweg die Inhaber-Rolle der zweiten Person abgeben (Konto › Inhaber › „Rolle
+abgeben“) — sonst behielte sie im alten Stand Inhaber-Rechte allein über die Rolle (`istInhaber` prüfte dort nur die Rolle; der Haushalt der Inhaber
+wäre derselbe, weil der alte Stand den ersten Inhaber im Bestand nimmt — den Haupt-Inhaber). `einstellungen.hauptInhaber` übergeht der alte Stand
+(bleibt erhalten); die neuen Anmeldeprotokoll-Arten zeigt er roh. Onboarding: die alten Seiten /os/onboarding/kevin|malin gibt es dort wieder, alte
+Häkchen sind unberührt, Häkchen der Schritte 1.11/1.12 übergeht er. Der SSH-Schlüssel bleibt eingetragen, bis man ihn mit `--entfernen` herausnimmt.
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt
