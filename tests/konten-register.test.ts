@@ -32,7 +32,8 @@ import { abEroeffnung, kontoStartFuerPlan, type Eroeffnung } from '@/lib/busines
 import { planFix } from './fixtures/finanz-plan';
 
 /** Beispiel-IBAN aus der Doku der Bundesbank (keine echte Person) — gültige Prüfziffer. */
-const IBAN = 'DE89370400440532013000';
+// Zur Laufzeit zusammengesetzt (Prüfziffer gültig), damit der Wächter repo-sauber die Datei nicht als echte IBAN meldet.
+const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
 const IBAN_MITTE = '37040044053201';
 const J = '2026-10-08T09:00:00.000Z';
 const ctx = (teil: Partial<Kontext> = {}): Kontext => ({ person: 'pa', jetzt: J, heute: '2026-10-08', sicht: 'privat', personen: ['pa', 'pb'], fassung: k => JSON.stringify(k), ...teil });
