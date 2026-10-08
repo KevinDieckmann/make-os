@@ -28,15 +28,18 @@ export const WHOOP_PFLICHT_SCOPES: readonly string[] = ['read:recovery', 'read:s
 export const WHOOP_RUECKRUF_PFAD = '/api/whoop/rueckruf';
 export const WHOOP_WEBHOOK_PFAD = '/api/whoop/webhook';
 
+/** Die Umgebung (process.env oder ein Ausschnitt in Tests). */
+export type Umgebung = Readonly<Record<string, string | undefined>>;
+
 export interface WhoopKonfig { clientId: string; clientSecret: string; rueckrufUrl: string }
 
-const adresseAus = (env: NodeJS.ProcessEnv): string | null => {
+const adresseAus = (env: Umgebung): string | null => {
   const a = (env.MAKE_OS_ADRESSE ?? '').trim().replace(/\/+$/, '');
   return /^https?:\/\/[^\s/]+$/.test(a) ? a : null;
 };
 
 /** Was fehlt, damit WHOOP läuft — nur NAMEN der Variablen (nie Werte). */
-export function whoopFehlt(env: NodeJS.ProcessEnv = process.env): string[] {
+export function whoopFehlt(env: Umgebung = process.env): string[] {
   const f: string[] = [];
   if (!env.WHOOP_CLIENT_ID?.trim()) f.push('WHOOP_CLIENT_ID');
   if (!env.WHOOP_CLIENT_SECRET?.trim()) f.push('WHOOP_CLIENT_SECRET');
@@ -45,15 +48,15 @@ export function whoopFehlt(env: NodeJS.ProcessEnv = process.env): string[] {
 }
 
 /** Die Konfiguration aus der Umgebung — null, solange etwas fehlt. */
-export function whoopKonfig(env: NodeJS.ProcessEnv = process.env): WhoopKonfig | null {
+export function whoopKonfig(env: Umgebung = process.env): WhoopKonfig | null {
   if (whoopFehlt(env).length) return null;
   const rueckrufUrl = (env.WHOOP_RUECKRUF_URL ?? '').trim() || `${adresseAus(env)}${WHOOP_RUECKRUF_PFAD}`;
   return { clientId: env.WHOOP_CLIENT_ID!.trim(), clientSecret: env.WHOOP_CLIENT_SECRET!.trim(), rueckrufUrl };
 }
-export const whoopKonfiguriert = (env: NodeJS.ProcessEnv = process.env): boolean => whoopKonfig(env) !== null;
+export const whoopKonfiguriert = (env: Umgebung = process.env): boolean => whoopKonfig(env) !== null;
 
 /** Die öffentliche Webhook-Adresse (für die Anleitung/den Status) — nur mit HTTPS-Adresse der Instanz, sonst null. */
-export function whoopWebhookAdresse(env: NodeJS.ProcessEnv = process.env): string | null {
+export function whoopWebhookAdresse(env: Umgebung = process.env): string | null {
   const a = adresseAus(env);
   return a && a.startsWith('https://') ? `${a}${WHOOP_WEBHOOK_PFAD}` : null;
 }

@@ -256,17 +256,22 @@ async function erneuern(person: string, v: WhoopVerbindung, konfig: WhoopKonfig)
   throw new WhoopVerbindungsFehler('netz', TEXT.netz, 503);
 }
 
-/** Gültiges Zugriffstoken dieser Person — erneuert bei Bedarf (höchstens ein Erneuern je Person gleichzeitig). */
-export async function whoopZugriffstoken(person: string, opt: { erneuern?: boolean } = {}): Promise<string> {
-  const konfig = whoopKonfig();
-  if (!konfig) throw new WhoopVerbindungsFehler('nicht-konfiguriert', TEXT['nicht-konfiguriert'], 409);
+/**
+ * Gültiges Zugriffstoken dieser Person — erneuert bei Bedarf. Alles je Person läuft hintereinander (EIN Versprechen in `laufend`, gesetzt
+ * VOR dem ersten await): bei WHOOP rotiert das Refresh-Token, zwei gleichzeitige Erneuerungen ließen die zweite scheitern (belegt).
+ */
+export function whoopZugriffstoken(person: string, opt: { erneuern?: boolean } = {}): Promise<string> {
   const l = laufend.get(person);
   if (l) return l;
-  const v = await ladeVerbindung(person);
-  if (!v) throw new WhoopVerbindungsFehler('nicht-verbunden', TEXT['nicht-verbunden'], 409);
-  if (v.status !== 'verbunden') throw new WhoopVerbindungsFehler('getrennt', TEXT.getrennt, 409);
-  if (!opt.erneuern && v.accessToken && v.ablauf && Date.now() < v.ablauf - 60_000) return v.accessToken;
-  const p = erneuern(person, v, konfig).finally(() => laufend.delete(person));
+  const p = (async () => {
+    const konfig = whoopKonfig();
+    if (!konfig) throw new WhoopVerbindungsFehler('nicht-konfiguriert', TEXT['nicht-konfiguriert'], 409);
+    const v = await ladeVerbindung(person);
+    if (!v) throw new WhoopVerbindungsFehler('nicht-verbunden', TEXT['nicht-verbunden'], 409);
+    if (v.status !== 'verbunden') throw new WhoopVerbindungsFehler('getrennt', TEXT.getrennt, 409);
+    if (!opt.erneuern && v.accessToken && v.ablauf && Date.now() < v.ablauf - 60_000) return v.accessToken;
+    return erneuern(person, v, konfig);
+  })().finally(() => laufend.delete(person));
   laufend.set(person, p);
   return p;
 }

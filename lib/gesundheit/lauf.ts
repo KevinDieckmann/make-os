@@ -64,7 +64,7 @@ async function haushaltZeilen(person: Person): Promise<string> {
  * ohne die Ausnahme „ZOE-Antworten vollständig über Telegram“ der Person NUR ein neutraler Hinweis mit Link — keine
  * Werte (Recovery, Schlaf), keine Fragen zu Beschwerden, keine Beträge. Mit der Ausnahme wie früher.
  */
-export async function nachrichtFuer(person: Person, slot: Slot, origin: string): Promise<string> {
+export async function nachrichtFuer(person: Person, slot: Slot, _origin: string): Promise<string> {
   const heute = localDay();
   const name = (await namenVon())[person] ?? nameVon(person);
   if (!(await telegramVollFuer(person).catch(() => false))) return hinweisCheckIn(name, slot, appLink(aussenAdresse(), '/os/gesundheit'));
