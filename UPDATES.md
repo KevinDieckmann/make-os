@@ -13,7 +13,7 @@ Kevins Antworten auf die Fragen 1–3 der Sicht-Prüfung (unten, „Fragen an Ke
    Liste). EINE Regel `lib/planung/eigene-ziele-sicht.ts` (+ `-server.ts`): fremd nur geteilt UND im selben Haushalt, Systemlauf nie.
    Nicht geteilt ⇒ nichts davon: `GET /api/state/ziele?fuer=<person>` 403; Lichtfäden ohne die Ziele und ihre Meilensteine (auch kein
    „Belegt“ mehr); Seil, `GET/PATCH/PUT /api/state/meilensteine` (Altbestand: Meilensteine an einem fremden eigenen Ziel — lesen nein,
-   ändern 403), Kapazität (Titel → „Privat (belegt)“), Verbindungsprüfung (Befunde/Reparatur nur gemeinsamer Bestand + EIGENE Ziele;
+   ändern 403), Kapazität (seit der Gegenprüfung ganz ohne den Posten), Verbindungsprüfung (Befunde/Reparatur nur gemeinsamer Bestand + EIGENE Ziele;
    fremde zählen nur als Kennung), Neustart (Vorschau, „Neu anfangen“ und „Zurückholen“ nur gemeinsam + eigene; Archiv zeigt fremde eigene
    Ziele und ihre Meilensteine nicht). Fluss und Brain-Kugel ließen fremde eigene Ziele schon weg. Geteilt ⇒ lesen (Kompass „Fokus von …“),
    nie schreiben; die Sammel-Ansichten bleiben dann so streng wie vorher („Belegt“). Oberfläche: Konto › Kachel „Eigene Ziele teilen“,
@@ -29,12 +29,33 @@ Kevins Antworten auf die Fragen 1–3 der Sicht-Prüfung (unten, „Fragen an Ke
    am Lese-Weg vorbei).
 4. **WHOOP ist die Quelle:** Werte aus dem WHOOP-Datenexport tragen jetzt je Feld die Herkunft `whoop-export` (vorher ersetzte der
    Export den ganzen Tag); die Schnittstelle überschreibt sie. Handwerte (`hand`) und Werte der Schnittstelle (`whoop`) bleiben. Altbestand
-   ohne Herkunft: nur ein Wert, der GENAU dem WHOOP-Wert entspricht, bekommt die Herkunft (Wert unverändert) — abweichende bleiben stehen
-   (könnten von Hand sein, wird nicht geraten). Tipp: den alten Export noch einmal einlesen markiert alle unveränderten Export-Werte —
-   ab dann gewinnt die Schnittstelle. Tests `tests/whoop-export.test.ts`, `tests/whoop-abbilden.test.ts`.
+   ohne Herkunft: nur beim Einlesen des Datenexports bekommt ein Wert, der GENAU dem Export-Wert entspricht, die Herkunft `whoop-export`
+   (Wert unverändert) — abweichende bleiben stehen. Die Schnittstelle selbst fasst Altbestand ohne Herkunft nie an, auch keinen gleichen
+   Wert (Gegenprüfung 08.10.: ein aus der WHOOP-App abgetippter Morgen-Check wäre ebenso gleich). Tipp: den alten Export noch einmal
+   einlesen markiert alle unveränderten Export-Werte — ab dann gewinnt die Schnittstelle. Tests `tests/whoop-export.test.ts`,
+   `tests/whoop-abbilden.test.ts`. **Frage an Kevin:** Auch beim Export-Einlesen kann ein gleicher Altwert ein abgetippter Handwert sein —
+   soll er dort trotzdem als Export-Wert gelten (heute ja) oder stehen bleiben?
 
 **Rückweg:** nur optionale Felder (`teilt.ziele`, `Vision.ziele[].von`, Agenten-Lauf `person`, Herkunft `whoop-export`) — der alte Stand
 ignoriert sie bzw. verwirft `von` beim nächsten Speichern der Vision (Einträge gelten dann als Altbestand ohne Anlegerin).
+
+**Gegenprüfung (08.10. nachm., gleicher Branch):**
+- **Meilensteine an fremden eigenen Zielen (Altbestand) überall weg, nicht nur in der Meilenstein-Route:** EIN Leseweg
+  `meilensteineSichtbarFuer`/`verborgeneMeilensteineFuer` (lib/planung/eigene-ziele-sicht-server.ts; ohne Person = Systemlauf: keiner an einem
+  eigenen Ziel). Angeschlossen: Detail `GET/POST /api/planung/meilenstein` (404 — auch Verlauf/Notiz), Kalender-Fristen (`fristenLesen(…, betrachter)`
+  Pflicht → Kalender, Glocke, Heute), ZOE-Kontext (`gatherBrain`), `setze_meilenstein` + Vorschau (Vorschau kennt jetzt die Person), `create_task`
+  am Meilenstein und `/api/tasks/create` (404), Schilde, Gesundheit, Loops, Business-Index (zählt mit, aber ohne Titel/Kennung), Kapazität
+  (`ohneVerborgenePosten`: Posten ganz weg, auch aus „kritisch“ und Wochenplan — die Stunden bleiben in der Last), Verbindungsprüfung (weder gemeldet
+  noch repariert, `weitereMeilensteine`). Die Aufgaben-Liste `lm-…` eines solchen Meilensteins heißt für die anderen nur „Meilenstein-Liste“
+  (`mitNeutralenListen` in jeder Ausgabe des Aufgaben-Bestands: `ladeAufgabenSicht`, `GET /api/state/tasks`, Export) und ist für sie nicht änderbar
+  (404). Ihre Aufgaben bleiben sichtbar (eigene Regel „nur ich“); die Kennung `lm-<Meilenstein>` bleibt.
+- **Agenten-Log:** Läufe rechnen und loggen mit DERSELBEN Person — `laufPerson(req)` (lib/finanzen/haushalt/zugriff.ts): benannte Person, im
+  Systemlauf der Inhaber aus den Konten (statt des festen Rückfalls in `personAus`). Tageslauf, Fokus, Performance-Analyse, Board, OKR. Ein Takt-
+  Tageslauf aus der Sicht des Inhabers steht damit unter ihm, nicht als Systemlauf für alle. Wächter `tests/agent-log-lauf-person.test.ts`.
+- **Vision:** Anlegerin ohne Konto im Haushalt (gelöscht, umgezogen) sperrt nichts mehr (frei wie Altbestand, Name fällt beim Schreiben weg);
+  Konto löschen tilgt den Namen sofort (`visionOhnePerson`, Einträge bleiben). Doppelte Kennungen → 400 (sonst ließ sich ein Eintrag „im Namen“
+  der anderen Person unterschieben).
+- **WHOOP:** die Gleichheits-Regel (Altbestand ohne Herkunft = WHOOP-Wert) gilt nur noch beim Export-Einlesen, nicht im Abgleich (siehe 4.).
 
 ## 08.10.2026 — Aufräumen Etappe 2: Finanzen in zwei Ebenen (nur lokal — Branch `aufraeumen-2`)
 
