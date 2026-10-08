@@ -167,7 +167,7 @@ export function KontoView() {
                 </div>
               </div>
             ) : <>
-              <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Für Malin hier „Malin“ eintragen: dann hängen ihre bisherigen Bestände am Konto (ohne diese Bindung bekommt niemand ihren Namen).'} />
+              <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Soll das Konto an schon vorhandene Bestände anschließen, hier den Namen eintragen, unter dem sie liegen: dann hängen sie am neuen Konto (ohne diese Bindung bekommt niemand diesen Namen).'} />
               <form className="konto-feldreihe" onSubmit={e => { e.preventDefault(); void einladen(); }}>
                 <Feldzeile label="Vorname (optional)"><input value={fuer} onChange={e => setFuer(e.target.value)} style={feld} autoComplete="off" /></Feldzeile>
                 <Feldzeile label="E-Mail der Person (optional) — reserviert die Adresse für die Einladung"><input type="email" inputMode="email" autoCapitalize="none" value={fuerMail} onChange={e => setFuerMail(e.target.value)} style={feld} autoComplete="off" /></Feldzeile>

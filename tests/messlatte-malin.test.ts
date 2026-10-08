@@ -294,6 +294,9 @@ const SYS = {
   mail: 'MESSLATTE-SYS-MAIL-BETREFF',
   postfach: 'MESSLATTE-SYS-POSTFACH-NAME',
   haut: 'MESSLATTE-SYS-HAUT',
+  // Onboarding (08.10. spät): persönliche Häkchen je Person — die Marke steckt im Zeitstempel (nur der wird ausgeliefert).
+  onboarding: '2001-02-03T04:05:06.789Z',
+  onboardingAlt: '2001-02-03T04:05:07.891Z',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -432,6 +435,9 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
       [`${PF}:e:1:1`]: { id: `${PF}:e:1:1`, threadId: 'x', am: J, von: { name: 'Freundin', email: 'freundin@example.invalid' }, an: [{ email: 'kevin.messlatte@example.invalid' }], cc: [], betreff: SYS.mail, ausschnitt: SYS.mail, labels: ['INBOX'], anhaenge: [], postfachId: PF, ordner: 'e', uidValidity: '1', uid: 1, wurzel: '<m1@x>', messageId: '<m1@x>' },
     } });
     await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
+    // Onboarding: Kevins persönliches Häkchen und ein altes Häkchen seiner früheren Spur im gemeinsamen Bestand (gilt nur für ihn).
+    await db.saveJson('onboarding--kevin', { erledigt: { 'ich-rundgang': { at: SYS.onboarding, von: 'kevin' } } });
+    await db.saveJson('onboarding', { erledigt: { 'kevin-sicht-alt': { at: '2000-01-01T00:00:00.000Z', von: 'Kevin' }, 'kevin-zwei-faktor': { at: SYS.onboardingAlt, von: 'Kevin' } } });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

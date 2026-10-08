@@ -355,7 +355,17 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('inbox-status', 'Altbestand der alten Inbox (bis 06.10.): Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen. Wird nicht mehr geschrieben; Gmail-Wiedervorlagen übernimmt `inbox-zustand--<person>` beim ersten Schreiben (lib/inbox/zustand.ts).'),
   K('kalender-einstellungen', 'Kalender-Einstellungen.'),
   K('labels', 'Beschriftungen.'),
-  K('onboarding', 'Einrichtungs-Haken.'),
+  // Onboarding „Einrichtung“ (08.10. spät, Paket B0/B2): gemeinsame Häkchen mit dem Speichernamen, wer abgehakt hat; persönliche je Person.
+  mit(H('onboarding', 'Gemeinsame Häkchen der Einrichtung (Schritt-Kennung, Zeitpunkt, Speichername der Person, die abgehakt hat) — keine Inhalte, keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Einrichtung und Nutzung der Software durch die Kontopersonen',
+    art15: 'Konto › Meine Daten exportiert die eigenen Häkchen; die Einrichtung (Einstellungen › Onboarding) zeigt sie',
+    loeschfrist: 'solange die Instanz läuft; beim Löschen eines Kontos wird der Speichername zu „[gelöscht]“',
+  }),
+  mit(H('onboarding--*', 'Persönliche Häkchen der Einrichtung je Person (Schritt-Kennung, Zeitpunkt) — nur die Person selbst liest und schreibt sie.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die eigene Einrichtung der Software',
+    art15: 'Konto › Meine Daten exportiert den Bestand; die eigene Spur der Einrichtung zeigt ihn',
+    loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand samt Tageskopien)',
+  }),
   K('ordnung', 'Sortierung/Ordnung von Listen.'),
   K('performance', 'Wachstums-Score (Zahlen).'),
   K('planung-einheiten--*', 'Einheiten der Planung je Haushalt.'),

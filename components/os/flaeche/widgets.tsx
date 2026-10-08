@@ -49,6 +49,7 @@ import { BUSINESS_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN_NAMEN
 import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
 import { Anstehend } from '../heute/Anstehend';
+import { SPUREN as ONBOARDING_SPUREN, fortschrittVon, schritteFuer, spurFuerRolle, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -614,10 +615,37 @@ function EventWidget({ titel, i }: WidgetProps) {
   );
 }
 
+// ── Einrichtung · x von y (08.10. spät, Onboarding B5) ─────────────────────
+// Vorne auf Heute, solange die eigene Einrichtung offen ist: die eigenen Schritte („Meine Einrichtung“), die gemeinsamen und — beim
+// Inhaber — die der Instanz (lib/make-one/onboarding-data.ts `schritteFuer`). Daten aus /api/onboarding (persönliche Befunde nur der
+// Person der Sitzung). Fertig oder ohne Zugang → keine Karte.
+interface EinrichtungBild { z: HakenZustand; ich: OnboardingKontext }
+function EinrichtungWidget({ titel, i }: WidgetProps) {
+  const d = useDaten<EinrichtungBild>('/api/onboarding', x => {
+    const r = x as { erledigt?: HakenZustand['erledigt']; befunde?: HakenZustand['befunde']; ich?: OnboardingKontext | null };
+    return r?.ich ? { z: { erledigt: r.erledigt ?? {}, befunde: r.befunde ?? {} }, ich: r.ich } : null;
+  });
+  if (!d) return null;
+  const f = fortschrittVon(schritteFuer(d.ich), d.z);
+  if (!f.gesamt || f.fertig >= f.gesamt) return null;
+  const spur = ONBOARDING_SPUREN.find(s => s.id === spurFuerRolle(d.ich.inhaber))?.href ?? '/os/onboarding';
+  return (
+    <Karte i={i} akzent={LEUCHT.schlaf}>
+      <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/onboarding" style={link}>alle Schritte ›</Link>}>{titel ?? `Einrichtung · ${f.fertig} von ${f.gesamt}`}</Ueberschrift>
+      <Fortschritt anteil={f.fertig / f.gesamt} farbe={LEUCHT.schlaf} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>
+        {f.naechster && <span style={{ flex: '1 1 220px', minWidth: 0 }}>Als Nächstes: <Link href={f.naechster.spur === 'fundament' ? '/os/onboarding' : spur} style={{ color: C.ink, fontWeight: 600, textDecoration: 'none' }}>{f.naechster.nr} · {f.naechster.titel} ›</Link></span>}
+        <span style={{ color: C.inkLeise }}>noch {f.offeneMinuten < 60 ? `${f.offeneMinuten} Min.` : `rund ${Math.round(f.offeneMinuten / 60 * 10) / 10} Std.`}</span>
+      </div>
+    </Karte>
+  );
+}
+
 // Steht an (08.10., Heute): Nachbereiten, Fristen, Follow-ups, Buchungsanfragen, ZOE-Kalender-Vorschläge, Geburtstage — dieselbe Quelle wie die Glocke; leer → keine Karte.
 function AnstehendWidget({ i }: WidgetProps) { return <Anstehend i={i} />; }
 
 export const WIDGETS: Record<string, WidgetDef> = {
+  einrichtung: { art: 'einrichtung', label: 'Einrichtung', bereich: 'Tag', beschreibung: 'Wie weit deine Einrichtung ist und was als Nächstes kommt — verschwindet, wenn alles steht', breite: 6, Komponente: EinrichtungWidget },
   anstehend: { art: 'anstehend', label: 'Steht an', bereich: 'Tag', beschreibung: 'Nachbereiten, Fristen, Follow-ups, Buchungsanfragen und Geburtstage — dieselbe Quelle wie die Glocke', breite: 4, Komponente: AnstehendWidget },
   score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
@@ -649,6 +677,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
     ] },
 };
 export const KATALOG: KatalogEintrag[] = [
+  { art: 'einrichtung', label: 'Einrichtung', beschreibung: WIDGETS.einrichtung.beschreibung, bereich: 'Tag', breite: 6 },
   { art: 'anstehend', label: 'Steht an', beschreibung: WIDGETS.anstehend.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'aufgaben', label: 'Aufgaben', beschreibung: WIDGETS.aufgaben.beschreibung, bereich: 'Tag', breite: 4 },
