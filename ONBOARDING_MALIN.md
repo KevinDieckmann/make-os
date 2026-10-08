@@ -55,7 +55,7 @@ neue Absender zulassen oder blocken. Deine Postfächer liest niemand sonst.
 Konto › „Der Bote · Telegram“ › koppeln. Die Hinweise sind neutral („In MAKE OS wartet etwas“ mit Link) — keine Inhalte,
 keine Beträge, keine Namen.
 
-**Whoop** kommt mit dem nächsten Update (eigene Verbindung je Person, setzt die Gesundheits-Einwilligung voraus).
+**WHOOP (optional):** Gesundheit › Karte „WHOOP“ › „Verbinden“ — nur dein eigenes Konto, setzt die Gesundheits-Einwilligung (a) voraus. Danach kommen Erholung, Schlaf und Training von selbst; deine eigenen Einträge überschreibt WHOOP nie.
 
 ## 8 · Rundgang (20 Min.)
 - Links die Leiste mit den Bereichen, oben der Wechsel **Privat / Business**, Inbox und Kalender.

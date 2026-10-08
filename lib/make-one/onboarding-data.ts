@@ -294,9 +294,14 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'malin-whoop', spur: 'malin', minuten: 1,
-    titel: 'Whoop verbinden — kommt mit dem nächsten Update',
-    warum: 'Die Whoop-Verbindung je Person (Erholung, Schlaf, Training) ist gebaut, aber noch nicht online. Sie setzt die Gesundheits-Einwilligung voraus.',
-    wie: ['Jetzt nichts zu tun. Sobald das Update online ist, steht der Weg hier.'],
+    titel: 'WHOOP verbinden (optional)',
+    warum: 'Mit WHOOP kommen Erholung, Schlaf und Training von selbst in deine Gesundheit und in Sport — ohne Abtippen. Jede Person verbindet nur ihr eigenes Konto; andere sehen deine Werte nur, wenn du Gesundheit mit ihnen teilst.',
+    wie: [
+      'Vorher die Gesundheits-Einwilligung (a) erklären — ohne sie holt MAKE OS nichts ab.',
+      'Gesundheit öffnen, Karte „WHOOP“ → „Verbinden“ → bei WHOOP anmelden und zustimmen.',
+      'Beim ersten Mal kommen die letzten 90 Tage; danach meldet WHOOP neue Werte von selbst. Eigene Einträge im Morgen-Check überschreibt WHOOP nie.',
+    ],
+    wo: { href: '/os/gesundheit', label: 'Gesundheit' },
   },
   {
     id: 'malin-rundgang', spur: 'malin', minuten: 20,
