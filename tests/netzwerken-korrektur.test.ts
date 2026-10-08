@@ -227,7 +227,8 @@ describe('4 · Standardansicht Leads: neue Netzwerken-Leads stehen in „In Arbe
   });
 });
 
-describe('5 · Event-Kennzahlen: Netzwerken-Events getrennt', () => {
+// Fünf Erfassungen nacheinander (je mehrere Sperren): allein ~1,3 s, unter voller Last der Testreihe über 5 s — eigene Zeitgrenze.
+describe('5 · Event-Kennzahlen: Netzwerken-Events getrennt', { timeout: 20_000 }, () => {
   const neuesEventKörper = { eventId: 'ev-nw-fremd', eventNeu: { titel: 'Fremde Messe Köln', datum: '2026-10-02' } };
   it('Fünf Personen am fremden Event ergeben keine 100-%-Erscheinensquote; eigene Events zählen allein; „Netzwerken: n Kontakte, n Termine, n Follow-ups“ steht getrennt', async () => {
     const { eventKennzahlen } = await import('@/lib/crm/traktion');
