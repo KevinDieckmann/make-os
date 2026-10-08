@@ -6,7 +6,9 @@
 // und Annahmen bearbeitbar) · Ziele (mit „Was wäre wenn“). Alle Zahlen kommen
 // aus dem Rechenkern; das Blatt schreibt nur Zellen-Überschreibungen.
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Raster, Spalten, Spalte, Knopf, LEUCHT, feld, Haken } from '../ui';
 import type { Szenario, Zeile } from '@/lib/finanzen/rechenkern';
@@ -306,7 +308,10 @@ function SelbstAbschluss() {
               {zeile('Einkommensteuer-Anteil Jan–Sep (Näherung)', hz('ab.est', r.est, 'Einkommensteuer 2026', { farbe: r.est > 0 ? LEUCHT.achtung : undefined }), true)}
               {zeile('Steuer auf Jan–Sep gesamt (mit Gewerbesteuer, Soli)', <Geld v={r.steuer} />)}
               {zeile('Vorauszahlungen 2026 schon bezahlt', <ZahlFeld wert={s.estVorausgezahlt ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/estVorausgezahlt', alt: s.estVorausgezahlt, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Vorauszahlungen 2026')} titel="Vorauszahlungen 2026 schon bezahlt" />)}
-              {zeile('Kontostand heute', <ZahlFeld wert={s.kontoStart} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/kontoStart', alt: s.kontoStart, neu: v ?? 0 }], 'Selbstständigkeit Kontostand')} titel="Kontostand" />)}
+              {/* Konten-Register (08.10., R4): führt es die Selbstständigkeit, kommt „Kontostand heute“ von dort (beim Lesen gesetzt) — gepflegt wird er im Register. */}
+              {zeile('Kontostand heute', d.kontenIst?.selbststaendigkeit
+                ? <Link href={WEG.kontenRegister('privat')} title="aus dem Konten-Register — dort pflegen" style={{ textDecoration: 'none', color: 'inherit' }}><Geld v={s.kontoStart} /> <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Konten ›</span></Link>
+                : <ZahlFeld wert={s.kontoStart} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/kontoStart', alt: s.kontoStart, neu: v ?? 0 }], 'Selbstständigkeit Kontostand')} titel="Kontostand" />)}
               {zeile('Darlehen, die noch hinausgehen', <Geld v={r.darlehen} />)}
               {zeile('Sicherheit Steuer', <ZahlFeld wert={s.sicherheit} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sicherheit', alt: s.sicherheit, neu: v ?? 0 }], 'Selbstständigkeit Sicherheit')} titel="Sicherheit Steuer" />)}
               {zeile('Frei nach Abschluss', hz('ab.frei', r.frei, 'Frei nach Abschluss'), true)}

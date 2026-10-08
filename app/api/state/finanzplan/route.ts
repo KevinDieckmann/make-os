@@ -17,6 +17,7 @@ import {
   type FinanzplanFile, type BezahltErgebnis, type RechnungsBuchung, type FpErgebnis, type StornoErgebnis,
 } from '@/lib/finanzen/finanzplan-bestand';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { kontostandAusAltweg } from '@/lib/finanzen/konten/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,8 @@ export async function GET(req: Request) {
 /** Kompletten Stand setzen (die Seite verwaltet die Listen). */
 export async function PUT(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
-  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
+  const zugang = await privatFinanzZugang(req);
+  if (!zugang) return keinFinanzZugang();
   let body: Partial<FinanzplanFile>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Erste Posten bei der UG in einem Plan ohne UG-Konto → leeres UG-Konto dazu (28.09., additiv).
@@ -63,9 +65,10 @@ export async function PUT(req: Request) {
   if (grenze) return NextResponse.json({ ok: false, error: grenze }, { status: 413 });
   // Kontostand-Änderung stempelt automatisch das Stand-Datum.
   const vorher = await loadJson<FinanzplanFile>('finanzplan');
+  const neueStaende: { id: string; kontostand: number }[] = [];
   for (const fa of sauber.firmen) {
     const alt = vorher?.firmen?.find(x => x.id === fa.id);
-    if (fa.kontostand !== null && fa.kontostand !== (alt?.kontostand ?? null)) fa.stand = localDay();
+    if (fa.kontostand !== null && fa.kontostand !== (alt?.kontostand ?? null)) { fa.stand = localDay(); neueStaende.push({ id: fa.id, kontostand: fa.kontostand }); }
   }
   // Hier hängt Geld dran: Rechnungen, offene Zahlungen, Merkposten. Ein Client
   // mit halb geladenem Stand darf das nicht überschreiben — jede Liste wird
@@ -79,7 +82,16 @@ export async function PUT(req: Request) {
       { status: 409 },
     );
   }
+  await insRegister(neueStaende, zugang.person);
   return NextResponse.json({ ok: true, ...next });
+}
+
+/**
+ * Konten-Register (08.10.): ein Kontostand, der über diesen bisherigen Weg kommt (ältere Fenster, Skripte), landet zusätzlich im Register —
+ * aber nur für Gesellschaften, die das Register schon führt (sonst bleibt der Finanzplan die Quelle; übernommen wird nur per Klick).
+ */
+async function insRegister(neu: { id: string; kontostand: number }[], person: string): Promise<void> {
+  for (const n of neu) await kontostandAusAltweg({ firma: n.id, betrag: n.kontostand, datum: localDay(), person, herkunft: 'liquiditaet' });
 }
 
 /**
@@ -98,7 +110,8 @@ export async function PUT(req: Request) {
  */
 export async function PATCH(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
-  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
+  const zugang = await privatFinanzZugang(req);
+  if (!zugang) return keinFinanzZugang();
   let body: { ops?: unknown; felder?: Record<string, unknown>; aktion?: unknown; rechnungId?: unknown; am?: unknown; stand?: unknown; grund?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion === 'bezahlt') return bezahlt(body);
@@ -118,6 +131,7 @@ export async function PATCH(req: Request) {
 
   let angewandt = 0;
   let grenze: string | null = null;
+  let neueStaende: { id: string; kontostand: number }[] = [];
   let abgelehnt: Extract<FpErgebnis, { ok: false }> | null = null;
   const next = await updateJson<FinanzplanFile>('finanzplan', current => {
     // Immer vom gesäuberten Bestand ausgehen — nie vom Rohzustand. Die Säuberung kürzt nichts (28.09.).
@@ -130,9 +144,10 @@ export async function PATCH(req: Request) {
     if (uhrwerk) { f.uhrwerk = sauberFile({ uhrwerk } as unknown as Partial<FinanzplanFile>).uhrwerk; angewandt++; }
     // Kontostand-Änderung stempelt das Stand-Datum, wie beim Vollschreiben.
     const alt = sauberFile(current);
+    neueStaende = [];
     for (const fa of f.firmen) {
       const vorher = alt.firmen.find(x => x.id === fa.id);
-      if (fa.kontostand !== null && fa.kontostand !== (vorher?.kontostand ?? null)) fa.stand = localDay();
+      if (fa.kontostand !== null && fa.kontostand !== (vorher?.kontostand ?? null)) { fa.stand = localDay(); neueStaende.push({ id: fa.id, kontostand: fa.kontostand }); }
     }
     // Über der Grenze: ablehnen, den Bestand unverändert lassen (in der Sperre geprüft).
     grenze = ueberGrenze(f, alt);
@@ -146,6 +161,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: false, error: nein.fehler, ...(nein.konflikte ? { konflikte: nein.konflikte } : {}), ...aktuell, stand: aktuell }, { status: nein.status });
   }
   if (grenze) return NextResponse.json({ ok: false, error: grenze }, { status: istGrenzFehler(grenze) ? 413 : 400 });
+  await insRegister(neueStaende, zugang.person);
   const stand = mitFassung(sauberFile(next));
   return NextResponse.json({ ok: true, angewandt, ...stand, stand });
 }

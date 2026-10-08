@@ -93,8 +93,9 @@ export const ZIEL_QUELLEN_BUSINESS = ['ug.frei', 'kdv.bjoern'];
 export function businessSicht(d: FinanzDaten): FinanzDaten {
   const protokoll = d.protokoll.filter(p => protokollBusiness(p, d));
   // Ampel-Schwellen sind gemeinsam mit Privat (Luft, Notgroschen) — nicht in der Business-Sicht; Steuern und Darlehen nur gefiltert.
-  // Alte Handwerte (`handAlt`, nur Abschluss/Selbstständigkeit) sind privat.
-  const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, handAlt: _handAlt, ...rest } = d;
+  // Alte Handwerte (`handAlt`, nur Abschluss/Selbstständigkeit) sind privat; das Ist aus dem Konten-Register (`kontenIst`: Privat-Konten,
+  // Selbstständigkeit, 08.10.) ebenso — die Business-Sicht trägt es nie.
+  const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, handAlt: _handAlt, kontenIst: _kontenIst, ...rest } = d;
   const steuern = nurBusinessSteuern(d.steuern);
   const darlehen = (d.darlehen ?? []).map(darlehenFuerBusiness).filter((l): l is NonNullable<typeof l> => !!l);
   return {

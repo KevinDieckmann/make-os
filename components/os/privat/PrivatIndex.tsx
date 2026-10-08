@@ -6,14 +6,16 @@
 // Ansicht ist die gemeinsame aller Indizes (IndexAnsicht); eigen ist nur die
 // Rücklage-Karte.
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, feld, LEUCHT, Hinweis } from '../ui';
 import { IndexAnsicht, type IndexDaten } from '../kennzahlen/IndexAnsicht';
 
 export const PRIVAT_FARBE: Record<string, string> = { rl: LEUCHT.geld, ab: LEUCHT.achtung, vs: LEUCHT.schlaf };
 
-interface Antwort extends IndexDaten { ok: boolean; frisch: boolean; ruecklage: { betrag: number; stand: string; von: string } | null; fehler?: string }
+interface Antwort extends IndexDaten { ok: boolean; frisch: boolean; ruecklage: { betrag: number; stand: string; von: string; quelle?: 'register' } | null; fehler?: string }
 
 const senden = (body: Record<string, unknown>) =>
   fetch('/api/privat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
@@ -56,6 +58,8 @@ function RuecklageKarte({ r, onGespeichert }: { r: Antwort['ruecklage']; onGespe
         <Knopf farbe={LEUCHT.geld} typ="submit">Speichern</Knopf>
       </form>
       {meldung && <div style={{ marginTop: 10 }}><Hinweis art={meldung.ok ? 'gut' : 'kritisch'}>{meldung.text}</Hinweis></div>}
+      {/* Konten-Register (08.10.): führt es Tagesgeld-Konten mit Stand, gilt deren Summe — die Eintragung hier bleibt gespeichert, zählt dann aber nicht. */}
+      {r?.quelle === 'register' && <div style={{ marginTop: 10 }}><Hinweis art="info">Gilt jetzt: die Tagesgeld-Konten aus dem Konten-Register ({Math.round(r.betrag / 100).toLocaleString('de-DE')} €). Stände pflegt ihr unter <Link href={WEG.kontenRegister('privat')} style={{ color: 'inherit' }}>Konten & Buchungen</Link>.</Hinweis></div>}
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Was sofort verfügbar ist (Tagesgeld, Notgroschen) — ohne Depot und Altersvorsorge. Die Kontoauszüge enthalten keine Kontostände, deshalb tragt ihr die Rücklage hier ein; einmal im Monat aktualisieren reicht.</div>
     </Karte>
   );

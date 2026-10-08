@@ -65,6 +65,7 @@ const R = {
   deal: () => import('@/app/api/crm/deal/route') as Promise<Modul>,
   gesellschaften: () => import('@/app/api/gesellschaften/route') as Promise<Modul>,
   eroeffnung: () => import('@/app/api/business/eroeffnung/route') as Promise<Modul>,
+  konten: () => import('@/app/api/finanzen/konten/route') as Promise<Modul>,
   ziele: () => import('@/app/api/state/ziele/route') as Promise<Modul>,
   nordstern: () => import('@/app/api/planung/nordstern/route') as Promise<Modul>,
   meilensteine: () => import('@/app/api/state/meilensteine/route') as Promise<Modul>,
@@ -382,6 +383,12 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await rufe(R.eroeffnung(), 'POST', '/api/business/eroeffnung', LENA, { aktion: 'setzen', firma: 'ug', stichtag: `${heute.slice(0, 7)}-01`, kontostand: 48000,
     forderungen: [{ name: 'Nordwerk (Beispiel)', betrag: 4165, faellig: tagPlus(heute, 10) }], verbindlichkeiten: [{ name: 'Kanzlei (Beispiel)', betrag: 535.5, faellig: tagPlus(heute, 20) }], notiz: 'Beispiel-Eröffnung (Demo)' });
   schritt('0-Punkt (Eröffnung)', 1);
+  // Konten-Register (08.10.): die bisherigen Stände einmal übernehmen (wie der Knopf „Übernahme ansehen“ → „Übernehmen“) und ein Tagesgeld des
+  // Haushalts dazu (die Rücklage im Privat-Index) — erfundene Beträge, über die Route wie in der Oberfläche.
+  const kontenVorschau = await rufe(R.konten(), 'GET', '/api/finanzen/konten?uebernahme=1', LENA);
+  await rufe(R.konten(), 'POST', '/api/finanzen/konten', LENA, { aktion: 'uebernahme', basis: kontenVorschau.basis });
+  await rufe(R.konten(), 'POST', '/api/finanzen/konten', LENA, { ops: [{ op: 'konto-neu', konto: { name: 'Tagesgeld (Beispiel)', art: 'tagesgeld', ort: 'gemeinsam', bank: 'Beispielbank' }, stand0: { betrag: 15000, datum: heute } }] });
+  schritt('Konten-Register', 2);
 
   // 14) Familie & Gesundheit — harmlos und minimal.
   await rufe(R.familie(), 'PATCH', '/api/familie', LENA, { ops: [

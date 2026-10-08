@@ -44,6 +44,9 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('finanzplanung-privat', 'Finanzen · Planung Privat (alles)', WEG.finanzplanung('privat'), 'privat'),
   s('rechnungen', 'Finanzen · Rechnungen & Zahlungen', WEG.rechnungen(), 'business'),
   s('liquiditaet', 'Finanzen · Liquidität', WEG.liquiditaet(), 'business'),
+  // Konten-Register (08.10.): keine eigene Seite — die Karte „Konten“ steht unter Privat › Konten & Buchungen bzw. Business › Liquidität.
+  s('konten-privat', 'Finanzen · Konten & Kontostände (Privat, gemeinsam, Selbstständigkeit)', WEG.kontenRegister('privat'), 'privat'),
+  s('konten-business', 'Finanzen · Konten & Kontostände der Gesellschaften', WEG.kontenRegister('business'), 'business'),
   s('buchungen', 'Finanzen · Buchungen der Gesellschaften', WEG.buchungen(), 'business'),
   s('controlling', 'Finanzen · Controlling & Ziele', WEG.controlling(), 'business'),
   s('grundlage', 'Finanzen · Altbestand · Grundlage (Kassenbuch)', WEG.grundlage(), 'privat'),

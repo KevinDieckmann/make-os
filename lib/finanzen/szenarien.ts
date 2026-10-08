@@ -239,9 +239,15 @@ export function rechneMit(d: FinanzDaten, ps: Planszenario | null, treiber?: Sze
 export function jetztMonat(d: Pick<FinanzDaten, 'einstellungen' | 'monate'>): number {
   return Math.min(d.monate.length, Math.max(1, planMonat(`${d.einstellungen.heute.slice(0, 7)}-01`)));
 }
-/** Summe der bekannten Kontostände einer Einheit (Verpflichtungen › Kontostände) — Kern-Name oder Kennung der einen Liste (kdc = selbststaendigkeit). */
-export function kontostand(d: Pick<FinanzDaten, 'posten'>, einheit: KernEinheit | FinanzOrt): { summe: number; bekannt: number; fehlen: number } {
+/**
+ * Summe der bekannten Kontostände einer Einheit (Verpflichtungen › Kontostände) — Kern-Name oder Kennung der einen Liste (kdc = selbststaendigkeit).
+ * Konten-Register (08.10., R4 „Haushalt führt das Ist, Finanzplanung liest daraus“): führt das Register die Privat-Konten bzw. die Selbstständigkeit
+ * (`kontenIst`, beim Lesen gesetzt), gilt dessen Summe — sonst die Posten „Konto“ wie bisher (bit-gleich).
+ */
+export function kontostand(d: Pick<FinanzDaten, 'posten' | 'kontenIst'>, einheit: KernEinheit | FinanzOrt): { summe: number; bekannt: number; fehlen: number } {
   const e: KernEinheit = einheit === 'kdc' ? 'selbststaendigkeit' : einheit;
+  const ist = e === 'privat' ? d.kontenIst?.privat : e === 'selbststaendigkeit' ? d.kontenIst?.selbststaendigkeit : undefined;
+  if (ist) return { summe: ist.betrag, bekannt: ist.konten, fehlen: ist.fehlen };
   const k = d.posten.filter(p => p.art === 'konto' && p.einheit === e);
   const b = k.filter(p => p.betrag != null);
   return { summe: b.reduce((s, p) => s + (p.betrag ?? 0), 0), bekannt: b.length, fehlen: k.length - b.length };

@@ -154,7 +154,13 @@ export interface Aenderung {
 }
 
 /** Kontostand-Startwert einer Gesellschaft aus der Eröffnung: Plan-Monat (1 = Okt 26; ein Stichtag vor dem Plan → 1) und Betrag. */
-export interface KontoStart { monat: number; betrag: number; stichtag: string }
+export interface KontoStart {
+  monat: number; betrag: number; stichtag: string;
+  /** Seit 08.10. (Konten-Register): `register` = der Start kommt aus einem jüngeren Kontostand im Register, nicht aus dem 0-Punkt (die Ansicht markiert dann keine Monate „vor Eröffnung“). */
+  quelle?: 'register';
+}
+/** Ist-Kontostand aus dem Konten-Register (lib/finanzen/konten/register.ts): Summe der geltenden Stände, jüngster/ältester Stand, Konten mit und ohne Stand. */
+export interface KontoIstWert { betrag: number; stand: string; aeltester: string; konten: number; fehlen: number }
 
 export interface FinanzDaten {
   version: 3; stand: string; monate: string[]; aktiv: string;
@@ -187,6 +193,12 @@ export interface FinanzDaten {
    * Operationen darauf gibt es nicht (`ERLAUBT`). Fehlt es, rechnet der Kern bit-genau wie vorher. Ein Handwert `ug.konto:<m>`/`kdv.konto:<m>` gewinnt.
    */
   eroeffnung?: Partial<Record<'ug' | 'kdv', KontoStart>>;
+  /**
+   * Konten-Register (08.10., Kevin R4: „Haushalt führt das Ist, Finanzplanung liest daraus“): Ist-Kontostände des Haushalts (privat + gemeinsam) und der
+   * Selbstständigkeit. NIE gespeichert — der Server setzt das Feld beim Lesen (`ladeFinanzplan`), Operationen darauf gibt es nicht (`ERLAUBT`), die
+   * Business-Sicht trägt es nie. Fehlt es, rechnet alles bit-genau wie vorher (die Formeln des Kerns lesen es nicht — nur `kontostand()` in szenarien.ts).
+   */
+  kontenIst?: { privat?: KontoIstWert; selbststaendigkeit?: KontoIstWert };
   schulden: Schuld[];
   /** Wer hat eine Planzelle zuletzt geändert: key → {wer, wann}. */
   meta: Record<string, { wer: string; wann: string }>;

@@ -84,6 +84,10 @@ export const WEG = {
   zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', z: id })),
   planposten: (id?: string) => q('/os/finanzen', { s: 'liquiditaet', space: 'business', p: id }),
   kontostaende: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende'),
+  /** Konten-Register (08.10.): Privat = Karte „Konten“ unter Privat › Konten & Buchungen; Business = unter Liquidität (#kontostaende). */
+  kontenRegister: (bereich: 'privat' | 'business' = 'privat') => (bereich === 'business'
+    ? q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende')
+    : q('/os/finanzen', { s: 'privat', t: 'buchungen', space: 'privat' }, 'konten')),
   liquiditaet: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }),
   controlling: () => q('/os/finanzen', { s: 'controlling', space: 'business' }),
   /** Buchungen der Gesellschaften (Business) bzw. — mit `ort` einer Privat-Einheit, z. B. der Selbstständigkeit — unter Privat. */

@@ -8,6 +8,8 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { finanzOrtName, type Gesellschaftskennung } from '@/lib/einheiten';
+import { mitRegister, type GesellschaftsKasse } from '@/lib/finanzen/konten/register';
+import { registerKasseLaden, eroeffnungImRegister, eroeffnungZurueckgenommen } from '@/lib/finanzen/konten/server';
 import {
   EROEFFNUNG_BESTAND, abEroeffnung, archivZahlen, eroeffnungPruefen, geltendeEroeffnungen, rechnungVor, zahlungVor, planpostenVor, abschlussVor, eroeffnungVon,
   type AbEroeffnung, type ArchivZahl, type Eroeffnung, type EroeffnungsBestand, type FinanzBundle, type Geltende,
@@ -24,9 +26,13 @@ export async function geltendeLaden(): Promise<Geltende> {
   return geltendeEroeffnungen(await ladeEroeffnungen());
 }
 
-/** DIE Server-Hilfe: einen Bestand (Konten, Rechnungen, Zahlungen, Planposten) ab dem 0-Punkt rechnen. */
-export async function mitEroeffnung<B extends FinanzBundle>(b: B, g?: Geltende): Promise<AbEroeffnung<B>> {
-  return abEroeffnung(b, g ?? await geltendeLaden());
+/**
+ * DIE Server-Hilfe: einen Bestand (Konten, Rechnungen, Zahlungen, Planposten) ab dem 0-Punkt rechnen. Seit 08.10. zuerst mit dem Konten-Register
+ * überlagert (lib/finanzen/konten: je Gesellschaft, die das Register führt, gilt dessen Kasse als Kontostand), dann der 0-Punkt wie bisher.
+ * Ohne Register-Einträge: genau wie vorher (dieselben Listen).
+ */
+export async function mitEroeffnung<B extends FinanzBundle>(b: B, g?: Geltende, kasse?: GesellschaftsKasse): Promise<AbEroeffnung<B>> {
+  return abEroeffnung(mitRegister(b, kasse ?? await registerKasseLaden()), g ?? await geltendeLaden());
 }
 
 export type Schreiben = { ok: true; eintrag: Eroeffnung | null; geltend: Geltende } | { ok: false; status: 400 | 409; fehler: string; geltend?: Geltende };
@@ -52,7 +58,11 @@ export async function speichereEroeffnung(roh: Record<string, unknown>, von: str
     return { eintraege: neu };
   });
   const fertig = ergebnis as Schreiben; // im Rückruf gesetzt — TS sieht das nicht
-  if (fertig.ok && fertig.eintrag) await protokolliere(EROEFFNUNG_BESTAND, [{ liste: 'eintraege', op: 'neu', id: fertig.eintrag.id, felder: Object.keys(p.daten) }], { art: 'person', person: von }, jetzt);
+  if (fertig.ok && fertig.eintrag) {
+    await protokolliere(EROEFFNUNG_BESTAND, [{ liste: 'eintraege', op: 'neu', id: fertig.eintrag.id, felder: Object.keys(p.daten) }], { art: 'person', person: von }, jetzt);
+    // Konten-Register (08.10.): führt es die Gesellschaft schon, ist der Anfangsbestand dort ein Stand am Stichtag (sonst bleibt der 0-Punkt die Quelle).
+    await eroeffnungImRegister(fertig.eintrag, von, jetzt);
+  }
   return fertig;
 }
 
@@ -74,7 +84,11 @@ export async function nimmEroeffnungZurueck(firma: Gesellschaftskennung, von: st
     ergebnis = { ok: true, eintrag: null, geltend: geltendeEroeffnungen(neu) };
     return { eintraege: neu };
   });
-  if (ergebnis.ok && id) await protokolliere(EROEFFNUNG_BESTAND, [{ liste: 'eintraege', op: 'geaendert', id, felder: ['zurueckgenommenAm'] }], { art: 'person', person: von }, jetzt);
+  if (ergebnis.ok && id) {
+    await protokolliere(EROEFFNUNG_BESTAND, [{ liste: 'eintraege', op: 'geaendert', id, felder: ['zurueckgenommenAm'] }], { art: 'person', person: von }, jetzt);
+    // Konten-Register (08.10.): der Stand dieses 0-Punkts zählt dort ebenso nicht mehr (bleibt in der Historie).
+    await eroeffnungZurueckgenommen(id, firma, von, jetzt, (ergebnis as Schreiben).geltend?.[firma] ?? null);
+  }
   return ergebnis;
 }
 

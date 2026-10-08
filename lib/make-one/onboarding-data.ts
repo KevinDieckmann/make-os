@@ -572,7 +572,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Privatkonten und Kontoauszüge',
     warum: 'Die Haushaltsfinanzen rechnen mit euren Buchungen. Jede Person trägt ihre Konten ein, gemeinsame nur einmal. (Gilt nur für Konten mit Zugang zu den Privat-Finanzen.)',
     wie: [
-      'Privat › Konten & Buchungen: eigene Konten mit Inhaber anlegen, gemeinsame einmal.',
+      'Privat › Konten & Buchungen: eigene Konten mit Inhaber anlegen, gemeinsame einmal. In der Karte „Konten“ den Stand mit Datum eintragen (bisherige Stände vorher einmal übernehmen).',
       'Kontoauszüge einlesen und die Kontrollsumme prüfen. Den Zeitraum gemeinsam festlegen.',
       'Bis zur Bank-Anbindung (vorgezogen in Phase 1) ist das der monatliche Weg.',
     ],
@@ -1069,8 +1069,8 @@ export const altePerson = (altId: string): string | null => (/^(kevin|malin)-/.e
 export interface DatenkartenZeile { fakt: string; hier: string; nicht: string; href?: string; etappe: number }
 export const DATENKARTE: DatenkartenZeile[] = [
   { fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3 },
-  { fakt: 'Kontostand einer Gesellschaft danach', hier: 'Liquidität › Kontostände, Datum ab 02.10.', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3 },
-  { fakt: 'Kontostand privat', hier: 'Finanzplanung › Privat (Posten „Konto“)', nicht: 'Haushalt (kennt keinen Saldo)', href: WEG.finanzplanung('privat'), etappe: 5 },
+  { fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3 },
+  { fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
   { fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.eroeffnung(), etappe: 3 },
   { fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.rechnungen(), etappe: 3 },
   { fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3 },

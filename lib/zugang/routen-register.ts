@@ -253,6 +253,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'finanzplan': r('GET,PATCH', 'finanz-business', 'Finanzplanung je Haushalt mit Sicht aus dem Konto (Privat für business-Konten serverseitig gefiltert); Business-Sicht schreibt nur Business-Pfade und nie den privaten Teil (403, lib/finanzen/plan/business-schreiben.ts), Kennzahlen je Bereich mit dessen Arbeitsplan.'),
   'finanzplan/import': r('POST', 'finanz-privat', 'Import in die Finanzplanung des eigenen Haushalts — nur voller Zugang.'),
   'finanzplan/vorschlaege': r('GET', 'finanz-privat', 'Vorschläge aus CRM für die Finanzplanung des eigenen Haushalts.'),
+  // Konten-Register (08.10.): EIN Ort für Konten und Kontostände. Sicht aus dem Konto wie die Finanzplanung (`wirksameSicht`): „nur Business“ und der
+  // Business-Bereich bekommen nur Konten der Business-Gesellschaften, schreiben auf andere → 403; Dienstweg → 403 (ein Mensch trägt ein).
+  'finanzen/konten': r('GET,POST', 'finanz-business', 'Konten-Register je Haushalt (Konto → Gesellschaft/privat/gemeinsam, Stände mit Datum, IBAN nur maskiert) mit Sicht aus dem Konto; Privat/gemeinsam nur volle Mitglieder, Schreiben außerhalb der Sicht 403, Dienstweg 403, Stand je Konto (409), Übernahme nur mit Vorschau-Kennung.'),
   'finanzchef': r('GET,POST', 'haushalt', 'Head of Finance: Business der Instanz für den Haushalt; Haushaltsteil zusätzlich über haushaltVon.'),
   'haushalt': r('GET,PATCH', 'finanz-privat', 'Haushaltsfinanzen je Haushalt.'),
   'haushalt/aktion': r('POST', 'finanz-privat', 'Aktionen in den Haushaltsfinanzen je Haushalt.'),
