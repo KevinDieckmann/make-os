@@ -3,8 +3,10 @@
 // ─── MAKE OS — Onboarding „Einrichtung“ ─────────────────────────────────────
 // Kevin 08.10. spät: „Ein komplettes Onboarding mit Erklärung, sodass wir alles wirklich sauber verbinden können. Auch alle Zahlen,
 // Daten, Fakten sollen sauber rein.“ Paket B0 (ONBOARDING_PLAN.md A5) + Nachbesserung nach der Gegenprüfung (08.10. spät):
-//   · Die Übersicht zeigt JEDER Person alle IHRE Schritte (eigene + gemeinsame, beim Inhaber die Instanz) — nach dem Ablauf (R1):
-//     Samstag-Kern zuerst (offener Freitag davor), dann „einzeln bis 16.10.“, darin in Etappen-Reihenfolge. Die Spurseiten bleiben Filter.
+//   · Die Übersicht zeigt JEDER Person alle IHRE Schritte (eigene + gemeinsame, bei Inhabern die Instanz) — nach dem Ablauf (R1):
+//     Samstag-Kern zuerst (offener Freitag davor), dann „einzeln bis 16.10.“, darin in Etappen-Reihenfolge.
+//   · B1 (09.10.): Ebenen statt Namen — die Seiten /os/onboarding/{ich,gemeinsam,instanz} sind Filter je Ebene (`EbeneView`); die Instanz
+//     zeigt ihre Schritte nur Inhabern (jedem Inhaber). Die früheren Seiten mit Personen-Kennungen leiten in next.config.mjs weiter.
 //   · Ein roter Befund schlägt jedes Häkchen; Schritte mit `bestaetigen` brauchen Prüfung UND Häkchen; alte Häkchen zählen nie
 //     („früher abgehakt — bitte bestätigen“). Die Anleitung bleibt bei erledigten Schritten aufklappbar.
 // Daten aus /api/onboarding; Inhaber-Schritte und Privat-Schritte prüft der Server (403) — die Oberfläche zeigt es nur an.
@@ -13,10 +15,10 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  ABLAUF, DATENKARTE, ETAPPEN, GRUPPEN, SPUREN, fortschrittVon, gruppeVon, istFertig, schritteFuer, schritteVon, sichtbarFuer, spurFuerRolle, werText,
-  type Gruppe, type Kontext, type Schritt, type Spur,
+  ABLAUF, DATENKARTE, EBENEN, ETAPPEN, GRUPPEN, ebeneMitId, fortschrittVon, gruppeVon, istFertig, schrittFuer, schritteDerEbene, schritteFuer, sichtbarFuer, werText,
+  type Ebene, type Gruppe, type Kontext, type Schritt,
 } from '@/lib/make-one/onboarding-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Leerzustand, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
 
 const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
 const absatz: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: 0 };
@@ -194,29 +196,51 @@ function Meldung({ text }: { text: string }) {
   return text ? <Hinweis art="achtung" rolle="alert">{text}</Hinweis> : null;
 }
 
-export function SpurView({ spur }: { spur: Exclude<Spur, 'ich'> }) {
+/**
+ * Die Schritte einer Ebene, die diese Person auf der Ebenen-Seite sieht: „Meine Einrichtung“ und Instanz genau wie in der Übersicht
+ * (`schrittFuer` — Rolle, eingeladen, Zahl der Konten); „Gemeinsam“ alle sichtbaren (auch die, die nur ein Inhaber abhakt — alle sehen
+ * den Stand). Rein, aus dem Konto — nie ein Name.
+ */
+export function schritteAufEbene(ebene: Ebene, ich: Kontext | null): Schritt[] {
+  return schritteDerEbene(ebene).filter(s => (ebene === 'gemeinsam' ? sichtbarFuer(s, ich) && !(s.nurMitMehreren && ich && ich.personen < 2) : schrittFuer(s, ich)));
+}
+
+export function EbeneView({ ebene }: { ebene: Ebene }) {
   const { z, haken, meldung } = useOnboarding();
-  const meta = SPUREN.find(s => s.id === spur)!;
-  // Filter: die Schritte dieser Spur, die es für das eigene Konto gibt (Privat-Finanzen, Altbestand) — Rolle egal.
-  const schritte = schritteVon(spur).filter(s => sichtbarFuer(s, z?.ich ?? null));
-  const meine = z?.ich ? spurFuerRolle(z.ich.inhaber) === spur : false;
+  const meta = ebeneMitId(ebene)!;
+  const ich = z?.ich ?? null;
+  // Instanz: nur Inhaber (jeder Inhaber). Die Schrittliste ist nichts Geheimes — die Prüfungen filtert ohnehin der Server
+  // (andere sehen nur „Instanz eingerichtet: ja/nein“); hier zeigt die Seite Nicht-Inhabern nur den Hinweis.
+  const gesperrt = !!meta.nurInhaber && !!z && !ich?.inhaber;
+  const schritte = gesperrt ? [] : schritteAufEbene(ebene, ich);
+  const f = fortschrittVon(schritte, z);
+  const weiter = [{ id: 'alles', titel: 'Einrichtung — alle deine Schritte', satz: 'Freitag, Samstag und „einzeln bis 16.10.“ in der richtigen Reihenfolge.', href: '/os/onboarding' },
+    ...EBENEN.filter(e => e.id !== ebene && (!e.nurInhaber || !!ich?.inhaber))];
   return (
     <Seite titel={meta.titel} unter={meta.satz} rechts={<Knopf leise href="/os/onboarding">Einrichtung ›</Knopf>}>
       <Meldung text={meldung} />
-      <Karte i={0} ton={LEUCHT.schlaf}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={meine ? <Chip farbe={LEUCHT.gut}>deine Spur</Chip> : undefined}>Stand der Spur</Ueberschrift>
-        <Fortschritt schritte={schritte} z={z} gross />
-        <p style={{ ...absatz, marginTop: 12 }}>
-          Ein Filter auf die Einrichtung. {spur !== 'fundament' && 'Schritte mit „jede Person“ gehören zu „Meine Einrichtung“: Prüfung und Häkchen gelten immer der Person, die gerade angemeldet ist. '}
-          Den ganzen Ablauf in der richtigen Reihenfolge zeigt die <Link href="/os/onboarding" style={stark}>Einrichtung ›</Link>
-        </p>
-      </Karte>
-      <NachEtappen schritte={schritte} z={z} haken={haken} start={1} mitWann />
-      {spur === 'kevin' && <DatenkarteKarte i={MAX_I} />}
+      {gesperrt ? (
+        <Karte i={0}>
+          <Leerzustand symbol="⚙" titel="Das richten die Inhaber ein" aktion={<Knopf href="/os/onboarding">Zur Einrichtung</Knopf>}>Server, Sicherheit und Einstellungen der Instanz pflegen die Inhaber. Ob die Instanz eingerichtet ist, siehst du in deiner Einrichtung.</Leerzustand>
+        </Karte>
+      ) : (
+        <>
+          <Karte i={0} ton={LEUCHT.schlaf}>
+            <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${f.fertig} von ${f.gesamt}`}>Stand</Ueberschrift>
+            <Fortschritt schritte={schritte} z={z} gross />
+            <p style={{ ...absatz, marginTop: 12 }}>
+              Ein Filter auf die Einrichtung. {ebene === 'ich' ? 'Prüfung und Häkchen gelten immer der Person, die gerade angemeldet ist. ' : ebene === 'gemeinsam' ? 'Eine Person trägt ein, alle sehen den Stand; Schritte mit „Inhaber“ hakt ein Inhaber ab. ' : ''}
+              Den ganzen Ablauf in der richtigen Reihenfolge zeigt die <Link href="/os/onboarding" style={stark}>Einrichtung ›</Link>
+            </p>
+          </Karte>
+          <NachEtappen schritte={schritte} z={z} haken={haken} start={1} mitWann />
+          {ebene === 'gemeinsam' && <DatenkarteKarte i={MAX_I} />}
+        </>
+      )}
       <Karte i={MAX_I}>
         <Ueberschrift>Weiter</Ueberschrift>
         <Liste>
-          {[{ id: 'alles', titel: 'Einrichtung — alle deine Schritte', satz: 'Freitag, Samstag und „einzeln bis 16.10.“ in der richtigen Reihenfolge.', href: '/os/onboarding' }, ...SPUREN.filter(s => s.id !== spur && s.id !== 'fundament')].map(s => (
+          {weiter.map(s => (
             <Link key={s.id} href={s.href} style={{ textDecoration: 'none', color: 'inherit' }}>
               <Zeile onClick={() => {}} titel={s.titel} unter={s.satz} />
             </Link>
@@ -238,7 +262,6 @@ export function OnboardingUebersicht() {
   const { z, haken, meldung } = useOnboarding();
   const meine = schritteFuer(z?.ich ?? null);
   const f = fortschrittVon(meine, z);
-  const eigeneSpur = z?.ich ? spurFuerRolle(z.ich.inhaber) : null;
   const gruppen = abschnitte(meine, z);
   return (
     <Seite titel="Einrichtung" unter="Alles verbinden und eure echten Zahlen eintragen — Schritt für Schritt, mit Erklärung.">
@@ -257,7 +280,7 @@ export function OnboardingUebersicht() {
         <Ueberschrift>So läuft die Einrichtung</Ueberschrift>
         <Liste>{ABLAUF.map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
         <p style={{ ...absatz, marginTop: 10 }}>
-          Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur der Inhaber), <strong style={stark}>Gemeinsam</strong> (Haushalt und
+          Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur die Inhaber), <strong style={stark}>Gemeinsam</strong> (Haushalt und
           Firmen — alle sehen den Stand) und <strong style={stark}>Meine Einrichtung</strong> (jede Person für sich). Prüfungen zeigen nur ja/nein oder Zähler — nie
           Werte. Nichts geht ohne euren Klick nach außen; Schritte am Server zeigen nur den Befehl, nie einen Wert.
         </p>
@@ -278,21 +301,18 @@ export function OnboardingUebersicht() {
       })}
 
       <Karte i={MAX_I} flach>
-        <Ueberschrift>Nach Spuren</Ueberschrift>
+        <Ueberschrift>Nach Ebenen</Ueberschrift>
         <p style={{ ...absatz, marginBottom: 10 }}>Dieselben Schritte als Filter — die Regeln fürs Nebeneinander stehen unter <Link href="/os/onboarding/zusammenarbeit" style={stark}>Zusammenarbeit</Link>.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(268px, 100%), 1fr))', gap: 14 }}>
-          {SPUREN.filter(s => s.id !== 'fundament').map(s => {
-            const liste = schritteVon(s.id).filter(x => sichtbarFuer(x, z?.ich ?? null));
-            return (
-              <Link key={s.id} href={s.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                <Karte i={MAX_I} style={{ height: '100%' }}>
-                  <Ueberschrift rechts={eigeneSpur === s.id ? <Chip farbe={LEUCHT.gut}>deine Spur</Chip> : <span>›</span>}>{s.titel}</Ueberschrift>
-                  <p style={{ ...absatz, margin: '0 0 12px' }}>{s.satz}</p>
-                  <Fortschritt schritte={liste} z={z} />
-                </Karte>
-              </Link>
-            );
-          })}
+          {EBENEN.filter(e => !e.nurInhaber || !!z?.ich?.inhaber).map(e => (
+            <Link key={e.id} href={e.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+              <Karte i={MAX_I} style={{ height: '100%' }}>
+                <Ueberschrift rechts={<span>›</span>}>{e.titel}</Ueberschrift>
+                <p style={{ ...absatz, margin: '0 0 12px' }}>{e.satz}</p>
+                <Fortschritt schritte={schritteAufEbene(e.id, z?.ich ?? null)} z={z} />
+              </Karte>
+            </Link>
+          ))}
         </div>
       </Karte>
       <DatenkarteKarte i={MAX_I} />

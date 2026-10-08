@@ -30,7 +30,7 @@ delete process.env.ICLOUD_PERSON;
 afterAll(async () => { await fs.rm(wurzel, { recursive: true, force: true, maxRetries: 3 }); });
 
 const D = await import('@/lib/make-one/onboarding-data');
-const { SCHRITTE, ZONEN, ETAPPEN, DATENKARTE, ABLAUF, SPUREN, ALT_ZU_NEU, schritteFuer, schritteVon, fortschrittVon, istPersoenlich, istFertig, gruppeVon, samstagMinuten, frueherErlaubt } = D;
+const { SCHRITTE, ZONEN, ETAPPEN, DATENKARTE, ABLAUF, EBENEN, ALT_ZU_NEU, schritteFuer, fortschrittVon, istPersoenlich, istFertig, gruppeVon, samstagMinuten, frueherErlaubt } = D;
 const { ALLE_PRUEFUNGEN, PERSOENLICHE_PRUEFUNGEN, GEMEINSAME_PRUEFUNGEN, INHABER_PRUEFUNGEN, INSTANZ_PRUEFUNGEN, pruefeAlles, fortschritt, kontextFuer } = await import('@/lib/onboarding-status');
 const { hakenSicht, hakenLesen, hakenSetzen } = await import('@/lib/onboarding-haken');
 
@@ -67,11 +67,11 @@ const INHABER = { inhaber: true, personen: 2, privatFinanzen: true, altbestand: 
 const ZWEITE = { inhaber: false, personen: 2, privatFinanzen: true, altbestand: true };
 
 const TEXT_VERBOTEN = [/localhost/i, /\.env\.local/, /tailscale/i, /ipconfig/, /Kevins-IP/i, /auch Gesundheit/i, /npm install/, /start\.sh/, /iCloud-Ordner/i, /\.data\b/, /fd_p/];
-/** Nur die Texte eines Schritts (nicht Kennung und Adresse — die alten Spur-Adressen /os/onboarding/kevin|malin bleiben bewusst). */
+/** Nur die Texte eines Schritts (nicht Kennung und Adresse). */
 const texte = (s: { titel: string; warum: string; wie: string[]; danach?: string; befehl?: string; wo?: { label: string } }) => [s.titel, s.warum, ...s.wie, s.danach ?? '', s.befehl ?? '', s.wo?.label ?? ''].join(' \n ');
 const alleTexte = () => [
   ...SCHRITTE.map(texte), ...ETAPPEN.flatMap(e => [e.titel, e.satz, ...(e.hinweise ?? []).flatMap(h => [h.titel, h.satz, h.wann])]),
-  ...DATENKARTE.map(d => `${d.fakt} ${d.hier} ${d.nicht}`), ...ABLAUF.map(a => `${a.wann} ${a.was}`), ...SPUREN.map(s => `${s.titel} ${s.satz}`),
+  ...DATENKARTE.map(d => `${d.fakt} ${d.hier} ${d.nicht}`), ...ABLAUF.map(a => `${a.wann} ${a.was}`), ...EBENEN.map(s => `${s.titel} ${s.satz}`),
   ...ZONEN.map(z => JSON.stringify(z)), ...Object.values(D.GRUPPEN).map(g => `${g.titel} ${g.satz}`),
 ];
 
@@ -126,7 +126,11 @@ describe('Onboarding-Daten', () => {
     for (let e = 0; e <= 8; e++) expect(SCHRITTE.some(s => s.etappe === e), `Etappe ${e}`).toBe(true);
     for (const s of SCHRITTE) { expect(texte(s)).not.toMatch(/telegram/i); expect(s.id).not.toMatch(/telegram|zulieferer/); }
     const hinweise = ETAPPEN.flatMap(e => e.hinweise ?? []).map(h => `${h.titel} ${h.satz} ${h.wann}`).join(' ');
-    for (const m of [/WhatsApp/, /Phase 1/, /Zulieferer/, /Update 2/]) expect(hinweise).toMatch(m);
+    for (const m of [/WhatsApp/, /Phase 1/, /Zulieferer/]) expect(hinweise).toMatch(m);
+    // Update 2 (16.10.): die zweite gleichwertige Inhaberin ist kein Hinweis mehr, sondern gebaut — zwei Schritte (Rolle in der App, eigener SSH-Schlüssel).
+    expect(hinweise).not.toMatch(/Update 2/);
+    expect(schritt('weitere-inhaber')).toMatchObject({ ebene: 'instanz', nurInhaber: true, nurMitMehreren: true, pruefung: 'inhaber' });
+    expect(schritt('ssh-zweiter-schluessel').befehl).toContain('deploy/ssh-schluessel-hinzufuegen.sh');
   });
 
   it('Entscheidungen 08.10. stehen in den Texten (Stichtag, Haushalt führt das Ist, Verantwortlicher)', () => {
@@ -312,8 +316,8 @@ describe('Onboarding-Häkchen (Route): je Person, sicherer Schreibweg', () => {
     expect((await fs.readdir(DATEN)).sort()).toEqual(vorher);
     expect(e.befunde['zwei-faktor'].erfuellt).toBe(true);
     expect(z.befunde['zwei-faktor'].erfuellt).toBe(false);
-    expect(e.ich).toEqual({ inhaber: true, personen: 2, privatFinanzen: true, altbestand: true });
-    expect(z.ich).toEqual({ inhaber: false, personen: 2, privatFinanzen: true, altbestand: true });
+    expect(e.ich).toEqual({ inhaber: true, haupt: true, eingeladen: false, personen: 2, privatFinanzen: true, altbestand: true });
+    expect(z.ich).toEqual({ inhaber: false, haupt: false, eingeladen: true, personen: 2, privatFinanzen: true, altbestand: true });
     expect(z.befunde.altbestand).toBeUndefined();
   });
 
@@ -429,7 +433,7 @@ describe('Fortschritt, Übersicht und die Karte auf Heute', () => {
     expect(schritteFuer({ ...INHABER, personen: 1 }).some(s => s.nurMitMehreren)).toBe(false);
     for (const l of [inhaber, zweite]) for (let i = 1; i < l.length; i++) expect(l[i].etappe).toBeGreaterThanOrEqual(l[i - 1].etappe);
     // Übersicht: JEDE Person sieht alle ihre Schritte (eigene + gemeinsame + beim Inhaber Instanz und Inhaber-Spur).
-    for (const sp of ['fundament', 'kevin'] as const) for (const s of schritteVon(sp).filter(x => x.nurInhaber || x.spur === 'kevin')) if (!s.nurAltbestand) expect(inhaber).toContain(s);
+    for (const s of SCHRITTE.filter(x => x.nurInhaber && !x.nurAltbestand)) expect(inhaber).toContain(s);
     expect(lies('components/os/OnboardingView.tsx')).toContain('const meine = schritteFuer(z?.ich ?? null)');
   });
 

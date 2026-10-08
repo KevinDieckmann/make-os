@@ -94,6 +94,10 @@ const nextConfig = {
       { source: '/os/okr', destination: '/os/planung/jahr?space=business', permanent: false },
       // 06.10. (Inbox 2): die volle alte Inbox (Fächer/Screener/Zero) ist in der einen Inbox aufgegangen.
       { source: '/os/inbox/voll', destination: '/os/inbox', permanent: false },
+      // 09.10. (Onboarding B1 — Ebenen statt Namen): die Seiten der früheren Spuren mit Personen-Kennung sind weg. Die Inhaber-Spur
+      // war die ganze Einrichtung mit Inhaber-Schritten (→ Übersicht), die der zweiten Person „Meine Einrichtung“ (→ Ebene ich).
+      { source: '/os/onboarding/kevin', destination: '/os/onboarding', permanent: false },
+      { source: '/os/onboarding/malin', destination: '/os/onboarding/ich', permanent: false },
       // 08.10. (Phase 0, Kevin): die Vollansicht des Stapels (Protokoll, Rückgängig, Felder ändern) ist der Reiter „Protokoll“ der Freigaben.
       { source: '/os/stapel/voll', destination: '/os/stapel?t=protokoll', permanent: false },
       // 08.10. (Aufräumen Etappe 2 — Finanzen in höchstens zwei Ebenen, lib/finanzen/navigation.ts): die Nebenseiten sind Reiter bzw.

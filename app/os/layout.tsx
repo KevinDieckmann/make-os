@@ -10,7 +10,7 @@ import { ZoePanel } from '@/components/os/ZoePanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
 import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
-import { WillkommenMalin } from '@/components/os/WillkommenMalin';
+import { Willkommen } from '@/components/os/Willkommen';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
 import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
@@ -55,7 +55,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       {/* Netzwerken (03.10.): sendet liegengebliebene Erfassungen von JEDER Seite aus (Öffnen, Netz da, sichtbar, alle 30 s) und zählt sie für die Handy-Leiste. */}
       <NetzwerkenSender />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
-      <WillkommenMalin />
+      <Willkommen />
     </div>
   );
 }

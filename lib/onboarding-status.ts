@@ -5,8 +5,8 @@
 // Regeln (ONBOARDING_PLAN.md A1, Paket B0/B3 Teil 1, Nachbesserung 08.10. spät):
 //   · Prüfungen liefern NUR ja/nein und Zähler — nie Werte, Beträge, Adressen, Namen oder Gesundheitsinhalte.
 //   · Persönliche Prüfungen gelten IMMER nur der Person der Sitzung (nie einer anderen); ohne Person fehlen sie ganz.
-//   · Inhaber-Prüfungen (Altbestand) bekommt NUR die Inhaber-Sitzung; Instanz-Befunde (Server-Einstellungen) sehen alle anderen nur als
-//     „Instanz eingerichtet: ja/nein“.
+//   · Inhaber-Prüfungen (Altbestand) bekommt NUR die Sitzung des Haupt-Inhabers (der Altbestand ist seiner — seit 09.10. kann es mehrere
+//     Inhaber geben); Instanz-Befunde (Server-Einstellungen) sehen alle Nicht-Inhaber nur als „Instanz eingerichtet: ja/nein“.
 //   · „Verbunden UND gesund“: ein Zustand „getrennt“ oder „Anmeldung abgelehnt“ zählt nicht — und nichts ist grün ohne getane Arbeit.
 //   · Die Kartei nur über `kontakteFuerVerarbeitung` (Art. 18), Firmen-Posten nur über den 0-Punkt (`mitEroeffnung`), Ziele aus der
 //     Planung — nie aus einer Vorgabe im Code.
@@ -22,6 +22,7 @@ import { ladePostfaecher } from '@/lib/postfach/register';
 import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma } from '@/lib/einheiten';
 import { fortschrittVon, schritteFuer, type Kontext } from '@/lib/make-one/onboarding-data';
 import { hakenLesen } from '@/lib/onboarding-haken';
+import { hauptInhaber, istWirksamerInhaber, wirksameInhaber } from '@/lib/zugang/inhaber';
 
 export interface Befund { erfuellt: boolean; wert: string }
 
@@ -36,13 +37,13 @@ export const ALTBESTAND_BIS = '2026-10-09';
 
 /** Persönliche Prüfungen — IMMER nur für `person` (die Person der Sitzung), nie für eine andere. */
 export const PERSOENLICHE_PRUEFUNGEN = ['zwei-faktor', 'gesundheit-einwilligung', 'icloud', 'google', 'gmail', 'postfach', 'whoop', 'aufgaben-ich', 'zoe'] as const;
-/** Inhaber-Prüfungen — nur die Inhaber-Sitzung bekommt sie, nie eine andere Person. */
+/** Inhaber-Prüfungen — nur die Sitzung des Haupt-Inhabers bekommt sie (sein Altbestand), nie eine andere Person. */
 export const INHABER_PRUEFUNGEN = ['altbestand'] as const;
 /** Instanz-Befunde (Server-Einstellungen): an andere als den Inhaber nur „Instanz eingerichtet: ja/nein“. */
 export const INSTANZ_PRUEFUNGEN = ['sicherung', 'pepper', 'adresse', 'whoop-konfig', 'google-konfig'] as const;
 /** Prüfungen über die Instanz bzw. den gemeinsamen Haushalt (für alle im Haushalt gleich). */
 export const GEMEINSAME_PRUEFUNGEN = [
-  ...INSTANZ_PRUEFUNGEN, 'zwei-faktor-pflicht', 'personen', 'haushalt', 'eroeffnung', 'konten', 'posten', 'kontakte', 'ziele', 'fokus', 'kompass',
+  ...INSTANZ_PRUEFUNGEN, 'zwei-faktor-pflicht', 'personen', 'haushalt', 'inhaber', 'eroeffnung', 'konten', 'posten', 'kontakte', 'ziele', 'fokus', 'kompass',
 ] as const;
 export const ALLE_PRUEFUNGEN: readonly string[] = [...PERSOENLICHE_PRUEFUNGEN, ...INHABER_PRUEFUNGEN, ...GEMEINSAME_PRUEFUNGEN];
 
@@ -131,7 +132,7 @@ async function persoenlich(person: string): Promise<Record<string, Befund>> {
   return Object.fromEntries(PERSOENLICHE_PRUEFUNGEN.map((k, i) => [k, befunde[i]]));
 }
 
-/** Altbestand (Schritt 0.5) — NUR für die Inhaber-Sitzung: drei Teile (Körper, Nordstern, Kernziel), nur ja/nein und Zähler. */
+/** Altbestand (Schritt 0.5) — NUR für die Sitzung des Haupt-Inhabers: drei Teile (Körper, Nordstern, Kernziel), nur ja/nein und Zähler. */
 async function inhaberBefunde(person: string, haushalt: string | undefined): Promise<Record<string, Befund>> {
   return {
     altbestand: await sicher(async () => {
@@ -196,9 +197,15 @@ async function gemeinsam(): Promise<Record<string, Befund>> {
       const alle = (await konten()).konten;
       return alle.length >= 2 ? ja(`${alle.length} Konten`) : nein(alle.length === 1 ? 'erst ein Konto (arbeitet ihr allein, entfällt der Schritt)' : 'noch kein Konto');
     },
+    // Mehrere gleichwertige Inhaber (09.10., R9): nur der Zähler, nie Namen.
+    inhaber: async () => {
+      const n = wirksameInhaber(await konten()).length;
+      return n >= 2 ? ja(`${n} Inhaber`) : nein(n === 1 ? 'ein Inhaber' : 'noch kein Inhaber');
+    },
     haushalt: async () => {
-      const alle = (await konten()).konten;
-      const inhaber = alle.find(k => k.rolle === 'inhaber');
+      const st = await konten();
+      const alle = st.konten;
+      const inhaber = hauptInhaber(st);
       const imHaushalt = alle.filter(k => !!inhaber?.haushalt && k.haushalt === inhaber.haushalt).length;
       return !alle.length ? nein('noch kein Konto') : !inhaber?.haushalt ? nein('der Inhaber hat noch keinen Haushalt')
         : imHaushalt === alle.length ? ja(`${imHaushalt} von ${alle.length} Konten im Haushalt`) : nein(`${imHaushalt} von ${alle.length} Konten im Haushalt`);
@@ -266,12 +273,17 @@ async function gemeinsam(): Promise<Record<string, Befund>> {
 /** Rolle, Zahl der Konten, Privat-Finanzen und Altbestand — bestimmt, welche Schritte und Befunde eine Person bekommt. */
 export async function kontextFuer(person: string | null): Promise<(Kontext & { haushalt?: string }) | null> {
   if (!person || !PERSON.test(person)) return null;
-  const { konten } = await (await import('@/lib/zugang/konten')).ladeKonten();
+  const st = await (await import('@/lib/zugang/konten')).ladeKonten();
+  const konten = st.konten;
   const k = konten.find(x => x.speicher === person);
   if (!k) return null;
-  const inhaber = konten.find(x => x.rolle === 'inhaber');
+  // Der Haupt-Inhaber (lib/zugang/inhaber.ts) — sein Haushalt ist der der Inhaber, an ihm hängt der Altbestand. Inhaber-Rechte hat JEDER
+  // Inhaber (09.10., R9); „eingeladen“ = jedes Konto außer dem Haupt-Inhaber (das Erstkonto richtete die Instanz ein).
+  const inhaber = hauptInhaber(st);
   return {
-    inhaber: k.rolle === 'inhaber',
+    inhaber: istWirksamerInhaber(st, person),
+    haupt: inhaber?.speicher === person,
+    eingeladen: !!inhaber && inhaber.speicher !== person,
     personen: konten.length,
     // Wie `privatFinanzZugang`: Haushaltsmitglied ohne „nur Business“ UND Haushalt des Inhabers.
     privatFinanzen: k.finanzRecht !== 'business' && !!k.haushalt && k.haushalt === inhaber?.haushalt,
@@ -293,7 +305,7 @@ export async function pruefeAlles(person: string | null): Promise<Record<string,
     const [g, ich, inh] = await Promise.all([
       gemeinsam(),
       p ? persoenlich(p) : Promise.resolve({}),
-      p && k?.inhaber ? inhaberBefunde(p, k.haushalt) : Promise.resolve({}),
+      p && k?.inhaber && k.haupt ? inhaberBefunde(p, k.haushalt) : Promise.resolve({}),
     ]);
     if (!k?.inhaber) for (const id of INSTANZ_PRUEFUNGEN) if (g[id]) g[id] = { erfuellt: g[id].erfuellt, wert: g[id].erfuellt ? 'Instanz eingerichtet: ja' : 'Instanz eingerichtet: nein' };
     return { ...g, ...ich, ...inh };

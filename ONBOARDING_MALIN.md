@@ -4,8 +4,10 @@ Willkommen. MAKE OS ist unser Life & Business OS — Heute, Inbox, Kalender, Auf
 Es läuft auf unserem eigenen Server in Deutschland unter **https://app.makeinnovation.de** — kein Mac muss an sein,
 du kommst vom Laptop und vom Handy überall hin. Du brauchst dafür nichts zu installieren und keinen Code.
 
-Die Schritte stehen auch in der App: **https://app.makeinnovation.de/os/onboarding/malin** — dort hakt die Software
-vieles selbst ab, sobald es eingerichtet ist (du siehst dort immer nur deinen eigenen Stand).
+Die Schritte stehen auch in der App: **https://app.makeinnovation.de/os/onboarding** (alle deine Schritte) bzw.
+**/os/onboarding/ich** („Meine Einrichtung“) — dort hakt die Software vieles selbst ab, sobald es eingerichtet ist (du siehst dort immer
+nur deinen eigenen Stand). Seit Update 2 (16.10.) kannst du gleichwertige Inhaberin werden: nach dem zweiten Faktor macht Kevin dich unter
+**Konto › Inhaber** dazu; danach siehst du auch „Instanz“ (/os/onboarding/instanz) und bekommst einen eigenen Server-Zugang (Schritt 1.12).
 
 ## 1 · Einladung annehmen (5 Min.)
 1. Kevin erzeugt unter **Konto › Einladen** einen Link (gilt 48 Stunden, nur einmal) und schickt ihn dir.

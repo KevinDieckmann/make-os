@@ -102,7 +102,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('bauplan', 'Einstellungen · Bauplan', '/os/bauplan'),
   s('roadmap', 'Bauplan · Phasen (Roadmap)', '/os/bauplan?s=phasen'),
   s('onboarding', 'Einstellungen · Onboarding (Einrichtung)', '/os/onboarding'),
-  s('onboarding-kevin', 'Einstellungen · Onboarding, Spur Inhaber', '/os/onboarding/kevin'),
-  s('onboarding-malin', 'Einstellungen · Onboarding, Spur Zweite Person', '/os/onboarding/malin'),
+  s('onboarding-ich', 'Einstellungen · Onboarding, Meine Einrichtung', '/os/onboarding/ich'),
+  s('onboarding-gemeinsam', 'Einstellungen · Onboarding, Gemeinsam', '/os/onboarding/gemeinsam'),
+  s('onboarding-instanz', 'Einstellungen · Onboarding, Instanz (Inhaber)', '/os/onboarding/instanz'),
   s('zusammenarbeit', 'Einstellungen · Zusammenarbeit', '/os/onboarding/zusammenarbeit'),
 ];
