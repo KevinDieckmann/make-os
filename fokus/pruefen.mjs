@@ -34,7 +34,7 @@ const PLATZHALTER = /\[\[KEVIN:([^\]]*)\]\]/g;
 export const MAIL = ['hello', 'makeinnovation.de'].join('@');
 export const KONTAKT = `mailto:${MAIL}`;
 /** Erlaubte Ziele außerhalb der Seite (makeinnovation.de: Absender und Datenschutzhinweis zu Geschäftskontakten). */
-export const EXTERN_ERLAUBT = ['https://makeinnovation.de', 'https://makeinnovation.de/datenschutz.html#kontakte'];
+export const EXTERN_ERLAUBT = ['https://makeinnovation.de', 'https://makeinnovation.de/datenschutz.html'];
 /** Seiten mit Pflichtteilen (404 schlicht, aber mit Firmierung). */
 const SEITEN_MIT_PFLICHT = ['index.html', 'impressum.html', 'datenschutz.html'];
 /** Arbeitsdateien im Ordner — nie ausgeliefert (Caddy: @intern → 404 und file_server hide; Vorschlag in LIESMICH.md). */

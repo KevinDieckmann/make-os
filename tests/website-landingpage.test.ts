@@ -45,7 +45,7 @@ describe('website/pruefen.mjs', () => {
     const k = kopie();
     fuellen(k);
     expect(pruefeWebsite(k)).toEqual({ fehler: [], platzhalter: [], freigabefaehig: true });
-    ersetze(k, 'datenschutz.html', 'abgesichert. Beispielwert', 'abgesichert. [[KEVIN: Anbieter]]');
+    ersetze(k, 'datenschutz.html', 'abgesichert.</p>', 'abgesichert. [[KEVIN: Anbieter]]</p>');
     const r = pruefeWebsite(k);
     expect(r.freigabefaehig).toBe(false);
     expect(r.platzhalter).toEqual([expect.objectContaining({ datei: 'datenschutz.html', text: 'Anbieter' })]);
@@ -54,7 +54,7 @@ describe('website/pruefen.mjs', () => {
   it('gelbe Markierung ohne Platzhalter darin fällt auf', () => {
     const k = kopie();
     fuellen(k);
-    ersetze(k, 'datenschutz.html', 'abgesichert. Beispielwert', 'abgesichert. <span class="ph">Anbieter</span>');
+    ersetze(k, 'datenschutz.html', 'abgesichert.</p>', 'abgesichert. <span class="ph">Anbieter</span></p>');
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/gelbe Platzhalter-Markierung/);
   });
 
