@@ -12,6 +12,9 @@
 // 04.10. (Kevin: „alles anpassbar“): jede Karte hängt mit ihrem Kopf am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`,
 // unten „Archiv“, zurückholbar) und Löschen = Papierkorb (`geloeschtAm`, mit „Rückgängig“; endgültig nur aus dem Papierkorb,
 // hinter einer Rückfrage). Beide Marken sind einfache Textfelder des Satzes — der Speicher nimmt sie ohne Umbau mit.
+// 08.10. spät (Datenschutz vor dem Upload): Steuer-ID, SV-Nummer und IBAN kommen nur bei der Person selbst an (Server,
+// lib/stammdaten/regeln.ts) — fremde stehen als „nur für die Person selbst“ (`geschuetzt`), nicht bearbeitbar. Gespeichert wird
+// je Feld als Einzeländerung mit Stand (PATCH, nacheinander) — nie mehr der ganze Bestand.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Eye, EyeOff, Plus } from 'lucide-react';
@@ -28,6 +31,9 @@ const nackt: CSSProperties = { background: 'none', border: 'none', padding: 4, c
 type Satz = Record<string, string> & { id: string };
 type Bestand = { firmen: Satz[]; konten: Satz[]; personen: Satz[]; partner: Satz[] };
 const LEER: Bestand = { firmen: [], konten: [], personen: [], partner: [] };
+type Op = { op: 'teil'; id: string; felder: Record<string, string | null> } | { op: 'upsert'; eintrag: Satz } | { op: 'delete'; id: string };
+/** Ist dieses Feld des Satzes für mich verdeckt (gehört einer anderen Person)? */
+const fremdGeschuetzt = (s: Satz, key: string) => (s.geschuetzt ?? '').split(',').includes(key);
 
 export function StammdatenView() {
   const [d, setD] = useState<Bestand | null>(null);
@@ -50,31 +56,45 @@ export function StammdatenView() {
 
   // Speichern erst nach dem Laden — sonst überschreibt eine leere Ansicht den
   // echten Bestand. Derselbe Schutz wie im Bauplan.
-  const sichern = useCallback((next: Bestand) => {
+  // Seit 08.10. spät: je Änderung EIN PATCH mit dem Stand des Satzes aus der letzten Server-Antwort, nacheinander (Kette).
+  const dRef = useRef(d); dRef.current = d;
+  const kette = useRef<Promise<void>>(Promise.resolve());
+  const schicke = useCallback((liste: Kartei['id'], bauen: (b: Bestand) => Op | null, vorab?: (b: Bestand) => Bestand) => {
     if (ladeFehler) return;
-    setD(next);
-    fetch('/api/state/stammdaten', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next),
-    })
-      .then(async r => { setFehler(r.ok ? null : (await r.text()).slice(0, 200)); })
-      .catch(() => setFehler('Nicht gespeichert — läuft die Software noch?'));
+    if (vorab && dRef.current) setD(vorab(dRef.current));
+    kette.current = kette.current.then(async () => {
+      const b = dRef.current;
+      const op = b ? bauen(b) : null;
+      if (!op || !b) return;
+      const stand = op.op === 'upsert' ? undefined : b[liste].find(x => x.id === op.id)?.stand;
+      try {
+        const r = await fetch('/api/state/stammdaten', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ liste, ops: [{ ...op, ...(stand ? { stand } : {}) }] }),
+        });
+        const x = await r.json().catch(() => ({})) as { ansicht?: Bestand; fehler?: string };
+        if (x.ansicht && Array.isArray(x.ansicht.firmen)) { const neu = { ...LEER, ...x.ansicht }; dRef.current = neu; setD(neu); }
+        setFehler(r.ok ? null : r.status === 409 && !x.fehler?.startsWith('Nicht gespeichert') ? 'Jemand hat inzwischen geändert — der neue Stand ist geladen, bitte noch einmal.' : (x.fehler ?? `Nicht gespeichert (${r.status}).`).slice(0, 240));
+      } catch { setFehler('Nicht gespeichert — läuft die Software noch?'); }
+    });
   }, [ladeFehler]);
+  /** Ein Feld setzen (leer = entfernen). */
+  const setzeFeld = (liste: Kartei['id'], id: string, key: string, wert: string) =>
+    schicke(liste, () => ({ op: 'teil', id, felder: { [key]: wert === '' ? null : wert } }),
+      b => ({ ...b, [liste]: b[liste].map(x => (x.id === id ? { ...x, [key]: wert } : x)) }));
 
   // Archiv & Papierkorb (04.10.): Marken am Satz — „Rückgängig“ läuft später, darum immer auf dem jüngsten Bestand.
-  const dRef = useRef(d); dRef.current = d;
   const { melden, hinweis } = useRueckgaengig();
   const { fragen, dialog } = useRueckfrage();
-  const marke = (kartei: Kartei['id'], id: string, feld: 'archiviertAm' | 'geloeschtAm', wert: string | null) => {
-    const b = dRef.current;
-    if (!b) return;
-    sichern({ ...b, [kartei]: b[kartei].map(x => { if (x.id !== id) return x; const n = { ...x } as Satz; if (wert) n[feld] = wert; else delete n[feld]; return n; }) });
-  };
+  const marke = (kartei: Kartei['id'], id: string, feld: 'archiviertAm' | 'geloeschtAm', wert: string | null) =>
+    schicke(kartei, () => ({ op: 'teil', id, felder: { [feld]: wert } }));
   const ablage: Ablage = {
     melden,
     archivieren: (k, sz) => { const t = sz[k.titelFeld] || 'Diese Karte'; if (sz.archiviertAm) { marke(k.id, sz.id, 'archiviertAm', null); melden(`„${t}“ ist zurück`, () => marke(k.id, sz.id, 'archiviertAm', new Date().toISOString())); return; } marke(k.id, sz.id, 'archiviertAm', new Date().toISOString()); melden(`„${t}“ archiviert — unten unter „Archiv“`, () => marke(k.id, sz.id, 'archiviertAm', null)); },
     loeschen: (k, sz) => { const t = sz[k.titelFeld] || 'Diese Karte'; marke(k.id, sz.id, 'geloeschtAm', new Date().toISOString()); melden(`„${t}“ im Papierkorb — unten wiederherstellbar`, () => marke(k.id, sz.id, 'geloeschtAm', null)); },
     wiederherstellen: (k, sz) => { const t = sz[k.titelFeld] || 'Diese Karte'; marke(k.id, sz.id, 'geloeschtAm', null); melden(`„${t}“ wiederhergestellt`, () => marke(k.id, sz.id, 'geloeschtAm', new Date().toISOString())); },
-    endgueltig: (k, sz) => fragen({ titel: `„${sz[k.titelFeld] || 'Diese Karte'}“ endgültig löschen?`, text: 'Die Karte verschwindet ganz, mit allen Angaben. Das lässt sich nicht rückgängig machen.', wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: () => { const b = dRef.current; if (b) sichern({ ...b, [k.id]: b[k.id].filter(x => x.id !== sz.id) }); } }] }),
+    endgueltig: (k, sz) => fragen({ titel: `„${sz[k.titelFeld] || 'Diese Karte'}“ endgültig löschen?`, text: 'Die Karte verschwindet ganz, mit allen Angaben. Das lässt sich nicht rückgängig machen.', wahl: [{ label: 'Endgültig löschen', ton: 'gefahr', tun: () => schicke(k.id, () => ({ op: 'delete', id: sz.id })) }] }),
+    neu: k => { const id = `${k.id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; schicke(k.id, () => ({ op: 'upsert', eintrag: { id, [k.titelFeld]: '' } as Satz }), b => ({ ...b, [k.id]: [...b[k.id], { id, [k.titelFeld]: '' } as Satz] })); },
   };
 
   const karteien = KARTEIEN.filter(k => modus === 'alles' || k.modus === 'beides' || k.modus === modus);
@@ -84,8 +104,8 @@ export function StammdatenView() {
       <Karte i={0}>
         <Ueberschrift farbe={LEUCHT.gut}>Verdeckt, bis du hinschaust</Ueberschrift>
         <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: 0 }}>
-          Steuer-ID, Sozialversicherungsnummer und IBAN stehen verdeckt. Zum Ansehen einmal auf das Auge tippen —
-          so steht nichts offen auf dem Bildschirm, wenn jemand danebensitzt.
+          Steuer-ID, Sozialversicherungsnummer und IBAN sieht nur die Person, der die Karte gehört — auch auf dem Server.
+          Die eigenen stehen verdeckt; zum Ansehen einmal auf das Auge tippen.
         </p>
       </Karte>
 
@@ -102,7 +122,7 @@ export function StammdatenView() {
           saetze={d[k.id]}
           offen={offen}
           aufdecken={(id) => setOffen(o => ({ ...o, [id]: !o[id] }))}
-          aendern={(saetze) => sichern({ ...d, [k.id]: saetze })}
+          setzen={(id, key, wert) => setzeFeld(k.id, id, key, wert)}
           gesperrt={ladeFehler}
           ablage={ablage}
         />
@@ -117,24 +137,23 @@ interface Ablage {
   melden: Rueckgaengig['melden'];
   archivieren: (k: Kartei, s: Satz) => void; loeschen: (k: Kartei, s: Satz) => void;
   wiederherstellen: (k: Kartei, s: Satz) => void; endgueltig: (k: Kartei, s: Satz) => void;
+  neu: (k: Kartei) => void;
 }
 
-function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, aendern: aendernAlle, gesperrt, ablage }: {
+function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, setzen: setzeFeld, gesperrt, ablage }: {
   i: number; kartei: Kartei; saetze: Satz[]; offen: Record<string, boolean>;
-  aufdecken: (id: string) => void; aendern: (s: Satz[]) => void; gesperrt: boolean; ablage: Ablage;
+  aufdecken: (id: string) => void; setzen: (id: string, key: string, wert: string) => void; gesperrt: boolean; ablage: Ablage;
 }) {
   // Nur die laufenden Karten stehen offen; Archiv und Papierkorb unten als kurze Zeilen.
   const saetze = alle.filter(x => !x.archiviertAm && !x.geloeschtAm);
   const archiv = alle.filter(x => x.archiviertAm && !x.geloeschtAm);
   const korb = alle.filter(x => x.geloeschtAm);
-  /** Änderungen an den laufenden Karten — Archiv und Papierkorb bleiben, wie sie sind. */
-  const aendern = (neu: Satz[]) => aendernAlle([...neu, ...alle.filter(x => x.archiviertAm || x.geloeschtAm)]);
   const kurz = (x: Satz, rechts: ReactNode) => (
     <div key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: `1px solid ${HAAR}`, fontSize: TYP.bedien }}>
       <span style={{ minWidth: 0, color: C.inkDim }}>{x[kartei.titelFeld] || 'Ohne Namen'}</span>{rechts}
     </div>
   );
-  const neu = () => aendern([...saetze, { id: `${kartei.id}-${alle.length + 1}-${Date.now().toString(36)}`, [kartei.titelFeld]: '' } as Satz]);
+  const neu = () => ablage.neu(kartei);
 
   return (
     <Karte i={i}>
@@ -147,7 +166,7 @@ function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, aendern: aende
 
       {saetze.length === 0 && <Leer>Noch nichts eingetragen. Über „Neu“ die erste Karte anlegen.</Leer>}
 
-      {saetze.map((s, idx) => (
+      {saetze.map(s => (
         <div key={s.id} style={{ padding: '14px 0 16px', borderTop: `1px solid ${HAAR}` }}>
           <ZeileAktionen titel={s[kartei.titelFeld] || 'Ohne Namen'} darf={!gesperrt} onArchivieren={() => ablage.archivieren(kartei, s)} onLoeschen={() => ablage.loeschen(kartei, s)}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12, minHeight: 44 }}>
@@ -165,8 +184,9 @@ function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, aendern: aende
               <FeldZeile
                 key={f.key} feld={f} wert={s[f.key] ?? ''}
                 sichtbar={!f.schutz || !!offen[`${s.id}.${f.key}`]}
+                fremd={fremdGeschuetzt(s, f.key)}
                 umschalten={() => aufdecken(`${s.id}.${f.key}`)}
-                setzen={(v) => aendern(saetze.map((x, j) => j === idx ? { ...x, [f.key]: v } : x))}
+                setzen={(v) => setzeFeld(s.id, f.key, v)}
               />
             ))}
           </div>
@@ -198,8 +218,8 @@ function KarteiBlock({ i, kartei, saetze: alle, offen, aufdecken, aendern: aende
   );
 }
 
-function FeldZeile({ feld: f, wert, sichtbar, umschalten, setzen }: {
-  feld: Feld; wert: string; sichtbar: boolean; umschalten: () => void; setzen: (v: string) => void;
+function FeldZeile({ feld: f, wert, sichtbar, fremd, umschalten, setzen }: {
+  feld: Feld; wert: string; sichtbar: boolean; fremd: boolean; umschalten: () => void; setzen: (v: string) => void;
 }) {
   // Beim Tippen nur lokal — gespeichert wird beim Verlassen des Feldes.
   const [entwurf, setEntwurf] = useState(wert);
@@ -209,6 +229,16 @@ function FeldZeile({ feld: f, wert, sichtbar, umschalten, setzen }: {
   const eingabe: CSSProperties = { ...feld, padding: '9px 12px', fontSize: TYP.bedien, fontFamily: f.schutz ? SCHRIFT.mono : SCHRIFT.text };
 
   const spalte = f.art === 'lang' ? { gridColumn: '1 / -1' } : undefined;
+
+  // Persönliche Kennung einer anderen Person (08.10. spät): der Server liefert sie nicht (IBAN nur maskiert) — nicht bearbeitbar.
+  if (fremd) {
+    return (
+      <div style={spalte}>
+        <div style={{ ...beschriftung, marginBottom: 4 }}>{f.label}</div>
+        <div style={{ ...eingabe, color: C.inkLeise, letterSpacing: '.02em' }}>{wert ? `${wert} · ` : ''}nur für die Person selbst sichtbar</div>
+      </div>
+    );
+  }
 
   return (
     <div style={spalte}>

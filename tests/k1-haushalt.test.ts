@@ -74,7 +74,8 @@ describe('Kartei-Routen: nur Haushalt des Inhabers (#66/#67)', () => {
       expect((await routen.prospects.PUT!(anfrage('/api/state/prospects', sitzung(p), 'PUT', { icp: 'x', prospects: [] }))).status).toBe(403);
       expect((await routen.netzwerk.PUT!(anfrage('/api/state/netzwerk', sitzung(p), 'PUT', { kontakte: [] }))).status).toBe(403);
       expect((await routen.netzwerk.PATCH!(anfrage('/api/state/netzwerk', sitzung(p), 'PATCH', { ops: [] }))).status).toBe(403);
-      expect((await routen.stammdaten.PUT!(anfrage('/api/state/stammdaten', sitzung(p), 'PUT', { firmen: [] }))).status).toBe(403);
+      // Seit 08.10. spät Einzeländerungen (PATCH) statt PUT des ganzen Bestands.
+      expect((await routen.stammdaten.PATCH!(anfrage('/api/state/stammdaten', sitzung(p), 'PATCH', { liste: 'firmen', ops: [{ op: 'upsert', eintrag: { id: 's-fremd', name: 'X' } }] }))).status).toBe(403);
     }
     expect(JSON.stringify(await db.loadJson('kontakte'))).toBe(vorher);
     expect((await routen.kontakte.PATCH!(anfrage('/api/state/kontakte', sitzung('malin'), 'PATCH', op))).status).toBe(200);

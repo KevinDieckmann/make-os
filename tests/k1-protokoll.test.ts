@@ -86,9 +86,10 @@ describe('Schreibwege protokollieren selbst', () => {
     await speicher.aendereCrm(c => ({ ...c, firmen: [...c.firmen, { id: 'f-neu', name: 'Neu GmbH', rolle: 'zielkunde', geaendert: '2026-09-02T10:00:00.000Z' }] }) as typeof c);
     expect((await protokoll()).at(-1)).toMatchObject({ wer: 'system', bestand: 'crm', liste: 'firmen', op: 'neu', id: 'f-neu' });
   });
-  it('PUT-Wege (Stammdaten, Kunden) protokollieren ebenfalls', async () => {
-    await stammdaten.PUT!(anfrage('/api/state/stammdaten', sitzung('malin'), 'PUT', { firmen: [{ id: 's-1', name: 'X' }], konten: [], personen: [], partner: [] }));
-    expect((await protokoll()).at(-1)).toMatchObject({ wer: 'person', person: 'malin', bestand: 'stammdaten', liste: 'firmen', op: 'neu', id: 's-1' });
+  it('Stammdaten (PATCH, seit 08.10. spät) und PUT-Wege (Kunden) protokollieren ebenfalls', async () => {
+    const r = await stammdaten.PATCH!(anfrage('/api/state/stammdaten', sitzung('malin'), 'PATCH', { liste: 'firmen', ops: [{ op: 'upsert', eintrag: { id: 's-1', name: 'X' } }] }));
+    expect(r.status).toBe(200);
+    expect((await protokoll()).at(-1)).toMatchObject({ wer: 'person', person: 'malin', bestand: 'stammdaten', op: 'neu', id: 's-1' });
     await kunden.PUT!(anfrage('/api/state/kunden', sitzung('kevin'), 'PUT', { kunden: [{ id: 'kd-1', name: 'Beispiel AG', status: 'aktiv' }] }));
     expect((await protokoll()).at(-1)).toMatchObject({ bestand: 'kunden', liste: 'kunden', op: 'neu', id: 'kd-1' });
   });
