@@ -46,6 +46,13 @@ interface Datei { buchungen: Buchung[] }
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Grenzen statt Kürzen (09.10., Befund des Kontoauszug-Pakets): vorher schnitt PUT still nach 5.000 Buchungen ab und PATCH nach
+ * 200 Änderungen — mit Kontoauszügen wächst der Bestand, und „nie kürzen, ablehnen“ gilt auch hier. Darüber → 413 mit Satz.
+ */
+const BUCHUNGEN_MAX = 50_000;
+const BUCHUNGEN_OPS_MAX = 200;
+
 function sauber(b: Partial<Buchung>, _i: number): Buchung | null {
   const wer = String(b.wer ?? '').trim().slice(0, 120);
   // Auf den Cent (28.09., K3) — vorher auf ganze Euro: aus 1.190,50 € wurden 1.191 €.
@@ -81,8 +88,11 @@ export async function PUT(req: Request) {
   let body: Partial<Datei>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.buchungen)) return NextResponse.json({ ok: false, error: 'buchungen fehlt.' }, { status: 400 });
+  if (body.buchungen.length > BUCHUNGEN_MAX) {
+    return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${BUCHUNGEN_MAX.toLocaleString('de-DE')} Buchungen (jetzt ${body.buchungen.length.toLocaleString('de-DE')}). Gekürzt wird nie — nichts gespeichert.` }, { status: 413 });
+  }
 
-  const buchungen = body.buchungen.slice(0, 5000).map(sauber).filter((x): x is Buchung => !!x)
+  const buchungen = body.buchungen.map(sauber).filter((x): x is Buchung => !!x)
     .sort((a, b) => b.datum.localeCompare(a.datum));
   const { ok, next } = await updateGeschuetzt<Datei>('buchungen', { buchungen }, d => d.buchungen?.length ?? 0);
   if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Buchungen gelöscht.' }, { status: 409 });
@@ -102,8 +112,11 @@ export async function PATCH(req: Request) {
   if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let body: { ops?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 200) : null;
+  const roh = Array.isArray(body.ops) ? body.ops : null;
   if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  if (roh.length > BUCHUNGEN_OPS_MAX) {
+    return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${BUCHUNGEN_OPS_MAX} Änderungen je Aufruf (jetzt ${roh.length}). Gekürzt wird nie — nichts gespeichert.` }, { status: 413 });
+  }
 
   interface Op { op: 'upsert' | 'delete'; buchung?: Buchung; id?: string }
   const ops: Op[] = [];
