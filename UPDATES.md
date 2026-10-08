@@ -19,7 +19,7 @@ Kevin 08.10.: „Whoop-Schnittstelle, damit wir immer die aktuellen Daten haben.
 - Lehnt WHOOP den Zugang ab (in der App widerrufen, abgelaufen): eine Glocke „Die WHOOP-Verbindung ist getrennt“ → neu verbinden.
 
 **Was Kevin tun muss (einmal, auf Kevins Wort beim Upload):**
-1. developer-dashboard.whoop.com (WHOOP-Konto) → **Create App**: Name z. B. „MAKE OS“, Kontakt-Adresse, **Privacy Policy URL** (die
+1. WHOOP Developer Dashboard (developer.whoop.com, mit dem WHOOP-Konto; die Feldnamen dort sind nicht geprüft) → App anlegen: Name z. B. „MAKE OS“, Kontakt-Adresse, **Privacy Policy URL** (die
    Datenschutzseite der Instanz), Scopes anhaken: `read:recovery`, `read:cycles`, `read:workout`, `read:sleep`, `read:profile` — **nicht**
    `read:body_measurement` (`offline` fordert MAKE OS bei der Anmeldung selbst an).
 2. **Redirect URL:** `https://<MAKE_OS_ADRESSE>/api/whoop/rueckruf` (genau so, https).
