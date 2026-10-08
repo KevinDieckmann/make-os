@@ -158,3 +158,7 @@ können wir direkt mitbauen. Die gehen dann direkt an die Head ofs, um sie zu be
 17. **Threads:** Löschfrist 12 Monate nach der letzten Nachricht.
 18. **Gesundheits-Head:** reiner Wellness-Coach, keine Diagnose/Therapie · im Kunden-Produkt erst nach Prüfung Medizinprodukterecht · nur mit (a)+(b), nur eigene Werte ·
     zuständige Person (Malin) je Instanz einstellbar.
+**Rückfragen geklärt (09.10. nachts):** Vorschaubilder **verschlüsselt + privater Zwischenspeicher im Browser** (Regel 9 bleibt). Google Drive: „Am liebsten
+hätte ich das Ganze sauber nachher auf unserem Server, aber die Basis haben wir jetzt gerade bei Google Drive. Mit dem neuen Server müssen wir das halt machen,
+je nach Kosten entscheiden.“ → V1 legt neu Aufgenommenes in den Hetzner Object Storage; ein Import des bestehenden Materials aus Google Drive (Business,
+Vorschau → Bestätigen) kommt als eigener Schritt, wenn Speicher/Server nach Kosten entschieden sind.
