@@ -4,9 +4,9 @@
 // Kevins Ansage: „Wir müssen aufpassen, dass wenn ich gleichzeitig im Programm
 // rumprogrammiere, wir nicht was kaputtmachen — programmierfreie Zonen."
 //
-// Zwei Dinge stehen hier: die Abmachung (drei Zonen) und der Schalter, der sie
-// sichtbar macht. Steht Bauzeit an, zeigt die Software auf jeder Seite einen
-// Hinweis — Malin muss nicht raten, ob gerade gebaut wird.
+// Zwei Dinge stehen hier: die Abmachung (drei Zonen) und der Schalter „Update läuft“.
+// 08.10. (Server-Stand): gebaut wird lokal auf „entwicklung“, online ist „main“ — die
+// Instanz merkt vom Bauen nichts; heikel ist nur das Ausrollen eines Updates.
 // 24.09.: auf das lebendige Muster umgezogen.
 
 import Link from 'next/link';
@@ -46,31 +46,31 @@ export function ZusammenarbeitView() {
   const aktiv = !!b?.aktiv;
 
   return (
-    <Seite titel="Zusammenarbeit" unter="Kevin baut weiter an der Software, während Malin damit arbeitet. Damit dabei nichts verloren geht, gibt es drei Zonen und einen Schalter."
+    <Seite titel="Zusammenarbeit" unter="Am Code wird weitergebaut, während alle mit der Instanz arbeiten. Gebaut wird lokal, online geht ein Update nur auf das Wort des Inhabers — drei Zonen und ein Schalter halten das auseinander."
       rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
 
       {/* Der Schalter */}
       <Karte i={0} ton={aktiv ? LEUCHT.achtung : undefined}>
         <Ueberschrift farbe={aktiv ? LEUCHT.achtung : C.inkLeise}
           rechts={aktiv
-            ? <Knopf leise onClick={() => setzen(false, woran)}>Bauzeit beenden</Knopf>
-            : <Knopf farbe={LEUCHT.achtung} onClick={() => setzen(true, woran)}>Bauzeit starten</Knopf>}>
-          Bauzeit
+            ? <Knopf leise onClick={() => setzen(false, woran)}>Update fertig</Knopf>
+            : <Knopf farbe={LEUCHT.achtung} onClick={() => setzen(true, woran)}>Update läuft</Knopf>}>
+          Update
         </Ueberschrift>
         <div style={{ fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.01em', color: aktiv ? LEUCHT.achtung : C.ink }}>
-          {aktiv ? 'Kevin baut gerade' : 'Kein Umbau — alles sicher'}
+          {aktiv ? 'Update läuft' : 'Kein Update — alles sicher'}
         </div>
         <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: '4px 0 0' }}>
           {aktiv
-            ? <>Seit {b?.seit ? `${b.seit.slice(11, 16)} Uhr` : 'gerade eben'}{b?.woran ? ` · ${b.woran}` : ''}. Der Hinweis steht jetzt auf jeder Seite.</>
-            : 'Einschalten, bevor du am Code arbeitest. Malin sieht den Hinweis dann überall.'}
+            ? <>Seit {b?.seit ? `${b.seit.slice(11, 16)} Uhr` : 'gerade eben'}{b?.woran ? ` · ${b.woran}` : ''}. Bitte bis „fertig“ nichts in großen Mengen schreiben.</>
+            : 'Einschalten, bevor ein Update ausgerollt wird (dauert etwa fünf Minuten). Lokales Bauen braucht den Schalter nicht — davon merkt die Instanz nichts.'}
         </p>
         <input
           value={woran}
           onChange={e => setWoran(e.target.value)}
           onBlur={() => { if (b?.aktiv && woran !== b.woran) setzen(true, woran); }}
-          placeholder="Woran baust du gerade? z. B. Finanzen-Import umbauen"
-          aria-label="Woran gerade gebaut wird"
+          placeholder="Was kommt mit dem Update? z. B. Whoop je Person"
+          aria-label="Was mit dem Update kommt"
           style={{ ...feld, marginTop: 14 }} />
       </Karte>
 
@@ -87,19 +87,18 @@ export function ZusammenarbeitView() {
         ))}
       </div>
 
-      {/* Wer führt die Daten */}
+      {/* Wo die Daten liegen */}
       <Karte i={4}>
-        <Ueberschrift farbe={LEUCHT.geld}>Wer führt die Daten</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.geld}>Wo die Daten liegen</Ueberschrift>
         <p style={absatz}>
-          Das ist die Regel, an der es sonst scheitert: <strong style={{ color: C.ink, fontWeight: 600 }}>zwei Rechner dürfen nicht gleichzeitig in dieselbe Datei schreiben.</strong> Der
-          iCloud-Ordner löst Schreibkonflikte nicht auf — er behält eine Fassung und benennt die andere um. Deshalb:
+          <strong style={{ color: C.ink, fontWeight: 600 }}>Eine Instanz, eine Wahrheit:</strong> MAKE OS läuft auf einem eigenen Server in Deutschland, alle arbeiten auf demselben Stand —
+          vom Laptop wie vom Handy, ohne dass ein Rechner laufen muss.
         </p>
         <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
-          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Code und Dokumente</strong> liegen im iCloud-Ordner — den darf jeder lesen.</li>
-          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Die Daten (.data)</strong> liegen genau einmal: auf dem Rechner, der gerade die Instanz betreibt.</li>
-          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Solange Kevins Rechner läuft</strong>, arbeitet Malin über das Netzwerk auf derselben Instanz — dann gibt es nur eine Wahrheit.</li>
-          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Eigene Kopie</strong> nur zum Ansehen. Was Malin dort einträgt, bleibt dort und ist nach dem nächsten Abgleich weg.</li>
-          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Dauerhaft</strong> gehört das auf den Hetzner-Server: eine Instanz, zwei Zugänge, kein Rechner muss laufen.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Die Daten</strong> liegen nur auf dem Server, verschlüsselt — keine Kopie in einem Cloud-Ordner, keine auf einem Rechner.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Der Code</strong> wird lokal auf dem Stand „entwicklung“ gebaut. Online ist der Stand „main“ — ein Update geht nur auf ausdrückliches Wort des Inhabers raus.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Gleichzeitig arbeiten</strong> ist sicher: Änderungen gehen einzeln mit Stand an den Server. Hat jemand anderes dieselbe Zeile inzwischen geändert, bleibt deine Fassung sichtbar stehen statt still überschrieben zu werden.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Privates</strong> trennt der Server: was nur dir gehört (private Notizen, „nur ich“-Aufgaben, private Termine, Gesundheit ohne Teilen), kommt bei den anderen gar nicht erst an.</li>
         </ul>
       </Karte>
 
@@ -110,9 +109,9 @@ export function ZusammenarbeitView() {
       <Karte i={6}>
         <Ueberschrift farbe={LEUCHT.kritisch}>Wenn doch etwas kaputtgeht</Ueberschrift>
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <li style={punkt}>Jede Datei wird täglich gesichert, 14 Stände bleiben liegen — in <span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>.data/backup</span>.</li>
-          <li style={punkt}>Beim Schreiben schützt eine Sperre: Wer plötzlich viel weniger Daten schickt als gespeichert sind, wird abgelehnt.</li>
-          <li style={punkt}>Sieht eine Seite kaputt aus: Bildschirmfoto an Kevin. Nicht selbst reparieren.</li>
+          <li style={punkt}>Jede Nacht sichert der Server alles verschlüsselt; dazu kommen tägliche Abbilder beim Anbieter und — sobald eingerichtet — eine zweite Kopie außerhalb des Servers. Den Stand zeigt der <Link href="/os/hoi" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Head of IT</Link>.</li>
+          <li style={punkt}>Gelöschte Aufgaben und Projekte liegen 30 Tage im Papierkorb und lassen sich wiederherstellen.</li>
+          <li style={punkt}>Sieht eine Seite kaputt aus: unten links „Problem oder Idee melden“, mit Bildschirmfoto. Nicht selbst reparieren.</li>
         </ul>
       </Karte>
     </Seite>

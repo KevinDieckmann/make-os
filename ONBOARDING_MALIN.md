@@ -1,77 +1,79 @@
-# MAKE OS — Onboarding für Malin
+# MAKE OS — Start für Malin (ab 01.11.2026)
 
-Willkommen im Maschinenraum. MAKE OS ist unser Life & Business OS — Dashboard,
-Tag, Inbox, Gesundheit, Finanzen, Planung mit Zeitstrahl, ZOE. Du hast
-vollen Zugriff: mitbenutzen und mitbauen.
+Willkommen. MAKE OS ist unser Life & Business OS — Heute, Inbox, Kalender, Aufgaben, Finanzen, Planung, Gesundheit, ZOE.
+Es läuft auf unserem eigenen Server in Deutschland unter **https://app.makeinnovation.de** — kein Mac muss an sein,
+du kommst vom Laptop und vom Handy überall hin. Du brauchst dafür nichts zu installieren und keinen Code.
 
-## 1 · Mitbenutzen (ohne Code)
+Die Schritte stehen auch in der App: **https://app.makeinnovation.de/os/onboarding/malin** — dort hakt die Software
+vieles selbst ab, sobald es eingerichtet ist (du siehst dort immer nur deinen eigenen Stand).
 
-Kevins Mac betreibt das System, bis der Server steht (PLAN.md, Phase 1). Du
-kommst über **Tailscale** hin — ein privates, verschlüsseltes Netz nur
-zwischen unseren Geräten. Das klappt über mobile Daten von überall, ein
-gemeinsames WLAN braucht es nicht. (Kevin, 24.09.: Tailscale jetzt als Brücke,
-Hetzner parallel.)
+## 1 · Einladung annehmen (5 Min.)
+1. Kevin erzeugt unter **Konto › Einladen** einen Link (gilt 48 Stunden, nur einmal) und schickt ihn dir.
+2. Link öffnen → Vorname, E-Mail-Adresse, Passwort mit mindestens 10 Zeichen → fertig. Ist die Einladung an „malin“
+   gebunden, hängen deine bisherigen Daten automatisch an deinem Konto.
+3. Am iPhone: in Safari **Teilen › „Zum Home-Bildschirm“** — dann liegt MAKE OS wie eine App da.
 
-**Einmal einrichten (iPhone):**
-1. **Tailscale** aus dem App Store laden, mit deinem eigenen Konto anmelden
-   (Apple-ID reicht).
-2. Kevins Freigabe für seinen Mac annehmen (kommt per Mail oder Link) und in
-   der App den Schalter auf „Connected".
-3. Den **Einladungslink** von Kevin öffnen (48 Stunden gültig, einmal
-   einlösbar). Er sieht so aus: `https://macbook-air-von-kevin.….ts.net/anmelden?code=…`
-4. Vorname **Malin**, E-Mail, Passwort mit mindestens 10 Zeichen — fertig. Der
-   Vorname wird der Name deiner Daten, deine bisherigen Bestände hängen damit
-   an deinem Konto.
-5. In Safari Teilen → **„Zum Home-Bildschirm"**: MAKE OS liegt dann wie eine
-   App auf dem Handy.
+## 2 · Zweiter Faktor (5 Min., Pflicht)
+1. **https://app.makeinnovation.de/os/konto** › „Zweiter Faktor · Authenticator“ › Einrichten.
+2. QR-Code mit einer Authenticator-App scannen (z. B. die Passwörter-App am iPhone) und den 6-stelligen Code bestätigen.
+3. Die **Wiederherstellungs-Codes** in deinen Passwort-Manager legen — sie sind der Weg zurück, wenn das Handy weg ist.
 
-**Was du wissen musst:** Du erreichst MAKE OS nur, solange Kevins Mac läuft,
-MAKE OS darauf gestartet ist und der Mac online ist (gerade über Kevins
-Handy-Hotspot). Ist er weg, siehst du „Seite nicht erreichbar" — nichts ist
-kaputt. Das ändert sich mit dem Server. Im Wissen siehst du alles aus dem
-Brain außer Kevins privaten Notizen.
+Nach dem nächsten Update ist der zweite Faktor für alle Pflicht; ohne ihn öffnet sich nur noch die Konto-Seite.
 
-## 2 · Mitbauen (eigene Entwicklungs-Kopie)
+## 3 · Wer sieht was
+- **Gemeinsam** sieht der Haushalt: Aufgaben und Projekte, Kontakte und Markttraktion, Ziele, gemeinsame Kalender, die
+  Finanzen des Haushalts.
+- **Nur du** siehst: deine privaten Notizen, „nur ich“-Aufgaben, private Termine (die anderen sehen nur „Belegt“), deine
+  Routinen und dein Ernährungsprofil, deine Postfächer.
+- **Gesundheit** sieht nur, wem du sie ausdrücklich freigibst (Konto › „Gesundheit teilen“) — umgekehrt genauso.
+- Getrennt wird auf dem Server: was du nicht sehen sollst, kommt gar nicht erst bei dir an.
 
-Du entwickelst auf einer eigenen Kopie mit eigenen Testdaten — die echten
-Daten bleiben auf Kevins Mac. Zusammengeführt wird über GitHub.
+## 4 · Gesundheit: Einwilligung (5 Min.)
+Unter **https://app.makeinnovation.de/os/datenschutz#gesundheit** erklärst du drei Dinge, jedes für sich, jederzeit widerrufbar:
+- **(a) Verarbeiten** — MAKE OS darf deine Gesundheitsdaten (Erholung, Schlaf, Sport, Ernährung, Journal …) für deine eigenen
+  Auswertungen speichern. Ohne (a) wird nichts erfasst.
+- **(b) An die KI** — ZOE und automatische Läufe dürfen sie nutzen (Modell-Anbieter in den USA). Setzt (a) voraus.
+- **(c) Partner** — wer deine Gesundheit sehen darf, darf sie auch über seine ZOE abfragen. Setzt (a) und (b) voraus.
 
-1. **Werkzeuge:** Node 22 (nodejs.org) und Git. Optional, aber empfohlen:
-   Claude Code (claude.com/claude-code) — damit bauen wir dieses System.
-2. **Code holen:** `git clone <GitHub-URL>` (URL kommt von Kevin, das Repo ist
-   privat) und dann `cd make-os && npm install`.
-   Öffne den geklonten Ordner danach als Projekt in Claude Code — dein
-   Claude liest die `CLAUDE.md` und kennt damit unsere Spielregeln.
-3. **Umgebung:** `.env.local.example` zu `.env.local` kopieren und eigene
-   Werte eintragen — eigener `MAKE_OS_KEY` (frei ausdenken), Anthropic-Key
-   von Kevin. Die Datei bleibt auf deinem Rechner, Git ignoriert sie.
-4. **Starten:** `npm run dev` → `http://localhost:3001/anmelden`. Beim ersten
-   Start „Erstes Konto einrichten" — dafür einmal den Einrichtungs-Code aus
-   `node scripts/einrichtung-token.mjs` (seit 05.10.; einmal gültig, 24 Stunden).
-   Danach ist alles leer — das ist richtig so: deine
-   Kopie, deine Testdaten.
+Ob überhaupt jemand deine Gesundheit sieht, entscheidest du getrennt unter Konto › „Gesundheit teilen“ (Standard: niemand).
 
-   **Im gemeinsamen System** (Kevins Instanz, später der Server) brauchst du
-   keinen Schlüssel: Kevin erzeugt unter Konto → „Einladen" einen Code, du
-   öffnest die Anmeldeseite → „Ich habe eine Einladung" → Vorname, E-Mail,
-   Passwort. Dein Vorname wird der Name deiner Daten (`malin`) — deine
-   bisherigen Bestände hängen damit automatisch an deinem Konto.
+## 5 · Eigener iCloud-Kalender (10 Min.)
+1. Auf **https://appleid.apple.com** › Anmelden und Sicherheit › **App-spezifische Passwörter** ein neues anlegen
+   (Name z. B. „MAKE OS“). Nicht das normale Apple-Passwort.
+2. **https://app.makeinnovation.de/os/kalender?space=privat** › Karte „iCloud Kalender“: Apple-ID + App-Passwort eintragen.
+3. Wählen, welche Kalender erscheinen und wohin Blöcke aus Planen und ZOE geschrieben werden (dann stehen sie auch auf deinem iPhone).
 
-## 3 · Arbeitsweise
+Die anderen sehen deine Termine nur als „Belegt“. Wechselst du dein Apple-Passwort, wird das App-Passwort ungültig — dann
+in der Karte „Verbindung erneuern“.
 
-- `main` bleibt immer lauffähig. Für jede Änderung ein eigener Branch
-  (`git checkout -b feature/mein-thema`), kleine Commits, dann Pull Request —
-  Kevin oder Claude schaut kurz drüber, dann Merge.
-- Design-Sprache: Klar·DARK, Petrol `#21B5AA`, keine Untertitel hinter Namen,
-  Terminologie wie im System etabliert.
-- TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
+## 6 · Postfach verbinden (10 Min.)
+**https://app.makeinnovation.de/os/inbox?postfaecher=1** › Postfach verbinden: Anbieter wählen (iCloud mit App-Passwort,
+IONOS, eigener Server oder Gmail), Bereich wählen (Privat oder eine Gesellschaft). Danach einmal durch die Fächer gehen und
+neue Absender zulassen oder blocken. Deine Postfächer liest niemand sonst.
 
-## 4 · Eiserne Regeln
+## 7 · Optional: Hinweise aufs Handy
+Konto › „Der Bote · Telegram“ › koppeln. Die Hinweise sind neutral („In MAKE OS wartet etwas“ mit Link) — keine Inhalte,
+keine Beträge, keine Namen.
 
-1. `.env.local` und `.data/` sind vom Repo ausgeschlossen und bleiben es —
-   niemals Schlüssel oder echte Daten committen, niemals Keys in den Code.
-2. Was wir an Dritte geben (z. B. Alex), ist immer nur der **Rohbau**: Code,
-   Regeln, Struktur. Niemals unsere Daten — Gesundheit, Journal, Ziele,
-   Finanzen bleiben bei uns. Das Repo ist genau so gebaut.
-3. Ausgehendes (Mails, Nachrichten an Dritte) verschickt das System nie
-   selbst — immer erst Freigabe durch einen von uns.
+**Whoop** kommt mit dem nächsten Update (eigene Verbindung je Person, setzt die Gesundheits-Einwilligung voraus).
+
+## 8 · Rundgang (20 Min.)
+- Links die Leiste mit den Bereichen, oben der Wechsel **Privat / Business**, Inbox und Kalender.
+- **Heute** zeigt den Tag, **Aufgaben** die Arbeit (Filter „Meine“), **Finanzen** die Zahlen
+  (Kontostände unter Liquidität, Rechnungen & Zahlungen).
+- **⌘K** (am Handy die Suche) springt zu jeder Seite.
+- **ZOE** fragt und bereitet vor — sie macht **nur Vorschläge**. Was etwas ändert oder nach außen geht, landet im Stapel
+  (**/os/stapel**) und passiert erst mit deinem Klick „Freigeben“.
+
+## 9 · Mitbauen — ohne Code
+- Was hakt oder fehlt: unten links **„Problem oder Idee melden“** (am Handy im Menü bzw. unter System) — Fehler, Idee oder
+  Wunsch, gern mit Bildschirmfoto. Die Seite, auf der du warst, geht automatisch mit.
+- Das Board **https://app.makeinnovation.de/os/bauplan**: Ideen → Bereit → In Arbeit → Zum Testen → Fertig. Was unter
+  „Zum Testen“ steht, probierst du aus: „Passt“ oder „Passt noch nicht“ mit Kommentar.
+- Gebaut wird lokal; online geht ein Update nur auf Kevins ausdrückliches Wort. Während ein Update ausgerollt wird (etwa fünf
+  Minuten, die alte Version läuft weiter), zeigt **Zusammenarbeit** „Update läuft“ — dann bitte keine großen Importe.
+
+## Eiserne Regeln
+1. Unsere Daten — Gesundheit, Journal, Finanzen, Ziele — bleiben in MAKE OS. An Dritte geht höchstens Code und Struktur, nie Daten.
+2. Nichts geht nach außen (Mails, Nachrichten an Dritte) ohne Freigabe von dir oder Kevin.
+3. Passwörter, App-Passwörter und Wiederherstellungs-Codes gehören in den Passwort-Manager — nie in einen Chat, nie in eine Notiz.

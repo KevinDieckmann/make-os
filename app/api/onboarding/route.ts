@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { pruefeAlles, type Handisch } from '@/lib/onboarding-status';
 import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const [handisch, befunde] = await Promise.all([
     loadJson<Handisch>('onboarding'),
-    pruefeAlles(),
+    // Persönliche Befunde nur für die Person der Sitzung (08.10.) — nie für eine andere.
+    pruefeAlles(personStreng(req)),
   ]);
   return NextResponse.json({ erledigt: handisch?.erledigt ?? {}, befunde });
 }
