@@ -51,6 +51,16 @@ export async function betriebStarten(): Promise<void> {
   }, 20_000);
   brainNachStart.unref?.();
 
+  // Einmalige Übernahme des Altbestands (08.10. abends, Fragebogen Teil 3): NUR mit MAKE_OS_ALTBESTAND_PERSON (unser Server) —
+  // Demo- und Kunden-Instanzen setzen die Variable nie, dann wird das Modul gar nicht erst geladen. Idempotent, wirft nie.
+  // Wird mit dem übernächsten Upload samt Modul entfernt (lib/altbestand/uebernahme.ts).
+  if (process.env.MAKE_OS_ALTBESTAND_PERSON) {
+    const altbestandNachStart = setTimeout(() => {
+      void import('@/lib/altbestand/uebernahme').then(m => m.altbestandUebernehmen()).catch(e => console.error('[MAKE OS] Altbestand nach dem Start:', e instanceof Error ? e.name : 'unbekannt'));
+    }, 8_000);
+    altbestandNachStart.unref?.();
+  }
+
   const beenden = (signal: string) => {
     abschaltungBeginnen();
     const l = datenschichtLage();

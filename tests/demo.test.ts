@@ -108,7 +108,7 @@ describe('Saat', () => {
   it('sät eine vollständige, erfundene Demo über die Schreibwege', async () => {
     const b = await server.demoSaenInLeerenOrdner({ passwort: 'pruef-passwort-demo', heute: localDay() }); // echtes Heute: die Deal-Prüfung vergleicht mit der Uhr
     const n = Object.fromEntries(b.schritte.map(s => [s.name, s.anzahl]));
-    expect(n).toMatchObject({ Konten: 2, Team: 3, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4 });
+    expect(n).toMatchObject({ Konten: 2, Team: 3, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4, 'Körper-Profil': 1 });
     const crm = await db.loadJson<{ chancen: unknown[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[] }>('crm');
     expect(crm?.chancen).toHaveLength(4);
     expect(crm?.mandate).toHaveLength(2);

@@ -74,6 +74,8 @@ export function umgebungGruende(env: Umgebung, dir: string | undefined): string[
   if (env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_SECRET) g.push('GOOGLE_* ist gesetzt — keine echten Google-Konten in der Demo.');
   if (env.TELEGRAM_BOT_TOKEN) g.push('TELEGRAM_BOT_TOKEN ist gesetzt — die Demo verschickt nichts.');
   if (env.WHOOP_CLIENT_ID || env.MS_CLIENT_ID) g.push('WHOOP_*/MS_* ist gesetzt — keine echten Verbindungen in der Demo.');
+  // 08.10. abends (Fragebogen Teil 3): die einmalige Übernahme des Altbestands gehört nur auf unseren Server.
+  if (env.MAKE_OS_ALTBESTAND_PERSON) g.push('MAKE_OS_ALTBESTAND_PERSON ist gesetzt — die Übernahme bisheriger Inhalte gehört nie in die Demo.');
   return g;
 }
 

@@ -294,6 +294,8 @@ const SYS = {
   mail: 'MESSLATTE-SYS-MAIL-BETREFF',
   postfach: 'MESSLATTE-SYS-POSTFACH-NAME',
   haut: 'MESSLATTE-SYS-HAUT',
+  // Körper-Profil (08.10. abends, Fragebogen Teil 3): nur die Person selbst — auch geteilt nie für andere.
+  koerper: 'MESSLATTE-SYS-KOERPER',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -432,6 +434,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
       [`${PF}:e:1:1`]: { id: `${PF}:e:1:1`, threadId: 'x', am: J, von: { name: 'Freundin', email: 'freundin@example.invalid' }, an: [{ email: 'kevin.messlatte@example.invalid' }], cc: [], betreff: SYS.mail, ausschnitt: SYS.mail, labels: ['INBOX'], anhaenge: [], postfachId: PF, ordner: 'e', uidValidity: '1', uid: 1, wurzel: '<m1@x>', messageId: '<m1@x>' },
     } });
     await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
+    const { speicherFuer: sf } = await import('@/lib/zoe/raum');
+    await db.saveJson(sf('gesundheit-koerper', 'kevin'), { v: 1, leitsatz: SYS.koerper, beschwerden: [{ id: 'kb-messlatte', name: SYS.koerper, status: '', notiz: SYS.koerper, ton: 'achtung' }], hebel: [], stufen: [], zusammenhaenge: [], hinweis: SYS.koerper, symptom: { name: SYS.koerper }, sauberZaehler: true, routinenHinweise: [] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

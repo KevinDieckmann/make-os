@@ -78,6 +78,7 @@ const R = {
   vitals: () => import('@/app/api/state/vitals/route') as Promise<Modul>,
   sport: () => import('@/app/api/sport/route') as Promise<Modul>,
   gesundheitEinwilligung: () => import('@/app/api/datenschutz/gesundheit/route') as Promise<Modul>,
+  koerper: () => import('@/app/api/gesundheit/koerper/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -381,6 +382,18 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   }
   await rufe(R.sport(), 'PUT', '/api/sport', LENA, { ops: [{ op: 'einstieg', fertig: true }, { op: 'woche', tage: { mo: { art: 'lauf', dauerMin: 40 }, di: { art: 'frei' }, mi: { art: 'gym', dauerMin: 60 }, do: { art: 'frei' }, fr: { art: 'lauf', dauerMin: 30 }, sa: { art: 'hyrox', dauerMin: 60 }, so: { art: 'ruhe' } } }] });
   schritt('Familie & Gesundheit', 10);
+  // Körper-Profil (08.10. abends, Fragebogen Teil 3): erfunden und harmlos — nur die Person selbst sieht es (Körper-Reiter).
+  const kp = await rufe(R.koerper(), 'GET', '/api/gesundheit/koerper', LENA);
+  await rufe(R.koerper(), 'PATCH', '/api/gesundheit/koerper', LENA, { stand: kp.stand, ops: [
+    { op: 'felder', felder: { leitsatz: 'Ausgeruht durch die Woche (Beispiel)', hinweis: 'Beispiel-Profil der Demo — Struktur und Notizen, keine ärztliche Beratung.', symptom: { name: 'Nacken (Beispiel)' }, sauberZaehler: false } },
+    { op: 'eintrag', liste: 'beschwerden', eintrag: { name: 'Verspannter Nacken (Beispiel)', status: 'besser', notiz: 'Nach langen Bildschirmtagen.', ton: 'achtung' } },
+    { op: 'eintrag', liste: 'hebel', eintrag: { name: 'Schlaf', notiz: 'Vor 23 Uhr ins Bett.', kennzahl: 'schlaf' } },
+    { op: 'eintrag', liste: 'hebel', eintrag: { name: 'Bewegung', notiz: 'Täglich 30 Minuten draußen.' } },
+    { op: 'eintrag', liste: 'stufen', eintrag: { phase: '1', name: 'Grundlage', beschreibung: 'Drei feste Bewegungstermine je Woche.', zustand: 'jetzt' } },
+    { op: 'eintrag', liste: 'stufen', eintrag: { phase: '2', name: 'Aufbau', beschreibung: 'Längere Läufe am Wochenende.', zustand: 'danach' } },
+    { op: 'eintrag', liste: 'zusammenhaenge', eintrag: { text: 'Mehr Schlaf → mehr Energie am Nachmittag (Beispiel)' } },
+  ] });
+  schritt('Körper-Profil', 1);
 
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;
