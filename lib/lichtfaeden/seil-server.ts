@@ -11,6 +11,8 @@ import { loadJson } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
 import type { Meilenstein } from '@/lib/planung/typen';
 import { BEIDE } from './modell';
+import { meilensteineFuerBetrachter, verborgeneZielIds } from '@/lib/planung/eigene-ziele-sicht';
+import { lesbareEigentuemerFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { seilRechnen, type SeilAnsicht } from './seil';
 import { seilAufgaben, seilJahr, type QDeal, type QTermin, type SeilBereich, type SeilDaten } from './seil-quellen';
 
@@ -29,11 +31,15 @@ export async function seilBereichFuer(person: string, gewuenscht: SeilBereich): 
 /** Alle Daten für das Seil — gelesen mit den vorhandenen Lesewegen. */
 export async function seilDatenLaden(person: string, bereich: SeilBereich, von: string, bis: string, heute: string): Promise<SeilDaten> {
   const [{ haushaltsZiele }, { ladeAufgabenSicht }] = await Promise.all([import('@/lib/planung/ziel-farben-server'), import('@/lib/aufgaben/sicht')]);
-  const [ziele, ms, aufgaben] = await Promise.all([
+  const [ziele, ms0, aufgaben, lesbar] = await Promise.all([
     sicher(haushaltsZiele, []),
     sicher(() => loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), null),
     sicher(() => ladeAufgabenSicht(person), null),
+    sicher(() => lesbareEigentuemerFuer(person), new Set<string>()),
   ]);
+  // Altbestand (08.10., Kevin „eigene Ziele nur geteilt“): Meilensteine, die noch an einem nicht geteilten eigenen Ziel der anderen
+  // Person hängen, kommen gar nicht erst hinein (lib/planung/eigene-ziele-sicht.ts).
+  const ms = ms0 ? { ...ms0, meilensteine: meilensteineFuerBetrachter(ms0.meilensteine ?? [], verborgeneZielIds(ziele, lesbar)) } : null;
   const tasks = aufgaben?.tasks ?? [];
   const ids = new Set(tasks.map(t => t.id));
   // Termine mit Aufgabe (nur die eigenen bzw. gemeinsamen — maskierte bleiben draußen).

@@ -298,13 +298,11 @@ const SYS = {
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
 /**
- * Bewusst erlaubt (Kevins frühere Entscheidungen) — die Marke darf in genau dieser Route auftauchen:
- * - Eigene Ziele/Fokus (`ziele-eigen`) liest die andere Person NUR LESEND über `?fuer=` (26.09., Kompass „Fokus von …“);
- *   offen als Frage an Kevin (UPDATES.md 08.10. „Sicht-Prüfung Malin“).
+ * Bewusst erlaubt (Kevins frühere Entscheidungen) — die Marke darf in genau dieser Route auftauchen. Leer seit 08.10. (Phase 0):
+ * eigene Ziele/Fokus (`ziele-eigen`) der anderen Person gibt es über `?fuer=` nur noch, wenn sie sie ausdrücklich teilt (Konto ›
+ * `teilt.ziele`, Vorgabe „nicht geteilt“, lib/planung/eigene-ziele-sicht.ts) — in der Saat teilt Kevin nicht.
  */
-const ERLAUBT: { route: string; marke: string; warum: string }[] = [
-  { route: 'state/ziele', marke: SYS.ziel, warum: 'eigene Ziele der anderen Person nur lesend über ?fuer= (26.09., Kompass)' },
-];
+const ERLAUBT: { route: string; marke: string; warum: string }[] = [];
 
 /** Übersprungen (mit Grund). Alles andere wird aufgerufen. */
 const UEBERSPRUNGEN: Record<string, string> = {

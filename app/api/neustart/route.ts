@@ -22,7 +22,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const BESTAETIGUNG = NEUSTART_BESTAETIGUNG;
-const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: 'Neu anfangen dürfen nur Kevin und Malin selbst (Haushalt des Inhabers).' }, { status: 403 });
+const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: 'Neu anfangen dürfen nur die Personen des Haushalts selbst (Haushalt des Inhabers).' }, { status: 403 });
 const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:~-]{0,120}$/;
 const SPEICHER = /^[a-z0-9][a-z0-9-]{0,80}$/;
 
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return GESPERRT();
   if (new URL(req.url).searchParams.get('archiv') === '1') return NextResponse.json({ laeufe: await neustartArchiv(z.person) });
-  return NextResponse.json({ vorschau: await neustartVorschau(), bestaetigung: BESTAETIGUNG });
+  return NextResponse.json({ vorschau: await neustartVorschau(z.person), bestaetigung: BESTAETIGUNG });
 }
 
 function auswahlLesen(a: unknown): NeustartAuswahl | null {

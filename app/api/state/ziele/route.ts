@@ -29,6 +29,7 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ohneToteVerweise, zielVerweiseLoesen } from '@/lib/planung/meilenstein-kette';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-server';
+import { eigeneZieleLesbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
 import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
 
@@ -53,16 +54,21 @@ const JE_HORIZONT = 100;
  * Wessen Ziele/Fokus (26.09., Kevin: „Malin hat ihre eigenen Ziele, wir haben gemeinsame“):
  * `wir` (Standard, der geteilte Bestand) · `ich` (der eigene) · <speicher> einer Person im
  * Haushalt (nur lesen). Rückgabe: Speichername + ob geschrieben werden darf.
+ * Seit 08.10. (Kevin): die eigenen Ziele einer ANDEREN Person nur, wenn sie sie mit mir teilt (Konto › `teilt.ziele`,
+ * lib/planung/eigene-ziele-sicht.ts) — sonst `geteilt: false` → 403, nichts aus dem Bestand.
  */
-async function speicherFuerAnfrage(req: Request, fuer: string | null): Promise<{ name: string; darfSchreiben: boolean; fuer: string } | null> {
+async function speicherFuerAnfrage(req: Request, fuer: string | null): Promise<{ name: string; darfSchreiben: boolean; fuer: string } | { geteilt: false } | null> {
   const ich = personAus(req);
   if (!fuer || fuer === 'wir') return { name: 'ziele', darfSchreiben: true, fuer: 'wir' };
   if (fuer === 'ich' || fuer === ich) return { name: speicherFuer('ziele-eigen', ich), darfSchreiben: true, fuer: ich };
   if (!/^[a-z0-9-]{1,40}$/.test(fuer)) return null;
   const z = await haushaltVon(req);
   if (!z) return null;
+  if (!(await eigeneZieleLesbarFuer(fuer, personStreng(req)))) return { geteilt: false };
   return { name: speicherFuer('ziele-eigen', fuer), darfSchreiben: false, fuer };
 }
+const NICHT_GETEILT = 'Diese Person teilt ihre eigenen Ziele nicht mit dir.';
+const nichtGeteilt = () => NextResponse.json({ ok: false, error: NICHT_GETEILT, geteilt: false }, { status: 403 });
 
 function datei(roh: ZieleDatei | null | undefined): ZieleDatei {
   const aus: ZieleDatei = { ...LEER, fokus: roh?.fokus && typeof roh.fokus === 'object' ? roh.fokus : {} };
@@ -74,6 +80,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const sp = await speicherFuerAnfrage(req, new URL(req.url).searchParams.get('fuer'));
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
+  if ('geteilt' in sp) return nichtGeteilt();
   const f = datei(await loadJson<ZieleDatei>(sp.name));
   return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...await mitStaenden(f) });
 }
@@ -101,6 +108,7 @@ export async function PUT(req: Request) {
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sp = await speicherFuerAnfrage(req, body.fuer ?? null);
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
+  if ('geteilt' in sp) return nichtGeteilt();
   if (!sp.darfSchreiben) return NextResponse.json({ ok: false, error: 'Den Fokus einer anderen Person kannst du nur lesen.' }, { status: 403 });
   const h = body.horizont;
   if (Array.isArray(body.ziele)) {
@@ -132,6 +140,7 @@ export async function PATCH(req: Request) {
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sp = await speicherFuerAnfrage(req, body.fuer ?? null);
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
+  if ('geteilt' in sp) return nichtGeteilt();
   if (!sp.darfSchreiben) return NextResponse.json({ ok: false, error: 'Die Ziele einer anderen Person kannst du nur lesen.' }, { status: 403 });
   const h = body.horizont;
   if (!istZielHorizont(h)) return NextResponse.json({ ok: false, error: 'horizont (tag|woche|monat|quartal|jahr) nötig.' }, { status: 400 });

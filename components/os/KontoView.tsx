@@ -17,10 +17,10 @@ import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
 import { MeineDaten } from './MeineDaten';
 
-interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
+interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[]; ziele?: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
 const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht' };
-interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
+interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
 export function KontoView() {
@@ -43,10 +43,12 @@ export function KontoView() {
     const r = await fetch('/api/konto/ich', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(r.error ?? ok); if (!r.error) { setPw({ alt: '', neu: '' }); void laden(); }
   }
-  async function teilen(speicher: string, an: boolean) {
+  async function teilen(speicher: string, an: boolean, was: 'gesundheit' | 'ziele' = 'gesundheit') {
     if (!ich) return;
-    const liste = an ? [...ich.teilt.gesundheit, speicher] : ich.teilt.gesundheit.filter(s => s !== speicher);
-    await fetch('/api/konto/teilen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gesundheit: liste }) }).catch(() => {});
+    const bisher = (was === 'ziele' ? ich.teilt.ziele : ich.teilt.gesundheit) ?? [];
+    const liste = an ? [...bisher, speicher] : bisher.filter(s => s !== speicher);
+    // Nur die eine Liste schicken — der Server ändert nur, was mitkommt (08.10.).
+    await fetch('/api/konto/teilen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [was]: liste }) }).catch(() => {});
     void laden();
   }
   async function tgCode() {
@@ -189,6 +191,20 @@ export function KontoView() {
           const an = ich.teilt.gesundheit.includes(a.speicher);
           return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an)} />} titel={a.name}
             unter={`${an ? 'sieht deine Gesundheit' : 'sieht deine Gesundheit nicht'} · ${a.teiltGesundheitMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
+        })}
+      </Liste>
+      </Karte>
+      </Kachel>
+      {/* Eigene Ziele (08.10., Kevin): Vorgabe „nicht geteilt“ — wer meine eigenen Ziele lesen darf, entscheide nur ich (Server: lib/planung/eigene-ziele-sicht.ts). */}
+      <Kachel id="ziele-teilen" titel="Eigene Ziele teilen" breite={3}>
+      <Karte i={2}>
+      <Ueberschrift farbe={LEUCHT.planung}>Eigene Ziele teilen</Ueberschrift>
+      <Liste>
+        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine eigenen Ziele lesen darf, entscheidest du je Person — ohne Haken sieht niemand etwas davon.</Leer>}
+        {andere.map(a => {
+          const an = (ich.teilt.ziele ?? []).includes(a.speicher);
+          return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an, 'ziele')} />} titel={a.name}
+            unter={`${an ? 'liest deine eigenen Ziele' : 'sieht deine eigenen Ziele nicht'} · ${a.teiltZieleMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
         })}
       </Liste>
       </Karte>

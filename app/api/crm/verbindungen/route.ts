@@ -75,7 +75,7 @@ export async function GET(req: Request) {
   const etag = etagAus('verbindungen-2', await verbindungsStand(), await speicherStand(['calendar-cache', 'kalender-einstellungen']), heute, person);
   const nichtsNeu = unveraendert(req, etag);
   if (nichtsNeu) return nichtsNeu;
-  const bestaende = await ladeVerbindungsBestaende(heute);
+  const bestaende = await ladeVerbindungsBestaende(heute, person);
   const befunde = verbindungenPruefen(bestaende);
   // Termine nur lesen, wenn eine Kennung offen bleibt (sonst reicht der Bestand).
   const ohneTermine = beispielNamen(bestaende, befunde);
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
 
   const heute = localDay();
   const jetzt = new Date().toISOString();
-  const alt = await ladeVerbindungsBestaende(heute);
+  const alt = await ladeVerbindungsBestaende(heute, person);
   const vorschau = verbindungenReparieren(alt, ids, jetzt, person);
   if (body.vorschau === true) return NextResponse.json({ ok: true, vorschau: true, aenderungen: vorschau.aenderungen });
   // S1 #19: Reparieren schreibt — nur aus dem aktuellen Bau (Dienstweg ausgenommen); die Vorschau oben liest nur.
@@ -131,8 +131,9 @@ export async function POST(req: Request) {
   // Mandat an Zielen und Zeit (28.09.): tote Bezüge gegen den frischen CRM-Stand — je Speicher eine Sperre.
   if (speicher.has('ziele') || speicher.has('meilensteine') || speicher.has('zeit')) {
     // Ziele für den Ziel-Bezug der Meilensteine (01.10.): alle Bestände, alle Horizonte.
-    const lebend = { mandate: new Set(stand.crm.mandate.map(x => x.id)), firmen: new Set(stand.crm.firmen.map(x => x.id)), ziele: new Set((alt.planung?.ziele ?? []).flatMap(s => s.ziele.map(z => z.id))) };
+    const lebend = { mandate: new Set(stand.crm.mandate.map(x => x.id)), firmen: new Set(stand.crm.firmen.map(x => x.id)), ziele: new Set([...(alt.planung?.ziele ?? []).flatMap(s => s.ziele.map(z => z.id)), ...(alt.planung?.weitereZiele ?? [])]) };
     if (speicher.has('ziele')) {
+      // Nur der gemeinsame Bestand und die EIGENEN Ziele der fragenden Person (08.10.: `ladePlanung` mit Betrachter) — nie fremde.
       for (const s of alt.planung?.ziele ?? []) {
         await updateJson<Record<string, unknown>>(s.speicher, cur => (cur ? zieleDateiBereinigen(cur, lebend).datei : cur as unknown as Record<string, unknown>));
       }
@@ -148,7 +149,7 @@ export async function POST(req: Request) {
   // Termine gelöschter Events in iCloud entfernen (auf dem frischen Stand; mit Gästen nie — Teilnehmer-Sperre).
   let terminHinweis = '';
   if (ids.includes('termin-waise-neu') || ids.includes('event-termin-verwaist')) {
-    const frisch = await ladeVerbindungsBestaende(heute);
+    const frisch = await ladeVerbindungsBestaende(heute, person);
     if (ids.includes('termin-waise-neu')) {
       const tasksKurz = frisch.aufgaben?.liste ?? [];
       // Die Kartei ist schon umgehängt — die Paare kommen aus dem Stand VOR dem Schreiben (`alt`), geprüft gegen den frischen Bezug.
@@ -187,7 +188,7 @@ export async function POST(req: Request) {
   }
   // Aufgaben (28.09. spät): nur `bezug` der betroffenen Aufgaben, auf dem aktuellen Stand in der Sperre.
   if (speicher.has('tasks')) await aufgabenBezugZurueckschreiben(stand, werAus(req));
-  const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(heute));
+  const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(heute, person));
   return NextResponse.json({ ok: true, aenderungen: vorschau.aenderungen.map(a => (a.befundId === 'event-termin-verwaist' && terminHinweis ? { ...a, text: `${a.text}${terminHinweis}` } : a)), ampel: verbindungsAmpel(befunde), befunde });
 }
 

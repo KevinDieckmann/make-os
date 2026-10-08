@@ -141,7 +141,8 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await aendereKonten(() => ({
     konten: DEMO_PERSONEN.map((p, i) => ({
       id: `k-demo-${p.speicher}`, speicher: p.speicher, email: p.email, name: p.name, rolle: p.rolle, angelegt: jetzt.toISOString(),
-      haushalt: DEMO_HAUSHALT, teilt: { gesundheit: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher) },
+      // Eigene Ziele (08.10.): in der Demo teilen beide sie miteinander — so ist die Einstellung „geteilt“ vorführbar (Vorgabe: niemand).
+      haushalt: DEMO_HAUSHALT, teilt: { gesundheit: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher), ziele: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher) },
       ...hashes[p.speicher],
     })),
     einladungen: [],

@@ -27,6 +27,11 @@ export interface PlanungBestand {
   /** Ziele je Speicher (`ziele` = gemeinsam, `ziele-eigen…` je Person). */
   ziele: { speicher: string; ziele: PlanungBezug[] }[];
   meilensteine: PlanungBezug[];
+  /**
+   * Kennungen von Zielen, die die Prüfung weder meldet noch repariert — die eigenen Ziele ANDERER Personen (08.10., Kevin: eigene
+   * Ziele nur geteilt lesbar, schreiben nie). Sie zählen nur als „lebt“, damit ein Meilenstein daran nicht als tot gilt.
+   */
+  weitereZiele?: string[];
 }
 
 const e = (n: number, ein: string, mehr: string) => (n === 1 ? ein : mehr);
@@ -45,7 +50,7 @@ export interface Lebend { mandate: ReadonlySet<string>; firmen: ReadonlySet<stri
 
 /** Kennungen aller lebenden Ziele (alle Bestände, alle Horizonte) und Meilensteine einer Planung. */
 const planungKennungen = (p: PlanungBestand) => ({
-  ziele: new Set((p.ziele ?? []).flatMap(s => (s.ziele ?? []).map(z => z.id))),
+  ziele: new Set([...(p.ziele ?? []).flatMap(s => (s.ziele ?? []).map(z => z.id)), ...(p.weitereZiele ?? [])]),
   meilensteine: new Set((p.meilensteine ?? []).map(m => m.id)),
 });
 /** Welche Kennungen eines Meilensteins zeigen ins Leere: Ziel-Bezug, Vorgänger. */

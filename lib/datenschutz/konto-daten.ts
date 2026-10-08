@@ -218,10 +218,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     bericht.whoop = r.war ? (r.widerrufen ? 'widerrufen' : 'entfernt') : 'keine';
   } catch (e) { console.error('[konto-loeschen] WHOOP:', e instanceof Error ? e.message : e); }
 
-  // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit mit“ der anderen.
+  // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit / eigene Ziele mit“ der anderen (08.10.).
   await aendereKonten(s => ({
     ...s,
-    konten: s.konten.filter(k => k.speicher !== speicher).map(k => (k.teilt?.gesundheit?.includes(speicher) ? { ...k, teilt: { ...k.teilt, gesundheit: k.teilt.gesundheit.filter(x => x !== speicher) } } : k)),
+    konten: s.konten.filter(k => k.speicher !== speicher).map(k => (k.teilt?.gesundheit?.includes(speicher) || k.teilt?.ziele?.includes(speicher)
+      ? { ...k, teilt: { ...k.teilt, gesundheit: (k.teilt.gesundheit ?? []).filter(x => x !== speicher), ...(k.teilt.ziele ? { ziele: k.teilt.ziele.filter(x => x !== speicher) } : {}) } }
+      : k)),
     einladungen: s.einladungen.filter(e => e.von !== speicher && e.speicher !== speicher),
   }));
 

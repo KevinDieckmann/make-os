@@ -182,10 +182,24 @@ const gemerkt = async (heute: string) => merken(`kapazitaet:${await kapaSpeicher
 
 /** Der Stand für eine Person (Plattform-Regel: serverseitig gefiltert — Erholung/Titel nur die eigenen). */
 export async function kapaStandFuer(person: string, heute = localDay()) {
-  const [{ stand, bezuege, privat }, zugang] = await Promise.all([gemerkt(heute), planZugangFuer(person)]);
-  const fuerIhn = fuerBetrachter(stand, kapaIdVon(person));
+  const [{ stand, bezuege, privat }, zugang, verborgen] = await Promise.all([gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person)]);
+  const fuerIhn = ohnePrivatePosten(fuerBetrachter(stand, kapaIdVon(person)), verborgen);
   // Konten ohne Privatzugang (finanzRecht „business“): Posten der Selbstständigkeit nur als „Privat (belegt)“ (serverseitig, 05.10. abends).
   return { stand: zugang?.sicht === 'business' ? ohnePrivatePosten(fuerIhn, privat) : fuerIhn, bezuege };
+}
+
+/**
+ * Eigene Ziele nur geteilt (08.10., Kevin): Meilensteine aus dem Altbestand, die noch an einem NICHT geteilten eigenen Ziel einer
+ * anderen Person hängen, nennt die Kapazität dieser Person nicht (Titel/Ziel-Bezug weg, „Privat (belegt)“ — die Stunden bleiben
+ * in der Team-Last, die Zeit ist ja belegt). Postenschlüssel wie `ohnePrivatePosten`.
+ */
+async function verborgeneMeilensteinPosten(person: string): Promise<Set<string>> {
+  // Kein catch: kann die Regel nicht gelesen werden, scheitert die Antwort (fail-closed) — nie Titel auf Verdacht ausliefern.
+  const [{ verborgeneZieleFuer }, { meilensteinVerborgen }] = await Promise.all([import('@/lib/planung/eigene-ziele-sicht-server'), import('@/lib/planung/eigene-ziele-sicht')]);
+  const verborgen = await verborgeneZieleFuer(person);
+  if (!verborgen.size) return new Set();
+  const ms = (await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'))?.meilensteine ?? [];
+  return new Set(ms.filter(m => meilensteinVerborgen(m, verborgen)).map(m => postenSchluessel({ art: 'meilenstein', id: m.id })));
 }
 
 /**

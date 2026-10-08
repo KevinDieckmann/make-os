@@ -19,6 +19,8 @@ import { markttraktionStraenge } from './quellen/markttraktion';
 import { finanzStraenge } from './quellen/finanzen';
 import { beziehungStraenge } from './quellen/beziehung';
 import { gesundheitStraenge } from './quellen/gesundheit';
+import { meilensteineFuerBetrachter, verborgeneZielIds, zieleFuerBetrachter } from '@/lib/planung/eigene-ziele-sicht';
+import { lesbareEigentuemerFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 const sicher = async <T>(p: Promise<T> | (() => Promise<T>), sonst: T): Promise<T> => { try { return await (typeof p === 'function' ? p() : p); } catch { return sonst; } };
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -38,14 +40,18 @@ export async function haushaltsPersonen(): Promise<Person[]> {
   return (await sicher(kontenDesHaushalts(h), [])).map(k => ({ id: k.speicher, name: k.name }));
 }
 
-async function planung(heute: string): Promise<PlanungErgebnis> {
-  const [ziele, ms, aufgaben] = await Promise.all([
+async function planung(heute: string, betrachter: string): Promise<PlanungErgebnis> {
+  const [ziele, ms, aufgaben, lesbar] = await Promise.all([
     // Alle Ziele des Haushalts MIT Farbe — dieselbe Menge und Farbe wie GET /api/state/ziele (lib/planung/ziel-farben-server.ts).
     sicher(async () => (await import('@/lib/planung/ziel-farben-server')).haushaltsZiele(), []),
     sicher(loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), null),
     sicher(async () => (await import('@/lib/aufgaben/sicht')).ladeAufgabenUngefiltert(), null),
+    sicher(lesbareEigentuemerFuer(betrachter), new Set<string>()),
   ]);
-  return planungStraenge({ ziele, meilensteine: ms?.meilensteine ?? [], aufgaben: aufgaben?.tasks ?? [], projekte: aufgaben?.projects ?? [], heute });
+  // Eigene Ziele der anderen Person (08.10., Kevin): nicht geteilt → gar nicht erst hinein (kein „Belegt“, auch ihre Meilensteine
+  // nicht); geteilt → wie bisher als privat (Knoten weg, Stränge „Belegt“, `fuerBetrachter`).
+  const verborgen = verborgeneZielIds(ziele, lesbar);
+  return planungStraenge({ ziele: zieleFuerBetrachter(ziele, lesbar), meilensteine: meilensteineFuerBetrachter(ms?.meilensteine ?? [], verborgen), aufgaben: aufgaben?.tasks ?? [], projekte: aufgaben?.projects ?? [], heute });
 }
 
 async function kalender(person: string, von: string, bis: string, heute: string): Promise<Strang[]> {
@@ -130,7 +136,7 @@ async function gesundheit(personen: readonly Person[], heute: string): Promise<S
 export async function straengeSammeln(betrachter: string, von: string, bis: string, heute: string): Promise<Sammlung> {
   const randVon = tagPlus(von, -56), randBis = tagPlus(bis, 56);
   const personen = await haushaltsPersonen();
-  const plan = await sicher(planung(heute), { knoten: [], straenge: [], bezuege: KEINE_BEZUEGE, zielWurzel: new Map<string, string>() });
+  const plan = await sicher(planung(heute, betrachter), { knoten: [], straenge: [], bezuege: KEINE_BEZUEGE, zielWurzel: new Map<string, string>() });
   const teile = await Promise.all([
     sicher(kalender(betrachter, randVon, randBis, heute), []),
     sicher(markttraktion(randBis, heute, plan.bezuege), []),

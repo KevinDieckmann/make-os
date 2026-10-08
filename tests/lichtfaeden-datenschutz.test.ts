@@ -111,8 +111,9 @@ describe('„nur ich“ vererbt sich — die Partnerin sieht keine Titel, Kennun
     // Business: Aufgabe, Kind, Enkel als anonymes Gewicht; die Altaufgabe gar nicht. Familie „nur ich“ der Partnerin kommt
     // gar nicht erst an (`sichtFuer` je Betrachter) — im Privat-Space also kein „Belegt“.
     expect((await json('kevin', 'wurzel=space:business&person=alle')).d.ansicht.buendel.find(b => b.name === 'Belegt')?.anzahl).toBe(3);
-    // Malins eigenes Ziel: Frist und Meilenstein nur als „Belegt“ (Last bleibt), kein Knoten, kein Link, keine Markierung.
-    expect((await json('kevin', 'wurzel=space:privat&person=alle')).d.ansicht.buendel.find(b => b.name === 'Belegt')?.anzahl).toBe(2);
+    // Malins eigenes Ziel: seit 08.10. (Kevin: eigene Ziele nur geteilt lesbar) kommt es ungeteilt GAR NICHT an — auch kein „Belegt“
+    // (vorher: Frist und Meilenstein als „Belegt“ mit Anzahl 2). Geteilt bleibt es „Belegt“ (tests/eigene-ziele-teilen.test.ts).
+    expect((await json('kevin', 'wurzel=space:privat&person=alle')).d.ansicht.buendel.find(b => b.name === 'Belegt')).toBeUndefined();
     const r = await route.GET(new Request('http://test/api/lichtfaeden?von=2026-10-01&bis=2027-03-31&wurzel=ziel:zm-spanisch', { headers: { 'x-make-user': 'kevin' } }));
     expect(r.status).toBe(404);
     // Die Meilenstein-Ebene (Blatt) zeigt nur den Meilenstein selbst.

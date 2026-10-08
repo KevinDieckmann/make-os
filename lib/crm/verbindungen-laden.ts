@@ -79,16 +79,25 @@ const bezugVon = (x: unknown): PlanungBezug | null => {
 };
 const bezuege = (l: unknown): PlanungBezug[] => (Array.isArray(l) ? l.map(bezugVon).filter((x): x is PlanungBezug => !!x) : []);
 
-/** Ziele und Meilensteine für die Verbindungsprüfung laden (nur lesen). */
-async function ladePlanung(q: Quellen): Promise<NonNullable<VerbindungsBestaende['planung']>> {
+/**
+ * Ziele und Meilensteine für die Verbindungsprüfung laden (nur lesen). Mit `betrachter` (08.10., Kevin: eigene Ziele nur geteilt
+ * lesbar, schreiben nie): gemeldet und repariert werden nur der gemeinsame Bestand und die EIGENEN Ziele dieser Person — die eigenen
+ * Ziele der anderen zählen nur als Kennung (`weitereZiele`, damit Meilensteine daran nicht als tot gelten). Ohne `betrachter`
+ * (Systemlauf: Durchsicht, nur Zähler) wie bisher alle Bestände.
+ */
+async function ladePlanung(q: Quellen, betrachter?: string | null): Promise<NonNullable<VerbindungsBestaende['planung']>> {
   const namen = ['ziele', ...q.personen.map(p => speicherFuer('ziele-eigen', p))];
   const [ziele, ms] = await Promise.all([
     Promise.all(Array.from(new Set(namen)).map(async n => ({ speicher: n, datei: await loadJson<Record<string, unknown>>(n) }))),
     loadJson<{ meilensteine?: unknown }>('meilensteine'),
   ]);
+  const geladen = ziele.filter(z => z.datei).map(z => ({ speicher: z.speicher, ziele: ZIEL_HORIZONTE.flatMap(h => bezuege(z.datei![h])) }));
+  if (betrachter === undefined) return { ziele: geladen, meilensteine: bezuege(ms?.meilensteine) };
+  const eigene = new Set(['ziele', ...(betrachter ? [speicherFuer('ziele-eigen', betrachter)] : [])]);
   return {
-    ziele: ziele.filter(z => z.datei).map(z => ({ speicher: z.speicher, ziele: ZIEL_HORIZONTE.flatMap(h => bezuege(z.datei![h])) })),
+    ziele: geladen.filter(z => eigene.has(z.speicher)),
     meilensteine: bezuege(ms?.meilensteine),
+    weitereZiele: geladen.filter(z => !eigene.has(z.speicher)).flatMap(z => z.ziele.map(x => x.id)),
   };
 }
 
@@ -175,14 +184,17 @@ async function aufPlatte(h: string): Promise<string[]> {
   }
 }
 
-/** Alles, was die Verbindungsprüfung braucht — nur lesen. */
-export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
+/**
+ * Alles, was die Verbindungsprüfung braucht — nur lesen. `betrachter` = die fragende Person (Route, ZOE): eigene Ziele anderer
+ * Personen nur als Kennung (siehe `ladePlanung`); ohne Angabe (Systemlauf) wie bisher.
+ */
+export async function ladeVerbindungsBestaende(heute: string, betrachter?: string | null): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
   const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel, termine, familieTage] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
-    ladePlanung(q),
+    ladePlanung(q, betrachter),
     ladeKalenderPruefung().catch(() => null),
     ladeBuchungen().catch(() => null),
     ladeFamilieSpiegel().catch(() => null),
