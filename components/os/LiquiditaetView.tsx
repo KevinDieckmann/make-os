@@ -5,6 +5,7 @@
 // (Kontostände, Rechnungen, Zahlungen) und dem, was wir erwarten
 // (Planposten: Miete, Gehälter, Mandate, Steuern).
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
+// 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Liquidität“ unter Finanzen › Business (/os/finanzen/liquiditaet leitet weiter).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
@@ -19,7 +20,7 @@ import {
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT, FadenLinie } from './ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT, FadenLinie } from './ui';
 import { bereichVonFirma, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
@@ -258,7 +259,7 @@ export function LiquiditaetView() {
   const ende = v?.wochen.at(-1)?.stand;
 
   return (
-    <Seite titel="Liquidität" unter="Wie viel Geld ist wann da — gerechnet aus Kontoständen, offenen Rechnungen, fälligen Zahlungen und dem, was ihr erwartet.">
+    <>
       <div className="ui-reiter-zeile"><Segmente liste={WOCHEN} aktiv={String(wochen)} onWahl={id => setWochen(Number(id))} /></div>
       {!v && <Karte i={0}><Leer>lädt …</Leer></Karte>}
 
@@ -384,22 +385,8 @@ export function LiquiditaetView() {
             </Karte>
           )}
 
-          <Karte i={6}>
-            <Ueberschrift>Weiter</Ueberschrift>
-            <Liste>
-              {[
-                { href: '/os/finanzen/planung', titel: 'Rechnungen & Zahlungen', satz: 'was reinkommt, was raus muss, in welcher Reihenfolge' },
-                { href: '/os/controlling', titel: 'Controlling & Ziele', satz: 'Kurs aufs Jahresziel, Run-Rate, Runway' },
-                { href: '/os/finanzen/dashboard', titel: 'Finanz-Dashboard', satz: 'Malins gewachsenes Werkzeug, unverändert' },
-              ].map(b => (
-                <Link key={b.href} href={b.href} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <Zeile onClick={() => {}} titel={b.titel} unter={b.satz} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
-                </Link>
-              ))}
-            </Liste>
-          </Karte>
         </>
       )}
-    </Seite>
+    </>
   );
 }

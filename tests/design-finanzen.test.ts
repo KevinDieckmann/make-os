@@ -114,13 +114,16 @@ describe('Handy-Regeln', () => {
   it('Kopf der Finanzplanung: Aktionen als Standard-Knöpfe mit Text nur am Rechner (ui-nur-breit)', () => {
     const f = lies('components/os/finanzplan/Finanzplan.tsx');
     expect(f).toContain('ui-nur-breit');
-    expect(f).toContain("<Reiter ariaLabel=\"Bereiche der Finanzplanung\"");
+    // 08.10. (Aufräumen Etappe 2): die Blätter stehen in EINER Pillenreihe (Ebene 2 unter dem Reiter „Planung“).
+    expect(f).toContain('<nav aria-label="Blätter der Finanzplanung">');
+    expect(f).toContain('<Pillen einzeilig');
+    expect(f).not.toContain('<Reiter ');
     expect(f).toContain('ariaLabel="Letzte Änderung rückgängig"');
   });
 
-  it('Zahlen: eine wischbare Reiterleiste statt Segment-Umschalter im Kopf', () => {
+  it('Finanzen: eine wischbare Reiterleiste je Bereich statt Segment-Umschalter im Kopf', () => {
     const f = lies('components/os/FinanzenView.tsx');
-    expect(f).toContain('<Reiter ariaLabel="Sicht der Zahlen"');
+    expect(f).toContain("<Reiter ariaLabel={bereich === 'privat' ? 'Finanzen Privat' : 'Finanzen Business'}");
     expect(f).not.toContain('<Segmente');
   });
 });

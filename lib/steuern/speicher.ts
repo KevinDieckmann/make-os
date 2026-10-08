@@ -233,7 +233,7 @@ export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): 
       neu++;
       return {
         id, title: `${finanzOrtName(x.einheit)}: ${x.titel}`.slice(0, 200),
-        description: `Steuerfrist ${x.datum.slice(8, 10)}.${x.datum.slice(5, 7)}.${x.datum.slice(0, 4)} — ${x.hinweis}. Abhaken unter Zahlen → Steuern. ${HINWEIS}`,
+        description: `Steuerfrist ${x.datum.slice(8, 10)}.${x.datum.slice(5, 7)}.${x.datum.slice(0, 4)} — ${x.hinweis}. Abhaken unter Finanzen › Steuern. ${HINWEIS}`,
         status: 'todo', priority: x.tage <= 3 ? 'high' : 'medium', assignee: 'kevin',
         tags: ['steuern', ...(x.einheit === 'privat' ? ['haushalt'] : [])], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: x.datum,
         // Space der Gesellschaft (05.10.: die Selbstständigkeit steht unter Privat — `bereichVon`), Einheit bleibt.

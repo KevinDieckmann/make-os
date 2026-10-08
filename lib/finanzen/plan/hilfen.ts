@@ -41,7 +41,8 @@ export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; la
   { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }, { id: 'selbst', label: finanzOrtName('kdc') }] },
   { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: KDV }] },
   { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
-  { id: 'buchungen', label: 'Buchungen & Check', unter: [{ id: 'buchungen', label: 'Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
+  // 08.10. (Aufräumen Etappe 2): „Ist“ statt „Buchungen“ — die Kontobuchungen stehen unter Konten & Buchungen; hier ist der Ist-Abgleich des Plans.
+  { id: 'buchungen', label: 'Ist & Check', unter: [{ id: 'buchungen', label: 'Ist-Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
   { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },
   { id: 'protokoll', label: 'Protokoll', unter: [{ id: 'protokoll', label: 'Protokoll' }] },
 ];
@@ -91,8 +92,8 @@ export function bereicheFuer(sicht: 'privat' | 'business'): typeof BEREICHE {
 /** Unterseite in einer Sicht — eine private Unterseite fällt in der Business-Sicht auf „lage“ zurück. */
 export const unterseiteFuer = (u: unknown, sicht: 'privat' | 'business'): Unterseite => (istUnterseite(u) && (sicht === 'privat' || !NUR_PRIVAT_UNTERSEITEN.includes(u)) ? u : 'lage');
 /**
- * Die Adresse der Finanzplanung (04.10.: Reiter „Finanzplanung“ unter Finanzen › Privat und Finanzen › Business). Alte Links auf
- * `/os/finanzplan?…` landen in der Privat-Sicht (dort ist alles); alle Parameter (u, monat, zeile, sz, feld, steuern …) bleiben.
+ * Die Adresse der Finanzplanung (04.10.; seit 08.10. Reiter „Planung“ unter Finanzen › Privat und Finanzen › Business). Alte Links auf
+ * /os/finanzplan?… leiten in next.config.mjs in die Privat-Sicht weiter (dort ist alles); alle Parameter (u, monat, zeile, sz, feld, steuern …) bleiben.
  */
 export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSearchParams | Record<string, string | number | undefined>): string {
   const q = new URLSearchParams();
@@ -100,6 +101,13 @@ export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSear
   const eintraege = params instanceof URLSearchParams ? Array.from(params.entries()) : Object.entries(params ?? {});
   for (const [k, v] of eintraege) if (k !== 's' && k !== 'space' && v !== undefined && v !== '') q.set(k, String(v));
   return `/os/finanzen?${q.toString()}`;
+}
+/**
+ * Die Blätter einer Sicht in EINER Reihe (08.10., Aufräumen Etappe 2: Finanzen hat höchstens zwei Ebenen — Reiter „Planung“ =
+ * Ebene 1, das Blatt = Ebene 2). Reihenfolge und Gruppen bleiben die der acht Bereiche (BEREICHE); die Gruppe steht nur noch als Daten.
+ */
+export function blaetterFuer(sicht: 'privat' | 'business'): { id: Unterseite; label: string; bereich: Bereich }[] {
+  return bereicheFuer(sicht).flatMap(b => b.unter.map(u => ({ id: u.id, label: u.label, bereich: b.id })));
 }
 export const istUnterseite = (v: unknown): v is Unterseite => BEREICHE.some(b => b.unter.some(x => x.id === v));
 

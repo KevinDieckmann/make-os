@@ -354,7 +354,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           <Ueberschrift farbe={LEUCHT.geld} rechts={<Chip farbe={offene.length ? LEUCHT.achtung : LEUCHT.gut}>{offene.length} offen</Chip>}>Einkaufsliste</Ueberschrift>
           {b && (
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>
-              Lebensmittel {b.monat.slice(5, 7)}/{b.monat.slice(0, 4)}: <b style={{ color: budgetFarbe }}>{euro(b.ausgegeben)}</b>{b.budget ? <> von {euro(b.budget)} Budget</> : ' — kein Budget gesetzt'} · <Link href="/os/finanzen?s=privat&t=buchungen" style={link}>Zahlen ›</Link>
+              Lebensmittel {b.monat.slice(5, 7)}/{b.monat.slice(0, 4)}: <b style={{ color: budgetFarbe }}>{euro(b.ausgegeben)}</b>{b.budget ? <> von {euro(b.budget)} Budget</> : ' — kein Budget gesetzt'} · <Link href="/os/finanzen?s=privat&t=buchungen" style={link}>Finanzen ›</Link>
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>

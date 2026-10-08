@@ -113,7 +113,7 @@ function GesamtBusiness() {
       </Karte>
       <Karte i={1}>
         <Blatt zeilen={zeilen} titel="Business je Monat" werkzeuge={<span style={{ display: 'inline-flex', gap: 6 }}><Etikett einheit="ug" /><Etikett einheit="kdv" /></span>} />
-        <Hinweis>Nur Business. Gehalt und Ausschüttung stehen als Abfluss der Gesellschaft (brutto); was davon privat ankommt, steht unter Finanzen › Privat › Finanzplanung. {STEUER_HINWEIS}</Hinweis>
+        <Hinweis>Nur Business. Gehalt und Ausschüttung stehen als Abfluss der Gesellschaft (brutto); was davon privat ankommt, steht unter Finanzen › Privat › Planung. {STEUER_HINWEIS}</Hinweis>
       </Karte>
     </>
   );

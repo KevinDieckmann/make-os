@@ -115,7 +115,7 @@ export const REGLER: Regler[] = [
   { id: 'recovery-gruen', label: 'Grüne Tagesform ab', bereich: 'schutz', erklaert: 'Ab welchem Erholungswert ein Tag als grün gilt — steuert Tagesform, Fokus-Vorschlag und Wochenplanung.', min: 50, max: 85, schritt: 1, einheit: '%',
     wirktIn: [{ label: 'Gesundheit', href: '/os/gesundheit' }, { label: 'Tag', href: '/os/planung' }], skala: ['schnell grün', 'nur wirklich erholt'] },
   { id: 'runway-warnung', label: 'Runway-Warnung ab', bereich: 'schutz', erklaert: 'Ab wie wenigen Monaten Geldreichweite das System rot schlägt.', min: 1, max: 12, schritt: 1, einheit: 'Monate',
-    wirktIn: [{ label: 'Finanzen', href: '/os/finanzen' }, { label: 'Controlling', href: '/os/controlling' }], skala: ['erst spät nervös', 'früh warnen'] },
+    wirktIn: [{ label: 'Finanzen', href: '/os/finanzen' }, { label: 'Controlling', href: '/os/finanzen?s=controlling&space=business' }], skala: ['erst spät nervös', 'früh warnen'] },
   // „Körperdaten an Agenten“ (global, Vorgabe an) ist seit 05.10. entfernt — ersetzt durch die Art.-9-Einwilligung (b)
   // „An die KI geben“ JE PERSON (System › Datenschutz, lib/datenschutz/gesundheit-einwilligung.ts; Vorgabe aus).
 ];

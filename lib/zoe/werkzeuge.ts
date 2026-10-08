@@ -104,7 +104,7 @@ const firmaId = (rein: unknown): Gesellschaftskennung => firmaAusAngabe(rein);
 const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string): F => (fid === UG_FIRMA.id && Array.isArray(f.firmen) && f.firmen.length && !f.firmen.some(x => x.id === UG_FIRMA.id) ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f);
 /** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|malin|n26/i.test(String(rein ?? ''));
-const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Zahlen → Privat) — dafür gibt es eigene Werkzeuge.';
+const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.';
 
 async function setzeKontostand(input: Record<string, unknown>): Promise<string> {
   const betrag = Number(input.betrag);
@@ -707,7 +707,7 @@ async function businessIndex(input: Record<string, unknown>, _origin: string, pe
   const { scopeAus } = await import('@/lib/business/register');
   // Seit 05.10. gehört die Selbstständigkeit zu Privat — der Business-Index führt sie nicht (ehrlich sagen statt still „Gesamt“).
 
-  if (istGesellschaft(input.sicht) && gehoertZuPrivat(input.sicht)) return `${GEHOERT_ZU_PRIVAT(input.sicht)} Der Business-Index rechnet nur die Gesellschaften im Business; ihre Zahlen stehen unter Finanzen › Privat › Finanzplanung.`;
+  if (istGesellschaft(input.sicht) && gehoertZuPrivat(input.sicht)) return `${GEHOERT_ZU_PRIVAT(input.sicht)} Der Business-Index rechnet nur die Gesellschaften im Business; ihre Zahlen stehen unter Finanzen › Privat › Planung.`;
   const sicht = scopeAus(input.sicht);
   return businessText(sicht, typeof input.kennzahl === 'string' && input.kennzahl ? input.kennzahl : undefined);
 }

@@ -311,7 +311,7 @@ function SelbstAbschluss() {
               {zeile('nach Ablösung', hz('ab.nachConsors', r.nachConsors, 'nach Ablösung'))}
             </tbody>
           </Tabelle>
-          <Hinweis>Seit 05.10. EIN Steuerjahr: Jan–Sep (hier) und Okt–Dez (Blatt oben) werden zusammen versteuert, mit dem Gehalt in derselben Progression. Die Steuer 2026 steht ab Okt in der Rücklage der Selbstständigkeit und wird im Zahlmonat 2027 bezahlt (minus schon bezahlter Vorauszahlungen). Darlehen erfassen Sie unter Buchungen &amp; Check › Schulden › Darlehen. Grundtarif 2026 (§ 32a EStG) als Näherung — Hinweis, keine Steuerberatung.</Hinweis>
+          <Hinweis>Seit 05.10. EIN Steuerjahr: Jan–Sep (hier) und Okt–Dez (Blatt oben) werden zusammen versteuert, mit dem Gehalt in derselben Progression. Die Steuer 2026 steht ab Okt in der Rücklage der Selbstständigkeit und wird im Zahlmonat 2027 bezahlt (minus schon bezahlter Vorauszahlungen). Darlehen erfassen Sie unter Planung › Schulden › Darlehen. Grundtarif 2026 (§ 32a EStG) als Näherung — Hinweis, keine Steuerberatung.</Hinweis>
         </Karte>
       </Spalte>
     </Spalten>

@@ -15,6 +15,8 @@ import { GRENZEN } from '@/lib/finanzen/finanzplan-bestand';
 import { belegBetrag, euroText } from '@/lib/finanzen/beleg-betrag';
 import { einmalig, type Antwort } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
+import { WEG } from '@/lib/wege';
+import { gehoertZuPrivat } from '@/lib/einheiten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,7 +83,7 @@ async function uebernehmen(b: {
       return f;
     });
     if (!angelegt) return antwort({ ok: false, error: `Abgelehnt: höchstens ${GRENZEN.rechnungen} Rechnungen im Finanzplan — erst Erledigtes aufräumen.` }, 413);
-    return antwort({ ok: true, ziel: 'rechnung', angelegt, wo: '/os/finanzen/planung' });
+    return antwort({ ok: true, ziel: 'rechnung', angelegt, wo: WEG.rechnungen() });
   }
 
   // Standard: Buchung (Ausgabe)
@@ -106,5 +108,5 @@ async function uebernehmen(b: {
     angelegt = `${neu.zweck} · ${euroText(neu.betrag)} · ${neu.kategorie}`;
     return f;
   });
-  return antwort({ ok: true, ziel: 'buchung', angelegt, wo: '/os/finanzen/buchungen' });
+  return antwort({ ok: true, ziel: 'buchung', angelegt, wo: WEG.buchungen({ privat: gehoertZuPrivat(firma) }) });
 }

@@ -194,7 +194,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
                   </div>
                   <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{u.rechnungen.length} Rechnung{u.rechnungen.length === 1 ? '' : 'en'} ({d.einstellungen[u.firma].istVersteuerung ? 'Ist-Versteuerung: nach Zahlungseingang' : 'Soll-Versteuerung: nach Rechnungsdatum'}) · Vorsteuer: {u.vorsteuerQuelle}</span>
                   {u.rechnungen.slice(0, 4).map(r => (
-                    <Link key={r.id} href={`/os/finanzen/planung?r=${r.id}`} className="fassbar" style={{ display: 'flex', gap: 10, justifyContent: 'space-between', padding: '5px 8px', borderRadius: 9, textDecoration: 'none', color: C.ink, fontSize: TYP.bedien }}>
+                    <Link key={r.id} href={WEG.rechnung(r.id)} className="fassbar" style={{ display: 'flex', gap: 10, justifyContent: 'space-between', padding: '5px 8px', borderRadius: 9, textDecoration: 'none', color: C.ink, fontSize: TYP.bedien }}>
                       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.kunde}{r.nummer ? ` · ${r.nummer}` : ''}{r.angenommen && <span style={{ color: LEUCHT.achtung }}> · 19 % angenommen</span>}</span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkDim, whiteSpace: 'nowrap' }}>{euro(r.ust)} USt ›</span>
                     </Link>

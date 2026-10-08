@@ -6,12 +6,14 @@
 // Liquidität der nächsten zwölf Wochen, die Kennzahlen, der Lagebericht, der
 // Umsatz je Monat — und die Ziele samt Ist-Zahlen zum Pflegen.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Ring).
+// 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Finanzen › Business › Überblick › „Controlling & Ziele“ (/os/controlling leitet weiter).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
+import { WEG } from '@/lib/wege';
 import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
@@ -20,7 +22,7 @@ import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
   type FinanceState,
 } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
+import { Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung } from '@/lib/business/eroeffnung';
 
@@ -155,9 +157,11 @@ export function ControllingView() {
   const kursFarbe = m.aktiveMonate === 0 ? C.inkLeise : zoneFarbe(pct);
 
   return (
-    <Seite titel="Controlling & Ziele" unter={`Ziel ${s.jahr} · ${eur(s.zielUmsatz)} Umsatz, ${eur(s.zielGewinn)} Gewinn`}
-      rechts={<span className="ui-nur-breit"><Knopf onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf></span>}>
-      <div className="ui-nur-schmal"><Knopf voll onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf></div>
+    <>
+      <div style={{ display: 'flex', gap: '8px 14px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', minWidth: 0 }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Ziel {s.jahr} · {eur(s.zielUmsatz)} Umsatz, {eur(s.zielGewinn)} Gewinn</span>
+        <Knopf onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf>
+      </div>
       {/* ── Der Held: liegen wir auf Kurs zum Jahresziel? ── */}
       <Karte i={0} ton={m.aktiveMonate > 0 ? (aufKurs ? LEUCHT.gut : LEUCHT.achtung) : undefined}>
         <Ueberschrift farbe={kursFarbe}>Kurs aufs Jahresziel</Ueberschrift>
@@ -193,7 +197,7 @@ export function ControllingView() {
             <Ueberschrift farbe={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}
               rechts={<>
                 <Knopf leise onClick={() => setOptimistisch(!optimistisch)}>{optimistisch ? 'mit geplanten Rechnungen' : 'nur was gestellt ist'}</Knopf>
-                <Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>Rechnungen & Zahlungen ›</Link>
+                <Link href={WEG.rechnungen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Rechnungen & Zahlungen ›</Link>
               </>}>
               Liquidität · 12 Wochen
             </Ueberschrift>
@@ -224,7 +228,7 @@ export function ControllingView() {
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               {fplan.firmen.map(f => (
                 <Feld key={f.id} label={<>{f.name}{f.stand ? ` · ${datum(f.stand)}` : ''}</>}>
-                  <Link href="/os/finanzen/liquiditaet#kontostaende" style={{ ...zahlFeld, width: 140, display: 'inline-block', textDecoration: 'none', color: f.kontostand == null ? C.inkLeise : C.ink }}>{f.kontostand == null ? 'eintragen ›' : `${eur(f.kontostand)} ›`}</Link>
+                  <Link href={WEG.kontostaende()} style={{ ...zahlFeld, width: 140, display: 'inline-block', textDecoration: 'none', color: f.kontostand == null ? C.inkLeise : C.ink }}>{f.kontostand == null ? 'eintragen ›' : `${eur(f.kontostand)} ›`}</Link>
                 </Feld>
               ))}
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingBottom: 8, lineHeight: 1.5 }}>
@@ -337,7 +341,7 @@ export function ControllingView() {
       {/* Eingabe */}
       <Karte i={6}>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
-          Die Ist-Monate kommen aus dem <Link href="/os/finanzen?s=business#abschluss" style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss je Firma</Link> (Zahlen → Business) — eine Eingabe, eine Wahrheit (26.09.). Liegt für einen Monat noch kein Abschluss vor, gilt der hier gepflegte Wert.
+          Die Ist-Monate kommen aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss je Firma</Link> (Finanzen › Business) — eine Eingabe, eine Wahrheit (26.09.). Liegt für einen Monat noch kein Abschluss vor, gilt der hier gepflegte Wert.
         </div>
         <details open={loaded && m.aktiveMonate === 0}>
           <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', listStyle: 'none', marginTop: 10 }}>Altbestand pflegen ▸</summary>
@@ -356,6 +360,6 @@ export function ControllingView() {
           <Leer>Nur Zahlen eintragen. Wird automatisch gespeichert, alles rechnet live.</Leer>
         </details>
       </Karte>
-    </Seite>
+    </>
   );
 }

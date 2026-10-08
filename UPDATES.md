@@ -4,6 +4,63 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 — Aufräumen Etappe 2: Finanzen in zwei Ebenen (nur lokal — Branch `aufraeumen-2`)
+
+Kevin 08.10.: „Die Software wirkt unaufgeräumt und überladen.“ Vorher drei Navigationsebenen (Reiter Privat/Business · Finanzplanung · Steuern ·
+Gesamt · Head of Finance; darunter 7 Haushalt-Reiter bzw. 8 Finanzplan-Bereiche mit 19 Unterseiten) plus sechs Nebenseiten ohne Menüpunkt;
+„Buchungen“ dreimal, „Gesamt“ doppelt, Titel „Zahlen“ neben dem Menü „Finanzen“. Jetzt höchstens zwei Ebenen, jede Sache an einem Ort,
+der Bereich kommt aus dem Kopf-Schalter (`?space=`; „Alles“/ohne = Privat — Privat darf Business sehen, nie umgekehrt):
+
+```
+Finanzen  (Kopf-Schalter Privat | Business · Knopf „Head of Finance“ neben den Reitern)
+├─ Privat
+│  ├─ Überblick              Privat-Index · Für dich · Übersicht · Gesamt (die Brücke Privat → Business, #gesamt — EINMAL)
+│  ├─ Konten & Buchungen     Buchungen · Einnahmen · Analyse · Fixkosten & Budget · Ist gegen Soll · Schulden & Rechnungen
+│  │                         · Selbstständigkeit (ihre Buchungen aus dem Beleg-Werkzeug)
+│  ├─ Planung                die Blätter in EINER Reihe: Lage · Szenarien bauen · Treiber … · Privat · Selbstständigkeit (+ Altbestand:
+│  │                         Grundlage/Kassenbuch und erstes Cockpit, erst auf Klick) · MAKE · KD Ventures · Gesamt · Entwicklung · Geldfluss
+│  │                         · Ist-Buchungen · Budget · Wochen-Check · Zu erledigen · Kalender & Verträge · Schulden · Ziele · Töpfe · Protokoll
+│  └─ Steuern
+└─ Business
+   ├─ Überblick              Cockpit (Business-Index, 0-Punkt, Monatsabschluss, Konten, Fälliges) · Controlling & Ziele
+   ├─ Rechnungen & Zahlungen
+   ├─ Liquidität
+   ├─ Buchungen              nur die Gesellschaften
+   ├─ Planung                dieselben Blätter ohne Privates (Server filtert wie bisher, `?sicht=business`)
+   └─ Steuern
+```
+- **Abweichungen vom Vorschlag:** Business hat einen sechsten Reiter „Buchungen“ — das Kassenbuch der Gesellschaften (Beleg-Werkzeug, bezahlte
+  Rechnungen) hatte sonst keinen Ort, und Steuer-Checkliste/Beleg-Übernahme verlinken dorthin. Controlling ist Ebene 2 unter Business › Überblick
+  (Kurs aufs Jahresziel ist ein Lagebild, kein Planblatt); „Gesamt“ steht nur noch unter Privat, weil die Brücke private Zahlen trägt
+  (Business sieht nie Privates). Grundlage und erstes Cockpit gehören zur Selbstständigkeit (seit 05.10. Privat) → Altbestand unter
+  Planung › Selbstständigkeit, nicht in der Hauptnavigation; das Cockpit lädt erst auf Klick (es holt Skripte von außen).
+- **Ein Name:** „Finanzen“ überall, sichtbare „Zahlen → …“-Texte umbenannt; in der Planung heißen die Plan-Buchungen „Ist-Buchungen“ (Gruppe
+  „Ist & Check“), damit „Buchungen“ nur noch die Kontobuchungen meint.
+- **Aufbau an EINER Stelle:** `lib/finanzen/navigation.ts` (Reiter, Ebene 2, `finanzOrt` = wo bin ich, `finanzAdresse`); Planung-Blätter
+  `blaetterFuer` (lib/finanzen/plan/hilfen.ts). Die Nebenansichten (Rechnungen & Zahlungen, Liquidität, Buchungen, Controlling, Grundlage, erstes
+  Cockpit) haben keine eigene Seite mehr; ihre Karte „Bereiche“/„Weiter“ ist weg (die Reiter sind die Navigation).
+- **Alte Adressen** leiten in `next.config.mjs` weiter, Parameter und Anker bleiben: `/os/finanzen/planung?r=…|z=…` → Rechnungen & Zahlungen,
+  `/os/finanzen/liquiditaet?p=…#kontostaende` → Liquidität, `/os/finanzen/buchungen?monat=&kat=&q=&ort=` → Buchungen (Privat-Einheit → Privat),
+  `/os/finanzen/grundlage` und `/os/finanzen/dashboard` → Planung › Selbstständigkeit › Altbestand, `/os/controlling` → Controlling & Ziele,
+  `/os/finanzplan` → Privat › Planung, `/os/business?f=&k=` → Business › Überblick (die beiden letzten waren Weiterleitungs-Seiten unter app/).
+  Alle Links (WEG, Kennzahl-Punkte, Head of Finance, Steuern, Agenten, Onboarding, Schnellsuche) zeigen direkt auf die neuen Orte.
+- Keine Rechen-, Daten- oder Sicht-Änderung; `tests/finanzplan-sicht.test.ts` unverändert grün.
+- Wächter `tests/aufraeumen-etappe2.test.ts`; angepasst: business-modell (Links), steuern (Links), design-finanzen (Blätter als Pillen).
+
+**So sieht Kevin es:** `localhost:3001/os/finanzen` → Kopf auf Privat: vier Reiter Überblick · Konten & Buchungen · Planung · Steuern, rechts
+„Head of Finance“. Konten & Buchungen → eine Pillenreihe (Buchungen … Selbstständigkeit). Planung → eine Pillenreihe der Blätter; „Selbstständigkeit“
+→ unten „Altbestand“ mit zwei Knöpfen. Kopf auf Business: sechs Reiter; Überblick → Pillen Cockpit · Controlling & Ziele. Ein altes Lesezeichen
+`/os/controlling` oder `/os/finanzen/planung?r=<Rechnung>` landet am neuen Ort, die Rechnung ist hervorgehoben.
+
+**Rückweg:** reine Oberfläche — keine Bestände, keine Formänderung. Ein alter Stand kennt `s=rechnungen|liquiditaet|buchungen|controlling` nicht
+(zeigt dort den Privat- bzw. Business-Überblick); die alten Adressen funktionieren dort wieder als Seiten.
+
+**Offen:** Kopf-Schalter auf `/os/finanzen` — die Adresse trägt `space=` und gewinnt; schaltet der Kopf nur den gemerkten Space um, bleibt die
+Seite im alten Bereich (Kopf gehört Etappe 1/zweiter Agent). `lib/make-one/spaces.ts` erkennt `s=rechnungen|liquiditaet|buchungen|controlling`
+nur über `space=` (alle neuen Wege tragen ihn); die Muster `/os/controlling`, `/os/business`, `/os/finanzen/` dort sind jetzt tot (nicht angefasst).
+Planung-Blätter: 19 (Privat) bzw. 13 (Business) Pillen in einer wischbaren Reihe — ob einzelne Blätter zusammengehören (z. B. Entwicklung +
+Geldfluss), entscheidet Kevin.
+
 ## 08.10.2026 — Aufräumen Etappe 1: Navigation, Kopf, Startseite (nur lokal — Branch `aufraeumen-1`)
 
 Kevin 08.10.: „Die Software wirkt unaufgeräumt und überladen, ich weiß gar nicht mehr wo alles ist.“ Vorher: rund 27 Navigationsziele vor dem
