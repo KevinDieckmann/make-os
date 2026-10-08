@@ -308,8 +308,8 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Rundgang durch die Software',
     warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
-      // Aufräumen Etappe 1 (08.10.): eine Leiste je Space, oben nur der Schalter Privat | Business, Suche, Glocke, Fokus.
-      'Oben links der Schalter Privat | Business — die Leiste darunter zeigt nur die Punkte dieses Space: Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, dann Gesundheit · Familie · Kontakte bzw. Markttraktion · Mandate & Unternehmen · Kontakte, zuletzt ZOE.',
+      // Aufräumen Etappe 1 (08.10., Nachbesserung): EIN Schalter oben — Alles · Privat · Business —, Suche, Glocke, Fokus.
+      'Oben links der Schalter Alles · Privat · Business — die Leiste darunter folgt ihm: bei „Alles“ Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, Kontakte, ZOE und darunter die Gruppen Privat (Gesundheit, Familie) und Business (Markttraktion, Mandate & Unternehmen); bei Privat bzw. Business nur die Punkte dieses Bereichs. Am Handy öffnet „Menü“ unten dasselbe.',
       'Heute ist die Startseite (Gruß, Steht an, Termine, Aufgaben, Score) — über „Anpassen“ gestaltest du sie selbst. Fokus, Kompass und Wachstum liegen unter Planung; Freigaben, Agenten und Brain unter ZOE.',
       'Unten links Einstellungen (Konto, Verbindungen, Datenschutz, Betrieb). ⌘K (am Handy die Lupe) springt zu jeder Seite.',
     ],

@@ -35,6 +35,27 @@ Alte Lesezeichen `/os/heute` und `/os/uebersicht?space=business` landen auf Heut
 Layouts (die neue Karte „Steht an“ fällt dort weg). Zeitmessung: `/os/agenten` und `/os/wissen` behalten ihre Schlüssel (`agenten`, `brain`),
 Planung `ziele-planung`, Mandate `mandate`; Research/Content/Meeting/Board/Prospecting zählen jetzt unter `zoe` statt unter dem Business-Bereich.
 
+**Nachtrag 08.10. — ein Schalter oben mit „Alles“ (Kevin nach der Demo; Branch `aufraeumen-1b`):**
+- Der Kopf-Schalter heißt **Alles · Privat · Business**; Heute hat keinen eigenen Schalter mehr und folgt dem Kopf.
+- **Bei „Alles“:** Heute = die gemeinsame Fläche (`home`); Inbox = alle eigenen Postfächer; Kalender = Bereich „alle“; Aufgaben = Überblick über
+  Privat, Firmen und Mandanten; Planung/Ziele = Filter „alle“; Finanzen = „Gesamt“; Kontakte = die Kartei der Markttraktion. Seiten eines Bereichs
+  (Gesundheit, Familie, Markttraktion, Mandate, Finanzen › Privat/Business) zeigen ihren Bereich, der Schalter bleibt auf „Alles“.
+- Leiste bei „Alles“: Heute · Inbox · Kalender · Aufgaben · Planung · Finanzen · Kontakte · ZOE, darunter Gruppe **Privat** (Gesundheit, Familie)
+  und **Business** (Markttraktion, Mandate & Unternehmen) — zwölf Punkte.
+- Gemerkt wie bisher (`?space=` gewinnt; „Alles“ = kein Parameter, `?space=alles` wird ebenso verstanden). Alte Links mit `?space=privat|business`
+  gelten weiter. Ohne gemerkte Wahl startet „Alles“.
+- **Handy unten fünf statt sechs:** Heute · Inbox · Menü · ZOE · Netzwerken. „Menü“ öffnet das Blatt mit dem Schalter Alles/Privat/Business, allen
+  Punkten, Einstellungen und „Problem oder Idee melden“ (ein „Mehr“ wäre dasselbe Blatt doppelt; Inbox ist am Handy der häufigste Weg). Namen
+  kürzen mit „…“ statt zu überlappen. Kopf am Handy: der Schalter ist kompakt (12 px, 8 px Rand), passt mit Lupe, Glocke und Fokus in 375 px.
+- Wächter: `tests/spaces.test.ts` (Wahl, Leiste Alles, Schalter-Ziele), `tests/aufraeumen-etappe1.test.ts` (kein zweiter Schalter auf Heute, Kopf mit
+  Alles · Privat · Business, Handy ≤ 5, Gruppen), angepasst `leiste-melden`, `design-kern`.
+
+**So sieht Kevin es:** `localhost:3001/os` → oben links Alles · Privat · Business. „Alles“: Leiste mit den Gruppen Privat/Business, Heute zeigt beides.
+Auf Aufgaben „Privat“ tippen → Aufgaben im Privat-Space; zurück auf „Alles“ → Überblick. Auf Gesundheit bei „Alles“ bleibt der Schalter stehen.
+Handy (375 px): unten fünf Knöpfe, „Menü“ öffnet das Blatt mit Schalter und Einstellungen.
+
+**Rückweg:** reine Oberfläche; der Merker `make-space` kann jetzt `alles` tragen — ein alter Stand liest das als „Privat“.
+
 **Offen für Etappe 2/3:** Finanzen-Reiter und Markttraktion-Reiter entschlacken (bewusst nicht angefasst); „Steht an“ auf Heute je Space filtern
 (zeigt heute alles der Person); Bauplan-Bereiche (gespeicherte Werte „Zahlen“, „System“) umbenennen; Weiterleitungs-Seiten unter app/os
 (`business`, `crm`, `finanzplan`, `planung/woche`, `datenschutz/nachweise`) nach `next.config.mjs` ziehen; `lib/make-one/bereiche.ts` (alte
