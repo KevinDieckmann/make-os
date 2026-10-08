@@ -292,6 +292,15 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('whatsapp-medien', r.medien);
   });
 
+  // 11d · Medien unterwegs (09.10., Paket 5): unfertige Uploads (7 Tage), Papierkorb (30 Tage, samt Dateien), Sperren festschreiben (Art. 17/18,
+  //       Widerruf, Werbesperre), Ablauf der Freigaben (gesperrt + Aufgabe), Rohmaterial mit Personen → Prüf-Aufgabe (nie löschen), Schlüssel neu wickeln.
+  await schritt('medien', async () => {
+    const { medienPflege } = await import('@/lib/medien/pflege');
+    const r = await medienPflege({ uploadTage: f['medien-upload'], papierkorbTage: f['medien-papierkorb'], rohMonate: f['medien-roh'] }, jetzt);
+    zaehle('medien-uploads', r.sitzungen);
+    zaehle('medien-papierkorb', r.papierkorb);
+  });
+
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
   await schritt('archiv-umzug', async () => {
     const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);

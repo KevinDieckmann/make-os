@@ -254,17 +254,28 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'jedes Mitglied sieht die Einstellungen der Heads, die es sehen darf; der eigene Speichername (zuständig, Not-Aus) steht im Konto-Export',
     loeschfrist: 'solange die Instanz läuft; beim Konto-Löschen wird der Speichername „[gelöscht]“ (Paket 4)',
   }),
-  // Medien unterwegs (08.10. spät, Nachtrag Kevin; Paket 5): Metadaten der Bilder/Videos — die Dateien selbst liegen verschlüsselt in der
-  // Bild-Ablage (lib/store/bild-ablage.ts; Ordner trägt Paket 5 in BILD_ORDNER ein). Bilder können Personen zeigen (Recht am Bild).
-  mit(T('medien--*', 'Medien des Business je Haushalt (Bild/Video-Metadaten: wer, wann, Bezug Event/Kontakt/Firma, Freigabe fürs Marketing, an welche Heads) — Bezüge auf eine Person getilgt; die Dateien liegen verschlüsselt in der Bild-Ablage.'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Dokumentation und Öffentlichkeitsarbeit des Business); Veröffentlichung erkennbarer Personen nur mit Einwilligung bzw. nach KUG — Freigabe nur per Klick',
-    art15: 'Mitglieder sehen die Business-Medien (Agenten-Bereich/Medien); Kontakte: die Auskunft nennt Medien mit Bezug auf sie',
-    loeschfrist: 'bis zum Löschen von Hand; Frist je Medium offen (Richtungsfragen Paket 5)',
+  // Medien unterwegs (09.10., Paket 5 V1; Kevins Antworten Fragerunde Teil 2): Kataloge (Metadaten, Personen im Bild, Freigaben, Einwilligungen) —
+  // die Dateien liegen NIE im Datenordner-Bestand, sondern verschlüsselt je Segment im Medienspeicher (Hetzner Object Storage, ohne Einrichtung
+  // `<daten>/medien`, von der Nachtsicherung ausgenommen). Bilder können Personen zeigen (Recht am Bild); Gesichtserkennung gibt es nicht.
+  mit(T('medien--*', 'Medien des Business je Haushalt: Alben, Bild/Video-Metadaten (wer, wann, Album, Personen im Bild als Kennung, Freigabe fürs Marketing mit Kanälen/bis-Datum, an welche Heads mit Auftrag) und Einwilligungen abgebildeter Personen (Wortlaut, Fassung, Unterschrift verschlüsselt im Medienspeicher, Widerruf nur anhängend). Art. 17: Kennung „[gelöscht]“ → Medium sofort gesperrt + Prüf-Aufgabe (lib/medien/pflege.ts); die Dateien selbst liegen verschlüsselt im Medienspeicher.', 'medien-papierkorb'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Dokumentation und Öffentlichkeitsarbeit des Business, KUG-Wertungen § 23); Porträts, nicht öffentliche Veranstaltungen, Minderjährige (Sorgeberechtigte) und Beschäftigte nur mit Einwilligung (Art. 6 Abs. 1 lit. a, Art. 7) — Freigabe nur per Klick eines Menschen, Vier-Augen bei erkennbaren Personen',
+    art15: 'Mitglieder sehen die Business-Medien (Fotos & Videos); Kontakte: die Auskunft nennt Medien, auf denen sie markiert sind, und ihre Einwilligungen (lib/medien/datenschutz.ts `medienAuskunft`)',
+    loeschfrist: 'Papierkorb 30 Tage (Frist „medien-papierkorb“), dann samt Dateien endgültig; Rohmaterial mit erkennbaren Personen, das 12 Monate nicht freigegeben wurde → Prüf-Aufgabe (Frist „medien-roh“, nie automatisch gelöscht); Freigaben enden am bis-Datum (gesperrt + Aufgabe); Konto löschen: Medien bleiben, Stempel der Person „[gelöscht]“',
   }),
-  mit(T('medien-privat--*', 'Private Medien je Person (Bild/Video-Metadaten) — nur die Person selbst sieht sie; Bezüge auf Dritte getilgt.'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson)',
-    art15: 'die Person sieht und exportiert sie (Medien, Konto › Meine Daten)',
-    loeschfrist: 'bis die Person sie bzw. ihr Konto löscht (Konto löschen entfernt Bestand und Dateien — Paket 5)',
+  mit(T('medien-privat--*', 'Private Medien je Person (Alben „nur ich“ oder „Haushalt“, Bild/Video-Metadaten) — „nur ich“ sieht nur die Person, „Haushalt“ nur volle Mitglieder; Bezüge auf Dritte getilgt.', 'medien-papierkorb'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); Familienfotos im Haushalt überwiegend persönlich-familiär (Art. 2 Abs. 2 lit. c) — nie ins Marketing ohne Umzug nach Business mit neuer Prüfung',
+    art15: 'die Person sieht und exportiert sie (Fotos & Videos, Konto › Meine Daten)',
+    loeschfrist: 'Papierkorb 30 Tage; sonst bis die Person sie bzw. ihr Konto löscht (Konto löschen entfernt Bestand und Dateien — lib/medien/datenschutz.ts)',
+  }),
+  mit(K('medien-uploads', 'Offene Upload-Sitzungen der Instanz (lib/medien/upload-server.ts): Speichername, Kennung, Größe, Prüfsummen und Salze der Stücke, gewickelter Schlüssel, Angaben zum Medium (Name, Aufnahmezeit, Album) bis zum Abschluss — keine Inhalte (die Stücke liegen verschlüsselt im Medienspeicher).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Hochladen auf Wunsch der Person)',
+    art15: 'die Person sieht ihre laufenden Uploads in Fotos & Videos (Warteschlange)',
+    loeschfrist: '7 Tage (Frist „medien-upload“) bzw. mit dem Abschluss; Konto löschen entfernt die Sitzungen der Person',
+  }),
+  mit({ muster: 'medien', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'medien-papierkorb', grund: 'Dateien der Medien (Ordner <daten>/medien bzw. Hetzner Object Storage): nur Chiffrat je Segment unter zufälligen Namen, Schlüssel je Medium im Katalog — kein Bestand, nicht durchsuchbar. Art. 17 wirkt über den Katalog (medien--*): Medium gesperrt + Prüfung; endgültig gelöscht werden Dateien nur zusammen mit dem Eintrag (Papierkorb, Konto löschen). Von der Nachtsicherung ausgenommen (deploy/sicherung.sh).' }, {
+    rechtsgrundlage: 'wie medien--* bzw. medien-privat--*',
+    art15: 'über den Katalog (Fotos & Videos; Auskunft nennt die Medien, auf denen eine Person markiert ist)',
+    loeschfrist: 'mit dem Eintrag im Katalog (Papierkorb 30 Tage); Zuschnitte sind eigene Medien „abgeleitet von“',
   }),
   // ── Paket D-C (29.09.) ──
   T('absichten--*', 'Absichtsprotokoll (lib/store/absichten.ts) — andere Absichten getilgt; die eigene Art.-17-Absicht behält Name/Adressen bis zum letzten Schritt, beim Abschluss werden die Daten geleert (fertige nach 30 Tagen weg).'),

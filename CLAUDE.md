@@ -1434,6 +1434,27 @@ Kevin: Kontakte, die wir für einen Kunden erfassen, „gehören immer auch uns�
 - **Handy-Leiste:** „Netzwerken“ (Handschlag) statt „Melden“; „Problem oder Idee melden“ = `MeldenZeile` im Blatt + System-Seite. **Kontaktakte < 1180 px:** `SchnellLeiste.tsx` bündelt die vorhandenen CRM-Wege (kein Zweitweg).
 - Offline: Abbild der EIGENEN Profile in `localStorage` `make-karten-cache` (nur wenn kein Funkloch-Ersatz nötig ist, nie für `?fuer`); `karteCacheLeeren()` beim Abmelden.
 
+## Medien unterwegs — Fotos & Videos (09.10., Paket 5 V1, Branch `medien`, nur lokal; UPDATES.md 09.10., research/agenten/MEDIEN.md)
+Kevin 08.10. spät: „Bilder und Videos über die Kamera … geordnet, z. B. über ein Event, direkt auf den Server, Business oder Privat … fürs Marketing, wenn
+freigegeben … an die Head ofs, wenn gewollt.“ Antworten: ENTSCHEIDUNGEN_FRAGEBOGEN.md › Fragerunde Teil 2 + „Rückfragen geklärt“.
+- **Nie im Datenordner-Bestand, nie in der Nachtsicherung:** Dateien liegen im Medienspeicher (`lib/medien/speicher*.ts`: Hetzner Object Storage, ohne
+  Einrichtung Ordner `<daten>/medien`, in `deploy/sicherung.sh` ausgeschlossen — Wächter). Konfiguration nur aus der Umgebung (`MAKE_OS_MEDIEN_*`, gesetzt über
+  `deploy/medien-speicher-verbinden.sh`). S3 selbst signiert (`s3-signatur.ts`, AWS-Beispiel als Test), getestet gegen `tests/fixtures/s3-fake.ts`.
+- **Verschlüsselung je Segment** (`krypto.ts`: 64 KiB, AES-256-GCM, Salz je Stück-Versuch in der Nonce, AAD Medium + Variante, Letzt-Merker), **Schlüssel je
+  Medium** gewickelt mit dem Datenschlüssel (`kid`); nie im Browser, nie in Antworten (`alsSicht`). Auch Vorschauen; Rotation = nur neu wickeln
+  (`medienSchluesselUmwickeln`, in `umschluesseln.ts` + täglich). `BILD_ORDNER` bewusst ohne `medien`.
+- **Upload nur in Stücken** (`upload-server.ts`, 8 MiB, SHA-256 je Stück, Typ aus dem Inhalt, idempotent je UUID `up-<uuid>` = `md-<uuid>`, Grenzen → 413, nie
+  gekürzt); Inhalt nur als Strom mit Range (206). Browser: `vorbereiten.ts` (Exif/GPS raus, Drehung zurück — `exif.ts`; Video: Orts-Atome und Tonspur genullt
+  ohne Neukodierung — `mp4-ort.ts`), verschlüsselte Warteschlange `warteschlange.ts` (Sender im /os-Rahmen, Abmelden fragt).
+- **EINE Filterstelle** `medienFuerBetrachter` (regeln.ts): Business = Haushalt des Inhabers (auch „nur Business“); Privat = Person bzw. Alben „Haushalt“ nur für
+  volle Mitglieder; Dienstweg 403. Schreiben NUR über `katalogAendern` (server.ts). Neue Leser über `mediumFinden`/`medienListe` — nie Kataloge roh ausgeben.
+- **Freigabe nur durch Menschen** (`mediumAktion` › `freigabe`): Pflichten in `freigabeGruende`, Vier-Augen bei erkennbaren Personen, Sperren wirken sofort beim
+  Lesen (`wirksamerStatus`: Art. 17/18, Widerruf, Werbesperre, Ablauf) und werden täglich festgeschrieben (`pflege.ts`, Löschfristen-Lauf Schritt „medien“).
+  Personen nur von Hand, keine Gesichtserkennung; Minderjährige nie an Heads/ohne Sorgeberechtigte; Einwilligungen nur anhängend.
+- **Heads:** nur über `medienFuerHead(person, headId, auftragId)` und Vorschläge nur über `medienVorschlagAblegen` → Stapel-Art `medien` (`heads.ts`); Zuschnitt
+  führt der Browser nach Klick aus (neues Medium `abgeleitetVon`).
+- Tests `tests/medien-*.test.ts`; Saat-Marke in der Messlatte (`medien-privat--kevin`).
+
 ## Kalender — Termine finden (29.09., Paket K4, nur lokal)
 - **Freie Zeit = EINE Lesefunktion, auf K1 aufgesetzt:** WANN jemand da ist, sagt nur K1 `verfuegbarkeitFuer` (beschäftigt/TRANSP, Abwesend, Arbeitsort, Arbeitszeit aus der Wochenvorlage `routinen.bloecke`, Feiertage NRW). `lib/kalender/freie-zeit.ts` übersetzt (`belegungenAus`, `arbeitszeitAus` — ohne Vorlage Mo–Fr 9–18, nicht an Feiertagen/ganz abwesenden Tagen —, `feiertageAus`) und ruft die reine Lückensuche `freieZeiten` (`lib/kalender/verfuegbar.ts`: Arbeitszeit je Tag oder Wochen-Fenster, Belegungen, Puffer, Vorlauf, Raster, max. je Tag; Zeitumstellung über Rundweg `wandzeit(ausWandzeit(x)) === x` + echte Dauer, doppelte Stunde = die spätere). `freieZeitFuer({ personen, dauerMin, … })` nutzen „Mit … planen“ (`GET /api/kalender/frei`), künftig ZOE (`freie_zeit`, nur lesen) und das Angebot. Gehaltene Buchungen zählen als belegt. Nie eine zweite Verfügbarkeits-Rechnung bauen; Feiertage/KW später aus K2 `lib/zeit/kalender-kern.ts` (über K1).
 - **Mit … planen** (`components/os/kalender/MitPlanen.tsx`, ein Haken `useTermineFinden` in `Kalender.tsx`): Personen wählen → Termine der anderen halbtransparent im Raster (Farbe gemischt, `gedimmt`), private (`maskiert`/`sichtbarkeit: privat`) nur „belegt“; `FreieZeiten.tsx` → Klick öffnet `NeuerTermin` vorbelegt (`Vorgabe`, gemeinsam → `wer: 'beide'`). Offene Buchungen stehen als `buchung-…`-Einträge im Raster (Klick öffnet die Buchungsseiten-Karte). Arbeitszeiten pflegt man in der Wochenvorlage (`WEG.routinen()`), nicht hier.

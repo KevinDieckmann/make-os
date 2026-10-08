@@ -27,6 +27,7 @@ import { Budget } from './Budget';
 import { Abend } from './Abend';
 import { Nachfassen } from './Nachfassen';
 import { Kalender } from './Kalender';
+import { MedienKnopf } from '../../medien/MedienKnopf';
 
 export function EventDetail({ e, api, zuKontakt, ablage }: ReiterProps) {
   const crm = api.crm!;
@@ -75,6 +76,8 @@ export function EventDetail({ e, api, zuKontakt, ablage }: ReiterProps) {
       </div>
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={REITER} aktiv={reiter} onWahl={setReiter} farbe={LEUCHT.beziehung} /></div>
       {reiter === 'ueberblick' && <Ueberblick {...props} zuReiter={setReiter} />}
+      {/* Fotos & Videos des Abends (09.10., Paket 5): ins Event-Album aufnehmen, Link auf alle. */}
+      {reiter === 'ueberblick' && <MedienKnopf eventId={e.id} titel={e.titel} kachel />}
       {reiter === 'gaeste' && <Gaeste {...props} />}
       {reiter === 'ablauf' && <Ablauf {...props} />}
       {reiter === 'checkliste' && <Checkliste {...props} />}

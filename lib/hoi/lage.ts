@@ -9,6 +9,8 @@
 // Jede Zahl bekommt eine Ampel mit Schwelle und Satz; daraus entsteht die Gesamt-
 // ampel. Keine Inhalte, keine Adressen, keine Personen — nur Zähler und Zustände.
 
+import { medienBefunde } from '@/lib/medien/hoi';
+
 export type Ampel = 'gruen' | 'gelb' | 'rot' | 'grau';
 export interface Befund { id: string; bereich: 'server' | 'app' | 'sicherheit' | 'aussen' | 'sicherung'; label: string; ampel: Ampel; wert: string; satz: string; seit?: string }
 
@@ -88,6 +90,8 @@ export interface InnenLage {
   zoeWhatsapp?: ZoeWhatsappLage | null;
   /** WHOOP je Person (08.10.): Verbindungen, Alter des Abgleichs, Webhooks — nur Zähler, nie Adressen/Kennungen/Werte. null = nicht eingerichtet. */
   whoop?: WhoopLage | null;
+  /** Medien unterwegs (09.10., Paket 5): Speicher (Ordner/Object Storage), Belegung, alte Schlüssel, unfertige Uploads — nur Zahlen. */
+  medien?: import('@/lib/medien/hoi').MedienLage | null;
   /** Einrichtung der Verbindungen (08.10. spät, Onboarding L23): ist der Anschluss am Server überhaupt eingerichtet? Nur ja/nein. */
   einrichtung?: EinrichtungLage | null;
   /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
@@ -591,6 +595,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...whatsappBefunde(innen.whatsapp));
   b.push(...zoeWhatsappBefunde(innen.zoeWhatsapp));
   b.push(...whoopBefunde(innen.whoop));
+  b.push(...medienBefunde(innen.medien));
   b.push(...einrichtungBefunde(innen.einrichtung, innen));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──

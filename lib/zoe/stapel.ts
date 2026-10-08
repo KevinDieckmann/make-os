@@ -40,7 +40,8 @@ export const ANSPRUCH_MS = 10 * 60_000;
  * Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): `skill` · `mitarbeiter` · `merksatz` (lib/agenten/typen.ts) — anlegen tut Paket 1
  * (Head-Chat), die Freigabe baut Paket 3 in stapel-arten.ts; bis dahin ist eine Freigabe dieser Arten 409 (unbekannte Art).
  */
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | AgentenStapelArt;
+// Medien unterwegs (09.10., Paket 5): `medien` — ein Head schlägt Auswahl, Zuschnitte und Texte zu Medien eines Auftrags vor (lib/medien/heads.ts).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

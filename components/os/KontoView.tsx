@@ -7,6 +7,7 @@
 
 import { karteCacheLeeren } from './netzwerken/karten-daten';
 import { vorAbmelden } from '@/lib/netzwerken/abmelden';
+import { medienVorAbmelden } from '@/lib/medien/warteschlange';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Hinweis, Feldzeile, feld, LEUCHT, useRueckfrage } from './ui';
@@ -71,7 +72,7 @@ export function KontoView() {
   async function zfAus() { const r = await zfPost({ aktion: 'aus', passwort: zf.passwort }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'aus', code: '', passwort: '' }); setMeldung('Zweiter Faktor ist aus.'); void laden(); } }
   // Das Offline-Abbild der eigenen Visitenkarten (Netzwerken) bleibt nicht auf einem abgemeldeten Gerät liegen.
   // Netzwerken (03.10.): wartet noch eine Erfassung, wird davor gewarnt („erst senden?“); danach räumt Abmelden Warteschlange und Merker weg.
-  async function abmelden() { if (!(await vorAbmelden(ich?.speicher ?? null, { bestaetigen: (t, k) => bestaetigen({ titel: k?.titel ?? 'Wirklich?', text: t, ja: k?.ja ?? 'Weiter', gefahr: k?.gefahr }) }))) return; karteCacheLeeren(); await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
+  async function abmelden() { if (!(await vorAbmelden(ich?.speicher ?? null, { bestaetigen: (t, k) => bestaetigen({ titel: k?.titel ?? 'Wirklich?', text: t, ja: k?.ja ?? 'Weiter', gefahr: k?.gefahr }) }))) return; if (!(await medienVorAbmelden(ich?.speicher ?? null, t => bestaetigen({ titel: 'Fotos & Videos noch nicht gesendet', text: t, ja: 'Löschen und abmelden', gefahr: true })))) return; karteCacheLeeren(); await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
   // Alle anderen Geräte raus — dieses bleibt drin (der Server stellt einen neuen Zettel aus).
   async function alleAbmelden() {
     const r = await fetch('/api/konto/abmelden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true }) }).then(x => x.json()).catch(() => ({ ok: false }));

@@ -32,6 +32,7 @@ const KEINE_EVENTS: Event[] = [];
 import { neuesEvent } from '@/lib/crm/netzwerken';
 import { Gross, Hinweis, eingabe, Feldzeile, tagText, ZIEL } from './bausteine';
 import { AbendZaehler, abendZahlen } from './zaehler';
+import { MedienKnopf } from '../medien/MedienKnopf';
 
 /** Die gemerkte Wahl: das Event und der Tag, für den sie gilt. */
 export interface EventWahl { eventId: string; titel: string; datum: string; ort?: string; /** Noch nicht auf dem Server (ohne Netz angelegt). */ lokal?: boolean; tag: string; /** Für wen das Event läuft (03.10.) — fehlt = MAKE selbst; geht mit `eventNeu` an den Server, wenn das Event ohne Netz entstand. */ fuer?: EventFuer }
@@ -76,6 +77,8 @@ export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ic
           </div>
         )}
         {gueltig && <AbendZaehler zahlen={zahlen} eventTitel={gueltig.titel} farbe={ton} />}
+        {/* Fotos & Videos (09.10., Paket 5): ins Album dieses Events — das Album entsteht beim ersten Upload, auch ohne Netz aufgenommen. */}
+        {gueltig && <MedienKnopf eventId={gueltig.eventId} titel={gueltig.titel} />}
       </Karte>
       {offen && <EventWahlFenster api={api} ich={ich} heute={heute} onZu={() => setOffen(false)} onWahl={w => { setWahl(w); setOffen(false); }} />}
       {fuerOffen && gueltig && <FuerFenster api={api} wahl={gueltig} fuer={fuer} firmen={firmen} onZu={() => setFuerOffen(false)} onGeaendert={f => { setWahl({ ...gueltig, fuer: f }); setFuerOffen(false); }} />}

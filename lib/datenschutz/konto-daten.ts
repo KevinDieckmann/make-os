@@ -282,6 +282,16 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     await sprachnachrichtenEntfernen(speicher);
   } catch (e) { console.error('[konto-loeschen] ZOE-WhatsApp:', e instanceof Error ? e.message : e); }
 
+  // 2d. Medien unterwegs (09.10., Paket 5): private Medien samt Dateien im Medienspeicher, offene Uploads; im Business bleiben die Medien,
+  //     die Stempel der Person werden „[gelöscht]“ — vor Schritt 4, der den Bestand `medien-privat--<person>` entfernt.
+  try {
+    const { medienKontoEntfernen } = await import('@/lib/medien/datenschutz');
+    const r = await medienKontoEntfernen(speicher);
+    if (r.objekte) zaehl(bericht.eintraege, 'medien-dateien', r.objekte);
+    if (r.sitzungen) zaehl(bericht.eintraege, 'medien-uploads', r.sitzungen);
+    if (r.business) zaehl(bericht.eintraege, 'medien--*', r.business);
+  } catch (e) { console.error('[konto-loeschen] Medien:', e instanceof Error ? e.message : e); }
+
   // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit / eigene Ziele mit“ der anderen (08.10.).
   await aendereKonten(s => ({
     ...s,

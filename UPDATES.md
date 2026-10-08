@@ -179,6 +179,88 @@ Handy: Reiter Gespräch · Team · Läuft unten, Head/Thread ganzflächig mit �
 10. Handy (375 px): unten Gespräch · Team · Läuft; „Team › Sales“ öffnet ganzflächig, „‹ Team“ zurück; unter „Läuft“ eine risikoarme Freigabe nach
     rechts wischen → Rückfrage → freigegeben.
 
+## 09.10.2026 nachts — Medien unterwegs V1: Fotos & Videos (nur lokal — Branch `medien`, Paket 5; AGENTEN_KONZEPT.md C11)
+
+Kevin 08.10. spät: „Über die App Bilder und Videos machen, wenn wir unterwegs sind — einfach über die Kamera … geordnet, z. B. über ein Event, direkt
+auf den Server, entweder Business oder Privat … im Marketing arbeiten, wenn sie dazu freigegeben wurden … direkt an die Head ofs.“ Gebaut nach den
+Antworten der Fragerunde Teil 2 (09.10. nachts, ENTSCHEIDUNGEN_FRAGEBOGEN.md) und research/agenten/MEDIEN.md (D–G), RECHT.md (Teil 7).
+Hinweis, keine Rechtsberatung — Einwilligungs- und Schildtext sind Entwürfe (RECHT.md 6.4), einmal anwaltlich gegenlesen.
+
+- **Seite „Fotos & Videos“** `/os/medien` (Schnellsuche, `WEG.medien`): „Aufnehmen“ (System-Kamera) + „Aus Mediathek“, Warteschlange mit Fortschritt
+  („App offen lassen“), Alben (Event · Kunde/Mandat · frei; Privat „nur ich“/„Haushalt“, Vorgabe „nur ich“), Filter (Business, Privat, Favoriten,
+  Freigegeben, Gesperrt, „Mit Personen, offen“, Papierkorb), Galerie, Detail (Abspielen nur auf Knopfdruck, Favorit/Ablehnen je Person, Personen von Hand
+  markieren, Freigabe, an Head geben, Texte, Vorschläge der Heads, Papierkorb), Hinweisschild, Einwilligungen. **Einstiege:** Knopf im Netzwerken-Event-Modus
+  („Heute bei …“), Kachel in der Event-Akte (besuchte Events) und im Make.One-Überblick — das Event-Album entsteht beim ersten Upload (auch ohne Netz).
+- **Im Browser vorbereitet:** Fotos ohne Exif/GPS (vorhandener Säuberer), nur die Drehung bleibt; Vorschauen per Canvas (Raster 480 px, Ansicht 1568 px).
+  Videos: Orts-Atome (`udta`/`meta`) und — ohne Ton-Schalter — die Tonspur werden in der Datei genullt, OHNE Neukodierung (lib/medien/mp4-ort.ts). Geht das
+  nicht (fragmentierte Datei), heißt es „Ton nicht freigegeben“: nie abgespielt, nie geteilt, bis die Person den Ton freigibt (§ 201-Hinweis). 4K nur mit
+  „Original“. Warteschlange auf dem Gerät **verschlüsselt** in IndexedDB (je 8-MiB-Stück, nicht exportierbarer Schlüssel), Sender im /os-Rahmen, Wake Lock.
+- **Upload in Stücken** über den eigenen Server (8 MiB, SHA-256 je Stück, Typ aus dem Inhalt, Wiederaufnahme nach Abbruch, idempotent je UUID, Video ≤ 2 GB,
+  Foto ≤ 50 MB → 413; Sitzungen verfallen nach 7 Tagen). Der Server prüft das erste Stück eines JPEG selbst auf übrige Metadaten.
+- **Verschlüsselt auf dem Server** je Segment (64 KiB, AES-256-GCM, Schlüssel je Medium, gewickelt mit dem Datenschlüssel — der Hauptschlüssel verlässt nie
+  den Server). Auch Vorschaubilder (Kevin: „verschlüsselt + privater Zwischenspeicher“): `Cache-Control: private` + ETag; Original `no-store`, Range/206.
+- **Speicher:** Hetzner Object Storage (S3, selbst signiert, kein SDK) über `deploy/medien-speicher-verbinden.sh`; ohne Einrichtung Ordner `daten/medien` mit
+  Grenze (Vorgabe 2 GB) — **nie in der Nachtsicherung** (`deploy/sicherung.sh` schließt ihn aus, Wächter). Head of IT: „Medienspeicher nicht eingerichtet“,
+  „fast voll“, „alte Schlüssel“ (vor dem Entfernen des alten Datenschlüssels), unfertige Uploads. Rotation wickelt nur die Schlüssel neu.
+- **Freigabe fürs Marketing:** intern → angefragt → freigegeben (Kanäle + bis-Datum) → gesperrt/abgelaufen. Freigeben: Marketing-Verantwortliche bzw. volles
+  Mitglied; bei erkennbaren Personen Vier-Augen (nie die Person allein, die angefragt hat). Pflichtfrage „Erkennbare Personen?“, „unklar“ geht nie hinaus,
+  Porträts/nicht öffentliche Events nur mit Einwilligung, Minderjährige nur mit Sorgeberechtigten, fremde Fotografen nur mit Lizenz-Nachweis (Datei).
+  Ablauf → gesperrt + Aufgabe; Widerruf und Art. 18 sperren sofort (Widerruf zusätzlich Aufgabe „aus den Kanälen entfernen“).
+- **Einwilligung am Handy:** Wortlaut aus der Vorlage (Verantwortlicher aus System › Datenschutz), Zwecke einzeln (+ KI-Bearbeitung), Unterschrift mit dem
+  Finger (PNG, verschlüsselt), Fassung geprüft, nur anhängend.
+- **Heads:** nur Business-Medien, die ausdrücklich „an Head gegeben“ sind (Auftrag: Auswahl · Zuschnitt · Texte). Für Paket 1: `medienFuerHead(person, headId,
+  auftragId)` (Vorschau ≤ 1568 px auf Abruf, `mitPersonen` für den KI-Schalter) und `medienVorschlagAblegen` → Stapel-Art **`medien`**; der Klick übernimmt
+  Texte (Herkunft „KI“) und Zuschnitt-Rechtecke; den Zuschnitt führt der Browser aus (neues Medium „abgeleitet von“). Nie Minderjährige, nie Gesperrtes.
+- **Recht:** Speicher-Register (`medien--*`, `medien-privat--*`, `medien-uploads`, Ordner `medien`), Löschfristen `medien-upload` (7 T.), `medien-papierkorb`
+  (30 T.), `medien-roh` (12 Monate → EINE Prüf-Aufgabe, nie löschen), VVT `vv-medien`, Art. 15 (`personAufzaehlen.medien`), Art. 17 (Kennung getilgt → gesperrt
+  + Prüf-Aufgabe), Konto löschen (private Medien samt Dateien weg, Business bleibt mit „[gelöscht]“), Abmelden fragt nach wartenden Medien, Lese-Protokoll `medien`.
+- **Vertragsänderungen (C11):** vier Unterrouten (`medien/upload`, `medien/upload/[id]`, `medien/inhalt`, `medien/beleg`) im Routen-Register; Stapel-Art
+  `medien` (lib/zoe/stapel.ts + stapel-arten.ts); Wächter `agenten-vertrag` erwartet für `medien` keine 501 mehr; eine Saat-Marke in der Messlatte;
+  `BILD_ORDNER` bewusst NICHT erweitert (eigenes Segment-Format — Rotation über die Schlüssel; Export/Skripte sollen keine Videos lesen).
+- Tests: `tests/medien-{krypto,speicher,upload,freigabe,regeln,mp4}.test.ts`, dazu routen-register, datenschutz-register, betroffenenrechte,
+  messlatte-malin, repo-sauber, design-*, netzwerken-*, besuche-*, agenten-vertrag.
+
+**Kevins Schritte (Server — erst beim Upload, auf Kevins Wort):**
+1. Hetzner Cloud Console → Object Storage → Bucket anlegen: **Nürnberg (nbg1) oder Falkenstein (fsn1)** (gleiche Netzzone wie der Server), **privat**,
+   Versionierung aus. Lebenszyklus-Regel „abgebrochene Multipart-Uploads nach 2 Tagen löschen“. S3-Zugangsdaten erzeugen (Secret nur einmal sichtbar).
+2. Prüfen, ob der Hetzner-AVV den Object Storage abdeckt (System › Datenschutz › Empfänger „Hetzner“ — Notiz ergänzen).
+3. `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/medien-speicher-verbinden.sh` (fragt Endpunkt, Bucket, Zugang, Geheimnis verdeckt). Kommt beim
+   ersten Upload „Signature …“: das Skript erneut ausführen und beim Adress-Stil `host` wählen.
+4. DSFA erweitern (Medien), externen DSB benennen, Anwalt prüft Einwilligung/Schild (Fragerunde Teil 2, Punkt 14).
+
+**iPhone-Prüfliste (kann der Agent nicht — am Gerät, MEDIEN.md G):**
+1. Foto über „Aufnehmen“ und aus der Mediathek: kommt JPEG (nicht HEIC)? Hochkant richtig gedreht (Galerie und „Original laden“)?
+2. Video aus der Kamera-App (MOV/HEVC) wählen: Poster da? Nach dem Upload „Original laden“ und am Mac prüfen: exiftool ohne `GPS`/`ISO6709`, ohne Ton-Schalter
+   keine Tonspur (`ffprobe`), Bild unverändert.
+3. 500-MB-Video über Mobilfunk, App im Vordergrund: Fortschritt; Flugmodus → wartet; Flugmodus aus → geht weiter. Seite mitten im Upload neu laden → geht
+   weiter (aus dem Gerät). Bildschirm bleibt an (Wake Lock) in der Home-Screen-App.
+4. Abspielen im Player (Safari, Range): Springen im Video geht, Ton nur bei „Ton behalten“.
+5. Ohne Netz bei einem Event 3 Fotos aufnehmen → Netz an → sie stehen im Event-Album.
+
+**So testet ihr (in Klicks, lokal mit Wegwerfkonto):**
+1. Fotos & Videos → „Aus Mediathek“ → zwei Fotos → „Sind Personen erkennbar?“ nein → „Hochladen“: Warteschlange zeigt Fortschritt, danach in der Galerie.
+2. Ein Foto öffnen → Favorit; Kanäle Website + Social Media, Datum → „Freigeben“ → grün „freigegeben“.
+3. Netzwerken → „Heute bei“ ein Event → „Aufnehmen“ → Foto → in Fotos & Videos steht das Album des Events. Event-Akte: Kachel „Fotos & Videos“.
+4. Foto mit Personen: „Ja, erkennbar“ → Kontakt suchen → markieren (Hauptperson) → „Freigeben“ ist aus, Grund „nur mit Einwilligung“ → „Einwilligung
+   festhalten“ (Kontakt, Zwecke, unterschreiben) → an der Person die Einwilligung wählen → „Freigabe anfragen“ → mit dem ANDEREN Konto „Freigeben“.
+   Danach „Einwilligungen“ → „Widerruf eintragen“ → das Medium ist sofort gesperrt, in Aufgaben steht „… aus den Kanälen entfernen“.
+5. Ein Business-Foto → „An einen Head geben“ (Head of Marketing, Auswahl + Texte) → im Detail steht der Auftrag; „Entziehen“ nimmt ihn zurück.
+6. Album „Privat · nur ich“ anlegen, ein Foto hinein → mit dem anderen Konto sind weder Album noch Foto zu sehen; Album auf „Haushalt“ stellen → sichtbar.
+7. Löschen → Filter „Papierkorb“ → Wiederherstellen; erneut löschen → „Endgültig löschen“.
+8. Abmelden mit einem wartenden Foto → Rückfrage „noch nicht gesendet“.
+
+**Rückweg:** nur neue Bestände (`medien--*`, `medien-privat--*`, `medien-uploads`), neue Routen, ein neuer Ordner `daten/medien` (bzw. Bucket) und optionale
+Felder; der alte Stand kennt die Seite nicht und lässt Bestände und Ordner liegen. Die Löschfristen `medien-*` ignoriert er.
+
+**Folgeschritte (nicht gebaut):**
+- iOS-Kurzbefehl im Teilen-Menü (eingeschränkter Upload-Schlüssel je Person nach dem Muster des Zulieferer-Schlüssels, eigener Middleware-Pfad mit Test) —
+  zurückgestellt: ein Kurzbefehl schickt die Datei am Stück (über 10 MB schneidet die Middleware ab) und der Server kann keine Vorschauen rechnen.
+- **Import aus Google Drive** (Business, Vorschau → Bestätigen) — wenn Speicher/Server nach Kosten entschieden sind (Rückfrage 09.10.).
+- QR-Selbstauskunft der Gäste (öffentliche Einwilligungsseite nach Muster `/buchen`, eigene Regex + Test) — V1 hat die Unterschrift am Handy.
+- Web-Fassung 1080p H.264 (WebCodecs ab iOS 26), Transkript/SRT, Clips; Duplikate (dHash), Sterne, Kommentare; Zweitkopie (hel1/Storage Box); Export in
+  Social-Formaten; Demo-Saat mit Beispiel-Album; Konto-Export der eigenen Business-Medien (`kontoExport` hält Paket 3); Instanz-Export/-Löschen um den
+  Bucket ergänzen; KI-Kategorie `medien` + Schalter „Bilder mit Personen an KI“ im KI-Tor (Paket 1/6a); Glocke „Freigabe angefragt“ (Meldungen: Paket 1).
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt

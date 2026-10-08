@@ -232,6 +232,12 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'agenten/skills': r('GET,POST', 'person', 'Skills, eigene Mitarbeiter und Gedächtnis der sichtbaren Heads lesen und pflegen (Testlauf, aktivieren, SKILL.md) — nur die Person selbst (eigenePerson, Dienstweg 403); Agenten-Vorschläge nur über den Stapel (Paket 3).'),
   'agenten/laeufe': r('GET,POST', 'person', 'Hintergrundaufgaben (Läuft/Fertig/Fehler, nur eigene und Systemläufe), „Als Nächstes“ und geplante Aufgaben anlegen, abbrechen, neu starten — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 3).'),
   'medien': r('GET,POST', 'person', 'Medien unterwegs (Bilder/Videos): Business des Haushalts, Privat nur eigene; hochladen, ordnen, fürs Marketing freigeben nur per Klick — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 5).'),
+  // Medien unterwegs (09.10., Paket 5 V1 — Vertragsänderung: drei Unterrouten): Upload in Stücken, Inhalt mit Range, Belege. Sicht an EINER
+  // Stelle (lib/medien/regeln.ts `medienFuerBetrachter`); fremde Upload-Sitzungen „gibt es nicht“ (404); nie der Dienstweg.
+  'medien/upload': r('POST', 'person', 'Upload-Sitzung für ein eigenes Foto/Video anlegen (idempotent je UUID und Person, Grenzen 413) — nur die Person selbst (eigenePerson, Dienstweg 403).'),
+  'medien/upload/[id]': r('GET,PUT,POST,DELETE', 'person', 'Eigene Upload-Sitzung: Stand, Stücke (8 MiB, SHA-256, Typ aus dem Inhalt) und Vorschauen verschlüsselt weiterreichen, abschließen, abbrechen — fremde Sitzungen 404 (eigenePerson, Dienstweg 403).'),
+  'medien/inhalt': r('GET', 'person', 'Inhalt eines Mediums, das die Person sieht (Range 206, Strom, Vorschau privat zwischengespeichert, Original mit Personen im Lese-Protokoll; Video mit nicht freigegebenem Ton nie) — eigenePerson, Dienstweg 403.'),
+  'medien/beleg': r('GET,POST', 'person', 'Lizenz-Nachweis fremder Fotografen ablegen/lesen, Unterschrift einer Einwilligung ansehen (nur wer freigeben darf) — eigenePerson, Dienstweg 403.'),
 
   // ── Gesundheit, Familie, Persönliches ──────────────────────────────────────────────────────────────────────
   'gesundheit/index': r('GET,POST', 'person', 'Gesundheits-Index je Person; fremde nur mit Freigabe (darfGesundheitSehen).'),

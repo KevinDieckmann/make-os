@@ -22,7 +22,7 @@ import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 
-export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox';
+export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien';
 export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> = {
   gesundheit: { label: 'Gesundheit', art9: true },
   erholung: { label: 'Erholung', art9: true },
@@ -38,6 +38,8 @@ export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> 
   export: { label: 'Export (eigene Daten / ganze Instanz)' },
   // 08.10. (Inbox teilen): Suche über die eigene Post, Lesen einer Übergabe bzw. eines Team-Postfachs (`betroffen` = wessen Postfach).
   inbox: { label: 'Inbox (Suche, Übergaben, Team-Postfächer)' },
+  // 09.10. (Medien unterwegs, Paket 5): Original eines Mediums mit erkennbaren Personen bzw. Einwilligungen abgebildeter Personen gelesen.
+  medien: { label: 'Fotos & Videos mit Personen' },
 };
 export const istLeseBereich = (b: unknown): b is LeseBereich => typeof b === 'string' && b in LESE_BEREICHE;
 
