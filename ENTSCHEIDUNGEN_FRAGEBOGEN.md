@@ -98,3 +98,39 @@ Kevin: „Den ganzen Agent-Bereich im Business wie im Privaten aufs nächste Lev
 direkt auf den Server, entweder Business oder Privat. Mit denen können wir dann im Marketing arbeiten, wenn sie dazu freigegeben wurden. Die Schnittstelle
 können wir direkt mitbauen. Die gehen dann direkt an die Head ofs, um sie zu bearbeiten, wenn gewollt — das müssen wir auswählen können.“
 → Paket „Medien unterwegs“ neben dem Agenten-Bereich; Richtungsfragen (Speicherort, Ordnung, Freigabe/Rechte am Bild, Videogrößen) in der Fragerunde.
+
+## Agenten-Bereich — Fragerunde Teil 1 nach der Recherche (08.10.2026 spät) — Grundlage research/agenten/*.md
+1. **Ebenen:** Heads · Mitarbeiter · Threads, je Instanz umbenennbar. Kevin: „Heads sind links sozusagen die Ordner — da kann ich mit ZOE sprechen, und sie
+   kann die Heads mit Threads erreichen. Ich kann aber auch auf die Heads gehen und habe dann die Threads zu den Mitarbeitern. Wenn ich auf Heads bin, chatte
+   ich im nächsten Fenster auch nur mit ihnen.“
+2. **Aussehen:** Kürzel-Kugel in Bereichsfarbe · eigene Farbe + Ton je Head · Vorname frei je Instanz · Foto-Avatar möglich · kleine ZOE-Kugel-Variante je Head.
+3. **Mitte:** Überblick-Karte + ZOE-Chat · Kurz-Briefing oben · Zeile „Vorschläge“ (Arbeit für heute).
+4. **Rechts:** Wartet auf dich · Läuft · Als Nächstes (Eisenhower) · Fertig/Fehler eingeklappt.
+5. **Head-Seite:** Reiter Chat · Aktivität · Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen · Kopf mit Auftrag + 3 Kennzahlen + Skills als Chips ·
+   Vorschläge als Karte im Chat · Delegation als aufklappbare Karte (Ziel, Format, Grenzen, Quellen) · Mitarbeiter-Threads links unter dem Head eingerückt.
+6. **Kopfleiste:** „+ Neu ▾“ (Auftrag, an mehrere Heads, Hintergrundaufgabe, Mitarbeiter, Skill) · Freigaben (Zahl) · Geplant · Budget-Balken · Not-Aus ·
+   Modell & Aufwand in den Einstellungen je Head · Leitplanken unter „⋯“.
+7. **Neuer Mitarbeiter:** Vorlagen · beschreiben → Rückfragen → Plan bestätigen · Vorschlag von ZOE/Head → Freigabe · duplizieren · Probelauf ohne Wirkung/Kosten.
+8. **Eigentum:** Threads der Person, per Knopf teilbar · geplante Läufe in einem gemeinsamen Raum · Skills gehören dem Haushalt (Anleger vermerkt) · beim
+   Konto-Löschen gehen Business-Skills an den Inhaber.
+9. **Hilfe:** nur über den Head mit gemeinsamem Arbeitsstand („Brett“) · ein Schreiber je Vorgang · geteilte Mitarbeiter = Schnittmenge der Werkzeuge · Advisor.
+10. **Qualität:** fester Prüfer je Head bei Außenwirkung (erst Regeln, dann KI) · Plan-Freigabe vor großen Aufträgen · „Zweite Meinung“ auf Knopfdruck ·
+    Abbruch nach 2 Runden ohne Fortschritt.
+11. **Tiefe:** 2 fest (ZOE → Head → Mitarbeiter) · ZOE beauftragt nur Heads · Mitarbeiter delegieren nie · je Lauf ≤ 6 Runden · 14 Werkzeuge · 5 Minuten.
+12. **Gedächtnis:** Ebenen Persönlich · Haushalt · System · sichtbar und löschbar · Haushalt nur per Klick · Mitarbeiter erben vom Head · Löschfrist.
+13. **ZOE ≤ 20 Werkzeuge**, Rest zu den Heads.
+14. **Technik:** eigene Warteschlange + Absichtsprotokoll ausbauen · eigenes Lauf-Protokoll (OpenTelemetry-Felder, ohne Inhalte) · MCP später · Batch nachts.
+15. **Autonomie:** Boden wie heute + Stufe je Head (nur verschärfen) · mehr Freiheit erst nach Annahmequote · zurück automatisch, hoch per Klick · Höchstzahl Auto-Läufe.
+16. **Kosten:** erster Monat nur messen · Grenze je Lauf · Schätzung vor großen Aufträgen mit Klick · Euro · bei 100 % Regelwerk + Glocke · Budget-Balken.
+17. **Leistung:** Daumen · Annahmequote · Erfolgsquote je Skill · Kosten je Ergebnis · monatlicher Review von ZOE · Tests vor jeder Änderung.
+18. **Handy:** neutraler Hinweis mit Link · Web-App mit Push · Daumen-Wischen risikoarm · Sammel-Freigabe risikoarm · Risiko-Ampel · Push nur bei Entscheidung/
+    fertigem langen Lauf · Erinnerung bei lange offener Freigabe · nie in Business-freien Zeiten.
+19. **Claude & Datenschutz:** Register korrigieren (SCC statt DPF) · Vertex EU für Gesundheit, Privat-Finanzen, Familie · Gesundheit an die KI nur EU mit ZDR.
+20. **Modellstufen:** Haiku 5.5 / Sonnet 5.5 / Opus 5.5 nach Test · Preise in die Kostenmessung · Mitarbeiter Haiku, Heads Sonnet, Reviews Opus.
+21. **Bilder:** Nano Banana 2.1 / Pro · frei bis zum Budget, Rest mit Klick · Kennzeichnung nie entfernen · sichtbares Zeichen bei realistischen Personen/Orten.
+22. **Video:** Omni Flash + Veo 3.1 · nur mit Klick und Kostenschätzung.
+23. **Research:** Claude-Websuche + Web-Fetch Standard · Gemini Deep Research als „Tiefenbericht zum Lesen“, nur mit Klick.
+24. **Anbieter:** keine Vermittler-Plattform · Google über Vertex mit Dienstkonto · eigene Verträge je Kunde · EIN Anbieter-Tor, Rückfall nie in schwächeren Datenschutz.
+25. **Sprache:** Voxtral nach deutschem Test · Gerätestimme + ElevenLabs-Schalter · Diktat wählbar (Kunden Voxtral) · Mikro-Knopf · WhatsApp-Sprachnachricht ·
+    Siri-Kurzbefehl · Sprachassistent: Konzept jetzt, Bau nach Q1.
+26. **Server:** erst messen (Head of IT), dann entscheiden.
