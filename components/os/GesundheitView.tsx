@@ -253,8 +253,8 @@ export function GesundheitView() {
             )}
             <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '14px 0 0', lineHeight: 1.5 }}>
               {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
-              {stand && rec == null && <> Whoop-Export einlesen oder morgens dem Boten sagen.</>}
-              {stand && anspannung == null && rec != null && eigene && <> Anspannung: oben 1–5 tippen (oder dem Boten mittags sagen).</>}
+              {stand && rec == null && eigene && <> WHOOP verbinden (Kachel „WHOOP“) oder den Morgen-Check ausfüllen.</>}
+              {stand && anspannung == null && rec != null && eigene && <> Anspannung: oben 1–5 tippen.</>}
             </p>
             {stand && rec == null && eigene && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}><WhoopImport kurz onFertig={() => { void laden(); setVerlauf(null); }} /></div>}
           </Karte>
