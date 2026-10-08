@@ -303,7 +303,7 @@ export async function POST(req: Request) {
   await logRun(`tageslauf-${art}`, `Tageslauf ${art} ${heute}`, {
     schritte: schritte.map(s => ({ name: s.name, stand: s.stand, kurz: s.kurz })),
     alarm,
-  });
+  }, { person: personStreng(req) });
 
   return NextResponse.json({ lauf, heute: file.laeufe.filter(l => l.gestartet.slice(0, 10) === heute).length });
 }

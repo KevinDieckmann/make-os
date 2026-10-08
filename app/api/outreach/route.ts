@@ -13,6 +13,7 @@ import { logRun } from '@/lib/agent-log';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
   });
   if (!r.ok || !r.data?.email) return NextResponse.json({ error: r.error ?? 'Kein Entwurf erhalten.' }, { status: 200 });
 
-  await logRun('outreach', `Ansprache entworfen: ${p.company}`, { company: p.company, score: p.score ?? null });
+  await logRun('outreach', `Ansprache entworfen: ${p.company}`, { company: p.company, score: p.score ?? null }, { person: personStreng(req) });
 
   return NextResponse.json({
     ki: kiKennzeichen(), // KI-VO Art. 50 (05.10.)

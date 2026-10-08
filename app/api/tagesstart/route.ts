@@ -33,13 +33,13 @@ export const dynamic = 'force-dynamic';
 
 interface StartLog { lastRun?: string }
 
-/** Was ist heute schon passiert und was fehlt? */
-async function status(today: string) {
+/** Was ist heute schon passiert und was fehlt? `person` = wer fragt (ohne: Systemlauf) — Läufe nur die eigenen + Systemläufe (08.10.). */
+async function status(today: string, person: string | null) {
   const start = (await loadJson<StartLog>('tagesstart')) ?? {};
   const vitals = await resolveVitals(today);
   const cal = await loadJson<{ at?: string }>('calendar-cache');
   const calAgeH = cal?.at ? (Date.now() - new Date(cal.at).getTime()) / 3_600_000 : null;
-  const loops = await recentRuns('loop-morgen', 5);
+  const loops = await recentRuns(person, { agent: 'loop-morgen', limit: 5 });
   const loopHeute = loops.some(e => e.ts.slice(0, 10) === today);
 
   return {
@@ -58,19 +58,20 @@ async function status(today: string) {
 }
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  return NextResponse.json(await status(localDay()));
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return nurHaushalt();
+  return NextResponse.json(await status(localDay(), zugang.person));
 }
 
 export async function POST(req: Request) {
   let body: { force?: boolean } = {};
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch { /* Aufruf ohne Body ist ok */ }
   const today = localDay();
-  const st = await status(today);
+  const st = await status(today, personStreng(req));
 
   // Schon gelaufen und kein ausdrücklicher Neustart → nichts doppelt tun.
   if (st.gelaufen && !body.force) {
-    const letzte = (await recentRuns('loop-morgen', 1))[0];
+    const letzte = (await recentRuns(personStreng(req), { agent: 'loop-morgen', limit: 1 }))[0];
     return NextResponse.json({ ...st, uebersprungen: true, loop: letzte?.payload ?? null });
   }
 
@@ -230,5 +231,5 @@ export async function POST(req: Request) {
 
   await updateJson<StartLog>('tagesstart', () => ({ lastRun: today }));
 
-  return NextResponse.json({ ...(await status(today)), schritte, loop });
+  return NextResponse.json({ ...(await status(today, person)), schritte, loop });
 }

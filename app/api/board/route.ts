@@ -111,6 +111,6 @@ export async function POST(req: Request) {
     risiken: Array.isArray(r.data.risiken) ? r.data.risiken.slice(0, 5) : [],
     naechsteWoche: Array.isArray(r.data.naechsteWoche) ? r.data.naechsteWoche.slice(0, 4) : [],
   };
-  await logRun('board', `Board-Pack ${today}`, { headline: out.headline, risiken: out.risiken, naechsteWoche: out.naechsteWoche, stats });
+  await logRun('board', `Board-Pack ${today}`, { headline: out.headline, risiken: out.risiken, naechsteWoche: out.naechsteWoche, stats }, { person: personStreng(req) });
   return NextResponse.json({ ...out, stats });
 }

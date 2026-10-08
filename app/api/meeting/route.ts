@@ -12,6 +12,7 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { localDay } from '@/lib/zeit';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,6 @@ export async function POST(req: Request) {
     entscheidungen: Array.isArray(r.data.entscheidungen) ? r.data.entscheidungen.slice(0, 8) : [],
     actionItems: items.slice(0, 20),
   };
-  await logRun('meeting', out.titel, { zusammenfassung: out.zusammenfassung, entscheidungen: out.entscheidungen, actionItems: out.actionItems.length });
+  await logRun('meeting', out.titel, { zusammenfassung: out.zusammenfassung, entscheidungen: out.entscheidungen, actionItems: out.actionItems.length }, { person: personStreng(req) });
   return NextResponse.json(out);
 }

@@ -10,6 +10,7 @@ import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,6 @@ export async function POST(req: Request) {
     ki: kiAus(req, ['allgemein'], { pseudonym: false }), system: SYSTEM, user: query, maxTokens: 5000, model: agent.model, timeoutMs: 120_000 });
   if (!r2.ok || !r2.text) return NextResponse.json({ reply: r2.error ?? 'Konnte gerade nicht recherchieren — versuch es nochmal.' });
 
-  await logRun('research', query.slice(0, 120), { query, reply: r2.text.slice(0, 2000), webUsed: r2.webUsed });
+  await logRun('research', query.slice(0, 120), { query, reply: r2.text.slice(0, 2000), webUsed: r2.webUsed }, { person: personStreng(req) });
   return NextResponse.json({ reply: r2.text, webUsed: r2.webUsed });
 }

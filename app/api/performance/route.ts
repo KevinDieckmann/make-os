@@ -17,6 +17,7 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -127,6 +128,6 @@ export async function POST(req: Request) {
   const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000, ki: kiAus(req, frei ? ['aufgaben', 'finanzen', 'gesundheit'] : ['aufgaben', 'finanzen'], { person: personAus(req) }) });
   if (!r.ok || !r.data) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: r.error ?? 'Analyse fehlgeschlagen.' });
 
-  await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data });
+  await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data }, { person: personStreng(req) });
   return NextResponse.json({ aktuell, verlauf: file.snapshots, ...r.data });
 }

@@ -246,6 +246,8 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   // Das Agenten-Protokoll teilen sich alle Konten — für den Haushalt nur Zähler, keine Beträge.
   await logRun('finanzchef', `${MODUS_NAME[a.modus]}${a.haushalt ? ' · Haushalt' : ''} · ${antwort.status}`,
     a.haushalt ? { befunde: antwort.befunde.length, vorschlaege: antwort.vorschlaege.length, neu, geprueft: pruefung.geprueft, unbelegt: pruefung.unbelegt.length }
-      : { zusammenfassung: antwort.zusammenfassung, vorschlaege: antwort.vorschlaege.map(v => v.titel), geprueft: pruefung.geprueft, unbelegt: pruefung.unbelegt.length });
+      : { zusammenfassung: antwort.zusammenfassung, vorschlaege: antwort.vorschlaege.map(v => v.titel), geprueft: pruefung.geprueft, unbelegt: pruefung.unbelegt.length },
+    // Je Person (08.10.): ausgelöst von einer Person → ihr Lauf; der Takt ist ein Systemlauf (ohne Person, für alle sichtbar).
+    { person: a.ausgeloest === 'takt' ? null : a.person ?? null });
   return { ok: true, bericht, neu, aktualisiert };
 }

@@ -62,6 +62,6 @@ export async function POST(req: Request) {
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });
 
   // Der Titel des Laufs geht später als Gedächtnis in andere Prompts (blockGedaechtnis) — deshalb ohne Gesundheitswert.
-  await logRun('fokus', 'Tagesplan erstellt', { ...(b.gesundheitFrei ? { zone, recovery: rec } : {}), reply: r.text.slice(0, 1500) });
+  await logRun('fokus', 'Tagesplan erstellt', { ...(b.gesundheitFrei ? { zone, recovery: rec } : {}), reply: r.text.slice(0, 1500) }, { person: personStreng(req) });
   return NextResponse.json({ reply: r.text, recovery: rec, zone, stand: v.stand, heute: v.heute });
 }

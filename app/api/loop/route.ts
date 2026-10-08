@@ -52,7 +52,8 @@ async function gather(today: string, person: string) {
   const b = await gatherBrain(today, person);
   // Für den Rückblick brauchen wir die vollen Payloads der Loop-Läufe.
   // Ohne Einwilligung (b) keine Gesundheits-Ableitungen aus früheren Läufen in neuen Prompts (Rückblick, Vergleich).
-  const loopLog = await recentRuns(undefined, 30, 'loop-').then(l => [...l].reverse()).then(l => (b.gesundheitFrei ? l : ohneGesundheit(l)));
+  // Nur die eigenen Loop-Läufe und Systemläufe (08.10.) — nie die der anderen Person.
+  const loopLog = await recentRuns(person, { limit: 30, prefix: 'loop-' }).then(l => [...l].reverse()).then(l => (b.gesundheitFrei ? l : ohneGesundheit(l)));
   return {
     open: b.tasks.offen,
     overdue: b.tasks.overdue,
@@ -140,7 +141,7 @@ export async function POST(req: Request) {
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000,
       ki: kiAus(req, g.gesundheitFrei || eigeneAngaben ? ['aufgaben', 'kalender', 'finanzen', 'gesundheit'] : ['aufgaben', 'kalender', 'finanzen'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop, stats: { open: g.open.length, termine: g.todaysEvents.length } });
-    await logRun('loop-morgen', `Morgen-Loop ${today}`, r.data);
+    await logRun('loop-morgen', `Morgen-Loop ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, overdue: g.overdue.length, dueToday: g.dueToday.length, termine: g.todaysEvents.length } });
   }
 
@@ -190,7 +191,7 @@ export async function POST(req: Request) {
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 4000, ki: kiAus(req, ['finanzen', 'aufgaben', 'kalender', 'crm'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
-    await logRun('loop-woche', `Wochen-Loop ${today}`, r.data);
+    await logRun('loop-woche', `Wochen-Loop ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, critical: g.critical.length, pipeline: g.prospects.length, hot } });
   }
 
@@ -210,7 +211,7 @@ export async function POST(req: Request) {
     const user = g.loopLog.slice(-12).map(e => `[${e.ts.slice(0, 16)}] ${e.agent} — ${e.title}\n${JSON.stringify(e.payload).slice(0, 900)}`).join('\n\n');
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000, ki: kiAus(req, g.gesundheitFrei ? ['allgemein', 'gesundheit'] : ['allgemein'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
-    await logRun('loop-rueckblick', `Rückblick ${today}`, r.data);
+    await logRun('loop-rueckblick', `Rückblick ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data, anzahl: g.loopLog.length });
   }
 
@@ -332,7 +333,7 @@ export async function POST(req: Request) {
     const KAT: Record<string, KiKategorie[]> = { finanzen: ['finanzen'], sales: ['crm'], marketing: ['crm'], operations: ['aufgaben', 'kalender'], kunden: ['crm', 'finanzen'], gesundheit: ['gesundheit'] };
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3500, ki: kiAus(req, KAT[loop] ?? ['allgemein'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
-    await logRun(`loop-${loop}`, `${label} ${today}`, r.data);
+    await logRun(`loop-${loop}`, `${label} ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data });
   }
 

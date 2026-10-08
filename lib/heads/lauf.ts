@@ -171,7 +171,8 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
 
   // Interne Kleinigkeiten selbst (Kevin 25.09.) — nie bei ZOE-Fragen, nie wenn ausgeschaltet.
   const auto = a.ausgeloest === 'zoe' || OHNE_AUTO_MODI.has(a.modus) ? 0 : await autoUebernehmen(a.head, bericht.id, a.person, jetzt);
-  await logRun(AGENT_ID[a.head], `${MODI[a.head].find(m => m.id === a.modus)?.label} · ${antwort.status}${art.quelle === 'regelwerk' ? ' · Regelwerk' : ''}`, { vorschlaege: antwort.vorschlaege.map(v => v.titel), gestrichen: pruefung!.gestrichen.length, unbelegt: pruefung!.unbelegt.length, quelle: art.quelle });
+  // Je Person (08.10.): ausgelöst von einer Person → ihr Lauf; der Takt ist ein Systemlauf (ohne Person).
+  await logRun(AGENT_ID[a.head], `${MODI[a.head].find(m => m.id === a.modus)?.label} · ${antwort.status}${art.quelle === 'regelwerk' ? ' · Regelwerk' : ''}`, { vorschlaege: antwort.vorschlaege.map(v => v.titel), gestrichen: pruefung!.gestrichen.length, unbelegt: pruefung!.unbelegt.length, quelle: art.quelle }, { person: a.ausgeloest === 'takt' ? null : a.person });
   return { ok: true, bericht, neu, ...(auto ? { auto } : {}) };
 }
 

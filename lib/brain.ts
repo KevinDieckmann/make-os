@@ -144,7 +144,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
     gesundheitFrei ? resolveVitals(heute, person) : Promise.resolve(VITALS_GESPERRT),
     computeIndex(heute, person),
-    recentRuns(undefined, 10),
+    recentRuns(person, { limit: 10 }), // Gedächtnis: eigene Läufe + Systemläufe, nie die der anderen Person (08.10.)
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     // 0-Punkt (05.10.): Konten und Rechnungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),

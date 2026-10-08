@@ -13,6 +13,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
   const r = await askText({ zweck: 'content', ki: kiAus(req, ['allgemein']), system, user, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Entwurf erzeugen — nochmal versuchen.' });
 
-  await logRun('content', `${fmt.label}: ${thema.slice(0, 80)}`, { format: fmt.label, thema, entwurf: r.text.slice(0, 2000) });
+  await logRun('content', `${fmt.label}: ${thema.slice(0, 80)}`, { format: fmt.label, thema, entwurf: r.text.slice(0, 2000) }, { person: personStreng(req) });
   // Ein Platz für den Entwurf (27.09.): läuft der Agent im Hintergrund (ZOE, Takt), legt er den Text hier ab —
   // sonst stünde er nur in der Warteschlange. Höchstens 30 Entwürfe, älteste fallen raus.
   let abgelegt = false;
