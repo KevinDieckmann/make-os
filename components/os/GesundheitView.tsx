@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
+import { WhoopKarte } from './gesundheit/WhoopKarte';
 import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { BESCHWERDEN, HEBEL, AUFBAU, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
@@ -245,13 +246,15 @@ export function GesundheitView() {
           </Karte>
           </Kachel>
           <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} /></Kachel>
+          {/* WHOOP je Person (08.10.): nur die EIGENE Verbindung — in der Ansicht einer anderen Person keine Karte. */}
+          {eigene && <Kachel id="whoop" titel="WHOOP" breite={3}><WhoopKarte i={2} /></Kachel>}
           <Kachel id="sieben-tage" titel="Sieben Tage Routinen" breite={3}>
           <Karte i={3}>
             <Ueberschrift rechts={stand?.routinen.quote7 != null ? `Ø ${Math.round(stand.routinen.quote7 * 100)} %` : 'Ø — %'}>Sieben Tage Routinen</Ueberschrift>
             <Trend werte={sieben.map(t => t.n || null)} max={anzahl} farbe={LEUCHT.gut} hoehe={44} titel={sieben.map(t => `${t.d.slice(8)}.${t.d.slice(5, 7)}. · ${t.n}/${anzahl}`)} />
             <div style={{ marginTop: 16, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>
-              <span>{v?.heute ? 'Whoop heute' : <Link href="/os/verbindungen" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
+              <span>{v?.heute ? 'Whoop heute' : <Link href="/os/gesundheit#whoop" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
             </div>
             <div style={{ marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien }}>
               <Link href="/os/ritual?modus=morgen" style={{ color: C.inkDim }}>Tagesstart ›</Link>

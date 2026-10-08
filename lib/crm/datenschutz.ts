@@ -293,6 +293,32 @@ export function verarbeitungIcloudNachtragen(vorhanden: readonly Verarbeitung[],
   return vorhanden.some(v => v.id === VV_KALENDER_ICLOUD_ID) ? [...vorhanden] : [...vorhanden, verarbeitungKalenderIcloud(jetzt)];
 }
 
+// ── Verarbeitung „WHOOP je Person (Art. 9)“ (08.10.) — idempotent nachgetragen, sobald WHOOP auf der Instanz eingerichtet ist ──
+// Kevin 08.10.: „Whoop-Schnittstelle, damit wir immer die aktuellen Daten haben.“ Fakten: research/whoop/FAKTEN_WHOOP.md. Hinweis, keine
+// Rechtsberatung — anwaltlich gegenlesen; die Garantie für die USA (DPF) ist NICHT belegt, im Empfänger-Register „zu prüfen“.
+
+export const VV_WHOOP_ID = 'vv-whoop';
+
+export function verarbeitungWhoop(jetzt: string): Verarbeitung {
+  return {
+    id: VV_WHOOP_ID, name: 'WHOOP je Person (Körperwerte, Art. 9)',
+    zweck: 'Die eigenen WHOOP-Werte einer Person automatisch in MAKE OS übernehmen (Recovery, Schlaf, HRV, Ruhepuls, Strain, Workouts) — für Gesundheit, Sport und Erholung; jede Person verbindet ihr eigenes Konto selbst',
+    personen: 'die Person selbst (Konto) — keine Dritten',
+    daten: 'Gesundheitsdaten (Art. 9): Recovery, HRV, Ruhepuls, SpO2, Hauttemperatur, Schlafphasen und -leistung, Strain, Workouts (Sportart, Dauer, Puls, Distanz); WHOOP-Kennung und Adresse des WHOOP-Kontos; Zugriffstoken (nur verschlüsselt auf dem Server, nie im Browser, nie in Protokollen)',
+    rechtsgrundlage: 'Art. 9 Abs. 2 lit. a DSGVO — ausdrückliche Einwilligung (a) der Person in die Verarbeitung ihrer Gesundheitsdaten; ohne sie wird nichts abgefragt; Verbinden und Trennen nur durch die Person selbst',
+    empfaenger: 'WHOOP (Quelle, eigener Verantwortlicher — eigener Vertrag der Person); die Person selbst (andere Konten nur bei „Teilen“); Hetzner (Hosting); an die KI nur mit Einwilligung (b) über die vorhandenen Wege',
+    drittland: 'WHOOP: USA — Garantie (Data Privacy Framework) zu prüfen',
+    loeschfrist: 'Spiegel 400 Tage (fällt beim Abgleich heraus), „Trennen“ widerruft bei WHOOP und löscht Zugang + Spiegel samt Tageskopien; übernommene Werte bis die Person sie löscht bzw. ihr Konto entfernt wird',
+    toms: 'Zugang nur mit Anmeldung (zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, Token je Person getrennt und nur an api.prod.whoop.com, Webhook nur mit gültiger Signatur (HMAC-SHA256, Client Secret), nur bekannte WHOOP-Kennungen, Handwerte werden nie überschrieben',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt), empfaengerIds: ['whoop', 'hetzner'],
+  };
+}
+
+/** Die Verarbeitung „WHOOP je Person“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungWhoopNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_WHOOP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungWhoop(jetzt)];
+}
+
 // ── Verarbeitung „E-Mail (Google Workspace)“ (03.10., gmail) — idempotent nachgetragen ──
 // Kevin 03.10.: Mails ziehen von IONOS zu Gmail; gelesen, zugeordnet und beantwortet wird in MAKE OS. Hinweis, keine Rechtsberatung —
 // anwaltlich gegenlesen.
@@ -460,7 +486,7 @@ export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbe
  * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet), WhatsApp (wenn eingerichtet),
  * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
  */
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -468,6 +494,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   // iCloud (06.10.): sobald der Haushalts-Kalender oder eine Verbindung je Person besteht (`icloudInGebrauch`).
   if (opt.icloud) l = verarbeitungIcloudNachtragen(l, jetzt);
   if (opt.whatsapp) l = verarbeitungWhatsappNachtragen(l, jetzt);
+  // WHOOP (08.10.): sobald die App auf der Instanz eingerichtet ist (`whoopKonfiguriert`).
+  if (opt.whoop) l = verarbeitungWhoopNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = alteFassungenHeben(l);

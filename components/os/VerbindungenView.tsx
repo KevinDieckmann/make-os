@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Verbindungen ─────────────────────────────────────────────────
-// Der eine Ort für externe Anbindungen (Whoop, Microsoft 365, seit 07.10. WhatsApp Business). Drei ehrliche
+// Der eine Ort für externe Anbindungen (Microsoft 365, seit 07.10. WhatsApp Business, seit 08.10. WHOOP je Person). Drei ehrliche
 // Zustände je Anbieter: nicht konfiguriert (mit Anleitung) → bereit
 // (Verbinden) → verbunden (seit wann, Trennen). Tokens sieht diese Seite nie.
 // Seit 24.09. im lebendigen Muster; der Bote (Telegram) wohnt unter Konto.
@@ -11,27 +11,22 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
+import { WhoopKarte } from './gesundheit/WhoopKarte';
 import { WhatsappKarte } from './whatsapp/WhatsappKarte';
 import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, Hinweis, LEUCHT, Raster } from './ui';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
 
-const FARBE_JE: Record<string, string> = { whoop: LEUCHT.gut, microsoft: LEUCHT.puls };
+const FARBE_JE: Record<string, string> = { microsoft: LEUCHT.puls };
 
 export function VerbindungenView() {
   const [liste, setListe] = useState<Verbindung[]>([]);
   const [geladen, setGeladen] = useState(false);
-  const [syncMeld, setSyncMeld] = useState('');
   const status = useSearchParams().get('status');
 
   const laden = () => fetch('/api/oauth/status').then(r => r.json()).then(d => { setListe(d.verbindungen ?? []); setGeladen(true); }).catch(() => setGeladen(true));
   useEffect(() => { laden(); }, []);
   async function trennen(id: string) { await fetch('/api/oauth/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: id, aktion: 'trennen' }) }).catch(() => {}); laden(); }
-  async function whoopSync() {
-    setSyncMeld('hole Werte …');
-    const d = await fetch('/api/whoop/sync', { method: 'POST' }).then(r => r.json()).catch(() => ({ error: 'Sync fehlgeschlagen.' }));
-    setSyncMeld(d.ok ? `Übernommen: Recovery ${d.vitals.rec ?? '—'} % · Schlaf ${d.vitals.sleep ?? '—'} h` : (d.error ?? 'Fehler.'));
-  }
   const zustand = (v: Verbindung) => (v.verbunden ? { label: 'verbunden', farbe: LEUCHT.gut } : v.konfiguriert ? { label: 'bereit', farbe: LEUCHT.achtung } : { label: 'nicht konfiguriert', farbe: C.inkLeise });
 
   return (
@@ -55,25 +50,25 @@ export function VerbindungenView() {
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
               {v.konfiguriert && !v.verbunden && <a href={`/api/oauth/start?provider=${v.id}`} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, background: f, color: C.grund, textDecoration: 'none', boxShadow: `0 6px 18px -6px ${f}99` }}>Verbinden ›</a>}
-              {v.verbunden && v.id === 'whoop' && <Knopf farbe={f} onClick={whoopSync}>Werte jetzt holen</Knopf>}
               {v.verbunden && <Knopf leise onClick={() => trennen(v.id)}>Trennen</Knopf>}
-              {v.id === 'whoop' && syncMeld && <span style={{ fontSize: TYP.bedien, color: syncMeld.startsWith('Übernommen') ? LEUCHT.gut : LEUCHT.achtung }}>{syncMeld}</span>}
             </div>
-            {v.id === 'whoop' && (
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.07)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Export einlesen · ohne Entwickler-Zugang</div>
-                <WhoopImport />
-              </div>
-            )}
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>
-              {v.id === 'whoop' ? 'Verbunden heißt: Recovery, Schlaf, HRV und Puls kommen jeden Morgen von selbst — in die Gesundheit und in den Wachstums-Score.' : 'Verbunden heißt: Postfach und Firmenkalender live statt als Momentaufnahme.'}
+              Verbunden heißt: Postfach und Firmenkalender live statt als Momentaufnahme.
             </div>
           </Karte>
         );
       })}
+      {/* WHOOP je Person (08.10.): nur die EIGENE Verbindung (components/os/gesundheit/WhoopKarte.tsx) — darunter der Export als Rückfall. */}
+      <div style={{ display: 'grid', gap: 12 }}>
+        <WhoopKarte i={liste.length + 1} />
+        <Karte i={liste.length + 1} flach>
+          <Ueberschrift farbe={LEUCHT.gut}>WHOOP-Export einlesen</Ueberschrift>
+          <WhoopImport />
+        </Karte>
+      </div>
       {/* WhatsApp Business (07.10.): Business-Nummer der Instanz — eigene Karte (components/os/whatsapp/WhatsappKarte.tsx). */}
-      <WhatsappKarte i={liste.length + 1} />
-      <Karte i={liste.length + 2}>
+      <WhatsappKarte i={liste.length + 2} />
+      <Karte i={liste.length + 3}>
         <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
         <Liste>
           <Link href="/os/konto" style={{ textDecoration: 'none', color: 'inherit' }}>

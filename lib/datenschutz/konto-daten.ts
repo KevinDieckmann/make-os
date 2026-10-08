@@ -37,6 +37,9 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   // iCloud je Person (06.10.): der Spiegel der eigenen Kalender gehört der Person; der Zugang (App-Passwort) nie in eine Datei.
   { basis: 'kalender-icloud' },
   { basis: 'icloud-verbindung', export: false, grund: 'Zugang zu iCloud (Apple-ID + app-spezifisches Passwort, verschlüsselt) — nie in einer Datei; beim Löschen entfernt (das App-Passwort bitte zusätzlich bei Apple widerrufen)' },
+  // WHOOP je Person (08.10.): der Spiegel der eigenen Werte gehört der Person (Export); der Zugang (Token) nie in eine Datei.
+  { basis: 'whoop-stand' },
+  { basis: 'whoop-verbindung', export: false, grund: 'Zugang zu WHOOP (verschlüsselte Token) — nie in einer Datei; beim Löschen bei WHOOP widerrufen und entfernt' },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */
@@ -170,6 +173,8 @@ export interface KontoLoeschBericht {
   /** Aufgaben, die der Person noch als verantwortlich zugewiesen sind (bleiben als Arbeit des Haushalts — neu zuweisen). */
   aufgabenZugewiesen: number;
   google: 'widerrufen' | 'entfernt' | 'keine';
+  /** WHOOP (08.10.): Zugang bei WHOOP widerrufen bzw. nur entfernt. */
+  whoop?: 'widerrufen' | 'entfernt' | 'keine';
   grabstein: boolean;
 }
 
@@ -206,6 +211,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const r = await googleTrennen(speicher);
     if (r.war) bericht.google = r.widerrufen ? 'widerrufen' : 'entfernt';
   } catch (e) { console.error('[konto-loeschen] Google:', e instanceof Error ? e.message : e); }
+  // 2b. WHOOP (08.10.): Zugang widerrufen, Verbindung + Spiegel weg — ein Fehler verhindert das Löschen nie.
+  try {
+    const { whoopTrennen } = await import('@/lib/whoop/verbindung');
+    const r = await whoopTrennen(speicher);
+    bericht.whoop = r.war ? (r.widerrufen ? 'widerrufen' : 'entfernt') : 'keine';
+  } catch (e) { console.error('[konto-loeschen] WHOOP:', e instanceof Error ? e.message : e); }
 
   // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit mit“ der anderen.
   await aendereKonten(s => ({
