@@ -4,7 +4,9 @@ import { kalenderLesen, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
-import { cacheFuerPerson, type CacheEreignis } from '@/lib/kalender/zoe-sicht';
+import { cacheFuerPerson, cacheMitBezug, type CacheEreignis } from '@/lib/kalender/zoe-sicht';
+import { ladeBezuege } from '@/lib/kalender/bezug-server';
+import type { BezugBestand } from '@/lib/kalender/bezug';
 import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 
 // Apple Kalender via osascript ist zäh (whose-Datumsfilter) und wird unter Last
@@ -114,9 +116,14 @@ async function sichtFuer(person: string | null): Promise<(events: object[]) => o
   // iCloud je Person (06.10.): Termine aus der EIGENEN Verbindung einer Person gehen auch an den Systemlauf nur als „Belegt“.
   if (person === null) return events => (events as CacheEreignis[]).map(e => (e.persoenlich ? cacheFuerPerson(e, '', undefined) : e));
   const einst = await ladeEinstellungen().catch(() => null);
+  // 08.10. (Sicht-Prüfung Malin): „privat“/Anleger auch aus der Sicherung in `kalender-bezug` — wie GET /api/kalender und ZOE.
+  // Fehlt der Neben-Bestand (Lesefehler), gilt jeder Eintrag mit Eigentümer als privat: lieber „Belegt“ als ein Titel zu viel.
+  let bezuege: BezugBestand | null = null, bezugFehlt = false;
+  try { bezuege = await ladeBezuege(); } catch { bezugFehlt = true; }
   return events => (events as CacheEreignis[]).map(e => {
     const wer = einst && e.calendarName ? wemGehoert(einst, e.calendarName) : e.owner === 'kevin' || e.owner === 'malin' ? e.owner : undefined;
-    return cacheFuerPerson(e, person, wer);
+    const mit = cacheMitBezug(e, bezuege);
+    return cacheFuerPerson(bezugFehlt ? { ...mit, privat: true } : mit, person, wer);
   });
 }
 

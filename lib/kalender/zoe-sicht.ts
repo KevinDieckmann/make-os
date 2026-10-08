@@ -10,7 +10,7 @@
 // Wem ein Termin gehört, sagt `eigentuemer` (wer ihn angelegt hat, sonst der Kalender). Gemeinsame Kalender ohne
 // Anleger haben keinen Eigentümer und bleiben sichtbar (wie in der Kalender-Sicht).
 
-import { maskieren, eigentuemer, verdeckteKennung, type TerminMitBezug } from './bezug';
+import { maskieren, eigentuemer, verdeckteKennung, bezugVon, type TerminMitBezug, type BezugBestand } from './bezug';
 import { STICHWORT } from '@/lib/make-one/stichworte-data';
 import { terminMarke, buchungTerminUid } from './buchung';
 
@@ -82,6 +82,19 @@ export interface CacheEreignis { id?: string; uid?: string; title?: string; loca
  * `wemGehoert`). Privat oder Gesundheit der ANDEREN Person → „Belegt“: Zeit, Kalender, Kategorie — kein Titel, Ort,
  * keine UID, kein Anleger. Eigene und gemeinsame ohne Eigentümer bleiben, wie sie sind. Rein.
  */
+/**
+ * Sicherung aus `kalender-bezug` an einem Zwischenspeicher-Eintrag (08.10., Sicht-Prüfung Malin): „privat“ und der Anleger
+ * gelten auch dann, wenn der Eintrag sie selbst nicht trägt (ältere Mac-Lieferung, Apple hat CLASS verloren) — dieselbe
+ * Regel wie `mitBezug` in der Kalender-Sicht: privat, wenn EINE Seite privat sagt; der Anleger aus dem Termin gewinnt. Rein.
+ */
+export function cacheMitBezug(e: CacheEreignis, bestand: BezugBestand | null | undefined): CacheEreignis {
+  const uid = String(e.uid ?? e.id ?? '');
+  if (!uid || !bestand) return e;
+  const b = bezugVon(bestand, { id: String(e.id ?? uid), uid });
+  if (!b) return e;
+  return { ...e, ...(b.privat && e.privat !== true ? { privat: true } : {}), ...(!e.von && b.von ? { von: b.von } : {}) };
+}
+
 export function cacheFuerPerson(e: CacheEreignis, betrachter: string, wer: string | undefined): CacheEreignis {
   const besitzer = eigentuemer({ ...(e.von ? { von: e.von } : {}), ...(wer ? { wer } : {}) });
   if (!besitzer || besitzer === betrachter) return e;
