@@ -247,6 +247,25 @@ export const inAppleZaehlen: Wirkung = (cur, m) => {
   return { neu: cur, n: eintraege.filter(e => nenntPerson(e, m)).length };
 };
 
+/** Spiegel vom Mac-Zulieferer (Erinnerungen, Adressbuch) — solange der Zulieferer läuft, baut der Mac sie aus Apple neu. */
+export const MAC_SPIEGEL: ReadonlySet<string> = new Set(['apple-reminders-cache', 'apple-contacts-cache']);
+/**
+ * Eingefrorener Mac-Spiegel (08.10., Lücke 10): ist der Zulieferer aus, liefert niemand mehr nach — Tilgen ist dann KEIN Schein mehr,
+ * sondern die einzige Kopie auf dem Server. Einträge, die die Person nennen, fallen weg (`{daten: [...]}` bzw. `{daten: {kontakte}}`).
+ */
+export const macSpiegelRaus: Wirkung = (cur, m) => {
+  const d = cur?.daten;
+  if (Array.isArray(d)) { const r = ohneNennung(d, m); return { neu: r.n ? { ...cur, daten: r.liste } : cur, n: r.n }; }
+  if (d && typeof d === 'object' && Array.isArray((d as Obj).kontakte)) {
+    const r = ohneNennung((d as Obj).kontakte as unknown[], m);
+    if (!r.n) return { neu: cur, n: 0 };
+    const zaehl: Record<string, number> = {};
+    for (const k of r.liste as { art?: unknown }[]) if (typeof k?.art === 'string') zaehl[k.art] = (zaehl[k.art] ?? 0) + 1;
+    return { neu: { ...cur, daten: { ...(d as Obj), kontakte: r.liste, anzahl: r.liste.length, zaehl } }, n: r.n };
+  }
+  return { neu: cur, n: 0 };
+};
+
 /** Google-Spiegel (03.10.): `{ events: { id: GEvent } }` — gezählt, nie geändert (Löschung nur in Google). */
 export const inGoogleZaehlen: Wirkung = (cur, m) => {
   const ev = ((cur ?? {}) as Obj).events;
@@ -333,6 +352,11 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
 /** Welcher weitere Speicher gilt für diesen Bestandsnamen? */
 export const weitererSpeicher = (bestand: string) => WEITERE_SPEICHER.find(s => s.muster.test(bestand)) ?? null;
 
+/** Läuft der Mac-Zulieferer noch (lib/zulieferer/server.ts)? Unklar → ja (dann bleibt es beim Zählen, wie bisher). */
+async function zuliefererLaeuft(): Promise<boolean> {
+  try { return await (await import('@/lib/zulieferer/server')).zuliefererAktiv(); } catch { return true; }
+}
+
 async function bestandsNamen(): Promise<string[]> {
   const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
   return namen.filter(n => n.endsWith('.json')).map(n => n.slice(0, -5)).sort();
@@ -351,6 +375,24 @@ export async function weitereEntfernen(m: PersonMerkmale): Promise<{ speicher: R
     const s = weitererSpeicher(name);
     if (!s) continue;
     if (s.behandlung === 'nur-in-apple') {
+      // Mac-Spiegel bei abgeschaltetem Zulieferer (08.10., Lücke 10): eingefroren → hier wirklich entfernen; das Original in Apple
+      // zählt weiter als „dort löschen“.
+      if (MAC_SPIEGEL.has(name) && !(await zuliefererLaeuft())) {
+        try {
+          let n = 0;
+          await updateJson<Obj>(name, cur => {
+            if (!cur || typeof cur !== 'object') return cur as unknown as Obj;
+            const r = macSpiegelRaus(cur, m);
+            n = r.n;
+            return r.n ? r.neu : cur;
+          });
+          if (n) { speicher[name] = n; nurInApple[name] = n; }
+        } catch (e) {
+          fehler.push(name);
+          console.error(`[art17] ${name}:`, e instanceof Error ? e.message : e);
+        }
+        continue;
+      }
       // Nie schreiben — nur zählen, damit der Mensch in Apple löschen kann (Register: „ausgenommen: Löschung nur in Apple“).
       const cur = await loadJson<Obj>(name).catch(() => null);
       const n = cur && typeof cur === 'object' ? s.wirkung(cur, m).n : 0;

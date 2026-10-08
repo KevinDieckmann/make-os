@@ -81,7 +81,7 @@ export interface Etappe { nr: number; titel: string; satz: string; hinweise?: Et
 
 export const ETAPPEN: Etappe[] = [
   { nr: 0, titel: 'Am Upload-Tag und direkt danach', satz: 'Am Server, nur der Inhaber — am Abend des Uploads. Die zweite Kopie am Mac geht erst am Tag nach der ersten Nachtsicherung.',
-    hinweise: [{ titel: 'Mac-Zulieferer wird abgeschaltet', wann: 'kommt später', satz: 'Alles läuft nur noch auf dem Server; am Mac bleibt nur der Mail-Weg. Die Apple-Erinnerungen werden einmal als Aufgaben übernommen, danach geht der Zulieferer aus. Bis dahin ist hier nichts zu tun — auch kein eigener Zulieferer-Schlüssel.' }] },
+    hinweise: [{ titel: 'Mac-Zulieferer wird abgeschaltet', wann: 'nach dem Upload', satz: 'Alles läuft nur noch auf dem Server; am Mac bleibt nur der Mail-Weg. Unter Einstellungen › Verbindungen › Mac-Zulieferer die Apple-Erinnerungen einmal als Aufgaben übernehmen (Vorschau → Bestätigen) — danach ist der Zulieferer aus; am Mac den Dienst mit scripts/mac-zulieferer-entfernen.sh entfernen. Kein eigener Zulieferer-Schlüssel mehr.' }] },
   { nr: 1, titel: 'Zugang, Sicherheit, Datenschutz', satz: 'Wer reinkommt, wie er sich ausweist, wer was sieht — und was die Instanz mit Daten tun darf.',
     hinweise: [{ titel: 'Zweite Person als gleichwertige Inhaberin', wann: 'kommt mit Update 2 (16.10.)', satz: 'Die zweite Person bekommt dieselben Inhaber-Rechte und einen eigenen Server-Zugang. Bis dahin erledigt der Inhaber die Inhaber-Schritte.' }] },
   { nr: 2, titel: 'Verbindungen', satz: 'Kalender, Postfächer und Geräte. Jede Person verbindet nur ihre eigenen Konten; niemand liest die Post einer anderen Person.',

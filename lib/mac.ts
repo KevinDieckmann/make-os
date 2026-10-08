@@ -24,14 +24,29 @@ export const SPEICHER: Record<Zulieferung, string> = {
   kalender: 'calendar-cache', erinnerungen: 'apple-reminders-cache', kontakte: 'apple-contacts-cache',
 };
 export interface Gemerkt { daten: unknown; at: string; quelle: 'mac' | 'zulieferung' }
+/** Was an Stelle des Spiegels gilt, wenn der Zulieferer aus ist (08.10., Lücke 10). */
+const AUS_HINWEIS: Record<Exclude<Zulieferung, 'kalender'>, string> = {
+  erinnerungen: 'Der Mac-Zulieferer ist aus — die Apple-Erinnerungen stehen als Aufgaben in MAKE OS.',
+  kontakte: 'Der Mac-Zulieferer ist aus — Kontakte führt MAKE OS in der Kartei (Markttraktion › Kontakte bzw. Privat › Kontakte).',
+};
 
 /** Auf dem Mac: gelesenen Stand merken (für Zulieferer und Ausfälle). */
 export async function merke(art: Exclude<Zulieferung, 'kalender'>, daten: unknown): Promise<void> {
   try { await saveJson<Gemerkt>(SPEICHER[art], { daten, at: new Date().toISOString(), quelle: 'mac' }); } catch { /* Merken darf nie eine Antwort verhindern */ }
 }
 
-/** Auf dem Server: den zugelieferten Stand ausliefern — oder leer mit Hinweis. */
+/**
+ * Auf dem Server: den zugelieferten Stand ausliefern — oder leer mit Hinweis. Ist der Zulieferer aus (08.10., Lücke 10), liest
+ * niemand mehr den Spiegel: leer mit `X-Zulieferer: aus` (Erinnerungen stehen dann als Aufgaben in MAKE OS, Kontakte in der Kartei).
+ */
 export async function vomMac(art: Exclude<Zulieferung, 'kalender'>, leer: unknown): Promise<NextResponse> {
+  const { zuliefererAktiv } = await import('@/lib/zulieferer/server');
+  if (!(await zuliefererAktiv())) {
+    const aus = leer && typeof leer === 'object' && !Array.isArray(leer)
+      ? { ...Object.fromEntries(Object.entries(leer).filter(([k]) => k !== 'error')), hinweis: AUS_HINWEIS[art] }
+      : leer;
+    return NextResponse.json(aus, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'leer', 'X-Zulieferer': 'aus' } });
+  }
   const g = await loadJson<Gemerkt>(SPEICHER[art]);
   if (g?.at) return NextResponse.json(g.daten, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'zulieferung', 'X-Stand': g.at } });
   return NextResponse.json(leer, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'leer', 'X-Nur-Mac': '1' } });

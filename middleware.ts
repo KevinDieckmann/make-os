@@ -16,7 +16,7 @@ import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich }
 import { standPruefen, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
 import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
-import { anfrageIntern, zuliefererSchluessel, ZULIEFERUNG, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
+import { anfrageIntern, zuliefererSchluessel, zuliefererUmgebung, ZULIEFERUNG, ZULIEFERER_AUS_ANTWORT, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
@@ -89,6 +89,10 @@ export async function middleware(req: NextRequest) {
 
   const pfad = req.nextUrl.pathname;
   const kopf = new Headers(req.headers);
+
+  // Zulieferer per Umgebung abgeschaltet (08.10., Lücke 10): POST /api/zulieferung → 410, vor jeder Schlüsselprüfung — damit ist
+  // auch der Übergang (MAKE_OS_KEY von außen) zu. Ist er nur in der Instanz-Einstellung aus, antwortet die Route selbst mit 410.
+  if (ZULIEFERUNG.test(pfad) && req.method === 'POST' && zuliefererUmgebung() === 'aus') return NextResponse.json(ZULIEFERER_AUS_ANTWORT, { status: 410 });
 
   // Alles, was nicht der interne Dienstweg ist, darf sich NICHT selbst benennen.
   const ohneSelbstbenennung = () => { for (const k of ['x-make-user', 'x-make-person', 'x-make-hoi', 'x-make-zulieferer']) kopf.delete(k); };

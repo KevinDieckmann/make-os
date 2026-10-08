@@ -48,7 +48,8 @@ export async function POST(req: Request) {
     const jetzt = new Date().toISOString();
     konto = { id: neueKennung('k'), speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, kdf, angelegt: jetzt, teilt: { gesundheit: [] } };
     // Neue Instanz (05.10.): 2FA-Pflicht von Anfang an — der Inhaber richtet den zweiten Faktor gleich mit ein.
-    return { ...s, konten: [konto], einstellungen: { ...s.einstellungen, zweiFaktorPflicht: true, zweiFaktorPflichtSeit: jetzt } };
+    // Und ohne Mac-Zulieferer (08.10., Lücke 10): eine neue Instanz führt alles auf dem Server (lib/zulieferer/schalter.ts).
+    return { ...s, konten: [konto], einstellungen: { ...s.einstellungen, zweiFaktorPflicht: true, zweiFaktorPflichtSeit: jetzt, zulieferer: 'aus', zuliefererSeit: jetzt } };
   });
   if (!konto) return NextResponse.json({ error: 'Gleichzeitig eingerichtet — bitte anmelden.' }, { status: 409 });
   await einrichtungsCodeVerbrauchen();

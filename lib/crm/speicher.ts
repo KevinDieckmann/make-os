@@ -310,7 +310,16 @@ function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung |
     id: String(o.id), name: txt(o.name, 160), zweck: txt(o.zweck, 1500), personen: txt(o.personen, 600), daten: txt(o.daten, 800), rechtsgrundlage: txt(o.rechtsgrundlage, 800),
     empfaenger: txt(o.empfaenger, 800), drittland: txt(o.drittland, 300), loeschfrist: txt(o.loeschfrist, 800), toms: txt(o.toms, 1500), verantwortlich: txt(o.verantwortlich, 200), stand: jetzt.slice(0, 10),
     ...(Array.isArray(o.empfaengerIds) ? { empfaengerIds: Array.from(new Set(o.empfaengerIds.map(x => String(x)).filter(x => /^[a-z0-9][a-z0-9-]{1,40}$/.test(x)))).slice(0, 20) } : {}),
+    // Archiviert (08.10., Lücke 10): Tag + Grund bleiben als Nachweis; `durch` nur aus der festen Liste.
+    ...(archivSauber(o.archiviert) ? { archiviert: archivSauber(o.archiviert)! } : {}),
   };
+}
+function archivSauber(a: unknown): Verarbeitung['archiviert'] | null {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  const x = a as Record<string, unknown>;
+  const am = typeof x.am === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x.am) ? x.am.slice(0, 10) : null;
+  if (!am) return null;
+  return { am, grund: txt(x.grund, 400), ...(x.durch === 'zulieferer-aus' || x.durch === 'hand' ? { durch: x.durch } : {}) };
 }
 
 const strListe = (v: unknown, n = KRITERIEN_WERTE_MAX, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);

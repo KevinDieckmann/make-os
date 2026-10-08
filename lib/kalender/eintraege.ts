@@ -130,8 +130,9 @@ export function faelligWand(due: string, wand: (d: Date) => string): string | nu
 export function erinnerungen(roh: unknown, von: string, bis: string, wand: (d: Date) => string): Erinnerung[] {
   if (!Array.isArray(roh)) return [];
   const raus: Erinnerung[] = [];
-  for (const r of roh as { id?: string; title?: string; due?: string; list?: string }[]) {
-    if (!r?.title || !r.due) continue;
+  for (const r of roh as { id?: string; title?: string; due?: string; list?: string; completed?: unknown }[]) {
+    // Seit 08.10. liefert der Mac auch erledigte Erinnerungen (für die einmalige Übernahme als Aufgaben) — der Kalender zeigt sie nicht.
+    if (!r?.title || !r.due || r.completed === true) continue;
     const w = faelligWand(String(r.due), wand);
     if (!w) continue;
     const tag = w.slice(0, 10);

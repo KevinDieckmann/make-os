@@ -91,8 +91,11 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ihn alle 5 Min. aus Apple neu. Deshalb „ausgenommen: Löschung nur in Apple“ — der Löschlauf zählt die Einträge, die
   // die Person nennen, und meldet „n Einträge in Apple nennen die Person — dort löschen“ (person-weitere.ts `nurInApple`).
   A('calendar-cache', 'Kalender-Spiegel aus Apple (Mac-Zulieferung/iCloud) — Löschung nur in Apple; der Löschlauf meldet die Termine, die die Person nennen.', 'kalender-caches'),
-  A('apple-reminders-cache', 'Erinnerungen-Spiegel vom Mac — Löschung nur in Apple; der Löschlauf meldet die Einträge, die die Person nennen.'),
-  A('apple-contacts-cache', 'Kontakte-Spiegel vom Mac (Adressbuch) — Löschung nur in Apple; der Löschlauf meldet die Einträge, die die Person nennen.'),
+  // Mac-Zulieferer abschaltbar (08.10., Lücke 10): solange er läuft, wie oben (Löschung nur in Apple). Ist er aus, liest niemand
+  // mehr den Spiegel (lib/mac.ts `vomMac`, Kalender), Art. 17 entfernt die Einträge der Person darin wirklich (`macSpiegelRaus` —
+  // eingefroren ist er die einzige Kopie), und der Inhaber löscht ihn ganz über Einstellungen › Verbindungen › Mac-Zulieferer.
+  A('apple-reminders-cache', 'Erinnerungen-Spiegel vom Mac — Löschung nur in Apple, solange der Zulieferer läuft; danach eingefroren: Art. 17 entfernt die Einträge, die die Person nennen, und „Spiegel löschen“ (Inhaber) entfernt ihn ganz (lib/zulieferer/server.ts).'),
+  A('apple-contacts-cache', 'Kontakte-Spiegel vom Mac (Adressbuch) — Löschung nur in Apple, solange der Zulieferer läuft; danach eingefroren und von niemandem mehr gelesen: Art. 17 entfernt die Einträge der Person, „Spiegel löschen“ (Inhaber) entfernt ihn ganz.'),
   // Google Kalender (03.10.2026): ein Spiegel je Person — Wahrheit ist Google, Löschung nur dort (wie die Apple-Spiegel; der Löschlauf zählt die Termine, die die Person nennen).
   A('kalender-google--*', 'Spiegel des Google Kalenders je Person (Termine, Teilnehmer-Adressen Dritter) — Wahrheit ist Google, Löschung nur dort; der Abgleich holt ihn neu, der Löschlauf meldet die Termine, die die Person nennen (person-weitere.ts).', 'kalender-caches'),
   // Gmail in der Inbox (03.10.2026): Spiegel je Person — Nachrichten, die die Person nennen, raus (Art. 17), das Original bleibt in Gmail (der Löschlauf zählt es als „dort löschen“).
@@ -301,6 +304,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('fokus-laufend--*', 'Laufender Fokus-Block je Person.'),
   H('wochenplan--*', 'Alter Wochenplan je Person (bis 29.09., K5) — nur noch Archiv; liest allein die Übernahme in den Kalender.'),
   H('wochenplan-uebernahme', 'Stand der Übernahme alter Wochenplan-Blöcke in den Kalender (K5): nur Block-Kennung → Termin-UID, keine Titel.'),
+  K('zulieferer-uebernahme', 'Stand der einmaligen Übernahme der Apple-Erinnerungen als Aufgaben (08.10., Lücke 10, lib/zulieferer/server.ts): nur Zeitpunkte und Zahlen (wann bestätigt, wie viele neu/schon da, wann der Spiegel gelöscht wurde) — keine Titel, keine Namen, keine Person; die Aufgaben selbst liegen in `tasks`.'),
   mit(H('sport', 'Sport (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('sport--*', 'Sport je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('vitals', 'Körperwerte (Kevin, Whoop) — eigene Gesundheitsdaten.'), GESUNDHEIT),

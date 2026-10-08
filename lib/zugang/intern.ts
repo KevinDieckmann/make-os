@@ -65,3 +65,21 @@ export function zuliefererSchluessel(): string | null {
 
 /** Die Routen, die der Mac-Zulieferer beschreiben darf (zulieferer.mjs: POST /api/zulieferung). */
 export const ZULIEFERUNG = /^\/api\/zulieferung$/;
+
+// ── Zulieferer abschalten (08.10., Lücke 10 / R6: „alles nur auf dem Server führen“) ─────────────────────────────────
+// Die Umgebung `MAKE_OS_ZULIEFERER=aus|an` gewinnt vor der Instanz-Einstellung des Inhabers (lib/zulieferer/schalter.ts). Mit
+// `aus` antwortet schon die Middleware auf POST /api/zulieferung mit 410 — vor jeder Schlüsselprüfung, damit auch der Übergang
+// (MAKE_OS_KEY von außen) zu ist. Rein und ohne Node-Module (Edge-Laufzeit der Middleware).
+
+/** Die Umgebung schaltet den Zulieferer ausdrücklich: 'aus' | 'an' — sonst null (dann gilt die Einstellung des Inhabers). */
+export function zuliefererUmgebung(env: Record<string, string | undefined> = process.env): 'an' | 'aus' | null {
+  const w = (env.MAKE_OS_ZULIEFERER ?? '').trim().toLowerCase();
+  if (/^(aus|0|nein|false|off)$/.test(w)) return 'aus';
+  if (/^(an|1|ja|true|on)$/.test(w)) return 'an';
+  return null;
+}
+
+/** Der Satz, mit dem der Server einen Zulieferer abweist, der nicht mehr gebraucht wird (410 Gone). Keine Werte, keine Namen. */
+export const ZULIEFERER_AUS_TEXT = 'Der Mac-Zulieferer ist abgeschaltet — Erinnerungen und Kontakte führt MAKE OS jetzt selbst. Am Mac den Dienst entfernen: bash scripts/mac-zulieferer-entfernen.sh (erst ohne --ausfuehren ansehen).';
+/** Antwort-Körper für 410 (Middleware und Route). */
+export const ZULIEFERER_AUS_ANTWORT = { ok: false, abgeschaltet: true, fehler: ZULIEFERER_AUS_TEXT } as const;

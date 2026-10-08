@@ -1,7 +1,8 @@
 'use client';
 
 // ─── MAKE OS — Verbindungen ─────────────────────────────────────────────────
-// Der eine Ort für externe Anbindungen (Microsoft 365, seit 07.10. WhatsApp Business, seit 08.10. WHOOP je Person). Drei ehrliche
+// Der eine Ort für externe Anbindungen (Microsoft 365, seit 07.10. WhatsApp Business, seit 08.10. WHOOP je Person und das Abschalten
+// des Mac-Zulieferers — nur der Inhaber, components/os/ZuliefererKarte.tsx). Drei ehrliche
 // Zustände je Anbieter: nicht konfiguriert (mit Anleitung) → bereit
 // (Verbinden) → verbunden (seit wann, Trennen). Tokens sieht diese Seite nie.
 // Seit 24.09. im lebendigen Muster; der Bote (Telegram) wohnt unter Konto.
@@ -14,6 +15,7 @@ import { WhoopImport } from './WhoopImport';
 import { WhoopKarte } from './gesundheit/WhoopKarte';
 import { WhatsappKarte } from './whatsapp/WhatsappKarte';
 import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
+import { ZuliefererKarte } from './ZuliefererKarte';
 import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, Hinweis, LEUCHT, Raster } from './ui';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
@@ -71,6 +73,8 @@ export function VerbindungenView() {
       <WhatsappKarte i={liste.length + 2} />
       {/* ZOE auf WhatsApp (08.10.): die eigene ZOE-Nummer — jede Person verbindet ihre Handynummer selbst (components/os/zoe-whatsapp). */}
       <ZoeWhatsappKarte i={liste.length + 2} />
+      {/* Mac-Zulieferer abschalten (08.10., Lücke 10): nur der Inhaber sieht die Karte (sonst bleibt sie leer). */}
+      <ZuliefererKarte i={liste.length + 3} />
       <Karte i={liste.length + 3}>
         <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
         <Liste>

@@ -1,12 +1,13 @@
 // ─── MAKE OS — Apple Erinnerungen (iCloud, geteilt mit Malin) ────────────────
-// Liest offene Erinnerungen je Liste via AppleScript. KEIN `whose`-Filter
-// (zu langsam) — stattdessen die ersten N je Liste durchgehen und im Loop
-// prüfen. Läuft lokal auf dem Mac; braucht einmalig die Zugriffs-Freigabe
-// (macOS-Popup „Zugriff auf Erinnerungen").
+// Liest die Erinnerungen je Liste via AppleScript (seit 08.10. auch erledigte, gekennzeichnet — der Kalender zeigt sie nicht,
+// die einmalige Übernahme als Aufgaben nimmt sie nur auf Wunsch). KEIN `whose`-Filter (zu langsam) — stattdessen die ersten N
+// je Liste durchgehen. Läuft lokal auf dem Mac; braucht einmalig die Zugriffs-Freigabe (macOS-Popup „Zugriff auf Erinnerungen").
+// Auf dem Server liefert die Route den zugelieferten Spiegel — bzw. nichts mehr, sobald der Zulieferer aus ist (lib/mac.ts `vomMac`).
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
 import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
+import { skriptZeileLesen, SKRIPT_SATZ } from '@/lib/zulieferer/erinnerungen';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -14,7 +15,13 @@ export const dynamic = 'force-dynamic';
 
 const MAX_PER_LIST = 40;
 
+// Seit 08.10. (Lücke 10 — einmalige Übernahme als Aufgaben, lib/zulieferer/erinnerungen.ts): zusätzlich die Apple-Kennung (`id`,
+// „x-apple-reminder://…“ → feste Aufgaben-Kennung), die Notiz (`body`), erledigt ja/nein und die Fälligkeit als Wandzeit aus den
+// Datumsteilen („JJJJ-MM-TTTHH:MM“) — `(due date) as string` hängt von der Sprache des Macs ab und war oft nicht lesbar.
+// Felder mit Steuerzeichen getrennt (US = 31, RS = 30), damit Notizen Zeilenumbrüche haben dürfen.
 const SCRIPT = `
+set US to (character id 31)
+set RS to (character id 30)
 tell application "Reminders"
   set out to ""
   repeat with l in lists
@@ -25,17 +32,28 @@ tell application "Reminders"
     repeat with i from 1 to n
       set r to item i of rs
       try
-        if (completed of r) is false then
-          set dd to ""
-          try
-            set dd to (due date of r) as string
-          end try
-          set pr to 0
-          try
-            set pr to priority of r
-          end try
-          set out to out & lname & "||" & (name of r) & "||" & dd & "||" & pr & linefeed
-        end if
+        set erl to (completed of r)
+        set rid to ""
+        try
+          set rid to (id of r) as string
+        end try
+        set dd to ""
+        try
+          set d to due date of r
+          if d is not missing value then
+            set dd to ((year of d) as string) & "-" & (text -2 thru -1 of ("0" & ((month of d) as integer))) & "-" & (text -2 thru -1 of ("0" & (day of d))) & "T" & (text -2 thru -1 of ("0" & (hours of d))) & ":" & (text -2 thru -1 of ("0" & (minutes of d)))
+          end if
+        end try
+        set bd to ""
+        try
+          set b to body of r
+          if b is not missing value then set bd to b
+        end try
+        set pr to 0
+        try
+          set pr to priority of r
+        end try
+        set out to out & lname & US & (name of r) & US & dd & US & pr & US & rid & US & bd & US & (erl as string) & RS
       end try
     end repeat
   end repeat
@@ -57,13 +75,6 @@ function runOsascript(script: string, timeoutMs = 45_000): Promise<string> {
   });
 }
 
-function parseDate(s: string): string | undefined {
-  const t = s.trim();
-  if (!t || t === 'missing value') return undefined;
-  const d = new Date(t);
-  return isNaN(d.getTime()) ? undefined : d.toISOString();
-}
-
 export async function GET(req: Request) {
   // Auch der Systemlauf ohne Person (Zulieferer vom Mac, 28.09.) — Personen nur aus dem Haushalt des Inhabers.
   if (!(await imHaushaltOderSystemlauf(req))) return NextResponse.json({ error: 'Erinnerungen gehören zum Haushalt des Inhabers.' }, { status: 403 });
@@ -72,19 +83,11 @@ export async function GET(req: Request) {
     const stdout = await runOsascript(SCRIPT);
     const items: object[] = [];
     let idx = 0;
-    for (const line of stdout.split('\n')) {
-      const parts = line.split('||');
-      if (parts.length < 2) continue;
-      const [list, title, dueStr, prio] = parts;
-      if (!title?.trim()) continue;
-      items.push({
-        id: `reminder-${idx++}`,
-        list: list.trim(),
-        title: title.trim(),
-        due: parseDate(dueStr ?? ''),
-        priority: Number((prio ?? '0').trim()) || 0,
-        source: 'apple-reminders',
-      });
+    for (const zeile of stdout.split(SKRIPT_SATZ)) {
+      const e = skriptZeileLesen(zeile, idx);
+      if (!e) continue;
+      idx++;
+      items.push(e);
     }
     await merke('erinnerungen', items);
     return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } });

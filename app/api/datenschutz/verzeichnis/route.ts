@@ -18,6 +18,7 @@ import { empfaengerWirksam, verantwortlicherWirksam } from '@/lib/datenschutz/ei
 import { ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
 import { verzeichnisDokument, verzeichnisHtml } from '@/lib/datenschutz/verzeichnis-export';
 import { localDay } from '@/lib/zeit';
+import { zuliefererAktiv } from '@/lib/zulieferer/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const jetzt = new Date().toISOString();
   let crm = await ladeCrm();
-  const vvOpt = { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet() };
+  const vvOpt = { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()) };
   if (verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, vvOpt).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, jetzt, vvOpt); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
   const e = await ladeEinrichtung();
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {}).fristen);

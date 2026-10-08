@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Zulieferer als Hintergrunddienst auf dem Mac. Kopieren nach
+<!-- Seit 08.10. (Lücke 10, Kevin R6) abgelöst: der Server führt alles selbst. Entfernen: bash scripts/mac-zulieferer-entfernen.sh
+     (Trockenlauf), dann mit --ausfuehren. Diese Datei bleibt nur für den Rückweg im Repo.
+     Zulieferer als Hintergrunddienst auf dem Mac. Kopieren nach
      ~/Library/LaunchAgents/ und laden mit:
      launchctl load ~/Library/LaunchAgents/de.makeos.zulieferer.plist -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

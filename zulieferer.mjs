@@ -17,6 +17,9 @@
 // der Umstellung (Mac zuerst oder Server zuerst) egal.
 // Den lokalen Schlüssel liest es aus .env.local.
 //
+// Abschalten (08.10., Lücke 10): antwortet der Server mit 410, liefert der Zulieferer nichts mehr (einmal am Tag ein Hinweis im Log).
+// Am Mac entfernen: bash scripts/mac-zulieferer-entfernen.sh (Trockenlauf), dann mit --ausfuehren.
+//
 //   node zulieferer.mjs            # dauerhaft (alle paar Minuten)
 //   node zulieferer.mjs --einmal   # ein Durchgang, zum Testen
 
@@ -50,6 +53,10 @@ const PLAN = [
 ];
 const zuletzt = {};
 const zeit = () => new Date().toLocaleTimeString('de-DE');
+// Seit 08.10. (Lücke 10, Kevin R6): der Server kann den Zulieferer abschalten — dann antwortet er mit 410 (Gone). Der Zulieferer
+// liefert danach nichts mehr und meldet sich höchstens einmal am Tag mit dem Weg zum Entfernen (scripts/mac-zulieferer-entfernen.sh).
+let abgeschaltet = null; // Zeitpunkt der letzten Meldung
+class Abgeschaltet extends Error {}
 
 async function liefere(p) {
   const r = await fetch(`${LOKAL}${p.pfad}`, { headers: { 'x-make-key': LOKAL_KEY }, signal: AbortSignal.timeout(120_000) });
@@ -68,18 +75,26 @@ async function liefere(p) {
     break;
   }
   const a = await s.json().catch(() => ({}));
+  if (s.status === 410) throw new Abgeschaltet(a.fehler ?? 'Der Zulieferer ist am Server abgeschaltet.');
   if (!a.ok) throw new Error(`Server: ${a.fehler ?? s.status}`);
   return a.anzahl;
 }
 
 async function runde() {
+  if (abgeschaltet && Date.now() - abgeschaltet < 24 * 3600_000) return;
   for (const p of PLAN) {
     if (zuletzt[p.art] && Date.now() - zuletzt[p.art] < p.alle * 60_000) continue;
     try {
       const n = await liefere(p);
       zuletzt[p.art] = Date.now();
+      abgeschaltet = null;
       console.log(`[${zeit()}] ${p.art}: geliefert${n != null ? ` (${n})` : ''}`);
     } catch (e) {
+      if (e instanceof Abgeschaltet) {
+        abgeschaltet = Date.now();
+        console.log(`[${zeit()}] Der Server hat den Zulieferer abgeschaltet — es wird nichts mehr geliefert. ${String(e.message).slice(0, 240)}`);
+        return;
+      }
       console.log(`[${zeit()}] ${p.art}: nicht geliefert — ${String(e?.message ?? e).slice(0, 120)}`);
     }
   }
