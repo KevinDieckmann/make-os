@@ -62,14 +62,9 @@ export function BuchungenView({ bereich = 'business' }: { bereich?: 'business' |
       setAlle(Array.isArray(d.buchungen) ? d.buchungen : []);
       setGeladen(true);
     }).catch(() => setGeladen(true));
-  }, []);
+  }, [orte]);
 
   const monate = useMemo(() => Array.from(new Set(alle.map(b => b.datum.slice(0, 7)))).sort().reverse(), [alle]);
-  const kategorien = useMemo(() => {
-    const m = new Map<string, number>();
-    alle.forEach(b => m.set(b.kategorie, (m.get(b.kategorie) ?? 0) + 1));
-    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([k]) => k);
-  }, [alle]);
 
   const sichtbar = useMemo(() => {
     const n = suche.trim().toLowerCase();

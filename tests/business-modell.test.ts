@@ -9,6 +9,7 @@ vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ 
 import { berechne } from '../lib/business/index';
 import { MESSEN, type Bestand } from '../lib/business/messen';
 import { kennzahlenFuer, KENNZAHLEN } from '../lib/business/register';
+import { FINANZ_S } from '../lib/finanzen/navigation';
 import { geschaeftsmodell } from '../lib/business/modell';
 import { WEG } from '../lib/wege';
 import type { Mandat, Chance, Leistung } from '../lib/crm/typen';
@@ -68,8 +69,8 @@ describe('Punkte hinter den Kacheln', () => {
       { id: 'r2', kunde: 'Beta', titel: 'Sep', betrag: 1000, status: 'gestellt', faellig: '2026-10-10', firmaId: 'kdc' },
     ] });
     const d = MESSEN.ueberfaellig(b).details!;
-    expect(d[0]).toMatchObject({ titel: 'Acme · RE-7', href: '/os/finanzen/planung?r=r1', ampel: 'rot', unter: expect.stringContaining('seit 24 Tagen') });
-    expect(d[1]).toMatchObject({ titel: 'Beta', href: '/os/finanzen/planung?r=r2', ampel: 'gruen' });
+    expect(d[0]).toMatchObject({ titel: 'Acme · RE-7', href: '/os/finanzen?s=rechnungen&space=business&r=r1', ampel: 'rot', unter: expect.stringContaining('seit 24 Tagen') });
+    expect(d[1]).toMatchObject({ titel: 'Beta', href: '/os/finanzen?s=rechnungen&space=business&r=r2', ampel: 'gruen' });
   });
   it('Kundenkonzentration: die größten Kunden mit Anteil, Link aufs Mandat', () => {
     const b = leer({ mandate: [mandat('a', { kunde: 'Acme', honorar: { betrag: 3000, basis: 'monat', netto: true } }), mandat('b', { kunde: 'Beta' })] });
@@ -99,7 +100,9 @@ describe('Punkte hinter den Kacheln', () => {
   });
 
   it('kein Link endet im Leeren: jeder Punkt und jedes „so schließen“ zeigt auf eine echte Seite', () => {
-    const ERLAUBT = /^\/os\/(finanzen(\/(planung|liquiditaet|grundlage|buchungen))?|mandate|markttraktion|planung\/(woche|jahr|kapazitaet|meilenstein\/[A-Za-z0-9_~:.-]+|ziel\/[A-Za-z0-9_~:.-]+)|kalender|agenten|controlling|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index))?$/;
+    // 08.10. (Aufräumen Etappe 2): Finanzen hat keine Nebenseiten mehr — alles unter /os/finanzen, `s` muss ein echter Ort sein.
+    const ERLAUBT_PFAD = /^\/os\/(finanzen|mandate|markttraktion|planung\/(woche|jahr|kapazitaet|meilenstein\/[A-Za-z0-9_~:.-]+|ziel\/[A-Za-z0-9_~:.-]+)|kalender|agenten|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index|gesamt|altbestand))?$/;
+    const ERLAUBT = { test: (h: string) => ERLAUBT_PFAD.test(h) && (!h.startsWith('/os/finanzen') || (FINANZ_S as readonly string[]).includes(new URLSearchParams(h.split(/[?#]/)[1] ?? '').get('s') ?? 'privat')) };
     const b = leer({
       firmen: [{ id: 'kdc', name: 'Consulting', kontostand: 20000, stand: '2026-09-01' }, { id: 'kdv', name: 'KD Ventures', kontostand: null, stand: null }],
       grundlageMonate: monate(1, 8, 10000, 7000), planposten: [posten('miete', -2000), posten('kredit', -500, { kategorie: 'kredite' })],

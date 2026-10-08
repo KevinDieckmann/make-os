@@ -147,13 +147,13 @@ describe('Belege und Übergabe', () => {
   it('fehlende Pflichtangaben verlinken auf die Rechnung, fehlende Belege tragen ihre Kennung zum Erledigen — Privates nie', () => {
     const p = belegPunkte(rechnungen, belege, HEUTE);
     expect(p.map(x => x.id)).toEqual(['b-b1', 'r-r9']);
-    expect(p[1]).toMatchObject({ href: '/os/finanzen/planung?r=r9', unter: 'fehlt: Rechnungsnummer, USt-Satz, Leistungszeitraum' });
+    expect(p[1]).toMatchObject({ href: '/os/finanzen?s=rechnungen&space=business&r=r9', unter: 'fehlt: Rechnungsnummer, USt-Satz, Leistungszeitraum' });
     expect(p[0]).toMatchObject({ belegId: 'b1', stand: 3, art: 'beleg' });
   });
   it('Monats-Checkliste leitet ab, was sie sieht; Abhaken überstimmt', () => {
     const m = uebergabeMonat('2026-08', { rechnungen, belege, abschluesse: [{ firma: 'kdc', monat: '2026-08' }], buchungsMonate: [], abgehakt: { 'm:2026-08:konto': { am: HEUTE, von: 'kevin' } } });
     expect(Object.fromEntries(m.map(x => [x.key.split(':')[2], x.status]))).toEqual({ konto: 'ok', rechnungen: 'offen', belege: 'offen', abschluss: 'offen', abgleich: 'hand', uebergeben: 'hand' });
-    expect(m.find(x => x.key === 'm:2026-08:rechnungen')).toMatchObject({ href: '/os/finanzen/planung?r=r9' });
+    expect(m.find(x => x.key === 'm:2026-08:rechnungen')).toMatchObject({ href: '/os/finanzen?s=rechnungen&space=business&r=r9' });
     expect(uebergabeJahr(2025, {}).every(x => x.status === 'hand' && x.key.startsWith('j:2025:'))).toBe(true);
   });
 });

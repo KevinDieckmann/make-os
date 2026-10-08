@@ -92,8 +92,8 @@ export function bereicheFuer(sicht: 'privat' | 'business'): typeof BEREICHE {
 /** Unterseite in einer Sicht — eine private Unterseite fällt in der Business-Sicht auf „lage“ zurück. */
 export const unterseiteFuer = (u: unknown, sicht: 'privat' | 'business'): Unterseite => (istUnterseite(u) && (sicht === 'privat' || !NUR_PRIVAT_UNTERSEITEN.includes(u)) ? u : 'lage');
 /**
- * Die Adresse der Finanzplanung (04.10.: Reiter „Finanzplanung“ unter Finanzen › Privat und Finanzen › Business). Alte Links auf
- * `/os/finanzplan?…` landen in der Privat-Sicht (dort ist alles); alle Parameter (u, monat, zeile, sz, feld, steuern …) bleiben.
+ * Die Adresse der Finanzplanung (04.10.; seit 08.10. Reiter „Planung“ unter Finanzen › Privat und Finanzen › Business). Alte Links auf
+ * /os/finanzplan?… leiten in next.config.mjs in die Privat-Sicht weiter (dort ist alles); alle Parameter (u, monat, zeile, sz, feld, steuern …) bleiben.
  */
 export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSearchParams | Record<string, string | number | undefined>): string {
   const q = new URLSearchParams();
