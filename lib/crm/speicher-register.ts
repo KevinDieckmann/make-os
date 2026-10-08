@@ -327,6 +327,13 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Arbeits-Schalter je Person seit 08.10. spät — Altbestand ohne Suffix nur beim Inhaber.
   mit(H('arbeitsmodus', 'Arbeits-Schalter (an/aus, nur Uhrzeiten) — Altbestand ohne Suffix, gehört dem Inhaber.'), ARBEITSZEIT),
   mit(H('arbeitsmodus--*', 'Arbeits-Schalter je Person (an/aus, nur Uhrzeiten) — liest und schaltet nur die Person selbst.'), ARBEITSZEIT),
+  // Business-frei (08.10., Lücke 7): eigene Ergänzung des Arbeitsrahmens — nur Wochentage und Uhrzeiten, keine Inhalte, keine Dritten.
+  mit(H('arbeitsrahmen--*', 'Eigene Business-freie Zeitfenster je Person (Wochentage + Uhrzeiten, Zeitpunkt der letzten Änderung) — ergänzen die gemeinsamen Zeiten der Familie, nur die Person selbst liest und schreibt sie.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG — die Person legt ihren eigenen Arbeitsrahmen selbst fest',
+    art15: 'die Person sieht und ändert ihre Zeiten unter Familie › Rahmen (GET /api/arbeitsrahmen liefert nur die eigenen); Konto › Meine Daten exportiert sie',
+    loeschfrist: 'bis die Person sie leert; Konto löschen entfernt den Bestand',
+    kategorie: ['beschaeftigte'],
+  }),
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
   mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der Anwendung) bzw. § 26 BDSG für Beschäftigte; lit. f (Sicherheit)',

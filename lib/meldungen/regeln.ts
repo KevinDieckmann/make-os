@@ -17,6 +17,13 @@
 //     gilt je Berliner Tag: morgen meldet sich eine noch offene überfällige Aufgabe neu.
 //  5. Zuständig „both“ (gemeinsam) zählt für jede Person, die die Glocke sehen darf
 //     (der Zugang ist schon auf den Haushalt des Inhabers begrenzt).
+//  6. Business-frei (08.10., Lücke 7, lib/arbeitsrahmen/regel.ts): eine Meldung, die in einer Business-freien Zeit der
+//     Empfängerin abgelegt wird, trägt `freiBis` (Ende des Fensters, ISO). Ist sie Business (`istBusinessMeldung`: Markttraktion,
+//     Netzwerken, Buchungen, Verträge, Aufgaben im Business-Space, Business-Fristen), ruht sie bis dahin (nicht gezeigt, nicht
+//     gezählt, „alle gelesen“ fasst sie nicht an) und kommt danach als EINE Meldung „n Business-Hinweise aus der freien Zeit“
+//     (`businessfrei:<freiBis>`, mit allen Meldungen darin). Abgeleitete Business-Meldungen (fällig, Follow-up …) erscheinen
+//     während des Fensters gar nicht — sie werden danach ohnehin neu abgeleitet. Nichts geht verloren, nichts wird gelöscht.
+//     Sicherheit, Verbindungen, Postfach, Kalender-Hinweise, Termine und Privates kommen immer sofort.
 
 import type { MeldungArt, MeldungBezug, MeldungEingabe } from './melden';
 import { geburtstagFuer } from '@/lib/kalender/geburtstag';
@@ -43,7 +50,7 @@ export type GespeicherteArt = MeldungArt | 'sammel';
  * heute/überfällig, Kalender-Vorschläge von ZOE im Stapel — alle aus lib/heute/anstehend.ts (`anstehendAbleiten`).
  * Offene Buchungsanfragen meldet die Glocke schon beim Eingang (gespeicherte Art „buchung“) — hier nicht doppelt.
  */
-export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke';
+export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei';
 // `danke` (02.10., Netzwerken): „n Danke-Mails bereit“ — ab dem Folgetag eines Events, aus Teilnahme + Kartei abgeleitet.
 
 export interface Meldung {
@@ -60,6 +67,12 @@ export interface Meldung {
   anzahl?: number;
   /** Abgeleitet (fällig/überfällig), nicht gespeichert. */
   virtuell?: boolean;
+  /** Business-frei (Regel 6): in einer Business-freien Zeit der Empfängerin abgelegt — Ende des Fensters (ISO). */
+  freiBis?: string;
+  /** Abgeleitet und Business (z. B. eine Business-Frist) — ruht während einer Business-freien Zeit (Regel 6). */
+  business?: true;
+  /** Nur bei `businessfrei`: die gesammelten Meldungen aus der freien Zeit (nichts geht verloren). */
+  enthalten?: Meldung[];
 }
 
 export interface MeldungEinstellungen {
@@ -270,7 +283,7 @@ const minutenBis = (vonWand: string, bisWand: string) => {
 export interface AnstehendFuerGlocke {
   termine: readonly { id: string; titel: string; start: string; ganztags: boolean; href: string; laeuft: boolean }[];
   nachbereiten: readonly { kontaktId: string; name: string; titel: string; href: string }[];
-  fristen: readonly { id: string; titel: string; tag: string; href: string; inTagen: number; kuendigung?: true }[];
+  fristen: readonly { id: string; titel: string; tag: string; href: string; inTagen: number; kuendigung?: true; business?: true }[];
   followups: readonly { id: string; text: string; name: string; tageUeber: number; href: string }[];
   /** Offene Kalender-Vorschläge von ZOE im Freigabe-Stapel (nur die Zahl). */
   vorschlaege?: { kalender: number };
@@ -281,10 +294,10 @@ export interface AnstehendFuerGlocke {
 export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; jetztWand: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
   const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
   const raus: Meldung[] = [];
-  const dazu = (art: AbgeleiteteArt, schluessel: string, titel: string, link: string) => {
+  const dazu = (art: AbgeleiteteArt, schluessel: string, titel: string, link: string, business?: boolean) => {
     if (!istLink(link)) return;
     const id = `${art}:${o.heute}:${kennung(schluessel)}`;
-    raus.push({ id, art, titel: titel.slice(0, TITEL_MAX), link, am: o.am, virtuell: true, gelesen: merker.has(id) });
+    raus.push({ id, art, titel: titel.slice(0, TITEL_MAX), link, am: o.am, virtuell: true, gelesen: merker.has(id), ...(business ? { business: true as const } : {}) });
   };
   for (const t of a.termine) {
     if (t.ganztags) continue;
@@ -293,7 +306,7 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
     dazu('termin', kurzSchluessel(t.id), t.laeuft ? `Läuft gerade: ${t.titel}` : `Um ${t.start.slice(11, 16)}: ${t.titel}${bis <= 30 ? ` (in ${Math.max(0, bis)} Min.)` : ''}`, t.href);
   }
   for (const n of a.nachbereiten) dazu('nachbereiten', n.kontaktId, `Wie lief „${n.titel}“ mit ${n.name}? — Ergebnis festhalten`, n.href);
-  for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagKurz(f.tag, o.heute)}): ${f.titel}`, f.href);
+  for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagKurz(f.tag, o.heute)}): ${f.titel}`, f.href, f.business === true);
   // Die Zahl steckt in der Kennung: kommt ein neuer Vorschlag dazu, meldet sich die Glocke wieder.
   if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, '/os/stapel');
   // Die Zahl steckt in der Kennung: wird eine Danke-Mail verschickt oder kommt eine dazu, meldet sich die Glocke neu.
@@ -307,6 +320,75 @@ function kurzSchluessel(s: string): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
   return h.toString(36);
+}
+
+// ── Business-frei (08.10., Lücke 7) ─────────────────────────────────────────
+
+/** Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften). */
+export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke']);
+
+/**
+ * Ist eine Meldung Business? Arten aus `BUSINESS_ARTEN`, Buchungs-Bezüge, abgeleitete Business-Fristen (`business`) und alles mit
+ * Aufgaben-Bezug, dessen Aufgabe im Business liegt (`bereichVonAufgabe`). Sicherheit, Verbindungen, Postfach, Kalender-Hinweise,
+ * Termine, Geburtstage, Sammelmeldungen — nie.
+ */
+export function istBusinessMeldung(m: Pick<Meldung, 'art' | 'bezug' | 'business'>, bereichVonAufgabe: (id: string) => 'privat' | 'business' | null = () => null): boolean {
+  if (m.art === 'sammel' || m.art === 'businessfrei') return false;
+  if (BUSINESS_ARTEN.has(m.art)) return true;
+  if (m.business) return true;
+  if (m.bezug?.art === 'buchung' || m.bezug?.art === 'buchung-termin' || m.bezug?.art === 'netzwerken') return true;
+  if (m.bezug?.art === 'aufgabe') return bereichVonAufgabe(m.bezug.id) === 'business';
+  return false;
+}
+
+export interface BusinessFreiLage {
+  /** Jetzt (ISO). */
+  jetzt: string;
+  /** Ist die Person JETZT Business-frei? (Abgeleitete Business-Meldungen ruhen dann.) */
+  frei: boolean;
+  istBusiness: (m: Meldung) => boolean;
+}
+export interface BusinessFreiErgebnis {
+  meldungen: Meldung[];
+  /** Kennungen, die gerade ruhen (Fenster noch offen) — „alle gelesen“ fasst sie nicht an. */
+  ruhen: Set<string>;
+  /** Sammelmeldung → die Kennungen darin. */
+  gruppen: Map<string, string[]>;
+}
+
+/** Kennung der Sammelmeldung eines Fensters (das Ende steht darin — eine je Fenster). */
+export const businessFreiId = (freiBis: string) => `businessfrei:${freiBis}`;
+
+/**
+ * Regel 6, rein: gespeicherte, ungelesene Business-Meldungen mit `freiBis` ruhen bis dahin und kommen danach gesammelt; abgeleitete
+ * Business-Meldungen fehlen, solange die Person Business-frei ist. Alles andere bleibt, wie es ist.
+ */
+export function businessFreiSammeln(liste: readonly Meldung[], o: BusinessFreiLage): BusinessFreiErgebnis {
+  const ruhen = new Set<string>();
+  const gruppen = new Map<string, Meldung[]>();
+  const raus: Meldung[] = [];
+  for (const m of liste) {
+    if (m.virtuell) { if (o.frei && o.istBusiness(m)) continue; raus.push(m); continue; }
+    if (!m.freiBis || m.gelesen || !o.istBusiness(m)) { raus.push(m); continue; }
+    if (o.jetzt < m.freiBis) { ruhen.add(m.id); continue; }
+    const id = businessFreiId(m.freiBis);
+    gruppen.set(id, [...(gruppen.get(id) ?? []), m]);
+  }
+  for (const [id, drin] of gruppen) {
+    const n = drin.length;
+    const sortiert = [...drin].sort(neuesteZuerst);
+    raus.push({
+      id, art: 'businessfrei', am: sortiert[0].freiBis!, link: sortiert[0].link, gelesen: false, anzahl: n,
+      titel: `${n} Business-Hinweis${n === 1 ? '' : 'e'} aus der freien Zeit`,
+      enthalten: sortiert,
+    });
+  }
+  return { meldungen: raus, ruhen, gruppen: new Map([...gruppen].map(([k, v]) => [k, v.map(x => x.id)])) };
+}
+
+/** „gelesen“ für Sammelmeldungen auflösen: `businessfrei:…` → die Meldungen darin (Regel 6). */
+export function businessFreiIdsAufloesen(ids: readonly string[], gruppen: ReadonlyMap<string, readonly string[]>): string[] {
+  return Array.from(new Set(ids.flatMap(id => (gruppen.has(id) ? [id, ...gruppen.get(id)!] : [id]))));
 }
 
 // ── Sicht und „gelesen“ ─────────────────────────────────────────────────────
@@ -323,11 +405,16 @@ export function ungelesenZahl(liste: Meldung[]): number {
   return liste.reduce((s, m) => s + (m.gelesen ? 0 : m.art === 'sammel' ? Math.max(1, m.anzahl ?? 1) : 1), 0);
 }
 
-/** Gespeichertes + Abgeleitetes zu einer Liste, neueste zuerst (abgeleitete stehen am Tagesbeginn). */
-export function sichtBauen(bestand: MeldungenBestand, abgeleitet: Meldung[], heute: string): MeldungenSicht {
+/**
+ * Gespeichertes + Abgeleitetes zu einer Liste, neueste zuerst (abgeleitete stehen am Tagesbeginn). Mit `frei` (Regel 6) ruhen
+ * Business-Meldungen der freien Zeit und kommen danach gesammelt — ohne `frei` wie bisher.
+ */
+export function sichtBauen(bestand: MeldungenBestand, abgeleitet: Meldung[], heute: string, frei?: BusinessFreiLage): MeldungenSicht {
   const gespeichert = bestand.eintraege.map(e => ({ ...e, gelesen: !!e.gelesen }));
+  const alle = [...abgeleitet, ...gespeichert];
+  const liste = frei ? businessFreiSammeln(alle, frei).meldungen : alle;
   // Stabil sortieren: die Reihenfolge der abgeleiteten (überfällig vor fällig) bleibt erhalten.
-  const meldungen = [...abgeleitet, ...gespeichert].map((m, i) => ({ m, i })).sort((a, b) => neuesteZuerst(a.m, b.m) || a.i - b.i).map(x => x.m);
+  const meldungen = liste.map((m, i) => ({ m, i })).sort((a, b) => neuesteZuerst(a.m, b.m) || a.i - b.i).map(x => x.m);
   return { meldungen, ungelesen: ungelesenZahl(meldungen), einstellungen: bestand.einstellungen, heute };
 }
 
@@ -361,10 +448,11 @@ export interface GelesenAuswahl { ids?: string[]; alle?: boolean }
  * abgeleitete Kennungen, die es heute wirklich gibt (`abgeleiteteIds`); fremde Kennungen
  * ändern nichts. Der Tages-Merker wird beim Tageswechsel ersetzt, nicht fortgeschrieben.
  */
-export function gelesenSetzen(bestand: MeldungenBestand, auswahl: GelesenAuswahl, heute: string, abgeleiteteIds: string[]): MeldungenBestand {
+export function gelesenSetzen(bestand: MeldungenBestand, auswahl: GelesenAuswahl, heute: string, abgeleiteteIds: string[], ruhen: ReadonlySet<string> = new Set()): MeldungenBestand {
   const ids = new Set(auswahl.ids ?? []);
   const alle = auswahl.alle === true;
-  const eintraege = bestand.eintraege.map(e => (!e.gelesen && (alle || ids.has(e.id)) ? { ...e, gelesen: true } : e));
+  // Regel 6: was gerade ruht (Business-frei, Fenster offen), fasst „alle gelesen“ nicht an — es kommt danach gesammelt.
+  const eintraege = bestand.eintraege.map(e => (!e.gelesen && ((alle && !ruhen.has(e.id)) || ids.has(e.id)) ? { ...e, gelesen: true } : e));
   const vorher = bestand.faelligGelesen?.tag === heute ? bestand.faelligGelesen.ids : [];
   const neu = abgeleiteteIds.filter(id => alle || ids.has(id));
   const merker = Array.from(new Set([...vorher.filter(id => abgeleiteteIds.includes(id)), ...neu]));

@@ -29,6 +29,9 @@ import type { Geburtstag } from '@/lib/kalender/geburtstag';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { ladeBuchungBestand, buchungHaushalt } from '@/lib/kalender/buchung-speicher';
 import { OFFEN } from '@/lib/kalender/buchung';
+import { businessFreiJetzt, eigenerRahmenName } from '@/lib/arbeitsrahmen/server';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
+import { businessFreiIdsAufloesen, businessFreiSammeln, istBusinessMeldung, type BusinessFreiLage } from './regeln';
 
 /** Speichername je Person — für alle Konten gleich gebaut (auch „kevin“), nie im Code mit Daten. */
 export function meldungenSpeicher(person: string): string {
@@ -75,9 +78,14 @@ export async function meldungAblegen(m: MeldungEingabe, jetzt: Date = new Date()
   if (!p.ok) return p;
   // Nur an Personen im Haushalt des Inhabers — nie ein Bestand für ein fremdes Konto.
   if (!(await personImHaushaltDesInhabers(m.an))) return { ok: false, grund: 'Empfänger nicht im Haushalt des Inhabers' };
-  const neu = eintragAus(m, `m-${jetzt.getTime().toString(36)}-${randomBytes(4).toString('hex')}`, jetzt.toISOString());
+  const roh = eintragAus(m, `m-${jetzt.getTime().toString(36)}-${randomBytes(4).toString('hex')}`, jetzt.toISOString());
+  // Business-frei (08.10., Lücke 7, Regel 6): in einer Business-freien Zeit der Empfängerin trägt die Meldung das Ende des
+  // Fensters — ob sie Business ist, entscheidet die Sicht (lib/meldungen/regeln.ts); Business ruht dann bis danach.
+  const frei = await businessFreiJetzt(m.an, jetzt).catch(() => ({ frei: false as const, bisIso: undefined }));
+  const neu = frei.frei && frei.bisIso ? { ...roh, freiBis: frei.bisIso } : roh;
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(m.an), cur => einfuegen(bestandSaeubern(cur), neu, MELDUNGEN_MAX));
-  if (next.einstellungen.telegram) await telegramHaken(m.an, neu).catch(() => {});
+  // Telegram (heute aus) stellt in der freien Zeit nichts zu — auch später nicht ungefragt.
+  if (next.einstellungen.telegram && !neu.freiBis) await telegramHaken(m.an, neu).catch(() => {});
   return { ok: true };
 }
 
@@ -87,7 +95,9 @@ export async function meldungenStand(person: string, jetzt: Date = new Date()): 
   const bh = await buchungHaushalt().catch(() => null);
   // K6a: dazu die Quellen von „Was ansteht“ (Termine, Fristen, Follow-ups …) samt 10-Minuten-Uhr (Termin „gleich“).
   // Nachtrag F1: der Buchungs-Bestand (Terminanfrage freigegeben/abgelehnt/abgesagt → Meldung erledigt).
-  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : [])])}|${await anstehendStand(jetzt)}`;
+  // Business-frei (Lücke 7): Beginn und Ende eines Fensters ändern die Sicht ohne Schreibung — der Zustand gehört ins ETag.
+  const bf = await businessFreiJetzt(person, jetzt).catch(() => ({ frei: false, bisIso: undefined }));
+  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', eigenerRahmenName(person), ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : [])])}|${await anstehendStand(jetzt)}|bf:${bf.frei ? bf.bisIso : '-'}`;
 }
 
 /**
@@ -157,6 +167,19 @@ async function quellenLesen(person: string, heute: string, jetzt: Date) {
   return { ...q, jetztWand: uhr };
 }
 
+/**
+ * Business-frei (08.10., Lücke 7, Regel 6): die Lage für die Sicht — ist die Person JETZT Business-frei, und welche Meldung ist
+ * Business (Aufgaben über ihren Space aus der Sicht der Person). Ein Lesefehler sperrt nichts (dann wie bisher).
+ */
+async function businessFreiLage(person: string, aufgaben: unknown[], jetzt: Date): Promise<BusinessFreiLage> {
+  const frei = await businessFreiJetzt(person, jetzt).catch(() => ({ frei: false }));
+  const bereich = new Map<string, 'privat' | 'business'>();
+  for (const t of aufgaben as Parameters<typeof spaceVonAufgabe>[0][]) {
+    if (t && typeof t === 'object' && typeof t.id === 'string') { try { bereich.set(t.id, spaceVonAufgabe(t)); } catch { /* unlesbar → privat */ } }
+  }
+  return { jetzt: jetzt.toISOString(), frei: frei.frei, istBusiness: m => istBusinessMeldung(m, id => bereich.get(id) ?? null) };
+}
+
 /** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute + was ansteht (K6a). */
 export async function meldungenSicht(person: string, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
@@ -164,20 +187,23 @@ export async function meldungenSicht(person: string, jetzt: Date = new Date()): 
   const gespeichert = bestandSaeubern(roh);
   // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke; Restpunkte 29.09.: gelöste Termine auch nicht.
   const bestand = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
-  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
+  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, await businessFreiLage(person, q.aufgaben, jetzt));
 }
 
-/** „Gelesen“ setzen — nur im eigenen Bestand der Person. */
+/** „Gelesen“ setzen — nur im eigenen Bestand der Person. Eine Sammelmeldung „aus der freien Zeit“ setzt alle ihre Meldungen. */
 export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
   const q = await quellenLesen(person, heute, jetzt);
+  const lage = await businessFreiLage(person, q.aufgaben, jetzt);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
     const b = bestandSaeubern(cur);
-    const ids = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand).map(m => m.id);
-    return gelesenSetzen(b, auswahl, heute, ids);
+    const abg = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand);
+    const s = businessFreiSammeln([...abg, ...b.eintraege.map(e => ({ ...e, gelesen: !!e.gelesen }))], lage);
+    const ids = auswahl.ids ? businessFreiIdsAufloesen(auswahl.ids, s.gruppen) : undefined;
+    return gelesenSetzen(b, { ...auswahl, ...(ids ? { ids } : {}) }, heute, abg.map(m => m.id), s.ruhen);
   });
   const sicht = buchungenErledigen(next, await buchungenLage(next, jetzt));
-  return sichtBauen(sicht, abgeleitet(sicht, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
+  return sichtBauen(sicht, abgeleitet(sicht, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, lage);
 }
 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */
@@ -186,5 +212,5 @@ export async function meldungenEinstellen(person: string, e: { telegram: boolean
   const q = await quellenLesen(person, heute, jetzt);
   const gespeichert = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
   const next = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
-  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
+  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, await businessFreiLage(person, q.aufgaben, jetzt));
 }

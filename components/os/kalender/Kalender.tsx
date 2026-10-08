@@ -52,6 +52,7 @@ import { useIch } from '../aufgaben/hilfe';
 import { suchPasst } from '@/lib/text/such-norm';
 import { useVerschieben } from './verschieben';
 import { EinstellungenBelegt } from './EinstellungenBelegt';
+import { useArbeitsrahmen, BusinessFreiLink } from '../arbeitsrahmen/BusinessFrei';
 import { AbgleichStand } from './AbgleichStand';
 import { GoogleVerbindung } from './GoogleVerbindung';
 import { IcloudVerbindung } from './IcloudVerbindung';
@@ -181,6 +182,8 @@ export function Kalender() {
     const t = Array.from({ length: 30 }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, 30), tage: t, blatt: [] as string[] };
   }, [ansicht, anker]);
   const { daten, laedt, laden, setDaten } = useKalender(von, bis);
+  // Business-frei (08.10., Lücke 7): die EIGENEN Business-freien Zeiten des Zeitraums — dezent im Raster.
+  const rahmen = useArbeitsrahmen(MIT_RASTER.includes(ansicht) ? von : '', MIT_RASTER.includes(ansicht) ? bis : '');
   // Quellen (K2): Feiertage NRW + Geburtstage — ganztägig, schreibgeschützt, in allen Ansichten; im Jahr das ganze Jahr.
   const jahr = Number(anker.slice(0, 4));
   const quell = useQuellTermine(ansicht === 'jahr' ? `${jahr}-01-01` : von, ansicht === 'jahr' ? `${jahr + 1}-01-01` : bis);
@@ -389,6 +392,7 @@ export function Kalender() {
               ); })}
             </div>
             <EinstellungenBelegt kalender={daten?.kalender ?? []} einst={einst} setzen={einstSetzen} />
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Business-freie Zeiten sperren Business-Termine (mit Rückfrage), freie Zeiten und Buchungsseiten: <BusinessFreiLink text="Familie › Rahmen" /></div>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: oben unter „iCloud Kalender“.</div>
           </div>
         )}
@@ -416,11 +420,11 @@ export function Kalender() {
         {modus === 'aufgaben' && <AufgabenModus heute={heute} woche={wocheDesAnkers} sicht={sicht} bereich={bereich} suche={suche} filter={aufgabenFilter} onFilter={setAufgabenFilter} />}
         {modus !== 'aufgaben' && (ansicht === 'tag' || ansicht === 'woche') && (
           <Zeitraster tage={tage} heute={heute} termine={k4.raster(rasterTermine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={k4.farbe(farbe)}
-            onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} />
+            onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} businessFrei={rahmen?.fenster} />
         )}
         {modus !== 'aufgaben' && ansicht === 'vier' && (
           <VierTage start={anker} heute={heute} termine={rasterTermine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={farbe}
-            onOeffnen={oeffnen} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} />
+            onOeffnen={oeffnen} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} businessFrei={rahmen?.fenster} />
         )}
         {modus !== 'aufgaben' && ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine.filter(t => t.art !== 'arbeitsort')} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} />}
         {modus !== 'aufgaben' && ansicht === 'jahr' && <Jahr jahr={jahr} heute={heute} daten={jahrDaten} quellen={quell.filter(t => !aus.has(t.kalender))} kalenderAn={kalenderAn} farbe={kalenderFarbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} />}

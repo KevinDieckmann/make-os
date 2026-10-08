@@ -241,6 +241,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/ernaehrung': r('GET,PUT,PATCH', 'haushalt', 'Ernährungs-Bestand des Haushalts.'),
   'familie': r('GET,PATCH', 'haushalt', 'Familie & Partnerschaft — Bestand je Haushalt (`familie--<haushalt>`), streng über haushaltVon.', 'haushaltVon'),
   'kapazitaet': r('GET,PATCH', 'haushalt', 'Kapazität des Haushalts; Gesundheit nur mit Einwilligung (S2).'),
+  // Business-frei (08.10., Lücke 7): eigener Arbeitsrahmen — nur die Person selbst; über andere nur ja/nein (volle Mitglieder „bis“).
+  'arbeitsrahmen': r('GET,PUT', 'person', 'Eigene Business-freie Zeiten (Familie + eigene Ergänzung `arbeitsrahmen--<person>`) — nur die Person selbst im Haushalt (eigenePerson, Dienstweg 403), keine Personen-Parameter; über andere Konten nur ja/nein, Konten mit finanzRecht „business“ nie Zeiten.'),
 
   // ── Finanzen ────────────────────────────────────────────────────────────────────────────────────────────────
   'beleg': r('POST', 'finanz-privat', 'Beleg lesen (KI) mit Kategorien aus den Buchungen der Instanz — Privatzugang im Inhaber-Haushalt.'),

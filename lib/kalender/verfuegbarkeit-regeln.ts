@@ -9,6 +9,10 @@
 // gemeinsamen Kalender — Abwesend und Arbeitsort dort aber nur, wenn sie sie angelegt hat
 // (`von`) oder niemand eingetragen ist. Titel nur, wenn der Termin nicht privat ist.
 // Alle Zeiten Berliner Wandzeit; Tage [von, bis).
+// Business-freie Zeiten (08.10., Lücke 7, Regel lib/arbeitsrahmen/regel.ts): optional `businessFrei` (Spannen der Person) —
+// je Tag als `businessFrei` ausgewiesen und aus der Soll-Arbeitszeit der Wochenvorlage herausgenommen (`arbeitszeitVorlage`
+// hält dann die ungekürzte Vorlage, damit „hat eine Vorlage“ gleich bleibt). `istFrei` ist dort nie frei. Ohne Angabe ist
+// jeder Tag bit-gleich wie vorher (keine neuen Felder).
 
 // Tag, Wandzeit, Wochentag und Feiertage NRW nur aus dem Kalender-Kern (lib/zeit/kalender-kern.ts, K2).
 import { tagPlus, minutenVon, wandAus, feiertag, istWochenende, wochentag } from '@/lib/zeit/kalender-kern';
@@ -16,6 +20,7 @@ import type { TerminMitBezug } from './bezug';
 import type { IcsArt, ArbeitsortArt } from './arten';
 import { arbeitsortTitel } from './arten';
 import type { Block } from '@/lib/planung/typen';
+import { abziehen, amTag as spannenAmTag, ueberlappt } from '@/lib/arbeitsrahmen/regel';
 
 export interface Zeitraum { start: string; ende: string }
 export interface Belegt extends Zeitraum { art: IcsArt; ganztags: boolean }
@@ -34,6 +39,10 @@ export interface TagVerfuegbarkeit {
   arbeitszeit: Zeitraum[];
   /** Beschäftigt: alle Termine mit TRANSP:OPAQUE (auch Abwesend, Fokus) — ohne Titel. */
   beschaeftigt: Belegt[];
+  /** Business-freie Zeit an diesem Tag (lib/arbeitsrahmen/regel.ts) — nur, wenn es welche gibt. */
+  businessFrei?: Zeitraum[];
+  /** Die ungekürzte Soll-Arbeitszeit der Vorlage — nur, wenn Business-frei davon etwas weggenommen hat. */
+  arbeitszeitVorlage?: Zeitraum[];
 }
 export interface Verfuegbarkeit { person: string; von: string; bis: string; tage: TagVerfuegbarkeit[] }
 
@@ -58,7 +67,7 @@ function amTag(t: T, tag: string): Belegt | null {
 const hhmm = (s: string) => { const m = /^(\d{2}):(\d{2})$/.exec(s); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 
 /** Verfügbarkeit einer Person in [von, bis) aus Terminen (mit `wer`, Bezug angewandt) und Wochenvorlage. */
-export function verfuegbarkeitAus(a: { person: string; von: string; bis: string; termine: readonly T[]; bloecke?: readonly Block[] }): Verfuegbarkeit {
+export function verfuegbarkeitAus(a: { person: string; von: string; bis: string; termine: readonly T[]; bloecke?: readonly Block[]; businessFrei?: readonly Zeitraum[] }): Verfuegbarkeit {
   // Abgesagte (STATUS:CANCELLED) und selbst abgelehnte Einladungen belegen nicht und sind keine Abwesenheit (R-K1 #68);
   // vorläufige (TENTATIVE) zählen wie bestätigte.
   const eigene = a.termine.filter(t => betrifft(t, a.person) && !t.abgesagt);
@@ -70,23 +79,33 @@ export function verfuegbarkeitAus(a: { person: string; von: string; bis: string;
     const ganzAbwesend = abwesend.some(x => x.ganztags);
     const ort = heute.filter(x => x.t.art === 'arbeitsort' && x.t.arbeitsort).pop();
     const ft = feiertag(tag);
-    const arbeitszeit = ft || ganzAbwesend ? [] : vorlage.filter(b => b.wochentag === wochentag(tag)).flatMap(b => {
+    const vorlageTag = ft || ganzAbwesend ? [] : vorlage.filter(b => b.wochentag === wochentag(tag)).flatMap(b => {
       const v = hhmm(b.von), bi = hhmm(b.bis);
       return v !== null && bi !== null && bi > v ? [{ start: wandAus(tag, v), ende: wandAus(tag, bi) }] : [];
     }).sort((x, y) => x.start.localeCompare(y.start));
+    // Business-frei (Lücke 7): die Fenster des Tages ausweisen und aus der Arbeitszeit nehmen.
+    const frei = a.businessFrei?.length ? spannenAmTag(a.businessFrei, tag) : [];
+    const gekuerzt = frei.length > 0 && vorlageTag.some(x => ueberlappt(frei, x.start, x.ende));
+    const arbeitszeit = gekuerzt ? abziehen(vorlageTag, frei) : vorlageTag;
     tage.push({
       tag, ...(ft ? { feiertag: ft } : {}), wochenende: istWochenende(tag),
       ...(ort ? { arbeitsort: { art: ort.t.arbeitsort!.art, titel: arbeitsortTitel(ort.t.arbeitsort!) } } : {}),
       abwesend, ganzAbwesend, arbeitszeit,
       beschaeftigt: heute.filter(x => x.t.beschaeftigt).map(x => x.b).sort((x, y) => x.start.localeCompare(y.start)),
+      ...(frei.length ? { businessFrei: frei } : {}),
+      ...(gekuerzt ? { arbeitszeitVorlage: vorlageTag } : {}),
     });
   }
   return { person: a.person, von: a.von, bis: a.bis, tage };
 }
 
-/** Ist die Person in [start, ende) (Wandzeit) frei? Nicht bei Feiertag, ganzer Abwesenheit oder Überschneidung mit „beschäftigt“. */
+/**
+ * Ist die Person in [start, ende) (Wandzeit) frei? Nicht bei Feiertag, ganzer Abwesenheit, Überschneidung mit „beschäftigt“
+ * oder mit einer Business-freien Zeit (Lücke 7 — die Buchungs-Freigabe fragt dann „Trotzdem freigeben“).
+ */
 export function istFrei(v: Verfuegbarkeit, start: string, ende: string): boolean {
   const tag = v.tage.find(t => t.tag === start.slice(0, 10));
   if (!tag || tag.feiertag || tag.ganzAbwesend) return false;
+  if (tag.businessFrei && ueberlappt(tag.businessFrei, start, ende)) return false;
   return !tag.beschaeftigt.some(b => b.start < ende && b.ende > start);
 }

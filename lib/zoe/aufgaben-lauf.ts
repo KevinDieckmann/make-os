@@ -36,6 +36,8 @@ import { UNTERLAGEN_QUELLE } from './aufgaben-unterlagen';
 import { aufgabeZoeAendern } from './aufgaben-werkzeuge';
 import { lege, hole } from './stapel';
 import { notiere } from './protokoll';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
+import { businessFreiJetzt } from '@/lib/arbeitsrahmen/server';
 
 /** Standard und Obergrenze je Lauf — jeder Auftrag ist ein Modellaufruf. */
 export const LAUF_STANDARD = 3;
@@ -232,6 +234,12 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
     for (const t of liste.slice(0, max)) {
       const a = auftraggeberinVon(t);
       if (!a || !(await personImHaushaltDesInhabers(a))) { erg.uebersprungen.push({ id: t.id, grund: 'keine Auftraggeberin im Haushalt' }); continue; }
+      // Business-frei (08.10., Lücke 7): der Takt bereitet in einer Business-freien Zeit der Auftraggeberin keine Business-Aufgabe vor —
+      // sie bleibt bei ZOE und kommt im nächsten Lauf danach dran. Der Knopf (`opt.person`, sie fragt selbst) bleibt frei.
+      if (!opt.person && spaceVonAufgabe(t) === 'business' && (await businessFreiJetzt(a, new Date(jetzt)).catch(() => ({ frei: false }))).frei) {
+        erg.uebersprungen.push({ id: t.id, grund: 'Business-freie Zeit — kommt danach dran' });
+        continue;
+      }
       // 1) In Arbeit nehmen — mit Stand: hat jemand gerade geändert oder ein zweiter Lauf sie genommen, nicht doppelt.
       const genommen = await aufgabeZoeAendern(t.id, x => (x.zoe && (x.zoe.status === 'offen' || x.zoe.status === 'in_arbeit') ? { task: { ...x, zoe: { ...x.zoe, status: 'in_arbeit' } } } : { status: 409, fehler: 'nicht mehr offen' }), { person: a, zoe: true });
       if (!genommen.ok) { erg.uebersprungen.push({ id: t.id, grund: genommen.fehler }); continue; }

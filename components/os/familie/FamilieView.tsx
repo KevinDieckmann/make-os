@@ -6,7 +6,7 @@
 // kaputt.“ Deshalb zuerst „Wir zwei“, dann „Familie“, dann der „Rahmen“.
 // Konzept: docs/konzepte/familie-und-partnerschaft.md
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, Hinweis, ZielBezug, Wahl as UiWahl, feld, LEUCHT, FlussKarte } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useFamilie, WOCHENTAGE, type FamilieApi } from './daten';
@@ -14,6 +14,7 @@ import { WirZwei } from './WirZwei';
 import { Gespraech } from './Gespraech';
 import { FamilieOrga } from './FamilieOrga';
 import { Auswahl, Klein, Reihe, Wahl } from './teile';
+import { EigeneBusinessFrei } from '../arbeitsrahmen/BusinessFrei';
 
 type Bereich = 'wir' | 'familie' | 'rahmen';
 
@@ -22,6 +23,16 @@ export function FamilieView() {
   const [bereich, setBereich] = useState<Bereich>('wir');
   const [gespraech, setGespraech] = useState(false);
   const d = api.d;
+  // `?b=rahmen` (WEG.familie('rahmen'), 08.10.): aus Kalender und Kapazität direkt zu den Business-freien Zeiten.
+  useEffect(() => {
+    const b = new URLSearchParams(window.location.search).get('b');
+    if (b === 'wir' || b === 'familie' || b === 'rahmen') setBereich(b);
+  }, []);
+  useEffect(() => {
+    if (!d || bereich !== 'rahmen' || window.location.hash !== '#business-frei') return;
+    const t = setTimeout(() => document.getElementById('business-frei')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150);
+    return () => clearTimeout(t);
+  }, [d, bereich]);
 
   return (
     <Seite titel="Familie & Partnerschaft" unter="Erst wir zwei, dann die Familie. Gemessen wird, was ihr gemeinsam tut — nie eine Person.">
@@ -72,8 +83,9 @@ function Rahmen({ api }: { api: FamilieApi }) {
 
       <Kachel id="business-frei" titel="Business-freie Zeiten" breite={3}>
       <Karte i={1}>
+        <div id="business-frei" style={{ scrollMarginTop: 80 }} />
         <Ueberschrift farbe={LEUCHT.beziehung}>Business-freie Zeiten</Ueberschrift>
-        <Klein>Ehe ist kein Business. In diesen Zeiten gibt es keine Business-Themen — MAKE OS erinnert euch im Paar-Gespräch daran, ob es geklappt hat.</Klein>
+        <Klein>Ehe ist kein Business. In diesen Zeiten bietet der Kalender keine Business-Zeiten an und fragt bei Business-Terminen nach, die Kapazität zählt sie nicht als Arbeitszeit, ZOE und die Heads halten Business-Vorschläge zurück, und die Glocke sammelt Business-Hinweise bis danach. Gilt für alle im Haushalt — MAKE OS fragt im Paar-Gespräch, ob es geklappt hat.</Klein>
         <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
           {e.businessFrei.map((b, i) => (
             <Reihe key={i}>
@@ -90,13 +102,14 @@ function Rahmen({ api }: { api: FamilieApi }) {
           ))}
           <div><Knopf leise onClick={() => setze({ businessFrei: [...e.businessFrei, { tage: [6], von: '18:00', bis: '23:59' }] })}>+ Zeitfenster</Knopf></div>
         </div>
+        <EigeneBusinessFrei />
       </Karte>
       </Kachel>
 
       <Kachel id="ausnahme" titel="Ausnahmezeit" breite={3}>
       <Karte i={2}>
         <Ueberschrift>Ausnahmezeit</Ueberschrift>
-        <Klein>Urlaub, Krankheit, Geburt, Umzug: Der Rhythmus pausiert, statt euch zu bewerten.</Klein>
+        <Klein>Urlaub, Krankheit, Geburt, Umzug: Der Rhythmus pausiert, statt euch zu bewerten. Die Business-freien Zeiten gelten auch dann weiter.</Klein>
         <Reihe>
           <input type="date" value={ausnahme} aria-label="Pausiert bis" onChange={x => setAusnahme(x.target.value)} style={{ ...feld, width: 'auto', colorScheme: 'dark', marginTop: 10 }} />
           <Knopf leise onClick={() => setze({ ausnahmeBis: ausnahme || null })}>Pausieren bis dahin</Knopf>

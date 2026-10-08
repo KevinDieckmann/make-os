@@ -36,7 +36,12 @@ export async function finanzchefFaellig(jetzt: Date): Promise<Faellig[]> {
   const haushalte = haushalteAus((await ladeKonten()).konten);
   const ziele: [string | null, string | null][] = haushalte.size ? Array.from(haushalte.entries()) : [[null, null]];
   const raus: Faellig[] = [];
+  // Business-frei (08.10., Lücke 7): in einer Business-freien Zeit des Haushalts ruht der Head of Finance — seine Modi holen von
+  // selbst nach (Monatsabschluss bis zum 20., Wochenreview ab 8 Tagen, Tagescheck „heute noch nicht“).
+  const { haushaltBusinessFreiJetzt, businessFreiJetzt } = await import('@/lib/arbeitsrahmen/server');
+  if ((await haushaltBusinessFreiJetzt(jetzt).catch(() => ({ frei: false }))).frei) return [];
   for (const [haushalt, person] of ziele) {
+    if (person && (await businessFreiJetzt(person, jetzt).catch(() => ({ frei: false }))).frei) continue;
     const stand = { ...leererStand(), ...((await loadJson<ChefStand>(standName(haushalt))) ?? {}) };
     const m = faelligerModus(stand, heute, jetzt.getDay(), jetzt.getHours(), termine, jetzt);
     if (!m) continue;

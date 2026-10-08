@@ -57,11 +57,13 @@ const STANDARD_FENSTER = [{ s: 9 * 60, e: 18 * 60 }];
  * beschäftigen (Art „termin“ oder Abwesenheit mit Uhrzeit) — Fokus und Blöcke sind geplante Arbeit, keine Abzüge.
  */
 export function tageAusVerfuegbarkeit(v: Pick<Verfuegbarkeit, 'tage'>): { tage: TagEingabe[]; hatVorlage: boolean } {
-  const hatVorlage = v.tage.some(t => t.arbeitszeit.length > 0);
+  // Business-frei (08.10., Lücke 7): K1 hat die Business-freie Zeit schon aus der Arbeitszeit der Vorlage genommen — das Soll
+  // sinkt dort. „Hat eine Vorlage“ zählt auch einen Tag, den Business-frei ganz geleert hat (`arbeitszeitVorlage`).
+  const hatVorlage = v.tage.some(t => t.arbeitszeit.length > 0 || (t.arbeitszeitVorlage?.length ?? 0) > 0);
   const tage = v.tage.map(t => {
     const fenster = t.arbeitszeit.length
       ? t.arbeitszeit.map(a => ({ s: a.start.slice(0, 10) === t.tag ? minuten(a.start) : 0, e: a.ende.slice(0, 10) === t.tag ? minuten(a.ende) : 1440 }))
-      : STANDARD_FENSTER;
+      : t.arbeitszeitVorlage?.length ? [] : STANDARD_FENSTER;
     const belegt = t.beschaeftigt.filter(b => !b.ganztags && (b.art === 'termin' || b.art === 'abwesend'));
     const spannen = belegt.map(b => ({ s: b.start.slice(0, 10) === t.tag ? minuten(b.start) : 0, e: b.ende.slice(0, 10) === t.tag ? minuten(b.ende) : 1440 }));
     const vorlage = t.arbeitszeit.reduce((s, a) => s + Math.max(0, (Date.parse(`${a.ende}Z`) - Date.parse(`${a.start}Z`)) / 3_600_000), 0);
@@ -72,6 +74,7 @@ export function tageAusVerfuegbarkeit(v: Pick<Verfuegbarkeit, 'tage'>): { tage: 
       ...(t.feiertag ? { feiertag: t.feiertag } : {}),
       terminStunden: r1(geschnitten(spannen, fenster) / 60),
       terminAnzahl: belegt.filter(b => b.art === 'termin').length,
+      ...(t.arbeitszeitVorlage?.length ? { vorlageGekuerzt: true as const } : {}),
     };
   });
   return { tage, hatVorlage };
@@ -134,7 +137,8 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     // Wochenmuster der Vorlage (Wochentag → Stunden), aus Tagen ohne Feiertag/Abwesenheit.
     const muster: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
     if (p.hatVorlage) for (const t of p.tage ?? []) if (!t.frei && t.vorlageStunden != null) { const w = wochentag(t.tag); muster[w] = Math.max(muster[w], t.vorlageStunden); }
-    const quelle: PersonStand['grundwertQuelle'] | null = typeof einst.stundenWoche === 'number' ? 'einstellung' : p.hatVorlage && muster.some(x => x > 0) ? 'vorlage' : p.quelle === 'konto' ? 'annahme' : null;
+    // Business-frei (Lücke 7): eine Vorlage, deren Arbeitszeit ganz in Business-freier Zeit liegt, bleibt eine Vorlage (Soll 0) — nie die Annahme 40 h.
+    const quelle: PersonStand['grundwertQuelle'] | null = typeof einst.stundenWoche === 'number' ? 'einstellung' : p.hatVorlage && (muster.some(x => x > 0) || (p.tage ?? []).some(t => t.vorlageGekuerzt)) ? 'vorlage' : p.quelle === 'konto' ? 'annahme' : null;
     const grundwert = quelle === 'einstellung' ? einst.stundenWoche as number : quelle === 'vorlage' ? r1(muster.reduce((s, x) => s + x, 0)) : quelle === 'annahme' ? ANNAHME_STUNDEN_WOCHE : 0;
     const sollRoh = (tag: string): number => {
       const w = wochentag(tag);

@@ -66,6 +66,11 @@ export interface AnlegeEingabe {
   /** Gäste (K3) — nur mit `einladungBestaetigt` geschrieben. */
   gaeste: GastEingabe[];
   einladungBestaetigt: boolean;
+  /**
+   * Business-frei (08.10., Lücke 7): ein Business-Termin in einer Business-freien Zeit braucht die ausdrückliche Bestätigung
+   * aus dem Anlege-Dialog („Business-frei — trotzdem?“), sonst 409. Nur gesetzt, wenn `true`.
+   */
+  businessFreiBestaetigt?: true;
   /** F1 #6: feste UID aus dem Browser (`UID_FEST`) — zweites Senden = derselbe Termin. */
   uid?: string;
 }
@@ -111,6 +116,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
       ...(art === 'block' && istBlockArt(b.blockArt) ? { blockArt: b.blockArt } : {}),
       bezug: kennungenVon(b.bezug && typeof b.bezug === 'object' ? b.bezug as BezugKennungen : {}),
       gaeste: g.gaeste, einladungBestaetigt: b.einladungBestaetigt === true,
+      ...(b.businessFreiBestaetigt === true ? { businessFreiBestaetigt: true as const } : {}),
       ...(typeof b.uid === 'string' ? { uid: b.uid } : {}),
     },
   };

@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -108,6 +108,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   postfach: { Icon: Mail, label: 'Postfach', farbe: C.achtung },
   // 08.10.: eine eigene Verbindung (WHOOP) ist getrennt — neu verbinden.
   verbindung: { Icon: Unplug, label: 'Verbindung', farbe: C.achtung },
+  // 08.10. (Lücke 7): Business-Hinweise, die während einer Business-freien Zeit kamen — gesammelt, danach EINE Meldung.
+  businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {
@@ -155,6 +157,19 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
                   </span>
                   {!m.gelesen && <span aria-label="ungelesen" style={{ width: 8, height: 8, marginTop: 6, borderRadius: '50%', background: C.kritisch, boxShadow: `0 0 8px ${C.kritisch}` }} />}
                 </Link>
+                {/* Business-frei (Lücke 7): die gesammelten Meldungen stehen darunter — nichts geht verloren. */}
+                {m.enthalten?.length ? (
+                  <ul role="list" aria-label="Gesammelte Business-Hinweise" style={{ listStyle: 'none', margin: '0 0 4px 48px', padding: 0, display: 'grid', gap: 0 }}>
+                    {m.enthalten.map(e => (
+                      <li key={e.id}>
+                        <Link href={e.link} onClick={() => oeffnen(m)} data-meldung-in={m.id}
+                          style={{ display: 'block', padding: '6px 10px', minHeight: 32, borderRadius: 8, textDecoration: 'none', color: m.gelesen ? C.inkLeise : C.inkDim, fontSize: TYP.bedien, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                          {e.titel} <span style={{ color: C.inkLeise }}>· {ART[e.art]?.label ?? ''} · {vorZeit(e.am, jetzt)}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             );
           })}

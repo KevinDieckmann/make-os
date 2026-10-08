@@ -473,9 +473,12 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: s
   const zwang = S.RHYTHMUS_SLOTS.find(s => new RegExp(`(^|\\s)${s}(\\s|$)`).test(auftrag.trim()));
   // Sofort-Versand nur an die Person des Laufs; „person:x“ im Text gilt nur für den Takt (26.09.).
   const nur = person ?? /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
+  // Business-frei (08.10., Lücke 7): der Takt schickt in der freien Zeit niemandem eine Markttraktion-Nachricht — der ausdrückliche
+  // Sofort-Versand (`zwang`, von Hand) bleibt.
+  const { nichtBusinessFrei } = await import('@/lib/arbeitsrahmen/server');
   const dran = zwang
     ? personen.filter(p => !nur || p === nur).map(person => ({ person, slot: zwang }))
-    : S.faelligeRhythmen(S.rhythmusStand(riegel), personen, jetzt);
+    : S.faelligeRhythmen(S.rhythmusStand(riegel), await nichtBusinessFrei(personen, jetzt), jetzt);
   if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team ist mit Telegram gekoppelt.');
 
   // Art. 18 zentral (29.09., #72): eingeschränkte Personen stehen nie in der Morgen-/Wochennachricht.

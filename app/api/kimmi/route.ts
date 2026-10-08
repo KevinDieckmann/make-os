@@ -12,7 +12,7 @@ import { kiSchalterFuer, type KiBereich, type KiKategorie } from '@/lib/datensch
 import { kategorieVonWerkzeug, werkzeugSperre } from '@/lib/datenschutz/ki-werkzeuge';
 import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { gruppeVon } from '@/lib/zoe/register';
-import { jetztSatz } from '@/lib/zeit';
+import { jetztSatz, localDay } from '@/lib/zeit';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
@@ -38,6 +38,8 @@ import { CRM_WERKZEUG_DEFS, crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-w
 import { BUSINESS_EINHEITEN_NAMEN, PRIVAT_EINHEITEN_NAMEN, KERN_EINHEITEN } from '@/lib/einheiten';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { vornameVon, anredeSatz, firmenKennungen, gesellschaftenSatz } from '@/lib/zoe/grundauftrag';
+import { businessFreiJetzt } from '@/lib/arbeitsrahmen/server';
+import { bisText, businessFreiSatz } from '@/lib/arbeitsrahmen/regel';
 import { AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
@@ -64,9 +66,11 @@ async function liveContext(person: string, bereiche: Record<KiBereich, boolean>)
  * Konto, `o.firmen` die eigenen Gesellschaften (lib/einheiten.ts + Register, lib/zoe/grundauftrag.ts). Gesundheits-Werkzeuge
  * nennt der Text nur, wenn sie mit Einwilligung (b) überhaupt angeboten werden (`o.gesundheit`).
  */
-function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, brain: string, space: 'privat' | 'business' | null, o: { name: string; firmen: string; gesundheit: boolean }): string {
+function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, brain: string, space: 'privat' | 'business' | null, o: { name: string; firmen: string; gesundheit: boolean; businessFrei?: string }): string {
   const n = o.name;
   return [
+    // Business-frei (08.10., Lücke 7): ein neutraler Satz — ohne Familieninhalte, ohne Gründe, nur „gerade“ und „bis wann“.
+    o.businessFrei ? businessFreiSatz(n, o.businessFrei) : '',
     space ? `AKTIVER SPACE: ${space === 'privat' ? `PRIVAT (Familie, Haushalt, private Ziele${PRIVAT_EINHEITEN_NAMEN.length ? `, ${PRIVAT_EINHEITEN_NAMEN.join(', ')}` : ''})` : `BUSINESS (${[...BUSINESS_EINHEITEN_NAMEN, 'Markttraktion', 'Mandate'].join(', ')})`}. Die Person schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer sie sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
     // 24.09.: Die Identität kommt live aus dem Obsidian-Brain der Instanz (AGENTS.md §5).
     brain ? `DEINE GRUNDLAGE AUS DEM OBSIDIAN-BRAIN — gilt für jede Antwort. Die Regeln dieser Software unten gehen bei Widerspruch vor (Werkzeuge, Freigaben, Live-Zahlen).\n\n${brain}` : '',
@@ -723,7 +727,8 @@ export async function POST(req: Request) {
     // Brain/Vault nur, wenn der Bereich für ZOE an ist (05.10.).
     const brain = kiS.bereiche.brain ? await brainAnweisung(person).catch(() => '') : '';
     // Name aus dem Konto der auslösenden Person, Gesellschaften aus Einheiten + Register (08.10. spät, lib/zoe/grundauftrag.ts).
-    const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi };
+    const bf = await businessFreiJetzt(person).catch(() => ({ frei: false, bisWand: undefined }));
+    const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}) };
     if (brain) kategorien.add('brain');
     if (crmBezug) kategorien.add('crm');
     for (let runde = 0; runde < 3; runde++) {

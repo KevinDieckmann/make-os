@@ -65,6 +65,19 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
   const kollision = blockKollision(kal.termine, person, date, startMin, ende);
   if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
 
+  // Business-frei (08.10., Lücke 7, lib/arbeitsrahmen/regel.ts): Arbeit (Fokus, Aufgabe, eigener Block) kommt nie in eine
+  // Business-freie Zeit der Person — Reha, Routine und Pause schon. Der Satz nennt keine Zeiten und keinen Grund aus der Familie.
+  {
+    const { istArbeitsBlock, ueberlappt } = await import('@/lib/arbeitsrahmen/regel');
+    if (istArbeitsBlock(art === 'fokus' ? 'fokus' : 'block', art === 'fokus' || art === 'block' ? null : art)) {
+      const { businessFreiFensterFuer } = await import('@/lib/arbeitsrahmen/server');
+      const spannen = await businessFreiFensterFuer(person, date, tagePlus(date, 1)).catch(() => []);
+      if (ueberlappt(spannen, `${date}T${hhmm(startMin)}:00`, ende >= 24 * 60 ? `${tagePlus(date, 1)}T00:00:00` : `${date}T${hhmm(ende)}:00`)) {
+        return `Nicht eingeplant: ${date} ${hhmm(startMin)}–${hhmm(Math.min(ende, 24 * 60 - 1))} liegt in einer Business-freien Zeit — dort plant ZOE keine Arbeit. Schlage eine Zeit außerhalb vor (freie_zeit).`;
+      }
+    }
+  }
+
   try {
     await blockAnlegen(person, { date, startMin, dauerMin, titel, art }, { art: 'zoe', person });
   } catch (e) {
@@ -89,8 +102,9 @@ async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: 
   const tage = Math.max(1, Math.min(30, Math.round(Number(input.tage) || 7)));
   const von = /^\d{4}-\d{2}-\d{2}$/.test(String(input.von ?? '')) && String(input.von) >= localDay() ? String(input.von) : undefined;
   const { freieZeitFuer } = await import('@/lib/kalender/freie-zeit');
+  // Business-freie Zeiten (08.10., Lücke 7) bietet `freieZeitFuer` nie an — K1 rechnet sie als belegt.
   const r = await freieZeitFuer({ personen, dauerMin, tage, grenze: 40, ...(von ? { von } : {}) });
-  if (!r.vorschlaege.length) return `Keine gemeinsame freie Zeit von ${dauerMin} Min. für ${personen.join(' + ')} zwischen ${r.von} und ${r.bis} (Arbeitszeit aus der Wochenvorlage, Feiertage NRW, Abwesenheiten).`;
+  if (!r.vorschlaege.length) return `Keine gemeinsame freie Zeit von ${dauerMin} Min. für ${personen.join(' + ')} zwischen ${r.von} und ${r.bis} (Arbeitszeit aus der Wochenvorlage, Feiertage NRW, Abwesenheiten, Business-freie Zeiten).`;
   const zeilen = r.vorschlaege.slice(0, 12).map(v => `- ${WT[new Date(`${v.tag}T12:00:00Z`).getUTCDay()]} ${v.tag} ${v.start.slice(11, 16)}–${v.ende.slice(11, 16)}${v.feiertag ? ` (Feiertag ${v.feiertag})` : ''}`);
   return `Freie Zeit (${dauerMin} Min.) für ${personen.join(' + ')} von ${r.von} bis ${r.bis} — ${r.vorschlaege.length} Möglichkeiten, die ersten ${zeilen.length}:\n${zeilen.join('\n')}\nNur ein Vorschlag: einen Termin legt erst ein Klick im Kalender an.`;
 }
