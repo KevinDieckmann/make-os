@@ -28,6 +28,10 @@
   6. Zweite Inhaberin (R9, Update 2) + Onboarding B1 (Spuren neutral) — ONBOARDING_PLAN.md.
   7. Bank-Übergang: CAMT.053/CSV-Import je Konto ins Konten-Register (R3/R8, unabhängig von finAPI).
   8. Morgens: Demo-Bau aus agenten-nacht, Rundgang mit Bildern, Bericht.
+- **Stand 09.10. ~01:30:** In `agenten-nacht` (Worktree `scratchpad/nacht`) zusammengeführt: ki-anbieter (6a), `agenten-kern` (1, 1237876f), `agenten-seite`
+  (2, 75e5585e) + Kategorien-Fix — tsc 0, Agenten-/UI-Tests grün. Laufen (4): `medien` (5), `agenten-skills` (3), `markttraktion-w1` (Woche-1-Befunde, Basis
+  nach-upload), `kontoauszug` (CAMT/CSV → Konten-Register, Basis nach-upload). Danach: Paket 4a (ZOE steuert Heads, Schleife, ≤ 20 Werkzeuge, Verlauf neutral,
+  ZoePanel auf Threads) ∥ 4b (Einstellungen/Not-Aus/Budget 50 €, Vertragsergänzungen, Takt ohne Kürzel) → zweite Inhaberin + B1 → Plattform neutralisieren.
 - **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
   wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
   Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
