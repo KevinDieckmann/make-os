@@ -967,7 +967,10 @@ export async function personAufzaehlen(id: string) {
   // Rechnungen mit PDF (08.10.): an die Person adressierte Rechnungen (Kontakt-Kennung) — Nummer, Datum, Status, Betrag (Aufbewahrungspflicht, kein Löschen).
   const { rechnungenAuskunft } = await import('@/lib/finanzen/rechnung/server');
   const rechnungen = await rechnungenAuskunft(id).catch(() => []);
-  return { ...verweise, rechnungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  // Medien unterwegs (09.10., Paket 5): Fotos/Videos, auf denen die Person markiert ist, und ihre Einwilligungen (Angaben — Bilder auf Anfrage).
+  const { medienAuskunft } = await import('@/lib/medien/datenschutz');
+  const medien = await medienAuskunft(id).catch(() => null);
+  return { ...verweise, rechnungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

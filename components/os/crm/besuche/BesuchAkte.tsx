@@ -31,6 +31,7 @@ import type { CrmAblage } from '../ablage';
 import { LinkChips, type LinkChip } from '../../netzwerken/bausteine';
 import { FuerWahl, ZielSuche, AvvHinweis, BFeld, zielName, eventSetzen, zielAenderung, type BesuchProps } from './gemeinsam';
 import { UebergabeDialog } from './Uebergabe';
+import { MedienKnopf } from '../../medien/MedienKnopf';
 
 const URTEIL_FARBE = { lohnt: LEUCHT.gut, laeuft: LEUCHT.achtung, frueh: C.inkDim, ohne: LEUCHT.kritisch } as const;
 
@@ -98,6 +99,9 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck, ablage 
         <BFeld label="Kalender"><Kalender e={e} /></BFeld>
         {fuer.art === 'kunde' && <div style={{ marginTop: 8 }}><AvvHinweis text={`${UEBERGABE_HINWEIS} ${ROLLE_HINWEIS}`} /></div>}
       </Karte>
+
+      {/* Fotos & Videos des Events (09.10., Paket 5): aufnehmen ins Event-Album, Link auf alle. */}
+      <MedienKnopf eventId={e.id} titel={e.titel} kachel />
 
       <Karte i={2}>
         <Ueberschrift rechts={ziele.length ? <span>{zielStand.anzahl} von {ziele.length} getroffen{w.zielQuote !== null ? ` · ${Math.round(w.zielQuote * 100)} % erreicht` : ''}</span> : undefined}>Ziel und wen wir treffen wollen</Ueberschrift>

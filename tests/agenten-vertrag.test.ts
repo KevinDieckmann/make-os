@@ -292,6 +292,8 @@ describe('Routen: Register und Stubs', () => {
   const rufe = async (pfad: string, m: string, kopf: Record<string, string>) =>
     (await (await route(pfad))[m](new Request(`http://test/api/${pfad}`, { method: m, headers: kopf, ...(m === 'GET' ? {} : { body: '{}' }) }))).status;
 
+  /** Routen, deren Paket den Stub schon ersetzt hat. */
+  const GEBAUT = new Set(['medien']);
   it('Stubs: ohne Sitzung, fremder Haushalt, Testkunde, Dienstweg → 401/403; im Haushalt → 501', async () => {
     const db = await import('@/lib/store/local-db');
     const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
@@ -311,7 +313,9 @@ describe('Routen: Register und Stubs', () => {
       if (klasse === 'person') {
         expect(await rufe(pfad, m, dienst('person-a')), `${pfad} ${m} Dienstweg mit Person`).toBe(403);
         expect(await rufe(pfad, m, dienst()), `${pfad} ${m} Dienstweg ohne Person`).toBe(403);
-        expect(await rufe(pfad, m, sitzung('person-b')), `${pfad} ${m} im Haushalt`).toBe(501);
+        // Gebaute Pakete ersetzen ihren Stub (Paket 5 „Medien“, 09.10.): im Haushalt dann eine echte Antwort, nie 401/403/501.
+        if (GEBAUT.has(pfad)) expect([401, 403, 501], `${pfad} ${m} im Haushalt (gebaut)`).not.toContain(await rufe(pfad, m, sitzung('person-b')));
+        else expect(await rufe(pfad, m, sitzung('person-b')), `${pfad} ${m} im Haushalt`).toBe(501);
       } else {
         expect(await rufe(pfad, m, sitzung('person-a')), `${pfad} ${m} Sitzung statt Dienstweg`).toBe(403);
         expect(await rufe(pfad, m, dienst()), `${pfad} ${m} Dienstweg ohne Person`).toBe(401);

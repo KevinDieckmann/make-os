@@ -14,6 +14,7 @@ import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
 import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
+import { MedienSender } from '@/components/os/medien/Sender';
 import { IdeeErfassen } from '@/components/os/bauplan/IdeeErfassen';
 import { wache } from '@/lib/zugang/wache';
 
@@ -54,6 +55,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <NetzwerkenPopup />
       {/* Netzwerken (03.10.): sendet liegengebliebene Erfassungen von JEDER Seite aus (Öffnen, Netz da, sichtbar, alle 30 s) und zählt sie für die Handy-Leiste. */}
       <NetzwerkenSender />
+      {/* Fotos & Videos (09.10.): lädt wartende Stücke von JEDER Seite aus weiter (Öffnen, Netz da, sichtbar) — App offen lassen bei großen Videos. */}
+      <MedienSender />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
       <WillkommenMalin />
     </div>

@@ -79,6 +79,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
   s('netzwerken', 'Netzwerken · Person erfassen, Abendbericht', WEG.netzwerken()),
   s('netzwerken-karte', 'Netzwerken · Meine Visitenkarten', WEG.netzwerkenKarte()),
+  s('medien', 'Fotos & Videos · aufnehmen, ordnen, freigeben', WEG.medien()),
   // ZOE
   s('zoe', 'ZOE · Empfang', '/zoe'),
   s('stapel', 'ZOE · Freigaben (Aufträge & Freigaben)', WEG.freigaben()),

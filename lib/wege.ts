@@ -171,6 +171,8 @@ export const WEG = {
    * `f` = Thread (`fd-…`). Links auf Heads/Threads/Läufe NUR hierüber (Pakete 1–3); die Seite liest beides (Paket 2).
    */
   agenten: (o: { h?: string; f?: string } = {}) => q('/os/agenten', { h: o.h, f: o.f }),
+  /** Fotos & Videos (09.10., Paket 5): `album` = Album vorwählen, `id` = Medium öffnen, `filter` = gesperrt|roh|favoriten|freigegeben|papierkorb, `aufnehmen` = Aufnehmen-Blatt offen. */
+  medien: (o: { album?: string; id?: string; filter?: string; aufnehmen?: boolean } = {}) => q('/os/medien', { album: o.album, id: o.id, filter: o.filter, aufnehmen: o.aufnehmen ? '1' : undefined }),
   /** ZOE › Freigaben (08.10.): ohne Angabe „Offen“; `protokoll` = was ZOE getan hat (Rückgängig), Gedächtnis, Wissen. */
   freigaben: (t?: FreigabenReiter) => q('/os/stapel', { t: t === 'protokoll' ? t : undefined }),
   /** Brain (05.10.): die Seite bzw. eine Notiz im Lesefenster (`?n=` — Kennung relativ zum Vault, wie /api/zoe/wissen sie liefert). */

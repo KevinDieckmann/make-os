@@ -171,6 +171,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     whatsapp: await import('@/lib/whatsapp/lage').then(m => m.whatsappLage(Date.parse(jetzt))).catch(() => null),
     zoeWhatsapp: await import('@/lib/zoe-whatsapp/lage').then(m => m.zoeWhatsappLage(Date.parse(jetzt))).catch(() => null),
     whoop: await import('@/lib/whoop/lage').then(m => m.whoopLage(Date.parse(jetzt))).catch(() => null),
+    medien: await import('@/lib/medien/hoi').then(m => m.medienLage()).catch(() => null),
     einrichtung: await (async () => {
       const [g, w, h, z] = await Promise.all([import('@/lib/google/verbindung'), import('@/lib/whatsapp/konfig'), import('@/lib/whoop/konfig'), import('@/lib/zoe-whatsapp/konfig')]);
       return { google: !!g.googleKonfig(), whatsapp: !!w.whatsappKonfig(), whoop: h.whoopFehlt().length === 0, zoeWhatsapp: z.zoeWhatsappEingerichtet() || z.zoeWhatsappKonflikt() };

@@ -34,6 +34,8 @@ export interface UmschluesselErgebnis {
   ablage: { neu: number; schon: number };
   /** Bilder (05.10., lib/store/bild-ablage.ts). */
   bilder?: { neu: number; schon: number };
+  /** Medien (09.10.): neu gewickelte Schlüssel je Medium. */
+  medien?: number;
   fehler: string[];
 }
 
@@ -97,5 +99,12 @@ export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselE
   const b = await bilderUmschluesseln();
   r.bilder = { neu: b.neu, schon: b.schon };
   r.fehler.push(...b.fehler);
+  // 5. Medien unterwegs (09.10., Paket 5): nur die Schlüssel je Medium neu wickeln — die Dateien im Medienspeicher bleiben unberührt.
+  try {
+    const { medienSchluesselUmwickeln } = await import('@/lib/medien/pflege');
+    const m = await medienSchluesselUmwickeln();
+    r.medien = m.neu;
+    r.fehler.push(...m.fehler);
+  } catch (e) { r.fehler.push(`medien: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}`); }
   return r;
 }

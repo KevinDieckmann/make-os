@@ -309,6 +309,10 @@ const SYS = {
 
   // ZOE auf WhatsApp (08.10.): der Kanal je Person — die Marke steckt im Zeitpunkt „verbunden seit“ (nur der geht maskiert-frei hinaus).
   zoeKanal: '2002-03-04T05:06:07.891Z',
+
+  // Medien unterwegs (09.10., Paket 5): ein privates Medium „nur ich“ von Kevin samt Album „nur ich“ — Malin sieht nicht einmal das Album.
+  medium: 'MESSLATTE-SYS-MEDIUM-NURICH',
+  medienAlbum: 'MESSLATTE-SYS-MEDIEN-ALBUM',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -469,6 +473,12 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('arbeitsrahmen--kevin', { businessFrei: [{ tage: [2], von: '05:17', bis: '06:43' }], geaendertAm: SYS.arbeitsrahmen });
 
     await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
+
+    // Medien unterwegs (09.10., Paket 5): privates Album „nur ich“ mit einem Medium (Name trägt die Marke) — nur Kevin sieht es.
+    await db.saveJson('medien-privat--kevin', { v: 1, alben: [{ id: 'al-messlatte', bereich: 'privat', art: 'frei', titel: SYS.medienAlbum, sicht: 'nur-ich', von: 'kevin', angelegt: J }], medien: [{
+      id: 'md-00000000-0000-4000-8000-0000000000aa', art: 'bild', bereich: 'privat', von: 'kevin', album: 'al-messlatte', hochgeladen: J, typ: 'image/jpeg', groesse: 10, name: SYS.medium,
+      ortsdatenEntfernt: true, schluessel: { kid: null, dek: Buffer.alloc(32).toString('base64') }, varianten: {}, personen: [], urheber: { art: 'team' }, marketing: { status: 'intern', verlauf: [] }, heads: [], geaendert: J,
+    }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)
