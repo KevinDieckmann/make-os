@@ -27,6 +27,18 @@ Profile (Bedarf/Ziel) nur die Person selbst — außer sie teilt Gesundheit. Wä
 **Danach:** Format v2 umstellen, wenn der neue Stand stabil läuft.
 **Bleibt so / offen:** Selbstständigkeit in Business-Index/Cockpit/Steuern/Liquiplan wie heute · Design Klar·DARK bleibt (erledigt) · Zielgruppe Produkt: offen.
 
+## Stand 08.10. nachmittags
+- **ONLINE geändert (Kevin, Hotfix `1de19d8c` auf `main`, Caddy neu geladen):** makeinnovation.de + fokusinnovation.de sind OFFLINE (503, ohne Inhalt).
+  App app.makeinnovation.de läuft unverändert. Derselbe Offline-Stand ist in `entwicklung` gemergt (afe161a2), damit ein Upload sie nicht still einschaltet.
+- **Websites lokal:** KEMARIS überall raus (Absender nur „MAKE Innovation“, hello@makeinnovation.de, ohne Telefon, § 18 MStV Kevin Dieckmann);
+  offen: Registerangaben (Platzhalter bis zur Eintragung der Umbenennung) · fokus „Teilnahme an einem Abend“ (Anwalt). Wieder online: siehe website/LIESMICH.md.
+- **Gemergt:** `malin-sicht-2` (Essensvorschläge personenneutral, Lese-Protokoll Ernährung, fremde Wochenblöcke „Belegt“) · `sicht-pruefung` (8 Lücken
+  geschlossen, Messlatte prüft alle GET-Routen gegen 26 Geheim-Marken). Volle Suite 452 Dateien / 5.751 grün.
+- **In Arbeit:** Whoop je Person (Branch `whoop`, Agent) — Verbindung je Person, alle Daten, Webhook/Takt, Art. 9. Danach braucht es Kevin ~15 Min. (Whoop-App).
+- **Fragen an Kevin aus der Sicht-Prüfung (offen):** eigene Ziele per `?fuer=` lesbar? · Agenten-Log je Person trennen? · Familie › Vision nur eigene Träume
+  ändern? · Ernährungs-Wochenplan nutzt Kevins Unverträglichkeiten ohne „teilt Gesundheit“? · Malin darf in Kevins nicht-private Kalender schreiben? ·
+  Archiv-Blöcke des alten Wochenplans „Belegt“? · Variante „für eine Portion ohne X“ ok?
+
 ## Stand 08.10. mittags (auf `entwicklung`, nicht online)
 - Gebaut nach Kevins Entscheidungen: Websites (Datenschutz/Impressum, nur Gründer-Satz offen; fokus: „Teilnahme an einem Abend“ wartet auf Anwalt) · Malin-Sicht
   (Merge `malin-sicht`: fremde Routinen „Belegt“, Ernährungsprofile nur selbst, Schreiben auf Fremdes 403) · Vault: 17 Notizen im MAKE OS Brain mit Block
