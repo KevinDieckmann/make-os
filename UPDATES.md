@@ -4,6 +4,35 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 — Phase 0: Freigaben › Protokoll und Update-Hinweis (nur lokal — Branch `phase0-oberflaeche`)
+
+Kevins Entscheidungen 08.10. (ROADMAP_Q4.md › Phase 0): „Aufträge & Freigaben › voll“ als Reiter „Protokoll“ in die Freigaben;
+Update-Hinweis schmal oben auf jeder Seite, solange ein Update läuft.
+- **Freigaben mit zwei Reitern** (`/os/stapel`, Pillen unter den ZOE-Reitern): **Offen** (wie bisher, Standard) · **Protokoll**
+  (`?t=protokoll`, `WEG.freigaben('protokoll')`): was ZOE getan hat mit „↺ Rückgängig“, alles, was ZOE sich gemerkt hat (mit „bis“, vergessen),
+  woraus ZOE weiß. `app/os/stapel/voll` ist weg, die alte Adresse leitet in `next.config.mjs` auf den Reiter; Schnellsuche „ZOE · Freigaben ›
+  Protokoll“. **„Ändern & freigeben“** steht jetzt direkt am offenen Vorschlag („Felder ändern“, nur gewöhnliche Werkzeug-Vorschläge —
+  Aufgaben-Vorschläge haben ihre Häkchen, die CRM-Art liest geänderte Eingaben nicht). Dabei behoben: die alte Vollansicht machte aus jedem
+  Wert Text („[object Object]“ bei verschachtelten Werten); jetzt geht die volle Eingabe mit, Zahl bleibt Zahl (`lib/zoe/stapel-aendern.ts`).
+  Komponente `components/os/StapelVoll.tsx` → `StapelProtokoll.tsx` (nur noch der Reiter, keine eigene Seite).
+- **Update-Hinweis:** `deploy/ausrollen.sh` schreibt im Modus `ziehen` nach dem Ziehen `<daten>/system/update.json` `{ seit, ziel }`
+  (Datenordner wie compose.yml: `MAKE_OS_DATEN` aus `.env`, sonst `/srv/make-os/daten`) und entfernt sie im Modus `bild` NACH dem Tausch —
+  per `trap` auch, wenn Laden/Tauschen scheitert (Altweg ohne Modus ebenso). Jeder Schritt `|| true`: das Ausrollen bricht daran nie ab;
+  Action, Forced Command und Modus-Logik unverändert. Die App: `lib/bau/update.ts` (rein) — Marke älter als 20 Min. = ignorieren; ist der
+  Server NACH der Marke gestartet, ist er schon der neue Bau = erledigt (der Bau trägt keinen Commit: das Bild entsteht ohne `.git`, die
+  Bau-Kennung ist zufällig — darum zählt die Startzeit). `GET /api/system/update` (Sitzung nötig, sonst 401; Register `person`) liefert nur
+  `{ laeuft, seit, bau }`. Zeile `components/os/UpdateHinweis.tsx` oben im Kopf (sticky mit ihm, eine Zeile, am Handy gekürzt):
+  „Update läuft — kurz nichts Wichtiges speichern“ bzw. „Neue Version da — neu laden“ + Knopf, sobald der Server einen anderen Bau meldet als
+  die Seite. Gefragt wird nur bei sichtbarer Seite, höchstens alle 60 s, und sofort nach einer 409 „bitte neu laden“ (Ereignis der Bau-Wache;
+  deren eigener Hinweis bleibt und wird nicht verdoppelt).
+- Tests: `tests/phase0-oberflaeche.test.ts` (Leser, Route ohne Sitzung 401 / nur drei Felder, `bash -n`, Marke schreiben/entfernen unter
+  `set -euo pipefail` mit Schreibfehler, Datenordner aus `.env`, Reiter, Weiterleitung, „Ändern & freigeben“); angepasst: aufraeumen,
+  aufraeumen-etappe3 (Weiterleitung `/os/stapel/voll`), design-privat (StapelProtokoll).
+- **Erstes Ausrollen danach:** `ziehen` läuft noch mit dem ALTEN Skript (das neue kommt erst mit diesem Ziehen) — der Hinweis „Update läuft“
+  erscheint also ab dem übernächsten Update; „Neue Version da“ wirkt sofort. Schreibt `make` nicht in `<daten>/system` (Besitzer prüfen:
+  `ls -ld /srv/make-os/daten/system`), fehlt nur der Hinweis — das Ausrollen läuft trotzdem.
+- **Rückweg:** reine Oberfläche + eine Klartext-Datei ohne Inhalt; ein alter Stand ignoriert die Marke, `/os/stapel/voll` gibt es dort wieder.
+
 ## 08.10.2026 — Aufräumen Etappe 2: Finanzen in zwei Ebenen (nur lokal — Branch `aufraeumen-2`)
 
 Kevin 08.10.: „Die Software wirkt unaufgeräumt und überladen.“ Vorher drei Navigationsebenen (Reiter Privat/Business · Finanzplanung · Steuern ·
@@ -106,7 +135,7 @@ Sales-Start-Seite) bleibt liegen und wird nur nicht mehr gezeigt; ein alter Stan
 
 **Offen:** (1) Mit den zwei Schnellknöpfen hat die Zeile acht Klickziele (vorher zwölf) — soll es streng sieben sein, wäre der nächste Schritt,
 „Angebot“ als Ansicht unter Deals zu führen (Kevin entscheidet). (2) `/os/stapel/voll` bleibt: Protokoll, „Rückgängig“ und „Ändern &
-freigeben“ gibt es nur dort — als Reiter in die Freigaben ziehen ist ein eigener Schritt. (3) Die Delegations-Runde stand nur im alten
+freigeben“ gibt es nur dort — als Reiter in die Freigaben ziehen ist ein eigener Schritt (erledigt 08.10., Phase 0: Reiter „Protokoll“). (3) Die Delegations-Runde stand nur im alten
 Aufgaben-Bau; sie bleibt als ZOE-Agent (`/api/delegation`), ohne eigenen Knopf in den Aufgaben.
 
 ## 08.10.2026 — Aufräumen Etappe 1: Navigation, Kopf, Startseite (nur lokal — Branch `aufraeumen-1`)

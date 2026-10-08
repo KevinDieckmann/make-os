@@ -470,6 +470,10 @@ nav a:hover { transform: translateX(2px); }
 /* Der Kopf nimmt dieselbe Breite wie die Seite, damit die Kanten übereinanderstehen */
 .wachstum-kopf-innen { max-width: 1440px; margin: 0 auto; padding: 10px clamp(18px,4vw,48px); display: flex; align-items: center; gap: 16px; }
 @media (max-width: 720px) { .wachstum-kopf-innen { gap: 12px; padding: 8px 16px; } }
+/* Update-Hinweis (08.10., Phase 0, components/os/UpdateHinweis.tsx): EINE ruhige Zeile über dem Kopf, gleiche Kanten wie er; am Handy kürzt der Text statt umzubrechen. */
+.update-hinweis-innen { max-width: 1440px; margin: 0 auto; padding: 2px clamp(18px,4vw,48px); min-height: 40px; display: flex; align-items: center; gap: 10px; }
+.update-hinweis-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
+@media (max-width: 720px) { .update-hinweis-innen { padding: 2px 16px; gap: 8px; } }
 .wachstum-kopf-lupe { display: none; }
 @media (max-width: 720px) { .wachstum-kopf-suche { display: none !important; } .wachstum-kopf-lupe { display: block; } }
 /* Kopf-Suche am schmalen Rechner (1280 px): mindestens 150 px, das ⌘K-Kürzel weicht, statt Symbol und Text zu überlagern (Praxis 04.10.). */
