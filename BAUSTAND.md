@@ -14,6 +14,11 @@
   Paket 2 `agenten-seite`, Paket 3 `agenten-skills` → Paket 5 `medien` (nach Kevins Antworten Teil 2) → Paket 4 Verdrahtung (ZOE steuert Heads, ZOE ≤ 20 Werkzeuge,
   Streaming) erst nach dem Merge von 1–3.
 - **Befunde für alle:** Register Anthropic SCC statt DPF (in 6a) · Modellstufen Haiku/Sonnet/Opus 5.5 nach Eval-Vergleich (in 6a) · ZOE hat ~66 Werkzeuge (Paket 4).
+- **Stand 09.10. ~01 Uhr:** Paket 0 fertig (`agenten-vertrag` a7919902, Basis nach-upload; C11 = Datei-Zuordnung). Laufen (4, Kevin: „90 % Last, ich gehe
+  pennen“): `ki-anbieter` (6a), `agenten-kern` (1), `agenten-seite` (2), `medien` (5). Danach `agenten-skills` (3), dann Paket 4. Morgens: Integration
+  `agenten-nacht` (Merge 1 → 3 → 5 → 2 → 6a), volle Suite, Demo-Bau, Rundgang mit Bildern, Bericht an Kevin.
+- **Aufgaben für Kevin (aus Teil 2):** externen Datenschutzbeauftragten benennen · Anwalt prüft RECHT.md Teil 9 (12 Punkte) · Aufbewahrung im Anthropic-DPA
+  schriftlich klären · Hetzner Object Storage anlegen (Medien) · Google-Cloud-Projekt + Vertex-Dienstkonto EU (KI-Anbieter).
 
 ## Stand 08.10. spät (auf `entwicklung`, 135 Commits vor `origin/main`, nicht online — Upload Fr 09.10. auf Kevins Wort)
 - **Gemergt seit dem Abend:** Teil 3 (`finanzplan-blaetter`, `privat-raus-koerper`, `privat-raus-nordstern` — `lib/make-one/health-data.ts` gelöscht) ·
