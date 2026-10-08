@@ -117,8 +117,8 @@ ONBOARDING_PLAN.md › B9 d (+ L7/L8/L32). Kevin 08.10.: „Bank-Anbindung vorzi
 - **Server** `server.ts` + Route `/api/finanzen/konten/auszug` (Klasse `finanz-business` wie das Register; Business-Sicht nur Business-Konten →
   sonst 403, Dienstweg 403): `vorschau` schreibt nichts; `uebernehmen` nur mit `basis` (sonst 409 + neue Vorschau) und bei nicht stimmiger
   Saldo-Prüfung nur mit `trotzAbweichung`; `zuruecknehmen` nimmt nur Buchungen, deren Fingerabdruck seit dem Anlegen gleich ist (sonst
-  Konflikt-Liste, Lauf „teilweise“), und den Saldo-Stand zurück (bleibt im Verlauf); das angelegte Haushalts-Konto bleibt. `anfrageId` über
-  `einmalig`. **Absichtsprotokoll** (Art `kontoauszug`, Schritte lauf · haushaltkonto · buchungen · saldo · abschluss bzw. buchungen · saldo ·
+  Konflikt-Liste, Lauf „teilweise“), und den Saldo-Stand zurück (bleibt im Verlauf); das angelegte Haushalts-Konto bleibt. Übernehmen mit
+  `anfrageId` über `einmalig` (Zurücknehmen nicht — es ist selbst idempotent, und seine Antwort trägt Namen). **Absichtsprotokoll** (Art `kontoauszug`, Schritte lauf · haushaltkonto · buchungen · saldo · abschluss bzw. buchungen · saldo ·
   protokoll) — jeder Schritt idempotent (Lauf-Marke `auszug`/`import_id` an der Buchung), Wiederaufnahme im Takt/beim Start.
 - **Saldo** → `standAusAuszug` (lib/finanzen/konten/server.ts, EINE Schreibstelle): Stand `quelle: 'bank'`, Herkunft `auszug` (Lauf), gleicher
   Betrag + Datum schon da → nichts; Rückweg-Spiegel in den Finanzplan wie jeder Stand.
