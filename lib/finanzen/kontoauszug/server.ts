@@ -184,6 +184,7 @@ export interface VorschauAntwort {
   zeilen: (Omit<PlanZeile, 'i' | 'schluessel'>)[];
   saldo: (Plan['saldo'] & { betrag: number }) | null;
   zahlen: Plan['zahlen'];
+  einordnung?: Plan['einordnung'];
   zeitraum: Plan['zeitraum'];
   pruefung: Pruefsumme | null;
   hinweise: string[];
@@ -198,7 +199,7 @@ function antwortAus(v: Vorbereitet): VorschauAntwort {
     ziel: { ...p.ziel, satz: zielSatz(p.ziel, g => finanzOrtName(g)) },
     zeilen: p.zeilen.map(({ i: _i, schluessel: _s, ...z }) => z),
     saldo: p.saldo ? { ...p.saldo, betrag: centZuEuro(p.saldo.cent) } : null,
-    zahlen: p.zahlen, zeitraum: p.zeitraum, pruefung: p.pruefung, hinweise: p.hinweise, ...(p.ibanMaskiert ? { ibanMaskiert: p.ibanMaskiert } : {}), basis: p.basis,
+    zahlen: p.zahlen, ...(p.einordnung ? { einordnung: p.einordnung } : {}), zeitraum: p.zeitraum, pruefung: p.pruefung, hinweise: p.hinweise, ...(p.ibanMaskiert ? { ibanMaskiert: p.ibanMaskiert } : {}), basis: p.basis,
   };
 }
 

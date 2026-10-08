@@ -207,6 +207,8 @@ describe('Privat-Konto: CSV → Haushalt (Haushalts-Konto angelegt und verknüpf
     const v = await sende<{ zahlen: Record<string, number>; ziel: { art: string; neu: boolean }; basis: string; csv: { kopfZeile: number } }>('pb', { aktion: 'vorschau', kontoId: privatKonto, datei: d });
     expect(v.status, JSON.stringify(v.j)).toBe(200);
     expect(v.j).toMatchObject({ zahlen: { neu: 2 }, ziel: { art: 'haushalt', neu: true }, csv: { kopfZeile: 2 } });
+    // Einordnung wie im Haushalt (lib/finanzen/haushalt/einordnung.ts): eine Ausgabe, eine Einnahme ohne Art, beide ohne Kategorie.
+    expect((v.j as unknown as { einordnung: Record<string, number> }).einordnung).toEqual({ 'ausgabe-variabel': 1, 'einnahme-offen': 1, ohneKategorie: 2 });
     const u = await sende<{ angelegt: number; lauf: { id: string; haushaltKonto: { id: string; neu: boolean } } }>('pb', { aktion: 'uebernehmen', kontoId: privatKonto, datei: d, basis: v.j.basis });
     expect(u.status, JSON.stringify(u.j)).toBe(200);
     expect(u.j.angelegt).toBe(2);

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { zufallsUuid } from '@/lib/kennung';
+import { tagVon } from '@/lib/zeit';
 import { Knopf, Hinweis, Liste, Zeile, Feldzeile, Wahl, auswahl, LEUCHT, useRueckfrage } from '../ui';
 import { auszugLesen, bytesZuBase64 } from '@/lib/finanzen/kontoauszug/lesen';
 import { spaltenVollstaendig } from '@/lib/finanzen/kontoauszug/csv';
@@ -19,6 +20,12 @@ import type { VorschauAntwort, AuszugLauf } from '@/lib/finanzen/kontoauszug/ser
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const tag = (t?: string | null) => (t ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : '—');
 const STATUS_NAME = { neu: 'neu', vorhanden: 'schon da', uebersprungen: 'übersprungen' } as const;
+const EINORDNUNG_NAME: Record<string, string> = {
+  'ausgabe-variabel': 'Ausgaben', 'ausgabe-fix': 'Fixkosten', 'einnahme-planbar': 'planbare Einnahmen', 'einnahme-einmalig': 'einmalige Einnahmen',
+  'einnahme-offen': 'Einnahmen ohne Art', umbuchung: 'Umbuchungen', durchlauf: 'Durchläufe', geliehen: 'Kredite', ohneKategorie: 'ohne Kategorie',
+};
+/** „5 Ausgaben · 2 Einnahmen ohne Art · 3 ohne Kategorie“ — wie der Haushalt die neuen Buchungen einordnen würde. */
+const einordnungSatz = (e: Record<string, number | undefined>) => Object.entries(e).filter(([, n]) => n).map(([k, n]) => `${n} ${EINORDNUNG_NAME[k] ?? k}`).join(' · ');
 const STATUS_FARBE = { neu: LEUCHT.gut, vorhanden: C.inkLeise, uebersprungen: LEUCHT.achtung } as const;
 /** Felder der Zuordnung, in der Reihenfolge der Maske (Verwendungszweck eigens, mehrere Spalten). */
 const FELDER: Exclude<SpaltenFeld, 'zweck'>[] = ['datum', 'betrag', 'soll', 'haben', 'kennzeichen', 'gegenpartei', 'saldo', 'valuta', 'waehrung', 'iban', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban'];
@@ -110,9 +117,9 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
   };
 
   const zuruecknehmen = async (l: AuszugLauf) => {
-    if (!(await bestaetigen({ titel: 'Kontoauszug zurücknehmen?', text: `Die ${l.buchungen.length} übernommenen Buchungen vom ${tag(l.am.slice(0, 10))} werden entfernt, soweit seitdem niemand sie geändert hat; der Saldo-Stand wird zurückgenommen (bleibt im Verlauf).`, ja: 'Zurücknehmen', gefahr: true }))) return;
+    if (!(await bestaetigen({ titel: 'Kontoauszug zurücknehmen?', text: `Die ${l.buchungen.length} übernommenen Buchungen vom ${tag(tagVon(l.am))} werden entfernt, soweit seitdem niemand sie geändert hat; der Saldo-Stand wird zurückgenommen (bleibt im Verlauf).`, ja: 'Zurücknehmen', gefahr: true }))) return;
     setLaeuft(true);
-    const r = await post<Zurueck>(bereich, { aktion: 'zuruecknehmen', laufId: l.id, anfrageId: `kaz-${zufallsUuid()}` });
+    const r = await post<Zurueck>(bereich, { aktion: 'zuruecknehmen', laufId: l.id });
     setLaeuft(false);
     if (!r.ok) { setMeldung({ art: 'kritisch', text: r.fehler ?? 'Nicht zurückgenommen.' }); return; }
     setKonflikte(r.konflikte);
@@ -198,6 +205,7 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
             <span>
               <b style={{ color: LEUCHT.gut }}>{vorschau.zahlen.neu} neu</b> · {vorschau.zahlen.vorhanden} schon da · {vorschau.zahlen.uebersprungen} übersprungen (von {vorschau.zahlen.gelesen})
             </span>
+            {vorschau.einordnung && vorschau.zahlen.neu > 0 && <span>Einordnung: {einordnungSatz(vorschau.einordnung)}</span>}
             {vorschau.saldo && (
               <span>Saldo {tag(vorschau.saldo.datum)}: <b style={{ color: C.ink, fontFamily: SCHRIFT.display }}>{euro(vorschau.saldo.betrag)}</b> — {vorschau.saldo.status === 'neu' ? (vorschau.saldo.geltend ? 'wird der geltende Stand' : 'kommt in den Verlauf') : vorschau.saldo.status === 'vorhanden' ? 'schon eingetragen' : vorschau.saldo.grund ?? 'nicht übernommen'}</span>
             )}
@@ -245,7 +253,7 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600, marginBottom: 4 }}>Eingelesen</div>
           <Liste>
             {laeufe.map(l => (
-              <Zeile key={l.id} umbrechen titel={`${tag(l.am.slice(0, 10))} · ${l.format === 'camt' ? 'CAMT' : 'CSV'}${l.zeitraum ? ` · ${tag(l.zeitraum.von)} – ${tag(l.zeitraum.bis)}` : ''}`}
+              <Zeile key={l.id} umbrechen titel={`${tag(tagVon(l.am))} · ${l.format === 'camt' ? 'CAMT' : 'CSV'}${l.zeitraum ? ` · ${tag(l.zeitraum.von)} – ${tag(l.zeitraum.bis)}` : ''}`}
                 unter={`${l.zahlen.neu} übernommen · ${l.zahlen.vorhanden} schon da${l.standId ? ' · Saldo' : ''}${l.status === 'zurueckgenommen' ? ' · zurückgenommen' : l.status === 'teilweise' ? ` · teilweise zurückgenommen (${l.buchungen.length} geändert)` : l.status === 'laeuft' ? ' · läuft' : ''}`}
                 rechts={l.status === 'uebernommen' || l.status === 'teilweise' ? <Knopf leise aus={laeuft} onClick={() => zuruecknehmen(l)}>Rückgängig</Knopf> : undefined} />
             ))}

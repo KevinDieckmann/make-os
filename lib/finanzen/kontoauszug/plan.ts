@@ -18,6 +18,7 @@ import { ibanGrundform, ibanMaskiert } from '@/lib/crm/zahlung';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { N26_KATEGORIEN, istUmbuchungText, katIdFinder, vorbereiten, type Entwurf, type Rohbuchung } from '@/lib/finanzen/haushalt/import';
 import type { Buchung as HaushaltBuchung, Einheit, Regel } from '@/lib/finanzen/haushalt/typen';
+import { einordnen, katNamen, type Einordnung } from '@/lib/finanzen/haushalt/einordnung';
 
 // ── Zuordnung Datei → Konto ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,8 @@ export interface Plan {
   zeilen: PlanZeile[];
   saldo: SaldoPlan | null;
   zahlen: { gelesen: number; neu: number; vorhanden: number; uebersprungen: number };
+  /** Haushalt: wie die neuen Buchungen eingeordnet würden (lib/finanzen/haushalt/einordnung.ts) — Einordnung → Anzahl, dazu „ohne Kategorie“. */
+  einordnung?: Partial<Record<Einordnung | 'ohneKategorie', number>>;
   zeitraum: { von: string; bis: string } | null;
   pruefung: Pruefsumme | null;
   hinweise: string[];
@@ -194,6 +197,8 @@ export function planBauen(x: PlanEingabe): Plan {
 
   const vorkommen = new Map<string, number>();
   const zeilen: PlanZeile[] = [];
+  const einordnung: Plan['einordnung'] | undefined = ziel.art === 'haushalt' ? {} : undefined;
+  const katName = ziel.art === 'haushalt' ? katNamen({ kategorien: (x.haushalt?.kategorien ?? []) as Parameters<typeof katNamen>[0]['kategorien'], aliase: {} }) : undefined;
   let gebNr = 0;
   auszug.eintraege.forEach((e, i) => {
     const basis = { i, nr: e.zeile, datum: e.datum, cent: e.cent, gegenpartei: e.gegenpartei, zweck: e.zweck, ...(umbuchung(e) ? { umbuchung: true as const } : {}) };
@@ -219,6 +224,11 @@ export function planBauen(x: PlanEingabe): Plan {
     // 2. Fingerabdruck als Menge.
     if ((genutzt.get(f) ?? 0) < (vorhandenFp.get(f) ?? 0)) { zaehle(genutzt, f); zeilen.push({ ...basis, status: 'vorhanden', schluessel }); return; }
     zeilen.push({ ...basis, status: 'neu', schluessel });
+    if (entwurf && einordnung) {
+      const art = einordnen(entwurf, katName!);
+      einordnung[art] = (einordnung[art] ?? 0) + 1;
+      if (!entwurf.kategorie_id && !entwurf.ist_umbuchung) einordnung.ohneKategorie = (einordnung.ohneKategorie ?? 0) + 1;
+    }
   });
 
   // Saldo → Stand im Register.
@@ -243,7 +253,7 @@ export function planBauen(x: PlanEingabe): Plan {
   const zielSchluessel = ziel.art === 'haushalt' ? `h:${ziel.neu ? `neu:${ziel.kontoName}` : ziel.haushaltKontoId}` : ziel.art === 'business' ? `b:${ziel.ort}` : 'k';
   const basis = kurzHash(JSON.stringify({ k: konto.id, z: zielSchluessel, l: zeilen.map(z => [z.schluessel, z.status]), s: saldo ? [saldo.cent, saldo.datum, saldo.status] : null }));
   return {
-    kontoId: konto.id, ziel, zeilen, saldo, zahlen, zeitraum: daten.length ? { von: daten[0], bis: daten[daten.length - 1] } : null,
+    kontoId: konto.id, ziel, zeilen, saldo, zahlen, ...(einordnung ? { einordnung } : {}), zeitraum: daten.length ? { von: daten[0], bis: daten[daten.length - 1] } : null,
     pruefung: auszug.pruefung, hinweise, ...(auszug.iban ? { ibanMaskiert: ibanMaskiert(auszug.iban) } : {}), basis,
   };
 }

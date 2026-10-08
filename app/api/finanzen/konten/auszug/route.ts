@@ -2,7 +2,7 @@
 // GET  ?konto=<kt-…>  → { ok, laeufe }  (die eingelesenen Auszüge dieses Kontos: nur Kennungen, Zahlen, Zeitraum — für „Rückgängig“)
 // POST { aktion: 'vorschau', kontoId, datei: { inhalt: <base64> }, spalten? }            → Vorschau (schreibt nichts), mit `basis`
 //      { aktion: 'uebernehmen', kontoId, datei, spalten?, basis, trotzAbweichung?, anfrageId? } → nur mit der `basis` dieser Vorschau (sonst 409)
-//      { aktion: 'zuruecknehmen', laufId, anfrageId? }                                      → nur seitdem Unverändertes, sonst Konflikt-Liste
+//      { aktion: 'zuruecknehmen', laufId }                                                  → nur seitdem Unverändertes, sonst Konflikt-Liste
 // Zugang wie das Konten-Register (Klasse finanz-business): die Sicht entscheidet der Server (`wirksameSicht`) — Business-Bereich und Konten mit
 // Finanzrecht „nur Business“ lesen nur Konten der Business-Gesellschaften ein (sonst 403); der Dienstweg (ZOE, Takt) nie (403).
 // Die Datei wird NICHT gespeichert (Auszüge tragen Namen Dritter): sie kommt zur Vorschau und zum Übernehmen je einmal, höchstens 5 MB.
@@ -59,12 +59,11 @@ export async function POST(req: Request) {
   const ctx = { haushalt: z.haushalt, person: z.person, sicht };
 
   if (b.aktion === 'zuruecknehmen') {
-    const r = await einmalig('kontoauszug-zurueck', b.anfrageId, async () => {
-      const e = await auszugZuruecknehmen(ctx, b.laufId);
-      return { status: e.ok ? 200 : e.status, body: e };
-    });
-    if (r.status === 200) businessGeaendert();
-    return NextResponse.json(r.wiederholt ? { ...(r.body as object), wiederholt: true } : r.body, { status: r.status });
+    // Ohne `einmalig`: Zurücknehmen ist selbst idempotent (schon Entferntes zählt als „schon weg“), und die Antwort trägt die Konflikt-Zeilen
+    // mit Namen der Gegenseite — die gehören nicht für 24 h in die Idempotenz-Ablage.
+    const e = await auszugZuruecknehmen(ctx, b.laufId);
+    if (e.ok) businessGeaendert();
+    return NextResponse.json(e, { status: e.ok ? 200 : e.status });
   }
   if (b.aktion !== 'vorschau' && b.aktion !== 'uebernehmen') return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion (vorschau, uebernehmen, zuruecknehmen).' }, { status: 400 });
   const bytes = bytesAusBase64(b.datei?.inhalt);

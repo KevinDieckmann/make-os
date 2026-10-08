@@ -189,6 +189,7 @@ const SOLL_KZ = /^(s|soll|d|db|dbit|debit|-|belastung|ausgang)$/i;
 const HABEN_KZ = /^(h|haben|c|cr|crdt|credit|\+|gutschrift|eingang)$/i;
 const ENDE_SALDO = /(neuer|end|schluss)\s*-?\s*(kontostand|saldo)|^kontostand|^saldo|kontostand am|saldo am/;
 const ANFANG_SALDO = /(alter|anfangs?|eroeffnungs)\s*-?\s*(kontostand|saldo)|vortrag/;
+const SALDO_ZELLE = /^(anfangs?-?saldo|end-?saldo|schluss-?saldo|alter (kontostand|saldo)|neuer (kontostand|saldo)|kontostand|saldo|saldovortrag|vortrag)$/;
 const IBAN_IN_TEXT = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,7}(?:\s?[A-Z0-9]{1,4})?\b/g;
 
 /** Saldo aus einer Zeile außerhalb der Daten (Vorspann/Fuß): Betrag und Datum aus den Zellen — ohne Datum keiner (nie raten). */
@@ -247,6 +248,12 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
   let pos = 0;
   for (const z of daten) {
     const datum = datumAus(zelle(z, spalten.datum));
+    // Saldo-Zeilen MIT Datum (z. B. „Anfangssaldo“/„Endsaldo“ im Datenteil älterer Exporte) sind kein Umsatz.
+    if (datum && z.zellen.some(c => SALDO_ZELLE.test(kopfNorm(c)))) {
+      const s = saldoAusZeile(z, zahlformat);
+      if (s?.art === 'ende') fussEnde = s.saldo; else if (s?.art === 'anfang') fussAnfang = s.saldo;
+      continue;
+    }
     if (!datum) {
       const s = saldoAusZeile(z, zahlformat);
       if (s?.art === 'ende') fussEnde = s.saldo; else if (s?.art === 'anfang') fussAnfang = s.saldo;

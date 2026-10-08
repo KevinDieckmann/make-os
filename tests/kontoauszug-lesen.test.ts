@@ -209,6 +209,14 @@ describe('CSV beliebiger Banken', () => {
     expect(spaltenPruefen({ datum: 0, betrag: 1, boese: 2 }, 4)).toMatchObject({ ok: false });
     expect(spaltenPruefen({ datum: 0, soll: 1, haben: 2, zweck: [3] }, 4)).toMatchObject({ ok: true });
   });
+  it('Saldo-Zeilen mit Datum im Datenteil (Anfangs-/Endsaldo) sind kein Umsatz — sie werden Anfangs- und Endsaldo', () => {
+    const t = ['Buchungstag;Empfänger;Verwendungszweck;Umsatz;S/H', '30.09.2026;;Anfangssaldo;100,00;H', '01.10.2026;Beispiel GmbH;Rechnung;50,00;H', '02.10.2026;Laden Beispiel;Einkauf;20,00;S', '02.10.2026;;Endsaldo;130,00;H'].join('\n');
+    const a = ok(auszugLesen(utf8(t), { spalten: { datum: 0, gegenpartei: 1, zweck: [2], betrag: 3, kennzeichen: 4 } })).auszuege[0];
+    expect(a.eintraege.map(e => e.cent)).toEqual([5000, -2000]);
+    expect(a.anfang).toEqual({ cent: 10000, datum: '2026-09-30' });
+    expect(a.saldo).toEqual({ cent: 13000, datum: '2026-10-02' });
+    expect(a.pruefung?.stimmt).toBe(true);
+  });
   it('Trenner, Anführungszeichen mit Zeilenumbruch, Kopfzeile ohne Vorspann', () => {
     const t = 'Datum;Betrag;Zweck\n01.10.2026;"1.234,56";"zwei\nZeilen"\n';
     expect(trennerErkennen(t)).toBe(';');
