@@ -17,6 +17,17 @@
 - **Stand 09.10. ~01 Uhr:** Paket 0 fertig (`agenten-vertrag` a7919902, Basis nach-upload; C11 = Datei-Zuordnung). Laufen (4, Kevin: „90 % Last, ich gehe
   pennen“): `ki-anbieter` (6a), `agenten-kern` (1), `agenten-seite` (2), `medien` (5). Danach `agenten-skills` (3), dann Paket 4. Morgens: Integration
   `agenten-nacht` (Merge 1 → 3 → 5 → 2 → 6a), volle Suite, Demo-Bau, Rundgang mit Bildern, Bericht an Kevin.
+- **WARTESCHLANGE DER NACHT (Kevin 09.10. ~01 Uhr: „die ganze Zeit programmieren, bis alles fertig ist — kein Leerlauf, ich will dich morgen früh noch
+  programmieren sehen“). Immer 4 Agenten belegt halten; jeder fertige Platz bekommt sofort das Nächste:**
+  1. `agenten-skills` (Paket 3: Skills, Läufe, Als Nächstes, Takt-Zeile) — Basis agenten-vertrag.
+  2. Integration `agenten-nacht` (Hauptsitzung): nach-upload + vertrag + kern + skills + medien + seite + ki-anbieter; Konflikte lösen, volle Suite.
+  3. Paket 4 Verdrahtung auf `agenten-nacht`: ZOE steuert Heads (`an_head`, `head_fragen`), ZOE ≤ 20 Werkzeuge, gemeinsame Schleife, Streaming, KI-Kategorie
+     `familie`, Einstellungen schreiben, Heads im Takt ohne festes Kürzel, Demo-Saat für Agenten/Medien.
+  4. Markttraktion-Befunde Woche 1 (MARKTTRAKTION_BEFUND.md, ohne Kevins offene Fragebogen-Themen) — Trichter ohne kalte Leads, veraltete Regeltexte, übrige Fehler.
+  5. Plattform neutralisieren Paket 1–2 (PRIVATE_INHALTE_SUCHE.md: feste kevin/malin-Stellen, Prompts) — auf agenten-nacht, nach Paket 4.
+  6. Zweite Inhaberin (R9, Update 2) + Onboarding B1 (Spuren neutral) — ONBOARDING_PLAN.md.
+  7. Bank-Übergang: CAMT.053/CSV-Import je Konto ins Konten-Register (R3/R8, unabhängig von finAPI).
+  8. Morgens: Demo-Bau aus agenten-nacht, Rundgang mit Bildern, Bericht.
 - **Aufgaben für Kevin (aus Teil 2):** externen Datenschutzbeauftragten benennen · Anwalt prüft RECHT.md Teil 9 (12 Punkte) · Aufbewahrung im Anthropic-DPA
   schriftlich klären · Hetzner Object Storage anlegen (Medien) · Google-Cloud-Projekt + Vertex-Dienstkonto EU (KI-Anbieter).
 
