@@ -45,3 +45,15 @@
 11. **Kleine Entscheidungen:** Träume einer gelöschten Person bleiben ohne Namen · WHOOP-Export: gleicher alter Wert gilt als Export-Wert · Aufgaben an einem
     privaten Ziel-Meilenstein bleiben sichtbar (außer „nur ich“) · Dates/Vereinbarungen einer gelöschten Person bleiben ohne Namen · „Sauber geblieben“: nicht
     beantwortet (→ fällt unter 2: pflegbar je Person).
+
+## Onboarding-Richtungsfragen R1–R10 (08.10.2026 spät) — Grundlage ONBOARDING_PLAN.md
+- **R1 Termin:** alles an einem langen Samstag (≈ 8 h), Rest einzeln.
+- **R7 Umfang vor dem Start:** „Gucken wir, wie weit wir bis morgen Abend kommen.“
+- **R2 Stichtag 0-Punkt:** 01.10.2026 (Planbeginn, Jan–Sep nur archiviert).
+- **R3 Zahlen:** von Hand über die Formulare wie heute · **Bank-Anbindung auf Oktober vorziehen**.
+- **R4 Privat-Finanzen:** der Haushalt führt das Ist, die Finanzplanung liest daraus.
+- **R5 ZOE-Kanal:** zweite WhatsApp-Business-Nummer nur für ZOE.
+- **R6 Mac-Zulieferer:** „Alles nur auf dem Server führen — wir brauchen nachher im Mac nur noch die API zur Mail, den Rest haben wir ja in MAKE OS.“
+- **R8 Zuerst nach dem Onboarding:** Bank-Anbindung vorziehen · „Markttraktion weiter ausbauen, damit wir Kunden generieren können — es muss am Ende jetzt alles gut laufen, damit das funktioniert.“
+- **R9 Vertretung:** Malin wird gleichwertige zweite Inhaberin · Server-Zugang (SSH) auch für Malin.
+- **R10 Verantwortlicher (Datenschutz):** MAKE Innovation GmbH.
