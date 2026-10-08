@@ -20,8 +20,7 @@ import {
   type LaufArt, type Lauf, type LaufFile, type SchrittErgebnis,
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
-import { personAus } from '@/lib/zoe/raum';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { stromFuer } from '@/lib/inbox/strom-server';
@@ -69,7 +68,10 @@ export async function POST(req: Request) {
   const geplant = schritteFuer(art);
   const schritte: SchrittErgebnis[] = [];
   // EIN Brain-Zug für die ganze Kette — statt dass jeder Schritt selbst liest.
-  const b = await gatherBrain(heute, personAus(req));
+  // Für wen der Lauf rechnet = unter wem er im Agenten-Log steht (08.10.): benannte Person, im Systemlauf der Inhaber — nie als Systemlauf
+  // für alle, wenn er aus der Sicht einer Person rechnet (ihre Aufgaben samt „nur ich“, ihre Ausrichtung).
+  const fuer = await laufPerson(req);
+  const b = await gatherBrain(heute, fuer);
 
   /** Kapselt einen Schritt: Fehler beenden nie die Kette. */
   async function schritt(id: string, fn: () => Promise<Omit<SchrittErgebnis, 'id' | 'name' | 'ms'>>) {
@@ -246,7 +248,7 @@ export async function POST(req: Request) {
         alarm ? `WÄCHTER SCHLÄGT AN: ${alarm}` : 'Der Wächter meldet nichts Dringendes.',
       ].filter(Boolean).join('\n'),
       maxTokens: 3500,
-      ki: kiAus(req, mitGesundheit || eigeneAngaben ? ['aufgaben', 'finanzen', 'kalender', 'postfach', 'gesundheit'] : ['aufgaben', 'finanzen', 'kalender', 'postfach'], { person: personAus(req) }),
+      ki: kiAus(req, mitGesundheit || eigeneAngaben ? ['aufgaben', 'finanzen', 'kalender', 'postfach', 'gesundheit'] : ['aufgaben', 'finanzen', 'kalender', 'postfach'], { person: fuer }),
     });
     if (kiGesperrt(r)) return { stand: 'uebersprungen' as const, kurz: kiSperrText(r) };
     if (!r.ok || !r.data) return { stand: 'fehler' as const, kurz: r.error ?? 'Keine Antwort' };
@@ -303,7 +305,7 @@ export async function POST(req: Request) {
   await logRun(`tageslauf-${art}`, `Tageslauf ${art} ${heute}`, {
     schritte: schritte.map(s => ({ name: s.name, stand: s.stand, kurz: s.kurz })),
     alarm,
-  }, { person: personStreng(req) });
+  }, { person: fuer });
 
   return NextResponse.json({ lauf, heute: file.laeufe.filter(l => l.gestartet.slice(0, 10) === heute).length });
 }

@@ -8,14 +8,13 @@ import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { gatherBrain } from '@/lib/brain';
-import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
@@ -32,7 +31,9 @@ export async function POST(req: Request) {
 
   // Server-seitig aus dem Brain — der Browser ist nicht mehr der Datenlieferant.
   // POST-Body bleibt als Override erlaubt (Tests), sonst gilt das Brain.
-  const brain = await gatherBrain(undefined, personAus(req));
+  // Für wen das Board rechnet = unter wem es im Agenten-Log steht (08.10.): benannte Person, im Systemlauf der Inhaber.
+  const fuer = await laufPerson(req);
+  const brain = await gatherBrain(undefined, fuer);
   const fin = p.finance ?? brain.finance ?? undefined;
   const prospects = Array.isArray(p.prospects) && p.prospects.length ? p.prospects : brain.prospects;
   let tasks: TaskLite[];
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     tasks = p.tasks;
   } else {
     // Privat bleibt privat — Filter jetzt SERVER-seitig: nur business-Projekte.
-    const store = await ladeAufgabenSicht(personStreng(req)); // Sichtfilter „nur ich“ (29.09.)
+    const store = await ladeAufgabenSicht(fuer); // Sichtfilter „nur ich“ (29.09.)
     const businessIds = new Set((store?.projects ?? []).filter(x => x.category === 'business').map(x => x.id));
     tasks = (store?.tasks ?? []).filter(t => t.projectId && businessIds.has(t.projectId));
   }
@@ -111,6 +112,6 @@ export async function POST(req: Request) {
     risiken: Array.isArray(r.data.risiken) ? r.data.risiken.slice(0, 5) : [],
     naechsteWoche: Array.isArray(r.data.naechsteWoche) ? r.data.naechsteWoche.slice(0, 4) : [],
   };
-  await logRun('board', `Board-Pack ${today}`, { headline: out.headline, risiken: out.risiken, naechsteWoche: out.naechsteWoche, stats }, { person: personStreng(req) });
+  await logRun('board', `Board-Pack ${today}`, { headline: out.headline, risiken: out.risiken, naechsteWoche: out.naechsteWoche, stats }, { person: fuer });
   return NextResponse.json({ ...out, stats });
 }

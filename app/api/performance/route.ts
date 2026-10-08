@@ -17,7 +17,7 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -78,7 +78,9 @@ export async function POST(req: Request) {
   let body: { analyse?: boolean } = {};
   try { body = await jsonBegrenzt(req); } catch { /* ohne Body ist ok */ }
 
-  const aktuell = await computeIndex(undefined, personAus(req));
+  // Für wen die Analyse rechnet = unter wem sie im Agenten-Log steht (08.10.): benannte Person, im Systemlauf der Inhaber.
+  const fuer = await laufPerson(req);
+  const aktuell = await computeIndex(undefined, fuer);
 
   // Schnappschuss für heute — ein Eintrag pro Tag, spätere überschreiben.
   const snap: PerfSnapshot = {
@@ -98,7 +100,7 @@ export async function POST(req: Request) {
 
   // ── Einordnung: nur interpretieren, nicht rechnen ──
   // Art. 9 (05.10.): ohne Einwilligung (b) gehen weder die Gesundheits-Säule noch die Gesamtzahl (die sie enthält) an die KI.
-  const frei = await gesundheitAnKi(personAus(req)).catch(() => false);
+  const frei = await gesundheitAnKi(fuer).catch(() => false);
   const fuerKi = indexFuerKi(aktuell, frei) ?? aktuell;
   const vorher = frei ? file.snapshots.filter(s => s.date < snap.date).slice(-1)[0] : undefined;
   const saeulenText = fuerKi.saeulen.map(s => {
@@ -125,9 +127,9 @@ export async function POST(req: Request) {
     saeulenText,
   ].join('\n');
 
-  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000, ki: kiAus(req, frei ? ['aufgaben', 'finanzen', 'gesundheit'] : ['aufgaben', 'finanzen'], { person: personAus(req) }) });
+  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000, ki: kiAus(req, frei ? ['aufgaben', 'finanzen', 'gesundheit'] : ['aufgaben', 'finanzen'], { person: fuer }) });
   if (!r.ok || !r.data) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: r.error ?? 'Analyse fehlgeschlagen.' });
 
-  await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data }, { person: personStreng(req) });
+  await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data }, { person: fuer });
   return NextResponse.json({ aktuell, verlauf: file.snapshots, ...r.data });
 }
