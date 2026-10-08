@@ -1,7 +1,7 @@
 // WHOOP je Person — Routen, Abgleich, Webhook, Takt-Zustand, HOI (Sicht „Malin bekommt nichts aus Kevins WHOOP“, Dienstweg 403,
 // Art.-9-Sperre, Handwert gewinnt, Sport ohne Dubletten, Signatur, Doppelte einmal, 429 → Pause). Echter Datenspeicher (Temp, verschlüsselt),
 // WHOOP nachgebaut (tests/fixtures/whoop-fake.ts) — kein Netz.
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -25,6 +25,16 @@ const dienst = (person?: string) => ({ 'content-type': 'application/json', 'x-ma
 const anfrage = (url: string, h: Record<string, string>, methode = 'GET', body?: unknown) => new Request(`http://localhost${url}`, { method: methode, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
 const j = async (r: Response) => ({ status: r.status, d: await r.json().catch(() => ({})) as Record<string, any> }); // eslint-disable-line @typescript-eslint/no-explicit-any
 const warte = (ms = 60) => new Promise(r => setTimeout(r, ms));
+// Hintergrundarbeit (after/Abgleich) braucht unter Last unterschiedlich lange — warten, bis es eingetreten ist, statt fester Zeiten.
+// Uhr = performance.now(): Date ist in diesem Test fest gestellt.
+async function bis(pruef: () => boolean | Promise<boolean>, ms = 5000): Promise<void> {
+  const ende = performance.now() + ms;
+  while (!(await pruef())) { if (performance.now() > ende) throw new Error('Bedingung nicht eingetreten'); await warte(25); }
+}
+async function stabil(wert: () => number, ruhe = 300, ms = 5000): Promise<void> {
+  const ende = performance.now() + ms; let alt = wert(); let seit = performance.now();
+  while (performance.now() - seit < ruhe) { if (performance.now() > ende) throw new Error('kommt nicht zur Ruhe'); await warte(25); const neu = wert(); if (neu !== alt) { alt = neu; seit = performance.now(); } }
+}
 
 beforeAll(async () => {
   V = await import('@/lib/whoop/verbindung'); A = await import('@/lib/whoop/abgleich'); W = await import('@/lib/whoop/webhook'); db = await import('@/lib/store/local-db');
@@ -60,6 +70,12 @@ beforeEach(async () => {
   vi.stubEnv('MAKE_OS_ADRESSE', 'https://app.beispiel.test'); vi.stubEnv('WHOOP_RUECKRUF_URL', ''); vi.stubEnv('NEXT_PUBLIC_MAKE_BAU', '');
   await haushaltKonten(db);
   await einwilligen('kevin'); await einwilligen('malin');
+});
+
+// Ein Webhook stößt den Abgleich im Hintergrund an (after). Läuft er beim nächsten Test noch, hält er dessen Sperre „ein Lauf je
+// Person“ und schreibt in den schon geleerten Ordner — deshalb wartet jeder Test, bis kein Abgleich mehr läuft.
+afterEach(async () => {
+  await bis(() => !A.whoopAbgleichLaeuft('kevin') && !A.whoopAbgleichLaeuft('malin'), 10_000);
 });
 
 describe('Zugang: nur die eigene Person', () => {
@@ -197,19 +213,20 @@ describe('Webhook', () => {
     const vorher = w.aufrufe.length;
     expect((await senden(meldung({}), W.signieren(meldung({}), '1759910400000', 'falsch'))).status).toBe(401);
     expect((await senden(meldung({}), undefined, '1759910400999')).status).toBe(200); // passende Signatur zu einem anderen Zeitstempel → gültig
-    await warte();
-    expect(w.aufrufe.length).toBeGreaterThan(vorher);
+    await bis(() => w.aufrufe.length > vorher);
   });
   it('gültig → 200 leer, Abgleich danach; dieselbe trace_id ein zweites Mal wirkt nicht noch einmal', async () => {
     await verbunden('kevin', 4711);
     const r1 = await senden(meldung({}));
     expect(r1.status).toBe(200);
     expect(await r1.text()).toBe('');
-    await warte(150);
-    const nach1 = w.aufrufe.filter(a => a.pfad === '/developer/v2/recovery').length;
-    expect(nach1).toBeGreaterThan(0);
+    const recovery = () => w.aufrufe.filter(a => a.pfad === '/developer/v2/recovery').length;
+    await bis(() => recovery() > 0);
+    await stabil(recovery);
+    await bis(async () => ((await A.ladeWhoopStand('kevin'))?.spuren ?? []).includes('spur-1'));
+    const nach1 = recovery();
     expect((await senden(meldung({}))).status).toBe(200);
-    await warte(150);
+    await warte(300);
     expect(w.aufrufe.filter(a => a.pfad === '/developer/v2/recovery').length).toBe(nach1);
     expect((await A.ladeWhoopStand('kevin'))?.spuren).toEqual(['spur-1']);
   });
@@ -225,7 +242,7 @@ describe('Webhook', () => {
     await A.whoopAbgleichen('kevin');
     w.konten.get(4711)!.workout.splice(0, 1);
     expect((await senden(meldung({ type: 'workout.deleted', trace_id: 'spur-weg' }))).status).toBe(200);
-    await warte(150);
+    await bis(async () => ((await db.loadJson<{ laeufe: unknown[] }>('sport'))?.laeufe ?? [1]).length === 0);
     const s = await db.loadJson<{ laeufe: unknown[]; training: unknown[] }>('sport');
     expect(s?.laeufe).toEqual([]);
     expect(s?.training).toHaveLength(1);
