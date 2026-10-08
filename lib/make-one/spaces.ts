@@ -76,7 +76,7 @@ export const SPACES: Space[] = [
     suche: 'In Privat suchen: Familie, Gesundheit, Finanzen',
     eintraege: [
       ...vorn('privat'),
-      { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=privat', '/os/finanzen?s=finanzplanung&space=privat', '/os/finanzen?s=gesamt&space=privat', '/os/finanzen?s=steuern&space=privat', '/os/finanzplan'], auch: ['/os/finanzen'] },
+      { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?space=privat', '/os/finanzen?s=privat', '/os/finanzen?s=gesamt'], auch: ['/os/finanzen'] },
       { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/sport', '/os/journal', '/os/ernaehrung', '/os/ritual', '/os/energie', '/os/tageslauf'] },
       { href: '/os/familie', label: 'Familie', icon: Users, passt: ['/os/familie'] },
       { href: '/os/menschen', label: 'Kontakte', icon: BookUser, passt: ['/os/menschen'] },
@@ -87,7 +87,7 @@ export const SPACES: Space[] = [
     suche: 'In Business suchen: Rechnungen, Mandate, Kontakte',
     eintraege: [
       ...vorn('business'),
-      { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=business', '/os/finanzen?s=steuern', '/os/finanzen?s=chef', '/os/finanzen?s=finanzplanung&space=business', '/os/finanzen?s=gesamt&space=business', '/os/finanzen/', '/os/controlling', '/os/business'], auch: ['/os/finanzen'] },
+      { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?space=business', '/os/finanzen?s=business', '/os/finanzen?s=controlling', '/os/finanzen?s=rechnungen', '/os/finanzen?s=liquiditaet', '/os/finanzen?s=buchungen', '/os/finanzen?s=steuern', '/os/finanzen?s=chef'], auch: ['/os/finanzen'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm'] },
       // Mandate & Unternehmen (08.10.): eine Gruppe — der Punkt öffnet Mandate, das Gesellschafts-Register ist von dort einen Klick entfernt.
       { href: '/os/mandate', label: 'Mandate & Unternehmen', icon: Briefcase, zeitId: 'mandate', passt: ['/os/mandate', '/os/unternehmen'] },
@@ -109,7 +109,7 @@ export const ALLES_EINTRAEGE: SpaceEintrag[] = [
   { href: '/os/kalender', label: 'Kalender', icon: CalendarDays, passt: [], auch: ['/os/kalender', '/os/planung/woche'] },
   { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: [], auch: ['/os/aufgaben'] },
   { href: '/os/planung/jahr', label: 'Planung', icon: Target, zeitId: 'ziele-planung', passt: [], auch: ['/os/planung', '/os/fokus', '/os/kompass', '/os/wachstum', '/os/saeule'] },
-  { href: '/os/finanzen?s=gesamt', label: 'Finanzen', icon: Wallet, passt: [], auch: ['/os/finanzen', '/os/finanzplan', '/os/controlling', '/os/business'] },
+  { href: '/os/finanzen?s=gesamt', label: 'Finanzen', icon: Wallet, passt: [], auch: ['/os/finanzen'] },
   { href: '/os/markttraktion?s=kontakte', label: 'Kontakte', icon: BookUser, passt: [], auch: ['/os/markttraktion?s=kontakte', '/os/menschen'] },
   ZOE_EINTRAG,
 ];

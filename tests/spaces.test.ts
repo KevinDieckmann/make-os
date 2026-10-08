@@ -109,6 +109,8 @@ describe('Spaces', () => {
     expect(wechselZiel('/os/aufgaben', '', 'business')).toBe('/os/aufgaben?space=business');
     expect(wechselZiel('/os/gesundheit', '', 'privat')).toBeNull();
     expect(wechselZiel('/os/gesundheit', '', 'business')).toBe('/os?space=business');
-    expect(wechselZiel('/os/finanzen', '?s=gesamt', 'privat')).toBe('/os/finanzen?s=privat');
+    // Etappe 2 (08.10.): „Gesamt“ gehört zu Privat — wer dort auf Privat schaltet, bleibt stehen; aus einem Business-Reiter geht es zum Privat-Überblick.
+    expect(wechselZiel('/os/finanzen', '?s=gesamt', 'privat')).toBeNull();
+    expect(wechselZiel('/os/finanzen', '?s=rechnungen', 'privat')).toBe('/os/finanzen?s=privat');
   });
 });
