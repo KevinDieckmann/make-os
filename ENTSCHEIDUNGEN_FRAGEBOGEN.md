@@ -92,3 +92,9 @@ Kevin: „Den ganzen Agent-Bereich im Business wie im Privaten aufs nächste Lev
 15. **Handy:** Heads-Liste → Chat · Diktat und Vorlesen · Freigaben mit einem Daumen.
 16. **Über Nacht:** Seite mit drei Spalten + ZOE-Chat + Heads links · Chat je Head · Mitarbeiter mit Threads · Skills · Hintergrundaufgaben + Als Nächstes.
 **Frei:** „Lass uns nochmal eine Fragerunde machen, nachdem du eine umfangreiche Marktrecherche gemacht hast, wie man das noch am besten bauen kann.“
+
+### Nachtrag 08.10. spät — Bilder und Videos unterwegs (Kevin, Auftrag für die Nacht)
+„Über die App Bilder und Videos machen, wenn wir unterwegs sind — einfach über die Kamera. Dann gehen die Sachen geordnet, z. B. über ein Event,
+direkt auf den Server, entweder Business oder Privat. Mit denen können wir dann im Marketing arbeiten, wenn sie dazu freigegeben wurden. Die Schnittstelle
+können wir direkt mitbauen. Die gehen dann direkt an die Head ofs, um sie zu bearbeiten, wenn gewollt — das müssen wir auswählen können.“
+→ Paket „Medien unterwegs“ neben dem Agenten-Bereich; Richtungsfragen (Speicherort, Ordnung, Freigabe/Rechte am Bild, Videogrößen) in der Fragerunde.
