@@ -19,6 +19,7 @@ import { localDay } from '@/lib/zeit';
 import { aufgabeStatusSetzen } from '@/lib/aufgaben/status';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT, ZielBezug } from './ui';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { WEG } from '@/lib/wege';
 
 export { SAEULEN_META };
 
@@ -95,7 +96,7 @@ function WerkzeugBusiness() {
   const hotOffen = ps.filter(p => (p.score ?? 0) >= 80 && p.status !== 'kontaktiert' && p.status !== 'verworfen').length; // ── Der EINE Hebel — deterministische Regel-Kette, kein Raten ──
   const hebel = (() => {
     if (ueberfaellig.length) return { text: `${eur(sum(ueberfaellig))} Forderungen sind ÜBERFÄLLIG — heute nachfassen.`, href: '/os/finanzen', label: 'Finanzplanung' };
-    if (!fin || ist === 0) return { text: 'Ohne Ist-Zahlen fliegt die Säule blind — Controlling füllen (Finanzmeeting).', href: '/os/controlling', label: 'Controlling' };
+    if (!fin || ist === 0) return { text: 'Ohne Ist-Zahlen fliegt die Säule blind — Controlling füllen (Finanzmeeting).', href: WEG.controlling(), label: 'Controlling' };
     if (geplantR.length && !gestellt.length)
       return { text: `${geplantR.length} Rechnung${geplantR.length > 1 ? 'en' : ''} in Vorbereitung — stellen, sonst fließt nichts.`, href: '/os/finanzen', label: 'Finanzplanung' };
     if (!produkteAktiv) return { text: 'Kein Produktpaket aktiv — ohne Angebot kein Verkauf. Pakete festzurren.', href: '/os/finanzen', label: 'Produkte' };
@@ -169,7 +170,7 @@ function WerkzeugBusiness() {
         ) : (
           <Leer>
             Noch keine Ist-Zahlen. Ohne sie kann diese Säule nur die Pipeline bewerten — der halbe Blick.{' '}
-            <Link href="/os/controlling" style={link}>Zahlen eintragen ›</Link>
+            <Link href={WEG.controlling()} style={link}>Zahlen eintragen ›</Link>
           </Leer>
         )}
       </Karte>
@@ -279,7 +280,7 @@ function WerkzeugFinanzen() {
   }
   return (
     <Karte i={1}>
-      <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href="/os/controlling" style={link}>Monatszahlen pflegen ›</Link>}>Runway-Rechner</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href={WEG.controlling()} style={link}>Monatszahlen pflegen ›</Link>}>Runway-Rechner</Ueberschrift>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', maxWidth: 220 }}>
           <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>{ausKonten ? `Cash · ${kasse!.konten} Firmenkonten` : 'Cash aktuell'}</span>

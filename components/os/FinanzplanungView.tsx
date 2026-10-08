@@ -6,6 +6,7 @@
 // (geplant → gestellt → bezahlt, Klick wechselt den Status) und Merkposten
 // (z. B. Partnerdarlehen). Oben die Verknüpfung zum Umsatzziel aus dem Controlling.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
+// 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Rechnungen & Zahlungen“ unter Finanzen › Business (/os/finanzen/planung leitet weiter).
 
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung, rechnungVor, zahlungVor } from '@/lib/business/eroeffnung';
@@ -20,7 +21,7 @@ import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { localDay } from '@/lib/zeit';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, auswahl, LEUCHT, Hinweis } from './ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, auswahl, LEUCHT, Hinweis } from './ui';
 import { MandantLink } from './crm/MandantLink';
 import { neueKennung } from '@/lib/kennung';
 
@@ -112,7 +113,7 @@ export function FinanzplanungView() {
     planSpeichern.speichern(next);
   }
 
-  if (!plan) return <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}><Karte i={0}><Leer>lade …</Leer></Karte></Seite>;
+  if (!plan) return <Karte i={0}><Leer>lade …</Leer></Karte>;
 
   const m = finance ? computeMetrics(finance) : null;
   // Privat zählt hier nicht mit — die privaten Konten stehen unter Zahlen → Privat.
@@ -173,7 +174,7 @@ export function FinanzplanungView() {
   const meetingUeberfaellig = tageSeitMeeting !== null && tageSeitMeeting > 16;
 
   return (
-    <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}>
+    <>
       {hinweis && <Hinweis art={hinweis.startsWith('Storniert') ? 'gut' : 'achtung'} rolle="status" aktion={<Knopf leise onClick={() => setHinweis(null)}>Schließen</Knopf>}>{hinweis}</Hinweis>}
       {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
       <Karte i={0} akzent={meetingUeberfaellig ? LEUCHT.kritisch : undefined}>
@@ -207,7 +208,7 @@ export function FinanzplanungView() {
       {/* Ziel-Verknüpfung: dieselben Zahlen wie im Controlling */}
       {m && finance && (
         <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href="/os/controlling" style={{ color: C.inkLeise, textDecoration: 'none' }}>Controlling ›</Link>}>Jahresziel</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={WEG.controlling()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Controlling ›</Link>}>Jahresziel</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
             <Zahl wert={eur(finance.zielUmsatz)} label="Jahresziel" />
             <Zahl wert={eur(m.istUmsatz)} label={`Ist · ${Math.round(m.fortschritt * 100)} %`} farbe={LEUCHT.gut} />
@@ -310,7 +311,7 @@ export function FinanzplanungView() {
                     {storniert && `storniert${r.storniertAm ? ` ${datum(r.storniertAm)}` : ''}${r.stornoGrund ? ` · ${r.stornoGrund}` : ''} · `}
                     netto {(r.netto ?? nettoAusBrutto(r.betrag, r.ustSatz)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
-                    {r.status === 'bezahlt' && <> · <Link href={`/os/finanzen/buchungen?q=${encodeURIComponent(r.kunde)}`} style={{ color: C.inkDim }}>Buchung ›</Link></>}
+                    {r.status === 'bezahlt' && <> · <Link href={WEG.buchungen({ q: r.kunde })} style={{ color: C.inkDim }}>Buchung ›</Link></>}
                   </span>
                 </div>
               </div>
@@ -333,7 +334,7 @@ export function FinanzplanungView() {
           }}>+ Rechnung</Knopf>
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
-          Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Zahlen → Business) — dort zählt er aufs Jahresziel.
+          Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Finanzen › Business) — dort zählt er aufs Jahresziel.
         </div>
       </Karte>
 
@@ -420,6 +421,6 @@ export function FinanzplanungView() {
           {!plan.merkposten.length && <Leer>Nichts vorgemerkt.</Leer>}
         </Liste>
       </Karte>
-    </Seite>
+    </>
   );
 }

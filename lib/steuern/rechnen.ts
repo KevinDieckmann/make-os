@@ -338,7 +338,7 @@ export function uebergabeMonat(monat: string, x: {
     return { key: k(id), titel, unter, status: h ? 'ok' : abgeleitet, abgehakt: h, ...(href ? { href } : {}) };
   };
   return [
-    p('konto', 'Kontoauszüge der Geschäftskonten vollständig', x.buchungsMonate.includes(monat) ? 'Buchungen für den Monat sind da' : 'keine Geschäftsbuchungen in MAKE OS — im Bankzugang des Steuerberaters prüfen und abhaken', x.buchungsMonate.includes(monat) ? 'ok' : 'hand', '/os/finanzen/buchungen'),
+    p('konto', 'Kontoauszüge der Geschäftskonten vollständig', x.buchungsMonate.includes(monat) ? 'Buchungen für den Monat sind da' : 'keine Geschäftsbuchungen in MAKE OS — im Bankzugang des Steuerberaters prüfen und abhaken', x.buchungsMonate.includes(monat) ? 'ok' : 'hand', WEG.buchungen()),
     p('rechnungen', 'Ausgangsrechnungen vollständig', imMonat.length ? (unvollstaendig.length ? `${unvollstaendig.length} von ${imMonat.length} ohne Nummer oder USt-Satz` : `${imMonat.length} Rechnungen mit Nummer und USt-Satz`) : 'keine Rechnung mit Datum in diesem Monat', unvollstaendig.length ? 'offen' : 'ok', unvollstaendig[0] ? WEG.rechnung(unvollstaendig[0].id) : WEG.rechnungen()),
     p('belege', 'Eingangsbelege vollständig', belegeOffen.length ? `${belegeOffen.length} Beleg${belegeOffen.length === 1 ? '' : 'e'} fehlen noch` : 'kein fehlender Beleg bis Monatsende', belegeOffen.length ? 'offen' : 'ok', WEG.steuern('ust')),
     p('abschluss', 'Monatsabschluss eingetragen', abschluss.length === pflicht.length && pflicht.length ? pflicht.map(f => EINHEIT_LABEL[f]).join(' und ') : abschluss.length ? `nur ${abschluss.map(f => EINHEIT_LABEL[f]).join(', ')}` : 'noch keiner', abschluss.length === pflicht.length ? 'ok' : 'offen', WEG.abschluss()),

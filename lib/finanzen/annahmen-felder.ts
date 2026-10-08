@@ -15,7 +15,7 @@ export interface AnnahmeGruppe { id: string; label: string; ort: Gesellschaftske
 
 const f = (k: keyof Annahmen & string, label: string, art: AnnahmeArt = 'betrag', hinweis?: string): AnnahmeFeld => ({ k, label, art, dezimal: art === 'anteil' ? 4 : 0, ...(hinweis ? { hinweis } : {}) });
 /** Gegenprüfung 05.10. (Kevin: „Es gibt kein Gesellschafterdarlehen“): das alte Feld bleibt nur für ein echtes Darlehen von außen. */
-export const DARLEHEN_ALT_HINWEIS = 'Nur eintragen, wenn es ein echtes Darlehen gibt — sonst 0. Der Geber liegt außerhalb des Plans (Geld kommt in die GmbH, Rückzahlung geht hinaus); Darlehen zwischen Privat und den Gesellschaften unter Buchungen & Check › Schulden › Darlehen.';
+export const DARLEHEN_ALT_HINWEIS = 'Nur eintragen, wenn es ein echtes Darlehen gibt — sonst 0. Der Geber liegt außerhalb des Plans (Geld kommt in die GmbH, Rückzahlung geht hinaus); Darlehen zwischen Privat und den Gesellschaften unter Planung › Schulden › Darlehen.';
 
 /** `person1`/`person2`: Namen der beiden Gehaltsempfänger (aus dem Team, nie fest im Code). */
 export function annahmeGruppen(person1: string, person2: string): AnnahmeGruppe[] {

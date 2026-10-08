@@ -5,13 +5,15 @@
 // Adresse ändert, ändert sie hier.
 //
 //   Heute       /os[?space=privat|business]   (die eine Startseite, 08.10.)
-//   Finanzen    /os/finanzen?s=privat|business|steuern|gesamt|chef   (bis 08.10. „Zahlen“; WEG.zahlen bleibt der Name der Funktion)
-//     Privat    &t=uebersicht|buchungen|einnahmen|analyse|fixkosten|plan|schulden (+ monat, kat, q bei Buchungen)
-//               &k=<Kennzahl des Privat-Index>  #index · #ruecklage
-//     Steuern   #fristen · #ruecklage · #ust · #uebergabe
-//     Business  &f=kdc|kdv (Sicht) &k=<Kennzahl>  #abschluss · #einstellungen · #modell · #eroeffnung (0-Punkt)
-//   Rechnung    /os/finanzen/planung?r=<id>        (springt hin und hebt hervor)
-//   Planposten  /os/finanzen/liquiditaet?p=<id>    (öffnet den Posten) · #kontostaende
+//   Finanzen    /os/finanzen?space=privat|business&s=<Reiter>   (bis 08.10. „Zahlen“; WEG.zahlen bleibt der Name der Funktion)
+//               Höchstens zwei Ebenen (08.10., Aufräumen Etappe 2) — Aufbau und Regeln: lib/finanzen/navigation.ts
+//     Privat    s=privat (Überblick, #index · #ruecklage · #gesamt) · s=privat&t=buchungen|einnahmen|analyse|fixkosten|plan|schulden
+//               (Konten & Buchungen; + monat, kat, q) · s=buchungen&space=privat (Buchungen der Selbstständigkeit) · s=finanzplanung · s=steuern
+//     Business  s=business (Überblick: &f=kdc|kdv &k=<Kennzahl> #abschluss · #einstellungen · #modell · #eroeffnung) · s=controlling
+//               · s=rechnungen (&r=<Rechnung> &z=<Zahlung>) · s=liquiditaet (&p=<Posten>, #kontostaende) · s=buchungen (&monat &kat &q &ort)
+//               · s=finanzplanung (&u=<Blatt>) · s=steuern (#fristen · #ruecklage · #ust · #uebergabe) · s=chef (Head of Finance, Knopf)
+//   Alte Adressen /os/finanzen/{planung,liquiditaet,buchungen,grundlage,dashboard}, /os/controlling, /os/finanzplan, /os/business
+//               leiten in next.config.mjs mit allen Parametern weiter.
 //   Woche       /os/kalender?modus=planen&tag=YYYY-MM-DD   (K5: der Wochenplaner ist der Modus „Planen“ im Kalender;
 //               /os/planung/woche leitet dorthin weiter)
 //   Kalender    /os/kalender[?tag=YYYY-MM-DD]
@@ -63,20 +65,28 @@ export const WEG = {
   privatIndex: (abschnitt: 'index' | 'ruecklage' = 'index', k?: string) => q('/os/finanzen', { s: 'privat', k }, abschnitt),
   /** Steuern (05.10.: auch unter Privat — `space=privat` zeigt Privat und die Selbstständigkeit, ohne bzw. `business` nur die Gesellschaften). */
   steuern: (abschnitt?: 'fristen' | 'ruecklage' | 'ust' | 'uebergabe', space?: 'privat' | 'business') => q('/os/finanzen', { s: 'steuern', space: space === 'privat' ? 'privat' : undefined }, abschnitt),
-  gesamt: () => q('/os/finanzen', { s: 'gesamt' }),
+  /** Gesamt (die Brücke Privat → Business) steht seit 08.10. EINMAL: unten auf Finanzen › Privat › Überblick. */
+  gesamt: () => q('/os/finanzen', { s: 'privat' }, 'gesamt'),
+  /** Head of Finance — ein Knopf neben den Reitern, kein eigener Reiter (08.10.). */
   chef: () => q('/os/finanzen', { s: 'chef' }),
-  /** Finanzplanung (04.10.): Reiter unter Finanzen › Privat (alles) bzw. › Business (nur Gesellschaften); `u` = Unterseite. Weitere Parameter: `finanzplanAdresse`. */
+  /** Finanzplanung (04.10.): Reiter „Planung“ unter Finanzen › Privat (alles) bzw. › Business (nur Gesellschaften); `u` = Blatt. Weitere Parameter: `finanzplanAdresse`. */
   finanzplanung: (sicht: 'privat' | 'business', u?: string) => q('/os/finanzen', { s: 'finanzplanung', space: sicht, u }),
 
   // Offene Posten der Eröffnung (Kennung `er-…`, lib/business/eroeffnung.ts) stehen nicht in der Rechnungsliste — sie führen zum 0-Punkt.
-  rechnung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen/planung', { r: id })),
-  rechnungen: () => '/os/finanzen/planung',
-  zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen/planung', { z: id })),
-  planposten: (id?: string) => q('/os/finanzen/liquiditaet', { p: id }),
-  kontostaende: () => '/os/finanzen/liquiditaet#kontostaende',
-  liquiditaet: () => '/os/finanzen/liquiditaet',
-  controlling: () => '/os/controlling',
-  grundlage: () => '/os/finanzen/grundlage',
+  // 08.10. (Aufräumen Etappe 2): Rechnungen & Zahlungen, Liquidität, Buchungen, Controlling sind Reiter unter Finanzen › Business.
+  rechnung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', r: id })),
+  rechnungen: () => q('/os/finanzen', { s: 'rechnungen', space: 'business' }),
+  zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', z: id })),
+  planposten: (id?: string) => q('/os/finanzen', { s: 'liquiditaet', space: 'business', p: id }),
+  kontostaende: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende'),
+  liquiditaet: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }),
+  controlling: () => q('/os/finanzen', { s: 'controlling', space: 'business' }),
+  /** Buchungen der Gesellschaften (Business) bzw. — mit `ort` einer Privat-Einheit, z. B. der Selbstständigkeit — unter Privat. */
+  buchungen: (f: { monat?: string; kat?: string; q?: string; ort?: string; privat?: boolean } = {}) =>
+    q('/os/finanzen', { s: 'buchungen', space: f.privat ? 'privat' : 'business', monat: f.monat, kat: f.kat, q: f.q, ort: f.ort }),
+  /** Altbestand der Selbstständigkeit (seit 08.10. unter Privat › Planung › Selbstständigkeit): Malins Kassenbuch bzw. ihr erstes Cockpit (V1). */
+  grundlage: () => q('/os/finanzen', { s: 'finanzplanung', space: 'privat', u: 'selbst', alt: 'grundlage' }, 'altbestand'),
+  altbestand: () => q('/os/finanzen', { s: 'finanzplanung', space: 'privat', u: 'selbst', alt: 'v1' }, 'altbestand'),
 
   /** Gesellschafts-Register (04.10.): Liste bzw. eine Gesellschaft mit Reiter. */
   unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),

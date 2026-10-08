@@ -8,12 +8,14 @@
 // Zahl hier stammt aus Malins Export, keine ist geschätzt. Wo etwas fehlt oder
 // nicht eindeutig ist, steht das als Lücke da — statt weggerechnet zu werden.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
+// 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Altbestand unter Finanzen › Privat › Planung › Selbstständigkeit
+// (/os/finanzen/grundlage leitet weiter). Der Rahmen (Überschrift, Stand) kommt von dort.
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Grundlage, Kennzahlen, MonatsZeile, Position } from '@/lib/make-one/grundlage';
 import { MONAT_KURZ } from '@/lib/make-one/grundlage';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, LEUCHT } from './ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, LEUCHT } from './ui';
 
 /** Cent-genau — hier wird ein Kassenbuch gelesen, nicht überschlagen. */
 const eurC = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -66,11 +68,11 @@ export function GrundlageView() {
 
   useEffect(() => { fetch('/api/state/grundlage').then(r => r.json()).then(setD).catch(() => setD({ vorhanden: false })); }, []);
 
-  if (!d) return <Seite titel="Grundlage" unter="Malins Kassenbuch"><Karte i={0}><Leer>lädt …</Leer></Karte></Seite>;
+  if (!d) return <Karte i={0}><Leer>lädt …</Leer></Karte>;
 
   if (!d.vorhanden || !d.grundlage || !d.kennzahlen) {
     return (
-      <Seite titel="Grundlage" unter="Malins Kassenbuch">
+      <>
         <Karte i={0}>
           <Ueberschrift farbe={LEUCHT.achtung}>Noch keine Grundlage</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>{d.hinweis ?? 'Noch keine Grundlage geladen.'}</div>
@@ -78,7 +80,7 @@ export function GrundlageView() {
             Im Finanz-Dashboard exportieren, dann als PUT an <span style={{ fontFamily: SCHRIFT.mono, color: C.inkDim }}>/api/state/grundlage</span> — danach rechnet das System damit.
           </div>
         </Karte>
-      </Seite>
+      </>
     );
   }
 
@@ -97,7 +99,7 @@ export function GrundlageView() {
   ].filter(Boolean);
 
   return (
-    <Seite titel="Grundlage" unter={`Malins Kassenbuch · Stand ${stand}`}>
+    <>
       <Karte i={0} ton={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Ergebnis netto</Ueberschrift>
         <Zahl gross wert={eurC(k.ergebnisNetto)} farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} label={`${k.monate} Monate: ${MONAT_KURZ(k.vonMonat)}–${MONAT_KURZ(k.bisMonat)}`} />
@@ -112,7 +114,7 @@ export function GrundlageView() {
           Gepflegt wird dort, gerechnet wird hier. MAKE OS erfindet nichts dazu.
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 5 }}>
-          {g.umsatz.length + g.kosten.length + g.entnahmen.length + g.offen.length} Positionen Betrieb · Privatkonto und private Schulden stehen seit 24.09. unter Zahlen → Privat
+          {g.umsatz.length + g.kosten.length + g.entnahmen.length + g.offen.length} Positionen Betrieb · Privatkonto und private Schulden stehen seit 24.09. unter Finanzen › Privat
         </div>
       </Karte>
 
@@ -163,7 +165,7 @@ export function GrundlageView() {
       </Karte>
 
       {/* 24.09.: Die „Verbindlichkeiten“ hier waren Malins PRIVATE Schulden (p.sch)
-          und standen auf einer Business-Seite. Sie leben jetzt unter Zahlen → Privat. */}
+          und standen auf einer Business-Seite. Sie leben jetzt unter Finanzen › Privat. */}
 
       <Karte i={7}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={`${eurC(k.fixkostenMonatBrutto)} pro Monat brutto`}>Laufende Fixkosten</Ueberschrift>
@@ -215,6 +217,6 @@ export function GrundlageView() {
           die Ableitung rechnet sich neu, das Original bleibt unverändert liegen.
         </div>
       </Karte>
-    </Seite>
+    </>
   );
 }

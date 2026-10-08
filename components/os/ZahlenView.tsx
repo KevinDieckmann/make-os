@@ -1,10 +1,11 @@
 'use client';
 
-// ─── MAKE OS — Zahlen ───────────────────────────────────────────────────────
+// ─── MAKE OS — Finanzen › Business › Überblick (unter dem Cockpit) ───────────
 // Eine Heldenzahl (was auf den Konten liegt), darunter je eine Zeile: wohin es
 // in zwölf Wochen läuft, was raus muss, was reinkommt. Dann Malins Grundlage,
 // was als Nächstes fällig ist, der laufende Monat — und die Bereiche als Liste.
 // Nichts davon ist neu; es ist das alte Finanz-Dashboard ohne Kacheln.
+// 08.10. (Aufräumen Etappe 2): die Karte „Bereiche“ ist weg — Rechnungen & Zahlungen, Liquidität, Buchungen und Controlling sind Reiter.
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,15 +26,8 @@ import { abEroeffnung, buchungVor } from '@/lib/business/eroeffnung';
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort?: string }
 
-const BEREICHE = [
-  { href: '/os/finanzen/grundlage', titel: 'Grundlage', satz: 'Malins Kassenbuch — die Zahlen, auf denen alles steht' },
-  { href: '/os/finanzen/liquiditaet', titel: 'Liquidität', satz: 'wie viel Geld wann da ist' },
-  { href: '/os/finanzen/buchungen', titel: 'Buchungen', satz: 'was auf den Konten wirklich passiert ist' },
-  { href: '/os/finanzen/planung', titel: 'Rechnungen & Zahlungen', satz: 'was reinkommt, was raus muss, in welcher Reihenfolge' },
-  { href: '/os/controlling', titel: 'Controlling & Ziele', satz: 'Kurs aufs Jahresziel, Run-Rate, Runway' },
-];
 
-/** Business: Konten, Fälliges, Monat, Grundlage, Belege, Bereiche. Unter Zahlen → Business steht es unter dem Cockpit (ohne eigenen Index-Streifen). */
+/** Business: Konten, Fälliges, Monat, Grundlage, Belege. Unter Finanzen › Business steht es unter dem Cockpit (ohne eigenen Index-Streifen). */
 export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolean } = {}) {
   const router = useRouter();
   const heute = localDay();
@@ -95,7 +89,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
       </Kachel>
       <Kachel id="faellig" titel="Als Nächstes fällig" breite={4}>
       <Karte i={2} akzent={faellig.some(z => z.faellig && z.faellig < heute) ? LEUCHT.kritisch : undefined}>
-        <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>alle ›</Link>}>Als Nächstes fällig</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={WEG.rechnungen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>alle ›</Link>}>Als Nächstes fällig</Ueberschrift>
         <Liste>
           {plan && !faellig.length && <Leer>Nichts offen.</Leer>}
           {faellig.map(z => {
@@ -109,14 +103,14 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
       {monat.im.length > 0 && (
         <Kachel id="monat" titel="Dieser Monat" breite={4}>
         <Karte i={3}>
-          <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{alleBuchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href={WEG.buchungen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>{alleBuchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
           <div style={{ display: 'flex', gap: 18, padding: '4px 0 12px', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>
             <span style={{ color: LEUCHT.gut }}>+{eur(monat.ein)}</span><span style={{ color: LEUCHT.achtung }}>−{eur(monat.aus)}</span>
             <span style={{ color: monat.ein - monat.aus >= 0 ? LEUCHT.gut : LEUCHT.kritisch }}>= {monat.ein - monat.aus >= 0 ? '+' : ''}{eur(monat.ein - monat.aus)}</span>
           </div>
           <div style={{ display: 'grid', gap: 9 }}>
             {monat.top.map(x => (
-              <Link key={x.k} href={`/os/finanzen/buchungen?monat=${monat.zeige}&kat=${encodeURIComponent(x.k)}&ort=geschaeft`} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px,150px) 1fr 84px', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}>
+              <Link key={x.k} href={WEG.buchungen({ monat: monat.zeige, kat: x.k, ort: 'geschaeft' })} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px,150px) 1fr 84px', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.k} ›</span>
                 <Fortschritt anteil={x.s / Math.max(monat.top[0]?.s ?? 1, 1)} farbe={LEUCHT.achtung} />
                 <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right' }}>{eur(x.s)}</span>
@@ -129,7 +123,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
       {k && (
         <Kachel id="grundlage" titel="Grundlage · Malins Kassenbuch" breite={2}>
         <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/finanzen/grundlage" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.grundlage()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '4px 0' }}>
             <Zahl wert={eur(k.umsatzNetto)} label="Umsatz netto" farbe={LEUCHT.gut} />
             <Zahl wert={eur(k.kostenNetto)} label="Kosten netto" farbe={LEUCHT.achtung} />
@@ -141,18 +135,6 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
         </Kachel>
       )}
       <Kachel id="belege" titel="Rechnungen & Belege" breite={2}><BelegeBusiness /></Kachel>
-      <Kachel id="bereiche" titel="Bereiche" breite={2}>
-      <Karte i={4}>
-        <Ueberschrift>Bereiche</Ueberschrift>
-        <Liste>
-          {BEREICHE.map(b => (
-            <Link key={b.href} href={b.href} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <Zeile onClick={() => {}} titel={b.titel} unter={b.satz} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
-            </Link>
-          ))}
-        </Liste>
-      </Karte>
-      </Kachel>
       </Flaeche>
     </>
   );
@@ -172,7 +154,7 @@ function BelegeBusiness() {
   const heute = localDay();
   return (
     <Karte i={5}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=steuern#ust" style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · {BUSINESS_GESELLSCHAFTEN.map(finanzOrtKurz).join(' / ')}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={WEG.steuern('ust')} style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · {BUSINESS_GESELLSCHAFTEN.map(finanzOrtKurz).join(' / ')}</Ueberschrift>
       <Liste>
         {!liste.length && <Leer>Nichts offen.</Leer>}
         {liste.slice(0, 8).map(b => (

@@ -4,13 +4,16 @@
 // Was auf den Konten wirklich passiert ist. Filtern nach Monat und Kategorie,
 // damit man Fragen beantworten kann wie „wofür ging im Juli das Geld drauf".
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
+// 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Buchungen“ unter Finanzen › Business (nur die Gesellschaften) bzw.
+// unter Finanzen › Privat › Konten & Buchungen (die Privat-Einheiten, z. B. die Selbstständigkeit). /os/finanzen/buchungen leitet weiter.
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT, Raster, Wahl } from './ui';
-import { KERN_EINHEITEN, istBusinessGesellschaft } from '@/lib/einheiten';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT, Raster, Wahl } from './ui';
+import { KERN_EINHEITEN, istBusinessGesellschaft, gehoertZuPrivat } from '@/lib/einheiten';
+import { WEG } from '@/lib/wege';
 
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; rechnungId?: string }
 
@@ -23,20 +26,30 @@ const tag: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontS
  * Auswahl „Geschäftlich".
  */
 // Seit 28.09. die eine Einheitenliste (lib/einheiten.ts); seit 05.10. Geschäftlich = die Business-Gesellschaften (die Selbstständigkeit gehört zu Privat, eigene Pille bleibt).
-const ORTE: { id: string; label: string; trifft: (o?: string) => boolean }[] = [
-  { id: 'alle', label: 'Alles', trifft: () => true },
-  { id: 'privat', label: 'Privat', trifft: o => o === 'privat' },
-  { id: 'geschaeft', label: 'Geschäftlich', trifft: o => istBusinessGesellschaft(o) },
-  ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label, trifft: (o?: string) => o === e.id })),
-];
+type Ort = { id: string; label: string; trifft: (o?: string) => boolean };
+const ORTE: Record<'business' | 'privat', Ort[]> = {
+  business: [
+    { id: 'geschaeft', label: 'Alle Gesellschaften', trifft: o => istBusinessGesellschaft(o) },
+    ...KERN_EINHEITEN.filter(e => istBusinessGesellschaft(e.id)).map(e => ({ id: e.id, label: e.label, trifft: (o?: string) => o === e.id })),
+  ],
+  privat: [
+    { id: 'alle', label: 'Alles', trifft: o => !o || gehoertZuPrivat(o) },
+    ...KERN_EINHEITEN.filter(e => gehoertZuPrivat(e.id)).map(e => ({ id: e.id, label: e.label, trifft: (o?: string) => o === e.id })),
+    { id: 'privat', label: 'Privat', trifft: o => !o || o === 'privat' },
+  ],
+};
 
-export function BuchungenView() {
-  const [alle, setAlle] = useState<Buchung[]>([]);
+/** `bereich`: Business = nur die Gesellschaften, Privat = die Privat-Einheiten (und alte private Buchungen ohne Ort). */
+export function BuchungenView({ bereich = 'business' }: { bereich?: 'business' | 'privat' } = {}) {
+  const orte = ORTE[bereich];
+  const [roh, setAlle] = useState<Buchung[]>([]);
   const [geladen, setGeladen] = useState(false);
   const [monat, setMonat] = useState<string>('alle');
   const [kategorie, setKategorie] = useState<string>('alle');
   const [suche, setSuche] = useState('');
-  const [ort, setOrt] = useState('alle');
+  const [ort, setOrt] = useState(orte[0].id);
+  // Nur die Buchungen dieses Bereichs — Business sieht nie eine private (Kevin 08.10.: Business nie Privat).
+  const alle = useMemo(() => roh.filter(b => orte[0].trifft(b.ort)), [roh, orte]);
 
   useEffect(() => {
     // Filter aus dem Link (?monat=YYYY-MM&kat=…&q=…&ort=kdc) — z. B. von einer Rechnung oder Kachel (26.09.).
@@ -44,7 +57,7 @@ export function BuchungenView() {
     if (u.get('monat')) setMonat(u.get('monat')!);
     if (u.get('kat')) setKategorie(u.get('kat')!);
     if (u.get('q')) setSuche(u.get('q')!);
-    if (u.get('ort')) setOrt(u.get('ort')!);
+    if (u.get('ort') && orte.some(o => o.id === u.get('ort'))) setOrt(u.get('ort')!);
     fetch('/api/state/buchungen').then(r => r.json()).then(d => {
       setAlle(Array.isArray(d.buchungen) ? d.buchungen : []);
       setGeladen(true);
@@ -60,7 +73,7 @@ export function BuchungenView() {
 
   const sichtbar = useMemo(() => {
     const n = suche.trim().toLowerCase();
-    const ortFilter = ORTE.find(o => o.id === ort) ?? ORTE[0];
+    const ortFilter = orte.find(o => o.id === ort) ?? orte[0];
     return alle.filter(b => {
       if (!ortFilter.trifft(b.ort)) return false;
       if (monat !== 'alle' && b.datum.slice(0, 7) !== monat) return false;
@@ -68,7 +81,7 @@ export function BuchungenView() {
       if (n && !`${b.wer} ${b.zweck ?? ''} ${b.kategorie}`.toLowerCase().includes(n)) return false;
       return true;
     });
-  }, [alle, monat, kategorie, suche, ort]);
+  }, [alle, monat, kategorie, suche, ort, orte]);
 
   const ein = sichtbar.filter(b => b.betrag > 0).reduce((s, b) => s + b.betrag, 0);
   const aus = Math.abs(sichtbar.filter(b => b.betrag < 0).reduce((s, b) => s + b.betrag, 0));
@@ -84,8 +97,7 @@ export function BuchungenView() {
   const hat = sichtbar.length > 0;
 
   return (
-    <Seite titel="Buchungen" unter={geladen ? `${sichtbar.length} ${sichtbar.length === 1 ? 'Buchung' : 'Buchungen'}${kategorien.length ? ` · ${kategorien.length} Kategorien` : ''}` : undefined}
-      >
+    <>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Buchungen durchsuchen …" aria-label="Buchungen durchsuchen" type="search" style={{ ...feld, width: '100%', maxWidth: 420 }} />
       <Karte i={0} ton={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Saldo der Auswahl</Ueberschrift>
@@ -97,9 +109,9 @@ export function BuchungenView() {
 
         {/* Wo die Buchung hingehört — Privat getrennt, Firmen einzeln oder zusammen */}
         <div className="ui-pillen ui-pillen-einzeilig" style={{ marginTop: 18 }}>
-          {ORTE.map(o => {
+          {orte.map(o => {
             const n = alle.filter(b => o.trifft(b.ort)).length;
-            return <span key={o.id} style={!n && o.id !== 'alle' ? { opacity: .5 } : undefined}><Wahl klein an={ort === o.id} onClick={() => setOrt(o.id)}>{o.label} <span style={{ opacity: .7, fontVariantNumeric: 'tabular-nums' }}>{n}</span></Wahl></span>;
+            return <span key={o.id} style={!n && o.id !== orte[0].id ? { opacity: .5 } : undefined}><Wahl klein an={ort === o.id} onClick={() => setOrt(o.id)}>{o.label} <span style={{ opacity: .7, fontVariantNumeric: 'tabular-nums' }}>{n}</span></Wahl></span>;
           })}
         </div>
         <div className="ui-pillen ui-pillen-einzeilig" style={{ marginTop: 8 }}>
@@ -140,7 +152,7 @@ export function BuchungenView() {
           {sichtbar.slice(0, 300).map(b => (
             <Zeile key={b.id} links={<span style={tag}>{b.datum.slice(8)}.{b.datum.slice(5, 7)}.</span>} titel={b.wer} unter={b.zweck}
               rechts={<>
-                {b.rechnungId && <Link href={`/os/finanzen/planung?r=${encodeURIComponent(b.rechnungId)}`} style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.gut}>Rechnung ›</Chip></Link>}
+                {b.rechnungId && <Link href={WEG.rechnung(b.rechnungId)} style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.gut}>Rechnung ›</Chip></Link>}
                 <Chip farbe={C.inkDim}>{b.kategorie}</Chip>
                 <span style={{ ...geld, color: b.betrag > 0 ? LEUCHT.gut : C.ink }}>{b.betrag > 0 ? '+' : '−'}{eur(Math.abs(b.betrag))}</span>
               </>} />
@@ -148,9 +160,9 @@ export function BuchungenView() {
           {sichtbar.length > 300 && <Leer>+{sichtbar.length - 300} weitere — Monat oder Kategorie wählen</Leer>}
         </Liste>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
-          Buchungen kommen aus dem Beleg-Werkzeug (ZOE), aus bezahlten <Link href="/os/finanzen/planung" style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
+          Buchungen kommen aus dem Beleg-Werkzeug (ZOE), aus bezahlten <Link href={WEG.rechnungen()} style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
         </div>
       </Karte>
-    </Seite>
+    </>
   );
 }

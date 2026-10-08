@@ -2,6 +2,7 @@
 // Kevin: „dass wir morgen abend einen klaren Ist-Stand haben, an dem wir
 // arbeiten können.“ Klar heißt prüfbar: jeder Punkt ist aus den Daten
 // abgeleitet (nicht abgehakt), sagt, was fehlt, wer es tut und wo.
+import { WEG } from '@/lib/wege';
 
 export interface Schritt {
   id: string; bereich: 'privat' | 'business' | 'gemeinsam';
@@ -45,17 +46,17 @@ export function istStand(e: IstStandEingaben): Schritt[] {
   }
   const konten = e.firmen.filter(f => f.id !== 'privat');
   const unklar = konten.filter(f => f.kontostand === null || !f.stand || tage(f.stand, e.heute) > 7);
-  s.push({ id: 'kontostaende', bereich: 'business', titel: 'Kontostände aller Firmenkonten, höchstens 7 Tage alt', erledigt: konten.length > 0 && !unklar.length, wer: 'kevin', link: '/os/finanzen/liquiditaet',
+  s.push({ id: 'kontostaende', bereich: 'business', titel: 'Kontostände aller Firmenkonten, höchstens 7 Tage alt', erledigt: konten.length > 0 && !unklar.length, wer: 'kevin', link: WEG.liquiditaet(),
     detail: unklar.length ? `offen: ${unklar.map(f => `${f.name} (${f.kontostand === null ? 'kein Stand' : !f.stand ? 'ohne Datum' : `vom ${f.stand.slice(8, 10)}.${f.stand.slice(5, 7)}.`})`).join(', ')}` : 'alle aktuell' });
   const ohneFrist = e.offeneRechnungen.filter(r => !r.faellig);
-  s.push({ id: 'rechnungen', bereich: 'business', titel: 'Offene Rechnungen mit Fälligkeit', erledigt: !ohneFrist.length, wer: 'kevin', link: '/os/finanzen/planung',
+  s.push({ id: 'rechnungen', bereich: 'business', titel: 'Offene Rechnungen mit Fälligkeit', erledigt: !ohneFrist.length, wer: 'kevin', link: WEG.rechnungen(),
     detail: ohneFrist.length ? `ohne Fälligkeit: ${ohneFrist.map(r => r.kunde).join(', ')}` : `${e.offeneRechnungen.length} offen, alle mit Datum` });
-  s.push({ id: 'controlling', bereich: 'business', titel: 'Controlling-Monate gepflegt', erledigt: e.leereControllingMonate !== null && !e.leereControllingMonate.length, wer: 'kevin', link: '/os/controlling',
+  s.push({ id: 'controlling', bereich: 'business', titel: 'Controlling-Monate gepflegt', erledigt: e.leereControllingMonate !== null && !e.leereControllingMonate.length, wer: 'kevin', link: WEG.controlling(),
     detail: e.leereControllingMonate === null ? 'noch kein Controlling' : e.leereControllingMonate.length ? `es fehlen: ${e.leereControllingMonate.join(', ')}` : 'alle Monate seit Start da' });
   const gAlt = e.grundlageStand ? tage(e.grundlageStand, e.heute) : null;
-  s.push({ id: 'grundlage', bereich: 'business', titel: 'Business-Grundlage (Malins V1-Export) aktuell', erledigt: gAlt !== null && gAlt <= 14, wer: 'malin', link: '/os/finanzen/grundlage',
+  s.push({ id: 'grundlage', bereich: 'business', titel: 'Business-Grundlage (Malins V1-Export) aktuell', erledigt: gAlt !== null && gAlt <= 14, wer: 'malin', link: WEG.grundlage(),
     detail: gAlt === null ? 'kein Export geladen' : gAlt <= 14 ? `Stand vor ${gAlt} Tagen` : `Stand vor ${gAlt} Tagen — neuen Export laden` });
-  s.push({ id: 'planung', bereich: 'business', titel: 'Liquiditätsplanung geklärt', erledigt: e.planposten > 0 && e.zuKlaeren === 0, wer: 'beide', link: '/os/finanzen/liquiditaet',
+  s.push({ id: 'planung', bereich: 'business', titel: 'Liquiditätsplanung geklärt', erledigt: e.planposten > 0 && e.zuKlaeren === 0, wer: 'beide', link: WEG.liquiditaet(),
     detail: !e.planposten ? 'keine Planposten' : e.zuKlaeren ? `${e.zuKlaeren} Posten „zu klären“ — bestätigen (sicher) oder streichen` : `${e.planposten} Posten, alle geklärt` });
   const rf = [e.rechtsform.kdv ? null : 'KD Ventures', e.rechtsform.kdc ? null : 'Consulting'].filter(Boolean);
   s.push({ id: 'rechtsform', bereich: 'business', titel: 'Rechtsform und Steuer-Annahmen', erledigt: !rf.length, wer: 'kevin', link: '/os/finanzen?s=chef',

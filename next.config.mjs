@@ -95,6 +95,18 @@ const nextConfig = {
       { source: '/os/okr', destination: '/os/planung/jahr?space=business', permanent: false },
       // 06.10. (Inbox 2): die volle alte Inbox (Fächer/Screener/Zero) ist in der einen Inbox aufgegangen.
       { source: '/os/inbox/voll', destination: '/os/inbox', permanent: false },
+      // 08.10. (Aufräumen Etappe 2 — Finanzen in höchstens zwei Ebenen, lib/finanzen/navigation.ts): die Nebenseiten sind Reiter bzw.
+      // Abschnitte unter /os/finanzen. Next hängt die Parameter der alten Adresse an (?r= ?z= ?p= ?monat= ?kat= ?q= ?ort= ?u= …),
+      // der Browser behält den Anker (#kontostaende). Wächter: tests/aufraeumen-etappe2.test.ts.
+      { source: '/os/finanzen/planung', destination: '/os/finanzen?s=rechnungen&space=business', permanent: false },
+      { source: '/os/finanzen/liquiditaet', destination: '/os/finanzen?s=liquiditaet&space=business', permanent: false },
+      { source: '/os/finanzen/buchungen', destination: '/os/finanzen?s=buchungen', permanent: false },
+      { source: '/os/finanzen/grundlage', destination: '/os/finanzen?s=finanzplanung&space=privat&u=selbst&alt=grundlage', permanent: false },
+      { source: '/os/finanzen/dashboard', destination: '/os/finanzen?s=finanzplanung&space=privat&u=selbst&alt=v1', permanent: false },
+      { source: '/os/controlling', destination: '/os/finanzen?s=controlling&space=business', permanent: false },
+      // Bis 08.10. Weiterleitungs-Seiten unter app/ (Regel: Weiterleitungen nur hier): Finanzplanung → Privat › Planung, Business-Cockpit.
+      { source: '/os/finanzplan', destination: '/os/finanzen?s=finanzplanung&space=privat', permanent: false },
+      { source: '/os/business', destination: '/os/finanzen?s=business&space=business', permanent: false },
     ];
   },
 };

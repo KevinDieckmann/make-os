@@ -25,7 +25,7 @@ export function HaushaltZuordnung() {
   return (
     <Karte i={5} akzent={LEUCHT.geld}>
       <Ueberschrift farbe={LEUCHT.geld}>Haushaltsfinanzen</Ueberschrift>
-      <div style={{ fontSize: 13, color: C.inkDim, marginBottom: 6 }}>Wer eure privaten Finanzen unter „Zahlen → Privat“ sieht und pflegt. Alle anderen Konten sehen davon nichts, auch keine Summen.</div>
+      <div style={{ fontSize: 13, color: C.inkDim, marginBottom: 6 }}>Wer eure privaten Finanzen unter „Finanzen › Privat“ sieht und pflegt. Alle anderen Konten sehen davon nichts, auch keine Summen.</div>
       <Liste>
         {konten.map(k => (
           <Zeile key={k.speicher} titel={k.name} unter={k.haushalt ? `Haushalt „${k.haushalt}“` : 'kein Zugang'}

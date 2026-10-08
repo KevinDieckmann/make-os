@@ -41,7 +41,7 @@ export function GesamtView() {
     <>
       <Karte i={1} ton={b.deckung === null ? undefined : b.deckung >= 100 ? LEUCHT.gut : LEUCHT.kritisch}>
         <Ueberschrift farbe={LEUCHT.geld}>Was die Selbstständigkeit mindestens bringen muss</Ueberschrift>
-        <Stufe n="1" href={WEG.privat('fixkosten')} titel="Privater Sockel" wert={`${eur(b.sockel, false)} / Monat`} quelle="Fixkosten + Kreditraten, 12 volle Monate · Zahlen → Privat → Fixkosten" />
+        <Stufe n="1" href={WEG.privat('fixkosten')} titel="Privater Sockel" wert={`${eur(b.sockel, false)} / Monat`} quelle="Fixkosten + Kreditraten, 12 volle Monate · Finanzen › Privat › Konten & Buchungen › Fixkosten" />
         <Stufe n="−" href={WEG.privat('einnahmen')} titel="Planbares Einkommen ohne Kevins Entnahme" wert={`${eur(b.planbarOhneEntnahme, false)} / Monat`} quelle="Gehalt & andere planbare Eingänge, Schnitt der letzten 3 vollen Monate" />
         <Stufe n="=" href={WEG.grundlage()} titel="Nötige Entnahme aus der Selbstständigkeit" wert={`${eur(b.noetigeEntnahme, false)} / Monat`} quelle={`tatsächlich entnommen: ${eur(b.entnahmeIst, false)} / Monat (3 volle Monate)`} farbe={b.entnahmeIst >= b.noetigeEntnahme ? LEUCHT.gut : LEUCHT.achtung} stark />
         <Stufe n="÷" titel={`Steuerrücklage ${q === null ? '— bitte als Annahme setzen' : `${q} % (Annahme)`}`} wert={b.noetigerGewinn === null ? '–' : `${eur(b.noetigerGewinn, false)} / Monat`} quelle="nötiger Gewinn vor Steuern — pauschal, keine Steuerberechnung" />

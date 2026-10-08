@@ -41,7 +41,8 @@ export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; la
   { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }, { id: 'selbst', label: finanzOrtName('kdc') }] },
   { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: KDV }] },
   { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
-  { id: 'buchungen', label: 'Buchungen & Check', unter: [{ id: 'buchungen', label: 'Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
+  // 08.10. (Aufräumen Etappe 2): „Ist“ statt „Buchungen“ — die Kontobuchungen stehen unter Konten & Buchungen; hier ist der Ist-Abgleich des Plans.
+  { id: 'buchungen', label: 'Ist & Check', unter: [{ id: 'buchungen', label: 'Ist-Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
   { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },
   { id: 'protokoll', label: 'Protokoll', unter: [{ id: 'protokoll', label: 'Protokoll' }] },
 ];
@@ -100,6 +101,13 @@ export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSear
   const eintraege = params instanceof URLSearchParams ? Array.from(params.entries()) : Object.entries(params ?? {});
   for (const [k, v] of eintraege) if (k !== 's' && k !== 'space' && v !== undefined && v !== '') q.set(k, String(v));
   return `/os/finanzen?${q.toString()}`;
+}
+/**
+ * Die Blätter einer Sicht in EINER Reihe (08.10., Aufräumen Etappe 2: Finanzen hat höchstens zwei Ebenen — Reiter „Planung“ =
+ * Ebene 1, das Blatt = Ebene 2). Reihenfolge und Gruppen bleiben die der acht Bereiche (BEREICHE); die Gruppe steht nur noch als Daten.
+ */
+export function blaetterFuer(sicht: 'privat' | 'business'): { id: Unterseite; label: string; bereich: Bereich }[] {
+  return bereicheFuer(sicht).flatMap(b => b.unter.map(u => ({ id: u.id, label: u.label, bereich: b.id })));
 }
 export const istUnterseite = (v: unknown): v is Unterseite => BEREICHE.some(b => b.unter.some(x => x.id === v));
 

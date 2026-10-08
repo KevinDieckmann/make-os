@@ -223,7 +223,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // 0-Punkt (05.10.): Eröffnung je Gesellschaft — offene Posten tragen Namen von Kunden/Gläubigern (wie Rechnungen im Finanzplan).
   mit({ muster: 'business-eroeffnung', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Eröffnung (0-Punkt) der Gesellschaften: Stichtag, Kontostand, offene Forderungen/Verbindlichkeiten mit Namen von Kunden/Gläubigern — Buchführung, Aufbewahrungspflicht § 147 AO / § 257 HGB; Historie bleibt (Rückgängig markiert nur).' }, {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO / § 257 HGB (Buchführung); Art. 6 Abs. 1 lit. b für Kunden/Lieferanten',
-    art15: 'Auskunft über den Inhaber (Zahlen › Business › 0-Punkt zeigt jede Zeile mit Namen)',
+    art15: 'Auskunft über den Inhaber (Finanzen › Business › Überblick › 0-Punkt zeigt jede Zeile mit Namen)',
     loeschfrist: 'Ablauf der Aufbewahrungsfrist (10 Jahre nach Ende des Geschäftsjahres)',
   }),
   // Familie & Partnerschaft (29.09., K2 — Name dynamisch `familie--<haushalt>`, der Scanner sieht ihn nicht; hier trotzdem

@@ -2,7 +2,7 @@
 
 // ─── Ziel aus dem Link — hinspringen und hervorheben ────────────────────────
 // Ein Punkt hinter einer Kennzahl verlinkt auf genau einen Eintrag
-// (/os/finanzen/planung?r=<Rechnung>, …/liquiditaet?p=<Posten>). Die Seite
+// (/os/finanzen?s=rechnungen&r=<Rechnung>, …?s=liquiditaet&p=<Posten>). Die Seite
 // liest den Parameter, springt nach dem Laden einmal dorthin und hebt den
 // Eintrag hervor — so endet ein Klick nie auf einer Liste, in der man suchen muss.
 

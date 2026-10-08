@@ -245,7 +245,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Ziele und Startmonat bestätigen',
     warum: 'Controlling und Run-Rate rechnen ab dem Startmonat. Steht der falsch, sieht jede Auswertung schlechter aus, als sie ist.',
     wie: ['Jahresziel Umsatz und Gewinn prüfen.', 'Startmonat bestätigen.', 'Runway-Schwelle prüfen.'],
-    wo: { href: '/os/controlling', label: 'Controlling' },
+    wo: { href: '/os/finanzen?s=controlling&space=business', label: 'Controlling' },
     pruefung: 'ziele',
   },
   gesundheitEinwilligung('kevin', 'kevin-gesundheit'),
@@ -320,7 +320,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Kontostände eintragen',
     warum: 'Die Liquiditäts-Vorschau startet beim heutigen Kontostand. Ist der alt, ist die ganze Kurve falsch.',
     wie: ['Unter Liquidität für jede Gesellschaft den aktuellen Kontostand eintragen.', 'Datum dazu, damit man sieht, wie frisch der Wert ist.'],
-    wo: { href: '/os/finanzen/liquiditaet#kontostaende', label: 'Kontostände' },
+    wo: { href: '/os/finanzen?s=liquiditaet&space=business#kontostaende', label: 'Kontostände' },
     pruefung: 'konten',
   },
   {
@@ -332,7 +332,7 @@ export const SCHRITTE: Schritt[] = [
       'Offene Zahlungen durchgehen und Fälligkeiten setzen.',
       'Posten mit unklarem Empfänger klären, bevor sie in die Planung gehen.',
     ],
-    wo: { href: '/os/finanzen/planung', label: 'Rechnungen & Zahlungen' },
+    wo: { href: '/os/finanzen?s=rechnungen&space=business', label: 'Rechnungen & Zahlungen' },
     pruefung: 'posten',
   },
   {

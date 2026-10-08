@@ -6,7 +6,7 @@
 // lib/business/register.ts) — je Firma und gesamt, jede Zahl
 // mit Formel und Quelle, jede fehlende mit dem Weg, sie zu schließen.
 // Der Wachstums-Score nimmt genau diese Zahl als seine Business-Säule.
-// Seit 25.09. lebt das Cockpit unter Zahlen → Business (/os/finanzen?s=business);
+// Seit 25.09. lebt das Cockpit unter Finanzen › Business › Überblick (/os/finanzen?s=business);
 // /os/business leitet dorthin um. Hinter jeder Kachel stehen die Punkte, aus
 // denen sie besteht — jeder ein Link dorthin, wo man handelt.
 
@@ -95,7 +95,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
         </div>
       )}
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
-      {privatSicht && <Hinweis>{GEHOERT_ZU_PRIVAT(privatSicht)} Ihre Zahlen stehen unter Finanzen › Privat › Finanzplanung; hier siehst du „Gesamt“ ohne sie.</Hinweis>}
+      {privatSicht && <Hinweis>{GEHOERT_ZU_PRIVAT(privatSicht)} Ihre Zahlen stehen unter Finanzen › Privat › Planung; hier siehst du „Gesamt“ ohne sie.</Hinweis>}
 
       <Flaeche seite="business">
       {/* Der Index */}

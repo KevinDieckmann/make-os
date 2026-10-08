@@ -10,16 +10,20 @@
 // Cmd+Z macht die letzte Änderung rückgängig, solange kein Feld den Fokus hat.
 //
 // Seit 04.10. (Kevin: „Teile die Finanzplanung … bei Privat und bei Business“) ist das EINE Komponente mit `sicht`:
-// eingehängt als Reiter „Finanzplanung“ unter Finanzen › Privat (alles, auch die Firmen) und Finanzen › Business (nur die
+// eingehängt als Reiter „Planung“ (bis 08.10. „Finanzplanung“) unter Finanzen › Privat (alles, auch die Firmen) und Finanzen › Business (nur die
 // Gesellschaften — das Dokument kommt schon gefiltert vom Server, lib/finanzen/plan/sicht.ts). Alte Links /os/finanzplan?… leiten
 // in die Privat-Sicht weiter.
+//
+// 08.10. (Aufräumen Etappe 2, Kevin: „unaufgeräumt und überladen“): Finanzen hat höchstens zwei Ebenen — die Finanzplanung ist der
+// Reiter „Planung“ (Ebene 1), ihre Blätter stehen in EINER Pillenreihe darunter (Ebene 2, `blaetterFuer`). Die acht Bereiche bleiben
+// als Reihenfolge, nicht mehr als eigene Leiste.
 
 import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Undo2 } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, Knopf, Reiter, Pillen, LEUCHT } from '../ui';
-import { FRAGE, FRAGE_BUSINESS, bereichVon, offeneBuchungen, faelligeZahl, datumLang, bereicheFuer, unterseiteFuer, finanzplanAdresse, type Unterseite } from '@/lib/finanzen/plan/hilfen';
+import { Seite, Knopf, Pillen, LEUCHT } from '../ui';
+import { FRAGE, FRAGE_BUSINESS, offeneBuchungen, faelligeZahl, datumLang, blaetterFuer, unterseiteFuer, finanzplanAdresse, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { mitBereich, bereichEigen, type Bereich } from '@/lib/finanzen/szenarien';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
@@ -59,8 +63,7 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
   const eigen = !!roh && bereichEigen(roh, bereich);
   const g = useGerechnet(d);
   const u: Unterseite = unterseiteFuer(params.get('u'), sicht);
-  const reiter = bereichVon(u);
-  const bereiche = bereicheFuer(sicht);
+  const blaetter = blaetterFuer(sicht);
 
   const geh = useCallback((ziel: Unterseite, extra?: Record<string, string | number | undefined>) => {
     const z = unterseiteFuer(ziel, sicht);
@@ -95,13 +98,14 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
   const titel = bereich === 'business' ? 'Finanzplanung Business' : 'Finanzplanung';
   if (zustand === 'laedt') { const l = <div style={{ color: C.inkDim, fontSize: TYP.bedien }} role="status">Lädt …</div>; return eingebettet ? l : <Seite titel={titel}>{l}</Seite>; }
   // Einrichten (Startbestand hochladen, ersetzen) nur in der Privat-Sicht — die Business-Sicht darf nie das ganze Dokument schreiben.
-  if (sicht === 'business' && zustand === 'leer') return <div style={{ color: C.inkDim, fontSize: TYP.bedien }} role="status">Noch keine Finanzplanung — eingerichtet wird sie unter Finanzen › Privat › Finanzplanung.</div>;
+  if (sicht === 'business' && zustand === 'leer') return <div style={{ color: C.inkDim, fontSize: TYP.bedien }} role="status">Noch keine Finanzplanung — eingerichtet wird sie unter Finanzen › Privat › Planung.</div>;
   if (!d || !g || !kontext) return <Einrichtung zustand={zustand === 'kein' ? 'kein' : zustand === 'fehler' ? 'fehler' : 'leer'} onFertig={() => void laden()} />;
 
   // Lage je Bereich: Business mit den Business-Kennzahlen (MAKE frei, Runway, Tiefpunkt), Privat mit den privaten.
   const Ansicht = (bereich === 'business' || sicht === 'business') && u === 'lage' ? LageBusiness : ANSICHT[u];
   const offen = offeneBuchungen(d), faellig = faelligeZahl(d);
-  const reiterInfo = bereiche.find(b => b.id === reiter) ?? bereiche[0];
+  // Zähler stehen am Blatt, das sie auflöst: offene Ist-Buchungen bzw. fällige Posten.
+  const zaehler: Partial<Record<Unterseite, number>> = { buchungen: offen, posten: faellig };
 
   // Szenario dieses Bereichs: gemeinsam (wie der andere Bereich) oder ein eigenes (auch „Basis“ = reiner Treiber).
   const anderer = bereich === 'business' ? 'Privat' : 'Business';
@@ -133,10 +137,9 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
       <div className="ui-karten">
         {eingebettet && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}><div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{unter}</div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{knoepfe}</div></div>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{szenarioWahl}</div>
-        <nav aria-label="Finanzplanung" className="ui-reiter-zeile">
-          <Reiter ariaLabel="Bereiche der Finanzplanung" liste={bereiche.map(b => ({ id: b.id, label: b.id === 'buchungen' && offen + faellig > 0 ? <>{b.label}<span className="fp-zaehler" aria-label={`${offen + faellig} offen`}>{offen + faellig}</span></> : b.label }))} aktiv={reiter} onWahl={b => geh(bereiche.find(x => x.id === b)!.unter[0].id)} />
+        <nav aria-label="Blätter der Finanzplanung">
+          <Pillen einzeilig liste={blaetter.map(b => ({ id: b.id, label: zaehler[b.id] ? `${b.label} · ${zaehler[b.id]}` : b.label }))} aktiv={u} onWahl={geh} />
         </nav>
-        {reiterInfo.unter.length > 1 && <Pillen einzeilig liste={reiterInfo.unter} aktiv={u} onWahl={geh} />}
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{(sicht === 'business' && FRAGE_BUSINESS[u]) || (bereich === 'business' && u === 'lage' && FRAGE_BUSINESS.lage) || FRAGE[u]}</div>
         <Ansicht />
       </div>

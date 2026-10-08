@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, Fortschritt, LEUCHT } from './ui';
+import { WEG } from '@/lib/wege';
 
 type Ton = 'ok' | 'acht' | 'fehlt' | 'neutral';
 const TON_FARBE: Record<Ton, string> = { ok: LEUCHT.gut, acht: LEUCHT.achtung, fehlt: LEUCHT.kritisch, neutral: C.inkLeise };
@@ -55,7 +56,7 @@ export function DatenbasisView() {
         status: prodAktiv ? `${prodAktiv} aktiv mit Preis` : `${(fplan?.produkte ?? []).length} Entwürfe — festzurren`,
         ton: prodAktiv ? 'ok' : 'acht' });
       const istUmsatz = (fin?.state?.months ?? []).reduce((s: number, m: { umsatz: number }) => s + (m.umsatz || 0), 0);
-      z.push({ bereich: 'Ist-Zahlen (Umsatz/Kosten je Monat)', wer: 'Malin', href: '/os/controlling',
+      z.push({ bereich: 'Ist-Zahlen (Umsatz/Kosten je Monat)', wer: 'Malin', href: WEG.controlling(),
         status: istUmsatz > 0 ? 'gepflegt — Score rechnet' : 'leer — Nordstern nicht messbar',
         ton: istUmsatz > 0 ? 'ok' : 'fehlt' });
 

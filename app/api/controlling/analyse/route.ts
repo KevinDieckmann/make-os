@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Ohne Body: Server liest selbst — damit ZOE den Agenten direkt ausführen kann.
   const roh = payload.state ?? (await loadJson<FinanceState>('finance'));
-  if (!roh || !Array.isArray(roh.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter /os/controlling pflegen.' }, { status: 200 });
+  if (!roh || !Array.isArray(roh.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter Finanzen › Business › Controlling & Ziele pflegen.' }, { status: 200 });
 
   // Kasse immer aus den Firmenkonten — auch wenn die Seite ihren Stand mitschickt.
   // 0-Punkt (05.10.): die Kasse aus den Konten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts).
