@@ -134,3 +134,27 @@ können wir direkt mitbauen. Die gehen dann direkt an die Head ofs, um sie zu be
 25. **Sprache:** Voxtral nach deutschem Test · Gerätestimme + ElevenLabs-Schalter · Diktat wählbar (Kunden Voxtral) · Mikro-Knopf · WhatsApp-Sprachnachricht ·
     Siri-Kurzbefehl · Sprachassistent: Konzept jetzt, Bau nach Q1.
 26. **Server:** erst messen (Head of IT), dann entscheiden.
+
+## Fragerunde Teil 2 — Medien unterwegs + Recht (09.10.2026 nachts) — Grundlage research/agenten/MEDIEN.md, RECHT.md
+1. **Speicher:** Hetzner Object Storage Nürnberg/Falkenstein, privat, nur verschlüsselt · dazu „Google Drive der Firma“ (→ als späterer Export freigegebener
+   Business-Medien auf Klick verstanden, Drittland — Kevin bestätigt in der nächsten Runde).
+2. **Verschlüsselung:** auf unserem Server je Segment, Schlüssel je Medium, Hauptschlüssel verlässt nie den Server · „Vorschaubilder unverschlüsselt“ gewählt
+   (→ steht gegen Eiserne Regel 9; gebaut wird verschlüsselt mit schnellem Zwischenspeicher, Frage in der nächsten Runde).
+3. **Upload:** eigener Upload in Stücken (8 MB) über unseren Server, fortsetzbar.
+4. **Video:** Original, Empfehlung 1080p/30 HEVC · höchstens 2 GB · Videos starten nur auf Knopfdruck · 4K nur bei „Original“ · Ton standardmäßig aus (§ 201 StGB).
+5. **Einstieg:** System-Kamera + „Aus Mediathek“ · Knopf im Netzwerken-Event-Modus · Kachel in der Event-Akte · eigene Seite „Fotos & Videos“ · iOS-Kurzbefehl im Teilen-Menü.
+6. **Ordnung:** Album vorbelegt („Heute bei …“), danach änderbar · Alben Event · Kunde/Mandat · Projekt · frei · Favorit/Ablehnen je Person.
+7. **Privat:** je Album „nur ich“ oder „Haushalt“, Vorgabe „nur ich“.
+8. **Freigabe Marketing:** Marketing-Verantwortliche bzw. volles Mitglied; bei erkennbaren Personen Vier-Augen · Head of Marketing schlägt vor, Mensch klickt.
+9. **Personen:** Pflichtfrage „erkennbare Personen?“ · von Hand markieren · Porträts/nicht öffentliche Events nur mit Einwilligung · Minderjährige nie ohne Eltern ·
+   Einwilligung per QR-Formular oder Unterschrift am Handy · Hinweisschild (ersetzt keine Einwilligung) · Widerruf sperrt sofort.
+10. **Nutzungsrechte:** je Freigabe Kanäle + bis-Datum, danach automatisch gesperrt + Aufgabe · fremde Fotografen: Lizenz-Nachweis Pflicht.
+11. **Heads sehen** nur Medien, die ausdrücklich „an Head gegeben“ sind (mit Auftrag), nur Business.
+12. **Heads dürfen (Vorschlag):** beste Bilder auswählen + begründen · Zuschnitte vorschlagen (Browser schneidet nach Klick) · Alt-Text, Bildunterschrift, Post-Entwurf.
+13. **Aufbewahrung:** Rohmaterial mit Personen, nicht freigegeben → Prüf-Aufgabe nach 12 Monaten (nie automatisch löschen) · Papierkorb 30 Tage · Art. 17 → sperren + Prüfung.
+14. **DSFA/DSB:** bestehende DSFA erweitern + neue für Medien · externen Datenschutzbeauftragten jetzt benennen · Anwalt prüft die 12 Punkte (RECHT.md Teil 9). → Aufgaben für Kevin.
+15. **Kennzeichnung:** maschinenlesbar immer · sichtbar bei realistischen Personen/Orten · Text-Entwürfe klärt der Anwalt.
+16. **Anthropic:** eigene Instanz Standard; Kunden-Instanzen ZDR oder EU-Weg je Instanz · Aufbewahrung im DPA schriftlich klären (Aufgabe Kevin).
+17. **Threads:** Löschfrist 12 Monate nach der letzten Nachricht.
+18. **Gesundheits-Head:** reiner Wellness-Coach, keine Diagnose/Therapie · im Kunden-Produkt erst nach Prüfung Medizinprodukterecht · nur mit (a)+(b), nur eigene Werte ·
+    zuständige Person (Malin) je Instanz einstellbar.
