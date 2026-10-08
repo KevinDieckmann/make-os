@@ -103,7 +103,8 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
     if (!t) return;
     // Ohne Autor-Eintrag schreibt die/der Verantwortliche für Marketing.
     const b: Beitrag = { id: neueId('bt'), titel: t.slice(0, 200), kanal: 'linkedin', status: 'idee', wirkung: [], quellen: [], geaendert: new Date().toISOString() };
-    await api.setze('beitraege', alsEintrag(b));
+    // Nur öffnen, was der Server angenommen hat (08.10., Sofort-Paket 5.11) — sonst bleibt der Titel stehen, der Grund steht oben.
+    if (!(await api.setze('beitraege', alsEintrag(b)))) { setMeldung(`„${t.slice(0, 60)}“ ist NICHT angelegt — der Grund steht oben, der Titel bleibt stehen.`); return; }
     setTitel(''); setOffen(b.id);
   };
   const aktuell = offen ? (alleBeitraege ?? []).find(b => b.id === offen) ?? null : null;
@@ -233,7 +234,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
                     <button onClick={() => zuKontakt(s.kontaktId)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{s.name} · {datum(s.am, heute)}</button>
                   </div>
                   {drin ? <Chip farbe={LEUCHT.gut}>übernommen</Chip>
-                    : <Knopf leise onClick={async () => { const b = ideeAusStimme(s, neueId('bt'), new Date().toISOString()); await api.setze('beitraege', alsEintrag(b)); setMeldung(`Idee „${b.titel}“ angelegt.`); }}>Als Idee übernehmen</Knopf>}
+                    : <Knopf leise onClick={async () => { const b = ideeAusStimme(s, neueId('bt'), new Date().toISOString()); const ok = await api.setze('beitraege', alsEintrag(b)); setMeldung(ok ? `Idee „${b.titel}“ angelegt.` : `Idee „${b.titel}“ NICHT angelegt — der Grund steht oben.`); }}>Als Idee übernehmen</Knopf>}
                 </div>
               );
             })}

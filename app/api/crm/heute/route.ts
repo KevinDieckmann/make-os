@@ -52,6 +52,8 @@ export async function GET(req: Request) {
         letzte: (k.aktivitaeten ?? []).slice(-3).reverse(), chance: c.chance ? { id: c.chance.id, titel: c.chance.titel, stufe: c.chance.stufe } : undefined, bezug: c.bezug,
         // Wem die Karte gehört (Chance → Mandat → Kampagne → Einladung → Beziehung) und wer die Beziehung hält.
         gehoert: karteGehoert(c, crm), beziehung: haeltBeziehung(k), bezugArt: bezugArt(c.bezug),
+        // Das echte Follow-up hinter der Karte (08.10., 4.1) — der Ergebnis-Knopf erledigt es mit.
+        ...(c.followupId ? { followupId: c.followupId } : {}),
       };
     }),
     // Die Sitzungen der letzten Wochen — für Serie und Zähler (der Person, deren Liste es ist).

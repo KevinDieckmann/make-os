@@ -9,6 +9,11 @@
 //  3. Werbesperre (Ergebnis „Sperre“, Art. 21): offene werbliche Follow-ups der Person (Mail, LinkedIn,
 //     Anruf) werden mit Grund abgesagt (nie gelöscht), und die Person verlässt aktive und Entwurfs-
 //     Kampagnen — über die Reparatur `werbesperre-kampagne` der Verbindungsprüfung (EINE Regel).
+//  0. Follow-up der Karte (08.10., Sofort-Paket 4.1): kommt die Aktivität aus einer Power-Hour-Karte mit echtem Follow-up
+//     (`followupId`), wird es mitgeführt — vorher blieb es offen, kam täglich wieder, und das Ergebnis setzte daneben eine
+//     zweite Wiedervorlage. Nicht erreicht / Mailbox / Rückruf → das Follow-up wandert auf den Tag der Regel (es bleibt die
+//     EINE Erinnerung, mit seinem Text; die Route setzt dann keine Wiedervorlage am Kontakt). Jedes andere Ergebnis → erledigt
+//     (mit Ergebnis; Event-Follow-up: der Gast gilt als nachgefasst — wie beim Erledigen in der Follow-up-Liste).
 
 import type { Kontakt, Ergebnis } from '@/lib/make-one/crm';
 import type { CrmBestand, FollowUp, KampagnenErgebnis } from './typen';
@@ -26,7 +31,18 @@ export interface AktivitaetFolgenEingabe {
   jetzt: string;
   /** Meeting in der Zukunft — noch keine Aktivität am Deal. */
   geplant?: boolean;
+  /** Das echte Follow-up hinter der Power-Hour-Karte (`fu-…`), siehe Schritt 0. */
+  followupId?: string;
+  /** Neuer Tag für das Follow-up, wenn das Ergebnis „noch einmal“ heißt (`FOLLOWUP_NOCHMAL`) — der Tag aus `folgeAus`. */
+  followupNochmalAm?: string;
 }
+
+/** Ergebnisse, nach denen ein Follow-up nicht erledigt ist, sondern wiederkommt (Anlauf ohne Gespräch). */
+export const FOLLOWUP_NOCHMAL: readonly Ergebnis[] = ['nicht_erreicht', 'mailbox', 'rueckruf'];
+
+/** Gehört dieses offene Follow-up zu der Person der Aktivität? Nur dann wird es mitgeführt. */
+export const followupDerPerson = (f: Pick<FollowUp, 'status' | 'kontaktId' | 'bezug'>, kontaktId: string): boolean =>
+  f.status === 'offen' && (f.kontaktId === kontaktId || (!f.kontaktId && f.bezug.art === 'kontakt' && f.bezug.id === kontaktId));
 
 /** Werbliche Follow-up-Arten — bei Werbewiderspruch abgesagt. Termine/Nachrichten bleiben (Vertrag, eigene Anfrage). */
 export const WERBLICHE_FOLLOWUPS: readonly FollowUp['art'][] = ['mail', 'linkedin', 'anruf'];
@@ -43,10 +59,25 @@ export function dealZurAktivitaet(crm: Pick<CrmBestand, 'chancen'>, kontaktId: s
 /** Ergebnis in die Kampagnen-Sprache (angesprochen · gespraech · kein_interesse). */
 const kampagnenErgebnis = (erg: Ergebnis): KampagnenErgebnis => (erg === 'gespraech' || erg === 'termin' ? 'gespraech' : erg === 'kein_bedarf' || erg === 'sperre' ? 'kein_interesse' : 'angesprochen');
 
-export function aktivitaetImCrm(crm: CrmBestand, e: AktivitaetFolgenEingabe): { crm: CrmBestand; geaendert: boolean; dealId: string | null; abgesagt: number; kampagnen: number } {
+export function aktivitaetImCrm(crm: CrmBestand, e: AktivitaetFolgenEingabe): { crm: CrmBestand; geaendert: boolean; dealId: string | null; abgesagt: number; kampagnen: number; followup: { id: string; wie: 'erledigt' | 'verschoben'; faellig?: string; aufgabeId?: string } | null } {
   const id = e.kontakt.id;
   let neu = crm;
   let geaendert = false;
+
+  // 0. Follow-up der Power-Hour-Karte mitführen (vor der Werbesperre: ein „Sperre“-Ergebnis erledigt es mit diesem Ergebnis).
+  let followup: { id: string; wie: 'erledigt' | 'verschoben'; faellig?: string; aufgabeId?: string } | null = null;
+  const fu = e.followupId && !e.geplant ? (neu.followups ?? []).find(f => f.id === e.followupId) : undefined;
+  if (fu && followupDerPerson(fu, id)) {
+    const nochmal = e.ergebnis && FOLLOWUP_NOCHMAL.includes(e.ergebnis) && e.followupNochmalAm ? e.followupNochmalAm : undefined;
+    const fNeu: FollowUp = nochmal
+      ? { ...fu, faellig: nochmal > fu.faellig ? nochmal : fu.faellig, geaendert: e.jetzt, geaendertVon: e.von }
+      : { ...fu, status: 'erledigt', erledigtAm: e.jetzt, ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), geaendert: e.jetzt, geaendertVon: e.von };
+    neu = { ...neu, followups: (neu.followups ?? []).map(f => (f.id === fu.id ? fNeu : f)) };
+    // Event-Follow-up erledigt: der Gast gilt als nachgefasst (wie „Erledigen“ in der Follow-up-Liste) — nur, wenn es noch fehlt.
+    if (!nochmal && fu.bezug.art === 'event') neu = { ...neu, teilnahmen: neu.teilnahmen.map(t => (t.eventId === fu.bezug.id && t.kontaktId === id && !t.followUpAm ? { ...t, followUpAm: e.heute, geaendert: e.jetzt, geaendertVon: e.von } : t)) };
+    followup = { id: fu.id, wie: nochmal ? 'verschoben' : 'erledigt', ...(nochmal ? { faellig: fNeu.faellig } : {}), ...(fu.aufgabeId ? { aufgabeId: fu.aufgabeId } : {}) };
+    geaendert = true;
+  }
 
   // 1. Kampagnen-Ergebnis (vor dem Herausnehmen bei Sperre — das Nein zählt noch in der Kampagne).
   if (e.bezug?.startsWith('kp-') && e.ergebnis) {
@@ -77,5 +108,5 @@ export function aktivitaetImCrm(crm: CrmBestand, e: AktivitaetFolgenEingabe): { 
     const a = rep.aenderungen.find(x => x.befundId === 'werbesperre-kampagne');
     if (a) { neu = rep.bestaende.crm; kampagnen = a.anzahl; geaendert = true; }
   }
-  return { crm: neu, geaendert, dealId, abgesagt, kampagnen };
+  return { crm: neu, geaendert, dealId, abgesagt, kampagnen, followup };
 }

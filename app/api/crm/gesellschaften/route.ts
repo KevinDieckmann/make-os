@@ -1,5 +1,6 @@
 // ─── Markttraktion · Stammdaten › Gesellschaften (Absender für Angebote, 28.09.) ─
-// GET                                → { gesellschaften: [kdc, kdv, ug] mit stand, IBAN maskiert, luecken }
+// GET                                → { gesellschaften: [kdc, kdv, ug] mit stand, IBAN maskiert, luecken; vorgabe } — `vorgabe` (08.10.):
+//                                       die operative Business-Gesellschaft (Register) für Rechnungen ohne Mandat, sonst null (wählen)
 // PATCH  { id, felder, stand }       → Felder ändern (Stand/409; ungültige Werte 400 mit Feld)
 // POST   multipart { id, datei }     → Logo (nur PNG/JPG, ≤ 15 MB) in die Dateiablage, verknüpft
 // DELETE ?id=<gesellschaft>&logo=1   → Logo entfernen
@@ -14,11 +15,11 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { loadJson } from '@/lib/store/local-db';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
-import { registerAendern, standVon as registerStand } from '@/lib/gesellschaften/server';
+import { absenderVorgabe, registerAendern, standVon as registerStand } from '@/lib/gesellschaften/server';
 import type { RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { ablegen, entfernen, AblageFehler } from '@/lib/dateien/ablage';
 import { MAX_DATEI_BYTES, dateinameSaeubern, endung, typErkennen } from '@/lib/dateien/regeln';
-import { alleGesellschaften, gesellschaftAnwenden, gesellschaftenName, gesellschaftFuerAnzeige, gesellschaftLuecken, istGesellschaftId, type Gesellschaft, type GesellschaftenDatei, type GesellschaftFehler } from '@/lib/crm/gesellschaften';
+import { absenderFuerAnzeige, alleGesellschaften, gesellschaftAnwenden, gesellschaftenName, istGesellschaftId, type Gesellschaft, type GesellschaftenDatei, type GesellschaftFehler } from '@/lib/crm/gesellschaften';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
@@ -27,12 +28,12 @@ export const dynamic = 'force-dynamic';
 const KEIN_ZUGANG = { ok: false, fehler: 'Gesellschaften gehören zum Haushalt des Inhabers — für dieses Konto nicht freigegeben.' };
 const fehler = (text: string, status: number, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler: text, ...extra }, { status });
 /**
- * Für den Browser: nur die Absender-Felder (IBAN maskiert) — Cap-Table, Verträge und Notizen des Registers bleiben in
- * /api/gesellschaften (sensibel, 04.10.). Der Stand ist der Fingerabdruck des GANZEN Eintrags (eine Schreibstelle).
+ * Für den Browser: nur die Absender-Felder (IBAN maskiert, `absenderFuerAnzeige` — dieselbe Stelle wie das Angebots-Tool) — Cap-Table,
+ * Organe, Verträge und Notizen des Registers bleiben in /api/gesellschaften (sensibel, 04.10.). Der Stand ist der Fingerabdruck des GANZEN
+ * Eintrags (eine Schreibstelle).
  */
 function zurAnzeige(g: Gesellschaft) {
-  const { gesellschafter: _gs, beteiligungen: _bt, vertraege: _vt, notizen: _nz, ...absender } = g as Gesellschaft & Partial<Pick<RegisterGesellschaft, 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'notizen'>>;
-  return { ...gesellschaftFuerAnzeige(absender as Gesellschaft), stand: registerStand(g as unknown as RegisterGesellschaft), luecken: gesellschaftLuecken(g) };
+  return { ...absenderFuerAnzeige(g), stand: registerStand(g as unknown as RegisterGesellschaft) };
 }
 
 async function zugang(req: Request): Promise<{ person: string; haushalt: string } | null> {
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   leseZugriff(req, 'gesellschaften'); // Lese-Protokoll (05.10.)
-  return NextResponse.json({ ok: true, gesellschaften: await liste(z.haushalt) }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ok: true, gesellschaften: await liste(z.haushalt), vorgabe: await absenderVorgabe(z.haushalt) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 /**

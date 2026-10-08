@@ -32,9 +32,11 @@ import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
   ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
-  stellenFehlt, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage,
+  stellenFehlt, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
+import { WEG } from '@/lib/wege';
+import { absenderVorgabe } from '@/lib/gesellschaften/server';
 import { absenderAus, empfaengerAus, angebotDokument } from './angebot-dokument';
 import { angebotPdf, type PdfLogo } from './angebot-pdf';
 import { ablegen, lesen } from '@/lib/dateien/ablage';
@@ -67,7 +69,11 @@ export async function angebotSpeichern(p: { id?: unknown; felder: Record<string,
   if (zuLang.length) throw new AngebotFehler(zuLang.join(' · '), 413);
   const jetzt = p.jetzt ?? new Date();
   const heute = localDay(jetzt);
-  const g = typeof p.felder.gesellschaft === 'string' ? (await gesellschaftenLaden(p.haushalt)).find(x => x.id === p.felder.gesellschaft) : undefined;
+  // Ohne Absender im Körper (z. B. der Entwurf aus „Netzwerken“) gilt für einen NEUEN Entwurf die operative Business-Gesellschaft des Registers
+  // (08.10., Sofort-Paket 3.2) — nicht mehr still die Selbstständigkeit. Ein bestehender Entwurf behält seinen Absender.
+  const vorgabe = istGesellschaft(p.felder.gesellschaft) ? null : await absenderVorgabe(p.haushalt);
+  const gesId = istGesellschaft(p.felder.gesellschaft) ? p.felder.gesellschaft : vorgabe;
+  const g = gesId ? (await gesellschaftenLaden(p.haushalt)).find(x => x.id === gesId) : undefined;
   const v = g ? mitVorgaben(g) : null;
   const id = typeof p.id === 'string' && /^ang-[a-z0-9-]{4,60}$/.test(p.id) ? p.id : neueAngebotId();
   let ergebnis: Angebot | null = null;
@@ -80,7 +86,7 @@ export async function angebotSpeichern(p: { id?: unknown; felder: Record<string,
         if (!istEntwurf(alt)) throw new AngebotFehler(`Angebot ${alt.nummer ?? ''} ist gestellt und festgeschrieben — Änderungen nur als neue Version.`.replace('  ', ' '), 409, { aktuell: mitStand(alt), grund: 'gestellt' });
         standPruefen(alt, p.stand);
       }
-      const neu = entwurfSaeubern(p.felder, alt, { id, jetzt: jetzt.toISOString(), person: p.person, heute, ...(v ? { gueltigTage: v.gueltigkeitTage, zielTage: v.zahlungszielTage } : {}) });
+      const neu = entwurfSaeubern(p.felder, alt, { id, jetzt: jetzt.toISOString(), person: p.person, heute, ...(vorgabe ? { gesellschaftVorgabe: vorgabe } : {}), ...(v ? { gueltigTage: v.gueltigkeitTage, zielTage: v.zahlungszielTage } : {}) });
       ergebnis = neu;
       return { ...b, angebote: alt ? liste.map(a => (a.id === id ? neu : a)) : [...liste, neu] };
     } catch (e) { fehler = e as AngebotFehler; return b; }
@@ -236,14 +242,17 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   if (ampel.sperre) throw new AngebotFehler(`Nicht gesendet: ${ampel.sperre}. Ein Angebot geht an diese Person nicht hinaus.`, 409, { ampel: 'rot', grund: ampel.sperre });
   const g = (await gesellschaftenLaden(p.haushalt)).find(x => x.id === a0.gesellschaft) ?? { id: a0.gesellschaft };
   const luecken = gesellschaftLuecken(g);
-  if (luecken.includes('Firmierung') || luecken.includes('Anschrift')) throw new AngebotFehler(`Absender unvollständig — erst unter Stammdaten › Gesellschaften ergänzen: ${luecken.filter(x => x === 'Firmierung' || x === 'Anschrift').join(', ')}.`, 409, { luecken });
+  // Weg zum Absender (08.10., Sofort-Paket 3.1): Unternehmen › <Gesellschaft> › Absender — „Stammdaten › Gesellschaften“ gibt es nicht mehr.
+  const absenderWeg = WEG.unternehmen(g.id, 'absender');
+  const absenderOrt = `Unternehmen › ${mitVorgaben(g).name} › Absender`;
+  if (luecken.includes('Firmierung') || luecken.includes('Anschrift')) throw new AngebotFehler(`Absender unvollständig — erst unter ${absenderOrt} ergänzen: ${luecken.filter(x => x === 'Firmierung' || x === 'Anschrift').join(', ')}.`, 409, { luecken, weg: absenderWeg });
   const v = mitVorgaben(g);
   let logo: PdfLogo | null = null;
   if (g.logoDateiId) {
     const d = await lesen(p.haushalt, g.logoDateiId).catch(() => null);
     if (d && (d.eintrag.datei?.typ === 'image/png' || d.eintrag.datei?.typ === 'image/jpeg')) logo = { bytes: new Uint8Array(d.bytes), typ: d.eintrag.datei.typ };
   }
-  const hinweise = [...ampel.hinweise, ...luecken.filter(x => x !== 'Firmierung' && x !== 'Anschrift').map(x => `Absender: ${x} fehlt (Stammdaten › Gesellschaften).`)];
+  const hinweise = [...ampel.hinweise, ...luecken.filter(x => x !== 'Firmierung' && x !== 'Anschrift').map(x => `Absender: ${x} fehlt (${absenderOrt}).`)];
 
   // 2. Deal: vorhanden (am Angebot, sonst offener der Person/Firma) oder neu über den EINEN Weg (`dealAnlegen`).
   const firmaId = a0.firmaId ?? k.firmaId;

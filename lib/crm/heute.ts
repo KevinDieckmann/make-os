@@ -24,7 +24,7 @@ import { mandatLage } from './kunden';
 import { followUpBis } from './events';
 import { nachfassText } from './marke';
 import { taktVon, dealWiedervorlagen } from './followup';
-import { haeltBeziehung, zustaendig, BEIDE } from './team';
+import { haeltBeziehung, zustaendig, wer, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
@@ -44,6 +44,11 @@ export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
 export interface Karte {
   kontakt: Kontakt; name: string; kategorie: Kategorie; punkte: number; gruende: string[];
   kanal: KanalStatus | null; chance?: Chance; bezug?: string;
+  /**
+   * Das echte Follow-up hinter der Karte (08.10., Sofort-Paket 4.1/4.3): der Ergebnis-Knopf erledigt es mit (POST /api/crm/aktivitaet
+   * mit `followupId`), und die Karte gehört der Person, die für das Follow-up zuständig ist (`karteGehoert`).
+   */
+  followupId?: string;
 }
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
@@ -70,8 +75,16 @@ export function unbeantwortet(k: Kontakt, heute?: string): boolean {
  */
 export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number } }
 
-/** Wem eine Karte gehört: Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält. */
-export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug'>, crm: CrmBestand): string {
+/**
+ * Wem eine Karte gehört: Follow-up → Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält.
+ * Das Follow-up zuerst (08.10., Sofort-Paket 4.3): die Glocke meldet ein Follow-up der zuständigen Person — die Karte liegt dann
+ * auch in IHRER Power Hour, nicht bei der Person, die den Deal oder die Beziehung hält.
+ */
+export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'followupId'>, crm: CrmBestand): string {
+  if (c.followupId) {
+    const f = (crm.followups ?? []).find(x => x.id === c.followupId);
+    if (f && wer(f.zustaendig)) return wer(f.zustaendig)!;
+  }
   if (c.chance) return zustaendig(c.chance.besitzer, 'sales');
   if (c.bezug) {
     const m = crm.mandate.find(x => x.id === c.bezug); if (m) return zustaendig(m.zustaendig, 'sales');
@@ -81,7 +94,8 @@ export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug'>, crm
   return haeltBeziehung(c.kontakt);
 }
 
-export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string, n = 12): Auswahl {
+/** `person` null (08.10., Systemlauf der Heads): die Karten aller — sonst nur die, die dieser Person gehören (oder beiden). */
+export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, n = 12): Auswahl {
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const chancenJe = new Map<string, Chance[]>();
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) for (const id of c.kontaktIds) chancenJe.set(id, [...(chancenJe.get(id) ?? []), c]);
@@ -105,10 +119,12 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     if (!k) return;
     const alt = kandidaten.get(k.id);
     const rang = (x: Kategorie) => KATEGORIEN.findIndex(c => c.id === x);
-    if (alt && rang(alt.kategorie) < rang(kategorie)) { alt.gruende.push(grund); alt.punkte += Math.round(punkte / 3); return; }
-    if (alt && rang(alt.kategorie) === rang(kategorie)) { alt.gruende.push(grund); alt.punkte += punkte; return; }
+    // Das Follow-up hinter einer Karte geht beim Zusammenlegen nie verloren (4.1) — sonst bliebe es nach dem Ergebnis-Knopf offen.
+    if (alt && rang(alt.kategorie) < rang(kategorie)) { alt.gruende.push(grund); alt.punkte += Math.round(punkte / 3); if (extra.followupId && !alt.followupId) alt.followupId = extra.followupId; return; }
+    if (alt && rang(alt.kategorie) === rang(kategorie)) { alt.gruende.push(grund); alt.punkte += punkte; if (extra.followupId && !alt.followupId) alt.followupId = extra.followupId; return; }
     const ctx = { hatMandat: mandatJe.has(k.id), hatChance: chancenJe.has(k.id) };
-    kandidaten.set(k.id, { kontakt: k, name: anzeigename(k), kategorie, punkte, gruende: [grund, ...(alt?.gruende ?? [])], kanal: besterKanal(k, ctx), ...extra });
+    const fu = extra.followupId ?? alt?.followupId;
+    kandidaten.set(k.id, { kontakt: k, name: anzeigename(k), kategorie, punkte, gruende: [grund, ...(alt?.gruende ?? [])], kanal: besterKanal(k, ctx), ...extra, ...(fu ? { followupId: fu } : {}) });
   };
 
   // 1 Versprechen
@@ -131,7 +147,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   // 1b Echte Follow-ups (27.09.): die Follow-up-Ebene führt — was dort fällig ist, liegt auch hier oben (Prüfbericht, Punkt 1).
   for (const f of (crm.followups ?? []).filter(f => f.status === 'offen' && f.faellig <= heute && f.kontaktId)) {
     const d = tage(f.faellig, heute);
-    nimm(nachId.get(f.kontaktId!), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Follow-up „${f.text}“ seit ${d} Tagen überfällig` : `Follow-up heute: ${f.text}`, f.bezug.art === 'chance' ? { chance: crm.chancen.find(c => c.id === f.bezug.id) } : { bezug: f.bezug.id });
+    nimm(nachId.get(f.kontaktId!), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Follow-up „${f.text}“ seit ${d} Tagen überfällig` : `Follow-up heute: ${f.text}`, { ...(f.bezug.art === 'chance' ? { chance: crm.chancen.find(c => c.id === f.bezug.id) } : { bezug: f.bezug.id }), followupId: f.id });
   }
   // 2 Signale
   for (const k of kontakte) if (unbeantwortet(k, heute)) nimm(k, 'signale', 50, (k.aktivitaeten ?? []).slice(-1)[0]?.text?.startsWith('Mail:') ? `hat geschrieben (${(k.aktivitaeten ?? []).slice(-1)[0].text!.slice(6, 70)}) — wartet auf dich` : 'hat geantwortet — wartet auf dich');
@@ -197,7 +213,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     const k = c.kontakt;
     if (ausgenommen(k)) { aus.sperre++; continue; }
     const wem = karteGehoert(c, crm);
-    if (wem !== person && wem !== BEIDE) { aus.beiAnderen++; continue; }
+    if (person !== null && wem !== person && wem !== BEIDE) { aus.beiAnderen++; continue; }
     if (!c.kanal) { aus.ohneKanal++; continue; }
     const kuerzlich = k.letzterKontakt && werktageSeit(k.letzterKontakt, heute) < 3;
     if (kuerzlich && c.kategorie !== 'signale' && c.kategorie !== 'versprechen') { aus.kuerzlich++; continue; }

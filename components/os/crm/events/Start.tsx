@@ -47,6 +47,8 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
   // Reihe (03.10., z. B. Fokus Innovation): optional — ohne Wahl ein gewöhnlicher Make.One-Abend.
   const [reihe, setReihe] = useState<string | undefined>(undefined);
   const [laeuft, setLaeuft] = useState(false);
+  // Nur weiter, wenn der Server das Event angenommen hat (08.10., Sofort-Paket 5.11) — sonst öffnete die Seite ein Event, das es nicht gibt.
+  const [fehler, setFehler] = useState<string | null>(null);
   const hinweis = zielHinweis(ziel);
   const bereit = zielReicht(ziel, hinweis) && /^\d{4}-\d{2}-\d{2}$/.test(datum) && !laeuft;
 
@@ -74,8 +76,10 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       status: 'geplant', ...(zustaendig ? { zustaendig } : {}), marke: marke ?? MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString(),
     };
     const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
-    await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
+    setFehler(null);
+    const ok = await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
     setLaeuft(false);
+    if (!ok) { setFehler('Das Event ließ sich nicht anlegen — der Grund steht oben, die Eingaben bleiben stehen.'); return; }
     onFertig(e.id);
   };
 
@@ -136,9 +140,10 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       </Feldzeile>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Knopf farbe={LEUCHT.beziehung} aus={!bereit} onClick={() => void anlegen()}>{laeuft ? 'legt an …' : 'Event anlegen'}</Knopf>
+        <Knopf farbe={LEUCHT.beziehung} aus={!bereit} onClick={anlegen}>{laeuft ? 'legt an …' : 'Event anlegen'}</Knopf>
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Status „Geplant“ — danach: Gäste aus der Kartei, Checkliste als Aufgaben, Budget in die Liquiditätsplanung, Termin in den Kalender.</span>
       </div>
+      {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
     </div>
   );
 }

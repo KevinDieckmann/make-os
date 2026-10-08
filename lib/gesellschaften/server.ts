@@ -10,13 +10,13 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { gesellschaftenName } from '@/lib/crm/gesellschaften';
-import { istGesellschaft, type GesellschaftId } from '@/lib/einheiten';
+import { istGesellschaft, type GesellschaftId, type Gesellschaftskennung } from '@/lib/einheiten';
 import { inPapierkorb, ausPapierkorb, imPapierkorb } from '@/lib/eintraege/sicher';
 import {
   alleGesellschaften, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
   eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, GRENZEN, PRAEFIX,
   type RegisterDatei, type RegisterGesellschaft, type RegisterFehler, type RegisterListe, type EintragAktion, type CrmVerweisTeil,
-  beschlussSaeubern, organSaeubern, faelligeErinnerungen, geloeschtVermerken,
+  beschlussSaeubern, organSaeubern, faelligeErinnerungen, geloeschtVermerken, operativeBusinessGesellschaft,
   type Gesellschafter, type FremdBeteiligung, type Vertrag, type Beschluss, type Organ, type ListenEintrag,
 } from './modell';
 
@@ -25,6 +25,15 @@ export const standVon = (g: RegisterGesellschaft) => fingerabdruck(g as unknown 
 
 export async function ladeRegister(haushalt: string): Promise<RegisterDatei | null> {
   return loadJson<RegisterDatei>(registerName(haushalt));
+}
+
+/**
+ * Vorgabe für Absender und Rechnung dieses Haushalts (08.10., Sofort-Paket 3.2): die operative Business-Gesellschaft aus dem Register
+ * (`operativeBusinessGesellschaft`, Holding-Rückfall wie im Business-Index), sonst `null` — dann wählt der Mensch.
+ */
+export async function absenderVorgabe(haushalt: string | null | undefined): Promise<Gesellschaftskennung | null> {
+  const { HOLDING_VORGABE } = await import('@/lib/business/register');
+  return operativeBusinessGesellschaft(haushalt ? await ladeRegister(haushalt) : null, HOLDING_VORGABE);
 }
 
 /** Nur die Felder, die Deals/Mandate/Produkte für die Verweis-Prüfung brauchen (ohne Personendaten). */

@@ -1,5 +1,6 @@
 // ─── Markttraktion · Angebots-Tool (28.09.) ─────────────────────────────────
-// GET                     → { angebote (mit stand), gesellschaften (IBAN maskiert) } — zieht vorher den Ablauf nach
+// GET                     → { angebote (mit stand), gesellschaften (nur Absender-Felder, IBAN maskiert, `luecken`), vorgabe } — zieht vorher den Ablauf nach
+//                           `vorgabe` (08.10.): die operative Business-Gesellschaft aus dem Register oder null (dann wählt der Mensch).
 // POST { aktion, … }:
 //   speichern  { id?, felder, stand? }      → Entwurf anlegen/ändern (Stand/409, Grenzen 413)
 //   stellen    { id, stand, nachfassenAm? } → Nummer, PDF in die Ablage, Deal/Follow-up/Aktivität (409 bei Sperre)
@@ -19,7 +20,8 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeCrmMitPapierkorb } from '@/lib/crm/speicher';
-import { gesellschaftFuerAnzeige } from '@/lib/crm/gesellschaften';
+import { absenderFuerAnzeige } from '@/lib/crm/gesellschaften';
+import { absenderVorgabe } from '@/lib/gesellschaften/server';
 import { AngebotFehler, ablaufNachziehen, angebotAblage, angebotAblehnen, angebotAnnehmen, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
 
 export const runtime = 'nodejs';
@@ -42,7 +44,8 @@ export async function GET(req: Request) {
     const h = await haushaltVon(req);
     const crm = await ladeCrmMitPapierkorb();
     const alle = crm.angebote ?? [];
-    return NextResponse.json({ ok: true, angebote: alle.filter(a => !a.geloeschtAm).map(mitStand), papierkorb: alle.filter(a => a.geloeschtAm).map(mitStand), gesellschaften: (await gesellschaftenLaden(h?.haushalt)).map(gesellschaftFuerAnzeige), haushalt: !!h }, { headers: { 'Cache-Control': 'no-store' } });
+    // Absender mit `luecken` (08.10., Sofort-Paket 3.1): sonst erschien „Absender … fehlt“ nie und erst „Senden“ scheiterte. Nur Absender-Felder — nie Cap-Table/Verträge.
+    return NextResponse.json({ ok: true, angebote: alle.filter(a => !a.geloeschtAm).map(mitStand), papierkorb: alle.filter(a => a.geloeschtAm).map(mitStand), gesellschaften: (await gesellschaftenLaden(h?.haushalt)).map(absenderFuerAnzeige), vorgabe: await absenderVorgabe(h?.haushalt), haushalt: !!h }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
 }
 

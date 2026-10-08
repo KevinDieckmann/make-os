@@ -19,7 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
-import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
 import { herkunftVon } from '@/lib/crm/herkunft';
@@ -100,6 +100,13 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
 
   const zaehl = (w: RundenFilter['wer']) => (d ? zuQualifizieren(d.leads, { wer: w, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }).length : 0);
   const neuZahl = d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), bean: 'N', heute }).length : 0;
+  // 08.10. (Sofort-Paket 1.1): wie viele die Runde nur wegen „kalt“ nicht zeigt — nie eine leere Runde, die „alle qualifiziert“ behauptet.
+  const kalteZahl = d ? kalteAusgeblendet(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
+  const kalteZeigen = kalteZahl > 0 && !auchKalt ? (
+    <Hinweis art="info" rolle="status" aktion={<Knopf leise onClick={() => setAuchKalt(true)}>Zeigen</Knopf>}>
+      {kalteZahl} {kalteZahl === 1 ? 'kalter Lead ist' : 'kalte Leads sind'} ausgeblendet — sie warten im Segment „Vernetzen“, bis sie warm werden.
+    </Hinweis>
+  ) : null;
   const sqlOffen = karten.filter(sqlEntscheidungOffen).length;
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
@@ -135,6 +142,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
             </select>
             {karten.length > 0 && <span className="quali-nav" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
           </div>
+          {kalteZeigen && karten.length > 0 && <div style={{ marginTop: 10 }}>{kalteZeigen}</div>}
           {sqlOffen > 0 && <Hinweis art="gut" rolle="status">{sqlOffen} {sqlOffen === 1 ? 'Lead ist' : 'Leads sind'} SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.</Hinweis>}
           {start && d && !startZeile && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
         </Karte>
@@ -148,8 +156,8 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
 
         {!d && <Karte i={1}><Leer>Lädt die Leads …</Leer></Karte>}
         {d && !karten.length && (
-          <Karte i={1} akzent={LEUCHT.gut}>
-            <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Nicht zugeordnet“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>
+          <Karte i={1} akzent={kalteZeigen ? undefined : LEUCHT.gut}>
+            {kalteZeigen ?? <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Nicht zugeordnet“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>}
           </Karte>
         )}
         {d && karten.length > 0 && !z && (

@@ -11,7 +11,7 @@
 // volle IBAN (der Kunde soll zahlen können) — es entsteht nur auf dem Server.
 
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import { KERN_EINHEITEN, UG_NAME } from '@/lib/einheiten';
+import { KERN_EINHEITEN, RECHTSART, UG_NAME } from '@/lib/einheiten';
 import { ibanGueltig, ibanGrundform, ibanMaskiert } from './zahlung';
 import { GESELLSCHAFTEN, KURZ_VORGABE, NUMMER_VORGABE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE, nummernformatOk, istGesellschaft } from './angebote';
 
@@ -127,6 +127,24 @@ export function gesellschaftFuerAnzeige<G extends { bank?: GesellschaftBank }>(g
   return { ...g, bank: { ...g.bank, iban: ibanMaskiert(g.bank.iban), ibanGesetzt: true } };
 }
 
+/** Die Felder des Absenders — NUR diese gehen in eine Absender-Antwort (Angebots-Tool, Stammdaten), nie Cap-Table, Organe, Verträge, Notizen des Registers. */
+export const ABSENDER_FELDER = ['id', 'firmierung', 'strasse', 'plz', 'ort', 'land', 'email', 'telefon', 'web', 'steuernummer', 'ustId', 'geschaeftsfuehrung', 'register', 'bank',
+  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'kurz', 'logoDateiId', 'fusstext', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
+
+/**
+ * Ein Absender für den Browser (08.10., Sofort-Paket 3.1) — EINE Stelle für GET /api/crm/angebot und GET /api/crm/gesellschaften:
+ * nur die Absender-Felder (Liste statt Ausschluss: ein neues Register-Feld landet nie aus Versehen hier), IBAN maskiert und die
+ * `luecken` (was für ein Angebot fehlt). Vorher lieferte das Angebots-Tool die Gesellschaften ohne `luecken` — der Hinweis
+ * „Absender … fehlt“ erschien nie, und erst „Senden“ scheiterte.
+ */
+export function absenderFuerAnzeige(roh: Gesellschaft): Gesellschaft & { luecken: string[] } {
+  const g = Object.fromEntries(ABSENDER_FELDER.filter(f => (roh as unknown as Record<string, unknown>)[f] !== undefined).map(f => [f, (roh as unknown as Record<string, unknown>)[f]])) as unknown as Gesellschaft;
+  return { ...gesellschaftFuerAnzeige(g), luecken: gesellschaftLuecken(roh) };
+}
+
+/** Wo der Absender gepflegt wird: Unternehmen › <Gesellschaft> › Absender (seit dem Gesellschafts-Register 04.10.). */
+export const ABSENDER_ORT = 'Unternehmen › Gesellschaft › Absender';
+
 /** Was für Angebote fehlt (Hinweis im Tool und in den Stammdaten) — keine Rechtsberatung. */
 export function gesellschaftLuecken(g: Gesellschaft): string[] {
   const f: string[] = [];
@@ -134,7 +152,8 @@ export function gesellschaftLuecken(g: Gesellschaft): string[] {
   if (!g.strasse || !g.plz || !g.ort) f.push('Anschrift');
   if (!g.steuernummer && !g.ustId) f.push('Steuernummer oder USt-IdNr.');
   if (!g.email) f.push('E-Mail');
-  if (g.id === 'ug' || g.id === 'kdv') { if (!g.geschaeftsfuehrung) f.push('Geschäftsführung'); if (!g.register) f.push('Registergericht/HRB'); }
+  // Pflichtangaben einer Kapitalgesellschaft (§ 35a GmbHG) — aus der Rechtsart der Einheit, nie eine feste Kennung (Plattform-Regel, 08.10.).
+  if (RECHTSART[g.id] === 'kapitalgesellschaft') { if (!g.geschaeftsfuehrung) f.push('Geschäftsführung'); if (!g.register) f.push('Registergericht/HRB'); }
   return f;
 }
 

@@ -76,7 +76,8 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
   return { luecken, positiv, negativ };
 }
 
-export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string, frueher: { titel: string; status: string }[]) {
+/** `personName` null = Systemlauf des Takts: die Karten aller (werIstDran ohne Personenfilter), `meta.fuer` = null. */
+export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string | null, frueher: { titel: string; status: string }[]) {
   // Werbesperre und Einschränkung (Art. 18, U2): nie in ein Agentenpaket.
   const aktiv = kontakte.filter(k => !ausgenommen(k));
   const nachId = new Map(aktiv.map(k => [k.id, k]));

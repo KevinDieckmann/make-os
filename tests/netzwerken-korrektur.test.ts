@@ -197,6 +197,13 @@ describe('4 · Standardansicht Leads: neue Netzwerken-Leads stehen in „In Arbe
     expect(z.status).toBe('kontaktiert');
     expect(z.gesetzt).toBe(true);
     expect(LEAD_STATUS.find(s => s.id === z.status)!.aktiv).toBe(true);
+    // 08.10. (Markttraktion Sofort-Paket 1.2): der Kommentar verspricht „In Arbeit“ — geprüft wird jetzt, was die Liste wirklich filtert:
+    // ein gesetzter aktiver Status zählt nie als kalt (auch mit kaltem Score, siehe tests/markttraktion-sofort.test.ts), Liste und Runde zeigen ihn.
+    const { nichtKalt, inArbeit, zuQualifizieren, istKalt } = await import('@/lib/crm/leads');
+    expect(istKalt({ ...z, score: { ...z.score, temperatur: 'kalt' } })).toBe(false);
+    expect(nichtKalt(z)).toBe(true);
+    expect(inArbeit(z)).toBe(true);
+    expect(zuQualifizieren([z], { wer: 'alle', heute: '2026-10-02' }).map(x => x.id)).toEqual([z.id]);
   });
   it('ohne Firma: Lead an der Person; Status „neu“ wird überschrieben, ein aktiver Status bleibt', async () => {
     const { leads } = await import('@/lib/crm/leads');

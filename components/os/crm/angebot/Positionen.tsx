@@ -39,7 +39,7 @@ function ZahlFeld({ wert, onWert, breite, label, rechts }: { wert: string; onWer
     style={{ ...zelle, width: breite, textAlign: rechts ? 'right' : 'left', fontVariantNumeric: 'tabular-nums' }} />;
 }
 
-export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; gesellschaft: Gesellschaftskennung; kleinunternehmer: (g: Gesellschaftskennung) => boolean; onDazu: (p: AngebotPosition, von: Gesellschaftskennung | null) => void; aus?: boolean }) {
+export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; /** null = Absender noch nicht gewählt (dann zählt jedes Produkt mit Gesellschaft als „andere“, alle sichtbar). */ gesellschaft: Gesellschaftskennung | null; kleinunternehmer: (g: Gesellschaftskennung | null) => boolean; onDazu: (p: AngebotPosition, von: Gesellschaftskennung | null) => void; aus?: boolean }) {
   const l = katalog(leistungen, gesellschaft);
   const [alle, setAlle] = useState(false);
   // Hat die gewählte Gesellschaft kein eigenes Produkt, gleich alle zeigen — im Call zählt jeder Klick.

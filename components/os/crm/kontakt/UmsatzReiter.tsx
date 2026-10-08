@@ -23,10 +23,10 @@ import { Wahl, type WahlEintrag } from '../Wahl';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
-import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName, type UmsatzRechnung, type ZugeordneteRechnung, type AngebotZeile } from '@/lib/crm/umsatz';
+import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName, rechnungsFirma, rechnungVorbelegung, rechnungAusFormular, type UmsatzRechnung, type ZugeordneteRechnung, type AngebotZeile } from '@/lib/crm/umsatz';
 import { ZAHLUNGSWEGE, ZAHLUNGSWEG_LABEL, ibanGueltig, ibanMaskiert, zahlungsQuelle, zahlungLuecken } from '@/lib/crm/zahlung';
 import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, istBeleg, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
-import { einheitAusGesellschaft, finanzFirmaFuer, gesellschaftAusEinheit, NUR_GRUNDDATEN } from '@/lib/einheiten';
+import { einheitAusGesellschaft, istGesellschaft, NUR_GRUNDDATEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { inGruppe } from '@/lib/crm/konzern';
 import Link from 'next/link';
 import { angebotLink } from '@/lib/crm/adresse';
@@ -140,6 +140,20 @@ async function hochladen(meta: Record<string, unknown>, datei: File | null): Pro
   } catch { return { ok: false, fehler: 'Keine Verbindung.' }; }
 }
 
+/**
+ * Die Vorgabe-Gesellschaft für Rechnungen ohne Mandat (08.10., Sofort-Paket 3.2): die operative Business-Gesellschaft aus dem Register
+ * (GET /api/crm/gesellschaften › vorgabe). `null` = nicht eindeutig oder nicht erreichbar — dann wird gewählt, nie still `kdc`.
+ */
+function useRechnungsVorgabe(): Gesellschaftskennung | null {
+  const [v, setV] = useState<Gesellschaftskennung | null>(null);
+  useEffect(() => {
+    let aktiv = true;
+    fetch('/api/crm/gesellschaften', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((d: { vorgabe?: unknown } | null) => { if (aktiv && istGesellschaft(d?.vorgabe)) setV(d!.vorgabe as Gesellschaftskennung); }).catch(() => {});
+    return () => { aktiv = false; };
+  }, []);
+  return v;
+}
+
 // ── Der Reiter ───────────────────────────────────────────────────────────────
 
 export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
@@ -150,6 +164,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   const [meldung, setMeldung] = useState<string | null>(null);
   // „Ganze Gruppe“ (28.09., #7): Umsatz, Deals und Rechnungen von Mutter- und Tochterfirmen zusammenfassen.
   const [gruppe, setGruppe] = useState(false);
+  const vorgabe = useRechnungsVorgabe();
 
   const planLaden = useCallback(async (): Promise<Plan | null> => {
     try {
@@ -283,9 +298,12 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
             alsRechnung={plan === null || typeof plan !== 'object' ? undefined : async () => {
               const e = a.eintrag!;
               const mandat = e.mandatId ? bezug.mandate.find(m => m.id === e.mandatId) : bezug.mandate[0];
-              // Register-Gesellschaft (04.10.): noch nicht im Finanzplan — Hinweis statt still bei der Selbstständigkeit.
-              const finanzFirma = mandat ? finanzFirmaFuer(mandat.gesellschaft) : 'kdc';
-              if (!finanzFirma) { setMeldung(NUR_GRUNDDATEN); return; }
+              // Register-Gesellschaft (04.10.): noch nicht im Finanzplan — Hinweis statt still bei der Selbstständigkeit. Ohne Mandat bzw.
+              // Mandat „offen“: die operative Business-Gesellschaft (08.10.), sonst wählen über „+ Rechnung“ — nie still `kdc`.
+              const rf = rechnungsFirma(mandat, vorgabe);
+              if (rf.nurGrunddaten) { setMeldung(NUR_GRUNDDATEN); return; }
+              const finanzFirma = rf.firmaId;
+              if (!finanzFirma) { setMeldung('Keine eindeutige Gesellschaft für diese Rechnung — bitte unter Rechnungen „+ Rechnung“ nutzen und die Gesellschaft wählen.'); return; }
               const id = neueKennung('r');
               const ok = await rechnungSchreiben({ id, firmaId: finanzFirma, kunde: kundenName(k, bezug.firma), titel: e.titel || `Angebot ${e.angebot?.nummer ?? ''}`.trim(), betrag: e.angebot?.betrag ?? 0, status: 'geplant', ...(e.angebot?.nummer ? { angebot: e.angebot.nummer } : {}), ...(e.angebot?.datum ? { angebotAm: e.angebot.datum } : {}), ...(mandat ? { mandatId: mandat.id } : {}) });
               if (ok) await eintragAendern(e.id, { rechnungId: id });
@@ -296,7 +314,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
       <KachelKarte id="rechnungen" i={4} titel="Rechnungen" farbe={LEUCHT.puls} kurz={rechnungen.length ? `${offen.length} offen · ${rechnungen.length} gesamt` : undefined} zu={zu.has('rechnungen')} umschalten={umschalten}
         rechts={<a href={WEG.rechnungen()} style={leiseLink}>in den Finanzen ›</a>}>
         {planHinweis ?? <>
-          <RechnungNeu k={k} bezug={bezug} zielTage={zielTage} heute={heute} firmen={(plan as Plan).firmen} schreiben={rechnungSchreiben} />
+          <RechnungNeu k={k} bezug={bezug} zielTage={zielTage} heute={heute} firmen={(plan as Plan).firmen} vorgabe={vorgabe} schreiben={rechnungSchreiben} />
           {!rechnungen.length ? <Leer>Noch keine Rechnung für {kundenName(k, bezug.firma) || 'diesen Kontakt'} im Finanzplan.</Leer> : rechnungen.map(z => (
             <RechnungZeile key={z.r.id} z={z} heute={heute} pdf={rechnungsPdf.get(z.r.id)} kontaktId={k.id} firmaId={bezug.firma?.id} onFertig={ablageLaden} setMeldung={setMeldung} loeschen={eintragLoeschen} stornieren={stornieren} />
           ))}
@@ -514,20 +532,26 @@ function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung 
 
 // ── Rechnungen ───────────────────────────────────────────────────────────────
 
-function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kontakt; bezug: ReturnType<typeof umsatzBezug>; zielTage: number; heute: string; firmen: { id: string; name: string }[]; schreiben: (e: Record<string, unknown>) => Promise<boolean> }) {
+function RechnungNeu({ k, bezug, zielTage, heute, firmen, vorgabe, schreiben }: { k: Kontakt; bezug: ReturnType<typeof umsatzBezug>; zielTage: number; heute: string; firmen: { id: string; name: string }[]; vorgabe: Gesellschaftskennung | null; schreiben: (e: Record<string, unknown>) => Promise<boolean> }) {
   const [offen, setOffen] = useState(false);
   const aktiv = bezug.mandate.find(m => m.status === 'aktiv') ?? bezug.mandate[0];
+  // Wählbar sind die Gesellschaften des Finanzplans (ohne Privat) — die Vorbelegung rechnet `rechnungVorbelegung` (lib/crm/umsatz.ts):
+  // Brutto aus dem Netto-Honorar, Gesellschaft des Mandats bzw. die operative Business-Gesellschaft, Status „geplant“ (08.10., 3.2/3.9).
   const eigene = firmen.filter(f => f.id !== 'privat').map(f => ({ id: f.id, label: einheitAusGesellschaft(f.id) ?? f.name, hinweis: f.name }));
-  type Form = { nummer: string; titel: string; betrag: string; datum: string; faellig: string; mandatId: string | null; firmaId: string; status: 'gestellt' | 'geplant' };
-  const start = (): Form => ({ nummer: '', titel: aktiv?.titel ?? '', betrag: aktiv?.honorar.betrag ? String(aktiv.honorar.betrag) : '', datum: heute, faellig: plusTage(heute, zielTage), mandatId: aktiv?.id ?? null, firmaId: (aktiv ? gesellschaftAusEinheit(aktiv.gesellschaft) : undefined) ?? eigene[0]?.id ?? 'kdc', status: 'gestellt' });
+  type Form = { nummer: string; titel: string; betrag: string; datum: string; faellig: string; mandatId: string | null; firmaId: string | null; status: 'gestellt' | 'geplant'; nurGrunddaten: boolean };
+  const ausMandat = (m: (typeof bezug.mandate)[number] | undefined) => { const v = rechnungVorbelegung(m, vorgabe); return { titel: v.titel, betrag: v.betrag, mandatId: v.mandatId, firmaId: v.firmaId && eigene.some(e => e.id === v.firmaId) ? v.firmaId : null, nurGrunddaten: v.nurGrunddaten }; };
+  const start = (): Form => ({ nummer: '', datum: heute, faellig: plusTage(heute, zielTage), status: 'geplant', ...ausMandat(aktiv) });
   const [f, setF] = useState(start);
   const [laeuft, setLaeuft] = useState(false);
   if (!offen) return <div style={{ marginBottom: 6 }}><button onClick={() => { setF(start()); setOffen(true); }} style={leiseLink}>+ Rechnung</button></div>;
   const mandatListe = bezug.mandate.map(m => ({ id: m.id, label: m.titel, hinweis: m.kunde }));
+  const mandat = f.mandatId ? bezug.mandate.find(m => m.id === f.mandatId) : undefined;
+  // „gestellt“ nur mit Nummer — eine gestellte Rechnung ohne Nummer gibt es nicht (sie ist ab dann festgeschrieben).
+  const fehlt = [!f.betrag.trim() ? 'Betrag' : '', !f.firmaId ? 'Gesellschaft' : '', f.status === 'gestellt' && !f.nummer.trim() ? 'Rechnungsnummer (für „gestellt“)' : ''].filter(Boolean);
   async function los() {
+    if (!f.firmaId || fehlt.length) return;
     setLaeuft(true);
-    const betrag = Number(f.betrag.replace(',', '.'));
-    const ok = await schreiben({ id: neueKennung('r'), firmaId: f.firmaId, kunde: kundenName(k, bezug.firma), titel: f.titel.trim() || 'Rechnung', betrag: Number.isFinite(betrag) ? betrag : 0, status: f.status, ...(f.nummer ? { nummer: f.nummer.trim() } : {}), ...(f.datum ? { datum: f.datum } : {}), ...(f.faellig ? { faellig: f.faellig } : {}), ...(f.mandatId ? { mandatId: f.mandatId } : {}) });
+    const ok = await schreiben(rechnungAusFormular({ ...f, firmaId: f.firmaId }, mandat, { id: neueKennung('r'), kunde: kundenName(k, bezug.firma) }));
     setLaeuft(false);
     if (ok) setOffen(false);
   }
@@ -536,12 +560,15 @@ function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kont
       <Feldzeile label="Status"><Wahl<'gestellt' | 'geplant'> liste={[{ id: 'gestellt', label: 'gestellt' }, { id: 'geplant', label: 'geplant' }]} wert={f.status} label="Status" onWahl={s => setF({ ...f, status: s })} /></Feldzeile>
       <Feldzeile label="Nummer"><input value={f.nummer} onChange={e => setF({ ...f, nummer: e.target.value })} placeholder="Rechnungsnummer" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(220px, 100%)' }} /></Feldzeile>
       <Feldzeile label="Titel"><input value={f.titel} onChange={e => setF({ ...f, titel: e.target.value })} placeholder="Leistung" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
-      <Feldzeile label="Betrag €"><input inputMode="decimal" value={f.betrag} onChange={e => setF({ ...f, betrag: e.target.value })} placeholder="brutto" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(140px, 100%)' }} /></Feldzeile>
+      <Feldzeile label="Betrag € brutto"><input inputMode="decimal" value={f.betrag} onChange={e => setF({ ...f, betrag: e.target.value })} placeholder="brutto" aria-label="Betrag brutto in Euro" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(140px, 100%)' }} />{mandat?.honorar.netto && mandat.honorar.betrag ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 8 }}>Honorar {euro(mandat.honorar.betrag)} netto + {mandat.ustSatz} % USt</span> : null}</Feldzeile>
       <Feldzeile label="Datum · fällig"><span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><input type="date" value={f.datum} onChange={e => setF({ ...f, datum: e.target.value, faellig: e.target.value ? plusTage(e.target.value, zielTage) : f.faellig })} aria-label="Rechnungsdatum" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(160px, 100%)' }} /><input type="date" value={f.faellig} onChange={e => setF({ ...f, faellig: e.target.value })} aria-label="fällig am" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(160px, 100%)' }} /></span></Feldzeile>
-      {mandatListe.length > 0 && <Feldzeile label="Mandat"><Wahl<string> liste={mandatListe} wert={f.mandatId} label="Mandat" onWahl={v => { const m = bezug.mandate.find(x => x.id === v); const g = m ? gesellschaftAusEinheit(m.gesellschaft) : undefined; setF({ ...f, mandatId: v, ...(g ? { firmaId: g } : {}) }); }} onLeeren={() => setF({ ...f, mandatId: null })} /></Feldzeile>}
-      {eigene.length > 0 && <Feldzeile label="Einheit"><Wahl<string> liste={eigene} wert={f.firmaId} label="Einheit" onWahl={v => setF({ ...f, firmaId: v })} /></Feldzeile>}
+      {mandatListe.length > 0 && <Feldzeile label="Mandat"><Wahl<string> liste={mandatListe} wert={f.mandatId} label="Mandat" onWahl={v => setF({ ...f, ...ausMandat(bezug.mandate.find(x => x.id === v)), mandatId: v })} onLeeren={() => setF({ ...f, mandatId: null, nurGrunddaten: false })} /></Feldzeile>}
+      {eigene.length > 0 && <Feldzeile label="Gesellschaft"><Wahl<string> liste={eigene} wert={f.firmaId} label="Gesellschaft" leer="Gesellschaft wählen ▾" onWahl={v => setF({ ...f, firmaId: v, nurGrunddaten: false })} /></Feldzeile>}
+      {f.nurGrunddaten && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '4px 0' }}>{NUR_GRUNDDATEN}</div>}
+      {!f.firmaId && !f.nurGrunddaten && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '4px 0' }}>Keine eindeutige Gesellschaft — bitte wählen, bei welcher Gesellschaft die Rechnung in den Finanzplan geht.</div>}
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '4px 0' }}>Geht in den Finanzplan (Kunde „{kundenName(k, bezug.firma)}“){f.mandatId ? ', mit Bezug zum Mandat' : ' — ohne Mandat wird sie per Name zugeordnet'}.</div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><Knopf onClick={() => void los()} aus={laeuft || !f.betrag}>{laeuft ? 'speichert …' : 'Anlegen'}</Knopf><Knopf leise onClick={() => setOffen(false)}>Abbrechen</Knopf></div>
+      {fehlt.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '4px 0' }}>fehlt: {fehlt.join(', ')}</div>}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><Knopf onClick={los} aus={laeuft || fehlt.length > 0}>{laeuft ? 'speichert …' : 'Anlegen'}</Knopf><Knopf leise onClick={() => setOffen(false)}>Abbrechen</Knopf></div>
     </div>
   );
 }

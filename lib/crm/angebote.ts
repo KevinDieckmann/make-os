@@ -213,7 +213,8 @@ export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId',
  * Entwurf säubern: nur ENTWURF_FELDER aus `roh`, auf den bisherigen Entwurf gelegt. Status bleibt „entwurf“,
  * Version/Vorgänger bleiben, wie der Server sie setzte. Kennungen nur in ihrer Form (tote prüft die Verbindungsprüfung).
  */
-export function entwurfSaeubern(roh: Record<string, unknown>, alt: Angebot | null, basis: { id: string; jetzt: string; person: string; heute: string; gueltigTage?: number; zielTage?: number }): Angebot {
+/** `gesellschaftVorgabe` (08.10.): Absender eines NEUEN Entwurfs ohne Angabe — die operative Business-Gesellschaft (Server: `absenderVorgabe`). */
+export function entwurfSaeubern(roh: Record<string, unknown>, alt: Angebot | null, basis: { id: string; jetzt: string; person: string; heute: string; gueltigTage?: number; zielTage?: number; gesellschaftVorgabe?: Gesellschaftskennung }): Angebot {
   const r = (f: (typeof ENTWURF_FELDER)[number]) => (f in roh ? roh[f] : alt ? (alt as unknown as Record<string, unknown>)[f] : undefined);
   const g = r('gesellschaft');
   const pos = r('positionen');
@@ -224,7 +225,8 @@ export function entwurfSaeubern(roh: Record<string, unknown>, alt: Angebot | nul
   const gb = r('gueltigBis');
   const ziel = Math.round(Number(r('zahlungszielTage')));
   return {
-    id: basis.id, gesellschaft: istGesellschaft(g) ? g : alt?.gesellschaft ?? 'kdc',
+    // Rückfall `kdc` nur noch, wenn das Register keine eindeutige operative Business-Gesellschaft kennt (Altverhalten, im Editor sichtbar).
+    id: basis.id, gesellschaft: istGesellschaft(g) ? g : alt?.gesellschaft ?? basis.gesellschaftVorgabe ?? 'kdc',
     ...(kontaktIdOk(r('kontaktId')) ? { kontaktId: r('kontaktId') as string } : {}),
     ...(firmaIdOk(r('firmaId')) ? { firmaId: r('firmaId') as string } : {}),
     ...(idOk(r('dealId')) ? { dealId: r('dealId') as string } : {}),
@@ -343,7 +345,7 @@ export function positionAusProdukt(l: Leistung, id: string, opt: { kleinunterneh
 }
 
 /** Produkte für den Katalog im Tool: aktive der Gesellschaft (dazu die ohne Gesellschaft), „Text fehlt“ markiert. */
-export function katalog(leistungen: readonly Leistung[], gesellschaft: Gesellschaftskennung): { l: Leistung; textFehlt: boolean; andere: boolean }[] {
+export function katalog(leistungen: readonly Leistung[], gesellschaft: Gesellschaftskennung | null): { l: Leistung; textFehlt: boolean; andere: boolean }[] {
   return leistungen.filter(l => l.status === 'aktiv' && !l.geloeschtAm)
     .map(l => ({ l, textFehlt: produktAngebotFehlt(l).length > 0, andere: l.gesellschaft !== gesellschaft && l.gesellschaft !== 'offen' }))
     .sort((a, b) => Number(a.andere) - Number(b.andere) || a.l.name.localeCompare(b.l.name, 'de'));

@@ -22,7 +22,8 @@ import type { HeadId } from './prompt';
 import type { HeadStand } from './stand';
 import type { Vorschlag } from './pruefer';
 
-export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string, stand: HeadStand) {
+/** `person` null = Systemlauf des Takts (lib/heads/lauf.ts): Karten aller, „fuer“ ohne Rückfall. */
+export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, stand: HeadStand) {
   const frueher = stand.vorschlaege.filter(v => v.status !== 'erledigt').map(v => ({ titel: v.titel, status: v.status }));
   const basis = datenpaket(head, modus, kontakte, crm, heute, person, frueher) as Record<string, unknown>;
   const g = modus === 'frage' ? null : grundlauf(head, modus, basis);
@@ -40,9 +41,9 @@ export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], cr
 }
 export type VollesPaket = ReturnType<typeof vollesPaket>;
 
-/** Wer einen Vorschlag tun soll — Chance → Mandat → Event → Beziehung → Verantwortung der Welt. */
-export function fuerWen(v: Pick<Vorschlag, 'kontakt_id' | 'chance_id' | 'mandat_id' | 'event_id'>, head: HeadId, kontakte: Map<string, Kontakt>, crm: CrmBestand, person: string): string {
-  const aufloesen = (z: string) => (z === BEIDE ? person : z);
+/** Wer einen Vorschlag tun soll — Chance → Mandat → Event → Beziehung → Verantwortung der Welt. „beide“ wird die Person des Laufs — im Systemlauf (ohne Person) bleibt es „beide“. */
+export function fuerWen(v: Pick<Vorschlag, 'kontakt_id' | 'chance_id' | 'mandat_id' | 'event_id'>, head: HeadId, kontakte: Map<string, Kontakt>, crm: CrmBestand, person: string | null): string {
+  const aufloesen = (z: string) => (z === BEIDE ? person ?? BEIDE : z);
   if (v.chance_id) { const c = crm.chancen.find(x => x.id === v.chance_id); if (c) return aufloesen(zustaendig(c.besitzer, 'sales')); }
   if (v.mandat_id) { const m = crm.mandate.find(x => x.id === v.mandat_id); if (m) return aufloesen(zustaendig(m.zustaendig, 'sales')); }
   if (v.event_id && head === 'event') {

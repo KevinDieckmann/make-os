@@ -4,6 +4,64 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10. spät — Markttraktion Sofort-Paket (nur lokal — Branch `markttraktion-sofort`)
+
+Kevin 08.10.: „Markttraktion weiter ausbauen, damit wir Kunden generieren können — es muss am Ende jetzt alles gut laufen.“ Behoben sind die
+zehn Funde aus `MARKTTRAKTION_BEFUND.md` › Reihenfolge 1 (1.1, 1.2, 3.1, 3.2, 3.9, 4.1, 4.2, 4.3, 5.11, 6.1), je mit Test.
+- **1.1/1.2 Neue Kontakte verschwinden nicht mehr:** EINE Regel in `lib/crm/leads.ts` (`istKalt`, `nichtKalt`, `inArbeit`, `frischAngelegt`,
+  `FRISCH_TAGE` = 14, `kalteAusgeblendet`). Nie kalt: SQL, Kunde, Deal, ein von Hand GESETZTER aktiver Status (kontaktiert, im Gespräch,
+  Qualifizierung — z. B. aus Netzwerken) und ein Lead, dessen Person in den letzten 14 Tagen angelegt wurde. „Angelegt“ = `importiertAm` MIT
+  Anlage-Vermerk (jeder Anlege-Weg von Hand schreibt eine Aktivität; ein Listen-Import nicht — sonst stünden nach einem Import Hunderte Personen
+  14 Tage „In Arbeit“). Leads-Liste: „In Arbeit“ nimmt „Neu“ dazu; Runde: „n kalte Leads sind ausgeblendet — Zeigen“ (auch statt „alle qualifiziert“).
+- **3.1 Absender früh:** GET `/api/crm/angebot` liefert die Absender mit `luecken` über EINE Stelle `absenderFuerAnzeige` (lib/crm/gesellschaften.ts,
+  Liste der Absender-Felder statt Ausschluss — vorher kamen dort auch Cap-Table, Verträge und Notizen des Registers mit; dieselbe Stelle nutzt jetzt
+  `/api/crm/gesellschaften`). Editor: Chip + Hinweis „Absender unvollständig“ mit Link Unternehmen › Gesellschaft › Absender (`WEG.unternehmen(g,
+  'absender')`), „Mail versenden“ gesperrt; Vorschau ebenso. Die 409 beim Stellen nennt denselben Weg (`weg` in der Antwort), nicht mehr
+  „Stammdaten › Gesellschaften“. `gesellschaftLuecken` fragt die Rechtsart (`RECHTSART`), nicht mehr feste Kennungen.
+- **3.2 Absender-Vorgabe:** `operativeBusinessGesellschaft` (lib/gesellschaften/modell.ts; Server `absenderVorgabe`): `BUSINESS_GESELLSCHAFTEN` ohne
+  Holding (Rolle im Steckbrief, sonst `HOLDING_VORGABE` wie im Business-Index) und ohne Papierkorb — genau eine → sie, sonst wählen. GET Angebot und
+  Gesellschaften liefern sie als `vorgabe`. Editor: Deal → zuletzt gewählt → Vorgabe → offen („Absender wählen“, speichert erst nach der Wahl).
+  Umsatz-Reiter („+ Rechnung“, „→ als Rechnung planen“) ohne `kdc`-Rückfall. Ein neuer Entwurf ohne Absender auf dem Server (z. B. „Angebot“ aus
+  Netzwerken) bekommt die Vorgabe (`entwurfSaeubern` › `gesellschaftVorgabe`); `kdc` nur noch, wenn das Register keine eindeutige kennt.
+- **3.9 „+ Rechnung“ im Kontakt › Umsatz:** Vorbelegung rein in `lib/crm/umsatz.ts` (`rechnungVorbelegung`, `rechnungsFirma`, `rechnungAusFormular`):
+  Brutto aus dem Netto-Honorar (`bruttoAusNetto`), Gesellschaft über `finanzFirmaFuer` (Register-Gesellschaft → Hinweis „nur Grunddaten“, Mandat
+  „offen“ → Vorgabe), Status „geplant“; „gestellt“ nur mit Nummer. Netto/USt-Satz gehen nur mit, solange der Betrag der gerechnete ist.
+- **4.1 Power Hour schließt Follow-ups:** Karte trägt `followupId` (lib/crm/heute.ts); POST `/api/crm/aktivitaet` nimmt `followupId` und führt das
+  Follow-up in derselben CRM-Sperre (`aktivitaetImCrm`, Schritt 0): Gespräch/Termin/Kein Bedarf/Sperre → erledigt (mit Ergebnis; Event-Gast
+  nachgefasst; verknüpfte Aufgabe mit erledigt); nicht erreicht/Mailbox/Rückruf → das Follow-up kommt am Tag der Regel wieder, KEINE Wiedervorlage
+  am Kontakt daneben (eine schon fällige ist mit dem Anlauf abgearbeitet, eine künftige bleibt). Kein zweiter Schreibweg.
+- **4.2 Follow-up-Liste:** Fehler einer Aktion bleiben stehen (eigener Zustand, das Neuladen löscht sie nicht mehr); „Erledigt“/„+ Follow-up“
+  schließen nur bei Erfolg, sonst Meldung am Formular, die Eingabe bleibt.
+- **4.3 Power Hour verteilt richtig:** `karteGehoert` nimmt zuerst die Zuständigkeit des Follow-ups (Glocke und Karte bei derselben Person).
+- **5.11 Kein Erfolg trotz Fehler:** Segmente (speichern, Vorlage), Make.One-Abend (Person erst gespeichert, dann „da“; jede Stufe mit Meldung),
+  Event-Start (öffnet nur ein angenommenes Event), Redaktionsplan (Beitrag anlegen, Idee übernehmen) prüfen die Rückgabe.
+- **6.1 Heads im Takt:** POST `/api/heads/[head]` trägt den Systemlauf des Takts (Dienstweg OHNE Person, `imHaushaltOderSystemlauf`) — nur
+  `lauf` + `ausgeloest: 'takt'` + ein Modus ohne Person (nicht Power Hour, nicht Frage); alles andere ohne Person bleibt 403. Kein Rückfall auf ein
+  Kürzel (Regel 5): `headLauf` mit `person: null` — Karten aller, Termine maskiert, „fuer“ je Vorschlag aus der Zuständigkeit („beide“ bleibt
+  „beide“), selbst übernommen nur mit eindeutiger Person. Routen-Register-Grund ergänzt; Wächter in `tests/integritaet-zugang.test.ts` (begründet
+  geändert: Takt-Lauf → 200, fremder Haushalt/Testkunde/fremder Auftrag → 403).
+- Tests: neu `tests/markttraktion-sofort.test.ts` (29), ergänzt `tests/integritaet-zugang.test.ts`, `tests/netzwerken-korrektur.test.ts`; grün
+  dazu: crm-*, qualifizierung-*, scoring-*, netzwerken-*, angebot*, followup*, heads*, markttraktion-*, besuche-*, aufraeumen-etappe3,
+  routen-register, messlatte-malin, gesellschaften-*, design-standard, repo-sauber.
+
+**So testet ihr:**
+1. Markttraktion › Kontakte & Firmen › „+ Person“ anlegen (ohne Gespräch) → Schnellknopf „Qualifizierung“: die Person steht in der Runde;
+   Qualifizierung › Leads (Filter „In Arbeit“) zeigt sie mit Status „Neu“. Ist eine kalte importierte Person dabei: oben „n kalte Leads sind
+   ausgeblendet — Zeigen“ anklicken → sie erscheinen.
+2. Schnellknopf „Angebot“ › neues Angebot ohne Deal: Gesellschaft steht auf der GmbH (nicht Selbstständigkeit). Fehlen dort Firmierung oder
+   Anschrift: roter Hinweis „Absender unvollständig“ → „Absender ergänzen ›“ öffnet Unternehmen › Gesellschaft › Absender; „Mail versenden“ ist
+   bis dahin gesperrt.
+3. Kontakt öffnen › Umsatz › Rechnungen › „+ Rechnung“ bei einem Kontakt mit Mandat (Honorar netto): Betrag = Honorar + 19 %, Status „geplant“,
+   Gesellschaft die des Mandats; „gestellt“ wählen ohne Nummer → „fehlt: Rechnungsnummer“.
+4. Follow-up › „+ Follow-up“ für eine Person, zuständig die andere Person → deren Power Hour zeigt die Karte. Dort „Gespräch“ → in Follow-up ›
+   Fällig ist es weg (erledigt). Ein zweites mit „nicht erreicht“ → es steht in zwei Werktagen wieder da, ohne zweite Wiedervorlage.
+5. Follow-up › Fällig › ein Eintrag › „✓ Erledigt“ › als Notiz mehr als 1.000 Zeichen einfügen › „Erledigt“ → rote Meldung am Formular,
+   das Formular bleibt offen, der Text ist noch da (vorher war die Meldung nach Sekundenbruchteilen weg und das Formular zu).
+6. Heads: Markttraktion › Marketing › Überblick › Head of Marketing (zugeklappte Karte öffnen) — nach dem nächsten Takt (werktags ab 8 Uhr)
+   steht der Lauf „Netzwerk“ im Bericht (vorher blieb es bei „Noch kein Lauf“); Wochenreview freitags ab 14 Uhr unter Deals.
+**Offen (nicht in diesem Paket):** der Takt der Heads fällt ohne Konten weiter auf `['kevin']` zurück und kennt den Sonderfall `p === 'kevin'`
+(lib/heads/takt.ts, Befund 6.5); Trichter zählt kalte Leads mit (1.4); veraltete Regeltexte (1.3/2.6); übrige Funde aus Woche 1.
+
 ## 08.10. abends — Fragebogen Teil 3
 
 ### Finanzen › Planung: Blätter zusammengelegt (nur lokal — Branch `finanzplan-blaetter`; Frage 10)

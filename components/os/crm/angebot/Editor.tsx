@@ -20,7 +20,9 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Knopf, Chip, feld } from '../../ui';
+import Link from 'next/link';
+import { Karte, Knopf, Chip, Hinweis, feld } from '../../ui';
+import { WEG } from '@/lib/wege';
 import { Wahl, type WahlEintrag } from '../Wahl';
 import { type CrmApi } from '../daten';
 import { suchPasst } from '@/lib/text/such-norm';
@@ -29,7 +31,7 @@ import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { kanalStatus } from '@/lib/crm/recht';
 import {
   angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionAusProdukt, istGesellschaft,
-  NACHFASSEN_WERKTAGE,
+  NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
@@ -39,7 +41,9 @@ import { TerminVorschlag } from './TerminVorschlag';
 import { Vorschau, NUMMER_PLATZHALTER, type MailEntwurf } from './Vorschau';
 import { mailtoLink } from '@/lib/crm/angebote';
 
-type Form = Pick<Angebot, 'gesellschaft' | 'kontaktId' | 'firmaId' | 'dealId' | 'mandatId' | 'titel' | 'positionen' | 'einleitung' | 'schluss' | 'gueltigBis' | 'zahlungszielTage'>;
+// Der Absender kann im Editor offen sein (08.10., Sofort-Paket 3.2): ohne Deal, Merker oder eindeutige operative Business-Gesellschaft
+// wird er gewählt — nie mehr still die Selbstständigkeit. Solange er fehlt, speichert der Entwurf nicht (Hinweis oben, Warnung beim Verlassen).
+type Form = Pick<Angebot, 'kontaktId' | 'firmaId' | 'dealId' | 'mandatId' | 'titel' | 'positionen' | 'einleitung' | 'schluss' | 'gueltigBis' | 'zahlungszielTage'> & { gesellschaft?: Gesellschaftskennung };
 type VonHand = { titel: boolean; einleitung: boolean; schluss: boolean };
 export interface Vorbelegung { kontaktId?: string | null; firmaId?: string | null; dealId?: string | null }
 export interface Gestellt { angebot: AngebotMitStand; pdf: { id: string; name: string }; mailto: string; hinweise: string[]; dealId?: string }
@@ -72,17 +76,18 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const firmaId = vorbelegung.firmaId ?? k?.firmaId ?? deal?.firmaId;
     const d = deal ?? offeneDeals(crm.stand.chancen, k, firmaId)[0];
     const merk = letzteGesellschaft();
-    const g: Gesellschaftskennung = d && istGesellschaft(d.gesellschaft) ? d.gesellschaft : istGesellschaft(merk) ? merk : 'kdc';
-    const v = mitVorgaben(gesellschaftVon(g));
+    // Absender: Deal → zuletzt hier gewählt → die operative Business-Gesellschaft aus dem Register → offen (wählen). Nie fest `kdc` (3.2).
+    const g: Gesellschaftskennung | undefined = d && istGesellschaft(d.gesellschaft) ? d.gesellschaft : istGesellschaft(merk) ? merk : daten.vorgabe ?? undefined;
+    const v = g ? mitVorgaben(gesellschaftVon(g)) : null;
     const firma = firmaId ? crm.stand.firmen.find(f => f.id === firmaId) : undefined;
-    const ziel = firma?.zahlung?.zielTage ?? k?.zahlung?.zielTage ?? v.zahlungszielTage;
+    const ziel = firma?.zahlung?.zielTage ?? k?.zahlung?.zielTage ?? v?.zahlungszielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE;
     const produkt = d?.leistungId ? crm.stand.leistungen.find(l => l.id === d.leistungId && l.status === 'aktiv') : undefined;
     const titel = d?.titel ?? '';
-    const gueltigBis = plusTage(heute, v.gueltigkeitTage);
+    const gueltigBis = plusTage(heute, v?.gueltigkeitTage ?? GUELTIG_VORGABE_TAGE);
     const texte = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel, gueltigBis });
     return {
-      gesellschaft: g, ...(k ? { kontaktId: k.id } : {}), ...(firmaId ? { firmaId } : {}), ...(d ? { dealId: d.id } : {}), titel,
-      positionen: produkt ? [positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v.kleinunternehmer })] : [],
+      ...(g ? { gesellschaft: g } : {}), ...(k ? { kontaktId: k.id } : {}), ...(firmaId ? { firmaId } : {}), ...(d ? { dealId: d.id } : {}), titel,
+      positionen: produkt ? [positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v?.kleinunternehmer })] : [],
       ...texte, gueltigBis, zahlungszielTage: ziel,
     };
   });
@@ -109,6 +114,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const speichernJetzt = useCallback((opt: { keepalive?: boolean } = {}) => {
     if (uhr.current) { clearTimeout(uhr.current); uhr.current = null; }
     if (!offen.current) return kette.current;
+    // Ohne Absender wird nichts gespeichert (3.2) — die Eingabe bleibt offen (Hinweis oben; beim Verlassen warnt der Browser).
+    if (!formRef.current.gesellschaft) { setStatus('wartet'); return kette.current; }
     offen.current = false;
     kette.current = kette.current.then(async () => {
       setStatus('speichert');
@@ -162,11 +169,15 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const firma: Firma | undefined = form.firmaId ? crm.stand.firmen.find(f => f.id === form.firmaId) : undefined;
   const deals = offeneDeals(crm.stand.chancen, k, form.firmaId);
   const deal = form.dealId ? crm.stand.chancen.find(c => c.id === form.dealId) : undefined;
-  const g = gesellschaftVon(form.gesellschaft);
-  const v = mitVorgaben(g);
-  const ku = !!v.kleinunternehmer;
+  const g = form.gesellschaft ? gesellschaftVon(form.gesellschaft) : null;
+  const v = g ? mitVorgaben(g) : null;
+  const ku = !!v?.kleinunternehmer;
   const s = angebotSummen(form, { kleinunternehmer: ku });
-  const logoUrl = g.logoDateiId ? `/api/crm/dateien?id=${encodeURIComponent(g.logoDateiId)}` : null;
+  const logoUrl = g?.logoDateiId ? `/api/crm/dateien?id=${encodeURIComponent(g.logoDateiId)}` : null;
+  // Absender-Lücken früh zeigen (3.1) — Firmierung und Anschrift sperren das Senden, der Weg führt zu Unternehmen › … › Absender.
+  const luecken = g?.luecken ?? [];
+  const absenderFehlt = luecken.filter(x => x === 'Firmierung' || x === 'Anschrift');
+  const absenderWeg = form.gesellschaft ? WEG.unternehmen(form.gesellschaft, 'absender') : null;
 
   // Vorlage nachziehen, solange die Texte nicht von Hand geändert wurden (Anrede, Name, Titel, gültig bis).
   useEffect(() => {
@@ -196,7 +207,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const teil: Partial<Form> = { positionen: [...positionen, p] };
     if (!form.titel.trim() && !vonHand.titel) teil.titel = p.titel;
     if (von && von !== form.gesellschaft) {
-      if (!positionen.length) { teil.gesellschaft = von; merkeGesellschaft(von); setMischHinweis(null); }
+      if (!positionen.length || !form.gesellschaft) { teil.gesellschaft = von; merkeGesellschaft(von); setMischHinweis(null); }
       else setMischHinweis(`„${p.titel}“ gehört zu ${GES_WAHL.find(x => x.id === von)?.label ?? von} — Absender bleibt ${GES_WAHL.find(x => x.id === form.gesellschaft)?.label ?? form.gesellschaft}. Getrennte Angebote je Gesellschaft sind sauberer.`);
     }
     aendern(teil);
@@ -204,7 +215,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
   // ── Vorschau ──
   const empf = empfaengerAus(k, firma);
-  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g), empf, heute);
+  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }), empf, heute);
   const ampel = useMemo(() => {
     if (!k) return { hinweise: ['Kein Empfänger gewählt.'] };
     const ctx = { hatMandat: crm.stand.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id)), hatChance: crm.stand.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id)) };
@@ -213,12 +224,12 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     if (st.grund === 'keine Adresse') return { hinweise: ['Keine E-Mail-Adresse am Kontakt — das PDF entsteht trotzdem; bitte auf anderem Weg senden.'] };
     return { hinweise: st.farbe === 'gruen' ? [] : [`Kanal-Ampel ${st.farbe}: ${st.grund}. Ein angefragtes Angebot ist Vertragsanbahnung (Art. 6 Abs. 1 lit. b DSGVO) — nur senden, wenn es angefragt wurde, ohne Werbung.`] };
   }, [k, crm.stand.mandate, crm.stand.chancen]);
-  const fehlt = [!k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
+  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
 
   async function zurVorschau() {
     offen.current = true; // auch ein unveränderter, vorbelegter Entwurf wird vor der Vorschau gespeichert
     await speichernJetzt();
-    const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, nummer: NUMMER_PLATZHALTER, gueltigBis: form.gueltigBis, absender: v.name });
+    const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, nummer: NUMMER_PLATZHALTER, gueltigBis: form.gueltigBis, absender: v?.name ?? '' });
     setMail({ an: k?.email ?? '', ...m });
     setMeldung(null);
     setAnsicht('vorschau');
@@ -237,7 +248,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const pdf = r.pdf as { id: string; name: string };
     const link = mailtoLink(mail.an.trim() || undefined, ein(mail.betreff), ein(mail.text));
     daten.uebernehmen(r.angebot);
-    merkeGesellschaft(form.gesellschaft);
+    if (form.gesellschaft) merkeGesellschaft(form.gesellschaft);
     pdfLaden(pdf.id, pdf.name);
     setTimeout(() => { window.location.href = link; }, 500);
     void api.laden(true);
@@ -245,7 +256,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   }
 
   if (ansicht === 'vorschau') {
-    return <Vorschau dok={dokEntwurf} logoUrl={logoUrl} mail={mail} setMail={setMail} ampel={ampel} luecken={g.luecken ?? []} nachfassen={nachfassen} setNachfassen={setNachfassen} onZurueck={() => setAnsicht('bearbeiten')} onSenden={senden} meldung={meldung} />;
+    return <Vorschau dok={dokEntwurf} logoUrl={logoUrl} mail={mail} setMail={setMail} ampel={ampel} luecken={luecken} absenderWeg={absenderWeg} nachfassen={nachfassen} setNachfassen={setNachfassen} onZurueck={() => setAnsicht('bearbeiten')} onSenden={senden} meldung={meldung} />;
   }
 
   const statusText = { ruhig: 'noch nicht gespeichert', wartet: 'Änderung …', speichert: 'speichert …', gespeichert: 'Entwurf gespeichert', fehler: 'nicht gespeichert' }[status];
@@ -279,15 +290,25 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
               wert={form.dealId ?? null} onWahl={x => aendern({ dealId: x })} onLeeren={() => aendern({ dealId: undefined })} leerenLabel="ohne Deal (beim Senden neu)" />
           )}
           {!deals.length && !deal && k && <span style={klein}>Kein offener Deal — beim Senden entsteht einer in Stufe „Angebot“.</span>}
-          {(g.luecken ?? []).length > 0 && <Chip farbe={LEUCHT.achtung}>Absender: {(g.luecken ?? []).join(', ')} fehlt</Chip>}
+          {luecken.length > 0 && <Chip farbe={absenderFehlt.length ? LEUCHT.kritisch : LEUCHT.achtung}>Absender: {luecken.join(', ')} fehlt</Chip>}
         </div>
+        {!form.gesellschaft && (
+          <div style={{ marginTop: 10 }}><Hinweis art="achtung" rolle="status" titel="Absender wählen">Für dieses Angebot steht keine Gesellschaft fest — oben „Gesellschaft“ wählen (oder ein Produkt anklicken). Bis dahin wird der Entwurf nicht gespeichert.</Hinweis></div>
+        )}
+        {absenderFehlt.length > 0 && absenderWeg && (
+          <div style={{ marginTop: 10 }}>
+            <Hinweis art="kritisch" titel="Absender unvollständig" aktion={<Link href={absenderWeg} style={{ color: LEUCHT.kritisch, fontWeight: 700, fontSize: TYP.bedien }}>Absender ergänzen ›</Link>}>
+              Es fehlt {absenderFehlt.join(' und ')} — ohne sie geht kein Angebot hinaus. Gepflegt wird der Absender unter Unternehmen › {v?.name ?? 'Gesellschaft'} › Absender.
+            </Hinweis>
+          </div>
+        )}
         {/* K6a (29.09.): freie Zeit zeigen → Termin-Entwurf mit Bezug (Kontakt/Firma/Deal) — erst „Speichern“ legt an. */}
         {k && api.ich && <div style={{ marginTop: 10 }}><TerminVorschlag ich={api.ich} heute={heute} titel={form.titel} {...(start?.nummer ? { nummer: start.nummer } : {})} kunde={firma?.name ?? anzeigename(k)} kontaktId={k.id} {...(form.firmaId ? { firmaId: form.firmaId } : {})} {...(form.dealId ? { dealId: form.dealId } : {})} /></div>}
       </Karte>
 
       <Karte i={1}>
         <div style={{ ...kopf, marginBottom: 10 }}>2 · Was</div>
-        <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft} kleinunternehmer={x => !!mitVorgaben(gesellschaftVon(x)).kleinunternehmer} onDazu={dazu} />
+        <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft ?? null} kleinunternehmer={x => !!x && !!mitVorgaben(gesellschaftVon(x)).kleinunternehmer} onDazu={dazu} />
         {mischHinweis && <div style={{ fontSize: TYP.bedien, color: LEUCHT.business, marginTop: 8 }}>{mischHinweis}</div>}
         <div style={{ marginTop: 14 }}>
           <input value={form.titel} onChange={e => { setVonHand(h => ({ ...h, titel: true })); aendern({ titel: e.target.value }); }} placeholder="Titel des Angebots (z. B. Retainer Strategie 2027)" aria-label="Titel des Angebots"

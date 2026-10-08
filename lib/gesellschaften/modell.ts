@@ -16,7 +16,7 @@
 //     „ausgeschieden“ (Gesellschafter), „beendet“ (Beteiligung, Vertrag); Löschen = Papierkorb 30 Tage.
 // Tests: tests/gesellschaften-register.test.ts.
 
-import { KERN_EINHEITEN, istGesellschaft, istGesellschaftId, istRegisterKennung, type GesellschaftId, type Gesellschaftskennung } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN, istGesellschaft, istGesellschaftId, istRegisterKennung, type GesellschaftId, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { Gesellschaft as Absender } from '@/lib/crm/gesellschaften';
 import { imPapierkorb, inPapierkorb, ausPapierkorb, papierkorbAbgelaufen } from '@/lib/eintraege/sicher';
 
@@ -836,6 +836,20 @@ export function holdingSichten(d: RegisterDatei | null | undefined): Gesellschaf
   const feste = (d?.gesellschaften ?? []).filter(g => istGesellschaft(g.id) && !imPapierkorb(g));
   if (!feste.some(g => g.rolle !== undefined)) return null;
   return feste.filter(g => g.rolle === 'holding').map(g => g.id as Gesellschaftskennung);
+}
+
+/**
+ * Die operative Business-Gesellschaft der Instanz (08.10., Sofort-Paket 3.2) — die Vorgabe für den Absender eines Angebots und die
+ * Gesellschaft einer Rechnung, wenn sonst nichts feststeht (kein Deal, kein Mandat). Kandidaten: die festen Gesellschaften im Bereich
+ * Business (`BUSINESS_GESELLSCHAFTEN`, nie eine Privat-Einheit wie die Selbstständigkeit), ohne Holding (Rolle im Steckbrief; trägt keine
+ * feste Gesellschaft eine Rolle, gilt `holdingRueckfall` — der Business-Index nimmt dafür `HOLDING_VORGABE`) und ohne Papierkorb.
+ * Genau eine → sie; sonst `null`: dann wählt der Mensch — nie ein stiller Rückfall auf eine feste Kennung.
+ */
+export function operativeBusinessGesellschaft(d: RegisterDatei | null | undefined, holdingRueckfall: readonly string[]): Gesellschaftskennung | null {
+  const holdings: readonly string[] = holdingSichten(d) ?? holdingRueckfall;
+  const imKorb = new Set((d?.gesellschaften ?? []).filter(g => istGesellschaft(g.id) && imPapierkorb(g)).map(g => g.id));
+  const kandidaten = BUSINESS_GESELLSCHAFTEN.filter(g => !holdings.includes(g) && !imKorb.has(g));
+  return kandidaten.length === 1 ? kandidaten[0] : null;
 }
 
 // ── Erinnerung vor „kündigen bis“ ────────────────────────────────────────────────────────────────────────────────

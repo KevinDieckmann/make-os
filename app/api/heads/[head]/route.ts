@@ -20,11 +20,11 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
-import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/prompt';
-import { headLauf } from '@/lib/heads/lauf';
+import { headLauf, NUR_MIT_PERSON } from '@/lib/heads/lauf';
 import { vollesPaket } from '@/lib/heads/paket';
 import { lernstand, merksatzNeu, ABLEHNGRUENDE } from '@/lib/heads/lernen';
 import { ruecknehmbar } from '@/lib/heads/autonomie';
@@ -81,8 +81,14 @@ function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string |
   return null;
 }
 
+// Systemlauf des Takts (08.10., Sofort-Paket 6.1): Der Takt ruft Wochen-, Lead-, Kundenreview, Marketing- und Event-Läufe OHNE Person
+// (Dienstweg, `imHaushaltOderSystemlauf`) — vorher 403, die Läufe pausierten still. Ohne Person geht NUR `aktion: 'lauf'` mit
+// `ausgeloest: 'takt'` und einem Modus, der keine Person braucht (nicht Power Hour, nicht Frage); alles andere bleibt 403. Kein Rückfall
+// auf ein festes Kürzel (Regel 5): `headLauf` rechnet ohne Person, die Vorschläge gehen an die zuständige Person.
+const SYSTEMLAUF_NUR_TAKT = { ok: false, fehler: 'Ohne Person nur Takt-Läufe der Heads (keine Power Hour, keine Frage, keine Entscheidung).' } as const;
+
 export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
-  const zugang = await imHaushaltDesInhabers(req);
+  const zugang = await imHaushaltOderSystemlauf(req);
   if (!zugang) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   // S1 #19: Läufe und Entscheidungen schreiben — nur aus dem aktuellen Bau (Dienstweg ausgenommen).
   const alterBau = bauPruefen(req); if (alterBau) return alterBau;
@@ -93,6 +99,13 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   const agentCfg = await resolveAgent(AGENT_ID[h]); if (!agentCfg.enabled) return NextResponse.json({ ok: false, fehler: disabledResponse(agentCfg).error, disabled: true }, { status: 409 });
   let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+
+  if (zugang.person === null) {
+    const modus = String(b.modus ?? 'frage');
+    if (b.aktion !== 'lauf' || b.ausgeloest !== 'takt' || NUR_MIT_PERSON.has(modus)) return NextResponse.json(SYSTEMLAUF_NUR_TAKT, { status: 403 });
+    const r = await headLauf({ head: h, modus, person: null, ausgeloest: 'takt' });
+    return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+  }
   const person = zugang.person;
 
   if (b.aktion === 'lauf') {

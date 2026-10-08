@@ -23,7 +23,7 @@ import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, Hinweis } from '../ui';
 import type { LeadStatus, ChancenArt } from '@/lib/crm/typen';
-import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, inArbeit, type LeadZeile, type Trichter } from '@/lib/crm/leads';
 import { Fragen } from './quali/Fragen';
 import { useLeadFragen } from './quali/useLeadFragen';
 import { useScoringEinstellungen } from './quali/hilfen';
@@ -93,6 +93,9 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
 }
 
 type Filter = 'aktiv' | 'kalt' | LeadStatus;
+/** Ein Filter der Leads-Liste — „In Arbeit“ = `inArbeit` (mit „Neu“), „Kalt“ = `istKalt`, sonst der Status ohne die kalten. */
+const passtFilter = (z: LeadZeile, f: Filter): boolean =>
+  f === 'kalt' ? !nichtKalt(z) : f === 'aktiv' ? inArbeit(z) : nichtKalt(z) && (f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f);
 export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const breit = useBreit();
   const { d, laden, fehler } = useLeads(api);
@@ -108,14 +111,15 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const alleLeads = useMemo(() => (d?.leads ?? []).map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }), [d, api.crm, api.kontakte, angebote]);
   const zeilen = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    // Kalte Leads (Score < 25) leben im Marketing-Segment „Vernetzen“ — hier nur über den Filter „Kalt“ (Kevin 27.09.).
-    return alleLeads.filter(z => (filter === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (filter === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : filter === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === filter)))
+    // Kalte Leads leben im Marketing-Segment „Vernetzen“ — hier nur über den Filter „Kalt“ (Kevin 27.09.). Was als kalt gilt und was
+    // „In Arbeit“ ist (seit 08.10. mit „Neu“, frisch Angelegtes und gesetzte Status nie kalt), steht EINMAL in lib/crm/leads.ts.
+    return alleLeads.filter(z => passtFilter(z, filter))
       .filter(z => passtWer(wer, z.besitzer, 'sales', ich))
       .filter(z => !bn || z.bean === bn)
       .filter(z => !q || [z.name, ...z.personen.map(p => p.name), z.branche ?? '', z.stadt ?? ''].join(' ').toLowerCase().includes(q));
   }, [alleLeads, filter, suche, wer, ich, bn]);
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt die Leads …</Leer>}</Karte>;
-  const zahl = (f: Filter) => alleLeads.filter(z => (!bn || z.bean === bn) && (f === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (f === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f))).length;
+  const zahl = (f: Filter) => alleLeads.filter(z => (!bn || z.bean === bn) && passtFilter(z, f)).length;
   const FILTER: { id: Filter; label: string }[] = [
     { id: 'aktiv', label: `In Arbeit ${zahl('aktiv')}` }, { id: 'im_gespraech', label: `Im Gespräch ${zahl('im_gespraech')}` }, { id: 'qualifizierung', label: `Qualifizierung ${zahl('qualifizierung')}` },
     { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'kalt', label: `Kalt ${zahl('kalt')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
@@ -135,7 +139,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
         <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl(b)}`, hinweis: BEAN_HINWEIS[b] }))} wert={bn} leer="BEAN: alle ▾"
           farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setWahl(null); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
       </div>
-      {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : filter === 'kalt' ? 'Keine kalten Leads — alle haben mindestens 25 Punkte.' : 'Keine Leads in diesem Status.'}</Leer>}
+      {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : filter === 'kalt' ? 'Keine kalten Leads.' : 'Keine Leads in diesem Status.'}</Leer>}
       <div>
         {zeigen.slice(0, 120).map(z => (
           <div key={z.id}>

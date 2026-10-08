@@ -151,6 +151,8 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
   const [karte, setKarte] = useState<VisitenkartenDaten | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const [erledigt, setErledigt] = useState<{ id: string; name: string; neu: boolean } | null>(null);
+  // Fehler (08.10., Sofort-Paket 5.11): nie „als da eingetragen“ melden, wenn Person oder Teilnahme nicht gespeichert sind.
+  const [fehler, setFehler] = useState<string | null>(null);
   // Nach dem Anlegen/Verwerfen startet der Knopf frisch (ohne Vorschau der letzten Karte).
   const [runde, setRunde] = useState(0);
   const dubl: { mail?: Kontakt; name?: Kontakt } = karte ? kartenDubletten(karte, api.kontakte ?? []) : {};
@@ -159,20 +161,23 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
   const setze = (teil: Partial<VisitenkartenDaten>) => setKarte(k => (k ? { ...k, ...teil } : k));
   const fertig = (x: { id: string; name: string; neu: boolean }) => { setErledigt(x); setKarte(null); setRunde(r => r + 1); };
 
-  /** Als „da“ eintragen — steht die Person schon auf der Liste (z. B. eingeladen), nur ihren Status ändern. */
-  const eintragen = async (kontaktId: string) => {
+  /** Als „da“ eintragen — steht die Person schon auf der Liste (z. B. eingeladen), nur ihren Status ändern. Liefert, ob es gespeichert ist. */
+  const eintragen = async (kontaktId: string): Promise<boolean> => {
     const t = crm.stand.teilnahmen.find(x => x.eventId === e.id && x.kontaktId === kontaktId);
-    if (t) await gastSetzen(api, t, { status: 'da', eingechecktVon: api.ich ?? undefined });
-    else await api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId, status: 'da', rolle: 'gast', ...(api.ich ? { eingechecktVon: api.ich } : {}) });
+    if (t) return gastSetzen(api, t, { status: 'da', eingechecktVon: api.ich ?? undefined });
+    return api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId, status: 'da', rolle: 'gast', ...(api.ich ? { eingechecktVon: api.ich } : {}) });
   };
   const bestehend = async (k: Kontakt) => {
     if (laeuft) return;
-    setLaeuft(true);
-    try { await eintragen(k.id); fertig({ id: k.id, name: anzeigename(k), neu: false }); } finally { setLaeuft(false); }
+    setLaeuft(true); setFehler(null);
+    try {
+      if (await eintragen(k.id)) fertig({ id: k.id, name: anzeigename(k), neu: false });
+      else setFehler(`${anzeigename(k)} ist NICHT als da eingetragen — der Grund steht oben. Bitte noch einmal.`);
+    } finally { setLaeuft(false); }
   };
   const anlegen = async () => {
     if (!karte || !ok) return;
-    setLaeuft(true);
+    setLaeuft(true); setFehler(null);
     try {
       const d: VisitenkartenDaten = { ...karte, email: karte.email ? emailNormal(karte.email) : undefined };
       // Bestehende Firma (Schlüssel, Domain oder gleiche Kennung) verknüpfen — nie überschreiben (F1).
@@ -180,19 +185,21 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
       if (!firma && d.firma?.trim()) {
         const domain = domainVon({ email: d.email, firmaWebseite: d.webseite });
         firma = { ...neueFirma(d.firma), ...(d.webseite ? { webseite: d.webseite } : {}), ...(domain ? { domain } : {}) };
-        await api.setze('firmen', firma as unknown as { id: string } & Record<string, unknown>);
+        if (!(await api.setze('firmen', firma as unknown as { id: string } & Record<string, unknown>))) { setFehler('Die Firma ließ sich nicht anlegen — nichts eingetragen, die Karte bleibt stehen.'); return; }
       }
       const id = neueKontaktKennung(); // Paket D-C #35: `c-<uuid>`
       const k = kontaktAusKarte(d, { id, heute: crm.heute, jetzt: new Date().toISOString(), von: api.ich, herkunft: 'veranstaltung', firma, anlass: `Per Visitenkarte am Einlass angelegt — ${e.titel}` });
-      await api.kontaktSetzen(k);
-      await eintragen(id);
+      // Erst wenn die Person gespeichert ist, wird sie als „da“ eingetragen — nie eine Teilnahme ohne Person in der Kartei.
+      if (!(await api.kontaktSetzen(k))) { setFehler(`${anzeigename(k)} ließ sich nicht anlegen — nichts eingetragen, die Karte bleibt stehen.`); return; }
+      if (!(await eintragen(id))) { setFehler(`${anzeigename(k)} ist angelegt, aber NICHT als da eingetragen — bitte oben über die Suche einchecken.`); return; }
       fertig({ id, name: anzeigename(k), neu: true });
     } finally { setLaeuft(false); }
   };
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      <VisitenkarteKnopf key={runde} gross onErkannt={d => { setErledigt(null); setKarte(d); }} />
+      <VisitenkarteKnopf key={runde} gross onErkannt={d => { setErledigt(null); setFehler(null); setKarte(d); }} />
+      {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
       {erledigt && !karte && (
         <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>
           ✓ {erledigt.name} {erledigt.neu ? 'angelegt und ' : ''}als da eingetragen ·{' '}
