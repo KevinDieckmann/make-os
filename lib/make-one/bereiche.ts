@@ -40,8 +40,7 @@ export interface Bereich {
  * werden Prioritäten und Fokus gesetzt, und darüber wird fast alles gesteuert.
  */
 export const EINSTIEGE: BereichItem[] = [
-  { href: '/os', label: 'Home', icon: Sunrise },
-  { href: '/os/heute', label: 'Heute', icon: Sunrise },
+  { href: '/os', label: 'Heute', icon: Sunrise },
   { href: '/os/inbox', label: 'Inbox', icon: Inbox },
   { href: '/os/kompass', label: 'Kompass', icon: Compass, hinweis: 'steuert' },
 ];

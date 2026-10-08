@@ -61,8 +61,11 @@ const nextConfig = {
       { source: '/os/performance', destination: '/os/wachstum', permanent: false },
       // 25.09.: „Brain“ heißt in der Leiste so, die Seite liegt unter /os/wissen.
       { source: '/os/brain', destination: '/os/wissen', permanent: false },
-      // '/os/uebersicht' ist seit 26.09. wieder eine echte Seite (Übersicht je Space) — die alte Weiterleitung nach Home ist weg.
       { source: '/os/start', destination: '/os', permanent: false },
+      // 08.10. (Aufräumen Etappe 1): EINE Startseite „Heute“ unter /os — die feste Tagesseite /os/heute und die Übersicht je Space
+      // (/os/uebersicht?space=…) sind darin aufgegangen. Next reicht die Parameter weiter (?space= bleibt erhalten).
+      { source: '/os/heute', destination: '/os', permanent: false },
+      { source: '/os/uebersicht', destination: '/os', permanent: false },
       // 26.09.: die Gesundheits-Säule IST der Gesundheits-Index; das Journal (/os/journal) ist wieder eine eigene Seite —
       // dort stehen Energie, Stress und die Flags, aus denen der Index rechnet.
       { source: '/os/saeule/health', destination: '/os/gesundheit?s=index', permanent: false },

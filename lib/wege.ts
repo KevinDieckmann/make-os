@@ -4,7 +4,8 @@
 // über diese eine Liste — so zeigt ein Link nie ins Leere, und wer eine
 // Adresse ändert, ändert sie hier.
 //
-//   Zahlen      /os/finanzen?s=privat|business|steuern|gesamt|chef
+//   Heute       /os[?space=privat|business]   (die eine Startseite, 08.10.)
+//   Finanzen    /os/finanzen?s=privat|business|steuern|gesamt|chef   (bis 08.10. „Zahlen“; WEG.zahlen bleibt der Name der Funktion)
 //     Privat    &t=uebersicht|buchungen|einnahmen|analyse|fixkosten|plan|schulden (+ monat, kat, q bei Buchungen)
 //               &k=<Kennzahl des Privat-Index>  #index · #ruecklage
 //     Steuern   #fristen · #ruecklage · #ust · #uebergabe
@@ -31,10 +32,11 @@ const q = (basis: string, p: Record<string, string | undefined | null>, hash?: s
 export type ZahlenReiter = 'privat' | 'business' | 'steuern' | 'gesamt' | 'chef';
 
 export const WEG = {
-  /** Home (das eigene Dashboard) · Heute (die feste Tagesseite) · Übersicht je Space · Kontakte privat (26.09.). */
-  home: () => '/os',
-  heute: () => '/os/heute',
-  uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
+  /**
+   * Heute (08.10., Aufräumen Etappe 1): EINE Startseite unter /os — ohne Space Privat und Business zusammen, mit `space` nur
+   * dieser Space. Die alten Adressen /os/heute und /os/uebersicht?space= leiten hierher (next.config.mjs). · Kontakte privat.
+   */
+  heute: (space?: 'privat' | 'business') => q('/os', { space }),
   menschen: () => '/os/menschen',
   /** Konto (Kachel „Team“: Konten und Team-Personen des Haushalts pflegen). */
   konto: () => '/os/konto',
