@@ -133,7 +133,7 @@ export function aufgabenFuerBrain(state: { tasks: readonly (StoredTask & { paren
 /** Alles einsammeln — jede Quelle darf einzeln ausfallen. */
 /**
  * Der Live-Zustand. `person` entscheidet, WESSEN Körperwerte darin stehen —
- * seit 07.09., weil ZOE sonst Malin Kevins Recovery vorgelesen hätte.
+ * seit 07.09., weil ZOE sonst einer Person die Körperwerte der anderen vorgelesen hätte.
  * Seit 29.09. (#K4) auch, welche Termine: derselbe Lesepfad wie die Kalender-Sicht (`termineFuerZoe`), private und
  * Gesundheitstermine der ANDEREN Person nur als „Belegt“, nur im Haushalt des Inhabers.
  */
@@ -160,8 +160,8 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     // Kunden/Mandate gehören dem Haushalt des Inhabers (28.09.): eine Person aus einem anderen Haushalt bekommt
     // davon nichts in ihren ZOE-Kontext — auch keine Zahlen.
     personImHaushaltDesInhabers(person).then(ja => (ja ? ladeCrm().then(kundenAusMandaten) : { kunden: [] })),
-    // Schilde der FRAGENDEN Person (08.10., Sicht-Prüfung Malin): ohne Person zählten die Blöcke des Inhabers — sein
-    // Reha-Plan stand dann in Malins ZOE-Kontext.
+    // Schilde der FRAGENDEN Person (08.10., Sicht-Prüfung): ohne Person zählten die Blöcke des Inhabers — seine privaten
+    // Blöcke standen dann im ZOE-Kontext der anderen Person.
     computeShields(heute, person),
     loadJson<{ modus?: string }>('kompass'),
     loadJson<{ reihenfolge?: string[] }>('ordnung'),
@@ -326,7 +326,7 @@ export function blockLage(b: Brain): string {
 }
 
 function blockAufgabenRoh(b: Brain, max = 20): string {
-  if (!b.tasks.offen.length) return 'OFFENE AUFGABEN: keine im Store — wenn das überrascht, sag es Kevin, statt Aufgaben zu erfinden.';
+  if (!b.tasks.offen.length) return 'OFFENE AUFGABEN: keine im Store — wenn das überrascht, sag es der Person, statt Aufgaben zu erfinden.';
   // Jede Aufgabe trägt jetzt Thema, Ort und Umsetzungs-Einschätzung — damit
   // Agenten nach derselben Logik priorisieren wie die Oberfläche.
   const zeilen = b.tasks.offen.slice(0, max).map(t => {
@@ -334,7 +334,7 @@ function blockAufgabenRoh(b: Brain, max = 20): string {
     const thema = THEMA[themaVon(zuordnung)]?.label.split(' ')[0] ?? '—';
     const ort = ORG[orgVon(zuordnung)]?.kurz ?? '—';
     const e = einschaetzen(t);
-    const wer = e.wer === 'zoe' ? 'DU KANNST DAS' : e.wer === 'gemeinsam' ? 'du bereitest vor' : 'nur Kevin/Malin';
+    const wer = e.wer === 'zoe' ? 'DU KANNST DAS' : e.wer === 'gemeinsam' ? 'du bereitest vor' : 'nur ein Mensch';
     return `• ${t.title} [${t.priority}${t.dueDate ? `, fällig ${t.dueDate}` : ''}, ${thema}, ${ort}${t.einheit ? ` · Einheit ${t.einheit}` : ''}, ${t.assignee ?? '—'} · ${wer}, ~${dauerText(e.dauer)}]`;
   });
   const zoeBar = b.tasks.offen.filter(t => einschaetzen(t).wer === 'zoe');
@@ -371,7 +371,7 @@ function blockTermineRoh(b: Brain): string {
   if (q.kemaris.stale) alt.push(`KEMARIS/M365 ${q.kemaris.alterH == null ? 'unbekannt' : q.kemaris.alterH + ' Std.'} alt`);
   const quellenHinweis = alt.length && !b.kalender.stale ? ` (Teilquelle veraltet: ${alt.join(', ')})` : '';
   const stale = b.kalender.stale
-    ? ` — ACHTUNG: Kalender-Stand ${b.kalender.alterH == null ? 'unbekannt' : b.kalender.alterH + ' Std.'} alt, womöglich unvollständig. Nicht als „frei" werten; Kevin soll /os/kalender öffnen.`
+    ? ` — ACHTUNG: Kalender-Stand ${b.kalender.alterH == null ? 'unbekannt' : b.kalender.alterH + ' Std.'} alt, womöglich unvollständig. Nicht als „frei" werten; die Person soll /os/kalender öffnen.`
     : '';
   const zeile = (e: CalEvent) => {
     const d = e.startDate ? new Date(e.startDate) : null;
@@ -409,10 +409,10 @@ export function kalenderImPrompt(b: { kalender?: Pick<Brain['kalender'], 'heute'
 }
 
 export function blockIndex(b: Brain): string {
-  if (!b.index || b.index.index == null) return 'PERFORMANCE-INDEX: noch nicht berechenbar — sag Kevin, was dafür fehlt.';
+  if (!b.index || b.index.index == null) return 'PERFORMANCE-INDEX: noch nicht berechenbar — sag der Person, was dafür fehlt.';
   const saeulen = b.index.saeulen.map(x => `${x.label} ${x.score ?? '—'}${x.zuDuenn ? ' (zu dünn, zählt nicht)' : ''}`).join(' · ');
   return `PERFORMANCE-INDEX: ${b.index.index} (${b.index.label}), Datenbasis ${Math.round(b.index.abdeckung * 100)}%. ${saeulen}. Größter Hebel: ${b.index.hebel ?? '—'}. ` +
-    'Eine niedrige Säule mit dünner Datenbasis ist KEIN schlechter Wert, sondern eine Messlücke — sag dann, was Kevin eintragen müsste, statt ihn zu bewerten. Die Säulen stehen auf /os/wachstum.' +
+    'Eine niedrige Säule mit dünner Datenbasis ist KEIN schlechter Wert, sondern eine Messlücke — sag dann, was die Person eintragen müsste, statt sie zu bewerten. Die Säulen stehen auf /os/wachstum.' +
     blockBusiness(b);
 }
 
@@ -452,31 +452,22 @@ export function blockZiele(b?: Brain): string {
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */
 /**
- * Der Auftrag. Steht vor allem anderen, weil er alles andere einordnet.
- *
- * Kevin am 02.08.2026, wörtlich sinngemäß: „Das soll unsere Familien-KI
- * werden, die uns bei allem im Leben unterstützt, mit der wir sprechen und
- * vieles teilen, damit sie uns optimal hilft. Ein treuer Begleiter, der alles
- * im Hintergrund für uns steuert. In drei, vier Jahren haben wir Roboter, die
- * auch gemanagt werden wollen. Die ganze Welt verändert sich — und wir bauen
- * uns jetzt schon unabhängig eine eigene KI. Dazu werden wir Dutzende Firmen
- * kaufen, verkaufen, aufbauen und skalieren."
- *
- * Das ist kein Werbetext, sondern eine Anweisung: Es begründet, warum ZOE
- * langfristig denkt, warum er Wissen sammelt statt Antworten wegzuwerfen, und
- * warum Gesundheit und Beziehung genauso zählen wie Umsatz.
+ * Der Auftrag. Steht vor allem anderen, weil er alles andere einordnet: langfristig denken, mitschreiben, das ganze Leben
+ * gleichrangig mit dem Geschäft, unabhängig bleiben, wiederholbar bauen, ehrlich sein.
+ * 08.10. spät (Datenschutz vor dem Upload): ohne Namen, ohne Gesundheitsangaben einer Person, ohne private Lebenspläne —
+ * Wer die Instanz nutzt, steht in den Konten; Persönliches nur über die Einwilligungs-Wege (Wächter tests/vor-upload-datenschutz.test.ts).
  */
 export function blockAuftrag(): string {
   // Die Daten-Regel steht vor allem anderen (26.09.).
   return [
     'DEIN AUFTRAG — das steht über allem anderen:',
-    'Du bist nicht ein Werkzeug in einer Software. Du bist die KI von Kevin und Malin — für ihr ganzes Leben, nicht nur fürs Geschäft. Ihr Ziel ist ein treuer Begleiter, der im Hintergrund steuert, mit dem sie sprechen und dem sie viel anvertrauen, damit du wirklich helfen kannst.',
+    'Du bist nicht ein Werkzeug in einer Software. Du bist die KI der Menschen, die diese MAKE-OS-Instanz nutzen — für Alltag und Geschäft. Ihr Ziel ist ein verlässlicher Begleiter, der im Hintergrund steuert, mit dem sie sprechen und dem sie viel anvertrauen, damit du wirklich helfen kannst.',
     'DARAUS FOLGT, wie du arbeitest:',
-    '- LANGFRISTIG DENKEN. Die beiden bauen über Jahre. Bewerte Entscheidungen danach, was in einem Jahr trägt, nicht nur was diese Woche löst. Sag es, wenn ein schneller Weg später teuer wird.',
-    '- MITSCHREIBEN STATT VERGESSEN. Was du erfährst, gehört ins System — Zusammenhänge, Namen, Muster, Entscheidungen und warum sie so fielen. Ein Begleiter, der jedes Mal bei null anfängt, ist keiner.',
-    '- DAS GANZE LEBEN. Gesundheit, Beziehung und Ruhe zählen gleichrangig mit Umsatz. Kevins Rücken und die Beziehung zu Malin sind keine Nebenbedingungen, sondern das, wofür das Geschäft überhaupt da ist. Ein Vorschlag, der Umsatz bringt und den Menschen ruiniert, ist ein schlechter Vorschlag.',
-    '- UNABHÄNGIG BLEIBEN. Alles läuft auf ihren eigenen Rechnern, mit ihren eigenen Daten. Bevorzuge Lösungen, die ihnen gehören, vor Abhängigkeiten von fremden Diensten. Wenn etwas nach außen geht, sag es dazu.',
-    '- SKALIEREN VORBEREITEN. Die Absicht ist, Firmen zu kaufen, zu verkaufen, aufzubauen und zu skalieren — und in wenigen Jahren auch Maschinen und Roboter zu steuern. Baue und rate so, dass aus einem Fall zehn werden können: Struktur vor Einzellösung, Regel vor Handgriff, Wiederholbares vor Einmaligem.',
+    '- LANGFRISTIG DENKEN. Bewerte Entscheidungen danach, was in einem Jahr trägt, nicht nur was diese Woche löst. Sag es, wenn ein schneller Weg später teuer wird.',
+    '- MITSCHREIBEN STATT VERGESSEN. Was du erfährst, gehört ins System — Zusammenhänge, Muster, Entscheidungen und warum sie so fielen. Ein Begleiter, der jedes Mal bei null anfängt, ist keiner.',
+    '- DAS GANZE LEBEN. Ruhe, Beziehungen und Wohlbefinden zählen gleichrangig mit Umsatz — sie sind keine Nebenbedingungen. Ein Vorschlag, der Umsatz bringt und den Menschen ruiniert, ist ein schlechter Vorschlag.',
+    '- UNABHÄNGIG BLEIBEN. Alles läuft auf der eigenen Instanz, mit den eigenen Daten. Bevorzuge Lösungen, die den Nutzern gehören, vor Abhängigkeiten von fremden Diensten. Wenn etwas nach außen geht, sag es dazu.',
+    '- WIEDERHOLBAR BAUEN. Baue und rate so, dass aus einem Fall zehn werden können: Struktur vor Einzellösung, Regel vor Handgriff, Wiederholbares vor Einmaligem.',
     '- EHRLICH SEIN. Ein Begleiter, der schönredet, ist gefährlicher als einer, der schweigt. Nenne Lücken, unsichere Daten und schlechte Nachrichten zuerst und beim Namen.',
   ].join('\n');
 }

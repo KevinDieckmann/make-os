@@ -4,6 +4,10 @@
 //
 // Jeder Schritt ist gekapselt: fällt einer aus, laufen die anderen weiter und
 // der Ausfall wird ehrlich ausgewiesen statt still verschluckt.
+//
+// 08.10. spät (Datenschutz vor dem Upload, Art. 9): die Läufe liegen JE PERSON (`tageslauf--<person>`, der Altbestand ohne
+// Suffix nur beim Inhaber — `eigenerSpeicher`). Die Ausrichtung entsteht mit dem Gesundheitskontext der Person, für die der
+// Lauf rechnet (`fuer`), und gehört nur ihr: GET liefert nur die eigenen Läufe. Prompts ohne feste Namen und Firmen.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
@@ -21,6 +25,9 @@ import {
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
 import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
+import { eigenerSpeicher } from '@/lib/zoe/raum';
+import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { vornameVon, gesellschaftenSatz } from '@/lib/zoe/grundauftrag';
 
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { stromFuer } from '@/lib/inbox/strom-server';
@@ -39,9 +46,14 @@ interface Mail { id: string; account?: string; sender?: string; subject?: string
 
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
+/** Der Bestand der Läufe einer Person (08.10. spät) — der Altbestand ohne Suffix nur beim Inhaber. */
+const tageslaufBestand = async (person: string): Promise<string> => eigenerSpeicher('tageslauf', person, await inhaberSpeicher());
+
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  const f = await loadJson<LaufFile>('tageslauf');
+  const z = await imHaushaltDesInhabers(req);
+  if (!z) return nurHaushalt();
+  // Nur die EIGENEN Läufe (Sitzung bzw. Dienstweg mit Person) — die Ausrichtung trägt Gesundheitskontext (Art. 9).
+  const f = await loadJson<LaufFile>(await tageslaufBestand(z.person));
   const laeufe = Array.isArray(f?.laeufe) ? f.laeufe : [];
   const heute = tagKey();
   return NextResponse.json({
@@ -152,12 +164,14 @@ export async function POST(req: Request) {
   // ── 5. Lage draußen ──
   await schritt('news', async () => {
     if (!hasAnthropicKey()) return { stand: 'uebersprungen' as const, kurz: 'Kein Anthropic-Key' };
+    const firmen = await gesellschaftenSatz();
     const r = await askWithSearch({ zweck: 'tageslauf',
       system: [
-        'Du bist der Research-Agent in Kevins MAKE OS. Liefere die Lage von heute in drei Blöcken — je GENAU DREI Meldungen, nicht mehr.',
-        'Kontext: Kevin baut POINCAP (Controlling-/Liquiditäts-Plattform für den Mittelstand) unter der Holding KD Ventures, Sitz OWL/Deutschland.',
-        'welt = weltweite Lage mit möglicher Auswirkung auf deutsche Unternehmen. business = KI/Software/Mittelstand/Finanzierung. wettbewerb = konkrete Anbieter im Umfeld Controlling/Liquidität/KI-Beratung (DACH).',
-        'Jede Meldung: ein Satz Sachverhalt + ein Halbsatz, warum es Kevin angeht. Keine Floskeln, kein Startup-Sprech. Wenn du zu einem Block nichts Belastbares findest, gib weniger — erfinde nichts.',
+        'Du bist der Research-Agent in MAKE OS. Liefere die Lage von heute in drei Blöcken — je GENAU DREI Meldungen, nicht mehr.',
+        // Kontext aus den Gesellschaften der Instanz (08.10. spät) — vorher fest: ein Produktname und eine Holding im Code.
+        firmen,
+        'welt = weltweite Lage mit möglicher Auswirkung auf deutsche Unternehmen. business = KI/Software/Mittelstand/Finanzierung. wettbewerb = konkrete Anbieter im Umfeld der eigenen Gesellschaften (DACH).',
+        'Jede Meldung: ein Satz Sachverhalt + ein Halbsatz, warum es die eigenen Gesellschaften angeht. Keine Floskeln, kein Startup-Sprech. Wenn du zu einem Block nichts Belastbares findest, gib weniger — erfinde nichts.',
         'Antworte NUR als JSON: {"welt":["…"],"business":["…"],"wettbewerb":["…"]}',
       ].join('\n'),
       user: `Heute ist ${wd}, ${heute}. Was ist die Lage?`,
@@ -182,7 +196,7 @@ export async function POST(req: Request) {
     }
     const r = await askJson<{ vorziehen?: { was: string; warum: string; statt?: string }[]; ruhig?: boolean; satz?: string }>({ zweck: 'tageslauf',
       system: [
-        'Du bist der Prioritäten-Wächter in Kevins MAKE OS. Deine EINZIGE Frage: Ist etwas hereingekommen, das die geplante Reihenfolge des Tages umwirft?',
+        'Du bist der Prioritäten-Wächter in MAKE OS. Deine EINZIGE Frage: Ist etwas hereingekommen, das die geplante Reihenfolge des Tages umwirft?',
         FREMD_REGEL,
         'Sei streng. Die meisten Mails sind KEIN Grund, etwas vorzuziehen. Nur wenn ein Termin, ein Kunde, eine Frist oder Geld wirklich davon abhängt.',
         'Wenn du etwas vorziehst, sag auch, was dafür weichen soll — sonst wird der Tag nur voller.',
@@ -223,19 +237,21 @@ export async function POST(req: Request) {
     // Vitalwerte nur mit Einwilligung (b) der Person, deren Lage das Brain trägt (`b.gesundheitFrei`) — das Protokoll
     // nennt deshalb genau diese Person, auch im Systemlauf.
     const mitGesundheit = b.gesundheitFrei;
+    // Name aus dem Konto der Person, für die der Lauf rechnet (08.10. spät) — vorher fest auf eine Person geschrieben.
+    const name = await vornameVon(fuer);
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'tageslauf',
       system: [
-        'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du schließt den Tageslauf ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.',
+        `Du bist ZOE, die zentrale Intelligenz und Chief of Staff in MAKE OS. Du schließt den Tageslauf für ${name} ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.`,
         FREMD_REGEL,
-        'Sprich Kevin mit „Sir" an — einmal, nicht in jedem Satz.',
+        `Sprich ${name} mit dem Vornamen an — einmal, nicht in jedem Satz. Du duzt.`,
         // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
         nordsternSatz(b.nordstern),
         KONTEXT_REGEL,
         'Regeln: max 3 Prioritäten. Bei niedriger Recovery oder vollem Tag: weniger, und sag es offen. Gesundheitsdaten sind privat.',
         'Wenn die Kette Ausfälle hatte (Kalender alt, kein Postfach-Zugriff), benenne das — lieber ehrlich unvollständig als falsch zuversichtlich.',
         'Kein Startup-Sprech. Deutsch, direkt, warm aber knapp.',
-        'Antworte NUR als JSON: {"gruss":"<1-2 Sätze Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz>","prioritaeten":[{"titel":"…","warum":"…","wann":"…"}],"schutz":"<1 Satz für Körper und Ruhe>","warnung":"<optional, sonst leer>"}',
+        'Antworte NUR als JSON: {"gruss":"<1-2 Sätze Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz>","prioritaeten":[{"titel":"…","warum":"…","wann":"…"}],"schutz":"<1 Satz für Pausen und Ruhe>","warnung":"<optional, sonst leer>"}',
       ].join('\n'),
       user: [
         `Heute ${wd}, ${heute}, ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2, '0')} Uhr. Lauf-Art: ${art}.`,
@@ -298,9 +314,10 @@ export async function POST(req: Request) {
     ausrichtung,
     alarm,
   };
-  const file = await updateJson<LaufFile>('tageslauf', current => {
+  // Je Person (08.10. spät): in den Bestand der Person, für die der Lauf rechnet — nur sie liest ihn (GET).
+  const file = await updateJson<LaufFile>(await tageslaufBestand(fuer), current => {
     const l = Array.isArray(current?.laeufe) ? current.laeufe : [];
-    // Gespeichert ohne `detail` (Absender, Betreffe): der Bestand ist für alle Konten lesbar (26.09.).
+    // Gespeichert ohne `detail` (Absender, Betreffe) — seit 08.10. spät liegt der Bestand ohnehin je Person.
     const ohneDetail = { ...lauf, schritte: lauf.schritte.map(s => ({ ...s, detail: undefined })) };
     return { laeufe: [...l, ohneDetail].slice(-MAX_LAEUFE) };
   });

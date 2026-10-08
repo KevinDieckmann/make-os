@@ -46,8 +46,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('liquiditaet', 'Finanzen · Liquidität', WEG.liquiditaet(), 'business'),
   s('buchungen', 'Finanzen · Buchungen der Gesellschaften', WEG.buchungen(), 'business'),
   s('controlling', 'Finanzen · Controlling & Ziele', WEG.controlling(), 'business'),
-  s('grundlage', 'Finanzen · Altbestand · Grundlage (Malins Kassenbuch)', WEG.grundlage(), 'privat'),
-  s('finanz-dashboard', 'Finanzen · Altbestand · Erstes Cockpit (Version 1)', WEG.altbestand(), 'privat'),
+  s('grundlage', 'Finanzen · Altbestand · Grundlage (Kassenbuch)', WEG.grundlage(), 'privat'),
   // Privat
   s('gesundheit', 'Gesundheit', '/os/gesundheit', 'privat'),
   s('ernaehrung', 'Gesundheit · Ernährung & Einkauf', WEG.ernaehrung(), 'privat'),

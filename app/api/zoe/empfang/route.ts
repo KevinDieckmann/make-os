@@ -2,7 +2,7 @@
 // Zwei Sätze zur Begrüßung: was heute zählt. Dieselbe Grundlage wie der
 // Morgenlauf — echte Zahlen, Kalender, Stapel — nur kurz und zum Vorlesen.
 //
-// ZWISCHENGESPEICHERT je Stunde. Kevin macht den Bildschirm am Tag mehrfach
+// ZWISCHENGESPEICHERT je Stunde. Man macht den Bildschirm am Tag mehrfach
 // auf; ohne das kostete jedes Öffnen einen Modellaufruf. Bei rund drei Cent je
 // Aufruf ist das der Unterschied zwischen „läuft nebenbei mit" und „ich mache
 // die Software lieber nicht so oft auf".
@@ -16,7 +16,7 @@ import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
-import type { Person } from '@/lib/zoe/raum';
+import { vornameVon } from '@/lib/zoe/grundauftrag';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
@@ -39,15 +39,14 @@ function tageszeit(h: number): string {
   return 'spät abends';
 }
 
-function anweisung(person: Person, offen: number): string {
-  const wer = person === 'malin' ? 'Malin' : 'Kevin';
-  const anrede = person === 'malin' ? 'Sprich sie mit Namen an, warm und direkt.' : 'Sprich ihn mit „Sir" an, ruhig und souverän.';
+/** 08.10. spät: Name aus dem Konto der auslösenden Person, EINE Anrede für alle (vorher je Person fest im Code). */
+function anweisung(name: string, offen: number): string {
   return [
-    `Du bist ZOE. ${wer} hat gerade die Software geöffnet und sieht dich als Erstes.`,
+    `Du bist ZOE. ${name} hat gerade die Software geöffnet und sieht dich als Erstes.`,
     // Ohne diese Zeile grüßte er am 07.09. um halb drei nachmittags mit
     // „Guten Morgen" — er hat keine Uhr, er weiß nur, was im Prompt steht.
     `Es ist ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr, also ${tageszeit(new Date().getHours())}. Grüße passend dazu.`,
-    anrede,
+    `Sprich ${name} mit dem Vornamen an — ruhig, warm und direkt.`,
     '',
     'AUFTRAG: Begrüße kurz und sag in HÖCHSTENS ZWEI SÄTZEN, was heute zählt.',
     'Nimm die EINE wichtigste Sache aus der Lage — nicht drei. Nenne eine konkrete Zahl, wenn es eine gibt.',
@@ -56,7 +55,7 @@ function anweisung(person: Person, offen: number): string {
     'Das wird VORGELESEN: kein Markdown, keine Aufzählung, keine Klammern, keine Abkürzungen.',
     'Zahlen zum Hören schreiben: „null Monate" statt „0.0 Monaten", „zweitausendsechshunderteinundsechzig Euro"',
     'darf ruhig „rund zweitausendsiebenhundert Euro" werden. Lieber gerundet und verständlich als exakt und sperrig.',
-    `DUZEN: „Sir" ist die Anrede, kein Grund zum Siezen. Also „auf deine Freigabe", nie „auf Ihre".`,
+    'DUZEN: „auf deine Freigabe", nie „auf Ihre".',
     'Schreib, wie du sprechen würdest. Höchstens 45 Wörter.',
   ].filter(Boolean).join('\n');
 }
@@ -79,6 +78,7 @@ export async function GET(req: Request) {
   }
 
   const offen = await offeneAnzahl().catch(() => 0);
+  const name = await vornameVon(person);
   let lage = '';
   // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b) — `kategorien` = was drinsteht.
   const kiS = await kiSchalterFuer(person);
@@ -88,14 +88,14 @@ export async function GET(req: Request) {
 
   const r = await askText({
     zweck: 'empfang', ki: kiAus(req, kategorien, { person }),
-    system: anweisung(person, offen),
+    system: anweisung(name, offen),
     user: lage ? `LAGE:\n${lage}` : 'Begrüße kurz, die Lage ist gerade nicht lesbar.',
     maxTokens: 300,
     timeoutMs: 60_000,
   });
 
   const text = (r.text ?? '').trim()
-    || (person === 'malin' ? 'Schön, dass du da bist, Malin. Womit fangen wir an?' : 'Ich bin bereit, Sir. Womit fangen wir an?');
+    || `Schön, dass du da bist, ${name}. Womit fangen wir an?`;
 
   // Nur den aktuellen und den vorherigen Schlüssel behalten — die Datei soll
   // nicht mit jeder Stunde wachsen.

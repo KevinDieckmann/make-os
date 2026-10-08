@@ -1,8 +1,8 @@
 # HTTPS für MAKE OS — Zertifikat holt Caddy selbst, sobald die Domain auf den Server zeigt.
 # Sicherheits-Kopfzeilen (25.09., „höchste Stufe“): nur HTTPS (HSTS), Kamera/Mikrofon nur
 # für MAKE OS selbst, keine Verrate-Kopfzeilen. Content-Security-Policy und X-Frame-Options
-# setzt seit 26.09. die App selbst (next.config.mjs, je Pfad: der Altbestand /finanz-dashboard.html
-# darf im eigenen Rahmen laufen) — Caddy würde sie hier überschreiben, deshalb stehen sie nicht mehr hier.
+# setzt seit 26.09. die App selbst (next.config.mjs, je Pfad; der frühere Altbestand /finanz-dashboard.html ist seit
+# 08.10. entfernt) — Caddy würde sie hier überschreiben, deshalb stehen sie nicht mehr hier.
 # Referrer-Policy und Permissions-Policy (Upload U1 N1, 29.09.): nur noch als Vorgabe („?“ = nur, wenn die App keine
 # setzt) — die öffentliche Buchungsseite (/buchen…, /api/buchung…) hat eigene, strengere Werte in next.config.mjs
 # (`no-referrer`: die Status-Adresse trägt das Token im Fragment; keine Kamera/Mikrofon). Früher überschrieb Caddy sie

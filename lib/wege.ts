@@ -89,9 +89,10 @@ export const WEG = {
   /** Buchungen der Gesellschaften (Business) bzw. — mit `ort` einer Privat-Einheit, z. B. der Selbstständigkeit — unter Privat. */
   buchungen: (f: { monat?: string; kat?: string; q?: string; ort?: string; privat?: boolean } = {}) =>
     q('/os/finanzen', { s: 'buchungen', space: f.privat ? 'privat' : 'business', monat: f.monat, kat: f.kat, q: f.q, ort: f.ort }),
-  /** Altbestand der Selbstständigkeit (seit 08.10. unter Privat › Planung › Selbstständigkeit): Malins Kassenbuch bzw. ihr erstes Cockpit (V1). */
+  /** Altbestand der Selbstständigkeit (seit 08.10. unter Privat › Planung › Selbstständigkeit): das Kassenbuch (Grundlage).
+   *  Das erste Cockpit (V1, `alt=v1`) ist seit 08.10. spät entfernt — `altbestand()` führt nur noch zum Abschnitt. */
   grundlage: () => q('/os/finanzen', { s: 'finanzplanung', space: 'privat', u: 'selbst', alt: 'grundlage' }, 'altbestand'),
-  altbestand: () => q('/os/finanzen', { s: 'finanzplanung', space: 'privat', u: 'selbst', alt: 'v1' }, 'altbestand'),
+  altbestand: () => q('/os/finanzen', { s: 'finanzplanung', space: 'privat', u: 'selbst' }, 'altbestand'),
 
   /** Gesellschafts-Register (04.10.): Liste bzw. eine Gesellschaft mit Reiter. */
   unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),

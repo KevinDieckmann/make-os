@@ -4,6 +4,45 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10. spät — Datenschutz vor dem Upload (nur lokal — Branch `vor-upload-datenschutz`)
+
+Regelverstöße vor dem Upload geschlossen (Eiserne Regel 1, Plattform-Regel, Trennung serverseitig, Art. 9; ONBOARDING_PLAN.md L12, L15, L18, L27).
+Wächter: `tests/vor-upload-datenschutz.test.ts` (+ Messlatte-Saat in `tests/messlatte-malin.test.ts`).
+
+- **Altbestand mit echten Daten raus:** das erste Finanz-Cockpit (`public/finanz-dashboard.html`, lud Firebase, ohne CSP) samt Einbettung
+  (`FinanzDashboardView`, Knopf „Erstes Cockpit (Version 1)“, Sucheintrag) ist entfernt; `/finanz-dashboard.html` und `/os/finanzen/dashboard`
+  leiten zum Altbestand der Selbstständigkeit (Kassenbuch). Die CSP gilt jetzt für jede Seite (`next.config.mjs`). Tote Dateien mit privatem
+  Inhalt entfernt: `lib/make-one/zurufe-data.ts`, der Datenteil von `lib/make-one/os-data.ts` (nur noch `THEME`).
+  `docs/make-orga/` enthält keine Kontodaten (Hinweise + SQL-Regeln) — bleibt.
+- **ZOE ohne Persönliches im Code:** Grundauftrag (`blockAuftrag`), Gesprächs-Prompt (`/api/kimmi`), Empfang, Morgen-/Abendlauf, Tageslauf,
+  Fokus-Agent und die Agenten-Liste (`agentRoster`) nennen keine Gesundheitsangaben, keine Lebenspläne, keine Namen und keine alten Firmen-/
+  Produktnamen mehr. Name = Vorname aus dem Konto der auslösenden Person (`vornameVon`), Gesellschaften aus `lib/einheiten.ts` + Register
+  (`gesellschaftenSatz`) — beides `lib/zoe/grundauftrag.ts`. **Eine Anrede für alle** (Vorname, du) — die frühere feste Anrede je Person ist weg.
+  Gesundheits-Hinweise im Gesprächs-Prompt nur, wenn die Gesundheits-Werkzeuge mit Einwilligung (b) überhaupt angeboten werden.
+- **Tageslauf, Arbeits- und Gesundheits-Schalter je Person (Art. 9):** Bestände `tageslauf--<person>`, `arbeitsmodus--<person>`,
+  `gesundheitszeit--<person>` über `eigenerSpeicher` (lib/zoe/raum.ts): der Altbestand ohne Suffix gehört nur dem Inhaber, keine andere Person
+  sieht ihn. GET liefert nur die eigenen Läufe/Zähler; der Takt rechnet den Tageslauf als Inhaber und liest dessen Bestand. Register mit Angaben
+  (Art. 9 bzw. Arbeitszeit), `PERSON_BESTAENDE` (Export/Löschen mit dem Konto), Routen-Register.
+- **Stammdaten (L27):** Steuer-ID, SV-Nummer und IBAN bekommt nur die Person, der die Karte gehört (Server; IBAN sonst maskiert wie im CRM,
+  `geschuetzt` nennt verdeckte Felder) — Regeln rein in `lib/stammdaten/regeln.ts`. Besitz: einmal festgehalten (`person`, nur Server),
+  sonst passender Name zum Konto, sonst (Altbestand mit Kennungen) der Inhaber; Umbenennen ändert den Besitz nie. Schreiben nur noch per
+  `PATCH { liste, ops }` mit Stand je Satz (409), fremde Kennungen 403, über den Grenzen 413 (nie gekürzt), Bau-Kennung; der alte PUT ist weg.
+- **Öffentlich:** Meta-Beschreibung und App-Manifest neutral („MAKE OS — Life & Business OS“).
+
+**Für Kevin:** keine Einmal-Schritte. Nach dem Upload sieht nur noch der Inhaber die bisherigen Tagesläufe/Schalter-Zeiten; Malin startet mit
+eigenen. Personen-Karten der Stammdaten ohne passenden Namen gehören (mit Kennungen) dem Inhaber — Malin trägt ihre Kennungen auf der Karte
+mit ihrem Namen selbst ein.
+
+**Rückweg:** nur neue, eigene Bestände (`…--<person>`) und das optionale Feld `person` an Stammdaten-Karten — der alte Stand liest weiter die
+Bestände ohne Suffix (= Inhaber) und kennt den PATCH nicht (seine Oberfläche schreibt per PUT, den es dann wieder gibt). Das entfernte Cockpit
+ist im alten Stand wieder da; Stammdaten-Werte über 400 Zeichen kürzt der alte Stand beim nächsten Speichern (wie vorher).
+
+**Gemeldet, nicht geändert:** Git-Verlauf enthält das entfernte Cockpit und die gelöschten Dateien weiter (vor einer Weitergabe des Repos an Dritte
+bereinigen); `lib/altbestand/uebernahme.ts` trägt bis zur Übernahme bewusst Gesundheitsinhalte (Schritt 0.5, wird danach gelöscht); Heute-Widget
+fällt bei fehlender Person auf einen festen Speichernamen zurück (`components/os/flaeche/widgets.tsx`, Schnell-Anlegen); Werkzeug-Schemas mit
+festen Personen-Kennungen (`wer`, `an`, `personen`) und einer festen Fremdfirma; Gesundheits-Merkmale im Produkt (Bausteine/Journal-Schalter/
+Chips mit einem Körperbezug); Vertriebs- und Content-Prompts im Namen fester Firmen; Onboarding-Seiten mit Namen im Titel.
+
 ## 08.10. abends — Fragebogen Teil 3
 
 ### Finanzen › Planung: Blätter zusammengelegt (nur lokal — Branch `finanzplan-blaetter`; Frage 10)

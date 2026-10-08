@@ -24,7 +24,7 @@ function dateien(dir: string, ende: RegExp): string[] {
   });
 }
 const ort = (adresse: string, o: Parameters<typeof finanzOrt>[1] = {}) => finanzOrt(new URLSearchParams(adresse.split(/[?#]/)[1] ?? ''), o);
-const EINGEBETTET = ['BuchungenView', 'ControllingView', 'LiquiditaetView', 'FinanzplanungView', 'GrundlageView', 'FinanzDashboardView'].map(n => `components/os/${n}.tsx`);
+const EINGEBETTET = ['BuchungenView', 'ControllingView', 'LiquiditaetView', 'FinanzplanungView', 'GrundlageView'].map(n => `components/os/${n}.tsx`);
 
 describe('Aufräumen Etappe 2 — höchstens zwei Ebenen', () => {
   it('Ebene 1: wenige Reiter je Bereich, eindeutig, Überblick vorn', () => {
@@ -102,7 +102,8 @@ describe('Aufräumen Etappe 2 — alte Adressen leiten mit Parametern weiter', (
       ['/os/controlling', 'business', 'business', 's', 'controlling'],
       ['/os/finanzplan?u=buchungen&monat=8&space=business', 'privat', 'finanzplanung', 'u', 'buchungen'],
       ['/os/finanzen/grundlage', 'privat', 'finanzplanung', 'alt', 'grundlage'],
-      ['/os/finanzen/dashboard', 'privat', 'finanzplanung', 'alt', 'v1'],
+      ['/os/finanzen/dashboard', 'privat', 'finanzplanung', 'u', 'selbst'],
+      ['/finanz-dashboard.html', 'privat', 'finanzplanung', 'u', 'selbst'],
       ['/os/business?f=kdv&k=runway', 'business', 'business', 'k', 'runway'],
     ] as const;
     for (const [alt, bereich, reiter, k, v] of f) {

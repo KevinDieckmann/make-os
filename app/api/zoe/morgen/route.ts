@@ -23,7 +23,7 @@ import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahl, lies as liesStapel } from '@/lib/zoe/stapel';
-import type { Person } from '@/lib/zoe/raum';
+import { vornameVon } from '@/lib/zoe/grundauftrag';
 import { localDay } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
 import { modellSchranke } from '@/lib/zugang/umfang';
@@ -59,7 +59,7 @@ const WERKZEUGE = [
   },
   {
     name: 'plan_block',
-    description: 'Schlägt einen Block im Tagesplan vor — Fokuszeit, Reha, Vorbereitung. Nur in freie Zeit; feste Termine stehen im Live-Zustand. Fenster 06:00–22:00, Raster 15 Minuten.',
+    description: 'Schlägt einen Block im Tagesplan vor — Fokuszeit, Routine, Vorbereitung. Nur in freie Zeit; feste Termine stehen im Live-Zustand. Fenster 06:00–22:00, Raster 15 Minuten.',
     input_schema: {
       type: 'object',
       properties: {
@@ -76,11 +76,11 @@ const WERKZEUGE = [
 
 type Tageszeit = import('@/lib/zoe/regelwerk').Tageszeit;
 
-function anweisung(person: Person, lage: string, zeit: Tageszeit, liegt: string): string {
-  if (zeit === 'abend') return anweisungAbend(person, lage, liegt);
-  const wer = person === 'malin' ? 'Malin' : 'Kevin';
+// 08.10. spät: `wer` = Vorname aus dem Konto der Person, für die der Lauf läuft (vorher: wer nicht die zweite Person war, hieß wie die erste).
+function anweisung(wer: string, lage: string, zeit: Tageszeit, liegt: string): string {
+  if (zeit === 'abend') return anweisungAbend(wer, lage, liegt);
   return [
-    `Du bist ZOE und bereitest ${wer}s Tag vor, bevor er den Rechner aufklappt.`,
+    `Du bist ZOE und bereitest den Tag von ${wer} vor, bevor der Rechner aufgeklappt wird.`,
     '',
     'AUFTRAG: Sieh dir die Lage an und schlage HÖCHSTENS FÜNF Dinge vor, die heute wirklich zählen.',
     'Jeder Vorschlag muss aus einer konkreten Stelle der Lage folgen — eine überfällige Zahlung, ein Termin,',
@@ -93,7 +93,7 @@ function anweisung(person: Person, lage: string, zeit: Tageszeit, liegt: string)
     liegt,
     'Findest du nichts Belastbares, schlage NICHTS vor und sag es in einem Satz.',
     '',
-    'REIHENFOLGE: Schreibe ZUERST den Lagebericht, DANN rufe die Werkzeuge auf. Ohne Bericht steht Kevin',
+    `REIHENFOLGE: Schreibe ZUERST den Lagebericht, DANN rufe die Werkzeuge auf. Ohne Bericht steht ${wer}`,
     'morgens vor einem Stapel ohne Begründung — der Bericht ist wichtiger als der fünfte Vorschlag.',
     'Höchstens drei Sätze, keine Aufzählung, keine Überschriften, kein Gruß: was ist heute die eine wichtige Sache.',
     '',
@@ -113,10 +113,9 @@ function anweisung(person: Person, lage: string, zeit: Tageszeit, liegt: string)
  * was muss morgen frueh stehen". Derselbe Prompt zweimal am Tag haette nur
  * dieselben Vorschlaege ein zweites Mal erzeugt.
  */
-function anweisungAbend(person: Person, lage: string, liegt: string): string {
-  const wer = person === 'malin' ? 'Malin' : 'Kevin';
+function anweisungAbend(wer: string, lage: string, liegt: string): string {
   return [
-    `Du bist ZOE und schliesst ${wer}s Tag ab. Er hoert gleich auf zu arbeiten.`,
+    `Du bist ZOE und schliesst den Tag von ${wer} ab. Gleich ist Feierabend.`,
     '',
     'AUFTRAG: Sieh dir die Lage an und schlage HOECHSTENS DREI Dinge vor, die den morgigen Start leichter machen.',
     'Woran du dich haeltst:',
@@ -186,7 +185,7 @@ export async function POST(req: Request) {
     : '';
 
   const r = await askText({
-    system: anweisung(person, lage, zeit, liegt),
+    system: anweisung(await vornameVon(person), lage, zeit, liegt),
     user: zeit === 'abend' ? 'Schliess den Tag ab.' : 'Bereite den Tag vor.',
     maxTokens: 1500,
     tools: WERKZEUGE,

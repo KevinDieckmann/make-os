@@ -7,7 +7,8 @@
 // liegen sie in .data, werden täglich gesichert und verlassen den Rechner
 // nicht.
 //
-// „schutz: true" heißt: wird nur als •••• angezeigt, bis man auf Zeigen tippt.
+// „schutz: true" heißt: wird nur als •••• angezeigt, bis man auf Zeigen tippt — und kommt seit 08.10. spät überhaupt nur bei
+// der Person selbst an (Server, lib/stammdaten/regeln.ts `GESCHUETZT`); alle anderen bekommen das Feld nicht bzw. maskiert.
 
 export type Feldart = 'text' | 'lang' | 'datum';
 
@@ -62,7 +63,7 @@ export const KARTEIEN: Kartei[] = [
     untertitelFeld: 'bank',
     modus: 'beides',
     felder: [
-      { key: 'name', label: 'Bezeichnung', hinweis: 'z. B. Geschäftskonto KD Ventures' },
+      { key: 'name', label: 'Bezeichnung', hinweis: 'z. B. Geschäftskonto' },
       { key: 'bank', label: 'Bank' },
       { key: 'inhaber', label: 'Kontoinhaber' },
       { key: 'iban', label: 'IBAN', schutz: true },
@@ -74,7 +75,7 @@ export const KARTEIEN: Kartei[] = [
   {
     id: 'personen',
     titel: 'Personen',
-    satz: 'Kevin und Malin — die Angaben, die jede Steuererklärung und jeder Antrag verlangt.',
+    satz: 'Die Personen des Haushalts — die Angaben, die jede Steuererklärung und jeder Antrag verlangt. Steuer-ID und SV-Nummer sieht nur die Person selbst.',
     titelFeld: 'name',
     untertitelFeld: 'rolle',
     modus: 'beides',

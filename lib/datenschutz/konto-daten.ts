@@ -50,6 +50,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'gesundheit-koerper' },
   // Onboarding (08.10. spät): persönliche Häkchen der Einrichtung — `onboarding` ohne Suffix sind die GEMEINSAMEN (geteilter Bestand).
   { basis: 'onboarding', nurMitSuffix: true },
+  // Seit 08.10. spät je Person (Datenschutz vor dem Upload): Tagesläufe mit Ausrichtung, Arbeits- und Gesundheits-Schalter.
+  { basis: 'tageslauf' }, { basis: 'arbeitsmodus' }, { basis: 'gesundheitszeit' },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */

@@ -272,7 +272,11 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   }
 
   // 5) Der Tageslauf — stündlich, aber nur wenn der Morgenlauf durch ist.
-  const tl = await loadJson<TageslaufStand>('tageslauf');
+  // Seit 08.10. spät je Person: der Takt-Lauf rechnet als Inhaber (`laufPerson`) — also zählt dessen Bestand.
+  const { inhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
+  const { eigenerSpeicher } = await import('@/lib/zoe/raum');
+  const inhaber = await inhaberSpeicher();
+  const tl = inhaber ? await loadJson<TageslaufStand>(eigenerSpeicher('tageslauf', inhaber, inhaber)) : null;
   // Der SPEICHER hängt neue Läufe hinten an — die Route dreht sie erst für die
   // Anzeige um. Ich hatte anfangs das erste Element genommen und damit den
   // ÄLTESTEN Lauf des Tages als „letzten" gelesen: der Takt hielt den Abstand
@@ -282,7 +286,8 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   const heutige = (tl?.laeufe ?? []).filter(l => l.gestartet.slice(0, 10) === tagKey(jetzt));
   const letzter = neuester(heutige);
   const minutenSeit = letzter ? (jetzt.getTime() - Date.parse(letzter.gestartet)) / 60_000 : Infinity;
-  if (minutenSeit >= ABSTAND_MIN) {
+  // Ohne Inhaber (leere Instanz) gibt es niemanden, für den der Lauf rechnen könnte.
+  if (inhaber && minutenSeit >= ABSTAND_MIN) {
     // Der volle Lauf gehört dem Morgen; danach reicht der Puls.
     const art = artFuerStunde(h);
     raus.push({

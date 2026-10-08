@@ -299,6 +299,9 @@ const SYS = {
   // Onboarding (08.10. spät): persönliche Häkchen je Person — die Marke steckt im Zeitstempel (nur der wird ausgeliefert).
   onboarding: '2001-02-03T04:05:06.789Z',
   onboardingAlt: '2001-02-03T04:05:07.891Z',
+  // Datenschutz vor dem Upload (08.10. spät): Tageslauf je Person (Ausrichtung mit Gesundheitskontext), persönliche Kennungen der Stammdaten.
+  tageslauf: 'MESSLATTE-SYS-TAGESLAUF',
+  steuerId: 'MESSLATTE-SYS-STEUERID',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -442,6 +445,10 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     // Onboarding: Kevins persönliches Häkchen und ein altes Häkchen seiner früheren Spur im gemeinsamen Bestand (gilt nur für ihn).
     await db.saveJson('onboarding--kevin', { erledigt: { 'ich-rundgang': { at: SYS.onboarding, von: 'kevin' } } });
     await db.saveJson('onboarding', { erledigt: { 'kevin-sicht-alt': { at: '2000-01-01T00:00:00.000Z', von: 'Kevin' }, 'kevin-zwei-faktor': { at: SYS.onboardingAlt, von: 'Kevin' } } });
+
+    // Tageslauf (Altbestand ohne Suffix = Inhaber) und Stammdaten mit persönlicher Kennung von Kevin (08.10. spät).
+    await db.saveJson('tageslauf', { laeufe: [{ id: 'lauf-messlatte', art: 'kurz', gestartet: J, fertig: J, schritte: [{ id: 'aufgaben', name: 'Aufgaben', stand: 'ok', kurz: SYS.tageslauf }], ausrichtung: { gruss: SYS.tageslauf } }] });
+    await db.saveJson('stammdaten', { firmen: [], konten: [], partner: [], personen: [{ id: 'p-messlatte', name: 'kevin', person: 'kevin', steuerId: SYS.steuerId, svNummer: SYS.steuerId }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

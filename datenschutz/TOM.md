@@ -86,7 +86,7 @@ Legende Status: **umgesetzt** · **teilweise** (gebaut, aber nicht überall akti
   X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP; Buchungsseiten mit strengeren Köpfen
   (`no-referrer`, kein Rahmen) — `next.config.mjs`. Server-Kennung (`Server`, `X-Powered-By`) entfernt. Schriften selbst ausgeliefert
   (keine Abrufe bei Font-Diensten).
-- Ausnahme: der Altbestand `/finanz-dashboard.html` hat **keine CSP** (lädt Firebase von außen). [[KEVIN: Altbestand abschalten?]]
+- Keine Ausnahme mehr: der frühere Altbestand `/finanz-dashboard.html` (ohne CSP, lud Firebase von außen) ist seit 08.10. aus dem Repo entfernt.
 - Kein Versand ohne Klick; Exporte (CSV, Kunden-Übergabe) nur mit Sitzung, nie über den Dienstweg; Übergaben an Kunden werden
   protokolliert (`uebergabe-journal--*`).
 - Telegram-Texte ohne Namen Dritter (`telegramText`, „Details in MAKE OS“).

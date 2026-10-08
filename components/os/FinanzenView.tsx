@@ -30,7 +30,6 @@ import { LiquiditaetView } from './LiquiditaetView';
 import { BuchungenView } from './BuchungenView';
 import { ControllingView } from './ControllingView';
 import { GrundlageView } from './GrundlageView';
-import { FinanzDashboardView } from './FinanzDashboardView';
 import { useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
 import { PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, finanzOrt, finanzAdresse, kontenUnter, type FinanzReiter, type FinanzOrt, type KontenUnter } from '@/lib/finanzen/navigation';
@@ -117,7 +116,8 @@ function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: F
     return (
       <>
         <Finanzplan key={b} bereich={b} eingebettet />
-        {/* Altbestand der Selbstständigkeit (05.10.: sie gehört zu Privat): Malins Kassenbuch und ihr erstes Cockpit — nur hier, nie in der Hauptnavigation. */}
+        {/* Altbestand der Selbstständigkeit (05.10.: sie gehört zu Privat): das Kassenbuch — nur hier, nie in der Hauptnavigation.
+            Das erste Cockpit (public/finanz-dashboard.html) ist seit 08.10. spät entfernt (echte Kontobewegungen im Repo). */}
         {b === 'privat' && u === 'selbst' && <Altbestand offen={altbestand} />}
       </>
     );
@@ -139,21 +139,19 @@ function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: F
   return inhaber ? <BusinessCockpit eingebettet darunter={<ZahlenBusiness ohneStreifen />} /> : inhaber === false ? <ZahlenBusiness /> : null;
 }
 
-/** Altbestand der Selbstständigkeit — geladen erst auf Klick (das erste Cockpit lädt von außen). */
+/** Altbestand der Selbstständigkeit — geladen erst auf Klick. */
 function Altbestand({ offen: start }: { offen: string | null }) {
-  const [offen, setOffen] = useState<string | null>(start === 'grundlage' || start === 'v1' ? start : null);
-  useEffect(() => { if (start === 'grundlage' || start === 'v1') setOffen(start); }, [start]);
+  const [offen, setOffen] = useState<boolean>(start === 'grundlage');
+  useEffect(() => { if (start === 'grundlage') setOffen(true); }, [start]);
   return (
     <div id="altbestand" className="ui-karten" style={{ scrollMarginTop: 80 }}>
       <Karte i={9}>
         <Ueberschrift farbe={LEUCHT.schlaf}>Altbestand</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Knopf leise farbe={offen === 'grundlage' ? LEUCHT.geld : undefined} onClick={() => setOffen(offen === 'grundlage' ? null : 'grundlage')}>Grundlage · Malins Kassenbuch</Knopf>
-          <Knopf leise farbe={offen === 'v1' ? LEUCHT.geld : undefined} onClick={() => setOffen(offen === 'v1' ? null : 'v1')}>Erstes Cockpit (Version 1)</Knopf>
+          <Knopf leise farbe={offen ? LEUCHT.geld : undefined} onClick={() => setOffen(!offen)}>Grundlage · Kassenbuch</Knopf>
         </div>
       </Karte>
-      {offen === 'grundlage' && <GrundlageView />}
-      {offen === 'v1' && <FinanzDashboardView />}
+      {offen && <GrundlageView />}
     </div>
   );
 }
