@@ -122,8 +122,11 @@ export function GesundheitView() {
   // Symptom-Regler und Zähler „Sauber geblieben“: eigene Ansicht nach der eigenen Einstellung (Körper › Anzeige); in einer
   // geteilten Ansicht nur, wenn es Einträge gibt — neutral benannt (die Einstellungen der anderen Person bleiben bei ihr).
   const symptomName = eigeneSicher ? koerper.koerper?.symptom?.name ?? null : stand?.haut.tage.some(t => t.e) ? 'Symptom-Tagebuch' : null;
-  // Verlauf: dieselbe Regel über 30 Tage.
-  const verlaufSymptom = eigeneSicher ? symptomName : verlauf && Object.values(verlauf.haut).some(e => e?.juckreiz != null) ? 'Symptom-Tagebuch' : null;
+  // Verlauf (nur lesen, 30 Tage): in BEIDEN Ansichten, sobald es Einträge gibt — vorhandene Daten verschwinden nie, nur weil
+  // (noch) kein Regler eingestellt ist; in der eigenen Ansicht mit dem eigenen Namen, sonst neutral. Der Regler auf „Heute“
+  // (Eingabe) folgt in der eigenen Ansicht der Einstellung.
+  const verlaufEintraege = !!verlauf && Object.values(verlauf.haut).some(e => e?.juckreiz != null);
+  const verlaufSymptom = (eigeneSicher ? symptomName : null) ?? (verlaufEintraege ? 'Symptom-Tagebuch' : null);
   const sauberZeigen = eigeneSicher ? !!koerper.koerper?.sauberZaehler : (stand?.streak.eintraege30 ?? 0) > 0;
   const q = ansicht ? `?fuer=${ansicht}` : '';
   // #morgen · #routinen · #haut · #streak aus einem Link: hinspringen, sobald der Stand da ist.

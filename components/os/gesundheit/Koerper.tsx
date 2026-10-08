@@ -76,7 +76,15 @@ function TextFeld({ label, wert, max, lang, leer, onSpeichern }: { label: string
   const [offen, setOffen] = useState(false);
   const [entwurf, setEntwurf] = useState(wert);
   const zuLang = entwurf.length > max;
-  const speichern = async (e?: FormEvent) => { e?.preventDefault(); if (zuLang) return; if (await onSpeichern(entwurf)) setOffen(false); };
+  // Gesendet wird NUR über das Formular (Enter oder der Submit-Knopf — der Knopf trägt kein eigenes `onClick`, sonst ginge
+  // jede Änderung zweimal raus und die zweite bekäme 409). `laeuft` sperrt, bis die Antwort da ist.
+  const [laeuft, setLaeuft] = useState(false);
+  const speichern = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (zuLang || laeuft) return;
+    setLaeuft(true);
+    try { if (await onSpeichern(entwurf)) setOffen(false); } finally { setLaeuft(false); }
+  };
   if (!offen) {
     return (
       <Zeile titel={wert.trim() ? wert : <span style={{ color: C.inkLeise }}>{leer}</span>} umbrechen
@@ -91,7 +99,7 @@ function TextFeld({ label, wert, max, lang, leer, onSpeichern }: { label: string
           : <input value={entwurf} onChange={e => setEntwurf(e.target.value)} style={feld} />}
       </Feldzeile>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Knopf typ="submit" aus={zuLang} onClick={async () => { await speichern(); }}>Speichern</Knopf>
+        <Knopf typ="submit" aus={zuLang || laeuft}>Speichern</Knopf>
         <Knopf leise onClick={() => setOffen(false)}>Abbrechen</Knopf>
       </div>
     </form>
@@ -116,14 +124,22 @@ function EintragsListe<T extends { id: string }>({ liste, eintraege, felder, zei
   };
   const zuLang = felder.find(f => f.max != null && (entwurf[f.key] ?? '').length > f.max);
   const fehlt = felder.find(f => f.pflicht && !(entwurf[f.key] ?? '').trim());
+  // Wie beim Textfeld: nur das Formular sendet (kein `onClick` am Submit-Knopf), `laeuft` sperrt bis zur Antwort — ein zweites
+  // Absenden mit demselben Stand gäbe 409 bzw. beim Anlegen eine Dublette.
+  const [laeuft, setLaeuft] = useState(false);
+  const mitSperre = async (fn: () => Promise<void>) => {
+    if (laeuft) return;
+    setLaeuft(true);
+    try { await fn(); } finally { setLaeuft(false); }
+  };
   const speichern = async (ev?: FormEvent) => {
     ev?.preventDefault();
     if (zuLang || fehlt) return;
     const eintrag: Record<string, unknown> = { ...(offen && offen !== 'neu' ? { id: offen } : {}) };
     for (const f of felder) eintrag[f.key] = f.art === 'wahl' && !entwurf[f.key] ? null : entwurf[f.key] ?? '';
-    if (await aendern([{ op: 'eintrag', liste, eintrag }])) setOffen(null);
+    await mitSperre(async () => { if (await aendern([{ op: 'eintrag', liste, eintrag }])) setOffen(null); });
   };
-  const entfernen = async () => { if (offen && offen !== 'neu' && await aendern([{ op: 'weg', liste, id: offen }])) setOffen(null); };
+  const entfernen = () => mitSperre(async () => { if (offen && offen !== 'neu' && await aendern([{ op: 'weg', liste, id: offen }])) setOffen(null); });
 
   const formular = (
     <form onSubmit={speichern} style={{ display: 'grid', gap: 10, margin: '6px 0 14px' }}>
@@ -140,7 +156,7 @@ function EintragsListe<T extends { id: string }>({ liste, eintraege, felder, zei
         </Feldzeile>
       ))}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Knopf typ="submit" aus={!!zuLang || !!fehlt} onClick={async () => { await speichern(); }}>Speichern</Knopf>
+        <Knopf typ="submit" aus={!!zuLang || !!fehlt || laeuft}>Speichern</Knopf>
         {offen !== 'neu' && <Knopf leise farbe={LEUCHT.kritisch} onClick={entfernen}>Entfernen</Knopf>}
         <Knopf leise onClick={() => setOffen(null)}>Abbrechen</Knopf>
       </div>

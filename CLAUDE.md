@@ -238,7 +238,10 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
 - **Kein Rückfall auf „kevin“** (Regel 5) mehr in kimmi (400 ohne Person), zoe/stapel, state/zeit, planung/vorschlag, loop,
   `freie_zeit`/`bauplan_notieren`, kalender/termin (ohne Kalender/`wer` → 400), tasks/create (Systemlauf ohne `owner` → 400);
   interne Hops (Tagesstart, Tageslauf, Eingang) tragen nur `personStreng`. Offen (dokumentierte Systemläufe): `personAus`
-  in Lese-Routen (`resolveVitals`/`gatherBrain` haben seit 08.10. abends keinen Standard mehr — Person Pflicht).
+  in Lese-Routen. `resolveVitals`/`gatherBrain` haben seit 08.10. abends keinen Standard mehr (Person Pflicht); ihre Aufrufer im
+  Systemlauf OHNE Person (Takt: ZOE-Morgen/-Abend; OKR, Board, Fokus, Tageslauf) rechnen als Inhaber der Instanz (`laufPerson`, Rolle
+  aus den Konten — nie ein fester Name), Gesundheitswerte dabei nur mit dessen Einwilligung (b); der Empfang nimmt die Person aus dem
+  Tor. Offen: Morgen-/Abendlauf je Person statt als Inhaber.
 - **Nie still kürzen:** tasks/create (Titel 300, Einheit 40, Beschreibung 4000), crm/followup (Text 300, Notiz 1000 auch
   zusammen mit der alten Notiz), familie (200 Ops) → 413.
 - **ZOE-Gespräch:** „fremd gelesen“ gilt fürs ganze Gespräch (`verlaufFremd` über `ran` im Verlauf); `notiz_ergaenzen` wie
@@ -680,12 +683,17 @@ Gesundheitsinhalte nur mit Einwilligung ‚an die KI‘“.
   Schreiben: `gesundheitSchreibSperre` zuerst, Stand/409, Grenzen 413). Oberfläche `components/os/gesundheit/Koerper.tsx`; in einer fremden Ansicht
   gibt es den Reiter nicht. Wächter `tests/koerper-sicht.test.ts`.
 - **Nie wieder persönliche Inhalte (Beschwerden, Ziele, Werte, Sätze einer Person) als Konstanten in Code, Prompts oder Ansichten** — Personen-
-  bezogenes Verhalten über Einstellungen der Person (wie Symptom-Regler/Zähler), nie `=== '<person>'`.
+  bezogenes Verhalten über Einstellungen der Person (wie Symptom-Regler/Zähler), nie `=== '<person>'`. Das gilt auch für Kommentare, Texte
+  der Oberfläche, Telegram-Texte und Schilde (Reha-Schild nur, wer selbst Reha plant: `rehaFehltHeute`). Symptom-Regler und Zähler
+  „Sauber geblieben“ fragen Oberfläche UND Gesundheits-Takt (Telegram, `lib/gesundheit/lauf.ts`) nur nach der eigenen Einstellung; der
+  Verlauf (nur lesen) zeigt vorhandene Einträge in jeder Ansicht. Formulare senden nur über `onSubmit` — nie ein `onClick` am Submit-
+  Knopf (Wächter `tests/privat-neutral.test.ts`).
 - **Vitalwerte:** `resolveVitals(tag, person)` und `gatherBrain(tag, person)` — Person Pflicht, keine festen Rückfallwerte; Prompts zeigen
   Vitalwerte nur über `vitalsKurz` (fehlend = „—“, nie eine erfundene Zahl).
 - **KI:** das Körper-Profil geht nur über `eigenerGesundheitsKontext` (Einwilligung (b) der Person selbst, nie die andere Person).
 - **Übernahme des Altbestands** `lib/altbestand/uebernahme.ts`: hält den bisherigen Inhalt nur bis zur einmaligen Übernahme (nur mit
-  `MAKE_OS_ALTBESTAND_PERSON`, nur leeres Ziel, Marke, Gesundheit nur mit (a); Demo-Riegel lehnt die Variable ab) — wird mit dem übernächsten
+  `MAKE_OS_ALTBESTAND_PERSON` = Konto mit Rolle Inhaber, nur ohne eigenen INHALT im Ziel — vorher gesetzte Anzeige-Einstellungen werden
+  zusammengeführt, ihre gewinnen —, Marke, Gesundheit nur mit (a); Demo-Riegel lehnt die Variable ab) — wird mit dem übernächsten
   Upload gelöscht. Weitere Altbestände (z. B. Nordstern) hängen sich als `AltbestandTeil` an `altbestandTeile()` an; außer dem Start-Haken
   (`lib/store/betrieb.ts`) importiert niemand das Modul (Wächter `tests/altbestand-uebernahme.test.ts`).
 

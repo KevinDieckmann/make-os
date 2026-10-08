@@ -30,19 +30,21 @@ const PLATZHALTER = (): import('@/lib/gesundheit/koerper').KoerperStand => ({
   sauberZaehler: true,
 });
 
+/** Konten der Prüf-Instanz — `inhaber` = wer die Rolle Inhaber trägt (die Übernahme geht nur an den Inhaber). */
+const kontenMitInhaber = (inhaber: string) => db.saveJson('konten', { konten: ['pia', 'olaf', 'uwe', 'vera'].map((p, i) => ({
+  id: String(i + 1), speicher: p, email: `${p}@example.invalid`, name: `${p} Prüf`, rolle: p === inhaber ? 'inhaber' : 'mitglied',
+  hash: 'x', salz: 'x', angelegt: '2026-10-10T08:00:00.000Z', teilt: { gesundheit: [] }, haushalt: 'h-alt',
+})), einladungen: [] });
+
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
   ab = await import('@/lib/altbestand/uebernahme');
   K = await import('@/lib/gesundheit/koerper');
   const ein = await import('@/lib/datenschutz/gesundheit-einwilligung');
-  await db.saveJson('konten', { konten: [
-    { id: '1', speicher: 'pia', email: 'pia@example.invalid', name: 'Pia Prüf', rolle: 'inhaber', hash: 'x', salz: 'x', angelegt: '2026-10-10T08:00:00.000Z', teilt: { gesundheit: [] }, haushalt: 'h-alt' },
-    { id: '2', speicher: 'olaf', email: 'olaf@example.invalid', name: 'Olaf Prüf', rolle: 'mitglied', hash: 'x', salz: 'x', angelegt: '2026-10-10T08:00:00.000Z', teilt: { gesundheit: [] }, haushalt: 'h-alt' },
-    { id: '3', speicher: 'uwe', email: 'uwe@example.invalid', name: 'Uwe Prüf', rolle: 'mitglied', hash: 'x', salz: 'x', angelegt: '2026-10-10T08:00:00.000Z', teilt: { gesundheit: [] }, haushalt: 'h-alt' },
-  ], einladungen: [] });
-  for (const p of ['pia', 'olaf']) expect((await ein.gesundheitErklaeren(p, 'verarbeiten', true, ein.GESUNDHEIT_FASSUNG)).ok).toBe(true);
+  await kontenMitInhaber('pia');
+  for (const p of ['pia', 'olaf', 'vera']) expect((await ein.gesundheitErklaeren(p, 'verarbeiten', true, ein.GESUNDHEIT_FASSUNG)).ok).toBe(true);
 });
-beforeEach(() => { delete process.env.MAKE_OS_ALTBESTAND_PERSON; delete process.env.MAKE_OS_DEMO; });
+beforeEach(async () => { delete process.env.MAKE_OS_ALTBESTAND_PERSON; delete process.env.MAKE_OS_DEMO; await kontenMitInhaber('pia'); });
 afterAll(() => {
   delete process.env.MAKE_OS_ALTBESTAND_PERSON;
   rmSync(ordner, { recursive: true, force: true });
@@ -86,6 +88,7 @@ describe('Übernahme des Altbestands', () => {
 
   it('nie über vorhandene Daten: hat die Person schon selbst etwas gepflegt, bleibt es unverändert', async () => {
     const { speicherFuer } = await import('@/lib/zoe/raum');
+    await kontenMitInhaber('olaf');
     await db.saveJson(speicherFuer('gesundheit-koerper', 'olaf'), { ...K.leererKoerper(), leitsatz: 'Olafs eigener Satz' });
     const vorher = roh('gesundheit-koerper--olaf');
     process.env.MAKE_OS_ALTBESTAND_PERSON = 'olaf';
@@ -94,11 +97,44 @@ describe('Übernahme des Altbestands', () => {
     expect(roh('gesundheit-koerper--olaf')).toBe(vorher);
   });
 
+  it('nur Anzeige-Einstellungen gesetzt (Regler vermisst, bevor die Übernahme lief) → zählt NICHT als belegt; ihre Einstellungen gewinnen', async () => {
+    const { speicherFuer } = await import('@/lib/zoe/raum');
+    await kontenMitInhaber('vera');
+    // Vera hat vorher nur Regler/Zähler/einen Satz eingeschaltet — kein Inhalt.
+    await db.saveJson(speicherFuer('gesundheit-koerper', 'vera'), { ...K.leererKoerper(), symptom: { name: 'Veras Regler' }, sauberZaehler: false,
+      routinenHinweise: [{ id: 'kr-eigen', routine: 'r-eins', text: 'Veras Satz' }] });
+    process.env.MAKE_OS_ALTBESTAND_PERSON = 'vera';
+    const inhalt = { ...PLATZHALTER(), routinenHinweise: [{ id: 'kr-alt-1', routine: 'r-eins', text: 'alter Satz' }, { id: 'kr-alt-2', routine: 'r-zwei', text: 'zweiter alter Satz' }] };
+    const b = await ab.altbestandUebernehmen({ teile: [ab.koerperTeil(inhalt) as import('@/lib/altbestand/uebernahme').AltbestandTeil], tag: '2026-10-09' });
+    expect(b.teile).toEqual([{ name: 'koerper', ergebnis: 'uebernommen' }]);
+    const k = K.koerperSaeubern(JSON.parse(roh('gesundheit-koerper--vera')!))!;
+    expect(k.leitsatz).toBe('PLATZHALTER-LEITSATZ');
+    expect(k.altbestand).toBe('2026-10-09');
+    expect(k.symptom).toEqual({ name: 'Veras Regler' }); // ihre Einstellung gewinnt
+    expect(k.sauberZaehler).toBe(true); // eine Seite hat ihn an
+    expect(k.routinenHinweise.map(h => h.text)).toEqual(['Veras Satz', 'zweiter alter Satz']); // je Routine ihr Satz, der Rest dazu
+  });
+
   it('ohne Einwilligung (a) wird der Gesundheitsteil übersprungen — kein Bestand', async () => {
+    await kontenMitInhaber('uwe');
     process.env.MAKE_OS_ALTBESTAND_PERSON = 'uwe';
     const b = await ab.altbestandUebernehmen({ teile: teile() });
     expect(b.teile).toEqual([{ name: 'koerper', ergebnis: 'ohne-einwilligung' }]);
     expect(roh('gesundheit-koerper--uwe')).toBeNull();
+  });
+
+  it('die Variable nennt ein Konto, das NICHT Inhaber ist → nichts (nie Art.-9-Inhalte in ein fremdes Profil)', async () => {
+    process.env.MAKE_OS_ALTBESTAND_PERSON = 'olaf'; // Mitglied (Inhaber ist pia), mit Einwilligung (a)
+    const vorher = roh('gesundheit-koerper--olaf');
+    const b = await ab.altbestandUebernehmen({ teile: teile() });
+    expect(b).toEqual({ lauf: false, grund: 'nicht Inhaber', teile: [] });
+    expect(roh('gesundheit-koerper--olaf')).toBe(vorher);
+  });
+
+  it('Kennzahl je Hebel: genauer Name oder Name beginnt mit dem Schlüssel', () => {
+    expect(ab.hebelKennzahl('Schlaf')).toBe('schlaf');
+    expect(ab.hebelKennzahl('Bewegung & mehr')).toBe('reha');
+    expect(ab.hebelKennzahl('Etwas anderes')).toBeUndefined();
   });
 });
 

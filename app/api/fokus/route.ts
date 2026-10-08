@@ -7,7 +7,7 @@ import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
-import { resolveVitals, zoneOf, vitalsHint, vitalsKurz } from '@/lib/vitals';
+import { resolveVitals, tagesZone, vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
 import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const v = b.gesundheitFrei ? b.vitals : await resolveVitals(undefined, fuer);
   // Ohne Wert (0 = keine Angabe) keine Zone aus einer erfundenen Zahl: dann wie GELB (mit Puffer), ehrlich ohne Recovery.
   const rec = v.rec;
-  const zone = rec > 0 ? zoneOf(rec) : 'GELB';
+  const zone = tagesZone(rec);
 
   if (!hasAnthropicKey()) {
     return NextResponse.json({ reply: 'Mir fehlt noch dein Anthropic-Key (.env.local), dann richte ich deinen Tag nach deiner Recovery aus.', recovery: rec, zone, needsKey: true });

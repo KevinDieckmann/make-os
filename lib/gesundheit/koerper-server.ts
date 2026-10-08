@@ -50,16 +50,32 @@ export async function koerperAendern(person: string, basisStand: unknown, ops: u
 
 /**
  * Einmalige Übernahme eines vorbereiteten Profils (nur lib/altbestand/uebernahme.ts): schreibt NUR, wenn die Person noch
- * kein Profil mit Inhalt hat und noch keine Übernahme-Marke trägt. Nie über vorhandene Daten.
+ * keinen INHALT im Profil hat (`koerperHatInhalt`) und noch keine Übernahme-Marke trägt. Nie über Inhalte der Person.
+ * Hat die Person vorher nur Anzeige-Einstellungen gesetzt (Symptom-Regler, Zähler, Sätze unter Routinen — z. B. weil sie
+ * die Regler auf „Heute“ vermisst hat, bevor die Übernahme lief), zählt das NICHT als belegt: die Einstellungen werden
+ * zusammengeführt (ihre gewinnen — Symptom-Name, je Routine ihr Satz; der Zähler bleibt an, wenn eine Seite ihn an hat).
  */
 export async function koerperAltbestandSetzen(person: string, inhalt: KoerperStand, tag: string): Promise<'uebernommen' | 'schon-uebernommen' | 'ziel-belegt'> {
   let ergebnis: 'uebernommen' | 'schon-uebernommen' | 'ziel-belegt' = 'uebernommen';
   await updateJson<unknown>(speicherFuer('gesundheit-koerper', person), cur => {
     const alt = koerperSaeubern(cur);
     if (alt?.altbestand) { ergebnis = 'schon-uebernommen'; return cur; }
-    // Belegt = irgendein gepflegter Wert (auch nur eine Einstellung) — die Person hat dann selbst angefangen.
-    if (alt && (koerperHatInhalt(alt) || alt.symptom || alt.sauberZaehler || alt.routinenHinweise.length)) { ergebnis = 'ziel-belegt'; return cur; }
-    return { ...koerperSaeubern(inhalt)!, altbestand: tag, geaendert: new Date().toISOString() };
+    if (koerperHatInhalt(alt)) { ergebnis = 'ziel-belegt'; return cur; }
+    const neu = koerperSaeubern(inhalt)!;
+    return { ...koerperEinstellungenZusammen(neu, alt), altbestand: tag, geaendert: new Date().toISOString() };
   });
   return ergebnis;
+}
+
+/** Anzeige-Einstellungen der Person (`alt`) über ein übernommenes Profil legen — die der Person gewinnen, nichts geht verloren. */
+export function koerperEinstellungenZusammen(neu: KoerperStand, alt: KoerperStand | null): KoerperStand {
+  if (!alt) return neu;
+  const eigeneRoutinen = new Set(alt.routinenHinweise.map(h => h.routine));
+  const vergeben = new Set(alt.routinenHinweise.map(h => h.id));
+  return {
+    ...neu,
+    symptom: alt.symptom ?? neu.symptom,
+    sauberZaehler: alt.sauberZaehler || neu.sauberZaehler,
+    routinenHinweise: [...alt.routinenHinweise, ...neu.routinenHinweise.filter(h => !eigeneRoutinen.has(h.routine) && !vergeben.has(h.id))],
+  };
 }

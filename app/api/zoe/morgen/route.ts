@@ -18,12 +18,12 @@ import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, guthabenLeer, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { regelBericht } from '@/lib/zoe/regelwerk';
 import { gatherBrain, promptBrain, brainKategorien } from '@/lib/brain';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahl, lies as liesStapel } from '@/lib/zoe/stapel';
-import { personAus, type Person } from '@/lib/zoe/raum';
+import type { Person } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
 import { modellSchranke } from '@/lib/zugang/umfang';
@@ -142,7 +142,10 @@ function anweisungAbend(person: Person, lage: string, liegt: string): string {
 export async function POST(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  const person = personAus(req);
+  // Regel 5 (08.10. abends): die benannte Person; der Takt ruft ohne Person (lib/zoe/agenten.ts) — dann rechnet der Lauf als
+  // Inhaber der Instanz (Rolle aus den Konten, `laufPerson`), nie als fester Name. Gesundheitswerte gehen auch dann nur mit
+  // dessen Einwilligung (b) an das Modell (gatherBrain → `gesundheitFrei`). Offen: Morgen-/Abendlauf je Person (CLAUDE.md, Regel 5).
+  const person = await laufPerson(req);
   const origin = innenAdresse(req);
   let body: { zeit?: Tageszeit } = {};
   try { body = await jsonBegrenzt(req); } catch { /* ohne Rumpf gilt Morgen */ }

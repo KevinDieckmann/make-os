@@ -62,6 +62,12 @@ describe('Texte', () => {
     expect(abendText({ name: 'K', routinen: [], streakAktiv: false })).not.toContain('Sauber');
   });
 
+  it('fragt abends nach einem Symptom nur mit eigenem Namen aus dem Körper-Profil (08.10.: keine feste Frage für alle)', () => {
+    expect(abendText({ name: 'K', routinen: [], streakAktiv: false })).not.toMatch(/0–10/);
+    expect(abendText({ name: 'K', routinen: [], streakAktiv: false, symptom: '  ' })).not.toMatch(/0–10/);
+    expect(abendText({ name: 'K', routinen: [], streakAktiv: false, symptom: 'Platzhalter-Regler' })).toContain('Platzhalter-Regler: 0–10');
+  });
+
   it('nennt in der Woche den häufigsten Auslöser', () => {
     const haut = hautTrend({ [HEUTE]: { juckreiz: 5, schub: false, ausloeser: 'Stress', at: AT }, '2026-09-22': { juckreiz: 6, schub: true, ausloeser: 'stress', at: AT } }, HEUTE);
     const t = wochenText({ name: 'K', routinenQuote: 0.5, routinenTage: 4, journalTage: 3, haut, streak: streakStand({}, HEUTE) });

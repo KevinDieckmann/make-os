@@ -52,8 +52,15 @@ export async function altbestandUebernehmen(opts: { teile?: AltbestandTeil[]; ta
   if (!/^[a-z0-9-]{1,40}$/.test(person)) { console.error('[MAKE OS] Altbestand: Variable ungültig — nichts übernommen.'); return { lauf: false, grund: 'Variable ungültig', teile: [] }; }
   try {
     const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
-    if (!(await kontoFuerSpeicher(person))) { console.error('[MAKE OS] Altbestand: kein Konto zur Variable — nichts übernommen.'); return { lauf: false, grund: 'kein Konto', teile: [] }; }
-  } catch { return { lauf: false, grund: 'Konten nicht lesbar', teile: [] }; }
+    const konto = await kontoFuerSpeicher(person);
+    if (!konto) { console.error('[MAKE OS] Altbestand: kein Konto zur Variable — nichts übernommen.'); return { lauf: false, grund: 'kein Konto', teile: [] }; }
+    // Zusätzliche Schranke: der Altbestand stammt aus dem Code des Inhabers — nur dessen Konto kann ihn bekommen. Eine falsch
+    // gesetzte Variable (Speichername einer anderen Person) legt so nie Art.-9-Inhalte in ein fremdes Profil.
+    if (konto.rolle !== 'inhaber') { console.error('[MAKE OS] Altbestand: die Variable nennt nicht den Inhaber — nichts übernommen.'); return { lauf: false, grund: 'nicht Inhaber', teile: [] }; }
+  } catch {
+    console.error('[MAKE OS] Altbestand: Konten nicht lesbar — nichts übernommen (läuft beim nächsten Start erneut).');
+    return { lauf: false, grund: 'Konten nicht lesbar', teile: [] };
+  }
 
   const { localDay } = await import('@/lib/zeit');
   const tag = opts.tag ?? localDay();
@@ -84,6 +91,9 @@ export function altbestandTeile(): AltbestandTeil[] {
 
 // ── Der bisherige Inhalt — UNVERÄNDERT aus dem Code hierher verschoben (lib/make-one/health-data.ts, GesundheitView) ──
 // Nicht ändern, nicht woanders verwenden: er geht genau einmal in die Daten der Person und wird dann gelöscht.
+// Bewusst NICHT übernommen: die festen Zahlen je Eintrag (`sev` je Beschwerde, `score` je Hebel). Sie wurden nie angezeigt
+// und waren Schätzwerte eines Tages — den Wert eines Hebels liefert jetzt live die Kennzahl des Gesundheits-Index, die
+// Einschätzung einer Beschwerde steht im Ton. Wer sie braucht: Git-Historie dieser Datei.
 
 const NORTHSTAR = 'Mehr Ruhe — den Körper planbar aufbauen, den Kopf runterfahren.';
 
@@ -140,6 +150,12 @@ const SYMPTOM_NAME = "Haut · Juckreiz";
 /** Satz unter einer Routine der Tagesliste (vorher fest in der Ansicht). */
 const ROUTINE_HINWEIS = { routine: 'essen', text: 'dein Hebel gegen die Schübe' };
 
+/** Kennzahl zu einem Hebel: genauer Name, sonst der Name beginnt mit dem Schlüssel (zwei Hebel tragen einen längeren Namen —
+ *  die frühere Zuordnung fand sie nicht; die Übernahme setzt die gemeinte Kennzahl gleich richtig). */
+export function hebelKennzahl(name: string): string | undefined {
+  return HEBEL_KENNZAHL[name] ?? Object.entries(HEBEL_KENNZAHL).find(([k]) => name.startsWith(k))?.[1];
+}
+
 const TON_ALT: Record<string, K.KoerperTon> = { good: 'gut', watch: 'achtung', crit: 'kritisch' };
 const ZUSTAND_ALT: Record<string, K.StufenZustand> = { now: 'jetzt', next: 'danach', later: 'spaeter' };
 
@@ -149,7 +165,7 @@ function koerperAusAltbestand(): K.KoerperStand {
     v: 1,
     leitsatz: NORTHSTAR,
     beschwerden: BESCHWERDEN.map((b, i) => ({ id: `kb-alt-${i + 1}`, name: b.name, status: b.status, notiz: b.note, ton: TON_ALT[b.tone] ?? 'achtung' })),
-    hebel: HEBEL.map((h, i) => ({ id: `kh-alt-${i + 1}`, name: h.name, notiz: h.note, ...(HEBEL_KENNZAHL[h.name] ? { kennzahl: HEBEL_KENNZAHL[h.name] } : {}) })),
+    hebel: HEBEL.map((h, i) => { const kennzahl = hebelKennzahl(h.name); return { id: `kh-alt-${i + 1}`, name: h.name, notiz: h.note, ...(kennzahl ? { kennzahl } : {}) }; }),
     stufen: AUFBAU.map((s, i) => ({ id: `ks-alt-${i + 1}`, phase: s.phase, name: s.name, beschreibung: s.desc, zustand: ZUSTAND_ALT[s.state] ?? 'spaeter' })),
     zusammenhaenge: ZUSAMMENHAENGE.map((t, i) => ({ id: `kz-alt-${i + 1}`, text: t })),
     hinweis: CARE_NOTE,

@@ -105,6 +105,12 @@ export function zoneOf(rec: number): 'GRÜN' | 'GELB' | 'ROT' {
   return rec >= 66 ? 'GRÜN' : rec >= 40 ? 'GELB' : 'ROT';
 }
 
+/** Zone für die Tagesplanung: ohne Recovery-Wert (0 = keine Angabe) keine Zone aus einer erfundenen Zahl, sondern GELB
+ *  (mit Puffer planen) — 08.10. abends, seit es keine festen Rückfallwerte mehr gibt. */
+export function tagesZone(rec: number): 'GRÜN' | 'GELB' | 'ROT' {
+  return rec > 0 ? zoneOf(rec) : 'GELB';
+}
+
 /** Ehrlicher Hinweis für den Prompt, wenn die Werte nicht von heute sind (neutral — kein Name im Code). */
 export function vitalsHint(v: ResolvedVitals): string {
   if (v.heute) return '';

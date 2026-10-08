@@ -40,10 +40,29 @@ Kevin (Frage 2): „Alles als eigene Daten je Person/Instanz (pflegbar, verschl�
    vorhandene Daten, ohne Einwilligung nicht; `health-data.ts` exportiert die früheren Konstanten nicht mehr — geprüft über Exportnamen),
    Messlatte (Marke `koerper` in der Saat), Register/Konto-Daten, Demo-Saat mit erfundenem Profil.
 
-**Offene Einmal-Schritte (Kevin):**
-- Mit dem Upload: in `/srv/make-os/app/.env` die Zeile `MAKE_OS_ALTBESTAND_PERSON=<dein Speichername>` setzen, dann `docker compose up -d`.
-  Nach dem Start: `docker compose logs app | grep Altbestand` zeigt „Altbestand „koerper“: uebernommen.“ — danach Gesundheit › Körper ansehen.
-  (Steht dort „übersprungen — keine Einwilligung (a)“: erst System › Datenschutz › Gesundheit bestätigen, dann App neu starten.)
+8. **Nachbesserung nach der Prüfung (gleicher Branch):**
+   - Körper › Speichern schickte jede Änderung zweimal (Klick UND Absenden des Formulars) — die zweite bekam 409 und der Hinweis „wurde
+     inzwischen geändert“ blieb stehen. Jetzt sendet nur das Formular, gesperrt bis zur Antwort. Wächter: kein Submit-Knopf mit `onClick`.
+   - Übernahme: als „belegt“ zählt nur echter INHALT. Wer vorher nur Regler/Zähler/Sätze eingeschaltet hat, bekommt den Altbestand trotzdem;
+     seine Einstellungen gewinnen. Die Übernahme geht nur an das Konto mit der Rolle Inhaber (falsche Variable → nichts). „Konten nicht
+     lesbar“ steht jetzt auch im Log. Zwei Hebel mit längerem Namen bekommen ihre Kennzahl. Die alten festen Zahlen je Eintrag (nie angezeigt)
+     werden bewusst nicht übernommen.
+   - Telegram (Gesundheits-Takt): Symptom-Frage und „Sauber geblieben?“ nur nach der EIGENEN Einstellung im Körper-Profil — die feste
+     Personen-Abfrage und die feste Symptom-Frage an alle sind weg.
+   - ZOE-Morgen/-Abend ohne Person (Takt) rechnen als Inhaber (Rolle, kein fester Name), der Empfang nur mit der Person aus dem Tor.
+   - Weitere Stellen neutral: Energie-Kachel (kein persönlicher Grund mehr im Text), Reha-Schild nur für wer selbst Reha plant, Kommentare
+     ohne Gesundheitsangaben (Haut-Tagebuch, Einträge, Ernährung, Takt). Verlauf zeigt vorhandene Symptom-Einträge auch in der eigenen
+     Ansicht ohne eingestellten Regler. Wächter `tests/privat-neutral.test.ts` (Vitalwerte-Verhalten, Reha-Schild, Personen-Abfragen).
+
+**Offene Einmal-Schritte (Kevin) — Reihenfolge wichtig:**
+- Mit dem Upload, VOR dem ersten Öffnen von Gesundheit › Körper: in `/srv/make-os/app/.env` die Zeile
+  `MAKE_OS_ALTBESTAND_PERSON=<dein Speichername>` setzen (das Konto muss die Rolle Inhaber haben), dann `docker compose up -d`.
+  Nach dem Start (≈ 10 s): `docker compose logs app | grep Altbestand` zeigt „Altbestand „koerper“: uebernommen.“ — danach Gesundheit › Körper
+  ansehen. Erst dann im Körper-Profil eigene Inhalte anlegen: wer vorher Inhalte einträgt, bekommt den Altbestand nicht mehr („ziel-belegt“
+  im Log; Regler/Zähler allein schaden nicht).
+  Andere Log-Zeilen: „übersprungen — keine Einwilligung (a)“ → erst System › Datenschutz › Gesundheit bestätigen, dann App neu starten ·
+  „die Variable nennt nicht den Inhaber“ / „kein Konto zur Variable“ → Speichername prüfen · „Konten nicht lesbar“ → App neu starten.
+  Läuft vor dem übernächsten Upload nichts davon durch, ist der Altinhalt nach dem Löschen des Moduls nur noch in der Git-Historie.
 - Mit dem übernächsten Upload: `lib/altbestand/uebernahme.ts`, den Start-Haken in `lib/store/betrieb.ts`, den Übernahme-Teil von
   `tests/altbestand-uebernahme.test.ts` und die Variable in der `.env` entfernen.
 

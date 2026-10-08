@@ -29,11 +29,14 @@ async function routinen(person: Person): Promise<Routine[]> {
   return sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), person);
 }
 
-/** Ob der Streak für diese Person Thema ist: Kevins erklärtes Ziel (29.07.),
- *  bei Malin nur, wenn sie selbst angefangen hat, ihn zu führen. */
-async function streakAktiv(person: Person, log: StreakLog, heute: string): Promise<boolean> {
-  if (person === 'kevin') return true;
-  return streakStand(log, heute).eintraege30 > 0;
+/** Symptom-Regler und Zähler „Sauber geblieben“ der Person — NUR aus ihrer eigenen Einstellung im Körper-Profil (08.10. abends,
+ *  Fragebogen Teil 3): keine Abfrage einer festen Person mehr. Ohne Profil (oder nicht lesbar) beides aus. */
+async function anzeigeEinstellung(person: Person): Promise<{ symptom: string | null; sauberZaehler: boolean }> {
+  try {
+    const { koerperLaden } = await import('./koerper-server');
+    const { koerper } = await koerperLaden(person);
+    return { symptom: koerper?.symptom?.name ?? null, sauberZaehler: koerper?.sauberZaehler === true };
+  } catch { return { symptom: null, sauberZaehler: false }; }
 }
 
 /** WHOOP frisch holen (08.10.): für JEDE Person mit eigener Verbindung (vorher fest nur das Erstkonto) — wartet höchstens 30 s.
@@ -81,11 +84,13 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string)
   }
   if (slot === 'mittag') return mittagText(name);
   const streak = (await loadJson<StreakLog>(speicherFuer('streak', person))) ?? {};
+  const anzeige = await anzeigeEinstellung(person);
   if (slot === 'abend') {
     return abendText({
       name,
       routinen: alle.filter(r => r.wann === 'abend').map(r => r.label),
-      streakAktiv: await streakAktiv(person, streak, heute),
+      streakAktiv: anzeige.sauberZaehler,
+      symptom: anzeige.symptom,
     });
   }
   // woche
@@ -105,6 +110,7 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string)
     journalTage: t7.filter(d => journal?.[d]).length,
     haut: hautTrend(haut ?? {}, heute),
     streak: streakStand(streak, heute),
+    symptom: anzeige.symptom,
   });
 }
 
