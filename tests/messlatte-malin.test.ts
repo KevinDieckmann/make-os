@@ -309,6 +309,10 @@ const SYS = {
 
   // ZOE auf WhatsApp (08.10.): der Kanal je Person — die Marke steckt im Zeitpunkt „verbunden seit“ (nur der geht maskiert-frei hinaus).
   zoeKanal: '2002-03-04T05:06:07.891Z',
+
+  // Agenten-Bereich Paket 1 (09.10.): Threads je Person (`agenten-faeden--<person>`) — ein Business- und ein Privat-Thread von Kevin
+  // (nicht geteilt); die zweite Person sieht keinen davon.
+  agentenFaden: 'MESSLATTE-SYS-AGENTEN-FADEN',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -469,6 +473,16 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('arbeitsrahmen--kevin', { businessFrei: [{ tage: [2], von: '05:17', bis: '06:43' }], geaendertAm: SYS.arbeitsrahmen });
 
     await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
+
+    // Agenten-Bereich Paket 1 (09.10.): Kevins Threads (Business + Privat, nicht geteilt).
+    {
+      const fd = (id: string, headId: string, bereich: 'business' | 'privat', titel: string) => ({ id, besitzer: 'kevin', agent: { art: 'head', headId }, bereich, titel, status: 'offen', fremdGelesen: false, vertraulich: false, erstellt: J, aktualisiert: J,
+        nachrichten: [{ id: `nr-${id}`, rolle: 'person', von: 'kevin', text: titel, zeit: J }] });
+      await db.saveJson('agenten-faeden--kevin', { v: 1, faeden: [
+        fd('fd-00000000-0000-4000-8000-00000000ab01', 'sales', 'business', `${SYS.agentenFaden} Business`),
+        fd('fd-00000000-0000-4000-8000-00000000ab02', 'assistenz', 'privat', `${SYS.agentenFaden} Privat`),
+      ] });
+    }
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

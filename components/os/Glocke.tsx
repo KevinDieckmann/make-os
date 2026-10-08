@@ -108,6 +108,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   postfach: { Icon: Mail, label: 'Postfach', farbe: C.achtung },
   // 08.10.: eine eigene Verbindung (WHOOP) ist getrennt — neu verbinden.
   verbindung: { Icon: Unplug, label: 'Verbindung', farbe: C.achtung },
+  // 09.10. (Agenten-Bereich): ein Lauf eines Heads/Mitarbeiters ist fertig — neutral, Link auf den Thread.
+  agenten: { Icon: Sparkles, label: 'Agenten', farbe: C.aktiv },
   // 08.10. (Lücke 7): Business-Hinweise, die während einer Business-freien Zeit kamen — gesammelt, danach EINE Meldung.
   businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
 };

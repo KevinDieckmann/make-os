@@ -292,7 +292,10 @@ describe('Routen: Register und Stubs', () => {
   const rufe = async (pfad: string, m: string, kopf: Record<string, string>) =>
     (await (await route(pfad))[m](new Request(`http://test/api/${pfad}`, { method: m, headers: kopf, ...(m === 'GET' ? {} : { body: '{}' }) }))).status;
 
-  it('Stubs: ohne Sitzung, fremder Haushalt, Testkunde, Dienstweg → 401/403; im Haushalt → 501', async () => {
+  // Paket 1 „Kern“ (09.10.) hat diese Routen gebaut — im Haushalt antworten sie (200 bzw. 400 auf einen leeren Körper), die übrigen bleiben Stubs (501).
+  const GEBAUT = new Set(['agenten', 'agenten/faden', 'agenten/faden/lauf']);
+  const imHaushalt = (pfad: string) => (GEBAUT.has(pfad) ? [200, 400] : [501]);
+  it('Stubs: ohne Sitzung, fremder Haushalt, Testkunde, Dienstweg → 401/403; im Haushalt → 501 (gebaute Routen: 200/400)', async () => {
     const db = await import('@/lib/store/local-db');
     const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
       ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
@@ -311,12 +314,12 @@ describe('Routen: Register und Stubs', () => {
       if (klasse === 'person') {
         expect(await rufe(pfad, m, dienst('person-a')), `${pfad} ${m} Dienstweg mit Person`).toBe(403);
         expect(await rufe(pfad, m, dienst()), `${pfad} ${m} Dienstweg ohne Person`).toBe(403);
-        expect(await rufe(pfad, m, sitzung('person-b')), `${pfad} ${m} im Haushalt`).toBe(501);
+        expect(imHaushalt(pfad), `${pfad} ${m} im Haushalt`).toContain(await rufe(pfad, m, sitzung('person-b')));
       } else {
         expect(await rufe(pfad, m, sitzung('person-a')), `${pfad} ${m} Sitzung statt Dienstweg`).toBe(403);
         expect(await rufe(pfad, m, dienst()), `${pfad} ${m} Dienstweg ohne Person`).toBe(401);
         expect(await rufe(pfad, m, dienst('gast')), `${pfad} ${m} Dienstweg mit fremder Person`).toBe(403);
-        expect(await rufe(pfad, m, dienst('person-b')), `${pfad} ${m} Dienstweg mit Person im Haushalt`).toBe(501);
+        expect(imHaushalt(pfad), `${pfad} ${m} Dienstweg mit Person im Haushalt`).toContain(await rufe(pfad, m, dienst('person-b')));
       }
     }
   });

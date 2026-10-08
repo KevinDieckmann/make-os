@@ -27,7 +27,8 @@ export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 
  */
 /** `vertrag` (04.10. Nachtrag): „kündigen bis“ eines Vertrags im Gesellschafts-Register naht (Bezug = die Erinnerungs-Aufgabe). */
 /** `verbindung` (08.10.): eine eigene Verbindung zu einem Dienst (WHOOP) ist getrennt — neu verbinden. */
-export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach' | 'verbindung';
+/** `agenten` (09.10., Agenten-Bereich Paket 1): ein Lauf eines Heads bzw. Mitarbeiters ist fertig — Text neutral, ohne Inhalt; Link auf den Thread. */
+export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach' | 'verbindung' | 'agenten';
 
 export interface MeldungEingabe {
   /** Empfänger: Speichername der Person (z. B. „malin“). Nie an sich selbst melden. */
