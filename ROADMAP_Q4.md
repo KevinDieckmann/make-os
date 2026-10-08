@@ -8,6 +8,9 @@
 - **MAKE OS wird der „AI CEO“** für **Business Couples, Solopreneure und kleine Mittelständer** — ein Chief of Staff, der alles kennt,
   vorschlägt und vorbereitet; der Mensch gibt per Klick frei. Wie autonom ZOE handelt, ist **je Kunde einstellbar** (Standard: nichts ohne Klick).
 - **Kernmerkmal: zu zweit arbeiten** — zwei Personen, ein Haushalt, gemeinsame Firma(n), klare Privat-Grenzen (serverseitig).
+- **Versprechen an Kunden:** „Ihr schafft viel mehr, strukturierter, mit einem Assistenten, der mitdenkt“ — eine Plattform für alles
+  (Privat, Business, KI) für KMU und Solopreneure, die wenig Struktur haben; dazu mehr Umsatz durch besseren Vertrieb.
+- **Fokus 12 Wochen (Fragebogen Teil 1):** Eigennutzung rund · MAKE OS als Betriebssystem der GmbH · ZOE per Sprache · Bank-Anbindung.
 - **Ziele der nächsten 3 Monate:** (1) Eigennutzung Kevin + Malin rund, (2) MAKE OS trägt die MAKE Innovation GmbH,
   (3) **3–5 Testkunden** bekommen ihre eigene Instanz, (4) **ab Mitte Q1 2027 mitverkaufen** (Markttraktion, volles MAKE OS, AI CEO —
   Ziel ist der AI CEO; ein Testkunde bekommt die komplette Software, die bis dahin fertig ist).
@@ -32,7 +35,16 @@
 - **Kevin:** WHOOP-App anlegen (Redirect `…/api/whoop/rueckruf`, Webhook `…/api/whoop/webhook`, v2) · nach dem Upload die GmbH-Zahlen (0-Punkt) eintragen.
 
 ## Phase 1 — Eigennutzung polieren (12.10. – 31.10., Updates jeden Freitagnachmittag: 16.10., 23.10., 30.10.)
-- In dieser Reihenfolge feinjustieren: **Heute & ZOE** → **Aufgaben & Kalender** → **Inbox & Markttraktion** → **Finanzen**.
+- In dieser Reihenfolge feinjustieren (Fragebogen Teil 1, ersetzt die frühere Reihenfolge): **ZOE** → **Planung & Ziele** → **Inbox** →
+  **Aufgaben** → **Kalender** → **Brain** → **Mandate & Unternehmen** → **Heute** → **Markttraktion** → **Finanzen**.
+  Grundsatz: **nichts entfernen** (ganzheitliche Plattform) — ordnen, verbinden, verständlicher machen.
+- **ZOE = Ansprechpartnerin für alles** (Business, Leben, Beziehung, Gesundheit): im Hintergrund alles im Blick, erinnert, warnt vor
+  Veränderungen, nimmt ab, was geht. Rhythmus: **7 Uhr Telegram-Briefing**, **Montag Wochenstart**, **Freitag Wochenrückblick**.
+  Ohne Klick (nur eigene Instanz): Kontakte anreichern, Erinnerungen per Telegram, Wochenplan-Entwurf anlegen — weitere Ideen vorschlagen.
+- **Heute oben:** Top-3 von ZOE · kurzes Tages-Briefing · offene Freigaben · Fortschritt der Jahresziele.
+- **Aufgaben:** Vorschläge aus Mails/WhatsApp · Eisenhower sichtbarer · täglich Top-3 · Zeitschätzung + Kapazität.
+- **Planung:** alle zwölf Punkte aus Frage 8 (Wochenplanung mit ZOE, Blöcke aus Aufgaben, Kette Ziel→Meilenstein→Aufgabe, Kapazitätswarnung,
+  Seil als Hauptansicht, Quartalsplanung zu zweit, Routinen, Fokuszeit, Paar-Planung, Nordstern prominenter …). Antworten: `ENTSCHEIDUNGEN_FRAGEBOGEN.md`.
 - **Verbindungen live:** Google Workspace (Business-Kalender + Gmail makeinnovation.de), WHOOP je Person.
 - **KI-Verbrauch messen** (einen Monat), danach Monatsgrenze festlegen (Head of IT warnt).
 - **Malins Start 01.11.** vorbereiten: Konto, 2FA, Einwilligungen, Onboarding (`ONBOARDING_MALIN.md`); sie nutzt alles.
