@@ -214,7 +214,7 @@ export function OnboardingUebersicht() {
   const f = fortschrittVon(meine, z);
   const eigeneSpur = z?.ich ? spurFuerRolle(z.ich.inhaber) : null;
   return (
-    <Seite titel="Einrichtung" unter="Alles, was rein muss, damit MAKE OS sauber verbunden ist und mit euren echten Zahlen rechnet — Schritt für Schritt, mit Erklärung.">
+    <Seite titel="Einrichtung" unter="Alles verbinden und eure echten Zahlen eintragen — Schritt für Schritt, mit Erklärung.">
       <Meldung text={meldung} />
       <Karte i={0} ton={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${f.fertig} von ${f.gesamt} Schritten`}>Dein Stand</Ueberschrift>
