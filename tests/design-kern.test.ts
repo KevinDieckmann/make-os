@@ -110,18 +110,20 @@ describe('Bausteine HakenZiel und SymbolKnopf', () => {
 
   it('globals.css kennt die Ziele: Haken, Symbole, Kopf-Kreise, Monatsblatt, ZOE-Fenster', () => {
     const css = lies('app/globals.css');
-    for (const k of ['.ui-haken-ziel', '.ui-symbol', '.ui-symbole', '.kopf-rund', '.kopf-index-zeile', '.ui-monat-punkte', '.ui-mini-monat', '.ui-ziel-text']) expect(css, k).toContain(k);
+    for (const k of ['.ui-haken-ziel', '.ui-symbol', '.ui-symbole', '.kopf-rund', '.kopf-space', '.ui-monat-punkte', '.ui-mini-monat', '.ui-ziel-text']) expect(css, k).toContain(k);
     expect(css).toMatch(/\.kopf-rund \{ width: 40px; height: 40px;/);
     expect(css).toMatch(/\.zoe-fenster \{ right: 8px !important; width: calc\(100vw - 16px\) !important;/);
   });
 });
 
 describe('Globale Shell', () => {
-  it('Kopf: runde Knöpfe über .kopf-rund (kein festes 34 px mehr), Index-Schalter am Handy in eigener Zeile', () => {
+  // 08.10. (Aufräumen Etappe 1): der Kopf trägt nur Space-Schalter, Suche, Glocke, Fokus — kein Index-Schalter mehr (eigene Zeile am Handy fällt weg).
+  it('Kopf: runde Knöpfe über .kopf-rund (kein festes 34 px mehr), Space-Schalter statt Index-Schalter', () => {
     const k = lies('components/os/Kopf.tsx');
     expect(k).not.toMatch(/width: 34/);
     expect(k).toContain('className="kopf-rund"');
-    expect(k).toContain('kopf-index-zeile');
+    expect(k).toContain('className="kopf-space"');
+    expect(k).not.toContain('kopf-index-zeile');
     expect(lies('components/os/Glocke.tsx')).toContain('kopf-rund');
   });
 
