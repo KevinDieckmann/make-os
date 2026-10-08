@@ -6,15 +6,19 @@
 // Aufgaben · Planung · Finanzen · zwei Bereiche des Space · Kontakte · ZOE. Den Space wählt man oben im Kopf (Privat |
 // Business). Unten: Einstellungen, „Problem oder Idee melden“ (öffnet das Erfassen-Fenster, kein Seitenwechsel), Konto.
 // Oben MAKE OS und das Klappzeichen — eingeklappt bleibt eine schmale Spalte mit Symbolen, der Stand wird gemerkt.
-// Handy: Leiste unten mit Heute · Privat · Business · ZOE · Netzwerken · Einstellungen — Privat/Business öffnen ihre Punkte
-// als Blatt; „Problem oder Idee melden“ steht als Zeile unten in beiden Blättern und auf der Einstellungs-Seite.
+// Nachbesserung 08.10. (Kevin nach der Demo): EIN Schalter oben (Alles · Privat · Business). Bei „Alles“ zeigt die Leiste
+// Heute · Inbox · Kalender · Aufgaben · Planung · Finanzen · Kontakte · ZOE und darunter je eine kleine Gruppe Privat (Gesundheit,
+// Familie) und Business (Markttraktion, Mandate & Unternehmen) — zusammen zwölf Punkte (`leisteFuer('alles')`, `ALLES_GRUPPEN`).
+// Handy: unten FÜNF Einträge — Heute · Inbox · Menü · ZOE · Netzwerken (sechs liefen ineinander). „Menü“ öffnet das Blatt mit dem
+// Schalter Alles/Privat/Business, allen Punkten der Wahl, Einstellungen und „Problem oder Idee melden“ — ein „Mehr“ daneben wäre
+// dasselbe Blatt ein zweites Mal; den frei gewordenen Platz bekommt die Inbox (am Handy der häufigste Weg, sonst zwei Tipps entfernt).
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Settings, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, Handshake, Sun } from 'lucide-react';
+import { Settings, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, Handshake, Sun, Inbox, LayoutGrid } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { SPACES, ZOE_EINTRAG, aktiverSpaceEintrag, aktiverLeistenPunkt, leisteFuer, spaceVon, type SpaceId, type SpaceEintrag } from '@/lib/make-one/spaces';
+import { ZOE_EINTRAG, ALLES_EINTRAEGE, ALLES_GRUPPEN, SPACE_WAHLEN, aktiverSpaceEintrag, aktiverLeistenPunkt, leisteFuer, spaceVon, wahlInfo, type SpaceWahl, type SpaceEintrag } from '@/lib/make-one/spaces';
 import { useSpace } from '@/hooks/useSpace';
 import { problemMelden } from './bauplan/IdeeErfassen';
 import { WEG } from '@/lib/wege';
@@ -41,8 +45,17 @@ export function MeldenKnopf({ zu, stil }: { zu: boolean; stil: CSSProperties }) 
   );
 }
 
+/** Die Handy-Leiste unten — höchstens fünf Einträge, kurze Namen (Wächter in tests/aufraeumen-etappe1.test.ts). */
+export const HANDY_LEISTE = ['Heute', 'Inbox', 'Menü', 'ZOE', 'Netzwerken'] as const;
+
+/** Die Punkte einer Wahl als Blöcke: bei „Alles“ die gemeinsamen Punkte, dann je Gruppe Privat/Business mit Überschrift. */
+export function leistenBloecke(w: SpaceWahl): { titel?: string; farbe: string; eintraege: SpaceEintrag[] }[] {
+  if (w !== 'alles') return [{ farbe: spaceVon(w).farbe, eintraege: leisteFuer(w) }];
+  return [{ farbe: wahlInfo('alles').farbe, eintraege: ALLES_EINTRAEGE }, ...ALLES_GRUPPEN.map(g => ({ titel: g.label, farbe: g.farbe, eintraege: g.eintraege }))];
+}
+
 /**
- * Handy: „Problem oder Idee melden“ als Zeile unten im Blatt (Privat/Business) — ≥ 44 px hoch. `onWeg` schließt das Blatt,
+ * Handy: „Problem oder Idee melden“ als Zeile unten im Blatt (Menü) — ≥ 44 px hoch. `onWeg` schließt das Blatt,
  * danach öffnet sich das Erfassen-Fenster wie am Rechner.
  */
 export function MeldenZeile({ onWeg }: { onWeg: () => void }) {
@@ -56,13 +69,14 @@ export function MeldenZeile({ onWeg }: { onWeg: () => void }) {
 
 export function Leiste() {
   const pfad = usePathname() ?? '/os';
-  const { space, suche, setzen } = useSpace();
+  const { wahl, suche, setzen } = useSpace();
   const aktiv = aktiverSpaceEintrag(pfad, suche);
-  const sp = spaceVon(space);
-  const punktAn = aktiverLeistenPunkt(space, pfad, suche);
+  const sp = wahlInfo(wahl);
+  const punktAn = aktiverLeistenPunkt(wahl, pfad, suche);
   const einstellungenAn = EINSTELLUNGEN.passt.some(p => pfad === p || pfad.startsWith(`${p}/`));
   const [konto, setKonto] = useState<{ name: string } | null>(null);
-  const [offen, setOffen] = useState<SpaceId | null>(null); // Handy-Blatt
+  const [offen, setOffen] = useState(false); // Handy-Blatt „Menü“
+  const [blattWahl, setBlattWahl] = useState<SpaceWahl>(wahl); // im Blatt umschaltbar, ohne gleich zu springen
   const wartezahl = useWartezahl(); // Netzwerken (03.10.): wie viele Erfassungen noch auf dem Gerät warten
   // Eingeklappt (Kevin 26.09.): nur Symbole, Stand gemerkt.
   const [zu, setZu] = useState(false);
@@ -71,7 +85,8 @@ export function Leiste() {
   useEffect(() => {
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) setKonto(d.ich); }).catch(() => {});
   }, []);
-  useEffect(() => { setOffen(null); }, [pfad, suche]);
+  useEffect(() => { setOffen(false); }, [pfad, suche]);
+  useEffect(() => { if (offen) setBlattWahl(wahl); }, [offen]); // eslint-disable-line react-hooks/exhaustive-deps
   const vorname = konto?.name.split(' ')[0] ?? '';
 
   /** Ein Punkt der Leiste: Symbol + Text, eingeklappt nur das Symbol; aktiv in der Farbe des Space. */
@@ -89,7 +104,21 @@ export function Leiste() {
       </Link>
     );
   };
+  const gruppenTitel = (titel: string, farbe: string) => zu
+    ? <div key={`t-${titel}`} aria-hidden style={{ borderTop: `1px solid ${C.linie}`, margin: '8px 8px 4px' }} />
+    : <div key={`t-${titel}`} style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: farbe, padding: '12px 10px 4px' }}>{titel}</div>;
   const breite = zu ? 68 : 232;
+
+  // Handy unten: fünf Einträge (HANDY_LEISTE). Heute und Inbox folgen der Wahl; „Menü“ leuchtet, wenn das Blatt offen ist oder die
+  // Seite ein Punkt der Leiste ist, der unten nicht eigens steht (Aufgaben, Finanzen, Gesundheit …), oder in den Einstellungen.
+  const inboxEintrag = leisteFuer(wahl).find(e => e.label === 'Inbox') ?? ALLES_EINTRAEGE[1];
+  const unten = [
+    { art: 'link' as const, href: sp.start, label: 'Heute', icon: Sun, an: pfad === '/os' },
+    { art: 'link' as const, href: inboxEintrag.href, label: 'Inbox', icon: Inbox, an: pfad === '/os/inbox' || pfad.startsWith('/os/inbox/') },
+    { art: 'menue' as const, href: '', label: 'Menü', icon: LayoutGrid, an: offen || einstellungenAn || (!!punktAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label)) },
+    { art: 'link' as const, href: ZOE_EINTRAG.href, label: 'ZOE', icon: ZOE_EINTRAG.icon, an: aktiv.eintrag === ZOE_EINTRAG },
+    { art: 'link' as const, href: WEG.netzwerken(), label: 'Netzwerken', icon: Handshake, an: pfad === WEG.netzwerken() || pfad.startsWith(`${WEG.netzwerken()}/`) },
+  ];
 
   return (
     <>
@@ -108,10 +137,13 @@ export function Leiste() {
           </button>
         </div>
 
-        {/* Der aktive Space (gewählt im Kopf) — nur als Beschriftung, in seiner Farbe. */}
+        {/* Die Wahl (oben im Kopf) — nur als Beschriftung, in ihrer Farbe. */}
         {!zu && <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: sp.farbe, padding: '0 10px 6px' }}>{sp.label}</div>}
-        {/* Die Punkte des Space, dann ZOE (gemeinsam für beide). */}
-        {leisteFuer(space).map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : sp.farbe))}
+        {/* Die Punkte der Wahl (Space: seine Punkte, dann ZOE; Alles: gemeinsame Punkte samt ZOE, dann die Gruppen Privat/Business). */}
+        {leistenBloecke(wahl).flatMap(b => [
+          ...(b.titel ? [gruppenTitel(b.titel, b.farbe)] : []),
+          ...b.eintraege.map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : b.farbe)),
+        ])}
 
         <div style={{ marginTop: 'auto', display: 'grid', gap: 1 }}>
           <div style={{ borderTop: `1px solid ${C.linie}`, margin: '10px 0 8px' }} />
@@ -125,40 +157,51 @@ export function Leiste() {
         </div>
       </nav>
 
-      {/* Handy: Blatt mit den Punkten des angetippten Space */}
+      {/* Handy: Blatt „Menü“ — Schalter Alles/Privat/Business, die Punkte dieser Wahl, Einstellungen, Melden. */}
       {offen && (
-        <div className="leiste-mobil-blatt" onClick={() => setOffen(null)} style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,.45)' }}>
-          {SPACES.filter(s => s.id === offen).map(s => (
-            <div key={s.id} onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: 8, right: 8, bottom: 'calc(64px + env(safe-area-inset-bottom))', background: C.flaecheHoch, border: `1px solid ${s.farbe}55`, borderRadius: 16, padding: 10, boxShadow: '0 16px 40px -12px rgba(0,0,0,.8)' }}>
-              <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, color: s.farbe, padding: '4px 10px 8px', fontSize: TYP.bedien, letterSpacing: '.08em', textTransform: 'uppercase' }}>{s.label}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                {s.eintraege.map(e => { const Icon = e.icon; const an = space === s.id && aktiverLeistenPunkt(s.id, pfad, suche)?.href === e.href; return (
-                  <Link key={e.href} href={e.href} onClick={() => { setzen(s.id); setOffen(null); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', minHeight: 44, boxSizing: 'border-box', borderRadius: 12, textDecoration: 'none', color: an ? s.farbe : C.ink, background: an ? `${s.farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: an ? 600 : 500 }}><Icon size={16} strokeWidth={1.75} />{e.label}</Link>
-                ); })}
-              </div>
-              {/* „Problem oder Idee melden“ ist am Handy nicht in der Leiste (dort steht Netzwerken) — hier bleibt es einen Tipp entfernt. */}
-              <MeldenZeile onWeg={() => setOffen(null)} />
+        <div className="leiste-mobil-blatt" onClick={() => setOffen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,.45)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: 8, right: 8, bottom: 'calc(64px + env(safe-area-inset-bottom))', maxHeight: 'calc(100vh - 96px - env(safe-area-inset-bottom))', overflowY: 'auto', background: C.flaecheHoch, border: `1px solid ${wahlInfo(blattWahl).farbe}55`, borderRadius: 16, padding: 10, boxShadow: '0 16px 40px -12px rgba(0,0,0,.8)' }}>
+            <div role="group" aria-label="Bereich im Menü" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4, padding: 3, marginBottom: 6, borderRadius: 999, background: 'rgba(255,255,255,.05)' }}>
+              {SPACE_WAHLEN.map(id => { const w = wahlInfo(id); const an = id === blattWahl; return (
+                <button key={id} type="button" aria-pressed={an} onClick={() => setBlattWahl(id)} className="fassbar"
+                  style={{ minHeight: 44, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    border: `1px solid ${an ? `${w.farbe}66` : 'transparent'}`, background: an ? `${w.farbe}1F` : 'transparent', color: an ? w.farbe : C.inkDim }}>{w.label}</button>
+              ); })}
             </div>
-          ))}
+            {leistenBloecke(blattWahl).map(b => (
+              <div key={b.titel ?? 'haupt'}>
+                {b.titel && <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, color: b.farbe, padding: '8px 10px 4px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase' }}>{b.titel}</div>}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
+                  {b.eintraege.map(e => { const Icon = e.icon; const an = blattWahl === wahl && punktAn?.href === e.href; const farbe = e === ZOE_EINTRAG ? C.aktiv : b.farbe; return (
+                    <Link key={e.href} href={e.href} onClick={() => { setzen(blattWahl); setOffen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', minHeight: 44, minWidth: 0, boxSizing: 'border-box', borderRadius: 12, textDecoration: 'none', color: an ? farbe : C.ink, background: an ? `${farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: an ? 600 : 500 }}>
+                      <Icon size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>
+                    </Link>
+                  ); })}
+                </div>
+              </div>
+            ))}
+            <Link href={EINSTELLUNGEN.href} onClick={() => setOffen(false)} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 9, padding: '12px 10px', minHeight: 44, boxSizing: 'border-box', borderRadius: 10, borderTop: `1px solid ${C.linie}`, textDecoration: 'none', color: einstellungenAn ? C.aktiv : C.inkDim, fontSize: TYP.body, fontWeight: 500 }}>
+              <Settings size={16} strokeWidth={1.75} />{EINSTELLUNGEN.label}
+            </Link>
+            {/* „Problem oder Idee melden“ ist am Handy nicht in der Leiste (dort steht Netzwerken) — hier bleibt es einen Tipp entfernt. */}
+            <MeldenZeile onWeg={() => setOffen(false)} />
+          </div>
         </div>
       )}
       <nav className="leiste-mobil" aria-label="Hauptnavigation" style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40, borderTop: `1px solid ${C.linie}`, background: C.grund,
         padding: '6px 8px calc(6px + env(safe-area-inset-bottom))', justifyContent: 'space-around',
       }}>
-        {([{ art: 'link' as const, href: sp.start, label: 'Heute', icon: Sun, farbe: C.aktiv, an: pfad === '/os' },
-          // N3 (03.10.): ein Space leuchtet unten nur auf Seiten, die zu ihm gehören (Eintrag der Space-Punkte) — nicht auf Konto, Heute, Kalender oder Inbox, nur weil er zuletzt gewählt war.
-          ...SPACES.map(s => ({ art: 'space' as const, href: s.start, label: s.label, icon: s.icon, farbe: s.farbe, an: aktiv.space === s.id || offen === s.id, id: s.id })),
-          { art: 'link' as const, href: ZOE_EINTRAG.href, label: 'ZOE', icon: ZOE_EINTRAG.icon, farbe: C.aktiv, an: aktiv.eintrag === ZOE_EINTRAG },
-          { art: 'link' as const, href: WEG.netzwerken(), label: 'Netzwerken', icon: Handshake, farbe: C.aktiv, an: pfad === WEG.netzwerken() || pfad.startsWith(`${WEG.netzwerken()}/`) },
-          { art: 'link' as const, href: EINSTELLUNGEN.href, label: EINSTELLUNGEN.label, icon: Settings, farbe: C.aktiv, an: einstellungenAn }]).map(e => {
+        {unten.map(e => {
           const Icon = e.icon;
+          const farbe = e.art === 'menue' ? sp.farbe : C.aktiv;
           // Netzwerken (03.10.): wartet etwas auf dem Gerät, steht es als Abzeichen am Knopf („2 warten“).
           const abzeichen = e.label === 'Netzwerken' ? wartezahlText(wartezahl) : null;
-          const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span>{abzeichen && <span data-netzwerken-zaehler aria-label={`${abzeichen} auf dem Gerät`} style={{ position: 'absolute', top: -5, left: '50%', marginLeft: 4, padding: '1px 6px', borderRadius: 999, fontSize: TYP.mikro, fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap', background: wartezahl.wartend ? LEUCHT.achtung : LEUCHT.kritisch, color: C.grund }}>{abzeichen}</span>}</>;
-          const stil = { position: 'relative' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: 1, padding: '6px 0', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? e.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: e.an ? 700 : 500, minHeight: 48, justifyContent: 'center', cursor: 'pointer' };
-          return e.art === 'space'
-            ? <button key={e.label} type="button" onClick={() => setOffen(o => (o === e.id ? null : e.id))} className="fassbar" style={stil}>{innen}</button>
+          const innen = <><Icon size={20} strokeWidth={1.75} /><span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>{abzeichen && <span data-netzwerken-zaehler aria-label={`${abzeichen} auf dem Gerät`} style={{ position: 'absolute', top: -5, left: '50%', marginLeft: 4, padding: '1px 6px', borderRadius: 999, fontSize: TYP.mikro, fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap', background: wartezahl.wartend ? LEUCHT.achtung : LEUCHT.kritisch, color: C.grund }}>{abzeichen}</span>}</>;
+          // Fünf gleich breite Spalten (flex 1 1 0, minWidth 0): die Namen kürzen mit „…“, statt ineinanderzulaufen.
+          const stil = { position: 'relative' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: '1 1 0', minWidth: 0, padding: '6px 2px', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: e.an ? 700 : 500, minHeight: 48, justifyContent: 'center', cursor: 'pointer' };
+          return e.art === 'menue'
+            ? <button key={e.label} type="button" onClick={() => setOffen(o => !o)} aria-expanded={offen} aria-label={`Menü · ${sp.label}`} className="fassbar" style={stil}>{innen}</button>
             : <Link key={e.label} href={e.href} className="fassbar" style={stil}>{innen}</Link>;
         })}
       </nav>

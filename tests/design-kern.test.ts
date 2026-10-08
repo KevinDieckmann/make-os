@@ -127,9 +127,10 @@ describe('Globale Shell', () => {
     expect(lies('components/os/Glocke.tsx')).toContain('kopf-rund');
   });
 
-  it('Leiste unten leuchtet nur auf Seiten des Space (N3) und trägt den offenen Blattkasten mit', () => {
+  // Nachbesserung 08.10.: unten fünf Einträge; „Menü“ leuchtet bei offenem Blatt oder auf einem Punkt der Leiste, der unten nicht steht (N3 sinngemäß).
+  it('Leiste unten: Menü leuchtet nur auf Seiten der Leiste ohne eigenen Knopf und trägt den offenen Blattkasten mit', () => {
     const l = lies('components/os/Leiste.tsx');
-    expect(l).toContain('an: aktiv.space === s.id || offen === s.id');
+    expect(l).toContain("an: offen || einstellungenAn || (!!punktAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label))");
     expect(l).not.toContain("an: space === s.id && pfad !== '/os'");
   });
 

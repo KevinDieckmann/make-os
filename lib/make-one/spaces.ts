@@ -19,10 +19,15 @@
 // Heute, ZOE …). Unten: Einstellungen (/os/system), „Problem oder Idee melden“, Konto.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, LayoutGrid } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
+import { FARBE } from './design';
 
 export type { SpaceId };
+/** Die Wahl im Kopf: beide Bereiche („alles“) oder ein Space. */
+export type SpaceWahl = 'alles' | SpaceId;
+export const SPACE_WAHLEN: readonly SpaceWahl[] = ['alles', 'privat', 'business'];
+export const istSpaceWahl = (v: unknown): v is SpaceWahl => v === 'alles' || v === 'privat' || v === 'business';
 export interface SpaceEintrag {
   href: string; label: string; icon: LucideIcon;
   /** Muster, die den Space festlegen (aktiverSpaceEintrag, spaceVonAdresse). */
@@ -91,8 +96,39 @@ export const SPACES: Space[] = [
   },
 ];
 
-/** Die Leiste eines Space: seine Punkte, dann ZOE. */
-export const leisteFuer = (id: SpaceId): SpaceEintrag[] => [...spaceVon(id).eintraege, ZOE_EINTRAG];
+const eintrag = (id: SpaceId, label: string): SpaceEintrag => SPACES.find(s => s.id === id)!.eintraege.find(e => e.label === label)!;
+
+/**
+ * „Alles“ (08.10.): die gemeinsamen Punkte ohne Space-Parameter — die Seiten zeigen dann beide Bereiche (Inbox: alle eigenen
+ * Postfächer, Kalender: Bereich „alle“, Aufgaben: Überblick über Privat, Firmen und Mandanten, Planung: Filter „alle“, Finanzen:
+ * Gesamt). Kontakte = die Kartei der Markttraktion (dort stehen alle Personen; das private Kontaktbuch hebt den Punkt mit hervor).
+ */
+export const ALLES_EINTRAEGE: SpaceEintrag[] = [
+  { href: '/os', label: 'Heute', icon: Sun, passt: [], auch: ['=/os'] },
+  { href: '/os/inbox', label: 'Inbox', icon: Inbox, passt: [], auch: ['/os/inbox'] },
+  { href: '/os/kalender', label: 'Kalender', icon: CalendarDays, passt: [], auch: ['/os/kalender', '/os/planung/woche'] },
+  { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: [], auch: ['/os/aufgaben'] },
+  { href: '/os/planung/jahr', label: 'Planung', icon: Target, zeitId: 'ziele-planung', passt: [], auch: ['/os/planung', '/os/fokus', '/os/kompass', '/os/wachstum', '/os/saeule'] },
+  { href: '/os/finanzen?s=gesamt', label: 'Finanzen', icon: Wallet, passt: [], auch: ['/os/finanzen', '/os/finanzplan', '/os/controlling', '/os/business'] },
+  { href: '/os/markttraktion?s=kontakte', label: 'Kontakte', icon: BookUser, passt: [], auch: ['/os/markttraktion?s=kontakte', '/os/menschen'] },
+  ZOE_EINTRAG,
+];
+
+/** Unter „Alles“ je eine kleine Gruppe: die Bereiche, die nur einen Space kennen (dieselben Einträge wie in der Space-Leiste). */
+export const ALLES_GRUPPEN: { space: SpaceId; label: string; farbe: string; eintraege: SpaceEintrag[] }[] = [
+  { space: 'privat', label: 'Privat', farbe: SPACE_FARBE.privat, eintraege: [eintrag('privat', 'Gesundheit'), eintrag('privat', 'Familie')] },
+  { space: 'business', label: 'Business', farbe: SPACE_FARBE.business, eintraege: [eintrag('business', 'Markttraktion'), eintrag('business', 'Mandate & Unternehmen')] },
+];
+
+/** Anzeige der Wahl (Kopf, Leiste, Handy-Blatt): Name, Farbe, Startadresse, Text der Suche. */
+export const ALLES = { id: 'alles' as const, label: 'Alles', farbe: FARBE.aktiv, icon: LayoutGrid, start: '/os', suche: 'Überall suchen: Aufgaben, Kontakte, Seiten' };
+export function wahlInfo(w: SpaceWahl): { id: SpaceWahl; label: string; farbe: string; icon: LucideIcon; start: string; suche: string } {
+  return w === 'alles' ? ALLES : spaceVon(w);
+}
+
+/** Die Leiste einer Wahl: Space = seine Punkte, dann ZOE; „Alles“ = die gemeinsamen Punkte samt ZOE, dann die Gruppen. */
+export const leisteFuer = (id: SpaceWahl): SpaceEintrag[] =>
+  id === 'alles' ? [...ALLES_EINTRAEGE, ...ALLES_GRUPPEN.flatMap(g => g.eintraege)] : [...spaceVon(id).eintraege, ZOE_EINTRAG];
 
 /**
  * Passt eine Adresse zu einem Muster? Pfad: gleich oder Unterpfad („/os/planung“
@@ -126,7 +162,7 @@ export function aktiverSpaceEintrag(pfad: string, suche = ''): { space: SpaceId 
 }
 
 /** Welcher Punkt der Leiste eines Space leuchtet — das genaueste Muster (passt oder auch) unter seinen Punkten. */
-export function aktiverLeistenPunkt(id: SpaceId, pfad: string, suche = ''): SpaceEintrag | null {
+export function aktiverLeistenPunkt(id: SpaceWahl, pfad: string, suche = ''): SpaceEintrag | null {
   let best: { e: SpaceEintrag; l: number } | null = null;
   for (const e of leisteFuer(id)) for (const m of [...e.passt, ...(e.auch ?? [])]) {
     if (passtZu(pfad, suche, m) && (!best || m.length > best.l)) best = { e, l: m.length };
@@ -141,18 +177,47 @@ export function spaceVonAdresse(pfad: string, suche = ''): SpaceId | null {
   return aktiverSpaceEintrag(pfad, suche).space;
 }
 
+/** Die Wahl aus dem Parameter `space` allein (privat · business · alles), sonst null. */
+export function wahlAusParameter(suche = ''): SpaceWahl | null {
+  const q = new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche).get('space');
+  return istSpaceWahl(q) ? q : null;
+}
+
+/**
+ * Die wirksame Wahl (08.10.): `?space=` gewinnt (auch `alles`). Ist „Alles“ gemerkt, bleibt es — Seiten nur eines Bereichs
+ * (Gesundheit, Markttraktion …) lassen den Schalter stehen. Ist ein Space gemerkt, legt die Seite ihn fest wie bisher.
+ */
+export function wahlVon(pfad: string, suche: string, gemerkt: SpaceWahl): SpaceWahl {
+  const p = wahlAusParameter(suche);
+  if (p) return p;
+  if (gemerkt === 'alles') return 'alles';
+  return aktiverSpaceEintrag(pfad, suche).space ?? gemerkt;
+}
+
 export const spaceVon = (id: SpaceId): Space => SPACES.find(s => s.id === id) ?? SPACES[0];
+/** Merker der Wahl im Kopf (`alles` | `privat` | `business`; alte Stände tragen nur einen Space). */
 export const SPACE_MERKER = 'make-space';
+/** Der zuletzt konkrete Space — für Stellen, die einen Space brauchen (Suche, ZOE, Zeitmessung), auch bei „Alles“. */
+export const SPACE_ZULETZT_MERKER = 'make-space-zuletzt';
 export const SPACE_EREIGNIS = 'make-space-gewechselt';
 
 /**
- * Wohin der Space-Schalter im Kopf führt (08.10.): steht man auf einem Punkt der Leiste, der im anderen Space ein Gegenstück
- * gleichen Namens hat (Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, Kontakte), geht es dorthin; auf einer Seite des
- * einen Space ohne Gegenstück zu Heute des anderen. Gemeinsame Seiten (Konto, Einstellungen, ZOE …) bleiben stehen (null).
+ * Wohin der Schalter im Kopf führt (08.10.): steht man auf einem Punkt der Leiste, der in der neuen Wahl ein Gegenstück gleichen
+ * Namens hat (Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, Kontakte), geht es dorthin; trifft die Seite den Punkt der neuen
+ * Wahl schon (z. B. Gesundheit bei „Alles“ — die Gruppe Privat), bleibt man stehen (null). Eine Seite eines Space ohne Gegenstück
+ * führt zu Heute der neuen Wahl. Gemeinsame Seiten (Konto, Einstellungen, ZOE …) bleiben stehen (null).
  */
-export function wechselZiel(pfad: string, suche: string, nach: SpaceId): string | null {
-  const von: SpaceId = nach === 'privat' ? 'business' : 'privat';
-  const punkt = aktiverLeistenPunkt(von, pfad, suche) ?? aktiverLeistenPunkt(nach, pfad, suche);
-  if (!punkt || punkt === ZOE_EINTRAG) return spaceVonAdresse(pfad, suche) ? spaceVon(nach).start : null;
-  return spaceVon(nach).eintraege.find(e => e.label === punkt.label)?.href ?? spaceVon(nach).start;
+export function wechselZiel(pfad: string, suche: string, nach: SpaceWahl): string | null {
+  const reihe: SpaceWahl[] = [...SPACE_WAHLEN.filter(w => w !== nach), nach];
+  let punkt: SpaceEintrag | null = null;
+  for (const w of reihe) { punkt = aktiverLeistenPunkt(w, pfad, suche); if (punkt) break; }
+  const start = wahlInfo(nach).start;
+  if (!punkt || punkt === ZOE_EINTRAG) return spaceVonAdresse(pfad, suche) || wahlAusParameter(suche) ? start : null;
+  const ziel = leisteFuer(nach).find(e => e.label === punkt!.label);
+  if (!ziel) return start;
+  // Schon da (die Seite trifft den Punkt der neuen Wahl) und kein widersprechender ?space= → stehen bleiben, nur die Wahl wechselt.
+  const param = wahlAusParameter(suche);
+  const schonDa = ziel.passt.some(m => passtZu(pfad, suche, m)) || passtZu(pfad, suche, ziel.href);
+  if (schonDa && (!param || param === nach)) return null;
+  return ziel.href;
 }

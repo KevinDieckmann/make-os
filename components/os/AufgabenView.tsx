@@ -213,9 +213,10 @@ export function AufgabenView() {
   const [themaFilter, setThemaFilter] = useState<string | 'alle'>('alle');
   const [orgFilter, setOrgFilter] = useState<string | 'alle'>('alle');
   // Space (26.09.): im Privat-Space nur Privates, im Business-Space nur Business — „Alle“ zeigt beides.
-  const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
+  // „Alles“ im Kopf (08.10.) = Filter „Alle“ (`filter` aus useSpace).
+  const { filter: spaceVorgabe, setzen: spaceSetzen } = useSpace();
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
-  useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
+  useEffect(() => { setSpaceFilter(spaceVorgabe); }, [spaceVorgabe]);
   const imSpace = (t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId }) => spaceFilter === 'alle' || spaceVonAufgabe(t, orgZuord) === spaceFilter;
   // Business-Einheit (27.09.): Filter-Pillen im Business, Vorgabe für neue Aufgaben = zuletzt gefiltert/gewählt.
   const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
@@ -757,7 +758,7 @@ export function AufgabenView() {
       }
       rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         {(['privat', 'business', 'alle'] as const).map(k => (
-          <Pille key={k} an={spaceFilter === k} farbe={k === 'alle' ? C.aktiv : SPACE_FARBE[k]} onClick={() => { setSpaceFilter(k); if (k !== 'alle') spaceSetzen(k); }} title={k === 'alle' ? 'Privat und Business zusammen' : `Nur ${SPACE_LABEL[k]}`}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</Pille>
+          <Pille key={k} an={spaceFilter === k} farbe={k === 'alle' ? C.aktiv : SPACE_FARBE[k]} onClick={() => { setSpaceFilter(k); spaceSetzen(k === 'alle' ? 'alles' : k); }} title={k === 'alle' ? 'Privat und Business zusammen' : `Nur ${SPACE_LABEL[k]}`}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</Pille>
         ))}
         <Link href="/os/aufgaben" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', marginLeft: 6 }}>Liste ›</Link>
       </span>}>

@@ -62,6 +62,7 @@ import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
 import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
+import { useSpace } from '@/hooks/useSpace';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 
 type Ansicht = KalenderAnsicht;
@@ -118,6 +119,9 @@ export function Kalender() {
   const [anker, setAnker] = useState(heute);
   const [sicht, setSicht] = useState<'alle' | Wer>('alle');
   const [bereich, setBereich] = useState<Bereich>('alle');
+  // Der Schalter im Kopf (08.10.: Alles · Privat · Business) wählt den Bereich — „Alles“ = alle; im Kalender bleibt er umschaltbar.
+  const { filter: kopfBereich } = useSpace();
+  useEffect(() => { setBereich(kopfBereich); }, [kopfBereich]);
   const { state: aufgabenStand } = useTasks();
   const [aus, setAus] = useState<Set<string>>(new Set());
   const [ebenen, setEbenen] = useState<{ fristen: boolean; erinnerungen: boolean; aufgaben: boolean }>({ fristen: true, erinnerungen: true, aufgaben: true });

@@ -874,16 +874,25 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   `passtZu` Pfad+Parameter), `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Tests `tests/spaces.test.ts`.
 - **Aufräumen Etappe 1 (08.10., Branch `aufraeumen-1`, nur lokal; Kevin: „ich weiß gar nicht mehr wo alles ist“):**
   - **EINE Startseite „Heute“** = `/os` (`components/os/HeuteView.tsx`, gestaltbare Fläche): ohne Parameter Privat + Business zusammen, `?space=`
-    nur dieser Space (Segmente Alles · Privat · Business). Gruß + Datum einmal; Standard je Sicht `HEUTE_STANDARD` (Steht an = Widget `anstehend`,
+    nur dieser Space — seit der Nachbesserung OHNE eigenen Schalter, die Sicht folgt `useSpace().wahl` (Kopf). Gruß + Datum einmal; Standard je Sicht `HEUTE_STANDARD` (Steht an = Widget `anstehend`,
     Fokus, Termine, Aufgaben, Index, Wachstums-Score als Karte). **Flächen-Kennungen bleiben** (`HEUTE_FLAECHE`: `home`, `uebersicht-privat`,
     `uebersicht-business`) — nie umbenennen, sonst sind gespeicherte Layouts weg. `/os/heute` und `/os/uebersicht` leiten in `next.config.mjs` nach
     `/os` (Parameter wandern mit); Links nur über `WEG.heute(space?)`. `/os/wachstum` bleibt Seite (Score-Karte, Planung).
-  - **Kopf** (`components/os/Kopf.tsx`): nur Space-Schalter Privat | Business (`wechselZiel`: Gegenstück im anderen Space, sonst dessen Heute) ·
+  - **Nachbesserung (08.10., Branch `aufraeumen-1b`, Kevin: „ein Schalter, oben, mit Alles“):** `SpaceWahl` = `alles` | `privat` | `business`
+    (`SPACE_WAHLEN`). `useSpace()` liefert `wahl` (Schalter/Leiste/Heute), `space` (immer konkret: Seite, sonst zuletzt konkret — Suche, ZOE,
+    Zeit) und `filter` (Space der Adresse, sonst Wahl; „alle“ bei Alles — Aufgaben, Planung, Ziele, Kalender). Wahl nur über `wahlVon`: `?space=`
+    gewinnt (auch `alles`, wird gelesen, nie erzeugt); gemerktes „Alles“ bleibt auf Seiten eines Bereichs (Gesundheit, Markttraktion … zeigen ihren
+    Bereich, der Schalter springt nicht); gemerkter Space folgt der Seite wie bisher. Merker `make-space` (Wahl, ohne = Alles) + `make-space-zuletzt`.
+    „Alles“ in der Leiste: `ALLES_EINTRAEGE` (Heute · Inbox · Kalender · Aufgaben · Planung · Finanzen `?s=gesamt` · Kontakte = Kartei · ZOE, ohne
+    `?space=`) + `ALLES_GRUPPEN` (Privat: Gesundheit, Familie · Business: Markttraktion, Mandate & Unternehmen), zusammen ≤ 12. Handy unten
+    `HANDY_LEISTE` = Heute · Inbox · Menü · ZOE · Netzwerken (≤ 5, Spalten kürzen mit „…“); „Menü“ = Blatt mit Schalter, allen Punkten der Wahl,
+    Einstellungen, Melden. Serverseitige Filter unverändert (nur Darstellung/Adresse).
+  - **Kopf** (`components/os/Kopf.tsx`): nur Schalter Alles · Privat · Business (`wechselZiel`: Gegenstück in der neuen Wahl, schon da → stehen bleiben, sonst deren Heute; am Handy kompakt) ·
     Suche (⌘K) · Glocke · Fokus-Zähler. Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
   - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute ·
     Inbox · Kalender · Aufgaben · Planung · Finanzen · (Privat: Gesundheit · Familie · Kontakte `/os/menschen` | Business: Markttraktion ·
     Mandate & Unternehmen · Kontakte `?s=kontakte`) · ZOE. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten:
-    Heute · Privat · Business · ZOE · Netzwerken · Einstellungen. `SpaceEintrag.passt` legt den Space fest, `auch` hebt nur hervor (gemeinsame
+    siehe Nachbesserung (fünf Einträge). `SpaceEintrag.passt` legt den Space fest, `auch` hebt nur hervor (gemeinsame
     Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung (Planung = `ziele-planung`).
   - **Unterbereiche:** ZOE-Reiter (`components/os/ZoeReiter.tsx`, `ZOE_BEREICH`: Freigaben · Agenten · Loops · Brain · Empfang) auf allen
     ZOE-Seiten inkl. Research/Content/Meeting/Board/Prospecting (erreichbar über ZOE › Agenten). Fokus · Kompass · Wachstum = Reiter der

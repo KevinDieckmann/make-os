@@ -10,16 +10,17 @@
 // Die gespeicherten Layouts bleiben: die Flächen-Kennungen sind die alten (`home` = zusammen, `uebersicht-privat`,
 // `uebersicht-business`), neue Karten rutschen über `anwenden` an ihre Standardstelle. /os/heute und /os/uebersicht leiten
 // hierher (next.config.mjs, der Space-Parameter wandert mit). Wachstum bleibt eine eigene Seite (Score-Karte, Planung).
+//
+// Nachbesserung 08.10. (Kevin: „ein Schalter, oben, mit Alles“): Heute hat KEINE eigene Umschaltung mehr — die Sicht folgt dem
+// Schalter im Kopf (`useSpace().wahl`: Alles → `home`, Privat, Business).
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Seite, Segmente, ZielBezug } from './ui';
+import { Seite, ZielBezug } from './ui';
 import { Flaeche } from './flaeche/Flaeche';
 import { Anlaesse } from './kalender/Anlaesse';
 import { useSpace } from '@/hooks/useSpace';
-import { WEG } from '@/lib/wege';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
 
 export type HeuteSicht = 'alle' | 'privat' | 'business';
@@ -73,15 +74,12 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
   ],
 };
 
-/** `?space=` → Sicht; alles andere = zusammen. */
+/** Wahl im Kopf (bzw. `?space=`) → Sicht; alles andere = zusammen. */
 export const heuteSicht = (space: string | null | undefined): HeuteSicht => (space === 'privat' || space === 'business' ? space : 'alle');
 
-const SICHTEN: { id: HeuteSicht; label: string }[] = [{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }];
-
 export function HeuteView() {
-  const router = useRouter();
-  const sicht = heuteSicht(useSearchParams().get('space'));
-  const { setzen } = useSpace();
+  // Die Sicht folgt dem Schalter im Kopf (die Adresse `?space=` gewinnt dort schon) — kein zweiter Schalter hier.
+  const sicht = heuteSicht(useSpace().wahl);
   const [datum, setDatum] = useState('');
   const [gruss, setGruss] = useState('Hallo');
   const [vorname, setVorname] = useState('');
@@ -93,15 +91,10 @@ export function HeuteView() {
     setAbend(jetzt.getHours() >= 17);
     fetch('/api/konto/ich').then(r => r.json()).then(d => setVorname((d.ich?.name ?? '').split(' ')[0])).catch(() => {});
   }, []);
-  // Gleichrangiges tauschen (Überall sauber zurück): die Sicht ersetzt den Verlaufseintrag; Privat/Business nimmt die Leiste mit.
-  const waehlen = (s: HeuteSicht) => {
-    if (s !== 'alle') setzen(s);
-    router.replace(WEG.heute(s === 'alle' ? undefined : s));
-  };
   return (
     <Seite titel="Heute"
       unter={<span suppressHydrationWarning>{gruss}{vorname ? `, ${vorname}` : ''} · {datum} · <Link href={`/os/ritual?modus=${abend ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{abend ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}
-      rechts={<Segmente liste={SICHTEN} aktiv={sicht} onWahl={waehlen} />}>
+>
       {/* K2 (29.09.): Feiertag NRW heute/morgen. Geburtstage stehen nur in „Steht an“ (F2 M2, eine Stelle). */}
       <Anlaesse geburtstage={false} />
       {sicht === 'privat' && <ZielBezug bereich="privat" max={2} />}

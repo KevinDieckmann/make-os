@@ -860,8 +860,9 @@ nav a:hover { transform: translateX(2px); }
   .wachstum-kopf-innen { gap: 4px; padding: 6px 12px; }
   /* Rechts Lupe · Glocke · Fokus zu 44 px; wer nicht passt (laufender Fokus), wischt — wie bisher */
   .wachstum-kopf-saeulen { flex: 1 1 auto; justify-content: flex-end; gap: 4px !important; }
-  /* Space-Schalter (08.10.): am Handy 44 px hoch, etwas enger */
-  .kopf-space button { min-height: 44px !important; padding: 0 11px !important; }
+  /* Schalter Alles · Privat · Business (08.10.): am Handy 44 px hoch und kompakt — drei Knöpfe + Lupe + Glocke + Fokus passen in 375 px */
+  .kopf-space { padding: 2px !important; gap: 0 !important; }
+  .kopf-space button { min-height: 44px !important; padding: 0 8px !important; font-size: 12px !important; letter-spacing: -.01em; }
 }
 /* ZOE-Fenster am Handy: bündig mit 8 px Rand links und rechts (vorher 6 px links abgeschnitten) */
 @media (max-width: 720px) { .zoe-fenster { right: 8px !important; width: calc(100vw - 16px) !important; } }
