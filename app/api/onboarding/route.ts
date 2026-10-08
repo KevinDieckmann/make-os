@@ -2,7 +2,7 @@
 // Der Plan prüft sich selbst (lib/onboarding-status.ts — eine Quelle mit Startfläche und Heute-Karte). Häkchen seit 08.10. spät
 // (Paket B0/B2, ONBOARDING_PLAN.md): persönliche je Person (`onboarding--<speicher>`), gemeinsame im Bestand `onboarding`
 // (lib/onboarding-haken.ts). Schreiben nur die angemeldete Person selbst — Dienstweg 403, ohne Person 401, unbekannte Kennung 400
-// (nie gekürzt), Inhaber-Schritte nur der Inhaber (403), Privat-Schritte nur mit Zugang zu den Privat-Finanzen (403), Build-Kennung (409
+// (nie gekürzt), Inhaber-Schritte nur ein Inhaber (403; seit 09.10. jeder Inhaber), Privat-Schritte nur mit Zugang zu den Privat-Finanzen (403), Build-Kennung (409
 // neu laden). Gespeichert wird der Speichername, nie ein Vorname. Alte Häkchen (vor dem 08.10.) zählen nie — nur `frueher` („bitte
 // bestätigen“). GET liest nur (auch WHOOP roh, lib/onboarding-status.ts) — Lesen schreibt nie.
 
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     pruefeAlles(person),
     kontextFuer(person),
   ]);
-  const ich = kontext ? { inhaber: kontext.inhaber, personen: kontext.personen, privatFinanzen: kontext.privatFinanzen, altbestand: kontext.altbestand } : null;
+  const ich = kontext ? { inhaber: kontext.inhaber, haupt: kontext.haupt, eingeladen: kontext.eingeladen, personen: kontext.personen, privatFinanzen: kontext.privatFinanzen, altbestand: kontext.altbestand } : null;
   return NextResponse.json({ ...(await mitAnzeige(haken, z.person)), befunde, ich });
 }
 

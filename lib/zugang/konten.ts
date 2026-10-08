@@ -13,6 +13,7 @@
 // Rollen: der Inhaber (erstes Konto, mit dem Zugangsschlüssel angelegt) darf
 // einladen. Mitglieder dürfen alles andere. Ein „Haushalt" ist die Instanz —
 // wer später verkauft, zieht diese Datei je Kunde einmal hoch.
+// Seit 09.10. (R9) darf die Rolle `inhaber` mehrere Konten tragen — Regeln und der Haupt-Inhaber NUR über lib/zugang/inhaber.ts.
 
 import { scrypt, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
@@ -91,6 +92,12 @@ export interface ZugangEinstellungen {
   zulieferer?: 'an' | 'aus';
   /** Seit wann die Einstellung gilt (ISO). */
   zuliefererSeit?: string;
+  /**
+   * Haupt-Inhaber (09.10., R9 — mehrere Inhaber): Speichername des Inhabers, an dem hängt, was genau EINEN braucht (Altbestand
+   * ohne Suffix, Systemlauf-Person, Kalender-Haupt-Person). Wird bei der ersten Ernennung eines weiteren Inhabers festgeschrieben;
+   * fehlt es, gilt das älteste Inhaber-Konto. Lesen NUR über `hauptInhaber` (lib/zugang/inhaber.ts).
+   */
+  hauptInhaber?: string;
 }
 export interface KontenStand { konten: Konto[]; einladungen: Einladung[]; einstellungen?: ZugangEinstellungen }
 
@@ -286,7 +293,7 @@ export function kontoAenderungen(alt: KontenStand | null, neu: KontenStand): Aen
   }
   for (const id of Array.from(vorher.keys())) if (!nachher.has(id)) raus.push({ op: 'geloescht', id });
   const ea = alt?.einstellungen ?? {}, en = neu.einstellungen ?? {};
-  const efelder = (['zweiFaktorPflicht', 'leerlaufStunden', 'zulieferer'] as const).filter(f => (ea[f] ?? null) !== (en[f] ?? null));
+  const efelder = (['zweiFaktorPflicht', 'leerlaufStunden', 'zulieferer', 'hauptInhaber'] as const).filter(f => (ea[f] ?? null) !== (en[f] ?? null));
   if (efelder.length) raus.push({ op: 'geaendert', id: 'instanz', felder: [...efelder] });
   return raus;
 }

@@ -3,7 +3,7 @@
 // Bestand heißt schon `onboarding`, `speicherFuer` wäre hier falsch); lesen und schreiben nur die Person selbst. Gemeinsame und
 // Instanz-Schritte → Bestand `onboarding` (alle im Haushalt sehen den Stand). `von` ist der Speichername der Sitzung, nie ein Vorname.
 //
-// Alte Häkchen (Spuren `kevin-…`/`malin-…`, `updates`) stehen im gemeinsamen Bestand und bleiben dort UNANGETASTET liegen. Sie zählen
+// Alte Häkchen (frühere Spuren `<speicher>-…`, `updates`) stehen im gemeinsamen Bestand und bleiben dort UNANGETASTET liegen. Sie zählen
 // nie als getan (Gegenprüfung: die neuen Schritte bedeuten mehr) — wo erlaubt (`frueherErlaubt`: ohne Prüfung, ohne Stichtagsbezug)
 // erscheinen sie als „früher abgehakt — bitte bestätigen“; persönliche nur für die Person mit genau diesem Speichernamen.
 // Lesen schreibt nie. Wächter: tests/onboarding-stand.test.ts.

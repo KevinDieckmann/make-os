@@ -155,6 +155,13 @@ Was im Repo steht und mit dem nächsten Ausrollen wirkt:
   Zweiter Ort: der Mac holt jede Nacht ab (Abschnitt „Sicherung, Offsite, Wiederherstellung“).
 - **SSH:** `server-haerten.sh` setzt `PermitRootLogin no`, sobald `make` einen Schlüssel und sudo hat
   (`server-einrichten.sh` richtet beides ein); `AllowTcpForwarding no`; Sicherheitsupdates explizit täglich.
+- **Weiterer Admin-Schlüssel (09.10., R9 — zweite gleichwertige Inhaberin):** jede Inhaberin/jeder Inhaber kommt mit einem EIGENEN
+  Schlüssel als `make` auf den Server (nie ein geteilter). Die neue Person erzeugt ihn am eigenen Rechner
+  (`ssh-keygen -t ed25519 -C "<vorname>-make-os"`, mit Passphrase) und gibt nur die `.pub`-Zeile weiter; wer schon Zugang hat, trägt
+  sie ein: `ssh -t make@<SERVER> bash /srv/make-os/app/deploy/ssh-schluessel-hinzufuegen.sh` (fragt die Zeile ab). Das Skript nimmt
+  genau einen öffentlichen Schlüssel ohne Optionen, trägt keinen doppelt ein, lässt den Ausroll-Schlüssel (`command=…,restrict`)
+  unberührt und schreibt atomar mit Rechten 600. `--liste` zeigt die Fingerabdrücke, `--entfernen "<Schlüssel>"` nimmt genau diesen
+  wieder heraus (nie den letzten Admin-Schlüssel). Probe der neuen Person: `ssh make@<SERVER> 'sudo -n true && echo ok'`.
 
 Einmalig auf dem Server (als root, lesend prüfen, dann ausführen):
 ```bash

@@ -10,7 +10,7 @@ import { ZoePanel } from '@/components/os/ZoePanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
 import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
-import { WillkommenMalin } from '@/components/os/WillkommenMalin';
+import { Willkommen } from '@/components/os/Willkommen';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
 import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
@@ -58,7 +58,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       {/* Fotos & Videos (09.10.): lädt wartende Stücke von JEDER Seite aus weiter (Öffnen, Netz da, sichtbar) — App offen lassen bei großen Videos. */}
       <MedienSender />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
-      <WillkommenMalin />
+      <Willkommen />
     </div>
   );
 }

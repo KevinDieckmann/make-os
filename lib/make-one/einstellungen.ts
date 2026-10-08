@@ -29,7 +29,7 @@ export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
   { id: 'betrieb', titel: 'Betrieb', eintraege: [
     { href: '/os/hoi', label: 'Head of IT', was: 'Server, App, Sicherheit und der Blick von außen — in Ampeln' },
     { href: '/os/bauplan', label: 'Bauplan', was: 'was als Nächstes gebaut wird — mit Planung und den Phasen (früher „Roadmap“)' },
-    { href: '/os/onboarding', label: 'Onboarding', was: 'die Einrichtungsspur je Person' },
+    { href: '/os/onboarding', label: 'Onboarding', was: 'die Einrichtung: Meine Einrichtung · Gemeinsam · Instanz' },
     { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit', was: 'wer woran baut, wie wir zusammen arbeiten' },
   ] },
 ];

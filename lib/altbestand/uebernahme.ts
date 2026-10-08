@@ -51,12 +51,15 @@ export async function altbestandUebernehmen(opts: { teile?: AltbestandTeil[]; ta
   if (process.env.MAKE_OS_DEMO === '1') return { lauf: false, grund: 'Demo-Instanz', teile: [] };
   if (!/^[a-z0-9-]{1,40}$/.test(person)) { console.error('[MAKE OS] Altbestand: Variable ungültig — nichts übernommen.'); return { lauf: false, grund: 'Variable ungültig', teile: [] }; }
   try {
-    const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
-    const konto = await kontoFuerSpeicher(person);
+    const { ladeKonten } = await import('@/lib/zugang/konten');
+    const { istHauptInhaber } = await import('@/lib/zugang/inhaber');
+    const st = await ladeKonten();
+    const konto = st.konten.find(k => k.speicher === person);
     if (!konto) { console.error('[MAKE OS] Altbestand: kein Konto zur Variable — nichts übernommen.'); return { lauf: false, grund: 'kein Konto', teile: [] }; }
     // Zusätzliche Schranke: der Altbestand stammt aus dem Code des Inhabers — nur dessen Konto kann ihn bekommen. Eine falsch
-    // gesetzte Variable (Speichername einer anderen Person) legt so nie Art.-9-Inhalte in ein fremdes Profil.
-    if (konto.rolle !== 'inhaber') { console.error('[MAKE OS] Altbestand: die Variable nennt nicht den Inhaber — nichts übernommen.'); return { lauf: false, grund: 'nicht Inhaber', teile: [] }; }
+    // gesetzte Variable (Speichername einer anderen Person) legt so nie Art.-9-Inhalte in ein fremdes Profil. Seit 09.10. (mehrere
+    // Inhaber): nur der Haupt-Inhaber (lib/zugang/inhaber.ts) — ein weiterer Inhaber bekommt den Altbestand nie.
+    if (konto.rolle !== 'inhaber' || !istHauptInhaber(st, person)) { console.error('[MAKE OS] Altbestand: die Variable nennt nicht den Inhaber — nichts übernommen.'); return { lauf: false, grund: 'nicht Inhaber', teile: [] }; }
   } catch {
     console.error('[MAKE OS] Altbestand: Konten nicht lesbar — nichts übernommen (läuft beim nächsten Start erneut).');
     return { lauf: false, grund: 'Konten nicht lesbar', teile: [] };

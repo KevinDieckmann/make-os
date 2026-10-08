@@ -16,14 +16,11 @@ import { personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 
 /** Ein weiteres Konto im Haushalt des Inhabers (das erste nach Anlage) — oder null. */
 async function anderePersonImHaushalt(ich: string): Promise<string | null> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return null;
-  const imHaushalt = (k: (typeof konten)[number]) => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt);
-  return konten.find(k => k.speicher !== ich && imHaushalt(k))?.speicher ?? null;
+  return kontenImHaushaltDerInhaber(await ladeKonten()).find(k => k.speicher !== ich)?.speicher ?? null;
 }
 
 export const runtime = 'nodejs';

@@ -17,7 +17,8 @@
 
 import { promises as fs } from 'fs';
 import { datenOrdner, loadJson, updateJson, bestandEntfernen } from '@/lib/store/local-db';
-import { aendereKonten, ladeKonten, oeffentlich, type Konto } from '@/lib/zugang/konten';
+import { aendereKonten, ladeKonten, oeffentlich, type Konto, type ZugangEinstellungen } from '@/lib/zugang/konten';
+import { istHauptInhaber } from '@/lib/zugang/inhaber';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { teamSpeicherName } from '@/lib/make-one/team-speicher';
 import { KONTO_PRAEFIX } from '@/lib/make-one/team-typen';
@@ -248,10 +249,14 @@ export interface KontoLoeschBericht {
 /** Kennung des Konto-Grabsteins (nur HMAC/SHA der zufälligen Konto-Kennung — nie Name/Adresse; trifft nie einen Kontakt). */
 export const kontoGrabsteinKennung = (kontoId: string, v = kennungsVersion()) => grabsteinKennung(`konto:${kontoId}`, v);
 
-/** Darf diese Person ihr Konto löschen? Rein. Inhaber nur, wenn er allein ist. */
-export function loeschenErlaubt(k: Pick<Konto, 'speicher' | 'rolle'>, alle: readonly Pick<Konto, 'speicher'>[]): { ok: true } | { ok: false; fehler: string } {
-  if (k.rolle === 'inhaber' && alle.some(x => x.speicher !== k.speicher)) return { ok: false, fehler: 'Als Inhaber können Sie Ihr Konto erst löschen, wenn es keine anderen Konten mehr gibt — entfernen Sie zuerst die anderen Konten bzw. lassen Sie sie ihr Konto selbst löschen. Für das Ende der ganzen Instanz gibt es den Instanz-Export und das Löschskript (System › Datenschutz).' };
-  return { ok: true };
+/**
+ * Darf diese Person ihr Konto löschen? Rein. Der Haupt-Inhaber nur, wenn er allein ist. Ein weiterer Inhaber (09.10., R9) gibt zuerst
+ * die Inhaber-Rolle ab (Konto › Inhaber) — so laufen Protokoll und Glocke an alle Inhaber, dann löscht er als Mitglied.
+ */
+export function loeschenErlaubt(k: Pick<Konto, 'speicher' | 'rolle'>, alle: readonly Pick<Konto, 'speicher' | 'rolle'>[], einstellungen?: Pick<ZugangEinstellungen, 'hauptInhaber'>): { ok: true } | { ok: false; fehler: string } {
+  if (k.rolle !== 'inhaber' || !alle.some(x => x.speicher !== k.speicher)) return { ok: true };
+  if (istHauptInhaber({ konten: alle, einstellungen }, k.speicher)) return { ok: false, fehler: 'Als Inhaber können Sie Ihr Konto erst löschen, wenn es keine anderen Konten mehr gibt — entfernen Sie zuerst die anderen Konten bzw. lassen Sie sie ihr Konto selbst löschen. Für das Ende der ganzen Instanz gibt es den Instanz-Export und das Löschskript (System › Datenschutz).' };
+  return { ok: false, fehler: 'Geben Sie zuerst die Inhaber-Rolle ab (Konto › Inhaber) — danach können Sie Ihr Konto löschen.' };
 }
 
 /**

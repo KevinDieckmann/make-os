@@ -14,9 +14,15 @@ Hier stehen **nur Orte, nie Werte**. Ziele: **RPO 24 h** (höchstens ein Tag Dat
 | **Sicherungspasswort** (`.sicherung-passwort`, für `.enc`-Archive: vor dem 26.09. und die openssl-Übergangssicherung, wenn am Server age fehlt) | `.enc`-Archive | wie oben |
 | **GitHub-Zugang** (Repo `make-os`, `make-vault`) mit 2FA-Wiederherstellungscodes | Code + Vault | Passwort-Manager beider |
 | **Hetzner-Zugang** mit 2FA | neuer Server | Passwort-Manager beider |
+| **SSH-Schlüssel je Inhaber** (eigener privater Schlüssel, mit Passphrase; 09.10., R9) | als `make` auf den Server (sudo) — fällt eine Person aus, kommt die andere mit ihrem eigenen rein | nur auf dem eigenen Rechner der Person + ihr Passwort-Manager (Passphrase); eintragen/entfernen: `deploy/ssh-schluessel-hinzufuegen.sh` (DEPLOY.md › Härtung) |
 | Die Archive selbst | Daten | Mac `~/MAKE-OS-Sicherungen` (täglich abgeholt) · Server `/srv/make-os/sicherungen` · Hetzner-Abbilder |
 
 Jährlich prüfen (Übung, Abschnitt 3), ob alle drei Orte den **aktuellen** Stand haben — nach jeder Rotation sofort.
+
+**Fällt ein Inhaber aus (09.10., R9):** Seit Update 2 kann es zwei gleichwertige Inhaber geben (Konto › Inhaber). Die andere Person
+verwaltet dann Konten, Haushalt, zweiten Faktor, Datenschutz und Nachweise in der App und kommt mit IHREM SSH-Schlüssel auf den Server.
+Ein verlorenes Gerät: dessen Schlüssel mit `deploy/ssh-schluessel-hinzufuegen.sh --entfernen "<Schlüssel>"` herausnehmen, in der App
+„Alle anderen Geräte abmelden“ bzw. das Passwort der Person ändern lassen.
 
 ## 2 · Schritte „Server weg“ → „läuft wieder“
 

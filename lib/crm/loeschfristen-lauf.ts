@@ -33,6 +33,7 @@ import { HEADS } from '@/lib/heads/prompt';
 import type { ReplayStand } from '@/lib/heads/lauf';
 import type { SignalStand } from './person-bestaende';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { hauptInhaber } from '@/lib/zugang/inhaber';
 import { protokolliere, PROTOKOLL_PRAEFIX, type ProtokollDatei } from '@/lib/store/aenderungsprotokoll';
 import {
   LOESCHFRISTEN_SPEICHER, fristenWirksam, stichtag, kontakteUeberFrist, signalTexteBereinigen, replayBereinigen, protokollMonateUeberFrist,
@@ -388,7 +389,8 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
 
 /** Die eine Aufgabe führen: anlegen, Zahl nachziehen oder erledigen. Nie Kennungen oder Namen im Text. */
 async function aufgabeAbgleichen(kartei: number, monate: number, jetztIso: string, netz = 0, nw = 0, nwMonate = 12): Promise<LaufErgebnis['aufgabe']> {
-  const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
+  // Eine Verantwortliche für die Aufgabe: der Haupt-Inhaber (bei mehreren Inhabern genau einer, lib/zugang/inhaber.ts).
+  const inhaber = hauptInhaber(await ladeKonten())?.speicher;
   let wirkung: LaufErgebnis['aufgabe'] = 'keine';
   const n = kartei + netz + nw;
   // Nichts über der Frist und noch keine Aufgaben-Liste: nichts anlegen.

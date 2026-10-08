@@ -108,8 +108,11 @@ export function vormonatVon(tag: string): string {
 /** Alles laden (Server). Ohne Haushalt des Inhabers: null — dann schreibt niemand etwas. */
 export async function appDatenLaden(heute: string, opt: { mitZeit?: boolean } = {}): Promise<AppDaten | null> {
   const { ladeKonten } = await import('@/lib/zugang/konten');
-  const konten = (await ladeKonten()).konten;
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
+  const { hauptInhaber } = await import('@/lib/zugang/inhaber');
+  const st = await ladeKonten();
+  const konten = st.konten;
+  // Der Haupt-Inhaber (bei mehreren Inhabern genau einer, lib/zugang/inhaber.ts) — sein Haushalt ist der der Inhaber.
+  const inhaber = hauptInhaber(st);
   const haushalt = inhaber?.haushalt;
   if (!inhaber || !haushalt) return null;
   const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht'); // ohne Papierkorb, ohne Archiv („Neu anfangen“), ohne „nur ich“

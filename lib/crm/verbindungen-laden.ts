@@ -22,6 +22,7 @@ import { AUFGABEN_DATEI_PRAEFIX } from '@/lib/dateien/aufgaben-regeln';
 import { ladeCrm, CRM_SPEICHER } from './speicher';
 import { KONFLIKT_SPEICHER, type KonfliktStand } from './import-konflikte';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { haushaltDerInhaber, hauptInhaber, kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { AufgabeKurz, RechnungKurz, VerbindungsBestaende } from './verbindungen';
@@ -45,10 +46,11 @@ interface Quellen { haushalt: string | null; personen: string[] }
 
 /** Haushalt des Inhabers und seine Personen (für Fokus-Blöcke) — ohne Haushalt nur der Inhaber. */
 async function quellen(): Promise<Quellen> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  const h = inhaber?.haushalt && HAUSHALT_OK.test(inhaber.haushalt) ? inhaber.haushalt : null;
-  const personen = konten.filter(k => k.speicher === inhaber?.speicher || (!!h && k.haushalt === h)).map(k => k.speicher);
+  const st = await ladeKonten();
+  const hh = haushaltDerInhaber(st);
+  const h = hh && HAUSHALT_OK.test(hh) ? hh : null;
+  // Ohne gültigen Haushalt nur der Haupt-Inhaber.
+  const personen = h ? kontenImHaushaltDerInhaber(st).map(k => k.speicher) : [hauptInhaber(st)?.speicher].filter((x): x is string => !!x);
   return { haushalt: h, personen: Array.from(new Set(personen)) };
 }
 

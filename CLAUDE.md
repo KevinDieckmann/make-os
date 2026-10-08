@@ -77,6 +77,21 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
 
+## Mehrere Inhaber — Rolle statt Person (09.10., R9, Branch `zweite-inhaberin`, nur lokal; UPDATES.md)
+Kevin 08.10. (R9): „Malin wird gleichwertige zweite Inhaberin · Server-Zugang (SSH) auch für Malin.“
+- **Inhaber = Rolle**, mehrere Konten dürfen sie tragen. Regeln NUR in `lib/zugang/inhaber.ts` (rein): Rechte hat JEDER wirksame Inhaber
+  (`istWirksamerInhaber` — Rolle im Haushalt der Inhaber; über `istInhaber`/`nurInhaber`), nie `find(k => k.rolle === 'inhaber')` für eine Rechte- oder
+  Haushaltsfrage. Haushalt der Inhaber/Personen im Haushalt nur über `haushaltDerInhaber`/`kontenImHaushaltDerInhaber` (bzw. `haushaltDesInhabers`).
+- **Haupt-Inhaber nur über `hauptInhaber`** (Einstellung `einstellungen.hauptInhaber`, bei der ersten Ernennung festgeschrieben — sonst das älteste
+  Inhaber-Konto) bzw. `inhaberSpeicher()`/`istDerHauptInhaber`: nur für Dinge, die GENAU EINEN brauchen (Altbestand ohne Suffix, Systemlauf-Person,
+  Kalender-Haupt-Person, Persönliches an seinem Gerät: Mac-Adressbuch, Mac-Zulieferer, Apple-Erinnerungen). Meldungen „an den Inhaber“ an alle
+  (`alleInhaberSpeicher`). Der Haupt-Inhaber und der letzte Inhaber geben nie ab.
+- **Inhaber heißt Verwaltung, nicht Einsicht:** neue Inhaber-Werkzeuge öffnen nie persönliche Bestände einer anderen Person (Muster: Einzel-
+  Wiederherstellung → 403 über `personBestandNamen`). Wächter: `tests/zweite-inhaberin.test.ts` („zweiter Inhaber darf alles, was der erste darf“
+  über das Routen-Register), Messlatte mit der zweiten Person als Inhaberin.
+- Ernennen/Abgeben nur `POST /api/konto/haushalt` (Sitzung, `erneutPruefen`, `aendereKonten`, Glocke an alle Inhaber); SSH-Schlüssel je Person über
+  `deploy/ssh-schluessel-hinzufuegen.sh`.
+
 ## Datenschutz vor dem Upload (08.10. spät, Branch `vor-upload-datenschutz`; UPDATES.md)
 - **Feste Prompt-Texte ohne Persönliches:** keine Namen, keine Gesundheitsangaben einer Person, keine Lebenspläne, keine festen Firmen/Produkte —
   Name aus dem Konto der auslösenden Person (`vornameVon`), Gesellschaften über `gesellschaftenSatz`/`firmenKennungen` (lib/zoe/grundauftrag.ts),
@@ -498,17 +513,19 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   `nurMitMehreren`, `samstag`/`spaeter` (Kevin R1: Samstag-Kern ≤ 8 h, Rest „einzeln bis 16.10.“ zählt wie optional), `bestaetigen` (Prüfung zeigt
   nur einen Teil → Prüfung UND Häkchen), `stichtag`, `privatFinanzen` (nicht für `finanzRecht: 'business'`), `nurAltbestand`; Erklärung
   warum/wie/danach, Ort NUR über `WEG`/vorhandene Seiten, Server-Befehle mit `cd /srv/make-os/app &&` und Platzhaltern, nie Werte). Entschieden,
-  aber nicht gebaut = `ETAPPEN[].hinweise`. Datenkarte (`DATENKARTE`) und Ablauf (`ABLAUF`) ebenda. Spuren sichtbar „Inhaber“ · „Zweite Person“
-  (Kennungen/Adressen `kevin`/`malin` bleiben bis B1) — die Übersicht zeigt jeder Person ALLE ihre Schritte (`schritteFuer`), Spurseiten sind Filter.
+  aber nicht gebaut = `ETAPPEN[].hinweise`. Datenkarte (`DATENKARTE`) und Ablauf (`ABLAUF`) ebenda. **B1 (09.10.): Ebenen statt Namen** — `EBENEN`
+  (ich · gemeinsam · instanz) mit Seiten `/os/onboarding/{ich,gemeinsam,instanz}` (`EbeneView`, Instanz zeigt Schritte nur Inhabern); die alten
+  Spur-Seiten nur als Weiterleitung in next.config.mjs; „neue Person“-Schritte über `nurEingeladen` (`Kontext.eingeladen`); kein `spur`-Feld, keine
+  Namen im Code (alte Häkchen-Kennungen nur in `ALT_ZU_NEU`). Die Übersicht zeigt jeder Person ALLE ihre Schritte (`schritteFuer`), Ebenen-Seiten sind Filter.
 - **Fertig-Regel** NUR `istFertig`: roter Befund schlägt jedes Häkchen; grün = fertig (bei `bestaetigen` erst mit Häkchen); ohne Prüfung das Häkchen.
   Fortschritt/„Als Nächstes“ NUR `fortschrittVon` (Etappen-Reihenfolge, späte/optionale zählen erst, wenn getan). Wer einen Schritt sieht/abhakt:
   `sichtbarFuer`/`schrittFuer` (dieselbe Regel für Zählung und POST).
 - **Häkchen** nur über `lib/onboarding-haken.ts` + `app/api/onboarding`: persönliche in `onboarding--<speicher>` (IMMER mit Suffix —
   `PERSON_BESTAENDE.nurMitSuffix`), gemeinsame in `onboarding` mit Speichername. POST nur die Person selbst (Dienstweg 403, ohne Person 401), Kennung
-  aus `SCHRITTE` (sonst 400), `nurInhaber` bzw. nicht `sichtbarFuer` → 403. Alte `kevin-…`/`malin-…`-Häkchen bleiben liegen und zählen NIE — nur
+  aus `SCHRITTE` (sonst 400), `nurInhaber` bzw. nicht `sichtbarFuer` → 403. Alte `<speicher>-…`-Häkchen (frühere Spuren) bleiben liegen und zählen NIE — nur
   `frueher` („bitte bestätigen“, `frueherErlaubt`: ohne Prüfung, ohne Stichtagsbezug; persönliche nur für genau diesen Speichernamen).
 - **Prüfungen** nur in `lib/onboarding-status.ts`: ja/nein und Zähler, nie Werte; persönliche nur für die Person der Sitzung, `INHABER_PRUEFUNGEN`
-  (Altbestand) nur für die Inhaber-Sitzung, `INSTANZ_PRUEFUNGEN` für andere nur „Instanz eingerichtet: ja/nein“; „verbunden UND gesund“; nichts grün
+  (Altbestand) nur für die Sitzung des Haupt-Inhabers, `INSTANZ_PRUEFUNGEN` für andere nur „Instanz eingerichtet: ja/nein“; „verbunden UND gesund“; nichts grün
   ohne getane Arbeit (Sicherung nur mit ok + age + Ping, Einwilligung = aktueller Stand, iCloud aus der Umgebung zählt nicht, 0-Punkt-Posten eigens);
   jede Prüfung in `sicher()`, beschädigter Bestand = „nicht prüfbar“; GET schreibt nie (WHOOP roh lesen, nie `whoopStatus`). Neuer Prüf-Schlüssel →
   passende Liste + Schritt-`pruefung` (Wächter `tests/onboarding-stand.test.ts`).

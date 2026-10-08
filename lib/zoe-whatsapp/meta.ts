@@ -25,9 +25,9 @@ export async function zoeTokenZustand(ok: boolean, jetzt = new Date()): Promise<
   if (!ok && z.token?.gemeldet) return;
   await aendereZoeZustand(cur => (ok ? { ...cur, token: { okAt: jetzt.toISOString() } } : { ...cur, token: { ...(cur.token ?? {}), fehlerAt: jetzt.toISOString(), gemeldet: true } }));
   if (!ok) {
-    const { ladeKonten } = await import('@/lib/zugang/konten');
-    const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
-    if (inhaber) await melde({ an: inhaber, art: 'verbindung', titel: TOKEN_TEXT, link: '/os/verbindungen#zoe-whatsapp' });
+    // An jeden Inhaber (09.10., R9 — mehrere Inhaber verwalten die Instanz gleichwertig).
+    const { alleInhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
+    for (const inhaber of await alleInhaberSpeicher()) await melde({ an: inhaber, art: 'verbindung', titel: TOKEN_TEXT, link: '/os/verbindungen#zoe-whatsapp' });
   }
 }
 

@@ -42,7 +42,10 @@ export interface TeamPerson extends TeamEintrag {
   kreis: 'kern' | 'partner';
   /** Nur bei Konten: der Speichername (kevin, malin, …). */
   speicher?: string;
-  /** Inhaber des Haushalts — bekommt keine Aufgaben delegiert. */
+  /**
+   * Der Inhaber, der delegiert — bekommt keine Aufgaben delegiert. Bei mehreren Inhabern (09.10., R9) nur der Haupt-Inhaber
+   * (lib/zugang/inhaber.ts): ein weiterer Inhaber bleibt im Team delegierbar wie bisher.
+   */
   inhaber?: boolean;
   /** Fingerabdruck des gespeicherten Eintrags (fehlt, solange nichts gespeichert ist). */
   stand?: string;
@@ -116,7 +119,7 @@ function ausPlatzhalter(t: TeamMitglied): TeamPerson {
 export const platzhalterTeam = (): TeamPerson[] => PLATZHALTER.map(ausPlatzhalter);
 
 /** Ein Konto, soweit das Team es braucht. */
-export interface TeamKonto { speicher: string; name: string; rolle: 'inhaber' | 'mitglied' }
+export interface TeamKonto { speicher: string; name: string; rolle: 'inhaber' | 'mitglied'; /** Haupt-Inhaber (09.10.) — fehlt die Angabe, zählt die Rolle. */ haupt?: boolean }
 
 /**
  * Konten + gespeicherte Einträge → das Team. Konten sind feste Einträge (Name aus dem Konto, immer aktiv);
@@ -138,7 +141,7 @@ export function teamZusammen(konten: readonly TeamKonto[], eintraege: readonly T
       ...(e?.bereich ? { bereich: e.bereich } : vorgabe && vorgabe.bereiche.length > 1 ? { bereich: vorgabe.bereiche.slice(1).join(', ') } : {}),
       ...(e?.farbe ? { farbe: e.farbe } : {}),
       aktiv: true, kreis: e?.kreis ?? 'kern', quelle: 'konto' as const, speicher: k.speicher,
-      ...(k.rolle === 'inhaber' ? { inhaber: true } : {}),
+      ...((k.haupt ?? k.rolle === 'inhaber') ? { inhaber: true } : {}),
       ...(staende.get(id) ? { stand: staende.get(id) } : {}),
     };
   });

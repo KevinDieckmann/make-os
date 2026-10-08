@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { heuteBerlin, monatVon } from '@/lib/finanzen/haushalt/monat';
 import { sauberDatei, wendeAn, gefuellt, profileFuerBetrachter, type ErnaehrungFile, type Op } from '@/lib/ernaehrung/modell';
@@ -56,9 +57,7 @@ async function budget(): Promise<{ monat: string; ausgegeben: number; budget: nu
 }
 
 async function personen(): Promise<{ id: string; name: string }[]> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  return konten.filter(k => k.speicher === inhaber?.speicher || (!!inhaber?.haushalt && k.haushalt === inhaber.haushalt)).map(k => ({ id: k.speicher, name: k.name.split(' ')[0] }));
+  return kontenImHaushaltDerInhaber(await ladeKonten()).map(k => ({ id: k.speicher, name: k.name.split(' ')[0] }));
 }
 
 /**

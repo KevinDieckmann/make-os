@@ -8,6 +8,7 @@ import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
 import { eigeneZieleLesbar } from '@/lib/planung/eigene-ziele-sicht';
+import { istHauptInhaber, istWirksamerInhaber } from '@/lib/zugang/inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,9 @@ export async function GET(req: Request) {
   if (!ich) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 401 });
   return NextResponse.json({
     ich: oeffentlich(ich),
+    // Mehrere Inhaber (09.10., R9): Inhaber-Rechte (jeder Inhaber im Haushalt der Inhaber) und ob dieses Konto der Haupt-Inhaber ist.
+    inhaber: istWirksamerInhaber(s, wer),
+    hauptInhaber: istHauptInhaber(s, wer),
     // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.
     zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),
