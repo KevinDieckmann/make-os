@@ -63,6 +63,8 @@ Kevin: „Bank-Anbindung vorziehen · Markttraktion weiter ausbauen, damit wir K
 7. **Business-freie Zeiten wirken nicht →** ein Arbeitsrahmen je Person; Business-frei sperrt Kalender, Kapazität, ZOE, Heads und Glocke.
 8. **Nur ein Inhaber →** Malin wird gleichwertige zweite Inhaberin, auch mit Server-Zugang (SSH) (R9) — mit Update 2 (16.10.).
 9. **Zahlen nur Formular für Formular →** vorerst bewusst so (R3: von Hand); Tabellen/Importe erst, wenn die Bank läuft und es noch hakt.
+10. **Mac-Zulieferer abschalten (R6):** Apple-Erinnerungen einmal als Aufgaben übernehmen (Vorschau → Bestätigen), dann Zulieferer und
+    Mac-Dienste aus; am Mac bleibt nur der Mail-Zugang (Gmail/IMAP laufen ohnehin auf dem Server). Head of IT: Befund „Zulieferer“ entfällt.
 
 ## Phase 1 — Eigennutzung polieren (12.10. – 31.10., Updates jeden Freitagnachmittag: 16.10., 23.10., 30.10.)
 - In dieser Reihenfolge feinjustieren (Fragebogen Teil 1, ersetzt die frühere Reihenfolge): **ZOE** → **Planung & Ziele** → **Inbox** →
