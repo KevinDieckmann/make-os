@@ -12,7 +12,7 @@ import { sperren } from '@/lib/lauf-sperre';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, askWithSearch, hasAnthropicKey, fremd, FREMD_REGEL, extractJson, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
-import { vitalsHint } from '@/lib/vitals';
+import { vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { gatherBrain, blockIndex } from '@/lib/brain';
 import { resolveAgent } from '@/lib/agent-config';
 import {
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
       user: [
         `Heute ${wd}, ${heute}, ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2, '0')} Uhr. Lauf-Art: ${art}.`,
         // Art. 9 (05.10.): nur mit Einwilligung (b) — sonst steht in `b.vitals` ohnehin nichts (gatherBrain).
-        mitGesundheit ? `Recovery ${vit.rec}%, Schlaf ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}` : 'Keine Gesundheitswerte (keine Einwilligung) — Tagesform „gelb“ annehmen.',
+        mitGesundheit ? `${vitalsKurz(vit)}${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}` : 'Keine Gesundheitswerte (keine Einwilligung) — Tagesform „gelb“ annehmen.',
         eigeneAngaben,
         blockIndex(b),
         '',

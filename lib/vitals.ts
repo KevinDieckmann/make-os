@@ -3,12 +3,13 @@
 // Für die tägliche Nutzung ist das unbrauchbar: der Fokus-Agent und der
 // Morgen-Loop hätten ewig mit denselben Zahlen gerechnet.
 //
-// Jetzt: Kevin trägt morgens seine Whoop-Werte ein (15 Sekunden), alles
-// Nachgelagerte rechnet damit. Ohne Eintrag fallen wir auf den letzten
-// bekannten Stand zurück — und sagen ehrlich, wie alt der ist.
+// Jetzt: die Werte kommen je Person aus ihrem Bestand (`vitals` bzw. `vitals--<person>`, speicherFuer) — WHOOP-Abgleich,
+// Export oder Morgen-Check. Ohne Eintrag fallen wir auf den letzten bekannten Stand zurück und sagen ehrlich, wie alt
+// er ist. 08.10. abends (Fragebogen Teil 3): kein Personen-Sonderfall und keine festen Rückfallwerte mehr — ohne Werte
+// gibt es keine Werte (0 = keine Angabe, Anzeige „—“, `vitalsKurz`), nie die Zahlen eines alten Exports im Code.
 
 import { loadJson } from '@/lib/store/local-db';
-import { WHOOP } from '@/lib/make-one/health-data';
+import { speicherFuer } from '@/lib/zoe/raum';
 
 export interface DayVitals {
   /** Recovery in % (0–100) */
@@ -50,7 +51,7 @@ export interface ResolvedVitals {
   heute: boolean;
   /** Alter in Tagen (0 = heute) */
   alterTage: number;
-  /** true = gar kein Eintrag, wir nutzen den alten Whoop-Export */
+  /** true = gar kein Eintrag — alle Werte 0 (keine Angabe), `stand` „—“ */
   fallback: boolean;
 }
 
@@ -65,36 +66,38 @@ function daysBetween(from: string, to: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
-/** Die Werte, mit denen gerechnet werden soll — heute, sonst der letzte
- *  bekannte Stand, sonst der ursprüngliche Whoop-Export. */
-export async function resolveVitals(today = localDay(), person: string = 'kevin'): Promise<ResolvedVitals> {
-  // Kevins Whoop-Export ist sein Ausgangspunkt. Malin startet ohne — bei ihr
-  // gibt es keine erfundenen Rückfallwerte, sondern ehrlich leere Säulen.
-  const base = person === 'kevin'
-    ? { rec: WHOOP.rec, sleep: WHOOP.sleepLast, hrv: WHOOP.hrv, rhr: WHOOP.rhr }
-    : { rec: 0, sleep: 0, hrv: 0, rhr: 0 };
+/** Die Werte, mit denen gerechnet werden soll — heute, sonst der letzte bekannte Stand, sonst keine (0 = keine Angabe).
+ *  `person` ist Pflicht (Regel 5, kein Rückfall auf eine feste Person): wer für niemanden rechnet, liest keine Werte. */
+export async function resolveVitals(today: string | undefined, person: string): Promise<ResolvedVitals> {
+  const tag = today ?? localDay();
+  const keine: ResolvedVitals = { rec: 0, sleep: 0, hrv: 0, rhr: 0, stand: '—', heute: false, alterTage: 999, fallback: true };
   try {
-    const log = (await loadJson<VitalsLog>(person === 'kevin' ? 'vitals' : `vitals--${person}`)) ?? {};
-    const days = Object.keys(log).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today).sort();
+    const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
+    const days = Object.keys(log).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= tag).sort();
     const latest = days[days.length - 1];
-    if (!latest) {
-      return { ...base, stand: person === 'kevin' ? WHOOP.stand : '—', heute: false, alterTage: 999, fallback: true };
-    }
+    if (!latest) return keine;
     const v = log[latest] ?? {};
+    const zahl = (x: unknown) => (typeof x === 'number' && isFinite(x) ? x : 0);
     return {
-      rec: typeof v.rec === 'number' ? v.rec : base.rec,
-      sleep: typeof v.sleep === 'number' ? v.sleep : base.sleep,
-      hrv: typeof v.hrv === 'number' ? v.hrv : base.hrv,
-      rhr: typeof v.rhr === 'number' ? v.rhr : base.rhr,
+      rec: zahl(v.rec),
+      sleep: zahl(v.sleep),
+      hrv: zahl(v.hrv),
+      rhr: zahl(v.rhr),
       note: v.note,
       stand: latest,
-      heute: latest === today,
-      alterTage: daysBetween(latest, today),
+      heute: latest === tag,
+      alterTage: daysBetween(latest, tag),
       fallback: false,
     };
   } catch {
-    return { ...base, stand: person === 'kevin' ? WHOOP.stand : '—', heute: false, alterTage: 999, fallback: true };
+    return keine;
   }
+}
+
+/** Die Werte als kurze Zeile für Prompts — fehlende Werte ehrlich als „—“ (nie eine erfundene Zahl). */
+export function vitalsKurz(v: Pick<ResolvedVitals, VitalFeld>, felder: readonly VitalFeld[] = ['rec', 'sleep']): string {
+  const NAME: Record<VitalFeld, [string, string]> = { rec: ['Recovery', '%'], sleep: ['Schlaf', 'h'], hrv: ['HRV', ''], rhr: ['Ruhepuls', ''] };
+  return felder.map(f => { const [n, e] = NAME[f]; const w = v[f]; return w > 0 ? `${n} ${w}${e}` : `${n} —`; }).join(', ');
 }
 
 /** Ampel aus der Recovery — die eine Regel, die überall gleich gilt. */
@@ -102,9 +105,9 @@ export function zoneOf(rec: number): 'GRÜN' | 'GELB' | 'ROT' {
   return rec >= 66 ? 'GRÜN' : rec >= 40 ? 'GELB' : 'ROT';
 }
 
-/** Ehrlicher Hinweis für den Prompt, wenn die Werte nicht von heute sind. */
+/** Ehrlicher Hinweis für den Prompt, wenn die Werte nicht von heute sind (neutral — kein Name im Code). */
 export function vitalsHint(v: ResolvedVitals): string {
   if (v.heute) return '';
-  if (v.fallback) return ' — ACHTUNG: Kevin hat noch nie Werte eingetragen, das ist ein alter Export. Sag ihm, er soll unter /os/gesundheit seinen Morgen-Check machen, und bewerte die Tagesform vorsichtig.';
-  return ` — ACHTUNG: diese Werte sind vom ${v.stand} (${v.alterTage} Tag(e) alt), NICHT von heute. Behandle die Tagesform als unsicher und bitte Kevin um seinen Morgen-Check unter /os/gesundheit.`;
+  if (v.fallback) return ' — ACHTUNG: Es liegen keine Werte vor. Bitte die Person, unter /os/gesundheit ihren Morgen-Check zu machen (oder WHOOP zu verbinden), und bewerte die Tagesform vorsichtig.';
+  return ` — ACHTUNG: diese Werte sind vom ${v.stand} (${v.alterTage} Tag(e) alt), NICHT von heute. Behandle die Tagesform als unsicher und bitte die Person um ihren Morgen-Check unter /os/gesundheit.`;
 }

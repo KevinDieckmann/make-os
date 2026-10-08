@@ -7,7 +7,7 @@ import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
-import { resolveVitals, zoneOf, vitalsHint } from '@/lib/vitals';
+import { resolveVitals, zoneOf, vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
 import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
@@ -26,8 +26,9 @@ export async function POST(req: Request) {
   // Anzeige (eigene Werte der Person, bleiben im Haus) getrennt vom Prompt: an die KI gehen Vitalwerte nur mit
   // Einwilligung (b) — `b.gesundheitFrei` (Art. 9, 05.10.).
   const v = b.gesundheitFrei ? b.vitals : await resolveVitals(undefined, fuer);
+  // Ohne Wert (0 = keine Angabe) keine Zone aus einer erfundenen Zahl: dann wie GELB (mit Puffer), ehrlich ohne Recovery.
   const rec = v.rec;
-  const zone = zoneOf(rec);
+  const zone = rec > 0 ? zoneOf(rec) : 'GELB';
 
   if (!hasAnthropicKey()) {
     return NextResponse.json({ reply: 'Mir fehlt noch dein Anthropic-Key (.env.local), dann richte ich deinen Tag nach deiner Recovery aus.', recovery: rec, zone, needsKey: true });
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
 
   const eigeneAngaben = await eigenerGesundheitsKontext(personStreng(req));
   const koerper = b.gesundheitFrei
-    ? `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Notiz: "${v.note}"` : ''}`
+    ? `${vitalsKurz(v, ['rec'])} (Zone ${zone})${vitalsHint(v)}. ${vitalsKurz(v, ['rhr', 'hrv', 'sleep'])}.${v.note ? ` Notiz: "${v.note}"` : ''}`
     : 'KEINE GESUNDHEITSWERTE: Die Person hat nicht eingewilligt, dass sie an die KI gehen. Plane nach den Aufgaben mit mittlerer Last (wie GELB) und frag nicht nach Werten; unter **Tagesform** und **Körper** nur ein allgemeiner Satz.';
   const message = `${koerper}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
 

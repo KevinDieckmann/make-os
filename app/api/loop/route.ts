@@ -18,7 +18,7 @@ import { nameVon, speicherFuer } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { gatherBrain } from '@/lib/brain';
-import { vitalsHint } from '@/lib/vitals';
+import { vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { computeMetrics, eur } from '@/lib/make-one/finance-data';
 import { loadJson } from '@/lib/store/local-db';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       `Heute: ${wd}, ${today}.`,
       eigeneAngaben,
       g.gesundheitFrei
-        ? `Recovery ${vit.rec}%, Ruhepuls ${vit.rhr}, HRV ${vit.hrv}, Schlaf letzte Nacht ${vit.sleep}h${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}`
+        ? `${vitalsKurz(vit, ['rec', 'rhr', 'hrv', 'sleep'])}${vitalsHint(vit)}.${vit.note ? ` Notiz: "${vit.note}"` : ''}`
         : 'KEINE GESUNDHEITSWERTE (keine Einwilligung, dass sie an die KI gehen): Tagesform „gelb“ annehmen, nicht nach Werten fragen, unter „schutz“ nur ein allgemeiner Satz.',
       '',
       // Ehrlich über die Datenlage: der Kalender-Cache wird nur beim Öffnen von
@@ -327,7 +327,7 @@ export async function POST(req: Request) {
       user = [
         `Stichtag ${wd}, ${today}.`,
         eigeneAngaben,
-        `AKTUELL: Recovery ${g.vitals.rec}%, Schlaf ${g.vitals.sleep}h, HRV ${g.vitals.hrv}, Puls ${g.vitals.rhr}${vitalsHint(g.vitals)}.`,
+        `AKTUELL: ${vitalsKurz(g.vitals, ['rec', 'sleep', 'hrv', 'rhr'])}${vitalsHint(g.vitals)}.`,
         `JOURNAL (7 Tage): Energie Ø ${energie.length ? (energie.reduce((a, b2) => a + b2, 0) / energie.length).toFixed(1) : '—'}/5 · Stress Ø ${stress.length ? (stress.reduce((a, b2) => a + b2, 0) / stress.length).toFixed(1) : '—'}/5 · ${j7.length} Einträge.`,
         `GESUNDHEITS-ETAPPEN: ${msGes.map(x => `${x.titel} (${x.fortschritt}%${x.messlatte ? ` — Messlatte: ${x.messlatte}` : ''})`).join(' · ') || 'keine'}`,
       ].join('\n');

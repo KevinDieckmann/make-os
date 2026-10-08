@@ -36,7 +36,8 @@ interface StartLog { lastRun?: string }
 /** Was ist heute schon passiert und was fehlt? `person` = wer fragt (ohne: Systemlauf) — Läufe nur die eigenen + Systemläufe (08.10.). */
 async function status(today: string, person: string | null) {
   const start = (await loadJson<StartLog>('tagesstart')) ?? {};
-  const vitals = await resolveVitals(today);
+  // Vitalwerte nur der benannten Person (08.10., Regel 5) — der Systemlauf ohne Person prüft keine Werte (vorher: die einer festen Person).
+  const vitals = person ? await resolveVitals(today, person) : null;
   const cal = await loadJson<{ at?: string }>('calendar-cache');
   const calAgeH = cal?.at ? (Date.now() - new Date(cal.at).getTime()) / 3_600_000 : null;
   const loops = await recentRuns(person, { agent: 'loop-morgen', limit: 5 });
@@ -46,12 +47,12 @@ async function status(today: string, person: string | null) {
     today,
     gelaufen: start.lastRun === today,
     loopHeute,
-    vitalsHeute: vitals.heute,
-    vitalsStand: vitals.stand,
+    vitalsHeute: vitals?.heute ?? null,
+    vitalsStand: vitals?.stand ?? null,
     kalenderAlterStd: calAgeH == null ? null : Math.round(calAgeH),
     // Was Kevin noch selbst tun muss, damit die Zahlen von heute stimmen.
     offen: [
-      !vitals.heute ? 'Morgen-Check: Whoop-Werte eintragen (/os/gesundheit)' : null,
+      vitals && !vitals.heute ? 'Morgen-Check: Whoop-Werte eintragen (/os/gesundheit)' : null,
       calAgeH == null || calAgeH > 12 ? 'Kalender auffrischen (/os/kalender öffnen)' : null,
     ].filter(Boolean) as string[],
   };
