@@ -10,7 +10,7 @@ import { neueMailVorbereiten } from '@/lib/inbox/neue-mail';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  DEFAULT_ICP, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL, PIPELINE_HINT,
+  DEFAULT_ICP, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL,
   type Prospect, type ProspectStatus, type ProspectsState,
 } from '@/lib/make-one/prospecting-data';
 import { Building2 } from 'lucide-react';
@@ -142,8 +142,8 @@ export function ProspectingView() {
 
   return (
     <Seite
-      titel="Deine Zielliste zum 1-Mio-Ziel."
-      unter={<>Firmen rein, KI qualifiziert gegen dein Profil (Score + Fit + Aufhänger), du priorisierst. {PIPELINE_HINT}</>}
+      titel="Prospecting"
+      unter="Deine Zielliste: Firmen rein, KI qualifiziert gegen dein Profil (Score, Fit, Aufhänger), du priorisierst."
       rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
     >
       <ZoeReiter />

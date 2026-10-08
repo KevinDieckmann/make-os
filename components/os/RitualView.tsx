@@ -209,8 +209,8 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
 
   return (
     <Seite
-      titel={modusTab === 'morgen' ? 'Rein in den Tag.' : 'Raus aus dem Tag.'}
-      unter={<>{modusTab === 'morgen' ? 'Tagesstart' : 'Tagesende'} · {datum} — 10–15 Minuten für dich, zahlt direkt auf Gesundheit & Energie ein. Jeder Schritt hakt sich selbst ab, sobald er wirklich passiert ist.{gespeichert && <span style={{ color: LEUCHT.gut }}> {gespeichert}</span>}</>}
+      titel={modusTab === 'morgen' ? 'Tagesstart' : 'Tagesende'}
+      unter={<>{modusTab === 'morgen' ? 'Rein in den Tag' : 'Raus aus dem Tag'} · {datum} — 10–15 Minuten für dich.{gespeichert && <span style={{ color: LEUCHT.gut }}> {gespeichert}</span>}</>}
       rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <Chip farbe={alleFertig ? LEUCHT.gut : LEUCHT.achtung}>{modusTab === 'morgen' ? `${mDone}/6` : `${aDone}/5`}</Chip>
         <Segmente liste={[{ id: 'morgen', label: 'Morgen' }, { id: 'abend', label: 'Abend' }]} aktiv={modusTab} onWahl={setModusTab} />

@@ -57,7 +57,8 @@ describe('Routen: ein Weg statt zwei', () => {
     expect(ziel('/dog')).toBe('/os/familie');
     // Jedes Ziel ist eine echte Seite.
     for (const r of regeln.filter(x => !x.destination.includes('?'))) {
-      const seite = path.join(wurzel, 'app', r.destination === '/os' ? 'os' : r.destination.slice(1), 'page.tsx');
+      const ziel = r.destination.split('#')[0]; // Anker (z. B. /os/datenschutz#nachweise, 08.10.) zählen nicht zum Pfad
+      const seite = path.join(wurzel, 'app', ziel === '/os' ? 'os' : ziel.slice(1), 'page.tsx');
       expect(existsSync(seite), `${r.source} → ${r.destination}`).toBe(true);
     }
   });

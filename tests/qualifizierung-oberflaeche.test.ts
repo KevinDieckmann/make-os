@@ -103,9 +103,9 @@ describe('Qualifizierung zeichnet', () => {
   it('Host: Qualifizierung & Scoring mit den Pillen', async () => {
     vi.stubGlobal('fetch', async () => new Response('{}'));
     const { QualifizierungScoring } = await import('@/components/os/crm/quali/QualifizierungScoring');
-    const a = renderToStaticMarkup(h(QualifizierungScoring, { api: api(), ansicht: 'scoring-sales', onAnsicht: () => {}, zuLeads: () => {} }));
-    for (const t of ['Qualifizierung', 'Scoring', 'Marketing-Scoring · bis MQL', 'Sales-Scoring · MQL → SQL']) expect(a, t).toContain(t);
-    const b = renderToStaticMarkup(h(QualifizierungScoring, { api: api(), ansicht: 'runde', onAnsicht: () => {}, zuLeads: () => {} }));
+    const a = renderToStaticMarkup(h(QualifizierungScoring, { api: api(), ansicht: 'scoring-sales', onAnsicht: () => {}, zuLeads: () => {}, leads: null }));
+    for (const t of ['Runde', 'Leads', 'Scoring', 'Marketing-Scoring · bis MQL', 'Sales-Scoring · MQL → SQL']) expect(a, t).toContain(t);
+    const b = renderToStaticMarkup(h(QualifizierungScoring, { api: api(), ansicht: 'runde', onAnsicht: () => {}, zuLeads: () => {}, leads: null }));
     expect(b).toContain('Qualifizierungsrunde');
     vi.unstubAllGlobals();
   });

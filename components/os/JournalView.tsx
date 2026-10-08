@@ -99,7 +99,7 @@ export function JournalView() {
   return (
     <Seite
       titel={<span suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</span>}
-      unter={<>Journal · dein Datenweg — kurz festhalten, wie der Tag war. Daraus entstehen deine Daten, um den Weg immer wieder anzupassen. <Link href="/os/gesundheit" style={{ color: C.inkDim }}>Gesundheit ›</Link></>}
+      unter={<>Journal — kurz festhalten, wie der Tag war. <Link href="/os/gesundheit" style={{ color: C.inkDim }}>Gesundheit ›</Link></>}
       rechts={<Chip farbe={saved ? LEUCHT.gut : LEUCHT.achtung}>{saved ? 'gespeichert ✓' : 'speichert …'}</Chip>}
     >
       <ZielBezug bereich="gesundheit" />

@@ -197,8 +197,8 @@ describe('Aufräumen 04.10.: der Standard überall (keine Altbausteine mehr)', (
     expect(direkt).toEqual([]);
   });
   it('die umgestellten Seiten: Fließtext nicht unter 13 px, Fehler als Hinweis-Karte', () => {
-    const UMGESTELLT = ['BoardView', 'ContentView', 'MeetingView', 'ProspectingView', 'ResearchView', 'RoadmapView', 'RitualView', 'OnboardingView',
-      'TageslaufView', 'ZusammenarbeitView', 'HeuteView', 'Abhaengigkeit', 'Faelligkeit'].map(n => `components/os/${n}.tsx`)
+    const UMGESTELLT = ['BoardView', 'ContentView', 'MeetingView', 'ProspectingView', 'ResearchView', 'RitualView', 'OnboardingView',
+      'TageslaufView', 'ZusammenarbeitView', 'HeuteView'].map(n => `components/os/${n}.tsx`)
       .concat(dateien('components/os/bauplan'), dateien('components/os/zeit'), ['components/os/heute/Anstehend.tsx', 'components/os/netzwerken/MeineKarte.tsx',
         'components/os/mandate/ProdukteMandate.tsx', 'components/os/austausch/BeitragsVerlauf.tsx']);
     const klein: string[] = []; const fehler: string[] = [];

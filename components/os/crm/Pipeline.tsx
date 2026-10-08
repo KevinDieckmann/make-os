@@ -390,7 +390,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
             <Wahl label={c.quelle === 'event' ? 'Event' : c.quelle === 'kampagne' ? 'Kampagne' : 'Beitrag'} leer="+ wählen"
               liste={c.quelle === 'event' ? crm.stand.events.map(x => ({ id: x.id, label: x.titel, hinweis: datum(x.datum) })) : c.quelle === 'kampagne' ? (crm.stand.kampagnen ?? []).map(x => ({ id: x.id, label: x.name })) : (crm.stand.beitraege ?? []).map(x => ({ id: x.id, label: x.titel }))}
               wert={c.quelleBezug} onWahl={quelleBezug => setze({ quelleBezug })} onLeeren={() => setze({ quelleBezug: undefined })} />
-            {c.quelleBezug && <Link href={c.quelle === 'event' ? eventLink(crm?.stand.events.find(x => x.id === c.quelleBezug) ?? { id: c.quelleBezug }) : c.quelle === 'kampagne' ? WEG.kampagne(c.quelleBezug, 'marketing') : WEG.marketing('redaktion', c.quelleBezug)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
+            {c.quelleBezug && <Link href={c.quelle === 'event' ? eventLink(crm?.stand.events.find(x => x.id === c.quelleBezug) ?? { id: c.quelleBezug }) : c.quelle === 'kampagne' ? WEG.kampagne(c.quelleBezug) : WEG.marketing('redaktion', c.quelleBezug)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
           </div>
         </Feldzeile>
       )}

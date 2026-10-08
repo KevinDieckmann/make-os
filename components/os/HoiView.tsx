@@ -39,7 +39,7 @@ export function HoiView() {
 
   const g = lage?.gesamt;
   return (
-    <Seite titel="Head of IT" unter="Server, App, Sicherheit und der Blick von außen — in Ampeln. Nichts davon ist eine Person oder ein Inhalt, nur Zähler und Zustände."
+    <Seite titel="Head of IT" unter="Server, App, Sicherheit und der Blick von außen — in Ampeln, nur Zähler und Zustände."
       rechts={<Knopf leise onClick={() => void laden()} aus={laedt}>{laedt ? 'lädt …' : 'Neu lesen'}</Knopf>}>
       {fehler && <Hinweis art="kritisch" titel="Der Blick auf die IT ist nicht angekommen" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal versuchen</Knopf>}>{fehler}</Hinweis>}
       {lage && g && (

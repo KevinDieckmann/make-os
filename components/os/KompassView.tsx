@@ -338,7 +338,7 @@ export function KompassView() {
   return (
     <Seite
       titel="Kompass"
-      unter="Der Zustand, in dem das System läuft: Lage → Regler → Wirkung → Reichweite. Was hier steht, wirkt in Aufgaben, Tag, Dashboard und Postfach."
+      unter="Lage → Regler → Wirkung → Reichweite: was hier steht, wirkt in Aufgaben, Tag und Postfach."
       breit={960}
       rechts={abw.length > 0 ? <Knopf leise onClick={zuruecksetzen}>↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen</Knopf> : undefined}
     >

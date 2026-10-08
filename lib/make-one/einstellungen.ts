@@ -22,16 +22,17 @@ export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
   { id: 'daten', titel: 'Daten & Datenschutz', eintraege: [
     { href: '/os/datenschutz', label: 'Datenschutz', was: 'Verantwortlicher, Einwilligungen, KI-Schalter, AVV, Verzeichnis, Nachweise' },
     { href: '/os/stammdaten', label: 'Stammdaten', was: 'Firmen, Konten, Adressen' },
+    // 08.10. (Aufräumen Etappe 3): die Stammdaten der Markttraktion stehen dort hinter dem Zahnrad — und hier, damit man sie findet.
+    { href: '/os/markttraktion?s=stammdaten', label: 'Kartei-Pflege', was: 'Datenqualität, Wertelisten, Betroffenenanträge, Import & Export der Markttraktion' },
     { href: '/os/datenbasis', label: 'Datenbasis', was: 'wo welche Zahl herkommt' },
   ] },
   { id: 'betrieb', titel: 'Betrieb', eintraege: [
     { href: '/os/hoi', label: 'Head of IT', was: 'Server, App, Sicherheit und der Blick von außen — in Ampeln' },
-    { href: '/os/bauplan', label: 'Bauplan', was: 'was als Nächstes gebaut wird' },
-    { href: '/os/roadmap', label: 'Roadmap', was: 'der lange Weg' },
+    { href: '/os/bauplan', label: 'Bauplan', was: 'was als Nächstes gebaut wird — mit Planung und den Phasen (früher „Roadmap“)' },
     { href: '/os/onboarding', label: 'Onboarding', was: 'die Einrichtungsspur je Person' },
     { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit', was: 'wer woran baut, wie wir zusammen arbeiten' },
   ] },
 ];
 
 /** Seiten, auf denen in der Leiste „Einstellungen“ leuchtet (Pfade, die nur hier gelistet sind). */
-export const EINSTELLUNGEN_PFADE = ['/os/system', '/os/konto', '/os/verbindungen', '/os/datenschutz', '/os/stammdaten', '/os/datenbasis', '/os/hoi', '/os/bauplan', '/os/roadmap', '/os/onboarding'];
+export const EINSTELLUNGEN_PFADE = ['/os/system', '/os/konto', '/os/verbindungen', '/os/datenschutz', '/os/stammdaten', '/os/datenbasis', '/os/hoi', '/os/bauplan', '/os/onboarding'];

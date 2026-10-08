@@ -26,6 +26,7 @@ import { localDay } from '@/lib/zeit';
 import { baum, passtFilter, statusListe, bereichVonSpace, FILTER_STANDARD, sonstigeProjektId, istSonstigeProjekt, type AufgabenFilter, type FaelligFilter } from '@/lib/aufgaben/struktur';
 import { adresseLesen, aufgabenLink, alteAdresseUmleiten, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import type { Task } from '@/types/tasks';
+import { Seil } from '../seil/Seil';
 import { SchnellAnlegen } from './SchnellAnlegen';
 import { AufgabeDetail } from './AufgabeDetail';
 import { StatusVerwalten } from './StatusVerwalten';
@@ -147,7 +148,9 @@ export function AufgabenRaum() {
   const baumProjekt = projektId ? projekteBaum.find(p => p.id === projektId) : undefined;
   const imRaum = raumId ? state.tasks.filter(t => t.spaceId === raumId && zeigen(t) && (!projektId || t.projectId === projektId || (istSonstigeProjekt(projektId) && !state.projects.some(p => p.id === t.projectId && p.spaceId === raumId)))) : [];
   const statusWahl: WahlEintrag<string>[] = [{ id: 'offen', label: 'Nicht erledigt' }, { id: 'alle', label: 'Alle' }, ...statusListe(raumId ?? undefined, state.statusEigen ?? []).map(s => ({ id: s.id, label: s.label, punkt: s.farbe }))];
-  const darstellung = adresse.darstellung === 'board' || adresse.darstellung === 'tabelle' || adresse.darstellung === 'kalender' || adresse.darstellung === 'zoe' ? adresse.darstellung : 'liste';
+  const darstellung = adresse.darstellung === 'board' || adresse.darstellung === 'tabelle' || adresse.darstellung === 'kalender' || adresse.darstellung === 'zoe' || adresse.darstellung === 'zeitstrahl' ? adresse.darstellung : 'liste';
+  // Zeitstrahl (Seil, 07.10.): bis 08.10. nur im alten Bau /os/aufgaben/board — jetzt eine Darstellung des Überblicks (`ansicht=zeitstrahl`).
+  const seilSchluessel = useMemo(() => state.tasks.map(t => `${t.id}:${t.status}:${t.dueDate ?? ''}:${t.zielId ?? ''}:${(t.abhaengigVon ?? []).join(',')}`).join('|'), [state.tasks]);
   const zoeSicht = <ZoeAufgabenSicht state={state} personen={personen} ich={ich} offenId={offenId} onOeffnen={id => setOffen(offenId === id ? null : id)} />;
   const board = darstellung === 'board';
   // Tabelle/Kalender (C5): Kontext = Space bzw. Projekt, dazu die Liste aus der Adresse.
@@ -200,7 +203,7 @@ export function AufgabenRaum() {
   // Darstellung (Liste · Board · Tabelle · Kalender · ZOE): am Rechner im Kopf, am Handy als eigene wischbare Zeile im Inhalt (Standard: breite Umschalter nicht im Kopf).
   const darstellungWahl = <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'tabelle', label: 'Tabelle' }, { id: 'kalender', label: 'Kalender' }, { id: 'zoe', label: 'ZOE' }]} aktiv={darstellung} onWahl={a => gehe({ ...adresse, darstellung: a === 'liste' ? undefined : a }, 'replace')} />;
   const nebenWege = <>
-    <Link href={bereichGemerkt === 'privat' ? '/os/aufgaben/board?space=privat' : '/os/aufgaben/board?space=business'} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
+    <Link href={aufgabenLink({ ansicht: 'ueberblick', darstellung: 'zeitstrahl', ...(adresse.bereich ? { bereich: adresse.bereich } : {}) })} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
     {!raum && <NeuAnfangenKnopf klein />}
   </>;
   const titel = raum ? `Aufgaben · ${raum.label}` : adresse.ansicht === 'archiv' ? 'Aufgaben · Archiv' : 'Aufgaben';
@@ -235,7 +238,7 @@ export function AufgabenRaum() {
           </div>
         </Karte>
       )}
-      {ready && adresse.ansicht === 'ueberblick' && darstellung !== 'zoe' && (
+      {ready && adresse.ansicht === 'ueberblick' && darstellung !== 'zoe' && darstellung !== 'zeitstrahl' && (
         <div style={{ margin: '0 0 12px' }}>
           <input type="search" value={suche} onChange={e => setSuche(e.target.value)} aria-label="In allen Aufgaben suchen" placeholder="In allen Aufgaben suchen …"
             style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
@@ -257,6 +260,8 @@ export function AufgabenRaum() {
 
       {ready && adresse.ansicht === 'ueberblick' && (darstellung === 'zoe'
         ? <>{offen && <div style={{ marginBottom: 14 }}>{detail(offen)}</div>}{zoeSicht}</>
+        : darstellung === 'zeitstrahl'
+        ? <Seil ebene="aufgaben" bereich={adresse.bereich ?? 'alle'} titel="Zeitstrahl · Stränge zum Ziel" i={1} schluessel={seilSchluessel} />
         : <AufgabenUeberblick state={state} dispatch={dispatch} spaces={spaces} ich={ich} heute={heute} gehe={gehe} nur={adresse.bereich === 'business' ? 'business' : undefined} />)}
       {ready && adresse.ansicht === 'archiv' && <AufgabenArchiv state={state} dispatch={dispatch} spaces={spaces} heute={heute} gehe={gehe} />}
 

@@ -1,8 +1,8 @@
 'use client';
 // ─── Aufgaben-Board nach Status (28.09. abends) ─────────────────────────────
 // Spalten = Status des Space (fest + eigene, in ihrer Reihenfolge); Karten zieht man dazwischen — das setzt Status
-// und Grundstatus (statusTeil). Nur Aufgaben (Unteraufgaben zählen als Fortschritt auf der Karte). Das alte Board mit
-// Bahnen nach Person/Firma und Zeitstrahl liegt weiter unter /os/aufgaben/board.
+// und Grundstatus (statusTeil). Nur Aufgaben (Unteraufgaben zählen als Fortschritt auf der Karte).
+// Der Zeitstrahl (Seil) ist seit 08.10. die Darstellung „zeitstrahl“ des Aufgaben-Überblicks (der alte Bau /os/aufgaben/board ist weg).
 // Paket T2 (29.09.): Karten per Tastatur bedienbar (Titel = Knopf, „Status ▾“ direkt auf der Karte, #62), 🔒 „nur ich“,
 // „Abgebrochen“ als eigene Spalte (nur mit Karten oder auf Wunsch), Priorität/überfällig auch als Zeichen (#88), Ablegen auf
 // „Erledigt“ fragt bei offenen Unteraufgaben (#66) und bietet „Rückgängig“ (#87). Gruppieren einmal je Render (#84).

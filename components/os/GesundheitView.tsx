@@ -260,7 +260,7 @@ export function GesundheitView() {
               <Link href="/os/ritual?modus=morgen" style={{ color: C.inkDim }}>Tagesstart ›</Link>
               <Link href={WEG.journal()} style={{ color: C.inkDim }}>Journal ›</Link>
               <Link href={WEG.routinen()} style={{ color: C.inkDim }}>Routinen planen ›</Link>
-              <Link href={WEG.saeule('health')} style={{ color: C.inkDim }}>Säule im Wachstums-Score ›</Link>
+              <Link href={WEG.wachstum()} style={{ color: C.inkDim }}>Säule im Wachstums-Score ›</Link>
             </div>
           </Karte>
           </Kachel>

@@ -23,11 +23,13 @@ import { localDay } from '@/lib/zeit';
 import { BAUPLAN_NEU, useBauplan, useIch, Fenster, ErfassenFormular, ART_FARBE, klein, datumKurz, Kopf, personFarbe } from './gemeinsam';
 import { KarteDetail } from './KarteDetail';
 import { Planung } from './Planung';
+import { Phasen } from './Phasen';
 
 const FERTIG_ZEIGEN = 12;
 const SPALTEN_FARBE: Record<Spalte, string> = { idee: C.inkDim, bereit: LEUCHT.puls, arbeit: LEUCHT.business, test: LEUCHT.achtung, fertig: LEUCHT.gut };
 
-type Ansicht = 'board' | 'plan';
+/** board · plan (Etappen) · phasen (die sieben Bau-Phasen — bis 08.10. die eigene Seite /os/roadmap). */
+type Ansicht = 'board' | 'plan' | 'phasen';
 
 export function BauplanBoard() {
   const { items, etappen, fehler, setFehler, laden, tu } = useBauplan();
@@ -35,7 +37,7 @@ export function BauplanBoard() {
   const router = useRouter();
   const pfad = usePathname() ?? '/os/bauplan';
   const params = useSearchParams();
-  const ansicht: Ansicht = params.get('s') === 'plan' ? 'plan' : 'board';
+  const ansicht: Ansicht = params.get('s') === 'plan' ? 'plan' : params.get('s') === 'phasen' ? 'phasen' : 'board';
   const [offen, setOffen] = useLinkAuswahl('k');
   const [neu, setNeu] = useState(false);
   const [frisch, setFrisch] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export function BauplanBoard() {
 
   const wechsle = (a: Ansicht) => {
     const q = new URLSearchParams(params.toString());
-    if (a === 'plan') q.set('s', 'plan'); else q.delete('s');
+    if (a === 'board') q.delete('s'); else q.set('s', a);
     q.delete('k');
     router.push(`${pfad}${q.toString() ? `?${q}` : ''}`, { scroll: false });
   };
@@ -114,9 +116,9 @@ export function BauplanBoard() {
 
   return (
     <Seite titel="Bauplan" breit={1680}
-      unter="Hier verbessern wir MAKE OS. Neues landet in „Ideen“ — was nach „Bereit“ wandert, baut Claude von oben nach unten; ihr testet und nehmt ab."
+      unter="Hier verbessern wir MAKE OS: Ideen → Bereit → Claude baut → ihr testet und nehmt ab."
       rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Segmente liste={[{ id: 'board' as Ansicht, label: 'Board' }, { id: 'plan' as Ansicht, label: 'Planung' }]} aktiv={ansicht} onWahl={wechsle} />
+        <Segmente liste={[{ id: 'board' as Ansicht, label: 'Board' }, { id: 'plan' as Ansicht, label: 'Planung' }, { id: 'phasen' as Ansicht, label: 'Phasen' }]} aktiv={ansicht} onWahl={wechsle} />
         <Knopf haupt onClick={() => setNeu(true)}>+ Karte</Knopf>
       </div>}>
 
@@ -141,7 +143,7 @@ export function BauplanBoard() {
         )}
       </Karte>
 
-      {ansicht === 'plan' ? (
+      {ansicht === 'phasen' ? <Phasen /> : ansicht === 'plan' ? (
         items ? <Planung items={alle} etappen={etappen} tu={tu} onOeffnen={setOffen} /> : null
       ) : (
         <>

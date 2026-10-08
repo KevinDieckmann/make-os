@@ -55,8 +55,8 @@ export function ContentView() {
 
   return (
     <Seite
-      titel="Schreibt in deiner CI."
-      unter={<>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: C.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
+      titel="Content"
+      unter={<>Schreibt in deiner CI: Format wählen, Thema rein, der Agent entwirft. <b style={{ color: C.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
       <ZoeReiter />

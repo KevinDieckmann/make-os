@@ -1,7 +1,7 @@
 // ─── Events (besuchte Veranstaltungen, 03.10.) — Adressen und Reiterleiste ────
 // Make.One bleibt die Kennung `event` (und der alte Name `events`); der neue Reiter heißt `besuche`. Alte Links bleiben gültig.
 import { describe, it, expect } from 'vitest';
-import { aufloesen, markttraktion, LEISTE, BEREICHE, BESUCHE_ANSICHTEN } from '../lib/crm/adresse';
+import { aufloesen, markttraktion, REITER_ZEILE, reiterVon, BESUCHE_ANSICHTEN } from '../lib/crm/adresse';
 import { WEG } from '../lib/wege';
 import { zoeBezugFuer } from '../lib/zoe/crm-bezug';
 
@@ -35,12 +35,11 @@ describe('Reiter „Events“ (besuche) neben Make.One (event)', () => {
     expect(WEG.netzwerken()).toBe('/os/netzwerken');
   });
 
-  it('Leiste: Events rechts zwischen Marketing und Make.One, jeder Bereich genau einmal', () => {
-    expect(LEISTE.rechts.indexOf('besuche')).toBe(LEISTE.rechts.indexOf('marketing') + 1);
-    expect(LEISTE.rechts.indexOf('event')).toBe(LEISTE.rechts.indexOf('besuche') + 1);
-    const alle = [...LEISTE.links, ...LEISTE.mitte, ...LEISTE.rechts];
-    expect(new Set(alle).size).toBe(alle.length);
-    expect([...alle].sort()).toEqual([...BEREICHE].sort());
+  it('Leiste (Aufräumen Etappe 3, 08.10.): EIN Reiter „Events“ rechts nach Marketing trägt Besuchte Events und Make.One', () => {
+    expect(REITER_ZEILE.rechts.map(r => r.id)).toEqual(['marketing', 'events']);
+    expect(REITER_ZEILE.rechts.find(r => r.id === 'events')?.bereiche).toEqual(['besuche', 'event']);
+    expect(reiterVon('besuche')).toBe('events');
+    expect(reiterVon('event')).toBe('events');
   });
 
   it('ZOE fragen: der Reiter Events hat denselben Bezug wie die Event-Welt', () => {

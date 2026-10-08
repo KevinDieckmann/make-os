@@ -3,7 +3,7 @@
 // Legt zwischen Lesen und Schreiben jemand eine Aufgabe an, war sie weg. Der Test
 // schiebt genau dort einen zweiten Schreiber dazwischen. Eigener Datenordner.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { aufgabeStatusSetzen } from '@/lib/aufgaben/status';
@@ -47,9 +47,7 @@ describe('aufgabeStatusSetzen', () => {
     expect(jetzt.find(t => t.id === 'a1')!.status).toBe('done');
   });
 
-  it('SaeuleView schreibt Aufgaben nicht mehr per PUT', () => {
-    const quelle = readFileSync(path.join(process.cwd(), 'components/os/SaeuleView.tsx'), 'utf8');
-    expect(quelle).not.toMatch(/api\/state\/tasks['"`][^)]*method:\s*'PUT'/);
-    expect(quelle).toContain('aufgabeStatusSetzen');
+  it('die alte Säulen-Seite (SaeuleView, schrieb früher per PUT) gibt es nicht mehr — /os/saeule/* leitet weiter (08.10.)', () => {
+    expect(existsSync(path.join(process.cwd(), 'components/os/SaeuleView.tsx'))).toBe(false);
   });
 });

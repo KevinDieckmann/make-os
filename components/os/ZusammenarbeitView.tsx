@@ -46,7 +46,7 @@ export function ZusammenarbeitView() {
   const aktiv = !!b?.aktiv;
 
   return (
-    <Seite titel="Zusammenarbeit" unter="Am Code wird weitergebaut, während alle mit der Instanz arbeiten. Gebaut wird lokal, online geht ein Update nur auf das Wort des Inhabers — drei Zonen und ein Schalter halten das auseinander."
+    <Seite titel="Zusammenarbeit" unter="Gebaut wird lokal, online geht ein Update nur auf das Wort des Inhabers — drei Zonen und ein Schalter."
       rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
 
       {/* Der Schalter */}

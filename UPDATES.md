@@ -60,6 +60,54 @@ Seite im alten Bereich (Kopf gehört Etappe 1/zweiter Agent). `lib/make-one/spac
 nur über `space=` (alle neuen Wege tragen ihn); die Muster `/os/controlling`, `/os/business`, `/os/finanzen/` dort sind jetzt tot (nicht angefasst).
 Planung-Blätter: 19 (Privat) bzw. 13 (Business) Pillen in einer wischbaren Reihe — ob einzelne Blätter zusammengehören (z. B. Entwicklung +
 Geldfluss), entscheidet Kevin.
+## 08.10.2026 — Aufräumen Etappe 3: Markttraktion und Altbestand (nur lokal — Branch `aufraeumen-3`)
+
+Kevin 08.10.: „Die Software wirkt unaufgeräumt und überladen.“ Vorher hatte die Markttraktion zwölf Klickziele in der Reiterzeile, mehrere
+Ansichten doppelt (Power Hour unter Follow-up UND Sales, Kampagnen unter Sales UND Marketing, „Kunden“ unter Deals, Events und Mandate, zwei
+Qualifizierungs-Runden, Leads unter Firmen neben dem Schnellknopf Qualifizierung) und dazu Altbau-Seiten, die niemand mehr brauchte.
+- **Markttraktion: sechs Reiter + zwei Schnellknöpfe** (eine Stelle `REITER_ZEILE` in `lib/crm/adresse.ts`): Überblick · Kontakte & Firmen ·
+  Deals · Follow-up · [Qualifizierung & Scoring] [Angebot] · Marketing · Events. Stammdaten hinter dem **Zahnrad** oben rechts (und in Einstellungen ›
+  Daten & Datenschutz › „Kartei-Pflege“). Jede Ansicht genau einmal:
+
+  | alt | neu |
+  |---|---|
+  | Firmen (eigener Reiter) | Kontakte & Firmen › Firmen |
+  | Firmen › Leads · qualifizieren | Qualifizierung › Leads (`?s=qualifizierung&a=leads`) |
+  | Kartei › Qualifizierungs-Runde (`runde-chancen`, Runde vom 25.09.) | Qualifizierung › Runde |
+  | Sales › Head of Sales (Fläche: Head, Scoreboard, Trichter, Kanal) | Deals › Board (Head of Sales), Überblick (Scoreboard), Qualifizierung › Leads (Trichter), Deals › Auswertung (Kanal-Leistung) |
+  | Sales › Power Hour | Follow-up › Power Hour |
+  | Sales › Kampagnen | Marketing › Kampagnen |
+  | Sales › Auswertung | Deals › Auswertung |
+  | Deals › Kunden | Deals › Auswertung (Karte „Ebene 3 · Kunden“ mit Sprung zu Mandate) |
+  | Events (Reiter) + Make.One (Reiter) | Events › Besuchte Events · Make.One |
+  | Events › Für Kunden | Events › Im Kundenauftrag (nur Name) |
+  | Stammdaten (Reiter) | Zahnrad |
+- **Alte Links bleiben gültig:** `aufloesen` übersetzt jede alte Kombination (Reiter „Sales“ mit allen Ansichten seit 25.09., `heute`, `pipeline`,
+  `kunden`, `events`, `kartei`, Firmen › Leads, Deals › Kunden, `runde-chancen`); die Seite schreibt eine alte Adresse still auf den neuen Ort um
+  (Parameter `k`, `t`, `u`, `r`, `bean` bleiben). `WEG.leads/kunden/kampagne` zeigen auf die neuen Orte.
+- **Altbestand weg, Weiterleitungen nur noch in `next.config.mjs`:** `/os/aufgaben/board` → `/os/aufgaben` (der Zeitstrahl/Seil ist jetzt die
+  Darstellung „Zeitstrahl ›“ der Aufgaben, `?ansicht=zeitstrahl`); `/os/roadmap` → Bauplan › **Phasen** (`/os/bauplan?s=phasen`); `/os/saeule/planning`
+  → Aufgaben, `/finance` → Finanzen, `/business` → Finanzen › Business, `/agents` → Agenten, sonst → Wachstum. Die reinen Weiterleitungs-Seiten
+  `/os/crm`, `/os/business`, `/os/finanzplan`, `/os/planung/woche`, `/os/datenschutz/nachweise` sind Regeln in `next.config.mjs` (Ziele 1:1).
+  Gelöscht: `AufgabenView`/`AufgabenBoard` (alter Bau), `SaeuleView`, `SalesStart`, `Abhaengigkeit`/`Faelligkeit`, `lib/make-one/bereiche.ts`
+  (die Loop-Verbesserung liest jetzt die eine Seitenliste `lib/make-one/seiten.ts`).
+- **Ruhigere Köpfe:** Untertitel höchstens eine Zeile (≤ 110 Zeichen), Substantiv-Titel statt Werbesätzen (Wochen-Pack, Content, Meeting,
+  Prospecting, Research, Tagesstart/Tagesende, Routinen, Energie, Monats-/Quartals-/Jahresplanung) — der Slogan steht im Untertitel.
+- Wächter `tests/aufraeumen-etappe3.test.ts`; angepasst: markttraktion, markttraktion-angebot, besuche-adresse, crm-deal-ebene,
+  qualifizierung-lib, qualifizierung-oberflaeche, aufraeumen (Anker in Weiterleitungen), aufgabe-status, design-kern, design-privat, design-standard.
+
+**So sieht Kevin es:** `localhost:3001/os/markttraktion` → eine Zeile: Überblick · Kontakte & Firmen · Deals · Follow-up · (Qualifizierung & Scoring)
+(Angebot) · Marketing · Events; oben rechts das Zahnrad für die Stammdaten. „Kontakte & Firmen“ → Pillen Personen | Firmen. „Events“ → Pillen
+Besuchte Events | Make.One. Qualifizierung → Runde · Leads · Scoring. Ein alter Link `…?s=sales&a=kampagnen` landet in Marketing › Kampagnen,
+`…?s=firmen&a=leads` in Qualifizierung › Leads. Aufgaben → „Zeitstrahl ›“ zeigt das Seil im Aufgaben-Überblick; Bauplan → Reiter „Phasen“.
+
+**Rückweg:** reine Oberfläche, keine Bestände, keine Formänderung. Die gespeicherte Fläche `markttraktion-sales` (Anordnung der früheren
+Sales-Start-Seite) bleibt liegen und wird nur nicht mehr gezeigt; ein alter Stand zeigt sie wieder.
+
+**Offen:** (1) Mit den zwei Schnellknöpfen hat die Zeile acht Klickziele (vorher zwölf) — soll es streng sieben sein, wäre der nächste Schritt,
+„Angebot“ als Ansicht unter Deals zu führen (Kevin entscheidet). (2) `/os/stapel/voll` bleibt: Protokoll, „Rückgängig“ und „Ändern &
+freigeben“ gibt es nur dort — als Reiter in die Freigaben ziehen ist ein eigener Schritt. (3) Die Delegations-Runde stand nur im alten
+Aufgaben-Bau; sie bleibt als ZOE-Agent (`/api/delegation`), ohne eigenen Knopf in den Aufgaben.
 
 ## 08.10.2026 — Aufräumen Etappe 1: Navigation, Kopf, Startseite (nur lokal — Branch `aufraeumen-1`)
 

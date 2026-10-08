@@ -162,7 +162,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
     const t = trichter(b);
     return [
       { titel: 'Kosten Beiträge', wert: euro(t.kosten.beitraege), href: WEG.marketing('redaktion') },
-      { titel: 'Kosten Kampagnen', wert: euro(t.kosten.kampagnen), href: WEG.kampagne(undefined, 'marketing') },
+      { titel: 'Kosten Kampagnen', wert: euro(t.kosten.kampagnen), href: WEG.kampagne() },
       { titel: 'Anfragen', wert: String(t.anfragen.gesamt), href: WEG.marketing('anfragen') },
     ];
   },

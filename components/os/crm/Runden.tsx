@@ -8,8 +8,7 @@
 //                  die Beziehung hält (so wandert Arbeit zu Malin) und Sie/Du.
 //                  Erst die Wichtigen (Kunden, Mandate, Gespräche, Prio A/B),
 //                  die übrigen auf Wunsch danach.
-//   Chancen-Runde  je Person im Gespräch eine Chance mit Wert und nächstem
-//                  Schritt (Pflicht) — oder „kein Bedarf“.
+//   (Die Chancen- bzw. Qualifizierungs-Runde steht seit 08.10. nur noch unter dem Schnellknopf Qualifizierung.)
 // Jede Karte speichert sofort: der Kontakt als ganzer Eintrag (der Server
 // vereint den Verlauf mit dem aktuellen Stand), die Chance als
 // Einzeländerung. „Kein Bedarf“ ist EIN Aufruf an /api/crm/aktivitaet (Notiz
@@ -24,7 +23,6 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Leer, Fortschritt, LEUCHT } from '../ui';
 import { anzeigename, type Kontakt, type Kreis } from '@/lib/make-one/crm';
 import { TEAM, BEIDE, anderer, nameVon, haeltBeziehung, verantwortlich } from '@/lib/crm/team';
-import { QualifizierungsRunde } from './Leads';
 import { VernetzenRunde } from './Vernetzen';
 import {
   kreisKandidaten, kreisBilanz, kreisZusammenfassung, letzteNotiz, KREIS_WAHL, KREIS_GRUPPEN,
@@ -34,8 +32,9 @@ import { type CrmApi, datum } from './daten';
 import { Pillen, Feldzeile } from './teile';
 import { Person, ZustaendigWahl } from './team';
 
-/** 'chancen' heißt seit 25.09. Qualifizierungs-Runde: Leads im Gespräch bis zum SQL (Ebene 1 → 2). */
-export type RundenArt = 'kreis' | 'chancen' | 'vernetzen';
+/** Die Qualifizierungs-Runde (früher 'chancen', „runde-chancen“) lebt seit 08.10. nur noch unter dem Schnellknopf Qualifizierung —
+ * alte Links leitet `aufloesen` (lib/crm/adresse.ts) dorthin. */
+export type RundenArt = 'kreis' | 'vernetzen';
 interface RundenProps { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void; zurueck: () => void }
 
 export function Runden({ api, art, name, zuKontakt, zurueck, kampagneId, zuKampagne }: RundenProps & { art: RundenArt; /** Vernetzen-Runde: Texte aus dieser Kampagne. */ kampagneId?: string; zuKampagne?: (id: string | null) => void }) {
@@ -43,8 +42,7 @@ export function Runden({ api, art, name, zuKontakt, zurueck, kampagneId, zuKampa
   return (
     <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', display: 'grid', gap: 14 }}>
       {art === 'kreis' ? <KreisRunde api={api} name={name} zuKontakt={zuKontakt} zurueck={zurueck} />
-        : art === 'vernetzen' ? <VernetzenRunde api={api} kampagneId={kampagneId} zuKontakt={zuKontakt} zurueck={zurueck} zuKampagne={zuKampagne ?? (() => {})} />
-        : <QualifizierungsRunde api={api} zuKontakt={zuKontakt} zurueck={zurueck} />}
+        : <VernetzenRunde api={api} kampagneId={kampagneId} zuKontakt={zuKontakt} zurueck={zurueck} zuKampagne={zuKampagne ?? (() => {})} />}
     </div>
   );
 }
@@ -284,4 +282,3 @@ function KreisKarte({ kandidat, k, heute, name, kannZurueck, onEntscheid, onZuru
   );
 }
 
-// ── Chancen-Runde ───────────────────────────────────────────────────────────

@@ -1,62 +1,77 @@
 // ─── Markttraktion — Adressen (rein, getestet) ──────────────────────────────
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person, Firma, Deal, Event>
-//   s (Reiter, Kevins Reihenfolge 27.09.): ueberblick (Start) · kontakte · firmen ·
-//      deals · followup · qualifizierung (Runde, 27.09.) · angebot (28.09.) · sales · marketing · besuche (Events, 03.10.) · event (Make.One) · stammdaten
-//      Die Leiste (28.09. abends): links die Arbeit, in der Mitte die Schnellknöpfe Qualifizierung + Angebot,
-//      rechts die Welten und die Stammdaten — `LEISTE` unten ist die eine Stelle für die Reihenfolge.
-//   qualifizierung (03.10., „Qualifizierung & Scoring“): a leer = Runde · scoring (Marketing) · scoring-sales; k = Lead (Sprung in die Runde)
-//   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte („Kontakt öffnen“ zu k)
-//      t (nur bei „Kontakt öffnen“, 28.09.): Reiter ueber (Start, ohne t) · aktivitaeten · umsatz · daten —
-//      alte Links ohne t bleiben gültig und öffnen „Über“; die Reiter vom 27.09. werden übersetzt
-//      (ueberblick → ueber, verlauf → aktivitaeten, stammdaten | beziehung | datenschutz → daten)
-//      u (nur im Reiter Aktivitäten): der Unter-Reiter (z. B. alle, notizen) — ein Anker (#…) springt zur Quelle
-//      firmen     → (leer) Kartei · leads (Ebene 1: qualifizieren → SQL)
-//      deals      → board (Start) · liste · akte (Deal-Akte zu k) · kunden · auswertung
-//      followup   → faellig (Start) · woche · powerhour · kadenz
-//      marketing  → uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
-//      besuche    → Events (03.10.): die Veranstaltungen, die wir BESUCHEN — kalender (Start) · wirkung · kunden; k = ein Event (Event-Akte)
-//      event      → Make.One: unsere EIGENEN Abende (Gäste, Checkliste, Abend, Nachfassen, Budget). Kennung `event` und der alte Name
-//                   `events` (s=events) bleiben Make.One; Links auf ein BESUCHTES Event (s=event&k=…) leitet die Seite in die Event-Akte um.
-//      stammdaten → der Reiter
-//   angebot (28.09.): k = ein bestehendes Angebot, dazu die Vorbelegung kontakt=<id> · firma=<id> · deal=<id>
-//      (`angebotLink` baut, `angebotAusAdresse` liest — unbekannte oder kaputte Kennungen fallen weg)
-// Alte Adressen bleiben gültig: /os/crm leitet um; `aufloesen` übersetzt die alten
-// Bereiche (heute/pipeline/kunden/events/kartei) UND den Reiter „Sales“ vom 25./26.09.
-// (s=sales&a=heute|leads|pipeline|kunden|kampagnen) auf die neuen Reiter — so
-// funktionieren alle Links aus Suche, Befunden, ZOE und Telegram weiter.
+// Aufräumen Etappe 3 (08.10., Kevin: „Die Software wirkt unaufgeräumt und überladen.“): die Reiterzeile hat sechs Reiter und die zwei
+// Schnellknöpfe — vorher zwölf. Jede Unteransicht steht genau EINMAL; `REITER_ZEILE` unten ist die eine Stelle für Reihenfolge und
+// Zuordnung, `aufloesen` übersetzt jede alte Adresse auf ihren neuen Ort (Wächter: tests/aufraeumen-etappe3.test.ts).
+//   Überblick           ueberblick
+//   Kontakte & Firmen   kontakte (Personen; a = gespeicherte Ansicht, runde-…, akte) · firmen (Firmen-Kartei)
+//   Deals               deals: board (Start) · liste · auswertung (Kanal-Leistung, Kunden kurz, Pipeline-Auswertung) · akte (Deal-Akte zu k)
+//   Follow-up           followup: faellig (Start) · woche · powerhour · kadenz
+//   Marketing           marketing: uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
+//   Events              besuche (besuchte Veranstaltungen: kalender (Start) · wirkung · kunden; k = Event-Akte) · event (Make.One, k = Abend)
+//   Schnellknöpfe       qualifizierung (Runde · leads · scoring · scoring-sales; k = Lead) · angebot (k = Angebot, kontakt/firma/deal)
+//   Zahnrad             stammdaten (Qualität, Wertelisten, Gesellschaften, Datenschutz, Import & Export) — nicht in der Reiterzeile
+//   „Kontakt öffnen“: t = ueber (Start, ohne t) · aktivitaeten · umsatz · daten; u = Unter-Reiter der Aktivitäten; Anker #akt-… springt.
+// Alte Adressen bleiben gültig (nie brechen): /os/crm leitet um (next.config.mjs); `aufloesen` übersetzt die alten Bereiche
+// (heute/pipeline/kunden/events/kartei), den früheren Reiter „Sales“ (head/powerhour/kampagnen/auswertung und vom 25./26.09.
+// heute/leads/pipeline/kunden), Firmen › Leads und Deals › Kunden — so funktionieren Suche, Befunde, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'sales' | 'marketing' | 'besuche' | 'event' | 'stammdaten';
-/** Der Reiter „Events“ (besuchte Veranstaltungen, 03.10.): Kalender · Wirkung · Für Kunden — die Event-Akte steht in `k`. Die Kennung heißt `besuche`, weil `events` als alter Name von Make.One gültig bleibt. */
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'marketing' | 'besuche' | 'event' | 'stammdaten';
+/** Events › Besuchte Events (03.10.): Kalender · Wirkung · Im Kundenauftrag — die Event-Akte steht in `k`. Die Kennung heißt `besuche`, weil `events` als alter Name von Make.One gültig bleibt. */
 export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
 export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
-/** Der Reiter „Sales“ rechts (Kevin 27.09.): Head of Sales · Power Hour · Kampagnen · Auswertung. */
-export type SalesReiterAnsicht = 'head' | 'powerhour' | 'kampagnen' | 'auswertung';
-export const SALES_REITER_ANSICHTEN: SalesReiterAnsicht[] = ['head', 'powerhour', 'kampagnen', 'auswertung'];
-export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'kunden' | 'auswertung';
+export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
-/** Der alte Sales-Reiter (bis 26.09.) — nur noch zum Übersetzen alter Adressen. */
-export type SalesAnsicht = 'heute' | 'leads' | 'pipeline' | 'kunden' | 'kampagnen';
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'sales', 'marketing', 'besuche', 'event', 'stammdaten'];
+export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
+export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'];
+/** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
+export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'marketing', 'besuche', 'event', 'stammdaten'];
+/** Alte Bereiche, die es als Reiter nicht mehr gibt — `aufloesen` übersetzt sie (der Wächter prüft jede Kombination). */
+export const BEREICHE_ALT = ['sales', 'heute', 'pipeline', 'kunden', 'events', 'kartei'] as const;
+
 /**
- * Die Reiterleiste (Kevin 28.09. abends): links die Arbeit, in der Mitte die zwei Schnellknöpfe
- * (Qualifizierung orange, Angebot grün — pulsieren leise), rechts die Welten und die Stammdaten.
- * Jeder Bereich steht genau einmal in der Leiste.
+ * Die Reiterzeile (Aufräumen Etappe 3, 08.10.): sechs Reiter, in der Mitte die zwei Schnellknöpfe (Qualifizierung orange, Angebot
+ * grün — pulsieren leise). Ein Reiter kann mehrere Bereiche tragen (Kontakte & Firmen, Events); die Stammdaten stehen hinter dem Zahnrad.
+ * Jeder Bereich gehört genau einem Reiter, einem Schnellknopf oder dem Zahnrad.
  */
-export const LEISTE: { links: Bereich[]; mitte: Bereich[]; rechts: Bereich[] } = {
-  links: ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup'],
+export type ReiterId = 'ueberblick' | 'kontakte' | 'deals' | 'followup' | 'marketing' | 'events';
+export interface ReiterDef { id: ReiterId; bereiche: Bereich[] }
+export const REITER_ZEILE: { links: ReiterDef[]; mitte: Bereich[]; rechts: ReiterDef[]; zahnrad: Bereich } = {
+  links: [
+    { id: 'ueberblick', bereiche: ['ueberblick'] },
+    { id: 'kontakte', bereiche: ['kontakte', 'firmen'] },
+    { id: 'deals', bereiche: ['deals'] },
+    { id: 'followup', bereiche: ['followup'] },
+  ],
   mitte: ['qualifizierung', 'angebot'],
-  rechts: ['sales', 'marketing', 'besuche', 'event', 'stammdaten'],
+  rechts: [
+    { id: 'marketing', bereiche: ['marketing'] },
+    { id: 'events', bereiche: ['besuche', 'event'] },
+  ],
+  zahnrad: 'stammdaten',
 };
+const ALLE_REITER: ReiterDef[] = [...REITER_ZEILE.links, ...REITER_ZEILE.rechts];
+/** Die Reiter der Zeile (ohne Schnellknöpfe). */
+export const REITER_IDS: ReiterId[] = ALLE_REITER.map(r => r.id);
+/** Klickziele der Reiterzeile: Reiter + Schnellknöpfe. */
+export const KLICKZIELE_ZEILE = REITER_IDS.length + REITER_ZEILE.mitte.length;
+/** Welcher Reiter zu einem Bereich leuchtet — null für Schnellknöpfe und das Zahnrad. */
+export function reiterVon(b: Bereich): ReiterId | null {
+  return ALLE_REITER.find(r => r.bereiche.includes(b))?.id ?? null;
+}
+/** Der erste Bereich eines Reiters (wohin ein Klick auf den Reiter führt). */
+export const reiterStart = (r: ReiterId): Bereich => ALLE_REITER.find(x => x.id === r)?.bereiche[0] ?? 'ueberblick';
+
 /**
- * Der Schnellknopf in der Mitte heißt seit 03.10. „Qualifizierung & Scoring“ (die Kennung `qualifizierung` und alte Links bleiben):
- * `a` fehlt = die Runde · `scoring` = Scoring-Einstellungen von Marketing (bis MQL) · `scoring-sales` = von Sales (MQL → SQL).
- * `k` = ein Lead (Firma f-… oder Person c-…): die Runde springt dorthin.
+ * Der Schnellknopf „Qualifizierung & Scoring“ (03.10.; die Kennung `qualifizierung` und alte Links bleiben):
+ * `a` fehlt = die Runde · `leads` = alle Leads (Ebene 1, bis 08.10. Firmen › Leads) · `scoring` = Marketing (bis MQL) · `scoring-sales` = Sales (MQL → SQL).
+ * `k` = ein Lead (Firma f-… oder Person c-…): Runde bzw. Liste springen dorthin.
  */
-export type QualiAnsicht = 'runde' | 'scoring' | 'scoring-sales';
-export const QUALI_ANSICHTEN: QualiAnsicht[] = ['runde', 'scoring', 'scoring-sales'];
-export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunden', 'auswertung'];
+export type QualiAnsicht = 'runde' | 'leads' | 'scoring' | 'scoring-sales';
+export const QUALI_ANSICHTEN: QualiAnsicht[] = ['runde', 'leads', 'scoring', 'scoring-sales'];
+export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'auswertung'];
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
-export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
 export const PFAD = '/os/markttraktion';
 
 /** Die Reiter von „Kontakt öffnen“ (Kevin 28.09., HubSpot-Vorbild): „Über“ ist der Start und steht nicht in der Adresse. Der Reiter `daten` heißt sichtbar „Stammdaten“ (28.09.) — die Kennung/Adresse `t=daten` bleibt. */
@@ -77,31 +92,42 @@ export function akteUnter(u?: string | null): string | null {
   return u && /^[a-z][a-z_-]{0,23}$/.test(u) ? u : null;
 }
 
-/** Wohin der alte Sales-Reiter zeigt. */
-const SALES_NEU: Record<SalesAnsicht, { s: Bereich; a?: string }> = {
-  heute: { s: 'sales', a: 'powerhour' },
-  leads: { s: 'firmen', a: 'leads' },
+/** Wohin der frühere Reiter „Sales“ zeigt (alle Ansichten seit 25.09.) — ohne Ansicht: Deals (dort steht der Head of Sales). */
+const SALES_NEU: Record<(typeof SALES_ALT_ANSICHTEN)[number], { s: Bereich; a?: string }> = {
+  head: { s: 'deals' },
+  powerhour: { s: 'followup', a: 'powerhour' },
+  heute: { s: 'followup', a: 'powerhour' },
+  kampagnen: { s: 'marketing', a: 'kampagnen' },
+  auswertung: { s: 'deals', a: 'auswertung' },
+  leads: { s: 'qualifizierung', a: 'leads' },
   pipeline: { s: 'deals' },
-  kunden: { s: 'deals', a: 'kunden' },
-  kampagnen: { s: 'sales', a: 'kampagnen' },
+  kunden: { s: 'deals', a: 'auswertung' },
 };
+const mit = (s: Bereich, a?: string): { s: Bereich; a?: string } => (a ? { s, a } : { s });
+const salesAlt = (a?: string): a is keyof typeof SALES_NEU => !!a && (SALES_ALT_ANSICHTEN as readonly string[]).includes(a);
 
-/** Bereich + Ansicht aus der Adresse — alte CRM-Bereiche und der alte Sales-Reiter eingeschlossen. */
+/** Bereich + Ansicht aus der Adresse — alte CRM-Bereiche, der frühere Reiter „Sales“, Firmen › Leads und Deals › Kunden eingeschlossen. */
 export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a?: string } {
   const ansicht = a || undefined;
-  if (s === 'heute' || s === 'pipeline' || s === 'kunden') return SALES_NEU[s];
-  if (s === 'events') return { s: 'event', ...(ansicht ? { a: ansicht } : {}) };
-  if (s === 'kartei') return { s: 'kontakte', ...(ansicht ? { a: ansicht } : {}) };
-  // „Sales“ ist seit 27.09. wieder ein eigener Reiter (rechts); alte Sales-Ansichten (heute, leads, pipeline, kunden) werden übersetzt.
-  if (s === 'sales' && ansicht && (SALES_ANSICHTEN as string[]).includes(ansicht) && !(SALES_REITER_ANSICHTEN as string[]).includes(ansicht)) return SALES_NEU[ansicht as SalesAnsicht];
-  if (s === 'sales') return { s: 'sales', ...(ansicht && ansicht !== 'head' && (SALES_REITER_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
+  if (s === 'heute') return SALES_NEU.heute;
+  if (s === 'pipeline') return SALES_NEU.pipeline;
+  if (s === 'kunden') return SALES_NEU.kunden;
+  if (s === 'events') return mit('event', ansicht);
+  if (s === 'kartei') return aufloesen('kontakte', ansicht);
+  if (s === 'sales') return salesAlt(ansicht) ? SALES_NEU[ansicht] : SALES_NEU.head;
   if (s && (BEREICHE as string[]).includes(s)) {
     const b = s as Bereich;
-    if (b === 'deals') return { s: b, ...(ansicht && ansicht !== 'board' && (DEALS_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
-    if (b === 'besuche') return { s: b, ...(ansicht && ansicht !== 'kalender' && (BESUCHE_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
-    if (b === 'followup') return { s: b, ...(ansicht && ansicht !== 'faellig' && (FOLLOWUP_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
-    if (b === 'qualifizierung') return { s: b, ...(ansicht && ansicht !== 'runde' && (QUALI_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
-    return { s: b, ...(ansicht ? { a: ansicht } : {}) };
+    if (b === 'ueberblick') return { s: b };
+    if (b === 'firmen' && ansicht === 'leads') return SALES_NEU.leads;
+    // Die alte Qualifizierungs-Runde der Kartei (Chancen-Runde, 25.09.) ist die Runde des Schnellknopfs.
+    if (b === 'kontakte' && ansicht === 'runde-chancen') return { s: 'qualifizierung' };
+    if (b === 'deals' && ansicht === 'kunden') return SALES_NEU.kunden;
+    if (b === 'deals') return mit(b, ansicht && ansicht !== 'board' && (DEALS_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    if (b === 'besuche') return mit(b, ansicht && ansicht !== 'kalender' && (BESUCHE_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    if (b === 'followup') return mit(b, ansicht && ansicht !== 'faellig' && (FOLLOWUP_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    if (b === 'qualifizierung') return mit(b, ansicht && ansicht !== 'runde' && (QUALI_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    if (b === 'marketing') return mit(b, ansicht && ansicht !== 'uebersicht' && (MARKETING_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    return mit(b, ansicht);
   }
   return { s: 'ueberblick' };
 }

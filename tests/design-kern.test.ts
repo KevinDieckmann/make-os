@@ -27,7 +27,7 @@ function dateien(dir: string, ende = /\.tsx$/): string[] {
 const RASTER = ['Zeitraster', 'Monat', 'Jahr', 'VierTage'].map(n => `components/os/kalender/${n}.tsx`);
 const BEREICH = [
   ...dateien('components/os/aufgaben'), ...dateien('components/os/kalender'), ...dateien('components/os/inbox'),
-  'components/os/AufgabenView.tsx', 'components/os/AufgabenBoard.tsx', 'components/os/KalenderAufgabenSchalter.tsx',
+  'components/os/KalenderAufgabenSchalter.tsx', // AufgabenView/AufgabenBoard (alter Bau /os/aufgaben/board) sind seit 08.10. weg
 ];
 const SHELL = ['components/os/Kopf.tsx', 'components/os/Leiste.tsx', 'components/os/Glocke.tsx', 'components/os/ZoePanel.tsx'];
 /** Ohne eigene schlank-Importe (auch der Zeitstrahl — Achsenbeschriftung darf aber klein bleiben wie Rasterzellen). */

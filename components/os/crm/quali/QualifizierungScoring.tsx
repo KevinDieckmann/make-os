@@ -4,7 +4,9 @@
 // Kevin: „Leadscoring ist der Oberbegriff der Qualifizierung — mach das ‚Qualifizierung & Scoring‘, darunter Qualifizierung und die
 // Scoring-Einstellungen von Marketing und von Sales, also von MQL zu SQL.“ Pillen: Qualifizierung (die Runde) · Scoring, darunter
 // Marketing-Scoring · Sales-Scoring. Die Kennung `qualifizierung` und alle alten Links bleiben (lib/crm/adresse.ts).
+// Aufräumen Etappe 3 (08.10.): die Lead-Liste (Ebene 1, vorher Firmen › Leads) steht als „Leads“ hier — Runde und Liste an einem Ort.
 
+import type { ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { LEUCHT, Karte } from '../../ui';
 import { Pillen } from '../teile';
@@ -14,15 +16,15 @@ import { Qualifizierung } from '../Qualifizierung';
 import { useScoringEntwurf } from './ScoringEntwurf';
 import { ScoringSeite, ScoringAktionen } from './ScoringEditor';
 
-type Teil = 'runde' | 'scoring';
+type Teil = 'runde' | 'leads' | 'scoring';
 
-export function QualifizierungScoring({ api, ansicht, start, onAnsicht, zuLeads }: { api: CrmApi; ansicht: QualiAnsicht; start?: string | null; onAnsicht: (a: QualiAnsicht) => void; zuLeads: (id?: string) => void }) {
+export function QualifizierungScoring({ api, ansicht, start, onAnsicht, zuLeads, leads }: { api: CrmApi; ansicht: QualiAnsicht; start?: string | null; onAnsicht: (a: QualiAnsicht) => void; zuLeads: (id?: string) => void; /** Die Lead-Liste (Trichter + Leads) — gebaut von der Seite, die die Wege kennt. */ leads: ReactNode }) {
   const z = useScoringEntwurf(api);
-  const teil: Teil = ansicht === 'runde' ? 'runde' : 'scoring';
+  const teil: Teil = ansicht === 'runde' || ansicht === 'leads' ? ansicht : 'scoring';
   return (
     <>
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
-        <Pillen einzeilig farbe={LEUCHT.business} liste={[{ id: 'runde' as Teil, label: 'Qualifizierung' }, { id: 'scoring' as Teil, label: z.geaendert ? 'Scoring ●' : 'Scoring' }]} aktiv={teil} onWahl={t => onAnsicht(t === 'runde' ? 'runde' : 'scoring')} />
+        <Pillen einzeilig farbe={LEUCHT.business} liste={[{ id: 'runde' as Teil, label: 'Runde' }, { id: 'leads' as Teil, label: 'Leads' }, { id: 'scoring' as Teil, label: z.geaendert ? 'Scoring ●' : 'Scoring' }]} aktiv={teil} onWahl={t => onAnsicht(t)} />
       </div>
       {teil === 'scoring' && (
         <>
@@ -36,6 +38,7 @@ export function QualifizierungScoring({ api, ansicht, start, onAnsicht, zuLeads 
         </>
       )}
       {teil === 'runde' && <Qualifizierung api={api} start={start} zuLeads={zuLeads} />}
+      {teil === 'leads' && leads}
     </>
   );
 }

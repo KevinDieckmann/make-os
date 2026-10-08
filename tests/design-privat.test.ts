@@ -26,7 +26,7 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 /** Alle Dateien des Bereichs Privat · ZOE · System. */
 const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche'];
 const EINZELN = [
-  'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'SaeuleView', 'KompassView', 'WissenView',
+  'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'KompassView', 'WissenView',
   'HeuteView', 'ZoeReiter', 'WachstumView', 'StapelView', 'StapelVoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
   'KontoView', 'AnmeldeAdressen', 'SystemView', 'VerbindungenView', 'DatenbasisView', 'StammdatenView', 'ZoeStart',
 ].map(n => `components/os/${n}.tsx`);

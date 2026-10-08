@@ -92,8 +92,8 @@ export function BoardView() {
 
   return (
     <Seite
-      titel="Das Wochen-Pack."
-      unter="Ein Blick über alles: Umsatz-Kurs, Pipeline und Ausführung — zusammengefasst aus Controlling, Prospecting und Aufgaben. Kennzahlen exakt, Einordnung vom Agenten."
+      titel="Wochen-Pack"
+      unter="Umsatz-Kurs, Pipeline und Ausführung auf einen Blick — Kennzahlen exakt, Einordnung vom Agenten."
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
       <ZoeReiter />

@@ -45,8 +45,8 @@ export function ResearchView() {
 
   return (
     <Seite
-      titel="Recherchiere mit Quellen."
-      unter="Stell eine Frage — Markt, Wettbewerb, Förderung, Prospects. Ich suche im Web und antworte belegt. Read-only, keine Freigabe nötig."
+      titel="Research"
+      unter="Recherche mit Quellen: Markt, Wettbewerb, Förderung, Prospects — nur lesend, keine Freigabe nötig."
       rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
     >
       <ZoeReiter />

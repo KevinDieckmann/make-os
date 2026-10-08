@@ -80,7 +80,7 @@ export function StammdatenView() {
   const karteien = KARTEIEN.filter(k => modus === 'alles' || k.modus === 'beides' || k.modus === modus);
 
   return (
-    <Seite titel="Stammdaten" unter="Die Angaben, die man dreimal im Jahr braucht und dann sucht. Sie liegen hier auf dem Rechner, werden täglich gesichert und gehen nirgendwohin.">
+    <Seite titel="Stammdaten" unter="Die Angaben, die man dreimal im Jahr braucht und dann sucht — täglich gesichert, gehen nirgendwohin.">
       <Karte i={0}>
         <Ueberschrift farbe={LEUCHT.gut}>Verdeckt, bis du hinschaust</Ueberschrift>
         <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: 0 }}>

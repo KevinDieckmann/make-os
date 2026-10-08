@@ -180,7 +180,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
   if (eingebettet) return inhalt;
 
   return (
-    <Seite titel="Energie erhöhen" unter="Die nächsten 4 Wochen: was für Körper und Energie wirklich geplant ist — Sport, Reha, Termine, Etappen. Eine leere Woche ist keine freie Woche, sondern eine Ansage.">
+    <Seite titel="Energie" unter="Die nächsten 4 Wochen: was für Körper und Energie geplant ist — eine leere Woche ist keine freie Woche.">
       {inhalt}
     </Seite>
   );
