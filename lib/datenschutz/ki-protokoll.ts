@@ -3,8 +3,11 @@
 // (crm, gesundheit, kalender …), wie viele Datensätze, ob pseudonymisiert, ob gesperrt. NIE Inhalte: kein Prompt, keine
 // Antwort, keine Namen, keine Kennungen Dritter (Wächter tests/ki-datenschutz.test.ts „KI-Protokoll ohne Inhalte“).
 //
-// Wozu: Rechenschaft (Art. 5 Abs. 2), Art. 15 Abs. 1 lit. c („an welche Empfänger gingen meine Daten“ — hier: Anthropic
-// PBC, USA), Art. 30 (Verzeichnis), Prüfung der Schalter. Einsehbar unter System › Datenschutz (je Person die eigenen
+// Wozu: Rechenschaft (Art. 5 Abs. 2), Art. 15 Abs. 1 lit. c („an welche Empfänger gingen meine Daten“ — seit 09.10. je Anbieter aus
+// dem Feld `anbieter`; Zeilen ohne Feld = Anthropic direkt), Art. 30 (Verzeichnis), Prüfung der Schalter.
+// Seit 09.10. (Paket 6a, Anbieter-Tor) zusätzlich je Zeile Anbieter, Fähigkeit, Region, Datenschutzstufe, Token-Mengen und Kosten —
+// Feldnamen angelehnt an die OpenTelemetry-Semantik für GenAI (`otelAttribute`: gen_ai.provider.name, gen_ai.operation.name,
+// gen_ai.request.model, gen_ai.usage.input_tokens/output_tokens), weiterhin NIE Inhalte. Einsehbar unter System › Datenschutz (je Person die eigenen
 // Zeilen; der Inhaber zusätzlich die Systemläufe ohne Person).
 //
 // Ablage: Monatsdateien `ki-protokoll--JJJJ-MM` (verschlüsselt wie alle Bestände). Aufbewahrung 12 Monate: beim ersten
@@ -14,13 +17,25 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { KI_KATEGORIEN, type KiKategorie } from './ki-einstellungen';
 import type { KiLauf } from './ki-lauf';
+import { istAnbieterId, STUFEN_REIHE, FAEHIGKEITEN, type AnbieterId, type DatenschutzStufe, type Faehigkeit } from '@/lib/ki/anbieter';
 
 export const KI_PROTOKOLL_PRAEFIX = 'ki-protokoll';
 export const KI_PROTOKOLL_MONATE = 12;
 /** Höchstens so viele Zeilen je Monat — darüber zählt nur noch `ueberlauf` (nie still). */
 export const KI_PROTOKOLL_MAX = 60_000;
-/** Empfänger der Modell-Aufrufe (Art. 15 Abs. 1 lit. c, Art. 13 Abs. 1 lit. e/f). */
-export const KI_EMPFAENGER = 'Anthropic PBC, San Francisco (USA) — KI-Modell (Drittland; EU-US Data Privacy Framework bzw. Standardvertragsklauseln)';
+/**
+ * Empfänger der Modell-Aufrufe über Anthropic direkt (Art. 15 Abs. 1 lit. c, Art. 13 Abs. 1 lit. e/f). Korrigiert 09.10. (Kevin 08.10.:
+ * „Register korrigieren (SCC statt DPF)“): Anthropic steht nicht auf der DPF-Liste; das Data Processing Addendum mit Standardvertragsklauseln
+ * gilt automatisch, EU-Vertragspartner ist Anthropic Ireland (research/agenten/MODELLE.md 2.1, A4–A7). Hinweis, keine Rechtsberatung.
+ */
+export const KI_EMPFAENGER = 'Anthropic Ireland, Ltd. (Vertragspartner in der EU) / Anthropic PBC, San Francisco (USA) — KI-Modell (Drittland; Standardvertragsklauseln)';
+/** Empfänger je Zugang des Anbieter-Tors (lib/ki/anbieter.ts) — für Auskunft und Protokoll-Zusammenfassung. */
+export const KI_EMPFAENGER_JE_ANBIETER: Record<AnbieterId, string> = {
+  anthropic: KI_EMPFAENGER,
+  'anthropic-vertex-eu': 'Google Cloud (Vertex AI, Region EU) — Claude-Modell von Anthropic, verarbeitet in der EU (Auftragsverarbeiter; Cloud Data Processing Addendum)',
+  'google-vertex': 'Google Cloud (Vertex AI, global bzw. USA) — Bilder, Video, Tiefenbericht (Drittland; Data Privacy Framework und Standardvertragsklauseln)',
+  mistral: 'Mistral AI, Paris (EU) — Transkription (kein Drittland)',
+};
 
 export interface KiProtokollEintrag {
   /** Zeitpunkt (ISO). */
@@ -39,6 +54,17 @@ export interface KiProtokollEintrag {
   ergebnis: 'ok' | 'fehler' | 'gesperrt';
   /** Grund einer Sperre (Kennwort, z. B. `hintergrund-aus`, `einwilligung-gesundheit`, `bereich-crm`). */
   grund?: string;
+  /** Zugang (seit 09.10.; fehlt = Anthropic direkt — Altbestand). */
+  anbieter?: AnbieterId;
+  /** Was der Aufruf tat (fehlt = Text). */
+  faehigkeit?: Faehigkeit;
+  /** Region und Datenschutzstufe des Zugangs zum Zeitpunkt des Aufrufs. */
+  region?: string;
+  stufe?: DatenschutzStufe;
+  /** Token-Mengen (nur Zahlen) und geschätzte Kosten in Euro-Cent. */
+  tokenEin?: number;
+  tokenAus?: number;
+  kostenCent?: number;
 }
 export interface KiProtokollDatei { eintraege: KiProtokollEintrag[]; ueberlauf?: number; bereinigt?: { am: string; eintraege: number; grund: string } }
 
@@ -81,6 +107,35 @@ export function eintragSaeubern(e: Omit<KiProtokollEintrag, 'at'> & { at?: strin
     modell: typeof e.modell === 'string' && KENNWORT.test(e.modell) ? e.modell : 'unbekannt',
     ergebnis: e.ergebnis === 'gesperrt' || e.ergebnis === 'fehler' ? e.ergebnis : 'ok',
     ...(typeof e.grund === 'string' && KENNWORT.test(e.grund) ? { grund: e.grund } : {}),
+    ...(istAnbieterId(e.anbieter) ? { anbieter: e.anbieter } : {}),
+    ...(typeof e.faehigkeit === 'string' && (FAEHIGKEITEN as readonly string[]).includes(e.faehigkeit) && e.faehigkeit !== 'text' ? { faehigkeit: e.faehigkeit } : {}),
+    ...(typeof e.region === 'string' && /^[A-Za-z0-9 ,./()-]{1,60}$/.test(e.region) ? { region: e.region } : {}),
+    ...(typeof e.stufe === 'string' && (STUFEN_REIHE as readonly string[]).includes(e.stufe) ? { stufe: e.stufe } : {}),
+    ...(zahl(e.tokenEin) !== undefined ? { tokenEin: zahl(e.tokenEin) } : {}),
+    ...(zahl(e.tokenAus) !== undefined ? { tokenAus: zahl(e.tokenAus) } : {}),
+    ...(zahl(e.kostenCent) !== undefined ? { kostenCent: zahl(e.kostenCent) } : {}),
+  };
+}
+
+/** Anbieter einer Zeile — Altbestand ohne Feld = Anthropic direkt. */
+export const anbieterDerZeile = (z: Pick<KiProtokollEintrag, 'anbieter'>): AnbieterId => z.anbieter ?? 'anthropic';
+
+/**
+ * Die Zeile als Attribute nach der OpenTelemetry-Semantik für GenAI (für einen Export ins Lauf-Protokoll; rein). Nur Metadaten —
+ * dieselben Felder wie die Zeile, nur anders benannt.
+ */
+export function otelAttribute(z: KiProtokollEintrag): Record<string, string | number | boolean> {
+  const op: Record<Faehigkeit, string> = { text: 'chat', bild: 'generate_content', video: 'generate_content', transkript: 'generate_content', tiefenbericht: 'invoke_agent' };
+  return {
+    'gen_ai.provider.name': anbieterDerZeile(z),
+    'gen_ai.operation.name': op[z.faehigkeit ?? 'text'],
+    'gen_ai.request.model': z.modell,
+    ...(z.tokenEin !== undefined ? { 'gen_ai.usage.input_tokens': z.tokenEin } : {}),
+    ...(z.tokenAus !== undefined ? { 'gen_ai.usage.output_tokens': z.tokenAus } : {}),
+    'make.zweck': z.zweck, 'make.lauf': z.lauf, 'make.ergebnis': z.ergebnis, 'make.kategorien': z.kategorien.join(','),
+    ...(z.grund ? { 'make.grund': z.grund } : {}),
+    ...(z.stufe ? { 'make.stufe': z.stufe } : {}),
+    ...(z.kostenCent !== undefined ? { 'make.kosten_eurocent': z.kostenCent } : {}),
   };
 }
 
@@ -132,7 +187,10 @@ export async function kiProtokollLesen(opt: { person: string; mitSystem?: boolea
  * im Protokoll (keine Kennungen), deshalb nur als Kategorie mit Zeitraum.
  */
 export interface KiEmpfaengerAuskunft {
+  /** Alle Empfänger der Zeitspanne in einem Satz (ohne Zeilen: Anthropic direkt, wie bisher). */
   empfaenger: string;
+  /** Je Anbieter (seit 09.10.): Empfänger und Zahl der übermittelten Aufrufe. */
+  empfaengerJeAnbieter: { anbieter: AnbieterId; empfaenger: string; aufrufe: number }[];
   zeitraumMonate: number;
   kategorien: { kategorie: KiKategorie; aufrufe: number; pseudonymisiert: number; erster: string | null; letzter: string | null }[];
   gesperrt: number;
@@ -140,9 +198,11 @@ export interface KiEmpfaengerAuskunft {
 }
 export function empfaengerAuskunft(zeilen: readonly KiProtokollEintrag[], nurKategorie?: KiKategorie): KiEmpfaengerAuskunft {
   const je = new Map<KiKategorie, { aufrufe: number; pseudonymisiert: number; erster: string | null; letzter: string | null }>();
+  const jeAnbieter = new Map<AnbieterId, number>();
   let gesperrt = 0;
   for (const z of zeilen) {
     if (z.ergebnis === 'gesperrt') { gesperrt++; continue; }
+    if (!nurKategorie || z.kategorien.includes(nurKategorie)) jeAnbieter.set(anbieterDerZeile(z), (jeAnbieter.get(anbieterDerZeile(z)) ?? 0) + 1);
     for (const k of z.kategorien) {
       if (nurKategorie && k !== nurKategorie) continue;
       const x = je.get(k) ?? { aufrufe: 0, pseudonymisiert: 0, erster: null, letzter: null };
@@ -152,8 +212,10 @@ export function empfaengerAuskunft(zeilen: readonly KiProtokollEintrag[], nurKat
       je.set(k, x);
     }
   }
+  const anbieter = Array.from(jeAnbieter.entries()).sort((a, b) => b[1] - a[1]);
   return {
-    empfaenger: KI_EMPFAENGER,
+    empfaenger: anbieter.length ? anbieter.map(([a]) => KI_EMPFAENGER_JE_ANBIETER[a]).join('; ') : KI_EMPFAENGER,
+    empfaengerJeAnbieter: anbieter.map(([a, aufrufe]) => ({ anbieter: a, empfaenger: KI_EMPFAENGER_JE_ANBIETER[a], aufrufe })),
     zeitraumMonate: KI_PROTOKOLL_MONATE,
     kategorien: Array.from(je.entries()).map(([kategorie, x]) => ({ kategorie, ...x })).sort((a, b) => b.aufrufe - a.aufrufe),
     gesperrt,

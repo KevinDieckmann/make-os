@@ -165,8 +165,9 @@ export async function POST(req: Request) {
     lage = promptBrain(brain, { bereiche: kiS.bereiche });
     kategorien = brainKategorien(brain, { bereiche: kiS.bereiche });
     // Haushalt (24.09.): Kevin hat Beträge im Briefing ausdrücklich erlaubt — nur mit benannter Person.
-    const hz = kiS.bereiche.finanzen ? await haushaltVon(req).catch(() => null) : null;
-    if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen']; }
+    // Privat-Finanzen (09.10., Anbieter-Tor): nur mit erlaubtem Zugang (mit Tor: nur EU) — sonst ohne den Haushalt.
+    const hz = kiS.bereiche.finanzen && (await (await import('@/lib/ki/tor')).kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req).catch(() => null) : null;
+    if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen', 'finanzen-privat']; }
   } catch {
     return NextResponse.json({ ok: false, error: 'Lage nicht lesbar.' }, { status: 200 });
   }

@@ -1,8 +1,9 @@
 # MAKE OS und die KI-Verordnung (VO (EU) 2024/1689)
 
-> **Entwurf — anwaltlich prüfen.** Keine Rechtsberatung. Stand 05.10.2026, IST-Stand Code e15a9a8.
-> [[ANWALT: aktuellen Stand möglicher Änderungen/Verschiebungen (EU-„Digital-Omnibus“, Leitlinien und Verhaltenskodizes der
-> Kommission zu Art. 50 und zur Hochrisiko-Einstufung) prüfen — dieser Entwurf geht vom Verordnungstext aus]]
+> **Entwurf — anwaltlich prüfen.** Keine Rechtsberatung. Stand 09.10.2026 (Paket 6a „Anbieter-Tor“), vorher 05.10.2026 (e15a9a8).
+> Nachgezogen nach der Recherche vom 08.10.2026 (`research/agenten/MODELLE.md` Teil 2.8, Quellen W33–W38): Digital Omnibus, neue Daten
+> zu Anhang III, Verhaltenskodex Kennzeichnung, Leitlinien zu Art. 50. Belege dort mit [O] (Primärquelle gelesen) bzw. [S] (Suchausschnitt).
+> [[ANWALT: Rolle von MAKE beim Einbau fremder Modelle („Anbieter“ oder „Betreiber“ i. S. v. Art. 50) und Umfang der sichtbaren Kennzeichnung]]
 
 ---
 
@@ -15,12 +16,15 @@
 | Lead-Scoring (MQL/SQL), Traktions-Index, Business-Index | feste Regeln und Formeln (`lib/crm/scoring.ts`) | nein (klassische Software) |
 | Kapazität, Plan-Treue, Fokus-Messung | feste Formeln (`lib/kapazitaet/`) | nein — **aber** Daten können in KI-Läufe fließen (Abschnitt 4) |
 | Brain-Suche (lokale Embeddings) | lokales Modell, nur Suche | ja (geringes Risiko, keine Ausgabe an Dritte) |
+| **Bilder, Video, Tiefenbericht** (seit 09.10. vorbereitet, aus bis eingerichtet) | Gemini-Modelle über Google Vertex (Nano Banana 2.1/Pro, Omni Flash, Veo 3.1, Deep Research) — `lib/ki/` | **ja** — erzeugt synthetische Bilder/Videos (Art. 50 Abs. 2 und 4) |
+| **Transkription** (nur Adapter + Vergleichstest, Schalter aus) | Mistral Voxtral (EU) | ja (Ausgabe: Text aus fremder Stimme) |
 
 **Rollen:**
 - **MAKE** ist **Anbieter** (Art. 3 Nr. 3) der KI-Systeme in MAKE OS, sobald MAKE OS Kunden unter eigenem Namen bereitgestellt
   wird, und zugleich **Betreiber** (Art. 3 Nr. 4) in der eigenen Instanz.
-- **Anthropic** ist Anbieter des **KI-Modells mit allgemeinem Verwendungszweck** (Kapitel V) — MAKE ist nachgelagerter Anbieter
-  und stützt sich auf dessen Dokumentation und Nutzungsrichtlinien.
+- **Anthropic**, **Google** (Gemini, Veo) und **Mistral** sind Anbieter der **KI-Modelle mit allgemeinem Verwendungszweck** (Kapitel V) —
+  MAKE ist nachgelagerter Anbieter und stützt sich auf deren Dokumentation und Nutzungsrichtlinien. Alle Aufrufe laufen durch EIN
+  Anbieter-Tor (`lib/ki/tor.ts`): Mindeststufe je Datenkategorie, Rückfall nie in eine schwächere Datenschutzstufe, Protokoll je Aufruf.
 - **Kunden** sind **Betreiber** ihrer Instanz.
 
 ## 2 · Zeitplan (laut Verordnung)
@@ -29,8 +33,16 @@
 |---|---|
 | 02.02.2025 | **Art. 4 KI-Kompetenz**, Art. 5 Verbote |
 | 02.08.2025 | Pflichten für Modelle mit allgemeinem Verwendungszweck (betrifft Anthropic) |
-| **02.08.2026** | **Art. 50 Transparenzpflichten**, Hochrisiko nach Anhang III, Sanktionen |
+| 27.07.2026 | **Digital Omnibus = VO (EU) 2026/1744** in Kraft [O W34]: verschiebt Teile des Zeitplans (unten) |
+| **02.08.2026** | **Art. 50 Transparenzpflichten**, Sanktionen |
+| 02.12.2026 | Ende der Übergangsfrist für die **maschinenlesbare Kennzeichnung (Art. 50 Abs. 2)** — **nur für Systeme, die vor dem 02.08.2026 auf dem Markt waren** [O W34, S W35]. **Neue Funktionen (Bilder, Video, Tiefenbericht seit 09.10.) kennzeichnen sofort.** |
 | 02.08.2027 | Hochrisiko nach Anhang I (Produkte) |
+| 02.12.2027 | Hochrisiko nach **Anhang III** (laut Omnibus verschoben) [S W35] |
+
+**Verhaltenskodex Kennzeichnung** (final 10.06.2026, freiwillig) [O W33]: mehrschichtig — wo nötig mindestens **zwei maschinenlesbare
+Schichten** (Metadaten/C2PA und Wasserzeichen); Erkennung anbieterübergreifend bis 02.02.2027 [S W36].
+**Leitlinien zu Art. 50** (20.07.2026) [S W38]: Chatbots/Agenten legen offen, dass sie KI sind und **für wen sie handeln**; ein Satz in den
+AGB reicht nicht; **Zusammenfassungen sind nicht ausgenommen**; geschlossene B2B-Umgebungen schon.
 
 ---
 
@@ -66,7 +78,8 @@ ausdrücklich keine Aussagen über Gefühle/Emotionen aus Körperwerten; Erholun
 | **Abs. 1** — Personen müssen wissen, dass sie mit einer KI interagieren (außer offensichtlich) | Anbieter | ZOE ist als Assistentin benannt; für Nutzer ist die KI-Natur im Kontext erkennbar. Telegram-Antworten von ZOE sind nicht ausdrücklich als KI gekennzeichnet. Dritte (Gäste der Buchungsseite, Mail-Empfänger) interagieren **nicht** mit ZOE. | **K5** „ZOE (KI)“ an allen Einstiegen und in Telegram-Antworten kennzeichnen |
 | **Abs. 2** — synthetisch erzeugte Texte/Bilder/Audio maschinenlesbar kennzeichnen (soweit technisch möglich; Ausnahme: unterstützende Funktion für Standardbearbeitung bzw. keine wesentliche Veränderung) | Anbieter | ZOE erzeugt Entwürfe (Mails, Nachrichten, Beiträge, Newsletter, Angebots-Entwürfe, Zusammenfassungen). Im System ist die Herkunft teils vermerkt (Aktivitäten mit ZOE-Herkunft, Stapel, Änderungsprotokoll „ZOE im Auftrag“). Ausgehende Texte werden von Menschen geprüft und versandt. | **K6** Herkunft „von ZOE entworfen“ an **jedem** gespeicherten Entwurf als Feld (maschinenlesbar); [[ANWALT: Fällt das Entwerfen mit menschlicher Freigabe unter die Ausnahme? Braucht der versandte Text eine Kennzeichnung?]] |
 | **Abs. 3** — Emotionserkennung/biometrische Kategorisierung offenlegen | Betreiber | nicht eingesetzt | — (K4 sichert ab) |
-| **Abs. 4** — Deepfakes offenlegen; KI-Texte, die **zur Information der Öffentlichkeit über Angelegenheiten von öffentlichem Interesse** veröffentlicht werden, offenlegen (außer menschliche Redaktion/Verantwortung) | Betreiber | Marketing-Entwürfe (Beiträge, Newsletter) werden vor Veröffentlichung von Menschen redigiert; KI-erzeugte Bilder/Filme auf Websites (Landingpages, Event-Seite) möglich | **K7** Redaktionsverantwortung festhalten (wer gibt frei); KI-erzeugte Bilder/Videos, die echte Personen/Orte täuschend echt zeigen, kennzeichnen |
+| **Abs. 2 — Medien (seit 09.10.)** | Anbieter | Bilder/Videos von Google tragen **SynthID** (Pixel/Frames) und **C2PA** (Metadaten, Vertex). MAKE OS legt die Bytes **unverändert** ab (nie umkodiert, nie durch den Exif-Säuberer — Wächter `tests/ki-anbieter.test.ts`) und führt als zweite Schicht die Herkunft am Medium (`KiMedium.kennzeichnung`, `herkunftsAngabe` für Export/Download) sowie `kiKennzeichen({ anbieter, modell })` in jeder Antwort. | **K12** Begleitdatei/Metadatenfeld beim Download in der Oberfläche anbieten (Funktion steht: `lib/ki/kennzeichnung.ts`) |
+| **Abs. 4** — Deepfakes offenlegen; KI-Texte, die **zur Information der Öffentlichkeit über Angelegenheiten von öffentlichem Interesse** veröffentlicht werden, offenlegen (außer menschliche Redaktion/Verantwortung) | Betreiber | Marketing-Entwürfe (Beiträge, Newsletter) werden vor Veröffentlichung von Menschen redigiert; KI-erzeugte Bilder/Filme auf Websites (Landingpages, Event-Seite) möglich. Seit 09.10.: beim Erzeugen wird „realistisch, mit Personen/Orten“ abgefragt → `sichtbaresZeichen` (Kevin 08.10.: sichtbares „KI-generiert“ bei realistischen Personen/Orten) | **K7** Redaktionsverantwortung festhalten (wer gibt frei); sichtbares Zeichen beim Veröffentlichen zeigen (Funktion steht, Oberfläche folgt mit dem Agenten-Bereich) |
 
 ## 6 · Hochrisiko — Anhang III Nr. 4 (Beschäftigung)
 
@@ -103,7 +116,10 @@ Bewertung **vor dem Inverkehrbringen dokumentieren** (Art. 6 Abs. 4) und das Sys
 - **Menschliche Aufsicht** ist im Produkt angelegt: Stapel, Freigabe per Klick, nie Versand durch ZOE, 409 bei veralteten Vorschlägen.
 - **Protokollierung:** ZOE-Entscheidungen (36 Monate), ZOE-Protokoll (90 Tage, nur Kennungen), Kosten je Person.
 - **Datenqualität/Robustheit:** fremder Text gekapselt (`fremd()`), Prompt-Injection-Regel, Größen- und Ratenschranken.
-- **Anbieter-Richtlinien** von Anthropic einhalten; Modellwechsel dokumentieren (`lib/agent-config.ts` `MODEL_BY_TIER`).
+- **Anbieter-Richtlinien** von Anthropic, Google und Mistral einhalten; Modellwechsel dokumentieren (Katalog mit Stand und Quelle:
+  `lib/ki/modelle.ts`; Stufen `MODEL_BY_TIER` über den Katalog, Umstellung erst nach dem Vergleich `scripts/ki-stufen-vergleich.mjs`).
+- **Datenschutz der Anbieter (Kevin 08.10.):** Anthropic direkt = Drittland mit **Standardvertragsklauseln** (nicht im Data Privacy
+  Framework); Gesundheit nur über Claude in der EU (Google Vertex) mit Zero Data Retention; Familie und Privat-Finanzen nur in der EU.
 - Verhältnis zur DSGVO: KI-Läufe sind in `DSFA.md` (DSFA-1, -3) bewertet.
 
 ## 8 · Maßnahmen-Übersicht
@@ -116,7 +132,8 @@ Bewertung **vor dem Inverkehrbringen dokumentieren** (Art. 6 Abs. 4) und das Sys
 | K4 | Keine Emotions-Aussagen aus Körperwerten; Gesundheit an ZOE abschaltbar | Art. 5 | Bau | vor erstem Kunden |
 | K5 | „ZOE (KI)“ kennzeichnen, auch in Telegram | Art. 50 Abs. 1 | Bau | überfällig (seit 02.08.2026) |
 | K6 | Herkunftsfeld an allen KI-Entwürfen | Art. 50 Abs. 2 | Bau + [[ANWALT]] | überfällig, Umfang klären |
-| K7 | Redaktionsverantwortung, Bild/Video-Kennzeichnung | Art. 50 Abs. 4 | [[KEVIN]] | laufend |
+| K7 | Redaktionsverantwortung, Bild/Video-Kennzeichnung (Funktion `sichtbaresZeichen` gebaut 09.10.) | Art. 50 Abs. 4 | [[KEVIN]] + Bau | laufend |
+| K12 | Zweite Schicht beim Download (Begleitdatei „KI-generiert“) in der Oberfläche | Art. 50 Abs. 2, Kodex | Bau | mit der ersten Medien-Oberfläche |
 | K8 | Zweckbestimmung schriftlich | Anhang III | [[KEVIN]] + [[ANWALT]] | vor erstem Kunden |
 | K9 | Delegation ohne Leistungsdaten, Wächtertest | Anhang III | Bau | vor erstem Kunden |
 | K10 | Art.-6-Abs.-3-Bewertung dokumentieren | Art. 6 Abs. 4 | [[ANWALT]] | vor erstem Kunden |

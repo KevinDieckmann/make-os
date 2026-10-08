@@ -117,6 +117,13 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     if (l.faellig) raus.push({ id: 'absichten', grund: `${l.faellig} abgebrochene${l.faellig === 1 ? 'r Vorgang' : ' Vorgänge'} fertigstellen`, auftrag: { art: 'agent', name: 'absichten', anlass: 'Takt: Absichten' } });
   } catch (err) { console.error('[MAKE OS] Absichten-Takt übersprungen:', err); }
 
+  // 00c) KI-Medien (09.10., Paket 6a Anbieter-Tor): laufende Video-/Tiefenbericht-Aufträge abholen — auch nachts, nur wenn etwas läuft
+  //      (Zähler lib/ki/aufruf.ts `KI_AUFTRAEGE_OFFEN`). Holt nur schon bezahlte Ergebnisse ab, kein neuer Modell-Auftrag.
+  try {
+    const o = (await loadJson<{ offen?: number }>('ki-auftraege-offen')) ?? {};
+    if ((o.offen ?? 0) > 0) raus.push({ id: 'ki-medien', grund: `KI-Medien: ${o.offen} laufende${o.offen === 1 ? 'r Auftrag' : ' Aufträge'} abholen`, auftrag: { art: 'agent', name: 'ki-medien', anlass: 'Takt: KI-Medien' } });
+  } catch (err) { console.error('[MAKE OS] KI-Medien-Takt übersprungen:', err); }
+
   if (h < VON || h >= BIS) return raus;
 
   // 0) Der Gesundheits-Takt (23.09.) — VOR allem anderen und unabhängig vom

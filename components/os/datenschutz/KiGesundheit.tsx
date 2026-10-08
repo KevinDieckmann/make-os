@@ -23,7 +23,7 @@ interface KDaten {
   bereiche: { id: Bereich; label: string }[];
   telegramVoll: { seit: string; fassung: string } | null; telegramHinweis: { text: string; fassung: string };
 }
-interface PZeile { at: string; zweck: string; lauf: string; person: string | null; kategorien: string[]; anzahl?: number; pseudonym?: number; websuche?: boolean; ergebnis: string; grund?: string }
+interface PZeile { at: string; zweck: string; lauf: string; person: string | null; kategorien: string[]; anzahl?: number; pseudonym?: number; websuche?: boolean; ergebnis: string; grund?: string; anbieter?: string }
 interface PDaten { zeilen: PZeile[]; gesamt: number; mitSystem: boolean; zusammenfassung: { empfaenger: string; kategorien: { kategorie: string; aufrufe: number; pseudonymisiert: number; letzter: string | null }[]; gesperrt: number } }
 
 const zeit = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
@@ -111,7 +111,7 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
 
       <Karte i={i + 1} id="ki">
         <Ueberschrift>KI-Schalter</Ueberschrift>
-        <div style={text}>Was an die KI (Anthropic, USA) gehen darf. Deine Schalter schränken nur ein — über die Instanz hinaus öffnen sie nichts. Erzwungen wird auf dem Server, an der einen Stelle, an der Daten das Haus verlassen.</div>
+        <div style={text}>Was an die KI gehen darf (Anbieter und Weg: siehe Protokoll unten). Deine Schalter schränken nur ein — über die Instanz hinaus öffnen sie nichts. Erzwungen wird auf dem Server, an der einen Stelle, an der Daten das Haus verlassen.</div>
         {k && (
           <>
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
@@ -165,7 +165,7 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
           <Liste>
             {p.zeilen.slice(0, 40).map((z, i) => (
               <Zeile key={`${z.at}-${i}`} titel={`${z.zweck} · ${LAUF[z.lauf] ?? z.lauf}${z.ergebnis === 'gesperrt' ? ` · gesperrt (${z.grund ?? '—'})` : z.ergebnis === 'fehler' ? ' · Fehler' : ''}`}
-                unter={`${zeit(z.at)} · ${z.kategorien.join(', ')}${z.anzahl !== undefined ? ` · ${z.anzahl} Datensätze` : ''}${z.pseudonym ? ` · ${z.pseudonym} Namen ersetzt` : ''}${z.websuche ? ' · mit Web-Suche' : ''}${z.person === null ? ' · Systemlauf' : ''}`} />
+                unter={`${zeit(z.at)} · ${z.kategorien.join(', ')}${z.anzahl !== undefined ? ` · ${z.anzahl} Datensätze` : ''}${z.pseudonym ? ` · ${z.pseudonym} Namen ersetzt` : ''}${z.websuche ? ' · mit Web-Suche' : ''}${z.person === null ? ' · Systemlauf' : ''}${z.anbieter && z.anbieter !== 'anthropic' ? ` · ${z.anbieter}` : ''}`} />
             ))}
             {!p.zeilen.length && <div style={text}>Noch keine Aufrufe protokolliert.</div>}
           </Liste>

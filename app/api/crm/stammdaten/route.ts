@@ -25,6 +25,7 @@ import { verantwortlicherLaden } from '@/lib/datenschutz/einrichtung-server';
 import { datenschutzUmfeld } from '@/lib/datenschutz/umfeld';
 import { verantwortlicherText } from '@/lib/datenschutz/einrichtung';
 import { verarbeitungKiNachtragen } from '@/lib/datenschutz/vvt-ki';
+import { kiAnbieterEingerichtet } from '@/lib/ki/konfig';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { icloudInGebrauch } from '@/lib/kalender/icloud-person';
 import { whatsappEingerichtet } from '@/lib/whatsapp/konfig';
@@ -69,7 +70,10 @@ export async function GET(req: Request) {
   const vvOpt = { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()) };
   if (verzeichnisVervollstaendigen(crm.verarbeitungen, vvJetzt, vvOpt).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, vvJetzt, vvOpt); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
   // KI-Funktionen (05.10., DSGVO-Paket KI/Gesundheit/Telegram) — eigener Eintrag aus lib/datenschutz/vvt-ki.ts, idempotent.
-  if (verarbeitungKiNachtragen(crm.verarbeitungen, new Date().toISOString()).length !== crm.verarbeitungen.length) crm = await aendereCrm(c => { const neu = verarbeitungKiNachtragen(c.verarbeitungen, new Date().toISOString()); return neu.length === c.verarbeitungen.length ? c : { ...c, verarbeitungen: neu }; });
+  // Seit 09.10. (Paket 6a) auch: alte Fassung (Data Privacy Framework → Standardvertragsklauseln) heben, „KI über weitere Anbieter“, sobald
+  // ein neuer Zugang eingerichtet ist — gleiche Referenz = nichts zu tun.
+  const kiAnbieter = kiAnbieterEingerichtet();
+  if (verarbeitungKiNachtragen(crm.verarbeitungen, new Date().toISOString(), kiAnbieter) !== crm.verarbeitungen) crm = await aendereCrm(c => { const neu = verarbeitungKiNachtragen(c.verarbeitungen, new Date().toISOString(), kiAnbieter); return neu === c.verarbeitungen ? c : { ...c, verarbeitungen: neu }; });
   const verantwortlicher = await verantwortlicherLaden();
   const konten = (await ladeKonten()).konten;
   const vorschlag = pflichtangaben(kontakte, crm);

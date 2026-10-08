@@ -41,6 +41,7 @@ import { vornameVon, anredeSatz, firmenKennungen, gesellschaftenSatz } from '@/l
 import { businessFreiJetzt } from '@/lib/arbeitsrahmen/server';
 import { bisText, businessFreiSatz } from '@/lib/arbeitsrahmen/regel';
 import { AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
+import { kategorienMoeglich } from '@/lib/ki/tor';
 import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 
 export const runtime = 'nodejs';
@@ -170,9 +171,10 @@ export async function POST(req: Request) {
   const gStand = await gesundheitStandFuer(person);
   const gesundheitKi = gStand.ki.an && gStand.verarbeitungErlaubt;
   const kategorien = new Set<KiKategorie>(['konto', 'allgemein']);
-  const haushalt = kiS.bereiche.finanzen ? await haushaltVon(req).catch(() => null) : null;
+  // Privat-Finanzen (09.10., Anbieter-Tor): nur, wenn sie an einen erlaubten Zugang dürfen (mit Tor: nur EU) — sonst bleibt der Block draußen.
+  const haushalt = kiS.bereiche.finanzen && (await kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req).catch(() => null) : null;
   const haushaltBlock = haushalt ? await ladeHaushalt(haushalt.haushalt).then(h => blockHaushalt(h)).catch(() => '') : '';
-  if (haushaltBlock) kategorien.add('finanzen');
+  if (haushaltBlock) { kategorien.add('finanzen'); kategorien.add('finanzen-privat'); }
   const lage = await liveContext(person, kiS.bereiche);
   lage.kategorien.forEach(k => kategorien.add(k));
   const live = [lage.text, haushaltBlock].filter(Boolean).join('\n\n');

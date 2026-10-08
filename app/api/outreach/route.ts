@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   await logRun('outreach', `Ansprache entworfen: ${p.company}`, { company: p.company, score: p.score ?? null }, { person: personStreng(req) });
 
   return NextResponse.json({
-    ki: kiKennzeichen(), // KI-VO Art. 50 (05.10.)
+    ki: kiKennzeichen({ anbieter: r.anbieter, modell: agent.model }), // KI-VO Art. 50 (05.10.; Anbieter seit 09.10.)
     betreff: String(r.data.betreff ?? `POINCAP × ${p.company}`).slice(0, 140),
     email: String(r.data.email).slice(0, 2000),
     linkedin: String(r.data.linkedin ?? '').slice(0, 800),

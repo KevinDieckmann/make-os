@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       abgelegt = true;
     } catch { abgelegt = false; }
   }
-  return NextResponse.json({ reply: r.text, format: fmt.label, abgelegt, ki: kiKennzeichen() }); // KI-VO Art. 50 (05.10.)
+  return NextResponse.json({ reply: r.text, format: fmt.label, abgelegt, ki: kiKennzeichen({ anbieter: r.anbieter, modell: agent.model }) }); // KI-VO Art. 50 (05.10.; Anbieter seit 09.10.)
 }
 
 /** Die abgelegten Entwürfe (Content › Entwürfe von ZOE). */

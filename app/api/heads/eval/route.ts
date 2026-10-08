@@ -7,6 +7,11 @@
 //                               Modell neu beantworten lassen, pass^k je Prüfung.
 //                               Kostet Modell-Aufrufe — nur bewusst auslösen,
 //                               z. B. vor und nach einer Prompt-Änderung.
+// POST { head, n?, k?, modus?, vergleich: true } → dieselben Fälle k-mal mit dem Modell-
+//                               Satz „bisher“ UND „neu“ (lib/ki/modelle.ts) — Ergebnis je
+//                               Prüfung, Kosten und Empfehlung (lib/ki/stufen-vergleich.ts).
+//                               Doppelte Kosten; nur der Inhaber. Kevin 08.10.: „nach Test
+//                               umstellen“ — scripts/ki-stufen-vergleich.mjs ruft das auf.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -23,6 +28,9 @@ import { nurInhaber, imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { STUFEN_SAETZE, type StufenSatz } from '@/lib/ki/modelle';
+import { stufenVergleichen, type StufenSeite } from '@/lib/ki/stufen-vergleich';
+import { kosten } from '@/lib/zoe/verbrauch';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +54,7 @@ export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 1000000)) return ZU_GROSS(1000000);
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
-  let b: { head?: string; n?: number; k?: number; modus?: string };
+  let b: { head?: string; n?: number; k?: number; modus?: string; vergleich?: boolean };
   try { b = await jsonBegrenzt(req, 1000000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const h = headAus(b.head);
   if (!h) return NextResponse.json({ ok: false, fehler: 'head=sales|marketing|event' }, { status: 400 });
@@ -58,6 +66,28 @@ export async function POST(req: Request) {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const agent = await resolveAgent(AGENT_ID[h]);
+  if (b.vergleich === true) {
+    // Vergleich der Modellstufen (09.10.): dieselben Fälle mit beiden Sätzen — das Modell je Fall wie im echten Lauf (Review = stark, sonst die
+    // Stufe des Heads), nur aus dem jeweiligen Satz. ANTHROPIC_MODEL gilt hier bewusst nicht (sonst verglichen wir nichts).
+    const seite = async (satz: StufenSatz): Promise<StufenSeite> => {
+      const faelleS: Bewertung[][] = []; let cent = 0, fehlerS = 0;
+      for (const f of faelle) {
+        const modell = STUFEN_SAETZE[satz][REVIEW_MODI.has(f.modus) ? 'stark' : agent.tier];
+        const wdh: Bewertung[] = [];
+        for (let i = 0; i < k; i++) {
+          const r = await askText({ system: SYSTEM[h], user: '', messages: [{ role: 'user', content: [{ type: 'text', text: datenBlock(f.daten), cache_control: { type: 'ephemeral' } }, { type: 'text', text: aufgabe(f.modus) }] }], model: modell, effort: REVIEW_MODI.has(f.modus) ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: 12000, timeoutMs: 200_000, zweck: `${AGENT_ID[h]}-vergleich`, ki: kiAus(req, ['crm']) });
+          if (r.usage) cent += kosten(modell, r.usage.ein, r.usage.aus, r.usage.cacheLesen, r.usage.cacheSchreiben, r.anbieter);
+          if (!r.ok) { fehlerS++; break; }
+          wdh.push(bewerte(normalisiere(extractJson(r.text), h), f.daten, kontakte, crm, f.heute));
+        }
+        if (wdh.length) faelleS.push(wdh);
+      }
+      return { faelle: faelleS, kostenCent: cent, fehler: fehlerS };
+    };
+    const bisher = await seite('bisher');
+    const neu = await seite('neu');
+    return NextResponse.json({ ok: true, head: h, k, modelle: { bisher: STUFEN_SAETZE.bisher, neu: STUFEN_SAETZE.neu }, vergleich: stufenVergleichen(bisher, neu) });
+  }
   const ergebnis: Bewertung[][] = [];
   const fehler: string[] = [];
   for (const f of faelle) {

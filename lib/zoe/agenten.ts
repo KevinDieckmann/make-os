@@ -17,6 +17,7 @@ export const AUSFUEHRBAR = [
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
   'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten',
+  'ki-medien',
 ] as const;
 export type Ausfuehrbar = typeof AUSFUEHRBAR[number];
 
@@ -57,6 +58,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   absichten: 'Abgebrochene Vorgänge über mehrere Bestände fertigstellen (Absichtsprotokoll: Art. 17, Import, Dubletten, Kennungs-Umzug, Angebot) — ohne KI, nur Zahlen (auftrag = jetzt nimmt auch junge)',
   durchsicht: 'Die nächtliche Durchsicht der Bestände (Datenschicht) — jeden Bestand entschlüsseln, parsen, zählen, Zeilen-Sprünge und Verbindungsprüfung für den Head of IT; ohne KI, nur Zahlen (auftrag = jetzt erzwingt)',
   loeschfristen: 'Der Löschfristen-Lauf (Datenschutz, einmal am Tag) — Kontakte über der Frist nur als Aufgabe (nie automatisch löschen), technische Bestände nach Frist bereinigen; ohne KI (auftrag = jetzt erzwingt)',
+  'ki-medien': 'Holt laufende Video- und Tiefenbericht-Aufträge beim KI-Anbieter ab und legt sie verschlüsselt ab — startet nichts Neues, kostet nichts zusätzlich',
 };
 
 /**
@@ -67,7 +69,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten', 'ki-medien'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -369,6 +371,12 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const r = await offeneFertigstellen({ mindestAlterMs: auftrag === 'jetzt' ? 0 : MINDEST_ALTER_MS });
         const text = `${r.gefunden} aufgenommen · ${r.fertig} fertig · ${r.weiterOffen} weiter offen · ${r.gescheitert} gescheitert`;
         return r.gescheitert || r.weiterOffen ? fehl(`Absichten: ${text}`) : gut(`ABSICHTEN: ${text}`);
+      }
+      case 'ki-medien': {
+        // Anbieter-Tor (09.10., Paket 6a): laufende Video-/Tiefenbericht-Aufträge abholen, verschlüsselt ablegen, Kosten buchen.
+        const { kiAuftraegeAbholen } = await import('@/lib/ki/aufruf');
+        const r = await kiAuftraegeAbholen();
+        return gut(`KI-MEDIEN: ${r.fertig} abgeholt · ${r.offen} laufen noch · ${r.fehler} gescheitert`);
       }
       case 'durchsicht': {
         // Paket D-A (29.09.): Datenschicht-Durchsicht — nur lesen und zählen, Ergebnis in hoi-durchsicht (Head of IT).

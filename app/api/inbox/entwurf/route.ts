@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!istGespraechId(b.gespraech)) return NextResponse.json({ ok: false, fehler: 'gespraech fehlt.' }, { status: 400 });
   try {
     const r = await inboxEntwurf(z.person, b.gespraech, typeof b.hinweis === 'string' ? b.hinweis : undefined, kiAus(req, ['postfach', 'brain', 'crm'], { anzahl: 1 }));
-    return NextResponse.json({ ok: true, ...r, ki: kiKennzeichen() });
+    return NextResponse.json({ ok: true, ...r, ki: kiKennzeichen({ anbieter: r.anbieter }) });
   } catch (e) {
     if (e instanceof EntwurfFehler) return NextResponse.json({ ok: false, fehler: e.message, ...(e.needsKey ? { needsKey: true } : {}) }, { status: e.status });
     return NextResponse.json({ ok: false, fehler: 'ZOE konnte gerade keinen Entwurf schreiben.' }, { status: 502 });

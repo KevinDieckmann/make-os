@@ -9,5 +9,5 @@ export function binV1Schreiben(klar: Buffer | Uint8Array, key: Buffer): Buffer;
 export function binOeffnen(b: Buffer, ring: SchluesselRing, haushalt: string, id: string): { klar: Buffer; version: 1 | 2; kid: string };
 export function binImModus(klar: Buffer | Uint8Array, schluessel: Schluessel, haushalt: string, id: string, env?: NodeJS.ProcessEnv): Buffer;
 export function binAktuell(geoeffnet: { version: 1 | 2; kid: string }, aktiv: Schluessel | null, env?: NodeJS.ProcessEnv): boolean;
-export const BILD_ORDNER: readonly ['bilder-gerichte', 'bauplan-bilder', 'whatsapp-medien', 'zoe-whatsapp-medien'];
+export const BILD_ORDNER: readonly ['bilder-gerichte', 'bauplan-bilder', 'whatsapp-medien', 'zoe-whatsapp-medien', 'ki-medien'];
 export const BILD_NAME: RegExp;

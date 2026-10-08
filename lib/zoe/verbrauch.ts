@@ -10,20 +10,13 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { kostenUsdCent, inEuroCent, usdEurKurs, type Mengen } from '@/lib/ki/kosten';
+import type { AnbieterId } from '@/lib/ki/anbieter';
 
-/**
- * Preise je Million Token, Stand 07.09.2026 (Eingabe / Ausgabe in US-Dollar).
- * Seit 25.09. mit Prompt-Cache: gelesen 0,1 ×, geschrieben 1,25 × Eingabepreis
- * (5-Minuten-Cache) — so sieht man, ob der Cache greift und was er spart.
- */
-const PREIS: Record<string, { ein: number; aus: number }> = {
-  'claude-opus-5-5': { ein: 4, aus: 20 },
-  'claude-opus-5': { ein: 5, aus: 25 },
-  'claude-sonnet-5': { ein: 2, aus: 10 },
-  'claude-haiku-4-5-20251001': { ein: 1, aus: 5 },
-};
-/** Unbekanntes Modell: mit dem teuersten rechnen, nicht mit null. */
-const STANDARD = { ein: 5, aus: 25 };
+// Preise (09.10., Paket 6a): aus dem Modell-Katalog lib/ki/modelle.ts — mit Stand und Quelle je Zeile, auch Haiku/Sonnet 5.5 und die
+// Medien-Einheiten (Bild, Sekunde Video, Minute Transkription, Aufgabe). Vorher stand hier eine eigene Tabelle (Stand 07.09.).
+// Unbekanntes Modell: mit dem teuersten seiner Fähigkeit rechnen, nicht mit null. Gespeichert wird weiter in US-Cent (`cent`, wie der
+// Altbestand); Euro rechnet die Übersicht mit dem Kurs der Instanz (lib/ki/kosten.ts).
 
 export interface Posten {
   modell: string;
@@ -35,6 +28,10 @@ export interface Posten {
   /** Geschätzte Kosten in US-Cent. */
   cent: number;
   anzahl: number;
+  /** Zugang (seit 09.10.; fehlt = Anthropic direkt, Altbestand). */
+  anbieter?: AnbieterId;
+  /** Nicht-Token-Einheiten (Bild, Sekunde, Minute, Aufgabe), aufsummiert. */
+  mengen?: Mengen;
 }
 interface Tag { tag: string; posten: Posten[] }
 interface Stand { tage: Tag[] }
@@ -42,29 +39,46 @@ interface Stand { tage: Tag[] }
 /** So viele Tage bleiben stehen — reicht für „was hat der Monat gekostet". */
 const TAGE = 45;
 
-export function kosten(modell: string, ein: number, aus: number, cacheLesen = 0, cacheSchreiben = 0): number {
-  const p = PREIS[modell] ?? STANDARD;
-  return ((ein / 1e6) * p.ein + (aus / 1e6) * p.aus + (cacheLesen / 1e6) * p.ein * 0.1 + (cacheSchreiben / 1e6) * p.ein * 1.25) * 100;
+/** Kosten eines Aufrufs in US-Cent (Token-Mengen; Preise aus dem Katalog). */
+export function kosten(modell: string, ein: number, aus: number, cacheLesen = 0, cacheSchreiben = 0, anbieter?: AnbieterId): number {
+  return kostenUsdCent(modell, { 'token-ein': ein, 'token-aus': aus, 'cache-lesen': cacheLesen, 'cache-schreiben': cacheSchreiben }, anbieter ? { anbieter } : {});
 }
 
 /**
- * Einen Aufruf mitschreiben. Je Tag und Zweck EINE Zeile, die mitwächst —
+ * Einen Aufruf mitschreiben. Je Tag, Modell, Zweck und Zugang EINE Zeile, die mitwächst —
  * sonst hätte die Datei nach einer Woche zehntausend Einträge und niemand
- * würde je hineinsehen.
+ * würde je hineinsehen. Seit 09.10. wachsen die Kosten je Aufruf (Haiku 5.5 hat eine Preisstaffel je Prompt-Länge —
+ * aus den Summen nachgerechnet wäre sie falsch).
  */
-export async function notiere(modell: string, zweck: string, ein: number, aus: number, cacheLesen = 0, cacheSchreiben = 0): Promise<void> {
+export async function notiere(modell: string, zweck: string, ein: number, aus: number, cacheLesen = 0, cacheSchreiben = 0, anbieter?: AnbieterId): Promise<void> {
   if (!ein && !aus && !cacheLesen && !cacheSchreiben) return;
+  await buche({ modell, zweck, anbieter, ein, aus, cl: cacheLesen, cs: cacheSchreiben, cent: kosten(modell, ein, aus, cacheLesen, cacheSchreiben, anbieter) });
+}
+
+/** Medien-Einheiten mitschreiben (Bild, Sekunde Video, Minute, Aufgabe) — Kosten aus dem Katalog. */
+export async function notiereMengen(modell: string, zweck: string, mengen: Mengen, anbieter: AnbieterId): Promise<void> {
+  const sauber = Object.fromEntries(Object.entries(mengen).filter(([, n]) => typeof n === 'number' && Number.isFinite(n) && n > 0)) as Mengen;
+  if (!Object.keys(sauber).length) return;
+  await buche({ modell, zweck, anbieter, ein: 0, aus: 0, cl: 0, cs: 0, mengen: sauber, cent: kostenUsdCent(modell, sauber, { anbieter }) });
+}
+
+async function buche(z: { modell: string; zweck: string; anbieter?: AnbieterId; ein: number; aus: number; cl: number; cs: number; mengen?: Mengen; cent: number }): Promise<void> {
   const heute = localDay();
+  // Anthropic direkt ohne Feld (wie der Altbestand) — so bleibt die Zeile je Tag/Modell/Zweck dieselbe wie vor dem Anbieter-Tor.
+  const anbieter = z.anbieter && z.anbieter !== 'anthropic' ? z.anbieter : undefined;
   await updateJson<Stand>('ki-verbrauch', current => {
     const tage = current?.tage ?? [];
     const tag = tage.find(t => t.tag === heute) ?? { tag: heute, posten: [] };
     const rest = tage.filter(t => t.tag !== heute);
-    const da = tag.posten.find(p => p.modell === modell && p.zweck === zweck);
+    const da = tag.posten.find(p => p.modell === z.modell && p.zweck === z.zweck && p.anbieter === anbieter);
     if (da) {
-      da.ein += ein; da.aus += aus; da.anzahl += 1; da.cl = (da.cl ?? 0) + cacheLesen; da.cs = (da.cs ?? 0) + cacheSchreiben;
-      da.cent = kosten(modell, da.ein, da.aus, da.cl, da.cs);
+      da.ein += z.ein; da.aus += z.aus; da.anzahl += 1;
+      if (z.cl) da.cl = (da.cl ?? 0) + z.cl;
+      if (z.cs) da.cs = (da.cs ?? 0) + z.cs;
+      if (z.mengen) { const m: Mengen = { ...(da.mengen ?? {}) }; for (const [k, n] of Object.entries(z.mengen) as [keyof Mengen, number][]) m[k] = (m[k] ?? 0) + n; da.mengen = m; }
+      da.cent += z.cent;
     } else {
-      tag.posten.push({ modell, zweck, ein, aus, anzahl: 1, ...(cacheLesen ? { cl: cacheLesen } : {}), ...(cacheSchreiben ? { cs: cacheSchreiben } : {}), cent: kosten(modell, ein, aus, cacheLesen, cacheSchreiben) });
+      tag.posten.push({ modell: z.modell, zweck: z.zweck, ein: z.ein, aus: z.aus, anzahl: 1, ...(z.cl ? { cl: z.cl } : {}), ...(z.cs ? { cs: z.cs } : {}), ...(anbieter ? { anbieter } : {}), ...(z.mengen ? { mengen: z.mengen } : {}), cent: z.cent });
     }
     return { tage: [tag, ...rest].slice(0, TAGE) };
   });
@@ -75,25 +89,44 @@ export async function uebersicht(tage = 30): Promise<{
   heuteCent: number;
   summeCent: number;
   jeZweck: { zweck: string; cent: number; anzahl: number }[];
+  /** Euro (seit 09.10., Kurs der Instanz) — Kevin: „Euro“. */
+  euro: { kurs: number; heuteCent: number; summeCent: number; monatCent: number };
+  jeAnbieter: { anbieter: AnbieterId; cent: number; anzahl: number }[];
 }> {
   const s = await loadJson<Stand>('ki-verbrauch');
   const liste = (s?.tage ?? []).slice(0, tage);
   const heute = localDay();
   const summe = (t: Tag) => t.posten.reduce((a, p) => a + p.cent, 0);
   const jeZweck = new Map<string, { cent: number; anzahl: number }>();
+  const jeAnbieter = new Map<AnbieterId, { cent: number; anzahl: number }>();
   for (const t of liste) {
     for (const p of t.posten) {
       const e = jeZweck.get(p.zweck) ?? { cent: 0, anzahl: 0 };
       e.cent += p.cent; e.anzahl += p.anzahl;
       jeZweck.set(p.zweck, e);
+      const a = jeAnbieter.get(p.anbieter ?? 'anthropic') ?? { cent: 0, anzahl: 0 };
+      a.cent += p.cent; a.anzahl += p.anzahl;
+      jeAnbieter.set(p.anbieter ?? 'anthropic', a);
     }
   }
+  const heuteCent = liste.filter(t => t.tag === heute).reduce((a, t) => a + summe(t), 0);
+  const summeCent = liste.reduce((a, t) => a + summe(t), 0);
+  const kurs = usdEurKurs();
   return {
     tage: liste,
-    heuteCent: liste.filter(t => t.tag === heute).reduce((a, t) => a + summe(t), 0),
-    summeCent: liste.reduce((a, t) => a + summe(t), 0),
+    heuteCent,
+    summeCent,
     jeZweck: Array.from(jeZweck.entries())
       .map(([zweck, e]) => ({ zweck, ...e }))
       .sort((a, b) => b.cent - a.cent),
+    euro: { kurs, heuteCent: inEuroCent(heuteCent, kurs), summeCent: inEuroCent(summeCent, kurs), monatCent: inEuroCent(await monatUsdCent(heute, s), kurs) },
+    jeAnbieter: Array.from(jeAnbieter.entries()).map(([anbieter, e]) => ({ anbieter, ...e })).sort((a, b) => b.cent - a.cent),
   };
+}
+
+/** Verbrauch des laufenden Monats (Berliner Tag) in US-Cent — für das Budget im Anbieter-Tor. */
+export async function monatUsdCent(heute = localDay(), vorgeladen?: Stand | null): Promise<number> {
+  const s = vorgeladen !== undefined ? vorgeladen : await loadJson<Stand>('ki-verbrauch');
+  const monat = heute.slice(0, 7);
+  return (s?.tage ?? []).filter(t => t.tag.startsWith(monat)).reduce((a, t) => a + t.posten.reduce((b, p) => b + p.cent, 0), 0);
 }

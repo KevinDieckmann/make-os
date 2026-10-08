@@ -213,7 +213,8 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   // Der tägliche Check braucht kein Reasoning-Modell; die großen Läufe schon.
   const modell = a.modus === 'tagescheck' && /opus/.test(agent.model) && !process.env.ANTHROPIC_MODEL ? MODEL_BY_TIER.ausgewogen : agent.model;
   // Datenschutz (05.10.): Takt = Hintergrund (Schalter, Pseudonymisierung), sonst Aufruf; Daten: Finanzen (+ Mandate/Pipeline).
-  const ki: KiKontext = { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person ?? null, kategorien: ['finanzen', 'crm'] };
+  // Mit Haushalt stehen Privat-Finanzen im Paket (09.10., Anbieter-Tor: mit Tor nur in die EU, sonst Regelwerk).
+  const ki: KiKontext = { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person ?? null, kategorien: a.haushalt ? ['finanzen', 'finanzen-privat', 'crm'] : ['finanzen', 'crm'] };
   const r1 = await frageModell({ system: SYSTEM, user, model: modell, tools, haushalt: a.haushalt, maxTokens, ki });
   if (!r1.ok) return { ok: false, fehler: r1.fehler };
   let antwort: Antwort = normalisiere(extractJson(r1.text), a.modus);

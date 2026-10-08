@@ -10,6 +10,7 @@
 //   · Kein Mailtext in Logs; das Modell bekommt höchstens `MAIL_MAX` Zeichen der Mail und `BRAIN_MAX` Zeichen Brain-Kontext.
 
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
+import type { AnbieterId } from '@/lib/ki/anbieter';
 import type { KiKontext } from '@/lib/datenschutz/ki-tor';
 import { resolveAgent } from '@/lib/agent-config';
 import { suche, type Treffer } from '@/lib/zoe/vault';
@@ -44,7 +45,7 @@ export function brainKontext(treffer: Treffer[], durchsucht: number): string {
   return trefferText(offen, durchsucht).slice(0, BRAIN_MAX);
 }
 
-export interface EntwurfErgebnis { draft: string; quellen: string[] }
+export interface EntwurfErgebnis { draft: string; quellen: string[]; /** Zugang, der geantwortet hat (09.10., KI-Kennzeichen). */ anbieter?: AnbieterId }
 
 export async function inboxEntwurf(person: string, gespraech: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach'], anzahl: 1 }): Promise<EntwurfErgebnis> {
   const a = await gespraechLesen(person, gespraech);
@@ -83,5 +84,5 @@ export async function inboxEntwurf(person: string, gespraech: string, hinweis?: 
 
   const r = await askText({ zweck: 'inbox-draft', system: entwurfSystem(person, z?.anrede, regeln, a.antwort.bereichName), user, maxTokens: 4000, model: agent.model, ki });
   if (!r.ok || !r.text) throw new EntwurfFehler(r.error === 'guthaben-leer' ? 'Das KI-Guthaben ist leer.' : 'ZOE konnte gerade keinen Entwurf schreiben — bitte noch einmal versuchen.', 502);
-  return { draft: r.text.trim(), quellen };
+  return { draft: r.text.trim(), quellen, ...(r.anbieter ? { anbieter: r.anbieter } : {}) };
 }

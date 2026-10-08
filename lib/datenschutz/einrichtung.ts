@@ -185,6 +185,10 @@ export function verantwortlicherAuskunft(v: Verantwortlicher | null | undefined)
 
 const start = (e: Omit<Empfaenger, 'start' | 'avv'> & { avv?: AvvNachweis }): Empfaenger => ({ ...e, avv: e.avv ?? { status: 'offen' }, start: true });
 
+/** Anthropic (09.10. korrigiert): Drittland und Notiz der Vorgabe — die alten Fassungen stehen in `ALTE_EMPFAENGER_FASSUNGEN`. */
+export const ANTHROPIC_DRITTLAND = 'USA (Anthropic PBC); Vertragspartner in der EU: Anthropic Ireland, Ltd.';
+export const ANTHROPIC_NOTIZ = 'Data Processing Addendum der kommerziellen Bedingungen (API) mit Standardvertragsklauseln (Modul 2/3) — gilt automatisch; Anthropic ist nicht im EU-US Data Privacy Framework (Liste abgefragt 08.10.2026). Annahme mit Tag und Unterlage hier bestätigen. Für Gesundheit, Privat-Finanzen und Familie: Claude über Google Vertex in der EU (Eintrag „Google Cloud Vertex AI“).';
+
 /**
  * Vorgabe-Liste (Startwerte) — so, wie MAKE OS heute Dienste anbindet. Jede Instanz pflegt danach ihre eigene Liste
  * (bearbeiten, archivieren = nicht in Gebrauch, löschen). AVV-Status startet immer „offen“: bestätigt wird von Hand mit Tag
@@ -198,7 +202,14 @@ export const EMPFAENGER_START: readonly Empfaenger[] = [
   // Inbox 2 (06.10.): eigene Postfächer per IMAP/SMTP.
   start({ id: 'ionos', name: 'IONOS (E-Mail-Postfach)', rolle: 'auftragsverarbeiter', zweck: 'E-Mail-Postfach einer Gesellschaft bzw. Person — MAKE OS holt die Post per IMAP ab und sendet Antworten per SMTP (nur auf Klick)', daten: 'E-Mails (Absender, Empfänger, Betreff, Text, Anhänge), Zugangsdaten des Postfachs', drittland: '', garantie: 'eu', dritte: true, notiz: 'AVV im IONOS-Kundenbereich abschließen und als PDF ablegen.' }),
   start({ id: 'apple-icloud-mail', name: 'Apple iCloud Mail', rolle: 'auftragsverarbeiter', zweck: 'Privates E-Mail-Postfach — MAKE OS holt die Post per IMAP ab (App-spezifisches Passwort) und sendet Antworten 1:1 per SMTP (nur auf Klick)', daten: 'E-Mails (Absender, Empfänger, Betreff, Text, Anhänge)', drittland: 'USA (Konzern)', garantie: 'dpf', dritte: true, notiz: 'Für private iCloud-Konten bietet Apple keinen AVV an — nur private Post über iCloud führen; Entscheidung hier vermerken.' }),
-  start({ id: 'anthropic', name: 'Anthropic (KI, ZOE)', rolle: 'auftragsverarbeiter', zweck: 'KI-Auswertung und Entwürfe (ZOE, Heads, automatische Läufe) — nur gekapselte Arbeitsfelder', daten: 'Ausschnitte aus Aufgaben, Kalender, CRM-Arbeitsfeldern, Mails (nie private Notizen, nie gesperrte Personen, IBAN maskiert)', drittland: 'USA', garantie: 'dpf-scc', dritte: true, notiz: 'Data Processing Addendum der kommerziellen Bedingungen (API) — Annahme mit Tag und Unterlage hier bestätigen.' }),
+  // Korrigiert 09.10. (Kevin 08.10.: „Register korrigieren (SCC statt DPF)“): Anthropic ist nicht im EU-US Data Privacy Framework (Liste
+  // abgefragt 08.10.2026); das Data Processing Addendum mit Standardvertragsklauseln gilt automatisch, Vertragspartner in der EU ist
+  // Anthropic Ireland (research/agenten/MODELLE.md 2.1, A4–A7). Gespeicherte, unveränderte Altfassungen hebt `empfaengerHeben`.
+  start({ id: 'anthropic', name: 'Anthropic (KI, ZOE)', rolle: 'auftragsverarbeiter', zweck: 'KI-Auswertung und Entwürfe (ZOE, Heads, automatische Läufe) — nur gekapselte Arbeitsfelder', daten: 'Ausschnitte aus Aufgaben, Kalender, CRM-Arbeitsfeldern, Mails (nie private Notizen, nie gesperrte Personen, IBAN maskiert)', drittland: ANTHROPIC_DRITTLAND, garantie: 'scc', dritte: true, notiz: ANTHROPIC_NOTIZ }),
+  // Anbieter-Tor (09.10., Paket 6a): archiviert („nicht in Gebrauch“), bis der Zugang eingerichtet und der AVV abgelegt ist — dann
+  // „Zurückholen“ und AVV bestätigen (das Tor lässt neue Anbieter erst mit bestätigtem AVV durch). UPDATES.md 09.10. › KI-Anbieter.
+  start({ id: 'google-vertex', name: 'Google Cloud Vertex AI (Claude in der EU, Bilder, Video, Tiefenbericht)', rolle: 'auftragsverarbeiter', zweck: 'KI über das eigene Google-Cloud-Projekt (Dienstkonto): Claude in der EU-Region für Gesundheit, Privat-Finanzen und Familie; Bilder, Video und Tiefenberichte nur auf Klick bzw. im Budget', daten: 'Claude in der EU: dieselben gekapselten Ausschnitte wie bei Anthropic, auch Gesundheitswerte der Person selbst (nur mit Einwilligung und nur mit bestätigter Zero Data Retention); Bilder/Video/Tiefenbericht: nur Motiv- bzw. Themenbeschreibungen ohne Personendaten', drittland: 'Claude: keines (Region EU); Bilder/Tiefenbericht: global, Video: USA (Google LLC)', garantie: 'dpf-scc', dritte: true, archiviert: true, notiz: 'Cloud Data Processing Addendum in der Google-Cloud-Konsole annehmen und ablegen; Zero Data Retention für Vertex beantragen und den 24-Stunden-Cache abschalten (MODELLE.md 4.7). Erst dann „Zurückholen“ und AVV bestätigen.' }),
+  start({ id: 'mistral', name: 'Mistral AI (Voxtral, Transkription)', rolle: 'auftragsverarbeiter', zweck: 'Sprachaufnahmen in Text umwandeln (Transkription in der EU) — erst nach dem deutschen Vergleichstest und nur auf Schalter', daten: 'Sprachaufnahmen (Stimme der aufgenommenen Personen) und der erkannte Text', drittland: '', garantie: 'eu', dritte: true, archiviert: true, notiz: 'Data Processing Addendum von Mistral annehmen und ablegen; im Admin-Panel das Training mit Ein- und Ausgaben ABSCHALTEN (Opt-out) und Zero Data Retention beantragen — vorher keine echten Aufnahmen. Erst dann „Zurückholen“ und AVV bestätigen.' }),
   start({ id: 'telegram', name: 'Telegram (Hinweise aufs Telefon)', rolle: 'eigener-verantwortlicher', zweck: 'Neutrale Hinweise an die Personen des Haushalts („Eine Vertragsfrist naht — Details in MAKE OS“)', daten: 'Chat-Kennung der Person, neutrale Hinweistexte ohne Namen Dritter', drittland: 'außerhalb der EU', garantie: 'keine', dritte: false, avv: { status: 'nicht-noetig' }, archiviert: true, notiz: 'Nicht in Gebrauch (Kevin 08.10.: ZOE meldet sich künftig über eine eigene WhatsApp-Business-Nummer). Kein AVV möglich — wird Telegram doch genutzt, nie Daten Dritter in Telegram-Texten (im Code erzwungen).' }),
   start({ id: 'github', name: 'GitHub (Code, Brain-Vault, Außenprüfung)', rolle: 'auftragsverarbeiter', zweck: 'Quellcode, privates Repository des Brain-Vaults (Notizen), Außenprüfung per Actions', daten: 'Notizen des Vaults (können Personen nennen), Erreichbarkeit der App', drittland: 'USA', garantie: 'dpf-scc', dritte: true, notiz: 'GitHub Data Protection Agreement (Teil der Kundenbedingungen) — Nachweis ablegen.' }),
   start({ id: 'healthchecks', name: 'Healthchecks (Wächter der Sicherung)', rolle: 'auftragsverarbeiter', zweck: 'Alarm, wenn die nächtliche Sicherung ausbleibt (Dead-Man-Ping)', daten: 'Zeitpunkt des Pings, IP-Adresse des Servers — keine Inhalte', drittland: '', garantie: 'eu', dritte: false, notiz: 'Anbieter in der EU; AVV über die Kontoeinstellungen.' }),
@@ -210,8 +221,46 @@ export const EMPFAENGER_START: readonly Empfaenger[] = [
   start({ id: 'whoop', name: 'WHOOP (Gesundheitswerte)', rolle: 'eigener-verantwortlicher', zweck: 'Die Person verbindet ihr eigenes WHOOP-Konto; MAKE OS holt ihre Werte ab', daten: 'Gesundheitsdaten der Person selbst (Art. 9): Erholung, Schlaf, Belastung', drittland: 'USA', garantie: 'pruefen', dritte: false, avv: { status: 'nicht-noetig' }, notiz: 'Eigener Vertrag der Person mit WHOOP; Abholen nur mit ihrer eigenen Verbindung (Einwilligung, Art. 9 Abs. 2 lit. a). Ob WHOOP unter dem EU-US Data Privacy Framework zertifiziert ist, ist nicht belegt — auf dataprivacyframework.gov prüfen und hier eintragen (08.10.).' }),
 ];
 
-/** Die wirksame Liste: gespeichert oder die Vorgabe. */
-export const empfaengerWirksam = (e: DatenschutzEinrichtung | null | undefined): Empfaenger[] => (Array.isArray(e?.empfaenger) ? e!.empfaenger! : EMPFAENGER_START.map(x => ({ ...x })));
+/**
+ * Fassungen der Vorgabe-Liste, die eine neuere ersetzt — nur, solange das Feld in der gespeicherten Liste noch GENAU die alte Fassung trägt
+ * (Muster wie `ALTE_FASSUNGEN` des Verzeichnisses, lib/crm/datenschutz.ts). Was die Instanz selbst geändert hat, bleibt.
+ */
+type EmpfaengerTextFeld = 'garantie' | 'drittland' | 'notiz';
+export const ALTE_EMPFAENGER_FASSUNGEN: Record<string, Partial<Record<EmpfaengerTextFeld, { alt: string[]; neu: string }>>> = {
+  // 09.10.: Anthropic SCC statt DPF (Kevin 08.10.).
+  anthropic: {
+    garantie: { alt: ['dpf-scc'], neu: 'scc' },
+    drittland: { alt: ['USA'], neu: ANTHROPIC_DRITTLAND },
+    notiz: { alt: ['Data Processing Addendum der kommerziellen Bedingungen (API) — Annahme mit Tag und Unterlage hier bestätigen.'], neu: ANTHROPIC_NOTIZ },
+  },
+};
+/** Neue Startwerte, die eine gespeicherte Liste beim Lesen bekommt (nach `id`, archiviert wie in der Vorgabe). */
+export const EMPFAENGER_NACHTRAG_IDS: readonly string[] = ['google-vertex', 'mistral'];
+
+/** Unveränderte alte Fassungen heben (rein; gibt dieselbe Liste zurück, wenn nichts zu tun ist). */
+export function empfaengerHeben(liste: readonly Empfaenger[]): Empfaenger[] {
+  let gehoben = false;
+  const neu = liste.map(x => {
+    const f = ALTE_EMPFAENGER_FASSUNGEN[x.id];
+    if (!f) return x;
+    let y = x;
+    for (const [k, w] of Object.entries(f) as [EmpfaengerTextFeld, { alt: string[]; neu: string }][]) {
+      if (w.alt.includes(String(y[k] ?? ''))) { y = { ...y, [k]: w.neu } as Empfaenger; gehoben = true; }
+    }
+    return y;
+  });
+  return gehoben ? neu : (liste as Empfaenger[]);
+}
+/** Fehlende neue Startwerte ergänzen (rein, nach `id`) — nie in eine bewusst leere Liste. Wer einen nachgetragenen Eintrag löscht, bekommt ihn beim nächsten Lesen wieder (archiviert), wie beim Verzeichnis. */
+export function empfaengerNachtragen(liste: readonly Empfaenger[]): Empfaenger[] {
+  if (!liste.length) return liste as Empfaenger[]; // eine bewusst leere Liste bleibt leer
+  const da = new Set(liste.map(x => x.id));
+  const dazu = EMPFAENGER_START.filter(x => EMPFAENGER_NACHTRAG_IDS.includes(x.id) && !da.has(x.id)).map(x => ({ ...x }));
+  return dazu.length ? [...liste, ...dazu] : (liste as Empfaenger[]);
+}
+
+/** Die wirksame Liste: gespeichert (alte Fassungen gehoben, neue Startwerte ergänzt) oder die Vorgabe. */
+export const empfaengerWirksam = (e: DatenschutzEinrichtung | null | undefined): Empfaenger[] => (Array.isArray(e?.empfaenger) ? empfaengerNachtragen(empfaengerHeben(e!.empfaenger!)) : EMPFAENGER_START.map(x => ({ ...x })));
 
 const ID = /^[a-z0-9][a-z0-9-]{1,40}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;

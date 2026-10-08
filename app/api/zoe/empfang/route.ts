@@ -84,7 +84,8 @@ export async function GET(req: Request) {
   const kiS = await kiSchalterFuer(person);
   let kategorien: KiKategorie[] = ['allgemein'];
   try { const b = await gatherBrain(undefined, person); lage = promptBrain(b, { bereiche: kiS.bereiche }); kategorien = brainKategorien(b, { bereiche: kiS.bereiche }); } catch { /* ohne Lage geht es auch */ }
-  try { const hz = kiS.bereiche.finanzen ? await haushaltVon(req) : null; if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen']; } } catch { /* ohne Haushalt geht es auch */ }
+  // Privat-Finanzen (09.10., Anbieter-Tor): nur mit erlaubtem Zugang (mit Tor: nur EU) — sonst ohne den Haushalt.
+  try { const hz = kiS.bereiche.finanzen && (await (await import('@/lib/ki/tor')).kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req) : null; if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen', 'finanzen-privat']; } } catch { /* ohne Haushalt geht es auch */ }
 
   const r = await askText({
     zweck: 'empfang', ki: kiAus(req, kategorien, { person }),
