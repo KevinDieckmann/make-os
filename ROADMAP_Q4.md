@@ -39,6 +39,31 @@
     gelöschten Person bleiben ohne Namen, WHOOP-Export-Altwert wird überschrieben, Aufgaben an privaten Ziel-Meilensteinen bleiben sichtbar.
 - **Kevin:** WHOOP-App anlegen (Redirect `…/api/whoop/rueckruf`, Webhook `…/api/whoop/webhook`, v2) · nach dem Upload die GmbH-Zahlen (0-Punkt) eintragen.
 
+## Onboarding „Einrichtung“ (Kevin 08.10. spät; Konzept `ONBOARDING_PLAN.md`, Entscheidungen R1–R10 in `ENTSCHEIDUNGEN_FRAGEBOGEN.md`)
+- **Fr 09.10.:** Upload (so viel vom Onboarding-Umbau, wie bis Freitagabend gegengeprüft fertig ist — R7), danach Server-Teil (Kevin).
+- **Sa 10.10.:** EIN langer Tag (≈ 8 h) gemeinsam durchs Onboarding: Zugang, Verbindungen, Firmen & Zahlen, Kontakte, Planung, Gesundheit &
+  Familie, ZOE & Brain; der Rest einzeln (R1).
+- **Festgelegt:** Stichtag 0-Punkt **01.10.2026** je Business-Gesellschaft (Jan–Sep archiviert, Monatsabschlüsse ab Oktober) · Zahlen von Hand über
+  die Formulare · Verantwortlicher (Datenschutz) = **MAKE Innovation GmbH** (in der App eintragen) · **Mac-Zulieferer wird abgeschaltet** (am Mac nur
+  noch die Mail-API, alles andere auf dem Server; Apple-Erinnerungen einmal als Aufgaben übernehmen) · Altbestand-Übernahme (Körper/Nordstern) nach
+  der Gesundheits-Einwilligung, vor dem 16.10.
+
+## Lücken für das Business Couple — aufgenommen 08.10. (Kevin: „aufnehmen“), Reihenfolge nach R8
+Kevin: „Bank-Anbindung vorziehen · Markttraktion weiter ausbauen, damit wir Kunden generieren können — es muss am Ende jetzt alles gut laufen.“
+1. **Keine Bank-Anbindung → vorgezogen in den Oktober** (finAPI, PSD2, Einwilligung je Konto): Umsätze und Kontostände automatisch.
+2. **Kontostände an fünf Stellen → EIN Konten-Register** (Konto → Gesellschaft/Person/gemeinsam, Stand mit Datum); Bank, 0-Punkt, Liquidität,
+   Finanzplanung und Haushalt lesen nur noch daraus. Haushalt führt das Ist, die Finanzplanung liest daraus (R4).
+3. **Markttraktion ausbauen, damit Kunden entstehen** — Ausbauplan aus den 30 Markttraktion-Fragen (Antworten ausstehend).
+4. **Keine Rechnungen mit PDF → Rechnungen schreiben** wie das Angebots-Tool (fortlaufende Nummer je Gesellschaft + PDF in einer Sperre,
+   Angebot → Rechnung, Mahnstufen als Vorschlag; E-Rechnung danach); Zahlungseingang über die Bank.
+5. **Kein Kanal aufs Handy → ZOE über eine zweite WhatsApp-Business-Nummer** nur für ZOE (R5): 7-Uhr-Briefing, Wochenstart, Rückblick,
+   Erinnerungen, Sicherheits-Hinweise; je Person mit Einwilligung, Vorlage „Briefing bereit“ außerhalb des 24-h-Fensters.
+6. **Mail nicht übergebbar, keine Inbox-Suche →** „An <Person> übergeben“ (freigegebene Kopie), gemeinsames Postfach je Gesellschaft mit „wer
+   kümmert sich“, Suche über die eigenen Spiegel.
+7. **Business-freie Zeiten wirken nicht →** ein Arbeitsrahmen je Person; Business-frei sperrt Kalender, Kapazität, ZOE, Heads und Glocke.
+8. **Nur ein Inhaber →** Malin wird gleichwertige zweite Inhaberin, auch mit Server-Zugang (SSH) (R9) — mit Update 2 (16.10.).
+9. **Zahlen nur Formular für Formular →** vorerst bewusst so (R3: von Hand); Tabellen/Importe erst, wenn die Bank läuft und es noch hakt.
+
 ## Phase 1 — Eigennutzung polieren (12.10. – 31.10., Updates jeden Freitagnachmittag: 16.10., 23.10., 30.10.)
 - In dieser Reihenfolge feinjustieren (Fragebogen Teil 1, ersetzt die frühere Reihenfolge): **ZOE** → **Planung & Ziele** → **Inbox** →
   **Aufgaben** → **Kalender** → **Brain** → **Mandate & Unternehmen** → **Heute** → **Markttraktion** → **Finanzen**.
@@ -51,7 +76,7 @@
 - **Planung:** alle zwölf Punkte aus Frage 8 (Wochenplanung mit ZOE, Blöcke aus Aufgaben, Kette Ziel→Meilenstein→Aufgabe, Kapazitätswarnung,
   Seil als Hauptansicht, Quartalsplanung zu zweit, Routinen, Fokuszeit, Paar-Planung, Nordstern prominenter …). Antworten: `ENTSCHEIDUNGEN_FRAGEBOGEN.md`.
 - **Verbindungen live:** Google Workspace (Business-Kalender + Gmail makeinnovation.de), WHOOP für beide (täglich aktuell).
-- **ZOE erreicht euch über WhatsApp** (eigene Business-Nummer, Nachricht an uns selbst) — Telegram wirkt online nicht (Abholer nur am Mac) und ist ein
+- **ZOE erreicht euch über WhatsApp** (zweite Business-Nummer nur für ZOE — R5) — Telegram wirkt online nicht (Abholer nur am Mac) und ist ein
   Drittland-Dienst ohne AVV. Darüber laufen das 7-Uhr-Briefing, Montag Wochenstart, Freitag Rückblick und Erinnerungen (Kanal einmal bestätigen lassen).
 - **Brain:** Notizen direkt in MAKE OS schreiben · ZOE liest Kern-Notizen immer mit (Profile, Projekte, Werte) · Entscheidungen automatisch protokollieren ·
   `_App`-Spiegel an (Upload).
