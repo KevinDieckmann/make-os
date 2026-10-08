@@ -1,17 +1,19 @@
 'use client';
 
-import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
 import Link from 'next/link';
 
-// ─── Markttraktion · Firmen › Leads (Ebene 1) — qualifizieren bis zum SQL ────
+// ─── Markttraktion · Qualifizierung › Leads (Ebene 1) — qualifizieren bis zum SQL ────
 // Kevin (25.09.): „Dort arbeiten wir über die Kontakt-/Firmen-Ebene, wo wir
 // qualifizieren und es ein SQL-Lead wird.“ Je Firma eine Zeile (mit ihren
 // Personen), Personen ohne Firma einzeln. Rechts die Qualifizierung: Status,
-// sechs Kernfragen (ja/nein/unklar, mit der Frage, die man stellt), und sobald
-// Schmerz + Entscheider + Budget oder Zeitpunkt geklärt sind: „Zum SQL → Deal
-// anlegen“ — der Deal steht dann unter Deals (Ebene 2). Logik in
-// lib/crm/leads.ts, Schreibwege über /api/crm/lead.
+// die Fragen der Sales-Scoring-Einstellungen, und sobald die Muss-Kriterien und
+// die Sales-Schwelle erreicht sind: „Zum SQL → Deal anlegen“ — der Deal steht
+// dann unter Deals (Ebene 2). Logik in lib/crm/leads.ts, Schreibwege über /api/crm/lead.
+// Woche 1 (08.10.): Pillen und Trichter zählen mit EINER Regel (`passtLeadFilter`), der Sprung aus dem Trichter gibt den Filter mit
+// (Ereignis `make-leads-filter`); leere Listen nennen die Kalt-Grenze der Einstellungen und die ausgeblendeten kalten; „Ruht“ und
+// „Kein Fit“ öffnen die Dialoge Parken/Raus (Wiedervorlage, Grund-Art, Sperre bei offenem Deal); ein Deal ohne erfüllte Kriterien
+// heißt „direkt angelegt“ (kein SQL), ein zweiter offener Deal nur mit Knopf.
 // Dazu `SalesTrichter`: die Leiste über allen Sales-Ansichten — Kontaktiert →
 // Im Gespräch → Qualifizierung → Deals → Gewonnen → Kunden, mit Umwandlungen.
 
@@ -23,7 +25,9 @@ import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, Hinweis } from '../ui';
 import type { LeadStatus, ChancenArt } from '@/lib/crm/typen';
-import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, inArbeit, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, passtLeadFilter, type LeadFilter, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { sqlRegelText } from '@/lib/crm/scoring';
+import { ParkenDialog, RausDialog } from './quali/KleineDialoge';
 import { Fragen } from './quali/Fragen';
 import { useLeadFragen } from './quali/useLeadFragen';
 import { useScoringEinstellungen } from './quali/hilfen';
@@ -34,6 +38,7 @@ import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
 import { Pillen, Feldzeile } from './teile';
 import { Wahl } from './Wahl';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
+import { verantwortlich } from '@/lib/crm/team';
 import { HeadPanel } from './HeadPanel';
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanFuerLead, type BeanId } from '@/lib/crm/bean';
 import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
@@ -67,7 +72,7 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
           return (
             <div key={s.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
               {i > 0 && <span aria-hidden style={{ alignSelf: 'center', color: C.inkLeise, fontSize: TYP.bedien }}>{neueEbene ? '⟩⟩' : '›'}</span>}
-              <button onClick={() => zuBereich(s.ziel.s, s.ziel.a)} className="fassbar" style={{ display: 'grid', gap: 2, textAlign: 'left', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,.07)', background: 'rgba(255,255,255,.03)', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 104 }}>
+              <button onClick={() => { zuBereich(s.ziel.s, s.ziel.a); if (s.ziel.filter) leadsFilterSetzen(s.ziel.filter); }} className="fassbar" style={{ display: 'grid', gap: 2, textAlign: 'left', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,.07)', background: 'rgba(255,255,255,.03)', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 104 }}>
                 <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: neueEbene ? C.inkDim : 'transparent', fontWeight: 600, whiteSpace: 'nowrap' }}>{EBENE[s.ebene]}</span>
                 <span style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.anzahl}</span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>{s.label}{s.wert ? ` · ${euro(s.wert)}` : ''}</span>
@@ -92,14 +97,26 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
   );
 }
 
-type Filter = 'aktiv' | 'kalt' | LeadStatus;
-/** Ein Filter der Leads-Liste — „In Arbeit“ = `inArbeit` (mit „Neu“), „Kalt“ = `istKalt`, sonst der Status ohne die kalten. */
-const passtFilter = (z: LeadZeile, f: Filter): boolean =>
-  f === 'kalt' ? !nichtKalt(z) : f === 'aktiv' ? inArbeit(z) : nichtKalt(z) && (f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f);
+type Filter = LeadFilter;
+/** Ein Filter der Leads-Liste — EINE Regel mit dem Trichter (lib/crm/leads.ts `passtLeadFilter`, 1.4). */
+const passtFilter = passtLeadFilter;
+/** Der Trichter gibt beim Sprung den Filter mit (1.4) — die Liste darunter hört zu (gleiche Seite, auch nach dem Laden). */
+const LEADS_FILTER_EREIGNIS = 'make-leads-filter';
+let gemerkterFilter: Filter | null = null;
+function leadsFilterSetzen(f: Filter) {
+  gemerkterFilter = f;
+  try { window.dispatchEvent(new CustomEvent(LEADS_FILTER_EREIGNIS, { detail: f })); } catch { /* ohne Fenster: nur gemerkt */ }
+}
 export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const breit = useBreit();
   const { d, laden, fehler } = useLeads(api);
-  const [filter, setFilter] = useState<Filter>('aktiv');
+  const [filter, setFilter] = useState<Filter>(() => { const f = gemerkterFilter; gemerkterFilter = null; return f ?? 'aktiv'; });
+  useEffect(() => {
+    const h = (e: Event) => { const f = (e as CustomEvent<Filter>).detail; if (f) { gemerkterFilter = null; setFilter(f); } };
+    window.addEventListener(LEADS_FILTER_EREIGNIS, h);
+    return () => window.removeEventListener(LEADS_FILTER_EREIGNIS, h);
+  }, []);
+  const einstellungen = useScoringEinstellungen(api);
   const [suche, setSuche] = useState('');
   // Offener Lead im Link (k) — aus Kartei und Firmen „Qualifizieren“, und Zurück schließt ihn wieder.
   const [wahl, setWahl] = useLinkAuswahl();
@@ -109,15 +126,18 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const angebote = useOffeneAngebote();
   const [bn, setBn] = useState<BeanId | null>(null);
   const alleLeads = useMemo(() => (d?.leads ?? []).map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }), [d, api.crm, api.kontakte, angebote]);
-  const zeilen = useMemo(() => {
+  // Alles außer dem Filter (Person, BEAN, Suche) — dieselbe Auswahl für die Liste und die Zahl der ausgeblendeten kalten (1.3).
+  const auswahl = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    // Kalte Leads leben im Marketing-Segment „Vernetzen“ — hier nur über den Filter „Kalt“ (Kevin 27.09.). Was als kalt gilt und was
-    // „In Arbeit“ ist (seit 08.10. mit „Neu“, frisch Angelegtes und gesetzte Status nie kalt), steht EINMAL in lib/crm/leads.ts.
-    return alleLeads.filter(z => passtFilter(z, filter))
+    return alleLeads
       .filter(z => passtWer(wer, z.besitzer, 'sales', ich))
       .filter(z => !bn || z.bean === bn)
       .filter(z => !q || [z.name, ...z.personen.map(p => p.name), z.branche ?? '', z.stadt ?? ''].join(' ').toLowerCase().includes(q));
-  }, [alleLeads, filter, suche, wer, ich, bn]);
+  }, [alleLeads, suche, wer, ich, bn]);
+  // Kalte Leads leben im Marketing-Segment „Vernetzen“ — hier nur über den Filter „Kalt“ (Kevin 27.09.). Was als kalt gilt und was
+  // „In Arbeit“ ist (seit 08.10. mit „Neu“, frisch Angelegtes und gesetzte Status nie kalt), steht EINMAL in lib/crm/leads.ts.
+  const zeilen = useMemo(() => auswahl.filter(z => passtFilter(z, filter)), [auswahl, filter]);
+  const kalteDaneben = filter === 'kalt' ? 0 : auswahl.filter(z => passtFilter(z, 'kalt')).length;
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt die Leads …</Leer>}</Karte>;
   const zahl = (f: Filter) => alleLeads.filter(z => (!bn || z.bean === bn) && passtFilter(z, f)).length;
   const FILTER: { id: Filter; label: string }[] = [
@@ -132,7 +152,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const liste = (
     <Karte i={1}>
       <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} />}>Leads · qualifizieren bis SQL</Ueberschrift>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist: Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt. Dann wird es ein Deal in der Pipeline.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist ({sqlRegelText(einstellungen)}). Dann wird es ein Deal in der Pipeline.</div>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Person, Branche, Ort …" aria-label="Leads suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 13px', marginBottom: 10 }} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu">
@@ -140,6 +160,12 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
           farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setWahl(null); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
       </div>
       {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : filter === 'kalt' ? 'Keine kalten Leads.' : 'Keine Leads in diesem Status.'}</Leer>}
+      {/* 1.3 (08.10.): nie eine leere Liste ohne Grund — die Kalt-Grenze aus den Scoring-Einstellungen und wie viele dahinter warten. */}
+      {kalteDaneben > 0 && (
+        <Hinweis art="info" rolle="status" aktion={<Knopf leise onClick={() => { setFilter('kalt'); setWahl(null); }}>Zeigen</Knopf>}>
+          {kalteDaneben} {kalteDaneben === 1 ? 'kalter Lead ist' : 'kalte Leads sind'} ausgeblendet (Score unter {einstellungen.temperaturAb.lau} von 100 — Grenze „lau“ der Scoring-Einstellungen).
+        </Hinweis>
+      )}
       <div>
         {zeigen.slice(0, 120).map(z => (
           <div key={z.id}>
@@ -198,17 +224,21 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
   const [status, setStatus] = useState<LeadStatus>(z.status);
   const [notiz, setNotiz] = useState(z.notiz ?? '');
   const [meldung, setMeldung] = useState('');
-  const [deal, setDeal] = useState({ titel: z.name.replace(/ \(.*\)$/, ''), art: 'retainer' as ChancenArt, betrag: '', basis: 'monat' as 'monat' | 'einmalig', schritt: '', datum: plusTage(heute, 3), erwartetAm: '', besitzer: z.besitzer === 'beide' ? api.ich ?? 'kevin' : z.besitzer });
+  const [deal, setDeal] = useState({ titel: z.name.replace(/ \(.*\)$/, ''), art: 'retainer' as ChancenArt, betrag: '', basis: 'monat' as 'monat' | 'einmalig', schritt: '', datum: plusTage(heute, 3), erwartetAm: '', besitzer: z.besitzer === 'beide' ? api.ich ?? verantwortlich('sales') : z.besitzer });
   const [trotzdem, setTrotzdem] = useState(false);
-  const { frage, dialog: nachfrage } = useNachfrage();
+  // 2.3 (08.10.): ein zweiter offener Deal nur bewusst — der Server meldet den offenen (409 mit `offen`), dann dieser Knopf.
+  const [offenerDeal, setOffenerDeal] = useState<{ id: string; titel: string } | null>(null);
+  // 2.8 (08.10.): „Ruht“ und „Kein Fit“ über dieselben Dialoge wie die Runde (Wiedervorlage, Grund-Art, Sperre bei offenem Deal).
+  const [dialog, setDialog] = useState<'parken' | 'raus' | null>(null);
   const post = (body: Record<string, unknown>) => fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
   const setze = async (felder: Record<string, unknown>) => { const r = await post({ aktion: 'setze', id: z.id, felder }); if (!r.ok) setMeldung(r.fehler); void laden(); };
   const bereit = fr.bereit;
   const fehltText = fr.fehlt.join(', ');
-  const zumSql = async () => {
-    const r = await post({ aktion: 'sql', id: z.id, trotzdem: !bereit, deal: { titel: deal.titel, art: deal.art, betrag: Number(deal.betrag.replace(',', '.')) || 0, basis: deal.basis, schritt: { text: deal.schritt, datum: deal.datum }, ...(deal.erwartetAm ? { erwartetAm: deal.erwartetAm } : {}), besitzer: deal.besitzer } });
+  const zumSql = async (zweiter = false) => {
+    const r = await post({ aktion: 'sql', id: z.id, trotzdem: !bereit, ...(zweiter ? { zweiter: true } : {}), deal: { titel: deal.titel, art: deal.art, betrag: Number(deal.betrag.replace(',', '.')) || 0, basis: deal.basis, schritt: { text: deal.schritt, datum: deal.datum }, ...(deal.erwartetAm ? { erwartetAm: deal.erwartetAm } : {}), besitzer: deal.besitzer } });
     setMeldung(r.ok ? r.text : r.fehler);
-    if (r.ok) { setStatus('sql'); void laden(); void api.laden(); }
+    setOffenerDeal(!r.ok && r.offen ? r.offen : null);
+    if (r.ok) { if (r.sql) setStatus('sql'); void laden(); void api.laden(); }
   };
   const eingabe = { ...feld, fontSize: TYP.bedien, padding: '8px 11px' } as const;
   const inDeal = z.deal?.offen;
@@ -233,12 +263,15 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
       <div>
         <Ueberschrift>Status</Ueberschrift>
         <Pillen liste={LEAD_STATUS.filter(s => s.id !== 'sql' && s.id !== 'kunde').map(s => ({ id: s.id, label: s.label }))} aktiv={status === 'sql' || status === 'kunde' ? undefined : status}
-          onWahl={async s => {
-            if (s === 'kein_fit' || s === 'ruht') { const grund = await frage(s === 'kein_fit' ? 'Warum kein Fit?' : 'Warum ruht es?', { hinweis: 'Ein kurzer Satz — steht später an der Firma.' }); if (grund === null) return; setStatus(s); void setze({ status: s, grund }); return; }
+          onWahl={s => {
+            if (s === 'kein_fit') { setDialog('raus'); return; }
+            if (s === 'ruht') { setDialog('parken'); return; }
             setStatus(s); void setze({ status: s });
           }} />
-        {nachfrage}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft unter Deals.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
+        {dialog === 'parken' && <ParkenDialog api={api} z={z} onZu={() => setDialog(null)} onFertig={i => { setDialog(null); setStatus('ruht'); setMeldung(i.text); void laden(); }} />}
+        {dialog === 'raus' && <RausDialog api={api} z={z} onZu={() => setDialog(null)} onFertig={i => { setDialog(null); setStatus('kein_fit'); setMeldung(i.text); void laden(); }} />}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft unter Deals.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{z.wiedervorlage && status === 'ruht' ? ` · Wiedervorlage ${datum(z.wiedervorlage)}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
+        {z.direkt && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 6 }}>Deal direkt angelegt am {datum(z.direkt.am.slice(0, 10))} — noch kein SQL{z.direkt.offen.length ? ` (damals fehlte: ${z.direkt.offen.join(', ')})` : ''}.</div>}
       </div>
 
       <div>
@@ -277,12 +310,18 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
               <Feldzeile label="Entscheidung bis"><input type="date" value={deal.erwartetAm} onChange={e => setDeal({ ...deal, erwartetAm: e.target.value })} aria-label="Entscheidung bis" style={{ ...eingabe, width: 150 }} /></Feldzeile>
               <Feldzeile label="Führt den Deal"><ZustaendigWahl wert={deal.besitzer} welt="sales" beide={false} onWahl={besitzer => setDeal({ ...deal, besitzer })} /></Feldzeile>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Knopf farbe={LEUCHT.gut} aus={!deal.schritt.trim() || !deal.datum} onClick={zumSql}>Zum SQL → Deal anlegen</Knopf>
-                {!bereit && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>ohne alle Kriterien — wird im Lead vermerkt</span>}
+                <Knopf farbe={LEUCHT.gut} aus={!deal.schritt.trim() || !deal.datum} onClick={() => zumSql()}>{bereit ? 'Zum SQL → Deal anlegen' : 'Deal trotzdem anlegen'}</Knopf>
+                {!bereit && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>ohne SQL-Kriterien: der Lead bleibt in der Qualifizierung, der Deal gilt als „direkt angelegt“</span>}
               </div>
+              {offenerDeal && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
+                  <Knopf leise onClick={() => zuDeal(offenerDeal.id)}>Zum offenen Deal</Knopf>
+                  <Knopf leise onClick={() => void zumSql(true)}>Bewusst zweiten Deal anlegen</Knopf>
+                </div>
+              )}
             </>
           ) : (
-            <button onClick={() => setTrotzdem(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textAlign: 'left' }}>trotzdem schon als SQL übergeben …</button>
+            <button onClick={() => setTrotzdem(true)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textAlign: 'left', minHeight: 44 }}>Deal trotzdem anlegen (ohne SQL) …</button>
           )}
         </div>
       )}

@@ -11,14 +11,15 @@
 //                    Pipeline: SQL → Bedarf → Diagnose → Angebot → Abschluss →
 //                    gewonnen/verloren. Die Kernfragen wandern mit.
 //   Ebene 3  KUNDE   Gewonnen → Mandat (Produkte & Mandate, /os/mandate; unter Deals › Kunden verlinkt).
-// Seit 27.09. liegen die Ebenen auf den Reitern Firmen › Leads (1), Deals (2) und Deals › Kunden (3).
+// Seit 08.10. (Aufräumen Etappe 3) liegen die Ebenen unter Qualifizierung & Scoring › Leads (1), Deals (2) und Produkte & Mandate (3).
 // Solange niemand den Status gesetzt hat, wird er aus den Personen abgeleitet
 // (Kontaktstufe, Lebensphase, offener Deal) — so ist die Liste sofort gefüllt,
 // ohne 450 Einträge von Hand.
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
-import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual } from './typen';
+import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual, Quelle } from './typen';
+import type { MarketingQuelle } from './scoring';
 import { OFFENE_STUFEN, gesamtwert } from './pipeline';
 import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
@@ -31,7 +32,8 @@ export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; a
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
   { id: 'kontaktiert', label: 'Kontaktiert', weiterWenn: 'Es kam eine Antwort oder ein Gespräch zustande.', aktiv: true },
   { id: 'im_gespraech', label: 'Im Gespräch', weiterWenn: 'Ein echtes Gespräch über ein Problem — dann qualifizieren.', aktiv: true },
-  { id: 'qualifizierung', label: 'Qualifizierung', weiterWenn: 'Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt → SQL.', aktiv: true },
+  // Woche 1 · 2.6 (08.10.): die SQL-Regel steht in den Scoring-Einstellungen (Muss-Kriterien + Sales-Schwelle) — nie fest im Text.
+  { id: 'qualifizierung', label: 'Qualifizierung', weiterWenn: 'Muss-Kriterien und Sales-Schwelle der Scoring-Einstellungen erreicht → SQL.', aktiv: true },
   { id: 'sql', label: 'SQL', weiterWenn: 'Deal in der Pipeline — ab hier Closing.', aktiv: false },
   { id: 'kunde', label: 'Kunde', weiterWenn: '', aktiv: false },
   { id: 'kein_fit', label: 'Kein Fit', weiterWenn: '', aktiv: false },
@@ -122,6 +124,10 @@ export interface LeadZeile {
   score: LeadScore; kanal: KanalId;
   /** Freitext je Frage und wann zuletzt qualifiziert wurde (Qualifizierungsrunde). */
   antworten?: Lead['antworten']; qualifiziertAm?: string;
+  /** „Geprüft“ in der Runde (Server-Stempel, 2.1) — Ruhe bis zur Wiedervorlage. */
+  geprueftAm?: string;
+  /** Deal direkt angelegt, ohne SQL-Kriterien (2.3): wann, und was bis zum SQL fehlte. */
+  direkt?: { am: string; offen: string[] };
   /** Die im Gespräch gewählten Stufen je Kriterium (Scoring-Einstellungen, 03.10.). */
   stufen?: Lead['stufen'];
   /** Geparkt bis (Status „ruht“) und die feste Art des Grundes (kein Fit / geparkt) — für Runde und Auswertung. */
@@ -171,16 +177,18 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
       personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })), ...(haupt ? { hauptKontaktId: haupt.id } : {}),
-      // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung.
-      status: lead?.status === 'sql' && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : lead?.status ?? abgeleitet(personen, offen), gesetzt: !!lead?.status,
+      // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung. Ebenso ein
+      // direkt angelegter Deal (2.3): der Lead blieb vor dem SQL stehen, sein Deal ist jetzt entschieden.
+      status: (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : lead?.status ?? abgeleitet(personen, offen), gesetzt: !!lead?.status,
       kriterien,
       score: leadScore(personen, lead, heute, kriterien, skx), kanal: kanalVon(haupt ?? personen[0] ?? {}),
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
+      ...(lead?.geprueftAm ? { geprueftAm: lead.geprueftAm } : {}), ...(lead?.direktAm ? { direkt: { am: lead.direktAm, offen: lead.direktOffen ?? [] } } : {}),
       ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
       ohneBesitzer: personen.every(k => !k.besitzer),
       ...(personen.some(k => frischAngelegt(k, heute)) ? { frisch: true as const } : {}),
       bean: firma ? beanFirma(firma, crm, personen).bean : beanVon(personen[0] ?? { id, firmaId: undefined }, crm).bean,
-      ...(lead?.fit ? { fit: lead.fit } : {}), ...(lead?.notiz ? { notiz: lead.notiz } : {}), ...(lead?.grund ? { grund: lead.grund } : lead?.status === 'sql' && d && !offen && d.grund ? { grund: d.grund } : {}), ...(lead?.sqlAm ? { sqlAm: lead.sqlAm } : {}),
+      ...(lead?.fit ? { fit: lead.fit } : {}), ...(lead?.notiz ? { notiz: lead.notiz } : {}), ...(lead?.grund ? { grund: lead.grund } : (lead?.status === 'sql' || lead?.direktAm) && d && !offen && d.grund ? { grund: d.grund } : {}), ...(lead?.sqlAm ? { sqlAm: lead.sqlAm } : {}),
       ...(d ? { deal: { id: d.id, titel: d.titel, stufe: d.stufe, wert: Math.round(gesamtwert(d)), offen } } : {}),
       ...(letzter ? { letzterKontakt: letzter } : {}),
       ...(schritt ? { naechsterSchritt: { ...schritt.naechsterSchritt!, bei: anzeigename(schritt) } } : {}),
@@ -199,14 +207,24 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
 }
 
 export interface Trichter {
-  stufen: { id: string; label: string; anzahl: number; wert?: number; ebene: 1 | 2 | 3; ziel: { s: string; a?: string } }[];
+  /** `ziel.filter`: der Filter der Leads-Liste, den der Sprung mitgibt (1.4) — dieselbe Regel wie die Zahl. */
+  stufen: { id: string; label: string; anzahl: number; wert?: number; ebene: 1 | 2 | 3; ziel: { s: string; a?: string; filter?: LeadFilter } }[];
   /** Umwandlung: aus „im Gespräch“ wird SQL, aus SQL wird gewonnen (nur, wo es schon Fälle gibt). */
   gespraechZuSql: number | null; sqlZuGewonnen: number | null;
 }
 
-/** Der Trichter über alle drei Ebenen — für die Leiste über den Leads (Firmen › Leads). */
+/** Ein Filter der Leads-Liste: „In Arbeit“ (`inArbeit`, mit „Neu“), „Kalt“ (`istKalt`) oder ein Status — dann ohne die kalten. */
+export type LeadFilter = 'aktiv' | 'kalt' | LeadStatus;
+/**
+ * Passt die Zeile zum Filter? EINE Zählregel (08.10., Woche 1 · 1.4) für die Pillen der Leads-Liste UND den Trichter darüber — vorher
+ * zählte der Trichter die kalten mit, die Liste dahinter nicht. „Ruht“ umfasst „Kein Fit“.
+ */
+export const passtLeadFilter = (z: LeadZeile, f: LeadFilter): boolean =>
+  f === 'kalt' ? !nichtKalt(z) : f === 'aktiv' ? inArbeit(z) : nichtKalt(z) && (f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f);
+
+/** Der Trichter über alle drei Ebenen — für die Leiste über den Leads. Ebene 1 zählt wie die Liste dahinter (`passtLeadFilter`). */
 export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
-  const n = (s: LeadStatus) => zeilen.filter(z => z.status === s).length;
+  const n = (s: LeadStatus) => zeilen.filter(z => passtLeadFilter(z, s)).length;
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const gewonnen = crm.chancen.filter(c => c.stufe === 'gewonnen');
   const verloren = crm.chancen.filter(c => c.stufe === 'verloren');
@@ -214,9 +232,9 @@ export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
   const warenImGespraech = sqlJe + n('im_gespraech') + n('qualifizierung');
   return {
     stufen: [
-      { id: 'kontaktiert', label: 'Kontaktiert', anzahl: n('kontaktiert'), ebene: 1, ziel: { s: 'firmen', a: 'leads' } },
-      { id: 'im_gespraech', label: 'Im Gespräch', anzahl: n('im_gespraech'), ebene: 1, ziel: { s: 'firmen', a: 'leads' } },
-      { id: 'qualifizierung', label: 'Qualifizierung', anzahl: n('qualifizierung'), ebene: 1, ziel: { s: 'firmen', a: 'leads' } },
+      { id: 'kontaktiert', label: 'Kontaktiert', anzahl: n('kontaktiert'), ebene: 1, ziel: { s: 'qualifizierung', a: 'leads', filter: 'kontaktiert' } },
+      { id: 'im_gespraech', label: 'Im Gespräch', anzahl: n('im_gespraech'), ebene: 1, ziel: { s: 'qualifizierung', a: 'leads', filter: 'im_gespraech' } },
+      { id: 'qualifizierung', label: 'Qualifizierung', anzahl: n('qualifizierung'), ebene: 1, ziel: { s: 'qualifizierung', a: 'leads', filter: 'qualifizierung' } },
       { id: 'deals', label: 'Deals offen', anzahl: offen.length, wert: Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)), ebene: 2, ziel: { s: 'deals' } },
       { id: 'gewonnen', label: 'Gewonnen', anzahl: gewonnen.length, ebene: 2, ziel: { s: 'deals', a: 'auswertung' } },
       { id: 'kunden', label: 'Kunden', anzahl: crm.mandate.filter(m => m.status === 'aktiv').length, ebene: 3, ziel: { s: 'deals', a: 'kunden' } },
@@ -250,16 +268,43 @@ export function offeneFragen(z: Pick<LeadZeile, 'kriterien' | 'score'>): number 
   return s.teile.flatMap(t => t.kriterien).filter(k => k.quelle === 'frage' && k.offen && k.herkunft === 'ohne').length;
 }
 /**
- * Braucht dieser Lead noch Qualifizierung? Offener Status, offene Fragen oder länger nicht angefasst — oder er war geparkt und
- * seine Wiedervorlage ist erreicht (03.10.: dann kommt er aus „ruht“ zurück in die Runde).
+ * Offene MUSS-Fragen (08.10., Woche 1 · 2.1): Fragen der Muss-Kriterien aus den Scoring-Einstellungen, die keine eigene Antwort haben —
+ * nur in Muss-Kriterien, die noch nicht erfüllt sind. Nur sie halten einen Lead als „offen“ in der Runde (vorher jede der zwölf
+ * Standardfragen — die Runde leerte sich nie). Ohne Scoring-Ergebnis (von Hand gebaute Zeile): die alte SQL-Regel (Schmerz, Entscheider,
+ * Budget oder Zeitpunkt), „unklar“ = offen.
  */
-export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal' | 'score'> & { wiedervorlage?: string }, heute: string): boolean {
+export function offeneMussFragen(z: Pick<LeadZeile, 'kriterien' | 'score'>): number {
+  const s = z.score.scoring?.sales;
+  if (!s) { const k = z.kriterien; return (k.schmerz === 'unklar' ? 1 : 0) + (k.entscheider === 'unklar' ? 1 : 0) + (k.budget === 'unklar' && k.zeitpunkt === 'unklar' ? 1 : 0); }
+  const nachId = new Map(s.teile.flatMap(t => t.kriterien).map(k => [k.id, k]));
+  const offen = new Set<string>();
+  for (const m of s.muss.filter(x => !x.ok)) for (const id of m.kriterien ?? []) { const k = nachId.get(id); if (k && k.quelle === 'frage' && k.offen && k.herkunft !== 'lead' && k.herkunft !== 'alt') offen.add(id); }
+  return offen.size;
+}
+/**
+ * Braucht dieser Lead noch Qualifizierung? (08.10., Woche 1 · 2.1 — konservativ: nichts verschwindet, was niemand angesehen hat)
+ *  · geparkt und die Wiedervorlage ist erreicht → zurück in die Runde (03.10.)
+ *  · nur offene Status ohne offenen Deal
+ *  · „Geprüft“ (Server-Stempel `geprueftAm`) gibt Ruhe bis zur Wiedervorlage (`QUALI_WIEDERVORLAGE_TAGE`) — eine bewusste Entscheidung
+ *    einer Person, auch wenn noch Muss-Fragen offen sind
+ *  · sonst hält ihn eine offene MUSS-Frage in der Runde (nicht mehr jede Frage)
+ *  · sonst: nie qualifiziert oder länger als die Wiedervorlage her
+ * SQL-bereite Leads ohne Entscheidung bleiben unabhängig davon in der Runde (`sqlEntscheidungOffen`).
+ */
+export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal' | 'score'> & { wiedervorlage?: string; geprueftAm?: string }, heute: string): boolean {
   if (z.status === 'ruht' && z.wiedervorlage && z.wiedervorlage <= heute) return !z.deal?.offen;
   if (!['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)) return false;
   if (z.deal?.offen) return false;
-  if (offeneFragen(z) > 0) return true;
+  if (z.geprueftAm && tageZw(z.geprueftAm, heute) <= QUALI_WIEDERVORLAGE_TAGE) return false;
+  if (offeneMussFragen(z) > 0) return true;
   return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > QUALI_WIEDERVORLAGE_TAGE;
 }
+/** Bis wann ein geprüfter Lead Ruhe hat (Tag) — für Texte in der Runde. Ohne Prüfung null. */
+export const ruheBis = (z: Pick<LeadZeile, 'geprueftAm'>): string | null => {
+  if (!z.geprueftAm) return null;
+  const d = new Date(`${z.geprueftAm}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + QUALI_WIEDERVORLAGE_TAGE);
+  return d.toISOString().slice(0, 10);
+};
 /**
  * SQL-bereit, aber noch ohne Entscheidung (Praxis-Prüfung M3): kein Deal, der Status steht noch vor „SQL“. Wer das Ergebnis eines Gesprächs
  * verlässt, ohne „Deal anlegen“, „Parken“ oder „Raus“ zu wählen, hat den Lead sonst aus der Runde verloren (frisch geprüft = nicht mehr dran).
@@ -311,6 +356,19 @@ export function qualiStand(z: Pick<LeadZeile, 'kriterien' | 'score' | 'status'>)
   return mqlErreicht(z) ? 'mql' : 'lead';
 }
 export { warmPlus };
+
+// ── Deal-Quelle aus der Herkunft (08.10., Woche 1 · 2.5) ─────────────────────────────────────────────
+// Vorher war die Quelle fest vorbelegt (Gesprächsmodus „Empfehlung“, ZOE „Bestand“, Leads-Weg leer) — „Deals aus Marketing“ und der
+// Marketing-Trichter rechneten damit falsch. Jetzt: zuerst die Marketing-Herkunft des Leads (`marketingHerkunft`, die EINE Stelle in
+// lib/crm/scoring.ts), sonst der Herkunftskanal (`kanalVon`). „Netzwerk“ (persönlich bekannt) zählt als Bestand; unbekannt bleibt leer.
+const QUELLE_AUS_MARKETING: Record<MarketingQuelle, Quelle> = { kampagne: 'kampagne', anfrage: 'inbound', inhalt: 'content', newsletter: 'content', event: 'event' };
+const MARKETING_RANG: readonly MarketingQuelle[] = ['kampagne', 'anfrage', 'inhalt', 'newsletter', 'event'];
+const QUELLE_AUS_KANAL: Partial<Record<KanalId, Quelle>> = { empfehlung: 'empfehlung', event: 'event', content: 'content', outreach: 'outreach', bestand: 'bestand', inbound: 'inbound', kampagne: 'kampagne', netzwerk: 'bestand' };
+export function quelleAusLead(z: Pick<LeadZeile, 'score' | 'kanal'>): Quelle | undefined {
+  const mk = new Set((z.score.scoring?.marketingHerkunft ?? []).map(g => g.quelle));
+  const erste = MARKETING_RANG.find(q => mk.has(q));
+  return erste ? QUELLE_AUS_MARKETING[erste] : QUELLE_AUS_KANAL[z.kanal];
+}
 
 /**
  * Die Lead-Zeile zu EINER Person (Akte, Seitenfenster): dieselbe Rechnung wie die Leads-Liste, nur für ihre Firma bzw. sie selbst —

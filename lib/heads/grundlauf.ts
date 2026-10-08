@@ -70,7 +70,8 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
     ls.forEach((l, i) => {
       if (vs.length >= 5 || !l.hauptkontakt) return;
       if (l.sql_bereit && !l.deal?.offen) vs.push(v({ art: 'sql_anlegen', titel: `Zum SQL machen: ${kurz(l.name, 60)} — Deal anlegen`, kontakt_id: l.hauptkontakt.id, frist: heute, prioritaet: 'mittel',
-        signal: { typ: 'chance', datum: l.letzter_kontakt, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt' }, begruendung: `Alle SQL-Kriterien sind geklärt, aber es gibt noch keinen Deal — ohne Deal fehlt er in Pipeline und Prognose.`, dedup_schluessel: `sql:${l.lead_id}`, quelle: [`leads_in_arbeit[${i}]`] }));
+        // 2.6 (08.10.): die SQL-Regel steht in den Scoring-Einstellungen (Muss-Kriterien + Sales-Schwelle), nicht fest im Text.
+        signal: { typ: 'chance', datum: l.letzter_kontakt, text: 'Muss-Kriterien und Sales-Schwelle erreicht' }, begruendung: `Alle SQL-Kriterien sind geklärt, aber es gibt noch keinen Deal — ohne Deal fehlt er in Pipeline und Prognose.`, dedup_schluessel: `sql:${l.lead_id}`, quelle: [`leads_in_arbeit[${i}]`] }));
       else if (l.fehlt.length) vs.push(v({ art: 'qualifizierung_klaeren', titel: `${l.fehlt[0]} klären: ${kurz(l.name, 60)}`, kontakt_id: l.hauptkontakt.id, frist: tagPlus(heute, 3), prioritaet: l.status === 'qualifizierung' ? 'mittel' : 'niedrig',
         signal: { typ: 'pflege', datum: l.letzter_kontakt, text: `${l.geklaert} von 6 geklärt` }, begruendung: `Bis zum SQL fehlt: ${l.fehlt.join(', ')}. Frage im nächsten Gespräch: „${FRAGE[l.fehlt[0]] ?? l.fehlt[0]}“`, dedup_schluessel: `quali:${l.lead_id}:${l.fehlt[0]}`, quelle: [`leads_in_arbeit[${i}].fehlt`] }));
     });

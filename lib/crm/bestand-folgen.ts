@@ -27,7 +27,8 @@ export function geloeschteDeals(vorher: Pick<CrmBestand, 'chancen'>, nachher: Pi
  */
 export function leadOhneDeal(lead: Lead | undefined, geloescht: ReadonlySet<string>, jetzt: string, person?: string): Lead | undefined {
   if (!lead?.chanceId || !geloescht.has(lead.chanceId)) return undefined;
-  const { chanceId: _c, sqlAm, geaendertVon: _v, ...rest } = lead;
+  // Der Vermerk „direkt angelegt“ (08.10., 2.3) gehört zum gelöschten Deal — er fällt mit dem Verweis.
+  const { chanceId: _c, sqlAm, geaendertVon: _v, direktAm: _d, direktOffen: _o, ...rest } = lead;
   const warSql = lead.status === 'sql';
   return {
     ...rest,

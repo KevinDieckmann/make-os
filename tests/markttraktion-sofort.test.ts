@@ -80,12 +80,14 @@ describe('1.1/1.2 · neu angelegte und gesetzte Leads sind nie „kalt“ (EINE 
   });
 
   it('Oberfläche: Leads-Liste filtert nur über inArbeit/nichtKalt, die Runde zeigt „kalte ausgeblendet — Zeigen“', () => {
+    // Woche 1 (1.4): die Filter-Regel liegt jetzt EINMAL in lib/crm/leads.ts (`passtLeadFilter`) — Liste und Trichter teilen sie.
+    expect(quelle('lib/crm/leads.ts')).toMatch(/f === 'aktiv' \? inArbeit\(z\)/);
     const leadsTsx = quelle('components/os/crm/Leads.tsx');
-    expect(leadsTsx).toMatch(/f === 'aktiv' \? inArbeit\(z\)/);
+    expect(leadsTsx).toMatch(/passtFilter = passtLeadFilter/);
     expect(leadsTsx).not.toMatch(/mindestens 25 Punkte/);
     const runde = quelle('components/os/crm/Qualifizierung.tsx');
     expect(runde).toMatch(/kalteAusgeblendet\(/);
-    expect(runde).toMatch(/ausgeblendet — sie warten im Segment/);
+    expect(runde).toMatch(/ausgeblendet \(Score unter[^\n]*— sie warten im Segment/);
   });
 });
 

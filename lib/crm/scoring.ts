@@ -567,7 +567,8 @@ export interface KriteriumErgebnis {
   stufePunkte: number;
 }
 export interface TeilErgebnis { id: string; name: string; seite: ScoringSeiteId; punkte: number; max: number; kriterien: KriteriumErgebnis[]; gedeckeltAuf?: number; grund: string }
-export interface MussErgebnis { text: string; ok: boolean }
+/** Ein Muss-Kriterium am Lead: Text, erfüllt — und die Kriterien dahinter (08.10., Woche 1 · 2.1: die Runde zählt nur offene Muss-Fragen). */
+export interface MussErgebnis { text: string; ok: boolean; kriterien: string[] }
 export interface SeitenErgebnis {
   seite: ScoringSeiteId; punkte: number; max: number; schwelle: number; erreicht: boolean;
   /**
@@ -642,6 +643,24 @@ function teilGrund(t: TeilErgebnis): string {
   return t.kriterien.length === 1 ? t.kriterien[0].grund : 'Noch nichts erkennbar';
 }
 
+/** Ein Muss-Kriterium als Satz: „Schmerz“ · „Budget oder Zeitpunkt“ · „mindestens 2 von …“ — EINE Formulierung für Lead, Runde und Texte. */
+export function mussText(m: ScoringMuss, nameVon: (id: string) => string): string {
+  const namen = m.kriterien.map(nameVon);
+  return m.kriterien.length === 1 ? namen[0] : m.mindestens === 1 ? namen.join(' oder ') : `mindestens ${m.mindestens} von ${namen.join(', ')}`;
+}
+
+/**
+ * Die SQL-Regel der Einstellungen in einem Satz (08.10., Woche 1 · 2.6) — statt fester Texte („Schmerz, Entscheider und Budget oder
+ * Zeitpunkt“), die nach einer Änderung der Scoring-Einstellungen nicht mehr stimmten. Beispiel Standard:
+ * „Muss: Schmerz · Entscheider · Budget oder Zeitpunkt — dazu mindestens 28 Sales-Punkte“.
+ */
+export function sqlRegelText(e: Pick<ScoringEinstellungen, 'sales'>): string {
+  const namen = new Map(e.sales.teile.flatMap(t => t.kriterien).map(k => [k.id, k.name]));
+  const muss = e.sales.muss.map(m => mussText(m, id => namen.get(id) ?? id));
+  const punkte = `mindestens ${e.sales.schwelle} Sales-Punkte`;
+  return muss.length ? `Muss: ${muss.join(' · ')} — dazu ${punkte}` : punkte;
+}
+
 function seiteRechnen(seite: ScoringSeiteId, s: ScoringSeite, personen: readonly Kontakt[], lead: LeadAntworten | undefined, mk: MessKontext): SeitenErgebnis {
   const alle: KriteriumErgebnis[] = [];
   const teile: TeilErgebnis[] = s.teile.map(t => {
@@ -658,9 +677,7 @@ function seiteRechnen(seite: ScoringSeiteId, s: ScoringSeite, personen: readonly
   const nameVon = (id: string) => nachId.get(id)?.name ?? s.teile.flatMap(t => t.kriterien).find(k => k.id === id)?.name ?? id;
   const muss: MussErgebnis[] = s.muss.map(m => {
     const erfuellt = m.kriterien.filter(id => { const e = nachId.get(id); return !!e && e.beantwortet && e.stufePunkte >= m.stufePunkte && e.stufePunkte > 0; }).length;
-    const namen = m.kriterien.map(nameVon);
-    const text = m.kriterien.length === 1 ? namen[0] : m.mindestens === 1 ? namen.join(' oder ') : `mindestens ${m.mindestens} von ${namen.join(', ')}`;
-    return { text, ok: erfuellt >= m.mindestens };
+    return { text: mussText(m, nameVon), ok: erfuellt >= m.mindestens, kriterien: [...m.kriterien] };
   });
   const punkte = Math.round(teile.reduce((a, t) => a + t.punkte, 0) * 100) / 100;
   const max = Math.round(teile.reduce((a, t) => a + t.max, 0) * 100) / 100;

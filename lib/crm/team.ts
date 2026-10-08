@@ -164,9 +164,10 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
   const meineLeads = leads(kontakte, crm, heute).filter(z => z.besitzer === person || z.besitzer === BEIDE);
   const sqlOffen = meineLeads.filter(z => salesBereit(z) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
-  if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt', ziel: { s: 'firmen', a: 'leads' } });
+  // Woche 1 · 2.6 (08.10.): der Text nennt die Regel der Scoring-Einstellungen, nicht die alte feste; der Sprung führt in die Runde (SQL-bereite oben).
+  if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Muss-Kriterien und Sales-Schwelle erreicht — die Entscheidung steht oben in der Runde', ziel: { s: 'qualifizierung' } });
   const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !salesBereit(z)).length;
-  if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'eine Kernfrage klären bringt sie zum SQL', ziel: { s: 'firmen', a: 'leads' } });
+  if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)', ziel: { s: 'qualifizierung', a: 'leads' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, 'sales', person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
   if (kpOffen) l.push({ id: 'kampagnen', welt: 'sales', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });

@@ -31,6 +31,16 @@ export interface Lead {
   grundArt?: string;
   /** Wann zuletzt qualifiziert wurde (Runde, Kernfrage, Antwort) — steuert die Wiedervorlage in der Qualifizierungsrunde. */
   qualifiziertAm?: string;
+  /**
+   * „Geprüft“ in der Runde (08.10., Woche 1 · 2.1): Berliner Tag, den NUR der Server stempelt (`/api/crm/lead` `setze` mit `geprueft`).
+   * Gibt dem Lead Ruhe bis zur Wiedervorlage (`QUALI_WIEDERVORLAGE_TAGE`) — auch wenn noch Muss-Fragen offen sind.
+   */
+  geprueftAm?: string;
+  /**
+   * Deal direkt angelegt, ohne dass die SQL-Kriterien erfüllt waren (08.10., Woche 1 · 2.3): der Lead wird NICHT SQL, sondern trägt
+   * diesen Vermerk (Zeitpunkt + was bis zum SQL fehlte). Nur der Server setzt ihn (lib/crm/deal-anlegen.ts).
+   */
+  direktAm?: string; direktOffen?: string[];
   /** Passt die Firma zu unserem Kundenprofil? */
   fit?: Qual;
   notiz?: string;

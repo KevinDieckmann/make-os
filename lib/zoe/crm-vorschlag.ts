@@ -598,8 +598,9 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
       return aus(await innen('/api/crm/followup', 'POST', { aktion: 'verschieben', id: e.followupId, faellig: e.faellig }, person), `Follow-up auf ${String(e.faellig)} verschoben.`);
     }
     case 'deal_anlegen': {
-      const r = await innen('/api/crm/deal', 'POST', { aktion: 'anlegen', kontaktIds: [e.kontaktId], ...(e.firmaId ? { firmaId: e.firmaId } : {}), titel: e.titel, art: 'retainer', wert: e.wert, schritt: e.schritt, quelle: 'bestand', stufe: e.stufe, erwartetAm: e.erwartetAm, besitzer: e.besitzer ?? person }, person);
-      return aus(r, 'Deal angelegt (Lead ist jetzt SQL).');
+      const r = await innen('/api/crm/deal', 'POST', { aktion: 'anlegen', kontaktIds: [e.kontaktId], ...(e.firmaId ? { firmaId: e.firmaId } : {}), titel: e.titel, art: 'retainer', wert: e.wert, schritt: e.schritt, stufe: e.stufe, erwartetAm: e.erwartetAm, besitzer: e.besitzer ?? person }, person);
+      // Quelle aus der Herkunft des Leads (08.10., 2.5); SQL nur bei erfüllten Kriterien (2.3) — die Antwort sagt es.
+      return aus(r, r.json?.chance && r.json.text ? String(r.json.text) : 'Deal angelegt.');
     }
     case 'deal_aendern': {
       const r = await innen('/api/crm/bestand', 'PATCH', { ops: [{ liste: 'chancen', op: 'teil', id: e.dealId, stand: e._stand, felder: e.felder }] }, person);

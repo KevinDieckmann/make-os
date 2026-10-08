@@ -38,6 +38,7 @@ import { firmenName } from '@/lib/crm/firmen-bezug';
 import { winLoss } from '@/lib/crm/deal-auswertung';
 import type { DealsAnsicht } from '@/lib/crm/adresse';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { sqlRegelText, standardZumRechnen } from '@/lib/crm/scoring';
 
 import { tagVon } from '@/lib/zeit';
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
@@ -56,7 +57,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const breit = useBreit();
   const board = ansicht !== 'liste';
   // Deal anlegen: ein Dialog für alle Wege (27.09.).
-  const [anlegen, setAnlegen] = useState<{ kontaktId?: string } | null>(null);
+  const [anlegen, setAnlegen] = useState<{ kontaktId?: string; besitzer?: string } | null>(null);
   const [wunsch, setWunsch] = useState<{ id: string; ziel: ChancenStufe } | null>(null);
   const [alleVorschlaege, setAlleVorschlaege] = useState(false);
   const [wahl, setWahl] = useWerFilter('pipeline');
@@ -80,7 +81,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const jeMonat = prognoseJeMonat(api, chancen, 6);
   // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
-  const neu = () => setAnlegen({});
+  // 2.9 (08.10.): „+ Deal für <Person>“ gibt diese Person als „führt“ mit — vorher entschied der Server still anders.
+  const neu = () => setAnlegen({ besitzer: neuFuer });
   // Ein geschlossener Deal aus einem Link (z. B. hinter der Win Rate) wird gezeigt, auch wenn der Filter ihn sonst verbirgt.
   const gewaehlt = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : undefined;
   const zu = [...chancen.filter(c => !istOffen(c)), ...(gewaehlt && !istOffen(gewaehlt) && !passt(gewaehlt) ? [gewaehlt] : [])];
@@ -90,7 +92,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !ausgenommen(k) && passtWer(wahl, k.besitzer, 'sales', ich))
     .sort((a, b) => (a.stufe === 'angebot' ? 0 : 1) - (b.stufe === 'angebot' ? 0 : 1));
   // Die Chance führt, wer die Beziehung hält — im Gespräch ist ja sie/er.
-  const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => setAnlegen({ kontaktId: k.id });
+  const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => setAnlegen({ kontaktId: k.id, ...(k.besitzer && k.besitzer !== 'beide' ? { besitzer: k.besitzer } : {}) });
 
   if (ansicht === 'akte' && auswahl) return <DealAkte api={api} id={auswahl} zuKontakt={zuKontakt} zurueck={() => (zurueck ? zurueck() : setAuswahl(null))} />;
   if (ansicht === 'auswertung') return <DealAuswertung api={api} zuAkte={id => (id ? zuAkte?.(id) : zurueck?.())} />;
@@ -153,7 +155,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   return (
     <>
       <HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} />
-      {anlegen && <DealAnlegen api={api} kontaktId={anlegen.kontaktId} onFertig={id => { setAnlegen(null); if (zuAkte) zuAkte(id); else setAuswahl(id); }} onAbbruch={() => setAnlegen(null)} zuDeal={zuAkte} />}
+      {anlegen && <DealAnlegen api={api} kontaktId={anlegen.kontaktId} besitzer={anlegen.besitzer} onFertig={id => { setAnlegen(null); if (zuAkte) zuAkte(id); else setAuswahl(id); }} onAbbruch={() => setAnlegen(null)} zuDeal={zuAkte} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
       </div>
@@ -263,8 +265,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
 
       {vorschlaege.length > 0 && (
         <Karte i={1}>
-          <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads (Firmen)</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Firmen › Leads: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
+          <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Qualifizierung › Leads: {sqlRegelText(crm.stand.scoring ?? standardZumRechnen())}), dann wird daraus ein SQL-Deal. Direkt angelegt bleibt der Lead in der Qualifizierung („direkt angelegt“, kein SQL).</div>
           <Liste>
             {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Deal</Knopf>} />)}
           </Liste>

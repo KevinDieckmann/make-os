@@ -138,11 +138,11 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
         {erg === 'sql' ? (
           <div style={{ display: 'grid', gap: 10 }}>
             <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Deal anlegen — SQL</div>
-            {!bereit && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Noch nicht alle SQL-Kriterien erfüllt (fehlt: {fehlt.join(', ')}) — der Deal entsteht trotzdem, das steht dann im Lead vermerkt.</div>}
-            <DealAnlegen api={api} {...(partner ? { kontaktId: partner.id } : {})} {...(z.firmaId ? { firmaId: z.firmaId } : {})} quelle="empfehlung"
-              onFertig={async () => {
-                if (!bereit) await leadPost({ aktion: 'setze', id: z.id, felder: { notiz: `${z.notiz ? `${z.notiz}\n` : ''}SQL ohne alle Kriterien angelegt (${fehlt.join(', ')} offen).` } });
-                await api.laden(true); sauber(); onFertig({ text: `SQL: Der Deal für „${z.name}“ steht unter Deals.`, weiter: true });
+            {!bereit && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Noch nicht alle SQL-Kriterien erfüllt (fehlt: {fehlt.join(', ')}) — der Deal entsteht trotzdem, der Lead bleibt aber in der Qualifizierung („direkt angelegt“, kein SQL).</div>}
+            {/* Woche 1 (08.10.): Quelle aus der Herkunft des Leads (2.5, Server), SQL nur bei erfüllten Kriterien (2.3, Server-Vermerk). */}
+            <DealAnlegen api={api} {...(partner ? { kontaktId: partner.id } : {})} {...(z.firmaId ? { firmaId: z.firmaId } : {})} besitzer={z.besitzer}
+              onFertig={async (_id, text) => {
+                await api.laden(true); sauber(); onFertig({ text: text ?? (bereit ? `SQL: Der Deal für „${z.name}“ steht unter Deals.` : `Der Deal für „${z.name}“ steht unter Deals — direkt angelegt, noch kein SQL.`), weiter: true });
               }}
               onAbbruch={() => setErg(null)} />
           </div>
@@ -166,7 +166,7 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
             <div style={{ display: 'grid', gap: 8 }}>
               {bereit
                 ? <Knopf farbe={LEUCHT.gut} onClick={() => zumSql()}>SQL → Deal anlegen</Knopf>
-                : trotzdem ? <Knopf farbe={LEUCHT.gut} onClick={() => zumSql()}>Trotzdem als SQL übergeben</Knopf> : <Knopf leise onClick={() => setTrotzdem(true)}>Trotzdem als SQL übergeben …</Knopf>}
+                : trotzdem ? <Knopf farbe={LEUCHT.gut} onClick={() => zumSql()}>Deal trotzdem anlegen (ohne SQL)</Knopf> : <Knopf leise onClick={() => setTrotzdem(true)}>Deal trotzdem anlegen (ohne SQL) …</Knopf>}
               <Knopf onClick={() => { setMeldung(''); setErg('weiter'); }}>Weiter qualifizieren</Knopf>
               <Knopf leise onClick={() => setWeg('parken')}>Parken (Wiedervorlage)</Knopf>
               <Knopf leise onClick={() => setWeg('raus')}>Raus — Kein Fit</Knopf>

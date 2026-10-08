@@ -12,6 +12,13 @@
 //  · (e) Mehr als 20 Personen: 413 mit Grund statt stillem Kürzen.
 //  · (d) Titel ohne Firma trägt keinen vollen Personennamen mehr („Deal · Retainer · M.“) — Titel wandern in
 //    Mandate, Exporte und Auswertungen und überlebten sonst ein Löschen nach Art. 17.
+//
+// Woche 1 (08.10., MARKTTRAKTION_BEFUND 2.3/2.5):
+//  · EIN Regelwerk für SQL: der Lead wird nur SQL, wenn er nach den Scoring-Einstellungen SQL-bereit ist (`salesBereit`). Sonst
+//    entsteht der Deal trotzdem, der Lead bleibt aber vor dem SQL stehen und trägt den Vermerk „direkt angelegt“ (`direktAm`,
+//    `direktOffen` = was bis zum SQL fehlte). Gilt für jeden Anlageweg (Pipeline, Leads, Gesprächsmodus, ZOE, Netzwerken-„Vermittlung“,
+//    Angebot stellen) — SQL-Zahl und Trichter zählen nur echte SQLs.
+//  · Quelle: ohne Angabe aus der Herkunft des Leads (`quelleAusLead`: Marketing-Herkunft, sonst Herkunftskanal) — nie fest vorbelegt.
 
 import { loadJson } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
@@ -19,13 +26,14 @@ import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
-import { leads, leereKriterien, type LeadZeile } from './leads';
+import { leads, leereKriterien, salesBereit, fehltBisSqlZeile, quelleAusLead, type LeadZeile } from './leads';
+import { ladeScoring } from './scoring-server';
 import { OFFENE_STUFEN } from './pipeline';
 import { wer, BEIDE, verantwortlich } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import { phaseHeben } from './lifecycle';
-import type { Chance, ChancenArt, Gesellschaft, Lead, Quelle, WertBasis } from './typen';
+import type { Chance, ChancenArt, Gesellschaft, Lead, LeadStatus, Quelle, WertBasis } from './typen';
 import { istRegisterKennung } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 
@@ -68,7 +76,11 @@ const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
 export const neueDealId = () => neueKennung('ch');
 
-export type DealErgebnis = { ok: true; chance: Chance; leadId?: string; text: string } | { ok: false; fehler: string; status: number; offen?: { id: string; titel: string } };
+/**
+ * `sql`: der Lead war SQL-bereit und wurde SQL. Sonst `direkt` mit dem, was bis zum SQL fehlte — der Lead trägt dann den Vermerk
+ * „direkt angelegt“ (2.3). `vorStatus`: der Status des Leads vor dem Deal (für den Vermerk).
+ */
+export type DealErgebnis = { ok: true; chance: Chance; leadId?: string; text: string; sql: boolean; fehlt: string[]; vorStatus?: LeadStatus } | { ok: false; fehler: string; status: number; offen?: { id: string; titel: string } };
 
 /** Reine Prüfung und Bau des Deals — ohne Schreiben (getestet). */
 export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { id: string; name: string; lead?: Lead }[]; chancen: Chance[]; leadZeilen: LeadZeile[]; person: string; jetzt: string; id?: string }): DealErgebnis {
@@ -103,13 +115,21 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
     wert: { betrag, basis, ...(laufzeit && basis !== 'einmalig' ? { laufzeitMonate: laufzeit } : {}) },
     stufe, historie: [{ stufe, am: ctx.jetzt, von: ctx.person }],
     naechsterSchritt: schritt, qualifizierung: kriterien,
-    ...(QUELLEN.includes(e.quelle as Quelle) ? { quelle: e.quelle as Quelle } : {}), ...(e.quelleBezug && idOk(e.quelleBezug) ? { quelleBezug: e.quelleBezug } : {}),
+    // Quelle (2.5): ausdrücklich, sonst aus der Herkunft des Leads — nie fest vorbelegt.
+    ...(QUELLEN.includes(e.quelle as Quelle) ? { quelle: e.quelle as Quelle } : zeile && quelleAusLead(zeile) ? { quelle: quelleAusLead(zeile)! } : {}), ...(e.quelleBezug && idOk(e.quelleBezug) ? { quelleBezug: e.quelleBezug } : {}),
     ...(tagOk(e.erwartetAm) ? { erwartetAm: tagOk(e.erwartetAm) } : {}),
     gesellschaft: GES.includes(e.gesellschaft as Gesellschaft) || istRegisterKennung(e.gesellschaft) ? (e.gesellschaft as Gesellschaft) : 'offen', besitzer,
     angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: ctx.person, letzteAktivitaet: tagVon(ctx.jetzt),
     ...(String(e.notiz ?? '').trim() ? { notiz: String(e.notiz).trim().slice(0, 3000) } : {}),
   };
-  return { ok: true, chance, ...(zeile ? { leadId: zeile.id } : {}), text: `Deal „${chance.titel}“ steht in der Pipeline (Stufe ${stufe === 'qualifiziert' ? 'SQL' : stufe}).` };
+  // EIN Regelwerk (2.3): SQL nur, wenn der Lead nach den Scoring-Einstellungen SQL-bereit ist (ohne Lead-Zeile: nicht).
+  const sql = !!zeile && salesBereit(zeile);
+  const fehlt = sql || !zeile ? [] : fehltBisSqlZeile(zeile);
+  const stufenText = stufe === 'qualifiziert' ? 'SQL' : stufe;
+  return {
+    ok: true, chance, ...(zeile ? { leadId: zeile.id, vorStatus: zeile.status } : {}), sql, fehlt,
+    text: sql ? `Deal „${chance.titel}“ steht in der Pipeline (Stufe ${stufenText}).` : `Deal „${chance.titel}“ steht in der Pipeline (Stufe ${stufenText}) — direkt angelegt: der Lead ist noch kein SQL${fehlt.length ? ` (es fehlt: ${fehlt.join(', ')})` : ''}.`,
+  };
 }
 
 /**
@@ -118,9 +138,24 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
  * Nur der Grund für „kein Fit“/„ruht“ fällt weg — er gilt für ein SQL nicht mehr.
  */
 export function leadWirdSql(alt: Lead | undefined, c: Pick<Chance, 'id' | 'qualifizierung'>, jetzt: string, person: string): Lead {
-  const { grund: _g, ...bisher } = alt ?? { kriterien: c.qualifizierung };
+  // Ein früherer Vermerk „direkt angelegt“ (2.3) gilt nicht mehr — jetzt ist es ein echtes SQL.
+  const { grund: _g, direktAm: _d, direktOffen: _o, ...bisher } = alt ?? { kriterien: c.qualifizierung };
   return { ...bisher, status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person };
 }
+
+/**
+ * Der Lead bekommt einen Deal, ist aber nicht SQL-bereit (08.10., Woche 1 · 2.3): Vermerk „direkt angelegt“ statt SQL. Der Status bleibt
+ * ein SQL oder Kunde, wenn er es schon war; sonst „Qualifizierung“ (der Deal läuft, die Fragen sind noch offen). Ruhe-/Fit-Gründe fallen
+ * weg (ein laufender Deal ist kein „ruht“), Antworten, Stufen und Notiz bleiben. `offen` = was bis zum SQL fehlte (höchstens zehn Punkte).
+ */
+export function leadDirekt(alt: Lead | undefined, c: Pick<Chance, 'id' | 'qualifizierung'>, offen: readonly string[], jetzt: string, person: string): Lead {
+  const { grund: _g, wiedervorlage: _w, grundArt: _a, ...bisher } = alt ?? { status: 'qualifizierung' as LeadStatus, kriterien: c.qualifizierung };
+  const status: LeadStatus = bisher.status === 'sql' || bisher.status === 'kunde' ? bisher.status : 'qualifizierung';
+  return { ...bisher, status, kriterien: alt?.kriterien ?? c.qualifizierung, chanceId: c.id, direktAm: jetzt, ...(offen.length ? { direktOffen: offen.slice(0, 10).map(x => x.slice(0, 160)) } : {}), geaendert: jetzt, geaendertVon: person };
+}
+/** Der Lead nach einem neuen Deal: SQL (bereit) oder Vermerk „direkt angelegt“ — EINE Stelle für Firma und Person ohne Firma. */
+const leadNachDeal = (alt: Lead | undefined, r: Extract<DealErgebnis, { ok: true }>, jetzt: string, person: string): Lead =>
+  r.sql ? leadWirdSql(alt, r.chance, jetzt, person) : leadDirekt(alt, r.chance, r.fehlt, jetzt, person);
 
 /**
  * Phase einer Person mit neuem offenem Deal (W6): nur eine GESETZTE Phase unter „Opportunity“ wird gehoben; leer bleibt leer.
@@ -134,20 +169,23 @@ export function kontaktPhaseNachDeal(phase: Kontakt['phase']): Kontakt['phase'] 
 /** Deal anlegen und schreiben: Chance in den CRM-Bestand, Lead wird SQL mit Verweis. `wer` fürs Änderungsprotokoll (fehlt → laufende Anfrage). */
 export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Date().toISOString(), wer?: Wer): Promise<DealErgebnis> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  // Die Scoring-Einstellungen hängt `ladeCrm` beim Lesen an — der rohe Bestand in der Sperre kennt sie nicht (2.3: SQL nach DENSELBEN Regeln).
+  const scoring = await ladeScoring();
   // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (ZOE + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
   let r: DealErgebnis | null = null;
   await aendereCrm(x => {
-    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x, tagVon(jetzt)), person, jetzt, ...(e.id && idOk(e.id) ? { id: e.id } : {}) });
+    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, { ...x, scoring }, tagVon(jetzt)), person, jetzt, ...(e.id && idOk(e.id) ? { id: e.id } : {}) });
     if (!r.ok) return x;
+    const ok = r;
     const c = r.chance;
-    // Ebene 1 → 2: der Lead der Firma ist jetzt SQL — mit Verweis auf den Deal, in derselben Mutation.
-    return { ...x, chancen: [...x.chancen, c], firmen: c.firmaId ? x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: leadWirdSql(f.lead, c, jetzt, person), geaendert: jetzt, geaendertVon: person } : f)) : x.firmen };
+    // Ebene 1 → 2: der Lead der Firma ist jetzt SQL (bereit) bzw. trägt den Vermerk „direkt angelegt“ — mit Verweis auf den Deal, in derselben Mutation.
+    return { ...x, chancen: [...x.chancen, c], firmen: c.firmaId ? x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: leadNachDeal(f.lead, ok, jetzt, person), geaendert: jetzt, geaendertVon: person } : f)) : x.firmen };
   }, wer);
   const ergebnis = r as DealErgebnis | null;
   if (!ergebnis) return { ok: false, fehler: 'Deal nicht angelegt.', status: 500 };
   if (!ergebnis.ok) return ergebnis;
   const c = ergebnis.chance;
-  // Kartei (anderer Bestand), eine Sperre: Person ohne Firma → ihr Lead wird SQL; gesetzte Phase unter Opportunity → Opportunity (W6).
+  // Kartei (anderer Bestand), eine Sperre: Person ohne Firma → ihr Lead wird SQL bzw. „direkt angelegt“; gesetzte Phase unter Opportunity → Opportunity (W6).
   const ids = new Set(c.kontaktIds);
   if (ids.size) {
     await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
@@ -155,7 +193,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
       const lead = !c.firmaId && k.id === c.kontaktIds[0] && !k.firmaId;
       const phase = kontaktPhaseNachDeal(k.phase);
       if (!lead && !phase) return k;
-      return { ...k, ...(lead ? { lead: leadWirdSql(k.lead, c, jetzt, person) } : {}), ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
+      return { ...k, ...(lead ? { lead: leadNachDeal(k.lead, ergebnis, jetzt, person) } : {}), ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
     }) }), wer);
   }
   return ergebnis;
