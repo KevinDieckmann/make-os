@@ -125,6 +125,17 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'Kontakt: Auskunft nennt Screener-Entscheidung und Zuordnung; Konto: Konto › Meine Daten',
     loeschfrist: 'mit dem Konto bzw. „Trennen“ (Gespräche dieses Postfachs); Absender-Entscheidungen bis die Person sie zurücknimmt',
   }),
+  // Inbox teilen (08.10.2026, Lücke 6): Übergaben (freigegebene Kopien) und der gemeinsame Zustand der Team-Postfächer — je Haushalt.
+  mit(E('inbox-uebergaben--*', 'Übergaben je Haushalt: freigegebene KOPIE eines Gesprächs (Köpfe: Absender, Empfänger, Betreff; Texte; Anhänge nur als Liste) von einer Person des Haushalts an eine andere, mit Notiz, „wer kümmert sich“ und Verlauf (nur Schritte, nie Text). Art. 17: Übergaben, die die Person nennen, fallen ganz weg (person-weitere.ts); das Original bleibt im Postfach (dort löschen).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Korrespondenz im Haushalt/Team weitergeben, damit sich jemand kümmert (Geschäftspostfächer zusätzlich lit. b: Anbahnung/Vertrag); geteilt nur ausdrücklich per Klick, Privat nur an volle Mitglieder',
+    art15: 'Kontakt: Auskunft zählt die Übergaben, die die Person nennen; Konto: Konto › Meine Daten (eigene gegebene und erhaltene Übergaben)',
+    loeschfrist: 'erledigte Übergaben 90 Tage nach „Erledigt“ (täglicher Löschfristen-Lauf und jeder Schreibvorgang räumen sie weg); Konto löschen entfernt alle Übergaben der Person',
+  }),
+  mit(T('inbox-geteilt--*', 'Gemeinsamer Zustand der Team-Postfächer je Haushalt: Wiedervorlage und „erledigt bis“ je Gespräch (nur Kennungen — bei WhatsApp trägt die Kennung die Nummer der Gegenseite), bestätigte Zuordnung (Kontakt-Kennung), „wer kümmert sich“ (Person des Haushalts) — Kennungen und Nummer der Person fallen weg bzw. werden getilgt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — gemeinsame Post des Teams ordnen (wer kümmert sich, Wiedervorlage)',
+    art15: 'Kontakt: Auskunft nennt die Zuordnung; Konto: Konto › Meine Daten (Gespräche, um die sich die Person kümmert)',
+    loeschfrist: 'mit dem Postfach („Trennen“, „Teilen aus“ gibt ihn dem Besitzer zurück) bzw. dem Konto des Besitzers; „wer kümmert sich“ einer gelöschten Person fällt weg',
+  }),
   A('kalender-umzug-sicherung--*', 'Sicherung der iCloud-Texte beim Umzug Business → Google (Notizen können Dritte nennen) — verschlüsselt, 30 Tage, dann räumt der Takt sie weg (lib/kalender/google/umzug.ts); Wahrheit ist der Termin in Google.', 'kalender-caches'),
   // Verbindung zu Google (03.10.): Token-Bestand und Anmelde-Zustand — gehören der Person des Haushalts, keine Dritten.
   H('google-verbindung--*', 'Google-Verbindung je Person (Adresse des Google-Kontos, verschlüsselte Token) — nur serverseitig, Trennen widerruft bei Google und löscht den Inhalt; Art. 17 über das Konto.'),

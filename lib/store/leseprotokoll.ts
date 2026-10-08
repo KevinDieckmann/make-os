@@ -2,6 +2,7 @@
 // Kevin: „alle Standards der DSGVO, damit wir Kundendaten aufnehmen können.“ Das Änderungsprotokoll zeigt, wer etwas
 // GEÄNDERT hat — für besonders schutzwürdige Daten muss sich auch belegen lassen, wer sie GELESEN hat:
 //   gesundheit · erholung (Art. 9) · finanzplan · haushalt · rechnungen · kontakte · firmen · gesellschaften · export (05.10.) · konten (08.10.)
+//   · inbox (08.10., Lücke 6: Suche, Übergaben, Team-Postfächer — nur Bereich, Anzahl und wessen Post; nie der Suchbegriff)
 // Eintrag: Zeit, wer (Person · ZOE im Auftrag · System), Bereich, wessen Daten (`betroffen`, Konto-Speicher — nur bei
 // personenbezogenen Bereichen wie Gesundheit), Umfang (`anzahl`) und Kennungen nur als Fingerabdruck (Kontakte `c2#…`,
 // sonst `k2#…`, Gesellschafts-/Vertrags-Kennungen bleiben lesbar), dazu der Weg (Pfad OHNE Abfrage — Suchbegriffe können
@@ -21,7 +22,7 @@ import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 
-export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export';
+export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox';
 export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> = {
   gesundheit: { label: 'Gesundheit', art9: true },
   erholung: { label: 'Erholung', art9: true },
@@ -35,12 +36,14 @@ export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> 
   konten: { label: 'Konten & Kontostände' },
   // 05.10. (Betroffenenrechte v2): eigene Daten heruntergeladen (`betroffen` = die Person selbst) bzw. die ganze Instanz exportiert (Inhaber).
   export: { label: 'Export (eigene Daten / ganze Instanz)' },
+  // 08.10. (Inbox teilen): Suche über die eigene Post, Lesen einer Übergabe bzw. eines Team-Postfachs (`betroffen` = wessen Postfach).
+  inbox: { label: 'Inbox (Suche, Übergaben, Team-Postfächer)' },
 };
 export const istLeseBereich = (b: unknown): b is LeseBereich => typeof b === 'string' && b in LESE_BEREICHE;
 
 export interface LeseEintrag {
   at: string; wer: WerArt; person?: string; bereich: LeseBereich;
-  /** Wessen Daten (Konto-Speicher) — nur bei personenbezogenen Bereichen (Gesundheit, Erholung). */
+  /** Wessen Daten (Konto-Speicher) — nur bei personenbezogenen Bereichen (Gesundheit, Erholung; Inbox: wessen Postfach). */
   betroffen?: string;
   /** Kennungen als Fingerabdruck (höchstens 20). */
   ids?: string[];

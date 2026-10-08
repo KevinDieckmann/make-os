@@ -110,7 +110,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'inbox/senden': r('POST', 'person', 'Senden NUR per Einzelklick der Person über das Postfach des Gesprächs (eigenePerson; Dienstweg 403).'),
   'inbox/entwurf': r('POST', 'person', 'ZOE-Entwurf (Vorschlag) zu einem eigenen Gespräch (eigenePerson).'),
   'inbox/postfaecher': r('GET,POST', 'person', 'Eigene Postfächer verbinden/einstellen/erneuern/trennen; Passwörter nie in der Antwort (eigenePerson).'),
-  'inbox/anhang': r('GET', 'person', 'Anhang aus dem eigenen IMAP-Postfach, nur als Download (eigenePerson).'),
+  'inbox/anhang': r('GET', 'person', 'Anhang aus dem eigenen IMAP-Postfach bzw. einem sichtbaren Team-Postfach (Zugang des Besitzers), nur als Download (eigenePerson).'),
+  'inbox/uebergaben': r('GET,POST', 'person', 'Übergaben (freigegebene Kopien) an bzw. von der Person — Sicht serverseitig (uebergabeSichtbar, Privat nie an finanzRecht business), Schreiben nur Beteiligte (eigenePerson; Dienstweg 403).'),
+  'inbox/suche': r('GET', 'person', 'Suche nur in dem, was die Person sieht (eigene Spiegel, sichtbare Team-Postfächer, eigene Übergaben); Suchbegriff nie im Protokoll (eigenePerson).'),
   'gmail/anhang': r('GET', 'person', 'Anhang aus dem eigenen Gmail (eigenePerson).'),
   'google/gmail/meldung': r('POST', 'offen', 'Gmail-Pub/Sub-Push: ohne Sitzung, prüft das OIDC-Token von Google selbst, liefert nie Daten.'),
   // WhatsApp Business (07.10., lib/whatsapp/*): die Business-Nummer der Instanz.

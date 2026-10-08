@@ -6,6 +6,8 @@
 // Signatur des Postfachs steht sichtbar und änderbar unten im Text. § 7 UWG: klingt der Text werblich und fehlt für eine Person die
 // Grundlage, fragt der Server zurück (409) — die Person entscheidet. Der Entwurf bleibt im Sitzungsspeicher, bis er gesendet oder
 // verworfen ist. Am Handy bedienbar (Ziele ≥ 44 px, Eingaben 16 px).
+// Übergabe (08.10., Lücke 6): `uebergabe` + `postfaecher` = Antwort der Empfängerin auf eine übergebene Mail — nur aus einem eigenen
+// Postfach desselben Raums (der Server prüft das noch einmal), Betreff „Re: …“ und Bezug baut der Server aus der Kopie.
 
 import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -17,6 +19,8 @@ import type { Adr } from '@/lib/gmail/typen';
 export interface AntwortVorgabe {
   /** Gespräch (Antwort) — oder `neu` mit Postfach-Wahl. */
   gespraech?: string;
+  /** Antwort auf eine übergebene Mail (Kennung `ub-…`) — mit Postfach-Wahl (`postfaecher`), Betreff steht fest. */
+  uebergabe?: string;
   betreff: string;
   empfaenger?: { antworten: { an: Adr[]; cc: Adr[] }; allen: { an: Adr[]; cc: Adr[] } };
   von: { email: string; name?: string }[];
@@ -39,7 +43,7 @@ const neueId = () => `inbox-${typeof crypto !== 'undefined' && 'randomUUID' in c
 type UwgDaten = { woerter: string[]; empfaenger: { name: string; grund: string }[] };
 
 export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVorgabe; allen: boolean; onGesendet: () => void; onZu: () => void; meldung: (t: string) => void }) {
-  const schluessel = v.gespraech ?? 'neu';
+  const schluessel = v.gespraech ?? v.uebergabe ?? 'neu';
   const ziel = allen ? v.empfaenger?.allen : v.empfaenger?.antworten;
   const [an, setAn] = useState(v.start?.an ?? zuText(ziel?.an));
   const [cc, setCc] = useState(zuText(ziel?.cc));
@@ -75,7 +79,9 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
     setLaeuft(true); setFehler('');
     const body = v.gespraech
       ? { gespraech: v.gespraech, an: zuListe(an), cc: zuListe(cc), text, ...(v.von.length > 1 ? { von } : {}), uwgBestaetigt: uwg, anfrageId: anfrageId.current }
-      : { neu: { postfach, betreff }, an: zuListe(an), cc: zuListe(cc), text, uwgBestaetigt: uwg, anfrageId: anfrageId.current };
+      : v.uebergabe
+        ? { uebergabe: v.uebergabe, postfach, an: zuListe(an), cc: zuListe(cc), text, uwgBestaetigt: uwg, anfrageId: anfrageId.current }
+        : { neu: { postfach, betreff }, an: zuListe(an), cc: zuListe(cc), text, uwgBestaetigt: uwg, anfrageId: anfrageId.current };
     const r = await senden<{ an?: string[]; uwg?: UwgDaten }>('/api/inbox/senden', body);
     setLaeuft(false);
     if (r.d.ok) { schreibe(schluessel, ''); meldung(`Gesendet an ${(r.d.an ?? []).join(', ')}.`); onGesendet(); return; }
@@ -89,10 +95,10 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
 
   return (
     <div style={{ marginTop: 14, borderTop: `1px solid ${C.linie}`, paddingTop: 14, display: 'grid', gap: 10 }} data-inbox="antwort">
-      <div style={{ fontWeight: 700, fontSize: TYP.body }}>{v.gespraech ? (allen ? 'Allen antworten' : 'Antworten') : 'Neue Mail'}{v.postfach ? <span style={{ color: C.inkLeise, fontWeight: 500 }}> · aus {v.postfach}{v.bereichName ? ` (${v.bereichName})` : ''}</span> : null}</div>
+      <div style={{ fontWeight: 700, fontSize: TYP.body }}>{v.gespraech ? (allen ? 'Allen antworten' : 'Antworten') : v.uebergabe ? `Antworten · ${v.betreff}` : 'Neue Mail'}{v.postfach ? <span style={{ color: C.inkLeise, fontWeight: 500 }}> · aus {v.postfach}{v.bereichName ? ` (${v.bereichName})` : ''}</span> : null}</div>
       {fehler && <Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => los(false)} aus={laeuft}>Noch einmal senden</Knopf>}>{fehler}</Hinweis>}
       {v.postfaecher && (
-        <Feldzeile label="Aus Postfach">
+        <Feldzeile label={v.uebergabe ? 'Aus deinem Postfach' : 'Aus Postfach'}>
           <select value={postfach} onChange={e => setPostfach(e.target.value)} style={auswahl} aria-label="Postfach">
             {v.postfaecher.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -108,7 +114,7 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
       {v.von.length === 1 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Von: <span style={{ color: C.inkDim }}>{v.von[0].name ? `${v.von[0].name} <${v.von[0].email}>` : v.von[0].email}</span></div>}
       <Feldzeile label="An"><input value={an} onChange={e => setAn(e.target.value)} style={eingabe} aria-label="An" inputMode="email" autoComplete="off" /></Feldzeile>
       {(cc || allen) && <Feldzeile label="Cc"><input value={cc} onChange={e => setCc(e.target.value)} style={eingabe} aria-label="Cc" inputMode="email" autoComplete="off" /></Feldzeile>}
-      {!v.gespraech && <Feldzeile label="Betreff"><input value={betreff} onChange={e => setBetreff(e.target.value)} style={eingabe} aria-label="Betreff" /></Feldzeile>}
+      {!v.gespraech && !v.uebergabe && <Feldzeile label="Betreff"><input value={betreff} onChange={e => setBetreff(e.target.value)} style={eingabe} aria-label="Betreff" /></Feldzeile>}
       {vonKi && text.trim() && <KiMarke />}
       <textarea ref={feld} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setVonKi(false); }} rows={10} placeholder="Deine Antwort …" aria-label="Text" style={{ ...eingabe, minHeight: 200, resize: 'vertical', lineHeight: 1.55, paddingTop: 12 }} />
       {v.gespraech && (
@@ -119,7 +125,7 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
       )}
       {v.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{v.hinweis}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Knopf haupt onClick={() => los(false)} aus={laeuft || !text.trim() || !an.trim() || (!v.gespraech && (!betreff.trim() || !postfach))}>{laeuft ? 'sendet …' : 'Senden'}</Knopf>
+        <Knopf haupt onClick={() => los(false)} aus={laeuft || !text.trim() || !an.trim() || (!v.gespraech && !postfach) || (!v.gespraech && !v.uebergabe && !betreff.trim())}>{laeuft ? 'sendet …' : 'Senden'}</Knopf>
         {v.gespraech && <Knopf leise onClick={entwurf} aus={schreibt || laeuft}>{schreibt ? 'ZOE schreibt …' : 'ZOE-Entwurf'}</Knopf>}
         <Knopf leise onClick={async () => { const t = text.replace(v.signatur ? `-- \n${v.signatur}` : '\u0000', '').trim(); if (!t || (await bestaetigen({ titel: 'Entwurf verwerfen?', text: 'Der geschriebene Text geht verloren.', ja: 'Verwerfen', gefahr: true }))) { schreibe(schluessel, ''); onZu(); } }} aus={laeuft}>Verwerfen</Knopf>
       </div>

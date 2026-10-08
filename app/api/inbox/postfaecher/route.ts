@@ -5,7 +5,10 @@
 //      `imBereich` wie der Strom). Ohne Parameter bzw. `space=privat`: alle EIGENEN Postfächer (die Person verwaltet ihre Postfächer).
 // POST { aktion: 'hinzufuegen', anbieter, adresse, passwort, bereich, anzeigename?, absenderName?, signatur?, imap?, smtp? }
 //        → prüft die Anmeldung beim Anbieter ZUERST; nur wenn sie klappt, werden Register + Passwort gespeichert (sonst 409, nichts gespeichert)
-//      { aktion: 'einstellen', id, bereich?, anzeigename?, absenderName?, signatur? }   (auch Gmail: Bereich festlegen)
+//      { aktion: 'einstellen', id, bereich?, anzeigename?, absenderName?, signatur?, geteilt? }   (auch Gmail: Bereich festlegen)
+//        `geteilt` (08.10., „mit dem Team teilen“): nur das EIGENE IMAP-Postfach mit Business-Bereich (sonst 400) — dann sehen es alle Konten
+//        des Haushalts mit Zugang zum Bereich; Zugang/Abgleich/Senden bleiben beim Besitzer. Team-Postfächer anderer stehen in GET unter
+//        `mitDirGeteilt` (nur ansehen) — einstellen/trennen kann sie nur ihr Besitzer (sein Register, keine fremde Kennung hier).
 //      { aktion: 'erneuern', id, passwort }        „Verbindung erneuern“ (Apple macht App-Passwörter bei jedem Passwortwechsel ungültig)
 //      { aktion: 'trennen', id }                   Spiegel + Zugang + Inbox-Zustand des Postfachs weg (beim Anbieter bleibt alles)
 //      { aktion: 'absender', adresse, status }     Screener-Entscheidung ändern (`zugelassen` | `geblockt` | null)
@@ -35,14 +38,18 @@ export async function GET(req: Request) {
   const [roh, namen, absenderAlle] = await Promise.all([stromRoh(z.person), bereichNamen(), absenderListe(z.person)]);
   const demo = demoErlaubt();
   const alleBereiche = [{ id: 'privat', name: 'Privat' }, ...KERN_EINHEITEN.map(e => ({ id: e.id, name: e.label })), ...Object.entries(namen).filter(([id]) => id.startsWith('g-')).map(([id, name]) => ({ id, name }))];
-  const sicht = postfaecherSicht({ postfaecher: roh.postfaecher.map(p => p.oeffentlich), gespraeche: roh.gespraeche, bereiche: alleBereiche, absender: absenderAlle }, space === 'business' ? 'business' : null);
+  const eigene = roh.postfaecher.filter(p => !p.oeffentlich.fremd);
+  const sicht = postfaecherSicht({ postfaecher: eigene.map(p => p.oeffentlich), gespraeche: roh.gespraeche.filter(g => eigene.some(p => p.id === g.postfachId)), bereiche: alleBereiche, absender: absenderAlle }, space === 'business' ? 'business' : null);
+  // Team-Postfächer anderer Personen, die diese Person sieht — dieselbe Bereichs-Sicht (`imBereich` in postfaecherSicht).
+  const mitDirGeteilt = postfaecherSicht({ postfaecher: roh.postfaecher.filter(p => p.oeffentlich.fremd).map(p => p.oeffentlich), gespraeche: [], bereiche: [], absender: [] }, space === 'business' ? 'business' : null).postfaecher
+    .map(p => ({ id: p.id, anzeigename: p.anzeigename, bereichName: p.bereichName, adresse: p.adresse, besitzerName: p.fremd?.besitzerName ?? '', zustand: p.zustand }));
   return NextResponse.json({
     ok: true,
     postfaecher: sicht.postfaecher,
     bereiche: sicht.bereiche,
     ...(space === 'business' ? { nurBusiness: true } : {}),
     anbieter: anbieterFuerFormular(demo).map(a => { const v = VOREINSTELLUNGEN[a]; return { id: a, name: v.name, passwortWort: v.passwortWort, anleitung: v.anleitung, ...(v.link ? { link: v.link } : {}), ...(v.sendeHinweis ? { sendeHinweis: v.sendeHinweis } : {}), eigeneServer: a === 'eigen' }; }),
-    demo, absender: sicht.absender, google: roh.google,
+    demo, absender: sicht.absender, google: roh.google, mitDirGeteilt,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
@@ -62,7 +69,7 @@ export async function POST(req: Request) {
       }
       case 'einstellen': {
         if (!id) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
-        const felder = Object.fromEntries(['bereich', 'anzeigename', 'absenderName', 'signatur'].filter(k => k in b).map(k => [k, b[k]]));
+        const felder = Object.fromEntries(['bereich', 'anzeigename', 'absenderName', 'signatur', 'geteilt'].filter(k => k in b).map(k => [k, b[k]]));
         await postfachEinstellen(z.person, id, felder);
         await protokolliere('postfaecher', [{ op: 'geaendert', id, felder: Object.keys(felder) }], wer).catch(() => { /* nur Protokoll */ });
         return NextResponse.json({ ok: true, text: 'Gespeichert.' });

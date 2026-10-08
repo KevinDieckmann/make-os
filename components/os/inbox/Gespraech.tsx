@@ -8,6 +8,8 @@
 // WhatsApp (07.10. abends): Etikett, Profilname + Nummer, Uhr des 24-h-Fensters, Zustellstand; Medien nur auf Klick (Bild-Vorschau,
 // Audio-Element, sonst Download — WaMedium); Antworten über WaAntwortInbox statt des Mail-Editors; „Kontakt anlegen“ mit der Nummer,
 // „Zuordnen zu …“, wenn mehrere Akten die Nummer tragen (nie automatisch).
+// Teilen (08.10., Lücke 6): eigenes Gespräch → „Übergeben an …“ (Kopie, nur an Personen, die den Bereich sehen dürfen); Gespräch eines
+// Team-Postfachs bzw. WhatsApp → „Wer kümmert sich“ (Stand/409). Gesendet wird im Team-Postfach ALS dieses Postfach.
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -26,6 +28,7 @@ import { Antwort } from './Antwort';
 import { BelegAusMail } from './BelegAusMail';
 import { WaMedium } from '../whatsapp';
 import { WaAntwortInbox, WaEtikett, WaKopf, WaZustell } from './WhatsappTeile';
+import { KuemmertWahl, UebergebenFeld } from './Teilen';
 import { aktion, anhangLink, datumLang, groesse, holen, naechsterMontag, senden, tagIn, type Ansicht } from './daten';
 
 interface AkteTermin { titel: string; start: string; ganztags?: boolean; abgesagt?: boolean }
@@ -176,8 +179,10 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           {wa && <WaEtikett />}
           {g.fach !== 'geblockt' && <Chip farbe={g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.inkLeise}>{FACH_LABEL[g.fach]}{g.fach === 'warten' && g.wartetTage !== undefined ? ` · ${g.wartetTage} T.` : ''}</Chip>}
           {z && <Chip umbrechen farbe={z.sperre ? LEUCHT.achtung : LEUCHT.gut}>gehört zu {z.name}{z.firma ? ` · ${z.firma}` : ''}</Chip>}
+          {g.team?.postfach && <Chip farbe={C.inkDim}>Team-Postfach{g.team.postfach.eigenes ? '' : ` · von ${g.team.postfach.besitzerName}`}</Chip>}
         </div>
         {wa && <WaKopf nummer={wa.nummer} profilname={wa.profilname} akte={z?.name} fenster={wa.fenster} />}
+        {g.team && <KuemmertWahl gespraech={id} team={g.team} person={person} meldung={t => meldung(t)} onGeaendert={() => { void laden(); onGeaendert(); }} />}
       </div>
 
       {kandidaten.length > 1 && !z && (
@@ -236,6 +241,9 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           {!(a.vorschlaege.some(v => v.art === 'aufgabe')) && <Knopf leise onClick={() => aufgabe()}>Aufgabe</Knopf>}
           {!(a.vorschlaege.some(v => v.art === 'termin')) && <Knopf leise onClick={() => setTermin(t => !t)}>Termin</Knopf>}
         </div>
+      )}
+      {!antwort && a.uebergabe && (a.uebergabe.personen.length > 0 || a.uebergabe.bestehend.length > 0) && (
+        <UebergebenFeld gespraech={id} personen={a.uebergabe.personen} bestehend={a.uebergabe.bestehend} meldung={t => meldung(t)} onGeaendert={() => { void laden(); onGeaendert(); }} />
       )}
       {spaeterAuf && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

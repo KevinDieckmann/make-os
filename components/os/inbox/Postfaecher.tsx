@@ -9,11 +9,14 @@
 // Knopf), hier nur der Bereich. WhatsApp (07.10.): die Business-Nummer der Instanz — Zustand hier, Einrichten/Prüfen unter System ›
 // Verbindungen; Absender-Entscheidungen gelten auch für Nummern. Business-Sicht (`space=business`, 07.10. abends): der SERVER liefert nur
 // Postfächer mit Business-Bereich, nur Business-Bereiche zur Wahl und nur Absender aus diesen Postfächern („Business sieht nie Privat“).
+// Teilen (08.10., Lücke 6): „Mit dem Team teilen“ je eigenem IMAP-Postfach mit Business-Bereich (Schalter; der Server prüft Bereich und
+// Besitz) — Passwort, Abgleich und Senden bleiben bei dir. „Mit dir geteilt“ zeigt Team-Postfächer anderer (nur ansehen).
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Pillen, Feldzeile, eingabe, auswahl, Leer, Punkt, LEUCHT, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Pillen, Feldzeile, eingabe, auswahl, Leer, Punkt, Schalter, LEUCHT, useRueckfrage } from '../ui';
+import { raumVon } from '@/lib/inbox/teilen';
 import { KUGEL } from '@/lib/make-one/design';
 import { GmailVerbinden, type GmailMeta } from './GmailVerbinden';
 import type { PostfachOeffentlich } from '@/lib/postfach/typen';
@@ -108,7 +111,7 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
         <Punkt farbe={STUFE_FARBE[z.stufe]} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontWeight: 600, fontSize: TYP.body, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.anzeigename}</span>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{p.bereichName} · {p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'} · {STUFE_TEXT[z.stufe]}{z.vorMin != null && z.stufe !== 'anmeldung' ? ` · ${vorText(z.vorMin)}` : ''}{z.idle ? ' · sofort (IDLE)' : ''}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{p.bereichName} · {p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'}{p.geteilt ? ' · mit dem Team geteilt' : ''} · {STUFE_TEXT[z.stufe]}{z.vorMin != null && z.stufe !== 'anmeldung' ? ` · ${vorText(z.vorMin)}` : ''}{z.idle ? ' · sofort (IDLE)' : ''}</span>
         </span>
         <span style={{ color: C.inkLeise }}>{auf ? '▴' : '▾'}</span>
       </button>
@@ -139,6 +142,12 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
               <Feldzeile label="Name in der Inbox"><input value={f.anzeigename} onChange={e => setF({ ...f, anzeigename: e.target.value })} style={eingabe} /></Feldzeile>
               {p.quelle === 'imap' && <Feldzeile label="Absendername"><input value={f.absenderName} onChange={e => setF({ ...f, absenderName: e.target.value })} style={eingabe} /></Feldzeile>}
               <Feldzeile label="Signatur (steht beim Antworten unten im Text)"><textarea value={f.signatur} onChange={e => setF({ ...f, signatur: e.target.value })} rows={3} style={{ ...eingabe, minHeight: 88, resize: 'vertical' }} /></Feldzeile>
+              {p.quelle === 'imap' && (
+                <Schalter karte an={!!p.geteilt} aus={laeuft || (!p.geteilt && raumVon(p.bereich) !== 'business')} onChange={an => void post({ aktion: 'einstellen', geteilt: an })}
+                  beschreibung={raumVon(p.bereich) === 'business' ? 'Alle im Haushalt mit Zugang zu diesem Bereich sehen die Gespräche, antworten als dieses Postfach und tragen ein, wer sich kümmert. Dein Passwort, der Abgleich und das Senden bleiben bei dir.' : 'Geht nur mit einem Business-Bereich — private Postfächer bleiben privat.'}>
+                  Mit dem Team teilen
+                </Schalter>
+              )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Knopf onClick={() => post({ aktion: 'einstellen', bereich: f.bereich, anzeigename: f.anzeigename, ...(p.quelle === 'imap' ? { absenderName: f.absenderName } : {}), signatur: f.signatur })} aus={laeuft || !f.bereich}>Speichern</Knopf>
                 <Knopf leise onClick={async () => { if (await bestaetigen({ titel: `${p.anzeigename} trennen?`, text: 'Die Kopie in MAKE OS (Nachrichten, Wiedervorlagen, Zuordnungen) wird gelöscht, das Passwort auch. Beim Anbieter bleibt alles, wie es ist.', ja: 'Trennen', gefahr: true })) await post({ aktion: 'trennen' }); }} aus={laeuft}>Trennen</Knopf>
@@ -175,6 +184,20 @@ export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () =
         {d.postfaecher.map(p => <PostfachZeile key={p.id} p={p} bereiche={d.bereiche} onGeaendert={geaendert} meldung={meldung} />)}
         {neu && <div style={{ marginTop: 14 }}><Hinzufuegen d={d} onFertig={t => { setNeu(false); meldung(t); geaendert(); }} /></div>}
       </Karte>
+      {(d.mitDirGeteilt ?? []).length > 0 && (
+        <Karte i={1} flach>
+          <Ueberschrift rechts={`${d.mitDirGeteilt!.length}`}>Mit dir geteilt</Ueberschrift>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {d.mitDirGeteilt!.map(p => (
+              <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }} data-postfach-geteilt={p.id}>
+                <Punkt farbe={STUFE_FARBE[p.zustand.stufe]} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, overflowWrap: 'anywhere' }}><b style={{ fontSize: TYP.body }}>{p.anzeigename}</b><span style={{ color: C.inkLeise }}> · {p.bereichName} · von {p.besitzerName}</span></span>
+              </div>
+            ))}
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Team-Postfächer: du siehst die Gespräche, antwortest als dieses Postfach und trägst ein, wer sich kümmert. Einstellen und trennen kann nur, wer es eingerichtet hat.</div>
+          </div>
+        </Karte>
+      )}
       {(d.google.konfiguriert || d.google.verbunden) && <GmailVerbinden meta={gmailMeta} onGeaendert={geaendert} meldung={meldung} />}
       {!waPostfach && (
         <Karte i={1} flach>

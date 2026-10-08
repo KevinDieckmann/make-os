@@ -46,7 +46,15 @@ export interface SendenEingabe {
   von?: string;
   /** Die Rückfrage zu § 7 UWG wurde beantwortet. */
   uwgBestaetigt?: boolean;
+  /**
+   * Antwort auf eine ÜBERGEBENE Mail (08.10., Lücke 6): die Nachricht liegt nicht im eigenen Spiegel, sondern in der Kopie einer
+   * Übergabe — Betreff „Re: …“, In-Reply-To/References daraus (die Gegenseite sieht ein Gespräch), Empfänger als Vorgabe. Ohne threadId.
+   */
+  bezug?: AntwortBezug;
 }
+
+/** Bezug einer Antwort außerhalb des eigenen Spiegels (übergebene Mail). */
+export interface AntwortBezug { messageId?: string; references?: string[]; betreff: string; empfaenger: Adr[] }
 
 export interface SendenErgebnis { id: string; threadId: string; von: string; an: string[] }
 
@@ -121,12 +129,12 @@ export async function gmailSenden(e: SendenEingabe): Promise<SendenErgebnis> {
   const antwortAuf = e.ausNachricht ? stand.koepfe[e.ausNachricht] : undefined;
   if (e.ausNachricht && !antwortAuf) throw new SendenFehler('nicht-gefunden', 'Die Mail, auf die geantwortet wird, gibt es im Spiegel nicht (mehr).', 404);
   const eigene = eigeneAdressen(stand);
-  const standard = antwortAuf ? antwortEmpfaenger(antwortAuf, eigene, false) : { an: [], cc: [] };
+  const standard = antwortAuf ? antwortEmpfaenger(antwortAuf, eigene, false) : { an: e.bezug?.empfaenger ?? [], cc: [] };
   const an = adressenSauber(e.an?.length ? e.an : standard.an);
   const cc = adressenSauber(e.cc);
   if (!an.length) throw new SendenFehler('kein-empfaenger', 'Es fehlt ein Empfänger.', 400);
   if (an.length + cc.length > EMPFAENGER_MAX) throw new SendenFehler('zu-viele', `Höchstens ${EMPFAENGER_MAX} Empfänger.`, 400);
-  const betreff = antwortAuf ? antwortBetreff(antwortAuf.betreff) : zeilenfrei(e.betreff ?? '');
+  const betreff = antwortAuf ? antwortBetreff(antwortAuf.betreff) : e.bezug ? antwortBetreff(zeilenfrei(e.bezug.betreff)) : zeilenfrei(e.betreff ?? '');
   if (!betreff) throw new SendenFehler('betreff', 'Es fehlt ein Betreff.', 400);
 
   const aliase = await aliaseSicherstellen(e.person).catch(() => stand.aliase ?? []);
@@ -144,6 +152,7 @@ export async function gmailSenden(e: SendenEingabe): Promise<SendenErgebnis> {
   const roh = mimeBauen({
     von: { ...(absender.name ? { name: absender.name } : {}), email: absender.email }, an, ...(cc.length ? { cc } : {}), betreff, text,
     ...(antwortAuf?.messageId ? { inReplyTo: antwortAuf.messageId, references: referenzenFuer(antwortAuf.references, antwortAuf.messageId) } : {}),
+    ...(!antwortAuf && e.bezug?.messageId ? { inReplyTo: e.bezug.messageId, references: referenzenFuer(e.bezug.references, e.bezug.messageId) } : {}),
   });
   const r = await googleAnfrage<{ id?: string; threadId?: string }>(e.person, 'gmail', `${GMAIL_API}/messages/send`, {
     method: 'POST', body: { raw: bytesBase64url(roh), ...(antwortAuf ? { threadId: antwortAuf.threadId } : {}) }, zeitMs: 60_000,

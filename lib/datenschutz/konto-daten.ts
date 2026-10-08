@@ -25,6 +25,9 @@ import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { grabsteinKennung, grabsteinSetzen, type Grabstein } from './grabsteine';
 import { kennungsVersion } from './pepper';
 import { familieName } from '@/lib/familie/speicher';
+import { ladePostfaecher } from '@/lib/postfach/register';
+import { uebergabenName } from '@/lib/inbox/uebergaben-speicher';
+import { geteiltName, teamHaushalt, teamOhnePerson } from '@/lib/inbox/teilen-server';
 
 export const GELOESCHT = '[gelöscht]';
 
@@ -72,6 +75,8 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'familie--*': 'Familie je Haushalt',
   'finanzen-plan--*': 'Finanzplan je Haushalt (Aufbewahrungspflicht)',
   'gesellschaften--*': 'Gesellschafts-Register je Haushalt',
+  'inbox-uebergaben--*': 'Übergaben je Haushalt (Inbox teilen, 08.10.) — im Export die eigenen (gegeben/erhalten), beim Konto-Löschen fallen sie ganz weg',
+  'inbox-geteilt--*': 'Gemeinsamer Zustand der Team-Postfächer je Haushalt — im Export „wer kümmert sich“ der Person; beim Löschen fällt das weg, ihre eigenen Team-Postfächer verlieren den Zustand',
   'haushalt-*--*': 'Haushaltsfinanzen je Haushalt',
   'haushalt-umzug--*': 'Umzugskopie der Haushaltsfinanzen',
   'kalender-umzug-sicherung--*': 'Umzugssicherung des Kalenders (30 Tage)',
@@ -161,6 +166,14 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   // WhatsApp (07.10.): selbst gesendete Nachrichten der Business-Nummer (Zeit, Art, Text, Zustellstand — ohne Nummer der Gegenseite).
   const wa = await loadJson<{ nachrichten?: Record<string, Obj> }>('whatsapp-spiegel').catch(() => null);
   merke('whatsapp-spiegel', Object.values(wa?.nachrichten ?? {}).filter(n => n.von === speicher).map(n => ({ am: n.am, art: n.art, text: n.text, status: n.status, ...(n.vorlage ? { vorlage: n.vorlage } : {}) })));
+  // Inbox teilen (08.10.): eigene Übergaben (gegeben und erhalten, mit der Kopie) und Team-Gespräche, um die sich die Person kümmert.
+  const th = await teamHaushalt().catch(() => null);
+  if (th) {
+    const ub = await loadJson<{ uebergaben?: Obj[] }>(uebergabenName(th)).catch(() => null);
+    merke(uebergabenName(th), (ub?.uebergaben ?? []).filter(u => u.von === speicher || u.an === speicher));
+    const tz = await loadJson<{ gespraeche?: Record<string, Obj> }>(geteiltName(th)).catch(() => null);
+    merke(geteiltName(th), Object.entries(tz?.gespraeche ?? {}).filter(([, v]) => (v.kuemmert as Obj | undefined)?.person === speicher).map(([gespraech, v]) => ({ gespraech, kuemmert: v.kuemmert })));
+  }
   // Agenten-Läufe je Person (08.10.): die von der Person ausgelösten Läufe (Ergebnisse) — Systemläufe ohne Person nicht.
   const al = await loadJson<Obj>('agent-log').catch(() => null);
   merke('agent-log', liste(al, 'entries').filter(e => (e as Obj).person === speicher));
@@ -254,6 +267,20 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
 
   // 4. Bestände je Person: ganz entfernen (mit Tagessicherungen).
   const namen = await bestandsNamen();
+  // 4a. Inbox teilen (08.10.) — VOR dem Register der Person (wir brauchen die Kennungen ihrer Team-Postfächer): Übergaben, die sie gegeben
+  // oder bekommen hat, fallen ganz weg (die Kopie gehört zu ihrem Postfach bzw. war nur für sie); „wer kümmert sich“ = sie fällt weg,
+  // der gemeinsame Zustand ihrer Team-Postfächer auch (es gibt sie danach nicht mehr).
+  try {
+    const h = await teamHaushalt();
+    const ub = uebergabenName(h);
+    if (namen.includes(ub)) {
+      let n = 0;
+      await updateJson<Obj>(ub, cur => { if (!cur) return cur as unknown as Obj; const l = liste(cur, 'uebergaben'); const r = l.filter(u => (u as Obj).von !== speicher && (u as Obj).an !== speicher); n = l.length - r.length; return n ? { ...cur, uebergaben: r } : cur; });
+      zaehl(bericht.eintraege, ub, n);
+    }
+    const teamPf = (await ladePostfaecher(speicher)).filter(p => p.geteilt).map(p => p.id);
+    zaehl(bericht.eintraege, geteiltName(h), await teamOhnePerson(speicher, teamPf));
+  } catch (e) { console.error('[konto-loeschen] Inbox teilen:', e instanceof Error ? e.message : e); }
   for (const b of personBestandNamen(speicher, namen)) {
     try { if (await bestandEntfernen(b.name, { tageskopien: true })) bericht.bestaende.push(b.name); }
     catch (e) { console.error(`[konto-loeschen] ${b.name}:`, e instanceof Error ? e.message : e); }

@@ -7,12 +7,24 @@
 import type { Gespraech, LageZeile, ZoeSatz } from '@/lib/inbox/strom';
 import type { PostfachOeffentlich } from '@/lib/postfach/typen';
 import type { GespraechAnsicht } from '@/lib/inbox/gespraech-server';
+import type { Uebergabe, UebergabeZeile } from '@/lib/inbox/teilen';
+import type { SuchTreffer } from '@/lib/inbox/suche-server';
+
+export type { UebergabeZeile, Uebergabe, SuchTreffer };
 
 export type GespraechZeile = Omit<Gespraech, 'nachrichten'>;
 export interface StromAntwort {
   ok: boolean; postfaecher: PostfachOeffentlich[]; gespraeche: GespraechZeile[]; lage: LageZeile[]; zoe: ZoeSatz;
   bereiche: { id: string; name: string }[]; google: { konfiguriert: boolean; verbunden: boolean; bereit: boolean; konto?: string; getrennt?: boolean }; heute: string; fehler?: string;
+  /** Übergaben an bzw. von mir (08.10., ohne Texte). */
+  uebergaben: UebergabeZeile[];
 }
+/** Eine Übergabe geöffnet (GET /api/inbox/uebergaben?id=): Kopie, Zeile, neuere Nachrichten im Original, Postfächer zum Antworten. */
+export interface UebergabeDetail { ok: boolean; uebergabe: Uebergabe; zeile: UebergabeZeile; neuer: number; postfaecher: { id: string; name: string; adresse: string }[]; fehler?: string }
+/** Suche (GET /api/inbox/suche). */
+export interface SuchAntwort { ok: boolean; treffer: SuchTreffer[]; gesamt: number; ab: number; seite: number; hinweis?: string; fehler?: string }
+/** Eine Übergabe-Kennung (`ub-<uuid>`) — die Inbox öffnet sie über denselben Link-Parameter `offen` wie ein Gespräch. */
+export const istUebergabeId = (v: string | null | undefined): v is string => !!v && /^ub-[0-9a-f-]{36}$/.test(v);
 export type Ansicht = Omit<GespraechAnsicht, 'gespraech'> & { gespraech: GespraechZeile; ok: boolean; fehler?: string };
 
 export interface PostfaecherAntwort {
@@ -22,6 +34,8 @@ export interface PostfaecherAntwort {
   google: StromAntwort['google']; fehler?: string;
   /** Business-Sicht (07.10. abends): der Server hat auf Business-Postfächer gefiltert. */
   nurBusiness?: boolean;
+  /** Team-Postfächer anderer Personen, die ich sehe (08.10., nur ansehen). */
+  mitDirGeteilt?: { id: string; anzeigename: string; bereichName: string; adresse: string; besitzerName: string; zustand: PostfachOeffentlich['zustand'] }[];
 }
 
 export interface Ergebnis<T = Record<string, unknown>> { status: number; d: T & { ok?: boolean; fehler?: string; code?: string; text?: string } }
@@ -41,6 +55,10 @@ export async function senden<T = Record<string, unknown>>(url: string, body: unk
 }
 
 export const aktion = (id: string, a: string, extra: Record<string, unknown> = {}) => senden<{ text?: string }>('/api/inbox', { aktion: a, id, ...extra });
+/** Übergabe-Aktion (zurueck · erledigt · wieder · kuemmert · aktualisieren) bzw. `uebergeben` (mit `gespraech`, `an`). */
+export const uebergabeAktion = (a: string, extra: Record<string, unknown>) => senden<{ text?: string; id?: string }>('/api/inbox/uebergaben', { aktion: a, ...extra });
+/** „Wer kümmert sich“ (Team-Postfach, WhatsApp) — mit dem gesehenen Stand (409 bei fremder Änderung). */
+export const kuemmern = (id: string, wer: string | null, stand: string) => senden<{ text?: string; stand?: string; konflikt?: boolean }>('/api/inbox', { aktion: 'kuemmert', id, wer, stand });
 
 /** „vor 5 Min.“, „3 Std.“, „gestern“, „Mo“, „12.10.“ (rein). */
 export function zeitKurz(iso: string, jetzt = Date.now()): string {

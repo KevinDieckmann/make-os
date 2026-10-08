@@ -295,6 +295,10 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'imap-stand--*', muster: /^imap-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'imap-text--*', muster: /^imap-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
   { name: 'inbox-zustand--*', muster: /^inbox-zustand--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: inboxZustandOhne, zaehlen: (cur, m) => inboxZustandOhne(cur, m).n },
+  // Inbox teilen (08.10.): Übergaben (Kopien) — eine Übergabe, die die Person nennt, fällt ganz weg (das Original bleibt im Postfach der
+  // übergebenden Person, dort räumt der Spiegel-Eintrag oben); der gemeinsame Zustand der Team-Postfächer wie der Inbox-Zustand je Person.
+  { name: 'inbox-uebergaben--*', muster: /^inbox-uebergaben--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('uebergaben') },
+  { name: 'inbox-geteilt--*', muster: /^inbox-geteilt--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: inboxZustandOhne, zaehlen: (cur, m) => inboxZustandOhne(cur, m).n },
   // WhatsApp Business (07.10.): Spiegel der Business-Nummer — Nachrichten mit einer Nummer der Person bzw. die sie nennen raus; bei Meta
   // liegen Nachrichten höchstens 30 Tage (kein „dort löschen“). Medien dieser Nachrichten löscht der nächste Takt (Dateien ohne Nachricht).
   { name: 'whatsapp-spiegel', muster: /^whatsapp-spiegel$/, behandlung: 'entfernen', wirkung: (cur, m) => waOhnePerson(cur, m, nenntPerson), zaehlen: (cur, m) => waZaehlen(cur, m, nenntPerson) },
