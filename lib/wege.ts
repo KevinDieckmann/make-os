@@ -166,7 +166,11 @@ export const WEG = {
    * Meilensteine als geordnete Kette (mit Abhängigkeiten), „+ Meilenstein zu diesem Ziel“, Beschreibung. Alle Horizonte.
    */
   ziel: (id: string) => `/os/planung/ziel/${encodeURIComponent(id)}`,
-  agenten: () => '/os/agenten',
+  /**
+   * Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“, AGENTEN_KONZEPT.md C2): ohne Angabe ZOE mit Überblick; `h` = Head (Katalog-Kennung),
+   * `f` = Thread (`fd-…`). Links auf Heads/Threads/Läufe NUR hierüber (Pakete 1–3); die Seite liest beides (Paket 2).
+   */
+  agenten: (o: { h?: string; f?: string } = {}) => q('/os/agenten', { h: o.h, f: o.f }),
   /** ZOE › Freigaben (08.10.): ohne Angabe „Offen“; `protokoll` = was ZOE getan hat (Rückgängig), Gedächtnis, Wissen. */
   freigaben: (t?: FreigabenReiter) => q('/os/stapel', { t: t === 'protokoll' ? t : undefined }),
   /** Brain (05.10.): die Seite bzw. eine Notiz im Lesefenster (`?n=` — Kennung relativ zum Vault, wie /api/zoe/wissen sie liefert). */

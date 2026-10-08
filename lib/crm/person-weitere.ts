@@ -338,6 +338,14 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'agent-log', muster: /^agent-log$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'client-fehler', muster: /^client-fehler$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'meldungen--*', muster: /^meldungen--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // Agenten-Bereich und Medien unterwegs (08.10. spät, Paket 0 „Vertrag“): Threads, Werkstatt, Hintergrundaufgaben, Medien-Metadaten können
+  // Dritte nennen — getilgt, der Eintrag bleibt (lib/agenten/typen.ts). Die Pakete 1/3/5 brauchen hier nichts mehr.
+  { name: 'agenten-faeden--*', muster: /^agenten-faeden--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'agenten-skills--*', muster: /^agenten-skills--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'agenten-skills-privat--*', muster: /^agenten-skills-privat--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'agenten-plan--*', muster: /^agenten-plan--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'medien--*', muster: /^medien--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'medien-privat--*', muster: /^medien-privat--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Übergabe-Journal (03.10., netz-recht): Kennungen der Person in `kontaktIds` → „[gelöscht]“, der Nachweis der Übergabe bleibt.
   { name: 'uebergabe-journal--*', muster: /^uebergabe-journal--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.

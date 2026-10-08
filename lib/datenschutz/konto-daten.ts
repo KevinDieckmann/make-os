@@ -61,6 +61,14 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   // ZOE auf WhatsApp (08.10.): der Kanal der Person (Nummer, Nachweise, Sprachnachrichten-Liste) — IMMER mit Suffix; die Dateien der
   // Sprachnachrichten entfernt `kontoLoeschen` vorher (Schritt 2c).
   { basis: 'zoe-kanal', nurMitSuffix: true },
+
+  // Agenten-Bereich und Medien unterwegs (08.10. spät, Paket 0 „Vertrag“; lib/agenten/typen.ts): Threads, Werkstatt der Privat-Heads,
+  // Hintergrundaufgaben und private Medien gehören der Person — IMMER mit Suffix (die Haushalts-Bestände heißen anders:
+  // `agenten-skills--<haushalt>`, `medien--<haushalt>`). Die Dateien der privaten Medien entfernt Paket 5 beim Konto-Löschen vorher.
+  { basis: 'agenten-faeden', nurMitSuffix: true },
+  { basis: 'agenten-skills-privat', nurMitSuffix: true },
+  { basis: 'agenten-plan', nurMitSuffix: true },
+  { basis: 'medien-privat', nurMitSuffix: true },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */
@@ -95,6 +103,10 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'team--*': 'Team je Haushalt — der Eintrag des Kontos fällt beim Löschen weg',
   'uebergabe-journal--*': 'Übergaben an Kunden (Kartei)',
   'zoe-chargen--*': 'ZOE-Chargen je Haushalt (nur Kennungen)',
+  // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): Bestände je HAUSHALT — Export/Löschen der eigenen Einträge baut das jeweilige Paket.
+  'agenten-skills--*': 'Werkstatt der Heads je Haushalt (Skills, eigene Mitarbeiter, Gedächtnis) — im Export die selbst angelegten/freigegebenen, beim Löschen Speichername „[gelöscht]“ (Paket 3)',
+  'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt (keine Inhalte) — beim Löschen Speichername „[gelöscht]“ (Paket 4)',
+  'medien--*': 'Business-Medien je Haushalt — im Export die selbst aufgenommenen, beim Löschen bleibt das Medium mit `von` „[gelöscht]“ (Paket 5)',
 };
 
 const PERSON = /^[a-z0-9-]{1,40}$/;

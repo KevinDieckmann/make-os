@@ -18,6 +18,8 @@ import { KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 export { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurInhaber, istInhaber, inhaberSpeicher, personImHaushaltDesInhabers } from './haushalt-inhaber';
 export { istDienst, istZulieferer } from './dienst';
 export { personStreng, haushaltVon, privatFinanzZugang, planZugangVon } from '@/lib/finanzen/haushalt/zugriff';
+// Nur die Person selbst (Sitzung, Haushalt des Inhabers, Dienstweg 403) — liefert `{ person }` oder die fertige 403-Antwort.
+export { eigenePerson } from '@/lib/google/zugang';
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 

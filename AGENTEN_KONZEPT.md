@@ -617,3 +617,72 @@ Paket 0 legt alles an, was mehrere Pakete berühren, damit danach **jede Datei g
 10. **Gesundheit:** Laut Leitbild ist Malin Gesundheits-Beauftragte. Soll das eine **Instanz-Einstellung** werden, also eine zuständige Person je Head wie bei der Markttraktion? Nie fest im Code.
 11. **Löschfrist der Threads:** 12 Monate nach der letzten Nachricht (Vorschlag) oder unbegrenzt bis zum Löschen von Hand?
 12. **AI_CEO_MODUL.md D3.3** auf „direkt mit Heads und Mitarbeitern sprechen“ umstellen?
+
+## C11 · Vertrag (Paket 0) — Dateien je Paket
+
+**Stand:** 09.10.2026, Branch `agenten-vertrag` (Basis `nach-upload`). C11 ersetzt die Spalte „Gehört dem Paket“ der Tabelle in C8; wo
+C11 und C8/C4 abweichen, gilt C11. Kevins Antworten 1–16 (ENTSCHEIDUNGEN_FRAGEBOGEN.md) gehen beidem vor.
+
+### Was Paket 0 festlegt
+- **`lib/agenten/typen.ts`** — die EINE Stelle für Typen, Bestandsnamen, Grenzen und die Form der Schnittstellen (Anfragen und Antworten
+  aller Agenten-Routen). Rein und client-sicher. **Nur additiv ändern** (neue optionale Felder, neue Union-Glieder) — nie umbenennen.
+- **`lib/agenten/katalog.ts`** — Kevins Auswahl als neutrale Daten: 11 Business-Heads (Sales, Marketing, Event, Finance, IT/Betrieb,
+  Operations, Kundenerfolg, Strategie/CEO-Office, Produkt, Recht & Datenschutz, Research) und 5 Privat-Heads (Gesundheit & Sport, Ernährung
+  & Einkauf, Familie & Partnerschaft, Finanzen privat, Persönliche Assistenz), je Head 1–5 Mitarbeiter-Vorlagen (zuerst ausgestattet:
+  Marketing, Sales, Finance). Werkzeuge je Head als ausdrückliche Liste aus dem ZOE-Register, KI-Kategorien, Ton, Farb-Token, Kennzahlen,
+  eingebaute Skills (= vorhandene Modi), Voraussetzungen. Kennungen nie ändern.
+- **`lib/agenten/skills-lesen.ts`** — Lese-Schnittstelle der Werkstatt (Stub): `skillsFuerHead` (→ `[]`), `skillLesen`, `mitarbeiterFuerHead`
+  (→ Vorlagen aus dem Katalog), `gedaechtnisFuer`, `einstellungFuer`. Paket 3 füllt sie, die Signaturen bleiben — Paket 1 baut dagegen.
+- **Routen-Stubs (501)** mit Tor-Zeile: `app/api/agenten` (GET), `agenten/faden` (GET/POST), `agenten/faden/lauf` (POST, Dienstweg MIT
+  Person), `agenten/skills` (GET/POST), `agenten/laeufe` (GET/POST), `medien` (GET/POST). Alle Personen-Routen über `eigenePerson`
+  (Re-Export in `lib/zugang/tor.ts`): nur die Person selbst, Dienstweg 403, keine Personen-Parameter.
+- **Register:** Routen (`lib/zugang/routen-register.ts`), Bestände mit Angaben (`lib/crm/speicher-register.ts`), Art. 17 tilgen und Art. 15
+  zählen (`lib/crm/person-weitere.ts` — `weitereAufzaehlen` nimmt die Bestände damit auch in die Kontakt-Auskunft), Konto-Export/-Löschen
+  (`lib/datenschutz/konto-daten.ts`), `StapelArt` + `skill`/`mitarbeiter`/`merksatz` (`lib/zoe/stapel.ts`), `WEG.agenten({ h, f })` (`lib/wege.ts`).
+- **Fixture** `tests/fixtures/agenten-api.ts` (Heads, Überblick, Threads mit „gesendet/Bericht“, Läufe, Als Nächstes, Skills, Medien — erfunden,
+  neutral, typgeprüft) und **Wächter** `tests/agenten-vertrag.test.ts`.
+
+### Entscheidungen in Paket 0 (Abweichungen von C4/C8)
+1. **Werkstatt statt nur Skills:** `agenten-skills--<haushalt>` (Heads der Ebene Haushalt: alle Business-Heads, Familie) und
+   `agenten-skills-privat--<person>` (Privat-Heads je Person) tragen `WerkstattBestand` = Skills + eigene/geänderte Mitarbeiter + Gedächtnis
+   der Heads (das der Mitarbeiter steht am Mitarbeiter). **Zwei verschiedene Namen**, weil Konto-Löschen `<basis>--<speicher>` ganz entfernt —
+   ein Haushalt, der zufällig wie eine Person heißt, verlöre sonst seine Skills. Welcher Bestand: `werkstattBestandFuer(ebene, umfang)`.
+2. **Hintergrundaufgaben:** „jetzt“ = Thread (`POST /api/agenten/faden` mit `hintergrund: true`, Paket 1); „geplant/wiederkehrend“ = neuer
+   Bestand `agenten-plan--<person>` (`POST /api/agenten/laeufe` `planen`, Paket 3). Deshalb hat `laeufe` auch POST (abbrechen, neu starten).
+3. **EIN Lauf-Name in der Warteschlange:** `faden` (`LAUF_AGENT`) für Mitarbeiter-, Skill- und Plan-Läufe; die `eingabe` ist ein `LaufAuftrag`,
+   eingereiht mit `auftrag: JSON.stringify(…)` (der Arbeiter reicht Agenten nur den Text weiter). Ausgeführt wird nur über
+   `/api/agenten/faden/lauf` (Paket 1) — Paket 3 reiht nur ein. `lib/zoe/agenten.ts` gehört damit allein Paket 1.
+4. **Mitarbeiter-Ids** sind im ganzen Katalog eindeutig (`<head>-<rolle>`); selbst angelegte heißen `ma-<uuid>`. Ein Mitarbeiter, der über
+   `auchFuer` aushilft, arbeitet im Thread mit `headId` des Heads, dem er hilft (Daten, Kategorien, Werkzeuge = Schnittmenge, Paket 1).
+5. **Werkzeuge** stehen je Head ausdrücklich im Katalog (nicht ganze Gruppen); die Agenten-Werkzeuge (`HEAD_WERKZEUGE`: `skill_laden`,
+   `an_mitarbeiter`, `merksatz_vorschlagen`, `skill_vorschlagen`, `mitarbeiter_vorschlagen`) zählen in die Grenze 20 mit. Mitarbeiter bekommen
+   nur `skill_laden` und `merksatz_vorschlagen` (Tiefe ≤ 2).
+6. **Head of IT** hat einen Chat über dem Lagebild (Antwort 2, Kontext `hoi`) — das Lagebild selbst bleibt ohne KI, nie Personen.
+7. **Familie:** die KI-Kategorie `familie` fehlt im KI-Tor — vorerst `allgemein` (+ Kalender, Aufgaben), als `offen` im Katalog (Paket 4).
+8. **Ernährung** trägt `gesundheit` nur als `kategorienMitEinwilligung` (wie die Ernährungs-Routen heute); Head Gesundheit braucht (a)+(b).
+9. **Modell-Anbieter:** nur das Feld `anbieter` (Antwort 14); ausgeführt wird bis zum Anbieter-Tor ausschließlich über `askText`.
+10. **Einstellungen schreiben** (Modell/Aufwand, Budget, Autonomie, Not-Aus, zuständige Person) → Paket 4 mit eigener Methode/Route und
+    Register-Eintrag; gelesen wird schon jetzt über `einstellungFuer` (Vorgabe).
+11. **Medien unterwegs** (Nachtrag): `medien--<haushalt>` (Business) und `medien-privat--<person>` (Privat) — Typ `Medium` ist ein Entwurf,
+    die Richtungsfragen (Speicherort, Ordnung, Recht am Bild, Videogrößen) klärt die Fragerunde.
+
+### Dateien je Paket (jede Datei gehört genau einem Paket)
+
+| Paket | Branch | Gehört dem Paket (nur dieses Paket ändert sie) | Liest nur |
+|---|---|---|---|
+| **0 · Vertrag** | `agenten-vertrag` | `lib/agenten/typen.ts`, `lib/agenten/katalog.ts`; die Agenten-Einträge in `lib/zugang/routen-register.ts`, `lib/zugang/tor.ts` (Re-Export `eigenePerson`), `lib/crm/speicher-register.ts`, `lib/crm/person-weitere.ts`, `lib/datenschutz/konto-daten.ts` (`PERSON_BESTAENDE`, `NICHT_PERSOENLICH`), `lib/zoe/stapel.ts` (`StapelArt`), `lib/wege.ts` (`WEG.agenten`); `tests/agenten-vertrag.test.ts`, `tests/fixtures/agenten-api.ts` | — |
+| **1 · Kern** | `agenten-kern` | neu: `lib/agenten/{sicht,faeden,faeden-server,kontext,gespraech,delegation,werkzeuge}.ts`; `app/api/agenten/route.ts`, `app/api/agenten/faden/route.ts`, `app/api/agenten/faden/lauf/route.ts` (Stubs ersetzen); `lib/zoe/agenten.ts` (`faden` in `AUSFUEHRBAR` + `SYSTEM_LAEUFE` + `AGENT_ZWECK` + Fall → `/api/agenten/faden/lauf`, Hintergrund-Kopf); `lib/meldungen/*` (Glocken-Art `agenten`, Text neutral); Tests `agenten-sicht`, `agenten-ki-tor`, `agenten-freigabe`, `agenten-faeden`; Saat-Marke für `agenten-faeden--<person>` in `tests/messlatte-malin.test.ts` | `typen`, `katalog`, `skills-lesen` (Signaturen), Stapel `lege()` mit den neuen Arten |
+| **2 · Oberfläche** | `agenten-seite` | `components/os/agenten/**`, `app/os/agenten/page.tsx`; arbeitet gegen `tests/fixtures/agenten-api.ts`, ZOE-Mitte vorerst über `/api/kimmi`; Tests `agenten-oberflaeche`, `agenten-plattform` | `typen`, `katalog`, `WEG.agenten`, Fixture |
+| **3 · Skills, Läufe, Als Nächstes** | `agenten-skills` | neu: `lib/agenten/{skills,skills-server,laeufe,naechstes,zeitplan,plan-server}.ts`; `lib/agenten/skills-lesen.ts` (Stub füllen, Signaturen bleiben); `app/api/agenten/skills/route.ts`, `app/api/agenten/laeufe/route.ts`; `lib/zoe/stapel-arten.ts` (Freigabe `skill`/`mitarbeiter`/`merksatz`); `lib/zoe/takt.ts` (eine Zeile Skill-/Plan-Zeitpläne, `faden` in `KI_LAEUFE`); Export/Löschen des Speichernamens in `agenten-skills--*` (`kontoExport`/`kontoLoeschen` in `lib/datenschutz/konto-daten.ts` — nur diese beiden Funktionen); Tests `agenten-skills`, `agenten-laeufe`, `agenten-naechstes`; Saat-Marken für `agenten-skills-privat--<person>`, `agenten-plan--<person>` | `typen`, `katalog`; Threads nur lesend über `fadenBestand` (Lesemodell `Lauf`) |
+| **5 · Medien unterwegs** | `medien-unterwegs` | neu: `lib/medien/**`, `components/os/medien/**` (+ ggf. `app/os/medien/**`); `app/api/medien/route.ts`; Ordner `medien` in `BILD_ORDNER` (`lib/store/datei-huelle.mjs` + `.d.mts`) samt Register-Eintrag der Dateien (eine Zeile im Agenten-Block von `lib/crm/speicher-register.ts`); Dateien beim Konto-Löschen (`kontoLoeschen`, eigener Schritt) | `typen` (`Medium`), `katalog` (`anHeads`) |
+| **4 · Verdrahtung** | nacheinander | `app/api/kimmi/route.ts` (`an_head`, `head_fragen`, Heads statt `agentRoster`), `lib/agenten/schleife.ts`, Streaming (`lib/anthropic.ts`), ZoePanel/Empfang auf Threads, Einstellungen schreiben, KI-Kategorie `familie`, Plattform-Schulden A13, `AI_CEO_MODUL.md` D3.3 | alles |
+
+**Berührungspunkte (bewusst klein, Merge-Reihenfolge 1 → 3 → 5 → 2):**
+- `tests/messlatte-malin.test.ts`: Paket 1 und 3 hängen je einen eigenen Saat-Block an (verschiedene Zeilen).
+- `lib/datenschutz/konto-daten.ts`: Paket 3 und 5 ändern verschiedene Funktionen; `PERSON_BESTAENDE`/`NICHT_PERSOENLICH` stehen schon.
+- `lib/make-one/seiten.ts` und `lib/wege.ts`: nur Paket 5, falls Medien eine eigene Seite bekommt (die Agenten-Seite gibt es schon).
+- Braucht ein Paket eine neue Route, Methode oder einen neuen Bestand, ist das eine **Vertragsänderung**: im Bericht nennen, nicht still
+  in fremde Register schreiben.
+
+**Offen nach Paket 0:** KI-Kategorie `familie` (Schalter, ggf. Einwilligung) · Anbieter-Tor für andere Modelle · Löschfrist der Threads
+(C10 Frage 11) · zuständige Person für Gesundheit als Instanz-Einstellung (C10 Frage 10) · Medien-Richtungsfragen · Einstellungen schreiben.

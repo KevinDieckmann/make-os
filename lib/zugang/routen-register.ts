@@ -223,6 +223,15 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'telegram/eingang': r('GET,POST', 'dienst', 'Bote (Telegram) — nur der Dienstweg.'),
   'telegram/koppeln': r('GET,POST,DELETE', 'person', 'Eigene Telegram-Kopplung der Person.'),
   'jarvis/[...pfad]': r('GET,POST,PUT,PATCH,DELETE', 'offen', 'Nur 308-Weiterleitung von /api/jarvis/* nach /api/zoe/* — das Ziel prüft selbst; liest/schreibt nichts.'),
+  // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“, AGENTEN_KONZEPT.md C11): Threads, Skills, Läufe gehören der PERSON; welche Heads sie
+  // sieht, filtert der Server (lib/agenten/sicht.ts: Business nur im Haushalt des Inhabers, Privat nur eigene bzw. Familie für volle
+  // Mitglieder, „nur Business“ nie Privat, Gesundheit nur mit Einwilligung). Methoden stehen fest — die Pakete 1/3/5 ändern hier nichts.
+  'agenten': r('GET', 'person', 'Heads und Überblick der Person, serverseitig gefiltert — nur die Person selbst (eigenePerson, Dienstweg 403), keine Personen-Parameter (Paket 1).'),
+  'agenten/faden': r('GET,POST', 'person', 'Eigene Threads mit ZOE, Heads und Mitarbeitern lesen und schreiben; Verlauf nur aus dem Bestand der Person — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 1).'),
+  'agenten/faden/lauf': r('POST', 'dienst', 'Arbeiter führt einen Thread-Lauf (Mitarbeiter, Skill, geplante Hintergrundaufgabe) aus — nur Dienstweg MIT Person aus dem Haushalt des Inhabers (sonst 401/403), gerechnet für die auslösende Person (Paket 1).'),
+  'agenten/skills': r('GET,POST', 'person', 'Skills, eigene Mitarbeiter und Gedächtnis der sichtbaren Heads lesen und pflegen (Testlauf, aktivieren, SKILL.md) — nur die Person selbst (eigenePerson, Dienstweg 403); Agenten-Vorschläge nur über den Stapel (Paket 3).'),
+  'agenten/laeufe': r('GET,POST', 'person', 'Hintergrundaufgaben (Läuft/Fertig/Fehler, nur eigene und Systemläufe), „Als Nächstes“ und geplante Aufgaben anlegen, abbrechen, neu starten — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 3).'),
+  'medien': r('GET,POST', 'person', 'Medien unterwegs (Bilder/Videos): Business des Haushalts, Privat nur eigene; hochladen, ordnen, fürs Marketing freigeben nur per Klick — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 5).'),
 
   // ── Gesundheit, Familie, Persönliches ──────────────────────────────────────────────────────────────────────
   'gesundheit/index': r('GET,POST', 'person', 'Gesundheits-Index je Person; fremde nur mit Freigabe (darfGesundheitSehen).'),

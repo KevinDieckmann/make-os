@@ -226,6 +226,46 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   T('agent-log', 'Agenten-Log — Titel/Texte getilgt (Art. 17 Kontakt); je Lauf optional `person` (wer ihn ausgelöst hat, 08.10.): gelesen nur eigene + Systemläufe, Konto löschen nimmt die Läufe der Person heraus.'),
   T('client-fehler', 'Fehlermeldungen der Oberfläche — getilgt, falls sie die Person nennen.'),
   T('meldungen--*', 'Glocke je Person — Texte getilgt.'),
+  // ── Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“; Namen: lib/agenten/typen.ts, AGENTEN_KONZEPT.md C4/C11) ──
+  // Threads, Skills, Hintergrundaufgaben können Text Dritter tragen (Kontaktnamen, Mails, Web) → Art. 17 tilgt Nennungen (person-weitere.ts),
+  // der Eintrag bleibt. Bestände je Person gehören zu Konto-Export/-Löschen (lib/datenschutz/konto-daten.ts PERSON_BESTAENDE).
+  mit(T('agenten-faeden--*', 'Threads je Person mit ZOE, Heads und Mitarbeitern (Nachrichten, Berichte, Lauf-Fortschritt, Kosten) — auch Business-Threads gehören der Person (Antwort 13); Nennungen Dritter getilgt, der Thread bleibt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); Daten Dritter darin Art. 6 Abs. 1 lit. f (eigene Arbeit organisieren); Gesundheitswerte nur über die Art.-9-Wege mit Einwilligung (b)',
+    art15: 'die Person sieht ihre Threads im Agenten-Bereich; Konto › Meine Daten exportiert den Bestand; Kontakte: die Auskunft nennt Threads, die sie nennen',
+    loeschfrist: 'bis die Person den Thread bzw. ihr Konto löscht; eine automatische Frist (Vorschlag 12 Monate nach der letzten Nachricht) ist offen (AGENTEN_KONZEPT.md C10 Frage 11)',
+  }),
+  mit(T('agenten-skills--*', 'Werkstatt der Heads je Haushalt (Business-Heads, Familie): Skills (Anleitung, Beispiele, Tests, Erfolgsquote), eigene Mitarbeiter, Gedächtnis (Merksätze) — wer angelegt/freigegeben hat (Speichername); Anleitungen können Dritte nennen → getilgt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die Arbeitsweise der Agenten des Haushalts festhalten',
+    art15: 'jedes Mitglied sieht die Skills der Heads, die es sehen darf (Agenten-Bereich); Konto › Meine Daten exportiert die eigenen Einträge (angelegt/freigegeben)',
+    loeschfrist: 'solange der Skill bzw. Mitarbeiter besteht; beim Konto-Löschen wird der Speichername „[gelöscht]“ (Paket 3)',
+  }),
+  mit(T('agenten-skills-privat--*', 'Werkstatt der Privat-Heads je Person: Skills, eigene Mitarbeiter, Gedächtnis — nur die Person selbst sieht sie.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); Gesundheitsbezug nur mit Einwilligung (b)',
+    art15: 'die Person sieht und exportiert sie (Agenten-Bereich, Konto › Meine Daten)',
+    loeschfrist: 'bis die Person sie bzw. ihr Konto löscht (Konto löschen entfernt den Bestand)',
+  }),
+  mit(T('agenten-plan--*', 'Geplante und wiederkehrende Hintergrundaufgaben je Person (Auftragstext, Zeitplan, Kostengrenze) — Nennungen Dritter getilgt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson)',
+    art15: 'die Person sieht ihre Aufgaben unter „Hintergrund“ im Agenten-Bereich; Konto › Meine Daten exportiert den Bestand',
+    loeschfrist: 'bis die Person die Aufgabe bzw. ihr Konto löscht',
+  }),
+  mit(H('agenten-einstellung--*', 'Einstellungen der Heads je Haushalt: an/aus, Modell, Aufwand, Budget, Autonomie-Stufe, Not-Aus, zuständige Person (Speichername) — keine Inhalte, keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Betrieb der Software im Haushalt',
+    art15: 'jedes Mitglied sieht die Einstellungen der Heads, die es sehen darf; der eigene Speichername (zuständig, Not-Aus) steht im Konto-Export',
+    loeschfrist: 'solange die Instanz läuft; beim Konto-Löschen wird der Speichername „[gelöscht]“ (Paket 4)',
+  }),
+  // Medien unterwegs (08.10. spät, Nachtrag Kevin; Paket 5): Metadaten der Bilder/Videos — die Dateien selbst liegen verschlüsselt in der
+  // Bild-Ablage (lib/store/bild-ablage.ts; Ordner trägt Paket 5 in BILD_ORDNER ein). Bilder können Personen zeigen (Recht am Bild).
+  mit(T('medien--*', 'Medien des Business je Haushalt (Bild/Video-Metadaten: wer, wann, Bezug Event/Kontakt/Firma, Freigabe fürs Marketing, an welche Heads) — Bezüge auf eine Person getilgt; die Dateien liegen verschlüsselt in der Bild-Ablage.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Dokumentation und Öffentlichkeitsarbeit des Business); Veröffentlichung erkennbarer Personen nur mit Einwilligung bzw. nach KUG — Freigabe nur per Klick',
+    art15: 'Mitglieder sehen die Business-Medien (Agenten-Bereich/Medien); Kontakte: die Auskunft nennt Medien mit Bezug auf sie',
+    loeschfrist: 'bis zum Löschen von Hand; Frist je Medium offen (Richtungsfragen Paket 5)',
+  }),
+  mit(T('medien-privat--*', 'Private Medien je Person (Bild/Video-Metadaten) — nur die Person selbst sieht sie; Bezüge auf Dritte getilgt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson)',
+    art15: 'die Person sieht und exportiert sie (Medien, Konto › Meine Daten)',
+    loeschfrist: 'bis die Person sie bzw. ihr Konto löscht (Konto löschen entfernt Bestand und Dateien — Paket 5)',
+  }),
   // ── Paket D-C (29.09.) ──
   T('absichten--*', 'Absichtsprotokoll (lib/store/absichten.ts) — andere Absichten getilgt; die eigene Art.-17-Absicht behält Name/Adressen bis zum letzten Schritt, beim Abschluss werden die Daten geleert (fertige nach 30 Tagen weg).'),
   // ── Kalender (29.09., K4) ──

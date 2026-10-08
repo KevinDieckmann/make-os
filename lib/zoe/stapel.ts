@@ -26,6 +26,7 @@ import { localDay } from '@/lib/zeit';
 import { entscheidungEintrag, haltFest, type EntscheidungArt } from './entscheidungen';
 import type { Person } from './raum';
 import { neueKennung } from '@/lib/kennung';
+import type { AgentenStapelArt } from '@/lib/agenten/typen';
 
 export type VorschlagStatus = 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
 /** Status, die noch nicht entschieden sind — sie werden nie gekürzt. */
@@ -36,8 +37,10 @@ export const ANSPRUCH_MS = 10 * 60_000;
 /**
  * Arten von Vorschlägen mit eigenem Bezug (28.09., C4). Neue Art: hier ergänzen und in lib/zoe/stapel-arten.ts
  * ihre Freigabe eintragen — der Stapel (Route, Ansicht) behandelt dann alle Arten gleich.
+ * Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): `skill` · `mitarbeiter` · `merksatz` (lib/agenten/typen.ts) — anlegen tut Paket 1
+ * (Head-Chat), die Freigabe baut Paket 3 in stapel-arten.ts; bis dahin ist eine Freigabe dieser Arten 409 (unbekannte Art).
  */
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender';
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {
