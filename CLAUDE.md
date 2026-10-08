@@ -577,8 +577,12 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   Kennzahl (alle Sichten oder eine Firma), Jahresziele je Firma, Verlauf 90 Tage.
 
 ## Business-Modell, Privat-Index, Steuern (seit 25.09.2026, online)
-- **Alles unter Zahlen** (`components/os/FinanzenView.tsx`): Privat · Business · Steuern · Gesamt ·
-  Head of Finance. Business = Cockpit (`BusinessCockpit eingebettet`); `/os/business` leitet um.
+- **Finanzen in zwei Ebenen (08.10., Aufräumen Etappe 2; bis dahin „Alles unter Zahlen“)** (`components/os/FinanzenView.tsx`, Aufbau NUR in
+  `lib/finanzen/navigation.ts`): Bereich aus `?space=` → Reiter → Kopf-Schalter („Alles“ = Privat; ohne Haushalt Business). Privat: Überblick
+  (inkl. Gesamt `#gesamt`) · Konten & Buchungen (Ebene 2) · Planung (Blätter als EINE Pillenreihe, `blaetterFuer`; Altbestand unter
+  Selbstständigkeit) · Steuern. Business: Überblick (Cockpit · Controlling & Ziele) · Rechnungen & Zahlungen · Liquidität · Buchungen · Planung ·
+  Steuern. Head of Finance = Knopf. Keine Nebenseiten unter app/os/finanzen — neue Finanz-Ansicht = Reiter/Ebene 2 dort, nie eine dritte Ebene,
+  nie eine eigene Seite; alte Adressen nur in `next.config.mjs` (Wächter `tests/aufraeumen-etappe2.test.ts`). Links nur über `WEG`.
 - **Gemeinsamer Kern** `lib/kennzahlen/kern.ts` (Punkte, Ampel, Gewichte, Details) — Business-Index
   und Privat-Index rechnen damit. Neue Indizes: Register + Messungen, nie eigene Punkte-Logik.
 - **Jede Kennzahl liefert `details`** (2–3 Punkte mit `href`) — alle Links über `lib/wege.ts` (WEG),
