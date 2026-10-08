@@ -21,7 +21,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual, Quelle } from './typen';
 import type { MarketingQuelle } from './scoring';
 import { OFFENE_STUFEN, gesamtwert } from './pipeline';
-import { haeltBeziehung } from './team';
+import { haeltBeziehung, verantwortlich } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, scoringKontext, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
@@ -192,7 +192,8 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
       ...(d ? { deal: { id: d.id, titel: d.titel, stufe: d.stufe, wert: Math.round(gesamtwert(d)), offen } } : {}),
       ...(letzter ? { letzterKontakt: letzter } : {}),
       ...(schritt ? { naechsterSchritt: { ...schritt.naechsterSchritt!, bei: anzeigename(schritt) } } : {}),
-      besitzer: haupt ? haeltBeziehung(haupt) : 'kevin',
+      // Ohne Person die Sales-Verantwortung des Teams — kein fester Name (Plattform-Regel, 08.10.).
+      besitzer: haupt ? haeltBeziehung(haupt) : verantwortlich('sales'),
     };
   };
   const raus: LeadZeile[] = [];
