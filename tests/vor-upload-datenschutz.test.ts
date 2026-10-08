@@ -74,11 +74,15 @@ describe('2. ZOE-Grundauftrag ohne Persönliches', () => {
     expect(t).not.toMatch(/Firmen zu kaufen|Maschinen/);
   });
   it('feste Prompt-Texte in Gespräch, Empfang, Morgen-/Abendlauf und Tageslauf: keine Namen, keine Gesundheit, keine festen Firmen', () => {
-    for (const d of ['app/api/kimmi/route.ts', 'app/api/zoe/empfang/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/tageslauf/route.ts', 'lib/zoe/grundauftrag.ts']) {
+    for (const d of ['app/api/kimmi/route.ts', 'app/api/zoe/empfang/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/tageslauf/route.ts', 'app/api/fokus/route.ts', 'lib/zoe/grundauftrag.ts']) {
       const t = ohneKommentare(lies(d));
       const fund = t.split('\n').filter(z => VERBOTEN_IM_PROMPT.test(z));
       expect(fund, d).toEqual([]);
     }
+  });
+  it('die Agenten-Liste im ZOE-Prompt (agentRoster) nennt keine Person und keine Beschwerde', async () => {
+    const { agentRoster } = await import('@/lib/make-one/agents-data');
+    expect(agentRoster().split('\n').filter(z => VERBOTEN_IM_PROMPT.test(z) || /\bHaut\b/.test(z))).toEqual([]);
   });
   it('keine Personen-Weiche „wer nicht X ist, heißt Y“ mehr in Gespräch, Empfang, Morgenlauf, Haushalts-Werkzeugen', () => {
     for (const d of ['app/api/kimmi/route.ts', 'app/api/zoe/empfang/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/tageslauf/route.ts', 'lib/zoe/werkzeuge.ts']) {
