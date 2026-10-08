@@ -32,6 +32,10 @@
   (2, 75e5585e) + Kategorien-Fix — tsc 0, Agenten-/UI-Tests grün. Laufen (4): `medien` (5), `agenten-skills` (3), `markttraktion-w1` (Woche-1-Befunde, Basis
   nach-upload), `kontoauszug` (CAMT/CSV → Konten-Register, Basis nach-upload). Danach: Paket 4a (ZOE steuert Heads, Schleife, ≤ 20 Werkzeuge, Verlauf neutral,
   ZoePanel auf Threads) ∥ 4b (Einstellungen/Not-Aus/Budget 50 €, Vertragsergänzungen, Takt ohne Kürzel) → zweite Inhaberin + B1 → Plattform neutralisieren.
+- **Stand 09.10. ~02:00:** `agenten-nacht` = nach-upload + 0 + 6a + 1 Kern + 2 Oberfläche + 5 Medien (a1710c55) + 3 Skills (498fa9a6) → **0ff3187a**, tsc 0,
+  44 Agenten-/Medien-/ZOE-Testdateien (635 Tests) grün. Laufen (4): `markttraktion-w1`, `kontoauszug`, `zweite-inhaberin` (alle Basis nach-upload), `agenten-p4a`
+  (ZOE steuert Heads, Basis 0ff3187a). Wartet: 4b (Einstellungen/Not-Aus/Budget 50 €, Paket-3-Haken), 4c (Medien ↔ Heads, Nano Banana, Demo-Saat).
+  Offene Fragen der Pakete 1/2/3/5 → Morgen-Bericht (Familie-Leser „nur ich“, Pläne im gemeinsamen Raum, iOS-Kurzbefehl, Bucket-Adress-Stil, MOV-Prüfung am iPhone).
 - **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
   wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
   Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
