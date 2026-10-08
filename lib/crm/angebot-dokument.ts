@@ -45,13 +45,21 @@ export function empfaengerAus(k: { vorname?: string; nachname?: string; email?: 
 export interface DokumentPosition { nr: string; titel: string; text: string; menge: string; einzelpreis: string; rabatt?: string; betrag: string; basis: string }
 export interface DokumentSumme { label: string; wert: string; stark?: boolean; leise?: boolean }
 export interface AngebotDokument {
+  /**
+   * Art des Belegs für Kopf, Fuß und Dateititel (08.10., Rechnungen mit PDF — lib/finanzen/rechnung/dokument.ts): fehlt = „Angebot“.
+   * Dasselbe Gerüst (PDF und Vorschau) trägt so Angebot, Rechnung und Stornorechnung.
+   */
+  art?: string;
+  /** Überschrift über den Positionen — fehlt = „Angebot: <Titel>“. */
+  ueberschrift?: string;
   absender: AngebotAbsender;
   /** Kleine Zeile über dem Empfänger (Rücksendeangabe). */
   absenderZeile: string;
   empfaenger: string[];
   nummer: string;
   entwurf: boolean;
-  meta: { label: string; wert: string }[];
+  /** `fett` = diese Angabe hervorheben (fehlt: die Zeile „Angebot“). */
+  meta: { label: string; wert: string; fett?: boolean }[];
   titel: string;
   einleitung: string;
   positionen: DokumentPosition[];

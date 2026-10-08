@@ -59,7 +59,11 @@ import { elternOrdnen, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
-export interface RechnungKurz { id: string; firmaId?: string; mandatId?: string; status?: string; betrag?: number; bezahltAm?: string; datum?: string; faellig?: string }
+export interface RechnungKurz {
+  id: string; firmaId?: string; mandatId?: string; status?: string; betrag?: number; bezahltAm?: string; datum?: string; faellig?: string;
+  /** Rechnungen mit PDF (08.10., lib/finanzen/rechnung/): Verweise in Kartei/CRM, PDF in der Ablage, Storno-Bezug. */
+  kontaktId?: string; kundeFirmaId?: string; angebotId?: string; pdfDateiId?: string; art?: string; stornoZu?: string; stornoRechnungId?: string;
+}
 /** Eine Aufgabe (Speicher „tasks“) — nur, was die Prüfung braucht. */
 export interface AufgabeKurz {
   id: string; title: string; description?: string; projectId: string; status?: string; space?: 'privat' | 'business'; einheit?: string;
@@ -164,6 +168,10 @@ export const PRUEFUNGEN = {
   'rechnung-gesellschaft-tot': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung gehört', 'Rechnungen gehören')} zu keiner Gesellschaft im Finanzplan.` },
   'rechnung-bezahlt-ohne-datum': { schwere: 'warnung', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung ist', 'Rechnungen sind')} bezahlt, aber ohne Eingangsdatum.` },
   'rechnung-betrag': { schwere: 'warnung', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung hat', 'Rechnungen haben')} keinen Betrag über 0 €.` },
+  // Rechnungen mit PDF (08.10.): das festgeschriebene PDF muss in der Ablage liegen, Storno-Bezüge zeigen auf eine Rechnung, Verweise ins CRM.
+  'rechnung-pdf-fehlt': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'gestellte Rechnung verweist', 'gestellte Rechnungen verweisen')} auf ein PDF, das nicht in der Dateiablage steht — Sicherung prüfen (Aufbewahrungspflicht).` },
+  'rechnung-storno-tot': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung zeigt', 'Rechnungen zeigen')} als Storno bzw. Stornorechnung auf eine Rechnung, die es nicht gibt.` },
+  'rechnung-bezug-tot': { schwere: 'hinweis', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung verweist', 'Rechnungen verweisen')} auf eine Person, Firma oder ein Angebot, das es nicht mehr gibt (z. B. nach einer Löschung) — die Rechnung selbst bleibt (Aufbewahrungspflicht), Empfänger steht in ihr.` },
   'followup-kontakt-tot': { schwere: 'fehler', bereich: 'followup', reparierbar: true, art: 'followup', text: n => `${n} ${e(n, 'offenes Follow-up gilt', 'offene Follow-ups gelten')} einer Person, die es nicht mehr gibt — Reparieren sagt sie mit Grund ab.` },
   'followup-bezug-tot': { schwere: 'fehler', bereich: 'followup', reparierbar: true, art: 'followup', text: n => `${n} ${e(n, 'offenes Follow-up hängt', 'offene Follow-ups hängen')} an einem Deal, Mandat, Event oder einer Firma, die es nicht mehr gibt — Reparieren sagt sie mit Grund ab.` },
   'followup-alt-tot': { schwere: 'hinweis', bereich: 'followup', reparierbar: false, art: 'followup', text: n => `${n} ${e(n, 'abgeschlossenes Follow-up zeigt', 'abgeschlossene Follow-ups zeigen')} auf etwas, das es nicht mehr gibt — bleibt als Verlauf stehen.` },
@@ -429,11 +437,17 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   // Rechnungen
   if (rechnungen) {
     const gesellschaften = new Set(liste(b.finanzplan?.firmen));
+    const rechnungIdsAlle = new Set(rechnungen.map(r => r.id));
+    const ablageIds = b.dateien ? new Set(liste(b.dateien.eintraege).map(d => d.id)) : null;
     for (const r of rechnungen) {
       if (r.mandatId && !m.mandate.has(r.mandatId)) melde('rechnung-mandat-tot', r.id);
       if (r.firmaId && gesellschaften.size && !gesellschaften.has(r.firmaId)) melde('rechnung-gesellschaft-tot', r.id);
       if (r.status === 'bezahlt' && !r.bezahltAm) melde('rechnung-bezahlt-ohne-datum', r.id);
-      if (!(typeof r.betrag === 'number' && Number.isFinite(r.betrag) && r.betrag > 0)) melde('rechnung-betrag', r.id);
+      // Eine Stornorechnung (08.10.) ist negativ — das ist ihr Sinn, kein Befund.
+      if (r.art !== 'storno' && !(typeof r.betrag === 'number' && Number.isFinite(r.betrag) && r.betrag > 0)) melde('rechnung-betrag', r.id);
+      if ((r.stornoZu && !rechnungIdsAlle.has(r.stornoZu)) || (r.stornoRechnungId && !rechnungIdsAlle.has(r.stornoRechnungId))) melde('rechnung-storno-tot', r.id);
+      if ((r.kontaktId && !m.kontakte.has(r.kontaktId)) || (r.kundeFirmaId && !m.firmen.has(r.kundeFirmaId)) || (r.angebotId && !m.angebote.has(r.angebotId))) melde('rechnung-bezug-tot', r.id);
+      if (r.pdfDateiId && ablageIds && !ablageIds.has(r.pdfDateiId)) melde('rechnung-pdf-fehlt', r.id);
     }
   }
 

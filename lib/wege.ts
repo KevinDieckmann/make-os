@@ -10,7 +10,7 @@
 //     Privat    s=privat (Überblick, #index · #ruecklage · #gesamt) · s=privat&t=buchungen|einnahmen|analyse|fixkosten|plan|schulden
 //               (Konten & Buchungen; + monat, kat, q) · s=buchungen&space=privat (Buchungen der Selbstständigkeit) · s=finanzplanung · s=steuern
 //     Business  s=business (Überblick: &f=kdc|kdv &k=<Kennzahl> #abschluss · #einstellungen · #modell · #eroeffnung) · s=controlling
-//               · s=rechnungen (&r=<Rechnung> &z=<Zahlung>) · s=liquiditaet (&p=<Posten>, #kontostaende) · s=buchungen (&monat &kat &q &ort)
+//               · s=rechnungen (&r=<Rechnung> &z=<Zahlung> &re=<Rechnung im Editor>) · s=liquiditaet (&p=<Posten>, #kontostaende) · s=buchungen (&monat &kat &q &ort)
 //               · s=finanzplanung (&u=<Blatt>) · s=steuern (#fristen · #ruecklage · #ust · #uebergabe) · s=chef (Head of Finance, Knopf)
 //   Alte Adressen /os/finanzen/{planung,liquiditaet,buchungen,grundlage,dashboard}, /os/controlling, /os/finanzplan, /os/business
 //               leiten in next.config.mjs mit allen Parametern weiter.
@@ -81,6 +81,8 @@ export const WEG = {
   // 08.10. (Aufräumen Etappe 2): Rechnungen & Zahlungen, Liquidität, Buchungen, Controlling sind Reiter unter Finanzen › Business.
   rechnung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', r: id })),
   rechnungen: () => q('/os/finanzen', { s: 'rechnungen', space: 'business' }),
+  /** Rechnung schreiben (08.10.): öffnet den Rechnungs-Editor über Rechnungen & Zahlungen (`re` = Entwurf bzw. Rechnung). */
+  rechnungSchreiben: (id?: string) => q('/os/finanzen', { s: 'rechnungen', space: 'business', re: id }),
   zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', z: id })),
   planposten: (id?: string) => q('/os/finanzen', { s: 'liquiditaet', space: 'business', p: id }),
   kontostaende: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende'),

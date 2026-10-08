@@ -250,6 +250,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/finanzplan': r('GET,PUT,PATCH', 'finanz-privat', 'Finanzplan-Altweg (Firmen inkl. Privatkonto, Rechnungen) — Business-Sicht gibt es über /api/finanzplan.', undefined, 'Erststart (leerer Bestand → Startgerüst) und einmaliger Nachzug neuer Abschnitte (Produkte, Uhrwerk) — idempotent.'),
   'state/finance': r('GET,PUT,PATCH', 'haushalt', 'Controlling (Business-Ist) des Haushalts.'),
   'state/grundlage': r('GET,PUT', 'haushalt', 'Finanz-Grundlage — Privates wird beim Lesen herausgenommen.'),
+  // Rechnungen schreiben mit PDF (08.10.): Konto mit Haushalt des Inhabers; `finanzRecht: 'business'` sieht/schreibt nur Business-Gesellschaften.
+  'rechnung': r('GET,POST', 'finanz-business', 'Rechnungen mit Positionen und PDF (Entwurf, Stellen mit lückenloser Nummer, Stornorechnung, Mahnvorschläge, PDF-Download) im Finanzplan des Haushalts des Inhabers; Sicht aus dem Konto (planZugangVon) — Business-Konten nur Business-Gesellschaften (serverseitig gefiltert, fremde → 403/404); Stellen/Storno/Mahnung nie über den Dienstweg (403).'),
   'finanzplan': r('GET,PATCH', 'finanz-business', 'Finanzplanung je Haushalt mit Sicht aus dem Konto (Privat für business-Konten serverseitig gefiltert); Business-Sicht schreibt nur Business-Pfade und nie den privaten Teil (403, lib/finanzen/plan/business-schreiben.ts), Kennzahlen je Bereich mit dessen Arbeitsplan.'),
   'finanzplan/import': r('POST', 'finanz-privat', 'Import in die Finanzplanung des eigenen Haushalts — nur voller Zugang.'),
   'finanzplan/vorschlaege': r('GET', 'finanz-privat', 'Vorschläge aus CRM für die Finanzplanung des eigenen Haushalts.'),

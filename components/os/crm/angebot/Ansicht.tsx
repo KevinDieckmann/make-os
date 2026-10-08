@@ -8,6 +8,9 @@
 // neue Version (Entwurf mit Bezug) · PDF laden · Mail erneut öffnen.
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
+import { entwurfAnlegen } from '../../rechnung/daten';
 import type { Angebot } from '@/lib/crm/typen';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Knopf, Chip, feld } from '../../ui';
@@ -108,6 +111,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {a.status === 'angenommen' && deal && !hatMandat && !mandat && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
           {mandat && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{mandat}</span>}
           {a.status === 'angenommen' && hatMandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
+          {/* Angebot → Rechnung (08.10.): Entwurf mit den Positionen, Kunde, Mandat und Gesellschaft — gestellt wird im Editor. */}
+          {a.status === 'angenommen' && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
         </div>
         {ablehnen && (
           <div style={{ display: 'grid', gap: 8, marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
@@ -130,3 +135,15 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
 
 // Verweise (Kontakt, Deal, Versionen) dürfen umbrechen — lange Deal-Titel schoben sonst die Kopfzeile über den Rand.
 const link = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textDecoration: 'none', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' } as const;
+
+/** „Rechnung schreiben“ aus einem angenommenen Angebot — legt den Entwurf an (oder öffnet den offenen) und führt in den Rechnungs-Editor. */
+function RechnungAusAngebot({ angebotId, onFehler }: { angebotId: string; onFehler: (t: string) => void }) {
+  const router = useRouter();
+  return (
+    <Knopf leise onClick={async () => {
+      const e = await entwurfAnlegen({ quelle: 'angebot', angebotId });
+      if (!e.id) { onFehler(e.fehler ?? 'Rechnung nicht angelegt.'); return; }
+      router.push(WEG.rechnungSchreiben(e.id));
+    }}>Rechnung schreiben</Knopf>
+  );
+}

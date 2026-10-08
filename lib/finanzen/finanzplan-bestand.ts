@@ -13,6 +13,8 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { UG_NAME, EINHEITEN_UEBERSCHRIEBEN, firmaFuerGesellschaft, kontoName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { zuordnungName } from './haushalt/entflechtung';
 import { neueKennung } from '@/lib/kennung';
+import type { RechnungZusatz } from './rechnung/typen';
+import { zusatzSaeubern, serverFelderUebernehmen, FEST_MIT_PDF } from './rechnung/regeln';
 
 export interface Firma {
   id: string;
@@ -28,7 +30,11 @@ export interface Firma {
  * der Eintrag bleibt (mit Datum und Grund), zählt aber in Liquidität und Umsatz nicht mehr.
  */
 export type RechnungStatus = 'geplant' | 'gestellt' | 'bezahlt' | 'storniert';
-export interface Rechnung {
+/**
+ * Seit 08.10. (Rechnungen schreiben mit PDF, lib/finanzen/rechnung/) trägt eine Rechnung optional Positionen, Empfänger,
+ * Nummernlauf, PDF und Mahnungen (`RechnungZusatz`) — alle Felder optional, eine Rechnung ohne sie bleibt, wie sie war.
+ */
+export interface Rechnung extends RechnungZusatz {
   id: string;
   firmaId: string;
   /** Das Mandat, aus dem die Rechnung stammt (26.09.). */
@@ -160,6 +166,21 @@ export const SEED: FinanzplanFile = {
 /** Ein Datum oder gar nichts — spart die Wiederholung bei jedem Feld. */
 const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
+/**
+ * Die neuen Felder einer Rechnung (08.10., Rechnungen mit PDF) hinten anhängen — nur, wenn es welche gibt: eine Rechnung ohne sie
+ * bleibt Byte für Byte, wie sie war. Eine Stornorechnung (`art: 'storno'`) trägt negative Beträge (sonst kappt die Säuberung auf ≥ 0).
+ */
+function mitZusatz(roh: Partial<Rechnung>, basis: Rechnung): Rechnung {
+  const z = zusatzSaeubern(roh as Record<string, unknown>);
+  if (!Object.keys(z).length) return basis;
+  const r: Rechnung = { ...basis, ...z };
+  if (z.art === 'storno') {
+    r.betrag = -Math.abs(cent(roh.betrag));
+    if (roh.netto != null && isFinite(Number(roh.netto))) r.netto = -Math.abs(Math.round(Number(roh.netto) * 100) / 100);
+  }
+  return r;
+}
+
 export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
   return {
     firmen: (Array.isArray(f?.firmen) ? f!.firmen : []).map(x => ({
@@ -170,7 +191,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       kontostand: x.kontostand == null || !isFinite(Number(x.kontostand)) ? null : Math.round(Number(x.kontostand)),
       stand: typeof x.stand === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.stand) ? x.stand : null,
     })).filter(x => x.name),
-    rechnungen: (Array.isArray(f?.rechnungen) ? f!.rechnungen : []).map(x => ({
+    rechnungen: (Array.isArray(f?.rechnungen) ? f!.rechnungen : []).map(x => mitZusatz(x, {
       id: String(x.id ?? '').slice(0, 40) || neueKennung('r'),
       firmaId: String(x.firmaId ?? '').slice(0, 40),
       kunde: String(x.kunde ?? '').slice(0, 120),
@@ -191,7 +212,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       leistungVon: tag(x.leistungVon),
       leistungBis: tag(x.leistungBis),
       notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,
-    })).filter(x => x.kunde || x.titel),
+    } as Rechnung)).filter(x => x.kunde || x.titel),
     merkposten: (Array.isArray(f?.merkposten) ? f!.merkposten : []).map(x => ({
       id: String(x.id ?? '').slice(0, 40) || neueKennung('m'),
       firmaId: String(x.firmaId ?? '').slice(0, 40),
@@ -338,6 +359,9 @@ export function mitFassung(f: FinanzplanFile): FinanzplanFile {
 // (`aktion: 'storno'`, mit Datum und Grund). Nachtragen (leer → Wert) bleibt
 // erlaubt, weil der Status oft vor der Nummer gesetzt wird.
 
+/** Satz, wenn der allgemeine Weg eine Rechnung mit Positionen stellen will (08.10.). */
+export const STELLEN_NUR_UEBER_TOOL = 'Diese Rechnung hat Positionen — Nummer und PDF vergibt „Rechnung stellen“ (Finanzen › Rechnungen & Zahlungen › Rechnung schreiben), nicht der Status-Wechsel.';
+
 /** Felder, die ab „gestellt“ feststehen (Nachtragen erlaubt, Ändern nicht). */
 export const FEST_AB_GESTELLT = ['betrag', 'nummer', 'datum', 'netto', 'ustSatz'] as const;
 const FELD_NAME: Record<typeof FEST_AB_GESTELLT[number], string> = { betrag: 'Betrag', nummer: 'Rechnungsnummer', datum: 'Rechnungsdatum', netto: 'Nettobetrag', ustSatz: 'USt-Satz' };
@@ -349,12 +373,27 @@ const leerWert = (v: unknown) => v === undefined || v === null || v === '' || v 
  * null = ja, sonst der Ablehnungstext (HTTP 409).
  */
 export function rechnungSchutz(alt: Rechnung | undefined, neu: Rechnung | null): string | null {
-  if (!alt) return neu?.status === 'storniert' ? 'Eine Rechnung wird nicht als „storniert“ angelegt.' : null;
+  if (!alt) {
+    if (neu?.status === 'storniert') return 'Eine Rechnung wird nicht als „storniert“ angelegt.';
+    // Rechnungen mit Positionen (08.10.) bekommen Nummer und PDF nur über „Rechnung stellen“ — nie als fertig „gestellt“ angelegt.
+    if (neu && neu.positionen?.length && neu.status !== 'geplant') return STELLEN_NUR_UEBER_TOOL;
+    return null;
+  }
   if (neu === null) {
     if (alt.status === 'geplant') return null;
     return `Die Rechnung ist ${alt.status} — sie wird nicht gelöscht, sondern storniert (mit Datum und Grund).`;
   }
-  if (alt.status === 'geplant') return neu.status === 'storniert' ? 'Eine geplante Rechnung wird gelöscht, nicht storniert.' : null;
+  if (alt.status === 'geplant') {
+    if (neu.status === 'storniert') return 'Eine geplante Rechnung wird gelöscht, nicht storniert.';
+    if ((alt.positionen?.length || neu.positionen?.length) && neu.status !== 'geplant') return STELLEN_NUR_UEBER_TOOL;
+    return null;
+  }
+  // Mit PDF festgeschrieben (08.10.): was im PDF steht, ändert sich nicht mehr — Storno + neue Rechnung.
+  if (alt.pdfDateiId && alt.status !== 'storniert') {
+    for (const k of FEST_MIT_PDF) {
+      if (JSON.stringify(alt[k] ?? null) !== JSON.stringify(neu[k] ?? null)) return `Die Rechnung ${alt.nummer ?? ''} ist mit PDF festgeschrieben — sie bleibt, wie sie ist. Stornieren und neu stellen.`.replace('  ', ' ');
+    }
+  }
   if (alt.status === 'storniert') {
     return JSON.stringify(neu) === JSON.stringify(alt) ? null : 'Die Rechnung ist storniert — sie bleibt, wie sie ist. Bei Bedarf eine neue anlegen.';
   }
@@ -406,12 +445,14 @@ export function fpOpsAnwenden(f: FinanzplanFile, ops: FpOp[]): FpErgebnis {
     const liste = aus[o.liste] as { id: string }[];
     const nachId = new Map(liste.map(x => [x.id, x]));
     const vorher = new Map((f[o.liste] as { id: string }[]).map(x => [x.id, x]));
-    const geprueft = o.op === 'upsert'
+    let geprueft = o.op === 'upsert'
       ? (sauberFile({ [o.liste]: [o.eintrag] } as Partial<FinanzplanFile>)[o.liste] as { id: string }[])[0]
       : undefined;
     const id = o.op === 'delete' ? o.id! : geprueft?.id;
     if (!id) continue;
     const alt = nachId.get(id);
+    // Server-Felder der Rechnungen (Nummernlauf, PDF, Prüfsumme, Storno-Bezug, Mahnungen — 08.10.) kommen nie aus dem Browser.
+    if (o.liste === 'rechnungen' && geprueft) geprueft = rechnungMitServerFeldern(alt as Rechnung | undefined, geprueft as Rechnung);
     if (o.stand !== undefined) {
       const bekannt = vorher.get(id);
       if (!bekannt) { konflikte.push({ liste: o.liste, id, grund: 'inzwischen gelöscht' }); continue; }
@@ -427,6 +468,18 @@ export function fpOpsAnwenden(f: FinanzplanFile, ops: FpOp[]): FpErgebnis {
   }
   if (konflikte.length) return { ok: false, status: 409, fehler: 'Jemand hat inzwischen geändert — Stand neu geladen, bitte noch einmal.', konflikte };
   return { ok: true, datei: aus, angewandt };
+}
+
+/** Eine Rechnung aus dem Browser mit den Server-Feldern des gespeicherten Stands (neu gesäubert — gleiche Form wie beim Lesen). */
+export function rechnungMitServerFeldern(alt: Rechnung | undefined, neu: Rechnung): Rechnung {
+  const mit = serverFelderUebernehmen(alt, neu);
+  return sauberFile({ rechnungen: [mit] }).rechnungen[0] ?? mit;
+}
+
+/** Vollschreiben (PUT): jede Rechnung behält die Server-Felder des gespeicherten Stands (08.10.). */
+export function rechnungenMitServerFeldern(vorher: FinanzplanFile | null, neu: FinanzplanFile): FinanzplanFile {
+  const alt = new Map((vorher?.rechnungen ?? []).map(r => [r.id, r]));
+  return { ...neu, rechnungen: neu.rechnungen.map(r => rechnungMitServerFeldern(alt.get(r.id), r)) };
 }
 
 /** Rechnungs-Schutz für das Vollschreiben (PUT): jede Rechnung ab „gestellt“ muss bleiben und darf nur erlaubt geändert sein. */

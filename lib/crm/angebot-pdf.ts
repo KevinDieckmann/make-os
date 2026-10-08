@@ -55,10 +55,11 @@ function umbrechen(text: string, font: PDFFont, groesse: number, breite: number)
   return out;
 }
 
-/** Das PDF eines Angebots. `erstellt` fest übergeben — gleiche Eingabe, gleiche Bytes (Prüfsumme). */
+/** Das PDF eines Angebots (seit 08.10. auch einer Rechnung, `d.art`). `erstellt` fest übergeben — gleiche Eingabe, gleiche Bytes (Prüfsumme). */
 export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | null; erstellt: Date; autor?: string }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Angebot ${d.nummer} – ${d.titel}`);
+  const art = d.art ?? 'Angebot';
+  doc.setTitle(`${art} ${d.nummer} – ${d.titel}`);
   doc.setSubject(d.titel);
   doc.setAuthor(opt.autor ?? d.absender.firmierung);
   doc.setCreator('MAKE OS');
@@ -115,13 +116,13 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
   let my = empfY;
   for (const m of d.meta) {
     text(m.label, A4[0] - RAND - 150, my, 8.5, { farbe: LEISE });
-    text(m.wert, A4[0] - RAND, my, 9.5, { fett: m.label === 'Angebot', rechts: true });
+    text(m.wert, A4[0] - RAND, my, 9.5, { fett: m.fett ?? m.label === 'Angebot', rechts: true });
     my -= 14;
   }
   y = Math.min(y, my) - 22;
 
   // ── Titel, Einleitung ──
-  absatz(`Angebot: ${d.titel}`, 14, { fett: true, zeile: 18 });
+  absatz(d.ueberschrift ?? `Angebot: ${d.titel}`, 14, { fett: true, zeile: 18 });
   if (d.entwurf) { y -= 2; absatz('ENTWURF — noch nicht gestellt', 8.5, { fett: true, farbe: rgb(0.75, 0.35, 0.1) }); }
   y -= 8;
   if (d.einleitung.trim()) { absatz(d.einleitung, 10); y -= 10; }
@@ -151,7 +152,8 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
     text(p.betrag, X.betrag, y, 9.5, { fett: true, rechts: true });
     titelZeilen.forEach((z, i) => { if (i) { y -= 12.5; } text(z, X.titel, y, 9.5, { fett: true }); });
     y -= 11;
-    text(`${p.basis}${p.rabatt ? ` · Rabatt ${p.rabatt}` : ''}`, X.titel, y, 7.5, { farbe: AKZENT });
+    // Rechnungen (08.10.) haben keine Basis — die Zeile steht nur, wenn es etwas zu sagen gibt (Angebote: immer).
+    if (p.basis || p.rabatt) text(`${p.basis}${p.rabatt ? `${p.basis ? ' · ' : ''}Rabatt ${p.rabatt}` : ''}`, X.titel, y, 7.5, { farbe: AKZENT });
     for (const z of textZeilen) { if (y - 11 < RAND + FUSS_HOEHE - 30) { neueSeite(); kopfzeile(); y -= 4; } y -= 11; if (z) text(z, X.titel, y, 8.5, { farbe: LEISE }); }
     y -= 6;
     seite.drawLine({ start: { x: RAND, y }, end: { x: A4[0] - RAND, y }, thickness: 0.3, color: LINIE });
@@ -182,7 +184,10 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
       fy -= 9;
     }
     text(`Seite ${i + 1} von ${n}`, A4[0] - RAND, RAND - 14, 7, { farbe: LEISE, rechts: true });
-    text(`Angebot ${d.nummer}`, RAND, RAND - 14, 7, { farbe: LEISE });
+    text(`${art} ${d.nummer}`, RAND, RAND - 14, 7, { farbe: LEISE });
   });
   return doc.save({ useObjectStreams: false });
 }
+
+/** Derselbe Weg unter dem allgemeinen Namen — Rechnungen und Stornorechnungen (lib/finanzen/rechnung/server.ts). */
+export const belegPdf = angebotPdf;

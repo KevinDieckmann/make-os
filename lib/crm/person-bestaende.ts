@@ -163,7 +163,7 @@ export function crmNamenTilgen<T extends Pick<CrmBestand, 'chancen' | 'mandate'>
 // ── Dateiablage ──
 
 /** Hat der Eintrag außer der Person noch einen geschäftlichen Bezug? */
-const andererBezug = (e: DateiEintrag) => !!(e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId); // Angebots-PDF (28.09.) = Geschäftsunterlage
+const andererBezug = (e: DateiEintrag) => !!(e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId || e.rechnungsPdf); // Angebots-/Rechnungs-PDF = Geschäftsunterlage
 
 /**
  * Art. 17 in der Ablage: Einträge NUR mit Personenbezug fallen weg (samt Datei); Einträge, die zugleich an
@@ -964,7 +964,10 @@ export async function personAufzaehlen(id: string) {
   // pseudonymisierter Läufe (lib/datenschutz/ki-protokoll.ts).
   const { kiEmpfaengerFuerKontakte } = await import('@/lib/datenschutz/ki-protokoll');
   const kiEmpfaenger = await kiEmpfaengerFuerKontakte().catch(() => null);
-  return { ...verweise, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+  // Rechnungen mit PDF (08.10.): an die Person adressierte Rechnungen (Kontakt-Kennung) — Nummer, Datum, Status, Betrag (Aufbewahrungspflicht, kein Löschen).
+  const { rechnungenAuskunft } = await import('@/lib/finanzen/rechnung/server');
+  const rechnungen = await rechnungenAuskunft(id).catch(() => []);
+  return { ...verweise, rechnungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */
