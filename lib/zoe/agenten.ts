@@ -18,6 +18,8 @@ export const AUSFUEHRBAR = [
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
   'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten',
   'ki-medien',
+  // Agenten-Bereich (09.10., Paket 1): EIN Lauf-Name für Mitarbeiter-, Skill- und Plan-Läufe (lib/agenten/typen.ts `LAUF_AGENT`).
+  'faden',
 ] as const;
 export type Ausfuehrbar = typeof AUSFUEHRBAR[number];
 
@@ -57,6 +59,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   'zoe-aufgaben': 'ZOE bereitet die Aufgaben vor, die an sie gegeben wurden — nur Vorschläge in den Stapel, übernommen wird erst nach Freigabe (mit Person: nur deren Aufträge)',
   absichten: 'Abgebrochene Vorgänge über mehrere Bestände fertigstellen (Absichtsprotokoll: Art. 17, Import, Dubletten, Kennungs-Umzug, Angebot) — ohne KI, nur Zahlen (auftrag = jetzt nimmt auch junge)',
   durchsicht: 'Die nächtliche Durchsicht der Bestände (Datenschicht) — jeden Bestand entschlüsseln, parsen, zählen, Zeilen-Sprünge und Verbindungsprüfung für den Head of IT; ohne KI, nur Zahlen (auftrag = jetzt erzwingt)',
+  faden: 'Agenten-Bereich: ein Thread-Lauf (Mitarbeiter, Skill, Hintergrundaufgabe) — NUR mit einem Lauf-Auftrag als JSON (Thread/Skill/Hintergrundaufgabe der Person), ein freier Text wird abgelehnt; Ergebnis steht im Thread',
   loeschfristen: 'Der Löschfristen-Lauf (Datenschutz, einmal am Tag) — Kontakte über der Frist nur als Aufgabe (nie automatisch löschen), technische Bestände nach Frist bereinigen; ohne KI (auftrag = jetzt erzwingt)',
   'ki-medien': 'Holt laufende Video- und Tiefenbericht-Aufträge beim KI-Anbieter ab und legt sie verschlüsselt ab — startet nichts Neues, kostet nichts zusätzlich',
 };
@@ -69,7 +72,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten', 'ki-medien'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten', 'ki-medien', 'faden'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -364,6 +367,17 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const { loeschfristenLauf } = await import('@/lib/crm/loeschfristen-lauf');
         const r = await loeschfristenLauf(new Date(), auftrag === 'jetzt');
         return r.ok ? gut(`LÖSCHFRISTEN${r.uebersprungen ? ' (heute schon gelaufen)' : ''}: ${r.text}`) : fehl(`Löschfristen: ${r.text}`);
+      }
+      case 'faden': {
+        // Agenten-Bereich (09.10., Paket 1): der Arbeiter reicht den Lauf-Auftrag als Text weiter (`auftrag` = JSON). Ein freier Text
+        // (z. B. von ZOE über run_agent) ist kein Lauf. Ausgeführt wird NUR über /api/agenten/faden/lauf — für die Person des Auftrags,
+        // nie als Systemlauf; die Route prüft, dass Thread/Skill/Aufgabe ihr gehören. Zurück kommen nur Metadaten (der Inhalt steht im Thread).
+        if (!person) return fehl('Agenten-Lauf braucht eine Person (kein Systemlauf).');
+        let lauf: unknown;
+        try { lauf = JSON.parse(auftrag); } catch { return fehl('Agenten-Lauf abgelehnt: kein Lauf-Auftrag (freier Text wird nicht ausgeführt).'); }
+        if (!lauf || typeof lauf !== 'object') return fehl('Agenten-Lauf abgelehnt: kein Lauf-Auftrag.');
+        const d = await post('/api/agenten/faden/lauf', lauf, 330_000);
+        return gut(`AGENTEN-LAUF: ${kuerze(d.laufStatus ?? 'fertig', 40)}${d.fadenId ? ` (Thread ${kuerze(d.fadenId, 60)})` : ''} — das Ergebnis steht im Thread.`);
       }
       case 'absichten': {
         // Paket D-C (29.09., #17): offene Absichten fertigstellen — Schritte idempotent, nach 3 Fehlversuchen „gescheitert“ (HOI rot).

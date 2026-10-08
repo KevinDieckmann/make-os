@@ -93,6 +93,56 @@ Kostenmessung: Opus 5.5 rechnet Cache-Lesen jetzt mit 0,20 $/Mio (Preisseite) st
 Kategorie `familie` für Geburtstage aus der Familie im Brain-Kontext (heute ohne Markierung); Vertex-Pfade für Omni Flash und Deep Research sowie
 der Host der Multi-Region „eu“ sind Annahmen — beim ersten echten Lauf prüfen (`ki-anbieter-pruefen.mjs`).
 
+## 09.10.2026 nachts — Agenten-Bereich Paket 1 „Kern“: Rechte, Threads, Head-Chat, Mitarbeiter-Delegation (nur lokal — Branch `agenten-kern`)
+
+Grundlage: `AGENTEN_KONZEPT.md` C1–C5, C7, C11 · Kevins Antworten (Agenten-Bereich, Fragerunde Teil 1 und Teil 2) · `research/agenten/ARCHITEKTUR.md`
+Teil 8 (R1–R20). Basis ist Paket 0 `agenten-vertrag` (Typen, Katalog, Register). Die Oberfläche baut Paket 2 (`agenten-seite`) — bis zum Merge
+sind die Routen nur über die Schnittstelle bzw. die Tests erreichbar.
+
+- **EINE Filterstelle** `lib/agenten/sicht.ts` (rein): `headsFuer`, `headSichtbar`, `kategorienFuer`, `fadenSichtbar`, `teilenErlaubt`. Business-Heads
+  für alle im Haushalt des Inhabers, Privat-Heads nur für volle Mitglieder (eigene; Familie für beide), „nur Business“ nie Privat, Gesundheit nur mit
+  Einwilligung (a)+(b) und nur eigene Werte, Finanzen privat nur mit privatem Finanzzugang. Fremder Haushalt, Testkunde, Dienstweg → 403.
+- **Threads** `lib/agenten/faeden.ts` (rein) + `faeden-server.ts` (EINE Schreibstelle, Bestand `agenten-faeden--<person>`): Einzeländerungen mit Stand
+  (409 mit dem aktuellen Thread), Grenzen 413 (Nachricht 8.000 Zeichen, 400 Nachrichten, 2.000 Threads) — nie gekürzt. Der Prompt liest NUR den
+  gespeicherten Verlauf: die letzten 16 Nachrichten + eine serverseitig gerechnete Kurzfassung. `fremdGelesen`/`vertraulich` setzt nur der Server,
+  vererbt auf Kind-Threads und zurück. **Löschfrist 12 Monate nach der letzten Nachricht** (Kevin, Teil 2 Nr. 17; Feld `loeschfristMonate` je Thread).
+  Teilen per Knopf nur für eigene Business-Threads — das ganze Gespräch (Mitarbeiter-Threads mit), das Team liest, schreiben nur der Besitzer.
+- **Kontext je Head** `lib/agenten/kontext.ts` NUR aus seinem Bereich: Sales/Marketing/Event = Datenpaket der Heads (Kartei ohne Art.-18-Kontakte),
+  Finance = Finanzbild (Business nur Business-Teil, Finanzen privat nur mit Zugang), IT = Lagebild aus Zählern, alle anderen = Ausschnitt von
+  `gatherBrain` nur in den aktiven KI-Kategorien (Aufgaben nur im Bereich des Heads; Termine nur bei Privat-Heads). Recherche-Mitarbeiter mit Web
+  bekommen kein Datenpaket (Map-Reduce). Postfach, Aufgaben, Arbeitssuche sind auf den Bereich des Heads beschränkt.
+- **Gespräch** `lib/agenten/gespraech.ts`: `askText` mit `ki: { lauf, person, kategorien }` (aktive Kategorien des Heads, Business nie Gesundheit),
+  Modellstufe aus der Definition, Verbrauch `zweck = agent-<head>`. Werkzeuge = Schnittmenge (`lib/agenten/werkzeuge.ts`: Katalog ∩ KI-Schalter ∩
+  Einwilligung). **Jede Wirkung über `fuehreAus`; im Agenten-Bereich ist alles Schreibende Vorschlag (Stapel)** (Antwort 10). ≤ 3 Runden im Chat.
+  Gesundheits-Head = Wellness-Coach ohne Diagnose/Therapie (Teil 2 Nr. 18). Business-frei: im Chat ruhiger Hinweis, im Hintergrund ruht der Bereich.
+  Lauf-Protokoll nur Metadaten (OpenTelemetry-GenAI-Felder) an der Antwort und im Agenten-Log.
+- **Delegation** `lib/agenten/delegation.ts`: `an_mitarbeiter { mitarbeiter, auftrag: { ziel, format, grenzen, quellen } }` → neuer Thread (`elternId`,
+  Kette), „An Thread … gesendet“ mit Auftragskarte, Brett je Auftrag im Head-Thread, eingereiht als `faden` (Warteschlange `zoe-auftraege`).
+  Tiefe 2 fest, ≤ 3 offene Mitarbeiter-Läufe je Person, je Lauf ≤ 6 Runden (letzte ohne Werkzeuge), 14 Werkzeuge, 5 Minuten, Abbruch nach 2 Runden
+  ohne Fortschritt, gleicher Aufruf → frühere Antwort. Hilfe nur über den Head (`hilfe_anfragen` → Lauf „wartet“, Head vermittelt mit
+  `brett_antworten` oder einem Helfer, der nur Funde liefert). Advisor `rat_holen` (≤ 2× je Lauf, nur Text). Fester Prüfer bei Außenwirkung (Regeln
+  aus `lib/heads/pruefer.ts`, dann KI-Prüfer). Plan-Freigabe vor großen Aufträgen (> 2 Mitarbeiter in einem Zug oder Schätzung über der Schwelle) —
+  per Klick im Thread. „Zweite Meinung“: zwei Entwürfe, der Prüfer wählt. Ergebnis als `fremd('agent')` im Mitarbeiter-Thread, „Bericht aus Thread …“
+  im Head-Thread, Glocke Art `agenten` (neutral).
+- **Gedächtnis**: Persönlich (im Thread-Bestand der Person, sichtbar und löschbar; nur ohne Fremdtext, nie Adressen/Nummern/Links/Namen aus der
+  Kartei), Haushalt nur per Klick (Stapel-Art `merksatz`), Mitarbeiter erben vom Head; Löschfrist 12 Monate.
+- **Routen** (Stubs ersetzt, Register unverändert): `GET /api/agenten` (Heads + Überblick; `?seit=` = letzter Besuch, Briefing regelbasiert),
+  `GET/POST /api/agenten/faden` (senden · umbenennen · gelesen · loeschen · teilen · plan · abbrechen · zweite-meinung · gedaechtnis-weg),
+  `POST /api/agenten/faden/lauf` (Arbeiter, Dienstweg MIT Person, nur ein Lauf-Auftrag — freier Text 400). `faden` in `lib/zoe/agenten.ts`.
+- Tests: `agenten-sicht`, `agenten-ki-tor`, `agenten-freigabe`, `agenten-faeden`, `agenten-delegation` (Modell als Fake, kein Netz), Messlatte-Saat
+  `agentenFaden`, `agenten-vertrag` auf die gebauten Routen angepasst.
+
+**So testet ihr** (Vorschau „make-os-entwicklung“, nach dem Merge mit Paket 2 über die Seite; vorher z. B. im Browser-Fenster der App mit `fetch`):
+1. `GET /api/agenten` → die Heads, die du siehst (als Konto „nur Business“: keine Privat-Heads; ohne Gesundheits-Einwilligung kein Gesundheits-Head).
+2. `POST /api/agenten/faden { "aktion": "senden", "agent": { "art": "head", "headId": "sales" }, "text": "Wie steht die Pipeline?" }` → Antwort des
+   Heads; `GET /api/agenten/faden?agent=head:sales` zeigt den Thread.
+3. „Leg eine Aufgabe an …“ an einen Head → die Aufgabe liegt im Stapel (ZOE › Freigaben), angelegt erst nach deinem Klick.
+4. „Bereite das Nachfassen vor — gib es an einen Mitarbeiter“ → im Head-Thread „An Thread … gesendet“; nach dem Lauf des Arbeiters „Bericht aus
+   Thread …“ und eine Glocke „Ein Agenten-Ergebnis liegt bereit“.
+5. Mit der zweiten Person anmelden → Threads der ersten erscheinen nirgends; erst nach „teilen“ (nur Business) liest sie mit.
+Rückweg: nur ein neuer Bestand (`agenten-faeden--<person>`) und optionale Felder; Meldungen der neuen Glocken-Art `agenten` kennt ein alter Stand
+nicht (vor dem Rückweg in der Glocke als gelesen markieren).
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt
