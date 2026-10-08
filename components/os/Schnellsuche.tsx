@@ -15,32 +15,12 @@ import { useTasks } from '@/context/TasksContext';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { einheitName } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
+import { SEITEN_SUCHE } from '@/lib/make-one/seiten';
 import type { Task } from '@/types/tasks';
 
 interface Treffer { art: string; id: string; titel: string; unter?: string; href: string; space?: 'privat' | 'business' }
-const SEITEN: Treffer[] = [
-  { art: 'seite', id: 'home', titel: 'Home · dein Dashboard', href: '/os' }, { art: 'seite', id: 'heute', titel: 'Heute', href: '/os/heute' }, { art: 'seite', id: 'wachstum', titel: 'Wachstum · Gesamtansicht & Score', href: '/os/wachstum' },
-  { art: 'seite', id: 'uebersicht-privat', titel: 'Privat · Übersicht', href: '/os/uebersicht?space=privat', space: 'privat' }, { art: 'seite', id: 'uebersicht-business', titel: 'Business · Übersicht', href: '/os/uebersicht?space=business', space: 'business' },
-  { art: 'seite', id: 'markttraktion', titel: 'Markttraktion · Überblick', href: '/os/markttraktion', space: 'business' }, { art: 'seite', id: 'powerhour', titel: 'Follow-up · Power Hour', href: '/os/markttraktion?s=followup&a=powerhour', space: 'business' },
-  { art: 'seite', id: 'kontakte', titel: 'Markttraktion · Kontakte', href: '/os/markttraktion?s=kontakte', space: 'business' },
-  { art: 'seite', id: 'followup', titel: 'Follow-up · Fällig', href: '/os/markttraktion?s=followup', space: 'business' }, { art: 'seite', id: 'leads', titel: 'Firmen · Leads qualifizieren', href: '/os/markttraktion?s=firmen&a=leads', space: 'business' }, { art: 'seite', id: 'deals-auswertung', titel: 'Deals · Auswertung', href: '/os/markttraktion?s=deals&a=auswertung', space: 'business' },
-  { art: 'seite', id: 'firmen', titel: 'Markttraktion · Firmen', href: '/os/markttraktion?s=firmen', space: 'business' }, { art: 'seite', id: 'pipeline', titel: 'Deals · Board', href: '/os/markttraktion?s=deals', space: 'business' },
-  { art: 'seite', id: 'kunden', titel: 'Produkte & Mandate', href: '/os/mandate', space: 'business' }, { art: 'seite', id: 'produkte', titel: 'Produkte (Leistungskatalog)', href: '/os/mandate?s=produkte', space: 'business' }, { art: 'seite', id: 'kampagnen', titel: 'Kampagnen', href: '/os/markttraktion?s=sales&a=kampagnen', space: 'business' },
-  { art: 'seite', id: 'marketing', titel: 'Marketing', href: '/os/markttraktion?s=marketing', space: 'business' },
-  { art: 'seite', id: 'qualifizierung', titel: 'Markttraktion · Qualifizierung', href: '/os/markttraktion?s=qualifizierung', space: 'business' }, { art: 'seite', id: 'angebot', titel: 'Markttraktion · Angebot', href: '/os/markttraktion?s=angebot', space: 'business' },
-  { art: 'seite', id: 'events', titel: 'Events (besuchte Veranstaltungen)', href: '/os/markttraktion?s=besuche', space: 'business' }, { art: 'seite', id: 'makeone', titel: 'Make.One (eigene Abende)', href: '/os/markttraktion?s=event', space: 'business' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten', space: 'business' },
-  { art: 'seite', id: 'finanzen-business', titel: 'Zahlen · Business', href: '/os/finanzen?s=business', space: 'business' }, { art: 'seite', id: 'agenten', titel: 'Agenten', href: '/os/agenten', space: 'business' },
-  // 04.10.: Gesellschafts-Register, Finanzplanung (je Sicht), Ziele & Planung und Kapazität — auffindbar wie jede andere Seite.
-  { art: 'seite', id: 'unternehmen', titel: 'Unternehmen · Gesellschaften, Anteile, Verträge', href: WEG.unternehmen(), space: 'business' },
-  { art: 'seite', id: 'finanzplanung-business', titel: 'Finanzplanung · Business (Gesellschaften)', href: WEG.finanzplanung('business'), space: 'business' },
-  { art: 'seite', id: 'finanzplanung-privat', titel: 'Finanzplanung · Privat (alles)', href: WEG.finanzplanung('privat'), space: 'privat' },
-  { art: 'seite', id: 'ziele', titel: 'Ziele & Planung · Jahr, Meilensteine', href: WEG.jahr() }, { art: 'seite', id: 'kapazitaet', titel: 'Kapazität · Zeit und Machbarkeit je Person', href: WEG.kapazitaet(), space: 'business' },
-  // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
-  { art: 'seite', id: 'netzwerken', titel: 'Netzwerken · Person erfassen, Abendbericht', href: WEG.netzwerken() }, { art: 'seite', id: 'netzwerken-karte', titel: 'Netzwerken · Meine Visitenkarten', href: WEG.netzwerkenKarte() },
-  { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen · Privat', href: '/os/finanzen?s=privat', space: 'privat' },
-  { art: 'seite', id: 'familie', titel: 'Familie & Partnerschaft', href: '/os/familie', space: 'privat' }, { art: 'seite', id: 'menschen', titel: 'Kontakte · privat (unsere Menschen)', href: '/os/menschen', space: 'privat' }, { art: 'seite', id: 'fokus', titel: 'Fokus', href: '/os/fokus' },
-  { art: 'seite', id: 'gesundheit', titel: 'Gesundheit', href: '/os/gesundheit', space: 'privat' }, { art: 'seite', id: 'ernaehrung', titel: 'Ernährung & Einkauf', href: '/os/gesundheit?s=ernaehrung', space: 'privat' }, { art: 'seite', id: 'sport', titel: 'Sport · Hyrox, Running, Gym, Erholung', href: '/os/sport', space: 'privat' }, { art: 'seite', id: 'wissen', titel: 'Brain', href: '/os/wissen' },
-];
+// Alle Seiten (08.10., Aufräumen Etappe 1): EINE Liste in lib/make-one/seiten.ts — auch Seiten, die nicht mehr im Menü stehen.
+const SEITEN: Treffer[] = SEITEN_SUCHE;
 const ART: Record<string, { label: string; farbe: string }> = {
   kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
   mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim }, mensch: { label: 'Mensch', farbe: LEUCHT.beziehung },
@@ -114,7 +94,7 @@ export function Schnellsuche() {
   return (
     <div onClick={schliessen} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(5,7,8,.62)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '12vh', paddingInline: 16 }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Schnellsuche" style={{ width: 'min(640px, 100%)', background: C.flaeche, borderRadius: 16, boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)', border: '1px solid rgba(255,255,255,.07)', overflow: 'hidden' }}>
-        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Deal, Mandat, Gesellschaft, Vertrag, Aufgabe oder Seite …' : 'Privat: Familie, Aufgabe, Gesundheit, Zahlen oder Seite …'} aria-label="Suchen"
+        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Deal, Mandat, Gesellschaft, Vertrag, Aufgabe oder Seite …' : 'Privat: Familie, Aufgabe, Gesundheit, Finanzen oder Seite …'} aria-label="Suchen"
           onKeyDown={e => {
             if (e.key === 'Escape') schliessen();
             else if (e.key === 'ArrowDown') { e.preventDefault(); setI(x => Math.min(treffer.length - 1, x + 1)); }
