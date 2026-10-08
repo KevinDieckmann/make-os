@@ -6,6 +6,19 @@
 - Server: **`38f88dc0` (07.10. ~18:28)** — Aufgaben v3 (Malin), Inbox 2 + WhatsApp (ohne Einrichtung aus), iCloud je Person, Blöcke ins eigene iCloud, Verbinden-Karten im Kalender, HOI-Befunde, Einwilligung WhatsApp, Telefon-Dubletten. Websites unverändert (alte „Klar“).
 - Sicherung `vor-upload-2026-10-07-1618.tar.gz`, Rückweg-Bild `make-os:6b10a5ba` (ALTES-BILD-OK). Platte danach 5,3 GB frei — alte Bilder 70603154/db93e88/5aca6f5 nur auf Kevins Wort löschen.
 
+## Stand 08.10. spät (auf `entwicklung`, 135 Commits vor `origin/main`, nicht online — Upload Fr 09.10. auf Kevins Wort)
+- **Gemergt seit dem Abend:** Teil 3 (`finanzplan-blaetter`, `privat-raus-koerper`, `privat-raus-nordstern` — `lib/make-one/health-data.ts` gelöscht) ·
+  `onboarding-b0` + `onboarding-fix` (76 Schritte, Samstag-Kern ≈ 7¾ h, ehrliche Prüfungen) · `vor-upload-datenschutz` (ZOE-Grundauftrag ohne Persönliches,
+  Tageslauf/Arbeitsmodus/Gesundheitszeit je Person, Stammdaten serverseitig getrennt, `public/finanz-dashboard.html` raus) · `markttraktion-sofort` (2994fca6:
+  10 Funde aus `MARKTTRAKTION_BEFUND.md` — neue Kontakte nicht kalt, Absender früh geprüft/GmbH-Vorgabe, Rechnung brutto, Power Hour schließt Follow-ups,
+  Heads im Takt).
+- **Volle Suite:** 475 Dateien / 6.116 Tests — 1 Zeitgrenze unter Last (netzwerken-korrektur › 5) auf 20 s angehoben (5cbee0fe); tsc 0.
+- **Entschieden (R1–R10, `ENTSCHEIDUNGEN_FRAGEBOGEN.md`):** Onboarding Sa 10.10. ein langer Tag · Stichtag 01.10. · Verantwortlicher MAKE Innovation GmbH ·
+  Zulieferer aus (Altbestand-Übernahme `MAKE_OS_ALTBESTAND_PERSON` statt Zulieferer-Schlüssel) · Malin zweite Inhaberin mit SSH (Update 2, 16.10.).
+- **In Arbeit:** `konten-register` (Agent; Lücke 2 der Business-Couple-Liste in ROADMAP_Q4) — erst NACH dem Freitags-Upload mergen.
+- **Wartet auf Kevin:** Markttraktion-Fragebogen (23 Bereiche, Marktvorbilder, ohne Grenze) · Bank-Runde (B1–B4, S1, K-Paare) · Teil 2 (Business).
+- **Vor dem Upload:** Demo-Rundgang mit Bildern (Demo-Bau `.next-demo`, Port 3200) · dann Push auf Kevins Wort · Server-Schritte `UPLOAD_0810.md`.
+
 ## Stand 08.10. abends (auf `entwicklung`, nicht online)
 - **Phase 0 gebaut + gegengeprüft + gemergt** (6f045180, d25231cd): eigene Ziele nur geteilt lesbar (überall, inkl. Meilensteine daran) · Familie › Vision nur
   eigene Träume · Agenten-Log je Person (`laufPerson`) · WHOOP ist die Quelle (Export-Werte `whoop-export`, Handwerte bleiben) · Freigaben-Reiter „Protokoll“
