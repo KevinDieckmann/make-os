@@ -38,6 +38,8 @@ export interface Buchung {
   ort?: FinanzOrt;
   /** Die Rechnung, deren Zahlungseingang diese Buchung ist (26.09.). */
   rechnungId?: string;
+  /** Lauf des Kontoauszug-Imports, der sie angelegt hat (09.10., `ka-…`) — nur für „Rückgängig“ (lib/finanzen/kontoauszug). */
+  auszug?: string;
 }
 
 interface Datei { buchungen: Buchung[] }
@@ -61,6 +63,7 @@ function sauber(b: Partial<Buchung>, _i: number): Buchung | null {
     // Altwerte (z. B. „Selbstständigkeit“) über die eine Liste; vorher fiel „ug“ still auf privat.
     ort: FINANZ_ORT_IDS.includes(b.ort as FinanzOrt) ? b.ort : finanzOrtAus(b.ort) ?? 'privat',
     ...(b.rechnungId ? { rechnungId: String(b.rechnungId).slice(0, 40) } : {}),
+    ...(b.auszug ? { auszug: String(b.auszug).slice(0, 60) } : {}),
   };
 }
 

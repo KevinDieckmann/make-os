@@ -93,3 +93,38 @@ weiter in den Haushalt bzw. `buchungen`; der Saldo gehört hierher.
 - Das Register und die Konten des Haushalts (`haushalt-stamm`) sind noch zwei Listen (verknüpft über `alt.haushaltKonto`); die Buchungen hängen
   am Haushalts-Konto. Zusammenlegen wäre der nächste Schritt (Haushalt-Konto = Register-Konto).
 - Konten der offenen Gesellschafts-Liste (`g-…`) — erst, wenn diese Gesellschaften rechnen.
+
+## 8. Kontoauszug einlesen — Bank-Übergang bis finAPI (09.10., Branch `kontoauszug`)
+
+ONBOARDING_PLAN.md › B9 d (+ L7/L8/L32). Kevin 08.10.: „Bank-Anbindung vorziehen“; R3: bis dahin von Hand. Je Konto der Karte „Konten“ →
+„Kontoauszug einlesen“: Datei (CAMT.053 oder CSV) → bei CSV Spalten zuordnen → **Vorschau** → **Übernehmen** → **Rückgängig**.
+
+- **Leser** `lib/finanzen/kontoauszug/` (rein, Server UND Browser, ohne neue Abhängigkeiten): `lesen.ts` (Einstieg, 5 MB → 413, PDF/ZIP/Bild → 415),
+  `camt.ts` (camt.053.001.02–.08, auch .052/.054; eigener XML-Leser **ohne DTD/Entitäten** — `<!DOCTYPE`/`<!ENTITY` → 415, Tiefe ≤ 64; Salden
+  `OPBD`/`PRCD`/`CLBD`, Einträge mit Status `BOOK`/`PDNG`, Gegenseite je Richtung (`Dbtr`/`Cdtr`, ab .08 `Pty/Nm`), `Ustrd`, `AcctSvcrRef`/`NtryRef`;
+  mehrere Tagesauszüge je IBAN zusammengefasst, **jeder** gegengerechnet), `csv.ts` (EIN Trenner erkannt, RFC-4180-Anführungszeichen, UTF-8 oder
+  Windows-1252, **Vorspann übersprungen**, Fußzeile „Kontostand“, Spaltenvorschlag aus Kopfnamen — nur Namen, keine Daten — für N26, Sparkasse,
+  VR-Banken, Deutsche Bank, Commerzbank, Qonto, Revolut, Kontist; Betrag, Soll/Haben oder Kennzeichen S/H; Gebühr; Status „vorgemerkt“; Saldo-Spalte
+  → End- und Anfangssaldo), `text.ts` (Beträge in **Cent**, deutsches/englisches Format, Daten inkl. zweistelliger Jahre, Fingerabdruck).
+  Ergebnis je Konto: `{ iban?, waehrung, saldo?, anfang?, eintraege, hinweise, pruefung }` — Prüfsumme Anfang + Summe = Ende, Abweichung = Hinweis.
+- **Plan** `plan.ts` (rein): Zuordnung per IBAN (Grundform) bzw. Wahl; IBAN eines anderen Kontos → 409 mit dem passenden Konto. Ziel:
+  privat/gemeinsam → Haushalt (Haushalts-Konto: verknüpftes `alt.haushaltKonto`, sonst gleicher Name/IBAN-Endung, sonst **neu angelegt** und
+  verknüpft; Einordnung über die Regeln/Kategorien des Haushalts wie der bisherige Import); Gesellschaft → `buchungen` mit `ort` (nur im Haushalt
+  des Inhabers, sonst nur der Saldo). Fremde Währung, vorgemerkt, storniert, Buchungstag in der Zukunft → übersprungen (nie still).
+  **Dubletten:** externe Kennung (wenn in der Datei eindeutig) bzw. Fingerabdruck (Datum, Betrag, Gegenseite, Zweck) als **Menge** (zwei gleiche
+  Kaffees = zwei Buchungen; auch von Hand Erfasstes zählt), im Haushalt zusätzlich der `zeilen_hash` des bisherigen Imports. Business-Kennung fest:
+  `bu-ka-<Konto>-<Schlüssel>`. Gegen-IBAN = eigenes Konto → Umbuchung. `basis` = Kennung genau dieser Vorschau.
+- **Server** `server.ts` + Route `/api/finanzen/konten/auszug` (Klasse `finanz-business` wie das Register; Business-Sicht nur Business-Konten →
+  sonst 403, Dienstweg 403): `vorschau` schreibt nichts; `uebernehmen` nur mit `basis` (sonst 409 + neue Vorschau) und bei nicht stimmiger
+  Saldo-Prüfung nur mit `trotzAbweichung`; `zuruecknehmen` nimmt nur Buchungen, deren Fingerabdruck seit dem Anlegen gleich ist (sonst
+  Konflikt-Liste, Lauf „teilweise“), und den Saldo-Stand zurück (bleibt im Verlauf); das angelegte Haushalts-Konto bleibt. `anfrageId` über
+  `einmalig`. **Absichtsprotokoll** (Art `kontoauszug`, Schritte lauf · haushaltkonto · buchungen · saldo · abschluss bzw. buchungen · saldo ·
+  protokoll) — jeder Schritt idempotent (Lauf-Marke `auszug`/`import_id` an der Buchung), Wiederaufnahme im Takt/beim Start.
+- **Saldo** → `standAusAuszug` (lib/finanzen/konten/server.ts, EINE Schreibstelle): Stand `quelle: 'bank'`, Herkunft `auszug` (Lauf), gleicher
+  Betrag + Datum schon da → nichts; Rückweg-Spiegel in den Finanzplan wie jeder Stand.
+- **Recht:** Die Datei wird nie gespeichert (Namen Dritter). Bestand `kontoauszug-laeufe--<haushalt>` hält nur Kennungen, Fingerabdrücke, Zahlen,
+  Zeitraum, Speichername (Register mit Angaben, Export/Konto löschen wie das Register, 400 Tage). Die anzulegenden Zeilen liegen nur bis zum Abschluss
+  in der Absicht. IBANs nach außen nur maskiert; Verwendungszwecke sind fremder Text (an ZOE nur über `fremd()` — heute geht nichts an ZOE).
+- **Nicht gebaut:** ZIP mit mehreren CAMT-Dateien (bitte entpacken), MT940, PDF (bleibt der N26-Import des Haushalts), Kategorien-Regeln für
+  Business-Buchungen (Kategorie aus der CSV bzw. „Sonstiges“/„Umbuchung“), automatischer Abgleich mit Rechnungen („bezahlt“ — wäre Vorschlag).
+- Tests: `tests/kontoauszug-lesen.test.ts`, `tests/kontoauszug-route.test.ts`.

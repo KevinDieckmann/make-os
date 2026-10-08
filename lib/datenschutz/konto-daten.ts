@@ -88,6 +88,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'kapazitaet-plan--*': 'Wochenpläne je Haushalt — wie Kapazität',
   'kennung-alias--*': 'Weiterleitung alter Kontakt-Kennungen',
   'konten--*': 'Konten-Register je Haushalt (08.10.) — im Export die eigenen Konten (IBAN maskiert), beim Löschen bleiben die Konten des Haushalts, die Personen-Kennung wird „[gelöscht]“',
+  'kontoauszug-laeufe--*': 'Lauf-Protokoll der Kontoauszüge je Haushalt (09.10.) — im Export die selbst ausgelösten Läufe, beim Löschen bleiben die Läufe, der Speichername wird „[gelöscht]“',
   'meilenstein-raum--*': 'Austausch je Meilenstein (Arbeit des Haushalts)',
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
@@ -190,6 +191,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     // Konten-Register (08.10.): die Konten, die der Person gehören (IBAN maskiert).
     const eigeneKonten = await (await import('@/lib/finanzen/konten/server')).kontenDerPerson(k.haushalt, speicher).catch(() => []);
     if (eigeneKonten.length) eintraege[`konten--${k.haushalt}`] = eigeneKonten;
+    // Kontoauszug einlesen (09.10.): die selbst ausgelösten Läufe (nur Kennungen und Zahlen).
+    const eigeneLaeufe = await (await import('@/lib/finanzen/kontoauszug/server')).laeufeDerPerson(k.haushalt, speicher).catch(() => []);
+    if (eigeneLaeufe.length) eintraege[`kontoauszug-laeufe--${k.haushalt}`] = eigeneLaeufe;
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
     const kid = `${KONTO_PRAEFIX}${speicher}`;
     if (kapa && JSON.stringify(kapa).includes(`"${kid}"`)) eintraege[`kapazitaet--${k.haushalt}`] = [{ hinweis: 'Ihre Kapazitätswerte stehen vollständig in der Kapazitäts-Auskunft (Planung › Kapazität).', person: kid }];
@@ -358,6 +362,20 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<Obj>(kr, cur => { if (!cur) return cur as unknown as Obj; const r = registerOhnePerson(registerLesen(cur), speicher, GELOESCHT); n = r.anzahl; return n ? (r.register as unknown as Obj) : cur; });
       if (n) await protokolliere(kr, [{ liste: 'konten', op: 'geaendert', id: 'personen', felder: ['person', 'erfasstVon'] }], { art: 'system' });
+      return n;
+    });
+    // Kontoauszug-Läufe (09.10.): bleiben als Nachweis des Haushalts, der Speichername wird „[gelöscht]“.
+    const kl = `kontoauszug-laeufe--${konto.haushalt}`;
+    await nurWenn(kl, async () => {
+      const { laeufeOhnePerson } = await import('@/lib/finanzen/kontoauszug/server');
+      let n = 0;
+      await updateJson<Obj>(kl, cur => {
+        if (!cur || !Array.isArray(cur.laeufe)) return cur as unknown as Obj;
+        const r = laeufeOhnePerson(cur.laeufe as Parameters<typeof laeufeOhnePerson>[0], speicher, GELOESCHT);
+        n = r.anzahl;
+        return n ? { ...cur, laeufe: r.laeufe } : cur;
+      });
+      if (n) await protokolliere(kl, [{ liste: 'laeufe', op: 'geaendert', id: 'personen', felder: ['von'] }], { art: 'system' });
       return n;
     });
     // Familie (08.10. abends, Fragebogen Teil 3 Frage 11 — erweitert die Vision-Regel der Gegenprüfung 08.10.): Einträge der Person

@@ -15,6 +15,7 @@
 
 import type { Buchung, Einheit, Regel } from './typen';
 import { normal, anwenden } from './regeln';
+import { csvZerlegen as zerlegen, kopfFinden, trennerErkennen } from '@/lib/finanzen/kontoauszug/csv';
 
 export const N26_KATEGORIEN: Record<string, string> = {
   'lebensmittel': 'Lebensmittel',
@@ -107,27 +108,15 @@ export function ausN26Text(text: string) {
   return ausN26Zeilen(zusammen);
 }
 
-function csvZerlegen(text: string): string[][] {
-  const z: string[][] = [];
-  let feld = '', zeile: string[] = [], inAnf = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inAnf) {
-      if (c === '"' && text[i + 1] === '"') { feld += '"'; i++; }
-      else if (c === '"') inAnf = false;
-      else feld += c;
-    } else if (c === '"') inAnf = true;
-    else if (c === ',' || c === ';') { zeile.push(feld); feld = ''; }
-    else if (c === '\n') { zeile.push(feld); z.push(zeile); zeile = []; feld = ''; }
-    else if (c !== '\r') feld += c;
-  }
-  if (feld || zeile.length) { zeile.push(feld); z.push(zeile); }
-  return z.filter(r => r.some(x => String(x).trim()));
-}
-
+/**
+ * CSV lesen (Spalten über die Kopfnamen). Seit 09.10. (ONBOARDING_PLAN.md › L8) mit EINEM erkannten Trenner — vorher teilte der Leser an Komma UND
+ * Semikolon, ein deutscher Betrag „-12,34“ ohne Anführungszeichen wurde so zu „-12“ — und die Kopfzeile darf unter einem Vorspann stehen
+ * (Zerlegen, Trenner und Kopfzeile aus lib/finanzen/kontoauszug/csv.ts). Spaltenzuordnung von Hand: Konten › „Kontoauszug einlesen“.
+ */
 export function ausCsv(text: string): { buchungen: Rohbuchung[]; kontrolle: Kontrolle } {
-  const t = csvZerlegen(text);
-  if (t.length < 2) return { buchungen: [], kontrolle: {} };
+  const zeilen = zerlegen(text, trennerErkennen(text));
+  if (zeilen.length < 2) return { buchungen: [], kontrolle: {} };
+  const t = zeilen.slice(Math.max(0, kopfFinden(zeilen))).map(z => z.zellen);
   const kopf = t[0].map(h => String(h).toLowerCase().trim());
   const idx = (r: RegExp) => kopf.findIndex(h => r.test(h));
   const iDat = idx(/datum|date|booking/), iBes = idx(/verwendung|beschreib|description|referenz|payment reference/);
