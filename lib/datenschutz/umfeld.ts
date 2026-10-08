@@ -25,6 +25,23 @@ export async function sicherungsStatus(): Promise<DatenschutzUmfeld['sicherung']
   } catch { return null; }
 }
 
+/**
+ * Die Statusdatei der Nachtsicherung mit Ergebnis und Wächter-Ping (Onboarding-Prüfung „sicherung“, 08.10. spät) — nur Zeit, Ergebnis,
+ * Verfahren und Ping-Zustand (`ok` · `fehler` · `fehlt`), nie Dateinamen oder Adressen. null, wenn es keine gibt.
+ */
+export async function sicherungsDatei(): Promise<{ zeit?: string; ok?: boolean; verfahren?: 'age' | 'openssl'; ping?: 'ok' | 'fehler' | 'fehlt' } | null> {
+  try {
+    const j = JSON.parse(await fs.readFile(path.join(datenOrdner(), 'system', 'sicherung.json'), 'utf8')) as Record<string, unknown>;
+    if (!j || typeof j !== 'object') return null;
+    return {
+      ...(typeof j.zeit === 'string' ? { zeit: j.zeit } : {}),
+      ...(typeof j.ok === 'boolean' ? { ok: j.ok } : {}),
+      ...(j.verfahren === 'age' || j.verfahren === 'openssl' ? { verfahren: j.verfahren } : {}),
+      ...(j.ping === 'ok' || j.ping === 'fehler' || j.ping === 'fehlt' ? { ping: j.ping } : {}),
+    };
+  } catch { return null; }
+}
+
 export async function datenschutzUmfeld(): Promise<DatenschutzUmfeld> {
   const e = await ladeEinrichtung().catch(() => ({}));
   const w = verantwortlicherWirksam(e);

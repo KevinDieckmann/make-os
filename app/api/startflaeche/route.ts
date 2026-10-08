@@ -34,7 +34,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const heute = localDay();
   const [ob, tasks, perf, netz, plan, grund] = await Promise.all([
-    fortschritt(personStreng(req)),
+    // Onboarding (08.10. spät): ein Fehler der Einrichtungs-Prüfung legt die Startfläche nie lahm.
+    fortschritt(personStreng(req)).catch(() => null),
     ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<{ snapshots?: { date: string; index: number; abdeckung?: number; label?: string; hebel?: string; saeulen?: Record<string, number | null> }[] }>('performance'),
     loadJson<{ kontakte?: unknown[]; chancen?: { wert?: number; stufe?: string }[] }>('netzwerk'),
@@ -155,7 +156,7 @@ export async function GET(req: Request) {
           { wert: String(netz?.chancen?.length ?? 0), label: 'Chancen', farbe: (netz?.chancen?.length ?? 0) ? undefined : 'warn' },
         ],
       },
-      onboarding: {
+      onboarding: !ob ? { status: { text: 'nicht prüfbar', farbe: 'warn' } } : {
         status: ob.fertig === ob.gesamt
           ? { text: 'fertig', farbe: 'gut' }
           : { text: `noch ${Math.round(ob.offeneMinuten / 60 * 10) / 10} h`, farbe: 'warn' },
