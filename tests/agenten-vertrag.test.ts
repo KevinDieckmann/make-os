@@ -172,7 +172,10 @@ describe('Katalog: Mitarbeiter-Vorlagen', () => {
     expect(m.map(x => x.id)).toEqual(v.map(x => x.vorlage.id));
     expect(m.find(x => x.id === 'event-nachfassen')?.headId).toBe('event');
     expect(await mitarbeiterFuerHead('gibt-es-nicht', u)).toEqual([]);
-    expect(await skillsFuerHead('sales', u)).toEqual([]);
+    // Paket 3 hat die Schnittstelle gefüllt: ohne eigene Skills liefert sie die eingebauten (= Modi des Heads).
+    const sk = await skillsFuerHead('sales', u);
+    expect(sk.every(s => s.eingebaut && s.aktiv)).toBe(true);
+    expect(sk.map(s => s.id)).toEqual(headDef('sales')!.eingebaut!.modi.map(m => `eingebaut:heads:${m}`));
     expect(await skillLesen('sk-x', u)).toBeNull();
     expect(await gedaechtnisFuer({ art: 'head', headId: 'sales' }, u)).toEqual([]);
     expect(await einstellungFuer('haus-a')).toEqual({ v: 1, heads: {} });
@@ -292,9 +295,12 @@ describe('Routen: Register und Stubs', () => {
   const rufe = async (pfad: string, m: string, kopf: Record<string, string>) =>
     (await (await route(pfad))[m](new Request(`http://test/api/${pfad}`, { method: m, headers: kopf, ...(m === 'GET' ? {} : { body: '{}' }) }))).status;
 
-  // Paket 1 „Kern“ (09.10.) hat diese Routen gebaut — im Haushalt antworten sie (200 bzw. 400 auf einen leeren Körper), die übrigen bleiben Stubs (501).
-  const GEBAUT = new Set(['agenten', 'agenten/faden', 'agenten/faden/lauf']);
-  const imHaushalt = (pfad: string) => (GEBAUT.has(pfad) ? [200, 400] : [501]);
+  // Gebaute Pakete (09.10.) ersetzen ihre Stubs — Paket 1 „Kern“ (agenten, faden, faden/lauf) und Paket 3 „Skills“ (skills, laeufe): im Haushalt
+  // antworten sie echt (GET 200, POST mit leerem Körper 400 — Aktion fehlt). Die übrigen bleiben Stubs (501).
+  const GEBAUT: Record<string, number[]> = {
+    agenten: [200, 400], 'agenten/faden': [200, 400], 'agenten/faden/lauf': [200, 400], 'agenten/skills': [200, 400], 'agenten/laeufe': [200, 400],
+  };
+  const imHaushalt = (pfad: string) => GEBAUT[pfad] ?? [501];
   /** Paket 5 „Medien“ (09.10.) hat seinen Stub ersetzt: im Haushalt eine echte Antwort, nie 401/403/501. */
   const GEBAUT_MEDIEN = new Set(['medien']);
   it('Stubs: ohne Sitzung, fremder Haushalt, Testkunde, Dienstweg → 401/403; im Haushalt → 501 (gebaute Routen: echte Antwort)', async () => {

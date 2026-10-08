@@ -81,7 +81,7 @@ interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des 
  * Tagesstart) bzw. mit Regelwerk statt Modell, weil das KI-Tor den Aufruf sperrt (Morgen-/Abendlauf, Tageslauf-Schritte
  * „übersprungen“, Heads, Brain-Konsolidierung). Kein Byte geht in beiden Fällen an das Modell.
  */
-export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef']);
+export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef', 'faden']);
 
 export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
   const roh0 = await faelligOhnePause(jetzt);
@@ -202,6 +202,9 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     if (lf.lauf?.tag !== heute) raus.push({ id: 'loeschfristen', grund: 'Löschfristen: Tageslauf steht aus', auftrag: { art: 'agent', name: 'loeschfristen', anlass: 'Takt: Löschfristen' } });
     else if (await grabsteineOffen()) raus.push({ id: 'grabsteine', grund: 'Grabsteine gelöschter Personen anwenden (nach Restore/Löschung)', auftrag: { art: 'agent', name: 'loeschfristen', anlass: 'Takt: Grabsteine' } });
   } catch (err) { console.error('[MAKE OS] Löschfristen-Takt übersprungen:', err); }
+
+  // 0f) Agenten (09.10., Paket 3): Skill- und Plan-Zeitpläne als Aufträge `faden` (lib/agenten/zeitplan.ts — Business-frei, Tageshöchstzahl, Riegel).
+  raus.push(...await import('@/lib/agenten/zeitplan').then(m => m.zeitplaeneFaellig(jetzt)).catch(err => { console.error('[MAKE OS] Agenten-Takt übersprungen:', err); return []; }));
 
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.
   const start = await loadJson<TagesstartStand>('tagesstart');

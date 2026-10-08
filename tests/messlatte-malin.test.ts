@@ -317,6 +317,10 @@ const SYS = {
   // Medien unterwegs (09.10., Paket 5): ein privates Medium „nur ich“ von Kevin samt Album „nur ich“ — Malin sieht nicht einmal das Album.
   medium: 'MESSLATTE-SYS-MEDIUM-NURICH',
   medienAlbum: 'MESSLATTE-SYS-MEDIEN-ALBUM',
+
+  // Agenten-Bereich (09.10., Paket 3): Werkstatt der Privat-Heads und geplante Hintergrundaufgaben je Person — nur die Person selbst.
+  agentenSkill: 'MESSLATTE-SYS-AGENTEN-SKILL',
+  agentenPlan: 'MESSLATTE-SYS-AGENTEN-PLAN',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -493,6 +497,13 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
       id: 'md-00000000-0000-4000-8000-0000000000aa', art: 'bild', bereich: 'privat', von: 'kevin', album: 'al-messlatte', hochgeladen: J, typ: 'image/jpeg', groesse: 10, name: SYS.medium,
       ortsdatenEntfernt: true, schluessel: { kid: null, dek: Buffer.alloc(32).toString('base64') }, varianten: {}, personen: [], urheber: { art: 'team' }, marketing: { status: 'intern', verlauf: [] }, heads: [], geaendert: J,
     }] });
+
+    // Agenten-Bereich (Paket 3): Kevins Privat-Skill (Head „Persönliche Assistenz“) und seine geplante Hintergrundaufgabe.
+    await db.saveJson('agenten-skills-privat--kevin', { v: 1, mitarbeiter: [], gedaechtnis: {}, skills: [{
+      id: 'sk-messlatte', headId: 'assistenz', name: 'messlatte-skill', beschreibung: SYS.agentenSkill, anleitung: SYS.agentenSkill, werkzeuge: [], ausloeser: { art: 'hand' },
+      eingabeFelder: [], freigabePflicht: false, ergebnis: 'faden', stufe: 'schnell', tests: [], erfolg: { laeufe: 0, angenommen: 0, abgelehnt: 0, fehler: 0 }, aktiv: false, version: 1, quelle: 'hand', angelegtVon: 'kevin',
+    }] });
+    await db.saveJson('agenten-plan--kevin', { v: 1, aufgaben: [{ id: 'hg-messlatte', besitzer: 'kevin', agent: { art: 'head', headId: 'assistenz' }, titel: SYS.agentenPlan, auftrag: SYS.agentenPlan, zeitplan: { art: 'wiederkehrend', rhythmus: 'taeglich', uhrzeit: '08:00' }, aktiv: true, erstellt: J }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

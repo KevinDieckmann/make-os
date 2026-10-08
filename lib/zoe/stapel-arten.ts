@@ -31,6 +31,11 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   medien: async () => (await import('@/lib/medien/heads')).MEDIEN_STAPEL_ART,
   // Paket R-Z (#K2): der Kalender-Agent hat Blöcke vorgeschlagen — anlegen über den Termin-Schreibweg (lib/zoe/kalender-vorschlag.ts).
   kalender: async () => (await import('./kalender-vorschlag')).KALENDER_STAPEL_ART,
+  // Agenten-Bereich (09.10., Paket 3): ein Agent hat einen Skill, einen Mitarbeiter bzw. einen Merksatz vorgeschlagen — übernehmen über
+  // die Werkstatt (lib/agenten/skills-server.ts). Ein Skill wird dabei nur ein Entwurf: aktiv erst nach Testlauf und eigenem Klick.
+  skill: async () => (await import('@/lib/agenten/skills-server')).SKILL_STAPEL_ART,
+  mitarbeiter: async () => (await import('@/lib/agenten/skills-server')).MITARBEITER_STAPEL_ART,
+  merksatz: async () => (await import('@/lib/agenten/skills-server')).MERKSATZ_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

@@ -261,6 +261,51 @@ Felder; der alte Stand kennt die Seite nicht und lässt Bestände und Ordner lie
   Social-Formaten; Demo-Saat mit Beispiel-Album; Konto-Export der eigenen Business-Medien (`kontoExport` hält Paket 3); Instanz-Export/-Löschen um den
   Bucket ergänzen; KI-Kategorie `medien` + Schalter „Bilder mit Personen an KI“ im KI-Tor (Paket 1/6a); Glocke „Freigabe angefragt“ (Meldungen: Paket 1).
 
+## 09.10.2026 nachts — Agenten-Bereich Paket 3: Skills, Hintergrundaufgaben, „Als Nächstes“, Takt (nur lokal — Branch `agenten-skills`)
+
+AGENTEN_KONZEPT.md C11 › Paket 3; Kevins Antworten 7–9 (Agenten-Bereich) und Fragerunde Teil 1 (6, 8, 14–17). Basis `agenten-vertrag`.
+Die Oberfläche (Paket 2) und der Thread-Kern (Paket 1) kommen getrennt — Merge-Reihenfolge 1 → 3 → 5 → 2.
+
+- **Skills** (`lib/agenten/skills.ts` rein, `skills-server.ts`): Name ≤ 64 `[a-z0-9-]`, Beschreibung ≤ 1.024, Anleitung ≤ 20.000 mit Beispielen
+  (darüber 413, nie gekürzt), Werkzeuge ⊆ Head bzw. Mitarbeiter (sonst 400 — die Stufe kommt immer aus dem Register), Auslöser von Hand ·
+  Zeitplan (täglich/werktags/wöchentlich/monatlich + Uhrzeit, 07–22 Uhr) · Ereignis (neue Mail, neuer Lead, Zahlungseingang — angebunden wird die
+  Quelle beim Zusammenführen), Eingabe-Felder, Freigabe-Pflicht, Ergebnis Thread/Stapel, Modellstufe, Kostengrenze, Testfälle.
+  **Aktiv nur per Klick** nach einem gelungenen Testlauf der aktuellen Fassung (≥ 3 Testfälle, ohne Wirkung). Jede Änderung = neue Version
+  (wieder aus, frühere Fassungen bleiben sichtbar). Import SKILL.md (nur Name, Beschreibung, Anleitung — Werkzeuge wählt die Person), „Das als
+  Skill speichern“ aus einem eigenen Thread (mit Fremdtext nur die eigenen Nachrichten). Eingebaute Skills = die Modi der Heads/des Finanzchefs.
+- **Vorschläge von Agenten** (Skill, Mitarbeiter, Merksatz) nur über den Stapel (neue Arten `skill`/`mitarbeiter`/`merksatz`); ein Skill wird
+  dabei nur ein Entwurf. **Eigentum:** Business-Skills gehören dem Haushalt (Anleger vermerkt), beim Konto-Löschen gehen sie an den Inhaber;
+  Privat-Skills gehören der Person (eigener Bestand, geht mit dem Konto).
+- **Hintergrundaufgaben** (`lib/agenten/laeufe.ts`): EIN Lesemodell aus Warteschlange, Threads, Head-/Finanzchef-Berichten und Agenten-Log —
+  eigene voll (Schritte, Kosten, Dauer), Systemläufe neutral, die der anderen Person nie. Abbrechen/neu starten nur eigene; Business-Läufe in
+  Business-freien Zeiten nur mit „trotzdem“; über 0,50 € je Lauf erst nach Bestätigung (Schätzung aus gemessenen Läufen, sonst Annahme).
+  **Geplant/wiederkehrend** in `agenten-plan--<person>` (`lib/agenten/plan-server.ts`).
+- **Takt** (eine Zeile in `lib/zoe/takt.ts`, Regel `lib/agenten/zeitplan.ts`): Skill- und Plan-Zeitpläne werden Aufträge `faden` — nur mit
+  Hintergrund-KI (`faden` in `KI_LAEUFE`), nie im Not-Aus, Business-Heads ruhen Business-frei (kommen am selben Tag danach), höchstens 12
+  automatische Läufe je Head und Tag, Reviews (Stufe „stark“) tragen `batch: true` (Feld für das Anbieter-Tor).
+- **„Als Nächstes“** (`lib/agenten/naechstes.ts`): geplante Läufe mit Uhrzeit aus DENSELBEN Regeln wie der Takt (Skills/Pläne, Heads-Takt,
+  Finanzchef — Gold-Test Minute für Minute), offene Freigaben als eine Zeile je Head, Fristen (`fristenLesen`), Aufgaben bei ZOE — nach
+  Eisenhower, Kritisches pulsiert (`kritisch`).
+- **Leistung & Autonomie** (`lib/agenten/leistung.ts`): Daumen (Feld `daumen` an der Nachricht, schreibt Paket 1), Annahmequote je Head,
+  Erfolgsquote je Skill, Kosten je Ergebnis, Daten für ZOEs Monatsreview (nur Zahlen). Autonomie je Head nur verschärfend über den heutigen Boden;
+  hoch per Klick erst ab 70 % Annahme (≥ 10 Entscheidungen), unter 40 % automatisch zurück (in `agenten-einstellung--<haushalt>`).
+- Routen `/api/agenten/skills` und `/api/agenten/laeufe` (nur die Person selbst, Dienstweg 403). Tests: `agenten-skills` (23), `agenten-laeufe` (13),
+  `agenten-naechstes` (10, Gold-Fälle), `agenten-leistung` (9); angepasst `agenten-vertrag` (Stubs gebaut), Saat-Marken in `messlatte-malin`.
+
+**So testet ihr** (nach dem Zusammenführen mit der Oberfläche über Agenten › Head; bis dahin auf `localhost:3001` angemeldet in der
+Browser-Konsole, z. B. `await (await fetch('/api/agenten/skills?head=sales')).json()`):
+1. Agenten › Sales › Skills: die sechs eingebauten Skills stehen da (Power Hour, Leads, Deal-Review …) — „ändern“ geht nicht.
+2. „+ Skill“: Name `angebot-nachfassen`, Beschreibung (was + wann), Anleitung, Werkzeuge `angebote_lage`, `crm_vorschlag`, Zeitplan werktags 08:00
+   → Speichern: Entwurf, aus. „Aktivieren“ → Hinweis „mindestens 3 Testfälle“. Drei Testfälle eintragen → „Testlauf“ → je Fall ✓/✗ (es wird
+   nichts gespeichert oder gesendet). Erst danach „Aktivieren“. Anleitung ändern → wieder aus, Version +1, „Versionen“ zeigt die alte.
+3. Ein Werkzeug wählen, das der Head nicht hat (z. B. `erfasse_rechnung` bei Sales) → Fehler „Diese Werkzeuge hat Head of Sales nicht“.
+4. „SKILL.md importieren“ mit einer Datei mit `name`/`description` → Entwurf ohne Werkzeuge; `allowed-tools` wird nicht übernommen.
+5. „+ Hintergrundaufgabe › geplant“: Head Strategie, morgen 09:30, Auftrag → steht unter „Als Nächstes“ mit Uhrzeit; „wiederkehrend“ freitags 15:00
+   → „wöchentlich Fr 15:00“. Zweites Konto: sieht weder den Plan noch Privat-Skills des ersten.
+6. Rechts „Läuft/Fertig“: eigener Lauf → „Abbrechen“ (wird nie ausgeführt) → „Neu starten“. In einer Business-freien Zeit fragt „Neu starten“
+   „Business-frei — trotzdem?“.
+7. Vorschau des Takts: `GET /api/zoe/takt?in=60` zeigt „Agenten: Skill nach Zeitplan“, sobald ein aktiver Skill fällig ist (ohne Titel).
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt
