@@ -16,6 +16,7 @@ import {
 import { Building2 } from 'lucide-react';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Chip, Zahl, feld, LEUCHT } from './ui';
 import { KiMarke } from './KiMarke';
+import { ZoeReiter } from './ZoeReiter';
 
 const scoreColor = (s?: number) => (s == null ? C.inkLeise : s >= 80 ? LEUCHT.gut : s >= 50 ? LEUCHT.achtung : LEUCHT.kritisch);
 const statusColor = (s: ProspectStatus) => (s === 'kontaktiert' ? LEUCHT.gut : s === 'qualifiziert' ? LEUCHT.business : s === 'verworfen' ? LEUCHT.kritisch : C.inkLeise);
@@ -145,6 +146,7 @@ export function ProspectingView() {
       unter={<>Firmen rein, KI qualifiziert gegen dein Profil (Score + Fit + Aufhänger), du priorisierst. {PIPELINE_HINT}</>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
     >
+      <ZoeReiter />
       {/* Kennzahlen */}
       <Karte i={0} ton={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business}>Zielliste</Ueberschrift>

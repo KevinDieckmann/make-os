@@ -30,6 +30,7 @@ import {
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, Wahl, ZielBezug, feld, LEUCHT } from './ui';
 import { neueKennung } from '@/lib/kennung';
 import { suchPasst } from '@/lib/text/such-norm';
+import { PlanerLeiste } from './PlanerLeiste';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -341,6 +342,8 @@ export function KompassView() {
       breit={960}
       rechts={abw.length > 0 ? <Knopf leise onClick={zuruecksetzen}>↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen</Knopf> : undefined}
     >
+      {/* Einstieg unter Planung (08.10.): dieselbe Reiterzeile wie Tag · Woche · Monat · Quartal · Jahr. */}
+      <PlanerLeiste aktiv="kompass" />
       <ZielBezug bereich="privat" />
       {/* ── EBENE 1: DIE LAGE ──
           Kein Zahlenwert, sondern ein Zustand: in welcher Lage läuft das

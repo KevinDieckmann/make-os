@@ -12,6 +12,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, prioFarbe, LEUCHT } from './ui';
 import { neueKennung } from '@/lib/kennung';
+import { ZoeReiter } from './ZoeReiter';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
 interface Protokoll { titel: string; zusammenfassung: string; entscheidungen: string[]; actionItems: ActionItem[]; }
@@ -114,6 +115,7 @@ export function MeetingView() {
       unter={<>Transkript oder Notizen einfügen — der Agent macht Zusammenfassung, Entscheidungen und Action-Items daraus. Jedes Action-Item übernimmst du <b style={{ color: C.ink }}>auf Klick in deine echten Aufgaben</b>. <span style={{ color: C.inkLeise }}>(Auto-Mitschrift via Granola/Fireflies kommt als Zusatz.)</span></>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
+      <ZoeReiter />
       <Karte i={0} ton={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>Mitschrift</Ueberschrift>
         <textarea value={transcript} onChange={e => setTranscript(e.target.value)} rows={7} placeholder="Meeting-Transkript oder Notizen hier einfügen …" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />

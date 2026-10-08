@@ -11,6 +11,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Hinweis, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
+import { ZoeReiter } from './ZoeReiter';
 
 type LoopKind = 'morgen' | 'woche' | 'rueckblick' | 'finanzen' | 'sales' | 'marketing' | 'operations' | 'kunden' | 'gesundheit';
 interface Prio { titel: string; warum?: string; wann?: string }
@@ -77,6 +78,7 @@ export function LoopView() {
 
   return (
     <Seite titel="Loops" unter="Der Rhythmus des Systems: echte Daten zusammenziehen, eine Handlung ableiten, das Ergebnis merken.">
+      <ZoeReiter />
       <Flaeche seite="loops">
       <Kachel id="wahl" titel="Welcher Loop" breite={4}>
       <Karte i={0}>

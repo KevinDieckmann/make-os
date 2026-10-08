@@ -19,6 +19,7 @@ import { CrmStapelDetail } from './crm/ZoeFragen';
 import { useTasks } from '@/context/TasksContext';
 import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WERKZEUG, type ZoeFeld } from '@/lib/aufgaben/zoe';
 import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
+import { ZoeReiter } from './ZoeReiter';
 
 interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
@@ -121,6 +122,7 @@ export function StapelView() {
 
   return (
     <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<span className="ui-nur-breit"><Knopf leise href="/os/stapel/voll">Protokoll & Rückgängig ›</Knopf></span>}>
+      <ZoeReiter />
       <div className="ui-nur-schmal"><Knopf leise href="/os/stapel/voll" voll>Protokoll & Rückgängig ›</Knopf></div>
       {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
 

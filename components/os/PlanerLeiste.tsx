@@ -19,7 +19,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 
-export type Horizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr' | 'routinen' | 'kapazitaet';
+export type Horizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr' | 'routinen' | 'kapazitaet' | 'fokus' | 'kompass' | 'wachstum';
 
 const HORIZONTE: { id: Horizont; label: string; href: string }[] = [
   { id: 'tag', label: 'Tag', href: '/os/planung' },
@@ -30,6 +30,10 @@ const HORIZONTE: { id: Horizont; label: string; href: string }[] = [
   { id: 'routinen', label: 'Routinen', href: '/os/planung/routinen' },
   // Kapazität (04.10.): Zeit und Machbarkeit je Person und Woche.
   { id: 'kapazitaet', label: 'Kapazität', href: '/os/planung/kapazitaet' },
+  // Aufräumen Etappe 1 (08.10.): Fokus, Kompass und Wachstum sind keine eigenen Menüpunkte mehr — sie sind Einstiege unter Planung.
+  { id: 'fokus', label: 'Fokus', href: '/os/fokus' },
+  { id: 'kompass', label: 'Kompass', href: '/os/kompass' },
+  { id: 'wachstum', label: 'Wachstum', href: '/os/wachstum' },
 ];
 
 const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];

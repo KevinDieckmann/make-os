@@ -21,6 +21,7 @@ import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Wahl, f
 import { Regeln } from './wissen/Regeln';
 import { Inbox } from './wissen/Inbox';
 import { BrainKugel } from './kugel/BrainKugel';
+import { ZoeReiter } from './ZoeReiter';
 
 interface Stand {
   person?: string;
@@ -406,6 +407,7 @@ export function WissenView() {
       unter={stand ? `Dein Obsidian-Brain · ${stand.notizen} ${stand.notizen === 1 ? 'Notiz' : 'Notizen'} · Nummer eins für ZOE` : 'Dein Obsidian-Brain · Nummer eins für ZOE'}
       rechts={obsidianVault ? <Knopf leise onClick={() => { window.location.href = obsidianVault; }}>Obsidian öffnen</Knopf> : undefined}
     >
+      <ZoeReiter />
       {/* Die Brain-Kugel (05.10., Überarbeitung): die Bühne der Seite — alle MAKE-OS-Datensätze, die du sehen darfst, als Sterne.
           Nur in der Übersicht (keine Notiz offen); am Handy volle Breite über dem Frage-Bereich. */}
       {!offen && (

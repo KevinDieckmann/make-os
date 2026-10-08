@@ -80,7 +80,8 @@ export function UnternehmenView() {
   if (offen && g) return <Detail key={g.id} g={g} daten={daten} reiter={params.get('r') ?? 'steckbrief'} onReiter={r => geh({ g: g.id, r })} zurueck={() => geh({ s: sicht })} onNeu={ersetzen} neuLaden={laden} oeffne={id => geh({ g: id })} />;
 
   return (
-    <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Anteile und Verträge — eine Quelle für Planung, Finanzen und Markttraktion."
+    // Mandate & Unternehmen (08.10.): EIN Punkt in der Leiste — er öffnet die Mandate; von hier geht es einen Klick zurück.
+    <Seite titel="Unternehmen" unter={<>Eigene Gesellschaften, Anteile und Verträge — eine Quelle für Planung, Finanzen und Markttraktion. · <Link href={WEG.mandat()} style={{ color: C.inkDim }}>Mandate & Produkte ›</Link></>}
       rechts={!neu && <Knopf haupt onClick={() => setNeu(true)}>+ Gesellschaft</Knopf>}>
       {offen && !g && (weg
         ? <Hinweis art="info" titel={geloeschtText(weg)}>Diese Gesellschaft wurde endgültig gelöscht. <UnterlagenBleiben href={WEG.unterlagen(weg.id)} /></Hinweis>

@@ -23,6 +23,7 @@ import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { ZeitJeEinheitKarte, FokusBloeckeKarte } from './zeit/ZeitJeEinheit';
 import { ZeitJeMandatKarte } from './zeit/ZeitJeMandat';
 import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
+import { PlanerLeiste } from './PlanerLeiste';
 
 type Horizont = 'tag' | 'woche' | 'monat';
 const HORIZONTE: { id: Horizont; label: string; frage: string }[] = [
@@ -72,6 +73,8 @@ export function FokusView() {
 
   return (
     <Seite titel="Fokus" unter="Worauf es heute, diese Woche und diesen Monat ankommt — und ob der Körper mitmacht.">
+      {/* Einstieg unter Planung (08.10.): dieselbe Reiterzeile wie Tag · Woche · Monat · Quartal · Jahr. */}
+      <PlanerLeiste aktiv="fokus" />
       <Flaeche seite="fokus">
       <Kachel id="fokus" titel="Unser Fokus" breite={6}>
       <Karte i={0} ton="fokus" netz>
