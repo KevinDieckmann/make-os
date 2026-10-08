@@ -17,11 +17,16 @@
   Zulieferer aus (Altbestand-Übernahme `MAKE_OS_ALTBESTAND_PERSON` statt Zulieferer-Schlüssel) · Malin zweite Inhaberin mit SSH (Update 2, 16.10.).
 - **Fertig auf Branch, erst NACH dem Freitags-Upload mergen:** `konten-register` (60c52c84; Lücke 2 — EIN Register `konten--<haushalt>`, Rückfall
   bit-gleich, Übernahme nur Vorschau → Bestätigen, Rückweg-Spiegel in `finanzplan.firmen`; KONTEN_REGISTER.md).
-- **In Arbeit (Agenten, je eigener Branch):** `rechnungen-pdf` (Lücke 4) · `business-frei` (Lücke 7) · `inbox-teilen` (Lücke 6).
+- **Fertig auf Branch (nach dem Upload mergen):** `business-frei` (a6873dc4; Lücke 7 — EINE Regel `lib/arbeitsrahmen/regel.ts`, Kalender 409 + Rückfrage,
+  freie Zeit/Buchung ohne Plätze, Kapazität, ZOE/Heads ruhen + holen nach, Glocke sammelt).
+- **In Arbeit (Agenten, je eigener Branch):** `rechnungen-pdf` (Lücke 4) · `inbox-teilen` (Lücke 6) · `zoe-whatsapp` (Lücke 5).
 - **Demo-Rundgang 08.10. spät:** 9 Bilder an Kevin; Funde behoben: Tagesplanung „Reha“ fest für alle (2a2ad831), Gesundheit „dem Boten sagen“ (afaf2ddc).
 - **Fragen für die nächste Klickrunde (Konten-Register):** (1) Finanzplanung startet MAKE/KD Ventures nach der Übernahme ab dem jüngsten Register-Stand
   (KD Ventures statt „Start KD Ventures“ aus den Annahmen) — so bestätigen? (2) Rücklage im Privat-Index = Summe der Tagesgeld-Konten (privat + gemeinsam)
   oder ein eigens markiertes Konto? (3) Haushalts-Konten und Register-Konten zu EINER Liste zusammenlegen (nächster Schritt)?
+- **Fragen für die nächste Klickrunde (Business-frei):** (1) Sperrt Business-frei auch die Selbstständigkeit (Privat, zählt aber als Arbeit)? (2) Sollen
+  Ziehen/Verschieben bestehender Business-Termine und Planen-Blöcke ins Fenster auch fragen? (3) Standard „So ganz, werktags ab 20 Uhr“ in neuen Instanzen
+  sofort durchsetzen (heute erst, wenn die Familie einmal geöffnet wurde)? (4) Eigene Ergänzung für Konten „nur Business“ in der Oberfläche?
 - **Wartet auf Kevin:** Markttraktion-Fragebogen (23 Bereiche, Marktvorbilder, ohne Grenze) · Bank-Runde (B1–B4, S1, K-Paare) · Teil 2 (Business).
 - **Vor dem Upload:** Demo-Rundgang mit Bildern (Demo-Bau `.next-demo`, Port 3200) · dann Push auf Kevins Wort · Server-Schritte `UPLOAD_0810.md`.
 
