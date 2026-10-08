@@ -27,6 +27,14 @@ Profile (Bedarf/Ziel) nur die Person selbst — außer sie teilt Gesundheit. Wä
 **Danach:** Format v2 umstellen, wenn der neue Stand stabil läuft.
 **Bleibt so / offen:** Selbstständigkeit in Business-Index/Cockpit/Steuern/Liquiplan wie heute · Design Klar·DARK bleibt (erledigt) · Zielgruppe Produkt: offen.
 
+## Stand 08.10. mittags (auf `entwicklung`, nicht online)
+- Gebaut nach Kevins Entscheidungen: Websites (Datenschutz/Impressum, nur Gründer-Satz offen; fokus: „Teilnahme an einem Abend“ wartet auf Anwalt) · Malin-Sicht
+  (Merge `malin-sicht`: fremde Routinen „Belegt“, Ernährungsprofile nur selbst, Schreiben auf Fremdes 403) · Vault: 17 Notizen im MAKE OS Brain mit Block
+  „🔴 UPDATE 08.10.“ unter dem Titel, alter Text unter „Verlauf“ · `UPLOAD_0810.md` = Schritte für den Upload · demo.test mit echtem Datum.
+- Prüfung: volle Suite 449 Dateien / 5.729 Tests grün, tsc 0, Lint 0.
+- Offen (Kevin): Gründer-Satz · Postgres oder JSON (M4) · Wiederherstellungstest · Ernährungs-Varianten „für <Name> ohne …“ erlaubt? · Blöcke der Wochenvorlage
+  zeigen Titel beiden · Lese-Protokoll für Ernährungsprofile.
+
 ## Aufräumen (wartet auf Kevin — Löschen braucht sein Wort)
 - Worktrees bereits gemergter Branches unter `.claude/worktrees/` (nullpunkt, betroffenenrechte, finanzplan-5, icloud-je-person, inbox-2, aufgaben-struktur, whatsapp, inbox-whatsapp-ui, websites-v3, zeitstrahl-seil) — `git worktree remove` je Ordner; Branches bleiben.
 - `worktree-agent-a726d126d4270b431` (Kalender-Gesamtprüfung 29.09.) ist überholt: alle Korrekturen stehen schon in `entwicklung`.
