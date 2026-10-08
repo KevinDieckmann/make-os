@@ -15,7 +15,7 @@ import { rechneMit } from '../lib/finanzen/szenarien';
 import { businessSicht, businessPfadErlaubt, pfadIstBusiness, bereichAus, fuerSicht, nurBusinessPunkte, wirksameSicht } from '../lib/finanzen/plan/sicht';
 import { bereicheFuer, unterseiteFuer, finanzplanAdresse, NUR_PRIVAT_UNTERSEITEN } from '../lib/finanzen/plan/hilfen';
 import { wendeOperationenAn, pruefeDokument } from '../lib/finanzen/plan/operationen';
-import { aktiverSpaceEintrag, EIGEN } from '../lib/make-one/spaces';
+import { aktiverSpaceEintrag, leisteFuer } from '../lib/make-one/spaces';
 import { planFix, arbeitsplanFix } from './fixtures/finanz-plan';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-fp-sicht-'));
@@ -270,7 +270,8 @@ describe('Navigation und Deep-Links', () => {
     expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=business&u=ug')).toMatchObject({ space: 'business', eintrag: { label: 'Finanzen' } });
     expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=privat&u=privat')).toMatchObject({ space: 'privat', eintrag: { label: 'Finanzen' } });
     expect(aktiverSpaceEintrag('/os/finanzplan', '?u=lage').space).toBe('privat');
-    expect(EIGEN.some(e => e.href === '/os/finanzplan')).toBe(false);
+    // 08.10. (Aufräumen Etappe 1): es gibt keine eigenen Knöpfe neben den Spaces mehr — Finanzplanung ist kein Leisten-Punkt.
+    expect([...leisteFuer('privat'), ...leisteFuer('business')].some(e => e.href === '/os/finanzplan')).toBe(false);
   });
   it('alte Links /os/finanzplan?… landen mit allen Parametern in der Privat-Sicht', () => {
     expect(finanzplanAdresse('privat', new URLSearchParams('u=buchungen&monat=8&zeile=pb1'))).toBe('/os/finanzen?s=finanzplanung&space=privat&u=buchungen&monat=8&zeile=pb1');

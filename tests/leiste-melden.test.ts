@@ -1,5 +1,5 @@
 // ─── Leiste (28.09.): „Problem oder Idee melden“ unten links ────────────────
-// Der Eintrag steht zwischen Brain und System (Desktop); am Handy (seit 02.10., Paket B) hat in der Leiste „Netzwerken“
+// Der Eintrag steht unten nach den Einstellungen (Desktop, seit 08.10.; vorher zwischen Brain und System); am Handy (seit 02.10., Paket B) hat in der Leiste „Netzwerken“
 // (Handschlag) seinen Platz übernommen — „Problem oder Idee melden“ bleibt dort als Zeile im Blatt von Privat/Business
 // (MeldenZeile) und auf der System-Seite erreichbar. Ein Klick löst `make-idee` aus — das Fenster IdeeErfassen im
 // /os-Layout lauscht darauf. Kein Browser: Server-Render + der Klick-Griff direkt.
@@ -12,18 +12,22 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace:
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('Leiste: Problem oder Idee melden', () => {
-  it('steht in der Desktop-Leiste zwischen Brain und System; die Handy-Leiste zeigt Netzwerken statt Melden', async () => {
+  // 08.10. (Aufräumen Etappe 1): unten stehen Einstellungen (vorher „System“), dann „Problem oder Idee melden“, dann das Konto;
+  // ZOE ist der letzte Punkt der Leiste darüber (Brain hängt unter ZOE).
+  it('steht in der Desktop-Leiste unter ZOE nach den Einstellungen; die Handy-Leiste zeigt Netzwerken statt Melden', async () => {
     const { Leiste, MELDEN_LABEL } = await import('@/components/os/Leiste');
     expect(MELDEN_LABEL).toBe('Problem oder Idee melden');
     const html = renderToStaticMarkup(h(Leiste));
     const [desktop, mobil] = html.split('class="leiste-mobil"');
     expect(mobil).toBeDefined();
-    const brain = desktop.indexOf('title="Brain"');
+    const zoe = desktop.indexOf('title="ZOE"');
+    const einstellungen = desktop.indexOf('title="Einstellungen"');
     const melden = desktop.indexOf(`title="${MELDEN_LABEL}"`);
-    const system = desktop.indexOf('title="System"');
-    expect(brain).toBeGreaterThan(-1);
-    expect(melden).toBeGreaterThan(brain);
-    expect(system).toBeGreaterThan(melden);
+    expect(zoe).toBeGreaterThan(-1);
+    expect(einstellungen).toBeGreaterThan(zoe);
+    expect(melden).toBeGreaterThan(einstellungen);
+    expect(desktop).not.toContain('title="System"');
+    expect(desktop).not.toContain('title="Brain"');
     expect(desktop).toContain(`>${MELDEN_LABEL}</span>`);
     // Handy: Netzwerken (Handschlag) → /os/netzwerken, „Melden“ steht nicht mehr in der Leiste.
     expect(mobil).toContain('href="/os/netzwerken"');
@@ -32,8 +36,8 @@ describe('Leiste: Problem oder Idee melden', () => {
     expect(mobil).toContain('lucide-handshake');
     // Am Rechner steht Netzwerken NICHT (Kevin 03.10.: „wirklich nur auf dem Handy“).
     expect(desktop).not.toContain('href="/os/netzwerken"');
-    // Reihenfolge am Handy: Home · Privat · Business · ZOE · Netzwerken · System
-    const reihe = ['>Home<', '>Privat<', '>Business<', '>ZOE<', '>Netzwerken<', '>System<'].map(t => mobil.indexOf(t));
+    // Reihenfolge am Handy: Heute · Privat · Business · ZOE · Netzwerken · Einstellungen
+    const reihe = ['>Heute<', '>Privat<', '>Business<', '>ZOE<', '>Netzwerken<', '>Einstellungen<'].map(t => mobil.indexOf(t));
     expect(reihe.every(i => i > -1)).toBe(true);
     expect([...reihe].sort((a, b) => a - b)).toEqual(reihe);
   });

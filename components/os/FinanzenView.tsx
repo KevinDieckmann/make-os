@@ -71,10 +71,10 @@ export function FinanzenView() {
       : [{ id: 'business' as Sicht, label: 'Business' }, planung, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef];
 
   return (
-    <Seite titel="Zahlen" breit={sicht === 'business' || sicht === 'steuern' || sicht === 'privat' || sicht === 'finanzplanung' ? 1440 : undefined} unter={UNTER[sicht]}>
+    <Seite titel="Finanzen" breit={sicht === 'business' || sicht === 'steuern' || sicht === 'privat' || sicht === 'finanzplanung' ? 1440 : undefined} unter={UNTER[sicht]}>
       {/* Eine wischbare Leiste (Standard-Baustein) — am Handy steht der Inhalt gleich darunter, der Kopf bleibt klein. */}
       {zugang !== null && (
-        <nav aria-label="Zahlen" className="ui-reiter-zeile">
+        <nav aria-label="Finanzen" className="ui-reiter-zeile">
           <Reiter ariaLabel="Sicht der Zahlen" liste={liste} aktiv={sicht} onWahl={s => setze({ s, space: s === 'gesamt' || s === 'finanzplanung' || s === 'steuern' ? (imPrivat ? 'privat' : 'business') : null, t: null, k: null, f: null, monat: null, kat: null, q: null, u: null, zeile: null, sz: null, feld: null, steuern: null })} />
         </nav>
       )}

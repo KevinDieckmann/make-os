@@ -57,17 +57,21 @@ describe('Flächen: Privates auf private, Business auf Business-Flächen', () =>
     expect(spaceAusFlaeche('home')).toBe('alle');
     expect(spaceAusFlaeche(undefined)).toBe('alle');
   });
-  it('Übersichten und Home: Aufgaben-Widgets je Space, keins mischt auf einer Space-Fläche', () => {
-    const quelle = readFileSync(path.join(process.cwd(), 'components/os/SpaceUebersichtView.tsx'), 'utf8');
-    const privat = quelle.slice(quelle.indexOf('privat: ['), quelle.indexOf('business: ['));
-    const business = quelle.slice(quelle.indexOf('business: ['));
+  // 08.10. (Aufräumen Etappe 1): Home und die Übersichten je Space sind EINE Seite „Heute“ (components/os/HeuteView.tsx) —
+  // die Standards je Sicht stehen dort, die Flächen-Kennungen sind die alten.
+  it('Heute je Sicht: Aufgaben-Widgets je Space, keins mischt auf einer Space-Fläche', () => {
+    const quelle = readFileSync(path.join(process.cwd(), 'components/os/HeuteView.tsx'), 'utf8');
+    const std = quelle.slice(quelle.indexOf('export const HEUTE_STANDARD'));
+    const alle = std.slice(std.indexOf('alle: ['), std.indexOf('privat: ['));
+    const privat = std.slice(std.indexOf('privat: ['), std.indexOf('business: ['));
+    const business = std.slice(std.indexOf('business: ['), std.indexOf('\n};'));
     expect(privat).toMatch(/art: 'aufgaben'[^}]*space: 'privat'/);
     expect(privat).not.toMatch(/space: 'business'/);
     expect(business).toMatch(/art: 'aufgaben'[^}]*space: 'business'/);
     expect(business).not.toMatch(/space: 'privat'/);
-    const home = readFileSync(path.join(process.cwd(), 'components/os/HomeView.tsx'), 'utf8');
-    expect(home).toMatch(/id: 'aufgaben-privat', art: 'aufgaben'[^}]*space: 'privat'/);
-    expect(home).toMatch(/id: 'aufgaben-business', art: 'aufgaben'[^}]*space: 'business'/);
+    expect(alle).toMatch(/id: 'aufgaben-privat', art: 'aufgaben'[^}]*space: 'privat'/);
+    expect(alle).toMatch(/id: 'aufgaben-business', art: 'aufgaben'[^}]*space: 'business'/);
+    expect(quelle).toContain("HEUTE_FLAECHE: Record<HeuteSicht, string> = { alle: 'home', privat: 'uebersicht-privat', business: 'uebersicht-business' }");
     // Das Widget nimmt ohne Einstellung den Space seiner Fläche (Flaeche reicht `seite` durch).
     expect(readFileSync(path.join(process.cwd(), 'components/os/flaeche/Flaeche.tsx'), 'utf8')).toContain('seite={seite}');
     expect(readFileSync(path.join(process.cwd(), 'components/os/flaeche/widgets.tsx'), 'utf8')).toContain('str(e.space, spaceAusFlaeche(seite))');

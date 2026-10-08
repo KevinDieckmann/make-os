@@ -127,8 +127,8 @@ export function Kalender() {
   const [meldung, setMeldung] = useState<string | null>(null);
   const [einst, setEinst] = useState<Einstellungen | null>(null);
   const [zeigeEinst, setZeigeEinst] = useState(false);
-  // Rückkehr von Google (?google=…): die Einstellungen öffnen, dort steht der Hinweis (GoogleVerbindung).
-  useEffect(() => { try { if (new URLSearchParams(window.location.search).has('google')) setZeigeEinst(true); } catch { /* ohne Adresse */ } }, []);
+  // Rückkehr von Google (?google=…) oder aus den Einstellungen (?einstellungen=1, 08.10.): die Einstellungen öffnen.
+  useEffect(() => { try { const a = new URLSearchParams(window.location.search); if (a.has('google') || a.get('einstellungen') === '1') setZeigeEinst(true); } catch { /* ohne Adresse */ } }, []);
   const [analyse, setAnalyse] = useState<Analyse | null>(null);
   const [analysiert, setAnalysiert] = useState(false);
   const [eingetragen, setEingetragen] = useState<Record<number, 'ok' | 'busy' | 'err'>>({});

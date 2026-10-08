@@ -17,6 +17,7 @@ import {
 } from '@/lib/make-one/agents-data';
 import { AgentenHirn } from './AgentenHirn';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, Hinweis, LEUCHT, Spalten, Spalte, aufZwei } from './ui';
+import { ZoeReiter } from './ZoeReiter';
 
 interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean }
 type CfgMap = Record<string, Cfg>;
@@ -113,6 +114,7 @@ export function AgentenView() {
 
   return (
     <Seite titel="Agenten" unter={`${ORCHESTRATOR.name} dirigiert · ${DEPARTMENTS.length} Abteilungen · ${live} von ${alle.length} live`}>
+      <ZoeReiter />
       <Spalten verhaeltnis="1:1">
         <Spalte>
       <Karte i={0} ton={LEUCHT.agenten}>

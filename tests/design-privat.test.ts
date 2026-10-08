@@ -27,7 +27,7 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche'];
 const EINZELN = [
   'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'SaeuleView', 'KompassView', 'WissenView',
-  'SpaceUebersichtView', 'HomeView', 'WachstumView', 'StapelView', 'StapelVoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
+  'HeuteView', 'ZoeReiter', 'WachstumView', 'StapelView', 'StapelVoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
   'KontoView', 'AnmeldeAdressen', 'SystemView', 'VerbindungenView', 'DatenbasisView', 'StammdatenView', 'ZoeStart',
 ].map(n => `components/os/${n}.tsx`);
 const ALLE = [...ORDNER.flatMap(d => dateien(d)), ...EINZELN];

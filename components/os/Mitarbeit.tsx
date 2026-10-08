@@ -18,8 +18,8 @@ import { useSpace } from '@/hooks/useSpace';
 interface Aktiv { person: string; name: string; pfad: string; seitSek: number }
 
 const BEREICH: [RegExp, string][] = [
-  [/^\/os\/finanzen/, 'Zahlen'], [/^\/os\/controlling/, 'Controlling'], [/^\/os\/aufgaben/, 'Aufgaben'], [/^\/os\/gesundheit/, 'Gesundheit'],
-  [/^\/os\/inbox/, 'Inbox'], [/^\/os\/(markttraktion|crm)/, 'Markttraktion'], [/^\/os\/(netzwerk|kontakte)/, 'Kontakte'], [/^\/os\/wissen/, 'Wissen'], [/^\/os\/?$/, 'Heute'],
+  [/^\/os\/finanzen/, 'Finanzen'], [/^\/os\/controlling/, 'Controlling'], [/^\/os\/aufgaben/, 'Aufgaben'], [/^\/os\/gesundheit/, 'Gesundheit'],
+  [/^\/os\/inbox/, 'Inbox'], [/^\/os\/(markttraktion|crm)/, 'Markttraktion'], [/^\/os\/(netzwerk|kontakte)/, 'Kontakte'], [/^\/os\/wissen/, 'Brain'], [/^\/os\/?$/, 'Heute'],
 ];
 const bereich = (pfad: string) => BEREICH.find(([r]) => r.test(pfad))?.[1] ?? 'MAKE OS';
 

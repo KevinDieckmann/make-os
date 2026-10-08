@@ -33,7 +33,8 @@ export function ProdukteMandate() {
   const zuKontakt = (id: string) => router.push(markttraktion('kontakte', 'akte', id));
   return (
     <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Health, Umsatz.'}
-      rechts={<Segmente liste={[{ id: 'mandate' as Reiter, label: 'Mandate' }, { id: 'produkte' as Reiter, label: 'Produkte' }]} aktiv={reiter} onWahl={r => router.push(mandateLink(r), { scroll: false })} />}>
+      // Mandate & Unternehmen (08.10.): ein Punkt in der Leiste — das Gesellschafts-Register ist der dritte Reiter (eigene Seite /os/unternehmen).
+      rechts={<Segmente liste={[{ id: 'mandate' as const, label: 'Mandate' }, { id: 'produkte' as const, label: 'Produkte' }, { id: 'unternehmen' as const, label: 'Unternehmen' }]} aktiv={reiter} onWahl={r => router.push(r === 'unternehmen' ? WEG.unternehmen() : mandateLink(r), { scroll: false })} />}>
       {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
       {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
       {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}

@@ -4,6 +4,42 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 — Aufräumen Etappe 1: Navigation, Kopf, Startseite (nur lokal — Branch `aufraeumen-1`)
+
+Kevin 08.10.: „Die Software wirkt unaufgeräumt und überladen, ich weiß gar nicht mehr wo alles ist.“ Vorher: rund 27 Navigationsziele vor dem
+ersten Inhalt, vier Startseiten (Home, Heute, Übersicht je Space, Wachstum), System-Seite mit 23 Links (Telegram und Wachstum doppelt),
+Hervorhebungen, die nicht zum Fundort passten, „Zahlen“ neben „Finanzen“, „Wissen“ neben „Brain“.
+- **Eine Startseite „Heute“** unter `/os` (gestaltbar wie bisher): Alles · Privat · Business (`?space=`). Gruß und Datum einmal, Standard: Steht an
+  (neues Widget), Fokus, Termine, Aufgaben, Index, Wachstums-Score als Karte. Die gespeicherten Layouts bleiben — die Flächen heißen intern weiter
+  `home`, `uebersicht-privat`, `uebersicht-business`; neue Karten rutschen an ihre Standardstelle. `/os/heute` und `/os/uebersicht?space=…` leiten
+  nach `/os` (Parameter bleiben).
+- **Kopf:** nur noch Schalter Privat | Business, Suche (⌘K), Glocke, Fokus-Zähler. Score und Index sind Karten auf Heute (Index auch unter Finanzen),
+  Inbox und Kalender stehen in der Leiste.
+- **Leiste je Space (10 Punkte):** Heute · Inbox · Kalender · Aufgaben · Planung · Finanzen · Gesundheit · Familie · Kontakte (Privat) bzw.
+  Markttraktion · Mandate & Unternehmen · Kontakte (Business) · ZOE. Unten Einstellungen, „Problem oder Idee melden“, Konto. Handy unten:
+  Heute · Privat · Business · ZOE · Netzwerken · Einstellungen.
+- **Unterbereiche sichtbar:** ZOE-Reiter (Freigaben · Agenten · Loops · Brain · Empfang) auf allen ZOE-Seiten; Research, Content, Meeting, Board,
+  Prospecting hängen unter ZOE › Agenten (nicht mehr unter Markttraktion/Aufgaben/„Bauen“). Fokus, Kompass, Wachstum als Reiter unter Planung.
+  Mandate-Seite mit Reiter „Unternehmen“.
+- **Einstellungen** (`/os/system`, vorher „System“): Konto & Sicherheit · Verbindungen (Dienste inkl. Telegram, Kalender, Postfächer, WHOOP) ·
+  Daten & Datenschutz · Betrieb (Head of IT, Bauplan, Roadmap, Onboarding, Zusammenarbeit) — jede Seite genau einmal.
+- **Schnellsuche** findet jede Seite (auch die, die nicht mehr im Menü stehen), Namen „Finanzen“ und „Brain“.
+- Wächter `tests/aufraeumen-etappe1.test.ts`; angepasst: spaces, leiste-melden, design-kern, design-privat, aufgaben-crm-flaechen, finanzplan-sicht.
+
+**So sieht Kevin es:** `localhost:3001/os` → „Heute“ mit Gruß, oben rechts Alles · Privat · Business. Oben links im Kopf Privat | Business
+umschalten → die Leiste zeigt die zehn Punkte dieses Space; auf Aufgaben/Finanzen/Inbox bleibt man beim selben Punkt im anderen Space.
+Unten links „Einstellungen“ öffnen → vier Gruppen. ZOE in der Leiste → Freigaben mit Reiterzeile darüber. Planung → Reiter Fokus/Kompass/Wachstum.
+Alte Lesezeichen `/os/heute` und `/os/uebersicht?space=business` landen auf Heute. ⌘K „Board“ oder „Roadmap“ findet die Seiten.
+
+**Rückweg:** reine Oberfläche — keine Bestände, keine Formänderung. Die Flächen-Kennungen sind unverändert, ein alter Stand zeigt dieselben
+Layouts (die neue Karte „Steht an“ fällt dort weg). Zeitmessung: `/os/agenten` und `/os/wissen` behalten ihre Schlüssel (`agenten`, `brain`),
+Planung `ziele-planung`, Mandate `mandate`; Research/Content/Meeting/Board/Prospecting zählen jetzt unter `zoe` statt unter dem Business-Bereich.
+
+**Offen für Etappe 2/3:** Finanzen-Reiter und Markttraktion-Reiter entschlacken (bewusst nicht angefasst); „Steht an“ auf Heute je Space filtern
+(zeigt heute alles der Person); Bauplan-Bereiche (gespeicherte Werte „Zahlen“, „System“) umbenennen; Weiterleitungs-Seiten unter app/os
+(`business`, `crm`, `finanzplan`, `planung/woche`, `datenschutz/nachweise`) nach `next.config.mjs` ziehen; `lib/make-one/bereiche.ts` (alte
+Bereichsliste, nur noch für Loop-Vorschläge) aufräumen.
+
 ## 08.10.2026 — Onboarding auf Server-Stand (nur lokal — Branch `onboarding-server`)
 
 Kevin 08.10.: Das Onboarding stand noch auf „MAKE OS läuft auf Kevins Mac“ (iCloud-Ordner, .env.local, Node, Kevins IP, Tailscale, „Malin darf

@@ -13,6 +13,7 @@ import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { eur } from '@/lib/make-one/finance-data';
 import { FileText } from 'lucide-react';
 import { Seite, Karte, Ueberschrift, Leerzustand, Knopf, Chip, Zahl, Fortschritt, LEUCHT } from './ui';
+import { ZoeReiter } from './ZoeReiter';
 
 interface Sektion { titel: string; punkte?: string[]; }
 interface Stats {
@@ -95,6 +96,7 @@ export function BoardView() {
       unter="Ein Blick über alles: Umsatz-Kurs, Pipeline und Ausführung — zusammengefasst aus Controlling, Prospecting und Aufgaben. Kennzahlen exakt, Einordnung vom Agenten."
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
+      <ZoeReiter />
       {!pack && !busy ? (
         <Leerzustand symbol={<FileText size={26} />} ton={LEUCHT.agenten} titel="Noch kein Wochen-Pack"
           aktion={<Knopf haupt voll onClick={build} aus={!ready} farbe={LEUCHT.agenten}>Board-Pack erstellen</Knopf>}>

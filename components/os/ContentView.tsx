@@ -10,6 +10,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Liste, Zeile } from './ui';
 import { KiMarke } from './KiMarke';
+import { ZoeReiter } from './ZoeReiter';
 
 /** Entwürfe, die der Agent im Hintergrund (ZOE, Takt) abgelegt hat — GET /api/content (27.09.). */
 interface Entwurf { id: string; zeit: string; format: string; thema: string; text: string }
@@ -58,6 +59,7 @@ export function ContentView() {
       unter={<>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: C.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
+      <ZoeReiter />
       <Karte i={0} ton={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>Format</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>

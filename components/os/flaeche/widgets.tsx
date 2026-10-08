@@ -48,6 +48,7 @@ import { EINHEIT_OHNE, einheitErlaubt, passtEinheitFilter } from '@/lib/aufgaben
 import { BUSINESS_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN_NAMEN, bereichVon, gesellschaftAusEinheit } from '@/lib/einheiten';
 import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
+import { Anstehend } from '../heute/Anstehend';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -522,7 +523,7 @@ function ZeitBereichWidget({ e, titel, i }: WidgetProps) {
   );
   return (
     <Karte i={i} akzent={sieben ? farbe : undefined}>
-      <Ueberschrift farbe={farbe} rechts={<Link href={`/os/uebersicht?space=${space}`} style={link}>{SPACE_LABEL[space]} ›</Link>}>{titel ?? `Zeit & Fokus · ${SPACE_LABEL[space]}`}</Ueberschrift>
+      <Ueberschrift farbe={farbe} rechts={<Link href={WEG.heute(space)} style={link}>{SPACE_LABEL[space]} ›</Link>}>{titel ?? `Zeit & Fokus · ${SPACE_LABEL[space]}`}</Ueberschrift>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 10 }}>
         {zahl('Heute', heute)}
         {zahl('7 Tage', sieben)}
@@ -613,7 +614,11 @@ function EventWidget({ titel, i }: WidgetProps) {
   );
 }
 
+// Steht an (08.10., Heute): Nachbereiten, Fristen, Follow-ups, Buchungsanfragen, ZOE-Kalender-Vorschläge, Geburtstage — dieselbe Quelle wie die Glocke; leer → keine Karte.
+function AnstehendWidget({ i }: WidgetProps) { return <Anstehend i={i} />; }
+
 export const WIDGETS: Record<string, WidgetDef> = {
+  anstehend: { art: 'anstehend', label: 'Steht an', bereich: 'Tag', beschreibung: 'Nachbereiten, Fristen, Follow-ups, Buchungsanfragen und Geburtstage — dieselbe Quelle wie die Glocke', breite: 4, Komponente: AnstehendWidget },
   score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
     einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'einheit', label: 'Einheit', art: 'wahl', optionen: [{ w: 'alle', label: 'alle' }, ...KERN_EINHEITEN_NAMEN.map(n => ({ w: n, label: `nur ${n}` })), { w: 'ohne', label: 'Business ohne Einheit' }], standard: 'alle' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
@@ -626,9 +631,9 @@ export const WIDGETS: Record<string, WidgetDef> = {
   'routinen-heute': { art: 'routinen-heute', label: 'Routinen heute', bereich: 'Tag', beschreibung: 'Was heute dran ist — eigene und gemeinsame Routinen nach Rhythmus, abhakbar', breite: 2, Komponente: RoutinenHeuteWidget,
     einstellungen: [{ k: 'space', label: 'Bereich', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }] },
   essen: { art: 'essen', label: 'Essen heute', bereich: 'Gesundheit', beschreibung: 'Die drei Mahlzeiten von heute mit Rezept und die offene Einkaufsliste', breite: 2, Komponente: EssenWidget },
-  index: { art: 'index', label: 'Index je Säule', bereich: 'Zahlen', beschreibung: 'Business-, Privat-, Gesundheits-Index oder Traktions-Score mit Säulen', breite: 2, Komponente: IndexWidget,
+  index: { art: 'index', label: 'Index je Säule', bereich: 'Finanzen', beschreibung: 'Business-, Privat-, Gesundheits-Index oder Traktions-Score mit Säulen', breite: 2, Komponente: IndexWidget,
     einstellungen: [{ k: 'saeule', label: 'Säule', art: 'wahl', optionen: [{ w: 'business', label: 'Business' }, { w: 'privat', label: 'Privat' }, { w: 'gesundheit', label: 'Gesundheit' }, { w: 'traktion', label: 'Traktion' }], standard: 'business' }] },
-  'finanzen-privat': { art: 'finanzen-privat', label: 'Finanzen · privat', bereich: 'Zahlen', beschreibung: 'Fällige Raten, Rechnungen, fehlende Kontoauszüge', breite: 2, Komponente: FinanzenPrivatWidget },
+  'finanzen-privat': { art: 'finanzen-privat', label: 'Finanzen · privat', bereich: 'Finanzen', beschreibung: 'Fällige Raten, Rechnungen, fehlende Kontoauszüge', breite: 2, Komponente: FinanzenPrivatWidget },
   zoe: { art: 'zoe', label: 'ZOE & Inbox', bereich: 'ZOE', beschreibung: 'Vorschläge im Stapel, offene Inbox', breite: 2, Komponente: ZoeWidget,
     einstellungen: [{ k: 'inbox', label: 'Inbox dazu', art: 'schalter', standard: false }] },
   dran: { art: 'dran', label: 'Wer heute dran ist', bereich: 'Business', beschreibung: 'Die wichtigsten Kontakte der Power Hour', breite: 4, Komponente: DranWidget },
@@ -644,6 +649,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
     ] },
 };
 export const KATALOG: KatalogEintrag[] = [
+  { art: 'anstehend', label: 'Steht an', beschreibung: WIDGETS.anstehend.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'aufgaben', label: 'Aufgaben', beschreibung: WIDGETS.aufgaben.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'termine', label: 'Termine heute', beschreibung: 'Die Termine von heute', bereich: 'Tag', breite: 4 },
@@ -658,11 +664,11 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'routinen-heute', label: 'Routinen heute · Privat', beschreibung: 'Heute fällige private Routinen — eigene und gemeinsame, abhakbar', bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },
   { art: 'routinen-heute', label: 'Routinen heute · Business', beschreibung: 'Heute fällige Business-Routinen — eigene und gemeinsame, abhakbar', bereich: 'Business', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'essen', label: 'Essen heute', beschreibung: WIDGETS.essen.beschreibung, bereich: 'Gesundheit', breite: 2 },
-  { art: 'index', label: 'Business-Index', beschreibung: 'Der Index mit seinen Säulen', bereich: 'Zahlen', breite: 2, voreinstellung: { saeule: 'business' } },
-  { art: 'index', label: 'Privat-Index', beschreibung: 'Der Privat-Index mit seinen Säulen', bereich: 'Zahlen', breite: 2, voreinstellung: { saeule: 'privat' } },
+  { art: 'index', label: 'Business-Index', beschreibung: 'Der Index mit seinen Säulen', bereich: 'Finanzen', breite: 2, voreinstellung: { saeule: 'business' } },
+  { art: 'index', label: 'Privat-Index', beschreibung: 'Der Privat-Index mit seinen Säulen', bereich: 'Finanzen', breite: 2, voreinstellung: { saeule: 'privat' } },
   { art: 'index', label: 'Gesundheits-Index', beschreibung: 'Der Gesundheits-Index mit seinen Säulen', bereich: 'Gesundheit', breite: 2, voreinstellung: { saeule: 'gesundheit' } },
   { art: 'index', label: 'Traktions-Score', beschreibung: 'Der Traktions-Score der Markttraktion', bereich: 'Business', breite: 2, voreinstellung: { saeule: 'traktion' } },
-  { art: 'finanzen-privat', label: 'Finanzen · privat', beschreibung: WIDGETS['finanzen-privat'].beschreibung, bereich: 'Zahlen', breite: 2 },
+  { art: 'finanzen-privat', label: 'Finanzen · privat', beschreibung: WIDGETS['finanzen-privat'].beschreibung, bereich: 'Finanzen', breite: 2 },
   { art: 'zoe', label: 'ZOE & Inbox', beschreibung: WIDGETS.zoe.beschreibung, bereich: 'ZOE', breite: 2, voreinstellung: { inbox: true } },
   { art: 'dran', label: 'Wer heute dran ist', beschreibung: WIDGETS.dran.beschreibung, bereich: 'Business', breite: 4 },
   { art: 'kanal', label: 'Kanal-Leistung', beschreibung: WIDGETS.kanal.beschreibung, bereich: 'Business', breite: 2 },

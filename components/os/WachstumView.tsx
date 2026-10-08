@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, ZielBezug, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
+import { PlanerLeiste } from './PlanerLeiste';
 
 interface Faktor { label: string; wert: number; echt: boolean; quelle?: string; href?: string }
 interface Saeule { key: string; label: string; gewicht: number; score: number | null; zuDuenn: boolean; faktoren?: Faktor[] }
@@ -50,6 +51,8 @@ export function WachstumView() {
 
   return (
     <Seite titel="Wachstum" unter="Der Score, auf den wir hinarbeiten: wachsen, uns optimieren, Unternehmertum, Firmen optimieren, mehr Geld verdienen. Gesundheit ist die Basis.">
+      {/* Einstieg unter Planung (08.10.): dieselbe Reiterzeile wie Tag · Woche · Monat · Quartal · Jahr. */}
+      <PlanerLeiste aktiv="wachstum" />
       <ZielBezug bereich="privat" />
       <Flaeche seite="wachstum">
       <Kachel id="saeulen" titel="Die sechs Säulen · Gesamtansicht" breite={6}>

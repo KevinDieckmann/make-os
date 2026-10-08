@@ -27,7 +27,7 @@ export function BelegAusMail({ quelle, bereich, vorschlag, onZu, meldung }: {
   const firma = bereich && istGesellschaft(bereich) ? bereich : null;
 
   if (!vorschlag) return <Hinweis art="info" aktion={<Knopf leise onClick={onZu}>Schließen</Knopf>}>In diesem Gespräch gibt es keinen lesbaren Beleg (PDF oder Foto).</Hinweis>;
-  if (!firma) return <Hinweis art="info" aktion={<Knopf leise onClick={onZu}>Schließen</Knopf>}>{bereich === 'privat' ? 'Private Belege bitte unter Zahlen › Privat erfassen — hier landen nur Belege einer Gesellschaft.' : 'Dieses Postfach gehört zu keiner Gesellschaft mit Finanzplan — den Beleg bitte direkt unter Zahlen erfassen.'}</Hinweis>;
+  if (!firma) return <Hinweis art="info" aktion={<Knopf leise onClick={onZu}>Schließen</Knopf>}>{bereich === 'privat' ? 'Private Belege bitte unter Finanzen › Privat erfassen — hier landen nur Belege einer Gesellschaft.' : 'Dieses Postfach gehört zu keiner Gesellschaft mit Finanzplan — den Beleg bitte direkt unter Zahlen erfassen.'}</Hinweis>;
 
   const lesen = async () => {
     setLaeuft('lesen'); setFehler('');

@@ -92,7 +92,7 @@ export function ausDateien(sich: Sicherung, v1: V1Export | null): { roh: Record<
   }
   const bisV1 = v1Zeilen.map(z => String(z.datum)).sort().pop() ?? null;
   const bis = [letzter, bisV1].filter(Boolean).sort().pop() ?? null;
-  if (bis) hinweise.push(`Buchungen reichen bis ${bis}. Alles danach: N26-Auszüge unter Zahlen › Privat einlesen.`);
+  if (bis) hinweise.push(`Buchungen reichen bis ${bis}. Alles danach: N26-Auszüge unter Finanzen › Privat einlesen.`);
 
   // Belege: Malins Sicherung hatte keine; V1 führt die fehlenden Belege für die
   // Buchhaltung (b.bel, „wartend“) — nur übernehmen, wenn die Sicherung leer ist.
