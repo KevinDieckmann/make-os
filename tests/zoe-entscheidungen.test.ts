@@ -69,6 +69,14 @@ describe('Entscheidungen dauerhaft, mit Person', () => {
     expect((await stapel.hole(v.id))!.status).toBe('offen');
     await entscheiden(v.id, 'kevin', 'ablehnen');
   });
+  it('„Ändern & freigeben“: ein Zahl-Feld bleibt Zahl — Text dort → 400, nichts übernommen (Gegenprüfung 08.10.)', async () => {
+    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block mit Dauer', nachher: 'x', eingabe: { tag: '2026-10-06', dauer: 60 }, person: 'kevin' });
+    const r = await entscheiden(v.id, 'kevin', 'freigeben', { eingabe: { tag: '2026-10-06', dauer: '1.500' } });
+    expect(r.status).toBe(400);
+    expect(String(((await r.json()) as { error?: string }).error)).toMatch(/„dauer“ ist ein Zahl-Feld/);
+    expect(await stapel.hole(v.id)).toMatchObject({ status: 'offen', eingabe: { tag: '2026-10-06', dauer: 60 } });
+    await entscheiden(v.id, 'kevin', 'ablehnen');
+  });
   it('Kontakt-Kennungen im Bezug nur als Fingerabdruck', () => {
     const b = E.bezugFuerProtokoll({ art: 'crm', id: 'aktivitaet:c-anna-1' })!;
     expect(b.id).toMatch(/^aktivitaet:c#[0-9a-f]{12}$/);

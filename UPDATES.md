@@ -24,13 +24,26 @@ Update-Hinweis schmal oben auf jeder Seite, solange ein Update läuft.
   `{ laeuft, seit, bau }`. Zeile `components/os/UpdateHinweis.tsx` oben im Kopf (sticky mit ihm, eine Zeile, am Handy gekürzt):
   „Update läuft — kurz nichts Wichtiges speichern“ bzw. „Neue Version da — neu laden“ + Knopf, sobald der Server einen anderen Bau meldet als
   die Seite. Gefragt wird nur bei sichtbarer Seite, höchstens alle 60 s, und sofort nach einer 409 „bitte neu laden“ (Ereignis der Bau-Wache;
-  deren eigener Hinweis bleibt und wird nicht verdoppelt).
+  deren eigener Hinweis bleibt und wird nicht verdoppelt). Die Zeile steht auch im ZOE-Empfang `/zoe` (liegt außerhalb von `/os`, ohne Kopf —
+  dort unter dem Zurück-Knopf).
+- **Gegenprüfung 08.10. (behoben):** „Ändern & freigeben“ las deutsche Zahlen falsch (`Number("1.500")` = 1,5; „1500,50“ ging als Text ans
+  Werkzeug — `setze_kontostand` rundete auf 2 €, ein Rechnungsbetrag fiel still weg). Jetzt: Zahl-Felder zeigen „1500,5“ (Komma, ohne
+  Tausenderpunkte) und gehen nur als EINDEUTIGE Zahl raus (`zahlAusText`: „1.500“ = 1500, „1500,50“, „1.500,50“, „12.5“, „0.125“); sonst
+  steht am Feld „Keine eindeutige Zahl …“ und „Freigeben“ ist gesperrt; neben dem Feld steht, was ZOE bekommt („= 1.500“). Der Server lehnt Text
+  in einem Zahl-Feld zusätzlich mit 400 ab (`eingabeSauber`). Der Anlass zeigt wieder seine Herkunft („weil du gesagt hast: „…““ nur bei einem
+  Satz aus dem Gespräch, sonst „ZOE: …“ — `anlassText`; auch CRM-/Aufgaben-/Kalender-Begründungen und „Takt: …“ gelten als ZOEs Herleitung).
+  Im Reiter „Protokoll“ lädt der Reiter „Offen“ nichts mehr im Hintergrund (kein 5-s-Takt, keine Head-Abfragen).
 - Tests: `tests/phase0-oberflaeche.test.ts` (Leser, Route ohne Sitzung 401 / nur drei Felder, `bash -n`, Marke schreiben/entfernen unter
-  `set -euo pipefail` mit Schreibfehler, Datenordner aus `.env`, Reiter, Weiterleitung, „Ändern & freigeben“); angepasst: aufraeumen,
+  `set -euo pipefail` mit Schreibfehler, Datenordner aus `.env`, die drei Modi von `ausrollen.sh` wirklich ausgeführt mit nachgebautem
+  git/docker — auch scheiterndes `docker load`/`compose up` entfernt die Marke und endet mit Fehler —, Folge einer Antwort/„nicht doppelt“,
+  Reiter, Weiterleitung, „Ändern & freigeben“ mit „1.500“/„1500,50“, Herkunft des Anlasses); `tests/zoe-entscheidungen.test.ts` (Text in einem
+  Zahl-Feld → 400); angepasst: aufraeumen,
   aufraeumen-etappe3 (Weiterleitung `/os/stapel/voll`), design-privat (StapelProtokoll).
-- **Erstes Ausrollen danach:** `ziehen` läuft noch mit dem ALTEN Skript (das neue kommt erst mit diesem Ziehen) — der Hinweis „Update läuft“
-  erscheint also ab dem übernächsten Update; „Neue Version da“ wirkt sofort. Schreibt `make` nicht in `<daten>/system` (Besitzer prüfen:
-  `ls -ld /srv/make-os/daten/system`), fehlt nur der Hinweis — das Ausrollen läuft trotzdem.
+- **Erstes Ausrollen danach:** `ziehen` läuft noch mit dem ALTEN Skript (das neue kommt erst mit diesem Ziehen) — keine Marke, also kein
+  „Update läuft“. Und Tabs, die VOR diesem Ausrollen offen waren, haben den alten Code ohne die Zeile und fragen `/api/system/update` gar nicht:
+  dort erscheint auch „Neue Version da“ nicht — für sie bleibt nur die bisherige Bau-Wache (409 „bitte neu laden“ beim nächsten Speichern).
+  Beide Hinweise wirken verlässlich erst in Tabs, die nach dem ersten Ausrollen geladen wurden, also ab dem ÜBERNÄCHSTEN Update.
+  Schreibt `make` nicht in `<daten>/system` (Besitzer prüfen: `ls -ld /srv/make-os/daten/system`), fehlt nur der Hinweis — das Ausrollen läuft trotzdem.
 - **Rückweg:** reine Oberfläche + eine Klartext-Datei ohne Inhalt; ein alter Stand ignoriert die Marke, `/os/stapel/voll` gibt es dort wieder.
 
 ## 08.10.2026 — Aufräumen Etappe 2: Finanzen in zwei Ebenen (nur lokal — Branch `aufraeumen-2`)

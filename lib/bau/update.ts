@@ -79,3 +79,22 @@ export function antwortLesen(d: unknown): UpdateAntwort | null {
 export function abfrageFaellig(letzte: number | null, jetzt: number, sofort = false): boolean {
   return sofort || letzte === null || jetzt - letzte >= UPDATE_ABFRAGE_MS;
 }
+
+/**
+ * Was der Browser nach einer Antwort tut (Gegenprüfung 08.10.: vorher nur im Bauteil, jetzt rein und getestet):
+ *   401/403 → `aus` — ohne Sitzung bzw. gesperrt nie wieder fragen (die Zeile verschwindet),
+ *   sonst kein 2xx → `behalten` — z. B. 502 während des Tauschs: der letzte Stand bleibt stehen,
+ *   2xx → `lesen`.
+ */
+export function abfrageFolge(status: number): 'aus' | 'behalten' | 'lesen' {
+  if (status === 401 || status === 403) return 'aus';
+  return status >= 200 && status < 300 ? 'lesen' : 'behalten';
+}
+
+/**
+ * Was die Zeile am Ende zeigt: „neu“ nicht, solange die Bau-Wache (components/os/BauWache.tsx) nach einer 409 „bitte neu
+ * laden“ schon ihren eigenen Hinweis zeigt (der sagt zusätzlich, dass die Eingabe nicht gespeichert ist) — nie doppelt.
+ */
+export function hinweisZeigen(anzeige: UpdateAnzeige, wacheZeigt: boolean): UpdateAnzeige {
+  return anzeige === 'neu' && wacheZeigt ? null : anzeige;
+}

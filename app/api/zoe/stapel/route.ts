@@ -53,6 +53,9 @@ function eingabeSauber(v: unknown, vorher: Record<string, unknown>): Sauber {
   for (const [k, w] of eintraege) {
     if (!/^[a-zA-Z_][a-zA-Z0-9_]{0,40}$/.test(k)) return { ok: false, status: 400, fehler: `Unzulässiger Feldname „${k.slice(0, 40)}“.` };
     if (w === null || typeof w === 'boolean' || (typeof w === 'number' && Number.isFinite(w))) raus[k] = w;
+    // Ein Zahl-Feld bleibt eine Zahl (Gegenprüfung 08.10.): Text dort rechnete das Werkzeug still falsch („1.500“ → 1,5;
+    // ein Betrag als Text fiel ganz weg). Die Oberfläche liest deutsche Zahlen selbst (lib/zoe/stapel-aendern.ts).
+    else if (typeof w === 'string' && typeof vorher[k] === 'number') return { ok: false, status: 400, fehler: `„${k}“ ist ein Zahl-Feld — geschickt wurde Text. Nichts übernommen.` };
     else if (typeof w === 'string') {
       if (w.length > EINGABE_GRENZEN.text) return { ok: false, status: 413, fehler: `Abgelehnt: „${k}“ ist länger als ${EINGABE_GRENZEN.text} Zeichen.` };
       raus[k] = w;

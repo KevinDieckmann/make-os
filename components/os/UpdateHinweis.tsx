@@ -7,13 +7,15 @@
 // Regeln rein in lib/bau/update.ts, Server GET /api/system/update. Gefragt wird nur bei sichtbarer Seite, höchstens alle 60 s,
 // und sofort, wenn ein Schreibversuch mit „bitte neu laden“ (409) zurückkam (Ereignis der Bau-Wache). Zeigt die Bau-Wache
 // schon ihren eigenen Hinweis (mit dem Satz zur nicht gespeicherten Eingabe), steht „Neue Version da“ hier nicht doppelt.
+// Eingehängt im Kopf (alles unter /os) und im ZOE-Empfang /zoe (liegt außerhalb von /os, ohne Kopf — components/os/ZoeStart.tsx).
+// Folge einer Antwort (`abfrageFolge`) und „nicht doppelt“ (`hinweisZeigen`) sind rein und getestet.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, TIEF, BEDEUTUNG_FARBE } from '@/lib/make-one/design';
 import { Knopf } from './ui';
 import { bauKennung, NEU_LADEN_EREIGNIS } from '@/lib/bau/kennung';
-import { abfrageFaellig, antwortLesen, updateAnzeige, NEUE_VERSION_TEXT, UPDATE_LAEUFT_TEXT, type UpdateAntwort } from '@/lib/bau/update';
+import { abfrageFaellig, abfrageFolge, antwortLesen, hinweisZeigen, updateAnzeige, NEUE_VERSION_TEXT, UPDATE_LAEUFT_TEXT, type UpdateAntwort } from '@/lib/bau/update';
 
 /** Wie oft nachgesehen wird, ob eine Abfrage fällig ist (die Abfrage selbst höchstens alle 60 s). */
 const TAKT_MS = 15_000;
@@ -34,8 +36,9 @@ export function UpdateHinweis() {
     unterwegs.current = true;
     try {
       const r = await fetch('/api/system/update', { cache: 'no-store' });
-      if (r.status === 401 || r.status === 403) { aus.current = true; setAntwort(null); return; }
-      if (!r.ok) return; // z. B. 502 während des Tauschs — der letzte Stand bleibt stehen
+      const folge = abfrageFolge(r.status);
+      if (folge === 'aus') { aus.current = true; setAntwort(null); return; }
+      if (folge === 'behalten') return; // z. B. 502 während des Tauschs — der letzte Stand bleibt stehen
       const a = antwortLesen(await r.json());
       if (a) setAntwort(a);
     } catch { /* offline oder gerade getauscht — der letzte Stand bleibt stehen */ }
@@ -56,8 +59,8 @@ export function UpdateHinweis() {
     };
   }, [fragen]);
 
-  const anzeige = updateAnzeige(antwort, bauKennung());
-  if (!anzeige || (anzeige === 'neu' && wacheZeigt)) return null;
+  const anzeige = hinweisZeigen(updateAnzeige(antwort, bauKennung()), wacheZeigt);
+  if (!anzeige) return null;
   const farbe = BEDEUTUNG_FARBE.info;
   return (
     <div role="status" aria-live="polite" className="update-hinweis" style={{ background: TIEF.flaeche(farbe), borderBottom: `1px solid ${TIEF.rand(farbe)}` }}>

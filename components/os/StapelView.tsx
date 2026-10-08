@@ -8,6 +8,9 @@
 // 08.10. (Phase 0, Kevin): zwei Reiter — „Offen“ (diese Ansicht) und „Protokoll“ (`?t=protokoll`, components/os/StapelProtokoll.tsx:
 // was ZOE getan hat mit Rückgängig, Gedächtnis, Wissen). Die frühere Vollansicht /os/stapel/voll leitet dorthin (next.config.mjs);
 // „Ändern & freigeben“ steht jetzt hier am offenen Vorschlag (lib/zoe/stapel-aendern.ts, nur gewöhnliche Werkzeug-Vorschläge).
+// Gegenprüfung 08.10.: ein Zahl-Feld geht nur als EINDEUTIGE Zahl raus („1.500“ = 1500, „1500,50“), sonst ist das Freigeben
+// gesperrt und das Feld sagt, warum; der Anlass trägt wieder seine Herkunft („weil du gesagt hast“ / „ZOE:“, `anlassText`);
+// geladen (und im 5-s-Takt nachgefragt) wird nur im Reiter „Offen“ — das Protokoll lädt selbst.
 // 29.09. (#94/#97): ZOE-Aufgaben-Vorschläge zeigen je Feld „alt → neu“ mit Häkchen; „Alle freigeben“ nur für risikoarme
 // (nur Notiz-Entwurf/Unteraufgaben) — alles andere braucht einzeln einen Blick; freigegebene Chargen lassen sich zurücknehmen.
 
@@ -18,7 +21,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, Pillen, feld, LEUCHT, Spalten, Spalte, useRueckfrage } from './ui';
 import { WEG, freigabenReiterAus, type FreigabenReiter } from '@/lib/wege';
-import { aenderbareFelder, darfAendern, eingabeMitAenderung, hatAenderung } from '@/lib/zoe/stapel-aendern';
+import { aenderbareFelder, aenderungFehler, anlassText, darfAendern, eingabeMitAenderung, feldNachAenderung, hatAenderung, zahlAnzeige } from '@/lib/zoe/stapel-aendern';
 import { StapelProtokoll } from './StapelProtokoll';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
@@ -27,7 +30,7 @@ import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WER
 import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
 import { ZoeReiter } from './ZoeReiter';
 
-interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
+interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; /** Aus dem Gespräch oder aus einem Lauf — fürs Etikett des Anlasses. */ quelle?: 'gespraech' | 'lauf'; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
 interface Fakt { id: string; tag: string; art: string; thema: string; satz: string }
 interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] }
@@ -56,6 +59,8 @@ const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(i
 export function StapelView() {
   const router = useRouter();
   const reiter = freigabenReiterAus(useSearchParams()?.get('t'));
+  /** Nur der Reiter „Offen“ braucht Stapel, Arbeiter, Heads, Gedächtnis und Verbrauch — das Protokoll lädt selbst (1-vCPU-Server). */
+  const offenReiter = reiter === 'offen';
   const { bestaetigen, dialog } = useRueckfrage();
   /** „Ändern & freigeben“: je Vorschlag die geänderten Felder (Text), erst beim Freigeben in ihre Form gebracht. */
   const [aendern, setAendern] = useState<Record<string, Record<string, string>>>({});
@@ -82,9 +87,14 @@ export function StapelView() {
     } catch { /* offline — der alte Stand bleibt */ }
     setLaedt(false);
   }, []);
-  useEffect(() => { void laden(); fetch('/api/zoe/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {}); }, [laden]);
+  useEffect(() => {
+    if (!offenReiter) return;
+    void laden();
+    fetch('/api/zoe/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {});
+  }, [laden, offenReiter]);
   // Die Heads führen ihre Freigaben selbst — hier die Summe, damit EINE Seite zeigt, was überall wartet.
   useEffect(() => {
+    if (!offenReiter) return;
     let aktiv = true;
     void Promise.all(HEADS_QUELLEN.map(async q => {
       try {
@@ -94,19 +104,25 @@ export function StapelView() {
       } catch { return { id: q.id, name: q.name, href: q.href, offen: 0, titel: [], fehler: true }; }
     })).then(l => { if (aktiv) setHeads(l); });
     return () => { aktiv = false; };
-  }, []);
+  }, [offenReiter]);
   const headsOffen = heads.reduce((s, h) => s + h.offen, 0);
   const inArbeit = auftraege.filter(a => a.status === 'laeuft' || a.status === 'offen').length;
-  useEffect(() => { if (!inArbeit) return; const iv = setInterval(() => { void laden(); }, 5000); return () => clearInterval(iv); }, [inArbeit, laden]);
+  useEffect(() => { if (!inArbeit || !offenReiter) return; const iv = setInterval(() => { void laden(); }, 5000); return () => clearInterval(iv); }, [inArbeit, laden, offenReiter]);
 
   async function entscheide(v: Vorschlag, entscheidung: 'freigeben' | 'ablehnen') {
     setBusy(v.id);
     // Häkchen (#94): bei ZOE-Aufgaben-Vorschlägen nur die gewählten Felder.
     const inhalt = entscheidung === 'freigeben' ? aufgabenInhalt(v) : null;
     const auswahl = inhalt ? haekchen[v.id] ?? alleFelder(inhalt) : null;
-    // „Ändern & freigeben“ (08.10., vorher nur in der Vollansicht): die volle Eingabe mit den geänderten Feldern.
-    const geaendert = entscheidung === 'freigeben' && !inhalt && darfAendern(v) && aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? eingabeMitAenderung(v.eingabe, aendern[v.id]) : null;
-    const eingabe = inhalt && auswahl ? nurGewaehlt(inhalt, auswahl) : geaendert;
+    // „Ändern & freigeben“ (08.10., vorher nur in der Vollansicht): die volle Eingabe mit den geänderten Feldern. Ein Zahl-Feld
+    // ohne eindeutige Zahl geht nie raus — der Knopf ist dann gesperrt; kommt der Klick trotzdem an, bleibt alles stehen.
+    const aenderung = entscheidung === 'freigeben' && !inhalt && darfAendern(v) && aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? eingabeMitAenderung(v.eingabe, aendern[v.id]) : null;
+    if (aenderung && !aenderung.ok) {
+      setOffenId(v.id); setBusy(null);
+      setMeldung(`Nicht freigegeben: ${aenderung.fehler.map(f => `„${f.schluessel}“ — ${f.grund}`).join(' · ')}`);
+      return;
+    }
+    const eingabe = inhalt && auswahl ? nurGewaehlt(inhalt, auswahl) : aenderung?.eingabe ?? null;
     const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(eingabe ? { eingabe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null);
     if (d.ok !== false) { setOffenId(null); setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; }); }
@@ -157,10 +173,12 @@ export function StapelView() {
               {risikoarmOffen.filter(v => v.gruppe === gr).length > 1 && <Knopf leise onClick={() => alleFreigeben(gr)} aus={busy === gr} style={{ marginLeft: 'auto' }}>alle in {g(gr).label} freigeben</Knopf>}
             </div>
             <Liste>
-              {offen.filter(v => v.gruppe === gr).map(v => (
+              {offen.filter(v => v.gruppe === gr).map(v => {
+                const feldFehler = darfAendern(v) && aendern[v.id] ? aenderungFehler(v.eingabe, aendern[v.id]) : [];
+                return (
                 <div key={v.id}>
-                  <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={v.anlass ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
-                    rechts={<span style={{ display: 'flex', gap: 6 }}><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
+                  <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={anlassText(v) ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
+                    rechts={<span style={{ display: 'flex', gap: 6 }}><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id || feldFehler.length > 0} titel={feldFehler.length ? `Erst „${feldFehler[0].schluessel}“ berichtigen: ${feldFehler[0].grund}` : undefined} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
                   {offenId === v.id && (
                     <div style={{ padding: '6px 2px 16px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
@@ -173,13 +191,21 @@ export function StapelView() {
                       {darfAendern(v) && (aendern[v.id] ? (
                         <div style={{ marginTop: 12 }}>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-                            {aenderbareFelder(v.eingabe).map(f => (
+                            {aenderbareFelder(v.eingabe).map(f => {
+                              // Zahl-Feld: daneben, was ZOE bekommt („= 1.500“), oder warum es so nicht geht.
+                              const lage = f.zahl ? feldNachAenderung(f, aendern[v.id][f.schluessel] ?? f.wert) : null;
+                              const fehler = lage && 'grund' in lage ? lage.grund : null;
+                              return (
                               <label key={f.schluessel} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                                 <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{f.schluessel}</span>
-                                <input value={aendern[v.id][f.schluessel] ?? f.wert} inputMode={f.zahl ? 'decimal' : undefined}
+                                <input value={aendern[v.id][f.schluessel] ?? f.wert} inputMode={f.zahl ? 'decimal' : undefined} aria-invalid={fehler ? true : undefined}
                                   onChange={e => { const wert = e.target.value; setAendern(a => ({ ...a, [v.id]: { ...a[v.id], [f.schluessel]: wert } })); }} style={feld} />
+                                {lage && (fehler
+                                  ? <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</span>
+                                  : 'wert' in lage && typeof lage.wert === 'number' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>= {zahlAnzeige(lage.wert)}</span>)}
                               </label>
-                            ))}
+                              );
+                            })}
                           </div>
                           <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; })}>Änderungen verwerfen</Knopf></div>
                         </div>
@@ -197,7 +223,8 @@ export function StapelView() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </Liste>
           </div>
         ))}

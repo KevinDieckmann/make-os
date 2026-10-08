@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ZurueckKnopf } from './Verlauf';
+import { UpdateHinweis } from './UpdateHinweis';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO, ZIEL } from '@/lib/make-one/design';
 import { ZoeHirn, TON } from './ZoeHirn';
 import { ZoeKugel, ZOE_KUGEL_TON, Aurora } from './kugel';
@@ -239,6 +240,11 @@ export function ZoeStart() {
       {/* Kein Sackgasse (25.09.): oben links ein Weg zurück — ein echter Schritt, sonst ins System. */}
       <div style={{ position: 'absolute', top: 'clamp(12px, 2vh, 22px)', left: 'clamp(12px, 2vw, 24px)', zIndex: 6 }}>
         <ZurueckKnopf ersatz="/os">Zurück</ZurueckKnopf>
+      </div>
+      {/* Update-Hinweis (08.10., Phase 0, Gegenprüfung): der Empfang liegt außerhalb von /os und damit ohne Kopf — die Zeile steht
+          hier unter dem Zurück-Knopf (überdeckt ihn nie), nur solange ein Update läuft bzw. eine neue Version da ist; sonst ohne Höhe. */}
+      <div style={{ position: 'absolute', top: 'calc(clamp(12px, 2vh, 22px) + 52px)', left: 0, right: 0, zIndex: 7 }}>
+        <UpdateHinweis />
       </div>
 
       <div style={{
