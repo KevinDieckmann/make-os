@@ -6,6 +6,15 @@
 - Server: **`38f88dc0` (07.10. ~18:28)** — Aufgaben v3 (Malin), Inbox 2 + WhatsApp (ohne Einrichtung aus), iCloud je Person, Blöcke ins eigene iCloud, Verbinden-Karten im Kalender, HOI-Befunde, Einwilligung WhatsApp, Telefon-Dubletten. Websites unverändert (alte „Klar“).
 - Sicherung `vor-upload-2026-10-07-1618.tar.gz`, Rückweg-Bild `make-os:6b10a5ba` (ALTES-BILD-OK). Platte danach 5,3 GB frei — alte Bilder 70603154/db93e88/5aca6f5 nur auf Kevins Wort löschen.
 
+## Nacht 08./09.10. — Agenten-Bereich + Medien unterwegs + KI-Anbieter (Kevin: „durchziehen die Nacht“)
+- **Entscheidungen:** ENTSCHEIDUNGEN_FRAGEBOGEN.md › „Agenten-Bereich — Antworten“, „Nachtrag Bilder und Videos unterwegs“, „Teil 1 nach der Recherche“.
+  Recherchen: `AGENTEN_KONZEPT.md`, `research/agenten/{ARCHITEKTUR,MARKT_UX,MODELLE}.md` (Medien + Recht laufen noch → Fragerunde Teil 2).
+- **Basis aller Pakete:** Branch `nach-upload` (Probe-Zusammenführung der 6 fertigen Pakete). Nichts davon geht mit dem Freitags-Upload online.
+- **Reihenfolge (höchstens 3 Bau-Agenten parallel):** Paket 0 `agenten-vertrag` (läuft) + Paket 6a `ki-anbieter` (läuft) → danach Paket 1 `agenten-kern`,
+  Paket 2 `agenten-seite`, Paket 3 `agenten-skills` → Paket 5 `medien` (nach Kevins Antworten Teil 2) → Paket 4 Verdrahtung (ZOE steuert Heads, ZOE ≤ 20 Werkzeuge,
+  Streaming) erst nach dem Merge von 1–3.
+- **Befunde für alle:** Register Anthropic SCC statt DPF (in 6a) · Modellstufen Haiku/Sonnet/Opus 5.5 nach Eval-Vergleich (in 6a) · ZOE hat ~66 Werkzeuge (Paket 4).
+
 ## Stand 08.10. spät (auf `entwicklung`, 135 Commits vor `origin/main`, nicht online — Upload Fr 09.10. auf Kevins Wort)
 - **Gemergt seit dem Abend:** Teil 3 (`finanzplan-blaetter`, `privat-raus-koerper`, `privat-raus-nordstern` — `lib/make-one/health-data.ts` gelöscht) ·
   `onboarding-b0` + `onboarding-fix` (76 Schritte, Samstag-Kern ≈ 7¾ h, ehrliche Prüfungen) · `vor-upload-datenschutz` (ZOE-Grundauftrag ohne Persönliches,
