@@ -417,6 +417,10 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   Person nur aus `x-make-user`, Dienstweg → 403.
 - **Grabstein für Konten:** `kontoGrabsteinKennung(konto.id)` (zufällige Konto-Kennung, nie Speichername/Adresse, `m: []` — trifft nie einen
   Kontakt); `grabsteineAnwenden` löscht zurückgespielte Konten erneut (`kontenNachGrabstein`).
+- **Familie beim Konto-Löschen (08.10. abends, Kevin: „Dates/Vereinbarungen einer gelöschten Person bleiben ohne Namen“):** EINE Stelle
+  `familieOhnePerson` (lib/familie/ohne-person.ts, rein) — Einträge bleiben ohne Namen (`von`, `wer`, `an`, `planer`, Love-Map-`person`,
+  Unterlisten), Karte → `inhaber: null`, Vision über `visionOhnePerson`; „nur ich“-Einträge, ungeteilte Reflexionen und das Profil der Person
+  fallen weg (sah nur sie, sonst verwaist). Neues Personen-Feld in der Familie → dort ergänzen (Test `tests/familie-ohne-person.test.ts`).
 - **Protokolle beim Konto-Löschen:** Felder `person`/`speicher`/`betroffen`/`von` = Speichername → „[gelöscht]“ (`eintragTilgen`); die Kette
   zählt das als „getilgt“. Nie Einträge entfernen.
 - **Instanz-Export** nur `app/api/datenschutz/instanz-export` (Inhaber-Sitzung + `erneutPruefen`, Strom aus `instanzExportTeile`, Lese-Bereich
@@ -706,7 +710,19 @@ abgekündigt, v1-Webhooks entfernt). Der alte gemeinsame Weg (`lib/oauth.ts` who
   409) gibt `bloecke` NUR über `bloeckeFuerBetrachter` (→ `blockBelegt`: Kennung, Besitz, Wochentag, von/bis, `art`, Rang, eine Privat-Einheit; kein
   Titel, keine Business-Einheit, `belegt: true`, nie gespeichert). `art` bleibt bewusst (nur Bereich des Fensters; Kapazität/Verfügbarkeit zählen
   Business-Blöcke als Soll). Server-Leser (Verfügbarkeit, Kapazität, Auswertung) lesen den Bestand direkt und geben nur Zahlen aus. Planer: grau „Belegt“.
+  **Keine Startroutinen (08.10. abends, Fragebogen Teil 3):** ein leerer Bestand bleibt leer (die früheren Startroutinen waren die einer echten
+  Person) — GET liest nur, `planung/vorschlag` nimmt nur den Bestand. Beispiele gibt es nur in der Demo-Saat (erfunden, über den PATCH).
 - Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
+- **Nordstern = Daten des Haushalts (08.10. abends, Kevin: „gemeinsames Ziel von uns beiden pflegbar (Planung › Jahr)“, Branch
+  `privat-raus-nordstern`):** Bestand `nordstern--<haushalt>` (Text, ohne Personennamen; nicht der „Fokus des Jahres“ — der gilt je Jahr und
+  `ziele` liegt nicht je Haushalt). Regeln rein `lib/planung/nordstern.ts` (≤ 1.000 Zeichen, sonst 413), EINE Schreib-/Lesestelle
+  `lib/planung/nordstern-server.ts`, Route `/api/planung/nordstern` (GET: jedes Konto mit Haushalt liest den SEINES Haushalts, auch
+  `finanzRecht: 'business'` — `planZugangVon`; PUT `{ text, stand }`: nur volle Mitglieder per Sitzung, Stand/409, Dienstweg 403),
+  Karte `components/os/planung/NordsternKarte.tsx` in Planung › Jahr. ZOE/Agenten lesen ihn NUR über `gatherBrain` (`Brain.nordstern`,
+  `blockZiele` im `<daten>`-Rahmen) bzw. `nordsternSatz`/`nordsternSatzFuer`; ohne Eintrag „kein Nordstern hinterlegt“, ohne Meilensteine
+  „keine hinterlegt“ — **nie wieder Nordstern, Zielzahlen oder Meilensteine als Konstante im Code oder in Prompts** (Wächter
+  `tests/nordstern.test.ts`, auch „anderer Haushalt bekommt nichts“). Einmalige Übernahme des Altbestands: `lib/altbestand/nordstern-uebernahme.ts`
+  (nur mit `MAKE_OS_ALTBESTAND_PERSON`, wird mit dem übernächsten Upload gelöscht — UPDATES.md 08.10. abends).
 - **Zeitstrahl & Planungsjahr (30.09.):** Rechnung rein in `lib/planung/zeitstrahl.ts` (Fenster aus ganzen Monaten `ab`+`monate`,
   `standardAb`/`heuteAb`, `abAus` ±50 Jahre, `monatsTicks` mit Jahreswechsel, `quartale`, `stapeln` mit „+n“-Bündeln,
   `zielJahr`/`meilensteinJahr`/`meilensteinImJahr`, `jahrLage` für den Forecast, `planTag` für ZOE, `zaehltImKurs` für die Indizes)

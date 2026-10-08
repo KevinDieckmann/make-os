@@ -4,6 +4,52 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10. abends — Fragebogen Teil 3
+
+### A2 — Nordstern als gemeinsames Ziel, feste Inhalte raus, Familie ohne Namen (nur lokal — Branch `privat-raus-nordstern`)
+
+Kevin (Frage 2 + 11): „Nordstern als gemeinsames Ziel von uns beiden pflegbar (Planung › Jahr) · alles als eigene Daten · bisherige
+Inhalte einmalig übernehmen, dann aus dem Code löschen“ — „Dates/Vereinbarungen einer gelöschten Person: bleiben ohne Namen“.
+
+1. **Nordstern = Daten je Haushalt.** Bestand `nordstern--<haushalt>` (ein Text, kein Personenname — wer geändert hat, steht nur im
+   Änderungsprotokoll). Bewusst nicht der „Fokus des Jahres“: der gilt je Jahr, liegt im Bestand `ziele` (nicht je Haushalt getrennt) und
+   hat keinen Stand. Route `/api/planung/nordstern`: GET für jedes Konto mit Haushalt (auch Business-Konten lesen mit — der Nordstern ist das
+   gemeinsame Business-Ziel), PUT `{ text, stand }` nur volle Mitglieder per Sitzung, Stand/409, > 1.000 Zeichen 413, leer = entfernen,
+   Dienstweg 403. Ein anderer Haushalt bekommt nie etwas (Wächter). Karte in **Planung › Jahr** (wie bisher nicht im Privat-Filter):
+   Leerzustand „Nordstern festlegen“, Bearbeiten, bei 409 bleibt die eigene Eingabe im Feld.
+2. **ZOE und die Agenten lesen ihn aus den Daten:** Brain (`blockZiele` im `<daten>`-Rahmen; ohne Eintrag „kein Nordstern hinterlegt“),
+   Board, Controlling, OKR, Tageslauf, Performance, Loops, Fokus, Head of Finance (`daten.nordstern`), Research (Zielzahl raus). Die Konstante
+   (`lib/make-one/nordstern-data.ts`) ist gelöscht, ebenso die veraltete Rückfall-Liste der Meilensteine — ohne gepflegte Meilensteine sagt
+   der Kontext „keine hinterlegt“. Beschriftungen im Agenten-Katalog ohne Zielzahl.
+3. **Übernahme des Altbestands** `lib/altbestand/nordstern-uebernahme.ts` (eigene Datei neben A1, dieselbe Variable): nur mit
+   `MAKE_OS_ALTBESTAND_PERSON` (Speichername des Inhabers mit Haushalt; Demo/Kunden-Instanzen nie, `MAKE_OS_DEMO=1` nie), genau einmal (Marken im
+   Nordstern-Bestand), nie über Gepflegtes. Der bisherige Text wird geteilt: der gemeinsame Satz → Nordstern des Haushalts; der persönliche Teil
+   → EIGENES Jahresziel der Person (`ziele-eigen`, Privat, nicht geteilt) — nur mit ausdrücklich erklärter Einwilligung (a). Log ohne Inhalt.
+   Start: 9 s nach dem Start (`lib/store/betrieb.ts`).
+4. **Routinen:** keine Startroutinen mehr (das waren die einer echten Person) — eine leere Instanz startet ohne, der GET schreibt nicht mehr;
+   der Wochenvorschlag liest nur den Bestand. Aus `lib/make-one/health-data.ts` entfernt: `ROUTINEN`, `ROUTINE_ITEMS`, `WOCHE`, `HGOALS`
+   (`WOCHE`/`HGOALS` las niemand mehr). Bestehende Routinen bleiben unberührt. Demo-Saat: erfundener Nordstern + vier neutrale Routinen.
+5. **Konto löschen › Familie:** alle Einträge mit dem Namen der Person bleiben ohne Namen (Dates, Vereinbarungen, Themen, Wünsche,
+   Gespräche, Wertschätzungen, Love-Map, Wichtige Tage, geteilte Reflexionen, Vision); Aufgabenkarten werden frei; ihre „nur ich“-Einträge,
+   ungeteilten Reflexionen und ihr Profil fallen weg (sah nur sie — sonst verwaist). Protokoll nur Liste/Kennung/Feldnamen
+   (`lib/familie/ohne-person.ts`).
+6. **Tests:** `tests/nordstern.test.ts` (Route, Sicht anderer Haushalt, ZOE-Kontext, keine Konstanten mehr, leere Routinen),
+   `tests/nordstern-uebernahme.test.ts` (nur Platzhalter-Inhalt), `tests/familie-ohne-person.test.ts`; angepasst `tests/routinen-bloecke.test.ts`.
+
+**Offene Einmal-Schritte (A2):**
+- Auf unserem Server `MAKE_OS_ALTBESTAND_PERSON=<Speichername des Inhabers>` in die `.env` (dieselbe Variable wie A1; nie in Demo- oder
+  Kunden-Instanzen), dann `docker compose up -d`.
+- Für das persönliche Jahresziel vorher unter System › Datenschutz die Einwilligung (a) „Gesundheitsdaten verarbeiten“ ausdrücklich erklären —
+  sonst bleibt es außen vor (Log „kernziel: übersprungen“); nach dem Erklären einmal neu starten.
+- Prüfen: Log zeigt „Altbestand „nordstern“: uebernommen“ und „„kernziel“: uebernommen“; Planung › Jahr zeigt den Nordstern; das
+  persönliche Jahresziel liegt in den eigenen Zielen der Person (`ziele-eigen`, z. B. in den Lichtfäden „Alle Stränge“ — andere sehen es nur,
+  wenn sie ihre Ziele teilt).
+- Mit dem übernächsten Upload: `lib/altbestand/nordstern-uebernahme.ts`, den Startblock in `lib/store/betrieb.ts`,
+  `tests/nordstern-uebernahme.test.ts` und die Variable entfernen.
+- Beim Zusammenführen mit A1: `lib/make-one/health-data.ts` ist danach ohne Inhalt → Datei löschen; diese Überschrift nur einmal.
+- Rückweg: der alte Stand kennt `nordstern--*` nicht (bleibt liegen) und zeigt wieder die alte Konstante; Routinen: der alte Stand säte nur
+  in einen leeren Bestand.
+
 ## 08.10.2026 — Phase 0: Sicht-Entscheidungen (nur lokal — Branch `phase0-sicht`)
 
 Kevins Antworten auf die Fragen 1–3 der Sicht-Prüfung (unten, „Fragen an Kevin“) plus WHOOP — alles serverseitig, je mit Wächtertest.
