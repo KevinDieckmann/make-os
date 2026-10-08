@@ -21,7 +21,15 @@ export interface DayVitals {
   rhr?: number;
   /** Freitext: wie fühlt es sich an */
   note?: string;
+  /**
+   * Woher ein Wert stammt (08.10., WHOOP je Person): `whoop` = vom Abgleich geschrieben — darf er nachziehen; `hand` = von Hand
+   * (Morgen-Check). Fehlt die Angabe, gilt der Wert als Handwert: der Abgleich überschreibt NIE, was nicht als `whoop` markiert ist.
+   */
+  quellen?: Partial<Record<VitalFeld, 'whoop' | 'hand'>>;
 }
+/** Die Felder, die eine Quelle (WHOOP) liefern kann. */
+export type VitalFeld = 'rec' | 'sleep' | 'hrv' | 'rhr';
+export const VITAL_FELDER: readonly VitalFeld[] = ['rec', 'sleep', 'hrv', 'rhr'];
 export type VitalsLog = Record<string, DayVitals>;
 
 export interface ResolvedVitals {

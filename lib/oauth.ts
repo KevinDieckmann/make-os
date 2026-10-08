@@ -1,5 +1,6 @@
 // ─── MAKE OS — OAuth-Fundament ──────────────────────────────────────────────
-// EIN sauberer Unterbau für alle externen Anbindungen (Whoop, Microsoft 365).
+// Unterbau für Microsoft 365 (nur Inhaber). WHOOP lief bis 08.10. hier als EIN gemeinsamer Token — seit 08.10. hat jede Person ihre
+// eigene Verbindung (lib/whoop/*); ein alter `oauth-tokens.whoop` wird beim ersten Lesen einmal in den Bestand des Inhabers übernommen.
 // Kevin registriert die App beim Anbieter, trägt Client-ID/Secret in
 // .env.local ein, klickt unter /os/verbindungen auf „Verbinden" — fertig.
 // Tokens liegen NUR lokal (.data/oauth-tokens.json, gitignored) und werden
@@ -21,16 +22,6 @@ export interface OAuthProvider {
 }
 
 export const PROVIDER: Record<string, OAuthProvider> = {
-  whoop: {
-    id: 'whoop',
-    name: 'Whoop',
-    authUrl: 'https://api.prod.whoop.com/oauth/oauth2/auth',
-    tokenUrl: 'https://api.prod.whoop.com/oauth/oauth2/token',
-    scope: 'read:recovery read:sleep read:cycles read:profile offline',
-    envId: 'WHOOP_CLIENT_ID',
-    envSecret: 'WHOOP_CLIENT_SECRET',
-    anleitung: 'developer.whoop.com → App anlegen → Redirect-URL http://localhost:3001/api/oauth/callback eintragen → Client-ID + Secret in .env.local (WHOOP_CLIENT_ID / WHOOP_CLIENT_SECRET), Server neu starten.',
-  },
   microsoft: {
     id: 'microsoft',
     name: 'Microsoft 365',

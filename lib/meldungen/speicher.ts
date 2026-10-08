@@ -64,6 +64,7 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   if (m.bezug?.art === 'aufgabe' && m.bezug.id.startsWith('vte-')) return 'Eine Vertragsfrist naht — Details in MAKE OS';
   if (m.art === 'sicherheit') return 'Am Zugang wurde etwas geändert — Details in MAKE OS';
   if (m.art === 'vertrag') return 'Eine Vertragsfrist naht — Details in MAKE OS';
+  if (m.art === 'verbindung') return 'Eine Verbindung braucht eine neue Anmeldung — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
   return m.titel;
 }

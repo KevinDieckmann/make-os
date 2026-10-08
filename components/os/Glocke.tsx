@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -106,6 +106,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   vertrag: { Icon: Hourglass, label: 'Vertragsfrist', farbe: C.achtung },
   // 06.10. (Inbox 2): ein Postfach braucht eine neue Anmeldung („Verbindung erneuern“).
   postfach: { Icon: Mail, label: 'Postfach', farbe: C.achtung },
+  // 08.10.: eine eigene Verbindung (WHOOP) ist getrennt — neu verbinden.
+  verbindung: { Icon: Unplug, label: 'Verbindung', farbe: C.achtung },
 };
 
 function zeitVon(m: Meldung, jetzt: number): string {

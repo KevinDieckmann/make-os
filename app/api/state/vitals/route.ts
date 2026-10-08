@@ -8,7 +8,7 @@ import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
-import { resolveVitals, localDay, type VitalsLog, type DayVitals } from '@/lib/vitals';
+import { resolveVitals, localDay, VITAL_FELDER, type VitalsLog, type DayVitals } from '@/lib/vitals';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
@@ -66,7 +66,11 @@ export async function PUT(req: Request) {
   const person = personAus(req);
   await updateJson<VitalsLog>(speicherFuer('vitals', person), current => {
     const log = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
-    return { ...log, [date]: { ...(log[date] ?? {}), ...clean } };
+    // Handwert (08.10.): jedes hier gesetzte Feld gilt als von Hand — der WHOOP-Abgleich überschreibt es nie mehr.
+    const alt = log[date] ?? {};
+    const quellen = { ...(alt.quellen ?? {}) };
+    for (const f of VITAL_FELDER) if (clean[f] !== undefined) quellen[f] = 'hand';
+    return { ...log, [date]: { ...alt, ...clean, ...(Object.keys(quellen).length ? { quellen } : {}) } };
   });
 
   // Verbindung zum Journal: Stimmung/Energie/Stress gehören fachlich dorthin

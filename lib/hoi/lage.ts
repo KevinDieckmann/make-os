@@ -84,6 +84,8 @@ export interface InnenLage {
   postfaecher?: PostfachLage | null;
   /** WhatsApp Business (07.10.): Zustand der Business-Nummer — nur Zahlen und Zustände, nie Nummern oder Namen. null = nicht eingerichtet. */
   whatsapp?: WhatsappLage | null;
+  /** WHOOP je Person (08.10.): Verbindungen, Alter des Abgleichs, Webhooks — nur Zähler, nie Adressen/Kennungen/Werte. null = nicht eingerichtet. */
+  whoop?: WhoopLage | null;
   /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
   brainIndex?: BrainIndexLage | null;
   /** Protokolle (05.10.): Hash-Kette über Änderungs-, Lese- und Anmeldeprotokoll — Ergebnis der letzten Prüfung. */
@@ -189,6 +191,39 @@ export interface GmailLage {
   getrennt: number;
   fehler?: string;
   push: { aktiv: number; von: number; moeglich: boolean };
+}
+
+/** Zustand der WHOOP-Verbindungen je Person (08.10.) — nur Zähler, nie Adressen, WHOOP-Kennungen oder Werte. */
+export interface WhoopLage {
+  personen: number;
+  /** Verbindungen, deren Erneuern WHOOP abgelehnt hat. */
+  getrennt: number;
+  /** Ältester gelungener Abgleich (Minuten) über die verbundenen Personen — null: eine Person noch nie. */
+  vorMin: number | null;
+  veraltet: number;
+  fehler: number;
+  /** Personen, für die in den letzten 48 h ein Webhook ankam. */
+  webhook: number;
+  /** Verbunden, aber ohne Einwilligung (a) — es wird nichts abgeglichen. */
+  ohneEinwilligung: number;
+  /** Öffentliche HTTPS-Adresse da (sonst keine Webhooks möglich). */
+  webhookMoeglich: boolean;
+}
+
+/** Befund zu WHOOP (rein): getrennt = rot, kein Abgleich seit 26 h = gelb (seit 3 Tagen rot), sonst grün. */
+export function whoopBefunde(w: WhoopLage | null | undefined): Befund[] {
+  if (!w || !w.personen) return [];
+  const alt = w.vorMin;
+  const aktiv = w.personen - w.getrennt - w.ohneEinwilligung;
+  const ampel: Ampel = w.getrennt ? 'rot' : aktiv > 0 && (alt === null || alt >= 3 * 24 * 60) ? 'rot' : w.veraltet || w.fehler ? 'gelb' : 'gruen';
+  return [{
+    id: 'whoop', bereich: 'app', label: 'WHOOP je Person', ampel,
+    wert: `${w.personen} ${w.personen === 1 ? 'Person' : 'Personen'} · ${aktiv <= 0 ? 'kein aktiver Abgleich' : alt === null ? 'noch nie abgeglichen' : `ältester Abgleich vor ${alt < 120 ? `${alt} min` : `${Math.round(alt / 60)} h`}`} · Webhook ${w.webhookMoeglich ? `${w.webhook}/${Math.max(0, aktiv)}` : 'aus'}`,
+    satz: w.getrennt ? `${w.getrennt} WHOOP-Verbindung${w.getrennt === 1 ? '' : 'en'} getrennt — die Person selbst: Gesundheit › WHOOP „neu verbinden“ (sie hat eine Glocke)`
+      : w.veraltet || w.fehler ? 'Abgleich steht bei mindestens einer Person — ihre Körperwerte sind alt'
+      : w.ohneEinwilligung ? `${w.ohneEinwilligung} verbunden, aber ohne Einwilligung — es wird nichts abgeglichen`
+      : w.webhookMoeglich && w.webhook ? 'Abgleich läuft (Webhooks von WHOOP, Rückfall alle 6 Stunden)' : 'Abgleich läuft stündlich (keine Webhooks angekommen)',
+  }];
 }
 
 /** Befund zu Gmail (rein): getrennt = rot, steht still = gelb/rot, sonst grün. */
@@ -453,6 +488,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...gmailBefunde(innen.gmail));
   b.push(...postfachBefunde(innen.postfaecher));
   b.push(...whatsappBefunde(innen.whatsapp));
+  b.push(...whoopBefunde(innen.whoop));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));

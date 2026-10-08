@@ -102,6 +102,26 @@ export interface Uebung { id: string; name: string; gruppe: Muskelgruppe; /** vo
 export interface VorlageUebung { uebung: string; saetze: number; wdh: string }
 export interface Vorlage { id: string; name: string; uebungen: VorlageUebung[]; eigen?: boolean }
 
+/**
+ * Training aus einem Import (08.10., WHOOP): jedes Workout, das kein Lauf mit Distanz ist (Krafttraining, Rad, Hyrox-Training …).
+ * Nur Importe legen es an (`quelle` + `externeId`, idempotent) — von Hand bleiben Läufe, Gym und Hyrox die Wege.
+ */
+export interface TrainingEinheit {
+  id: string;
+  datum: string;
+  /** Sportart, wie die Quelle sie nennt (z. B. „functional-fitness“). */
+  sport: string;
+  dauerMin: number;
+  /** WHOOP-Strain 0–21. */
+  strain?: number;
+  kcal?: number;
+  pulsSchnitt?: number;
+  pulsMax?: number;
+  distanzKm?: number;
+  quelle: Quelle;
+  externeId?: string;
+}
+
 export interface ErholungTag {
   schlafH?: number;
   ruhepuls?: number;
@@ -127,6 +147,8 @@ export interface SportStand {
   gym: { uebungen: Uebung[]; einheiten: GymEinheit[]; vorlagen: Vorlage[] };
   /** Je Tag (YYYY-MM-DD) die Erholung. */
   erholung: Record<string, ErholungTag>;
+  /** Trainings aus Importen (WHOOP, 08.10.) — fehlt, solange es keine gibt (alte Stände bleiben bit-gleich). */
+  training?: TrainingEinheit[];
 }
 
 // ── Grundzustand und Prüfung ─────────────────────────────────────────────────
@@ -267,6 +289,20 @@ export function saeubereVorlage(e: unknown): Vorlage | null {
   return { id: vid, name, uebungen, eigen: true };
 }
 
+export function saeubereTraining(e: unknown): TrainingEinheit | null {
+  if (!istObj(e)) return null;
+  const tid = id(e.id); const datum = tag(e.datum); const sport = text(e.sport, 60); const dauer = ganz(e.dauerMin, 1, 24 * 60);
+  if (!tid || !datum || !sport || !dauer) return null;
+  const t: TrainingEinheit = { id: tid, datum, sport, dauerMin: dauer, quelle: aus(e.quelle, QUELLEN) ?? 'hand' };
+  const st = zahl(e.strain, 0, 21); if (st !== undefined) t.strain = Math.round(st * 10) / 10;
+  const kc = ganz(e.kcal, 1, 20000); if (kc) t.kcal = kc;
+  const ps = ganz(e.pulsSchnitt, 25, 250); if (ps) t.pulsSchnitt = ps;
+  const pm = ganz(e.pulsMax, 25, 250); if (pm) t.pulsMax = pm;
+  const km = zahl(e.distanzKm, 0.01, 1000); if (km) t.distanzKm = Math.round(km * 100) / 100;
+  const x = text(e.externeId, 120); if (x) t.externeId = x;
+  return t;
+}
+
 export function saeubereErholung(e: unknown): ErholungTag | null {
   if (!istObj(e)) return null;
   const t: ErholungTag = {};
@@ -300,6 +336,7 @@ export function saeubere(raw: unknown): SportStand {
     if (Array.isArray(raw.gym.vorlagen)) s.gym.vorlagen = eindeutig(raw.gym.vorlagen.map(saeubereVorlage).filter((v): v is Vorlage => !!v)).slice(0, 50);
   }
   if (istObj(raw.erholung)) for (const [d, e] of Object.entries(raw.erholung)) { if (!TAG.test(d)) continue; const t = saeubereErholung(e); if (t) s.erholung[d] = t; }
+  if (Array.isArray(raw.training)) { const t = nachDatum(eindeutig(raw.training.map(saeubereTraining).filter((x): x is TrainingEinheit => !!x))).slice(0, 5000); if (t.length) s.training = t; }
   return s;
 }
 
@@ -328,7 +365,7 @@ const setze = <T extends { id: string }>(liste: T[], e: T) => [e, ...liste.filte
 
 /** Ein Schritt auf den Stand — gibt den neuen Stand zurück oder wirft mit einem Satz, den man zeigen kann. */
 export function wendeAn(stand: SportStand, op: Op): SportStand {
-  const s: SportStand = { ...stand, ziele: [...stand.ziele], hyrox: [...stand.hyrox], laeufe: [...stand.laeufe], gym: { uebungen: [...stand.gym.uebungen], einheiten: [...stand.gym.einheiten], vorlagen: [...stand.gym.vorlagen] }, erholung: { ...stand.erholung } };
+  const s: SportStand = { ...stand, ...(stand.training ? { training: [...stand.training] } : {}), ziele: [...stand.ziele], hyrox: [...stand.hyrox], laeufe: [...stand.laeufe], gym: { uebungen: [...stand.gym.uebungen], einheiten: [...stand.gym.einheiten], vorlagen: [...stand.gym.vorlagen] }, erholung: { ...stand.erholung } };
   switch (op.op) {
     case 'einstieg': s.einstieg = { fertig: op.fertig === true, ...(op.fertig ? { am: new Date().toISOString() } : {}) }; return s;
     case 'ziel': { const z = saeubereZiel(op.eintrag); if (!z) throw new Error('Ziel unvollständig: Art, Titel und eine Kennung braucht es.'); s.ziele = setze(s.ziele, z).sort((a, b) => (a.datum ?? '9999') < (b.datum ?? '9999') ? -1 : 1); return s; }
