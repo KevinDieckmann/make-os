@@ -269,7 +269,8 @@ describe('Navigation und Deep-Links', () => {
   it('Reiter „Finanzplanung“ hängt am richtigen Space; kein Eintrag mehr unter den Agenten', () => {
     expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=business&u=ug')).toMatchObject({ space: 'business', eintrag: { label: 'Finanzen' } });
     expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=privat&u=privat')).toMatchObject({ space: 'privat', eintrag: { label: 'Finanzen' } });
-    expect(aktiverSpaceEintrag('/os/finanzplan', '?u=lage').space).toBe('privat');
+    // /os/finanzplan ist seit Etappe 2 eine Weiterleitung (next.config.mjs) auf Privat › Planung — dort gilt der Space der Adresse.
+    expect(aktiverSpaceEintrag('/os/finanzen', '?s=finanzplanung&space=privat&u=lage').space).toBe('privat');
     // 08.10. (Aufräumen Etappe 1): es gibt keine eigenen Knöpfe neben den Spaces mehr — Finanzplanung ist kein Leisten-Punkt.
     expect([...leisteFuer('privat'), ...leisteFuer('business')].some(e => e.href === '/os/finanzplan')).toBe(false);
   });

@@ -75,7 +75,7 @@ describe('Aufräumen Etappe 1 — jede Seite ist erreichbar', () => {
     expect(SEITEN).toContain('/os/system');
     expect(SEITEN).not.toContain('/os/heute');
     expect(SEITEN).not.toContain('/os/uebersicht');
-    expect(SEITEN.length).toBeGreaterThan(50);
+    expect(SEITEN.length).toBeGreaterThan(40); // Etappe 3 hat Altbestand entfernt (08.10.)
   });
   it('über Leiste, Einstellungen, ZOE oder Schnellsuche', () => {
     const alle = [...leiste, ...einstellungen, ...zoe, ...suche];
