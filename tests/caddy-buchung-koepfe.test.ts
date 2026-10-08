@@ -95,9 +95,10 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
 
   it('Hauptdomain: VORERST 302 auf die Anmeldung — oder die Freigabe-Fassung, dann nur mit grüner Prüfung', () => {
     if (!freigabeAktiv) {
-      const vorerst = aktiv.get('makeinnovation.de, www.makeinnovation.de');
-      expect(vorerst, 'Umleitungs-Block').toBeDefined();
-      expect(vorerst).toMatch(/^redir https:\/\/app\.makeinnovation\.de\/anmelden 302$/m);
+      // VORERST: Umleitung auf die Anmeldung — oder OFFLINE (Kevin 08.10.): 503 ohne Inhalt.
+      const vorerst = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('makeinnovation.de'))?.[1];
+      expect(vorerst, 'Umleitungs- oder Offline-Block').toBeDefined();
+      expect(vorerst).toMatch(/^(redir https:\/\/app\.makeinnovation\.de\/anmelden 302|respond 503)$/m);
       expect(vorerst).not.toMatch(/file_server|root /);
       expect(vorerst).toMatch(/^Strict-Transport-Security "max-age=31536000"$/m);
     } else {
@@ -113,6 +114,14 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
   });
 
   it('fokusinnovation.de (04.10.): www → 301, Seite read-only aus /srv/fokus mit denselben strengen Köpfen, Vorschau mit noindex + robots.txt', () => {
+    // OFFLINE (Kevin 08.10.): beide Adressen im Offline-Block mit 503, nichts ausgeliefert.
+    const offline = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('fokusinnovation.de'));
+    if (offline && /^respond 503$/m.test(offline[1])) {
+      expect(offline[0]).toMatch(/www\.fokusinnovation\.de/);
+      expect(offline[1]).not.toMatch(/file_server|root |reverse_proxy/);
+      expect(offline[1]).toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
+      return;
+    }
     const www = aktiv.get('www.fokusinnovation.de');
     expect(www).toMatch(/^redir https:\/\/fokusinnovation\.de\{uri\} 301$/m);
     const seite = aktiv.get('fokusinnovation.de') ?? '';
