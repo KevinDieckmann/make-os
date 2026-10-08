@@ -13,6 +13,7 @@ import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { nordsternSatz } from '@/lib/planung/nordstern';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,8 @@ export async function POST(req: Request) {
     '- GELB (40–65): fokussiert, aber mit Puffer — weniger/ kürzere Blöcke, mehr Pausen.',
     '- ROT (<40): nur das Essentielle + Regeneration (NSDR, Reha, früher Feierabend). Nicht durchpowern.',
     // S1 #9: kein fester Gesundheitskontext mehr — nur aus dem eigenen Profil der fragenden Person (unten, falls gepflegt).
-    'Kontext: Fokuszeit 09–17 schützen. Nordstern: mehr Ruhe + 1 Mio € Umsatz KD Ventures.',
+    // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
+    `Kontext: Fokuszeit 09–17 schützen. ${nordsternSatz(b.nordstern)}`,
     KONTEXT_REGEL,
     'Antworte auf Deutsch, kurz & strukturiert in Markdown mit genau diesen fetten Überschriften:',
     '**Tagesform** (1 Satz zur Recovery-Zone) · **Heute zuerst** (die EINE wichtigste Aufgabe) · **Zeitblöcke** (2–3 konkrete mit Uhrzeit) · **Heute bewusst NICHT** (was warten kann) · **Körper** (1 konkreter Reha-/Ruhe-Hinweis).',

@@ -8,8 +8,9 @@
 //   · Jede Quelle fällt einzeln aus (allSettled) — das Brain liefert immer.
 //   · Jede Quelle trägt ihre Frische. Alte Daten werden als alt AUSGEWIESEN,
 //     nie als aktuell verkauft.
-//   · Feste Wahrheiten (Nordstern, Meilensteine, Team) leben hier, nicht
-//     verstreut in Routen.
+//   · Nordstern, Meilensteine und Team kommen aus den DATEN der Instanz (seit 08.10. abends auch der Nordstern —
+//     `nordstern--<haushalt>`, lib/planung/nordstern-server.ts); fehlt etwas, sagt der Kontext das, statt etwas
+//     Festes aus dem Code einzusetzen.
 
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
@@ -32,9 +33,8 @@ import { teamFuerPerson } from '@/lib/make-one/team-speicher';
 import { teamZeilenAus, platzhalterTeam } from '@/lib/make-one/team-typen';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
 
-// ── Feste Wahrheiten (client-sicher ausgelagert) ──
-export { NORDSTERN, MILESTONES } from '@/lib/make-one/nordstern-data';
-import { NORDSTERN, MILESTONES } from '@/lib/make-one/nordstern-data';
+// ── Nordstern (08.10. abends): Daten des Haushalts statt Konstante — lib/planung/nordstern-server.ts ──
+import { nordsternFuerPerson } from '@/lib/planung/nordstern-server';
 import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
 import { feiertageIm } from '@/lib/zeit/kalender-kern';
 import { termineFuerZoe, type ZoeTermin } from '@/lib/kalender/zoe-sicht-server';
@@ -94,8 +94,13 @@ export interface Brain {
   anlaesse?: { feiertage: { tag: string; name: string }[]; geburtstage: { name: string; tag: string; alter?: number; herkunft: string }[] };
   /** M365-Postfach-Snapshot (KEMARIS) — Team-Mails gehören ins Bild. */
   laeufe: AgentLogEntry[];
-  /** Business-Meilensteine aus dem Store (gesundheit bleibt hier bewusst draußen). */
+  /** Business-Meilensteine aus dem Store (gesundheit bleibt hier bewusst draußen). Leer = keine gepflegt (kein Rückfall mehr). */
   meilensteine: string[];
+  /**
+   * Nordstern des Haushalts der Person (08.10. abends, `nordstern--<haushalt>`) — null = keiner hinterlegt. Optional, damit
+   * unvollständige Brains (Tests, Ausfall) gültig bleiben; ohne Wert sagt der Kontext „kein Nordstern hinterlegt“.
+   */
+  nordstern?: string | null;
   /** Team-Zeilen aus `team--<haushalt>` (28.09., U4) — Namen nur aus den Daten; fehlt es, gelten die Rollen-Platzhalter. */
   team?: string[];
   /** Geldfluss aus der Finanzplanung + Mandate aus dem CRM. */
@@ -165,6 +170,8 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   // Anlässe (K2): eigener Abruf, wirft nie (geburtstageIm fängt selbst ab).
   const anlaesseBis = tagePlus(heute, 8);
   const geburtstage = await geburtstageIm({ von: heute, bis: anlaesseBis }, person).catch(() => []);
+  // Nordstern (08.10. abends): aus dem Bestand des Haushalts der Person — wirft nie, ohne Haushalt/Eintrag null.
+  const nordstern = await nordsternFuerPerson(person);
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 
   const store = val(tasksR);
@@ -240,15 +247,17 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     },
     anlaesse: { feiertage: feiertageIm(heute, anlaesseBis), geburtstage: geburtstage.map(g => ({ name: g.name, tag: g.tag, ...(g.alter !== undefined ? { alter: g.alter } : {}), herkunft: g.herkunft })) },
     laeufe: val(laeufeR) ?? [],
-    // Business-Meilensteine aus dem Store — Fallback: alte Konstante.
+    // Business-Meilensteine aus dem Store — ohne gepflegte Meilensteine leer (08.10. abends: der Rückfall auf eine feste,
+    // veraltete Liste im Code ist ersatzlos weg; der Kontext sagt dann „keine hinterlegt“).
     meilensteine: (() => {
       // 05.10. abends: Meilensteine der Selbstständigkeit (Privat-Einheit) sind keine Business-Meilensteine (`meilensteinSpace`, abgeleitet).
       const ms = (val(meilR)?.meilensteine ?? []).filter(m => m.bereich === 'business' && meilensteinSpace(m) === 'business');
-      if (!ms.length) return [...MILESTONES];
+      if (!ms.length) return [];
       // Datum mit Jahr, sobald es nicht das laufende ist (30.09.: Meilensteine im nächsten Jahr sind sonst nicht unterscheidbar).
       const tag = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4) !== heute.slice(0, 4) ? d.slice(0, 4) : ''}`;
       return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? tag(m.faellig) : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
     })(),
+    nordstern,
     team: teamZeilenAus(val(teamR) ?? platzhalterTeam()),
     geld: (() => {
       const re = (val(fplanR)?.rechnungen ?? []).filter(r => r.firmaId !== 'privat');
@@ -341,7 +350,7 @@ export function blockZahlen(b: Brain): string {
     b.geld.vorbereitung ? `Rechnungen in Vorbereitung ${eur(b.geld.vorbereitung)}` : '',
     b.mandate.aktiv + b.mandate.gespraech > 0 ? `Mandate: ${b.mandate.aktiv} aktiv${b.mandate.cashflow ? ` (${eur(b.mandate.cashflow)}/Monat)` : ''}, ${b.mandate.gespraech} im Gespräch` : '',
   ].filter(Boolean).join('. ');
-  if (!b.finance || !b.metrics) return `ZAHLEN: kein Finanzstand hinterlegt. Nordstern (${NORDSTERN.split('.')[0]}) ist damit nicht messbar — sag das offen.${extra ? ` ${extra}.` : ''}`;
+  if (!b.finance || !b.metrics) return `ZAHLEN: kein Finanzstand hinterlegt. ${b.nordstern ? 'Der Nordstern' : 'Der Fortschritt'} ist damit nicht messbar — sag das offen.${extra ? ` ${extra}.` : ''}`;
   const m = b.metrics;
   const kern = m.aktiveMonate > 0
     ? `ZAHLEN: Ist-Umsatz ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}% vom Ziel ${eur(b.finance.zielUmsatz)}), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
@@ -429,9 +438,15 @@ function blockGedaechtnisRoh(b: Brain, max = 6): string {
   return `LETZTE AGENTEN-LÄUFE (dein Gedächtnis — beziehe dich darauf, statt neu zu raten):\n${b.laeufe.slice(0, max).map(r => `• [${r.ts.slice(0, 16).replace('T', ' ')}] ${r.agent}: ${r.title}`).join('\n')}`;
 }
 
+/**
+ * Nordstern, Meilensteine, Team — alles aus den Daten (08.10. abends). Nordstern und Meilensteine sind Bestände des Haushalts und stehen
+ * deshalb im <daten>-Rahmen (Wissen, nie Anweisung); fehlt etwas, steht dort ehrlich „keiner/keine hinterlegt“ — nie etwas Erfundenes.
+ */
 export function blockZiele(b?: Brain): string {
-  const ms = b?.meilensteine?.length ? b.meilensteine : [...MILESTONES];
-  return `NORDSTERN-ZIEL: ${NORDSTERN}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr):\n${ms.map(m => `- ${m}`).join('\n')}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${(b?.team ?? teamZeilenAus(platzhalterTeam())).map(t => `- ${t}`).join('\n')}`;
+  const ms = b?.meilensteine ?? [];
+  const nordstern = b?.nordstern ? daten('nordstern', b.nordstern) : 'kein Nordstern hinterlegt — er wird unter Planung › Jahr gepflegt. Erfinde keinen; frag nach, wenn er für die Antwort fehlt.';
+  const meilensteine = ms.length ? daten('meilensteine', ms.map(m => `- ${m}`).join('\n')) : 'keine hinterlegt.';
+  return `NORDSTERN-ZIEL: ${nordstern}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${(b?.team ?? teamZeilenAus(platzhalterTeam())).map(t => `- ${t}`).join('\n')}`;
 }
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */

@@ -66,6 +66,7 @@ const R = {
   gesellschaften: () => import('@/app/api/gesellschaften/route') as Promise<Modul>,
   eroeffnung: () => import('@/app/api/business/eroeffnung/route') as Promise<Modul>,
   ziele: () => import('@/app/api/state/ziele/route') as Promise<Modul>,
+  nordstern: () => import('@/app/api/planung/nordstern/route') as Promise<Modul>,
   meilensteine: () => import('@/app/api/state/meilensteine/route') as Promise<Modul>,
   aufgabe: () => import('@/app/api/tasks/create/route') as Promise<Modul>,
   aufgaben: () => import('@/app/api/state/tasks/route') as Promise<Modul>,
@@ -217,6 +218,20 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   ].map((m, i) => ({ ...m, space: 'business', erledigt: false, rang: i + 1 }));
   await rufe(R.meilensteine(), 'PATCH', '/api/state/meilensteine', LENA, { ops: ms.map(upsert) });
   schritt('Ziele', ziele.length); schritt('Meilensteine', ms.length);
+
+  // 5b) Nordstern des Haushalts (08.10. abends, Planung › Jahr) — erfunden, über denselben Weg wie die Karte (GET Stand, PUT mit Stand).
+  const ns = await rufe(R.nordstern(), 'GET', '/api/planung/nordstern', LENA);
+  await rufe(R.nordstern(), 'PUT', '/api/planung/nordstern', LENA, { text: 'Nordlicht Labs wird die erste Adresse für klare Kennzahlen im Mittelstand — 40 Kunden, die wir beim Namen kennen, und ein Team, das freitags um vier Feierabend macht. (Beispiel)', stand: ns.stand });
+  // Routinen (08.10. abends): eine leere Instanz startet ohne Routinen — die Demo zeigt ein paar erfundene, neutrale Beispiele
+  // (gemeinsam und je Person) über den Routinen-Schreibweg.
+  const routinen = [
+    { id: 'r-demo-plan', label: 'Tagesplan festlegen · 10 Min', wann: 'morgen', kategorie: 'business', dauerMin: 10, owner: 'beide', space: 'business' },
+    { id: 'r-demo-spaziergang', label: 'Spaziergang an der frischen Luft', wann: 'tag', kategorie: 'leben', dauerMin: 20, owner: LENA, space: 'privat' },
+    { id: 'r-demo-lesen', label: 'Lesen · 20 Min', wann: 'abend', kategorie: 'leben', dauerMin: 20, owner: LENA, space: 'privat' },
+  ];
+  await rufe(R.routinen(), 'PATCH', '/api/state/routinen', LENA, { ops: routinen.map(upsert) });
+  await rufe(R.routinen(), 'PATCH', '/api/state/routinen', JONAS, { ops: [upsert({ id: 'r-demo-wochenrueckblick', label: 'Wochenrückblick vorbereiten', wann: 'tag', kategorie: 'business', dauerMin: 30, owner: JONAS, space: 'business', rhythmus: 'woechentlich' })] });
+  schritt('Nordstern', 1); schritt('Routinen', routinen.length + 1);
 
   // 6) Gründungsfahrplan der neuen Gesellschaft — wie der Knopf im Steckbrief (components/os/unternehmen/Fahrplan.tsx).
   const plan = fahrplanFuer(neu.id, { name: 'Nordlicht Ventures GmbH', art: 'gruendung' }, 'Nordlicht Ventures GmbH', heute);

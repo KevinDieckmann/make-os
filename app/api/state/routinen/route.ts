@@ -3,8 +3,10 @@
 // Routine-Planer pflegt sie, und alles andere greift darauf zu: der
 // Wochenplaner (Leiste + ZOE-Vorschlag), die Tagesplanung, das
 // Gesundheits-Cockpit (Häkchen), das Home-Widget „Routinen heute“ und der
-// MAKE Score (Routinen-Quote). Erststart wird aus den bisherigen
-// ROUTINE_ITEMS geseedet — gleiche ids, damit Streak und Verlauf weiterlaufen.
+// MAKE Score (Routinen-Quote). Bis 08.10. bekam ein leerer Bestand beim ersten Lesen Startroutinen — das waren die
+// Routinen einer echten Person (lib/make-one/health-data.ts, entfernt; Fragebogen Teil 3: „nichts Persönliches fest
+// einbauen“). Seitdem startet eine leere Instanz ohne Routinen, und der GET liest nur noch. Vorhandene Bestände bleiben,
+// wie sie sind; die Demo-Instanz legt erfundene Beispiele über den PATCH an (lib/demo/saat.ts).
 //
 // Seit 27.09. (Malins Rückmeldung) trägt eine Routine zusätzlich `space`
 // (privat/business), `owner` (Person oder „beide“), `rhythmus` + `naechstesMal`
@@ -29,7 +31,6 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { sauberRoutine, sauberBlock, sichtbarFuer, routinenFuerBetrachter, bloeckeFuerBetrachter, routinenSchreibPruefen, routinenVollSchreiben, ROUTINE_FREMD } from '@/lib/planung/routinen';
 import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
 
@@ -37,15 +38,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export type { Routine, Block };
-
-const seed = (): Routine[] => ROUTINE_ITEMS.map(r => ({
-  id: r.id,
-  label: r.label,
-  wann: (r.when === 'abend' ? 'abend' : 'morgen') as Routine['wann'],
-  kategorie: 'gesundheit',
-  dauerMin: 15,
-  aktiv: true,
-}));
 
 const bloeckeVon = (f: RoutinenDatei | null | undefined): Block[] => (Array.isArray(f?.bloecke) ? f!.bloecke : []);
 
@@ -65,13 +57,11 @@ const antwort = (f: RoutinenDatei | null | undefined, betrachter: string | null)
  */
 export async function GET(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt(); // lesen auch der Systemlauf (Takt, ZOE)
-  let f = await loadJson<RoutinenDatei>('routinen');
-  if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
-    f = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
-  }
+  // Leerer Bestand = keine Routinen (seit 08.10. keine Startroutinen mehr — Lesen schreibt nicht).
+  const f: RoutinenDatei = (await loadJson<RoutinenDatei>('routinen')) ?? { routinen: [] };
   const ich = personStreng(req);
   if (new URL(req.url).searchParams.get('sicht') === 'ich') {
-    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(f.routinen ?? [], ich ?? '') }, ich ?? ''));
+    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(Array.isArray(f.routinen) ? f.routinen : [], ich ?? '') }, ich ?? ''));
   }
   // Ohne Person (Takt, ZOE-Hintergrund) wie bisher der ganze Bestand; mit Person fremde nur als „Belegt“.
   return NextResponse.json(antwort(f, ich));

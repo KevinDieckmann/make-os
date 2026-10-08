@@ -281,6 +281,14 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
   H('ziele-eigen', 'Persönliche Ziele der ersten Person (Altname ohne Suffix) — eigene Planung, keine Dritten (gelesen u. a. von den Lichtfäden).'),
   H('ziele-eigen--*', 'Persönliche Ziele je Person — eigene Planung, keine Dritten.'),
+  // Nordstern je Haushalt (08.10. abends, Fragebogen Teil 3): ein Text, den die Mitglieder selbst pflegen (Planung › Jahr) — kein
+  // Personenname im Bestand (wer geändert hat, steht nur im Änderungsprotokoll), keine Dritten. Dazu die Marken der einmaligen
+  // Übernahme des Altbestands (nur Tage, lib/altbestand/nordstern-uebernahme.ts).
+  mit(H('nordstern--*', 'Nordstern des Haushalts — gemeinsames Ziel, von den Mitgliedern selbst gepflegt; kein Personenname, keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Nutzung der Planung durch die Mitglieder des Haushalts',
+    art15: 'alle Konten des Haushalts sehen ihn unter Planung › Jahr (Business-Konten lesend); er nennt keine Person',
+    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird',
+  }),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
   // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.
   T('meilenstein-raum--*', 'Verlauf/Notiz/Links je Meilenstein — bleiben, Namen/Adressen der Person getilgt (lib/crm/person-weitere.ts).'),

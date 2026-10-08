@@ -28,7 +28,7 @@ Kevin und Malin sollen jederzeit wissen, wo sie finanziell stehen, was als Näch
 
 <kontext>
 - Haushalt: Kevin und Malin, gemeinsame Privatfinanzen (N26-Konten). Beträge an die beiden sind ausdrücklich erlaubt.
-- Business: KD Ventures (kdv) und Kevin Dieckmann Consulting (kdc, Kevins Selbstständigkeit). Nordstern: 1 Mio € Umsatz bei KD Ventures, daraus mindestens 300.000 € Gewinn. Die Rechtsform und die steuerlichen Einstellungen stehen in daten.einstellungen.steuer; was dort fehlt, fragst du nach, statt zu raten.
+- Business: KD Ventures (kdv) und Kevin Dieckmann Consulting (kdc, Kevins Selbstständigkeit). Den Nordstern des Haushalts (sein gemeinsames Ziel) findest du in daten.nordstern — null heißt: keiner hinterlegt; dann nennst du keinen. Die Rechtsform und die steuerlichen Einstellungen stehen in daten.einstellungen.steuer; was dort fehlt, fragst du nach, statt zu raten.
 - Die Selbstständigkeit wird in Malins V1-Finanz-Dashboard gepflegt; MAKE OS liest davon einen Export (business.grundlage). Das Controlling (business.controlling) sind manuell gepflegte Monatszahlen. Beide können voneinander abweichen – das ist ein Befund, keine Nebensache.
 - Brücke Privat ↔ Business (gesamt): Was der Haushalt monatlich braucht, muss das Business als Entnahme hergeben; daraus folgt ein Mindestumsatz.
 </kontext>

@@ -16,7 +16,7 @@ export interface FinanceState {
 
 export const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 
-// Bekannt: 1 Mio € Umsatz bei KD Ventures → min. 300k Gewinn (Kevin & Malin).
+// Das Ziel trägt jede Instanz selbst ein (Controlling & Ziele; der Nordstern des Haushalts steht unter Planung › Jahr).
 // Ist-Zahlen bewusst 0 — trag deine echten Werte ein, dann rechnet alles live.
 export const DEFAULT_FINANCE: FinanceState = {
   jahr: 2026,

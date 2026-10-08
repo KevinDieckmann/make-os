@@ -1,5 +1,5 @@
 // ─── MAKE OS — OKR-/Ziel-Agent ──────────────────────────────────────────────
-// Klammert den Nordstern (1 Mio € KD Ventures → 300k Gewinn) mit den echten
+// Klammert den Nordstern (Daten des Haushalts, Planung › Jahr) mit den echten
 // Zahlen (Controlling) und den echten Aufgaben zusammen: Objectives + Key
 // Results, ordnet vorhandene Tasks zu und flaggt Lücken. Read-only Synthese.
 
@@ -15,6 +15,7 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { nordsternSatz } from '@/lib/planung/nordstern';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
   const m = fin ? computeMetrics(fin) : null;
   const finText = fin && m
     ? [
-        `Ziel: ${eur(fin.zielUmsatz)} Umsatz → ${eur(fin.zielGewinn)} Gewinn (KD Ventures).`,
+        `Ziel (Controlling): ${eur(fin.zielUmsatz)} Umsatz → ${eur(fin.zielGewinn)} Gewinn.`,
         m.aktiveMonate > 0
           ? `Ist: ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}%), Gewinn ${eur(m.istGewinn)}, Ø ${eur(m.runRateAktuell)}/Monat. Nötige Run-Rate: ${eur(m.runRateNoetig)}/Monat, ${m.restMonate} Monate übrig. Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
           : 'Ist-Zahlen noch nicht gepflegt (Controlling leer).',
@@ -58,7 +59,8 @@ export async function POST(req: Request) {
     : '(keine Aufgaben übergeben)';
 
   const system = [
-    'Du bist der OKR-/Ziel-Agent in Kevins MAKE OS. Nordstern: 1 Mio € Umsatz bei KD Ventures → min. 300k € Gewinn für Kevin & Malin.',
+    // Nordstern aus den Daten des Haushalts (08.10. abends, `brain.nordstern`) — vorher eine feste Zeile im Code.
+    `Du bist der OKR-/Ziel-Agent in MAKE OS. ${nordsternSatz(brain.nordstern)}`,
     'Deine Aufgabe: aus Nordstern + echten Zahlen + echten Aufgaben eine klare OKR-Struktur bauen, die vorhandenen Aufgaben den Zielen zuordnen und LÜCKEN benennen (wo kein Task auf ein Key Result einzahlt).',
     'Nutze NUR die gegebenen Zahlen/Aufgaben — erfinde keine. Sei ehrlich, wenn der Kurs nicht reicht. Kein Startup-Sprech.',
     'Antworte AUSSCHLIESSLICH als JSON, kein Markdown:',
