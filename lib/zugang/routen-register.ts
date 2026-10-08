@@ -193,6 +193,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'zoe/protokoll': r('GET,POST', 'haushalt', 'ZOE-Protokoll des Haushalts; zurücknehmen nur eigene bzw. Systemeinträge.'),
   'zoe/selbstbild': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Selbstbild-Blätter: ansehen im Haushalt; in den Vault schreiben nur Inhaber bzw. Systemlauf.'),
   'zoe/verbrauch': r('GET', 'haushalt', 'KI-Kosten der Instanz.'),
+  // ZOE auf WhatsApp (08.10., lib/zoe-whatsapp/*): die eigene ZOE-Nummer der Instanz — Kanal JE PERSON.
+  'zoe/whatsapp': r('GET,POST', 'person', 'Der eigene ZOE-Kanal auf WhatsApp: verbinden (Code), Einwilligung/Ausnahme, Test, trennen — NUR die Person selbst (eigenePerson; Dienstweg 403, keine Personen-Parameter); Nummer nur maskiert, Code nur einmal in der Antwort.'),
+  'zoe/whatsapp/webhook': r('GET,POST', 'offen', 'Webhook der ZOE-Nummer — offen, aber selbst geprüft: GET nur mit dem Verify-Token der ZOE-Nummer (zeitkonstant, gedrosselt), POST nur mit gültiger X-Hub-Signature-256 über den Rohkörper (App-Geheimnis der ZOE-Nummer), ≤ 512 KB, idempotent; fremde Nummern nur gezählt; ohne Einrichtung 404; liefert nie Daten.'),
+  'zoe/whatsapp/sprachnachricht': r('GET', 'person', 'Eigene Sprachnachricht an ZOE anhören (Download aus der verschlüsselten Ablage) — nur die Person selbst (eigenePerson), gesucht nur in ihrem Kanal.'),
   'delegation': r('GET,POST', 'haushalt', 'Delegations-Runde über Aufgaben des Haushalts; POST auch als Systemlauf.'),
   'okr': r('POST', 'haushalt', 'OKR-Agent über Finanzen und Aufgaben des Haushalts; auch als Systemlauf.'),
   'board': r('POST', 'haushalt', 'Board-Pack aus Controlling, Prospecting, Aufgaben des Haushalts; auch als Systemlauf.'),

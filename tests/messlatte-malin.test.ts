@@ -306,6 +306,9 @@ const SYS = {
 
   // Inbox teilen (08.10., Lücke 6): eine Übergabe von Kevin an eine DRITTE Person des Haushalts — Malin ist nicht beteiligt.
   uebergabe: 'MESSLATTE-SYS-UEBERGABE-NOTIZ',
+
+  // ZOE auf WhatsApp (08.10.): der Kanal je Person — die Marke steckt im Zeitpunkt „verbunden seit“ (nur der geht maskiert-frei hinaus).
+  zoeKanal: '2002-03-04T05:06:07.891Z',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -464,6 +467,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('stammdaten', { firmen: [], konten: [], partner: [], personen: [{ id: 'p-messlatte', name: 'kevin', person: 'kevin', steuerId: SYS.steuerId, svNummer: SYS.steuerId }] });
     // Arbeitsrahmen (Business-frei, Lücke 7): Kevins eigene Ergänzung — nur er selbst sieht sie.
     await db.saveJson('arbeitsrahmen--kevin', { businessFrei: [{ tage: [2], von: '05:17', bis: '06:43' }], geaendertAm: SYS.arbeitsrahmen });
+
+    await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

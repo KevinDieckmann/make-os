@@ -18,6 +18,7 @@ import { gmailJobsImTakt } from '@/lib/gmail/takt';
 import { postfachJobsImTakt } from '@/lib/postfach/takt';
 import { whatsappJobsImTakt } from '@/lib/whatsapp/takt';
 import { whoopJobsImTakt } from '@/lib/whoop/takt';
+import { zoeWhatsappJobsImTakt } from '@/lib/zoe-whatsapp/takt';
 import { localDay } from '@/lib/zeit';
 import { istDienst } from '@/lib/zugang/dienst';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -74,6 +75,8 @@ export async function POST(req: Request) {
   void whatsappJobsImTakt().catch(() => {});
   // WHOOP je Person (08.10.): Abgleich stündlich (mit Webhooks alle 6 h) — nie blockierend, Fehler als eine Zeile `[whoop] …`.
   void whoopJobsImTakt().catch(() => {});
+  // ZOE auf WhatsApp (08.10.): liegen gebliebene Nachrichten an ZOE verarbeiten, Sprachnachrichten nach 30 Tagen löschen — ohne Einrichtung nichts.
+  void zoeWhatsappJobsImTakt().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

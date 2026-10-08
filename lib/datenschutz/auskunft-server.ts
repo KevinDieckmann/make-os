@@ -11,6 +11,7 @@ import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { icloudInGebrauch } from '@/lib/kalender/icloud-person';
 import { whatsappEingerichtet } from '@/lib/whatsapp/konfig';
 import { whoopKonfiguriert } from '@/lib/whoop/konfig';
+import { zoeWhatsappEingerichtet } from '@/lib/zoe-whatsapp/konfig';
 import { LOESCHFRISTEN_SPEICHER, SICHERUNG_SATZ, fristText, fristenWirksam, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { empfaengerWirksam, verantwortlicherWirksam } from './einrichtung';
 import { ladeEinrichtung } from './einrichtung-server';
@@ -21,7 +22,7 @@ export async function auskunftAngaben(art: AuskunftArt, o: { bereiche?: readonly
   let einrichtung = {};
   try { einrichtung = await ladeEinrichtung(); } catch { /* „fehlt“ steht dann in der Auskunft */ }
   const crm = await ladeCrm();
-  const verarbeitungen = verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert() }).liste;
+  const verarbeitungen = verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet() }).liste;
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER).catch(() => null)) ?? {}).fristen);
   const lf = (id: Parameters<typeof fristText>[0], bereich: string, satz: (t: string) => string) => ({ bereich, frist: satz(fristText(id, fristen[id])) });
   const kontaktFristen = art === 'kontakt' ? [

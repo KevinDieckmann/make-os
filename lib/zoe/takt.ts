@@ -17,7 +17,7 @@ import { localDay } from '@/lib/zeit';
 import { wandzeit } from '@/lib/kalender/zeit';
 import { artFuerStunde, tagKey, type LaufArt } from '@/lib/tageslauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
-import { telegramKonfiguriert } from '@/lib/telegram';
+import { botenEingerichtet, botenKanalFuer } from './an-person';
 import { alleSpeicher } from '@/lib/zugang/konten';
 import type { NeuerAuftrag } from './auftraege';
 
@@ -120,10 +120,12 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   if (h < VON || h >= BIS) return raus;
 
   // 0) Der Gesundheits-Takt (23.09.) — VOR allem anderen und unabhängig vom
-  //    Morgenlauf: Kevin soll seine Nachricht aufs Handy bekommen, auch wenn
-  //    der Tagesstart hakt. Nur, wenn der Bote überhaupt da ist; die
-  //    Fälligkeit je Person und Slot steht in gesundheit-takt.json.
-  if (telegramKonfiguriert()) {
+  //    Morgenlauf: die Nachricht soll aufs Handy kommen, auch wenn der Tagesstart
+  //    hakt. Nur, wenn ein Bote überhaupt da ist (seit 08.10. ZOE auf WhatsApp
+  //    oder Telegram, lib/zoe/an-person.ts); die Fälligkeit je Person und Slot
+  //    steht in gesundheit-takt.json.
+  const bote = await botenEingerichtet();
+  if (bote) {
     const gt = (await loadJson<TaktStand>('gesundheit-takt')) ?? {};
     const offen = (await alleSpeicher()).flatMap(p => faelligeSlots(gt, p, jetzt, heute).map(s => `${p}:${s}`));
     if (offen.length) {
@@ -137,20 +139,21 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
 
   // 0b) Markttraktion (25.09.): werktags ab 7:30 die Morgen-Nachricht, freitags
   //     ab 15 Uhr das Wochen-Scoreboard — je Person im Team mit Konto, und nur,
-  //     wer mit Telegram gekoppelt ist (sonst stünde der Auftrag jede Minute
+  //     wer einen Boten hat (seit 08.10. ZOE auf WhatsApp oder Telegram — sonst stünde der Auftrag jede Minute
   //     neu in der Schlange, ohne dass ihn jemand zustellen kann). Wie der
   //     Gesundheits-Takt unabhängig vom Morgenlauf. Riegel je Person und Slot
   //     in markttraktion-takt.json (lib/crm/scoreboard.ts).
-  if (telegramKonfiguriert()) {
+  if (bote) {
     try {
       const { faelligeRhythmen, rhythmusStand, RHYTHMUS_SPEICHER } = await import('@/lib/crm/scoreboard');
       const { TEAM } = await import('@/lib/crm/team');
-      const { ladeStand, chatsFuerPerson } = await import('@/lib/telegram');
-      const [mitKonto, tg, riegel] = await Promise.all([alleSpeicher(), ladeStand(), loadJson<unknown>(RHYTHMUS_SPEICHER)]);
+      const [mitKonto, riegel] = await Promise.all([alleSpeicher(), loadJson<unknown>(RHYTHMUS_SPEICHER)]);
+      const mitBoten: string[] = [];
+      for (const p of TEAM.map(t => t.id)) if (mitKonto.includes(p) && (await botenKanalFuer(p)) !== null) mitBoten.push(p);
       // Business-frei (08.10., Lücke 7): wer gerade Business-frei ist, bekommt keine Markttraktion-Nachricht — sie kommt danach,
       // solange ihr Zeitfenster am Tag noch offen ist.
       const { nichtBusinessFrei } = await import('@/lib/arbeitsrahmen/server');
-      const personen = await nichtBusinessFrei(TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0), jetzt);
+      const personen = await nichtBusinessFrei(mitBoten, jetzt);
       const dran = faelligeRhythmen(rhythmusStand(riegel), personen, jetzt);
       if (dran.length) {
         raus.push({
@@ -170,7 +173,7 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     const hm = (await loadJson<{ berichtTag?: string; zuletzt?: string }>('hoi-meldung')) ?? {};
     const minuten = h * 60 + Number(wand.slice(14, 16));
     if (minuten >= 7 * 60 + 45 && hm.berichtTag !== heute) raus.push({ id: 'hoi-bericht', grund: 'Head of IT: Tagesbericht', auftrag: { art: 'agent', name: 'hoi', auftrag: 'bericht', anlass: 'Takt: Head of IT' } });
-    else if (telegramKonfiguriert() && (!hm.zuletzt || jetzt.getTime() - Date.parse(hm.zuletzt) >= 55 * 60_000)) raus.push({ id: `hoi-${h}`, grund: 'Head of IT: Stundenblick auf neues Rot', auftrag: { art: 'agent', name: 'hoi', auftrag: 'pruefen', anlass: 'Takt: Head of IT' } });
+    else if (bote && (!hm.zuletzt || jetzt.getTime() - Date.parse(hm.zuletzt) >= 55 * 60_000)) raus.push({ id: `hoi-${h}`, grund: 'Head of IT: Stundenblick auf neues Rot', auftrag: { art: 'agent', name: 'hoi', auftrag: 'pruefen', anlass: 'Takt: Head of IT' } });
   } catch (err) {
     console.error('[MAKE OS] HOI-Takt übersprungen:', err);
   }

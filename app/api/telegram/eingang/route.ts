@@ -116,7 +116,8 @@ export async function POST(req: Request) {
     try {
       const st = (await loadJson<TaktStand>('gesundheit-takt')) ?? {};
       const slot = faelligeSlots(st, person, jetzt, localDay(jetzt))[0];
-      if (slot) gruss += '\n\n' + await nachrichtFuer(person, slot, innenAdresse(req));
+      // Direkt in den Telegram-Chat → es zählt die Telegram-Ausnahme (nicht die des ZOE-Kanals auf WhatsApp, 08.10.).
+      if (slot) gruss += '\n\n' + await nachrichtFuer(person, slot, innenAdresse(req), { voll: await telegramVollFuer(person).catch(() => false) });
     } catch { /* der Gruß reicht */ }
     await sendeAnChat(chatId, gruss);
     return NextResponse.json({ ok: true, person, was: 'gekoppelt' });

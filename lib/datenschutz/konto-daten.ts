@@ -57,6 +57,10 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'tageslauf' }, { basis: 'arbeitsmodus' }, { basis: 'gesundheitszeit' },
   // Business-frei (08.10., Lücke 7): die eigene Ergänzung des Arbeitsrahmens — immer mit Suffix (`arbeitsrahmen--<speicher>`).
   { basis: 'arbeitsrahmen', nurMitSuffix: true },
+
+  // ZOE auf WhatsApp (08.10.): der Kanal der Person (Nummer, Nachweise, Sprachnachrichten-Liste) — IMMER mit Suffix; die Dateien der
+  // Sprachnachrichten entfernt `kontoLoeschen` vorher (Schritt 2c).
+  { basis: 'zoe-kanal', nurMitSuffix: true },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */
@@ -255,6 +259,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const r = await whoopTrennen(speicher);
     bericht.whoop = r.war ? (r.widerrufen ? 'widerrufen' : 'entfernt') : 'keine';
   } catch (e) { console.error('[konto-loeschen] WHOOP:', e instanceof Error ? e.message : e); }
+
+  // 2c. ZOE auf WhatsApp (08.10.): Sprachnachrichten-Dateien weg, bevor der Kanal-Bestand (Schritt 4) entfernt wird.
+  try {
+    const { sprachnachrichtenEntfernen } = await import('@/lib/zoe-whatsapp/medien');
+    await sprachnachrichtenEntfernen(speicher);
+  } catch (e) { console.error('[konto-loeschen] ZOE-WhatsApp:', e instanceof Error ? e.message : e); }
 
   // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit / eigene Ziele mit“ der anderen (08.10.).
   await aendereKonten(s => ({

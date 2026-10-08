@@ -9,7 +9,7 @@ import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, alle as anmeldungenAlle } from '@/lib/zugang/anmeldungen';
 import { neueAdresse, zuVieleFehlschlaege, darfMelden, textNeueAdresse, textFehlschlaege } from '@/lib/zugang/anmelde-alarm';
-import { sendeAnPerson, telegramKonfiguriert } from '@/lib/telegram';
+import { anPersonMelden, botenEingerichtet } from '@/lib/zoe/an-person';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     erfolg(bremse);
   }
 
-  // Sicherheit (27.09.): eine Anmeldung aus einem neuen Netz meldet MAKE OS der Person per Telegram — geprüft VOR dem Eintrag, sonst kennt es die Adresse schon.
+  // Sicherheit (27.09.): eine Anmeldung aus einem neuen Netz meldet MAKE OS der Person aufs Handy (seit 08.10. ZOE auf WhatsApp, sonst Telegram) — geprüft VOR dem Eintrag, sonst kennt es die Adresse schon.
   void alarmNeueAdresse(konto.speicher, adresseGekuerzt(adr));
   await notiere({ speicher: konto.speicher, art: 'anmelden', ok: true, adresse: adresseGekuerzt(adr) });
   // scrypt (05.10.): alter Hash → mit demselben Salz und den aktuellen Parametern neu (Sitzungs-Stand bleibt gleich).
@@ -74,22 +74,22 @@ export async function POST(req: Request) {
   return mitSitzung(konto);
 }
 
-/** Neue Adresse? Dann Telegram an die Person — nie blockierend, nie mit Fehler für die Anmeldung. */
+/** Neue Adresse? Dann ein Hinweis an die Person (ZOE auf WhatsApp, sonst Telegram — lib/zoe/an-person.ts) — nie blockierend, nie mit Fehler für die Anmeldung. */
 async function alarmNeueAdresse(speicher: string, adresse: string): Promise<void> {
   try {
-    if (!telegramKonfiguriert()) return;
+    if (!(await botenEingerichtet())) return;
     const jetzt = new Date().toISOString();
     if (!neueAdresse(await anmeldungenAlle(), speicher, adresse)) return;
     if (!darfMelden(`${speicher}:neu`)) return;
-    await sendeAnPerson(speicher, textNeueAdresse(adresse, jetzt));
+    await anPersonMelden(speicher, 'sicherheit', textNeueAdresse(adresse, jetzt), { link: '/os/konto' });
   } catch { /* Alarm ist Zusatz, nie Hindernis */ }
 }
 async function alarmFehlschlaege(speicher: string): Promise<void> {
   try {
-    if (!telegramKonfiguriert()) return;
+    if (!(await botenEingerichtet())) return;
     const jetzt = new Date().toISOString();
     const f = zuVieleFehlschlaege(await anmeldungenAlle(), speicher, jetzt);
     if (!f.alarm || !darfMelden(`${speicher}:fehl`)) return;
-    await sendeAnPerson(speicher, textFehlschlaege(f.anzahl, f.adressen, jetzt));
+    await anPersonMelden(speicher, 'sicherheit', textFehlschlaege(f.anzahl, f.adressen, jetzt), { link: '/os/konto' });
   } catch { /* s. o. */ }
 }
