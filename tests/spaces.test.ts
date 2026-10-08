@@ -1,6 +1,6 @@
 // Spaces (26.09.; Aufräumen Etappe 1, 08.10.): Muster-Matching, aktiver Eintrag, Space aus der Adresse, die Leiste je Space.
 import { describe, it, expect } from 'vitest';
-import { passtZu, aktiverSpaceEintrag, aktiverLeistenPunkt, spaceVonAdresse, wechselZiel, leisteFuer, SPACES, ZOE_EINTRAG } from '../lib/make-one/spaces';
+import { passtZu, aktiverSpaceEintrag, aktiverLeistenPunkt, spaceVonAdresse, wechselZiel, leisteFuer, wahlVon, wahlAusParameter, wahlInfo, SPACES, SPACE_WAHLEN, ALLES_EINTRAEGE, ALLES_GRUPPEN, ZOE_EINTRAG } from '../lib/make-one/spaces';
 
 describe('Spaces', () => {
   it('passtZu: Pfad gleich oder Unterpfad, Parameter müssen stimmen; „=“ heißt genau dieser Pfad', () => {
@@ -64,5 +64,51 @@ describe('Spaces', () => {
     expect(wechselZiel('/os', '', 'business')).toBe('/os?space=business');
     expect(wechselZiel('/os/konto', '', 'business')).toBeNull();
     expect(wechselZiel('/os/stapel', '', 'privat')).toBeNull();
+  });
+
+  // Nachbesserung 08.10. (Kevin: „ein Schalter, oben, mit Alles“)
+  it('Wahl: ?space= gewinnt (auch alles); gemerktes „Alles“ bleibt auf Seiten eines Bereichs; gemerkter Space folgt der Seite', () => {
+    expect(SPACE_WAHLEN).toEqual(['alles', 'privat', 'business']);
+    expect(wahlAusParameter('?space=alles')).toBe('alles');
+    expect(wahlAusParameter('?space=foo')).toBeNull();
+    expect(wahlVon('/os', '', 'alles')).toBe('alles');
+    expect(wahlVon('/os', '?space=privat', 'alles')).toBe('privat');
+    expect(wahlVon('/os/aufgaben', '?space=alles', 'business')).toBe('alles');
+    // Seiten nur eines Bereichs: bei „Alles“ springt der Schalter nicht um …
+    expect(wahlVon('/os/gesundheit', '', 'alles')).toBe('alles');
+    expect(wahlVon('/os/markttraktion', '?s=deals', 'alles')).toBe('alles');
+    // … bei gemerktem Space wie bisher (die Seite legt ihn fest).
+    expect(wahlVon('/os/markttraktion', '?s=deals', 'privat')).toBe('business');
+    expect(wahlVon('/os/inbox', '', 'business')).toBe('business');
+    // Alte Links bleiben gültig.
+    expect(spaceVonAdresse('/os/aufgaben', '?space=alles')).toBeNull();
+    expect(wahlInfo('alles')).toMatchObject({ label: 'Alles', start: '/os' });
+  });
+  it('Leiste bei „Alles“: gemeinsame Punkte ohne Space-Parameter, darunter Privat- und Business-Gruppe — höchstens zwölf', () => {
+    const l = leisteFuer('alles');
+    expect(l.length).toBeLessThanOrEqual(12);
+    expect(new Set(l.map(e => e.href)).size).toBe(l.length);
+    expect(ALLES_EINTRAEGE.map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Kontakte', 'ZOE']);
+    expect(ALLES_EINTRAEGE.at(-1)).toBe(ZOE_EINTRAG);
+    for (const e of ALLES_EINTRAEGE) expect(e.href, e.label).not.toContain('space=');
+    expect(ALLES_GRUPPEN.map(g => [g.label, g.eintraege.map(e => e.label)])).toEqual([['Privat', ['Gesundheit', 'Familie']], ['Business', ['Markttraktion', 'Mandate & Unternehmen']]]);
+    expect(aktiverLeistenPunkt('alles', '/os', '')?.label).toBe('Heute');
+    expect(aktiverLeistenPunkt('alles', '/os/gesundheit', '?s=sport')?.label).toBe('Gesundheit');
+    expect(aktiverLeistenPunkt('alles', '/os/finanzen', '?s=privat')?.label).toBe('Finanzen');
+    expect(aktiverLeistenPunkt('alles', '/os/menschen', '')?.label).toBe('Kontakte');
+    expect(aktiverLeistenPunkt('alles', '/os/unternehmen', '')?.label).toBe('Mandate & Unternehmen');
+  });
+  it('Schalter mit „Alles“: Gegenstück ohne Parameter, Seiten eines Bereichs bleiben stehen, Rückweg in einen Space', () => {
+    expect(wechselZiel('/os/aufgaben', '?space=privat', 'alles')).toBe('/os/aufgaben');
+    expect(wechselZiel('/os', '?space=business', 'alles')).toBe('/os');
+    expect(wechselZiel('/os', '', 'alles')).toBeNull();
+    expect(wechselZiel('/os/gesundheit', '?s=sport', 'alles')).toBeNull();
+    expect(wechselZiel('/os/markttraktion', '?s=deals', 'alles')).toBeNull();
+    expect(wechselZiel('/os/markttraktion', '?s=kontakte&a=akte&k=c-1', 'alles')).toBeNull();
+    expect(wechselZiel('/os/konto', '', 'alles')).toBeNull();
+    expect(wechselZiel('/os/aufgaben', '', 'business')).toBe('/os/aufgaben?space=business');
+    expect(wechselZiel('/os/gesundheit', '', 'privat')).toBeNull();
+    expect(wechselZiel('/os/gesundheit', '', 'business')).toBe('/os?space=business');
+    expect(wechselZiel('/os/finanzen', '?s=gesamt', 'privat')).toBe('/os/finanzen?s=privat');
   });
 });
