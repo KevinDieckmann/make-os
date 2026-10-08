@@ -19,7 +19,12 @@
   bit-gleich, Übernahme nur Vorschau → Bestätigen, Rückweg-Spiegel in `finanzplan.firmen`; KONTEN_REGISTER.md).
 - **Fertig auf Branch (nach dem Upload mergen):** `business-frei` (a6873dc4; Lücke 7 — EINE Regel `lib/arbeitsrahmen/regel.ts`, Kalender 409 + Rückfrage,
   freie Zeit/Buchung ohne Plätze, Kapazität, ZOE/Heads ruhen + holen nach, Glocke sammelt).
-- **In Arbeit (Agenten, je eigener Branch):** `rechnungen-pdf` (Lücke 4) · `inbox-teilen` (Lücke 6) · `zoe-whatsapp` (Lücke 5).
+- **Fertig auf Branch (nach dem Upload mergen):** `rechnungen-pdf` (2021914b; Lücke 4 — Stellen mit lückenloser Nummer + PDF + SHA-256, § 14 UStG
+  Pflichtangaben 409, Stornorechnung, Angebot → Rechnung, Mandat → Monatsentwurf, Mahnstufen nur Vorschlag, Route `/api/rechnung`).
+- **In Arbeit (Agenten, je eigener Branch):** `inbox-teilen` (Lücke 6) · `zoe-whatsapp` (Lücke 5).
+- **Fragen für die nächste Klickrunde (Rechnungen):** (1) Nummernformat je Gesellschaft einstellbar (heute `{KURZ}-R-{JAHR}-{NR4}`, mit Steuerberater
+  abstimmen)? (2) Versand später über die Inbox statt Mail-Programm? (3) Entwürfe einer gelöschten Person (Art. 17) automatisch entfernen? (4) Geschäftsführung +
+  Registergericht bei GmbH/UG als Pflichtangabe — so lassen?
 - **Demo-Rundgang 08.10. spät:** 9 Bilder an Kevin; Funde behoben: Tagesplanung „Reha“ fest für alle (2a2ad831), Gesundheit „dem Boten sagen“ (afaf2ddc).
 - **Fragen für die nächste Klickrunde (Konten-Register):** (1) Finanzplanung startet MAKE/KD Ventures nach der Übernahme ab dem jüngsten Register-Stand
   (KD Ventures statt „Start KD Ventures“ aus den Annahmen) — so bestätigen? (2) Rücklage im Privat-Index = Summe der Tagesgeld-Konten (privat + gemeinsam)
