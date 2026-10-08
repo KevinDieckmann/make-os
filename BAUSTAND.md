@@ -13,6 +13,20 @@
 - **Websites v3 „Der Weg“** — Merge 49fccef6 (Ruhe-Prüfer v3, Doku). Prüfer 0 Fehler, nur Platzhalter: Datenschutz-Angaben + Kevins Gründer-Satz. Kevin bestätigt Texte vor dem Upload.
 - **Zeitstrahl „Seil“ 5/5** — d62fa216 (als ein Commit zusammengefasst, damit der versehentlich eingecheckte Sandbox-Bau aus dem Zwischenstand nicht in die Historie kommt). Offen: Zeilen der Spalte 22 px (Tablet-Touch < 44 px), Ziel-Kopf 12 px/Untertitel gegen den Design-Standard.
 
+## Kevins Entscheidungen 08.10. (Klickrunde) — zu bauen bzw. beim Upload umzusetzen
+**Website (makeinnovation.de):** AVV Hetzner ✔ · AVV Google ✔ · Drittland-Verträge (Google, Microsoft, Apple, Anthropic) ✔ → diese Platzhalter löschen ·
+Login-Abschnitt verlinkt den Datenschutzhinweis der App (app.makeinnovation.de) · Abschnitt „Geschäftskontakte und Veranstaltungen“ vorerst RAUS (bis Anwalt; Verweis
+unter „Weitergabe“ mit raus) · Impressum/Verantwortlicher: „KEMARIS Innovation GmbH, vertreten durch Kevin Dieckmann“ · Gründer-Satz: Platzhalter bleibt (Kevin schreibt selbst)
+→ Website erst online, wenn der Satz da ist.
+**Malin:** Routinen-Planer: Routinen der anderen Person nur als „Belegt“ (ohne Titel), serverseitig; gemeinsame voll · Ernährung: Plan/Einkauf/Gerichte gemeinsam,
+Profile (Bedarf/Ziel) nur die Person selbst — außer sie teilt Gesundheit. Wächter in tests/messlatte-malin.test.ts ergänzen.
+**Eigentum MAKE OS:** Weg B — Einbringung in die GmbH (nur im Vault festhalten; Anwalt/Steuerberater klären Bewertung).
+**Vault:** Notizen im „01. MAKE OS Brain“ bekommen oben einen Block „🔴 UPDATE 08.10.“ mit dem echten Stand (nichts löschen).
+**Upload:** erst bauen, zeigen, dann auf Kevins Wort. Dabei: 2FA-Pflicht an · Pepper + MAKE_OS_START_RIEGEL=streng setzen · Zulieferer-Schlüssel umstellen ·
+`_App`-Spiegel an (MAKE_OS_APP_SPIEGEL=an) · Vault-Abgleich per Git einschalten (ohne Privates) · alte Bilder 70603154/db93e88/5aca6f5 löschen (6b10a5ba bleibt).
+**Danach:** Format v2 umstellen, wenn der neue Stand stabil läuft.
+**Bleibt so / offen:** Selbstständigkeit in Business-Index/Cockpit/Steuern/Liquiplan wie heute · Design Klar·DARK bleibt (erledigt) · Zielgruppe Produkt: offen.
+
 ## Aufräumen (wartet auf Kevin — Löschen braucht sein Wort)
 - Worktrees bereits gemergter Branches unter `.claude/worktrees/` (nullpunkt, betroffenenrechte, finanzplan-5, icloud-je-person, inbox-2, aufgaben-struktur, whatsapp, inbox-whatsapp-ui, websites-v3, zeitstrahl-seil) — `git worktree remove` je Ordner; Branches bleiben.
 - `worktree-agent-a726d126d4270b431` (Kalender-Gesamtprüfung 29.09.) ist überholt: alle Korrekturen stehen schon in `entwicklung`.
