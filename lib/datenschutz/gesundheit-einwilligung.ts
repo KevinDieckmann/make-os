@@ -163,9 +163,29 @@ export async function gesundheitVerarbeitungErlaubt(person: string | null | unde
   return (await gesundheitStandFuer(person)).verarbeitungErlaubt;
 }
 
-/** Dürfen Gesundheitswerte dieser Person an die KI (b)? */
-export async function gesundheitAnKi(person: string | null | undefined): Promise<boolean> {
+/** Hat die Person (b) „An die KI geben“ erklärt? NUR die Einwilligung — damit prüft das KI-Tor (lib/datenschutz/ki-tor.ts). */
+export async function gesundheitKiEinwilligung(person: string | null | undefined): Promise<boolean> {
   return (await gesundheitStandFuer(person)).ki.an;
+}
+
+/**
+ * Ist mit eingeschaltetem Anbieter-Tor (09.10., Kevin 08.10.: „Gesundheit an die KI nur noch in der EU mit ZDR“) ein solcher Weg offen?
+ * Ohne Tor (`MAKE_OS_KI_ANBIETER_TOR` aus) wie bisher ja. Sonst nur mit Claude über Vertex EU, bestätigter ZDR und AVV (lib/ki/tor.ts).
+ */
+async function gesundheitsWegOffen(): Promise<boolean> {
+  const { torModus } = await import('@/lib/ki/konfig');
+  if (torModus() === 'aus') return true;
+  const { kategorienMoeglich } = await import('@/lib/ki/tor');
+  return kategorienMoeglich(['gesundheit']).catch(() => false);
+}
+
+/**
+ * Dürfen Gesundheitswerte dieser Person in einen Prompt (b)? Die Prompt-Bauer (gatherBrain, eigener Gesundheits-Kontext, Profile, Planung,
+ * Score) fragen DIESE Funktion — seit 09.10. heißt „ja“ zusätzlich: der Weg in die EU mit ZDR ist offen. Ist er es nicht, bleiben die Werte
+ * einfach draußen (die Antwort kommt ohne sie), statt dass der ganze Aufruf gesperrt wird.
+ */
+export async function gesundheitAnKi(person: string | null | undefined): Promise<boolean> {
+  return (await gesundheitKiEinwilligung(person)) && (await gesundheitsWegOffen());
 }
 
 /**
@@ -179,7 +199,7 @@ export async function gesundheitFuerZoe(eigentuemer: string, betrachter: string)
   if (!s.ki.an || !s.partner.an) return false;
   const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
   const k = await kontoFuerSpeicher(eigentuemer);
-  return !!k?.teilt?.gesundheit?.includes(betrachter);
+  return !!k?.teilt?.gesundheit?.includes(betrachter) && (await gesundheitsWegOffen());
 }
 
 /** Antwort der Schreibwege ohne Einwilligung (a) — ein Satz überall. */

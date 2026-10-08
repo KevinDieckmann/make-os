@@ -6,16 +6,36 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ALL_AGENTS, type Autonomy, type ModelTier } from '@/lib/make-one/agents-data';
+import { stufenModelle, istStufenSatz, type StufenSatz } from '@/lib/ki/modelle';
 
 export interface AgentConfig { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean }
 export type AgentConfigMap = Record<string, AgentConfig>;
 
-/** Modell-Stufe → echtes Modell. Günstige Worker, das große nur wo es zählt. */
+/**
+ * Modell-Stufe → echtes Modell. Günstige Worker, das große nur wo es zählt.
+ * Seit 09.10. (Paket 6a, Kevin 08.10.: „Haiku 5.5 / Sonnet 5.5 / Opus 5.5 nach Test“) aus dem Katalog lib/ki/modelle.ts: Vorgabe „bisher“
+ * (Haiku 4.5, Sonnet 5, Opus 5.5 — wie vor dem Paket), umstellbar je Instanz über `MAKE_OS_KI_STUFEN=neu` bzw. die Inhaber-Einstellung
+ * (`ki-einstellungen` › instanz.modellStufen, gelesen beim Auflösen eines Agenten) — erst nach dem Vergleich (scripts/ki-stufen-vergleich.mjs).
+ * Die Getter lesen bei jedem Zugriff (die Umgebung und die zuletzt gelesene Einstellung) — wer `MODEL_BY_TIER.stark` liest, bekommt den
+ * wirksamen Satz.
+ */
+let einstellungSatz: StufenSatz | null = null;
+const wirksam = () => stufenModelle(process.env, einstellungSatz);
 export const MODEL_BY_TIER: Record<ModelTier, string> = {
-  schnell: 'claude-haiku-4-5-20251001',
-  ausgewogen: 'claude-sonnet-5',
-  stark: 'claude-opus-5-5',
+  get schnell() { return wirksam().schnell; },
+  get ausgewogen() { return wirksam().ausgewogen; },
+  get stark() { return wirksam().stark; },
 };
+/** Die Inhaber-Einstellung der Modellstufen neu lesen (wirft nie; ohne Einstellung bleibt die Vorgabe). */
+export async function modellStufenLaden(): Promise<void> {
+  try {
+    const { ladeKiEinstellungen } = await import('@/lib/datenschutz/ki-einstellungen');
+    const v = (await ladeKiEinstellungen()).instanz?.modellStufen;
+    einstellungSatz = istStufenSatz(v) ? v : null;
+  } catch { /* Vorgabe bleibt */ }
+}
+/** Für Tests. */
+export const _modellStufenSetzen = (s: StufenSatz | null): void => { einstellungSatz = s; };
 
 export interface ResolvedAgent {
   id: string;
@@ -29,6 +49,7 @@ export interface ResolvedAgent {
 
 /** Standard + gespeicherte Übersteuerung. Wirft nie — im Zweifel Standard. */
 export async function resolveAgent(agentId: string): Promise<ResolvedAgent> {
+  await modellStufenLaden();
   const base = ALL_AGENTS.find(a => a.id === agentId);
   const fallback: ResolvedAgent = {
     id: agentId,

@@ -25,9 +25,14 @@ export const KI_BEREICHE: readonly KiBereich[] = ['crm', 'kalender', 'aufgaben',
 export const KI_BEREICH_LABEL: Record<KiBereich, string> = {
   crm: 'Markttraktion (CRM)', kalender: 'Kalender', aufgaben: 'Aufgaben & Ziele', finanzen: 'Finanzen', brain: 'Brain & Vault',
 };
-/** Datenkategorien für das KI-Protokoll und das Tor — Bereiche plus Gesundheit (Art. 9) und weitere. */
-export type KiKategorie = KiBereich | 'gesundheit' | 'postfach' | 'web' | 'konto' | 'allgemein';
-export const KI_KATEGORIEN: readonly KiKategorie[] = [...KI_BEREICHE, 'gesundheit', 'postfach', 'web', 'konto', 'allgemein'];
+/**
+ * Datenkategorien für das KI-Protokoll und das Tor — Bereiche plus Gesundheit (Art. 9) und weitere.
+ * Seit 09.10. (Paket 6a, Kevin 08.10.: „Vertex EU für Gesundheit, Privat-Finanzen, Familie“) zusätzlich `familie` und `finanzen-privat`:
+ * keine eigenen Bereichs-Schalter (die Bereiche bleiben, wie sie sind — Privat-Finanzen zählen zusätzlich als `finanzen`), aber eine
+ * Mindeststufe im Anbieter-Tor (lib/ki/anbieter.ts `MINDESTSTUFE`). Aufrufer geben sie an, sobald solche Daten im Prompt stehen.
+ */
+export type KiKategorie = KiBereich | 'gesundheit' | 'familie' | 'finanzen-privat' | 'postfach' | 'web' | 'konto' | 'allgemein';
+export const KI_KATEGORIEN: readonly KiKategorie[] = [...KI_BEREICHE, 'gesundheit', 'familie', 'finanzen-privat', 'postfach', 'web', 'konto', 'allgemein'];
 export const istBereich = (k: string): k is KiBereich => (KI_BEREICHE as readonly string[]).includes(k);
 
 export interface KiSchalter { hintergrund: boolean; websuche: boolean; bereiche: Record<KiBereich, boolean> }
@@ -39,10 +44,21 @@ export interface KiPersonSchalter {
   telegramVoll?: { seit: string; fassung: string };
 }
 export type KiVorgabe = 'kompatibel' | 'sparsam';
+/** Neue KI-Fähigkeiten (09.10., Paket 6a, lib/ki/tor.ts) — je Instanz vom Inhaber eingeschaltet; fehlt = aus (auch „kompatibel“). */
+export type KiMedienFaehigkeit = 'bild' | 'video' | 'tiefenbericht' | 'transkript';
+export const KI_MEDIEN_FAEHIGKEITEN: readonly KiMedienFaehigkeit[] = ['bild', 'video', 'tiefenbericht', 'transkript'];
 export interface KiEinstellungenDatei {
   vorgabe: KiVorgabe;
   festgelegtAm: string;
-  instanz?: Partial<Omit<KiSchalter, 'bereiche'>> & { bereiche?: Partial<Record<KiBereich, boolean>> };
+  instanz?: Partial<Omit<KiSchalter, 'bereiche'>> & {
+    bereiche?: Partial<Record<KiBereich, boolean>>;
+    /** Anbieter-Tor (09.10.): welche neuen Fähigkeiten an sind — nur der Inhaber. */
+    medien?: Partial<Record<KiMedienFaehigkeit, boolean>>;
+    /** Budget in Euro-Cent (09.10.): Monat (fehlt = nur messen) und Grenze je Auftrag (fehlt = Vorgabe/Umgebung). */
+    budget?: { monatEuroCent?: number; auftragEuroCent?: number };
+    /** Modellstufen (09.10., lib/ki/modelle.ts): „bisher“ oder „neu“ — die Umgebung MAKE_OS_KI_STUFEN schlägt diese Einstellung. */
+    modellStufen?: 'bisher' | 'neu';
+  };
   personen?: Record<string, KiPersonSchalter>;
   geaendert?: string;
 }
@@ -98,6 +114,30 @@ export function schalterSaeubern(roh: unknown): { hintergrund?: boolean; websuch
     for (const k of KI_BEREICHE) { const x = (r.bereiche as Record<string, unknown>)[k]; if (typeof x === 'boolean') b[k] = x; }
     if (Object.keys(b).length) raus.bereiche = b;
   }
+  return raus;
+}
+
+/**
+ * Anbieter-Einstellungen der Instanz (09.10., nur der Inhaber) säubern: Fähigkeiten an/aus, Budget in Euro-Cent (Monat; `null` = nur messen;
+ * Grenze je Auftrag), Modellstufen „bisher“/„neu“. Unbekanntes fällt weg; Beträge 0 … 100.000 € (darüber 400 in der Route).
+ */
+export function anbieterEinstellungSaeubern(roh: unknown): { medien?: Partial<Record<KiMedienFaehigkeit, boolean>>; budget?: { monatEuroCent?: number | null; auftragEuroCent?: number | null }; modellStufen?: 'bisher' | 'neu' | null } | { fehler: string } {
+  if (!roh || typeof roh !== 'object') return {};
+  const r = roh as Record<string, unknown>;
+  const raus: { medien?: Partial<Record<KiMedienFaehigkeit, boolean>>; budget?: { monatEuroCent?: number | null; auftragEuroCent?: number | null }; modellStufen?: 'bisher' | 'neu' | null } = {};
+  if (r.medien && typeof r.medien === 'object') {
+    const m: Partial<Record<KiMedienFaehigkeit, boolean>> = {};
+    for (const f of KI_MEDIEN_FAEHIGKEITEN) { const x = (r.medien as Record<string, unknown>)[f]; if (typeof x === 'boolean') m[f] = x; }
+    if (Object.keys(m).length) raus.medien = m;
+  }
+  if (r.budget && typeof r.budget === 'object') {
+    const b = r.budget as Record<string, unknown>;
+    const betrag = (x: unknown): number | null | undefined | 'falsch' => (x === null ? null : x === undefined ? undefined : typeof x === 'number' && Number.isInteger(x) && x >= 0 && x <= 10_000_000 ? x : 'falsch');
+    const monat = betrag(b.monatEuroCent), auftrag = betrag(b.auftragEuroCent);
+    if (monat === 'falsch' || auftrag === 'falsch') return { fehler: 'Budget: ganze Euro-Cent zwischen 0 und 10.000.000 (oder null = keine Grenze).' };
+    raus.budget = { ...(monat !== undefined ? { monatEuroCent: monat } : {}), ...(auftrag !== undefined ? { auftragEuroCent: auftrag } : {}) };
+  }
+  if (r.modellStufen === 'bisher' || r.modellStufen === 'neu' || r.modellStufen === null) raus.modellStufen = r.modellStufen;
   return raus;
 }
 

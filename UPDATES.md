@@ -4,6 +4,95 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — KI-Anbieter-Tor: Claude in der EU, Bilder, Video, Tiefenbericht, Transkription, Budget (Paket 6a; nur lokal — Branch `ki-anbieter`)
+
+Kevin 08.10. spät (ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich Teil 1, Antworten 14, 16, 19–25), Grundlage `research/agenten/MODELLE.md`:
+„Register korrigieren (SCC statt DPF) · Vertex EU für Gesundheit, Privat-Finanzen, Familie · Gesundheit an die KI nur EU mit ZDR“ — „Haiku 5.5 /
+Sonnet 5.5 / Opus 5.5 nach Test“ — „EIN Anbieter-Tor, Rückfall nie in schwächeren Datenschutz“. Koordination 09.10.: Instanz-Budget in Euro
+(Test-Budget 50 €) mit Warnungen 80/95 % und Sperre bei 100 %.
+
+**Ohne Konfiguration verhält sich alles wie heute** — askText ruft Anthropic direkt mit demselben Körper (Wächter `tests/ki-anbieter-tor.test.ts`);
+Bilder/Video/Tiefenbericht/Transkription sind aus. Sofort wirksam sind nur: die Korrektur im Register/Verzeichnis (SCC statt DPF), das Feld
+`anbieter` im KI-Protokoll, die Preise aus dem Katalog in der Kostenmessung und — nur wenn gesetzt — das Instanz-Budget.
+
+- **EIN Anbieter-Tor** `lib/ki/` (neben askText, das unverändert nutzbar bleibt): Katalog der Zugänge (`anbieter.ts`: Anthropic direkt = SCC,
+  Claude über Google Vertex EU = eu bzw. eu-zdr, Google Vertex Gemini = dpf, Mistral = eu bzw. eu-zdr), Mindeststufe je Kategorie (Gesundheit
+  `eu-zdr`, Familie und Privat-Finanzen `eu`), **Rückfall nie in eine schwächere Stufe**, nur Zugänge mit bestätigtem AVV im Empfänger-Register
+  (Anthropic direkt nur im Modus `streng`), Budget, Klick. Neue KI-Kategorien `familie` und `finanzen-privat` (ZOE-Gespräch, Morgenlauf, Empfang,
+  Head of Finance mit Haushalt geben sie an).
+- **askText mit Tor** (`MAKE_OS_KI_ANBIETER_TOR=an|streng`): wählt je Aufruf Anthropic direkt oder Claude über Vertex EU; gibt es keinen erlaubten
+  Weg → `ki-gesperrt:anbieter-stufe` mit klarem Satz, nie still in die USA. **Gesundheitswerte und Privat-Finanzen bleiben dann aus den Prompts**,
+  solange der EU-Weg fehlt (`gesundheitAnKi`, `kategorienMoeglich`) — ZOE antwortet ohne sie, statt ganz zu schweigen.
+- **Instanz-Budget in Euro** je Kalendermonat (Inhaber-Einstellung vor `MAKE_OS_KI_BUDGET_MONAT_EURO`): gilt für JEDEN Modell-Aufruf, auch ohne
+  Anbieter-Tor; Glocke an den Inhaber bei 80 %, 95 % und 100 % (je einmal im Monat); bei 100 % kein Modell-Aufruf mehr (`ki-gesperrt:budget` →
+  Läufe nehmen ihr Regelwerk). Zusätzlich Grenze je Auftrag (Vorgabe 10 €). Zahl für den Budget-Balken: `budgetLage(await budgetStand())`
+  (`lib/ki/tor.ts`), ausgeliefert in `GET /api/datenschutz/ki` (`anbieter.budget`) und `GET /api/zoe/verbrauch` (`budget`, dazu `euro`).
+- **Modellstufen aus dem Katalog** (`lib/ki/modelle.ts`, je Zeile Stand + Quelle, Preise je Einheit inkl. Haiku/Sonnet 5.5, Bild, Sekunde, Minute):
+  `MODEL_BY_TIER` liest den Satz „bisher“ (Vorgabe = wie vorher) oder „neu“ (Haiku 5.5 / Sonnet 5.5 / Opus 5.5) — Umgebung `MAKE_OS_KI_STUFEN`
+  vor Inhaber-Einstellung. Rollen vorbereitet: Mitarbeiter schnell, Heads ausgewogen, Reviews stark (`STUFE_JE_ROLLE`). Vergleich vor dem Umstellen:
+  `POST /api/heads/eval { head, vergleich: true }` bzw. `scripts/ki-stufen-vergleich.mjs`.
+- **Adapter** (alle mit nachgebautem Anbieter getestet, ohne Netz, ohne Einrichtung aus): Claude über Vertex EU (`adapter/anthropic-vertex.ts`,
+  Dienstkonto-JWT `adapter/google-auth.ts`), Gemini Bild/Video/Tiefenbericht (`adapter/google-vertex.ts`), Mistral Voxtral (`adapter/mistral.ts`).
+  Anfragen nur an die Hosts des Katalogs, keine Umleitungen (`adapter/http.ts`).
+- **Wege** `lib/ki/aufruf.ts`: `kiBild` (frei bis zum Budget), `kiVideoStarten` + `kiTiefenberichtStarten` (nur mit bestätigter Kostenschätzung,
+  sonst 409 mit Betrag), `kiTranskript` (bleibt aus: `TRANSKRIPTION_AN`), Abholen im Takt über die Warteschlange (`ki-medien`, nur wenn etwas läuft).
+- **Ablage** `ki-medien` (verschlüsselt, Bytes UNVERÄNDERT — SynthID/C2PA bleiben, nie durch den Exif-Säuberer) + Bestand `ki-medien--<haushalt>`
+  (Sicht serverseitig: Haushalt bzw. „nur ich“; Papierkorb 30 Tage). **Tiefenbericht** nur für die fragende Person (`ki-tiefenbericht--<person>`,
+  30 Tage, nie Brain/ZOE, Suchvorschläge mit anzeigen — Google-Bedingungen).
+- **Recht:** Empfänger „Anthropic“ jetzt Standardvertragsklauseln (Vertragspartner EU: Anthropic Ireland); gespeicherte, UNVERÄNDERTE Altfassungen
+  werden beim Lesen gehoben, eigene Änderungen bleiben. Neue Empfänger „Google Cloud Vertex AI“ und „Mistral AI“ (archiviert, bis eingerichtet).
+  Verzeichnis: `vv-ki` und reine Anthropic-Sätze gehoben, `vv-ki-anbieter` sobald ein neuer Zugang eingerichtet ist. KI-Protokoll mit Anbieter,
+  Fähigkeit, Region, Stufe, Token, Kosten (OpenTelemetry-Namen über `otelAttribute`); Art. 15 nennt die Empfänger je Anbieter. `kiKennzeichen`
+  nennt den tatsächlichen Anbieter. KI-VO: `sichtbaresZeichen` (realistische Personen/Orte), `herkunftsAngabe`; `datenschutz/KI_VO.md` auf Stand
+  (Digital Omnibus, Fristen, Kodex — Hinweis, keine Rechtsberatung).
+- Tests: `tests/ki-anbieter.test.ts` (36), `tests/ki-anbieter-tor.test.ts` (18); dazu ki-datenschutz, betroffenenrechte, messlatte-malin,
+  datenschutz-register, routen-register, datenschutz-einrichtung/-verzeichnis/-selbstpruefung, agenten-verzeichnis.
+
+**Kevins Schritte (in dieser Reihenfolge, nur auf Kevins Wort hochladen):**
+1. **Budget fürs Ausprobieren:** `ssh -t make@<server> sudo bash /srv/make-os/app/deploy/ki-anbieter-verbinden.sh budget` → 50 (Euro je Monat),
+   Grenze je Auftrag 10. Danach meldet die Glocke 80/95 % und sperrt bei 100 %.
+2. **Google Cloud (Vertex):** Projekt anlegen (Abrechnung auf die Gesellschaft) · „Vertex AI API“ aktivieren · im Model Garden Claude
+   freischalten (Region **eu**) · Cloud Data Processing Addendum annehmen und als PDF ablegen · **Zero Data Retention für Vertex beantragen** und den
+   24-h-Cache abschalten (MODELLE.md 4.7) · Dienstkonto mit NUR der Rolle „Vertex AI User“ anlegen, JSON-Schlüssel erzeugen, per `scp` nach
+   `/tmp/vertex.json` auf den Server · `… ki-anbieter-verbinden.sh vertex` (fragt Projekt, Datei, Claude an?, Region, Medien an?, ZDR bestätigt?;
+   löscht die Datei danach) · Prüfen: `docker compose exec app node scripts/ki-anbieter-pruefen.mjs --token`.
+3. **In MAKE OS:** System › Datenschutz › Empfänger „Google Cloud Vertex AI“ → „Zurückholen“ + AVV „bestätigt“ (Tag, Unterlage). Ohne das sperrt
+   das Tor den Zugang.
+4. **Tor einschalten:** `… ki-anbieter-verbinden.sh tor` → `an`. Ab dann gehen Gesundheit (nur mit ZDR), Familie und Privat-Finanzen nur noch in
+   die EU; ohne Vertex bleiben sie aus den Prompts.
+5. **Erstes Bild (ca. 3 Cent):** Bilder einschalten (bis die Oberfläche kommt: `PUT /api/datenschutz/ki { "ebene": "instanz", "anbieter":
+   { "medien": { "bild": true } } }` als Inhaber), dann `docker compose exec app node scripts/ki-anbieter-pruefen.mjs --bild "Ruhiges Büro im
+   Abendlicht, ohne Menschen" --person <inhaber> --ja`.
+6. **Mistral:** Konto auf console.mistral.ai · DPA annehmen · im Admin-Panel **Training abschalten (Opt-out)** · ZDR beantragen · API-Schlüssel ·
+   `… ki-anbieter-verbinden.sh mistral`. Die Transkription bleibt aus.
+7. **Deutscher Voxtral-Test (auf dem Mac):** 3–5 eigene Aufnahmen (1–3 Min., nur mit Einwilligung aller Sprechenden) + je eine geprüfte Abschrift
+   `name.txt` in einen Ordner · `node scripts/voxtral-vergleich.mjs --ordner <ordner>` (Trockenlauf) · `MISTRAL_API_KEY=… node
+   scripts/voxtral-vergleich.mjs --ordner <ordner> --ja` → Wortfehlerrate je Datei und gesamt. Vergleichsabschriften anderer Dienste als
+   `name.<dienst>.txt` daneben legen.
+8. **Modellstufen umstellen nach Test:** `docker compose exec app node scripts/ki-stufen-vergleich.mjs --url http://localhost:3000 --person
+   <inhaber> --ja` (je Head zwei Sätze × 5 Fälle × 3 Wiederholungen) → Empfehlung lesen → umstellen mit `MAKE_OS_KI_STUFEN=neu` (Umgebung) oder
+   `PUT /api/datenschutz/ki { "ebene": "instanz", "anbieter": { "modellStufen": "neu" } }`.
+
+**So testet ihr (lokal, ohne Anbieter, in Klicks/Befehlen):**
+1. `npx vitest run tests/ki-anbieter.test.ts tests/ki-anbieter-tor.test.ts --maxWorkers=1` → alles grün.
+2. System › Datenschutz › Empfänger: „Anthropic (KI, ZOE)“ zeigt „Standardvertragsklauseln“ und „Vertragspartner in der EU: Anthropic Ireland“; darunter
+   „Google Cloud Vertex AI …“ und „Mistral AI …“ als „nicht in Gebrauch“.
+3. Markttraktion › Stammdaten › Verzeichnis (bzw. System › Datenschutz › Verzeichnis-Export): „KI-Funktionen“ nennt im Drittland
+   „Standardvertragsklauseln (Anthropic; nicht im EU-US Data Privacy Framework)“.
+4. ZOE etwas fragen → System › Datenschutz › KI-Protokoll: Zeile wie bisher; Empfänger-Satz unten nennt „Standardvertragsklauseln“.
+5. `MAKE_OS_DATEN_DIR=<leerer Ordner> node scripts/ki-anbieter-pruefen.mjs` → vier Zugänge „eingerichtet: nein“, Budget „nur gemessen“, Stufen „bisher“.
+6. Budget lokal (Dev-Server): in `.env.local` `MAKE_OS_KI_BUDGET_MONAT_EURO=0.01` → Vorschau „make-os-entwicklung“ neu starten → ZOE fragen → Antwort
+   „Das KI-Budget des Monats ist erreicht“, Glocke zeigt „erreicht“. Zeile danach wieder entfernen und neu starten.
+
+**Rückweg:** nur neue Bestände (`ki-medien--*`, `ki-tiefenbericht--*`, `ki-auftraege-offen`, Ordner `ki-medien`) und optionale Felder (KI-Protokoll
+`anbieter`/`faehigkeit`/…, Kosten-Posten `anbieter`/`mengen`, `ki-einstellungen` › `instanz.medien/budget/modellStufen`, `ki-stand` ›
+`budgetMeldungen`). Gehobene Register-/Verzeichnistexte sind nur neue Texte in alten Feldern. Der alte Stand liest alles; kein `_v`.
+Kostenmessung: Opus 5.5 rechnet Cache-Lesen jetzt mit 0,20 $/Mio (Preisseite) statt 0,1 × Eingabe, und Kosten wachsen je Aufruf (Haiku-Staffel).
+
+**Offen:** Oberfläche für Bilder/Video/Tiefenbericht, Budget-Balken und Stufen-Umschalter (kommt mit dem Agenten-Bereich — die Funktionen stehen);
+Kategorie `familie` für Geburtstage aus der Familie im Brain-Kontext (heute ohne Markierung); Vertex-Pfade für Omni Flash und Deep Research sowie
+der Host der Multi-Region „eu“ sind Annahmen — beim ersten echten Lauf prüfen (`ki-anbieter-pruefen.mjs`).
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt

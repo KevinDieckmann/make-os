@@ -56,8 +56,9 @@ export async function kiTor(k: KiKontext | undefined, websucheGewuenscht: boolea
   const s = await kiSchalterFuer(person);
   let gesundheitKi = true;
   if (kategorien.includes('gesundheit')) {
-    const { gesundheitAnKi } = await import('./gesundheit-einwilligung');
-    gesundheitKi = person ? await gesundheitAnKi(person) : false;
+    // Nur die Einwilligung (b) — ob der Weg in die EU offen ist, entscheidet danach das Anbieter-Tor (lib/ki/tor.ts, `anbieter-stufe`).
+    const { gesundheitKiEinwilligung } = await import('./gesundheit-einwilligung');
+    gesundheitKi = person ? await gesundheitKiEinwilligung(person) : false;
   }
   return torEntscheiden(s, gesundheitKi, { lauf, person, kategorien, pseudonym: k?.pseudonym }, websucheGewuenscht);
 }

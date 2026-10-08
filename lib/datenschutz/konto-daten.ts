@@ -69,6 +69,9 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'agenten-skills-privat', nurMitSuffix: true },
   { basis: 'agenten-plan', nurMitSuffix: true },
   { basis: 'medien-privat', nurMitSuffix: true },
+
+  // Anbieter-Tor (09.10.): Tiefenberichte zum Lesen gehören allein der fragenden Person — IMMER mit Suffix (Frist 30 Tage).
+  { basis: 'ki-tiefenbericht', nurMitSuffix: true },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */
@@ -79,6 +82,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'ki-protokoll--*': 'KI-Protokoll je Monat — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
   'zoe-entscheidungen--*': 'Entscheidungen je Haushalt und Monat (Rechenschaft)',
   'aufgaben-dateien--*': 'Dateien zu Aufgaben je Haushalt',
+  'ki-medien--*': 'Von der KI erzeugte Medien je Haushalt (Marketing-Material des Haushalts; „nur ich“-Medien sieht nur die auslösende Person)',
   'brain-bruecke--*': 'Einstellung je Haushalt',
   'buchung--*': 'Buchungsseiten und Buchungen Dritter',
   'crm-dateien--*': 'Dateiablage der Kartei je Haushalt',
