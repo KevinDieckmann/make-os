@@ -399,7 +399,7 @@ export function blockIndex(b: Brain): string {
   if (!b.index || b.index.index == null) return 'PERFORMANCE-INDEX: noch nicht berechenbar — sag Kevin, was dafür fehlt.';
   const saeulen = b.index.saeulen.map(x => `${x.label} ${x.score ?? '—'}${x.zuDuenn ? ' (zu dünn, zählt nicht)' : ''}`).join(' · ');
   return `PERFORMANCE-INDEX: ${b.index.index} (${b.index.label}), Datenbasis ${Math.round(b.index.abdeckung * 100)}%. ${saeulen}. Größter Hebel: ${b.index.hebel ?? '—'}. ` +
-    'Eine niedrige Säule mit dünner Datenbasis ist KEIN schlechter Wert, sondern eine Messlücke — sag dann, was Kevin eintragen müsste, statt ihn zu bewerten. Säulen-Seiten: /os/saeule/<key>.' +
+    'Eine niedrige Säule mit dünner Datenbasis ist KEIN schlechter Wert, sondern eine Messlücke — sag dann, was Kevin eintragen müsste, statt ihn zu bewerten. Die Säulen stehen auf /os/wachstum.' +
     blockBusiness(b);
 }
 

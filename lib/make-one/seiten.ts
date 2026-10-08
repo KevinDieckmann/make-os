@@ -16,7 +16,6 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('heute-privat', 'Heute · Privat', WEG.heute('privat'), 'privat'),
   s('heute-business', 'Heute · Business', WEG.heute('business'), 'business'),
   s('wachstum', 'Wachstum · Score und Säulen', WEG.wachstum()),
-  s('saeule-planung', 'Wachstum · Säule Planung', WEG.saeule('planning')),
   s('ritual', 'Tagesstart & Tagesende', '/os/ritual'),
   s('tageslauf', 'Tageslauf', '/os/tageslauf', 'privat'),
   s('inbox', 'Inbox', WEG.inbox()),
@@ -24,7 +23,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('wochenplan', 'Kalender · Woche planen', WEG.woche()),
   // Aufgaben
   s('aufgaben', 'Aufgaben', '/os/aufgaben'),
-  s('aufgaben-board', 'Aufgaben · Board, Zeitstrahl, Delegation', '/os/aufgaben/board'),
+  s('aufgaben-zeitstrahl', 'Aufgaben · Zeitstrahl', '/os/aufgaben?ansicht=zeitstrahl'),
   // Planung
   s('planung-tag', 'Planung · Tag', '/os/planung'),
   s('ziele', 'Planung · Jahr, Ziele, Meilensteine', WEG.jahr()),
@@ -98,7 +97,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('datenbasis', 'Einstellungen · Datenbasis', '/os/datenbasis'),
   s('hoi', 'Einstellungen · Head of IT', '/os/hoi'),
   s('bauplan', 'Einstellungen · Bauplan', '/os/bauplan'),
-  s('roadmap', 'Einstellungen · Roadmap', '/os/roadmap'),
+  s('roadmap', 'Bauplan · Phasen (Roadmap)', '/os/bauplan?s=phasen'),
   s('onboarding', 'Einstellungen · Onboarding', '/os/onboarding'),
   s('onboarding-kevin', 'Einstellungen · Onboarding, Spur Inhaber', '/os/onboarding/kevin'),
   s('onboarding-malin', 'Einstellungen · Onboarding, Spur Partnerin', '/os/onboarding/malin'),

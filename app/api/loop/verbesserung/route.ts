@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { localDay } from '@/lib/zeit';
-import { ALLE_SEITEN } from '@/lib/make-one/bereiche';
+import { SEITEN_SUCHE } from '@/lib/make-one/seiten';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
@@ -66,7 +66,9 @@ export async function POST(req: Request) {
 
   const benutzt = seiten.slice().sort((a, b) => b.anzahl - a.anzahl).slice(0, 15);
   const bekannt = new Set(seiten.map(s => s.pfad));
-  const nieBenutzt = ALLE_SEITEN.filter(s => !bekannt.has(s.href)).map(s => `${s.label} (${s.href})`);
+  // Die eine Seitenliste (Schnellsuche, Aufräumen Etappe 3 — vorher die alte Bereichsliste lib/make-one/bereiche.ts), je Pfad einmal.
+  const nieBenutzt = [...new Map(SEITEN_SUCHE.map(s => [s.href.split(/[?#]/)[0], s] as const)).entries()]
+    .filter(([pfad]) => !bekannt.has(pfad)).map(([pfad, s]) => `${s.titel} (${pfad})`);
   const offeneP1 = (backlog?.items ?? []).filter(i => i.status === 'offen' && i.prio === 1).map(i => i.titel);
   const fehlerZeilen = (fehler?.meldungen ?? []).slice(0, 8).map(m => `${m.seite}: ${String(m.text).split('\n')[0].slice(0, 110)} (${m.anzahl}×)`);
 

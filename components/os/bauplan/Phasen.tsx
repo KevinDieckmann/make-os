@@ -1,26 +1,20 @@
 'use client';
 
-// ─── MAKE OS — Roadmap ──────────────────────────────────────────────────────
+// ─── MAKE OS — Bauplan › Phasen (bis 08.10. die eigene Seite /os/roadmap) ──
 // In welcher Reihenfolge MAKE OS gebaut wird: sieben Phasen, die aufeinander
 // aufbauen — Messbarkeit lässt sich nicht auf Daten bauen, die noch nicht
-// reinfließen. 24.09.: auf das lebendige Muster umgezogen.
+// reinfließen. Aufräumen Etappe 3 (08.10.): eine Ansicht des Bauplans
+// (`/os/bauplan?s=phasen`), /os/roadmap leitet hierher.
 
-import Link from 'next/link';
-import { useEffect, useState, type CSSProperties } from 'react';
-import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
+import { useEffect, useState } from 'react';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { PHASEN } from '@/lib/make-one/roadmap-data';
 import { KAT_LABEL, BLOCK_LABEL, type BacklogItem } from '@/lib/make-one/backlog-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from './ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from '../ui';
 
 const blockColor = (b: string) => (b === 'frei' ? LEUCHT.gut : b === 'kevin' ? LEUCHT.achtung : C.inkLeise);
 const katColor = (k: string) => (k === 'anbindung' ? LEUCHT.puls : k === 'agent' ? LEUCHT.agenten : k === 'qualitaet' ? LEUCHT.gut : LEUCHT.schlaf);
-/** Ein Verweis, der wie ein Knopf aussieht. */
-const linkKnopf: CSSProperties = {
-  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
-  ...TIEF.knopf(LEUCHT.puls), textDecoration: 'none',
-};
-
-export function RoadmapView() {
+export function Phasen() {
   const [items, setItems] = useState<BacklogItem[]>([]);
   const [offen, setOffen] = useState<string | null>('takt');
   const [loaded, setLoaded] = useState(false);
@@ -36,7 +30,7 @@ export function RoadmapView() {
   const fertig = items.filter(i => i.status === 'erledigt').length;
 
   return (
-    <Seite titel="Roadmap" unter="Sieben Phasen, die aufeinander aufbauen. Erst der tägliche Takt, dann vollständige Daten, dann Steuerung — Messbarkeit auf Daten zu bauen, die noch nicht reinfließen, führt zu Zahlen, denen man nicht trauen kann.">
+    <>
       <Karte i={0} ton={LEUCHT.puls}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={`${PHASEN.length} Phasen`}>Der Fahrplan</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
@@ -112,14 +106,6 @@ export function RoadmapView() {
         )}
       </Karte>
 
-      <Karte i={2}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: TYP.body, color: C.inkDim, flex: '1 1 220px' }}>
-            Einzelne Punkte bearbeiten, Prioritäten ändern oder Neues notieren:
-          </span>
-          <Link href="/os/bauplan" className="fassbar" style={linkKnopf}>Zum Bauplan →</Link>
-        </div>
-      </Karte>
-    </Seite>
+    </>
   );
 }

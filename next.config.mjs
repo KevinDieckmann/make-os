@@ -71,8 +71,8 @@ const nextConfig = {
       { source: '/os/saeule/health', destination: '/os/gesundheit?s=index', permanent: false },
       { source: '/os/saeule/social', destination: '/os/familie', permanent: false },
       // 24.09.: eine Kartei im CRM statt Netzwerk + Kontakte + Kunden
-      { source: '/os/netzwerk', destination: '/os/crm?s=kontakte', permanent: false },
-      { source: '/os/kunden', destination: '/os/crm?s=kunden', permanent: false },
+      { source: '/os/netzwerk', destination: '/os/markttraktion?s=kontakte', permanent: false },
+      { source: '/os/kunden', destination: '/os/markttraktion?s=kunden', permanent: false },
       { source: '/os/ernaehrung', destination: '/os/gesundheit?s=ernaehrung', permanent: false },
       { source: '/os/energie', destination: '/os/gesundheit?s=koerper', permanent: false },
       // 26.09.: der alte Wochen-Rhythmus lebt im Wochenplaner (nicht mehr unter Gesundheit).
@@ -95,6 +95,22 @@ const nextConfig = {
       { source: '/os/okr', destination: '/os/planung/jahr?space=business', permanent: false },
       // 06.10. (Inbox 2): die volle alte Inbox (Fächer/Screener/Zero) ist in der einen Inbox aufgegangen.
       { source: '/os/inbox/voll', destination: '/os/inbox', permanent: false },
+      // 08.10. (Aufräumen Etappe 3): reine Weiterleitungs-Seiten unter app/os sind hierher gezogen (eine Stelle für alte Adressen) —
+      // dieselben Ziele wie vorher; Next reicht die Parameter weiter. Wächter: tests/aufraeumen-etappe3.test.ts.
+      { source: '/os/crm', destination: '/os/markttraktion', permanent: false },
+      { source: '/os/business', destination: '/os/finanzen?s=business', permanent: false },
+      { source: '/os/finanzplan', destination: '/os/finanzen?s=finanzplanung&space=privat', permanent: false },
+      { source: '/os/planung/woche', destination: '/os/kalender?modus=planen', permanent: false },
+      { source: '/os/datenschutz/nachweise', destination: '/os/datenschutz#nachweise', permanent: false },
+      // 08.10. (Aufräumen Etappe 3): Altbestand weg. Der alte Aufgaben-Bau (Board/Zeitstrahl/Delegation) → die eine Aufgaben-Seite
+      // (Zeitstrahl = Darstellung „zeitstrahl“ dort); die Roadmap ist der Reiter „Phasen“ im Bauplan; die Säulen-Seiten gehen auf ihre Seiten.
+      { source: '/os/aufgaben/board', destination: '/os/aufgaben', permanent: false },
+      { source: '/os/roadmap', destination: '/os/bauplan?s=phasen', permanent: false },
+      { source: '/os/saeule/business', destination: '/os/finanzen?s=business', permanent: false },
+      { source: '/os/saeule/agents', destination: '/os/agenten', permanent: false },
+      { source: '/os/saeule/planning', destination: '/os/aufgaben', permanent: false },
+      { source: '/os/saeule/finance', destination: '/os/finanzen', permanent: false },
+      { source: '/os/saeule/:key', destination: '/os/wachstum', permanent: false },
     ];
   },
 };

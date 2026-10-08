@@ -26,7 +26,7 @@ interface Ziele { monat: Ziel[]; quartal: Ziel[]; jahr: Ziel[]; fokus: { monat?:
 const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
 const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
 // Dieselben Ziele wie das Score-Widget auf Home — eine Quelle (26.09.).
-const HREF: Record<string, string> = { health: '/os/gesundheit?s=index', business: '/os/finanzen?s=business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
+const HREF: Record<string, string> = { health: '/os/gesundheit?s=index', business: '/os/finanzen?s=business', planning: '/os/aufgaben', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
 
 export function WachstumView() {
   const [perf, setPerf] = useState<Perf | null>(null);
@@ -82,7 +82,7 @@ export function WachstumView() {
                     ))}
                     <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>
                       {(s.faktoren ?? []).filter(x => !x.echt).length > 0 && <>Nicht gemessen: {(s.faktoren ?? []).filter(x => !x.echt).map(x => x.quelle ?? x.label).slice(0, 3).join(' · ')}. </>}
-                      <Link href={HREF[s.key] ?? `/os/saeule/${s.key}`} style={{ color: C.inkDim }}>Zur Säule ›</Link>
+                      <Link href={HREF[s.key] ?? '/os/wachstum'} style={{ color: C.inkDim }}>Zur Säule ›</Link>
                     </div>
                   </div>
                 )}
