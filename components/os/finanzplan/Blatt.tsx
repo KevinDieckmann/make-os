@@ -18,8 +18,9 @@
 // Zurücksetzen auf die Formel: je Zelle (Entf, Menü), je Zeile (Menü) oder alle Handwerte des Blatts (Knopf über dem Blatt).
 // Handwerte je Szenario (04.10. Nachtrag): Standard „gilt für alle Szenarien“ (`<kennung>:<monat>`); im Menü „Nur in „<Arbeitsplan>““
 // (`<kennung>@<szenario>:<monat>`). Vorrang Szenario › alle › Formel; eine Zelle mit Szenario-Handwert schreibt beim Tippen dorthin.
+// Mehrere Blatt-Tabellen auf einer Seite (08.10. abends): die Tastatur gehört nur der aktiven Tabelle — Regel in ./tastatur.ts.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, MIKRO, TYP, ECKE } from '@/lib/make-one/design';
 import { LEUCHT, Knopf, feld } from '../ui';
 import type { Zeile } from '@/lib/finanzen/rechenkern';
@@ -29,6 +30,7 @@ import { eur, parseBetrag, zeileName, monatLabel, datumLang, alleZeilen } from '
 import { HAND_FELDER, szenarioSchluessel } from '@/lib/finanzen/handwerte';
 import { usePlan } from './daten';
 import { Kontextmenue, Dialog, KnopfKlein, Schalter, personFarbe, personName, LILA, HAAR, vorzeichenFarbe, Legende, Pillen } from './teile';
+import { blattAnmelden, blattAktivieren, aktivesBlatt, tastenOrt, tasteGilt, blattTaste } from './tastatur';
 
 export type ZeilenListe = 'sachkosten' | 'privatBudget' | 'privatEinnahmen' | 'privatSchulden';
 export interface GruppenZeile {
@@ -115,6 +117,11 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
   const wurzel = useRef<HTMLDivElement>(null);
   const druck = useRef<number | null>(null);
   const fertigRef = useRef(false);
+  // Mehrere Blatt-Tabellen auf einer Seite (08.10. abends, Gesellschaften: MAKE, Töpfe, KD Ventures): die Tastatur gehört nur der aktiven —
+  // Regel in ./tastatur.ts. Wird eine andere Tabelle aktiv, verliert diese ihre Auswahl (ein offenes Feld übernimmt beim Verlassen wie bisher).
+  const blattId = useId();
+  useEffect(() => blattAnmelden(blattId, () => setSel(null)), [blattId]);
+  const aktivieren = useCallback(() => blattAktivieren(blattId), [blattId]);
 
   const spalten = useMemo<Spalte[]>(() => {
     const c: Spalte[] = [];
@@ -186,9 +193,10 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
     if (r.zelle && modus !== 'plan') return;
     const v = anzeigeWert(r, m);
     fertigRef.current = false;
+    aktivieren();
     setSel({ e, m });
     setBearbeitet({ e, m, text: start ?? (v == null ? '' : eur(v, Number.isInteger(v) ? 0 : 2)) });
-  }, [zeileVon, anzeigeWert, modus]);
+  }, [zeileVon, anzeigeWert, modus, aktivieren]);
 
   const uebernehme = useCallback((weiter: boolean) => {
     const b = bearbeitet; if (!b || fertigRef.current) return;
@@ -207,31 +215,24 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
     }
   }, [bearbeitet, zeileVon, anzeigeWert, setzeZelle, planMonate, beginne]);
 
-  // Tastatur auf dem Blatt: nur, wenn eine Zelle gewählt ist und kein Feld den Fokus hat.
+  // Tastatur auf dem Blatt: nur für die Tabelle, der die Taste gehört (./tastatur.ts — Fokus in dieser Tabelle, oder nirgends und diese ist
+  // die aktive), mit gewählter Zelle und ohne offenes Feld, Menü oder Notiz.
   useEffect(() => {
     const k = (ev: KeyboardEvent) => {
-      if (!sel || bearbeitet || menue || notiz) return;
-      const t = ev.target as HTMLElement | null;
-      if (t && ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName)) return;
-      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
-      const mi = planMonate.indexOf(sel.m), zi = editZeilen.indexOf(sel.e);
-      let ziel: { e: string; m: number } | null = null;
-      if (ev.key === 'ArrowRight' && mi + 1 < planMonate.length) ziel = { e: sel.e, m: planMonate[mi + 1] };
-      else if (ev.key === 'ArrowLeft' && mi > 0) ziel = { e: sel.e, m: planMonate[mi - 1] };
-      else if (ev.key === 'ArrowDown' && zi + 1 < editZeilen.length) ziel = { e: editZeilen[zi + 1], m: sel.m };
-      else if (ev.key === 'ArrowUp' && zi > 0) ziel = { e: editZeilen[zi - 1], m: sel.m };
-      else if (ev.key === 'Enter') { ev.preventDefault(); beginne(sel.e, sel.m); return; }
-      else if (ev.key === 'Backspace' || ev.key === 'Delete') { ev.preventDefault(); setzeZelle(sel.e, sel.m, null); return; }
-      else if (ev.key === 'Escape') { setSel(null); return; }
-      else if (/^[0-9,.\-]$/.test(ev.key)) { ev.preventDefault(); beginne(sel.e, sel.m, ev.key); return; }
-      if (ziel) {
-        ev.preventDefault(); setSel(ziel);
-        wurzel.current?.querySelector<HTMLElement>(`td[data-e="${CSS.escape(ziel.e)}"][data-m="${ziel.m}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      }
+      const t = typeof Element !== 'undefined' && ev.target instanceof Element ? ev.target as HTMLElement : null;
+      const ort = tastenOrt(t, { seite: !t || t === document.body || t === document.documentElement, inWurzel: !!t && !!wurzel.current?.contains(t) });
+      if (!sel || !tasteGilt({ ort, aktiv: aktivesBlatt() === blattId, gewaehlt: true, offen: !!(bearbeitet || menue || notiz), modifier: ev.metaKey || ev.ctrlKey || ev.altKey })) return;
+      const a = blattTaste(ev.key, sel, planMonate, editZeilen);
+      if (!a) return;
+      if (a.art === 'bearbeiten') { ev.preventDefault(); beginne(sel.e, sel.m, a.start); return; }
+      if (a.art === 'zuruecksetzen') { ev.preventDefault(); setzeZelle(sel.e, sel.m, null); return; }
+      if (a.art === 'abwaehlen') { setSel(null); return; }
+      ev.preventDefault(); setSel({ e: a.e, m: a.m });
+      wurzel.current?.querySelector<HTMLElement>(`td[data-e="${CSS.escape(a.e)}"][data-m="${a.m}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, [sel, bearbeitet, menue, notiz, planMonate, editZeilen, beginne, setzeZelle]);
+  }, [sel, bearbeitet, menue, notiz, planMonate, editZeilen, beginne, setzeZelle, blattId]);
 
   // Kontextmenü: fortschreiben, zurücksetzen, Notiz.
   /** Alle Zellen einer Ebene zurücksetzen (eine Änderung, ein Rückgängig) — über MAX_OPS hinaus lieber zeilenweise. */
@@ -404,7 +405,8 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
 
   leerZeile();
   return (
-    <div ref={wurzel}>
+    // Klick, Tippen oder Fokus in diese Tabelle (auch Werkzeugleiste, Menü, Notiz) macht sie zur aktiven — die anderen verlieren ihre Auswahl.
+    <div ref={wurzel} onPointerDownCapture={aktivieren} onFocusCapture={aktivieren}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
         {werkzeuge}
         <Pillen liste={[{ id: 'plan' as Modus, label: 'Plan' }, { id: 'ist' as Modus, label: 'IST' }, { id: 'delta' as Modus, label: 'Abweichung' }]} aktiv={modus} onWahl={m => { setModus(m); setSel(null); }} einzeilig />

@@ -127,6 +127,15 @@ export function blattAus(v: unknown, sicht: 'privat' | 'business'): { u: Unterse
   }
   return { u: 'lage', alt: false };
 }
+/**
+ * Alte Adresse (?u=<früheres Blatt, heute ein Abschnitt>): wohin die Seite sie umschreibt (Blatt + Anker) — sonst null. Das Ziel ist immer ein
+ * Blatt, nie wieder eine Abschnitts-Kennung: nach dem Umschreiben liefert dieselbe Frage null, die Seite schreibt höchstens einmal um (keine Schleife).
+ */
+export function alteAdresseUmschreiben(uRoh: unknown, sicht: 'privat' | 'business'): { u: Unterseite; abschnitt?: AbschnittId } | null {
+  if (!istAbschnittId(uRoh)) return null;
+  const z = blattAus(uRoh, sicht);
+  return z.abschnitt ? { u: z.u, abschnitt: z.abschnitt } : { u: z.u };
+}
 /** Blatt in einer Sicht — ein privates fällt in der Business-Sicht auf „lage“ zurück; alte Kennungen lösen auf ihr neues Blatt auf. */
 export const unterseiteFuer = (u: unknown, sicht: 'privat' | 'business'): Unterseite => blattAus(u, sicht).u;
 /**

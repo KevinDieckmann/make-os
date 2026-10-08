@@ -25,7 +25,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Settings, Undo2 } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Seite, Knopf, Pillen, LEUCHT } from '../ui';
-import { FRAGE, FRAGE_BUSINESS, ZAHNRAD, offeneBuchungen, faelligeZahl, datumLang, blaetterFuer, blattAus, istAbschnittId, finanzplanAdresse, type AbschnittId, type Sprung, type Unterseite } from '@/lib/finanzen/plan/hilfen';
+import { FRAGE, FRAGE_BUSINESS, ZAHNRAD, offeneBuchungen, faelligeZahl, datumLang, blaetterFuer, blattAus, istAbschnittId, alteAdresseUmschreiben, finanzplanAdresse, type AbschnittId, type Sprung, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { mitBereich, bereichEigen, type Bereich } from '@/lib/finanzen/szenarien';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
@@ -80,9 +80,10 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
   }, [router, sicht, adresse, springe]);
 
   // Alte Adresse (?u=<früheres Blatt>, Lesezeichen, Links von früher): auf das neue Blatt + Abschnitt umschreiben, alle Parameter bleiben.
+  // Höchstens einmal: das Ziel ist ein Blatt, danach liefert `alteAdresseUmschreiben` null (Wächter tests/aufraeumen-etappe2.test.ts).
   useEffect(() => {
-    if (zustand !== 'da' || !istAbschnittId(uRoh)) return;
-    const z = blattAus(uRoh, sicht);
+    const z = zustand === 'da' ? alteAdresseUmschreiben(uRoh, sicht) : null;
+    if (!z) return;
     router.replace(adresse(z.u, new URLSearchParams(params.toString()), z.abschnitt), { scroll: false });
     springe(z.abschnitt);
   }, [zustand, uRoh, sicht, params, adresse, router, springe]);

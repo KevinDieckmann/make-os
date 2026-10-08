@@ -37,7 +37,15 @@ unter Privat (Business 13) in einer Reihe; jetzt 9 bzw. 6, was zusammengehört, 
   darunter springen auf diesen Topf. Gesellschaften → „Töpfe MAKE“ aufklappen, neu laden: bleibt offen. Lage → „Wochen-Check öffnen“. Alter Link
   `/os/finanzen?s=finanzplanung&space=privat&u=kalender` → Fällig & Schulden, Kalender offen. Finanzen › Business › Planung → sechs Pillen, kein Budget.
 - **Rückweg:** nur Oberfläche, keine Datenform geändert — der alte Stand liest alles wie vorher; alte Links dort zeigen wieder die alten Blätter.
-- Tests: `tests/finanzplan-blaetter.test.ts` (neu), `tests/aufraeumen-etappe2.test.ts`, `tests/finanzplan-sicht.test.ts`, `tests/finanzplan-ansichten.test.ts` (erweitert).
+- **Nachbesserung aus der Prüfung — Tastatur bei mehreren Tabellen auf einem Blatt:** Auf „Gesellschaften“ stehen bis zu drei Tabellen (MAKE, Töpfe,
+  KD Ventures). Vorher wirkte nach je einem Klick in zwei Tabellen jede Taste in beiden — Entf setzte zwei Handwerte zurück, eine Ziffer landete still als
+  Handwert in der anderen Tabelle. Jetzt gehört die Tastatur genau einer Tabelle: der, in die man zuletzt geklickt/fokussiert hat (die andere verliert
+  ihre Auswahl); liegt der Fokus auf einem Knopf oder Feld, nimmt keine Tabelle die Taste. Regel an EINER Stelle `components/os/finanzplan/tastatur.ts`.
+  Außerdem: der Offen-Zustand der Abschnitte wird im Effekt gespeichert (nicht mehr im setState-Updater); die Umschreibung alter Adressen ist eine reine
+  Funktion `alteAdresseUmschreiben` (höchstens einmal, keine Schleife, alle Parameter bleiben — getestet).
+  **So testet ihr:** Gesellschaften → „Töpfe MAKE“ aufklappen. Zelle in MAKE anklicken, Enter; Zelle in den Töpfen anklicken, Enter; dann Entf bzw. eine
+  Ziffer → wirkt nur in den Töpfen, MAKE hat keinen Rahmen mehr und bekommt keinen Wert.
+- Tests: `tests/finanzplan-blaetter.test.ts` (neu), `tests/finanzplan-tastatur.test.ts` (neu), `tests/aufraeumen-etappe2.test.ts`, `tests/finanzplan-sicht.test.ts`, `tests/finanzplan-ansichten.test.ts` (erweitert).
 
 ## 08.10.2026 — Phase 0: Sicht-Entscheidungen (nur lokal — Branch `phase0-sicht`)
 

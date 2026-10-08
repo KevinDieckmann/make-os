@@ -8,7 +8,7 @@
 // - Sprung per Anker (#buchungen): beim Öffnen des Blatts aus der Adresse, danach über `anker` aus dem Kontext (geh, alte Adresse, hashchange).
 // - Private Abschnitte (Budget, Entwicklung, Geldfluss) rendert die Business-Sicht gar nicht (`abschnitteFuer`) — der Server liefert dort ohnehin kein Privat.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Klappbar } from '../ui';
 import { abschnitteFuer, offeneBuchungen, faelligeZahl, type AbschnittDef, type AbschnittId, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
@@ -37,11 +37,17 @@ function useAbschnittOffen() {
   useEffect(() => {
     try { const m = JSON.parse(localStorage.getItem(MERKER) ?? 'null'); if (m && typeof m === 'object') setMerk(m as Partial<Record<AbschnittId, boolean>>); } catch { /* ohne Speicher: Vorgabe */ }
   }, []);
-  const setze = useCallback((id: AbschnittId, offen: boolean) => setMerk(m => {
-    const n = { ...m, [id]: offen };
-    try { localStorage.setItem(MERKER, JSON.stringify(n)); } catch { /* egal */ }
-    return n;
-  }), []);
+  // Speichern im Effekt, nie im setState-Updater (StrictMode führt Updater doppelt aus). Erst nach einer eigenen Änderung — das Laden oben
+  // schreibt so nie eine leere Vorgabe über den gemerkten Stand.
+  const geaendert = useRef(false);
+  const setze = useCallback((id: AbschnittId, offen: boolean) => {
+    geaendert.current = true;
+    setMerk(m => ({ ...m, [id]: offen }));
+  }, []);
+  useEffect(() => {
+    if (!geaendert.current) return;
+    try { localStorage.setItem(MERKER, JSON.stringify(merk)); } catch { /* egal */ }
+  }, [merk]);
   return { merk, setze };
 }
 

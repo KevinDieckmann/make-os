@@ -12,7 +12,7 @@ import path from 'node:path';
 import { WEG } from '../lib/wege';
 import { SEITEN_SUCHE } from '../lib/make-one/seiten';
 import { finanzOrt, finanzAdresse, kontenUnter, PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, HAUSHALT_UNTER, FINANZ_S } from '../lib/finanzen/navigation';
-import { blaetterFuer, blattAus, abschnitteFuer, NUR_PRIVAT_UNTERSEITEN, NUR_PRIVAT_ABSCHNITTE, ABSCHNITTE, ZAHNRAD, finanzplanAdresse, type Unterseite, type AbschnittId } from '../lib/finanzen/plan/hilfen';
+import { blaetterFuer, blattAus, abschnitteFuer, NUR_PRIVAT_UNTERSEITEN, NUR_PRIVAT_ABSCHNITTE, ABSCHNITTE, ZAHNRAD, finanzplanAdresse, alteAdresseUmschreiben, istAbschnittId, type Unterseite, type AbschnittId } from '../lib/finanzen/plan/hilfen';
 import { PRIVAT_GESELLSCHAFTEN } from '../lib/einheiten';
 
 const wurzel = path.resolve(__dirname, '..');
@@ -221,6 +221,33 @@ describe('Aufräumen Etappe 2 — Blätter der Planung (08.10. abends)', () => {
     expect(finanzplanAdresse('privat', { u: z.u, monat: 8, zeile: 'pb1' }, z.abschnitt as AbschnittId)).toBe('/os/finanzen?s=finanzplanung&space=privat&u=monat&monat=8&zeile=pb1#buchungen');
     const f = lies('components/os/finanzplan/Finanzplan.tsx');
     expect(f).toContain('router.replace(adresse(z.u, new URLSearchParams(params.toString()), z.abschnitt)');
-    expect(f).toContain('istAbschnittId(uRoh)');
+    expect(f).toContain('alteAdresseUmschreiben(uRoh, sicht)');
+  });
+  it('alte Adresse wird höchstens einmal umgeschrieben (keine Schleife) und behält jeden Parameter', () => {
+    // Was die Seite mit router.replace tut: Ziel aus `alteAdresseUmschreiben`, Adresse mit allen bisherigen Parametern (u ersetzt).
+    const umschreiben = (adresse: string, sicht: 'privat' | 'business') => {
+      const q = new URLSearchParams(adresse.split(/[?#]/)[1] ?? '');
+      const z = alteAdresseUmschreiben(q.get('u'), sicht);
+      if (!z) return null;
+      q.set('u', z.u);
+      return finanzplanAdresse(sicht, q, z.abschnitt);
+    };
+    for (const sicht of ['privat', 'business'] as const) {
+      for (const alt of Object.keys(ALT)) {
+        const start = `/os/finanzen?s=finanzplanung&space=${sicht}&u=${alt}&monat=8&zeile=pb1&sz=s2&feld=preis&steuern=kdv`;
+        const neu = umschreiben(start, sicht);
+        if (!istAbschnittId(alt)) { expect(neu, `${alt} ${sicht}: ein Blatt bleibt stehen`).toBeNull(); continue; }
+        expect(neu, `${alt} ${sicht}`).not.toBeNull();
+        // Ein zweiter Durchlauf (die Seite rendert mit der neuen Adresse) schreibt nichts mehr um — keine Schleife.
+        expect(umschreiben(neu!, sicht), `${alt} ${sicht}: zweiter Durchlauf`).toBeNull();
+        const q = new URLSearchParams(neu!.split(/[?#]/)[1]);
+        expect(q.get('u'), `${alt} ${sicht}`).toBe(blattAus(alt, sicht).u);
+        for (const [k, v] of [['monat', '8'], ['zeile', 'pb1'], ['sz', 's2'], ['feld', 'preis'], ['steuern', 'kdv'], ['s', 'finanzplanung'], ['space', sicht]]) expect(q.get(k), `${alt} ${sicht} ${k}`).toBe(v);
+        const anker = neu!.split('#')[1];
+        expect(anker, `${alt} ${sicht}: Anker`).toBe(blattAus(alt, sicht).abschnitt);
+      }
+    }
+    // Nichts zum Umschreiben: kein u, neues Blatt, Unbekanntes.
+    for (const u of [null, '', 'monat', 'gesellschaften', 'quatsch']) expect(alteAdresseUmschreiben(u, 'privat')).toBeNull();
   });
 });
