@@ -185,9 +185,9 @@ Weiß), Kontrast AA (siehe Farben), Tippziele ≥ 44 px am Handy (gemessen), Men
    von selbst). Prüfen: `curl -sI https://makeinnovation.de` → 200 mit `content-security-policy`,
    `curl -sI https://www.makeinnovation.de` → 301 auf `https://makeinnovation.de/`.
 
-## Offene Platzhalter (Stand 07.10.2026, v3)
+## Offene Platzhalter (Stand 08.10.2026, v3)
 
-- **Startseite › 06 Gründer › Kevin Dieckmann:** ein Satz zu Kevins Vertriebserfahrung (ohne Kundennamen)
+- keine — Gründer-Satz von Kevin gewählt (08.10.): „Er hat Vertrieb als Geschäftsführer, CRO und Head of Sales aufgebaut — in Fintech, Software und Beratung.“
 
 ## Später auf Buchungsseite umstellen
 

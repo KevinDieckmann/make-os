@@ -396,10 +396,10 @@ describe('website/pruefen.mjs', () => {
     const zahl = (fragen.match(/<details>/g) ?? []).length;
     expect(zahl).toBeGreaterThanOrEqual(5);
     expect(zahl).toBeLessThanOrEqual(7);
-    // Gründer: nur belegte Angaben (Malin, Kevin Dieckmann; Platzhalter für die Vertriebserfahrung bleibt Kevins Sache).
+    // Gründer: nur belegte Angaben (Malin, Kevin Dieckmann; Satz zur Vertriebserfahrung von Kevin gewählt, 08.10.).
     const gruender = /<section class="abschnitt" id="ueber-uns"[\s\S]*?<\/section>/.exec(index)?.[0] ?? '';
     expect(gruender).toContain('<h3>Malin</h3>');
     expect(gruender).toContain('<h3>Kevin Dieckmann</h3>');
-    expect(gruender).toContain('[[KEVIN: Ein Satz zu deiner Vertriebserfahrung');
+    expect(gruender).toContain('aufgebaut — in Fintech, Software und Beratung');
   });
 });
