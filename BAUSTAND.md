@@ -21,7 +21,12 @@
   freie Zeit/Buchung ohne Plätze, Kapazität, ZOE/Heads ruhen + holen nach, Glocke sammelt).
 - **Fertig auf Branch (nach dem Upload mergen):** `rechnungen-pdf` (2021914b; Lücke 4 — Stellen mit lückenloser Nummer + PDF + SHA-256, § 14 UStG
   Pflichtangaben 409, Stornorechnung, Angebot → Rechnung, Mandat → Monatsentwurf, Mahnstufen nur Vorschlag, Route `/api/rechnung`).
-- **In Arbeit (Agenten, je eigener Branch):** `inbox-teilen` (Lücke 6) · `zoe-whatsapp` (Lücke 5).
+- **Fertig auf Branch (nach dem Upload mergen):** `inbox-teilen` (26e8f7f4; Lücke 6 — Übergeben als freigegebene Kopie, Team-Postfach (IMAP + Business)
+  mit „wer kümmert sich“, Suche über die eigenen Spiegel; Filterstelle `postfachSichtbar`).
+- **In Arbeit (Agent):** `zoe-whatsapp` (Lücke 5).
+- **Fragen für die nächste Klickrunde (Inbox teilen):** (1) Erledigt/Gelesen im Team-Postfach für alle oder je Person? (2) Screener im Team-Postfach gemeinsam?
+  (3) ZOE/Tageslauf der zweiten Person sehen Team-Postfächer (Kopf + Ausschnitt), keine Übergaben — ok? (4) Antwort auf Übergabe nur aus derselben Gesellschaft?
+  (5) Lagebild zählt Team-Gespräche nur bei der zuständigen Person? (6) WhatsApp Erledigt/Später ganz gemeinsam? (7) Eigener VVT-Eintrag für Übergaben/Team-Postfach?
 - **Fragen für die nächste Klickrunde (Rechnungen):** (1) Nummernformat je Gesellschaft einstellbar (heute `{KURZ}-R-{JAHR}-{NR4}`, mit Steuerberater
   abstimmen)? (2) Versand später über die Inbox statt Mail-Programm? (3) Entwürfe einer gelöschten Person (Art. 17) automatisch entfernen? (4) Geschäftsführung +
   Registergericht bei GmbH/UG als Pflichtangabe — so lassen?
