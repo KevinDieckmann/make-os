@@ -2,8 +2,8 @@
 // POST { hinweis?, gaeste?: string[] } → Vorschlag: 7 Tage × 3 Mahlzeiten, je
 // Gericht ein Rezept (Zutaten, Zubereitung, Dauer, Portionen, für wen) und die
 // Einkaufsliste mit Menge und Kategorie. Seit 26.09. für ALLE Profile des
-// Haushalts (Kevin, Malin, gewählte Gäste): gemeinsame Gerichte, wo nötig eine
-// Variante je Person. Bevorzugte Lebensmittel zuerst; was im Vorrat ist, wird
+// Haushalts (Konten + gewählte Gäste): gemeinsame Gerichte, passend für alle — seit 08.10.
+// (Kevin) ohne Variante je Person und ohne Personennamen (`lib/ernaehrung/neutral.ts`). Bevorzugte Lebensmittel zuerst; was im Vorrat ist, wird
 // verbraucht und steht nicht auf der Liste. NUR ein Vorschlag — übernommen
 // wird per Klick. Kein Medizin-/Ernährungsrat.
 
@@ -19,6 +19,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { TAGE, MAHLZEITEN, KATEGORIEN, sauberDatei, neueId, kategorieRaten, gleichesLebensmittel, type ErnaehrungFile, type Tag, type Mahlzeiten, type Gericht, type EinkaufPosten, type PlanGerichte, type Kategorie, PROFIL_DISKRET } from '@/lib/ernaehrung/modell';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
+import { namenFuer, ohneNamen, gerichtNeutral, begruendungNeutral } from '@/lib/ernaehrung/neutral';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -74,12 +75,12 @@ export async function POST(req: Request) {
     vorrat.length ? `VORRAT ZUHAUSE (verbrauchen! kommt NICHT auf die Einkaufsliste): ${vorrat.join('; ')}` : '',
     gespeichert.length ? `UNSERE GERICHTE (★ = Lieblinge; gern wieder einplanen, dann EXAKT diesen Namen verwenden und KEIN neues Rezept dafür schreiben): ${gespeichert.join('; ')}` : '',
     'REGELN:',
-    '- Je Mahlzeit EIN Gericht, Name max 8 Wörter. Gemeinsame Gerichte; braucht eine Person eine Variante, steht sie im Namen („… (für <Name> ohne Feta)“).',
+    '- Je Mahlzeit EIN Gericht, Name max 8 Wörter. Nur gemeinsame Gerichte, die für alle passen — keine Variante je Person.',
     PROFIL_DISKRET,
     '- Frühstück und Mittag alltagstauglich schnell; 2–3 Gerichte dürfen sich wiederholen (Meal-Prep), aber nicht alles. Abends leicht. Freitag/Samstag darf EIN Genuss-Gericht sein.',
-    '- Zu JEDEM verschiedenen Gericht ein Rezept: Zutaten mit Menge (für alle Personen zusammen), Zubereitung in 3–7 kurzen Schritten, Dauer in Minuten, Portionen, für wen.',
+    '- Zu JEDEM verschiedenen Gericht ein Rezept: Zutaten mit Menge (für alle Personen zusammen), Zubereitung in 3–7 kurzen Schritten, Dauer in Minuten, Portionen.',
     '- EINKAUFSLISTE: alle nötigen Zutaten der Woche, gebündelt und dedupliziert, abzüglich Vorrat, mit Menge und Kategorie aus: ' + KATEGORIEN.map(k => k.id).join(', ') + '. 15–35 Posten.',
-    'Antworte NUR als JSON: {"begruendung":"1-2 Sätze","plan":{"mo":{"fruehstueck":"…","mittag":"…","abend":"…"},…,"so":{…}},"gerichte":[{"name":"…","zutaten":[{"name":"…","menge":"…"}],"zubereitung":["…"],"dauerMin":20,"portionen":2,"fuer":["Kevin","Malin"],"tags":["schnell"]}],"einkauf":[{"text":"…","menge":"…","kategorie":"obst-gemuese"}]}',
+    'Antworte NUR als JSON: {"begruendung":"1-2 Sätze","plan":{"mo":{"fruehstueck":"…","mittag":"…","abend":"…"},…,"so":{…}},"gerichte":[{"name":"…","zutaten":[{"name":"…","menge":"…"}],"zubereitung":["…"],"dauerMin":20,"portionen":2,"fuer":["alle"],"tags":["schnell"]}],"einkauf":[{"text":"…","menge":"…","kategorie":"obst-gemuese"}]}',
   ].filter(Boolean).join('\n');
 
   const user = body.hinweis ? fremd('hinweis', `Hinweis für diese Woche: ${String(body.hinweis).slice(0, 300)}`) : 'Plane eine normale Woche.';
@@ -90,13 +91,18 @@ export async function POST(req: Request) {
   if (!r.ok || !r.data?.plan) return NextResponse.json({ error: r.error ?? 'Kein Vorschlag erhalten.' }, { status: 200 });
 
   const jetzt = new Date().toISOString();
+  // Personenneutral (08.10., Kevin): Namen aller Profile + Gäste fallen aus jedem Text der Antwort — dieselbe Funktion für Plan und
+  // Gericht, damit der Plan sein Rezept weiter findet (lib/ernaehrung/neutral.ts).
+  const verboten = namenFuer(f.profile, [...gaeste]);
+  const neutral = (x: unknown) => ohneNamen(String(x ?? '').slice(0, 200), verboten);
   const plan = {} as Record<Tag, Mahlzeiten>;
   for (const t of TAGE) {
     const m = r.data.plan[t] ?? {};
-    plan[t] = { fruehstueck: String(m.fruehstueck ?? '').slice(0, 200), mittag: String(m.mittag ?? '').slice(0, 200), abend: String(m.abend ?? '').slice(0, 200) };
+    plan[t] = { fruehstueck: neutral(m.fruehstueck), mittag: neutral(m.mittag), abend: neutral(m.abend) };
   }
   // Rezepte säubern, Ids vergeben, dem Plan zuordnen (Name → Rezept).
-  const gerichte: Gericht[] = sauberDatei({ gerichte: (Array.isArray(r.data.gerichte) ? r.data.gerichte : []).map(g => ({ ...(g as object), id: neueId('g'), quelle: 'zoe', angelegt: jetzt })) as Gericht[] }, jetzt).gerichte;
+  const gerichte: Gericht[] = sauberDatei({ gerichte: (Array.isArray(r.data.gerichte) ? r.data.gerichte : []).map(g => ({ ...(g as object), id: neueId('g'), quelle: 'zoe', angelegt: jetzt })) as Gericht[] }, jetzt).gerichte
+    .map(g => gerichtNeutral(g, verboten, namen));
   const planGerichte: PlanGerichte = {};
   for (const t of TAGE) for (const m of MAHLZEITEN) {
     const name = plan[t][m.k];
@@ -108,15 +114,15 @@ export async function POST(req: Request) {
   }
   const einkauf: EinkaufPosten[] = (Array.isArray(r.data.einkauf) ? r.data.einkauf : []).map(x => {
     const o = (x && typeof x === 'object' ? x : { text: x }) as { text?: unknown; menge?: unknown; kategorie?: unknown };
-    const text = String(o.text ?? '').slice(0, 120).trim();
+    const text = ohneNamen(String(o.text ?? '').slice(0, 120).trim(), verboten);
     const kategorie = KATEGORIEN.some(k => k.id === o.kategorie) ? (o.kategorie as Kategorie) : kategorieRaten(text);
-    return { id: neueId('e'), text, erledigt: false, ...(o.menge ? { menge: String(o.menge).slice(0, 30) } : {}), kategorie, quelle: 'plan' as const };
+    return { id: neueId('e'), text, erledigt: false, ...(o.menge && ohneNamen(String(o.menge).slice(0, 30), verboten) ? { menge: ohneNamen(String(o.menge).slice(0, 30), verboten) } : {}), kategorie, quelle: 'plan' as const };
   }).filter(p => p.text && !f.vorrat.some(v => gleichesLebensmittel(v.name, p.text))).slice(0, 60);
 
   // Neu geschriebene Rezepte, die es schon gibt, nicht doppelt anlegen.
   const neueGerichte = gerichte.filter(g => !f.gerichte.some(x => x.name.toLowerCase() === g.name.toLowerCase()));
   await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: neueGerichte.length, personen: namen.length });
-  const antwort = { begruendung: String(r.data.begruendung ?? '').slice(0, 400), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE };
+  const antwort = { begruendung: begruendungNeutral(String(r.data.begruendung ?? '').slice(0, 400), verboten), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE };
   // Hintergrundlauf (ZOE, Takt): der Vorschlag wartet auf der Ernährungs-Seite, bis ihn jemand übernimmt oder ein neuer kommt (27.09.).
   if (ablegen) await updateJson<{ zeit: string; vorschlag: typeof antwort }>(VORSCHLAG, () => ({ zeit: jetzt, vorschlag: antwort })).catch(() => { /* nur im Lauf-Text */ });
   return NextResponse.json({ ...antwort, abgelegt: ablegen });

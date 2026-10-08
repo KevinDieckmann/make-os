@@ -654,6 +654,10 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   409-Konflikte; Systemlauf ohne Person wie bisher. Schreiben auf fremde (ändern, löschen, neu für die andere, zuschieben) → 403
   (`routinenSchreibPruefen`; PUT-Altweg `routinenVollSchreiben`: fremde bleiben in der gespeicherten Fassung). `teil` läuft durch `sauberRoutine`.
   Lichtfäden: jede Routine einer Person ist `privat` (nicht nur Gesundheit). Wächter: tests/messlatte-malin.test.ts, tests/routinen-belegt.test.ts.
+  **Fremde Blöcke der Wochenvorlage nur „Belegt“ (08.10. nachm., Branch `malin-sicht-2`):** jede Antwort von `/api/state/routinen` (GET, PATCH, PUT,
+  409) gibt `bloecke` NUR über `bloeckeFuerBetrachter` (→ `blockBelegt`: Kennung, Besitz, Wochentag, von/bis, `art`, Rang, eine Privat-Einheit; kein
+  Titel, keine Business-Einheit, `belegt: true`, nie gespeichert). `art` bleibt bewusst (nur Bereich des Fensters; Kapazität/Verfügbarkeit zählen
+  Business-Blöcke als Soll). Server-Leser (Verfügbarkeit, Kapazität, Auswertung) lesen den Bestand direkt und geben nur Zahlen aus. Planer: grau „Belegt“.
 - Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
 - **Zeitstrahl & Planungsjahr (30.09.):** Rechnung rein in `lib/planung/zeitstrahl.ts` (Fenster aus ganzen Monaten `ab`+`monate`,
   `standardAb`/`heuteAb`, `abAus` ±50 Jahre, `monatsTicks` mit Jahreswechsel, `quartale`, `stapeln` mit „+n“-Bündeln,
@@ -786,6 +790,11 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   fremdes Profil → 403, nichts gespeichert; `wendeAn(…, konten)` macht Profile mit Konto-Namen immer zu Konto-Profilen (kein „Gast“ unter fremdem
   Namen). PUT nimmt Profile nie aus dem Körper. Wochenvorschlag/Rezept rechnen mit allen Profilen, der Prompt verbietet Gründe aus Profilen in der
   Antwort (`PROFIL_DISKRET`). Wächter: tests/messlatte-malin.test.ts, tests/ernaehrung-sicht.test.ts.
+- **Essensvorschläge personenneutral + Lese-Protokoll (08.10. nachm., Kevin, Branch `malin-sicht-2`):** Vorschlag/Rezept nennen keine Person und keine
+  Variante je Person — Prompt (`PROFIL_DISKRET`, ohne Namen im Beispiel) UND Server: `lib/ernaehrung/neutral.ts` (`namenFuer` aus allen Profilen + Gästen,
+  `ohneNamen` für Plan/Gerichtname/Zutat/Posten — dieselbe Funktion für Plan und Gericht, `schrittOhneNamen` „für <Name>“ → „für eine Portion“,
+  `begruendungNeutral`, `gerichtNeutral` mit `fuer` = alle). Neue Modell-Ausgaben der Ernährung laufen dort durch. Wird das Profil einer ANDEREN Person
+  ausgeliefert (geteilt), notiert `ausliefern` `leseZugriff(req, 'gesundheit', { betroffen })`. Wächter: tests/malin-sicht-2.test.ts.
 - Gerichte-Bibliothek „Unsere Gerichte“ (26.09.): `Gericht` hat `favorit` + `notiz`; Helfer `gerichteFiltern`, `tagsHaeufig`,
   `imPlan`, `gerichtZuName`, `zutatenAusText`, `schritteAusText`. `/api/ernaehrung/rezept` nimmt auch `beschreibung`
   (Wunsch) oder `text` (eingefügtes Rezept, als `fremd()`); `/vorschlag` listet gespeicherte Gerichte (★ zuerst) und

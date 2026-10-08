@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 nachmittags — Malins Sicht, Teil 2: Essensvorschläge ohne Personen, Lese-Protokoll Ernährung, fremde Blöcke „Belegt“ (nur lokal — Branch `malin-sicht-2`)
+
+Kevins Entscheidungen 08.10. (zusätzlich):
+- **Essensvorschläge ohne Personen-Vorlieben:** Wochenvorschlag und Rezept nennen keine Person mehr — kein „für <Name> ohne Feta“, keine Variante je
+  Person, keine Begründung mit Namen. Die Profile rechnen weiter mit (Gerichte passen für alle). Zwei Schichten: Prompt-Regel und Server-Absicherung
+  (`lib/ernaehrung/neutral.ts`): Klammern/Zusätze mit Namen fallen aus Gerichtnamen und Zutaten, „für <Name>“ in Schritten wird „für eine Portion“,
+  Sätze mit Namen fallen aus der Begründung, „für wen“ = alle. Das feste Beispiel mit echten Vornamen im Prompt ist weg.
+- **Lese-Protokoll Ernährung:** liefert `/api/state/ernaehrung` das Profil einer ANDEREN Person aus (sie teilt Gesundheit), steht ein Eintrag
+  „Gesundheit · betroffen <Person>“ unter System › Nachweise (gedrosselt, ohne Inhalte). Eigenes Profil und Gäste: kein Eintrag.
+- **Wochenvorlage-Blöcke:** Blöcke der anderen Person (Planung › Routinen › „Blöcke · Wochenvorlage“) zeigen nur Zeit, Tag und Privat/Business,
+  grau „Belegt“ — ohne Titel und ohne Business-Einheit. Ändern/Löschen fremder Blöcke war schon 403 (geprüft, Wächter dazu).
+
+**So testet ihr:** Malin öffnet Planung › Routinen, wählt bei „Blöcke · Wochenvorlage“ Kevin → seine Blöcke stehen als „09:00–18:00 Belegt“ (grau, B/P
+bleibt). Gesundheit › Ernährung › „Woche vorschlagen“ → kein Gericht, keine Zutat, kein Schritt, keine Begründung nennt einen Namen. Teilt Kevin seine
+Gesundheit mit Malin und Malin öffnet Ernährung, steht unter System › Nachweise (Kevin) „Gesundheit · Malin · betroffen Kevin“.
+
+**Rückweg:** nur Lese-Filter, Ausgabe-Säuberung und Protokolleinträge — keine Datenänderung, kein neues gespeichertes Feld (`belegt` nur in Antworten).
+Der alte Stand läuft ohne Weiteres; Lese-Protokoll-Einträge bleiben stehen (der alte Stand liest sie mit).
+
 ## 08.10.2026 — Malins Sicht: fremde Routinen nur „Belegt“, Ernährungsprofile nur selbst (nur lokal — Branch `malin-sicht`)
 
 Kevins Entscheidungen 08.10.:

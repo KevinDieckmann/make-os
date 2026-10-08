@@ -350,7 +350,8 @@ export function RoutinenPlanerView() {
                   <div key={b.id} style={{ padding: '4px 0', borderBottom: pos < tag.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Punkt farbe={SPACE_FARBE[b.art]} groesse={7} />
-                    <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: C.ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${b.von}–${b.bis} ${SPACE_LABEL[b.art]}${b.titel ? ` · ${b.titel}` : ''}`}>{b.von}–{b.bis}{b.titel ? <span style={{ color: C.inkDim }}> {b.titel}</span> : ''}</span>
+                    {/* Block der anderen Person (08.10., „Belegt“): Zeit und Bereich, grau, ohne Titel — der Server schickt nichts anderes mit. */}
+                    <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: b.belegt ? C.inkDim : C.ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.belegt ? `${b.von}–${b.bis} Belegt` : `${b.von}–${b.bis} ${SPACE_LABEL[b.art]}${b.titel ? ` · ${b.titel}` : ''}`}>{b.von}–{b.bis}{b.belegt ? <span style={{ color: C.inkLeise }}> Belegt</span> : b.titel ? <span style={{ color: C.inkDim }}> {b.titel}</span> : ''}</span>
                     {blockEigen ? <>
                       <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? (x.art === 'business' ? { ...x, art: 'privat', einheit: undefined } : { ...x, art: 'business' }) : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: TYP.bedien }}>{b.art === 'business' ? 'B' : 'P'}</button>
                       <PfeilRang label={`${wt.kurz} ${b.von}`} obenAus={pos === 0} untenAus={pos === tag.length - 1} onAuf={() => blockBewegen(b, 'auf')} onAb={() => blockBewegen(b, 'ab')} />

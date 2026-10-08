@@ -3,6 +3,7 @@
 // Zubereitung, Dauer, Portionen für die Profile des Haushalts — oder bringt ein
 // eingefügtes Rezept (`text`, z. B. aus einer Webseite kopiert) in diese Form.
 // Das Rezept wird gespeichert und, wenn Tag/Mahlzeit dabei sind, dem Plan-Feld zugeordnet.
+// 08.10. (Kevin): personenneutral — keine Personennamen, keine Variante je Person (`gerichtNeutral`, lib/ernaehrung/neutral.ts).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -14,6 +15,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { sauberDatei, wendeAn, neueId, TAGE, MAHLZEITEN, type ErnaehrungFile, type Gericht, type Tag, type Mahlzeit, type Op, PROFIL_DISKRET } from '@/lib/ernaehrung/modell';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
+import { namenFuer, gerichtNeutral, ohneNamen } from '@/lib/ernaehrung/neutral';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
     profile.length ? 'PROFILE (Unverträgliches und „Nie“ sind absolut):\n' + profile.map(p => `• ${p.name || p.person}: ${[p.bedarf, p.unvertraeglich.length ? `verträgt nicht ${p.unvertraeglich.join(', ')}` : '', p.nie.length ? `nie ${p.nie.join(', ')}` : '', p.gern.length ? `gern ${p.gern.join(', ')}` : ''].filter(Boolean).join('; ')}`).join('\n') : '',
     f.lebensmittel.filter(l => l.bevorzugt).length ? `BEVORZUGT: ${f.lebensmittel.filter(l => l.bevorzugt).map(l => (l.hinweis ? `${l.name} (${l.hinweis})` : l.name)).join('; ')}` : '',
     PROFIL_DISKRET,
-    'Antworte NUR als JSON: {"name":"…","zutaten":[{"name":"…","menge":"…"}],"zubereitung":["Schritt 1","…"],"dauerMin":25,"portionen":2,"fuer":["…"],"tags":["…"]} — Zutaten mit Mengen für alle zusammen, 3–8 Schritte, kein Vorwort.',
+    'Antworte NUR als JSON: {"name":"…","zutaten":[{"name":"…","menge":"…"}],"zubereitung":["Schritt 1","…"],"dauerMin":25,"portionen":2,"fuer":["alle"],"tags":["…"]} — Zutaten mit Mengen für alle zusammen, 3–8 Schritte, kein Vorwort.',
   ].filter(Boolean).join('\n');
 
   const text = String(body.text ?? '').slice(0, 6000).trim();
@@ -51,7 +53,10 @@ export async function POST(req: Request) {
   if (!r.ok || !r.data?.zutaten) return NextResponse.json({ error: r.error ?? 'Kein Rezept erhalten.' }, { status: 200 });
 
   const jetzt = new Date().toISOString();
-  const gericht = sauberDatei({ gerichte: [{ ...r.data, name: r.data.name || name, id: neueId('g'), quelle: 'zoe', angelegt: jetzt } as Gericht] }, jetzt).gerichte[0];
+  const roh = sauberDatei({ gerichte: [{ ...r.data, name: r.data.name || name, id: neueId('g'), quelle: 'zoe', angelegt: jetzt } as Gericht] }, jetzt).gerichte[0];
+  // Personenneutral (08.10.): Namen aller Profile fallen aus Name, Zutaten, Schritten und Tags; `fuer` = alle, für die gekocht wird.
+  const verboten = namenFuer(f.profile);
+  const gericht = roh ? gerichtNeutral(roh, verboten, profile.map(p => p.name || p.person), ohneNamen(name, verboten) || 'Gericht') : null;
   if (!gericht) return NextResponse.json({ error: 'Rezept unbrauchbar.' }, { status: 200 });
 
   const ops: Op[] = [{ liste: 'gerichte', op: 'upsert', eintrag: gericht as unknown as Record<string, unknown> }];
