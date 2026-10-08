@@ -145,6 +145,28 @@ describe('Routen: Heads und CRM-Routen nur mit Person im Haushalt (K1, Regel 5)'
     const ev = await import('@/app/api/heads/eval/route');
     expect((await ev.GET(anfrage('/api/heads/eval?head=sales', sitzung('fremd')))).status).toBe(403);
   });
+  // Begründete Änderung (08.10., Markttraktion Sofort-Paket 6.1): Der Takt ruft die Heads als Systemlauf OHNE Person (Dienstweg) — bis
+  // hierher war das 403, und Wochen-, Lead-, Kundenreview, alle Marketing- und Event-Läufe liefen nie (still pausiert). Jetzt trägt die
+  // Route GENAU diesen einen Weg (`imHaushaltOderSystemlauf`): `lauf` + `ausgeloest: 'takt'` + ein Modus ohne Person. Alles andere ohne
+  // Person bleibt 403 (oben: `daten`), ebenso jeder fremde Haushalt, Testkunde und Dienstweg im Auftrag einer fremden Person.
+  it('Heads POST: nur der Takt-Lauf ohne Person geht (6.1) — alles andere ohne Person und jeder Fremde bleibt 403', async () => {
+    const heads = await import('@/app/api/heads/[head]/route');
+    const p = (head = 'marketing') => ({ params: Promise.resolve({ head }) });
+    const lauf = { aktion: 'lauf', modus: 'netzwerk', ausgeloest: 'takt' };
+    const r = await heads.POST(anfrage('/api/heads/marketing', dienst(), 'POST', lauf), p());
+    expect(r.status).toBe(200);
+    const d = await r.json() as { ok: boolean; bericht?: { person?: string } };
+    expect(d.ok).toBe(true);
+    expect(d.bericht?.person).toBeUndefined(); // kein Rückfall auf ein Kürzel (Regel 5)
+    for (const body of [{ ...lauf, ausgeloest: 'hand' }, { ...lauf, ausgeloest: 'zoe' }, { aktion: 'lauf', modus: 'frage', frage: 'x', ausgeloest: 'takt' }, { aktion: 'entscheiden', id: 'x', status: 'abgelehnt' }, { aktion: 'merken', text: 'x' }, { aktion: 'autonomie', an: false }]) {
+      expect((await heads.POST(anfrage('/api/heads/marketing', dienst(), 'POST', body), p())).status, JSON.stringify(body)).toBe(403);
+    }
+    // Power Hour braucht immer eine Person (ihre Karten).
+    expect((await heads.POST(anfrage('/api/heads/sales', dienst(), 'POST', { aktion: 'lauf', modus: 'power_hour', ausgeloest: 'takt' }), p('sales'))).status).toBe(403);
+    for (const kopf of [sitzung('fremd'), sitzung('ohne'), dienst('fremd'), dienst('ohne'), dienst('niemand')]) {
+      expect((await heads.POST(anfrage('/api/heads/marketing', kopf, 'POST', lauf), p())).status).toBe(403);
+    }
+  });
   it('deal, followup, kampagnen, netzwerk, bestand: Dienstweg ohne Person → 403, nichts geschrieben', async () => {
     const vorher = JSON.stringify([await db.loadJson('kontakte'), await db.loadJson('crm')]);
     const deal = await import('@/app/api/crm/deal/route');

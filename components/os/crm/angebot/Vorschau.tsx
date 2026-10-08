@@ -9,6 +9,7 @@
 // Mail-Programm — „PDF anhängen und abschicken“. Vorher die Kanal-Ampel: rot durch
 // Werbesperre/Einschränkung sperrt mit Grund, gelb ist ein Hinweis.
 
+import Link from 'next/link';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Knopf, feld, useBreit } from '../../ui';
 import { Blatt } from './Blatt';
@@ -18,9 +19,9 @@ export const NUMMER_PLATZHALTER = '{Nummer}';
 
 export interface MailEntwurf { an: string; betreff: string; text: string }
 
-export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, nachfassen, setNachfassen, onZurueck, onSenden, meldung }: {
+export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, absenderWeg, nachfassen, setNachfassen, onZurueck, onSenden, meldung }: {
   dok: AngebotDokument; logoUrl?: string | null; mail: MailEntwurf; setMail: (m: MailEntwurf) => void;
-  ampel: { sperre?: string; hinweise: string[] }; luecken: string[]; nachfassen: string; setNachfassen: (t: string) => void;
+  ampel: { sperre?: string; hinweise: string[] }; luecken: string[]; /** Unternehmen › Gesellschaft › Absender (08.10.) — dort werden die Lücken ergänzt. */ absenderWeg?: string | null; nachfassen: string; setNachfassen: (t: string) => void;
   onZurueck: () => void; onSenden: () => Promise<void>; meldung?: string | null;
 }) {
   const breit = useBreit();
@@ -47,7 +48,7 @@ export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, nachfass
           <Karte i={1} akzent={gesperrt ? LEUCHT.kritisch : LEUCHT.achtung}>
             <div style={{ display: 'grid', gap: 6, fontSize: TYP.bedien, lineHeight: 1.5 }}>
               {ampel.sperre && <div style={{ color: LEUCHT.kritisch, fontWeight: 700 }}>Gesperrt: {ampel.sperre} — an diese Person geht kein Angebot hinaus.</div>}
-              {absenderFehlt && <div style={{ color: LEUCHT.kritisch }}>Absender unvollständig: {luecken.filter(x => x === 'Firmierung' || x === 'Anschrift').join(', ')} — Stammdaten › Gesellschaften.</div>}
+              {absenderFehlt && <div style={{ color: LEUCHT.kritisch }}>Absender unvollständig: {luecken.filter(x => x === 'Firmierung' || x === 'Anschrift').join(', ')} — {absenderWeg ? <Link href={absenderWeg} style={{ color: LEUCHT.kritisch, fontWeight: 700 }}>unter Unternehmen › Absender ergänzen ›</Link> : 'unter Unternehmen › Absender ergänzen.'}</div>}
               {ampel.hinweise.map((h, i) => <div key={i} style={{ color: LEUCHT.achtung }}>{h}</div>)}
               {luecken.filter(x => x !== 'Firmierung' && x !== 'Anschrift').length > 0 && <div style={{ color: C.inkDim }}>Absender: es fehlt {luecken.filter(x => x !== 'Firmierung' && x !== 'Anschrift').join(', ')}.</div>}
             </div>

@@ -63,6 +63,41 @@ export function fehltBisSql(k: Kriterien): string[] {
   return f;
 }
 
+// ── Kalt oder nicht (08.10., Markttraktion Sofort-Paket 1.1/1.2) — EINE Regel für Leads-Liste, Runde, ZOE ──────────────
+// Kevin 27.09.: kalte Leads leben im Marketing-Segment „Vernetzen“, bis sie warm werden. Aber: ein frisch angelegter Kontakt hat beim
+// Standard-Scoring nur 1–5 Punkte und galt damit sofort als kalt — man legte an und fand den Lead nicht wieder (auch Visitenkarten vom
+// Netzwerken, Status „kontaktiert“). Deshalb zählen nie als kalt: SQL, Kunde, ein Deal, ein von Hand GESETZTER aktiver Status
+// (kontaktiert, im Gespräch, Qualifizierung) und ein Lead, dessen Person in den letzten 14 Tagen angelegt wurde.
+
+/** So lange gilt eine neu angelegte Person als „frisch“ (nie kalt). */
+export const FRISCH_TAGE = 14;
+/**
+ * Wurde diese Person in den letzten `FRISCH_TAGE` Tagen angelegt? `importiertAm` ist der Tag der Anlage (Kartei, Anfrage, Netzwerken,
+ * Make.One-Abend, Visitenkarte) — ABER auch der Tag eines Listen-Imports. Die Liste legt Personen ohne jede Aktivität an (`ausZeile`), jeder
+ * Anlege-Weg von Hand dagegen mit einem Vermerk („Von Hand angelegt“, „Per Visitenkarte …“, die Anfrage selbst). So bleiben frisch importierte
+ * Listen kalt (sonst stünden nach einem Import Hunderte Personen 14 Tage lang „In Arbeit“), von Hand Angelegtes ist sichtbar.
+ */
+export function frischAngelegt(k: Pick<Kontakt, 'importiertAm' | 'aktivitaeten'>, heute: string): boolean {
+  const tag = (k.importiertAm ?? '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tag) || !(k.aktivitaeten ?? []).length) return false;
+  const tage = Math.round((Date.parse(`${heute.slice(0, 10)}T12:00:00Z`) - Date.parse(`${tag}T12:00:00Z`)) / 864e5);
+  return tage >= 0 && tage <= FRISCH_TAGE;
+}
+/** Ein von Hand gesetzter aktiver Status (kontaktiert, im Gespräch, Qualifizierung) — wer ihn setzt, arbeitet daran. */
+export const aktivGesetzt = (z: Pick<LeadZeile, 'status' | 'gesetzt'>): boolean => z.gesetzt && !!LEAD_STATUS.find(s => s.id === z.status)?.aktiv;
+/** Kalt im Sinne der Listen: niedrige Temperatur UND nichts davon, was ihn trotzdem sichtbar hält (siehe oben). */
+export function istKalt(z: Pick<LeadZeile, 'score' | 'status' | 'deal' | 'gesetzt' | 'frisch'>): boolean {
+  if (z.score.temperatur !== 'kalt') return false;
+  if (z.status === 'sql' || z.status === 'kunde' || !!z.deal) return false;
+  return !aktivGesetzt(z) && !z.frisch;
+}
+/**
+ * „In Arbeit“ (Standardfilter der Leads-Liste): nicht kalt und ein aktiver Status — oder „Neu“ (08.10.: ein neuer Lead ist Arbeit, kein
+ * eigener Reiter, in dem er verschwindet). Kalte „Neu“ (Liste/Import) bleiben im Filter „Kalt“ bzw. im Segment „Vernetzen“.
+ */
+export const inArbeit = (z: Pick<LeadZeile, 'score' | 'status' | 'deal' | 'gesetzt' | 'frisch'>): boolean =>
+  !istKalt(z) && (z.status === 'neu' || !!LEAD_STATUS.find(s => s.id === z.status)?.aktiv);
+
 /** Abgeleiteter Status aus den Personen, solange niemand ihn gesetzt hat. */
 export function abgeleitet(personen: Kontakt[], offenerDeal: boolean): LeadStatus {
   if (personen.some(k => k.lebensphase === 'kunde' || k.stufe === 'gewonnen')) return 'kunde';
@@ -93,6 +128,11 @@ export interface LeadZeile {
   wiedervorlage?: string; grundArt?: string;
   /** Besitzer wurde nie gesetzt — in der Runde per Klick übernehmen. */
   ohneBesitzer: boolean;
+  /**
+   * Frisch angelegt (08.10., Markttraktion Sofort-Paket 1.1): eine Person dieses Leads wurde in den letzten `FRISCH_TAGE` Tagen
+   * angelegt (`frischAngelegt`) — so ein Lead zählt nie als kalt. Fehlt bei älteren Leads und bei von Hand gebauten Zeilen.
+   */
+  frisch?: true;
   /**
    * BEAN-Kundengruppe (28.09., H4, lib/crm/bean.ts): der Firma bzw. der Person — von Hand oder abgeleitet
    * aus Mandaten und Deals. Die Oberfläche rechnet sie mit der Dateiablage nach (`beanFuerLead`).
@@ -138,6 +178,7 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
       ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
       ohneBesitzer: personen.every(k => !k.besitzer),
+      ...(personen.some(k => frischAngelegt(k, heute)) ? { frisch: true as const } : {}),
       bean: firma ? beanFirma(firma, crm, personen).bean : beanVon(personen[0] ?? { id, firmaId: undefined }, crm).bean,
       ...(lead?.fit ? { fit: lead.fit } : {}), ...(lead?.notiz ? { notiz: lead.notiz } : {}), ...(lead?.grund ? { grund: lead.grund } : lead?.status === 'sql' && d && !offen && d.grund ? { grund: d.grund } : {}), ...(lead?.sqlAm ? { sqlAm: lead.sqlAm } : {}),
       ...(d ? { deal: { id: d.id, titel: d.titel, stufe: d.stufe, wert: Math.round(gesamtwert(d)), offen } } : {}),
@@ -235,7 +276,7 @@ export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile
   return zeilen
     .filter(z => brauchtQualifizierung(z, f.heute) || sqlEntscheidungOffen(z))
     .filter(z => (f.wer === 'alle' ? true : f.wer === 'ohne' ? z.ohneBesitzer : !z.ohneBesitzer && (z.besitzer === f.wer || z.besitzer === 'beide')))
-    .filter(z => f.auchKalt || z.score.temperatur !== 'kalt' || sqlEntscheidungOffen(z))
+    .filter(z => f.auchKalt || !istKalt(z) || sqlEntscheidungOffen(z))
     .filter(z => !f.kanal || z.kanal === f.kanal)
     .filter(z => !f.bean || z.bean === f.bean)
     .sort((a, b) => Number(sqlEntscheidungOffen(b)) - Number(sqlEntscheidungOffen(a)) || b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
@@ -243,8 +284,16 @@ export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile
 /** Warum „Parken“ und „Raus — Kein Fit“ nicht gehen (M8): der Lead ist schon SQL/Kunde oder hat einen offenen Deal — dann wird der Deal in der Deal-Akte geparkt oder verloren. Eine Regel für Server UND Oberfläche. */
 export const AUSSCHEIDEN_GESPERRT = 'Dieser Lead ist schon SQL oder hat einen offenen Deal — der Deal wird in der Deal-Akte geparkt oder verloren.';
 export const ausscheidenGesperrt = (z: Pick<LeadZeile, 'deal' | 'status'>): string | null => (z.deal?.offen || z.status === 'sql' || z.status === 'kunde' ? AUSSCHEIDEN_GESPERRT : null);
-/** Leads-Liste ohne die kalten (Kevin 27.09.: kalte leben nur im Marketing-Segment „Vernetzen“, bis sie warm werden). */
-export const nichtKalt = (z: Pick<LeadZeile, 'score' | 'status' | 'deal'>) => z.score.temperatur !== 'kalt' || z.status === 'sql' || z.status === 'kunde' || !!z.deal;
+/** Leads-Liste ohne die kalten (Kevin 27.09.: kalte leben nur im Marketing-Segment „Vernetzen“, bis sie warm werden) — Regel `istKalt`. */
+export const nichtKalt = (z: Pick<LeadZeile, 'score' | 'status' | 'deal'> & Partial<Pick<LeadZeile, 'gesetzt' | 'frisch'>>) => !istKalt({ gesetzt: false, ...z });
+/**
+ * Wie viele Leads die Runde gerade nur deshalb nicht zeigt, weil sie kalt sind (08.10.) — für den Hinweis „n kalte ausgeblendet — zeigen“,
+ * damit eine leere Runde nie „alle qualifiziert“ behauptet, wenn bloß kalte fehlen. Mit `auchKalt` immer 0.
+ */
+export function kalteAusgeblendet(zeilen: LeadZeile[], f: RundenFilter): number {
+  if (f.auchKalt) return 0;
+  return zuQualifizieren(zeilen, { ...f, auchKalt: true }).length - zuQualifizieren(zeilen, f).length;
+}
 /**
  * SQL-bereit nach den Scoring-Einstellungen (Sales-Schwelle und Muss-Kriterien erreicht) — die eine Rechnung für Leads-Liste,
  * Runde, Heads, ZOE und den SQL-Weg. Ohne Scoring-Ergebnis (von Hand gebaute Zeile): die alte Regel `sqlBereit`.

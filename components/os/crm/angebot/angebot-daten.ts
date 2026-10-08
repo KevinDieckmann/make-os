@@ -9,6 +9,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Angebot } from '@/lib/crm/typen';
 import type { Gesellschaft } from '@/lib/crm/gesellschaften';
+import { istGesellschaft } from '@/lib/crm/angebote';
+import type { Gesellschaftskennung } from '@/lib/einheiten';
 
 export type AngebotMitStand = Angebot & { stand: string };
 export type GesellschaftAnzeige = Gesellschaft & { stand: string; luecken: string[] };
@@ -29,6 +31,8 @@ export function useAngebote() {
   /** Entwürfe im Papierkorb (04.10.) — die Liste `angebote` enthält sie nicht. */
   const [papierkorb, setPapierkorb] = useState<AngebotMitStand[]>([]);
   const [gesellschaften, setGesellschaften] = useState<GesellschaftAnzeige[]>([]);
+  /** Vorgabe für den Absender (08.10.): die operative Business-Gesellschaft aus dem Register — null = nicht eindeutig, bitte wählen. */
+  const [vorgabe, setVorgabe] = useState<Gesellschaftskennung | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [gesperrt, setGesperrt] = useState(false);
   const laeuft = useRef(false);
@@ -38,8 +42,8 @@ export function useAngebote() {
     try {
       const r = await fetch('/api/crm/angebot', { cache: 'no-store' });
       if (r.status === 403) { setGesperrt(true); setAngebote([]); return; }
-      const d = await r.json().catch(() => null) as { ok?: boolean; angebote?: AngebotMitStand[]; papierkorb?: AngebotMitStand[]; gesellschaften?: GesellschaftAnzeige[]; fehler?: string } | null;
-      if (d?.ok) { setAngebote(d.angebote ?? []); setPapierkorb(d.papierkorb ?? []); setGesellschaften(d.gesellschaften ?? []); setFehler(null); }
+      const d = await r.json().catch(() => null) as { ok?: boolean; angebote?: AngebotMitStand[]; papierkorb?: AngebotMitStand[]; gesellschaften?: GesellschaftAnzeige[]; vorgabe?: string | null; fehler?: string } | null;
+      if (d?.ok) { setAngebote(d.angebote ?? []); setPapierkorb(d.papierkorb ?? []); setGesellschaften(d.gesellschaften ?? []); setVorgabe(istGesellschaft(d.vorgabe) ? d.vorgabe : null); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
     finally { laeuft.current = false; }
@@ -48,7 +52,7 @@ export function useAngebote() {
   /** Ein Angebot aus einer Server-Antwort in die Liste übernehmen. */
   const uebernehmen = useCallback((a: AngebotMitStand) => setAngebote(alt => (alt ? (alt.some(x => x.id === a.id) ? alt.map(x => (x.id === a.id ? a : x)) : [...alt, a]) : [a])), []);
   const entfernen = useCallback((id: string) => setAngebote(alt => (alt ? alt.filter(x => x.id !== id) : alt)), []);
-  return { angebote, papierkorb, gesellschaften, fehler, gesperrt, laden, uebernehmen, entfernen, setFehler };
+  return { angebote, papierkorb, gesellschaften, vorgabe, fehler, gesperrt, laden, uebernehmen, entfernen, setFehler };
 }
 export type AngebotDaten = ReturnType<typeof useAngebote>;
 

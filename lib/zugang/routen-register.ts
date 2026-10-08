@@ -201,7 +201,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'loop/verbesserung': r('POST', 'inhaber', 'Verbesserungs-Loop (Software) — Inhaber bzw. Systemlauf.'),
   'tageslauf': r('GET,POST', 'haushalt', 'Tageslauf: Auslösen im Haushalt bzw. als Systemlauf (rechnet dann als Inhaber); Läufe je Person (seit 08.10. spät) — GET nur die eigenen; Post liest der Lauf nur für die eigene Person (Inbox 2).'),
   'tagesstart': r('GET,POST', 'haushalt', 'Tagesstart des Haushalts; Systemlauf erlaubt.'),
-  'heads/[head]': r('GET,POST', 'haushalt', 'Heads (Agenten-Leitungen) des Haushalts.'),
+  'heads/[head]': r('GET,POST', 'haushalt', 'Heads (Agenten-Leitungen) des Haushalts. POST trägt den Systemlauf des Takts (Dienstweg ohne Person, `imHaushaltOderSystemlauf`) — nur `lauf` mit `ausgeloest: takt` und einem Modus ohne Person (08.10., Sofort-Paket 6.1); alles andere braucht eine Person im Haushalt.'),
   'heads/eval': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Bewertung der Heads: ansehen im Haushalt, auslösen nur Inhaber.'),
   'state/agent-log': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Agenten-Läufe (Ergebnisse mit Inhalten) — lesen im Haushalt nur eigene + Systemläufe (08.10.), schreiben Inhaber/Systemlauf.'),
   'state/agents': rm({ GET: 'haushalt', PUT: 'inhaber' }, 'Agenten-Schalter: ansehen im Haushalt, ändern nur Inhaber.'),

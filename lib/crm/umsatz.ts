@@ -18,7 +18,8 @@ import { angebotSummen } from './angebote';
 import type { DateiEintrag, AngebotStatus } from '@/lib/dateien/regeln';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { rechnungPasst, mrr } from './kunden';
-import { einheitAusGesellschaft } from '@/lib/einheiten';
+import { einheitAusGesellschaft, finanzFirmaFuer, gesellschaftAusEinheit, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
+import { bruttoAusNetto } from '@/lib/finanzen/ust';
 import { istPrivatPosten } from '@/lib/make-one/liquiditaet';
 import { firmenGruppe } from './konzern';
 
@@ -240,4 +241,46 @@ export function angeboteListe(b: UmsatzBezug, ablage: DateiEintrag[], tool: read
 /** Die Kennungen, mit denen die Ablage für diesen Kontakt gefiltert wird. */
 export function ablageFilter(k: { id: string; firmaId?: string }, b: UmsatzBezug) {
   return { kontaktId: k.id, ...(b.firma ? { firmaId: b.firma.id } : {}), mandatIds: b.mandate.map(m => m.id), dealIds: b.deals.map(c => c.id), rechnungIds: b.rechnungen.map(z => z.r.id) };
+}
+
+// ── „+ Rechnung“ im Kontakt › Umsatz (08.10., Markttraktion Sofort-Paket 3.2/3.9) ─────────────────────────────────────────
+// Vorher: das Netto-Honorar des Mandats stand als Brutto im Feld (19 % zu wenig), Vorgabe „gestellt“ ohne Nummer, die Gesellschaft fiel
+// auf die erste Firma bzw. `kdc` (die Selbstständigkeit, gehört zu Privat). Jetzt wie der Weg aus dem Mandat (Kunden.tsx): Brutto über
+// `bruttoAusNetto`, Gesellschaft über `finanzFirmaFuer` (Register-Gesellschaft → `nurGrunddaten`), Vorgabe „geplant“ (gestellt wird erst
+// mit Nummer). Ohne Mandat bzw. bei Mandat „offen“: die operative Business-Gesellschaft aus dem Register (`vorgabe`), sonst keine — wählen.
+
+/** Gesellschaft (Konto im Finanzplan) für eine Rechnung zum Mandat — `null` = wählen bzw. Register-Gesellschaft (`nurGrunddaten`). */
+export function rechnungsFirma(m: Pick<Mandat, 'gesellschaft'> | undefined, vorgabe: Gesellschaftskennung | null): { firmaId: Gesellschaftskennung | null; nurGrunddaten: boolean } {
+  const g = m?.gesellschaft;
+  if (istRegisterKennung(g)) return { firmaId: finanzFirmaFuer(g), nurGrunddaten: true };
+  // Feste Gesellschaft (auch Altnamen) → sie selbst; „offen“/unbekannt → die Vorgabe, nie still die Selbstständigkeit.
+  const fest = gesellschaftAusEinheit(g);
+  return { firmaId: fest ? finanzFirmaFuer(fest) : vorgabe, nurGrunddaten: false };
+}
+
+export interface RechnungVorbelegung {
+  titel: string; betrag: string; mandatId: string | null; firmaId: Gesellschaftskennung | null; status: 'geplant';
+  /** Register-Gesellschaft am Mandat: im Finanzplan noch nicht geführt (`NUR_GRUNDDATEN`). */
+  nurGrunddaten: boolean;
+}
+/** Vorbelegung des Formulars „+ Rechnung“ aus dem Mandat (oder ohne). Der Betrag ist BRUTTO (das Feld heißt so). */
+export function rechnungVorbelegung(m: Pick<Mandat, 'id' | 'titel' | 'honorar' | 'ustSatz' | 'gesellschaft'> | undefined, vorgabe: Gesellschaftskennung | null): RechnungVorbelegung {
+  const f = rechnungsFirma(m, vorgabe);
+  const brutto = !m?.honorar.betrag ? null : m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
+  return { titel: m?.titel ?? '', betrag: brutto == null ? '' : String(brutto), mandatId: m?.id ?? null, firmaId: f.firmaId, status: 'geplant', nurGrunddaten: f.nurGrunddaten };
+}
+/**
+ * Der Eintrag für den Finanzplan aus dem Formular. Mit Mandat geht dessen USt-Satz mit; Netto nur, wenn der Betrag noch genau der aus dem
+ * Netto-Honorar gerechnete ist — hat jemand von Hand ein anderes Brutto eingetragen, gilt nur das Brutto (kein Widerspruch zwischen den Feldern).
+ */
+export function rechnungAusFormular(f: { titel: string; betrag: string; nummer?: string; datum?: string; faellig?: string; status: 'gestellt' | 'geplant'; mandatId: string | null; firmaId: string },
+  m: Pick<Mandat, 'honorar' | 'ustSatz'> | undefined, o: { id: string; kunde: string }): Record<string, unknown> {
+  const roh = Number(f.betrag.trim().replace(',', '.'));
+  const brutto = Number.isFinite(roh) ? Math.round(roh * 100) / 100 : 0;
+  const ausNetto = !!m?.honorar.netto && !!m.honorar.betrag && brutto === bruttoAusNetto(m.honorar.betrag, m.ustSatz);
+  return {
+    id: o.id, firmaId: f.firmaId, kunde: o.kunde, titel: f.titel.trim() || 'Rechnung', betrag: brutto, status: f.status,
+    ...(f.nummer?.trim() ? { nummer: f.nummer.trim() } : {}), ...(f.datum ? { datum: f.datum } : {}), ...(f.faellig ? { faellig: f.faellig } : {}), ...(f.mandatId ? { mandatId: f.mandatId } : {}),
+    ...(m ? { ustSatz: m.ustSatz } : {}), ...(ausNetto ? { netto: m!.honorar.betrag } : {}),
+  };
 }

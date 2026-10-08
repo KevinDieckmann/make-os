@@ -85,8 +85,10 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   const speichern = async (e: Entwurf) => {
     const kriterien = kriterienSauber(e.kriterien);
     // Neu anlegen als ganzer Eintrag; ein bestehendes Segment nur in diesen Feldern ändern (Einzeländerung, null löscht die Beschreibung).
-    if (e.neu) await api.setze('segmente', { id: e.id, name: e.name.trim(), ...(e.beschreibung.trim() ? { beschreibung: e.beschreibung.trim() } : {}), kriterien });
-    else await api.teil('segmente', e.id, { name: e.name.trim(), beschreibung: e.beschreibung.trim() || null, kriterien });
+    const ok = e.neu ? await api.setze('segmente', { id: e.id, name: e.name.trim(), ...(e.beschreibung.trim() ? { beschreibung: e.beschreibung.trim() } : {}), kriterien })
+      : await api.teil('segmente', e.id, { name: e.name.trim(), beschreibung: e.beschreibung.trim() || null, kriterien });
+    // Nur gespeichert melden, was der Server angenommen hat (08.10., Sofort-Paket 5.11) — sonst bleibt der Entwurf offen, die Meldung steht im Kopf.
+    if (!ok) { setMeldung(`„${e.name.trim()}“ ist NICHT gespeichert — der Grund steht oben, der Entwurf bleibt offen.`); return; }
     setMeldung(`„${e.name.trim()}“ gespeichert.`);
     setEntwurf({ ...e, name: e.name.trim(), beschreibung: e.beschreibung.trim(), kriterien, neu: false });
   };
@@ -137,7 +139,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
             {vorlagen.map(({ v, anzahl }) => {
               return (
                 <Zeile key={v.name} titel={v.name} unter={`${kriterienText(v.kriterien)} · heute ${anzahl} Personen`}
-                  rechts={<Knopf leise onClick={async () => { const s = vorlageAlsSegment(v, neueId('sg'), new Date().toISOString()); await api.setze('segmente', s as unknown as { id: string } & Record<string, unknown>); setMeldung(`Vorlage „${v.name}“ übernommen.`); }}>Vorlage übernehmen</Knopf>} />
+                  rechts={<Knopf leise onClick={async () => { const s = vorlageAlsSegment(v, neueId('sg'), new Date().toISOString()); const ok = await api.setze('segmente', s as unknown as { id: string } & Record<string, unknown>); setMeldung(ok ? `Vorlage „${v.name}“ übernommen.` : `Vorlage „${v.name}“ NICHT übernommen — der Grund steht oben.`); }}>Vorlage übernehmen</Knopf>} />
               );
             })}
           </Liste>

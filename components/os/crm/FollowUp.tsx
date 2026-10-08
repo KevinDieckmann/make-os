@@ -45,31 +45,43 @@ const QUELLE_LABEL: Record<string, string> = {
 };
 const ART_LABEL = Object.fromEntries(FOLLOWUP_ARTEN.map(a => [a.id, a.label])) as Record<FollowUpArt, string>;
 
+/** Antwort einer Follow-up-Aktion — `ok: false` mit Text, wenn nichts gespeichert wurde. */
+export type FollowupAntwort = { ok: boolean; fehler?: string; hinweis?: string; text?: string };
+
 export function useFollowups() {
   const [d, setD] = useState<Antwort | null>(null);
-  const [fehler, setFehler] = useState<string | null>(null);
+  // Zwei Fehler getrennt (08.10., Sofort-Paket 4.2): der Fehler einer AKTION bleibt stehen, bis die nächste Aktion gelingt — vorher
+  // löschte das sofort folgende Neuladen (auch bei 304) ihn nach Sekundenbruchteilen. Der Ladefehler gilt nur bis zum nächsten Laden.
+  const [ladeFehler, setLadeFehler] = useState<string | null>(null);
+  const [aktionFehler, setAktionFehler] = useState<string | null>(null);
   const staende = useRef(new Map<string, string>());
   const laden = useCallback(async () => {
-    try { const r = await holeMitStand<Antwort>('/api/crm/followup', staende.current); if (r?.ok) setD(r); setFehler(null); }
-    catch { setFehler('Follow-ups nicht erreichbar.'); }
+    try { const r = await holeMitStand<Antwort>('/api/crm/followup', staende.current); if (r?.ok) setD(r); setLadeFehler(null); }
+    catch { setLadeFehler('Follow-ups nicht erreichbar.'); }
   }, []);
   useEffect(() => { void laden(); }, [laden]);
   useAbgleich(laden, { alle: 20_000 });
-  const aktion = useCallback(async (body: Record<string, unknown>) => {
-    const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    if (!r.ok) setFehler(r.fehler ?? 'Nicht gespeichert.');
+  const aktion = useCallback(async (body: Record<string, unknown>): Promise<FollowupAntwort> => {
+    const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts gespeichert.' })) as FollowupAntwort;
+    if (!r?.ok) { setAktionFehler(r?.fehler ?? 'Nicht gespeichert.'); return { ok: false, fehler: r?.fehler ?? 'Nicht gespeichert.' }; }
+    setAktionFehler(null);
     staende.current.clear();
     void laden();
-    return r as { ok: boolean; fehler?: string; hinweis?: string; text?: string };
+    return r;
   }, [laden]);
-  return { d, fehler, laden, aktion };
+  return { d, fehler: aktionFehler ?? ladeFehler, laden, aktion, fehlerWeg: () => setAktionFehler(null) };
+}
+
+/** Fehler direkt am Formular — die Eingabe bleibt stehen (4.2). */
+function FormFehler({ text }: { text: string | null }) {
+  return text ? <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{text} — die Eingabe bleibt stehen.</div> : null;
 }
 
 /** „Event öffnen“: ein besuchtes Event führt in die Event-Akte, ein Make.One-Abend in Make.One (M10). */
 const eventHrefVon = (api: CrmApi) => (id: string) => eventLink(api.crm?.stand.events.find(e => e.id === id) ?? { id });
 
 export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: CrmApi; ansicht: FollowupAnsicht; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void }) {
-  const { d, fehler, laden, aktion } = useFollowups();
+  const { d, fehler, laden, aktion, fehlerWeg } = useFollowups();
   const eventHref = useMemo(() => eventHrefVon(api), [api.crm]); // eslint-disable-line react-hooks/exhaustive-deps
   const [wahl, setWahl] = useWerFilter('followup');
   const [neu, setNeu] = useState(false);
@@ -92,10 +104,13 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
     if (ich) z.ich = z[ich] ?? 0;
     return z;
   }, [d, ich]);
-  const nachAktion = async (body: Record<string, unknown>) => {
+  /** Eine Aktion — die Antwort geht an den Aufrufer zurück: nur bei `ok` schließt ein Formular (4.2). */
+  const nachAktion = async (body: Record<string, unknown>): Promise<FollowupAntwort> => {
     const r = await aktion(body);
+    if (!r.ok) return r;
     if (r.hinweis) setHinweis(r.hinweis); else if (r.text) setHinweis(r.text);
     void api.laden();
+    return r;
   };
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt …</Leer>}</Karte>;
 
@@ -112,8 +127,8 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Reviews und Kadenz — an einer Stelle. Erledigt schreibt eine Aktivität an die Person.</span>
         </div>
         {hinweis && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>{hinweis} <button onClick={() => setHinweis(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
-        {fehler && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
-        {neu && <NeuesFollowUp api={api} onFertig={async body => { await nachAktion({ aktion: 'anlegen', ...body }); setNeu(false); }} onAbbruch={() => setNeu(false)} />}
+        {fehler && <div role="alert" style={{ marginTop: 8, fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler} <button onClick={fehlerWeg} aria-label="Meldung schließen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>}
+        {neu && <NeuesFollowUp api={api} onFertig={async body => { const r = await nachAktion({ aktion: 'anlegen', ...body }); if (r.ok) setNeu(false); return r; }} onAbbruch={() => setNeu(false)} />}
       </Karte>
 
       {ansicht === 'faellig' && GRUPPEN.map((g, i) => {
@@ -146,7 +161,7 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
   );
 }
 
-function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [], eventHref }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void>; eigene?: { wert: string; label: string }[]; /** Wohin „Event öffnen“ führt (besuchtes Event → Event-Akte, Make.One → Make.One) — der Aufrufer kennt die Events. */ eventHref?: (id: string) => string }) {
+function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [], eventHref }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort>; eigene?: { wert: string; label: string }[]; /** Wohin „Event öffnen“ führt (besuchtes Event → Event-Akte, Make.One → Make.One) — der Aufrufer kennt die Events. */ eventHref?: (id: string) => string }) {
   const router = useRouter();
   const [offen, setOffen] = useState(false);
   const [erledigen, setErledigen] = useState(false);
@@ -175,7 +190,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}
           </div>
           {f.verschoben ? <div style={{ fontSize: TYP.bedien, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
-          {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { await aktion({ aktion: 'erledigen', id: f.id, ...b }); setErledigen(false); setOffen(false); }} onAbbruch={() => setErledigen(false)} />}
+          {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { const r = await aktion({ aktion: 'erledigen', id: f.id, ...b }); if (r.ok) { setErledigen(false); setOffen(false); } return r; }} onAbbruch={() => setErledigen(false)} />}
         </div>
       )}
       {dialog}
@@ -184,8 +199,9 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
 }
 
 /** Erledigen: Ergebnis (setzt Stufe/Wiedervorlage per Regel), kurze Notiz, und — Pflichtfrage — was als Nächstes passiert. */
-function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<void>; onAbbruch: () => void; /** Eigene Gesprächsergebnisse aus den Stammdaten (Wertelisten). */ eigene?: { wert: string; label: string }[] }) {
+function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<FollowupAntwort>; onAbbruch: () => void; /** Eigene Gesprächsergebnisse aus den Stammdaten (Wertelisten). */ eigene?: { wert: string; label: string }[] }) {
   const [ergebnis, setErgebnis] = useState<string | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
   const [notiz, setNotiz] = useState('');
   // Vorgabe wie in der Pipeline: Deals in drei Tagen weiter, alles andere in einer Woche.
   const [naechster, setNaechster] = useState<{ text: string; faellig: string; art: FollowUpArt }>({ text: '', faellig: plusTage(heute, f.bezug.art === 'chance' ? 3 : 7), art: f.art });
@@ -212,16 +228,18 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
           </div>
         </div>
       </Feldzeile>
+      <FormFehler text={fehler} />
       <div style={{ display: 'flex', gap: 8 }}>
-        <Knopf farbe={LEUCHT.gut} aus={!bereit} onClick={() => bereit && void onFertig({ ...(ergebnis ? { ergebnis } : {}), ...(notiz.trim() ? { notiz: notiz.trim() } : {}), ...(kein ? {} : { naechster }) })}>Erledigt</Knopf>
+        <Knopf farbe={LEUCHT.gut} aus={!bereit} onClick={async () => { if (!bereit) return; const r = await onFertig({ ...(ergebnis ? { ergebnis } : {}), ...(notiz.trim() ? { notiz: notiz.trim() } : {}), ...(kein ? {} : { naechster }) }); setFehler(r.ok ? null : r.fehler ?? 'Nicht gespeichert.'); }}>Erledigt</Knopf>
         <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
       </div>
     </div>
   );
 }
 
-function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b: Record<string, unknown>) => Promise<void>; onAbbruch: () => void }) {
+function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b: Record<string, unknown>) => Promise<FollowupAntwort>; onAbbruch: () => void }) {
   const heute = api.crm?.heute ?? localDay();
+  const [fehler, setFehler] = useState<string | null>(null);
   const [suche, setSuche] = useState('');
   const [kontaktId, setKontaktId] = useState<string | null>(null);
   const [art, setArt] = useState<FollowUpArt>('anruf');
@@ -251,8 +269,9 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
         </div>
       </Feldzeile>
       <Feldzeile label="Zuständig"><ZustaendigWahl wert={zustaendig} welt="sales" onWahl={setZustaendig} /></Feldzeile>
+      <FormFehler text={fehler} />
       <div style={{ display: 'flex', gap: 8 }}>
-        <Knopf aus={!bereit} onClick={() => bereit && void onFertig({ kontaktId, bezug: { art: 'kontakt', id: kontaktId }, art, text: text.trim(), faellig, ...(uhrzeit ? { uhrzeit } : {}), ...(zustaendig ? { zustaendig } : {}) })}>Anlegen</Knopf>
+        <Knopf aus={!bereit} onClick={async () => { if (!bereit) return; const r = await onFertig({ kontaktId, bezug: { art: 'kontakt', id: kontaktId }, art, text: text.trim(), faellig, ...(uhrzeit ? { uhrzeit } : {}), ...(zustaendig ? { zustaendig } : {}) }); setFehler(r.ok ? null : r.fehler ?? 'Nicht gespeichert.'); }}>Anlegen</Knopf>
         <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
       </div>
     </div>
@@ -260,7 +279,7 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
 }
 
 const WT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion, eventHref }: { liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void>; eventHref: (id: string) => string }) {
+function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion, eventHref }: { liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort>; eventHref: (id: string) => string }) {
   // Montag der Woche von heute
   const d = new Date(`${heute}T12:00:00Z`);
   const mo = plusTage(heute, -((d.getUTCDay() + 6) % 7));
@@ -296,7 +315,7 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion, eventH
   );
 }
 
-function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void> }) {
+function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort> }) {
   const kontakte = api.kontakte ?? [];
   const takte = api.crm?.stand.wertelisten?.kadenzTage ?? {};
   const kreise = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ k, takt: takte[k] ?? KREIS_TAKT[k], n: kontakte.filter(x => x.kreis === k && !ausgenommen(x)).length, faellig: liste.filter(f => f.quelle === 'kadenz' && kontakte.find(x => x.id === f.kontaktId)?.kreis === k).length }));

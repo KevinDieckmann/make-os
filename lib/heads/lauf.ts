@@ -41,7 +41,16 @@ import { neueKennung } from '@/lib/kennung';
 export interface ReplayFall { zeit: string; modus: string; person: string; heute: string; quelle: 'ki' | 'regelwerk'; modell: string; daten: Record<string, unknown>; roh: Antwort }
 export interface ReplayStand { faelle: ReplayFall[] }
 
-export interface HeadAuftrag { head: HeadId; modus: string; person: string; frage?: string; ausgeloest: HeadBericht['ausgeloest'] }
+/**
+ * `person` = für wen der Lauf arbeitet. `null` = Systemlauf des Takts (08.10., Sofort-Paket 6.1): Wochen-, Lead- und Kundenreview,
+ * Marketing- und Event-Läufe gehören keiner Person — vorher bekamen sie ohne Person 403 und liefen nie. Ohne Person gibt es KEINEN
+ * Rückfall auf ein Kürzel (Regel 5): das Paket zeigt die Karten aller, Termine nur maskiert, „fuer“ rechnet die Zuständigkeit je
+ * Vorschlag (bei „beide“ bleibt es „beide“), und selbst übernommen wird nur, was eine eindeutige zuständige Person hat.
+ * Power Hour und Fragen brauchen immer eine Person.
+ */
+export interface HeadAuftrag { head: HeadId; modus: string; person: string | null; frage?: string; ausgeloest: HeadBericht['ausgeloest'] }
+/** Modi, die nur MIT Person laufen (ihre Karten, ihr Gespräch). */
+export const NUR_MIT_PERSON = new Set(['power_hour', 'frage']);
 /** Modi, die das Regelwerk allein trägt (kein Modell nötig). */
 const NUR_REGELWERK = new Set(['netzwerk']);
 
@@ -61,10 +70,11 @@ export function pflichtZurueck(ki: Antwort, grund: Vorschlag[], max = 6): Vorsch
 
 export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   if (!MODI[a.head].some(m => m.id === a.modus)) return { ok: false, fehler: `Unbekannter Modus ${a.modus}.` };
+  if (!a.person && (a.ausgeloest !== 'takt' || NUR_MIT_PERSON.has(a.modus))) return { ok: false, fehler: 'Ohne Person nur Takt-Läufe der Heads — Power Hour und Fragen brauchen eine Person.' };
   const start = Date.now();
   const jetzt = new Date().toISOString();
   const name = standName(a.head);
-  const r = riegel(a.modus, a.person);
+  const r = riegel(a.modus, a.person ?? '');
   const alt = { ...leererStand(), ...((await loadJson<HeadStand>(name)) ?? {}) };
   if (a.ausgeloest === 'takt') {
     const vorher = alt.letzte[r], versuch = alt.versuche[r];
@@ -80,7 +90,8 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   const heute = localDay();
   // K6a: Meetings mit Termin-Verweis tragen im Paket die Zeit ihres Termins (nie `am`) — nur fürs Paket, nie gespeichert.
   const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server');
-  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person), crm, heute, a.person, alt) as Record<string, unknown>;
+  // Systemlauf (ohne Person): Termin-Zeiten aus der Sicht von niemandem — jeder private Termin bleibt maskiert.
+  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person ?? ''), crm, heute, a.person, alt) as Record<string, unknown>;
 
   // Nichts zu tun → ohne Modell.
   const leer = a.head === 'sales' && a.modus === 'power_hour' ? !(daten.karten as unknown[]).length
@@ -158,7 +169,7 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     return { ...v, entwurf, fuer: v.fuer ?? fuerWen(v, a.head, nachId, crm, a.person), belege: b.belege, ...(q.maengel.length || b.insLeere.length ? { maengel: [...q.maengel, ...(q.entwurfUnbrauchbar ? ['Entwurf entfernt'] : []), ...(b.insLeere.length ? [`Quelle ins Leere: ${b.insLeere.join(', ')}`] : [])] } : { maengel: undefined }) };
   }).sort((x, y) => RANG[x.prioritaet] - RANG[y.prioritaet] || (x.frist ?? '9999').localeCompare(y.frist ?? '9999')) };
 
-  const bericht: HeadBericht = { id: neueKennung('hb'), zeit: jetzt, modus: a.modus, ausgeloest: a.ausgeloest, person: a.person, ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), antwort, pruefung: { ...pruefung!, korrigiert }, modell: art.quelle === 'ki' ? art.modell ?? agent.model : 'regelwerk', dauer_ms: Date.now() - start, ...(verbrauch.aufrufe ? { verbrauch } : {}), quelle: art.quelle, ...(art.ohneKiGrund ? { ohneKiGrund: art.ohneKiGrund } : {}) };
+  const bericht: HeadBericht = { id: neueKennung('hb'), zeit: jetzt, modus: a.modus, ausgeloest: a.ausgeloest, ...(a.person ? { person: a.person } : {}), ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), antwort, pruefung: { ...pruefung!, korrigiert }, modell: art.quelle === 'ki' ? art.modell ?? agent.model : 'regelwerk', dauer_ms: Date.now() - start, ...(verbrauch.aufrufe ? { verbrauch } : {}), quelle: art.quelle, ...(art.ohneKiGrund ? { ohneKiGrund: art.ohneKiGrund } : {}) };
   let neu = 0;
   await updateJson<HeadStand>(name, s => {
     const st = { ...leererStand(), ...(s ?? {}) };
@@ -167,7 +178,7 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     return { ...st, berichte: [...st.berichte, bericht].slice(-30), vorschlaege: m.liste, letzte: { ...st.letzte, [r]: jetzt } };
   });
   // Fall für Evals ablegen (nur .data, nie im Repo): Datenpaket + erste, ungeprüfte Antwort.
-  if (art.roh && a.modus !== 'frage') await updateJson<ReplayStand>(`heads-replay-${a.head}`, s => ({ faelle: [...(s?.faelle ?? []), { zeit: jetzt, modus: a.modus, person: a.person, heute, quelle: art.quelle, modell: bericht.modell, daten, roh: art.roh! }].slice(-25) }));
+  if (art.roh && a.modus !== 'frage') await updateJson<ReplayStand>(`heads-replay-${a.head}`, s => ({ faelle: [...(s?.faelle ?? []), { zeit: jetzt, modus: a.modus, person: a.person ?? 'system', heute, quelle: art.quelle, modell: bericht.modell, daten, roh: art.roh! }].slice(-25) }));
 
   // Interne Kleinigkeiten selbst (Kevin 25.09.) — nie bei ZOE-Fragen, nie wenn ausgeschaltet.
   const auto = a.ausgeloest === 'zoe' || OHNE_AUTO_MODI.has(a.modus) ? 0 : await autoUebernehmen(a.head, bericht.id, a.person, jetzt);
@@ -188,7 +199,7 @@ export function fehlerGrund(status: number, text: string): string {
 }
 
 /** Offene Vorschläge dieses Berichts, die intern bleiben, selbst übernehmen — mit Rücknahme-Angabe. */
-async function autoUebernehmen(head: HeadId, berichtId: string, person: string, jetzt: string): Promise<number> {
+async function autoUebernehmen(head: HeadId, berichtId: string, person: string | null, jetzt: string): Promise<number> {
   const name = standName(head);
   const st = { ...leererStand(), ...((await loadJson<HeadStand>(name)) ?? {}) };
   if (st.autonomie === 'aus') return 0;
@@ -210,7 +221,7 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
         const eintrag = { am: jetzt, art: 'system' as const, von: 'system', text: `Head: nächster Schritt „${p.v.titel.slice(0, 120)}“ bis ${p.v.frist} (automatisch, rücknehmbar)` };
         return { ...k, naechsterSchritt: { text: p.v.titel.slice(0, 300), datum: p.v.frist }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt) };
       }) };
-    }, { art: 'zoe', person });
+    }, person ? { art: 'zoe', person } : { art: 'system' });
   }
   const aufgaben = plan.filter(p => p.w === 'aufgabe');
   if (aufgaben.length) {
@@ -220,13 +231,15 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
     await systemAufgabenAendern(stand => {
       const neu: Record<string, unknown>[] = [];
       for (const { v } of aufgaben) {
+        // Systemlauf ohne Person (6.1): nur mit eindeutiger Zuständigkeit — sonst bleibt der Vorschlag zur Freigabe (nie ein Rückfall).
         const bearbeiter = !v.fuer || v.fuer === BEIDE ? person : v.fuer;
+        if (!bearbeiter) continue;
         const t = aufgabeAus(v, HEAD_NAME[head], AGENT_ID[head], bearbeiter, jetzt, einheitAusBezug(crm, { chanceId: v.chance_id, mandatId: v.mandat_id }));
         if (!stand.tasks.some(x => x.id === t.id) && !neu.some(x => x.id === t.id)) neu.push(t);
         erledigt.set(v.id, { am: jetzt, wirkung: `Aufgabe für ${bearbeiter.charAt(0).toUpperCase() + bearbeiter.slice(1)}`, rueckgaengig: { art: 'aufgabe', aufgabeId: String(t.id) } });
       }
       return { neu };
-    }, { person, wer: { art: 'system', person }, jetzt });
+    }, { person, wer: person ? { art: 'system', person } : { art: 'system' }, jetzt });
   }
   if (!erledigt.size) return 0;
   await updateJson<HeadStand>(name, s => {
