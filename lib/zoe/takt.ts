@@ -147,7 +147,10 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
       const { TEAM } = await import('@/lib/crm/team');
       const { ladeStand, chatsFuerPerson } = await import('@/lib/telegram');
       const [mitKonto, tg, riegel] = await Promise.all([alleSpeicher(), ladeStand(), loadJson<unknown>(RHYTHMUS_SPEICHER)]);
-      const personen = TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0);
+      // Business-frei (08.10., Lücke 7): wer gerade Business-frei ist, bekommt keine Markttraktion-Nachricht — sie kommt danach,
+      // solange ihr Zeitfenster am Tag noch offen ist.
+      const { nichtBusinessFrei } = await import('@/lib/arbeitsrahmen/server');
+      const personen = await nichtBusinessFrei(TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0), jetzt);
       const dran = faelligeRhythmen(rhythmusStand(riegel), personen, jetzt);
       if (dran.length) {
         raus.push({

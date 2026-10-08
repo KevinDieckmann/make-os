@@ -23,6 +23,8 @@
 //     die Dauer ändert nur das letzte Segment (`endeAmTag`) — vorher wurden sie auf einen Tag gekürzt.
 //   · #85 ab 4 Spalten „+n“ (Klick klappt den Tag auf) · #86 Markierung der doppelten/fehlenden Stunde (25.10./29.03.)
 //   · #89 Klickfläche mindestens 24 px hoch.
+// Seit 08.10. (Business-frei, Lücke 7): die eigenen Business-freien Zeiten (`businessFrei`, Wandzeit-Spannen aus
+// /api/arbeitsrahmen) liegen dezent als Band unter den Terminen — nur Anzeige, Klicks gehen durch.
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPE, type DragEvent } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
@@ -48,6 +50,18 @@ const WD_KURZ = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 /** „Sa 10:00“ — Vorschau beim Ziehen mehrtägiger Termine. */
 const kurz = (wand: string) => `${WD_KURZ[new Date(`${wand.slice(0, 10)}T12:00:00Z`).getUTCDay()]} ${wand.slice(11, 16)}`;
 
+/** Business-freie Spannen an einem Tag als Minuten (0–1440) — für das Band im Raster. */
+function bandAm(l: readonly { start: string; ende: string }[] | undefined, tag: string): { von: number; bis: number }[] {
+  if (!l?.length) return [];
+  const a = `${tag}T00:00:00`;
+  return l.flatMap(s => {
+    if (s.ende <= a || s.start.slice(0, 10) > tag) return [];
+    const von = s.start < a ? 0 : minVon(s.start);
+    const bis = s.ende.slice(0, 10) > tag ? 24 * 60 : minVon(s.ende);
+    return bis > von ? [{ von, bis }] : [];
+  });
+}
+
 /** Eine Aufgabe im Raster (= KalenderAufgabe, lib/kalender/aufgaben.ts). */
 export type RasterAufgabe = KalenderAufgabe;
 /** Nur ziehen, was sich still verschieben lässt: nicht mit Gästen (die Änderung ginge an sie — Klick öffnet mit Rückfrage). */
@@ -62,8 +76,10 @@ const mehrtaegig = (t: KTermin) => !t.ganztags && letzterTag(t) > t.start.slice(
 interface Zieh { /** Termin.id (Kalender + UID, R-K1) */ id: string; art: 'move' | 'resize'; y0: number; x0: number; start: number; ende: number; tag: number; neuTag: number; neuStart: number; neuEnde: number; bewegt: boolean; aktiv: boolean; dMin: number; pointerId: number }
 interface Aufzug { tag: number; a: number; b: number; y0: number; bewegt: boolean; pointerId: number; aktiv: boolean }
 
-export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgaben, aufgabeDauer = 30, farbe, onOeffnen, onNeu, onVerschieben, onAufgabe, onAufgabeHaken, onAufgabeEinplanen, onArbeitsortNeu }: {
+export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgaben, aufgabeDauer = 30, farbe, onOeffnen, onNeu, onVerschieben, onAufgabe, onAufgabeHaken, onAufgabeEinplanen, onArbeitsortNeu, businessFrei }: {
   tage: string[]; heute: string; termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[];
+  /** Eigene Business-freie Zeiten (Lücke 7) — Wandzeit-Spannen; dezent gezeichnet, nie anklickbar. */
+  businessFrei?: readonly { start: string; ende: string }[];
   aufgaben: RasterAufgabe[];
   aufgabeDauer?: number;
   farbe: (t: KTermin) => string;
@@ -336,6 +352,13 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                   onDragOver={e => aufgabeUeber(e, ti)} onDragLeave={() => setAblage(a => (a?.tag === ti ? null : a))} onDrop={e => aufgabeAb(e, t.tag, true)}
                   style={{ position: 'relative', borderLeft: '1px solid rgba(255,255,255,.05)', background: t.abwesendGanz ? SCHRAFFUR : h ? 'rgba(255,255,255,.02)' : undefined, cursor: 'copy', touchAction: aufzug?.aktiv ? 'none' : 'pan-y', userSelect: 'none' }}>
                   {h && jetztMin != null && <div style={{ position: 'absolute', left: 0, right: 0, top: jetztMin * PX_MIN, borderTop: `2px solid ${LEUCHT.kritisch}`, zIndex: 3, pointerEvents: 'none' }}><span style={{ position: 'absolute', left: -5, top: -5, width: 8, height: 8, borderRadius: '50%', background: LEUCHT.kritisch }} /></div>}
+                  {/* Business-frei (Lücke 7): dezentes Band, Klicks gehen durch (die Rückfrage stellt der Anlege-Dialog). */}
+                  {bandAm(businessFrei, t.tag).map(b => (
+                    <div key={`bf-${b.von}`} aria-hidden title="Business-frei" data-business-frei={t.tag}
+                      style={{ position: 'absolute', left: 0, right: 0, top: b.von * PX_MIN, height: (b.bis - b.von) * PX_MIN, background: `${LEUCHT.beziehung}0d`, borderLeft: `2px solid ${LEUCHT.beziehung}55`, pointerEvents: 'none', zIndex: 0 }}>
+                      {(b.bis - b.von) * PX_MIN >= 22 && <span style={{ position: 'absolute', right: 4, top: 2, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: `${LEUCHT.beziehung}aa`, fontFamily: SCHRIFT.text }}>Business-frei</span>}
+                    </div>
+                  ))}
                   {/* #86: Zeitumstellung — Ende Oktober gibt es 02:00–03:00 zweimal, Ende März gar nicht. */}
                   {t.umstellung && (
                     <div role="note" title={t.umstellung === 'doppelt' ? 'Zeitumstellung: 02:00–03:00 gibt es heute zweimal (erst Sommer-, dann Winterzeit). Termine in dieser Stunde können übereinander liegen.' : 'Zeitumstellung: 02:00–03:00 gibt es heute nicht (die Uhr springt von 2 auf 3 Uhr).'}

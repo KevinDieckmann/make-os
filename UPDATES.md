@@ -45,6 +45,53 @@ KD Ventures ab „Start KD Ventures“ in den Annahmen) und Privat ab den Regist
 6. Mit einem Konto „nur Business“ (Partner): Liquidität › Konten zeigt nur MAKE/KD Ventures; Privat-Konten erscheinen nirgends.
 7. Business › Überblick › 0-Punkt: neu setzen → im Konto erscheint ein Stand „aus dem 0-Punkt“; „Rückgängig“ → dort „zurückgenommen“.
 
+## 08.10.2026 spät — Business-freie Zeiten durchsetzen (Lücke 7; nur lokal — Branch `business-frei`)
+
+Kevin (ROADMAP_Q4 › Lücken, 08.10.): „Business-freie Zeiten wirken nicht → ein Arbeitsrahmen je Person; Business-frei sperrt Kalender,
+Kapazität, ZOE, Heads und Glocke.“ Fragebogen Teil 3: „Business-freie Zeiten durchsetzen.“ Bis heute stand die Einstellung nur in der Familie.
+- **EINE Regel** `lib/arbeitsrahmen/regel.ts` (rein, client-sicher): Fenster wie in der Familie (0 = So … 6 = Sa, „HH:MM“), „bis 23:59“ = Tagesende,
+  „bis“ vor „von“ läuft über Mitternacht, „von = bis“ = 24 h; Berliner Wandzeit (Zeitumstellung getestet). Rahmen = gemeinsame Zeiten der Familie
+  (`familie--<haushalt>`, nur volle Mitglieder) + eigene Ergänzung je Person (`arbeitsrahmen--<person>`, kann nur einschränken). Server
+  `lib/arbeitsrahmen/server.ts` (liest die Familie nur, legt nichts an; Lesefehler sperren nichts).
+- **Kalender:** freie-Zeit-Suche, Buchungsseiten, ZOE `freie_zeit` und das Angebot bieten in Business-freier Zeit keine Plätze an (K1 belegt sie);
+  ein **Business-Termin** (Bereich Business bzw. Google-/Business-Kalender, nie Abwesend/Arbeitsort) in Business-freier Zeit → 409 mit Rückfrage
+  „Business-frei — trotzdem?“ im Anlege-Dialog, erst „Trotzdem anlegen“ legt an (Dienstweg kann nicht bestätigen). Privat/Familie/Gemeinsam frei,
+  bestehende Termine bleiben. Die Woche/der Tag zeigt die eigenen Fenster als dezentes Band. Buchungs-Freigabe: Business-frei zählt als Konflikt
+  („Trotzdem freigeben“).
+- **Kapazität:** zieht Business-freie Zeit vom Soll ab, wo die Wochenvorlage Business-Blöcke hat; ohne Eintrag bit-gleich (Test).
+- **ZOE & Heads:** Hintergrundläufe legen in der freien Zeit keine Business-Vorschläge an („ZURÜCKGEHALTEN“, Werkzeug-Gruppen Markttraktion/Kontakte/
+  Kunden/Business/Finanzen); ZOE-Aufgaben im Business warten bis danach; `plan_block` plant keine Arbeit (Fokus/Aufgabe/Block) hinein; im Gespräch ein
+  neutraler Hinweis „gerade Business-frei (bis …)“ ohne Familieninhalte. Heads, Head of Finance und die Markttraktion-Nachrichten ruhen im Fenster
+  des Haushalts (Power Hour/Nachrichten je Person); Wochen-/Monatsläufe und das Nachfassen nach einem Event holen nach, wenn der ganze Termin in
+  die freie Zeit fiel.
+- **Glocke:** Meldungen, die in einer Business-freien Zeit der Empfängerin ankommen, tragen das Ende des Fensters; Business (Markttraktion, Netzwerken,
+  Buchungen, Verträge, Aufgaben im Business-Space, Business-Fristen) ruht bis dahin und kommt danach als EINE Meldung „n Business-Hinweise aus der
+  freien Zeit“ mit allen darin. Sicherheit, Verbindungen, Postfach, Termine, Privates sofort. Nichts gelöscht, „alle gelesen“ fasst Ruhendes nicht an.
+- **Ausnahmezeit der Familie pausiert den Schutz nicht.** Ausnahme je Termin = die Rückfrage.
+- **Rechte (serverseitig):** `/api/arbeitsrahmen` (GET/PUT) nur die eigene Person; über andere nur ja/nein (volle Mitglieder zusätzlich „bis“, Konten
+  mit „nur Business“ nie Zeiten, Familie gilt für sie nicht). Register: Route (Klasse `person`), Speicher `arbeitsrahmen--*` (Art. 6/§ 26 BDSG),
+  Konto-Export/-Löschen. Messlatte Malin mit Marke.
+- **Oberfläche:** Familie › Rahmen (Satz, was es bewirkt, + „Nur für mich zusätzlich“), Link aus Kapazität und Kalender-Einstellungen
+  (`WEG.familie('rahmen')`), Status „Business-frei bis 23:59“ auf Heute (nur die eigene Person).
+- Tests: `tests/business-frei.test.ts` (Regel, K1, freie Zeit, Buchung, Kapazität vorher → nachher, Glocke, Heads), `tests/business-frei-server.test.ts`
+  (Route, Rechte „Sicht X bekommt nichts aus Y“, Ausnahmezeit, Glocke gesammelt, ZOE), `tests/business-frei-termin.test.ts` (409/Bestätigung).
+
+**So testet ihr (Klicks):**
+1. Familie › Rahmen › „Business-freie Zeiten“: ein Fenster für heute anlegen, das gerade läuft (z. B. heutiger Wochentag, jetzt bis 23:59).
+2. Heute: oben steht „Business-frei bis 23:59“.
+3. Kalender › Woche: das Fenster liegt als zartes Band im Raster. „Erstellen“ → Termin im Bereich Business (bzw. im Google-/Business-Kalender) in das
+   Fenster legen → „Speichern“ → Rückfrage „Business-frei — trotzdem?“; „Zurück“ legt nichts an, „Trotzdem anlegen“ legt an. Ein privater Termin
+   kommt ohne Rückfrage.
+4. Kalender › „Mit … planen“: im Fenster werden keine freien Zeiten vorgeschlagen; eine Buchungsseite zeigt dort keine Plätze.
+5. Planung › Kapazität: liegen Business-Blöcke der Wochenvorlage im Fenster, sinkt das Soll (Fenster wieder entfernen → alter Wert).
+6. Glocke: lässt sich die andere Person eine Business-Aufgabe zuweisen, erscheint sie erst nach dem Fenster — als „1 Business-Hinweis aus der
+   freien Zeit“ mit der Aufgabe darunter.
+7. ZOE fragen: der Hinweis „gerade Business-frei“ wirkt (ZOE schlägt nichts Geschäftliches von sich aus vor).
+8. Fenster wieder entfernen (bzw. Standard „So ganz, werktags ab 20 Uhr“ zurückstellen).
+
+**Offen (Richtungsfragen an Kevin):** siehe Bericht — Selbstständigkeit (Arbeit, Bereich Privat) mitsperren?, Verschieben bestehender Business-Termine
+ins Fenster (heute ohne Rückfrage), Standardzeiten neuer Haushalte.
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:

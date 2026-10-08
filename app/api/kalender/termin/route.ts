@@ -36,6 +36,10 @@
 //     lag → die Meeting-Aktivität fällt weg (mit Löschmarke). Serien: die Vorkommen legt der Signal-Lauf an.
 // Seit 06.10. (iCloud je Person, lib/kalender/icloud-person.ts): in einen Kalender aus der EIGENEN iCloud-Verbindung einer
 // Person schreibt nur diese Person (POST in ihren Kalender → 403); ihre Termine sind für alle anderen fremd-privat (403).
+// Seit 08.10. (Business-frei, Lücke 7, lib/arbeitsrahmen/regel.ts): ein Business-Termin (Bereich Business bzw. Business-Kalender,
+// nie Abwesend/Arbeitsort) in einer Business-freien Zeit der anlegenden Person oder der Person des Kalenders → 409
+// { businessFrei: true } ohne Zeiten/Namen, NICHTS geschrieben — erst `businessFreiBestaetigt: true` aus dem Dialog legt an.
+// Bestätigen nur von Hand (Dienstweg 403). Privat, Familie und Gemeinsam bleiben frei; bestehende Termine bleiben, wie sie sind.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -56,6 +60,11 @@ import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { terminAktivitaetenSetzen, terminAktivitaetenLoeschen } from '@/lib/crm/termin-aktivitaet-server';
 import { terminVorbei } from '@/lib/crm/termin-aktivitaet';
 import { istDienst } from '@/lib/zugang/dienst';
+import { spaceVonKalender } from '@/lib/kalender/space';
+import { tagPlus } from '@/lib/kalender/zeit';
+import { terminIstBusiness, ueberlappt, BUSINESS_FREI_FEHLER } from '@/lib/arbeitsrahmen/regel';
+import { businessFreiFensterFuer } from '@/lib/arbeitsrahmen/server';
+import type { AnlegeEingabe } from '@/lib/kalender/eingabe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -119,6 +128,24 @@ async function json(req: Request): Promise<Record<string, unknown> | null> {
   try { const b = await jsonBegrenzt(req); return b && typeof b === 'object' ? b as Record<string, unknown> : null; } catch { return null; }
 }
 
+/**
+ * Liegt der neue Termin in einer Business-freien Zeit (Lücke 7)? Geprüft für die anlegende Person und — falls der Kalender
+ * einer bestimmten Person gehört (Google der Person, Zuordnung in den Einstellungen) — für diese. Zeiten in Berliner Wandzeit;
+ * bei einer Serie zählt das erste Vorkommen.
+ */
+async function inBusinessFreierZeit(e: AnlegeEingabe, kalender: string, person: string, einst: Awaited<ReturnType<typeof ladeEinstellungen>>): Promise<boolean> {
+  const start = e.ganztags || e.zone === STANDARD_ZONE ? e.start : wandzeit(ausWandzeitIn(e.start, e.zone));
+  const endZone = e.endZone ?? e.zone;
+  const ende = e.ganztags || endZone === STANDARD_ZONE ? e.ende : wandzeit(ausWandzeitIn(e.ende, endZone));
+  const w = wemGehoert(einst, kalender);
+  const eigner = einst.google?.[kalender] ?? (w === 'beide' ? null : w);
+  for (const p of Array.from(new Set([person, ...(eigner ? [eigner] : [])]))) {
+    const spannen = await businessFreiFensterFuer(p, start.slice(0, 10), tagPlus(ende.slice(0, 10), 1)).catch(() => []);
+    if (ueberlappt(spannen, start, ende)) return true;
+  }
+  return false;
+}
+
 /** Einladungen protokollieren: wer, UID, Anzahl der Gäste — nie Adressen (K3). */
 const einladungProtokoll = (req: Request, uid: string, op: 'neu' | 'geaendert' | 'geloescht', anzahl: number) =>
   anzahl ? protokolliere('kalender', [{ liste: 'einladungen', op, id: uid, felder: [`gaeste:${anzahl}`] }], werAus(req)) : Promise.resolve();
@@ -144,6 +171,12 @@ export async function POST(req: Request) {
   if (!kalender) return NextResponse.json({ ok: false, fehler: 'Für diese Person ist kein Kalender hinterlegt — bitte einen Kalender wählen.' }, { status: 400 });
   // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer anderen Person schreibt niemand sonst.
   if (persoenlichFremd(await kalenderEintrag(kalender), z.person)) return NextResponse.json({ ok: false, fehler: 'Dieser Kalender gehört zur iCloud-Verbindung einer anderen Person — nur sie kann dort Termine anlegen.' }, { status: 403 });
+  // Business-frei (Lücke 7): Rückfrage statt still anlegen — die Antwort sagt nur ja/nein, nie wann oder warum.
+  if (e.businessFreiBestaetigt && istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Einen Termin in einer Business-freien Zeit bestätigt nur ein Mensch — nie ZOE oder ein Skript.' }, { status: 403 });
+  if (!e.businessFreiBestaetigt && terminIstBusiness({ art: e.art, bereich: e.bereich, kalenderBusiness: spaceVonKalender(einst, kalender) === 'business' })
+    && await inBusinessFreierZeit(e, kalender, z.person, einst)) {
+    return NextResponse.json({ ok: false, businessFrei: true, fehler: BUSINESS_FREI_FEHLER }, { status: 409 });
+  }
   try {
     const r = await anlegen({
       ...(e.uid ? { uid: e.uid } : {}),

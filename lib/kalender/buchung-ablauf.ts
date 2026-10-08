@@ -383,7 +383,8 @@ async function freigebenGesperrt(buchungId: string, von: string, jetzt: Date, op
     }
     if (!opt.trotzKonflikt && !(await vorhandenerTermin(b))) {
       const v = await verfuegbarkeitFuer(s.person, tagVon(b.start), tagPlus(tagVon(b.ende), 1));
-      if (!istFrei(v, b.start, b.ende)) throw new FreigabeFehler(`Der Platz ${datumText(b)} ist inzwischen nicht mehr frei (Termin, Abwesenheit oder Feiertag im Kalender).`, 409, { konflikt: true });
+      // Seit 08.10. (Lücke 7) zählt auch eine Business-freie Zeit — „Trotzdem freigeben“ ist dann die Ausnahme für diesen Termin.
+      if (!istFrei(v, b.start, b.ende)) throw new FreigabeFehler(`Der Platz ${datumText(b)} ist inzwischen nicht mehr frei (Termin, Abwesenheit, Feiertag oder Business-freie Zeit).`, 409, { konflikt: true });
     }
   }
   if (opt.einladen) {

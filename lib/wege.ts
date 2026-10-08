@@ -49,8 +49,11 @@ export const WEG = {
   konto: () => '/os/konto',
   /** System › Datenschutz (05.10.): Verantwortlicher, Empfänger/AVV, Selbstprüfung, Verzeichnis-Export — `#abschnitt` springt hin. */
   datenschutz: (abschnitt?: 'verantwortlicher' | 'empfaenger' | 'pruefung' | 'verzeichnis' | 'pannen' | 'dokumente' | 'nachweise' | 'gesundheit' | 'ki' | 'telegram' | 'protokoll') => q('/os/datenschutz', {}, abschnitt),
-  /** Familie & Partnerschaft (Privat) · Inbox (eigenes Postfach). */
-  familie: () => '/os/familie',
+  /**
+   * Familie & Partnerschaft (Privat) · Inbox (eigenes Postfach). `bereich` (08.10., Lücke 7) öffnet einen Reiter — „rahmen“ mit
+   * `#business-frei` springt zu den Business-freien Zeiten.
+   */
+  familie: (bereich?: 'wir' | 'familie' | 'rahmen') => q('/os/familie', { b: bereich }, bereich === 'rahmen' ? 'business-frei' : undefined),
   inbox: () => '/os/inbox',
   /** Netzwerken (02.10.): die Seite für unterwegs (Erfassen, Abendbericht — `bericht` = Event; `event` = „Heute bei“ mit diesem Event vorwählen, 03.10.) · `netzwerkenKarte` = „Meine Visitenkarte“ (QR, vCard). */
   netzwerken: (o: { bericht?: string; event?: string } = {}) => q('/os/netzwerken', { bericht: o.bericht, event: o.event }),

@@ -17,6 +17,9 @@
 //   „wiederherstellen“ oder „verwerfen“.
 //   Die Schnelleingabe (lib/kalender/schnell.ts) liest den Titel („Mo 10 Uhr Kaffee 45min“)
 //   und bietet „übernehmen“ an; Enter übernimmt und speichert.
+// Seit 08.10. (Business-frei, Lücke 7): ein Business-Termin in einer Business-freien Zeit kommt vom Server als 409
+// { businessFrei } zurück — der Dialog fragt „Business-frei — trotzdem?“; erst „Trotzdem anlegen“ schickt
+// `businessFreiBestaetigt: true`. Die Antwort nennt weder Zeiten noch Gründe.
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -37,6 +40,7 @@ import { neueTerminUid } from '@/lib/kalender/eingabe';
 import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, speicherFehlerText, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
 import { FarbPunkte, WER_FARBE, WER_LABEL, type Wer } from './teile';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
+import { BUSINESS_FREI_FRAGE, BUSINESS_FREI_HINWEIS } from '@/lib/arbeitsrahmen/regel';
 
 export type { Vorgabe };
 
@@ -58,6 +62,8 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const [alt] = useState<Entwurf | null>(() => { const e = lese(); return e && entwurfWertvoll(e.f) ? { ...e, f: formularErgaenzen(e.f) } : null; });
   /** Rückfrage vor dem Versand (K3): die Adressen, an die iCloud die Einladung schickt. */
   const [frage, setFrage] = useState<{ adressen: string[]; x: Formular } | null>(null);
+  /** Rückfrage Business-frei (Lücke 7): das Formular und ob die Einladung schon bestätigt war. */
+  const [bfFrage, setBfFrage] = useState<{ x: Formular; einladung: boolean } | null>(null);
   const [altOffen, setAltOffen] = useState(!!alt);
   const [voll, setVoll] = useState(false);
   const [eigenOffen, setEigenOffen] = useState(false);
@@ -79,7 +85,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
 
   /** Der Google Kalender der Person (schreibbar) — Standard im Business-Bereich. */
   const googleStandard = (w: Wer): string | undefined => kalender.find(k => k.quelle === 'google' && k.schreibbar && k.wer === w)?.name;
-  const speichern = async (roh: Formular = f, bestaetigt = false) => {
+  const speichern = async (roh: Formular = f, bestaetigt = false, businessFrei = false) => {
     let x = schnellAnwenden(roh);
     if (x !== roh) setF(x);
     const fe = formularFehler(x);
@@ -98,14 +104,16 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     if (!x.uid) { x = { ...x, uid: neueTerminUid() }; setFRoh(x); }
     schreibe({ f: x, am: new Date().toISOString() });
     const koerper = { ...a.koerper, uid: x.uid };
-    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...koerper, ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
+    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...koerper, ...(bestaetigt ? { einladungBestaetigt: true } : {}), ...(businessFrei ? { businessFreiBestaetigt: true } : {}) }) })
       .then(async res => ({ status: res.status, d: await res.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — dein Entwurf bleibt gemerkt.' } }));
     setLaeuft(false);
-    if (r.d.ok) { schreibe(null); setFrage(null); onAngelegt({ uid: r.d.uid, ...(r.d.gaeste ? { gaeste: r.d.gaeste } : {}), ...(r.d.hinweis ? { hinweis: r.d.hinweis } : {}) }); onZu(); return; }
+    if (r.d.ok) { schreibe(null); setFrage(null); setBfFrage(null); onAngelegt({ uid: r.d.uid, ...(r.d.gaeste ? { gaeste: r.d.gaeste } : {}), ...(r.d.hinweis ? { hinweis: r.d.hinweis } : {}) }); onZu(); return; }
     schreibe({ f: x, am: new Date().toISOString() });
     // Der Server verlangt die Bestätigung (z. B. Gäste kamen anders an) → dieselbe Rückfrage mit SEINEN Adressen.
     if (r.status === 409 && r.d.einladung && Array.isArray(r.d.adressen)) { setFrage({ adressen: r.d.adressen, x }); return; }
-    setFrage(null);
+    // Business-frei (Lücke 7): Rückfrage — die Einladung (falls schon bestätigt) bleibt bestätigt.
+    if (r.status === 409 && r.d.businessFrei) { setFrage(null); setBfFrage({ x, einladung: bestaetigt }); return; }
+    setFrage(null); setBfFrage(null);
     setFehler(speicherFehlerText(r.d.fehler, r.status));
   };
 
@@ -326,7 +334,17 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
 
       {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
       {frage && <EinladungFrage was="einladung" adressen={frage.adressen} laeuft={laeuft} onJa={() => void speichern(frage.x, true)} onNein={() => setFrage(null)} />}
-      {!frage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
+      {bfFrage && (
+        <div role="alertdialog" aria-label={BUSINESS_FREI_FRAGE} style={{ display: 'grid', gap: 8, background: `${LEUCHT.achtung}14`, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 12, padding: '10px 12px' }}>
+          <b style={{ fontSize: TYP.bedien }}>{BUSINESS_FREI_FRAGE}</b>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>{BUSINESS_FREI_HINWEIS} Die Zeiten pflegt ihr unter Familie › Rahmen.</span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Knopf farbe={LEUCHT.achtung} aus={laeuft} onClick={async () => { await speichern(bfFrage.x, bfFrage.einladung, true); }}>{laeuft ? 'speichert …' : 'Trotzdem anlegen'}</Knopf>
+            <Knopf leise onClick={() => setBfFrage(null)}>Zurück</Knopf>
+          </div>
+        </div>
+      )}
+      {!frage && !bfFrage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
         {art !== 'aufgabe' ? <Knopf leise onClick={() => setVoll(v => !v)}>{voll ? 'Weniger Optionen' : 'Weitere Optionen'}</Knopf> : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>

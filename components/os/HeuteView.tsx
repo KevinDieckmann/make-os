@@ -20,6 +20,7 @@ import { FARBE as C } from '@/lib/make-one/design';
 import { Seite, ZielBezug } from './ui';
 import { Flaeche } from './flaeche/Flaeche';
 import { Anlaesse } from './kalender/Anlaesse';
+import { BusinessFreiStatus } from './arbeitsrahmen/BusinessFrei';
 import { useSpace } from '@/hooks/useSpace';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
 
@@ -101,6 +102,8 @@ export function HeuteView() {
 >
       {/* K2 (29.09.): Feiertag NRW heute/morgen. Geburtstage stehen nur in „Steht an“ (F2 M2, eine Stelle). */}
       <Anlaesse geburtstage={false} />
+      {/* Business-frei (08.10., Lücke 7): nur die eigene Person, nur solange es gilt. */}
+      <BusinessFreiStatus />
       {sicht === 'privat' && <ZielBezug bereich="privat" max={2} />}
       <Flaeche key={sicht} seite={HEUTE_FLAECHE[sicht]} widgets={HEUTE_STANDARD[sicht]} />
     </Seite>

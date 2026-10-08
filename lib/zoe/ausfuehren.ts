@@ -10,6 +10,8 @@ import { notiere } from './protokoll';
 import { lege } from './stapel';
 import type { Person } from './raum';
 import { SELBST_GEKAPSELT } from './fremd';
+import { LESEND } from './gespraech-schutz';
+import { ZOE_BUSINESS_GRUPPEN, ZOE_ZURUECKGEHALTEN } from '@/lib/arbeitsrahmen/regel';
 
 export interface Lauf {
   /** Was dem Modell (oder dem Aufrufer) zurückgemeldet wird. */
@@ -51,6 +53,18 @@ export async function fuehreAus(
     if (sperre) {
       await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: 'gesperrt (Datenschutz)', ok: false, quelle: 'zoe', person: opt.person });
       return { text: sperre, ok: false, gestapelt: false };
+    }
+  }
+
+  // Business-frei (08.10., Lücke 7): Läufe im Hintergrund (Morgen, Abend, Tageslauf, Agenten) legen in einer Business-freien Zeit
+  // der Person (ohne Person: des Haushalts) keine Business-Vorschläge an und schreiben nichts im Business — lesen dürfen sie. Das
+  // Gespräch (die Person fragt selbst) und die Freigabe aus dem Stapel (`erzwingen`, ein Klick) bleiben frei.
+  if (!opt.erzwingen && (opt.quelle === 'lauf' || opt.hintergrund) && ZOE_BUSINESS_GRUPPEN.has(gruppe) && !LESEND.has(name)) {
+    const { businessFreiJetzt, haushaltBusinessFreiJetzt } = await import('@/lib/arbeitsrahmen/server');
+    const frei = await (opt.person ? businessFreiJetzt(opt.person) : haushaltBusinessFreiJetzt()).catch(() => ({ frei: false }));
+    if (frei.frei) {
+      await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: 'zurückgehalten (Business-frei)', ok: true, quelle: 'zoe', person: opt.person });
+      return { text: ZOE_ZURUECKGEHALTEN, ok: true, gestapelt: false };
     }
   }
 

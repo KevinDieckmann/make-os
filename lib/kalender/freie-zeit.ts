@@ -20,13 +20,18 @@ import { buchungenAlsBelegung } from './buchung';
 import { ladeEinstellungen } from './einstellungen';
 import { freieTageIm, type FreierTag } from './freie-tage';
 
-/** Belegt aus K1: alles Beschäftigte je Tag (Abwesend als „abwesend“, ohne Puffer), ganz abwesende Tage ganz. */
+/**
+ * Belegt aus K1: alles Beschäftigte je Tag (Abwesend als „abwesend“, ohne Puffer), ganz abwesende Tage ganz. Business-freie
+ * Zeit (08.10., Lücke 7) belegt wie eine Abwesenheit (ohne Puffer) — freie Zeit, Buchungsseite, ZOE `freie_zeit` und das
+ * Angebot bieten dort nichts an. Nach außen gehen nur Zeiten, nie der Grund.
+ */
 export function belegungenAus(v: Verfuegbarkeit): Belegung[] {
   const raus: Belegung[] = [];
   for (const t of v.tage) {
     if (t.ganzAbwesend) raus.push({ wer: v.person, start: `${t.tag}T00:00:00`, ende: `${tagPlus(t.tag, 1)}T00:00:00`, art: 'abwesend' });
     for (const b of t.beschaeftigt) raus.push({ wer: v.person, start: b.start, ende: b.ende, art: b.art === 'abwesend' ? 'abwesend' : 'belegt' });
     for (const a of t.abwesend) if (!a.ganztags) raus.push({ wer: v.person, start: a.start, ende: a.ende, art: 'abwesend' });
+    for (const f of t.businessFrei ?? []) raus.push({ wer: v.person, start: f.start, ende: f.ende, art: 'abwesend' });
   }
   return raus;
 }
@@ -36,7 +41,8 @@ export function belegungenAus(v: Verfuegbarkeit): Belegung[] {
  * Standard Mo–Fr 09:00–18:00 — an Feiertagen und ganz abwesenden Tagen nicht (wie K1).
  */
 export function arbeitszeitAus(v: Verfuegbarkeit): Record<string, Zeitspanne[]> {
-  if (v.tage.some(t => t.arbeitszeit.length)) return Object.fromEntries(v.tage.map(t => [t.tag, t.arbeitszeit]));
+  // „Hat eine Vorlage“ zählt auch, wenn Business-frei die Arbeitszeit eines Tages ganz weggenommen hat (`arbeitszeitVorlage`).
+  if (v.tage.some(t => t.arbeitszeit.length || t.arbeitszeitVorlage?.length)) return Object.fromEntries(v.tage.map(t => [t.tag, t.arbeitszeit]));
   const std = fensterSauber(ARBEITSZEIT_STANDARD) ?? [];
   return Object.fromEntries(v.tage.map(t => [t.tag, t.feiertag || t.ganzAbwesend ? [] : std.filter(f => f.tage.includes(wochentag(t.tag))).map(f => {
     const von = Number(f.von.slice(0, 2)) * 60 + Number(f.von.slice(3, 5)), bis = Number(f.bis.slice(0, 2)) * 60 + Number(f.bis.slice(3, 5));

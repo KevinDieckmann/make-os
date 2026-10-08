@@ -30,7 +30,8 @@ import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
 
 export interface ATermin { id: string; titel: string; start: string; ende: string; ganztags: boolean; ort?: string; art: string; href: string; laeuft: boolean }
-export interface AFrist { id: string; art: Frist['art'] | 'event'; tag: string; titel: string; unter?: string; href: string; inTagen: number; kuendigung?: true }
+/** `business` (08.10., Lücke 7): eine Business-Frist — die Glocke hält sie in einer Business-freien Zeit zurück. */
+export interface AFrist { id: string; art: Frist['art'] | 'event'; tag: string; titel: string; unter?: string; href: string; inTagen: number; kuendigung?: true; business?: true }
 export interface AFollowup { id: string; text: string; name: string; faellig: string; uhrzeit?: string; tageUeber: number; quelle: string; href: string }
 export interface ANachbereiten { kontaktId: string; name: string; titel: string; tag: string; zeit?: string; href: string }
 export interface ABuchung { id: string; titel: string; start: string; href: string }
@@ -102,7 +103,7 @@ export function fristenAnstehend(fristen: readonly Frist[], person: string, heut
     // Mandats-Reviews meldet die Follow-up-Ebene (`v:review`, eine Quelle — F2 M1), nicht zusätzlich als Frist.
     .filter(f => !f.erledigt && !f.review && (!f.fuer || f.fuer === person || f.fuer === 'beide'))
     .filter(f => f.tag >= heute && (f.tag <= morgen || (f.kuendigung && f.tag <= grenze)))
-    .map(f => ({ id: f.id, art: f.art, tag: f.tag, titel: f.titel, ...(f.unter ? { unter: f.unter } : {}), href: f.href, inTagen: tageZwischen(heute, f.tag), ...(f.kuendigung ? { kuendigung: true as const } : {}) }));
+    .map(f => ({ id: f.id, art: f.art, tag: f.tag, titel: f.titel, ...(f.unter ? { unter: f.unter } : {}), href: f.href, inTagen: tageZwischen(heute, f.tag), ...(f.kuendigung ? { kuendigung: true as const } : {}), ...(f.bereich === 'business' ? { business: true as const } : {}) }));
 }
 
 /**

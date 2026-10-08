@@ -69,6 +69,8 @@ export interface TagEingabe {
   /** Termine (Art „termin“, Abwesenheit mit Uhrzeit) im Arbeitsfenster, überlappungsfrei, in Stunden. */
   terminStunden: number;
   terminAnzahl: number;
+  /** Business-frei (08.10., Lücke 7) hat an diesem Tag Arbeitszeit der Vorlage weggenommen — nur gesetzt, wenn ja. */
+  vorlageGekuerzt?: true;
 }
 
 export interface PersonEingabe {
