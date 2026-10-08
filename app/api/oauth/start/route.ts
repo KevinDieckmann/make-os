@@ -1,5 +1,5 @@
 // ─── MAKE OS — OAuth-Start ──────────────────────────────────────────────────
-// GET ?provider=whoop|microsoft → leitet zur Anmeldeseite des Anbieters.
+// GET ?provider=microsoft → leitet zur Anmeldeseite des Anbieters (WHOOP seit 08.10. je Person: /api/whoop/verbinden).
 // state gegen CSRF wird serverseitig gemerkt (15-Minuten-Fenster).
 
 import { NextResponse } from 'next/server';
