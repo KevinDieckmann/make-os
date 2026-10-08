@@ -623,6 +623,8 @@ function ProfilKarte({ person, name, profil, darf, konto, patch, weg }: { person
   };
   const ro = !darf;
   const stil: CSSProperties = { ...klein, opacity: ro ? 0.8 : 1 };
+  // Profil einer anderen Person, das sie nicht mit mir teilt (08.10.): der Server schickt es gar nicht erst — nur der Name steht da.
+  const verborgen = konto && !darf && !profil;
   return (
     <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -631,11 +633,15 @@ function ProfilKarte({ person, name, profil, darf, konto, patch, weg }: { person
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{konto ? (darf ? 'dein Profil' : 'pflegt sie/er selbst') : 'Gast'}</span>
         {weg && <button type="button" onClick={weg} title="Gast entfernen" style={{ ...nackt, marginLeft: 'auto' }}>✕</button>}
       </div>
+      {verborgen ? (
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Sieht nur {name} selbst — außer {name} teilt Gesundheit mit dir. ZOE plant trotzdem für alle.</span>
+      ) : (<>
       <textarea value={f.bedarf} readOnly={ro} onChange={e => aendern('bedarf', e.target.value)} rows={3} placeholder={ro ? 'noch nichts eingetragen' : 'Bedürfnisse & Regeln in deinen Worten — z. B. anti-entzündlich, wenig Zucker, abends leicht, viel Eiweiß'} style={{ ...stil, resize: 'vertical', lineHeight: 1.5 }} />
       <input value={f.unvertraeglich} readOnly={ro} onChange={e => aendern('unvertraeglich', e.target.value)} placeholder="Verträgt nicht (Komma-getrennt)" style={stil} />
       <input value={f.nie} readOnly={ro} onChange={e => aendern('nie', e.target.value)} placeholder="Nie (Komma-getrennt)" style={stil} />
       <input value={f.gern} readOnly={ro} onChange={e => aendern('gern', e.target.value)} placeholder="Gern (Komma-getrennt)" style={stil} />
       <input value={f.ziel} readOnly={ro} onChange={e => aendern('ziel', e.target.value)} placeholder="Ziel (z. B. Haut ruhig, mehr Energie, 3 kg)" style={stil} />
+      </>)}
     </div>
   );
 }

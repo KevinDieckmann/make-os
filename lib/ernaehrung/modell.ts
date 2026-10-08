@@ -276,7 +276,28 @@ export function gerichtZuName(gerichte: Gericht[], name: string): Gericht | unde
   return n ? gerichte.find(g => normal(g.name) === n) : undefined;
 }
 
-export function wendeAn(f: ErnaehrungFile, ops: Op[], person: string, jetzt = new Date().toISOString()): { datei: ErnaehrungFile; abgelehnt: string[] } {
+/**
+ * Regel für jeden Modell-Text aus den Profilen (08.10.): Wochenvorschlag und Rezept kochen für alle (die Rechnung nutzt alle
+ * Profile), aber die Antwort lesen alle im Haushalt — Profile sieht sonst nur die Person selbst. Also keine Gründe aus Profilen.
+ */
+export const PROFIL_DISKRET = '- Die Antwort lesen alle im Haushalt: nenne nie Bedürfnisse, Unverträglichkeiten, Ziele oder Gründe aus einem Profil (auch nicht in Begründung, Namen oder Schritten). Eine Variante steht nur als Küchenhinweis da („… (für <Name> ohne Feta)“), ohne Warum.';
+
+/**
+ * Welche Profile eine Person sieht (08.10., Kevin): Einkauf, Plan und Gerichte bleiben gemeinsam — die Profile (Bedarf, Ziel,
+ * Unverträgliches: Gesundheitsnähe, Art. 9) sieht nur die Person selbst, außer die Inhaberin teilt ihre Gesundheit mit dem
+ * Betrachter (`teiltMitMir` = Speichernamen, die `teilt.gesundheit` für ihn gesetzt haben — dieselbe Regel wie
+ * `darfGesundheitSehen`). Gäste-Profile (vom Haushalt gepflegt) bleiben für alle sichtbar. Rein; EINE Filterstelle für jede
+ * Antwort von `/api/state/ernaehrung`. Tests: tests/ernaehrung-sicht.test.ts.
+ */
+export function profileFuerBetrachter(profile: readonly Profil[], betrachter: string, teiltMitMir: ReadonlySet<string>): Profil[] {
+  return profile.filter(p => !p.konto || p.person === betrachter || teiltMitMir.has(p.person));
+}
+
+/**
+ * @param konten Speichernamen der Konten im Haushalt (08.10.): ein Profil mit dieser Kennung ist IMMER ein Konto-Profil — so
+ *               lässt sich kein „Gast“ unter dem Namen einer Person anlegen (er wäre für alle sichtbar und würde ihr Profil kapern).
+ */
+export function wendeAn(f: ErnaehrungFile, ops: Op[], person: string, jetzt = new Date().toISOString(), konten: readonly string[] = []): { datei: ErnaehrungFile; abgelehnt: string[] } {
   const abgelehnt: string[] = [];
   let d: ErnaehrungFile = { ...f, plan: { ...f.plan }, planGerichte: { ...f.planGerichte }, einkauf: [...f.einkauf], profile: [...f.profile], lebensmittel: [...f.lebensmittel], vorrat: [...f.vorrat], gerichte: [...f.gerichte] };
   for (const op of ops) {
@@ -309,14 +330,14 @@ export function wendeAn(f: ErnaehrungFile, ops: Op[], person: string, jetzt = ne
         const e = op.eintrag as Partial<Profil>;
         const ziel = s(e.person, 40) || person;
         const alt = d.profile.find(p => p.person === ziel);
-        const istKonto = alt ? alt.konto : e.konto !== false;
+        const istKonto = konten.includes(ziel) || (alt ? alt.konto : e.konto !== false);
         if (istKonto && ziel !== person) { abgelehnt.push('profile:fremd'); continue; }
         const neu = sauberDatei({ profile: [{ ...(alt ?? {}), ...e, person: ziel, konto: istKonto, stand: jetzt } as Profil] }, jetzt).profile[0];
         if (!neu) { abgelehnt.push('profile'); continue; }
         d.profile = alt ? d.profile.map(p => (p.person === ziel ? neu : p)) : [...d.profile, neu];
       } else {
         const alt = d.profile.find(p => p.person === op.id);
-        if (alt && alt.konto && alt.person !== person) { abgelehnt.push('profile:fremd'); continue; }
+        if (alt && (alt.konto || konten.includes(alt.person)) && alt.person !== person) { abgelehnt.push('profile:fremd'); continue; }
         d.profile = d.profile.filter(p => p.person !== op.id);
       }
       continue;

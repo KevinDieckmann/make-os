@@ -81,6 +81,93 @@ export function sichtbarFuer<R extends Pick<Routine, 'owner'>>(routinen: readonl
   return routinen.filter(r => { const o = ownerVonRoutine(r); return o === OWNER_BEIDE || o === person; });
 }
 
+/** Titel einer verdeckten Routine der anderen Person. */
+export const ROUTINE_BELEGT = 'Belegt';
+
+/** Gehört die Routine einer ANDEREN Person (nicht „beide“, nicht der Betrachter)? */
+export const istFremdeRoutine = (r: Pick<Routine, 'owner'>, betrachter: string): boolean => {
+  const o = ownerVonRoutine(r);
+  return o !== OWNER_BEIDE && o !== betrachter;
+};
+
+/**
+ * Die verdeckte Form einer fremden Routine (08.10., Kevin: „Routinen der anderen Person nur als Belegt“). Bleibt nur, was
+ * Planung und Belegung brauchen: Kennung, Besitz, Tageszeit, Dauer, aktiv/pausiert, Rhythmus + nächstes Mal (wann sie
+ * belegt — wie ein „Belegt“-Termin im Kalender seine Zeit behält) und der wirksame Bereich (Privat/Business, damit der
+ * Bereichsfilter des Planers stimmt). Fällt weg, was etwas verrät: Titel, Kategorie (z. B. „Gesundheit“ — Art. 9),
+ * Einheit, Rang. Die Kategorie ist Pflichtfeld des Typs und steht neutral auf „leben“; `belegt: true` sagt der
+ * Oberfläche, dass sie nichts davon zeigen soll.
+ */
+export function routineBelegt(r: Routine): Routine {
+  const space = spaceVonRoutine(r);
+  return {
+    id: r.id, label: ROUTINE_BELEGT, wann: r.wann, kategorie: 'leben', dauerMin: r.dauerMin, aktiv: r.aktiv,
+    owner: ownerVonRoutine(r),
+    ...(space === 'business' ? { space } : {}),
+    ...(r.rhythmus ? { rhythmus: r.rhythmus } : {}),
+    ...(r.naechstesMal ? { naechstesMal: r.naechstesMal } : {}),
+    belegt: true,
+  };
+}
+
+/**
+ * DIE Filterstelle für Antworten an eine Person (08.10.): eigene und gemeinsame Routinen voll, fremde nur als „Belegt“
+ * (`routineBelegt`). `betrachter` null = Systemlauf ohne Person (Takt, ZOE-Hintergrund) → unverändert wie bisher.
+ * Rein; genutzt von GET/PATCH/PUT `/api/state/routinen`. Tests: tests/routinen-belegt.test.ts.
+ */
+export function routinenFuerBetrachter(routinen: readonly Routine[], betrachter: string | null): Routine[] {
+  if (betrachter === null) return [...routinen];
+  return routinen.map(r => (istFremdeRoutine(r, betrachter) ? routineBelegt(r) : r));
+}
+
+/** Ablehnungstext für Schreiben auf fremde Routinen (Route → 403). */
+export const ROUTINE_FREMD = 'Nicht erlaubt: Routinen der anderen Person ändert nur sie selbst.';
+
+/** Form einer Listen-Änderung (wie `ListenOp` aus lib/store/patch-liste — hier ohne Server-Import). */
+interface RoutinenOp { op: 'upsert' | 'delete' | 'teil'; eintrag?: Routine; id?: string; felder?: Record<string, unknown> }
+
+/**
+ * In der Sperre (PATCH): betrifft eine Änderung eine fremde Routine — gespeichert oder neu für die andere Person angelegt
+ * bzw. ihr zugeschoben (`owner`)? Dann `ROUTINE_FREMD`, die ganze Änderung wird abgelehnt (08.10.). So kann auch ein Schreiben
+ * mit dem verdeckten Stand („Belegt“) die echten Werte nie überschreiben.
+ */
+export function routinenSchreibPruefen(liste: readonly Routine[], ops: readonly RoutinenOp[], ich: string): string | null {
+  const nachId = new Map(liste.map(r => [r.id, r]));
+  for (const o of ops) {
+    const id = o.op === 'upsert' ? o.eintrag?.id : o.id;
+    const alt = id ? nachId.get(id) : undefined;
+    if (alt && istFremdeRoutine(alt, ich)) return ROUTINE_FREMD;
+    if (o.op === 'upsert' && o.eintrag && istFremdeRoutine(o.eintrag, ich)) return ROUTINE_FREMD;
+    if (o.op === 'teil' && o.felder && 'owner' in o.felder && istFremdeRoutine({ owner: sauberOwner(o.felder.owner) }, ich)) return ROUTINE_FREMD;
+  }
+  return null;
+}
+
+/**
+ * Vollschreiben (Altweg PUT, 08.10.): fremde Routinen bleiben IMMER in ihrer gespeicherten Fassung stehen — auch wenn der
+ * Browser sie nur verdeckt kannte oder gar nicht mitschickt. Kommt eine fremde Routine unverändert verdeckt zurück, zählt das
+ * nicht als Änderung; jede andere Änderung an ihr (oder eine neue/zugeschobene Routine für die andere Person) → `fremd`.
+ */
+export function routinenVollSchreiben(alt: readonly Routine[], neu: readonly Routine[], ich: string): { liste: Routine[] } | { fremd: true } {
+  const altNachId = new Map(alt.map(r => [r.id, r]));
+  const gleich = (a: Routine, b: Routine) => JSON.stringify(sauberRoutine(a)) === JSON.stringify(sauberRoutine(b));
+  const aus: Routine[] = [];
+  const gesehen = new Set<string>();
+  for (const r of neu) {
+    const vorher = altNachId.get(r.id);
+    if (vorher && istFremdeRoutine(vorher, ich)) {
+      if (!gleich(r, routineBelegt(vorher)) && !gleich(r, vorher)) return { fremd: true };
+      aus.push(vorher);
+    } else {
+      if (istFremdeRoutine(r, ich)) return { fremd: true };
+      aus.push(r);
+    }
+    gesehen.add(r.id);
+  }
+  for (const r of alt) if (!gesehen.has(r.id) && istFremdeRoutine(r, ich)) aus.push(r);
+  return { liste: aus };
+}
+
 /** Die Tage, an denen eine Routine im Log dieser Person abgehakt ist. */
 export function erledigtTage(log: Record<string, string[]> | null | undefined, id: string): string[] {
   return Object.entries(log ?? {}).filter(([, ids]) => Array.isArray(ids) && ids.includes(id)).map(([tag]) => tag).sort();

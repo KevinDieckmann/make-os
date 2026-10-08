@@ -15,6 +15,10 @@
 // der angemeldeten Person (28.09.). PUT { routinen } bleibt als Vollschreiben
 // (Schrumpf-Schutz in der Sperre); PUT { bloecke } ist abgeschaltet, weil er die
 // Blöcke BEIDER Personen ersetzte.
+//
+// 08.10. (Kevin): Routinen der ANDEREN Person sieht die angemeldete Person nur als „Belegt“ — jede Antwort geht durch
+// `routinenFuerBetrachter` (lib/planung/routinen.ts, EINE Filterstelle); Systemläufe ohne Person bekommen den Bestand wie
+// bisher. Schreiben auf fremde Routinen → 403 (`routinenSchreibPruefen`, PUT: `routinenVollSchreiben`).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
@@ -24,7 +28,7 @@ import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } 
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
-import { sauberRoutine, sauberBlock, sichtbarFuer } from '@/lib/planung/routinen';
+import { sauberRoutine, sauberBlock, sichtbarFuer, routinenFuerBetrachter, routinenSchreibPruefen, routinenVollSchreiben, ROUTINE_FREMD } from '@/lib/planung/routinen';
 import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
@@ -43,8 +47,12 @@ const seed = (): Routine[] => ROUTINE_ITEMS.map(r => ({
 
 const bloeckeVon = (f: RoutinenDatei | null | undefined): Block[] => (Array.isArray(f?.bloecke) ? f!.bloecke : []);
 
-const antwort = (f: RoutinenDatei | null | undefined) => ({
-  routinen: mitStand(Array.isArray(f?.routinen) ? f!.routinen : []),
+/**
+ * Jede Antwort mit Routinen geht hier durch: für eine Person die fremden nur verdeckt („Belegt“) — der Stand je Zeile wird
+ * aus der verdeckten Fassung gerechnet, verrät also nichts und passt nie auf die echte Zeile. `betrachter` null = Systemlauf.
+ */
+const antwort = (f: RoutinenDatei | null | undefined, betrachter: string | null) => ({
+  routinen: mitStand(routinenFuerBetrachter(Array.isArray(f?.routinen) ? f!.routinen : [], betrachter)),
   bloecke: mitStand(bloeckeVon(f)),
 });
 
@@ -59,10 +67,12 @@ export async function GET(req: Request) {
   if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
     f = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
   }
+  const ich = personStreng(req);
   if (new URL(req.url).searchParams.get('sicht') === 'ich') {
-    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(f.routinen ?? [], personStreng(req) ?? '') }));
+    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(f.routinen ?? [], ich ?? '') }, ich ?? ''));
   }
-  return NextResponse.json(antwort(f));
+  // Ohne Person (Takt, ZOE-Hintergrund) wie bisher der ganze Bestand; mit Person fremde nur als „Belegt“.
+  return NextResponse.json(antwort(f, ich));
 }
 
 /** Höchstzahlen — darüber wird abgelehnt, nie gekürzt (28.09.). */
@@ -80,16 +90,23 @@ export async function PUT(req: Request) {
   if (!Array.isArray(body.routinen)) return NextResponse.json({ ok: false, error: 'routinen fehlt.' }, { status: 400 });
   if (body.routinen.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` }, { status: 413 });
   const sauber = body.routinen.map(sauberRoutine).filter((r): r is Routine => !!r);
+  const ich = personStreng(req) ?? '';
   // Lesen, prüfen und schreiben in EINER Sperre (28.09.) — vorher las die Route den Bestand davor
   // und schrieb ihn mit zurück: was dazwischen an Blöcken geändert wurde, war weg.
+  // Fremde Routinen (08.10.): bleiben in ihrer gespeicherten Fassung — die verdeckte Fassung aus dem Browser überschreibt nie.
   let abgelehnt = false;
+  let fremd = false;
   const next = await updateJson<RoutinenDatei>('routinen', cur => {
-    const alt = Array.isArray(cur?.routinen) ? cur!.routinen.length : 0;
-    if (alt >= 4 && sauber.length < alt / 2) { abgelehnt = true; return cur as RoutinenDatei; }
-    return { ...(cur ?? {}), routinen: sauber };
+    const altListe = Array.isArray(cur?.routinen) ? cur!.routinen : [];
+    const r = routinenVollSchreiben(altListe, sauber, ich);
+    if ('fremd' in r) { fremd = true; return cur as RoutinenDatei; }
+    const alt = altListe.length;
+    if (alt >= 4 && r.liste.length < alt / 2) { abgelehnt = true; return cur as RoutinenDatei; }
+    return { ...(cur ?? {}), routinen: r.liste };
   });
+  if (fremd) return NextResponse.json({ ok: false, error: ROUTINE_FREMD }, { status: 403 });
   if (abgelehnt) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Routinen gelöscht.' }, { status: 409 });
-  return NextResponse.json({ ok: true, ...antwort(next) });
+  return NextResponse.json({ ok: true, ...antwort(next, ich) });
 }
 
 /**
@@ -101,9 +118,9 @@ export async function PATCH(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   let body: { ops?: unknown; bloecke?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const ich = personStreng(req);
 
   if (body.bloecke !== undefined) {
-    const ich = personStreng(req);
     if (!ich) return NextResponse.json({ ok: false, error: 'Blöcke gehören einer Person — ohne Anmeldung nichts zu ändern.' }, { status: 403 });
     if (Array.isArray(body.bloecke) && body.bloecke.length > MAX_BLOECKE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_BLOECKE} Änderungen je Aufruf.` }, { status: 413 });
     const ops = opsLesen<Block>(body.bloecke, sauberBlock, MAX_BLOECKE);
@@ -111,16 +128,19 @@ export async function PATCH(req: Request) {
     const r = await listePatchen<Block, RoutinenDatei & Record<string, unknown>>('routinen', 'bloecke', ops, 8, undefined, {
       pruefen: (liste, o) => nurEigene(liste, o, ich) ?? (wachstum(liste, o) > MAX_BLOECKE ? `Abgelehnt: höchstens ${MAX_BLOECKE} Blöcke.` : null),
     });
-    return ergebnis(r);
+    return ergebnis(r, ich);
   }
 
   if (Array.isArray(body.ops) && body.ops.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Änderungen je Aufruf.` }, { status: 413 });
   const ops = opsLesen<Routine>(body.ops, sauberRoutine, MAX_ROUTINEN);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, MAX_ROUTINEN) }, { status: Array.isArray(body.ops) ? 413 : 400 });
+  // Fremde Routinen (08.10.): weder ändern, löschen noch neu für die andere Person anlegen → 403. `teil` läuft durch denselben
+  // Säuberer wie ein ganzer Eintrag (vorher legte er die Felder ungeprüft auf).
   const r = await listePatchen<Routine, RoutinenDatei & Record<string, unknown>>('routinen', 'routinen', ops, 4, undefined, {
-    pruefen: (liste, o) => (wachstum(liste, o) > MAX_ROUTINEN ? `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` : null),
+    pruefen: (liste, o) => routinenSchreibPruefen(liste, o, ich ?? '') ?? (wachstum(liste, o) > MAX_ROUTINEN ? `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` : null),
+    teil: (alt, felder) => sauberRoutine({ ...alt, ...felder }),
   });
-  return ergebnis(r);
+  return ergebnis(r, ich);
 }
 
 /** Länge der Liste nach den neu angelegten Einträgen. */
@@ -145,10 +165,13 @@ function nurEigene(liste: Block[], ops: ListenOp<Block>[], ich: string): string 
   return null;
 }
 
-async function ergebnis(r: PatchErgebnis<RoutinenDatei & Record<string, unknown>>) {
-  if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, ...antwort(r.next) });
-  const status = r.fehler === FREMD ? 403
+async function ergebnis(r: PatchErgebnis<RoutinenDatei & Record<string, unknown>>, ich: string | null) {
+  const sicht = ich ?? '';
+  if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, ...antwort(r.next, sicht) });
+  const status = r.fehler === FREMD || r.fehler === ROUTINE_FREMD ? 403
     : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413
       : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
-  return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], ...antwort(await loadJson<RoutinenDatei>('routinen')) }, { status });
+  // Konflikte betreffen nur eigene/gemeinsame Zeilen (fremde scheitern vorher mit 403) — trotzdem verdeckt ausliefern.
+  const konflikte = (r.konflikte ?? []).map(k => (k.aktuell ? { ...k, aktuell: routinenFuerBetrachter([k.aktuell as Routine], sicht)[0] } : k));
+  return NextResponse.json({ ok: false, error: r.fehler, konflikte, ...antwort(await loadJson<RoutinenDatei>('routinen'), sicht) }, { status });
 }

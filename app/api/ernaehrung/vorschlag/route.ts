@@ -16,7 +16,7 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { TAGE, MAHLZEITEN, KATEGORIEN, sauberDatei, neueId, kategorieRaten, gleichesLebensmittel, type ErnaehrungFile, type Tag, type Mahlzeiten, type Gericht, type EinkaufPosten, type PlanGerichte, type Kategorie } from '@/lib/ernaehrung/modell';
+import { TAGE, MAHLZEITEN, KATEGORIEN, sauberDatei, neueId, kategorieRaten, gleichesLebensmittel, type ErnaehrungFile, type Tag, type Mahlzeiten, type Gericht, type EinkaufPosten, type PlanGerichte, type Kategorie, PROFIL_DISKRET } from '@/lib/ernaehrung/modell';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 
@@ -74,7 +74,8 @@ export async function POST(req: Request) {
     vorrat.length ? `VORRAT ZUHAUSE (verbrauchen! kommt NICHT auf die Einkaufsliste): ${vorrat.join('; ')}` : '',
     gespeichert.length ? `UNSERE GERICHTE (★ = Lieblinge; gern wieder einplanen, dann EXAKT diesen Namen verwenden und KEIN neues Rezept dafür schreiben): ${gespeichert.join('; ')}` : '',
     'REGELN:',
-    '- Je Mahlzeit EIN Gericht, Name max 8 Wörter. Gemeinsame Gerichte; braucht eine Person eine Variante, steht sie im Namen („… (für Malin ohne Feta)“).',
+    '- Je Mahlzeit EIN Gericht, Name max 8 Wörter. Gemeinsame Gerichte; braucht eine Person eine Variante, steht sie im Namen („… (für <Name> ohne Feta)“).',
+    PROFIL_DISKRET,
     '- Frühstück und Mittag alltagstauglich schnell; 2–3 Gerichte dürfen sich wiederholen (Meal-Prep), aber nicht alles. Abends leicht. Freitag/Samstag darf EIN Genuss-Gericht sein.',
     '- Zu JEDEM verschiedenen Gericht ein Rezept: Zutaten mit Menge (für alle Personen zusammen), Zubereitung in 3–7 kurzen Schritten, Dauer in Minuten, Portionen, für wen.',
     '- EINKAUFSLISTE: alle nötigen Zutaten der Woche, gebündelt und dedupliziert, abzüglich Vorrat, mit Menge und Kategorie aus: ' + KATEGORIEN.map(k => k.id).join(', ') + '. 15–35 Posten.',

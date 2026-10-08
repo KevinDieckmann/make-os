@@ -11,7 +11,7 @@ import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { sauberDatei, wendeAn, neueId, TAGE, MAHLZEITEN, type ErnaehrungFile, type Gericht, type Tag, type Mahlzeit, type Op } from '@/lib/ernaehrung/modell';
+import { sauberDatei, wendeAn, neueId, TAGE, MAHLZEITEN, type ErnaehrungFile, type Gericht, type Tag, type Mahlzeit, type Op, PROFIL_DISKRET } from '@/lib/ernaehrung/modell';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
     'GRUNDSÄTZE:', f.grundsaetze || 'anti-entzündlich, regelmäßig, einfach',
     profile.length ? 'PROFILE (Unverträgliches und „Nie“ sind absolut):\n' + profile.map(p => `• ${p.name || p.person}: ${[p.bedarf, p.unvertraeglich.length ? `verträgt nicht ${p.unvertraeglich.join(', ')}` : '', p.nie.length ? `nie ${p.nie.join(', ')}` : '', p.gern.length ? `gern ${p.gern.join(', ')}` : ''].filter(Boolean).join('; ')}`).join('\n') : '',
     f.lebensmittel.filter(l => l.bevorzugt).length ? `BEVORZUGT: ${f.lebensmittel.filter(l => l.bevorzugt).map(l => (l.hinweis ? `${l.name} (${l.hinweis})` : l.name)).join('; ')}` : '',
+    PROFIL_DISKRET,
     'Antworte NUR als JSON: {"name":"…","zutaten":[{"name":"…","menge":"…"}],"zubereitung":["Schritt 1","…"],"dauerMin":25,"portionen":2,"fuer":["…"],"tags":["…"]} — Zutaten mit Mengen für alle zusammen, 3–8 Schritte, kein Vorwort.',
   ].filter(Boolean).join('\n');
 

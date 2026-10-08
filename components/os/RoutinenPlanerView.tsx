@@ -248,17 +248,32 @@ export function RoutinenPlanerView() {
         <Karte i={2}><Leer>lade …</Leer></Karte>
       ) : WANN.map((w, wi) => {
         const eigene = sicht.filter(r => r.wann === w.id);
-        const ids = eigene.map(r => r.id);
+        // Verdeckte Routinen der anderen Person (08.10., „Belegt“) zählen beim Umsortieren nicht mit — ändern kann sie nur sie selbst.
+        const bearbeitbar = eigene.filter(r => !r.belegt);
+        const ids = bearbeitbar.map(r => r.id);
         const aktivHier = eigene.filter(r => r.aktiv).length;
         return (
           <Karte key={w.id} i={2 + wi}>
             <Ueberschrift farbe={LEUCHT.puls} rechts={<>{w.hint} · <b style={{ color: aktivHier ? C.inkDim : C.inkLeise, fontWeight: 600 }}>{aktivHier} aktiv</b></>}>{w.label}</Ueberschrift>
             {!eigene.length && <Leer>Noch nichts{spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : ''} — leg oben eine an.</Leer>}
             <Liste>
-              {eigene.map((r, pos) => {
+              {eigene.map(r => {
                 const sp = spaceVonRoutine(r);
                 const owner = ownerVonRoutine(r);
                 const rh = r.rhythmus ?? 'taeglich';
+                // Routine der anderen Person: nur „Belegt“ mit Besitz, Bereich und Rhythmus — der Server schickt nichts anderes mit.
+                if (r.belegt) return (
+                  <div key={r.id} className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 0.7 : 0.4 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Punkt farbe={C.inkLeise} groesse={8} />
+                      <span style={{ flex: 1, minWidth: 0, color: C.inkDim, fontSize: TYP.body }}>Belegt</span>
+                      <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
+                      <Chip farbe={LEUCHT.puls}>{nameVon(owner)}</Chip>
+                      {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
+                    </div>
+                  </div>
+                );
+                const pos = ids.indexOf(r.id);
                 return (
                   <div key={r.id} className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -271,7 +286,7 @@ export function RoutinenPlanerView() {
                       {sp === 'privat' && hatPrivatEinheit(r) && <Chip farbe={SPACE_FARBE.privat}>{r.einheit}</Chip>}
                       <Chip farbe={owner === OWNER_BEIDE ? LEUCHT.beziehung : LEUCHT.puls}>{nameVon(owner)}</Chip>
                       {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
-                      <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === eigene.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />
+                      <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === ids.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />
                       <button onClick={() => persist(routinen.filter(x => x.id !== r.id))} aria-label="Routine löschen" style={loeschen}>✕</button>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, paddingLeft: 46 }}>

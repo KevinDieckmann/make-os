@@ -27,4 +27,13 @@ describe('Gesundheit → Stränge', () => {
     expect(fuerBetrachter(st('sport:malin:s-1'), 'kevin')).toMatchObject({ titel: 'Belegt', quelle: 'belegt' });
     expect(st('sport:malin:s-1')).toMatchObject({ quelle: 'wettkampf', gewicht: 2.5 });
   });
+  it('08.10. (Kevin): JEDE Routine einer Person ist privat — auch „leben“/„business“; die andere sieht nur „Belegt“', () => {
+    const [s] = gesundheitStraenge({
+      heute: '2026-10-03', links: { routinen: '/os/planung/routinen', sport: '/os/sport' }, sport: [],
+      routinen: [{ id: 'r-5', label: 'Geheimer Termin', kategorie: 'leben', aktiv: true, owner: 'malin', rhythmus: 'monatlich', naechstesMal: '2026-10-20' }],
+    });
+    expect(s.privat).toBe(true);
+    expect(JSON.stringify(fuerBetrachter(s, 'kevin'))).not.toContain('Geheimer Termin');
+    expect(fuerBetrachter(s, 'malin').titel).toBe('Geheimer Termin');
+  });
 });

@@ -4,6 +4,9 @@
 //          zu zweit am Handy überschreibt so niemand den anderen
 // PUT    → Altweg (ganzer Plan/Liste/Grundsätze), bleibt für ältere Ansichten
 // Profile pflegt jede Person selbst (Konto), Gäste pflegt der Haushalt.
+// 08.10. (Kevin): Einkauf, Plan und Gerichte bleiben gemeinsam; Konto-Profile sieht nur die Person selbst — außer die
+// Inhaberin teilt ihre Gesundheit mit der anfragenden Person (`darfGesundheitSehen`). JEDE Antwort mit der Datei geht durch
+// `ausliefern` (→ `profileFuerBetrachter`, lib/ernaehrung/modell.ts). Fremde Profile schreiben/löschen → 403, nichts gespeichert.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -12,7 +15,8 @@ import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushal
 import { ladeKonten } from '@/lib/zugang/konten';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { heuteBerlin, monatVon } from '@/lib/finanzen/haushalt/monat';
-import { sauberDatei, wendeAn, gefuellt, type ErnaehrungFile, type Op } from '@/lib/ernaehrung/modell';
+import { sauberDatei, wendeAn, gefuellt, profileFuerBetrachter, type ErnaehrungFile, type Op } from '@/lib/ernaehrung/modell';
+import { darfGesundheitSehen } from '@/lib/zoe/raum';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
@@ -57,11 +61,21 @@ async function personen(): Promise<{ id: string; name: string }[]> {
   return konten.filter(k => k.speicher === inhaber?.speicher || (!!inhaber?.haushalt && k.haushalt === inhaber.haushalt)).map(k => ({ id: k.speicher, name: k.name.split(' ')[0] }));
 }
 
+/** Die Datei für die anfragende Person: fremde Konto-Profile nur, wenn deren Inhaberin Gesundheit mit ihr teilt. */
+async function ausliefern(req: Request, ich: string, f: ErnaehrungFile): Promise<ErnaehrungFile> {
+  const fremde = [...new Set(f.profile.filter(p => p.konto && p.person !== ich).map(p => p.person))];
+  const teilt = new Set<string>();
+  for (const p of fremde) if (await darfGesundheitSehen(req, p).catch(() => false)) teilt.add(p);
+  return { ...f, profile: profileFuerBetrachter(f.profile, ich, teilt) };
+}
+
+const FREMD = { ok: false, error: 'Nicht erlaubt: das Profil einer anderen Person pflegt nur sie selbst. Nichts gespeichert.' };
+
 export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const [f, b, p] = await Promise.all([laden(), budget(), personen()]);
-  return NextResponse.json({ ...f, ich: z.person, personen: p, budget: b });
+  return NextResponse.json({ ...(await ausliefern(req, z.person, f)), ich: z.person, personen: p, budget: b });
 }
 
 export async function PATCH(req: Request) {
@@ -73,14 +87,19 @@ export async function PATCH(req: Request) {
   const ops = (Array.isArray(body.ops) ? body.ops : []).slice(0, 200);
   if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine Schritte übergeben.' }, { status: 400 });
   let abgelehnt: string[] = [];
+  let fremd = false;
+  const konten = (await personen()).map(p => p.id);
   const next = await updateJson<ErnaehrungFile>(STORE, current => {
     const f = sauberDatei(current);
     if (!f.grundsaetze) f.grundsaetze = SEED_GRUNDSAETZE;
-    const r = wendeAn(f, ops, z.person);
+    const r = wendeAn(f, ops, z.person, undefined, konten);
+    // Ein Schritt auf ein fremdes Profil lehnt den ganzen Aufruf ab (08.10.) — nichts wird gespeichert.
+    if (r.abgelehnt.includes('profile:fremd')) { fremd = true; return (current ?? f) as ErnaehrungFile; }
     abgelehnt = r.abgelehnt;
     return r.datei;
   });
-  return NextResponse.json({ ok: true, abgelehnt, ...next, ich: z.person });
+  if (fremd) return NextResponse.json(FREMD, { status: 403 });
+  return NextResponse.json({ ok: true, abgelehnt, ...(await ausliefern(req, z.person, sauberDatei(next))), ich: z.person });
 }
 
 export async function PUT(req: Request) {
@@ -88,7 +107,8 @@ export async function PUT(req: Request) {
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   let body: Partial<ErnaehrungFile>;
   try { body = await jsonBegrenzt(req, 1_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  // Altweg: nur Plan, Liste und Grundsätze — Profile, Stammliste, Vorrat und Rezepte gehen über PATCH.
+  // Altweg: nur Plan, Liste und Grundsätze — Profile, Stammliste, Vorrat und Rezepte gehen über PATCH. Die Profile kommen IMMER
+  // aus dem gespeicherten Stand (`alt`), nie aus dem Körper — ein Browser, der fremde Profile nicht sieht, kann sie so nicht löschen.
   let verloren: string | null = null;
   const next = await updateJson<ErnaehrungFile>(STORE, current => {
     const alt = sauberDatei(current);
@@ -99,5 +119,5 @@ export async function PUT(req: Request) {
     return neu;
   });
   if (verloren) return NextResponse.json({ ok: false, error: `Verweigert: ${verloren} wäre stark geschrumpft. Der alte Stand bleibt stehen — Seite neu laden.` }, { status: 409 });
-  return NextResponse.json({ ok: true, ...next, ich: z.person });
+  return NextResponse.json({ ok: true, ...(await ausliefern(req, z.person, sauberDatei(next))), ich: z.person });
 }

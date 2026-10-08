@@ -157,6 +157,11 @@ export interface Routine {
   rang?: number;
   /** Business-Einheit (27.09., wie bei Zielen) — nur bei `space: 'business'`. */
   einheit?: string;
+  /**
+   * Nur in Antworten, nie gespeichert (08.10., Kevin): eine Routine der ANDEREN Person, für den Betrachter auf „Belegt“
+   * verdeckt (`routinenFuerBetrachter`, lib/planung/routinen.ts). Der Schreibweg (`sauberRoutine`) übernimmt das Feld nie.
+   */
+  belegt?: true;
 }
 
 /** Wochentag 1 = Montag … 7 = Sonntag. */
