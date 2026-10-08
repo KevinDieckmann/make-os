@@ -268,3 +268,210 @@ describe('Messlatte Malin-Sicht 08.10.: Ernährungsprofil sieht nur die Person s
     expect(await bestandText('ernaehrung')).toContain(PROFIL);
   });
 });
+
+// ─── 08.10. „Sicht-Prüfung Malin“ (Kevin: „noch tiefer ausbauen“) — systematisch über das Routen-Register ─────────────
+// Jede lesende Schnittstelle, die Personendaten tragen kann (alle GET außer `offen`/`dienst`), wird mit Malins Sitzung
+// aufgerufen — einmal ohne Parameter, einmal mit allen Personen-Parametern auf Kevin (`fuer`, `person`, `wer`, `owner`,
+// `von`, `auskunft`) und einmal mit den Sicht-Schaltern (`sicht`, `space`, `papierkorb`, `archiv`, `alle`). Keine Antwort
+// (gleich welcher Status) darf eine der Marken aus Kevins privaten Beständen enthalten. Gegenprobe: dieselben Marken
+// kommen bei Kevin an — die Saat ist also wirklich lesbar. Netz ist gesperrt (fetch wirft), Modelle sind aus.
+const SYS = {
+  termin: 'MESSLATTE-SYS-TERMIN-PRIVAT',
+  terminOrt: 'MESSLATTE-SYS-TERMIN-ORT',
+  aufgabe: 'MESSLATTE-SYS-AUFGABE-NURICH',
+  unteraufgabe: 'MESSLATTE-SYS-UNTERAUFGABE-NURICH',
+  ziel: 'MESSLATTE-SYS-ZIEL-EIGEN',
+  zeit: 'MESSLATTE-SYS-FOKUS-PRIVAT',
+  laufend: 'MESSLATTE-SYS-FOKUS-LAUFEND',
+  thema: 'MESSLATTE-SYS-FAMILIE-NURICH',
+  reflexion: 'MESSLATTE-SYS-FAMILIE-REFLEXION',
+  meldung: 'MESSLATTE-SYS-MELDUNG',
+  verlauf: 'MESSLATTE-SYS-ZOE-VERLAUF',
+  stapel: 'MESSLATTE-SYS-ZOE-STAPEL',
+  protokoll: 'MESSLATTE-SYS-ZOE-PROTOKOLL',
+  kapa: 'MESSLATTE-SYS-KAPA-URLAUB',
+  karte: 'MESSLATTE-SYS-VISITENKARTE',
+  mail: 'MESSLATTE-SYS-MAIL-BETREFF',
+  postfach: 'MESSLATTE-SYS-POSTFACH-NAME',
+  haut: 'MESSLATTE-SYS-HAUT',
+};
+const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
+
+/**
+ * Bewusst erlaubt (Kevins frühere Entscheidungen) — die Marke darf in genau dieser Route auftauchen:
+ * - Eigene Ziele/Fokus (`ziele-eigen`) liest die andere Person NUR LESEND über `?fuer=` (26.09., Kompass „Fokus von …“);
+ *   offen als Frage an Kevin (UPDATES.md 08.10. „Sicht-Prüfung Malin“).
+ */
+const ERLAUBT: { route: string; marke: string; warum: string }[] = [
+  { route: 'state/ziele', marke: SYS.ziel, warum: 'eigene Ziele der anderen Person nur lesend über ?fuer= (26.09., Kompass)' },
+];
+
+/** Übersprungen (mit Grund). Alles andere wird aufgerufen. */
+const UEBERSPRUNGEN: Record<string, string> = {
+  'jarvis/[...pfad]': 'nur 308-Weiterleitung auf /api/zoe/* — die Ziele werden selbst geprüft',
+};
+
+const VARIANTEN = [
+  '',
+  '?fuer=kevin&person=kevin&wer=kevin&owner=kevin&von=kevin&auskunft=kevin',
+  '?sicht=privat&space=privat&papierkorb=1&archiv=1&alle=1&fuer=kevin',
+  // Suchwege (Wissen, Schnellsuche, CRM-Suche …) mit den Marken als Suchbegriff.
+  '?frage=Messlatte&q=MESSLATTE&suche=MESSLATTE&text=MESSLATTE',
+];
+/** Zusätze je Route, damit sie überhaupt etwas liefert (Pflicht-Parameter). */
+const ZUSATZ: Record<string, string> = {
+  'state/flaeche': 'seite=heute',
+  'aufgaben/zeit': 'ids=t-messlatte-geheim',
+};
+/** Werte für dynamische Segmente. */
+const SEGMENTE: Record<string, string | string[]> = { head: 'sales', slug: 'messlatte-0123456789abcdef01234567', token: 'x', pfad: ['wissen'] };
+
+type Ctx = { params: Promise<Record<string, string | string[]>> };
+type GetHandler = (r: Request, ctx?: Ctx) => Promise<Response>;
+const mitFrist = async <T,>(p: Promise<T>, ms: number): Promise<T | 'frist'> => {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  try { return await Promise.race([p, new Promise<'frist'>(res => { t = setTimeout(() => res('frist'), ms); })]); } finally { if (t) clearTimeout(t); }
+};
+
+async function rufeGet(pfad: string, query: string, person: string): Promise<{ status: number; text: string } | 'frist' | { fehler: string }> {
+  try {
+    const m = (await import(`@/app/api/${pfad}/route`)) as { GET?: GetHandler };
+    if (!m.GET) return { fehler: 'kein GET' };
+    const params: Record<string, string | string[]> = {};
+    for (const [, name] of pfad.matchAll(/\[(?:\.\.\.)?([a-z]+)\]/g)) params[name] = SEGMENTE[name] ?? 'x';
+    const zusatz = ZUSATZ[pfad];
+    const q = zusatz ? (query ? `${query}&${zusatz}` : `?${zusatz}`) : query;
+    const r = await mitFrist(m.GET(new Request(`http://test/api/${pfad}${q}`, { headers: sitzung(person) }), { params: Promise.resolve(params) }), 20_000);
+    if (r === 'frist') return 'frist';
+    const text = await mitFrist(r.text(), 10_000);
+    if (text === 'frist') return 'frist';
+    return { status: r.status, text };
+  } catch (e) {
+    return { fehler: e instanceof Error ? e.message.slice(0, 200) : String(e) };
+  }
+}
+
+describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzung (Register)', () => {
+  const echtesFetch = globalThis.fetch;
+  let routen: string[] = [];
+
+  beforeAll(async () => {
+    // Kein Netz: externe Dienste (iCloud, Google, Meta, Modell) und interne Hops scheitern sofort.
+    globalThis.fetch = (async () => { throw new Error('Netz im Messlatte-Test gesperrt'); }) as typeof fetch;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.ICLOUD_APPLE_ID;
+    delete process.env.ICLOUD_APP_PASSWORT;
+    const db = await import('@/lib/store/local-db');
+    const { localDay, tagePlus } = await import('@/lib/zeit');
+    const H = localDay();
+    const J = new Date().toISOString();
+    await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied')], einladungen: [] });
+
+    // Kalender (Mac-Stand): ein privater Termin von Kevin — für Malin nur „Belegt“.
+    await db.saveJson('calendar-cache', { at: J, quelle: 'mac', events: [
+      { id: 'e-messlatte-privat', title: SYS.termin, location: SYS.terminOrt, startDate: `${H}T10:00:00`, endDate: `${H}T11:00:00`, allDay: false, calendarName: 'Privat Kevin' },
+      { id: 'e-messlatte-offen', title: 'Messlatte offener Termin', startDate: `${H}T12:00:00`, endDate: `${H}T13:00:00`, allDay: false, calendarName: 'Privat Kevin' },
+    ] });
+    await db.saveJson('kalender-bezug', { bezuege: { 'e-messlatte-privat': { privat: true, von: 'kevin', geaendert: J, tag: H } } });
+
+    // Aufgaben: „nur ich“ von Kevin samt Unteraufgabe, dazu eine gemeinsame.
+    const T0 = '2026-10-01T08:00:00.000Z';
+    const a = (id: string, title: string, extra: Record<string, unknown> = {}) => ({ id, projectId: 'p-messlatte', title, status: 'todo', priority: 'high', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 0, createdAt: T0, updatedAt: T0, spaceId: 'privat', dueDate: H, ...extra });
+    await db.saveJson('tasks', {
+      projects: [{ id: 'p-messlatte', title: 'Messlatte Haus', category: 'joint', owner: 'both', color: '#58D9CD', tags: [], archived: false, createdAt: T0, updatedAt: T0, spaceId: 'privat' }],
+      listen: [], statusEigen: [], vorlagen: [],
+      tasks: [
+        a('t-messlatte-geheim', SYS.aufgabe, { sichtbarkeit: 'nur-ich', angelegtVon: 'kevin', description: SYS.aufgabe }),
+        a('t-messlatte-geheim-u', SYS.unteraufgabe, { parentId: 't-messlatte-geheim' }),
+        a('t-messlatte-offen', 'Messlatte gemeinsame Aufgabe'),
+      ],
+    });
+
+    // Eigenes Ziel (ziele-eigen) von Kevin.
+    const ziele = (await import('@/app/api/state/ziele/route')) as unknown as Handler3;
+    const zr = await schreiben(ziele.PATCH, 'PATCH', '/api/state/ziele', 'kevin', { horizont: 'jahr', fuer: 'ich', ops: [{ op: 'upsert', eintrag: { id: 'z-messlatte-eigen', titel: SYS.ziel, fortschritt: 10, space: 'privat' } }] });
+    expect(zr.status, await zr.clone().text()).toBe(200);
+
+    // Zeit: ein privater Fokus-Block und ein laufender Fokus.
+    const zeit = (await import('@/app/api/state/zeit/route')) as unknown as { POST: Handler };
+    const von = new Date(Date.now() - 2 * 3_600_000), bis = new Date(Date.now() - 3_600_000);
+    const zb = await schreiben(zeit.POST, 'POST', '/api/state/zeit', 'kevin', { aktion: 'fokus', von: von.toISOString(), bis: bis.toISOString(), schluessel: 'privat:fokus', label: SYS.zeit });
+    expect(zb.status, await zb.clone().text()).toBe(200);
+    const fokus = (await import('@/app/api/state/fokus/route')) as unknown as { POST: Handler };
+    const fl = await schreiben(fokus.POST, 'POST', '/api/state/fokus', 'kevin', { laufend: { von: new Date(Date.now() - 600_000).toISOString(), schluessel: 'privat:fokus', label: SYS.laufend } });
+    expect(fl.status, await fl.clone().text()).toBe(200);
+
+    // Familie: ein „nur ich“-Thema und eine ungeteilte Reflexion.
+    const familie = (await import('@/app/api/familie/route')) as unknown as { PATCH: Handler };
+    const fa = await schreiben(familie.PATCH, 'PATCH', '/api/familie', 'kevin', { ops: [
+      { liste: 'themen', op: 'upsert', eintrag: { id: 'ft-messlatte', titel: SYS.thema, art: 'unklar', status: 'offen', hut: 'privat', sichtbarkeit: 'nur-ich' } },
+      { liste: 'reparaturen', op: 'upsert', eintrag: { id: 'fr-messlatte', datum: H, pauseBis: null, reflexionen: [{ person: 'kevin', gefuehle: SYS.reflexion, meineSicht: SYS.reflexion, meinAnteil: '', wunsch: '', geteilt: false }], abgeschlossen: null, vereinbarung: '' } },
+    ] });
+    expect(fa.status, await fa.clone().text()).toBe(200);
+
+    // Glocke, ZOE-Verlauf, Stapel, Protokoll — alles Kevin.
+    const { meldungAblegen } = await import('@/lib/meldungen/speicher');
+    await meldungAblegen({ an: 'kevin', art: 'kommentar', titel: SYS.meldung, link: '/os', von: 'malin' } as Parameters<typeof meldungAblegen>[0]);
+    await db.saveJson('zoe-verlauf', { gespraeche: [{ id: 'g-messlatte', person: 'kevin', begonnen: J, zuletzt: J, titel: SYS.verlauf, nachrichten: [{ rolle: 'kevin', text: SYS.verlauf, zeit: J }] }] });
+    const { lege } = await import('@/lib/zoe/stapel');
+    await lege({ werkzeug: 'create_task', gruppe: 'aufgaben', titel: SYS.stapel, nachher: SYS.stapel, eingabe: { title: SYS.stapel }, anlass: SYS.stapel, person: 'kevin', quelle: 'gespraech' } as Parameters<typeof lege>[0]);
+    const { notiere } = await import('@/lib/zoe/protokoll');
+    await notiere({ werkzeug: 'create_task', gruppe: 'aufgaben', risiko: 'frei', eingabe: {}, ergebnis: SYS.protokoll, ok: true, quelle: 'zoe', person: 'kevin' } as Parameters<typeof notiere>[0]);
+
+    // Kapazität: Urlaub mit Titel (der Titel gehört nur der Person selbst).
+    const kapa = (await import('@/app/api/kapazitaet/route')) as unknown as { PATCH: Handler };
+    const ka = await schreiben(kapa.PATCH, 'PATCH', '/api/kapazitaet', 'kevin', { ops: [
+      { op: 'grundwert', person: 'konto-kevin', stundenWoche: 40 },
+      { op: 'ausnahme', person: 'konto-kevin', ausnahme: { id: 'ka-messlatte', art: 'urlaub', von: tagePlus(H, 3), bis: tagePlus(H, 5), titel: SYS.kapa } },
+    ] });
+    expect(ka.status, await ka.clone().text()).toBe(200);
+
+    // Visitenkarte, Postfach + Mail-Kopf, Haut.
+    await db.saveJson('visitenkarten--kevin', { karten: [{ id: 'vk-messlatte', bezeichnung: SYS.karte, vorname: 'Kevin', firma: SYS.karte }] });
+    const PF = 'pf-11111111-2222-4333-8444-555555555555';
+    await db.saveJson('postfaecher--kevin', { v: 1, postfaecher: [{ id: PF, quelle: 'imap', bereich: 'privat', anzeigename: SYS.postfach, adresse: 'kevin.messlatte@example.invalid', anbieter: 'icloud', angelegtAm: '2026-10-06' }] });
+    await db.saveJson('imap-stand--kevin', { v: 1, person: 'kevin', postfaecher: { [PF]: { at: J } }, koepfe: {
+      [`${PF}:e:1:1`]: { id: `${PF}:e:1:1`, threadId: 'x', am: J, von: { name: 'Freundin', email: 'freundin@example.invalid' }, an: [{ email: 'kevin.messlatte@example.invalid' }], cc: [], betreff: SYS.mail, ausschnitt: SYS.mail, labels: ['INBOX'], anhaenge: [], postfachId: PF, ordner: 'e', uidValidity: '1', uid: 1, wurzel: '<m1@x>', messageId: '<m1@x>' },
+    } });
+    await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
+
+    const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
+    routen = Object.entries(ROUTEN_REGISTER)
+      .filter(([pfad, e]) => e.methoden.GET && e.methoden.GET !== 'offen' && e.methoden.GET !== 'dienst' && !UEBERSPRUNGEN[pfad])
+      .map(([pfad]) => pfad).sort();
+  }, 120_000);
+  afterAll(() => { globalThis.fetch = echtesFetch; });
+
+  it('keine Antwort an Malin enthält eine Marke aus Kevins privaten Beständen', async () => {
+    expect(routen.length).toBeGreaterThan(100);
+    const lecks: string[] = [];
+    const ohneAntwort: string[] = [];
+    for (const pfad of routen) {
+      for (const v of VARIANTEN) {
+        const r = await rufeGet(pfad, v, 'malin');
+        if (r === 'frist' || 'fehler' in r) { ohneAntwort.push(`${pfad}${v}: ${r === 'frist' ? 'Zeitüberschreitung' : r.fehler}`); continue; }
+        for (const [name, marke] of Object.entries(ALLE_MARKEN)) {
+          if (!r.text.includes(marke)) continue;
+          if (ERLAUBT.some(x => x.route === pfad && x.marke === marke)) continue;
+          lecks.push(`${pfad}${v} (${r.status}) → ${name}`);
+        }
+      }
+    }
+    // Was gar nicht antwortete, steht im Ausgabeprotokoll — kein Leck, aber sichtbar.
+    if (ohneAntwort.length) console.warn(`[messlatte] ohne Antwort (${ohneAntwort.length}):\n${ohneAntwort.join('\n')}`);
+    expect(lecks).toEqual([]);
+  }, 900_000);
+
+  it('Gegenprobe: jede Marke kommt bei Kevin selbst an (die Saat ist lesbar)', async () => {
+    const gefunden = new Map<string, string>();
+    for (const pfad of routen) {
+      for (const v of ['', VARIANTEN[3]]) {
+        const r = await rufeGet(pfad, v, 'kevin');
+        if (r === 'frist' || 'fehler' in r) continue;
+        for (const [name, marke] of Object.entries(ALLE_MARKEN)) if (r.text.includes(marke) && !gefunden.has(name)) gefunden.set(name, pfad);
+      }
+    }
+    const fehlt = Object.keys(ALLE_MARKEN).filter(n => !gefunden.has(n));
+    expect(fehlt).toEqual([]);
+  }, 900_000);
+});

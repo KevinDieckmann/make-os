@@ -69,6 +69,10 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   Teammitglied), Haushalte und Gesellschaften werden auf dem SERVER gefiltert — die Antwort enthält nur, was die Sicht
   sehen darf (eine reine, getestete Filterstelle je Bereich); Schreiben auf fremde Pfade → 403. Die Oberfläche blendet
   nie bloß aus. Jedes neue Feature mit Wächtertest „Sicht X bekommt nichts aus Y“.
+  Jede lesende Route läuft automatisch durch die Messlatte (`tests/messlatte-malin.test.ts`, 08.10.: alle GET aus dem Routen-Register
+  mit Malins Sitzung und `fuer/person/…=kevin`) — neuer privater Bestand → Marke in die Saat. Ketten (Papierkorb) nehmen fremde „nur
+  ich“-Aufgaben nie mit (`fremdeNurIchLoesen`), Bestände mit `aufgabeId` filtern über `verborgeneAufgabenFuer`; Agenten-/ZOE-Läufe
+  rechnen mit der AUSLÖSENDEN Person (`gatherBrain(…, person)`, nie Rückfall auf den Inhaber).
 - **Testkunden nie auf unserer Instanz** (Kevin: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.

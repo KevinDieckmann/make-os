@@ -17,6 +17,7 @@ import type { Task, TasksState } from '@/types/tasks';
 import { sonstigeProjektId } from './struktur';
 import { ohneArchiv } from './neustart';
 import { nachfahrenIn, mitVerbliebenenVorfahren, vorfahren, nachIdKarte } from './ebenen';
+import { darfSehen } from './sicht-regel';
 
 export const PAPIERKORB_TAGE = 30;
 const TAG_MS = 86_400_000;
@@ -92,6 +93,35 @@ function verweiseLoesen(tasks: Task[], ids: ReadonlySet<string>, jetzt: string):
     if (abhaengigVon?.length) n.abhaengigVon = abhaengigVon; else delete n.abhaengigVon;
     return n;
   });
+}
+
+/**
+ * Fremde „nur ich“-Aufgaben aus einer Kette lösen (08.10., Sicht-Prüfung Malin) — VOR `projektInPapierkorb`/`aufgabeInPapierkorb`/
+ * `endgueltigEntfernen`, wenn eine Person löscht. Wer ein gemeinsames Projekt oder eine gemeinsame Aufgabe löscht, nimmt die
+ * „nur ich“-Aufgaben der anderen Person (die sie gar nicht sieht) nicht mit — auch nicht endgültig samt Dateien:
+ * - Projekt: diese Aufgaben ziehen nach „Sonstige“ ihres Space (ohne Liste), ihre Wurzel hängt an keiner sichtbaren Aufgabe mehr;
+ * - Aufgabe: die Wurzel des verborgenen Teilbaums wird Hauptaufgabe (gleiches Projekt).
+ * Liegen sie schon mit im Papierkorb (`geloeschtMit` = diese Kette), bleiben sie dort — als eigener Eintrag ohne Kette. Rein.
+ */
+export function fremdeNurIchLoesen(state: TasksState, art: 'projekt' | 'aufgabe', id: string, person: string, jetzt: string): TasksState {
+  const nachId = nachIdKarte(state.tasks);
+  const betroffen = art === 'projekt'
+    ? state.tasks.filter(t => t.projectId === id || t.geloeschtMit === id)
+    : [...nachfahrenIn(id, state.tasks), ...state.tasks.filter(t => t.geloeschtMit === id)];
+  const verborgen = new Set(betroffen.filter(t => t.id !== id && !darfSehen(t, person, nachId)).map(t => t.id));
+  if (!verborgen.size) return state;
+  return {
+    ...state,
+    tasks: state.tasks.map(t => {
+      if (!verborgen.has(t.id)) return t;
+      const n: Task = { ...t, updatedAt: jetzt };
+      if (n.geloeschtMit === id) delete n.geloeschtMit;
+      // Wurzel des verborgenen Teilbaums: ihr Elternteil gehört zur Kette (sichtbar) → sie wird Hauptaufgabe.
+      if (n.parentId && !verborgen.has(n.parentId)) delete n.parentId;
+      if (art === 'projekt') { n.projectId = sonstigeProjektId(n.spaceId ?? 'privat'); delete n.listeId; }
+      return n;
+    }),
+  };
 }
 
 /** Projekt in den Papierkorb — seine Aufgaben (die nicht schon drin liegen) gehen mit. */

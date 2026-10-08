@@ -21,13 +21,18 @@ describe('Konsolidierung', () => {
     expect(K.tagesernte([f('2026-09-27T08:00:00Z'), f('2026-09-25T08:00:00Z'), f('2026-09-27T09:00:00Z', { geloeschtAm: 'x' })], jetzt)).toHaveLength(1);
     expect(K.regelVorschlag([], '2026-09-27')).toBeNull();
     expect(K.regelVorschlag([f('2026-09-27T08:00:00Z', { raum: 'malin' })], '2026-09-27')).toBeNull();
+    // Sicht-Prüfung 08.10.: auch der Raum „kevin“ ist persönlich — nie als „gemeinsam“ in die Brain-Inbox.
+    expect(K.regelVorschlag([f('2026-09-27T08:00:00Z', { raum: 'kevin' })], '2026-09-27')).toBeNull();
+    expect(K.regelVorschlag([f('2026-09-27T08:00:00Z', { raum: 'gemeinsam' })], '2026-09-27')).toMatchObject({ vertraulichkeit: 'gemeinsam' });
   });
   it('ohne KI: ein Regelwerk-Vorschlag in der Inbox, danach greift der Tages-Riegel', async () => {
-    await G.merke({ art: 'entscheidung', thema: 'KEMARIS', satz: 'Zweiter Standort ab Oktober in Erfurt.', woher: 'Kevin im Gespräch' });
+    await G.merke({ art: 'entscheidung', thema: 'KEMARIS', satz: 'Zweiter Standort ab Oktober in Erfurt.', woher: 'Kevin im Gespräch', raum: 'gemeinsam' });
+    await G.merke({ art: 'vorliebe', thema: 'Persönlich', satz: 'Nur für mich gemerkt (Probe).', raum: 'kevin' });
     const r = await K.konsolidieren(new Date().toISOString());
     expect(r).toMatchObject({ ok: true, ohneKi: true, abgelegt: 1 });
     const offen = await I.vorschlaegeLesen({ person: 'kevin' });
     expect(offen).toHaveLength(1); expect(offen[0].text).toContain('Erfurt'); expect(offen[0].ziel).toBe('neu');
+    expect(offen[0].text).not.toContain('Nur für mich gemerkt');
     const nochmal = await K.konsolidieren(new Date().toISOString());
     expect(nochmal.text).toBe('heute schon gelaufen');
     const erzwungen = await K.konsolidieren(new Date().toISOString(), true);

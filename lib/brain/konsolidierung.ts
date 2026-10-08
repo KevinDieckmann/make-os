@@ -29,9 +29,16 @@ export function tagesernte(alleFakten: Fakt[], jetzt: string, stundenZurueck = 2
   return alleFakten.filter(f => !f.geloeschtAm && Date.parse(f.zeit) >= ab);
 }
 
+/** Was der Lauf überhaupt verarbeiten darf: nur Fakten des gemeinsamen Raums (rein). Persönliche Räume bleiben im Gedächtnis. */
+export function nurGemeinsam(fakten: Fakt[]): Fakt[] {
+  return fakten.filter(f => f.raum === 'gemeinsam');
+}
+
 /** Regelwerk ohne KI: ein Vorschlag mit den neuen Fakten (nur gemeinsame Räume; Persönliches bleibt im Gedächtnis). */
 export function regelVorschlag(neu: Fakt[], heute: string): NeuerVorschlag | null {
-  const gemeinsam = neu.filter(f => f.raum === 'gemeinsam' || f.raum === 'kevin');
+  // Sicht-Prüfung 08.10.: NUR der gemeinsame Raum. Vorher zählte der Raum „kevin“ mit (aus der Zeit mit einem Konto) — so
+  // landeten persönliche Fakten einer Person als „gemeinsam“ in der Brain-Inbox, sichtbar für die andere.
+  const gemeinsam = nurGemeinsam(neu);
   if (!gemeinsam.length) return null;
   const zeilen = gemeinsam.slice(0, 40).map(f => `- **${f.thema}** (${f.art}): ${f.satz}${f.woher ? ` — _${f.woher}_` : ''}`);
   return { titel: `Fakten vom ${heute}`, text: `ZOE hat sich gestern Folgendes gemerkt. Was davon ins Brain gehört, bitte annehmen (als Protokoll) — oder ablehnen.\n\n${zeilen.join('\n')}`,
@@ -56,7 +63,7 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
   // App → Brain (29.09., B2): Tagesbericht als Vorschlag in der Inbox + _App-Spiegel (nur mit Server-Vault; wirft nie).
   const app = await appInsBrain(heute);
   const alle = await fakten({ anzahl: 500 }).catch(() => [] as Fakt[]);
-  const neu = tagesernte(alle, jetzt);
+  const neu = nurGemeinsam(tagesernte(alle, jetzt)); // auch fürs Modell nur der gemeinsame Raum (08.10.)
   const offen = await vorschlaegeLesen(AGENT).catch(() => []);
   const merke = async (e: Omit<Ergebnis, 'ok'>) => { await updateJson<KonsolidierungStand>(RIEGEL, cur => ({ ...(cur ?? {}), letzterTag: heute, letzterLauf: jetzt, letztesErgebnis: `${e.text} · ${app}` })); return { ok: true, ...e, app }; };
 

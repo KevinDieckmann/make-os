@@ -427,6 +427,16 @@ const sauber = (name: string) => name.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s
 const wer = (p?: string) => (p && /^[a-z0-9-]+$/.test(p) ? p : 'kevin');
 
 /**
+ * Darf an ein vorhandenes Protokoll (Kopf `k`) angehängt werden? Nur wenn die Person es sehen darf (`darfSehen`) und — bei
+ * einem privaten Nachtrag — nur an ihr eigenes privates Protokoll (08.10., Sicht-Prüfung Malin). Rein.
+ */
+export function anhaengenErlaubt(k: { scope?: string; owner?: string }, person: string, scope?: 'intern' | 'privat'): boolean {
+  if (!darfSehen(k, { person })) return false;
+  if (scope === 'privat') return (k.scope || 'intern') === 'privat' && (k.owner || 'kevin') === person;
+  return true;
+}
+
+/**
  * Neue Notiz = neues Protokoll im Brain: `03. Protokolle/Protokolle/JJJJ-MM-TT Titel.md`
  * mit Kopf nach AGENTS.md §3. Gibt es das Protokoll heute schon, wird ein
  * Nachtrag angehängt — nie überschrieben.
@@ -437,12 +447,22 @@ export async function legeAn(titel: string, text: string, opt: { person?: string
   if (!name) return { ok: false, fehler: 'Kein Titel.' };
   if (!text.trim()) return { ok: false, fehler: 'Kein Inhalt.' };
   const person = wer(opt.person);
-  const ziel = join(BRAIN, PROTOKOLL_ORDNER, `${heuteISO()} ${name}.md`);
+  let ziel = join(BRAIN, PROTOKOLL_ORDNER, `${heuteISO()} ${name}.md`);
   try {
     await access(BRAIN);
     await mkdir(dirname(ziel), { recursive: true });
-    let da = true;
-    try { await access(ziel); } catch { da = false; }
+    // Sicht-Prüfung 08.10.: angehängt wird nur an ein Protokoll, das die Person sehen darf — und Privates nur an das eigene
+    // private. Sonst (fremdes privates Protokoll gleichen Titels, oder privater Text an ein gemeinsames) ein eigenes Protokoll
+    // mit Zusatz — vorher landete der Nachtrag in der fremden Datei und der Pfad verriet, dass es sie gibt.
+    let da = false;
+    for (let n = 1; n <= 9; n++) {
+      if (n > 1) ziel = join(BRAIN, PROTOKOLL_ORDNER, `${heuteISO()} ${name} (${n}).md`);
+      let alt: string | null = null;
+      try { alt = await readFile(ziel, 'utf8'); } catch { /* gibt es nicht — hier wird neu angelegt */ }
+      if (alt === null) { da = false; break; }
+      if (anhaengenErlaubt(leseKopf(alt).kopf, person, opt.scope)) { da = true; break; }
+      if (n === 9) return { ok: false, fehler: 'Protokoll mit diesem Titel gibt es heute schon zu oft — bitte anderen Titel wählen.' };
+    }
     if (da) await appendFile(ziel, `\n\n## Nachtrag ${heuteDE()}\n\n${text.trim()}\n`, 'utf8');
     else {
       const kopf = `---\ntype: protokoll\nscope: ${opt.scope === 'privat' ? 'privat' : 'intern'}\nowner: ${person}\nstand: ${heuteISO()}\ntags: [protokoll, zoe]\n---\n\n# ${name}\n\n*${heuteDE()} · festgehalten von ZOE für ${person}*\n\n`;

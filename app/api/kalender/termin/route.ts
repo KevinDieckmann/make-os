@@ -97,6 +97,14 @@ async function fremdPrivatFuer(t: Termin | null, person: string): Promise<boolea
   const [einst, bezuege] = await Promise.all([ladeEinstellungen(), ladeBezuege().catch(() => null)]);
   return fremdPrivat({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, person);
 }
+/** Gehört ein schon vorhandener Termin (feste UID, `schonDa`) der anfragenden Person? Bezug mit Anleger → der zählt; ohne
+ *  Bezug der Kalender (nur der eigene, nie „beide“). Lesefehler → nein (lieber 409 als ein fremder Bezug). */
+async function schonDaGehoert(schluessel: string, uid: string, kalender: string, person: string, einst: Awaited<ReturnType<typeof ladeEinstellungen>>): Promise<boolean> {
+  let b: TerminBezug | undefined;
+  try { b = bezugVon(await ladeBezuege(), { id: schluessel, uid }); } catch { return false; }
+  if (b?.von) return b.von === person;
+  return wemGehoert(einst, kalender) === person;
+}
 const nichtDeiner = () => NextResponse.json({ ok: false, fehler: 'Privater Termin der anderen Person — nur sie kann ihn ändern oder löschen.' }, { status: 403 });
 
 /** Der Kalender (Eintrag im Stand) zu einem Namen — Lesefehler → unbekannt (das Anlegen scheitert dann ohnehin). */
@@ -145,6 +153,13 @@ export async function POST(req: Request) {
       sichtbarkeit: e.sichtbarkeit, zone: e.zone, ...(e.endZone ? { endZone: e.endZone } : {}), ...(e.arbeitsort ? { arbeitsort: e.arbeitsort } : {}), ...(e.blockArt ? { blockArt: e.blockArt } : {}),
       ...(g.gaeste.length ? { gaeste: g.gaeste.map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) })) } : {}),
     }, { einladungBestaetigt: e.einladungBestaetigt });
+    // Sicht-Prüfung 08.10.: eine mitgeschickte UID, die es SCHON gibt (`schonDa`), ist nur der Wiederholversuch der eigenen
+    // Anlage — der Bezug (`von`, „privat“) wird nur dann geschrieben, wenn der Termin dieser Person gehört (eigener Bezug, sonst
+    // eigener Kalender). Vorher machte ein POST mit fremder UID die anfragende Person zur Eigentümerin eines fremden Termins
+    // (`eigentuemer` liest `von` zuerst) — damit ließ sich „privat“ setzen oder eine Maske aufheben.
+    if (r.schonDa && !(await schonDaGehoert(r.schluessel, r.uid, r.kalender, z.person, einst))) {
+      return NextResponse.json({ ok: false, fehler: 'Diese Termin-Kennung ist schon vergeben.' }, { status: 409 });
+    }
     // Starttag in Berlin (für die Verbindungsprüfung) — bei einer anderen Zone umgerechnet, nie über new Date(wandzeit).
     const startBerlin = e.ganztags || e.zone === STANDARD_ZONE ? e.start : wandzeit(ausWandzeitIn(e.start, e.zone));
     const tag = startBerlin.slice(0, 10);
@@ -186,7 +201,8 @@ export async function PATCH(req: Request) {
   if ((gaeste || antwort || einladungBestaetigt) && istDienst(req)) return nurVonHand();
   try {
     // Rechte zuerst (R-K1 #96): fremd-private Termine gibt es für diese Person nur als „Belegt“.
-    const bisher = await terminLesen(uid).catch(() => null);
+    // Fehler beim Lesen → Abbruch (antwortFehler), nie „kein Termin“ und dann doch schreiben (08.10., fail-closed).
+    const bisher = await terminLesen(uid);
     if (await fremdPrivatFuer(bisher, z.person)) return nichtDeiner();
     // Als Gast antworten (K3): nur PARTSTAT, nach Bestätigung — sonst nichts an diesem Aufruf.
     if (antwort) {
@@ -255,7 +271,7 @@ export async function DELETE(req: Request) {
   const einladungBestaetigt = q.get('einladungBestaetigt') === '1';
   if (einladungBestaetigt && istDienst(req)) return nurVonHand();
   try {
-    const vorher = await terminLesen(uid).catch(() => null);
+    const vorher = await terminLesen(uid); // Lesefehler → Abbruch, nie blind löschen (08.10.)
     if (await fremdPrivatFuer(vorher, z.person)) return nichtDeiner();
     const r = await loeschen(uid, { ...(stand ? { stand } : {}), einladungBestaetigt });
     const schluessel = r.schluessel ?? uid;

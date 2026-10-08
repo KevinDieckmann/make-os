@@ -23,6 +23,7 @@ import { aufgabenDateienListe, aufgabenDateiAblegen, aufgabenDateiAendern, aufga
 import { DATEI_ID, dateinameAscii, dateinameSaeubern, endung } from '@/lib/dateien/regeln';
 import { AUFGABEN_KENNUNG, MAX_AUFGABEN_DATEI_BYTES, aufgabenDateienFuer, aufgabenTypErkennen } from '@/lib/dateien/aufgaben-regeln';
 import { begrenztLesen } from '@/lib/dateien/begrenzt-lesen';
+import { verborgeneAufgabenFuer } from '@/lib/aufgaben/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,18 @@ async function zugang(req: Request): Promise<{ person: string; haushalt: string 
   return h ? { person: h.person, haushalt: h.haushalt } : null;
 }
 
+/**
+ * Sicht-Prüfung 08.10.: Dateien an einer fremden „nur ich“-Aufgabe gibt es für diese Person nicht — weder in der Liste noch
+ * zum Herunterladen, Umbenennen, Löschen oder als Ziel eines Uploads (404, wie die Aufgabe selbst).
+ */
+async function anVerborgener(person: string, aufgabeId: string | undefined): Promise<boolean> {
+  return !!aufgabeId && (await verborgeneAufgabenFuer(person)).has(aufgabeId);
+}
+async function dateiVerborgen(z: { person: string; haushalt: string }, id: string): Promise<boolean> {
+  const e = (await aufgabenDateienListe(z.haushalt)).find(x => x.id === id);
+  return !!e && await anVerborgener(z.person, e.aufgabeId);
+}
+
 function ausFehler(e: unknown) {
   if (e instanceof AblageFehler) return fehler(e.message, e.status);
   console.error('[aufgaben/dateien]', (e as Error)?.message);
@@ -55,7 +68,7 @@ export async function GET(req: Request) {
     if (id !== null) {
       if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
       const d = await aufgabenDateiLesen(z.haushalt, id);
-      if (!d) return fehler('Nicht gefunden.', 404);
+      if (!d || await anVerborgener(z.person, d.eintrag.aufgabeId)) return fehler('Nicht gefunden.', 404);
       const name = d.eintrag.datei.name;
       return new Response(new Uint8Array(d.bytes), {
         headers: {
@@ -71,7 +84,8 @@ export async function GET(req: Request) {
     const projektId = q.get('projektId') ?? undefined, aufgabeId = q.get('aufgabeId') ?? undefined, listeId = q.get('listeId') ?? undefined;
     if ((projektId && !AUFGABEN_KENNUNG.test(projektId)) || (aufgabeId && !AUFGABEN_KENNUNG.test(aufgabeId)) || (listeId && !AUFGABEN_KENNUNG.test(listeId))) return fehler('Unzulässige Kennung.', 400);
     if (!projektId && !aufgabeId) return fehler('projektId oder aufgabeId fehlt.', 400);
-    const eintraege = aufgabenDateienFuer(await aufgabenDateienListe(z.haushalt), { projektId, aufgabeId, listeId });
+    const verborgen = await verborgeneAufgabenFuer(z.person);
+    const eintraege = aufgabenDateienFuer(await aufgabenDateienListe(z.haushalt), { projektId, aufgabeId, listeId }).filter(e => !e.aufgabeId || !verborgen.has(e.aufgabeId));
     const etag = `"${createHash('sha256').update(JSON.stringify(eintraege)).digest('base64url').slice(0, 27)}"`;
     const kopf = { 'Cache-Control': 'no-store, private', ETag: etag };
     if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: kopf });
@@ -101,6 +115,8 @@ export async function POST(req: Request) {
     if (!typ) return FALSCHER_TYP();
     let meta: unknown = {};
     try { meta = JSON.parse(String(form.get('meta') ?? '{}')); } catch { return fehler('meta ist kein gültiges JSON.', 400); }
+    const zielAufgabe = (meta as { aufgabeId?: unknown } | null)?.aufgabeId;
+    if (typeof zielAufgabe === 'string' && await anVerborgener(z.person, zielAufgabe)) return fehler('Aufgabe nicht gefunden.', 404);
     const e = await aufgabenDateiAblegen(z.haushalt, z.person, meta, { bytes, name, typ });
     return NextResponse.json({ ok: true, eintrag: e });
   } catch (e) { return ausFehler(e); }
@@ -116,6 +132,7 @@ export async function PATCH(req: Request) {
   const id = String(b.id ?? '');
   if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
   try {
+    if (await dateiVerborgen(z, id)) return fehler('Nicht gefunden.', 404);
     const e = await aufgabenDateiAendern(z.haushalt, z.person, id, b.felder);
     return e ? NextResponse.json({ ok: true, eintrag: e }) : fehler('Nicht gefunden.', 404);
   } catch (e) { return ausFehler(e); }
@@ -129,6 +146,7 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
   try {
+    if (await dateiVerborgen(z, id)) return fehler('Nicht gefunden.', 404);
     return (await aufgabenDateiEntfernen(z.haushalt, z.person, id)) ? NextResponse.json({ ok: true }) : fehler('Nicht gefunden.', 404);
   } catch (e) { return ausFehler(e); }
 }
