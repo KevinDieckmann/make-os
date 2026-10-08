@@ -143,7 +143,7 @@ export async function POST(req: Request) {
         const wer = v.verantwortlich === 'malin' ? 'malin' : 'kevin';
         return { neu: [{
           id: `hof-${v.id}`, title: (privat ? ohneBetraege(v.titel) : v.titel).slice(0, 200),
-          description: privat ? 'Vorschlag des Head of Finance (Haushalt) — Details und Beträge unter Zahlen › Head of Finance.' : `Vorschlag des Head of Finance: ${v.begruendung}`,
+          description: privat ? 'Vorschlag des Head of Finance (Haushalt) — Details und Beträge unter Finanzen › Head of Finance.' : `Vorschlag des Head of Finance: ${v.begruendung}`,
           status: 'todo', priority: v.prioritaet === 'hoch' ? 'high' : v.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: wer,
           tags: privat ? ['haushalt', 'finanzchef'] : ['finanzchef'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
           ...(v.frist ? { dueDate: v.frist } : {}),

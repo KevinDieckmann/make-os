@@ -52,8 +52,8 @@ async function uebernehmen(b: {
   if (!betrag) return antwort({ ok: false, error: 'Betrag fehlt oder ist nicht plausibel.' }, 400);
 
   // Belege aus dem Chat sind Firmen-Belege. Private gehören in den Haushalt
-  // (Zahlen › Privat), nicht in die Business-Buchungen.
-  if (String(b.firma ?? '').toLowerCase() === 'privat') return antwort({ ok: false, error: 'Private Belege bitte unter Zahlen › Privat erfassen — hier landen nur Firmen-Belege.' }, 400);
+  // (Finanzen › Privat), nicht in die Business-Buchungen.
+  if (String(b.firma ?? '').toLowerCase() === 'privat') return antwort({ ok: false, error: 'Private Belege bitte unter Finanzen › Privat erfassen — hier landen nur Firmen-Belege.' }, 400);
   // Die eine Einheitenliste (28.09.): kdc · kdv · ug; ohne Angabe wie bisher KD Ventures.
   const firma = b.firma === 'kdc' || b.firma === 'ug' ? b.firma : 'kdv';
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(b.datum ?? '')) ? String(b.datum) : localDay();

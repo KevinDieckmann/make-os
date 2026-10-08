@@ -29,7 +29,7 @@ export function istStand(e: IstStandEingaben): Schritt[] {
   const h = e.haushalt;
   if (h) {
     s.push({ id: 'umzug', bereich: 'privat', titel: 'Haushaltsdaten aus Malins Cockpit übernommen', erledigt: h.umzug && h.buchungen > 0, wer: 'beide', link: '/os/finanzen?s=privat',
-      detail: h.umzug ? `${h.buchungen} Buchungen übernommen` : 'Zahlen › Privat › „Aus Malins Cockpit“ — mit dem Cockpit-Login: Probelauf, dann Übernehmen' });
+      detail: h.umzug ? `${h.buchungen} Buchungen übernommen` : 'Finanzen › Privat › „Aus Malins Cockpit“ — mit dem Cockpit-Login: Probelauf, dann Übernehmen' });
     const alt = h.letzteBuchung ? tage(h.letzteBuchung, e.heute) : null;
     s.push({ id: 'auszuege', bereich: 'privat', titel: 'Kontoauszüge bis heute eingelesen', erledigt: alt !== null && alt <= 7, wer: 'malin', link: '/os/finanzen?s=privat&t=buchungen',
       detail: alt === null ? 'noch keine Buchungen' : alt <= 7 ? `letzte Buchung vor ${alt} Tagen` : `letzte Buchung vor ${alt} Tagen — N26-Auszüge seitdem einlesen` });
@@ -39,7 +39,7 @@ export function istStand(e: IstStandEingaben): Schritt[] {
     s.push({ id: 'entflechtung', bereich: 'gemeinsam', titel: 'Private Einträge aus den Business-Listen geräumt', erledigt: h.pruefposten === 0, wer: 'kevin', link: '/os/finanzen?s=privat',
       detail: h.pruefposten ? `${h.pruefposten} Einträge zu entscheiden — „Aufräumen“ in der Leiste unter Privat` : 'nichts mehr offen' });
     s.push({ id: 'steuerquote', bereich: 'gemeinsam', titel: 'Steuerrücklage als Annahme gesetzt', erledigt: h.steuerquote !== null, wer: 'kevin', link: '/os/finanzen?s=gesamt',
-      detail: h.steuerquote !== null ? `${h.steuerquote} % vom Gewinn` : 'Zahlen › Gesamt — sonst gibt es keinen Mindestumsatz' });
+      detail: h.steuerquote !== null ? `${h.steuerquote} % vom Gewinn` : 'Finanzen › Gesamt — sonst gibt es keinen Mindestumsatz' });
     s.push({ id: 'malin', bereich: 'gemeinsam', titel: 'Malin hat Zugang zum Haushalt', erledigt: h.mitglieder.includes('malin'), wer: 'kevin', link: '/os/konto',
       detail: h.mitglieder.includes('malin') ? 'Konto mit Haushalt' : 'Einladen (Konto › Einladung), danach Haushalt „kevin-malin“ zuweisen' });
   }

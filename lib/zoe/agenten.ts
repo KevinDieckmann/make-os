@@ -404,7 +404,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         if (d.ohneKi) return gut(`HEAD OF FINANCE · Tagescheck: ${d.ruhigText}`);
         const a = d.bericht?.antwort;
         const zahlen = `${a?.befunde?.length ?? 0} Befunde, ${d.neu ?? 0} neue Vorschläge zur Freigabe`;
-        if (d.bericht?.umfang !== 'business') return gut(`HEAD OF FINANCE · ${modus}: Status ${a?.status} · ${zahlen} — Bericht unter Zahlen › Head of Finance.`);
+        if (d.bericht?.umfang !== 'business') return gut(`HEAD OF FINANCE · ${modus}: Status ${a?.status} · ${zahlen} — Bericht unter Finanzen › Head of Finance.`);
         return gut(`HEAD OF FINANCE (Business):
 ${kuerze(a?.antwort ?? a?.zusammenfassung, 1600)}
 ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\n')}

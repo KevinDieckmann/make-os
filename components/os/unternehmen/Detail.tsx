@@ -96,10 +96,10 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
         </Karte>
       )}
       {!g.geloeschtAm && <FahrplanKarte g={g} daten={daten} />}
-      {/* 0-Punkt (05.10.): Eröffnung mit Stichtag und Anfangsbestand — gepflegt unter Zahlen › Business (eine Quelle). */}
+      {/* 0-Punkt (05.10.): Eröffnung mit Stichtag und Anfangsbestand — gepflegt unter Finanzen › Business (eine Quelle). */}
       {istBusinessGesellschaft(g.id) && !g.geloeschtAm && (
         <Hinweis art="info" titel="0-Punkt (Eröffnung)" aktion={<Knopf leise href={WEG.eroeffnung()}>Öffnen</Knopf>}>
-          Stichtag, Kontostand und offene Posten, ab denen {g.name} in Zahlen, Liquidität und Finanzplanung neu rechnet — unter Zahlen › Business.
+          Stichtag, Kontostand und offene Posten, ab denen {g.name} in Zahlen, Liquidität und Finanzplanung neu rechnet — unter Finanzen › Business.
         </Hinweis>
       )}
       {g.luecken.length > 0 && <Hinweis art="info" titel="Noch offen">Für einen vollständigen Steckbrief fehlen: {g.luecken.join(', ')}. Hinweis, keine Rechtsberatung.</Hinweis>}
