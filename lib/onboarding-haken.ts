@@ -1,20 +1,19 @@
-// ─── MAKE OS — Onboarding: Häkchen je Person und gemeinsam (Server, 08.10. spät, Paket B0/B2) ──────────────────────────────
-// Bis 08.10. galten alle Häkchen für den ganzen Haushalt (ein Bestand `onboarding`), die Route speicherte Vornamen und kürzte die
-// Kennung still. Jetzt (ONBOARDING_PLAN.md A1/B2):
-//   · persönliche Schritte (Ebene „ich“)  → Bestand `onboarding--<speicher>` (IMMER mit Suffix, auch beim Erstkonto — der
-//     gemeinsame Bestand heißt schon `onboarding`, `speicherFuer` wäre hier falsch); lesen und schreiben nur die Person selbst.
-//   · gemeinsame und Instanz-Schritte     → Bestand `onboarding` (alle im Haushalt sehen den Stand).
-//   · `von` ist der Speichername der Sitzung, nie ein Vorname; die Anzeige löst ihn über die Konten auf.
-// Altbestand: Häkchen der alten Spuren `kevin-…`/`malin-…` und `updates` standen im gemeinsamen Bestand. Beim Lesen gelten sie weiter
-// (persönliche NUR für die Person mit genau diesem Speichernamen — nie für eine andere), übernommen werden sie beim nächsten Schreiben
-// derselben Person; Lesen schreibt nie. Unbekannte Alt-Kennungen bleiben unangetastet liegen (nichts geht verloren).
-// Wächter: tests/onboarding-stand.test.ts.
+// ─── MAKE OS — Onboarding: Häkchen je Person und gemeinsam (Server, 08.10. spät, Paket B0/B2; Nachbesserung 08.10. spät) ────────────
+// Persönliche Schritte (Ebene „ich“) → Bestand `onboarding--<speicher>` (IMMER mit Suffix, auch beim Erstkonto — der gemeinsame
+// Bestand heißt schon `onboarding`, `speicherFuer` wäre hier falsch); lesen und schreiben nur die Person selbst. Gemeinsame und
+// Instanz-Schritte → Bestand `onboarding` (alle im Haushalt sehen den Stand). `von` ist der Speichername der Sitzung, nie ein Vorname.
+//
+// Alte Häkchen (Spuren `kevin-…`/`malin-…`, `updates`) stehen im gemeinsamen Bestand und bleiben dort UNANGETASTET liegen. Sie zählen
+// nie als getan (Gegenprüfung: die neuen Schritte bedeuten mehr) — wo erlaubt (`frueherErlaubt`: ohne Prüfung, ohne Stichtagsbezug)
+// erscheinen sie als „früher abgehakt — bitte bestätigen“; persönliche nur für die Person mit genau diesem Speichernamen.
+// Lesen schreibt nie. Wächter: tests/onboarding-stand.test.ts.
 
-import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
-import { ALT_ZU_NEU, altePerson, istPersoenlich, schrittMitId } from '@/lib/make-one/onboarding-data';
+import { loadJson, updateJson } from '@/lib/store/local-db';
+import { ALT_ZU_NEU, altePerson, frueherErlaubt, istPersoenlich, schrittMitId } from '@/lib/make-one/onboarding-data';
 
 export interface Haken { at: string; von: string }
 export interface HakenDatei { erledigt: Record<string, Haken> }
+export interface HakenSicht { erledigt: Record<string, Haken>; frueher: string[] }
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 /** Der gemeinsame Bestand (Haushalt + Instanz). */
@@ -27,82 +26,50 @@ const liste = (d: HakenDatei | null | undefined): [string, Haken][] =>
   Object.entries(d?.erledigt && typeof d.erledigt === 'object' ? d.erledigt : {}).filter((e): e is [string, Haken] => istHaken(e[1]));
 
 /**
- * Die Sicht einer Person (rein): gemeinsame Häkchen (auch übersetzte Alt-Häkchen) + ihre eigenen. Persönliche Alt-Häkchen
- * (`<speicher>-…`) zählen nur für genau diese Person. Häkchen persönlicher Schritte im gemeinsamen Bestand gibt es nie.
+ * Die Sicht einer Person (rein): gemeinsame Häkchen + ihre eigenen; alte Häkchen nur als `frueher` (Kennungen der neuen Schritte, bei
+ * denen „bitte bestätigen“ erscheinen darf) — persönliche nur für genau diese Person. Häkchen persönlicher Schritte im gemeinsamen
+ * Bestand gibt es nie.
  */
-export function hakenSicht(gemeinsam: HakenDatei | null | undefined, eigen: HakenDatei | null | undefined, person: string | null): Record<string, Haken> {
-  const aus: Record<string, Haken> = {};
-  const alt: [string, Haken][] = [];
+export function hakenSicht(gemeinsam: HakenDatei | null | undefined, eigen: HakenDatei | null | undefined, person: string | null): HakenSicht {
+  const erledigt: Record<string, Haken> = {};
+  const frueher = new Set<string>();
   for (const [id, h] of liste(gemeinsam)) {
     const s = schrittMitId(id);
-    if (s) { if (!istPersoenlich(s)) aus[id] = { at: h.at, von: String(h.von ?? '') }; continue; }
-    alt.push([id, h]);
+    if (s) { if (!istPersoenlich(s)) erledigt[id] = { at: h.at, von: String(h.von ?? '') }; continue; }
+    const neu = ALT_ZU_NEU[id]; const z = neu ? schrittMitId(neu) : null;
+    if (!neu || !z || !frueherErlaubt(z)) continue;
+    if (istPersoenlich(z) && (!person || altePerson(id) !== person)) continue;
+    frueher.add(neu);
   }
-  // Alt-Häkchen: nur ergänzen, nie ein neues Häkchen überschreiben.
-  for (const [altId, h] of alt) {
-    const neu = ALT_ZU_NEU[altId]; const s = neu ? schrittMitId(neu) : null;
-    if (!neu || !s) continue;
-    if (istPersoenlich(s)) {
-      if (person && altePerson(altId) === person && !aus[neu]) aus[neu] = { at: h.at, von: person };
-    } else if (!aus[neu]) aus[neu] = { at: h.at, von: altePerson(altId) ?? String(h.von ?? '') };
-  }
-  if (person) for (const [id, h] of liste(eigen)) { const s = schrittMitId(id); if (s && istPersoenlich(s)) aus[id] = { at: h.at, von: person }; }
-  return aus;
-}
-
-/**
- * Übernahme beim Schreiben (rein): aus dem gemeinsamen Bestand wandern die persönlichen Alt-Häkchen DIESER Person in ihren eigenen
- * Bestand; Alt-Häkchen gemeinsamer Schritte bekommen ihre neue Kennung. Persönliche Alt-Häkchen anderer Personen bleiben liegen.
- */
-export function altUebernehmen(gemeinsam: HakenDatei | null | undefined, person: string): { gemeinsam: HakenDatei; eigen: Record<string, Haken> } {
-  const neu: Record<string, Haken> = Object.fromEntries(liste(gemeinsam));
-  const eigen: Record<string, Haken> = {};
-  for (const [altId, h] of Object.entries(neu)) {
-    if (schrittMitId(altId)) continue;
-    const ziel = ALT_ZU_NEU[altId]; const s = ziel ? schrittMitId(ziel) : null;
-    if (!ziel || !s) continue;
-    const wer = altePerson(altId);
-    if (istPersoenlich(s)) {
-      if (wer !== person) continue;
-      eigen[ziel] = eigen[ziel] ?? { at: h.at, von: person };
-      delete neu[altId];
-    } else {
-      if (!neu[ziel]) neu[ziel] = { at: h.at, von: wer ?? String(h.von ?? '') };
-      delete neu[altId];
-    }
-  }
-  return { gemeinsam: { erledigt: neu }, eigen };
+  if (person) for (const [id, h] of liste(eigen)) { const s = schrittMitId(id); if (s && istPersoenlich(s)) erledigt[id] = { at: h.at, von: person }; }
+  return { erledigt, frueher: [...frueher].filter(id => !erledigt[id]).sort() };
 }
 
 /** Häkchen lesen — Lesen schreibt nie. */
-export async function hakenLesen(person: string | null): Promise<Record<string, Haken>> {
+export async function hakenLesen(person: string | null): Promise<HakenSicht> {
   const p = person && PERSON.test(person) ? person : null;
   const [g, e] = await Promise.all([loadJson<HakenDatei>(GEMEINSAM), p ? loadJson<HakenDatei>(persoenlichName(p)) : Promise.resolve(null)]);
   return hakenSicht(g, e, p);
 }
 
 /**
- * Ein Häkchen setzen oder entfernen — die Route hat Person, Kennung und Recht schon geprüft. Beide Bestände in EINER Sperre
- * (außen der gemeinsame, innen der persönliche); dabei werden die Alt-Häkchen dieser Person übernommen.
+ * Ein Häkchen setzen oder entfernen — die Route hat Person, Kennung und Recht schon geprüft. Persönliche in den eigenen Bestand,
+ * gemeinsame in den gemeinsamen (mit Speichername). Alte Häkchen bleiben, wie sie sind.
  */
-export async function hakenSetzen(person: string, id: string, an: boolean, jetzt = new Date()): Promise<Record<string, Haken>> {
+export async function hakenSetzen(person: string, id: string, an: boolean, jetzt = new Date()): Promise<HakenSicht> {
   if (!PERSON.test(person)) throw new Error('Person ungültig.');
   const s = schrittMitId(id);
   if (!s) throw new Error('Schritt unbekannt.');
   const at = jetzt.toISOString();
-  let eigenNachher: HakenDatei | null = null;
-  const gemeinsamNachher = await updateJsonAsync<HakenDatei>(GEMEINSAM, async cur => {
-    const { gemeinsam, eigen } = altUebernehmen(cur, person);
-    if (istPersoenlich(s) || Object.keys(eigen).length) {
-      eigenNachher = await updateJson<HakenDatei>(persoenlichName(person), alt => {
-        const erledigt: Record<string, Haken> = Object.fromEntries(liste(alt));
-        for (const [k, h] of Object.entries(eigen)) if (!erledigt[k]) erledigt[k] = h;
-        if (istPersoenlich(s)) { if (an) erledigt[id] = { at, von: person }; else delete erledigt[id]; }
-        return { erledigt };
-      });
-    }
-    if (!istPersoenlich(s)) { if (an) gemeinsam.erledigt[id] = { at, von: person }; else delete gemeinsam.erledigt[id]; }
-    return gemeinsam;
+  const name = istPersoenlich(s) ? persoenlichName(person) : GEMEINSAM;
+  await updateJson<HakenDatei>(name, cur => {
+    const erledigt: Record<string, Haken> = Object.fromEntries(liste(cur));
+    // Alte Häkchen und Fremdes im gemeinsamen Bestand bleiben stehen (nur gültige Einträge werden hier neu geschrieben — alles
+    // andere bleibt über `...cur` erhalten).
+    const roh = (cur?.erledigt && typeof cur.erledigt === 'object' ? cur.erledigt : {}) as Record<string, unknown>;
+    const neu: Record<string, unknown> = { ...roh, ...erledigt };
+    if (an) neu[id] = { at, von: person }; else delete neu[id];
+    return { ...(cur ?? {}), erledigt: neu as Record<string, Haken> };
   });
-  return hakenSicht(gemeinsamNachher, eigenNachher ?? await loadJson<HakenDatei>(persoenlichName(person)), person);
+  return hakenLesen(person);
 }

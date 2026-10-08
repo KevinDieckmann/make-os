@@ -4,6 +4,37 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
+
+Strenge Gegenprüfung von B0 (18 Befunde). Behoben:
+- **Ganzer Ablauf auf einer Seite:** Einstellungen › Onboarding zeigt jeder Person ALLE ihre Schritte (eigene + gemeinsame, beim Inhaber Instanz und
+  Inhaber-Spur) in Etappen-Reihenfolge, gegliedert nach Freitag (offen zuerst) · **Samstag** · „einzeln bis 16.10.“; die Spurseiten sind nur Filter.
+- **Samstag passt in einen Tag (R1):** Felder `samstag`/`spaeter`. Samstag-Kern = Etappen 1–2 (ohne Mail-Umzug/WhatsApp), 0.12, 3.1/3.2/3.4/3.6/3.7/
+  3.8a/b, 4.2, 5.1, 5.4, Etappe 6 → Inhaber ≈ 7¾ h, zweite Person ≈ 4¾ h (Wächter ≤ 8 h). Alles andere zählt wie optional (erst, wenn getan);
+  „Als Nächstes“ und die Heute-Karte nehmen den ersten offenen Kern-Schritt (nie 0.7). ABLAUF und UPLOAD_0810.md §9 entsprechend (Freitag: 1.8 vor 0.5).
+- **Nichts grün ohne Arbeit:** Sicherung nur mit gelungenem Lauf + age + Wächter-Ping + frisch (`sicherungsDatei` in lib/datenschutz/umfeld.ts, sonst
+  steht da, was fehlt); Gesundheits-Einwilligung = aktueller Stand (Widerruf zählt); iCloud nur aus der Server-Umgebung → eigener Hinweis; Agenten ohne
+  Zähl-Prüfung (nur Häkchen); Kartei = Prüfung UND Häkchen (`bestaetigen`); offene Posten des 0-Punkts eigens ausgewiesen („davon n aus dem 0-Punkt —
+  dort Fälligkeit bzw. neue Fassung“), 3.6 verlangt je Posten eine Fälligkeit; ein beschädigter Bestand ist „nicht prüfbar“, nie „leer = grün“.
+- **Ein roter Befund schlägt jedes Häkchen** (`istFertig`); alte Häkchen (vor dem 08.10.) zählen nie — nur „früher abgehakt — bitte bestätigen“ bei
+  Schritten ohne Prüfung und ohne Stichtagsbezug; sie bleiben unangetastet im Bestand (keine Übernahme mehr beim Schreiben).
+- **Robust:** jede gemeinsame Prüfung einzeln (`sicher`), Startfläche fängt Fehler ab, die Oberfläche meldet einen nicht geladenen Stand.
+- **Altbestand (0.5):** neue Prüfung `altbestand` nur für die Inhaber-Sitzung („n von 3 Teilen“: Körper-Marke oder -Inhalt, Nordstern-Marke,
+  Kernziel-Marke); der Schritt erscheint nur auf einer Instanz mit Altbestand — Regel: Inhaber-Konto vor dem 09.10.2026 angelegt und keine Demo
+  (einfachste korrekte Regel: neue Kunden-/Demo-Instanzen hatten nie Inhalte im Code). Texte: Körper braucht (a), Kernziel nur ausdrückliches (a);
+  5.1 „Nordstern erst bearbeiten, wenn 0.5 übernommen meldet“; UPLOAD_0810.md §3a fest formuliert (beide Übernahmen sind im Upload).
+- **Rechte:** Privat-Schritte (3.10, 3.11, 5.4) für Konten mit „nur Business“ weder gezählt noch abhakbar (POST 403); Instanz-Befunde für andere als
+  den Inhaber nur „Instanz eingerichtet: ja/nein“.
+- **Server-Befehle:** überall `cd /srv/make-os/app &&` vor docker compose/.env; 0.6 age-Installation am Server und Mac (RESTORE_TEST.md §1) und
+  Wächter-Ping-Datei; 0.7 Abholung `--einrichten` (§2) und Probe mit Archiv + age-Identität (§3).
+- **Kleines:** Nummern eindeutig (3.8a/b, 8.5), Steuerprofil nach dem Finanzplan (5.4b; GmbH ohne Steuerlogik, Selbstständigkeit nur im Zahnrad,
+  Datenkarte passt), Links (Kalender-Einstellungen `?einstellungen=1`, Buchungsseiten `?buchungen=1`, Datenschutz `#verantwortlicher`, ZOE `/zoe`),
+  Karten-Erscheinen gedeckelt. **GET /api/onboarding schreibt nie** (WHOOP wird roh gelesen) — deshalb keine `getSchreibt`-Begründung nötig.
+- Tests: `tests/onboarding-stand.test.ts` 32 (je Befund); dazu messlatte-malin, routen-register, aufraeumen-etappe1/3, design-*, demo grün.
+
+**Offen (bewusst):** Instanz-Inhalte (Termine, Stichtag, „Eure Entscheidung vom 08.10.“) stehen noch als Text in `onboarding-data.ts` statt aus
+Daten/Einrichtung (B1/B4); Ebenen statt Spuren (B1), Prüfungen Teil 2, Datenstand (B8).
+
 ## 08.10. spät — Datenschutz vor dem Upload (nur lokal — Branch `vor-upload-datenschutz`)
 
 Regelverstöße vor dem Upload geschlossen (Eiserne Regel 1, Plattform-Regel, Trennung serverseitig, Art. 9; ONBOARDING_PLAN.md L12, L15, L18, L27).

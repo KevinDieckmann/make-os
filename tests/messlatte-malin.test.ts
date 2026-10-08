@@ -298,7 +298,6 @@ const SYS = {
   koerper: 'MESSLATTE-SYS-KOERPER',
   // Onboarding (08.10. spät): persönliche Häkchen je Person — die Marke steckt im Zeitstempel (nur der wird ausgeliefert).
   onboarding: '2001-02-03T04:05:06.789Z',
-  onboardingAlt: '2001-02-03T04:05:07.891Z',
   // Datenschutz vor dem Upload (08.10. spät): Tageslauf je Person (Ausrichtung mit Gesundheitskontext), persönliche Kennungen der Stammdaten.
   tageslauf: 'MESSLATTE-SYS-TAGESLAUF',
   steuerId: 'MESSLATTE-SYS-STEUERID',
@@ -442,9 +441,10 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
     const { speicherFuer: sf } = await import('@/lib/zoe/raum');
     await db.saveJson(sf('gesundheit-koerper', 'kevin'), { v: 1, leitsatz: SYS.koerper, beschwerden: [{ id: 'kb-messlatte', name: SYS.koerper, status: '', notiz: SYS.koerper, ton: 'achtung' }], hebel: [], stufen: [], zusammenhaenge: [], hinweis: SYS.koerper, symptom: { name: SYS.koerper }, sauberZaehler: true, routinenHinweise: [] });
-    // Onboarding: Kevins persönliches Häkchen und ein altes Häkchen seiner früheren Spur im gemeinsamen Bestand (gilt nur für ihn).
+    // Onboarding: Kevins persönliches Häkchen (die Marke steckt im Zeitstempel) und alte Häkchen seiner früheren Spur im gemeinsamen
+    // Bestand — die zählen nie und erscheinen höchstens als Kennung „früher abgehakt“, nie mit Zeitstempel.
     await db.saveJson('onboarding--kevin', { erledigt: { 'ich-rundgang': { at: SYS.onboarding, von: 'kevin' } } });
-    await db.saveJson('onboarding', { erledigt: { 'kevin-sicht-alt': { at: '2000-01-01T00:00:00.000Z', von: 'Kevin' }, 'kevin-zwei-faktor': { at: SYS.onboardingAlt, von: 'Kevin' } } });
+    await db.saveJson('onboarding', { erledigt: { 'kevin-sicht-alt': { at: '2000-01-01T00:00:00.000Z', von: 'Kevin' }, 'kevin-zwei-faktor': { at: '2001-02-03T04:05:07.891Z', von: 'Kevin' } } });
 
     // Tageslauf (Altbestand ohne Suffix = Inhaber) und Stammdaten mit persönlicher Kennung von Kevin (08.10. spät).
     await db.saveJson('tageslauf', { laeufe: [{ id: 'lauf-messlatte', art: 'kurz', gestartet: J, fertig: J, schritte: [{ id: 'aufgaben', name: 'Aufgaben', stand: 'ok', kurz: SYS.tageslauf }], ausrichtung: { gruss: SYS.tageslauf } }] });
