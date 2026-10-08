@@ -20,7 +20,7 @@ import { dealRolleVorschlag, besterEntscheider, offeneRollenVorschlaege, vorschl
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
-import { gesamtwert, VERSCHOBEN_GELB } from '@/lib/crm/pipeline';
+import { gesamtwert, VERSCHOBEN_GELB, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { verweildauer, verweildauerJeStufe, umwandlung, winLoss, zyklus, prognoseNachMonat, haengtNachWert, MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
 import { mitglied } from '@/lib/crm/team';
@@ -114,7 +114,8 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
               {angeboteZu(crm.stand.angebote, { dealId: c.id }).slice(0, 3).map(x => (
                 <Link key={x.id} href={angebotLink({ angebotId: x.id })} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>{x.nummer ?? 'Entwurf'} · {ANGEBOT_STATUS_LABEL[x.status]} ›</Link>
               ))}
-              <Link href={angebotLink({ dealId: c.id, kontaktId: c.kontaktIds[0], firmaId: c.firmaId })} style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.gut, textDecoration: 'none', border: `1px solid ${LEUCHT.gut}80`, background: `${LEUCHT.gut}24`, borderRadius: 10, padding: '6px 11px' }}>Angebot erstellen</Link>
+              {/* 3.3: zu einem geschlossenen Deal (Folgeauftrag) ohne Deal starten — beim Stellen entsteht ein neuer. */}
+              <Link href={angebotLink({ ...(OFFENE_STUFEN.includes(c.stufe) ? { dealId: c.id } : {}), kontaktId: c.kontaktIds[0], firmaId: c.firmaId })} style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.gut, textDecoration: 'none', border: `1px solid ${LEUCHT.gut}80`, background: `${LEUCHT.gut}24`, borderRadius: 10, padding: '6px 11px' }}>Angebot erstellen</Link>
             </div>
           </div>
         </div>

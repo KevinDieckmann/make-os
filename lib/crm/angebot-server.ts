@@ -32,7 +32,7 @@ import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
   ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
-  stellenFehlt, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
+  stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
 import { WEG } from '@/lib/wege';
@@ -234,7 +234,8 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   if (!istEntwurf(a0)) throw new AngebotFehler(`Schon gestellt (${a0.nummer ?? a0.status}).`, 409, { aktuell: mitStand(a0), grund: 'gestellt' });
   standPruefen(a0, p.stand);
   const fehlt = stellenFehlt(a0, heute);
-  if (fehlt.length) throw new AngebotFehler(fehlt.join(' '), 400, { fehlt });
+  // 3.12 (08.10.): Summe 0 € → 409 (Konflikt mit dem Inhalt, nichts fehlt im Formular) — sonst wäre eine feste Nummer verbraucht.
+  if (fehlt.length) throw new AngebotFehler(fehlt.join(' '), fehlt.includes(SUMME_NULL) ? 409 : 400, { fehlt, ...(fehlt.includes(SUMME_NULL) ? { grund: 'summe-null' } : {}) });
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const k = kontakte.find(x => x.id === a0.kontaktId);
   if (!k) throw new AngebotFehler('Der Empfänger steht nicht (mehr) in der Kartei.', 400);
@@ -255,8 +256,10 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   const hinweise = [...ampel.hinweise, ...luecken.filter(x => x !== 'Firmierung' && x !== 'Anschrift').map(x => `Absender: ${x} fehlt (${absenderOrt}).`)];
 
   // 2. Deal: vorhanden (am Angebot, sonst offener der Person/Firma) oder neu über den EINEN Weg (`dealAnlegen`).
+  //    Nur ein OFFENER Deal wird übernommen (08.10., Woche 1 · 3.3 Folgeauftrag): ein gewonnener, verlorener oder geparkter Deal am
+  //    Entwurf zählt nicht — sonst meldete „Angenommen“ den alten Deal als gewonnen, und „Mandat anlegen“ scheiterte.
   const firmaId = a0.firmaId ?? k.firmaId;
-  let dealId = a0.dealId && vor.chancen.some(c => c.id === a0.dealId) ? a0.dealId : undefined;
+  let dealId = a0.dealId && vor.chancen.some(c => c.id === a0.dealId && OFFENE_STUFEN.includes(c.stufe)) ? a0.dealId : undefined;
   if (!dealId) dealId = vor.chancen.find(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.includes(k.id) || (!!firmaId && c.firmaId === firmaId)))?.id;
   if (!dealId) {
     const r = await dealAnlegen({
@@ -305,8 +308,10 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   }, p.wer).catch(() => { /* bleibt reserviert — der nächste Versuch nimmt dieselbe Nummer */ });
 
   const empfaenger = empfaengerAus(k, r0.firma);
+  // Ein geschlossener Deal am Entwurf (3.3) fällt weg, wenn kein offener an seine Stelle trat.
+  const { dealId: _alterDeal, ...ohneDeal } = r0.a;
   const gestellt: Angebot = {
-    ...r0.a, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
+    ...ohneDeal, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
     absender: absenderAus(g), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
   };
   // b) Außerhalb der Sperre: das PDF (pdf-lib, Logo) und seine Prüfsumme — der teure Teil.

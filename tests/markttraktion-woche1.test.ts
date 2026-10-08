@@ -286,3 +286,88 @@ describe('Routen · „Geprüft“ stempelt der Server, ein Deal ohne Kriterien 
     expect(zweiter.status).toBe(200);
   });
 });
+
+// ── B · Angebot (3.3, 3.4, 3.5, 3.6, 3.12) ──────────────────────────────────────────────────────────────────────────────────
+describe('B · Angebot: Folgeauftrag, Rückfrage, Mandat-Link, Einmalposten, Summe > 0', () => {
+  const plus = (n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const pos = (id: string, basis: 'einmalig' | 'monat', cent: number) => ({ id, titel: `Position ${id}`, text: '', menge: 1, einheit: basis === 'monat' ? 'Monat' : 'pauschal', einzelpreisCent: cent, ustSatz: 19, basis, ...(basis === 'monat' ? { laufzeitMonate: 6 } : {}) });
+  const felder = (x: Record<string, unknown> = {}) => ({ gesellschaft: 'ug', kontaktId: 'c-folge', titel: 'Folgeauftrag', gueltigBis: plus(20), zahlungszielTage: 14, einleitung: 'Guten Tag', schluss: 'Gruß', positionen: [pos('p-1', 'einmalig', 150000), pos('p-2', 'monat', 200000)], ...x });
+
+  beforeAll(async () => {
+    await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: [...(cur?.kontakte ?? []), k('folge', { firmaId: 'f-folge', firma: 'Firma f-folge', email: 'folge@example.invalid', anrede: 'Sie', stufe: 'gespraech' })] }));
+    const gewonnen = { id: 'ch-alt-gewonnen', titel: 'Erster Auftrag', kontaktIds: ['c-folge'], firmaId: 'f-folge', firma: 'Firma f-folge', art: 'projekt', wert: { betrag: 1000, basis: 'einmalig' }, stufe: 'gewonnen', historie: [{ stufe: 'gewonnen', am: J, von: 'kevin' }], qualifizierung: { ...KRIT }, gesellschaft: 'ug', besitzer: 'kevin', angelegt: J, geaendert: J };
+    await db.updateJson<CrmBestand>('crm', cur => ({ ...(cur as CrmBestand), firmen: [...(cur?.firmen ?? []), firma('f-folge')], chancen: [...(cur?.chancen ?? []), gewonnen as never] }));
+    await db.saveJson('gesellschaften--haus', { gesellschaften: [{ id: 'ug', firmierung: 'Beispiel Innovation GmbH', strasse: 'Musterweg 1', plz: '10115', ort: 'Berlin', email: 'info@example.invalid', geschaeftsfuehrung: 'Erika Muster', register: 'AG Beispiel HRB 1', steuernummer: '00/000/00000' }] });
+  });
+
+  it('3.12 · Summe 0 €: stellenFehlt nennt es, der Server antwortet 409 — keine Nummer verbraucht', async () => {
+    const { stellenFehlt, SUMME_NULL } = await import('@/lib/crm/angebote');
+    const a = { status: 'entwurf', kontaktId: 'c-x', titel: 'T', gueltigBis: plus(5), positionen: [pos('p-1', 'einmalig', 0)] } as never;
+    expect(stellenFehlt(a, heute)).toContain(SUMME_NULL);
+    const route = await import('@/app/api/crm/angebot/route');
+    const s = await route.POST(anfrage('/api/crm/angebot', sitzung('kevin'), 'POST', { aktion: 'speichern', id: 'ang-woche1-null', felder: felder({ positionen: [pos('p-1', 'einmalig', 0)] }) }));
+    const st = (await s.json() as { angebot: { stand: string } }).angebot.stand;
+    const r = await route.POST(anfrage('/api/crm/angebot', sitzung('kevin'), 'POST', { aktion: 'stellen', id: 'ang-woche1-null', stand: st }));
+    expect(r.status).toBe(409);
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    expect((await ladeCrm()).angebote.find(x => x.id === 'ang-woche1-null')!.nummer).toBeUndefined();
+  });
+
+  it('3.3 · Angebot zu einem gewonnenen Deal (Folgeauftrag): beim Stellen entsteht ein NEUER Deal, der alte bleibt gewonnen', async () => {
+    const route = await import('@/app/api/crm/angebot/route');
+    const s = await route.POST(anfrage('/api/crm/angebot', sitzung('kevin'), 'POST', { aktion: 'speichern', id: 'ang-woche1-folge', felder: felder({ dealId: 'ch-alt-gewonnen' }) }));
+    expect(s.status).toBe(200);
+    const st = (await s.json() as { angebot: { stand: string } }).angebot.stand;
+    const r = await route.POST(anfrage('/api/crm/angebot', sitzung('kevin'), 'POST', { aktion: 'stellen', id: 'ang-woche1-folge', stand: st }));
+    const d = await r.json() as { angebot: { dealId?: string; stand: string }; fehler?: string };
+    expect(r.status, d.fehler).toBe(200);
+    expect(d.angebot.dealId).toBeTruthy();
+    expect(d.angebot.dealId).not.toBe('ch-alt-gewonnen');
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm();
+    expect(crm.chancen.find(c => c.id === 'ch-alt-gewonnen')!.stufe).toBe('gewonnen');
+    expect(crm.chancen.find(c => c.id === d.angebot.dealId)!.stufe).toBe('angebot');
+    // Angenommen → der NEUE Deal ist gewonnen, „Mandat anlegen“ gelingt (vorher 400).
+    const an = await route.POST(anfrage('/api/crm/angebot', sitzung('kevin'), 'POST', { aktion: 'annehmen', id: 'ang-woche1-folge', stand: d.angebot.stand }));
+    expect(an.status).toBe(200);
+    const lead = await import('@/app/api/crm/lead/route');
+    const m = await lead.POST(anfrage('/api/crm/lead', sitzung('kevin'), 'POST', { aktion: 'mandat', chanceId: d.angebot.dealId }));
+    const md = await m.json() as { ok: boolean; mandatId?: string };
+    expect(md.ok).toBe(true);
+    expect(md.mandatId).toMatch(/^m-/);
+  });
+
+  it('3.6 · gemischtes Angebot: die Einmalposten werden EINE geplante Rechnung (feste Kennung, idempotent, nur einmalige Positionen)', async () => {
+    const { entwurfNeu, einmalRechnungId } = await import('@/lib/finanzen/rechnung/server');
+    const z = { person: 'kevin', haushalt: 'haus', sicht: 'business' as const };
+    const e1 = await entwurfNeu({ quelle: 'angebot', angebotId: 'ang-woche1-folge', nur: 'einmalig', ...z });
+    expect(e1.vorhanden).toBe(false);
+    expect(e1.rechnung.id).toBe(einmalRechnungId('ang-woche1-folge'));
+    expect(e1.rechnung.status).toBe('geplant');
+    expect(e1.rechnung.firmaId).toBe('ug');
+    expect((e1.rechnung.positionen ?? []).map(p => p.titel)).toEqual(['Position p-1']);
+    // Brutto über ust.ts: 1.500 € netto + 19 % = 1.785 €.
+    expect(e1.rechnung.betrag).toBe(1785);
+    expect(e1.rechnung.mandatId).toBeTruthy();
+    const e2 = await entwurfNeu({ quelle: 'angebot', angebotId: 'ang-woche1-folge', nur: 'einmalig', ...z });
+    expect(e2.vorhanden).toBe(true);
+    expect(e2.rechnung.id).toBe(e1.rechnung.id);
+    // Ohne Einmalposten → 409.
+    await expect(entwurfNeu({ quelle: 'angebot', angebotId: 'ang-woche1-null', nur: 'einmalig', ...z })).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('3.4/3.5/3.6 · Oberfläche: „Angenommen“ fragt nach; nach „Mandat anlegen“ Link zum Mandat und „Erste Rechnung“; Einmalbetrag geplant', () => {
+    const src = quelle('components/os/crm/angebot/Ansicht.tsx');
+    expect(src).toContain("titel: 'Angebot als angenommen vermerken?'");
+    expect(src).toContain('onClick={annehmen}');
+    expect(src).toContain('WEG.mandat(mandatZiel)');
+    expect(src).toContain("entwurfAnlegen({ quelle: 'mandat', mandatId: mandatZiel })");
+    expect(src).toContain("entwurfAnlegen({ quelle: 'angebot', angebotId: a.id, nur: 'einmalig' })");
+    expect(src).toContain("if (typeof r.mandatId === 'string') setMandatId(r.mandatId);");
+  });
+
+  it('3.3 · Editor und Deal-Akte übernehmen einen geschlossenen Deal nicht', () => {
+    expect(quelle('components/os/crm/angebot/Editor.tsx')).toContain('const geschlossen = !!vorDeal && !OFFENE_STUFEN.includes(vorDeal.stufe);');
+    expect(quelle('components/os/crm/DealAkte.tsx')).toContain('...(OFFENE_STUFEN.includes(c.stufe) ? { dealId: c.id } : {})');
+  });
+});

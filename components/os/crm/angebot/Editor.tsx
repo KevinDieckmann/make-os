@@ -70,14 +70,20 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   // ── Anfangszustand: bestehender Entwurf oder neu aus der Vorbelegung ──
   const [form, setForm] = useState<Form>(() => {
     if (start) return nurForm(start);
-    const deal = vorbelegung.dealId ? crm.stand.chancen.find(c => c.id === vorbelegung.dealId) : undefined;
-    const kId = vorbelegung.kontaktId ?? deal?.kontaktIds[0];
+    const vorDeal = vorbelegung.dealId ? crm.stand.chancen.find(c => c.id === vorbelegung.dealId) : undefined;
+    // Folgeauftrag (08.10., Woche 1 · 3.3): ein gewonnener, verlorener oder geparkter Deal wird nicht übernommen — das Angebot startet
+    // ohne Deal, beim Stellen entsteht ein neuer (vorher meldete „Angenommen“ sonst „Deal gewonnen“ am alten, und „Mandat anlegen“ scheiterte).
+    const geschlossen = !!vorDeal && !OFFENE_STUFEN.includes(vorDeal.stufe);
+    const deal = geschlossen ? undefined : vorDeal;
+    const kId = vorbelegung.kontaktId ?? vorDeal?.kontaktIds[0];
     const k = kId ? kontakte.find(x => x.id === kId) : undefined;
-    const firmaId = vorbelegung.firmaId ?? k?.firmaId ?? deal?.firmaId;
-    const d = deal ?? offeneDeals(crm.stand.chancen, k, firmaId)[0];
+    const firmaId = vorbelegung.firmaId ?? k?.firmaId ?? vorDeal?.firmaId;
+    const d = deal ?? (geschlossen ? undefined : offeneDeals(crm.stand.chancen, k, firmaId)[0]);
     const merk = letzteGesellschaft();
-    // Absender: Deal → zuletzt hier gewählt → die operative Business-Gesellschaft aus dem Register → offen (wählen). Nie fest `kdc` (3.2).
-    const g: Gesellschaftskennung | undefined = d && istGesellschaft(d.gesellschaft) ? d.gesellschaft : istGesellschaft(merk) ? merk : daten.vorgabe ?? undefined;
+    // Absender: Deal (auch der geschlossene beim Folgeauftrag) → zuletzt hier gewählt → die operative Business-Gesellschaft aus dem Register
+    // → offen (wählen). Nie fest `kdc` (3.2).
+    const dealG = (d ?? vorDeal)?.gesellschaft;
+    const g: Gesellschaftskennung | undefined = istGesellschaft(dealG) ? dealG : istGesellschaft(merk) ? merk : daten.vorgabe ?? undefined;
     const v = g ? mitVorgaben(gesellschaftVon(g)) : null;
     const firma = firmaId ? crm.stand.firmen.find(f => f.id === firmaId) : undefined;
     const ziel = firma?.zahlung?.zielTage ?? k?.zahlung?.zielTage ?? v?.zahlungszielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE;
@@ -224,7 +230,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     if (st.grund === 'keine Adresse') return { hinweise: ['Keine E-Mail-Adresse am Kontakt — das PDF entsteht trotzdem; bitte auf anderem Weg senden.'] };
     return { hinweise: st.farbe === 'gruen' ? [] : [`Kanal-Ampel ${st.farbe}: ${st.grund}. Ein angefragtes Angebot ist Vertragsanbahnung (Art. 6 Abs. 1 lit. b DSGVO) — nur senden, wenn es angefragt wurde, ohne Werbung.`] };
   }, [k, crm.stand.mandate, crm.stand.chancen]);
-  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
+  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : positionen.length && !(s.gesamt.netto > 0) ? 'eine Summe über 0 €' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
 
   async function zurVorschau() {
     offen.current = true; // auch ein unveränderter, vorbelegter Entwurf wird vor der Vorschau gespeichert

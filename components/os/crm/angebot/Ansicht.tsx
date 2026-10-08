@@ -6,6 +6,9 @@
 // Handlungen je Status: angenommen (→ Deal gewonnen, danach „Mandat anlegen“ über den
 // bestehenden Weg, vorbelegt aus dem Angebot) · abgelehnt (Verlustgrund Pflicht) ·
 // neue Version (Entwurf mit Bezug) · PDF laden · Mail erneut öffnen.
+// Woche 1 (08.10.): „Angenommen“ mit Rückfrage (3.4, nicht rückgängig); nach „Mandat anlegen“ der Link zum Mandat und „Erste Rechnung“
+// (der vorhandene Weg „Rechnung aus dem Honorar“, 3.5); ein gemischtes Angebot plant die Einmalposten als eigene Rechnung (3.6, Rechnungs-
+// Tool, feste Kennung — idempotent; die laufende Leistung rechnet das Mandat ab).
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +16,8 @@ import { WEG } from '@/lib/wege';
 import { entwurfAnlegen } from '../../rechnung/daten';
 import type { Angebot } from '@/lib/crm/typen';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Knopf, Chip, feld } from '../../ui';
+import { Karte, Knopf, Chip, feld, useRueckfrage } from '../../ui';
+import Link from 'next/link';
 import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
 import { verlustgruende } from '@/lib/crm/pipeline';
@@ -36,12 +40,20 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   const [grund, setGrund] = useState<string | null>(null);
   const [grundFrei, setGrundFrei] = useState('');
   const [mandat, setMandat] = useState<string | null>(null);
+  const [mandatId, setMandatId] = useState<string | null>(null);
+  const [einmal, setEinmal] = useState<{ id?: string; fehler?: string } | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
+  const router = useRouter();
   const k = a.kontaktId ? (api.kontakte ?? []).find(x => x.id === a.kontaktId) : undefined;
   const g = daten.gesellschaften.find(x => x.id === a.gesellschaft);
   const logoUrl = g?.logoDateiId ? `/api/crm/dateien?id=${encodeURIComponent(g.logoDateiId)}` : null;
   const dok = a.absender && a.empfaenger ? angebotDokument(a, a.absender, a.empfaenger, (a.gestelltAm ?? a.geaendert).slice(0, 10)) : null;
   const deal = a.dealId ? crm.stand.chancen.find(c => c.id === a.dealId) : undefined;
-  const hatMandat = !!deal && crm.stand.mandate.some(m => m.chanceId === deal.id);
+  const vorhandenesMandat = deal ? crm.stand.mandate.find(m => m.chanceId === deal.id) : undefined;
+  const hatMandat = !!vorhandenesMandat;
+  const mandatZiel = mandatId ?? vorhandenesMandat?.id ?? null;
+  // Gemischtes Angebot (3.6): Einmalposten UND laufende Leistung — der Einmal-Anteil wird eine eigene geplante Rechnung.
+  const gemischt = a.positionen.some(p => p.basis === 'einmalig') && a.positionen.some(p => p.basis !== 'einmalig');
   const nachfolger = a.nachfolgerId ? daten.angebote?.find(x => x.id === a.nachfolgerId) : daten.angebote?.find(x => x.vorgaengerId === a.id);
   const vorgaenger = a.vorgaengerId ? daten.angebote?.find(x => x.id === a.vorgaengerId) : undefined;
 
@@ -52,11 +64,31 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
     setMeldung(typeof r.hinweis === 'string' ? `${ok} ${r.hinweis}` : ok);
     return true;
   }
+  /** Einmalposten als geplante Rechnung (3.6) — idempotent über die feste Kennung; ohne Finanz-Zugang kommt die Meldung. */
+  async function einmalPlanen() {
+    const e = await entwurfAnlegen({ quelle: 'angebot', angebotId: a.id, nur: 'einmalig' });
+    setEinmal(e.id ? { id: e.id } : { fehler: e.fehler ?? 'Einmalbetrag nicht als Rechnung geplant.' });
+  }
   async function mandatAnlegen() {
     if (!deal) return;
     const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: deal.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     if (!r.ok) { setMeldung(r.fehler ?? 'Mandat nicht angelegt.'); return; }
-    setMandat(r.text ?? 'Mandat angelegt.'); void api.laden(true);
+    setMandat(r.text ?? 'Mandat angelegt.');
+    if (typeof r.mandatId === 'string') setMandatId(r.mandatId);
+    void api.laden(true);
+    if (gemischt) await einmalPlanen();
+  }
+  /** „Erste Rechnung“ (3.5): derselbe Weg wie „Rechnung aus dem Honorar“ in der Mandatsakte — Entwurf für den laufenden Monat. */
+  async function ersteRechnung() {
+    if (!mandatZiel) return;
+    const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: mandatZiel });
+    if (!e.id) { setMeldung(e.fehler ?? 'Rechnung nicht angelegt.'); return; }
+    router.push(WEG.rechnungSchreiben(e.id));
+  }
+  async function annehmen() {
+    // 3.4: nicht rückgängig — der Deal wird gewonnen, das Angebot ist danach festgeschrieben.
+    if (!(await bestaetigen({ titel: 'Angebot als angenommen vermerken?', text: `${a.nummer ?? 'Das Angebot'} gilt dann als angenommen${deal ? ` und der Deal „${deal.titel}“ als gewonnen` : ''}. Das lässt sich nicht zurücknehmen.`, ja: 'Angenommen' }))) return;
+    await aktion({ aktion: 'annehmen' }, deal ? 'Angenommen — Deal gewonnen.' : 'Angenommen.');
   }
   function mailOeffnen() {
     const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: a.titel, nummer: a.nummer, gueltigBis: a.gueltigBis, absender: g ? mitVorgaben(g).name : undefined });
@@ -103,16 +135,22 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           {a.pdfDateiId && <Knopf leise onClick={() => pdfLaden(a.pdfDateiId!, `Angebot ${a.nummer}.pdf`)}>PDF laden</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf leise onClick={mailOeffnen}>Mail öffnen</Knopf>}
-          {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf farbe={LEUCHT.gut} onClick={async () => { await aktion({ aktion: 'annehmen' }, 'Angenommen — Deal gewonnen.'); }}>Angenommen</Knopf>}
+          {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf farbe={LEUCHT.gut} onClick={annehmen}>Angenommen</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && !ablehnen && <Knopf leise onClick={() => setAblehnen(true)}>Abgelehnt …</Knopf>}
           {a.status !== 'angenommen' && a.status !== 'ersetzt' && !(nachfolger && nachfolger.status === 'entwurf') && (
             <Knopf leise onClick={async () => { const r = await angebotPost({ aktion: 'version', id: a.id }); if (r.ok && r.angebot) { daten.uebernehmen(r.angebot); onOeffnen(r.angebot.id); } else setMeldung(r.fehler ?? 'Keine neue Version.'); }}>Neue Version</Knopf>
           )}
           {a.status === 'angenommen' && deal && !hatMandat && !mandat && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
           {mandat && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{mandat}</span>}
-          {a.status === 'angenommen' && hatMandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
+          {a.status === 'angenommen' && hatMandat && !mandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
+          {a.status === 'angenommen' && mandatZiel && <Link href={WEG.mandat(mandatZiel)} style={{ ...link, alignSelf: 'center' }}>Zum Mandat ›</Link>}
+          {a.status === 'angenommen' && mandatZiel && <Knopf leise onClick={ersteRechnung}>Erste Rechnung</Knopf>}
+          {a.status === 'angenommen' && mandatZiel && gemischt && !einmal?.id && <Knopf leise onClick={einmalPlanen}>Einmalbetrag als Rechnung planen</Knopf>}
+          {einmal?.id && <Link href={WEG.rechnungSchreiben(einmal.id)} style={{ ...link, alignSelf: 'center' }}>Einmalbetrag: Rechnung (geplant) ›</Link>}
+          {einmal?.fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, alignSelf: 'center' }}>{einmal.fehler}</span>}
           {/* Angebot → Rechnung (08.10.): Entwurf mit den Positionen, Kunde, Mandat und Gesellschaft — gestellt wird im Editor. */}
-          {a.status === 'angenommen' && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
+          {/* Gemischt mit Mandat (3.6): Einmalbetrag und Monatsrechnung laufen getrennt — keine Rechnung über alle Positionen daneben. */}
+          {a.status === 'angenommen' && !(gemischt && mandatZiel) && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
         </div>
         {ablehnen && (
           <div style={{ display: 'grid', gap: 8, marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
@@ -129,6 +167,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         )}
       </Karte>
       {dok ? <Blatt d={dok} logoUrl={logoUrl} /> : <Karte i={2}><div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine Vorschau (Schnappschuss fehlt) — das PDF ist die Unterlage.</div></Karte>}
+      {dialog}
     </div>
   );
 }
