@@ -119,6 +119,18 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'Kalender › Einstellungen › iCloud zeigt die verbundene Apple-ID (maskiert); das Passwort geht nie heraus (auch nicht im Export)',
     loeschfrist: 'bis die Person trennt bzw. ihr Konto entfernt wird',
   }),
+  // WHOOP je Person (08.10., lib/whoop/*): Zugang und Spiegel je Person — Gesundheitsdaten der Person selbst (Art. 9), keine Dritten.
+  mit(H('whoop-verbindung--*', 'WHOOP-Verbindung je Person (WHOOP-Kennung, Adresse des WHOOP-Kontos, verschlüsselte Token) — nur serverseitig, nie an den Browser/ins Log; „Trennen“ widerruft bei WHOOP und löscht ihn samt Tageskopien (Grabstein `v: 0`).'), {
+    rechtsgrundlage: 'Art. 9 Abs. 2 lit. a DSGVO — die Person verbindet ihr eigenes WHOOP-Konto selbst, nur mit Einwilligung (a) in die Verarbeitung ihrer Gesundheitsdaten',
+    art15: 'Gesundheit › WHOOP zeigt Verbindung (Adresse maskiert), seit wann und den letzten Abgleich; Token gehen nie heraus (auch nicht im Export)',
+    loeschfrist: 'bis die Person trennt bzw. ihr Konto entfernt wird (dann Widerruf bei WHOOP)',
+    kategorie: ['art9'],
+  }),
+  mit(H('whoop-stand--*', 'WHOOP-Spiegel je Person: Recovery, Schlaf (Phasen), Zyklen (Strain), Workouts — Zahlen und Zeiten, keine Namen; dazu Abgleich-Zustand und die trace_id der letzten Webhooks. Abgebildet in vitals--*/sport--* (Handwert gewinnt).'), {
+    ...GESUNDHEIT,
+    loeschfrist: 'Einträge älter als 400 Tage fallen beim nächsten Abgleich heraus; „Trennen“ oder Konto löschen entfernt den Spiegel sofort (samt Tageskopien). Übernommene Werte in vitals/sport bleiben bei der Person',
+  }),
+  K('whoop-oauth-zustand', 'Kurzlebiger Anmelde-Zustand der WHOOP-Verbindung (state → Person, 15 Minuten) — keine Gesundheitsdaten.'),
   K('google-oauth-zustand', 'Kurzlebiger Anmelde-Zustand der Google-Verbindung (state-Hash, PKCE-Verifier, 15 Minuten) — keine Personendaten.'),
   // WhatsApp Business (07.10., lib/whatsapp/*): die Business-Nummer der Instanz über die Cloud API von Meta (Auftragsverarbeiter).
   mit(E('whatsapp-spiegel', 'WhatsApp-Spiegel der Business-Nummer (je Instanz): Nachrichten (WAMID, wa_id der Gegenseite, Zeit, Art, Text/Bildunterschrift, Standort, geteilte Kontakte, Medien-Metadaten, Zustellstand, wer gesendet hat) und Gesprächspartner (wa_id, Profilname, letzte eingehende Nachricht, gelesen bis). Art. 17: Nachrichten mit einer Nummer der Person bzw. die sie nennen raus (lib/whatsapp/art17.ts), ihre Medien löscht der nächste Takt. Anders als Mail die EINZIGE dauerhafte Kopie (Meta hält Nachrichten höchstens 30 Tage).', 'whatsapp-spiegel'), {
@@ -297,7 +309,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     loeschfrist: '24 Monate je Woche (Morgenlauf „Wochenplan festhalten“, `PLAN_LOESCHEN_NACH_MONATEN`); Team-Person ohne Konto: ihre Zeilen 30 Tage nach dem Deaktivieren mit den übrigen Kapazitätsdaten (`kapaDeaktivierteAufraeumen`). Konto entfernt: beim nächsten Morgenlauf (`kapaEntfernteKontenAufraeumen`, 05.10.)',
     kategorie: ['beschaeftigte'],
   }),
-  H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
+  H('oauth-tokens', 'Zugangsschlüssel des Inhabers (Microsoft 365; ein alter WHOOP-Eintrag wird seit 08.10. einmal in whoop-verbindung--<inhaber> übernommen und hier gelöscht) — keine Dritten.'),
   H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
   H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
   // ── KI, Gesundheit, Telegram (05.10., DSGVO-Paket; lib/datenschutz/) ──

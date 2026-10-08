@@ -40,6 +40,7 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'konto/status': ['GET'], 'konto/anmelden': ['POST'], 'konto/einrichten': ['POST'], 'konto/beitreten': ['POST'],
   'buchung/[slug]': ['GET', 'POST'], 'buchung/[slug]/status': ['POST'],
   'kalender/google/meldung': ['POST'], 'google/gmail/meldung': ['POST'], 'hoi/csp': ['POST'],
+  'whoop/webhook': ['POST'], // WHOOP: X-WHOOP-Signature über Zeitstempel + Rohkörper — prüft die Route selbst (tests/whoop-webhook.test.ts)
   'whatsapp/webhook': ['GET', 'POST'], // Meta: Verify-Token bzw. X-Hub-Signature-256 — prüft die Route selbst (tests/whatsapp-webhook.test.ts)
   'jarvis/[...pfad]': ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // nur 308 → /api/zoe/*
   'kemaris-calendar': ['GET'], // fester Leerstand

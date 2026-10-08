@@ -36,14 +36,10 @@ async function streakAktiv(person: Person, log: StreakLog, heute: string): Promi
   return streakStand(log, heute).eintraege30 > 0;
 }
 
-/** Whoop nachts holen — nur für Kevin, nur wenn eingerichtet. Fehler sind hier
- *  keine: die Morgennachricht sagt dann eben ehrlich „keine Werte". */
-async function whoopHolen(origin: string): Promise<void> {
-  try {
-    await fetch(`${origin}/api/whoop/sync`, {
-      method: 'POST', headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '' }, signal: AbortSignal.timeout(30_000),
-    });
-  } catch { /* nichts — die Nachricht kommt trotzdem */ }
+/** WHOOP frisch holen (08.10.): für JEDE Person mit eigener Verbindung (vorher fest nur das Erstkonto) — wartet höchstens 30 s.
+ *  Fehler sind hier keine: die Morgennachricht sagt dann eben ehrlich „keine Werte“. */
+async function whoopHolen(person: Person): Promise<void> {
+  try { const { whoopFrischFuer } = await import('@/lib/whoop/takt'); await whoopFrischFuer(person); } catch { /* nichts — die Nachricht kommt trotzdem */ }
 }
 
 /**
@@ -68,13 +64,13 @@ async function haushaltZeilen(person: Person): Promise<string> {
  * ohne die Ausnahme „ZOE-Antworten vollständig über Telegram“ der Person NUR ein neutraler Hinweis mit Link — keine
  * Werte (Recovery, Schlaf), keine Fragen zu Beschwerden, keine Beträge. Mit der Ausnahme wie früher.
  */
-export async function nachrichtFuer(person: Person, slot: Slot, origin: string): Promise<string> {
+export async function nachrichtFuer(person: Person, slot: Slot, _origin: string): Promise<string> {
   const heute = localDay();
   const name = (await namenVon())[person] ?? nameVon(person);
   if (!(await telegramVollFuer(person).catch(() => false))) return hinweisCheckIn(name, slot, appLink(aussenAdresse(), '/os/gesundheit'));
   const alle = await routinen(person);
   if (slot === 'morgen') {
-    if (person === 'kevin') await whoopHolen(origin);
+    await whoopHolen(person);
     const v = await resolveVitals(heute, person);
     const text = morgenText({
       name,

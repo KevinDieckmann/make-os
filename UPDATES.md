@@ -24,6 +24,42 @@ alles sehen, auch Gesundheit“). Malin startet am 01.11. auf dem Server.
 
 **So testet ihr:** /os/onboarding öffnen → Fundament ohne Mac-Schritte. /os/onboarding/malin als zweite Person: „Zweiten Faktor einrichten“ steht
 mit „bei dir noch aus“, nach dem Einrichten unter Konto grün. Als Kevin dieselbe Seite: die Befunde zeigen Kevins eigenen Stand, nie Malins.
+## 08.10.2026 — WHOOP je Person: immer aktuelle Werte (nur lokal — Branch `whoop`)
+
+Kevin 08.10.: „Whoop-Schnittstelle, damit wir immer die aktuellen Daten haben.“ Fakten mit Quellen: `research/whoop/FAKTEN_WHOOP.md`
+(WHOOP API **v2** — v1 ist abgekündigt, v1-Webhooks entfernt; Webhooks gibt es für Schlaf, Recovery, Workouts — nicht für Strain).
+
+**Was Kevin (und Malin) sehen:**
+- Gesundheit › Karte **„WHOOP“** (nur die eigene): „WHOOP verbinden“ → Anmeldung bei WHOOP → zurück, „Verbunden als k***@…“, letzter Abgleich
+  vor X, letzte Werte, „Jetzt abgleichen“, „Trennen“ (Rückfrage). Dieselbe Karte unter System › Verbindungen, darunter weiter der Export.
+- Danach kommen Recovery, Schlaf, HRV und Ruhepuls von selbst in den Morgen-Check (die letzten 90 Tage beim ersten Mal), Workouts in Sport (Läufe
+  mit Distanz als Lauf, alles andere als Training). **Was ihr von Hand eintragt, überschreibt WHOOP nie** (auch alte Werte und der Export nicht).
+- Ohne Einwilligung in Gesundheitsdaten (System › Datenschutz) steht nur ein Hinweis — es wird nichts abgeholt.
+- Kevin und Malin verbinden je IHR WHOOP; Malin sieht Kevins Werte nur, wenn er Gesundheit mit ihr teilt (wie bisher).
+- Lehnt WHOOP den Zugang ab (in der App widerrufen, abgelaufen): eine Glocke „Die WHOOP-Verbindung ist getrennt“ → neu verbinden.
+
+**Was Kevin tun muss (einmal, auf Kevins Wort beim Upload):**
+1. WHOOP Developer Dashboard (developer.whoop.com, mit dem WHOOP-Konto; die Feldnamen dort sind nicht geprüft) → App anlegen: Name z. B. „MAKE OS“, Kontakt-Adresse, **Privacy Policy URL** (die
+   Datenschutzseite der Instanz), Scopes anhaken: `read:recovery`, `read:cycles`, `read:workout`, `read:sleep`, `read:profile` — **nicht**
+   `read:body_measurement` (`offline` fordert MAKE OS bei der Anmeldung selbst an).
+2. **Redirect URL:** `https://<MAKE_OS_ADRESSE>/api/whoop/rueckruf` (genau so, https).
+3. **Webhook URL:** `https://<MAKE_OS_ADRESSE>/api/whoop/webhook`, **Model Version: v2**.
+4. Client ID + Client Secret NICHT in den Chat: `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whoop-verbinden.sh` (fragt verdeckt,
+   startet neu). Danach verbindet sich jede Person selbst unter Gesundheit › WHOOP.
+5. Kevin: einmal **„Neu verbinden“** — der alte gemeinsame Token (Rohbau, v1, ohne Workouts) wird für ihn übernommen, darf aber keine Workouts
+   lesen; Malin verbindet ihr eigenes Konto.
+6. Datenschutz: im Empfänger-Register steht WHOOP mit Garantie **„zu prüfen“** — auf dataprivacyframework.gov nachsehen und eintragen.
+   Hinweis, keine Rechtsberatung.
+
+**So testet ihr:** Gesundheit öffnen → Karte „WHOOP“ → „WHOOP verbinden“ → bei WHOOP anmelden und zustimmen → zurück auf Gesundheit
+(„WHOOP ist verbunden …“). Nach ein paar Sekunden „Jetzt abgleichen“ → Morgen-Check zeigt Recovery/Schlaf von heute; Sport › Lauf zeigt einen
+WHOOP-Lauf. Einen Wert im Morgen-Check von Hand ändern, „Jetzt abgleichen“ → der Handwert bleibt. Malin meldet sich an → ihre Karte zeigt
+„WHOOP verbinden“, nichts von Kevin. „Trennen“ → in der WHOOP-App unter „Connected Apps“ ist MAKE OS weg.
+
+**Rückweg:** neue Bestände (`whoop-verbindung--*`, `whoop-stand--*`, `whoop-oauth-zustand`) und optionale Felder (`DayVitals.quellen`,
+`SportStand.training`) — der alte Stand liest sie nicht bzw. verwirft `training` beim nächsten Speichern im Sport (ein späterer Abgleich legt
+sie wieder an, idempotent). Der alte Stand kennt `/api/whoop/sync` (v1) — sein Token ist nach der Übernahme aus `oauth-tokens` entfernt, er
+meldet dann „nicht verbunden“. Vor dem Rückweg in MAKE OS trennen, sonst bleibt der Zugang bei WHOOP bestehen.
 
 ## 08.10.2026 nachmittags — Malins Sicht, Teil 2: Essensvorschläge ohne Personen, Lese-Protokoll Ernährung, fremde Blöcke „Belegt“ (nur lokal — Branch `malin-sicht-2`)
 

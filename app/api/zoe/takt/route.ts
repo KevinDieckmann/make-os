@@ -17,6 +17,7 @@ import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
 import { gmailJobsImTakt } from '@/lib/gmail/takt';
 import { postfachJobsImTakt } from '@/lib/postfach/takt';
 import { whatsappJobsImTakt } from '@/lib/whatsapp/takt';
+import { whoopJobsImTakt } from '@/lib/whoop/takt';
 import { localDay } from '@/lib/zeit';
 import { istDienst } from '@/lib/zugang/dienst';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
   void postfachJobsImTakt().catch(() => {});
   // WhatsApp (07.10.): Medien nachladen, die der Webhook nicht laden konnte, und Dateien ohne Nachricht entfernen — ohne Einrichtung nichts.
   void whatsappJobsImTakt().catch(() => {});
+  // WHOOP je Person (08.10.): Abgleich stündlich (mit Webhooks alle 6 h) — nie blockierend, Fehler als eine Zeile `[whoop] …`.
+  void whoopJobsImTakt().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });

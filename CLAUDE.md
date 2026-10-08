@@ -627,6 +627,46 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
 - Erholung belegt Schlaf/Puls/HRV aus `vitals--<person>` vor (Whoop-Export, Morgen-Check) — nur anzeigen, gespeichert wird erst auf „Speichern“ (`quelle: whoop`).
 - Wording: Vorschläge, keine Trainingsberatung (Hinweis auf jeder Karte, die plant). Läufe tragen `quelle` (`hand` | `apple-health` | `strava` | `whoop`) + `externeId`, damit ein Import später andockt.
 
+## WHOOP je Person (08.10., Branch `whoop`, nur lokal; Fakten `research/whoop/FAKTEN_WHOOP.md`, Schritte für Kevin: UPDATES.md 08.10.)
+Kevin 08.10.: „Whoop-Schnittstelle, damit wir immer die aktuellen Daten haben.“ Jede Person verbindet IHR WHOOP-Konto selbst (API **v2** — v1 ist
+abgekündigt, v1-Webhooks entfernt). Der alte gemeinsame Weg (`lib/oauth.ts` whoop, `/api/whoop/sync`, nur Inhaber, v1) ist abgelöst (`ENTFERNTE_ROUTEN`).
+- **Verbindung** `lib/whoop/verbindung.ts` (Vorbild Google): Code + `state` (genau 8 Zeichen laut Doku, `crypto.randomInt`, einmalig, 15 Min., gehört
+  der Person der Sitzung, höchstens 3 offen je Person; kein PKCE — nicht dokumentiert), Bestand `whoop-verbindung--<person>` (immer mit Suffix, auch
+  Erstkonto; WHOOP-Kennung `userId`, Adresse, Token verschlüsselt — nie an Browser/Log/Protokoll, Status nur `adresseMaskiert`), `whoop-oauth-zustand`.
+  Eine `user_id` gehört höchstens EINER Person (sonst 409 `belegt` + Widerruf). **Refresh-Token rotiert** (belegt): `whoopZugriffstoken` läuft je Person
+  streng hintereinander (EIN Versprechen in `laufend`, gesetzt vor dem ersten await) — nie zwei Erneuerungen gleichzeitig. Abgelehnt (400/401) →
+  „getrennt“ + EINE Glocke (Art `verbindung`, `getrenntGemeldet`). Trennen = `DELETE /v2/user/access` + `bestandEntfernen` (Verbindung + Spiegel,
+  Tageskopien) + Grabstein `{ v: 0 }`. **Übergang:** ein alter `oauth-tokens.whoop` wird beim ersten Lesen NUR in den Bestand des Inhabers übernommen
+  (`herkunft: 'alt'`, dann aus `oauth-tokens` gelöscht) — nie für eine andere Person; fehlt ihm `read:workout`, zeigt die Karte „neu verbinden“.
+- **Konfiguration** `lib/whoop/konfig.ts`: `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET` (signiert auch die Webhooks), Rückruf `WHOOP_RUECKRUF_URL` sonst
+  `MAKE_OS_ADRESSE` + `/api/whoop/rueckruf` (ohne beides: aus — nie ein fester localhost); gesetzt nur über `deploy/whoop-verbinden.sh`. Scopes minimal
+  (`offline read:recovery read:cycles read:workout read:sleep read:profile`, kein `read:body_measurement`). Zugangsdaten nur an `api.prod.whoop.com`.
+- **Abgleich** `lib/whoop/api.ts` (401 → einmal erneuern, 429 → Pause nach `X-RateLimit-Reset`, 5xx/Netz → Backoff 5·3^(n−1) min, ≤ 3 h; Sammlungen
+  seitenweise `limit=25` + `next_token`) und `lib/whoop/abgleich.ts`: **ohne Einwilligung (a) keine Anfrage, kein Schreiben** (`gesundheitVerarbeitungErlaubt`).
+  Voll (90 Tage, Spiegel neu) beim ersten Mal und wöchentlich, sonst ab letztem Erfolg − 3 Tage; ein Lauf je Person. Spiegel `whoop-stand--<person>`
+  (Recovery/Schlaf/Zyklen/Workouts schlank, Zustand, `trace_id`s; Einträge > 400 Tage fallen heraus).
+- **Abbildung — EINE Stelle** `lib/whoop/abbilden.ts` (rein): Schlaf/Recovery am Tag des Aufwachens (Ortszeit `timezone_offset`), Hauptschlaf ohne
+  Nickerchen, nur `SCORED`. Vitalwerte (`vitals--<person>` über `speicherFuer`): **Handwert gewinnt** — `DayVitals.quellen[feld]` (`whoop` | `hand`);
+  WHOOP schreibt nur leere oder eigene (`whoop`) Felder; ohne Markierung gilt ein Wert als Handwert (Altbestand, Export); der Morgen-Check
+  (`PUT /api/state/vitals`) markiert `hand`. Gelöschtes entfernt nur WHOOP-Felder ab Spiegel-Anfang. Sport (`speicherFuer('sport', …)`): Lauf mit Distanz
+  → `Lauf`, sonst `SportStand.training[]` (`TrainingEinheit`, optional — fehlt, solange leer, Säuberer kennt es), immer `quelle: 'whoop'` +
+  `externeId: 'whoop:<uuid>'`, idempotent; Gefühl/Notiz der Person bleiben; ein Hand-Lauf am selben Tag ±10 % gilt als derselbe. Erholung (Sport) belegt
+  wie bisher aus den Vitalwerten vor. Neue WHOOP-Größe: Feld im Spiegel + `tageswerte` + Test — nie in einer Route abbilden.
+- **Immer aktuell:** Webhook `POST /api/whoop/webhook` (Register-Klasse `offen`, `OFFEN_ERLAUBT`, Middleware `WHOOP_WEBHOOK` nur POST): Signatur
+  `X-WHOOP-Signature` = base64(HMAC-SHA256(Zeitstempel + ROHKÖRPER, Client Secret)) zeitkonstant → sonst 401 (gedrosselt); ≤ 64 KB; nur bekannte
+  `user_id` → Person (unbekannt: 200, nichts); idempotent über `trace_id`; schnell 200 leer, Arbeit per `after` (`*.deleted` → `whoopEntfernen`, sonst
+  Abgleich). Takt `whoopJobsImTakt` (in `/api/zoe/takt`): stündlich, mit Webhook in den letzten 48 h alle 6 h (Strain hat keinen Webhook). Morgenlauf
+  (Gesundheits-Takt) holt je Person frisch (`whoopFrischFuer`, ≤ 30 s) — der Sonderfall „nur kevin“ ist weg.
+- **Routen** `/api/whoop/{status,verbinden,rueckruf,trennen,abgleich}` — Klasse `person`, Tor `eigenePerson(req, …, NUR_SELBST_WHOOP)` (Dienstweg 403,
+  keine Personen-Parameter); Status liefert eigene letzte Werte mit `leseZugriff(…, 'gesundheit')`. Cross-Site-Ausnahme NUR `/api/whoop/rueckruf`
+  (`WHOOP_RUECKRUF`). Verbinden/Abgleich ohne Einwilligung → 403 `einwilligung: 'gesundheit'`.
+- **Recht:** Register `whoop-verbindung--*`, `whoop-stand--*` (Art. 9, mit Angaben), `whoop-oauth-zustand` (kein); `PERSON_BESTAENDE` (Spiegel exportierbar,
+  Zugang `export: false`), Konto löschen widerruft bei WHOOP (`bericht.whoop`); VVT `vv-whoop` (nachgetragen, sobald `whoopKonfiguriert`), in
+  `KONTO_VERARBEITUNGEN`; Empfänger `whoop` Garantie **`pruefen`** (neue Garantie-Stufe „zu prüfen (nicht belegt)“ — DPF nicht behauptet). Andere Konten
+  sehen WHOOP-Werte nur über die vorhandenen Wege mit `teilt.gesundheit`; KI nur über die vorhandenen Art.-9-Wege. HOI `whoopBefunde` (nur Zähler).
+- **Oberfläche** `components/os/gesundheit/WhoopKarte.tsx` (Kachel „whoop“ unter Gesundheit nur in der EIGENEN Ansicht, System › Verbindungen mit dem
+  Export darunter). Tests `tests/whoop-*.test.ts`, Fake `tests/fixtures/whoop-fake.ts` (Rotation, Seiten, 429, Widerruf, mehrere Konten).
+
 ## Ziele & Planung — Ziele, Meilensteine, Kaskade, Routinen (27.09. abends, nur lokal)
 - Ein Bauteil für alle Ebenen Tag · Woche · Monat · Quartal · Jahr: `components/os/planung/ZieleMeilensteine.tsx` (Ziele links,
   Meilensteine rechts, „+ neu“ oben, offen nach Rang, Erledigtes unten scrollend) + `usePlanung.ts` (laden/schreiben) +

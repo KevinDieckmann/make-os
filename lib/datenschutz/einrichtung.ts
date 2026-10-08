@@ -46,13 +46,14 @@ export const ROLLEN: { id: EmpfaengerRolle; label: string }[] = [
   { id: 'empfaenger', label: 'Empfänger (Übermittlung)' },
 ];
 /** Garantie für eine Übermittlung in ein Drittland (Kap. V DSGVO). `eu` = kein Drittland (EU/EWR). */
-export type Garantie = 'eu' | 'angemessenheit' | 'dpf' | 'scc' | 'dpf-scc' | 'keine';
+export type Garantie = 'eu' | 'angemessenheit' | 'dpf' | 'scc' | 'dpf-scc' | 'pruefen' | 'keine';
 export const GARANTIEN: { id: Garantie; label: string }[] = [
   { id: 'eu', label: 'kein Drittland (EU/EWR)' },
   { id: 'angemessenheit', label: 'Angemessenheitsbeschluss (Art. 45)' },
   { id: 'dpf', label: 'EU-US Data Privacy Framework' },
   { id: 'scc', label: 'Standardvertragsklauseln (Art. 46)' },
   { id: 'dpf-scc', label: 'Data Privacy Framework + Standardvertragsklauseln' },
+  { id: 'pruefen', label: 'zu prüfen (nicht belegt)' },
   { id: 'keine', label: 'keine Garantie' },
 ];
 export type AvvStatus = 'offen' | 'bestaetigt' | 'nicht-noetig';
@@ -204,7 +205,7 @@ export const EMPFAENGER_START: readonly Empfaenger[] = [
   start({ id: 'newsletter', name: 'Newsletter-Werkzeug (Massenversand)', rolle: 'auftragsverarbeiter', zweck: 'Versand von Newslettern und Kampagnen an Personen mit Einwilligung (Double-Opt-in)', daten: 'Name, E-Mail, Einwilligungs-Nachweis, Öffnungen/Klicks', drittland: '', garantie: 'eu', dritte: true, archiviert: true, notiz: 'Noch nicht in Gebrauch: Anbieter wählen (EU bevorzugt), AVV vor dem ersten Versand — dann „Zurückholen“.' }),
   // WhatsApp Business (07.10.): archiviert („nicht in Gebrauch“), bis die Nummer läuft — dann „Zurückholen“ (UPDATES.md 07.10.).
   start({ id: 'meta-whatsapp', name: 'WhatsApp Business (Meta, Cloud API)', rolle: 'auftragsverarbeiter', zweck: 'Nachrichten der eigenen WhatsApp-Business-Nummer empfangen und senden (Inbox, nur auf Klick)', daten: 'Telefonnummer, Profilname, Nachrichten (Text, Medien, Standort, Kontakte), Zustellstand', drittland: 'Meta-Konzern; mit Local Storage „DE“ gespeichert in Deutschland, Verarbeitung bis zu 60 Min. weltweit', garantie: 'scc', dritte: true, archiviert: true, notiz: 'WhatsApp Business Data Processing Terms gelten automatisch (Vertragspartner EU: WhatsApp Ireland Limited, Data Transfer Addendum) — Fassung/Datum ablegen. Vor der Registrierung der Nummer Local Storage „DE“ oder „No Storage“ wählen.' }),
-  start({ id: 'whoop', name: 'WHOOP (Gesundheitswerte)', rolle: 'eigener-verantwortlicher', zweck: 'Die Person verbindet ihr eigenes WHOOP-Konto; MAKE OS holt ihre Werte ab', daten: 'Gesundheitsdaten der Person selbst (Art. 9): Erholung, Schlaf, Belastung', drittland: 'USA', garantie: 'dpf', dritte: false, avv: { status: 'nicht-noetig' }, notiz: 'Eigener Vertrag der Person mit WHOOP; Abholen nur mit ihrer Verbindung (Einwilligung, Art. 9 Abs. 2 lit. a).' }),
+  start({ id: 'whoop', name: 'WHOOP (Gesundheitswerte)', rolle: 'eigener-verantwortlicher', zweck: 'Die Person verbindet ihr eigenes WHOOP-Konto; MAKE OS holt ihre Werte ab', daten: 'Gesundheitsdaten der Person selbst (Art. 9): Erholung, Schlaf, Belastung', drittland: 'USA', garantie: 'pruefen', dritte: false, avv: { status: 'nicht-noetig' }, notiz: 'Eigener Vertrag der Person mit WHOOP; Abholen nur mit ihrer eigenen Verbindung (Einwilligung, Art. 9 Abs. 2 lit. a). Ob WHOOP unter dem EU-US Data Privacy Framework zertifiziert ist, ist nicht belegt — auf dataprivacyframework.gov prüfen und hier eintragen (08.10.).' }),
 ];
 
 /** Die wirksame Liste: gespeichert oder die Vorgabe. */
@@ -251,7 +252,7 @@ export const rolleText = (r: EmpfaengerRolle): string => ROLLEN.find(x => x.id =
 /** Auftragsverarbeiter in Gebrauch, deren AVV noch nicht bestätigt ist. */
 export const avvOffen = (liste: readonly Empfaenger[]): Empfaenger[] => liste.filter(e => !e.archiviert && e.rolle === 'auftragsverarbeiter' && e.avv.status !== 'bestaetigt');
 /** In Gebrauch, mit Daten Dritter, in einem Drittland ohne Garantie. */
-export const drittlandOhneGarantie = (liste: readonly Empfaenger[]): Empfaenger[] => liste.filter(e => !e.archiviert && e.dritte && !!e.drittland && (e.garantie === 'keine' || e.garantie === 'eu'));
+export const drittlandOhneGarantie = (liste: readonly Empfaenger[]): Empfaenger[] => liste.filter(e => !e.archiviert && e.dritte && !!e.drittland && (e.garantie === 'keine' || e.garantie === 'eu' || e.garantie === 'pruefen'));
 
 /** Für die Auskunft nach Art. 15 Abs. 1 lit. c: Empfänger in Gebrauch, bei denen Daten Dritter ankommen (ohne interne Notizen). */
 export function empfaengerAuskunft(liste: readonly Empfaenger[]): { name: string; rolle: string; zweck: string; drittland: string | null; garantie: string | null }[] {

@@ -169,6 +169,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     gmail: await gmailLage(Date.parse(jetzt)).catch((): GmailLage | null => null),
     postfaecher: await import('@/lib/postfach/lage').then(m => m.postfachLage(Date.parse(jetzt))).catch(() => null),
     whatsapp: await import('@/lib/whatsapp/lage').then(m => m.whatsappLage(Date.parse(jetzt))).catch(() => null),
+    whoop: await import('@/lib/whoop/lage').then(m => m.whoopLage(Date.parse(jetzt))).catch(() => null),
     zugang: {
       zuliefererSchluessel: zuliefererSchluessel() !== null, zuliefererAltZuletzt: await altSchluesselZuletzt(),
       riegel: (({ modus, maengel }) => ({ modus, maengel }))(riegelBild()),

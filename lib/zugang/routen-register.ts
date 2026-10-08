@@ -123,7 +123,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'google/status': r('GET', 'person', 'Stand der eigenen Google-Verbindung (eigenePerson).'),
   'google/trennen': r('POST', 'person', 'Eigene Google-Verbindung trennen (eigenePerson).'),
   'google/verbinden': r('POST', 'person', 'Eigene Google-Verbindung herstellen (eigenePerson).'),
-  'oauth/callback': r('GET', 'inhaber', 'M365-Anmeldung des Inhabers.'),
+  'oauth/callback': r('GET', 'inhaber', 'M365-Anmeldung des Inhabers (WHOOP seit 08.10. je Person unter whoop/*).'),
   'oauth/start': r('GET', 'inhaber', 'M365-Anmeldung des Inhabers.'),
   'oauth/status': r('GET,POST', 'inhaber', 'M365-Verbindung des Inhabers.'),
 
@@ -224,7 +224,13 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/vitals': r('GET,PUT', 'person', 'Vitalwerte je Person (Art. 9); fremde nur mit Freigabe.'),
   'sport': r('GET,PUT', 'person', 'Sport je Person (personStreng, 401).'),
   'import/whoop': r('GET,POST', 'inhaber', 'Whoop-Export des Inhabers.'),
-  'whoop/sync': r('POST', 'inhaber', 'Whoop-Abgleich des Inhabers.'),
+  // WHOOP je Person (08.10., lib/whoop/*): Verbindung verwaltet nur die Person selbst (eigenePerson; Dienstweg 403), nie Tokens in Antworten.
+  'whoop/status': r('GET', 'person', 'Stand der EIGENEN WHOOP-Verbindung (maskiert, nie Token/Kennung) + eigene letzte Werte mit Lese-Protokoll (eigenePerson).'),
+  'whoop/verbinden': r('POST', 'person', 'Eigene WHOOP-Anmeldung starten (state je Person) — nur mit Einwilligung (a) Gesundheit (eigenePerson).'),
+  'whoop/rueckruf': r('GET', 'person', 'Rückruf der eigenen WHOOP-Anmeldung — state gehört der Person der Sitzung (eigenePerson).'),
+  'whoop/trennen': r('POST', 'person', 'Eigene WHOOP-Verbindung trennen: Widerruf bei WHOOP, Bestand + Spiegel weg (eigenePerson).'),
+  'whoop/abgleich': r('POST', 'person', 'Eigene Werte jetzt abgleichen — nur mit Einwilligung (a) (eigenePerson).'),
+  'whoop/webhook': r('POST', 'offen', 'Webhook von WHOOP — offen, aber selbst geprüft: nur mit gültiger X-WHOOP-Signature (HMAC-SHA256 über Zeitstempel + Rohkörper, Client Secret, zeitkonstant), Körper ≤ 64 KB, gedrosselt, idempotent (trace_id), nur bekannte WHOOP-Kennungen; ohne Einrichtung 404; liefert nie Daten.'),
   'ernaehrung/bild': r('GET,POST,DELETE', 'haushalt', 'Gerichte-Fotos des Haushalts.'),
   'ernaehrung/rezept': r('POST', 'haushalt', 'Rezept-Agent für den Haushalt.'),
   'ernaehrung/vorschlag': r('GET,POST', 'haushalt', 'Wochen-Essensvorschlag des Haushalts.'),
@@ -356,4 +362,6 @@ export const ENTFERNTE_ROUTEN = ['apple-calendar/create', 'apple-calendar/termin
   // Kontakt-Vorschläge aus dem M365-Bestand (ohne Aufrufer; die Inbox schlägt „Kontakt anlegen“ je Gespräch vor).
   'netzwerk/vorschlaege',
   // Postfach → Space-Zuordnung der alten Inbox (jetzt: Bereich je Postfach im Register `postfaecher--<person>`).
-  'state/spaces'] as const;
+  'state/spaces',
+  // WHOOP (08.10.): der gemeinsame Abgleich des Inhabers (API v1) — ersetzt durch whoop/* je Person.
+  'whoop/sync'] as const;

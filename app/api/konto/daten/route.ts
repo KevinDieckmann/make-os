@@ -90,7 +90,7 @@ export async function POST(req: Request) {
   const bericht = await kontoLoeschen(person);
   if (!bericht) return nein('Konto nicht gefunden.', 404);
   const res = ohneSitzung();
-  const raus = NextResponse.json({ ok: true, bericht: { bestaende: bericht.bestaende.length, eintraege: bericht.eintraege, protokolle: bericht.protokolle, aufgabenZugewiesen: bericht.aufgabenZugewiesen, google: bericht.google } }, { headers: { 'Cache-Control': 'no-store' } });
+  const raus = NextResponse.json({ ok: true, bericht: { bestaende: bericht.bestaende.length, eintraege: bericht.eintraege, protokolle: bericht.protokolle, aufgabenZugewiesen: bericht.aufgabenZugewiesen, google: bericht.google, whoop: bericht.whoop ?? 'keine' } }, { headers: { 'Cache-Control': 'no-store' } });
   for (const c of res.cookies.getAll()) raus.cookies.set(c);
   return raus;
 }

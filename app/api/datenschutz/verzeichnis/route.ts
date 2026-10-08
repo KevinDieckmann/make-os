@@ -11,6 +11,7 @@ import { verzeichnisVervollstaendigen } from '@/lib/crm/datenschutz';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
 import { icloudInGebrauch } from '@/lib/kalender/icloud-person';
 import { whatsappEingerichtet } from '@/lib/whatsapp/konfig';
+import { whoopKonfiguriert } from '@/lib/whoop/konfig';
 import { LOESCHFRISTEN_SPEICHER, fristenWirksam, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { empfaengerWirksam, verantwortlicherWirksam } from '@/lib/datenschutz/einrichtung';
 import { ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const jetzt = new Date().toISOString();
   let crm = await ladeCrm();
-  const vvOpt = { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet() };
+  const vvOpt = { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert() };
   if (verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, vvOpt).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, jetzt, vvOpt); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
   const e = await ladeEinrichtung();
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {}).fristen);
