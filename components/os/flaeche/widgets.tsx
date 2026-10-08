@@ -555,7 +555,7 @@ function KanalWidget({ titel, i }: WidgetProps) {
   const max = Math.max(1, ...zeilen.map(z => z.anzahl));
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('sales', 'auswertung')} style={link}>Auswertung ›</Link>}>{titel ?? 'Kanal-Leistung'}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('deals', 'auswertung')} style={link}>Auswertung ›</Link>}>{titel ?? 'Kanal-Leistung'}</Ueberschrift>
       {d === undefined && <Leer>lade …</Leer>}
       {zeilen.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 120px) 1fr auto', gap: '6px 10px', alignItems: 'center', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>

@@ -67,7 +67,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('qualifizierung', 'Markttraktion · Qualifizierung & Scoring', WEG.qualifizierung(), 'business'),
   s('angebot', 'Markttraktion · Angebot', WEG.angebot(), 'business'),
   s('marketing', 'Markttraktion · Marketing', WEG.marketing(), 'business'),
-  s('kampagnen', 'Markttraktion · Kampagnen', '/os/markttraktion?s=sales&a=kampagnen', 'business'),
+  s('kampagnen', 'Markttraktion · Kampagnen', '/os/markttraktion?s=marketing&a=kampagnen', 'business'),
   s('events', 'Markttraktion · Events (besuchte Veranstaltungen)', WEG.besuch(), 'business'),
   s('makeone', 'Markttraktion · Make.One (eigene Abende)', WEG.event(), 'business'),
   s('mt-stammdaten', 'Markttraktion · Stammdaten', WEG.stammdaten(), 'business'),

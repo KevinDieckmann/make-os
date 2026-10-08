@@ -8,7 +8,7 @@ import { bisherigeRechnung, standardScoring, scoringPruefen } from '@/lib/crm/sc
 import { idAusName, frageNeu, kriteriumAusMessung, freieMessungen, kriteriumEntfernen, kriteriumHinzufuegen, teilEntfernen, teilHinzufuegen, maxPunkte, istGeaendert, kopie } from '@/lib/crm/scoring-bearbeiten';
 import { scoringVorschau } from '@/lib/crm/scoring-vorschau';
 import { leads, leadZeileFuer, offeneFragen } from '@/lib/crm/leads';
-import { aufloesen, qualifizierungLink, markttraktion, LEISTE, BEREICHE } from '@/lib/crm/adresse';
+import { aufloesen, qualifizierungLink, markttraktion, REITER_ZEILE, BEREICHE } from '@/lib/crm/adresse';
 
 const HEUTE = '2026-10-03';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname: 'Vera', nachname: id.slice(2), eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });
@@ -130,7 +130,7 @@ describe('Lead-Zeile der Akte = Zeile der Leads-Liste', () => {
 describe('Adressen — alte Links bleiben', () => {
   it('„Qualifizierung & Scoring“: Kennung und leere Ansicht bleiben, neue Ansichten kommen dazu', () => {
     expect(BEREICHE).toContain('qualifizierung');
-    expect([...LEISTE.links, ...LEISTE.mitte, ...LEISTE.rechts]).toContain('qualifizierung');
+    expect(REITER_ZEILE.mitte).toContain('qualifizierung');
     expect(aufloesen('qualifizierung', null)).toEqual({ s: 'qualifizierung' });
     expect(aufloesen('qualifizierung', 'runde')).toEqual({ s: 'qualifizierung' });
     expect(aufloesen('qualifizierung', 'scoring')).toEqual({ s: 'qualifizierung', a: 'scoring' });

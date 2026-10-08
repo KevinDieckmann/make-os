@@ -75,7 +75,7 @@ export function herkunftVon(
   }
   for (const k of (crm.kampagnen ?? []).filter(x => x.kontaktIds.some(id => ids.has(id)))) {
     const erg = k.ergebnisse.filter(r => ids.has(r.kontaktId)).sort((a, b) => b.am.localeCompare(a.am))[0];
-    teile.push({ art: 'kampagne', text: `Kampagne · ${k.name}${erg ? ` · ${tagDE(erg.am.slice(0, 10))}` : ''}`, href: markttraktion('sales', 'kampagnen'), ...(erg ? { datum: erg.am.slice(0, 10) } : {}) });
+    teile.push({ art: 'kampagne', text: `Kampagne · ${k.name}${erg ? ` · ${tagDE(erg.am.slice(0, 10))}` : ''}`, href: markttraktion('marketing', 'kampagnen'), ...(erg ? { datum: erg.am.slice(0, 10) } : {}) });
   }
   // Herkunft der Person: Empfehlung, Anfrage, sonst die Quelle aus der Liste — nur, was nicht schon ein Event erklärt.
   for (const p of personen) {

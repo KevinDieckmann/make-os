@@ -7,7 +7,7 @@
 //   Kalender        anstehende/vergangene Events (Anmeldung, Kosten, wer geht, für wen) — unsere Make.One-Abende nur lesend dazwischen
 //   Event-Akte      (k=<Event>) Kopf, Ziel + Zielpersonen, erfasste Personen, Wirkung, Übergabe an Kunden
 //   Wirkung         eigene Kennzahlen, „Welche Events lohnen sich“
-//   Für Kunden      Auswertung je Kunde, Datenschutz-Hinweis (AVV)
+//   Im Kundenauftrag  Auswertung je Kunde, Datenschutz-Hinweis (AVV)
 // Ein Datenbestand: besuchte Events sind Events mit `marke: Netzwerken` (lib/crm/besuche-form.ts). Die Pillen und die Akte stehen
 // in der Adresse (a, k) — Zurück, Vor und alle Links zeigen dieselbe Ansicht.
 // 04.10. (Kevin: „alles anpassbar“): Archiv & Papierkorb wie bei Make.One (components/os/crm/ablage.tsx) — EINE Ablage für Kalender
@@ -28,7 +28,7 @@ import { NeuesBesuch } from './NeuesBesuch';
 import type { CrmApi } from '../daten';
 import { useCrmAblage } from '../ablage';
 
-const ANSICHTEN: { id: BesucheAnsicht; label: string }[] = [{ id: 'kalender', label: 'Kalender' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'kunden', label: 'Für Kunden' }];
+const ANSICHTEN: { id: BesucheAnsicht; label: string }[] = [{ id: 'kalender', label: 'Kalender' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'kunden', label: 'Im Kundenauftrag' }];
 
 export function Besuche({ api, zuKontakt, zuFirma, ansicht, k, onAnsicht, onAkte }: {
   api: CrmApi; zuKontakt: (id: string) => void; zuFirma: (id: string) => void;

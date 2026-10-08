@@ -120,9 +120,10 @@ export const WEG = {
   kontakt: (id?: string) => markttraktion('kontakte', undefined, id),
   firma: (id?: string) => markttraktion('firmen', undefined, id),
   powerHour: () => markttraktion('followup', 'powerhour'),
-  leads: () => markttraktion('firmen', 'leads'),
-  kunden: () => markttraktion('deals', 'kunden'),
-  kampagne: (id?: string, head: 'sales' | 'marketing' = 'marketing') => markttraktion(head, 'kampagnen', id),
+  // Aufräumen Etappe 3 (08.10.): Leads stehen unter dem Schnellknopf Qualifizierung, „Kunden“ in Deals › Auswertung, Kampagnen nur unter Marketing.
+  leads: (id?: string) => markttraktion('qualifizierung', 'leads', id),
+  kunden: () => markttraktion('deals', 'auswertung'),
+  kampagne: (id?: string) => markttraktion('marketing', 'kampagnen', id),
   marketing: (a?: 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,
   /** Events (03.10.): die Veranstaltungen, die wir BESUCHEN — `id` öffnet die Event-Akte, `a` die Ansicht (Kalender ist der Start). Make.One (unsere eigenen Abende) bleibt `WEG.event`. */

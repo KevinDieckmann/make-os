@@ -84,14 +84,15 @@ describe('Stufenwechsel nur mit Regel (Server)', () => {
 describe('Adressen: neue Reiter, alte Links laufen weiter', () => {
   it('der alte Sales-Reiter wird übersetzt', () => {
     expect(aufloesen('sales', 'pipeline')).toEqual({ s: 'deals' });
-    // 27.09. abends: „Sales“ ist wieder ein Reiter (rechts) — Heute/Power Hour lebt dort, ohne Ansicht öffnet der Head of Sales.
-    expect(aufloesen('sales', 'heute')).toEqual({ s: 'sales', a: 'powerhour' });
-    expect(aufloesen('sales')).toEqual({ s: 'sales' });
-    expect(aufloesen('sales', 'leads')).toEqual({ s: 'firmen', a: 'leads' });
-    expect(aufloesen('sales', 'kunden')).toEqual({ s: 'deals', a: 'kunden' });
-    expect(aufloesen('sales', 'kampagnen')).toEqual({ s: 'sales', a: 'kampagnen' });
+    // 08.10. (Aufräumen Etappe 3): der Reiter „Sales“ ist aufgelöst — Power Hour unter Follow-up, der Head of Sales am Deal-Board,
+    // Leads unter Qualifizierung, Kunden in Deals › Auswertung, Kampagnen unter Marketing.
+    expect(aufloesen('sales', 'heute')).toEqual({ s: 'followup', a: 'powerhour' });
+    expect(aufloesen('sales')).toEqual({ s: 'deals' });
+    expect(aufloesen('sales', 'leads')).toEqual({ s: 'qualifizierung', a: 'leads' });
+    expect(aufloesen('sales', 'kunden')).toEqual({ s: 'deals', a: 'auswertung' });
+    expect(aufloesen('sales', 'kampagnen')).toEqual({ s: 'marketing', a: 'kampagnen' });
     expect(aufloesen('pipeline')).toEqual({ s: 'deals' });
-    expect(aufloesen('heute')).toEqual({ s: 'sales', a: 'powerhour' });
+    expect(aufloesen('heute')).toEqual({ s: 'followup', a: 'powerhour' });
   });
   it('Standard-Ansichten stehen nicht in der Adresse', () => {
     expect(markttraktion('deals', 'board')).toBe('/os/markttraktion?s=deals');

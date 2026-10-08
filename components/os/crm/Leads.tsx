@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { markttraktion } from '@/lib/crm/adresse';
+import { qualifizierungLink } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, Hinweis } from '../ui';
@@ -85,7 +85,7 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
   if (!karte) return leiste;
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.business} rechts={<button onClick={() => zuBereich('firmen', 'leads')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Leads ›</button>}>Sales-Trichter</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.business} rechts={<button onClick={() => zuBereich('qualifizierung', 'leads')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Leads ›</button>}>Sales-Trichter</Ueberschrift>
       {leiste}
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Ebene 1 qualifiziert bis zum SQL, Ebene 2 schließt, Ebene 3 sind Kunden — jede Stufe ist ein Sprung dorthin.</div>
     </Karte>
@@ -293,53 +293,9 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
 }
 
 /**
- * Qualifizierungs-Runde (ersetzt die Chancen-Runde, 25.09.): alle Leads in
- * Arbeit (kontaktiert, im Gespräch, Qualifizierung) Karte für Karte — die
- * sechs Kernfragen klicken, bei SQL-bereit direkt „Zum SQL → Deal anlegen“.
- * Die Reihenfolge wird beim Start festgehalten, damit sich die Liste unter der
- * Hand nicht verschiebt, wenn ein Lead zum SQL wird.
- */
-export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi; zuKontakt: (id: string) => void; zurueck: () => void }) {
-  const router = useRouter();
-  const { d, laden } = useLeads(api);
-  const [ids, setIds] = useState<string[] | null>(null);
-  const [pos, setPos] = useState(0);
-  useEffect(() => { if (d && !ids) setIds(d.leads.filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)).map(z => z.id)); }, [d, ids]);
-  if (!d || !ids) return <Karte i={0}><Leer>Lädt die Leads …</Leer></Karte>;
-  const z = ids[pos] ? d.leads.find(x => x.id === ids[pos]) : undefined;
-  const sql = ids.filter(id => d.leads.find(x => x.id === id)?.status === 'sql').length;
-  const zuDeals = () => router.push(markttraktion('deals'));
-  return (
-    <>
-      <Karte i={0} ton={LEUCHT.business}>
-        <Ueberschrift farbe={LEUCHT.business} rechts={<span>{Math.min(pos + 1, ids.length)} von {ids.length}</span>}>Qualifizierungs-Runde</Ueberschrift>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Je Lead die sechs Kernfragen klären. Sind Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt, wird es ein SQL — und der Deal steht in der Pipeline.</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-          <Chip farbe={LEUCHT.gut}>{sql} SQL</Chip>
-          <span style={{ flex: 1 }} />
-          <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien }}>Zur Kartei</button>
-          {sql > 0 && <Knopf leise onClick={zuDeals}>Zu den Deals</Knopf>}
-        </div>
-      </Karte>
-      {z ? (
-        <Karte i={1} akzent={STATUS_FARBE[z.status]}>
-          <Qualifizierung key={z.id} z={z} api={api} laden={laden} zuKontakt={zuKontakt} zuDeal={zuDeals} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-            <Knopf onClick={() => setPos(pos + 1)}>Weiter →</Knopf>
-            {pos > 0 && <Knopf leise onClick={() => setPos(pos - 1)}>← Zurück</Knopf>}
-          </div>
-        </Karte>
-      ) : (
-        <Karte i={1}><Leer>{ids.length ? `Runde durch — ${sql} von ${ids.length} sind SQL. Die Deals laufen jetzt unter Deals.` : 'Gerade kein Lead in Arbeit. Neue kommen aus der Power Hour, aus Events und Kampagnen.'}</Leer>{sql > 0 && <Knopf onClick={zuDeals}>Zu den Deals</Knopf>}</Karte>
-      )}
-    </>
-  );
-}
-
-/**
  * Der Lead in der Karteikarte (Person) und der Firmenkarte: Ebene 1 auf einen
  * Blick — Status, sechs Kernfragen als Punkte, was bis zum SQL fehlt, ein
- * laufender Deal — und „Qualifizieren“ springt in Firmen › Leads zu genau
+ * laufender Deal — und „Qualifizieren“ springt in Qualifizierung › Leads zu genau
  * diesem Lead. Mit Firma liegt der Lead an der Firma, sonst an der Person.
  */
 export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
@@ -349,7 +305,7 @@ export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
   const fehlt = fehltBisSqlZeile(z);
   return (
     <div>
-      <Ueberschrift rechts={<Knopf leise onClick={() => router.push(markttraktion('firmen', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
+      <Ueberschrift rechts={<Knopf leise onClick={() => router.push(qualifizierungLink(z.id, 'leads'))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
         <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
         <KriterienPunkte z={z} />
