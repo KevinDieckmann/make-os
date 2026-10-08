@@ -168,7 +168,7 @@ export const LOESCHREGELN = [
   { id: 'loeschprotokoll', titel: 'Löschprotokoll (nur Protokoll-ID, Tag, Grund, wer)', frist: '36 Monate (abgeschlossene Einträge)', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 2, Art. 17 DSGVO' },
   { id: 'pannen', titel: 'Pannen-Register (Art. 33 Abs. 5)', frist: '36 Monate ab Abschluss der Panne', aktion: 'Löschen (Morgenlauf, Frist einstellbar — anwaltlich bestätigen)', norm: 'Art. 33 Abs. 5, Art. 5 Abs. 2 DSGVO' },
   // 07.10. (WhatsApp Business): Spiegel und Medien der Business-Nummer (lib/whatsapp/aufraeumen.ts).
-  { id: 'whatsapp-spiegel', titel: 'WhatsApp-Spiegel der Business-Nummer (einzige dauerhafte Kopie)', frist: '180 Tage (einstellbar; § 257 HGB für Geschäftsbriefe prüfen)', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 1 lit. e DSGVO, § 257 HGB' },
+  { id: 'whatsapp-spiegel', titel: 'WhatsApp-Spiegel der Business-Nummer (einzige dauerhafte Kopie)', frist: '2.557 Tage = 7 Jahre (einstellbar; wie Handelsbriefe nach § 257 HGB — Kevin 07.10.)', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 1 lit. e DSGVO, § 257 HGB' },
   { id: 'whatsapp-medien', titel: 'WhatsApp-Medien (Bilder, Dokumente, Audio)', frist: '90 Tage (einstellbar)', aktion: 'Löschen (Morgenlauf; Nachricht bleibt mit Hinweis)', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO' },
   { id: 'bauplan-bilder', titel: 'Bauplan: Bildschirmfotos (können Personendaten zeigen)', frist: '90 Tage nach Abschluss der Karte, nicht zugeordnete 7 Tage', aktion: 'Löschen (Morgenlauf, Frist einstellbar)', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO' },
   // 05.10. (DSGVO-Grundlagen): Sicherungen wahrheitsgemäß — Generationen bis ~12 Monate (deploy/generationen.sh), nicht 14 Tage.
