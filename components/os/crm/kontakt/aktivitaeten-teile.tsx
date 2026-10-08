@@ -74,11 +74,15 @@ const istLang = (t?: string) => !!t && (t.length > LANG_AB || t.split('\n').leng
 export interface KarteProps {
   e: Eintrag; k: Kontakt; api: CrmApi; heute: string;
   kompakt: boolean; markiert: boolean;
-  /** Ein Follow-up erledigen (über /api/crm/followup). */
-  onErledigen: (id: string) => Promise<void>;
+  /**
+   * Das Erledigen-Formular für ein Follow-up (08.10., 4.5) — dasselbe wie in der Follow-up-Liste (Ergebnis, Notiz, „Als Nächstes“).
+   * `null` = es gibt den Eintrag nicht mehr (dann bleibt der Knopf still).
+   */
+  erledigenFormular: (followupId: string, zu: () => void) => ReactNode;
 }
 
-export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledigen }: KarteProps) {
+export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, erledigenFormular }: KarteProps) {
+  const [erledigen, setErledigen] = useState(false);
   const router = useRouter();
   const [mehr, setMehr] = useState(false);
   const [bearbeiten, setBearbeiten] = useState<string | null>(null);
@@ -170,7 +174,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
             {(eigene && bearbeiten == null) || (e.quelle === 'followup' && e.status === 'offen' && e.followupId) ? (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
                 {e.quelle === 'followup' && e.status === 'offen' && e.followupId && (
-                  <button type="button" disabled={laeuft} onClick={async () => { setLaeuft(true); try { await onErledigen(e.followupId!); } finally { setLaeuft(false); } }} className="fassbar" style={{ ...leiseKnopf, color: LEUCHT.gut }}>{laeuft ? 'Speichert …' : '✓ Erledigt'}</button>
+                  <button type="button" aria-expanded={erledigen} onClick={() => setErledigen(!erledigen)} className="fassbar" style={{ ...leiseKnopf, color: LEUCHT.gut }}>✓ Erledigt</button>
                 )}
                 {eigene && bearbeiten == null && !loeschen && (
                   <>
@@ -187,6 +191,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
                 )}
               </div>
             ) : null}
+            {erledigen && e.followupId && <div style={{ marginTop: 8 }}>{erledigenFormular(e.followupId, () => setErledigen(false))}</div>}
             {fehler && <Meldung art="kritisch" rolle="alert">{fehler}</Meldung>}
           </>
         )}

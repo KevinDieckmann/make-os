@@ -371,3 +371,123 @@ describe('B · Angebot: Folgeauftrag, Rückfrage, Mandat-Link, Einmalposten, Sum
     expect(quelle('components/os/crm/DealAkte.tsx')).toContain('...(OFFENE_STUFEN.includes(c.stufe) ? { dealId: c.id } : {})');
   });
 });
+
+// ── C · Follow-up (4.4, 4.5, 4.6, 4.7, 4.8, 4.9) ────────────────────────────────────────────────────────────────────────────
+describe('C · Follow-up: Deal-Schritt, ein Erledigen-Formular, Art nach Ergebnis, Aufgaben am Kontakt, Art. 18 in Glocke/Heute', () => {
+  const deal = (x: Record<string, unknown> = {}) => ({ id: 'ch-fu', titel: 'Deal FU', kontaktIds: ['c-fu'], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'angebot', historie: [], qualifizierung: { ...KRIT }, gesellschaft: 'offen', besitzer: 'kevin', angelegt: J, geaendert: J, naechsterSchritt: { text: 'Angebot nachfassen', datum: T }, ...x }) as unknown as CrmBestand['chancen'][number];
+  const fu = (x: Record<string, unknown> = {}) => ({ id: 'fu-deal', bezug: { art: 'chance', id: 'ch-fu' }, kontaktId: 'c-fu', art: 'anruf', text: 'Angebot nachfassen', faellig: T, zustaendig: 'kevin', status: 'offen', quelle: 'deal', angelegt: J, geaendert: J, ...x }) as unknown as NonNullable<CrmBestand['followups']>[number];
+
+  it('4.4 · dealSchrittErledigt: fällig, gleicher Tag oder gleicher Text = derselbe Schritt; ein späterer anderer bleibt', async () => {
+    const { dealSchrittErledigt } = await import('@/lib/crm/followup');
+    const f = { text: 'Angebot nachfassen', faellig: T };
+    expect(dealSchrittErledigt({ text: 'Etwas', datum: vor(1) }, f, T)).toBe(true);
+    expect(dealSchrittErledigt({ text: 'Etwas', datum: T }, f, T)).toBe(true);
+    expect(dealSchrittErledigt({ text: 'angebot nachfassen ', datum: vor(-20) }, f, T)).toBe(true);
+    expect(dealSchrittErledigt({ text: 'Vertrag schicken', datum: vor(-20) }, f, T)).toBe(false);
+    expect(dealSchrittErledigt(undefined, f, T)).toBe(false);
+  });
+
+  it('4.4 · Power Hour erledigt ein Deal-Follow-up: derselbe Schritt am Deal wird geleert, ein „nächster Schritt“ der Karte gesetzt, ein späterer bleibt', async () => {
+    const { aktivitaetImCrm } = await import('@/lib/crm/aktivitaet-folgen');
+    const ein = (x: Record<string, unknown> = {}) => ({ kontakt: k('fu'), ergebnis: 'gespraech' as const, von: 'kevin', heute: T, jetzt: J, followupId: 'fu-deal', ...x });
+    const leer = aktivitaetImCrm(crmLeer({ chancen: [deal()], followups: [fu()] }), ein());
+    expect(leer.crm.chancen[0].naechsterSchritt).toBeUndefined();
+    const gesetzt = aktivitaetImCrm(crmLeer({ chancen: [deal()], followups: [fu()] }), ein({ naechster: { text: 'Vertrag schicken', datum: vor(-3) } }));
+    expect(gesetzt.crm.chancen[0].naechsterSchritt).toEqual({ text: 'Vertrag schicken', datum: vor(-3) });
+    const spaeter = aktivitaetImCrm(crmLeer({ chancen: [deal({ naechsterSchritt: { text: 'Workshop', datum: vor(-10) } })], followups: [fu()] }), ein());
+    expect(spaeter.crm.chancen[0].naechsterSchritt).toEqual({ text: 'Workshop', datum: vor(-10) });
+    // „nicht erreicht“: das Follow-up kommt wieder, der Deal bleibt unberührt.
+    const nochmal = aktivitaetImCrm(crmLeer({ chancen: [deal()], followups: [fu()] }), ein({ ergebnis: 'nicht_erreicht', followupNochmalAm: vor(-2) }));
+    expect(nochmal.crm.chancen[0].naechsterSchritt).toEqual({ text: 'Angebot nachfassen', datum: T });
+  });
+
+  it('4.6 · „Sonstiges“ mit Ergebnis wird Gespräch bzw. Anruf (zählt für letzten Kontakt und Kadenz), ohne Ergebnis bleibt es Notiz', async () => {
+    const { aktivitaetArtNachErledigen } = await import('@/lib/crm/followup');
+    const { echterKontakt } = await import('@/lib/make-one/crm');
+    expect(aktivitaetArtNachErledigen('sonstig')).toBe('notiz');
+    expect(aktivitaetArtNachErledigen('sonstig', 'gespraech')).toBe('gespraech');
+    expect(aktivitaetArtNachErledigen('sonstig', 'termin')).toBe('gespraech');
+    expect(aktivitaetArtNachErledigen('sonstig', 'mailbox')).toBe('anruf');
+    expect(aktivitaetArtNachErledigen('nachricht', 'gespraech')).toBe('mail');
+    expect(echterKontakt({ art: aktivitaetArtNachErledigen('sonstig', 'gespraech'), ergebnis: 'gespraech' })).toBe(true);
+  });
+
+  it('4.5/4.9 · Kontakt › Aktivitäten nimmt das Erledigen-Formular der Liste; „Sperre“ fragt nach', () => {
+    const reiter = quelle('components/os/crm/kontakt/AktivitaetenReiter.tsx');
+    expect(reiter).toContain('<Erledigen f={f}');
+    expect(reiter).toContain("JSON.stringify({ aktion: 'erledigen', id, ...b })");
+    expect(quelle('components/os/crm/FollowUp.tsx')).toContain('export function Erledigen(');
+    expect(quelle('components/os/crm/FollowUp.tsx')).toContain("ergebnis === 'sperre' && !(await bestaetigen(");
+    expect(quelle('components/os/crm/kontakt/aktivitaeten-teile.tsx')).not.toContain('onErledigen(e.followupId');
+  });
+
+  it('4.7 · aufgabenFuerAktivitaet: erledigte Aufgabe mit Kontakt-Bezug ja; „nur ich“, ohne Kontakt, über Follow-up schon erledigt nein', async () => {
+    const { aufgabenFuerAktivitaet, aufgabenFuerPowerHour } = await import('@/lib/crm/followup-aufgabe');
+    const t = (id: string, x: Record<string, unknown> = {}) => ({ id, title: `Aufgabe ${id}`, status: 'todo', assignee: 'malin', dueDate: T, bezug: { kontaktId: 'c-fu' }, ...x }) as never;
+    const vorher = { tasks: [t('a'), t('b', { sichtbarkeit: 'nur-ich' }), t('c', { bezug: { firmaId: 'f-x' } }), t('d'), t('e')] };
+    const nachher = { tasks: vorher.tasks.map(x => ({ ...(x as object), status: 'done' }) as never) };
+    const fus = [fu({ id: 'fu-d', aufgabeId: 'd', status: 'erledigt', bezug: { art: 'kontakt', id: 'c-fu' } }), fu({ id: 'fu-e', aufgabeId: 'e', status: 'erledigt', bezug: { art: 'kontakt', id: 'c-fu' } })];
+    // d: Follow-up war schon erledigt (der Follow-up-Weg schrieb die Aktivität) → nein; e: dieses Schreiben erledigte es → ja.
+    expect(aufgabenFuerAktivitaet(vorher, nachher, fus, ['fu-e']).map(x => x.aufgabeId)).toEqual(['a', 'e']);
+    expect(aufgabenFuerPowerHour([t('x'), t('y', { dueDate: vor(-3) }), t('z', { status: 'done' })], T).map(x => x.aufgabeId)).toEqual(['x']);
+  });
+
+  it('4.7 · Power Hour kennt fällige Aufgaben mit Kontakt-Bezug — die Karte gehört der Verantwortlichen', async () => {
+    const { werIstDran, karteGehoert } = await import('@/lib/crm/heute');
+    const p = k('fu', { email: 'fu@example.invalid', telefon: '+49 30 1', rechtsgrundlage: 'bestandskunde_7_3' as Kontakt['rechtsgrundlage'], stufe: 'gespraech', besitzer: 'kevin', letzterKontakt: vor(30) });
+    const crm = crmLeer();
+    const a = werIstDran([p], crm, T, 'malin', 12, [{ aufgabeId: 't-1', titel: 'Unterlagen schicken', faellig: T, kontaktId: 'c-fu', zustaendig: 'malin' }]);
+    expect(a.karten).toHaveLength(1);
+    expect(a.karten[0].aufgabe).toEqual({ id: 't-1', zustaendig: 'malin' });
+    expect(karteGehoert(a.karten[0], crm)).toBe('malin');
+    expect(werIstDran([p], crm, T, 'kevin', 12, [{ aufgabeId: 't-1', titel: 'Unterlagen schicken', faellig: T, kontaktId: 'c-fu', zustaendig: 'malin' }]).karten.some(x => x.aufgabe)).toBe(false);
+  });
+
+  it('4.7 · erledigte Aufgabe → EINE Notiz am Kontakt (idempotent), Kadenz ab heute; nie bei Art. 18 oder Werbesperre', async () => {
+    await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: [...(cur?.kontakte ?? []),
+      k('aufg', { letzterKontakt: vor(100) }), k('aufg-sperre', { werbesperre: { seit: vor(5), grund: 'Widerspruch' } }), k('aufg-art18', { eingeschraenkt: { seit: vor(5), grund: 'Antrag', von: 'kevin' } as never }),
+    ] }));
+    const { aktivitaetenNachAufgaben } = await import('@/lib/crm/followup-aufgabe-server');
+    const liste = [{ aufgabeId: 't-aufg-1', kontaktId: 'c-aufg', titel: 'Unterlagen schicken' }, { aufgabeId: 't-aufg-2', kontaktId: 'c-aufg-sperre', titel: 'x' }, { aufgabeId: 't-aufg-3', kontaktId: 'c-aufg-art18', titel: 'y' }];
+    expect(await aktivitaetenNachAufgaben(liste, 'malin')).toBe(1);
+    expect(await aktivitaetenNachAufgaben(liste, 'malin')).toBe(0);
+    const kontakte = (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte;
+    const a = kontakte.find(x => x.id === 'c-aufg')!;
+    expect((a.aktivitaeten ?? []).filter(x => x.aufgabeId === 't-aufg-1')).toHaveLength(1);
+    expect(a.aktivitaeten!.find(x => x.aufgabeId === 't-aufg-1')).toMatchObject({ art: 'notiz', von: 'malin', text: 'Aufgabe erledigt: Unterlagen schicken' });
+    expect(a.letzterKontakt).toBe(heute);
+    for (const id of ['c-aufg-sperre', 'c-aufg-art18']) expect((kontakte.find(x => x.id === id)!.aktivitaeten ?? []).some(x => x.aufgabeId)).toBe(false);
+    // Der Säuberer behält die Kennung (sonst käme die Notiz nach dem nächsten Speichern doppelt).
+    const { saeubereKontakt } = await import('@/lib/make-one/crm');
+    expect(saeubereKontakt(a)?.aktivitaeten?.find(x => x.aufgabeId === 't-aufg-1')).toBeTruthy();
+  });
+
+  it('4.8 · Glocke/Heute: echte Follow-ups eingeschränkter Personen erscheinen nie (auch mit der verarbeitbaren Kartei)', async () => {
+    const { faellige } = await import('@/lib/crm/followup');
+    const crm = crmLeer({ followups: [fu({ id: 'fu-art18', kontaktId: 'c-weg', bezug: { art: 'kontakt', id: 'c-weg' }, text: 'Max Mustername anrufen' }), fu({ id: 'fu-ok', kontaktId: 'c-da', bezug: { art: 'kontakt', id: 'c-da' } })] });
+    const kontakte = [k('da')]; // die verarbeitbare Kartei kennt c-weg nicht
+    expect(faellige(kontakte, crm, T, { horizont: 0 }).map(f => f.id)).toContain('fu-art18'); // vorher: mit dem Text als Namen
+    expect(faellige(kontakte, crm, T, { horizont: 0, ausgeblendet: new Set(['c-weg']) }).map(f => f.id)).toEqual(['fu-ok']);
+    const { eingeschraenkteKennungen } = await import('@/lib/crm/verarbeitung');
+    expect((await eingeschraenkteKennungen()).has('c-aufg-art18')).toBe(true);
+    const src = quelle('lib/heute/anstehend-server.ts');
+    expect(src).toContain('eingeschraenkteKennungen()');
+    expect(src).toContain('ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte)');
+  });
+
+  it('4.4 · Follow-up-Route: ein Deal-Follow-up, dessen Schritt am Deal derselbe ist, braucht „Als Nächstes“ (sonst 400, nichts erledigt)', async () => {
+    await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: [...(cur?.kontakte ?? []), k('fu', { email: 'fu@example.invalid', besitzer: 'kevin' })] }));
+    await db.updateJson<CrmBestand>('crm', cur => ({ ...(cur as CrmBestand), chancen: [...(cur?.chancen ?? []), deal({ naechsterSchritt: { text: 'Angebot nachfassen', datum: heute } })], followups: [...(cur?.followups ?? []), fu({ faellig: heute })] }));
+    const route = await import('@/app/api/crm/followup/route');
+    const ohne = await route.POST(anfrage('/api/crm/followup', sitzung('kevin'), 'POST', { aktion: 'erledigen', id: 'fu-deal' }));
+    expect(ohne.status).toBe(400);
+    const mit = await route.POST(anfrage('/api/crm/followup', sitzung('kevin'), 'POST', { aktion: 'erledigen', id: 'fu-deal', ergebnis: 'gespraech', naechster: { text: 'Vertrag schicken', faellig: (await import('@/lib/zeit')).tagePlus(heute, 3) } }));
+    expect(mit.status).toBe(200);
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const c = await ladeCrm();
+    expect(c.chancen.find(x => x.id === 'ch-fu')!.naechsterSchritt?.text).toBe('Vertrag schicken');
+    // 4.6: das Ergebnis „Gespräch“ zählt am Kontakt als echter Kontakt.
+    const kfu = (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.find(x => x.id === 'c-fu')!;
+    expect(kfu.letzterKontakt).toBe(heute);
+  });
+});

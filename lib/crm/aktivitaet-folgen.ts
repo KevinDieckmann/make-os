@@ -14,11 +14,15 @@
 //     zweite Wiedervorlage. Nicht erreicht / Mailbox / Rückruf → das Follow-up wandert auf den Tag der Regel (es bleibt die
 //     EINE Erinnerung, mit seinem Text; die Route setzt dann keine Wiedervorlage am Kontakt). Jedes andere Ergebnis → erledigt
 //     (mit Ergebnis; Event-Follow-up: der Gast gilt als nachgefasst — wie beim Erledigen in der Follow-up-Liste).
+//     Deal-Follow-up erledigt (08.10., Woche 1 · 4.4): ein „nächster Schritt“ aus der Karte wird der Schritt am Deal; sonst wird der
+//     Schritt am Deal geleert, wenn er genau dieser war (`dealSchrittErledigt`) — er stünde sonst sofort wieder als überfällig da. Die
+//     Deal-Ampel zeigt dann „ohne nächsten Schritt“, bis jemand einen setzt.
 
 import type { Kontakt, Ergebnis } from '@/lib/make-one/crm';
 import type { CrmBestand, FollowUp, KampagnenErgebnis } from './typen';
 import { OFFENE_STUFEN } from './pipeline';
 import { verbindungenReparieren } from './verbindungen';
+import { dealSchrittErledigt } from './followup';
 
 export interface AktivitaetFolgenEingabe {
   kontakt: Kontakt;
@@ -35,6 +39,8 @@ export interface AktivitaetFolgenEingabe {
   followupId?: string;
   /** Neuer Tag für das Follow-up, wenn das Ergebnis „noch einmal“ heißt (`FOLLOWUP_NOCHMAL`) — der Tag aus `folgeAus`. */
   followupNochmalAm?: string;
+  /** Der nächste Schritt aus der Karte (4.4) — bei einem erledigten Deal-Follow-up wird er der Schritt am Deal. */
+  naechster?: { text: string; datum: string };
 }
 
 /** Ergebnisse, nach denen ein Follow-up nicht erledigt ist, sondern wiederkommt (Anlauf ohne Gespräch). */
@@ -73,6 +79,13 @@ export function aktivitaetImCrm(crm: CrmBestand, e: AktivitaetFolgenEingabe): { 
       ? { ...fu, faellig: nochmal > fu.faellig ? nochmal : fu.faellig, geaendert: e.jetzt, geaendertVon: e.von }
       : { ...fu, status: 'erledigt', erledigtAm: e.jetzt, ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), geaendert: e.jetzt, geaendertVon: e.von };
     neu = { ...neu, followups: (neu.followups ?? []).map(f => (f.id === fu.id ? fNeu : f)) };
+    // Deal-Follow-up erledigt (4.4): „nächster Schritt“ aus der Karte → Schritt am Deal; sonst denselben Schritt leeren (nie einen späteren, anderen).
+    if (!nochmal && fu.bezug.art === 'chance') {
+      const deal = neu.chancen.find(c => c.id === fu.bezug.id && OFFENE_STUFEN.includes(c.stufe));
+      if (deal && (e.naechster || dealSchrittErledigt(deal.naechsterSchritt, fu, e.heute))) {
+        neu = { ...neu, chancen: neu.chancen.map(c => (c.id === deal.id ? (({ naechsterSchritt: _alt, ...rest }) => ({ ...rest, ...(e.naechster ? { naechsterSchritt: e.naechster } : {}), geaendert: e.jetzt, geaendertVon: e.von }))(c) : c)) };
+      }
+    }
     // Event-Follow-up erledigt: der Gast gilt als nachgefasst (wie „Erledigen“ in der Follow-up-Liste) — nur, wenn es noch fehlt.
     if (!nochmal && fu.bezug.art === 'event') neu = { ...neu, teilnahmen: neu.teilnahmen.map(t => (t.eventId === fu.bezug.id && t.kontaktId === id && !t.followUpAm ? { ...t, followUpAm: e.heute, geaendert: e.jetzt, geaendertVon: e.von } : t)) };
     followup = { id: fu.id, wie: nochmal ? 'verschoben' : 'erledigt', ...(nochmal ? { faellig: fNeu.faellig } : {}), ...(fu.aufgabeId ? { aufgabeId: fu.aufgabeId } : {}) };

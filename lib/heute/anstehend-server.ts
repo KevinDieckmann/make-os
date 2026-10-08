@@ -17,7 +17,7 @@ import { maskieren } from '@/lib/kalender/bezug';
 import { wandzeit, tagPlus, tagVon } from '@/lib/kalender/zeit';
 import { fristenLesen } from '@/lib/kalender/fristen-server';
 import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
-import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
+import { kontakteFuerVerarbeitung, eingeschraenkteKennungen } from '@/lib/crm/verarbeitung';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { faellige } from '@/lib/crm/followup';
 import { nachbereitung } from '@/lib/crm/erfassen';
@@ -62,12 +62,18 @@ function dankeAnstehend(crm: { events: Parameters<typeof dankeZeilen>[0]['events
   return Array.from(je.entries()).map(([id, l]) => ({ id: `danke-${id}`, n: dankeOffen(l), eventTitel: l[0].event.titel, href: WEG.netzwerken({ bericht: id }) })).filter(d => d.n > 0);
 }
 
+/** Rückfall (4.8): ohne Liste der Eingeschränkten fallen alle echten Follow-ups weg, deren Person die verarbeitbare Kartei nicht kennt. */
+function ohneSichtbareKennung(crm: { followups?: { kontaktId?: string }[] }, kontakte: readonly { id: string }[]): Set<string> {
+  const da = new Set(kontakte.map(k => k.id));
+  return new Set((crm.followups ?? []).map(f => f.kontaktId).filter((id): id is string => !!id && !da.has(id)));
+}
+
 /** Was für die Person ansteht (heute). */
 export async function anstehendLesen(person: string, jetzt: Date = new Date()): Promise<Anstehend> {
   const jetztWand = wandzeit(jetzt), heute = tagVon(jetztWand);
   const einst = await sicher(ladeEinstellungen(), null);
   const vorlauf = einst?.kuendigungVorlaufTage ?? 14;
-  const [gelesen, kontakte, crm, fristen, buchungen, vorschlaege, geburtstage] = await Promise.all([
+  const [gelesen, kontakte, crm, fristen, buchungen, vorschlaege, geburtstage, ausgeblendet] = await Promise.all([
     einst ? sicher(termineLesen(einst, tagPlus(heute, -4), tagPlus(heute, 2)), null) : Promise.resolve(null),
     sicher(kontakteFuerVerarbeitung(), []),
     sicher(ladeCrm(), null),
@@ -76,6 +82,9 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     sicher(vorschlaegeZaehlen(person), { kalender: 0, gesamt: 0 }),
     // Ab heute; 61 Tage, damit ein längerer Vorlauf eines Wichtigen Tages (Familie, ≤ 60) greift — `geburtstageVorlauf` schneidet.
     sicher(geburtstageIm({ von: heute, bis: tagPlus(heute, 61) }, person), []),
+    // 4.8 (08.10.): Follow-ups eingeschränkter Personen nie in Glocke/Heute — die verarbeitbare Kartei kennt sie nicht, also die Kennungen.
+    // Scheitert das Lesen, zeigt die Liste lieber KEINE echten Follow-ups ohne bekannte Person (siehe unten), statt Namen zu verraten.
+    sicher<Set<string> | null>(eingeschraenkteKennungen(), null),
   ]);
   const sicht = (gelesen?.termine ?? []).map(t => maskieren(t, person));
   const mitAufgabe = new Set((crm?.followups ?? []).filter(f => f.aufgabeId).map(f => f.id));
@@ -91,7 +100,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),
     // Dazu (N5): besuchte Events, bei denen wir „angemeldet“ sind, aber noch kein Termin im Kalender steht — sonst fährt niemand hin, der es im Kalender sieht.
     fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : [])],
-    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten }), person, mitAufgabe, zeiten) : [],
+    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte) }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),

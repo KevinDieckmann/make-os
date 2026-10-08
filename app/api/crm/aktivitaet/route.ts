@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { personAus } from '@/lib/zoe/raum';
-import { VORSCHLAG_KENNUNG, fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZukunft, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
+import { VORSCHLAG_KENNUNG, AUFGABE_KENNUNG, fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZukunft, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
 import { notizAnwenden, istAktAnker, type NotizAktion } from '@/lib/crm/aktivitaeten';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -24,6 +24,7 @@ import { aendereCrm, ladeCrm } from '@/lib/crm/speicher';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { aktivitaetImCrm, followupDerPerson, FOLLOWUP_NOCHMAL } from '@/lib/crm/aktivitaet-folgen';
 import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe-server';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,10 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 // mitgeführt (`aktivitaetImCrm`, Schritt 0): erledigt mit Ergebnis, bzw. bei „nicht erreicht“/Mailbox/Rückruf auf den Tag der
 // Regel verschoben — dann setzt diese Route KEINE Wiedervorlage am Kontakt (keine zweite Erinnerung neben dem Follow-up).
 // Eine verknüpfte Aufgabe wird wie beim Erledigen in der Follow-up-Liste mit erledigt.
+//
+// 08.10. (Woche 1 · 4.7): `aufgabeId` — die Power-Hour-Karte einer fälligen Aufgabe mit Kontakt-Bezug. Die Aktivität trägt die Kennung
+// (dann schreibt das Erledigen der Aufgabe keine zweite), und die Aufgabe wird mit erledigt — außer bei „nicht erreicht“/Mailbox/Rückruf.
+// Nur eine Aufgabe, die die Person sieht (fremde „nur ich“ nie) und die an DIESER Person hängt.
 
 type Antwort = Record<string, unknown>;
 const mitStandFuer = (k: Kontakt, person: string) => ({ ...fuerPerson(k, person), stand: fingerabdruck(k as unknown as Record<string, unknown>) });
@@ -100,7 +105,7 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; anlass?: string; aktion?: string; anker?: string; stand?: string; vorschlagId?: string; followupId?: string };
+  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; anlass?: string; aktion?: string; anker?: string; stand?: string; vorschlagId?: string; followupId?: string; aufgabeId?: string };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'aendern' || b.aktion === 'loeschen') return notizAktion(req, { ...b, aktion: b.aktion });
   if (b.aktion !== undefined) return NextResponse.json({ ok: false, fehler: 'aktion ist aendern oder loeschen.' }, { status: 400 });
@@ -131,6 +136,9 @@ export async function POST(req: Request) {
   const fu = followupId && crm ? (crm.followups ?? []).find(f => f.id === followupId && followupDerPerson(f, id)) : undefined;
   /** „Noch einmal“ (nicht erreicht, Mailbox, Rückruf) mit Follow-up: es wandert auf den Tag der Regel — keine Wiedervorlage am Kontakt. */
   const fuNochmalAm = fu && erg && FOLLOWUP_NOCHMAL.includes(erg) ? folgeAus(erg, heute, 'neu').wiedervorlage : undefined;
+  // Die Aufgabe der Power-Hour-Karte (4.7): nur, wenn die Person sie sieht und sie an dieser Person hängt.
+  const aufgabeWunsch = typeof b.aufgabeId === 'string' && AUFGABE_KENNUNG.test(b.aufgabeId) ? b.aufgabeId : undefined;
+  const aufgabe = aufgabeWunsch ? (await ladeAufgabenSicht(personStreng(req))).tasks.find(t => t.id === aufgabeWunsch && t.bezug?.kontaktId === id && t.status !== 'done' && t.status !== 'cancelled') : undefined;
 
   // Aus einem ZOE-Vorschlag (29.09.): steht die Aktivität schon am Kontakt, wird nichts doppelt angelegt (idempotent).
   const vorschlagId = typeof b.vorschlagId === 'string' && VORSCHLAG_KENNUNG.test(b.vorschlagId) ? b.vorschlagId : undefined;
@@ -161,7 +169,7 @@ export async function POST(req: Request) {
     const geplant = art === 'termin' && wannInZukunft(wann, jetzt);
     nurGeplant = geplant;
     let neu = wendeAktivitaetAn(alt, {
-      art, text: text || undefined, von, ergebnis: erg, ...(vorschlagId ? { vorschlagId } : {}), ...(ausZoe ? { quelle: 'zoe' as const, freigegebenVon: personStreng(req) ?? undefined } : {}), notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
+      art, text: text || undefined, von, ergebnis: erg, ...(vorschlagId ? { vorschlagId } : {}), ...(aufgabe ? { aufgabeId: aufgabe.id } : {}), ...(ausZoe ? { quelle: 'zoe' as const, freigegebenVon: personStreng(req) ?? undefined } : {}), notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
       ...(wann ? { wann } : {}), ...(art === 'termin' ? { ort: ortSaeubern(b.ort) } : {}), ...(art === 'anruf' && anlass ? { anlass } : {}),
       stufe: wunschStufe ?? (geplant ? undefined : folge?.stufe), wiedervorlage: wunschWv ?? naechster?.datum ?? (geplant ? undefined : folge?.wiedervorlage),
     }, heute, jetzt, tagePlus);
@@ -184,14 +192,17 @@ export async function POST(req: Request) {
   if (gespeichert?.werbesperre) await sperren([gespeichert], 'werbesperre', heute);
   // Folgen im CRM-Bestand in EINER Sperre (lib/crm/aktivitaet-folgen.ts): Kampagnen-Ergebnis (Karte aus einer Kampagne —
   // Power Hour ↔ Kampagne), letzte Aktivität am Deal, bei „Sperre“ werbliche Follow-ups absagen und raus aus Kampagnen.
-  const folgen = { kontakt: gespeichert!, bezug, ergebnis: erg, von, heute, jetzt: new Date().toISOString(), geplant: nurGeplant, ...(fu ? { followupId: fu.id } : {}), ...(fuNochmalAm ? { followupNochmalAm: fuNochmalAm } : {}) };
+  const folgen = { kontakt: gespeichert!, bezug, ergebnis: erg, von, heute, jetzt: new Date().toISOString(), geplant: nurGeplant, ...(fu ? { followupId: fu.id } : {}), ...(fuNochmalAm ? { followupNochmalAm: fuNochmalAm } : {}), ...(naechster && naechster.datum >= heute ? { naechster } : {}) };
   const vorab = await ladeCrm();
   let fuFolge: ReturnType<typeof aktivitaetImCrm>['followup'] = null;
   if (aktivitaetImCrm(vorab, folgen).geaendert) await aendereCrm(c => { const r = aktivitaetImCrm(c, folgen); fuFolge = r.followup; return r.crm; });
   const fuF = fuFolge as ReturnType<typeof aktivitaetImCrm>['followup'];
   // Follow-up = Aufgabe (29.09., #99): die verknüpfte Aufgabe wird mit erledigt — derselbe Weg wie in der Follow-up-Liste.
   if (fuF?.wie === 'erledigt' && fuF.aufgabeId) await aufgabeErledigenNachFollowUp(fuF, personStreng(req) ?? von);
-  const fuText = fuF?.wie === 'erledigt' ? 'Follow-up erledigt.' : fuF?.wie === 'verschoben' ? `Follow-up kommt am ${fuF.faellig} wieder.` : '';
+  // Aufgabe der Karte (4.7): mit erledigt — außer der Anlauf kam nicht durch (dann bleibt sie fällig). Die Aktivität trägt ihre Kennung,
+  // das Erledigen schreibt deshalb keine zweite.
+  const aufgabeErledigt = !!aufgabe && !nurGeplant && !(erg && FOLLOWUP_NOCHMAL.includes(erg)) && await aufgabeErledigenNachFollowUp({ aufgabeId: aufgabe.id }, personStreng(req) ?? von);
+  const fuText = [fuF?.wie === 'erledigt' ? 'Follow-up erledigt.' : fuF?.wie === 'verschoben' ? `Follow-up kommt am ${fuF.faellig} wieder.` : '', aufgabeErledigt ? 'Aufgabe erledigt.' : ''].filter(Boolean).join(' ');
   const regel = erg ? folgeAus(erg, heute, 'neu').hinweis : undefined;
   // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort; ohne ausdrückliche Person keine (Regel 5).
   return NextResponse.json({ ok: true, kontakt: ergebnis ? mitStandFuer(ergebnis, personStreng(req) ?? '') : ergebnis, hinweis: [fuF?.wie === 'verschoben' ? undefined : regel, fuText].filter(Boolean).join(' ') || undefined, ...(fuF ? { followup: { id: fuF.id, wie: fuF.wie, ...(fuF.faellig ? { faellig: fuF.faellig } : {}) } } : {}) });

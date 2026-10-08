@@ -48,6 +48,8 @@ interface HeuteKarte {
   gehoert: string; beziehung: string; bezugArt?: 'mandat' | 'kampagne' | 'event';
   /** Das echte Follow-up hinter der Karte (08.10.) — geht mit dem Ergebnis an /api/crm/aktivitaet und wird dort mit erledigt. */
   followupId?: string;
+  /** Die fällige Aufgabe hinter der Karte (08.10., Woche 1 · 4.7) — geht mit dem Ergebnis mit und wird dort mit erledigt. */
+  aufgabeId?: string;
 }
 interface HeuteAntwort {
   heute: string;
@@ -140,7 +142,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
     const art = ergebnis === 'gespraech' || ergebnis === 'termin' ? (k.kanal?.kanal === 'telefon' || !k.kanal ? 'anruf' : 'gespraech') : 'anruf';
     // Anlass (U2 #58): der Grund der Power-Hour-Karte ist der konkrete Anlass aus der Beziehung (Zusage, Deal-Schritt, Takt …).
     const anlass = x?.notiz?.anlass?.trim() || (k.gruende[0] ? `Power Hour: ${k.gruende[0]}` : '');
-    const r = await festhalten(api, { id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...(x ? { notiz: x.notiz, naechster: x.naechster } : {}), ...(anlass ? { anlass } : {}), ...(k.followupId ? { followupId: k.followupId } : {}) }, x?.einwilligung, d!.heute);
+    const r = await festhalten(api, { id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...(x ? { notiz: x.notiz, naechster: x.naechster } : {}), ...(anlass ? { anlass } : {}), ...(k.followupId ? { followupId: k.followupId } : {}), ...(k.aufgabeId ? { aufgabeId: k.aufgabeId } : {}) }, x?.einwilligung, d!.heute);
     setMeldung([r.hinweis ?? (r.error ? r.error : ''), x?.einwilligung && r.kontakt ? 'Einwilligung für Mail festgehalten.' : ''].filter(Boolean).join(' '));
     setOffen(null); setGewaehlt(null);
     // Ohne Power Hour lädt die Liste über den geänderten Bestand neu.

@@ -49,7 +49,15 @@ export interface Karte {
    * mit `followupId`), und die Karte gehört der Person, die für das Follow-up zuständig ist (`karteGehoert`).
    */
   followupId?: string;
+  /**
+   * Die fällige Aufgabe mit Kontakt-Bezug hinter der Karte (08.10., Woche 1 · 4.7): der Ergebnis-Knopf erledigt sie mit (POST
+   * /api/crm/aktivitaet mit `aufgabeId`), und die Karte gehört der Person, die für die Aufgabe verantwortlich ist.
+   */
+  aufgabe?: { id: string; zustaendig: string };
 }
+
+/** Eine fällige Aufgabe mit Kontakt-Bezug für die Power Hour (lib/crm/followup-aufgabe.ts `aufgabenFuerPowerHour`, aus der Sicht der Person). */
+export interface PowerHourAufgabe { aufgabeId: string; titel: string; faellig: string; kontaktId?: string; zustaendig: string }
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
 /** +n Werktage (Mo–Fr ohne Feiertage NRW) — Kalender-Kern (29.09., K2: vorher zählten Feiertage als Werktag). */
@@ -80,11 +88,13 @@ export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohne
  * Das Follow-up zuerst (08.10., Sofort-Paket 4.3): die Glocke meldet ein Follow-up der zuständigen Person — die Karte liegt dann
  * auch in IHRER Power Hour, nicht bei der Person, die den Deal oder die Beziehung hält.
  */
-export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'followupId'>, crm: CrmBestand): string {
+export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'followupId'> & Partial<Pick<Karte, 'aufgabe'>>, crm: CrmBestand): string {
   if (c.followupId) {
     const f = (crm.followups ?? []).find(x => x.id === c.followupId);
     if (f && wer(f.zustaendig)) return wer(f.zustaendig)!;
   }
+  // Aufgabe (4.7): wer sie verantwortet — sonst wie bisher.
+  if (c.aufgabe && wer(c.aufgabe.zustaendig) && wer(c.aufgabe.zustaendig) !== BEIDE) return wer(c.aufgabe.zustaendig)!;
   if (c.chance) return zustaendig(c.chance.besitzer, 'sales');
   if (c.bezug) {
     const m = crm.mandate.find(x => x.id === c.bezug); if (m) return zustaendig(m.zustaendig, 'sales');
@@ -94,8 +104,12 @@ export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'fo
   return haeltBeziehung(c.kontakt);
 }
 
-/** `person` null (08.10., Systemlauf der Heads): die Karten aller — sonst nur die, die dieser Person gehören (oder beiden). */
-export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, n = 12): Auswahl {
+/**
+ * `person` null (08.10., Systemlauf der Heads): die Karten aller — sonst nur die, die dieser Person gehören (oder beiden).
+ * `aufgaben` (08.10., Woche 1 · 4.7): fällige Aufgaben mit Kontakt-Bezug (aus der Aufgaben-Sicht der Person) — sie stehen unter
+ * „Versprechen“ wie ein Follow-up. Ohne Angabe wie bisher.
+ */
+export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, n = 12, aufgaben: readonly PowerHourAufgabe[] = []): Auswahl {
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const chancenJe = new Map<string, Chance[]>();
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) for (const id of c.kontaktIds) chancenJe.set(id, [...(chancenJe.get(id) ?? []), c]);
@@ -120,11 +134,12 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     const alt = kandidaten.get(k.id);
     const rang = (x: Kategorie) => KATEGORIEN.findIndex(c => c.id === x);
     // Das Follow-up hinter einer Karte geht beim Zusammenlegen nie verloren (4.1) — sonst bliebe es nach dem Ergebnis-Knopf offen.
-    if (alt && rang(alt.kategorie) < rang(kategorie)) { alt.gruende.push(grund); alt.punkte += Math.round(punkte / 3); if (extra.followupId && !alt.followupId) alt.followupId = extra.followupId; return; }
-    if (alt && rang(alt.kategorie) === rang(kategorie)) { alt.gruende.push(grund); alt.punkte += punkte; if (extra.followupId && !alt.followupId) alt.followupId = extra.followupId; return; }
+    if (alt && rang(alt.kategorie) < rang(kategorie)) { alt.gruende.push(grund); alt.punkte += Math.round(punkte / 3); if (extra.followupId && !alt.followupId) alt.followupId = extra.followupId; if (extra.aufgabe && !alt.aufgabe) alt.aufgabe = extra.aufgabe; return; }
+    if (alt && rang(alt.kategorie) === rang(kategorie)) { alt.gruende.push(grund); alt.punkte += punkte; if (extra.followupId && !alt.followupId) alt.followupId = extra.followupId; if (extra.aufgabe && !alt.aufgabe) alt.aufgabe = extra.aufgabe; return; }
     const ctx = { hatMandat: mandatJe.has(k.id), hatChance: chancenJe.has(k.id) };
     const fu = extra.followupId ?? alt?.followupId;
-    kandidaten.set(k.id, { kontakt: k, name: anzeigename(k), kategorie, punkte, gruende: [grund, ...(alt?.gruende ?? [])], kanal: besterKanal(k, ctx), ...extra, ...(fu ? { followupId: fu } : {}) });
+    const auf = extra.aufgabe ?? alt?.aufgabe;
+    kandidaten.set(k.id, { kontakt: k, name: anzeigename(k), kategorie, punkte, gruende: [grund, ...(alt?.gruende ?? [])], kanal: besterKanal(k, ctx), ...extra, ...(fu ? { followupId: fu } : {}), ...(auf ? { aufgabe: auf } : {}) });
   };
 
   // 1 Versprechen
@@ -148,6 +163,14 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const f of (crm.followups ?? []).filter(f => f.status === 'offen' && f.faellig <= heute && f.kontaktId)) {
     const d = tage(f.faellig, heute);
     nimm(nachId.get(f.kontaktId!), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Follow-up „${f.text}“ seit ${d} Tagen überfällig` : `Follow-up heute: ${f.text}`, { ...(f.bezug.art === 'chance' ? { chance: crm.chancen.find(c => c.id === f.bezug.id) } : { bezug: f.bezug.id }), followupId: f.id });
+  }
+  // 1c Fällige Aufgaben mit Kontakt-Bezug (08.10., Woche 1 · 4.7): der neue Standardweg „+ Hinzufügen“ legt Aufgaben an — die Power Hour
+  // kannte sie nicht. Eine Aufgabe, an der schon ein offenes Follow-up hängt, steht über das Follow-up da (nicht doppelt).
+  const mitFollowup = new Set((crm.followups ?? []).filter(f => f.status === 'offen' && f.aufgabeId).map(f => f.aufgabeId!));
+  for (const a of aufgaben) {
+    if (!a.kontaktId || a.faellig > heute || mitFollowup.has(a.aufgabeId)) continue;
+    const d = tage(a.faellig, heute);
+    nimm(nachId.get(a.kontaktId), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Aufgabe „${a.titel}“ seit ${d} Tagen überfällig` : `Aufgabe heute: ${a.titel}`, { aufgabe: { id: a.aufgabeId, zustaendig: a.zustaendig } });
   }
   // 2 Signale
   for (const k of kontakte) if (unbeantwortet(k, heute)) nimm(k, 'signale', 50, (k.aktivitaeten ?? []).slice(-1)[0]?.text?.startsWith('Mail:') ? `hat geschrieben (${(k.aktivitaeten ?? []).slice(-1)[0].text!.slice(6, 70)}) — wartet auf dich` : 'hat geantwortet — wartet auf dich');

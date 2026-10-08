@@ -37,6 +37,9 @@ import type { CrmApi } from '../daten';
 import { Karte, Leer, Knopf, feld, LEUCHT, Schalter } from '../../ui';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { AktivitaetKarte, NeuFormular, NEU_KNOEPFE, KATEGORIE_FARBE, type NeuArt } from './aktivitaeten-teile';
+import { Erledigen, type FollowupAntwort } from '../FollowUp';
+import { faellige } from '@/lib/crm/followup';
+import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { useTerminZeiten, useNaechsterTermin } from '../../kalender/TermineAkte';
 
 export interface AktivitaetenReiterProps {
@@ -127,11 +130,22 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
   }, [ziel, alle, aktiv, filter, heute, waehle]);
   useEffect(() => { if (!markiert) return; const t = setTimeout(() => setMarkiert(null), 2600); return () => clearTimeout(t); }, [markiert]);
 
-  const erledigen = useCallback(async (id: string) => {
-    const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'erledigen', id }) })
-      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' })) as { ok: boolean; text?: string; fehler?: string };
-    if (r.ok) { setMeldung(r.text ?? 'Erledigt.'); await api.laden(); } else api.setFehler(r.fehler ?? 'Nicht erledigt.');
-  }, [api]);
+  // Erledigen (08.10., Woche 1 · 4.5): DASSELBE Formular wie in der Follow-up-Liste (Ergebnis, Notiz, „Als Nächstes“ — beim Deal Pflicht).
+  // Die Fehlermeldung bleibt am Formular stehen, die Eingabe auch (4.2).
+  const offeneFollowups = useMemo(() => new Map((api.crm ? faellige([k], api.crm.stand, heute, { horizont: 3650, wertelisten: api.crm.stand.wertelisten }) : []).map(f => [f.id, f])), [api.crm, k, heute]);
+  const eigeneErgebnisse = useMemo(() => wertelistenVollstaendig(api.crm?.stand.wertelisten).ergebnisse.filter(e => !e.fest).map(e => ({ wert: e.wert, label: e.label })), [api.crm?.stand.wertelisten]);
+  const erledigenFormular = useCallback((id: string, zu: () => void) => {
+    const f = offeneFollowups.get(id);
+    if (!f) return null;
+    return (
+      <Erledigen f={f} heute={heute} eigene={eigeneErgebnisse} onAbbruch={zu} onFertig={async b => {
+        const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'erledigen', id, ...b }) })
+          .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts gespeichert.' })) as FollowupAntwort;
+        if (r.ok) { setMeldung(r.text ?? 'Erledigt.'); zu(); await api.laden(); }
+        return r;
+      }} />
+    );
+  }, [offeneFollowups, heute, eigeneErgebnisse, api]);
 
   const setze = (x: Partial<AktFilter>) => setFilter(f => ({ ...f, ...x }));
   const alleZu = gruppen.length > 0 && (kompakt || gruppen.every(g => zu.has(g.id)));
@@ -226,7 +240,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
               <span style={{ fontWeight: 600, color: C.inkLeise, letterSpacing: 0, textTransform: 'none' }}>{g.eintraege.length}{ueber ? ` · ${ueber} überfällig` : ''}</span>
             </button>
             {!gZu && g.eintraege.map(e => (
-              <AktivitaetKarte key={e.anker} e={e} k={k} api={api} heute={heute} kompakt={kompakt} markiert={markiert === e.anker} onErledigen={erledigen} />
+              <AktivitaetKarte key={e.anker} e={e} k={k} api={api} heute={heute} kompakt={kompakt} markiert={markiert === e.anker} erledigenFormular={erledigenFormular} />
             ))}
           </section>
         );
