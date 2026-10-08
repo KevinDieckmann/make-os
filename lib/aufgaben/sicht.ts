@@ -14,6 +14,7 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import type { Task, TasksState } from '@/types/tasks';
 import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
+import { istNurIch, darfSehen } from './sicht-regel';
 
 export const AUFGABEN_BESTAND_NAME = 'tasks';
 const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
@@ -24,58 +25,7 @@ export const alsStand = (roh: TasksState | null | undefined): TasksState => (roh
 // Ebenen erben das (sichtbar nur, wenn alle Vorfahren es sind). Ohne Person (Systemlauf) sieht man KEINE „nur ich“-Aufgabe. Wer eine fremde
 // „nur ich“-Aufgabe schreiben will, bekommt 404 (lib/aufgaben/speicher.ts) — als gäbe es sie nicht.
 
-/** Ist die Aufgabe selbst als „nur ich“ markiert? */
-export const istNurIch = (t: Pick<Task, 'sichtbarkeit'> | undefined | null): boolean => t?.sichtbarkeit === 'nur-ich';
-
-/**
- * Darf `person` die Aufgabe sehen? `nachId` = alle Aufgaben (für die Vorfahren einer Unteraufgabe). Seit 01.10. (mehrstufige
- * Unteraufgaben) gilt die ganze Kette: liegt IRGENDEIN Vorfahre auf „nur ich“ einer anderen Person, ist auch der Enkel
- * unsichtbar. Kreisfest (gesehene Einträge, höchstens 64 Schritte).
- */
-export function darfSehen(t: Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>, person: string | null | undefined, nachId?: ReadonlyMap<string, Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>>): boolean {
-  const fremd = (x: Pick<Task, 'sichtbarkeit' | 'angelegtVon'>) => istNurIch(x) && (!person || x.angelegtVon !== person);
-  if (fremd(t)) return false;
-  const gesehen = new Set<string>();
-  let pid = t.parentId;
-  for (let n = 0; pid && n < 64 && !gesehen.has(pid); n++) {
-    gesehen.add(pid);
-    const e = nachId?.get(pid);
-    if (!e) break;
-    if (fremd(e)) return false;
-    pid = e.parentId;
-  }
-  return true;
-}
-
-/**
- * Wer darf die Aufgabe sehen — dieselbe Regel wie `darfSehen`, nur als Antwort statt als Ja/Nein (für Leser, die ALLE
- * Aufgaben bekommen und je Betrachter maskieren, z. B. die Lichtfäden):
- *   · `undefined` — keine „nur ich“-Markierung in der Kette (Aufgabe oder ein Vorfahre): alle dürfen sie sehen.
- *   · Speichername — genau diese Person (die Anlegerin der „nur ich“-Aufgabe bzw. des „nur ich“-Vorfahren).
- *   · `null` — niemand: „nur ich“ ohne bestimmbare Anlegerin (Altaufgabe ohne `angelegtVon`) oder zwei „nur ich“ in der
- *     Kette mit verschiedenen Anlegerinnen. Solche Aufgaben gehören in keine geteilte Sicht.
- * Es gilt immer: `darfSehen(t, p, nachId) === (b === undefined || b === p)` für jede Person `p`. Kreisfest wie `darfSehen`.
- */
-export function nurIchBesitzer(t: Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>, nachId?: ReadonlyMap<string, Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>>): string | null | undefined {
-  let besitzer: string | null | undefined;
-  const pruefe = (x: Pick<Task, 'sichtbarkeit' | 'angelegtVon'>): boolean => {
-    if (!istNurIch(x)) return true;
-    if (!x.angelegtVon || (besitzer !== undefined && besitzer !== x.angelegtVon)) { besitzer = null; return false; }
-    besitzer = x.angelegtVon;
-    return true;
-  };
-  if (!pruefe(t)) return null;
-  const gesehen = new Set<string>();
-  let pid = t.parentId;
-  for (let n = 0; pid && n < 64 && !gesehen.has(pid); n++) {
-    gesehen.add(pid);
-    const e = nachId?.get(pid);
-    if (!e) break;
-    if (!pruefe(e)) return null;
-    pid = e.parentId;
-  }
-  return besitzer;
-}
+export { istNurIch, darfSehen, nurIchBesitzer } from './sicht-regel';
 
 /** Der Bestand, wie `person` ihn sehen darf (null = Systemlauf: ohne alle „nur ich“-Aufgaben). Rein. */
 export function sichtFuer<T extends TasksState>(state: T, person: string | null | undefined): T {
@@ -136,4 +86,16 @@ export async function ladeAufgabenSicht(person: string | null, orgs?: Record<str
  */
 export async function ladeAufgabenUngefiltert(orgs?: Record<string, string>): Promise<TasksState> {
   return aufgabenSicht(await ladeAufgaben(orgs));
+}
+
+/**
+ * Kennungen der Aufgaben, die `person` NICHT sehen darf (fremde „nur ich“ samt Teilbaum) — auch im Papierkorb (08.10.,
+ * Sicht-Prüfung Malin). Für Bestände, die per `aufgabeId` an Aufgaben hängen (Aufgaben-Dateien): ein Eintrag an einer
+ * verborgenen Aufgabe gibt es für diese Person nicht (Liste ohne ihn, Einzelzugriff 404).
+ */
+export async function verborgeneAufgabenFuer(person: string): Promise<Set<string>> {
+  const { tasks } = await ladeAufgaben();
+  if (!tasks.some(istNurIch)) return new Set();
+  const nachId = new Map(tasks.map(t => [t.id, t]));
+  return new Set(tasks.filter(t => !darfSehen(t, person, nachId)).map(t => t.id));
 }

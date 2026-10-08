@@ -90,7 +90,15 @@ export async function PUT(req: Request) {
     if (i >= 0) f.gespraeche[i] = { ...g, begonnen: f.gespraeche[i].begonnen ?? g.begonnen };
     else f.gespraeche.push(g);
     f.gespraeche.sort((a, b) => (b.zuletzt ?? '').localeCompare(a.zuletzt ?? ''));
-    f.gespraeche = f.gespraeche.slice(0, GRENZEN.gespraeche);
+    // Sicht-Prüfung 08.10.: die Grenze gilt JE PERSON — vorher schnitt ein gemeinsames `slice` ab, und wer viele (oder in
+    // die Zukunft datierte) Gespräche anlegte, verdrängte die der anderen Person endgültig.
+    const zaehler = new Map<string, number>();
+    f.gespraeche = f.gespraeche.filter(x => {
+      const wer = x.person ?? 'kevin'; // Altbestand ohne Person = Erstkonto (wie `gehoert`)
+      const n = (zaehler.get(wer) ?? 0) + 1;
+      zaehler.set(wer, n);
+      return n <= GRENZEN.gespraeche;
+    });
     return f;
   });
   if (fremd) return NextResponse.json({ ok: false, error: 'Nicht dein Gespräch.' }, { status: 403 });

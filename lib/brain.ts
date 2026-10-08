@@ -151,7 +151,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     // Kunden/Mandate gehören dem Haushalt des Inhabers (28.09.): eine Person aus einem anderen Haushalt bekommt
     // davon nichts in ihren ZOE-Kontext — auch keine Zahlen.
     personImHaushaltDesInhabers(person).then(ja => (ja ? ladeCrm().then(kundenAusMandaten) : { kunden: [] })),
-    computeShields(heute),
+    // Schilde der FRAGENDEN Person (08.10., Sicht-Prüfung Malin): ohne Person zählten die Blöcke des Inhabers — sein
+    // Reha-Plan stand dann in Malins ZOE-Kontext.
+    computeShields(heute, person),
     loadJson<{ modus?: string }>('kompass'),
     loadJson<{ reihenfolge?: string[] }>('ordnung'),
     schwellen(),

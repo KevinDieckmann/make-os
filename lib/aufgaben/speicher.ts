@@ -19,7 +19,7 @@ import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen, nurIch
 import { beideAufloesen, anlegerinVon, alleZustaendigen, SYSTEM } from './zustaendig';
 import { aufgabePruefen } from './pruefen';
 import { archivMarkeSchuetzen } from './archiv-einzeln';
-import { aufgabenSicht, projektInPapierkorb, aufgabeInPapierkorb, endgueltigEntfernen, imPapierkorb } from './papierkorb';
+import { aufgabenSicht, projektInPapierkorb, aufgabeInPapierkorb, endgueltigEntfernen, imPapierkorb, fremdeNurIchLoesen } from './papierkorb';
 import { aufgabenSchreiben, UMBAU_VERSION } from './umbau';
 import { abhaengigAngleichen, kreisBei } from './abhaengig';
 import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
@@ -370,6 +370,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
       roh2 = { ...roh2, tasks: [...roh2.tasks.map(x => (x.id === p.id ? r.geloescht : x)), ...r.neu] };
       uebersprungen.push(...r.neu);
     }
+    // Sicht-Prüfung 08.10.: fremde „nur ich“-Aufgaben gehen nie mit in die Kette einer Person (weder Papierkorb noch endgültig).
+    if (!opt.system && echtePerson) for (const p of papierkorb) roh2 = fremdeNurIchLoesen(roh2, p.art, p.id, opt.person, jetzt);
     for (const p of papierkorb.filter(x => !x.endgueltig)) roh2 = p.art === 'projekt' ? projektInPapierkorb(roh2, p.id, jetzt) : aufgabeInPapierkorb(roh2, p.id, jetzt);
     for (const p of papierkorb.filter(x => x.endgueltig)) {
       const r = endgueltigEntfernen(roh2, p.art, p.id);

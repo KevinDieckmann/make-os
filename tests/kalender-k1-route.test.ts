@@ -131,4 +131,24 @@ describe('Termin-Route (K1)', () => {
     expect(await alt.json()).toMatchObject({ neuLaden: true });
     expect((await POST(anfrage('POST', { titel: 'X', start: '2026-10-01T09:00', ende: '2026-10-01T10:00' }, 'fremd'))).status).toBe(403);
   });
+
+  it('Sicht-Prüfung 08.10.: POST mit fremder, schon vergebener UID → 409, der Bezug bleibt (keine Übernahme fremder Termine)', async () => {
+    // Ein Termin aus Apple ohne Bezug in Kevins Kalender (vor dem ersten Lesen da) … ohne Bezug in seinem Kalender.
+    server['apple.ics'] = { ics: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:apple-ohne-bezug-1\r\nDTSTAMP:20260901T100000Z\r\nDTSTART:20261002T060000Z\r\nDTEND:20261002T063000Z\r\nSUMMARY:Arzt Probe\r\nEND:VEVENT\r\nEND:VCALENDAR', etag: 'a1' };
+    // … und Kevins Termin mit Bezug (von MAKE OS angelegt).
+    const k = await POST(anfrage('POST', { uid: 'kevin-fest-0001', titel: 'Teamrunde', start: '2026-10-01T09:00', ende: '2026-10-01T10:00' }));
+    expect(k.status).toBe(200);
+    const schluessel = (await k.json()).schluessel as string;
+    const bezugVorher = JSON.stringify(speicher.get('kalender-bezug'));
+    for (const uid of ['kevin-fest-0001', 'apple-ohne-bezug-1']) {
+      const r = await POST(anfrage('POST', { uid, titel: 'Übernahme', start: '2026-10-01T09:00', ende: '2026-10-01T10:00', kalender: 'Privat Kevin', sichtbarkeit: 'privat' }, 'malin'));
+      expect(r.status, uid).toBe(409);
+      expect(JSON.stringify(await r.json())).not.toMatch(/Teamrunde|Arzt/);
+    }
+    expect(JSON.stringify(speicher.get('kalender-bezug'))).toBe(bezugVorher);
+    // Der eigene Wiederholversuch bleibt idempotent erlaubt.
+    const nochmal = await POST(anfrage('POST', { uid: 'kevin-fest-0001', titel: 'Teamrunde', start: '2026-10-01T09:00', ende: '2026-10-01T10:00' }));
+    expect(nochmal.status).toBe(200);
+    expect(await nochmal.json()).toMatchObject({ schonDa: true, schluessel });
+  });
 });

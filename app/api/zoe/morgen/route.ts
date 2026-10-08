@@ -174,7 +174,9 @@ export async function POST(req: Request) {
   // — der Dublettenschlüssel greift dagegen nicht, weil zwei Modell-Läufe
   // dieselbe Sache anders formulieren („1.234€ heute begleichen" gegen
   // „1.234 € begleichen"). Gegen Wiederholung hilft nur Wissen, nicht Prüfen.
-  const offeneVorschlaege = await liesStapel('offen').catch(() => []);
+  // Sicht-Prüfung 08.10.: nur die eigenen und die des Systems (ohne Person) — die offenen Vorschläge der anderen Person
+  // (gemerkte Fakten, Blöcke, Notiz-Titel) gehören nicht in diesen Prompt (Regel wie `vorschlagSichtbar`).
+  const offeneVorschlaege = (await liesStapel('offen').catch(() => [])).filter(v => !v.person || v.person === person);
   const liegt = offeneVorschlaege.length
     ? `LIEGT SCHON IN SEINEM STAPEL (nicht noch einmal vorschlagen, auch nicht anders formuliert):\n`
       + offeneVorschlaege.map(v => `- ${v.nachher}`).join('\n')

@@ -6,6 +6,7 @@
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
+import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
 
@@ -38,7 +39,12 @@ export async function POST(req: Request) {
 /** Zurücksetzen — damit der Gruß erneut gezeigt werden kann (?person=malin). */
 export async function DELETE(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  const person = new URL(req.url).searchParams.get('person');
+  // Sicht-Prüfung 08.10.: den Gruß einer ANDEREN Person (bzw. aller) setzt nur der Inhaber zurück — sonst nur den eigenen.
+  const ich = personAus(req);
+  const gewuenscht = new URL(req.url).searchParams.get('person');
+  const inhaber = await istInhaber(ich).catch(() => false);
+  if (!inhaber && gewuenscht && gewuenscht !== ich) return NextResponse.json({ ok: false, error: 'Nur den eigenen Gruß zurücksetzen.' }, { status: 403 });
+  const person = inhaber ? gewuenscht : ich;
   const next = await updateJson<Datei>('willkommen', current => {
     const f = current ?? { gesehen: {} };
     f.gesehen = f.gesehen ?? {};

@@ -8,6 +8,8 @@ import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { gatherBrain } from '@/lib/brain';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
@@ -25,7 +27,12 @@ export async function POST(req: Request) {
   let payload: { finance?: FinanceState; tasks?: TaskLite[] };
   try { payload = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Server-seitig aus dem Brain; Body bleibt optionaler Override.
-  const brain = await gatherBrain();
+  // Sicht-Prüfung 08.10.: das Brain der auslösenden Person (Sitzung bzw. `x-make-person` des Agentenlaufs) — vorher ohne
+  // Person = Rückfall auf den Inhaber, und Malins ZOE bekam dessen „nur ich“-Aufgaben in den Zielbaum. Nur der Systemlauf
+  // ohne Person rechnet für den Inhaber (Regel 5: kein fester Name).
+  const person = personStreng(req) ?? await inhaberSpeicher();
+  if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
+  const brain = await gatherBrain(undefined, person);
   const fin = payload.finance ?? brain.finance ?? undefined;
   const tasks: TaskLite[] = Array.isArray(payload.tasks) && payload.tasks.length
     ? payload.tasks
