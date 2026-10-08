@@ -37,6 +37,7 @@ import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { nordsternSatz } from '@/lib/planung/nordstern';
 
 /** Frühere Loop-Ergebnisse ohne Gesundheits-Ableitungen (rein): kein Gesundheits-Loop, im Morgen-Loop ohne Tagesform/Schutz. */
 function ohneGesundheit<T extends { agent: string; payload?: unknown }>(l: T[]): T[] {
@@ -76,6 +77,8 @@ async function gather(today: string, person: string) {
     geld: b.geld,
     mandate: b.mandate,
     shields: b.shields,
+    /** Nordstern des Haushalts (08.10. abends, Daten statt Konstante) — null = keiner hinterlegt. */
+    nordstern: b.nordstern ?? null,
   };
 }
 
@@ -107,7 +110,7 @@ export async function POST(req: Request) {
     const vit = g.vitals;
     const system = [
       'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den MORGEN-LOOP: eine ruhige, konkrete Tagesausrichtung.',
-      `Die Person heute: ${name}. Nordstern 1 Mio € Umsatz KD Ventures → 300k Gewinn. Ziel „mehr Ruhe".`,
+      `Die Person heute: ${name}. ${nordsternSatz(g.nordstern)}`,
       KONTEXT_REGEL,
       'Regeln: max 3 echte Prioritäten für heute (nicht mehr — Überladung ist das Problem). Berücksichtige Recovery UND die echten Termine (freie Zeit realistisch einschätzen). Wenn Recovery niedrig oder der Tag voll ist: weniger vornehmen, das offen sagen.',
       `Gesundheitsdaten sind privat — nur für ${name}, nie als Business-Aussage.`,
@@ -158,7 +161,7 @@ export async function POST(req: Request) {
 
     const system = [
       'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.',
-      'Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn (Kevin & Malin).',
+      nordsternSatz(g.nordstern),
       'Du bekommst FERTIGE Kennzahlen — rechne nicht neu, erfinde nichts. Sei ehrlich, auch wenn der Kurs nicht reicht.',
       'Verknüpfe die Bereiche: Was bedeutet die Pipeline für den Umsatz? Was blockiert die Ausführung? Wo ist der eine Hebel?',
       letzteSache
@@ -248,7 +251,7 @@ export async function POST(req: Request) {
       system = [kopf, 'FINANZ-LOOP: die komplette Geld-Lage — Forderungen eintreiben, Rechnungen stellen, Takt halten. punkte = Geld-Moves.', formatJson].join('\n');
       const zahlOffen = (fplan?.zahlungen ?? []).filter(z => z.status === 'offen');
       user = [
-        `Stichtag ${wd}, ${today}. Nordstern 1 Mio € / 300k Gewinn.`,
+        `Stichtag ${wd}, ${today}. ${nordsternSatz(g.nordstern)}`,
         m && m.aktiveMonate > 0 ? `CONTROLLING: Ist ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}%), Run-Rate nötig ${eur(m.runRateNoetig)}/Monat, Runway ${m.runwayMonate?.toFixed(1) ?? 'n/a'} Monate.` : 'CONTROLLING: leer — Nordstern nicht messbar.',
         `FORDERUNGEN: ${eur(g.geld.forderungen)} offen${g.geld.ueberfaelligeForderungen ? ` (davon ${eur(g.geld.ueberfaelligeForderungen)} ÜBERFÄLLIG)` : ''} · in Vorbereitung ${eur(g.geld.vorbereitung)}.`,
         `RECHNUNGEN: ${(fplan?.rechnungen ?? []).map(r2 => `${r2.kunde} „${r2.titel}" ${eur(r2.betrag)} [${r2.status}${r2.faellig ? `, fällig ${r2.faellig}` : ''}]`).join(' · ') || 'keine'}`,
@@ -282,7 +285,9 @@ export async function POST(req: Request) {
         `SICHTBARKEITS-MEILENSTEINE: ${msBiz.filter(x => /podcast|magazin|launch|presse|landing/i.test(x.titel)).map(x => `${x.titel} (${x.fortschritt}%${x.faellig ? `, ${x.faellig}` : x.zeitfenster ? `, ${x.zeitfenster}` : ''})`).join(' · ') || 'keine gepflegt'}`,
         `LETZTE CONTENT-LÄUFE: ${contentLaeufe.map(l => l.title).join(' · ') || 'keine — der Content-Agent liegt brach'}`,
         `ZIELGRUPPE: inhaber-/familiengeführter Mittelstand DACH (50–500 MA), Entscheider GF/CFO/Leitung Controlling. Kanäle bisher: LinkedIn, Landingpage F&F.`,
-        `KONTEXT: F&F-Launch ${msBiz.find(x => /F&F|Launch/i.test(x.titel))?.faellig ?? '01.08'} · Volllaunch + Pressekonferenz 01.10.`,
+        // 08.10. abends: die frühere Zeile „KONTEXT: <Launch-Termin> · Volllaunch …“ ist weg — sie stammte aus der gelöschten festen
+        // Meilenstein-Liste (fester Rückfall-Termin). Launch-Termine stehen jetzt nur noch, wenn sie als Meilenstein gepflegt sind
+        // (Zeile SICHTBARKEITS-MEILENSTEINE oben, aus dem Bestand) — ohne Meilensteine steht im Kontext nichts Erfundenes.
       ].join('\n');
     } else if (loop === 'operations') {
       label = 'Operations-Loop';

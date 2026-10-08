@@ -18,6 +18,7 @@ import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
+import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -111,7 +112,8 @@ export async function POST(req: Request) {
   const system = [
     'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du ordnest seinen Performance-Index ein.',
     // S1 #9: kein fester Gesundheitskontext mehr im Prompt.
-    'Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn. Persönliches Ziel: mehr Ruhe.',
+    // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
+    await nordsternSatzFuer(fuer),
     'Du bekommst FERTIG GERECHNETE Werte — rechne nichts nach, erfinde nichts.',
     'WICHTIG: Faktoren ohne Daten sind KEINE schlechten Werte, sondern eine Messlücke. Behandle sie als „wissen wir nicht" und sag, was Kevin eintragen müsste, damit die Zahl echt wird.',
     'Sei nüchtern und konkret. Kein Startup-Sprech. Gesundheitsdaten sind privat.',

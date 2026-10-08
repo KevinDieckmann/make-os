@@ -137,7 +137,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'tasks/create': r('POST', 'haushalt', 'Aufgabe anlegen; Systemlauf nur mit owner (S1).'),
   'state/ziele': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsame Ziele („wir“) und persönliche Ziele des Haushalts — fremde eigene nur, wenn geteilt (teilt.ziele, 08.10.), nie schreiben.'),
   'state/meilensteine': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Meilenstein-Bestand des Haushalts.'),
-  'state/routinen': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Routinen-Bestand des Haushalts (Blöcke je Person); lesen auch als Systemlauf.', undefined, 'Erststart: leerer Bestand bekommt einmal die Startroutinen (idempotent, in der Sperre).'),
+  // 08.10. abends (Fragebogen Teil 3): keine Startroutinen mehr (das waren die Routinen einer echten Person) — eine leere Instanz
+  // startet ohne Routinen, der GET liest nur noch.
+  'state/routinen': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Routinen-Bestand des Haushalts (Blöcke je Person); lesen auch als Systemlauf.'),
+  'planung/nordstern': r('GET,PUT', 'haushalt', 'Nordstern je Haushalt (`nordstern--<haushalt>`, 08.10. abends): jedes Konto mit Haushalt liest den SEINES Haushalts — auch Business-Konten, der Nordstern ist das gemeinsame Business-Ziel (planZugangVon entscheidet aus dem Konto); schreiben nur volle Mitglieder per Sitzung mit Stand/409, Dienstweg 403. Ein anderer Haushalt bekommt nie etwas.', 'planZugangVon'),
   'planung/einheiten': r('GET,POST', 'haushalt', 'Planungs-Einheiten je Haushalt (`planung-einheiten--<haushalt>`, ohne Haushalt je Person).', 'haushaltFuer'),
   'planung/meilenstein': r('GET,POST', 'haushalt', 'Meilenstein-Detail und Austausch des Haushalts.'),
   'planung/bezuege': r('POST', 'haushalt', 'Seil (07.10.): Bezüge auf ein zurückgeholtes Ziel wieder setzen (Unterziele, Meilensteine, Aufgaben, Projekte) — nur Sitzung, nur wo das Feld leer ist, dieselben Prüfungen.'),

@@ -10,6 +10,7 @@
 //     wartet auf offene Anfragen. Beim Beenden verschwindet das Lockfile (nur das eigene).
 //   · 5 s nach dem Start: offene Absichten fertigstellen (lib/store/absichten-fortsetzen.ts, Paket D-C #17).
 //   · 20 s nach dem Start: Brain-Index im tmpfs/Arbeitsspeicher neu bauen, alten Klartext-Index löschen (lib/brain/index.ts).
+//   · 9 s nach dem Start (nur mit MAKE_OS_ALTBESTAND_PERSON): einmalige Übernahme des Nordsterns (lib/altbestand/nordstern-uebernahme.ts).
 
 import { datenOrdner, abschaltungBeginnen, warteBisStill, datenschichtLage } from './local-db';
 import { schreiberSetzen, schreiberHerz, schreiberEntfernenSync, HERZ_MS, type SchreiberEintrag } from './schreiber.mjs';
@@ -43,6 +44,16 @@ export async function betriebStarten(): Promise<void> {
     }).catch(e => console.error('[MAKE OS] Absichten beim Start nicht fertiggestellt:', e instanceof Error ? e.message : e));
   }, 5_000);
   nachStart.unref?.();
+
+  // Einmalige Übernahme des Altbestands „Nordstern“ (08.10. abends, Fragebogen Teil 3, Paket A2): NUR mit MAKE_OS_ALTBESTAND_PERSON
+  // (unser Server) — Demo- und Kunden-Instanzen setzen die Variable nie, dann wird das Modul gar nicht erst geladen. Idempotent, wirft
+  // nie. Wird mit dem übernächsten Upload samt Modul entfernt (lib/altbestand/nordstern-uebernahme.ts).
+  if (process.env.MAKE_OS_ALTBESTAND_PERSON) {
+    const nordsternAltbestand = setTimeout(() => {
+      void import('@/lib/altbestand/nordstern-uebernahme').then(m => m.nordsternAltbestandUebernehmen()).catch(e => console.error('[MAKE OS] Altbestand Nordstern nach dem Start:', e instanceof Error ? e.name : 'unbekannt'));
+    }, 9_000);
+    nordsternAltbestand.unref?.();
+  }
 
   // Brain-Index (05.10., Paket „Verschlüsselung lückenlos“): liegt nur noch im tmpfs bzw. Arbeitsspeicher — nach dem Start
   // leer. 20 s nach dem Start (Seiten zuerst) alten Klartext-Index entfernen und neu bauen; bis dahin sucht ZOE über die Dateien.

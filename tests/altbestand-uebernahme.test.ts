@@ -142,15 +142,9 @@ describe('Der bisherige Inhalt liegt nur noch im Übernahme-Modul', () => {
   const wurzel = path.resolve(__dirname, '..');
   const lies = (p: string) => readFileSync(path.join(wurzel, p), 'utf8');
 
-  it('health-data.ts exportiert keine der früheren Konstanten mehr (geprüft über die Exportnamen)', async () => {
-    const hd = await import('@/lib/make-one/health-data');
-    for (const name of ['NORTHSTAR', 'WHOOP', 'BESCHWERDEN', 'HEBEL', 'AUFBAU', 'ZUSAMMENHAENGE', 'CARE_NOTE']) expect(Object.keys(hd), name).not.toContain(name);
-    const quelle = lies('lib/make-one/health-data.ts');
-    for (const name of ['NORTHSTAR', 'WHOOP', 'BESCHWERDEN', 'HEBEL', 'AUFBAU', 'ZUSAMMENHAENGE', 'CARE_NOTE', 'Beschwerde', 'Hebel', 'Stufe']) {
-      expect(new RegExp(`export\\s+(const|interface|type)\\s+${name}\\b`).test(quelle), name).toBe(false);
-    }
+  it('die frühere Datei mit den festen Gesundheitsinhalten gibt es nicht mehr (A1 + A2 zusammengeführt, 08.10.)', () => {
+    expect(existsSync(path.join(wurzel, 'lib/make-one/health-data.ts'))).toBe(false);
   });
-
   it('niemand außer dem Start-Haken importiert das Übernahme-Modul — nie der Browser', () => {
     const funde: string[] = [];
     const lauf = (d: string) => {

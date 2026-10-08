@@ -27,6 +27,7 @@ import { stromFuer } from '@/lib/inbox/strom-server';
 import { lageText } from '@/lib/inbox/zoe-sicht';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { nordsternSatz } from '@/lib/planung/nordstern';
 
 /** Interner Hop: nur eine ausdrücklich benannte Person (S1, Regel 5/7) — ohne sie ein Systemlauf, nie „kevin“. */
 const personKopf = (req: Request): Record<string, string> => { const p = personStreng(req); return p ? { 'x-make-person': p } : {}; };
@@ -228,7 +229,8 @@ export async function POST(req: Request) {
         'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du schließt den Tageslauf ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.',
         FREMD_REGEL,
         'Sprich Kevin mit „Sir" an — einmal, nicht in jedem Satz.',
-        'Ziel „mehr Ruhe". Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn.',
+        // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
+        nordsternSatz(b.nordstern),
         KONTEXT_REGEL,
         'Regeln: max 3 Prioritäten. Bei niedriger Recovery oder vollem Tag: weniger, und sag es offen. Gesundheitsdaten sind privat.',
         'Wenn die Kette Ausfälle hatte (Kalender alt, kein Postfach-Zugriff), benenne das — lieber ehrlich unvollständig als falsch zuversichtlich.',

@@ -1,6 +1,6 @@
 // ─── MAKE OS — Controlling-Agent: Lagebericht ──────────────────────────────
 // Kennzahlen kommen deterministisch rein (server-seitig gerechnet), die KI
-// liefert nur die ehrliche Einordnung: Kurs zum 1-Mio-Ziel, Runway, Fokus.
+// liefert nur die ehrliche Einordnung: Kurs zum Ziel (Nordstern aus den Daten des Haushalts), Runway, Fokus.
 
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
@@ -14,6 +14,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,8 @@ export async function POST(req: Request) {
 
   const hasData = m.aktiveMonate > 0;
   const system = [
-    'Du bist der Controlling-Agent in Kevins MAKE OS. Nordstern: 1 Mio € Umsatz bei KD Ventures → min. 300k € Gewinn für Kevin & Malin.',
+    // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher eine feste Zeile im Code.
+    `Du bist der Controlling-Agent in MAKE OS. ${await nordsternSatzFuer(personStreng(req))}`,
     'Du bekommst FERTIG GERECHNETE Kennzahlen. Rechne NICHT neu und erfinde KEINE Zahlen — interpretiere nur, was dasteht.',
     'Sei nüchtern und ehrlich: Wo steht er wirklich, ist die nötige Run-Rate realistisch, reicht der Runway, worauf muss er diesen Monat fokussieren.',
     'Kein Startup-Sprech (kein „Disruption/Unicorn/Game-Changer"). Klar, ruhig, Klartext.',

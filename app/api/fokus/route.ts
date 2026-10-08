@@ -13,6 +13,11 @@ import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { nordsternSatz } from '@/lib/planung/nordstern';
+import { loadJson } from '@/lib/store/local-db';
+import { localDay } from '@/lib/zeit';
+import { wochentag } from '@/lib/zeit/kalender-kern';
+import type { RoutinenDatei } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,6 +44,19 @@ export async function POST(req: Request) {
   // Aufgaben kommen aus dem Brain — kein Mock-Fallback mehr: leer ist leer.
   const taskLines = blockAufgaben(b, 15);
 
+  // Arbeitszeit aus den DATEN der Person (08.10. abends): ihre Wochenvorlage (Planung › Routinen, Blöcke „business“) für heute —
+  // vorher stand hier für jede Person und Instanz eine feste Uhrzeit-Spanne (aus dem entfernten festen Wochen-Rhythmus). Ohne Vorlage: keine
+  // feste Arbeitszeit annehmen. Nur Uhrzeiten, keine Titel.
+  const routinenF = await loadJson<RoutinenDatei>('routinen').catch(() => null);
+  const heute = wochentag(localDay());
+  const arbeit = (Array.isArray(routinenF?.bloecke) ? routinenF!.bloecke : [])
+    .filter(bl => bl.owner === fuer && bl.art === 'business' && bl.wochentag === heute)
+    .sort((x, y) => x.von.localeCompare(y.von))
+    .map(bl => `${bl.von}–${bl.bis}`);
+  const arbeitszeit = arbeit.length
+    ? `Arbeitszeit heute laut Wochenvorlage: ${arbeit.join(', ')} — diese Zeit für Fokus schützen, Blöcke nur darin planen.`
+    : 'Für heute ist keine Arbeitszeit in der Wochenvorlage hinterlegt — nimm keine feste Arbeitszeit an.';
+
   const system = [
     'Du bist der Fokus-/Entscheidungs-Agent in Kevins MAKE OS — der Agent, der Gesundheit UND Firma in einer Empfehlung zusammenbringt.',
     'Kernregel: die Recovery bestimmt die Tagesform.',
@@ -46,7 +64,8 @@ export async function POST(req: Request) {
     '- GELB (40–65): fokussiert, aber mit Puffer — weniger/ kürzere Blöcke, mehr Pausen.',
     '- ROT (<40): nur das Essentielle + Regeneration (NSDR, Reha, früher Feierabend). Nicht durchpowern.',
     // S1 #9: kein fester Gesundheitskontext mehr — nur aus dem eigenen Profil der fragenden Person (unten, falls gepflegt).
-    'Kontext: Fokuszeit 09–17 schützen. Nordstern: mehr Ruhe + 1 Mio € Umsatz KD Ventures.',
+    // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
+    `Kontext: ${arbeitszeit} ${nordsternSatz(b.nordstern)}`,
     KONTEXT_REGEL,
     'Antworte auf Deutsch, kurz & strukturiert in Markdown mit genau diesen fetten Überschriften:',
     '**Tagesform** (1 Satz zur Recovery-Zone) · **Heute zuerst** (die EINE wichtigste Aufgabe) · **Zeitblöcke** (2–3 konkrete mit Uhrzeit) · **Heute bewusst NICHT** (was warten kann) · **Körper** (1 konkreter Reha-/Ruhe-Hinweis).',

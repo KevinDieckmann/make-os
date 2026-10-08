@@ -71,6 +71,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'meilenstein-raum--*': 'Austausch je Meilenstein (Arbeit des Haushalts)',
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
+  'nordstern--*': 'Nordstern je Haushalt (gemeinsames Ziel, Freitext ohne Personen-Feld — kann Vornamen nennen, wird beim Konto-Löschen nicht automatisch getilgt, ändern unter Planung › Jahr) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'team--*': 'Team je Haushalt — der Eintrag des Kontos fällt beim Löschen weg',
   'uebergabe-journal--*': 'Übergaben an Kunden (Kartei)',
   'zoe-chargen--*': 'ZOE-Chargen je Haushalt (nur Kennungen)',
@@ -289,19 +290,23 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const team = teamSpeicherName(konto.haushalt);
     await nurWenn(team, async () => { let n = 0; await updateJson<Obj>(team, cur => { const l = liste(cur, 'team'); const r = l.filter(e => (e as Obj).id !== `${KONTO_PRAEFIX}${speicher}`); n = l.length - r.length; return n ? { ...(cur ?? {}), team: r } : (cur as Obj); }); return n; });
     await sicher('kapazitaet', async () => { const { kapaEntfernteKontenAufraeumen } = await import('@/lib/kapazitaet/server'); return (await kapaEntfernteKontenAufraeumen(konto.haushalt!)).teile; });
-    // Familie › Vision (08.10., Gegenprüfung): Einträge der Person bleiben (gemeinsame Vision), ohne ihren Namen — sonst sperrte die
-    // Anlegerin sie für immer und der Speichername bliebe als Personenbezug stehen (lib/familie/vision.ts `visionOhnePerson`).
+    // Familie (08.10. abends, Fragebogen Teil 3 Frage 11 — erweitert die Vision-Regel der Gegenprüfung 08.10.): Einträge der Person
+    // bleiben als gemeinsames Leben des Haushalts (Dates, Vereinbarungen, Themen, Wünsche, Gespräche, Reparatur, Vision …), aber OHNE
+    // ihren Namen; ihre „nur ich“-Einträge, ungeteilten Reflexionen und ihr Profil fallen weg (sah nur sie — ohne sie wären sie
+    // verwaist). Regeln rein in lib/familie/ohne-person.ts (`familieOhnePerson`); das Protokoll nennt Liste, Kennung, Feldnamen.
     const fam = familieName(konto.haushalt);
     await nurWenn(fam, async () => {
-      const { visionOhnePerson } = await import('@/lib/familie/vision');
+      const { familieOhnePerson } = await import('@/lib/familie/ohne-person');
       let n = 0;
+      let aenderungen: import('@/lib/store/aenderungsprotokoll').Aenderung[] = [];
       await updateJson<Obj>(fam, cur => {
-        if (!cur || !Array.isArray(cur.visionen)) return cur as Obj;
-        const r = visionOhnePerson(cur.visionen as import('@/lib/familie/typen').Vision[], speicher);
+        if (!cur) return cur as unknown as Obj;
+        const r = familieOhnePerson(cur as unknown as import('@/lib/familie/typen').Familie, speicher);
         n = r.anzahl;
-        return n ? { ...cur, visionen: r.visionen } : cur;
+        aenderungen = r.aenderungen;
+        return n ? (r.familie as unknown as Obj) : cur;
       });
-      if (n) await protokolliere(fam, [{ op: 'geaendert' as const, id: 'visionen', felder: ['von'] }], { art: 'system' });
+      if (n) await protokolliere(fam, aenderungen, { art: 'system' });
       return n;
     });
   }

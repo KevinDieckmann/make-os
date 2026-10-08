@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Prospecting-Agent ────────────────────────────────────────────
-// Die Zielliste zum 1-Mio-Ziel: Firmen rein, KI qualifiziert gegen das ICP
+// Die Zielliste zum Nordstern: Firmen rein, KI qualifiziert gegen das ICP
 // (Score + Fit + Aufhänger), Kevin priorisiert. Ansprache entwerfen — der
 // Versand bleibt bei ihm.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Zahl aus schlank).

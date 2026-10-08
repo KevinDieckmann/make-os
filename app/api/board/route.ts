@@ -16,6 +16,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,8 @@ export async function POST(req: Request) {
   const critList = open.filter(t => t.priority === 'critical').slice(0, 8).map(t => `- ${t.title} [${t.status}${t.dueDate ? `, fällig ${t.dueDate}` : ''}]`).join('\n') || '(keine)';
 
   const context = [
-    `Stichtag: ${today}. Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn (Kevin & Malin).`,
+    // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher eine feste Zeile im Code.
+    `Stichtag: ${today}. ${await nordsternSatzFuer(fuer)}`,
     '',
     'CONTROLLING:',
     m && stats.finance?.aktiv

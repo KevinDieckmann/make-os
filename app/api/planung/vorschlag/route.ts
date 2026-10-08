@@ -23,7 +23,6 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { ausWandzeit, minutenVon } from '@/lib/kalender/zeit';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
-import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
@@ -96,9 +95,10 @@ export async function POST(req: Request) {
   const boost = (t: Task) => regler[SAEULE_VON_PROJEKT[t.projectId ?? ''] ?? ''] ?? 50;
   offen.sort((a, b) => (rank[a.priority] ?? 9) - (rank[b.priority] ?? 9) || boost(b) - boost(a) || (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
 
-  // Routinen aus dem Planer (Fallback: alte Konstante) — nur aktive.
+  // Routinen nur aus dem Planer (Bestand `routinen`) — nur aktive. Seit 08.10. abends kein Rückfall mehr auf feste Routinen
+  // im Code (das waren die einer echten Person): ohne gepflegte Routinen plant der Vorschlag ohne Routinen.
   // Nur eigene und gemeinsame Routinen dieser Person (`sichtbarFuer`, Praxis-Fund 04.10.).
-  const rAlle: RoutineDef[] = sichtbarFuer<RoutineDef>((routinenF?.routinen ?? ROUTINE_ITEMS.map((r): RoutineDef => ({ label: r.label, wann: r.when === 'abend' ? 'abend' : 'morgen', dauerMin: 15, aktiv: true }))).filter(r => r.aktiv), person);
+  const rAlle: RoutineDef[] = sichtbarFuer<RoutineDef>((Array.isArray(routinenF?.routinen) ? routinenF!.routinen : []).filter(r => r.aktiv), person);
   const rMorgen = rAlle.filter(r => r.wann === 'morgen').map(r => r.label);
   const rTag = rAlle.filter(r => r.wann === 'tag');
   const rAbend = rAlle.filter(r => r.wann === 'abend').map(r => r.label);

@@ -90,11 +90,14 @@ describe('Wochenblöcke je Person', () => {
   });
 
   it('Routinen einzeln mit Stand: zwei Schreiber an verschiedenen Routinen — beide bleiben', async () => {
+    // Seit 08.10. abends gibt es keine Startroutinen mehr (leerer Bestand bleibt leer) — zwei gemeinsame Routinen hier anlegen.
+    const gem = (id: string) => ({ op: 'upsert', eintrag: { id, label: `Gemeinsame Routine ${id}`, wann: 'morgen', kategorie: 'leben', dauerMin: 10, aktiv: true } });
+    expect((await route.PATCH(anfrage('PATCH', { ops: [gem('r-gem-1'), gem('r-gem-2')] }, 'kevin'))).status).toBe(200);
     const stand = await lade();
     const neu = (person: string) => new ListenSchreiber<Routine & { stand?: string }>({ pfad: '/api/state/routinen', liste: d => (Array.isArray(d.routinen) ? d.routinen as Routine[] : null), fetchImpl: netz(person) });
     const a = neu('kevin'), b = neu('malin');
     a.kenne(stand.routinen); b.kenne(stand.routinen);
-    const [r1, r2] = stand.routinen;
+    const [r1, r2] = stand.routinen.filter(r => r.id.startsWith('r-gem-'));
     a.aendern(stand.routinen, stand.routinen.map(r => (r.id === r1.id ? { ...r, label: 'Von Kevin' } : r)));
     b.aendern(stand.routinen, stand.routinen.map(r => (r.id === r2.id ? { ...r, aktiv: false } : r)));
     expect((await a.senden()).ok).toBe(true); expect((await b.senden()).ok).toBe(true);

@@ -30,6 +30,7 @@ import { zahlenImText } from './pruefung';
 import { rechne } from './rechne';
 import { leererStand, standName, vorschlaegeMischen, vorschlaegeFuerDaten, EINSTELLUNG_NAME, STANDARD_CHEF_EINSTELLUNG, type Bericht, type ChefStand, type ChefEinstellung } from './stand';
 import { neueKennung } from '@/lib/kennung';
+import { nordsternLaden } from '@/lib/planung/nordstern-server';
 
 export interface LaufAuftrag { modus: Modus; haushalt: string | null; person?: string; frage?: string; monat?: string; ausgeloest: Bericht['ausgeloest'] }
 export interface LaufErgebnis { ok: boolean; fehler?: string; bericht?: Bericht; ohneKi?: boolean; ruhigText?: string; neu?: number; aktualisiert?: number }
@@ -200,7 +201,11 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   const agent = await resolveAgent('finanzchef');
   if (!agent.enabled) return { ok: false, fehler: 'Der Head of Finance ist ausgeschaltet (unter Agenten aktivierbar).' };
 
-  const daten = await datenpaket(bild, einstellung, stand, a.modus, business);
+  // Nordstern (08.10. abends): aus den Daten des Haushalts statt fest im Prompt — im Business-Lauf (ohne Haushalt) der des Inhabers,
+  // dem das Business gehört (wie Index und Cockpit). Fehlt er: null, der Prompt nennt dann keinen.
+  const nsHaushalt = a.haushalt ?? await haushaltDesInhabers();
+  const nordstern = nsHaushalt ? ((await nordsternLaden(nsHaushalt).catch(() => null))?.text || null) : null;
+  const daten = { ...(await datenpaket(bild, einstellung, stand, a.modus, business)), nordstern };
   const user = `<daten>\n${JSON.stringify(daten, null, 1)}\n</daten>\n\n${aufgabe(a.modus, { frage: a.frage, person: a.person, monat: a.monat, haushalt: !!a.haushalt })}`;
   const tools = a.modus === 'tagescheck' ? [] : a.haushalt && a.modus !== 'steuercheck' ? [RECHNE, SUCHE] : [RECHNE];
   const maxTokens = a.modus === 'tagescheck' || a.modus === 'frage' ? 6000 : 12000;

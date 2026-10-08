@@ -26,7 +26,6 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
-import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig, FlussKarte } from './ui';
 import { useZiel, useZuZiel } from './ziel';
@@ -42,6 +41,7 @@ import { WEG } from '@/lib/wege';
 import { wartetText } from '@/lib/planung/meilenstein-kette';
 import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
+import { NordsternKarte } from './planung/NordsternKarte';
 import { usePlanung } from './planung/usePlanung';
 import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
 import { useMeilensteinFenster } from './planung/MeilensteinFenster';
@@ -275,12 +275,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         </Karte>
       )}
 
-      {/* Jahr: der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). */}
+      {/* Jahr: der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). Seit 08.10. abends gemeinsames, pflegbares Ziel
+          des Haushalts (Daten statt Konstante, /api/planung/nordstern) — die Karte lädt, zeigt den Leerzustand und bearbeitet selbst. */}
       {hatNordstern && (
-        <Karte i={kNordstern}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={spaceFilter === 'business' ? '/os/finanzen?s=business' : '/os/gesundheit?s=index'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{spaceFilter === 'business' ? 'Meilensteine zählen im Business-Index ›' : 'Meilensteine zählen in den Indizes ›'}</Link>}>Nordstern</Ueberschrift>
-          <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55, margin: 0 }}>{NORDSTERN}</p>
-        </Karte>
+        <NordsternKarte i={kNordstern}
+          rechts={<Link href={spaceFilter === 'business' ? '/os/finanzen?s=business' : '/os/gesundheit?s=index'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{spaceFilter === 'business' ? 'Meilensteine zählen im Business-Index ›' : 'Meilensteine zählen in den Indizes ›'}</Link>} />
       )}
 
       {/* Ziele links, Meilensteine rechts — Priorität per Pfeil, Erledigtes unten, Einheiten im Business, Kaskade aus dem Jahr */}

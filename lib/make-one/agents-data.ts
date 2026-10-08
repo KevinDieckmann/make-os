@@ -51,7 +51,7 @@ export const DEPARTMENTS: Department[] = [
     ],
   },
   {
-    id: 'sales', name: 'Sales / Revenue', mission: 'Direkt am 1-Mio-Nordstern — Leads, Pipeline, Abschluss.', color: '#4A6CF7', lead: 'Revenue Lead',
+    id: 'sales', name: 'Sales / Revenue', mission: 'Direkt am Nordstern — Leads, Pipeline, Abschluss.', color: '#4A6CF7', lead: 'Revenue Lead',
     agents: [
       { id: 'prospect', name: 'Prospecting-Agent', role: 'Signalbasierte Zielliste (CAPOS-Persona)', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/prospecting',
         funktionen: ['Zielliste + editierbares ICP (CapOS)', 'KI-Qualifizierung: Score + Fit + Aufhänger', 'Pipeline: Neu → Qualifiziert → Kontaktiert', 'Echte Firmen via Explorium/Vibe seeden'],
@@ -97,8 +97,8 @@ export const DEPARTMENTS: Department[] = [
         gate: 'Bewegt kein Geld. Jeder Vorschlag geht in die Freigabe-Liste; angenommen wird er zur Aufgabe.',
         funktionen: ['Tagescheck, Wochenreview, Monatsabschluss, Steuercheck — vom Takt geplant', 'Finanzbild: Business, Haushalt, Brücke, Steuertermine, Datenqualität — deterministisch gerechnet', 'Prüfer: jede Zahl, Quelle und Frist gegen die Daten, eine Korrekturrunde', 'Freigabe-Liste mit Dedup; Fragen an den Head of Finance'],
         bauplan: 'LIVE (24.09.): lib/finanzen/chef/ — finanzbild (Code rechnet), prompt (recherchierter System-Prompt, 5 Modi, JSON-Schema), pruefer (Zahlen/Quellen/Fristen/Vollzug/Anlage), lauf (Werkzeuge rechne + buchungen_suchen, Korrekturrunde), plan (Takt). Haushalt nur für Mitglieder, eigener Speicher je Haushalt. → /os/finanzen?s=chef' },
-      { id: 'controlling', name: 'Controlling-Agent', role: 'Umsatz gg. 1-Mio-Ziel, Runway', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/finanzen?s=controlling&space=business',
-        funktionen: ['Umsatz vs. 1-Mio-Ziel + Fortschritt', 'Nötige Run-Rate & Runway (live gerechnet)', 'KI-Lagebericht: Fokus + Risiken', 'Monatsverlauf gg. Ziel-Linie'],
+      { id: 'controlling', name: 'Controlling-Agent', role: 'Umsatz gg. Ziel, Runway', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/finanzen?s=controlling&space=business',
+        funktionen: ['Umsatz vs. Ziel + Fortschritt', 'Nötige Run-Rate & Runway (live gerechnet)', 'KI-Lagebericht: Fokus + Risiken', 'Monatsverlauf gg. Ziel-Linie'],
         bauplan: 'LIVE: Ist-Zahlen pflegst du, Kennzahlen deterministisch in JS (computeMetrics), Lagebericht von Anthropic (rechnet nichts, interpretiert nur). DATEV/Bank-Anbindung später. → Finanzen › Business › Überblick › Controlling & Ziele' },
       { id: 'board', name: 'Reporting-/Board-Agent', role: 'Kennzahlen, Board-Packs, Cap-Table-Sicht', status: 'live', autonomy: 'entwurf', model: 'stark', href: '/os/board',
         funktionen: ['Kennzahlen aus Controlling + Pipeline + Aufgaben', 'Executive Summary + Sektionen', 'Risiken + Fokus nächste Woche', 'Wochen-/Board-Pack auf Knopfdruck'],
@@ -117,7 +117,7 @@ export const DEPARTMENTS: Department[] = [
       { id: 'performance', name: 'Score-Agent', role: 'Den Wachstums-Score rechnen und einordnen', status: 'live', autonomy: 'autonom', model: 'stark', href: '/os/wachstum',
         funktionen: ['Fünf Säulen aus echten Daten rechnen', 'Messlücken ausweisen statt raten', 'Verlauf mitschreiben', 'Größten Hebel benennen'],
         bauplan: 'LIVE: /api/performance. Rechnet je Person getrennt (seit 07.09.), weil Gesundheit und Journal persönlich sind. Was nicht gemessen ist, wird als Messlücke ausgewiesen und zählt nicht als schlechter Wert. ZOE startet ihn selbst.' },
-      { id: 'okr', name: 'OKR-/Ziel-Agent', role: 'Weg zum 1-Mio-Ziel, MSI-Anbindung', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/planung/jahr?space=business',
+      { id: 'okr', name: 'OKR-/Ziel-Agent', role: 'Weg zum Nordstern, MSI-Anbindung', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/planung/jahr?space=business',
         funktionen: ['Nordstern → Objectives + Key Results', 'Echte Aufgaben den Zielen zuordnen', 'Lücken flaggen (wo nichts einzahlt)', 'Live gegen Controlling-Zahlen'],
         bauplan: 'LIVE: liest Controlling-Zahlen + echte Aufgaben, Anthropic baut OKR-Baum, ordnet vorhandene Tasks zu & benennt Lücken. Vorschlag — du entscheidest. Seit 04.10. ohne eigene Seite: ZOE startet ihn (/api/okr), die Ziele leben in Ziele & Planung (/os/okr leitet dorthin).' },
     ],
