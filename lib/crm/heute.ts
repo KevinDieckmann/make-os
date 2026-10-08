@@ -23,7 +23,7 @@ import { besterKanal, kanalStatus, type KanalStatus } from './recht';
 import { mandatLage } from './kunden';
 import { followUpBis } from './events';
 import { nachfassText } from './marke';
-import { taktVon, dealWiedervorlagen } from './followup';
+import { taktVon, dealWiedervorlagen, kadenzBasis } from './followup';
 import { haeltBeziehung, zustaendig, wer, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
@@ -216,7 +216,9 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     if (k.kreis !== 'A' && k.kreis !== 'B' && k.lebensphase !== 'multiplikator') continue;
     // Takt aus den Stammdaten (Wertelisten), wie in der Follow-up-Ebene (Prüfbericht 27.09., Punkt 8).
     const takt = taktVon(k, crm.wertelisten) ?? KREIS_TAKT[k.kreis ?? 'B'];
-    const seit = k.letzterKontakt ? tage(k.letzterKontakt, heute) : null;
+    // 7.1 (08.10.): dieselbe Basis wie die Kadenz der Follow-up-Ebene — nie vor Import/Anlage.
+    const basis = kadenzBasis(k, heute);
+    const seit = basis ? tage(basis, heute) : null;
     if (seit === null || seit >= takt) nimm(k, 'pflege', Math.round((seit === null ? 2 : seit / takt) * 10 * (KREIS_GEWICHT[k.kreis ?? 'B'])), seit === null ? `Kreis ${k.kreis ?? '–'}: noch kein Kontakt vermerkt` : `Kreis ${k.kreis ?? '–'}: ${seit} Tage still (Takt ${takt})`);
   }
   // 5b Aktive Kampagnen: wer noch nicht angesprochen ist, kommt als „Neu“ mit Kampagnen-Bezug.

@@ -77,6 +77,18 @@ export function dealSchrittErledigt(schritt: { text: string; datum: string } | u
   return schritt.datum <= heute || schritt.datum === f.faellig || schritt.text.trim().toLowerCase() === f.text.trim().toLowerCase();
 }
 
+/**
+ * Ab wann die Kadenz zählt (08.10., Markttraktion Woche 1 · 7.1): der letzte Kontakt — aber nie vor dem Tag, an dem die Person in die Kartei
+ * kam (`importiertAm` = Import bzw. Anlage). Vorher ergaben Kontakte mit altem „letzter Kontakt“ direkt nach dem Import sofort überfällige
+ * Kadenz (der Index startete rot). Ohne letzten Kontakt keine Kadenz (wie bisher).
+ */
+export function kadenzBasis(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten' | 'importiertAm'>, heute: string): string | undefined {
+  const letzter = letzterKontaktVon(k, heute);
+  if (!letzter) return undefined;
+  const seit = (k.importiertAm ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(seit) && seit > letzter && seit <= heute ? seit : letzter;
+}
+
 const tage = (von: string, bis: string) => Math.round((Date.parse(`${bis.slice(0, 10)}T12:00:00Z`) - Date.parse(`${von.slice(0, 10)}T12:00:00Z`)) / 864e5);
 export const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -190,7 +202,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   // 6 · Kadenz je Kreis: zu lange nichts gehört
   // Ein eingetragenes Meeting zählt ab seinem Tag (`wann`) — geplant setzt es „letzter Kontakt“ nicht (28.09., F1).
   for (const k of kontakte) {
-    const letzter = letzterKontaktVon(k, heute);
+    // 7.1 (08.10.): ab dem letzten Kontakt, aber nie vor Import/Anlage (`kadenzBasis`).
+    const letzter = kadenzBasis(k, heute);
     if (ausgenommen(k) || RUHT.has(k.stufe) || !letzter) continue;
     const takt = taktVon(k, opts.wertelisten);
     if (!takt) continue;

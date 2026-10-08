@@ -13,7 +13,8 @@ describe('Follow-up — fällige Liste', () => {
   const kontakte = [
     k('c-a', { naechsterSchritt: { text: 'Angebot schicken', datum: '2026-09-25' } }),            // überfällig (virtuell)
     k('c-b', { wiedervorlage: HEUTE }),                                                            // heute (virtuell)
-    k('c-c', { kreis: 'A', letzterKontakt: '2026-08-01' }),                                        // Kadenz A 30 Tage → seit 27 Tagen fällig
+    k('c-c', { kreis: 'A', letzterKontakt: '2026-08-01', importiertAm: '2026-07-01' }),            // Kadenz A 30 Tage → seit 27 Tagen fällig
+    k('c-f', { kreis: 'A', letzterKontakt: '2026-08-01' }),                                        // heute importiert: Kadenz zählt ab Import (08.10., 7.1) → nicht fällig
     k('c-d', { kreis: 'D', letzterKontakt: '2026-09-20' }),                                        // Kadenz D 180 → nicht im Horizont
     k('c-e', { naechsterSchritt: { text: 'x', datum: HEUTE }, werbesperre: { seit: HEUTE, grund: 'Widerspruch' } }), // gesperrt → nie
   ];
@@ -33,6 +34,7 @@ describe('Follow-up — fällige Liste', () => {
     expect(liste.find(f => f.id === 'v:dealschritt:ch-1')).toMatchObject({ gruppe: 'woche', zustaendig: 'malin', bezug: { art: 'chance', id: 'ch-1' } });
     expect(liste.find(f => f.id === 'v:kadenz:c-c')).toMatchObject({ quelle: 'kadenz', gruppe: 'ueberfaellig' });
     expect(liste.some(f => f.kontaktId === 'c-d')).toBe(false);
+    expect(liste.some(f => f.kontaktId === 'c-f')).toBe(false);
     expect(liste.some(f => f.kontaktId === 'c-e')).toBe(false);
   });
   it('sortiert nach Gruppe und Datum und zählt', () => {

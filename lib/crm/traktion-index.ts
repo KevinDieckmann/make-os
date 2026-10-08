@@ -11,7 +11,7 @@ import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Mandat } from './typen';
-import { kennzahlen, type Kpi } from './kennzahlen';
+import { kennzahlen, messlatte, type Kpi } from './kennzahlen';
 import { marketingKennzahlen, ausMarketing, abmeldequote, marketingTrichter } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
 import { OFFENE_STUFEN, gesundheit, gesamtwert, echtesGespraech, WIN_RATE } from './pipeline';
@@ -70,7 +70,19 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'art14', label: 'Art. 14 überfällig', saeule: 'grundlage', gruppe: 'Grundlage', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 1, formel: 'Personen, deren Informationsfrist nach Art. 14 DSGVO abgelaufen ist', quelle: 'Kartei', luecke: 'Noch keine Person in der Kartei', pflegen: { text: 'Art. 14 erledigen', href: markttraktion('kontakte', 'art14') } }),
 ];
 
-export interface TraktionBestand { kontakte: Kontakt[]; crm: CrmBestand; heute: string; schwellen?: Record<string, Schwelle>; /** Schon gerechnete Kennzahlen der Welten — spart die zweite Runde (Prüfbericht 27.09., Punkt 18). */ kpis?: Kpi[] }
+export interface TraktionBestand { kontakte: Kontakt[]; crm: CrmBestand; heute: string; schwellen?: Record<string, Schwelle>; /** Schon gerechnete Kennzahlen der Welten — spart die zweite Runde (Prüfbericht 27.09., Punkt 18). */ kpis?: Kpi[];
+  /** Erster Tag mit einem Schnappschuss des Index (`ersterLauf(datei)`) — die ersten `ANLAUF_TAGE` danach ist er „vorläufig“ (7.1). */
+  ersterLauf?: string }
+
+/** So lange ist der Traktions-Index nach seinem ersten Lauf „vorläufig“ (08.10., Woche 1 · 7.1: er startete rot, die Kartei lief erst an). */
+export const ANLAUF_TAGE = 28;
+/** Der erste Schnappschuss-Tag einer Index-Datei — ohne einen ist heute der erste Lauf. */
+export const ersterLauf = (d: { tage?: Record<string, unknown> } | null | undefined, heute: string): string => Object.keys(d?.tage ?? {}).sort()[0] ?? heute;
+/** Die Schwellen aus den Zielen der Wertelisten (7.2) — nur, wo ein Ziel steht; sie gelten vor eigenen Index-Schwellen (EINE Messlatte). */
+export function zielSchwellen(crm: Pick<CrmBestand, 'wertelisten'>): Record<string, Schwelle> {
+  const m = messlatte(crm.wertelisten);
+  return { ...(m.ausZiel.gespraeche ? { gespraeche: m.gespraeche } : {}), ...(m.ausZiel.sql ? { sql_30: m.sql30 } : {}) };
+}
 
 /** Der Marketing-Trichter je Bestand nur einmal — die Details fragten ihn bis zu viermal je Aufruf. */
 const TRICHTER = new WeakMap<TraktionBestand, ReturnType<typeof marketingTrichter>>();
@@ -274,7 +286,9 @@ export function traktionsIndex(b: TraktionBestand): TraktionsIndex {
   }
   const messen: Record<string, (x: TraktionBestand) => Messung> = {};
   for (const def of TRAKTION_KENNZAHLEN) messen[def.id] = x => messung(x, def, kpis[def.id]);
-  return berechneModell({ saeulen: TRAKTION_SAEULEN, kennzahlen: TRAKTION_KENNZAHLEN, messen, bestand: b, schwellen: b.schwellen, stand: b.heute, scope: 'markttraktion', geometrisch: true });
+  const schwellen = { ...(b.schwellen ?? {}), ...zielSchwellen(b.crm) };
+  const anlaufBis = b.ersterLauf && /^\d{4}-\d{2}-\d{2}$/.test(b.ersterLauf) ? (() => { const d = new Date(`${b.ersterLauf}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + ANLAUF_TAGE); return d.toISOString().slice(0, 10); })() : undefined;
+  return berechneModell({ saeulen: TRAKTION_SAEULEN, kennzahlen: TRAKTION_KENNZAHLEN, messen, bestand: b, schwellen, stand: b.heute, scope: 'markttraktion', geometrisch: true, ...(anlaufBis ? { anlaufBis } : {}) });
 }
 
 /** Die alte Form (Score, Welten) — für Scoreboard-Verlauf und Business-Index. */
@@ -285,10 +299,11 @@ export function alsTraktion(idx: TraktionsIndex): Traktion {
   });
   const ohne = welten.filter(w => w.score === null).map(w => w.label);
   const mit = welten.filter(w => w.score !== null);
+  const anlauf = idx.vorlaeufig ? `Anlaufphase bis ${idx.vorlaeufig.bis.slice(8, 10)}.${idx.vorlaeufig.bis.slice(5, 7)}. — ` : '';
   return {
-    score: idx.index, welten, vorlaeufig: ohne.length > 0 && mit.length > 0,
+    score: idx.index, welten, vorlaeufig: (ohne.length > 0 && mit.length > 0) || !!idx.vorlaeufig,
     hinweis: !mit.length ? 'Noch nichts gemessen — der Score entsteht mit den ersten Power Hours, Beiträgen und Events.'
-      : ohne.length ? `vorläufig — ${ohne.join(' und ')} noch ohne Messung, gerechnet über ${mit.map(w => w.label).join(' und ')}` : 'über alle drei Welten',
+      : `${anlauf}${ohne.length ? `vorläufig — ${ohne.join(' und ')} noch ohne Messung, gerechnet über ${mit.map(w => w.label).join(' und ')}` : anlauf ? 'vorläufig, über alle drei Welten' : 'über alle drei Welten'}`,
   };
 }
 

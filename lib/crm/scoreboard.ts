@@ -30,6 +30,7 @@ import { followUpBis } from './events';
 import { istNetzwerkenEvent } from './marke';
 import { werIstDran } from './heute';
 import { fuerDich, nameVon, TEAM } from './team';
+import { messlatte, sqlJeWoche } from './kennzahlen';
 import { localDay } from '@/lib/zeit';
 import { isoWoche as kalenderwoche, montagVon as kernMontag } from '@/lib/zeit/kalender-kern';
 
@@ -159,9 +160,23 @@ interface Spez {
 }
 
 /**
+ * Wer einen Sales-Anteil am Wochenziel trägt (08.10., Markttraktion Woche 1 · 6.3): wer Sales verantwortet (lib/crm/team.ts) — und wer
+ * sonst schon eine eigene Power Hour gemacht hat, ab dieser Woche. Vorher bekam jede Person dieselben Sales-Anteile, gemessen ab der ersten
+ * Power Hour IRGENDEINER Person — wer kein Sales macht, war jede Woche rot. Keine festen Namen: das Team kommt aus `TEAM`.
+ * Liefert je Person den Tag, ab dem gemessen wird (oder null = kein Anteil).
+ */
+export function salesAnteilAb(sitzungen: readonly { person: string; datum: string }[], teamAb: string | null): Record<string, string | null> {
+  return Object.fromEntries(TEAM.map(t => {
+    const eigene = fruehestes(sitzungen.filter(x => x.person === t.id).map(x => x.datum));
+    return [t.id, t.verantwortet.includes('sales') ? teamAb ?? eigene : eigene];
+  }));
+}
+
+/**
  * Das Scoreboard: Zeilen je Kennzahl, Spalten je Kalenderwoche. Sales mit
  * Power Hours und Gesprächen zusätzlich je Person (Anteil am Teamziel =
- * Teamziel geteilt durch die Zahl der Team-Mitglieder, aufgerundet).
+ * Teamziel geteilt durch die Zahl der Personen MIT Sales-Anteil, aufgerundet — `salesAnteilAb`).
+ * Gespräche und neue SQL messen an DERSELBEN Messlatte wie Kennzahlen und Traktions-Index (`messlatte`, Ziele der Wertelisten, 7.2).
  */
 export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: string, wochen = 8): Scoreboard {
   const W = wochenBis(heute, Math.max(1, Math.min(52, Math.round(wochen) || 8)));
@@ -189,18 +204,33 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   const abEvent = fruehestes(events.filter(e => !istNetzwerkenEvent(e)).flatMap(e => [e.datum, tag(e.geaendert)]));  // nur unsere Abende — besuchte Events (Events-Reiter) zählen hier nicht
 
   const anzahl = <T,>(liste: T[], datum: (x: T) => string) => (w: ScoreWoche) => liste.filter(x => drin(datum(x), w)).length;
-  const anteil = (z: number) => Math.ceil(z / Math.max(1, TEAM.length));
+  // 7.2 (08.10.): EINE Messlatte — die Ziele der Wertelisten (Gespräche je Woche, SQL je Monat → je Woche), sonst die Startwerte.
+  const ml = messlatte(crm.wertelisten);
+  const zielGespraeche = ml.gespraeche.gruen, gelbGespraeche = ml.gespraeche.rot;
+  const zielSql = ml.ausZiel.sql ? sqlJeWoche(ml) : SCORE_ZIELE.neue_chancen;
+  // 6.3 (08.10.): Sales-Anteile nur für Personen mit Sales-Verantwortung bzw. ab ihrer ersten eigenen Power Hour (`salesAnteilAb`).
+  const anteilAb = salesAnteilAb(sitzungen, abSitzung);
+  const mitAnteil = Math.max(1, TEAM.filter(t => anteilAb[t.id] !== null).length);
+  const anteil = (z: number) => Math.ceil(z / mitAnteil);
 
-  const personen = (id: 'power_hours' | 'gespraeche'): Spez[] => TEAM.map(t => id === 'power_hours'
-    ? { id: `power_hours:${t.id}`, welt: 'sales', label: 'Power Hours', person: t.id, ziel: anteil(SCORE_ZIELE.power_hours), gelbAb: Math.ceil(anteil(SCORE_ZIELE.power_hours) / 2), quelle: `Power Hours von ${t.name}`, ab: abSitzung, zaehle: anzahl(sitzungen.filter(s => s.person === t.id), s => s.datum) }
-    : { id: `gespraeche:${t.id}`, welt: 'sales', label: 'Echte Gespräche', person: t.id, ziel: anteil(SCORE_ZIELE.gespraeche), gelbAb: Math.ceil(anteil(SCORE_ZIELE.gespraeche) / 2), quelle: `Gespräche und Termine, festgehalten von ${t.name}`, ab: abVerlauf, zaehle: anzahl(gespraeche.filter(g => g.von === t.id), g => g.tag) });
+  // Gespräche je Person: Sales-Verantwortliche ab dem ersten Verlauf (wie bisher); wer Sales nur mitmacht, ab der ersten eigenen Power Hour.
+  const gespraecheAb = (sales: boolean, ab: string | null, verlauf: string | null): string | null =>
+    sales || ab === null || verlauf === null ? verlauf : (ab > verlauf ? ab : verlauf);
+  const personen = (id: 'power_hours' | 'gespraeche'): Spez[] => TEAM.map(t => {
+    const ab = anteilAb[t.id];
+    // Ohne Anteil: die Zahl steht trotzdem (gezählt ab der ersten Messung), aber ohne Ziel — nie rot.
+    const ziel = ab !== null ? anteil(id === 'power_hours' ? SCORE_ZIELE.power_hours : zielGespraeche) : null;
+    return id === 'power_hours'
+      ? { id: `power_hours:${t.id}`, welt: 'sales', label: 'Power Hours', person: t.id, ziel, gelbAb: ziel !== null ? Math.ceil(ziel / 2) : null, quelle: `Power Hours von ${t.name}`, ab: ab ?? abSitzung, zaehle: anzahl(sitzungen.filter(s => s.person === t.id), s => s.datum) }
+      : { id: `gespraeche:${t.id}`, welt: 'sales', label: 'Echte Gespräche', person: t.id, ziel, gelbAb: ziel !== null ? Math.ceil(ziel / 2) : null, quelle: `Gespräche und Termine, festgehalten von ${t.name}`, ab: gespraecheAb(t.verantwortet.includes('sales'), ab, abVerlauf), zaehle: anzahl(gespraeche.filter(g => g.von === t.id), g => g.tag) };
+  });
 
   const spez: Spez[] = [
     { id: 'power_hours', welt: 'sales', label: 'Power Hours', ziel: SCORE_ZIELE.power_hours, gelbAb: SCORE_ZIELE.power_hours / 2, quelle: 'Power-Hour-Sitzungen', ab: abSitzung, zaehle: anzahl(sitzungen, s => s.datum) },
     ...personen('power_hours'),
-    { id: 'gespraeche', welt: 'sales', label: 'Echte Gespräche', ziel: SCORE_ZIELE.gespraeche, gelbAb: SCORE_ZIELE.gespraeche / 2, quelle: 'Gespräche und Termine im Verlauf (ohne System)', ab: abVerlauf, zaehle: anzahl(gespraeche, g => g.tag) },
+    { id: 'gespraeche', welt: 'sales', label: 'Echte Gespräche', ziel: zielGespraeche, gelbAb: gelbGespraeche, quelle: `Gespräche und Termine im Verlauf (ohne System)${ml.ausZiel.gespraeche ? ' · Ziel aus den Wertelisten' : ''}`, ab: abVerlauf, zaehle: anzahl(gespraeche, g => g.tag) },
     ...personen('gespraeche'),
-    { id: 'neue_chancen', welt: 'sales', label: 'Neue SQL → Deals', ziel: SCORE_ZIELE.neue_chancen, gelbAb: null, quelle: 'Leads, die SQL wurden (Deals angelegt)', ab: abChance, zaehle: anzahl(chancen, c => tag(c.angelegt)) },
+    { id: 'neue_chancen', welt: 'sales', label: 'Neue SQL → Deals', ziel: zielSql, gelbAb: null, quelle: `Leads, die SQL wurden (Deals angelegt)${ml.ausZiel.sql ? ' · Monatsziel der Wertelisten je Woche' : ''}`, ab: abChance, zaehle: anzahl(chancen, c => tag(c.angelegt)) },
     { id: 'gewonnen', welt: 'sales', label: 'Gewonnene Deals', ziel: null, gelbAb: null, quelle: 'Stufe „gewonnen“ in der Historie', ab: abChance,
       zaehle: w => chancen.filter(c => (c.historie ?? []).some(h => h.stufe === 'gewonnen' && drin(tag(h.am), w))).length },
     { id: 'beitraege', welt: 'marketing', label: 'Veröffentlichte Beiträge', ziel: SCORE_ZIELE.beitraege, gelbAb: SCORE_ZIELE.beitraege / 2, quelle: 'Redaktionsplan, Status veröffentlicht', ab: abBeitrag, zaehle: anzahl(veroeffentlicht, b => tag(b.datum)) },

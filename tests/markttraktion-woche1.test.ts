@@ -556,3 +556,98 @@ describe('D · Marketing-Herkunft, Kampagne in der Power Hour, Netzwerken-Namen'
     expect(quelle('app/api/crm/visitenkarte/route.ts')).not.toMatch(/Kevin und Malin/);
   });
 });
+
+// ── E · Scoreboard & Index (6.3, 7.1, 7.2) ──────────────────────────────────────────────────────────────────────────────────
+describe('6.3 · Sales-Anteile nur für Sales-Verantwortliche bzw. ab der eigenen Power Hour', () => {
+  it('salesAnteilAb: Sales-Verantwortliche ab dem Team-Start, alle anderen erst ab ihrer ersten eigenen Power Hour', async () => {
+    const { salesAnteilAb } = await import('@/lib/crm/scoreboard');
+    const { TEAM } = await import('@/lib/crm/team');
+    const sales = TEAM.find(t => t.verantwortet.includes('sales'))!, andere = TEAM.find(t => !t.verantwortet.includes('sales'))!;
+    expect(salesAnteilAb([], vor(30))).toMatchObject({ [sales.id]: vor(30), [andere.id]: null });
+    expect(salesAnteilAb([{ person: andere.id, datum: vor(10) }], vor(30))).toMatchObject({ [sales.id]: vor(30), [andere.id]: vor(10) });
+    expect(salesAnteilAb([], null)[sales.id]).toBeNull();
+  });
+
+  it('Scoreboard: wer kein Sales macht und keine Power Hour hatte, hat kein Ziel (nie rot) — das Teamziel teilt sich nur auf Personen mit Anteil', async () => {
+    const { wochenScoreboard, SCORE_ZIELE } = await import('@/lib/crm/scoreboard');
+    const { TEAM } = await import('@/lib/crm/team');
+    const sales = TEAM.find(t => t.verantwortet.includes('sales'))!, andere = TEAM.find(t => !t.verantwortet.includes('sales'))!;
+    const ph = (id: string, person: string, datum: string) => ({ id, person, datum, start: `${datum}T09:00:00.000Z`, ziel: { gespraeche: 0, termine: 0 }, karten: [] });
+    const sb = wochenScoreboard([], crmLeer({ sitzungen: [ph('s1', sales.id, vor(20)), ph('s2', sales.id, vor(3))] } as Partial<CrmBestand>), T, 4);
+    const zeile = (id: string) => sb.zeilen.find(z => z.id === id)!;
+    expect(zeile(`power_hours:${andere.id}`).ziel).toBeNull();
+    expect(zeile(`power_hours:${andere.id}`).ampeln).not.toContain('rot');
+    expect(zeile(`gespraeche:${andere.id}`).ziel).toBeNull();
+    expect(zeile(`power_hours:${sales.id}`).ziel).toBe(SCORE_ZIELE.power_hours); // vorher die Hälfte — geteilt durch alle im Team
+    // Sobald die andere Person selbst eine Power Hour macht, trägt sie ab dann einen Anteil.
+    const mit = wochenScoreboard([], crmLeer({ sitzungen: [ph('s1', sales.id, vor(20)), ph('s3', andere.id, vor(2))] } as Partial<CrmBestand>), T, 4);
+    expect(mit.zeilen.find(z => z.id === `power_hours:${andere.id}`)!.ziel).toBe(Math.ceil(SCORE_ZIELE.power_hours / 2));
+  });
+});
+
+describe('7.1 · Kadenz ab Import, Index in der Anlaufphase vorläufig', () => {
+  it('kadenzBasis: letzter Kontakt, aber nie vor dem Tag der Aufnahme in die Kartei', async () => {
+    const { kadenzBasis } = await import('@/lib/crm/followup');
+    expect(kadenzBasis(k('a', { letzterKontakt: vor(100), importiertAm: vor(10) }), T)).toBe(vor(10));
+    expect(kadenzBasis(k('a', { letzterKontakt: vor(100), importiertAm: vor(200) }), T)).toBe(vor(100));
+    expect(kadenzBasis(k('a', { letzterKontakt: vor(100), importiertAm: '2026-12-01' }), T)).toBe(vor(100)); // Zukunft zählt nicht
+    expect(kadenzBasis(k('a', { importiertAm: vor(10) }), T)).toBeUndefined(); // ohne letzten Kontakt keine Kadenz (wie bisher)
+  });
+
+  it('frisch importierte Person mit altem letzten Kontakt erzeugt keine überfällige Kadenz', async () => {
+    const { faellige } = await import('@/lib/crm/followup');
+    const frisch = k('neu', { kreis: 'A', letzterKontakt: vor(200), importiertAm: vor(1) });
+    const alt = k('alt', { kreis: 'A', letzterKontakt: vor(200), importiertAm: vor(300) });
+    const liste = faellige([frisch, alt], crmLeer(), T);
+    expect(liste.some(f => f.kontaktId === 'c-neu')).toBe(false);
+    expect(liste.some(f => f.kontaktId === 'c-alt')).toBe(true);
+  });
+
+  it('Traktions-Index: ANLAUF_TAGE nach dem ersten Lauf „vorläufig“ (gerechnet wie immer), danach nicht mehr', async () => {
+    const { traktionsIndex, alsTraktion, ersterLauf, ANLAUF_TAGE } = await import('@/lib/crm/traktion-index');
+    expect(ersterLauf({ tage: { [vor(5)]: 1, [vor(40)]: 1 } }, T)).toBe(vor(40));
+    expect(ersterLauf(null, T)).toBe(T);
+    const anlauf = traktionsIndex({ kontakte: [], crm: crmLeer(), heute: T, ersterLauf: vor(3) });
+    expect(anlauf.vorlaeufig?.bis).toBe(vor(3 - ANLAUF_TAGE));
+    const spaeter = traktionsIndex({ kontakte: [], crm: crmLeer(), heute: T, ersterLauf: vor(ANLAUF_TAGE + 1) });
+    expect(spaeter.vorlaeufig).toBeUndefined();
+    expect(spaeter.index).toBe(anlauf.index); // keine eigene Punkte-Logik — nur die Beschriftung
+    expect(traktionsIndex({ kontakte: [], crm: crmLeer(), heute: T }).vorlaeufig).toBeUndefined(); // ohne Angabe wie bisher
+    // alsTraktion trägt die Anlaufphase in Kennzeichen und Hinweis.
+    const gemessen = { ...anlauf, saeulen: anlauf.saeulen.map(s => ({ ...s, score: 50, zuDuenn: false })) };
+    const t = alsTraktion(gemessen);
+    expect(t.vorlaeufig).toBe(true);
+    expect(t.hinweis).toMatch(/^Anlaufphase bis \d{2}\.\d{2}\. — vorläufig/);
+  });
+});
+
+describe('7.2 · EINE Messlatte: Ziele der Wertelisten gelten für Kennzahl, Index und Scoreboard', () => {
+  const ziele = { ziele: { gespraecheWoche: 12, sqlMonat: 8 } } as unknown as CrmBestand['wertelisten'];
+  it('messlatte: Ziel = grün, rot unter der Hälfte; ohne Ziel die Startschwellen', async () => {
+    const { messlatte, sqlJeWoche } = await import('@/lib/crm/kennzahlen');
+    expect(messlatte(undefined)).toMatchObject({ gespraeche: { gruen: 8, rot: 4 }, sql30: { gruen: 2, rot: 1 }, ausZiel: { gespraeche: false, sql: false } });
+    const m = messlatte(ziele);
+    expect(m).toMatchObject({ gespraeche: { gruen: 12, rot: 6 }, sql30: { gruen: 8, rot: 4 }, ausZiel: { gespraeche: true, sql: true } });
+    expect(sqlJeWoche(m)).toBe(2);
+  });
+
+  it('Traktions-Index rechnet mit dem Ziel — auch gegen eigene Index-Schwellen', async () => {
+    const { traktionsIndex, zielSchwellen } = await import('@/lib/crm/traktion-index');
+    expect(zielSchwellen(crmLeer())).toEqual({});
+    const idx = traktionsIndex({ kontakte: [], crm: crmLeer({ wertelisten: ziele }), heute: T, schwellen: { gespraeche: { gruen: 5, rot: 2 }, power_hours: { gruen: 6, rot: 3 } } });
+    const kz = (id: string) => idx.saeulen.flatMap(s => s.kennzahlen).find(x => x.id === id)!;
+    expect(kz('gespraeche')).toMatchObject({ gruen: 12, rot: 6 });
+    expect(kz('sql_30')).toMatchObject({ gruen: 8, rot: 4 });
+    expect(kz('power_hours')).toMatchObject({ gruen: 6, rot: 3 }); // eigene Schwellen ohne Ziel bleiben
+  });
+
+  it('Scoreboard: Gespräche und neue SQL messen am Ziel der Wertelisten', async () => {
+    const { wochenScoreboard, SCORE_ZIELE } = await import('@/lib/crm/scoreboard');
+    const ohne = wochenScoreboard([], crmLeer(), T, 2);
+    expect(ohne.zeilen.find(z => z.id === 'gespraeche')!.ziel).toBe(SCORE_ZIELE.gespraeche);
+    expect(ohne.zeilen.find(z => z.id === 'neue_chancen')!.ziel).toBe(SCORE_ZIELE.neue_chancen);
+    const mit = wochenScoreboard([], crmLeer({ wertelisten: ziele }), T, 2);
+    expect(mit.zeilen.find(z => z.id === 'gespraeche')!.ziel).toBe(12);
+    expect(mit.zeilen.find(z => z.id === 'neue_chancen')!.ziel).toBe(2);
+  });
+});

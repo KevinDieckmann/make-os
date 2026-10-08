@@ -21,7 +21,7 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { kennzahlen } from '@/lib/crm/kennzahlen';
 import { marketingKennzahlen } from '@/lib/crm/marketing';
 import { eventKennzahlen, uebergaben, GRUNDLAGE } from '@/lib/crm/traktion';
-import { traktionsIndex, alsTraktion, TRAKTION_KENNZAHLEN } from '@/lib/crm/traktion-index';
+import { traktionsIndex, alsTraktion, ersterLauf, TRAKTION_KENNZAHLEN } from '@/lib/crm/traktion-index';
 import { ladeIndexDatei, fortschreiben, speichereSchwelle } from '@/lib/kennzahlen/speicher';
 import { befunde } from '@/lib/crm/befunde';
 import { HEADS, HEAD_NAME } from '@/lib/heads/prompt';
@@ -72,7 +72,8 @@ export async function GET(req: Request) {
   // Traktions-Index (26.09.): derselbe Kern wie Business und Privat — mit eigenen Schwellen und Verlauf.
   const datei = await ladeIndexDatei('traktion-index');
   // Die Kennzahlen der drei Welten gehen mit — der Index rechnet sie nicht noch einmal (Prüfbericht 27.09., Punkt 18).
-  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event] });
+  // 7.1 (08.10.): die ersten Wochen nach dem ersten Lauf „vorläufig“ (Kern-Mechanik).
+  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute) });
   const heads = HEADS.map((h, i) => {
     const s = { ...leererStand(), ...(staende[i] ?? {}) };
     const b = s.berichte[s.berichte.length - 1];
