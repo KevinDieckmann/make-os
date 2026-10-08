@@ -10,6 +10,7 @@ import { geburtstagSaeubern } from '@/lib/kalender/geburtstag';
 import { localDay } from '@/lib/zeit';
 import { tageDatumSpiegeln } from './logik';
 import { LISTEN, type Familie, type Liste, type Einstellungen, type Profil, type Vision } from './typen';
+import { visionSetzen, VisionVerboten } from './vision';
 
 export const familieName = (haushalt: string) => `familie--${haushalt}`;
 
@@ -117,16 +118,14 @@ export function setzeFelder(f: Familie, felder: Record<string, unknown>, person:
     const eigenes: Profil = { person, stress: text(p.stress, 1000), traeume: text(p.traeume, 1000), wasMirGuttut: text(p.wasMirGuttut, 1000), stand: jetzt };
     n.profile = [...f.profile.filter(x => x.person !== person), eigenes];
   }
+  // Vision (08.10., Kevin): Einträge (Ziele, Träume) ändert/löscht nur ihre Anlegerin — sonst wirft `VisionVerboten` (Route → 403,
+  // nichts gespeichert). Regeln rein in lib/familie/vision.ts.
   if (felder.vision && typeof felder.vision === 'object') {
     const v = felder.vision as Partial<Vision>;
     const jahr = Number(v.jahr) || Number(jetzt.slice(0, 4));
-    const alt = f.visionen.find(x => x.jahr === jahr);
-    const neu: Vision = {
-      jahr, leitbild: text(v.leitbild ?? alt?.leitbild, 1500),
-      ziele: Array.isArray(v.ziele) ? v.ziele.slice(0, 12).map((z, i) => ({ id: text(z.id, 40) || `z${i}`, text: text(z.text, 300), erreicht: !!z.erreicht })) : alt?.ziele ?? [],
-      traeume: Array.isArray(v.traeume) ? v.traeume.slice(0, 12).map(t => ({ person: text(t.person, 40), text: text(t.text, 500) })) : alt?.traeume ?? [],
-    };
-    n.visionen = [...f.visionen.filter(x => x.jahr !== jahr), neu];
+    const r = visionSetzen(f.visionen.find(x => x.jahr === jahr), v, person, jahr);
+    if (!r.ok) throw new VisionVerboten(r.fehler);
+    n.visionen = [...f.visionen.filter(x => x.jahr !== jahr), r.vision];
   }
   // Ritual des Tages abhaken — gemeinsam, ohne Zähler je Person.
   if (felder.ritual && typeof felder.ritual === 'object') {

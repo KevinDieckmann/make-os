@@ -371,8 +371,12 @@ function Vision({ api }: { api: FamilieApi }) {
       <Textfeld wert={v.leitbild} zeilen={3} platzhalter="Wie soll sich unser Leben in einem Jahr anfühlen? Was ist uns als Familie wichtig?" onFertig={leitbild => api.felder({ vision: { ...v, leitbild } })} />
       <Liste>
         {v.ziele.map(z => {
+          // Vision (08.10., Kevin): ändern und entfernen nur, wer den Eintrag angelegt hat (Altbestand ohne `von`: alle) — der Server
+          // lehnt sonst mit 403 ab (lib/familie/vision.ts); hier gibt es für fremde Einträge gar keinen Knopf.
+          const frei = !z.von || z.von === d.person;
           const um = () => ziele(v.ziele.map(x => (x.id === z.id ? { ...x, erreicht: !x.erreicht } : x)));
-          return <Zeile key={z.id} links={<Haken an={z.erreicht} onChange={um} farbe={ROSA} />} titel={<span style={{ whiteSpace: 'normal' }}>{z.text}</span>} rechts={<Symbol titel="Entfernen" onClick={() => ziele(v.ziele.filter(x => x.id !== z.id))}>×</Symbol>} />;
+          const stand = <span aria-label={z.erreicht ? 'erreicht' : 'offen'} title={`Angelegt von ${api.name(z.von)}`} style={{ width: 24, textAlign: 'center', color: z.erreicht ? ROSA : C.inkLeise }}>{z.erreicht ? '✓' : '○'}</span>;
+          return <Zeile key={z.id} links={frei ? <Haken an={z.erreicht} onChange={um} farbe={ROSA} /> : stand} titel={<span style={{ whiteSpace: 'normal' }}>{z.text}</span>} rechts={frei ? <Symbol titel="Entfernen" onClick={() => ziele(v.ziele.filter(x => x.id !== z.id))}>×</Symbol> : undefined} />;
         })}
       </Liste>
       <div style={{ marginTop: 8 }}><Eingabe leeren platzhalter="Gemeinsames Ziel fürs Jahr" onFertig={text => ziele([...v.ziele, { id: neueId('z'), text, erreicht: false }])} /></div>
