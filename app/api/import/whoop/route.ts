@@ -17,10 +17,11 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { gunzipSync } from 'zlib';
 import { updateJson } from '@/lib/store/local-db';
-import { personAus, speicherFuer } from '@/lib/zoe/raum';
+import { speicherFuer } from '@/lib/zoe/raum';
 import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei } from '@/lib/whoop-export';
 import type { VitalsLog } from '@/lib/vitals';
-import { nurInhaber, inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
 export const runtime = 'nodejs';
@@ -46,7 +47,9 @@ async function neuesterExport(): Promise<{ pfad: string; name: string; zeit: Dat
 export async function GET(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
-  { const sperre = await gesundheitSchreibSperre(await inhaberSpeicher()); if (sperre) return sperre; }
+  // Die Person der Anfrage (09.10., mehrere Inhaber): geprüft wird ihre Einwilligung, nicht die des Haupt-Inhabers; der Systemlauf
+  // ohne Person rechnet als Haupt-Inhaber (`laufPerson`, kein fester Name).
+  { const sperre = await gesundheitSchreibSperre(await laufPerson(req)); if (sperre) return sperre; }
   // Auf dem Server gibt es keinen Downloads-Ordner — die Oberfläche zeigt dann nur die Dateiauswahl (26.09.).
   const n = AUF_DEM_MAC ? await neuesterExport() : null;
   return NextResponse.json({ ok: true, aufDemMac: AUF_DEM_MAC, downloads: n ? { name: n.name, zeit: n.zeit.toISOString() } : null });
@@ -54,6 +57,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Geschrieben wird in den Bestand der Person der Anfrage — vorher ihre Einwilligung (a) prüfen (wie GET; 09.10.).
+  const person = await laufPerson(req);
+  { const sperre = await gesundheitSchreibSperre(person); if (sperre) return sperre; }
   let csv: string | null = null, quelle = '';
   const typ = req.headers.get('content-type') ?? '';
   try {
@@ -78,7 +84,7 @@ export async function POST(req: Request) {
   let zahlen = { neu: 0, aktualisiert: 0, behalten: 0 };
   // Je Person eigener Bestand — der Export einer Person landet bei ihr (24.09.). Seit 08.10. je Feld mit Herkunft `whoop-export`:
   // die WHOOP-Schnittstelle überschreibt diese Werte später; Handwerte und Werte der Schnittstelle bleiben (lib/whoop-export.ts).
-  await updateJson<VitalsLog>(speicherFuer('vitals', personAus(req)), current => {
+  await updateJson<VitalsLog>(speicherFuer('vitals', person), current => {
     const bestand = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     const m = einmischen(bestand, r.tage); zahlen = { neu: m.neu, aktualisiert: m.aktualisiert, behalten: m.behalten };
     return m.log;

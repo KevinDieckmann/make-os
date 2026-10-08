@@ -14,6 +14,7 @@ import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { protokolliere, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { meldungenSicht, meldungenGelesen } from '@/lib/meldungen/speicher';
@@ -60,10 +61,7 @@ const bestand = (roh: NeustartBestand | null | undefined): NeustartBestand => ({
 
 /** Die Personen des Haushalts (Speichernamen) — je Person gibt es einen persönlichen Ziele-Bestand. */
 async function haushaltsPersonen(): Promise<string[]> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return [];
-  return konten.filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt)).map(k => k.speicher);
+  return kontenImHaushaltDerInhaber(await ladeKonten()).map(k => k.speicher);
 }
 
 /**

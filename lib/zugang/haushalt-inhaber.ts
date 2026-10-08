@@ -4,9 +4,13 @@
 // Haushalt (z. B. der Test-Haushalt) oder ein Konto ohne Haushalt nicht. Dazu
 // der Dienstweg (Arbeiter, Zulieferer, ZOE im Hintergrund), den die
 // Middleware schon am Schlüssel erkannt hat.
+// Seit 09.10. (R9) kann es mehrere Inhaber geben: „Haushalt des Inhabers“ = Haushalt der Inhaber (der des Haupt-Inhabers, alle
+// Inhaber teilen ihn), „nur der Inhaber“ = JEDER wirksame Inhaber, `inhaberSpeicher()` = der Haupt-Inhaber. Regeln rein in
+// lib/zugang/inhaber.ts — hier nur Laden + Anfrage.
 
 import { ladeKonten } from '@/lib/zugang/konten';
 import { istDienst } from '@/lib/zugang/dienst';
+import { hauptInhaber, imHaushaltDerInhaber, istWirksamerInhaber, istHauptInhaber, haushaltDerInhaber, wirksameInhaber } from '@/lib/zugang/inhaber';
 
 /**
  * Haushalt des Inhabers (Sitzung oder Dienstweg). Seit 28.09. (Integritätsprüfung, K1/Regel 5) beim Dienstweg
@@ -56,23 +60,17 @@ export const KARTEI_GESPERRT = { ok: false, fehler: 'Nur im Haushalt des Inhaber
 /** Dieselbe Regel für eine Person (z. B. ZOE-Werkzeuge, die im Auftrag handeln). */
 export async function personImHaushaltDesInhabers(person: string | undefined | null): Promise<boolean> {
   if (!person || !/^[a-z0-9-]{1,40}$/.test(person)) return false;
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  const ich = konten.find(k => k.speicher === person);
-  if (!inhaber || !ich) return false;
-  if (ich.speicher === inhaber.speicher) return true;
-  return !!inhaber.haushalt && ich.haushalt === inhaber.haushalt;
+  return imHaushaltDerInhaber(await ladeKonten(), person);
 }
 
-/** Ist diese Person der Inhaber (Rolle)? */
+/** Hat diese Person Inhaber-Rechte (Rolle Inhaber im Haushalt der Inhaber — seit 09.10. jeder Inhaber, nicht nur einer)? */
 export async function istInhaber(person: string | null | undefined): Promise<boolean> {
   if (!person) return false;
-  const { konten } = await ladeKonten();
-  return konten.find(k => k.speicher === person)?.rolle === 'inhaber';
+  return istWirksamerInhaber(await ladeKonten(), person);
 }
 
 /**
- * Kevins Mac-Postfach und Adressbuch (26.09.): nur der Inhaber selbst. Der
+ * Inhaber-Dinge (Haushalt, 2FA-Pflicht, Datenschutz, Nachweise, Agenten-Regler …): JEDER Inhaber. Der
  * Dienstweg ohne Person ist ein Systemlauf (Zulieferer, Signale) und darf;
  * handelt er für eine Person (ZOE), gilt deren Recht.
  */
@@ -83,14 +81,34 @@ export async function nurInhaber(req: Request): Promise<boolean> {
   return istInhaber(w.person);
 }
 
-/** Der Speichername des Inhabers (Rolle) — statt einer festen Person im Code (Plattform-Regel); ohne Inhaber null. */
-export async function inhaberSpeicher(): Promise<string | null> {
-  const { konten } = await ladeKonten();
-  return konten.find(k => k.rolle === 'inhaber')?.speicher ?? null;
+/**
+ * Persönliches des Haupt-Inhabers, das an seinem Gerät hängt (09.10.): das Mac-Adressbuch (auch Privates) — „Inhaber“ heißt
+ * Verwaltung, nicht Einsicht. Weitere Inhaber bekommen es nicht. Systemlauf (Dienstweg ohne Person) darf wie bei `nurInhaber`.
+ */
+export async function nurHauptInhaber(req: Request): Promise<boolean> {
+  if (!(await nurInhaber(req))) return false;
+  const w = await imHaushaltOderSystemlauf(req);
+  if (!w) return false;
+  if (w.person === null) return true;
+  return istDerHauptInhaber(w.person);
 }
 
-/** Der Haushalt des Inhabers — Kalender und Business-Index gehören genau diesem Haushalt. */
+/** Ist diese Person der Haupt-Inhaber? Für Persönliches an seinem Gerät (Mac-Adressbuch, Apple-Erinnerungen) — nie für Rechte. */
+export async function istDerHauptInhaber(person: string | null | undefined): Promise<boolean> {
+  return !!person && istHauptInhaber(await ladeKonten(), person);
+}
+
+/** Der Speichername des Haupt-Inhabers — statt einer festen Person im Code (Plattform-Regel); ohne Inhaber null. */
+export async function inhaberSpeicher(): Promise<string | null> {
+  return hauptInhaber(await ladeKonten())?.speicher ?? null;
+}
+
+/** Alle wirksamen Inhaber (Haupt-Inhaber zuerst) — für Meldungen „an den Inhaber“. */
+export async function alleInhaberSpeicher(): Promise<string[]> {
+  return wirksameInhaber(await ladeKonten()).map(k => k.speicher);
+}
+
+/** Der Haushalt des Inhabers — Kalender und Business-Index gehören genau diesem Haushalt (bei mehreren Inhabern: ihrem gemeinsamen). */
 export async function haushaltDesInhabers(): Promise<string | null> {
-  const { konten } = await ladeKonten();
-  return konten.find(k => k.rolle === 'inhaber')?.haushalt ?? null;
+  return haushaltDerInhaber(await ladeKonten());
 }

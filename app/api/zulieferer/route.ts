@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { istDienst, istInhaber, personDerSitzung, ohnePerson, nurDerInhaber } from '@/lib/zugang/tor';
+import { istDerHauptInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { wahlSauber } from '@/lib/zulieferer/erinnerungen';
 import { QUELLE_TEXT } from '@/lib/zulieferer/schalter';
@@ -21,12 +22,16 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Nur der Inhaber per Sitzung: Dienstweg → 403, ohne Sitzung → 401, andere Konten → 403. */
+/**
+ * Nur der Inhaber per Sitzung: Dienstweg → 403, ohne Sitzung → 401, andere Konten → 403. Seit 09.10. (mehrere Inhaber) nur der
+ * Haupt-Inhaber: der Mac-Zulieferer liefert SEIN Gerät (Erinnerungen, Adressbuch — auch Privates), und die Übernahme legt die
+ * Erinnerungen als seine Aufgaben an. Ein weiterer Inhaber sieht hier nichts (Inhaber heißt Verwaltung, nicht Einsicht).
+ */
 async function tor(req: Request): Promise<{ person: string } | NextResponse> {
   if (istDienst(req)) return nurDerInhaber();
   const person = personDerSitzung(req);
   if (!person) return ohnePerson();
-  if (!(await istInhaber(person))) return nurDerInhaber();
+  if (!(await istInhaber(person)) || !(await istDerHauptInhaber(person))) return nurDerInhaber();
   return { person };
 }
 

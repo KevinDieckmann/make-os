@@ -5,7 +5,9 @@
 //         (zweites Gerät!) · 400 mit einem Satz je ungültigem Feld · 413 bei zu vielen Änderungen/Profilen (nie gekürzt).
 // Je Person ein Bestand (`visitenkarten--<person>`): die Person kommt aus der Sitzung, nie aus dem Body — fremde Profile
 // sind nicht erreichbar. AUSNAHME (Kevin 02.10.): `?fuer=<person>` — die Inhaberin/der Inhaber des Haushalts darf Profile für eine
-// andere Person DES HAUSHALTS anlegen und bearbeiten („für Malin anlegen“); alle anderen bekommen 403, auch wer nur im Haushalt ist.
+// andere Person DES HAUSHALTS anlegen und bearbeiten (für eine Person ohne eigene Pflege); alle anderen bekommen 403, auch wer nur im
+// Haushalt ist. Seit 09.10. (R9 — mehrere gleichwertige Inhaber): nie für einen ANDEREN Inhaber — der pflegt seine Karten selbst
+// (Inhaber heißt Verwaltung für Mitglieder, nicht Einsicht in die persönlichen Bestände des anderen Inhabers).
 // Das Protokoll (listePatchen) nennt Kennung + Feldnamen und `wer` = die schreibende Person, nie Werte. Zugang nur mit Haushalt
 // (wie Familie) UND nur von Hand angemeldet: der Dienstweg (ZOE, Takt, Skripte) bekommt 403 — wie /api/netzwerken (03.10.); ein
 // Visitenkarten-Profil ist eine persönliche Angabe (Name, Rolle, Kontakt) und gehört nie in einen Hintergrundlauf. Schreibend zusätzlich `bauPruefen`. Logos: SVG wird gesäubert (lib/netzwerken/svg.ts), alles Weitere in
@@ -60,6 +62,7 @@ async function zielPerson(req: Request, z: { person: string; haushalt: string })
   if (!(await istInhaber(z.person))) return NextResponse.json({ ok: false, fehler: 'Profile für andere anlegen darf nur die Inhaberin oder der Inhaber des Haushalts.' }, { status: 403 });
   const ziel = await haushaltFuer(fuer);
   if (!ziel || ziel.haushalt !== z.haushalt) return NextResponse.json({ ok: false, fehler: 'Diese Person gehört nicht zu eurem Haushalt.' }, { status: 403 });
+  if (await istInhaber(fuer)) return NextResponse.json({ ok: false, fehler: 'Ein anderer Inhaber pflegt seine Visitenkarten selbst.' }, { status: 403 });
   return { person: fuer, fuerAndere: true };
 }
 
@@ -67,7 +70,8 @@ async function antwort(ziel: { person: string; fuerAndere: boolean }, z: { perso
   const konten = (await ladeKonten()).konten;
   const ich = konten.find(k => k.speicher === ziel.person);
   // Die Inhaberin/der Inhaber sieht, für wen sich Profile anlegen lassen (nur Haushalt, nur Namen).
-  const personen = (await istInhaber(z.person)) ? konten.filter(k => k.haushalt === z.haushalt).map(k => ({ person: k.speicher, name: k.name, ich: k.speicher === z.person })) : [];
+  // Andere Inhaber stehen nicht zur Wahl (09.10.) — sie pflegen ihre Karten selbst.
+  const personen = (await istInhaber(z.person)) ? konten.filter(k => k.haushalt === z.haushalt && (k.speicher === z.person || k.rolle !== 'inhaber')).map(k => ({ person: k.speicher, name: k.name, ich: k.speicher === z.person })) : [];
   return { ok: true, person: ziel.person, fuerAndere: ziel.fuerAndere, personen, karten: fuerBrowser(karten), gesellschaften: await gesellschaften(z.haushalt), konto: ich ? { name: ich.name, email: ich.email } : null };
 }
 

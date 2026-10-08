@@ -12,6 +12,7 @@ import path from 'node:path';
 import { datenOrdner, loadJson, leseCacheLeeren, schreibpauseSetzen, schreibpauseAufheben } from '@/lib/store/local-db';
 import { memoLeeren } from '@/lib/store/memo';
 import { ladeKonten, type KontenStand } from '@/lib/zugang/konten';
+import { istWirksamerInhaber } from '@/lib/zugang/inhaber';
 import { localDay } from '@/lib/zeit';
 import { DEMO_MARKE, BLEIBT_BEIM_ZURUECKSETZEN, istDemoInstanz, ordnerGruende, leerGruende, zuruecksetzenGruende, umgebungGruende, namenHinweise } from './schutz';
 import { demoSaen, DemoFehler, type SaatBericht, type Zugang } from './saat';
@@ -61,7 +62,7 @@ export async function demoZuruecksetzen(person: string): Promise<SaatBericht> {
   if (!lage.demo || lage.gruende.length) throw new DemoGesperrt(lage.gruende);
   const dir = datenOrdner();
   const konten: KontenStand = await ladeKonten();
-  if (!konten.konten.some(k => k.speicher === person && k.rolle === 'inhaber')) throw new DemoGesperrt(['Zurücksetzen darf nur der Inhaber der Demo.']);
+  if (!istWirksamerInhaber(konten, person)) throw new DemoGesperrt(['Zurücksetzen darf nur ein Inhaber der Demo.']);
   // Zugang behalten: dieselben Hash/Salz (Sitzung bleibt gültig), zweiter Faktor und Abmelde-Stand.
   const zugang: Record<string, Zugang> = {};
   for (const k of konten.konten) {

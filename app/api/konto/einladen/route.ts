@@ -4,6 +4,7 @@ import { personDerSitzung, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, neuerEinladungscode, speicherName, emailSauber, adresseVergeben, EINLADUNG_STUNDEN } from '@/lib/zugang/konten';
 import { aussenAdresse } from '@/lib/innen';
+import { istWirksamerInhaber } from '@/lib/zugang/inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,8 +12,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const wer = personDerSitzung(req);
   if (!wer) return ohnePerson();
-  const ich = (await ladeKonten()).konten.find(k => k.speicher === wer);
-  if (!ich || ich.rolle !== 'inhaber') return NextResponse.json({ error: 'Nur der Inhaber darf einladen.' }, { status: 403 });
+  // Jeder Inhaber darf einladen (09.10., R9 — mehrere Inhaber; Regel in lib/zugang/inhaber.ts).
+  if (!istWirksamerInhaber(await ladeKonten(), wer)) return NextResponse.json({ error: 'Nur ein Inhaber darf einladen.' }, { status: 403 });
   // Optional: für wen (Vorname) — bindet den Speichernamen an den Code (26.09.).
   // Optional (03.10.): für welche E-Mail-Adresse — sie darf in der Instanz noch nicht vorkommen (Haupt- oder weitere Adresse
   // eines Kontos, andere offene Einladung) und ist dann bis zum Ablauf für diese Einladung reserviert.

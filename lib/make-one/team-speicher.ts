@@ -7,6 +7,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { hauptInhaber } from '@/lib/zugang/inhaber';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers, karteiZugang, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import {
@@ -22,13 +23,14 @@ export function teamSpeicherName(haushalt: string): string {
   return `team--${haushalt}`;
 }
 
-/** Konten eines Haushalts (der Inhaber zählt immer zu seinem Haushalt). */
+/** Konten eines Haushalts (der Inhaber zählt immer zu seinem Haushalt). Inhaber zuerst; `haupt` markiert den Haupt-Inhaber (09.10.). */
 export async function kontenDesHaushalts(haushalt: string): Promise<TeamKonto[]> {
-  const { konten } = await ladeKonten();
-  return konten
+  const st = await ladeKonten();
+  const haupt = hauptInhaber(st)?.speicher;
+  return st.konten
     .filter(k => k.haushalt === haushalt)
     .sort((a, b) => Number(b.rolle === 'inhaber') - Number(a.rolle === 'inhaber'))
-    .map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle }));
+    .map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, haupt: k.speicher === haupt }));
 }
 
 /** Die gespeicherten Einträge — leer, wenn es den Bestand noch nicht gibt. Lesefehler werfen (local-db). */

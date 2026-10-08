@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { nurHauptInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -98,8 +98,8 @@ function einordnen(firma: string, rolle: string, email: string): 'geschaeftlich'
 }
 
 export async function GET(req: Request) {
-  // Kevins Adressbuch (auch Privates): nur der Inhaber (26.09.).
-  if (!(await nurInhaber(req))) return NextResponse.json({ kontakte: [], anzahl: 0, error: 'Das Adressbuch gehört dem Inhaber.' }, { status: 403 });
+  // Das Adressbuch am Mac des Haupt-Inhabers (auch Privates): nur er selbst (26.09.; seit 09.10. mit mehreren Inhabern nur der Haupt-Inhaber).
+  if (!(await nurHauptInhaber(req))) return NextResponse.json({ kontakte: [], anzahl: 0, error: 'Das Adressbuch gehört dem Haupt-Inhaber.' }, { status: 403 });
   if (!AUF_DEM_MAC) return vomMac('kontakte', { kontakte: [], anzahl: 0, error: 'Kontakte kommen nur vom Mac — noch nichts zugeliefert.' });
   try {
     const stdout = await runOsascript(SCRIPT);

@@ -67,11 +67,14 @@ export async function nordsternAltbestandUebernehmen(opts: { inhalt?: string; ta
 
   let haushalt: string;
   try {
-    const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
+    const { ladeKonten } = await import('@/lib/zugang/konten');
+    const { istHauptInhaber } = await import('@/lib/zugang/inhaber');
     const { HAUSHALT_OK } = await import('@/lib/finanzen/haushalt/zugriff');
-    const konto = await kontoFuerSpeicher(person);
+    const st = await ladeKonten();
+    const konto = st.konten.find(k => k.speicher === person);
     if (!konto) { console.error('[MAKE OS] Altbestand Nordstern: kein Konto zur Variable — nichts übernommen.'); return { lauf: false, grund: 'kein Konto', teile: [] }; }
-    if (konto.rolle !== 'inhaber') { console.error('[MAKE OS] Altbestand Nordstern: die Variable nennt nicht den Inhaber — nichts übernommen.'); return { lauf: false, grund: 'nicht Inhaber', teile: [] }; }
+    // Der Altbestand stammt vom Haupt-Inhaber (09.10.: mehrere Inhaber möglich — nur er, lib/zugang/inhaber.ts).
+    if (konto.rolle !== 'inhaber' || !istHauptInhaber(st, person)) { console.error('[MAKE OS] Altbestand Nordstern: die Variable nennt nicht den Inhaber — nichts übernommen.'); return { lauf: false, grund: 'nicht Inhaber', teile: [] }; }
     if (!konto.haushalt || !HAUSHALT_OK.test(konto.haushalt)) { console.error('[MAKE OS] Altbestand Nordstern: Konto ohne Haushalt — nichts übernommen.'); return { lauf: false, grund: 'kein Haushalt', teile: [] }; }
     haushalt = konto.haushalt;
   } catch {

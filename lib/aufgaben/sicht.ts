@@ -11,6 +11,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { hauptInhaber, kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import type { Task, TasksState } from '@/types/tasks';
 import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
@@ -48,16 +49,18 @@ export async function orgZuordnung(): Promise<Record<string, string>> {
 }
 
 /**
- * Personen des Haushalts des Inhabers (Speichername + Anzeigename), der Inhaber zuerst — für „eine Verantwortliche“
+ * Personen des Haushalts des Inhabers (Speichername + Anzeigename), der Haupt-Inhaber zuerst — für „eine Verantwortliche“
  * (Prüfung + Auflösen von „both“) und Meldungen. Ohne Konten: leer (dann wird nichts umgewandelt und nichts geprüft).
+ * Seit 09.10. (mehrere Inhaber): genau EINER steht vorn — der Haupt-Inhaber (lib/zugang/inhaber.ts), danach die übrigen Inhaber,
+ * dann alle anderen, je in der Reihenfolge des Bestands. Mit einem Inhaber dieselbe Liste wie vorher.
  */
 export async function haushaltsPersonen(): Promise<{ speicher: string; name: string }[]> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return [];
-  return konten
-    .filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt))
-    .sort((a, b) => Number(b.rolle === 'inhaber') - Number(a.rolle === 'inhaber'))
+  const st = await ladeKonten();
+  const haupt = hauptInhaber(st);
+  if (!haupt) return [];
+  const rang = (k: { speicher: string; rolle: string }) => (k.speicher === haupt.speicher ? 0 : k.rolle === 'inhaber' ? 1 : 2);
+  return kontenImHaushaltDerInhaber(st)
+    .sort((a, b) => rang(a) - rang(b))
     .map(k => ({ speicher: k.speicher, name: k.name }));
 }
 /** Nur die Speichernamen (Inhaber zuerst). */

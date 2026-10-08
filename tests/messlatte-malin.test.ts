@@ -509,4 +509,37 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     const fehlt = Object.keys(ALLE_MARKEN).filter(n => !gefunden.has(n));
     expect(fehlt).toEqual([]);
   }, 900_000);
+
+  // ─── 09.10. (R9): die zweite Person als gleichwertige INHABERIN ─────────────────────────────────────────────────────────
+  // Inhaber heißt Verwaltung, nicht Einsicht: auch mit Inhaber-Rechten (jetzt kommen auch die Inhaber-Routen an) darf keine Antwort
+  // eine Marke aus Kevins privaten Beständen tragen — Gesundheit, „nur ich“, private Notizen, persönliche Bestände.
+  it('zweite Inhaberin: keine Antwort an Malin enthält eine Marke aus Kevins privaten Beständen', async () => {
+    const db = await import('@/lib/store/local-db');
+    const vorher = await db.loadJson('konten');
+    await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'inhaber'), konto('k3', 'dritte', 'mitglied')], einladungen: [], einstellungen: { hauptInhaber: 'kevin' } });
+    try {
+      const { istInhaber, inhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
+      expect(await istInhaber('malin')).toBe(true);
+      expect(await inhaberSpeicher()).toBe('kevin');
+      const lecks: string[] = [];
+      for (const pfad of routen) {
+        for (const v of VARIANTEN) {
+          const r = await rufeGet(pfad, v, 'malin');
+          if (r === 'frist' || 'fehler' in r) continue;
+          for (const [name, marke] of Object.entries(ALLE_MARKEN)) {
+            if (!r.text.includes(marke)) continue;
+            if (ERLAUBT.some(x => x.route === pfad && x.marke === marke)) continue;
+            lecks.push(`${pfad}${v} (${r.status}) → ${name}`);
+          }
+        }
+      }
+      // Das Werkzeug der Einzel-Wiederherstellung (Inhaber) öffnet keine persönlichen Bestände der anderen Person.
+      for (const q of ['?bestand=gesundheit-koerper--kevin&tag=2026-10-01&liste=beschwerden&ids=kb-messlatte', '?bestand=tageslauf', '?bestand=vitals', '?bestand=ziele-eigen--kevin']) {
+        const r = await rufeGet('intern/wiederherstellen', q, 'malin');
+        if (r === 'frist' || 'fehler' in r) { lecks.push(`intern/wiederherstellen${q}: keine Antwort`); continue; }
+        if (r.status !== 403) lecks.push(`intern/wiederherstellen${q}: ${r.status} statt 403`);
+      }
+      expect(lecks).toEqual([]);
+    } finally { await db.saveJson('konten', vorher); }
+  }, 900_000);
 });

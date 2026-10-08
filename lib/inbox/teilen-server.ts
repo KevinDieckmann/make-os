@@ -11,6 +11,7 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontenImHaushaltDerInhaber, haushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { ladePostfaecher } from '@/lib/postfach/register';
 import type { Postfach } from '@/lib/postfach/typen';
 import { aendereInboxZustand, ladeInboxZustand } from './zustand';
@@ -24,18 +25,13 @@ export interface TeamPerson extends Betrachter { name: string }
 
 /** Die Konten im Haushalt des Inhabers (dieselbe Regel wie `personImHaushaltDesInhabers`) mit Vornamen und Finanzrecht. */
 export async function teamPersonen(): Promise<TeamPerson[]> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return [];
-  return konten
-    .filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt))
+  return kontenImHaushaltDerInhaber(await ladeKonten())
     .map(k => ({ speicher: k.speicher, name: (k.name ?? '').split(/\s+/)[0] || k.speicher, ...(k.finanzRecht === 'business' ? { finanzRecht: 'business' as const } : {}) }));
 }
 
 /** Haushalt, unter dem die gemeinsamen Bestände liegen (der des Inhabers; ohne Eintrag ein fester Ersatz). */
 export async function teamHaushalt(): Promise<string> {
-  const { konten } = await ladeKonten();
-  const h = konten.find(k => k.rolle === 'inhaber')?.haushalt;
+  const h = haushaltDerInhaber(await ladeKonten());
   return h && HAUSHALT_OK.test(h) ? h : 'haupt';
 }
 

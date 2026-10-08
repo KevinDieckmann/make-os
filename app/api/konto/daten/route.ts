@@ -74,10 +74,10 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? nein('Kein gültiges JSON.', 400); }
   if (b?.aktion !== 'loeschen') return nein('aktion = loeschen', 400);
   if (String(b.bestaetigung ?? '').trim().toUpperCase() !== 'LÖSCHEN') return nein('Zur Bestätigung „LÖSCHEN“ eintippen.', 400);
-  const { konten } = await ladeKonten();
+  const { konten, einstellungen } = await ladeKonten();
   const ich = konten.find(k => k.speicher === person);
   if (!ich) return nein('Konto nicht gefunden.', 401);
-  const darf = loeschenErlaubt(ich, konten);
+  const darf = loeschenErlaubt(ich, konten, einstellungen);
   if (!darf.ok) return nein(darf.fehler, 409);
   const p = await erneutPruefen(req, ich, { passwort: b.passwort, code: b.code }, 'konto-loeschen');
   if (!p.ok) {

@@ -9,6 +9,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { personDerSitzung } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, leerlaufStunden } from '@/lib/zugang/konten';
+import { istWirksamerInhaber } from '@/lib/zugang/inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export const dynamic = 'force-dynamic';
 async function inhaber(req: Request) {
   const p = personDerSitzung(req);
   const st = await ladeKonten();
-  const ich = p && /^[a-z0-9-]{1,40}$/.test(p) ? st.konten.find(k => k.speicher === p && k.rolle === 'inhaber') : undefined;
+  // Jeder Inhaber (09.10., R9 — mehrere Inhaber), nie ein Inhaber-Konto außerhalb des Haushalts der Inhaber.
+  const ich = p && /^[a-z0-9-]{1,40}$/.test(p) && istWirksamerInhaber(st, p) ? st.konten.find(k => k.speicher === p) : undefined;
   return ich ? { ich, st } : null;
 }
 

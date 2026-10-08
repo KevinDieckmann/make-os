@@ -15,7 +15,8 @@
 //   person           nur die eigenen Daten der angemeldeten (ausdrücklich benannten) Person — kein Rückfall auf „kevin“
 //   haushalt         Haushalt des Inhabers (Kalender, Kartei, Aufgaben, Planung, Brain …); Dienstweg nur mit Person
 //                    aus dem Haushalt bzw. als Systemlauf, wo die Route das trägt
-//   inhaber          nur der Inhaber (oder der Systemlauf ohne Person, wo `nurInhaber` das zulässt)
+//   inhaber          nur ein Inhaber — seit 09.10. (R9) JEDER Inhaber (oder der Systemlauf ohne Person, wo `nurInhaber` das
+//                    zulässt); Persönliches am Gerät des Haupt-Inhabers (Mac-Adressbuch) nur er: `nurHauptInhaber`
 //   finanz-privat    private Haushaltsfinanzen: Haushaltsmitglied OHNE `finanzRecht: 'business'`
 //   finanz-business  Finanzplanung mit serverseitiger Sicht (privat/business aus dem Konto, `planZugangFuer`)
 //   modul:<name>     gehört zu einem einzeln verkaufbaren Modul (z. B. markttraktion). Bis es Modul-Lizenzen gibt, gilt
@@ -48,7 +49,7 @@ export const TORE: Record<Exclude<BasisKlasse, 'offen'>, readonly string[]> = {
   dienst: ['istDienst', 'istZulieferer'],
   person: ['personStreng', 'personDerSitzung', 'eigenePerson', 'darfGesundheitSehen'],
   haushalt: ['imHaushaltDesInhabers', 'imHaushaltOderSystemlauf', 'karteiZugang', 'kalenderZugang', 'kalenderLesen', 'personImHaushaltDesInhabers'],
-  inhaber: ['nurInhaber', 'istInhaber'],
+  inhaber: ['nurInhaber', 'istInhaber', 'nurHauptInhaber'],
   'finanz-privat': ['haushaltVon', 'haushaltFuer', 'privatFinanzZugang'],
   'finanz-business': ['planZugangVon', 'planZugangFuer'],
 };
@@ -79,7 +80,7 @@ const MT = 'modul:markttraktion' as const;
 export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Kalender, Mail, Mac-Zulieferer ──────────────────────────────────────────────────────────────────────────
   'apple-calendar': r('GET', 'haushalt', 'Kalender des Inhabers: Personen bekommen ihn maskiert, roh nur der Systemlauf (Mac-Zulieferer) — kalenderLesen.', undefined, 'Zwischenspeicher: `?refresh=1` legt den frisch gelesenen Kalender als Cache ab.'),
-  'apple-contacts': r('GET', 'inhaber', 'Adressbuch des Inhabers (Mac).'),
+  'apple-contacts': r('GET', 'inhaber', 'Adressbuch des Haupt-Inhabers (Mac, auch Privates) — nur er selbst, weitere Inhaber nicht (09.10.: Inhaber heißt Verwaltung, nicht Einsicht).'),
   'apple-reminders': r('GET', 'haushalt', 'Erinnerungen des Inhaber-Kalenders; Systemlauf (Zulieferer) erlaubt.'),
   'kalender': r('GET,POST', 'haushalt', 'Kalender des Haushalts; Apple-Erinnerungen nur für den Inhaber, private Fristen nur mit Haushalt (S1).'),
   'kalender/analyse': r('POST', 'haushalt', 'Kalender-Agent über den Kalender des Haushalts.'),
@@ -103,7 +104,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'planung/uebernahme': r('GET,POST', 'haushalt', 'Übernahme des alten Wochenplans in den Kalender; Ausführen nur von Hand (S1).'),
   'state/kalender-einstellungen': r('GET,PUT', 'haushalt', 'Kalender-Zuordnung des Haushalts.'),
   'zulieferung': rm({ POST: 'dienst', GET: 'haushalt' }, 'POST: nur der Mac-Zulieferer (eigener Schlüssel) bzw. Dienstweg — abgeschaltet 410 (08.10., Lücke 10); GET: Stand der Zulieferungen für den Haushalt.'),
-  'zulieferer': r('GET,POST', 'inhaber', 'Mac-Zulieferer abschalten (08.10., Lücke 10): Apple-Erinnerungen als Aufgaben übernehmen, Schalter, Spiegel löschen — nur der Inhaber per Sitzung (Dienstweg 403).', 'personDerSitzung'),
+  'zulieferer': r('GET,POST', 'inhaber', 'Mac-Zulieferer abschalten (08.10., Lücke 10): Apple-Erinnerungen als Aufgaben übernehmen, Schalter, Spiegel löschen — nur der Haupt-Inhaber per Sitzung (sein Mac; seit 09.10. mit mehreren Inhabern; Dienstweg 403).', 'personDerSitzung'),
   'gmail': r('GET,POST', 'person', 'Eigenes Gmail — nur die Person selbst (eigenePerson).'),
   // Inbox 2 (06.10.): EIN Strom aller eigenen Postfächer (Gmail + IMAP; WhatsApp vorbereitet) — nur die Person selbst, nie der Dienstweg.
   'inbox': r('GET,POST', 'person', 'Strom der EIGENEN Postfächer, serverseitig nach Bereich gefiltert; Aktionen gehen an die eigenen Postfächer zurück (eigenePerson).'),
@@ -358,7 +359,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'konto/zwei-faktor': r('POST', 'person', 'Eigener zweiter Faktor.'),
   'konto/einladen': r('POST', 'inhaber', 'Einladungscode — nur der Inhaber per Sitzung (Person der Sitzung, Rolle wird in der Route geprüft; Dienstweg → 401).', 'personDerSitzung'),
   'konto/einstellungen': r('GET,PUT', 'inhaber', 'Zugangs-Einstellungen der Instanz — nur der Inhaber per Sitzung (Rolle wird in der Route geprüft).', 'personDerSitzung'),
-  'konto/haushalt': r('GET,PUT', 'inhaber', 'Haushalt und finanzRecht der Konten — nur der Inhaber.'),
+  'konto/haushalt': r('GET,PUT,POST', 'inhaber', 'Haushalt und finanzRecht der Konten, Inhaber-Rolle ernennen/abgeben (09.10., R9) — jeder Inhaber; POST nur per Sitzung (Dienstweg 403) nach Passwort + zweitem Faktor.'),
   'konto/stand': r('GET,POST', 'dienst', 'Passwort-Stand für die Middleware — nur Dienstweg.'),
   'client-fehler': rm({ GET: 'inhaber', POST: 'person', DELETE: 'inhaber' }, 'Browser-Fehler: melden jede angemeldete Person, lesen/leeren nur der Inhaber (Meldungen können Inhalte tragen).'),
   'demo': r('GET,POST', 'inhaber', 'Demo-Instanz zurücksetzen — nur der Inhaber.'),
@@ -369,7 +370,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'intern/absichten': r('GET,POST', 'inhaber', 'Interne Absichten — Inhaber bzw. Systemlauf.'),
   'intern/schreibpause': r('POST', 'dienst', 'Schreibpause (Sicherung) — nur Dienstweg.'),
   'intern/umschluesseln': r('POST', 'dienst', 'Datenschlüssel rotieren — nur Dienstweg.'),
-  'intern/wiederherstellen': r('GET,POST', 'inhaber', 'Einzel-Wiederherstellung — Inhaber bzw. Systemlauf.'),
+  'intern/wiederherstellen': r('GET,POST', 'inhaber', 'Einzel-Wiederherstellung — Inhaber bzw. Systemlauf; persönliche Bestände einer ANDEREN Person nie (09.10.: Inhaber heißt Verwaltung, nicht Einsicht).'),
 };
 
 /** Entfernte Routen (05.10.): alte 410-Wege, auf die nichts mehr zeigt — dürfen nicht wiederkommen. */

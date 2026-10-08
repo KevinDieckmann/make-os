@@ -12,6 +12,7 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Hinweis, Feldzeile, feld, LEUCHT, useRueckfrage } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
+import { InhaberVerwaltung } from './InhaberVerwaltung';
 import { ZugangEinstellungen } from './ZugangEinstellungen';
 import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
@@ -20,13 +21,15 @@ import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
 
 interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[]; ziele?: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
-const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht' };
+const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht', 'inhaber-ernennen': 'Inhaber-Rolle vergeben', 'inhaber-abgeben': 'Inhaber-Rolle abgegeben' };
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
 export function KontoView() {
   const { bestaetigen, dialog } = useRueckfrage();
   const [ich, setIch] = useState<Ich | null>(null);
+  /** Haupt-Inhaber (09.10., mehrere Inhaber): gibt die Rolle nie ab, löscht sein Konto nur allein. */
+  const [haupt, setHaupt] = useState(false);
   const [andere, setAndere] = useState<Andere[]>([]);
   const [name, setName] = useState('');
   const [pw, setPw] = useState({ alt: '', neu: '' });
@@ -35,7 +38,7 @@ export function KontoView() {
   const [tg, setTg] = useState<Telegram | null>(null);
 
   const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string }[]>([]);
-  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
+  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
   const ladeTg = () => fetch('/api/telegram/koppeln').then(r => r.json()).then(d => setTg(t => ({ ...d, code: t?.code, minuten: t?.minuten }))).catch(() => {});
   useEffect(() => { void laden(); void ladeTg(); }, []);
 
@@ -180,6 +183,7 @@ export function KontoView() {
         </Kachel>
       )}
       {ich.rolle === 'inhaber' && <Kachel id="haushalt" titel="Haushalt" breite={3}><HaushaltZuordnung /></Kachel>}
+      {ich.rolle === 'inhaber' && <Kachel id="inhaber" titel="Inhaber" breite={3}><InhaberVerwaltung ich={ich.speicher} zweiterFaktorAn={!!ich.zweiterFaktorAn} i={5} /></Kachel>}
       {ich.rolle === 'inhaber' && <Kachel id="zugang-instanz" titel="Zugang der Instanz" breite={3}><ZugangEinstellungen /></Kachel>}
       {/* Team (28.09.): lebt in den Daten (team--<haushalt>); hier gepflegt, weil die alte Säulen-Seite auf /os/familie umleitet. */}
       <Kachel id="team" titel="Team" breite={6}><TeamKarte i={3} /></Kachel>
@@ -211,7 +215,7 @@ export function KontoView() {
       </Karte>
       </Kachel>
       {/* Betroffenenrechte (05.10.): Auskunft, Herunterladen, Konto löschen — jede Person selbst. */}
-      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} andere={andere.length} /></Kachel>
+      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} haupt={haupt} andere={andere.length} /></Kachel>
       {/* ZOE auf WhatsApp (08.10.): die eigene Nummer mit der ZOE-Nummer verbinden — nur die Person selbst (components/os/zoe-whatsapp). */}
       <Kachel id="zoe-whatsapp" titel="ZOE auf WhatsApp" breite={3}><ZoeWhatsappKarte i={3} /></Kachel>
       <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>

@@ -344,9 +344,11 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         // EIN Sendeweg (08.10.): ZOE auf WhatsApp, sonst Telegram (lib/zoe/an-person.ts) — ohne Boten wie bisher nichts.
         const { anPersonMelden, botenEingerichtet } = await import('./an-person');
         if ((await botenEingerichtet()) && ((bericht && r.berichtTag !== heute) || neuRot.length)) {
-          const { ladeKonten } = await import('@/lib/zugang/konten');
-          const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
-          if (inhaber) { const s = await anPersonMelden(inhaber, 'hoi', l.kurz, { link: '/os/hoi' }); telegram = s.erreicht > 0 ? `Bote gesendet (${s.kanal === 'whatsapp' ? 'WhatsApp' : 'Telegram'})` : `Bote: ${s.fehler ?? 'nicht zugestellt'}`; }
+          // An JEDEN Inhaber (09.10., R9 — mehrere Inhaber): fällt einer aus, sieht die andere den roten Befund.
+          const { alleInhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
+          const zustellungen: string[] = [];
+          for (const inhaber of await alleInhaberSpeicher()) { const s = await anPersonMelden(inhaber, 'hoi', l.kurz, { link: '/os/hoi' }); zustellungen.push(s.erreicht > 0 ? `Bote gesendet (${s.kanal === 'whatsapp' ? 'WhatsApp' : 'Telegram'})` : `Bote: ${s.fehler ?? 'nicht zugestellt'}`); }
+          telegram = [...new Set(zustellungen)].join(' · ');
         }
         await updateJson<HoiMeldung>('hoi-meldung', cur => ({ ...(cur ?? {}), gemeldet: rot, ...(bericht ? { berichtTag: heute } : {}), zuletzt: new Date().toISOString(), ampel: l.gesamt.ampel }));
         return gut(`HEAD OF IT (${bericht ? 'Tagesbericht' : 'Stundenblick'}): ${l.gesamt.ampel} — ${l.gesamt.rot} rot · ${l.gesamt.gelb} gelb · ${l.gesamt.gruen} grün${neuRot.length ? ` · neu rot: ${neuRot.join(', ')}` : ''}${telegram ? ` · ${telegram}` : ''}`);

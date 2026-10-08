@@ -25,7 +25,7 @@ import { googleKalenderNamen } from '@/lib/kalender/google/namen';
 import { ladeGoogleStand } from '@/lib/kalender/google/stand';
 import { googleAbgleichen, googleAbgleichFaellig, googleAlter } from '@/lib/kalender/google/abgleich';
 import { erinnerungen, fuerPersonFiltern } from '@/lib/kalender/eintraege';
-import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { istDerHauptInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { fristenLesen } from '@/lib/kalender/fristen-server';
 import { macTermine, type MacEv } from '@/lib/kalender/termine-lesen';
@@ -124,7 +124,8 @@ export async function GET(req: Request) {
   const [fristenAlle, rem, inhaber, eigenerHaushalt] = await Promise.all([
     fristenLesen(von, bis, heute, zugang.person).catch(() => []),
     erinnerungenAn ? loadJson<Gemerkt>(MAC.erinnerungen).catch(() => null) : Promise.resolve(null),
-    istInhaber(zugang.person).catch(() => false),
+    // Apple-Erinnerungen kommen vom Mac des Haupt-Inhabers (persönlich) — seit 09.10. (mehrere Inhaber) nur für ihn selbst.
+    istDerHauptInhaber(zugang.person).catch(() => false),
     haushaltFuer(zugang.person).catch(() => null),
   ]);
   const sicht = fuerPersonFiltern({ fristen: fristenAlle, erinnerungen: erinnerungen(rem?.daten, von, bis, wandzeit) }, { inhaber, privat: !!eigenerHaushalt });

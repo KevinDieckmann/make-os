@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Feldzeile, feld, LEUCHT, useRueckfrage } from './ui';
 
-export function MeineDaten({ zweiterFaktorAn, inhaber, andere, i = 0 }: { zweiterFaktorAn: boolean; inhaber: boolean; andere: number; i?: number }) {
+export function MeineDaten({ zweiterFaktorAn, inhaber, haupt = true, andere, i = 0 }: { zweiterFaktorAn: boolean; inhaber: boolean; /** Haupt-Inhaber (09.10.): nur er löscht erst, wenn er allein ist; weitere Inhaber geben zuerst die Rolle ab. */ haupt?: boolean; andere: number; i?: number }) {
   const { bestaetigen, dialog } = useRueckfrage();
   const [loeschen, setLoeschen] = useState<{ passwort: string; code: string; wort: string } | null>(null);
   const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
@@ -20,7 +20,7 @@ export function MeineDaten({ zweiterFaktorAn, inhaber, andere, i = 0 }: { zweite
 
   async function fragenUndOeffnen() {
     setMeldung(null);
-    if (gesperrt) { setMeldung({ text: `Als Inhaber können Sie Ihr Konto erst löschen, wenn es keine anderen Konten mehr gibt (noch ${andere}). Für das Ende der ganzen Instanz: System › Datenschutz › Vertragsende.`, gut: false }); return; }
+    if (gesperrt) { setMeldung({ text: haupt ? `Als Inhaber können Sie Ihr Konto erst löschen, wenn es keine anderen Konten mehr gibt (noch ${andere}). Für das Ende der ganzen Instanz: System › Datenschutz › Vertragsende.` : 'Geben Sie zuerst die Inhaber-Rolle ab (Konto › Inhaber) — danach können Sie Ihr Konto löschen.', gut: false }); return; }
     const ja = await bestaetigen({ titel: 'Mein Konto löschen?', text: 'Ihr Konto und alle Daten, die nur Ihnen gehören (z. B. Journal, Gesundheit, Zeit, Visitenkarten, Meldungen, verbundene Dienste), werden endgültig gelöscht. Protokolle behalten nur „[gelöscht]“ statt Ihrer Kennung; Aufgaben des Teams bleiben. Laden Sie Ihre Daten vorher herunter, wenn Sie sie behalten möchten. Das lässt sich nicht rückgängig machen.', ja: 'Weiter zum Löschen', gefahr: true });
     if (ja) setLoeschen({ passwort: '', code: '', wort: '' });
   }

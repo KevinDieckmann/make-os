@@ -8,6 +8,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { datenOrdner, loadJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { ALL_AGENTS } from '@/lib/make-one/agents-data';
 import type { AgentConfigMap } from '@/lib/agent-config';
 import type { DatenschutzUmfeld } from '@/lib/crm/datenschutz';
@@ -45,9 +46,7 @@ export async function sicherungsDatei(): Promise<{ zeit?: string; ok?: boolean; 
 export async function datenschutzUmfeld(): Promise<DatenschutzUmfeld> {
   const e = await ladeEinrichtung().catch(() => ({}));
   const w = verantwortlicherWirksam(e);
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  const haushalt = konten.filter(k => k === inhaber || (!!inhaber?.haushalt && k.haushalt === inhaber.haushalt));
+  const haushalt = kontenImHaushaltDerInhaber(await ladeKonten());
   const cfg = (await loadJson<AgentConfigMap>('agents-config').catch(() => null)) ?? {};
   return {
     verantwortlicher: { gesetzt: !!w.v, quelle: w.quelle, luecken: w.luecken },

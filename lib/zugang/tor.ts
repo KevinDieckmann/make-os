@@ -5,7 +5,7 @@
 //   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();      // Haushalt des Inhabers (Person nötig)
 //   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();   // … oder Systemlauf (Dienstweg ohne Person)
 //   if (!personStreng(req)) return ohnePerson();                         // eigene Daten der angemeldeten Person
-//   if (!(await nurInhaber(req))) return nurDerInhaber();                // nur der Inhaber (oder Systemlauf)
+//   if (!(await nurInhaber(req))) return nurDerInhaber();                // jeder Inhaber (oder Systemlauf) — mehrere seit 09.10.
 //   if (!istDienst(req)) return nurDienstweg();                          // nur der interne Dienstweg
 //   if (!(await privatFinanzZugang(req))) return keinFinanzZugang();     // private Haushaltsfinanzen (finanzRecht ≠ business)
 //
@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server';
 import { KARTEI_GESPERRT } from './haushalt-inhaber';
 import { KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 
-export { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurInhaber, istInhaber, inhaberSpeicher, personImHaushaltDesInhabers } from './haushalt-inhaber';
+export { imHaushaltDesInhabers, imHaushaltOderSystemlauf, nurInhaber, nurHauptInhaber, istInhaber, inhaberSpeicher, personImHaushaltDesInhabers } from './haushalt-inhaber';
 export { istDienst, istZulieferer } from './dienst';
 export { personStreng, haushaltVon, privatFinanzZugang, planZugangVon } from '@/lib/finanzen/haushalt/zugriff';
 
@@ -34,7 +34,7 @@ export function personDerSitzung(req: Request): string | null {
 export const nurHaushalt = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
 /** 401: keine ausdrücklich benannte Person (z. B. Dienstweg ohne Person) — kein Rückfall auf eine feste Person. */
 export const ohnePerson = () => NextResponse.json({ ok: false, fehler: 'Keine Person angemeldet.', error: 'Keine Person angemeldet.' }, { status: 401 });
-/** 403: nur der Inhaber. */
+/** 403: nur ein Inhaber (seit 09.10. jeder Inhaber). */
 export const nurDerInhaber = () => NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.', error: 'Nur der Inhaber.' }, { status: 403 });
 /** 403: nur der interne Dienstweg (Arbeiter, Bote, Takt). */
 export const nurDienstweg = () => NextResponse.json({ ok: false, fehler: 'Nur für den Dienstweg.', error: 'Nur für den Dienstweg.' }, { status: 403 });
