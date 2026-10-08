@@ -23,7 +23,15 @@
   Pflichtangaben 409, Stornorechnung, Angebot → Rechnung, Mandat → Monatsentwurf, Mahnstufen nur Vorschlag, Route `/api/rechnung`).
 - **Fertig auf Branch (nach dem Upload mergen):** `inbox-teilen` (26e8f7f4; Lücke 6 — Übergeben als freigegebene Kopie, Team-Postfach (IMAP + Business)
   mit „wer kümmert sich“, Suche über die eigenen Spiegel; Filterstelle `postfachSichtbar`).
-- **In Arbeit (Agent):** `zoe-whatsapp` (Lücke 5).
+- **Fertig auf Branch:** `zoe-whatsapp` (aca975f7; Lücke 5 — eigene ZOE-Nummer `WHATSAPP_ZOE_*`, Kanal je Person mit Code + Einwilligung, EIN Sendeweg
+  `anPersonMelden` (WhatsApp → Telegram → Glocke), Eingang über `/api/kimmi` mit `fremd()`, „Aufgabe:/Notiz:“ nur Vorschlag, „ja <Kennung>“).
+- **Probe-Zusammenführung `nach-upload`** (Worktree im Scratchpad): konten-register + business-frei + rechnungen-pdf + inbox-teilen + zoe-whatsapp, Konflikte
+  gelöst (UPDATES, Imports, Lese-Bereiche, Markttraktion-Takt = Boten-Kanal UND Business-frei). Volle Suite vor zoe-whatsapp 6.239/6.240 (Test-IBAN behoben,
+  84235d62); danach tsc 0 + betroffene Tests grün. → nach dem Freitags-Upload so in `entwicklung` mergen.
+- **In Arbeit:** `zulieferer-aus` (Lücke 10, Agent) · Recherche `AGENTEN_KONZEPT.md` (neuer Agenten-Bereich, Kevin 08.10. spät).
+- **Fragen für die nächste Klickrunde (ZOE auf WhatsApp):** (1) Inhalt der Montags-Wochenstart-Nachricht? (2) Sicherheits-Hinweise ohne Boten in die Glocke?
+  (3) Glocken-Erinnerungen über WhatsApp freischalten? (4) Eigene Meta-App für ZOE (Webhook je App) — bei Meta prüfen. (5) Telegram behalten oder abschalten?
+  (6) Transkription: welcher EU-Dienst? (7) Sprachnachrichten 30 Tage, höchstens eine Vorlage je 20 h — so lassen?
 - **Fragen für die nächste Klickrunde (Inbox teilen):** (1) Erledigt/Gelesen im Team-Postfach für alle oder je Person? (2) Screener im Team-Postfach gemeinsam?
   (3) ZOE/Tageslauf der zweiten Person sehen Team-Postfächer (Kopf + Ausschnitt), keine Übergaben — ok? (4) Antwort auf Übergabe nur aus derselben Gesellschaft?
   (5) Lagebild zählt Team-Gespräche nur bei der zuständigen Person? (6) WhatsApp Erledigt/Später ganz gemeinsam? (7) Eigener VVT-Eintrag für Übergaben/Team-Postfach?
