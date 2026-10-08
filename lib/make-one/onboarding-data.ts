@@ -71,7 +71,7 @@ const gesundheitEinwilligung = (spur: Spur, id: string): Schritt => ({
     'Ob jemand deine Gesundheit überhaupt sieht, entscheidest du getrennt davon: Konto › „Gesundheit teilen“, je Person. Standard: niemand.',
     'Jede Erklärung lässt sich jederzeit widerrufen — an derselben Stelle.',
   ],
-  wo: { href: '/os/datenschutz#gesundheit', label: 'System › Datenschutz' },
+  wo: { href: '/os/datenschutz#gesundheit', label: 'Einstellungen › Datenschutz' },
 });
 
 const postfach = (spur: Spur, id: string): Schritt => ({
@@ -308,11 +308,12 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Rundgang durch die Software',
     warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
-      'Links die Leiste mit den Bereichen, oben der Wechsel Privat / Business, Inbox und Kalender.',
-      'Heute zeigt den Tag, Aufgaben die Arbeit, Finanzen die Zahlen.',
-      '⌘K (am Handy die Suche) springt zu jeder Seite.',
+      // Aufräumen Etappe 1 (08.10.): eine Leiste je Space, oben nur der Schalter Privat | Business, Suche, Glocke, Fokus.
+      'Oben links der Schalter Privat | Business — die Leiste darunter zeigt nur die Punkte dieses Space: Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, dann Gesundheit · Familie · Kontakte bzw. Markttraktion · Mandate & Unternehmen · Kontakte, zuletzt ZOE.',
+      'Heute ist die Startseite (Gruß, Steht an, Termine, Aufgaben, Score) — über „Anpassen“ gestaltest du sie selbst. Fokus, Kompass und Wachstum liegen unter Planung; Freigaben, Agenten und Brain unter ZOE.',
+      'Unten links Einstellungen (Konto, Verbindungen, Datenschutz, Betrieb). ⌘K (am Handy die Lupe) springt zu jeder Seite.',
     ],
-    wo: { href: '/os', label: 'Dashboard' },
+    wo: { href: '/os', label: 'Heute' },
   },
   {
     id: 'malin-konten', spur: 'malin', minuten: 10,
@@ -346,7 +347,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Mitbauen: Problem oder Idee melden',
     warum: 'Mitbauen braucht keinen Code. Was hakt oder fehlt, kommt als Karte auf das Bauplan-Board — mit der Seite, auf der du gerade warst.',
     wie: [
-      'Unten links in der Leiste „Problem oder Idee melden“ (am Handy im Menü bzw. unter System): Fehler, Idee oder Wunsch, gern mit Bildschirmfoto.',
+      'Unten links in der Leiste „Problem oder Idee melden“ (am Handy im Blatt Privat/Business bzw. unter Einstellungen): Fehler, Idee oder Wunsch, gern mit Bildschirmfoto.',
       'Das Board: Ideen → Bereit → In Arbeit → Zum Testen → Fertig.',
       'Was unter „Zum Testen“ steht, probierst du aus: „Passt“ oder „Passt noch nicht“ mit Kommentar.',
     ],

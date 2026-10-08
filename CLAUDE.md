@@ -431,7 +431,7 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
   Petrol `#21B5AA` als Akzent. Motion-Sprache in `app/globals.css`.
 - **Keine Untertitel/Hinweise hinter Namen** — Namen stehen allein.
-- Startseite heißt „Dashboard". Interne Navigation immer `next/link`, nie `<a>`.
+- Startseite heißt „Heute“ (`/os`, seit 08.10.; vorher „Dashboard“/„Home“). Interne Navigation immer `next/link`, nie `<a>`.
 - Charts: die drei Teals (health/planning/finance) nie gemeinsam als Serien —
   Finanzen im Chart = Kupfer `#DE9E63`.
 - **Design-Standard (03.10., Kevin: „Den Standard von Netzwerken überall reinbringen“) — `DESIGN_STANDARD.md` ist verbindlich:** gemeinsame
@@ -870,17 +870,35 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
 ## Spaces Privat/Business (26.09., online seit 22:47)
 - Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/ZOE sehen beides. Regeln in
   `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab; `fokusSchluessel`/`fokusFuerSpace`:
-  Fokus gemeinsam oder `privat:jahr`/`business:jahr`). Menü/Kopf: `lib/make-one/spaces.ts` (SPACES · EIGEN · UNTEN,
+  Fokus gemeinsam oder `privat:jahr`/`business:jahr`). Menü/Kopf: `lib/make-one/spaces.ts` (SPACES · `leisteFuer` · ZOE_EINTRAG,
   `passtZu` Pfad+Parameter), `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Tests `tests/spaces.test.ts`.
-- Seiten: `/os` = Home (`HomeView`, gestaltbare Fläche, Standard = Privat+Business zusammen) · `/os/heute` = feste Tagesseite
-  (`HeuteView`) · `/os/wachstum` = Gesamtansicht + Score · `/os/uebersicht?space=` = Dashboard je Space (`SpaceUebersichtView`) ·
-  `/os/menschen` = Kontakte privat. Leiste `components/os/Leiste.tsx` (einklappbar, Merker `make-leiste`), Kopf `components/os/Kopf.tsx`.
-- Je Space 6 Punkte: Übersicht · Finanzen · Aufgaben · Ziele & Planung + (Privat: Gesundheit · Familie · Kontakte | Business:
-  Markttraktion · Mandate). Agenten eigener Kasten. Inbox/Kalender im Kopf folgen dem Space (`?space=`). Postfächer → Bereich je Postfach im
-  Register `postfaecher--<person>` (Inbox 2, serverseitig gefiltert), Kalender → Space in den Kalender-Einstellungen (`lib/kalender/space.ts`, client-sicher).
+- **Aufräumen Etappe 1 (08.10., Branch `aufraeumen-1`, nur lokal; Kevin: „ich weiß gar nicht mehr wo alles ist“):**
+  - **EINE Startseite „Heute“** = `/os` (`components/os/HeuteView.tsx`, gestaltbare Fläche): ohne Parameter Privat + Business zusammen, `?space=`
+    nur dieser Space (Segmente Alles · Privat · Business). Gruß + Datum einmal; Standard je Sicht `HEUTE_STANDARD` (Steht an = Widget `anstehend`,
+    Fokus, Termine, Aufgaben, Index, Wachstums-Score als Karte). **Flächen-Kennungen bleiben** (`HEUTE_FLAECHE`: `home`, `uebersicht-privat`,
+    `uebersicht-business`) — nie umbenennen, sonst sind gespeicherte Layouts weg. `/os/heute` und `/os/uebersicht` leiten in `next.config.mjs` nach
+    `/os` (Parameter wandern mit); Links nur über `WEG.heute(space?)`. `/os/wachstum` bleibt Seite (Score-Karte, Planung).
+  - **Kopf** (`components/os/Kopf.tsx`): nur Space-Schalter Privat | Business (`wechselZiel`: Gegenstück im anderen Space, sonst dessen Heute) ·
+    Suche (⌘K) · Glocke · Fokus-Zähler. Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
+  - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute ·
+    Inbox · Kalender · Aufgaben · Planung · Finanzen · (Privat: Gesundheit · Familie · Kontakte `/os/menschen` | Business: Markttraktion ·
+    Mandate & Unternehmen · Kontakte `?s=kontakte`) · ZOE. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten:
+    Heute · Privat · Business · ZOE · Netzwerken · Einstellungen. `SpaceEintrag.passt` legt den Space fest, `auch` hebt nur hervor (gemeinsame
+    Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung (Planung = `ziele-planung`).
+  - **Unterbereiche:** ZOE-Reiter (`components/os/ZoeReiter.tsx`, `ZOE_BEREICH`: Freigaben · Agenten · Loops · Brain · Empfang) auf allen
+    ZOE-Seiten inkl. Research/Content/Meeting/Board/Prospecting (erreichbar über ZOE › Agenten). Fokus · Kompass · Wachstum = Reiter der
+    `PlanerLeiste`. Mandate-Seite hat „Unternehmen“ als dritten Reiter.
+  - **Einstellungen** (`/os/system`, Titel „Einstellungen“): Gruppen nur in `lib/make-one/einstellungen.ts` (`EINSTELLUNGEN_GRUPPEN`: Konto &
+    Sicherheit · Verbindungen · Daten & Datenschutz · Betrieb) — jede Seite genau einmal, keine ZOE-Dinge.
+  - **Schnellsuche:** alle Seiten in `lib/make-one/seiten.ts` (`SEITEN_SUCHE`) — jede neue Seite dort eintragen. Namen: „Finanzen“ (nicht
+    „Zahlen“), „Brain“ (Adresse `/os/wissen`).
+  - Wächter `tests/aufraeumen-etappe1.test.ts` (≤ 12 je Space, jede Seite unter app/os erreichbar und in der Suche, Einstellungen ohne Doppel,
+    alte Adressen leiten weiter, keine verdeckte Seite, Kopf schlank), `tests/spaces.test.ts`.
+- Kontakte privat: `/os/menschen`. Postfächer → Bereich je Postfach im Register `postfaecher--<person>` (Inbox 2, serverseitig gefiltert),
+  Kalender → Space in den Kalender-Einstellungen (`lib/kalender/space.ts`, client-sicher).
 - Neue Bereiche: Space aus der Adresse lesen (`useSpace().ausAdresse`), nie stumm mischen; Adressen in `lib/wege.ts` eintragen;
-  neue Seite in `lib/make-one/spaces.ts` (passt) und `components/os/Schnellsuche.tsx` (SEITEN) anschließen. Keine Weiterleitung
-  in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
+  neue Seite in `lib/make-one/spaces.ts` (Leisten-Punkt `passt`/`auch`, nur wenn wirklich nötig — höchstens zwölf) bzw. als Unterreiter
+  anschließen und IMMER in `lib/make-one/seiten.ts`. Keine Weiterleitung in `next.config.mjs` darf eine echte Seite verdecken.
 
 ## Aufgaben wie Monday/ClickUp (28.09. abends, nur lokal — Plan: AUFGABEN_PLAN.md)
 - **Bauplan-Karte (06.10., Malin; Kevin: „komplett nach Malins Liste“, Branch `aufgaben-struktur`, UPDATES.md 06.10.):** Projekt › Liste ›
@@ -1828,10 +1846,9 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   (privat ohne Beträge, Tag „haushalt“). Takt über `plan.ts`/`takt.ts`, ein Lauf
   je Haushalt gleichzeitig; Haushalts-Ergebnisse in Warteschlange/Agenten-Log
   nur als Zähler. Speicher: `finanzchef` (Business) · `haushalt-chef--<h>`.
-- **Navigation (24.09.2026, Kevins Vorgabe):** links nur ZOE · Brain (Wissen) ·
-  Markttraktion · Fokus · Aufgaben (`lib/make-one/navigation.ts`, Test `navigation.test.ts`);
-  alles andere oben im `WachstumsKopf` (Heute, Inbox, Säulen-Ringe). `/os/fokus`
-  ist eine eigene Seite (Fokus je Horizont, Tagesform, Regler).
+- **Navigation:** seit 08.10. gilt Abschnitt „Spaces Privat/Business“ › Aufräumen Etappe 1 (Leiste je Space, schlanker Kopf, Heute
+  unter `/os`). Die Fassung vom 24.09. (links ZOE · Brain · Markttraktion · Fokus · Aufgaben, `WachstumsKopf`) ist überholt. `/os/fokus`
+  ist eine eigene Seite (Fokus je Horizont, Tagesform, Regler), erreichbar über Planung.
 - **Familie & Partnerschaft (24.09.2026):** `/os/familie`, Logik `lib/familie/`,
   Speicher `familie--<haushalt>` nur über `haushaltVon`. Gemessen wird der
   Pflege-Rhythmus des PAARES (28 Tage, Gewichte in `logik.ts`), nie eine Person,
