@@ -77,6 +77,16 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
 
+## Datenschutz vor dem Upload (08.10. spät, Branch `vor-upload-datenschutz`; UPDATES.md)
+- **Feste Prompt-Texte ohne Persönliches:** keine Namen, keine Gesundheitsangaben einer Person, keine Lebenspläne, keine festen Firmen/Produkte —
+  Name aus dem Konto der auslösenden Person (`vornameVon`), Gesellschaften über `gesellschaftenSatz`/`firmenKennungen` (lib/zoe/grundauftrag.ts),
+  EINE Anrede für alle (`anredeSatz`). Gesundheit an das Modell nur über die Art.-9-Wege mit Einwilligung (b). Wächter `tests/vor-upload-datenschutz.test.ts`
+  (Grundauftrag, Gespräch, Empfang, Morgenlauf, Tageslauf, Fokus, `agentRoster`).
+- **Bestände, die bisher geteilt lagen und jetzt je Person liegen:** `eigenerSpeicher(basis, person, inhaber)` (lib/zoe/raum.ts) — Altbestand ohne
+  Suffix nur beim Inhaber; heute `tageslauf`, `arbeitsmodus`, `gesundheitszeit`.
+- **Stammdaten:** persönliche Kennungen (`GESCHUETZT` in lib/stammdaten/regeln.ts) nur für die Person selbst, serverseitig; Schreiben nur `PATCH` mit Stand.
+- **Nichts Privates in `public/`:** dort liegen nur Icons, Manifest, Schriften (Wächter: keine `.html`).
+
 ## Bereich je Einheit — die Selbstständigkeit gehört zu Privat (05.10., Branch `selbst-privat`, nur lokal; UPDATES.md)
 Kevin 05.10.: „Selbstständigkeit raus aus Business“ — „Ja, überall unter Privat“ — „Ich habe in der Selbstständigkeit einfach ein Gewerbe
 angemeldet“ — „Runway Privat zählt das Konto der Selbstständigkeit mit“. **EINE Zuordnung** in `lib/einheiten.ts`: `RECHTSART` (kdc =
