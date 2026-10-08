@@ -19,6 +19,8 @@ import { SteuerKarte } from '@/components/os/finanzplan/Steuern';
 import { planFix, arbeitsplanFix, pruefPlan } from './fixtures/finanz-plan';
 import { LageBusiness } from '@/components/os/finanzplan/Ueberblick';
 import { businessSicht } from '@/lib/finanzen/plan/sicht';
+import { BlattSeite } from '@/components/os/finanzplan/Blaetter';
+import { blaetterFuer, ZAHNRAD, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/finanzplan' }));
 
@@ -31,6 +33,28 @@ const SEITEN: [string, () => JSX.Element][] = [
   ['Budget', Budget], ['Buchungen', Buchungen], ['Schulden', Schulden], ['Zu erledigen', ZuErledigen], ['Kalender', Kalender], ['Entwicklung', Entwicklung], ['Geldfluss', Geldfluss], ['Protokoll', Protokoll],
   ['Szenarien bauen', Baukasten], ['Gesamt', Gesamt],
 ];
+
+// 08.10. abends (Fragebogen Teil 3 Frage 10): die neuen Blätter — jeder Abschnitt offen — rendern mit und ohne Arbeitsplan und im leeren Plan.
+describe('Alle Blätter (zusammengelegt) rendern', () => {
+  const BLAETTER: Unterseite[] = [...blaetterFuer('privat').map(b => b.id), ZAHNRAD.id];
+  const blatt = (dd: FinanzDaten, u: Unterseite) => renderToStaticMarkup(h(FinanzplanKontext.Provider, { value: kontext(dd) }, h(BlattSeite, { u, alleOffen: true })));
+  for (const u of BLAETTER) {
+    it(`${u}: mit Arbeitsplan`, () => { expect(blatt(mitPlan(), u).length).toBeGreaterThan(200); });
+    it(`${u}: ohne Arbeitsplan`, () => { expect(blatt(planFix(), u).length).toBeGreaterThan(100); });
+  }
+  it('leerer Plan (frisches Konto) stürzt auf keinem Blatt ab', () => {
+    const leer = leeresDokument('2026-10-02');
+    for (const u of BLAETTER) expect(() => blatt(leer, u)).not.toThrow();
+  });
+  it('Gesellschaften: MAKE, Töpfe und KD Ventures als Abschnitte; zugeklappt wird nichts gerendert', () => {
+    const offen = blatt(mitPlan(), 'gesellschaften');
+    for (const a of ['ug', 'toepfe', 'kdv']) expect(offen).toContain(`data-abschnitt="${a}"`);
+    const zu = renderToStaticMarkup(h(FinanzplanKontext.Provider, { value: kontext(mitPlan()) }, h(BlattSeite, { u: 'gesellschaften' })));
+    // Vorgabe: MAKE offen, Töpfe und KD Ventures zu — deren Inhalt (Blatt „Töpfe …“) steht nicht im HTML.
+    expect(zu).toContain('aria-expanded="true"'); expect(zu).toContain('aria-expanded="false"');
+    expect(zu).not.toContain('id="toepfe-inhalt"'); expect(zu).toContain('id="ug-inhalt"');
+  });
+});
 
 describe('Alle Unterseiten rendern', () => {
   for (const [name, k] of SEITEN) {
@@ -135,8 +159,9 @@ describe('Ansichten gegen den Prüfstand (Zahlen von Hand, finanzplan-5)', () =>
     // 2026: Gewinn 33.400, Lohn 10.770, zvE 44.170, ESt 8.559, GewSt 1.246 · 2027: 69.600, 46.770, 116.370, 37.739, Lohn 9.432, Mehrsteuer 28.307, GewSt 6.314, Soli 1.318, Summe 29.625
     for (const s of ['33.400', '10.770', '44.170', '8.559', '1.246', '69.600', '46.770', '116.370', '37.739', '9.432', '28.307', '6.314', '1.318', '29.625', '26.770', '3.324']) expect(t, s).toContain(s);
   });
-  it('Geldfluss/Gruppe (Privat): Freies Geld Gruppe Jan 27 = 47.897', () => {
-    expect(render(d(), Geldfluss)).toContain('47.897');
+  it('Gruppe (Privat): Freies Geld Gruppe Jan 27 = 47.897 — seit 08.10. abends im Gesamt-Blatt (das Blatt „Gruppe“ des Geldflusses ist weg)', () => {
+    expect(render(d(), Gesamt)).toContain('47.897');
+    expect(render(d(), Geldfluss)).not.toContain('Freies Geld Gruppe');
   });
   it('Kalender: Entnahme 2.000 im Nov (Privat sieht sie, Business nicht)', () => {
     expect(render(d(), Kalender)).toContain('Entnahme');

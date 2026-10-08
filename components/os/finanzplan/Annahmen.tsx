@@ -48,7 +48,7 @@ export function AnnahmenKarte({ ort, i = 5 }: { ort: Gesellschaftskennung; i?: n
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{g.felder.map(feld)}</div>
         </div>
       ))}
-      <Hinweis>Monate zählen ab dem ersten Planmonat = 1; „aus“ (0) heißt: nicht in Kraft. Gilt für alle Szenarien; ein Szenario kann Gehälter unter „Szenarien bauen“ überschreiben.</Hinweis>
+      <Hinweis>Monate zählen ab dem ersten Planmonat = 1; „aus“ (0) heißt: nicht in Kraft. Gilt für alle Szenarien; ein Szenario kann Gehälter unter „Planen“ überschreiben.</Hinweis>
     </Karte>
   );
 }

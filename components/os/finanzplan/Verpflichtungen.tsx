@@ -59,7 +59,7 @@ export function Schulden() {
             <tr>
               <td style={TD}>Partnerdarlehen</td><td style={TD}><Etikett einheit="kdv" /></td><td style={TD}>läuft</td>
               <td style={TDr}><Geld v={d.annahmen.bjoernBetrag} /></td><td style={TDr}><Geld v={d.annahmen.bjoernRate} /></td><td style={TDr}>—</td>
-              <td style={TD}>{d.annahmen.bjoernRateVon ? monatLabel(d, d.annahmen.bjoernRateVon) : '—'}</td><td style={TDleise}>Planen › Szenarien</td><td style={TD}>{darlehenFrei}</td><td style={TDr}><Geld v={d.annahmen.bjoernZinsDeckel} farbe={C.inkLeise} /></td><td style={TD}></td>
+              <td style={TD}>{d.annahmen.bjoernRateVon ? monatLabel(d, d.annahmen.bjoernRateVon) : '—'}</td><td style={TDleise}>Annahmen &amp; Steuern</td><td style={TD}>{darlehenFrei}</td><td style={TDr}><Geld v={d.annahmen.bjoernZinsDeckel} farbe={C.inkLeise} /></td><td style={TD}></td>
             </tr>
             {plaene.map(({ s, t, t0 }) => (
               <tr key={s.id}>

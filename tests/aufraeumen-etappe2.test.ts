@@ -12,7 +12,7 @@ import path from 'node:path';
 import { WEG } from '../lib/wege';
 import { SEITEN_SUCHE } from '../lib/make-one/seiten';
 import { finanzOrt, finanzAdresse, kontenUnter, PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, HAUSHALT_UNTER, FINANZ_S } from '../lib/finanzen/navigation';
-import { blaetterFuer, NUR_PRIVAT_UNTERSEITEN } from '../lib/finanzen/plan/hilfen';
+import { blaetterFuer, blattAus, abschnitteFuer, NUR_PRIVAT_UNTERSEITEN, NUR_PRIVAT_ABSCHNITTE, ABSCHNITTE, ZAHNRAD, finanzplanAdresse, type Unterseite, type AbschnittId } from '../lib/finanzen/plan/hilfen';
 import { PRIVAT_GESELLSCHAFTEN } from '../lib/einheiten';
 
 const wurzel = path.resolve(__dirname, '..');
@@ -46,8 +46,10 @@ describe('Aufräumen Etappe 2 — höchstens zwei Ebenen', () => {
     }
     // Business-Blätter ohne Privates (Sicht-Regel 04.10.).
     for (const u of NUR_PRIVAT_UNTERSEITEN) expect(blaetterFuer('business').map(b => b.id)).not.toContain(u);
-    // „Buchungen“ heißt in der Planung „Ist-Buchungen“ — die Kontobuchungen stehen unter Konten & Buchungen.
-    expect(blaetterFuer('privat').find(b => b.id === 'buchungen')?.label).toBe('Ist-Buchungen');
+    // „Buchungen“ heißt in der Planung „Ist-Buchungen“ (seit 08.10. abends ein Abschnitt des Blatts Monat) — die Kontobuchungen stehen unter Konten & Buchungen.
+    expect(ABSCHNITTE.monat.find(a => a.id === 'buchungen')?.label).toBe('Ist-Buchungen');
+    // Abschnitte stehen als Daten neben den Blättern, nie als dritte Pillenreihe (keine `unter`-Liste an einem Blatt).
+    for (const u of Object.keys(ABSCHNITTE) as Unterseite[]) for (const a of ABSCHNITTE[u]) expect(Object.keys(a)).not.toContain('unter');
   });
   it('FinanzenView rendert genau EINE Reiterleiste; Planung und Haushalt keine eigene', () => {
     const v = lies('components/os/FinanzenView.tsx');
@@ -111,6 +113,9 @@ describe('Aufräumen Etappe 2 — alte Adressen leiten mit Parametern weiter', (
       expect(new URLSearchParams(neu.split('?')[1]).get(k), alt).toBe(v);
     }
     expect(ort(await folge('/os/controlling'), { haushalt: true }).unter).toBe('controlling');
+    // 08.10. abends: das alte Blatt ?u=buchungen ist ein Abschnitt des Blatts Monat — die Planung schreibt die Adresse auf Monat #buchungen um.
+    const fp = new URLSearchParams((await folge('/os/finanzplan?u=buchungen&monat=8&space=business')).split('?')[1]);
+    expect(blattAus(fp.get('u'), 'privat')).toEqual({ u: 'monat', abschnitt: 'buchungen', alt: true });
     // Buchungen einer Privat-Einheit (z. B. der Selbstständigkeit) landen unter Privat › Konten & Buchungen.
     if (PRIVAT_GESELLSCHAFTEN.length) expect(ort(await folge(`/os/finanzen/buchungen?ort=${PRIVAT_GESELLSCHAFTEN[0]}`))).toEqual({ bereich: 'privat', reiter: 'konten', unter: 'firma' });
   });
@@ -168,5 +173,54 @@ describe('Aufräumen Etappe 2 — ein Name, ein Ort', () => {
     });
     expect(funde).toEqual([]);
     expect(lies('components/os/FinanzenView.tsx')).toContain('titel="Finanzen"');
+  });
+});
+
+// ─── 08.10. abends (Fragebogen Teil 3 Frage 10): die Blätter der Planung zusammengelegt ─────────────────────────────────────
+// Kevin: „Vorschlag so übernehmen · MAKE und KD Ventures zusammen als ‚Gesellschaften‘ · Wochen-Check bleibt eigenes Blatt“.
+// Jede alte Adresse ?u=<früheres Blatt> führt auf das neue Blatt + Abschnitt (Adress-Logik `blattAus`, die Planung schreibt per router.replace um).
+describe('Aufräumen Etappe 2 — Blätter der Planung (08.10. abends)', () => {
+  /** Alt → [Privat, Business] (Blatt#Abschnitt) — so steht es im angenommenen Vorschlag; private fallen in Business auf die Lage zurück (wie bis 08.10.). */
+  const ALT: Record<string, [string, string]> = {
+    lage: ['lage', 'lage'], check: ['check', 'lage'], planen: ['planen', 'planen'], szenarien: ['szenarien', 'szenarien'],
+    ziele: ['planen#ziele', 'planen#ziele'], budget: ['monat#budget', 'lage'], buchungen: ['monat#buchungen', 'monat#buchungen'],
+    privat: ['privat', 'lage'], selbst: ['selbst', 'lage'],
+    ug: ['gesellschaften#ug', 'gesellschaften#ug'], toepfe: ['gesellschaften#toepfe', 'gesellschaften#toepfe'], kdv: ['gesellschaften#kdv', 'gesellschaften#kdv'],
+    gesamt: ['gesamt', 'gesamt'], entwicklung: ['gesamt#entwicklung', 'lage'], geldfluss: ['gesamt#geldfluss', 'lage'],
+    posten: ['faellig#posten', 'faellig#posten'], kalender: ['faellig#kalender', 'faellig#kalender'], schulden: ['faellig#schulden', 'faellig#schulden'],
+    protokoll: ['szenarien#protokoll', 'szenarien#protokoll'],
+  };
+  const text = (z: ReturnType<typeof blattAus>) => (z.abschnitt ? `${z.u}#${z.abschnitt}` : z.u);
+  it('Privat 9 Blätter, Business 6 — in dieser Reihenfolge; Annahmen & Steuern hinter dem Zahnrad, nicht als Pille', () => {
+    expect(blaetterFuer('privat').map(b => b.id)).toEqual(['lage', 'check', 'planen', 'monat', 'privat', 'selbst', 'gesellschaften', 'gesamt', 'faellig']);
+    expect(blaetterFuer('business').map(b => b.id)).toEqual(['lage', 'planen', 'monat', 'gesellschaften', 'gesamt', 'faellig']);
+    expect(blaetterFuer('privat').find(b => b.id === 'check')?.label).toBe('Wochen-Check');
+    for (const s of ['privat', 'business'] as const) expect(blaetterFuer(s).map(b => b.id)).not.toContain(ZAHNRAD.id);
+    expect(lies('components/os/finanzplan/Finanzplan.tsx')).toMatch(/<Settings [^>]*\/>/);
+  });
+  it('jede alte Kennung (?u=…) landet in beiden Sichten auf dem richtigen Blatt und Abschnitt', () => {
+    for (const [alt, [p, b]] of Object.entries(ALT)) {
+      expect(text(blattAus(alt, 'privat')), `${alt} privat`).toBe(p);
+      expect(text(blattAus(alt, 'business')), `${alt} business`).toBe(b);
+    }
+    // Neue Kennungen bleiben, wie sie sind; Unbekanntes → Lage.
+    for (const b of blaetterFuer('privat')) expect(blattAus(b.id, 'privat')).toEqual({ u: b.id, alt: false });
+    expect(blattAus('quatsch', 'privat')).toEqual({ u: 'lage', alt: false });
+    expect(blattAus(null, 'business')).toEqual({ u: 'lage', alt: false });
+  });
+  it('Abschnitte: private gibt es in der Business-Sicht nicht; jeder Abschnitt steht auf genau einem Blatt', () => {
+    const alle = (Object.keys(ABSCHNITTE) as Unterseite[]).flatMap(u => ABSCHNITTE[u].map(a => a.id));
+    expect(new Set(alle).size).toBe(alle.length);
+    for (const u of Object.keys(ABSCHNITTE) as Unterseite[]) for (const a of abschnitteFuer(u, 'business')) expect(NUR_PRIVAT_ABSCHNITTE).not.toContain(a.id);
+    expect([...NUR_PRIVAT_ABSCHNITTE].sort()).toEqual(['budget', 'entwicklung', 'geldfluss']);
+    expect(abschnitteFuer('monat', 'business').map(a => a.id)).toEqual(['buchungen']);
+    expect(abschnitteFuer('gesellschaften', 'business').map(a => a.id)).toEqual(['ug', 'toepfe', 'kdv']);
+  });
+  it('die Adresse trägt Blatt und Anker; alte Parameter (Monat, Zeile, Szenario, Steuern) bleiben', () => {
+    const z = blattAus('buchungen', 'privat');
+    expect(finanzplanAdresse('privat', { u: z.u, monat: 8, zeile: 'pb1' }, z.abschnitt as AbschnittId)).toBe('/os/finanzen?s=finanzplanung&space=privat&u=monat&monat=8&zeile=pb1#buchungen');
+    const f = lies('components/os/finanzplan/Finanzplan.tsx');
+    expect(f).toContain('router.replace(adresse(z.u, new URLSearchParams(params.toString()), z.abschnitt)');
+    expect(f).toContain('istAbschnittId(uRoh)');
   });
 });

@@ -26,90 +26,121 @@ export const SONDER_ZEILEN: Record<string, string> = {
 /** Berechnete Zeilen, die man je Zelle überschreiben kann — seit 04.10. jede gerechnete Zahl (Handwerte, lib/finanzen/handwerte.ts). */
 export const RECHENZEILEN: Record<string, string> = Object.fromEntries(Object.entries(HAND_FELDER).map(([k, f]) => [k, f.name]));
 
-// ── Aufbau (Kevin 27.09. abends: acht Bereiche, die alten Unterseiten leben darunter weiter) ──
-// Lage → Planen (Szenarien bauen · Treiber, Annahmen & Steuern) → Privat (Privat · Selbstständigkeit, seit 05.10.) → Business (MAKE Innovation GmbH · KD Ventures)
-// → Gesamt (Gesamt · Entwicklung · Geldfluss) → Buchungen & Check (Buchungen · Budget · Wochen-Check · Zu erledigen ·
-// Kalender & Verträge · Schulden) → Ziele & Töpfe (Ziele · Töpfe MAKE) → Protokoll. Alte `?u=`-Werte lösen weiter auf.
-export type Bereich = 'lage' | 'planen' | 'privat' | 'business' | 'gesamt' | 'buchungen' | 'ziele' | 'protokoll';
-export type Unterseite =
-  | 'lage' | 'check' | 'budget' | 'buchungen' | 'privat' | 'ug' | 'toepfe' | 'kdv' | 'selbst' | 'szenarien' | 'ziele'
-  | 'schulden' | 'posten' | 'kalender' | 'entwicklung' | 'geldfluss' | 'protokoll' | 'planen' | 'gesamt';
-export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; label: string }[] }[] = [
-  { id: 'lage', label: 'Lage', unter: [{ id: 'lage', label: 'Lage' }] },
-  { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber, Annahmen & Steuern' }] },
-  // 05.10. (Kevin): die Selbstständigkeit gehört zu Privat (eine Einkommensteuer) — Business sind nur noch die Gesellschaften.
-  { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }, { id: 'selbst', label: finanzOrtName('kdc') }] },
-  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: finanzOrtName('ug') }, { id: 'kdv', label: KDV }] },
-  { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
-  // 08.10. (Aufräumen Etappe 2): „Ist“ statt „Buchungen“ — die Kontobuchungen stehen unter Konten & Buchungen; hier ist der Ist-Abgleich des Plans.
-  { id: 'buchungen', label: 'Ist & Check', unter: [{ id: 'buchungen', label: 'Ist-Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
-  { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }] },
-  { id: 'protokoll', label: 'Protokoll', unter: [{ id: 'protokoll', label: 'Protokoll' }] },
+// ── Aufbau (08.10. abends, Fragebogen Teil 3 Frage 10 — Kevin: „Vorschlag so übernehmen · MAKE und KD Ventures zusammen als
+// ‚Gesellschaften‘ · Wochen-Check bleibt eigenes Blatt“) ──────────────────────────────────────────────────────────────────────
+// Statt 19 Blättern (Business 13) stehen unter Privat 9 und unter Business 6 Blätter in EINER Pillenreihe (Ebene 2 unter dem Reiter
+// „Planung“); was zusammengehört, steht als Abschnitt zum Auf- und Zuklappen auf einer Seite (zugeklappt nicht gerendert, Sprung per #anker).
+// „Treiber, Annahmen & Steuern“ samt Protokoll liegt hinter dem Zahnrad (Vorbild REITER_ZEILE.zahnrad der Markttraktion).
+//   Privat:   Lage · Wochen-Check · Planen (+ Ziele) · Monat (Budget · Ist-Buchungen) · Privat · Selbstständigkeit ·
+//             Gesellschaften (MAKE · Töpfe · KD Ventures) · Gesamt (+ Entwicklung · Geldfluss) · Fällig & Schulden (Zu erledigen · Kalender & Verträge · Schulden)
+//   Business: Lage · Planen · Monat (nur Ist-Buchungen) · Gesellschaften · Gesamt · Fällig & Schulden
+// Gerechnet wird genau wie vorher; nur die Oberfläche ist neu geordnet. Alte Adressen (?u=<altes Blatt>) lösen über `blattAus` auf das neue
+// Blatt + Abschnitt auf — die Kennungen der alten Blätter sind genau die Kennungen der neuen Blätter bzw. Abschnitte (eine Liste, kein Zweitweg).
+
+/** Ein Blatt (Ebene 2) — bzw. `szenarien`, die Seite hinter dem Zahnrad. */
+export type Unterseite = 'lage' | 'check' | 'planen' | 'monat' | 'privat' | 'selbst' | 'gesellschaften' | 'gesamt' | 'faellig' | 'szenarien';
+/** Ein Abschnitt auf einem Blatt (zum Auf- und Zuklappen). Die Kennungen sind die der früheren Blätter. */
+export type AbschnittId = 'ziele' | 'budget' | 'buchungen' | 'ug' | 'toepfe' | 'kdv' | 'entwicklung' | 'geldfluss' | 'posten' | 'kalender' | 'schulden' | 'protokoll';
+/** Wohin ein Sprung (geh, Entscheidung, Lücke, alte Adresse) führen kann: ein Blatt oder ein Abschnitt. Jede alte Blatt-Kennung ist eines davon. */
+export type Sprung = Unterseite | AbschnittId;
+
+export interface BlattDef { id: Unterseite; label: string; /** Nur in der Privat-Sicht — die Business-Sicht rendert es gar nicht. */ nurPrivat?: boolean }
+export interface AbschnittDef { id: AbschnittId; label: string; /** Nur in der Privat-Sicht — die Business-Sicht rendert ihn gar nicht. */ nurPrivat?: boolean; /** Beim ersten Öffnen aufgeklappt. */ offen?: boolean }
+
+/** Die Blätter in ihrer Reihenfolge (nach Nutzen). Namen der Gesellschaften kommen aus lib/einheiten.ts — nie fest im Code. */
+export const BLAETTER: readonly BlattDef[] = [
+  { id: 'lage', label: 'Lage' },
+  { id: 'check', label: 'Wochen-Check', nurPrivat: true },
+  { id: 'planen', label: 'Planen' },
+  { id: 'monat', label: 'Monat' },
+  { id: 'privat', label: 'Privat', nurPrivat: true },
+  { id: 'selbst', label: finanzOrtName('kdc'), nurPrivat: true },
+  { id: 'gesellschaften', label: 'Gesellschaften' },
+  { id: 'gesamt', label: 'Gesamt' },
+  { id: 'faellig', label: 'Fällig & Schulden' },
 ];
-/** Die eine Frage, die jede Unterseite beantwortet — steht klein unter den Pillen (02.10., Navigation verständlich). */
+/** Die Seite hinter dem Zahnrad (selten gebraucht: Treiber, Annahmen, Steuern, Schwellen — und das Protokoll). */
+export const ZAHNRAD: { id: 'szenarien'; label: string } = { id: 'szenarien', label: 'Treiber, Annahmen & Steuern' };
+
+/** Die Abschnitte je Blatt, in ihrer Reihenfolge. Blätter ohne Eintrag haben keine Abschnitte. */
+export const ABSCHNITTE: Readonly<Record<Unterseite, readonly AbschnittDef[]>> = {
+  lage: [], check: [], privat: [], selbst: [],
+  planen: [{ id: 'ziele', label: 'Ziele' }],
+  monat: [{ id: 'budget', label: 'Budget', nurPrivat: true, offen: true }, { id: 'buchungen', label: 'Ist-Buchungen', offen: true }],
+  gesellschaften: [{ id: 'ug', label: finanzOrtName('ug'), offen: true }, { id: 'toepfe', label: `Töpfe ${UG_KURZ}` }, { id: 'kdv', label: KDV }],
+  gesamt: [{ id: 'entwicklung', label: 'Entwicklung', nurPrivat: true }, { id: 'geldfluss', label: 'Geldfluss', nurPrivat: true }],
+  faellig: [{ id: 'posten', label: 'Zu erledigen', offen: true }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }],
+  szenarien: [{ id: 'protokoll', label: 'Protokoll' }],
+};
+
+/** Die eine Frage, die jedes Blatt beantwortet — steht klein unter den Pillen (02.10., Navigation verständlich). */
 export const FRAGE: Record<Unterseite, string> = {
   lage: 'Wo stehen wir, was ist zu entscheiden und was ist noch offen?',
-  planen: 'Szenarien bauen: Produkte, Kosten und Annahmen — und sehen, was sich dadurch ändert.',
-  szenarien: 'Treiber vergleichen, Annahmen eintragen, Steuern und Ampel-Schwellen einstellen.',
-  privat: 'Was kommt privat herein, was geht heraus, was bleibt übrig?',
-  ug: 'Umsatz, Kosten und Ergebnis dieser Gesellschaft — mit Steuern, Break-even und Runway.',
-  kdv: 'Einnahmen, Ausgaben und Kontostand dieser Gesellschaft — mit Steuern und Runway.',
-  selbst: 'Umsatz, Kosten und Ergebnis der Selbstständigkeit, die gemeinsame Einkommensteuer mit Privat — und der Abschluss 2026.',
-  gesamt: 'Alles zusammen: Privat und die Gesellschaften, verbunden über Gehalt und Ausschüttung.',
-  entwicklung: 'Wie entwickeln sich Einnahmen und Ausgaben?',
-  geldfluss: 'Wohin fließt das Geld in einem Monat?',
-  buchungen: 'Was wurde gebucht — und wohin gehört es?',
-  budget: 'Wie weit ist der Monat im Budget?',
   check: 'Der Wochen-Check: fünf Punkte, beide bestätigen.',
-  posten: 'Offene Posten, Rechnungen und Kontostände.',
-  kalender: 'Was ist wann fällig — Zahlungen, Verträge, Kündigungen.',
-  schulden: 'Restschulden, Raten und was eine Sondertilgung bringt.',
-  ziele: 'Welche Ziele haben wir, und halten wir das Tempo?',
-  toepfe: 'Wem gehört das Geld auf dem Konto der Gesellschaft?',
-  protokoll: 'Wer hat was wann geändert?',
+  planen: 'Szenarien bauen: Produkte, Kosten und Annahmen — und sehen, was sich dadurch ändert. Darunter die Ziele.',
+  monat: 'Wie läuft der Monat — Budget und Ist-Buchungen?',
+  privat: 'Was kommt privat herein, was geht heraus, was bleibt übrig?',
+  selbst: 'Umsatz, Kosten und Ergebnis der Selbstständigkeit, die gemeinsame Einkommensteuer mit Privat — und der Abschluss 2026.',
+  gesellschaften: 'Umsatz, Kosten und Ergebnis je Gesellschaft — mit Steuern, Break-even, Runway und den Töpfen.',
+  gesamt: 'Alles zusammen: Privat und die Gesellschaften, verbunden über Gehalt und Ausschüttung — darunter Entwicklung und Geldfluss.',
+  faellig: 'Was ist offen, was ist wann fällig — und welche Schulden laufen?',
+  szenarien: 'Treiber vergleichen, Annahmen eintragen, Steuern und Ampel-Schwellen einstellen — und wer was geändert hat.',
 };
-/** Die Frage je Unterseite in der Business-Sicht, wo sie sich von der Privat-Sicht unterscheidet (04.10.). */
+/** Die Frage je Blatt in der Business-Sicht, wo sie sich von der Privat-Sicht unterscheidet (04.10.). */
 export const FRAGE_BUSINESS: Partial<Record<Unterseite, string>> = {
   lage: 'Wo stehen die Gesellschaften, was ist zu entscheiden und was ist noch offen?',
+  monat: 'Was wurde im Business gebucht — und wohin gehört es?',
   gesamt: 'Die Gesellschaften zusammen — Gehalt und Ausschüttung als Abfluss (brutto).',
-  buchungen: 'Was wurde im Business gebucht — und wohin gehört es?',
-  ziele: 'Welche Business-Ziele haben wir, und halten wir das Tempo?',
-  posten: 'Offene Posten, Rechnungen und Kontostände der Gesellschaften.',
-  kalender: 'Was ist im Business wann fällig — Zahlungen, Verträge, Kündigungen.',
-  schulden: 'Restschulden der Gesellschaften, Raten und was eine Sondertilgung bringt.',
-  protokoll: 'Wer hat im Business was wann geändert?',
+  faellig: 'Offene Posten, Fälligkeiten und Schulden der Gesellschaften.',
+  szenarien: 'Treiber vergleichen, Annahmen eintragen, Steuern einstellen — und wer im Business was geändert hat.',
 };
-export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter.some(x => x.id === u))?.id ?? 'lage';
+
+export const istUnterseite = (v: unknown): v is Unterseite => v === ZAHNRAD.id || BLAETTER.some(b => b.id === v);
+export const istAbschnittId = (v: unknown): v is AbschnittId => Object.values(ABSCHNITTE).some(l => l.some(a => a.id === v));
+/** Das Blatt, auf dem ein Abschnitt steht. */
+export const blattVonAbschnitt = (a: AbschnittId): Unterseite => (Object.keys(ABSCHNITTE) as Unterseite[]).find(u => ABSCHNITTE[u].some(x => x.id === a)) ?? 'lage';
 
 // ── Sichten (04.10., Kevin: „Business ist bei Business sichtbar, kein Privat“) ──
-/** Unterseiten, die nur Privat zeigen — in der Business-Sicht gibt es sie nicht. */
-export const NUR_PRIVAT_UNTERSEITEN: Unterseite[] = ['privat', 'selbst', 'budget', 'check', 'entwicklung', 'geldfluss'];
-/** Die Bereiche einer Sicht: Privat = alle acht; Business = ohne den Bereich Privat und ohne private Unterseiten. */
-export function bereicheFuer(sicht: 'privat' | 'business'): typeof BEREICHE {
-  if (sicht === 'privat') return BEREICHE;
-  return BEREICHE.filter(b => b.id !== 'privat').map(b => ({ ...b, unter: b.unter.filter(u => !NUR_PRIVAT_UNTERSEITEN.includes(u.id)) })).filter(b => b.unter.length);
+/** Blätter, die nur Privat zeigen — in der Business-Sicht gibt es sie nicht. */
+export const NUR_PRIVAT_UNTERSEITEN: Unterseite[] = BLAETTER.filter(b => b.nurPrivat).map(b => b.id);
+/** Abschnitte, die nur Privat zeigen — die Business-Sicht rendert sie gar nicht (nicht bloß ausgeblendet). */
+export const NUR_PRIVAT_ABSCHNITTE: AbschnittId[] = Object.values(ABSCHNITTE).flatMap(l => l.filter(a => a.nurPrivat).map(a => a.id));
+
+/** Die Blätter einer Sicht in EINER Reihe (08.10., Aufräumen Etappe 2: Finanzen hat höchstens zwei Ebenen — Reiter „Planung“ = Ebene 1, Blatt = Ebene 2). */
+export function blaetterFuer(sicht: 'privat' | 'business'): { id: Unterseite; label: string }[] {
+  return BLAETTER.filter(b => sicht === 'privat' || !b.nurPrivat).map(b => ({ id: b.id, label: b.label }));
 }
-/** Unterseite in einer Sicht — eine private Unterseite fällt in der Business-Sicht auf „lage“ zurück. */
-export const unterseiteFuer = (u: unknown, sicht: 'privat' | 'business'): Unterseite => (istUnterseite(u) && (sicht === 'privat' || !NUR_PRIVAT_UNTERSEITEN.includes(u)) ? u : 'lage');
+/** Die Abschnitte eines Blatts in einer Sicht — private fallen in der Business-Sicht ganz weg. */
+export function abschnitteFuer(u: Unterseite, sicht: 'privat' | 'business'): AbschnittDef[] {
+  return ABSCHNITTE[u].filter(a => sicht === 'privat' || !a.nurPrivat);
+}
+/**
+ * Wohin ein Sprung (neues oder altes Blatt, Abschnitt) in einer Sicht führt. Ein privates Blatt oder ein privater Abschnitt fällt in der
+ * Business-Sicht auf die Lage zurück (wie bis 08.10.); Unbekanntes ebenso. `alt`: die Kennung ist kein Blatt — die Adresse wird umgeschrieben.
+ */
+export function blattAus(v: unknown, sicht: 'privat' | 'business'): { u: Unterseite; abschnitt?: AbschnittId; alt: boolean } {
+  if (istUnterseite(v)) return { u: sicht === 'business' && NUR_PRIVAT_UNTERSEITEN.includes(v) ? 'lage' : v, alt: false };
+  if (istAbschnittId(v)) {
+    const u = blattVonAbschnitt(v);
+    if (sicht === 'business' && (NUR_PRIVAT_ABSCHNITTE.includes(v) || NUR_PRIVAT_UNTERSEITEN.includes(u))) return { u: 'lage', alt: true };
+    return { u, abschnitt: v, alt: true };
+  }
+  return { u: 'lage', alt: false };
+}
+/** Blatt in einer Sicht — ein privates fällt in der Business-Sicht auf „lage“ zurück; alte Kennungen lösen auf ihr neues Blatt auf. */
+export const unterseiteFuer = (u: unknown, sicht: 'privat' | 'business'): Unterseite => blattAus(u, sicht).u;
 /**
  * Die Adresse der Finanzplanung (04.10.; seit 08.10. Reiter „Planung“ unter Finanzen › Privat und Finanzen › Business). Alte Links auf
  * /os/finanzplan?… leiten in next.config.mjs in die Privat-Sicht weiter (dort ist alles); alle Parameter (u, monat, zeile, sz, feld, steuern …) bleiben.
+ * `abschnitt` hängt den Anker an (#buchungen) — der Abschnitt klappt dann auf und kommt ins Bild.
  */
-export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSearchParams | Record<string, string | number | undefined>): string {
+export function finanzplanAdresse(sicht: 'privat' | 'business', params?: URLSearchParams | Record<string, string | number | undefined>, abschnitt?: AbschnittId): string {
   const q = new URLSearchParams();
   q.set('s', 'finanzplanung'); q.set('space', sicht);
   const eintraege = params instanceof URLSearchParams ? Array.from(params.entries()) : Object.entries(params ?? {});
   for (const [k, v] of eintraege) if (k !== 's' && k !== 'space' && v !== undefined && v !== '') q.set(k, String(v));
-  return `/os/finanzen?${q.toString()}`;
+  return `/os/finanzen?${q.toString()}${abschnitt ? `#${abschnitt}` : ''}`;
 }
-/**
- * Die Blätter einer Sicht in EINER Reihe (08.10., Aufräumen Etappe 2: Finanzen hat höchstens zwei Ebenen — Reiter „Planung“ =
- * Ebene 1, das Blatt = Ebene 2). Reihenfolge und Gruppen bleiben die der acht Bereiche (BEREICHE); die Gruppe steht nur noch als Daten.
- */
-export function blaetterFuer(sicht: 'privat' | 'business'): { id: Unterseite; label: string; bereich: Bereich }[] {
-  return bereicheFuer(sicht).flatMap(b => b.unter.map(u => ({ id: u.id, label: u.label, bereich: b.id })));
-}
-export const istUnterseite = (v: unknown): v is Unterseite => BEREICHE.some(b => b.unter.some(x => x.id === v));
 
 // ── Zahlen ──────────────────────────────────────────────────────────────────
 const FORMATE = new Map<number, Intl.NumberFormat>();

@@ -14,7 +14,7 @@ import type { FinanzDaten, MonatPrivat, MonatSelbst, MonatUG, Szenario, IstHisto
 import { kennzahlen, istHistorie } from '@/lib/finanzen/rechenkern';
 import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertung, type Bereich } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, lies, pfadTeile, OperationUngueltig, type Operation } from '@/lib/finanzen/plan/operationen';
-import type { Unterseite } from '@/lib/finanzen/plan/hilfen';
+import type { AbschnittId, Sprung } from '@/lib/finanzen/plan/hilfen';
 import type { Formeln } from '@/lib/finanzen/handwerte';
 import type { PlanSicht } from '@/lib/finanzen/plan/sicht';
 
@@ -189,9 +189,14 @@ export interface PlanKontext extends Gerechnet {
   /** Änderung mit lesbarem Feldnamen; meldet „Gespeichert“ selbst. */
   aendere: (ops: Operation[], feld: string) => Promise<boolean>;
   melde: (art: Meldung['art'], titel: string, text?: string) => void;
-  /** Unterseite wechseln — mit Parametern (Monat, Zeile) für Sprünge in die Buchungen. */
-  geh: (u: Unterseite, params?: Record<string, string | number | undefined>) => void;
+  /**
+   * Blatt wechseln bzw. zu einem Abschnitt springen (08.10.: auch alte Blatt-Kennungen wie 'buchungen' → Monat #buchungen) — mit Parametern
+   * (Monat, Zeile) für Sprünge in die Buchungen.
+   */
+  geh: (u: Sprung, params?: Record<string, string | number | undefined>) => void;
   params: URLSearchParams;
+  /** Letzter Sprung zu einem Abschnitt (08.10.): der Abschnitt klappt auf und kommt ins Bild; `n` zählt, damit derselbe Sprung erneut greift. */
+  anker?: { id: AbschnittId; n: number } | null;
 }
 
 export const FinanzplanKontext = createContext<PlanKontext | null>(null);

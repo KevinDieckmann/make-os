@@ -5,14 +5,15 @@
 
 import { GESELLSCHAFTEN, finanzOrtName, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FinanzDaten, MonatUG } from './rechenkern';
-import type { Unterseite } from './plan/hilfen';
+import type { Sprung } from './plan/hilfen';
 import { nettoTabellePlatzhalter } from './plan/operationen';
 import { arbeitsplanVon, planszenarienVon } from './szenarien';
 import { bausteineVon } from './geschaeft';
 
-export interface Luecke { id: string; text: string; hinweis?: string; ziel: { u: Unterseite; params?: Record<string, string> } }
+export interface Luecke { id: string; text: string; hinweis?: string; ziel: { u: Sprung; params?: Record<string, string> } }
 
-const SEITE: Record<Gesellschaftskennung, Unterseite> = { ug: 'ug', kdv: 'kdv', kdc: 'selbst' };
+/** Wo eine Gesellschaft geplant wird: die Gesellschaften als Abschnitt des Blatts „Gesellschaften“, die Selbstständigkeit als eigenes Blatt (08.10.). */
+const SEITE: Record<Gesellschaftskennung, Sprung> = { ug: 'ug', kdv: 'kdv', kdc: 'selbst' };
 
 /** Umsatz einer Gesellschaft im Planzeitraum — Treiber, Bausteine, bei der Selbstständigkeit auch die Posten des Abschlusses 2026. */
 function hatUmsatz(d: FinanzDaten, ort: Gesellschaftskennung, ug: MonatUG[], ps: ReturnType<typeof arbeitsplanVon>): boolean {
@@ -33,7 +34,7 @@ export function luecken(d: FinanzDaten, ug: MonatUG[], kontenFehlen: number): Lu
   }
   const ohnePreis = (ps?.bausteine ?? []).filter(b => b.art === 'umsatz' && b.an && !b.regler && b.preis === 0);
   if (ohnePreis.length) out.push({ id: 'ohne-preis', text: `${ohnePreis.length} Produkt${ohnePreis.length === 1 ? '' : 'e'} ohne Preis: ${ohnePreis.slice(0, 3).map(b => b.name).join(', ')}${ohnePreis.length > 3 ? ' …' : ''}.`, hinweis: 'Ein Produkt ohne Preis bringt im Plan keinen Umsatz.', ziel: { u: 'planen', params: { feld: 'umsatz' } } });
-  if (!d.steuern) out.push({ id: 'steuern', text: 'Steuern noch nicht durchgesehen — gerechnet wird mit den Sätzen aus den Annahmen.', hinweis: 'Je Gesellschaft festlegen, welche Steuern gelten und wie hoch sie sind.', ziel: { u: 'ug', params: { steuern: '1' } } });
+  if (!d.steuern) out.push({ id: 'steuern', text: 'Steuern noch nicht durchgesehen — gerechnet wird mit den Sätzen aus den Annahmen.', hinweis: 'Je Gesellschaft festlegen, welche Steuern gelten und wie hoch sie sind.', ziel: { u: 'ug', params: { steuern: 'ug' } } });
   if (!d.annahmen.kevinBrutto && !d.annahmen.malinBrutto && !planszenarienVon(d).some(p => p.annahmen.kevinBrutto || p.annahmen.malinBrutto)) out.push({ id: 'gehaelter', text: 'Keine Gehälter eingetragen — Personal- und Haushaltsrechnung laufen ohne Einkommen.', ziel: { u: 'szenarien' } });
   if (!d.sachkosten.length && !(ps?.bausteine ?? []).some(b => b.art === 'kosten' && b.einheit === 'ug')) out.push({ id: 'kosten-ug', text: `${finanzOrtName('ug')}: keine Fixkosten und keine Kostenbausteine.`, ziel: { u: 'ug' } });
   if (kontenFehlen > 0) out.push({ id: 'konten', text: `${kontenFehlen} Kontostände fehlen — „frei verfügbar“ ist bis dahin geschätzt.`, ziel: { u: 'posten' } });

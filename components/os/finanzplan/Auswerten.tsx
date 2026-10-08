@@ -4,6 +4,8 @@
 // Entwicklung (IST-Verlauf und Plan, Sparquote, Fixkostenquote, was sich am
 // stärksten bewegt), Geldfluss (Einnahmen → Haushalt/Umsatz → Töpfe, einfacher
 // SVG-Fluss) und Protokoll (wer hat was geändert).
+// 08.10. abends: Entwicklung und Geldfluss sind Abschnitte des Blatts Gesamt; das Blatt „Gruppe je Monat“ des Geldflusses ist weg —
+// jede seiner Zahlen (MAKE, KD Ventures, Selbstständigkeit frei, Privat angespart, Partnerdarlehen, Freies Geld Gruppe) steht im Gesamt-Blatt.
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -11,12 +13,9 @@ import { Karte, Ueberschrift, Spalten, Spalte, LEUCHT } from '../ui';
 import { istSchnitt, sollBudget, wert } from '@/lib/finanzen/rechenkern';
 import { achse, letzterVoller, prozent, monatLabel } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
-import { UG_NAME, finanzOrtName } from '@/lib/einheiten';
+import { UG_NAME } from '@/lib/einheiten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Auswahl, Hinweis, Legende, PersonMarke, KUPFER, LILA, Nichts, Pillen } from './teile';
 import { Linie, Fluss, type FlussKante } from './diagramme';
-import { Blatt } from './Blatt';
-/** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
-const KDV = finanzOrtName('kdv');
 
 // ── Entwicklung ─────────────────────────────────────────────────────────────
 export function Entwicklung() {
@@ -77,7 +76,7 @@ export function Entwicklung() {
 const GF: Record<string, string> = { Fixkosten: LEUCHT.puls, 'Jahreskosten & Puffer': KUPFER, Flexibel: C.aktiv, Sparen: LILA, Schulden: LEUCHT.kritisch, Luft: C.ink, Ereignisse: LEUCHT.achtung, Fehlbetrag: LEUCHT.kritisch, 'Nicht zugeordnet': C.inkLeise };
 
 export function Geldfluss() {
-  const { d, ug, kdc, pr, h, sz, gruppe } = usePlan();
+  const { d, ug, pr, h, sz } = usePlan();
   const [art, setArt] = useState<'privat' | 'ug'>('privat');
   const [m, setM] = useState(1);
   const optionen = [...(art === 'privat' ? d.historie.map((l, j) => ({ id: String(-(j + 1)), label: `${l} IST` })) : []), ...d.monate.map((l, j) => ({ id: String(j + 1), label: l }))];
@@ -119,18 +118,6 @@ export function Geldfluss() {
         <Ueberschrift>Wohin das Geld fließt</Ueberschrift>
         <Fluss kanten={kanten} />
         <Hinweis>{art === 'privat' ? 'Links die Einnahmen, in der Mitte der Haushalt, rechts die Töpfe. IST-Monate zeigen die Buchungen, Plan-Monate den Plan.' : 'Links die Umsatzquellen, rechts, wohin der Umsatz geht — Steuerrücklage als Näherung.'}</Hinweis>
-      </Karte>
-      <Karte i={1}>
-        <Ueberschrift>Gruppe je Monat</Ueberschrift>
-        <Blatt titel="Gruppe" zeilen={[
-          { grp: 'Stand' },
-          { name: `${UG_NAME} frei`, edit: 'ug.frei', stock: true, get: mm => ug[mm - 1].frei, ind: true },
-          { name: `${KDV} (nach Steuerrücklage)`, edit: 'kdv.frei', stock: true, get: mm => ug[mm - 1].kdvFrei, ind: true },
-          { name: 'Selbstständigkeit', edit: 'kdc.frei', stock: true, get: mm => kdc[mm - 1].frei, ind: true },
-          { name: 'Privat angespart', edit: 'p.angespart', stock: true, get: mm => pr[mm - 1].angespart, ind: true },
-          { name: 'Partnerdarlehen offen', edit: 'kdv.darlehenOffen', minus: true, stock: true, get: mm => -ug[mm - 1].bjoernRest, ind: true },
-          { name: 'Freies Geld Gruppe', edit: 'g.frei', stock: true, sum: true, key: true, get: mm => gruppe[mm - 1] },
-        ]} />
       </Karte>
     </>
   );

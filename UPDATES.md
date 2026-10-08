@@ -4,6 +4,41 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10. abends — Fragebogen Teil 3
+
+### Finanzen › Planung: Blätter zusammengelegt (nur lokal — Branch `finanzplan-blaetter`; Frage 10)
+
+Kevin: „Vorschlag so übernehmen · MAKE und KD Ventures zusammen als ‚Gesellschaften‘ · Wochen-Check als eigenes Blatt behalten.“ Vorher 19 Blätter
+unter Privat (Business 13) in einer Reihe; jetzt 9 bzw. 6, was zusammengehört, steht als Abschnitt zum Auf- und Zuklappen auf einer Seite:
+
+| Blatt | darin (früher eigene Blätter) | Privat | Business |
+|---|---|---|---|
+| Lage | Lage | ja | ja (Business-Lage) |
+| Wochen-Check | Wochen-Check | ja | – |
+| Planen | Szenarien bauen · Abschnitt Ziele | ja | ja |
+| Monat | Abschnitte Budget · Ist-Buchungen | ja | nur Ist-Buchungen |
+| Privat | Privat | ja | – |
+| Selbstständigkeit | Selbstständigkeit (+ Altbestand) | ja | – |
+| Gesellschaften | Abschnitte MAKE · Töpfe MAKE · KD Ventures (Namen aus den Einstellungen) | ja | ja |
+| Gesamt | Gesamt · Abschnitte Entwicklung · Geldfluss | ja | nur die Gesellschaften |
+| Fällig & Schulden | Abschnitte Zu erledigen · Kalender & Verträge · Schulden | ja | ja |
+| Zahnrad | Treiber, Annahmen & Steuern · Abschnitt Protokoll | ja | ja |
+
+- **Nichts geht verloren:** jede Zahl, jedes Eingabefeld bleibt; gerechnet wird genau wie vorher, an den Daten ändert sich nichts (kein Server-/Datenumbau).
+  Weggefallen ist nur das doppelte Blatt „Gruppe je Monat“ im Geldfluss — jede seiner Zahlen steht (bearbeitbar) im Gesamt-Blatt.
+- **Abschnitte:** zugeklappt nicht gerendert (Handy, Rechenlast); offen bleibt, was man offen hatte (im Browser gemerkt), sonst die Vorgabe
+  (Monat: Budget + Ist-Buchungen, Gesellschaften: MAKE, Fällig & Schulden: Zu erledigen). Zähler am Blatt und am Abschnitt (offene Buchungen, Fälliges).
+- **Alte Links und Lesezeichen** (`?u=buchungen`, `?u=ug`, `?u=protokoll` …) führen auf das neue Blatt und klappen den Abschnitt auf (Adresse wird
+  umgeschrieben, Monat/Zeile/Szenario bleiben). Private Abschnitte gibt es in der Business-Sicht gar nicht (nicht bloß versteckt).
+- **Lücke geschlossen:** die Zahl „Gehalt 2 brutto (Selbstständigkeit)“ (Handwert `p.malinSelbst`) rechnete der Kern schon, aber kein Blatt zeigte sie —
+  jetzt optionale Zeile im Privat-Blatt (nur bis zum Start in der Gesellschaft, ohne Wert verborgen).
+- **Steuerkarte aus dem Link:** `steuern=<Gesellschaft>` öffnet genau eine Karte (MAKE und KD Ventures stehen jetzt auf einem Blatt); alte Links `steuern=1` wie bisher.
+- **So testet ihr:** Finanzen › Privat › Planung → neun Pillen, rechts das Zahnrad „Annahmen & Steuern“. Monat → Budget, Klick auf einen Topf → Ist-Buchungen
+  darunter springen auf diesen Topf. Gesellschaften → „Töpfe MAKE“ aufklappen, neu laden: bleibt offen. Lage → „Wochen-Check öffnen“. Alter Link
+  `/os/finanzen?s=finanzplanung&space=privat&u=kalender` → Fällig & Schulden, Kalender offen. Finanzen › Business › Planung → sechs Pillen, kein Budget.
+- **Rückweg:** nur Oberfläche, keine Datenform geändert — der alte Stand liest alles wie vorher; alte Links dort zeigen wieder die alten Blätter.
+- Tests: `tests/finanzplan-blaetter.test.ts` (neu), `tests/aufraeumen-etappe2.test.ts`, `tests/finanzplan-sicht.test.ts`, `tests/finanzplan-ansichten.test.ts` (erweitert).
+
 ## 08.10.2026 — Phase 0: Sicht-Entscheidungen (nur lokal — Branch `phase0-sicht`)
 
 Kevins Antworten auf die Fragen 1–3 der Sicht-Prüfung (unten, „Fragen an Kevin“) plus WHOOP — alles serverseitig, je mit Wächtertest.

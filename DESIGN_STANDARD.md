@@ -50,6 +50,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 | `Erfolg`, `Schritte`, `Fortschritt` | Haken, Schrittanzeige, Balken |
 | `eingabe`, `feld`, `auswahl`, `Feldzeile` | Formularfeld 48/16 · kompakt 44 · Auswahlliste 40/44 · Feld mit Beschriftung und Fehlertext |
 | `Aktionsleiste` | die Hauptaktion unten mitlaufend am Handy, über der Tastatur beim Tippen |
+| `Klappbar` | Abschnitt einer Seite zum Auf- und Zuklappen (08.10.): Kopfzeile = Knopf (Anzeigeschrift 18, Pfeil, optional Zähler), zugeklappt wird der Inhalt NICHT gerendert, Anker `#<id>`; keine Karte (der Inhalt trägt seine Karten) — Finanzen › Planung |
 | `ZeileAktionen` | Archivieren & Löschen an jeder Listenzeile: Handy nach links wischen, Rechner Knöpfe am Rand (siehe „Löschen & Archivieren“) |
 | `Rueckfrage`/`useRueckfrage`, `RueckgaengigLeiste`/`useRueckgaengig` | Rückfrage statt `window.confirm` (Abbrechen hat den Fokus) · Hinweis unten mit „Rückgängig“ (10 s) |
 

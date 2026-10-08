@@ -91,7 +91,7 @@ export function Budget() {
             {BUDGET_GRUPPEN.map(g => { const zs = d.privatBudget.filter(z => z.gruppe === g); return zs.length ? [<Gruppenzeile key={`g-${g}`} text={g} spalten={7} />, ...zs.map(zeile)] : null; })}
             {d.privatSchulden.length > 0 && <Gruppenzeile text="Schulden" spalten={7} />}
             {d.privatSchulden.map(zeile)}
-            {!d.privatBudget.length && <tr><td colSpan={7} style={TDleise}>Noch keine Budget-Zeilen — unter Planen › Privat anlegen.</td></tr>}
+            {!d.privatBudget.length && <tr><td colSpan={7} style={TDleise}>Noch keine Budget-Zeilen — im Blatt Privat anlegen.</td></tr>}
           </tbody>
         </Tabelle>
         <Hinweis>{vorPlan ? 'Vor Oktober gab es keinen Plan — Maßstab ist das Budget ab Okt 26. ' : ''}{laufend ? 'Der Strich im Balken ist der heutige Tag: liegt der Balken davor, seid ihr im Tempo. ' : ''}Klick auf einen Topf öffnet die Buchungen.</Hinweis>

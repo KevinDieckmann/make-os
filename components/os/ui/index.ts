@@ -5,6 +5,8 @@
 export { Seite, Karte, Ueberschrift, Abschnitt, Titel, Beschriftung, Kennzahl, Zahl, Raster, Liste, Zeile, Eigenschaft, Initialen, Fortschritt, SEITE_BREIT } from './flaechen';
 export { Knopf, Gross, Wahl, Pillen, MehrfachPillen, Chip, Segmente, Reiter, Schalter, Aktionsleiste, HakenZiel, SymbolKnopf, type KnopfProps, type KnopfTon, type ReiterEintrag } from './knoepfe';
 export { Hinweis, Leerzustand, Leer, Erfolg, Schritte } from './rueckmeldung';
+// Klappbar (08.10.): Abschnitt einer Seite zum Auf- und Zuklappen — zugeklappt nicht gerendert, Anker #<id> (Finanzen › Planung).
+export { Klappbar } from './klappbar';
 export { eingabe, feld, auswahl, Feldzeile } from './felder';
 // Ziel-Bezug: `ZielChip`/`useZielBezug` = je Aufgabe (Kern), `ZielBezug` = je Bereich/Seite (Privat: Gesundheit, Familie, Kompass …).
 export { ZielChip, useZielBezug } from './ziel';

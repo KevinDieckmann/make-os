@@ -51,6 +51,9 @@ export function Privat() {
     { grp: 'Einnahmen', add: 'privatEinnahmen' },
     ...d.privatEinnahmen.map((z): DatenZeile => ({ name: z.name, zeile: z.id, edit: z.id, get: m => wert(z, m, dd.plan), ind: true })),
     { name: `${personName('kevin')} netto`, edit: 'p.kevinNetto', get: m => P(m).kevinNetto, ind: true },
+    // 08.10. abends (Lücke geschlossen): Gehalt 2 brutto vor dem Start in der Gesellschaft (über die Selbstständigkeit) — der Kern las den Handwert
+    // `p.malinSelbst` schon, aber kein Blatt zeigte ihn. Nur bis zum Start in der Gesellschaft (danach kommt das Brutto von dort); ohne Wert verborgen.
+    { name: HAND_FELDER['p.malinSelbst'].name, edit: 'p.malinSelbst', get: m => (m < dd.annahmen.malinAb ? P(m).malinBrutto : 0), ind: true, optional: true },
     { name: `${personName('malin')} netto`, edit: 'p.malinNetto', get: m => P(m).malinNetto, ind: true },
     { name: 'Ausschüttung netto', edit: 'p.ausschuettung', get: m => P(m).ausschuettung, ind: true, optional: true },
     { name: 'Entnahme aus der Selbstständigkeit', edit: 'p.entnahme', get: m => P(m).entnahme, ind: true, optional: true },
