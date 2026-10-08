@@ -40,6 +40,21 @@ const KOERPER: Angaben = {
   art15: 'nur die Person selbst sieht, pflegt und exportiert ihr Körper-Profil (Gesundheit › Körper, Konto-Export) — auch bei „Teilen“ nie andere Konten',
 };
 
+/** Tageslauf je Person (08.10. spät): Ausrichtung mit Tagesform (Art. 9 nur mit Einwilligung) — nur die Person selbst. */
+const TAGESLAUF: Angaben = {
+  rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); soweit die Tagesform einfließt Art. 9 Abs. 2 lit. a — nur mit Einwilligung (b) „An die KI geben“',
+  art15: 'die Person sieht ihre Läufe unter Tageslauf/Ritual (GET /api/tageslauf liefert nur die eigenen); Konto › Meine Daten exportiert sie',
+  loeschfrist: 'rollend: nur die letzten Läufe (MAX_LAEUFE); Konto löschen entfernt den Bestand',
+  kategorie: ['art9'],
+};
+/** Arbeits-Schalter je Person (08.10. spät): nur Uhrzeiten an/aus — Arbeitszeit. */
+const ARBEITSZEIT: Angaben = {
+  rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG — die Person misst ihre eigene Arbeitszeit selbst',
+  art15: 'die Person sieht ihre Zeiten unter Ritual (GET /api/state/arbeitsmodus liefert nur die eigenen); Konto › Meine Daten exportiert sie',
+  loeschfrist: 'rollend 60 Tage; Konto löschen entfernt den Bestand',
+  kategorie: ['beschaeftigte'],
+};
+
 const E = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'entfernen', grund, ...(frist ? { frist } : {}) });
 const T = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'tilgen', grund, ...(frist ? { frist } : {}) });
 const H = (muster: string, grund: string): SpeicherEintrag => ({ muster, bezug: 'haushalt', behandlung: 'ausgenommen', grund });
@@ -283,7 +298,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('delegation-runde', 'Delegations-Vorschläge an Personen des Haushalts (Aufgaben-Titel).'),
   { muster: 'anfragen-ergebnis', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Idempotenz-Ablage (lib/store/anfragen.ts): Antworten höchstens 24 h, danach automatisch weg — kein eigener Löschlauf nötig.' },
   mit(H('gesundheit-takt', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
-  mit(H('gesundheitszeit', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
+  // Je Person seit 08.10. spät (Datenschutz vor dem Upload): Altbestand ohne Suffix nur beim Inhaber (lib/zoe/raum.ts `eigenerSpeicher`).
+  mit(H('gesundheitszeit', 'Gesundheits-Zeit (Schalter an/aus, nur Uhrzeiten) — Altbestand ohne Suffix, gehört dem Inhaber.'), GESUNDHEIT),
+  mit(H('gesundheitszeit--*', 'Gesundheits-Zeit je Person (Schalter an/aus, nur Uhrzeiten) — liest und schaltet nur die Person selbst.'), GESUNDHEIT),
   mit(H('health-log', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
   H('journal', 'Eigenes Journal des Haushalts.'),
   H('routinen', 'Eigene Routinen des Haushalts.'),
@@ -307,7 +324,9 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('anwesenheit', 'Wer vom Haushalt gerade online ist.'),
   H('nutzung', 'Nutzung der Oberfläche durch den Haushalt (Zähler).'),
   H('aenderungen', 'Altes Browser-Änderungsprotokoll (nur Person des Haushalts, Bestand, Seite) — nur gelesen.'),
-  H('arbeitsmodus', 'Arbeitsmodus des Haushalts.'),
+  // Arbeits-Schalter je Person seit 08.10. spät — Altbestand ohne Suffix nur beim Inhaber.
+  mit(H('arbeitsmodus', 'Arbeits-Schalter (an/aus, nur Uhrzeiten) — Altbestand ohne Suffix, gehört dem Inhaber.'), ARBEITSZEIT),
+  mit(H('arbeitsmodus--*', 'Arbeits-Schalter je Person (an/aus, nur Uhrzeiten) — liest und schaltet nur die Person selbst.'), ARBEITSZEIT),
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
   mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der Anwendung) bzw. § 26 BDSG für Beschäftigte; lit. f (Sicherheit)',
@@ -378,7 +397,10 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('performance', 'Wachstums-Score (Zahlen).'),
   K('planung-einheiten--*', 'Einheiten der Planung je Haushalt.'),
   K('spaces', 'Space-Einstellungen.'),
-  K('tageslauf', 'Riegel des Tageslaufs.'),
+  // Tageslauf je Person seit 08.10. spät (Datenschutz vor dem Upload): die Ausrichtung entsteht mit dem Gesundheitskontext der Person
+  // (nur mit Einwilligung (b)) — vorher lag sie in einem Bestand, den jedes Konto lesen konnte. Altbestand ohne Suffix nur beim Inhaber.
+  mit(H('tageslauf', 'Tagesläufe (Kurzfassung je Schritt, Ausrichtung mit Tagesform und Prioritäten) — Altbestand ohne Suffix, gehört dem Inhaber.'), TAGESLAUF),
+  mit(H('tageslauf--*', 'Tagesläufe je Person (Kurzfassung je Schritt, Ausrichtung mit Tagesform und Prioritäten) — nur die Person selbst liest sie.'), TAGESLAUF),
   K('tagesstart', 'Riegel des Morgenlaufs.'),
   K('willkommen', 'Willkommens-Hinweise.'),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),

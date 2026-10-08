@@ -115,6 +115,17 @@ export function speicherFuer(basis: string, person: Person): string {
   return person === 'kevin' ? basis : `${basis}--${person.replace(/[^a-z0-9-]/g, '')}`;
 }
 
+/**
+ * Wie `speicherFuer`, aber für Bestände, die BIS ZUM 08.10. geteilt (ohne Person) lagen und jetzt je Person liegen
+ * (Tageslauf, Arbeits- und Gesundheits-Schalter — „Datenschutz vor dem Upload“): der Altbestand ohne Suffix gehört
+ * nur dem Inhaber. Liefe `speicherFuer` für eine andere Person auf den Namen ohne Suffix hinaus, bekommt sie
+ * `<basis>--<person>` — sie sieht den Altbestand nie (Konto-Daten kennen beide Namen, lib/datenschutz/konto-daten.ts).
+ */
+export function eigenerSpeicher(basis: string, person: Person, inhaber: string | null): string {
+  const n = speicherFuer(basis, person);
+  return n === basis && person !== inhaber ? `${basis}--${person.replace(/[^a-z0-9-]/g, '')}` : n;
+}
+
 /** Filter für Listen mit Raum-Feld. */
 export function nurSichtbar<T extends { raum?: Raum }>(liste: T[], person: Person): T[] {
   return liste.filter(x => darfSehen(x.raum, person));

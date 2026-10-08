@@ -1,13 +1,18 @@
 // ─── MAKE OS — An/Aus-Modus (lokal) ─────────────────────────────────────────
-// Kevins Arbeits-Schalter: morgens AN, abends AUS. Misst ehrlich, wie viel
+// Der Arbeits-Schalter: morgens AN, abends AUS. Misst ehrlich, wie viel
 // aktiv gearbeitet wird — und ob abends wirklich ausgeloggt wurde.
 // Log: { "YYYY-MM-DD": { sessions: [{ von: "HH:MM", bis: "HH:MM"|null }] } }
+// 08.10. spät (Datenschutz vor dem Upload): beide Zähler JE PERSON (`arbeitsmodus--<person>`, `gesundheitszeit--<person>`,
+// Gesundheitszeit = Art. 9) — vorher ein Bestand für alle Konten. Der Altbestand ohne Suffix gehört nur dem Inhaber
+// (`eigenerSpeicher`); jede Person liest und schaltet nur ihre eigenen Zähler.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { eigenerSpeicher } from '@/lib/zoe/raum';
+import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,14 +38,17 @@ function tagesStand(log: ModusLog, tag: string) {
 }
 
 // Zwei Zähler, ein Muster: Arbeitszeit ('arbeitsmodus') und Gesundheits-Zeit
-// ('gesundheitszeit' — Reha, Bewegung, Erholung; Kevins zweiter Schalter oben).
+// ('gesundheitszeit' — Bewegung, Erholung; der zweite Schalter oben).
 const STORE_VON: Record<string, string> = { arbeit: 'arbeitsmodus', gesundheit: 'gesundheitszeit' };
+/** Bestand der Person (je Person, Altbestand ohne Suffix nur beim Inhaber). */
+const bestand = async (basis: string, person: string) => eigenerSpeicher(basis, person, await inhaberSpeicher());
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  const z = await imHaushaltDesInhabers(req);
+  if (!z) return nurHaushalt();
   const [aLog, gLog] = await Promise.all([
-    loadJson<ModusLog>('arbeitsmodus'),
-    loadJson<ModusLog>('gesundheitszeit'),
+    loadJson<ModusLog>(await bestand('arbeitsmodus', z.person)),
+    loadJson<ModusLog>(await bestand('gesundheitszeit', z.person)),
   ]);
   const heute = localDay();
   return NextResponse.json({ heute: tagesStand(aLog ?? {}, heute), gesundheit: tagesStand(gLog ?? {}, heute) });
@@ -48,13 +56,14 @@ export async function GET(req: Request) {
 
 /** POST { aktion: 'an' | 'aus', was?: 'arbeit' | 'gesundheit' } — schaltet den jeweiligen Zähler. */
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  const z = await imHaushaltDesInhabers(req);
+  if (!z) return nurHaushalt();
   let body: { aktion?: string; was?: string };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion !== 'an' && body.aktion !== 'aus') {
     return NextResponse.json({ ok: false, error: 'aktion an|aus nötig.' }, { status: 400 });
   }
-  const store = STORE_VON[body.was ?? 'arbeit'] ?? 'arbeitsmodus';
+  const store = await bestand(STORE_VON[body.was ?? 'arbeit'] ?? 'arbeitsmodus', z.person);
   const heute = localDay();
   const next = await updateJson<ModusLog>(store, current => {
     const log: ModusLog = current && typeof current === 'object' && !Array.isArray(current) ? current : {};

@@ -200,7 +200,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
   const zoneR = recHeute != null
     ? recHeute >= 66 ? { l: 'GRÜN', c: LEUCHT.gut, txt: 'volle Ladung — heute darf hart gefahren werden.' }
       : recHeute >= 40 ? { l: 'GELB', c: LEUCHT.achtung, txt: 'halbe Ladung — zwei gute Blöcke, Pausen ernst nehmen.' }
-      : { l: 'ROT', c: LEUCHT.kritisch, txt: 'Erhaltungsmodus — heute bewusst leichter planen, Rücken schonen.' }
+      : { l: 'ROT', c: LEUCHT.kritisch, txt: 'Erhaltungsmodus — heute bewusst leichter planen, Pausen schützen.' }
     : null;
   const erledigtHeute = tasksState.tasks.filter(t => t.status === 'done' && t.dueDate === heute).length;
 
@@ -258,7 +258,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
               <input value={vEingabe.sleep} onChange={e => setVEingabe({ ...vEingabe, sleep: e.target.value })} placeholder="Schlaf h" style={zahlenFeld} />
               <input value={vEingabe.hrv} onChange={e => setVEingabe({ ...vEingabe, hrv: e.target.value })} placeholder="HRV" type="number" style={zahlenFeld} />
               <input value={vEingabe.rhr} onChange={e => setVEingabe({ ...vEingabe, rhr: e.target.value })} placeholder="Puls" type="number" style={zahlenFeld} />
-              <input value={vEingabe.note} onChange={e => setVEingabe({ ...vEingabe, note: e.target.value })} placeholder="Notiz (z.B. Rücken zieht)" style={{ ...feld, width: 'auto', flex: '2 1 160px', minWidth: 0 }} />
+              <input value={vEingabe.note} onChange={e => setVEingabe({ ...vEingabe, note: e.target.value })} placeholder="Notiz (z. B. kurz geschlafen)" style={{ ...feld, width: 'auto', flex: '2 1 160px', minWidth: 0 }} />
               <Knopf onClick={vitalsSpeichern}>Speichern</Knopf>
             </div>
             {zoneR && (
