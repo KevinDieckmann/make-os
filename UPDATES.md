@@ -4,6 +4,56 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 — Sicht-Prüfung Malin: alle Bereiche, Lücken geschlossen (nur lokal — Branch `sicht-pruefung`)
+
+Kevin 08.10.: „noch tiefer ausbauen“ — Malin startet am 01.11. als zweite Person im Haushalt (Messlatte im Vault: keine private
+Notiz, keiner der geschützten Speicher von Kevin). Geprüft: Kalender (privat, iCloud/Google je Person), Aufgaben „nur ich“, Inbox/
+Postfächer, Zeit/Fokus, Gesundheit/Journal/Vitals/Haut/Sport, Familie, eigene Ziele, Glocke, ZOE (Verlauf, Stapel, Protokoll,
+Aufträge, Werkzeuge, Agentenläufe), Brain/Wissen/Kugel, Lichtfäden, Seil, Kapazität, Visitenkarten, Konto, Flächen, Heute.
+
+**Neu: systematische Messlatte** (`tests/messlatte-malin.test.ts`, letzter Teil): JEDE lesende Route aus dem Routen-Register (alle GET
+außer `offen`/`dienst`, heute ~200) wird mit Malins Sitzung aufgerufen — ohne Parameter, mit `fuer/person/wer/owner/von/auskunft=kevin`,
+mit Sicht-Schaltern und als Suche. Keine Antwort darf eine von 26 Marken aus Kevins privaten Beständen enthalten (privater Termin + Ort,
+„nur ich“-Aufgabe + Unteraufgabe, eigenes Ziel, privater Fokus-Block, laufender Fokus, Familie „nur ich“ + ungeteilte Reflexion,
+Glocke, ZOE-Verlauf/-Stapel/-Protokoll, Urlaubs-Titel der Kapazität, Visitenkarte, Postfach + Mail, Haut, Vitals, Journal, Routine,
+Ritual, private Brain-Notizen). Gegenprobe: jede Marke kommt bei Kevin an. Neue Routen laufen automatisch mit.
+
+**Geschlossen (serverseitig, je mit Wächter):**
+- `GET /api/apple-calendar`: „privat“/Anleger auch aus der Sicherung in `kalender-bezug` (`cacheMitBezug`) — vorher Titel und Ort
+  eines privaten Termins im Klartext, wenn der Zwischenspeicher die Markierung nicht selbst trug.
+- OKR-Agent (`/api/okr`, auch über ZOE `run_agent okr`): Brain der auslösenden Person — vorher Inhaber, also Kevins „nur ich“-Aufgaben
+  in Malins Zielbaum. Morgen-/Abendlauf: nur eigene/personlose offene Vorschläge im Prompt. Schilde (`computeShields`) je Person —
+  vorher stand Kevins Reha-Plan in Malins ZOE-Kontext.
+- Brain-Konsolidierung: nur der gemeinsame Raum — persönliche Fakten im Raum „kevin“ landeten als „gemeinsam“ in der Brain-Inbox.
+- ZOE `notiz_anlegen` (`legeAn`): kein Nachtrag in ein fremdes privates Protokoll gleichen Titels (und kein privater Text in ein
+  gemeinsames) — dann eigenes Protokoll „Titel (2)“.
+- Kalender `POST /api/kalender/termin` mit fremder, schon vergebener UID → 409 (vorher wurde der Bezug überschrieben: `von` = Malin,
+  damit „privat“ setzen oder eine Maske aufheben). PATCH/DELETE: Lesefehler → Abbruch statt blind schreiben.
+- Papierkorb: löscht Malin ein gemeinsames Projekt/eine gemeinsame Aufgabe, gehen Kevins „nur ich“-Aufgaben nicht mit (auch nicht
+  endgültig samt Dateien) — sie ziehen nach „Sonstige“ bzw. werden Hauptaufgabe (`fremdeNurIchLoesen`). Sichtregel rein in
+  `lib/aufgaben/sicht-regel.ts` (sicht.ts reicht weiter).
+- Aufgaben-Dateien an fremden „nur ich“-Aufgaben: nicht in der Liste, Download/Ändern/Löschen/Upload 404 (`verborgeneAufgabenFuer`).
+- ZOE-Verlauf: Grenze 80 je Person (vorher gemeinsam — Malin konnte Kevins Gespräche verdrängen). Willkommen: fremden Gruß setzt nur
+  der Inhaber zurück.
+
+**Fragen an Kevin (nicht geändert):**
+1. Eigene Ziele/Fokus (`ziele-eigen`): die andere Person liest sie über `?fuer=` (Kompass „Fokus von …“, 26.09.) — so lassen?
+2. Agenten-Log ist gemeinsam: Titel aller Läufe (z. B. Recherchefragen) sieht der Haushalt (System › Agenten) und ZOE beider Personen
+   („Letzte Agenten-Läufe“). Je Person trennen?
+3. Familie › Vision: die „Träume“ je Person werden als ganze Liste ersetzt — Malin kann Kevins Traum-Text überschreiben. Nur eigene?
+4. Ernährungs-Wochenplan: geht mit Kevins Unverträglichkeiten in Malins Lauf (geprüft: seine KI-Einwilligung, nicht „teilt Gesundheit“).
+5. Kalender: Malin kann in Kevins nicht-private Kalender (auch Google-Business) Termine anlegen/ändern — gewollt (gemeinsame Planung)?
+6. Kleinkram: Anzahl offener Vorschläge im ZOE-Empfang zählt beide Personen; Zeit je Mandat zeigt den Haushalt (Malin kann Kevins
+   Business-Zeit ableiten); KEMARIS-Termine (M365) kennen kein „privat“; `run_agent gesundheit` stößt den Takt auch für Kevin an.
+7. Randfall: wiederholtes Anlegen mit derselben UID in einem „beide“-Kalender, wenn der erste Bezug fehlte → jetzt 409 (Termin steht).
+
+**So testet ihr:** `npx vitest run tests/messlatte-malin.test.ts tests/sicht-pruefung-malin.test.ts tests/sicht-pruefung-malin-zoe.test.ts`.
+Von Hand mit Malins Konto: Kalender (Kevins privater Termin „Belegt“), Aufgaben (gemeinsames Projekt löschen → Kevins „nur ich“-Aufgabe
+steht danach unter „Sonstige“), ZOE „Mach mir den Zielbaum“ (keine Kevin-„nur ich“-Titel).
+
+**Rückweg:** nur Lese-/Schreibprüfungen, keine neue Datenform. Einzige Datenwirkung: Papierkorb-Ketten lassen fremde „nur ich“-Aufgaben
+stehen (verschoben nach „Sonstige“ bzw. ohne Elternteil) — der alte Stand liest das ohne Weiteres.
+
 ## 08.10.2026 — Malins Sicht: fremde Routinen nur „Belegt“, Ernährungsprofile nur selbst (nur lokal — Branch `malin-sicht`)
 
 Kevins Entscheidungen 08.10.:
