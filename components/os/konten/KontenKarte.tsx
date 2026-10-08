@@ -14,6 +14,7 @@ import {
   KONTO_ARTEN, KONTO_ART_NAME, ZUR_KASSE, ortName, orteFuerSicht,
   type KontoAnzeige, type KontoArt, type KontoOrt, type KontenSicht, type Kasse, type GesellschaftsKasse, type UebernahmePlan,
 } from '@/lib/finanzen/konten/register';
+import { KontoauszugEinlesen } from './KontoauszugEinlesen';
 
 /** Ereignis nach jeder Änderung — Ansichten, die mit dem Register rechnen (Liquidität, Zahlen, Controlling), laden neu. */
 export const KONTEN_GEAENDERT = 'make-konten-geaendert';
@@ -41,7 +42,7 @@ export function useKontenKasse(sicht: KontenSicht = 'business'): GesellschaftsKa
 
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const tag = (t?: string | null) => (t ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : '—');
-const QUELLE: Record<string, string> = { konten: 'von Hand', liquiditaet: 'aus Liquidität', eroeffnung: 'aus dem 0-Punkt', finanzplanung: 'aus der Planung', zoe: 'über ZOE', uebernahme: 'übernommen', bank: 'von der Bank' };
+const QUELLE: Record<string, string> = { konten: 'von Hand', liquiditaet: 'aus Liquidität', eroeffnung: 'aus dem 0-Punkt', finanzplanung: 'aus der Planung', zoe: 'über ZOE', uebernahme: 'übernommen', bank: 'von der Bank', auszug: 'aus dem Kontoauszug' };
 const UEBERNAHME_QUELLE: Record<UebernahmePlan['punkte'][number]['quelle'], string> = { liquiditaet: 'Liquidität', eroeffnung: '0-Punkt', finanzplanung: 'Finanzplanung', haushalt: 'Haushalt' };
 
 type Rueckmeldung = { ok: boolean; fehler?: string } & Partial<Omit<Antwort, 'ok'>>;
@@ -85,6 +86,8 @@ export function KontenKarte({ bereich, i = 2, id = 'konten' }: { bereich: Konten
     if (r.ok) window.dispatchEvent(new CustomEvent(KONTEN_GEAENDERT));
     return r.ok;
   };
+  /** Nach einem eingelesenen (oder zurückgenommenen) Kontoauszug: neu laden, Ansichten mit Register-Kasse auch. */
+  const neuLaden = async () => { await laden(); window.dispatchEvent(new CustomEvent(KONTEN_GEAENDERT)); };
 
   const orte = useMemo(() => orteFuerSicht(bereich), [bereich]);
   const aktive = (d?.konten ?? []).filter(k => !k.archiviertAm);
@@ -155,7 +158,7 @@ export function KontenKarte({ bereich, i = 2, id = 'konten' }: { bereich: Konten
             <Liste>
               {g.konten.map(konto => (
                 <KontoZeile key={konto.id} konto={konto} offen={offen === konto.id} onOffen={() => setOffen(offen === konto.id ? null : konto.id)}
-                  bereich={bereich} personen={d.personen ?? []} bestaetigen={bestaetigen} nachSchreiben={nachSchreiben} />
+                  bereich={bereich} personen={d.personen ?? []} bestaetigen={bestaetigen} nachSchreiben={nachSchreiben} neuLaden={neuLaden} />
               ))}
             </Liste>
           </div>
@@ -174,10 +177,11 @@ export function KontenKarte({ bereich, i = 2, id = 'konten' }: { bereich: Konten
   );
 }
 
-function KontoZeile({ konto, offen, onOffen, bereich, personen, bestaetigen, nachSchreiben }: {
+function KontoZeile({ konto, offen, onOffen, bereich, personen, bestaetigen, nachSchreiben, neuLaden }: {
   konto: KontoAnzeige; offen: boolean; onOffen: () => void; bereich: KontenSicht; personen: { speicher: string; name: string }[];
   bestaetigen: ReturnType<typeof useRueckfrage>['bestaetigen'];
   nachSchreiben: (r: { ok: boolean; fehler?: string }, gut: string) => Promise<boolean>;
+  neuLaden: () => Promise<void>;
 }) {
   const [betrag, setBetrag] = useState('');
   const [datum, setDatum] = useState(localDay());
@@ -230,6 +234,8 @@ function KontoZeile({ konto, offen, onOffen, bereich, personen, bestaetigen, nac
             <Knopf leise onClick={archivieren}>Archivieren</Knopf>
           </div>
           {bearbeiten && <KontoBearbeiten konto={konto} bereich={bereich} personen={personen} onFertig={async r => { if (await nachSchreiben(r, 'Gespeichert.')) setBearbeiten(false); }} />}
+          {/* Bank-Übergang bis zur finAPI-Anbindung (09.10., B9 d): CAMT.053/CSV → Saldo als Stand, Umsätze als Buchungen. */}
+          <KontoauszugEinlesen konto={konto} bereich={bereich} onGeaendert={neuLaden} />
         </div>
       )}
     </div>

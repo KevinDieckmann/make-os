@@ -52,7 +52,8 @@ export const istPrivatOrt = (o: unknown): boolean => o === 'privat' || o === 'ge
 /** Woher ein Stand kommt: von Hand (Formular, ZOE nach Freigabe) oder später aus der Bank-Anbindung. */
 export type StandQuelle = 'hand' | 'bank';
 /** Über welchen Weg er kam — für Verlauf und Rückweg (z. B. den 0-Punkt zurücknehmen). */
-export type StandHerkunft = 'konten' | 'liquiditaet' | 'eroeffnung' | 'finanzplanung' | 'zoe' | 'uebernahme' | 'bank';
+/** `auszug` (09.10.): Saldo aus einem eingelesenen Kontoauszug (CAMT/CSV, lib/finanzen/kontoauszug) — `id` = Kennung des Laufs. */
+export type StandHerkunft = 'konten' | 'liquiditaet' | 'eroeffnung' | 'finanzplanung' | 'zoe' | 'uebernahme' | 'bank' | 'auszug';
 
 export interface KontoStand {
   /** `ks-<uuid>` */

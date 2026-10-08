@@ -282,6 +282,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Konten-Register (08.10.): EIN Ort für Konten und Kontostände. Sicht aus dem Konto wie die Finanzplanung (`wirksameSicht`): „nur Business“ und der
   // Business-Bereich bekommen nur Konten der Business-Gesellschaften, schreiben auf andere → 403; Dienstweg → 403 (ein Mensch trägt ein).
   'finanzen/konten': r('GET,POST', 'finanz-business', 'Konten-Register je Haushalt (Konto → Gesellschaft/privat/gemeinsam, Stände mit Datum, IBAN nur maskiert) mit Sicht aus dem Konto; Privat/gemeinsam nur volle Mitglieder, Schreiben außerhalb der Sicht 403, Dienstweg 403, Stand je Konto (409), Übernahme nur mit Vorschau-Kennung.'),
+  'finanzen/konten/auszug': r('GET,POST', 'finanz-business', 'Kontoauszug (CAMT.053/CSV) einem Konto des Registers zuordnen: Saldo als Stand (quelle bank), Umsätze als Buchungen (Haushalt bzw. Business mit ort) — Vorschau schreibt nichts, Übernehmen nur mit der Vorschau-Kennung (409), Rückgängig nur Unverändertes; Sicht aus dem Konto (Business nur Business-Konten, sonst 403), Dienstweg 403; die Datei wird nie gespeichert.'),
   'finanzchef': r('GET,POST', 'haushalt', 'Head of Finance: Business der Instanz für den Haushalt; Haushaltsteil zusätzlich über haushaltVon.'),
   'haushalt': r('GET,PATCH', 'finanz-privat', 'Haushaltsfinanzen je Haushalt.'),
   'haushalt/aktion': r('POST', 'finanz-privat', 'Aktionen in den Haushaltsfinanzen je Haushalt.'),

@@ -273,6 +273,77 @@ export async function eroeffnungZurueckgenommen(id: string, firma: Gesellschafts
   } catch (e) { console.error('[konten] 0-Punkt zurücknehmen im Register:', e instanceof Error ? e.message : e); return 0; }
 }
 
+// ── Kontoauszug (09.10., lib/finanzen/kontoauszug) — Saldo als Stand, Verknüpfung zum Haushalts-Konto ───────────────────────────────
+
+/**
+ * Saldo eines eingelesenen Kontoauszugs als Stand (`quelle: 'bank'`, Herkunft `auszug` mit der Lauf-Kennung). Idempotent: liegt am Konto schon
+ * ein nicht zurückgenommener Stand mit demselben Betrag und Datum (egal woher), geschieht nichts. Danach Protokoll + Rückweg-Spiegel.
+ * Liefert die Kennung des (neuen oder schon vorhandenen) Stands dieses Laufs; null = nichts geschrieben.
+ */
+export async function standAusAuszug(haushalt: string, kontoId: string, s: { betrag: number; datum: string; laufId: string; externeId?: string; person: string; jetzt?: Date }): Promise<{ standId: string | null; neu: boolean }> {
+  const jetzt = s.jetzt ?? new Date();
+  let standId: string | null = null, neu = false, ort: KontoOrt | null = null;
+  await imRegister(haushalt, alt => {
+    const r = registerLesen(alt);
+    const k = r.konten.find(x => x.id === kontoId);
+    if (!k) return null;
+    ort = k.ort;
+    const betrag = Math.round(s.betrag * 100) / 100;
+    const eigen = k.staende.find(x => x.herkunft?.art === 'auszug' && x.herkunft.id === s.laufId && !x.zurueckgenommenAm);
+    if (eigen) { standId = eigen.id; return null; }
+    if (k.staende.some(x => !x.zurueckgenommenAm && x.betrag === betrag && x.datum === s.datum)) return null;
+    const n = standAnhaengen(r, kontoId, {
+      betrag, datum: s.datum, quelle: 'bank', erfasstVon: s.person, erfasstAm: jetzt.toISOString(), herkunft: { art: 'auszug', id: s.laufId },
+      ...(s.externeId ? { externeId: s.externeId.slice(0, 120) } : {}), notiz: 'aus dem Kontoauszug',
+    });
+    if (!n.neu) return null;
+    neu = true;
+    standId = n.register.konten.find(x => x.id === kontoId)!.staende.find(x => x.herkunft?.art === 'auszug' && x.herkunft.id === s.laufId)?.id ?? null;
+    return n.register;
+  });
+  if (neu) {
+    await protokolliere(kontenName(haushalt), [{ liste: 'konten', op: 'geaendert', id: kontoId, felder: ['staende'] }], { art: 'person', person: s.person }, jetzt);
+    if (ort) await finanzplanSpiegeln(haushalt, [ort]);
+  }
+  return { standId, neu };
+}
+
+/** Den Saldo eines Kontoauszug-Laufs zurücknehmen (bleibt im Verlauf). Liefert die Zahl der zurückgenommenen Stände. Danach Rückweg-Spiegel. */
+export async function auszugStandZuruecknehmen(haushalt: string, laufId: string, person: string, jetzt = new Date()): Promise<number> {
+  let anzahl = 0;
+  const orte: KontoOrt[] = [];
+  await imRegister(haushalt, alt => {
+    const r = registerLesen(alt);
+    for (const k of r.konten) if (k.staende.some(s => s.herkunft?.art === 'auszug' && s.herkunft.id === laufId && !s.zurueckgenommenAm)) orte.push(k.ort);
+    const z = herkunftZuruecknehmen(r, 'auszug', laufId, person, jetzt.toISOString());
+    anzahl = z.anzahl;
+    return z.anzahl ? z.register : null;
+  });
+  if (anzahl) {
+    await protokolliere(kontenName(haushalt), [{ liste: 'konten', op: 'geaendert', id: `auszug:${laufId}`, felder: ['staende'] }], { art: 'person', person }, jetzt);
+    await finanzplanSpiegeln(haushalt, orte);
+  }
+  return anzahl;
+}
+
+/**
+ * Register-Konto mit seinem Haushalts-Konto verknüpfen (`alt.haushaltKonto`) — nur, wenn noch keins verknüpft ist bzw. die bisherige Verknüpfung
+ * auf ein Haushalts-Konto zeigt, das es nicht mehr gibt (`ersetzt`). Idempotent.
+ */
+export async function haushaltKontoVerknuepfen(haushalt: string, kontoId: string, haushaltKonto: string, person: string, opt: { ersetzt?: string; jetzt?: Date } = {}): Promise<boolean> {
+  const jetzt = opt.jetzt ?? new Date();
+  let gesetzt = false;
+  await imRegister(haushalt, alt => {
+    const r = registerLesen(alt);
+    const k = r.konten.find(x => x.id === kontoId);
+    if (!k || k.alt?.haushaltKonto === haushaltKonto || (k.alt?.haushaltKonto && k.alt.haushaltKonto !== opt.ersetzt)) return null;
+    gesetzt = true;
+    return { ...r, konten: r.konten.map(x => (x.id === kontoId ? { ...x, alt: { ...(x.alt ?? {}), haushaltKonto }, geaendertAm: jetzt.toISOString() } : x)) };
+  });
+  if (gesetzt) await protokolliere(kontenName(haushalt), [{ liste: 'konten', op: 'geaendert', id: kontoId, felder: ['alt'] }], { art: 'person', person }, jetzt);
+  return gesetzt;
+}
+
 // ── Übernahme der bisherigen Stände (Vorschau → Bestätigen, nie automatisch) ─────────────────────────────────────────────────────
 
 const normName = (s: string) => s.normalize('NFC').toLocaleLowerCase('de-DE').replace(/\s+/g, ' ').trim();

@@ -15,6 +15,7 @@ import { ladeHaushalt, patchen, type Op, speicherName } from '@/lib/finanzen/hau
 import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
 import { faelligeZeilen } from '@/lib/finanzen/haushalt/zoe';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { ladeKonten } from '@/lib/zugang/konten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,11 +35,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, punkte: h.buchungen.length ? faelligeZeilen(h) : [], leer: !h.buchungen.length });
   }
   // Tempo (27.09.): der ganze Haushalt (≈1 MB) ging alle 20 s ungepackt raus — jetzt ETag aus den fünf Beständen, 304 wenn nichts neu ist, gepackt.
-  const etag = etagAus('hh', await speicherStand((['buchungen', 'stamm', 'schulden', 'belege', 'plan'] as Parameters<typeof speicherName>[0][]).map(t => speicherName(t, z.haushalt))), z.haushalt, z.person);
+  const etag = etagAus('hh', await speicherStand([...(['buchungen', 'stamm', 'schulden', 'belege', 'plan'] as Parameters<typeof speicherName>[0][]).map(t => speicherName(t, z.haushalt)), 'konten']), z.haushalt, z.person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const h = await ladeHaushalt(z.haushalt);
-  return jsonAntwort(req, { ok: true, haushalt: z.haushalt, person: z.person, ...h }, etag);
+  // Wer im Haushalt ist (Vornamen) — für „Inhaber“ an den Haushalts-Konten statt fester Namen im Code (ONBOARDING_PLAN.md › L8, 09.10.).
+  const personen = Array.from(new Set((await ladeKonten()).konten.filter(k => k.haushalt === z.haushalt).map(k => k.name.trim().split(/\s+/)[0]).filter(Boolean)));
+  return jsonAntwort(req, { ok: true, haushalt: z.haushalt, person: z.person, personen, ...h }, etag);
 }
 
 export async function PATCH(req: Request) {

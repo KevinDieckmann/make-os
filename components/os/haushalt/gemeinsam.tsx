@@ -15,7 +15,8 @@ import { eur } from '@/lib/finanzen/haushalt/typen';
 import type { Meta } from '@/lib/finanzen/haushalt/speicher';
 import { LEUCHT, Knopf, auswahl } from '../ui';
 
-export type HaushaltDaten = Haushalt & { meta: Meta; haushalt: string; person: string };
+/** `personen`: Vornamen der Konten im Haushalt (seit 09.10. — Inhaber-Auswahl ohne feste Namen). */
+export type HaushaltDaten = Haushalt & { meta: Meta; haushalt: string; person: string; personen?: string[] };
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string }
 export type Op = { op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string; stand?: number };
 export type PatchErgebnis = { ok: true } | { ok: false; status: number; fehler: string };

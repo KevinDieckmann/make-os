@@ -94,6 +94,17 @@ function KategorieZeile({ k, buchungen, regeln, offen, onOffen, patch }: { k: Ka
   );
 }
 
+/** Wer ein Konto führen kann: die Personen des Haushalts (aus den Konten, nie feste Namen — L8, 09.10.), „gemeinsam“ und ein schon gespeicherter Wert. */
+function InhaberWahl({ wert, personen, onWahl, label }: { wert: string; personen: string[]; onWahl: (v: string) => void; label?: string }) {
+  const liste = Array.from(new Set([...personen, ...(wert && wert !== 'gemeinsam' ? [wert] : [])]));
+  return (
+    <select aria-label={label} value={wert} onChange={e => onWahl(e.target.value)} style={auswahl}>
+      {liste.map(p => <option key={p} value={p}>{p}</option>)}
+      <option value="gemeinsam">gemeinsam</option>
+    </select>
+  );
+}
+
 function Konten({ h, patch, nutzung }: { h: HaushaltDaten; patch: (t: string, o: Op[]) => Promise<boolean>; nutzung: Map<string, number> }) {
   const leer = { name: '', inhaber: 'gemeinsam', bank: '', iban_suffix: '' };
   const [neu, setNeu] = useState(leer);
@@ -102,18 +113,18 @@ function Konten({ h, patch, nutzung }: { h: HaushaltDaten; patch: (t: string, o:
     <div style={{ display: 'grid', gap: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, alignItems: 'end' }}>
         <Feld label="Neues Konto"><input value={neu.name} onChange={e => setNeu({ ...neu, name: e.target.value })} placeholder="z. B. Tagesgeld" style={klein} /></Feld>
-        <Feld label="Inhaber"><select value={neu.inhaber} onChange={e => setNeu({ ...neu, inhaber: e.target.value })} style={auswahl}><option>Kevin</option><option>Malin</option><option value="gemeinsam">gemeinsam</option></select></Feld>
+        <Feld label="Inhaber"><InhaberWahl wert={neu.inhaber} personen={h.personen ?? []} onWahl={v => setNeu({ ...neu, inhaber: v })} /></Feld>
         <Feld label="Bank"><input value={neu.bank} onChange={e => setNeu({ ...neu, bank: e.target.value })} placeholder="z. B. N26" style={klein} /></Feld>
         <Feld label="IBAN-Ende"><input inputMode="numeric" maxLength={4} value={neu.iban_suffix} onChange={e => setNeu({ ...neu, iban_suffix: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="4 Ziffern" style={klein} /></Feld>
         <Knopf farbe={LEUCHT.geld} aus={!neu.name.trim()} onClick={async () => { if (await patch('konten', [{ op: 'upsert', eintrag: { ...neu, name: neu.name.trim(), einheit: 'privat', waehrung: 'EUR', aktiv: true } }])) setNeu(leer); }}>Anlegen</Knopf>
       </div>
       <Hinweis>Nur die letzten vier Ziffern der IBAN — die ganze Nummer gehört nicht in die Software.</Hinweis>
-      {h.stamm.konten.map(k => <KontoZeile key={k.id} k={k} buchungen={nutzung.get(k.id) ?? 0} offen={offen === k.id} onOffen={() => setOffen(offen === k.id ? null : k.id)} patch={patch} />)}
+      {h.stamm.konten.map(k => <KontoZeile key={k.id} k={k} personen={h.personen ?? []} buchungen={nutzung.get(k.id) ?? 0} offen={offen === k.id} onOffen={() => setOffen(offen === k.id ? null : k.id)} patch={patch} />)}
     </div>
   );
 }
 
-function KontoZeile({ k, buchungen, offen, onOffen, patch }: { k: Konto; buchungen: number; offen: boolean; onOffen: () => void; patch: (t: string, o: Op[]) => Promise<boolean> }) {
+function KontoZeile({ k, personen, buchungen, offen, onOffen, patch }: { k: Konto; personen: string[]; buchungen: number; offen: boolean; onOffen: () => void; patch: (t: string, o: Op[]) => Promise<boolean> }) {
   const [e, setE] = useState({ name: k.name, inhaber: k.inhaber ?? 'gemeinsam', bank: k.bank ?? '', iban_suffix: k.iban_suffix ?? '', aktiv: k.aktiv });
   return (
     <div style={zeile}>
@@ -124,7 +135,7 @@ function KontoZeile({ k, buchungen, offen, onOffen, patch }: { k: Konto; buchung
       {offen && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
           <input aria-label="Name" value={e.name} onChange={x => setE({ ...e, name: x.target.value })} style={klein} />
-          <select aria-label="Inhaber" value={e.inhaber} onChange={x => setE({ ...e, inhaber: x.target.value })} style={auswahl}><option>Kevin</option><option>Malin</option><option value="gemeinsam">gemeinsam</option></select>
+          <InhaberWahl label="Inhaber" wert={e.inhaber} personen={personen} onWahl={v => setE({ ...e, inhaber: v })} />
           <input aria-label="Bank" value={e.bank} onChange={x => setE({ ...e, bank: x.target.value })} style={klein} />
           <input aria-label="IBAN-Ende" inputMode="numeric" maxLength={4} value={e.iban_suffix} onChange={x => setE({ ...e, iban_suffix: x.target.value.replace(/\D/g, '').slice(0, 4) })} style={klein} />
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

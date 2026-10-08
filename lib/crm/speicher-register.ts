@@ -382,6 +382,14 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     loeschfrist: 'solange der Haushalt das Konto führt; Stände werden nie gelöscht, nur zurückgenommen (Nachweis); Konto löschen tilgt die Personen-Kennung',
     kategorie: ['vertraulich'],
   }),
+  // Kontoauszug einlesen (09.10., B9 d): je Lauf NUR Kennungen der angelegten Buchungen + Fingerabdrücke, Zahlen, Zeitraum und wer eingelesen hat —
+  // nie Namen der Gegenseite, Verwendungszwecke oder IBANs (die stehen in den Buchungen selbst; die Datei wird nie gespeichert).
+  mit(H('kontoauszug-laeufe--*', 'Lauf-Protokoll der eingelesenen Kontoauszüge je Haushalt (für „Rückgängig“): Kennungen, Fingerabdrücke, Zahlen, Zeitraum, Speichername der Person — keine Daten Dritter.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die eigenen Finanzen des Haushalts führen und Übernahmen nachvollziehbar zurücknehmen können; für Gesellschafts-Konten zusätzlich lit. c i. V. m. § 147 AO (Buchführung)',
+    art15: 'die Person sieht die Läufe am Konto (Konten › Kontoauszug einlesen › Verlauf); Konto › Meine Daten exportiert die selbst ausgelösten',
+    loeschfrist: 'abgeschlossene Läufe 400 Tage (danach kein Rückgängig mehr, die Buchungen bleiben); Konto löschen tilgt den Speichernamen („[gelöscht]“)',
+    kategorie: ['vertraulich'],
+  }),
   H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
   H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
   // Betroffenenrechte v2 (05.10.): mit Frist und Angaben — 12 Monate (FRIST_MONATE, lib/zugang/anmeldungen.ts), nicht mehr „300 Einträge“.

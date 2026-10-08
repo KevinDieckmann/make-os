@@ -306,6 +306,31 @@ Browser-Konsole, z. B. `await (await fetch('/api/agenten/skills?head=sales')).js
    „Business-frei — trotzdem?“.
 7. Vorschau des Takts: `GET /api/zoe/takt?in=60` zeigt „Agenten: Skill nach Zeitplan“, sobald ein aktiver Skill fällig ist (ohne Titel).
 
+## 09.10.2026 — Kontoauszug einlesen: Bank-Übergang bis finAPI (nur lokal — Branch `kontoauszug` auf `konten-register`)
+
+ONBOARDING_PLAN.md › B9 d (+ L7/L8/L32), Kevin 08.10.: „Bank-Anbindung vorziehen“, R3: bis dahin von Hand. Details: `KONTEN_REGISTER.md` › 8.
+
+- Je Konto der Karte „Konten“ → **„Kontoauszug einlesen“**: CAMT.053 (XML) oder CSV beliebiger Banken (Vorspann, Soll/Haben, Windows-1252,
+  Spaltenzuordnung mit Vorschlag) → Vorschau (neu · schon da · übersprungen, Saldo, Saldo-Prüfung) → Übernehmen → Rückgängig.
+- **Saldo** wird Stand im Register (`quelle: 'bank'`); **Umsätze** werden Buchungen: privat/gemeinsam → Haushalt (Haushalts-Konto wird bei Bedarf
+  angelegt und verknüpft), Gesellschaft → Business-Buchungen mit `ort`. Ein zweiter Import derselben Datei legt nichts doppelt an.
+- Rückgängig nimmt nur Unverändertes (sonst Konflikt-Liste); die Datei wird nie gespeichert; Business-Sicht nur Business-Konten (403), Dienstweg 403.
+- Nebenbei (L8): Haushalts-Import liest CSV mit EINEM Trenner (vorher wurde „-12,34“ ohne Anführungszeichen am Komma zu „-12“) und findet die
+  Kopfzeile unter einem Vorspann; „Inhaber“ der Haushalts-Konten kommt aus den Konten des Haushalts statt fester Namen.
+- **Rückweg:** nur neue Bestände (`kontoauszug-laeufe--*`, Absichten-Art `kontoauszug`) und optionale Felder (`Buchung.auszug` im Business-Bestand,
+  Stand-Herkunft `auszug`, `personen` in GET /api/haushalt). Der alte Stand liest die angelegten Buchungen und Stände normal; er kennt die
+  Absichten-Art nicht — vor dem Rückweg keine Übernahme offen lassen (HOI zeigt offene Absichten).
+- Tests: `tests/kontoauszug-lesen.test.ts`, `tests/kontoauszug-route.test.ts` (dazu konten-register, routen-register, datenschutz-register, absichten,
+  haushalt-*).
+
+**So testet ihr (in Klicks):**
+1. Finanzen › Business › Liquidität → Karte „Konten“ → Geschäftskonto antippen → „Kontoauszug einlesen“ → „Datei wählen“ (CAMT-XML aus dem
+   Online-Banking) → Vorschau prüfen (Zeitraum, „n neu“, Saldo, „Saldo-Prüfung stimmt“) → „Übernehmen“ → bestätigen.
+2. Dieselbe Datei noch einmal wählen → Vorschau „0 neu · n schon da“ → nichts doppelt.
+3. Unter „Eingelesen“ → „Rückgängig“ → bestätigen → Buchungen und Saldo-Stand sind zurückgenommen (Verlauf zeigt ihn als zurückgenommen).
+4. Privat › Konten & Buchungen → Karte „Konten“ → Privatkonto → CSV der Bank wählen → Spalten prüfen (Vorschlag) → „Vorschau mit dieser Zuordnung“ →
+   „Übernehmen“. Die Buchungen erscheinen unter Buchungen (eigenes Haushalts-Konto mit gleichem Namen).
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt
