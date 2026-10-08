@@ -86,6 +86,8 @@ export interface InnenLage {
   whatsapp?: WhatsappLage | null;
   /** WHOOP je Person (08.10.): Verbindungen, Alter des Abgleichs, Webhooks — nur Zähler, nie Adressen/Kennungen/Werte. null = nicht eingerichtet. */
   whoop?: WhoopLage | null;
+  /** Einrichtung der Verbindungen (08.10. spät, Onboarding L23): ist der Anschluss am Server überhaupt eingerichtet? Nur ja/nein. */
+  einrichtung?: EinrichtungLage | null;
   /** Brain-Index (05.10., Verschlüsselung lückenlos): wo er liegt (tmpfs/Arbeitsspeicher/Platte), Größe, Neubau nach dem Start. */
   brainIndex?: BrainIndexLage | null;
   /** Protokolle (05.10.): Hash-Kette über Änderungs-, Lese- und Anmeldeprotokoll — Ergebnis der letzten Prüfung. */
@@ -307,6 +309,38 @@ export function whatsappBefunde(w: WhatsappLage | null | undefined): Befund[] {
   return [{ id: 'whatsapp', bereich: 'app', label: 'WhatsApp Business', ampel, wert: teile.join(' · '), satz }];
 }
 
+/**
+ * Einrichtung der Verbindungen (08.10. spät, ONBOARDING_PLAN.md L23). Ist ein Anschluss am Server nicht eingerichtet, liefern die
+ * Befunde oben gar nichts (`personen = 0` bzw. `null`) — man sähe nicht, dass etwas fehlt. Hier: je Anschluss EIN grauer Befund
+ * „erwartet, noch nicht eingerichtet“ bzw. „eingerichtet, noch niemand verbunden“, mit dem Weg. Grau zählt nicht in die Gesamtampel.
+ * Nur ja/nein — nie Werte, Adressen oder Namen.
+ */
+export interface EinrichtungLage {
+  /** Google-Anwendung am Server eingerichtet (GOOGLE_CLIENT_ID/SECRET …). */
+  google: boolean;
+  /** WhatsApp-Business-Nummer am Server eingerichtet. */
+  whatsapp: boolean;
+  /** WHOOP-Anwendung am Server eingerichtet. */
+  whoop: boolean;
+}
+
+export function einrichtungBefunde(e: EinrichtungLage | null | undefined, innen?: Pick<InnenLage, 'kalenderGoogle' | 'gmail' | 'whoop'>): Befund[] {
+  if (!e) return [];
+  const b: Befund[] = [];
+  const googleVerbunden = (innen?.kalenderGoogle?.personen ?? 0) + (innen?.gmail?.personen ?? 0) > 0;
+  if (!e.google) b.push({ id: 'einrichtung-google', bereich: 'app', label: 'Google Workspace (Kalender, Gmail)', ampel: 'grau', wert: 'noch nicht eingerichtet',
+    satz: 'Erwartet für Business-Kalender und Gmail — am Server deploy/google-verbinden.sh (Anleitungen GOOGLE_KALENDER_EINRICHTEN.md, GOOGLE_GMAIL_EINRICHTEN.md); danach verbindet jede Person selbst' });
+  else if (!googleVerbunden) b.push({ id: 'einrichtung-google', bereich: 'app', label: 'Google Workspace (Kalender, Gmail)', ampel: 'grau', wert: 'eingerichtet · noch niemand verbunden',
+    satz: 'Jede Person verbindet ihr Konto selbst: Kalender › Business „verbinden“ bzw. Inbox „Gmail verbinden“' });
+  if (!e.whoop) b.push({ id: 'einrichtung-whoop', bereich: 'app', label: 'WHOOP', ampel: 'grau', wert: 'noch nicht eingerichtet',
+    satz: 'Erwartet für Gesundheitswerte — WHOOP-Anwendung auf developer.whoop.com anlegen, dann am Server deploy/whoop-verbinden.sh; danach Gesundheit › WHOOP je Person' });
+  else if (!(innen?.whoop?.personen)) b.push({ id: 'einrichtung-whoop', bereich: 'app', label: 'WHOOP', ampel: 'grau', wert: 'eingerichtet · noch niemand verbunden',
+    satz: 'Jede Person verbindet ihr WHOOP-Konto selbst unter Gesundheit › WHOOP (vorher Einwilligung Gesundheit)' });
+  if (!e.whatsapp) b.push({ id: 'einrichtung-whatsapp', bereich: 'app', label: 'WhatsApp Business', ampel: 'grau', wert: 'noch nicht eingerichtet',
+    satz: 'Eigene Business-Nummer bei Meta (Cloud API) anlegen, dann am Server deploy/whatsapp-verbinden.sh — Schritte in UPDATES.md (07.10.)' });
+  return b;
+}
+
 /** Zustand der Google-Kalender (HOI): worst case über alle verbundenen Personen. */
 export interface GoogleKalenderLage {
   personen: number;
@@ -489,6 +523,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...postfachBefunde(innen.postfaecher));
   b.push(...whatsappBefunde(innen.whatsapp));
   b.push(...whoopBefunde(innen.whoop));
+  b.push(...einrichtungBefunde(innen.einrichtung, innen));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));

@@ -1,6 +1,6 @@
 // Head of IT (27.09.): Befunde aus innen, Host und außen — Schwellen, Gesamtampel, Kurzbericht.
 import { describe, it, expect } from 'vitest';
-import { befundeAus, gesamt, kurzbericht, type InnenLage, type HostLage, type AussenLage } from '../lib/hoi/lage';
+import { befundeAus, gesamt, kurzbericht, einrichtungBefunde, type InnenLage, type HostLage, type AussenLage } from '../lib/hoi/lage';
 
 const JETZT = '2026-09-27T06:30:00.000Z';
 const innen: InnenLage = {
@@ -69,5 +69,26 @@ describe('HOI: iCloud-Verbindungen je Person (07.10.)', async () => {
     expect(rot.satz).toContain('Verbindung erneuern');
     // nie Namen oder Adressen — nur Zähler
     expect(JSON.stringify(rot)).not.toMatch(/@|malin|kevin/i);
+  });
+});
+
+describe('Einrichtung der Verbindungen (08.10. spät, L23): graue Hinweise statt Schweigen', () => {
+  it('nicht eingerichtet → je Anschluss ein grauer Befund mit Weg; eingerichtet, aber niemand verbunden → grau „noch niemand verbunden“', () => {
+    const nichts = einrichtungBefunde({ google: false, whatsapp: false, whoop: false });
+    expect(nichts.map(b => b.id)).toEqual(['einrichtung-google', 'einrichtung-whoop', 'einrichtung-whatsapp']);
+    expect(nichts.every(b => b.ampel === 'grau')).toBe(true);
+    expect(nichts.find(b => b.id === 'einrichtung-google')!.satz).toContain('deploy/google-verbinden.sh');
+    const eingerichtet = einrichtungBefunde({ google: true, whatsapp: true, whoop: true });
+    expect(eingerichtet.map(b => [b.id, b.wert])).toEqual([['einrichtung-google', 'eingerichtet · noch niemand verbunden'], ['einrichtung-whoop', 'eingerichtet · noch niemand verbunden']]);
+    const verbunden = einrichtungBefunde({ google: true, whatsapp: true, whoop: true }, {
+      gmail: { personen: 1 } as InnenLage['gmail'], kalenderGoogle: null, whoop: { personen: 2 } as InnenLage['whoop'],
+    });
+    expect(verbunden).toEqual([]);
+    expect(einrichtungBefunde(null)).toEqual([]);
+  });
+  it('grau zählt nicht in die Gesamtampel und nennt nie Personen', () => {
+    const b = einrichtungBefunde({ google: false, whatsapp: false, whoop: false });
+    expect(gesamt(b).ampel).toBe('grau');
+    expect(JSON.stringify(b)).not.toMatch(/@|malin|kevin/i);
   });
 });

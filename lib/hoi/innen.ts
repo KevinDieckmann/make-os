@@ -170,6 +170,10 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     postfaecher: await import('@/lib/postfach/lage').then(m => m.postfachLage(Date.parse(jetzt))).catch(() => null),
     whatsapp: await import('@/lib/whatsapp/lage').then(m => m.whatsappLage(Date.parse(jetzt))).catch(() => null),
     whoop: await import('@/lib/whoop/lage').then(m => m.whoopLage(Date.parse(jetzt))).catch(() => null),
+    einrichtung: await (async () => {
+      const [g, w, h] = await Promise.all([import('@/lib/google/verbindung'), import('@/lib/whatsapp/konfig'), import('@/lib/whoop/konfig')]);
+      return { google: !!g.googleKonfig(), whatsapp: !!w.whatsappKonfig(), whoop: h.whoopFehlt().length === 0 };
+    })().catch(() => null),
     zugang: {
       zuliefererSchluessel: zuliefererSchluessel() !== null, zuliefererAltZuletzt: await altSchluesselZuletzt(),
       riegel: (({ modus, maengel }) => ({ modus, maengel }))(riegelBild()),
