@@ -62,6 +62,15 @@
         "/Users/kevindieckmann/Claude/Projects/MakeOS/fokus"
       ],
       "port": 3015
+    },
+    {
+      "name": "make-os-demo",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": [
+        "-lc",
+        ". $HOME/make-os-demo/demo-env.sh && NODE_ENV=production node node_modules/next/dist/bin/next start -p 3200"
+      ],
+      "port": 3200
     }
   ]
 }
