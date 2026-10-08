@@ -84,6 +84,13 @@ export interface ZugangEinstellungen {
   zweiFaktorPflichtSeit?: string;
   /** Leerlauf-Ende einer Sitzung in Stunden (1–336, Standard `LEERLAUF_STUNDEN`). */
   leerlaufStunden?: number;
+  /**
+   * Mac-Zulieferer an/aus (08.10., Lücke 10 — lib/zulieferer/schalter.ts). Fehlt das Feld, gilt die Vorgabe: nach der Übernahme der
+   * Apple-Erinnerungen aus, mit Altbestand an, neue Instanz aus. Die Umgebung `MAKE_OS_ZULIEFERER` gewinnt. Setzt nur der Inhaber.
+   */
+  zulieferer?: 'an' | 'aus';
+  /** Seit wann die Einstellung gilt (ISO). */
+  zuliefererSeit?: string;
 }
 export interface KontenStand { konten: Konto[]; einladungen: Einladung[]; einstellungen?: ZugangEinstellungen }
 
@@ -279,7 +286,7 @@ export function kontoAenderungen(alt: KontenStand | null, neu: KontenStand): Aen
   }
   for (const id of Array.from(vorher.keys())) if (!nachher.has(id)) raus.push({ op: 'geloescht', id });
   const ea = alt?.einstellungen ?? {}, en = neu.einstellungen ?? {};
-  const efelder = (['zweiFaktorPflicht', 'leerlaufStunden'] as const).filter(f => (ea[f] ?? null) !== (en[f] ?? null));
+  const efelder = (['zweiFaktorPflicht', 'leerlaufStunden', 'zulieferer'] as const).filter(f => (ea[f] ?? null) !== (en[f] ?? null));
   if (efelder.length) raus.push({ op: 'geaendert', id: 'instanz', felder: [...efelder] });
   return raus;
 }

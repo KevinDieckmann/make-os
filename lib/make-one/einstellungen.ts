@@ -14,7 +14,7 @@ export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
   ] },
   { id: 'verbindungen', titel: 'Verbindungen', eintraege: [
     // Telegram steht nur hier (die Kopplung selbst liegt im Konto, die Verbindungs-Seite verweist dorthin).
-    { href: '/os/verbindungen', label: 'Dienste', was: 'WhatsApp Business, Telegram, Microsoft, Miro, WHOOP-Export' },
+    { href: '/os/verbindungen', label: 'Dienste', was: 'WhatsApp Business, Telegram, Microsoft, Miro, WHOOP-Export, Mac-Zulieferer abschalten' },
     { href: '/os/kalender?einstellungen=1', label: 'Kalender', was: 'iCloud und Google verbinden, Kalender zuordnen' },
     { href: '/os/inbox?postfaecher=1', label: 'Postfächer', was: 'Gmail, iCloud, IONOS und weitere — Bereich, Signatur, Verbindung erneuern' },
     { href: '/os/gesundheit#whoop', label: 'WHOOP', was: 'deine eigene WHOOP-Verbindung' },

@@ -5,6 +5,9 @@
 // im Browser reicht nicht, denn wer hier schreibt, bestimmt, was ZOE für Kevins Kalender hält. Übergang: ohne
 // Zulieferer-Schlüssel auf dem Server lässt die Middleware MAKE_OS_KEY von außen NUR hierher durch (`alt`, HOI gelb).
 // GET zeigt, was wann zuletzt ankam (ohne Inhalte).
+// Seit 08.10. (Lücke 10, Kevin R6 „alles nur auf dem Server führen“): ist der Zulieferer aus (lib/zulieferer/schalter.ts — Umgebung,
+// Instanz-Einstellung oder nach der Übernahme der Erinnerungen), antwortet POST mit 410 und schreibt nichts; mit der Umgebung
+// `MAKE_OS_ZULIEFERER=aus` antwortet schon die Middleware so. Ein Übergangs-Aufruf wird dann auch nicht mehr vermerkt (HOI bleibt ruhig).
 
 import { NextResponse } from 'next/server';
 import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
@@ -17,10 +20,14 @@ export const dynamic = 'force-dynamic';
 
 import { istZulieferer } from '@/lib/zugang/dienst';
 import { altSchluesselVermerken } from '@/lib/zugang/zulieferer';
+import { ZULIEFERER_AUS_ANTWORT } from '@/lib/zugang/intern';
+import { zuliefererLage } from '@/lib/zulieferer/server';
 const MAX_BYTES = 3_000_000;
 
 export async function POST(req: Request) {
   if (!istZulieferer(req)) return NextResponse.json({ ok: false, fehler: 'Nur mit Zulieferer-Schlüssel.' }, { status: 403 });
+  // Abgeschaltet: 410 (Gone) mit klarem Satz — der Mac legt sich damit schlafen (zulieferer.mjs), nichts wird geschrieben.
+  if (!(await zuliefererLage()).aktiv) return NextResponse.json(ZULIEFERER_AUS_ANTWORT, { status: 410 });
   if (req.headers.get('x-make-zulieferer') === 'alt') await altSchluesselVermerken();
   const text = await req.text();
   if (text.length > MAX_BYTES) return NextResponse.json({ ok: false, fehler: 'Zu groß.' }, { status: 413 });
@@ -43,10 +50,13 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
+  const lage = await zuliefererLage();
+  // Abgeschaltet (Lücke 10): die Spiegel liest niemand mehr — auch hier nicht.
+  if (!lage.aktiv) return NextResponse.json({ ok: true, stand: {}, aktiv: false, quelle: lage.quelle });
   const stand: Record<string, string | null> = {};
   for (const art of ZULIEFERUNGEN) {
     const g = await loadJson<{ at?: string }>(SPEICHER[art]);
     stand[art] = g?.at ?? null;
   }
-  return NextResponse.json({ ok: true, stand });
+  return NextResponse.json({ ok: true, stand, aktiv: true, quelle: lage.quelle });
 }

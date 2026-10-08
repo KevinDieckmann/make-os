@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # ─── MAKE OS · Eigener Schlüssel für den Mac-Zulieferer (05.10.) ─────────────
+# Seit 08.10. ENTFÄLLT (Kevin R6, UPLOAD_0810.md § 3): der Zulieferer wird abgeschaltet (Einstellungen › Verbindungen › Mac-Zulieferer,
+# am Mac scripts/mac-zulieferer-entfernen.sh). Das Skript bleibt nur für den Rückweg.
 # Bis 05.10. schickte der Mac den Dienstschlüssel des Servers (MAKE_OS_KEY) über das Internet — wer ihn abfing,
 # kam an jede Route. Jetzt bekommt der Zulieferer einen EIGENEN Schlüssel, der am Server NUR die Zulieferung öffnet.
 # Der Schlüssel erscheint nirgends: nicht auf dem Bildschirm, nicht in der Prozessliste, nicht im Chat, nicht im Repo.

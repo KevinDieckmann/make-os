@@ -176,6 +176,8 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     })().catch(() => null),
     zugang: {
       zuliefererSchluessel: zuliefererSchluessel() !== null, zuliefererAltZuletzt: await altSchluesselZuletzt(),
+      // Lücke 10 (08.10.): an/aus aus EINER Regel (lib/zulieferer/schalter.ts) — nur Zustände, nie Inhalte.
+      zulieferer: await (await import('@/lib/zulieferer/server')).zuliefererLage().then(l => ({ aktiv: l.aktiv, altbestand: l.altbestand, uebernommen: !!l.uebernahmeAm })).catch(() => undefined),
       riegel: (({ modus, maengel }) => ({ modus, maengel }))(riegelBild()),
       zweiFaktor: await ladeKonten().then(st => ({ pflicht: !!st.einstellungen?.zweiFaktorPflicht, ohne: st.konten.filter(k => !k.zweiterFaktor).length, konten: st.konten.length })).catch(() => undefined),
     },

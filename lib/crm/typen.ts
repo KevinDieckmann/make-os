@@ -601,6 +601,11 @@ export interface Verarbeitung {
   id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string;
   /** Kennungen aus dem Empfänger-/AVV-Register (System › Datenschutz, 05.10.) — der Export nennt sie mit Rolle, Drittland/Garantie und AVV-Status. Optional (Altbestand). */
   empfaengerIds?: string[];
+  /**
+   * Archiviert (08.10., Lücke 10): die Verarbeitung findet nicht mehr statt — der Eintrag bleibt als Nachweis (nie löschen), der
+   * Export zeigt ihn als „archiviert“. `durch` = wer archiviert hat (`zulieferer-aus`: automatisch, solange der Mac-Zulieferer aus ist).
+   */
+  archiviert?: { am: string; grund: string; durch?: 'zulieferer-aus' | 'hand' };
 }
 
 // ── Follow-up-Ebene (27.09., Kevin: „die ganze Follow-up-Ebene sauber einpflegen“) ──

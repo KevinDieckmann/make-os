@@ -104,17 +104,28 @@ export interface ZugangLage {
   zuliefererAltZuletzt: string | null;
   /** 2FA-Pflicht der Instanz und wie viele Konten ohne zweiten Faktor sind (nur Zahlen). */
   zweiFaktor?: { pflicht: boolean; ohne: number; konten: number };
+  /**
+   * Mac-Zulieferer an/aus (08.10., Lücke 10 — lib/zulieferer/schalter.ts). Aus → kein gelber Übergangs-Befund mehr; hatte die Instanz
+   * einen Zulieferer (Altbestand, Übernahme), steht er grau „abgeschaltet“ da, sonst gar nicht.
+   */
+  zulieferer?: { aktiv: boolean; altbestand: boolean; uebernommen: boolean };
   /** Start-Riegel (lib/zugang/start-riegel.ts): Modus und Mängel (nur Namen, nie Werte). */
   riegel?: { modus: 'entwicklung' | 'aus' | 'lokal' | 'scharf' | 'streng'; maengel: { was: string; art: 'fehlt' | 'zu-kurz'; hart: boolean }[] };
 }
 
-/** Zugang & Schlüssel (05.10.): Zulieferer im Übergang → gelb, mit eigenem Schlüssel → grün; nie benutzt → kein Befund. */
+/**
+ * Zugang & Schlüssel (05.10.): Zulieferer im Übergang → gelb, mit eigenem Schlüssel → grün; nie benutzt → kein Befund.
+ * Seit 08.10. (Lücke 10): Zulieferer aus → der Befund entfällt (grau „abgeschaltet“, wenn es je einen gab).
+ */
 export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[] {
   if (!z) return [];
   const b: Befund[] = [];
   const altTage = z.zuliefererAltZuletzt ? (Date.parse(jetzt) - Date.parse(z.zuliefererAltZuletzt)) / 864e5 : null;
-  if (z.zuliefererSchluessel) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gruen', wert: 'eigener Schlüssel', satz: 'öffnet nur die Zulieferung — der Dienstschlüssel gilt nur noch von innen' });
-  else if (altTage !== null && altTage <= 7) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gelb', wert: 'liefert noch mit dem Dienstschlüssel', satz: 'Übergang: MAKE_OS_KEY reist noch übers Internet — Zulieferer-Schlüssel einrichten (deploy/zulieferer-schluessel.sh mac → server → aufraeumen, UPDATES.md)' });
+  const zl = z.zulieferer;
+  if (zl && !zl.aktiv) {
+    if (zl.altbestand || zl.uebernommen || z.zuliefererAltZuletzt) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'grau', wert: 'abgeschaltet', satz: zl.uebernommen ? 'Erinnerungen sind als Aufgaben übernommen — alles läuft auf dem Server; am Mac den Dienst entfernen (scripts/mac-zulieferer-entfernen.sh)' : 'alles läuft auf dem Server; am Mac den Dienst entfernen (scripts/mac-zulieferer-entfernen.sh)' });
+  } else if (z.zuliefererSchluessel) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gruen', wert: 'eigener Schlüssel', satz: 'öffnet nur die Zulieferung — der Dienstschlüssel gilt nur noch von innen' });
+  else if (altTage !== null && altTage <= 7) b.push({ id: 'zulieferer', bereich: 'sicherheit', label: 'Mac-Zulieferer', ampel: 'gelb', wert: 'liefert noch mit dem Dienstschlüssel', satz: 'Übergang: MAKE_OS_KEY reist noch übers Internet — Apple-Erinnerungen übernehmen und den Zulieferer ausschalten (Einstellungen › Verbindungen › Mac-Zulieferer, UPDATES.md 08.10. „Zulieferer aus“)' });
   const zf = z.zweiFaktor;
   if (zf && zf.konten > 0) {
     if (zf.pflicht) b.push({ id: 'zwei-faktor', bereich: 'sicherheit', label: 'Zweiter Faktor', ampel: zf.ohne ? 'gelb' : 'gruen', wert: zf.ohne ? `Pflicht an · ${zf.ohne} noch ohne` : 'Pflicht an · alle Konten', satz: zf.ohne ? 'wer noch keinen hat, richtet ihn beim nächsten Anmelden ein' : 'jedes Konto meldet sich mit Passwort und Code an' });

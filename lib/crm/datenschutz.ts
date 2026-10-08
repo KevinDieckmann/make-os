@@ -486,7 +486,7 @@ export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbe
  * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet), WhatsApp (wenn eingerichtet),
  * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
  */
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zuliefererAus?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -500,8 +500,28 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);
+  // Mac-Zulieferer aus (08.10., Lücke 10): die Verarbeitung „Zulieferung vom Rechner …“ findet nicht mehr statt → archiviert (nie gelöscht).
+  if (opt.zuliefererAus !== undefined) l = zuliefererVerarbeitungArchivieren(l, opt.zuliefererAus, jetzt);
   const geaendert = l.length !== vorhanden.length || l.some((v, i) => v !== vorhanden[i] && JSON.stringify(v) !== JSON.stringify(vorhanden[i]));
   return { liste: geaendert ? l : [...vorhanden], geaendert };
+}
+
+// ── Mac-Zulieferer aus (08.10., Lücke 10) — Verarbeitung archivieren statt löschen ──
+// `vv-mac-m365` beschreibt die Zulieferung vom Rechner (Kalender, Erinnerungen, Adressbuch) und Microsoft 365 (nicht angebunden,
+// der KEMARIS-Kalender liefert nichts). Ist der Zulieferer aus, findet die Verarbeitung nicht mehr statt: der Eintrag bleibt als
+// Nachweis, bekommt `archiviert` (Tag + Grund, `durch: 'zulieferer-aus'`) — und verliert die Marke wieder, wenn der Zulieferer
+// erneut läuft (nur die automatische, nie eine von Hand gesetzte). Idempotent; Texte bleiben unberührt.
+export const VV_MAC_ID = 'vv-mac-m365';
+export const ZULIEFERER_ARCHIV_GRUND = 'Mac-Zulieferer abgeschaltet: Erinnerungen und Adressbuch kommen nicht mehr vom Rechner (Erinnerungen als Aufgaben übernommen, Kontakte in der Kartei); Kalender und Mail holt der Server selbst. Microsoft 365 ist nicht angebunden — bei Anbindung neu erfassen.';
+export function zuliefererVerarbeitungArchivieren(l: readonly Verarbeitung[], aus: boolean, jetzt: string): Verarbeitung[] {
+  let anders = false;
+  const neu = l.map(v => {
+    if (v.id !== VV_MAC_ID) return v;
+    if (aus && !v.archiviert) { anders = true; return { ...v, archiviert: { am: tagVon(jetzt), grund: ZULIEFERER_ARCHIV_GRUND, durch: 'zulieferer-aus' as const } }; }
+    if (!aus && v.archiviert?.durch === 'zulieferer-aus') { anders = true; const { archiviert: _a, ...rest } = v; return rest; }
+    return v;
+  });
+  return anders ? neu : [...l];
 }
 
 // ── Verzeichnis vervollständigt (05.10., Punkt 5 des Pakets): alle Verarbeitungen der Plattform ──

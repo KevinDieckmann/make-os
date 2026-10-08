@@ -284,12 +284,13 @@ function Verzeichnis({ liste, api, laden, verantwortlicher }: { liste: Verarbeit
       <Liste>
         {liste.map(v => (
           <div key={v.id}>
-            <Zeile onClick={() => setOffen(offen === v.id ? null : v.id)} aktiv={offen === v.id} titel={v.name} unter={`${v.zweck.slice(0, 90)} · Stand ${datum(v.stand)}`} />
+            <Zeile onClick={() => setOffen(offen === v.id ? null : v.id)} aktiv={offen === v.id} titel={v.name} unter={`${v.archiviert ? `archiviert seit ${datum(v.archiviert.am)} · ` : ''}${v.zweck.slice(0, 90)} · Stand ${datum(v.stand)}`} />
             {offen === v.id && (
               <div style={{ padding: '8px 2px 14px' }}>
                 <Feldzeile label="Bezeichnung"><Feld wert={v.name} onFertig={name => name.trim() && setze({ ...v, name: name.trim() })} /></Feldzeile>
                 {FELDER.map(([f, l]) => <Feldzeile key={f} label={l}><Feld wert={String(v[f] ?? '')} onFertig={x => setze({ ...v, [f]: x })} /></Feldzeile>)}
                 {(!v.verantwortlich || v.verantwortlich === VERANTWORTLICH_EINRICHTUNG) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Verantwortlich wirkt als: {verantwortlicher?.text ?? '—'}</div>}
+                {v.archiviert && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Archiviert seit {datum(v.archiviert.am)}: {v.archiviert.grund}</div>}
               </div>
             )}
           </div>

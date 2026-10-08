@@ -67,6 +67,8 @@ export interface KalenderStand {
   /** iCloud je Person (06.10.): Stand der EIGENEN iCloud-Verbindung (nur die ansehende Person, nie Zugangsdaten). */
   icloudEigen?: { abgleich: import('./AbgleichStand').AbgleichInfo };
   termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[]; erinnerungenStand: string | null;
+  /** Mac-Zulieferer aus (08.10., Lücke 10): keine Apple-Erinnerungen mehr — 'uebernommen' = sie stehen als Aufgaben in MAKE OS. */
+  erinnerungenAus?: 'uebernommen' | 'aus';
   einstellungen?: { kalender: Record<Wer, string> };
   /** R-K1 #51: Alter des Stands („letzter Abgleich vor X Min.“, `veraltet` ab 30 Min., Hinweise je Kalender). */
   abgleich?: import('./AbgleichStand').AbgleichInfo;

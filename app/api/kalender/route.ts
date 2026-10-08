@@ -11,6 +11,7 @@
 // Abgleich vor X Min.“; übersprungene Kalender (403, gekürzte Antwort) stehen in `hinweise`.
 // S1 #20 (29.09.): Apple-Erinnerungen (Mac des Inhabers) nur für den Inhaber, private Fristen nur für Personen mit
 // Haushalt — serverseitig (`fuerPersonFiltern`, lib/kalender/eintraege.ts), nicht erst im Browser.
+// Lücke 10 (08.10.): ist der Mac-Zulieferer aus, kommen gar keine Apple-Erinnerungen mehr (`erinnerungenAus`: 'uebernommen' | 'aus').
 // iCloud je Person (06.10., lib/kalender/icloud-person.ts): die Kalender aus der eigenen Verbindung einer Person kommen bei ihr
 // mit Namen, bei allen anderen nur als EIN neutraler Eintrag „iCloud · <Vorname>“ (nur lesen); ihre Termine sind dort „Belegt“
 // (`maskieren`). `icloudEigen` = Stand der eigenen Verbindung (maskierte Apple-ID, letzter Abgleich, Anmeldung abgelehnt?).
@@ -31,6 +32,7 @@ import { macTermine, type MacEv } from '@/lib/kalender/termine-lesen';
 import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { SPEICHER as MAC, type Gemerkt } from '@/lib/mac';
+import { zuliefererLage } from '@/lib/zulieferer/server';
 import { localDay } from '@/lib/zeit';
 import type { Termin } from '@/lib/kalender/ics';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
@@ -114,10 +116,14 @@ export async function GET(req: Request) {
   }
 
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
+  // Mac-Zulieferer aus (08.10., Lücke 10): keine Apple-Erinnerungen mehr — der Spiegel wird gar nicht erst gelesen; es bleibt der
+  // Hinweis „übernommen als Aufgaben“ (`erinnerungenAus`), sobald die Übernahme bestätigt ist.
+  const zl = await zuliefererLage().catch(() => null);
+  const erinnerungenAn = !!zl?.aktiv;
   // Fristen: die Quellen lädt EINE Stelle (lib/kalender/fristen-server.ts, K6a) — dieselbe wie Glocke/Heute.
   const [fristenAlle, rem, inhaber, eigenerHaushalt] = await Promise.all([
     fristenLesen(von, bis, heute, zugang.person).catch(() => []),
-    loadJson<Gemerkt>(MAC.erinnerungen).catch(() => null),
+    erinnerungenAn ? loadJson<Gemerkt>(MAC.erinnerungen).catch(() => null) : Promise.resolve(null),
     istInhaber(zugang.person).catch(() => false),
     haushaltFuer(zugang.person).catch(() => null),
   ]);
@@ -135,6 +141,7 @@ export async function GET(req: Request) {
     fristen: sicht.fristen,
     erinnerungen: sicht.erinnerungen,
     erinnerungenStand: inhaber ? rem?.at ?? null : null,
+    ...(erinnerungenAn ? {} : { erinnerungenAus: zl?.uebernahmeAm ? 'uebernommen' as const : 'aus' as const }),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

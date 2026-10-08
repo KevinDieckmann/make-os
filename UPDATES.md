@@ -4,6 +4,75 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 spät — Mac-Zulieferer abschalten (Lücke 10, Kevin R6; nur lokal — Branch `zulieferer-aus`)
+
+Kevin 08.10.: „alles nur auf dem Server führen; wir brauchen nachher im Mac nur noch die API zur Mail, den Rest haben wir ja in MAKE OS.“
+
+**Gebaut**
+- **EINE Regel an/aus** (`lib/zulieferer/schalter.ts`): Umgebung `MAKE_OS_ZULIEFERER=aus|an` > Instanz-Einstellung des Inhabers
+  (`konten.json › einstellungen.zulieferer`) > Vorgabe: nach der Übernahme der Erinnerungen **aus** · mit Altbestand (Spiegel vom Mac) **an** ·
+  neue Instanz **aus** (das Erstkonto schreibt `zulieferer: 'aus'` gleich mit).
+- **Apple-Erinnerungen einmal als Aufgaben** (Einstellungen › Verbindungen › Karte „Mac-Zulieferer“, nur der Inhaber per Sitzung — Route
+  `/api/zulieferer`, Dienstweg 403): Vorschau aus dem vorhandenen Spiegel (Titel, Fälligkeit, Liste → Space, „schon übernommen“), je Apple-Liste
+  ein Space (Vorgabe Privat), einzeln abwählen, „Erledigte mitnehmen“ (Vorgabe aus), „nur ich“ in Privat (Vorgabe an) → Bestätigen. Feste
+  Kennungen `ar-…` aus der Apple-UID (sonst Liste + Titel + Vorkommen): zweimal bestätigen legt nichts doppelt an. Notiz → Notiz, Fälligkeit →
+  `dueDate`/`dueTime`, verantwortlich der Inhaber. Geschrieben nur über `systemAufgabenAendern` (Verlauf, Protokoll ohne Inhalte); zwei Bestände
+  nacheinander → Absichtsprotokoll (Art `erinnerungen-uebernahme`, Abbruch nach jedem Schritt getestet).
+- **Aus heißt aus:** `POST /api/zulieferung` → **410** mit klarem Satz (mit `MAKE_OS_ZULIEFERER=aus` schon in der Middleware, dann ist auch der
+  Übergang mit MAKE_OS_KEY zu); der Zulieferer am Mac legt sich bei 410 schlafen (ein Log-Hinweis am Tag). Kalender ohne Apple-Erinnerungen
+  (Hinweis „als Aufgaben übernommen“, Ebene „Erinnerungen“ weg), Apple-Routen lesen den Spiegel nicht mehr (Adressbuch: Hinweis auf die
+  Kartei), HOI: kein gelber Übergangs-Befund mehr — grau „abgeschaltet“.
+- **Spiegel löschen** (Karte, erst wenn aus): `apple-reminders-cache` bzw. `apple-contacts-cache` samt Tageskopien (`bestandEntfernen`).
+- **Recht:** eingefrorene Spiegel sind die einzige Kopie → Art. 17 entfernt die Einträge der Person darin wirklich (`macSpiegelRaus`), solange sie
+  liegen; Register-Texte angepasst, neuer Bestand `zulieferer-uebernahme` (nur Zeitpunkte/Zahlen). Verzeichnis: `vv-mac-m365` wird bei „aus“
+  **archiviert** (neues Feld `Verarbeitung.archiviert`, nie gelöscht; Export „archiviert seit …“, Art. 15 „beendet am …“), bei „an“ wieder aktiv.
+- **Mac-Seite:** das AppleScript der Erinnerungen liefert jetzt Apple-Kennung, Notiz, erledigt und die Fälligkeit aus den Datumsteilen (vorher
+  hing sie an der Sprache des Macs). Neues Skript `scripts/mac-zulieferer-entfernen.sh` (Trockenlauf; entlädt nur den launchd-Dienst und entfernt
+  dessen Plist, Ausgabe nur Namen).
+
+**Schritte für Kevin (nach dem Upload)**
+1. Optional, damit Notizen, Fälligkeiten und erledigte Erinnerungen mitkommen: am Mac die lokale Instanz auf diesen Stand bringen (Vorschau
+   „make-os“ neu starten) und den Zulieferer einmal liefern lassen:
+   ```
+   cd ~/Claude/Projects/MakeOS && ~/.local/node22/bin/node zulieferer.mjs --einmal
+   ```
+2. MAKE OS › Einstellungen › Verbindungen › „Mac-Zulieferer“: Vorschau ansehen, je Apple-Liste den Space wählen, ggf. einzelne abwählen →
+   „n als Aufgaben übernehmen“ → Rückfrage bestätigen. Danach steht der Zulieferer auf „aus“.
+3. Am Mac den Dienst entfernen — erst ansehen:
+   ```
+   cd ~/Claude/Projects/MakeOS && bash scripts/mac-zulieferer-entfernen.sh
+   ```
+   dann wirklich:
+   ```
+   cd ~/Claude/Projects/MakeOS && bash scripts/mac-zulieferer-entfernen.sh --ausfuehren
+   ```
+4. Optional am Mac die alte Zugangsdatei löschen (sie enthält ggf. den Generalschlüssel des Servers, MAKE_OS_SERVER_KEY):
+   ```
+   rm ~/.make-os/zulieferer.env
+   ```
+5. Optional am Server endgültig festlegen (schließt auch den Übergang mit MAKE_OS_KEY von außen):
+   ```
+   ssh -t make@<server> 'cd /srv/make-os/app && echo "MAKE_OS_ZULIEFERER=aus" >> .env && docker compose up -d app'
+   ```
+6. Optional, wenn alles passt: auf der Karte „Erinnerungs-Spiegel löschen“ und „Adressbuch-Spiegel löschen“.
+
+**So testet ihr** (Wegwerf-Datenordner oder Prüfbau, nie die echten Daten)
+1. Als Inhaber Einstellungen › Verbindungen öffnen → Karte „Mac-Zulieferer“ zeigt „läuft“, Stand vom Mac und die Vorschau; als zweite Person ist die
+   Karte gar nicht da.
+2. „Zulieferer ausschalten“ vor der Übernahme → Rückfrage „n offene Erinnerungen …“ → Abbrechen.
+3. Einen Space für eine Liste wählen, eine Erinnerung abwählen → „übernehmen“ → Meldung „n Aufgaben angelegt“; unter Aufgaben stehen sie (Privat mit 🔒).
+4. Noch einmal „übernehmen“ (bzw. „Erledigte mitnehmen“ an) → „0 angelegt · n waren schon da“ bzw. nur die erledigten kommen dazu.
+5. Karte zeigt „aus“; Kalender: keine Erinnerungen mehr, Hinweis „als Aufgaben übernommen“; Head of IT: „Mac-Zulieferer · abgeschaltet“ (grau).
+6. „Erinnerungs-Spiegel löschen“ → Rückfrage → weg. Tests: `tests/zulieferer-aus.test.ts` (32).
+
+**Rückweg:** nur neue, optionale Felder (`einstellungen.zulieferer`, `Verarbeitung.archiviert`) und ein neuer Bestand; der alte Stand ignoriert sie
+(die übernommenen Aufgaben bleiben normale Aufgaben). Zulieferer wieder an: Karte „Wieder einschalten“ (bzw. `MAKE_OS_ZULIEFERER=an`), am Mac
+`deploy/de.makeos.zulieferer.plist` wieder laden.
+
+**Andere Mac-Dienste (nicht angefasst):** `de.makeos.vault-abgleich` (Vault-Abgleich, bleibt — Obsidian am Mac), `de.makeos.sicherung`
+(Sicherungs-Abholung auf den Mac — **offene Frage an Kevin**, ob sie bleibt), der Telegram-Bote (`bote.mjs`, läuft nur mit `start.sh` am Mac,
+kein launchd-Dienst), der Kalender vom Mac (war Teil des Zulieferers; der Server holt iCloud/Google selbst).
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:

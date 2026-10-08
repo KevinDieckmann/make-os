@@ -102,7 +102,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'planung/bloecke': r('GET', 'haushalt', 'Planungsblöcke = Termine im Haushalts-Kalender.'),
   'planung/uebernahme': r('GET,POST', 'haushalt', 'Übernahme des alten Wochenplans in den Kalender; Ausführen nur von Hand (S1).'),
   'state/kalender-einstellungen': r('GET,PUT', 'haushalt', 'Kalender-Zuordnung des Haushalts.'),
-  'zulieferung': rm({ POST: 'dienst', GET: 'haushalt' }, 'POST: nur der Mac-Zulieferer (eigener Schlüssel) bzw. Dienstweg; GET: Stand der Zulieferungen für den Haushalt.'),
+  'zulieferung': rm({ POST: 'dienst', GET: 'haushalt' }, 'POST: nur der Mac-Zulieferer (eigener Schlüssel) bzw. Dienstweg — abgeschaltet 410 (08.10., Lücke 10); GET: Stand der Zulieferungen für den Haushalt.'),
+  'zulieferer': r('GET,POST', 'inhaber', 'Mac-Zulieferer abschalten (08.10., Lücke 10): Apple-Erinnerungen als Aufgaben übernehmen, Schalter, Spiegel löschen — nur der Inhaber per Sitzung (Dienstweg 403).', 'personDerSitzung'),
   'gmail': r('GET,POST', 'person', 'Eigenes Gmail — nur die Person selbst (eigenePerson).'),
   // Inbox 2 (06.10.): EIN Strom aller eigenen Postfächer (Gmail + IMAP; WhatsApp vorbereitet) — nur die Person selbst, nie der Dienstweg.
   'inbox': r('GET,POST', 'person', 'Strom der EIGENEN Postfächer, serverseitig nach Bereich gefiltert; Aktionen gehen an die eigenen Postfächer zurück (eigenePerson).'),

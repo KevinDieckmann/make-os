@@ -132,9 +132,12 @@ export function empfaengerFuer(art: AuskunftArt, liste: readonly Empfaenger[]): 
   return liste.filter(e => !e.archiviert).map(e => ({ name: e.name, rolle: rolleText(e.rolle), zweck: e.zweck, drittland: e.drittland || null, garantie: e.drittland ? garantieText(e.garantie) : null }));
 }
 
+/** Name einer Verarbeitung in der Auskunft — archivierte (08.10., z. B. Mac-Zulieferer aus) mit Hinweis: beendet, Reste bis zur Löschung. */
+const vvName = (v: Verarbeitung): string => (v.archiviert ? `${v.name} (beendet am ${v.archiviert.am} — gespeicherte Reste bis zu ihrer Löschung)` : v.name);
+
 export function art15Angaben(e: Art15Eingabe): Art15Angaben {
   const ids = verarbeitungenFuer(e.art, e.bereiche);
-  const vv = ids.map(id => e.verarbeitungen.find(v => v.id === id)).filter((v): v is Verarbeitung => !!v);
+  const vv = ids.map(id => e.verarbeitungen.find(v => v.id === id)).filter((v): v is Verarbeitung => !!v).map(v => ({ ...v, name: vvName(v) }));
   const behoerde = e.verantwortlicher?.aufsicht?.trim();
   return {
     grundlage: 'Angaben nach Art. 15 Abs. 1 lit. a–h und Abs. 2 DSGVO; Kopie der Daten nach Art. 15 Abs. 3 (Feld „daten“ bzw. Abschnitt „Ihre Daten“).',
