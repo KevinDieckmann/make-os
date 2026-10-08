@@ -2,7 +2,8 @@
 
 // ─── MAKE OS — Der Kopf über jeder Seite (Aufräumen Etappe 1, 08.10.) ───────
 // Kevin (08.10.): „Die Software wirkt unaufgeräumt und überladen.“ Seitdem trägt der Kopf nur noch vier Dinge: links den
-// Space-Schalter (Privat | Business — die Leiste zeigt die Punkte des gewählten Space), in der Mitte die Suche (⌘K), rechts
+// Schalter Alles · Privat · Business (Nachbesserung 08.10.: EIN Schalter, oben, mit „Alles“ — die Leiste zeigt die Punkte der
+// Wahl, Heute folgt ihm; am Handy kompakt), in der Mitte die Suche (⌘K), rechts
 // die Glocke und den Fokus-Zähler. Heute, Inbox und Kalender stehen in der Leiste; der Wachstums-Score und der Index des
 // Space sind Karten auf Heute (und unter Planung › Wachstum bzw. Finanzen). Datei hieß bis 26.09. WachstumsKopf.tsx.
 
@@ -13,7 +14,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useRueckfrage } from './ui';
 import { Search, Timer, Square, Tag } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACES, spaceVon, wechselZiel, type SpaceId } from '@/lib/make-one/spaces';
+import { SPACE_WAHLEN, wahlInfo, wechselZiel, type SpaceId, type SpaceWahl } from '@/lib/make-one/spaces';
 import { teile } from '@/lib/zeitmessung/modell';
 import { gemerkterFokus, fokusMerken, fokusAbgleichen, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
 import { useTasks } from '@/context/TasksContext';
@@ -27,26 +28,28 @@ import { Glocke } from './Glocke';
 export const ZEIT_EREIGNIS = 'make-zeit-geaendert';
 
 /**
- * Der Space-Schalter (08.10.): zwei Knöpfe Privat | Business in ihrer Farbe. Ein Klick wechselt den Space; steht man auf einem
- * Punkt der Leiste mit Gegenstück im anderen Space (Inbox, Aufgaben, Finanzen …), geht es dorthin (`wechselZiel`).
+ * Der Schalter (08.10., Nachbesserung): drei Knöpfe Alles · Privat · Business in ihrer Farbe — der EINE Ort, an dem der Bereich
+ * gewählt wird (Heute hat keinen eigenen mehr). Ein Klick wechselt die Wahl; steht man auf einem Punkt der Leiste mit Gegenstück
+ * in der neuen Wahl (Inbox, Aufgaben, Finanzen …), geht es dorthin; Seiten nur eines Bereichs bleiben stehen (`wechselZiel`).
  */
-function SpaceSchalter({ space, setzen }: { space: SpaceId; setzen: (s: SpaceId) => void }) {
+function SpaceSchalter({ wahl, setzen }: { wahl: SpaceWahl; setzen: (s: SpaceWahl) => void }) {
   const router = useRouter();
   const pfad = usePathname() ?? '/os';
   const { suche } = useSpace();
-  const waehlen = (s: SpaceId) => {
-    if (s === space) return;
+  const waehlen = (s: SpaceWahl) => {
+    if (s === wahl) return;
     setzen(s);
     const ziel = wechselZiel(pfad, suche, s);
     if (ziel) router.push(ziel);
   };
   return (
-    <span role="group" aria-label="Space wählen" className="kopf-space" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', flex: '0 0 auto' }}>
-      {SPACES.map(s => {
-        const an = s.id === space;
+    <span role="group" aria-label="Bereich wählen" className="kopf-space" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', flex: '0 0 auto' }}>
+      {SPACE_WAHLEN.map(id => {
+        const s = wahlInfo(id);
+        const an = id === wahl;
         return (
-          <button key={s.id} type="button" onClick={() => waehlen(s.id)} aria-pressed={an} title={an ? `${s.label} ist gewählt` : `Zu ${s.label} wechseln`} className="fassbar"
-            style={{ minHeight: 40, minWidth: 44, padding: '0 14px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700,
+          <button key={id} type="button" onClick={() => waehlen(id)} aria-pressed={an} title={an ? `${s.label} ist gewählt` : id === 'alles' ? 'Privat und Business zusammen' : `Nur ${s.label}`} className="fassbar"
+            style={{ minHeight: 40, minWidth: 44, padding: '0 14px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, whiteSpace: 'nowrap',
               border: `1px solid ${an ? `${s.farbe}66` : 'transparent'}`, background: an ? `${s.farbe}1F` : 'transparent', color: an ? s.farbe : C.inkDim }}>
             {s.label}
           </button>
@@ -194,14 +197,14 @@ const rund = (an: boolean) => ({ border: `2px solid ${an ? C.aktiv : 'rgba(255,2
 
 export function Kopf() {
   const pfad = usePathname() ?? '';
-  const { space, setzen } = useSpace();
-  const sp = spaceVon(space);
+  const { space, wahl, setzen } = useSpace();
+  const sp = wahlInfo(wahl);
   const suchen = () => window.dispatchEvent(new CustomEvent('make-suche', { detail: { space } }));
   return (
     <div className="wachstum-kopf os-auf">
       <div className="wachstum-kopf-innen">
-        {/* Links der Space-Schalter, dann die Suche ausgeglichen in der Mitte (gibt zuerst nach, flex-shrink 1000), rechts Glocke und Fokus. */}
-        <SpaceSchalter space={space} setzen={setzen} />
+        {/* Links der Schalter Alles · Privat · Business, dann die Suche ausgeglichen in der Mitte (gibt zuerst nach, flex-shrink 1000), rechts Glocke und Fokus. */}
+        <SpaceSchalter wahl={wahl} setzen={setzen} />
         <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1000 520px', minWidth: 150, maxWidth: 960, margin: '0 auto', padding: '9px 14px', minHeight: 44, borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
           <Search size={15} strokeWidth={1.9} style={{ flex: '0 0 auto' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sp.suche}</span>

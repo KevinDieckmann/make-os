@@ -1,6 +1,6 @@
 // ─── Leiste (28.09.): „Problem oder Idee melden“ unten links ────────────────
 // Der Eintrag steht unten nach den Einstellungen (Desktop, seit 08.10.; vorher zwischen Brain und System); am Handy (seit 02.10., Paket B) hat in der Leiste „Netzwerken“
-// (Handschlag) seinen Platz übernommen — „Problem oder Idee melden“ bleibt dort als Zeile im Blatt von Privat/Business
+// (Handschlag) seinen Platz übernommen — „Problem oder Idee melden“ bleibt dort als Zeile im Blatt „Menü“ (vorher Privat/Business)
 // (MeldenZeile) und auf der System-Seite erreichbar. Ein Klick löst `make-idee` aus — das Fenster IdeeErfassen im
 // /os-Layout lauscht darauf. Kein Browser: Server-Render + der Klick-Griff direkt.
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -36,10 +36,12 @@ describe('Leiste: Problem oder Idee melden', () => {
     expect(mobil).toContain('lucide-handshake');
     // Am Rechner steht Netzwerken NICHT (Kevin 03.10.: „wirklich nur auf dem Handy“).
     expect(desktop).not.toContain('href="/os/netzwerken"');
-    // Reihenfolge am Handy: Heute · Privat · Business · ZOE · Netzwerken · Einstellungen
-    const reihe = ['>Heute<', '>Privat<', '>Business<', '>ZOE<', '>Netzwerken<', '>Einstellungen<'].map(t => mobil.indexOf(t));
+    // Reihenfolge am Handy (Nachbesserung 08.10., fünf statt sechs): Heute · Inbox · Menü · ZOE · Netzwerken — Einstellungen im Menü-Blatt.
+    const reihe = ['>Heute<', '>Inbox<', '>Menü<', '>ZOE<', '>Netzwerken<'].map(t => mobil.indexOf(t));
     expect(reihe.every(i => i > -1)).toBe(true);
     expect([...reihe].sort((a, b) => a - b)).toEqual(reihe);
+    expect(mobil).not.toContain('>Einstellungen<');
+    expect(mobil).not.toContain('>Privat</span>');
   });
 
   it('Melden bleibt am Handy erreichbar: Zeile im Blatt (≥ 44 px) löst make-idee aus und schließt das Blatt; auch auf der System-Seite', async () => {
