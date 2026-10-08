@@ -26,8 +26,7 @@ export const dynamic = 'force-dynamic';
 const STORE = 'ernaehrung';
 const KEIN = { ok: false, error: 'Ernährung und Einkauf gehören zum Haushalt des Inhabers (System → Konto).' };
 
-// Startbestand aus Kevins Profil (Ernährung = Hebel gegen die Psoriasis) — nur die Grundsätze;
-// Bedürfnisse je Person stehen seit 26.09. in den Profilen.
+// Startbestand: allgemeine Grundsätze (bearbeitbar) — Bedürfnisse je Person stehen seit 26.09. in den Profilen.
 const SEED_GRUNDSAETZE = [
   'Anti-entzündlich (mediterran): viel Gemüse, Olivenöl, Fisch/Omega-3, Nüsse.',
   'Regelmäßig: 3 Mahlzeiten, nicht ausfallen lassen.',

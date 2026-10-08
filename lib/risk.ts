@@ -16,6 +16,21 @@ import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { WEG } from '@/lib/wege';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
+/** Wie weit zurück „Reha gehört zur eigenen Routine“ zählt (Tage). */
+export const REHA_GEWOHNHEIT_TAGE = 14;
+
+/**
+ * Reha-Schild (rein): heute sind Blöcke geplant, aber kein Reha-Block — UND die Person hat in den letzten
+ * `REHA_GEWOHNHEIT_TAGE` Tagen selbst Reha-Blöcke geplant. Wer nie Reha plant, bekommt den Schild nie (08.10. abends:
+ * vorher galt das Ziel EINER Person für alle).
+ */
+export function rehaFehltHeute(bloecke: readonly { date: string; art: string }[], today: string): boolean {
+  const heute = bloecke.filter(b => b.date === today);
+  if (!heute.length || heute.some(b => b.art === 'reha')) return false;
+  const ab = tagPlus(today, -REHA_GEWOHNHEIT_TAGE);
+  return bloecke.some(b => b.art === 'reha' && b.date >= ab && b.date < today);
+}
+
 export interface Shield {
   id: string;
   stufe: 'rot' | 'amber';
@@ -39,8 +54,9 @@ export async function computeShields(today = localDay(), person?: string | null)
     // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person; ohne Person keiner an einem eigenen Ziel).
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
       .then(async f => (f ? { ...f, meilensteine: await meilensteineSichtbarFuer(f.meilensteine, person ?? null) } : f)),
-    // Heutige Blöcke (K5: Kalender-Termine der Art Fokus/Block) der Person (bzw. des Inhabers) — ohne Konto keine.
-    fuer ? planBloeckeLesen({ person: fuer, von: today, bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
+    // Blöcke (K5: Kalender-Termine der Art Fokus/Block) der Person (bzw. des Inhabers) — heute und die 14 Tage davor (ob Reha
+    // zur eigenen Routine gehört, `rehaFehltHeute`); ohne Konto keine.
+    fuer ? planBloeckeLesen({ person: fuer, von: tagPlus(today, -REHA_GEWOHNHEIT_TAGE), bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
   ]);
 
   // 0-Punkt (05.10.): Posten vor der Eröffnung einer Gesellschaft sind archiviert — sie lösen keinen Alarm mehr aus (lib/business/eroeffnung.ts).
@@ -103,10 +119,10 @@ export async function computeShields(today = localDay(), person?: string | null)
     if (tage > 16) shields.push({ id: 'finanzmeeting', stufe: 'amber', text: `Letztes Finanzmeeting vor ${tage} Tagen — der Takt ist 2× im Monat.`, href: '/os/finanzen', label: 'Finanzmeeting' });
   }
 
-  // ── Rücken: heute kein Reha-Block im Plan (Bandscheibe — nicht verhandelbar) ──
-  const heuteBloecke = wplanF.filter(b => b.date === today);
-  if (heuteBloecke.length && !heuteBloecke.some(b => b.art === 'reha')) {
-    shields.push({ id: 'reha', stufe: 'amber', text: 'Heute ist kein Reha-Block geplant — 30 Minuten, nicht verhandelbar.', href: '/os/planung', label: 'Tagesplanung' });
+  // ── Reha: heute kein Reha-Block, obwohl er zur eigenen Routine gehört (08.10. abends: kein Ziel EINER Person mehr im
+  //    Code — der Schild gilt nur, wer in den letzten 14 Tagen selbst Reha-Blöcke geplant hat; Regel `rehaFehltHeute`) ──
+  if (rehaFehltHeute(wplanF, today)) {
+    shields.push({ id: 'reha', stufe: 'amber', text: 'Heute ist kein Reha-Block geplant — in den letzten zwei Wochen gehörte er zu deiner Routine.', href: '/os/planung', label: 'Tagesplanung' });
   }
 
   // Rot zuerst — was weh tut, steht oben.

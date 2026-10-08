@@ -4,8 +4,10 @@
 // dreimal am Tag, aufs Handy:
 //
 //   morgens   Lage (Recovery, Schlaf) + die Morgenroutinen + „Wie geht's?"
-//   mittags   „Schon gegessen?" — regelmäßig essen ist sein Hebel gegen Schübe
-//   abends    Journal, Haut, Supplements, Reha, Streak — EINE Nachricht
+//   mittags   „Schon gegessen?" — regelmäßig essen
+//   abends    Journal, Routinen, dazu der eigene Symptom-Regler und der Zähler
+//             „Sauber geblieben“ — beides NUR, wenn die Person es in ihrem
+//             Körper-Profil eingestellt hat (08.10.) — EINE Nachricht
 //   sonntags  Wochenrückblick mit Trend
 //
 // Die Nachrichten sind BEWUSST ohne Modell gebaut: deterministisch, kurz,
@@ -77,7 +79,10 @@ export function mittagText(name: string): string {
 export interface AbendEingabe {
   name: string;
   routinen: string[];
+  /** Zähler „Sauber geblieben“ — nur nach der eigenen Einstellung der Person (Körper-Profil `sauberZaehler`). */
   streakAktiv: boolean;
+  /** Name des eigenen Symptom-Reglers (Körper-Profil `symptom`) — ohne Namen keine Frage danach. */
+  symptom?: string | null;
 }
 
 export function abendText(e: AbendEingabe): string {
@@ -85,8 +90,8 @@ export function abendText(e: AbendEingabe): string {
     'Was lief heute gut?',
     'Wofür bist du dankbar?',
     'Wo warst du hart zu dir?',
-    'Haut: Juckreiz 0–10, Schub ja/nein, Auslöser?',
   ];
+  if (e.symptom?.trim()) fragen.push(`${e.symptom.trim()}: 0–10, Schub ja/nein, Auslöser?`);
   if (e.routinen.length) fragen.push(`Erledigt? ${e.routinen.join(' · ')}`);
   if (e.streakAktiv) fragen.push('Sauber geblieben? Verlangen 0–10?');
   return `${e.name}, Tagesabschluss — eine Antwort reicht, in deinen Worten:\n` + fragen.map(f => `· ${f}`).join('\n');
@@ -100,6 +105,8 @@ export interface WochenEingabe {
   journalTage: number;
   haut: HautTrend;
   streak: StreakStand;
+  /** Name des eigenen Symptom-Reglers (Körper-Profil) — sonst neutral „Symptom-Tagebuch“. */
+  symptom?: string | null;
 }
 
 export function wochenText(e: WochenEingabe): string {
@@ -109,7 +116,7 @@ export function wochenText(e: WochenEingabe): string {
   z.push(`· Journal: ${e.journalTage} von 7 Abenden`);
   if (e.haut.tage) {
     const r = e.haut.richtung === 'besser' ? 'besser als die Woche davor' : e.haut.richtung === 'schlechter' ? 'schlechter als die Woche davor' : e.haut.richtung === 'gleich' ? 'wie die Woche davor' : '';
-    z.push(`· Haut: Juckreiz Ø ${e.haut.juckreiz7 ?? '–'}${r ? `, ${r}` : ''}${e.haut.schuebe30 ? `, ${e.haut.schuebe30} Schub-Tage im Monat` : ''}${e.haut.ausloeser[0] ? ` — häufigster Auslöser: ${e.haut.ausloeser[0].was}` : ''}`);
+    z.push(`· ${e.symptom?.trim() || 'Symptom-Tagebuch'}: Ø ${e.haut.juckreiz7 ?? '–'}${r ? `, ${r}` : ''}${e.haut.schuebe30 ? `, ${e.haut.schuebe30} Schub-Tage im Monat` : ''}${e.haut.ausloeser[0] ? ` — häufigster Auslöser: ${e.haut.ausloeser[0].was}` : ''}`);
   }
   if (e.streak.aktuell) z.push(`· Sauber seit ${e.streak.sauberTage} Tag${e.streak.sauberTage === 1 ? '' : 'en'}${typeof e.streak.craving7 === 'number' ? `, Verlangen Ø ${e.streak.craving7}` : ''}`);
   z.push('Was nimmst du dir für nächste Woche vor? Ein Satz.');

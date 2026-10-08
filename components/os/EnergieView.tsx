@@ -102,8 +102,11 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
                 <Zeile
                   links={<Punkt farbe={leer ? LEUCHT.achtung : LEUCHT.gut} />}
                   titel={wLabel(w, wi)}
-                  unter={<span style={{ color: reha.length ? C.inkLeise : LEUCHT.achtung }}>
-                    Reha {reha.length}× {reha.length === 0 ? '— Bandscheibe braucht täglich' : reha.length < 5 ? '— Luft nach oben' : '✓'}
+                  /* Neutral (08.10. abends, Fragebogen Teil 3): keine Ziele oder Gründe EINER Person im Code — nur, was geplant ist. */
+                  unter={<span style={{ color: C.inkLeise }}>
+                    {reha.length || sport.length
+                      ? [reha.length ? `Reha ${reha.length}×` : '', sport.length ? `Sport ${sport.length}×` : ''].filter(Boolean).join(' · ')
+                      : 'noch keine Reha- oder Sport-Blöcke'}
                   </span>}
                   rechts={leer
                     ? <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>nichts geplant — <Link href="/os/kalender?modus=planen" style={link}>Blöcke reinziehen ›</Link></span>

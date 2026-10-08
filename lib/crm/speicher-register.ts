@@ -34,6 +34,11 @@ const GESUNDHEIT: Angaben = {
   loeschfrist: 'bis die Person sie löscht bzw. ihr Konto entfernt wird',
   kategorie: ['art9'],
 };
+/** Körper-Profil (08.10. abends): wie GESUNDHEIT, aber auch bei „Teilen“ nie für andere Konten. */
+const KOERPER: Angaben = {
+  ...GESUNDHEIT,
+  art15: 'nur die Person selbst sieht, pflegt und exportiert ihr Körper-Profil (Gesundheit › Körper, Konto-Export) — auch bei „Teilen“ nie andere Konten',
+};
 
 const E = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'entfernen', grund, ...(frist ? { frist } : {}) });
 const T = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'tilgen', grund, ...(frist ? { frist } : {}) });
@@ -256,6 +261,10 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   mit(H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('haut', 'Haut-Tagebuch (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('haut--*', 'Haut-Tagebuch je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  // Körper-Profil (08.10. abends, Fragebogen Teil 3): Leitsatz, Beschwerden, Hebel, Stufenplan, Zusammenhänge, Anzeige-Einstellungen —
+  // NUR die Person selbst (auch bei „Teilen“ nicht), an die KI nur über eigenerGesundheitsKontext mit Einwilligung (b).
+  mit(H('gesundheit-koerper', 'Körper-Profil (Erstkonto) — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
+  mit(H('gesundheit-koerper--*', 'Körper-Profil je Person — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
   H('streak', 'Serien (Kevin) — eigene Daten.'),
   H('streak--*', 'Serien je Person — eigene Daten.'),
   mit(H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),

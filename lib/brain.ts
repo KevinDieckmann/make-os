@@ -17,7 +17,7 @@ import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
-import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
+import { resolveVitals, vitalsHint, vitalsKurz, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
 import { SAEULEN_TEXT } from '@/lib/business/register';
 import { computeMetrics, mitKasse, eur, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
@@ -132,7 +132,8 @@ export function aufgabenFuerBrain(state: { tasks: readonly (StoredTask & { paren
  * Seit 29.09. (#K4) auch, welche Termine: derselbe Lesepfad wie die Kalender-Sicht (`termineFuerZoe`), private und
  * Gesundheitstermine der ANDEREN Person nur als „Belegt“, nur im Haushalt des Inhabers.
  */
-export async function gatherBrain(heute = localDay(), person: string = 'kevin'): Promise<Brain> {
+// 08.10. abends (Fragebogen Teil 3, Regel 5): `person` ist Pflicht — kein stiller Rückfall auf eine feste Person mehr.
+export async function gatherBrain(heute: string = localDay(), person: string): Promise<Brain> {
   // Art. 9 (05.10.): Gesundheitswerte nur mit Einwilligung (b) der Person — ohne sie werden sie gar nicht erst gelesen.
   const gesundheitFrei = await gesundheitAnKi(person).catch(() => false);
   const [tasksR, finR, prospectsR, zoeKalR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
@@ -415,13 +416,13 @@ function blockBusiness(b: Brain): string {
     `${bi.rot.length ? ` Rot: ${bi.rot.join(', ')}.` : ''}${bi.hebel ? ` Größter Hebel: ${bi.hebel}.` : ''} ${bi.luecken} Messlücken — Cockpit /os/finanzen?s=business (Monatsabschluss schließt die meisten).`;
 }
 
-export function blockVitals(b: Brain, person: string = 'kevin'): string {
+export function blockVitals(b: Brain): string {
   const v = b.vitals;
-  const wer = person === 'malin' ? 'Malin' : 'Kevin';
   // „privat" heißt hier zweierlei: nie in Business-Aussagen — und nie über
   // die andere Person. Die Werte kommen aus dem Speicher der Person, mit der
-  // gerade geredet wird (siehe gatherBrain).
-  return `KÖRPER (privat, nie in Business-Aussagen, nie über die andere Person): Recovery ${v.rec}%, Schlaf ${v.sleep}h${vitalsHint(v)}.${v.note ? ` ${wer} notiert: "${v.note}"` : ''}`;
+  // gerade geredet wird (siehe gatherBrain). Fehlende Werte stehen als „—“ da (vitalsKurz), nie als erfundene Zahl;
+  // kein Name im Code (08.10.: vorher fest je Person).
+  return `KÖRPER (privat, nie in Business-Aussagen, nie über die andere Person): ${vitalsKurz(v)}${vitalsHint(v)}.${v.note ? ` Eigene Notiz: "${v.note}"` : ''}`;
 }
 
 function blockGedaechtnisRoh(b: Brain, max = 6): string {

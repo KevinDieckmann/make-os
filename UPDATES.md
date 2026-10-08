@@ -47,6 +47,68 @@ unter Privat (Business 13) in einer Reihe; jetzt 9 bzw. 6, was zusammengehört, 
   Ziffer → wirkt nur in den Töpfen, MAKE hat keinen Rahmen mehr und bekommt keinen Wert.
 - Tests: `tests/finanzplan-blaetter.test.ts` (neu), `tests/finanzplan-tastatur.test.ts` (neu), `tests/aufraeumen-etappe2.test.ts`, `tests/finanzplan-sicht.test.ts`, `tests/finanzplan-ansichten.test.ts` (erweitert).
 
+### A1 — Körper-Profil je Person, persönliche Inhalte raus aus dem Code (nur lokal — Branch `privat-raus-koerper`)
+
+Kevin (Frage 2): „Alles als eigene Daten je Person/Instanz (pflegbar, verschlüsselt) · bisherige Inhalte einmalig in meine Daten
+übernehmen, dann aus dem Code löschen · Körper-Reiter sieht nur die Person selbst · ZOE nutzt Gesundheitsinhalte nur mit Einwilligung
+‚an die KI‘“.
+
+1. **Körper-Profil = Daten je Person.** Bestand `gesundheit-koerper` (Erstkonto) bzw. `gesundheit-koerper--<person>` (`speicherFuer`,
+   verschlüsselt wie jeder Bestand): Leitsatz, „Was Aufmerksamkeit braucht“, Hebel (mit Kennung einer Kennzahl des Gesundheits-Index statt
+   fester Namenszuordnung), Stufenplan, Zusammenhänge, eigener Hinweis — dazu die Anzeige auf „Heute“: Symptom-Regler (nur mit Namen),
+   Zähler „Sauber geblieben“ (an/aus), Sätze unter Routinen. Vorher standen diese Inhalte einer Person als Konstanten im Code und der Reiter
+   zeigte sie JEDEM Konto. Rein `lib/gesundheit/koerper.ts` (Säubern kürzt nie, über einer Grenze 413), Server `lib/gesundheit/koerper-server.ts`.
+2. **Route `/api/gesundheit/koerper`** (GET/PATCH, Klasse `person`): NUR die Person selbst — kein `?fuer=`, Dienstweg 403, auch bei geteilter
+   Gesundheit nie für andere. Schreiben: Einwilligung (a) zuerst, Build-Kennung, Stand/409 (zwei Geräte), ein ungültiger Schritt lässt den
+   ganzen Stapel liegen. Lese-Protokoll Art. 9.
+3. **Oberfläche Gesundheit › Körper:** nur in der eigenen Ansicht (in der Ansicht einer anderen Person gibt es den Reiter nicht). Ohne Profil
+   Leerzustand mit „Profil anlegen“; jede Zeile antippen = bearbeiten/entfernen, „+ neu“ je Liste (`components/os/gesundheit/Koerper.tsx`).
+   „Heute“: Symptom-Regler und Zähler nur nach der eigenen Einstellung (keine Abfrage einer festen Person mehr); in einer geteilten Ansicht
+   nur, wenn es Einträge gibt, neutral benannt.
+4. **Vitalwerte ohne Personen-Sonderfall:** `resolveVitals(tag, person)` — Person Pflicht, Bestand über `speicherFuer`, keine festen
+   Rückfallwerte mehr (ohne Werte ehrlich keine; Prompts zeigen fehlende Werte als „—“ über `vitalsKurz`, Fokus ohne Recovery = „GELB“).
+   `gatherBrain(tag, person)` ebenfalls ohne Rückfall auf eine feste Person; `blockVitals` ohne Namen; Tagesstart prüft Vitalwerte nur
+   für die benannte Person. Die alten festen WHOOP-Werte (Stand Juli) werden NICHT übernommen — die echten kommen über WHOOP/Export/Morgen-Check.
+5. **KI:** Das eigene Körper-Profil geht nur über `eigenerGesundheitsKontext` an das Modell — nur mit Einwilligung (b) der Person selbst,
+   nie für die andere Person (`<eigene_angaben quelle="koerper">`). Vorher ging kein Körper-Inhalt an ein Modell, wohl aber die festen
+   WHOOP-Rückfallwerte (jetzt weg).
+6. **Übernahme des Altbestands:** `lib/altbestand/uebernahme.ts` (Server) hält den bisherigen Inhalt unverändert und schreibt ihn genau
+   EINMAL in das Körper-Profil der Person aus `MAKE_OS_ALTBESTAND_PERSON` — nur wenn das Ziel leer ist, mit Marke, Gesundheit nur mit
+   Einwilligung (a), Symptom-Regler und Zähler dort AN (für diese Person bleibt alles wie heute). Ohne Variable (Demo, Kunden) passiert
+   nichts; die Demo-Riegel lehnen die Variable ab. Ausgelöst 8 s nach dem Start (`lib/store/betrieb.ts`, nur mit Variable).
+7. **Wächter:** `tests/koerper-sicht.test.ts` (B bekommt nichts aus A, auch geteilt/`?fuer`; Dienstweg 403; ohne Einwilligung kein
+   Schreiben; 409/413/404; KI nur mit (b) und nur eigen), `tests/altbestand-uebernahme.test.ts` (ohne Variable nichts, genau einmal, nie über
+   vorhandene Daten, ohne Einwilligung nicht; `health-data.ts` exportiert die früheren Konstanten nicht mehr — geprüft über Exportnamen),
+   Messlatte (Marke `koerper` in der Saat), Register/Konto-Daten, Demo-Saat mit erfundenem Profil.
+
+8. **Nachbesserung nach der Prüfung (gleicher Branch):**
+   - Körper › Speichern schickte jede Änderung zweimal (Klick UND Absenden des Formulars) — die zweite bekam 409 und der Hinweis „wurde
+     inzwischen geändert“ blieb stehen. Jetzt sendet nur das Formular, gesperrt bis zur Antwort. Wächter: kein Submit-Knopf mit `onClick`.
+   - Übernahme: als „belegt“ zählt nur echter INHALT. Wer vorher nur Regler/Zähler/Sätze eingeschaltet hat, bekommt den Altbestand trotzdem;
+     seine Einstellungen gewinnen. Die Übernahme geht nur an das Konto mit der Rolle Inhaber (falsche Variable → nichts). „Konten nicht
+     lesbar“ steht jetzt auch im Log. Zwei Hebel mit längerem Namen bekommen ihre Kennzahl. Die alten festen Zahlen je Eintrag (nie angezeigt)
+     werden bewusst nicht übernommen.
+   - Telegram (Gesundheits-Takt): Symptom-Frage und „Sauber geblieben?“ nur nach der EIGENEN Einstellung im Körper-Profil — die feste
+     Personen-Abfrage und die feste Symptom-Frage an alle sind weg.
+   - ZOE-Morgen/-Abend ohne Person (Takt) rechnen als Inhaber (Rolle, kein fester Name), der Empfang nur mit der Person aus dem Tor.
+   - Weitere Stellen neutral: Energie-Kachel (kein persönlicher Grund mehr im Text), Reha-Schild nur für wer selbst Reha plant, Kommentare
+     ohne Gesundheitsangaben (Haut-Tagebuch, Einträge, Ernährung, Takt). Verlauf zeigt vorhandene Symptom-Einträge auch in der eigenen
+     Ansicht ohne eingestellten Regler. Wächter `tests/privat-neutral.test.ts` (Vitalwerte-Verhalten, Reha-Schild, Personen-Abfragen).
+
+**Offene Einmal-Schritte (Kevin) — Reihenfolge wichtig:**
+- Mit dem Upload, VOR dem ersten Öffnen von Gesundheit › Körper: in `/srv/make-os/app/.env` die Zeile
+  `MAKE_OS_ALTBESTAND_PERSON=<dein Speichername>` setzen (das Konto muss die Rolle Inhaber haben), dann `docker compose up -d`.
+  Nach dem Start (≈ 10 s): `docker compose logs app | grep Altbestand` zeigt „Altbestand „koerper“: uebernommen.“ — danach Gesundheit › Körper
+  ansehen. Erst dann im Körper-Profil eigene Inhalte anlegen: wer vorher Inhalte einträgt, bekommt den Altbestand nicht mehr („ziel-belegt“
+  im Log; Regler/Zähler allein schaden nicht).
+  Andere Log-Zeilen: „übersprungen — keine Einwilligung (a)“ → erst System › Datenschutz › Gesundheit bestätigen, dann App neu starten ·
+  „die Variable nennt nicht den Inhaber“ / „kein Konto zur Variable“ → Speichername prüfen · „Konten nicht lesbar“ → App neu starten.
+  Läuft vor dem übernächsten Upload nichts davon durch, ist der Altinhalt nach dem Löschen des Moduls nur noch in der Git-Historie.
+- Mit dem übernächsten Upload: `lib/altbestand/uebernahme.ts`, den Start-Haken in `lib/store/betrieb.ts`, den Übernahme-Teil von
+  `tests/altbestand-uebernahme.test.ts` und die Variable in der `.env` entfernen.
+
+**Rückweg:** nur ein neuer Bestand — der alte Stand liest ihn nicht und zeigt wieder die Inhalte aus seinem Code.
+
 ## 08.10.2026 — Phase 0: Sicht-Entscheidungen (nur lokal — Branch `phase0-sicht`)
 
 Kevins Antworten auf die Fragen 1–3 der Sicht-Prüfung (unten, „Fragen an Kevin“) plus WHOOP — alles serverseitig, je mit Wächtertest.

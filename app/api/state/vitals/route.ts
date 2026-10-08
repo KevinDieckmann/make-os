@@ -7,7 +7,7 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
+import { ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { resolveVitals, localDay, VITAL_FELDER, type VitalsLog, type DayVitals } from '@/lib/vitals';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
@@ -22,26 +22,26 @@ const num = (v: unknown, min: number, max: number): number | undefined => {
 };
 
 export async function GET(req: Request) {
-  // Körperwerte sind persönlich: Kevin und Malin schreiben in getrennte
-  // Speicher. Vorher hätte ihr Morgen-Check seinen überschrieben.
-  // Lesen dürfen sich beide gegenseitig (?fuer=, seit 23.09.).
+  // Körperwerte sind persönlich: jede Person schreibt in ihren eigenen Speicher.
+  // Lesen darf eine andere Person sie nur, wenn sie geteilt sind (?fuer=, darfGesundheitSehen).
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
-  // Auch der Rückfallwert gehört der Person: resolveVitals nimmt für Kevin
-  // seinen Whoop-Export als Ausgangspunkt und für Malin ehrlich Null. Ohne
-  // das stand bei ihr Kevins Recovery von 81 % als ihr eigener Wert.
+  // Die aktuellen Werte gehören der Person: resolveVitals liest nur ihren Bestand — ohne Werte ehrlich keine (08.10.:
+  // keine festen Rückfallwerte einer Person mehr im Code).
   const aktuell = await resolveVitals(undefined, person);
   return NextResponse.json({ log, aktuell });
 }
 
 export async function PUT(req: Request) {
+  // Nur die ausdrücklich benannte Person (08.10. abends, Regel 5 — vorher prüfte die Sperre ohne Person die Einwilligung einer festen Person).
+  const person = personStreng(req);
+  if (!person) return ohnePerson();
   // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
-  { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
+  { const sperre = await gesundheitSchreibSperre(person); if (sperre) return sperre; }
   let body: { date?: string; vitals?: DayVitals };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  if (!personStreng(req)) return ohnePerson();
 
   const date = body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : localDay();
   const v = body.vitals ?? {};
@@ -63,7 +63,6 @@ export async function PUT(req: Request) {
 
   // Serialisiert lesen-ändern-schreiben: sonst überschreibt ein paralleler
   // Schreiber die anderen Tage.
-  const person = personAus(req);
   await updateJson<VitalsLog>(speicherFuer('vitals', person), current => {
     const log = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     // Handwert (08.10.): jedes hier gesetzte Feld gilt als von Hand — der WHOOP-Abgleich überschreibt es nie mehr.
@@ -89,9 +88,8 @@ export async function PUT(req: Request) {
     });
   }
 
-  // Auch der Rückfallwert gehört der Person: resolveVitals nimmt für Kevin
-  // seinen Whoop-Export als Ausgangspunkt und für Malin ehrlich Null. Ohne
-  // das stand bei ihr Kevins Recovery von 81 % als ihr eigener Wert.
+  // Die aktuellen Werte gehören der Person: resolveVitals liest nur ihren Bestand — ohne Werte ehrlich keine (08.10.:
+  // keine festen Rückfallwerte einer Person mehr im Code).
   const aktuell = await resolveVitals(undefined, person);
   return NextResponse.json({ ok: true, date, aktuell });
 }

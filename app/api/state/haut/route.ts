@@ -1,8 +1,7 @@
-// ─── MAKE OS — Das Haut-Tagebuch ────────────────────────────────────────────
-// Schuppenflechte: Juckreiz 0–10, Schub, Stellen, Auslöser — ein Eintrag je
-// Tag. Kevin am 29.07.: „Ich merke, wenn mein Stresslevel hoch ist oder ich
-// nervös werde, kratze ich." Hier wird das sichtbar, und beim Hautarzt sind es
-// Zahlen statt Erinnerung.
+// ─── MAKE OS — Das Haut-Tagebuch (Symptom-Tagebuch) ─────────────────────────
+// Ein allgemeiner Tracker je Person: Wert 0–10, Schub, Stellen, Auslöser — ein Eintrag je Tag. Wie der Regler
+// heißt, legt die Person in ihrem Körper-Profil fest (08.10. abends: keine Inhalte einer Person im Code). Sichtbar
+// wird der Verlauf über Wochen — Zahlen statt Erinnerung.
 //
 // GET  ?fuer=kevin|malin  → Log + Trend (Kevins Entscheidung 23.09.: Malin
 //                            sieht alles — beide dürfen die Seite der anderen

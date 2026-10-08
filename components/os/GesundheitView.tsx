@@ -9,7 +9,8 @@
 //              drei Fragen — so macht es Whoops Journal)
 //   Verlauf    30 Tage, ein Diagramm je Kennzahl
 //   Ernährung  die Woche (bestehende Ansicht, eingebettet)
-//   Körper     Aufbau und Reha (eingebettet) + das Profil vom 29.07.
+//   Körper     Energie, Gesundheits-Meilensteine und das EIGENE Körper-Profil (Daten je Person, seit 08.10. abends —
+//              nur die Person selbst; in der Ansicht einer anderen Person gibt es den Reiter nicht)
 //
 // Whoops Regeln, hier eingehalten: keine Rahmen — Weißraum und Haarlinien;
 // eine Schrift; große Zahlen, kleine Labels in normaler Schrift; eine Farbe
@@ -18,15 +19,14 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
+import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
 import { WhoopKarte } from './gesundheit/WhoopKarte';
-import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
+import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Hinweis, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
-import { BESCHWERDEN, HEBEL, AUFBAU, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
+import { useKoerper, KoerperLeer, ProfilKarte, BeschwerdenKarte, HebelKarte, ZusammenhaengeKarte, AnzeigeKarte } from './gesundheit/Koerper';
+import { routinenHinweis } from '@/lib/gesundheit/koerper';
 
-/** Welche Kennzahl des Gesundheits-Index hinter einem Hebel steht (26.09.). */
-const HEBEL_KENNZAHL: Record<string, string> = { Ernährung: 'essen', Stress: 'stress', Bewegung: 'reha', Schlaf: 'schlaf', Cannabis: 'streak', Haut: 'haut' };
 import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
 import { EnergieView } from './EnergieView';
@@ -114,6 +114,20 @@ export function GesundheitView() {
   const [hebel, setHebel] = useState<{ id: string; label: string; anzeige: string | null; ampel: string; gemessen: boolean }[] | null>(null);
   const [etappen, setEtappen] = useState<{ id: string; titel: string; faellig?: string; fortschritt: number; erledigt: boolean; bereich: string }[]>([]);
   const eigene = !stand || stand.ich === ansicht;
+  // Körper-Profil (08.10. abends, Kevin: „Körper-Reiter sieht nur die Person selbst“): nur die EIGENE Ansicht, sicher erst mit
+  // geladenem Stand. Die Route liefert ohnehin nur das eigene Profil — die Oberfläche zeigt es nie unter fremdem Namen.
+  const eigeneSicher = !!stand && stand.ich === ansicht;
+  const koerper = useKoerper(eigeneSicher);
+  const segmente = !stand || eigeneSicher ? SEGMENTE : SEGMENTE.filter(s => s.id !== 'koerper');
+  // Symptom-Regler und Zähler „Sauber geblieben“: eigene Ansicht nach der eigenen Einstellung (Körper › Anzeige); in einer
+  // geteilten Ansicht nur, wenn es Einträge gibt — neutral benannt (die Einstellungen der anderen Person bleiben bei ihr).
+  const symptomName = eigeneSicher ? koerper.koerper?.symptom?.name ?? null : stand?.haut.tage.some(t => t.e) ? 'Symptom-Tagebuch' : null;
+  // Verlauf (nur lesen, 30 Tage): in BEIDEN Ansichten, sobald es Einträge gibt — vorhandene Daten verschwinden nie, nur weil
+  // (noch) kein Regler eingestellt ist; in der eigenen Ansicht mit dem eigenen Namen, sonst neutral. Der Regler auf „Heute“
+  // (Eingabe) folgt in der eigenen Ansicht der Einstellung.
+  const verlaufEintraege = !!verlauf && Object.values(verlauf.haut).some(e => e?.juckreiz != null);
+  const verlaufSymptom = (eigeneSicher ? symptomName : null) ?? (verlaufEintraege ? 'Symptom-Tagebuch' : null);
+  const sauberZeigen = eigeneSicher ? !!koerper.koerper?.sauberZaehler : (stand?.streak.eintraege30 ?? 0) > 0;
   const q = ansicht ? `?fuer=${ansicht}` : '';
   // #morgen · #routinen · #haut · #streak aus einem Link: hinspringen, sobald der Stand da ist.
   useZuZiel(null, !!stand);
@@ -140,11 +154,11 @@ export function GesundheitView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ansicht]);
   useEffect(() => {
-    if (segment !== 'koerper') return;
+    if (segment !== 'koerper' || !eigeneSicher) return;
     fetch(`/api/gesundheit/index${q}`, { cache: 'no-store' }).then(r => r.json()).then(d => { if (d.ok) setHebel((d.pi.saeulen as { kennzahlen: { id: string; label: string; anzeige: string | null; ampel: string; gemessen: boolean }[] }[]).flatMap(s => s.kennzahlen)); }).catch(() => {});
     fetch('/api/state/meilensteine').then(r => r.json()).then(d => setEtappen((d.meilensteine ?? []).filter((m: { bereich: string }) => m.bereich === 'gesundheit'))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segment, ansicht]);
+  }, [segment, ansicht, eigeneSicher]);
   useEffect(() => {
     if (segment !== 'verlauf' || verlauf) return;
     Promise.all([fetch(`/api/state/vitals${q}`).then(r => r.json()), fetch(`/api/state/haut${q}`).then(r => r.json())])
@@ -214,7 +228,7 @@ export function GesundheitView() {
       >
       {/* Die Umschalter stehen im Inhalt als EINE wischbare Leiste (Standard, Regel 11) — nicht im Kopf. */}
       {eigene && <EinwilligungHinweis />}
-      <Segmente liste={SEGMENTE} aktiv={segment} onWahl={geheZu} />
+      <Segmente liste={segmente} aktiv={segment} onWahl={geheZu} />
       <ZielBezug bereich="gesundheit" />
 
       {segment === 'heute' && (
@@ -283,21 +297,23 @@ export function GesundheitView() {
             <div style={{ marginTop: 6 }}>
               {(stand?.routinen.liste ?? []).map(r => (
                 <Zeile key={r.id} wann={r.wann === 'abend' ? 'Abend' : r.id === 'essen' ? 'Mittag' : 'Morgen'} titel={r.label}
-                  unter={r.id === 'essen' ? 'dein Hebel gegen die Schübe' : undefined}
+                  unter={eigeneSicher ? routinenHinweis(koerper.koerper, r.id) : undefined}
                   kinder={<Schalter an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} ariaLabel={`${r.label} heute erledigt`} />} />
               ))}
+              {symptomName && (<>
               <div id="haut" style={{ scrollMarginTop: 90 }} />
-              <Zeile wann="Abend" titel="Haut · Juckreiz"
+              <Zeile wann="Abend" titel={symptomName}
                 unter={stand?.haut.trend.juckreiz7 != null ? `Ø ${stand.haut.trend.juckreiz7} diese Woche${stand.haut.trend.richtung === 'besser' ? ', besser als die Woche davor' : stand.haut.trend.richtung === 'schlechter' ? ', schlechter als die Woche davor' : ''}` : 'noch kein Eintrag'}
                 kinder={
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 clamp(140px, 24vw, 200px)' }}>
-                    <input type="range" min={0} max={10} value={juckreiz ?? 0} disabled={!eigene} onChange={e => hautSetzen(Number(e.target.value))} aria-label="Juckreiz 0 bis 10"
+                    <input type="range" min={0} max={10} value={juckreiz ?? 0} disabled={!eigene} onChange={e => hautSetzen(Number(e.target.value))} aria-label={`${symptomName} 0 bis 10`}
                       style={{ flex: 1, accentColor: juckreiz == null ? C.inkLeise : juckreiz >= 7 ? LEUCHT.kritisch : juckreiz >= 4 ? LEUCHT.achtung : LEUCHT.gut }} />
                     <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, width: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: juckreiz == null ? C.inkLeise : C.ink }}>{juckreiz ?? '—'}</span>
                   </div>
                 } />
+              </>)}
               <div id="streak" style={{ scrollMarginTop: 90 }} />
-              {(ansicht === 'kevin' || (stand?.streak.eintraege30 ?? 0) > 0) && (
+              {sauberZeigen && (
                 <Zeile wann="Abend" titel="Sauber geblieben"
                   unter={stand?.streak.aktuell ? `Tag ${stand.streak.sauberTage} seit dem letzten Rückfall` : stand?.streak.eintraege30 ? 'seit über drei Tagen kein Eintrag' : 'noch nicht angefangen'}
                   kinder={<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -324,9 +340,9 @@ export function GesundheitView() {
               <Balken titel="Schlaf" einheit=" h" max={9} farbe={LEUCHT.schlaf} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.sleep ?? null)} />
               <Balken titel="HRV" einheit=" ms" max={140} farbe={LEUCHT.puls} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.hrv ?? null)} />
               <Balken titel="Ruhepuls" einheit="" max={90} farbe={LEUCHT.beziehung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.rhr ?? null)} />
-              <Balken titel="Juckreiz" max={10} farbe={LEUCHT.achtung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />
+              {verlaufSymptom && <Balken titel={verlaufSymptom} max={10} farbe={LEUCHT.achtung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />}
               <Balken titel="Routinen" max={anzahl} farbe={LEUCHT.gut} besserIst="hoch" tage={tage30} werte={tage30.map(d => (hl[d]?.length ?? 0) || null)} />
-              {stand?.haut.trend.ausloeser.length ? (
+              {verlaufSymptom && stand?.haut.trend.ausloeser.length ? (
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>Auslöser in 30 Tagen: {stand.haut.trend.ausloeser.map(a => `${a.was} (${a.mal}×)`).join(' · ')}</div>
               ) : null}
             </>
@@ -336,8 +352,13 @@ export function GesundheitView() {
 
       {segment === 'ernaehrung' && <ErnaehrungView eingebettet />}
 
-      {segment === 'koerper' && (
+      {segment === 'koerper' && stand && !eigeneSicher && (
+        <Leer>Das Körper-Profil sieht nur die Person selbst.</Leer>
+      )}
+      {segment === 'koerper' && eigeneSicher && (
         <>
+          {koerper.fehler && <Hinweis art="kritisch">{koerper.fehler}</Hinweis>}
+          {koerper.geladen && !koerper.koerper && <KoerperLeer aendern={koerper.aendern} />}
           <Flaeche seite="gesundheit-koerper">
           <Kachel id="energie" titel="Energie" breite={3}><EnergieView eingebettet /></Kachel>
           <Kachel id="meilensteine" titel="Gesundheits-Meilensteine" breite={3}>
@@ -347,35 +368,11 @@ export function GesundheitView() {
             {etappen.map(g => { const spaet = !!g.faellig && g.faellig < heute && !g.erledigt; return <Link key={g.id} href={`/os/planung/jahr?m=${encodeURIComponent(g.id)}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={<span style={{ textDecoration: g.erledigt ? 'line-through' : 'none', color: g.erledigt ? C.inkLeise : C.ink }}>{g.titel}</span>} unter={spaet ? `überfällig seit ${g.faellig!.slice(8)}.${g.faellig!.slice(5, 7)}. — zählt 0 im Index` : g.faellig ? `fällig ${g.faellig.slice(8)}.${g.faellig.slice(5, 7)}.` : undefined} kinder={<span style={{ fontSize: TYP.bedien, color: spaet ? LEUCHT.kritisch : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.fortschritt} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.fortschritt / 100} farbe={spaet ? LEUCHT.kritisch : LEUCHT.schlaf} /></div></Link>; })}
           </Karte>
           </Kachel>
-          <Kachel id="zusammenhaenge" titel="Zusammenhänge" breite={3}>
-          <Karte i={5}>
-            <Ueberschrift>Zusammenhänge</Ueberschrift>
-            {ZUSAMMENHAENGE.map(z => <Zeile key={z} titel={z} kinder={<span />} />)}
-            <p style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
-          </Karte>
-          </Kachel>
-          <Kachel id="profil" titel="Profil" breite={3}>
-          <Karte i={1}>
-            <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>aktuell im Verlauf ›</button>}>Profil · Stand 29.07.</Ueberschrift>
-            {AUFBAU.map(s => <Zeile key={s.phase} wann={s.state === 'now' ? 'Jetzt' : s.state === 'next' ? 'Danach' : 'Später'} titel={`${s.phase} · ${s.name}`} unter={s.desc} kinder={<span />} />)}
-          </Karte>
-          </Kachel>
-          <Kachel id="aufmerksamkeit" titel="Was Aufmerksamkeit braucht" breite={3}>
-          <Karte i={2}>
-            <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>Stand 29.07. · <button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>aktuell ›</button></span>}>Was Aufmerksamkeit braucht</Ueberschrift>
-            {BESCHWERDEN.map(b => <Zeile key={b.name} titel={b.name} unter={b.note} kinder={<Chip farbe={b.tone === 'crit' ? LEUCHT.kritisch : b.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut}>{b.status}</Chip>} />)}
-          </Karte>
-          </Kachel>
-          <Kachel id="hebel" titel="Hebel · live" breite={3}>
-          <Karte i={3}>
-            <Ueberschrift farbe={LEUCHT.gut} rechts={<button onClick={() => geheZu('index')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Index ›</button>}>Hebel · live</Ueberschrift>
-            {HEBEL.map(h => {
-              const k = hebel?.find(x => x.id === HEBEL_KENNZAHL[h.name]);
-              const f = !k || !k.gemessen ? C.inkLeise : k.ampel === 'gruen' ? LEUCHT.gut : k.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.kritisch;
-              return <Link key={h.name} href={`/os/gesundheit?s=index${!eigene ? `&fuer=${ansicht}` : ''}&k=${HEBEL_KENNZAHL[h.name] ?? ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={h.name} unter={k ? (k.gemessen ? k.label : `${k.label} · noch nicht messbar`) : h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, color: f }}>{k?.gemessen ? k.anzeige : '—'}</span>} /></Link>;
-            })}
-          </Karte>
-          </Kachel>
+          {koerper.koerper && <Kachel id="profil" titel="Profil" breite={3}><ProfilKarte k={koerper.koerper} aendern={koerper.aendern} zumVerlauf={() => geheZu('verlauf')} /></Kachel>}
+          {koerper.koerper && <Kachel id="aufmerksamkeit" titel="Was Aufmerksamkeit braucht" breite={3}><BeschwerdenKarte k={koerper.koerper} aendern={koerper.aendern} /></Kachel>}
+          {koerper.koerper && <Kachel id="hebel" titel="Hebel · live" breite={3}><HebelKarte k={koerper.koerper} aendern={koerper.aendern} kennzahlen={hebel} zumIndex={() => geheZu('index')} /></Kachel>}
+          {koerper.koerper && <Kachel id="zusammenhaenge" titel="Zusammenhänge" breite={3}><ZusammenhaengeKarte k={koerper.koerper} aendern={koerper.aendern} /></Kachel>}
+          {koerper.koerper && <Kachel id="anzeige" titel="Anzeige auf Heute" breite={3}><AnzeigeKarte k={koerper.koerper} aendern={koerper.aendern} routinen={(stand?.routinen.liste ?? []).map(r => ({ id: r.id, label: r.label }))} /></Kachel>}
           </Flaeche>
         </>
       )}

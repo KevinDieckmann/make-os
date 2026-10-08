@@ -8,8 +8,13 @@
 // nie ein Gast-Profil und nie das der anderen Person). Fehlt es, steht im Prompt nichts. Die Texte gehen als Daten in den
 // Prompt (Kapsel `<eigene_angaben>`), nie als Anweisung.
 
+// 08.10. abends (Fragebogen Teil 3, Kevin: „ZOE nutzt Gesundheitsinhalte nur mit Einwilligung ‚an die KI‘“): dazu das EIGENE
+// Körper-Profil der fragenden Person (lib/gesundheit/koerper.ts) — Leitsatz, was Aufmerksamkeit braucht, Hebel, aktuelle Stufe;
+// gleiche Regeln (nur die Person selbst, nur mit (b), zu lange Felder weggelassen, als Daten in `<eigene_angaben>`).
+
 import { loadJson } from '@/lib/store/local-db';
 import type { ErnaehrungFile, Profil } from '@/lib/make-one/ernaehrung-data';
+import { koerperSaeubern, type KoerperStand } from './koerper';
 
 /** Längster Text je Feld im Prompt — darüber wird nichts gekürzt, sondern das Feld weggelassen (Hinweis statt Bruchstück). */
 export const KONTEXT_MAX = 600;
@@ -28,6 +33,19 @@ export function kontextAusProfilen(profile: readonly Partial<Profil>[] | undefin
   return teile.length ? `<eigene_angaben quelle="profil">\n${teile.join('\n')}\n</eigene_angaben>` : '';
 }
 
+/** Rein: der Kontext aus dem eigenen Körper-Profil — leer, wenn nichts gepflegt ist. Felder über KONTEXT_MAX fallen weg. */
+export function kontextAusKoerper(k: KoerperStand | null | undefined): string {
+  if (!k) return '';
+  const jetzt = k.stufen.filter(s => s.zustand === 'jetzt').map(s => sauber(s.phase ? `${s.phase} · ${s.name}` : s.name)).filter(Boolean);
+  const teile = [
+    ['Leitsatz', sauber(k.leitsatz)],
+    ['Was Aufmerksamkeit braucht', k.beschwerden.map(b => sauber(b.status ? `${b.name} (${b.status})` : b.name)).filter(Boolean).join('; ')],
+    ['Hebel', k.hebel.map(h => sauber(h.name)).filter(Boolean).join('; ')],
+    ['Aktuelle Stufe', jetzt.join('; ')],
+  ].filter(([, t]) => t && t.length <= KONTEXT_MAX).map(([n, t]) => `${n}: ${t}`);
+  return teile.length ? `<eigene_angaben quelle="koerper">\n${teile.join('\n')}\n</eigene_angaben>` : '';
+}
+
 /**
  * Der Gesundheits-/Profil-Kontext der fragenden Person für einen Prompt — oder ''. Nur ihr eigener Bestand; wer für eine
  * andere Person plant, bekommt deren Angaben nie (es gibt hier keinen `fuer`-Parameter).
@@ -37,8 +55,12 @@ export async function eigenerGesundheitsKontext(person: string | null | undefine
   // Art. 9 (05.10.): nur mit der Einwilligung (b) „An die KI geben“ der Person — sonst steht im Prompt nichts.
   const { gesundheitAnKi } = await import('@/lib/datenschutz/gesundheit-einwilligung');
   if (!(await gesundheitAnKi(person).catch(() => false))) return '';
-  const f = await loadJson<Partial<ErnaehrungFile>>('ernaehrung').catch(() => null);
-  return kontextAusProfilen(f?.profile, person);
+  const [f, koerper] = await Promise.all([
+    loadJson<Partial<ErnaehrungFile>>('ernaehrung').catch(() => null),
+    // Körper-Profil: nur der eigene Bestand (speicherFuer der FRAGENDEN Person) — nie der einer anderen Person.
+    import('./koerper-server').then(m => m.koerperLaden(person)).then(r => r.koerper).catch(() => null),
+  ]);
+  return [kontextAusProfilen(f?.profile, person), kontextAusKoerper(koerperSaeubern(koerper))].filter(Boolean).join('\n');
 }
 
 /** Ein Satz für den System-Prompt, der sagt, wie der Kontext zu lesen ist (nur, wenn es einen gibt). */

@@ -16,7 +16,7 @@ import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
-import { personAus, type Person } from '@/lib/zoe/raum';
+import type { Person } from '@/lib/zoe/raum';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
@@ -62,9 +62,11 @@ function anweisung(person: Person, offen: number): string {
 }
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  // Regel 5 (08.10. abends): die Person kommt aus dem Tor (Sitzung bzw. Dienstweg MIT Person) — nie der Rückfall von `personAus`.
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  const person = personAus(req);
+  const person = zugang.person;
   const stunde = stundeJetzt();
   const schluessel = `${person}:${stunde}`;
 

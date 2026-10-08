@@ -42,6 +42,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   // WHOOP je Person (08.10.): der Spiegel der eigenen Werte gehört der Person (Export); der Zugang (Token) nie in eine Datei.
   { basis: 'whoop-stand' },
   { basis: 'whoop-verbindung', export: false, grund: 'Zugang zu WHOOP (verschlüsselte Token) — nie in einer Datei; beim Löschen bei WHOOP widerrufen und entfernt' },
+  // Körper-Profil (08.10. abends, Fragebogen Teil 3): gehört allein der Person — Export und Löschen mit dem Konto.
+  { basis: 'gesundheit-koerper' },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */

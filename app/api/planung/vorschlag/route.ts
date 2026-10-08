@@ -13,7 +13,7 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
-import { resolveVitals, vitalsHint } from '@/lib/vitals';
+import { resolveVitals, vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { nameVon } from '@/lib/zoe/raum';
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
 
   const user = [
     `Woche: ${tage[0]} bis ${tage[6]}. Heute ist ${localDay()}.`,
-    vitals ? `Recovery ${vitals.rec}%, Schlaf ${vitals.sleep}h${vitalsHint(vitals)}.` : 'Keine Gesundheitswerte (keine Einwilligung) — plane mit mittlerer Last.',
+    vitals ? `${vitalsKurz(vitals)}${vitalsHint(vitals)}.` : 'Keine Gesundheitswerte (keine Einwilligung) — plane mit mittlerer Last.',
     eigeneAngaben,
     '',
     `FESTE TERMINE (unverrückbar):`,

@@ -1,11 +1,11 @@
 // ─── MAKE OS — Gesundheit: die Einträge und ihre Regeln ─────────────────────
 // Kevin, 23.09.: „Gesundheit ist die Basis, deswegen bauen wir ihn zuerst."
 //
-// Drei Bestände, die es bis heute nicht gab, obwohl Kevin sie am 29.07. als
-// seine Hebel genannt hat:
-//   · das Haut-Tagebuch (Schuppenflechte: Juckreiz, Schub, Auslöser)
-//   · der Streak (Cannabis-Schnitt: sauber ja/nein, Verlangen)
-//   · die Routinen-Quoten je Hebel (Essen, Reha, Supplements)
+// Drei Bestände je Person (allgemeine Tracker, keine Inhalte einer Person im Code — 08.10. abends):
+//   · das Symptom-Tagebuch (Bestand `haut`: Wert 0–10, Schub, Auslöser — den Namen des Reglers legt die
+//     Person in ihrem Körper-Profil fest)
+//   · der Zähler „Sauber geblieben“ (Bestand `streak`: sauber ja/nein, Verlangen)
+//   · die Routinen-Quoten je Routine
 //
 // Alles hier ist reine Logik, damit vitest sie prüft. Kein Speicherzugriff,
 // keine Zeit aus der Uhr — beides kommt von außen herein.
@@ -94,8 +94,8 @@ export interface HautTrend {
 }
 
 /**
- * Was die Haut über einen Monat erzählt. Für Kevin beim Hautarzt und für
- * ZOE, der den Zusammenhang Stress → Kratzen → Schub sichtbar machen soll.
+ * Was das Symptom-Tagebuch über einen Monat erzählt — für die Person selbst und für ZOE, die Zusammenhänge
+ * (z. B. Stress → Schub) sichtbar machen soll.
  */
 export function hautTrend(log: HautLog, heute: string): HautTrend {
   const t30 = tageZurueck(heute, 30);
