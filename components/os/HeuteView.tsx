@@ -31,6 +31,8 @@ export const HEUTE_FLAECHE: Record<HeuteSicht, string> = { alle: 'home', privat:
 /** Der Standard je Sicht (wird nie gespeichert). Kennungen der bisherigen Home-/Übersichts-Standards bleiben gleich. */
 export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
   alle: [
+    // Einrichtung (08.10. spät, Onboarding B5): vorne, solange die eigene Einrichtung offen ist — `anwenden` setzt sie auch in angepasste Layouts.
+    { id: 'einrichtung', art: 'einrichtung', breite: 6 },
     { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'fokus', art: 'fokus', breite: 2 },
     { id: 'termine', art: 'termine', breite: 3, einstellungen: { tage: 3, business: true }, titel: 'Nächste 3 Tage' },
@@ -48,6 +50,7 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'index-business', art: 'index', breite: 3, einstellungen: { saeule: 'business' }, titel: 'Business · Index' },
   ],
   privat: [
+    { id: 'einrichtung', art: 'einrichtung', breite: 6 },
     { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'fokus', art: 'fokus', breite: 2, einstellungen: { space: 'privat' } },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'privat' }, titel: 'Nächste 3 Tage · Privat' },
@@ -62,6 +65,7 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'score', art: 'score', breite: 2 },
   ],
   business: [
+    { id: 'einrichtung', art: 'einrichtung', breite: 6 },
     { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'fokus', art: 'fokus', breite: 2, einstellungen: { space: 'business' } },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'business', business: true }, titel: 'Nächste 3 Tage · Business' },

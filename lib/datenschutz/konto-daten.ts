@@ -28,8 +28,12 @@ import { familieName } from '@/lib/familie/speicher';
 
 export const GELOESCHT = '[gelöscht]';
 
-/** Bestände je Person — `export: false` = nie in eine Datei (Zugangsschlüssel), beim Löschen trotzdem weg. */
-export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?: string }[] = [
+/**
+ * Bestände je Person — `export: false` = nie in eine Datei (Zugangsschlüssel), beim Löschen trotzdem weg. `nurMitSuffix`: der Bestand
+ * heißt IMMER `<basis>--<speicher>` — `<basis>` selbst ist ein GETEILTER Bestand (Onboarding: `onboarding` = gemeinsame Häkchen) und
+ * gehört nie einer Person (sonst fiele er beim Erstkonto über `speicherFuer` in Export und Löschen).
+ */
+export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?: string; nurMitSuffix?: true }[] = [
   { basis: 'zeit' }, { basis: 'fokus-laufend' }, { basis: 'wochenplan' }, { basis: 'sport' }, { basis: 'vitals' }, { basis: 'haut' },
   { basis: 'streak' }, { basis: 'health-log' }, { basis: 'journal' }, { basis: 'ziele-eigen' }, { basis: 'visitenkarten' },
   { basis: 'meldungen' }, { basis: 'performance' }, { basis: 'flaeche' }, { basis: 'kalender-google' }, { basis: 'gmail-stand' }, { basis: 'gmail-text' },
@@ -44,6 +48,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'whoop-verbindung', export: false, grund: 'Zugang zu WHOOP (verschlüsselte Token) — nie in einer Datei; beim Löschen bei WHOOP widerrufen und entfernt' },
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): gehört allein der Person — Export und Löschen mit dem Konto.
   { basis: 'gesundheit-koerper' },
+  // Onboarding (08.10. spät): persönliche Häkchen der Einrichtung — `onboarding` ohne Suffix sind die GEMEINSAMEN (geteilter Bestand).
+  { basis: 'onboarding', nurMitSuffix: true },
 ];
 
 /** Register-Muster `…--*`, die NICHT je Person sind — mit Grund (Wächter: jedes Muster ist eingeordnet). */
@@ -85,7 +91,7 @@ export function personBestandNamen(speicher: string, vorhanden: readonly string[
   const da = new Set(vorhanden);
   const raus = new Map<string, boolean>();
   for (const b of PERSON_BESTAENDE) {
-    for (const n of [`${b.basis}--${speicher}`, speicherFuer(b.basis, speicher)]) if (da.has(n)) raus.set(n, b.export !== false);
+    for (const n of b.nurMitSuffix ? [`${b.basis}--${speicher}`] : [`${b.basis}--${speicher}`, speicherFuer(b.basis, speicher)]) if (da.has(n)) raus.set(n, b.export !== false);
   }
   return Array.from(raus, ([name, ex]) => ({ name, export: ex })).sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -153,6 +159,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   // Agenten-Läufe je Person (08.10.): die von der Person ausgelösten Läufe (Ergebnisse) — Systemläufe ohne Person nicht.
   const al = await loadJson<Obj>('agent-log').catch(() => null);
   merke('agent-log', liste(al, 'entries').filter(e => (e as Obj).person === speicher));
+  // Onboarding (08.10. spät): gemeinsame Häkchen, die die Person gesetzt hat (Schritt, Zeitpunkt).
+  const ob = await loadJson<{ erledigt?: Record<string, { at?: string; von?: string }> }>('onboarding').catch(() => null);
+  merke('onboarding', Object.entries(ob?.erledigt ?? {}).filter(([, h]) => h?.von === speicher).map(([schritt, h]) => ({ schritt, at: h.at })));
   const tasks = await loadJson<Obj>('tasks');
   merke('tasks', liste(tasks, 'tasks').filter(t => { const x = t as Obj; return x.assignee === speicher || x.angelegtVon === speicher || (Array.isArray(x.beteiligte) && x.beteiligte.includes(speicher)); }));
   if (k.haushalt) {
@@ -262,6 +271,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
   await nurWenn('gesundheit-einwilligungen', async () => { let n = 0; await updateJson<Obj>('gesundheit-einwilligungen', cur => {
     const l = liste(cur, 'ereignisse'); const r = l.map(e => eintragTilgen(e, speicher)); n = r.filter((x, i) => x !== l[i]).length;
     return n ? { ...(cur ?? {}), ereignisse: r } : (cur as Obj);
+  }); return n; });
+  // Onboarding (08.10. spät): gemeinsame Häkchen bleiben (Stand des Haushalts), „wer abgehakt hat“ wird „[gelöscht]“.
+  await nurWenn('onboarding', async () => { let n = 0; await updateJson<{ erledigt?: Record<string, { at: string; von: string }> }>('onboarding', cur => {
+    if (!cur?.erledigt) return cur as { erledigt?: Record<string, { at: string; von: string }> };
+    const erledigt = Object.fromEntries(Object.entries(cur.erledigt).map(([k, h]) => { if (h?.von === speicher) { n++; return [k, { ...h, von: GELOESCHT }]; } return [k, h]; }));
+    return n ? { ...cur, erledigt } : cur;
   }); return n; });
   // Agenten-Läufe (08.10.): die Läufe der Person sind ihre Ergebnisse (sieht sonst niemand) — sie fallen ganz weg, kein Nachweis nötig.
   await nurWenn('agent-log', async () => { let n = 0; await updateJson<Obj>('agent-log', cur => { const l = liste(cur, 'entries'); const r = l.filter(e => (e as Obj).person !== speicher); n = l.length - r.length; return n ? { ...(cur ?? {}), entries: r } : (cur as Obj); }); return n; });

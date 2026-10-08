@@ -99,8 +99,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('hoi', 'Einstellungen · Head of IT', '/os/hoi'),
   s('bauplan', 'Einstellungen · Bauplan', '/os/bauplan'),
   s('roadmap', 'Bauplan · Phasen (Roadmap)', '/os/bauplan?s=phasen'),
-  s('onboarding', 'Einstellungen · Onboarding', '/os/onboarding'),
+  s('onboarding', 'Einstellungen · Onboarding (Einrichtung)', '/os/onboarding'),
   s('onboarding-kevin', 'Einstellungen · Onboarding, Spur Inhaber', '/os/onboarding/kevin'),
-  s('onboarding-malin', 'Einstellungen · Onboarding, Spur Partnerin', '/os/onboarding/malin'),
+  s('onboarding-malin', 'Einstellungen · Onboarding, Spur Zweite Person', '/os/onboarding/malin'),
   s('zusammenarbeit', 'Einstellungen · Zusammenarbeit', '/os/onboarding/zusammenarbeit'),
 ];

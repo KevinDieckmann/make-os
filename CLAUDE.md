@@ -483,6 +483,20 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
 - **Sicherung:** nachts 03:15 verschlüsselt auf dem Server (`deploy/sicherung.sh`: age, ohne age openssl-Übergang mit HOI rot, nie unverschlüsselt; einzelne unlesbare Dateien → Archiv trotzdem, „teilweise“; Generationen 14/8/12)
   und Hetzner-Backups (aktiv seit 25.09., 7 tägliche Abbilder außerhalb des Servers).
 
+## Onboarding „Einrichtung“ (08.10. spät, Paket B0, Branch `onboarding-b0`; Konzept `ONBOARDING_PLAN.md`, UPDATES.md)
+- **Schritte nur als Daten** in `lib/make-one/onboarding-data.ts` (Etappen 0–8, Ebene `instanz`/`gemeinsam`/`ich`, `nurInhaber`, `optional`,
+  `nurMitMehreren`, Erklärung warum/wie/danach, Ort NUR über `WEG`/vorhandene Seiten, Server-Schritte nur Befehl mit Platzhaltern). Entschieden,
+  aber nicht gebaut = `ETAPPEN[].hinweise` (kein Schritt). Datenkarte (`DATENKARTE`, je Fakt EIN Eingabeort) und Ablauf (`ABLAUF`) ebenda.
+  Keine Namen: Spuren heißen sichtbar „Instanz & Gemeinsam“ · „Inhaber“ · „Zweite Person“ (Kennungen/Adressen `kevin`/`malin` bleiben bis B1).
+- **Häkchen** nur über `lib/onboarding-haken.ts` + `app/api/onboarding`: persönliche in `onboarding--<speicher>` (IMMER mit Suffix — `onboarding`
+  ist der gemeinsame Bestand; `PERSON_BESTAENDE.nurMitSuffix`), gemeinsame in `onboarding` mit Speichername. POST nur die Person selbst (Dienstweg
+  403, ohne Person 401), Kennung aus `SCHRITTE` (sonst 400), `nurInhaber` → 403 für andere. Alte `kevin-…`/`malin-…`-Häkchen über `ALT_ZU_NEU`
+  (persönliche nur für die Person mit genau diesem Speichernamen; übernommen beim nächsten Schreiben, Lesen schreibt nie).
+- **Prüfungen** nur in `lib/onboarding-status.ts`: ja/nein und Zähler, nie Werte; persönliche nur für die Person der Sitzung; „verbunden UND
+  gesund“ (getrennt/Anmeldung abgelehnt zählt nicht); Kartei über `kontakteFuerVerarbeitung`, Firmen-Posten über `mitEroeffnung`, Ziele aus der
+  Planung. Neuer Prüf-Schlüssel → `PERSOENLICHE_PRUEFUNGEN`/`GEMEINSAME_PRUEFUNGEN` + Schritt-`pruefung` (Wächter `tests/onboarding-stand.test.ts`).
+- **Heute:** Widget `einrichtung` vorne in `HEUTE_STANDARD` (eigene + gemeinsame Schritte, Inhaber + Instanz; weg, wenn fertig).
+
 ## Bauplan — so arbeiten Kevin, Malin und Claude (seit 25.09.2026)
 - `/os/bauplan` ist ein Board: **Ideen → Bereit → In Arbeit → Zum Testen → Fertig**,
   dazu „Planung“ (Etappen mit Zieldatum). Karten kommen aus „Problem oder Idee

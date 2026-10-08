@@ -177,6 +177,43 @@ Inhalte einmalig übernehmen, dann aus dem Code löschen“ — „Dates/Vereinb
   sie beschreibt und ohne sie niemand es pflegen kann — bewusste Abweichung bis zu deiner Antwort. Soll der Profil-Text bleiben, wandert er als
   Vision-Traum ohne Namen dorthin (eine Zeile in `lib/familie/ohne-person.ts`).
 
+## 08.10.2026 spät — Onboarding B0 „Einrichtung“ (nur lokal — Branch `onboarding-b0`)
+
+Kevin 08.10. spät: „Ein sauberes Onboarding … mit Erklärung, sodass wir alles wirklich sauber verbinden können. Auch alle Zahlen, Daten, Fakten
+sollen sauber rein.“ Konzept `ONBOARDING_PLAN.md` (Teil A); gebaut ist das „Freitag-Paket“ B0 aus A5 — mit Kevins Entscheidungen R1–R6, R9, R10.
+- **Schritte** (`lib/make-one/onboarding-data.ts`): alle Etappen 0–8 (≈ 77 Schritte) mit Erklärung (warum · was zu tun · was danach anders ist),
+  wer, Dauer, Ort (nur über `WEG`/vorhandene Seiten), Prüfung oder Haken; Server-Schritte nur mit Befehl (Platzhalter, nie Werte). Drei Ebenen
+  (`instanz` · `gemeinsam` · `ich`), `nurInhaber`, `optional`, `nurMitMehreren`. Etappen-Hinweise statt Schritte für Entschiedenes, das noch nicht
+  gebaut ist: Mac-Zulieferer aus (später), zweite Inhaberin mit Server-Zugang (Update 2), ZOE über eine zweite WhatsApp-Nummer (Phase 1),
+  Bank-Anbindung und Brücke Haushalt → Finanzplanung (Phase 1). Telegram- und Zulieferer-Schritt sind raus. Datenkarte (`DATENKARTE`) und
+  Ablauf (`ABLAUF`: Freitag Server, Samstag 10.10. ≈ 8 h, Rest einzeln) als Daten; Stichtag 01.10.2026, Verantwortlicher = MAKE Innovation GmbH.
+- **Spuren neutral:** „Instanz & Gemeinsam“ · „Inhaber“ · „Zweite Person“ — Kennungen und Adressen (`/os/onboarding/kevin|malin`) bleiben. Die
+  Schritte „Meine Einrichtung“ (Spur `ich`) stehen in beiden persönlichen Spuren; jede Person sieht dort nur ihren eigenen Stand.
+- **Häkchen je Person** (`lib/onboarding-haken.ts`, `app/api/onboarding/route.ts`): persönliche in `onboarding--<speicher>` (immer mit Suffix),
+  gemeinsame in `onboarding` mit dem Speichernamen (nie Vorname). POST: Dienstweg 403, ohne Person 401, unbekannte Kennung 400 (nie gekürzt),
+  Körper ≤ 2 KB (413), Inhaber-Schritte nur der Inhaber (403), Build-Kennung. Alte Häkchen der Spuren `kevin-…`/`malin-…`: beim Lesen gültig
+  (persönliche nur für die Person mit diesem Speichernamen), übernommen beim nächsten Schreiben derselben Person; Lesen schreibt nie.
+  Register (`onboarding` + `onboarding--*` mit Angaben), `PERSON_BESTAENDE` (`nurMitSuffix` — der gemeinsame Bestand fällt nie in Export/Löschen
+  einer Person), Konto-Export der eigenen gemeinsamen Häkchen, Konto löschen → „[gelöscht]“, Messlatte-Marken.
+- **Prüfungen** (`lib/onboarding-status.ts`, Teil 1): `kontakte` aus der Kartei (`kontakteFuerVerarbeitung`) + offene Import-Konflikte; `ziele` =
+  Jahresziele des laufenden Jahres aus der Planung; `konten` = Geschäftskonten der Business-Gesellschaften ab dem 0-Punkt, Stand ≤ 7 Tage; `posten` =
+  überfällige gestellte Rechnungen + Zahlungen ohne Frist; neu `google`, `gmail`, `whoop` (verbunden UND gesund), `icloud` (Apple nimmt das
+  App-Passwort an), `postfach` (jedes mit Bereich, keins „Anmeldung abgelehnt“), `eroeffnung`, `haushalt`, `personen`, `pepper`, `adresse`,
+  `whoop-konfig`, `google-konfig`; `fokus` auch je Bereich und Jahr. Nur ja/nein und Zähler; 60 s gemerkt je Person. Telegram-Prüfung raus.
+- **Heute:** Karte „Einrichtung · x von y“ (Widget `einrichtung`) vorne in jeder Sicht — auch in angepassten Layouts; zählt eigene + gemeinsame
+  Schritte (Inhaber zusätzlich die Instanz), optionale erst wenn getan; verschwindet bei fertig.
+- **UPLOAD_0810.md:** Zulieferer-Schlüssel entfällt, neu „3a · Altbestand übernehmen“ (Einwilligung (a) zuerst, `MAKE_OS_ALTBESTAND_PERSON`, neu
+  starten, Log prüfen, vor dem 16.10.) und „9 · Onboarding starten“.
+- Tests: `tests/onboarding-stand.test.ts` (23), dazu grün: routen-register, datenschutz-register, betroffenenrechte, whoop-datenschutz,
+  aufraeumen-etappe1, aufgaben-crm-flaechen, design-standard/-privat/-kern, flaeche, spaces, demo, messlatte-malin.
+
+**So testet ihr:** Einstellungen › Onboarding öffnen → „Dein Stand“, Ablauf, drei Spuren, Etappen 0–8 mit Hinweisen, Datenkarte. Als zweite Person
+einen Inhaber-Schritt (z. B. „Datenschutz der Instanz“) anklicken → gesperrt; „Wer sieht was“ abhaken → als Inhaber dort nicht abgehakt. Heute:
+vorne die Karte „Einrichtung · x von y“ mit „Als Nächstes“.
+**Bewusst nicht gebaut (B1 ff., 16.10.):** Ebenen statt Spuren mit eigenen Seiten, geführter Ablauf („Nächster Schritt“ mit Abhängigkeiten),
+Prüfungen Teil 2 (Datenschutz-Selbstprüfung, Finanzplan, Monatsabschluss, Mandate, Produkte, Kapazität, Familie, Brain, Agenten „bewusst
+gesetzt“), Rechte-Filter der Befunde (B11), neutrale Begrüßung, Datenstand (B8), Daten-Assistenten (B9).
+
 ## 08.10.2026 — Phase 0: Sicht-Entscheidungen (nur lokal — Branch `phase0-sicht`)
 
 Kevins Antworten auf die Fragen 1–3 der Sicht-Prüfung (unten, „Fragen an Kevin“) plus WHOOP — alles serverseitig, je mit Wächtertest.

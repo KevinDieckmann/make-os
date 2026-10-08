@@ -1,362 +1,1039 @@
-// ─── MAKE OS — Onboarding ───────────────────────────────────────────────────
-// Kevins Ansage: „Alles, was wir fürs Onboarding brauchen, damit die Software
-// reibungslos läuft für mich und Malin — Schritt für Schritt, jeweils eigene
-// Spur, weil wir unterschiedliche Daten brauchen."
+// ─── MAKE OS — Onboarding „Einrichtung“ (Daten, rein, client-sicher) ────────
+// Kevin 08.10. spät: „Ich möchte, dass du ein sauberes Onboarding für uns baust. Mit dem nächsten Update soll ein komplettes
+// Onboarding mit Erklärung durchgeführt werden, sodass wir alles wirklich sauber verbinden können. Auch alle Zahlen, Daten,
+// Fakten sollen sauber rein.“ Konzept: ONBOARDING_PLAN.md (Teil A) — hier das „Freitag-Paket“ B0: alle Schritte der Etappen 0–8
+// mit Erklärung und die Datenkarte (A3) in den bestehenden Spuren.
 //
-// Der Plan prüft sich selbst: Wo das System nachsehen kann, ob ein Schritt
-// getan ist (zweiter Faktor an? Postfach verbunden? Sicherung gelaufen?), zählt
-// der echte Zustand — nicht ein Häkchen. Nur was sich nicht messen lässt, hakt
-// man von Hand ab.
+// Der Plan prüft sich selbst: Wo das System nachsehen kann, ob ein Schritt getan ist, zählt der echte Zustand (lib/onboarding-status.ts,
+// nur ja/nein oder Zähler, nie Werte). Nur was sich nicht messen lässt, hakt man von Hand ab — gespeichert serverseitig
+// (app/api/onboarding/route.ts): persönliche Häkchen je Person (`onboarding--<speicher>`), gemeinsame im Bestand `onboarding`.
 //
-// 08.10. (Kevin: „Onboarding auf den echten Stand“): MAKE OS läuft seit 25.09. auf
-// dem Server — kein Mac, kein iCloud-Ordner, keine .env.local, kein Tailscale mehr.
-// Persönliche Schritte (`persoenlich`) prüft der Server IMMER für die Person der
-// Sitzung, nie für eine andere (lib/onboarding-status.ts). Wächter:
-// tests/onboarding-stand.test.ts.
+// Drei Ebenen (ONBOARDING_PLAN.md A1), gebildet aus den Konten — keine Namen im Code:
+//   instanz    Server und Einstellungen der Instanz — nur der Inhaber hakt ab (`nurInhaber`)
+//   gemeinsam  Haushalt und Firmen — eine Person trägt ein, alle sehen den Stand (`nurInhaber`, wo der Inhaber es tun muss)
+//   ich        „Meine Einrichtung“ — jede Person für sich; Prüfung und Häkchen gelten nur der Person der Sitzung
+// Die Spur-Kennungen `kevin`/`malin` bleiben (Adressen /os/onboarding/kevin|malin und alte Häkchen hängen daran) — sichtbar heißen
+// sie neutral „Inhaber“ und „Zweite Person“ (Rolle aus dem Konto). Die Spur `ich` ist keine eigene Seite: ihre Schritte stehen in
+// beiden persönlichen Spuren, jede Person sieht dort ihren eigenen Stand. Plattform-Schuld (B1, 16.10.): Ebenen statt Spuren.
+// Wächter: tests/onboarding-stand.test.ts.
 
-export type Spur = 'fundament' | string;
+import { WEG } from '@/lib/wege';
+import { BUSINESS_EINHEITEN_NAMEN, UG_NAME } from '@/lib/einheiten';
+
+export type Spur = 'fundament' | 'kevin' | 'malin' | 'ich';
+export type Ebene = 'instanz' | 'gemeinsam' | 'ich';
 
 export interface Schritt {
   id: string;
   spur: Spur;
+  /** Etappe 0–8 (ONBOARDING_PLAN.md A2). */
+  etappe: number;
+  /** Nummer im Plan, z. B. „3.6“ — nur zum Wiederfinden. */
+  nr: string;
+  ebene: Ebene;
   titel: string;
   /** Warum das gebraucht wird — ohne das ist es eine Aufgabenliste ohne Sinn. */
   warum: string;
-  /** Konkret, was zu tun ist. */
+  /** Was zu tun ist bzw. was dabei passiert. */
   wie: string[];
+  /** Was danach anders ist. */
+  danach?: string;
   minuten: number;
-  /** Wer es macht, wenn es nicht der Spur-Eigentümer ist (z. B. „Inhaber“, „jede Person“). */
-  wer?: string;
   wo?: { href: string; label: string };
+  /** Am Server: der Befehl — nie ein Wert (Platzhalter in spitzen Klammern). */
   befehl?: string;
-  /** Schlüssel, unter dem die API den echten Zustand prüft (bekannt in lib/onboarding-status.ts). */
+  /** Schlüssel, unter dem der Server den echten Zustand prüft (lib/onboarding-status.ts). */
   pruefung?: string;
-  /**
-   * Die Prüfung gilt der Person, die gerade angemeldet ist („bei dir“) — jede Person sieht nur ihren eigenen Stand.
-   * Wer die Spur einer anderen Person ansieht, sieht hier also seinen eigenen Stand, nie den der anderen.
-   */
-  persoenlich?: true;
+  /** Am Server (nur der Inhaber, per SSH). */
+  server?: true;
+  /** Nur der Inhaber darf abhaken (Server und Einstellungen der Instanz, Firmen-Grundlagen) — sonst 403. */
+  nurInhaber?: true;
+  /** Optional: zählt nicht im Fortschritt mit, solange er offen ist. */
+  optional?: true;
+  /** Entfällt, wenn die Instanz nur ein Konto hat. */
+  nurMitMehreren?: true;
 }
 
-// Die Spur-Kennungen `kevin`/`malin` bleiben (Häkchen und Links hängen daran) — Plattform-Schuld: eine neue Instanz
-// bräuchte Spuren aus den Konten statt fester Namen.
-export const SPUREN: { id: Spur; titel: string; satz: string; href: string }[] = [
-  { id: 'fundament', titel: 'Fundament', satz: 'Server, Sicherung, Updates, Einladung — einmal aufsetzen, dann läuft es für alle.', href: '/os/onboarding' },
-  { id: 'kevin', titel: 'Kevin', satz: 'Inhaber: Zugang, Kalender, Postfach, Kontakte, Kompass, Agenten.', href: '/os/onboarding/kevin' },
-  { id: 'malin', titel: 'Malin', satz: 'Zweite Person: Einladung, zweiter Faktor, Einwilligung, Kalender, Postfach, Finanzen.', href: '/os/onboarding/malin' },
+export const SPUREN: { id: Exclude<Spur, 'ich'>; titel: string; satz: string; href: string }[] = [
+  { id: 'fundament', titel: 'Instanz & Gemeinsam', satz: 'Server, Sicherheit, Datenschutz und alles, was ihr gemeinsam einrichtet — Firmen, Zahlen, Planung, Familie.', href: '/os/onboarding' },
+  { id: 'kevin', titel: 'Inhaber', satz: 'Was nur der Inhaber einträgt (Firmen, Zahlen, Mandate, Agenten) — dazu „Meine Einrichtung“.', href: '/os/onboarding/kevin' },
+  { id: 'malin', titel: 'Zweite Person', satz: 'Reinkommen und „Meine Einrichtung“: Zugang, Verbindungen, Arbeitsrahmen, Gesundheit, ZOE.', href: '/os/onboarding/malin' },
 ];
 
-// ── Bausteine, die in mehreren Spuren gleich gelten ─────────────────────────
+/** Die Spur, die zu einer Rolle gehört (Rolle aus dem Konto — nie ein Name). */
+export const spurFuerRolle = (inhaber: boolean): Exclude<Spur, 'ich' | 'fundament'> => (inhaber ? 'kevin' : 'malin');
 
-const zweiterFaktor = (spur: Spur, id: string): Schritt => ({
-  id, spur, minuten: 5, persoenlich: true, pruefung: 'zwei-faktor',
-  titel: 'Zweiten Faktor einrichten',
-  warum: 'Passwort allein reicht für einen Server im Netz nicht. Mit dem zweiten Faktor kommt nur rein, wer zusätzlich das eigene Handy hat. Nach dem nächsten Update ist er für alle Pflicht — ohne ihn öffnet sich nur noch die Konto-Seite.',
-  wie: [
-    'Konto › „Zweiter Faktor · Authenticator“ › Einrichten.',
-    'Den QR-Code mit einer Authenticator-App scannen (z. B. die Passwörter-App des iPhones oder eine andere App für Einmal-Codes) und den 6-stelligen Code bestätigen.',
-    'Die Wiederherstellungs-Codes sicher ablegen (Passwort-Manager) — sie sind der Weg zurück, wenn das Handy weg ist.',
-  ],
-  wo: { href: '/os/konto', label: 'Konto' },
-});
+/** Ein Hinweis in einer Etappe: entschieden, aber noch nicht gebaut — kein Schritt, kein Häkchen. */
+export interface EtappenHinweis { titel: string; satz: string; wann: string }
+export interface Etappe { nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[] }
 
-const gesundheitEinwilligung = (spur: Spur, id: string): Schritt => ({
-  id, spur, minuten: 5, persoenlich: true, pruefung: 'gesundheit-einwilligung',
-  titel: 'Gesundheit: Einwilligung erklären',
-  warum: 'Gesundheitsdaten sind besonders geschützt (Art. 9 DSGVO). MAKE OS erfasst sie erst, wenn du selbst einwilligst — jede Person für sich, niemand für eine andere.',
-  wie: [
-    '(a) Verarbeiten: MAKE OS speichert deine Gesundheitsdaten (Erholung, Schlaf, Sport, Ernährung, Journal …) für deine eigenen Auswertungen. Ohne (a) wird nichts erfasst.',
-    '(b) An die KI: ZOE und automatische Läufe dürfen deine Gesundheitswerte nutzen (Modell-Anbieter in den USA). Setzt (a) voraus.',
-    '(c) Partner: Personen, mit denen du deine Gesundheit teilst, dürfen sie auch über ihre ZOE abfragen. Setzt (a) und (b) voraus.',
-    'Ob jemand deine Gesundheit überhaupt sieht, entscheidest du getrennt davon: Konto › „Gesundheit teilen“, je Person. Standard: niemand.',
-    'Jede Erklärung lässt sich jederzeit widerrufen — an derselben Stelle.',
-  ],
-  wo: { href: '/os/datenschutz#gesundheit', label: 'Einstellungen › Datenschutz' },
-});
+export const ETAPPEN: Etappe[] = [
+  { nr: 0, titel: 'Am Upload-Tag und direkt danach', satz: 'Am Server, nur der Inhaber — am Abend des Uploads. Die zweite Kopie am Mac geht erst am Tag nach der ersten Nachtsicherung.',
+    hinweise: [{ titel: 'Mac-Zulieferer wird abgeschaltet', wann: 'kommt später', satz: 'Alles läuft nur noch auf dem Server; am Mac bleibt nur der Mail-Weg. Die Apple-Erinnerungen werden einmal als Aufgaben übernommen, danach geht der Zulieferer aus. Bis dahin ist hier nichts zu tun — auch kein eigener Zulieferer-Schlüssel.' }] },
+  { nr: 1, titel: 'Zugang, Sicherheit, Datenschutz', satz: 'Wer reinkommt, wie er sich ausweist, wer was sieht — und was die Instanz mit Daten tun darf.',
+    hinweise: [{ titel: 'Zweite Person als gleichwertige Inhaberin', wann: 'kommt mit Update 2 (16.10.)', satz: 'Die zweite Person bekommt dieselben Inhaber-Rechte und einen eigenen Server-Zugang. Bis dahin erledigt der Inhaber die Inhaber-Schritte.' }] },
+  { nr: 2, titel: 'Verbindungen', satz: 'Kalender, Postfächer und Geräte. Jede Person verbindet nur ihre eigenen Konten; niemand liest die Post einer anderen Person.',
+    hinweise: [{ titel: 'ZOE aufs Handy über WhatsApp', wann: 'kommt in Phase 1', satz: 'ZOE bekommt eine eigene, zweite WhatsApp-Business-Nummer — nur für ZOE, getrennt von der Business-Nummer der Inbox. Telegram ist raus; bis dahin gibt es dafür keinen Schritt.' }] },
+  { nr: 3, titel: 'Firmen & Zahlen', satz: 'Steckbrief, 0-Punkt, Kontostände, offene Posten, Privatkonten. Jede Zahl hat genau einen Eingabeort — siehe Datenkarte. Alle Zahlen kommen von Hand über die vorhandenen Formulare.',
+    hinweise: [
+      { titel: 'Bank-Anbindung', wann: 'vorgezogen in Phase 1', satz: 'Bis dahin tragt ihr Kontostände und Buchungen von Hand ein bzw. lest Kontoauszüge ein.' },
+      { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt in Phase 1', satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
+    ] },
+  { nr: 4, titel: 'Kontakte, Vertrieb & Mandate', satz: 'Kartei, Produkte, laufende Mandate, offene Deals und die Grundlagen des Vertriebs.' },
+  { nr: 5, titel: 'Planung & Finanzplan', satz: 'Ziele, Meilensteine, Finanzplan, Arbeitsrahmen und die gemeinsamen Rhythmen.' },
+  { nr: 6, titel: 'Gesundheit & Familie', satz: 'Gesundheit macht jede Person nur für sich. Familie richtet ihr gemeinsam ein.' },
+  { nr: 7, titel: 'ZOE & Brain', satz: 'Wie viel die Agenten selbst tun dürfen, wie ZOE arbeitet und was im Brain steht.' },
+  { nr: 8, titel: 'Abschluss', satz: 'Einmal durch alles gehen, den Datenstand prüfen, den Head of IT auf Grün bringen.' },
+];
 
-const postfach = (spur: Spur, id: string): Schritt => ({
-  id, spur, minuten: 10, persoenlich: true, pruefung: 'postfach',
-  titel: 'Eigenes Postfach verbinden',
-  warum: 'Die Inbox ist der tägliche Einstieg — Fächer, neue Absender, Aufgaben und Termine aus Mails hängen daran. Jedes Postfach gehört genau einer Person; niemand sonst liest es.',
-  wie: [
-    'Inbox › Postfächer › verbinden: Anbieter wählen (iCloud mit app-spezifischem Passwort, IONOS, eigener Server) oder Gmail über die Google-Verbindung.',
-    'Einen Bereich wählen (Privat oder eine Gesellschaft) — danach zeigt die Inbox das Postfach im passenden Bereich.',
-    'Einmal durch die Fächer gehen und neue Absender zulassen oder blocken.',
-  ],
-  wo: { href: '/os/inbox?postfaecher=1', label: 'Inbox › Postfächer' },
-});
+/**
+ * Der Ablauf (Kevin 08.10. spät, Entscheidung R1): Server-Teil am Abend des Uploads, dann EIN langer Samstag, der Rest einzeln.
+ * Text für die Übersicht — die Etappen sind so geordnet, dass der Samstag von oben nach unten durchläuft.
+ */
+export const ABLAUF: { wann: string; was: string }[] = [
+  { wann: 'Freitag 09.10., nach dem Upload', was: 'Etappe 0 am Server (Inhaber, etwa 2 Stunden): Update, Pepper, Altbestand, Sicherung, Vault, Adresse, WHOOP- und Google-Anwendung.' },
+  { wann: 'Samstag 10.10. (etwa 8 Stunden)', was: 'Vormittags jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen). Danach gemeinsam Etappen 3 bis 8 von oben nach unten — die Inhaber-Schritte macht der Inhaber dazwischen.' },
+  { wann: 'Danach einzeln', was: 'Zweite Kopie am Mac und Probe (frühestens am Tag nach der ersten Nachtsicherung), Mail-Umzug und WhatsApp als eigene Termine, der erste Monatsabschluss (Oktober) Anfang November. Der Altbestand muss vor dem Update am 16.10. übernommen sein.' },
+];
 
-const kalenderEigen = (spur: Spur, id: string): Schritt => ({
-  id, spur, minuten: 10, persoenlich: true, pruefung: 'icloud',
-  titel: 'Eigenen iCloud-Kalender verbinden',
-  warum: 'Damit deine Termine in MAKE OS stehen, Planen um sie herum plant und Blöcke aus Planen und ZOE auf deinem eigenen iPhone landen.',
-  wie: [
-    'Auf appleid.apple.com › Anmelden und Sicherheit › App-spezifische Passwörter ein neues Passwort anlegen (z. B. „MAKE OS“). Nicht das normale Apple-Passwort.',
-    'Kalender › Bereich Privat › Karte „iCloud Kalender“ (oder Kalender › Einstellungen): Apple-ID und das App-Passwort eintragen.',
-    'Wählen, welche Kalender gezeigt werden und wohin Blöcke geschrieben werden.',
-    'Die anderen im Haushalt sehen deine Termine nur als „Belegt“ — ohne Titel, Ort oder Notiz.',
-    'Wechselst du später dein Apple-Passwort, wird das App-Passwort ungültig — dann „Verbindung erneuern“.',
-  ],
-  wo: { href: '/os/kalender?space=privat', label: 'Kalender' },
-});
-
-const zoeVorschlaege = (spur: Spur, id: string): Schritt => ({
-  id, spur, minuten: 10, persoenlich: true, pruefung: 'zoe',
-  titel: 'ZOE kennenlernen',
-  warum: 'Fragen statt suchen. ZOE kennt die Zahlen, Aufgaben und Termine, die du sehen darfst — und bereitet Arbeit vor. Entscheiden tust du.',
-  wie: [
-    'ZOE öffnen und fragen, z. B. „Was ist diese Woche fällig?“',
-    'ZOE macht nur Vorschläge: alles, was etwas ändert oder nach außen geht, landet im Stapel und wird erst mit deinem Klick „Freigeben“ ausgeführt.',
-    'Dein Gesprächsverlauf gehört dir; Gesundheitswerte bekommt ZOE nur mit deiner Einwilligung (b).',
-  ],
-  wo: { href: '/os/stapel', label: 'Stapel' },
-});
+const KONTO = { href: WEG.konto(), label: 'Konto' };
+const HOI = { href: '/os/hoi', label: 'Head of IT' };
+const BUSINESS = BUSINESS_EINHEITEN_NAMEN.length ? ` (bei euch: ${BUSINESS_EINHEITEN_NAMEN.join(' · ')})` : '';
 
 export const SCHRITTE: Schritt[] = [
-  // ── FUNDAMENT ─────────────────────────────────────────────────────────────
+  // ── Etappe 0 — Am Upload-Tag und direkt danach (Server, nur der Inhaber) ─────────────────────────────────────────────────────
   {
-    id: 'server', spur: 'fundament', wer: 'Inhaber', minuten: 2,
-    titel: 'MAKE OS läuft auf dem Server',
-    warum: 'Eine Instanz, eine Wahrheit: MAKE OS läuft auf einem eigenen Server in Deutschland. Kein Rechner muss an sein, alle arbeiten auf demselben Stand — vom Laptop und vom Handy, von überall.',
+    id: 'update', spur: 'fundament', etappe: 0, nr: '0.1', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25,
+    titel: 'Update einspielen',
+    warum: 'Erst mit dem neuen Stand gibt es diese Einrichtung, die Prüfungen und alle Verbindungen. Vorher wird gesichert, damit es einen Weg zurück gibt.',
     wie: [
-      'Die Adresse ist die, unter der du diese Seite gerade siehst — als Lesezeichen anlegen.',
-      'Am iPhone: in Safari Teilen › „Zum Home-Bildschirm“ — dann liegt MAKE OS wie eine App da.',
-      'Die Daten liegen nur auf dem Server, verschlüsselt. Keine Kopie auf einem Rechner, kein geteilter Cloud-Ordner.',
-      'Ob alles läuft, zeigt der Head of IT (Ampeln für Server, Sicherung, Verbindungen).',
+      'Vorher am Server eine Sicherung ziehen (wie beim letzten Update) — die Anleitung steht in UPLOAD_0810.md, Abschnitt 0.',
+      'Den Stand „entwicklung“ nach „main“ zusammenführen und hochladen. Die GitHub-Aktion prüft und rollt aus (etwa fünf Minuten, die alte Version läuft solange weiter).',
+      'Danach im App-Ordner am Server die Caddy-Einstellung prüfen und neu laden (Befehl unten).',
     ],
-    wo: { href: '/os/hoi', label: 'Head of IT' },
+    danach: 'Der Head of IT zeigt die neue Bau-Kennung; diese Seite zeigt alle neuen Schritte.',
+    befehl: 'docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile\ndocker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile',
+    wo: HOI,
   },
   {
-    id: 'sicherung', spur: 'fundament', wer: 'Inhaber', minuten: 2,
-    titel: 'Nachtsicherung auf dem Server',
-    warum: 'Jede Nacht sichert der Server alles verschlüsselt; dazu hält der Anbieter sieben tägliche Abbilder außerhalb des Servers. Einmal nachsehen, dass das greift.',
+    id: 'pepper', spur: 'fundament', etappe: 0, nr: '0.2', ebene: 'instanz', server: true, nurInhaber: true, minuten: 10, pruefung: 'pepper',
+    titel: 'Pepper und strenger Start-Riegel',
+    warum: 'Mit dem Pepper sind die Fingerabdrücke gesperrter oder gelöschter Personen nicht mehr zu erraten. Der strenge Start-Riegel sorgt dafür, dass MAKE OS ohne seine Geheimnisse gar nicht erst startet.',
     wie: [
-      'Die Sicherung läuft nachts von selbst — es ist nichts zu tun.',
-      'Im Head of IT steht, wann die letzte Sicherung lief.',
+      'Am Mac einen Wert erzeugen (Befehl unten) und in beide Passwort-Manager und auf Papier legen. Den Pepper nie wechseln.',
+      'Am Server in die .env: MAKE_OS_PEPPER=<Wert> und MAKE_OS_START_RIEGEL=streng — dann neu starten.',
+      'Startet die App nicht, nennt das Log, was fehlt oder zu kurz ist (nur Namen, nie Werte).',
     ],
-    wo: { href: '/os/hoi', label: 'Head of IT' },
-    pruefung: 'sicherung',
+    danach: 'Im Head of IT stehen „Start-Riegel“ und die Fingerabdrücke (HMAC mit Pepper) auf Grün.',
+    befehl: 'openssl rand -hex 32\n# in .env: MAKE_OS_PEPPER=<Wert> · MAKE_OS_START_RIEGEL=streng\ndocker compose up -d',
+    wo: HOI,
   },
   {
-    id: 'sicherung-mac', spur: 'fundament', wer: 'Inhaber', minuten: 45,
+    id: 'altbestand', spur: 'fundament', etappe: 0, nr: '0.5', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15,
+    titel: 'Altbestand übernehmen — vor dem Update am 16.10.',
+    warum: 'Bisherige persönliche Inhalte standen im Code. Sie wandern genau einmal in die Daten des Inhabers und fliegen danach aus dem Code — nichts geht verloren.',
+    wie: [
+      'Zuerst in der Spur Inhaber den Schritt „Gesundheit: Einwilligung erklären“ — ohne Einwilligung (a) überspringt die Übernahme die Körper-Inhalte.',
+      'Am Server in die .env: MAKE_OS_ALTBESTAND_PERSON=<Speichername des Inhabers>, dann neu starten.',
+      'Im Log nachsehen, dass „uebernommen“ (oder „schon-uebernommen“) steht — nie Inhalte, nur der Teil.',
+      'Erst danach eigene Körper-Inhalte anlegen. Übernommen wird nur, was im Update steckt.',
+      'Muss erledigt sein, bevor das nächste Update (16.10.) das Übernahme-Modul wieder entfernt.',
+    ],
+    danach: 'Die Inhalte stehen in den eigenen Daten des Inhabers; die Variable kann wieder aus der .env.',
+    befehl: '# in .env: MAKE_OS_ALTBESTAND_PERSON=<Speichername>\ndocker compose up -d\ndocker compose logs app | grep Altbestand',
+  },
+  {
+    id: 'sicherung', spur: 'fundament', etappe: 0, nr: '0.6', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'sicherung',
+    titel: 'Nachtsicherung mit age und Wächter',
+    warum: 'Jede Nacht sichert der Server alles verschlüsselt. Den privaten Schlüssel habt nur ihr — ohne ihn ist die Sicherung für niemanden lesbar. Fällt die Sicherung aus, schlägt der Wächter (Healthchecks) Alarm.',
+    wie: [
+      'Am Mac einmal ein age-Schlüsselpaar erzeugen. Den privaten Schlüssel in beide Passwort-Manager und auf Papier, nie auf den Server.',
+      'Nur den öffentlichen Schlüssel am Server ablegen (Befehl unten).',
+      'Den Healthchecks-Ping am Server eintragen (Datei .healthchecks-sicherung im Ordner der Instanz).',
+    ],
+    danach: 'Ab der nächsten Nacht meldet die Sicherung sich hier und im Head of IT (bis dahin grau).',
+    befehl: 'age-keygen -o <Ort am Mac>/make-os-sicherung.key\necho \'<öffentlicher Schlüssel age1…>\' > /srv/make-os/sicherung.pub',
+    wo: HOI,
+  },
+  {
+    id: 'sicherung-mac', spur: 'fundament', etappe: 0, nr: '0.7', ebene: 'instanz', server: true, nurInhaber: true, minuten: 45,
     titel: 'Zweite Kopie am Mac — und einmal zurückspielen',
-    warum: 'Eine Sicherung, die nie zurückgespielt wurde, ist ein Versprechen. Der zweite Ort außerhalb des Servers holt jede Nacht das neueste Archiv auf den Mac; die Probe beweist, dass es sich wiederherstellen lässt.',
+    warum: 'Eine Sicherung, die nie zurückgespielt wurde, ist ein Versprechen. Der zweite Ort holt jede Nacht das neueste Archiv auf den Mac; die Probe beweist, dass es sich wiederherstellen lässt.',
     wie: [
-      'Anleitung RESTORE_TEST.md im Projekt: age einrichten, die Abholung vom Server einmal einrichten (nur lesender Zugang).',
-      'Danach steht im Head of IT „Sicherung am Mac“ auf Grün.',
-      'Einmal die Probe machen (RESTORE_TEST.md, Abschnitt „Die Probe“) — ohne den Server anzufassen.',
+      'Frühestens am Tag nach der ersten Nachtsicherung (03:15) — vorher gibt es kein age-Archiv.',
+      'Die Abholung einmal einrichten (nur lesender Zugang), Anleitung RESTORE_TEST.md, Abschnitt 3.',
+      'Dann die Probe mit App-Start (baut lokal — nicht gleichzeitig mit Tests). Ergebnis mit Datum in DEPLOY.md festhalten.',
     ],
-    wo: { href: '/os/hoi', label: 'Head of IT' },
+    danach: 'Im Head of IT steht „Sicherung am Mac“ auf Grün; ihr wisst, wie lange eine Wiederherstellung dauert.',
+    befehl: 'bash deploy/sicherung-abholen.sh\nbash deploy/sicherung-probe.sh --app',
+    wo: HOI,
   },
   {
-    id: 'updates', spur: 'fundament', wer: 'alle', minuten: 5,
-    titel: 'Updates: gebaut wird lokal, online geht nur auf das Wort des Inhabers',
-    warum: 'Am Code wird laufend weitergebaut — aber nicht am laufenden System. Was online ist, ändert sich nur, wenn der Inhaber ausdrücklich ein Update freigibt.',
+    id: 'vault', spur: 'fundament', etappe: 0, nr: '0.8', ebene: 'instanz', server: true, nurInhaber: true, minuten: 30,
+    titel: 'Vault umziehen, Abgleich und App-Spiegel an',
+    warum: 'Das Brain ist euer Wissen. Der Server-Vault wird die Wahrheit; der Abgleich hält ihn alle fünf Minuten mit dem Mac gleich. Der App-Spiegel schreibt Projekte, Mandate und Wochen als Notizen ins Brain.',
     wie: [
-      'Gebaut wird lokal auf dem Stand „entwicklung“ — davon merkt die Instanz nichts.',
-      'Online ist der Stand „main“. Updates werden gesammelt und auf ausdrückliches Wort des Inhabers ausgerollt; das dauert etwa fünf Minuten, die alte Version läuft solange weiter.',
-      'Neues steht vorher im Bauplan unter „Zum Testen“ — dort abnehmen oder mit Kommentar zurückgeben.',
+      'Den Vault genau nach VAULT_UMZUG_ANLEITUNG.md umziehen (Obsidian dabei geschlossen, etwa 20 Minuten). Private Ordner gehen nicht auf den Server.',
+      'Am Server den App-Spiegel einschalten (Befehl unten). Der erste Lauf kommt nachts.',
     ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
+    danach: 'Konflikte oder gescheiterte Abgleiche zeigt der Head of IT rot.',
+    befehl: '# in .env: MAKE_OS_APP_SPIEGEL=an\ndocker compose up -d app',
+    wo: HOI,
   },
   {
-    id: 'einladen', spur: 'fundament', wer: 'Inhaber', minuten: 5,
+    id: 'adresse', spur: 'fundament', etappe: 0, nr: '0.9', ebene: 'instanz', server: true, nurInhaber: true, minuten: 5, pruefung: 'adresse',
+    titel: 'Adresse der Instanz prüfen',
+    warum: 'Aus MAKE_OS_ADRESSE entstehen Rückruf-Adressen (Google, WHOOP), Einladungslinks und Cookies. Sie muss genau die Adresse sein, unter der ihr arbeitet — mit https.',
+    wie: ['In der .env am Server MAKE_OS_ADRESSE prüfen: genau die Adresse, die im Browser oben steht, mit https:// und ohne Schrägstrich am Ende.'],
+    danach: 'Verbindungen mit Google und WHOOP finden ihren Rückweg.',
+    befehl: 'grep -c "^MAKE_OS_ADRESSE=https://" .env',
+  },
+  {
+    id: 'whoop-app', spur: 'fundament', etappe: 0, nr: '0.10', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15, pruefung: 'whoop-konfig',
+    titel: 'WHOOP-Anwendung einmal je Instanz',
+    warum: 'Damit jede Person ihr eigenes WHOOP-Konto verbinden kann, braucht die Instanz einmal eine eigene WHOOP-Anwendung (Schnittstelle v2).',
+    wie: [
+      'Im WHOOP-Entwicklerbereich eine Anwendung anlegen: Redirect …/api/whoop/rueckruf, Webhook …/api/whoop/webhook (jeweils hinter der Adresse aus 0.9), nur die nötigen Lese-Rechte.',
+      'Client-ID und Secret über das Skript am Server eintragen — es fragt verdeckt (Befehl unten). Nie in den Chat.',
+    ],
+    danach: 'Unter Gesundheit erscheint für jede Person die Karte „WHOOP verbinden“.',
+    befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whoop-verbinden.sh',
+  },
+  {
+    id: 'google-app', spur: 'fundament', etappe: 0, nr: '0.11', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'google-konfig',
+    titel: 'Google prüfen und Gmail freischalten',
+    warum: 'Business-Kalender und Gmail laufen über eine Google-Verbindung je Person. Die Instanz braucht dafür einmal ein Google-Projekt mit Gmail-Schnittstelle.',
+    wie: [
+      'GOOGLE_GMAIL_EINRICHTEN.md, Teil A: Gmail-Schnittstelle an, Bereich „gmail.modify“, Lizenz für jede Person, Datenverarbeitungszusatz in der Admin-Konsole.',
+      'Redirect genau: Adresse aus 0.9 + /api/google/rueckruf.',
+      'Zugangsdaten über das Skript am Server eintragen (fragt verdeckt).',
+    ],
+    danach: 'Jede Person kann im Kalender (Business) und in der Inbox ihr Google-Konto verbinden.',
+    befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/google-verbinden.sh',
+  },
+  {
+    id: 'notfallmappe', spur: 'fundament', etappe: 0, nr: '0.12', ebene: 'gemeinsam', minuten: 20,
+    titel: 'Notfallmappe',
+    warum: 'Fällt der Inhaber aus, muss jemand an Pepper, age-Schlüssel, Datenschlüssel, Server-Zugang und Wiederherstellungs-Codes kommen — sonst ist alles verschlüsselt und unerreichbar.',
+    wie: [
+      'Gemeinsam festlegen, wo diese Dinge liegen: auf Papier an einem sicheren Ort und im Passwort-Manager.',
+      'Keine Werte in MAKE OS eintragen — hier wird nur abgehakt, dass beide wissen, wo die Mappe liegt (NOTFALL.md).',
+    ],
+    danach: 'Beide wissen, was im Ernstfall zu tun ist.',
+  },
+
+  // ── Etappe 1 — Zugang, Sicherheit, Datenschutz ───────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'zweite-einladung', spur: 'malin', etappe: 1, nr: '1.0', ebene: 'ich', minuten: 5,
+    titel: 'Einladung annehmen',
+    warum: 'Erster Schritt: reinkommen. Es gibt keine offene Registrierung — eine Einladung des Inhabers ist der einzige Weg.',
+    wie: [
+      'Den Einladungslink öffnen (gilt 48 Stunden, nur einmal).',
+      'Vorname, E-Mail-Adresse und ein Passwort mit mindestens 10 Zeichen. War die Einladung an vorhandene Daten gebunden, hängen sie jetzt an deinem Konto.',
+    ],
+    danach: 'Du hast ein eigenes Konto; alles Weitere baut darauf auf.',
+  },
+  {
+    id: 'ich-zwei-faktor', spur: 'ich', etappe: 1, nr: '1.1', ebene: 'ich', minuten: 5, pruefung: 'zwei-faktor',
+    titel: 'Zweiten Faktor einrichten',
+    warum: 'Ein Passwort allein reicht für einen Server im Netz nicht. Mit dem zweiten Faktor kommt nur rein, wer zusätzlich dein Handy hat.',
+    wie: [
+      'Konto › „Zweiter Faktor · Authenticator“ › Einrichten.',
+      'Den QR-Code mit einer Authenticator-App scannen (z. B. die Passwörter-App des iPhones) und den 6-stelligen Code bestätigen.',
+      'Die Wiederherstellungs-Codes in den Passwort-Manager — sie sind der Weg zurück, wenn das Handy weg ist.',
+    ],
+    danach: 'Beim Anmelden fragt MAKE OS zusätzlich den Code.',
+    wo: KONTO,
+  },
+  {
+    id: 'einladen', spur: 'fundament', etappe: 1, nr: '1.2', ebene: 'instanz', nurInhaber: true, nurMitMehreren: true, minuten: 5, pruefung: 'personen',
     titel: 'Zweite Person einladen',
-    warum: 'Jede Person hat ein eigenes Konto. Eine Einladung ist der einzige Weg hinein — es gibt keine offene Registrierung.',
+    warum: 'Jede Person hat ein eigenes Konto. Gibt es das Konto schon, ist hier nichts zu tun; arbeitet ihr allein, entfällt der Schritt.',
     wie: [
-      'Konto › Einladen: Vorname eintragen (optional die E-Mail-Adresse). Soll das Konto an schon vorhandene Daten anschließen, den Speichernamen binden, den die Bestände tragen.',
+      'Konto › Einladen: Vorname (optional die E-Mail-Adresse). Soll das Konto an vorhandene Bestände anschließen, den Speichernamen eintragen, unter dem sie liegen.',
       'Den Link schicken — er gilt 48 Stunden und nur einmal.',
-      'Konto › Haushalt: die Person dem Haushalt zuordnen. Ohne Haushalt sieht sie keine privaten Finanzen; mit „nur Business“ nur die Business-Sicht.',
     ],
-    wo: { href: '/os/konto', label: 'Konto' },
+    danach: 'Die zweite Person kann ihre eigene Spur gehen.',
+    wo: KONTO,
   },
   {
-    id: 'zwei-faktor-pflicht', spur: 'fundament', wer: 'Inhaber', minuten: 2,
+    id: 'haushalt', spur: 'fundament', etappe: 1, nr: '1.3', ebene: 'instanz', nurInhaber: true, minuten: 5, pruefung: 'haushalt',
+    titel: 'Haushalt und Finanzrecht',
+    warum: 'Ohne Haushalt sieht ein Konto keine privaten Finanzen, keine Familie und keine Ernährung. „Nur Business“ sperrt Privates auf dem Server — nicht bloß in der Oberfläche.',
+    wie: ['Konto › Haushalt: jedes Konto dem Haushalt zuordnen und bewusst entscheiden, ob es alles sieht oder nur Business.'],
+    danach: 'Jedes Konto sieht genau seinen Bereich.',
+    wo: KONTO,
+  },
+  {
+    id: 'zwei-faktor-pflicht', spur: 'fundament', etappe: 1, nr: '1.4', ebene: 'instanz', nurInhaber: true, minuten: 2, pruefung: 'zwei-faktor-pflicht',
     titel: 'Zweiten Faktor für alle zur Pflicht machen',
-    warum: 'Damit kein Konto mit Passwort allein hereinkommt. Wer noch keinen zweiten Faktor hat, wird beim nächsten Anmelden zur Einrichtung geführt.',
+    warum: 'Damit kein Konto mit Passwort allein hereinkommt. Vorher zeigt der Head of IT, wie viele Konten noch ohne zweiten Faktor sind.',
     wie: [
-      'Zuerst den eigenen zweiten Faktor einrichten (Konto › Zweiter Faktor).',
+      'Zuerst den eigenen zweiten Faktor einrichten (Schritt 1.1).',
       'Dann Konto › „Zugang der Instanz“ › 2FA-Pflicht einschalten.',
     ],
-    wo: { href: '/os/konto', label: 'Konto' },
-    pruefung: 'zwei-faktor-pflicht',
+    danach: 'Wer noch keinen zweiten Faktor hat, wird beim nächsten Anmelden zur Einrichtung geführt.',
+    wo: KONTO,
   },
   {
-    id: 'regeln', spur: 'fundament', wer: 'alle', minuten: 5,
-    titel: 'Wer sieht was — die Regel',
-    warum: 'Gemeinsam heißt nicht: alles für alle. Die Trennung macht der Server, nicht die Oberfläche — was du nicht sehen darfst, kommt gar nicht erst bei dir an.',
+    id: 'datenschutz', spur: 'fundament', etappe: 1, nr: '1.5', ebene: 'instanz', nurInhaber: true, minuten: 35,
+    titel: 'Datenschutz der Instanz',
+    warum: 'Sobald Kontakte und Mandanten drin sind, braucht die Instanz einen Verantwortlichen, ein vollständiges Empfänger-Register und klare Löschfristen. Hinweis, keine Rechtsberatung.',
     wie: [
-      'Gemeinsame Bereiche sieht der ganze Haushalt: gemeinsame Aufgaben und Projekte, Kontakte und Markttraktion, Finanzen (je nach Finanzrecht), Ziele, gemeinsame Kalender.',
-      'Nur die Person selbst sieht: private Notizen, „nur ich“-Aufgaben, private Termine (die anderen sehen „Belegt“), eigene Routinen und Ernährungsprofile, eigene Postfächer — und Gesundheit, solange sie sie nicht ausdrücklich teilt.',
-      'Wer was geändert hat, steht unter Zusammenarbeit — nur wer, was, wann; nie Inhalte.',
+      `Den Verantwortlichen in der App eintragen (Datenschutz › Verantwortlicher). Eure Entscheidung vom 08.10.: die ${UG_NAME}.`,
+      'Empfänger auf Stand bringen: genutzte Dienste mit Datum des Auftragsverarbeitungsvertrags eintragen, nicht genutzte archivieren. Eine schon gespeicherte Liste kennt neue Startwerte nicht — die von Hand ergänzen.',
+      'Die Vorlage für die Information nach Art. 14 prüfen (bevor Kontakte importiert werden, Schritt 4.2).',
+      'Die Löschfristen ansehen.',
     ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
+    danach: 'Die Selbstprüfung unter Datenschutz zeigt, was noch fehlt — jeder Punkt mit Weg zum Beheben.',
+    wo: { href: WEG.datenschutz(), label: 'Einstellungen › Datenschutz' },
+  },
+  {
+    id: 'ki-instanz', spur: 'fundament', etappe: 1, nr: '1.6', ebene: 'instanz', nurInhaber: true, minuten: 10,
+    titel: 'KI der Instanz',
+    warum: 'Ohne Schlüssel und Guthaben fallen ZOE und die Heads still auf das Regelwerk zurück. Die Schalter der Instanz legen fest, ob KI im Hintergrund läuft, ob sie im Web suchen darf und für welche Bereiche.',
+    wie: [
+      'Im Head of IT nachsehen, ob die KI erreichbar ist (Schlüssel, Guthaben).',
+      'Unter Datenschutz › KI die Schalter der Instanz bewusst setzen.',
+    ],
+    danach: 'Jede Person kann für sich nur noch weiter einschränken (Schritt 1.9).',
+    wo: { href: WEG.datenschutz('ki'), label: 'Datenschutz › KI' },
+  },
+  {
+    id: 'ich-sicht', spur: 'ich', etappe: 1, nr: '1.7', ebene: 'ich', minuten: 10,
+    titel: 'Wer sieht was — und was ich teile',
+    warum: 'Gemeinsam heißt nicht: alles für alle. Die Trennung macht der Server — was du nicht sehen darfst, kommt gar nicht erst bei dir an.',
+    wie: [
+      'Gemeinsam: Aufgaben und Projekte (außer „nur ich“), Kontakte und Markttraktion, Finanzen je nach Recht, gemeinsame Kalender.',
+      'Nur du: deine Notizen, „nur ich“-Aufgaben, private Termine (andere sehen „Belegt“), Routinen, Postfächer, deine Agenten-Läufe und dein Körper-Profil.',
+      'Ob jemand deine Gesundheit und deine eigenen Ziele sieht, entscheidest du selbst: Konto › „Gesundheit teilen“ und „Eigene Ziele teilen“. Vorgabe: niemand.',
+      'In Kalender, die nicht privat sind, darf die andere Person schreiben — wie eine Assistenz.',
+    ],
+    danach: 'Du weißt, was geteilt ist und was nur dir gehört.',
+    wo: KONTO,
+  },
+  {
+    id: 'ich-gesundheit', spur: 'ich', etappe: 1, nr: '1.8', ebene: 'ich', minuten: 5, pruefung: 'gesundheit-einwilligung',
+    titel: 'Gesundheit: Einwilligung erklären',
+    warum: 'Gesundheitsdaten sind besonders geschützt (Art. 9 DSGVO). MAKE OS erfasst sie erst, wenn du selbst einwilligst — jede Person für sich, niemand für eine andere. Der Inhaber macht das zuerst, vor der Übernahme des Altbestands (0.5).',
+    wie: [
+      '(a) Verarbeiten: MAKE OS speichert deine Gesundheitsdaten für deine eigenen Auswertungen. Ohne (a) wird nichts erfasst.',
+      '(b) An die KI: ZOE und automatische Läufe dürfen deine Gesundheitswerte nutzen. Setzt (a) voraus.',
+      '(c) Partner: Personen, mit denen du Gesundheit teilst, dürfen sie auch über ihre ZOE abfragen. Setzt (a) und (b) voraus.',
+      'Jede Erklärung lässt sich an derselben Stelle widerrufen.',
+    ],
+    danach: 'Gesundheit, Sport und WHOOP arbeiten mit deinen Daten — nur so weit, wie du eingewilligt hast.',
+    wo: { href: WEG.datenschutz('gesundheit'), label: 'Einstellungen › Datenschutz' },
+  },
+  {
+    id: 'ich-ki', spur: 'ich', etappe: 1, nr: '1.9', ebene: 'ich', minuten: 5,
+    titel: 'Eigene KI-Schalter',
+    warum: 'Die Instanz gibt den Rahmen vor; du kannst für dich nur weiter einschränken — etwa keine KI im Hintergrund für deine Bereiche.',
+    wie: ['Datenschutz › KI: deine eigenen Schalter ansehen und bewusst setzen.'],
+    danach: 'ZOE und die Läufe halten sich an deine Grenzen.',
+    wo: { href: WEG.datenschutz('ki'), label: 'Datenschutz › KI' },
+  },
+  {
+    id: 'ich-handy', spur: 'ich', etappe: 1, nr: '1.10', ebene: 'ich', minuten: 5,
+    titel: 'Handy einrichten',
+    warum: 'Am Handy liegt MAKE OS wie eine App da — schneller Zugriff auf Heute, Inbox und ZOE.',
+    wie: [
+      'Am iPhone in Safari: Teilen › „Zum Home-Bildschirm“.',
+      'Optional ZOE das Mikrofon erlauben (Sprache) und unter Konto weitere Anmelde-Adressen hinterlegen.',
+    ],
+    danach: 'MAKE OS ist mit einem Tipp offen.',
+    wo: KONTO,
   },
 
-  // ── KEVIN (Inhaber) ───────────────────────────────────────────────────────
-  zweiterFaktor('kevin', 'kevin-zwei-faktor'),
+  // ── Etappe 2 — Verbindungen ─────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    id: 'kevin-kalender', spur: 'kevin', minuten: 5,
-    titel: 'Kalender des Haushalts verbinden',
-    warum: 'Ohne Termine kann Planen keine Blöcke legen und ZOE plant über feste Termine hinweg. Die Verbindung des Inhabers speist den gemeinsamen Kalender.',
+    id: 'ich-icloud', spur: 'ich', etappe: 2, nr: '2.1', ebene: 'ich', minuten: 10, pruefung: 'icloud',
+    titel: 'iCloud-Kalender verbinden (Privat)',
+    warum: 'Damit deine Termine in MAKE OS stehen, Planen um sie herum plant und Blöcke aus Planen und ZOE auf deinem eigenen iPhone landen. Die andere Person sieht deine Termine nur als „Belegt“.',
     wie: [
-      'Kalender › Bereich Privat › Karte „iCloud Kalender“: Apple-ID und app-spezifisches Passwort eintragen.',
-      'Business-Termine: Kalender › Bereich Business › die Firma mit Google Workspace verbinden.',
-      'Prüfen, dass die Termine dieser Woche auftauchen.',
+      'Auf appleid.apple.com › Anmelden und Sicherheit › App-spezifische Passwörter ein Passwort anlegen. Nicht das normale Apple-Passwort.',
+      'Kalender › Bereich Privat › Karte „iCloud Kalender“: Apple-ID und App-Passwort eintragen, Kalender wählen.',
+      'Inhaber: der Eintrag ersetzt die frühere Server-Einrichtung — die alten iCloud-Zeilen danach von Hand aus der .env nehmen.',
+      'Wechselst du später dein Apple-Passwort, wird das App-Passwort ungültig — dann „Verbindung erneuern“.',
     ],
-    wo: { href: '/os/kalender?space=privat', label: 'Kalender' },
-    pruefung: 'kalender',
-  },
-  postfach('kevin', 'kevin-postfach'),
-  {
-    id: 'kevin-kontakte', spur: 'kevin', minuten: 5,
-    titel: 'Kartei prüfen und sortieren',
-    warum: 'Power Hour und Pipeline rechnen mit der Kartei. Kreis, Lebensphase und Herkunft müssen stimmen, sonst schlägt das System die Falschen vor.',
-    wie: ['In der Markttraktion › Stammdaten die Pflichtangaben (Herkunft, Rechtsgrundlage) übernehmen.', 'Bei den wichtigsten 20 Menschen den Kreis A oder B setzen.', 'Die restlichen Dubletten zusammenführen.'],
-    wo: { href: '/os/markttraktion?s=kontakte', label: 'Markttraktion › Kontakte' },
-    pruefung: 'kontakte',
+    danach: 'Verbunden und gesund: Apple nimmt das App-Passwort an.',
+    wo: { href: '/os/kalender?space=privat', label: 'Kalender › Privat' },
   },
   {
-    id: 'kevin-aufgaben', spur: 'kevin', minuten: 25,
-    titel: 'Aufgaben sichten und ordnen',
-    warum: 'Die Reihenfolge des ganzen Systems hängt an eurer Ordnung. Was falsch einsortiert ist, wird falsch priorisiert.',
-    wie: ['Alle offenen Aufgaben einmal durchgehen.', 'Kritische bestätigen oder herunterstufen.', 'Je Aufgabe eine verantwortliche Person setzen, weitere als Beteiligte.', 'Überfällige entweder neu datieren oder schließen.'],
-    wo: { href: '/os/aufgaben', label: 'Aufgaben' },
-    pruefung: 'aufgaben',
+    id: 'ich-google', spur: 'ich', etappe: 2, nr: '2.2', ebene: 'ich', minuten: 5, pruefung: 'google',
+    titel: 'Google-Kalender verbinden (Business)',
+    warum: 'Business-Termine liegen im Google-Kalender deines Firmenkontos — in beide Richtungen: was du hier anlegst, steht dort, und umgekehrt.',
+    wie: [
+      'Kalender › Bereich Business › „verbinden“ und bei Google anmelden.',
+      'Optional: alte Business-Termine aus iCloud nach Vorschau zu Google umziehen (etwa 15 Minuten).',
+    ],
+    danach: 'Verbunden und gesund: Google hat die Kalender-Freigabe erteilt und die Verbindung ist nicht getrennt.',
+    wo: { href: '/os/kalender?space=business', label: 'Kalender › Business' },
   },
   {
-    id: 'kevin-kompass', spur: 'kevin', minuten: 15,
+    id: 'ich-gmail', spur: 'ich', etappe: 2, nr: '2.3', ebene: 'ich', minuten: 5, pruefung: 'gmail',
+    titel: 'Gmail verbinden',
+    warum: 'Dein Firmen-Postfach erscheint in der Inbox — lesen, zuordnen, antworten per Klick. Nur du liest es; der Dienstweg und ZOE senden nie selbst.',
+    wie: ['Inbox › Postfächer › „Gmail verbinden“ — die Google-Verbindung wird um Gmail ergänzt.'],
+    danach: 'Verbunden und gesund: die Gmail-Freigabe ist da und Google nimmt die Anmeldung an.',
+    wo: { href: '/os/inbox?postfaecher=1', label: 'Inbox › Postfächer' },
+  },
+  {
+    id: 'ich-postfaecher', spur: 'ich', etappe: 2, nr: '2.4', ebene: 'ich', minuten: 15, pruefung: 'postfach',
+    titel: 'Weitere Postfächer und ihr Bereich',
+    warum: 'Die Inbox ist der tägliche Einstieg. Jedes Postfach gehört genau einer Person und genau einem Bereich (Privat oder eine Gesellschaft) — auch Gmail.',
+    wie: [
+      'Inbox › Postfächer: weitere Postfächer verbinden (z. B. iCloud-Mail mit App-Passwort für Privates, das bisherige Postfach bis zum Umzug).',
+      'Jedem Postfach einen Bereich geben, auch dem Gmail-Postfach.',
+      'Danach neue Absender zulassen oder blocken.',
+    ],
+    danach: 'Die Inbox zeigt jedes Postfach im passenden Bereich.',
+    wo: { href: '/os/inbox?postfaecher=1', label: 'Inbox › Postfächer' },
+  },
+  {
+    id: 'kalender-zuordnen', spur: 'fundament', etappe: 2, nr: '2.5', ebene: 'gemeinsam', minuten: 20,
+    titel: 'Kalender zuordnen',
+    warum: 'MAKE OS muss wissen, welcher Kalender wem gehört, welcher gemeinsam ist und was als belegt zählt — sonst plant es in eure Termine hinein.',
+    wie: [
+      'Kalender je Person und „Gemeinsam“ zuordnen; in den gemeinsamen spiegeln Paar-Gespräch, Dates und Events.',
+      'Je Kalender Privat oder Business festlegen.',
+      '„Zählt als belegt“, freie Tage, Arbeitsfenster, Standarddauern und Vorlauf für Kündigungsfristen prüfen.',
+      'Den gemeinsamen Kalender in Apple miteinander teilen.',
+    ],
+    danach: 'Freie Zeiten, Kapazität und ZOE rechnen mit den richtigen Kalendern.',
+    wo: { href: WEG.kalender(), label: 'Kalender › Einstellungen' },
+  },
+  {
+    id: 'ich-woanders', spur: 'ich', etappe: 2, nr: '2.6', ebene: 'ich', optional: true, minuten: 20,
+    titel: 'Zeit, die woanders belegt ist',
+    warum: 'Arbeitest du auch in einem Kalender, den MAKE OS noch nicht anbinden kann (z. B. Microsoft 365 eines Arbeitgebers oder Kunden), gilt diese Zeit sonst als frei — in Kapazität, freier Zeit und bei ZOE.',
+    wie: [
+      'Übergang: diese Zeit als feste Blöcke bzw. Abwesenheit in die Wochenvorlage (Planung › Routinen).',
+      'Oder eine Frei/Gebucht-Freigabe in einen verbundenen Kalender — den Weg vorher prüfen.',
+    ],
+    danach: 'Kapazität und freie Zeit stimmen auch an Tagen mit fremden Terminen.',
+    wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
+  },
+  {
+    id: 'ich-whoop', spur: 'ich', etappe: 2, nr: '2.7', ebene: 'ich', optional: true, minuten: 3, pruefung: 'whoop',
+    titel: 'WHOOP verbinden',
+    warum: 'Mit WHOOP kommen Erholung, Schlaf und Training von selbst in Gesundheit und Sport — ohne Abtippen. Jede Person verbindet nur ihr eigenes Konto; andere sehen die Werte nur, wenn du Gesundheit mit ihnen teilst.',
+    wie: [
+      'Vorher die Gesundheits-Einwilligung (a) erklären (Schritt 1.8) — ohne sie holt MAKE OS nichts ab.',
+      'Gesundheit › Karte „WHOOP“ › Verbinden. Zeigt die Karte „neu verbinden“, neu verbinden (ein alter Zugang hat keine Workouts).',
+      'Beim ersten Mal kommen die letzten 90 Tage; danach meldet WHOOP neue Werte von selbst. Eigene Einträge überschreibt WHOOP nie.',
+    ],
+    danach: 'Verbunden und gesund: nicht getrennt, alle nötigen Rechte erteilt.',
+    wo: { href: '/os/gesundheit#whoop', label: 'Gesundheit › WHOOP' },
+  },
+  {
+    id: 'mail-umzug', spur: 'fundament', etappe: 2, nr: '2.8', ebene: 'instanz', nurInhaber: true, minuten: 90,
+    titel: 'Mail-Domain umziehen (eigener Termin)',
+    warum: 'Wenn die Post der Firma künftig über Google läuft, muss der Umzug in der richtigen Reihenfolge passieren — sonst gehen Mails verloren.',
+    wie: [
+      'Reihenfolge: gemeinsame Adressen als Gruppe, „Senden als“, Testmail, SPF/DKIM/DMARC — die MX-Einträge ganz zuletzt.',
+      'Alte Mails optional mitnehmen.',
+      'Den bisherigen Anbieter mindestens vier Wochen weiterlaufen lassen.',
+      'Anleitung: GOOGLE_GMAIL_EINRICHTEN.md, Teil D. An einem Werktag-Vormittag nach dem Gmail-Test.',
+    ],
+    danach: 'Neue Post kommt bei Google an; die Inbox zeigt sie über die Gmail-Verbindung.',
+  },
+  {
+    id: 'whatsapp', spur: 'fundament', etappe: 2, nr: '2.9', ebene: 'instanz', nurInhaber: true, minuten: 90,
+    titel: 'WhatsApp Business (eigener Termin)',
+    warum: 'Die Business-Nummer der Instanz erscheint in der Inbox. Die Verifizierung bei Meta dauert Tage — deshalb früh anstoßen, sobald der Weg entschieden ist.',
+    wie: [
+      'Den Weg für ZOE über WhatsApp vorher gemeinsam entscheiden.',
+      'Anleitung UPDATES.md (07.10.), Zugangsdaten über das Skript am Server (fragt verdeckt).',
+    ],
+    danach: 'System › Verbindungen zeigt den Zustand der Nummer; der Head of IT meldet Probleme.',
+    befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whatsapp-verbinden.sh',
+    wo: { href: WEG.verbindungen(), label: 'Einstellungen › Verbindungen' },
+  },
+
+  // ── Etappe 3 — Firmen & Zahlen ──────────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'stichtag', spur: 'fundament', etappe: 3, nr: '3.1', ebene: 'gemeinsam', minuten: 10,
+    titel: 'Stichtag des 0-Punkts: 01.10.2026',
+    warum: 'Ab dem Stichtag rechnet jede Business-Gesellschaft neu. Eure Entscheidung vom 08.10.: der 01.10.2026 für jede Business-Gesellschaft — derselbe Tag, an dem die Finanzplanung beginnt.',
+    wie: [
+      'Januar bis September bleiben gespeichert und sichtbar („vor dem 0-Punkt“), zählen aber nicht mehr: Rechnungen, Zahlungen, Planposten, Buchungen und Monatsabschlüsse davor. Nichts davon wird nachgetragen.',
+      'Ein Kontostand mit Datum genau am 01.10. zählt nicht — dort gilt der 0-Punkt. Neue Kontostände tragen ein Datum ab dem 02.10.',
+      'Weil Stichtag und Planbeginn zusammenfallen, braucht die Finanzplanung keinen Handwert für den ersten Planmonat.',
+    ],
+    danach: 'Abhaken, wenn beide den Stichtag kennen; Schritt 3.6 trägt ihn je Gesellschaft ein.',
+  },
+  {
+    id: 'steckbrief', spur: 'kevin', etappe: 3, nr: '3.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 35,
+    titel: 'Steckbrief je Gesellschaft',
+    warum: 'Rechtsform, Rolle und Geschäftsjahr steuern, wie MAKE OS rechnet — die Rolle „Holding“ etwa bestimmt die Holding-Sicht im Business-Index.',
+    wie: [
+      'Unternehmen: je Gesellschaft Rechtsform, Status, Rolle operativ/holding, Sitz, Gründung, Stammkapital, Geschäftsjahr.',
+      'Optional: Gründungs- bzw. Umbenennungsfahrplan per Klick, solange eine Eintragung läuft.',
+    ],
+    danach: 'Index und Finanzen kennen eure Gesellschaften richtig.',
+    wo: { href: WEG.unternehmen(), label: 'Business › Unternehmen' },
+  },
+  {
+    id: 'register', spur: 'kevin', etappe: 3, nr: '3.3', ebene: 'gemeinsam', nurInhaber: true, minuten: 50,
+    titel: 'Gesellschafter, Organe, Beschlüsse, Beteiligungen, Verträge',
+    warum: 'Wer hält was, wer führt, was wurde beschlossen — und welche Verträge laufen. Verträge mit „kündigen bis“ erinnern rechtzeitig.',
+    wie: [
+      'Je Gesellschaft: Gesellschafter (die Nennbeträge ergeben das Stammkapital), Organe (je Kapitalgesellschaft eine Geschäftsführung), Beschlüsse.',
+      'Beteiligungen an fremden Firmen und laufende Verträge samt Unterlagen.',
+      'Verträge mit „kündigen bis“ erzeugen eine Erinnerung (Vorgabe 30 Tage vorher) und einen Kalendereintrag.',
+    ],
+    danach: 'Fristen erscheinen im Kalender und in der Glocke.',
+    wo: { href: WEG.unternehmen(), label: 'Business › Unternehmen' },
+  },
+  {
+    id: 'absender', spur: 'kevin', etappe: 3, nr: '3.4', ebene: 'gemeinsam', nurInhaber: true, minuten: 20,
+    titel: 'Absender für Angebote',
+    warum: 'Ohne vollständige Pflichtangaben kann MAKE OS kein sauberes Angebot erzeugen.',
+    wie: ['Je Gesellschaft (Reiter „Absender“): Firmierung, Anschrift, Steuernummer, USt-ID, Register, Geschäftsführung, Bank, Logo, Nummernkürzel.'],
+    danach: 'Angebote tragen die richtigen Angaben und fortlaufende Nummern.',
+    wo: { href: WEG.unternehmen(), label: 'Business › Unternehmen' },
+  },
+  {
+    id: 'steuerprofil', spur: 'kevin', etappe: 3, nr: '3.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 25,
+    titel: 'Steuerprofil',
+    warum: 'Fristen und Schätzungen rechnen mit Rechtsform, Hebesatz und Vorauszahlungen. Hinweis, keine Steuerberatung.',
+    wie: [
+      'Im Steuer-Modul das Profil je Gesellschaft setzen — und gleich auch in der Finanzplanung › Zahnrad (bis beides zusammengeführt ist, gibt es zwei Orte; siehe Datenkarte).',
+      'Optional den Schalter „Steuertermine im Kalender“ einschalten (Vorgabe aus).',
+    ],
+    danach: 'Steuertermine und Rücklagen stimmen.',
+    wo: { href: WEG.steuern(), label: 'Finanzen › Steuern' },
+  },
+  {
+    id: 'eroeffnung', spur: 'kevin', etappe: 3, nr: '3.6', ebene: 'gemeinsam', nurInhaber: true, minuten: 30, pruefung: 'eroeffnung',
+    titel: '0-Punkt je Business-Gesellschaft',
+    warum: `Ab dem 0-Punkt rechnet jede Business-Gesellschaft${BUSINESS} mit sauberen Zahlen: Kontostand am Stichtag plus alles, was dann offen war.`,
+    wie: [
+      'Finanzen › Business › 0-Punkt: Stichtag 01.10.2026 (Schritt 3.1) und der Kontostand an diesem Tag.',
+      'Alle zum Stichtag offenen Forderungen und Verbindlichkeiten eintragen — auch Rechnungen aus der Liste mit Datum vor dem Stichtag (die werden archiviert).',
+      'Ein Eröffnungs-Posten, der später bezahlt wird, geht heute nur über eine neue Fassung des 0-Punkts raus.',
+    ],
+    danach: 'Älteres bleibt sichtbar („vor dem 0-Punkt“), zählt aber nicht mehr.',
+    wo: { href: WEG.eroeffnung(), label: 'Finanzen › Business › 0-Punkt' },
+  },
+  {
+    id: 'monatsabschluss', spur: 'fundament', etappe: 3, nr: '3.7', ebene: 'gemeinsam', minuten: 30,
+    titel: 'Monatsabschlüsse ab Oktober',
+    warum: 'Controlling und Business-Index rechnen mit den Monatszahlen. Mit dem Stichtag 01.10. zählen erst die Monate ab Oktober — Januar bis September werden nicht nachgetragen.',
+    wie: [
+      'Der erste Abschluss ist der Oktober — Anfang November, je Business-Gesellschaft, von Hand über das Formular.',
+      'Danach jeden Monat den Vormonat. Am Onboarding-Samstag ist hier noch nichts zu tun: abhaken, wenn der Termin für den ersten Abschluss steht.',
+    ],
+    danach: 'Controlling und Index haben echte Ist-Zahlen.',
+    wo: { href: WEG.abschluss(), label: 'Finanzen › Business › Monatsabschluss' },
+  },
+  {
+    id: 'kontostaende', spur: 'fundament', etappe: 3, nr: '3.8', ebene: 'gemeinsam', minuten: 15, pruefung: 'konten',
+    titel: 'Kontostände nach dem Stichtag',
+    warum: 'Die Liquiditäts-Vorschau startet beim aktuellen Kontostand. Ist der älter als eine Woche, ist die ganze Kurve unsicher.',
+    wie: [
+      'Liquidität › Kontostände: für jede Business-Gesellschaft den aktuellen Stand mit Datum eintragen.',
+      'Das Datum muss nach dem Stichtag liegen (ab 02.10.) — sonst gilt der 0-Punkt.',
+      'Bis zur Bank-Anbindung (Phase 1) von Hand, etwa einmal die Woche.',
+    ],
+    danach: 'Geprüft wird, ob jedes Geschäftskonto einen Stand hat, der höchstens sieben Tage alt ist (der 0-Punkt zählt mit).',
+    wo: { href: WEG.kontostaende(), label: 'Finanzen › Liquidität' },
+  },
+  {
+    id: 'offene-posten', spur: 'fundament', etappe: 3, nr: '3.8', ebene: 'gemeinsam', minuten: 15, pruefung: 'posten',
+    titel: 'Offene Rechnungen und Zahlungen',
+    warum: 'Das ist die Prioritätenliste: was zuerst raus muss, was noch reinkommt.',
+    wie: [
+      'Gestellte Rechnungen prüfen — was eingegangen ist, auf „bezahlt“ setzen.',
+      'Offene Zahlungen mit Fälligkeit versehen.',
+      'Datum nach dem Stichtag (ab 02.10.), sonst gilt der 0-Punkt — Offenes vom Stichtag steht im 0-Punkt.',
+    ],
+    danach: 'Geprüft wird: keine überfällige gestellte Rechnung, keine offene Zahlung ohne Fälligkeit.',
+    wo: { href: WEG.rechnungen(), label: 'Finanzen › Rechnungen & Zahlungen' },
+  },
+  {
+    id: 'business-grundlagen', spur: 'kevin', etappe: 3, nr: '3.9', ebene: 'gemeinsam', nurInhaber: true, minuten: 15,
+    titel: 'Grundlagen des Business-Index',
+    warum: 'Ohne Köpfe, Beratertage und Jahresziel bleiben Personal und Auslastung im Index „keine Daten“.',
+    wie: [
+      'Business › Feinjustierung: Köpfe (FTE), verfügbare Beratertage je Monat, Jahresziel je Gesellschaft (dieselbe Zahl wie in Planung › Jahr, Schritt 5.1).',
+      'Bei Bedarf eigene Schwellen.',
+    ],
+    danach: 'Der Index rechnet alle Säulen.',
+    wo: { href: WEG.einstellungen(), label: 'Finanzen › Business › Einstellungen' },
+  },
+  {
+    id: 'ich-privatkonten', spur: 'ich', etappe: 3, nr: '3.10', ebene: 'ich', minuten: 45,
+    titel: 'Privatkonten und Kontoauszüge',
+    warum: 'Die Haushaltsfinanzen rechnen mit euren Buchungen. Jede Person trägt ihre Konten ein, gemeinsame nur einmal. (Gilt nur für Konten mit Zugang zu den Privat-Finanzen.)',
+    wie: [
+      'Privat › Konten & Buchungen: eigene Konten mit Inhaber anlegen, gemeinsame einmal.',
+      'Kontoauszüge einlesen und die Kontrollsumme prüfen. Den Zeitraum gemeinsam festlegen.',
+      'Bis zur Bank-Anbindung (vorgezogen in Phase 1) ist das der monatliche Weg.',
+    ],
+    danach: 'Budget, Fixkosten und Privat-Index rechnen mit echten Zahlen.',
+    wo: { href: WEG.privat('buchungen'), label: 'Finanzen › Privat › Konten & Buchungen' },
+  },
+  {
+    id: 'privat-fixkosten', spur: 'fundament', etappe: 3, nr: '3.11', ebene: 'gemeinsam', minuten: 35,
+    titel: 'Fixkosten, Budget, Schulden und Rücklage (Privat)',
+    warum: 'Damit der Privat-Index ehrlich rechnet: Fixkosten mit Rhythmus, Schulden mit Rate, ein Ziel für die Rücklage. Eure Entscheidung vom 08.10.: der Haushalt führt das Ist, die Finanzplanung liest daraus. (Nur für Konten mit Zugang zu den Privat-Finanzen.)',
+    wie: [
+      'Fixkosten durchgehen, bis keine mehr „Rhythmus unklar“ hat.',
+      'Budget, Schulden und Fixkosten im Haushalt pflegen (Privat › Konten & Buchungen) — nicht zusätzlich in der Finanzplanung. Die Brücke, über die die Finanzplanung daraus liest, kommt in Phase 1.',
+      'Das Rücklage-Ziel im Privat-Index setzen.',
+    ],
+    danach: 'Der Privat-Index zeigt euren echten Stand.',
+    wo: { href: WEG.privat('fixkosten'), label: 'Finanzen › Privat › Fixkosten' },
+  },
+
+  // ── Etappe 4 — Kontakte, Vertrieb & Mandate ─────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'team', spur: 'fundament', etappe: 4, nr: '4.1', ebene: 'gemeinsam', minuten: 10,
+    titel: 'Team und Zuständigkeiten',
+    warum: 'Wer kümmert sich um Vertrieb, Marketing und Events, wer um Haushaltsfinanzen, wer begleitet Gesundheit — daran hängen Vorschläge und Power Hour.',
+    wie: ['Konto › Team: je Person die Rolle eintragen.'],
+    danach: 'Vorschläge und Aufgaben gehen an die zuständige Person.',
+    wo: KONTO,
+  },
+  {
+    id: 'kartei', spur: 'kevin', etappe: 4, nr: '4.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 50, pruefung: 'kontakte',
+    titel: 'Kartei importieren und bereinigen',
+    warum: 'Power Hour, Pipeline und Index rechnen mit der Kartei. Herkunft, Rechtsgrundlage und Zuständigkeit müssen stimmen, sonst schlägt das System die Falschen vor.',
+    wie: [
+      'Markttraktion › Zahnrad (Stammdaten): Import mit Vorschau, Konflikte entscheiden, Dubletten und Firmen zusammenführen.',
+      'Herkunft und Rechtsgrundlage übernehmen; bei den wichtigsten Menschen Kreis A oder B setzen.',
+      '„Zuständig“ je wichtigem Kontakt setzen — sonst landet die Power Hour bei einer Person.',
+      'Für Kontakte aus fremden Quellen läuft ab dem Import die Ein-Monats-Frist für die Information nach Art. 14.',
+    ],
+    danach: 'Geprüft wird: Kontakte in der Kartei, keine offenen Import-Konflikte.',
+    wo: { href: WEG.stammdaten(), label: 'Markttraktion › Stammdaten' },
+  },
+  {
+    id: 'produkte', spur: 'fundament', etappe: 4, nr: '4.3', ebene: 'gemeinsam', minuten: 30,
+    titel: 'Produkte',
+    warum: 'Produkte sind die eine Quelle für Angebote, Mandate und die Umsatz-Bausteine der Finanzplanung.',
+    wie: [
+      'Mandate & Unternehmen › Produkte: Preis, Basis, Laufzeit, Gesellschaft und Leistungstext (ohne Leistungstext kein „aktiv“).',
+      'Die alte Karte „Produkte“ unter Rechnungen nicht mehr pflegen.',
+    ],
+    danach: 'Angebote und Finanzplan greifen auf denselben Katalog zu.',
+    wo: { href: WEG.produkt(), label: 'Mandate & Unternehmen › Produkte' },
+  },
+  {
+    id: 'mandate', spur: 'kevin', etappe: 4, nr: '4.4', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    titel: 'Laufende Mandate',
+    warum: 'Mandate sind Umsatz, Zeit und Kapazität. Ohne sie fehlen Index, Liquidität und Planung die wichtigste Größe.',
+    wie: ['Je laufendem Mandat: Firma (aus der Kartei), Produkt, Honorar, Rhythmus, Gesellschaft, Zahlungsziel, Zuständigkeit.'],
+    danach: 'Mandate tauchen in Zeit, Kapazität und Finanzplan auf.',
+    wo: { href: WEG.mandat(), label: 'Mandate & Unternehmen › Mandate' },
+  },
+  {
+    id: 'deals', spur: 'kevin', etappe: 4, nr: '4.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 20,
+    titel: 'Offene Deals',
+    warum: 'Die Pipeline zeigt, was kommt — aber nur, wenn jeder Deal einen nächsten Schritt mit Datum hat.',
+    wie: ['Markttraktion › Deals: jeden offenen Deal mit Stufe, Wert und nächstem Schritt samt Datum.'],
+    danach: 'Follow-up und Head of Sales arbeiten mit echten Deals.',
+    wo: { href: WEG.deals(), label: 'Markttraktion › Deals' },
+  },
+  {
+    id: 'vertrieb', spur: 'fundament', etappe: 4, nr: '4.6', ebene: 'gemeinsam', minuten: 30,
+    titel: 'Grundlagen des Vertriebs',
+    warum: 'Positionierung, Wertelisten und Wochenziele machen Vorschläge, Texte und das Scoreboard erst passend.',
+    wie: [
+      'Marketing › Positionierung: Zielgruppe, Nutzen, Ton.',
+      'Zahnrad › Wertelisten: Verlustgründe, Kadenz je Kreis.',
+      'Überblick: Wochenziele im Scoreboard je Person. Den Scoring-Standard lassen oder anpassen.',
+    ],
+    danach: 'Die Heads schlagen in eurer Sprache vor.',
+    wo: { href: WEG.marketing('positionierung'), label: 'Markttraktion › Marketing' },
+  },
+  {
+    id: 'ich-visitenkarte', spur: 'ich', etappe: 4, nr: '4.7', ebene: 'ich', optional: true, minuten: 10,
+    titel: 'Eigene Visitenkarte',
+    warum: 'Auf Veranstaltungen zeigst du deine Karte als QR-Code — wer sie scannt, hat deine Kontaktdaten.',
+    wie: ['Netzwerken › Meine Karte: Profil anlegen, Design wählen.'],
+    danach: 'Deine Karte ist unterwegs mit einem Tipp da.',
+    wo: { href: WEG.netzwerkenKarte(), label: 'Netzwerken › Meine Visitenkarten' },
+  },
+  {
+    id: 'ich-buchungsseite', spur: 'ich', etappe: 4, nr: '4.8', ebene: 'ich', optional: true, minuten: 15,
+    titel: 'Buchungsseite für Erstgespräche',
+    warum: 'Interessenten buchen selbst einen freien Termin bei dir. Braucht den Verantwortlichen (1.5), einen frischen Kalender und deine Wochenvorlage (5.7).',
+    wie: ['Kalender › Buchungsseiten: Seite anlegen, Fenster und Dauer festlegen, Link kopieren.'],
+    danach: 'Anfragen kommen in die Glocke; freigeben musst du immer selbst.',
+    wo: { href: WEG.kalender(), label: 'Kalender' },
+  },
+
+  // ── Etappe 5 — Planung & Finanzplan ─────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'jahresziele', spur: 'fundament', etappe: 5, nr: '5.1', ebene: 'gemeinsam', minuten: 30, pruefung: 'ziele',
+    titel: 'Nordstern und Jahresziele',
+    warum: 'Die Jahresziele sind die Messlatte für alles darunter — Quartal, Monat, Woche und die Indizes rechnen daraus.',
+    wie: [
+      'Planung › Jahr: je Bereich die Jahresziele des laufenden Jahres, möglichst mit Zahl.',
+      'Den Nordstern nur, wenn er mit dem Altbestand übernommen wurde — sonst entsteht eine zweite Fassung.',
+    ],
+    danach: 'Geprüft wird, ob es Jahresziele für das laufende Jahr gibt (aus der Planung, nicht aus einer Vorgabe).',
+    wo: { href: WEG.jahr(), label: 'Planung › Jahr' },
+  },
+  {
+    id: 'zahlenziele', spur: 'kevin', etappe: 5, nr: '5.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 10,
+    titel: 'Zahlenziele gleichziehen',
+    warum: 'Das Umsatzziel steht heute noch an mehreren Stellen. Bis es eine Quelle gibt, überall dieselbe Zahl — sonst widersprechen sich Controlling und Index.',
+    wie: [
+      'Controlling & Ziele: Jahresziel, Startmonat, Runway-Schwelle — bewusst speichern.',
+      'Das Jahresziel je Gesellschaft (3.9) auf dieselbe Zahl wie in Planung › Jahr.',
+    ],
+    danach: 'Alle Auswertungen messen gegen dieselbe Zahl.',
+    wo: { href: WEG.controlling(), label: 'Finanzen › Controlling & Ziele' },
+  },
+  {
+    id: 'meilensteine-fokus', spur: 'fundament', etappe: 5, nr: '5.3', ebene: 'gemeinsam', minuten: 30, pruefung: 'fokus',
+    titel: 'Meilensteine und Fokus',
+    warum: 'Meilensteine mit Termin, Aufwand und Beteiligten machen die Kapazität sichtbar. Ein Fokus je Horizont sagt ZOE und Planen, was gerade wichtiger ist.',
+    wie: [
+      'Planung › Jahr: Meilensteine mit Termin, Aufwand und Beteiligten.',
+      'Fokus: je Horizont (Jahr, Quartal, Monat, Woche) einen Satz — gemeinsam oder je Bereich.',
+    ],
+    danach: 'Geprüft wird, wie viele Horizonte einen Fokus haben (mindestens drei von vier).',
+    wo: { href: '/os/fokus', label: 'Planung › Fokus' },
+  },
+  {
+    id: 'finanzplan', spur: 'fundament', etappe: 5, nr: '5.4', ebene: 'gemeinsam', minuten: 45,
+    titel: 'Finanzplan anlegen',
+    warum: 'Die Finanzplanung rechnet Runway, Steuern und Szenarien. Sie startet mit einem Dokument — hochgeladen oder leer begonnen. (Nur für Konten mit Zugang zu den Privat-Finanzen.)',
+    wie: [
+      'Finanzen › Privat › Planung: Dokument hochladen oder leer beginnen; Gehälter, Netto-Tabelle, Privatkonten, Darlehen.',
+      'Die Kontostände der Gesellschaften kommen aus dem 0-Punkt (3.6). Stichtag und Planbeginn fallen zusammen (01.10.) — kein Handwert für den ersten Planmonat nötig.',
+      'Budget, Schulden und Fixkosten nicht hier doppelt pflegen — der Haushalt führt das Ist (Datenkarte).',
+    ],
+    danach: 'Runway und Szenarien rechnen mit euren Zahlen.',
+    wo: { href: WEG.finanzplanung('privat'), label: 'Finanzen › Privat › Planung' },
+  },
+  {
+    id: 'selbststaendigkeit', spur: 'kevin', etappe: 5, nr: '5.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    titel: 'Selbstständigkeit: Januar bis September',
+    warum: 'Die Einkommensteuer rechnet über das ganze Jahr. Die Monate vor dem Planbeginn (01.10.) gehören deshalb in die Finanzplanung — als Summen, nicht als Monatsabschlüsse.',
+    wie: [
+      'Planung › Blatt „Selbstständigkeit“: Einnahmen, Ausgaben und Gehalt von Januar bis September.',
+      'Die Vorauszahlungen zur Einkommensteuer NUR hier eintragen — die Steuer-Einstellungen zählen mit Finanzplanung nicht.',
+    ],
+    danach: 'Die Steuer des laufenden Jahres stimmt.',
+    wo: { href: WEG.finanzplanung('privat', 'selbst'), label: 'Finanzen › Privat › Planung' },
+  },
+  {
+    id: 'finanzplan-business', spur: 'kevin', etappe: 5, nr: '5.6', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    titel: 'Finanzplan Business',
+    warum: 'Der Business-Teil der Planung rechnet aus Mandaten, Sachkosten und dem Arbeitsplan.',
+    wie: ['Finanzen › Business › Planung: Bausteine aus den Mandaten übernehmen, Sachkosten, Arbeitsplan setzen, offene Vorschläge entscheiden.'],
+    danach: 'Der Plan der Gesellschaften steht.',
+    wo: { href: WEG.finanzplanung('business'), label: 'Finanzen › Business › Planung' },
+  },
+  {
+    id: 'ich-arbeitsrahmen', spur: 'ich', etappe: 5, nr: '5.7', ebene: 'ich', minuten: 20,
+    titel: 'Mein Arbeitsrahmen',
+    warum: 'Ohne Eintrag rechnet MAKE OS mit 40 Stunden bzw. Mo–Fr 9–18 Uhr. Deine echte Arbeitszeit macht Kapazität und freie Zeit ehrlich.',
+    wie: [
+      'Planung › Routinen: die Wochenvorlage ist führend (Blöcke für Arbeit).',
+      'Kapazität: Grundwert; Urlaub nur einmal als „Abwesend“ im Kalender.',
+      'Arbeitszeit außerhalb (2.6) als Block.',
+    ],
+    danach: 'Machbarkeit und freie Zeit stimmen für dich.',
+    wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
+  },
+  {
+    id: 'mandate-kapazitaet', spur: 'kevin', etappe: 5, nr: '5.8', ebene: 'gemeinsam', nurInhaber: true, minuten: 10,
+    titel: 'Mandate je Person',
+    warum: 'Mandate binden Stunden. Erst mit der Zuweisung sieht die Kapazität, was wirklich frei ist.',
+    wie: ['Planung › Kapazität: je aktivem Mandat die gebundenen Stunden je Woche und Person.'],
+    danach: 'Engpässe zeigen sich, bevor sie passieren.',
+    wo: { href: WEG.kapazitaet(), label: 'Planung › Kapazität' },
+  },
+  {
+    id: 'ich-routinen', spur: 'ich', etappe: 5, nr: '5.9', ebene: 'ich', minuten: 10,
+    titel: 'Eigene Routinen',
+    warum: 'Was regelmäßig dran ist, steht dann auf Heute — abhakbar, ohne daran denken zu müssen.',
+    wie: ['Planung › Routinen: mindestens eine eigene Routine mit Rhythmus anlegen.'],
+    danach: 'Heute zeigt, was dran ist.',
+    wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
+  },
+  {
+    id: 'rhythmen', spur: 'fundament', etappe: 5, nr: '5.10', ebene: 'gemeinsam', nurMitMehreren: true, minuten: 20,
+    titel: 'Gemeinsame Rhythmen',
+    warum: 'Zu zweit hält ein fester Takt alles zusammen: Finanzen-Check, Wochenstart, Rückblick, Paar-Gespräch.',
+    wie: [
+      'Aufgaben: Finanzen-Check als Serie mit Rotation über euch beide.',
+      'Routinen: Wochenstart und Rückblick für beide.',
+      'Familie › Rahmen: Paar-Gespräch mit Termin.',
+    ],
+    danach: 'Der gemeinsame Takt steht im Kalender und auf Heute.',
+    wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
+  },
+  {
+    id: 'kompass', spur: 'fundament', etappe: 5, nr: '5.11', ebene: 'gemeinsam', minuten: 15, pruefung: 'kompass',
     titel: 'Kompass stellen',
-    warum: 'Die Regler steuern, wie das System dich behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt.',
-    wie: ['Lage wählen (Aufbau / Ernte / Schutz / Feuer).', 'Die Regler durchgehen, Wirkung live mitlesen.', 'Abweichungen unten anschauen — dort steht, wo der Alltag dem Kompass widerspricht.'],
-    wo: { href: '/os/kompass', label: 'Kompass' },
-    pruefung: 'kompass',
+    warum: 'Die Regler steuern, wie das System euch behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt. Er gilt vorerst für beide.',
+    wie: ['Lage wählen, die Regler durchgehen und die Wirkung mitlesen.', 'Unten die Abweichungen ansehen: dort steht, wo der Alltag dem Kompass widerspricht.'],
+    danach: 'ZOE und die Agenten richten sich nach dem Kompass.',
+    wo: { href: '/os/kompass', label: 'Planung › Kompass' },
   },
   {
-    id: 'kevin-fokus', spur: 'kevin', minuten: 15,
-    titel: 'Fokus je Horizont setzen',
-    warum: 'Jahr, Quartal, Monat und Woche brauchen je einen Satz. Ohne den kann weder ZOE noch Planen entscheiden, was gerade wichtiger ist.',
-    wie: ['Jahresfokus setzen.', 'Quartal und Monat daraus ableiten.', 'Wochenfokus für diese Woche setzen.'],
-    wo: { href: '/os/fokus', label: 'Fokus' },
-    pruefung: 'fokus',
+    id: 'projekte', spur: 'fundament', etappe: 5, nr: '5.12', ebene: 'gemeinsam', minuten: 30,
+    titel: 'Projekte und Listen je Space',
+    warum: 'Ordnung in den Aufgaben: je Gesellschaft, Privat und Mandant die Projekte, die gerade laufen.',
+    wie: ['Aufgaben › Überblick › „+ Projekt“ — aus Vorlagen, mit Verantwortlichen.'],
+    danach: 'Jede Aufgabe hat ihren Platz.',
+    wo: { href: WEG.aufgaben(), label: 'Aufgaben' },
   },
   {
-    id: 'kevin-ziele', spur: 'kevin', minuten: 10,
-    titel: 'Ziele und Startmonat bestätigen',
-    warum: 'Controlling und Run-Rate rechnen ab dem Startmonat. Steht der falsch, sieht jede Auswertung schlechter aus, als sie ist.',
-    wie: ['Jahresziel Umsatz und Gewinn prüfen.', 'Startmonat bestätigen.', 'Runway-Schwelle prüfen.'],
-    wo: { href: '/os/finanzen?s=controlling&space=business', label: 'Controlling' },
-    pruefung: 'ziele',
+    id: 'ich-aufgaben', spur: 'ich', etappe: 5, nr: '5.13', ebene: 'ich', minuten: 20, pruefung: 'aufgaben-ich',
+    titel: 'Deine Aufgaben sichten',
+    warum: 'Was auf dich zugewiesen ist, soll nicht in einer langen Liste untergehen.',
+    wie: ['Aufgaben › Filter „Meine“.', 'Fälligkeiten setzen oder mit Kommentar zurückgeben; mit @Name holst du jemanden dazu.', 'Überfälliges neu datieren oder schließen.'],
+    danach: 'Geprüft wird: nichts auf dich überfällig.',
+    wo: { href: WEG.aufgaben(), label: 'Aufgaben' },
   },
-  gesundheitEinwilligung('kevin', 'kevin-gesundheit'),
-  {
-    id: 'kevin-agenten', spur: 'kevin', minuten: 10,
-    titel: 'Agenten und ihre Autonomie festlegen',
-    warum: 'Jeder Agent braucht eine Stufe: nur vorschlagen, nach Freigabe, oder selbstständig. Alles, was nach außen geht, bleibt auf Freigabe.',
-    wie: ['Jeden Agenten durchgehen und die Stufe setzen.', 'Alles, was nach außen geht, bleibt auf Freigabe.', 'Abschalten, was gerade nicht gebraucht wird.'],
-    wo: { href: '/os/agenten', label: 'Agentensystem' },
-    pruefung: 'agenten',
-  },
-  zoeVorschlaege('kevin', 'kevin-zoe'),
 
-  // ── MALIN (zweite Person) ─────────────────────────────────────────────────
+  // ── Etappe 6 — Gesundheit & Familie ─────────────────────────────────────────────────────────────────────────────────────────
   {
-    id: 'malin-einladung', spur: 'malin', minuten: 5,
-    titel: 'Einladung annehmen',
-    warum: 'Erster Schritt: reinkommen. Alles andere baut darauf auf.',
+    id: 'ich-gesundheit-profil', spur: 'ich', etappe: 6, nr: '6.1', ebene: 'ich', minuten: 20,
+    titel: 'Gesundheit für dich einrichten',
+    warum: 'Ernährungsprofil, Sport-Einstieg und Körper-Profil gehören nur dir. Niemand richtet das für eine andere Person ein.',
     wie: [
-      'Den Einladungslink vom Inhaber öffnen (gilt 48 Stunden, nur einmal).',
-      'Vorname, E-Mail-Adresse und ein Passwort mit mindestens 10 Zeichen — fertig. War die Einladung an vorhandene Daten gebunden, hängen sie jetzt an deinem Konto.',
-      'Lesezeichen anlegen; am iPhone Safari › Teilen › „Zum Home-Bildschirm“.',
+      'Gesundheit: Ernährungsprofil (Bedarf, Ziel, Unverträgliches).',
+      'Sport: Einstieg und Ziele.',
+      'Körper-Profil — beim Inhaber erst nach der Übernahme des Altbestands (0.5).',
     ],
-  },
-  zweiterFaktor('malin', 'malin-zwei-faktor'),
-  {
-    id: 'malin-sicht', spur: 'malin', minuten: 5,
-    titel: 'Wer sieht was',
-    warum: 'Damit klar ist, was geteilt ist und was nur dir gehört — getrennt wird auf dem Server, nicht bloß in der Oberfläche.',
-    wie: [
-      'Gemeinsam: Aufgaben und Projekte (außer „nur ich“), Kontakte und Markttraktion, Ziele, gemeinsame Kalender, die Finanzen des Haushalts.',
-      'Nur du: deine privaten Notizen, „nur ich“-Aufgaben, private Termine (die anderen sehen „Belegt“), deine Routinen und dein Ernährungsprofil, deine Postfächer.',
-      'Gesundheit: sieht nur, wem du sie unter Konto › „Gesundheit teilen“ ausdrücklich freigibst — umgekehrt genauso.',
-    ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
-  },
-  gesundheitEinwilligung('malin', 'malin-gesundheit'),
-  kalenderEigen('malin', 'malin-kalender'),
-  postfach('malin', 'malin-postfach'),
-  {
-    id: 'malin-telegram', spur: 'malin', minuten: 5, persoenlich: true, pruefung: 'telegram',
-    titel: 'Hinweise aufs Handy (optional)',
-    warum: 'Wer möchte, bekommt kurze Hinweise über Telegram — ohne Inhalte, Beträge oder Namen, nur „In MAKE OS wartet etwas“ mit Link.',
-    wie: ['Konto › „Der Bote · Telegram“ › koppeln und den Code an den Bot schicken.', 'Lässt sich jederzeit wieder trennen.'],
-    wo: { href: '/os/konto', label: 'Konto' },
-  },
-  {
-    id: 'malin-whoop', spur: 'malin', minuten: 1,
-    titel: 'WHOOP verbinden (optional)',
-    warum: 'Mit WHOOP kommen Erholung, Schlaf und Training von selbst in deine Gesundheit und in Sport — ohne Abtippen. Jede Person verbindet nur ihr eigenes Konto; andere sehen deine Werte nur, wenn du Gesundheit mit ihnen teilst.',
-    wie: [
-      'Vorher die Gesundheits-Einwilligung (a) erklären — ohne sie holt MAKE OS nichts ab.',
-      'Gesundheit öffnen, Karte „WHOOP“ → „Verbinden“ → bei WHOOP anmelden und zustimmen.',
-      'Beim ersten Mal kommen die letzten 90 Tage; danach meldet WHOOP neue Werte von selbst. Eigene Einträge im Morgen-Check überschreibt WHOOP nie.',
-    ],
+    danach: 'Vorschläge und Indizes rechnen mit deinen Angaben.',
     wo: { href: '/os/gesundheit', label: 'Gesundheit' },
   },
   {
-    id: 'malin-rundgang', spur: 'malin', minuten: 20,
+    id: 'ich-kopf-energie', spur: 'ich', etappe: 6, nr: '6.2', ebene: 'ich', optional: true, minuten: 5,
+    titel: '„Kopf & Energie“ in der Kapazität',
+    warum: 'Deine Erholung kann in die Kapazität einfließen — nur mit deiner eigenen Einwilligung und wenn du Gesundheit mit allen im Haushalt teilst. Vorgabe: aus.',
+    wie: ['Planung › Kapazität: bei dir „Kopf & Energie“ einschalten oder bewusst aus lassen.'],
+    danach: 'An erschöpften Tagen plant die Kapazität weniger ein.',
+    wo: { href: WEG.kapazitaet(), label: 'Planung › Kapazität' },
+  },
+  {
+    id: 'familie-rahmen', spur: 'fundament', etappe: 6, nr: '6.3', ebene: 'gemeinsam', minuten: 15,
+    titel: 'Familie › Rahmen',
+    warum: 'Paar-Gespräch, Business-freie Zeiten und Ausnahmezeit geben dem Familienbereich seinen Takt.',
+    wie: [
+      'Paar-Gespräch: Wochentag und Uhrzeit — es landet im gemeinsamen Kalender.',
+      'Business-freie Zeiten und, wenn nötig, eine Ausnahmezeit.',
+    ],
+    danach: 'Der Pflege-Rhythmus misst gegen euren Rahmen.',
+    wo: { href: WEG.familie(), label: 'Familie' },
+  },
+  {
+    id: 'familie-menschen', spur: 'fundament', etappe: 6, nr: '6.4', ebene: 'gemeinsam', minuten: 15,
+    titel: 'Menschen und wichtige Tage',
+    warum: 'Geburtstage und wichtige Tage erinnern rechtzeitig — private hier, die von Geschäftskontakten im CRM (siehe Datenkarte).',
+    wie: ['Familie: die wichtigsten Menschen mit Geburtstag und die wichtigen Tage eintragen.'],
+    danach: 'Die Glocke erinnert am Vortag; Heute zeigt die nächsten Anlässe.',
+    wo: { href: WEG.familie(), label: 'Familie' },
+  },
+
+  // ── Etappe 7 — ZOE & Brain ──────────────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'agenten', spur: 'kevin', etappe: 7, nr: '7.1', ebene: 'gemeinsam', nurInhaber: true, minuten: 15, pruefung: 'agenten',
+    titel: 'Autonomie der Agenten',
+    warum: 'Jeder Agent braucht eine Stufe: nur vorschlagen, nach Freigabe oder selbstständig. Was nach außen geht, braucht immer eine Freigabe.',
+    wie: ['ZOE › Agenten: jeden Agenten durchgehen und die Stufe bewusst setzen.', 'Abschalten, was gerade nicht gebraucht wird.'],
+    danach: 'Die Agenten arbeiten im gesetzten Rahmen.',
+    wo: { href: WEG.agenten(), label: 'ZOE › Agenten' },
+  },
+  {
+    id: 'ich-zoe', spur: 'ich', etappe: 7, nr: '7.2', ebene: 'ich', minuten: 10, pruefung: 'zoe',
+    titel: 'ZOE kennenlernen',
+    warum: 'Fragen statt suchen. ZOE kennt die Zahlen, Aufgaben und Termine, die du sehen darfst — und bereitet Arbeit vor. Entscheiden tust du.',
+    wie: [
+      'ZOE öffnen und fragen, z. B. „Was ist diese Woche fällig?“',
+      'Alles, was etwas ändert oder nach außen geht, landet bei den Freigaben und passiert erst mit deinem Klick.',
+      'Einmal das Protokoll ansehen.',
+    ],
+    danach: 'Dein Gesprächsverlauf gehört dir.',
+    wo: { href: WEG.freigaben(), label: 'ZOE › Freigaben' },
+  },
+  {
+    id: 'brain', spur: 'fundament', etappe: 7, nr: '7.3', ebene: 'gemeinsam', minuten: 45,
+    titel: 'Brain: Regeln und Kern-Notizen',
+    warum: 'Regeln und Konstitution sind Anweisungen an ZOE — sie gelten erst, wenn eine Person sie freigibt. Kern-Notizen sagen ZOE, wer ihr seid.',
+    wie: [
+      'Brain: Regeln und Konstitution prüfen und freigeben, Kern-Notizen „Wer wir sind“ anlegen.',
+      'App-Brücke (Privat nur als Zahlen oder voll) und die Zeit-Freigabe je Person festlegen.',
+    ],
+    danach: 'ZOE arbeitet nach euren Regeln.',
+    wo: { href: WEG.wissen(), label: 'Brain' },
+  },
+  {
+    id: 'uebergabe-probe', spur: 'fundament', etappe: 7, nr: '7.4', ebene: 'gemeinsam', nurMitMehreren: true, minuten: 10,
+    titel: 'Probelauf: Übergabe',
+    warum: 'Einmal ausprobieren, wie Arbeit zwischen euch wandert — bevor es darauf ankommt.',
+    wie: ['Auf Heute eine Aufgabe mit @Name an die andere Person anlegen.', 'Die andere Person sieht sie in der Glocke, kommentiert und hakt sie ab.'],
+    danach: 'Ihr wisst, wie Übergaben laufen.',
+    wo: { href: WEG.heute(), label: 'Heute' },
+  },
+
+  // ── Etappe 8 — Abschluss ────────────────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'ich-rundgang', spur: 'ich', etappe: 8, nr: '8.1', ebene: 'ich', minuten: 20,
     titel: 'Rundgang durch die Software',
     warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
-      // Aufräumen Etappe 1 (08.10., Nachbesserung): EIN Schalter oben — Alles · Privat · Business —, Suche, Glocke, Fokus.
-      'Oben links der Schalter Alles · Privat · Business — die Leiste darunter folgt ihm: bei „Alles“ Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, Kontakte, ZOE und darunter die Gruppen Privat (Gesundheit, Familie) und Business (Markttraktion, Mandate & Unternehmen); bei Privat bzw. Business nur die Punkte dieses Bereichs. Am Handy öffnet „Menü“ unten dasselbe.',
-      'Heute ist die Startseite (Gruß, Steht an, Termine, Aufgaben, Score) — über „Anpassen“ gestaltest du sie selbst. Fokus, Kompass und Wachstum liegen unter Planung; Freigaben, Agenten und Brain unter ZOE.',
-      'Unten links Einstellungen (Konto, Verbindungen, Datenschutz, Betrieb). ⌘K (am Handy die Lupe) springt zu jeder Seite.',
+      'Oben der Schalter Alles · Privat · Business — die Leiste darunter folgt ihm. Am Handy öffnet „Menü“ unten dasselbe.',
+      'Heute ist die Startseite — über „Anpassen“ gestaltest du sie selbst. Fokus, Kompass und Wachstum liegen unter Planung; Freigaben, Agenten und Brain unter ZOE.',
+      'Unten links Einstellungen. ⌘K (am Handy die Lupe) springt zu jeder Seite. Netzwerken erfasst unterwegs.',
     ],
-    wo: { href: '/os', label: 'Heute' },
+    danach: 'Du findest dich zurecht.',
+    wo: { href: WEG.heute(), label: 'Heute' },
   },
   {
-    id: 'malin-konten', spur: 'malin', minuten: 10,
-    titel: 'Kontostände eintragen',
-    warum: 'Die Liquiditäts-Vorschau startet beim heutigen Kontostand. Ist der alt, ist die ganze Kurve falsch.',
-    wie: ['Unter Liquidität für jede Gesellschaft den aktuellen Kontostand eintragen.', 'Datum dazu, damit man sieht, wie frisch der Wert ist.'],
-    wo: { href: '/os/finanzen?s=liquiditaet&space=business#kontostaende', label: 'Kontostände' },
-    pruefung: 'konten',
-  },
-  {
-    id: 'malin-posten', spur: 'malin', minuten: 25,
-    titel: 'Offene Rechnungen und Zahlungen pflegen',
-    warum: 'Das ist die Prioritätenliste: was zuerst raus muss, was noch reinkommt.',
-    wie: [
-      'Offene Ausgangsrechnungen prüfen — was schon eingegangen ist, auf „bezahlt“ setzen.',
-      'Offene Zahlungen durchgehen und Fälligkeiten setzen.',
-      'Posten mit unklarem Empfänger klären, bevor sie in die Planung gehen.',
-    ],
-    wo: { href: '/os/finanzen?s=rechnungen&space=business', label: 'Rechnungen & Zahlungen' },
-    pruefung: 'posten',
-  },
-  {
-    id: 'malin-aufgaben', spur: 'malin', minuten: 15, persoenlich: true, pruefung: 'aufgaben-ich',
-    titel: 'Deine Aufgaben sichten',
-    warum: 'Was auf dich zugewiesen ist, soll nicht in einer langen Liste untergehen.',
-    wie: ['In Aufgaben den Filter „Meine“ wählen.', 'Fälligkeiten setzen oder mit Kommentar zurückgeben.', 'Mit @Name in einem Kommentar holst du jemanden dazu.'],
-    wo: { href: '/os/aufgaben', label: 'Aufgaben' },
-  },
-  {
-    id: 'malin-bauplan', spur: 'malin', minuten: 5,
+    id: 'ich-bauplan', spur: 'ich', etappe: 8, nr: '8.1', ebene: 'ich', minuten: 5,
     titel: 'Mitbauen: Problem oder Idee melden',
     warum: 'Mitbauen braucht keinen Code. Was hakt oder fehlt, kommt als Karte auf das Bauplan-Board — mit der Seite, auf der du gerade warst.',
     wie: [
-      'Unten links in der Leiste „Problem oder Idee melden“ (am Handy im Blatt Privat/Business bzw. unter Einstellungen): Fehler, Idee oder Wunsch, gern mit Bildschirmfoto.',
-      'Das Board: Ideen → Bereit → In Arbeit → Zum Testen → Fertig.',
-      'Was unter „Zum Testen“ steht, probierst du aus: „Passt“ oder „Passt noch nicht“ mit Kommentar.',
+      'Unten links „Problem oder Idee melden“ (am Handy im Menü): Fehler, Idee oder Wunsch, gern mit Bildschirmfoto.',
+      'Das Board: Ideen → Bereit → In Arbeit → Zum Testen → Fertig. Was unter „Zum Testen“ steht, probierst du aus: „Passt“ oder „Passt noch nicht“ mit Kommentar.',
     ],
+    danach: 'Deine Rückmeldung landet direkt beim nächsten Bau.',
     wo: { href: '/os/bauplan', label: 'Bauplan' },
   },
-  zoeVorschlaege('malin', 'malin-zoe'),
+  {
+    id: 'datenstand', spur: 'fundament', etappe: 8, nr: '8.2', ebene: 'gemeinsam', minuten: 15,
+    titel: 'Datenstand prüfen',
+    warum: 'Am Ende einmal sehen, welcher Bereich gepflegt, leer oder veraltet ist.',
+    wie: [
+      'Datenbasis ansehen und Lücken schließen.',
+      'Markttraktion › Stammdaten: Verbindungsprüfung ohne Fehler; Business-Index ohne Finanz-Lücke.',
+    ],
+    danach: 'Ihr startet mit einem sauberen Bestand.',
+    wo: { href: '/os/datenbasis', label: 'Einstellungen › Datenbasis' },
+  },
+  {
+    id: 'hoi-gruen', spur: 'fundament', etappe: 8, nr: '8.3', ebene: 'instanz', nurInhaber: true, minuten: 20,
+    titel: 'Head of IT ohne Rot',
+    warum: 'Das Lagebild zeigt, ob Server, Sicherung, Verbindungen und Schlüssel in Ordnung sind. Erst ohne Rot ist die Einrichtung abgeschlossen.',
+    wie: [
+      'Am Server läuft der Lage-Sammler (der Befund „Host“ ist nicht grau).',
+      'Für den Außenblick in den GitHub-Einstellungen den eingeschränkten HOI-Schlüssel und die Adresse hinterlegen — nie den Dienstschlüssel.',
+      'Alle roten Befunde abarbeiten.',
+    ],
+    danach: 'Der Head of IT bleibt eure dauerhafte Ampel.',
+    wo: HOI,
+  },
+  {
+    id: 'regeln', spur: 'fundament', etappe: 8, nr: '8.4', ebene: 'gemeinsam', minuten: 5,
+    titel: 'Zusammenarbeit: Zonen und Updates',
+    warum: 'Am Code wird laufend weitergebaut — aber nicht am laufenden System. Die Zonen sagen, was jederzeit geht und wann man kurz wartet.',
+    wie: [
+      'Grün: Daten in der Oberfläche eintragen — übersteht jedes Update.',
+      'Gelb: große Mengen auf einmal (Import, Finanzplan ersetzen, „Neu anfangen“) nicht während „Update läuft“.',
+      'Rot: Code und Server — online geht ein Update nur auf ausdrückliches Wort des Inhabers.',
+      'Wer was geändert hat, steht unter Zusammenarbeit — nur wer, was, wann; nie Inhalte.',
+    ],
+    danach: 'Weiterbauen und Arbeiten kommen sich nicht in die Quere.',
+    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
+  },
 ];
 
-export const schritteVon = (spur: Spur) => SCHRITTE.filter(s => s.spur === spur);
+/** Ein Schritt per Kennung (null = unbekannt). */
+export const schrittMitId = (id: string): Schritt | null => SCHRITTE.find(s => s.id === id) ?? null;
+
+/** Persönlich gespeichert und geprüft (Ebene „ich“)? */
+export const istPersoenlich = (s: Pick<Schritt, 'ebene'>): boolean => s.ebene === 'ich';
+
+/** Die Schritte einer Spur — die persönlichen Spuren tragen dazu „Meine Einrichtung“ (Spur `ich`). Sortiert nach Etappe. */
+export function schritteVon(spur: Spur): Schritt[] {
+  const eigen = SCHRITTE.filter(s => s.spur === spur || ((spur === 'kevin' || spur === 'malin') && s.spur === 'ich'));
+  return eigen.map((s, i) => ({ s, i })).sort((a, b) => a.s.etappe - b.s.etappe || a.i - b.i).map(x => x.s);
+}
+
+export interface Kontext { inhaber: boolean; personen: number }
+
+/** Die Schritte, die eine Person betreffen (Rolle aus dem Konto): Meine Einrichtung, Gemeinsames — und beim Inhaber die Instanz. */
+export function schritteFuer(k: Kontext | null): Schritt[] {
+  return SCHRITTE.filter(s => {
+    if (s.nurMitMehreren && k && k.personen < 2) return false;
+    if (s.spur === 'ich') return !!k;
+    if (s.spur === 'kevin') return !!k?.inhaber;
+    if (s.spur === 'malin') return !!k && !k.inhaber;
+    return s.nurInhaber ? !!k?.inhaber : true;
+  });
+}
+
+export interface HakenZustand { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, { erfuellt: boolean; wert: string }> }
+
+/** Getan, wenn die Prüfung greift ODER der Schritt von Hand abgehakt wurde. */
+export function istFertig(s: Schritt, z: HakenZustand | null | undefined): boolean {
+  if (!z) return false;
+  if (s.pruefung && z.befunde[s.pruefung]?.erfuellt) return true;
+  return !!z.erledigt[s.id];
+}
+
+/** Fortschritt über eine Schrittliste — optionale Schritte zählen nur, wenn sie getan sind (nie als „offen“). */
+export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | null | undefined): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
+  const zaehlen = schritte.filter(s => !s.optional || istFertig(s, z));
+  const fertig = zaehlen.filter(s => istFertig(s, z));
+  const offen = zaehlen.filter(s => !istFertig(s, z));
+  return { fertig: fertig.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster: offen[0] ?? null };
+}
+
+/** Wer den Schritt macht — für den Chip. */
+export function werText(s: Schritt): string {
+  if (s.server) return 'am Server · Inhaber';
+  if (s.nurInhaber) return 'Inhaber';
+  if (s.ebene === 'ich') return s.spur === 'malin' ? 'zweite Person' : 'jede Person';
+  return 'gemeinsam';
+}
+
+/**
+ * Alte Häkchen (bis 08.10.) → neue Schritte. Die Spuren hießen `kevin`/`malin`; ihre Häkchen standen im gemeinsamen Bestand mit dem
+ * Spur-Präfix. Beim Lesen gelten sie weiter (persönliche nur für die Person mit diesem Speichernamen), übernommen werden sie beim
+ * nächsten Schreiben dieser Person (lib/onboarding-haken.ts). Nicht mehr vorhandene Schritte (Telegram, „läuft auf dem Server“)
+ * bleiben im Bestand liegen und werden nur nicht mehr gezeigt.
+ */
+export const ALT_ZU_NEU: Readonly<Record<string, string>> = {
+  updates: 'regeln',
+  'kevin-zwei-faktor': 'ich-zwei-faktor', 'kevin-kalender': 'ich-icloud', 'kevin-postfach': 'ich-postfaecher',
+  'kevin-kontakte': 'kartei', 'kevin-aufgaben': 'ich-aufgaben', 'kevin-kompass': 'kompass', 'kevin-fokus': 'meilensteine-fokus',
+  'kevin-ziele': 'zahlenziele', 'kevin-gesundheit': 'ich-gesundheit', 'kevin-agenten': 'agenten', 'kevin-zoe': 'ich-zoe',
+  'malin-einladung': 'zweite-einladung', 'malin-zwei-faktor': 'ich-zwei-faktor', 'malin-sicht': 'ich-sicht', 'malin-gesundheit': 'ich-gesundheit',
+  'malin-kalender': 'ich-icloud', 'malin-postfach': 'ich-postfaecher', 'malin-whoop': 'ich-whoop', 'malin-rundgang': 'ich-rundgang',
+  'malin-konten': 'kontostaende', 'malin-posten': 'offene-posten', 'malin-aufgaben': 'ich-aufgaben', 'malin-bauplan': 'ich-bauplan', 'malin-zoe': 'ich-zoe',
+};
+/** Die Spur-Kennung eines alten Häkchens (`kevin-…` → `kevin`) — sonst null (gemeinsamer Altbestand wie `updates`). */
+export const altePerson = (altId: string): string | null => (/^(kevin|malin)-/.exec(altId)?.[1] ?? null);
+
+// ── Datenkarte (ONBOARDING_PLAN.md A3): welche Zahl wohin, bis die Doppelungen weg sind ─────────────────────────────────────────
+export interface DatenkartenZeile { fakt: string; hier: string; nicht: string; href?: string; etappe: number }
+export const DATENKARTE: DatenkartenZeile[] = [
+  { fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3 },
+  { fakt: 'Kontostand einer Gesellschaft danach', hier: 'Liquidität › Kontostände, Datum ab 02.10.', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3 },
+  { fakt: 'Kontostand privat', hier: 'Finanzplanung › Privat (Posten „Konto“)', nicht: 'Haushalt (kennt keinen Saldo)', href: WEG.finanzplanung('privat'), etappe: 5 },
+  { fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.eroeffnung(), etappe: 3 },
+  { fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.rechnungen(), etappe: 3 },
+  { fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3 },
+  { fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Business › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
+  { fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Steckbrief und Absender', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
+  { fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
+  { fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
+  { fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 3 },
+  { fakt: 'Produkte und Preise', hier: 'Mandate & Unternehmen › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
+  { fakt: 'Jahresziel Umsatz', hier: 'Planung › Jahr — dieselbe Zahl in Controlling und Business-Einstellungen', nicht: '–', href: WEG.jahr(), etappe: 5 },
+  { fakt: 'Arbeitszeit', hier: 'Wochenvorlage (Planung › Routinen)', nicht: 'Kalender-Arbeitsfenster, Beratertage', href: WEG.routinen(), etappe: 5 },
+  { fakt: 'Arbeitszeit außerhalb (fremder Kalender)', hier: 'Blöcke bzw. Abwesenheit (Schritt 2.6)', nicht: '–', href: WEG.routinen(), etappe: 2 },
+  { fakt: 'Urlaub', hier: 'Kalender „Abwesend“', nicht: 'Ausnahme in der Kapazität', href: WEG.kalender(), etappe: 5 },
+  { fakt: 'Budget, Schulden, Fixkosten und Ist privat', hier: 'Haushalt (Privat › Konten & Buchungen) — er führt das Ist', nicht: 'Finanzplanung (liest ab Phase 1 aus dem Haushalt)', href: WEG.privat('fixkosten'), etappe: 3 },
+  { fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
+  { fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },
+  { fakt: 'Persönliche Kennungen (Steuer-ID, SV-Nummer)', hier: 'vorerst nirgends', nicht: 'Einstellungen › Stammdaten', etappe: 3 },
+  { fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+];
 
 /** Die drei Zonen — die Abmachung, damit Weiterbauen und Arbeiten sich nicht in die Quere kommen. */
 export const ZONEN = [

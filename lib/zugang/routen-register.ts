@@ -168,7 +168,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/dashboard': r('GET,PUT', 'haushalt', 'Widget-Board des Haushalts.'),
   'state/willkommen': r('GET,POST,DELETE', 'haushalt', 'Willkommens-Haken des Haushalts.'),
   'state/meetings': r('GET,POST,DELETE', 'haushalt', 'Meeting-Verlauf (Wortlaut Dritter) des Haushalts.'),
-  'onboarding': r('GET,POST', 'haushalt', 'Onboarding-Stand der Instanz.'),
+  'onboarding': r('GET,POST', 'haushalt', 'Einrichtung (Onboarding): gemeinsame Häkchen und Befunde für den Haushalt, persönliche nur für die Person der Sitzung; abhaken nur die Person selbst (Dienstweg 403, ohne Person 401), Inhaber-Schritte nur der Inhaber.'),
   'startflaeche': r('GET', 'haushalt', 'Kennzahlen aus den Beständen des Haushalts; Score der anderen Person nur mit Freigabe.'),
   'risk': r('GET', 'haushalt', 'Warnungen aus Finanz-, Aufgaben- und Kalenderbeständen des Haushalts.'),
   'performance': r('GET,POST', 'haushalt', 'MAKE Score je Person aus Beständen des Haushalts; POST auch als Systemlauf (Tagesstart).', undefined, 'Idempotenter Tagespunkt im EIGENEN Verlauf der Person (erster Aufruf des Tages) — der Systemlauf kennt nur den Inhaber.'),
