@@ -28,6 +28,7 @@ import { PrueflisteDialog } from './Pruefliste';
 import { KategorienDialog } from './Kategorien';
 import { StammdatenDialog } from './Stammdaten';
 import { PrivatIndex } from '../privat/PrivatIndex';
+import { KontenKarte } from '../konten/KontenKarte';
 
 type Reiter = 'uebersicht' | typeof HAUSHALT_UNTER[number]['id'];
 
@@ -64,6 +65,8 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
           {!leer && <Knopf farbe={LEUCHT.geld} onClick={() => setImportAuf(true)}>Kontoauszug einlesen</Knopf>}
         </div>
       </div>}
+      {/* Konten-Register (08.10., R4 „Haushalt führt das Ist“): eure Konten mit Stand und Datum — die Finanzplanung liest daraus. */}
+      {ansicht === 'konten' && aktiv === 'buchungen' && <KontenKarte bereich="privat" i={1} />}
       {leer ? (
         <Karte i={1} akzent={LEUCHT.geld}>
           <Leer>Noch keine Daten in diesem Haushalt. Der Umzug aus Malins Cockpit füllt ihn: erst ein Probelauf mit Abgleich, dann die Übernahme.</Leer>

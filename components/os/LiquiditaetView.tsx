@@ -7,7 +7,6 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 // 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Liquidität“ unter Finanzen › Business (/os/finanzen/liquiditaet leitet weiter).
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
@@ -26,9 +25,10 @@ import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
 import { useMandate } from './zeit/useMandate';
 import { neueKennung } from '@/lib/kennung';
-import { WEG } from '@/lib/wege';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
-import { abEroeffnung, kontoQuelle, planpostenVor } from '@/lib/business/eroeffnung';
+import { abEroeffnung, planpostenVor } from '@/lib/business/eroeffnung';
+import { mitRegister } from '@/lib/finanzen/konten/register';
+import { KontenKarte, useKontenKasse } from './konten/KontenKarte';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
@@ -139,19 +139,12 @@ export function LiquiditaetView() {
     setOffen(p.id);
   }
 
-  function kontostand(firmaId: string, wert: string) {
-    if (!plan) return;
-    const zahl = wert.trim() === '' ? null : Math.round(Number(wert));
-    if (zahl !== null && !Number.isFinite(zahl)) return;
-    const next = { ...plan, firmen: plan.firmen.map(f => f.id === firmaId ? { ...f, kontostand: zahl } : f) };
-    setPlan(next);
-    planSpeichern.speichern(next);
-  }
-
   const firmaFilter = nurFirma === 'alle' ? undefined : nurFirma;
   // 0-Punkt (05.10.): die Vorschau rechnet ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts); die Listen unten bleiben vollständig.
+  // Konten-Register (08.10.): vorher die Kasse je Gesellschaft, die das Register führt (ohne Register: die Kontostände wie bisher).
   const eroeffnung = useGeltendeEroeffnung();
-  const ab = useMemo(() => (plan ? abEroeffnung({ ...plan, planposten: posten }, eroeffnung) : null), [plan, posten, eroeffnung]);
+  const kasse = useKontenKasse('business');
+  const ab = useMemo(() => (plan ? abEroeffnung(mitRegister({ ...plan, planposten: posten }, kasse), eroeffnung) : null), [plan, posten, eroeffnung, kasse]);
   const v = useMemo(
     () => ab ? vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, wochen, false, ab.planposten, szenario, firmaFilter, true) : null,
     [ab, heute, wochen, szenario, firmaFilter],
@@ -338,25 +331,8 @@ export function LiquiditaetView() {
             </Karte>
           )}
 
-          {/* Kontostände */}
-          {plan && (
-            <Karte i={2} id="kontostaende">
-              <Ueberschrift farbe={LEUCHT.geld} rechts="der Startpunkt">Kontostände</Ueberschrift>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {plan.firmen.map(f => {
-                  const e = istGesellschaft(f.id) ? eroeffnung[f.id] : undefined;
-                  return (
-                    <Feld key={f.id} label={f.name}>
-                      <input type="number" value={f.kontostand ?? ''} onChange={ev => kontostand(f.id, ev.target.value)}
-                        placeholder="—" aria-label={`Kontostand ${f.name}`} style={{ ...eingabe, width: 150, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }} />
-                      {/* 0-Punkt: welcher Stand gilt — der Anfangsbestand, bis ein Kontostand nach dem Stichtag eingetragen ist. */}
-                      {e && <Link href={WEG.eroeffnung()} style={{ ...leise, display: 'block', marginTop: 4, textDecoration: 'none' }}>{kontoQuelle(f, e) === 'eroeffnung' ? `gilt: 0-Punkt ${e.stichtag.slice(8, 10)}.${e.stichtag.slice(5, 7)}. · ${eur(e.kontostand)} ›` : 'gilt: dieser Kontostand (nach dem 0-Punkt)'}</Link>}
-                    </Feld>
-                  );
-                })}
-              </div>
-            </Karte>
-          )}
+          {/* Kontostände — seit 08.10. das Konten-Register (Konten je Gesellschaft, Stand mit Datum, Verlauf, Übernahme); Anker #kontostaende bleibt. */}
+          <KontenKarte bereich="business" i={2} id="kontostaende" />
 
           {/* Planposten */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>

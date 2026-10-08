@@ -4,6 +4,47 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
+
+ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt
+lesen nur noch daraus.“ R4: „Haushalt führt das Ist, Finanzplanung liest daraus.“ Befund (sieben Stellen) und Bauplan: `KONTEN_REGISTER.md`.
+
+- **Register** `konten--<haushalt>` (rein `lib/finanzen/konten/register.ts`, Server `lib/finanzen/konten/server.ts`, Route `/api/finanzen/konten`):
+  Konto (Name, Art, Zuordnung privat/Person · gemeinsam · Gesellschaft, Bank, IBAN nur maskiert) mit Ständen (Betrag auf den Cent, Datum, `quelle:
+  'hand' | 'bank'`, erfasst von). Stände nur anhängen, falsche **zurücknehmen** (bleiben sichtbar). Geltend = jüngster nach Datum. Kredit und
+  Depot zählen nicht zur Kasse. Andockstelle Bank: `quelle: 'bank'` + `externeId` (nicht gebaut).
+- **Wer regiert?** Sobald eine Gesellschaft (bzw. der Haushalt) im Register ein Konto mit Stand hat, zählt dort NUR das Register; vorher die bisherige
+  Stelle — **ohne Register bit-gleich** (Business-Index, 0-Punkt-Wirkung, Finanzplan-Kennzahlen, Runway: Tests).
+- **Lesen:** Liquidität, Business-Index, Head of Finance, Fluss, Startfläche, Kasse/Runway, Schilde, Brain, Onboarding-Prüfung über `mitEroeffnung`
+  (erst Register, dann 0-Punkt wie bisher); Zahlen/Rechnungen/Controlling ebenso im Browser. **Finanzplanung** (beim Lesen, nie gespeichert): Start
+  MAKE/KD Ventures aus einem jüngeren Register-Stand als dem 0-Punkt, Privat-Konten und „Kontostand heute“ der Selbstständigkeit aus dem Register
+  (`kontenIst`, nie in der Business-Sicht). **Privat-Index:** Tagesgeld im Register = Rücklage. Formeln des Rechenkerns unverändert.
+- **Schreiben:** Karte „Konten“ (Privat › Konten & Buchungen; Business › Liquidität ersetzt die alten Eingabefelder „Kontostände“, Anker bleibt).
+  Der 0-Punkt, `/api/state/finanzplan` (ältere Fenster) und ZOE `setze_kontostand` schreiben zusätzlich ins Register (nur, wenn es die Gesellschaft
+  führt). **Rückweg:** jede Register-Änderung zieht den Kontostand der Firma im Finanzplan nach — der alte Stand sieht die neue Zahl; nur neue
+  Bestände und optionale Lese-Felder, kein `_v`.
+- **Übernahme nur per Klick:** „Übernahme ansehen“ zeigt, was aus Liquidität, 0-Punkt, Finanzplanung (Posten „Konto“) und Haushalt (Konten) käme;
+  „Übernehmen“ schreibt genau diese Vorschau (sonst 409). Danach ist der Business-Index derselbe (Test).
+- **Trennung serverseitig:** „nur Business“ und der Business-Bereich bekommen nur Konten der Business-Gesellschaften, Schreiben auf andere → 403,
+  Dienstweg → 403. Speicher-/Routen-Register, Lese-Protokoll `konten`, Konto-Export/-Löschen, Schnellsuche, Demo-Saat (Übernahme + Tagesgeld).
+- Tests: `tests/konten-register.test.ts` (19), dazu routen-register, datenschutz-register, betroffenenrechte, nullpunkt, finanzplan-*, design-*.
+
+**Achtung nach der Übernahme:** Die Finanzplanung rechnet MAKE und KD Ventures dann ab dem jüngsten Kontostand (vorher MAKE ab 0 bzw. 0-Punkt,
+KD Ventures ab „Start KD Ventures“ in den Annahmen) und Privat ab den Register-Konten — gewollt (R4). Wer das zurückwill: den Stand zurücknehmen.
+
+**So testet ihr (in Klicks):**
+1. Finanzen › Business › Liquidität → Karte „Konten“: Hinweis „Bisherige Stände noch nicht im Register“ → „Übernahme ansehen“ → Liste prüfen
+   (MAKE/KD Ventures mit Datum, 0-Punkt) → „Übernehmen“ → bestätigen. „Heute auf den Konten“ bleibt gleich; Business › Überblick unverändert.
+2. In der Karte ein Konto antippen → „Stand eintragen“: Betrag + Datum → „Stand eintragen“. Die Zahl oben in der Liquidität ändert sich; der Verlauf
+   zeigt beide Stände, der neue „gilt“. „Zurücknehmen“ am neuen Stand → bestätigen → der alte gilt wieder.
+3. „+ Konto“ → z. B. „Tagesgeld MAKE“, Art Tagesgeld, Zuordnung MAKE, erster Stand → „Konto anlegen“. Kasse der Gesellschaft = Summe.
+4. Finanzen › Privat › Konten & Buchungen → oben Karte „Konten“ → Übernahme (Planungs-Posten „Konto“ und Haushalts-Konten) → „Übernehmen“. Ein Konto
+   „Tagesgeld“ (gemeinsam) mit Stand anlegen → Privat › Überblick: die Rücklage-Karte sagt „Gilt jetzt: die Tagesgeld-Konten aus dem Konten-Register“.
+5. Finanzen › Privat › Planung → Überblick: „Auf den Konten“ = Register; Planung › Selbstständigkeit: „Kontostand heute“ ist eine Anzeige mit Link
+   „Konten ›“. Finanzen › Business › Planung: keine Privat-Konten zu sehen.
+6. Mit einem Konto „nur Business“ (Partner): Liquidität › Konten zeigt nur MAKE/KD Ventures; Privat-Konten erscheinen nirgends.
+7. Business › Überblick › 0-Punkt: neu setzen → im Konto erscheint ein Stand „aus dem 0-Punkt“; „Rückgängig“ → dort „zurückgenommen“.
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:

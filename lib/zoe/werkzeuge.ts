@@ -108,7 +108,7 @@ const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string):
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|malin|n26/i.test(String(rein ?? ''));
 const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.';
 
-async function setzeKontostand(input: Record<string, unknown>): Promise<string> {
+async function setzeKontostand(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
   const betrag = Number(input.betrag);
   if (!isFinite(betrag)) return 'Fehlgeschlagen: betrag fehlt oder ist keine Zahl.';
   const fid = firmaId(input.firma);
@@ -122,6 +122,9 @@ async function setzeKontostand(input: Record<string, unknown>): Promise<string> 
     });
     return f;
   });
+  // Konten-Register (08.10.): führt es die Gesellschaft schon, kommt der Stand auch dort an (freigegeben von einem Menschen — `freigabe`).
+  const wer = kontext?.freigegebenVon ?? person;
+  if (wer) await (await import('@/lib/finanzen/konten/server')).kontostandAusAltweg({ firma: fid, betrag: Math.round(betrag), datum: localDay(), person: wer, herkunft: 'zoe' });
   return `Erfasst: Kontostand ${name} = ${eurW(betrag)} (Stand heute).`;
 }
 

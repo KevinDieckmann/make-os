@@ -24,6 +24,8 @@ import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
 import { abEroeffnung, abschlussVor, gesamtAbMonat, geltendeEroeffnungen, type Geltende } from './eroeffnung';
 import { ladeEroeffnungen } from './eroeffnung-server';
+import { firmenMitRegister } from '@/lib/finanzen/konten/register';
+import { registerKasseLaden } from '@/lib/finanzen/konten/server';
 import { verborgeneMeilensteineFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { BUSINESS_GESELLSCHAFTEN, PRIVAT_GESELLSCHAFTEN, KERN_EINHEITEN, GEHOERT_ZU_PRIVAT, bereichVon, bereichVonFirma, bereichVonGesellschaft, finanzOrtName, istBusinessGesellschaft, istGesellschaft, type Bereich, type Gesellschaftskennung } from '@/lib/einheiten';
 
@@ -168,7 +170,7 @@ export async function ladeRoh(heute = localDay()) {
   return merken(`business-roh:${heute}`, 2 * 60_000, () => ladeRohFrisch(heute));
 }
 async function ladeRohFrisch(heute: string) {
-  const [fp, lp, fin, grund, abschluesseAlle, crm, kartei, cal, plan, auftraege, ms, einst, verlauf, traktionDatei, eroeffnungen] = await Promise.all([
+  const [fp, lp, fin, grund, abschluesseAlle, crm, kartei, cal, plan, auftraege, ms, einst, verlauf, traktionDatei, eroeffnungen, registerKasse] = await Promise.all([
     loadJson<{ firmen?: Firma[]; rechnungen?: (Rechnung & { firmaId?: string })[]; zahlungen?: Zahlung[]; merkposten?: Merkposten[] }>('finanzplan'),
     loadJson<{ posten?: Planposten[] }>('liquiplan'),
     loadJson<FinanceState>('finance'),
@@ -185,6 +187,8 @@ async function ladeRohFrisch(heute: string) {
     loadJson<BusinessVerlauf>(VERLAUF),
     ladeIndexDatei('traktion-index'),
     ladeEroeffnungen(),
+    // Konten-Register (08.10.): je Gesellschaft, die das Register führt, gilt dessen Kasse als Kontostand (ohne Register: bisherige Quelle).
+    registerKasseLaden(),
   ]);
   // 0-Punkt (05.10.): je Business-Gesellschaft mit Eröffnung rechnet alles ab dem Stichtag (lib/business/eroeffnung.ts) — Konten starten beim
   // Anfangsbestand, Posten/Abschlüsse davor sind archiviert (gespeichert, nicht gezählt), offene Posten der Eröffnung kommen dazu.
@@ -218,7 +222,7 @@ async function ladeRohFrisch(heute: string) {
   // hier gar nicht erst an. Nichts wird gelöscht; Privat sieht sie weiter.
   const imBusiness = <T extends { firmaId?: string }>(l: T[]): T[] => l.filter(x => bereichVonFirma(x.firmaId) === 'business');
   const ab0 = abEroeffnung({
-    firmen: (fp?.firmen ?? []).filter(f => bereichVonFirma(f.id) === 'business'), rechnungen: imBusiness(fp?.rechnungen ?? []), zahlungen: imBusiness(fp?.zahlungen ?? []),
+    firmen: (firmenMitRegister(fp?.firmen, registerKasse) ?? []).filter(f => bereichVonFirma(f.id) === 'business'), rechnungen: imBusiness(fp?.rechnungen ?? []), zahlungen: imBusiness(fp?.zahlungen ?? []),
     planposten: imBusiness(lp?.posten ?? []),
   }, eroeffnung);
   // Controlling (Gesamt-Ist ohne Firma): Monate vor dem 0-Punkt zählen nur dann nicht mehr, wenn JEDE Business-Gesellschaft eröffnet ist.

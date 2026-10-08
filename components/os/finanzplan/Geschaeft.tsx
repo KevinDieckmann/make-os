@@ -294,7 +294,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       <BausteinKarten ort={ort} />
       <Karte i={3}>
         <Blatt zeilen={zeilen} titel={`${label} · ${ps?.name ?? sz.name}`} werkzeuge={<Etikett einheit={ort === 'kdc' ? 'selbststaendigkeit' : ort} />}
-          abMonat={ort === 'ug' || ort === 'kdv' ? d.eroeffnung?.[ort]?.monat : undefined}
+          abMonat={(ort === 'ug' || ort === 'kdv') && d.eroeffnung?.[ort]?.quelle !== 'register' ? d.eroeffnung?.[ort]?.monat : undefined}
           onZeile={setDialog} onNeueZeile={async (liste, gruppe, einheit) => { const { op, id } = neueZeileOp(liste, gruppe, einheit); if (await aendere([op], 'Zeile angelegt')) setDialog(id); }} />
         <Hinweis>
           Bei Produkten und Kosten-Bausteinen gilt ein eingetippter Wert für diesen Monat des Bausteins; jede andere Zahl überschreibt die Formel von Hand (✎) — Summen, Steuern, Ein- und Auszahlungen und Kontostand rechnen damit weiter.

@@ -14,7 +14,7 @@ import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { UG_KURZ, finanzOrtName } from '@/lib/einheiten';
-import { entscheidungen } from '@/lib/finanzen/szenarien';
+import { entscheidungen, kontostand } from '@/lib/finanzen/szenarien';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { luecken } from '@/lib/finanzen/luecken';
 import { nurBusinessPunkte, nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
@@ -90,7 +90,10 @@ export function Lage() {
   const zs = zielStaende(dd, ug, pr, kdc);
   const ng = zs.find(z => z.ziel.id === 'g.notgroschen') ?? zs.find(z => z.ziel.quelle === 'privat.angespart');
   const offen = offeneBuchungen(d);
-  const konten = d.posten.filter(p => p.art === 'konto'); const kontenBekannt = konten.filter(p => p.betrag != null);
+  // Privat aus dem Konten-Register, wenn es die Privat-Konten führt (08.10.), sonst die Posten „Konto“; die übrigen Einheiten wie bisher.
+  const kp = kontostand(d, 'privat'); const andereKonten = d.posten.filter(p => p.art === 'konto' && p.einheit !== 'privat');
+  const kontenSumme = kp.summe + andereKonten.reduce((a, p) => a + (p.betrag ?? 0), 0);
+  const kontenFehlen = kp.fehlen + andereKonten.filter(p => p.betrag == null).length;
   const forderungen = d.posten.filter(p => p.art === 'forderung' && ['offen', 'unklar'].includes(p.status));
   const zuZahlen = d.posten.filter(p => p.art === 'rechnung' && postenOffen(p));
   const schulden = d.schulden.filter(x => x.status !== 'getilgt').reduce((a, x) => a + x.rest, 0) + d.annahmen.bjoernBetrag;
@@ -108,7 +111,7 @@ export function Lage() {
   if (flexUeber.length) warn.push([LEUCHT.achtung, `Flexibel über Plan (Ø 3 Monate): ${flexUeber.map(x => x.z.name).join(' · ')}`]);
   if (kz.obAnteilJun27 >= sw.ankerAnteilMax && kz.obAnteilJun27 > 0) warn.push([LEUCHT.achtung, `Ankermandat Juni 27 bei ${prozent(kz.obAnteilJun27)} des Umsatzes — Ziel unter ${prozent(sw.ankerAnteilMax)}`]);
   if (offen && !imKopf.has('buchungen')) warn.push([LEUCHT.achtung, `${offen} Buchungen ohne Zuordnung — IST ist dort unscharf`]);
-  if (konten.length - kontenBekannt.length && !imKopf.has('konten')) warn.push([LEUCHT.achtung, `${konten.length - kontenBekannt.length} Kontostände fehlen`]);
+  if (kontenFehlen && !imKopf.has('konten')) warn.push([LEUCHT.achtung, `${kontenFehlen} Kontostände fehlen`]);
   const termine = zahlungskalender(d, ug, pr, 14, kdc);
   const hi = d.historie.length, lab = achse(d);
   const leerVor = Array<number | null>(hi).fill(null);
@@ -131,7 +134,7 @@ export function Lage() {
         <Raster min={260}>
           <div>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Wo stehen wir heute?</div>
-            {zeile('Auf den Konten', <><Geld v={kontenBekannt.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €{konten.length - kontenBekannt.length ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}> · {konten.length - kontenBekannt.length} fehlen</span> : null}</>)}
+            {zeile('Auf den Konten', <><Geld v={kontenSumme} /> €{kontenFehlen ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}> · {kontenFehlen} fehlen</span> : null}</>)}
             {zeile('Uns geschuldet', <><Geld v={forderungen.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €</>)}
             {zeile('Zu zahlen', <><Geld v={zuZahlen.reduce((a, p) => a + (p.betrag ?? 0), 0)} /> €</>)}
             {zeile('Schulden', <><Geld v={schulden} /> €</>)}

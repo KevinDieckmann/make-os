@@ -22,6 +22,8 @@ import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung, buchungVor } from '@/lib/business/eroeffnung';
+import { mitRegister } from '@/lib/finanzen/konten/register';
+import { useKontenKasse } from './konten/KontenKarte';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort?: string }
@@ -47,7 +49,9 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
 
   // 0-Punkt (05.10.): Konten, Posten und Buchungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
   const eroeffnung = useGeltendeEroeffnung();
-  const ab = useMemo(() => (plan ? abEroeffnung({ ...plan, planposten: posten }, eroeffnung) : null), [plan, posten, eroeffnung]);
+  // Konten-Register (08.10.): die Kasse je Gesellschaft, die das Register führt, vor dem 0-Punkt (ohne Register wie bisher).
+  const kasse = useKontenKasse('business');
+  const ab = useMemo(() => (plan ? abEroeffnung(mitRegister({ ...plan, planposten: posten }, kasse), eroeffnung) : null), [plan, posten, eroeffnung, kasse]);
   const v = useMemo(() => (ab ? vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, 12, false, ab.planposten, 'real', undefined, true) : null), [ab, heute]);
   const konten = businessFirmen(ab?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const mussRaus = nurBusiness(ab?.zahlungen ?? []).filter(z => z.status === 'offen');

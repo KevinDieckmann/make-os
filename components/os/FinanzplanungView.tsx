@@ -10,6 +10,8 @@
 
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung, rechnungVor, zahlungVor } from '@/lib/business/eroeffnung';
+import { mitRegister } from '@/lib/finanzen/konten/register';
+import { useKontenKasse } from './konten/KontenKarte';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
@@ -81,6 +83,7 @@ export function FinanzplanungView() {
   const [finance, setFinance] = useState<FinanceState | null>(null);
   // 0-Punkt (05.10.): Summen ab der Eröffnung je Gesellschaft; ältere Posten bleiben in den Listen (Kennzeichen „vor dem 0-Punkt“).
   const eroeffnung = useGeltendeEroeffnung();
+  const kasse = useKontenKasse('business');
   const [neu, setNeu] = useState({ kunde: '', titel: '', betrag: '', firmaId: 'kdc' });
   const [neuZ, setNeuZ] = useState({ an: '', titel: '', betrag: '', faellig: '', firmaId: 'kdc' });
   /** Rückfrage an einer Rechnung: löschen (nur geplant) oder stornieren (ab gestellt, mit Grund). */
@@ -117,7 +120,8 @@ export function FinanzplanungView() {
 
   const m = finance ? computeMetrics(finance) : null;
   // Privat zählt hier nicht mit — die privaten Konten stehen unter Zahlen → Privat.
-  const ab = abEroeffnung(plan, eroeffnung);
+  // Konten-Register (08.10.): Kasse je Gesellschaft aus dem Register (ohne Register wie bisher), dann der 0-Punkt.
+  const ab = abEroeffnung(mitRegister(plan, kasse), eroeffnung);
   const cash = ab.firmen.filter(f => f.id !== 'privat').reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const gestellt = ab.rechnungen.filter(r => r.status === 'gestellt');
   const geplant = ab.rechnungen.filter(r => r.status === 'geplant');

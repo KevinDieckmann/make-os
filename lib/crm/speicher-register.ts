@@ -286,6 +286,14 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('journal--*', 'Journal je Person — eigene Daten.'),
   H('steuern', 'Eigene Steuern des Haushalts (Einstellungen, Vorauszahlungen).'),
   H('haushalt-*--*', 'Haushaltsfinanzen (Konten, Buchungen, Rechnungen) — eigene Daten des Haushalts.'),
+  // Konten-Register (08.10.): EIN Ort für Konten und Kontostände (Gesellschaften, privat, gemeinsam) — Name, Art, Bank, IBAN (nur maskiert ausgeliefert),
+  // Stände mit Datum und „erfasst von“. Keine Dritten. Konto löschen: Konten bleiben (Daten des Haushalts), die Personen-Kennung wird „[gelöscht]“.
+  mit(H('konten--*', 'Konten-Register je Haushalt (Konten der Gesellschaften, private und gemeinsame Konten, Kontostände mit Datum) — eigene Daten des Haushalts; IBAN verschlüsselt im Bestand, nach außen nur maskiert.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die eigenen Finanzen des Haushalts führen; für die Konten der Gesellschaften zusätzlich lit. c i. V. m. § 147 AO / § 257 HGB (Buchführung)',
+    art15: 'jede berechtigte Person sieht die Konten unter Finanzen › Privat › Konten & Buchungen bzw. Business › Liquidität; Konto › Meine Daten exportiert die eigenen Konten (IBAN maskiert)',
+    loeschfrist: 'solange der Haushalt das Konto führt; Stände werden nie gelöscht, nur zurückgenommen (Nachweis); Konto löschen tilgt die Personen-Kennung',
+    kategorie: ['vertraulich'],
+  }),
   H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
   H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
   // Betroffenenrechte v2 (05.10.): mit Frist und Angaben — 12 Monate (FRIST_MONATE, lib/zugang/anmeldungen.ts), nicht mehr „300 Einträge“.

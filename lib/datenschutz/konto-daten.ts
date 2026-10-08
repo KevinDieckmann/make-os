@@ -76,6 +76,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'kapazitaet--*': 'Kapazität je Haushalt — im Export die eigenen Werte, beim Löschen weg (Morgenlauf-Regel sofort angewendet)',
   'kapazitaet-plan--*': 'Wochenpläne je Haushalt — wie Kapazität',
   'kennung-alias--*': 'Weiterleitung alter Kontakt-Kennungen',
+  'konten--*': 'Konten-Register je Haushalt (08.10.) — im Export die eigenen Konten (IBAN maskiert), beim Löschen bleiben die Konten des Haushalts, die Personen-Kennung wird „[gelöscht]“',
   'meilenstein-raum--*': 'Austausch je Meilenstein (Arbeit des Haushalts)',
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
@@ -167,6 +168,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   const tasks = await loadJson<Obj>('tasks');
   merke('tasks', liste(tasks, 'tasks').filter(t => { const x = t as Obj; return x.assignee === speicher || x.angelegtVon === speicher || (Array.isArray(x.beteiligte) && x.beteiligte.includes(speicher)); }));
   if (k.haushalt) {
+    // Konten-Register (08.10.): die Konten, die der Person gehören (IBAN maskiert).
+    const eigeneKonten = await (await import('@/lib/finanzen/konten/server')).kontenDerPerson(k.haushalt, speicher).catch(() => []);
+    if (eigeneKonten.length) eintraege[`konten--${k.haushalt}`] = eigeneKonten;
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
     const kid = `${KONTO_PRAEFIX}${speicher}`;
     if (kapa && JSON.stringify(kapa).includes(`"${kid}"`)) eintraege[`kapazitaet--${k.haushalt}`] = [{ hinweis: 'Ihre Kapazitätswerte stehen vollständig in der Kapazitäts-Auskunft (Planung › Kapazität).', person: kid }];
@@ -307,6 +311,16 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const team = teamSpeicherName(konto.haushalt);
     await nurWenn(team, async () => { let n = 0; await updateJson<Obj>(team, cur => { const l = liste(cur, 'team'); const r = l.filter(e => (e as Obj).id !== `${KONTO_PRAEFIX}${speicher}`); n = l.length - r.length; return n ? { ...(cur ?? {}), team: r } : (cur as Obj); }); return n; });
     await sicher('kapazitaet', async () => { const { kapaEntfernteKontenAufraeumen } = await import('@/lib/kapazitaet/server'); return (await kapaEntfernteKontenAufraeumen(konto.haushalt!)).teile; });
+    // Konten-Register (08.10.): Konten und Stände bleiben (Finanzen des Haushalts), die Personen-Kennung wird „[gelöscht]“.
+    const kr = `konten--${konto.haushalt}`;
+    await nurWenn(kr, async () => {
+      const { registerOhnePerson } = await import('@/lib/finanzen/konten/server');
+      const { registerLesen } = await import('@/lib/finanzen/konten/register');
+      let n = 0;
+      await updateJson<Obj>(kr, cur => { if (!cur) return cur as unknown as Obj; const r = registerOhnePerson(registerLesen(cur), speicher, GELOESCHT); n = r.anzahl; return n ? (r.register as unknown as Obj) : cur; });
+      if (n) await protokolliere(kr, [{ liste: 'konten', op: 'geaendert', id: 'personen', felder: ['person', 'erfasstVon'] }], { art: 'system' });
+      return n;
+    });
     // Familie (08.10. abends, Fragebogen Teil 3 Frage 11 — erweitert die Vision-Regel der Gegenprüfung 08.10.): Einträge der Person
     // bleiben als gemeinsames Leben des Haushalts (Dates, Vereinbarungen, Themen, Wünsche, Gespräche, Reparatur, Vision …), aber OHNE
     // ihren Namen; ihre „nur ich“-Einträge, ungeteilten Reflexionen und ihr Profil fallen weg (sah nur sie — ohne sie wären sie

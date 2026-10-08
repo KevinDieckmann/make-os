@@ -110,14 +110,17 @@ async function finanzenBusiness(heute: string): Promise<FlussReihe> {
   const [{ vorschau, nurBusiness }, { istBusinessGesellschaft }] = await Promise.all([import('@/lib/make-one/liquiditaet'), import('@/lib/einheiten')]);
   type Plan = { firmen?: Parameters<typeof vorschau>[0]; rechnungen?: Parameters<typeof vorschau>[1]; zahlungen?: Parameters<typeof vorschau>[2]; merkposten?: Parameters<typeof vorschau>[3] };
   const [{ geltendeLaden }, { abEroeffnung, buchungVor }] = await Promise.all([import('@/lib/business/eroeffnung-server'), import('@/lib/business/eroeffnung')]);
-  const [roh, liqui, buch, eroeffnung] = await Promise.all([
+  const [{ registerKasseLaden }, { mitRegister }] = await Promise.all([import('@/lib/finanzen/konten/server'), import('@/lib/finanzen/konten/register')]);
+  const [roh, liqui, buch, eroeffnung, kasse] = await Promise.all([
     loadJson<Plan>('finanzplan').catch(() => null),
     loadJson<{ posten?: Parameters<typeof vorschau>[7] }>('liquiplan').catch(() => null),
     loadJson<{ buchungen?: { datum?: string; betrag?: number; ort?: string }[] }>('buchungen').catch(() => null),
     geltendeLaden(),
+    registerKasseLaden(),
   ]);
   // 0-Punkt (05.10.): Konten, Posten und Buchungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
-  const plan = roh ? abEroeffnung({ ...roh, planposten: liqui?.posten ?? [] }, eroeffnung) : null;
+  // Konten-Register (08.10.): vorher die Kasse je Gesellschaft, die das Register führt (ohne Register unverändert).
+  const plan = roh ? abEroeffnung(mitRegister({ ...roh, planposten: liqui?.posten ?? [] }, kasse), eroeffnung) : null;
   // Nur Business-Gesellschaften — eine Buchung ohne `ort` ist privat, eine der Selbstständigkeit gehört seit 05.10. zu Privat.
   const saldo = (buch?.buchungen ?? []).filter(b => istBusinessGesellschaft(b.ort) && tag(b.datum) && Number.isFinite(b.betrag) && !buchungVor(b, eroeffnung)).map(b => ({ tag: b.datum!, wert: b.betrag! }));
   const v = plan ? vorschau(plan.firmen ?? [], plan.rechnungen ?? [], plan.zahlungen ?? [], plan.merkposten ?? [], heute, 13, false, plan.planposten ?? [], 'real', undefined, true) : null;

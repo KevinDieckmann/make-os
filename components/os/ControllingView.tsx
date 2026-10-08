@@ -25,6 +25,8 @@ import {
 import { Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung } from '@/lib/business/eroeffnung';
+import { firmenMitRegister, mitRegister } from '@/lib/finanzen/konten/register';
+import { useKontenKasse } from './konten/KontenKarte';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
 interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -93,6 +95,9 @@ export function ControllingView() {
   // Dieselben Planposten wie unter Zahlen und Liquidität — sonst zeigt jede Seite eine andere Kurve.
   const [posten, setPosten] = useState<Planposten[]>([]);
   const eroeffnung = useGeltendeEroeffnung();
+  const registerKasse = useKontenKasse('business');
+  // Konten-Register (08.10.): die Firmen-Konten mit der Kasse je Gesellschaft, die das Register führt (ohne Register: dieselben Konten).
+  const firmen = useMemo(() => firmenMitRegister(fplan?.firmen, registerKasse), [fplan, registerKasse]);
   useEffect(() => {
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
   }, []);
@@ -131,8 +136,8 @@ export function ControllingView() {
   const setField = (field: 'zielUmsatz' | 'zielGewinn' | 'cash', v: string) => persist({ ...s, [field]: num(v) });
 
   // Kasse aus den Firmenkonten — das Feld „Cash“ gilt nur, solange keins einen Stand hat.
-  const kasse = useMemo(() => geschaeftsKasse(fplan?.firmen, s.cash), [fplan, s.cash]);
-  const m = useMemo(() => computeMetrics(fplan ? mitKasse(s, fplan.firmen) : s), [s, fplan]);
+  const kasse = useMemo(() => geschaeftsKasse(firmen, s.cash), [firmen, s.cash]);
+  const m = useMemo(() => computeMetrics(fplan ? mitKasse(s, firmen) : s), [s, fplan, firmen]);
   // Ohne gesetzten Startmonat gilt der erste Monat mit Zahlen als Start.
   const startMonat = useMemo(() => {
     if (typeof s.startMonat === 'number') return Math.max(0, Math.min(11, s.startMonat));
@@ -189,7 +194,8 @@ export function ControllingView() {
       {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
       {fplan && (() => {
         // 0-Punkt (05.10.): ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
-        const ab = abEroeffnung({ ...fplan, planposten: posten }, eroeffnung);
+        // Konten-Register (08.10.): Kasse je Gesellschaft aus dem Register (ohne Register wie bisher).
+        const ab = abEroeffnung(mitRegister({ ...fplan, planposten: posten }, registerKasse), eroeffnung);
         const v = vorschau(ab.firmen, ab.rechnungen, ab.zahlungen, ab.merkposten, heute, 12, optimistisch, ab.planposten, 'real', undefined, true);
         const fix = monatlicheLast(nurBusiness(fplan.merkposten));
         return (
@@ -226,7 +232,7 @@ export function ControllingView() {
 
             {/* Kontostände werden an EINER Stelle gepflegt (Liquidität) — hier nur Anzeige + Weg dorthin (26.09.). */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-              {fplan.firmen.map(f => (
+              {(firmen ?? fplan.firmen).map(f => (
                 <Feld key={f.id} label={<>{f.name}{f.stand ? ` · ${datum(f.stand)}` : ''}</>}>
                   <Link href={WEG.kontostaende()} style={{ ...zahlFeld, width: 140, display: 'inline-block', textDecoration: 'none', color: f.kontostand == null ? C.inkLeise : C.ink }}>{f.kontostand == null ? 'eintragen ›' : `${eur(f.kontostand)} ›`}</Link>
                 </Feld>
