@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
   const benutzt = seiten.slice().sort((a, b) => b.anzahl - a.anzahl).slice(0, 15);
   const bekannt = new Set(seiten.map(s => s.pfad));
-  // Die eine Seitenliste (Schnellsuche, Aufräumen Etappe 3 — vorher die alte Bereichsliste lib/make-one/bereiche.ts), je Pfad einmal.
+  // Die eine Seitenliste (Schnellsuche, Aufräumen Etappe 3 — vorher eine eigene alte Bereichsliste), je Pfad einmal.
   const nieBenutzt = [...new Map(SEITEN_SUCHE.map(s => [s.href.split(/[?#]/)[0], s] as const)).entries()]
     .filter(([pfad]) => !bekannt.has(pfad)).map(([pfad, s]) => `${s.titel} (${pfad})`);
   const offeneP1 = (backlog?.items ?? []).filter(i => i.status === 'offen' && i.prio === 1).map(i => i.titel);

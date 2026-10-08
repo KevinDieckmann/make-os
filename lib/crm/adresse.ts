@@ -113,10 +113,11 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   if (s === 'pipeline') return SALES_NEU.pipeline;
   if (s === 'kunden') return SALES_NEU.kunden;
   if (s === 'events') return mit('event', ansicht);
-  if (s === 'kartei') return mit('kontakte', ansicht);
+  if (s === 'kartei') return aufloesen('kontakte', ansicht);
   if (s === 'sales') return salesAlt(ansicht) ? SALES_NEU[ansicht] : SALES_NEU.head;
   if (s && (BEREICHE as string[]).includes(s)) {
     const b = s as Bereich;
+    if (b === 'ueberblick') return { s: b };
     if (b === 'firmen' && ansicht === 'leads') return SALES_NEU.leads;
     // Die alte Qualifizierungs-Runde der Kartei (Chancen-Runde, 25.09.) ist die Runde des Schnellknopfs.
     if (b === 'kontakte' && ansicht === 'runde-chancen') return { s: 'qualifizierung' };
