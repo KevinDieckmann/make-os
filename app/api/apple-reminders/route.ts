@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
-import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltOderSystemlauf, istDerHauptInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { skriptZeileLesen, SKRIPT_SATZ } from '@/lib/zulieferer/erinnerungen';
 import { spawn } from 'child_process';
 
@@ -77,7 +77,11 @@ function runOsascript(script: string, timeoutMs = 45_000): Promise<string> {
 
 export async function GET(req: Request) {
   // Auch der Systemlauf ohne Person (Zulieferer vom Mac, 28.09.) — Personen nur aus dem Haushalt des Inhabers.
-  if (!(await imHaushaltOderSystemlauf(req))) return NextResponse.json({ error: 'Erinnerungen gehören zum Haushalt des Inhabers.' }, { status: 403 });
+  const zugang = await imHaushaltOderSystemlauf(req);
+  if (!zugang) return NextResponse.json({ error: 'Erinnerungen gehören zum Haushalt des Inhabers.' }, { status: 403 });
+  // 09.10. (Befund der Prüfung „zweite Inhaberin“): die Erinnerungen kommen vom Mac des Haupt-Inhabers und sind persönlich — wie in
+  // /api/kalender bekommt sie nur er selbst (bzw. der Systemlauf ohne Person), nie die anderen Personen des Haushalts.
+  if (zugang.person && !(await istDerHauptInhaber(zugang.person))) return NextResponse.json({ error: 'Apple-Erinnerungen sieht nur die Person, von deren Mac sie kommen.' }, { status: 403 });
   if (!AUF_DEM_MAC) return vomMac('erinnerungen', []);
   try {
     const stdout = await runOsascript(SCRIPT);

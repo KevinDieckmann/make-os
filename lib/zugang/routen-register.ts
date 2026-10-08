@@ -81,7 +81,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Kalender, Mail, Mac-Zulieferer ──────────────────────────────────────────────────────────────────────────
   'apple-calendar': r('GET', 'haushalt', 'Kalender des Inhabers: Personen bekommen ihn maskiert, roh nur der Systemlauf (Mac-Zulieferer) — kalenderLesen.', undefined, 'Zwischenspeicher: `?refresh=1` legt den frisch gelesenen Kalender als Cache ab.'),
   'apple-contacts': r('GET', 'inhaber', 'Adressbuch des Haupt-Inhabers (Mac, auch Privates) — nur er selbst, weitere Inhaber nicht (09.10.: Inhaber heißt Verwaltung, nicht Einsicht).'),
-  'apple-reminders': r('GET', 'haushalt', 'Erinnerungen des Inhaber-Kalenders; Systemlauf (Zulieferer) erlaubt.'),
+  'apple-reminders': r('GET', 'haushalt', 'Erinnerungen vom Mac des Haupt-Inhabers — nur er selbst (andere Personen 403); Systemlauf (Zulieferer) erlaubt.'),
   'kalender': r('GET,POST', 'haushalt', 'Kalender des Haushalts; Apple-Erinnerungen nur für den Inhaber, private Fristen nur mit Haushalt (S1).'),
   'kalender/analyse': r('POST', 'haushalt', 'Kalender-Agent über den Kalender des Haushalts.'),
   'kalender/auswertung': r('GET', 'haushalt', 'Auswertung des Haushalts-Kalenders.'),

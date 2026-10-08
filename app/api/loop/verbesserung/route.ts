@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { SEITEN_SUCHE } from '@/lib/make-one/seiten';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { istDienst, nurDerInhaber } from '@/lib/zugang/tor';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,9 @@ const QUELLE = 'Verbesserungs-Loop';
 const ABSTAND_TAGE = 7;
 
 export async function POST(req: Request) {
+  // Zugang (09.10., Befund der Prüfung „zweite Inhaberin“): das Register sagt „Inhaber bzw. Systemlauf“, die Route ließ aber jede
+  // angemeldete Person durch (nur `jetzt=1` war Inhaber-Sache) — jetzt nur der Takt (Dienstweg) oder ein Inhaber per Sitzung.
+  if (!istDienst(req) && !(await nurInhaber(req))) return nurDerInhaber();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   // „jetzt=1“ umgeht den 7-Tage-Abstand — nur der Inhaber (26.09.).
   const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1' && (await nurInhaber(req));
