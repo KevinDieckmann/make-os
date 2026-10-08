@@ -10,11 +10,16 @@ import { schluesselFuer, type ZeitSpace } from './modell';
 export interface BereichTreffer { id: string; label: string }
 
 const FEST: [RegExp, BereichTreffer][] = [
-  [/^\/os\/?$/, { id: 'home', label: 'Home' }],
+  // 08.10. (Aufräumen Etappe 1): /os heißt „Heute“, /os/heute leitet dorthin — die Kennungen bleiben, damit gespeicherte Zeit
+  // weiter zu ihrem Bereich zählt (`home` = die Startseite, `heute` = Altbestand der früheren Tagesseite).
+  [/^\/os\/?$/, { id: 'home', label: 'Heute' }],
   [/^\/os\/heute/, { id: 'heute', label: 'Heute' }],
   [/^\/os\/wachstum|^\/os\/saeule/, { id: 'wachstum', label: 'Wachstum' }],
-  [/^\/os\/(system|konto|datenbasis|verbindungen|bauplan|onboarding)/, { id: 'system', label: 'System' }],
+  [/^\/os\/(system|konto|datenbasis|verbindungen|bauplan|onboarding)/, { id: 'system', label: 'Einstellungen' }],
   [/^\/zoe|^\/os\/(stapel|loop)/, { id: 'zoe', label: 'ZOE' }],
+  // Agenten und Brain hängen seit 08.10. unter dem einen Leisten-Punkt ZOE — ihre Zeit bleibt unter dem bisherigen Schlüssel.
+  [/^\/os\/agenten/, { id: 'agenten', label: 'Agenten' }],
+  [/^\/os\/wissen/, { id: 'brain', label: 'Brain' }],
   [/^\/os\/inbox/, { id: 'inbox', label: 'Inbox' }],
   [/^\/os\/(kalender|planung\/woche)/, { id: 'kalender', label: 'Kalender' }],
 ];
@@ -26,7 +31,7 @@ export const bereichId = (label: string): string =>
 export function bereichVon(pfad: string, suche = ''): BereichTreffer {
   for (const [re, t] of FEST) if (re.test(pfad)) return t;
   const { eintrag } = aktiverSpaceEintrag(pfad, suche);
-  if (eintrag) return { id: bereichId(eintrag.label), label: eintrag.label };
+  if (eintrag) return { id: eintrag.zeitId ?? bereichId(eintrag.label), label: eintrag.label };
   return { id: 'sonstiges', label: 'MAKE OS' };
 }
 
