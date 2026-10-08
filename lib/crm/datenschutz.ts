@@ -393,6 +393,33 @@ export function verarbeitungWhatsappNachtragen(vorhanden: readonly Verarbeitung[
   return vorhanden.some(v => v.id === VV_WHATSAPP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungWhatsapp(jetzt)];
 }
 
+// ── Verarbeitung „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ (08.10., Roadmap Lücke 5) — idempotent nachgetragen, sobald die ZOE-Nummer eingerichtet ist ──
+// Kevin 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Nur die Personen des Haushalts, je Person mit Einwilligung. Hinweis, keine
+// Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung der Nummer.
+
+export const VV_ZOE_WHATSAPP_ID = 'vv-zoe-whatsapp';
+
+export function verarbeitungZoeWhatsapp(jetzt: string): Verarbeitung {
+  return {
+    id: VV_ZOE_WHATSAPP_ID, name: 'ZOE auf WhatsApp (Meta, ZOE-Kanal)',
+    zweck: 'ZOE erreicht die Personen des Haushalts auf dem Handy: Briefing am Morgen, Wochenstart, Rückblick, Erinnerungen, Sicherheits-Hinweise — ohne Ausnahme nur neutrale Hinweise mit Link; die Person schreibt ZOE Fragen, „Aufgabe: …“/„Notiz: …“ (nur als Vorschlag in ihre Freigaben) und Sprachnachrichten (abgelegt, keine Transkription)',
+    personen: 'Personen des Haushalts mit Konto, die ihre Nummer selbst verbunden und eingewilligt haben — keine Dritten (Nachrichten fremder Nummern werden nur gezählt)',
+    daten: 'Handynummer der Person, Nachweis der Einwilligung und der Ausnahme, Zeitpunkte (24-h-Fenster), Nachrichten der Person an ZOE (Text bis zur Verarbeitung; Sprachnachrichten als Datei), Hinweise von ZOE (ohne Ausnahme ohne Inhalte), Verweise auf eigene Vorschläge',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. a DSGVO — Einwilligung der Person, jederzeit widerrufbar („STOP“ oder „Trennen“); Inhalte nur mit der gesonderten Ausnahme „Inhalte senden“; Gesundheitswerte zusätzlich nur mit der Art.-9-Einwilligung der Person',
+    empfaenger: 'WhatsApp Ireland Limited / Meta (Cloud API — Auftragsverarbeiter nach den WhatsApp Business Data Processing Terms, gelten automatisch); Hetzner (Hosting); Anthropic (ZOE beantwortet Fragen — derselbe Weg wie im Browser, KI-Tor und Einwilligungen gelten)',
+    empfaengerIds: ['meta-zoe-kanal', 'hetzner', 'anthropic'],
+    drittland: 'Meta: Verarbeitung in Meta-Rechenzentren; mit Local Storage „DE“ bleiben gespeicherte Daten in Deutschland, während der Verarbeitung bis zu 60 Minuten weltweit; Data Transfer Addendum (EU) der Data Processing Terms; Anthropic: Standardvertragsklauseln/Data Privacy Framework — prüfen',
+    loeschfrist: 'Bei Meta höchstens 30 Tage; in MAKE OS: Nummer bis „STOP“/„Trennen“, Nachrichten nur bis zur Verarbeitung (Antworten im ZOE-Verlauf), Sprachnachrichten 30 Tage, Nachweis der Einwilligung bis das Konto gelöscht wird',
+    toms: 'Eigene Nummer, eigene Meta-App, eigener Webhook (nur mit gültiger Signatur), Schlüssel nur in der Umgebung des Servers, Nummer per Code von genau dieser Nummer bestätigt, Kanal je Person getrennt (nur die Person selbst verwaltet ihn, Dienstweg 403), Nummer nur maskiert im Browser, ohne Ausnahme nur neutrale Texte (Prüfung im Code), Aufgaben/Notizen nur als Vorschlag, Freigabe nur des eigenen Vorschlags mit Kennung, Sprachnachrichten verschlüsselt auf der Platte, Server in Deutschland (Hetzner)',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „ZOE auf WhatsApp“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungZoeWhatsappNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_ZOE_WHATSAPP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungZoeWhatsapp(jetzt)];
+}
+
 // ── Verarbeitungen „Gesellschafts-Register“ und „Kapazität“ (DSGVO-Prüfung 04.10.) — idempotent nachgetragen ──
 // Kevin 04.10.: „DSGVO und Datenschutz — alles verbessern, anpassen.“ Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
 
@@ -486,7 +513,7 @@ export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbe
  * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet), WhatsApp (wenn eingerichtet),
  * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
  */
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -496,6 +523,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.whatsapp) l = verarbeitungWhatsappNachtragen(l, jetzt);
   // WHOOP (08.10.): sobald die App auf der Instanz eingerichtet ist (`whoopKonfiguriert`).
   if (opt.whoop) l = verarbeitungWhoopNachtragen(l, jetzt);
+  // ZOE auf WhatsApp (08.10.): sobald die ZOE-Nummer eingerichtet ist (`zoeWhatsappEingerichtet`).
+  if (opt.zoeWhatsapp) l = verarbeitungZoeWhatsappNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = alteFassungenHeben(l);

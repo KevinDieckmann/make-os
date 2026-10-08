@@ -16,6 +16,7 @@ import { ZugangEinstellungen } from './ZugangEinstellungen';
 import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
 import { MeineDaten } from './MeineDaten';
+import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
 
 interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[]; ziele?: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
@@ -211,6 +212,8 @@ export function KontoView() {
       </Kachel>
       {/* Betroffenenrechte (05.10.): Auskunft, Herunterladen, Konto löschen — jede Person selbst. */}
       <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} andere={andere.length} /></Kachel>
+      {/* ZOE auf WhatsApp (08.10.): die eigene Nummer mit der ZOE-Nummer verbinden — nur die Person selbst (components/os/zoe-whatsapp). */}
+      <Kachel id="zoe-whatsapp" titel="ZOE auf WhatsApp" breite={3}><ZoeWhatsappKarte i={3} /></Kachel>
       <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>
       <Karte i={3}>
       <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>

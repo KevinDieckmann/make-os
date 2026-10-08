@@ -341,11 +341,12 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const bericht = auftrag === 'bericht';
         const neuRot = rot.filter(x => !(r.gemeldet ?? []).includes(x));
         let telegram = '';
-        const { telegramKonfiguriert, sendeAnPerson } = await import('@/lib/telegram');
-        if (telegramKonfiguriert() && ((bericht && r.berichtTag !== heute) || neuRot.length)) {
+        // EIN Sendeweg (08.10.): ZOE auf WhatsApp, sonst Telegram (lib/zoe/an-person.ts) — ohne Boten wie bisher nichts.
+        const { anPersonMelden, botenEingerichtet } = await import('./an-person');
+        if ((await botenEingerichtet()) && ((bericht && r.berichtTag !== heute) || neuRot.length)) {
           const { ladeKonten } = await import('@/lib/zugang/konten');
           const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
-          if (inhaber) { const s = await sendeAnPerson(inhaber as Parameters<typeof sendeAnPerson>[0], l.kurz); telegram = s.erreicht > 0 ? 'Telegram gesendet' : `Telegram: ${s.fehler ?? 'nicht zugestellt'}`; }
+          if (inhaber) { const s = await anPersonMelden(inhaber, 'hoi', l.kurz, { link: '/os/hoi' }); telegram = s.erreicht > 0 ? `Bote gesendet (${s.kanal === 'whatsapp' ? 'WhatsApp' : 'Telegram'})` : `Bote: ${s.fehler ?? 'nicht zugestellt'}`; }
         }
         await updateJson<HoiMeldung>('hoi-meldung', cur => ({ ...(cur ?? {}), gemeldet: rot, ...(bericht ? { berichtTag: heute } : {}), zuletzt: new Date().toISOString(), ampel: l.gesamt.ampel }));
         return gut(`HEAD OF IT (${bericht ? 'Tagesbericht' : 'Stundenblick'}): ${l.gesamt.ampel} — ${l.gesamt.rot} rot · ${l.gesamt.gelb} gelb · ${l.gesamt.gruen} grün${neuRot.length ? ` · neu rot: ${neuRot.join(', ')}` : ''}${telegram ? ` · ${telegram}` : ''}`);
@@ -450,16 +451,17 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
 
 // ── Markttraktion im Takt (25.09.) ─────────────────────────────────────────
 // Was der Lauf „markttraktion“ tut: für jede fällige Person (Team, Konto,
-// gekoppelt) den Text bauen (lib/crm/scoreboard.ts — morgenText werktags,
-// wochenText freitags), per Telegram schicken und den Riegel setzen. Die
+// mit Boten) den Text bauen (lib/crm/scoreboard.ts — morgenText werktags,
+// wochenText freitags), über den Boten schicken (ZOE auf WhatsApp, sonst Telegram) und den Riegel setzen. Die
 // Nachricht geht an Kevin oder Malin selbst, nie an Kunden; sie trägt nur
 // Zahlen, keine Beträge und keine Namen von Kontakten. Nicht zugestellt →
 // ein Fehlversuch, nach drei ist für den Tag Ruhe (kein Minutentakt).
 // Ein Slot als Auftrag („woche“, „morgen person:malin“) schickt sofort —
 // für ZOE auf Zuruf.
 async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: string): Promise<AgentLauf> {
-  const { telegramKonfiguriert, ladeStand, chatsFuerPerson, sendeAnPerson } = await import('@/lib/telegram');
-  if (!telegramKonfiguriert()) return fehl('Kein Telegram-Token — die Markttraktion hat keinen Weg aufs Handy.');
+  // EIN Sendeweg (08.10.): ZOE auf WhatsApp, sonst Telegram (lib/zoe/an-person.ts).
+  const { anPersonMelden, botenEingerichtet, botenKanalFuer } = await import('./an-person');
+  if (!(await botenEingerichtet())) return fehl('Kein Bote eingerichtet (ZOE auf WhatsApp oder Telegram) — die Markttraktion hat keinen Weg aufs Handy.');
   const { loadJson, updateJson } = await import('@/lib/store/local-db');
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const { alleSpeicher } = await import('@/lib/zugang/konten');
@@ -468,15 +470,16 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: s
   const S = await import('@/lib/crm/scoreboard');
 
   const heute = localDay(jetzt);
-  const [mitKonto, tg, riegel] = await Promise.all([alleSpeicher(), ladeStand(), loadJson<unknown>(S.RHYTHMUS_SPEICHER)]);
-  const personen = TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0);
+  const [mitKonto, riegel] = await Promise.all([alleSpeicher(), loadJson<unknown>(S.RHYTHMUS_SPEICHER)]);
+  const personen: string[] = [];
+  for (const p of TEAM.map(t => t.id)) if (mitKonto.includes(p) && (await botenKanalFuer(p)) !== null) personen.push(p);
   const zwang = S.RHYTHMUS_SLOTS.find(s => new RegExp(`(^|\\s)${s}(\\s|$)`).test(auftrag.trim()));
   // Sofort-Versand nur an die Person des Laufs; „person:x“ im Text gilt nur für den Takt (26.09.).
   const nur = person ?? /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
   const dran = zwang
     ? personen.filter(p => !nur || p === nur).map(person => ({ person, slot: zwang }))
     : S.faelligeRhythmen(S.rhythmusStand(riegel), personen, jetzt);
-  if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team ist mit Telegram gekoppelt.');
+  if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team hat einen Boten (ZOE auf WhatsApp oder Telegram).');
 
   // Art. 18 zentral (29.09., #72): eingeschränkte Personen stehen nie in der Morgen-/Wochennachricht.
   const [kontakte, crm] = await Promise.all([(await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung(), ladeCrm()]);
@@ -484,7 +487,7 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: s
   const ergebnisse: { person: string; slot: typeof dran[number]['slot']; ok: boolean; zeile: string }[] = [];
   for (const { person, slot } of dran) {
     const text = slot === 'morgen' ? S.morgenText(person, kontakte, crm, heute, o) : S.wochenText(person, kontakte, crm, heute, o);
-    const r = await sendeAnPerson(person, text);
+    const r = await anPersonMelden(person, slot === 'morgen' ? 'markttraktion' : 'rueckblick', text, { link: '/os/markttraktion' });
     ergebnisse.push({ person, slot, ok: r.erreicht > 0, zeile: `${nameVon(person)} · ${slot === 'morgen' ? 'Morgen' : 'Wochen-Scoreboard'}: ${r.erreicht > 0 ? 'gesendet' : r.fehler ?? 'nicht zugestellt'}` });
   }
   await updateJson<unknown>(S.RHYTHMUS_SPEICHER, cur => ergebnisse.reduce((s, e) => S.markiereRhythmus(s, e.person, e.slot, heute, e.ok), S.rhythmusStand(cur)));

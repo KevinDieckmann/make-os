@@ -42,6 +42,7 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'kalender/google/meldung': ['POST'], 'google/gmail/meldung': ['POST'], 'hoi/csp': ['POST'],
   'whoop/webhook': ['POST'], // WHOOP: X-WHOOP-Signature über Zeitstempel + Rohkörper — prüft die Route selbst (tests/whoop-webhook.test.ts)
   'whatsapp/webhook': ['GET', 'POST'], // Meta: Verify-Token bzw. X-Hub-Signature-256 — prüft die Route selbst (tests/whatsapp-webhook.test.ts)
+  'zoe/whatsapp/webhook': ['GET', 'POST'], // ZOE-Nummer (08.10.): Verify-Token bzw. X-Hub-Signature-256 der ZOE-Nummer — prüft die Route selbst (tests/zoe-whatsapp-route.test.ts)
   'jarvis/[...pfad]': ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // nur 308 → /api/zoe/*
   'kemaris-calendar': ['GET'], // fester Leerstand
   'state/aenderungen': ['POST'], // nur 405
@@ -94,7 +95,7 @@ describe('Routen-Register (statisch)', () => {
 
   it('öffentliche Wege der Middleware sind im Register „offen“ (und nur die)', () => {
     const mw = readFileSync(path.join(WURZEL, 'middleware.ts'), 'utf8');
-    for (const p of ['konto\\/(status|anmelden|einrichten|beitreten)', 'hoi\\/csp', '(kalender\\/google|google\\/gmail)\\/meldung', 'whatsapp\\/webhook']) expect(mw).toContain(p);
+    for (const p of ['konto\\/(status|anmelden|einrichten|beitreten)', 'hoi\\/csp', '(kalender\\/google|google\\/gmail)\\/meldung', 'whatsapp\\/webhook', 'zoe\\/whatsapp\\/webhook']) expect(mw).toContain(p);
     expect(ROUTEN_REGISTER['hoi/csp'].methoden.GET).toBe('haushalt');
   });
 

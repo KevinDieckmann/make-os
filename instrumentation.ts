@@ -19,5 +19,11 @@ export async function register(): Promise<void> {
       const { hauptZugangAuffrischen } = await import('./lib/kalender/icloud-person');
       await hauptZugangAuffrischen();
     }
+    // ZOE auf WhatsApp (08.10.): gleicht die ZOE-Nummer der Business-Nummer, steht es einmal im Log (nur Namen) — die ZOE-Nummer bleibt
+    // aus, der Head of IT zeigt es rot (lib/zoe-whatsapp/konfig.ts).
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      const { zoeWhatsappStartPruefung } = await import('./lib/zoe-whatsapp/konfig');
+      zoeWhatsappStartPruefung();
+    }
   }
 }

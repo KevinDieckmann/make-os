@@ -12,11 +12,10 @@ import { speicherFuer, nameVon, type Person } from '@/lib/zoe/raum';
 import { alleSpeicher, namenVon } from '@/lib/zugang/konten';
 import { resolveVitals } from '@/lib/vitals';
 import { localDay } from '@/lib/zeit';
-import { ladeStand, chatsFuerPerson, sendeAnPerson, telegramKonfiguriert } from '@/lib/telegram';
+import { anPersonMelden, botenEingerichtet, botenKanalFuer, inhalteErlaubtFuer } from '@/lib/zoe/an-person';
 import { faelligeSlots, markiere, morgenText, mittagText, abendText, wochenText, type Slot, type TaktStand } from './takt';
 import { hautTrend, streakStand, routineQuote, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
 import { sichtbarFuer } from '@/lib/planung/routinen';
-import { telegramVollFuer } from '@/lib/datenschutz/ki-einstellungen';
 import { appLink, hinweisCheckIn } from '@/lib/datenschutz/telegram-text';
 import { aussenAdresse } from '@/lib/innen';
 
@@ -63,14 +62,17 @@ async function haushaltZeilen(person: Person): Promise<string> {
 }
 
 /**
- * Die Telegram-Nachricht eines Slots. Seit 05.10. (DSGVO, Telegram ist nicht Ende-zu-Ende-verschlüsselt, Drittland):
- * ohne die Ausnahme „ZOE-Antworten vollständig über Telegram“ der Person NUR ein neutraler Hinweis mit Link — keine
- * Werte (Recovery, Schlaf), keine Fragen zu Beschwerden, keine Beträge. Mit der Ausnahme wie früher.
+ * Die Nachricht eines Slots aufs Handy. Seit 05.10. (DSGVO, Telegram ist nicht Ende-zu-Ende-verschlüsselt, Drittland):
+ * ohne die Ausnahme der Person NUR ein neutraler Hinweis mit Link — keine Werte (Recovery, Schlaf), keine Fragen zu
+ * Beschwerden, keine Beträge. Mit der Ausnahme wie früher. Seit 08.10. (ZOE auf WhatsApp) zählt die Ausnahme DES Kanals,
+ * der genutzt wird (`inhalteErlaubtFuer`: WhatsApp „Inhalte senden“, sonst wie bisher Telegram).
  */
-export async function nachrichtFuer(person: Person, slot: Slot, _origin: string): Promise<string> {
+export async function nachrichtFuer(person: Person, slot: Slot, _origin: string, o: { voll?: boolean } = {}): Promise<string> {
   const heute = localDay();
   const name = (await namenVon())[person] ?? nameVon(person);
-  if (!(await telegramVollFuer(person).catch(() => false))) return hinweisCheckIn(name, slot, appLink(aussenAdresse(), '/os/gesundheit'));
+  // `voll` ausdrücklich: ein Weg, der den Kanal schon kennt (die Telegram-Kopplung schickt direkt in den Chat → Telegram-Ausnahme).
+  const voll = o.voll ?? await inhalteErlaubtFuer(person).catch(() => false);
+  if (!voll) return hinweisCheckIn(name, slot, appLink(aussenAdresse(), '/os/gesundheit'));
   const alle = await routinen(person);
   if (slot === 'morgen') {
     await whoopHolen(person);
@@ -117,9 +119,8 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string)
 export interface LaufErgebnis { ok: boolean; text: string; gesendet: number; uebersprungen: number }
 
 export async function gesundheitsLauf(origin: string, nur?: Slot, jetzt = new Date()): Promise<LaufErgebnis> {
-  if (!telegramKonfiguriert()) return { ok: false, text: 'Kein Telegram-Token — der Gesundheits-Takt hat keinen Weg zu Kevin.', gesendet: 0, uebersprungen: 0 };
+  if (!(await botenEingerichtet())) return { ok: false, text: 'Kein Bote eingerichtet (ZOE auf WhatsApp oder Telegram) — der Gesundheits-Takt hat keinen Weg aufs Handy.', gesendet: 0, uebersprungen: 0 };
   const heute = localDay(jetzt);
-  const tg = await ladeStand();
   let stand = (await loadJson<TaktStand>('gesundheit-takt')) ?? {};
   const zeilen: string[] = [];
   let gesendet = 0, uebersprungen = 0;
@@ -128,14 +129,15 @@ export async function gesundheitsLauf(origin: string, nur?: Slot, jetzt = new Da
   for (const person of await alleSpeicher()) {
     const slots = faelligeSlots(stand, person, jetzt, heute).filter(s => !nur || s === nur);
     if (!slots.length) continue;
-    const gekoppelt = chatsFuerPerson(tg, person).length > 0;
+    // ZOE auf WhatsApp (verbunden) oder Telegram (gekoppelt) — sonst übersprungen wie bisher (08.10.: EIN Sendeweg, lib/zoe/an-person.ts).
+    const gekoppelt = (await botenKanalFuer(person)) !== null;
     for (const slot of slots) {
       if (!gekoppelt) {
         uebersprungen++;
         zeilen.push(`${namen[person] ?? nameVon(person)} · ${slot}: nicht gekoppelt, übersprungen`);
       } else {
         const text = await nachrichtFuer(person, slot, origin);
-        const r = await sendeAnPerson(person, text);
+        const r = await anPersonMelden(person, 'gesundheit', text, { link: '/os/gesundheit' });
         if (r.erreicht) { gesendet++; zeilen.push(`${namen[person] ?? nameVon(person)} · ${slot}: gesendet`); }
         else { zeilen.push(`${namen[person] ?? nameVon(person)} · ${slot}: ${r.fehler ?? 'nicht zugestellt'}`); continue; }
       }

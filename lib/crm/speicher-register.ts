@@ -164,6 +164,19 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'über die Nachricht in der Inbox (Download auf Klick); in der Kontakt-Auskunft über die Nachricht gezählt',
     loeschfrist: 'Frist „WhatsApp-Medien“ (Vorgabe 90 Tage, einstellbar 7–365) — danach nur noch der Hinweis an der Nachricht; größer als 25 MB wird nie abgelegt',
   }),
+  // ZOE auf WhatsApp (08.10., lib/zoe-whatsapp/*): die eigene ZOE-Nummer der Instanz (Meta, Auftragsverarbeiter) — Kanal JE PERSON, nur die
+  // Personen des Haushalts selbst; fremde Nummern werden nur gezählt (`zoe-whatsapp-zustand`), nie gespeichert.
+  mit(H('zoe-kanal--*', 'ZOE-Kanal auf WhatsApp je Person: eigene Handynummer (nur solange verbunden), Nachweis der Einwilligung und der Ausnahme „Inhalte senden“ (Ereignisse, nur anhängend, ohne Nummer), 24-h-Fenster, was die Vorlage „Briefing bereit“ angekündigt hat, kurzlebiger Eingang (Nachrichten bis zur Verarbeitung), Verweise auf eigene Vorschläge, Sprachnachrichten (Metadaten; Dateien in zoe-whatsapp-medien).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. a DSGVO — Einwilligung der Person (Wortlaut + Fassung als Nachweis), jederzeit widerrufbar mit „STOP“ oder „Trennen“; Inhalte (Gesundheit, Finanzen, Kontakte) nur mit der gesonderten Ausnahme „Inhalte senden“, Gesundheitswerte zusätzlich nur über die Art.-9-Wege',
+    art15: 'Konto › ZOE auf WhatsApp zeigt Verbindung (Nummer maskiert), Nachweise und Sprachnachrichten; Konto › Meine Daten exportiert den Bestand',
+    loeschfrist: '„Trennen“/„STOP“ entfernt Nummer, Eingang, Ausstehendes und Sprachnachrichten sofort (der Nachweis der Einwilligung bleibt); Sprachnachrichten nach 30 Tagen; Konto löschen entfernt alles',
+  }),
+  K('zoe-whatsapp-zustand', 'Zustand der ZOE-Nummer (je Instanz): Webhook zuletzt/Zähler, Nachrichten fremder Nummern NUR als Zahl, verworfene Nachrichten (Zahl), Zustand des Zugriffsschlüssels, Vorlagen- und Telefon-Cache der eigenen Nummer, Zeitpunkte „nicht zugestellt“ — keine Personendaten, nie der Schlüssel.'),
+  mit({ muster: 'zoe-whatsapp-medien', bezug: 'haushalt', behandlung: 'ausgenommen', grund: 'Sprachnachrichten der Personen des Haushalts an die ZOE-Nummer (Dateien <daten>/zoe-whatsapp-medien, verschlüsselt wie die Dateiablage, Name = Fingerabdruck der WAMID). Kein Bestand — der Verweis steht im Kanal der Person (zoe-kanal--*); Dateien ohne Verweis entfernt der Takt (lib/zoe-whatsapp/medien.ts).' }, {
+    rechtsgrundlage: 'wie zoe-kanal--* (Art. 6 Abs. 1 lit. a DSGVO, Einwilligung der Person)',
+    art15: 'Konto › ZOE auf WhatsApp: nur die Person selbst hört ihre Sprachnachrichten (Download auf Klick)',
+    loeschfrist: '30 Tage; „Trennen“/„STOP“ und Konto löschen sofort; ohne Verweis entfernt der nächste Takt die Datei',
+  }),
   T('kemaris-calendar', 'Kalender-Zwischenspeicher (KEMARIS) — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
   // Kalender K1 (29.09., KALENDER_VERBINDUNGEN.md 4a/4f):
   E('kalender-bezug', 'Bezüge der Termine zu MAKE OS (nur Kennungen: Kontakt, Firma, Mandat, Deal, Aufgabe, Event) — die Kontakt-Kennung der Person fällt weg, der Eintrag bleibt (lib/crm/person-weitere.ts kalenderBezugOhne).'),

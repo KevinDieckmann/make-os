@@ -13,6 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
 import { WhoopKarte } from './gesundheit/WhoopKarte';
 import { WhatsappKarte } from './whatsapp/WhatsappKarte';
+import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
 import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, Hinweis, LEUCHT, Raster } from './ui';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
@@ -68,6 +69,8 @@ export function VerbindungenView() {
       </div>
       {/* WhatsApp Business (07.10.): Business-Nummer der Instanz — eigene Karte (components/os/whatsapp/WhatsappKarte.tsx). */}
       <WhatsappKarte i={liste.length + 2} />
+      {/* ZOE auf WhatsApp (08.10.): die eigene ZOE-Nummer — jede Person verbindet ihre Handynummer selbst (components/os/zoe-whatsapp). */}
+      <ZoeWhatsappKarte i={liste.length + 2} />
       <Karte i={liste.length + 3}>
         <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
         <Liste>

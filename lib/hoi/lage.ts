@@ -84,6 +84,8 @@ export interface InnenLage {
   postfaecher?: PostfachLage | null;
   /** WhatsApp Business (07.10.): Zustand der Business-Nummer — nur Zahlen und Zustände, nie Nummern oder Namen. null = nicht eingerichtet. */
   whatsapp?: WhatsappLage | null;
+  /** ZOE auf WhatsApp (08.10.): die eigene ZOE-Nummer — nur Zähler und Zustände, nie Nummern/Texte. null = nicht eingerichtet. */
+  zoeWhatsapp?: ZoeWhatsappLage | null;
   /** WHOOP je Person (08.10.): Verbindungen, Alter des Abgleichs, Webhooks — nur Zähler, nie Adressen/Kennungen/Werte. null = nicht eingerichtet. */
   whoop?: WhoopLage | null;
   /** Einrichtung der Verbindungen (08.10. spät, Onboarding L23): ist der Anschluss am Server überhaupt eingerichtet? Nur ja/nein. */
@@ -310,6 +312,56 @@ export function whatsappBefunde(w: WhatsappLage | null | undefined): Befund[] {
 }
 
 /**
+ * Zustand der ZOE-Nummer (08.10., lib/zoe-whatsapp/lage.ts) — NUR aus dem eigenen Zustand (kein Aufruf bei Meta): Konflikt mit der
+ * Business-Nummer, Schlüssel, Webhook, Signatur-Ablehnungen, Vorlage „Briefing bereit“, verbundene Personen (Zahl), Nachrichten fremder
+ * Nummern (Zahl), Eingang, Zustellung. Nie Nummern, nie Namen, nie Texte.
+ */
+export interface ZoeWhatsappLage {
+  /** ZOE-Nummer = Business-Nummer → ZOE-Nummer aus. */
+  konflikt: boolean;
+  webhookVorMin: number | null;
+  abgelehnt: number;
+  abgelehntFrisch: boolean;
+  token: boolean;
+  /** Vorlage „Briefing bereit“: genehmigt (ok), fehlt/nicht genehmigt, oder noch nicht geprüft. */
+  vorlage: 'ok' | 'fehlt' | 'ungeprueft';
+  verbunden: number;
+  mitInhalten: number;
+  fremd: number;
+  verworfen: number;
+  eingangOffen: number;
+  fehlgeschlagen7d: number;
+}
+
+/** Befund zur ZOE-Nummer (rein): Konflikt oder Schlüssel abgelehnt = rot; Auffälliges gelb; sonst grün. */
+export function zoeWhatsappBefunde(w: ZoeWhatsappLage | null | undefined): Befund[] {
+  if (!w) return [];
+  const label = 'ZOE auf WhatsApp';
+  if (w.konflikt) return [{ id: 'zoe-whatsapp', bereich: 'app', label, ampel: 'rot', wert: 'ZOE-Nummer = Business-Nummer',
+    satz: 'Die ZOE-Nummer gleicht der Business-Nummer — sie bleibt aus (Hinweise an euch dürfen nie im Business-Postfach landen). Eine eigene Nummer eintragen: deploy/zoe-whatsapp-verbinden.sh' }];
+  const alt = w.webhookVorMin;
+  const ampel: Ampel = w.token ? 'rot'
+    : w.abgelehntFrisch || (w.verbunden > 0 && w.vorlage === 'fehlt') || w.fehlgeschlagen7d > 0 || w.verworfen > 0 || w.eingangOffen > 5 ? 'gelb' : 'gruen';
+  const teile = [
+    `${w.verbunden} ${w.verbunden === 1 ? 'Person' : 'Personen'} verbunden${w.mitInhalten ? ` (${w.mitInhalten} mit Inhalten)` : ''}`,
+    alt === null ? 'noch keine Meldung von Meta' : `letzte Meldung vor ${alt < 120 ? `${alt} min` : alt < 48 * 60 ? `${Math.round(alt / 60)} h` : `${Math.round(alt / 1440)} Tagen`}`,
+    w.vorlage === 'ok' ? 'Vorlage genehmigt' : w.vorlage === 'fehlt' ? 'Vorlage fehlt/nicht genehmigt' : 'Vorlage ungeprüft',
+    ...(w.fremd ? [`${w.fremd} von fremden Nummern (ignoriert)`] : []),
+    ...(w.eingangOffen ? [`${w.eingangOffen} in Arbeit`] : []), ...(w.verworfen ? [`${w.verworfen} verworfen`] : []),
+    ...(w.fehlgeschlagen7d ? [`${w.fehlgeschlagen7d} nicht zugestellt (7 Tage)`] : []),
+  ];
+  const satz = w.token ? 'Meta lehnt den Zugriffsschlüssel der ZOE-Nummer ab — neuen dauerhaften Schlüssel erzeugen und deploy/zoe-whatsapp-verbinden.sh erneut ausführen (Verify-Token behalten); bis dahin laufen Hinweise über Telegram bzw. gar nicht'
+    : w.abgelehntFrisch ? `${w.abgelehnt} Aufruf${w.abgelehnt === 1 ? '' : 'e'} ohne gültige Signatur abgelehnt (zuletzt in den letzten 24 h) — stimmt das App-Geheimnis der ZOE-Nummer? Sonst klopft jemand an`
+    : w.verbunden > 0 && w.vorlage === 'fehlt' ? 'Die Vorlage „Briefing bereit“ ist bei Meta nicht (oder nicht als UTILITY) genehmigt — außerhalb des 24-Stunden-Fensters erreicht ZOE niemanden'
+    : w.fehlgeschlagen7d ? 'Meta hat Nachrichten von ZOE als nicht zugestellt gemeldet — Nummer der Person noch aktiv in WhatsApp?'
+    : w.verworfen ? 'Nachrichten an ZOE wurden verworfen (Eingang voll oder dreimal gescheitert) — Log prüfen'
+    : w.eingangOffen > 5 ? 'Nachrichten an ZOE warten auf Verarbeitung — läuft der Takt?'
+    : w.verbunden === 0 ? 'Eingerichtet — noch niemand verbunden (Konto › ZOE auf WhatsApp)'
+    : 'Webhook kommt an, ZOE erreicht die verbundenen Personen';
+  return [{ id: 'zoe-whatsapp', bereich: 'app', label, ampel, wert: teile.join(' · '), satz }];
+}
+
+/**
  * Einrichtung der Verbindungen (08.10. spät, ONBOARDING_PLAN.md L23). Ist ein Anschluss am Server nicht eingerichtet, liefern die
  * Befunde oben gar nichts (`personen = 0` bzw. `null`) — man sähe nicht, dass etwas fehlt. Hier: je Anschluss EIN grauer Befund
  * „erwartet, noch nicht eingerichtet“ bzw. „eingerichtet, noch niemand verbunden“, mit dem Weg. Grau zählt nicht in die Gesamtampel.
@@ -322,6 +374,8 @@ export interface EinrichtungLage {
   whatsapp: boolean;
   /** WHOOP-Anwendung am Server eingerichtet. */
   whoop: boolean;
+  /** ZOE-Nummer am Server eingerichtet (08.10.) — optional (ältere Lagen kennen das Feld nicht). */
+  zoeWhatsapp?: boolean;
 }
 
 export function einrichtungBefunde(e: EinrichtungLage | null | undefined, innen?: Pick<InnenLage, 'kalenderGoogle' | 'gmail' | 'whoop'>): Befund[] {
@@ -338,6 +392,8 @@ export function einrichtungBefunde(e: EinrichtungLage | null | undefined, innen?
     satz: 'Jede Person verbindet ihr WHOOP-Konto selbst unter Gesundheit › WHOOP (vorher Einwilligung Gesundheit)' });
   if (!e.whatsapp) b.push({ id: 'einrichtung-whatsapp', bereich: 'app', label: 'WhatsApp Business', ampel: 'grau', wert: 'noch nicht eingerichtet',
     satz: 'Eigene Business-Nummer bei Meta (Cloud API) anlegen, dann am Server deploy/whatsapp-verbinden.sh — Schritte in UPDATES.md (07.10.)' });
+  if (e.zoeWhatsapp === false) b.push({ id: 'einrichtung-zoe-whatsapp', bereich: 'app', label: 'ZOE auf WhatsApp', ampel: 'grau', wert: 'noch nicht eingerichtet',
+    satz: 'Erwartet als Weg aufs Handy (Briefing, Erinnerungen) — eigene ZOE-Nummer bei Meta (eigene App), Vorlage „Briefing bereit“ einreichen, dann am Server deploy/zoe-whatsapp-verbinden.sh — Schritte in UPDATES.md (08.10.)' });
   return b;
 }
 
@@ -522,6 +578,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...gmailBefunde(innen.gmail));
   b.push(...postfachBefunde(innen.postfaecher));
   b.push(...whatsappBefunde(innen.whatsapp));
+  b.push(...zoeWhatsappBefunde(innen.zoeWhatsapp));
   b.push(...whoopBefunde(innen.whoop));
   b.push(...einrichtungBefunde(innen.einrichtung, innen));
   b.push(...zugangBefunde(innen.zugang, jetzt));

@@ -301,6 +301,8 @@ const SYS = {
   // Datenschutz vor dem Upload (08.10. spät): Tageslauf je Person (Ausrichtung mit Gesundheitskontext), persönliche Kennungen der Stammdaten.
   tageslauf: 'MESSLATTE-SYS-TAGESLAUF',
   steuerId: 'MESSLATTE-SYS-STEUERID',
+  // ZOE auf WhatsApp (08.10.): der Kanal je Person — die Marke steckt im Zeitpunkt „verbunden seit“ (nur der geht maskiert-frei hinaus).
+  zoeKanal: '2002-03-04T05:06:07.891Z',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -449,6 +451,7 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     // Tageslauf (Altbestand ohne Suffix = Inhaber) und Stammdaten mit persönlicher Kennung von Kevin (08.10. spät).
     await db.saveJson('tageslauf', { laeufe: [{ id: 'lauf-messlatte', art: 'kurz', gestartet: J, fertig: J, schritte: [{ id: 'aufgaben', name: 'Aufgaben', stand: 'ok', kurz: SYS.tageslauf }], ausrichtung: { gruss: SYS.tageslauf } }] });
     await db.saveJson('stammdaten', { firmen: [], konten: [], partner: [], personen: [{ id: 'p-messlatte', name: 'kevin', person: 'kevin', steuerId: SYS.steuerId, svNummer: SYS.steuerId }] });
+    await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

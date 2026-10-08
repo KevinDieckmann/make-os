@@ -4,6 +4,91 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 spät — ZOE auf WhatsApp: eigene ZOE-Nummer, Kanal je Person (nur lokal — Branch `zoe-whatsapp`; Roadmap Lücke 5)
+
+**Entschieden (Kevin 08.10., R5):** „Zweite Business-Nummer nur für ZOE.“ Roadmap: 7-Uhr-Briefing, Wochenstart, Rückblick, Erinnerungen,
+Sicherheits-Hinweise über WhatsApp; je Person mit Einwilligung; außerhalb des 24-h-Fensters die Vorlage „Briefing bereit“. Telegram wirkt online
+nicht (Abholer nur am Mac) und ist ein Drittland-Dienst ohne AVV. Fragebogen Teil 3: Sprachnachricht an ZOE → Aufgabe/Notiz (Transkription folgt).
+
+**Was gebaut ist:**
+- **Eigene ZOE-Nummer** neben der Business-Nummer — eigene Variablen `WHATSAPP_ZOE_*`, eigener Webhook `/api/zoe/whatsapp/webhook` (Verify-Token,
+  Signatur über den Rohkörper, idempotent), eigene Bestände; Graph-Zugriff, Signaturprüfung und Fehlertexte der Business-Nummer werden
+  wiederverwendet. Ohne Einrichtung ist alles aus (404). Gleicht die ZOE-Nummer der Business-Nummer, bleibt sie aus (Log beim Start, Head of IT rot).
+- **Kanal je Person** (Konto › „ZOE auf WhatsApp“ und Einstellungen › Verbindungen): Einwilligung lesen + zustimmen, eigene Handynummer eingeben,
+  „Code holen“, den Code von GENAU dieser Nummer an die ZOE-Nummer schicken → verbunden (Glocke „… ist jetzt mit +49 ••• … verbunden“).
+  Nachweis (Einwilligung, Bestätigung, Ausnahme, Widerruf) nur anhängend. „STOP“ an ZOE oder „Trennen“ beendet ihn. Nummer nur maskiert im Browser.
+- **EIN Sendeweg** `anPersonMelden` (lib/zoe/an-person.ts): ZOE-WhatsApp, sonst Telegram, sonst (nur wo gewünscht) Glocke. Gesundheits-Takt
+  (Morgen/Mittag/Abend/Woche), Markttraktion (Morgen-Nachricht, Freitags-Scoreboard), Head of IT und die Sicherheits-Hinweise der Anmeldung
+  laufen darüber. **Ohne ZOE-Kanal wie bisher** (Telegram bzw. nichts).
+- **Regeln:** ohne die Ausnahme „Inhalte senden“ nur neutrale Hinweise mit Link (dieselbe Prüfung wie Telegram); im 24-h-Fenster frei,
+  außerhalb nur die Vorlage „Briefing bereit“ — höchstens eine je 20 h ohne Antwort (Sicherheits-Hinweise immer); was sie ankündigt, kommt mit
+  der nächsten Nachricht der Person („zeig“ genügt).
+- **Eingang:** Fragen beantwortet ZOE über denselben Weg wie im Browser (als die Person, Nachricht in `fremd()`, schreibende Werkzeuge nur als
+  Vorschlag, KI-Tor) — die Antwort liegt im ZOE-Verlauf („WhatsApp · …“), aufs Handy nur „Antwort liegt in MAKE OS“ mit Link (mit Ausnahme der
+  Wortlaut). „Aufgabe: …“ / „Notiz: …“ → NUR Vorschlag in den Freigaben mit Kennung; „ja <Kennung>“ (oder „ja“ als Antwort auf die Ansage) gibt
+  genau diesen eigenen Vorschlag frei, „nein <Kennung>“ lehnt ab. Sprachnachricht → verschlüsselt abgelegt (30 Tage), keine Transkription
+  (`ZOE_TRANSKRIPTION_AN` aus), Antwort „bitte als Text schicken oder in MAKE OS anhören“. Fremde Nummern: keine Antwort, nur ein Zähler.
+
+**So testet ihr — lokal (ohne Meta):**
+1. Einstellungen › Verbindungen: Karte „ZOE auf WhatsApp“ steht unter „WhatsApp Business“ — Chip „nicht eingerichtet“; als Inhaber stehen dort die
+   fehlenden Variablen (nur Namen) und die Webhook-Adresse.
+2. Konto: dieselbe Karte als Kachel „ZOE auf WhatsApp“ (neben „Der Bote · Telegram“).
+3. ZOE › Head of IT: grauer Befund „ZOE auf WhatsApp — noch nicht eingerichtet“.
+4. Alles andere wie vorher: Telegram-Hinweise (falls gekoppelt) kommen unverändert.
+
+**So testet ihr — nach dem Upload und der Einrichtung (Schritte unten):**
+1. Konto › ZOE auf WhatsApp: Schalter „ZOE darf mich auf WhatsApp erreichen“ an, Handynummer eingeben → **Code holen** → **In WhatsApp öffnen** →
+   in WhatsApp **Senden** → zurück in MAKE OS **Ist es angekommen?** → Chip „verbunden“, Glocke zeigt die Verbindung.
+2. **Test-Nachricht** → kommt aufs Handy.
+3. Am Handy: „Aufgabe: Test aus WhatsApp“ → Antwort „Vorschlag ABCD liegt in deinen Freigaben …“; ZOE › Freigaben zeigt ihn; am Handy „ja ABCD“ →
+   „Freigegeben (ABCD) …“, die Aufgabe steht im Board. Mit „nein ABCD“ wird er abgelehnt.
+4. Am Handy: „Was steht heute an?“ → „Antwort liegt in MAKE OS — …/zoe“; in ZOE steht das Gespräch „WhatsApp · Was steht heute an?“.
+5. Sprachnachricht schicken → „Sprachnachricht erhalten …“; Konto › ZOE auf WhatsApp › **Anhören**.
+6. Ausnahme **„Inhalte über WhatsApp senden“** einschalten (Rückfrage) → Antworten und Briefings kommen im Wortlaut; ausschalten → wieder nur Hinweise.
+7. Einen Tag nicht schreiben → am Morgen kommt „Briefing bereit“ (Vorlage); „zeig“ antworten → die angekündigten Nachrichten kommen.
+8. „STOP“ schicken → „Abgemeldet …“; die Karte zeigt „nicht verbunden“, unter **Nachweise** „Getrennt · über WhatsApp“.
+9. Von einem anderen Handy an die ZOE-Nummer schreiben → keine Antwort; Head of IT zählt „1 von fremden Nummern (ignoriert)“.
+
+**Schritte für Kevin — in dieser Reihenfolge** (Aussagen über Meta mit Beleg; wo keiner da ist: „bei Meta prüfen“):
+1. **Zweite Nummer** (SMS oder Anruf möglich, **nicht** in der WhatsApp-App aktiv). Ein neues Business-Portfolio hat höchstens 2 Nummern — Business-
+   und ZOE-Nummer passen hinein (https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started).
+2. **Eigene App für ZOE** (Typ „Business“) im App-Dashboard https://developers.facebook.com/apps/ anlegen, Produkt **WhatsApp** hinzufügen, im
+   Portfolio der MAKE Innovation GmbH. Warum eine eigene App: Meta schickt die Webhooks an die Rückruf-Adresse der App — mit eigener App hat
+   die ZOE-Nummer ihren eigenen Webhook und ihr eigenes App-Geheimnis (Annahme; lägen beide Nummern in einer App, kämen ZOEs Nachrichten am
+   Webhook der Business-Nummer an und würden dort übersprungen — ob Meta je Nummer eine eigene Rückruf-Adresse erlaubt: bei Meta prüfen).
+3. **Nummer hinzufügen** (WhatsApp › API-Einrichtung) und per SMS/Anruf bestätigen — **noch nicht registrieren** (Schritt 8, mit Speicherort
+   Deutschland). Anzeigename z. B. „ZOE · MAKE“ (Regeln: https://developers.facebook.com/documentation/business-messaging/whatsapp/display-names).
+4. **System-User + dauerhafter Zugriffsschlüssel** mit **whatsapp_business_messaging** und **whatsapp_business_management**, ZOE-App und WhatsApp-Konto
+   zuweisen (https://developers.facebook.com/documentation/business-messaging/whatsapp/access-tokens).
+5. **Vorlage „briefing_bereit“ einreichen** (WhatsApp Manager › Vorlagen): Kategorie **Utility**, Sprache **Deutsch**, Text z. B.
+   „ZOE hat etwas für dich vorbereitet. Antworte hier, dann schicke ich es dir — oder öffne MAKE OS: {{1}}“ (genau EIN Platzhalter = der Link;
+   Beispielwert https://app.makeinnovation.de/os). Utility-Vorlagen kosten nur außerhalb des 24-h-Fensters, je zugestellter Vorlage
+   (Faktendatei A3; https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/overview). Ob Meta den Text als Utility
+   annimmt: bei Meta prüfen — ein anderer Name/eine andere Sprache geht über das Skript.
+6. **Auf dem Server eintragen:** `ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/zoe-whatsapp-verbinden.sh` — fragt Telefonnummer-ID und
+   WABA-ID der ZOE-Nummer, den Schlüssel (verdeckt, genau EINMAL), das App-Geheimnis der ZOE-App (verdeckt), Name/Sprache der Vorlage; bricht ab,
+   wenn die ID der Business-Nummer gleicht; erzeugt den **Verify-Token**. Entfernen: `… zoe-whatsapp-verbinden.sh --entfernen`.
+7. **Webhook der ZOE-App** (App-Dashboard › WhatsApp › Konfiguration): Rückruf-URL `https://app.makeinnovation.de/api/zoe/whatsapp/webhook`, Verify-Token
+   aus Schritt 6, „Überprüfen und speichern“, Feld **messages** abonnieren
+   (https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/create-webhook-endpoint).
+8. **In MAKE OS** (als Inhaber): Einstellungen › Verbindungen › „ZOE auf WhatsApp“ › **ZOE-Nummer registrieren** (Zwei-Schritt-PIN, Speicherort
+   Deutschland; höchstens 10 Versuche in 72 h — https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/registration)
+   → „bei Meta prüfen“ zeigt Nummer und „Vorlage genehmigt“.
+9. **Datenschutz:** System › Datenschutz › Empfänger: „Meta (ZOE-Kanal)“ zurückholen (liegt archiviert) und die WhatsApp Business Data Processing
+   Terms mit Datum ablegen; der VVT-Eintrag „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ erscheint von selbst, sobald die Werte auf dem Server stehen.
+10. **Jede Person verbindet sich selbst** (Konto › ZOE auf WhatsApp) — Kevin und Malin je mit eigener Nummer.
+11. Danach entscheidet Kevin, ob der Telegram-Bot bleibt (er ist der Rückfall, solange jemand nicht verbunden ist).
+
+**Neu im Code (nur neue Bestände, optionale Felder):** Bestände `zoe-kanal--<person>` (Register mit Angaben, PERSON_BESTAENDE: Export + Löschen),
+`zoe-whatsapp-zustand` (nur Zähler/Caches), Ordner `<daten>/zoe-whatsapp-medien/` (in `BILD_ORDNER`), Empfänger `meta-zoe-kanal`, VVT
+`vv-zoe-whatsapp` (Konto-Auskunft), Routen `/api/zoe/whatsapp` (+ `/webhook`, `/sprachnachricht`), Middleware lässt genau den Webhook (GET/POST) ohne
+Sitzung durch, HOI-Befunde `zoe-whatsapp` und `einrichtung-zoe-whatsapp`. `lib/whatsapp/graph.ts` kennt einen eigenen Schlüssel-Haken je Zugang
+(die Business-Nummer bleibt unverändert). Umgebung: `WHATSAPP_ZOE_*`, `ZOE_TRANSKRIPTION_AN` (deploy/env.server.beispiel).
+
+**Rückweg:** Der alte Stand kennt die Bestände nicht und fasst sie nicht an; ohne `WHATSAPP_ZOE_*` ist alles aus und die Hinweise laufen wie vorher
+über Telegram. Sprachnachrichten-Dateien bleiben verschlüsselt liegen (bei Bedarf Ordner `zoe-whatsapp-medien` löschen). Bei Meta: Webhook-Abo der
+ZOE-App entfernen, System-User-Schlüssel widerrufen.
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:
