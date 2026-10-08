@@ -55,6 +55,17 @@ describe('Reha-Schild nur für die eigene Routine (vorher: Ziel einer Person fü
     expect(rehaFehltHeute([{ date: '2026-10-02', art: 'reha' }, fokus, { date: heute, art: 'reha' }], heute)).toBe(false);
     expect(rehaFehltHeute([{ date: '2026-10-02', art: 'reha' }], heute)).toBe(false); // heute gar nichts geplant
   });
+  it('Tagesplanung „Durchgeplant“: Prüfpunkt Reha nur mit eigener Reha-Gewohnheit (Demo-Rundgang 08.10.: stand fest für jede Person)', async () => {
+    const { rehaGewohnt } = await import('@/lib/planung/reha-regel');
+    const heute = '2026-10-09';
+    expect(rehaGewohnt([], heute)).toBe(false);
+    expect(rehaGewohnt([{ date: '2026-10-02', art: 'reha' }], heute)).toBe(true);
+    expect(rehaGewohnt([{ date: heute, art: 'reha' }], heute)).toBe(false); // heute zählt nicht als Gewohnheit
+    expect(rehaGewohnt([{ date: '2026-09-20', art: 'reha' }], heute)).toBe(false);
+    const quelle = readFileSync(path.join(process.cwd(), 'components/os/TagesplanView.tsx'), 'utf-8');
+    expect(quelle).toContain('rehaGewohnt(');
+    expect(quelle).not.toMatch(/\{ ok: meine\.some\(b => b\.art === 'reha'\), text: 'Reha' \}/);
+  });
 });
 
 describe('Quelltext: keine Abfrage einer festen Person', () => {

@@ -20,6 +20,7 @@ import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { useKalender } from './kalender/teile';
 import { bloeckeAus, blockAnfrage, gehoertZu, planArtVon, type PlanBlockSicht } from '@/lib/planung/bloecke';
+import { REHA_GEWOHNHEIT_TAGE, rehaGewohnt } from '@/lib/planung/reha-regel';
 import { tagPlus, wandAus, minutenVon } from '@/lib/kalender/zeit';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
@@ -84,6 +85,8 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const { daten: kal, laden: kalLaden } = useKalender(heute, tagPlus(heute, 1));
   const [ich, setIch] = useState<string | null>(null);
   const [archiv, setArchiv] = useState<PlanBlockSicht[]>([]);
+  // Reha zählt im „Durchgeplant“-Check nur, wenn die Person selbst in den letzten Tagen Reha geplant hat (nie fest für alle).
+  const [rehaVorher, setRehaVorher] = useState(false);
   const [meldung, setMeldung] = useState<string | null>(null);
   const [routinen, setRoutinen] = useState<Routine[]>([]);
   const [hlog, setHlog] = useState<Record<string, string[]>>({});
@@ -99,8 +102,13 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   useEffect(() => {
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (typeof d.ich?.speicher === 'string') setIch(d.ich.speicher); }).catch(() => {});
     // Archiv: Blöcke des alten Wochenplans an diesem Tag, die (noch) nicht übernommen sind — nur lesen.
-    fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlus(heute, 1)}`).then(r => r.json())
-      .then(d => setArchiv(((d.bloecke ?? []) as (PlanBlockSicht & { gespiegelt?: true })[]).filter(b => b.quelle === 'archiv' && !b.gespiegelt))).catch(() => setArchiv([]));
+    // Dazu die eigenen Blöcke der letzten Tage — nur für die Reha-Regel (`rehaGewohnt`, lib/planung/reha-regel.ts).
+    fetch(`/api/planung/bloecke?von=${tagPlus(heute, -REHA_GEWOHNHEIT_TAGE)}&bis=${tagPlus(heute, 1)}`).then(r => r.json())
+      .then(d => {
+        const alle = (d.bloecke ?? []) as (PlanBlockSicht & { gespiegelt?: true })[];
+        setArchiv(alle.filter(b => b.date === heute && b.quelle === 'archiv' && !b.gespiegelt));
+        setRehaVorher(rehaGewohnt(alle, heute));
+      }).catch(() => { setArchiv([]); setRehaVorher(false); });
     fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
     fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => { setFokusAlle(d.fokus ?? {}); setZiele((d.monat ?? []).filter((z: { erledigt?: boolean }) => !z.erledigt)); }).catch(() => {});
@@ -233,15 +241,16 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         if (intervalle[i].s < intervalle[k].e && intervalle[k].s < intervalle[i].e) kollisionen++;
       }
     }
+    const rehaHeute = meine.some(b => b.art === 'reha');
     return [
-      { ok: meine.some(b => b.art === 'reha'), text: 'Reha' },
+      ...(rehaVorher || rehaHeute ? [{ ok: rehaHeute, text: 'Reha' }] : []),
       { ok: wochenende || fokusMin >= 90, text: wochenende ? 'Wochenende' : '90 Min Fokus' },
       { ok: faelligHeute.every(t => geplantTasks.has(t.id)), text: 'Fälliges im Plan' },
       { ok: meine.some(b => b.art === 'routine' && b.startMin < 10 * 60) || erledigt.size > 0, text: 'Morgenroutine' },
       { ok: kollisionen === 0, text: kollisionen ? `${kollisionen} Kollision${kollisionen > 1 ? 'en' : ''}` : 'Keine Kollisionen' },
       { ok: meine.length + fix.length <= 10, text: 'Nicht überladen' },
     ];
-  }, [meine, fix, faelligHeute, geplantTasks, erledigt, heute]);
+  }, [meine, fix, faelligHeute, geplantTasks, erledigt, heute, rehaVorher]);
   const okN = check.filter(c => c.ok).length;
   const checkFarbe = okN === check.length ? LEUCHT.gut : okN >= 3 ? LEUCHT.achtung : LEUCHT.kritisch;
 

@@ -16,20 +16,9 @@ import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { WEG } from '@/lib/wege';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
-/** Wie weit zurück „Reha gehört zur eigenen Routine“ zählt (Tage). */
-export const REHA_GEWOHNHEIT_TAGE = 14;
-
-/**
- * Reha-Schild (rein): heute sind Blöcke geplant, aber kein Reha-Block — UND die Person hat in den letzten
- * `REHA_GEWOHNHEIT_TAGE` Tagen selbst Reha-Blöcke geplant. Wer nie Reha plant, bekommt den Schild nie (08.10. abends:
- * vorher galt das Ziel EINER Person für alle).
- */
-export function rehaFehltHeute(bloecke: readonly { date: string; art: string }[], today: string): boolean {
-  const heute = bloecke.filter(b => b.date === today);
-  if (!heute.length || heute.some(b => b.art === 'reha')) return false;
-  const ab = tagPlus(today, -REHA_GEWOHNHEIT_TAGE);
-  return bloecke.some(b => b.art === 'reha' && b.date >= ab && b.date < today);
-}
+// Reha-Regel rein und browser-tauglich in lib/planung/reha-regel.ts (auch für die Tagesplanung) — hier nur weitergereicht.
+import { REHA_GEWOHNHEIT_TAGE, rehaFehltHeute } from '@/lib/planung/reha-regel';
+export { REHA_GEWOHNHEIT_TAGE, rehaFehltHeute };
 
 export interface Shield {
   id: string;
