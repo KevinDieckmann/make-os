@@ -4,6 +4,42 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 Nacht — Agenten-Bereich Paket 2 „Oberfläche“ (nur lokal — Branch `agenten-seite`, Basis `agenten-vertrag`)
+
+AGENTEN_KONZEPT.md C2 + C11, Antworten „Agenten-Bereich“ und „Fragerunde Teil 1“ (ENTSCHEIDUNGEN_FRAGEBOGEN.md). `/os/agenten` ist jetzt der
+Agenten-Bereich: **links das Team wie Ordner** (ZOE, Heads nach Business/Privat, aufgeklappt die Mitarbeiter-Threads eingerückt; Punkt = läuft,
+⚑-Zahl = Freigaben), **Mitte** ZOE (Kurz-Briefing, Überblick-Karte, „Vorschläge für heute“, Chat mit @Head) bzw. der Head (Kopf mit Auftrag,
+3 Kennzahlen, „Sieht / sieht nicht“, Skills und Mitarbeiter als Chips; Reiter Chat · Aktivität · Mitarbeiter · Skills · Gedächtnis · Leistung ·
+Einstellungen) bzw. der Mitarbeiter-Thread (Brotkrumen, Auftrag in Ziel · Format · Grenzen · Quellen, Schritte, „Zweite Meinung“), **rechts** Wartet
+auf dich (Antwort in der Zeile, Risiko-Ampel) · Läuft · Als Nächstes (Eisenhower) · Fertig/Fehler eingeklappt. Kopfleiste: „+ Neu ▾“ (Auftrag, an
+mehrere Heads, Hintergrundaufgabe, Mitarbeiter, Skill), Freigaben, Geplant, Budget in Euro, Not-Aus, „⋯“ (Leitplanken, bisherige Übersicht).
+Handy: Reiter Gespräch · Team · Läuft unten, Head/Thread ganzflächig mit „‹ Team“, Daumen-Wischen nur für risikoarme Freigaben.
+
+- **Ein Client** `components/os/agenten/daten.ts` spricht die echten Routen (`/api/agenten`, `…/faden`, `…/skills`, `…/laeufe`) — solange eine Route
+  501 antwortet, zeigt der Bereich einen ruhigen Leerzustand. **Heute schon echt:** „Wartet auf dich“ und der Freigaben-Zähler (über `/api/zoe/stapel`)
+  und der ZOE-Chat in der Mitte (vorerst `/api/kimmi`; das bisherige Gespräch geht als `context` mit → ab dem 2. Zug schlägt ZOE Schreibendes nur vor;
+  Paket 4 stellt auf Threads um). Heads, Threads, Skills, Läufe erscheinen, sobald Paket 1 und 3 gemergt sind.
+- **Nicht gebaut / wartet auf Schnittstellen:** Daumen je Antwort (nur auf dem Gerät gemerkt — `FadenAnfrage` braucht eine Aktion `bewerten`),
+  Einstellungen je Head schreiben, Not-Aus schalten (Paket 4), Probelauf eines Mitarbeiters (Paket 3). Die alte Übersicht (`AgentenView`) liegt
+  unter „⋯ › Bisherige Übersicht“.
+- Tests: `tests/agenten-oberflaeche.test.ts` (Rendern gegen das Fixture, 501-Leerzustände, Design-Standard, reine Regeln), `tests/agenten-plattform.test.ts`.
+
+**So testet ihr (in Klicks) — erst nach dem Merge von Paket 1 und 3 mit echten Daten, vorher mit Leerzuständen:**
+1. Leiste › ZOE › Reiter „Agenten“. Oben „Agenten“ mit „+ Neu ▾“, Freigaben-Zahl, Geplant, Budget-Balken, Not-Aus, „⋯“.
+2. Mitte: ZOE mit Kurz-Briefing und Überblick. „Vorschläge für heute“ → einen Vorschlag antippen → ZOE antwortet im Chat (KI-Marke darunter).
+3. Im ZOE-Feld `@Sales wie sieht die Pipeline aus?` (oder Chip „@Sales“) → Senden → Zeile „An Sales gesendet“ → aufklappen → „Thread öffnen ›“.
+4. Links „Sales“ antippen → Kopf mit Auftrag, 3 Kennzahlen, Skills, Mitarbeiter. Reiter durchklicken: Aktivität, Mitarbeiter (Thread starten,
+   Duplizieren), Skills (eingebaute mit 🔒), Gedächtnis (Merksatz hinzufügen/löschen), Leistung, Einstellungen.
+5. Im Head-Chat `@Nachfassen & Power Hour bereite die Liste vor` → neuer Mitarbeiter-Thread öffnet sich; Brotkrumen „Sales › … › Thread“,
+   „Zweite Meinung“ schickt das Ergebnis an Sales zurück.
+6. Links den Pfeil vor „Sales“ → Mitarbeiter-Threads eingerückt; einen Mitarbeiter ohne Thread antippen → „Neuer Thread mit …“.
+7. Rechts „Wartet auf dich“: eine Freigabe „Risikoarm“ → „Freigeben“; „Ändert Daten“ → Rückfrage; „Nach außen“ → nur „Ansehen ›“.
+8. „+ Neu ▾ › Skill“ → Name, Beschreibung, Anleitung, Werkzeuge, Auslöser „Zeitplan › werktags 08:00“ (Satz „nächster Lauf …“), Tests → „Anlegen“.
+   „+ Neu ▾ › Mitarbeiter“ → Vorlage oder „Beschreiben“ → Rückfragen → „Plan ansehen“ → „Anlegen“.
+9. „Not-Aus“ → Rückfrage (Abbrechen hat den Fokus). „⋯ › Bisherige Übersicht“ → die alte Agenten-Seite, „‹ Zurück zu den Agenten“.
+10. Handy (375 px): unten Gespräch · Team · Läuft; „Team › Sales“ öffnet ganzflächig, „‹ Team“ zurück; unter „Läuft“ eine risikoarme Freigabe nach
+    rechts wischen → Rückfrage → freigegeben.
+
 ## 08.10.2026 spät — Konten-Register: EIN Ort für Konten und Kontostände (nur lokal — Branch `konten-register`)
 
 ROADMAP_Q4 › Lücke 2. Kevin 08.10.: „Kontostände an fünf Stellen → EIN Konten-Register … Bank, 0-Punkt, Liquidität, Finanzplanung und Haushalt
