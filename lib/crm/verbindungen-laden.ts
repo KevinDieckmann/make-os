@@ -28,6 +28,7 @@ import type { AufgabeKurz, RechnungKurz, VerbindungsBestaende } from './verbindu
 import { aufgabenBezugReparieren } from './verbindungen';
 import type { PlanungBezug } from './verbindungen-planung';
 import { ZIEL_HORIZONTE } from '@/lib/planung/typen';
+import { verborgeneMeilensteineFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { HEADS } from '@/lib/heads/prompt';
 import { standName } from '@/lib/heads/stand';
 import { ladeStand, objekteKurz, holfenster, termineImZeitraum, SPEICHER as ICLOUD_SPEICHER } from '@/lib/kalender/icloud';
@@ -92,12 +93,17 @@ async function ladePlanung(q: Quellen, betrachter?: string | null): Promise<NonN
     loadJson<{ meilensteine?: unknown }>('meilensteine'),
   ]);
   const geladen = ziele.filter(z => z.datei).map(z => ({ speicher: z.speicher, ziele: ZIEL_HORIZONTE.flatMap(h => bezuege(z.datei![h])) }));
-  if (betrachter === undefined) return { ziele: geladen, meilensteine: bezuege(ms?.meilensteine) };
+  const alleMs = bezuege(ms?.meilensteine);
+  if (betrachter === undefined) return { ziele: geladen, meilensteine: alleMs };
   const eigene = new Set(['ziele', ...(betrachter ? [speicherFuer('ziele-eigen', betrachter)] : [])]);
+  // Meilensteine an einem nicht geteilten eigenen Ziel einer anderen Person (Altbestand, Gegenprüfung 08.10.): weder gemeldet noch repariert.
+  const roh = (Array.isArray(ms?.meilensteine) ? ms!.meilensteine : []).filter((m): m is { id: string; zielId?: string; abgeleitetVon?: string } => !!m && typeof m === 'object' && typeof (m as { id?: unknown }).id === 'string');
+  const verborgen = await verborgeneMeilensteineFuer(betrachter, roh);
   return {
     ziele: geladen.filter(z => eigene.has(z.speicher)),
-    meilensteine: bezuege(ms?.meilensteine),
+    meilensteine: alleMs.filter(m => !verborgen.has(m.id)),
     weitereZiele: geladen.filter(z => !eigene.has(z.speicher)).flatMap(z => z.ziele.map(x => x.id)),
+    ...(verborgen.size ? { weitereMeilensteine: [...verborgen] } : {}),
   };
 }
 

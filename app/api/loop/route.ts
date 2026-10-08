@@ -36,6 +36,7 @@ import { delegierbar } from '@/lib/make-one/team-typen';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 /** Frühere Loop-Ergebnisse ohne Gesundheits-Ableitungen (rein): kein Gesundheits-Loop, im Morgen-Loop ohne Tagesform/Schutz. */
 function ohneGesundheit<T extends { agent: string; payload?: unknown }>(l: T[]): T[] {
@@ -224,7 +225,9 @@ export async function POST(req: Request) {
     const [fplan, kundenF, msF, journalF, wplanF] = await Promise.all([
       loadJson<{ rechnungen: { kunde: string; titel: string; betrag: number; status: string; faellig?: string }[]; zahlungen: { an: string; betrag: number; status: string; faellig?: string }[]; produkte: { name: string; preis: number; status: string; einheit: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
       loadJson<{ kunden: { name: string; status: string; mandat?: string; cashflow?: number; naechsterSchritt?: string }[] }>('kunden'),
-      loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; messlatte?: string }[] }>('meilensteine'),
+      // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person).
+      loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; messlatte?: string; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
+        .then(async f => (f ? { ...f, meilensteine: await meilensteineSichtbarFuer(f.meilensteine, person) } : f)),
       // Das Journal der auslösenden Person (S1: vorher der Altbestand „journal“ — der einer Person — für jede).
       loadJson<Record<string, { energy?: number; stress?: number; haut?: string; ruecken?: string; tagesnote?: number }>>(speicherFuer('journal', person)),
       // Blöcke dieser Woche (K5: Kalender-Termine der Art Fokus/Block) der auslösenden Person.

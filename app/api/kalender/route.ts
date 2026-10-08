@@ -116,7 +116,7 @@ export async function GET(req: Request) {
   const bezuege: BezugBestand | null = await ladeBezuege().catch(() => null);
   // Fristen: die Quellen lädt EINE Stelle (lib/kalender/fristen-server.ts, K6a) — dieselbe wie Glocke/Heute.
   const [fristenAlle, rem, inhaber, eigenerHaushalt] = await Promise.all([
-    fristenLesen(von, bis, heute).catch(() => []),
+    fristenLesen(von, bis, heute, zugang.person).catch(() => []),
     loadJson<Gemerkt>(MAC.erinnerungen).catch(() => null),
     istInhaber(zugang.person).catch(() => false),
     haushaltFuer(zugang.person).catch(() => null),

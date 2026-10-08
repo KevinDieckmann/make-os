@@ -14,6 +14,7 @@ import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { WEG } from '@/lib/wege';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 export interface Shield {
   id: string;
@@ -35,7 +36,9 @@ export async function computeShields(today = localDay(), person?: string | null)
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
-    loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean }[] }>('meilensteine'),
+    // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person; ohne Person keiner an einem eigenen Ziel).
+    loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
+      .then(async f => (f ? { ...f, meilensteine: await meilensteineSichtbarFuer(f.meilensteine, person ?? null) } : f)),
     // Heutige Blöcke (K5: Kalender-Termine der Art Fokus/Block) der Person (bzw. des Inhabers) — ohne Konto keine.
     fuer ? planBloeckeLesen({ person: fuer, von: today, bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
   ]);

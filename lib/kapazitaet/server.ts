@@ -33,7 +33,7 @@ import { wirksamerSpace, zaehltAlsArbeit } from '@/lib/planung/bereich';
 import { meilensteinVonAufgabe, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
-import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit, ohnePrivatePosten, ohnePrivateKennzahlen, postenSchluessel } from './modell';
+import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit, ohnePrivatePosten, ohneVerborgenePosten, ohnePrivateKennzahlen, postenSchluessel } from './modell';
 import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
 import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, kapaVerwaisteKonten, type KapaAuskunft } from './aufraeumen';
@@ -183,23 +183,20 @@ const gemerkt = async (heute: string) => merken(`kapazitaet:${await kapaSpeicher
 /** Der Stand für eine Person (Plattform-Regel: serverseitig gefiltert — Erholung/Titel nur die eigenen). */
 export async function kapaStandFuer(person: string, heute = localDay()) {
   const [{ stand, bezuege, privat }, zugang, verborgen] = await Promise.all([gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person)]);
-  const fuerIhn = ohnePrivatePosten(fuerBetrachter(stand, kapaIdVon(person)), verborgen);
+  const fuerIhn = ohneVerborgenePosten(fuerBetrachter(stand, kapaIdVon(person)), verborgen);
   // Konten ohne Privatzugang (finanzRecht „business“): Posten der Selbstständigkeit nur als „Privat (belegt)“ (serverseitig, 05.10. abends).
   return { stand: zugang?.sicht === 'business' ? ohnePrivatePosten(fuerIhn, privat) : fuerIhn, bezuege };
 }
 
 /**
- * Eigene Ziele nur geteilt (08.10., Kevin): Meilensteine aus dem Altbestand, die noch an einem NICHT geteilten eigenen Ziel einer
- * anderen Person hängen, nennt die Kapazität dieser Person nicht (Titel/Ziel-Bezug weg, „Privat (belegt)“ — die Stunden bleiben
- * in der Team-Last, die Zeit ist ja belegt). Postenschlüssel wie `ohnePrivatePosten`.
+ * Eigene Ziele nur geteilt (08.10., Kevin; Gegenprüfung): Meilensteine aus dem Altbestand, die noch an einem NICHT geteilten eigenen Ziel
+ * einer anderen Person hängen, gibt es in der Kapazität dieser Person nicht (`ohneVerborgenePosten`: weder Titel noch Kennung, Termin,
+ * Aufwand — die Stunden bleiben in der Last, die Zeit ist ja belegt). Ohne Person (Business-Index): jeder Meilenstein an einem eigenen Ziel.
  */
-async function verborgeneMeilensteinPosten(person: string): Promise<Set<string>> {
+async function verborgeneMeilensteinPosten(person: string | null): Promise<Set<string>> {
   // Kein catch: kann die Regel nicht gelesen werden, scheitert die Antwort (fail-closed) — nie Titel auf Verdacht ausliefern.
-  const [{ verborgeneZieleFuer }, { meilensteinVerborgen }] = await Promise.all([import('@/lib/planung/eigene-ziele-sicht-server'), import('@/lib/planung/eigene-ziele-sicht')]);
-  const verborgen = await verborgeneZieleFuer(person);
-  if (!verborgen.size) return new Set();
-  const ms = (await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'))?.meilensteine ?? [];
-  return new Set(ms.filter(m => meilensteinVerborgen(m, verborgen)).map(m => postenSchluessel({ art: 'meilenstein', id: m.id })));
+  const { verborgeneMeilensteineFuer } = await import('@/lib/planung/eigene-ziele-sicht-server');
+  return new Set([...await verborgeneMeilensteineFuer(person)].map(id => postenSchluessel({ art: 'meilenstein', id })));
 }
 
 /**
@@ -209,7 +206,11 @@ async function verborgeneMeilensteinPosten(person: string): Promise<Set<string>>
  */
 export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaKennzahlen | null> {
   // Der Business-Index nennt keine Posten aus dem Privat-Bereich (Selbstständigkeit) — ihre Stunden zählen in der Last mit (Arbeit).
-  try { const g = await gemerkt(heute); return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, g.privat)); } catch { return null; }
+  // Seit 08.10. ebenso keine Meilensteine an eigenen Zielen (Systemsicht — der Index geht an alle im Haushalt).
+  try {
+    const [g, verborgen] = await Promise.all([gemerkt(heute), verborgeneMeilensteinPosten(null)]);
+    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, new Set([...g.privat, ...verborgen])));
+  } catch { return null; }
 }
 
 // ── Wochenplan festhalten (Kevin 05.10.: „Jeden Montag wird der Wochenplan festgehalten“) — Regeln rein in ./plan.ts ──

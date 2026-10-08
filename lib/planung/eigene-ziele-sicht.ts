@@ -8,6 +8,10 @@
 // bleiben dabei so streng wie vorher (fremde eigene Ziele dort höchstens als „Belegt“).
 // EINE Regel für alle Leser — hier (rein) und in eigene-ziele-sicht-server.ts (Konten laden). Neue Leser fremder eigener Ziele
 // gehen IMMER darüber (`zieleFuerBetrachter` / `verborgeneZielIds` / `meilensteineFuerBetrachter`).
+// Gegenprüfung 08.10.: JEDER Leser des Bestands `meilensteine`, der an eine Person (oder als Systemlauf an alle) ausliefert, filtert über
+// `meilensteineSichtbarFuer`/`verborgeneMeilensteineFuer` (Server) — Detail-Route, Kalender-Fristen/Glocke/Heute, ZOE-Kontext und
+// -Werkzeuge, Business-Index (nur ohne Titel), Kapazität (ganz ohne den Posten), Verbindungsprüfung, Gesundheit, Schilde, Loops; die
+// Aufgaben-Liste `lm-…` trägt für sie nur `LISTE_NICHT_GETEILT`. Ohne Person (Systemlauf) gilt: kein Meilenstein an einem eigenen Ziel.
 
 /** Gemeinsamer Bestand (`ziele`) — gehört allen im Haushalt (wie `BEIDE` in lib/lichtfaeden/modell.ts). */
 export const GEMEINSAM = 'beide';
@@ -58,4 +62,21 @@ export const meilensteinVerborgen = (m: { zielId?: string; abgeleitetVon?: strin
 /** Meilensteine ohne die, die an einem verborgenen Ziel hängen. */
 export function meilensteineFuerBetrachter<M extends { zielId?: string; abgeleitetVon?: string }>(ms: readonly M[], verborgen: ReadonlySet<string>): M[] {
   return verborgen.size ? ms.filter(m => !meilensteinVerborgen(m, verborgen)) : [...ms];
+}
+
+/** Kennungen der Meilensteine, die an einem verborgenen Ziel hängen (Altbestand). */
+export function verborgeneMeilensteinIds(ms: readonly { id: string; zielId?: string; abgeleitetVon?: string }[], verborgen: ReadonlySet<string>): Set<string> {
+  return verborgen.size ? new Set(ms.filter(m => meilensteinVerborgen(m, verborgen)).map(m => m.id)) : new Set();
+}
+
+/**
+ * Neutraler Name der Aufgaben-Liste eines verborgenen Meilensteins (Gegenprüfung 08.10.): die Liste `lm-…` im geteilten Aufgaben-Bestand
+ * trägt sonst den Titel des Meilensteins. Die Aufgaben darin bleiben (sie haben ihre eigene Sichtbarkeit „nur ich“) — nur der Name nicht.
+ */
+export const LISTE_NICHT_GETEILT = 'Meilenstein-Liste';
+
+/** Der Aufgaben-Stand mit neutralem Namen für die Listen verborgener Meilensteine. Rein; ohne Treffer derselbe Stand. */
+export function listenFuerBetrachter<S extends { listen?: { id: string; titel: string }[] }>(state: S, verborgeneListen: ReadonlySet<string>): S {
+  if (!verborgeneListen.size || !state.listen?.some(l => verborgeneListen.has(l.id))) return state;
+  return { ...state, listen: state.listen.map(l => (verborgeneListen.has(l.id) ? { ...l, titel: LISTE_NICHT_GETEILT } : l)) } as S;
 }

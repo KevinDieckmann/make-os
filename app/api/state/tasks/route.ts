@@ -27,7 +27,7 @@ import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
-import { sichtFuer } from '@/lib/aufgaben/sicht';
+import { sichtFuer, mitNeutralenListen, neutraleListenStandNamen } from '@/lib/aufgaben/sicht';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -55,14 +55,16 @@ export async function GET(req: Request) {
   const mitPapierkorb = new URL(req.url).searchParams.get('papierkorb') === '1';
   // ETag/304 (29.09., #86): Stand von Aufgaben, CRM (Mandanten-Spaces), Orten und Konten (Übernahme) + Person (Sichtfilter
   // „nur ich“ je Person) + Papierkorb ja/nein. Unverändert → 304 ohne Lesen, Übernahme und Fingerabdrücke.
-  const etag = etagAus('aufgaben1', zugang.person ?? 'system', mitPapierkorb ? 'korb' : 'sicht', await speicherStand([AUFGABEN_SPEICHER, 'crm', 'ordnung', 'konten']));
+  // Seit 08.10. (eigene Ziele nur geteilt) auch Meilensteine und Ziele: die Liste eines verborgenen Meilensteins trägt nur einen neutralen Namen.
+  const etag = etagAus('aufgaben2', zugang.person ?? 'system', mitPapierkorb ? 'korb' : 'sicht', await speicherStand([AUFGABEN_SPEICHER, 'crm', 'ordnung', 'konten', ...await neutraleListenStandNamen()]));
   const nichts = unveraendert(req, etag);
   if (nichts) return nichts;
   const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
   if (!roh) return jsonAntwort(req, { state: null, spaces: await spacesFuer({ projects: [], tasks: [] }) }, etag);
   const voll = await ladeAufgaben();
   // Sichtfilter „nur ich“ (29.09.): jede Person sieht nur ihre eigenen „nur ich“-Aufgaben; der Systemlauf keine.
-  const state = sichtFuer(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person);
+  // Listen verborgener Meilensteine (Altbestand an einem nicht geteilten eigenen Ziel) nur mit neutralem Namen (08.10.).
+  const state = await mitNeutralenListen(sichtFuer(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person), zugang.person);
   return jsonAntwort(req, { state: fuerBrowser(state), spaces: await spacesFuer(state) }, etag);
 }
 
@@ -86,7 +88,7 @@ export async function PATCH(req: Request) {
   const haushalt = (await haushaltFuer(zugang.person))?.haushalt;
   const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true, ...(haushalt ? { haushalt } : {}) });
   if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen, ...(r.serien?.length ? { serien: r.serien } : {}) });
-  const aktuell = r.konflikte?.length ? sichtFuer(r.state ?? await ladeAufgaben(), zugang.person) : null;
+  const aktuell = r.konflikte?.length ? await mitNeutralenListen(sichtFuer(r.state ?? await ladeAufgaben(), zugang.person), zugang.person) : null;
   return NextResponse.json({
     ok: false, error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}),
     ...(r.massenAenderung ? { massenAenderung: true, anzahl: r.anzahl, grenze: r.grenze } : {}),

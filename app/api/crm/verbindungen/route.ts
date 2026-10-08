@@ -139,7 +139,9 @@ export async function POST(req: Request) {
       }
     }
     if (speicher.has('meilensteine')) {
-      await updateJson<{ meilensteine?: unknown }>('meilensteine', cur => (cur ? meilensteinDateiBereinigen(cur, lebend, new Set(ids)).datei : cur as unknown as { meilensteine?: unknown }));
+      // Verborgene Meilensteine (08.10.: an einem nicht geteilten eigenen Ziel einer anderen Person) bleiben unberührt.
+      const ausnehmen = new Set(alt.planung?.weitereMeilensteine ?? []);
+      await updateJson<{ meilensteine?: unknown }>('meilensteine', cur => (cur ? meilensteinDateiBereinigen(cur, lebend, new Set(ids), ausnehmen).datei : cur as unknown as { meilensteine?: unknown }));
     }
     if (speicher.has('zeit') && ids.includes('zeit-mandat-tot')) {
       for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiBereinigen(d, lebend).datei);

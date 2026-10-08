@@ -71,7 +71,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     einst ? sicher(termineLesen(einst, tagPlus(heute, -4), tagPlus(heute, 2)), null) : Promise.resolve(null),
     sicher(kontakteFuerVerarbeitung(), []),
     sicher(ladeCrm(), null),
-    sicher(fristenLesen(heute, tagPlus(heute, Math.max(2, vorlauf + 1)), heute), []),
+    sicher(fristenLesen(heute, tagPlus(heute, Math.max(2, vorlauf + 1)), heute, person), []),
     sicher(buchungenLesen(person), []),
     sicher(vorschlaegeZaehlen(person), { kalender: 0, gesamt: 0 }),
     // Ab heute; 61 Tage, damit ein längerer Vorlauf eines Wichtigen Tages (Familie, ≤ 60) greift — `geburtstageVorlauf` schneidet.
@@ -108,6 +108,7 @@ export async function anstehendStand(jetzt: Date = new Date()): Promise<string> 
   const h = await sicher(buchungHaushalt(), '');
   // F2 N9: alle Quellen von `anstehendLesen` — Bauplan-Etappen (`backlog`), Steuer-Vorlage (`steuern`), Familie (Geburtstage,
   // Wichtige Tage mit Geschenk-Vorlauf) — sonst bliebe das ETag nach einer Änderung dort stehen.
-  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : [])];
+  // 08.10.: Meilensteine an eigenen Zielen hängen an Konten (teilen) und Zielen — beide zählen mit.
+  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : [])];
   return `${wandzeit(jetzt).slice(0, 15)}:${await sicher(speicherStand(namen), '0')}`;
 }

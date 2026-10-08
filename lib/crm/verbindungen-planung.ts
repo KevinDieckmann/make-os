@@ -32,6 +32,11 @@ export interface PlanungBestand {
    * Ziele nur geteilt lesbar, schreiben nie). Sie zählen nur als „lebt“, damit ein Meilenstein daran nicht als tot gilt.
    */
   weitereZiele?: string[];
+  /**
+   * Kennungen von Meilensteinen, die die Prüfung weder meldet noch repariert — die an einem nicht geteilten eigenen Ziel einer ANDEREN
+   * Person hängen (Altbestand, Gegenprüfung 08.10.). Sie stehen nicht in `meilensteine` und zählen nur als „lebt“ (Vorgänger-Verweise).
+   */
+  weitereMeilensteine?: string[];
 }
 
 const e = (n: number, ein: string, mehr: string) => (n === 1 ? ein : mehr);
@@ -51,7 +56,7 @@ export interface Lebend { mandate: ReadonlySet<string>; firmen: ReadonlySet<stri
 /** Kennungen aller lebenden Ziele (alle Bestände, alle Horizonte) und Meilensteine einer Planung. */
 const planungKennungen = (p: PlanungBestand) => ({
   ziele: new Set([...(p.ziele ?? []).flatMap(s => (s.ziele ?? []).map(z => z.id)), ...(p.weitereZiele ?? [])]),
-  meilensteine: new Set((p.meilensteine ?? []).map(m => m.id)),
+  meilensteine: new Set([...(p.meilensteine ?? []).map(m => m.id), ...(p.weitereMeilensteine ?? [])]),
 });
 /** Welche Kennungen eines Meilensteins zeigen ins Leere: Ziel-Bezug, Vorgänger. */
 export function toteKetten(m: { zielId?: string; wartetAuf?: readonly string[] }, ziele: ReadonlySet<string>, meilensteine: ReadonlySet<string>): { ziel: boolean; wartet: string[] } {
@@ -165,8 +170,9 @@ export function zieleDateiBereinigen<T extends Record<string, unknown>>(d: T, l:
 /**
  * Eine Meilenstein-Datei ({ meilensteine }) bereinigen. Mit `will` (die gewählten Befunde) nur, was gewählt ist — ohne alles.
  * Der Ziel-Bezug wird nur geprüft, wenn `l.ziele` mitkommt (die Datei kennt die Ziele nicht); Vorgänger gegen die Datei selbst.
+ * `ausnehmen` = Kennungen, die unverändert bleiben (die für die fragende Person verborgenen Meilensteine).
  */
-export function meilensteinDateiBereinigen<T extends { meilensteine?: unknown }>(d: T, l: Lebend, will?: ReadonlySet<string>): { datei: T; anzahl: number } {
+export function meilensteinDateiBereinigen<T extends { meilensteine?: unknown }>(d: T, l: Lebend, will?: ReadonlySet<string>, ausnehmen?: ReadonlySet<string>): { datei: T; anzahl: number } {
   if (!Array.isArray(d.meilensteine)) return { datei: d, anzahl: 0 };
   let anzahl = 0;
   const ids = new Set((d.meilensteine as unknown[]).map(m => (m && typeof m === 'object' ? (m as { id?: unknown }).id : undefined)).filter((x): x is string => typeof x === 'string'));
@@ -174,6 +180,8 @@ export function meilensteinDateiBereinigen<T extends { meilensteine?: unknown }>
   const mandat = !will || will.has('meilenstein-mandat-tot');
   const meilensteine = d.meilensteine.map(m => {
     if (!m || typeof m !== 'object') return m;
+    // Verborgene Meilensteine (`weitereMeilensteine` der Prüfung, 08.10.) fasst die Reparatur der fragenden Person nie an.
+    if (ausnehmen?.has((m as { id?: string }).id ?? '')) return m;
     let x = mandat ? bezugBereinigen(m as PlanungBezug, l) : (m as PlanungBezug);
     x = kettenBereinigen(x, l.ziele ?? new Set<string>(), ids, w);
     if (x !== m) anzahl++;

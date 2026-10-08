@@ -10,6 +10,10 @@ import path from 'node:path';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-eigene-ziele-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
+// Nie Kevins echten Vault/Index berühren (gatherBrain, ZOE-Werkzeuge).
+process.env.MAKE_VAULT_DIR = path.join(ordner, 'vault');
+process.env.MAKE_OS_DOKU_WURZEL = 'aus';
+process.env.MAKE_OS_BRAIN_INDEX = 'aus';
 process.env.MAKE_OS_KEY = 'pruef-schluessel-eigene-ziele';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
@@ -30,6 +34,9 @@ let licht: { GET: H };
 let ms: { GET: H; PATCH: H };
 let seil: { GET: H };
 let kapa: { GET: H };
+let detail: { GET: H; POST: H };
+let tasks: { GET: H; PATCH: H };
+let anlegen: { POST: H };
 let db: typeof import('@/lib/store/local-db');
 
 const zieleTeilen = async (wer: string, liste: string[]) => {
@@ -52,7 +59,7 @@ beforeAll(async () => {
   await db.saveJson('meilensteine', { meilensteine: [
     { id: 'm-wir', titel: 'Gemeinsamer Meilenstein', faellig: '2026-11-20', zielId: 'z-wir', space: 'business', fortschritt: 0, erledigt: false },
     { id: 'm-alt', titel: 'GEHEIM-MS-B', faellig: '2026-11-25', zielId: 'zb-geheim', space: 'privat', fortschritt: 0, erledigt: false },
-    { id: 'm-alt-biz', titel: 'GEHEIM-MS-BIZ', faellig: '2026-12-01', zielId: 'zb-geheim', space: 'business', fortschritt: 0, erledigt: false, aufwand: 20 },
+    { id: 'm-alt-biz', titel: 'GEHEIM-MS-BIZ', faellig: '2026-12-01', zielId: 'zb-geheim', space: 'business', bereich: 'business', fortschritt: 0, erledigt: false, aufwand: 20, mandatId: 'm-gibt-es-nicht' },
   ] });
   await db.saveJson('tasks', { projects: [], listen: [], tasks: [] });
   ziele = (await import('@/app/api/state/ziele/route')) as unknown as typeof ziele;
@@ -62,6 +69,9 @@ beforeAll(async () => {
   ms = (await import('@/app/api/state/meilensteine/route')) as unknown as typeof ms;
   seil = (await import('@/app/api/seil/route')) as unknown as typeof seil;
   kapa = (await import('@/app/api/kapazitaet/route')) as unknown as typeof kapa;
+  detail = (await import('@/app/api/planung/meilenstein/route')) as unknown as typeof detail;
+  tasks = (await import('@/app/api/state/tasks/route')) as unknown as typeof tasks;
+  anlegen = (await import('@/app/api/tasks/create/route')) as unknown as typeof anlegen;
 }, 60_000);
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); vi.restoreAllMocks(); });
 
@@ -138,11 +148,89 @@ describe('nicht geteilt (Vorgabe) — person-a bekommt nichts aus den eigenen Zi
     ohneGeheim(await r.text(), 'seil');
   });
 
-  it('Kapazität: der Meilenstein am fremden eigenen Ziel trägt für person-a keinen Titel', async () => {
+  it('Kapazität: den Meilenstein am fremden eigenen Ziel gibt es für person-a nicht — kein Titel, keine Kennung (Gegenprüfung 08.10.)', async () => {
     const r = await kapa.GET(anfrage('/api/kapazitaet', 'person-a'));
     expect(r.status).toBe(200);
-    expect(await r.text()).not.toContain('GEHEIM-MS-BIZ');
+    ohneGeheim(await r.text(), 'kapazität person-a');
     expect(await (await kapa.GET(anfrage('/api/kapazitaet', 'person-b'))).text()).toContain('GEHEIM-MS-BIZ');
+    // Pure Regel: Posten weg (auch aus „kritisch“ und dem Wochenplan), die Summen bleiben.
+    const { ohneVerborgenePosten } = await import('@/lib/kapazitaet/modell');
+    const posten = { art: 'meilenstein' as const, id: 'm-x', titel: 'X', personen: [], status: 'machbar' as const, text: '' };
+    const stand = { heute: '2026-10-08', wochen: [], personen: [], team: { wochen: [], kopf: { faktor: 1, personen: 0, tage: 0 } }, posten: [posten], zuweisungen: [],
+      kennzahlen: { kritisch: [posten] }, wochenPlan: { woche: '2026-10-05', ab: '2026-10-08', personen: [{ id: 'p', quelle: 'konto' as const, verfuegbar: 10, geplant: 5, gebunden: 0, posten: [{ art: 'meilenstein' as const, id: 'm-x', stunden: 5 }], zuweisungen: [] }] } };
+    const aus = ohneVerborgenePosten(stand as unknown as Parameters<typeof ohneVerborgenePosten>[0], new Set(['meilenstein:m-x']));
+    expect(JSON.stringify(aus)).not.toContain('m-x');
+    expect(aus.wochenPlan!.personen[0].geplant).toBe(5);
+  });
+
+  it('Meilenstein-Detail (GET/POST /api/planung/meilenstein): für person-a 404 ohne Inhalt, auch kein Verlauf schreiben; die Eigentümerin öffnet ihn', async () => {
+    const g = await detail.GET(anfrage('/api/planung/meilenstein?id=m-alt', 'person-a'));
+    expect(g.status).toBe(404);
+    ohneGeheim(await g.text(), 'detail GET');
+    const p = await detail.POST(anfrage('/api/planung/meilenstein', 'person-a', 'POST', { id: 'm-alt', aktion: { art: 'senden', text: 'von außen' } }));
+    expect(p.status).toBe(404);
+    expect(await db.loadJson('meilenstein-raum--haus-t')).toBeNull();
+    // Die Eigentümerin öffnet ihn — dabei entsteht (lazy) seine Aufgaben-Liste mit dem Titel (für den Aufgaben-Test unten).
+    const b = await detail.GET(anfrage('/api/planung/meilenstein?id=m-alt', 'person-b'));
+    expect(b.status).toBe(200);
+    expect(await b.text()).toContain('GEHEIM-MS-B');
+  });
+
+  it('Aufgaben: die Liste des verborgenen Meilensteins heißt für person-a (und den Systemlauf) nur neutral; ändern/löschen 404', async () => {
+    const { LISTE_NICHT_GETEILT } = await import('@/lib/planung/eigene-ziele-sicht');
+    const roh = (await db.loadJson<{ listen: { id: string; titel: string }[] }>('tasks'))!;
+    const liste = roh.listen.find(l => l.titel === 'GEHEIM-MS-B');
+    expect(liste).toBeTruthy();
+    const a = await tasks.GET(anfrage('/api/state/tasks', 'person-a'));
+    expect(a.status).toBe(200);
+    const text = await a.text();
+    expect(text).not.toContain('GEHEIM-MS-B');
+    expect(text).toContain(LISTE_NICHT_GETEILT);
+    expect(await (await tasks.GET(anfrage('/api/state/tasks', 'person-b'))).text()).toContain('GEHEIM-MS-B');
+    const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht');
+    expect(JSON.stringify(await ladeAufgabenSicht('person-a'))).not.toContain('GEHEIM-MS-B');
+    expect(JSON.stringify(await ladeAufgabenSicht(null))).not.toContain('GEHEIM-MS-B');
+    for (const op of [{ op: 'delete', id: liste!.id }, { op: 'upsert', eintrag: { ...liste, titel: LISTE_NICHT_GETEILT } }]) {
+      expect((await tasks.PATCH(anfrage('/api/state/tasks', 'person-a', 'PATCH', { struktur: { listen: [op] } }))).status).toBe(404);
+    }
+    expect((await db.loadJson<{ listen: { id: string; titel: string }[] }>('tasks'))!.listen.find(l => l.id === liste!.id)?.titel).toBe('GEHEIM-MS-B');
+    // Eine Aufgabe am verborgenen Meilenstein anlegen: „gibt es nicht“.
+    const c = await anlegen.POST(anfrage('/api/tasks/create', 'person-a', 'POST', { title: 'Aufgabe von außen', meilensteinId: 'm-alt' }));
+    expect(c.status).toBe(404);
+  });
+
+  it('Kalender-Fristen (Kalender, Glocke, Heute): ohne den Meilenstein — auch im Systemlauf', async () => {
+    const { fristenLesen } = await import('@/lib/kalender/fristen-server');
+    ohneGeheim(JSON.stringify(await fristenLesen('2026-10-01', '2027-01-31', '2026-10-08', 'person-a')), 'fristen person-a');
+    ohneGeheim(JSON.stringify(await fristenLesen('2026-10-01', '2027-01-31', '2026-10-08', null)), 'fristen system');
+    expect(JSON.stringify(await fristenLesen('2026-10-01', '2027-01-31', '2026-10-08', 'person-b'))).toContain('GEHEIM-MS-B');
+  });
+
+  it('ZOE: Kontext (gatherBrain), setze_meilenstein + Vorschau finden ihn für person-a nicht und nennen ihn nicht', async () => {
+    const { gatherBrain } = await import('@/lib/brain');
+    ohneGeheim(JSON.stringify((await gatherBrain('2026-10-08', 'person-a')).meilensteine), 'brain person-a');
+    expect(JSON.stringify((await gatherBrain('2026-10-08', 'person-b')).meilensteine)).toContain('GEHEIM-MS-BIZ');
+    const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
+    const t = await WERKZEUGE.setze_meilenstein.lauf({ titel: 'GEHEIM', fortschritt: 50 }, 'http://test', 'person-a');
+    expect(t).toMatch(/Kein Meilenstein/);
+    ohneGeheim(t, 'setze_meilenstein');
+    expect((await db.loadJson<{ meilensteine: { id: string; fortschritt: number }[] }>('meilensteine'))!.meilensteine.find(m => m.id === 'm-alt')?.fortschritt).toBe(0);
+    const { vorschauVon } = await import('@/lib/zoe/register');
+    ohneGeheim(JSON.stringify(await vorschauVon('setze_meilenstein', { titel: 'GEHEIM' }, 'person-a')), 'vorschau person-a');
+    expect(JSON.stringify(await vorschauVon('setze_meilenstein', { titel: 'GEHEIM-MS-B' }, 'person-b'))).toContain('GEHEIM-MS-B');
+  });
+
+  it('Business-Index (an alle im Haushalt): der Meilenstein zählt mit, aber ohne Titel und Kennung; Schilde und Gesundheit ohne ihn', async () => {
+    const { ladeRoh } = await import('@/lib/business/speicher');
+    const roh = await ladeRoh('2026-10-08');
+    ohneGeheim(JSON.stringify(roh.meilensteine), 'business');
+    expect(roh.meilensteine.filter(m => !m.titel).length).toBe(2);
+    const { computeShields } = await import('@/lib/risk');
+    ohneGeheim(JSON.stringify(await computeShields('2026-12-31', 'person-a')), 'schilde person-a');
+    ohneGeheim(JSON.stringify(await computeShields('2026-12-31', null)), 'schilde system');
+    expect(JSON.stringify(await computeShields('2026-12-31', 'person-b'))).toContain('GEHEIM-MS-B');
+    const { ladeGesundheitBestand } = await import('@/lib/gesundheit/speicher');
+    ohneGeheim(JSON.stringify((await ladeGesundheitBestand('person-a', '2026-10-08')).meilensteine), 'gesundheit person-a');
   });
 
   it('Verbindungsprüfung: Befunde/Reparatur nur über geteilte und EIGENE Ziele — Meilensteine am fremden Ziel gelten nicht als tot', async () => {
@@ -152,6 +240,14 @@ describe('nicht geteilt (Vorgabe) — person-a bekommt nichts aus den eigenen Zi
     expect(fuerA.some(b => b.id === 'meilenstein-ziel-tot')).toBe(false);
     const fuerB = verbindungenPruefen(await ladeVerbindungsBestaende('2026-10-08', 'person-b'));
     expect(JSON.stringify(fuerB.find(b => b.id === 'ziel-mandat-tot'))).toContain('zb-geheim');
+    // Gegenprüfung 08.10.: auch der tote Mandats-Bezug des verborgenen Meilensteins wird person-a weder gemeldet noch repariert.
+    expect(fuerA.some(b => b.id === 'meilenstein-mandat-tot')).toBe(false);
+    expect(JSON.stringify(fuerB.find(b => b.id === 'meilenstein-mandat-tot'))).toContain('m-alt-biz');
+    const { meilensteinDateiBereinigen } = await import('@/lib/crm/verbindungen-planung');
+    const datei = (await db.loadJson<{ meilensteine: unknown[] }>('meilensteine'))!;
+    const lebend = { mandate: new Set<string>(), firmen: new Set<string>() };
+    expect(meilensteinDateiBereinigen(datei, lebend, new Set(['meilenstein-mandat-tot']), new Set(['m-alt-biz'])).anzahl).toBe(0);
+    expect(meilensteinDateiBereinigen(datei, lebend, new Set(['meilenstein-mandat-tot'])).anzahl).toBe(1);
   });
 });
 

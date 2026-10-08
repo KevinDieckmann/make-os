@@ -299,7 +299,7 @@ describe('Server: Rechte, Kompatibilität, Kalender', () => {
 
     // Vertragsfrist erscheint in den Fristen des Kalenders (Haushalt des Inhabers)
     const { fristenLesen } = await import('@/lib/kalender/fristen-server');
-    const f = await fristenLesen('2026-12-01', '2027-01-01', '2026-10-04');
+    const f = await fristenLesen('2026-12-01', '2027-01-01', '2026-10-04', 'person-a');
     expect(f.some(x => x.art === 'vertrag' && x.tag === '2026-12-15' && x.titel === 'Kündigen bis: Satzung')).toBe(true);
 
     // Löschen: feste nie, eine mit Verweisen nur in den Papierkorb, endgültig erst ohne Verweise

@@ -24,6 +24,7 @@ import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
 import { abEroeffnung, abschlussVor, gesamtAbMonat, geltendeEroeffnungen, type Geltende } from './eroeffnung';
 import { ladeEroeffnungen } from './eroeffnung-server';
+import { verborgeneMeilensteineFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { BUSINESS_GESELLSCHAFTEN, PRIVAT_GESELLSCHAFTEN, KERN_EINHEITEN, GEHOERT_ZU_PRIVAT, bereichVon, bereichVonFirma, bereichVonGesellschaft, finanzOrtName, istBusinessGesellschaft, istGesellschaft, type Bereich, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export const EINSTELLUNGEN = 'business-einstellungen';
@@ -179,7 +180,7 @@ async function ladeRohFrisch(heute: string) {
     // Fokus-Blöcke (K5: Kalender-Termine der Art Fokus/Block + Archiv) — der Plan des Inhabers (Rolle, keine feste Person im Code).
     inhaberSpeicher().then(p => (p ? planBloeckeLesen({ person: p, von: tagPlus(heute, -42), bis: tagPlus(heute, 1) }) : [])).catch(() => []),
     loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('zoe-auftraege'),
-    loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; space?: string; einheit?: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
+    loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; space?: string; einheit?: string; faellig?: string; fortschritt: number; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine'),
     ladeEinstellungen(),
     loadJson<BusinessVerlauf>(VERLAUF),
     ladeIndexDatei('traktion-index'),
@@ -188,6 +189,9 @@ async function ladeRohFrisch(heute: string) {
   // 0-Punkt (05.10.): je Business-Gesellschaft mit Eröffnung rechnet alles ab dem Stichtag (lib/business/eroeffnung.ts) — Konten starten beim
   // Anfangsbestand, Posten/Abschlüsse davor sind archiviert (gespeichert, nicht gezählt), offene Posten der Eröffnung kommen dazu.
   const eroeffnung: Geltende = geltendeEroeffnungen(eroeffnungen);
+  // Fail-closed: kann die Regel nicht gelesen werden, tragen alle Meilensteine mit Ziel-Bezug keinen Titel.
+  const msOhneTitel = await verborgeneMeilensteineFuer(null, (ms?.meilensteine ?? []).filter((m): m is typeof m & { id: string } => !!m.id))
+    .catch(() => new Set((ms?.meilensteine ?? []).filter(m => m.id && (m.zielId || m.abgeleitetVon)).map(m => m.id!)));
   const abschluesse = abschluesseAlle.filter(a => !abschlussVor(a, eroeffnung));
   // Kapazität (04.10.): nur die Team-Summen — eigener Lesefehler darf den Index nie kippen (null = Säule zählt nicht).
   const kapa = await kapaKennzahlenFuerIndex(heute);
@@ -242,7 +246,10 @@ async function ladeRohFrisch(heute: string) {
     auftraege: (auftraege?.auftraege ?? []).map(a => ({ status: a.status, beendet: a.beendet, zeit: a.zeit, anlass: a.anlass, name: a.name, auftrag: typeof a.auftrag === 'string' ? a.auftrag.slice(0, 120) : undefined })),
     // Meilensteine einer Privat-Einheit (05.10. abends: gespeichert Business + Einheit „Selbstständigkeit“) gehören zu Privat — serverseitig
     // heraus (`meilensteinSpace`, abgeleitet). Das Altfeld `bereich` bleibt im Speicher „business“ (für den alten Stand).
-    meilensteine: (ms?.meilensteine ?? []).filter(m => !(m.bereich === 'business' && meilensteinSpace(m) === 'privat')),
+    // Eigene Ziele nur geteilt (08.10., Gegenprüfung): der Index geht an alle im Haushalt (und an ZOE) — ein Meilenstein an einem eigenen
+    // Ziel (Altbestand) zählt im Kurs mit, aber ohne Titel und Kennung (Systemsicht `verborgeneMeilensteineFuer(null)`).
+    meilensteine: (ms?.meilensteine ?? []).filter(m => !(m.bereich === 'business' && meilensteinSpace(m) === 'privat'))
+      .map(m => (m.id && msOhneTitel.has(m.id) ? { bereich: m.bereich, ...(m.space ? { space: m.space } : {}), ...(m.einheit ? { einheit: m.einheit } : {}), ...(m.faellig ? { faellig: m.faellig } : {}), fortschritt: m.fortschritt, erledigt: m.erledigt } : m)),
     kapa,
     fte: einst.fte,
     ziele: einst.ziele ?? {},

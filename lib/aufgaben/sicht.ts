@@ -77,7 +77,27 @@ export async function ladeAufgaben(orgs?: Record<string, string>): Promise<Tasks
  * `person` ist Pflicht: `null` = Systemlauf → keine „nur ich“-Aufgabe. So kann kein Leser den Filter vergessen.
  */
 export async function ladeAufgabenSicht(person: string | null, orgs?: Record<string, string>): Promise<TasksState> {
-  return sichtFuer(aufgabenSicht(await ladeAufgaben(orgs)), person);
+  return mitNeutralenListen(sichtFuer(aufgabenSicht(await ladeAufgaben(orgs)), person), person);
+}
+
+/**
+ * Eigene Ziele nur geteilt (08.10., Gegenprüfung): die Aufgaben-Liste eines Meilensteins, der an einem nicht geteilten eigenen Ziel
+ * einer anderen Person hängt (Altbestand), trägt für `person` nur einen neutralen Namen (`LISTE_NICHT_GETEILT`) — ohne Person
+ * (Systemlauf) gilt das für jede Liste eines Meilensteins an einem eigenen Ziel. Kann der Bestand nicht gelesen werden, wird JEDE
+ * Meilenstein-Liste neutral benannt (nie Titel auf Verdacht). Für jede Ausgabe des Aufgaben-Bestands an eine Person.
+ */
+export async function mitNeutralenListen<S extends TasksState>(state: S, person: string | null): Promise<S> {
+  const [{ verborgeneMeilensteinListenFuer }, { listenFuerBetrachter }, { MS_LISTE_PRAEFIX }] = await Promise.all([
+    import('@/lib/planung/eigene-ziele-sicht-server'), import('@/lib/planung/eigene-ziele-sicht'), import('@/lib/planung/meilenstein-aufgaben'),
+  ]);
+  const v = await verborgeneMeilensteinListenFuer(person);
+  return listenFuerBetrachter(state, v ?? new Set((state.listen ?? []).filter(l => l.id.startsWith(MS_LISTE_PRAEFIX)).map(l => l.id)));
+}
+
+/** Bestände, von denen `mitNeutralenListen` abhängt (für ETags von Aufgaben-Antworten; Konten stehen dort schon). */
+export async function neutraleListenStandNamen(): Promise<string[]> {
+  const { speicherFuer } = await import('@/lib/zoe/raum');
+  return ['meilensteine', 'ziele', ...(await haushaltsSpeicher()).map(p => speicherFuer('ziele-eigen', p))];
 }
 
 /**

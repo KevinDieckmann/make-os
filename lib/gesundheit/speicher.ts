@@ -15,6 +15,7 @@ import type { ErnaehrungFile } from '@/lib/make-one/ernaehrung-data';
 import { ladeIndexDatei, fortschreiben, speichereSchwelle, type IndexVerlauf } from '@/lib/kennzahlen/speicher';
 import { berechneGesundheit, GESUNDHEIT_KENNZAHLEN, type GesundheitBestand, type GesundheitsIndex } from './index';
 import type { HautLog, StreakLog, RoutinenLog } from './eintraege';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 const name = (person: string) => speicherFuer('gesundheit-index', person);
 const tagPlus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00`); d.setDate(d.getDate() + n); return localDay(d); };
@@ -30,7 +31,7 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     // Blöcke = Kalender-Termine der Art Fokus/Block (+ Archiv des alten Wochenplans) — K5, 29.09.
     planBloeckeLesen({ person, von: tagPlus(heute, -35), bis: tagPlus(heute, 1) }).catch(() => []),
     loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; at?: string; quelle?: string }>('calendar-cache'),
-    loadJson<{ meilensteine?: GesundheitBestand['meilensteine'] }>('meilensteine'),
+    loadJson<{ meilensteine?: (GesundheitBestand['meilensteine'][number] & { zielId?: string; abgeleitetVon?: string })[] }>('meilensteine'),
     loadJson<ErnaehrungFile>('ernaehrung'),
     ladeIndexDatei(name(person)),
   ]);
@@ -49,7 +50,8 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     bloecke: plan.filter(x => x.date >= ab).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art, titel: x.titel })),
     termine: (cal?.events ?? []).filter(e => e.startDate && !e.allDay).map(e => ({ start: e.startDate!, ende: e.endDate, title: e.title, owner: e.owner })),
     kalenderFrisch: !!cal?.at && (Date.now() - new Date(cal.at).getTime()) / 3_600_000 < 48,
-    meilensteine: ms?.meilensteine ?? [],
+    // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person).
+    meilensteine: await meilensteineSichtbarFuer(ms?.meilensteine, person),
     ernaehrung: ern ?? null,
     schwellen: datei.schwellen,
   };

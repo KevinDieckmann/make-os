@@ -16,6 +16,7 @@ import { localDay } from '@/lib/zeit';
 import { fristen, type Frist, type Quellen } from './eintraege';
 import { ladeEinstellungen } from './einstellungen';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 /**
  * Vertragsfristen aus dem Gesellschafts-Register (04.10.) — nur der Haushalt des Inhabers (dem gehört der Kalender, Business);
@@ -44,10 +45,15 @@ export async function steuerFristenLesen(heute: string): Promise<NonNullable<Que
     .map(f => ({ datum: f.datum, art: `${f.einheit}-${f.art}`, titel: `${EINHEIT_LABEL[f.einheit]}: ${f.titel}`, hinweis: f.hinweis, ...(gehoertZuPrivat(f.einheit) ? { privat: true } : {}) }));
 }
 
-/** Die Quellen der Fristen (ohne Rechnung). Das Fenster wählt `fristen` (Steuer-Vorlage: −30 … +365 Tage ab heute). */
-export async function fristenQuellenLesen(): Promise<Quellen> {
+/**
+ * Die Quellen der Fristen (ohne Rechnung) für `betrachter`. Das Fenster wählt `fristen` (Steuer-Vorlage: −30 … +365 Tage ab heute).
+ * Meilensteine nur, die der Betrachter sehen darf (08.10., eigene Ziele nur geteilt: keiner an einem nicht geteilten eigenen Ziel einer
+ * anderen Person; ohne Person keiner an einem eigenen Ziel) — kann die Regel nicht gelesen werden, fehlen die Meilensteine.
+ */
+export async function fristenQuellenLesen(betrachter: string | null): Promise<Quellen> {
   const [meilensteine, bauplan, crm, finanzplan, einst, vertraege] = await Promise.all([
-    loadJson<{ meilensteine?: Quellen['meilensteine'] }>('meilensteine').catch(() => null),
+    loadJson<{ meilensteine?: (NonNullable<Quellen['meilensteine']>[number] & { zielId?: string; abgeleitetVon?: string })[] }>('meilensteine')
+      .then(async f => ({ meilensteine: await meilensteineSichtbarFuer(f?.meilensteine, betrachter) })).catch(() => null),
     ladeBauplan().catch(() => null),
     ladeCrm().catch(() => null),
     loadJson<{ zahlungen?: Quellen['zahlungen']; rechnungen?: Quellen['rechnungen'] }>('finanzplan').catch(() => null),
@@ -68,7 +74,7 @@ export async function fristenQuellenLesen(): Promise<Quellen> {
   };
 }
 
-/** Alle Fristen im Fenster [von, bis) — Berliner Tage. */
-export async function fristenLesen(von: string, bis: string, heute = localDay()): Promise<Frist[]> {
-  return fristen(await fristenQuellenLesen(), von, bis, heute);
+/** Alle Fristen im Fenster [von, bis) — Berliner Tage — für `betrachter` (Pflicht: `null` = Systemlauf). */
+export async function fristenLesen(von: string, bis: string, heute: string, betrachter: string | null): Promise<Frist[]> {
+  return fristen(await fristenQuellenLesen(betrachter), von, bis, heute);
 }

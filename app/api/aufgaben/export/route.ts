@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
-import { ladeAufgaben, sichtFuer } from '@/lib/aufgaben/sicht';
+import { ladeAufgaben, sichtFuer, mitNeutralenListen } from '@/lib/aufgaben/sicht';
 import { spacesFuer } from '@/lib/aufgaben/speicher';
 import { aufgabenDateienListe } from '@/lib/dateien/aufgaben-ablage';
 import { exportBauen, type ExportDatei } from '@/lib/aufgaben/export';
@@ -20,7 +20,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z || z.dienst) return NextResponse.json({ ...KARTEI_GESPERRT, error: 'Exportieren darf nur eine Person im Haushalt selbst.' }, { status: 403 });
-  const state = sichtFuer(await ladeAufgaben(), z.person);
+  // Listen verborgener Meilensteine nur mit neutralem Namen (08.10., eigene Ziele nur geteilt) — wie jede Ausgabe des Bestands.
+  const state = await mitNeutralenListen(sichtFuer(await ladeAufgaben(), z.person), z.person);
   const haushalt = (await haushaltFuer(z.person))?.haushalt;
   const dateien: ExportDatei[] = haushalt ? (await aufgabenDateienListe(haushalt).catch(() => [])).map(d => ({
     id: d.id, name: d.datei.name, typ: d.datei.typ, groesse: d.datei.groesse, projektId: d.projektId, ...(d.aufgabeId ? { aufgabeId: d.aufgabeId } : {}),
