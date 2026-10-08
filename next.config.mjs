@@ -11,6 +11,11 @@ const nextConfig = {
   distDir: process.env.MAKE_OS_DIST || '.next',
   // Nicht verraten, womit gebaut ist (25.09., Härtung).
   poweredByHeader: false,
+  // 09.10. (Befund der Medien-Recherche): Die Middleware läuft auf allen Pfaden und klont dafür den Anfragekörper — über der
+  // Next-Grenze (Vorgabe 10 MB) kommt bei der Route nur der Anfang an (node_modules/next/dist/server/body-streams.js). Die größten
+  // Körper: Aufgaben-Dateien 25 MB, JSON_GROSS 20 MB, CRM-Ablage 15 MB — Grenze mit Luft für den Multipart-Rahmen.
+  // Wächter: tests/koerper-grenze.test.ts (muss über jeder Upload-Grenze liegen).
+  experimental: { middlewareClientMaxBodySize: 30 * 1024 * 1024 },
   // Sicherheits-Kopfzeilen aus der App selbst (26.09.) — gelten auch lokal und über Tailscale, nicht nur
   // hinter Caddy. Die Content-Security-Policy nur im Produktionsbau (der Entwicklungsmodus braucht eval).
   // 08.10. spät: der Altbestand /finanz-dashboard.html (lud Firebase von außen, ohne CSP) ist entfernt — jede Seite trägt die CSP.
