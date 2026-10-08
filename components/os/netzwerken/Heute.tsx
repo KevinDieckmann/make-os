@@ -146,14 +146,14 @@ function AutoFeld({ wert, onWert, label, zeilen }: { wert: string; onWert: (v: s
 
 /**
  * Verantwortlicher und Kontaktweg für den Hinweis in der Danke-Mail — aus der Datenschutz-Einrichtung der Instanz (05.10., EINE Quelle:
- * System › Datenschutz); bis die Antwort da ist bzw. ohne Einrichtung der Standard (`datenschutzAngaben`). Einmal je Seite geladen.
+ * System › Datenschutz); bis die Antwort da ist bzw. ohne Einrichtung „fehlt“ (`datenschutzAngaben`, nie ein Name aus dem Code). Einmal je Seite geladen.
  */
 let angabenLaden: Promise<DatenschutzAngaben | null> | null = null;
 function useDatenschutzAngaben(): DatenschutzAngaben {
   const [a, setA] = useState<DatenschutzAngaben>(datenschutzAngaben);
   useEffect(() => {
     let lebt = true;
-    angabenLaden ??= fetch('/api/datenschutz/einrichtung?nur=angaben', { cache: 'no-store' }).then(r => r.json()).then(x => (x?.ok && x.mail && x.verantwortlich ? { mail: x.mail, seite: x.seite, verantwortlich: x.verantwortlich } as DatenschutzAngaben : null)).catch(() => { angabenLaden = null; return null; });
+    angabenLaden ??= fetch('/api/datenschutz/einrichtung?nur=angaben', { cache: 'no-store' }).then(r => r.json()).then(x => (x?.ok && typeof x.verantwortlich === 'string' && x.verantwortlich ? { mail: String(x.mail ?? ''), seite: String(x.seite ?? ''), verantwortlich: x.verantwortlich, ...(x.fehlt ? { fehlt: true } : {}) } as DatenschutzAngaben : null)).catch(() => { angabenLaden = null; return null; });
     void angabenLaden.then(x => { if (lebt && x) setA(x); });
     return () => { lebt = false; };
   }, []);
@@ -231,7 +231,9 @@ function DankeKarte({ d, heute, absender, meine, vonName, api, kunde }: { d: Dan
           </div>
           <Hinweis>{DANKE_UWG_HINWEIS}</Hinweis>
           {/* Der Datenschutzhinweis (Art. 13) steht am Ende des Textes — hier vorab sichtbar, damit man ihn nicht erst ans Ende scrollen muss. */}
-          {aktuell.text.includes('Datenschutz:')
+          {angaben.fehlt
+            ? <Hinweis farbe={LEUCHT.achtung} rolle="alert">Verantwortlicher bzw. Kontaktweg für den Datenschutzhinweis fehlen — zuerst unter <Link href={WEG.datenschutz('verantwortlicher')} style={{ color: 'inherit' }}>Einstellungen › Datenschutz</Link> eintragen; bis dahin steht im Text ein Platzhalter.</Hinweis>
+            : aktuell.text.includes('Datenschutz:')
             ? <Hinweis farbe={LEUCHT.gut} rolle="status">✓ Datenschutzhinweis ist enthalten (am Ende der Mail).</Hinweis>
             : <Hinweis farbe={LEUCHT.achtung} rolle="alert">Der Datenschutzhinweis (Art. 13) fehlt im Text — bitte ergänzen oder beim ersten Kontakt geben.</Hinweis>}
           <AutoFeld wert={aktuell.betreff} onWert={setBetreff} label="Betreff" zeilen={1} />

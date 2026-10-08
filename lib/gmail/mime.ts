@@ -324,11 +324,22 @@ function falten(name: string, wert: string): string {
   return aus.join('\r\n');
 }
 
+/**
+ * Domain für die eigene Message-ID: die des Absenders (geprüft — praktisch immer da); sonst die der Instanz aus `MAKE_OS_ADRESSE`, zuletzt
+ * eine nie zustellbare (`.invalid`, RFC 2606). Plattform-Regel: keine feste Firmen-Domain im Code.
+ */
+export function messageIdDomain(von: string, env: Record<string, string | undefined> = process.env): string {
+  const eigen = von.split('@')[1];
+  if (eigen) return eigen;
+  try { const h = new URL(env.MAKE_OS_ADRESSE ?? '').hostname; if (h) return h; } catch { /* keine gültige Adresse */ }
+  return 'make-os.invalid';
+}
+
 /** Die fertige Nachricht (RFC 5322, CRLF). Wirft bei ungültigen Adressen — der Aufrufer prüft vorher mit `adresseGueltig`. */
 export function mimeBauen(e: MailEntwurf): string {
   for (const a of [e.von, ...e.an, ...(e.cc ?? [])]) if (!adresseGueltig(a.email)) throw new Error('Ungültige E-Mail-Adresse.');
   if (!e.an.length) throw new Error('Kein Empfänger.');
-  const domain = e.von.email.split('@')[1] ?? 'makeinnovation.de';
+  const domain = messageIdDomain(e.von.email);
   const id = e.messageId && messageIdOk(e.messageId) ? e.messageId : `<${bytesBase64url(randomBytes(18))}@${domain}>`;
   const zeilen = [
     falten('From', adresseBauen(e.von)),
