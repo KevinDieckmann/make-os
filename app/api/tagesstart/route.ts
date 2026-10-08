@@ -154,6 +154,19 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0f2) Mahnvorschläge (08.10., Rechnungen mit PDF): je fälliger Mahnstufe EINE Aufgabe (`mahn-<rechnung>-<stufe>`, idempotent, Titel ohne
+  //      Betrag/Namen). Verschickt wird nichts — nur per Klick in Finanzen › Rechnungen & Zahlungen.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Mahnvorschläge', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { mahnAufgabenNachziehen } = await import('@/lib/finanzen/rechnung/server');
+      const m = await mahnAufgabenNachziehen();
+      schritte.push({ name: 'Mahnvorschläge', ok: true, info: m.neu ? `${m.neu} neue Mahn-Aufgabe${m.neu === 1 ? '' : 'n'}` : 'nichts fällig' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Mahnvorschläge', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0g) Kapazität deaktivierter Team-Personen (DSGVO-Nachtrag 04.10.): 30 Tage nach dem Deaktivieren Grundwert, Urlaub/Blöcke,
   //     Zuweisungen und Einwilligung löschen (idempotent, Protokoll „System“); alte Einträge ohne Zeitpunkt bekommen „jetzt“.
   try {

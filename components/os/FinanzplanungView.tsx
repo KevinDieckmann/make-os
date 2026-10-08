@@ -36,6 +36,8 @@ interface Rechnung {
   /** Der Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
   nummer?: string; datum?: string; angebot?: string; angebotAm?: string; bezahltAm?: string;
   netto?: number; ustSatz?: number; leistungVon?: string; leistungBis?: string;
+  /** Rechnungen mit PDF (08.10., lib/finanzen/rechnung/): Positionen → Beträge kommen aus dem Editor; PDF → festgeschrieben. */
+  positionen?: unknown[]; pdfDateiId?: string; art?: 'storno';
 }
 interface Merkposten { id: string; firmaId: string; titel: string; betrag: number; art: 'kredit' | 'sonstig'; datum?: string; notiz?: string }
 interface Zahlung { id: string; firmaId: string; an: string; titel: string; betrag: number; status: 'offen' | 'bezahlt'; faellig?: string }
@@ -155,11 +157,12 @@ export function FinanzplanungView() {
     await planSpeichern.jetzt(); // offene Eingaben zuerst
     const stand = planSpeichern.standVon('rechnungen', r.id);
     const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'storno', rechnungId: r.id, grund, ...(stand ? { stand } : {}) }) })
-      .then(x => x.json()).catch(() => null) as { ok?: boolean; stand?: Plan; error?: string; gegenbuchung?: string } | null;
+      .then(x => x.json()).catch(() => null) as { ok?: boolean; stand?: Plan; error?: string; gegenbuchung?: string; stornoRechnung?: { nummer?: string } } | null;
     if (!d) { setHinweis('Keine Verbindung — nichts storniert.'); return; }
     if (d.stand) { planSpeichern.kenne(d.stand); if (!planSpeichern.hatOffenes()) setPlan(d.stand); }
     if (!d.ok) { setHinweis(d.error ?? 'Nicht storniert.'); if (!d.stand) void ladePlan(); return; }
-    setHinweis(d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : null);
+    // Rechnung mit PDF (08.10.): Storno = Stornorechnung mit eigener Nummer und eigenem PDF.
+    setHinweis(d.stornoRechnung ? `Storniert — Stornorechnung ${d.stornoRechnung.nummer ?? ''} mit eigenem PDF angelegt${d.gegenbuchung === 'neu' ? ', Gegenbuchung zum Zahlungseingang gebucht' : ''}.` : d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : null);
   }
   function zahlungBewegen(id: string, richtung: -1 | 1) {
     const z = [...plan!.zahlungen];
@@ -262,7 +265,9 @@ export function FinanzplanungView() {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {plan.rechnungen.map(r => {
             const spaet = r.status === 'gestellt' && r.faellig && r.faellig < heute;
-            const weiter = STATUS_NEXT[r.status];
+            // Rechnung mit Positionen (08.10.): „gestellt“ nur über „Rechnung stellen“ im Editor (Nummer + PDF), nie über den Status-Klick.
+            const ausEditor = !!r.positionen;
+            const weiter = r.status === 'geplant' && ausEditor ? undefined : STATUS_NEXT[r.status];
             const storniert = r.status === 'storniert';
             const f = frage?.id === r.id ? frage : null;
             return (
@@ -273,11 +278,13 @@ export function FinanzplanungView() {
                 {/* Mandanten klickbar (28.09.): mit Mandat in die Mandatsakte, sonst per eindeutigem Namen, sonst Text. */}
                 <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, minWidth: 0 }}><MandantLink mandatId={r.mandatId} name={r.kunde} nachName zeichen={false} /></span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
+                {r.pdfDateiId && <a href={`/api/rechnung?pdf=${encodeURIComponent(r.id)}`} download style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv, textDecoration: 'none' }} title="PDF herunterladen (festgeschrieben)">{r.art === 'storno' ? 'Storno-PDF ↓' : 'PDF ↓'}</a>}
+                {(r.status === 'geplant' || r.pdfDateiId) && <Link href={WEG.rechnungSchreiben(r.id)} scroll={false} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none' }}>{r.status === 'geplant' ? 'Rechnung schreiben ›' : 'ansehen ›'}</Link>}
                 <span style={leise}>{firmaName(r.firmaId)}</span>
                 {rechnungVor(r, eroeffnung) && <Link href={WEG.eroeffnung()} title="vor dem 0-Punkt — gespeichert, zählt nicht mehr" style={{ ...leise, textDecoration: 'none' }}>vor dem 0-Punkt (archiviert)</Link>}
                 {r.faellig && <span style={{ ...leise, color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet ? 'überfällig ' : 'fällig '}{datum(r.faellig)}</span>}
-                <input type="number" step="0.01" value={r.betrag || ''} placeholder="0" aria-label="Betrag (brutto)" readOnly={fest(r, r.betrag)}
-                  title={fest(r, r.betrag) ? 'Ab „gestellt“ steht der Betrag fest — stornieren und neu stellen' : 'Betrag brutto'}
+                <input type="number" step="0.01" value={r.betrag || ''} placeholder="0" aria-label="Betrag (brutto)" readOnly={fest(r, r.betrag) || ausEditor}
+                  title={fest(r, r.betrag) ? 'Ab „gestellt“ steht der Betrag fest — stornieren und neu stellen' : ausEditor ? 'Betrag aus den Positionen — im Editor ändern' : 'Betrag brutto'}
                   onChange={e => rechnungAendern(r.id, { betrag: Math.round((Number(e.target.value) || 0) * 100) / 100 })}
                   style={{ ...eingabe, width: 110, textAlign: 'right', fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textDecoration: storniert ? 'line-through' : 'none' }} />
                 <span style={leise}>€</span>
@@ -307,7 +314,7 @@ export function FinanzplanungView() {
                     ['bezahltAm', 'bezahlt am', 'date', 138],
                   ] as const).map(([name, platz, typ, breite]) => (
                     <input key={name} type={typ} value={(r[name] as string) ?? ''} placeholder={platz} title={platz} aria-label={platz}
-                      readOnly={storniert || ((name === 'nummer' || name === 'datum') && fest(r, r[name]))}
+                      readOnly={storniert || ausEditor || ((name === 'nummer' || name === 'datum') && fest(r, r[name]))}
                       onChange={e => rechnungAendern(r.id, { [name]: e.target.value || undefined })}
                       style={{ ...eingabe, width: breite, fontSize: TYP.bedien, padding: '5px 8px', colorScheme: 'dark', color: r[name] ? C.ink : C.inkLeise }} />
                   ))}

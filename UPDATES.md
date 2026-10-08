@@ -92,6 +92,76 @@ Kapazität, ZOE, Heads und Glocke.“ Fragebogen Teil 3: „Business-freie Zeite
 **Offen (Richtungsfragen an Kevin):** siehe Bericht — Selbstständigkeit (Arbeit, Bereich Privat) mitsperren?, Verschieben bestehender Business-Termine
 ins Fenster (heute ohne Rückfrage), Standardzeiten neuer Haushalte.
 
+## 08.10.2026 spät — Rechnungen schreiben mit PDF (nur lokal — Branch `rechnungen-pdf`)
+
+Kevin 08.10. (ROADMAP_Q4.md › Lücken, Punkt 4): „Rechnungen schreiben wie das Angebots-Tool (fortlaufende Nummer je Gesellschaft + PDF in einer
+Sperre, Angebot → Rechnung, Mahnstufen als Vorschlag; E-Rechnung danach).“ Hinweis, keine Steuerberatung — Pflichtangaben und Nummernkreis einmal
+mit dem Steuerberater abstimmen (RECHNUNGEN_PLAN.md).
+- **Eine Quelle:** die Rechnung bleibt der Eintrag im Finanzplan (`finanzplan` › `rechnungen`) — Liquidität, Business-Index, Umsatz-Reiter, Steuern
+  lesen dieselbe Liste. Neu sind NUR optionale Felder (`RechnungZusatz`, lib/finanzen/rechnung/typen.ts): Positionen (Cent), Empfänger als
+  Momentaufnahme (Firma, z. Hd., Straße, PLZ, Ort, Land, USt-IdNr., Referenz, E-Mail), Absender-Momentaufnahme, `kontaktId`/`kundeFirmaId`/`angebotId`,
+  Zahlungsziel, Steuerhinweis (Reverse Charge / steuerfrei + Grund), Texte, Nummernlauf, `pdfDateiId`, `sha256`, `gestelltAm/-Von`, `art: 'storno'`,
+  `stornoZu`/`stornoRechnungId`, `mahnungen`. Die Säuberung des Finanzplans hängt sie nur an, wenn es sie gibt — eine Rechnung von vorher bleibt
+  Byte für Byte (Test).
+- **Stellen** (lib/finanzen/rechnung/server.ts, Vorbild `angebotStellen`): Vorprüfung ohne Sperre (Entwurf, Stand, Sicht, **Pflichtangaben § 14 Abs. 4
+  UStG** + § 35a GmbHG → 409 mit Liste und Weg ins Register), dann in der Sperre des Nummernkreises `rechnungswesen` (hält nur Stellen/Storno an):
+  nächste Nummer `{KURZ}-R-{JAHR}-{NR4}` = höchste vergebene (Zähler ODER Finanzplan) + 1 → PDF (pdf-lib, dasselbe Gerüst wie das Angebot, IBAN voll)
+  + SHA-256 außerhalb der Finanzplan-Sperre → in der Finanzplan-Sperre Stand erneut prüfen, verwaiste PDFs eines Abbruchs entfernen, PDF in die
+  Dateiablage (verschlüsselt, fester Bezug `rechnungsPdf` = Beleg, nicht löschbar und nicht vom Bezug lösbar), festschreiben → Zähler. Lückenlos auch
+  bei zwei gleichzeitigen Aufrufen und bei Abbruch nach jedem Schritt (Tests). `anfrageId` + `einmalig`: ein Netz-Retry stellt nie doppelt.
+- **Festgeschrieben:** was im PDF steht (`FEST_MIT_PDF`), ändert kein Weg mehr (Editor, Finanzplan-PATCH/PUT, Entflechtung → 409); Server-Felder
+  (`RECHNUNG_SERVER_FELDER`) übernimmt der allgemeine Finanzplan-Weg nie aus dem Browser. Ein Entwurf mit Positionen wird nicht per Status-Klick
+  „gestellt“. Rechnungen ohne Positionen (Altbestand, „+ Rechnung“) laufen wie bisher.
+- **Storno = Stornorechnung:** eigene Nummer aus demselben Kreis, gleiche Positionen mit umgekehrtem Vorzeichen (Betrag negativ, Status „storniert“ —
+  zählt wie das Original danach nirgends mit), Bezug `stornoZu`, eigenes PDF; Original „storniert“ mit Grund und `stornoRechnungId`; Zahlungseingang →
+  Gegenbuchung `bu-st-…` (gemeinsamer Helfer `lib/finanzen/finanzplan-buchung.ts`). Die bestehende Aktion `PATCH /api/state/finanzplan { aktion:
+  'storno' }` macht das für Rechnungen MIT PDF automatisch (Dienstweg 403), Altbestand ohne PDF wie bisher.
+- **Angebot → Rechnung:** aus einem ANGENOMMENEN Angebot ein Entwurf mit dessen Positionen, Kunde, Mandat, Gesellschaft, Angebotsnummer (offener
+  Entwurf dazu = derselbe). **Mandat → Monatsrechnung:** je Leistungsmonat ein Entwurf auf Klick (Honorar netto, Zeitraum = Monat) — nie automatisch gestellt.
+- **Mahnstufen nur als Vorschlag:** Zahlungserinnerung · 1. Mahnung · 2. Mahnung nach Fälligkeit + 7/14/21 Tagen (einstellbar, `rechnungswesen.mahnTage`),
+  der Reihe nach, mit Abstand zur letzten. Morgenlauf-Schritt „Mahnvorschläge“ legt je fälliger Stufe EINE Aufgabe `mahn-<rechnung>-<stufe>` an (Titel
+  ohne Betrag und ohne Namen). Versand nur per Klick: „Im Mail-Programm öffnen“ vermerkt die Stufe und öffnet den Entwurf (`mailto:`) — MAKE OS verschickt nichts.
+- **Rechte (serverseitig):** Route `/api/rechnung` (Klasse `finanz-business`): Konto mit dem Haushalt des Inhabers; `finanzRecht: 'business'` sieht und
+  schreibt nur Rechnungen und Absender der Business-Gesellschaften (kdc → 404/403), Mahn-Tage nur volle Mitglieder; Stellen/Storno/Mahnung nie über den
+  Dienstweg (403). Lese-Protokoll `rechnungen`, Änderungsprotokoll nur Kennung + Feldnamen. Register: `rechnungswesen` (keine Personen), `finanzplan` mit
+  Angaben (Art. 6 lit. b/c, 10 Jahre). Art. 15: `personAufzaehlen` › `rechnungen`. Verbindungsprüfung: `rechnung-pdf-fehlt`, `rechnung-storno-tot`,
+  `rechnung-bezug-tot`; die Stornorechnung ist kein „Betrag 0“-Befund.
+- **Oberfläche:** Finanzen › Business › Rechnungen & Zahlungen oben die Karte „Rechnungen schreiben“ (`components/os/rechnung/`: Entwürfe,
+  Mahnvorschläge, zuletzt gestellt mit „PDF ↓“, Mahnstufen-Tage; für Konten „nur Business“ ist der Reiter jetzt sichtbar — ohne die Pipeline darunter).
+  Editor als Fenster (`?re=<Rechnung>`, `WEG.rechnungSchreiben`): Absender, Empfänger, Leistung (Zeitraum, Zahlungsziel, Positionen, Steuerhinweis),
+  Texte, Vorschau im PDF-Layout, Pflicht-Hinweise mit „beheben ›“, EINE Hauptaktion „Rechnung stellen“. Gestellte Rechnungen nur lesend (PDF,
+  Mail-Entwurf, Mahnung, Stornorechnung). Einstiege: Kontakt › Umsatz („+ Rechnung schreiben (PDF)“, „→ Rechnung schreiben“ am angenommenen Angebot,
+  „Rechnung schreiben ›“ an geplanten), Mandatsakte („Rechnung für <Monat> schreiben“), Angebot (angenommen → „Rechnung schreiben“), Pipeline-Zeilen
+  („PDF ↓“, „Rechnung schreiben ›“/„ansehen ›“). Das Angebots-PDF/-Blatt kennt dafür `art`/`ueberschrift` (Angebote unverändert).
+- **E-Rechnung (XRechnung/ZUGFeRD) noch NICHT gebaut** — die Daten sind so geschnitten, dass sie daraus entsteht (strukturierte Adressen, Positionen mit
+  Menge/Einheit/Preis/Satz, Leistungszeitraum, Fälligkeit, Bank aus dem Register, Steuerhinweis).
+- Tests: neu `tests/rechnungen-regeln.test.ts` (22), `tests/rechnungen-pdf.test.ts` (21), `tests/rechnungen-oberflaeche.test.ts` (4); ergänzt
+  `tests/crm-verbindungen.test.ts`; grün dazu: routen-register, datenschutz-register, messlatte-malin, repo-sauber, kennungen, angebot*, crm-umsatz,
+  crm-dateien-route, markttraktion-sofort, finanzplan-*, k1-seed, pruefliste, nullpunkt, steuern, design-finanzen/-standard, aufraeumen-etappe2, business-modell.
+
+**So testet ihr:**
+1. Unternehmen › KD Ventures (bzw. MAKE) › Absender: Firmierung, Anschrift, Steuernummer, Bank (IBAN), Geschäftsführung, Registergericht/HRB pflegen.
+2. Finanzen › Business › Rechnungen & Zahlungen › Karte „Rechnungen schreiben“ › „+ Rechnung schreiben“ → das Fenster öffnet sich. „Rechnung stellen“
+   ist aus, unten steht „Bis zum Stellen fehlt noch“ (Empfänger-Anschrift, Leistungsdatum, Position …).
+3. Empfänger ausfüllen, Leistung von/bis wählen, „+ Position“ (z. B. 2 Tag × 1.200), oben „Vorschau“ → das Blatt sieht aus wie das PDF.
+4. „Rechnung stellen“ → Hinweis „Rechnung KDV-R-2026-0001 gestellt“, das PDF lädt herunter (Nummer, Leistungszeitraum, Steuernummer, IBAN voll);
+   „Mail-Programm öffnen“ öffnet den Entwurf. In der Pipeline darunter steht die Rechnung mit „PDF ↓“; Betrag/Nummer sind nicht mehr änderbar.
+5. Zweite Rechnung stellen → Nummer …-0002. Die erste über „ansehen ›“ öffnen › „Stornorechnung anlegen“ (Grund) → Stornorechnung …-0003 mit eigenem
+   PDF (Beträge negativ); das Original steht auf „storniert“.
+6. Kontakt öffnen › Umsatz › Angebote: ein angenommenes Angebot › „→ Rechnung schreiben“ → Editor mit den Positionen des Angebots.
+   Mandate › ein Mandat öffnen › „Rechnung für <Vormonat> schreiben“ → Entwurf mit Leistungszeitraum des Monats und dem Honorar.
+7. Mahnung: eine gestellte Rechnung mit Fälligkeit vor über 7 Tagen (z. B. Zahlungsziel 0 und einige Tage warten bzw. im Testbestand) → Karte zeigt
+   „Mahnstufe dran · Zahlungserinnerung“; öffnen › „Im Mail-Programm öffnen“ → Entwurf; Aufgaben zeigt „Zahlungserinnerung vorbereiten — Rechnung …“
+   nach dem nächsten Morgenlauf. „ändern“ an den Mahnstufen stellt die Tage um.
+8. Mit einem Konto „nur Business“: Finanzen zeigt jetzt „Rechnungen & Zahlungen“ — nur Rechnungen von KD Ventures/MAKE, keine der Selbstständigkeit.
+
+**Rückweg (alter Online-Stand):** nur neue, optionale Felder und der neue Bestand `rechnungswesen`. Der alte Stand verwirft die neuen Felder beim
+nächsten Speichern des Finanzplans (Positionen, PDF-Verweis, Storno-Bezug) und zeigt eine Stornorechnung mit Betrag 0 (Status storniert, zählt nicht);
+die PDFs bleiben in der Ablage als Rechnungs-Belege (über `rechnungId`). Vor einem Rückweg also eine Sicherung ziehen.
+**Offen (Kevins Entscheidung):** eigenes Rechnungs-Nummernformat je Gesellschaft (heute fest `{KURZ}-R-{JAHR}-{NR4}`, Kürzel aus dem Register);
+E-Rechnung; Versand über die Inbox statt Mail-Programm; Zahlungseingang automatisch über die Bank (Lücke 1); Art. 17 lässt `kontaktId` an Rechnungen
+stehen (Aufbewahrung, Verbindungsprüfung meldet es als Hinweis).
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:

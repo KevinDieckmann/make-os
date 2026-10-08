@@ -233,7 +233,16 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   //   localStorage `make-os-netzwerken-*` hält nur Merker (Event-Wahl, „wer bin ich“, Zähler, Hinweis „nach 30 Tagen verworfen“ mit Name/Datum der
   //   verworfenen Erfassung) — die Merker räumt das Abmelden; `make-karten-cache` ist das Offline-Abbild der EIGENEN Visitenkarten.
   // ── Haushalt / Geschäft: bewusst ausgenommen ──
-  { muster: 'finanzplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Rechnungen/Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB (Kundenname auf der Rechnung bleibt).' },
+  mit({ muster: 'finanzplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Rechnungen/Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB (Kundenname auf der Rechnung bleibt). Seit 08.10. tragen Rechnungen mit PDF eine Momentaufnahme des Empfängers (Name, Anschrift, USt-IdNr., Referenz) und optional die Kontakt-Kennung; das PDF liegt als Beleg in crm-dateien--* (fester Bezug, nicht löschbar).' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Vertrag mit dem Kunden) und lit. c i. V. m. § 14 UStG, § 147 AO, § 257 HGB (Rechnungspflicht, Aufbewahrung)',
+    art15: 'Rechnungen an eine Person (Kontakt-Kennung) nennt die Auskunft (`personAufzaehlen` › rechnungen); sonst Finanzen › Rechnungen & Zahlungen bzw. Kontakt › Umsatz',
+    loeschfrist: '10 Jahre ab Ende des Jahres der Rechnung (§ 147 AO); Art. 17 löscht in dieser Zeit nicht (Art. 17 Abs. 3 lit. b) — Entwürfe ohne Nummer löscht der Haushalt selbst',
+  }),
+  mit(K('rechnungswesen', 'Nummernkreise der Rechnungen (je Gesellschaft und Jahr die zuletzt vergebene laufende Nummer) und die Mahnstufen-Tage — keine Personen.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 14 Abs. 4 Nr. 4 UStG (fortlaufende Nummer) — enthält keine personenbezogenen Daten',
+    art15: 'keine Personendaten',
+    loeschfrist: 'solange Rechnungen gestellt werden (Zähler je Jahr)',
+  }),
   { muster: 'finanzen-plan--*', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanzplan des Haushalts — Rechnungen: Aufbewahrungspflicht § 147 AO / § 257 HGB.' },
   { muster: 'liquiplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Planposten/Zahlungen — Geschäftsunterlage, Aufbewahrungspflicht § 147 AO.' },
   { muster: 'buchungen', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB.' },

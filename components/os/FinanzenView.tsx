@@ -9,7 +9,7 @@
 // Ort. Der Bereich (Privat/Business) kommt aus dem Kopf-Schalter bzw. `?space=`; „Alles“/ohne Space = Privat (Privat darf Business
 // sehen, nie umgekehrt). Aufbau und Regeln: lib/finanzen/navigation.ts.
 //   Privat    Überblick · Konten & Buchungen (Ebene 2: Buchungen … Schulden, Selbstständigkeit) · Planung (Ebene 2: Blätter) · Steuern
-//   Business  Überblick (Ebene 2: Cockpit · Controlling & Ziele) · Rechnungen & Zahlungen · Liquidität · Buchungen · Planung · Steuern
+//   Business  Überblick (Ebene 2: Cockpit · Controlling & Ziele) · Rechnungen & Zahlungen (oben: Rechnungen schreiben mit PDF, 08.10.) · Liquidität · Buchungen · Planung · Steuern
 //   Head of Finance = Knopf neben den Reitern. Gesamt (die Brücke) steht einmal: unten auf Privat › Überblick (#gesamt).
 // Die früheren Nebenseiten (/os/finanzen/planung, …/liquiditaet, …/buchungen, …/grundlage, …/dashboard, /os/controlling) leiten in
 // next.config.mjs mit allen Parametern hierher. Wer keinen Haushalt hat, sieht nur Business (Überblick, Planung) und den Head of Finance.
@@ -26,6 +26,7 @@ import { BusinessCockpit } from './business/BusinessCockpit';
 import { SteuernView } from './steuern/SteuernView';
 import { Finanzplan } from './finanzplan/Finanzplan';
 import { FinanzplanungView } from './FinanzplanungView';
+import { RechnungenKarte } from './rechnung/RechnungenKarte';
 import { LiquiditaetView } from './LiquiditaetView';
 import { BuchungenView } from './BuchungenView';
 import { ControllingView } from './ControllingView';
@@ -66,7 +67,8 @@ export function FinanzenView() {
   const { bereich } = ort;
   // Reiter, die dieses Konto hat: ohne Haushalt nur Überblick + Planung (der Server filtert), Steuern nur im Haushalt des Inhabers.
   const reiterListe = (bereich === 'privat' ? PRIVAT_REITER : BUSINESS_REITER).filter(r =>
-    zugang === false ? r.id === 'business' || (r.id === 'finanzplanung' && planZugang) : r.id !== 'steuern' || inhaber !== false);
+    // Rechnungen schreiben (08.10.): auch Konten „nur Business“ — der Server zeigt ihnen nur die Business-Gesellschaften.
+    zugang === false ? r.id === 'business' || ((r.id === 'finanzplanung' || r.id === 'rechnungen') && planZugang) : r.id !== 'steuern' || inhaber !== false);
   const reiter: FinanzReiter | 'chef' = ort.reiter === 'chef' || reiterListe.some(r => r.id === ort.reiter) ? ort.reiter : reiterListe[0]?.id ?? 'business';
 
   // Ort wechseln = router.push (Zurück führt zum vorigen Ort, 25.09.); die Filter des alten Ortes fallen weg.
@@ -132,7 +134,8 @@ function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: F
       </>
     );
   }
-  if (reiter === 'rechnungen') return <FinanzplanungView />;
+  // Rechnungen schreiben mit PDF (08.10.) oben, darunter die bisherige Pipeline (nur mit Haushaltszugang — sie trägt Privates).
+  if (reiter === 'rechnungen') return <><RechnungenKarte />{zugang && <FinanzplanungView />}</>;
   if (reiter === 'liquiditaet') return <LiquiditaetView />;
   if (reiter === 'buchungen') return <BuchungenView bereich="business" />;
   if (ort.unter === 'controlling' && inhaber) return <ControllingView />;

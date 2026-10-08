@@ -13,11 +13,15 @@ import { localDay } from '@/lib/zeit';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import {
   SEED, ugFirmaNachziehen, sauberFile, ueberGrenze, istGrenzFehler, bezahltAnwenden, mitFassung, fassung, fpOpsLesen, fpOpsAnwenden,
-  rechnungenSchutzVoll, stornoAnwenden, stornoBuchungFuer, buchungsId, stornoBuchungsId,
-  type FinanzplanFile, type BezahltErgebnis, type RechnungsBuchung, type FpErgebnis, type StornoErgebnis,
+  rechnungenSchutzVoll, rechnungenMitServerFeldern, stornoAnwenden,
+  type FinanzplanFile, type BezahltErgebnis, type FpErgebnis, type StornoErgebnis,
 } from '@/lib/finanzen/finanzplan-bestand';
+import { buchungAnlegen, gegenbuchungAnlegen } from '@/lib/finanzen/finanzplan-buchung';
+import { istDienst } from '@/lib/zugang/dienst';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { kontostandAusAltweg } from '@/lib/finanzen/konten/server';
+
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,7 +59,8 @@ export async function PUT(req: Request) {
   let body: Partial<FinanzplanFile>;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Erste Posten bei der UG in einem Plan ohne UG-Konto → leeres UG-Konto dazu (28.09., additiv).
-  const sauber = ugFirmaNachziehen(sauberFile(body));
+  // Server-Felder der Rechnungen (Nummernlauf, PDF, Storno-Bezug, Mahnungen — 08.10.) kommen nie aus dem Browser.
+  const sauber = rechnungenMitServerFeldern(sauberFile(await loadJson<FinanzplanFile>('finanzplan')), ugFirmaNachziehen(sauberFile(body)));
   if (!sauber.firmen.length) return NextResponse.json({ ok: false, error: 'firmen darf nicht leer sein.' }, { status: 400 });
   // Rechnungen ab „gestellt“ bleiben (28.09., K3) — auch das Vollschreiben löscht oder ändert sie nicht.
   const schutz = rechnungenSchutzVoll(sauberFile(await loadJson<FinanzplanFile>('finanzplan')), sauber);
@@ -115,7 +120,7 @@ export async function PATCH(req: Request) {
   let body: { ops?: unknown; felder?: Record<string, unknown>; aktion?: unknown; rechnungId?: unknown; am?: unknown; stand?: unknown; grund?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion === 'bezahlt') return bezahlt(body);
-  if (body.aktion === 'storno') return storno(body);
+  if (body.aktion === 'storno') return storno(body, req, zugang);
   if (body.aktion !== undefined) return NextResponse.json({ ok: false, error: 'Unbekannte Aktion.' }, { status: 400 });
   // Zu viele Änderungen auf einmal: ablehnen statt still nur die ersten 100 zu nehmen (28.09.).
   if (Array.isArray(body.ops) && body.ops.length > MAX_OPS) {
@@ -213,12 +218,31 @@ async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unkno
  * `bu-re-<id>`, kommt in derselben Sperre die Gegenbuchung `bu-st-<id>` dazu (idempotent) — kein
  * verwaister Ist-Eingang. Schlägt die Buchung fehl, bleibt die Rechnung unverändert.
  */
-async function storno(body: { rechnungId?: unknown; am?: unknown; stand?: unknown; grund?: unknown }) {
+async function storno(body: { rechnungId?: unknown; am?: unknown; stand?: unknown; grund?: unknown }, req: Request, zugang: { person: string; haushalt: string }) {
   const id = typeof body.rechnungId === 'string' ? body.rechnungId.slice(0, 40) : '';
   if (!id) return NextResponse.json({ ok: false, error: 'rechnungId fehlt.' }, { status: 400 });
   const am = typeof body.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.am) ? body.am : localDay();
   const stand = typeof body.stand === 'string' && body.stand ? body.stand : undefined;
   const grund = typeof body.grund === 'string' ? body.grund : '';
+  // Rechnung mit PDF (08.10.): Storno = Stornorechnung mit eigener Nummer und eigenem PDF (lib/finanzen/rechnung/server.ts).
+  // Nur von Hand — der Dienstweg storniert keine festgeschriebene Rechnung (403). Altbestand ohne PDF: wie bisher unten.
+  const vorher = sauberFile(await loadJson<FinanzplanFile>('finanzplan')).rechnungen.find(r => r.id === id);
+  if (vorher?.pdfDateiId && vorher.art !== 'storno') {
+    if (istDienst(req)) return NextResponse.json({ ok: false, error: 'Eine Rechnung mit PDF storniert nur ein Mensch (nicht der Dienstweg).' }, { status: 403 });
+    const { rechnungStornieren, RechnungFehler } = await import('@/lib/finanzen/rechnung/server');
+    try {
+      const e = await rechnungStornieren({ id, grund, ...(stand ? { stand } : {}), person: zugang.person, haushalt: zugang.haushalt, sicht: 'privat', wer: werAus(req) });
+      const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
+      return NextResponse.json({ ok: true, rechnung: e.original, stornoRechnung: e.storno, schonStorniert: e.schonStorniert, gegenbuchung: e.gegenbuchung, ...stand2, stand: stand2 });
+    } catch (err) {
+      if (err instanceof RechnungFehler) {
+        const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
+        return NextResponse.json({ ok: false, error: err.message, ...err.extra, ...stand2, stand: stand2 }, { status: err.status });
+      }
+      console.error('[finanzplan] Stornorechnung fehlgeschlagen', err);
+      return NextResponse.json({ ok: false, error: 'Nicht storniert — die Rechnung ist unverändert. Bitte noch einmal.' }, { status: 500 });
+    }
+  }
   let erg: StornoErgebnis | null = null;
   let gegen: 'neu' | 'vorhanden' | 'keine' = 'keine';
   try {
@@ -241,30 +265,4 @@ async function storno(body: { rechnungId?: unknown; am?: unknown; stand?: unknow
   const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
   if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}), ...stand2, stand: stand2 }, { status: e.status });
   return NextResponse.json({ ok: true, rechnung: e.rechnung, schonStorniert: e.schonStorniert, gegenbuchung: gegen, ...stand2, stand: stand2 });
-}
-
-/** Zum Zahlungseingang `bu-re-<id>` die Gegenbuchung `bu-st-<id>` anlegen, wenn es den Eingang gibt und die Gegenbuchung noch nicht. */
-async function gegenbuchungAnlegen(r: Parameters<typeof stornoBuchungFuer>[1], am: string): Promise<'neu' | 'vorhanden' | 'keine'> {
-  let ergebnis: 'neu' | 'vorhanden' | 'keine' = 'keine';
-  await updateJson<{ buchungen: RechnungsBuchung[] }>('buchungen', cur => {
-    const liste = Array.isArray(cur?.buchungen) ? cur!.buchungen : [];
-    const eingang = liste.find(x => x.id === buchungsId(r.id));
-    if (!eingang) return cur ?? { buchungen: liste };
-    if (liste.some(x => x.id === stornoBuchungsId(r.id))) { ergebnis = 'vorhanden'; return cur ?? { buchungen: liste }; }
-    ergebnis = 'neu';
-    return { ...(cur ?? {}), buchungen: [...liste, stornoBuchungFuer(eingang, r, am)].sort((x, y) => y.datum.localeCompare(x.datum)) };
-  });
-  return ergebnis;
-}
-
-/** Die Buchung zur Rechnung anlegen, wenn es sie noch nicht gibt (Kennung `bu-re-<id>`). */
-async function buchungAnlegen(b: RechnungsBuchung): Promise<'neu' | 'vorhanden'> {
-  let ergebnis: 'neu' | 'vorhanden' = 'vorhanden';
-  await updateJson<{ buchungen: RechnungsBuchung[] }>('buchungen', cur => {
-    const liste = Array.isArray(cur?.buchungen) ? cur!.buchungen : [];
-    if (liste.some(x => x.id === b.id)) return cur ?? { buchungen: liste };
-    ergebnis = 'neu';
-    return { ...(cur ?? {}), buchungen: [...liste, b].sort((x, y) => y.datum.localeCompare(x.datum)) };
-  });
-  return ergebnis;
 }

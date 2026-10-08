@@ -32,6 +32,8 @@ import Link from 'next/link';
 import { angebotLink } from '@/lib/crm/adresse';
 import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
 import { neueKennung } from '@/lib/kennung';
+import { useRouter } from 'next/navigation';
+import { entwurfAnlegen } from '../../rechnung/daten';
 
 export interface UmsatzReiterProps {
   k: Kontakt;
@@ -165,6 +167,16 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   // „Ganze Gruppe“ (28.09., #7): Umsatz, Deals und Rechnungen von Mutter- und Tochterfirmen zusammenfassen.
   const [gruppe, setGruppe] = useState(false);
   const vorgabe = useRechnungsVorgabe();
+  const router = useRouter();
+  /**
+   * Rechnung schreiben mit PDF (08.10.): legt den Entwurf an (vorbelegt aus Kontakt, Firma, Mandat bzw. dem angenommenen Angebot)
+   * und öffnet den Editor unter Finanzen › Rechnungen & Zahlungen — dort wird gestellt (Nummer + PDF).
+   */
+  const rechnungSchreibenOeffnen = useCallback(async (body: Parameters<typeof entwurfAnlegen>[0]) => {
+    const e = await entwurfAnlegen(body);
+    if (!e.id) { setMeldung(e.fehler ?? 'Rechnung nicht angelegt.'); return; }
+    router.push(WEG.rechnungSchreiben(e.id));
+  }, [router]);
 
   const planLaden = useCallback(async (): Promise<Plan | null> => {
     try {
@@ -256,8 +268,9 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
     const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'storno', rechnungId: r.id, grund, ...(stand ? { stand } : {}) }) })
       .then(x => x.json()).catch(() => ({ ok: false, error: 'Keine Verbindung — nichts geändert.' }));
     if (!d.ok) setMeldung(d.error ?? 'Nicht storniert.');
-    else setMeldung(d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : 'Storniert — die Rechnung bleibt als Beleg stehen.');
+    else setMeldung(d.stornoRechnung ? `Storniert — Stornorechnung ${d.stornoRechnung.nummer ?? ''} mit eigenem PDF angelegt.` : d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : 'Storniert — die Rechnung bleibt als Beleg stehen.');
     await planLaden();
+    await ablageLaden();
   }
 
   const planHinweis = kein ? <Leer>Rechnungen gehören zu den Business-Zahlen des Haushalts — für dieses Konto nicht freigegeben.</Leer>
@@ -295,6 +308,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
         <AngebotNeu bezugListe={bezugListe} bezugFelder={bezugFelder} heute={heute} onFertig={ablageLaden} setMeldung={setMeldung} />
         {!angebote.length ? <Leer>Noch kein Angebot — „+ Angebot“ oben rechts öffnet das Angebots-Tool.</Leer> : angebote.map(a => (
           <AngebotZeileAnsicht key={a.schluessel} a={a} heute={heute} zuDeal={zuDeal} aendern={eintragAendern} loeschen={eintragLoeschen}
+            rechnungAusAngebot={kein ? undefined : (angebotId: string) => rechnungSchreibenOeffnen({ quelle: 'angebot', angebotId })}
             alsRechnung={plan === null || typeof plan !== 'object' ? undefined : async () => {
               const e = a.eintrag!;
               const mandat = e.mandatId ? bezug.mandate.find(m => m.id === e.mandatId) : bezug.mandate[0];
@@ -312,7 +326,10 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
       </KachelKarte>
 
       <KachelKarte id="rechnungen" i={4} titel="Rechnungen" farbe={LEUCHT.puls} kurz={rechnungen.length ? `${offen.length} offen · ${rechnungen.length} gesamt` : undefined} zu={zu.has('rechnungen')} umschalten={umschalten}
-        rechts={<a href={WEG.rechnungen()} style={leiseLink}>in den Finanzen ›</a>}>
+        rechts={<span style={{ display: 'inline-flex', gap: 12, alignItems: 'center' }}>
+          {!kein && <button onClick={() => { const m = bezug.mandate.find(x => x.status === 'aktiv') ?? bezug.mandate[0]; const rf = rechnungsFirma(m, vorgabe); void rechnungSchreibenOeffnen({ quelle: 'frei', kontaktId: k.id, ...(bezug.firma ? { kundeFirmaId: bezug.firma.id } : {}), ...(m ? { mandatId: m.id } : {}), ...(rf.firmaId ? { firmaId: rf.firmaId } : {}) }); }} style={leiseLink}>+ Rechnung schreiben (PDF)</button>}
+          <a href={WEG.rechnungen()} style={leiseLink}>in den Finanzen ›</a>
+        </span>}>
         {planHinweis ?? <>
           <RechnungNeu k={k} bezug={bezug} zielTage={zielTage} heute={heute} firmen={(plan as Plan).firmen} vorgabe={vorgabe} schreiben={rechnungSchreiben} />
           {!rechnungen.length ? <Leer>Noch keine Rechnung für {kundenName(k, bezug.firma) || 'diesen Kontakt'} im Finanzplan.</Leer> : rechnungen.map(z => (
@@ -501,7 +518,7 @@ function AngebotNeu({ bezugListe, bezugFelder, heute, onFertig, setMeldung }: { 
   );
 }
 
-function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung }: { a: AngebotZeile; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (e: DateiEintrag) => Promise<void>; alsRechnung?: () => Promise<void> }) {
+function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung, rechnungAusAngebot }: { a: AngebotZeile; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (e: DateiEintrag) => Promise<void>; alsRechnung?: () => Promise<void>; /** Angebots-Tool (08.10.): angenommen → Rechnungsentwurf mit den Positionen. */ rechnungAusAngebot?: (angebotId: string) => Promise<void> }) {
   const e = a.eintrag;
   // Aus dem Angebots-Tool (28.09.): Status des Tools, öffnen im Tool (dort annehmen/ablehnen/neue Version).
   if (a.quelle === 'tool' && a.angebot) {
@@ -510,7 +527,7 @@ function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung 
     return (
       <ZeileKlein titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel}</>}
         unter={[a.datum ? datum(a.datum, heute) : null, a.betrag != null ? `${euro(a.betrag)} Gesamtwert` : null, `bis ${datum(a.angebot.gueltigBis)}`].filter(Boolean).join(' · ')}
-        rechts={<><Chip farbe={farbe}>{ANGEBOT_STATUS_LABEL[st]}</Chip><Link href={angebotLink({ angebotId: a.angebot.id })} style={leiseLink}>öffnen ›</Link>{a.dealId && zuDeal && <button onClick={() => zuDeal(a.dealId!)} style={leiseLink}>Deal ›</button>}</>} />
+        rechts={<><Chip farbe={farbe}>{ANGEBOT_STATUS_LABEL[st]}</Chip><Link href={angebotLink({ angebotId: a.angebot.id })} style={leiseLink}>öffnen ›</Link>{a.dealId && zuDeal && <button onClick={() => zuDeal(a.dealId!)} style={leiseLink}>Deal ›</button>}{st === 'angenommen' && rechnungAusAngebot && <button onClick={() => void rechnungAusAngebot(a.angebot!.id)} style={leiseLink}>→ Rechnung schreiben</button>}</>} />
     );
   }
   const quelle = a.quelle === 'deal' ? 'aus dem Deal' : a.quelle === 'rechnung' ? 'im Finanzplan' : e?.datei ? 'abgelegt' : 'erfasst';
@@ -592,7 +609,8 @@ function RechnungZeile({ z, heute, pdf, kontaktId, firmaId, onFertig, setMeldung
       rechts={<>
         <Chip farbe={STATUS_FARBE[status] ?? C.inkLeise}>{status === 'ueberfaellig' ? 'überfällig' : status}</Chip>
         {(z.r.status === 'gestellt' || z.r.status === 'bezahlt') && <StornoKnopf onJa={grund => stornieren(z.r, grund)} />}
-        {pdf ? <><DateiLink e={pdf} /><LoeschKnopf beleg={istBeleg(pdf)} onJa={() => void loeschen(pdf)} /></> : <>
+        {z.r.status === 'geplant' && <Link href={WEG.rechnungSchreiben(z.r.id)} style={leiseLink}>Rechnung schreiben ›</Link>}
+        {pdf ? <><DateiLink e={pdf} />{!pdf.rechnungsPdf && <LoeschKnopf beleg={istBeleg(pdf)} onJa={() => void loeschen(pdf)} />}</> : <>
           <input ref={ref} type="file" accept={ANNEHMEN} hidden onChange={e => void pdfHoch(e.target.files?.[0] ?? null)} />
           <button onClick={() => ref.current?.click()} style={leiseLink} disabled={laeuft}>{laeuft ? 'lädt …' : '+ PDF'}</button>
         </>}

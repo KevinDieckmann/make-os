@@ -50,6 +50,8 @@ import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { neueKennung } from '@/lib/kennung';
+import { entwurfAnlegen } from '../rechnung/daten';
+import { monatsName } from '@/lib/finanzen/rechnung/regeln';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -350,6 +352,15 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const ueber = offen.filter(r => r.faellig && r.faellig < heute);
   // Register-Gesellschaft (04.10.): der Finanzplan führt sie noch nicht — ehrlich sagen statt still bei der Selbstständigkeit ablegen.
   const finanzFirma = finanzFirmaFuer(m.gesellschaft);
+  const [fehler, setFehler] = useState<string | null>(null);
+  // Monatsrechnung mit PDF (08.10.): ein Entwurf je Leistungsmonat auf Klick — gestellt wird erst im Editor (nie automatisch).
+  const monat = heute.slice(0, 7);
+  const vormonat = tagePlus(`${monat}-01`, -1).slice(0, 7);
+  const monatsrechnung = async (mo: string) => {
+    const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat: mo });
+    if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
+    router.push(WEG.rechnungSchreiben(e.id));
+  };
   const anlegen = async () => {
     if (!finanzFirma) return;
     const id = neueKennung('r');
@@ -372,9 +383,12 @@ function MandatRechnungen({ m }: { m: Mandat }) {
           </Link>
         ))}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => void anlegen()}>+ Rechnung aus dem Honorar</Knopf>}
+          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
+          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(monat)}>… für {monatsName(monat)}</Knopf>}
+          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => void anlegen()}>+ Rechnung nur planen (ohne PDF)</Knopf>}
           {m.honorar.betrag > 0 && !finanzFirma && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
           {ueber.length > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{ueber.length} überfällig</span>}
+          {fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{fehler}</span>}
           {eigene.length > 5 && <Link href={WEG.rechnungen()} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>alle ›</Link>}
         </div>
       </div>

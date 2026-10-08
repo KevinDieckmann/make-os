@@ -111,6 +111,10 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['rechnung-gesellschaft-tot', b => { b.finanzplan!.rechnungen[0].firmaId = 'weg'; }, 1, 'r-1'],
   ['rechnung-bezahlt-ohne-datum', b => { b.finanzplan!.rechnungen[0].status = 'bezahlt'; }, 1, 'r-1'],
   ['rechnung-betrag', b => { b.finanzplan!.rechnungen[0].betrag = 0; }, 1, 'r-1'],
+  // Rechnungen mit PDF (08.10.): PDF fehlt in der Ablage, Storno-Bezug tot, Verweis ins CRM tot — eine Stornorechnung (negativ) ist kein Betrags-Befund.
+  ['rechnung-pdf-fehlt', b => { b.finanzplan!.rechnungen.push({ id: 'r-pdf', firmaId: 'kdv', status: 'gestellt', betrag: 10, pdfDateiId: 'd-weg99', datum: '2026-09-20' }, { id: 'r-pdf-da', firmaId: 'kdv', status: 'gestellt', betrag: 10, pdfDateiId: 'd-abcd1', datum: '2026-09-20' }); }, 1, 'r-pdf'],
+  ['rechnung-storno-tot', b => { b.finanzplan!.rechnungen.push({ id: 'r-st', firmaId: 'kdv', status: 'storniert', art: 'storno', betrag: -10, stornoZu: 'r-weg' }, { id: 'r-st-ok', firmaId: 'kdv', status: 'storniert', art: 'storno', betrag: -2500, stornoZu: 'r-1' }); }, 1, 'r-st'],
+  ['rechnung-bezug-tot', b => { b.finanzplan!.rechnungen[0].kontaktId = 'c-weg1'; }, 1, 'r-1'],
   ['followup-kontakt-tot', b => { b.crm.followups[0].kontaktId = 'c-weg1'; }, 1, 'fu-1'],
   ['followup-bezug-tot', b => { b.crm.followups[0].bezug = { art: 'mandat', id: 'm-weg' }; }, 1, 'fu-1'],
   ['followup-alt-tot', b => { b.crm.followups.push(fu('fu-2', { status: 'erledigt', erledigtAm: J, bezug: { art: 'event', id: 'ev-weg' } })); }, 1, 'fu-2'],
