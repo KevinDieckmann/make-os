@@ -1,7 +1,7 @@
 {
   "name": "MAKE OS",
   "short_name": "MAKE",
-  "description": "Kevins Life & Business OS — MAKE steuert, du entscheidest.",
+  "description": "MAKE OS — Life & Business OS",
   "start_url": "/os",
   "display": "standalone",
   "background_color": "#0B0E10",

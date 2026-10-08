@@ -22,7 +22,7 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 
 /** Alle Dateien des Bereichs Zahlen & Finanzen. */
 const ORDNER = ['components/os/finanzplan', 'components/os/haushalt', 'components/os/steuern', 'components/os/business', 'components/os/kennzahlen', 'components/os/privat'];
-const EINZELN = ['ZahlenView', 'FinanzenView', 'FinanzchefView', 'FinanzDashboardView', 'FinanzplanungView', 'LiquiditaetView', 'ControllingView', 'BuchungenView', 'GrundlageView', 'HaushaltZuordnung'].map(n => `components/os/${n}.tsx`);
+const EINZELN = ['ZahlenView', 'FinanzenView', 'FinanzchefView', 'FinanzplanungView', 'LiquiditaetView', 'ControllingView', 'BuchungenView', 'GrundlageView', 'HaushaltZuordnung'].map(n => `components/os/${n}.tsx`);
 const ALLE = [...ORDNER.flatMap(d => dateien(d)), ...EINZELN];
 
 describe('Zahlen & Finanzen hängen am Standard', () => {

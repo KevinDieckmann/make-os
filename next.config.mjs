@@ -13,7 +13,7 @@ const nextConfig = {
   poweredByHeader: false,
   // Sicherheits-Kopfzeilen aus der App selbst (26.09.) — gelten auch lokal und über Tailscale, nicht nur
   // hinter Caddy. Die Content-Security-Policy nur im Produktionsbau (der Entwicklungsmodus braucht eval).
-  // Der Altbestand /finanz-dashboard.html lädt Firebase von außen — er bekommt keine CSP.
+  // 08.10. spät: der Altbestand /finanz-dashboard.html (lud Firebase von außen, ohne CSP) ist entfernt — jede Seite trägt die CSP.
   async headers() {
     const basis = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -45,8 +45,7 @@ const nextConfig = {
       ].join('; ') }] : []),
     ];
     return [
-      { source: '/finanz-dashboard.html', headers: basis.filter(h => h.key !== 'X-Frame-Options').concat([{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]) },
-      { source: '/((?!finanz-dashboard\\.html).*)', headers: [...basis, ...csp] },
+      { source: '/:pfad*', headers: [...basis, ...csp] },
       { source: '/buchen/:pfad*', headers: buchung },
       { source: '/api/buchung/:pfad*', headers: buchung },
       // Abmeldelink (05.10., Betroffenenrechte v2): das Token steht im Pfad — dieselbe strenge Richtlinie (kein Referrer, nicht indexieren).
@@ -104,7 +103,10 @@ const nextConfig = {
       { source: '/os/finanzen/liquiditaet', destination: '/os/finanzen?s=liquiditaet&space=business', permanent: false },
       { source: '/os/finanzen/buchungen', destination: '/os/finanzen?s=buchungen', permanent: false },
       { source: '/os/finanzen/grundlage', destination: '/os/finanzen?s=finanzplanung&space=privat&u=selbst&alt=grundlage', permanent: false },
-      { source: '/os/finanzen/dashboard', destination: '/os/finanzen?s=finanzplanung&space=privat&u=selbst&alt=v1', permanent: false },
+      // 08.10. spät (Datenschutz vor dem Upload): das erste Cockpit (public/finanz-dashboard.html, echte Kontobewegungen) ist aus dem
+      // Repo entfernt — beide alten Adressen landen beim Altbestand der Selbstständigkeit (Kassenbuch).
+      { source: '/os/finanzen/dashboard', destination: '/os/finanzen?s=finanzplanung&space=privat&u=selbst', permanent: false },
+      { source: '/finanz-dashboard.html', destination: '/os/finanzen?s=finanzplanung&space=privat&u=selbst', permanent: false },
       { source: '/os/controlling', destination: '/os/finanzen?s=controlling&space=business', permanent: false },
       // Bis 08.10. Weiterleitungs-Seiten unter app/ (Regel: Weiterleitungen nur hier): Finanzplanung → Privat › Planung, Business-Cockpit.
       { source: '/os/finanzplan', destination: '/os/finanzen?s=finanzplanung&space=privat', permanent: false },

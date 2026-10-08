@@ -140,7 +140,7 @@ Was im Repo steht und mit dem nächsten Ausrollen wirkt:
   der Arbeiter bekommt nur `MAKE_OS_KEY` statt der ganzen `.env`.
 - **Kopfzeilen aus der App** (`next.config.mjs`): X-Content-Type-Options, Referrer-Policy, X-Frame-Options,
   Permissions-Policy; im Produktionsbau eine Content-Security-Policy (`default-src 'self'` …). Caddy setzt
-  zusätzlich HSTS. Der Altbestand `/finanz-dashboard.html` bleibt ohne CSP (lädt Firebase).
+  zusätzlich HSTS. Der frühere Altbestand `/finanz-dashboard.html` (ohne CSP) ist seit 08.10. entfernt — die CSP gilt für jede Seite.
 - **Sitzungen:** 14 Tage; Abmelden widerruft den Zettel; „Alle anderen Geräte abmelden“ unter Konto;
   Passwortwechsel meldet andere Geräte ab; Anmelde-Protokoll unter Konto („Zuletzt: …“).
 - **Ausrollen:** `deploy/ausrollen.sh` ist der Forced Command des Ausroll-Schlüssels (nur `git merge --ff-only`

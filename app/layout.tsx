@@ -22,7 +22,7 @@ import { BauWache } from '@/components/os/BauWache';
 
 export const metadata: Metadata = {
   title: 'make — Life & Business OS',
-  description: 'Das persönliche Betriebssystem für Malin & Kevin',
+  description: 'MAKE OS — Life & Business OS',
   // PWA: auf dem iPhone „Zum Home-Bildschirm" → läuft wie eine echte App.
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'MAKE' },
