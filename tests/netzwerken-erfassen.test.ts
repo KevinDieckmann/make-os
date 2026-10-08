@@ -432,7 +432,7 @@ describe('Rechte und Prüfung', () => {
   it('zuständig nur aus dem Haushalt; kaputte Eingaben → 400/413/415 mit Klartext, nichts geschrieben', async () => {
     expect((await senden(erfassung({ zustaendig: 'fremd' }))).status).toBe(400);
     expect((await senden(erfassung({ erfassungId: 'keine-uuid' }))).status).toBe(400);
-    expect((await senden(erfassung({ kontakt: { vorname: 'Nur' } }))).d.fehler).toMatch(/Nachname/);
+    expect((await senden(erfassung({ kontakt: { firma: 'Nur Firma' } }))).d.fehler).toMatch(/Vor- oder Nachname/); // 5.14: einer von beiden reicht
     expect((await senden(erfassung({ schritt: 'quatsch' }))).d.fehler).toMatch(/Schritt/);
     expect((await senden(erfassung({ bilder: [{ name: 'x.gif', typ: 'image/gif', daten: JPEG }] }))).status).toBe(415);
     expect((await senden(erfassung({ info: 'x'.repeat(1001) }))).status).toBe(413);

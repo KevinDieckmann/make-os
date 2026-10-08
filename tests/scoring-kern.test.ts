@@ -85,9 +85,9 @@ describe('Deckel, Schwellen, Temperatur, Gesamtwert', () => {
   });
   it('Schwelle und „erreicht“: Marketing der bisherigen Rechnung ab 35 Punkten (für einen Marketing-Lead)', () => {
     const e = bisherigeRechnung();
-    const m = (aktivitaeten: Kontakt['aktivitaeten']) => scoringRechnen([p({ aktivitaeten, herkunft: 'selbst' })], undefined, HEUTE, { einstellungen: e }).marketing;
+    const m = (aktivitaeten: Kontakt['aktivitaeten']) => scoringRechnen([p({ aktivitaeten, quelle: 'Website-Anfrage' })], undefined, HEUTE, { einstellungen: e }).marketing;
     expect(m([{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }])).toMatchObject({ punkte: 30, erreicht: false });
-    expect(scoringRechnen([p({ herkunft: 'selbst', email: 'a@example.invalid', telefon: '1', aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE, { einstellungen: e }).marketing).toMatchObject({ punkte: 37, erreicht: true });
+    expect(scoringRechnen([p({ quelle: 'Website-Anfrage', email: 'a@example.invalid', telefon: '1', aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'gespraech', von: 'kevin' }] })], undefined, HEUTE, { einstellungen: e }).marketing).toMatchObject({ punkte: 37, erreicht: true });
     expect(m([{ am: '2026-09-20T10:00:00Z', art: 'mail', von: 'kevin' }])).toMatchObject({ punkte: 8, erreicht: false });
   });
   it('Gesamtwert = Anteil an der möglichen Summe, nicht die Summe selbst (Vorschlag: 53 + 70 = 123 möglich)', () => {

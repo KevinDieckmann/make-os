@@ -8,7 +8,7 @@ import {
   netzwerkenAngabeSaeubern, stadtAusAnschrift, wandPlusMinuten, abstand, neuesEvent, SCHRITTE, INFO_MAX, MAX_BILDER,
   zusammenfuehrung, luekenFuellen, ergebnisLinks, followupFristEinTag,
 } from '@/lib/crm/netzwerken';
-import { karteAuslesen, ausgelesenesUebernehmen, KARTE_AUSLESEN_AN } from '@/lib/crm/netzwerken-karte';
+import { karteAuslesen, ausgelesenesUebernehmen, BITTE_TIPPEN } from '@/lib/crm/netzwerken-karte';
 import { bewerten, Warteschlange, ramSpeicher, WARTET_TEXT, wartendFuer, type Sender } from '@/lib/netzwerken/warteschlange';
 import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
 import { anstehendAbleiten, pruefeEingabe, ARTEN } from '@/lib/meldungen/regeln';
@@ -35,7 +35,8 @@ describe('Erfassung prüfen', () => {
   it.each([
     [{ erfassungId: 'x' }, 400, /Kennung/],
     [{ eventId: '' }, 400, /Event/],
-    [{ kontakt: { vorname: 'Nur' } }, 400, /Nachname/],
+    // 5.14 (08.10.): Vorname ODER Nachname reicht — ohne beides 400.
+    [{ kontakt: { firma: 'Nur Firma' } }, 400, /Vor- oder Nachname/],
     [{ kontakt: { nachname: 'A', email: 'kaputt@' } }, 400, /E-Mail/],
     [{ kontakt: { nachname: 'A', telefon: '12345' } }, 400, /Vorwahl/],
     [{ kontakt: { nachname: 'A', linkedin: 'https://example.invalid/in/x' } }, 400, /LinkedIn/],
@@ -233,10 +234,17 @@ describe('Angabe an der Teilnahme säubern', () => {
   });
 });
 
-describe('Karte automatisch auslesen: vorbereitet, aus', () => {
-  it('liefert heute nichts; übernimmt später nur in leere Felder', async () => {
-    expect(KARTE_AUSLESEN_AN).toBe(false);
-    expect(await karteAuslesen([{ daten: JPEG, typ: 'image/jpeg' }])).toBeNull();
+describe('Karte automatisch auslesen: über /api/crm/visitenkarte (08.10., 5.13)', () => {
+  it('liest über dieselbe Route wie Kartei/Abend (nur das erste Foto), ohne KI „bitte tippen“; übernimmt nur in leere Felder', async () => {
+    const aufrufe: { url: string; body: unknown }[] = [];
+    const holen = (async (url: string, init?: RequestInit) => { aufrufe.push({ url, body: JSON.parse(String(init?.body)) }); return new Response(JSON.stringify({ ok: true, daten: { vorname: 'Anja', nachname: 'Beispiel', firma: 'Beispiel GmbH', titel: 'Dr.' } })); }) as typeof fetch;
+    const r = await karteAuslesen([{ daten: JPEG, typ: 'image/jpeg' }, { daten: 'zweites', typ: 'image/jpeg' }], holen);
+    expect(aufrufe).toEqual([{ url: '/api/crm/visitenkarte', body: { bild: JPEG, medientyp: 'image/jpeg' } }]);
+    expect(r).toEqual({ erkannt: { vorname: 'Anja', nachname: 'Beispiel', firma: 'Beispiel GmbH' } });
+    const aus = await karteAuslesen([{ daten: JPEG, typ: 'image/jpeg' }], (async () => new Response(JSON.stringify({ ok: false, fehler: 'Erkennung gerade nicht möglich — Felder bitte von Hand ausfüllen.' }))) as typeof fetch);
+    expect(aus).toEqual({ erkannt: null, hinweis: 'Erkennung gerade nicht möglich — Felder bitte von Hand ausfüllen.' });
+    expect((await karteAuslesen([{ daten: JPEG, typ: 'image/jpeg' }], (async () => { throw new Error('offline'); }) as typeof fetch)).hinweis).toBe(BITTE_TIPPEN);
+    expect(await karteAuslesen([])).toEqual({ erkannt: null });
     expect(ausgelesenesUebernehmen({ anrede: 'Sie', vorname: 'Anna' }, null)).toEqual({ anrede: 'Sie', vorname: 'Anna' });
     expect(ausgelesenesUebernehmen({ anrede: 'Sie', vorname: 'Anna' }, { vorname: 'Anja', nachname: 'Beispiel', position: '  ' })).toEqual({ anrede: 'Sie', vorname: 'Anna', nachname: 'Beispiel' });
   });

@@ -389,22 +389,26 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
   const anlegen = async () => {
     if (!ok) return;
     let firmaId = firma?.id;
-    if (!firmaId && e.firma.trim()) { const f = { ...neueFirma(e.firma), ...(e.webseite ? { webseite: e.webseite } : {}) }; firmaId = f.id; await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>); }
+    // 1.5 (08.10.): Rückgabe prüfen — scheitert die Firma, bleibt der Dialog stehen (die Meldung zeigt die Kette); sonst zeigte der
+    // Kontakt auf eine Firma, die es nicht gibt, und wurde nie ein Lead.
+    if (!firmaId && e.firma.trim()) { const f = { ...neueFirma(e.firma), ...(e.webseite ? { webseite: e.webseite } : {}) }; firmaId = f.id; if (!(await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>))) return; }
     const id = neueKontaktKennung(); // Paket D-C #35: `c-<uuid>` — keine Zeit, keine E-Mail in der Kennung
     const herk = HERKUNFT.find(h => h.id === e.herkunft);
-    await api.kontaktSetzen({
+    const gespeichert = await api.kontaktSetzen({
       id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),
       ...(e.position.trim() ? { position: e.position.trim() } : {}), ...(e.firma.trim() ? { firma: firma?.name ?? e.firma.trim(), firmaId } : {}),
       ...(e.mobil ? { sms: e.mobil } : {}), ...(e.linkedin ? { linkedin: e.linkedin } : {}), ...(e.webseite ? { firmaWebseite: e.webseite } : {}),
       eignung: '', prio: '', stufe: 'neu', lebensphase: e.lebensphase, anrede: e.anrede, ...(api.ich ? { besitzer: api.ich } : {}), ...(e.herkunft ? { herkunft: e.herkunft, ...(herk?.fremd ? { fremddaten: true } : {}) } : {}),
       quelle: e.vonKarte ? 'Visitenkarte' : 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: e.vonKarte ? 'Per Visitenkarte angelegt' : 'Von Hand angelegt', von: 'system' }], importiertAm: heute, geaendertAm: heute,
     });
+    if (!gespeichert) return; // die Karte öffnet nur, wenn der Kontakt wirklich steht (1.5)
     onFertig(id);
   };
   return (
     <div style={{ display: 'grid', gap: 10, marginTop: 14, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-      {/* Visitenkarte fotografieren → Felder vorausgefüllt; die Karte kam von der Person selbst (keine Art.-14-Pflicht, aber keine Einwilligung). */}
-      <VisitenkarteKnopf onErkannt={d => setE({ ...e, vorname: d.vorname ?? e.vorname, nachname: d.nachname ?? e.nachname, email: d.email ?? e.email, telefon: d.telefon ?? e.telefon, position: d.position ?? e.position, firma: d.firma ?? e.firma, linkedin: d.linkedin ?? e.linkedin, webseite: d.webseite ?? e.webseite, mobil: d.mobil ?? e.mobil, vonKarte: true, herkunft: e.herkunft ?? 'selbst' })} />
+      {/* Visitenkarte fotografieren → Felder vorausgefüllt; die Karte kam von der Person selbst (keine Art.-14-Pflicht, aber keine Einwilligung).
+          Herkunft „Veranstaltung“ (08.10., 5.1): eine überreichte Karte ist eine Begegnung — „selbst angegeben“ las der Kanal als Website-Anfrage (MQL). */}
+      <VisitenkarteKnopf onErkannt={d => setE({ ...e, vorname: d.vorname ?? e.vorname, nachname: d.nachname ?? e.nachname, email: d.email ?? e.email, telefon: d.telefon ?? e.telefon, position: d.position ?? e.position, firma: d.firma ?? e.firma, linkedin: d.linkedin ?? e.linkedin, webseite: d.webseite ?? e.webseite, mobil: d.mobil ?? e.mobil, vonKarte: true, herkunft: e.herkunft ?? 'veranstaltung' })} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 8 }}>
         <Feld wert={e.vorname} platzhalter="Vorname" onFertig={vorname => setE({ ...e, vorname })} />
         <Feld wert={e.nachname} platzhalter="Nachname *" onFertig={nachname => setE({ ...e, nachname })} />

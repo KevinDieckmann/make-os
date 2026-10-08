@@ -32,6 +32,10 @@ import { personenDerFirma } from './stationen';
 import { werktagePlus as kernWerktagePlus, istWerktag } from '@/lib/zeit/kalender-kern';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
+/** So viele „Neu“-Karten (Kampagnen, Prio A/B) nimmt die Power Hour je Tag höchstens — über alle Quellen (08.10., 5.3: im Text genannt). */
+export const NEU_MAX = 4;
+/** Wie viele Personen dieser Kampagne heute in der Power Hour stehen — aus DERSELBEN Rechnung (`werIstDran`, Karten mit Bezug). */
+export const kampagneInPowerHour = (karten: readonly Pick<Karte, 'bezug'>[], kampagneId: string): number => karten.filter(c => c.bezug === kampagneId).length;
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
   { id: 'versprechen', label: 'Versprechen', warum: 'Zugesagt ist zugesagt' },
   { id: 'signale', label: 'Signale', warum: 'Jemand wartet auf dich' },
@@ -250,8 +254,8 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   const eindeutig = karten.filter(c => { const key = `${c2n(c.name)}|${c2n(c.kontakt.firma)}`; if (gesehen.has(key)) return false; gesehen.add(key); return true; });
   karten.splice(0, karten.length, ...eindeutig);
 
-  // Umfang: höchstens n, davon mind. 3 aus Pflege+Neu (Law of Replacement), höchstens 4 Neu.
-  const neu = karten.filter(k => k.kategorie === 'neu').slice(0, 4);
+  // Umfang: höchstens n, davon mind. 3 aus Pflege+Neu (Law of Replacement), höchstens NEU_MAX Neu.
+  const neu = karten.filter(k => k.kategorie === 'neu').slice(0, NEU_MAX);
   const pflege = karten.filter(k => k.kategorie === 'pflege');
   const rest = karten.filter(k => k.kategorie !== 'neu' && k.kategorie !== 'pflege');
   const reserve = [...pflege, ...neu].slice(0, 3);

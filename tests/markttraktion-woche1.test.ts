@@ -491,3 +491,68 @@ describe('C · Follow-up: Deal-Schritt, ein Erledigen-Formular, Art nach Ergebni
     expect(kfu.letzterKontakt).toBe(heute);
   });
 });
+
+// ── D · Marketing & Netzwerken (5.1, 5.2, 5.3, 5.13, 5.14, dazu 1.5) ────────────────────────────────────────────────────────
+describe('D · Marketing-Herkunft, Kampagne in der Power Hour, Netzwerken-Namen', () => {
+  const anfrage = (text: string, bezug?: string) => ({ am: J, art: 'antwort' as const, text, von: 'kevin', ...(bezug ? { bezug } : {}) });
+  it('5.1 · die Datenschutz-Herkunft macht keinen Marketing-Lead; Anfragen über Empfehlung/Event bzw. zu einem besuchten Event auch nicht', async () => {
+    const { marketingHerkunft, istMarketingLead, anfrageIstMarketing, ANFRAGE_OHNE_MARKETING } = await import('@/lib/crm/scoring');
+    const { anfrageText, ANFRAGE_KANAELE } = await import('@/lib/crm/anfragen');
+    const besucht = { id: 'ev-besucht', titel: 'Messe', datum: vor(3), marke: 'Netzwerken', status: 'durchgefuehrt' } as never;
+    const eigen = { id: 'ev-eigen', titel: 'Abend', datum: vor(3), status: 'durchgefuehrt' } as never;
+    // Visitenkarte, „selbst angegeben“ (Art. 14) — keine Anfrage, kein Marketing.
+    expect(istMarketingLead([k('karte', { herkunft: 'selbst', quelle: 'Visitenkarte' })])).toBe(false);
+    // Website-Anfrage: Marketing.
+    expect(marketingHerkunft([k('web', { herkunft: 'selbst', quelle: 'Anfrage über Website', aktivitaeten: [anfrage(anfrageText('website', 'Bitte um Rückruf'))] })]).map(g => g.quelle)).toEqual(['anfrage']);
+    // Empfehlung/Event: kein Marketing — auch nicht über die Quelle „Anfrage über …“.
+    expect(istMarketingLead([k('empf', { herkunft: 'selbst', quelle: 'Anfrage über Empfehlung', aktivitaeten: [anfrage(anfrageText('empfehlung', 'x'))] })])).toBe(false);
+    expect(istMarketingLead([k('ev', { herkunft: 'selbst', quelle: 'Anfrage über Event', aktivitaeten: [anfrage(anfrageText('event', 'x'))] })])).toBe(false);
+    // Website-Anfrage mit Bezug auf ein BESUCHTES Event: Begegnung, kein Marketing; Bezug auf ein eigenes Event: Marketing.
+    const mitBezug = (ev: string) => [k('bez', { quelle: 'Anfrage über Website', aktivitaeten: [anfrage(anfrageText('website', 'x'), ev)] })];
+    expect(istMarketingLead(mitBezug('ev-besucht'), { events: [besucht, eigen] })).toBe(false);
+    expect(istMarketingLead(mitBezug('ev-eigen'), { events: [besucht, eigen] })).toBe(true);
+    // Die Liste der „keine Marketing“-Kanäle passt zu den Beschriftungen des Anfragen-Eingangs.
+    for (const kn of ANFRAGE_OHNE_MARKETING) expect(ANFRAGE_KANAELE.some(x => x.label === kn), kn).toBe(true);
+    expect(anfrageIstMarketing({ text: anfrageText('linkedin', 'x') })).toBe(true);
+  });
+  it('5.1/1.5 · Kartei: Visitenkarte → Herkunft „Veranstaltung“; Anlegen prüft Firma und Kontakt, bevor die Karte öffnet', () => {
+    const src = quelle('components/os/crm/Kartei.tsx');
+    expect(src).toContain("herkunft: e.herkunft ?? 'veranstaltung'");
+    expect(src).toContain("if (!(await api.setze('firmen'");
+    expect(src).toContain('if (!gespeichert) return;');
+  });
+  it('5.3/5.2 · Kampagne: „heute in der Power Hour: n“ aus derselben Rechnung, ehrlicher Text; Ampel-Hinweis des Servers sichtbar', async () => {
+    const { kampagneInPowerHour, NEU_MAX } = await import('@/lib/crm/heute');
+    expect(kampagneInPowerHour([{ bezug: 'kp-1' }, { bezug: 'kp-2' }, { bezug: 'kp-1' }, {}], 'kp-1')).toBe(2);
+    expect(NEU_MAX).toBe(4);
+    const src = quelle('components/os/crm/Kampagnen.tsx');
+    expect(src).toContain('heute in der Power Hour: ${inPowerHour}');
+    expect(src).toContain('/api/crm/heute?n=12&fuer=');
+    expect(src).not.toContain('— sie stehen in der Power Hour von');
+    expect(src).toContain('r.hinweis');
+    expect(quelle('app/api/crm/kampagnen/route.ts')).toContain('hinweis: ampelText.trim()');
+  });
+  it('5.14 · Netzwerken: Vorname ODER Nachname reicht (Browser und Server)', async () => {
+    const { erfassungPruefen, nameOk, NAME_FEHLT } = await import('@/lib/crm/netzwerken');
+    const roh = (kontakt: Record<string, unknown>) => ({ erfassungId: '3f2b9c1e-1a2b-4c3d-8e4f-0123456789ab', erfasstAm: J, eventId: 'ev-test-1', kontakt, bilder: [], schritt: 'nur-kontakt', zustaendig: 'kevin' });
+    expect(erfassungPruefen(roh({ vorname: 'Nur' }), { heute: T, jetzt: new Date(J) }).ok).toBe(true);
+    expect(erfassungPruefen(roh({ nachname: 'Beispiel' }), { heute: T, jetzt: new Date(J) }).ok).toBe(true);
+    const ohne = erfassungPruefen(roh({ firma: 'Nur Firma' }), { heute: T, jetzt: new Date(J) });
+    expect(ohne.ok).toBe(false);
+    if (!ohne.ok) expect(ohne.fehler).toBe(NAME_FEHLT);
+    expect(nameOk({ vorname: ' ' })).toBe(false);
+    expect(quelle('components/os/netzwerken/Erfassen.tsx')).toContain('nameOk(f)');
+  });
+  it('5.14 · ohne Nachnamen hängt eine gleiche Nummer NIE an (die Dublettenregel bleibt sicher)', async () => {
+    const { zusammenfuehrung } = await import('@/lib/crm/netzwerken');
+    const da = k('da', { vorname: 'Max', nachname: 'Beispiel', telefon: '+49 30 1234567' });
+    const r = zusammenfuehrung({ kontakt: { vorname: 'Max', telefon: '+49 30 1234567' } }, [da], 'c-neu');
+    expect(r.ziel).toBeUndefined();
+    expect(r.gleicheNummer?.kontakt.id).toBe('c-da');
+  });
+  it('5.13 · Netzwerken liest die Karte über /api/crm/visitenkarte; kein fester Personenname im Prompt der Route', () => {
+    expect(quelle('lib/crm/netzwerken-karte.ts')).not.toContain('export const KARTE_AUSLESEN_AN');
+    expect(quelle('lib/crm/netzwerken-karte.ts')).toContain("'/api/crm/visitenkarte'");
+    expect(quelle('app/api/crm/visitenkarte/route.ts')).not.toMatch(/Kevin und Malin/);
+  });
+});
