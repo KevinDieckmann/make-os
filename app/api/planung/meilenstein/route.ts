@@ -18,6 +18,7 @@ import { meilensteinListeId, meilensteinProjektId, meilensteinAufgabenSpace } fr
 import { meilensteinStrukturSichern } from '@/lib/planung/meilenstein-aufgaben-server';
 import { aktionLesen, raumFuerBrowser } from '@/lib/planung/meilenstein-raum';
 import { raumLaden, raumAendern } from '@/lib/planung/meilenstein-raum-server';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,9 +35,14 @@ async function zugangUndHaushalt(req: Request): Promise<{ person: string; hausha
   return { person: z.person, haushalt: h.haushalt };
 }
 
-async function meilensteinFinden(id: string): Promise<Meilenstein | null> {
+/**
+ * Der Meilenstein, wie `person` ihn sehen darf (08.10., eigene Ziele nur geteilt): einer aus dem Altbestand, der an einem nicht geteilten
+ * eigenen Ziel einer anderen Person hängt, gibt es für sie nicht (404 — lesen UND Verlauf/Notiz schreiben, wie PATCH /api/state/meilensteine).
+ */
+async function meilensteinFinden(id: string, person: string): Promise<Meilenstein | null> {
   const f = await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine');
-  return (Array.isArray(f?.meilensteine) ? f!.meilensteine : []).find(m => m.id === id) ?? null;
+  const m = (Array.isArray(f?.meilensteine) ? f!.meilensteine : []).find(x => x.id === id);
+  return m ? (await meilensteineSichtbarFuer([m], person))[0] ?? null : null;
 }
 
 export async function GET(req: Request) {
@@ -44,7 +50,7 @@ export async function GET(req: Request) {
   if (z instanceof NextResponse) return z;
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!KENNUNG.test(id)) return NextResponse.json({ ok: false, error: 'Kennung fehlt.' }, { status: 400 });
-  const m = await meilensteinFinden(id);
+  const m = await meilensteinFinden(id, z.person);
   if (!m) return NextResponse.json({ ok: false, error: 'Diesen Meilenstein gibt es nicht (mehr).' }, { status: 404 });
   // Lazy: die Liste entsteht spätestens hier (idempotent — schreibt nur, wenn etwas fehlt oder abweicht).
   await meilensteinStrukturSichern([id], { person: z.person });
@@ -66,7 +72,7 @@ export async function POST(req: Request) {
   const id = typeof b?.id === 'string' && KENNUNG.test(b.id) ? b.id : null;
   const aktion = aktionLesen(b?.aktion);
   if (!id || !aktion) return NextResponse.json({ ok: false, error: 'id + aktion nötig.' }, { status: 400 });
-  const m = await meilensteinFinden(id);
+  const m = await meilensteinFinden(id, z.person);
   if (!m) return NextResponse.json({ ok: false, error: 'Diesen Meilenstein gibt es nicht (mehr).' }, { status: 404 });
   const r = await raumAendern(z.haushalt, id, m.titel, aktion, z.person);
   if (!r.ok) {

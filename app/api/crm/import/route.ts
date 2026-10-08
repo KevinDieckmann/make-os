@@ -184,7 +184,7 @@ export async function POST(req: Request) {
   }
   await absichtAbschliessen(haushalt, absicht.id, 'fertig', ['laufId']);
   r = r as unknown as ReturnType<typeof importieren>;
-  await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert, ${r.konflikte.length} Konflikte, ${r.gesperrt} gesperrt übersprungen`, { quelle, zeilen: zeilen.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer, ...(mitLauf ? { lauf: lauf.id } : {}) });
+  await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert, ${r.konflikte.length} Konflikte, ${r.gesperrt} gesperrt übersprungen`, { quelle, zeilen: zeilen.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer, ...(mitLauf ? { lauf: lauf.id } : {}) }, { person: wer.person });
   return NextResponse.json({
     ok: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert,
     konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer, gesperrt: r.gesperrt, weitereAdressen: r.weitereAdressen,
@@ -322,6 +322,6 @@ async function rueckgaengig(body: Body, person: string) {
   // Konflikte/Dubletten-Hinweise zu Kontakten, die es nicht mehr gibt, fallen aus der Konfliktliste.
   const weg = new Set(lauf.neu.filter(id => !e.kontakte.some(k => k.id === id)));
   if (weg.size) await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => { const st = cur ?? leererKonfliktStand(); return { ...st, konflikte: st.konflikte.filter(k => !weg.has(k.kontaktId)), moeglicheDubletten: st.moeglicheDubletten.filter(m => !weg.has(m.kontaktId) && !(m.mitId && weg.has(m.mitId))) }; });
-  await logRun('crm', `Import rückgängig: ${e.zurueck} zurückgesetzt, ${firmenZurueck} Firmen entfernt, ${konflikte.length} Konflikte`, { lauf: laufId, von: person });
+  await logRun('crm', `Import rückgängig: ${e.zurueck} zurückgesetzt, ${firmenZurueck} Firmen entfernt, ${konflikte.length} Konflikte`, { lauf: laufId, von: person }, { person });
   return NextResponse.json({ ok: true, laufId, zurueck: e.zurueck, firmen: firmenZurueck, konflikte });
 }

@@ -95,8 +95,10 @@ export function KompassView() {
     fetch('/api/state/ordnung').then(r => r.json()).then(d => {
       if (Array.isArray(d.reihenfolge) && d.reihenfolge.length) setReihenfolge(d.reihenfolge);
     }).catch(() => {});
-    fetch('/api/konto/ich').then(r => r.json()).then((d: { ich?: { speicher: string }; andere?: { speicher: string; name?: string; haushalt?: string }[] }) => {
-      if (d.ich) setPersonen({ ich: d.ich.speicher, andere: (d.andere ?? []).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] })) });
+    // Eigene Ziele (08.10., Kevin): die Fokus-Sätze einer anderen Person nur, wenn sie ihre eigenen Ziele mit mir teilt — der Server
+    // lehnt sonst ab (403); hier erscheint ihr Chip gar nicht erst.
+    fetch('/api/konto/ich').then(r => r.json()).then((d: { ich?: { speicher: string }; andere?: { speicher: string; name?: string; haushalt?: string; teiltZieleMitMir?: boolean }[] }) => {
+      if (d.ich) setPersonen({ ich: d.ich.speicher, andere: (d.andere ?? []).filter(a => a.teiltZieleMitMir).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] })) });
     }).catch(() => {});
   }, []);
   useEffect(() => {
@@ -410,7 +412,7 @@ export function KompassView() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           {([['wir', 'Wir'], ['ich', 'Ich']] as const).map(([id, label]) => chip(wessen === id, LEUCHT.schlaf, label, () => setWessen(id), id))}
           {personen.andere.map(a => chip(wessen === a.speicher, LEUCHT.beziehung, a.name, () => setWessen(a.speicher), a.speicher))}
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du, die andere Person kann ihn sehen'}</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du — andere sehen ihn nur, wenn du deine eigenen Ziele teilst (Konto)'}</span>
         </div>
         {/* Welcher Space (26.09.): gemeinsam, Privat, Business — jeder Space hat seinen eigenen Satz je Horizont. */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>

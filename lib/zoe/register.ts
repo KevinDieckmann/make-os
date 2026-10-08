@@ -54,7 +54,8 @@ interface Eintrag {
   /** Stufe je Aufruf (29.09.) — nur strenger als `risiko`, nie lockerer (siehe `risikoFuerAufruf`). */
   risikoFuer?: (input: Record<string, unknown>, person?: string) => Risiko;
   /** Trockenlauf: liest denselben Bestand wie die Ausführung, ändert nichts. */
-  vorschau: (input: Record<string, unknown>) => Promise<Vorschau>;
+  /** `person` = für wen der Vorschlag gilt (Sichtregeln wie beim Ausführen); ohne = Systemlauf. */
+  vorschau: (input: Record<string, unknown>, person?: string) => Promise<Vorschau>;
 }
 
 const eur = (n: unknown) => {
@@ -142,10 +143,12 @@ async function vsZiele(i: Record<string, unknown>): Promise<Vorschau> {
   };
 }
 
-async function vsMeilenstein(i: Record<string, unknown>): Promise<Vorschau> {
+async function vsMeilenstein(i: Record<string, unknown>, person?: string): Promise<Vorschau> {
   const suche = text(i.titel).toLowerCase();
-  const m = await loadJson<{ meilensteine?: { titel: string; fortschritt: number; erledigt: boolean; faellig?: string }[] }>('meilensteine');
-  const treffer = (m?.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
+  const m = await loadJson<{ meilensteine?: { titel: string; fortschritt: number; erledigt: boolean; faellig?: string; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine');
+  // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person) — wie das Werkzeug.
+  const { meilensteineSichtbarFuer } = await import('@/lib/planung/eigene-ziele-sicht-server');
+  const treffer = (await meilensteineSichtbarFuer(m?.meilensteine, person ?? null)).find(x => x.titel.toLowerCase().includes(suche));
   const tag = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : 'ohne Datum');
   const faellig = typeof i.faellig === 'string' && i.faellig ? text(i.faellig, 10) : '';
   // Ziel und Kette (01.10.): was die Vorschau zusätzlich nennt (Freigabe im Stapel, nie direkt).
@@ -421,11 +424,11 @@ export function gruppeVon(name: string): string {
   return REGISTER[name]?.gruppe ?? WERKZEUGE[name]?.gruppe ?? 'sonstige';
 }
 
-export async function vorschauVon(name: string, input: Record<string, unknown>): Promise<Vorschau> {
+export async function vorschauVon(name: string, input: Record<string, unknown>, person?: string): Promise<Vorschau> {
   const e = REGISTER[name];
   if (!e) return { titel: name, nachher: 'unbekanntes Werkzeug' };
   try {
-    return await e.vorschau(input);
+    return await e.vorschau(input, person);
   } catch {
     return { titel: name, nachher: 'Vorschau nicht möglich' };
   }

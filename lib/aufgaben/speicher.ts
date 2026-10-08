@@ -31,6 +31,7 @@ import { elternPruefen, nachIdKarte, kinderKarte, vorfahren } from './ebenen';
 import { ortPruefen } from './ziehen';
 import { aufgabenBezugPruefen, projektBezugPruefen } from '@/lib/planung/bezuege';
 import { zieleFuerBezug } from '@/lib/planung/bezuege-server';
+import { MS_LISTE_PRAEFIX } from '@/lib/planung/meilenstein-aufgaben';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -226,6 +227,14 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   // Bezüge (07.10., Seil): genannte Ziele aus dem geteilten Bestand — nur geladen, wenn eine Änderung ein Ziel nennen kann.
   const nenntZiel = typeof opsOderRechnen === 'function' || [...ops.tasks, ...ops.projects].some(o => o.op === 'upsert' && !!(o.eintrag as { zielId?: string } | undefined)?.zielId);
   const zieleBezug = nenntZiel ? await zieleFuerBezug() : null;
+  // Eigene Ziele nur geteilt (08.10., Gegenprüfung): die Liste eines Meilensteins an einem nicht geteilten eigenen Ziel einer anderen
+  // Person (Altbestand) ist für die schreibende Person nur neutral benannt — ändern/löschen darf sie sie nicht (404, wie „nur ich“).
+  // Unlesbar (`null`) → jede Meilenstein-Liste gilt als verborgen (nie auf Verdacht schreiben lassen).
+  const listenOps = typeof opsOderRechnen === 'function' || ops.listen.length > 0;
+  const verborgeneListen = !opt.system && listenOps
+    ? await (await import('@/lib/planung/eigene-ziele-sicht-server')).verborgeneMeilensteinListenFuer(echtePerson ? opt.person : null)
+    : new Set<string>();
+  const listeVerborgen = (id: string) => (verborgeneListen === null ? id.startsWith(MS_LISTE_PRAEFIX) : verborgeneListen.has(id));
   let erg: SchreibErgebnis = { ok: false, status: 409, angewandt: 0, zeilen: [] };
   let vorher: TasksState = leer();
   let nachher: TasksState = leer();
@@ -249,6 +258,9 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
         const id = o.op === 'delete' ? o.id! : o.eintrag!.id;
         const alt = alleVorher.get(id);
         if (alt && !darfSehen(alt, echtePerson ? opt.person : null, alleVorher)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+      }
+      for (const o of ops.listen) {
+        if (listeVerborgen(o.op === 'delete' ? o.id! : o.eintrag!.id)) { erg = { ok: false, status: 404, fehler: 'Liste nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
       }
     }
     // Gruppen (Umbau v3, 06.10.): auch Server-Schreiber legen keine mehr an.

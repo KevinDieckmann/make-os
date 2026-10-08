@@ -121,7 +121,7 @@ export async function POST(req: Request) {
 
   // Neu geschriebene Rezepte, die es schon gibt, nicht doppelt anlegen.
   const neueGerichte = gerichte.filter(g => !f.gerichte.some(x => x.name.toLowerCase() === g.name.toLowerCase()));
-  await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: neueGerichte.length, personen: namen.length });
+  await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: neueGerichte.length, personen: namen.length }, { person: z.person });
   const antwort = { begruendung: begruendungNeutral(String(r.data.begruendung ?? '').slice(0, 400), verboten), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE };
   // Hintergrundlauf (ZOE, Takt): der Vorschlag wartet auf der Ernährungs-Seite, bis ihn jemand übernimmt oder ein neuer kommt (27.09.).
   if (ablegen) await updateJson<{ zeit: string; vorschlag: typeof antwort }>(VORSCHLAG, () => ({ zeit: jetzt, vorschlag: antwort })).catch(() => { /* nur im Lauf-Text */ });

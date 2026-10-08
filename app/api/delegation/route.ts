@@ -22,6 +22,7 @@ import { delegierbar, personZuKurz, teamZeilenAus } from '@/lib/make-one/team-ty
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
     });
 
   const abgabe = vorschlaege.filter(v => v.empfehlung === 'abgeben').length;
-  await logRun('task', `Delegations-Runde: ${abgabe} von ${vorschlaege.length} abgebbar`, { abgabe, gesamt: vorschlaege.length, privatAusgeblendet: privatAnzahl });
+  await logRun('task', `Delegations-Runde: ${abgabe} von ${vorschlaege.length} abgebbar`, { abgabe, gesamt: vorschlaege.length, privatAusgeblendet: privatAnzahl }, { person: personStreng(req) });
 
   if (ablegen) await updateJson<DelegationRunde>(RUNDE, () => ({ zeit: new Date().toISOString(), vorschlaege, privatAnzahl })).catch(() => { /* Runde nur im Lauf-Text */ });
   return NextResponse.json({ vorschlaege, privatAnzahl, abgelegt: ablegen });

@@ -57,7 +57,7 @@ export async function fuehreAus(
   // Der Trockenlauf liest denselben Bestand wie die Ausführung. Er läuft immer
   // — bei freien Werkzeugen, damit das Protokoll eine lesbare Zeile bekommt,
   // bei freigabepflichtigen, weil er das Vorher/Nachher im Stapel ist.
-  const vs = await vorschauVon(name, input);
+  const vs = await vorschauVon(name, input, opt.person);
 
   // `vorschlagen` stapelt AUCH freie Werkzeuge. Gebraucht wird das vom
   // Morgenlauf: was ZOE nachts von allein erarbeitet, soll Kevin einmal

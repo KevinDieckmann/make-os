@@ -6,7 +6,8 @@
 // UND am Konto einen Haushalt eingetragen hat.
 
 import { kontoFuerSpeicher } from '@/lib/zugang/konten';
-import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { haushaltDesInhabers, inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { personAus } from '@/lib/zoe/raum';
 
 export const HAUSHALT_OK = /^[a-z0-9][a-z0-9-]{0,39}$/;
 
@@ -14,6 +15,17 @@ export const HAUSHALT_OK = /^[a-z0-9][a-z0-9-]{0,39}$/;
 export function personStreng(req: Request): string | null {
   const p = req.headers.get('x-make-user') || req.headers.get('x-make-person');
   return p && /^[a-z0-9-]{1,40}$/.test(p) ? p : null;
+}
+
+/**
+ * Für wen ein Agenten-Lauf rechnet UND unter wem er im Agenten-Log steht (08.10., Gegenprüfung Agenten-Log je Person): die benannte
+ * Person (Sitzung bzw. Dienstweg mit `x-make-person`), im Systemlauf ohne Person der Inhaber der Instanz (Rolle aus den Konten, kein
+ * fester Name). Ein Lauf, der aus der Sicht einer Person rechnet (ihre Aufgaben samt „nur ich“, ihre Werte), steht damit nie als
+ * Systemlauf für alle im Log — die Rechnung und `logRun(…, { person })` nehmen DIESELBE Person. Nur ohne jedes Konto (leere Instanz)
+ * bleibt der alte Rückfall von `personAus` (dann gibt es niemanden, der etwas sehen könnte).
+ */
+export async function laufPerson(req: Request): Promise<string> {
+  return personStreng(req) ?? (await inhaberSpeicher()) ?? personAus(req);
 }
 
 export interface HaushaltZugang { person: string; haushalt: string }

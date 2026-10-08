@@ -30,6 +30,7 @@ import { loadJson } from '@/lib/store/local-db';
 import type { Meilenstein } from '@/lib/planung/typen';
 import { meilensteinAufgabenSpace, meilensteinListeId, meilensteinProjektId } from '@/lib/planung/meilenstein-aufgaben';
 import { meilensteinStrukturSichern } from '@/lib/planung/meilenstein-aufgaben-server';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -77,7 +78,9 @@ export async function POST(req: Request) {
 
   // Aufgabe am Meilenstein (30.09.): seine Liste sichern (idempotent) und dort anlegen — Space/Projekt/Liste kommen von ihm.
   if (body.meilensteinId !== undefined) {
-    const ms = typeof body.meilensteinId === 'string' ? ((await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'))?.meilensteine ?? []).find(m => m.id === body.meilensteinId) : undefined;
+    // Nur ein Meilenstein, den die anlegende Person sehen darf (08.10.: keiner an einem nicht geteilten eigenen Ziel einer anderen Person;
+    // Systemlauf ohne Person: keiner an einem eigenen Ziel) — sonst 404 wie „gibt es nicht“.
+    const ms = typeof body.meilensteinId === 'string' ? (await meilensteineSichtbarFuer((await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'))?.meilensteine, zugang.person)).find(m => m.id === body.meilensteinId) : undefined;
     if (!ms) return NextResponse.json({ ok: false, error: 'Diesen Meilenstein gibt es nicht (mehr).' }, { status: 404 });
     await meilensteinStrukturSichern([ms.id], { person: zugang.person });
     const sp = meilensteinAufgabenSpace(ms);

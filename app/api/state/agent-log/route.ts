@@ -5,6 +5,8 @@
 // GET  ?agent=board&limit=5   → exakter Agent
 // GET  ?prefix=loop-&limit=20 → alle Loops (Filter VOR dem Kürzen)
 // POST { agent, title, payload }
+// Je Person (08.10., Kevin): GET liefert NUR die eigenen Läufe der Person und Systemläufe (ohne Person) — die Läufe der anderen
+// Person nie (serverseitig, lib/agent-log.ts `laufSichtbar`). POST trägt die Person des Aufrufs ein (Sitzung bzw. `x-make-person`).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
@@ -12,17 +14,19 @@ import { NextResponse } from 'next/server';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { istDienst } from '@/lib/zugang/dienst';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return nurHaushalt();
   const url = new URL(req.url);
   const agent = url.searchParams.get('agent') ?? undefined;
   const prefix = url.searchParams.get('prefix') ?? undefined;
   const limit = Math.max(1, Math.min(50, Number(url.searchParams.get('limit')) || 10));
-  const entries = await recentRuns(agent, limit, prefix);
+  const entries = await recentRuns(zugang.person, { agent, limit, prefix });
   return NextResponse.json({ entries });
 }
 
@@ -33,6 +37,6 @@ export async function POST(req: Request) {
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const agent = (body.agent ?? '').trim();
   if (!agent) return NextResponse.json({ ok: false, error: 'agent fehlt.' }, { status: 400 });
-  await logRun(agent, body.title ?? agent, body.payload ?? null);
+  await logRun(agent, body.title ?? agent, body.payload ?? null, { person: personStreng(req) });
   return NextResponse.json({ ok: true });
 }

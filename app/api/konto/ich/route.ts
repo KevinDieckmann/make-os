@@ -7,6 +7,7 @@ import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashe
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
+import { eigeneZieleLesbar } from '@/lib/planung/eigene-ziele-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,8 @@ export async function GET(req: Request) {
     // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.
     zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),
-    andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer) })),
+    // `teiltZieleMitMir` (08.10.): ob ich die EIGENEN Ziele dieser Person lesen darf (lib/planung/eigene-ziele-sicht.ts — dieselbe Regel wie die Ziele-Route).
+    andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer), teiltZieleMitMir: eigeneZieleLesbar(s.konten, k.speicher, wer) })),
   });
 }
 

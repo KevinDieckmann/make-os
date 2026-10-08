@@ -163,11 +163,14 @@ describe('Route /api/neustart', () => {
     expect((await route.GET(anfrage(sitzung('malin')))).status).toBe(200);
   });
 
-  it('Vorschau zählt Ziele (geteilt + persönlich), Meilensteine, Projekte, Aufgaben', async () => {
+  it('Vorschau zählt Ziele (geteilt + die EIGENEN der fragenden Person), Meilensteine, Projekte, Aufgaben', async () => {
     const d = await (await route.GET(anfrage(sitzung('kevin')))).json() as { vorschau: Record<string, unknown> };
     // Vorher 4 Aufgaben. Seit dem Umbau v3 (06.10.) liest der Server die Gruppe „Marketing“ als Liste und die Liste „September“
     // als Aufgabe darin (l1) — eine Aufgabe mehr; a2 läuft als Serie und bleibt Hauptaufgabe.
-    expect(d.vorschau).toMatchObject({ ziele: 4, meilensteine: 1, projekte: 2, aufgaben: 5, unteraufgaben: 1, fokus: 1 });
+    // Seit 08.10. (Kevin: eigene Ziele nur geteilt lesbar, nie fremd schreiben): Malins eigenes Ziel zählt bei Kevin nicht mehr (vorher 4).
+    expect(d.vorschau).toMatchObject({ ziele: 3, meilensteine: 1, projekte: 2, aufgaben: 5, unteraufgaben: 1, fokus: 1 });
+    const m = await (await route.GET(anfrage(sitzung('malin')))).json() as { vorschau: Record<string, unknown> };
+    expect(m.vorschau).toMatchObject({ ziele: 4 });
   });
 
   it('ohne getipptes „NEU ANFANGEN“ passiert nichts', async () => {
@@ -184,13 +187,14 @@ describe('Route /api/neustart', () => {
     expect(r.status).toBe(200);
     const d = await r.json() as { schon: boolean; bericht: Record<string, unknown> };
     expect(d.schon).toBe(false);
-    expect(d.bericht).toMatchObject({ projekte: 2, aufgaben: 5, unteraufgaben: 1, ziele: 4, meilensteine: 1, fokus: 1, meldungenGelesen: 1 }); // vorher aufgaben: 4 (Umbau v3: l1)
+    expect(d.bericht).toMatchObject({ projekte: 2, aufgaben: 5, unteraufgaben: 1, ziele: 3, meilensteine: 1, fokus: 1, meldungenGelesen: 1 }); // vorher aufgaben: 4 (Umbau v3: l1); ziele 4 (bis 08.10. mit Malins eigenem)
     // Leser sehen nichts mehr außer der offenen Steuer-Frist.
     const { ladeAufgaben } = await import('@/lib/aufgaben/sicht');
     const sicht = aufgabenSicht(await ladeAufgaben());
     expect(sicht.tasks.map(t => t.id)).toEqual(['steuer-kdc-ust-2026-10']);
     expect(ohneV(await db.loadJson<Record<string, unknown>>('ziele'))).toMatchObject({ jahr: [], monat: [], tag: [], fokus: {} });
-    expect(ohneV(await db.loadJson<Record<string, unknown>>('ziele-eigen--malin'))).toMatchObject({ woche: [] });
+    // Kevins Neustart lässt Malins EIGENE Ziele stehen (08.10.) — die nimmt nur sie selbst heraus.
+    expect(ohneV(await db.loadJson('ziele-eigen--malin'))).toEqual(EIGEN);
     expect((await db.loadJson<{ meilensteine: unknown[] }>('meilensteine'))!.meilensteine).toEqual([]);
     const glocke = await db.loadJson<{ eintraege: { id: string; gelesen?: boolean }[] }>('meldungen--malin');
     expect(glocke!.eintraege.find(m => m.id === 'mz1')!.gelesen).toBe(true);
@@ -205,7 +209,7 @@ describe('Route /api/neustart', () => {
     expect(a.laeufe).toHaveLength(1);
     expect(a.laeufe[0].projekte.map(p => [p.id, p.aufgaben]).sort()).toEqual([['p1', 1], ['p2', 2]]); // vorher p2: 1 (Umbau v3: + l1)
     expect(a.laeufe[0].aufgaben.map(x => x.id).sort()).toEqual(['a3', 'steuer-kdc-ust-2026-08']);
-    expect(a.laeufe[0].ziele).toHaveLength(4);
+    expect(a.laeufe[0].ziele).toHaveLength(3);
     expect(a.laeufe[0].serien).toHaveLength(2);
     // Alles zurück
     const z = await route.POST(anfrage(sitzung('malin'), 'POST', { aktion: 'zurueck', laufId: 'na-lauf-0001', auswahl: { art: 'alles' } }));
@@ -231,5 +235,35 @@ describe('Route /api/neustart', () => {
     expect(aufgabenSicht(await ladeAufgaben()).tasks.map(t => t.id).sort()).toEqual(['a2', 'l1', 'steuer-kdc-ust-2026-10']); // vorher ohne l1 (Umbau v3)
     expect((await post({ art: 'quatsch', id: 'x' })).status).toBe(400);
     expect((await route.POST(anfrage(sitzung('kevin'), 'POST', { aktion: 'zurueck', laufId: 'na-gibtsnicht', auswahl: { art: 'alles' } }))).status).toBe(404);
+  });
+
+  it('eigene Ziele (08.10., Kevin): Malins Neustart nimmt ihre eigenen heraus — Kevin sieht davon im Archiv nichts und holt sie nicht zurück', async () => {
+    // Altbestand: ein Meilenstein hängt noch an Malins eigenem Ziel (seit 07.10. entsteht so keiner mehr).
+    await db.saveJson('meilensteine', { meilensteine: [...MS.meilensteine, { id: 'm-eigen', titel: 'Geheimer Meilenstein', fortschritt: 0, erledigt: false, space: 'privat', zielId: 'ze' }] });
+    // Kevins Vorschau zählt den Meilenstein an Malins (nicht geteiltem) Ziel nicht, sein Neustart lässt ihn stehen.
+    expect(((await (await route.GET(anfrage(sitzung('kevin')))).json()) as { vorschau: { meilensteine: number } }).vorschau.meilensteine).toBe(1);
+    expect((await route.POST(anfrage(sitzung('kevin'), 'POST', { aktion: 'neu-anfangen', laufId: 'na-lauf-0003', bestaetigung: 'NEU ANFANGEN' }))).status).toBe(200);
+    expect((await db.loadJson<{ meilensteine: { id: string }[] }>('meilensteine'))!.meilensteine.map(m => m.id)).toEqual(['m-eigen']);
+    expect(ohneV(await db.loadJson('ziele-eigen--malin'))).toEqual(EIGEN);
+    // Malins eigener Neustart nimmt ihr eigenes Ziel und den Meilenstein daran heraus.
+    expect((await route.POST(anfrage(sitzung('malin'), 'POST', { aktion: 'neu-anfangen', laufId: 'na-lauf-0004', bestaetigung: 'NEU ANFANGEN' }))).status).toBe(200);
+    expect(ohneV(await db.loadJson<Record<string, unknown>>('ziele-eigen--malin'))).toMatchObject({ woche: [] });
+    // Archiv: Kevin sieht von Malins Lauf weder ihr Ziel noch den Meilenstein daran — kein Titel, keine Kennung.
+    const roh = await (await route.GET(anfrage(sitzung('kevin'), 'GET', undefined, '?archiv=1'))).text();
+    for (const geheim of ['Eigenes', 'ze', 'Geheimer Meilenstein', 'm-eigen']) expect(roh, geheim).not.toContain(`"${geheim}"`);
+    const vonMalin = await (await route.GET(anfrage(sitzung('malin'), 'GET', undefined, '?archiv=1'))).text();
+    expect(vonMalin).toContain('Eigenes');
+    expect(vonMalin).toContain('Geheimer Meilenstein');
+    // Zurückholen: Kevin darf Malins eigenes Ziel und den Meilenstein daran nicht (403), „alles“ lässt beides liegen.
+    const post = (wer: string, auswahl: unknown) => route.POST(anfrage(sitzung(wer), 'POST', { aktion: 'zurueck', laufId: 'na-lauf-0004', auswahl }));
+    expect((await post('kevin', { art: 'ziel', speicher: 'ziele-eigen--malin', horizont: 'woche', id: 'ze' })).status).toBe(403);
+    expect((await post('kevin', { art: 'meilenstein', id: 'm-eigen' })).status).toBe(403);
+    expect((await post('kevin', { art: 'alles' })).status).toBe(200);
+    expect(ohneV(await db.loadJson<Record<string, unknown>>('ziele-eigen--malin'))).toMatchObject({ woche: [] });
+    expect((await db.loadJson<{ meilensteine: { id: string }[] }>('meilensteine'))!.meilensteine.map(m => m.id)).not.toContain('m-eigen');
+    // Malin holt beides selbst zurück.
+    expect((await post('malin', { art: 'alles' })).status).toBe(200);
+    expect(ohneV(await db.loadJson('ziele-eigen--malin'))).toEqual(EIGEN);
+    expect((await db.loadJson<{ meilensteine: { id: string }[] }>('meilensteine'))!.meilensteine.map(m => m.id)).toContain('m-eigen');
   });
 });

@@ -44,6 +44,7 @@ import { VITALS_GESPERRT, indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import type { KiBereich, KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 // ── Formen ──
 interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string; /** Business-Einheit (27.09.) — nur im Business gesetzt. */ einheit?: string }
@@ -144,8 +145,10 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
     gesundheitFrei ? resolveVitals(heute, person) : Promise.resolve(VITALS_GESPERRT),
     computeIndex(heute, person),
-    recentRuns(undefined, 10),
-    loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
+    recentRuns(person, { limit: 10 }), // Gedächtnis: eigene Läufe + Systemläufe, nie die der anderen Person (08.10.)
+    // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person).
+    loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
+      .then(async f => (f ? { ...f, meilensteine: await meilensteineSichtbarFuer(f.meilensteine, person) } : f)),
     // 0-Punkt (05.10.): Konten und Rechnungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),
     // Kunden/Mandate gehören dem Haushalt des Inhabers (28.09.): eine Person aus einem anderen Haushalt bekommt

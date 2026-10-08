@@ -23,6 +23,7 @@ import { SAEULEN } from '@/lib/business/register';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { laeufeFuer } from '@/lib/agent-log';
 
 export interface Faktor {
   label: string;
@@ -125,7 +126,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
 
   // Agenten (24.09.): was ZOE und die Agenten abnehmen — sechste Säule.
   const [agentLogF, auftraegeF, stapelF, tgStand] = await Promise.all([
-    loadJson<{ entries: { ts: string }[] }>('agent-log'),
+    laeufeFuer(person), // eigene Läufe + Systemläufe (08.10.) — die Agenten-Säule zählt nie die Läufe der anderen Person
     loadJson<{ auftraege: { zeit: string; status: string }[] }>('zoe-auftraege'),
     loadJson<{ vorschlaege: { zeit?: string; status: string; entschiedenAm?: string }[] }>('zoe-stapel'),
     ladeTelegram().catch(() => null),
@@ -264,7 +265,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // ── Agenten ──
   const agenten = agentenFaktoren(agentenEingabe({
     agenten: DEPARTMENTS.flatMap(d => d.agents),
-    log: agentLogF?.entries ?? [],
+    log: agentLogF ?? [],
     auftraege: auftraegeF?.auftraege ?? [],
     vorschlaege: stapelF?.vorschlaege ?? [],
     boteKonfiguriert: telegramKonfiguriert(),

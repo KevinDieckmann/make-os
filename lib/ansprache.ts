@@ -63,7 +63,7 @@ export async function entwurfFuer(k: Kontakt, ki: KiKontext = { lauf: 'aufruf', 
   });
   if (!r.ok || !r.data?.email) return { ok: false, fehler: r.error ?? 'Kein Entwurf erhalten.' };
 
-  await logRun('outreach', `Ansprache entworfen: ${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`, { id: k.id, prio: k.prio });
+  await logRun('outreach', `Ansprache entworfen: ${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`, { id: k.id, prio: k.prio }, { person: ki.person });
   return {
     ok: true,
     entwurf: {

@@ -13,6 +13,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,6 +72,6 @@ export async function POST(req: Request) {
     fokus: Array.isArray(r.data.fokus) ? r.data.fokus.slice(0, 5) : [],
     risiken: Array.isArray(r.data.risiken) ? r.data.risiken.slice(0, 5) : [],
   };
-  await logRun('controlling', `Lagebericht ${s.jahr}`, { ...out, metrics: m });
+  await logRun('controlling', `Lagebericht ${s.jahr}`, { ...out, metrics: m }, { person: personStreng(req) });
   return NextResponse.json({ ...out, metrics: m });
 }

@@ -47,6 +47,8 @@ import { gemesseneQuoten } from '@/lib/crm/deal-auswertung';
 import { wertelistenVollstaendig, wertelistenPruefen, type Pruefung } from '@/lib/crm/wertelisten';
 import type { ChancenStufe } from '@/lib/crm/typen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { laeufeFuer } from '@/lib/agent-log';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,7 +73,8 @@ export async function GET(req: Request) {
   const vorschlag = pflichtangaben(kontakte, crm);
   const zaehl = (f: (v: (typeof vorschlag)[number]) => string | undefined) => vorschlag.reduce((a, v) => { const x = f(v); if (x) a[x] = (a[x] ?? 0) + 1; return a; }, {} as Record<string, number>);
   const nachId = new Map(kontakte.map(k => [k.id, k]));
-  const log = (await loadJson<{ entries: { ts: string; agent: string; title?: string }[] }>('agent-log'))?.entries ?? [];
+  // Je Person (08.10.): nur eigene Läufe + Systemläufe — der letzte Import der anderen Person erscheint hier nicht.
+  const log = await laeufeFuer(personStreng(req));
   const letzterImport = [...log].reverse().find(e => e.agent === 'crm' && (e.title ?? '').startsWith('Import'));
   const verlust: Record<string, number> = {};
   for (const c of crm.chancen.filter(c => c.stufe === 'verloren' && c.grund)) verlust[c.grund!] = (verlust[c.grund!] ?? 0) + 1;

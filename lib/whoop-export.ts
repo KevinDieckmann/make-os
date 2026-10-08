@@ -10,6 +10,7 @@
 //   zyklenLesen  macht aus der Tabelle Tageswerte (Recovery, Schlaf, HRV, Puls)
 
 import { inflateRawSync } from 'zlib';
+import { VITAL_FELDER, type DayVitals, type VitalsLog } from '@/lib/vitals';
 
 export interface WhoopTag { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
 export type WhoopLog = Record<string, WhoopTag>;
@@ -130,13 +131,37 @@ export function zyklenLesen(csv: string): ZyklenErgebnis {
   return { ok: true, tage, ohneWerte };
 }
 
-/** Neue Tage in den Bestand mischen: Messwerte vom Export, eigene Notizen bleiben. */
-export function einmischen(bestand: WhoopLog, neu: WhoopLog): { log: WhoopLog; neu: number; aktualisiert: number } {
-  const log: WhoopLog = { ...bestand };
-  let dazu = 0, erg = 0;
+/**
+ * Neue Tage in den Bestand mischen — je FELD (08.10., Kevin Phase 0: „WHOOP ist die Quelle; Werte aus dem alten Export: Schnittstelle
+ * gewinnt, nur echte Handeingaben bleiben“). Jeder geschriebene Wert trägt die Herkunft `whoop-export` (lib/vitals.ts `quellen`) —
+ * der WHOOP-Abgleich (lib/whoop/abbilden.ts) überschreibt ihn später.
+ *   · leer oder schon `whoop-export`  → Exportwert (markiert `whoop-export`)
+ *   · `whoop` (Schnittstelle)         → bleibt (die Schnittstelle gewinnt)
+ *   · `hand`                          → bleibt (echte Handeingabe)
+ *   · ohne Herkunft (Altbestand)      → gleicher Wert: nur die Herkunft `whoop-export` nachtragen (der Wert ändert sich nicht);
+ *                                       anderer Wert: bleibt (`behalten`) — er kann von Hand sein, raten wir nicht.
+ * Notizen und alle anderen Felder des Tages bleiben (vorher ersetzte der Export den ganzen Tag bis auf die Notiz).
+ */
+export function einmischen(bestand: VitalsLog, neu: WhoopLog): { log: VitalsLog; neu: number; aktualisiert: number; behalten: number } {
+  const log: VitalsLog = { ...bestand };
+  let dazu = 0, erg = 0, behalten = 0;
   for (const [d, t] of Object.entries(neu)) {
-    if (log[d]) { log[d] = { ...t, ...(log[d].note ? { note: log[d].note } : {}) }; erg++; }
-    else { log[d] = t; dazu++; }
+    const alt: DayVitals | undefined = log[d];
+    const tag: DayVitals = alt ? { ...alt, ...(alt.quellen ? { quellen: { ...alt.quellen } } : {}) } : {};
+    let anders = false;
+    for (const f of VITAL_FELDER) {
+      const w = t[f];
+      if (w === undefined) continue;
+      const q = alt?.quellen?.[f];
+      if (alt?.[f] === undefined || q === 'whoop-export') {
+        if (alt?.[f] !== w || q !== 'whoop-export') { tag[f] = w; (tag.quellen ??= {})[f] = 'whoop-export'; anders = true; }
+      } else if (q === undefined) {
+        if (alt[f] === w) { (tag.quellen ??= {})[f] = 'whoop-export'; anders = true; } else behalten++;
+      }
+      // `whoop` (Schnittstelle) und `hand` bleiben unangetastet.
+    }
+    if (!alt) { log[d] = tag; dazu++; }
+    else if (anders) { log[d] = tag; erg++; }
   }
-  return { log, neu: dazu, aktualisiert: erg };
+  return { log, neu: dazu, aktualisiert: erg, behalten };
 }

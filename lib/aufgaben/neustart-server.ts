@@ -30,6 +30,8 @@ import {
   type ArchivFokus, type ArchivMeilenstein, type ArchivZiel,
 } from '@/lib/planung/neustart';
 import { ZIEL_HORIZONTE, type ZielHorizont } from '@/lib/planung/typen';
+import { lesbareEigentuemerFuer, verborgeneZieleFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { meilensteinVerborgen } from '@/lib/planung/eigene-ziele-sicht';
 
 export const MEILENSTEINE_BESTAND = 'meilensteine';
 export const ZIELE_BESTAND = 'ziele';
@@ -64,9 +66,19 @@ async function haushaltsPersonen(): Promise<string[]> {
   return konten.filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt)).map(k => k.speicher);
 }
 
-/** Alle Ziele-Bestände des Haushalts: der geteilte + je Person der eigene. */
-export async function zieleBestaende(): Promise<string[]> {
-  return Array.from(new Set([ZIELE_BESTAND, ...(await haushaltsPersonen()).map(p => speicherFuer('ziele-eigen', p))]));
+/**
+ * Die Ziele-Bestände, die ein Neustart dieser Person anfasst: der geteilte + ihr EIGENER. Seit 08.10. (Kevin: eigene Ziele nur
+ * geteilt lesbar, nie fremd schreiben) nie mehr die eigenen Ziele der anderen Personen — die nimmt jede Person mit ihrem eigenen
+ * „Neu anfangen“ heraus. Ohne Person (nur Altaufrufer) der geteilte Bestand allein.
+ */
+export async function zieleBestaende(person?: string | null): Promise<string[]> {
+  return Array.from(new Set([ZIELE_BESTAND, ...(person ? [speicherFuer('ziele-eigen', person)] : [])]));
+}
+
+/** Welche Ziele-Bestände diese Person im Archiv SEHEN darf: geteilt, eigener, und eigene anderer, die sie mit ihr teilen. */
+async function zieleBestaendeLesbar(person: string | null): Promise<Set<string>> {
+  const lesbar = await lesbareEigentuemerFuer(person);
+  return new Set([ZIELE_BESTAND, ...Array.from(lesbar).map(p => speicherFuer('ziele-eigen', p))]);
 }
 
 // ── Vorschau ──────────────────────────────────────────────────────────────
@@ -79,18 +91,20 @@ export interface NeustartVorschau extends AufgabenVorschau {
   fokus: number;
 }
 
-export async function neustartVorschau(): Promise<NeustartVorschau> {
+export async function neustartVorschau(person: string | null = null): Promise<NeustartVorschau> {
   const orgs = await orgZuordnung();
   const tasks = uebernehmen(alsStand(await loadJson<TasksState>(AUFGABEN_BESTAND)), orgs).state;
   const zieleJe = Object.fromEntries(ZIEL_HORIZONTE.map(h => [h, 0])) as Record<ZielHorizont, number>;
   let ziele = 0, fokus = 0;
-  for (const s of await zieleBestaende()) {
+  // Nur, was ein Neustart dieser Person anfasst (geteilt + eigene) — die eigenen Ziele der anderen zählen nicht mit (08.10.).
+  for (const s of await zieleBestaende(person)) {
     const d = zieleDatei(await loadJson<unknown>(s));
     ziele += zieleZahl(d);
     for (const h of ZIEL_HORIZONTE) zieleJe[h] += d[h].length;
     fokus += Object.values(d.fokus ?? {}).filter(v => typeof v === 'string' && v.trim()).length;
   }
-  const meilensteine = meilensteineDatei(await loadJson<unknown>(MEILENSTEINE_BESTAND)).meilensteine.length;
+  const verborgen = await verborgeneZieleFuer(person);
+  const meilensteine = meilensteineDatei(await loadJson<unknown>(MEILENSTEINE_BESTAND)).meilensteine.filter(m => !meilensteinVerborgen(m, verborgen)).length;
   return { ...aufgabenVorschau(tasks), ziele, zieleJe, meilensteine, fokus };
 }
 
@@ -120,7 +134,7 @@ export async function neuAnfangen(o: { laufId: string; person: string; wer?: Wer
   const name = neustartSpeicher(await karteiHaushalt());
   const vorhanden = bestand(await loadJson<NeustartBestand>(name)).laeufe.find(l => l.id === o.laufId);
   if (vorhanden?.status === 'fertig') return { lauf: vorhanden, schon: true };
-  const zielSpeicher = await zieleBestaende();
+  const zielSpeicher = await zieleBestaende(o.person);
 
   // 1 + 2: Sicherheitskopie (vorher, roh) und Lauf anlegen — nur beim ersten Anlauf dieser Kennung.
   if (!vorhanden) {
@@ -173,11 +187,12 @@ export async function neuAnfangen(o: { laufId: string; person: string; wer?: Wer
     });
   }
 
-  // 3c: Meilensteine.
+  // 3c: Meilensteine — ohne die (Altbestand), die an einem nicht geteilten eigenen Ziel einer anderen Person hängen (08.10.).
   let msIds: string[] = [];
+  const verborgen = await verborgeneZieleFuer(o.person);
   if ((await loadJson<unknown>(MEILENSTEINE_BESTAND)) !== null) {
     await updateJsonAsync<Record<string, unknown>>(MEILENSTEINE_BESTAND, async cur => {
-      const r = meilensteineHerausnehmen(cur);
+      const r = meilensteineHerausnehmen(cur, m => meilensteinVerborgen(m, verborgen));
       if (!r.raus.length) return cur as Record<string, unknown>;
       await laufAendern(l => {
         const schon = new Set(l.meilensteine.map(m => m.meilenstein.id));
@@ -248,12 +263,18 @@ export async function neustartArchiv(person: string | null): Promise<ArchivLaufS
   const tasks = uebernehmen(alsStand(await loadJson<TasksState>(AUFGABEN_BESTAND)), await orgZuordnung()).state;
   const alleNachId = new Map(tasks.tasks.map(t => [t.id, t]));
   const sichtbar = (t: TasksState['tasks'][number]) => darfSehen(t, person, alleNachId);
+  // Eigene Ziele (08.10.): aus älteren Läufen (die noch alle Bestände nahmen) nur der geteilte, der eigene und die eigenen anderer,
+  // die sie mit dieser Person teilen — sonst nichts (kein Titel, keine Kennung, keine Zahl).
+  const zielBestaende = await zieleBestaendeLesbar(person);
+  const verborgenJetzt = await verborgeneZieleFuer(person);
   return laeufe.slice().reverse().map(l => {
+    // Verborgen: Ziele, die heute nicht lesbar sind, und die archivierten eigenen Ziele anderer aus diesem Lauf — ihre Meilensteine auch.
+    const verborgen = new Set([...verborgenJetzt, ...l.ziele.filter(z => !zielBestaende.has(z.speicher)).map(z => z.ziel.id)]);
     const vomLauf = (x: { archiviertAm?: string; archivId?: string } | undefined) => !!x && imArchiv(x) && x.archivId === l.id;
     // Projekte, lose Aufgaben und Serien rein (lib/aufgaben/neustart.ts `archivSicht`, Sichtprüfung 29.09., F6).
     const { projekte, aufgaben, serien } = archivSicht(tasks, l.id, l.aufgaben, sichtbar);
-    const ziele = l.ziele.map(z => ({ speicher: z.speicher, horizont: z.horizont, id: z.ziel.id, titel: z.ziel.titel, erledigt: !!z.ziel.erledigt, zurueck: !!z.zurueckAm }));
-    const meilensteine = l.meilensteine.map(m => ({ id: m.meilenstein.id, titel: m.meilenstein.titel, ...(m.meilenstein.faellig ? { faellig: m.meilenstein.faellig } : {}), erledigt: !!m.meilenstein.erledigt, zurueck: !!m.zurueckAm }));
+    const ziele = l.ziele.filter(z => zielBestaende.has(z.speicher)).map(z => ({ speicher: z.speicher, horizont: z.horizont, id: z.ziel.id, titel: z.ziel.titel, erledigt: !!z.ziel.erledigt, zurueck: !!z.zurueckAm }));
+    const meilensteine = l.meilensteine.filter(m => !meilensteinVerborgen(m.meilenstein, verborgen)).map(m => ({ id: m.meilenstein.id, titel: m.meilenstein.titel, ...(m.meilenstein.faellig ? { faellig: m.meilenstein.faellig } : {}), erledigt: !!m.meilenstein.erledigt, zurueck: !!m.zurueckAm }));
     const offen = tasks.tasks.filter(vomLauf).length + tasks.projects.filter(vomLauf).length + ziele.filter(z => !z.zurueck).length + meilensteine.filter(m => !m.zurueck).length;
     return { id: l.id, am: l.am, von: l.von, status: l.status, projekte, aufgaben, ziele, meilensteine, serien, offen };
   });
@@ -296,10 +317,13 @@ export async function neustartZurueck(o: { laufId: string; auswahl: NeustartAusw
     if (erg.aufgaben.length || erg.projekte.length || erg.listen.length || erg.gruppen.length) await protokollAufgaben(erg, ['archiviertAm', 'archivId'], o.wer);
   }
 
-  // Ziele (alles | ziel)
+  // Ziele (alles | ziel) — zurückgeschrieben wird nur in Bestände, die diese Person schreiben darf (geteilt + eigener, 08.10.);
+  // die eigenen Ziele anderer Personen aus älteren Läufen holt deren Eigentümerin selbst zurück. Ein einzelnes fremdes Ziel → 403.
+  const schreibbar = new Set(await zieleBestaende(o.person));
+  if (a.art === 'ziel' && !schreibbar.has(a.speicher)) throw new NeustartFehler('Dieses Ziel gehört einer anderen Person — sie holt es selbst zurück.', 403);
   if (a.art === 'alles' || a.art === 'ziel') {
-    const gewaehlt = lauf.ziele.filter(z => !z.zurueckAm && (a.art === 'alles' || (z.speicher === a.speicher && z.horizont === a.horizont && z.ziel.id === a.id)));
-    const speicherListe = Array.from(new Set([...gewaehlt.map(z => z.speicher), ...(a.art === 'alles' ? lauf.fokus.filter(f => !f.zurueckAm).map(f => f.speicher) : [])]));
+    const gewaehlt = lauf.ziele.filter(z => !z.zurueckAm && schreibbar.has(z.speicher) && (a.art === 'alles' || (z.speicher === a.speicher && z.horizont === a.horizont && z.ziel.id === a.id)));
+    const speicherListe = Array.from(new Set([...gewaehlt.map(z => z.speicher), ...(a.art === 'alles' ? lauf.fokus.filter(f => !f.zurueckAm && schreibbar.has(f.speicher)).map(f => f.speicher) : [])]));
     for (const s of speicherListe) {
       const eintraege = gewaehlt.filter(z => z.speicher === s);
       const fokus = a.art === 'alles' ? lauf.fokus.find(f => f.speicher === s && !f.zurueckAm) ?? null : null;
@@ -319,9 +343,12 @@ export async function neustartZurueck(o: { laufId: string; auswahl: NeustartAusw
     }
   }
 
-  // Meilensteine (alles | meilenstein)
+  // Meilensteine (alles | meilenstein) — die an einem für diese Person verborgenen Ziel hängen (08.10.), holt nur die Eigentümerin zurück.
   if (a.art === 'alles' || a.art === 'meilenstein') {
-    const gewaehlt = lauf.meilensteine.filter(m => !m.zurueckAm && (a.art === 'alles' || m.meilenstein.id === a.id));
+    const lesbarB = await zieleBestaendeLesbar(o.person);
+    const verborgen = new Set([...await verborgeneZieleFuer(o.person), ...lauf.ziele.filter(z => !lesbarB.has(z.speicher)).map(z => z.ziel.id)]);
+    if (a.art === 'meilenstein' && lauf.meilensteine.some(m => m.meilenstein.id === a.id && meilensteinVerborgen(m.meilenstein, verborgen))) throw new NeustartFehler('Dieser Meilenstein gehört zu einem Ziel einer anderen Person — sie holt ihn selbst zurück.', 403);
+    const gewaehlt = lauf.meilensteine.filter(m => !m.zurueckAm && !meilensteinVerborgen(m.meilenstein, verborgen) && (a.art === 'alles' || m.meilenstein.id === a.id));
     if (gewaehlt.length) {
       await updateJsonAsync<Record<string, unknown>>(MEILENSTEINE_BESTAND, async cur => {
         const r = meilensteineZurueck(cur, gewaehlt);

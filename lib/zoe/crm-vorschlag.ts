@@ -317,7 +317,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const { ladeVerbindungsBestaende } = await import('@/lib/crm/verbindungen-laden');
       const ids = liste(i.befunde).filter(istReparierbar);
       if (!ids.length) return `Fehlgeschlagen: befunde braucht reparierbare Kennungen (${REPARIERBAR.join(', ')}) — siehe datenqualitaet.`;
-      const vs = verbindungenReparieren(await ladeVerbindungsBestaende(heute), ids, new Date().toISOString(), s.person);
+      const vs = verbindungenReparieren(await ladeVerbindungsBestaende(heute, s.person), ids, new Date().toISOString(), s.person);
       return {
         titel: `${ART_TITEL.reparatur}: ${ids.join(', ')}`, bezugId: 'markttraktion',
         nachher: vs.aenderungen.map(a => `${a.text} (${a.anzahl})`).join(' · ') || 'nichts zu reparieren (schon sauber)',

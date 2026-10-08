@@ -2,7 +2,11 @@
 // Aus den Rohdaten der API v2 (Felder: https://developer.whoop.com/api, FAKTEN 5) wird:
 //   · der schlanke Spiegel `whoop-stand--<person>` (nur, was MAKE OS braucht — Zahlen und Zeiten, keine Namen),
 //   · je Tag die Vitalwerte (`vitals--<person>`: Recovery, Schlaf, HRV, Ruhepuls) — **Handwert gewinnt**: ein Feld wird nur geschrieben,
-//     wenn es leer ist oder schon von WHOOP stammt (`quellen[feld] === 'whoop'`); ohne Markierung gilt es als von Hand,
+//     wenn es leer ist oder schon von WHOOP stammt (`quellen[feld] === 'whoop'`, seit 08.10. auch `whoop-export` = alter Datenexport:
+//     „Schnittstelle gewinnt“); ohne Markierung gilt es als von Hand und bleibt unberührt — auch wenn es GENAU dem WHOOP-Wert entspricht
+//     (Gegenprüfung 08.10.: ein vor dem 08.10. aus der WHOOP-App abgetippter Morgen-Check ist ebenso gleich; markiert, würde ihn ein
+//     Löschen/Neubewerten bei WHOOP entfernen bzw. überschreiben — nie geraten). Die Gleichheits-Regel gilt nur beim Einlesen des
+//     Datenexports (lib/whoop-export.ts `einmischen`, ausdrückliche Handlung der Person),
 //   · Workouts im Sport-Bestand: Läufe mit Distanz als `Lauf`, alles andere als `TrainingEinheit` — immer `quelle: 'whoop'` +
 //     `externeId: 'whoop:<uuid>'` (idempotent, nie doppelt; ein Lauf von Hand am selben Tag mit ±10 % Distanz zählt als derselbe).
 // Tageszuordnung (Annahme, FAKTEN 5): Schlaf/Recovery = Tag des Aufwachens in Ortszeit (`timezone_offset`), Workouts/Zyklen = Starttag.
@@ -161,7 +165,9 @@ export function vitalsAnwenden(log: VitalsLog, werte: Record<string, WhoopTag>, 
       const w = werte[tag]?.[f];
       const q = alt.quellen?.[f];
       if (w !== undefined) {
-        if (alt[f] === undefined || q === 'whoop') {
+        // WHOOP ist die Quelle (08.10., Kevin Phase 0): leer, eigener Wert oder Wert aus dem alten Datenexport (`whoop-export`) → der
+        // Wert der Schnittstelle. Jeder Wert ohne Herkunft (auch ein gleicher — Gegenprüfung 08.10.) und jeder `hand`-Wert bleibt.
+        if (alt[f] === undefined || q === 'whoop' || q === 'whoop-export') {
           if (alt[f] !== w || q !== 'whoop') { tagNeu[f] = w; (tagNeu.quellen ??= {})[f] = 'whoop'; anders = true; }
         }
       } else if (q === 'whoop' && tag >= abTag) {

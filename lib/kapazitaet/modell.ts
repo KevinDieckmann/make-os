@@ -374,6 +374,23 @@ export function ohnePrivatePosten(stand: KapaStand, privat: ReadonlySet<string>)
     kennzahlen: ohnePrivateKennzahlen(stand.kennzahlen, privat),
   };
 }
+/**
+ * Verborgene Posten (08.10., Gegenprüfung — eigene Ziele nur geteilt): ein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen
+ * Person (Altbestand) kommt beim Betrachter gar nicht an — kein Titel, keine Kennung, kein Termin, kein Aufwand, nicht in „kritisch“ und
+ * nicht im Wochenplan. Seine Stunden bleiben in den Summen (Last je Person/Team, Machbarkeits-Zähler) — die Zeit ist ja belegt.
+ * Rein; `verborgen` = `postenSchluessel`.
+ */
+export function ohneVerborgenePosten(stand: KapaStand, verborgen: ReadonlySet<string>): KapaStand {
+  if (!verborgen.size) return stand;
+  const weg = (p: { art: 'meilenstein' | 'ziel'; id: string }) => verborgen.has(postenSchluessel(p));
+  return {
+    ...stand,
+    posten: stand.posten.filter(p => !weg(p)),
+    kennzahlen: ohnePrivateKennzahlen(stand.kennzahlen, verborgen),
+    ...(stand.wochenPlan ? { wochenPlan: { ...stand.wochenPlan, personen: stand.wochenPlan.personen.map(p => ({ ...p, posten: p.posten.filter(x => !weg(x)) })) } } : {}),
+  };
+}
+
 /** Kennzahlen ohne die Titel privater Posten (Liste „kritisch“). */
 export function ohnePrivateKennzahlen(k: KapaKennzahlen, privat: ReadonlySet<string>): KapaKennzahlen {
   return privat.size ? { ...k, kritisch: k.kritisch.filter(p => !privat.has(postenSchluessel(p))) } : k;

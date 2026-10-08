@@ -9,8 +9,7 @@ import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { resolveVitals, zoneOf, vitalsHint } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
-import { personAus } from '@/lib/zoe/raum';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
@@ -21,10 +20,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  const b = await gatherBrain(undefined, personAus(req));
+  // Für wen der Lauf rechnet = unter wem er im Agenten-Log steht (08.10.): benannte Person, im Systemlauf der Inhaber.
+  const fuer = await laufPerson(req);
+  const b = await gatherBrain(undefined, fuer);
   // Anzeige (eigene Werte der Person, bleiben im Haus) getrennt vom Prompt: an die KI gehen Vitalwerte nur mit
   // Einwilligung (b) — `b.gesundheitFrei` (Art. 9, 05.10.).
-  const v = b.gesundheitFrei ? b.vitals : await resolveVitals(undefined, personAus(req));
+  const v = b.gesundheitFrei ? b.vitals : await resolveVitals(undefined, fuer);
   const rec = v.rec;
   const zone = zoneOf(rec);
 
@@ -62,6 +63,6 @@ export async function POST(req: Request) {
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });
 
   // Der Titel des Laufs geht später als Gedächtnis in andere Prompts (blockGedaechtnis) — deshalb ohne Gesundheitswert.
-  await logRun('fokus', 'Tagesplan erstellt', { ...(b.gesundheitFrei ? { zone, recovery: rec } : {}), reply: r.text.slice(0, 1500) });
+  await logRun('fokus', 'Tagesplan erstellt', { ...(b.gesundheitFrei ? { zone, recovery: rec } : {}), reply: r.text.slice(0, 1500) }, { person: fuer });
   return NextResponse.json({ reply: r.text, recovery: rec, zone, stand: v.stand, heute: v.heute });
 }

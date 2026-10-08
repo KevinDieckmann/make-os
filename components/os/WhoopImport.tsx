@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, Hinweis, LEUCHT } from './ui';
 
-interface Ergebnis { ok: boolean; error?: string; quelle?: string; tage?: number; neu?: number; von?: string; bis?: string; letzter?: { rec?: number; sleep?: number; hrv?: number; rhr?: number } }
+interface Ergebnis { ok: boolean; error?: string; quelle?: string; tage?: number; neu?: number; behalten?: number; von?: string; bis?: string; letzter?: { rec?: number; sleep?: number; hrv?: number; rhr?: number } }
 
 /** Nach dem Einlesen: der Wachstums-Kopf und offene Seiten holen die neuen Werte. */
 export const SCORE_NEU = 'make-os:score-neu';
@@ -60,7 +60,7 @@ export function WhoopImport({ onFertig, kurz }: { onFertig?: () => void; kurz?: 
       {ergebnis && (
         <Hinweis art={ergebnis.ok ? 'gut' : 'kritisch'}>
           {ergebnis.ok
-            ? <>Eingelesen: {ergebnis.tage} Tage bis {datum(ergebnis.bis)}{ergebnis.neu ? `, ${ergebnis.neu} neu` : ', alle schon bekannt'}.{ergebnis.letzter?.rec != null && <> Letzter Tag: Recovery {ergebnis.letzter.rec} %{ergebnis.letzter.sleep != null && `, Schlaf ${String(ergebnis.letzter.sleep).replace('.', ',')} h`}.</>}</>
+            ? <>Eingelesen: {ergebnis.tage} Tage bis {datum(ergebnis.bis)}{ergebnis.neu ? `, ${ergebnis.neu} neu` : ', alle schon bekannt'}{ergebnis.behalten ? ` — ${ergebnis.behalten} ältere Werte weichen ab und bleiben stehen (könnten von Hand sein)` : ''}.{ergebnis.letzter?.rec != null && <> Letzter Tag: Recovery {ergebnis.letzter.rec} %{ergebnis.letzter.sleep != null && `, Schlaf ${String(ergebnis.letzter.sleep).replace('.', ',')} h`}.</>}</>
             : ergebnis.error}
         </Hinweis>
       )}

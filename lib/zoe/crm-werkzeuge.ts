@@ -648,7 +648,7 @@ async function datenqualitaet(i: Eingabe, s: CrmSicht): Promise<string> {
   const { nachweisOffen } = await import('@/lib/crm/einwilligung');
   const { nichtGeprueft } = await import('@/lib/crm/geprueft');
   const { vollstaendigkeit } = await import('@/lib/crm/kennzahlen');
-  const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(s.heute));
+  const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(s.heute, s.person));
   const paare = dubletten(s.kontakte);
   const nw = nachweisOffen(s.kontakte);
   const ng = nichtGeprueft(s.kontakte, s.crm, s.heute);

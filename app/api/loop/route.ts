@@ -36,6 +36,7 @@ import { delegierbar } from '@/lib/make-one/team-typen';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 /** Frühere Loop-Ergebnisse ohne Gesundheits-Ableitungen (rein): kein Gesundheits-Loop, im Morgen-Loop ohne Tagesform/Schutz. */
 function ohneGesundheit<T extends { agent: string; payload?: unknown }>(l: T[]): T[] {
@@ -52,7 +53,8 @@ async function gather(today: string, person: string) {
   const b = await gatherBrain(today, person);
   // Für den Rückblick brauchen wir die vollen Payloads der Loop-Läufe.
   // Ohne Einwilligung (b) keine Gesundheits-Ableitungen aus früheren Läufen in neuen Prompts (Rückblick, Vergleich).
-  const loopLog = await recentRuns(undefined, 30, 'loop-').then(l => [...l].reverse()).then(l => (b.gesundheitFrei ? l : ohneGesundheit(l)));
+  // Nur die eigenen Loop-Läufe und Systemläufe (08.10.) — nie die der anderen Person.
+  const loopLog = await recentRuns(person, { limit: 30, prefix: 'loop-' }).then(l => [...l].reverse()).then(l => (b.gesundheitFrei ? l : ohneGesundheit(l)));
   return {
     open: b.tasks.offen,
     overdue: b.tasks.overdue,
@@ -140,7 +142,7 @@ export async function POST(req: Request) {
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000,
       ki: kiAus(req, g.gesundheitFrei || eigeneAngaben ? ['aufgaben', 'kalender', 'finanzen', 'gesundheit'] : ['aufgaben', 'kalender', 'finanzen'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop, stats: { open: g.open.length, termine: g.todaysEvents.length } });
-    await logRun('loop-morgen', `Morgen-Loop ${today}`, r.data);
+    await logRun('loop-morgen', `Morgen-Loop ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, overdue: g.overdue.length, dueToday: g.dueToday.length, termine: g.todaysEvents.length } });
   }
 
@@ -190,7 +192,7 @@ export async function POST(req: Request) {
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 4000, ki: kiAus(req, ['finanzen', 'aufgaben', 'kalender', 'crm'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
-    await logRun('loop-woche', `Wochen-Loop ${today}`, r.data);
+    await logRun('loop-woche', `Wochen-Loop ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, critical: g.critical.length, pipeline: g.prospects.length, hot } });
   }
 
@@ -210,7 +212,7 @@ export async function POST(req: Request) {
     const user = g.loopLog.slice(-12).map(e => `[${e.ts.slice(0, 16)}] ${e.agent} — ${e.title}\n${JSON.stringify(e.payload).slice(0, 900)}`).join('\n\n');
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000, ki: kiAus(req, g.gesundheitFrei ? ['allgemein', 'gesundheit'] : ['allgemein'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
-    await logRun('loop-rueckblick', `Rückblick ${today}`, r.data);
+    await logRun('loop-rueckblick', `Rückblick ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data, anzahl: g.loopLog.length });
   }
 
@@ -223,7 +225,9 @@ export async function POST(req: Request) {
     const [fplan, kundenF, msF, journalF, wplanF] = await Promise.all([
       loadJson<{ rechnungen: { kunde: string; titel: string; betrag: number; status: string; faellig?: string }[]; zahlungen: { an: string; betrag: number; status: string; faellig?: string }[]; produkte: { name: string; preis: number; status: string; einheit: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
       loadJson<{ kunden: { name: string; status: string; mandat?: string; cashflow?: number; naechsterSchritt?: string }[] }>('kunden'),
-      loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; messlatte?: string }[] }>('meilensteine'),
+      // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person).
+      loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; messlatte?: string; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
+        .then(async f => (f ? { ...f, meilensteine: await meilensteineSichtbarFuer(f.meilensteine, person) } : f)),
       // Das Journal der auslösenden Person (S1: vorher der Altbestand „journal“ — der einer Person — für jede).
       loadJson<Record<string, { energy?: number; stress?: number; haut?: string; ruecken?: string; tagesnote?: number }>>(speicherFuer('journal', person)),
       // Blöcke dieser Woche (K5: Kalender-Termine der Art Fokus/Block) der auslösenden Person.
@@ -332,7 +336,7 @@ export async function POST(req: Request) {
     const KAT: Record<string, KiKategorie[]> = { finanzen: ['finanzen'], sales: ['crm'], marketing: ['crm'], operations: ['aufgaben', 'kalender'], kunden: ['crm', 'finanzen'], gesundheit: ['gesundheit'] };
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3500, ki: kiAus(req, KAT[loop] ?? ['allgemein'], { person }) });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
-    await logRun(`loop-${loop}`, `${label} ${today}`, r.data);
+    await logRun(`loop-${loop}`, `${label} ${today}`, r.data, { person });
     return NextResponse.json({ loop, today, ...r.data });
   }
 

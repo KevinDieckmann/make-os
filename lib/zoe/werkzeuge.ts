@@ -12,6 +12,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { aufgabenVonMeilenstein, fortschrittAusAufgaben } from '@/lib/planung/meilenstein-aufgaben';
 import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { kettePruefen } from '@/lib/planung/meilenstein-kette';
+import { meilensteineSichtbarFuer, verborgeneMeilensteineFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { ZIEL_HORIZONTE, type ZieleDatei } from '@/lib/planung/typen';
 import { ladeAufgaben, ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { elternAusText } from '@/lib/aufgaben/ebenen';
@@ -190,7 +191,7 @@ function treffer<T extends { id: string; titel: string }>(liste: readonly T[], t
   return l.length ? `${was} „${teil}“ ist nicht eindeutig (${l.slice(0, 4).map(x => x.titel).join(' · ')}) — genauer benennen.` : `Kein ${was} passt zu „${teil}“.`;
 }
 
-async function setzeMeilenstein(input: Record<string, unknown>): Promise<string> {
+async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
   const suche = String(input.titel ?? '').trim().toLowerCase();
   if (!suche) return 'Fehlgeschlagen: titel fehlt.';
   const fortschritt = input.fortschritt != null && isFinite(Number(input.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(input.fortschritt)))) : undefined;
@@ -213,12 +214,16 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
   // Fortschritt-Regel (30.09., lib/planung/meilenstein-aufgaben.ts): mit Aufgaben rechnet er sich aus ihnen — dann nicht von Hand.
   const aufgaben = await ladeAufgaben();
   type Ms = { id: string; titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean; zielId?: string; wartetAuf?: string[] };
+  // Eigene Ziele nur geteilt (08.10.): Meilensteine an einem nicht geteilten eigenen Ziel einer anderen Person gibt es für diese Person
+  // nicht — weder als Treffer noch in der Liste „Offene“ noch als Vorgänger (ohne Person: keiner an einem eigenen Ziel).
+  const verborgen = await verborgeneMeilensteineFuer(person ?? null);
   await updateJson<{ meilensteine: Ms[] }>('meilensteine', current => {
     const f = current ?? { meilensteine: [] };
     const liste = f.meilensteine ?? [];
-    const m = liste.find(x => x.titel.toLowerCase().includes(suche));
+    const sichtbar = liste.filter(x => !verborgen.has(x.id));
+    const m = sichtbar.find(x => x.titel.toLowerCase().includes(suche));
     if (!m) {
-      ergebnis = `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}". Offene: ${liste.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
+      ergebnis = `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}". Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
       return f;
     }
     // Kette zuerst prüfen — nichts wird halb geändert.
@@ -226,7 +231,7 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
     if (wartetRoh) {
       const ids: string[] = [];
       for (const t of wartetRoh) {
-        const w = treffer(liste.filter(x => x.id !== m.id), t, 'Meilenstein');
+        const w = treffer(sichtbar.filter(x => x.id !== m.id), t, 'Meilenstein');
         if (typeof w === 'string') { ergebnis = `Fehlgeschlagen: ${w}`; return f; }
         if (!ids.includes(w.id)) ids.push(w.id);
       }
@@ -579,10 +584,11 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
  * anzulegen ist also auch dann ausgeschlossen, wenn zwei Wege sie erzeugen.
  */
 /** Meilenstein aus einer Angabe (Kennung oder Teil des Titels, offene zuerst) — sonst undefined. */
-async function meilensteinAus(v: unknown): Promise<string | undefined> {
+async function meilensteinAus(v: unknown, person?: string): Promise<string | undefined> {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
   if (!s) return undefined;
-  const l = (await loadJson<{ meilensteine?: { id: string; titel: string; erledigt?: boolean }[] }>('meilensteine'))?.meilensteine ?? [];
+  // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person).
+  const l = await meilensteineSichtbarFuer((await loadJson<{ meilensteine?: { id: string; titel: string; erledigt?: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine'))?.meilensteine, person ?? null);
   const m = l.find(x => x.id === v) ?? l.filter(x => !x.erledigt).find(x => x.titel.toLowerCase().includes(s)) ?? l.find(x => x.titel.toLowerCase().includes(s));
   return m?.id;
 }
@@ -604,7 +610,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     // Privat-Einheit („Selbstständigkeit“) — die Aufgabe landet dann in deren Space unter Privat.
     einheit: typeof input.einheit === 'string' && input.einheit.trim() && (input.space !== 'privat' || gehoertZuPrivat(finanzOrtAus(input.einheit))) ? input.einheit.trim().slice(0, 40) : undefined,
     // Meilenstein (30.09.): Teil des Namens → die Aufgabe landet in seiner Liste (Space/Projekt/Liste vom Meilenstein).
-    meilensteinId: await meilensteinAus(input.meilenstein),
+    meilensteinId: await meilensteinAus(input.meilenstein, person),
   };
   if (input.meilenstein !== undefined && input.meilenstein !== '' && !body.meilensteinId) return `Fehlgeschlagen: kein Meilenstein passt zu „${String(input.meilenstein).slice(0, 80)}“.`;
   // Unteraufgabe auf jeder Ebene (01.10.): `unter` = Titel/Pfad/Kennung der übergeordneten Aufgabe — gesucht nur in dem, was die

@@ -176,7 +176,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'Konten: System › Nachweise (Inhaber) bzw. auf Anfrage beim Inhaber; Kontakte: Fingerabdrücke über die Auskunft auflösbar',
     loeschfrist: '12 Monate (ältere Monate leert die nächtliche Durchsicht, Vermerk mit Anzahl bleibt), in Sicherungen bis zu 12 Monate länger',
   }),
-  T('agent-log', 'Agenten-Log — Titel/Texte getilgt.'),
+  T('agent-log', 'Agenten-Log — Titel/Texte getilgt (Art. 17 Kontakt); je Lauf optional `person` (wer ihn ausgelöst hat, 08.10.): gelesen nur eigene + Systemläufe, Konto löschen nimmt die Läufe der Person heraus.'),
   T('client-fehler', 'Fehlermeldungen der Oberfläche — getilgt, falls sie die Person nennen.'),
   T('meldungen--*', 'Glocke je Person — Texte getilgt.'),
   // ── Paket D-C (29.09.) ──

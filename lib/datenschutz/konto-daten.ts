@@ -5,7 +5,8 @@
 // Welche Bestände zur Person gehören, folgt dem Speicher-Register (lib/crm/speicher-register.ts):
 //   PERSON_BESTAENDE  Bestände JE PERSON (`<basis>--<speicher>`, beim Erstkonto auch `<basis>` — `speicherFuer`): gehen ganz in den
 //                     Export und werden beim Löschen ganz entfernt (Datei + Tagessicherungen, `bestandEntfernen`).
-//   GETEILTE_BESTAENDE geteilte Bestände mit Einträgen je Person (Feld `person` o. ä.): im Export nur die eigenen Einträge; beim Löschen
+//   GETEILTE_BESTAENDE geteilte Bestände mit Einträgen je Person (Feld `person` o. ä. — u. a. zoe-verlauf, telegram, tasks, agent-log
+//                     seit 08.10.): im Export nur die eigenen Einträge; beim Löschen
 //                     fallen sie weg bzw. die Kennung wird „[gelöscht]“ (Nachweise/Protokolle — rechtmäßige Umschreibung, die Hash-Kette
 //                     zählt solche Einträge als „getilgt“, lib/store/protokoll-kette.ts).
 //   NICHT_PERSOENLICH jedes andere Register-Muster `…--*` mit Grund (Haushalt, Kartei, Monat) — der Wächtertest
@@ -23,6 +24,7 @@ import { KONTO_PRAEFIX } from '@/lib/make-one/team-typen';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { grabsteinKennung, grabsteinSetzen, type Grabstein } from './grabsteine';
 import { kennungsVersion } from './pepper';
+import { familieName } from '@/lib/familie/speicher';
 
 export const GELOESCHT = '[gelöscht]';
 
@@ -145,6 +147,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   // WhatsApp (07.10.): selbst gesendete Nachrichten der Business-Nummer (Zeit, Art, Text, Zustellstand — ohne Nummer der Gegenseite).
   const wa = await loadJson<{ nachrichten?: Record<string, Obj> }>('whatsapp-spiegel').catch(() => null);
   merke('whatsapp-spiegel', Object.values(wa?.nachrichten ?? {}).filter(n => n.von === speicher).map(n => ({ am: n.am, art: n.art, text: n.text, status: n.status, ...(n.vorlage ? { vorlage: n.vorlage } : {}) })));
+  // Agenten-Läufe je Person (08.10.): die von der Person ausgelösten Läufe (Ergebnisse) — Systemläufe ohne Person nicht.
+  const al = await loadJson<Obj>('agent-log').catch(() => null);
+  merke('agent-log', liste(al, 'entries').filter(e => (e as Obj).person === speicher));
   const tasks = await loadJson<Obj>('tasks');
   merke('tasks', liste(tasks, 'tasks').filter(t => { const x = t as Obj; return x.assignee === speicher || x.angelegtVon === speicher || (Array.isArray(x.beteiligte) && x.beteiligte.includes(speicher)); }));
   if (k.haushalt) {
@@ -218,10 +223,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     bericht.whoop = r.war ? (r.widerrufen ? 'widerrufen' : 'entfernt') : 'keine';
   } catch (e) { console.error('[konto-loeschen] WHOOP:', e instanceof Error ? e.message : e); }
 
-  // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit mit“ der anderen.
+  // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit / eigene Ziele mit“ der anderen (08.10.).
   await aendereKonten(s => ({
     ...s,
-    konten: s.konten.filter(k => k.speicher !== speicher).map(k => (k.teilt?.gesundheit?.includes(speicher) ? { ...k, teilt: { ...k.teilt, gesundheit: k.teilt.gesundheit.filter(x => x !== speicher) } } : k)),
+    konten: s.konten.filter(k => k.speicher !== speicher).map(k => (k.teilt?.gesundheit?.includes(speicher) || k.teilt?.ziele?.includes(speicher)
+      ? { ...k, teilt: { ...k.teilt, gesundheit: (k.teilt.gesundheit ?? []).filter(x => x !== speicher), ...(k.teilt.ziele ? { ziele: k.teilt.ziele.filter(x => x !== speicher) } : {}) } }
+      : k)),
     einladungen: s.einladungen.filter(e => e.von !== speicher && e.speicher !== speicher),
   }));
 
@@ -253,6 +260,8 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const l = liste(cur, 'ereignisse'); const r = l.map(e => eintragTilgen(e, speicher)); n = r.filter((x, i) => x !== l[i]).length;
     return n ? { ...(cur ?? {}), ereignisse: r } : (cur as Obj);
   }); return n; });
+  // Agenten-Läufe (08.10.): die Läufe der Person sind ihre Ergebnisse (sieht sonst niemand) — sie fallen ganz weg, kein Nachweis nötig.
+  await nurWenn('agent-log', async () => { let n = 0; await updateJson<Obj>('agent-log', cur => { const l = liste(cur, 'entries'); const r = l.filter(e => (e as Obj).person !== speicher); n = l.length - r.length; return n ? { ...(cur ?? {}), entries: r } : (cur as Obj); }); return n; });
   // WhatsApp (07.10.): gesendete Nachrichten bleiben (Geschäftskorrespondenz der Instanz), „wer gesendet hat“ wird „[gelöscht]“.
   await nurWenn('whatsapp-spiegel', async () => { let n = 0; await updateJson<Obj>('whatsapp-spiegel', cur => {
     const alt = (cur?.nachrichten ?? {}) as Record<string, Obj>;
@@ -278,6 +287,21 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const team = teamSpeicherName(konto.haushalt);
     await nurWenn(team, async () => { let n = 0; await updateJson<Obj>(team, cur => { const l = liste(cur, 'team'); const r = l.filter(e => (e as Obj).id !== `${KONTO_PRAEFIX}${speicher}`); n = l.length - r.length; return n ? { ...(cur ?? {}), team: r } : (cur as Obj); }); return n; });
     await sicher('kapazitaet', async () => { const { kapaEntfernteKontenAufraeumen } = await import('@/lib/kapazitaet/server'); return (await kapaEntfernteKontenAufraeumen(konto.haushalt!)).teile; });
+    // Familie › Vision (08.10., Gegenprüfung): Einträge der Person bleiben (gemeinsame Vision), ohne ihren Namen — sonst sperrte die
+    // Anlegerin sie für immer und der Speichername bliebe als Personenbezug stehen (lib/familie/vision.ts `visionOhnePerson`).
+    const fam = familieName(konto.haushalt);
+    await nurWenn(fam, async () => {
+      const { visionOhnePerson } = await import('@/lib/familie/vision');
+      let n = 0;
+      await updateJson<Obj>(fam, cur => {
+        if (!cur || !Array.isArray(cur.visionen)) return cur as Obj;
+        const r = visionOhnePerson(cur.visionen as import('@/lib/familie/typen').Vision[], speicher);
+        n = r.anzahl;
+        return n ? { ...cur, visionen: r.visionen } : cur;
+      });
+      if (n) await protokolliere(fam, [{ op: 'geaendert' as const, id: 'visionen', felder: ['von'] }], { art: 'system' });
+      return n;
+    });
   }
 
   // 6. Protokolle: Einträge bleiben (Nachweis, Art. 5 Abs. 2), die Kennung der Person wird „[gelöscht]“ — die Hash-Kette zählt solche

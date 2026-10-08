@@ -72,6 +72,6 @@ export async function POST(req: Request) {
   if (!r.ok || !r.data) return NextResponse.json({ lage: r.error ?? 'Analyse gerade nicht möglich.', objectives: [] });
 
   const objectives = Array.isArray(r.data.objectives) ? r.data.objectives.slice(0, 4) : [];
-  await logRun('okr', 'OKR-Zielbaum', { lage: r.data.lage, objectives });
+  await logRun('okr', 'OKR-Zielbaum', { lage: r.data.lage, objectives }, { person });
   return NextResponse.json({ lage: r.data.lage ?? '', objectives, metrics: m });
 }

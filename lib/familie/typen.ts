@@ -42,7 +42,11 @@ export interface LoveMapAntwort extends Basis { frageId: string; person: string;
 export interface Wunsch extends Basis { text: string; kategorie: 'alltag' | 'zeit' | 'naehe' | 'erlebnis' | 'geschenk'; status: 'offen' | 'erfuellt' | 'zurueckgezogen' }
 export interface Profil { person: string; stress: string; traeume: string; wasMirGuttut: string; stand: string }
 export interface Reparatur extends Basis { datum: string; pauseBis: string | null; reflexionen: { person: string; gefuehle: string; meineSicht: string; meinAnteil: string; wunsch: string; geteilt: boolean }[]; abgeschlossen: string | null; vereinbarung: string }
-export interface Vision { jahr: number; leitbild: string; ziele: { id: string; text: string; erreicht: boolean }[]; traeume: { person: string; text: string }[] }
+/**
+ * Vision eines Jahres. `ziele[].von` (08.10., Kevin): wer den Eintrag angelegt hat — setzt nur der Server; nur sie ändert/löscht ihn
+ * (lib/familie/vision.ts). Fehlt `von` (Altbestand), bleibt der Eintrag für alle änderbar. `traeume[].person` = wessen Traum.
+ */
+export interface Vision { jahr: number; leitbild: string; ziele: { id: string; text: string; erreicht: boolean; von?: string }[]; traeume: { person: string; text: string }[] }
 
 /**
  * Ein wichtiger Tag mit Vorlauf und Aktion. Geburtstage (29.09., K2): der MENSCH führt das Datum — ein Geburtstag mit

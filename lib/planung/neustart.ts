@@ -72,9 +72,13 @@ export function meilensteineDatei(roh: unknown): { meilensteine: Meilenstein[] }
   return { ...r, meilensteine: Array.isArray(r.meilensteine) ? (r.meilensteine as Meilenstein[]) : [] };
 }
 
-export function meilensteineHerausnehmen(roh: unknown): { rest: { meilensteine: Meilenstein[] } & Record<string, unknown>; raus: ArchivMeilenstein[] } {
+/**
+ * Alle Meilensteine heraus — außer denen, die `bleibt` behält (08.10.: Meilensteine aus dem Altbestand, die an einem nicht geteilten
+ * eigenen Ziel einer anderen Person hängen — die nimmt nur deren Eigentümerin mit ihrem eigenen Neustart heraus).
+ */
+export function meilensteineHerausnehmen(roh: unknown, bleibt: (m: Meilenstein) => boolean = () => false): { rest: { meilensteine: Meilenstein[] } & Record<string, unknown>; raus: ArchivMeilenstein[] } {
   const d = meilensteineDatei(roh);
-  return { rest: { ...d, meilensteine: [] }, raus: d.meilensteine.map(m => ({ meilenstein: m })) };
+  return { rest: { ...d, meilensteine: d.meilensteine.filter(bleibt) }, raus: d.meilensteine.filter(m => !bleibt(m)).map(m => ({ meilenstein: m })) };
 }
 
 export function meilensteineZurueck(roh: unknown, eintraege: readonly ArchivMeilenstein[]): { datei: { meilensteine: Meilenstein[] } & Record<string, unknown>; zurueck: string[]; schon: string[] } {

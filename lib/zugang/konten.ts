@@ -39,8 +39,11 @@ export interface Konto {
   /** scrypt-Parameter des Hashes (05.10.). Fehlt = Node-Vorgabe N=2^14 (`KDF_STANDARD`) — so lesen alte Stände jedes Konto. */
   kdf?: Kdf;
   angelegt: string;
-  /** Wem diese Person ihre Gesundheitsdaten zeigt (speicher-Namen). */
-  teilt: { gesundheit: string[] };
+  /**
+   * Wem diese Person ihre Gesundheitsdaten zeigt (speicher-Namen). `ziele` (08.10., Kevin): wem sie ihre EIGENEN Ziele
+   * (`ziele-eigen--<person>`) zeigt — optional, fehlt = niemand (lib/planung/eigene-ziele-sicht.ts).
+   */
+  teilt: { gesundheit: string[]; ziele?: string[] };
   /** Wer die Einladung ausgesprochen hat. */
   eingeladenVon?: string;
   /**

@@ -24,11 +24,17 @@ export interface DayVitals {
   /**
    * Woher ein Wert stammt (08.10., WHOOP je Person): `whoop` = vom Abgleich geschrieben — darf er nachziehen; `hand` = von Hand
    * (Morgen-Check). Fehlt die Angabe, gilt der Wert als Handwert: der Abgleich überschreibt NIE, was nicht als `whoop` markiert ist.
+   * `whoop-export` (08.10., Kevin Phase 0: „WHOOP ist die Quelle — Werte aus dem alten Export: Schnittstelle gewinnt, nur echte
+   * Handeingaben bleiben“): aus dem WHOOP-Datenexport (lib/whoop-export.ts) — der Abgleich überschreibt ihn wie `whoop`. Altbestand
+   * ohne Angabe bleibt Handwert; nur beim Einlesen des Datenexports bekommt ein GENAU gleicher Wert die Herkunft `whoop-export`
+   * (Wert unverändert) — die Schnittstelle selbst fasst ihn nie an (Gegenprüfung 08.10.).
    */
-  quellen?: Partial<Record<VitalFeld, 'whoop' | 'hand'>>;
+  quellen?: Partial<Record<VitalFeld, VitalQuelle>>;
 }
 /** Die Felder, die eine Quelle (WHOOP) liefern kann. */
 export type VitalFeld = 'rec' | 'sleep' | 'hrv' | 'rhr';
+/** Herkunft eines Vitalwerts (siehe `DayVitals.quellen`). */
+export type VitalQuelle = 'whoop' | 'whoop-export' | 'hand';
 export const VITAL_FELDER: readonly VitalFeld[] = ['rec', 'sleep', 'hrv', 'rhr'];
 export type VitalsLog = Record<string, DayVitals>;
 
