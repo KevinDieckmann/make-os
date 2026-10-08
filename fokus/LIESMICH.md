@@ -1,5 +1,12 @@
 # Event-Seite fokusinnovation.de — Fokus Innovation, ein Format von Make.One
 
+> **Stand 08.10.2026 (Kevin):** Beide Seiten sind **offline** (Caddy antwortet 503, Hotfix 1de19d8c auf `main`). KEMARIS steht
+> **nirgends mehr** — Absender überall nur „MAKE Innovation“, Kontakt hello@makeinnovation.de, ohne Telefon; verantwortlich nach
+> § 18 MStV Kevin Dieckmann; Registerangaben als Platzhalter bis zur Eintragung der Umbenennung. `pruefen.mjs` meldet jedes „KEMARIS“
+> als Fehler. Was weiter unten zur Firmierung „eine Marke der KEMARIS Innovation GmbH“ steht, ist Verlauf.
+> Wieder online: Platzhalter füllen → in `deploy/caddy/Caddyfile` den OFFLINE-Block löschen und die Fassungen entkommentieren → Upload auf Kevins Wort → Caddy reload.
+
+
 **Fokus Innovation** ist die Event-Reihe unter **Make.One** — Abende in kleiner Runde, junge und erfahrene Entscheider an einem
 Tisch, in Berlin (Ausgangspunkt), Hamburg, Bielefeld, Köln, München und Dresden. Make.One bleibt das Netzwerk; Absender ist
 **MAKE Innovation · eine Marke der KEMARIS Innovation GmbH**.

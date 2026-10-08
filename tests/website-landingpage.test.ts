@@ -150,15 +150,15 @@ describe('website/pruefen.mjs', () => {
     }
     ersetze(k, 'index.html', '</main>', '<p>Unser Dash' + 'board</p></main>');
     expect(pruefeWebsite(k).fehler.join('\n')).toMatch(/Wortregeln/);
-    // Firmierung (Kevin 03.10.): eine GmbH namens MAKE Innovation gibt es nicht; jede Seite trägt die Marke der KEMARIS Innovation GmbH.
+    // Firmierung (Kevin 03.10., 08.10.): eine GmbH namens MAKE Innovation gibt es nicht; jede Seite trägt „MAKE Innovation“, KEMARIS nirgends.
     const k3 = kopie();
     fuellen(k3);
     expect(pruefeWebsite(k3).fehler).toEqual([]);
     ersetze(k3, 'impressum.html', '</main>', '<p>MAKE Innovation ' + 'GmbH</p></main>');
-    ersetze(k3, '404.html', /eine Marke der KEMARIS Innovation GmbH/g, 'MAKE');
+    ersetze(k3, '404.html', /MAKE Innovation/g, 'MAKE');
     const f3 = pruefeWebsite(k3).fehler.join('\n');
     expect(f3).toMatch(/impressum\.html:\d+: „MAKE Innovation GmbH“ — die GmbH ist nicht eingetragen/);
-    expect(f3).toMatch(/404\.html: Firmierung/);
+    expect(f3).toMatch(/404\.html: Absender/);
   });
 
   it('Skripte nur als eigene Datei aus js/ — und die lesen, speichern und senden nichts', () => {
@@ -373,7 +373,8 @@ describe('website/pruefen.mjs', () => {
     expect(weg.match(/<li class="[^"]*"><span class="halt"/g)).toHaveLength(6);
     expect(weg).toContain('<li class="knoten">');
     const fuss = /<footer class="fuss">[\s\S]*<\/footer>/.exec(index)?.[0] ?? '';
-    expect(fuss).toContain('eine Marke der KEMARIS Innovation GmbH');
+    expect(fuss).toContain('MAKE Innovation');
+    expect(fuss).not.toMatch(/kemaris/i);
     expect(fuss).toContain('href="impressum.html"');
     expect(fuss).toContain('href="datenschutz.html"');
     expect(fuss).toContain(`href="${ANMELDEN}"`);

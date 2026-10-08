@@ -21,10 +21,10 @@ function kopie() {
 }
 
 describe('fokus/ — Freigabe-Prüfung', () => {
-  it('Bau-Regeln sind erfüllt; offen sind nur die Datenschutz-Platzhalter', () => {
+  it('Bau-Regeln sind erfüllt; offen sind nur die Platzhalter in Datenschutz und Impressum (Registerangaben, Kevin 08.10.)', () => {
     const r = pruefeFokus(FOKUS);
     expect(r.fehler).toEqual([]);
-    expect(r.platzhalter.every((p: { datei: string }) => p.datei === 'datenschutz.html')).toBe(true);
+    expect(r.platzhalter.every((p: { datei: string }) => p.datei === 'datenschutz.html' || p.datei === 'impressum.html')).toBe(true);
     expect(r.groesse).toBeLessThan(GROESSE_MAX);
   });
 
@@ -52,7 +52,7 @@ describe('fokus/ — Freigabe-Prüfung', () => {
     const k = kopie();
     try {
       writeFileSync(join(k.fokus, 'assets/fonts/archivo-latin.woff2'), 'kaputt');
-      k.aendern('impressum.html', t => t.replace('HRB 19873', 'HRB 1'));
+      k.aendern('impressum.html', t => t.replace('Attilastraße 18', 'Attilastraße 1'));
       // 07.10. Kevin („Klar 2“): die Tokens stehen in der gemeinsamen Grundlage css/seite.css (Byte-Kopie) — css/fokus.css setzt keine.
       k.aendern('css/fokus.css', t => `${t}\n:root { --aktiv: #FF0000; }\n`);
       k.aendern('css/seite.css', t => t.replace('--granat: #C9465C;', '--granat: #FF0000;'));
@@ -68,11 +68,11 @@ describe('fokus/ — Freigabe-Prüfung', () => {
     const k = kopie();
     try {
       k.aendern('index.html', t => t.replace('subject=Fokus%20Innovation%20%E2%80%93%20Gastgeber', 'subject=Hallo'));
-      k.aendern('datenschutz.html', t => t.split('eine Marke der KEMARIS Innovation GmbH').join('eine Marke'));
+      k.aendern('datenschutz.html', t => t.split('MAKE Innovation').join('MAKE'));
       const f = pruefeFokus(k.fokus).fehler.join('\n');
       expect(f).toMatch(/Betreff „Hallo“/);
       expect(f).toMatch(/Knopf „Gastgeber werden“/);
-      expect(f).toMatch(/datenschutz\.html: Firmierung/);
+      expect(f).toMatch(/datenschutz\.html: Absender/);
     } finally { k.weg(); }
   });
 

@@ -19,9 +19,9 @@
 //   · Inhalt: nur MAKE — keine anderen Firmen-, Produkt- oder Projektnamen (SPERRLISTE), der Name der Software
 //     steht nirgends im Ordner (auch nicht in LIESMICH/LOGO.md), keine Preise, dazu Wortregeln.
 //   · Belege (Kevin 07.10.): nur Prinzipien — keine Statistiken, Prozentzahlen oder Marktgrößen auf der Startseite (STATISTIK).
-//   · Firmierung (Kevin 03.10.): Eine „MAKE Innovation GmbH“ gibt es nicht (nicht eingetragen) — der Name steht nirgends
-//     im Ordner. Jede Seite trägt „MAKE Innovation“ mit dem Zusatz „eine Marke der KEMARIS Innovation GmbH“ (Fuß,
-//     Titel/Beschreibung). KEMARIS steht nur in dieser Firmierung (und in der Adresse @kemaris.de im Impressum).
+//   · Firmierung (Kevin 03.10., geändert 08.10.): Eine „MAKE Innovation GmbH“ gibt es nicht (nicht eingetragen) — der Name
+//     steht nirgends im Ordner. Seit 08.10. (Kevin: „KEMARIS überall raus“) steht nur „MAKE Innovation“; KEMARIS darf
+//     nirgends mehr stehen. Die Registerangaben folgen nach Eintragung der Umbenennung (Platzhalter im Impressum).
 //   · Vorschau: solange robots.txt alles sperrt, trägt jede Seite <meta name="robots" content="noindex">; jede Seite
 //     hat eine Beschreibung (<meta name="description">).
 //   · Ruhe (Kevin 07.10.: „keine Spielereien“; „v3“ abends: „Nimm die Kugel raus … bring Innovation nach vorne“ — gemeinsam mit
@@ -93,10 +93,10 @@ export const ANGEBOTE = { 'angebot-interim-cso': 'aktiv', 'angebot-head-of-sales
  * mit Zeichenklassen geschrieben, damit eine Textsuche über website/ die Namen nirgends findet — auch hier nicht.
  */
 export const SPERRLISTE = /\b(?:Cap[O]S|POIN[C]AP|K[S]I|Capital[ ]Readiness|AST[A]RNA|Conn[e]ct|One[ ]?B[a]nking|Infin[i]ty)\b/i;
-/** KEMARIS nur als Firmierung der Trägerin („KEMARIS Innovation GmbH“ / „Kemaris Innovation GmbH“) oder als Mail-Domain. */
+/** KEMARIS steht seit 08.10. nirgends mehr (Kevin) — auch nicht als Firmierung oder Mail-Domain. */
 const KEMARIS_ALLE = /\bkem[a]ris\b/gi;
-/** Die Firmierung, die jede Seite trägt (Kevin 03.10.). */
-export const FIRMIERUNG = 'eine Marke der KEMARIS Innovation GmbH';
+/** Der Absender, den jede Seite trägt (Kevin 08.10.: nur noch „MAKE Innovation“, ohne KEMARIS). */
+export const FIRMIERUNG = 'MAKE Innovation';
 /** Gibt es nicht (nicht eingetragen) — darf nirgends im Ordner stehen. */
 export const ALTER_NAME = /MAKE Innovation Gmb[H]/;
 /** Der Name der Software kommt erst auf die Seite, wenn sie marktreif ist (Kevin 01.10.) — gilt für den ganzen Ordner. */
@@ -249,11 +249,7 @@ export function pruefeWebsite(ordner) {
     const text = inhalt.get(d);
     const m = SPERRLISTE.exec(text);
     if (m) fehler.push(`${d}:${zeileVon(text, m.index)}: fremder Name „${m[0]}“ — auf der Seite steht nur MAKE`);
-    for (const k of text.matchAll(KEMARIS_ALLE)) {
-      const um = text.slice(k.index, k.index + k[0].length + 16), davor = text[k.index - 1];
-      if (!/^kemaris Innovation GmbH/i.test(um) && !(davor === '@' && /^kemaris\.de\b/i.test(um)))
-        { fehler.push(`${d}:${zeileVon(text, k.index)}: fremder Name „${k[0]}“ — KEMARIS nur als „KEMARIS Innovation GmbH“`); break; }
-    }
+    for (const k of text.matchAll(KEMARIS_ALLE)) { fehler.push(`${d}:${zeileVon(text, k.index)}: fremder Name „${k[0]}“ — KEMARIS steht nirgends mehr (Kevin 08.10.)`); break; }
     if (d.endsWith('.html')) {
       const w = VERBOTENE_WOERTER.exec(text.replace(/<[^>]+>/g, ' '));
       if (w) fehler.push(`${d}: Wort „${w[0]}“ — steht nicht auf der Seite (Wortregeln)`);
@@ -262,7 +258,7 @@ export function pruefeWebsite(ordner) {
 
   for (const [d, text] of inhalt) {
     const alt = ALTER_NAME.exec(text);
-    if (alt) fehler.push(`${d}:${zeileVon(text, alt.index)}: „${alt[0]}“ — die GmbH ist nicht eingetragen; „MAKE Innovation“ + „${FIRMIERUNG}“`);
+    if (alt) fehler.push(`${d}:${zeileVon(text, alt.index)}: „${alt[0]}“ — die GmbH ist nicht eingetragen; nur „${FIRMIERUNG}“`);
     const m = SOFTWARE_NAME.exec(text);
     if (m) fehler.push(`${d}:${zeileVon(text, m.index)}: Name der Software — kommt erst auf die Seite, wenn sie marktreif ist`);
   }
@@ -317,7 +313,7 @@ export function pruefeWebsite(ordner) {
       if (!text.includes('href="datenschutz.html"')) fehler.push(`${d}: Link auf datenschutz.html fehlt`);
     }
     // Firmierung auf jeder Seite (auch 404), Beschreibung, Vorschau-Sperre.
-    if (!arbeitsdatei && !text.includes(FIRMIERUNG)) fehler.push(`${d}: Firmierung „MAKE Innovation — ${FIRMIERUNG}“ fehlt`);
+    if (!arbeitsdatei && !text.includes(FIRMIERUNG)) fehler.push(`${d}: Absender „${FIRMIERUNG}“ fehlt`);
     if (!/<meta name="description" content="[^"]{20,}">/.test(text) && !arbeitsdatei) fehler.push(`${d}: <meta name="description"> fehlt`);
     if (!arbeitsdatei && vorschau && !text.includes('<meta name="robots" content="noindex">')) fehler.push(`${d}: Vorschau (robots.txt sperrt) — <meta name="robots" content="noindex"> fehlt`);
     // Eigene Links und Quellen müssen existieren (Seiten-Anker inklusive).

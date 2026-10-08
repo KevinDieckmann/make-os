@@ -1,5 +1,12 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
+> **Stand 08.10.2026 (Kevin):** Beide Seiten sind **offline** (Caddy antwortet 503, Hotfix 1de19d8c auf `main`). KEMARIS steht
+> **nirgends mehr** — Absender überall nur „MAKE Innovation“, Kontakt hello@makeinnovation.de, ohne Telefon; verantwortlich nach
+> § 18 MStV Kevin Dieckmann; Registerangaben als Platzhalter bis zur Eintragung der Umbenennung. `pruefen.mjs` meldet jedes „KEMARIS“
+> als Fehler. Was weiter unten zur Firmierung „eine Marke der KEMARIS Innovation GmbH“ steht, ist Verlauf.
+> Wieder online: Platzhalter füllen → in `deploy/caddy/Caddyfile` den OFFLINE-Block löschen und die Fassungen entkommentieren → Upload auf Kevins Wort → Caddy reload.
+
+
 Statische Seite (HTML + zwei CSS-Dateien + drei kleine eigene Skripte, keine Cookies, kein Tracking, kein Speicher im Browser,
 Schriften selbst gehostet). Stand **„v3 · Der Weg“ (07.10.2026 abends, Branch `websites-v3`, nicht online)** auf der Grundlage von **„Klar 2“ (07.10.2026)** — Kevin: „Das sieht alles noch scheiße aus. Ich will, dass du die
 Homepages richtig sauber machst.“ und „Wir wollen innovativ UND seriös wirken. Wir haben auch in [unserer Software] keine Spielereien —

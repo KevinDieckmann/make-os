@@ -8,7 +8,7 @@
 //     senden nichts), keine fremden Quellen, keine Tracker, keine Formulare. Stempel: jeder Verweis auf css/ und js/ trägt
 //     ?v=<Prüfsumme der Datei> (wie makeinnovation.de — node scripts/fokus-seite.mjs oder node website/stempeln.mjs fokus).
 //   · Pflichtteile je Seite: lang="de", Titel, Beschreibung, genau eine H1, noindex solange robots.txt sperrt, Firmierung
-//     „eine Marke der KEMARIS Innovation GmbH“, Impressum + Datenschutz verlinkt; jeder eigene Link/Anker existiert.
+//     „MAKE Innovation“ (ohne KEMARIS, Kevin 08.10.), Impressum + Datenschutz verlinkt; jeder eigene Link/Anker existiert.
 //   · Externe Links nur zu makeinnovation.de (Startseite, Datenschutzhinweis). Mail nur an die MAKE-Adresse; jede Mail mit
 //     Betreff beginnt mit „Fokus Innovation“.
 //   · Inhalt: Absender „Ein Format von Make.One“, die H1 „Fokus Innovation“, die sechs Städte mit „Termin in Planung“ (Liste
@@ -106,10 +106,7 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     const text = inhalt.get(d);
     const m = SPERRLISTE.exec(text);
     if (m) fehler.push(`${d}:${zeileVon(text, m.index)}: fremder Name „${m[0]}“`);
-    for (const k of text.matchAll(/\bkem[a]ris\b/gi)) {
-      const um = text.slice(k.index, k.index + k[0].length + 16), davor = text[k.index - 1];
-      if (!/^kemaris Innovation GmbH/i.test(um) && !(davor === '@' && /^kemaris\.de\b/i.test(um))) { fehler.push(`${d}:${zeileVon(text, k.index)}: KEMARIS nur als „KEMARIS Innovation GmbH“`); break; }
-    }
+    for (const k of text.matchAll(/\bkem[a]ris\b/gi)) { fehler.push(`${d}:${zeileVon(text, k.index)}: fremder Name „${k[0]}“ — KEMARIS steht nirgends mehr (Kevin 08.10.)`); break; }
     if (d.endsWith('.html')) {
       const w = VERBOTENE_WOERTER.exec(sichtbar(text));
       if (w) fehler.push(`${d}: Wort „${w[0]}“ — steht nicht auf der Seite (Wortregeln)`);
@@ -117,7 +114,7 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
   }
   for (const [d, text] of inhalt) {
     const alt = ALTER_NAME.exec(text);
-    if (alt) fehler.push(`${d}:${zeileVon(text, alt.index)}: „${alt[0]}“ — die GmbH ist nicht eingetragen; „MAKE Innovation“ + „${FIRMIERUNG}“`);
+    if (alt) fehler.push(`${d}:${zeileVon(text, alt.index)}: „${alt[0]}“ — die GmbH ist nicht eingetragen; nur „${FIRMIERUNG}“`);
     const s = SOFTWARE_NAME.exec(text);
     if (s) fehler.push(`${d}:${zeileVon(text, s.index)}: Name der Software — kommt nicht auf die Seite`);
   }
@@ -152,7 +149,7 @@ export function pruefeFokus(ordner, website = join(ordner, '..', 'website')) {
     for (const m of text.matchAll(/<span class="ph">([^<]*)<\/span>/g)) if (!m[1].includes('[[KEVIN:')) fehler.push(`${d}:${zeileVon(text, m.index)}: gelbe Platzhalter-Markierung ohne Platzhalter`);
     for (const m of text.matchAll(/\ssrc="([^"]*)"/g)) if (/^(https?:)?\/\//.test(m[1])) fehler.push(`${d}: fremde Quelle ${m[1]}`);
     for (const m of text.matchAll(/<link\b[^>]*\shref="([^"]*)"/g)) if (/^(https?:)?\/\//.test(m[1])) fehler.push(`${d}: fremde Quelle ${m[1]}`);
-    if (!text.includes(FIRMIERUNG)) fehler.push(`${d}: Firmierung „${FIRMIERUNG}“ fehlt`);
+    if (!text.includes(FIRMIERUNG)) fehler.push(`${d}: Absender „${FIRMIERUNG}“ fehlt`);
     if (!/Ein Format von Make\.One/.test(text)) fehler.push(`${d}: Absender „Ein Format von Make.One“ fehlt`);
     if (vorschau && !text.includes('<meta name="robots" content="noindex">')) fehler.push(`${d}: Vorschau (robots.txt sperrt) — <meta name="robots" content="noindex"> fehlt`);
     if (SEITEN_MIT_PFLICHT.includes(d)) {
