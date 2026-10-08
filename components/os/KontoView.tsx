@@ -200,7 +200,7 @@ export function KontoView() {
       <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
       <Liste>
         {!tg ? <Leer>lade …</Leer>
-          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>.env.local</code>, neu starten.</Leer>
+          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>TELEGRAM_BOT_TOKEN</code> in die Server-Umgebung (<code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>/srv/make-os/app/.env</code>) eintragen, dann <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>docker compose up -d</code> — macht der Inhaber.</Leer>
           : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
           : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
           : <Zeile titel="Noch nicht gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
