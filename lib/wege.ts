@@ -33,6 +33,11 @@ const q = (basis: string, p: Record<string, string | undefined | null>, hash?: s
 
 export type ZahlenReiter = 'privat' | 'business' | 'steuern' | 'gesamt' | 'chef';
 
+/** ZOE › Freigaben (08.10., Phase 0): „Offen“ (Standard, ohne Parameter) und „Protokoll“ (`?t=protokoll`, bis 08.10. /os/stapel/voll). */
+export type FreigabenReiter = 'offen' | 'protokoll';
+/** Der Reiter aus der Adresse — alles Unbekannte ist „Offen“. */
+export const freigabenReiterAus = (t: string | null | undefined): FreigabenReiter => (t === 'protokoll' ? 'protokoll' : 'offen');
+
 export const WEG = {
   /**
    * Heute (08.10., Aufräumen Etappe 1): EINE Startseite unter /os — ohne Space Privat und Business zusammen, mit `space` nur
@@ -152,6 +157,8 @@ export const WEG = {
    */
   ziel: (id: string) => `/os/planung/ziel/${encodeURIComponent(id)}`,
   agenten: () => '/os/agenten',
+  /** ZOE › Freigaben (08.10.): ohne Angabe „Offen“; `protokoll` = was ZOE getan hat (Rückgängig), Gedächtnis, Wissen. */
+  freigaben: (t?: FreigabenReiter) => q('/os/stapel', { t: t === 'protokoll' ? t : undefined }),
   /** Brain (05.10.): die Seite bzw. eine Notiz im Lesefenster (`?n=` — Kennung relativ zum Vault, wie /api/zoe/wissen sie liefert). */
   wissen: () => '/os/wissen',
   notiz: (id: string) => q('/os/wissen', { n: id }),

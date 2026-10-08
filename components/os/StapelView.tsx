@@ -4,16 +4,22 @@
 // Was ZOE vorbereitet hat und auf dein Ja wartet. Seit 24.09. im
 // lebendigen Muster: offene Vorschläge je Gruppe mit Freigeben/Ablehnen,
 // zuletzt Entschiedenes, der Arbeiter mit seinen Aufträgen, Gedächtnis und
-// Verbrauch. Protokoll, Rückgängig und Felder-Ändern: /os/stapel/voll.
+// Verbrauch.
+// 08.10. (Phase 0, Kevin): zwei Reiter — „Offen“ (diese Ansicht) und „Protokoll“ (`?t=protokoll`, components/os/StapelProtokoll.tsx:
+// was ZOE getan hat mit Rückgängig, Gedächtnis, Wissen). Die frühere Vollansicht /os/stapel/voll leitet dorthin (next.config.mjs);
+// „Ändern & freigeben“ steht jetzt hier am offenen Vorschlag (lib/zoe/stapel-aendern.ts, nur gewöhnliche Werkzeug-Vorschläge).
 // 29.09. (#94/#97): ZOE-Aufgaben-Vorschläge zeigen je Feld „alt → neu“ mit Häkchen; „Alle freigeben“ nur für risikoarme
 // (nur Notiz-Entwurf/Unteraufgaben) — alles andere braucht einzeln einen Blick; freigegebene Chargen lassen sich zurücknehmen.
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, feld, LEUCHT, Spalten, Spalte, useRueckfrage } from './ui';
-import { WEG } from '@/lib/wege';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, Pillen, feld, LEUCHT, Spalten, Spalte, useRueckfrage } from './ui';
+import { WEG, freigabenReiterAus, type FreigabenReiter } from '@/lib/wege';
+import { aenderbareFelder, darfAendern, eingabeMitAenderung, hatAenderung } from '@/lib/zoe/stapel-aendern';
+import { StapelProtokoll } from './StapelProtokoll';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
 import { useTasks } from '@/context/TasksContext';
@@ -48,7 +54,11 @@ const STATUS: Record<string, { label: string; farbe: string }> = {
 const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(iso)) / 60000); return min < 1 ? 'gerade' : min < 60 ? `vor ${min} min` : min < 1440 ? `vor ${Math.floor(min / 60)} h` : `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`; };
 
 export function StapelView() {
+  const router = useRouter();
+  const reiter = freigabenReiterAus(useSearchParams()?.get('t'));
   const { bestaetigen, dialog } = useRueckfrage();
+  /** „Ändern & freigeben“: je Vorschlag die geänderten Felder (Text), erst beim Freigeben in ihre Form gebracht. */
+  const [aendern, setAendern] = useState<Record<string, Record<string, string>>>({});
   const [vorschlaege, setVorschlaege] = useState<Vorschlag[]>([]);
   const [auftraege, setAuftraege] = useState<Auftrag[]>([]);
   const [fakten, setFakten] = useState<Fakt[]>([]);
@@ -94,8 +104,13 @@ export function StapelView() {
     // Häkchen (#94): bei ZOE-Aufgaben-Vorschlägen nur die gewählten Felder.
     const inhalt = entscheidung === 'freigeben' ? aufgabenInhalt(v) : null;
     const auswahl = inhalt ? haekchen[v.id] ?? alleFelder(inhalt) : null;
-    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(inhalt && auswahl ? { eingabe: nurGewaehlt(inhalt, auswahl) } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
-    setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null); if (d.ok !== false) setOffenId(null); void laden();
+    // „Ändern & freigeben“ (08.10., vorher nur in der Vollansicht): die volle Eingabe mit den geänderten Feldern.
+    const geaendert = entscheidung === 'freigeben' && !inhalt && darfAendern(v) && aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? eingabeMitAenderung(v.eingabe, aendern[v.id]) : null;
+    const eingabe = inhalt && auswahl ? nurGewaehlt(inhalt, auswahl) : geaendert;
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(eingabe ? { eingabe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null);
+    if (d.ok !== false) { setOffenId(null); setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; }); }
+    void laden();
     if (inhalt) void rehydrate();
   }
   async function alleFreigeben(gruppe?: string) {
@@ -121,9 +136,12 @@ export function StapelView() {
   const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
 
   return (
-    <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<span className="ui-nur-breit"><Knopf leise href="/os/stapel/voll">Protokoll & Rückgängig ›</Knopf></span>}>
+    <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts.">
       <ZoeReiter />
-      <div className="ui-nur-schmal"><Knopf leise href="/os/stapel/voll" voll>Protokoll & Rückgängig ›</Knopf></div>
+      {/* Reiter der Freigaben (08.10.): Ort wechseln = push (Zurück führt zum vorigen Reiter). */}
+      <div><Pillen<FreigabenReiter> einzeilig liste={[{ id: 'offen', label: offen.length ? `Offen · ${offen.length}` : 'Offen' }, { id: 'protokoll', label: 'Protokoll' }]}
+        aktiv={reiter} onWahl={t => router.push(WEG.freigaben(t), { scroll: false })} /></div>
+      {reiter === 'protokoll' ? <StapelProtokoll /> : <>
       {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
 
       <Spalten verhaeltnis="2:1">
@@ -142,7 +160,7 @@ export function StapelView() {
               {offen.filter(v => v.gruppe === gr).map(v => (
                 <div key={v.id}>
                   <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={v.anlass ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
-                    rechts={<span style={{ display: 'flex', gap: 6 }}><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id} farbe={LEUCHT.gut}>Freigeben</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
+                    rechts={<span style={{ display: 'flex', gap: 6 }}><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
                   {offenId === v.id && (
                     <div style={{ padding: '6px 2px 16px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
@@ -151,6 +169,21 @@ export function StapelView() {
                         <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{v.werkzeug}</span>
                         <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
                       </div>
+                      {/* Ändern & freigeben (08.10., vorher nur in der Vollansicht): die Felder, die das Werkzeug bekommt — Text und Zahl. */}
+                      {darfAendern(v) && (aendern[v.id] ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+                            {aenderbareFelder(v.eingabe).map(f => (
+                              <label key={f.schluessel} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                                <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{f.schluessel}</span>
+                                <input value={aendern[v.id][f.schluessel] ?? f.wert} inputMode={f.zahl ? 'decimal' : undefined}
+                                  onChange={e => { const wert = e.target.value; setAendern(a => ({ ...a, [v.id]: { ...a[v.id], [f.schluessel]: wert } })); }} style={feld} />
+                              </label>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; })}>Änderungen verwerfen</Knopf></div>
+                        </div>
+                      ) : <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setAendern(a => ({ ...a, [v.id]: {} }))}>Felder ändern</Knopf></div>)}
                       {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
                       {aufgabenInhalt(v) && (
                         <div style={{ marginTop: 10 }}>
@@ -225,6 +258,7 @@ export function StapelView() {
         </Karte>
         </Spalte>
       </Spalten>
+      </>}
       {dialog}
     </Seite>
   );
