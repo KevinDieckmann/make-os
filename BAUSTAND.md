@@ -28,6 +28,9 @@
   6. Zweite Inhaberin (R9, Update 2) + Onboarding B1 (Spuren neutral) — ONBOARDING_PLAN.md.
   7. Bank-Übergang: CAMT.053/CSV-Import je Konto ins Konten-Register (R3/R8, unabhängig von finAPI).
   8. Morgens: Demo-Bau aus agenten-nacht, Rundgang mit Bildern, Bericht.
+- **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
+  wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
+  Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
 - **Aufgaben für Kevin (aus Teil 2):** externen Datenschutzbeauftragten benennen · Anwalt prüft RECHT.md Teil 9 (12 Punkte) · Aufbewahrung im Anthropic-DPA
   schriftlich klären · Hetzner Object Storage anlegen (Medien) · Google-Cloud-Projekt + Vertex-Dienstkonto EU (KI-Anbieter).
 
