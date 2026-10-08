@@ -15,7 +15,13 @@
 - **Volle Suite:** 475 Dateien / 6.116 Tests — 1 Zeitgrenze unter Last (netzwerken-korrektur › 5) auf 20 s angehoben (5cbee0fe); tsc 0.
 - **Entschieden (R1–R10, `ENTSCHEIDUNGEN_FRAGEBOGEN.md`):** Onboarding Sa 10.10. ein langer Tag · Stichtag 01.10. · Verantwortlicher MAKE Innovation GmbH ·
   Zulieferer aus (Altbestand-Übernahme `MAKE_OS_ALTBESTAND_PERSON` statt Zulieferer-Schlüssel) · Malin zweite Inhaberin mit SSH (Update 2, 16.10.).
-- **In Arbeit:** `konten-register` (Agent; Lücke 2 der Business-Couple-Liste in ROADMAP_Q4) — erst NACH dem Freitags-Upload mergen.
+- **Fertig auf Branch, erst NACH dem Freitags-Upload mergen:** `konten-register` (60c52c84; Lücke 2 — EIN Register `konten--<haushalt>`, Rückfall
+  bit-gleich, Übernahme nur Vorschau → Bestätigen, Rückweg-Spiegel in `finanzplan.firmen`; KONTEN_REGISTER.md).
+- **In Arbeit (Agenten, je eigener Branch):** `rechnungen-pdf` (Lücke 4) · `business-frei` (Lücke 7) · `inbox-teilen` (Lücke 6).
+- **Demo-Rundgang 08.10. spät:** 9 Bilder an Kevin; Funde behoben: Tagesplanung „Reha“ fest für alle (2a2ad831), Gesundheit „dem Boten sagen“ (afaf2ddc).
+- **Fragen für die nächste Klickrunde (Konten-Register):** (1) Finanzplanung startet MAKE/KD Ventures nach der Übernahme ab dem jüngsten Register-Stand
+  (KD Ventures statt „Start KD Ventures“ aus den Annahmen) — so bestätigen? (2) Rücklage im Privat-Index = Summe der Tagesgeld-Konten (privat + gemeinsam)
+  oder ein eigens markiertes Konto? (3) Haushalts-Konten und Register-Konten zu EINER Liste zusammenlegen (nächster Schritt)?
 - **Wartet auf Kevin:** Markttraktion-Fragebogen (23 Bereiche, Marktvorbilder, ohne Grenze) · Bank-Runde (B1–B4, S1, K-Paare) · Teil 2 (Business).
 - **Vor dem Upload:** Demo-Rundgang mit Bildern (Demo-Bau `.next-demo`, Port 3200) · dann Push auf Kevins Wort · Server-Schritte `UPLOAD_0810.md`.
 
