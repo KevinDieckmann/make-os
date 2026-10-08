@@ -4,9 +4,15 @@
 // Spur, weil wir unterschiedliche Daten brauchen."
 //
 // Der Plan prüft sich selbst: Wo das System nachsehen kann, ob ein Schritt
-// getan ist (Kalender verbunden? Grundlage geladen? Kontakte drin?), zählt der
-// echte Zustand — nicht ein Häkchen. Nur was sich nicht messen lässt, hakt man
-// von Hand ab.
+// getan ist (zweiter Faktor an? Postfach verbunden? Sicherung gelaufen?), zählt
+// der echte Zustand — nicht ein Häkchen. Nur was sich nicht messen lässt, hakt
+// man von Hand ab.
+//
+// 08.10. (Kevin: „Onboarding auf den echten Stand“): MAKE OS läuft seit 25.09. auf
+// dem Server — kein Mac, kein iCloud-Ordner, keine .env.local, kein Tailscale mehr.
+// Persönliche Schritte (`persoenlich`) prüft der Server IMMER für die Person der
+// Sitzung, nie für eine andere (lib/onboarding-status.ts). Wächter:
+// tests/onboarding-stand.test.ts.
 
 export type Spur = 'fundament' | string;
 
@@ -19,129 +25,189 @@ export interface Schritt {
   /** Konkret, was zu tun ist. */
   wie: string[];
   minuten: number;
-  /** Wer es macht, wenn es nicht der Spur-Eigentümer ist. */
-  wer?: 'Kevin' | 'Malin' | 'beide';
+  /** Wer es macht, wenn es nicht der Spur-Eigentümer ist (z. B. „Inhaber“, „jede Person“). */
+  wer?: string;
   wo?: { href: string; label: string };
   befehl?: string;
-  /** Schlüssel, unter dem die API den echten Zustand prüft. */
+  /** Schlüssel, unter dem die API den echten Zustand prüft (bekannt in lib/onboarding-status.ts). */
   pruefung?: string;
+  /**
+   * Die Prüfung gilt der Person, die gerade angemeldet ist („bei dir“) — jede Person sieht nur ihren eigenen Stand.
+   * Wer die Spur einer anderen Person ansieht, sieht hier also seinen eigenen Stand, nie den der anderen.
+   */
+  persoenlich?: true;
 }
 
+// Die Spur-Kennungen `kevin`/`malin` bleiben (Häkchen und Links hängen daran) — Plattform-Schuld: eine neue Instanz
+// bräuchte Spuren aus den Konten statt fester Namen.
 export const SPUREN: { id: Spur; titel: string; satz: string; href: string }[] = [
-  { id: 'fundament', titel: 'Fundament', satz: 'Einmal aufsetzen — danach läuft es für uns beide.', href: '/os/onboarding' },
-  { id: 'kevin', titel: 'Kevin', satz: 'Kalender, Postfach, Kontakte, Kompass, Gesundheit, Agenten.', href: '/os/onboarding/kevin' },
-  { id: 'malin', titel: 'Malin', satz: 'Zugang, Finanzen, offene Posten, ihre Aufgaben.', href: '/os/onboarding/malin' },
+  { id: 'fundament', titel: 'Fundament', satz: 'Server, Sicherung, Updates, Einladung — einmal aufsetzen, dann läuft es für alle.', href: '/os/onboarding' },
+  { id: 'kevin', titel: 'Kevin', satz: 'Inhaber: Zugang, Kalender, Postfach, Kontakte, Kompass, Agenten.', href: '/os/onboarding/kevin' },
+  { id: 'malin', titel: 'Malin', satz: 'Zweite Person: Einladung, zweiter Faktor, Einwilligung, Kalender, Postfach, Finanzen.', href: '/os/onboarding/malin' },
 ];
+
+// ── Bausteine, die in mehreren Spuren gleich gelten ─────────────────────────
+
+const zweiterFaktor = (spur: Spur, id: string): Schritt => ({
+  id, spur, minuten: 5, persoenlich: true, pruefung: 'zwei-faktor',
+  titel: 'Zweiten Faktor einrichten',
+  warum: 'Passwort allein reicht für einen Server im Netz nicht. Mit dem zweiten Faktor kommt nur rein, wer zusätzlich das eigene Handy hat. Nach dem nächsten Update ist er für alle Pflicht — ohne ihn öffnet sich nur noch die Konto-Seite.',
+  wie: [
+    'Konto › „Zweiter Faktor · Authenticator“ › Einrichten.',
+    'Den QR-Code mit einer Authenticator-App scannen (z. B. die Passwörter-App des iPhones oder eine andere App für Einmal-Codes) und den 6-stelligen Code bestätigen.',
+    'Die Wiederherstellungs-Codes sicher ablegen (Passwort-Manager) — sie sind der Weg zurück, wenn das Handy weg ist.',
+  ],
+  wo: { href: '/os/konto', label: 'Konto' },
+});
+
+const gesundheitEinwilligung = (spur: Spur, id: string): Schritt => ({
+  id, spur, minuten: 5, persoenlich: true, pruefung: 'gesundheit-einwilligung',
+  titel: 'Gesundheit: Einwilligung erklären',
+  warum: 'Gesundheitsdaten sind besonders geschützt (Art. 9 DSGVO). MAKE OS erfasst sie erst, wenn du selbst einwilligst — jede Person für sich, niemand für eine andere.',
+  wie: [
+    '(a) Verarbeiten: MAKE OS speichert deine Gesundheitsdaten (Erholung, Schlaf, Sport, Ernährung, Journal …) für deine eigenen Auswertungen. Ohne (a) wird nichts erfasst.',
+    '(b) An die KI: ZOE und automatische Läufe dürfen deine Gesundheitswerte nutzen (Modell-Anbieter in den USA). Setzt (a) voraus.',
+    '(c) Partner: Personen, mit denen du deine Gesundheit teilst, dürfen sie auch über ihre ZOE abfragen. Setzt (a) und (b) voraus.',
+    'Ob jemand deine Gesundheit überhaupt sieht, entscheidest du getrennt davon: Konto › „Gesundheit teilen“, je Person. Standard: niemand.',
+    'Jede Erklärung lässt sich jederzeit widerrufen — an derselben Stelle.',
+  ],
+  wo: { href: '/os/datenschutz#gesundheit', label: 'System › Datenschutz' },
+});
+
+const postfach = (spur: Spur, id: string): Schritt => ({
+  id, spur, minuten: 10, persoenlich: true, pruefung: 'postfach',
+  titel: 'Eigenes Postfach verbinden',
+  warum: 'Die Inbox ist der tägliche Einstieg — Fächer, neue Absender, Aufgaben und Termine aus Mails hängen daran. Jedes Postfach gehört genau einer Person; niemand sonst liest es.',
+  wie: [
+    'Inbox › Postfächer › verbinden: Anbieter wählen (iCloud mit app-spezifischem Passwort, IONOS, eigener Server) oder Gmail über die Google-Verbindung.',
+    'Einen Bereich wählen (Privat oder eine Gesellschaft) — danach zeigt die Inbox das Postfach im passenden Bereich.',
+    'Einmal durch die Fächer gehen und neue Absender zulassen oder blocken.',
+  ],
+  wo: { href: '/os/inbox?postfaecher=1', label: 'Inbox › Postfächer' },
+});
+
+const kalenderEigen = (spur: Spur, id: string): Schritt => ({
+  id, spur, minuten: 10, persoenlich: true, pruefung: 'icloud',
+  titel: 'Eigenen iCloud-Kalender verbinden',
+  warum: 'Damit deine Termine in MAKE OS stehen, Planen um sie herum plant und Blöcke aus Planen und ZOE auf deinem eigenen iPhone landen.',
+  wie: [
+    'Auf appleid.apple.com › Anmelden und Sicherheit › App-spezifische Passwörter ein neues Passwort anlegen (z. B. „MAKE OS“). Nicht das normale Apple-Passwort.',
+    'Kalender › Bereich Privat › Karte „iCloud Kalender“ (oder Kalender › Einstellungen): Apple-ID und das App-Passwort eintragen.',
+    'Wählen, welche Kalender gezeigt werden und wohin Blöcke geschrieben werden.',
+    'Die anderen im Haushalt sehen deine Termine nur als „Belegt“ — ohne Titel, Ort oder Notiz.',
+    'Wechselst du später dein Apple-Passwort, wird das App-Passwort ungültig — dann „Verbindung erneuern“.',
+  ],
+  wo: { href: '/os/kalender?space=privat', label: 'Kalender' },
+});
+
+const zoeVorschlaege = (spur: Spur, id: string): Schritt => ({
+  id, spur, minuten: 10, persoenlich: true, pruefung: 'zoe',
+  titel: 'ZOE kennenlernen',
+  warum: 'Fragen statt suchen. ZOE kennt die Zahlen, Aufgaben und Termine, die du sehen darfst — und bereitet Arbeit vor. Entscheiden tust du.',
+  wie: [
+    'ZOE öffnen und fragen, z. B. „Was ist diese Woche fällig?“',
+    'ZOE macht nur Vorschläge: alles, was etwas ändert oder nach außen geht, landet im Stapel und wird erst mit deinem Klick „Freigeben“ ausgeführt.',
+    'Dein Gesprächsverlauf gehört dir; Gesundheitswerte bekommt ZOE nur mit deiner Einwilligung (b).',
+  ],
+  wo: { href: '/os/stapel', label: 'Stapel' },
+});
 
 export const SCHRITTE: Schritt[] = [
   // ── FUNDAMENT ─────────────────────────────────────────────────────────────
   {
-    id: 'ordner', spur: 'fundament', wer: 'Kevin', minuten: 10,
-    titel: 'MAKE OS in den gemeinsamen iCloud-Ordner legen',
-    warum: 'Malin braucht den Code und die Dokumente von ihrer Seite. Der Ordner „Make Privat ❤️" ist bereits geteilt — dort liegt MAKE OS als eigener Unterordner.',
+    id: 'server', spur: 'fundament', wer: 'Inhaber', minuten: 2,
+    titel: 'MAKE OS läuft auf dem Server',
+    warum: 'Eine Instanz, eine Wahrheit: MAKE OS läuft auf einem eigenen Server in Deutschland. Kein Rechner muss an sein, alle arbeiten auf demselben Stand — vom Laptop und vom Handy, von überall.',
     wie: [
-      'Ordner „MAKE OS/software" im geteilten iCloud-Ordner anlegen.',
-      'Den Projektordner hineinkopieren — OHNE node_modules und OHNE .next (die baut jeder Rechner selbst).',
-      'WICHTIG: .data NICHT dauerhaft mitsynchronisieren. Zwei Rechner, die gleichzeitig in dieselbe JSON schreiben, zerlegen sie. Wer die Daten führt, steht unter Zusammenarbeit.',
-      '.env.local kommt NICHT in die Cloud — die Schlüssel gibst du Malin separat.',
+      'Die Adresse ist die, unter der du diese Seite gerade siehst — als Lesezeichen anlegen.',
+      'Am iPhone: in Safari Teilen › „Zum Home-Bildschirm“ — dann liegt MAKE OS wie eine App da.',
+      'Die Daten liegen nur auf dem Server, verschlüsselt. Keine Kopie auf einem Rechner, kein geteilter Cloud-Ordner.',
+      'Ob alles läuft, zeigt der Head of IT (Ampeln für Server, Sicherung, Verbindungen).',
     ],
-    befehl: 'rsync -av --exclude node_modules --exclude .next --exclude .data --exclude .env.local ~/Claude/Projects/MakeOS/ "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Make Privat ❤️/MAKE OS/software/"',
+    wo: { href: '/os/hoi', label: 'Head of IT' },
   },
   {
-    id: 'schluessel', spur: 'fundament', wer: 'beide', minuten: 5,
-    titel: 'Schlüssel setzen (.env.local)',
-    warum: 'Ohne MAKE_OS_KEY kommt niemand rein, ohne ANTHROPIC_API_KEY denkt ZOE nicht mit. Jeder Rechner hat seine eigene Datei — nur der KI-Schlüssel ist derselbe.',
+    id: 'sicherung', spur: 'fundament', wer: 'Inhaber', minuten: 2,
+    titel: 'Nachtsicherung auf dem Server',
+    warum: 'Jede Nacht sichert der Server alles verschlüsselt; dazu hält der Anbieter sieben tägliche Abbilder außerhalb des Servers. Einmal nachsehen, dass das greift.',
     wie: [
-      'Datei .env.local im Projektordner anlegen.',
-      'MAKE_OS_KEY=… — nur für DIESEN Rechner. Beim Start über start.sh wird er automatisch erzeugt; er muss nicht Kevins Wert sein. Kevins Schlüssel brauchst du nur, wenn du über das Netzwerk auf SEINE laufende Instanz gehst.',
-      'ANTHROPIC_API_KEY=… — für ZOE und alle Agenten.',
-      'Die Datei gehört nie in die Cloud und nie in ein Repository.',
+      'Die Sicherung läuft nachts von selbst — es ist nichts zu tun.',
+      'Im Head of IT steht, wann die letzte Sicherung lief.',
     ],
-    pruefung: 'schluessel',
-  },
-  {
-    id: 'start', spur: 'fundament', wer: 'beide', minuten: 10,
-    titel: 'Node installieren und die Software starten',
-    warum: 'MAKE OS läuft lokal auf dem eigenen Rechner — kein fremder Server sieht eure Daten.',
-    wie: [
-      'Node 22 muss vorhanden sein.',
-      'Einmal npm install im Projektordner.',
-      'Danach immer ./start.sh — die Software läuft auf Port 3001.',
-    ],
-    befehl: './start.sh',
-  },
-  {
-    id: 'anmelden', spur: 'fundament', wer: 'beide', minuten: 2,
-    titel: 'Einmal anmelden',
-    warum: 'Jede Person hat ein eigenes Konto. Der Vorname wird der Name der Daten (Kevin → kevin, Malin → malin) — die gewachsenen Bestände hängen damit ohne Umzug am richtigen Konto.',
-    wie: [
-      'http://localhost:3001/anmelden öffnen.',
-      'Beim allerersten Mal „Erstes Konto einrichten": Vorname, E-Mail, Passwort (mindestens 10 Zeichen) und einmal der Schlüssel aus .env.local.',
-      'Danach genügt E-Mail + Passwort — die Sitzung hält 30 Tage. Lesezeichen auf http://localhost:3001/os.',
-    ],
-  },
-  {
-    id: 'zugang-malin', spur: 'fundament', wer: 'beide', minuten: 15,
-    titel: 'Entscheiden, wie Malin zugreift',
-    warum: 'Das ist die wichtigste Weiche des ganzen Onboardings. Davon hängt ab, ob ihr eine Wahrheit habt oder zwei auseinanderlaufende Stände.',
-    wie: [
-      'EMPFOHLEN — eine Instanz: Kevins Rechner läuft. Kevin erzeugt unter Konto → Einladen einen Link, Malin öffnet ihn im selben WLAN (http://<Kevins-IP>:3001/anmelden?code=…) und legt ihr Konto an. Eine Datenbasis, keine Konflikte.',
-      'Kevins IP findest du mit: ipconfig getifaddr en0',
-      'FALLBACK — eigene Kopie: Malin startet ihre eigene Instanz aus dem iCloud-Ordner. Dann sind ihre Einträge NUR auf ihrem Rechner. Das ist für Ansehen und Ausprobieren in Ordnung, nicht für gemeinsames Pflegen.',
-      'DAUERHAFT: der Hetzner-Server. Dann greift ihr beide von überall auf dieselbe Instanz zu, ohne dass ein Rechner laufen muss. Steht als nächster Schritt im Bauplan.',
-    ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
-  },
-  {
-    id: 'regeln', spur: 'fundament', wer: 'beide', minuten: 10,
-    titel: 'Programmierfreie Zonen verstehen',
-    warum: 'Kevin baut weiter an der Software, während Malin damit arbeitet. Ohne Absprache gehen dabei Eingaben verloren oder eine Seite ist kurz kaputt.',
-    wie: [
-      'Die drei Zonen (grün/gelb/rot) einmal gemeinsam durchgehen.',
-      'Abmachung: Kevin sagt kurz Bescheid, wenn er baut — solange nichts Wichtiges eintragen.',
-    ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
-  },
-  {
-    id: 'grundlage', spur: 'fundament', wer: 'Malin', minuten: 10,
-    titel: 'Finanz-Grundlage aus Malins Dashboard laden',
-    warum: 'Malins Dashboard ist die einzige gepflegte Finanzquelle. Ohne diesen Schritt rechnet MAKE OS mit nichts.',
-    wie: [
-      'Im Finanz-Dashboard den Export ziehen (die Schlüssel fd_p, fd_s, fd_u).',
-      'Als { roh, stand } an /api/state/grundlage schicken.',
-      'Danach steht der Stand oben auf der Finanzen-Seite.',
-    ],
-    wo: { href: '/os/finanzen/grundlage', label: 'Grundlage ansehen' },
-    pruefung: 'grundlage',
-  },
-  {
-    id: 'sicherung', spur: 'fundament', wer: 'Kevin', minuten: 5,
-    titel: 'Sicherung prüfen',
-    warum: 'Alles liegt als Dateien in .data. Die Software legt täglich eine Sicherung an und hält 14 Stände — einmal nachsehen, dass das greift.',
-    wie: [
-      'In .data/backup nachsehen, ob Stände von heute liegen.',
-      'Zusätzlich: den ganzen .data-Ordner ab und zu in den iCloud-Ordner kopieren (als Archiv, nicht als laufende Synchronisation).',
-    ],
+    wo: { href: '/os/hoi', label: 'Head of IT' },
     pruefung: 'sicherung',
   },
+  {
+    id: 'sicherung-mac', spur: 'fundament', wer: 'Inhaber', minuten: 45,
+    titel: 'Zweite Kopie am Mac — und einmal zurückspielen',
+    warum: 'Eine Sicherung, die nie zurückgespielt wurde, ist ein Versprechen. Der zweite Ort außerhalb des Servers holt jede Nacht das neueste Archiv auf den Mac; die Probe beweist, dass es sich wiederherstellen lässt.',
+    wie: [
+      'Anleitung RESTORE_TEST.md im Projekt: age einrichten, die Abholung vom Server einmal einrichten (nur lesender Zugang).',
+      'Danach steht im Head of IT „Sicherung am Mac“ auf Grün.',
+      'Einmal die Probe machen (RESTORE_TEST.md, Abschnitt „Die Probe“) — ohne den Server anzufassen.',
+    ],
+    wo: { href: '/os/hoi', label: 'Head of IT' },
+  },
+  {
+    id: 'updates', spur: 'fundament', wer: 'alle', minuten: 5,
+    titel: 'Updates: gebaut wird lokal, online geht nur auf das Wort des Inhabers',
+    warum: 'Am Code wird laufend weitergebaut — aber nicht am laufenden System. Was online ist, ändert sich nur, wenn der Inhaber ausdrücklich ein Update freigibt.',
+    wie: [
+      'Gebaut wird lokal auf dem Stand „entwicklung“ — davon merkt die Instanz nichts.',
+      'Online ist der Stand „main“. Updates werden gesammelt und auf ausdrückliches Wort des Inhabers ausgerollt; das dauert etwa fünf Minuten, die alte Version läuft solange weiter.',
+      'Neues steht vorher im Bauplan unter „Zum Testen“ — dort abnehmen oder mit Kommentar zurückgeben.',
+    ],
+    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
+  },
+  {
+    id: 'einladen', spur: 'fundament', wer: 'Inhaber', minuten: 5,
+    titel: 'Zweite Person einladen',
+    warum: 'Jede Person hat ein eigenes Konto. Eine Einladung ist der einzige Weg hinein — es gibt keine offene Registrierung.',
+    wie: [
+      'Konto › Einladen: Vorname eintragen (optional die E-Mail-Adresse). Soll das Konto an schon vorhandene Daten anschließen, den Speichernamen binden, den die Bestände tragen.',
+      'Den Link schicken — er gilt 48 Stunden und nur einmal.',
+      'Konto › Haushalt: die Person dem Haushalt zuordnen. Ohne Haushalt sieht sie keine privaten Finanzen; mit „nur Business“ nur die Business-Sicht.',
+    ],
+    wo: { href: '/os/konto', label: 'Konto' },
+  },
+  {
+    id: 'zwei-faktor-pflicht', spur: 'fundament', wer: 'Inhaber', minuten: 2,
+    titel: 'Zweiten Faktor für alle zur Pflicht machen',
+    warum: 'Damit kein Konto mit Passwort allein hereinkommt. Wer noch keinen zweiten Faktor hat, wird beim nächsten Anmelden zur Einrichtung geführt.',
+    wie: [
+      'Zuerst den eigenen zweiten Faktor einrichten (Konto › Zweiter Faktor).',
+      'Dann Konto › „Zugang der Instanz“ › 2FA-Pflicht einschalten.',
+    ],
+    wo: { href: '/os/konto', label: 'Konto' },
+    pruefung: 'zwei-faktor-pflicht',
+  },
+  {
+    id: 'regeln', spur: 'fundament', wer: 'alle', minuten: 5,
+    titel: 'Wer sieht was — die Regel',
+    warum: 'Gemeinsam heißt nicht: alles für alle. Die Trennung macht der Server, nicht die Oberfläche — was du nicht sehen darfst, kommt gar nicht erst bei dir an.',
+    wie: [
+      'Gemeinsame Bereiche sieht der ganze Haushalt: gemeinsame Aufgaben und Projekte, Kontakte und Markttraktion, Finanzen (je nach Finanzrecht), Ziele, gemeinsame Kalender.',
+      'Nur die Person selbst sieht: private Notizen, „nur ich“-Aufgaben, private Termine (die anderen sehen „Belegt“), eigene Routinen und Ernährungsprofile, eigene Postfächer — und Gesundheit, solange sie sie nicht ausdrücklich teilt.',
+      'Wer was geändert hat, steht unter Zusammenarbeit — nur wer, was, wann; nie Inhalte.',
+    ],
+    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
+  },
 
-  // ── KEVIN ─────────────────────────────────────────────────────────────────
+  // ── KEVIN (Inhaber) ───────────────────────────────────────────────────────
+  zweiterFaktor('kevin', 'kevin-zwei-faktor'),
   {
     id: 'kevin-kalender', spur: 'kevin', minuten: 5,
-    titel: 'Apple-Kalender verbinden',
-    warum: 'Ohne Termine kann der Tagesplan keine Blöcke legen und ZOE plant über feste Termine hinweg.',
-    wie: ['Unter Verbindungen den Kalender einmal ziehen.', 'Prüfen, dass die Termine dieser Woche auftauchen.'],
-    wo: { href: '/os/verbindungen', label: 'Verbindungen' },
+    titel: 'Kalender des Haushalts verbinden',
+    warum: 'Ohne Termine kann Planen keine Blöcke legen und ZOE plant über feste Termine hinweg. Die Verbindung des Inhabers speist den gemeinsamen Kalender.',
+    wie: [
+      'Kalender › Bereich Privat › Karte „iCloud Kalender“: Apple-ID und app-spezifisches Passwort eintragen.',
+      'Business-Termine: Kalender › Bereich Business › die Firma mit Google Workspace verbinden.',
+      'Prüfen, dass die Termine dieser Woche auftauchen.',
+    ],
+    wo: { href: '/os/kalender?space=privat', label: 'Kalender' },
     pruefung: 'kalender',
   },
-  {
-    id: 'kevin-postfach', spur: 'kevin', minuten: 10,
-    titel: 'Postfach verbinden',
-    warum: 'Die Inbox ist dein täglicher Einstieg — Türsteher, Fächer und die Zuordnung zu Aufgaben hängen daran.',
-    wie: ['In der Inbox › Postfächer das eigene Postfach verbinden (iCloud mit App-Passwort, IONOS, Google Workspace …) und einen Bereich wählen.', 'Weitere Postfächer je Bereich dazunehmen.', 'Einmal durch die Fächer gehen und neue Absender zulassen oder blocken.'],
-    wo: { href: '/os/inbox', label: 'Inbox' },
-    pruefung: 'postfach',
-  },
+  postfach('kevin', 'kevin-postfach'),
   {
     id: 'kevin-kontakte', spur: 'kevin', minuten: 5,
     titel: 'Kartei prüfen und sortieren',
@@ -153,177 +219,154 @@ export const SCHRITTE: Schritt[] = [
   {
     id: 'kevin-aufgaben', spur: 'kevin', minuten: 25,
     titel: 'Aufgaben sichten und ordnen',
-    warum: 'Die Reihenfolge des ganzen Systems hängt an eurer Ordnung: rechtssicher → Umsatz → Produkt → Gesundheit. Was falsch einsortiert ist, wird falsch priorisiert.',
-    wie: ['Alle offenen Aufgaben einmal durchgehen.', 'Kritische bestätigen oder herunterstufen.', 'Zuweisung Kevin/Malin/beide setzen — das füllt Malins Spur.', 'Überfällige entweder neu datieren oder schließen.'],
-    wo: { href: '/os/aufgaben', label: 'Taskmanagement' },
+    warum: 'Die Reihenfolge des ganzen Systems hängt an eurer Ordnung. Was falsch einsortiert ist, wird falsch priorisiert.',
+    wie: ['Alle offenen Aufgaben einmal durchgehen.', 'Kritische bestätigen oder herunterstufen.', 'Je Aufgabe eine verantwortliche Person setzen, weitere als Beteiligte.', 'Überfällige entweder neu datieren oder schließen.'],
+    wo: { href: '/os/aufgaben', label: 'Aufgaben' },
     pruefung: 'aufgaben',
   },
   {
     id: 'kevin-kompass', spur: 'kevin', minuten: 15,
     titel: 'Kompass stellen',
-    warum: 'Die 20 Regler steuern, wie das System dich behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt.',
-    wie: ['Lage wählen (Aufbau / Ernte / Schutz / Feuer).', 'Die 20 Regler durchgehen, Wirkung live mitlesen.', 'Abweichungen unten anschauen — dort steht, wo dein Alltag dem Kompass widerspricht.'],
+    warum: 'Die Regler steuern, wie das System dich behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt.',
+    wie: ['Lage wählen (Aufbau / Ernte / Schutz / Feuer).', 'Die Regler durchgehen, Wirkung live mitlesen.', 'Abweichungen unten anschauen — dort steht, wo der Alltag dem Kompass widerspricht.'],
     wo: { href: '/os/kompass', label: 'Kompass' },
     pruefung: 'kompass',
   },
   {
     id: 'kevin-fokus', spur: 'kevin', minuten: 15,
     titel: 'Fokus je Horizont setzen',
-    warum: 'Jahr, Quartal, Monat und Woche brauchen je einen Satz. Ohne den kann weder ZOE noch der Tagesplan entscheiden, was gerade wichtiger ist.',
+    warum: 'Jahr, Quartal, Monat und Woche brauchen je einen Satz. Ohne den kann weder ZOE noch Planen entscheiden, was gerade wichtiger ist.',
     wie: ['Jahresfokus setzen.', 'Quartal und Monat daraus ableiten.', 'Wochenfokus für diese Woche setzen.'],
-    wo: { href: '/os/kompass', label: 'Fokus-Regler' },
+    wo: { href: '/os/fokus', label: 'Fokus' },
     pruefung: 'fokus',
   },
   {
     id: 'kevin-ziele', spur: 'kevin', minuten: 10,
     titel: 'Ziele und Startmonat bestätigen',
     warum: 'Controlling und Run-Rate rechnen ab dem Startmonat. Steht der falsch, sieht jede Auswertung schlechter aus, als sie ist.',
-    wie: ['Jahresziel Umsatz und Gewinn prüfen.', 'Startmonat steht auf Juni 2026 — bestätigen.', 'Runway-Schwelle prüfen.'],
+    wie: ['Jahresziel Umsatz und Gewinn prüfen.', 'Startmonat bestätigen.', 'Runway-Schwelle prüfen.'],
     wo: { href: '/os/controlling', label: 'Controlling' },
     pruefung: 'ziele',
   },
-  {
-    id: 'kevin-gesundheit', spur: 'kevin', minuten: 15,
-    titel: 'Gesundheit füllen — die größte Lücke',
-    warum: 'Der MAKE Score steht bei 50 % Abdeckung, weil Gesundheit fast leer ist. Und der Tagesplan schont deinen Rücken nur, wenn er weiß, wie es dir geht.',
-    wie: ['Whoop-Werte eintragen (Recovery, Schlaf, HRV).', 'Reha-Block täglich 30 Minuten einplanen — Bandscheibe.', 'Ernährung und Journal einmal starten, damit die Reihe anläuft.'],
-    wo: { href: '/os/gesundheit', label: 'Gesundheit' },
-    pruefung: 'gesundheit',
-  },
+  gesundheitEinwilligung('kevin', 'kevin-gesundheit'),
   {
     id: 'kevin-agenten', spur: 'kevin', minuten: 10,
     titel: 'Agenten und ihre Autonomie festlegen',
-    warum: 'Zwölf Agenten laufen. Jeder braucht eine Stufe: nur vorschlagen, nach Freigabe, oder selbstständig. Ohne das schreibt dir irgendwann etwas ungefragt in den Kalender.',
-    wie: ['Jeden Agenten durchgehen und die Stufe setzen.', 'Alles, was nach außen geht, bleibt auf Freigabe.', 'Abschalten, was du gerade nicht brauchst.'],
+    warum: 'Jeder Agent braucht eine Stufe: nur vorschlagen, nach Freigabe, oder selbstständig. Alles, was nach außen geht, bleibt auf Freigabe.',
+    wie: ['Jeden Agenten durchgehen und die Stufe setzen.', 'Alles, was nach außen geht, bleibt auf Freigabe.', 'Abschalten, was gerade nicht gebraucht wird.'],
     wo: { href: '/os/agenten', label: 'Agentensystem' },
     pruefung: 'agenten',
   },
+  zoeVorschlaege('kevin', 'kevin-zoe'),
+
+  // ── MALIN (zweite Person) ─────────────────────────────────────────────────
   {
-    id: 'kevin-zoe', spur: 'kevin', minuten: 10,
-    titel: 'ZOE einrichten',
-    warum: 'ZOE kennt jetzt euren Gesprächsverlauf und kann sprechen. Beides einmal ausprobieren, damit es im Alltag sitzt.',
-    wie: ['Ein Gespräch führen — der Verlauf bleibt gespeichert.', 'Stimme einschalten und Freihand testen.', 'Einmal etwas per Zuruf erfassen lassen („trag Adobe-Abo mit 59 € monatlich ein").'],
-    pruefung: 'zoe',
-  },
-  // ── MALIN ─────────────────────────────────────────────────────────────────
-  {
-    id: 'malin-zugang', spur: 'malin', minuten: 10,
-    titel: 'Zugang einrichten',
+    id: 'malin-einladung', spur: 'malin', minuten: 5,
+    titel: 'Einladung annehmen',
     warum: 'Erster Schritt: reinkommen. Alles andere baut darauf auf.',
     wie: [
-      'Kevin schickt dir den Einladungslink (Konto → Einladen). Öffnen, Vorname „Malin", E-Mail, Passwort — fertig. Deine bisherigen Bestände hängen dann an deinem Konto.',
-      'Lesezeichen auf http://<Kevins-IP>:3001/anmelden anlegen.',
-      'Falls eigene Kopie: Ordner aus iCloud holen, npm install, ./start.sh — dann aber wissen, dass Einträge nur lokal liegen.',
+      'Den Einladungslink vom Inhaber öffnen (gilt 48 Stunden, nur einmal).',
+      'Vorname, E-Mail-Adresse und ein Passwort mit mindestens 10 Zeichen — fertig. War die Einladung an vorhandene Daten gebunden, hängen sie jetzt an deinem Konto.',
+      'Lesezeichen anlegen; am iPhone Safari › Teilen › „Zum Home-Bildschirm“.',
     ],
+  },
+  zweiterFaktor('malin', 'malin-zwei-faktor'),
+  {
+    id: 'malin-sicht', spur: 'malin', minuten: 5,
+    titel: 'Wer sieht was',
+    warum: 'Damit klar ist, was geteilt ist und was nur dir gehört — getrennt wird auf dem Server, nicht bloß in der Oberfläche.',
+    wie: [
+      'Gemeinsam: Aufgaben und Projekte (außer „nur ich“), Kontakte und Markttraktion, Ziele, gemeinsame Kalender, die Finanzen des Haushalts.',
+      'Nur du: deine privaten Notizen, „nur ich“-Aufgaben, private Termine (die anderen sehen „Belegt“), deine Routinen und dein Ernährungsprofil, deine Postfächer.',
+      'Gesundheit: sieht nur, wem du sie unter Konto › „Gesundheit teilen“ ausdrücklich freigibst — umgekehrt genauso.',
+    ],
+    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
+  },
+  gesundheitEinwilligung('malin', 'malin-gesundheit'),
+  kalenderEigen('malin', 'malin-kalender'),
+  postfach('malin', 'malin-postfach'),
+  {
+    id: 'malin-telegram', spur: 'malin', minuten: 5, persoenlich: true, pruefung: 'telegram',
+    titel: 'Hinweise aufs Handy (optional)',
+    warum: 'Wer möchte, bekommt kurze Hinweise über Telegram — ohne Inhalte, Beträge oder Namen, nur „In MAKE OS wartet etwas“ mit Link.',
+    wie: ['Konto › „Der Bote · Telegram“ › koppeln und den Code an den Bot schicken.', 'Lässt sich jederzeit wieder trennen.'],
+    wo: { href: '/os/konto', label: 'Konto' },
+  },
+  {
+    id: 'malin-whoop', spur: 'malin', minuten: 1,
+    titel: 'Whoop verbinden — kommt mit dem nächsten Update',
+    warum: 'Die Whoop-Verbindung je Person (Erholung, Schlaf, Training) ist gebaut, aber noch nicht online. Sie setzt die Gesundheits-Einwilligung voraus.',
+    wie: ['Jetzt nichts zu tun. Sobald das Update online ist, steht der Weg hier.'],
   },
   {
     id: 'malin-rundgang', spur: 'malin', minuten: 20,
     titel: 'Rundgang durch die Software',
-    warum: 'MAKE OS hat sieben Bereiche. Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
+    warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
-      'Startfläche öffnen — jeder Bereich ist eine eigene Anwendung.',
-      'Reihenfolge: Finanzen → Aufgaben → Netzwerk. Das sind deine drei.',
-      '⌘K öffnet die Schnellnavigation über alle Seiten.',
-      'Du darfst alles sehen — auch Gesundheit und Privates. Nichts ist vor dir versteckt.',
+      'Links die Leiste mit den Bereichen, oben der Wechsel Privat / Business, Inbox und Kalender.',
+      'Heute zeigt den Tag, Aufgaben die Arbeit, Finanzen die Zahlen.',
+      '⌘K (am Handy die Suche) springt zu jeder Seite.',
     ],
-    wo: { href: '/os', label: 'Startfläche' },
-  },
-  {
-    id: 'malin-grundlage', spur: 'malin', minuten: 15,
-    titel: 'Dein Dashboard bleibt die Quelle',
-    warum: 'Du pflegst weiter dort, wo du es gewohnt bist. MAKE OS liest und rechnet — es schreibt dir nichts hinein.',
-    wie: [
-      'Weiter im Finanz-Dashboard buchen wie bisher.',
-      'Rhythmus vereinbaren: wie oft der Export nach MAKE OS geht (Vorschlag: montags).',
-      'Nach jedem Export einmal auf Finanzen → Grundlage schauen, ob der Stand stimmt.',
-    ],
-    wo: { href: '/os/finanzen/grundlage', label: 'Grundlage' },
-    pruefung: 'grundlage',
-  },
-  {
-    id: 'malin-luecken', spur: 'malin', minuten: 20,
-    titel: 'Die drei Lücken schließen',
-    warum: 'Ohne diese drei Zahlen ist jede Liquiditätsrechnung zu optimistisch — sie zeigt Geld, das längst weg ist.',
-    wie: [
-      'Kevins KV + PV als Selbstständiger eintragen (steht auf 0 €/Monat).',
-      'Dein Bruttogehalt eintragen, sobald die Anstellung steht (steht auf 0 €).',
-      'Sonstige Betriebs-Fixkosten erfassen (steht auf 0 € — außer Office Club ist nichts drin).',
-      'Alles drei im Finanz-Dashboard unter „Betrieb konfigurieren", dann neu exportieren.',
-    ],
-    wo: { href: '/os/finanzen/grundlage', label: 'Lücken ansehen' },
-    pruefung: 'luecken',
+    wo: { href: '/os', label: 'Dashboard' },
   },
   {
     id: 'malin-konten', spur: 'malin', minuten: 10,
     titel: 'Kontostände eintragen',
     warum: 'Die Liquiditäts-Vorschau startet beim heutigen Kontostand. Ist der alt, ist die ganze Kurve falsch.',
-    wie: ['Für jede Firma den aktuellen Stand eintragen: KD Ventures, Kevin Dieckmann Consulting, Privat.', 'Datum dazu, damit man sieht, wie frisch der Wert ist.'],
-    wo: { href: '/os/finanzen/planung', label: 'Rechnungen & Zahlungen' },
+    wie: ['Unter Liquidität für jede Gesellschaft den aktuellen Kontostand eintragen.', 'Datum dazu, damit man sieht, wie frisch der Wert ist.'],
+    wo: { href: '/os/finanzen/liquiditaet#kontostaende', label: 'Kontostände' },
     pruefung: 'konten',
   },
   {
     id: 'malin-posten', spur: 'malin', minuten: 25,
     titel: 'Offene Rechnungen und Zahlungen pflegen',
-    warum: 'Das ist die Prioritätenliste: was zuerst raus muss, was noch reinkommt. Neun offene Posten stehen drin — die wollen geprüft sein.',
+    warum: 'Das ist die Prioritätenliste: was zuerst raus muss, was noch reinkommt.',
     wie: [
-      'Offene Ausgangsrechnungen prüfen — eine Rechnung, die auf „gestellt" steht, aber im Kassenbuch schon als eingegangen auftaucht, auf „bezahlt" setzen.',
+      'Offene Ausgangsrechnungen prüfen — was schon eingegangen ist, auf „bezahlt“ setzen.',
       'Offene Zahlungen durchgehen und Fälligkeiten setzen.',
-      'Inkasso-Forderungen mit Aktenzeichen und Frist eintragen.',
       'Posten mit unklarem Empfänger klären, bevor sie in die Planung gehen.',
     ],
     wo: { href: '/os/finanzen/planung', label: 'Rechnungen & Zahlungen' },
     pruefung: 'posten',
   },
   {
-    id: 'malin-aufgaben', spur: 'malin', minuten: 15,
+    id: 'malin-aufgaben', spur: 'malin', minuten: 15, persoenlich: true, pruefung: 'aufgaben-ich',
     titel: 'Deine Aufgaben sichten',
-    warum: 'Was auf dich zugewiesen ist, soll nicht in Kevins Liste untergehen.',
-    wie: ['Im Taskmanagement auf „Malin" filtern.', 'Fälligkeiten setzen oder zurückgeben.', 'Neue Aufgaben mit @malin zuweisen — das versteht auch ZOE.'],
-    wo: { href: '/os/aufgaben', label: 'Taskmanagement' },
-    pruefung: 'malin-aufgaben',
+    warum: 'Was auf dich zugewiesen ist, soll nicht in einer langen Liste untergehen.',
+    wie: ['In Aufgaben den Filter „Meine“ wählen.', 'Fälligkeiten setzen oder mit Kommentar zurückgeben.', 'Mit @Name in einem Kommentar holst du jemanden dazu.'],
+    wo: { href: '/os/aufgaben', label: 'Aufgaben' },
   },
   {
-    id: 'malin-zoe', spur: 'malin', minuten: 10,
-    titel: 'ZOE kennenlernen',
-    warum: 'Fragen statt suchen. ZOE kennt alle Zahlen und kann auch für dich schreiben.',
+    id: 'malin-bauplan', spur: 'malin', minuten: 5,
+    titel: 'Mitbauen: Problem oder Idee melden',
+    warum: 'Mitbauen braucht keinen Code. Was hakt oder fehlt, kommt als Karte auf das Bauplan-Board — mit der Seite, auf der du gerade warst.',
     wie: [
-      'Unten rechts der Kreis öffnet ihn — auf jeder Seite.',
-      'Ausprobieren: „Was muss diese Woche bezahlt werden?"',
-      'Er kann auch eintragen: „Rechnung Beispiel GmbH ist bezahlt."',
-      'Der Verlauf bleibt gespeichert — ihr könnt ihn beide nachlesen.',
+      'Unten links in der Leiste „Problem oder Idee melden“ (am Handy im Menü bzw. unter System): Fehler, Idee oder Wunsch, gern mit Bildschirmfoto.',
+      'Das Board: Ideen → Bereit → In Arbeit → Zum Testen → Fertig.',
+      'Was unter „Zum Testen“ steht, probierst du aus: „Passt“ oder „Passt noch nicht“ mit Kommentar.',
     ],
-    pruefung: 'zoe',
+    wo: { href: '/os/bauplan', label: 'Bauplan' },
   },
-  {
-    id: 'malin-grenzen', spur: 'malin', minuten: 5,
-    titel: 'Was du nicht anfassen musst',
-    warum: 'Damit klar ist, wo Arbeiten sicher ist und wo Kevin gerade baut.',
-    wie: [
-      'Der Code geht dich nichts an — du arbeitest nur in der Oberfläche.',
-      'Wenn oben „Bauzeit" steht: nichts Wichtiges eintragen, Kevin baut gerade.',
-      'Wenn etwas kaputt aussieht: Bildschirmfoto an Kevin, nicht selbst reparieren.',
-    ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
-  },
+  zoeVorschlaege('malin', 'malin-zoe'),
 ];
 
 export const schritteVon = (spur: Spur) => SCHRITTE.filter(s => s.spur === spur);
 
-/** Die drei Zonen — die Abmachung, damit sich beide nicht in die Quere kommen. */
+/** Die drei Zonen — die Abmachung, damit Weiterbauen und Arbeiten sich nicht in die Quere kommen. */
 export const ZONEN = [
   {
     farbe: 'gruen', titel: 'Grün — immer sicher',
-    satz: 'Daten in der Oberfläche eintragen. Das übersteht jedes Update, weil es in .data liegt und nicht im Code.',
-    beispiele: ['Aufgaben anlegen und abhaken', 'Rechnungen und Zahlungen pflegen', 'Kontostände, Journal, Ernährung', 'Mit ZOE reden', 'Kompass-Regler stellen'],
+    satz: 'Daten in der Oberfläche eintragen. Sie liegen auf dem Server und überstehen jedes Update — auch während eines Updates läuft die alte Version weiter.',
+    beispiele: ['Aufgaben anlegen und abhaken', 'Rechnungen und Zahlungen pflegen', 'Kontostände, Journal, Ernährung', 'Mit ZOE reden', 'Problem oder Idee melden'],
   },
   {
-    farbe: 'gelb', titel: 'Gelb — nur wenn keine Bauzeit läuft',
-    satz: 'Alles, was größere Mengen schreibt oder ersetzt. Läuft parallel ein Umbau, kann das kollidieren.',
-    beispiele: ['Finanz-Grundlage neu laden', 'Kontakte importieren', 'Postfach oder Kalender neu ziehen', 'Agenten-Autonomie ändern'],
+    farbe: 'gelb', titel: 'Gelb — nicht während „Update läuft“',
+    satz: 'Alles, was größere Mengen auf einmal schreibt. Zeigt Zusammenarbeit „Update läuft“, kurz warten — das Ausrollen dauert etwa fünf Minuten.',
+    beispiele: ['Kontakte importieren', 'Finanzplanung hochladen oder ersetzen', '„Neu anfangen“ in Aufgaben/Planung', 'Agenten-Autonomie ändern'],
   },
   {
-    farbe: 'rot', titel: 'Rot — nur Kevin, nie parallel',
-    satz: 'Alles am Code und an den Grunddateien. Während dessen ist die Software kurz nicht verlässlich.',
-    beispiele: ['Dateien im Projektordner ändern', '.env.local anfassen', 'Direkt in .data/*.json schreiben', 'npm install oder Server neu starten', 'Den Ordner in die Cloud kopieren'],
+    farbe: 'rot', titel: 'Rot — nur der Inhaber',
+    satz: 'Code und Server. Gebaut wird lokal auf „entwicklung“; online geht nur „main“, und nur auf ausdrückliches Wort des Inhabers.',
+    beispiele: ['Code ändern (lokal, Stand „entwicklung“)', 'Update ausrollen (Stand „main“)', 'Schlüssel und Einstellungen am Server', 'Sicherung zurückspielen'],
   },
 ] as const;

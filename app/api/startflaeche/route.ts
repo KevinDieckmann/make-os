@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const heute = localDay();
   const [ob, tasks, perf, netz, plan, grund] = await Promise.all([
-    fortschritt(),
+    fortschritt(personStreng(req)),
     ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<{ snapshots?: { date: string; index: number; abdeckung?: number; label?: string; hebel?: string; saeulen?: Record<string, number | null> }[] }>('performance'),
     loadJson<{ kontakte?: unknown[]; chancen?: { wert?: number; stufe?: string }[] }>('netzwerk'),

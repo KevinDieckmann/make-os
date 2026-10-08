@@ -1,6 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Onboarding ───────────────────────────────────────────────────
+// 08.10.: auf Server-Stand (persönliche Prüfungen nur für die Person der Sitzung, lib/onboarding-status.ts).
 // Kevins Ansage: „Alles, was wir fürs Onboarding brauchen, damit die Software
 // reibungslos läuft für mich und Malin — Schritt für Schritt, jeweils eigene
 // Spur, weil wir unterschiedliche Daten brauchen."
@@ -42,10 +43,11 @@ export function useOnboarding() {
   useEffect(laden, [laden]);
 
   const haken = useCallback((id: string, an: boolean, von: Spur) => {
+    // Wer abhakt, bestimmt der Server aus der Sitzung — `von` (Spur) geht nur mit, die Anzeige sagt bis zum Neuladen „dir“.
     // Sofort sichtbar, sofort geschrieben — Kevins Regel: gleicher Stand beim nächsten Reingucken.
     setZ(alt => alt ? {
       ...alt,
-      erledigt: an ? { ...alt.erledigt, [id]: { at: new Date().toISOString(), von: von === 'malin' ? 'Malin' : 'Kevin' } }
+      erledigt: an ? { ...alt.erledigt, [id]: { at: new Date().toISOString(), von: 'dir' } }
         : Object.fromEntries(Object.entries(alt.erledigt).filter(([k]) => k !== id)),
     } : alt);
     fetch('/api/onboarding', {
@@ -182,7 +184,7 @@ export function OnboardingUebersicht() {
   const stunden = Math.round(restMinuten / 60 * 10) / 10;
 
   return (
-    <Rahmen titel="Onboarding" unter="Alles, was drin sein muss, damit MAKE OS für euch beide reibungslos läuft.">
+    <Rahmen titel="Onboarding" unter="Alles, was drin sein muss, damit MAKE OS auf dem Server für alle reibungslos läuft.">
       <Karte i={0} ton={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${fertig} von ${alle.length} Schritten`}>Stand</Ueberschrift>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -219,16 +221,16 @@ export function OnboardingUebersicht() {
       </div>
 
       <Karte i={4}>
-        <Ueberschrift rechts={`${schritteVon('fundament').length} Schritte`}>Fundament — einmal aufsetzen, dann läuft es für beide</Ueberschrift>
+        <Ueberschrift rechts={`${schritteVon('fundament').length} Schritte`}>Fundament — einmal aufsetzen, dann läuft es für alle</Ueberschrift>
         <Liste>{schritteVon('fundament').map((s, i) => karte(s, i + 1, z, haken))}</Liste>
       </Karte>
 
       <Karte i={5}>
         <Ueberschrift>Danach</Ueberschrift>
         <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.65, margin: 0 }}>
-          Wenn das Fundament steht, geht jeder seine eigene Spur — <Link href="/os/onboarding/kevin" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Kevin</Link> füllt
-          Kalender, Postfach, Kompass und Gesundheit, <Link href="/os/onboarding/malin" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Malin</Link> die
-          Finanzen und offenen Posten. Die Regeln fürs Nebeneinander stehen unter{' '}
+          Wenn das Fundament steht, geht jede Person ihre eigene Spur — <Link href="/os/onboarding/kevin" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Kevin</Link> als
+          Inhaber, <Link href="/os/onboarding/malin" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Malin</Link> als zweite Person. Schritte mit „bei dir“ prüft
+          die Software für die Person, die gerade angemeldet ist — jede sieht nur ihren eigenen Stand. Die Regeln fürs Nebeneinander stehen unter{' '}
           <Link href="/os/onboarding/zusammenarbeit" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Zusammenarbeit</Link>.
         </p>
       </Karte>

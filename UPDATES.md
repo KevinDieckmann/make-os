@@ -4,6 +4,27 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 — Onboarding auf Server-Stand (nur lokal — Branch `onboarding-server`)
+
+Kevin 08.10.: Das Onboarding stand noch auf „MAKE OS läuft auf Kevins Mac“ (iCloud-Ordner, .env.local, Node, Kevins IP, Tailscale, „Malin darf
+alles sehen, auch Gesundheit“). Malin startet am 01.11. auf dem Server.
+- **Schritte neu** (`lib/make-one/onboarding-data.ts`): Fundament = Server läuft · Nachtsicherung · zweite Kopie am Mac + Probe (RESTORE_TEST.md) ·
+  Updates nur auf Wort des Inhabers (entwicklung lokal, online = main) · zweite Person einladen · 2FA-Pflicht · Regel „wer sieht was“. Zweite Person:
+  Einladung · zweiter Faktor · wer sieht was · Gesundheits-Einwilligung (a/b/c erklärt) · eigener iCloud-Kalender · Postfach · Telegram (optional) ·
+  Whoop „kommt mit dem nächsten Update“ · Rundgang · Kontostände · offene Posten · eigene Aufgaben · Bauplan „Problem oder Idee melden“ · ZOE nur Vorschläge.
+  Entfernt: iCloud-Ordner, .env.local, Node/start.sh, localhost-Anmeldung, Kevins IP/Tailscale, Finanz-Dashboard-Export (fd_p…) und „drei Lücken“,
+  Gesundheits-Schritt mit persönlichen Angaben, „Du darfst alles sehen — auch Gesundheit“.
+- **Prüfungen** (`lib/onboarding-status.ts`): `pruefeAlles(person)` — persönliche Befunde (zweiter Faktor, Einwilligung erklärt ja/nein, eigener
+  iCloud-Kalender, eigene Postfächer, Telegram, eigene Aufgaben, eigene ZOE-Gespräche) NUR für die Person der Sitzung; die Gesundheits-Zählung aus
+  `health-log` und die Prüfungen `schluessel`/`grundlage`/`luecken`/`malin-aufgaben` sind weg; `sicherung` liest die Statusdatei der Nachtsicherung,
+  neu `zwei-faktor-pflicht`. Schritte mit persönlicher Prüfung tragen `persoenlich`.
+- **Zusammenarbeit:** Zonen auf Server-Stand, Schalter heißt „Update läuft“, Karte „Wo die Daten liegen“.
+- **ONBOARDING_MALIN.md** neu: klickbare Anleitung für den 01.11. mit Adressen auf app.makeinnovation.de, ohne Code-Setup.
+- Wächter `tests/onboarding-stand.test.ts` (keine Alt-Verweise, jeder Prüf-Schlüssel bekannt, nur Person der Sitzung, Links zeigen auf Seiten).
+
+**So testet ihr:** /os/onboarding öffnen → Fundament ohne Mac-Schritte. /os/onboarding/malin als zweite Person: „Zweiten Faktor einrichten“ steht
+mit „bei dir noch aus“, nach dem Einrichten unter Konto grün. Als Kevin dieselbe Seite: die Befunde zeigen Kevins eigenen Stand, nie Malins.
+
 ## 08.10.2026 nachmittags — Malins Sicht, Teil 2: Essensvorschläge ohne Personen, Lese-Protokoll Ernährung, fremde Blöcke „Belegt“ (nur lokal — Branch `malin-sicht-2`)
 
 Kevins Entscheidungen 08.10. (zusätzlich):
