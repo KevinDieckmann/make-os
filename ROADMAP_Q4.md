@@ -19,7 +19,7 @@
 
 ## Phase 0 — diese Woche (bis Freitag 09.10., Upload Freitagnachmittag)
 - **Upload** des ganzen Stands seit 07.10. (Claude pusht auf Kevins Wort; Schritte `UPLOAD_0810.md`): 2FA-Pflicht, Pepper + strenger
-  Start-Riegel, Zulieferer-Schlüssel, `_App`-Spiegel, Vault-Abgleich, alte Server-Bilder weg. Websites bleiben **offline**, bis alles sauber ist.
+  Start-Riegel, Altbestand-Übernahme (nach der Gesundheits-Einwilligung), `_App`-Spiegel, Vault-Abgleich, alte Server-Bilder weg. Websites bleiben **offline**, bis alles sauber ist.
 - **Zweite Sicherung am Mac** einrichten + einmal Wiederherstellung üben (`RESTORE_TEST.md`).
 - **Vor dem Upload noch bauen** (Kevins Antworten 08.10.):
   - Eigene Ziele lesbar für den Partner **nur wenn geteilt** (wie Gesundheit, Einstellung im Konto).
