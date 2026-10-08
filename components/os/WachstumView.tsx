@@ -50,7 +50,7 @@ export function WachstumView() {
   ];
 
   return (
-    <Seite titel="Wachstum" unter="Der Score, auf den wir hinarbeiten: wachsen, uns optimieren, Unternehmertum, Firmen optimieren, mehr Geld verdienen. Gesundheit ist die Basis.">
+    <Seite titel="Wachstum" unter="Der Score, auf den wir hinarbeiten — Gesundheit ist die Basis.">
       {/* Einstieg unter Planung (08.10.): dieselbe Reiterzeile wie Tag · Woche · Monat · Quartal · Jahr. */}
       <PlanerLeiste aktiv="wachstum" />
       <ZielBezug bereich="privat" />

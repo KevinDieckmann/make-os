@@ -89,7 +89,7 @@ export function TageslaufView() {
   return (
     <Seite
       titel="Tageslauf"
-      unter={<>Jeden Tag dieselbe Reihenfolge: Postfächer, Termine, Aufgaben, Transkripte, Lage draußen, Prioritäten — und am Ende eine Ausrichtung. Du sollst morgens nichts entscheiden und nichts suchen müssen.{d && <span style={{ color: C.inkLeise }}> Heute {d.heute} {d.heute === 1 ? 'Lauf' : 'Läufe'}.</span>}</>}
+      unter={<>Jeden Tag dieselbe Reihenfolge — Postfächer, Termine, Aufgaben, Lage, Prioritäten, Ausrichtung.{d && <span style={{ color: C.inkLeise }}> Heute {d.heute} {d.heute === 1 ? 'Lauf' : 'Läufe'}.</span>}</>}
       rechts={<Chip farbe={LEUCHT.agenten}>die feste Kette</Chip>}
     >
       {/* Lauf-Art */}

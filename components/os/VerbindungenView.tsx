@@ -30,7 +30,7 @@ export function VerbindungenView() {
   const zustand = (v: Verbindung) => (v.verbunden ? { label: 'verbunden', farbe: LEUCHT.gut } : v.konfiguriert ? { label: 'bereit', farbe: LEUCHT.achtung } : { label: 'nicht konfiguriert', farbe: C.inkLeise });
 
   return (
-    <Seite titel="Verbindungen" unter="App beim Anbieter registrieren, Schlüssel in .env.local, einmal verbinden. Danach fließen die Daten von selbst, die Tokens bleiben auf diesem Mac.">
+    <Seite titel="Verbindungen" unter="Einmal verbinden — danach fließen die Daten von selbst; Schlüssel und Tokens bleiben in MAKE OS.">
       {status && (
         <Hinweis art={status.startsWith('verbunden') ? 'gut' : 'kritisch'}>{status.startsWith('verbunden') ? 'Verbindung hergestellt.' : `Verbindung nicht zustande gekommen (${status}) — nochmal versuchen.`}</Hinweis>
       )}

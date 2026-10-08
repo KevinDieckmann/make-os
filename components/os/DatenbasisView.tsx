@@ -118,7 +118,7 @@ export function DatenbasisView() {
   const pfeil = <span style={{ color: C.inkLeise }}>›</span>;
 
   return (
-    <Seite titel="Datenbasis" unter={<>Eine Wahrheit, drei Ebenen: <b style={{ color: C.ink, fontWeight: 600 }}>eingeben</b> was nur ihr wisst, <b style={{ color: C.ink, fontWeight: 600 }}>verbinden</b> was automatisch fließen kann, <b style={{ color: C.ink, fontWeight: 600 }}>Agenten</b> arbeiten lassen. Jede Zeile springt direkt ins richtige Feld.</>}>
+    <Seite titel="Datenbasis" unter={<>Drei Ebenen: <b style={{ color: C.ink, fontWeight: 600 }}>eingeben</b>, <b style={{ color: C.ink, fontWeight: 600 }}>verbinden</b>, <b style={{ color: C.ink, fontWeight: 600 }}>Agenten</b> arbeiten lassen — jede Zeile springt ins richtige Feld.</>}>
       {/* Ampel-Kopf */}
       <Karte i={0} ton={zeilen ? ampel : undefined}>
         <Ueberschrift farbe={zeilen ? ampel : C.inkLeise} rechts={zeilen ? `${gepflegtN} von ${zeilen.length} gepflegt` : undefined}>Was das System trägt</Ueberschrift>

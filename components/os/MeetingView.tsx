@@ -111,8 +111,8 @@ export function MeetingView() {
 
   return (
     <Seite
-      titel="Vom Gespräch zu Aufgaben."
-      unter={<>Transkript oder Notizen einfügen — der Agent macht Zusammenfassung, Entscheidungen und Action-Items daraus. Jedes Action-Item übernimmst du <b style={{ color: C.ink }}>auf Klick in deine echten Aufgaben</b>. <span style={{ color: C.inkLeise }}>(Auto-Mitschrift via Granola/Fireflies kommt als Zusatz.)</span></>}
+      titel="Meeting"
+      unter={<>Vom Gespräch zu Aufgaben: Transkript rein — Action-Items übernimmst du <b style={{ color: C.ink }}>auf Klick</b>.</>}
       rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
     >
       <ZoeReiter />

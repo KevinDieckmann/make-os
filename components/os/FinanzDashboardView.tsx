@@ -36,7 +36,7 @@ export function FinanzDashboardView() {
   }
 
   return (
-    <Seite titel="Altbestand der Selbstständigkeit" unter="Malins erstes Cockpit (Version 1). Hier wird die Selbstständigkeit noch gepflegt — sie gehört seit 05.10. zu Privat (Zahlen → Privat, Finanzplanung › Selbstständigkeit)."
+    <Seite titel="Altbestand der Selbstständigkeit" unter="Das erste Cockpit (Version 1) — die Selbstständigkeit gehört seit 05.10. zu Privat › Finanzplanung."
 >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px 14px' }}>{schalter}{fenster}</div>
       <Karte i={0} akzent={LEUCHT.geld} style={{ padding: 0, overflow: 'hidden' }}>

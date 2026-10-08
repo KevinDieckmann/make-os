@@ -57,7 +57,7 @@ type Horizont = 'monat' | 'quartal' | 'jahr';
 const META: Record<Horizont, { titel: string; claim: string; hinweis: string }> = {
   monat: { titel: 'Monatsplanung', claim: 'Was diesen Monat zählt.', hinweis: '3–5 Ziele — mehr ist Verzettelung.' },
   quartal: { titel: 'Quartalsplanung', claim: 'Die Etappe zum Jahresziel.', hinweis: 'Welche 3 Dinge müssen in 3 Monaten stehen?' },
-  jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Nordstern + Meilensteine + deine Jahresziele — Zahlen und Termine kaskadieren nach unten, das nächste Jahr planst du schon jetzt.' },
+  jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Zahlen und Termine kaskadieren nach unten.' },
 };
 /** Eine Farbe je Horizont — dieselbe wie auf der Wachstums-Seite. */
 const HFARBE: Record<Horizont, string> = { jahr: LEUCHT.schlaf, quartal: LEUCHT.puls, monat: LEUCHT.gut };
@@ -188,8 +188,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
   return (
     <Seite
-      titel={meta.claim}
-      unter={<>{meta.titel} · {zr.label} — {meta.hinweis}</>}
+      titel={meta.titel}
+      unter={<>{zr.label} · {meta.claim} {meta.hinweis}</>}
       rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{schnitt != null && <Chip farbe={col(schnitt)}>Ziele Ø {schnitt} %</Chip>}<NeuAnfangenKnopf klein /></span>}
     >
       <PlanerLeiste aktiv={horizont} />

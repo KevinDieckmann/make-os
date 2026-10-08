@@ -33,7 +33,7 @@ export function DatenschutzView() {
   }, []);
   useEffect(() => { void laden(); }, [laden]);
   return (
-    <Seite titel="Datenschutz" unter="Verantwortlicher, Einwilligungen, KI, Empfänger, Verzeichnis und Nachweise — eine Quelle für die ganze Instanz. Hinweis, keine Rechtsberatung.">
+    <Seite titel="Datenschutz" unter="Verantwortlicher, Einwilligungen, KI, Empfänger, Verzeichnis, Nachweise — Hinweis, keine Rechtsberatung.">
       {fehler && <Hinweis art="kritisch" titel="Nicht geladen" aktion={<Knopf leise onClick={() => void laden()}>Nochmal</Knopf>}>{fehler}</Hinweis>}
       {d && <PruefungKarte stand={stand} i={0} />}
       {d && <VerantwortlicherKarte d={d} onGeaendert={() => void laden()} i={1} />}

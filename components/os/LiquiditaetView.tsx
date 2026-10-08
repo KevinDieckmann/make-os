@@ -258,7 +258,7 @@ export function LiquiditaetView() {
   const ende = v?.wochen.at(-1)?.stand;
 
   return (
-    <Seite titel="Liquidität" unter="Wie viel Geld ist wann da — gerechnet aus Kontoständen, offenen Rechnungen, fälligen Zahlungen und dem, was ihr erwartet.">
+    <Seite titel="Liquidität" unter="Wie viel Geld wann da ist — aus Kontoständen, offenen Rechnungen, fälligen Zahlungen und Erwartetem.">
       <div className="ui-reiter-zeile"><Segmente liste={WOCHEN} aktiv={String(wochen)} onWahl={id => setWochen(Number(id))} /></div>
       {!v && <Karte i={0}><Leer>lädt …</Leer></Karte>}
 
