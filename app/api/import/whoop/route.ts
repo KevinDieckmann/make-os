@@ -5,8 +5,8 @@
 //   POST FormData „datei"     das ZIP oder die CSV aus der Dateiauswahl
 //   POST { ausDownloads }     der neueste my_whoop_data_*.zip im Downloads-
 //                             Ordner dieses Rechners — ein Klick nach dem Download
-// Die Regeln stehen in lib/whoop-export.ts. Bestehende Tage werden ergänzt,
-// eigene Notizen bleiben stehen. Geschrieben wird in den Bestand der
+// Die Regeln stehen in lib/whoop-export.ts. Bestehende Tage werden je Feld ergänzt (Herkunft `whoop-export`, 08.10.):
+// eigene Notizen, Handwerte und Werte der WHOOP-Schnittstelle bleiben stehen; `behalten` zählt abweichende Altwerte ohne Herkunft. Geschrieben wird in den Bestand der
 // angemeldeten Person.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
@@ -18,7 +18,8 @@ import { join } from 'path';
 import { gunzipSync } from 'zlib';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus, speicherFuer } from '@/lib/zoe/raum';
-import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, type WhoopLog } from '@/lib/whoop-export';
+import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei } from '@/lib/whoop-export';
+import type { VitalsLog } from '@/lib/vitals';
 import { nurInhaber, inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 
@@ -74,11 +75,12 @@ export async function POST(req: Request) {
   const r = zyklenLesen(csv);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: 400 });
 
-  let zahlen = { neu: 0, aktualisiert: 0 };
-  // Je Person eigener Bestand — Malins Export landet bei Malin, nicht bei Kevin (24.09.).
-  await updateJson<WhoopLog>(speicherFuer('vitals', personAus(req)), current => {
+  let zahlen = { neu: 0, aktualisiert: 0, behalten: 0 };
+  // Je Person eigener Bestand — der Export einer Person landet bei ihr (24.09.). Seit 08.10. je Feld mit Herkunft `whoop-export`:
+  // die WHOOP-Schnittstelle überschreibt diese Werte später; Handwerte und Werte der Schnittstelle bleiben (lib/whoop-export.ts).
+  await updateJson<VitalsLog>(speicherFuer('vitals', personAus(req)), current => {
     const bestand = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
-    const m = einmischen(bestand, r.tage); zahlen = { neu: m.neu, aktualisiert: m.aktualisiert };
+    const m = einmischen(bestand, r.tage); zahlen = { neu: m.neu, aktualisiert: m.aktualisiert, behalten: m.behalten };
     return m.log;
   });
   const tage = Object.keys(r.tage).sort();

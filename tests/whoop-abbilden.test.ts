@@ -63,6 +63,23 @@ describe('Vitalwerte: Handwert gewinnt', () => {
     expect(b.log['2026-10-07'].rec).toBe(84);
     expect(vitalsAnwenden(b.log, { '2026-10-07': { ...werte['2026-10-07'], rec: 84 } }, '2026-07-01').geaendert).toBe(0);
   });
+  // Kevin 08.10. (Phase 0): „WHOOP ist die Quelle; Werte aus dem alten Export: Schnittstelle gewinnt, nur echte Handeingaben bleiben.“
+  it('Export-Werte (`whoop-export`) überschreibt die Schnittstelle; Handwerte bleiben', () => {
+    const log: VitalsLog = { '2026-10-07': { rec: 70, sleep: 6.9, hrv: 55, rhr: 60, quellen: { rec: 'whoop-export', sleep: 'whoop-export', hrv: 'hand' } } };
+    const r = vitalsAnwenden(log, werte, '2026-07-01');
+    expect(r.log['2026-10-07']).toEqual({ rec: 81, sleep: 7.5, hrv: 55, rhr: 60, quellen: { rec: 'whoop', sleep: 'whoop', hrv: 'hand' } });
+  });
+  it('Altbestand ohne Herkunft: GENAU der WHOOP-Wert → nur die Herkunft wird nachgetragen; ein anderer Wert bleibt (nie geraten)', () => {
+    const r = vitalsAnwenden({ '2026-10-07': { rec: 81, sleep: 7.2, note: 'müde' } }, werte, '2026-07-01');
+    expect(r.log['2026-10-07']).toEqual({ rec: 81, sleep: 7.2, hrv: 61, rhr: 52, note: 'müde', quellen: { rec: 'whoop', hrv: 'whoop', rhr: 'whoop' } });
+    // Danach darf WHOOP den markierten Wert nachziehen — der abweichende Altwert (7.2) bleibt weiter stehen.
+    const b = vitalsAnwenden(r.log, { '2026-10-07': { ...werte['2026-10-07'], rec: 79 } }, '2026-07-01');
+    expect(b.log['2026-10-07']).toMatchObject({ rec: 79, sleep: 7.2 });
+  });
+  it('gelöscht bei WHOOP → nur Werte der Schnittstelle fallen weg, Export-Werte bleiben', () => {
+    const log: VitalsLog = { '2026-10-07': { rec: 70, hrv: 50, quellen: { rec: 'whoop-export', hrv: 'whoop' } } };
+    expect(vitalsAnwenden(log, {}, '2026-07-01').log['2026-10-07']).toEqual({ rec: 70, quellen: { rec: 'whoop-export' } });
+  });
   it('gelöscht bei WHOOP → nur WHOOP-Felder fallen weg, nur ab dem Spiegel-Anfang', () => {
     const log: VitalsLog = { '2026-10-07': { rec: 81, sleep: 6, quellen: { rec: 'whoop', sleep: 'hand' } }, '2026-01-02': { rec: 70, quellen: { rec: 'whoop' } } };
     const r = vitalsAnwenden(log, {}, '2026-07-01');

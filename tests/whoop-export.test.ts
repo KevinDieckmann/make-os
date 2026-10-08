@@ -50,10 +50,23 @@ describe('Whoop-Export', () => {
   });
 
   it('mischt ein: Messwerte neu, eigene Notizen bleiben', () => {
-    const { log, neu, aktualisiert } = einmischen({ '2026-09-23': { rec: 40, note: 'schlecht geschlafen' } }, { '2026-09-23': { rec: 61 }, '2026-09-24': { rec: 72 } });
-    expect(log['2026-09-23']).toEqual({ rec: 61, note: 'schlecht geschlafen' });
-    expect(log['2026-09-24']).toEqual({ rec: 72 });
-    expect([neu, aktualisiert]).toEqual([1, 1]);
+    // Seit 08.10. (Kevin Phase 0) je Feld mit Herkunft `whoop-export`: ein Altwert ohne Herkunft, der vom Export abweicht, kann eine
+    // Handeingabe sein — er bleibt (`behalten`); leere Felder füllt der Export, die Notiz bleibt.
+    const { log, neu, aktualisiert, behalten } = einmischen({ '2026-09-23': { rec: 40, note: 'schlecht geschlafen' } }, { '2026-09-23': { rec: 61, hrv: 70 }, '2026-09-24': { rec: 72 } });
+    expect(log['2026-09-23']).toEqual({ rec: 40, hrv: 70, note: 'schlecht geschlafen', quellen: { hrv: 'whoop-export' } });
+    expect(log['2026-09-24']).toEqual({ rec: 72, quellen: { rec: 'whoop-export' } });
+    expect([neu, aktualisiert, behalten]).toEqual([1, 1, 1]);
+  });
+
+  it('Herkunft je Feld (08.10.): Export-Werte zieht der Export nach, Schnittstelle und Hand bleiben, gleicher Altwert wird markiert', () => {
+    const bestand = { '2026-09-23': { rec: 50, sleep: 7.1, hrv: 66, rhr: 49, quellen: { rec: 'whoop-export' as const, sleep: 'whoop' as const, hrv: 'hand' as const } } };
+    const r = einmischen(bestand, { '2026-09-23': { rec: 61, sleep: 6.0, hrv: 70, rhr: 49 } });
+    expect(r.log['2026-09-23']).toEqual({ rec: 61, sleep: 7.1, hrv: 66, rhr: 49, quellen: { rec: 'whoop-export', sleep: 'whoop', hrv: 'hand', rhr: 'whoop-export' } });
+    expect([r.neu, r.aktualisiert, r.behalten]).toEqual([0, 1, 0]);
+    // Derselbe Export noch einmal: nichts ändert sich.
+    const zwei = einmischen(r.log, { '2026-09-23': { rec: 61, sleep: 6.0, hrv: 70, rhr: 49 } });
+    expect(zwei.log).toEqual(r.log);
+    expect(zwei.aktualisiert).toBe(0);
   });
 
   it('ordnet einen Zyklus dem Tag des Aufwachens zu, nicht dem Einschlafen', () => {
