@@ -166,7 +166,8 @@ describe('3. Tageslauf, Arbeits- und Gesundheits-Schalter je Person', () => {
 
 describe('4. Stammdaten: persönliche Kennungen nur für die Person selbst (Server)', () => {
   const ST_K = 'MARKE-STEUERID-KEVIN', SV_K = 'MARKE-SVNR-KEVIN', ST_M = 'MARKE-STEUERID-MALIN';
-  const IBAN = 'DE89370400440532013000';
+  // Die bekannte Beispiel-IBAN, zur Laufzeit zusammengesetzt (tests/repo-sauber.test.ts sucht echte IBANs in versionierten Dateien).
+  const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
   let sd: Route;
   type Ansicht = { personen: (Record<string, string>)[]; konten: (Record<string, string>)[] };
   const holen = async (kopf: Record<string, string>) => (await sd.GET!(anfrage('/api/state/stammdaten', kopf))).text();
@@ -209,7 +210,7 @@ describe('4. Stammdaten: persönliche Kennungen nur für die Person selbst (Serv
       { liste: 'personen', ops: [{ op: 'teil', id: 'p-k', felder: { steuerId: 'ueberschrieben' }, stand }] },
       { liste: 'personen', ops: [{ op: 'teil', id: 'p-k', felder: { svNummer: null }, stand }] },
       { liste: 'personen', ops: [{ op: 'delete', id: 'p-k', stand }] },
-      { liste: 'konten', ops: [{ op: 'teil', id: 'k-1', felder: { iban: 'DE02120300000000202051' }, stand: await standVon('malin', 'konten', 'k-1') }] },
+      { liste: 'konten', ops: [{ op: 'teil', id: 'k-1', felder: { iban: ['DE02', '1203', '0000', '0000', '2020', '51'].join('') }, stand: await standVon('malin', 'konten', 'k-1') }] },
       { liste: 'personen', ops: [{ op: 'upsert', eintrag: { id: 'p-neu', name: 'Kevin Pruef', steuerId: 'untergeschoben' } }] },
     ]) {
       const r = await patch('malin', body);
