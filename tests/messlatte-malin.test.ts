@@ -151,3 +151,120 @@ describe('Messlatte M3: Malin sieht keinen der 🔒-Speicher von Kevin', () => {
     expect(r.text).toContain('Messlatte gemeinsame Routine');
   });
 });
+
+// ─── 08.10. (Kevin): Routinen der anderen Person nur „Belegt“, Ernährungsprofile nur selbst (oder geteilt) ─────────────
+type Handler3 = { GET: Handler; PATCH: Handler; PUT: Handler };
+const schreiben = (h: Handler, methode: string, pfad: string, person: string, body: unknown) =>
+  h(new Request(`http://test${pfad}`, { method: methode, headers: sitzung(person), body: JSON.stringify(body) }));
+const bestandText = async (name: string) => JSON.stringify(await (await import('@/lib/store/local-db')).loadJson(name));
+
+describe('Messlatte Malin-Sicht 08.10.: Routinen-Planer zeigt Kevins Routine nur als „Belegt“', () => {
+  it('GET ohne ?sicht: Kevins eigene Routine nur verdeckt (kein Titel, keine Kategorie), gemeinsame voll', async () => {
+    const { GET } = (await import('@/app/api/state/routinen/route')) as unknown as Handler3;
+    const r = await holen(GET, '/api/state/routinen', 'malin');
+    expect(r.status).toBe(200);
+    expect(r.text).not.toContain(GEHEIM.routine);
+    const d = JSON.parse(r.text) as { routinen: { id: string; label: string; kategorie: string; belegt?: boolean }[] };
+    const fremd = d.routinen.find(x => x.id === 'r-kevin')!;
+    expect(fremd).toMatchObject({ label: 'Belegt', belegt: true, owner: 'kevin', wann: 'morgen', dauerMin: 10 });
+    expect(fremd.kategorie).not.toBe('gesundheit');
+    expect(d.routinen.find(x => x.id === 'r-beide')!.label).toBe('Messlatte gemeinsame Routine');
+    // Gegenprobe: Kevin sieht seine Routine voll.
+    expect((await holen(GET, '/api/state/routinen', 'kevin')).text).toContain(GEHEIM.routine);
+  });
+
+  it('Schreiben auf Kevins Routine → 403, der Bestand bleibt bit-gleich (PATCH teil/upsert/delete, neu für Kevin, zuschieben, PUT geändert)', async () => {
+    const { PATCH, PUT } = (await import('@/app/api/state/routinen/route')) as unknown as Handler3;
+    const vorher = await bestandText('routinen');
+    const routine = (id: string, label: string, owner: string) => ({ id, label, wann: 'morgen', kategorie: 'leben', dauerMin: 10, aktiv: true, owner });
+    const versuche: [Handler, string, unknown][] = [
+      [PATCH, 'PATCH', { ops: [{ op: 'teil', id: 'r-kevin', felder: { label: 'Überschrieben' } }] }],
+      [PATCH, 'PATCH', { ops: [{ op: 'upsert', eintrag: routine('r-kevin', 'Belegt', 'kevin') }] }],
+      [PATCH, 'PATCH', { ops: [{ op: 'delete', id: 'r-kevin' }] }],
+      [PATCH, 'PATCH', { ops: [{ op: 'upsert', eintrag: routine('r-neu-fuer-kevin', 'Für Kevin', 'kevin') }] }],
+      [PATCH, 'PATCH', { ops: [{ op: 'teil', id: 'r-beide', felder: { owner: 'kevin' } }] }],
+      [PUT, 'PUT', { routinen: [routine('r-kevin', 'Überschrieben', 'kevin'), routine('r-beide', 'Messlatte gemeinsame Routine', 'beide')] }],
+    ];
+    for (const [h, m, body] of versuche) {
+      const r = await schreiben(h, m, '/api/state/routinen', 'malin', body);
+      expect(r.status, JSON.stringify(body)).toBe(403);
+      expect(await r.text()).not.toContain(GEHEIM.routine);
+      expect(await bestandText('routinen')).toBe(vorher);
+    }
+  });
+
+  it('PUT mit dem verdeckten Stand überschreibt nie die echten Werte (Altweg)', async () => {
+    const { GET, PUT } = (await import('@/app/api/state/routinen/route')) as unknown as Handler3;
+    const sicht = JSON.parse((await holen(GET, '/api/state/routinen', 'malin')).text) as { routinen: Record<string, unknown>[] };
+    const ohneStand = (l: Record<string, unknown>[]) => l.map(x => Object.fromEntries(Object.entries(x).filter(([k]) => k !== 'stand')));
+    const r = await schreiben(PUT, 'PUT', '/api/state/routinen', 'malin', { routinen: ohneStand(sicht.routinen) });
+    expect(r.status).toBe(200);
+    expect(await r.text()).not.toContain(GEHEIM.routine);
+    expect(await bestandText('routinen')).toContain(GEHEIM.routine);
+    // Lässt der Browser sie ganz weg, bleibt sie trotzdem stehen.
+    const ohne = await schreiben(PUT, 'PUT', '/api/state/routinen', 'malin', { routinen: ohneStand(sicht.routinen.filter(x => x.id !== 'r-kevin')) });
+    expect(ohne.status).toBe(200);
+    expect(await bestandText('routinen')).toContain(GEHEIM.routine);
+  });
+});
+
+describe('Messlatte Malin-Sicht 08.10.: Ernährungsprofil sieht nur die Person selbst (oder wem sie Gesundheit teilt)', () => {
+  const PROFIL = 'MESSLATTE-GEHEIM-PROFIL-KEVIN';
+  const pfad = '/api/state/ernaehrung';
+  const profil = (person: string, name: string, bedarf: string, konto: boolean) => ({ person, name, bedarf, unvertraeglich: [], nie: [], gern: [], ziel: konto ? bedarf : '', konto, stand: '2026-10-01' });
+
+  beforeAll(async () => {
+    const db = await import('@/lib/store/local-db');
+    await db.saveJson('ernaehrung', {
+      grundsaetze: 'Messlatte Grundsätze', plan: {}, planGerichte: {},
+      einkauf: [{ id: 'e-1', text: 'Messlatte Hafer', erledigt: false }],
+      profile: [profil('kevin', 'Kevin', PROFIL, true), profil('gast-oma', 'Oma', 'Messlatte Gast weich', false)],
+      lebensmittel: [], vorrat: [], gerichte: [],
+    });
+  });
+
+  it('GET: Malin sieht Kevins Profil nicht, Gast und Einkauf schon; Kevin sieht sein eigenes', async () => {
+    const { GET } = (await import('@/app/api/state/ernaehrung/route')) as unknown as Handler3;
+    const r = await holen(GET, pfad, 'malin');
+    expect(r.status).toBe(200);
+    expect(r.text).not.toContain(PROFIL);
+    expect(r.text).toContain('Messlatte Gast weich');
+    expect(r.text).toContain('Messlatte Hafer');
+    expect((await holen(GET, pfad, 'kevin')).text).toContain(PROFIL);
+  });
+
+  it('teilt Kevin Gesundheit mit Malin, sieht sie sein Profil — danach wieder nicht', async () => {
+    const db = await import('@/lib/store/local-db');
+    const { GET } = (await import('@/app/api/state/ernaehrung/route')) as unknown as Handler3;
+    await db.saveJson('konten', { konten: [{ ...konto('k1', 'kevin', 'inhaber'), teilt: { gesundheit: ['malin'] } }, konto('k2', 'malin', 'mitglied')], einladungen: [] });
+    try {
+      expect((await holen(GET, pfad, 'malin')).text).toContain(PROFIL);
+    } finally {
+      await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied')], einladungen: [] });
+    }
+    expect((await holen(GET, pfad, 'malin')).text).not.toContain(PROFIL);
+  });
+
+  it('Schreiben auf Kevins Profil → 403, Bestand unverändert; PUT (Altweg) und PATCH-Antworten lassen es weg, löschen es nie', async () => {
+    const { PATCH, PUT } = (await import('@/app/api/state/ernaehrung/route')) as unknown as Handler3;
+    const vorher = await bestandText('ernaehrung');
+    for (const ops of [
+      [{ liste: 'profile', op: 'upsert', eintrag: { person: 'kevin', name: 'Kevin', bedarf: 'überschrieben' } }],
+      [{ liste: 'profile', op: 'delete', id: 'kevin' }],
+      [{ liste: 'profile', op: 'upsert', eintrag: { person: 'kevin', name: 'Kevin', konto: false, bedarf: 'als Gast gekapert' } }],
+      [{ liste: 'einkauf', op: 'upsert', eintrag: { text: 'Messlatte mit drin' } }, { liste: 'profile', op: 'delete', id: 'kevin' }],
+    ]) {
+      const r = await schreiben(PATCH, 'PATCH', pfad, 'malin', { ops });
+      expect(r.status, JSON.stringify(ops)).toBe(403);
+      expect(await bestandText('ernaehrung')).toBe(vorher);
+    }
+    // Eigener Schritt: erlaubt, die Antwort ohne Kevins Profil.
+    const gut = await schreiben(PATCH, 'PATCH', pfad, 'malin', { ops: [{ liste: 'einkauf', op: 'upsert', eintrag: { text: 'Messlatte Äpfel' } }] });
+    expect(gut.status).toBe(200);
+    expect(await gut.text()).not.toContain(PROFIL);
+    const put = await schreiben(PUT, 'PUT', pfad, 'malin', { profile: [], einkauf: [{ id: 'e-1', text: 'Messlatte Hafer', erledigt: true }] });
+    expect(put.status).toBe(200);
+    expect(await put.text()).not.toContain(PROFIL);
+    expect(await bestandText('ernaehrung')).toContain(PROFIL);
+  });
+});

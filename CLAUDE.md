@@ -648,6 +648,12 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   (fehlt = täglich) + `naechstesMal`, `rang`; Fälligkeit in `lib/planung/rhythmus.ts` (rein, YYYY-MM-DD, Monatsende geklemmt),
   „heute dran“ je Person in `lib/planung/routinen.ts` (`heuteFaellig`, `sichtbarFuer`). Blöcke (Wochenvorlage je Person) liegen
   als `bloecke` im selben Bestand — geschrieben nur per `PATCH { bloecke: ops }`, nur eigene Blöcke (`personStreng`, sonst 403). Wer Routinen liest, filtert mit `sichtbarFuer(…, person)`.
+  **Fremde Routinen nur „Belegt“ (08.10., Kevin, Branch `malin-sicht`):** Routinen der ANDEREN Person (owner ≠ beide, ≠ ich) gehen an eine
+  Person NUR über `routinenFuerBetrachter` (lib/planung/routinen.ts → `routineBelegt`: Kennung, Besitz, Tageszeit, Dauer, aktiv, Rhythmus,
+  nächstes Mal, Bereich; kein Titel/Kategorie/Einheit/Rang, `belegt: true`, nie gespeichert) — jede Antwort von `/api/state/routinen` inkl.
+  409-Konflikte; Systemlauf ohne Person wie bisher. Schreiben auf fremde (ändern, löschen, neu für die andere, zuschieben) → 403
+  (`routinenSchreibPruefen`; PUT-Altweg `routinenVollSchreiben`: fremde bleiben in der gespeicherten Fassung). `teil` läuft durch `sauberRoutine`.
+  Lichtfäden: jede Routine einer Person ist `privat` (nicht nur Gesundheit). Wächter: tests/messlatte-malin.test.ts, tests/routinen-belegt.test.ts.
 - Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
 - **Zeitstrahl & Planungsjahr (30.09.):** Rechnung rein in `lib/planung/zeitstrahl.ts` (Fenster aus ganzen Monaten `ab`+`monate`,
   `standardAb`/`heuteAb`, `abAus` ±50 Jahre, `monatsTicks` mit Jahreswechsel, `quartale`, `stapeln` mit „+n“-Bündeln,
@@ -774,6 +780,12 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Voll-Stand zurückschreiben — zu zweit am Handy), PUT nur Altweg. `/api/ernaehrung/vorschlag` (Woche für alle Profile,
   mit Rezepten, Vorrat abgezogen), `/api/ernaehrung/rezept` (ein Rezept, hängt am Plan-Feld). Nur Haushalt des Inhabers.
 - Ansicht `components/os/ErnaehrungView.tsx` (in Gesundheit → Ernährung eingebettet); ZOE `einkauf_setzen` (frei).
+- **Profile nur selbst oder geteilt (08.10., Kevin, Branch `malin-sicht`):** Einkauf, Plan, Gerichte bleiben gemeinsam; Konto-Profile (Bedarf, Ziel,
+  Unverträgliches) sieht nur die Person selbst, außer sie teilt Gesundheit mit der anfragenden Person (`darfGesundheitSehen`); Gäste-Profile für alle.
+  EINE Filterstelle `profileFuerBetrachter` (lib/ernaehrung/modell.ts) für jede Antwort der Route (GET/PATCH/PUT, `ausliefern`). Ein Schritt auf ein
+  fremdes Profil → 403, nichts gespeichert; `wendeAn(…, konten)` macht Profile mit Konto-Namen immer zu Konto-Profilen (kein „Gast“ unter fremdem
+  Namen). PUT nimmt Profile nie aus dem Körper. Wochenvorschlag/Rezept rechnen mit allen Profilen, der Prompt verbietet Gründe aus Profilen in der
+  Antwort (`PROFIL_DISKRET`). Wächter: tests/messlatte-malin.test.ts, tests/ernaehrung-sicht.test.ts.
 - Gerichte-Bibliothek „Unsere Gerichte“ (26.09.): `Gericht` hat `favorit` + `notiz`; Helfer `gerichteFiltern`, `tagsHaeufig`,
   `imPlan`, `gerichtZuName`, `zutatenAusText`, `schritteAusText`. `/api/ernaehrung/rezept` nimmt auch `beschreibung`
   (Wunsch) oder `text` (eingefügtes Rezept, als `fremd()`); `/vorschlag` listet gespeicherte Gerichte (★ zuerst) und

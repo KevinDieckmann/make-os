@@ -4,6 +4,22 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 — Malins Sicht: fremde Routinen nur „Belegt“, Ernährungsprofile nur selbst (nur lokal — Branch `malin-sicht`)
+
+Kevins Entscheidungen 08.10.:
+- **Routinen-Planer:** Routinen der anderen Person (nicht „gemeinsam“) erscheinen nur als „Belegt“ (Tageszeit, Dauer, Rhythmus, Bereich und Besitz
+  bleiben; Titel, Kategorie, Einheit nicht) — gefiltert auf dem SERVER (`routinenFuerBetrachter`). Ändern/Löschen/Zuschieben fremder Routinen → 403;
+  ein Schreiben mit der verdeckten Fassung überschreibt nie die echte. Lichtfäden: jede Routine einer Person ist privat („Belegt“ für die andere).
+- **Ernährung:** Einkaufsliste, Plan und Gerichte bleiben gemeinsam. Die Profile (Bedarf/Ziel/Unverträgliches) sieht nur die Person selbst — außer
+  sie teilt Gesundheit mit der anderen (Konto › Gesundheit teilen). Gäste-Profile sieht der ganze Haushalt. Fremde Profile ändern/löschen → 403.
+  Der Wochenvorschlag kocht weiter für alle, nennt aber keine Gründe aus Profilen.
+
+**So testet ihr:** Malin öffnet Planung › Routinen → Kevins eigene Routinen stehen als „Belegt“ (grau, ohne Bedienung), gemeinsame normal. Gesundheit ›
+Ernährung › „Bedürfnisse & Vorlieben“: Kevins Karte zeigt nur den Namen und „Sieht nur Kevin selbst …“; teilt Kevin Gesundheit mit Malin, erscheint sein Profil.
+
+**Rückweg:** nur Lesefilter + Schreibprüfungen, keine Datenänderung, kein neues gespeichertes Feld (`belegt` steht nur in Antworten) — der alte Stand
+läuft ohne Weiteres. Einzige Nebenwirkung: `teil`-Änderungen an Routinen laufen jetzt durch `sauberRoutine` (`null` entfernt ein Feld statt `null` zu speichern).
+
 ## 07.10.2026 abends — makeinnovation.de + fokusinnovation.de „v3 · Der Weg“ (nur lokal — Branch `websites-v3`, nicht zusammengeführt)
 
 Kevin 07.10. abends: „Nimm die Kugel raus. Bau das Ganze nochmal und bring Innovation nach vorne. Ich brauche keine 0815-KI-Homepage.“

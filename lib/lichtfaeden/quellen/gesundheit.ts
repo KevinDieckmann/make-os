@@ -2,7 +2,8 @@
 // Nur was einen Tag hat: Routinen ab wöchentlich mit `naechstesMal` (Arzt, Vorsorge, Steuererklärung …) und Sport-Ziele
 // mit Wettkampf-/Stichtag. Tägliche Routinen zählen nicht — sie wären ein gleichmäßiges Rauschen über jede Woche.
 // Gesundheit ist persönlich: Stränge einer Person sind `privat` (die andere sieht ein anonymes „belegt“ — dieselbe
-// Regel wie Gesundheits-Termine im Kalender). Gemeinsame Routinen (Besitz „beide“) sind nicht privat.
+// Regel wie Gesundheits-Termine im Kalender). Seit 08.10. (Kevin) gilt das für JEDE Routine einer Person, nicht nur für
+// Gesundheit — dieselbe Regel wie im Routinen-Planer (`routinenFuerBetrachter`). Gemeinsame Routinen (Besitz „beide“) sind nicht privat.
 // Routine-Kategorie: gesundheit → Privat › Gesundheit, leben → Privat › Ziele & Planung, business → Business › Ziele & Planung
 // (eine Routine der Selbstständigkeit → Privat › Ziele & Planung, 05.10. abends).
 
@@ -31,7 +32,7 @@ export function gesundheitStraenge(d: GesundheitDaten): Strang[] {
     // 05.10. abends: eine Routine einer Privat-Einheit (Selbstständigkeit) läuft unter Privat, auch mit Kategorie „business“.
     const business = !hatPrivatEinheit(r) && (r.kategorie === 'business' || r.space === 'business');
     const pfad = gesundheit ? themaPfad('privat', 'gesundheit') : themaPfad(business ? 'business' : 'privat', 'planung');
-    aus.push({ id: `routine:${r.id}`, quelle: 'training', titel: r.label, pfad, person, zeit: { tag }, gewicht: gewichtVon('training'), status: statusVon(false, tag, d.heute), link: d.links.routinen, ...(gesundheit && person !== BEIDE ? { privat: true } : {}) });
+    aus.push({ id: `routine:${r.id}`, quelle: 'training', titel: r.label, pfad, person, zeit: { tag }, gewicht: gewichtVon('training'), status: statusVon(false, tag, d.heute), link: d.links.routinen, ...(person !== BEIDE ? { privat: true } : {}) });
   }
   for (const s of d.sport) {
     for (const z of s.ziele) {
