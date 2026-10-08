@@ -17,6 +17,8 @@ import { fristAus } from './faecher';
 import type { WaKopfInfo } from '@/lib/whatsapp/typen';
 import { stromRoh } from './strom-server';
 import { nachrichtenVon } from './verlauf';
+import { uebergabeEmpfaenger } from './teilen';
+import { uebergabenFuer } from './uebergaben-speicher';
 import type { Gespraech, StromKopf } from './strom';
 
 export interface NachrichtAnsicht {
@@ -51,6 +53,11 @@ export interface GespraechAnsicht {
     kandidaten?: { id: string; name: string; firma?: string }[];
   };
   vorschlaege: Vorschlag[];
+  /**
+   * Übergeben (08.10., Lücke 6) — nur bei EIGENEN Gesprächen (Gmail/IMAP, kein Team-Postfach): an wen es gehen kann (Personen des
+   * Haushalts mit Zugang zum Bereich) und an wen es schon übergeben ist. Team-Gespräche tragen stattdessen `gespraech.team`.
+   */
+  uebergabe?: { personen: { speicher: string; name: string }[]; bestehend: { id: string; an: string; anName: string; status: string; kopieAm: string }[] };
 }
 
 /** Vorschläge zu einem Gespräch (rein): höchstens drei, in fester Rangfolge. */
@@ -85,8 +92,9 @@ export async function gespraechLesen(person: string, id: string): Promise<Gespra
   if (!g || !p) return null;
   const n = await nachrichtenVon(person, id);
   if (!n) return null;
-  // WhatsApp: der ganze Text steht schon im Kopf (`ausschnitt`) — kein Textbestand daneben.
-  const texte: Record<string, { t: string }> = g.quelle === 'gmail' ? (await ladeGmailTexte(person)).texte : g.quelle === 'imap' ? (await ladeImapTexte(person)).texte : {};
+  // WhatsApp: der ganze Text steht schon im Kopf (`ausschnitt`) — kein Textbestand daneben. Team-Postfach: Texte aus dem Spiegel des Besitzers.
+  const besitzer = g.team?.postfach?.besitzer ?? person;
+  const texte: Record<string, { t: string }> = g.quelle === 'gmail' ? (await ladeGmailTexte(person)).texte : g.quelle === 'imap' ? (await ladeImapTexte(besitzer)).texte : {};
   const vonUns = (k: StromKopf) => k.labels.includes('SENT') || k.ordner === 'g' || n.eigene.includes(k.von.email);
   const nachrichten = n.koepfe.map(k => ohneIntern(k, texte[k.id]?.t ?? k.ausschnitt, vonUns(k)));
   // Antwort bezieht sich auf die jüngste echte Nachricht von außen (sonst die jüngste überhaupt).
@@ -103,6 +111,12 @@ export async function gespraechLesen(person: string, id: string): Promise<Gespra
   // WhatsApp ohne Zuordnung: trägt die Nummer mehr als eine Akte, wählt die Person (nie automatisch).
   const kandidaten = g.quelle === 'whatsapp' && !g.zuordnung && g.whatsapp ? await waKandidaten(g.whatsapp.nummer) : [];
   const vorschlaege = vorschlaegeFuer(g, nachrichten, heute).filter(v => !(kandidaten.length && v.art === 'kontakt'));
+  const eigenes = !g.team && (g.quelle === 'gmail' || g.quelle === 'imap');
+  const namenTeam = Object.fromEntries(roh.team.map(t => [t.speicher, t.name]));
+  const uebergabe = eigenes ? {
+    personen: uebergabeEmpfaenger(roh.team, person, g.bereich).map(t => ({ speicher: t.speicher, name: t.name })),
+    bestehend: (await uebergabenFuer(person, roh.team)).filter(u => u.von === person && u.gespraech === id).map(u => ({ id: u.id, an: u.an, anName: namenTeam[u.an] ?? u.an, status: u.status, kopieAm: u.kopieAm })),
+  } : undefined;
   return {
     gespraech: g,
     nachrichten,
@@ -119,6 +133,7 @@ export async function gespraechLesen(person: string, id: string): Promise<Gespra
       ...(kandidaten.length ? { kandidaten } : {}),
     },
     vorschlaege,
+    ...(uebergabe ? { uebergabe } : {}),
   };
 }
 

@@ -57,6 +57,12 @@ export interface Postfach {
   ordner?: Ordner;
   /** Bietet der Server IMAP IDLE an (beim Prüfen gemessen)? */
   idle?: boolean;
+  /**
+   * „Mit dem Team teilen“ (08.10., Lücke 6): nur IMAP mit Business-Bereich, nur die einrichtende Person setzt es. Dann sehen alle Konten
+   * des Haushalts mit Zugang zum Bereich die Gespräche (lib/inbox/teilen.ts `postfachSichtbar`); Zugang, Abgleich und Senden bleiben
+   * beim Besitzer, der Zustand der Gespräche liegt gemeinsam in `inbox-geteilt--<haushalt>`.
+   */
+  geteilt?: boolean;
   angelegtAm: string;
   geaendertAm?: string;
 }
@@ -73,6 +79,10 @@ export interface PostfachOeffentlich {
   signatur?: string;
   anbieter?: Anbieter;
   zustand: PostfachZustand;
+  /** Mit dem Team geteilt (08.10.). */
+  geteilt?: boolean;
+  /** Ein Team-Postfach einer ANDEREN Person (nur sehen, antworten, kümmern — einstellen und trennen nur der Besitzer). */
+  fremd?: { besitzerName: string };
 }
 
 /** Zustand der Verbindung — für die Postfach-Leiste (Punkt) und den HOI (nur Zähler). */

@@ -384,3 +384,23 @@ describe('Oberfläche: WhatsApp in der Inbox', () => {
     expect(lies('components/os/inbox/daten.ts')).toContain("if (quelle === 'whatsapp') return `/api/whatsapp/medien?id=");
   });
 });
+
+// Inbox teilen (08.10., Lücke 6): WhatsApp gehört der Instanz — „wer kümmert sich“ liegt gemeinsam (Stand/409), Art. 17 nimmt den Eintrag
+// zur Nummer der Person heraus.
+describe('WhatsApp: „wer kümmert sich“ (gemeinsam, mit Stand)', () => {
+  it('Kevin trägt Malin ein → beide sehen es; veralteter Stand → 409; nur Personen mit Zugang; Art. 17 über die Nummer', async () => {
+    await post(koerper(text('wamid.K1000001', 'Können Sie mich zurückrufen?')));
+    const g = await waGespraech();
+    expect(g.team.personen.map((p: { speicher: string }) => p.speicher).sort()).toEqual(['kevin', 'malin']);
+    const r = await POST(inbox, '/api/inbox', { aktion: 'kuemmert', id: GID(), wer: 'malin', stand: g.team.stand });
+    expect(r.status).toBe(200);
+    expect((await waGespraech('malin')).team.kuemmert).toMatchObject({ person: 'malin', name: 'Malin' });
+    expect((await POST(inbox, '/api/inbox', { aktion: 'kuemmert', id: GID(), wer: 'kevin', stand: g.team.stand }, 'malin')).status).toBe(409);
+    expect((await POST(inbox, '/api/inbox', { aktion: 'kuemmert', id: GID(), wer: 'gibtsnicht', stand: (await waGespraech()).team.stand })).status).toBe(400);
+    expect((await POST(inbox, '/api/inbox', { aktion: 'kuemmert', id: GID(), wer: null })).status).toBe(400);
+    const W = await import('@/lib/crm/person-weitere');
+    const m = W.merkmaleVon('c-erika', { vorname: 'Erika', nachname: 'Beispiel', telefon: `+${KUNDE}` });
+    await W.weitereEntfernen(m);
+    expect(JSON.stringify(await db.loadJson('inbox-geteilt--h'))).not.toContain(KUNDE);
+  });
+});

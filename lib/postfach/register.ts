@@ -14,6 +14,7 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeRegister } from '@/lib/gesellschaften/server';
 import { alleGesellschaften, anzeigeName } from '@/lib/gesellschaften/modell';
 import { zeilenfrei, adresseGueltig, adresseKlein } from '@/lib/gmail/mime';
+import { postfachTeilbar } from '@/lib/inbox/teilen';
 import { VOREINSTELLUNGEN, hostOk, portOk } from './anbieter';
 import { GMAIL_POSTFACH, PERSON_OK, POSTFACH_GRENZEN, istAnbieter, registerName, zugangName, type Anbieter, type Ordner, type Postfach, type ServerAdresse } from './typen';
 
@@ -150,9 +151,14 @@ export async function postfachAnlegen(person: string, n: NeuesPostfach): Promise
   return neu;
 }
 
-/** Bereich, Anzeigename, Absendername, Signatur ändern (auch für Gmail: legt den Eintrag `gmail` an). */
+/**
+ * Bereich, Anzeigename, Absendername, Signatur ändern (auch für Gmail: legt den Eintrag `gmail` an). `geteilt` (08.10., „mit dem Team
+ * teilen“): nur IMAP mit Business-Bereich — sonst 400; ein geteiltes Postfach bekommt keinen Privat-Bereich (erst Teilen ausschalten).
+ * Nur die Person selbst kommt hierher (ihr eigenes Register) — niemand sonst kann ein Postfach teilen.
+ */
 export async function postfachAendern(person: string, id: string, b: Record<string, unknown>, gmailAdresse?: string | null): Promise<Postfach> {
   const felder: Partial<Postfach> = {};
+  if ('geteilt' in b) felder.geteilt = b.geteilt === true ? true : undefined;
   if ('bereich' in b) felder.bereich = await bereichPruefen(b.bereich);
   if ('anzeigename' in b) felder.anzeigename = text(b.anzeigename, POSTFACH_GRENZEN.anzeigename, 'Der Name');
   if ('absenderName' in b) felder.absenderName = text(b.absenderName, POSTFACH_GRENZEN.absenderName, 'Der Absendername') || undefined;
@@ -171,6 +177,7 @@ export async function postfachAendern(person: string, id: string, b: Record<stri
     if (i < 0) { fehler = new RegisterFehler('Dieses Postfach gibt es nicht.', 404); return cur ?? { v: 1, postfaecher: [] }; }
     const neu = { ...liste[i], ...felder, geaendertAm: new Date().toISOString() } as Postfach;
     for (const k of Object.keys(neu) as (keyof Postfach)[]) if (neu[k] === undefined) delete neu[k];
+    if (neu.geteilt && !postfachTeilbar(neu)) { fehler = new RegisterFehler(liste[i].geteilt ? 'Dieses Postfach ist mit dem Team geteilt — ein Privat-Bereich geht erst, wenn „mit dem Team teilen“ aus ist.' : 'Mit dem Team teilen lassen sich nur IMAP-Postfächer mit einem Business-Bereich (Gmail bleibt persönlich).'); return cur ?? { v: 1, postfaecher: [] }; }
     liste[i] = neu; ergebnis = neu;
     return { v: 1, postfaecher: liste };
   });

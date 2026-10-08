@@ -14,11 +14,11 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { ladeGmailStand } from '@/lib/gmail/stand';
 import { eigeneAdressen, gmailBezug, mailLinkFuer } from '@/lib/gmail/zuordnung';
-import { ladePostfaecher } from '@/lib/postfach/register';
 import { ladeImapStand } from '@/lib/postfach/spiegel';
 import { kurzHash } from '@/lib/postfach/rfc822';
 import { gespraechPfad, gespraechTeile, imapFaeden, type StromKopf } from './strom';
 import { ladeInboxZustand } from './zustand';
+import { ladeGeteilt, postfachAufloesen } from './teilen-server';
 
 const betreffZeile = (b: string) => b.replace(/\s+/g, ' ').trim().slice(0, 120) || '(kein Betreff)';
 
@@ -35,9 +35,11 @@ export async function nachrichtenVon(person: string, id: string): Promise<{ koep
   // WhatsApp (07.10.): Köpfe aus dem Spiegel der Business-Nummer — nur mit Zugang (lib/whatsapp/strom.ts).
   if (t.quelle === 'whatsapp') { const { whatsappNachrichtenVon } = await import('@/lib/whatsapp/strom'); return whatsappNachrichtenVon(person, t.postfach, t.schluessel); }
   if (t.quelle !== 'imap') return null;
-  const p = (await ladePostfaecher(person)).find(x => x.id === t.postfach && x.quelle === 'imap');
-  if (!p) return null;
-  const s = await ladeImapStand(person);
+  // Eigenes Postfach oder ein Team-Postfach, das die Person sehen darf (08.10.) — die Köpfe liegen im Spiegel des BESITZERS.
+  const r = await postfachAufloesen(person, t.postfach);
+  if (!r || r.postfach.quelle !== 'imap') return null;
+  const p = r.postfach;
+  const s = await ladeImapStand(r.besitzer);
   const liste = Object.values(s.koepfe).filter(k => k.postfachId === p.id);
   const faeden = imapFaeden(liste, kurzHash);
   const koepfe = liste.filter(k => faeden.get(k.id) === t.schluessel).sort((a, b) => a.am.localeCompare(b.am));
@@ -72,7 +74,12 @@ export function gespraechSignale(person: string, id: string, koepfe: readonly St
  */
 export async function verlaufNachziehen(person: string, nur?: string): Promise<number> {
   const z = await ladeInboxZustand(person);
-  const bestaetigt = Object.entries(z.gespraeche).filter(([id, g]) => g.zuordnung && (!nur || id === nur));
+  // Team-Postfächer (08.10.): die Zuordnung liegt gemeinsam — nachgezogen über den Spiegel des Besitzers (hier: `person`, der Abgleich
+  // läuft unter dem Besitzer; „Zuordnen“ durch eine andere Person ruft diese Funktion für den Besitzer).
+  const eigeneTeam = Object.entries(await ladeGeteilt().catch(() => ({}))).filter(([id, g]) => g.zuordnung && id.startsWith('im~'));
+  const team: [string, typeof z.gespraeche[string]][] = [];
+  for (const [id, g] of eigeneTeam) { const pf = id.split('~')[1]; const r = await postfachAufloesen(person, pf); if (r && r.besitzer === person && r.geteilt) team.push([id, g]); }
+  const bestaetigt = [...Object.entries(z.gespraeche).filter(([id]) => !team.some(([t]) => t === id)), ...team].filter(([id, g]) => g.zuordnung && (!nur || id === nur));
   if (!bestaetigt.length) return 0;
   const kontakte = await kontakteFuerVerarbeitung();
   const je = new Map(kontakte.map(k => [k.id, k]));

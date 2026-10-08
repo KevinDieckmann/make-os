@@ -9,6 +9,7 @@
 import { gmailAusschalten } from '@/lib/google/trennen';
 import { googleAdresse } from '@/lib/google/verbindung';
 import { zustandOhnePostfach } from '@/lib/inbox/zustand';
+import { teamOhnePostfach, teilenUmschalten } from '@/lib/inbox/teilen-server';
 import { VOREINSTELLUNGEN } from './anbieter';
 import { imapAbgleichen } from './abgleich';
 import { verbindungPruefen } from './pruefen';
@@ -44,11 +45,17 @@ export async function postfachErneuern(person: string, id: string, passwort: str
   void imapAbgleichen(person, id, { erzwingen: true }).catch(() => { /* steht im Stand */ });
 }
 
-/** Bereich, Name, Absendername, Signatur (Gmail: legt den Register-Eintrag an). */
+/**
+ * Bereich, Name, Absendername, Signatur (Gmail: legt den Register-Eintrag an); „mit dem Team teilen“ (08.10.) — der Zustand der Gespräche
+ * zieht mit: an → in den gemeinsamen Bestand, aus → zurück zum Besitzer (lib/inbox/teilen-server.ts `teilenUmschalten`).
+ */
 export async function postfachEinstellen(person: string, id: string, b: Record<string, unknown>): Promise<Postfach> {
   const gmail = id === GMAIL_POSTFACH ? await googleAdresse(person) : null;
   if (id === GMAIL_POSTFACH && !gmail) throw new RegisterFehler('Gmail ist nicht verbunden.', 409);
-  return postfachAendern(person, id, b, gmail);
+  const vorher = !!(await ladePostfach(person, id))?.geteilt;
+  const p = await postfachAendern(person, id, b, gmail);
+  if (!!p.geteilt !== vorher) await teilenUmschalten(person, id, !!p.geteilt);
+  return p;
 }
 
 export async function postfachTrennen(person: string, id: string): Promise<{ war: boolean; nachrichten: number }> {
@@ -63,6 +70,8 @@ export async function postfachTrennen(person: string, id: string): Promise<{ war
   await waechterStoppen(person, id);
   const n = await spiegelEntfernen(person, id);
   await zustandOhnePostfach(person, `im~${id}~`);
+  // Team-Postfach (08.10.): auch der gemeinsame Zustand (Wiedervorlagen, „wer kümmert sich“) fällt weg — das Postfach gibt es nicht mehr.
+  await teamOhnePostfach(`im~${id}~`);
   await registerEntfernen(person, id);
   return { war: true, nachrichten: n };
 }

@@ -4,6 +4,59 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 08.10.2026 spät — Inbox teilen: Übergeben, Team-Postfach, Suche (nur lokal — Branch `inbox-teilen`; ROADMAP_Q4.md › Lücke 6)
+
+Kevin 08.10.: „Mail nicht übergebbar, keine Inbox-Suche → ‚An <Person> übergeben‘ (freigegebene Kopie), gemeinsames Postfach je Gesellschaft mit ‚wer
+kümmert sich‘, Suche über die eigenen Spiegel.“ Grundregel bleibt: niemand liest die Post der anderen Person — geteilt wird nur per Klick, gefiltert
+auf dem Server.
+
+**Gebaut**
+- **Übergeben** (`lib/inbox/teilen.ts` rein · `uebergaben-speicher.ts` · `uebergaben-server.ts` · Route `/api/inbox/uebergaben`): im eigenen Gespräch
+  (Gmail/IMAP) „Übergeben an …“ → Person + Notiz → der Server legt eine KOPIE an (Köpfe + Texte bis jetzt, Anhänge nur als Liste), Bestand
+  `inbox-uebergaben--<haushalt>`. Wählbar nur Personen des Haushalts mit Zugang zum Bereich: Business-Postfach → alle Konten, Privat-Postfach (auch
+  Gmail ohne Bereich) → nur volle Mitglieder (nie `finanzRecht: 'business'`). Fach „Übergeben“ in der Inbox („von <Vorname>, Kopie vom …“). Die
+  Empfängerin antwortet NUR aus einem eigenen Postfach (oder einem Team-Postfach, das sie sieht) desselben Raums — „Re:“ + In-Reply-To aus der
+  Kopie —, oder „Zurück an …“ mit Notiz; „Erledigt“ gilt für beide; „Kopie aktualisieren“ und „Erneut übergeben“ nur die übergebende Person (neue
+  Nachrichten wandern nie von selbst mit). Stand/409, Glocke (Art `postfach`, neutral, ohne Betreff), Protokoll nur Kennung + Feldnamen. Erledigte
+  Übergaben 90 Tage, dann weg (Löschfristen-Lauf).
+- **Team-Postfach** (`lib/inbox/teilen-server.ts`): Schalter „Mit dem Team teilen“ an einem EIGENEN IMAP-Postfach mit Business-Bereich (sonst 400;
+  ein geteiltes Postfach bekommt keinen Privat-Bereich). Dann sehen es alle Konten des Haushalts mit Zugang im Strom — EINE Filterstelle
+  `postfachSichtbar` neben `imBereich`; Passwort, Abgleich und Senden bleiben beim Besitzer, gesendet wird ALS das Postfach (die sendende Person
+  steht im Änderungsprotokoll, Feld `team-postfach`). Zustand (Wiedervorlage, erledigt, Zuordnung) und „wer kümmert sich“ liegen gemeinsam in
+  `inbox-geteilt--<haushalt>` (Stand je Gespräch → 409). Teilen an/aus zieht den Zustand mit. Archivieren/Gelesen gehen über den Zugang des Besitzers
+  an das Postfach. Lesen eines fremden Team-Postfachs (Gespräch, Anhang) steht im Lese-Protokoll (Bereich „inbox“, wessen Postfach, Anzahl).
+- **WhatsApp:** „wer kümmert sich“ ebenso (nur Personen mit WhatsApp-Zugang); Erledigt/Später bleiben je Person wie bisher.
+- **Suche** (`lib/inbox/suche-server.ts`, Route `/api/inbox/suche`): Feld „In der Inbox suchen“ oben (am Handy hinter der Lupe, Taste „/“). Gesucht
+  wird nur in dem, was die Person sieht (eigene Spiegel, sichtbare Team-Postfächer, WhatsApp mit Zugang, eigene Übergaben), im selben Bereichsfilter,
+  über Betreff, Absender, Empfänger, Text — EINE Such-Regel (`suchNorm`). Höchstens 40 je Seite, „mehr …“ lädt weiter, nie still gekürzt. Der
+  Suchbegriff steht in keinem Protokoll (Lese-Protokoll: Bereich „inbox“ + Anzahl).
+- **Recht:** Speicher-Register (beide Bestände mit Angaben), Art. 15/17 (`person-weitere.ts`: Übergaben, die die Person nennen, fallen ganz weg; der
+  gemeinsame Zustand wie der Inbox-Zustand inkl. WhatsApp-Nummer), Konto-Export (eigene Übergaben, „wer kümmert sich“) und Konto-Löschen (Übergaben
+  der Person weg, „wer kümmert sich“ weg, Zustand ihrer Team-Postfächer weg), neuer Lese-Bereich `inbox`.
+- **Wächter:** `tests/inbox-teilen.test.ts` (rein + Route: Rechte, Privat nie an „nur Business“, fremder Haushalt/Dienstweg 403, manipuliertes
+  „geteilt“ an einem Privat-Postfach bleibt unsichtbar, 409, Antworten nur aus eigenem Postfach, Suche ohne fremde Treffer und ohne Begriff im
+  Protokoll, Seiten, Art. 15/17, Konto); Messlatte-Saat um eine Übergabe an eine dritte Person und ein manipuliert „geteiltes“ Privat-Postfach
+  ergänzt; WhatsApp-„wer kümmert sich“ in `tests/inbox-whatsapp-ui.test.ts`.
+
+**So testet ihr** (zwei Konten im Haushalt, z. B. Inhaber + zweite Person; Business-Postfach beim Inhaber verbunden)
+1. Als Inhaber: Inbox → ein Business-Gespräch öffnen → „Übergeben an …“ → zweite Person wählen → Notiz „Bitte du“ → „Übergeben“.
+   Erwartet: Meldung „Übergeben“, im Gespräch steht „an … übergeben · offen“ mit „Kopie aktualisieren“.
+2. Als zweite Person: Glocke zeigt „… hat dir ein Gespräch übergeben.“ (ohne Betreff) → Klick → Inbox öffnet die Übergabe: „von <Vorname>, Kopie vom
+   …“, Notiz, Nachrichten; Anhänge stehen nur als Namen (kein Download).
+3. Als zweite Person: „Antworten“ → „Aus deinem Postfach“ zeigt nur eigene Business-Postfächer → Text → „Senden“. Danach „Zurück an <Vorname>“ mit
+   Notiz bzw. „Erledigt“ → beim Inhaber steht dasselbe (Fach „Übergeben“).
+4. Ein Privat-Gespräch übergeben: in der Auswahl fehlen Konten mit „nur Business“.
+5. Als Inhaber: Inbox › Postfächer → Business-IMAP-Postfach aufklappen → „Mit dem Team teilen“ an. Als zweite Person: Inbox zeigt dessen Gespräche
+   (Chip „Team-Postfach · von …“), Postfächer › „Mit dir geteilt“. Im Gespräch „Wer kümmert sich“ → „Ich kümmere mich“; beim Inhaber steht in der
+   Zeile „<Vorname> kümmert sich“. Antworten der zweiten Person geht als dieses Postfach raus.
+6. Suche: Inbox → „/“ drücken (Handy: Lupe) → „mueller“ eingeben → Gespräche mit „Müller“ erscheinen, Treffer hervorgehoben; ein Begriff aus einem
+   Privat-Gespräch des Inhabers findet die zweite Person nie.
+7. Teilen wieder aus → bei der zweiten Person verschwinden die Gespräche; Wiedervorlagen bleiben beim Inhaber.
+
+**Rückweg:** nur neue Bestände (`inbox-uebergaben--*`, `inbox-geteilt--*`) und optionale Felder (`Postfach.geteilt`, Lese-Bereich `inbox`). Der alte
+Stand ignoriert sie; ein geteiltes Postfach ist dort wieder nur beim Besitzer sichtbar, sein gemeinsamer Zustand (Wiedervorlagen) liegt dann nicht beim
+Besitzer — vorher „Teilen aus“ klicken, dann wandert er zurück.
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:

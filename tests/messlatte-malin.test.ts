@@ -301,6 +301,8 @@ const SYS = {
   // Datenschutz vor dem Upload (08.10. spät): Tageslauf je Person (Ausrichtung mit Gesundheitskontext), persönliche Kennungen der Stammdaten.
   tageslauf: 'MESSLATTE-SYS-TAGESLAUF',
   steuerId: 'MESSLATTE-SYS-STEUERID',
+  // Inbox teilen (08.10., Lücke 6): eine Übergabe von Kevin an eine DRITTE Person des Haushalts — Malin ist nicht beteiligt.
+  uebergabe: 'MESSLATTE-SYS-UEBERGABE-NOTIZ',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -370,7 +372,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     const { localDay, tagePlus } = await import('@/lib/zeit');
     const H = localDay();
     const J = new Date().toISOString();
-    await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied')], einladungen: [] });
+    // Dritte Person des Haushalts (08.10., Inbox teilen): Empfängerin einer Übergabe, an der Malin nicht beteiligt ist.
+    await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied'), konto('k3', 'dritte', 'mitglied')], einladungen: [] });
 
     // Kalender (Mac-Stand): ein privater Termin von Kevin — für Malin nur „Belegt“.
     await db.saveJson('calendar-cache', { at: J, quelle: 'mac', events: [
@@ -434,10 +437,17 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     // Visitenkarte, Postfach + Mail-Kopf, Haut.
     await db.saveJson('visitenkarten--kevin', { karten: [{ id: 'vk-messlatte', bezeichnung: SYS.karte, vorname: 'Kevin', firma: SYS.karte }] });
     const PF = 'pf-11111111-2222-4333-8444-555555555555';
-    await db.saveJson('postfaecher--kevin', { v: 1, postfaecher: [{ id: PF, quelle: 'imap', bereich: 'privat', anzeigename: SYS.postfach, adresse: 'kevin.messlatte@example.invalid', anbieter: 'icloud', angelegtAm: '2026-10-06' }] });
+    // `geteilt: true` an einem PRIVAT-Postfach (Inbox teilen, 08.10.) — so stünde es nur nach einer Manipulation im Bestand; die Sicht
+    // (`postfachSichtbar`) darf es trotzdem nie zu Malin bringen.
+    await db.saveJson('postfaecher--kevin', { v: 1, postfaecher: [{ id: PF, quelle: 'imap', bereich: 'privat', anzeigename: SYS.postfach, adresse: 'kevin.messlatte@example.invalid', anbieter: 'icloud', angelegtAm: '2026-10-06', geteilt: true }] });
     await db.saveJson('imap-stand--kevin', { v: 1, person: 'kevin', postfaecher: { [PF]: { at: J } }, koepfe: {
       [`${PF}:e:1:1`]: { id: `${PF}:e:1:1`, threadId: 'x', am: J, von: { name: 'Freundin', email: 'freundin@example.invalid' }, an: [{ email: 'kevin.messlatte@example.invalid' }], cc: [], betreff: SYS.mail, ausschnitt: SYS.mail, labels: ['INBOX'], anhaenge: [], postfachId: PF, ordner: 'e', uidValidity: '1', uid: 1, wurzel: '<m1@x>', messageId: '<m1@x>' },
     } });
+    await db.saveJson('inbox-uebergaben--haus-messlatte', { v: 1, uebergaben: [{
+      id: 'ub-11111111-2222-4333-8444-555555555555', von: 'kevin', an: 'dritte', gespraech: `im~${PF}~0123456789abcdef0123`, quelle: 'imap', postfachId: PF, bereich: 'privat',
+      betreff: SYS.mail, gegenueber: { email: 'freundin@example.invalid' }, notiz: SYS.uebergabe, kuemmert: 'dritte', status: 'offen',
+      angelegtAm: J, kopieAm: J, geaendertAm: J, nachrichten: [{ id: `${PF}:e:1:1`, am: J, von: { email: 'freundin@example.invalid' }, an: [], cc: [], betreff: SYS.mail, text: SYS.uebergabe, vonUns: false, anhaenge: [] }], verlauf: [],
+    }] });
     await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
     const { speicherFuer: sf } = await import('@/lib/zoe/raum');
     await db.saveJson(sf('gesundheit-koerper', 'kevin'), { v: 1, leitsatz: SYS.koerper, beschwerden: [{ id: 'kb-messlatte', name: SYS.koerper, status: '', notiz: SYS.koerper, ton: 'achtung' }], hebel: [], stufen: [], zusammenhaenge: [], hinweis: SYS.koerper, symptom: { name: SYS.koerper }, sauberZaehler: true, routinenHinweise: [] });

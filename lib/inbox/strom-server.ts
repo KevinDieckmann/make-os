@@ -7,6 +7,10 @@
 //   · `space=privat`        nur Postfächer im Privat-Bereich (`privat` und Privat-Einheiten wie die Selbstständigkeit)
 //   · ohne Filter („Alle“)   alle EIGENEN Postfächer; ein Postfach ohne Bereich nur hier
 // Eine andere Person sieht nie etwas davon: es gibt keinen Parameter für die Person — sie kommt aus der Sitzung.
+// Team (08.10., Lücke 6): dazu kommen Team-Postfächer ANDERER Personen, die diese Person sehen darf — entschieden an EINER Stelle neben
+// `imBereich`: `postfachSichtbar` (lib/inbox/teilen.ts, eingesammelt über `geteiltePostfaecherFuer`). Ihr Zustand (Wiedervorlage, erledigt,
+// Zuordnung, „wer kümmert sich“) kommt aus dem gemeinsamen Bestand `inbox-geteilt--<haushalt>` — für den Besitzer genauso. Übergaben
+// (Kopien, `uebergaben`) stehen getrennt neben den Gesprächen und laufen durch denselben Bereichsfilter.
 
 import { localDay } from '@/lib/zeit';
 import { bereichVon } from '@/lib/einheiten';
@@ -23,8 +27,12 @@ import { kurzHash } from '@/lib/postfach/rfc822';
 import { abgleichAlter } from '@/lib/kalender/icloud';
 import { bereichName, GMAIL_POSTFACH, type Postfach, type PostfachOeffentlich, type PostfachZustand } from '@/lib/postfach/typen';
 import { whatsappImStrom } from '@/lib/whatsapp/strom';
+import { whatsappFuer } from '@/lib/whatsapp/server';
 import { absenderSchluessel, ladeInboxZustand, type InboxZustand } from './zustand';
-import { gespraecheBauen, lageBauen, zoeSatz, type Gespraech, type LageZeile, type PostfachKurz, type StromKopf, type ZoeSatz } from './strom';
+import { gespraecheBauen, lageBauen, zoeSatz, type Gespraech, type GespraechZustand, type LageZeile, type PostfachKurz, type StromKopf, type ZoeSatz } from './strom';
+import { geteiltePostfaecherFuer, ladeGeteilt, personenMitBlick, teamPersonen, type TeamPerson } from './teilen-server';
+import { postfachTeilbar, standVon, type GespraechTeam, type TeamZustand, type UebergabeZeile } from './teilen';
+import { uebergabeZeilenFuer } from './uebergaben-speicher';
 
 export interface StromFilter { bereich?: string; space?: 'privat' | 'business' }
 
@@ -43,6 +51,8 @@ export interface Strom {
   bereiche: { id: string; name: string }[];
   google: { konfiguriert: boolean; verbunden: boolean; bereit: boolean; konto?: string; getrennt?: boolean };
   heute: string;
+  /** Übergaben (Kopien) an bzw. von dieser Person — ohne Texte, im selben Bereichsfilter. */
+  uebergaben: UebergabeZeile[];
 }
 
 /** Zustand eines IMAP-Postfachs für die Leiste (rein). */
@@ -67,9 +77,13 @@ async function zuordnungen(koepfe: Record<string, StromKopf[]>, eigene: Record<s
   return raus;
 }
 
-/** Alles, was der Strom einer Person braucht (ohne Filter) — auch für Aktionen, Kontext und ZOE. */
-export async function stromRoh(person: string, heute = localDay(), zustand?: InboxZustand): Promise<{ gespraeche: Gespraech[]; postfaecher: (Postfach & { oeffentlich: PostfachOeffentlich })[]; google: Strom['google']; namen: Record<string, string> }> {
-  const [register, gs, imap, z, namen] = await Promise.all([ladePostfaecher(person), googleStatus(person), ladeImapStand(person), zustand ? Promise.resolve(zustand) : ladeInboxZustand(person), bereichNamen()]);
+/** Ein Postfach im Rohstrom: das Register-Postfach + was der Browser sieht; bei Team-Postfächern der Besitzer. */
+export type RohPostfach = Postfach & { oeffentlich: PostfachOeffentlich; besitzer: string };
+
+/** Alles, was der Strom einer Person braucht (ohne Filter) — auch für Aktionen, Kontext, Suche und ZOE. */
+export async function stromRoh(person: string, heute = localDay(), zustand?: InboxZustand): Promise<{ gespraeche: Gespraech[]; postfaecher: RohPostfach[]; google: Strom['google']; namen: Record<string, string>; team: TeamPerson[] }> {
+  const [register, gs, imap, z, namen, team, gemeinsam] = await Promise.all([ladePostfaecher(person), googleStatus(person), ladeImapStand(person), zustand ? Promise.resolve(zustand) : ladeInboxZustand(person), bereichNamen(), teamPersonen(), ladeGeteilt()]);
+  const fremde = await geteiltePostfaecherFuer(person, team);
   const bereit = gs.verbunden && await gmailBereit(person).catch(() => false);
   const gmail = bereit ? await ladeGmailStand(person).catch(() => null) : null;
   const liste: Postfach[] = register.filter(p => p.quelle !== 'gmail' || bereit);
@@ -77,7 +91,9 @@ export async function stromRoh(person: string, heute = localDay(), zustand?: Inb
   const koepfe: Record<string, StromKopf[]> = {};
   const eigene: Record<string, string[]> = {};
   const kurz: PostfachKurz[] = [];
-  const mitOeffentlich: (Postfach & { oeffentlich: PostfachOeffentlich })[] = [];
+  const mitOeffentlich: RohPostfach[] = [];
+  /** Team-Postfächer (eigene geteilte + sichtbare fremde): Postfach-Kennung → Besitzer. Ihr Zustand liegt gemeinsam. */
+  const teamPf = new Map<string, { p: Postfach; besitzer: string; besitzerName: string }>();
   const jetzt = Date.now();
   for (const p of liste) {
     let zustandP: PostfachZustand;
@@ -95,20 +111,62 @@ export async function stromRoh(person: string, heute = localDay(), zustand?: Inb
       eigene[p.id] = [];
       zustandP = { stufe: 'vorbereitet' };
     }
+    const geteilt = !!p.geteilt && postfachTeilbar(p);
+    if (geteilt) teamPf.set(p.id, { p, besitzer: person, besitzerName: team.find(t => t.speicher === person)?.name ?? person });
     kurz.push({ id: p.id, quelle: p.quelle, bereich: p.bereich, anzeigename: p.anzeigename, eigene: eigene[p.id] });
-    mitOeffentlich.push({ ...p, oeffentlich: {
+    mitOeffentlich.push({ ...p, besitzer: person, oeffentlich: {
       id: p.id, quelle: p.quelle, bereich: p.bereich, bereichName: bereichName(p.bereich, namen), anzeigename: p.anzeigename,
       adresse: p.quelle === 'gmail' ? (gs.konto ?? '') : p.adresse, ...(p.absenderName ? { absenderName: p.absenderName } : {}), ...(p.signatur ? { signatur: p.signatur } : {}),
-      ...(p.anbieter ? { anbieter: p.anbieter } : {}), zustand: zustandP,
+      ...(p.anbieter ? { anbieter: p.anbieter } : {}), zustand: zustandP, ...(geteilt ? { geteilt: true } : {}),
     } });
   }
+  // Team-Postfächer anderer Personen (nur sichtbare — `postfachSichtbar`): Köpfe aus dem Spiegel des BESITZERS.
+  const fremdeStaende = new Map<string, ImapStand>();
+  for (const f of fremde) {
+    const st = fremdeStaende.get(f.besitzer) ?? await ladeImapStand(f.besitzer);
+    fremdeStaende.set(f.besitzer, st);
+    const p = f.postfach;
+    koepfe[p.id] = Object.values(st.koepfe).filter(k => k.postfachId === p.id);
+    eigene[p.id] = [p.adresse];
+    teamPf.set(p.id, { p, besitzer: f.besitzer, besitzerName: f.besitzerName });
+    kurz.push({ id: p.id, quelle: p.quelle, bereich: p.bereich, anzeigename: p.anzeigename, eigene: eigene[p.id] });
+    mitOeffentlich.push({ ...p, besitzer: f.besitzer, oeffentlich: {
+      id: p.id, quelle: p.quelle, bereich: p.bereich, bereichName: bereichName(p.bereich, namen), anzeigename: p.anzeigename, adresse: p.adresse,
+      ...(p.absenderName ? { absenderName: p.absenderName } : {}), ...(p.signatur ? { signatur: p.signatur } : {}),
+      zustand: imapZustand(st, p.id, jetzt), geteilt: true, fremd: { besitzerName: f.besitzerName },
+    } });
+  }
+  // Zustand: eigener je Person — für Team-Postfächer ersetzt durch den gemeinsamen (für alle derselbe, auch für den Besitzer).
+  const teamPraefix = Array.from(teamPf.keys()).map(id => `im~${id}~`);
+  const imTeam = (k: string) => teamPraefix.some(x => k.startsWith(x));
+  const gespraechZustand: Record<string, GespraechZustand> = Object.fromEntries(Object.entries(z.gespraeche).filter(([k]) => !imTeam(k)));
+  for (const [k, v] of Object.entries(gemeinsam)) if (imTeam(k)) { const { kuemmert: _k, ...rest } = v; gespraechZustand[k] = rest; }
   const zu = await zuordnungen(koepfe, eigene);
-  const gespraeche = gespraecheBauen({ postfaecher: kurz, koepfe, zuordnung: zu, zustand: z.gespraeche, absender: z.absender, heute, hash: kurzHash });
+  const gespraeche = gespraecheBauen({ postfaecher: kurz, koepfe, zuordnung: zu, zustand: gespraechZustand, absender: z.absender, heute, hash: kurzHash });
+  const namenTeam = Object.fromEntries(team.map(t => [t.speicher, t.name]));
+  const teamVon = (id: string, personen: TeamPerson[], extra?: GespraechTeam['postfach']): GespraechTeam => {
+    const v: TeamZustand | undefined = gemeinsam[id];
+    return {
+      ...(extra ? { postfach: extra } : {}),
+      ...(v?.kuemmert ? { kuemmert: { person: v.kuemmert.person, name: namenTeam[v.kuemmert.person] ?? v.kuemmert.person, seit: v.kuemmert.seit } } : {}),
+      personen: personen.map(t => ({ speicher: t.speicher, name: t.name })), stand: standVon(v),
+    };
+  };
+  for (const g of gespraeche) {
+    const t = teamPf.get(g.postfachId);
+    if (t) g.team = teamVon(g.id, personenMitBlick(t.p, t.besitzer, team), { besitzer: t.besitzer, besitzerName: t.besitzerName, eigenes: t.besitzer === person });
+  }
   // WhatsApp (07.10., lib/whatsapp/strom.ts): die Business-Nummer der INSTANZ — nur für Personen mit Zugang (Haushalt des Inhabers,
   // ggf. WHATSAPP_PERSONEN), Bereich immer Business; der Filter `imBereich` unten gilt genauso (Sicht „Privat“ sieht sie nie).
+  // „Wer kümmert sich“ (08.10.) kommt aus dem gemeinsamen Bestand; wählbar sind nur Personen mit WhatsApp-Zugang.
   const wa = await whatsappImStrom(person, z.gespraeche, heute, namen, Date.now(), z.absender).catch(e => { console.warn(`[whatsapp] Strom: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); return null; });
-  if (wa) { mitOeffentlich.push(wa.postfach); gespraeche.push(...wa.gespraeche); }
-  return { gespraeche, postfaecher: mitOeffentlich, google: { konfiguriert: gs.konfiguriert, verbunden: gs.verbunden, bereit, ...(gs.konto ? { konto: gs.konto } : {}), ...(gs.getrennt ? { getrennt: true } : {}) }, namen };
+  if (wa) {
+    const waPersonen = (await Promise.all(team.map(async t => ((await whatsappFuer(t.speicher).catch(() => null)) ? t : null)))).filter((t): t is TeamPerson => !!t);
+    for (const g of wa.gespraeche) g.team = teamVon(g.id, waPersonen);
+    mitOeffentlich.push({ ...wa.postfach, besitzer: person });
+    gespraeche.push(...wa.gespraeche);
+  }
+  return { gespraeche, postfaecher: mitOeffentlich, google: { konfiguriert: gs.konfiguriert, verbunden: gs.verbunden, bereit, ...(gs.konto ? { konto: gs.konto } : {}), ...(gs.getrennt ? { getrennt: true } : {}) }, namen, team };
 }
 
 /**
@@ -145,5 +203,6 @@ export async function stromFuer(person: string, f: StromFilter = {}): Promise<St
     bereiche: bereicheDa.filter(b => imBereich(b, f.space ? { space: f.space } : {})).map(b => ({ id: b, name: bereichName(b, r.namen) })),
     google: r.google,
     heute,
+    uebergaben: (await uebergabeZeilenFuer(person, r.team)).filter(u => imBereich(u.bereich, f)),
   };
 }

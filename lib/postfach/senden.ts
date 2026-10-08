@@ -9,7 +9,7 @@
 //     sofort ein Abgleich, damit die Antwort im Gespräch steht
 // Kein Text in Protokollen.
 
-import { antwortEmpfaenger, pruefeEmpfaenger, SendenFehler, TEXT_MAX, EMPFAENGER_MAX } from '@/lib/gmail/senden';
+import { antwortEmpfaenger, pruefeEmpfaenger, SendenFehler, TEXT_MAX, EMPFAENGER_MAX, type AntwortBezug } from '@/lib/gmail/senden';
 import { adresseGueltig, adresseKlein, antwortBetreff, mimeBauen, referenzenFuer, zeilenfrei } from '@/lib/gmail/mime';
 import type { Adr } from '@/lib/gmail/typen';
 import { ladePostfach, zugangLesen } from './register';
@@ -28,6 +28,8 @@ export interface ImapSendenEingabe {
   betreff?: string;
   text: string;
   uwgBestaetigt?: boolean;
+  /** Antwort auf eine übergebene Mail (08.10.) — wie bei Gmail (lib/gmail/senden.ts `AntwortBezug`). */
+  bezug?: AntwortBezug;
 }
 
 export interface ImapSendenErgebnis { messageId: string; von: string; an: string[]; abgelegt: 'selbst' | 'anbieter' | 'nicht' }
@@ -55,12 +57,12 @@ export async function imapSenden(e: ImapSendenEingabe): Promise<ImapSendenErgebn
   const auf: ImapKopf | undefined = e.ausNachricht ? stand.koepfe[e.ausNachricht] : undefined;
   if (e.ausNachricht && (!auf || auf.postfachId !== p.id)) throw new SendenFehler('nicht-gefunden', 'Die Mail, auf die geantwortet wird, gibt es im Spiegel nicht (mehr).', 404);
   const eigene = eigeneAdressenVon(p);
-  const standard = auf ? antwortEmpfaenger(auf, eigene, false) : { an: [], cc: [] };
+  const standard = auf ? antwortEmpfaenger(auf, eigene, false) : { an: e.bezug?.empfaenger ?? [], cc: [] };
   const an = sauber(e.an?.length ? e.an : standard.an);
   const cc = sauber(e.cc);
   if (!an.length) throw new SendenFehler('kein-empfaenger', 'Es fehlt ein Empfänger.', 400);
   if (an.length + cc.length > EMPFAENGER_MAX) throw new SendenFehler('zu-viele', `Höchstens ${EMPFAENGER_MAX} Empfänger.`, 400);
-  const betreff = auf ? antwortBetreff(auf.betreff) : zeilenfrei(e.betreff ?? '');
+  const betreff = auf ? antwortBetreff(auf.betreff) : e.bezug ? antwortBetreff(zeilenfrei(e.bezug.betreff)) : zeilenfrei(e.betreff ?? '');
   if (!betreff) throw new SendenFehler('betreff', 'Es fehlt ein Betreff.', 400);
 
   const pr = await pruefeEmpfaenger([...an, ...cc].map(a => a.email), text);
@@ -72,6 +74,7 @@ export async function imapSenden(e: ImapSendenEingabe): Promise<ImapSendenErgebn
   const roh = mimeBauen({
     von: { ...(p.absenderName ? { name: p.absenderName } : {}), email: p.adresse }, an, ...(cc.length ? { cc } : {}), betreff, text,
     ...(auf?.messageId ? { inReplyTo: auf.messageId, references: referenzenFuer(auf.references, auf.messageId) } : {}),
+    ...(!auf && e.bezug?.messageId ? { inReplyTo: e.bezug.messageId, references: referenzenFuer(e.bezug.references, e.bezug.messageId) } : {}),
   });
   const messageId = (/^Message-ID: (<[^>]+>)/m.exec(roh) ?? [])[1] ?? '';
   const passwort = await zugangLesen(e.person, p.id);

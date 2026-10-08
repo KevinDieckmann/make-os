@@ -11,6 +11,7 @@
 import { fachVon, fristAus, type FachId, type FachNachricht } from './faecher';
 import type { Adr, GmailKopf, Zuordnung } from '@/lib/gmail/typen';
 import type { Fenster, WaKopfInfo } from '@/lib/whatsapp/typen';
+import type { GespraechTeam } from './teilen';
 
 export type GespraechQuelle = 'gmail' | 'imap' | 'whatsapp';
 
@@ -66,6 +67,11 @@ export interface Gespraech {
    * (frei schreiben nur, solange `fenster.offen`; sonst Vorlage). Uhr/Vorlagen-Wähler: components/os/whatsapp/.
    */
   whatsapp?: { nummer: string; fenster: Fenster; profilname?: string };
+  /**
+   * Team (08.10., Lücke 6): Gespräch eines Team-Postfachs bzw. der WhatsApp-Business-Nummer — „wer kümmert sich“ und gemeinsamer
+   * Zustand (lib/inbox/teilen.ts, gesetzt auf dem Server in strom-server.ts).
+   */
+  team?: GespraechTeam;
 }
 
 // ── Gesprächs-Kennungen ─────────────────────────────────────────────────────

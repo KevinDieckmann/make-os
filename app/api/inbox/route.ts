@@ -3,6 +3,7 @@
 //      Gespräche statt Einzelmails (Gmail + IMAP; WhatsApp vorbereitet), serverseitig nach Bereich gefiltert (lib/inbox/strom-server.ts
 //      `imBereich`) — ein Business-Bereich sieht nie Privates; ohne Filter alle EIGENEN Postfächer. ETag (304 beim 60-s-Abgleich).
 // POST { aktion, id, bis?, kontaktId? }          → erledigt · gelesen · ungelesen · spaeter · zurueck · zuordnen · loesen · zulassen · blocken · offen
+//      { aktion: 'kuemmert', id, wer|null, stand } → „wer kümmert sich“ (Team-Postfach, WhatsApp; 08.10.) — veralteter Stand → 409 + aktueller
 //      { aktion: 'alle-erledigen', ids }         → am Stück (Info & Rundschreiben), höchstens 200 (sonst 413)
 //      { aktion: 'abgleichen' }                  → jetzt mit allen eigenen Postfächern abgleichen
 // NUR die eigene Person aus der Sitzung (`eigenePerson`): der Dienstweg (ZOE, Takt, Skripte) bekommt 403, ein anderes Konto sieht nie
@@ -14,7 +15,10 @@ import { speicherStand } from '@/lib/store/local-db';
 import { etagAus, jsonAntwort, unveraendert } from '@/lib/http/json-antwort';
 import { localDay } from '@/lib/zeit';
 import { stromFuer, type StromFilter } from '@/lib/inbox/strom-server';
-import { aktionAusfuehren, alleErledigen, istAktion, AktionsFehler } from '@/lib/inbox/aktionen';
+import { aktionAusfuehren, alleErledigen, istAktion, AktionsFehler, kuemmertSetzen } from '@/lib/inbox/aktionen';
+import { teilenStandNamen } from '@/lib/inbox/uebergaben-speicher';
+import { TeamKonflikt } from '@/lib/inbox/teilen-server';
+import { TeilenFehler } from '@/lib/inbox/teilen';
 import { istGespraechId } from '@/lib/inbox/strom';
 import { zustandName } from '@/lib/inbox/zustand';
 import { registerName, imapStandName } from '@/lib/postfach/typen';
@@ -48,7 +52,7 @@ export async function GET(req: Request) {
   const f = filterAus(req);
   if (!f) return NextResponse.json({ ok: false, fehler: 'bereich bzw. space ist ungültig.' }, { status: 400 });
   const p = z.person;
-  const etag = etagAus('inbox2', p, f.bereich ?? '', f.space ?? '', await speicherStand([registerName(p), imapStandName(p), gmailStandName(p), zustandName(p), 'kontakte', 'crm', `google-verbindung--${p}`, WA_SPIEGEL, WA_ZUSTAND]), localDay(), String(Math.floor(Date.now() / 60_000)));
+  const etag = etagAus('inbox2', p, f.bereich ?? '', f.space ?? '', await speicherStand([registerName(p), imapStandName(p), gmailStandName(p), zustandName(p), 'kontakte', 'crm', `google-verbindung--${p}`, WA_SPIEGEL, WA_ZUSTAND, 'konten', ...(await teilenStandNamen(p))]), localDay(), String(Math.floor(Date.now() / 60_000)));
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const s = await stromFuer(p, f);
@@ -57,7 +61,8 @@ export async function GET(req: Request) {
 }
 
 function fehlerAntwort(e: unknown): NextResponse {
-  if (e instanceof AktionsFehler || e instanceof ZustandFehler) return NextResponse.json({ ok: false, fehler: e.message }, { status: e.status });
+  if (e instanceof TeamKonflikt) return NextResponse.json({ ok: false, konflikt: true, fehler: e.message, ...e.aktuell }, { status: 409 });
+  if (e instanceof AktionsFehler || e instanceof ZustandFehler || e instanceof TeilenFehler) return NextResponse.json({ ok: false, fehler: e.message }, { status: e.status });
   if (e instanceof PostfachFehler) return NextResponse.json({ ok: false, code: e.code, fehler: e.message }, { status: e.code === 'anmeldung' ? 409 : e.status });
   return gmailFehlerAntwort(e);
 }
@@ -65,7 +70,7 @@ function fehlerAntwort(e: unknown): NextResponse {
 export async function POST(req: Request) {
   const z = await eigenePerson(req, true, NUR_EIGENE_POST);
   if (z instanceof NextResponse) return z;
-  let b: { aktion?: unknown; id?: unknown; ids?: unknown; bis?: unknown; kontaktId?: unknown };
+  let b: { aktion?: unknown; id?: unknown; ids?: unknown; bis?: unknown; kontaktId?: unknown; wer?: unknown; stand?: unknown };
   try { b = await jsonBegrenzt(req, 64 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   try {
     if (b.aktion === 'abgleichen') {
@@ -80,6 +85,14 @@ export async function POST(req: Request) {
       if (!Array.isArray(b.ids) || !b.ids.every(istGespraechId)) return NextResponse.json({ ok: false, fehler: 'ids (Gespräche) fehlen.' }, { status: 400 });
       if (b.ids.length > 200) return NextResponse.json({ ok: false, fehler: 'Höchstens 200 Gespräche auf einmal.' }, { status: 413 });
       const r = await alleErledigen(z.person, b.ids as string[]);
+      return NextResponse.json({ ok: true, ...r });
+    }
+    if (b.aktion === 'kuemmert') {
+      if (!istGespraechId(b.id)) return NextResponse.json({ ok: false, fehler: 'id (Gespräch) fehlt.' }, { status: 400 });
+      if (typeof b.stand !== 'string' || !/^[0-9a-f]{1,32}$/.test(b.stand)) return NextResponse.json({ ok: false, fehler: 'stand fehlt — bitte neu laden.' }, { status: 400 });
+      if (b.wer !== null && (typeof b.wer !== 'string' || !/^[a-z0-9-]{1,40}$/.test(b.wer))) return NextResponse.json({ ok: false, fehler: 'wer ist ungültig.' }, { status: 400 });
+      const r = await kuemmertSetzen(z.person, b.id, b.wer as string | null, b.stand);
+      await protokolliere('inbox', [{ op: 'geaendert', id: b.id, felder: ['kuemmert'] }], werAus(req)).catch(() => { /* nur Protokoll */ });
       return NextResponse.json({ ok: true, ...r });
     }
     if (!istAktion(b.aktion) || !istGespraechId(b.id)) return NextResponse.json({ ok: false, fehler: 'aktion und id (Gespräch) fehlen.' }, { status: 400 });

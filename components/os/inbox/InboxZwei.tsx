@@ -10,6 +10,9 @@
 // Alles kommt gefiltert vom Server (/api/inbox) — die Oberfläche blendet nie bloß aus. Nichts wird ohne Klick zugeordnet oder gesendet.
 // WhatsApp (07.10. abends): Zeilen mit Symbol, Name (Akte bzw. Profilname) + Nummer und dem Stand des 24-h-Fensters; „Neue Absender“
 // gilt auch für Nummern (Zulassen · Blocken); Lagebild und Fächer zählen WhatsApp mit (derselbe Strom).
+// Teilen (08.10., Lücke 6 „Business Couple“): Fach „Übergeben“ (Kopien an bzw. von mir, `offen=ub-…` öffnet sie), „wer kümmert sich“ an
+// Gesprächen der Team-Postfächer und bei WhatsApp, Suchfeld oben (am Handy hinter der Lupe, Taste „/“) — Suche auf dem Server über das,
+// was die Person sieht (/api/inbox/suche), Ergebnisse mit Hervorhebung statt der Arbeitsliste.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -20,14 +23,16 @@ import { gespraechPfad, sortieren, type LageZeile } from '@/lib/inbox/strom';
 import { aufgabeAusGespraech } from '@/lib/inbox/aus-gespraech';
 import { neueMailHolen, type NeueMail } from '@/lib/inbox/neue-mail';
 import type { Owner } from '@/types/common';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, SymbolKnopf, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
 import { GespraechAnsicht } from './Gespraech';
 import { Postfaecher, STUFE_FARBE, STUFE_TEXT } from './Postfaecher';
 import { Antwort } from './Antwort';
 import { WaSymbol, fensterJetzt } from '../whatsapp';
 import { fensterText, nummerAnzeige, type Fenster } from '@/lib/whatsapp/typen';
-import { aktion, holen, nameVon, senden, tagIn, zeitKurz, type GespraechZeile, type StromAntwort } from './daten';
+import { UebergabeAnsicht, UebergabenKarte } from './Teilen';
+import { SuchErgebnisse, SuchFeld } from './Suche';
+import { aktion, holen, istUebergabeId, nameVon, senden, tagIn, zeitKurz, type GespraechZeile, type StromAntwort } from './daten';
 
 type Filter = { fach: FachId | 'nachfassen' | 'wiedervorlage'; bereich: string | null } | null;
 /** WhatsApp-Zeile: Rest des 24-h-Fensters („noch 3 Std.“) bzw. „nur Vorlage“ (rein bis auf die Uhrzeit). */
@@ -73,16 +78,21 @@ export function InboxZwei() {
   const [ich, setIch] = useState('');
   const [neueMail, setNeueMail] = useState<NeueMail | null>(null);
   const [antwortStart, setAntwortStart] = useState<string | null>(null);
+  const [frage, setFrage] = useState('');
+  const [sucheAuf, setSucheAuf] = useState(false);
+  const suchFeld = useRef<HTMLInputElement>(null);
+  const sucht = frage.trim().length >= 2;
   const breit = useBreit();
   const handy = useHandy();
   const { melden, hinweis } = useRueckgaengig();
   const { state, dispatch } = useTasks();
 
-  const url = useMemo(() => {
+  const filterQuery = useMemo(() => {
     const q = new URLSearchParams();
     if (bereich !== 'alle') q.set('bereich', bereich); else if (space) q.set('space', space);
-    return `/api/inbox${q.toString() ? `?${q}` : ''}`;
+    return q.toString();
   }, [bereich, space]);
+  const url = `/api/inbox${filterQuery ? `?${filterQuery}` : ''}`;
 
   const laden = useCallback(async () => {
     const r = await holen<StromAntwort>(url);
@@ -121,6 +131,7 @@ export function InboxZwei() {
   }, [arbeit.map(g => g.id).join('|'), infoAuf, filter]);
   const reihe = gruppen.flatMap(g => (g.eingeklappt ? [] : g.liste));
   const offen = offenId ? sichtbar.find(g => g.id === offenId) ?? null : null;
+  const offeneUebergabe = istUebergabeId(offenId) ? offenId : null;
 
   const tun = useCallback(async (g: GespraechZeile, was: 'erledigt' | 'spaeter', bis?: string) => {
     setWeg(w => new Set(w).add(g.id));
@@ -150,6 +161,8 @@ export function InboxZwei() {
     function onKey(ev: KeyboardEvent) {
       const ziel = ev.target as HTMLElement | null;
       if (ev.metaKey || ev.ctrlKey || ev.altKey || ziel?.tagName === 'INPUT' || ziel?.tagName === 'TEXTAREA' || ziel?.tagName === 'SELECT' || ziel?.isContentEditable || ansicht !== 'liste') return;
+      // „/“ öffnet die Suche (wie in Gmail/Superhuman).
+      if (ev.key === '/') { ev.preventDefault(); setSucheAuf(true); setTimeout(() => suchFeld.current?.focus(), 0); return; }
       const k = ev.key.toLowerCase();
       const i = offenId ? reihe.findIndex(g => g.id === offenId) : -1;
       if (k === 'j' || ev.key === 'ArrowDown') { ev.preventDefault(); const n = reihe[Math.min(reihe.length - 1, i + 1)]; if (n) setOffenId(n.id); return; }
@@ -174,7 +187,7 @@ export function InboxZwei() {
     const wa = g.quelle === 'whatsapp' && g.whatsapp ? g.whatsapp : null;
     const unter = g.fach === 'warten'
       ? `${g.vonUns ? 'Du hast geschrieben' : 'Automatische Antwort'} · seit ${g.wartetTage} ${g.wartetTage === 1 ? 'Tag' : 'Tagen'} keine Antwort`
-      : `${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${wa ? `WhatsApp · ${fensterKurz(wa.fenster)} — ` : ''}${g.zuordnung?.firma ? `${g.zuordnung.firma} — ` : g.fach === 'neu' && !wa ? `${g.gegenueber.email} — ` : ''}${handy ? g.ausschnitt.slice(0, 80) + (g.ausschnitt.length > 80 ? ' …' : '') : g.ausschnitt}`;
+      : `${g.team?.kuemmert ? `${g.team.kuemmert.person === ich ? 'du kümmerst dich' : `${g.team.kuemmert.name} kümmert sich`} · ` : ''}${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${wa ? `WhatsApp · ${fensterKurz(wa.fenster)} — ` : ''}${g.zuordnung?.firma ? `${g.zuordnung.firma} — ` : g.fach === 'neu' && !wa ? `${g.gegenueber.email} — ` : ''}${handy ? g.ausschnitt.slice(0, 80) + (g.ausschnitt.length > 80 ? ' …' : '') : g.ausschnitt}`;
     // WhatsApp: der „Betreff“ ist der Anfang der Nachricht (steht schon unten) — oben stattdessen die Nummer.
     const titel = wa
       ? <><span style={{ color: KUGEL.smaragd, marginRight: 6 }}><WaSymbol groesse={14} /></span><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span>{nameVon(g) !== g.gegenueber.email ? <span style={{ color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}> · {nummerAnzeige(wa.nummer)}</span> : null}<span style={{ color: C.inkLeise }}>{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>
@@ -206,11 +219,14 @@ export function InboxZwei() {
 
   const anmeldung = (s?.postfaecher ?? []).filter(p => p.zustand.stufe === 'anmeldung');
   const lageZahl = (s?.lage ?? []).reduce((n, l) => n + l.antworten, 0);
-  const nichtsOffen = !!s && s.postfaecher.length > 0 && !arbeit.filter(g => g.fach !== 'info').length && !filter;
+  const uebergaben = s?.uebergaben ?? [];
+  const nichtsOffen = !!s && s.postfaecher.length > 0 && !arbeit.filter(g => g.fach !== 'info').length && !filter && !uebergaben.some(u => u.status !== 'erledigt');
+  const mitInhalt = !!s && (s.postfaecher.length > 0 || uebergaben.length > 0);
   const naechsteWv = (s?.gespraeche ?? []).map(g => g.wiedervorlage).filter((x): x is string => !!x && x !== 'faellig').sort()[0];
 
   const kopfRechts = (
     <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      {ansicht === 'liste' && handy && <SymbolKnopf ariaLabel={sucheAuf ? 'Suche schließen' : 'In der Inbox suchen'} onClick={() => { if (sucheAuf) { setSucheAuf(false); setFrage(''); } else { setSucheAuf(true); setTimeout(() => suchFeld.current?.focus(), 0); } }}>{sucheAuf ? '✕' : '⌕'}</SymbolKnopf>}
       {ansicht === 'liste' ? <Knopf leise onClick={() => setAnsicht('postfaecher')}>Postfächer</Knopf> : <Knopf leise onClick={() => setAnsicht('liste')}>‹ Zur Inbox</Knopf>}
       {ansicht === 'liste' && <span className="ui-nur-breit"><Knopf leise onClick={async () => { melden('Gleicht ab …'); const r = await senden<{ fehler?: number }>('/api/inbox', { aktion: 'abgleichen' }); melden(r.d.ok ? 'Abgeglichen.' : String(r.d.fehler ?? 'Abgleich ging nicht.')); void laden(); }}>Abgleichen</Knopf></span>}
     </span>
@@ -225,8 +241,13 @@ export function InboxZwei() {
     );
   }
 
-  const liste = (
+  const liste = sucht ? (
     <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+      <SuchErgebnisse frage={frage.trim()} filter={filterQuery} offenId={offenId} onOeffnen={id => setOffenId(id)} />
+    </div>
+  ) : (
+    <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+      <UebergabenKarte liste={uebergaben} offenId={offenId} onOeffnen={setOffenId} i={0} person={ich} />
       {filter && (
         <Hinweis art="info" aktion={<Knopf leise onClick={() => setFilter(null)}>Alle zeigen</Knopf>}>
           Gefiltert: {filter.fach === 'nachfassen' ? 'Nachfassen fällig' : filter.fach === 'wiedervorlage' ? 'Wiedervorlage' : FACH_LABEL[filter.fach]}{filter.bereich !== null ? ` · ${bereichWort(filter.bereich)}` : ''}
@@ -256,19 +277,26 @@ export function InboxZwei() {
     <Karte i={1} akzent={KUGEL.granat}>
       <GespraechAnsicht key={`${offen.id}-${antwortStart === offen.id ? 'r' : ''}`} id={offen.id} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} startAntwort={antwortStart === offen.id} />
     </Karte>
+  ) : offeneUebergabe ? (
+    <Karte i={1} akzent={KUGEL.granat}>
+      <UebergabeAnsicht key={offeneUebergabe} id={offeneUebergabe} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} />
+    </Karte>
   ) : null;
+  const istOffen = !!offen || !!offeneUebergabe;
+  const suchZeile = (!handy || sucheAuf) ? <div style={{ marginBottom: 14 }}><SuchFeld ref={suchFeld} wert={frage} onAendern={t => { setFrage(t); if (!t && handy) setSucheAuf(false); }} /></div> : null;
 
   return (
     <Seite titel="Inbox" unter={lageZahl > 0 ? `${lageZahl} ${lageZahl === 1 ? 'Gespräch braucht' : 'Gespräche brauchen'} eine Antwort.` : undefined} rechts={kopfRechts}>
       {fehler && <div style={{ marginBottom: 12 }}><Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal</Knopf>}>{fehler}</Hinweis></div>}
       {!s && !fehler && <Karte i={0}><Leer>lädt …</Leer></Karte>}
-      {s && !s.postfaecher.length && (
+      {s && !s.postfaecher.length && !uebergaben.length && (
         <Leerzustand symbol="✉" titel="Verbinde dein erstes Postfach" ton={KUGEL.granat} aktion={<Knopf haupt onClick={() => setAnsicht('postfaecher')}>Postfach verbinden</Knopf>}>
           iCloud, IONOS, Google Workspace oder ein anderer Anbieter — MAKE OS holt die Post selbst, sortiert sie in Fächer und zeigt, was gerade passiert.
         </Leerzustand>
       )}
       {/* Mit offenem Gespräch tritt das Lagebild zurück (Esc bzw. „Zurück“ holt es wieder) — das Gespräch steht oben. */}
-      {s && s.postfaecher.length > 0 && !offen && (
+      {mitInhalt && suchZeile}
+      {s && s.postfaecher.length > 0 && !istOffen && !sucht && (
         <div style={{ display: 'grid', gap: 14, marginBottom: 14 }}>
           {(s.bereiche.length > 1 || bereich !== 'alle') && (
             <Segmente umbrechen liste={[{ id: 'alle', label: 'Alle' }, ...s.bereiche.map(b => ({ id: b.id, label: b.name }))]} aktiv={bereich} onWahl={b => { setBereich(b); setFilter(null); setOffenId(null); }} />
@@ -315,11 +343,11 @@ export function InboxZwei() {
         </div>
       )}
       {/* Rechner: ohne offenes Gespräch die Liste in voller Breite; mit Gespräch Liste ⅓ · Gespräch + Kontext ⅔ (Front-Muster). */}
-      {s && s.postfaecher.length > 0 && (breit && offen ? (
+      {mitInhalt && (breit && istOffen ? (
         <Spalten verhaeltnis="1:2"><Spalte>{liste}</Spalte><Spalte klebt>{detail}</Spalte></Spalten>
-      ) : offen ? detail : liste)}
-      {s && s.postfaecher.length > 0 && !offen && <div style={{ marginTop: 18 }}><FlussKarte bereich="inbox" farbe={KUGEL.granat} /></div>}
-      {s && s.postfaecher.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 18 }}>Tasten: j/k wandern · e erledigt · s später · a Aufgabe · r antworten{handy ? ' · Wischen: rechts erledigt, links morgen' : ''}</div>}
+      ) : istOffen ? detail : liste)}
+      {s && s.postfaecher.length > 0 && !istOffen && !sucht && <div style={{ marginTop: 18 }}><FlussKarte bereich="inbox" farbe={KUGEL.granat} /></div>}
+      {mitInhalt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 18 }}>Tasten: / suchen · j/k wandern · e erledigt · s später · a Aufgabe · r antworten{handy ? ' · Wischen: rechts erledigt, links morgen' : ''}</div>}
       {hinweis}
     </Seite>
   );
