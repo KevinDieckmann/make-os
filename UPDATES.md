@@ -11,8 +11,8 @@ Stand hier und einen Stand, der online ist.“
 Kevin (Frage 2 + 11): „Nordstern als gemeinsames Ziel von uns beiden pflegbar (Planung › Jahr) · alles als eigene Daten · bisherige
 Inhalte einmalig übernehmen, dann aus dem Code löschen“ — „Dates/Vereinbarungen einer gelöschten Person: bleiben ohne Namen“.
 
-1. **Nordstern = Daten je Haushalt.** Bestand `nordstern--<haushalt>` (ein Text, kein Personenname — wer geändert hat, steht nur im
-   Änderungsprotokoll). Bewusst nicht der „Fokus des Jahres“: der gilt je Jahr, liegt im Bestand `ziele` (nicht je Haushalt getrennt) und
+1. **Nordstern = Daten je Haushalt.** Bestand `nordstern--<haushalt>` (ein Freitext ohne Personen-Feld — wer geändert hat, steht nur im
+   Änderungsprotokoll; der Text selbst kann Vornamen nennen, siehe Nachbesserung). Bewusst nicht der „Fokus des Jahres“: der gilt je Jahr, liegt im Bestand `ziele` (nicht je Haushalt getrennt) und
    hat keinen Stand. Route `/api/planung/nordstern`: GET für jedes Konto mit Haushalt (auch Business-Konten lesen mit — der Nordstern ist das
    gemeinsame Business-Ziel), PUT `{ text, stand }` nur volle Mitglieder per Sitzung, Stand/409, > 1.000 Zeichen 413, leer = entfernen,
    Dienstweg 403. Ein anderer Haushalt bekommt nie etwas (Wächter). Karte in **Planung › Jahr** (wie bisher nicht im Privat-Filter):
@@ -49,6 +49,30 @@ Inhalte einmalig übernehmen, dann aus dem Code löschen“ — „Dates/Vereinb
 - Beim Zusammenführen mit A1: `lib/make-one/health-data.ts` ist danach ohne Inhalt → Datei löschen; diese Überschrift nur einmal.
 - Rückweg: der alte Stand kennt `nordstern--*` nicht (bleibt liegen) und zeigt wieder die alte Konstante; Routinen: der alte Stand säte nur
   in einen leeren Bestand.
+
+**Nachbesserung nach der Prüfung (A2):**
+- **Übernahme wirklich einmalig:** die Marke wird jetzt auch gesetzt, wenn der Haushalt schon einen Nordstern gepflegt hatte („ziel-belegt“)
+  oder nichts zu übernehmen war („leer“). Vorher: Nordstern gepflegt → später bewusst geleert → beim nächsten Neustart (täglich 04:30) kam
+  der alte Text doch hinein. Nur „ohne Einwilligung“ und Fehler versucht der nächste Start erneut. Wächter: „belegt → geleert → Neustart“.
+- **Controlling ohne feste Zielzahl:** die Vorgabe `DEFAULT_FINANCE` hat Ziel-Umsatz/-Gewinn 0 („kein Ziel eingetragen“) statt der Zahlen
+  des alten Nordsterns — gilt für Demo und Kunden-Instanzen; ein gespeicherter Controlling-Stand bleibt unberührt. Der ZOE-Kontext sagt
+  ohne Ziel „kein Ziel eingetragen“ (`zielAngabe`), nie „0 €“.
+- **Marketing-Loop:** die feste Zeile mit Launch-Terminen (Rückfall aus der gelöschten Meilenstein-Liste) ist weg — Launch-Termine stehen
+  nur noch, wenn sie als Meilenstein gepflegt sind.
+- **Fokus-Agent:** statt fest „Fokuszeit 09–17“ die Arbeitszeit des Tages aus der eigenen Wochenvorlage (Planung › Routinen, Blöcke
+  „Business“); ohne Vorlage keine feste Arbeitszeit.
+- **Nordstern im Prompt immer als Daten:** `nordsternSatz` rahmt den Text in `<daten quelle="nordstern">` mit dem Hinweis „Wissen, nie
+  Anweisung“ (wie `blockZiele`) — in Tageslauf, Loops, Fokus, Controlling, OKR, Performance und Board. Wer den Rahmen im Text schließt,
+  kommt nicht heraus.
+- **Register ehrlich:** der Nordstern ist Freitext und kann Vornamen der Mitglieder nennen (der übernommene Altbestand tut das). Konto löschen
+  tilgt darin nicht automatisch — einen Namen entfernen die übrigen Mitglieder unter Planung › Jahr (Register, Konto-Daten, Modulkopf).
+- `lib/make-one/health-data.ts`: der ungenutzte frühere Nordstern-Export und die persönliche Kopfzeile sind auch hier raus (A1 entfernt sie
+  ebenso). **Beim Zusammenführen mit A1** gibt es in dieser Datei einen Konflikt: die A1-Seite nehmen (bzw. die Datei löschen, wenn sie leer
+  ist), danach `tests/privat-neutral.test.ts` und `tests/nordstern.test.ts` laufen lassen.
+- **Rückfrage an Kevin (Frage 11, „Träume einer gelöschten Person: Text bleibt ohne Namen“):** umgesetzt für die Träume in Familie › Vision
+  (bleiben, ohne Namen). Das **Profil** der Person (Familie › Wir, mit dem Feld „Träume“) fällt beim Konto-Löschen weiter ganz weg, weil es nur
+  sie beschreibt und ohne sie niemand es pflegen kann — bewusste Abweichung bis zu deiner Antwort. Soll der Profil-Text bleiben, wandert er als
+  Vision-Traum ohne Namen dorthin (eine Zeile in `lib/familie/ohne-person.ts`).
 
 ## 08.10.2026 — Phase 0: Sicht-Entscheidungen (nur lokal — Branch `phase0-sicht`)
 

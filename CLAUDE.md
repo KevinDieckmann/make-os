@@ -714,15 +714,19 @@ abgekündigt, v1-Webhooks entfernt). Der alte gemeinsame Weg (`lib/oauth.ts` who
   Person) — GET liest nur, `planung/vorschlag` nimmt nur den Bestand. Beispiele gibt es nur in der Demo-Saat (erfunden, über den PATCH).
 - Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
 - **Nordstern = Daten des Haushalts (08.10. abends, Kevin: „gemeinsames Ziel von uns beiden pflegbar (Planung › Jahr)“, Branch
-  `privat-raus-nordstern`):** Bestand `nordstern--<haushalt>` (Text, ohne Personennamen; nicht der „Fokus des Jahres“ — der gilt je Jahr und
+  `privat-raus-nordstern`):** Bestand `nordstern--<haushalt>` (Freitext ohne Personen-Feld — kann Vornamen nennen, Konto löschen tilgt darin
+  nicht automatisch; nicht der „Fokus des Jahres“ — der gilt je Jahr und
   `ziele` liegt nicht je Haushalt). Regeln rein `lib/planung/nordstern.ts` (≤ 1.000 Zeichen, sonst 413), EINE Schreib-/Lesestelle
   `lib/planung/nordstern-server.ts`, Route `/api/planung/nordstern` (GET: jedes Konto mit Haushalt liest den SEINES Haushalts, auch
   `finanzRecht: 'business'` — `planZugangVon`; PUT `{ text, stand }`: nur volle Mitglieder per Sitzung, Stand/409, Dienstweg 403),
   Karte `components/os/planung/NordsternKarte.tsx` in Planung › Jahr. ZOE/Agenten lesen ihn NUR über `gatherBrain` (`Brain.nordstern`,
-  `blockZiele` im `<daten>`-Rahmen) bzw. `nordsternSatz`/`nordsternSatzFuer`; ohne Eintrag „kein Nordstern hinterlegt“, ohne Meilensteine
-  „keine hinterlegt“ — **nie wieder Nordstern, Zielzahlen oder Meilensteine als Konstante im Code oder in Prompts** (Wächter
-  `tests/nordstern.test.ts`, auch „anderer Haushalt bekommt nichts“). Einmalige Übernahme des Altbestands: `lib/altbestand/nordstern-uebernahme.ts`
-  (nur mit `MAKE_OS_ALTBESTAND_PERSON`, wird mit dem übernächsten Upload gelöscht — UPDATES.md 08.10. abends).
+  `blockZiele` im `<daten>`-Rahmen) bzw. `nordsternSatz`/`nordsternSatzFuer` (rahmt den Text ebenfalls als `<daten quelle="nordstern">` —
+  jedes volle Mitglied schreibt ihn frei, im Prompt ist er Wissen, nie Anweisung; nie `${b.nordstern}` roh in einen Prompt); ohne Eintrag
+  „kein Nordstern hinterlegt“, ohne Meilensteine „keine hinterlegt“ — **nie wieder Nordstern, Zielzahlen, Meilensteine, Launch-Termine oder
+  Arbeitszeiten als Konstante im Code, in Vorgaben (`DEFAULT_FINANCE` = Ziel 0, `zielAngabe`) oder in Prompts** (Arbeitszeit aus der
+  Wochenvorlage; Wächter `tests/nordstern.test.ts`, auch „anderer Haushalt bekommt nichts“ und „keine Inline-Reste“). Einmalige Übernahme
+  des Altbestands: `lib/altbestand/nordstern-uebernahme.ts` (nur mit `MAKE_OS_ALTBESTAND_PERSON`; Marke auch bei „belegt“/„leer“ — kommt
+  nach bewusstem Leeren nie zurück; wird mit dem übernächsten Upload gelöscht — UPDATES.md 08.10. abends).
 - **Zeitstrahl & Planungsjahr (30.09.):** Rechnung rein in `lib/planung/zeitstrahl.ts` (Fenster aus ganzen Monaten `ab`+`monate`,
   `standardAb`/`heuteAb`, `abAus` ±50 Jahre, `monatsTicks` mit Jahreswechsel, `quartale`, `stapeln` mit „+n“-Bündeln,
   `zielJahr`/`meilensteinJahr`/`meilensteinImJahr`, `jahrLage` für den Forecast, `planTag` für ZOE, `zaehltImKurs` für die Indizes)

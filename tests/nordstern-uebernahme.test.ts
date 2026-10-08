@@ -114,6 +114,29 @@ describe('Übernahme', () => {
     expect(await eigeneZiele()).toEqual([{ id: 'z-eigen', titel: PERSOENLICH, fortschritt: 30 }]);
   });
 
+  it('gepflegter Nordstern zählt als entschieden: belegt → später geleert → Neustart holt den alten Text nicht zurück', async () => {
+    process.env.MAKE_OS_ALTBESTAND_PERSON = 'person-a';
+    await db.saveJson('nordstern--haus-u', { nordstern: { text: 'Vorher gepflegt (Beispiel)', geaendertAm: '2026-10-01T08:00:00.000Z' } });
+    expect(ergebnis(await lauf(), 'nordstern')).toBe('ziel-belegt');
+    const { nordsternSchreiben, nordsternLaden } = await import('@/lib/planung/nordstern-server');
+    expect((await nordsternLaden('haus-u')).text).toBe('Vorher gepflegt (Beispiel)');
+    await nordsternSchreiben('haus-u', '', (await nordsternLaden('haus-u')).stand, { art: 'person', person: 'person-a' });
+    // „Neustart“: der nächste Lauf sieht die Marke und schreibt nichts.
+    expect(ergebnis(await lauf(), 'nordstern')).toBe('schon-uebernommen');
+    expect((await nordsternLaden('haus-u')).text).toBe('');
+  });
+
+  it('ohne gemeinsamen Satz („leer“): Marke gesetzt, kein Nordstern geschrieben', async () => {
+    process.env.MAKE_OS_ALTBESTAND_PERSON = 'person-a';
+    await db.saveJson('nordstern--haus-u', {});
+    const b = await m.nordsternAltbestandUebernehmen({ inhalt: `Persönliches Kernziel: ${PERSOENLICH}`, tag: TAG, jahr: 2026 });
+    expect(ergebnis(b, 'nordstern')).toBe('leer');
+    const datei = await db.loadJson<{ nordstern?: unknown; altbestand?: { nordstern?: string } }>('nordstern--haus-u');
+    expect(datei?.nordstern).toBeUndefined();
+    expect(datei?.altbestand?.nordstern).toBe(TAG);
+    expect(ergebnis(await lauf(), 'nordstern')).toBe('schon-uebernommen');
+  });
+
   it('der bisherige Inhalt im Modul hat beide Teile (nur Längen geprüft — kein Inhalt im Test)', () => {
     const l = m.altbestandLaengen();
     expect(l.gemeinsam).toBeGreaterThan(10);

@@ -92,24 +92,31 @@ export async function nordsternAltbestandUebernehmen(opts: { inhalt?: string; ta
   const merke = (teil: 'nordstern' | 'kernziel', ergebnis: TeilErgebnis) => { bericht.teile.push({ name: teil, ergebnis }); log(teil, ergebnis); };
 
   // 1) Gemeinsamer Satz → Nordstern des Haushalts (nur, wenn noch keiner gepflegt ist).
+  // Die Marke wird IMMER gesetzt, sobald entschieden ist — auch bei „ziel-belegt“ (Haushalt pflegte schon einen) und „leer“:
+  // leert der Haushalt ihn später bewusst, holt der nächste Start (täglich 04:30) den alten Text nie zurück (wie beim Kernziel).
   try {
+    let ergebnis: TeilErgebnis = 'uebernommen';
     await updateJson<NordsternDatei>(name, cur => {
       if (cur?.altbestand?.nordstern) throw new Ohne('schon-uebernommen');
-      if (nordsternTextVon(cur)) throw new Ohne('ziel-belegt');
-      if (!gemeinsam) throw new Ohne('leer');
-      return { ...(cur ?? {}), nordstern: { text: gemeinsam, geaendertAm: new Date().toISOString() }, altbestand: { ...(cur?.altbestand ?? {}), nordstern: tag } };
+      const altbestand = { ...(cur?.altbestand ?? {}), nordstern: tag };
+      if (nordsternTextVon(cur)) { ergebnis = 'ziel-belegt'; return { ...(cur ?? {}), altbestand }; }
+      if (!gemeinsam) { ergebnis = 'leer'; return { ...(cur ?? {}), altbestand }; }
+      ergebnis = 'uebernommen';
+      return { ...(cur ?? {}), nordstern: { text: gemeinsam, geaendertAm: new Date().toISOString() }, altbestand };
     });
-    await protokolliere(name, [{ op: 'geaendert', id: 'nordstern', felder: ['text'] }], { art: 'system' });
-    merke('nordstern', 'uebernommen');
+    if (ergebnis === 'uebernommen') await protokolliere(name, [{ op: 'geaendert', id: 'nordstern', felder: ['text'] }], { art: 'system' });
+    merke('nordstern', ergebnis);
   } catch (e) {
     if (e instanceof Ohne) merke('nordstern', e.ergebnis);
     else { merke('nordstern', 'fehler'); console.error('[MAKE OS] Altbestand „nordstern“: Fehler —', e instanceof Error ? e.name : 'unbekannt'); }
   }
 
   // 2) Persönlicher Teil → eigenes Jahresziel der Person (Art.-9-Schranke: Einwilligung (a)).
+  // Marke wie in Schritt 1, sobald entschieden ist (nur „ohne Einwilligung“ und Fehler versuchen es beim nächsten Start erneut).
+  const kernzielMarke = () => updateJson<NordsternDatei>(name, cur => ({ ...(cur ?? {}), altbestand: { ...(cur?.altbestand ?? {}), kernziel: tag } }));
   try {
-    if (!persoenlich) { merke('kernziel', 'leer'); return bericht; }
     if ((await loadJson<NordsternDatei>(name))?.altbestand?.kernziel) { merke('kernziel', 'schon-uebernommen'); return bericht; }
+    if (!persoenlich) { await kernzielMarke(); merke('kernziel', 'leer'); return bericht; }
     // Ausdrücklich erklärte Einwilligung (a) — strenger als der Schreibweg-Übergang für Bestands-Konten ohne Erklärung
     // (`verarbeitungErlaubt`): Inhalte aus dem Code werden nur mit einer echten Erklärung der Person zu ihren Daten.
     const { gesundheitStandFuer } = await import('@/lib/datenschutz/gesundheit-einwilligung');
@@ -123,7 +130,7 @@ export async function nordsternAltbestandUebernehmen(opts: { inhalt?: string; ta
     const ziel = sauberZiel(persoenlich.length <= TITEL_MAX
       ? { id: KERNZIEL_ID, titel: persoenlich, fortschritt: 0, space: 'privat', jahr }
       : { id: KERNZIEL_ID, titel: PERSOENLICH_MARKE, notiz: persoenlich, fortschritt: 0, space: 'privat', jahr });
-    if (!ziel) { merke('kernziel', 'leer'); return bericht; }
+    if (!ziel) { await kernzielMarke(); merke('kernziel', 'leer'); return bericht; }
     const zieleName = speicherFuer('ziele-eigen', person);
     let ergebnis: TeilErgebnis = 'uebernommen';
     try {
@@ -140,7 +147,7 @@ export async function nordsternAltbestandUebernehmen(opts: { inhalt?: string; ta
     }
     // Marke setzen — auch wenn das Ziel schon da war (Abbruch zwischen den beiden Schreibungen) oder die Person es selbst schon
     // angelegt hatte: danach versucht es niemand mehr, ein späteres Löschen holt es nie zurück.
-    await updateJson<NordsternDatei>(name, cur => ({ ...(cur ?? {}), altbestand: { ...(cur?.altbestand ?? {}), kernziel: tag } }));
+    await kernzielMarke();
     merke('kernziel', ergebnis);
   } catch (e) {
     merke('kernziel', 'fehler');

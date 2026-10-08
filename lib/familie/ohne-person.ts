@@ -13,7 +13,10 @@
 //     dann steht sie wie jede unverteilte Karte zur Übernahme an.
 //   · Reparatur: ungeteilte Reflexionen der Person fallen weg (sah nur sie — wie „nur ich“), geteilte bleiben ohne Namen.
 //   · Profil der Person (Stress, Träume, was ihr guttut) fällt weg: es beschreibt nur sie, steht nur unter ihrem Namen und wäre ohne
-//     sie verwaist (niemand sonst kann es pflegen).
+//     sie verwaist (niemand sonst kann es pflegen). BEWUSSTE ABWEICHUNG, Rückfrage an Kevin offen (UPDATES.md › 08.10. abends):
+//     seine Antwort „Träume einer gelöschten Person: Text bleibt ohne Namen“ ist hier auf die Vision-Träume bezogen (die gemeinsame
+//     Seite, aus der die Frage stammt — bleiben ohne Namen, unten). Das Feld `traeume` im Profil fällt mit dem Profil weg; soll es
+//     ohne Namen bleiben, käme es als Vision-Traum ohne Person dorthin (eine Zeile hier).
 //   · Vision: `visionOhnePerson` (Ziele ohne `von`, Träume ohne Person).
 // Werte „beide“, „system“ und andere Personen bleiben, wie sie sind. Ergebnis: neuer Bestand + Änderungen fürs Protokoll (nur Liste,
 // Kennung, Feldnamen — nie Werte) + Anzahl.

@@ -16,12 +16,14 @@ export interface FinanceState {
 
 export const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 
-// Das Ziel trägt jede Instanz selbst ein (Controlling & Ziele; der Nordstern des Haushalts steht unter Planung › Jahr).
+// Das Ziel trägt jede Instanz selbst ein (Controlling & Ziele; der Nordstern des Haushalts steht unter Planung › Jahr) —
+// deshalb auch die Zielwerte 0 = „kein Ziel eingetragen“, nie eine feste Zielzahl im Code (gilt für Demo und Kunden-Instanzen;
+// ein gespeicherter Stand bleibt unberührt, die Route nimmt nur `current ?? DEFAULT_FINANCE`).
 // Ist-Zahlen bewusst 0 — trag deine echten Werte ein, dann rechnet alles live.
 export const DEFAULT_FINANCE: FinanceState = {
   jahr: 2026,
-  zielUmsatz: 1_000_000,
-  zielGewinn: 300_000,
+  zielUmsatz: 0,
+  zielGewinn: 0,
   cash: 0,
   months: MONTHS_DE.map(m => ({ m, umsatz: 0, kosten: 0 })),
 };
@@ -115,6 +117,13 @@ export function geschaeftsKasse(firmen: { id: string; kontostand?: number | null
 export function mitKasse(s: FinanceState, firmen: Parameters<typeof geschaeftsKasse>[0]): FinanceState & { kasse: Kasse } {
   const kasse = geschaeftsKasse(firmen, s.cash);
   return { ...s, cash: kasse.betrag, kasse };
+}
+
+/** Ziel als Satzteil — ohne eingetragenes Ziel „kein Ziel eingetragen“ statt „0 €“ (ZOE-Kontext, Lageberichte). */
+export function zielAngabe(s: Pick<FinanceState, 'zielUmsatz' | 'zielGewinn'>): string {
+  return (s.zielUmsatz || 0) > 0 || (s.zielGewinn || 0) > 0
+    ? `Ziel ${eur(s.zielUmsatz || 0)} Umsatz / ${eur(s.zielGewinn || 0)} Gewinn`
+    : 'kein Ziel eingetragen';
 }
 
 export const eur = (n: number) =>

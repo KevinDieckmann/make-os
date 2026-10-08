@@ -69,7 +69,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'meilenstein-raum--*': 'Austausch je Meilenstein (Arbeit des Haushalts)',
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
-  'nordstern--*': 'Nordstern je Haushalt (gemeinsames Ziel, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
+  'nordstern--*': 'Nordstern je Haushalt (gemeinsames Ziel, Freitext ohne Personen-Feld — kann Vornamen nennen, wird beim Konto-Löschen nicht automatisch getilgt, ändern unter Planung › Jahr) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'team--*': 'Team je Haushalt — der Eintrag des Kontos fällt beim Löschen weg',
   'uebergabe-journal--*': 'Übergaben an Kunden (Kartei)',
   'zoe-chargen--*': 'ZOE-Chargen je Haushalt (nur Kennungen)',

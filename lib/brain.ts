@@ -21,7 +21,7 @@ import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
 import { SAEULEN_TEXT } from '@/lib/business/register';
-import { computeMetrics, mitKasse, eur, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, eur, zielAngabe, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
 import { recentRuns, type AgentLogEntry } from '@/lib/agent-log';
 import { computeShields, shieldZeilen, type Shield } from '@/lib/risk';
 import { schwellen, type Schwellen } from '@/lib/schwellen';
@@ -353,8 +353,8 @@ export function blockZahlen(b: Brain): string {
   if (!b.finance || !b.metrics) return `ZAHLEN: kein Finanzstand hinterlegt. ${b.nordstern ? 'Der Nordstern' : 'Der Fortschritt'} ist damit nicht messbar — sag das offen.${extra ? ` ${extra}.` : ''}`;
   const m = b.metrics;
   const kern = m.aktiveMonate > 0
-    ? `ZAHLEN: Ist-Umsatz ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}% vom Ziel ${eur(b.finance.zielUmsatz)}), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
-    : `ZAHLEN: Controlling ist leer (Ziel ${eur(b.finance.zielUmsatz)} / ${eur(b.finance.zielGewinn)} Gewinn) — der Nordstern ist nicht messbar. Sag das offen.`;
+    ? `ZAHLEN: Ist-Umsatz ${eur(m.istUmsatz)} (${b.finance.zielUmsatz > 0 ? `${Math.round(m.fortschritt * 100)}% vom Ziel ${eur(b.finance.zielUmsatz)}` : 'kein Umsatzziel eingetragen'}), Gewinn ${eur(m.istGewinn)}, ${b.finance.zielUmsatz > 0 ? `nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, ` : ''}Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
+    : `ZAHLEN: Controlling ist leer (${zielAngabe(b.finance)}) — ${b.nordstern ? 'der Nordstern' : 'der Fortschritt'} ist nicht messbar. Sag das offen.`;
   return extra ? `${kern} ${extra}.` : kern;
 }
 

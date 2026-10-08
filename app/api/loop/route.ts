@@ -285,7 +285,9 @@ export async function POST(req: Request) {
         `SICHTBARKEITS-MEILENSTEINE: ${msBiz.filter(x => /podcast|magazin|launch|presse|landing/i.test(x.titel)).map(x => `${x.titel} (${x.fortschritt}%${x.faellig ? `, ${x.faellig}` : x.zeitfenster ? `, ${x.zeitfenster}` : ''})`).join(' · ') || 'keine gepflegt'}`,
         `LETZTE CONTENT-LÄUFE: ${contentLaeufe.map(l => l.title).join(' · ') || 'keine — der Content-Agent liegt brach'}`,
         `ZIELGRUPPE: inhaber-/familiengeführter Mittelstand DACH (50–500 MA), Entscheider GF/CFO/Leitung Controlling. Kanäle bisher: LinkedIn, Landingpage F&F.`,
-        `KONTEXT: F&F-Launch ${msBiz.find(x => /F&F|Launch/i.test(x.titel))?.faellig ?? '01.08'} · Volllaunch + Pressekonferenz 01.10.`,
+        // 08.10. abends: die frühere Zeile „KONTEXT: <Launch-Termin> · Volllaunch …“ ist weg — sie stammte aus der gelöschten festen
+        // Meilenstein-Liste (fester Rückfall-Termin). Launch-Termine stehen jetzt nur noch, wenn sie als Meilenstein gepflegt sind
+        // (Zeile SICHTBARKEITS-MEILENSTEINE oben, aus dem Bestand) — ohne Meilensteine steht im Kontext nichts Erfundenes.
       ].join('\n');
     } else if (loop === 'operations') {
       label = 'Operations-Loop';

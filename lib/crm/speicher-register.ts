@@ -281,13 +281,14 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
   H('ziele-eigen', 'Persönliche Ziele der ersten Person (Altname ohne Suffix) — eigene Planung, keine Dritten (gelesen u. a. von den Lichtfäden).'),
   H('ziele-eigen--*', 'Persönliche Ziele je Person — eigene Planung, keine Dritten.'),
-  // Nordstern je Haushalt (08.10. abends, Fragebogen Teil 3): ein Text, den die Mitglieder selbst pflegen (Planung › Jahr) — kein
-  // Personenname im Bestand (wer geändert hat, steht nur im Änderungsprotokoll), keine Dritten. Dazu die Marken der einmaligen
+  // Nordstern je Haushalt (08.10. abends, Fragebogen Teil 3): ein Freitext, den die Mitglieder selbst pflegen (Planung › Jahr) — kein
+  // Personen-FELD (wer geändert hat, steht nur im Änderungsprotokoll), keine Dritten; der Text selbst kann aber Vornamen der Mitglieder
+  // nennen (auch der übernommene Altbestand tut das). Konto löschen tilgt im Freitext nicht automatisch. Dazu die Marken der einmaligen
   // Übernahme des Altbestands (nur Tage, lib/altbestand/nordstern-uebernahme.ts).
-  mit(H('nordstern--*', 'Nordstern des Haushalts — gemeinsames Ziel, von den Mitgliedern selbst gepflegt; kein Personenname, keine Dritten.'), {
+  mit(H('nordstern--*', 'Nordstern des Haushalts — gemeinsames Ziel, von den Mitgliedern selbst gepflegt; Freitext ohne Personen-Feld (kann Vornamen der Mitglieder nennen), keine Dritten.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Nutzung der Planung durch die Mitglieder des Haushalts',
-    art15: 'alle Konten des Haushalts sehen ihn unter Planung › Jahr (Business-Konten lesend); er nennt keine Person',
-    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird',
+    art15: 'alle Konten des Haushalts sehen ihn unter Planung › Jahr (Business-Konten lesend); als Freitext kann er Vornamen der Mitglieder nennen',
+    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird; Art. 17 (Konto löschen) tilgt im Freitext nicht automatisch — einen Namen darin entfernen die übrigen Mitglieder unter Planung › Jahr (Text bearbeiten)',
   }),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
   // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.

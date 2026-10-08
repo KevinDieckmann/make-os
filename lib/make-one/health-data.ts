@@ -1,8 +1,8 @@
 // ─── MAKE OS — Gesundheit (privat · MAKE.One) ───────────────────────────────
-// Kevins echte, selbst berichtete Daten + Whoop-Export. STRUKTUR & TRACKING —
-// KEINE ärztliche Beratung; seine Ärzte führen. Nordstern: mehr Ruhe.
-
-export const NORTHSTAR = 'Mehr Ruhe — den Körper planbar aufbauen, den Kopf runterfahren.';
+// Feste Inhalte aus der Zeit vor den Daten je Person — Paket A1 (Branch privat-raus-koerper) zieht sie in die Daten je Person
+// (lib/gesundheit/koerper.ts). STRUKTUR & TRACKING — KEINE ärztliche Beratung. Der frühere Nordstern-Export ist entfernt (08.10.
+// abends, Paket A2: der Nordstern ist ein Bestand des Haushalts, lib/planung/nordstern.ts) — beim Zusammenführen mit A1 die A1-Seite
+// nehmen und tests/privat-neutral.test.ts laufen lassen.
 
 // Whoop-Gerätedaten (Export 30.07.2026, 246 Messtage)
 export const WHOOP = {
