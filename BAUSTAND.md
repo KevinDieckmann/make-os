@@ -6,6 +6,20 @@
 - Server: **`38f88dc0` (07.10. ~18:28)** — Aufgaben v3 (Malin), Inbox 2 + WhatsApp (ohne Einrichtung aus), iCloud je Person, Blöcke ins eigene iCloud, Verbinden-Karten im Kalender, HOI-Befunde, Einwilligung WhatsApp, Telefon-Dubletten. Websites unverändert (alte „Klar“).
 - Sicherung `vor-upload-2026-10-07-1618.tar.gz`, Rückweg-Bild `make-os:6b10a5ba` (ALTES-BILD-OK). Platte danach 5,3 GB frei — alte Bilder 70603154/db93e88/5aca6f5 nur auf Kevins Wort löschen.
 
+## Stand 08.10. abends (auf `entwicklung`, nicht online)
+- **Phase 0 gebaut + gegengeprüft + gemergt** (6f045180, d25231cd): eigene Ziele nur geteilt lesbar (überall, inkl. Meilensteine daran) · Familie › Vision nur
+  eigene Träume · Agenten-Log je Person (`laufPerson`) · WHOOP ist die Quelle (Export-Werte `whoop-export`, Handwerte bleiben) · Freigaben-Reiter „Protokoll“
+  (`/os/stapel/voll` leitet weiter), „Ändern & freigeben“ liest deutsche Zahlen · Update-Hinweis oben (`<daten>/system/update.json` aus `deploy/ausrollen.sh`,
+  wirkt verlässlich erst ab dem übernächsten Update).
+- **Volle Suite:** 465 Dateien / 5.927 Tests — 1 wackliger Test (whoop-route, Hintergrund-Abgleich des Vortests) behoben (9c8a686f); tsc 0, Lint 0 Fehler.
+- **Modul-Landkarte** `MODUL_LANDKARTE.md` (im Code geprüft, Online-Stand = `origin/main`; lokaler `main` ist veraltet!). Befunde: Gesundheit › Körper mit
+  echten Gesundheitsangaben fest im Code (für alle Konten sichtbar) · Telegram wirkt online nicht (Bote nur am Mac) · Vault-Abgleich läuft nicht (Stand 25.09.) ·
+  Brain-Regeln/Inbox fest kevin/malin.
+- **Fragebogen:** Teil 1 beantwortet (`ENTSCHEIDUNGEN_FRAGEBOGEN.md`, in ROADMAP_Q4 eingearbeitet) · Teil 2 (Business) gezeigt, Antwort offen · Teil 3
+  (Privat & Plattform, inkl. Finanzplan-Blätter-Vorschlag und 5 kleine Entscheidungen aus dem Bau) liegt bereit.
+- **Offen aus Phase 0 (Teil 3, Frage 11):** Träume/Dates einer gelöschten Person · WHOOP-Export gleicher Altwert · Aufgaben an privaten Ziel-Meilensteinen ·
+  „Sauber geblieben“. Außerdem: `lib/brain.ts` MILESTONES-Rückfall enthält noch den Altnamen „KD Management UG“ (Plattform-/Namensverstoß).
+
 ## Auf `entwicklung` (lokal fertig, wartet auf Upload — Stand 07.10. spät)
 - Alles bis `38f88dc0` ist online; die frühere Liste hier war damit erledigt.
 - **Messlatte M3 „Malin“** — `tests/messlatte-malin.test.ts` (a83f1b72): Malin sieht keine `scope: privat`-Notiz von Kevin (auch nicht den Dateinamen) und keinen der sechs 🔒-Speicher; Frist 31.10. damit nachgewiesen. Offen für Kevin: Routinen-Planer (Gesamtansicht zeigt beiden alle Routinen) und Ernährung (gemeinsam, inkl. Profile) — so lassen oder für Malin ausblenden?
