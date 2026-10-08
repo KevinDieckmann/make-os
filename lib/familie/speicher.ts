@@ -98,7 +98,8 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
   return { familie: neu, angewandt, abgelehnt };
 }
 
-export function setzeFelder(f: Familie, felder: Record<string, unknown>, person: string, jetzt: string): Familie {
+/** `personen` = Speichernamen der Konten des Haushalts (Vision: eine Anlegerin ohne Konto sperrt nichts, 08.10.). */
+export function setzeFelder(f: Familie, felder: Record<string, unknown>, person: string, jetzt: string, personen?: ReadonlySet<string>): Familie {
   const n = { ...f };
   if (felder.einstellungen && typeof felder.einstellungen === 'object') {
     const e = felder.einstellungen as Partial<Einstellungen>;
@@ -123,8 +124,8 @@ export function setzeFelder(f: Familie, felder: Record<string, unknown>, person:
   if (felder.vision && typeof felder.vision === 'object') {
     const v = felder.vision as Partial<Vision>;
     const jahr = Number(v.jahr) || Number(jetzt.slice(0, 4));
-    const r = visionSetzen(f.visionen.find(x => x.jahr === jahr), v, person, jahr);
-    if (!r.ok) throw new VisionVerboten(r.fehler);
+    const r = visionSetzen(f.visionen.find(x => x.jahr === jahr), v, person, jahr, personen);
+    if (!r.ok) throw new VisionVerboten(r.fehler, r.status ?? 403);
     n.visionen = [...f.visionen.filter(x => x.jahr !== jahr), r.vision];
   }
   // Ritual des Tages abhaken — gemeinsam, ohne Zähler je Person.

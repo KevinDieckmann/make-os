@@ -24,6 +24,7 @@ import { KONTO_PRAEFIX } from '@/lib/make-one/team-typen';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { grabsteinKennung, grabsteinSetzen, type Grabstein } from './grabsteine';
 import { kennungsVersion } from './pepper';
+import { familieName } from '@/lib/familie/speicher';
 
 export const GELOESCHT = '[gelöscht]';
 
@@ -286,6 +287,21 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const team = teamSpeicherName(konto.haushalt);
     await nurWenn(team, async () => { let n = 0; await updateJson<Obj>(team, cur => { const l = liste(cur, 'team'); const r = l.filter(e => (e as Obj).id !== `${KONTO_PRAEFIX}${speicher}`); n = l.length - r.length; return n ? { ...(cur ?? {}), team: r } : (cur as Obj); }); return n; });
     await sicher('kapazitaet', async () => { const { kapaEntfernteKontenAufraeumen } = await import('@/lib/kapazitaet/server'); return (await kapaEntfernteKontenAufraeumen(konto.haushalt!)).teile; });
+    // Familie › Vision (08.10., Gegenprüfung): Einträge der Person bleiben (gemeinsame Vision), ohne ihren Namen — sonst sperrte die
+    // Anlegerin sie für immer und der Speichername bliebe als Personenbezug stehen (lib/familie/vision.ts `visionOhnePerson`).
+    const fam = familieName(konto.haushalt);
+    await nurWenn(fam, async () => {
+      const { visionOhnePerson } = await import('@/lib/familie/vision');
+      let n = 0;
+      await updateJson<Obj>(fam, cur => {
+        if (!cur || !Array.isArray(cur.visionen)) return cur as Obj;
+        const r = visionOhnePerson(cur.visionen as import('@/lib/familie/typen').Vision[], speicher);
+        n = r.anzahl;
+        return n ? { ...cur, visionen: r.visionen } : cur;
+      });
+      if (n) await protokolliere(fam, [{ op: 'geaendert' as const, id: 'visionen', felder: ['von'] }], { art: 'system' });
+      return n;
+    });
   }
 
   // 6. Protokolle: Einträge bleiben (Nachweis, Art. 5 Abs. 2), die Kennung der Person wird „[gelöscht]“ — die Hash-Kette zählt solche

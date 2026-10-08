@@ -98,17 +98,20 @@ export async function PATCH(req: Request) {
   const jetzt = new Date().toISOString();
   let abgelehnt = 0, angewandt = 0;
   let f: Familie;
+  // Vision (Gegenprüfung 08.10.): eine Anlegerin ohne Konto im Haushalt (gelöscht, umgezogen) sperrt keinen Eintrag mehr.
+  const personen = b.felder && 'vision' in b.felder ? new Set((await mitglieder(z.haushalt)).map(m => m.person)) : undefined;
   try {
     f = await updateJson<Familie>(familieName(z.haushalt), cur => {
       let x = { ...startBestand(jetzt), ...(cur ?? {}) };
       const ops = Array.isArray(b.ops) ? b.ops : [];
       if (ops.length) { const r = wendeFamilieAn(x, ops, z.person, jetzt); x = r.familie; abgelehnt = r.abgelehnt; angewandt = r.angewandt; }
-      if (b.felder) x = setzeFelder(x, b.felder, z.person, jetzt);
+      if (b.felder) x = setzeFelder(x, b.felder, z.person, jetzt, personen);
       return x;
     });
   } catch (e) {
     // Vision (08.10., Kevin): fremde Einträge ändert/löscht nur ihre Anlegerin — abgelehnt, NICHTS gespeichert (auch nicht die Ops).
-    if (e instanceof VisionVerboten) return NextResponse.json({ ok: false, fehler: e.message }, { status: 403 });
+    // Doppelte Kennungen (Gegenprüfung 08.10.) → 400.
+    if (e instanceof VisionVerboten) return NextResponse.json({ ok: false, fehler: e.message }, { status: e.status });
     throw e;
   }
   // Spiegel im Kalender nachziehen (29.09., K5): Date verschoben/abgesagt, Gespräch ausgefallen, Uhrzeit/Wochentag
