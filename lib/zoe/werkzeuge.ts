@@ -34,6 +34,7 @@ import { verbunden as icloudVerbunden } from '@/lib/kalender/icloud';
 import { blockKollision } from '@/lib/planung/bloecke';
 import { planTag } from '@/lib/planung/zeitstrahl';
 import { fokusSchreibSchluessel } from '@/lib/planung/jahr-fokus';
+import { vornameVon } from '@/lib/zoe/grundauftrag';
 
 // ── ZOE plant: Block in den Kalender der Person (Kevins Ansage: „dass da auch drin geplant werden kann"). Seit F2 M8
 // (29.09., Kevin: „ZOE schreibt nur über den Stapel“) ist `plan_block` freigabepflichtig (Register, Gruppe „kalender“):
@@ -999,7 +1000,7 @@ async function haushaltDer(person?: string) {
   const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
   return haushaltFuer(person ?? null);
 }
-const KEIN_HAUSHALT = 'Nicht verfügbar: Die Haushaltsfinanzen gibt es nur im Gespräch mit Kevin oder Malin — nicht im Hintergrund und nicht für andere Konten.';
+const KEIN_HAUSHALT = 'Nicht verfügbar: Die Haushaltsfinanzen gibt es nur im Gespräch mit einer Person des Haushalts — nicht im Hintergrund und nicht für andere Konten.';
 
 async function haushaltStand(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
@@ -1047,7 +1048,8 @@ async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: stri
   const e = await patchen(z.haushalt, 'belege', [{ op: 'upsert', eintrag: {
     art: 'rechnung', empfaenger: String(input.an ?? ''), bezeichnung: String(input.wofuer ?? input.an ?? 'Rechnung'),
     betrag: Number.isFinite(betrag) ? Math.round(betrag * 100) : null, faellig_am: /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : null,
-    verursacher: person === 'malin' ? 'Malin' : 'Kevin', einheit: 'privat', erledigt: false,
+    // 08.10. spät: Vorname aus dem Konto der auslösenden Person (vorher: wer nicht die zweite Person war, hieß wie die erste).
+    verursacher: await vornameVon(person ?? z.person), einheit: 'privat', erledigt: false,
   } }]);
   return e.ok ? `Offene Rechnung erfasst: ${String(input.an ?? '')}${Number.isFinite(betrag) ? ` über ${eurW(betrag)}` : ''}.` : `Fehlgeschlagen: ${e.fehler}`;
 }
