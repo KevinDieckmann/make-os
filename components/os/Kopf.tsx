@@ -23,6 +23,7 @@ import { useMandate } from './zeit/useMandate';
 import { fokusTitel } from '@/lib/zeitmessung/fokus-regeln';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 import { Glocke } from './Glocke';
+import { UpdateHinweis } from './UpdateHinweis';
 
 /** Zeit-Ereignis: der Fokus-Zähler meldet einen gespeicherten Block (Zeit je Einheit/Mandat laden dann neu). */
 export const ZEIT_EREIGNIS = 'make-zeit-geaendert';
@@ -202,6 +203,8 @@ export function Kopf() {
   const suchen = () => window.dispatchEvent(new CustomEvent('make-suche', { detail: { space } }));
   return (
     <div className="wachstum-kopf os-auf">
+      {/* Update-Hinweis (08.10., Phase 0): eine ruhige Zeile über dem Kopf, nur solange ein Update läuft bzw. eine neue Version da ist. */}
+      <UpdateHinweis />
       <div className="wachstum-kopf-innen">
         {/* Links der Schalter Alles · Privat · Business, dann die Suche ausgeglichen in der Mitte (gibt zuerst nach, flex-shrink 1000), rechts Glocke und Fokus. */}
         <SpaceSchalter wahl={wahl} setzen={setzen} />

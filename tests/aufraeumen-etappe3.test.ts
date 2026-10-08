@@ -137,6 +137,8 @@ describe('Altbestand — entfernte Seiten leiten weiter, keine Weiterleitungs-Se
     ['/os/saeule/:key', '/os/wachstum'], ['/os/crm', '/os/markttraktion'], ['/os/business', '/os/finanzen?s=business&space=business'],
     ['/os/finanzplan', '/os/finanzen?s=finanzplanung&space=privat'], ['/os/planung/woche', '/os/kalender?modus=planen'],
     ['/os/datenschutz/nachweise', '/os/datenschutz#nachweise'],
+    // 08.10. (Phase 0): die Vollansicht des Stapels ist der Reiter „Protokoll“ der Freigaben.
+    ['/os/stapel/voll', '/os/stapel?t=protokoll'],
   ];
   it('jede entfernte Adresse hat ihre Regel, das Ziel ist eine echte Seite, die alte Seite ist weg', async () => {
     const { default: konfig } = await import('../next.config.mjs');
@@ -155,7 +157,7 @@ describe('Altbestand — entfernte Seiten leiten weiter, keine Weiterleitungs-Se
   });
   it('kein Code verlinkt mehr auf entfernte Seiten; die alte Bereichsliste ist weg', () => {
     const code = [...dateien('components', /\.tsx?$/), ...dateien('lib', /\.tsx?$/), ...dateien('app', /\.tsx?$/), ...dateien('hooks', /\.tsx?$/)];
-    const funde = code.filter(f => /['"`]\/os\/(aufgaben\/board|roadmap|saeule\/)/.test(lies(f)));
+    const funde = code.filter(f => /['"`]\/os\/(aufgaben\/board|roadmap|saeule\/|stapel\/voll)/.test(lies(f)));
     expect(funde).toEqual([]);
     expect(existsSync(path.join(wurzel, 'lib/make-one/bereiche.ts'))).toBe(false);
     expect(code.filter(f => lies(f).includes('make-one/bereiche'))).toEqual([]);

@@ -347,6 +347,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'hoi/aussen': rm({ GET: 'haushalt', POST: 'dienst' }, 'Außenblick des Head of IT: melden nur mit HOI-Schlüssel bzw. Dienstweg, ansehen im Haushalt.'),
   'hoi/csp': rm({ POST: 'offen', GET: 'haushalt' }, 'CSP-Meldungen: der Browser meldet ohne Sitzung (nur Zähler, eigene Rate); ansehen im Haushalt.'),
   'hoi/lage': r('GET', 'haushalt', 'Lage des Systems (Head of IT) für den Haushalt.'),
+  'system/update': r('GET', 'person', 'Update-Hinweis im Kopf (08.10.): jede angemeldete Person per Sitzung — nur { laeuft, seit, bau }, keine Inhalte, keine Personen (Dienstweg braucht ihn nicht).'),
   'intern/absichten': r('GET,POST', 'inhaber', 'Interne Absichten — Inhaber bzw. Systemlauf.'),
   'intern/schreibpause': r('POST', 'dienst', 'Schreibpause (Sicherung) — nur Dienstweg.'),
   'intern/umschluesseln': r('POST', 'dienst', 'Datenschlüssel rotieren — nur Dienstweg.'),

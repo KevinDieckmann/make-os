@@ -350,6 +350,9 @@ Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und sch
 leer = Altweg (ziehen + auf dem Server bauen). Die Action prüft an der Ausgabe `ausrollen-v2`, ob das neue Skript schon
 auf dem Server liegt; sonst hat der Altweg gebaut. Vorteil: kein Bau auf dem 1-CPU-Server, die App bleibt beim Ausrollen
 flott; Rückfall bleibt möglich (`ssh make@… ` ohne Modus).
+Update-Hinweis (08.10.): `ziehen` legt danach `<daten>/system/update.json` `{ seit, ziel }` ab, `bild` (bzw. der Altweg) entfernt sie nach
+dem Tausch und bei jedem Abbruch — die App zeigt solange oben „Update läuft — kurz nichts Wichtiges speichern“ (ignoriert sie nach 20 Min.)
+und danach „Neue Version da — neu laden“. Schreib-/Löschfehler halten das Ausrollen nie auf (`|| true`).
 
 ## Domain makeinnovation.de (01.10.2026)
 

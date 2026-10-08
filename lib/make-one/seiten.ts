@@ -79,8 +79,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('netzwerken-karte', 'Netzwerken · Meine Visitenkarten', WEG.netzwerkenKarte()),
   // ZOE
   s('zoe', 'ZOE · Empfang', '/zoe'),
-  s('stapel', 'ZOE · Freigaben (Aufträge & Freigaben)', '/os/stapel'),
-  s('stapel-voll', 'ZOE · Freigaben, Protokoll und Rückgängig', '/os/stapel/voll'),
+  s('stapel', 'ZOE · Freigaben (Aufträge & Freigaben)', WEG.freigaben()),
+  s('stapel-protokoll', 'ZOE · Freigaben › Protokoll, Rückgängig und Gedächtnis', WEG.freigaben('protokoll')),
   s('agenten', 'ZOE · Agenten', WEG.agenten()),
   s('loop', 'ZOE · Loops', '/os/loop'),
   s('wissen', 'Brain · Notizen und Wissen', WEG.wissen()),
