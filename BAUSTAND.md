@@ -30,7 +30,8 @@
   84235d62); danach tsc 0 + betroffene Tests grün. → nach dem Freitags-Upload so in `entwicklung` mergen.
 - **Fertig auf Branch:** `zulieferer-aus` (1703ec77; Lücke 10 — Schalter `zuliefererLage` (Umgebung > Einstellung > Übernahme > Altbestand > neu aus),
   Erinnerungen → Aufgaben nur Inhaber mit Vorschau/Bestätigen (Absicht `erinnerungen-uebernahme`, `ar-…`), `/api/zulieferung` 410, `vv-mac-m365` archiviert,
-  `scripts/mac-zulieferer-entfernen.sh`). In `nach-upload` zusammengeführt (Verzeichnis-Optionen kombiniert), tsc 0.
+  `scripts/mac-zulieferer-entfernen.sh`). In `nach-upload` zusammengeführt (Verzeichnis-Optionen kombiniert), tsc 0; volle Suite auf `nach-upload`
+  (6 Pakete): 486 Dateien / 6.326 Tests grün.
 - **Recherche fertig:** `AGENTEN_KONZEPT.md` (fb9b4639) — Bestand, Markt mit Quellen, Zielbild, Bauplan (Paket 0 Vertrag → agenten-kern · agenten-seite ·
   agenten-skills → Paket 4 ZOE steuert Heads). Wartet auf Kevins Antworten im Agenten-Fragebogen.
 - **Fragen für die nächste Klickrunde (Zulieferer):** (1) Sicherungs-Abholung auf den Mac behalten? (2) Übernahme schaltet den Zulieferer gleich aus — oder
