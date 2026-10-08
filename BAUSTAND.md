@@ -28,7 +28,14 @@
 - **Probe-Zusammenführung `nach-upload`** (Worktree im Scratchpad): konten-register + business-frei + rechnungen-pdf + inbox-teilen + zoe-whatsapp, Konflikte
   gelöst (UPDATES, Imports, Lese-Bereiche, Markttraktion-Takt = Boten-Kanal UND Business-frei). Volle Suite vor zoe-whatsapp 6.239/6.240 (Test-IBAN behoben,
   84235d62); danach tsc 0 + betroffene Tests grün. → nach dem Freitags-Upload so in `entwicklung` mergen.
-- **In Arbeit:** `zulieferer-aus` (Lücke 10, Agent) · Recherche `AGENTEN_KONZEPT.md` (neuer Agenten-Bereich, Kevin 08.10. spät).
+- **Fertig auf Branch:** `zulieferer-aus` (1703ec77; Lücke 10 — Schalter `zuliefererLage` (Umgebung > Einstellung > Übernahme > Altbestand > neu aus),
+  Erinnerungen → Aufgaben nur Inhaber mit Vorschau/Bestätigen (Absicht `erinnerungen-uebernahme`, `ar-…`), `/api/zulieferung` 410, `vv-mac-m365` archiviert,
+  `scripts/mac-zulieferer-entfernen.sh`). In `nach-upload` zusammengeführt (Verzeichnis-Optionen kombiniert), tsc 0.
+- **Recherche fertig:** `AGENTEN_KONZEPT.md` (fb9b4639) — Bestand, Markt mit Quellen, Zielbild, Bauplan (Paket 0 Vertrag → agenten-kern · agenten-seite ·
+  agenten-skills → Paket 4 ZOE steuert Heads). Wartet auf Kevins Antworten im Agenten-Fragebogen.
+- **Fragen für die nächste Klickrunde (Zulieferer):** (1) Sicherungs-Abholung auf den Mac behalten? (2) Übernahme schaltet den Zulieferer gleich aus — oder
+  eigener Klick? (3) `~/.make-os/zulieferer.env` mit dem Dienstschlüssel löschen, danach `MAKE_OS_KEY` rotieren und `MAKE_OS_ZULIEFERER=aus` fest setzen?
+  (4) `vv-mac-m365` (auch M365, nicht angebunden) archivieren — ok?
 - **Fragen für die nächste Klickrunde (ZOE auf WhatsApp):** (1) Inhalt der Montags-Wochenstart-Nachricht? (2) Sicherheits-Hinweise ohne Boten in die Glocke?
   (3) Glocken-Erinnerungen über WhatsApp freischalten? (4) Eigene Meta-App für ZOE (Webhook je App) — bei Meta prüfen. (5) Telegram behalten oder abschalten?
   (6) Transkription: welcher EU-Dienst? (7) Sprachnachrichten 30 Tage, höchstens eine Vorlage je 20 h — so lassen?
