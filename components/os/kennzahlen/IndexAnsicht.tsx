@@ -82,6 +82,8 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
               {chips}
               {pi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span>}
               {pi?.teil && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Erst {pi.teil.saeulen} von {pi.teil.von} Säulen haben genug Daten (Teilwert {pi.teil.wert}) — der Index zählt ab {Math.round(MIN_ABDECKUNG * 100)} % des Gewichts.</span>}
+              {/* Anlaufphase (08.10., 7.1): gerechnet wie immer, aber noch nicht belastbar — die Daten laufen erst an. */}
+              {pi?.vorlaeufig && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Vorläufig bis {pi.vorlaeufig.bis.slice(8, 10)}.{pi.vorlaeufig.bis.slice(5, 7)}. — Anlaufphase nach dem ersten Lauf.</span>}
             </div>
             {zaehlende.map(s => (
               <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(70px, 2fr) 40px', gap: 12, alignItems: 'center' }}>

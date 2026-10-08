@@ -31,8 +31,9 @@ const bestand = (x: Partial<CrmBestand> = {}): CrmBestand => ({ ...leererBestand
 const quellen = (p: Kontakt[], ctx = {}) => marketingHerkunft(p, ctx).map(g => g.quelle);
 
 describe('Welche Quellen sind Marketing', () => {
-  it('Website-Anfrage: selbst angegeben oder eine Anfrage im Verlauf', () => {
-    expect(quellen([k('a', { herkunft: 'selbst' })])).toContain('anfrage');
+  it('Website-Anfrage: eine Anfrage im Verlauf oder die Quelle — NICHT die Datenschutz-Herkunft „selbst angegeben“ (08.10., Woche 1 · 5.1)', () => {
+    expect(quellen([k('a', { herkunft: 'selbst' })])).not.toContain('anfrage'); // z. B. eine überreichte Visitenkarte
+    expect(quellen([k('a', { quelle: 'Website-Anfrage' })])).toContain('anfrage');
     expect(quellen([k('a', { aktivitaeten: [{ am: '2026-09-20T09:00:00Z', art: 'antwort', von: 'kevin', text: 'Anfrage über Webseite: Hallo' }] })])).toContain('anfrage');
     // Eine einfache Antwort ist noch keine Anfrage.
     expect(istMarketingLead([k('a', { aktivitaeten: [{ am: '2026-09-20T09:00:00Z', art: 'antwort', von: 'kevin' }] })])).toBe(false);
@@ -76,7 +77,7 @@ describe('Welche Quellen sind Marketing', () => {
     expect(istMarketingLead([k('a')])).toBe(false);
   });
   it('Eine Firma gilt als Marketing-Lead, sobald EINE Person aus dem Marketing kommt', () => {
-    expect(istMarketingLead([k('a', { herkunft: 'empfehlung' }), k('b', { herkunft: 'selbst' })])).toBe(true);
+    expect(istMarketingLead([k('a', { herkunft: 'empfehlung' }), k('b', { quelle: 'Website-Anfrage' })])).toBe(true);
   });
 });
 
@@ -92,7 +93,7 @@ describe('Der Kern: das Marketing-Scoring gilt nur für Marketing-Leads', () => 
     expect(r.gesamt).toBeGreaterThan(0);
   });
   it('Marketing-Lead mit denselben Signalen: MQL erreicht; Herkunft steht im Ergebnis', () => {
-    const r = scoringRechnen([warm({ herkunft: 'selbst' })], undefined, HEUTE);
+    const r = scoringRechnen([warm({ quelle: 'Website-Anfrage' })], undefined, HEUTE);
     expect(r.marketingLead).toBe(true);
     expect(r.marketing).toMatchObject({ gilt: true, erreicht: true });
     expect(r.marketingHerkunft.map(g => g.quelle)).toContain('anfrage');
@@ -100,7 +101,7 @@ describe('Der Kern: das Marketing-Scoring gilt nur für Marketing-Leads', () => 
   it('gilt auch für die bisherige Rechnung (Schwelle 35) — die Herkunft entscheidet zuerst', () => {
     const e = bisherigeRechnung();
     expect(scoringRechnen([warm({ herkunft: 'empfehlung' })], undefined, HEUTE, { einstellungen: e }).marketing.erreicht).toBe(false);
-    expect(scoringRechnen([warm({ herkunft: 'selbst' })], undefined, HEUTE, { einstellungen: e }).marketing.erreicht).toBe(true);
+    expect(scoringRechnen([warm({ quelle: 'Website-Anfrage' })], undefined, HEUTE, { einstellungen: e }).marketing.erreicht).toBe(true);
   });
   it('Kampagnen aus dem Bestand kommen über den Kontext in die Rechnung', () => {
     const r = scoringRechnen([warm()], undefined, HEUTE, { kampagnen: [kampagne('k1', ['c-a'])] });
@@ -115,7 +116,7 @@ describe('Alle Leser sehen dasselbe', () => {
     events: [e1], teilnahmen: [teilnahme('e1', 'c-b')],
   });
   const heiss = { eignung: 'ja' as const, email: 'x@example.invalid', telefon: '030 1', aktivitaeten: [{ am: '2026-09-28T09:00:00Z', art: 'gespraech' as const, von: 'kevin' }] };
-  const kontakte = [k('b', { ...heiss, firmaId: 'f-b', firma: 'Begegnung GmbH', herkunft: 'veranstaltung' }), k('m', { ...heiss, firmaId: 'f-m', firma: 'Marketing GmbH', herkunft: 'selbst' })];
+  const kontakte = [k('b', { ...heiss, firmaId: 'f-b', firma: 'Begegnung GmbH', herkunft: 'veranstaltung' }), k('m', { ...heiss, firmaId: 'f-m', firma: 'Marketing GmbH', quelle: 'Website-Anfrage' })];
   it('Leads-Zeile: Begegnung bleibt „lead“ (noch zu qualifizieren), Marketing-Lead wird MQL; Kennzahl zählt nur Letzteren', () => {
     const z = leads(kontakte, crm, HEUTE);
     const b = z.find(x => x.id === 'f-b')!, m = z.find(x => x.id === 'f-m')!;

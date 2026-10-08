@@ -6,7 +6,7 @@
 
 import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
-import type { CrmBestand } from './typen';
+import type { CrmBestand, Wertelisten } from './typen';
 import { OFFENE_STUFEN, prognose, gesundheit, gesamtwert, winRate, WIN_RATE, echtesGespraech } from './pipeline';
 import { zyklus as dealZyklus, haengtNachWert } from './deal-auswertung';
 import { faellige, puenktlichkeit } from './followup';
@@ -21,15 +21,35 @@ export interface Kpi { id: string; label: string; wert: number | null; anzeige: 
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 const stufe = (v: number, gruen: number, gelb: number, hoeherBesser = true): KpiAmpel => (hoeherBesser ? (v >= gruen ? 'gruen' : v >= gelb ? 'gelb' : 'rot') : (v <= gruen ? 'gruen' : v <= gelb ? 'gelb' : 'rot'));
 
+/**
+ * EINE Messlatte für Gespräche je Woche und SQL je Monat (08.10., Markttraktion Woche 1 · 7.2): die Ziele aus Stammdaten › Wertelisten
+ * (grün = Ziel, rot = unter der Hälfte), sonst die Startschwellen. Dieselbe Messlatte gilt für die Einzelampel (`kennzahlen`), den
+ * Traktions-Index (`traktionsIndex`, als Schwellen) und das Wochen-Scoreboard (`wochenScoreboard`, als Wochenziele) — vorher rechnete
+ * der Index fest 8/4 und 2/1 und das Scoreboard eigene Ziele, beide zeigten aber den Text der Werteliste.
+ */
+export interface Messlatte { gespraeche: { gruen: number; rot: number }; sql30: { gruen: number; rot: number }; ausZiel: { gespraeche: boolean; sql: boolean } }
+export function messlatte(w?: Pick<Wertelisten, 'ziele'> | null): Messlatte {
+  const zielG = w?.ziele?.gespraecheWoche, zielS = w?.ziele?.sqlMonat;
+  const g = !!zielG && zielG > 0, sq = !!zielS && zielS > 0;
+  return {
+    gespraeche: g ? { gruen: zielG!, rot: Math.ceil(zielG! / 2) } : { gruen: 8, rot: 4 },
+    sql30: sq ? { gruen: zielS!, rot: Math.ceil(zielS! / 2) } : { gruen: 2, rot: 1 },
+    ausZiel: { gespraeche: g, sql: sq },
+  };
+}
+/** SQL je Monat → Ziel je Kalenderwoche (Scoreboard): anteilig auf die Wochen eines Jahres, mindestens 1. */
+export const sqlJeWoche = (m: Messlatte): number => Math.max(1, Math.ceil((m.sql30.gruen * 12) / 52));
+
 export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
   const vor7 = tagMinus(heute, 6), vor30 = tagMinus(heute, 29);
   const ph7 = crm.sitzungen.filter(s => s.datum >= vor7 && s.datum <= heute).length;
   const phJe = crm.sitzungen.length > 0;
   const akt = kontakte.flatMap(k => (k.aktivitaeten ?? []).map(a => ({ ...a, k: k.id })));
-  const gespraeche7 = akt.filter(a => a.am.slice(0, 10) >= vor7 && echtesGespraech(a)).length;
-  const erste = kontakte.filter(k => { const g = (k.aktivitaeten ?? []).filter(echtesGespraech).map(a => a.am.slice(0, 10)).sort()[0]; return g && g >= vor30; }).length;
+  // 7.5 (08.10.): Berliner Tag (`tagVon`) statt UTC-Tag.
+  const gespraeche7 = akt.filter(a => echtesGespraech(a) && tagVon(a.am) >= vor7).length;
+  const erste = kontakte.filter(k => { const g = (k.aktivitaeten ?? []).filter(echtesGespraech).map(a => tagVon(a.am)).sort()[0]; return g && g >= vor30; }).length;
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
-  const sql30 = crm.chancen.filter(c => c.angelegt.slice(0, 10) >= vor30 && c.angelegt.slice(0, 10) <= heute).length;
+  const sql30 = crm.chancen.filter(c => { const t = tagVon(c.angelegt); return t >= vor30 && t <= heute; }).length;
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
   const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
   const m = mrr(crm.mandate), kz = konzentration(crm.mandate);
@@ -39,9 +59,11 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const reife = kontakte.length ? Math.round((reif / kontakte.length) * 100) : null;
   const hatVerlauf = akt.some(a => a.art !== 'system');
   // Ziele aus Stammdaten › Wertelisten sind die Messlatte (27.09.): grün = Ziel erreicht, rot = unter der Hälfte. Ohne Ziel gelten die Startschwellen.
-  const zielG = crm.wertelisten?.ziele?.gespraecheWoche, zielS = crm.wertelisten?.ziele?.sqlMonat;
-  const gGruen = zielG && zielG > 0 ? zielG : 8, gGelb = zielG && zielG > 0 ? Math.ceil(zielG / 2) : 4;
-  const sGruen = zielS && zielS > 0 ? zielS : 2, sGelb = zielS && zielS > 0 ? Math.ceil(zielS / 2) : 1;
+  // Seit 08.10. (7.2) EINE Stelle `messlatte` — dieselbe für Index und Scoreboard.
+  const ml = messlatte(crm.wertelisten);
+  const zielG = ml.ausZiel.gespraeche, zielS = ml.ausZiel.sql;
+  const gGruen = ml.gespraeche.gruen, gGelb = ml.gespraeche.rot;
+  const sGruen = ml.sql30.gruen, sGelb = ml.sql30.rot;
   // ── Deal- und Follow-up-Ebene (27.09.): Win Rate, Zyklus, hängender Wert, Pünktlichkeit, Überfälliges, Neuumsatz gegen Ziel ──
   const wr = winRate(crm.chancen, heute);
   const zy = dealZyklus(crm.chancen);

@@ -252,12 +252,16 @@ export function angebotAusSpeicher(o: Record<string, unknown>): Angebot | null {
 // ── Prüfen vor dem Stellen ───────────────────────────────────────────────────
 
 /** Was fehlt, um das Angebot zu stellen? (leer = kann gestellt werden) */
+/** Ablehnung, wenn ein Angebot über 0 € gestellt werden soll (3.12) — derselbe Text in Editor-Liste und Server-Antwort. */
+export const SUMME_NULL = 'Die Summe ist 0 € — ein Angebot über nichts belegt nur eine Nummer.';
 export function stellenFehlt(a: Angebot, heute: string): string[] {
   const f: string[] = [];
   if (!istEntwurf(a)) f.push('Nur ein Entwurf kann gestellt werden.');
   if (!a.kontaktId) f.push('Empfänger fehlt — erst einen Kontakt wählen.');
   if (!a.positionen.length) f.push('Keine Position — mindestens ein Produkt oder eine freie Position.');
   if (a.positionen.some(p => !(p.menge > 0))) f.push('Eine Position hat Menge 0.');
+  // 3.12 (08.10.): ein Angebot über 0 € belegte eine feste Nummer — die Summe muss über 0 liegen (der Server antwortet 409).
+  if (a.positionen.length && !(angebotSummen(a).gesamt.netto > 0)) f.push(SUMME_NULL);
   if (!a.titel.trim()) f.push('Titel fehlt.');
   if (a.gueltigBis < heute) f.push('„Gültig bis“ liegt in der Vergangenheit.');
   return f;

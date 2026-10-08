@@ -100,11 +100,20 @@ export async function rechnungPdf(id: string, z: { haushalt: string; sicht: Sich
 
 // ── Entwurf anlegen (frei, aus Angebot, aus Mandat) ─────────────────────────
 
-export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; mandatId?: unknown; angebotId?: unknown; monat?: unknown }
+export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; mandatId?: unknown; angebotId?: unknown; monat?: unknown; /** Nur bei `angebot`: `einmalig` = nur die Einmalposten (Woche 1 · 3.6). */ nur?: unknown }
+
+/**
+ * Feste Kennung der Rechnung für die Einmalposten eines gemischten Angebots (08.10., Woche 1 · 3.6) — aus der Angebots-Kennung abgeleitet,
+ * damit ein zweiter Klick (oder „Mandat anlegen“ und der Knopf danach) nie eine zweite Rechnung anlegt.
+ */
+export const einmalRechnungId = (angebotId: string) => `r-e${createHash('sha256').update(`einmalig|${angebotId}`).digest('hex').slice(0, 24)}`;
 
 /**
  * Einen Rechnungsentwurf anlegen (Status „geplant“, ohne Nummer). `quelle`:
  *   angebot  aus einem ANGENOMMENEN Angebot: Positionen, Kunde, Mandat, Gesellschaft — gibt es schon einen offenen Entwurf dazu, kommt er zurück.
+ *            Mit `nur: 'einmalig'` (Woche 1 · 3.6, gemischtes Angebot nach „Mandat anlegen“): nur die Einmalposten, feste Kennung
+ *            (`einmalRechnungId`) — gibt es sie (in jedem Status) oder schon irgendeine Rechnung aus diesem Angebot, kommt DIE zurück;
+ *            eine gestellte Rechnung wird nie angefasst. Die laufende Leistung rechnet das Mandat ab (Monatsrechnung).
  *   mandat   Monatsrechnung aus dem Honorar für `monat` (JJJJ-MM, Vorgabe: laufender Monat) — je Mandat und Leistungsmonat höchstens eine.
  *   frei     leer bzw. vorbelegt aus Kontakt/Firma/Mandat der Kartei.
  * Nie gestellt — das macht nur „Rechnung stellen“. Eingeschränkte Personen (Art. 18) fehlen in der Kartei-Sicht und belegen nichts vor.
@@ -143,7 +152,12 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const a = (crm.angebote ?? []).find(x => x.id === p.angebotId);
     if (!a) throw new RechnungFehler('Angebot nicht gefunden.', 404);
     if (a.status !== 'angenommen') throw new RechnungFehler('Eine Rechnung entsteht nur aus einem angenommenen Angebot — erst „angenommen“ vermerken.', 409, { grund: 'nicht-angenommen' });
-    vorhandenIn = l => l.find(r => r.angebotId === a.id && r.status === 'geplant');
+    const nurEinmalig = p.nur === 'einmalig';
+    if (nurEinmalig && !a.positionen.some(x => x.basis === 'einmalig')) throw new RechnungFehler('Dieses Angebot hat keine Einmalposten.', 409, { grund: 'ohne-einmalposten' });
+    const fest = einmalRechnungId(a.id);
+    vorhandenIn = nurEinmalig
+      ? l => l.find(r => r.id === fest) ?? l.find(r => r.angebotId === a.id && r.art !== 'storno' && r.status !== 'storniert')
+      : l => l.find(r => r.angebotId === a.id && r.status === 'geplant');
     const offen = vorhandenIn(plan.rechnungen);
     if (offen) {
       if (!inSicht(offen, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
@@ -153,11 +167,15 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const f = firma(a.firmaId ?? k?.firmaId);
     const empf = empfaengerAusCrm(k, f);
     const mandat = a.mandatId ? crm.mandate.find(m => m.id === a.mandatId) : a.dealId ? crm.mandate.find(m => m.chanceId === a.dealId && !m.geloeschtAm) : undefined;
+    // Gesellschaft wie überall (08.10., 3.6): eine Register-Gesellschaft führt der Finanzplan nicht (409 „nur Grunddaten“), nie still kdc.
+    const g = gesellschaftFuer(a.gesellschaft);
+    if (!g) throw new RechnungFehler('Für dieses Angebot steht keine Gesellschaft fest — die Rechnung frei schreiben.', 409, { grund: 'gesellschaft' });
+    const positionen = positionenAusAngebot(nurEinmalig ? { positionen: a.positionen.filter(x => x.basis === 'einmalig') } : a, ku(g));
     entwurf = neuerEntwurf({
-      id, firmaId: a.gesellschaft, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: a.titel, empfaenger: empf, positionen: positionenAusAngebot(a, ku(a.gesellschaft)),
+      id: nurEinmalig ? fest : id, firmaId: g, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: nurEinmalig ? `${a.titel || 'Leistung'} — einmalig`.slice(0, 160) : a.titel, empfaenger: empf, positionen,
       zahlungszielTage: a.zahlungszielTage, heute, ...(mandat ? { mandatId: mandat.id } : {}), ...(a.nummer ? { angebot: a.nummer } : {}), ...(a.gestelltAm ? { angebotAm: tagVon(a.gestelltAm) } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), angebotId: a.id, einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
-    }, { kleinunternehmer: ku(a.gesellschaft) });
+    }, { kleinunternehmer: ku(g) });
   } else if (quelle === 'mandat') {
     const m = typeof p.mandatId === 'string' ? crm.mandate.find(x => x.id === p.mandatId && !x.geloeschtAm) : undefined;
     if (!m) throw new RechnungFehler('Mandat nicht gefunden.', 404);

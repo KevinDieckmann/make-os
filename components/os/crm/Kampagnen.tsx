@@ -42,6 +42,7 @@ import { HeadPanel } from './HeadPanel';
 import { VernetzenEinstellungen } from './Vernetzen';
 import { DealAusQuelle } from './marketing/DealAusQuelle';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { NEU_MAX, kampagneInPowerHour } from '@/lib/crm/heute';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number })[];
@@ -83,7 +84,8 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
     setOffen(r.kampagne.id); setSegmentPlan(null);
     // Die neue Kampagne soll sichtbar sein, auch wenn gerade nach der anderen Person gefiltert ist.
     if (!passtWer(wahl, r.kampagne.zustaendig, 'sales', ich)) setWahl('alle');
-    setMeldung(`Entwurf „${r.kampagne.name}“ mit ${r.kampagne.kontaktIds.length} Personen angelegt — zuständig ${nameVon(zustaendig(r.kampagne.zustaendig, 'sales'))}. Als Nächstes: Personen prüfen, dann den ersten Schritt angehen.`);
+    // 5.2 (08.10.): der Hinweis des Servers (rote Ampel nicht aufgenommen, gelbe nur persönlich) geht nicht mehr verloren — „0 Personen“ hat einen Grund.
+    setMeldung(`Entwurf „${r.kampagne.name}“ mit ${r.kampagne.kontaktIds.length} Personen angelegt — zuständig ${nameVon(zustaendig(r.kampagne.zustaendig, 'sales'))}.${typeof r.hinweis === 'string' && r.hinweis ? ` ${r.hinweis}` : ''} Als Nächstes: Personen prüfen, dann den ersten Schritt angehen.`);
   };
   const alleRoh = api.crm?.stand.kampagnen ?? [];
   const archivZahl = alleRoh.filter(k => k.archiviertAm).length;
@@ -181,6 +183,23 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
   );
 }
 
+/**
+ * Wie viele Personen der Kampagne heute in der Power Hour der führenden Person stehen (5.3) — dieselbe Rechnung wie die Power Hour
+ * (GET /api/crm/heute, Karten mit Bezug auf die Kampagne). Nur für aktive Kampagnen; ohne Antwort null (dann kein Zähler).
+ */
+function useKampagneInPowerHour(k: Kampagne, person: string): number | null {
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    if (k.status !== 'aktiv') { setN(null); return; }
+    let lebt = true;
+    fetch(`/api/crm/heute?n=12&fuer=${encodeURIComponent(person)}`, { cache: 'no-store' }).then(r => r.json())
+      .then((d: { ok?: boolean; karten?: { bezug?: string }[] }) => { if (lebt) setN(d?.ok ? kampagneInPowerHour(d.karten ?? [], k.id) : null); })
+      .catch(() => { if (lebt) setN(null); });
+    return () => { lebt = false; };
+  }, [k.id, k.status, person]);
+  return n;
+}
+
 /** Löschen = Papierkorb; eine laufende Kampagne erst nach Rückfrage (Archiv als ruhigerer Weg). */
 function kampagneLoeschen(ablage: CrmAblage, k: Kampagne) {
   if (k.status !== 'aktiv') { ablage.loeschen(k.id, k.name); return; }
@@ -204,10 +223,12 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k:
   // Aufgaben gehen an die Zuständigkeit; bei „beide“ an mich.
   const aufgabenAn = bearbeiterFuer(k.zustaendig, 'sales', api.ich ?? fuehrt);
   const jePerson = kampagneJePerson(k);
+  const inPowerHour = useKampagneInPowerHour(k, fuehrt === BEIDE ? api.ich ?? fuehrt : fuehrt);
   // Was als Nächstes zu tun ist — fällige Schritte vor offenen Personen vor Abschluss.
   const naechstes = !z ? '' : k.status === 'abgeschlossen' || k.status === 'abgebrochen' ? ''
     : z.schritteFaellig ? `${z.schritteFaellig} ${z.schritteFaellig === 1 ? 'Schritt ist' : 'Schritte sind'} fällig — abhaken oder als Aufgabe an ${nameVon(aufgabenAn)} geben.`
-    : z.offen ? `${z.offen} ${z.offen === 1 ? 'Person ist' : 'Personen sind'} noch nicht angesprochen${k.status === 'aktiv' ? ` — sie stehen in der Power Hour von ${fuehrt === BEIDE ? 'euch beiden' : nameVon(fuehrt)}` : ' — Status auf „Aktiv“, dann stehen sie in der Power Hour'}.`
+    // 5.3 (08.10.): ehrlich — die Power Hour nimmt je Tag höchstens NEU_MAX neue Karten über alle Quellen; rote Ampel und kürzlich Kontaktierte fallen raus.
+    : z.offen ? `${z.offen} ${z.offen === 1 ? 'Person ist' : 'Personen sind'} noch nicht angesprochen${k.status === 'aktiv' ? ` — die Power Hour von ${fuehrt === BEIDE ? 'euch beiden' : nameVon(fuehrt)} nimmt je Tag höchstens ${NEU_MAX} neue Karten (über alle Quellen, ohne rote Ampel und kürzlich Kontaktierte)${inPowerHour !== null ? `; heute in der Power Hour: ${inPowerHour}` : ''}` : ' — Status auf „Aktiv“, dann kommen sie nach und nach in die Power Hour'}.`
     : z.personen ? 'Alle angesprochen — Kampagne abschließen und in der Notiz festhalten, was funktioniert hat.' : 'Personen hinzufügen — über die Suche unten.';
   const kanal = k.kanal === 'telefon' || k.kanal === 'mail' || k.kanal === 'linkedin' ? k.kanal : null;
   const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(x => !k.kontaktIds.includes(x.id) && !ausgenommen(x) && `${anzeigename(x)} ${x.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];

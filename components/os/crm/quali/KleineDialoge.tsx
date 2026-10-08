@@ -29,7 +29,10 @@ const Fuss = ({ onZu, ok, laeuft, los, text }: { onZu: () => void; ok: boolean; 
 
 export function AbgebenDialog({ api, z, onZu, onFertig }: P) {
   const ich = api.ich ?? TEAM[0].id;
-  const [an, setAn] = useState(TEAM.find(t => t.id !== ich)?.id ?? TEAM[0].id);
+  // 2.12 (08.10.): vorgewählt ist die erste SICHTBARE Person — nie der jetzige Besitzer (er steht nicht in der Auswahl), wenn möglich nicht ich.
+  const waehlbar = TEAM.filter(t => t.id !== z.besitzer || z.besitzer === 'beide');
+  const [an, setAn] = useState((waehlbar.find(t => t.id !== ich) ?? waehlbar[0])?.id ?? '');
+  const anOk = waehlbar.some(t => t.id === an);
   const [notiz, setNotiz] = useState('');
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState('');
@@ -45,11 +48,11 @@ export function AbgebenDialog({ api, z, onZu, onFertig }: P) {
     <Fenster titel="Abgeben" onZu={onZu} breit={520}>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>„{z.name}“ mit {z.personen.length === 1 ? 'seiner Person' : `allen ${z.personen.length} Personen`} geht an die andere Person. Die Übergabe steht im Verlauf, sie bekommt eine Aufgabe mit Link.</div>
       <div role="radiogroup" aria-label="An wen" style={{ display: 'grid', gap: 6 }}>
-        {TEAM.filter(t => t.id !== z.besitzer || z.besitzer === 'beide').map(t => <button key={t.id} type="button" role="radio" aria-checked={an === t.id} onClick={() => setAn(t.id)} className="fassbar" style={knopfStil(an === t.id)}>{t.name}</button>)}
+        {waehlbar.map(t => <button key={t.id} type="button" role="radio" aria-checked={an === t.id} onClick={() => setAn(t.id)} className="fassbar" style={knopfStil(an === t.id)}>{t.name}</button>)}
       </div>
       <textarea value={notiz} onChange={e => setNotiz(e.target.value)} rows={3} maxLength={600} placeholder="Was die andere Person wissen muss (optional) …" aria-label="Notiz zur Übergabe" style={{ ...feld, fontSize: 16, padding: '8px 11px', width: '100%', resize: 'vertical' }} />
       {meldung && <Hinweis art="kritisch" rolle="alert">{meldung}</Hinweis>}
-      <Fuss onZu={onZu} ok laeuft={laeuft} los={() => void los()} text={`An ${nameVon(an)} abgeben`} />
+      <Fuss onZu={onZu} ok={anOk} laeuft={laeuft} los={() => void los()} text={anOk ? `An ${nameVon(an)} abgeben` : 'Abgeben'} />
     </Fenster>
   );
 }

@@ -200,7 +200,8 @@ export function marketingKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute:
 
   const neu = (crm.chancen ?? []).filter(c => tag(c.angelegt) >= vor90 && tag(c.angelegt) <= heute);
   const ausMk = neu.filter(c => ausMarketing(c, beitraege)).length;
-  const anteil = neu.length ? ausMk / neu.length : null;
+  // 7.4 (08.10.): Quote erst ab MINDESTMENGE neuen Deals — vorher war ein einziger Deal „100 %“.
+  const anteil = neu.length >= MINDESTMENGE ? ausMk / neu.length : null;
 
   const letzte = ausgaben.filter(a => abmeldequote(a) !== null).sort((a, b) => (b.datum ?? '').localeCompare(a.datum ?? '') || b.geaendert.localeCompare(a.geaendert))[0];
   const quote = letzte ? abmeldequote(letzte)! : null;
@@ -218,7 +219,7 @@ export function marketingKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute:
   return [
     { id: 'veroeffentlichungen', label: 'Veröffentlichungen · 7 Tage', wert: beitraege.length ? v7 : null, anzeige: beitraege.length ? String(v7) : '—', ampel: beitraege.length ? stufe(v7, 2, 1) : 'grau', ziel: '≥ 2 je Woche', quelle: beitraege.length ? `${v28} in 4 Wochen · Redaktionsplan` : 'noch kein Beitrag im Redaktionsplan' },
     { id: 'content_gespraeche', label: 'Gespräche aus Content · 30 Tage', wert: gespraecheMessbar ? gespraeche : null, anzeige: gespraecheMessbar ? String(gespraeche) : '—', ampel: gespraecheMessbar ? stufe(gespraeche, 2, 1) : 'grau', ziel: '≥ 2 je Monat', quelle: 'Wirkung „Gespräch“ oder „Anfrage“ an Beiträgen, je Person und Beitrag einmal' },
-    { id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', wert: anteil, anzeige: anteil === null ? '—' : `${Math.round(anteil * 100)} %`, ampel: anteil === null ? 'grau' : stufe(anteil, 0.25, 0.1), ziel: '≥ 25 %', quelle: neu.length ? `${ausMk} von ${neu.length} neuen Deals · Quelle Content/Anfrage oder Gespräch aus einem Beitrag` : 'kein neuer Deal in 90 Tagen' },
+    { id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', wert: anteil, anzeige: anteil === null ? '—' : `${Math.round(anteil * 100)} %`, ampel: anteil === null ? 'grau' : stufe(anteil, 0.25, 0.1), ziel: '≥ 25 %', quelle: neu.length ? `${ausMk} von ${neu.length} neuen Deals · Quelle Content/Anfrage oder Gespräch aus einem Beitrag${anteil === null ? ` — Quote erst ab ${MINDESTMENGE} Deals` : ''}` : 'kein neuer Deal in 90 Tagen' },
     { id: 'abmeldequote', label: 'Abmeldequote letzte Ausgabe', wert: quote, anzeige: quote === null ? '—' : prozent(quote), ampel: quote === null ? 'grau' : quotenAmpel(quote), ziel: '< 0,5 %', quelle: letzte ? `„${kurz(letzte.titel, 60)}“: ${letzte.abmeldungen} von ${letzte.empfaenger}` : 'noch keine versendete Ausgabe mit Zahlen' },
     { id: 'newsletter_netto', label: 'Newsletter netto · 30 Tage', wert: nl.length ? netto : null, anzeige: nl.length ? (netto > 0 ? `+${netto}` : String(netto)) : '—', ampel: nl.length ? (netto > 0 ? 'gruen' : netto === 0 ? 'gelb' : 'rot') : 'grau', ziel: '> 0 je Monat', quelle: nl.length ? `${doi} mit Double-Opt-in · ${zugang} neu, ${abgang} weg` : 'noch keine Newsletter-Einwilligung' },
     // 27.09.: Anfragen (Eingang + Wirkung an Beiträgen) und Kosten je Anfrage aus der Marketing-Strecke.

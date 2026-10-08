@@ -123,6 +123,10 @@ export const DAUERN = [30, 45, 60] as const;
 
 // ── Die Erfassung ────────────────────────────────────────────────────────────
 
+/** Ohne bestehende Person braucht die Erfassung einen Namen — Vorname ODER Nachname (5.14, Browser und Server). */
+export const NAME_FEHLT = 'Vor- oder Nachname fehlt — bitte mindestens einen eintragen.';
+export const nameOk = (f: Pick<KontaktFelder, 'vorname' | 'nachname'>): boolean => !!(f.vorname ?? '').trim() || !!(f.nachname ?? '').trim();
+
 export interface KontaktFelder {
   vorname?: string; nachname?: string; firma?: string; position?: string; email?: string; telefon?: string; mobil?: string;
   webseite?: string; anschrift?: string; linkedin?: string; anrede?: 'Du' | 'Sie';
@@ -261,7 +265,9 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
 
   const vorhanden = typeof b.vorhandenKontaktId === 'string' && b.vorhandenKontaktId ? b.vorhandenKontaktId : undefined;
   if (vorhanden && !istKontaktKennung(vorhanden)) return fehler('Die gewählte Person ist ungültig.');
-  if (!vorhanden && !felder.nachname) return fehler('Nachname fehlt — bitte eintragen.');
+  // 5.14 (08.10.): Vorname ODER Nachname reicht — auf dem Event kennt man oft nur einen. Die Dublettenregel bleibt sicher: eine gleiche
+  // Nummer hängt nur bei gleichem NACHNAMEN an (`zusammenfuehrung`), ohne Nachnamen entsteht eine neue Person mit Hinweis.
+  if (!vorhanden && !felder.nachname && !felder.vorname) return fehler(NAME_FEHLT);
   const firmaId = typeof b.firmaId === 'string' && b.firmaId ? b.firmaId : undefined;
   if (firmaId && !FIRMA_ID.test(firmaId)) return fehler('Die gewählte Firma ist ungültig.');
 

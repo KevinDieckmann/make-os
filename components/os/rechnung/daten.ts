@@ -84,7 +84,7 @@ export function pdfLaden(rechnungId: string, name?: string) {
  * Einen Entwurf anlegen (frei · aus Angebot · aus Mandat) — für die Einstiege außerhalb der Finanzen (Kontakt › Umsatz, Mandatsakte,
  * Angebot). Liefert die Kennung (danach `WEG.rechnungSchreiben(id)`) oder den Fehlertext.
  */
-export async function entwurfAnlegen(body: { quelle: 'frei' | 'angebot' | 'mandat'; firmaId?: string; kontaktId?: string; kundeFirmaId?: string; mandatId?: string; angebotId?: string; monat?: string }): Promise<{ id?: string; fehler?: string; vorhanden?: boolean }> {
+export async function entwurfAnlegen(body: { quelle: 'frei' | 'angebot' | 'mandat'; firmaId?: string; kontaktId?: string; kundeFirmaId?: string; mandatId?: string; angebotId?: string; monat?: string; /** Nur die Einmalposten eines gemischten Angebots (Woche 1 · 3.6). */ nur?: 'einmalig' }): Promise<{ id?: string; fehler?: string; vorhanden?: boolean }> {
   const r = await rechnungPost({ aktion: 'neu', ...body, anfrageId: neueAnfrage() });
   if (r.ok && r.rechnung) return { id: r.rechnung.id, vorhanden: !!r.vorhanden };
   return { fehler: r.fehler ?? 'Nicht angelegt.' };

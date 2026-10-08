@@ -55,7 +55,7 @@ function EventEinladen({ k, api, heute, onFertig }: { k: Kontakt; api: CrmApi; h
   const schon = new Set((crm?.stand.teilnahmen ?? []).filter(t => t.kontaktId === k.id).map(t => t.eventId));
   const [laeuft, setLaeuft] = useState<string | null>(null);
   if (!crm) return <Hinweis>Die Events laden noch …</Hinweis>;
-  if (!events.length) return <Hinweis>Kein kommendes Event geplant — zuerst unter Markttraktion › Event eines anlegen.</Hinweis>;
+  if (!events.length) return <Hinweis>Kein kommendes Event geplant — zuerst unter Markttraktion › Events › Make.One eines anlegen.</Hinweis>;
   const ctx = kontextAus(crm.stand, heute);
   const bez = { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) };
   const einl = kanalStatus(k, 'einladung', bez);

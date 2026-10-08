@@ -90,7 +90,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
           <Zahl wert={versendet.length ? String(antworten) : undefined} label="Antworten insgesamt" />
           <Zahl wert={letzteQuote === null ? undefined : prozent(letzteQuote)} label="Abmeldequote zuletzt" farbe={letzteQuote === null ? undefined : KPI_FARBE[quotenAmpel(letzteQuote)]} />
         </Raster>
-        {!empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>0 Empfänger mit Double-Opt-in — ohne DOI kein Newsletter. Die Einwilligung „Newsletter“ mit Nachweis (Bestätigungsklick) hältst du in der Karteikarte unter „Recht“ fest.</div>}
+        {!empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>0 Empfänger mit Double-Opt-in — ohne DOI kein Newsletter. Die Einwilligung „Newsletter“ mit Nachweis (Bestätigungsklick) hältst du am Kontakt unter „Stammdaten › Datenschutz“ fest.</div>}
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>MAKE OS versendet nichts. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in), im Versandwerkzeug verschicken — mit Abmeldelink. Danach Empfänger, Antworten und Abmeldungen eintragen. Öffnungsraten sind keine Steuergröße.</div>
       </Karte>
 

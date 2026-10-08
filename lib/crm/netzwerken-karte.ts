@@ -1,26 +1,39 @@
-// ─── Netzwerken — Karte automatisch auslesen (vorbereitet, abgeschaltet; 02.10.) ──
-// Die Schnittstelle für die spätere KI-Erkennung: Fotos der Visitenkarte rein, Felder raus. Heute ist sie AUS — die Felder
-// füllt die Person von Hand aus, die Fotos gehen unverändert in die Dateiablage. Die Oberfläche (components/os/netzwerken/
-// Erfassen.tsx) ruft `karteAuslesen` nach jedem Foto auf und übernimmt zurückgegebene Felder nur in LEERE Eingabefelder —
-// sobald die Erkennung läuft (in ein bis zwei Wochen), schaltet nur `KARTE_AUSLESEN_AN` um und die Funktion liefert Felder.
-// Anders als der ältere Weg `/api/crm/visitenkarte` (ein Foto, nicht gespeichert, sofort an das Modell) gehört hier das Foto
-// zur Erfassung: mehrere Bilder (Vorder- und Rückseite), verschlüsselt am Kontakt abgelegt, die Erkennung liest nur mit.
+// ─── Netzwerken — Karte automatisch auslesen (02.10.; seit 08.10. eingeschaltet, Woche 1 · 5.13) ──
+// Vorher war die Erkennung hier aus (`KARTE_AUSLESEN_AN = false`), in Kartei und Make.One-Abend aber an — ausgerechnet auf dem Event
+// wurde getippt. Jetzt läuft sie über DIESELBE Route wie Kartei und Abend (`/api/crm/visitenkarte`: dieselben KI-Regeln — `askText` mit
+// `ki`, KI-Tor, Modell-Schranke, das Foto wird dort nicht gespeichert). Die Oberfläche (components/os/netzwerken/Erfassen.tsx) ruft
+// `karteAuslesen` beim ERSTEN Foto (Vorderseite) und übernimmt erkannte Felder nur in LEERE Eingabefelder. Ohne KI, gesperrt, offline
+// oder unlesbar: kein Feld, nur der Hinweis „bitte tippen“. Das Foto der Erfassung selbst geht wie bisher verschlüsselt an den Kontakt.
 
 import type { KontaktFelder } from './netzwerken';
 
-/** Die Erkennung ist noch nicht eingeschaltet. */
-export const KARTE_AUSLESEN_AN = false;
-
 /** Ein Foto der Karte: Base64 ohne Präfix und sein Medientyp. */
 export interface KartenBild { daten: string; typ: string }
+/** Ergebnis des Auslesens: erkannte Felder (oder null) und ggf. ein Hinweis für die Person. */
+export interface KartenErkennung { erkannt: Partial<KontaktFelder> | null; hinweis?: string }
+/** Text, wenn nichts erkannt werden konnte — die Person tippt die Felder. */
+export const BITTE_TIPPEN = 'Karte nicht automatisch gelesen — bitte die Felder tippen.';
+/** Die Felder der Visitenkarten-Route, die das Netzwerken kennt (der Titel bleibt weg). */
+const FELDER: readonly (keyof KontaktFelder)[] = ['vorname', 'nachname', 'firma', 'position', 'email', 'telefon', 'mobil', 'webseite', 'linkedin'];
 
 /**
- * Fotos der Karte → erkannte Felder oder `null` (nicht erkannt bzw. abgeschaltet). Nie erfinden: nur, was auf der Karte
- * steht; ein zurückgegebenes Feld ersetzt nie etwas, das die Person schon getippt hat.
+ * Fotos der Karte → erkannte Felder über `/api/crm/visitenkarte` (die Vorderseite = das erste Foto). Nie erfinden: nur, was die Route
+ * zurückgibt; ein Feld ersetzt nie etwas, das die Person schon getippt hat (`ausgelesenesUebernehmen`). `holen` nur für Tests.
  */
-export async function karteAuslesen(_bilder: readonly KartenBild[]): Promise<Partial<KontaktFelder> | null> {
-  if (!KARTE_AUSLESEN_AN) return null;
-  return null;
+export async function karteAuslesen(bilder: readonly KartenBild[], holen: typeof fetch = (...a) => fetch(...a)): Promise<KartenErkennung> {
+  const vorne = bilder[0];
+  if (!vorne?.daten) return { erkannt: null };
+  try {
+    const r = await holen('/api/crm/visitenkarte', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bild: vorne.daten, medientyp: vorne.typ }) });
+    const d = await r.json().catch(() => null) as { ok?: boolean; daten?: Record<string, unknown>; fehler?: string } | null;
+    if (!d?.ok || !d.daten) return { erkannt: null, hinweis: typeof d?.fehler === 'string' && d.fehler ? d.fehler : BITTE_TIPPEN };
+    const erkannt: Partial<KontaktFelder> = {};
+    for (const f of FELDER) { const v = d.daten[f]; if (typeof v === 'string' && v.trim()) (erkannt as Record<string, string>)[f] = v.trim(); }
+    return Object.keys(erkannt).length ? { erkannt } : { erkannt: null, hinweis: BITTE_TIPPEN };
+  } catch {
+    // Offline (Funkloch auf dem Event): nichts gesendet, getippt wird wie immer.
+    return { erkannt: null, hinweis: BITTE_TIPPEN };
+  }
 }
 
 /** Erkannte Felder in die Eingabe übernehmen — nur dort, wo noch nichts steht. */

@@ -10,7 +10,7 @@ import type { FinanceState } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { lesen, monatsBild, type MalinExport } from '@/lib/make-one/grundlage';
 import { ladeCrm } from '@/lib/crm/speicher';
-import { traktionsIndex, alsTraktion } from '@/lib/crm/traktion-index';
+import { traktionsIndex, alsTraktion, ersterLauf } from '@/lib/crm/traktion-index';
 import { ladeIndexDatei } from '@/lib/kennzahlen/speicher';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
@@ -213,7 +213,7 @@ async function ladeRohFrisch(heute: string) {
   };
   const kontakte = kartei?.kontakte ?? [];
   // Traktions-Index (26.09.): dieselbe Zahl wie im Markttraktion-Überblick — eine Wahrheit.
-  const ti = traktionsIndex({ kontakte, crm, heute, schwellen: traktionDatei.schwellen });
+  const ti = traktionsIndex({ kontakte, crm, heute, schwellen: traktionDatei.schwellen, ersterLauf: ersterLauf(traktionDatei, heute) });
   const tr = alsTraktion(ti);
   const ab = new Date(`${heute}T12:00:00`); ab.setDate(ab.getDate() - 35);
   const abTag = localDay(ab);

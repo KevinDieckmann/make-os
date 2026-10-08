@@ -550,13 +550,13 @@ async function kennzahlenLesen(i: Eingabe, s: CrmSicht): Promise<string> {
   const { kennzahlen } = await import('@/lib/crm/kennzahlen');
   const { marketingKennzahlen } = await import('@/lib/crm/marketing');
   const { eventKennzahlen, traktion, uebergaben } = await import('@/lib/crm/traktion');
-  const { traktionsIndex } = await import('@/lib/crm/traktion-index');
+  const { traktionsIndex, ersterLauf } = await import('@/lib/crm/traktion-index');
   const { ladeIndexDatei } = await import('@/lib/kennzahlen/speicher');
   const { befunde } = await import('@/lib/crm/befunde');
   const { kontakte, crm, heute } = s;
   const sales = kennzahlen(kontakte, crm, heute), marketing = marketingKennzahlen(kontakte, crm, heute), event = eventKennzahlen(kontakte, crm, heute);
   const datei = await ladeIndexDatei('traktion-index');
-  const idx = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event] });
+  const idx = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute) });
   const t = traktion({ sales, marketing, event });
   const kz = (l: typeof sales) => l.map(k => `- ${k.label}: ${k.anzeige} (${k.ampel}) · Ziel ${k.ziel}`);
   const koerper = [

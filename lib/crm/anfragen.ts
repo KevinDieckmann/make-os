@@ -129,7 +129,8 @@ export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: str
 /** Aus einer Eingabe alles bauen, was zu einer Anfrage gehört — ohne zu schreiben. */
 export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErgebnis {
   const info = kanalInfo(e.kanal);
-  if (!info) return { ok: false, fehler: 'Kanal: website, mail, linkedin, telefon, empfehlung oder event.' };
+  // 5.18 (08.10.): der Text kommt aus der Liste — vorher fehlte WhatsApp.
+  if (!info) return { ok: false, fehler: `Kanal: ${ANFRAGE_KANAELE.slice(0, -1).map(k => k.id).join(', ')} oder ${ANFRAGE_KANAELE[ANFRAGE_KANAELE.length - 1].id}.` };
   const text = txt(e.text, GRENZEN.text);
   if (!text) return { ok: false, fehler: 'Was wurde angefragt? Der Text ist Pflicht.' };
   const datum = tagOk(e.datum) && e.datum! <= ctx.heute ? e.datum! : ctx.heute;

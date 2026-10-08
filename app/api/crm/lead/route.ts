@@ -5,7 +5,11 @@
 // POST { aktion: 'sql', id, deal }      → Lead wird SQL, der Deal entsteht in der
 //      Pipeline (Stufe „SQL“) — Kernfragen, Personen, Firma wandern mit.
 //      Pflicht: nächster Schritt mit Datum. Ohne erfüllte SQL-Kriterien nur mit
-//      `trotzdem: true` (dann steht es in der Notiz).
+//      `trotzdem: true` — seit 08.10. (Woche 1 · 2.3, EIN Regelwerk mit /api/crm/deal) wird der Lead dann NICHT SQL,
+//      sondern trägt den Vermerk „direkt angelegt“ (`direktAm`, `direktOffen`; lib/crm/deal-anlegen.ts). Ein zweiter offener
+//      Deal braucht `zweiter: true` (409 mit `offen` sonst). Die Quelle kommt aus der Herkunft des Leads (2.5).
+// POST { aktion: 'setze', id, felder: { geprueft: true } } → „Geprüft“ in der Runde: der Server stempelt `geprueftAm` (Berliner
+//      Tag) — Ruhe bis zur Wiedervorlage (2.1, lib/crm/leads.ts `brauchtQualifizierung`).
 // POST { aktion: 'setze', id, felder: { stufen: { <Frage>: <Stufe>|null }, antworten, fit, status, notiz, … } }
 //      Seit 03.10. (Qualifizierung & Scoring): `stufen` wählt je Frage der Sales-Einstellungen eine Stufe (null = zurück auf offen);
 //      für Fragen mit altem Feld (Schmerz … Alternative, Fit) wird `kriterien`/`fit` mitgeschrieben (lib/crm/scoring.ts `altWertAusStufe`).
@@ -188,7 +192,8 @@ export async function POST(req: Request) {
     if (stufenSumme > LEAD_MAP_MAX || antwortenSumme > LEAD_MAP_MAX) return NextResponse.json({ ok: false, fehler: `Höchstens ${LEAD_MAP_MAX} Antworten je Lead.` }, { status: 413 });
     const lead = await leadSchreiben(id, alt => {
       const l = basis(alt);
-      // Kernfrage, Antwort, Stufe oder Fit angefasst = qualifiziert — die Runde legt den Lead damit für 60 Tage weg.
+      // Kernfrage, Antwort, Stufe oder Fit angefasst = qualifiziert. Seit 08.10. (2.1) hält eine offene MUSS-Frage den Lead trotzdem in
+      // der Runde — nur „Geprüft“ (`geprueftAm`, Server-Stempel) gibt Ruhe bis zur Wiedervorlage.
       const qualifiziert = f.kriterien !== undefined || f.antworten !== undefined || f.fit !== undefined || f.stufen !== undefined || f.geprueft === true;
       const stufen: Record<string, string> = { ...(l.stufen ?? {}) };
       const kriterien = { ...leereKriterien(), ...l.kriterien };
@@ -208,7 +213,7 @@ export async function POST(req: Request) {
         ...(Object.keys(stufen).length ? { stufen } : { stufen: undefined }),
         ...(antwortenNeu ? { antworten: { ...(l.antworten ?? {}), ...(antwortenNeu as Record<string, string>) } } : {}),
         ...(f.fit !== undefined ? { fit: f.fit as Lead['fit'] } : fit !== undefined ? { fit } : {}), ...(f.notiz !== undefined ? { notiz: String(f.notiz) } : {}), ...(f.grund !== undefined ? { grund: String(f.grund) } : {}),
-        ...(qualifiziert ? { qualifiziertAm: tagVon(jetzt) } : {}),
+        ...(qualifiziert ? { qualifiziertAm: tagVon(jetzt) } : {}), ...(f.geprueft === true ? { geprueftAm: tagVon(jetzt) } : {}),
         geaendert: jetzt, geaendertVon: person };
     }, werAus(req));
     return NextResponse.json({ ok: true, lead });
@@ -265,8 +270,9 @@ export async function POST(req: Request) {
       schritt: { text: String(schritt.text), datum: String(schritt.datum) }, ...(tagOk(d.erwartetAm) ? { erwartetAm: tagOk(d.erwartetAm) } : {}), besitzer, trotzdem: b.zweiter === true,
     }, person, jetzt, werAus(req));
     if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler, ...(r.offen ? { offen: r.offen } : {}) }, { status: r.status });
-    if (b.trotzdem && !salesBereit(zeile)) await leadSchreiben(id, alt => ({ ...basis(alt), status: 'sql', sqlAm: jetzt, chanceId: r.chance.id, notiz: `${basis(alt).notiz ? `${basis(alt).notiz}\n` : ''}SQL ohne alle Kriterien angelegt (${fehltBisSqlZeile(zeile).join(', ')} offen).`, geaendert: jetzt, geaendertVon: person }), werAus(req));
-    return NextResponse.json({ ok: true, chanceId: r.chance.id, text: `SQL: Deal „${r.chance.titel}“ steht unter Deals (Stufe SQL).` });
+    // EIN Regelwerk (2.3): ob der Lead SQL wird, entscheidet `dealAnlegen` nach den Scoring-Einstellungen — „trotzdem“ legt den Deal an,
+    // der Lead trägt dann den Vermerk „direkt angelegt“ (nie mehr ein SQL ohne erfüllte Kriterien).
+    return NextResponse.json({ ok: true, chanceId: r.chance.id, sql: r.sql, text: r.sql ? `SQL: Deal „${r.chance.titel}“ steht unter Deals (Stufe SQL).` : `Deal „${r.chance.titel}“ steht unter Deals — direkt angelegt, der Lead bleibt in der Qualifizierung (es fehlt: ${r.fehlt.join(', ') || '—'}).` });
   }
 
   // Qualifizierungsrunde (27.09.): Leads ohne Besitzer übernimmt, wer sie qualifiziert — alle Personen des Leads, die noch niemandem gehören.

@@ -1001,9 +1001,10 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
   const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
-  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, quelle: 'bestand', stufe, besitzer: person, trotzdem: input.trotzdem === true }, person, undefined, { art: 'zoe', person });
+  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, stufe, besitzer: person, trotzdem: input.trotzdem === true }, person, undefined, { art: 'zoe', person });
   if (!r.ok) return `Fehlgeschlagen: ${r.fehler}${r.offen ? ` (offener Deal: ${r.offen.id})` : ''}`;
-  return `Deal angelegt (Lead ist jetzt SQL): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
+  // Quelle aus der Herkunft des Leads (08.10., 2.5), SQL nur bei erfüllten Kriterien (2.3) — sonst „direkt angelegt“.
+  return `Deal angelegt (${r.sql ? 'Lead ist jetzt SQL' : `direkt angelegt — Lead noch kein SQL${r.fehlt.length ? `, es fehlt: ${r.fehlt.join(', ')}` : ''}`}): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
 }
 
 // crm_lage läuft seit 28.09. (C7) über lib/zoe/crm-werkzeuge.ts (gekapselt, ohne eingeschränkte Kontakte).

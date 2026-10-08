@@ -19,13 +19,15 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
-import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { DealAnlegen } from './DealAnlegen';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
 import { herkunftVon } from '@/lib/crm/herkunft';
 import { leadGruende, type LeadGruende } from '@/lib/crm/lead-grund';
 import { MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { kontaktAkte, markttraktion } from '@/lib/crm/adresse';
+import { WEG } from '@/lib/wege';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import { type CrmApi, datum, holeMitStand } from './daten';
 import { Pillen } from './teile';
@@ -104,7 +106,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
   const kalteZahl = d ? kalteAusgeblendet(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
   const kalteZeigen = kalteZahl > 0 && !auchKalt ? (
     <Hinweis art="info" rolle="status" aktion={<Knopf leise onClick={() => setAuchKalt(true)}>Zeigen</Knopf>}>
-      {kalteZahl} {kalteZahl === 1 ? 'kalter Lead ist' : 'kalte Leads sind'} ausgeblendet — sie warten im Segment „Vernetzen“, bis sie warm werden.
+      {kalteZahl} {kalteZahl === 1 ? 'kalter Lead ist' : 'kalte Leads sind'} ausgeblendet (Score unter {einstellungen.temperaturAb.lau} von 100 — Grenze „lau“ der Scoring-Einstellungen) — sie warten im Segment „Vernetzen“, bis sie warm werden.
     </Hinweis>
   ) : null;
   const sqlOffen = karten.filter(sqlEntscheidungOffen).length;
@@ -157,7 +159,9 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
         {!d && <Karte i={1}><Leer>Lädt die Leads …</Leer></Karte>}
         {d && !karten.length && (
           <Karte i={1} akzent={kalteZeigen ? undefined : LEUCHT.gut}>
-            {kalteZeigen ?? <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Nicht zugeordnet“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>}
+            {/* 1.3 (08.10.): ehrlich — keine offene Muss-Frage, sonst geprüft; geprüfte kommen nach der Wiedervorlage zurück. Sind nur kalte
+                ausgeblendet, steht stattdessen der Hinweis darauf (kein „alle qualifiziert“). */}
+            {kalteZeigen ?? <Leer>{wer === ich ? `Bei dir wartet gerade kein Lead: keine offene Muss-Frage, oder du hast ihn geprüft — geprüfte kommen nach ${QUALI_WIEDERVORLAGE_TAGE} Tagen wieder. „Nicht zugeordnet“ zeigt Leads ohne Zuständigkeit.` : 'Hier wartet gerade nichts.'}</Leer>}
           </Karte>
         )}
         {d && karten.length > 0 && !z && (
@@ -168,7 +172,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
           </Karte>
         )}
         {z && sqlEntscheidungOffen(z) && <div role="note" style={{ padding: '8px 14px', borderRadius: 12, background: `${LEUCHT.gut}14`, border: `1px solid ${LEUCHT.gut}44`, fontSize: TYP.bedien, color: LEUCHT.gut, fontWeight: 700 }}>SQL bereit — Entscheidung offen</div>}
-        {z && <QualiKarte key={z.id} z={z} api={api} einstellungen={einstellungen} ich={ich} heute={heute} weiter={weiter} ersetze={ersetze} zuLeads={zuLeads}
+        {z && <QualiKarte key={z.id} z={z} api={api} einstellungen={einstellungen} ich={ich} heute={heute} weiter={weiter} ersetze={ersetze}
           oeffneKontakt={id => setPanel({ art: 'kontakt', id, startFirma: (api.kontakte ?? []).find(k => k.id === id)?.firmaId })} oeffneFirma={id => setPanel({ art: 'firma', id })} meldeFertig={setMeldung} />}
 
         <KanalLeistung zeilen={kanaele} i={2} />
@@ -184,14 +188,14 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
 }
 
 // ── Die Karte je Lead ────────────────────────────────────────────────────────────────────────
-function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLeads, oeffneKontakt, oeffneFirma, meldeFertig }: {
+function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffneKontakt, oeffneFirma, meldeFertig }: {
   z: LeadZeile; api: CrmApi; einstellungen: ScoringEinstellungen; ich: string; heute: string; weiter: (fertig: boolean) => void; ersetze: (neuId: string) => void;
-  zuLeads: (id?: string) => void; oeffneKontakt: (id: string) => void; oeffneFirma: (id: string) => void; meldeFertig: (text: string) => void;
+  oeffneKontakt: (id: string) => void; oeffneFirma: (id: string) => void; meldeFertig: (text: string) => void;
 }) {
   const router = useRouter();
   const { lokal, antworten, score, fehler, setFehler, speichern, stufeWaehlen, antwortSpeichern, bereit, fehlt } = useLeadFragen(api, z, einstellungen);
   const [notiz, setNotiz] = useState(z.notiz ?? '');
-  const [werkzeug, setWerkzeug] = useState<'firma' | 'zusammen' | 'person' | 'abgeben' | 'parken' | 'raus' | 'gespraech' | null>(null);
+  const [werkzeug, setWerkzeug] = useState<'firma' | 'zusammen' | 'person' | 'abgeben' | 'parken' | 'raus' | 'gespraech' | 'deal' | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const personen = useMemo(() => z.personen.map(p => (api.kontakte ?? []).find(x => x.id === p.id)).filter((x): x is NonNullable<typeof x> => !!x), [z.personen, api.kontakte]);
   const haupt = z.personen.find(p => p.id === z.hauptKontaktId) ?? z.personen[0];
@@ -247,8 +251,9 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
 
         {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         <div className="quali-aktionen" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf>
-          {bereit && !z.deal?.offen && <Knopf farbe={LEUCHT.gut} onClick={() => zuLeads(z.id)}>SQL → Deal anlegen</Knopf>}
+          <span title={`Ruhe bis zur Wiedervorlage (${QUALI_WIEDERVORLAGE_TAGE} Tage) — auch mit offenen Fragen`}><Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf></span>
+          {/* 2.2 (08.10.): der Deal entsteht HIER in der Karte (wie im Gesprächsmodus) — kein Sprung mehr in die lange Leads-Liste. */}
+          {bereit && !z.deal?.offen && werkzeug !== 'deal' && <Knopf farbe={LEUCHT.gut} onClick={() => setWerkzeug('deal')}>SQL → Deal anlegen</Knopf>}
           <Knopf leise onClick={() => weiter(false)}>Später</Knopf>
           <span style={{ marginLeft: 'auto' }}>
             <MehrMenue punkte={[
@@ -264,6 +269,13 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, zuLead
           </span>
         </div>
       </div>
+      {werkzeug === 'deal' && (
+        <div style={{ marginTop: 14 }}>
+          <DealAnlegen api={api} {...(haupt ? { kontaktId: haupt.id } : {})} {...(z.firmaId ? { firmaId: z.firmaId } : {})} besitzer={z.besitzer}
+            onFertig={(_id, text) => { setWerkzeug(null); void api.laden(true); meldeFertig(text ?? `SQL: Der Deal für „${z.name}“ steht unter Deals.`); weiter(true); }}
+            onAbbruch={() => setWerkzeug(null)} zuDeal={id => router.push(WEG.deal(id))} />
+        </div>
+      )}
       {werkzeug === 'firma' && <FirmaWechselnDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={fertig} />}
       {werkzeug === 'zusammen' && <ZusammenfuehrenDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={fertig} />}
       {werkzeug === 'person' && <WeiterePersonDialog api={api} z={z} onZu={() => setWerkzeug(null)} onFertig={fertig} />}
@@ -307,7 +319,7 @@ export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts 
   return (
     <Karte i={i}>
       <Ueberschrift rechts={rechts}>{titel}</Ueberschrift>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Herkunftskanal: wie viele Leads, wie viele davon warm oder heiß, wie viele wurden SQL oder Kunde.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Herkunftskanal: wie viele Leads, wie viele davon warm oder heiß, wie viele wurden SQL oder Kunde. Quoten ab {MINDESTMENGE} Leads je Kanal.</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 140px) 1fr auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
         <span style={{ color: C.inkLeise, fontSize: 12 }}>Kanal</span><span />
         <span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>warm+</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>SQL</span>
@@ -319,8 +331,8 @@ export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts 
               <div style={{ width: `${(100 * (z.anzahl - z.warm)) / max}%`, background: 'rgba(255,255,255,.14)' }} />
             </div>
             <span style={{ textAlign: 'right' }}>{z.anzahl}</span>
-            <span style={{ textAlign: 'right', color: z.warm ? C.ink : C.inkLeise }}>{z.warm} <span style={{ color: C.inkLeise }}>({z.warmQuote} %)</span></span>
-            <span style={{ textAlign: 'right', color: z.sql ? LEUCHT.gut : C.inkLeise }}>{z.sql} <span style={{ color: C.inkLeise }}>({z.sqlQuote} %)</span></span>
+            <span style={{ textAlign: 'right', color: z.warm ? C.ink : C.inkLeise }}>{z.warm}{z.warmQuote !== null ? <span style={{ color: C.inkLeise }}> ({z.warmQuote} %)</span> : null}</span>
+            <span style={{ textAlign: 'right', color: z.sql ? LEUCHT.gut : C.inkLeise }}>{z.sql}{z.sqlQuote !== null ? <span style={{ color: C.inkLeise }}> ({z.sqlQuote} %)</span> : null}</span>
           </ContainerZeile>
         ))}
       </div>

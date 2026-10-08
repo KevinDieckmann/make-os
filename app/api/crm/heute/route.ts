@@ -18,6 +18,11 @@ import { werIstDran, karteGehoert, KATEGORIEN } from '@/lib/crm/heute';
 import { teamZahlen } from '@/lib/crm/pipeline';
 import { wer, BEIDE, haeltBeziehung, verantwortlich } from '@/lib/crm/team';
 import { ampel } from '@/lib/crm/recht';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { aufgabenFuerPowerHour } from '@/lib/crm/followup-aufgabe';
+
+/** Eine Nebenquelle darf die Power Hour nie umwerfen — ohne Aufgaben läuft sie wie bisher. */
+async function sicher<T>(f: () => Promise<T>, ersatz: T): Promise<T> { try { return await f(); } catch { return ersatz; } }
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,7 +38,9 @@ export async function GET(req: Request) {
   const heute = localDay();
   const kontakte = await kontakteFuerVerarbeitung(); // Art. 18 zentral (29.09.)
   const crm = await ladeCrm();
-  const a = werIstDran(kontakte, crm, heute, person, n);
+  // Fällige Aufgaben mit Kontakt-Bezug (08.10., 4.7) — aus der Aufgaben-Sicht der ANFRAGENDEN Person (fremde „nur ich“ nie).
+  const aufgaben = await sicher(async () => aufgabenFuerPowerHour((await ladeAufgabenSicht(ich)).tasks, heute), []);
+  const a = werIstDran(kontakte, crm, heute, person, n, aufgaben);
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));
   const bezugArt = (bezug?: string) => !bezug ? undefined
     : crm.mandate.some(m => m.id === bezug) ? 'mandat' as const
@@ -54,6 +61,8 @@ export async function GET(req: Request) {
         gehoert: karteGehoert(c, crm), beziehung: haeltBeziehung(k), bezugArt: bezugArt(c.bezug),
         // Das echte Follow-up hinter der Karte (08.10., 4.1) — der Ergebnis-Knopf erledigt es mit.
         ...(c.followupId ? { followupId: c.followupId } : {}),
+        // Die Aufgabe hinter der Karte (4.7) — der Ergebnis-Knopf erledigt sie mit.
+        ...(c.aufgabe ? { aufgabeId: c.aufgabe.id } : {}),
       };
     }),
     // Die Sitzungen der letzten Wochen — für Serie und Zähler (der Person, deren Liste es ist).

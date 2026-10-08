@@ -9,7 +9,7 @@
 // `followupsNachAufgaben`, `aufgabeErledigenNachFollowUp` — getrennt, damit kein Server-Modul ins Browser-Bündel gerät.
 
 import type { Task, TasksState } from '@/types/tasks';
-import type { CrmBestand } from './typen';
+import type { CrmBestand, FollowUp } from './typen';
 
 /** Aufgaben, die in diesem Schreiben erledigt wurden (vorher nicht erledigt, jetzt erledigt). */
 export function neuErledigt(vorher: Pick<TasksState, 'tasks'>, nachher: Pick<TasksState, 'tasks'>): string[] {
@@ -46,3 +46,31 @@ export function aufgabenAlsFaellig(tasks: readonly Task[], heute: string, horizo
     })
     .sort((a, b) => a.faellig.localeCompare(b.faellig));
 }
+
+// ── Aufgabe mit Kontakt-Bezug erledigt → Aktivität am Kontakt (08.10., Woche 1 · 4.7) ─────────────────────────────────────
+// Der neue Standardweg „+ Hinzufügen“ in Kontakt öffnen legt Aufgaben an (keine Follow-ups). Beim Abhaken entstand bisher keine
+// Aktivität, und die Kadenz lief weiter. Jetzt hinterlässt eine erledigte Aufgabe mit Kontakt-Bezug genau EINE Aktivität (idempotent
+// über `Aktivitaet.aufgabeId`) — außer:
+//   · „nur ich“-Aufgaben: der Verlauf am Kontakt ist geteilt, er würde eine private Aufgabe verraten
+//   · die Aufgabe hing an einem Follow-up, das schon VOR diesem Schreiben erledigt war (der Follow-up-Weg hat die Aktivität geschrieben)
+// Eingeschränkte Personen (Art. 18) und Werbesperre prüft der Server-Teil an der Person.
+
+/** Eine Aktivität, die eine erledigte Aufgabe am Kontakt hinterlässt. */
+export interface AufgabeAktivitaet { aufgabeId: string; kontaktId: string; titel: string }
+
+/**
+ * Welche gerade erledigten Aufgaben eine Aktivität am Kontakt hinterlassen (rein). `followupsVorher` = Follow-ups VOR diesem Schreiben,
+ * `erledigtJetzt` = Kennungen der Follow-ups, die dieses Schreiben über die Aufgabe erledigt hat (`followupsErledigen`).
+ */
+export function aufgabenFuerAktivitaet(vorher: Pick<TasksState, 'tasks'>, nachher: Pick<TasksState, 'tasks'>, followupsVorher: readonly FollowUp[], erledigtJetzt: readonly string[]): AufgabeAktivitaet[] {
+  const fertig = new Set(neuErledigt(vorher, nachher));
+  const jetzt = new Set(erledigtJetzt);
+  return nachher.tasks
+    .filter(t => fertig.has(t.id) && !!t.bezug?.kontaktId && t.sichtbarkeit !== 'nur-ich' && !t.geloeschtAm)
+    .filter(t => !followupsVorher.some(f => f.aufgabeId === t.id && f.status !== 'offen' && !jetzt.has(f.id)))
+    .map(t => ({ aufgabeId: t.id, kontaktId: t.bezug!.kontaktId!, titel: t.title }));
+}
+
+/** Offene Aufgaben mit Kontakt-Bezug, fällig bis heute — für die Power Hour (4.7). Ohne „nur ich“ anderer: die Sicht filtert vorher. */
+export const aufgabenFuerPowerHour = (tasks: readonly Task[], heute: string): AufgabeFaellig[] =>
+  aufgabenAlsFaellig(tasks, heute, 0).filter(a => !!a.kontaktId && a.faellig <= heute);

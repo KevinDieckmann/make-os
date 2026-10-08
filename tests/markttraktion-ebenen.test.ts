@@ -64,11 +64,16 @@ describe('Ebene 1 → 2: aus dem SQL wird ein Deal', () => {
 
 describe('Trichter über alle Ebenen', () => {
   it('zählt Leads je Status, offene Deals mit Wert, Gewonnene und aktive Kunden', () => {
-    const kontakte = [k('a', { stufe: 'gespraech' }), k('b', { stufe: 'angesprochen' }), k('c', { stufe: 'gespraech' })];
+    // Seit 08.10. (Woche 1 · 1.4) zählt Ebene 1 wie die Leads-Liste darunter — ohne die kalten. Die drei sind frisch von Hand angelegt (nie kalt).
+    const frisch = { importiertAm: HEUTE, aktivitaeten: [{ am: J, art: 'system' as const, text: 'Von Hand angelegt', von: 'system' }] };
+    const kontakte = [k('a', { stufe: 'gespraech', ...frisch }), k('b', { stufe: 'angesprochen', ...frisch }), k('c', { stufe: 'gespraech', ...frisch })];
     const crm = { ...leererBestand(), chancen: [deal({ kontaktIds: ['c-z'] })], mandate: [{ id: 'm-1', status: 'aktiv' } as never] };
     const t = trichter(leads(kontakte, crm, HEUTE), crm);
     expect(Object.fromEntries(t.stufen.map(s => [s.id, s.anzahl]))).toEqual({ kontaktiert: 1, im_gespraech: 2, qualifizierung: 0, deals: 1, gewonnen: 0, kunden: 1 });
     expect(t.stufen.find(s => s.id === 'deals')?.wert).toBe(36000);
+    // Kalte Leads (Import ohne Kontakt) zählen nicht mehr mit — wie die Liste dahinter.
+    const kalt = trichter(leads([k('a', { stufe: 'gespraech' }), k('b', { stufe: 'angesprochen' })], crm, HEUTE), crm);
+    expect(kalt.stufen.find(s => s.id === 'im_gespraech')?.anzahl).toBe(0);
   });
 });
 

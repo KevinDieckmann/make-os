@@ -368,7 +368,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
     const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
     const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: finanzFirma, mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
     const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag }] }) }).then(x => x.json()).catch(() => null);
-    if (r?.ok !== false) router.push(WEG.rechnung(id));
+    // 3.8 (08.10.): nur bei bestätigtem Speichern springen — vorher führte ein Netzfehler (r = null) auf eine Rechnung, die es nicht gibt.
+    if (r?.ok) router.push(WEG.rechnung(id)); else setFehler(r?.fehler ?? r?.error ?? 'Rechnung nicht gespeichert — keine Verbindung.');
   };
   return (
     <Feldzeile label="Rechnungen">

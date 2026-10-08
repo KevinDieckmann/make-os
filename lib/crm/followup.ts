@@ -12,7 +12,7 @@
 // werden sie über die Route, die dann das alte Feld ändert oder ein echtes
 // Follow-up daraus macht.
 
-import type { Kontakt } from '@/lib/make-one/crm';
+import type { Kontakt, AktivitaetArt, Ergebnis } from '@/lib/make-one/crm';
 import { anzeigename, letzterKontaktVon, KREIS_TAKT } from '@/lib/make-one/crm';
 import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt, Wertelisten } from './typen';
 import { OFFENE_STUFEN } from './pipeline';
@@ -54,6 +54,41 @@ export interface Faellig {
   terminUid?: string;
 }
 
+// ── Erledigen: Aktivitäts-Art und Deal-Schritt (08.10., Woche 1 · 4.4/4.6) ──────────────────────────────────────────────
+/** Welche Aktivität ein erledigtes Follow-up am Kontakt hinterlässt — je Art (Nachricht = Mail, Sonstiges = Notiz). */
+export const AKT_ART: Record<FollowUpArt, AktivitaetArt> = { anruf: 'anruf', mail: 'mail', linkedin: 'linkedin', termin: 'termin', nachricht: 'mail', sonstig: 'notiz' };
+/**
+ * Art der Aktivität beim Erledigen (4.6): „Sonstiges“ (Zusagen, Deal-Schritte) wurde als Notiz verbucht — auch mit dem Ergebnis
+ * „Gespräch“ änderten sich letzter Kontakt und Kadenz nicht. Mit einem Ergebnis wird es der Kontakt, der stattfand: ein Anlauf ohne
+ * Gespräch (nicht erreicht, Mailbox, Rückruf) ein Anruf, alles andere ein Gespräch. Andere Arten bleiben, wie sie sind.
+ */
+export function aktivitaetArtNachErledigen(art: FollowUpArt, ergebnis?: Ergebnis): AktivitaetArt {
+  const basis = AKT_ART[art] ?? 'notiz';
+  if (basis !== 'notiz' || !ergebnis) return basis;
+  return ergebnis === 'nicht_erreicht' || ergebnis === 'mailbox' || ergebnis === 'rueckruf' ? 'anruf' : 'gespraech';
+}
+/**
+ * Ist der nächste Schritt am Deal genau das, was mit diesem Follow-up erledigt wurde (4.4)? Dann darf er nicht stehen bleiben — er wäre
+ * sofort wieder fällig (`v:dealschritt`). Derselbe Schritt heißt: schon fällig (Tag ≤ heute), am selben Tag wie das Follow-up, oder
+ * derselbe Text. Ein späterer, anderer Schritt bleibt.
+ */
+export function dealSchrittErledigt(schritt: { text: string; datum: string } | undefined, f: { text: string; faellig: string }, heute: string): boolean {
+  if (!schritt) return false;
+  return schritt.datum <= heute || schritt.datum === f.faellig || schritt.text.trim().toLowerCase() === f.text.trim().toLowerCase();
+}
+
+/**
+ * Ab wann die Kadenz zählt (08.10., Markttraktion Woche 1 · 7.1): der letzte Kontakt — aber nie vor dem Tag, an dem die Person in die Kartei
+ * kam (`importiertAm` = Import bzw. Anlage). Vorher ergaben Kontakte mit altem „letzter Kontakt“ direkt nach dem Import sofort überfällige
+ * Kadenz (der Index startete rot). Ohne letzten Kontakt keine Kadenz (wie bisher).
+ */
+export function kadenzBasis(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten' | 'importiertAm'>, heute: string): string | undefined {
+  const letzter = letzterKontaktVon(k, heute);
+  if (!letzter) return undefined;
+  const seit = (k.importiertAm ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(seit) && seit > letzter && seit <= heute ? seit : letzter;
+}
+
 const tage = (von: string, bis: string) => Math.round((Date.parse(`${bis.slice(0, 10)}T12:00:00Z`) - Date.parse(`${von.slice(0, 10)}T12:00:00Z`)) / 864e5);
 export const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -89,7 +124,12 @@ export const werbesperreHinweis = (n: number) => `${n} ${n === 1 ? 'Follow-up an
  * die virtuellen aus den alten Feldern — ohne Doppelung (hat eine Person am
  * selben Tag schon ein echtes Follow-up, fällt der virtuelle Eintrag weg).
  */
-export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, opts: { horizont?: number; wertelisten?: Wertelisten; /** Wird je wegen Werbesperre ausgeblendetem Follow-up gerufen (für den Hinweis). */ beiSperre?: (f: FollowUp) => void } = {}): Faellig[] {
+export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, opts: { horizont?: number; wertelisten?: Wertelisten; /** Wird je wegen Werbesperre ausgeblendetem Follow-up gerufen (für den Hinweis). */ beiSperre?: (f: FollowUp) => void;
+  /**
+   * Kennungen eingeschränkter Personen (08.10., Woche 1 · 4.8): wer mit der verarbeitbaren Kartei rechnet (`kontakteFuerVerarbeitung`),
+   * findet die Person nicht — ihr echtes Follow-up erschien dann mit dem Follow-up-Text als Namen (Glocke, Heute). Diese Kennungen fallen ganz weg.
+   */
+  ausgeblendet?: ReadonlySet<string> } = {}): Faellig[] {
   const horizont = opts.horizont ?? HORIZONT_TAGE;
   const bis = tagPlus(heute, horizont);
   const nachId = new Map(kontakte.map(k => [k.id, k]));
@@ -105,8 +145,9 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     if (f.status !== 'offen' || f.faellig > bis) continue;
     if (f.kontaktId) belegt.add(`${f.kontaktId}|${f.faellig}`);
     const k = f.kontaktId ? nachId.get(f.kontaktId) : undefined;
-    // Art. 18 (U2): eingeschränkte Personen stehen in keiner Fälligkeitsliste (Power Hour, „Für dich“).
-    if (k?.eingeschraenkt) continue;
+    // Art. 18 (U2): eingeschränkte Personen stehen in keiner Fälligkeitsliste (Power Hour, „Für dich“) — auch nicht, wenn der Aufrufer
+    // sie gar nicht kennt (4.8: verarbeitbare Kartei, Kennung in `ausgeblendet`).
+    if (k?.eingeschraenkt || (f.kontaktId && opts.ausgeblendet?.has(f.kontaktId))) continue;
     // Werbesperre (Art. 21, W8 28.09.): werbliche Arten fallen heraus — mit Hinweis über `beiSperre`.
     if (k?.werbesperre && istWerblich(f)) { opts.beiSperre?.(f); continue; }
     const titel = f.bezug.art === 'chance' ? crm.chancen.find(c => c.id === f.bezug.id)?.titel : f.bezug.art === 'mandat' ? crm.mandate.find(m => m.id === f.bezug.id)?.kunde : f.bezug.art === 'event' ? crm.events.find(e => e.id === f.bezug.id)?.titel : f.bezug.art === 'firma' ? firmen.get(f.bezug.id)?.name : undefined;
@@ -161,7 +202,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   // 6 · Kadenz je Kreis: zu lange nichts gehört
   // Ein eingetragenes Meeting zählt ab seinem Tag (`wann`) — geplant setzt es „letzter Kontakt“ nicht (28.09., F1).
   for (const k of kontakte) {
-    const letzter = letzterKontaktVon(k, heute);
+    // 7.1 (08.10.): ab dem letzten Kontakt, aber nie vor Import/Anlage (`kadenzBasis`).
+    const letzter = kadenzBasis(k, heute);
     if (ausgenommen(k) || RUHT.has(k.stufe) || !letzter) continue;
     const takt = taktVon(k, opts.wertelisten);
     if (!takt) continue;

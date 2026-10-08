@@ -198,8 +198,12 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
   );
 }
 
-/** Erledigen: Ergebnis (setzt Stufe/Wiedervorlage per Regel), kurze Notiz, und — Pflichtfrage — was als Nächstes passiert. */
-function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<FollowupAntwort>; onAbbruch: () => void; /** Eigene Gesprächsergebnisse aus den Stammdaten (Wertelisten). */ eigene?: { wert: string; label: string }[] }) {
+/**
+ * Erledigen: Ergebnis (setzt Stufe/Wiedervorlage per Regel), kurze Notiz, und — Pflichtfrage — was als Nächstes passiert.
+ * Exportiert (08.10., Woche 1 · 4.5): Kontakt › Aktivitäten nimmt DASSELBE Formular — vorher endete „✓ Erledigt“ dort bei einem
+ * Deal-Schritt immer mit 400 (ohne „Als Nächstes“) und ohne Notiz.
+ */
+export function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<FollowupAntwort>; onAbbruch: () => void; /** Eigene Gesprächsergebnisse aus den Stammdaten (Wertelisten). */ eigene?: { wert: string; label: string }[] }) {
   const [ergebnis, setErgebnis] = useState<string | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [notiz, setNotiz] = useState('');
@@ -207,6 +211,8 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
   const [naechster, setNaechster] = useState<{ text: string; faellig: string; art: FollowUpArt }>({ text: '', faellig: plusTage(heute, f.bezug.art === 'chance' ? 3 : 7), art: f.art });
   const [kein, setKein] = useState(false);
   const bereit = kein || (naechster.text.trim() && naechster.faellig);
+  // 4.9 (08.10.): „Sperre“ fragt nach — wie in der Power Hour (die Person taucht danach nirgends mehr auf).
+  const { bestaetigen, dialog } = useRueckfrage();
   return (
     <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       {f.kontaktId && (
@@ -230,9 +236,10 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
       </Feldzeile>
       <FormFehler text={fehler} />
       <div style={{ display: 'flex', gap: 8 }}>
-        <Knopf farbe={LEUCHT.gut} aus={!bereit} onClick={async () => { if (!bereit) return; const r = await onFertig({ ...(ergebnis ? { ergebnis } : {}), ...(notiz.trim() ? { notiz: notiz.trim() } : {}), ...(kein ? {} : { naechster }) }); setFehler(r.ok ? null : r.fehler ?? 'Nicht gespeichert.'); }}>Erledigt</Knopf>
+        <Knopf farbe={LEUCHT.gut} aus={!bereit} onClick={async () => { if (!bereit) return; if (ergebnis === 'sperre' && !(await bestaetigen({ titel: `${f.name} widerspricht Werbung?`, text: 'Die Person wird gesperrt und taucht nirgends mehr auf.', ja: 'Sperren', gefahr: true }))) return; const r = await onFertig({ ...(ergebnis ? { ergebnis } : {}), ...(notiz.trim() ? { notiz: notiz.trim() } : {}), ...(kein ? {} : { naechster }) }); setFehler(r.ok ? null : r.fehler ?? 'Nicht gespeichert.'); }}>Erledigt</Knopf>
         <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
       </div>
+      {dialog}
     </div>
   );
 }

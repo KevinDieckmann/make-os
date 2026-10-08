@@ -43,7 +43,7 @@ describe('Qualifizierung zeichnet', () => {
     expect(html).toMatch(/SQL[^<]*\/28/);
     expect(html).toContain('fehlt: Schmerz, Entscheider');
     // Marketing-Lead (Anfrage über die Website): der MQL-Balken gegen die Schwelle 8.
-    const mk = leads(K.map(k => ({ ...k, herkunft: 'selbst' as const })), stand(), '2026-10-03')[0];
+    const mk = leads(K.map(k => ({ ...k, quelle: 'Website-Anfrage' })), stand(), '2026-10-03')[0]; // Marketing über die Quelle (5.1: nie über die Datenschutz-Herkunft)
     const html2 = renderToStaticMarkup(h(ScoreKopf, { score: mk.score }));
     expect(html2).toMatch(/MQL[^<]*\/8/);
     expect(html2).not.toContain('Lead · noch zu qualifizieren');

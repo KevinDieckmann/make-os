@@ -74,6 +74,11 @@ export interface IndexErgebnis {
   saeulen: SaeulenStand[];
   hebel: { id: string; label: string; saeule: string } | null;
   luecken: number;
+  /**
+   * Anlaufphase (08.10., Markttraktion Woche 1 · 7.1): bis zu diesem Tag ist der Index „vorläufig“ — gerechnet wie immer (keine eigene
+   * Punkte-Logik), aber so beschriftet. Nur gesetzt, wenn der Aufrufer `anlaufBis` gibt und der Stand davor liegt.
+   */
+  vorlaeufig?: { bis: string };
 }
 
 export function berechneModell<B>(m: {
@@ -81,6 +86,8 @@ export function berechneModell<B>(m: {
   bestand: B; schwellen?: Record<string, Schwelle>; stand: string; scope: string;
   /** Gesamt als gewichtetes geometrisches Mittel (bestraft Ungleichgewicht — Traktions-Score, KEMARIS-Konzept). */
   geometrisch?: boolean;
+  /** Anlaufphase: bis zu diesem Tag (ausschließlich) ist das Ergebnis „vorläufig“ (7.1). */
+  anlaufBis?: string;
 }): IndexErgebnis {
   const messe = (id: string): Messung => {
     const f = m.messen[id];
@@ -134,5 +141,6 @@ export function berechneModell<B>(m: {
   return {
     scope: m.scope, stand: m.stand, index, label: indexLabel(index), abdeckung: Math.round(abdeckung * 100) / 100, teil,
     saeulen, hebel, luecken: saeulen.reduce((a, s) => a + s.kennzahlen.filter(k => !k.gemessen).length, 0),
+    ...(m.anlaufBis && m.stand < m.anlaufBis ? { vorlaeufig: { bis: m.anlaufBis } } : {}),
   };
 }

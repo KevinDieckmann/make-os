@@ -149,7 +149,8 @@ export const WEG = {
   kunden: () => markttraktion('deals', 'auswertung'),
   kampagne: (id?: string) => markttraktion('marketing', 'kampagnen', id),
   marketing: (a?: 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
-  event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,
+  // 5.19 (08.10.): `r` hängt am vorhandenen Abfrageteil — vorher entstand ohne Kennung „?s=event?r=…“.
+  event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => { const b = markttraktion('event', undefined, id); return r ? `${b}${b.includes('?') ? '&' : '?'}r=${r}` : b; },
   /** Events (03.10.): die Veranstaltungen, die wir BESUCHEN — `id` öffnet die Event-Akte, `a` die Ansicht (Kalender ist der Start). Make.One (unsere eigenen Abende) bleibt `WEG.event`. */
   besuch: (id?: string, a?: 'kalender' | 'wirkung' | 'kunden') => markttraktion('besuche', a, id),
   stammdaten: (tab?: string) => markttraktion('stammdaten', tab),

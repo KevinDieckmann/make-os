@@ -46,7 +46,9 @@ describe('Marketing-Kennzahlen', () => {
   });
   it('Anteil neuer Chancen mit Marketing-Quelle: ≥ 25 % grün, 10–25 % gelb, < 10 % rot', () => {
     const mk = (n: number, von: number) => Array.from({ length: von }, (_, i) => chance(`x${i}`, { quelle: i < n ? 'content' : 'empfehlung' }));
-    expect(kpi(marketingKennzahlen([], bestand({ chancen: mk(1, 4) }), HEUTE), 'marketing_anteil')).toMatchObject({ ampel: 'gruen', anzeige: '25 %' });
+    expect(kpi(marketingKennzahlen([], bestand({ chancen: mk(2, 8) }), HEUTE), 'marketing_anteil')).toMatchObject({ ampel: 'gruen', anzeige: '25 %' });
+    // 7.4 (08.10.): unter 5 neuen Deals keine Quote — vorher war 1 von 4 schon „25 % grün“.
+    expect(kpi(marketingKennzahlen([], bestand({ chancen: mk(1, 4) }), HEUTE), 'marketing_anteil').ampel).toBe('grau');
     expect(kpi(marketingKennzahlen([], bestand({ chancen: mk(1, 10) }), HEUTE), 'marketing_anteil').ampel).toBe('gelb');
     expect(kpi(marketingKennzahlen([], bestand({ chancen: mk(1, 11) }), HEUTE), 'marketing_anteil').ampel).toBe('rot');
     // Alte Chancen (älter als 90 Tage) sind keine neuen Chancen.

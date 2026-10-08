@@ -23,6 +23,15 @@ export async function kontakteFuerVerarbeitung(opt: { mitEingeschraenkten?: bool
 }
 
 /**
+ * Nur die KENNUNGEN der eingeschränkten Personen (08.10., Woche 1 · 4.8) — für Leser, die mit der verarbeitbaren Kartei arbeiten, aber
+ * Bestände mit Personen-Kennung zeigen (Follow-ups in Glocke/Heute): eine Kennung, die hier steht, wird ausgeblendet. Keine Namen.
+ */
+export async function eingeschraenkteKennungen(): Promise<Set<string>> {
+  const alle = (await loadJson<{ kontakte?: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  return new Set(alle.filter(k => istEingeschraenkt(k)).map(k => k.id));
+}
+
+/**
  * Stellen, die die Kartei direkt lesen dürfen — mit Grund. Neue Leser: `kontakteFuerVerarbeitung()` nehmen, nicht hier
  * eintragen (außer sie verwalten die Kartei selbst).
  */

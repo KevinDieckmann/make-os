@@ -4,7 +4,7 @@
 // Drei Schritte, am Handy mit dem Daumen: (1) Karte fotografieren + Felder + „Kennen wir schon?“, (2) nächster Schritt
 // (Pflicht) + Info + Sprachnotiz + wer zuständig ist, (3) bestätigen. Gespeichert wird zuerst in die lokale Warteschlange
 // (IndexedDB) und dann gesendet — ohne Netz bleibt alles liegen und geht später raus, nie doppelt (Kennung der Erfassung).
-// Das automatische Auslesen der Karte (KI) ist vorbereitet, aber aus (lib/crm/netzwerken-karte.ts).
+// Das automatische Auslesen der Karte (KI) läuft seit 08.10. über /api/crm/visitenkarte (lib/crm/netzwerken-karte.ts) — nur leere Felder.
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -14,7 +14,7 @@ import { zufallsUuid } from '@/lib/kennung';
 import { anzeigename } from '@/lib/make-one/crm';
 import { emailNormal, telefonNormal, linkedinNormal, webNormal, firmaZurKarte, firmaVorschlagAusDomain } from '@/lib/crm/visitenkarte';
 import {
-  SCHRITTE, INFO_MAX, MAX_BILDER, kenntWirSchon, kennenText, firmaVorschlaege, followupFrist, schrittLabel, terminArtLabel, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG,
+  SCHRITTE, INFO_MAX, MAX_BILDER, NAME_FEHLT, nameOk, kenntWirSchon, kennenText, firmaVorschlaege, followupFrist, schrittLabel, terminArtLabel, NETZWERKEN_QUELLE, KEINE_EINWILLIGUNG,
   type KontaktFelder,
 } from '@/lib/crm/netzwerken';
 import { karteAuslesen, ausgelesenesUebernehmen } from '@/lib/crm/netzwerken-karte';
@@ -112,9 +112,13 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
     const r = await fotoVorbereiten(datei, zufallsUuid(), e.fotos.length + 1);
     if ('fehler' in r) { setFotoFehler(r.fehler); return; }
     setE(x => ({ ...x, fotos: [...x.fotos, r] }));
-    // Vorbereitet, heute aus: die spätere Erkennung füllt nur leere Felder.
-    const erkannt = await karteAuslesen([...e.fotos, r].map(f => ({ daten: f.daten, typ: f.typ }))).catch(() => null);
-    if (erkannt) setE(x => ({ ...x, felder: ausgelesenesUebernehmen(x.felder, erkannt) as Entwurf['felder'] }));
+    // Erkennung (08.10., 5.13): beim ersten Foto über /api/crm/visitenkarte (dieselben KI-Regeln wie Kartei/Abend) — füllt nur leere
+    // Felder; ohne KI/offline nur der Hinweis „bitte tippen“.
+    if (e.fotos.length === 0) {
+      const { erkannt, hinweis } = await karteAuslesen([r].map(f => ({ daten: f.daten, typ: f.typ })));
+      if (erkannt) setE(x => ({ ...x, felder: ausgelesenesUebernehmen(x.felder, erkannt) as Entwurf['felder'] }));
+      else if (hinweis) setFotoFehler(hinweis);
+    }
   };
   const fotoWeg = (id: string) => setE(x => ({ ...x, fotos: x.fotos.filter(f => f.id !== id) }));
 
@@ -154,10 +158,11 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
 
   // Kommende Events (für „Zu Make.One einladen“): nicht das heutige, nicht abgesagt.
   const kommende = useMemo(() => (api.crm?.stand.events ?? []).filter(ev => ev.id !== wahl?.eventId && !istNetzwerkenEvent(ev) && ev.datum >= heute && (ev.status === 'idee' || ev.status === 'geplant' || ev.status === 'einladung')).sort((a, b) => a.datum.localeCompare(b.datum)).slice(0, 8), [api.crm, wahl?.eventId, heute]);
-  const nachnameOk = !leer(f.nachname) || !!e.vorhandenId;
+  // 5.14 (08.10.): Vorname ODER Nachname — dieselbe Regel wie der Server (`nameOk`).
+  const nachnameOk = nameOk(f) || !!e.vorhandenId;
   const weiter1 = () => {
     if (!wahl) { setFehler('Bitte oben zuerst „Heute bei“ wählen.'); return; }
-    if (!nachnameOk) { setFehler('Der Nachname fehlt — bitte eintragen.'); nachnameRef.current?.focus(); return; }
+    if (!nachnameOk) { setFehler(NAME_FEHLT); nachnameRef.current?.focus(); return; }
     if (!felderOk) { setFehler('Bitte die markierten Felder prüfen oder leeren.'); return; }
     if (starkOffen) { setFehler('Diese Person gibt es vielleicht schon — bitte oben „Diesen nehmen“ oder „Trotzdem neu“ wählen.'); trefferRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); return; }
     setFehler(null); setPhase('schritt');
@@ -267,7 +272,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             <Beschriftung>Person</Beschriftung>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
               <Feldzeile label="Vorname"><input value={f.vorname ?? ''} onChange={x => feld({ vorname: x.target.value })} autoComplete="off" autoCapitalize="words" enterKeyHint="next" style={eingabe} aria-label="Vorname" /></Feldzeile>
-              <Feldzeile label="Nachname *"><input ref={nachnameRef} value={f.nachname ?? ''} onChange={x => feld({ nachname: x.target.value })} autoComplete="off" autoCapitalize="words" enterKeyHint="next" style={eingabe} aria-label="Nachname" /></Feldzeile>
+              <Feldzeile label="Nachname"><input ref={nachnameRef} value={f.nachname ?? ''} onChange={x => feld({ nachname: x.target.value })} autoComplete="off" autoCapitalize="words" enterKeyHint="next" style={eingabe} aria-label="Nachname" /></Feldzeile>
             </div>
 
             {/* Kennen wir schon? */}

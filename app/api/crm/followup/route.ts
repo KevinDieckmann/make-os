@@ -38,7 +38,7 @@ import { folgeAus } from '@/lib/crm/heute';
 import { sperren } from '@/lib/crm/sperrliste';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, werbesperreHinweis, type Faellig } from '@/lib/crm/followup';
+import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, werbesperreHinweis, aktivitaetArtNachErledigen, dealSchrittErledigt, type Faellig } from '@/lib/crm/followup';
 import { leadHebenNachGespraech, type LeadMeldung } from '@/lib/crm/lead-heben';
 import { wer } from '@/lib/crm/team';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -54,7 +54,6 @@ const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
 const ARTEN: FollowUpArt[] = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'];
 const BEZUEGE: FollowUpBezugArt[] = ['kontakt', 'firma', 'chance', 'mandat', 'event'];
-const AKT_ART: Record<FollowUpArt, AktivitaetArt> = { anruf: 'anruf', mail: 'mail', linkedin: 'linkedin', termin: 'termin', nachricht: 'mail', sonstig: 'notiz' };
 // Je Anfrage eine neue Antwort (28.09.): eine geteilte Response ließe sich nur einmal lesen.
 const KEIN_ZUGANG = () => NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
 const EINGESCHRAENKT = () => NextResponse.json({ ok: false, fehler: EINGESCHRAENKT_FEHLER }, { status: 409 });
@@ -202,7 +201,9 @@ export async function POST(req: Request) {
       const f: FollowUp = echt ?? echtAus(vorlage!, quelleVon(herkunft));
       // Deal-Regel (Prüfbericht 27.09., Punkt 6): ein offener Deal braucht einen nächsten Schritt — auch über die Follow-up-Ebene.
       const deal = f.bezug.art === 'chance' ? c.chancen.find(x => x.id === f.bezug.id) : undefined;
-      if (deal && OFFENE_STUFEN.includes(deal.stufe) && !naechsterRoh && (herkunft === 'dealschritt' || !deal.naechsterSchritt)) { regelFehler = 'Am Deal muss ein nächster Schritt stehen — bitte „Als Nächstes“ ausfüllen (die Deal-Regel gilt auch hier).'; return c; }
+      // 4.4 (08.10.): auch wenn der Schritt am Deal genau DIESER war (fällig, gleicher Tag oder Text) — er stünde sonst sofort wieder als
+      // überfällig da (`v:dealschritt`). Ein späterer, anderer Schritt am Deal bleibt und erfüllt die Regel.
+      if (deal && OFFENE_STUFEN.includes(deal.stufe) && !naechsterRoh && (herkunft === 'dealschritt' || !deal.naechsterSchritt || dealSchrittErledigt(deal.naechsterSchritt, f, heute))) { regelFehler = 'Am Deal muss ein nächster Schritt stehen — bitte „Als Nächstes“ ausfüllen (die Deal-Regel gilt auch hier).'; return c; }
       const notizNeu = notiz ? `${f.notiz ? `${f.notiz}\n` : ''}${notiz}` : '';
       if (notizNeu.length > NOTIZ_MAX) { zuLang = true; return c; }
       erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notizNeu ? { notiz: notizNeu } : {}), geaendert: jetzt, geaendertVon: person };
@@ -236,7 +237,8 @@ export async function POST(req: Request) {
     let lead: LeadMeldung | null = null;
     if (e.kontaktId) {
       const aktNotiz = (herkunft as Herkunft) === 'dealwiedervorlage' ? (e.notiz ?? '') : notiz; // N8: dort mit „Als Nächstes“
-      await aktivitaet(e.kontaktId, AKT_ART[e.art], `${e.text}${aktNotiz ? ` — ${aktNotiz.replace(/\n/g, ' · ')}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));
+      // 4.6 (08.10.): „Sonstiges“ mit Ergebnis wird der Kontakt, der stattfand (Gespräch bzw. Anruf) — letzter Kontakt und Kadenz ziehen nach.
+      await aktivitaet(e.kontaktId, aktivitaetArtNachErledigen(e.art, ergebnis), `${e.text}${aktNotiz ? ` — ${aktNotiz.replace(/\n/g, ' · ')}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));
       if (e.bezug.art === 'event' && (ergebnis === 'gespraech' || ergebnis === 'termin')) lead = await leadHebenNachGespraech(e.kontaktId, jetzt, person, heute, werAus(req));
     }
     const f2 = folge as FollowUp | null;

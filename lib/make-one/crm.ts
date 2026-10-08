@@ -109,6 +109,11 @@ export interface Aktivitaet {
    */
   vorschlagId?: string;
   /**
+   * Die Aufgabe, aus der diese Aktivität stammt (08.10., Woche 1 · 4.7): eine erledigte Aufgabe mit Kontakt-Bezug hinterlässt genau EINE
+   * Aktivität am Kontakt (idempotent über diese Kennung) — ebenso die Power-Hour-Karte einer Aufgabe. Nur der Server setzt sie.
+   */
+  aufgabeId?: string;
+  /**
    * Herkunft (29.09., Paket D-B #94): `zoe` = ZOE hat den Eintrag vorbereitet, eine Person hat ihn im Stapel freigegeben
    * (`freigegebenVon`). `von` bleibt die Person, in deren Auftrag gearbeitet wurde — so sieht niemand eine ZOE-Notiz
    * für Kevins eigene Eingabe an. Fehlt = von Hand.
@@ -1104,11 +1109,12 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     const terminUid = typeof x.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(x.terminUid) ? x.terminUid : undefined;
     const aktFirma = typeof x.firmaId === 'string' && /^f-[a-z0-9-]{2,63}$/.test(x.firmaId) ? x.firmaId : undefined;
     const mailLink = typeof x.mailLink === 'string' && /^\/os\/inbox\?offen=(gmail-[A-Za-z0-9]{6,40}|im~pf-[0-9a-f-]{36}~[0-9a-f]{20})$/.test(x.mailLink) ? x.mailLink : undefined;
+    const aufgabeId = typeof x.aufgabeId === 'string' && AUFGABE_KENNUNG.test(x.aufgabeId) ? x.aufgabeId : undefined;
     return {
       am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
       ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),
       ...(wann && !terminUid ? { wann } : {}), ...(terminUid ? { terminUid } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}), ...(aktFirma ? { firmaId: aktFirma } : {}),
-      ...(anlass ? { anlass } : {}), ...(mailLink ? { mailLink } : {}),
+      ...(anlass ? { anlass } : {}), ...(mailLink ? { mailLink } : {}), ...(aufgabeId ? { aufgabeId } : {}),
     } as Aktivitaet;
   }).filter((a): a is Aktivitaet => !!a) : [];
   // Löschmarken (28.09., H4): markierte Fassungen fallen hier heraus — egal, welcher Weg sie zurückbringen wollte.
@@ -1200,6 +1206,8 @@ export interface AktivitaetEingabe {
   anlass?: string;
   /** Kennung des ZOE-Vorschlags, aus dem die Aktivität stammt (29.09., idempotente Freigabe). */
   vorschlagId?: string;
+  /** Die Aufgabe, aus der die Aktivität stammt (08.10., 4.7, idempotent). */
+  aufgabeId?: string;
   /** Aus einem ZOE-Vorschlag, freigegeben von … (29.09., #94). */
   quelle?: 'zoe';
   freigegebenVon?: string;
@@ -1215,6 +1223,8 @@ export interface AktivitaetEingabe {
  */
 /** Form einer ZOE-Vorschlags-Kennung (lib/zoe/stapel.ts: `v-<zeit>-<zufall>`). */
 export const VORSCHLAG_KENNUNG = /^v-[a-z0-9-]{4,40}$/;
+/** Form einer Aufgaben-Kennung am Verlauf (4.7) — alle Kennungsformen der Aufgaben (Unteraufgaben mit „--“ eingeschlossen). */
+export const AUFGABE_KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 
 export function wendeAktivitaetAn(
   k: Kontakt, e: AktivitaetEingabe, heute: string, jetztIso: string,
@@ -1225,6 +1235,7 @@ export function wendeAktivitaetAn(
     ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}),
     ...(e.anlass?.trim() ? { anlass: e.anlass.trim().slice(0, 600) } : {}),
     ...(e.vorschlagId && VORSCHLAG_KENNUNG.test(e.vorschlagId) ? { vorschlagId: e.vorschlagId } : {}),
+    ...(e.aufgabeId && AUFGABE_KENNUNG.test(e.aufgabeId) ? { aufgabeId: e.aufgabeId } : {}),
     ...(e.quelle === 'zoe' ? { quelle: 'zoe' as const, ...(e.freigegebenVon && /^[a-z0-9-]{1,40}$/.test(e.freigegebenVon) ? { freigegebenVon: e.freigegebenVon } : {}) } : {}),
     // Firma zum Zeitpunkt (28.09., Stationen): die Zeitlinie der Firma behält die Aktivität nach einem Jobwechsel.
     ...(k.firmaId ? { firmaId: k.firmaId } : {}) };

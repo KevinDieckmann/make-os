@@ -40,7 +40,7 @@ Qualifragen gekommen ist. Und dann können wir gucken, was er nachher ist, aber 
 
 | Quelle | Gilt als Marketing, wenn … |
 |---|---|
-| Website-/Inbound-Anfrage | Herkunft „selbst angegeben“ oder eine Anfrage im Verlauf („Anfrage über …“) |
+| Website-/Inbound-Anfrage | eine Anfrage im Verlauf („Anfrage über …“, nicht über Empfehlung/Event und nicht zu einem besuchten Event) oder die Quelle (Website/Anfrage) — seit 08.10. nie die Datenschutz-Herkunft „selbst angegeben“ |
 | Newsletter | Einwilligung Newsletter mit **nachgewiesenem Double-Opt-in**, nicht widerrufen |
 | Kampagne | Mitglied einer **gestarteten** Kampagne (nicht Entwurf), die nicht Direktansprache ist (Playbook „LinkedIn: vernetzen“, Kanal persönlich oder Telefon zählen nicht) — oder Quelle „Kampagne“ in der Liste |
 | Content / Leadmagnet | Quelle Content, Beitrag, Newsletter, LinkedIn-Beitrag (Kanal „Content“ in `lib/crm/kanal.ts`) |

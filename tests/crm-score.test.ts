@@ -64,7 +64,10 @@ describe('Herkunftskanal', () => {
       { kanal: 'bestand', score: s(80), status: 'kunde' }, { kanal: 'bestand', score: s(80), status: 'qualifizierung' }, { kanal: 'bestand', score: s(5), status: 'neu' },
     ]);
     expect(z[0].kanal).toBe('bestand');
-    expect(z[0]).toMatchObject({ anzahl: 3, warm: 2, sql: 1, warmQuote: 67, sqlQuote: 33 });
+    // 7.4 (08.10.): Quoten erst ab MINDESTMENGE (5) Leads je Kanal — darunter nur Anzahlen.
+    expect(z[0]).toMatchObject({ anzahl: 3, warm: 2, sql: 1, warmQuote: null, sqlQuote: null });
+    const fuenf = kanalLeistung([...Array(5)].map((_, i) => ({ kanal: 'event' as const, score: s(i < 3 ? 60 : 10), status: i < 2 ? 'sql' : 'neu' })));
+    expect(fuenf[0]).toMatchObject({ anzahl: 5, warm: 3, sql: 2, warmQuote: 60, sqlQuote: 40 });
     expect(z[1]).toMatchObject({ kanal: 'event', anzahl: 2, warm: 1, sql: 1 });
     expect(temperaturVerteilung([{ score: s(10) }, { score: s(60) }])).toEqual({ kalt: 1, lau: 0, warm: 1, heiss: 0 });
   });

@@ -25,6 +25,13 @@ function stufen(v: unknown): Lead['stufen'] | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+/** Was beim direkt angelegten Deal bis zum SQL fehlte (2.3) — nur Texte, höchstens zehn (Sicherung; der Server schreibt nie mehr). */
+function direktOffen(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const l = v.map(x => txt(x, 160)).filter((x): x is string => !!x).slice(0, 10);
+  return l.length ? l : undefined;
+}
+
 /** Nur, was das Modell kennt — sonst undefined (dann gilt der abgeleitete Status). */
 export function leadSaeubern(v: unknown): Lead | undefined {
   if (!v || typeof v !== 'object') return undefined;
@@ -41,6 +48,8 @@ export function leadSaeubern(v: unknown): Lead | undefined {
     ...(antworten(o.antworten) ? { antworten: antworten(o.antworten) } : {}), ...(stufen(o.stufen) ? { stufen: stufen(o.stufen) } : {}), ...(tag(o.qualifiziertAm) ? { qualifiziertAm: tag(o.qualifiziertAm) } : {}),
     ...(typeof o.hauptKontaktId === 'string' && /^c-[a-z0-9-]{4,60}$/.test(o.hauptKontaktId) ? { hauptKontaktId: o.hauptKontaktId } : {}),
     ...(typeof o.wiedervorlage === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.wiedervorlage) ? { wiedervorlage: o.wiedervorlage } : {}), ...(typeof o.grundArt === 'string' && /^[a-z][a-z_]{0,29}$/.test(o.grundArt) ? { grundArt: o.grundArt } : {}),
+    ...(typeof o.geprueftAm === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.geprueftAm) ? { geprueftAm: o.geprueftAm } : {}),
+    ...(tag(o.direktAm) ? { direktAm: tag(o.direktAm) } : {}), ...(direktOffen(o.direktOffen) ? { direktOffen: direktOffen(o.direktOffen) } : {}),
     ...(tag(o.sqlAm) ? { sqlAm: tag(o.sqlAm) } : {}), ...(/^[a-z0-9][a-z0-9-]{1,63}$/.test(String(o.chanceId ?? '')) ? { chanceId: String(o.chanceId) } : {}),
     ...(tag(o.geaendert) ? { geaendert: tag(o.geaendert) } : {}), ...(/^[a-z0-9-]{1,40}$/.test(String(o.geaendertVon ?? '')) ? { geaendertVon: String(o.geaendertVon) } : {}),
   };

@@ -20,7 +20,7 @@
 //
 // Alles hier ist rein (keine Speicherzugriffe) — Laden und Schreiben: lib/crm/scoring-server.ts.
 
-import type { Kontakt } from '@/lib/make-one/crm';
+import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
 import type { Event, Kampagne, Kriterien, Lead, Qual, Teilnahme } from './typen';
 import { kanalVon } from './kanal';
 import { echtesGespraech } from './pipeline';
@@ -92,7 +92,8 @@ export interface ScoringKontext {
 // Kevin: „MQL sind nur die Leads, die aus dem Marketing kommen. Wenn jemand auf dem Event kommt, ist es ein Lead, bis es durch die
 // Qualifragen gekommen ist.“ Eine Funktion entscheidet, ob ein Lead aus dem Marketing kommt — Lifecycle (MQL), Qualifizierungsrunde,
 // Leads-Liste, Kennzahlen und ZOE fragen sie. Marketing sind (je Person der Firma, ein Treffer genügt):
-//   anfrage     Website-/Inbound-Anfrage (Herkunft „selbst angegeben“ oder eine Anfrage im Verlauf)
+//   anfrage     Website-/Inbound-Anfrage (eine Anfrage im Verlauf — nicht über Empfehlung/Event, nicht zu einem besuchten Event — oder
+//               die Quelle; seit 08.10. NIE die Datenschutz-Herkunft „selbst angegeben“, Woche 1 · 5.1)
 //   newsletter  Newsletter mit nachgewiesenem Double-Opt-in
 //   kampagne    Mitglied einer gestarteten Kampagne (nicht Direktansprache: „LinkedIn vernetzen“, persönlich, Telefon) — oder Quelle „Kampagne“
 //   inhalt      Content / Leadmagnet (Quelle Content, Beitrag, Newsletter, LinkedIn-Beitrag)
@@ -116,16 +117,39 @@ function marketingKampagnenPersonen(l: readonly Kampagne[]): Set<string> {
   }
   return s;
 }
+/**
+ * Anfrage-Kanäle, die KEIN Marketing sind (08.10., Woche 1 · 5.1): eine Anfrage nach einer Empfehlung oder auf einem Event ist eine
+ * Begegnung, kein Marketing-Erfolg. Die Namen sind die Beschriftungen aus `ANFRAGE_KANAELE` (lib/crm/anfragen.ts) — dort steht die
+ * Marke „Anfrage über <Kanal>: …“ (Wächter in tests/markttraktion-woche1.test.ts).
+ */
+export const ANFRAGE_OHNE_MARKETING: readonly string[] = ['Empfehlung', 'Event'];
+/**
+ * Ist diese Anfrage (Aktivität „Anfrage über …“) ein Marketing-Signal? Nein bei Kanal Empfehlung/Event und bei Bezug auf ein BESUCHTES
+ * Event (Netzwerken — dort lernten wir die Person kennen). Ohne Events im Kontext lässt sich der Bezug nicht prüfen: dann zählt nur der Kanal.
+ */
+export function anfrageIstMarketing(a: Pick<Aktivitaet, 'text' | 'bezug'>, events?: readonly Event[]): boolean {
+  const kanal = (a.text ?? '').slice(ANFRAGE_ANFANG.length).split(':')[0].trim();
+  if (ANFRAGE_OHNE_MARKETING.includes(kanal)) return false;
+  const e = a.bezug && events ? events.find(x => x.id === a.bezug) : undefined;
+  return !(e && istNetzwerkenEvent(e));
+}
 /** Woher der Marketing-Lead kommt — leer, wenn er nicht aus dem Marketing stammt (dann „Lead · noch zu qualifizieren“). */
 export function marketingHerkunft(personen: readonly Kontakt[], ctx: Pick<ScoringKontext, 'kampagnen' | 'teilnahmen' | 'events'> = {}): MarketingGrund[] {
   const gruende: MarketingGrund[] = [];
   const dazu = (quelle: MarketingQuelle) => { if (!gruende.some(g => g.quelle === quelle)) gruende.push({ quelle, text: MARKETING_QUELLEN_LABEL[quelle] }); };
   const ids = new Set(personen.map(p => p.id));
   for (const p of personen) {
-    if (p.herkunft === 'selbst' || (p.aktivitaeten ?? []).some(a => a.art === 'antwort' && (a.text ?? '').startsWith(ANFRAGE_ANFANG))) dazu('anfrage');
+    // 5.1 (08.10.): die Marketing-Herkunft kommt NICHT aus der Datenschutz-Herkunft (`herkunft` = Art. 14: „selbst angegeben“ heißt auch
+    // „Visitenkarte überreicht“). Eine Anfrage zählt nur über ihre Marke im Verlauf — und nur, wenn sie ein Marketing-Signal ist.
+    const anfragen = (p.aktivitaeten ?? []).filter(a => a.art === 'antwort' && (a.text ?? '').startsWith(ANFRAGE_ANFANG));
+    const anfrageMarketing = anfragen.some(a => anfrageIstMarketing(a, ctx.events));
+    if (anfrageMarketing) dazu('anfrage');
     if ((p.einwilligungen ?? []).some(e => e.kanal === 'newsletter' && !e.widerrufenAm && !nachweisLuecken(e).length)) dazu('newsletter');
-    const kanal = kanalVon(p);
-    if (kanal === 'inbound') dazu('anfrage'); else if (kanal === 'content') dazu('inhalt'); else if (kanal === 'kampagne') dazu('kampagne');
+    // Der Kanal aus der Liste/Quelle (ohne die Datenschutz-Herkunft). Hat die Person nur Anfragen ohne Marketing (Empfehlung, Event,
+    // besuchtes Event), macht die Quelle „Anfrage über …“ sie nicht doch zum Marketing-Lead.
+    const kanal = kanalVon({ ...p, herkunft: undefined });
+    const nurBegegnung = anfragen.length > 0 && !anfrageMarketing;
+    if (kanal === 'inbound' && !nurBegegnung) dazu('anfrage'); else if (kanal === 'content' && !nurBegegnung) dazu('inhalt'); else if (kanal === 'kampagne') dazu('kampagne');
   }
   if (ctx.kampagnen?.length) { const m = marketingKampagnenPersonen(ctx.kampagnen); if (personen.some(p => m.has(p.id))) dazu('kampagne'); }
   if (ctx.teilnahmen?.length && ctx.events?.length) {
@@ -567,7 +591,8 @@ export interface KriteriumErgebnis {
   stufePunkte: number;
 }
 export interface TeilErgebnis { id: string; name: string; seite: ScoringSeiteId; punkte: number; max: number; kriterien: KriteriumErgebnis[]; gedeckeltAuf?: number; grund: string }
-export interface MussErgebnis { text: string; ok: boolean }
+/** Ein Muss-Kriterium am Lead: Text, erfüllt — und die Kriterien dahinter (08.10., Woche 1 · 2.1: die Runde zählt nur offene Muss-Fragen). */
+export interface MussErgebnis { text: string; ok: boolean; kriterien: string[] }
 export interface SeitenErgebnis {
   seite: ScoringSeiteId; punkte: number; max: number; schwelle: number; erreicht: boolean;
   /**
@@ -642,6 +667,24 @@ function teilGrund(t: TeilErgebnis): string {
   return t.kriterien.length === 1 ? t.kriterien[0].grund : 'Noch nichts erkennbar';
 }
 
+/** Ein Muss-Kriterium als Satz: „Schmerz“ · „Budget oder Zeitpunkt“ · „mindestens 2 von …“ — EINE Formulierung für Lead, Runde und Texte. */
+export function mussText(m: ScoringMuss, nameVon: (id: string) => string): string {
+  const namen = m.kriterien.map(nameVon);
+  return m.kriterien.length === 1 ? namen[0] : m.mindestens === 1 ? namen.join(' oder ') : `mindestens ${m.mindestens} von ${namen.join(', ')}`;
+}
+
+/**
+ * Die SQL-Regel der Einstellungen in einem Satz (08.10., Woche 1 · 2.6) — statt fester Texte („Schmerz, Entscheider und Budget oder
+ * Zeitpunkt“), die nach einer Änderung der Scoring-Einstellungen nicht mehr stimmten. Beispiel Standard:
+ * „Muss: Schmerz · Entscheider · Budget oder Zeitpunkt — dazu mindestens 28 Sales-Punkte“.
+ */
+export function sqlRegelText(e: Pick<ScoringEinstellungen, 'sales'>): string {
+  const namen = new Map(e.sales.teile.flatMap(t => t.kriterien).map(k => [k.id, k.name]));
+  const muss = e.sales.muss.map(m => mussText(m, id => namen.get(id) ?? id));
+  const punkte = `mindestens ${e.sales.schwelle} Sales-Punkte`;
+  return muss.length ? `Muss: ${muss.join(' · ')} — dazu ${punkte}` : punkte;
+}
+
 function seiteRechnen(seite: ScoringSeiteId, s: ScoringSeite, personen: readonly Kontakt[], lead: LeadAntworten | undefined, mk: MessKontext): SeitenErgebnis {
   const alle: KriteriumErgebnis[] = [];
   const teile: TeilErgebnis[] = s.teile.map(t => {
@@ -658,9 +701,7 @@ function seiteRechnen(seite: ScoringSeiteId, s: ScoringSeite, personen: readonly
   const nameVon = (id: string) => nachId.get(id)?.name ?? s.teile.flatMap(t => t.kriterien).find(k => k.id === id)?.name ?? id;
   const muss: MussErgebnis[] = s.muss.map(m => {
     const erfuellt = m.kriterien.filter(id => { const e = nachId.get(id); return !!e && e.beantwortet && e.stufePunkte >= m.stufePunkte && e.stufePunkte > 0; }).length;
-    const namen = m.kriterien.map(nameVon);
-    const text = m.kriterien.length === 1 ? namen[0] : m.mindestens === 1 ? namen.join(' oder ') : `mindestens ${m.mindestens} von ${namen.join(', ')}`;
-    return { text, ok: erfuellt >= m.mindestens };
+    return { text: mussText(m, nameVon), ok: erfuellt >= m.mindestens, kriterien: [...m.kriterien] };
   });
   const punkte = Math.round(teile.reduce((a, t) => a + t.punkte, 0) * 100) / 100;
   const max = Math.round(teile.reduce((a, t) => a + t.max, 0) * 100) / 100;

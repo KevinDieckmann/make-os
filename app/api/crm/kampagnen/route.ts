@@ -91,7 +91,8 @@ export async function POST(req: Request) {
     const max = LISTEN_GRENZEN.kampagnen?.kontaktIds ?? 20000;
     if (k.kontaktIds.length > max) return NextResponse.json({ ok: false, fehler: `Die Zielgruppe hat ${k.kontaktIds.length} Personen — eine Kampagne fasst höchstens ${max}. Bitte das Segment enger fassen.` }, { status: 413 });
     await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, k] }));
-    return NextResponse.json({ ok: true, kampagne: k, ...(rot.size ? { abgelehnt: rot.size } : {}), text: `Kampagne mit ${rot.size ? `${k.kontaktIds.length} Personen der Zielgruppe` : `allen ${k.kontaktIds.length} Personen der Zielgruppe`} angelegt — wer nicht dabei sein soll, in der Kampagne herausnehmen.${ampelText}` });
+    // `hinweis` (08.10., 5.2): der Ampel-Teil allein — die Oberfläche zeigt ihn, statt ihn zu verschlucken.
+    return NextResponse.json({ ok: true, kampagne: k, ...(rot.size ? { abgelehnt: rot.size } : {}), ...(ampelText.trim() ? { hinweis: ampelText.trim() } : {}), text: `Kampagne mit ${rot.size ? `${k.kontaktIds.length} Personen der Zielgruppe` : `allen ${k.kontaktIds.length} Personen der Zielgruppe`} angelegt — wer nicht dabei sein soll, in der Kampagne herausnehmen.${ampelText}` });
   }
 
   if (b.aktion === 'aufgaben') {

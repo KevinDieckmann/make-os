@@ -5,6 +5,8 @@
 // immer über /api/crm/deal. Pflicht ist der nächste Schritt mit Datum. Gibt es
 // an der Firma schon einen offenen Deal, sagt der Server das — und man kann
 // dorthin springen oder bewusst einen zweiten anlegen.
+// Woche 1 (08.10.): die Quelle bleibt ohne Wahl leer — der Server leitet sie aus der Herkunft des Leads ab (2.5); wer „führt“, kann
+// der Aufrufer vorbelegen (2.9, „+ Deal für <Person>“); ist der Lead nicht SQL-bereit, wird der Deal „direkt angelegt“ (2.3, Antworttext).
 
 import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
@@ -21,7 +23,7 @@ const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Re
 const BASEN: { id: WertBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
 const QUELLEN: { id: Quelle; label: string }[] = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Inbound' }];
 
-export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, quelleBezug, art: vorgabeArt, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; quelle?: Quelle; quelleBezug?: string; /** Vorbelegte Art (z. B. „Vermittlung“ aus der Schnellleiste am Handy). */ art?: ChancenArt; onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
+export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, quelleBezug, art: vorgabeArt, besitzer: vorgabeBesitzer, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; quelle?: Quelle; quelleBezug?: string; /** Vorbelegte Art (z. B. „Vermittlung“ aus der Schnellleiste am Handy). */ art?: ChancenArt; /** Wer den Deal führt — vorbelegt (2.9), sonst entscheidet der Server (Lead, sonst die Person). */ besitzer?: string; onFertig: (chanceId: string, text?: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
   const heute = api.crm?.heute ?? localDay();
   const kontakte = api.kontakte ?? [];
   const firmen = api.crm?.stand.firmen ?? [];
@@ -35,7 +37,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
   const [laufzeit, setLaufzeit] = useState('');
   const [schritt, setSchritt] = useState({ text: '', datum: plusTage(heute, 3) });
   const [quelle, setQuelle] = useState<Quelle | undefined>(vorgabeQuelle);
-  const [besitzer, setBesitzer] = useState<string | undefined>(undefined);
+  const [besitzer, setBesitzer] = useState<string | undefined>(vorgabeBesitzer && vorgabeBesitzer !== 'beide' ? vorgabeBesitzer : undefined);
   const [erwartetAm, setErwartetAm] = useState('');
   const [fehler, setFehler] = useState<{ text: string; offen?: { id: string; titel: string } } | null>(null);
   const [laeuft, setLaeuft] = useState(false);
@@ -54,7 +56,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
     setLaeuft(false);
     if (!r.ok) { setFehler({ text: r.fehler ?? 'Nicht angelegt.', offen: r.offen }); return; }
     void api.laden();
-    onFertig(r.chance.id);
+    onFertig(r.chance.id, typeof r.text === 'string' ? r.text : undefined);
   };
 
   return (
@@ -94,7 +96,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
         </div>
       </Feldzeile>
       <Feldzeile label="Entscheidung bis"><input type="date" value={erwartetAm} onChange={e => setErwartetAm(e.target.value)} style={{ ...feld, width: 150 }} aria-label="Entscheidung bis" /></Feldzeile>
-      <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={quelle} onWahl={setQuelle} onLeeren={() => setQuelle(undefined)} /></Feldzeile>
+      <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={quelle} leer="aus der Herkunft ▾" onWahl={setQuelle} onLeeren={() => setQuelle(undefined)} leerenLabel="aus der Herkunft" /></Feldzeile>
       <Feldzeile label="Führt"><ZustaendigWahl wert={besitzer} welt="sales" onWahl={setBesitzer} beide={false} /></Feldzeile>
       {fehler && (
         <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
