@@ -23,6 +23,7 @@ const { ordner, wurzel } = await vi.hoisted(async () => {
 
 import { ordnerGruende, leerGruende, zuruecksetzenGruende, umgebungGruende, demoUuid, istDemoInstanz, DEMO_MARKE } from '@/lib/demo/schutz';
 import { createHash } from 'node:crypto';
+import { localDay } from '@/lib/zeit';
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
@@ -105,7 +106,7 @@ describe('Saat', () => {
   });
 
   it('sät eine vollständige, erfundene Demo über die Schreibwege', async () => {
-    const b = await server.demoSaenInLeerenOrdner({ passwort: 'pruef-passwort-demo', heute: '2026-10-05' });
+    const b = await server.demoSaenInLeerenOrdner({ passwort: 'pruef-passwort-demo', heute: localDay() }); // echtes Heute: die Deal-Prüfung vergleicht mit der Uhr
     const n = Object.fromEntries(b.schritte.map(s => [s.name, s.anzahl]));
     expect(n).toMatchObject({ Konten: 2, Team: 3, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4 });
     const crm = await db.loadJson<{ chancen: unknown[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[] }>('crm');
@@ -121,7 +122,7 @@ describe('Saat', () => {
     expect(ms?.meilensteine.filter(m => m.id.startsWith('ms-fahrplan-')).length).toBe(9);
     // Plan-Treue aus festgehaltenen Wochen.
     const { kapaKennzahlenFuerIndex } = await import('@/lib/kapazitaet/server');
-    const kz = await kapaKennzahlenFuerIndex('2026-10-05');
+    const kz = await kapaKennzahlenFuerIndex(localDay());
     expect(kz?.planTreueQuelle).toBe('festgehalten');
     expect(kz?.treueWochen?.length).toBe(3);
     expect(kz?.planTreue).toBeGreaterThan(0);

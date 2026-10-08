@@ -42,79 +42,92 @@
 # bekommen `X-Robots-Tag: noindex, nofollow` und `robots.txt` (Disallow). Erst wenn die Seite beworben wird und
 # `node website/pruefen.mjs` „freigabefähig“ meldet: die X-Robots-Tag-Zeile entfernen und website/robots.txt öffnen.
 # HSTS hier bewusst OHNE includeSubDomains (Mail-Autokonfiguration des Domain-Anbieters).
-# ▼ FREIGABE-FASSUNG (aktiv) — tests/caddy-buchung-koepfe.test.ts lässt offene Platzhalter nur mit noindex + robots.txt zu.
-(landingpage_koepfe) {
+# ─── OFFLINE (Kevin 08.10.: „beide Seiten offline nehmen“) ────────────────────────────────────────────────────
+# makeinnovation.de und fokusinnovation.de liefern nichts aus (503), bis Kevin sie wieder freigibt. Die App läuft unter {$MAKE_OS_DOMAIN}.
+makeinnovation.de, www.makeinnovation.de, fokusinnovation.de, www.fokusinnovation.de {
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Robots-Tag "noindex, nofollow"
-		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
-		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
-		X-Frame-Options DENY
-		Cross-Origin-Opener-Policy same-origin
-		Cross-Origin-Resource-Policy same-origin
 		-Server
 	}
+	respond 503
 }
-www.makeinnovation.de {
-	header -Server
-	redir https://makeinnovation.de{uri} 301
-}
-makeinnovation.de {
-	root * /srv/website
-	encode zstd gzip
-	import landingpage_koepfe
-	# Arbeitsdateien im Ordner werden nie ausgeliefert (wie NICHT_OEFFENTLICH in website/pruefen.mjs; *.md/*.mjs in jeder Tiefe).
-	@intern path /LIESMICH.md /pruefen.mjs /logo-entwuerfe.html /assets/logo/LOGO.md *.md *.mjs
-	respond @intern 404
-	# Caching: Seiten immer frisch nachfragen (ETag/Last-Modified von file_server), Schriften lange, Stile/Skript/Logo einen Tag.
-	@seiten path / /*.html
-	header @seiten Cache-Control "no-cache"
-	@schriften path /assets/fonts/*
-	header @schriften Cache-Control "public, max-age=2592000, immutable"
-	@stile path /css/* /js/* /favicon.svg /assets/logo/*
-	header @stile Cache-Control "public, max-age=86400"
-	file_server {
-		hide LIESMICH.md pruefen.mjs logo-entwuerfe.html LOGO.md
-	}
-	# Unbekannte Adressen: eigene 404-Seite mit denselben Köpfen (der Fehlerweg ist eine eigene Route-Kette).
-	handle_errors {
-		root * /srv/website
-		import landingpage_koepfe
-		rewrite * /404.html
-		file_server
-	}
-}
+
+# ▼ FREIGABE-FASSUNG (auskommentiert — OFFLINE seit 08.10., Kevin; zum Wiedereinschalten „# “ entfernen und den OFFLINE-Block löschen)
+# (landingpage_koepfe) {
+# 	header {
+# 		Strict-Transport-Security "max-age=31536000"
+# 		X-Robots-Tag "noindex, nofollow"
+# 		X-Content-Type-Options nosniff
+# 		Referrer-Policy strict-origin-when-cross-origin
+# 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+# 		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+# 		X-Frame-Options DENY
+# 		Cross-Origin-Opener-Policy same-origin
+# 		Cross-Origin-Resource-Policy same-origin
+# 		-Server
+# 	}
+# }
+# www.makeinnovation.de {
+# 	header -Server
+# 	redir https://makeinnovation.de{uri} 301
+# }
+# makeinnovation.de {
+# 	root * /srv/website
+# 	encode zstd gzip
+# 	import landingpage_koepfe
+# 	# Arbeitsdateien im Ordner werden nie ausgeliefert (wie NICHT_OEFFENTLICH in website/pruefen.mjs; *.md/*.mjs in jeder Tiefe).
+# 	@intern path /LIESMICH.md /pruefen.mjs /logo-entwuerfe.html /assets/logo/LOGO.md *.md *.mjs
+# 	respond @intern 404
+# 	# Caching: Seiten immer frisch nachfragen (ETag/Last-Modified von file_server), Schriften lange, Stile/Skript/Logo einen Tag.
+# 	@seiten path / /*.html
+# 	header @seiten Cache-Control "no-cache"
+# 	@schriften path /assets/fonts/*
+# 	header @schriften Cache-Control "public, max-age=2592000, immutable"
+# 	@stile path /css/* /js/* /favicon.svg /assets/logo/*
+# 	header @stile Cache-Control "public, max-age=86400"
+# 	file_server {
+# 		hide LIESMICH.md pruefen.mjs logo-entwuerfe.html LOGO.md
+# 	}
+# 	# Unbekannte Adressen: eigene 404-Seite mit denselben Köpfen (der Fehlerweg ist eine eigene Route-Kette).
+# 	handle_errors {
+# 		root * /srv/website
+# 		import landingpage_koepfe
+# 		rewrite * /404.html
+# 		file_server
+# 	}
+# }
 # ▲ FREIGABE-FASSUNG
 
 # ─── fokusinnovation.de + www — Event-Seite „Fokus Innovation“ (Ordner fokus/, Kevin 04.10.) ─────────────────────
 # VORSCHAU wie makeinnovation.de: noindex über landingpage_koepfe + fokus/robots.txt (Disallow). Erst wenn beworben wird und
 # `node fokus/pruefen.mjs` „freigabefähig“ meldet: noindex entfernen (eigene Kopf-Gruppe) und fokus/robots.txt öffnen.
-www.fokusinnovation.de {
-	header -Server
-	redir https://fokusinnovation.de{uri} 301
-}
-fokusinnovation.de {
-	root * /srv/fokus
-	encode zstd gzip
-	import landingpage_koepfe
-	# Arbeitsdateien werden nie ausgeliefert (wie NICHT_OEFFENTLICH in fokus/pruefen.mjs).
-	@intern path /LIESMICH.md /pruefen.mjs *.md *.mjs
-	respond @intern 404
-	@seiten path / /*.html
-	header @seiten Cache-Control "no-cache"
-	@schriften path /assets/fonts/*
-	header @schriften Cache-Control "public, max-age=2592000, immutable"
-	@stile path /css/* /js/* /favicon.svg /assets/logo/* /assets/film/*
-	header @stile Cache-Control "public, max-age=86400"
-	file_server {
-		hide LIESMICH.md pruefen.mjs
-	}
-	handle_errors {
-		root * /srv/fokus
-		import landingpage_koepfe
-		rewrite * /404.html
-		file_server
-	}
-}
+# ▼ FOKUS-FASSUNG (auskommentiert — OFFLINE seit 08.10., Kevin; zum Wiedereinschalten „# “ entfernen und den OFFLINE-Block löschen)
+# www.fokusinnovation.de {
+# 	header -Server
+# 	redir https://fokusinnovation.de{uri} 301
+# }
+# fokusinnovation.de {
+# 	root * /srv/fokus
+# 	encode zstd gzip
+# 	import landingpage_koepfe
+# 	# Arbeitsdateien werden nie ausgeliefert (wie NICHT_OEFFENTLICH in fokus/pruefen.mjs).
+# 	@intern path /LIESMICH.md /pruefen.mjs *.md *.mjs
+# 	respond @intern 404
+# 	@seiten path / /*.html
+# 	header @seiten Cache-Control "no-cache"
+# 	@schriften path /assets/fonts/*
+# 	header @schriften Cache-Control "public, max-age=2592000, immutable"
+# 	@stile path /css/* /js/* /favicon.svg /assets/logo/* /assets/film/*
+# 	header @stile Cache-Control "public, max-age=86400"
+# 	file_server {
+# 		hide LIESMICH.md pruefen.mjs
+# 	}
+# 	handle_errors {
+# 		root * /srv/fokus
+# 		import landingpage_koepfe
+# 		rewrite * /404.html
+# 		file_server
+# 	}
+# }
+# ▲ FOKUS-FASSUNG
