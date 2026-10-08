@@ -186,7 +186,7 @@ function Gruppe({ welt, zeilen, sb, erste }: { welt: Welt; zeilen: ScoreZeile[];
                 ? <Link href={markttraktion(undefined, undefined, SCORE_ZU_KENNZAHL[z.id])} scroll={false} title="Kennzahl im Traktions-Index öffnen" style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{z.label}</Link>
                 : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.label}</span>}
           </th>
-          <td title={z.person ? 'Anteil am Teamziel' : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
+          <td title={z.person ? (z.ziel === null ? 'kein Sales-Anteil — gezählt, ohne Ziel' : 'Anteil am Teamziel') : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
           {z.werte.map((wert, i) => {
             const w = sb.wochen[i];
             const wer = z.person ? ` · ${nameVon(z.person)}` : '';

@@ -319,7 +319,7 @@ export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts 
   return (
     <Karte i={i}>
       <Ueberschrift rechts={rechts}>{titel}</Ueberschrift>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Herkunftskanal: wie viele Leads, wie viele davon warm oder heiß, wie viele wurden SQL oder Kunde.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Herkunftskanal: wie viele Leads, wie viele davon warm oder heiß, wie viele wurden SQL oder Kunde. Quoten ab {MINDESTMENGE} Leads je Kanal.</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 140px) 1fr auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>
         <span style={{ color: C.inkLeise, fontSize: 12 }}>Kanal</span><span />
         <span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>warm+</span><span style={{ color: C.inkLeise, fontSize: 12, textAlign: 'right' }}>SQL</span>
@@ -331,8 +331,8 @@ export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts 
               <div style={{ width: `${(100 * (z.anzahl - z.warm)) / max}%`, background: 'rgba(255,255,255,.14)' }} />
             </div>
             <span style={{ textAlign: 'right' }}>{z.anzahl}</span>
-            <span style={{ textAlign: 'right', color: z.warm ? C.ink : C.inkLeise }}>{z.warm} <span style={{ color: C.inkLeise }}>({z.warmQuote} %)</span></span>
-            <span style={{ textAlign: 'right', color: z.sql ? LEUCHT.gut : C.inkLeise }}>{z.sql} <span style={{ color: C.inkLeise }}>({z.sqlQuote} %)</span></span>
+            <span style={{ textAlign: 'right', color: z.warm ? C.ink : C.inkLeise }}>{z.warm}{z.warmQuote !== null ? <span style={{ color: C.inkLeise }}> ({z.warmQuote} %)</span> : null}</span>
+            <span style={{ textAlign: 'right', color: z.sql ? LEUCHT.gut : C.inkLeise }}>{z.sql}{z.sqlQuote !== null ? <span style={{ color: C.inkLeise }}> ({z.sqlQuote} %)</span> : null}</span>
           </ContainerZeile>
         ))}
       </div>

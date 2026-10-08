@@ -13,6 +13,7 @@
 
 import { useNachfrage } from './Nachfrage';
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT, Hinweis } from '../ui';
 import { HERKUNFT, RECHTSGRUNDLAGEN } from '@/lib/make-one/crm';
@@ -188,11 +189,12 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
 }
 
 export function Befunde({ liste, zuBereich }: { liste: Befund[]; zuBereich: (b: string, ansicht?: string) => void }) {
+  const router = useRouter();
   if (!liste.length) return <Leer>Nichts Rotes — alles im Rahmen.</Leer>;
   const F = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDim, 5: C.inkLeise } as const;
   return (
     <Liste>
-      {liste.map((b, i) => <Zeile key={i} onClick={() => zuBereich(b.bereich, b.ansicht)} links={<Punkt farbe={F[b.prio]} />} titel={<span style={{ whiteSpace: 'normal' }}>{b.titel}</span>} unter={b.grund} rechts={<span style={{ color: C.inkLeise }}>›</span>} />)}
+      {liste.map((b, i) => <Zeile key={i} onClick={() => (b.href ? router.push(b.href) : zuBereich(b.bereich, b.ansicht))} links={<Punkt farbe={F[b.prio]} />} titel={<span style={{ whiteSpace: 'normal' }}>{b.titel}</span>} unter={b.grund} rechts={<span style={{ color: C.inkLeise }}>›</span>} />)}
     </Liste>
   );
 }

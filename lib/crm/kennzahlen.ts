@@ -45,10 +45,11 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const ph7 = crm.sitzungen.filter(s => s.datum >= vor7 && s.datum <= heute).length;
   const phJe = crm.sitzungen.length > 0;
   const akt = kontakte.flatMap(k => (k.aktivitaeten ?? []).map(a => ({ ...a, k: k.id })));
-  const gespraeche7 = akt.filter(a => a.am.slice(0, 10) >= vor7 && echtesGespraech(a)).length;
-  const erste = kontakte.filter(k => { const g = (k.aktivitaeten ?? []).filter(echtesGespraech).map(a => a.am.slice(0, 10)).sort()[0]; return g && g >= vor30; }).length;
+  // 7.5 (08.10.): Berliner Tag (`tagVon`) statt UTC-Tag.
+  const gespraeche7 = akt.filter(a => echtesGespraech(a) && tagVon(a.am) >= vor7).length;
+  const erste = kontakte.filter(k => { const g = (k.aktivitaeten ?? []).filter(echtesGespraech).map(a => tagVon(a.am)).sort()[0]; return g && g >= vor30; }).length;
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
-  const sql30 = crm.chancen.filter(c => c.angelegt.slice(0, 10) >= vor30 && c.angelegt.slice(0, 10) <= heute).length;
+  const sql30 = crm.chancen.filter(c => { const t = tagVon(c.angelegt); return t >= vor30 && t <= heute; }).length;
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
   const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
   const m = mrr(crm.mandate), kz = konzentration(crm.mandate);

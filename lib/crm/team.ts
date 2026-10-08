@@ -22,6 +22,7 @@ import { leads, salesBereit } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
+import { WEG } from '@/lib/wege';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
 const WELTEN: readonly Welt[] = ['sales', 'marketing', 'event'];
@@ -80,7 +81,8 @@ export function istMeins(z: string | undefined, w: Welt, person: string): boolea
 export const haeltBeziehung = (k: Pick<Kontakt, 'besitzer'>) => zustaendig(k.besitzer, 'sales');
 
 // ── Zuletzt im Team ────────────────────────────────────────────────────────
-export interface TeamEreignis { person: string; zeit: string; text: string; welt: Welt | null; ziel: { s: string; a?: string; k?: string } }
+/** `ziel.href` (6.7, 08.10.): Ziel außerhalb der Markttraktion (Mandate) — gewinnt vor `s`/`a`/`k`. */
+export interface TeamEreignis { person: string; zeit: string; text: string; welt: Welt | null; ziel: { s: string; a?: string; k?: string; href?: string } }
 
 const ART_TEXT: Record<string, string> = { mail: 'Mail an', linkedin: 'LinkedIn mit', anruf: 'Anruf bei', antwort: 'Antwort von', termin: 'Termin mit', notiz: 'Notiz zu', gespraech: 'Gespräch mit', event: 'Event mit' };
 const ERGEBNIS_TEXT: Record<string, string> = { gespraech: 'Gespräch', termin: 'Termin vereinbart', mailbox: 'Mailbox', nicht_erreicht: 'nicht erreicht', rueckruf: 'Rückruf vereinbart', kein_bedarf: 'kein Bedarf', sperre: 'Sperre' };
@@ -106,19 +108,20 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
   for (const c of crm.chancen) {
     for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Deal „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'deals', a: 'akte', k: c.id } });
   }
-  const geaendert = <T extends { geaendert: string; geaendertVon?: string }>(liste: T[], text: (x: T) => string, welt: Welt, ziel: TeamEreignis['ziel']) => {
-    for (const x of liste) if (x.geaendert >= seit && mensch(x.geaendertVon)) r.push({ person: x.geaendertVon!, zeit: x.geaendert, text: text(x), welt, ziel });
+  const geaendert = <T extends { geaendert: string; geaendertVon?: string }>(liste: T[], text: (x: T) => string, welt: Welt, ziel: TeamEreignis['ziel'] | ((x: T) => TeamEreignis['ziel'])) => {
+    for (const x of liste) if (x.geaendert >= seit && mensch(x.geaendertVon)) r.push({ person: x.geaendertVon!, zeit: x.geaendert, text: text(x), welt, ziel: typeof ziel === 'function' ? ziel(x) : ziel });
   };
   geaendert(crm.events, e => `Event „${e.titel}“ bearbeitet`, 'event', { s: 'event' });
   geaendert(crm.kampagnen ?? [], k => `Kampagne „${k.name}“ bearbeitet`, 'sales', { s: 'marketing', a: 'kampagnen' });
   geaendert(crm.beitraege ?? [], b => `Beitrag „${b.titel}“ · ${b.status}`, 'marketing', { s: 'marketing', a: 'redaktion' });
   geaendert(crm.newsletter ?? [], n => `Newsletter „${n.titel}“ · ${n.status}`, 'marketing', { s: 'marketing', a: 'newsletter' });
-  geaendert(crm.mandate, m => `Mandat ${m.kunde} bearbeitet`, 'sales', { s: 'deals', a: 'kunden' });
+  // 6.7 (08.10.): „Mandat bearbeitet“ öffnet das Mandat — vorher Deals › Auswertung.
+  geaendert(crm.mandate, m => `Mandat ${m.kunde} bearbeitet`, 'sales', m => ({ s: 'deals', a: 'kunden', href: WEG.mandat(m.id) }));
   return r.sort((a, b) => b.zeit.localeCompare(a.zeit)).slice(0, max);
 }
 
 // ── Für dich ────────────────────────────────────────────────────────────────
-export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: number; text: string; ziel: { s: string; a?: string } }
+export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: number; text: string; ziel: { s: string; a?: string; href?: string } }
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -135,8 +138,10 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const offen = crm.chancen.filter(c => ['qualifiziert', 'bedarf', 'diagnose', 'angebot', 'abschluss'].includes(c.stufe) && istMeins(c.besitzer, 'sales', person));
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
   if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Deals ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'deals' } });
-  const reviews = crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bald && istMeins(m.zustaendig, 'sales', person)).length;
-  if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'deals', a: 'kunden' } });
+  const reviewListe = crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bald && istMeins(m.zustaendig, 'sales', person));
+  const reviews = reviewListe.length;
+  // 6.7 (08.10.): zu den Mandaten (eins → dieses Mandat) — vorher Deals › Auswertung.
+  if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'deals', a: 'kunden', href: reviews === 1 ? WEG.mandat(reviewListe[0].id) : WEG.mandat() } });
   // Eine Beitrags-Freigabe zählt nur, solange sie nötig ist: an die jetzige Stimme, und die schreibt nicht selbst (lib/crm/marketing.ts freigabeStand).
   const beitragFreigabe = (b: NonNullable<CrmBestand['beitraege']>[number]) => b.status !== 'veroeffentlicht' && b.freigabe?.status === 'offen' && b.freigabe.an === person && b.stimme === person && zustaendig(b.zustaendig, 'marketing') !== person && zustaendig(b.zustaendig, 'marketing') !== BEIDE;
   const freigaben = (crm.beitraege ?? []).filter(beitragFreigabe).length + (crm.newsletter ?? []).filter(n => n.status !== 'versendet' && n.freigabe?.status === 'offen' && n.freigabe.an === person).length;

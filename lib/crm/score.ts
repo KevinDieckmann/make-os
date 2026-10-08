@@ -60,18 +60,19 @@ export { KANAL, kanalLabel, kanalVon, type KanalId } from './kanal';
 import { kanalLabel, type KanalId } from './kanal';
 
 /** Kanal-Leistung: je Kanal Anzahl, warm+, SQL/Kunde, gewonnen — für Sales-Auswertung, Marketing und die Heads. */
-export interface KanalZeile { kanal: KanalId; label: string; anzahl: number; warm: number; sql: number; gewonnen: number; warmQuote: number; sqlQuote: number }
+/** Quoten erst ab MINDESTMENGE Leads je Kanal, sonst null (7.4, 08.10.: vorher „1 (100 %)“) — wie bei der Temperatur. */
+export interface KanalZeile { kanal: KanalId; label: string; anzahl: number; warm: number; sql: number; gewonnen: number; warmQuote: number | null; sqlQuote: number | null }
 export function kanalLeistung(zeilen: { kanal: KanalId; score: LeadScore; status: string; deal?: { stufe: string } }[]): KanalZeile[] {
   const je = new Map<KanalId, KanalZeile>();
   for (const z of zeilen) {
-    const e = je.get(z.kanal) ?? { kanal: z.kanal, label: kanalLabel(z.kanal), anzahl: 0, warm: 0, sql: 0, gewonnen: 0, warmQuote: 0, sqlQuote: 0 };
+    const e = je.get(z.kanal) ?? { kanal: z.kanal, label: kanalLabel(z.kanal), anzahl: 0, warm: 0, sql: 0, gewonnen: 0, warmQuote: null, sqlQuote: null };
     e.anzahl++;
     if (warmPlus(z.score.temperatur)) e.warm++;
     if (z.status === 'sql' || z.status === 'kunde') e.sql++;
     if (z.status === 'kunde' || z.deal?.stufe === 'gewonnen') e.gewonnen++;
     je.set(z.kanal, e);
   }
-  return [...je.values()].map(e => ({ ...e, warmQuote: e.anzahl ? Math.round((100 * e.warm) / e.anzahl) : 0, sqlQuote: e.anzahl ? Math.round((100 * e.sql) / e.anzahl) : 0 })).sort((a, b) => b.sql - a.sql || b.warm - a.warm || b.anzahl - a.anzahl);
+  return [...je.values()].map(e => ({ ...e, warmQuote: e.anzahl >= MINDESTMENGE ? Math.round((100 * e.warm) / e.anzahl) : null, sqlQuote: e.anzahl >= MINDESTMENGE ? Math.round((100 * e.sql) / e.anzahl) : null })).sort((a, b) => b.sql - a.sql || b.warm - a.warm || b.anzahl - a.anzahl);
 }
 
 /**

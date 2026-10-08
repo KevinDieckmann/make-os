@@ -31,11 +31,12 @@ import { istNetzwerkenEvent } from './marke';
 import { werIstDran } from './heute';
 import { fuerDich, nameVon, TEAM } from './team';
 import { messlatte, sqlJeWoche } from './kennzahlen';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import { isoWoche as kalenderwoche, montagVon as kernMontag } from '@/lib/zeit/kalender-kern';
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
-const tag = (v?: string) => (v ?? '').slice(0, 10);
+// 7.5 (08.10.): Berliner Tag eines Zeitstempels — vorher der UTC-Tag (0–2 Uhr landete am Vortag bzw. in der Vorwoche).
+const tag = (v?: string) => (v ? tagVon(v) : '');
 const TAG_MUSTER = /^\d{4}-\d{2}-\d{2}$/;
 /** Frühestes Datum einer Liste — null, wenn nichts da ist. */
 const fruehestes = (liste: string[]) => liste.filter(d => TAG_MUSTER.test(d)).sort()[0] ?? null;

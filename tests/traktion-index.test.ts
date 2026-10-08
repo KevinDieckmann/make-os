@@ -86,7 +86,7 @@ describe('Traktions-Index', () => {
     const pi = traktionsIndex({ kontakte, crm: voll, heute: HEUTE });
     expect(kz(pi, 'veroeffentlichungen')).toMatchObject({ wert: 2, ampel: 'gruen' });
     expect(kz(pi, 'content_gespraeche')).toMatchObject({ wert: 2, ampel: 'gruen' });
-    expect(kz(pi, 'marketing_anteil')).toMatchObject({ wert: 50, ampel: 'gruen' }); // 1 von 2 neuen Deals aus Content — Quote als Prozent
+    expect(kz(pi, 'marketing_anteil').gemessen).toBe(false); // 1 von 2 neuen Deals aus Content — Quote erst ab 5 neuen Deals (08.10., 7.4)
     expect(kz(pi, 'events_90').gemessen).toBe(false);
     const s = Object.fromEntries(pi.saeulen.map(x => [x.id, x]));
     expect(s.sales.score).not.toBeNull();

@@ -17,8 +17,11 @@ import { nachweisOffen } from './einwilligung';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { labelsVon } from './mehrfach';
 import { LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN } from './netzwerken';
+import { WEG } from '@/lib/wege';
 
-export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
+export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string;
+  /** Ziel außerhalb der Markttraktion (6.7, 08.10.: Mandate liegen unter /os/mandate) — gewinnt vor `bereich`. */
+  href?: string }
 
 export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string, opts: { loeschMonate?: number } = {}): Befund[] {
   const b: Befund[] = [];
@@ -32,7 +35,7 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string, opt
   const ueber = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten }).filter(f => f.gruppe === 'ueberfaellig' && f.quelle !== 'dealschritt');
   if (ueber.length) b.push({ prio: 1, titel: `${ueber.length} Follow-up${ueber.length > 1 ? 's' : ''} überfällig`, grund: `${ueber.filter(f => f.tageUeber >= 7).length} davon über eine Woche — Follow-up › Fällig`, bereich: 'followup', ansicht: 'faellig' });
   const ablauf = crm.mandate.filter(m => m.status === 'aktiv' && (mandatLage(m, heute).endeIn ?? 999) <= 60);
-  if (ablauf.length) b.push({ prio: 1, titel: `${ablauf.length} Mandat${ablauf.length > 1 ? 'e' : ''}: Laufzeit endet oder ist vorbei`, grund: ablauf.map(m => m.kunde).join(', '), bereich: 'kunden' });
+  if (ablauf.length) b.push({ prio: 1, titel: `${ablauf.length} Mandat${ablauf.length > 1 ? 'e' : ''}: Laufzeit endet oder ist vorbei`, grund: ablauf.map(m => m.kunde).join(', '), bereich: 'kunden', href: ablauf.length === 1 ? WEG.mandat(ablauf[0].id) : WEG.mandat() });
   const art = kontakte.filter(k => art14(k, heute)?.faellig);
   if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'kontakte', ansicht: 'art14' });
   // Nur offene Chancen zählen — Ebene 1 (Leads) endet erst mit einem Deal.

@@ -24,6 +24,7 @@ import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, ty
 import { WEG } from '@/lib/wege';
 import { markttraktion } from './adresse';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { nameVon } from './team';
 
 export type TraktionsIndex = IndexErgebnis;
 
@@ -92,7 +93,8 @@ function trichter(b: TraktionBestand) { let t = TRICHTER.get(b); if (!t) { t = m
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 const tagKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n));
-const grenzen = (b: TraktionBestand, id: string) => b.schwellen?.[id] ?? (() => { const k = TRAKTION_KENNZAHLEN.find(x => x.id === id)!; return { gruen: k.gruen, rot: k.rot }; })();
+// 7.2 (08.10.): die Ampeln der Details messen an derselben Messlatte wie die Kennzahl (Ziel der Wertelisten vor eigener Schwelle).
+const grenzen = (b: TraktionBestand, id: string) => zielSchwellen(b.crm)[id] ?? b.schwellen?.[id] ?? (() => { const k = TRAKTION_KENNZAHLEN.find(x => x.id === id)!; return { gruen: k.gruen, rot: k.rot }; })();
 function ampelVon(w: number, g: Schwelle): Ampel {
   const hoch = g.gruen >= g.rot;
   return hoch ? (w >= g.gruen ? 'gruen' : w < g.rot ? 'rot' : 'gelb') : (w <= g.gruen ? 'gruen' : w > g.rot ? 'rot' : 'gelb');
@@ -109,7 +111,7 @@ const eventDetail = (e: { id: string; titel: string; datum: string }, wert: stri
 const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   power_hours(b) {
     return (b.crm.sitzungen ?? []).slice().sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
-      .map(s => ({ titel: `Power Hour ${tagKurz(s.datum)}`, wert: `${s.karten.length} Karten`, unter: `${s.person}${s.gelernt ? ` · ${s.gelernt.slice(0, 60)}` : ''}`, href: WEG.powerHour() }));
+      .map(s => ({ titel: `Power Hour ${tagKurz(s.datum)}`, wert: `${s.karten.length} Karten`, unter: `${nameVon(s.person)}${s.gelernt ? ` · ${s.gelernt.slice(0, 60)}` : ''}`, href: WEG.powerHour() }));
   },
   gespraeche(b) {
     const vor7 = tagMinus(b.heute, 6);

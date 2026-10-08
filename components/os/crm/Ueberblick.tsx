@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT, FlussKarte } from '../ui';
 import type { FlussReihe } from '@/lib/fluss/modell';
@@ -45,6 +46,9 @@ interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; fluss?: Flus
 const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 } as const;
 
 export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string, k?: string) => void }) {
+  const router = useRouter();
+  // 6.7 (08.10.): Ziele außerhalb der Markttraktion (Mandate) tragen `href` — sonst der Bereich der Markttraktion.
+  const geh = (z: { s: string; a?: string; k?: string; href?: string }) => (z.href ? router.push(z.href) : zuBereich(z.s, z.a, z.k));
   const [d, setD] = useState<Daten | null>(null);
   const [alle, setAlle] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -105,7 +109,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
             {!d.fuerDich.length ? <Leer>Bei dir liegt gerade nichts Fälliges — Zeit für die Power Hour oder einen Beitrag.</Leer> : (
               <Liste>
                 {d.fuerDich.map(f => (
-                  <Zeile key={f.id} onClick={() => zuBereich(f.ziel.s, f.ziel.a)} links={<Punkt farbe={WELT_FARBE[f.welt]} />}
+                  <Zeile key={f.id} onClick={() => geh(f.ziel)} links={<Punkt farbe={WELT_FARBE[f.welt]} />}
                     titel={<span style={{ whiteSpace: 'normal' }}>{f.titel}</span>} unter={<span style={{ whiteSpace: 'normal' }}>{WELT_LABEL[f.welt]} · {f.text}</span>}
                     rechts={<Chip farbe={WELT_FARBE[f.welt]}>{f.anzahl}</Chip>} />
                 ))}
@@ -116,10 +120,10 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
           <Kachel id="team" titel="Zuletzt im Team" breite={3}>
           <Karte i={1}>
             <Ueberschrift rechts={<span>14 Tage</span>}>Zuletzt im Team</Ueberschrift>
-            {!d.teamFeed.length ? <Leer>Noch nichts festgehalten. Was Kevin und Malin notieren, übergeben und bearbeiten, steht hier.</Leer> : (
+            {!d.teamFeed.length ? <Leer>Noch nichts festgehalten. Was ihr notiert, übergebt und bearbeitet, steht hier.</Leer> : (
               <Liste>
                 {d.teamFeed.slice(0, 7).map((e, i) => (
-                  <Zeile key={i} onClick={() => zuBereich(e.ziel.s, e.ziel.a, e.ziel.k)} links={<Person id={e.person} />}
+                  <Zeile key={i} onClick={() => geh(e.ziel)} links={<Person id={e.person} />}
                     titel={<span style={{ whiteSpace: 'normal', fontSize: TYP.bedien }}>{e.text}</span>}
                     unter={`${nameVon(e.person)} · ${zeit(e.zeit)}`} />
                 ))}
@@ -163,7 +167,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
                 {befunde.map((b, i) => {
                   // Runden aus der Kartei, die in Sales wirken (Qualifizierung), zählen zu Sales.
                   const w = b.ansicht === 'runde-chancen' ? 'sales' : BEFUND_WELT[b.bereich];
-                  return <Zeile key={i} onClick={() => zuBereich(b.bereich, b.ansicht)} links={<Punkt farbe={PRIO[b.prio]} />}
+                  return <Zeile key={i} onClick={() => geh({ s: b.bereich, a: b.ansicht, href: b.href })} links={<Punkt farbe={PRIO[b.prio]} />}
                     titel={<span style={{ whiteSpace: 'normal' }}>{b.titel}</span>} unter={<span style={{ whiteSpace: 'normal' }}>{b.grund}</span>}
                     rechts={<span style={{ fontSize: 12, color: w ? WELT_FARBE[w] : C.inkLeise, whiteSpace: 'nowrap' }}>{w ? WELT_LABEL[w] : 'Grundlage'} ›</span>} />;
                 })}

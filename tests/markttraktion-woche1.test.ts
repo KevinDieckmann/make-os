@@ -651,3 +651,73 @@ describe('7.2 · EINE Messlatte: Ziele der Wertelisten gelten für Kennzahl, Ind
     expect(mit.zeilen.find(z => z.id === 'neue_chancen')!.ziel).toBe(2);
   });
 });
+
+// ── F · Kleinigkeiten (2.12, 5.17, 5.18, 5.19, 6.7, 7.4, 7.5, 7.7) ───────────────────────────────────────────────────────────
+describe('F · Namen, Texte, Links, Mindestmengen, Berliner Tag', () => {
+  it('2.12 · „Abgeben“ wählt die erste sichtbare Person vor — nie den jetzigen Besitzer', () => {
+    const src = quelle('components/os/crm/quali/KleineDialoge.tsx');
+    expect(src).toContain("const waehlbar = TEAM.filter(t => t.id !== z.besitzer || z.besitzer === 'beide');");
+    expect(src).toContain('useState((waehlbar.find(t => t.id !== ich) ?? waehlbar[0])?.id');
+    expect(src).toContain('ok={anOk}');
+  });
+
+  it('5.17/7.7 · Anfrage-Meldung und Power-Hour-Detail nennen den Namen, nicht das Kürzel', async () => {
+    expect(quelle('app/api/crm/anfrage/route.ts')).toContain('steht heute bei ${nameVon(fertig.followUp.zustaendig)}');
+    const { traktionsIndex } = await import('@/lib/crm/traktion-index');
+    const { TEAM, nameVon } = await import('@/lib/crm/team');
+    const p = TEAM[0];
+    const idx = traktionsIndex({ kontakte: [], crm: crmLeer({ sitzungen: [{ id: 's1', person: p.id, datum: vor(1), start: J, ziel: { gespraeche: 0, termine: 0 }, karten: [] }] } as Partial<CrmBestand>), heute: T });
+    const kz = idx.saeulen.flatMap(s => s.kennzahlen).find(x => x.id === 'power_hours')!;
+    expect(kz.details?.[0]?.unter).toBe(nameVon(p.id));
+  });
+
+  it('5.18 · Texte: Kanal-Fehler aus der Liste (mit WhatsApp), Newsletter und Schnellleiste nennen die heutigen Orte', async () => {
+    const { anfrageBauen } = await import('@/lib/crm/anfragen');
+    const r = anfrageBauen({ kanal: 'fax', text: 'x' } as never, { kontakte: [], heute: T, jetzt: J, person: 'kevin' } as never);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.fehler).toBe('Kanal: website, mail, linkedin, telefon, empfehlung, event oder whatsapp.');
+    expect(quelle('components/os/crm/marketing/Newsletter.tsx')).not.toContain('unter „Recht“');
+    expect(quelle('components/os/crm/kontakt/SchnellLeiste.tsx')).toContain('Markttraktion › Events › Make.One');
+  });
+
+  it('5.19 · WEG.event ohne Kennung mit Reiter: ein Abfrageteil, kein zweites „?“', async () => {
+    const { WEG } = await import('@/lib/wege');
+    const ohne = WEG.event(undefined, 'gaeste');
+    expect(ohne.split('?')).toHaveLength(2);
+    expect(ohne).toContain('r=gaeste');
+    expect(WEG.event('ev-1', 'budget')).toMatch(/k=ev-1&r=budget$/);
+    expect(WEG.event()).not.toContain('r=');
+  });
+
+  it('6.7 · Team-Feed „Mandat bearbeitet“, „Kundenreviews“ und Befund „Mandat endet“ führen zum Mandat', async () => {
+    const { teamFeed, fuerDich, TEAM } = await import('@/lib/crm/team');
+    const { WEG } = await import('@/lib/wege');
+    const p = TEAM.find(t => t.verantwortet.includes('sales'))!.id;
+    const mandat = { id: 'm-1', kunde: 'Firma m-1', kontaktIds: [], status: 'aktiv', naechstesReview: T, zustaendig: p, geaendert: J, geaendertVon: p } as unknown as CrmBestand['mandate'][number];
+    const feed = teamFeed([], crmLeer({ mandate: [mandat] }), vor(14));
+    expect(feed.find(e => e.text.includes('Mandat'))?.ziel.href).toBe(WEG.mandat('m-1'));
+    const fd = fuerDich(p, [], crmLeer({ mandate: [mandat] }), T);
+    expect(fd.find(x => x.id === 'reviews')?.ziel.href).toBe(WEG.mandat('m-1'));
+    expect(quelle('lib/crm/befunde.ts')).toContain("href: ablauf.length === 1 ? WEG.mandat(ablauf[0].id) : WEG.mandat()");
+    expect(quelle('components/os/crm/Ueberblick.tsx')).toContain('z.href ? router.push(z.href)');
+    expect(quelle('components/os/crm/Stammdaten.tsx')).toContain('b.href ? router.push(b.href)');
+  });
+
+  it('7.4 · Kanal-Leistung und „Deals aus Marketing“ zeigen Quoten erst ab MINDESTMENGE', async () => {
+    const { marketingKennzahlen } = await import('@/lib/crm/marketing');
+    const deal = (id: string) => ({ id, titel: id, kontaktIds: [], art: 'projekt', wert: { betrag: 0, basis: 'einmalig' }, stufe: 'bedarf', historie: [], qualifizierung: { ...KRIT }, gesellschaft: 'offen', besitzer: 'kevin', quelle: 'inbound', angelegt: J, geaendert: J }) as unknown as CrmBestand['chancen'][number];
+    const eins = marketingKennzahlen([], crmLeer({ chancen: [deal('ch-1')] }), T).find(k => k.id === 'marketing_anteil')!;
+    expect(eins.wert).toBeNull();
+    expect(eins.quelle).toContain('Quote erst ab 5 Deals');
+    const fuenf = marketingKennzahlen([], crmLeer({ chancen: ['a', 'b', 'c', 'd', 'e'].map(x => deal(`ch-${x}`)) }), T).find(k => k.id === 'marketing_anteil')!;
+    expect(fuenf.wert).not.toBeNull();
+  });
+
+  it('7.5 · Gespräche zählen am Berliner Tag (0–2 Uhr gehört zum neuen Tag)', async () => {
+    const { kennzahlen } = await import('@/lib/crm/kennzahlen');
+    // 01.10. 22:30 UTC = 02.10. 00:30 in Berlin — der erste Tag des 7-Tage-Fensters bis zum 08.10.
+    const kontakte = [k('nacht', { aktivitaeten: [{ am: '2026-10-01T22:30:00.000Z', art: 'gespraech', text: 'Gespräch', von: 'kevin' }] })];
+    expect(kennzahlen(kontakte, crmLeer(), T).find(x => x.id === 'gespraeche')!.wert).toBe(1);
+    expect(quelle('lib/crm/scoreboard.ts')).toContain("const tag = (v?: string) => (v ? tagVon(v) : '');");
+  });
+});
