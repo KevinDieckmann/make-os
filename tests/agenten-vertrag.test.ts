@@ -172,7 +172,10 @@ describe('Katalog: Mitarbeiter-Vorlagen', () => {
     expect(m.map(x => x.id)).toEqual(v.map(x => x.vorlage.id));
     expect(m.find(x => x.id === 'event-nachfassen')?.headId).toBe('event');
     expect(await mitarbeiterFuerHead('gibt-es-nicht', u)).toEqual([]);
-    expect(await skillsFuerHead('sales', u)).toEqual([]);
+    // Paket 3 hat die Schnittstelle gefüllt: ohne eigene Skills liefert sie die eingebauten (= Modi des Heads).
+    const sk = await skillsFuerHead('sales', u);
+    expect(sk.every(s => s.eingebaut && s.aktiv)).toBe(true);
+    expect(sk.map(s => s.id)).toEqual(headDef('sales')!.eingebaut!.modi.map(m => `eingebaut:heads:${m}`));
     expect(await skillLesen('sk-x', u)).toBeNull();
     expect(await gedaechtnisFuer({ art: 'head', headId: 'sales' }, u)).toEqual([]);
     expect(await einstellungFuer('haus-a')).toEqual({ v: 1, heads: {} });
@@ -292,6 +295,11 @@ describe('Routen: Register und Stubs', () => {
   const rufe = async (pfad: string, m: string, kopf: Record<string, string>) =>
     (await (await route(pfad))[m](new Request(`http://test/api/${pfad}`, { method: m, headers: kopf, ...(m === 'GET' ? {} : { body: '{}' }) }))).status;
 
+  /** Von den Paketen gebaut (Stub ersetzt): im Haushalt die echte Antwort — GET 200, POST mit leerem Körper 400 (Aktion fehlt). */
+  const GEBAUT: Record<string, Record<string, number>> = {
+    'agenten/skills': { GET: 200, POST: 400 },
+    'agenten/laeufe': { GET: 200, POST: 400 },
+  };
   it('Stubs: ohne Sitzung, fremder Haushalt, Testkunde, Dienstweg → 401/403; im Haushalt → 501', async () => {
     const db = await import('@/lib/store/local-db');
     const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
@@ -311,7 +319,7 @@ describe('Routen: Register und Stubs', () => {
       if (klasse === 'person') {
         expect(await rufe(pfad, m, dienst('person-a')), `${pfad} ${m} Dienstweg mit Person`).toBe(403);
         expect(await rufe(pfad, m, dienst()), `${pfad} ${m} Dienstweg ohne Person`).toBe(403);
-        expect(await rufe(pfad, m, sitzung('person-b')), `${pfad} ${m} im Haushalt`).toBe(501);
+        expect(await rufe(pfad, m, sitzung('person-b')), `${pfad} ${m} im Haushalt`).toBe(GEBAUT[pfad]?.[m] ?? 501);
       } else {
         expect(await rufe(pfad, m, sitzung('person-a')), `${pfad} ${m} Sitzung statt Dienstweg`).toBe(403);
         expect(await rufe(pfad, m, dienst()), `${pfad} ${m} Dienstweg ohne Person`).toBe(401);

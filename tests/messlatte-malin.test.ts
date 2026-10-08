@@ -309,6 +309,10 @@ const SYS = {
 
   // ZOE auf WhatsApp (08.10.): der Kanal je Person — die Marke steckt im Zeitpunkt „verbunden seit“ (nur der geht maskiert-frei hinaus).
   zoeKanal: '2002-03-04T05:06:07.891Z',
+
+  // Agenten-Bereich (09.10., Paket 3): Werkstatt der Privat-Heads und geplante Hintergrundaufgaben je Person — nur die Person selbst.
+  agentenSkill: 'MESSLATTE-SYS-AGENTEN-SKILL',
+  agentenPlan: 'MESSLATTE-SYS-AGENTEN-PLAN',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -469,6 +473,13 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('arbeitsrahmen--kevin', { businessFrei: [{ tage: [2], von: '05:17', bis: '06:43' }], geaendertAm: SYS.arbeitsrahmen });
 
     await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
+
+    // Agenten-Bereich (Paket 3): Kevins Privat-Skill (Head „Persönliche Assistenz“) und seine geplante Hintergrundaufgabe.
+    await db.saveJson('agenten-skills-privat--kevin', { v: 1, mitarbeiter: [], gedaechtnis: {}, skills: [{
+      id: 'sk-messlatte', headId: 'assistenz', name: 'messlatte-skill', beschreibung: SYS.agentenSkill, anleitung: SYS.agentenSkill, werkzeuge: [], ausloeser: { art: 'hand' },
+      eingabeFelder: [], freigabePflicht: false, ergebnis: 'faden', stufe: 'schnell', tests: [], erfolg: { laeufe: 0, angenommen: 0, abgelehnt: 0, fehler: 0 }, aktiv: false, version: 1, quelle: 'hand', angelegtVon: 'kevin',
+    }] });
+    await db.saveJson('agenten-plan--kevin', { v: 1, aufgaben: [{ id: 'hg-messlatte', besitzer: 'kevin', agent: { art: 'head', headId: 'assistenz' }, titel: SYS.agentenPlan, auftrag: SYS.agentenPlan, zeitplan: { art: 'wiederkehrend', rhythmus: 'taeglich', uhrzeit: '08:00' }, aktiv: true, erstellt: J }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)

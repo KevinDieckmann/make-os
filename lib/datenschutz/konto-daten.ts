@@ -202,6 +202,10 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     // Konten-Register (08.10.): die Konten, die der Person gehören (IBAN maskiert).
     const eigeneKonten = await (await import('@/lib/finanzen/konten/server')).kontenDerPerson(k.haushalt, speicher).catch(() => []);
     if (eigeneKonten.length) eintraege[`konten--${k.haushalt}`] = eigeneKonten;
+    // Agenten-Werkstatt des Haushalts (09.10., Paket 3): die selbst angelegten/freigegebenen Skills, Mitarbeiter und Merksätze.
+    const werkstattName = `agenten-skills--${k.haushalt}`;
+    const werkstatt = await loadJson<import('@/lib/agenten/typen').WerkstattBestand>(werkstattName).catch(() => null);
+    if (werkstatt) merke(werkstattName, (await import('@/lib/agenten/skills-server')).werkstattEintraegeVon(werkstatt, speicher));
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
     const kid = `${KONTO_PRAEFIX}${speicher}`;
     if (kapa && JSON.stringify(kapa).includes(`"${kid}"`)) eintraege[`kapazitaet--${k.haushalt}`] = [{ hinweis: 'Ihre Kapazitätswerte stehen vollständig in der Kapazitäts-Auskunft (Planung › Kapazität).', person: kid }];
@@ -362,6 +366,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const team = teamSpeicherName(konto.haushalt);
     await nurWenn(team, async () => { let n = 0; await updateJson<Obj>(team, cur => { const l = liste(cur, 'team'); const r = l.filter(e => (e as Obj).id !== `${KONTO_PRAEFIX}${speicher}`); n = l.length - r.length; return n ? { ...(cur ?? {}), team: r } : (cur as Obj); }); return n; });
     await sicher('kapazitaet', async () => { const { kapaEntfernteKontenAufraeumen } = await import('@/lib/kapazitaet/server'); return (await kapaEntfernteKontenAufraeumen(konto.haushalt!)).teile; });
+    // Agenten-Werkstatt (09.10., Paket 3; Fragerunde 8): Business-Skills und eigene Mitarbeiter gehen an den Inhaber (Anleger vermerkt),
+    // „freigegeben von“ und Merksätze der Person werden „[gelöscht]“. Die Werkstatt der Privat-Heads ist ein Bestand der Person (Schritt 4).
+    await sicher(`agenten-skills--${konto.haushalt}`, async () => {
+      const [{ werkstattKontoLoeschen }, { inhaberSpeicher }] = await Promise.all([import('@/lib/agenten/skills-server'), import('@/lib/zugang/haushalt-inhaber')]);
+      return werkstattKontoLoeschen(konto.haushalt!, speicher, await inhaberSpeicher());
+    });
     // Konten-Register (08.10.): Konten und Stände bleiben (Finanzen des Haushalts), die Personen-Kennung wird „[gelöscht]“.
     const kr = `konten--${konto.haushalt}`;
     await nurWenn(kr, async () => {
