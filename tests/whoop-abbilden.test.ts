@@ -69,12 +69,13 @@ describe('Vitalwerte: Handwert gewinnt', () => {
     const r = vitalsAnwenden(log, werte, '2026-07-01');
     expect(r.log['2026-10-07']).toEqual({ rec: 81, sleep: 7.5, hrv: 55, rhr: 60, quellen: { rec: 'whoop', sleep: 'whoop', hrv: 'hand' } });
   });
-  it('Altbestand ohne Herkunft: GENAU der WHOOP-Wert → nur die Herkunft wird nachgetragen; ein anderer Wert bleibt (nie geraten)', () => {
+  it('Altbestand ohne Herkunft bleibt unberührt — auch ein GENAU gleicher Wert (Gegenprüfung 08.10.: könnte abgetippt sein, nie geraten)', () => {
     const r = vitalsAnwenden({ '2026-10-07': { rec: 81, sleep: 7.2, note: 'müde' } }, werte, '2026-07-01');
-    expect(r.log['2026-10-07']).toEqual({ rec: 81, sleep: 7.2, hrv: 61, rhr: 52, note: 'müde', quellen: { rec: 'whoop', hrv: 'whoop', rhr: 'whoop' } });
-    // Danach darf WHOOP den markierten Wert nachziehen — der abweichende Altwert (7.2) bleibt weiter stehen.
+    expect(r.log['2026-10-07']).toEqual({ rec: 81, sleep: 7.2, hrv: 61, rhr: 52, note: 'müde', quellen: { hrv: 'whoop', rhr: 'whoop' } });
+    // Neubewertung bei WHOOP überschreibt den gleichen Altwert NICHT, und ein Löschen bei WHOOP entfernt ihn nicht.
     const b = vitalsAnwenden(r.log, { '2026-10-07': { ...werte['2026-10-07'], rec: 79 } }, '2026-07-01');
-    expect(b.log['2026-10-07']).toMatchObject({ rec: 79, sleep: 7.2 });
+    expect(b.log['2026-10-07']).toMatchObject({ rec: 81, sleep: 7.2 });
+    expect(vitalsAnwenden(r.log, {}, '2026-07-01').log['2026-10-07']).toEqual({ rec: 81, sleep: 7.2, note: 'müde' });
   });
   it('gelöscht bei WHOOP → nur Werte der Schnittstelle fallen weg, Export-Werte bleiben', () => {
     const log: VitalsLog = { '2026-10-07': { rec: 70, hrv: 50, quellen: { rec: 'whoop-export', hrv: 'whoop' } } };

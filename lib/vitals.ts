@@ -26,7 +26,8 @@ export interface DayVitals {
    * (Morgen-Check). Fehlt die Angabe, gilt der Wert als Handwert: der Abgleich überschreibt NIE, was nicht als `whoop` markiert ist.
    * `whoop-export` (08.10., Kevin Phase 0: „WHOOP ist die Quelle — Werte aus dem alten Export: Schnittstelle gewinnt, nur echte
    * Handeingaben bleiben“): aus dem WHOOP-Datenexport (lib/whoop-export.ts) — der Abgleich überschreibt ihn wie `whoop`. Altbestand
-   * ohne Angabe bleibt Handwert, außer er ist GENAU der Wert, den WHOOP liefert (dann wird nur die Herkunft nachgetragen).
+   * ohne Angabe bleibt Handwert; nur beim Einlesen des Datenexports bekommt ein GENAU gleicher Wert die Herkunft `whoop-export`
+   * (Wert unverändert) — die Schnittstelle selbst fasst ihn nie an (Gegenprüfung 08.10.).
    */
   quellen?: Partial<Record<VitalFeld, VitalQuelle>>;
 }
