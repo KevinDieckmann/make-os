@@ -46,7 +46,7 @@ export async function seilDatenLaden(person: string, bereich: SeilBereich, von: 
   const termine: QTermin[] = await sicher(async () => {
     const { termineFuerZoe } = await import('@/lib/kalender/zoe-sicht-server');
     const k = await termineFuerZoe(person, tagPlus(von, -1), tagPlus(bis, 1));
-    return [...k.termine, ...k.kemaris]
+    return k.termine
       .filter(t => !t.maskiert && !t.abgesagt && !!t.bezug?.aufgabeId && ids.has(t.bezug.aufgabeId))
       .map(t => ({ id: t.id, titel: t.titel, tag: String(t.start).slice(0, 10), aufgabeId: t.bezug!.aufgabeId! }));
   }, []);

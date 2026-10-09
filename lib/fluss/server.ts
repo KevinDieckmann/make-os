@@ -182,7 +182,7 @@ async function kalender(person: string, heute: string): Promise<FlussReihe> {
   const { termineFuerZoe } = await import('@/lib/kalender/zoe-sicht-server');
   const k = await termineFuerZoe(person, tagPlus(heute, -ZURUECK), tagPlus(heute, VORAUS));
   // Nur eigene und gemeinsame Termine — „Belegt“ der anderen Person ist ihre Zeit, nicht meine.
-  const meine = [...k.termine, ...k.kemaris].filter(t => !t.maskiert && (!t.wer || t.wer === person || t.wer === BEIDE));
+  const meine = k.termine.filter(t => !t.maskiert && (!t.wer || t.wer === person || t.wer === BEIDE));
   return flussKalender({ heute, link: WEG.kalender(), termine: meine.map(t => ({ id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, link: WEG.kalender(t.start.slice(0, 10)) })) });
 }
 

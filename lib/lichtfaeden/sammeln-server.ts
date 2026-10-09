@@ -59,13 +59,11 @@ async function kalender(person: string, von: string, bis: string, heute: string)
     import('@/lib/kalender/zoe-sicht-server'), import('@/lib/kalender/space'), import('@/lib/kalender/zoe-sicht'),
   ]);
   const k = await termineFuerZoe(person, von, tagPlus(bis, 1));
-  const termine: KalenderTermin[] = [...k.termine, ...k.kemaris].map(t => ({
+  const termine: KalenderTermin[] = k.termine.map(t => ({
     id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, art: t.art, sichtbarkeit: t.sichtbarkeit,
-    wer: t.wer, space: k.kemaris.includes(t) ? 'business' : spaceVonKalender(k.einstellungen, t.kalender),
+    wer: t.wer, space: spaceVonKalender(k.einstellungen, t.kalender),
     gesundheit: !t.maskiert && istGesundheitsTermin(t), ...(t.maskiert ? { maskiert: true } : {}), ...(t.abgesagt ? { abgesagt: true } : {}),
     ...(t.bezug ? { bezug: t.bezug } : {}),
-    // Microsoft-365-Spiegel (KEMARIS): Kennung `m365-<Position>` — kein Termin dahinter, den ein Link öffnen könnte.
-    ...(k.kemaris.includes(t) ? { ohneLink: true } : {}),
   }));
   return kalenderStraenge({ termine, heute });
 }

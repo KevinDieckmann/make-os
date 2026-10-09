@@ -191,7 +191,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'Konto › ZOE auf WhatsApp: nur die Person selbst hört ihre Sprachnachrichten (Download auf Klick)',
     loeschfrist: '30 Tage; „Trennen“/„STOP“ und Konto löschen sofort; ohne Verweis entfernt der nächste Takt die Datei',
   }),
-  T('kemaris-calendar', 'Kalender-Zwischenspeicher (KEMARIS) — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
+  T('kemaris-calendar', 'Alter Kalender-Zwischenspeicher (M365-Snapshot, seit 09.10. ohne Leser) — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
   // Kalender K1 (29.09., KALENDER_VERBINDUNGEN.md 4a/4f):
   E('kalender-bezug', 'Bezüge der Termine zu MAKE OS (nur Kennungen: Kontakt, Firma, Mandat, Deal, Aufgabe, Event) — die Kontakt-Kennung der Person fällt weg, der Eintrag bleibt (lib/crm/person-weitere.ts kalenderBezugOhne).'),
   { muster: 'kalender-icloud', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Spiegel der iCloud-Objekte (auch Teilnehmer-Adressen Dritter) — Wahrheit ist iCloud, Löschung nur in Apple; der Abgleich holt den Spiegel alle 5 Minuten neu.' },

@@ -38,7 +38,7 @@ export function istGesundheitsTermin(t: { titel?: string; ort?: string; notiz?: 
 //   · Buchungsseite: die Marke `terminMarke` in der Notiz (Titel und Notiz tragen Gastangaben) — ODER die feste UID
 //     `makeos-buchung-…` (S1 #11, 29.09.): wird die Notiz in Apple bearbeitet, fällt die Marke weg, die UID bleibt.
 //   · Quelle: nur der iCloud-Stand kennt Teilnehmer und Rechte. Die Mac-Lieferung (Altweg, importierter Spiegel) und
-//     der KEMARIS-Snapshot (M365, Arbeitspostfach voller Einladungen, ohne Organisator-Angabe) gelten als fremd.
+//     ein Snapshot ohne Organisator-Angabe (früher M365) gelten als fremd.
 // „Belegt“ (maskiert) ist unser eigener Text und nie fremd. Feiertage und Geburtstage (Familie, eigene Kartei) sind eigen.
 
 /** Die Herkunft, gegen die ein Termin geprüft wird. `haushalt`/`nurLesen`: Kalendernamen, klein geschrieben. */

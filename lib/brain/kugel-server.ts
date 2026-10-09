@@ -101,7 +101,7 @@ async function termine(person: string, heute: string): Promise<RohPunkt[]> {
   ]);
   const k = await termineFuerZoe(person, tagPlus(heute, -TERMINE_TAGE), tagPlus(heute, TERMINE_TAGE));
   const aus: RohPunkt[] = [];
-  // Nur die iCloud-/Mac-Termine: der M365-Spiegel hat keinen Termin dahinter, den ein Link öffnen könnte.
+  // Die Termine des Kalender-Lesepfads (iCloud/Mac/Google) — jeder hat einen Termin dahinter, den ein Link öffnet.
   for (const t of k.termine) {
     if (t.maskiert || t.abgesagt || istGesundheitsTermin(t)) continue;
     const privat = t.sichtbarkeit === 'privat';

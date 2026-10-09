@@ -84,15 +84,14 @@ export interface Brain {
     alterH: number | null;
     /** > 12 Std. oder unbekannt → als unsicher behandeln. */
     stale: boolean;
-    /** Frische je Quelle — der M365-Snapshot altert unabhängig vom Apple-Cache. */
-    quellen: { apple: { alterH: number | null; stale: boolean }; kemaris: { alterH: number | null; stale: boolean } };
+    /** Frische je Quelle (heute nur der Kalender-Stand; weitere Quellen kommen über die Einstellungen). */
+    quellen: { apple: { alterH: number | null; stale: boolean } };
   };
   /**
    * Anlässe der nächsten 7 Tage (29.09., K2): Feiertage NRW (Kalender-Kern) und Geburtstage (`geburtstageIm` — Familie
    * der Person + CRM ohne Art.-18-Kontakte). Optional: fehlt es, sagt ZOE nichts dazu.
    */
   anlaesse?: { feiertage: { tag: string; name: string }[]; geburtstage: { name: string; tag: string; alter?: number; herkunft: string }[] };
-  /** M365-Postfach-Snapshot (KEMARIS) — Team-Mails gehören ins Bild. */
   laeufe: AgentLogEntry[];
   /** Business-Meilensteine aus dem Store (gesundheit bleibt hier bewusst draußen). Leer = keine gepflegt (kein Rückfall mehr). */
   meilensteine: string[];
@@ -147,7 +146,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     personImHaushaltDesInhabers(person).then(ja => (ja ? ladeAufgabenSicht(person).then(aufgabenFuerBrain) : null)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<FinanceState>('finance'),
     loadJson<{ prospects: Prospect[] }>('prospects'),
-    // Kalender (29.09., #K4): iCloud/Mac + KEMARIS (M365), je Person gefiltert — nie mehr der rohe `calendar-cache`.
+    // Kalender (29.09., #K4): iCloud/Mac/Google, je Person gefiltert — nie mehr der rohe `calendar-cache`.
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
     gesundheitFrei ? resolveVitals(heute, person) : Promise.resolve(VITALS_GESPERRT),
     computeIndex(heute, person),
@@ -194,15 +193,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     title: t.titel, startDate: t.start, endDate: t.ende, allDay: t.ganztags, calendarName: t.kalender, ...(t.maskiert ? { maskiert: true } : {}), ...(t.fremd ? { fremd: true } : {}), ...(t.abgesagt ? { abgesagt: true } : {}),
   });
 
-  // KEMARIS-Termine (M365-Snapshot) in den Kalender mergen. Dedupe über
-  // Titel+Startminute — „CapOS TownHall" steht sonst doppelt da, weil er
-  // in beiden Kalendern gepflegt ist.
-  const kemAlterH = alterStunden(zoeKal?.kemarisStand ?? null);
-  const kemEvents: CalEvent[] = (zoeKal?.kemaris ?? []).map(alsEvent);
-  const calEvents: CalEvent[] = (zoeKal?.termine ?? []).map(alsEvent);
-  const schluessel = (e: CalEvent) => `${(e.title ?? '').toLowerCase().trim()}|${(e.startDate ?? '').slice(0, 16)}`;
-  const bekannt = new Set(calEvents.map(schluessel));
-  const events: CalEvent[] = [...calEvents, ...kemEvents.filter(e => !bekannt.has(schluessel(e)))].filter(e => !e.abgesagt)
+  const events: CalEvent[] = (zoeKal?.termine ?? []).map(alsEvent).filter(e => !e.abgesagt)
     .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
 
 
@@ -239,11 +230,9 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
       }),
       at: zoeKal?.stand ?? null,
       alterH: calAlterH == null ? null : Math.round(calAlterH),
-      // Unsicher nur, wenn BEIDE Quellen alt sind — eine frische reicht fürs Bild.
-      stale: (calAlterH == null || calAlterH > 12) && (kemAlterH == null || kemAlterH > 12),
+      stale: calAlterH == null || calAlterH > 12,
       quellen: {
         apple: { alterH: calAlterH == null ? null : Math.round(calAlterH), stale: calAlterH == null || calAlterH > 12 },
-        kemaris: { alterH: kemAlterH == null ? null : Math.round(kemAlterH), stale: kemAlterH == null || kemAlterH > 12 },
       },
     },
     anlaesse: { feiertage: feiertageIm(heute, anlaesseBis), geburtstage: geburtstage.map(g => ({ name: g.name, tag: g.tag, ...(g.alter !== undefined ? { alter: g.alter } : {}), herkunft: g.herkunft })) },
@@ -368,7 +357,6 @@ function blockTermineRoh(b: Brain): string {
   const q = b.kalender.quellen;
   const alt: string[] = [];
   if (q.apple.stale) alt.push(`Apple ${q.apple.alterH == null ? 'unbekannt' : q.apple.alterH + ' Std.'} alt`);
-  if (q.kemaris.stale) alt.push(`KEMARIS/M365 ${q.kemaris.alterH == null ? 'unbekannt' : q.kemaris.alterH + ' Std.'} alt`);
   const quellenHinweis = alt.length && !b.kalender.stale ? ` (Teilquelle veraltet: ${alt.join(', ')})` : '';
   const stale = b.kalender.stale
     ? ` — ACHTUNG: Kalender-Stand ${b.kalender.alterH == null ? 'unbekannt' : b.kalender.alterH + ' Std.'} alt, womöglich unvollständig. Nicht als „frei" werten; die Person soll /os/kalender öffnen.`
