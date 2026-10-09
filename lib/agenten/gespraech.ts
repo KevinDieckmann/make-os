@@ -33,8 +33,8 @@ import { headSichtbar, kategorienFuer, type KontoSicht } from './sicht';
 import { kontextFuer } from './kontext';
 import { istMedienWerkzeug, medienAngebotErgaenzen, medienWerkzeugAusfuehren } from './medien-werkzeuge';
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
-import { anhaengen, brettText, fadenHinzu, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
-import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern, zugZuruecknehmenFuer } from './faeden-server';
+import { anhaengen, brettText, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
+import { bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, zugZuruecknehmenFuer } from './faeden-server';
 
 /** Ein Satz für den Gesundheits-Head (Entscheidung 09.10., Fragerunde Teil 2 Nr. 18): Wellness, nie Diagnose oder Therapie. */
 export const WELLNESS_SATZ = 'Du bist ein Wellness-Coach: keine Diagnose, keine Therapie, keine medizinische Beratung. Du arbeitest nur mit den EIGENEN Werten dieser Person; bei Beschwerden verweist du ruhig auf Ärztin oder Arzt.';
@@ -392,9 +392,9 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
     const x = anhaengen(f0, [n], jetzt);
     if (!x.ok) return nein(x.status, x.fehler);
     const neu = { ...x.faden, gelesenAm: jetzt };
-    const r = await bestandAendern<FadenKern>(person, b => { const y = fadenHinzu(b, neu); return y.ok ? { bestand: y.bestand, e: neu } : y; });
+    const r = await fadenAnlegen(person, neu);
     if (!r.ok) return nein(r.status, r.fehler);
-    faden = r.e;
+    faden = r.faden;
   }
 
   if (a.hintergrund === true) {

@@ -312,15 +312,16 @@ export async function annahmeFuerHead(head: HeadDef, haushalt: string | null, je
 
 /** Leistung eines Heads für die Person (eigene Threads; Freigaben des Haushalts) im Monat (Standard: laufender). */
 export async function leistungFuerHead(person: string, head: HeadDef, monat?: string, jetzt = new Date()): Promise<HeadLeistung & { autonomie: AutonomieLage }> {
-  const { loadJson } = await import('@/lib/store/local-db');
-  const { fadenBestand, werkstattBestandFuer } = await import('./typen');
+  const { werkstattBestandFuer } = await import('./typen');
+  const { faedenSeit } = await import('./faeden-server');
   const { umfangFuer, werkstattLaden } = await import('./skills-server');
   const { einstellungFuer } = await import('./skills-lesen');
   const { monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
   const m = monat && /^\d{4}-(0[1-9]|1[0-2])$/.test(monat) ? monat : monatBerlin(jetzt);
   const { von, bis } = monatsGrenzen(m);
   const umfang = await umfangFuer(person);
-  const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden ?? [];
+  // E3 (09.10.): ganz geladen werden nur die Threads dieses Heads, die seit Monatsbeginn geschrieben wurden (Index → nur die nötigen Dateien).
+  const faeden = await faedenSeit(person, f => f.agent.art !== 'zoe' && f.agent.headId === head.id, von).catch(() => [] as Faden[]);
   const name = werkstattBestandFuer(head.ebene, umfang);
   const skills = name ? (await werkstattLaden(name)).skills.filter(s => s.headId === head.id) : [];
   const annahme = await annahmeFuerHead(head, umfang.haushalt, jetzt);
@@ -332,9 +333,8 @@ export async function leistungFuerHead(person: string, head: HeadDef, monat?: st
 
 /** Gemessene Kosten der letzten fertigen Läufe eines Heads (eigene Threads) in EURO-Cent — Grundlage der Schätzung (`kostenSchaetzen`). */
 export async function gemesseneKosten(person: string, headId: string): Promise<number[]> {
-  const { loadJson } = await import('@/lib/store/local-db');
-  const { fadenBestand } = await import('./typen');
-  const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden ?? [];
+  const { bestandLesen } = await import('./faeden-server');
+  const faeden = (await bestandLesen(person).catch(() => null))?.faeden ?? []; // nur Köpfe (E3) — der Lauf-Zustand steht im Kopf
   return faeden.filter(f => f.agent.art !== 'zoe' && f.agent.headId === headId && f.lauf?.status === 'fertig' && Number.isFinite(f.lauf.kostenCent))
     .sort((a, b) => (a.lauf!.start < b.lauf!.start ? -1 : 1)).map(f => inEuroCent(f.lauf!.kostenCent)).slice(-20);
 }

@@ -4,6 +4,42 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — E3 Gesprächs-Ablage geteilt, KI-Protokoll je Tag (nur lokal — Branch `ablage-teilen`, Basis 9da50851)
+
+Kevin 09.10. (E3, ANALYSE_AGENTEN_DATEN.md 5 C): „Ja, jetzt“ — solange nichts davon online ist. Vorher war `agenten-faeden--<person>` EINE Datei mit allen
+Threads, Nachrichten, Brettern, Plänen und Merksätzen (≤ 2.000 Threads × 400 Nachrichten): jede Nachricht schrieb die ganze Datei, der Takt las sie jede
+Minute zweimal, „Läuft“ alle 30 s. `ki-protokoll--<Monat>` schrieb bei jedem Modellaufruf die ganze Monatsdatei (bis 60.000 Zeilen).
+
+| Was | Vorher | Jetzt |
+|---|---|---|
+| Ablage der Threads | eine Datei je Person | **Index** `agenten-faeden--<person>` (`FadenIndexKern`, `v: 2`): je Thread nur der Kopf — Kennung, Agent, Titel, Status, Lauf, Skill/Plan, Zeiten, `zaehler` (Nachrichten, Bretter, offene Pläne/Fragen), `letzte`, `letzteAntwort`, `geschrieben` — dazu Gedächtnis „Persönlich“ und die ZOE-Marke. **Je Thread** `agenten-faden--<person>--<id>` (`FadenDateiKern`): der ganze Thread. Kopf NUR aus `kopfVon` (lib/agenten/faeden.ts). |
+| Schreiben | `bestandAendern` (ganze Datei) | EINE Schreibstelle `ablageAendern` (lib/agenten/faeden-ablage.ts, über faeden-server.ts `ablageAendernFuer`/`fadenAendern`/`fadenAnlegen`/`faedenAendernWo`/`indexAendern`): Sperre des **Index**, darin je Thread (Rangfolge erst Index, dann Thread — jeder Thread wird nur in der Sperre seines Index geschrieben); lädt nur die Threads, die die Änderung braucht; Stand/409 je Thread wie bisher, 413 statt kürzen. Eine Nachricht schreibt nur Index + ihren Thread (gemessen im Test). |
+| Lesen | ganze Datei | Takt (`zeitplaeneFaellig`, liest weiter roh — Kopf-Felder genügen), „Läuft“ (`laeufeLesen`), „Als Nächstes“, Liste links, `?agent=`, Kosten-Schätzung, Not-Aus/„Head an“-Auswahl, verwaiste Läufe: **nur der Index**. Ganz geladen wird nur, was Nachrichten braucht: `?id=` (ein Thread), Lauf/Chat (der Thread, beim Brett der Head-Thread), Überblick „seit deinem letzten Besuch“ (nur seitdem geschriebene, höchstens 200), Leistung/Kosten je Monat (nur in dem Monat geschriebene Threads des Heads), Skill-Quote (nur Threads einer Skill-Kette, jüngste zuerst). Der Index ist je Person zwischengespeichert, solange sich die Datei nicht ändert. |
+| Löschen | aus der Datei gefiltert | Kopf verlässt den Index, danach die Datei samt Tagessicherungen (`bestandEntfernen`); Kinder mit. |
+| Morgenlauf (Schritt 11a) | Frist über die ganze Datei | über den Index: abgelaufene Köpfe + Dateien; dazu Waisen (Datei ohne Kopf nach einem Absturz) und Köpfe ohne Datei (`agenten-faeden (Waisen)`); ruhender Altbestand zieht hier spätestens um. |
+| KI-Protokoll | `ki-protokoll--JJJJ-MM` | **Tagesdateien** `ki-protokoll--JJJJ-MM-TT` (Berliner Tag, ≤ 20.000 Zeilen, darüber `ueberlauf`); gelesen werden Tage UND die alte Monatsdatei; Aufbewahrung 12 Monate: alte Tagesdateien gehen samt Tagessicherungen, alte Monatsdateien werden geleert (Marke `bereinigt`). Keine Hash-Kette (war nie in `MONATS_FAMILIEN`). Art. 15 `?auskunft=1` unverändert. |
+
+**Übernahme (Altbestand, Demo/lokal/Tests):** Lesen versteht die alte Datei ohne zu schreiben. Das erste Schreiben (bzw. der Morgenlauf) zieht EINMAL um:
+Archivkopie `archiv/agenten-vor-teilung-<person>-<zeit>.json` (Umzugs-Kopie, Frist „archiv-umzug“ 30 Tage, Konto löschen entfernt sie), dann je Thread die
+Datei, dann der Index (`teilung: { am, anzahl }`) — idempotent, ohne Verlust (auch ein als Altbestand zurückgeschriebener Index behält die Nachrichten
+seiner Threads). Thread-Kennungen der Ablage: `fd-[a-z0-9-]{1,80}` (`istAblageId` — weiter als die Routen, damit nichts verloren geht).
+
+**Nachgezogen:** Speicher-Register (`agenten-faden--*` mit Angaben, Frist „zoe-verlauf“; `ki-protokoll--*` je Tag) · Konto-Export/-Löschen (`PERSON_BESTAENDE`
+`agenten-faden` mit `jeEintrag` — jeder Thread ganz in den Export, alle beim Löschen weg; KI-Protokoll-Tage in den Protokollen) · Art. 15/17 (`agenten-faden--*`
+getilgt, in der Sperre des Index — `WeitererSpeicher.aussen`) · RAUSCHEN (`agenten-faden--*`) · HOI (`AGENTEN_BESTAND` mit Thread-Dateien und Tages-Protokoll,
+Satz angepasst) · Demo-Saat (über `ablageAendernFuer`) · Instanz-Export, Sicherung, Rotation, Umschlüsseln (laufen über alle Dateien des Datenordners — nichts
+zu tun). Wächter: `tests/agenten-ablage.test.ts` (16 Fälle: Kopf/Teilen rein, nur Index + ein Thread geschrieben, Takt/Läufe/„Als Nächstes“/Liste parsen keine
+Thread-Datei, 409/413/Löschen, Umzug ohne Verlust + idempotent, Morgenlauf mit Waisen, Register/Rauschen/HOI, Art. 17, Konto, KI-Protokoll je Tag).
+
+**Für das Zusammenführen:** `lib/agenten/zeitplan.ts` ist NICHT geändert — es liest `agenten-faeden--<p>` weiter roh und braucht nur Kopf-Felder (`skillId`,
+`planId`, `erstellt`, `lauf`, `agent`, `besitzer`, `aktualisiert`); der Typ dort (`FadenBestand`) behauptet noch Nachrichten. Wer dort neu liest: `indexLesen`
+(lib/agenten/faeden-ablage.ts). `app/api/kimmi` unverändert (`eigenerZoeFaden` liefert jetzt den Kopf — dort nur auf „gibt es“ geprüft). `bestandAendern` gibt es
+nicht mehr; `bestandLesen` liefert den Index (Köpfe), ganze Threads über `eigenerFaden`/`faedenSeit`/`alleFaedenLesen`.
+
+**Rückweg:** Der alte Stand kennt das Format nicht (er läse den Index als Bestand ohne Nachrichten und schriebe ihn so zurück). Die Bestände sind nicht online
+— vor einem Rückweg mit lokalen/Demo-Daten die Archivkopie `archiv/agenten-vor-teilung-*` zurückspielen bzw. die Ablage neu säen. Das KI-Protokoll je Tag liest
+der alte Stand nicht (er sähe nur Monatsdateien) — nur Metadaten, nichts geht verloren, die Tagesdateien bleiben liegen.
+
 ## 09.10.2026 — Agenten-Datenschicht: zwei Welten angeglichen, Fristen, nie kürzen (nur lokal — Branch `agenten-datenschicht`, Basis 297458af)
 
 Funde der Datenschicht-Analyse unter dem Agenten-System (alter Heads-Takt ↔ neuer Agenten-Bereich), je nachgeprüft und mit Wächter

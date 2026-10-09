@@ -55,7 +55,7 @@ let altFetch: typeof fetch;
 
 const INTERN: Record<string, () => { POST?: H; GET?: H }> = { '/api/agenten/faden/lauf': () => fadenLaufRoute };
 
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 const fadenVon = async (p: string, id: unknown) => (await bestand(p)).find(f => f.id === id);
 const auftraege = async () => (await db.loadJson<{ auftraege: { id: string; name: string; status: string; person?: string; eingabe: Record<string, unknown>; anlass?: string }[] }>('zoe-auftraege'))?.auftraege ?? [];
 const glocken = async (p: string) => ((await db.loadJson<{ eintraege?: { art: string; titel: string; link?: string }[] }>(`meldungen--${p}`))?.eintraege ?? []).filter(g => g.art === 'agenten');

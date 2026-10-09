@@ -259,7 +259,7 @@ describe('3a · Thread voll: der Lauf endet sichtbar, nie gekürzt', () => {
     await db.saveJson(fadenBestand('person-a'), { v: 1, faeden: [f] });
     const e = { ok: true, status: 'fertig', text: 'Das Ergebnis', ki: true, werkzeuge: [], fremdGelesen: false, vertraulich: false, schritte: [], kostenCent: 4, kategorien: [], span: { lauf_id: 'lauf-x', agent: 'head:sales', operation: 'invoke_agent', modell: 'm', runden: 1, werkzeug_aufrufe: 0, token: { ein: 1, aus: 1 }, cent: 4, dauer_ms: 1, ergebnis: 'ok' } } as unknown as LaufErgebnis;
     await D.ergebnisSchreiben('person-a', f, e, false);
-    const x = (await db.loadJson<{ faeden: FadenKern[] }>(fadenBestand('person-a')))!.faeden[0];
+    const x = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-a'))[0];
     expect(x.status).toBe('fehler');
     expect(x.lauf).toMatchObject({ status: 'fehler', kostenCent: 4 });
     expect(x.lauf?.fehler).toMatch(/Thread voll .* neuen Thread anlegen/);
@@ -275,7 +275,7 @@ describe('3a · Thread voll: der Lauf endet sichtbar, nie gekürzt', () => {
     await db.saveJson(fadenBestand('person-a'), { v: 1, faeden: [faden('fd-voll-2', 'person-a', 'sales', GRENZEN.fadenNachrichten)] });
     const r = await D.fadenLauf('person-a', { art: 'faden', fadenId: 'fd-voll-2' }, { origin: 'http://intern', hintergrund: false });
     expect(r).toMatchObject({ status: 200, ok: false, laufStatus: 'fehler' });
-    const x = (await db.loadJson<{ faeden: FadenKern[] }>(fadenBestand('person-a')))!.faeden[0];
+    const x = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-a'))[0];
     expect(x.lauf?.status).toBe('fehler');
     expect(x.lauf?.fehler).toMatch(/Thread voll/);
   });

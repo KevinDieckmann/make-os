@@ -24,10 +24,10 @@ import { headDef } from './katalog';
 import { skillLesen, einstellungFuer } from './skills-lesen';
 import { GRENZEN, LAUF_AGENT, agentSchluessel, planBestand, type AgentRef, type AgentenEinstellung, type HeadDef, type LaufAuftrag, type Merksatz, type Mitarbeiter, type PlanBestand, type Skill, type Umfang } from './typen';
 import {
-  KERN_GRENZEN, anhaengen, auftragText, brettEintragen, brettText, brettVon, fadenHinzu, fehler, gedaechtnisFuer, glockeNachLauf, laufWartet, merksatzHinzu, merksatzPruefen,
-  neuerFaden, offeneFragen, offeneLaeufe, statusAusLauf, textAbdruck, textPruefen, wurzelFaden, type AuftragKarte, type Brett, type FadenKern, type Fehler, type NachrichtKern, type PlanFreigabe,
+  KERN_GRENZEN, anhaengen, auftragText, brettEintragen, brettText, brettVon, fehler, gedaechtnisFuer, glockeNachLauf, laufWartet, merksatzHinzu, merksatzPruefen,
+  neuerFaden, offeneFragen, offeneLaeufe, statusAusLauf, textAbdruck, textPruefen, wurzelFaden, type AuftragKarte, type Brett, type FadenKern, type FadenKopfKern, type Fehler, type NachrichtKern, type PlanFreigabe,
 } from './faeden';
-import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern, sichtLaden } from './faeden-server';
+import { ablageAendernFuer, bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, indexAendern, sichtLaden } from './faeden-server';
 import { headSichtbar, type KontoSicht } from './sicht';
 import { agentAufloesen, agentLauf, aktiveMitarbeiter, anlassVon, type AgentenHandler, type Aufgeloest, type LaufErgebnis, type SchleifenStand, type WerkzeugAntwort } from './gespraech';
 
@@ -85,9 +85,10 @@ export async function delegieren(o: { person: string; head: HeadDef; headFaden: 
   const kette = [...(o.headFaden.kette ?? [agentSchluessel(o.headFaden.agent)])];
   const ichKette = `mitarbeiter:${o.head.id}:${o.mitarbeiter.id}`;
   if (kette.includes(ichKette)) return fehler(409, 'Dieser Mitarbeiter steht schon in der Kette (keine Zyklen).');
-  const r = await bestandAendern<FadenKern>(o.person, b => {
-    if (offeneLaeufe(b) >= GRENZEN.offeneLaeufeJePerson) return fehler(409, `Höchstens ${GRENZEN.offeneLaeufeJePerson} offene Mitarbeiter-Läufe gleichzeitig — warte, bis einer fertig ist.`);
-    const head = b.faeden.find(f => f.id === o.headFaden.id);
+  // E3 (09.10.): EINE Sperre über den Index — geladen wird nur der Head-Thread; geschrieben werden Head-Thread, Kind-Thread und Index.
+  const r = await ablageAendernFuer<FadenKern>(o.person, async t => {
+    if (offeneLaeufe(t.index()) >= GRENZEN.offeneLaeufeJePerson) return fehler(409, `Höchstens ${GRENZEN.offeneLaeufeJePerson} offene Mitarbeiter-Läufe gleichzeitig — warte, bis einer fertig ist.`);
+    const head = await t.faden(o.headFaden.id);
     if (!head) return fehler(404, 'Der Head-Thread fehlt.');
     const fremdGelesen = head.fremdGelesen || !!o.marke?.fremdGelesen;
     const vertraulich = head.vertraulich || !!o.marke?.vertraulich;
@@ -117,9 +118,10 @@ export async function delegieren(o: { person: string; head: HeadDef; headFaden: 
     const gesendet: NachrichtKern = { id: neuId(), rolle: 'system', von: 'system', text: `An Thread „${k.faden.titel}“ gesendet`, zeit: jetzt, verweis: { art: 'gesendet', fadenId: kindId, titel: k.faden.titel }, auftrag: o.auftrag };
     const h = anhaengen({ ...head, bretter, fremdGelesen, vertraulich }, [gesendet], jetzt);
     if (!h.ok) return h;
-    const mit = fadenHinzu({ ...b, faeden: b.faeden.map(f => (f.id === head.id ? h.faden : f)) }, k.faden);
-    if (!mit.ok) return mit;
-    return { bestand: mit.bestand, e: k.faden };
+    const mit = t.hinzu(k.faden);
+    if (mit) return mit;
+    t.setze(h.faden);
+    return { e: k.faden };
   });
   if (!r.ok) return r;
   const { auftragId } = await einreihen(o.person, kindId, { hintergrund: o.hintergrund, kostenGrenzeCent: o.kostenGrenzeCent });
@@ -130,7 +132,7 @@ export async function delegieren(o: { person: string; head: HeadDef; headFaden: 
  * Mittlere Kosten eines fertigen Mitarbeiter-Laufs dieses Heads in EURO-Cent (eigene Erfahrung — ohne Messung keine Schätzung). Die Threads
  * messen US-Cent; umgerechnet nur über lib/ki/kosten.ts (`inEuroCent`) — die Schwelle `planSchwelleCent` ist in Euro-Cent (Feinschliff 09.10.).
  */
-export function schaetzungCent(faeden: readonly FadenKern[], headId: string, kurs: number = usdEurKurs()): number | null {
+export function schaetzungCent(faeden: readonly Pick<FadenKopfKern, 'agent' | 'lauf'>[], headId: string, kurs: number = usdEurKurs()): number | null {
   const l = faeden.filter(f => f.agent.art === 'mitarbeiter' && f.agent.headId === headId && f.lauf?.status === 'fertig').map(f => inEuroCent(f.lauf!.kostenCent, kurs));
   return l.length ? l.reduce((a, b) => a + b, 0) / l.length : null;
 }
@@ -232,7 +234,7 @@ async function merksatz(ctx: HandlerKontext, input: Record<string, unknown>, s: 
   if (input.ebene === 'persoenlich') {
     if (s.fremdGelesen) return { text: 'Merksatz nicht abgelegt: in diesem Thread steht fremder Text — schlag ihn als „haushalt“ vor (Klick), statt ihn selbst abzulegen.', ok: false };
     const m: Merksatz = { id: neueKennung('ms'), text: t.text, am: jetzt, von: agentSchluessel(agent), quelle: 'vorschlag' };
-    const r = await bestandAendern(ctx.sicht.person, b => { const x = merksatzHinzu(b, agentSchluessel(agent), m); return x.ok ? { bestand: x.bestand, e: true } : x; });
+    const r = await indexAendern(ctx.sicht.person, b => { const x = merksatzHinzu(b, agentSchluessel(agent), m); return x.ok ? { e: true, neu: { gedaechtnis: x.bestand.gedaechtnis ?? {} } } : x; });
     return r.ok ? { text: 'Merksatz für diese Person abgelegt (sichtbar und löschbar im Agenten-Bereich).', ok: true } : { text: r.fehler, ok: false };
   }
   // Haushalt-Merksatz nur per Klick: über die EINE Vorschlags-Stelle der Werkstatt (lib/agenten/skills-server.ts, Stapel-Art `merksatz`, Paket 4a).
@@ -485,8 +487,7 @@ async function startFaden(person: string, agent: AgentRef, titel: string, text: 
   // Durchstich 09.10.: die Kostengrenze je Lauf der Hintergrundaufgabe bzw. des Skills (Antwort 8) gilt — vorher entstand der Thread ohne
   // Lauf-Zustand und die Grenze wurde still nicht angewendet. Der Lauf startet gleich danach (threadAusfuehren übernimmt den Zustand).
   const mitGrenze: FadenKern = o.kostenGrenzeCent ? { ...n.faden, lauf: laufWartet(jetzt, undefined, o.kostenGrenzeCent) } : n.faden;
-  const r = await bestandAendern<FadenKern>(person, b => { const x = fadenHinzu(b, mitGrenze); return x.ok ? { bestand: x.bestand, e: mitGrenze } : x; });
-  return r.ok ? { ok: true, faden: r.e } : r;
+  return fadenAnlegen(person, mitGrenze);
 }
 
 /** Den Thread im Hintergrund ausführen und das Ergebnis zurückschreiben (Thread, Bericht, Brett, Glocke, Lauf-Protokoll). */
@@ -540,7 +541,8 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
 async function threadLaufen(person: string, fadenId: string, f: FadenKern, sicht: KontoSicht, u: Umfang, o: { origin: string; hintergrund: boolean }, a: { head: HeadDef; mitarbeiter: Mitarbeiter | null; einstellung: AgentenEinstellung; hintergrund: boolean; skill?: Skill | null }): Promise<FadenLaufErgebnis> {
   const { head, mitarbeiter, einstellung, hintergrund, skill } = a;
   const bestand = await bestandLesen(person);
-  const kopf = f.elternId ? bestand.faeden.find(x => x.id === f.elternId) ?? null : null;
+  // E3 (09.10.): der Head-Thread mit seinem Brett ganz — nur er wird geladen (der Index trägt keine Bretter).
+  const kopf = f.elternId && f.brettId ? await eigenerFaden(person, f.elternId) : null;
   const brett = brettVon(kopf, f.brettId);
   const offeneBretter = (f.bretter ?? []).filter(b => offeneFragen(b).length);
   const zusatz = [brett ? brettText(brett, fremd) : '', offeneBretter.length ? `OFFENE FRAGEN DEINER MITARBEITER — beantworte selbst (brett_antworten), gib sie an einen Mitarbeiter (an_mitarbeiter mit hilfe_fuer) oder lass sie für den Menschen offen:\n${offeneBretter.map(b => brettText(b, fremd)).join('\n\n')}` : ''].filter(Boolean).join('\n\n');

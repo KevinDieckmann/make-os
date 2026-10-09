@@ -13,7 +13,7 @@
 // Aktionen (abbrechen, neu starten) nur für eigene Agenten-Läufe; Business-Heads ruhen in Business-freien Zeiten (lib/arbeitsrahmen).
 
 import { headDef } from './katalog';
-import { LAUF_AGENT, type Faden, type Hintergrundaufgabe, type Lauf, type LaufQuelle, type LaufStatus } from './typen';
+import { LAUF_AGENT, type FadenKopf, type Hintergrundaufgabe, type Lauf, type LaufQuelle, type LaufStatus } from './typen';
 import { WEG } from '@/lib/wege';
 import { inEuroCent } from '@/lib/ki/kosten';
 
@@ -55,7 +55,7 @@ export interface LogRoh { id: string; agent: string; title: string; ts: string; 
 export interface LaufQuellen {
   auftraege: readonly AuftragRoh[];
   /** NUR die Threads der Person. */
-  faeden: readonly Faden[];
+  faeden: readonly FadenKopf[];
   /** NUR die Hintergrundaufgaben der Person. */
   plan: readonly Hintergrundaufgabe[];
   /** Skills, die die Person sehen darf (Kennung → Name/Head/Auslöser). */
@@ -104,11 +104,11 @@ function agentenLauf(a: AuftragRoh, q: LaufQuellen): Pick<Lauf, 'quelle' | 'art'
 }
 
 /** Thread, der zu einem Auftrag gehört (Lauf-Zustand trägt die Auftrags-Kennung) — oder über Skill/Plan/Thread in der Eingabe. */
-const fadenZu = (a: AuftragRoh, q: LaufQuellen): Faden | undefined =>
+const fadenZu = (a: AuftragRoh, q: LaufQuellen): FadenKopf | undefined =>
   q.faeden.find(f => f.lauf?.auftragId === a.id) ?? (typeof a.eingabe?.fadenId === 'string' ? q.faeden.find(f => f.id === a.eingabe!.fadenId) : undefined);
 
 /** Lauf-Zustand eines Threads ins Lesemodell (Schritte, Kosten, Status). */
-function ausFaden(f: Faden, basis: Partial<Lauf>): Partial<Lauf> {
+function ausFaden(f: FadenKopf, basis: Partial<Lauf>): Partial<Lauf> {
   const l = f.lauf!;
   return {
     ...basis,
@@ -237,7 +237,8 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
   const { loadJson } = await import('@/lib/store/local-db');
   const { lies } = await import('@/lib/zoe/auftraege');
   const { laeufeFuer } = await import('@/lib/agent-log');
-  const { fadenBestand, planBestand } = await import('./typen');
+  const { planBestand } = await import('./typen');
+  const { indexLesen } = await import('./faeden-ablage');
   const { sichtbareHeads, sichtbareSkills, umfangFuer } = await import('./skills-server');
   const { standName: chefStand } = await import('@/lib/finanzen/chef/stand');
   const sicher = async <T,>(p: Promise<T>, leer: T): Promise<T> => p.catch(e => { console.error('[agenten-laeufe] Quelle nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return leer; });
@@ -248,7 +249,7 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
   const umfang = await umfangFuer(person);
   const [auftraege, faedenRoh, planRoh, log, skills] = await Promise.all([
     sicher(lies(), []),
-    sicher(loadJson<{ faeden?: Faden[] }>(fadenBestand(person)), null),
+    sicher(indexLesen(person), null), // nur der Index (E3, 09.10.) — „Läuft“ fragt alle 30 s und braucht nur Köpfe
     sicher(loadJson<{ aufgaben?: Hintergrundaufgabe[] }>(planBestand(person)), null),
     sicher(laeufeFuer(person), []),
     sicher(sichtbareSkills(person, heads, umfang), []),
@@ -341,11 +342,10 @@ export async function laufAbbrechen(person: string, laufId: unknown): Promise<La
 export async function laufNeuStarten(person: string, laufId: unknown, opt: { trotzdem?: boolean; kostenBestaetigt?: boolean } = {}): Promise<LaufAktionErgebnis> {
   if (typeof laufId !== 'string' || !laufId) return { ok: false, status: 400, fehler: 'Lauf fehlt.' };
   const { lies, reihe } = await import('@/lib/zoe/auftraege');
-  const { loadJson } = await import('@/lib/store/local-db');
-  const { fadenBestand } = await import('./typen');
+  const { indexLesen } = await import('./faeden-ablage');
   let eingabe: Record<string, unknown> | null = null;
   if (laufId.startsWith('fd:')) {
-    const f = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)))?.faeden?.find(x => x.id === laufId.slice(3) && x.besitzer === person);
+    const f = (await indexLesen(person)).faeden.find(x => x.id === laufId.slice(3) && x.besitzer === person);
     if (!f?.lauf) return { ok: false, status: 404, fehler: 'Lauf nicht gefunden.' };
     if (offen(f.lauf.status)) return { ok: false, status: 409, fehler: 'Der Lauf läuft noch.' };
     eingabe = f.skillId && f.agent.art !== 'zoe' ? { art: 'skill', skillId: f.skillId, headId: f.agent.headId, ausloeser: 'hand' } : f.planId ? { art: 'plan', planId: f.planId } : { art: 'faden', fadenId: f.id };
@@ -376,7 +376,8 @@ export async function laufNeuStarten(person: string, laufId: unknown, opt: { tro
 async function neuStartPruefen(person: string, e: Record<string, unknown>, opt: { trotzdem?: boolean; kostenBestaetigt?: boolean }): Promise<LaufAktionErgebnis> {
   const { headSichtbar, skillMitStand } = await import('./skills-server');
   const { loadJson } = await import('@/lib/store/local-db');
-  const { planBestand, fadenBestand } = await import('./typen');
+  const { planBestand } = await import('./typen');
+  const { indexLesen } = await import('./faeden-ablage');
   const { kostenSchaetzen, gemesseneKosten, GROSS_AB_CENT } = await import('./leistung');
   let headId: string | null = null;
   let stufe: 'schnell' | 'ausgewogen' | 'stark' = 'ausgewogen';
@@ -390,7 +391,7 @@ async function neuStartPruefen(person: string, e: Record<string, unknown>, opt: 
     if (!p) return { ok: false, status: 404, fehler: 'Die Hintergrundaufgabe gibt es nicht mehr.' };
     headId = p.agent.art === 'zoe' ? null : p.agent.headId;
   } else {
-    const f = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)))?.faeden?.find(x => x.id === e.fadenId);
+    const f = (await indexLesen(person)).faeden.find(x => x.id === e.fadenId);
     if (!f) return { ok: false, status: 404, fehler: 'Den Thread gibt es nicht mehr.' };
     headId = f.agent.art === 'zoe' ? null : f.agent.headId;
     if (f.agent.art === 'mitarbeiter') stufe = 'schnell';

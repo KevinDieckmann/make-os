@@ -209,7 +209,7 @@ describe('Not-Aus stoppt Lauf und Takt', () => {
     const r = await postAgenten('person-b', { aktion: 'not-aus', an: true, headId: 'marketing' });
     expect(r.status).toBe(200);
     expect(r.j.angehalten).toBe(1);
-    const f = (await db.loadJson<{ faeden: Faden[] }>(fadenBestand('person-b')))!.faeden.find(x => x.id === 'fd-p4b-laeuft-0001')!;
+    const f = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-b')).find(x => x.id === 'fd-p4b-laeuft-0001')!;
     expect(f.status).toBe('abgebrochen');
     expect(f.lauf?.status).toBe('abgebrochen');
     const a = (await db.loadJson<{ auftraege: J[] }>('zoe-auftraege'))!.auftraege;
@@ -242,7 +242,7 @@ describe('Not-Aus stoppt Lauf und Takt', () => {
     const r = await anfrage(lauf.POST, '/api/agenten/faden/lauf', 'POST', dienst('person-b'), { art: 'faden', fadenId: 'fd-p4b-mark-0002' });
     expect(r.status).toBe(200);
     expect(r.j.laufStatus).toBe('abgebrochen');
-    const f = (await db.loadJson<{ faeden: Faden[] }>(fadenBestand('person-b')))!.faeden.find(x => x.id === 'fd-p4b-mark-0002')!;
+    const f = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-b')).find(x => x.id === 'fd-p4b-mark-0002')!;
     expect(f.lauf?.status).toBe('abgebrochen');
     const s = await anfrage(faden.POST, '/api/agenten/faden', 'POST', sitzung('person-b'), { aktion: 'senden', agent: { art: 'head', headId: 'marketing' }, text: 'Hallo' });
     expect(s.status).toBe(409);
@@ -393,13 +393,13 @@ describe('bewerten: Daumen an Antworten und Berichten — nur die Besitzerin, nu
     expect((await bewerte('person-a', { nachrichtId: 'nr-person-1', wert: 'hoch' })).status).toBe(400);
     expect((await bewerte('person-a', { nachrichtId: 'nr-agent-1', wert: 'hoch', grund: 'vage' })).status).toBe(400);
     expect((await bewerte('person-a', { nachrichtId: 'nr-agent-1', wert: 'runter', grund: 'freitext' })).status).toBe(400);
-    const f = (await db.loadJson<{ faeden: Faden[] }>(fadenBestand('person-a')))!.faeden[0];
+    const f = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-a'))[0];
     expect(f.nachrichten.find(n => n.id === 'nr-agent-1')!.daumen?.wert).toBe('hoch');
     expect(f.nachrichten.find(n => n.id === 'nr-bericht-1')!.daumen).toMatchObject({ wert: 'runter', grund: 'vage' });
     const { fadenZahlen } = await import('@/lib/agenten/leistung');
     expect(fadenZahlen([f], 'sales', VOR(60), new Date(JETZT.getTime() + 60_000).toISOString()).daumen).toEqual({ hoch: 1, runter: 1 });
     expect((await bewerte('person-a', { nachrichtId: 'nr-agent-1', wert: null })).status).toBe(200);
-    expect((await db.loadJson<{ faeden: Faden[] }>(fadenBestand('person-a')))!.faeden[0].nachrichten.find(n => n.id === 'nr-agent-1')!.daumen).toBeUndefined();
+    expect((await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-a'))[0].nachrichten.find(n => n.id === 'nr-agent-1')!.daumen).toBeUndefined();
   });
 
   it('fremder Thread → 404 (nie bewertet), Dienstweg 403', async () => {
@@ -448,7 +448,7 @@ describe('Probelauf eines Mitarbeiters — ohne Wirkung, Ergebnis nur im Thread'
     SK.mitarbeiterProbelaeuferVerdrahten(async a => ({ ok: true, text: `Probe: ${a.eingabe.length} Zeichen`, werkzeuge: ['kampagnen_lage'] }));
     const r = await anfrage(skills.POST, '/api/agenten/skills', 'POST', sitzung('person-b'), { aktion: 'mitarbeiter-probelauf', headId: 'marketing', id: 'marketing-kampagnen', eingabe: 'Plane eine Kampagne' });
     expect(r.status).toBe(200);
-    const f = (await db.loadJson<{ faeden: Faden[] }>(fadenBestand('person-b')))!.faeden.find(x => x.id === r.j.fadenId)!;
+    const f = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-b')).find(x => x.id === r.j.fadenId)!;
     expect(f.titel).toMatch(/^Probelauf/);
     expect(f.status).toBe('fertig');
     expect(f.nachrichten.map(n => n.rolle)).toEqual(['person', 'agent', 'system']);

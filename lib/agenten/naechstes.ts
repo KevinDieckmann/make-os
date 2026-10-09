@@ -301,8 +301,8 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
     }
     const spannen = new Map<string, Spanne[]>();
     for (const p of posten) if (p.business && !spannen.has(p.laufPerson)) spannen.set(p.laufPerson, await personFrei(p.laufPerson));
-    const { fadenBestand } = await import('./typen');
-    const faeden = ((await sicher(loadJson<{ faeden?: { skillId?: string; planId?: string; erstellt: string }[] }>(fadenBestand(person)), null))?.faeden ?? []);
+    const { indexLesen } = await import('./faeden-ablage');
+    const faeden = ((await sicher(indexLesen(person), null))?.faeden ?? []); // nur der Index (E3, 09.10.)
     raus.push(...zeitplanEintraege(posten, jetzt, bis, (p, tag) => amTag(spannen.get((p as ZeitplanPosten & { laufPerson: string }).laufPerson) ?? [], tag), { auftraege, faeden }));
   }
 
