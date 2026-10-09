@@ -11,6 +11,7 @@ import { Fenster } from '../Fenster';
 import { Knopf, Segmente, feld, useRueckfrage } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import type { AufgabenVorlage } from '@/types/tasks';
+import type { Owner } from '@/types/common';
 import { sonstigeProjektId } from '@/lib/aufgaben/struktur';
 import {
   alleVorlagen, ausVorlageAnlegen, bezugsTagVon, istStartvorlage, vorlageAusListe, vorlageAusProjekt, vorlagenFuer, vorlageUmfang, vorlageZuGross,
@@ -117,7 +118,7 @@ function Anlegen({ spaceId: startSpace, projektId: startProjekt, artStart, onSch
     if (!v) return;
     const r = ausVorlageAnlegen(v, state, {
       spaceId, projektId: art === 'liste' ? projektId : undefined, start, titel: titelJetzt,
-      owner: ich === 'kevin' || ich === 'malin' ? ich : 'kevin', praefix: neueKennung(art === 'projekt' ? 'p' : 'l'), jetzt: new Date().toISOString(), farbe: space?.farbe,
+      owner: (ich || 'both') as Owner, praefix: neueKennung(art === 'projekt' ? 'p' : 'l'), jetzt: new Date().toISOString(), farbe: space?.farbe,
     });
     if (r.projekt) { const { createdAt: _c, updatedAt: _u, ...p } = r.projekt; dispatch({ type: 'ADD_PROJECT_MIT_ID', payload: p }); }
     for (const l of r.listen) dispatch({ type: 'ADD_LISTE', payload: l });

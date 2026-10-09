@@ -10,6 +10,8 @@ const PROJEKTE = [
   { id: 'p-capos', title: 'CapOS Aufbau' },
   { id: 'p-privat', title: 'Privat & Familie' },
 ];
+/** Die Personen kommen aus dem Team (09.10.: kein Rückfall auf feste Namen) — hier zwei Konten. */
+const ZWEI = [{ speicher: 'kevin', namen: ['kevin'] }, { speicher: 'malin', namen: ['malin'] }];
 
 describe('parseSchnell', () => {
   it('liest !! als kritisch und räumt den Titel auf', () => {
@@ -24,7 +26,8 @@ describe('parseSchnell', () => {
   });
 
   it('weist @malin und @beide korrekt zu (eine Verantwortliche, 29.09.)', () => {
-    expect(parseSchnell('Rechnung prüfen @malin', PROJEKTE).zustaendig).toBe('malin');
+    expect(parseSchnell('Rechnung prüfen @malin', PROJEKTE, undefined, ZWEI).zustaendig).toBe('malin');
+    expect(parseSchnell('Rechnung prüfen @malin', PROJEKTE).zustaendig).toBeUndefined(); // ohne geladenes Team erkennt @ niemanden
     const beide = parseSchnell('Wochenplanung @beide', PROJEKTE);
     expect(beide).toMatchObject({ title: 'Wochenplanung', alleBeteiligt: true, zustaendigGetippt: true });
     expect(beide.zustaendig).toBeUndefined();
@@ -58,7 +61,7 @@ describe('parseSchnell', () => {
   });
 
   it('kombiniert alles in einem Wurf', () => {
-    const p = parseSchnell('!! Vertrag gegenlesen morgen @malin #capos', PROJEKTE);
+    const p = parseSchnell('!! Vertrag gegenlesen morgen @malin #capos', PROJEKTE, undefined, ZWEI);
     expect(p).toMatchObject({
       title: 'Vertrag gegenlesen', priority: 'critical',
       zustaendig: 'malin', projectId: 'p-capos', dueDate: tagInT(1),
@@ -89,7 +92,7 @@ describe('parseSchnell ohne erfundene Fristen (#21)', () => {
     expect(parseSchnell('Schalttag 29.02.', PROJEKTE, HEUTE).dueDate).toBe('2028-02-29');
   });
   it('Vorschau vor dem Speichern: „Fr 02.10.“, Priorität, Person, Projekt', async () => {
-    const p = parseSchnell('!! Vertrag fr @malin #capos', PROJEKTE, HEUTE);
+    const p = parseSchnell('!! Vertrag fr @malin #capos', PROJEKTE, HEUTE, ZWEI);
     expect(schnellVorschau(p, PROJEKTE, { malin: 'Malin' })).toEqual(['Fr 02.10.', 'kritisch', '@Malin', '#CapOS Aufbau']);
     expect(schnellVorschau(parseSchnell('Nur Text', PROJEKTE, HEUTE), PROJEKTE)).toEqual([]);
   });

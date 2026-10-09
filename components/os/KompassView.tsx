@@ -31,6 +31,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zah
 import { neueKennung } from '@/lib/kennung';
 import { suchPasst } from '@/lib/text/such-norm';
 import { PlanerLeiste } from './PlanerLeiste';
+import { usePersonen } from './aufgaben/hilfe';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -65,6 +66,8 @@ const HORIZONTE = [
 ];
 
 export function KompassView() {
+  // Personen des Haushalts aus dem Team (09.10.: keine festen Namen im Filter „Wer“).
+  const teamPersonen = usePersonen();
   const { state } = useTasks();
 
   // ── Lage & Regler ──
@@ -566,7 +569,7 @@ export function KompassView() {
                         {reihe('Ort', ORTE.map(o => chip((f.orgs ?? []).includes(o.id), o.farbe, o.kurz, () => patch(f.id, { orgs: kippen(f.orgs, o.id) }), o.id)))}
                         {reihe('Stufe', PRIOS.map(([key, label]) => chip((f.prios ?? []).includes(key), C.aktiv, label, () => patch(f.id, { prios: kippen(f.prios, key) }), key)))}
                         {reihe('Weg', (['zoe', 'gemeinsam', 'mensch'] as const).map(w => chip((f.wege ?? []).includes(w), C.aktiv, WER_LABEL[w], () => patch(f.id, { wege: kippen(f.wege, w) }), w)))}
-                        {reihe('Wer', (['kevin', 'malin', 'both'] as const).map(p => chip(f.besitzer === p, C.aktiv, p === 'both' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin', () => patch(f.id, { besitzer: f.besitzer === p ? undefined : p }), p)))}
+                        {reihe('Wer', [...teamPersonen.map(p => ({ id: p.speicher, label: p.name })), { id: 'both', label: 'Beide' }].map(p => chip(f.besitzer === p.id, C.aktiv, p.label, () => patch(f.id, { besitzer: f.besitzer === p.id ? undefined : p.id }), p.id)))}
                       </>
                     ) : (
                       reihe('Fach', FAECHER.map(fa => chip((f.faecher ?? []).includes(fa.id), C.aktiv, fa.label, () => patch(f.id, { faecher: kippen(f.faecher, fa.id) }), fa.id)))

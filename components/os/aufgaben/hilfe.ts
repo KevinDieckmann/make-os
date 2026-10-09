@@ -19,13 +19,13 @@ export interface Person { speicher: string; name: string; namen: string[] }
 
 /**
  * Die Personen des Haushalts mit Konto (aus dem Team, Namen nie im Code — Regel 11). Solange das Team nicht geladen ist
- * (oder ohne Konten), gelten die Speichernamen der beiden Konten, auf die `Owner` zeigt.
+ * (oder ohne Konten), ist die Liste leer — kein Rückfall auf feste Namen (09.10.).
  */
 export function usePersonen(): Person[] {
   const { team } = useTeam();
   return useMemo(() => {
     const konten = team.filter(p => p.quelle === 'konto' && p.speicher && p.aktiv !== false);
-    const speicher = konten.length ? konten.map(p => p.speicher!) : ['kevin', 'malin'];
+    const speicher = konten.map(p => p.speicher!);
     return speicher.map(s => {
       const p = team.find(x => x.speicher === s);
       const vorname = (p?.name ?? '').trim().split(/\s+/)[0] || s.charAt(0).toUpperCase() + s.slice(1);
@@ -90,7 +90,7 @@ export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksS
   const imOrt = state.tasks.filter(t => t.spaceId === spaceId);
   const task: Omit<Task, 'createdAt' | 'updatedAt'> = {
     // Ohne Angabe ist die anlegende Person verantwortlich (29.09. — vorher fest „kevin“).
-    id, title: neu.title, description: neu.description ?? '', status: 'todo', priority: neu.priority ?? 'medium', assignee: neu.assignee ?? ((personLesen() || 'kevin') as Owner),
+    id, title: neu.title, description: neu.description ?? '', status: 'todo', priority: neu.priority ?? 'medium', assignee: neu.assignee ?? (personLesen() as Owner),
     tags: [], subTasks: [], dependencies: [], sortOrder: imOrt.reduce((m, t) => Math.max(m, t.sortOrder ?? 0), -1) + 1,
     spaceId, projectId: eltern?.projectId ?? ziel.projectId ?? sonstigeProjektId(spaceId), space: bereichVonSpace(spaceId),
     ...(einheitVonSpace(spaceId) ? { einheit: einheitVonSpace(spaceId) } : {}),

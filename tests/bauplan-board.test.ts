@@ -57,7 +57,7 @@ describe('Eingang', () => {
 
 describe('Planung und Warteschlange', () => {
   it('Etappen-Fortschritt; Claude baut Bereit von oben, ohne Karten, die auf Kevin warten', () => {
-    const items = [k('a', { etappe: 'e-1', spalte: 'fertig' }), k('b', { etappe: 'e-1', spalte: 'test' }), k('c', { etappe: 'e-1', spalte: 'bereit', rang: 20 }), k('d', { spalte: 'bereit', rang: 10, block: 'kevin' }), k('e', { spalte: 'bereit', rang: 30 })];
+    const items = [k('a', { etappe: 'e-1', spalte: 'fertig' }), k('b', { etappe: 'e-1', spalte: 'test' }), k('c', { etappe: 'e-1', spalte: 'bereit', rang: 20 }), k('d', { spalte: 'bereit', rang: 10, block: 'inhaber' }), k('e', { spalte: 'bereit', rang: 30 })];
     expect(etappenStand(items, { id: 'e-1' })).toEqual({ gesamt: 3, fertig: 1, imTest: 1, anteil: 1 / 3 });
     expect(warteschlange(items).map(i => i.id)).toEqual(['c', 'e']);
   });
