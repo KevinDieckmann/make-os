@@ -82,10 +82,19 @@ export function einstellungStand(e: HeadEinstellung | undefined | null): string 
 export interface Sperre { grund: Extract<HeadGesperrt, 'aus' | 'not-aus' | 'budget'>; text: string }
 
 /**
+ * Fail-closed (09.10., Takt robust): ist der Bestand der Agenten-Einstellungen nicht lesbar (beschädigt, falscher Schlüssel), gilt er als
+ * Not-Aus für alle — vorher las ein Lesefehler als „keine Einstellung“ und der Not-Aus griff gerade dann nicht. Nur ein Lese-Modell, nie
+ * gespeichert; der Head of IT zeigt es rot (`agentenEinstellungLesbar`).
+ */
+type Unlesbar = AgentenEinstellung & { unlesbar?: true };
+export const UNLESBAR_TEXT = 'Die Agenten-Einstellungen sind nicht lesbar — zur Sicherheit angehalten (wie Not-Aus). Head of IT prüfen.';
+
+/**
  * Warum ein Head gerade nicht arbeitet (Chat, Lauf, Takt) — oder null. Reihenfolge: Not-Aus für alle, Not-Aus des Heads, ausgeschaltet,
  * Monatsbudget des Heads erreicht. `kostenCent` = Kosten des Heads in diesem Monat (Euro-Cent) — ohne Angabe zählt das Budget nicht.
  */
 export function headSperre(e: AgentenEinstellung, head: Pick<HeadDef, 'id' | 'ebene' | 'name'>, person: string | null, kostenCent?: number): Sperre | null {
+  if ((e as Unlesbar).unlesbar) return { grund: 'not-aus', text: UNLESBAR_TEXT };
   if (e.notAus) return { grund: 'not-aus', text: 'Not-Aus ist gesetzt — die Agenten halten an.' };
   const h = headEinstellungVon(e, head, person);
   if (h.notAus) return { grund: 'not-aus', text: `Not-Aus für ${head.name} ist gesetzt — dieser Head hält an.` };
@@ -244,6 +253,8 @@ export function kostenJeHeadAusVerbrauch(tage: readonly { tag: string; posten: r
  */
 export const NOT_AUS_AUSGENOMMEN: ReadonlySet<string> = new Set(['tagesstart', 'gesundheit', 'markttraktion', 'hoi', 'loeschfristen', 'durchsicht', 'absichten', 'ki-medien']);
 export const notAusBetrifft = (name: string): boolean => !NOT_AUS_AUSGENOMMEN.has(name);
+/** Fail-closed (09.10.): ohne prüfbare Sperre bleiben nur die Wartungsläufe — dieselbe Liste wie beim Not-Aus. Rein. */
+export const nurWartung = <T extends { auftrag: { name: string } }>(faellig: readonly T[]): T[] => faellig.filter(f => !notAusBetrifft(f.auftrag.name));
 
 /** Welcher Head hinter einem Auftrag der Warteschlange steht (Takt, Arbeiter) — oder null. */
 export function headVonAuftrag(a: { name: string; eingabe?: Record<string, unknown> }): string | null {
@@ -322,13 +333,32 @@ async function haushaltFuerPerson(person: string): Promise<string | null> {
   return (await umfangFuer(person)).haushalt;
 }
 
-/** Der ganze Bestand (Server, roh — nur für Schreibwege und den Takt). */
+/**
+ * Der ganze Bestand (Server, roh — für die Sperren in Takt, Arbeiter und Lauf). Fehlt er: leer (nichts gesperrt). Ist er NICHT LESBAR
+ * (beschädigt, falscher Schlüssel): fail-closed — ein Lese-Modell mit Not-Aus für alle (`unlesbar`), nie gespeichert (09.10.).
+ */
 async function rohLesen(haushalt: string | null): Promise<AgentenEinstellung> {
   if (!haushalt) return leer();
-  const { loadJson } = await import('@/lib/store/local-db');
-  const e = await loadJson<AgentenEinstellung>(einstellungBestand(haushalt)).catch(() => null);
+  const { loadJson, beschaedigt } = await import('@/lib/store/local-db');
+  const name = einstellungBestand(haushalt);
+  const gesperrt = (grund: string): Unlesbar => {
+    console.error(`[agenten-einstellung] Bestand ${grund} — Agenten angehalten (fail-closed).`);
+    return { ...leer(), notAus: { seit: iso(), von: 'system' }, unlesbar: true };
+  };
+  let e: AgentenEinstellung | null;
+  try { e = await loadJson<AgentenEinstellung>(name); }
+  catch (err) { return gesperrt(`nicht lesbar (${err instanceof Error ? err.message.slice(0, 120) : 'Fehler'})`); }
+  // Kaputtes JSON legt local-db beiseite (.corrupt-…) und liest dann „leer“ — für die Sperre heißt das NICHT „nichts eingestellt“.
+  if (e === null && await beschaedigt(name).catch(() => true)) return gesperrt('beschädigt beiseitegelegt');
   if (!e || typeof e !== 'object') return leer();
   return { ...leer(), ...e, heads: e.heads && typeof e.heads === 'object' ? e.heads : {} };
+}
+
+/** Für das Lagebild (Head of IT): ist der Bestand der Agenten-Einstellungen lesbar? Fehlt er, gilt er als lesbar (nichts eingestellt). */
+export async function agentenEinstellungLesbar(): Promise<boolean> {
+  const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  const e = await rohLesen(await haushaltDesInhabers());
+  return !(e as Unlesbar).unlesbar;
 }
 
 /** Speichernamen im Haushalt des Inhabers und welche davon volle Mitglieder sind (ohne „nur Business“). */
@@ -354,7 +384,8 @@ export async function kostenHeadMonat(head: Pick<HeadDef, 'id' | 'ebene'>, perso
     const { loadJson } = await import('@/lib/store/local-db');
     const { fadenBestand } = await import('./typen');
     const { fadenZahlen } = await import('./leistung');
-    const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden ?? [];
+    // Nicht lesbar → wirft (fail-closed, 09.10.): `laufSperre` wertet das als „Budget erreicht“.
+    const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)))?.faeden ?? [];
     const [j, m] = monat.split('-').map(Number);
     const von = new Date(Date.UTC(j, m - 1, 1)).toISOString(), bis = new Date(Date.UTC(m === 12 ? j + 1 : j, m === 12 ? 0 : m, 1)).toISOString();
     return fadenZahlen(faeden, head.id, von, bis).kostenEuroCent;
@@ -364,8 +395,11 @@ export async function kostenHeadMonat(head: Pick<HeadDef, 'id' | 'ebene'>, perso
 
 /** Kosten aller Haushalts-Heads im Monat (Euro-Cent) — EIN Lesezugriff auf die Kostenmessung. */
 export async function kostenJeHeadMonat(jetzt = new Date()): Promise<Record<string, number>> {
-  const [{ loadJson }, { monatBerlin }, { usdEurKurs }] = await Promise.all([import('@/lib/store/local-db'), import('@/lib/store/aenderungsprotokoll'), import('@/lib/ki/kosten')]);
-  const s = await loadJson<{ tage?: { tag: string; posten: { zweck: string; cent: number }[] }[] }>('ki-verbrauch').catch(() => null);
+  const [{ loadJson, beschaedigt }, { monatBerlin }, { usdEurKurs }] = await Promise.all([import('@/lib/store/local-db'), import('@/lib/store/aenderungsprotokoll'), import('@/lib/ki/kosten')]);
+  // Fail-closed (09.10., Takt robust): ein nicht lesbarer Verbrauch WIRFT — die Sperren werten das als „Budget erreicht“ (Takt, Lauf), die
+  // Anzeige fängt es ab. Vorher hieß „nicht lesbar“ hier „0 Cent verbraucht“, und ein Budget griff nie.
+  const s = await loadJson<{ tage?: { tag: string; posten: { zweck: string; cent: number }[] }[] }>('ki-verbrauch');
+  if (!s && await beschaedigt('ki-verbrauch')) throw new Error('[agenten-einstellung] ki-verbrauch beschädigt beiseitegelegt');
   return kostenJeHeadAusVerbrauch(s?.tage ?? [], monatBerlin(jetzt), usdEurKurs());
 }
 
@@ -382,13 +416,20 @@ async function sichtFuer(person: string): Promise<KontoSicht> {
 export async function laufSperre(person: string | null, headId: string, jetzt = new Date()): Promise<Sperre | null> {
   const head = headDef(headId);
   if (!head) return null;
-  const haushalt = person ? await haushaltFuerPerson(person) : (await (await import('@/lib/zugang/haushalt-inhaber')).haushaltDesInhabers());
-  const e = await rohLesen(haushalt);
-  const h = headEinstellungVon(e, head, person);
-  const kosten = typeof h.budgetCentMonat === 'number' ? await kostenHeadMonat(head, person, jetzt).catch(() => undefined) : undefined;
-  const s = headSperre(e, head, person, kosten);
-  if (typeof kosten === 'number' && typeof h.budgetCentMonat === 'number' && haushalt) await budgetGlocke(haushalt, head, person, h.budgetCentMonat, kosten, jetzt).catch(() => {});
-  return s;
+  // Fail-closed (09.10.): was hier nicht gelesen werden kann (Konten, Einstellungen, Kosten bei gesetztem Budget), sperrt — vorher fingen die
+  // Aufrufer den Fehler mit „keine Sperre“ ab, und ein Not-Aus/Budget griff gerade bei einem kaputten Bestand nicht.
+  try {
+    const haushalt = person ? await haushaltFuerPerson(person) : (await (await import('@/lib/zugang/haushalt-inhaber')).haushaltDesInhabers());
+    const e = await rohLesen(haushalt);
+    const h = headEinstellungVon(e, head, person);
+    const kosten = typeof h.budgetCentMonat === 'number' ? await kostenHeadMonat(head, person, jetzt).catch(() => Number.POSITIVE_INFINITY) : undefined;
+    const s = headSperre(e, head, person, kosten);
+    if (typeof kosten === 'number' && Number.isFinite(kosten) && typeof h.budgetCentMonat === 'number' && haushalt) await budgetGlocke(haushalt, head, person, h.budgetCentMonat, kosten, jetzt).catch(() => {});
+    return s;
+  } catch (err) {
+    console.error('[agenten-einstellung] Sperre nicht prüfbar — angehalten (fail-closed):', err instanceof Error ? err.message.slice(0, 120) : err);
+    return { grund: 'not-aus', text: UNLESBAR_TEXT };
+  }
 }
 
 /** Eine Glocke je Stufe (80 % / 100 %) und Monat für das Budget eines Heads — an die zuständige Person, sonst die Besitzerin bzw. den Inhaber. */
@@ -421,16 +462,30 @@ async function budgetGlocke(haushalt: string, head: HeadDef, person: string | nu
 /** Für den Arbeiter (app/api/zoe/auftraege/lauf): darf dieser Auftrag laufen? Grund (nie Inhalte) oder null. */
 export async function auftragGesperrt(a: { name: string; eingabe?: Record<string, unknown>; person?: string | null }): Promise<string | null> {
   if (!notAusBetrifft(a.name)) return null;
-  const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  const e = await rohLesen(await haushaltDesInhabers());
-  if (e.notAus) return ANGEHALTEN;
-  const h = headVonAuftrag(a);
-  if (!h) return null;
-  const s = await laufSperre(a.person ?? null, h);
-  return s ? (s.grund === 'not-aus' ? ANGEHALTEN : s.grund === 'budget' ? 'Pausiert (Budget des Heads erreicht).' : 'Der Head ist ausgeschaltet.') : null;
+  try {
+    const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+    const e = await rohLesen(await haushaltDesInhabers());
+    if ((e as Unlesbar).unlesbar) return ANGEHALTEN_UNLESBAR;
+    if (e.notAus) return ANGEHALTEN;
+    const h = headVonAuftrag(a);
+    if (!h) return null;
+    const s = await laufSperre(a.person ?? null, h);
+    return s ? (s.text === UNLESBAR_TEXT ? ANGEHALTEN_UNLESBAR : s.grund === 'not-aus' ? ANGEHALTEN : s.grund === 'budget' ? 'Pausiert (Budget des Heads erreicht).' : 'Der Head ist ausgeschaltet.') : null;
+  } catch (err) {
+    // Fail-closed (09.10.): nicht prüfbar = angehalten — nie „frei“ aus einem Lesefehler.
+    console.error('[agenten-einstellung] Auftrag nicht prüfbar — angehalten:', err instanceof Error ? err.message.slice(0, 120) : err);
+    return ANGEHALTEN_UNLESBAR;
+  }
 }
 
-/** Für den Takt (lib/zoe/takt.ts): fällige Läufe ohne die gesperrten (Not-Aus, aus, Budget). Fehler → unverändert (der Takt läuft weiter). */
+/** Kurze Antwort für den Arbeiter, wenn die Sperre nicht gelesen werden kann (nie Inhalte). */
+export const ANGEHALTEN_UNLESBAR = 'Angehalten (Agenten-Einstellungen nicht lesbar).';
+
+/**
+ * Für den Takt (lib/zoe/takt.ts): fällige Läufe ohne die gesperrten (Not-Aus, aus, Budget). Fail-closed (09.10., Takt robust): ist die
+ * Sperre nicht prüfbar, bleiben nur die Wartungsläufe (`NOT_AUS_AUSGENOMMEN`); sind die Kosten nicht lesbar, gilt ein gesetztes Budget als
+ * erreicht. Vorher: Fehler → unverändert, der Not-Aus griff dann nicht.
+ */
 export async function taktSperreFiltern<T extends { auftrag: { name: string; eingabe?: Record<string, unknown>; person?: string } }>(faellig: T[], jetzt = new Date()): Promise<T[]> {
   if (!faellig.length) return faellig;
   try {
@@ -438,15 +493,15 @@ export async function taktSperreFiltern<T extends { auftrag: { name: string; ein
     const haushalt = await haushaltDesInhabers();
     const e = await rohLesen(haushalt);
     if (!e.notAus && !Object.keys(e.heads).length && !Object.keys(e.personen ?? {}).length) return faellig;
-    const kosten = await kostenJeHeadMonat(jetzt).catch(() => ({} as Record<string, number>));
+    const kosten = await kostenJeHeadMonat(jetzt).catch(() => null);
     return taktFiltern(faellig, e, (headId, person) => {
       const head = headDef(headId);
       if (!head) return null;
-      return headSperre(e, head, person, head.ebene === 'person' ? undefined : kosten[headId] ?? 0);
+      return headSperre(e, head, person, head.ebene === 'person' ? undefined : kosten ? kosten[headId] ?? 0 : Number.POSITIVE_INFINITY);
     });
   } catch (err) {
-    console.error('[agenten-einstellung] Takt-Sperre übersprungen:', err instanceof Error ? err.message.slice(0, 120) : err);
-    return faellig;
+    console.error('[agenten-einstellung] Takt-Sperre nicht prüfbar — nur Wartung läuft (fail-closed):', err instanceof Error ? err.message.slice(0, 120) : err);
+    return nurWartung(faellig);
   }
 }
 
