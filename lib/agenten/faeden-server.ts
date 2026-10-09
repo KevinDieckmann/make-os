@@ -95,11 +95,10 @@ export async function eigenerFaden(person: string, id: string): Promise<FadenKer
   return (await bestandLesen(person)).faeden.find(f => f.id === id) ?? null;
 }
 
-/** Speichernamen im Haushalt des Inhabers (für geteilte Business-Threads). */
+/** Speichernamen im Haushalt des Inhabers (für geteilte Business-Threads) — über die zentrale Regel (lib/zugang/inhaber.ts, Nahtstellen-Prüfung Punkt 9). */
 async function haushaltsPersonen(): Promise<string[]> {
-  const [{ konten }, h] = await Promise.all([ladeKonten(), haushaltDesInhabers()]);
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  return konten.filter(k => k.speicher === inhaber?.speicher || (!!h && k.haushalt === h)).map(k => k.speicher).filter(p => PERSON.test(p));
+  const { kontenImHaushaltDerInhaber } = await import('@/lib/zugang/inhaber');
+  return kontenImHaushaltDerInhaber(await ladeKonten()).map(k => k.speicher).filter(p => PERSON.test(p));
 }
 
 /** Alle Threads, die die Sicht sehen darf: eigene (Head sichtbar) + geteilte Business-Threads anderer im Haushalt. */
@@ -213,6 +212,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
     },
     notAus: !!einstellung.notAus,
     ...(zusatz ? { budget: zusatz.budget, notAusAendern: zusatz.notAusAendern, personen: zusatz.personen } : {}),
+    kurs: (await import('@/lib/ki/kosten')).usdEurKurs(),
   };
 }
 

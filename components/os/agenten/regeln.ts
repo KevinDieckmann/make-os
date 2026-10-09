@@ -9,6 +9,7 @@ import type {
   SkillEingabeFeld, SkillEreignis, SkillErfolg, SkillKurz, SkillTest, SkillBeispiel, ModelTier, UeberblickZeile,
 } from '@/lib/agenten/typen';
 import { EISENHOWER_REIHE, GRENZEN, type HeadDef } from '@/lib/agenten/typen';
+import { inEuroCent, USD_EUR_VORGABE } from '@/lib/ki/kosten';
 
 /** Zeitzone aller Anzeigen — wie überall in der App (Berliner Wandzeit). */
 const ZONE = 'Europe/Berlin';
@@ -158,6 +159,16 @@ export function dauerText(ms: number | undefined): string {
 export function euro(cent: number | undefined | null): string {
   if (cent == null || !Number.isFinite(cent)) return '—';
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(cent / 100);
+}
+
+/**
+ * Gemessene Kosten (US-Cent: `Nachricht.kosten.cent`, `LaufZustand.kostenCent` — wie `ki-verbrauch`) als Euro (Härtetest 09.10.: vorher zeigten
+ * Chat und Lauf-Kopf die US-Cent als Euro, ~16 % zu hoch). Umgerechnet NUR über lib/ki/kosten.ts — mit dem Kurs aus der Antwort des Servers
+ * (`kurs`, Instanz-Einstellung), sonst der Vorgabe.
+ */
+export function euroAusUsd(usdCent: number | undefined | null, kurs?: number): string {
+  if (usdCent == null || !Number.isFinite(usdCent)) return '—';
+  return euro(inEuroCent(usdCent, kurs && kurs > 0 ? kurs : USD_EUR_VORGABE));
 }
 
 /** Prozent als Text, ohne Nenner „—“ (nie eine erfundene Null). */
@@ -315,6 +326,11 @@ export interface SkillEntwurf {
   kostenGrenzeCent?: number;
   tests: SkillTest[];
   quelle: 'hand' | 'gespraech' | 'import' | 'vorschlag';
+  /**
+   * „Als Skill speichern“ (Nahtstellen-Prüfung 09.10., Punkt 8): aus welchem Thread der Text kam — der Server prüft, ob er fremd gelesen ist, und
+   * kennzeichnet den Skill dann (`ausFremdemText`, im Prompt gekapselt). Die Oberfläche entscheidet das nie selbst.
+   */
+  ausFaden?: string;
 }
 
 export function leererSkill(headId: string, vorlage?: Partial<SkillEntwurf>): SkillEntwurf {

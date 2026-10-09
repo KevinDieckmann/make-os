@@ -147,7 +147,9 @@ export async function mitRueckfrage<T>(
 /** Die offenen Freigaben der Person (Antwort von GET /api/zoe/stapel). */
 export interface StapelAntwort { ok: true; vorschlaege: VorschlagKurz[]; offen: number }
 /** Antwort des ZOE-Chats (POST /api/kimmi). `fadenId` = der ZOE-Thread, in dem der Zug steht (Paket 4a). */
-export interface ZoeAntwort { reply?: string; stapelOffen?: number; ran?: { agent: string; ok: boolean }[]; ki?: KiKennzeichen; needsKey?: boolean; error?: string; fadenId?: string; titel?: string }
+export interface ZoeAntwort { reply?: string; stapelOffen?: number; ran?: { agent: string; ok: boolean }[]; ki?: KiKennzeichen; needsKey?: boolean; error?: string; fadenId?: string; titel?: string;
+  /** `false` (Härtetest 09.10.): der Zug hat nicht stattgefunden (Modell, Sperre, Schlüssel) — `fehler` ist der Satz, die Nachricht bleibt im Feld. */
+  ok?: boolean; fehler?: string }
 
 const q = (basis: string, p: Record<string, string | undefined>) => {
   const s = new URLSearchParams();
@@ -196,8 +198,11 @@ export async function stapelEntscheiden(b: { id: string; entscheidung: 'freigebe
  * liest den Verlauf aus dem Thread (nie vom Browser), „fremd gelesen“ steht am Thread. Kein `context` mehr: der wäre Text Dritter, und
  * ZOE dürfte ab dem zweiten Zug nur noch vorschlagen.
  */
-export async function zoeFragen(b: { message: string; space: 'privat' | 'business'; zoeFaden: string }, bei?: (e: StromEreignis) => void): Promise<Ergebnis<ZoeAntwort>> {
-  const r = bei ? await sendenMitStrom<ZoeAntwort>(WEGE.zoe, b, bei) : await senden<ZoeAntwort>(WEGE.zoe, b);
+export async function zoeFragen(b: { message: string; space: 'privat' | 'business'; zoeFaden: string; anfrageId?: string }, bei?: (e: StromEreignis) => void): Promise<Ergebnis<ZoeAntwort>> {
+  // Eine Kennung je Absicht (Härtetest 09.10.): fällt der Strom vor der Antwort aus und der Client fragt einmal als JSON nach, läuft der Zug
+  // auf dem Server trotzdem nur einmal (`einmalig` in /api/kimmi); ein gescheiterter Zug wird nicht gemerkt und darf neu laufen.
+  const mitId = { ...b, anfrageId: b.anfrageId ?? anfrageId() };
+  const r = bei ? await sendenMitStrom<ZoeAntwort>(WEGE.zoe, mitId, bei) : await senden<ZoeAntwort>(WEGE.zoe, mitId);
   if (r.ok) meldeNeu();
   return r;
 }

@@ -166,8 +166,51 @@ export function extractJson<T>(raw: string): T | null {
   return null;
 }
 
-const RETRYABLE = new Set([429, 500, 502, 503, 529]);
+const RETRYABLE = new Set([429, 500, 502, 503, 504, 529]);
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+/** Höchstens so lange wartet ein Aufruf auf `retry-after` (Härtetest 09.10.) — länger hält kein Chat still; dann lieber ein klarer Satz. */
+const RETRY_AFTER_MAX_MS = 10_000;
+/**
+ * Pause vor dem nächsten Versuch: `retry-after` des Anbieters (Sekunden), wenn er es sagt — sonst 0,7 s · Versuch mit etwas Streuung (zwei
+ * gleichzeitige Läufe schlagen nicht im selben Takt erneut auf). `null` = der Anbieter will länger warten, als ein Gespräch aushält → nicht wiederholen.
+ */
+export function wartenVorVersuch(versuch: number, retryAfter: string | null | undefined): number | null {
+  if (retryAfter !== null && retryAfter !== undefined && retryAfter.trim() !== '') {
+    const s = Number(retryAfter);
+    const ms = Number.isFinite(s) ? Math.max(0, s * 1000) : Math.max(0, Date.parse(retryAfter) - Date.now());
+    if (!Number.isFinite(ms)) return 700 * versuch;
+    return ms > RETRY_AFTER_MAX_MS ? null : ms;
+  }
+  return Math.round(700 * versuch * (0.85 + Math.random() * 0.3));
+}
+
+/**
+ * EIN Satz für die Person, wenn ein Modell-Aufruf nicht geklappt hat (Härtetest 09.10.) — für ZOE, Heads, Mitarbeiter und Läufe gleich. Nie
+ * Technik-Rohtext („Anthropic hat abgelehnt (402)“), immer: was ist los, und was kann man tun.
+ */
+export function modellFehlerText(r: Pick<AskResult, 'ok' | 'status' | 'error' | 'stopReason'> | null | undefined): string {
+  if (!r) return 'Das Modell ist gerade nicht erreichbar — bitte gleich noch einmal versuchen.';
+  const e = r.error ?? '';
+  if (kiGesperrt(r)) return kiSperrText(r);
+  if (e === 'no-key') return 'Es ist kein KI-Schlüssel hinterlegt (ANTHROPIC_API_KEY auf dem Server) — ohne Schlüssel antwortet keine KI.';
+  if (e === 'guthaben-leer') return 'Das KI-Guthaben beim Anbieter ist aufgebraucht — bitte aufladen. Bis dahin (höchstens 30 Minuten) wird kein Aufruf mehr versucht.';
+  if (e === KI_ABGEBROCHEN) return 'Abgebrochen.';
+  if (/^Timeout/.test(e)) return 'Das Modell hat zu lange gebraucht (Zeitgrenze) — bitte noch einmal versuchen oder kürzer fragen.';
+  if (r.status === 401) return 'Der KI-Schlüssel wird vom Anbieter abgelehnt (401) — bitte den Schlüssel auf dem Server prüfen.';
+  if (r.status === 403) return 'Der KI-Anbieter verweigert den Zugriff (403) — Schlüssel bzw. Rechte des Kontos prüfen.';
+  if (r.status === 413 || (r.status === 400 && /too long|too large|too many tokens|maximum context|context.?length|request_too_large/i.test(e))) {
+    return 'Die Anfrage ist zu groß für das Modell (Verlauf oder Unterlagen zu lang) — bitte einen neuen Thread beginnen oder gezielter fragen.';
+  }
+  if (r.status === 429) return 'Der KI-Anbieter bremst gerade (zu viele Anfragen oder Ausgabenlimit des Kontos) — bitte in ein paar Minuten noch einmal.';
+  if (r.status === 529 || /overloaded/i.test(e)) return 'Der KI-Anbieter ist gerade überlastet — bitte gleich noch einmal versuchen.';
+  if (r.status >= 500) return `Der KI-Anbieter hat einen Fehler gemeldet (${r.status}) — bitte gleich noch einmal versuchen.`;
+  if (r.status === 400) return 'Der KI-Anbieter hat die Anfrage abgelehnt (400) — bitte anders formulieren oder einen neuen Thread beginnen.';
+  if (r.status === 200 && r.stopReason === 'refusal') return 'Das Modell hat diese Anfrage abgelehnt — bitte anders formulieren.';
+  if (r.status === 200 && r.stopReason === 'max_tokens') return 'Die Antwort passte nicht in die Längengrenze — bitte kürzer fragen oder in Teilen.';
+  if (r.status === 200) return 'Das Modell hat keine Antwort geliefert — bitte noch einmal fragen.';
+  if (r.status === 0) return 'Keine Verbindung zum KI-Anbieter — bitte gleich noch einmal versuchen.';
+  return `Das Modell ist gerade nicht erreichbar (${r.status}) — bitte gleich noch einmal versuchen.`;
+}
 
 /** Hat das KI-Tor den Aufruf gesperrt (Datenschutz-Schalter, Einwilligung)? Dann ist nichts hinausgegangen. */
 export const kiGesperrt = (r: { error?: string } | null | undefined): boolean => !!r?.error?.startsWith('ki-gesperrt:');
@@ -348,10 +391,18 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
   /** Hat die Oberfläche schon ein Stück gesehen? Dann keine Wiederholung mehr (sie sähe den Anfang doppelt). */
   let gezeigt = false;
   const stueck = (t: string) => { gezeigt = true; strom?.onText?.(t); };
+  // Härtetest 09.10.: was ALLE Versuche dieses Aufrufs verbraucht haben (abgerissener Strom, Nachfassen mit mehr Luft) — das Ergebnis trägt die
+  // Summe, damit Kostengrenze und Kosten eines Laufs stimmen (`ki-verbrauch` bucht ohnehin jeden Versuch einzeln).
+  const summe = { ein: 0, aus: 0, cacheLesen: 0, cacheSchreiben: 0 };
+  let gebucht = false;
+  const buchen = (u: AskResult['usage']) => { if (!u) return; gebucht = true; summe.ein += u.ein; summe.aus += u.aus; summe.cacheLesen += u.cacheLesen; summe.cacheSchreiben += u.cacheSchreiben; };
+  const mitSumme = (r: AskResult): AskResult => (gebucht ? { ...r, usage: { ...summe } } : r);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    if (strom?.signal?.aborted) return abgebrochen();
+    if (strom?.signal?.aborted) return mitSumme(abgebrochen());
     const ctrl = new AbortController();
+    // Die Zeitgrenze gilt bis zum letzten Byte — auch ohne Strom (Härtetest 09.10.: vorher endete sie mit dem Antwort-Kopf, ein hängender
+    // Körper hielt den Aufruf dann für immer offen).
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const aussen = () => ctrl.abort();
     strom?.signal?.addEventListener('abort', aussen, { once: true });
@@ -363,8 +414,6 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
         body: JSON.stringify(body),
         signal: ctrl.signal,
       });
-      // Ohne Strom gilt die Zeitgrenze bis zur Antwort (wie bisher); im Strom bis zum letzten Stück.
-      if (!imStrom) clearTimeout(timer);
       if (!res.ok) {
         const detail = await res.text();
         // Strukturierte Ausgabe nicht verfügbar (Modell/Konto)? Einmal ohne —
@@ -384,11 +433,17 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
         }
         last = { ok: false, status: res.status, text: '', error: detail.slice(0, 220), requestId: res.headers.get('request-id') ?? undefined };
         // Guthaben leer: merken und für alle weiteren Aufrufe sofort abbrechen (Schalter oben).
-        if (!ziel && istGuthabenFehler(res.status, detail)) { merkeGuthabenLeer(detail); return { ...last, status: 402, error: 'guthaben-leer' }; }
+        if (!ziel && istGuthabenFehler(res.status, detail)) { merkeGuthabenLeer(detail); return mitSumme({ ...last, status: 402, error: 'guthaben-leer' }); }
         // 429 ohne retry-after = Ausgabenlimit — nicht wiederholen.
-        if (res.status === 429 && !res.headers.get('retry-after')) return last;
-        if (RETRYABLE.has(res.status) && attempt < maxAttempts) { await sleep(700 * attempt); continue; }
-        return last;
+        if (res.status === 429 && !res.headers.get('retry-after')) return mitSumme(last);
+        if (RETRYABLE.has(res.status) && attempt < maxAttempts) {
+          // retry-after des Anbieters zählt (Härtetest 09.10.); will er länger, als ein Gespräch aushält, kommt gleich der klare Satz.
+          const warten = wartenVorVersuch(attempt, res.headers.get('retry-after'));
+          if (warten === null) return mitSumme(last);
+          await sleep(warten);
+          continue;
+        }
+        return mitSumme(last);
       }
       const requestId = res.headers.get('request-id') ?? undefined;
       let data: unknown;
@@ -397,10 +452,11 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
         if (zb.fehler || !zb.fertig) {
           // Fehler mitten im Strom (z. B. überlastet) bzw. abgerissen: der bekannte Verbrauch zählt; nochmal nur, solange nichts gezeigt wurde.
           await verbrauchNotieren(String(body.model), opts.zweck, zb.verbrauch());
+          buchen(zb.verbrauch());
           const art = zb.fehler?.art ?? 'abgerissen';
           last = { ok: false, status: art === 'overloaded_error' ? 529 : 500, text: '', error: zb.fehler ? `${art}: ${zb.fehler.text}` : 'Strom abgerissen', requestId };
-          if (!gezeigt && attempt < maxAttempts && /overloaded|api_error|abgerissen/.test(art)) { await sleep(700 * attempt); continue; }
-          return last;
+          if (!gezeigt && attempt < maxAttempts && /overloaded|api_error|abgerissen/.test(art)) { await sleep(wartenVorVersuch(attempt, null) ?? 700); continue; }
+          return mitSumme(last);
         }
         data = zb.nachricht();
       } else data = await res.json();
@@ -411,36 +467,40 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
       const u = (data as { usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } }).usage;
       const usage = u ? { ein: u.input_tokens ?? 0, aus: u.output_tokens ?? 0, cacheLesen: u.cache_read_input_tokens ?? 0, cacheSchreiben: u.cache_creation_input_tokens ?? 0 } : undefined;
       await verbrauchNotieren(String(body.model), opts.zweck, usage, ziel?.anbieter);
+      buchen(usage);
       const text = extractText(data);
       const stopReason = (data as { stop_reason?: string }).stop_reason;
-      // Denken hat das ganze Budget gefressen → einmal mit mehr Luft nachfassen.
-      if (!text && stopReason === 'max_tokens' && attempt < maxAttempts && !gezeigt) {
+      // Denken (oder ein abgeschnittener Werkzeug-Aufruf, der nie läuft) hat das ganze Budget gefressen → einmal mit mehr Luft nachfassen —
+      // sicher, weil noch nichts gewirkt hat und die Oberfläche nichts gesehen hat.
+      // Nur, wenn das Budget wirklich wächst (Härtetest 09.10.): mit demselben Budget käme derselbe Abbruch — nur doppelt bezahlt.
+      const mehrLuft = Math.max(Number(body.max_tokens), Math.min(8000, Number(body.max_tokens) * 2));
+      if (!text && stopReason === 'max_tokens' && attempt < maxAttempts && !gezeigt && mehrLuft > Number(body.max_tokens)) {
         // max(), nicht min(): bei bereits großem Budget darf das Nachfassen es
         // nicht VERKLEINERN.
-        body.max_tokens = Math.max(Number(body.max_tokens), Math.min(8000, Number(body.max_tokens) * 2));
+        body.max_tokens = mehrLuft;
         last = { ok: false, status: 200, text: '', stopReason, error: 'leer (max_tokens im Denken verbraucht)', usage, requestId };
         continue;
       }
       // Leere Antwort ist kein Erfolg — AUSSER das Modell hat ein Werkzeug
       // gerufen (stop_reason tool_use): dann steckt die Substanz in raw.
       if (!text && stopReason !== 'tool_use') {
-        return { ok: false, status: 200, text: '', stopReason, raw: data, usage, requestId, anbieter: ziel?.anbieter ?? 'anthropic',
-          error: stopReason === 'max_tokens' ? 'leer (max_tokens im Denken verbraucht)' : stopReason === 'refusal' ? 'abgelehnt (refusal)' : 'leere Antwort' };
+        return mitSumme({ ok: false, status: 200, text: '', stopReason, raw: data, usage, requestId, anbieter: ziel?.anbieter ?? 'anthropic',
+          error: stopReason === 'max_tokens' ? 'leer (max_tokens im Denken verbraucht)' : stopReason === 'refusal' ? 'abgelehnt (refusal)' : 'leere Antwort' });
       }
-      return { ok: true, status: 200, text, stopReason, raw: data, usage, requestId, anbieter: ziel?.anbieter ?? 'anthropic' };
+      return mitSumme({ ok: true, status: 200, text, stopReason, raw: data, usage, requestId, anbieter: ziel?.anbieter ?? 'anthropic' });
     } catch (err) {
-      if (strom?.signal?.aborted) { await verbrauchNotieren(String(body.model), opts.zweck, zb?.verbrauch()); return abgebrochen(); }
+      if (strom?.signal?.aborted) { await verbrauchNotieren(String(body.model), opts.zweck, zb?.verbrauch()); buchen(zb?.verbrauch()); return mitSumme(abgebrochen()); }
       const aborted = err instanceof Error && err.name === 'AbortError';
-      if (zb) await verbrauchNotieren(String(body.model), opts.zweck, zb.verbrauch());
+      if (zb) { await verbrauchNotieren(String(body.model), opts.zweck, zb.verbrauch()); buchen(zb.verbrauch()); }
       last = { ok: false, status: 0, text: '', error: aborted ? `Timeout nach ${Math.round(timeoutMs / 1000)}s` : (err instanceof Error ? err.message : String(err)) };
-      if (!aborted && attempt < maxAttempts && !gezeigt) { await sleep(700 * attempt); continue; }
-      return last;
+      if (!aborted && attempt < maxAttempts && !gezeigt) { await sleep(wartenVorVersuch(attempt, null) ?? 700); continue; }
+      return mitSumme(last);
     } finally {
       clearTimeout(timer);
       strom?.signal?.removeEventListener('abort', aussen);
     }
   }
-  return last;
+  return mitSumme(last);
 }
 
 /** Was `askStream` unterwegs meldet. */

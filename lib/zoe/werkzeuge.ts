@@ -708,6 +708,11 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
     .filter(a => a.name)
     .slice(0, 20);
   if (!auftraege.length) return 'Fehlgeschlagen: keine Agenten angegeben.';
+  // Härtetest 09.10.: nur Fach-Agenten — Systemläufe des Takts (Morgenlauf, Löschfristen, Agenten-Lauf `faden` …) startet kein Gespräch;
+  // sie liefen sonst auf Zuruf (oder auf einen eingeschleusten Satz) mit Modellkosten bzw. Wirkung außerhalb ihres Takts.
+  const { SYSTEM_LAEUFE } = await import('./agenten');
+  const system = auftraege.filter(a => (SYSTEM_LAEUFE as readonly string[]).includes(a.name));
+  if (system.length) return `Nicht eingereiht: ${system.map(a => a.name).join(', ')} ist kein Fach-Agent (läuft nur im Takt).`;
   // Agenten, die die Kartei lesen, nur für Personen im Haushalt des Inhabers (28.09., K1).
   if (auftraege.some(a => (CRM_AGENTEN as readonly string[]).includes(a.name)) && !(await crmWerkzeugErlaubt(person))) return KEIN_CRM;
 

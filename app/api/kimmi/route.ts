@@ -13,13 +13,13 @@ import { kategorieVonWerkzeug, werkzeugSperre } from '@/lib/datenschutz/ki-werkz
 import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { gruppeVon } from '@/lib/zoe/register';
 import { jetztSatz, localDay } from '@/lib/zeit';
-import { hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
+import { hasAnthropicKey, fremd, FREMD_REGEL, modellFehlerText } from '@/lib/anthropic';
 import { fuerPrompt, istNutzer, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
-import { AUSFUEHRBAR, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
+import { AUSFUEHRBAR, SYSTEM_LAEUFE, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
-import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
+import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN, LESEND } from '@/lib/zoe/gespraech-schutz';
 import { brainAnweisung } from '@/lib/zoe/vault';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
@@ -41,7 +41,9 @@ import { werkzeugDefs, openAgentDef, type WerkzeugDef } from '@/lib/zoe/werkzeug
 import { zoeWerkzeugWahl } from '@/lib/zoe/werkzeug-wahl';
 import { schleife, type AufrufErgebnis } from '@/lib/agenten/schleife';
 import { headFrageKategorien, headsImPrompt, zoeHeadsFuer } from '@/lib/agenten/zoe-heads';
-import { zoeAntwortAnhaengen, zoeFadenFuer, zoeVerlaufUebernehmen, type ZoeZug } from '@/lib/agenten/zoe-faden';
+import { istFadenId } from '@/lib/agenten/faeden';
+import { eigenerZoeFaden, zoeAntwortAnhaengen, zoeFadenFuer, zoeHinweisAnhaengen, zoeVerlaufUebernehmen, type ZoeZug } from '@/lib/agenten/zoe-faden';
+import { einmalig } from '@/lib/store/anfragen';
 import { haushaltsSpeicher } from '@/lib/aufgaben/sicht';
 import { zugZuruecknehmenFuer } from '@/lib/agenten/faeden-server';
 import { willStrom } from '@/lib/http/sse';
@@ -148,7 +150,7 @@ export async function POST(req: Request) {
   if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
   // `zoeFaden` (Paket 4a): Kennung eines EIGENEN ZOE-Threads oder 'neu' — dann liest der Prompt den Verlauf NUR aus dem Thread
   // (Server), und „fremd gelesen“/„vertraulich“ stehen am Thread. Ohne `zoeFaden` (Telegram, WhatsApp, Tagesplan) wie bisher.
-  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bezug?: unknown; zoeFaden?: unknown };
+  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bezug?: unknown; zoeFaden?: unknown; anfrageId?: unknown };
   try { payload = await jsonBegrenzt(req, 2_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = String(payload.message ?? '').trim().slice(0, 8000);
   // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
@@ -162,10 +164,9 @@ export async function POST(req: Request) {
   const vorgeschichteAlt = Array.isArray(payload.verlauf) ? fuerPrompt(payload.verlauf) : [];
 
   if (!hasAnthropicKey()) {
-    return NextResponse.json({
-      reply: 'Ich bin fast bereit — mir fehlt nur dein Anthropic-API-Key. Trag ihn als ANTHROPIC_API_KEY in die Datei .env.local ein und starte den Dev-Server neu, dann denke ich wirklich mit.',
-      needsKey: true,
-    });
+    // Härtetest 09.10.: `ok: false` — die Oberfläche lässt die Nachricht im Feld stehen (sie war nie gesendet); Kanäle lesen weiter `reply`.
+    const satz = modellFehlerText({ ok: false, status: 0, error: 'no-key' });
+    return NextResponse.json({ ok: false, reply: satz, fehler: satz, needsKey: true });
   }
 
   // Wer redet gerade mit ZOE: die ausdrücklich benannte Person (Sitzung oder Dienstweg mit Person, z. B. Telegram) —
@@ -197,24 +198,21 @@ export async function POST(req: Request) {
   // Person im Haushalt des Inhabers (Sitzung oder Dienstweg mit Person) — ein anderes Konto bekommt sie gar nicht
   // angeboten; die Werkzeuge prüfen es zusätzlich selbst (lib/zoe/werkzeuge.ts `nurImHaushalt`).
   const crmErlaubt = await crmWerkzeugErlaubt(personStreng(req));
-  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a));
+  // Nur Fach-Agenten (Härtetest 09.10.): Systemläufe des Takts (Morgenlauf, Löschfristen, Agenten-Lauf `faden` …) standen bisher mit im
+  // Angebot von run_agent/starte_auftraege — ein Zuruf (oder ein eingeschleuster Satz) hätte sie mit Modellkosten außer der Reihe gestartet.
+  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)));
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
   const crmBezug = crmErlaubt && kiS.bereiche.crm ? crmBezugAus(payload.bezug) : null;
 
-  // ZOE-Thread (Paket 4a, C8): einmal den alten Verlauf übernehmen, dann die neue Nachricht in den Thread — der Prompt liest von dort.
-  let zug: ZoeZug | null = null;
-  if (payload.zoeFaden !== undefined && payload.zoeFaden !== null && payload.zoeFaden !== '') {
+  // ZOE-Thread (Paket 4a, C8): einmal den alten Verlauf übernehmen; die Kennung wird VOR dem Strom geprüft (Fehler als JSON mit Status), die
+  // neue Nachricht geht erst im Zug in den Thread — innerhalb von `einmalig` (Härtetest 09.10.: dieselbe `anfrageId` — Doppelklick, Rückfall
+  // des Browsers auf JSON nach einem Netzfehler — legt die Frage nicht zweimal an und lässt das Modell nicht zweimal laufen).
+  const mitFaden = payload.zoeFaden !== undefined && payload.zoeFaden !== null && payload.zoeFaden !== '';
+  if (mitFaden) {
+    if (payload.zoeFaden !== 'neu' && !istFadenId(payload.zoeFaden)) return NextResponse.json({ ok: false, reply: 'Thread-Kennung ungültig.', error: 'Thread-Kennung ungültig.', fehler: 'Thread-Kennung ungültig.' }, { status: 400 });
     await zoeVerlaufUebernehmen(person).catch(() => 0);
-    const z = await zoeFadenFuer(person, payload.zoeFaden, message, { bereich: payload.space === 'business' ? 'business' : 'privat' });
-    if ('ok' in z && z.ok === false) return NextResponse.json({ reply: z.fehler, error: z.fehler }, { status: z.status });
-    zug = z as ZoeZug;
+    if (payload.zoeFaden !== 'neu' && !(await eigenerZoeFaden(person, payload.zoeFaden))) return NextResponse.json({ ok: false, reply: 'Diesen ZOE-Thread gibt es nicht.', error: 'Diesen ZOE-Thread gibt es nicht.', fehler: 'Diesen ZOE-Thread gibt es nicht.' }, { status: 404 });
   }
-  const vorgeschichte = zug ? zug.prompt : vorgeschichteAlt;
-  const fortsetzung = zug ? zug.fortsetzung : !!vorgeschichteAlt.length;
-  // Frühere Fragen dieses Gesprächs — Folgefragen („und für Juli?“) zielen auf denselben Bereich (Werkzeug-Wahl, Regelwerk).
-  const frueher = zug
-    ? zug.faden.nachrichten.filter(x => x.rolle === 'person').slice(-3, -1).map(x => x.text)
-    : (payload.verlauf ?? []).filter(x => istNutzer(x?.rolle)).slice(-2).map(x => String(x?.text ?? ''));
 
   // Die Heads, die DIESE Person sieht (lib/agenten/sicht.ts) — nie die Privat-Heads einer anderen Person, ein Konto „nur Business“ nur Business.
   const heads = (await zoeHeadsFuer(person).catch(() => null))?.heads ?? [];
@@ -233,13 +231,31 @@ export async function POST(req: Request) {
   const oa = openAgentDef();
   const alleDefs: WerkzeugDef[] = [...defs.values(), ...(oa ? [oa] : [])];
   const verfuegbar = new Set(alleDefs.map(d => d.name).filter(darf));
-  const wahl = payload.noTools ? { namen: [] as string[], bereiche: [] as string[] } : zoeWerkzeugWahl({ text: message, frueher, bezug: crmBezug, verfuegbar });
-  const angeboten = wahl.namen.map(n => alleDefs.find(d => d.name === n)).filter((d): d is WerkzeugDef => !!d);
-  const angebotenSet = new Set(wahl.namen);
 
   // Der Zug — derselbe Weg mit und ohne Streaming (09.10.): `strom` reicht nur Text-Stücke, Werkzeug-Stände und den Abbruch des Browsers
   // durch; gespeichert wird allein das Endergebnis (Thread wie bisher). Alles oben (Schranke, Person, Haushalt, Thread) antwortet weiter JSON.
   const zugAusfuehren = async (strom?: StromArbeit): Promise<{ status: number; body: Record<string, unknown> }> => {
+    let zug: ZoeZug | null = null;
+    if (mitFaden) {
+      const z = await zoeFadenFuer(person, payload.zoeFaden, message, { bereich: payload.space === 'business' ? 'business' : 'privat' });
+      if ('ok' in z && z.ok === false) return { status: z.status, body: { ok: false, reply: z.fehler, error: z.fehler, fehler: z.fehler } };
+      zug = z as ZoeZug;
+    }
+    const vorgeschichte = zug ? zug.prompt : vorgeschichteAlt;
+    const fortsetzung = zug ? zug.fortsetzung : !!vorgeschichteAlt.length;
+    // Frühere Fragen dieses Gesprächs — Folgefragen („und für Juli?“) zielen auf denselben Bereich (Werkzeug-Wahl, Regelwerk).
+    const frueher = zug
+      ? zug.faden.nachrichten.filter(x => x.rolle === 'person').slice(-3, -1).map(x => x.text)
+      : (payload.verlauf ?? []).filter(x => istNutzer(x?.rolle)).slice(-2).map(x => String(x?.text ?? ''));
+    const wahl = payload.noTools ? { namen: [] as string[], bereiche: [] as string[] } : zoeWerkzeugWahl({ text: message, frueher, bezug: crmBezug, verfuegbar });
+    const angeboten = wahl.namen.map(n => alleDefs.find(d => d.name === n)).filter((d): d is WerkzeugDef => !!d);
+    const angebotenSet = new Set(wahl.namen);
+    /** Ein Zug, der nichts bewirkt hat, findet nicht statt: die Frage geht wieder aus dem Thread (das Feld im Browser behält sie). Gibt an, ob der Thread bleibt. */
+    const zuruecknehmen = async (): Promise<boolean> => {
+      if (!zug) return false;
+      await zugZuruecknehmenFuer(person, zug.faden.id, zug.nachrichtId).catch(() => false);
+      return !!(await eigenerZoeFaden(person, zug.faden.id).catch(() => null));
+    };
     try {
       const origin = innenAdresse(req);
       // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web) — oder der
@@ -280,6 +296,10 @@ export async function POST(req: Request) {
         user: message,
         messages: [...vorgeschichte, ...(zug ? [] : [{ role: 'user', content: message }])],
         tools: angeboten, runden: 3, parallel: true,
+        // Härtetest 09.10.: ein Zug endet nach 5 Minuten (vorher ohne Grenze — 3 Runden × 3 Minuten + Werkzeuge), und derselbe schreibende
+        // Aufruf läuft je Zug nur einmal (ein Modell, das `create_task` in Runde 2 wiederholt, legt nichts doppelt an). Lesen darf sich wiederholen.
+        deadline: Date.now() + 5 * 60_000,
+        doppeltErkennen: name => !LESEND.has(name),
         weiterBei: name => name === 'run_agent' || !!WERKZEUGE[name],
         zustand: { fremdGelesen, vertraulich, kategorien },
         ask: { maxTokens: 4000, timeoutMs: 180_000, zweck: 'zoe-gespraech', ki: { lauf: 'gespraech', person } },
@@ -325,18 +345,30 @@ export async function POST(req: Request) {
         },
       });
 
+      const werkzeuge = aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}) }));
+      const marken = { fremdGelesen: aus.zustand.fremdGelesen, vertraulich: aus.zustand.vertraulich };
+      const schonGelaufen = () => werkzeuge.map(w => `${w.name}${w.gestapelt ? ' (Vorschlag im Stapel)' : w.ok ? '' : ' (fehlgeschlagen)'}`).join(', ');
       // Streaming: der Browser hat die Verbindung geschlossen — keine halbe Antwort im Thread. Lief noch kein Werkzeug, geht auch die Frage
-      // wieder heraus (der Zug hat nicht stattgefunden; das Feld im Browser behält den Text).
+      // wieder heraus (der Zug hat nicht stattgefunden; das Feld im Browser behält den Text). Lief schon eines, sagt ein Hinweis im Thread,
+      // was gewirkt hat (Härtetest 09.10. — vorher stand die Frage dann unbeantwortet da und sperrte den Thread).
       if (strom?.signal.aborted) {
-        if (zug && aus.werkzeugAufrufe === 0) await zugZuruecknehmenFuer(person, zug.faden.id, zug.nachrichtId).catch(() => false);
-        return { status: 499, body: { reply: '', abgebrochen: true } };
+        if (zug && aus.werkzeugAufrufe === 0) await zuruecknehmen();
+        else if (zug) await zoeHinweisAnhaengen(person, zug.faden.id, `Abgebrochen, bevor die Antwort fertig war — schon ausgeführt: ${schonGelaufen() || 'nichts'}.`, { ...marken, werkzeuge }).catch(() => false);
+        return { status: 499, body: { ok: false, reply: '', abgebrochen: true } };
       }
-      if (aus.status === 'fehler' && aus.modellFehler) {
-        const r = aus.modellFehler;
-        return {
-          status: 200,
-          body: { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300), ...(zug ? { fadenId: zug.faden.id } : {}) },
-        };
+      // Gescheitert (Modell, Datenschutz-Sperre, Guthaben, Zeitgrenze): EIN verständlicher Satz (lib/anthropic.ts `modellFehlerText`), nie Technik.
+      if (aus.status === 'fehler' || aus.status === 'abgebrochen') {
+        const satz = aus.grund ?? modellFehlerText(aus.modellFehler);
+        const roh = aus.modellFehler?.error?.slice(0, 300) ?? satz;
+        // Nichts gewirkt, nichts gesagt: der Zug hat nicht stattgefunden — `ok: false`, die Oberfläche lässt die Nachricht im Feld stehen.
+        if (!aus.werkzeugAufrufe && !aus.text) {
+          const bleibt = await zuruecknehmen();
+          return { status: 200, body: { ok: false, reply: satz, fehler: satz, error: roh, ...(zug && bleibt ? { fadenId: zug.faden.id } : {}) } };
+        }
+        // Es hat schon etwas gewirkt (Werkzeuge) bzw. ZOE hatte angefangen: die Antwort hält fest, was passiert ist — nie still.
+        const reply = [aus.text, `⚠️ ${satz}${werkzeuge.length ? ` Schon ausgeführt: ${schonGelaufen()}.` : ''}`].filter(Boolean).join('\n\n');
+        if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken });
+        return { status: 200, body: { reply, fehler: satz, error: roh, ran: aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok })), stapelOffen: await offeneAnzahl().catch(() => 0), ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
       }
       const ran = aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok }));
       // create_task legt seit 07.09. direkt an (freie Hand laut Kompass) — es gibt deshalb keinen Bestätigungsknopf mehr.
@@ -348,21 +380,29 @@ export async function POST(req: Request) {
         })
         .filter(Boolean);
 
-      const fallback = handoffs.length ? 'Ich habe etwas für dich vorbereitet:' : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
+      const fallback = handoffs.length ? 'Ich habe etwas für dich vorbereitet:'
+        : werkzeuge.length ? `Erledigt: ${schonGelaufen()} — eine Zusammenfassung habe ich nicht mehr geschrieben; frag nach, wenn du Details willst.`
+        : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
       const reply = aus.text || fallback;
       // ZOE-Thread: Antwort anhängen, Marken des Zugs festhalten (nur ODER — einmal fremd gelesen, bleibt das Gespräch es).
-      if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge: aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}) })), fremdGelesen: aus.zustand.fremdGelesen, vertraulich: aus.zustand.vertraulich });
+      if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken });
       const stapelOffen = await offeneAnzahl().catch(() => 0);
       // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
       return { status: 200, body: { reply, handoffs, ran, stapelOffen, ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { status: 200, body: { reply: 'Ich konnte Anthropic nicht erreichen (offline?). Versuch es gleich nochmal.', error: msg, ...(zug ? { fadenId: zug.faden.id } : {}) } };
+      // Interner Fehler (nicht das Modell): verständlich sagen; lief noch nichts, geht die Frage wieder heraus (Härtetest 09.10.).
+      console.warn('[kimmi] Zug gescheitert:', err instanceof Error ? err.message.slice(0, 160) : 'unbekannt');
+      const satz = 'Bei mir ist intern etwas schiefgegangen — bitte noch einmal versuchen. Nichts gespeichert.';
+      const bleibt = await zuruecknehmen().catch(() => false);
+      return { status: 200, body: { ok: false, reply: satz, fehler: satz, error: err instanceof Error ? err.message.slice(0, 300) : String(err), ...(zug && bleibt ? { fadenId: zug.faden.id } : {}) } };
     }
   };
 
+  // Einmal je `anfrageId` (Härtetest 09.10.): gemerkt wird nur ein gelungener Zug — ein gescheiterter (`ok: false`) darf neu laufen.
+  const arbeit = (strom?: StromArbeit) => einmalig('zoe-zug', payload.anfrageId, () => zugAusfuehren(strom), undefined, { merken: r => r.status === 200 && r.body.ok !== false });
+
   // Streaming (09.10., „wie Claude“): nur, wenn der Browser `Accept: text/event-stream` schickt — sonst JSON wie bisher.
-  if (willStrom(req)) return sseAntwort(req, zugAusfuehren);
-  const ergebnis = await zugAusfuehren();
+  if (willStrom(req)) return sseAntwort(req, arbeit);
+  const ergebnis = await arbeit();
   return NextResponse.json(ergebnis.body, { status: ergebnis.status });
 }

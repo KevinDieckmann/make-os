@@ -21,7 +21,7 @@ import { Chip, Knopf, Leer, SymbolKnopf, Wahl, eingabe, Eigenschaft, Schalter } 
 import { KuerzelKugel, ZoeStandbild, headFarbe } from './Avatar';
 import { bewerten, ladeFaden, stapelEntscheiden, type StapelAntwort } from './daten';
 import {
-  absenderVon, agentAusSchluessel, delegationTeile, euro, FADEN_STATUS_NAME, risikoVon, RISIKO_NAME, zeitKurz,
+  absenderVon, agentAusSchluessel, delegationTeile, euroAusUsd, FADEN_STATUS_NAME, risikoVon, RISIKO_NAME, zeitKurz,
   type Ansprechbar, type Risiko,
 } from './regeln';
 import { FELD_ZEILEN, KUGEL_GROESSE, NACHRICHT_MAX } from './masse';
@@ -180,6 +180,7 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
   unten?: ReactNode;
 }) {
   const { agenten, jetzt } = useAgenten();
+  const kurs = agenten.zustand === 'da' ? agenten.daten.kurs : undefined;
   const heads: HeadKarte[] = agenten.zustand === 'da' ? agenten.daten.heads : [];
   const stimme = useStimme(() => { /* hier wird nur vorgelesen */ });
   if (!nachrichten.length) return <div style={{ display: 'grid', gap: ABSTAND.m }}>{leer}{unten}</div>;
@@ -205,7 +206,7 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
           <li key={n.id} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: ABSTAND.m, alignItems: 'start' }}>
             {ab?.art === 'zoe' ? <ZoeStandbild groesse={KUGEL_GROESSE.klein} /> : <KuerzelKugel name={ab?.name ?? '?'} farbe={farbe} bereich={ab?.bereich} groesse={KUGEL_GROESSE.klein} />}
             <div style={{ display: 'grid', gap: ABSTAND.s, minWidth: 0, maxWidth: NACHRICHT_MAX }}>
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}><b style={{ color: C.inkDim }}>{ab?.name ?? 'Agent'}</b> · {zeitKurz(n.zeit, jetzt)}{n.kosten ? ` · ${euro(n.kosten.cent)}` : ''}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}><b style={{ color: C.inkDim }}>{ab?.name ?? 'Agent'}</b> · {zeitKurz(n.zeit, jetzt)}{n.kosten ? ` · ${euroAusUsd(n.kosten.cent, kurs)}` : ''}</span>
               <div style={{ fontSize: TYP.body, lineHeight: 1.55, color: C.ink, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.text}</div>
               {!!n.werkzeuge?.length && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: ABSTAND.xs }} aria-label="Benutzte Werkzeuge">

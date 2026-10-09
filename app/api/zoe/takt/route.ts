@@ -78,6 +78,9 @@ export async function POST(req: Request) {
   // ZOE auf WhatsApp (08.10.): liegen gebliebene Nachrichten an ZOE verarbeiten, Sprachnachrichten nach 30 Tagen löschen — ohne Einrichtung nichts.
   void zoeWhatsappJobsImTakt().catch(() => {});
   void businessTagesstand();
+  // Agenten (Härtetest 09.10.): verwaiste Läufe („läuft“ ohne Prozess nach einem Neustart, „wartet“ auf einen aufgegebenen Auftrag) enden
+  // sichtbar mit „fehler“ und einer Glocke — nie „läuft“ für immer. Nie blockierend.
+  void import('@/lib/agenten/delegation').then(m => m.verwaisteLaeufeAufraeumen()).catch(() => {});
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });
   const { angelegt, schonDa } = await reihe(dran.map(f => f.auftrag));

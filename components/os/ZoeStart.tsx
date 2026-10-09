@@ -33,6 +33,7 @@ import { fuerStimme, ohneMarkdown } from '@/lib/make-one/zoe-verlauf';
 import { zustandVon, inWorte, wortVerzug, vorschlaege, tagesWort } from '@/lib/make-one/empfang';
 import { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
 import { postMitStrom } from '@/lib/http/strom-client';
+import { zufallsUuid } from '@/lib/kennung';
 
 /** Ein Zug im Empfang — `ich` = die Person, mit der ZOE spricht (neutral, Paket 4a). `gestreamt` = stand schon beim Entstehen da
  *  (09.10.) — dann kommt er nicht noch einmal Wort für Wort an. */
@@ -174,19 +175,23 @@ export function ZoeStart() {
     let gezeigt = false;
     try {
       // Mit Strom (09.10.): der Text erscheint, während er entsteht; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON).
-      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: fadenRef.current || 'neu' }, e => {
+      // `anfrageId` (Härtetest 09.10.): der Rückfall auf JSON nach einem Netzfehler lässt den Zug auf dem Server nie zweimal laufen.
+      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: fadenRef.current || 'neu', anfrageId: zufallsUuid() }, e => {
         if (e.art === 'text') gezeigt = true;
         setEntsteht(s => entstehendNach(s, e));
       });
       if (r.netz) throw new Error('netz');
       // Abgerissen: der Server hat nichts Halbes gespeichert — kein stilles zweites Senden (Kosten), nur ein ruhiger Satz.
-      const d = (r.body ?? {}) as { reply?: string; fadenId?: unknown };
+      const d = (r.body ?? {}) as { reply?: string; fadenId?: unknown; ok?: unknown };
       if (typeof d.fadenId === 'string' && d.fadenId) fadenRef.current = d.fadenId;
+      // Der Zug hat nicht stattgefunden (`ok: false`): der Satz erscheint, die Frage kommt zurück ins Feld (nie verloren).
+      if (d.ok === false) setEingabe(e => e || q);
       const antwort = r.unterbrochen ? 'Die Verbindung ist abgerissen — frag mich bitte noch einmal.' : d.reply ?? 'Dazu habe ich gerade keine Antwort.';
       setZuege(z => [...z, { wer: 'zoe', text: antwort, ...(gezeigt && !r.unterbrochen ? { gestreamt: true } : {}) }]);
       stimme.lies(fuerStimme(antwort));
     } catch {
       setZuege(z => [...z, { wer: 'zoe', text: 'Ich bin gerade nicht erreichbar.' }]);
+      setEingabe(e => e || q);
     }
     setEntsteht(ENTSTEHEND_LEER);
     setDenkt(false);

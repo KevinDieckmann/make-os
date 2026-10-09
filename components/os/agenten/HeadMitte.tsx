@@ -152,7 +152,7 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
         </div>
       )}
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel} leer={leer} fadenId={fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer ? fa.faden.id : undefined}
-        onAlsSkill={(n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech' } })}
+        onAlsSkill={(n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(fa ? { ausFaden: fa.faden.id } : {}) } })}
         unten={laeuft ? <Schreibt name={k.kurz} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={`Nachricht an ${k.kurz} … (@Mitarbeiter beauftragt)`} ansprechbar={ansprechbar} onSenden={senden} laeuft={laeuft}
         aus={!!k.gesperrt && k.gesperrt.grund !== 'business-frei'} ausText={k.gesperrt?.text}

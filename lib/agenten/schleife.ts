@@ -18,11 +18,14 @@
 //     „vertraulich“ (Web-Agenten danach nur als Vorschlag). Wer den Zustand speichert (Thread), entscheidet der Aufrufer.
 //   • Jede Wirkung läuft im Handler über `fuehreAus` (lib/zoe/ausfuehren.ts) — die Schleife selbst wirkt nie.
 //   • Protokoll nur Metadaten (Runden, Aufrufe, Token, Cent, Dauer) — nie Inhalte.
+//   • Härtetest (09.10., tests/agenten-haertetest.test.ts): jeder Modellfehler wird EIN Satz (`modellFehlerText`); ein Werkzeug, das wirft,
+//     beendet nie das Gespräch; gleiche Aufrufe einer Runde laufen einmal; Ergebnisse über `ERGEBNIS_ZEICHEN_MAX` sichtbar gekürzt;
+//     abgeschnitten/abgelehnt steht sichtbar unter dem Text; Kostengrenze schon nach dem Modell-Aufruf; kein neues Werkzeug kurz vor der Zeitgrenze.
 //   • Streaming (09.10.): mit `ereignis` läuft jede Runde über `askStream` (dieselbe Schranke wie `askText`) — Text-Stücke und
 //     Werkzeug-Stände (nur Namen) gehen an den Aufrufer; Regeln, Grenzen, Kapselung und Ergebnis bleiben genau dieselben. `signal`
 //     (Browser weg) beendet den Lauf mit `abgebrochen` (`ABBRUCH_BROWSER`) — der Aufrufer speichert dann keine halbe Antwort.
 
-import { askStream, askText, fremd, kiGesperrt, kiSperrText, type AskResult } from '@/lib/anthropic';
+import { askStream, askText, fremd, MODEL, modellFehlerText, type AskResult } from '@/lib/anthropic';
 import type { StromEreignis, WerkzeugStand } from '@/lib/http/sse';
 import { kosten } from '@/lib/zoe/verbrauch';
 import { SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
@@ -74,8 +77,11 @@ export interface SchleifenEingabe {
   letzteRundeOhneWerkzeuge?: boolean;
   /** Aufrufe einer Runde nebeneinander (ZOE) statt nacheinander (Heads). */
   parallel?: boolean;
-  /** Derselbe Aufruf (Name + Eingabe) läuft je Lauf nur einmal (Heads). */
-  doppeltErkennen?: boolean;
+  /**
+   * Derselbe Aufruf (Name + Eingabe) läuft je Lauf nur einmal (Heads: alle; ZOE: alles außer reinem Lesen — Härtetest 09.10., sonst legte ein
+   * Modell, das in Runde 2 denselben `create_task` noch einmal ruft, die Aufgabe doppelt an). Innerhalb EINER Runde gilt es immer.
+   */
+  doppeltErkennen?: boolean | ((name: string) => boolean);
   /** Höchstens so viele Werkzeug-Aufrufe je Lauf (darüber „Budget erschöpft“, nichts ausgeführt). */
   werkzeugBudget?: number;
   /** Nur weitermachen, wenn mindestens ein Aufruf einer Runde hiervon erfasst ist (ZOE: Register-Werkzeuge und run_agent). */
@@ -151,10 +157,30 @@ export function zeigeName(u: Pick<Aufruf, 'name' | 'input'>): string {
   return u.name === 'run_agent' && typeof agent === 'string' && /^[a-z0-9_-]{1,40}$/i.test(agent) ? agent : u.name.slice(0, 80);
 }
 
-/** Das Ergebnis fürs Modell: gekapselt, wenn es Text Dritter trägt (außer der Leser kapselt selbst). */
-export function inhaltFuerModell(name: string, e: AufrufErgebnis): string {
-  return e.quelle && !SELBST_GEKAPSELT.has(name) ? fremd(e.quelle, e.inhalt) : e.inhalt;
+/**
+ * Höchstens so viele Zeichen gehen aus EINEM Werkzeug-Ergebnis an das Modell (Härtetest 09.10.) — die Leser selbst teilen schon bei 30.000
+ * (`ZOE_ZEICHEN`, „Teil x von y“); das hier ist das Netz darunter, damit kein Ergebnis den Kontext sprengt („prompt is too long“). Nie still:
+ * gekürzt wird sichtbar mit „Teil 1 von n“, das Modell sagt es der Person bzw. fragt gezielter.
+ */
+export const ERGEBNIS_ZEICHEN_MAX = 40_000;
+export function ergebnisBegrenzt(inhalt: string, max = ERGEBNIS_ZEICHEN_MAX): string {
+  if (inhalt.length <= max) return inhalt;
+  const teile = Math.ceil(inhalt.length / max);
+  return `${inhalt.slice(0, max)}\n\n[GEKÜRZT — Teil 1 von ${teile}: dieses Ergebnis hat ${inhalt.length.toLocaleString('de-DE')} Zeichen, gezeigt sind die ersten ${max.toLocaleString('de-DE')}. Sag der Person, dass nicht alles zu sehen war, oder frag gezielter.]`;
 }
+
+/** Das Ergebnis fürs Modell: gekapselt, wenn es Text Dritter trägt (außer der Leser kapselt selbst); über der Grenze sichtbar gekürzt. */
+export function inhaltFuerModell(name: string, e: AufrufErgebnis): string {
+  const inhalt = ergebnisBegrenzt(e.inhalt ?? '');
+  return e.quelle && !SELBST_GEKAPSELT.has(name) ? fremd(e.quelle, inhalt) : inhalt;
+}
+
+/** Ein Werkzeug, das wirft, beendet nie das ganze Gespräch — das Modell bekommt einen klaren Fehler und arbeitet weiter (Härtetest 09.10.). */
+export const WERKZEUG_FEHLER = (name: string) => `Fehlgeschlagen: das Werkzeug ${name.slice(0, 60)} ist mit einem internen Fehler abgebrochen. Nichts weiter ausgeführt — sag es der Person offen und rate nicht.`;
+
+/** Hinweis an der Antwort, wenn sie an der Längengrenze bzw. mit einer Ablehnung des Modells endete — nie still abgeschnitten. */
+export const HINWEIS_ABGESCHNITTEN = '_(Antwort an der Längengrenze abgeschnitten — frag nach dem Rest. Ein begonnener Werkzeug-Aufruf wurde nicht ausgeführt.)_';
+export const HINWEIS_ABGELEHNT = '_(Das Modell hat an dieser Stelle abgelehnt weiterzuschreiben.)_';
 
 /** Den Zustand nach einem Ergebnis fortschreiben (die gemeinsame Regel für „fremd gelesen“ und „vertraulich“). */
 export function zustandNach(z: SchleifenZustand, e: AufrufErgebnis): void {
@@ -176,7 +202,10 @@ export async function schleife(e: SchleifenEingabe): Promise<SchleifenAusgang> {
   const schritte: LaufSchritt[] = [];
   const blocks: Block[] = [];
   const frueher = new Map<string, string>();
-  const modell = e.ask.model ?? process.env.ANTHROPIC_MODEL ?? 'standard';
+  // Ohne eigenes Modell rechnet die Schleife mit dem Modell, das askText wirklich ruft (Härtetest 09.10.: vorher „standard“ → als
+  // unbekanntes Modell mit dem teuersten Preis gerechnet — ZOE-Züge erschienen zu teuer).
+  const modell = e.ask.model ?? MODEL;
+  const doppelt = (name: string): boolean => (typeof e.doppeltErkennen === 'function' ? e.doppeltErkennen(name) : !!e.doppeltErkennen);
   let cent = 0, runden = 0, werkzeugAufrufe = 0, still = 0;
   let budget = e.werkzeugBudget ?? Number.POSITIVE_INFINITY;
   let text = '', ki = false;
@@ -214,20 +243,29 @@ export async function schleife(e: SchleifenEingabe): Promise<SchleifenAusgang> {
     runden++;
     if (r.usage) {
       token.ein += r.usage.ein; token.aus += r.usage.aus; token.cache_lesen += r.usage.cacheLesen; token.cache_schreiben += r.usage.cacheSchreiben;
-      cent += kosten(e.ask.model ?? modell, r.usage.ein, r.usage.aus, r.usage.cacheLesen, r.usage.cacheSchreiben);
+      // Vertex EU +10 % (lib/ki/kosten.ts `AUFSCHLAG`) — derselbe Preis, den `ki-verbrauch` bucht.
+      cent += kosten(modell, r.usage.ein, r.usage.aus, r.usage.cacheLesen, r.usage.cacheSchreiben, r.anbieter && r.anbieter !== 'anthropic' ? r.anbieter : undefined);
     }
     if (browserWeg()) { status = 'abgebrochen'; grund = ABBRUCH_BROWSER; break; }
     if (!r.ok) {
       status = 'fehler'; modellFehler = r;
-      grund = kiGesperrt(r) ? kiSperrText(r) : r.error === 'guthaben-leer' ? 'KI-Guthaben ist leer' : `Modell nicht erreichbar (${r.status || 'offline'})`;
+      // EIN verständlicher Satz für jeden Fehler (lib/anthropic.ts `modellFehlerText`) — Datenschutz-Sperre, Guthaben, Schlüssel, überlastet …
+      grund = modellFehlerText(r);
       break;
     }
     const content: Block[] = Array.isArray((r.raw as { content?: Block[] })?.content) ? (r.raw as { content: Block[] }).content : [];
     blocks.push(...content);
-    if (r.text) { text = [text, r.text].filter(Boolean).join('\n\n'); ki = true; }
-    const uses: Aufruf[] = content.filter(b => b.type === 'tool_use').map(b => ({ id: b.id ?? '', name: b.name ?? '', input: b.input ?? {} }));
+    // Abgeschnitten bzw. abgelehnt (Härtetest 09.10.): die Antwort sagt es sichtbar — ein begonnener Werkzeug-Aufruf läuft NIE (unten: kein `tool_use`).
+    const hinweis = r.stopReason === 'max_tokens' ? HINWEIS_ABGESCHNITTEN : r.stopReason === 'refusal' ? HINWEIS_ABGELEHNT : '';
+    const rundenText = [r.text, hinweis].filter(Boolean).join('\n\n');
+    if (hinweis && e.ereignis) { melde({ art: 'text', text: `${gezeigt ? '\n\n' : ''}${hinweis}` }); gezeigt = true; }
+    if (rundenText) { text = [text, rundenText].filter(Boolean).join('\n\n'); ki = ki || !!r.text; }
+    const uses: Aufruf[] = content.filter(b => b.type === 'tool_use').map(b => ({ id: b.id ?? '', name: b.name ?? '', input: b.input && typeof b.input === 'object' && !Array.isArray(b.input) ? b.input : {} }));
     const weiter = e.weiterBei ? uses.some(u => e.weiterBei!(u.name)) : uses.length > 0;
     if (!weiter || r.stopReason !== 'tool_use' || (e.letzteRundeOhneWerkzeuge && !mitWerkzeugen)) break;
+    // Kostengrenze schon NACH dem Modell-Aufruf (Härtetest 09.10.): ist sie mit dieser Runde erreicht, laufen ihre Werkzeuge nicht mehr
+    // (Bilder, Fach-Agenten kosten selbst) — vorher prüfte die Schleife erst vor der nächsten Runde.
+    if (e.kostenGrenzeCent && cent >= e.kostenGrenzeCent) { status = 'abgebrochen'; grund = 'Kostengrenze des Laufs erreicht'; break; }
     messages.push({ role: 'assistant', content });
 
     const plan = e.vorRunde ? await e.vorRunde(uses, z) : { zurueck: new Set<string>() as ReadonlySet<string> };
@@ -235,11 +273,14 @@ export async function schleife(e: SchleifenEingabe): Promise<SchleifenAusgang> {
     let fortschritt = false;
     let wartet: string | undefined;
 
-    /** Was VOR der Ausführung feststeht (Plan, Wiederholung, Budget) — sonst null = ausführen. */
+    const schluessel = (u: Aufruf) => `${u.name}:${stabil(u.input)}`;
+    /** Was VOR der Ausführung feststeht (Plan, Wiederholung, Budget, Zeitgrenze) — sonst null = ausführen. */
     const vorab = (u: Aufruf): { inhalt: string; gestapelt?: boolean } | null => {
       if (plan.zurueck.has(u.id)) return { inhalt: plan.text ?? 'Wartet auf die Plan-Freigabe per Klick.', gestapelt: true };
-      if (e.doppeltErkennen) { const s = `${u.name}:${stabil(u.input)}`; if (frueher.has(s)) return { inhalt: `(Gleicher Aufruf wie vorhin — dieselbe Antwort.)\n${frueher.get(s)}` }; }
+      if (doppelt(u.name)) { const s = schluessel(u); if (frueher.has(s)) return { inhalt: `(Gleicher Aufruf wie vorhin — dieselbe Antwort.)\n${frueher.get(s)}` }; }
       if (budget <= 0) return { inhalt: `Nicht ausgeführt: Werkzeug-Budget dieses Laufs erschöpft (${e.werkzeugBudget}).` };
+      // Kein neues Werkzeug mehr kurz vor der Zeitgrenze (Härtetest 09.10.) — der Lauf endet sonst über seinen 5 Minuten.
+      if (e.deadline !== undefined && e.deadline - jetzt() <= 5_000) return { inhalt: 'Nicht ausgeführt: Zeitgrenze des Laufs erreicht.' };
       return null;
     };
     const verbuchen = (u: Aufruf, erg: AufrufErgebnis): string => {
@@ -248,17 +289,33 @@ export async function schleife(e: SchleifenEingabe): Promise<SchleifenAusgang> {
       if (erg.ok && (erg.fortschritt ?? true)) fortschritt = true;
       if (erg.wartet) wartet = erg.wartet;
       const inhalt = inhaltFuerModell(u.name, erg);
-      if (e.doppeltErkennen) frueher.set(`${u.name}:${stabil(u.input)}`, inhalt);
+      if (doppelt(u.name)) frueher.set(schluessel(u), inhalt);
       return inhalt;
     };
 
-    /** Ein Aufruf mit Stand für die Anzeige (läuft → fertig/Fehler/Vorschlag) — die Wirkung bleibt allein beim Handler. */
+    /** Ein Aufruf mit Stand für die Anzeige (läuft → fertig/Fehler/Vorschlag) — die Wirkung bleibt allein beim Handler. Wirft nie. */
     const ausfuehren = async (u: Aufruf): Promise<AufrufErgebnis> => {
       werkzeugStand(u, 'laeuft');
-      const erg = await e.ausfuehren(u, z);
+      let erg: AufrufErgebnis;
+      try { erg = await e.ausfuehren(u, z); }
+      catch (x) {
+        // Härtetest 09.10.: vorher riss eine Ausnahme im Werkzeug das ganze Gespräch mit („Anthropic nicht erreichbar“, Frage verwaist im Thread).
+        console.warn(`[schleife] Werkzeug ${u.name.slice(0, 60)} ist abgebrochen:`, x instanceof Error ? x.message.slice(0, 160) : 'unbekannt');
+        erg = { inhalt: WERKZEUG_FEHLER(u.name), ok: false, fortschritt: false };
+      }
       werkzeugStand(u, erg.gestapelt ? 'vorgeschlagen' : erg.ok ? 'fertig' : 'fehler');
       return erg;
     };
+    /** Zwei gleiche Aufrufe in EINER Runde laufen nur einmal (Härtetest 09.10. — sonst zwei Aufgaben, zwei Vorschläge, doppelte Kosten). */
+    const gleichInRunde = new Map<string, string>();
+    const doppeltInRunde = (u: Aufruf): string | null => {
+      const s = schluessel(u);
+      const erster = gleichInRunde.get(s);
+      if (erster !== undefined) return erster;
+      gleichInRunde.set(s, u.id);
+      return null;
+    };
+    const GLEICH_IN_RUNDE = '(Gleicher Aufruf wie vorhin — dieselbe Antwort.)\n';
 
     const ergebnisse: unknown[] = [];
     // Browser weg: kein neues Werkzeug mehr (was schon lief, ist über `fuehreAus` vollständig gewirkt oder gar nicht).
@@ -268,21 +325,32 @@ export async function schleife(e: SchleifenEingabe): Promise<SchleifenAusgang> {
       const geplant = uses.map(u => {
         const v = vorab(u);
         if (v) { if (v.gestapelt) werkzeugStand(u, 'vorgeschlagen'); return { u, v }; }
+        const erster = doppeltInRunde(u);
+        if (erster) return { u, wie: erster };
         budget--; werkzeugAufrufe++;
         return { u, p: ausfuehren(u) };
       });
       const fertig = await Promise.all(geplant.map(g => ('p' in g ? g.p! : Promise.resolve(null))));
+      const inhaltJe = new Map<string, string>();
       geplant.forEach((g, i) => {
         if ('v' in g && g.v) { if (g.v.gestapelt) aufrufe.push({ name: g.u.name, ok: true, gestapelt: true }); ergebnisse.push({ type: 'tool_result', tool_use_id: g.u.id, content: g.v.inhalt }); return; }
-        ergebnisse.push({ type: 'tool_result', tool_use_id: g.u.id, content: verbuchen(g.u, fertig[i]!) });
+        if ('wie' in g) { ergebnisse.push({ type: 'tool_result', tool_use_id: g.u.id, content: `${GLEICH_IN_RUNDE}${inhaltJe.get(g.wie!) ?? ''}` }); return; }
+        const inhalt = verbuchen(g.u, fertig[i]!);
+        inhaltJe.set(g.u.id, inhalt);
+        ergebnisse.push({ type: 'tool_result', tool_use_id: g.u.id, content: inhalt });
       });
     } else {
+      const inhaltJe = new Map<string, string>();
       for (const u of uses) {
         if (browserWeg()) { ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: 'Nicht ausgeführt: abgebrochen.' }); continue; }
         const v = vorab(u);
         if (v) { if (v.gestapelt) { aufrufe.push({ name: u.name, ok: true, gestapelt: true }); werkzeugStand(u, 'vorgeschlagen'); } ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: v.inhalt }); continue; }
+        const erster = doppeltInRunde(u);
+        if (erster) { ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: `${GLEICH_IN_RUNDE}${inhaltJe.get(erster) ?? ''}` }); continue; }
         budget--; werkzeugAufrufe++;
-        ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: verbuchen(u, await ausfuehren(u)) });
+        const inhalt = verbuchen(u, await ausfuehren(u));
+        inhaltJe.set(u.id, inhalt);
+        ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: inhalt });
       }
     }
     schritt.ende = new Date(jetzt()).toISOString();

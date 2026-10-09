@@ -189,6 +189,20 @@ export function anhaengen(f: FadenKern, neu: NachrichtKern[], jetzt: string): { 
   return { ok: true, faden: { ...rest, nachrichten, aktualisiert: jetzt, ...(kf ? { kurzfassung: kf } : {}) } };
 }
 
+/** Länger als ein Zug je dauern darf (Schleife: höchstens 5 Minuten) — danach gilt eine unbeantwortete Nachricht als liegen geblieben. */
+export const ZUG_SPERRE_MS = 6 * 60_000;
+export const ZUG_LAEUFT = 'Die Antwort auf deine letzte Nachricht läuft noch — kurz warten, dann noch einmal senden. Nichts gespeichert.';
+/**
+ * Läuft in diesem Thread gerade ein Zug (Härtetest 09.10.)? Die letzte Nachricht ist eine unbeantwortete der Person, jünger als `ZUG_SPERRE_MS`,
+ * und kein Lauf ist seitdem zu Ende gegangen. Ein zweiter Tab bzw. Doppelklick bekommt dann 409, statt dass zwei Züge über denselben Verlauf
+ * laufen und sich die Antworten überkreuzen. Rein.
+ */
+export function zugLaeuft(f: Pick<FadenKern, 'nachrichten' | 'lauf'>, jetztMs: number): boolean {
+  const l = f.nachrichten[f.nachrichten.length - 1];
+  if (!l || l.rolle !== 'person' || jetztMs - Date.parse(l.zeit) >= ZUG_SPERRE_MS) return false;
+  return !(f.lauf?.ende && f.lauf.ende >= l.zeit);
+}
+
 /**
  * Ein abgebrochener Zug (Streaming, 09.10.: der Browser hat die Verbindung geschlossen, bevor die Antwort fertig war) — nichts Halbes
  * bleibt stehen: die Nachricht der Person geht wieder heraus, aber NUR, wenn sie noch die letzte des Threads ist (danach kam nichts, z. B.
@@ -295,6 +309,28 @@ export function offeneLaeufe(b: Pick<FadenBestandKern, 'faeden'>): number {
 export const laufWartet = (jetzt: string, auftragId?: string, kostenGrenzeCent?: number): LaufZustand => ({
   ...(auftragId ? { auftragId } : {}), status: 'wartet', schritte: [], start: jetzt, kostenCent: 0, ...(kostenGrenzeCent ? { kostenGrenzeCent } : {}),
 });
+
+/** Ab wann ein „läuft“ als liegen geblieben gilt: Laufzeit (5 Min.) + Pacht-Spielraum — danach läuft dieser Lauf nicht mehr (Härtetest 09.10.). */
+export const VERWAIST_NACH_MS = KERN_GRENZEN.laufMs + 3 * 60_000;
+export const VERWAIST_TEXT = 'Unterbrochen — der Lauf ist nicht fertig geworden (z. B. Neustart des Servers). Nichts weiter passiert; bitte neu starten.';
+
+/**
+ * Ist dieser Lauf verwaist (Härtetest 09.10.: „nie ‚läuft‘ für immer“)? Rein. Grund (Satz für den Thread) oder null:
+ *   • „läuft“ seit länger als `VERWAIST_NACH_MS` — der Prozess, der ihn trug, ist weg (Neustart, Absturz);
+ *   • „wartet“ auf einen Auftrag der Warteschlange, den der Arbeiter endgültig aufgegeben hat (`fehler` nach 3 Versuchen) bzw. der fehlt,
+ *     obwohl er eingereiht war (älter als eine Stunde). Bewusstes Warten (Business-frei, Not-Aus, Plan-Freigabe, Hilfe) zählt nie.
+ */
+export function verwaistGrund(f: Pick<FadenKern, 'lauf' | 'agent'>, auftraege: readonly { id: string; status: string; fehler?: string }[], jetztMs: number): string | null {
+  const l = f.lauf;
+  if (!l || f.agent.art === 'zoe') return null;
+  if (l.status === 'laeuft') return jetztMs - Date.parse(l.start) > VERWAIST_NACH_MS ? VERWAIST_TEXT : null;
+  // Nur ein Lauf, der nie losging (keine Schritte, kein Grund) — ein Lauf, der auf eine Hilfe-Antwort wartet, lief schon und trägt seinen Grund.
+  if (l.status !== 'wartet' || !l.auftragId || l.wartetAuf || l.schritte?.length || l.fehler) return null;
+  const a = auftraege.find(x => x.id === l.auftragId);
+  if (a?.status === 'fehler') return `Der Lauf konnte nicht gestartet werden${a.fehler ? ` (${a.fehler.slice(0, 160)})` : ''} — bitte neu starten.`;
+  if (!a && jetztMs - Date.parse(l.start) > 3_600_000) return VERWAIST_TEXT;
+  return null;
+}
 
 /** FadenStatus aus dem Lauf-Status. */
 export function statusAusLauf(l: LaufZustand['status']): FadenStatus {

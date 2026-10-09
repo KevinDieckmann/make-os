@@ -14,7 +14,7 @@ import { KuerzelKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
-import { agentAusSchluessel, dauerText, delegationTeile, euro, FADEN_STATUS_NAME, zeitKurz } from './regeln';
+import { agentAusSchluessel, dauerText, delegationTeile, euro, euroAusUsd, FADEN_STATUS_NAME, zeitKurz } from './regeln';
 import { KUGEL_GROESSE } from './masse';
 
 const SCHRITT_ZEICHEN: Readonly<Record<LaufSchritt['status'], string>> = { offen: '○', laeuft: '◐', fertig: '✓', fehler: '✕', uebersprungen: '–' };
@@ -53,7 +53,7 @@ function Auftrag({ n, k }: { n: Nachricht; k: HeadKarte | null }) {
 }
 
 function LaufKopf({ fa }: { fa: FadenAntwort }) {
-  const { laeufe, melde, bestaetigen, jetzt } = useAgenten();
+  const { laeufe, melde, bestaetigen, jetzt, agenten } = useAgenten();
   const l = fa.faden.lauf;
   if (!l) return null;
   const lauf = laeufe.zustand === 'da' ? laeufe.daten.laeufe.find(x => x.fadenId === fa.faden.id) : undefined;
@@ -74,7 +74,8 @@ function LaufKopf({ fa }: { fa: FadenAntwort }) {
         <Chip farbe={farbe}>{l.status === 'laeuft' ? 'läuft' : l.status === 'fertig' ? 'fertig' : l.status === 'fehler' ? 'Fehler' : l.status}</Chip>
         <span>Schritt {Math.min(fertig + (l.status === 'laeuft' ? 1 : 0), l.schritte.length)}/{l.schritte.length}</span>
         <span>· {dauerText(dauer)}</span>
-        <span>· {euro(l.kostenCent)}{l.kostenGrenzeCent ? ` von ${euro(l.kostenGrenzeCent)}` : ''}</span>
+        {/* Gemessen in US-Cent, die Grenze in Euro-Cent — beides als Euro (Härtetest 09.10.: vorher stand US-Cent als Euro da). */}
+        <span>· {lauf?.kosten ? euro(lauf.kosten.cent) : euroAusUsd(l.kostenCent, agenten.zustand === 'da' ? agenten.daten.kurs : undefined)}{l.kostenGrenzeCent ? ` von ${euro(l.kostenGrenzeCent)}` : ''}</span>
         <span style={{ flex: 1 }} />
         {l.status === 'laeuft' && <Knopf leise onClick={() => tu('abbrechen')}>Stopp</Knopf>}
         {(l.status === 'fehler' || l.status === 'abgebrochen') && <Knopf leise onClick={() => tu('neu-starten')}>Neu starten</Knopf>}
@@ -160,7 +161,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel}
         fadenId={fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer) ? fa.faden.id : undefined}
         leer={fa ? <Leer>Noch keine Antwort in diesem Thread.</Leer> : <Leerzustand symbol="↳" titel={`Neuer Thread mit ${name}`}>Schreib den Auftrag: Ziel, Format, Grenzen und Quellen — dann arbeitet {name} los.</Leerzustand>}
-        onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}) } }) : undefined}
+        onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}), ...(fa ? { ausFaden: fa.faden.id } : {}) } }) : undefined}
         unten={wartend ? <Schreibt name={name} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={fa ? `Nachricht an ${name} …` : `Auftrag an ${name} — Ziel, Format, Grenzen, Quellen …`} onSenden={senden} laeuft={!!wartend}
         zusatz={fa && k ? <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf> : undefined}

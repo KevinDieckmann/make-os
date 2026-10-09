@@ -25,6 +25,70 @@ Kevin: „Das muss perfekt laufen.“ Gesucht wurde, was ZWISCHEN den Paketen de
 - **Beleg lesen**: Prompt ohne Personennamen/feste Firmen (Gesellschaften zur Laufzeit), Wächter `vor-upload-datenschutz`.
 - Rückweg: nur optionale Felder (`beleg` an Buchungen, `abgeglichen`/`firmaVorher` im Lauf-Protokoll). Der alte Stand ignoriert sie.
 
+## 09.10.2026 — Agenten-Härtetest: die typischen Fehlerbilder von KI-Agenten (nur lokal — Branch `agenten-haertetest`, Basis 2fd0ebb4)
+
+Kevin 09.10. morgens: „Alle typischen Themen bei Agenten anschauen, das soll direkt laufen — das muss perfekt laufen.“ Jeder Fall läuft von Ende zu Ende
+durch die echten Routen (ZOE-Chat, Head-Chat, Mitarbeiter-Lauf, Skill-Testlauf, Takt; JSON und Strom) gegen EINE nachgebaute Messages-API mit
+Fehler-Einspeisung (`tests/fixtures/ki-fake.ts`, kein Netz). Wächter: `tests/agenten-haertetest.test.ts` (41 Fälle).
+
+**Was sich geändert hat (sichtbar)**
+- **Ein Satz statt Technik:** jeder Modellfehler hat EINEN verständlichen Satz (`modellFehlerText`, lib/anthropic.ts) — überlastet, bremst (429), Schlüssel
+  abgelehnt (401/403), zu groß („neuen Thread beginnen“), keine Verbindung, zu lange, Guthaben leer, abgelehnt, keine Antwort, Budget/Datenschutz. Vorher stand
+  „Anthropic hat abgelehnt (402). Prüf den Key/das Modell.“ da.
+- **Nichts Halbes, Eingabe bleibt:** scheitert ein Zug, ohne dass etwas gewirkt hat, geht die Frage wieder aus dem Thread und die Nachricht bleibt im Feld (ZOE:
+  `ok:false`; Head-Chat: 503/409). Hatte schon ein Werkzeug gewirkt, steht im Thread, was passiert ist („Schon ausgeführt: …“). Brach eine spätere Runde ab,
+  steht der Grund unter dem Text. Abgeschnittene Antworten sagen „abgeschnitten“, Ablehnungen „abgelehnt“.
+- **Wiederholen nur, wo es sicher ist:** 5xx/529/Netz zweimal mit Pause (Streuung), `retry-after` zählt (über 10 s: gleich der Satz), 429 ohne `retry-after`,
+  401/403/400 und Zeitüberschreitung nie; im Strom nur vor dem ersten Stück; „max_tokens im Denken“ genau EINMAL mit mehr Luft (vorher bis zu dreimal mit
+  demselben Budget). Ein hängender Antwort-Körper endet jetzt an der Zeitgrenze (vorher: für immer).
+- **Nichts doppelt:** ein Zug je Thread (zweiter Tab/Doppelklick → 409 „läuft noch“); `anfrageId` auch für ZOE (Rückfall des Browsers auf JSON lässt den Zug nie
+  zweimal laufen; ein gescheiterter Zug wird nicht gemerkt); zwei gleiche Werkzeug-Aufrufe in einer Runde laufen einmal, schreibende auch rundenübergreifend
+  (ZOE); der Arbeiter startet denselben Lauf nie zweimal (Prüfen und „läuft“ setzen in einer Sperre).
+- **Nie „läuft“ für immer:** ein interner Fehler im Lauf → „fehler“ mit Satz; der Takt räumt verwaiste Läufe auf (Neustart mitten im Lauf; Auftrag vom Arbeiter
+  aufgegeben) → „fehler“ + Glocke „Ein Agenten-Lauf wurde unterbrochen — bitte neu starten“. ZOE-Züge enden nach 5 Minuten.
+- **Werkzeuge:** eine Ausnahme im Werkzeug beendet nie das Gespräch (Fehler ans Modell); Ergebnisse über 40.000 Zeichen sichtbar gekürzt („Teil 1 von n“).
+- **Kosten:** Kostengrenze je Lauf greift schon nach dem Modell-Aufruf (die Werkzeuge dieser Runde laufen dann nicht mehr); Kosten eines Aufrufs zählen alle
+  Versuche; ZOE-Züge mit dem echten Modellpreis (vorher als „unbekanntes Modell“ mit dem teuersten); Chat und Lauf-Kopf zeigen Euro (vorher US-Cent als Euro,
+  ~16 % zu hoch). Instanz-Budget erreicht → der Takt reiht keine Agenten-Läufe mehr ein.
+- **Systemläufe sind kein Werkzeug:** ZOE bot über `run_agent`/`starte_auftraege` bisher auch Morgenlauf, Löschfristen, Agenten-Lauf `faden` usw. an — jetzt nur
+  Fach-Agenten.
+
+**Live-Test in 10 Klicks** (Agenten-Seite `/os/agenten`; Schlüssel `ANTHROPIC_API_KEY` in der Server-.env, App neu gestartet)
+1. Kopf › „Budget“ (oder ⋯ › Budget) → „Gesamt“ → **50** € → Speichern. Der Balken oben zeigt „0,00 € / 50,00 € gesamt“. (Nur der Inhaber kann setzen.)
+2. Mitte (ZOE) → „Hallo ZOE, was steht heute an?“ → der Text erscheint, während er entsteht; darunter „KI-Antwort — bitte prüfen“.
+3. ZOE → „Frag Sales, wie die Pipeline steht.“ → unter der Antwort erscheint kurz „ZOE ruft head_fragen auf …“; die Antwort nennt Sales.
+4. Links „Sales“ öffnen → im Chat „Lass die offenen Angebote von einem Mitarbeiter prüfen“ → Sales delegiert: im Thread „An Thread … gesendet ›“ (aufklappbar:
+   Ziel · Format · Grenzen · Quellen). Alternativ „+ Neu › Hintergrundaufgabe“ › jetzt.
+5. Rechte Spalte „Läuft“ (Handy: Reiter „Läuft“) → der Lauf geht von „wartet“ über „läuft“ nach „Fertig“ (der Arbeiter nimmt ihn im nächsten Takt, ≤ 1 Min.);
+   am Lauf stehen die Kosten in Euro, im Sales-Thread „◂ Bericht aus Thread …“, oben die Glocke.
+6. „+ Neu › Skill“ → Name `pipeline-blick`, Beschreibung, Anleitung, Werkzeug `pipeline`, drei Tests → Speichern → „Testlauf starten“ (bei „kostet … — bestätigen“
+   auf Starten) → „Testlauf bestanden“ bzw. Ergebnisse je Test; erst danach „Einschalten“.
+7. „+ Neu › Hintergrundaufgabe“ → wiederkehrend, täglich, Uhrzeit in 2–3 Minuten (zwischen 7 und 22 Uhr) → in „Geplant“ steht sie; zur Uhrzeit läuft sie
+   (Hintergrund-KI muss unter System › Datenschutz › KI an sein).
+8. Kosten ansehen: Balken oben (Euro, gesamt), ⋯ › Budget (je Head), an jeder Agenten-Antwort und jedem Lauf.
+9. **Not-Aus** (roter Knopf oben) → Rückfrage → „Not-Aus gesetzt — n Läufe angehalten“. Jetzt: Head-Chat sagt „Not-Aus ist gesetzt“, ZOE gibt nichts mehr an
+   Heads, Zeitpläne ruhen; mit ZOE sprechen geht weiter.
+10. Not-Aus erneut → „Not-Aus lösen?“ → gelöst. Läufe, die angehalten wurden, startet ihr im Lauf mit „Neu starten“.
+Was ihr NICHT sehen dürft: einen Lauf, der länger als ~8 Min. „läuft“ (dann räumt der Takt ihn mit Glocke auf); eine Frage ohne Antwort im Thread; einen
+Fehlertext mit „Anthropic hat abgelehnt“. Bei 80 % / 95 % des Budgets kommt je eine Glocke, bei 100 % antwortet ZOE „Das KI-Budget ist erreicht“ — ohne Kosten.
+
+**Dazu drei Funde der Nahtstellen-Prüfung** (Wächter `tests/agenten-nahtstellen-fremd.test.ts`, erst rot, dann grün):
+- **(7) Kontoauszug × Agenten-Kontext:** das Finanzbild zitiert Verwendungszweck/Gegenseite (und Lieferanten aus Belegen) — der Kontext der Finanz-Heads
+  (privat UND Business) gilt jetzt als „fremd gelesen“. Folge: kein persönlicher Merksatz aus so einem Thread, „Skill aus Thread“ ohne Agenten-Text.
+- **(8) Agenten-Werkstatt:** ein Skill/Mitarbeiter, den ein Agent in einem fremd gelesenen Thread vorschlägt bzw. den ihr mit „Als Skill speichern“ aus so
+  einem Thread anlegt, trägt `ausFremdemText` (setzt nur der Server; der Vorschlag im Stapel heißt „… (aus fremdem Text — wird gekapselt)“, im Skill-Fenster ein
+  Chip). Seine Anleitung/Rolle/Beschreibung steht im Prompt gekapselt (`fremd()`), nie mehr als „von einem Menschen geschrieben“; ein Lauf damit gilt als fremd
+  gelesen. Die Oberfläche gibt beim „Als Skill speichern“ den Thread mit (`ausFaden`), der Server entscheidet.
+- **(9) Inhaber:** keine eigene Suche `rolle === 'inhaber'` mehr in lib/agenten/{faeden-server, einstellung, zeitplan, naechstes} und lib/heads/takt.ts — alles
+  über lib/zugang/inhaber.ts (`hauptInhaber`, `kontenImHaushaltDerInhaber`, `wirksameInhaber`); mit zwei Inhabern zählt die ausdrückliche Wahl.
+
+**Rückweg:** keine Datenänderung. Neu nur optionale Felder in Antworten (`ok`/`fehler` bei ZOE-Fehlern, `kurs` in GET /api/agenten), optional
+`ausFremdemText` an Skills/Mitarbeitern (der alte Stand ignoriert es — dann stünde so ein Skill wieder ungekapselt im Prompt) und eine optionale Option
+`merken` an `einmalig`. Der alte Stand liest alles.
+
+**Offen (bewusst nicht in diesem Paket):** Business-frei-Fälle sind nicht im Härtetest (eigene Wächter in tests/agenten-p4b); ein gescheiterter Head-Chat ohne
+Werkzeug-Wirkung bucht seine (kleinen) Kosten nicht in die Leistung eines Privat-Heads (die Instanz-Kosten in `ki-verbrauch` stimmen).
+
 ## 09.10.2026 — Plattform neutral, Rest 2: die ZOE-Dateien (nur lokal — Branch `neutral-rest-2`, Basis `agenten-nacht` a2b8a5ee)
 
 Der Durchgang „neutral-rest“ durfte die ZOE-Dateien nicht anfassen (Status-Zeile „kimmi, werkzeuge.ts, register.ts, agenten.ts, heads/takt.ts,

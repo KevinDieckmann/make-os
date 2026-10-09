@@ -333,12 +333,14 @@ async function rohLesen(haushalt: string | null): Promise<AgentenEinstellung> {
 
 /** Speichernamen im Haushalt des Inhabers und welche davon volle Mitglieder sind (ohne „nur Business“). */
 export async function haushaltsPersonen(): Promise<{ alle: { id: string; name: string; voll: boolean }[]; haushalt: string | null }> {
-  const [{ ladeKonten }, { haushaltDesInhabers }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/zugang/haushalt-inhaber')]);
-  const [{ konten }, h] = await Promise.all([ladeKonten(), haushaltDesInhabers()]);
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  const alle = konten
-    .filter(k => PERSON.test(k.speicher) && (k.speicher === inhaber?.speicher || (!!h && k.haushalt === h)))
-    .sort((a, b) => (a.rolle === 'inhaber' ? -1 : b.rolle === 'inhaber' ? 1 : 0))
+  // Nahtstellen-Prüfung Punkt 9: Haushalt und Reihenfolge (wirksame Inhaber zuerst, Haupt-Inhaber vorn) aus der zentralen Regel lib/zugang/inhaber.ts.
+  const [{ ladeKonten }, { haushaltDesInhabers }, { kontenImHaushaltDerInhaber, wirksameInhaber }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/zugang/haushalt-inhaber'), import('@/lib/zugang/inhaber')]);
+  const [st, h] = await Promise.all([ladeKonten(), haushaltDesInhabers()]);
+  const vorn = wirksameInhaber(st).map(k => k.speicher);
+  const rang = (s: string) => { const i = vorn.indexOf(s); return i < 0 ? vorn.length : i; };
+  const alle = kontenImHaushaltDerInhaber(st)
+    .filter(k => PERSON.test(k.speicher))
+    .sort((a, b) => rang(a.speicher) - rang(b.speicher))
     .map(k => ({ id: k.speicher, name: (k.name || k.speicher).slice(0, 60), voll: !!k.haushalt && k.finanzRecht !== 'business' }));
   return { alle, haushalt: h };
 }
