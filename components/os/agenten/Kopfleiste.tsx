@@ -3,7 +3,7 @@
 // ─── Agenten-Seite: die Bedienteile — „Neu ▾“, Budget-Balken, Not-Aus, „⋯“ (09.10., Paket 2; Aufräumen 09.10. abends) ────────
 // Fragerunde 6: „+ Neu ▾ (Auftrag, an mehrere Heads, Hintergrundaufgabe, Mitarbeiter, Skill) · Freigaben (Zahl) · Geplant · Budget-Balken ·
 // Not-Aus · Modell & Aufwand in den Einstellungen je Head · Leitplanken unter ⋯.“
-// Aufräumen 09.10. (Kevin: „bei Claude sieht das aufgeräumter aus — gleiches Prinzip“): die Kopfleiste über der Seite entfällt. Die Teile
+// Aufräumen 09.10. (Auftrag: „bei Claude sieht das aufgeräumter aus — gleiches Prinzip“): die Kopfleiste über der Seite entfällt. Die Teile
 // wohnen jetzt dort, wo man sie braucht — und keins geht verloren:
 //   • „Neu ▾“ (jetzt mit „Thread“) oben in der Liste links; ist die Liste zu, als „+“ in der Kopfzeile des Gesprächs;
 //   • Freigaben-Zahl → „Wartet auf dich“ rechts (Sprung zur Freigaben-Seite) bzw. der Zähler in der Kopfzeile, wenn rechts zu ist;
@@ -96,7 +96,7 @@ export function BudgetBalken({ grenzeCent: vorgabe }: { grenzeCent?: number }) {
   const anteil = cent != null && grenzeCent ? Math.min(1, cent / grenzeCent) : null;
   const farbe = anteil == null ? C.aktiv : anteil >= 0.95 ? LEUCHT.kritisch : anteil >= 0.8 ? LEUCHT.achtung : LEUCHT.gut;
   return (
-    <button type="button" onClick={() => dialog({ art: 'budget' })} className="fassbar" aria-label={`Kosten diesen Monat: ${cent == null ? 'noch nicht gemessen' : euro(cent)}${grenzeCent ? ` von ${euro(grenzeCent)}` : ' — nur gemessen'}`}
+    <button type="button" onClick={() => dialog({ art: 'budget' })} className="fassbar" aria-label={`${teil && b?.gesamt === teil ? 'Kosten gesamt' : 'Kosten diesen Monat'}: ${cent == null ? 'noch nicht gemessen' : euro(cent)}${grenzeCent ? ` von ${euro(grenzeCent)}` : ' — nur gemessen'} — Budget öffnen`}
       style={{ display: 'grid', gap: ABSTAND.xs, minHeight: ZIEL.rechner, minWidth: 120, width: '100%', padding: `${ABSTAND.xs}px ${ABSTAND.m}px`, borderRadius: ECKE.eingabe, border: `1px solid ${RAND.flaeche}`, background: FLAECHE_STIL.flach.background, color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, textAlign: 'left' }}>
       <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{cent == null ? '— €' : euro(cent)}{grenzeCent ? ` / ${euro(grenzeCent)}${teil && b?.gesamt === teil ? ' gesamt' : ' im Monat'}` : ' · gemessen'}</span>
       <span aria-hidden style={{ height: 4, borderRadius: ECKE.eingabe, background: RAND.haar, overflow: 'hidden' }}>

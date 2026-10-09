@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { schluesselLaenge } from '@/lib/store/huelle.mjs';
 import { startPruefung, mangelSatz, type RiegelBild } from './start-riegel';
+import { pruefEndpunkt, pruefSatz } from '../ki/pruefendpunkt';
 
 const g = globalThis as unknown as { __makeosRiegel?: RiegelBild };
 
@@ -32,6 +33,9 @@ export function startRiegel(env: NodeJS.ProcessEnv = process.env, beenden: (code
     beenden(1);
     return b;
   }
+  // KI-Prüfendpunkt (09.10.): ob er wirkt oder ignoriert wird, steht beim Start im Log (nie die Adresse).
+  const pruef = pruefSatz(pruefEndpunkt(env));
+  if (pruef) console.warn(`[MAKE OS] ${pruef}`);
   if (b.maengel.length) console.warn(`[MAKE OS] Start-Riegel (${b.modus}): ${b.maengel.map(mangelSatz).join('; ')} — läuft trotzdem${b.modus === 'scharf' ? ' (erst „streng“ bricht ab)' : ''}.`);
   if (b.modus === 'aus') console.warn('[MAKE OS] Start-Riegel ist AUSGESCHALTET (MAKE_OS_START_RIEGEL=aus) — nur für Sandbox/Prüfbau, nie auf einer Instanz mit echten Daten.');
   return b;

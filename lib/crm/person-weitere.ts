@@ -325,7 +325,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'kalender-bezug', muster: /^kalender-bezug$/, behandlung: 'entfernen', wirkung: kalenderBezugOhne },
   { name: 'meetings', muster: /^meetings$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'zoe-verlauf', muster: /^zoe-verlauf$/, behandlung: 'tilgen', wirkung: tilgen },
-  { name: 'zoe-gedaechtnis', muster: /^zoe-gedaechtnis$/, behandlung: 'entfernen', wirkung: eintraegeRaus('fakten') },
+  // Art. 15 zählt nur, was ZOE noch weiß — vergessene Fakten (Altbestand trägt dort noch den Satz, bis zum nächsten Schreiben) nie (Nachschliff 09.10.).
+  { name: 'zoe-gedaechtnis', muster: /^zoe-gedaechtnis$/, behandlung: 'entfernen', wirkung: eintraegeRaus('fakten'), zaehlen: (cur, m) => tilgeTief({ ...cur, fakten: liste(cur, 'fakten').filter(f => !(f as Obj)?.geloeschtAm) }, m).n },
   { name: 'zoe-protokoll', muster: /^zoe-protokoll$/, behandlung: 'entfernen', wirkung: eintraegeRaus('eintraege') },
   { name: 'zoe-stapel', muster: /^zoe-stapel$/, behandlung: 'entfernen', wirkung: eintraegeRaus('vorschlaege') },
   { name: 'zoe-auftraege', muster: /^zoe-auftraege$/, behandlung: 'tilgen', wirkung: tilgen },

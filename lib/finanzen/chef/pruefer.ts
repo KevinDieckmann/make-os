@@ -133,7 +133,7 @@ export const sauber = (p: Pruefung) => !p.unbelegt.length && !p.quellenFehlen.le
 /** Die Fehlerliste für die eine Korrekturrunde — konkret, damit das Modell weiterarbeiten kann. */
 export function korrekturAuftrag(p: Pruefung): string {
   const z: string[] = [];
-  if (p.unbelegt.length) z.push(`Diese Zahlen stehen nicht in <daten> und sind keine Summe/Differenz zweier Werte: ${p.unbelegt.map(f => `„${f.text}“`).join(', ')}. Ersetze sie durch Werte aus den Daten oder lass sie weg.`);
+  if (p.unbelegt.length) z.push(`Diese Zahlen stehen nicht im Datenblock und sind keine Summe/Differenz zweier Werte: ${p.unbelegt.map(f => `„${f.text}“`).join(', ')}. Ersetze sie durch Werte aus den Daten oder lass sie weg.`);
   if (p.quellenFehlen.length) z.push(`Diese Quellen-Pfade gibt es im Datenpaket nicht: ${p.quellenFehlen.join(', ')}. Nenne existierende Pfade.`);
   if (p.betraegeUnbelegt.length) z.push(`betrag_eur ohne Beleg: ${p.betraegeUnbelegt.join('; ')}. Nur Beträge aus den Daten, sonst null.`);
   if (p.fristenUnbelegt.length) z.push(`Fristen, die nicht in den Daten stehen: ${p.fristenUnbelegt.join('; ')}. Nur Daten aus steuern.termine_60_tage oder Fälligkeiten in den Daten, sonst null.`);

@@ -3,7 +3,7 @@
 // ─── Agenten: ZOE, Heads, Mitarbeiter, Threads (09.10., Paket 2 „Oberfläche“; AGENTEN_KONZEPT.md C2 + C11) ─────
 // Auftrag 08.10. spät: „Den ganzen Agent-Bereich im Business wie im Privaten aufs nächste Level bringen … direkt und
 // systematisch mit den Agenten chatten.“
-// Aufräumen 09.10. abends (Kevin: „Bei Claude sieht das aufgeräumter und sauberer aus — ist das gleiche Prinzip“; „es reicht, wenn wir links
+// Aufräumen 09.10. abends (Auftrag: „Bei Claude sieht das aufgeräumter und sauberer aus — ist das gleiche Prinzip“; „es reicht, wenn wir links
 // und rechts beides zuklappen können, damit der Chat größer und übersichtlicher wird“; Klickrunde: „Zuklappen + aufräumen“):
 //   Breit (alles passt nebeneinander): links die Liste (Neu ▾, Suche, ZOE, Heads nur mit Namen, aufgeklappt ihre Threads) · Mitte NUR das
 //   Gespräch (eine Kopfzeile, Verlauf, Feld — höchstens `SPALTE.lese` breit und mittig) · rechts der Hintergrund (Wartet auf dich · Läuft ·
@@ -32,8 +32,8 @@ import { Hintergrund } from './Hintergrund';
 import { AgentenDialog } from './Dialoge';
 import { FELD_ID } from './GespraechKopf';
 import { AgentenKontext, felderVon, useAgenten, wartetAufDichZahl, type AgentenWert, type DialogArt, type Felder, type Form } from './kontext';
-import { ladeAgenten, ladeFaeden, ladeLaeufe, ladeStapel, useAbruf } from './daten';
-import { auswahlAus, risikoVon } from './regeln';
+import { ladeAgenten, ladeFaeden, ladeLaeufe, ladeStapel, meldeNeu, useAbruf } from './daten';
+import { auswahlAus, laufBeendet, risikoVon } from './regeln';
 import { klappTaste, lageAus, merkerLesen, merkerSchreiben, type FeldArt, type Seitenfeld } from './klappen';
 import { HANDY_LEISTE, HANDY_REITER, SPALTE, SPALTE_ABSTAND, SPALTE_EINS } from './masse';
 
@@ -207,6 +207,16 @@ export function AgentenSeite() {
     const t = setTimeout(() => setMeldung(m => (m?.nr === meldung.nr ? null : m)), 6_000);
     return () => clearTimeout(t);
   }, [meldung]);
+
+  // Ein Lauf ist fertig geworden → alles neu laden (Thread mit Bericht, Freigaben, Team) — eine Stelle statt eines Abrufs je Bereich.
+  const laufend = laeufe.stand.zustand === 'da' ? laeufe.stand.daten.laeufe.filter(l => l.status === 'wartet' || l.status === 'laeuft').map(l => l.id).sort().join(',') : null;
+  const laufendVorher = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (laufend === null) return;
+    const jetzt = laufend ? laufend.split(',') : [];
+    if (laufBeendet(laufendVorher.current, jetzt)) meldeNeu();
+    laufendVorher.current = jetzt;
+  }, [laufend]);
 
   const h = params.get('h');
   const f = params.get('f');

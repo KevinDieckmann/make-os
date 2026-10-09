@@ -300,6 +300,15 @@ describe('Blöcke ins eigene Konto (Kevin 07.10.)', () => {
     expect((await icloud('kevin', { aktion: 'blockkalender', kennung: arzt })).status).toBe(409); // Kevin ist Haupt-Person, keine eigene Wahl
   });
 
+  it('Nachschliff 09.10.: eine weitere Person mit EIGENER Verbindung (ohne festen Platz in den Einstellungen) bekommt ihren Block ins eigene Konto; ohne Verbindung klar abgelehnt', async () => {
+    const { blockAnlegen } = await import('@/lib/planung/bloecke-server');
+    await expect(blockAnlegen('lena', { date: TAG, startMin: 15 * 60, dauerMin: 30, titel: 'Fokus Lena', art: 'fokus' as never }, SYS)).rejects.toThrow(/keinen eigenen Kalender/);
+    expect((await icloud('lena', { aktion: 'verbinden', appleId: 'lena@example.invalid', passwort: 'iiii-jjjj-kkkk-llll' })).d).toMatchObject({ ok: true, haupt: false });
+    await blockAnlegen('lena', { date: TAG, startMin: 15 * 60, dauerMin: 30, titel: 'Fokus Lena', art: 'fokus' as never }, SYS);
+    expect(Object.values(lena.kalender.home.objekte).some(o => o.ics.includes('Fokus Lena'))).toBe(true);
+    expect(kev.aufrufe.some(a => a.methode === 'PUT')).toBe(false);
+  });
+
   it('ohne eigene Verbindung, für die Haupt-Person und ohne den Schalter: wie bisher der Haushalts-Kalender', async () => {
     const { terminAnlegenServer } = await import('@/lib/kalender/termin-server');
     await terminAnlegenServer({ titel: 'Kevin Block', start: `${TAG}T11:00:00`, ende: `${TAG}T12:00:00`, wer: 'kevin', art: 'block', eigenesIcloud: true, von: 'kevin' }, SYS);

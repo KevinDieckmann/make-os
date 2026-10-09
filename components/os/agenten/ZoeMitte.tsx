@@ -2,7 +2,7 @@
 
 // ─── Agenten-Seite: die Mitte ohne Auswahl — ZOE (09.10., Paket 2; Aufräumen 09.10. abends nach dem Claude-Muster) ─────────────
 // Antworten (Agenten-Bereich 1 + Fragerunde 3): Kurz-Briefing von ZOE, was seit dem letzten Besuch passiert ist, Vorschläge für heute,
-// darunter der ZOE-Chat. Aufräumen 09.10. (Kevin: „Mitte nur Gespräch“): über dem Chat steht nur die Kopfzeile. Briefing, „Seit deinem
+// darunter der ZOE-Chat. Aufräumen 09.10. (Auftrag: „Mitte nur Gespräch“): über dem Chat steht nur die Kopfzeile. Briefing, „Seit deinem
 // letzten Besuch“ (höchstens drei Zeilen) und die Vorschlag-Chips stehen NUR, solange das Gespräch leer ist — danach nur der Verlauf.
 // Was vorher als Überblick-Karte darüber stand, liegt jetzt dort, wo es hingehört:
 //   • „Wartet auf dich“ und „Die nächsten Tage“ → rechts im Hintergrund („Wartet auf dich“, „Geplant“);
@@ -20,7 +20,7 @@ import { Fortschritt, Karte, Knopf, Leer, Wahl } from '../ui';
 import { ZoeKopfKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { GespraechKopf } from './GespraechKopf';
-import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, useAbruf, zoeFragen, type Entstehend } from './daten';
+import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, meldeNeu, useAbruf, zoeFragen, type Entstehend } from './daten';
 import { sichtbareHeads, useAgenten } from './kontext';
 import { ansprache, ansprechbarFuer, vorschlaegeHeute, wartendeFaeden, zeitKurz, zoeFadenAktuell, type UeberblickZeileMitHead } from './regeln';
 import { useStimme } from '@/hooks/useStimme';
@@ -137,7 +137,7 @@ function Begruessung({ vorschlaege, senden, laeuft, zuInfo, ansprechName }: {
 
 export function ZoeMitte({ neu = false }: { /** „Neues Gespräch“ (Kopfzeile, „Neu ▾ › Thread“): beim ersten Senden entsteht ein neuer Thread. */ neu?: boolean }) {
   const w = useAgenten();
-  const { agenten, laeufe, stapel, faeden, space, melde, oeffne, form, auswahl, bestaetigen, starteNeu } = w;
+  const { agenten, laeufe, stapel, faeden, space, melde, form, auswahl, bestaetigen, starteNeu } = w;
   // Welcher ZOE-Thread: aus der Adresse (`f`), sonst der jüngste der Person — derselbe wie im ZoePanel und im Empfang. „Neues Gespräch“
   // setzt `neu`: dann entsteht beim ersten Senden ein neuer Thread.
   const [gewaehlt, setGewaehlt] = useState<{ id: string | null; neu: boolean }>({ id: null, neu });
@@ -175,7 +175,8 @@ export function ZoeMitte({ neu = false }: { /** „Neues Gespräch“ (Kopfzeile
       const r = await fadenSenden({ aktion: 'senden', agent: { art: 'head', headId: an.ziel.id }, text: an.rest, anfrageId: anfrageId() });
       setLaeuft(false);
       if (!r.ok) { melde(r.kommt ? 'Head-Chats kommen mit dem Agenten-Kern — die Nachricht ist noch nicht gesendet.' : r.text, r.kommt ? 'info' : 'kritisch'); return false; }
-      melde(`An ${an.ziel.name} gesendet — der Thread steht links unter ${an.ziel.name}.`, 'gut');
+      // Seit dem Aufräumen 09.10. stehen links unter dem Head auch seine eigenen Threads (vorher nur die der Mitarbeiter).
+      melde(`An ${an.ziel.name} gesendet — „${r.daten.faden.titel}“ steht links unter ${an.ziel.name}.`, 'gut');
       return true;
     }
     const basis = gespeichert.length;
@@ -196,15 +197,16 @@ export function ZoeMitte({ neu = false }: { /** „Neues Gespräch“ (Kopfzeile
     setAnsicht('chat'); setAusstehend(null);
     if (starteNeu) starteNeu('zoe'); else setGewaehlt({ id: null, neu: true });
   };
-  // Ein Gespräch löschen (Server: samt aller Threads darunter, nur eigene) — mit Rückfrage; danach steht der jüngste übrige Thread.
-  const loeschen = async () => {
-    if (!thread) return;
-    if (!(await bestaetigen({ titel: 'Gespräch löschen?', text: `„${thread.faden.titel}“ und alle Aufträge darin an Heads und Mitarbeiter werden gelöscht.`, ja: 'Löschen', gefahr: true }))) return;
-    const r = await fadenSenden({ aktion: 'loeschen', fadenId: thread.faden.id, stand: thread.stand });
-    if (!r.ok) { melde(r.text, 'kritisch'); return; }
+  // Gespräch löschen (Rundgang 09.10. „Agenten live“: die Route gab es, die Oberfläche nicht) — mit Rückfrage, über EINEN Weg (`fadenLoeschen`).
+  // Erst weg vom Gespräch (ein neues beginnt), dann löschen — sonst lädt die Mitte das gelöschte noch einmal.
+  const gespraechLoeschen = async () => {
+    if (!thread || thread.faden.id !== fadenId) return;
+    if (!(await bestaetigen({ titel: 'Gespräch löschen?', text: `„${thread.faden.titel}“ wird mit allen Nachrichten gelöscht — auch die Threads, die ZOE daraus an Heads gegeben hat. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    const { id, stand } = { id: thread.faden.id, stand: thread.stand };
+    setGewaehlt({ id: null, neu: true }); setAusstehend(null);
+    const r = await fadenLoeschen(id, stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
     melde('Gespräch gelöscht.', 'gut');
-    setAusstehend(null); setGewaehlt({ id: null, neu: false });
-    oeffne({}, true);
   };
   const info = ansicht === 'info';
 
@@ -217,7 +219,7 @@ export function ZoeMitte({ neu = false }: { /** „Neues Gespräch“ (Kopfzeile
         menue={[
           { label: 'Neues Gespräch', satz: 'Leer anfangen — das bisherige bleibt links unter ZOE', tun: neuesGespraech },
           { label: info ? 'Zurück zum Gespräch' : 'Info', satz: info ? undefined : 'Was passiert ist, woran gearbeitet wird, Jahresziele', tun: () => setAnsicht(info ? 'chat' : 'info') },
-          ...(thread && zuege.length ? [{ label: 'Gespräch löschen', satz: 'Mit allen Aufträgen darin', gefahr: true, tun: () => { void loeschen(); } }] : []),
+          ...(thread && thread.faden.id === fadenId && zuege.length && !laeuft ? [{ label: 'Gespräch löschen', satz: 'Mit allen Aufträgen darin an Heads und Mitarbeiter', gefahr: true, tun: () => { void gespraechLoeschen(); } }] : []),
         ]} />
 
       {info ? (

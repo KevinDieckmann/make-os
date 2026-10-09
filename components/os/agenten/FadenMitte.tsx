@@ -9,14 +9,14 @@
 
 import { useState } from 'react';
 import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
-import type { FadenAntwort, HeadKarte, LaufSchritt, Nachricht } from '@/lib/agenten/typen';
+import { laufEingereiht, type FadenAntwort, type HeadKarte, type LaufSchritt, type Nachricht } from '@/lib/agenten/typen';
 import { Chip, Eigenschaft, Hinweis, Karte, Knopf, Leer, Leerzustand } from '../ui';
 import { KuerzelKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { GespraechKopf } from './GespraechKopf';
-import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
+import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
-import { agentAusSchluessel, dauerText, delegationTeile, euro, euroAusUsd, FADEN_STATUS_NAME, zeitKurz } from './regeln';
+import { agentAusSchluessel, dauerText, delegationTeile, euro, euroAusUsd, fadenStatusName, zeitKurz } from './regeln';
 import { einSpaltig, KUGEL_GROESSE } from './masse';
 
 const SCHRITT_ZEICHEN: Readonly<Record<LaufSchritt['status'], string>> = { offen: '○', laeuft: '◐', fertig: '✓', fehler: '✕', uebersprungen: '–' };
@@ -96,7 +96,7 @@ function LaufKopf({ fa }: { fa: FadenAntwort }) {
 
 export function FadenMitte({ fadenId }: { fadenId?: string }) {
   const w = useAgenten();
-  const { entwurf, starteEntwurf, oeffne, stapel, melde, dialog, form, bestaetigen } = w;
+  const { entwurf, starteEntwurf, oeffne, stapel, melde, dialog, form } = w;
   const vorgegeben = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
   const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `faden:${fadenId}` : null, () => ladeFaden(fadenId!));
   const stand: Abruf<FadenAntwort> = vorgegeben ? { zustand: 'da', daten: vorgegeben } : geladen.stand;
@@ -137,6 +137,19 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
     return true;
   };
 
+  // Nur eigene Threads löschen (Rundgang 09.10. „Agenten live“, über EINEN Weg `fadenLoeschen`); seit dem Aufräumen unter ⋯ in der Kopfzeile.
+  const eigen = !!fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer);
+  const loeschen = async () => {
+    if (!fa) return;
+    if (!(await w.bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ (${name}) wird gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    // Erst weg vom Thread, dann löschen (sonst lädt die Ansicht den gelöschten Thread noch einmal).
+    const { id, stand, titel } = { id: fa.faden.id, stand: fa.stand, titel: fa.faden.titel };
+    oeffne(k ? { h: k.id } : {}, true);
+    const r = await fadenLoeschen(id, stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    melde(`Thread „${titel}“ gelöscht.`, 'gut');
+  };
+
   const zweiteMeinung = async () => {
     if (!fa || !k) return;
     const text = `Zweite Meinung bitte: Prüf das Ergebnis aus Thread „${fa.faden.titel}“ (${name}) kritisch — was fehlt, was stimmt nicht, was würdest du anders machen?`;
@@ -145,28 +158,17 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
     else melde(r.kommt ? 'Die zweite Meinung kommt mit dem Agenten-Kern.' : r.text, r.kommt ? 'info' : 'kritisch');
   };
 
-  const geteilt = !!(fa && w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer);
-  // Den Thread löschen (Server: samt aller Threads darunter, nur eigene; ein laufender Lauf muss erst gestoppt werden) — mit Rückfrage.
-  const loeschen = async () => {
-    if (!fa) return;
-    if (!(await bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ mit ${name} wird gelöscht.`, ja: 'Löschen', gefahr: true }))) return;
-    const r = await fadenSenden({ aktion: 'loeschen', fadenId: fa.faden.id, stand: fa.stand });
-    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
-    melde('Thread gelöscht.', 'gut');
-    if (k) oeffne({ h: k.id }, true); else oeffne({}, true);
-  };
-
   const nachrichten = [...rest, ...(wartend ? [wartend] : [])];
   return (
     <div style={{ ...einSpaltig(ABSTAND.l), alignContent: 'start' }}>
       <GespraechKopf vor={<Brotkrumen k={k} />} titel={name}
         avatar={<KuerzelKugel name={name} farbe={farbe} bereich={k?.bereich} groesse={KUGEL_GROESSE.liste} />}
         zusatz={fa ? `› „${fa.faden.titel}“` : '› Neuer Thread'}
-        chip={fa ? <Chip farbe={fa.faden.status === 'wartet' ? LEUCHT.achtung : fa.faden.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{FADEN_STATUS_NAME[fa.faden.status]}</Chip> : undefined}
+        chip={fa ? <Chip farbe={fa.faden.status === 'wartet' && !laufEingereiht(fa.faden) ? LEUCHT.achtung : fa.faden.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{fadenStatusName({ status: fa.faden.status, eingereiht: laufEingereiht(fa.faden) })}</Chip> : undefined}
         menue={[
           ...(fa && k ? [{ label: 'Zweite Meinung', satz: `${k.kurz} prüft das Ergebnis kritisch`, tun: () => { void zweiteMeinung(); } }] : []),
           ...(k ? [{ label: `Zu ${k.kurz}`, satz: 'Chat, Aktivität und Info des Heads', tun: () => oeffne({ h: k.id }) }] : []),
-          ...(fa && !geteilt ? [{ label: 'Thread löschen', satz: 'Läuft er noch, erst „Stopp“', gefahr: true, tun: () => { void loeschen(); } }] : []),
+          ...(eigen ? [{ label: 'Thread löschen', satz: 'Läuft er noch, erst „Stopp“', gefahr: true, tun: () => { void loeschen(); } }] : []),
         ]} />
       {fa?.faden.fremdGelesen && <Hinweis art="info">Dieser Thread hat fremden Text gelesen (Web, Mails, Notizen) — alles Schreibende geht ab jetzt nur als Vorschlag.</Hinweis>}
       {fa && <LaufKopf fa={fa} />}

@@ -162,7 +162,8 @@ export async function POST(req: Request) {
     const a = await antwort(r, z.haushalt);
     return { status: a.status, body: await a.json() };
   };
-  const e = b.anfrageId !== undefined ? await einmalig('gesellschaft-anlegen', b.anfrageId, lauf) : await lauf();
+  // Nachschliff 09.10.: die gemerkte Antwort nur für die Person selbst (`wer`) — eine andere Sitzung mit derselben Kennung bekommt 409 ohne Inhalt.
+  const e = b.anfrageId !== undefined ? await einmalig('gesellschaft-anlegen', b.anfrageId, lauf, undefined, { wer: z.person }) : await lauf();
   return NextResponse.json(e.body, { status: e.status });
 }
 

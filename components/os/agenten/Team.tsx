@@ -3,7 +3,7 @@
 // ─── Agenten-Seite: links die Liste — ZOE, Heads, Threads (09.10., Paket 2; Aufräumen 09.10. abends nach dem Claude-Muster) ──────
 // Fragerunde 1: „Heads sind links sozusagen die Ordner — da kann ich mit ZOE sprechen, und sie kann die Heads mit Threads erreichen.
 // Ich kann aber auch auf die Heads gehen und habe dann die Threads zu den Mitarbeitern.“
-// Aufräumen 09.10. (Kevin: „bei Claude sieht das aufgeräumter aus“): eine ruhige Liste wie in der Claude-App —
+// Aufräumen 09.10. (Auftrag: „bei Claude sieht das aufgeräumter aus“): eine ruhige Liste wie in der Claude-App —
 //   oben „Neu ▾“ und das Suchfeld (filtert Heads und Threads nach Namen), dann ZOE, dann Business/Privat (nach dem Kopf-Schalter);
 //   Heads NUR mit Namen (keine Untertitel — Design-Regel „Namen stehen allein“), ein kleiner Punkt nur bei Zustand (läuft · wartet ·
 //   Freigabe, kritisch pulsiert); aufgeklappt die Threads des Heads und seiner Mitarbeiter (nur Titel, Punkt bei läuft/wartet/Fehler),
@@ -21,7 +21,7 @@ import { KuerzelKugel, ZoeStandbild, bereichFarbe, fotoVon, headFarbe } from './
 import { felderVon, sichtbareHeads, useAgenten } from './kontext';
 import { meldeNeu } from './daten';
 import { NeuMenue } from './Kopfleiste';
-import { FADEN_STATUS_NAME } from './regeln';
+import { fadenStatusFarbe, fadenStatusName, wartendeFaeden } from './regeln';
 import { TASTE_TEXT } from './klappen';
 import { KUGEL_GROESSE, LISTE_THREADS } from './masse';
 
@@ -46,13 +46,16 @@ function ListenZeile({ aktiv, onClick, links, titel, rechts, einzug = 0, ariaLab
   );
 }
 
-const fadenPunkt = (s: FadenKurz['status']): { farbe: string; puls?: boolean } | null =>
-  s === 'laeuft' ? { farbe: C.aktiv } : s === 'wartet' ? { farbe: LEUCHT.achtung, puls: true } : s === 'fehler' ? { farbe: LEUCHT.kritisch } : null;
+/** Punkt eines Threads — ein bloß eingereihter Lauf zählt wie „läuft“ (nicht wie „wartet auf dich“, `fadenStatusFarbe`). */
+const fadenPunkt = (f: FadenKurz): { farbe: string; puls?: boolean } | null => {
+  const s = fadenStatusFarbe(f);
+  return s === 'laeuft' ? { farbe: C.aktiv } : s === 'wartet' ? { farbe: LEUCHT.achtung, puls: true } : s === 'fehler' ? { farbe: LEUCHT.kritisch } : null;
+};
 const neuesteZuerst = (a: FadenKurz, b: FadenKurz) => b.aktualisiert.localeCompare(a.aktualisiert);
 /** Zustand eines Heads als EIN Punkt: Freigabe (pulsiert) vor wartet vor läuft. */
 function headPunkt(h: HeadKarte, threads: readonly FadenKurz[]): { farbe: string; puls?: boolean; text: string } | null {
   if (h.zaehler.freigaben) return { farbe: LEUCHT.achtung, puls: true, text: `${h.zaehler.freigaben} ${h.zaehler.freigaben === 1 ? 'Freigabe' : 'Freigaben'} offen` };
-  const wartet = threads.filter(f => f.status === 'wartet').length;
+  const wartet = wartendeFaeden(threads).length;
   if (wartet) return { farbe: LEUCHT.achtung, puls: true, text: `${wartet} ${wartet === 1 ? 'Thread wartet' : 'Threads warten'} auf dich` };
   if (h.zaehler.laufend) return { farbe: C.aktiv, text: `${h.zaehler.laufend} läuft` };
   return null;
@@ -69,12 +72,12 @@ function ThreadListe({ threads, wer, aktivId, oeffnen, alle, ariaLabel }: {
   return (
     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }} aria-label={ariaLabel}>
       {zeigen.map(f => {
-        const p = fadenPunkt(f.status);
+        const p = fadenPunkt(f);
         const name = wer(f);
         return (
           <li key={f.id}>
             <ListenZeile einzug={ZIEL.rechner} aktiv={aktivId === f.id} onClick={() => oeffnen(f)} titel={f.titel}
-              ariaLabel={`Thread „${f.titel}“ öffnen — ${name}, ${FADEN_STATUS_NAME[f.status]}`} hinweis={`${name} · ${FADEN_STATUS_NAME[f.status]}`}
+              ariaLabel={`Thread „${f.titel}“ öffnen — ${name}, ${fadenStatusName(f)}`} hinweis={`${name} · ${fadenStatusName(f)}`}
               rechts={p ? <Punkt farbe={p.farbe} puls={p.puls} /> : undefined} />
           </li>
         );

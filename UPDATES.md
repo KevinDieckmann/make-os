@@ -4,6 +4,64 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten: Nachschliff (nur lokal — Branch `agenten-nachschliff`, Basis `agenten-nacht` a94d4052)
+
+Kevin 09.10.: „Das muss perfekt laufen. Denke immer einen Schritt weiter.“ Die Punkte, die „Agenten-Durchstich“ und „Sicherheit an den Nahtstellen“ als
+„nice“ liegen ließen — je mit Wächter (erst rot, eigener Commit „Wächter zuerst“): `tests/agenten-nachschliff.test.ts` (18 Fälle über die echten Routen und
+die echte Warteschlange, Modell = `tests/fixtures/ki-fake.ts`), `tests/agenten-nachschliff-kalender.test.ts` (5 Fälle, nachgebautes iCloud + Google),
+ein Fall in `tests/kalender-icloud-person.test.ts`.
+
+**Was sich sichtbar ändert**
+- **Eine Glocke je Auftrag — erst mit dem Ergebnis.** Gibt ZOE einen Auftrag an einen Head und der Head an Mitarbeiter, kam bisher schon eine Glocke
+  „Ergebnis liegt bereit“, als der Head nur delegiert hatte. Jetzt meldet der LETZTE Lauf des Auftrags (zwei Mitarbeiter → eine Glocke, wenn beide fertig
+  sind; Hilfe-Kette → eine am Ende), an die auslösende Person, und der Link führt dorthin, wo der Auftrag gegeben wurde (ZOE- bzw. Head-Thread mit dem
+  Bericht). Fehler, Abbruch und „Thread voll“ melden wie bisher sofort (Link auf den betroffenen Thread). Regel rein: `glockeNachLauf`/`laufInArbeit`/
+  `wurzelFaden` (lib/agenten/faeden.ts).
+- **Jahresziele bei Sales, Marketing, Event und dem Head of Finance.** Das Datenpaket der eingebauten Heads trägt jetzt `ziele` (Nordstern als
+  `<daten quelle="nordstern">`-Satz + Business-Jahresziele mit Fortschritt; „Was der Head sieht (Datenpaket)“ am Head zeigt es). Der Head of Finance bekommt `jahresziele`
+  (Business-Lauf nur Business, Haushalts-Lauf auch Privat) neben dem Nordstern. EINE Lesestelle `zieleFuerHead` (lib/planung/jahresziele-sicht.ts):
+  Business-Heads nie Privat, Konto „nur Business“ nie Privat, fremder Haushalt keine Ziele, ohne Ziele „keine hinterlegt“. Texte ohne Rahmen-Marken
+  (`ohneRahmenMarken`, lib/planung/nordstern.ts) — ein Nordstern mit `</daten…>` beendet den Datenblock nie mehr (vorher stand er im Head of Finance roh im
+  `<daten>`-Block).
+- **Kalender-Block von ZOE: geprüft von Ende zu Ende.** ZOE `plan_block` → Stapel (kein Schreiben in iCloud, die andere Person sieht den Vorschlag nicht)
+  → Klick → genau EIN Termin (Art fokus, beschäftigt) im Kalender der Person + `kalender-bezug` mit `von`; Doppelklick → ein Termin; Kollision → „Kollision mit
+  festem Termin …“, nichts angelegt; Google für Business verbunden → der Block bleibt trotzdem iCloud (Regel). **Gefunden und behoben:** (a) in einer
+  Business-freien Zeit sagte das Werkzeug „Nicht eingeplant …“, der Vorschlag stand aber als „freigegeben“ im Stapel (lib/zoe/ausfuehren.ts zählt das jetzt als
+  Fehlschlag); (b) `blockAnlegen` kannte nur zwei feste Speichernamen — eine weitere Person mit EIGENER iCloud-Verbindung bekam ihren Block nie ins eigene Konto.
+  Jetzt: Platz in den Kalender-Einstellungen ODER eigene Verbindung (lib/planung/bloecke-server.ts).
+- **`medien_suchen` gekapselt.** Dateinamen, Album-Titel und Notizen der gegebenen Medien stehen im `<fremde_daten quelle="medien">`-Rahmen (eigene Kopfzeile
+  nur mit Zahlen, `SELBST_GEKAPSELT`); der Lauf gilt danach als „fremd gelesen“ (`WerkzeugAntwort.quelle`).
+- **`einmalig` überall mit Person.** Rechnung (neu, stellen, storno, mahnung), Beleg übernehmen, Kontoauszug, Gesellschaft anlegen — dazu Inbox senden und
+  WhatsApp senden — geben die Person der Sitzung mit: dieselbe `anfrageId` aus einer anderen Sitzung → 409 ohne Inhalt. Wächter scannt jeden Aufruf in app/ und lib/.
+- **ZOE vergisst wirklich.** „Vergessen“ eines Fakts entfernt Thema, Satz, Herkunft und Frist — es bleiben nur Kennung, Raum, Art und Zeitpunkte als Nachweis.
+  Altbestand (vergessen, Satz noch da) wird beim nächsten Schreiben gesäubert; Art. 15 (Kontakt-Auskunft) zählt Vergessenes nie; derselbe Satz darf neu gemerkt werden.
+- **„Head an“ setzt fort.** Wartete ein Lauf NUR, weil der Head aus war (neu: Feld `wartetAuf: 'head-aus'`, Hinweis „Der Lauf geht weiter, sobald er wieder an
+  ist“), reiht das Wiedereinschalten ihn genau einmal neu ein — als seine Besitzerin (auch die Läufe der anderen Person bei Haushalts-Heads). Budget-, Not-Aus- und
+  Hilfe-Wartende bleiben unberührt; ist der Head für die Besitzerin gerade anders gesperrt, bleibt die Marke stehen. „Läuft“ zeigt den Versuch, der nur wartete,
+  nicht zusätzlich als „Fertig“.
+
+**So testet ihr (in Klicks):**
+1. ZOE: „Gib das Nachfassen der Angebote an Sales.“ → Sales gibt an „Nachfassen“ → erst wenn der Bericht da ist, leuchtet die Glocke (einmal); Klick führt in den
+   ZOE-Thread mit dem Bericht.
+2. Planung › Jahr: ein Business-Jahresziel anlegen → Markttraktion, Head of Sales öffnen → „Was der Head sieht (Datenpaket)“ → `ziele.jahresziele` nennt es; ein
+   Privat-Ziel steht dort nie.
+3. ZOE: „Plane mir morgen 10 Uhr einen Fokus-Block im Kalender ein.“ → Freigaben → Freigeben → der Block steht im Kalender; noch einmal klicken → nichts doppelt.
+4. Agenten › Event ausschalten → Hintergrundaufgabe an Event → „Läuft“: wartet, „… ausgeschaltet. Der Lauf geht weiter, sobald er wieder an ist.“ → Event wieder an
+   → der Lauf startet von selbst (≤ 1 Min.) und steht danach EINMAL unter „Fertig“.
+5. ZOE etwas merken lassen → Agenten › ZOE › Gedächtnis → vergessen → der Satz ist auch in der Datei weg (nur Kennung + Zeitpunkt).
+
+**Rückweg:** keine neuen Bestände, keine neuen Routen. Neu nur optionale Felder bzw. Werte: `wartetAuf: 'head-aus'` am Lauf (der alte Stand liest ihn als
+„wartet mit Grund“, setzt nicht fort), `ziele` im Datenpaket der Heads / `jahresziele` beim Head of Finance (nur im Prompt, nie gespeichert außer in
+`heads-replay-*`), `quelle` an Agenten-Werkzeugantworten. Vergessene Fakten verlieren ihren Text endgültig (gewollt) — der alte Stand zeigt sie ohnehin nicht.
+
+**Bewusst nicht geändert / offen**
+- Budget-wartende Läufe laufen im neuen Monat weiter nicht von selbst (Kevins Entscheidung offen, UPDATES Durchstich).
+- Kalendermodell mit festen Plätzen je Person (Plattform-Schuld): eine Person ohne Platz bekommt Blöcke nur mit EIGENER iCloud-Verbindung; der Haushalts-Kalender
+  kennt weiter nur die festen Plätze. `planBlock` verlangt weiter die Haushalts-iCloud (`icloudVerbunden`), auch wenn die Person eine eigene Verbindung hat.
+- Head of Finance: der Datenblock heißt weiter schlicht `<daten>` (ohne wechselnde Kennung wie bei Sales/Marketing/Event) — Verwendungszwecke aus Kontoauszügen
+  stehen darin roh; Vorschläge gehen ohnehin nur in die Freigabe-Liste. Kandidat für den nächsten Durchgang.
+- Kommentare mit festen Vornamen in lib/heads/lauf.ts und app/api/heads/[head]/route.ts (nur Kommentare, keine Wirkung).
+
 ## 09.10.2026 — Agenten: Sicherheit an den Nahtstellen der letzten Merges (nur lokal — Branch `agenten-sicher-naht`, Basis `agenten-nacht` 10b72dbc)
 
 Kevin 09.10.: „Das muss perfekt laufen. Denke immer einen Schritt weiter.“ Die Gegenprüfung lief auf einem früheren Stand — geprüft wurde jetzt, wo
@@ -110,6 +168,73 @@ CRM-Vorschlägen; keine neuen Bestände, keine neuen Routen. Der alte Stand lies
   schon) — „Abbrechen“ + „Neu starten“ geht. Sollen sie automatisch weiterlaufen?
 - ZOE kennt die Skills der Heads nicht beim Namen (sie gibt den Auftrag an den Head, der den Skill lädt). Sollen die Skill-Namen in ZOEs Prompt?
 - Ein Head-Lauf, der nur delegiert hat, schickt schon eine Glocke „Ergebnis liegt bereit“ (die zweite kommt mit dem Bericht des Mitarbeiters). Eine reicht?
+
+## 09.10.2026 — Agenten live durchgeklickt (Prüfmodell) (nur lokal — Branch `agenten-live`, Basis 10b72dbc)
+
+Kevin 09.10.: „Das muss perfekt laufen. Schau, dass alles verbunden ist und die Agents sauber laufen.“ Bis hierher war der Agenten-Bereich nur in Vitest
+(Fake-`fetch`) und im Browser ohne Schlüssel geprüft — niemand hatte die Oberfläche mit **antwortenden** Agenten bedient. Jetzt: eine Demo-Instanz
+(erfundene Daten) mit einem **nachgebauten Modell**, bedient im headless Chrome wie ein Mensch (Element suchen, klicken, tippen, Enter), je Schritt ein
+Bildschirmfoto, Konsole und Netz mitgeschrieben. Kein echter KI-Aufruf, kein Netz außer localhost.
+
+**Neu: KI-Prüfendpunkt + Prüfmodell**
+- `MAKE_OS_KI_PRUEFENDPUNKT=http://127.0.0.1:4599` lenkt die Messages-API (askText, askStream, askJson, askWithSearch — lib/anthropic.ts) auf ein Prüfmodell
+  um. **Nur** wenn das Ziel loopback ist (genau 127.0.0.1, localhost, [::1]; ohne Benutzer/Abfrage) **und** `MAKE_OS_DEMO=1` oder `NODE_ENV ≠ production` —
+  sonst ignoriert (Log beim Start). Mit Umlenkung reist **nie** der echte Schlüssel: fester Platzhalter. Start-Riegel „scharf“/„streng“ startet mit gesetzter
+  Variable nicht; HOI: in Produktion ohne Demo **rot**, wirksam gelb („Prüfmodell aktiv — Antworten erfunden“). Regeln rein in `lib/ki/pruefendpunkt.ts`.
+  Nicht umgelenkt (bewusst): Claude über Vertex EU, Bilder/Video/Tiefenbericht (Google Vertex), Transkription (Mistral) — eigene Adapter mit fester Host-Liste.
+- `scripts/ki-pruefmodell.mjs` (ohne Pakete, nur 127.0.0.1): beantwortet `POST /v1/messages` als JSON oder Strom (`message_start` · `content_block_*` ·
+  `message_delta` · `message_stop`, mit `usage`) — regelbasiert nach System-Text und Frage: ZOE ruft `head_fragen`/`an_head`, ein Head delegiert
+  (`an_mitarbeiter`, passender Mitarbeiter) und legt Vorschläge an (`create_task` → Stapel), Mitarbeiter lesen (`crm_suche`/`sales_lage`/`pipeline` …) und
+  legen einen Nachfass-Vorschlag mit echtem Bezug an, JSON aus Schema bzw. aus der Vorlage im Prompt („Antworte NUR als JSON: {…}“), Testlauf-Prüfer (je
+  Erwartung `true`). Fehler-Modus: `POST /_modus {"fehler":"529"|"abbruch"|"401"|"429","anzahl":n}` oder „[pruef:529]“ in der Nachricht; `GET /_lage` zeigt
+  die letzten Anfragen (nur Rolle/Art/Werkzeug, keine Inhalte).
+
+**So startet ihr das Prüfmodell lokal (Demo-Instanz, Anleitung DEMO.md)**
+1. `node scripts/ki-pruefmodell.mjs --port 4599` (Terminal offen lassen; `--tempo 15` = ms je Strom-Stück).
+2. Umgebung der Demo wie in DEMO.md, dazu `export MAKE_OS_KI_PRUEFENDPUNKT=http://127.0.0.1:4599 ANTHROPIC_API_KEY=""` (kein Schlüssel nötig) und
+   `MAKE_OS_DEMO=1`; eigener Bau-Ordner, z. B. `MAKE_OS_DIST=.next-live`, eigener Port (`next start -H 127.0.0.1 -p 3210`).
+3. Arbeiter wie im Betrieb: `MAKE_OS_URL=http://localhost:3210 node worker.mjs` (mit dem `MAKE_OS_KEY` der Demo) — sonst bleiben Läufe „eingereiht“.
+4. Im Log steht beim Start „MAKE_OS_KI_PRUEFENDPUNKT ist aktiv …“. Geplante Aufgaben brauchen die Hintergrund-KI (Einstellungen › Datenschutz › KI).
+
+**Rundgang (8 Schritte, Bilder im Scratchpad `agenten-live/bilder/`) — Funde und was behoben ist**
+1. ZOE „Was steht heute an?“ — Text entsteht im Strom, „KI-Antwort — bitte prüfen“ ✓. **Fund:** keine Kosten an ZOEs Antworten → jetzt „ZOE · 12:42 · 0,02 €“
+   (Kosten des Zugs im Thread, `zoeAntwortAnhaengen(…, kostenCent)`). **Fund:** die Antwort stand unter dem klebenden Eingabefeld, und das Feld war oben
+   durchsichtig (Text schien durch die @-Chips) → das Ende des Verlaufs rückt beim Beginn und Ende eines Zugs über das Feld (gemessen am echten Feld, auch am
+   Handy; nie beim Laden eines Threads), Feld deckend.
+2. „Frag Sales, wie die Pipeline steht“ → „ZOE ruft head_fragen auf …“, Antwort nennt Sales ✓; @Sales-Chip → eigener Sales-Thread ✓. **Fund:** die Meldung
+   „der Thread steht links unter Sales“ stimmte nicht (links stehen nur Mitarbeiter-Threads) → „„…“ steht im Chat von Sales“. **Fund:** `pipeline` meldete
+   „Offen 64560“ ohne Euro → „Offen 64.560 €“.
+3. Head Sales → „Lass die offenen Angebote von einem Mitarbeiter prüfen“ → „An „Angebote“ gesendet“ (Ziel · Format · Grenzen · Quellen), Arbeiter nimmt den Lauf
+   in Sekunden, „fertig“, Bericht, Glocke ✓. **Fund:** jeder frisch eingereihte Lauf stand als „⚑ Angebote fragt“ mit Antwortfeld unter „Wartet auf dich“
+   (Status `wartet` hieß „wartet auf dich“) → `eingereiht` (lib/agenten/typen.ts `laufEingereiht`, `FadenKurz.eingereiht`), Status „eingereiht“. **Fund:** der
+   Bericht erschien im offenen Thread erst nach Neuladen → wird ein Lauf fertig, lädt die Seite alles neu (`laufBeendet`, ≤ 30 s).
+4. Freigaben. **Fund (schwer):** die Vorschlags-Karte im Chat zeigte nur „Ein Vorschlag (create_task) liegt zur Freigabe bereit.“ ohne Freigeben/Ablehnen —
+   `fuehreAus` gab die Stapel-Kennung nicht zurück → `Lauf.vorschlagId` bis in den Thread (Heads, Mitarbeiter, ZOE). **Fund (schwer):** zwei Vorschläge hießen
+   rechts beide nur „Aufgabe anlegen“, die Rückfrage auch — im Rundgang wurde der falsche freigegeben → Zeile und Rückfrage nennen den Inhalt
+   (`vorschlagDetail`). **Fund:** Vorschau/Ergebnis „„X" (high)“, „fällig 2026-10-10“ → „„X“ (hoch)“, „fällig 10.10.2026“ (`lib/zoe/vorschau-text.ts`, alle
+   Vorlagen in register.ts/werkzeuge.ts). Freigeben → Aufgabe im Board ✓; Ablehnen mit Grund auf der Freigaben-Seite ✓ (Grund gespeichert).
+5. „+ Neu › Skill“ (anlegen, drei Tests, Testlauf bestanden, einschalten) ✓; Hintergrundaufgabe „jetzt“ ✓. **Fund:** eine geplante Aufgabe lief nie — die
+   Hintergrund-KI ist in einer neuen Instanz aus, „Geplant“ zeigte trotzdem „an“ ohne Hinweis → GET /api/agenten/laeufe liefert `hintergrundKi`, „Geplant“ und
+   das Planen-Formular warnen mit Weg zu Datenschutz › KI; eingeschaltet lief die Aufgabe zur Uhrzeit ✓. „zuletzt 2026-10-09“ → deutsch.
+6. Not-Aus setzen/lösen ✓ (Head-Chat sagt „Not-Aus ist gesetzt“), Budget 50 € gesamt (Balken „0,00 € / 50,00 € gesamt“) ✓, Daumen (bleibt nach Neuladen) ✓,
+   Vorlesen ✓, „Neuer Thread“ ✓, Gedächtnis (Merksatz anlegen/löschen) ✓, Mitarbeiter-Reiter ✓. **Fund:** „Thread löschen“ gab es nur in der Route —
+   jetzt im Head-Chat, im Mitarbeiter-Thread und als „Gespräch löschen“ bei ZOE (mit Rückfrage; erst weg vom Thread, dann löschen). **Fund:** „2 Freigaben
+   offen (2)“ → ohne doppelte Zahl. Balken-Beschriftung „gesamt“ statt „diesen Monat“, wenn die Gesamt-Grenze gilt.
+7. Zweite Person (Jonas) sieht nichts von Lenas ZOE-Gespräch, Threads, Vorschlägen, Merksatz, Hintergrundaufgabe ✓. Handy 390 px: Reiter Gespräch/Team/Läuft,
+   Head öffnen + „‹ Team“, Eingabe 16 px, kein Querscrollen ✓. **Fund:** die Plakette „Lena ist auch hier“ lag auf dem Reiter „Gespräch“ → auf dieser Seite
+   am Handy ausgeblendet.
+8. Fehler-Modus: überlastet (529) und abgerissener Strom → ein verständlicher Satz („Der KI-Anbieter ist gerade überlastet …“ / „Keine Verbindung …“), die
+   Nachricht bleibt im Feld (ZOE und Head) ✓.
+- **Nebenbei:** der Takt-Auftrag „selbstbild“ scheiterte ohne Doku-Wurzel (Server, Demo) jeden Tag dreifach und füllte Agenten › Fehler → jetzt „übersprungen“.
+
+**Tests:** `tests/ki-pruefendpunkt.test.ts` (Umlenkung nie in Produktion/zu fremden Hosts, nie echter Schlüssel, Riegel, HOI, Prüfmodell von Ende zu Ende),
+`tests/agenten-live.test.ts` (alle Funde oben). **Rückweg:** keine Datenänderung; nur optionale Felder (`vorschlagId` an Werkzeug-Einträgen, `kosten` an
+ZOE-Antworten, `eingereiht` in Thread-Listen, `hintergrundKi` in GET /api/agenten/laeufe) — der alte Stand ignoriert sie.
+
+**Offen / für Kevin:** (a) Wer die Seite während einer Antwort verlässt, bricht den Zug ab („Abgebrochen, bevor die Antwort fertig war“) — so gewollt
+(Härtetest), oder soll die Antwort im Hintergrund fertig werden? (b) „Wartet auf dich“ zeigt nur den ZOE-Stapel; die Freigabe-Listen der Heads stehen nur
+unter „Als Nächstes“ und auf der Freigaben-Seite — zusammenführen? (c) Die Kosten an ZOEs Antwort enthalten nicht die eines `head_fragen`-Laufs (der
+zählt beim Head). (d) Klickbare Zeilen (`Zeile` mit onClick, z. B. Freigaben-Seite) sind ein `div` ohne Tastatur-Bedienung — eigener Durchgang.
 
 ## 09.10.2026 — Endprüfung des Nacht-Stands `agenten-nacht` (für Update 2 am 16.10.; nur lokal)
 

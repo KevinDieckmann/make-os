@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   const r = await einmalig('kontoauszug', b.anfrageId, async () => {
     const e = await auszugUebernehmen(ctx, b.kontoId, bytes, b.spalten, b.basis, { trotzAbweichung: b.trotzAbweichung === true });
     return { status: e.ok ? 200 : e.status, body: e };
-  });
+  }, undefined, { wer: z.person }); // Nachschliff 09.10.: gemerkte Antwort nur für die Person selbst
   if (r.status === 200) businessGeaendert();
   return NextResponse.json(r.wiederholt ? { ...(r.body as object), wiederholt: true } : r.body, { status: r.status });
 }

@@ -491,9 +491,11 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
   const zustaendigErlaubt = new Set(personen.alle.filter(p => !privat || p.voll).map(p => p.id));
   const jetzt = iso();
   let raus: EinstellungErgebnis = fehler(409, 'Nicht gespeichert.');
+  let warAus = false;
   await updateJson<AgentenEinstellung>(einstellungBestand(haushalt), cur => {
     const e: AgentenEinstellung = cur ? { ...leer(), ...cur, heads: cur.heads ?? {} } : leer();
     const alt = headEinstellungVon(e, head, person);
+    warAus = alt.aktiv === false;
     if (stand !== einstellungStand(alt)) { raus = fehler(409, 'Die Einstellungen haben sich inzwischen geändert — bitte neu laden.', { stand: einstellungStand(alt) }); return e; }
     const p = teilAnwenden(alt, t, head, {
       zustaendigErlaubt,
@@ -511,7 +513,42 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
   });
   const ergebnis = raus as EinstellungErgebnis; // in der Sperre gesetzt (TS verfolgt das nicht)
   if (ergebnis.ok && ergebnis.felder.length) await protokolliere(einstellungBestand(haushalt), [{ liste: head.ebene === 'person' ? 'personen' : 'heads', op: 'geaendert', id: head.id, felder: [...ergebnis.felder] }], { art: 'person', person }).catch(() => {});
+  // Nachschliff 09.10.: wieder eingeschaltet → Läufe, die nur deshalb warteten, laufen weiter (genau einmal; Budget/Not-Aus bleiben unberührt).
+  if (ergebnis.ok && warAus && ergebnis.felder.includes('aktiv') && ergebnis.einstellung.aktiv !== false) {
+    await laeufeNachHeadAn(person, head).catch(e => { console.error('[agenten-einstellung] Weiterlaufen nach „an“:', e instanceof Error ? e.message.slice(0, 120) : e); return 0; });
+  }
   return ergebnis;
+}
+
+/**
+ * Head wieder an (Nachschliff 09.10.: „Läufe, die wegen Head aus warten, laufen nach dem Wieder-Einschalten weiter“): Threads des Heads
+ * (Haushalts-Heads: aller Personen im Haushalt; Privat-Heads: nur die eigenen), die NUR wegen „Head aus“ warten (`wartetAuf: 'head-aus'`, gesetzt in
+ * app/api/agenten/faden/lauf), werden wieder eingereiht — als ihre Besitzerin, genau einmal: die Marke fällt in der Sperre des Bestands weg, nur wer
+ * sie dort entfernt hat, reiht ein. Budget-, Not-Aus- und Hilfe-Wartende bleiben unberührt; ist der Head für die Besitzerin gerade anders gesperrt
+ * (Not-Aus, Budget), bleibt die Marke stehen. Liefert die Zahl (nie Inhalte).
+ */
+export async function laeufeNachHeadAn(von: string, head: HeadDef): Promise<number> {
+  const [{ bestandAendern }, { einreihen }] = await Promise.all([import('./faeden-server'), import('./delegation')]);
+  const personen = head.ebene === 'person' ? [von] : (await haushaltsPersonen()).alle.map(p => p.id);
+  let n = 0;
+  for (const p of personen) {
+    if (await laufSperre(p, head.id).catch(() => null)) continue;
+    const r = await bestandAendern<{ id: string; hintergrund: boolean }[]>(p, b => {
+      const weiter: { id: string; hintergrund: boolean }[] = [];
+      const faeden = b.faeden.map(f => {
+        if (!fadenVonHead(f, head.id) || f.besitzer !== p || f.lauf?.status !== 'wartet' || f.lauf.wartetAuf !== 'head-aus') return f;
+        weiter.push({ id: f.id, hintergrund: !!f.hintergrund });
+        const { wartetAuf: _w, ...lauf } = f.lauf;
+        return { ...f, lauf };
+      });
+      return { bestand: weiter.length ? { ...b, faeden } : b, e: weiter };
+    }).catch(() => null);
+    if (!r?.ok) continue;
+    for (const x of r.e) {
+      await einreihen(p, x.id, { hintergrund: x.hintergrund }).then(() => { n++; }).catch(e => console.error('[agenten-einstellung] Einreihen nach „an“:', e instanceof Error ? e.message.slice(0, 120) : e));
+    }
+  }
+  return n;
 }
 
 export type NotAusErgebnis = { ok: true; an: boolean; headId?: string; angehalten: number } | Fehler;

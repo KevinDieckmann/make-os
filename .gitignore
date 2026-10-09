@@ -57,3 +57,4 @@ public/pdf.worker.min.mjs
 # Sandbox-Bau (Prüfung im Worktree) — Bauergebnis, nie ins Repo.
 /.next-sandbox/
 /.next-demo/
+/.next-live/

@@ -3,7 +3,7 @@
 // ─── Agenten-Seite: die Mitte mit einem Head (09.10., Paket 2; Aufräumen 09.10. abends nach dem Claude-Muster) ─────────────────
 // Fragerunde 5: „Reiter Chat · Aktivität · Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen · Kopf mit Auftrag + 3 Kennzahlen
 // + Skills als Chips · Vorschläge als Karte im Chat · Delegation als aufklappbare Karte.“
-// Aufräumen 09.10. (Kevin: „Mitte nur Gespräch“): über dem Chat steht NUR die Kopfzeile (Kugel, Name, Bereich, Reiter, „Neuer Thread“, ⋯).
+// Aufräumen 09.10. (Auftrag: „Mitte nur Gespräch“): über dem Chat steht NUR die Kopfzeile (Kugel, Name, Bereich, Reiter, „Neuer Thread“, ⋯).
 // Drei Reiter statt sieben — Chat · Aktivität · Info; „Info“ bündelt, was vorher über dem Chat und in fünf Reitern stand: Auftrag,
 // „Sieht / sieht nicht“, Kennzahlen, Hinweis und die aufklappbaren Abschnitte Mitarbeiter (Thread starten, Duplizieren) · Skills ·
 // Gedächtnis · Leistung · Einstellungen. Die Thread-Chips über dem Chat entfallen — die Threads stehen links unter dem Head; „Neuer Thread“
@@ -22,10 +22,10 @@ import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { GespraechKopf } from './GespraechKopf';
 import { LaufZeile } from './Hintergrund';
-import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
+import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import {
-  ansprache, ansprechbarFuer, ausloeserText, euro, FADEN_STATUS_NAME, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
+  ansprache, ansprechbarFuer, ausloeserText, euro, fadenStatusName, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
 } from './regeln';
 import { einSpaltig, KUGEL_GROESSE } from './masse';
 
@@ -141,7 +141,7 @@ function Aktivitaet({ k }: { k: HeadKarte }) {
           <Liste>
             {threads.map(t => <Zeile key={t.id} onClick={() => oeffne(t.agent.art === 'head' ? { h: k.id, f: t.id } : { f: t.id })} titel={t.titel}
               unter={`${t.agent.art === 'mitarbeiter' ? k.mitarbeiter.find(m => m.id === (t.agent as { mitarbeiterId: string }).mitarbeiterId)?.name ?? 'Mitarbeiter' : k.kurz} · ${zeitKurz(t.aktualisiert, jetzt)}`}
-              rechts={<Chip farbe={t.status === 'wartet' ? LEUCHT.achtung : t.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{FADEN_STATUS_NAME[t.status]}</Chip>} />)}
+              rechts={<Chip farbe={t.status === 'wartet' && !t.eingereiht ? LEUCHT.achtung : t.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{fadenStatusName(t)}</Chip>} />)}
           </Liste>
         ) : <Leer>Noch keine Threads.</Leer>}
       </div>
@@ -464,15 +464,18 @@ export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }:
   const farbe = headFarbe(k.farbe);
   const neuerThread = () => { setReiter('chat'); starteNeu?.(k.id); };
   const zuAbschnitt = (a: InfoAbschnitt) => { setReiter('info'); setOffen(o => (o.includes(a) ? o : [...o, a])); setSpringe(a); };
+  // Nur eigene Threads (ein geteilter gehört der anderen Person — die Route lehnt ihn ohnehin ab).
   const geteilt = fa ? !!(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer : false;
-  // Den offenen Thread löschen (Server: samt aller Threads darunter, nur eigene) — mit Rückfrage; danach steht der jüngste übrige.
+  // Den offenen Thread löschen (Rundgang 09.10. „Agenten live“; Server: samt der Threads seiner Mitarbeiter) — mit Rückfrage, über EINEN Weg
+  // (`fadenLoeschen`). Erst weg vom Thread (leerer neuer Thread), dann löschen — sonst lädt die offene Ansicht den gelöschten noch einmal (404).
   const loeschen = async () => {
     if (!fa) return;
-    if (!(await bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ und alle Aufträge darin an Mitarbeiter werden gelöscht.`, ja: 'Löschen', gefahr: true }))) return;
-    const r = await fadenSenden({ aktion: 'loeschen', fadenId: fa.faden.id, stand: fa.stand });
+    if (!(await bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ und die Threads seiner Mitarbeiter werden gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    const { id, stand, titel } = { id: fa.faden.id, stand: fa.stand, titel: fa.faden.titel };
+    if (starteNeu) starteNeu(k.id); else oeffne({ h: k.id }, true);
+    const r = await fadenLoeschen(id, stand);
     if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
-    melde('Thread gelöscht.', 'gut');
-    oeffne({ h: k.id }, true);
+    melde(`Thread „${titel}“ gelöscht.`, 'gut');
   };
   return (
     <div style={{ ...einSpaltig(ABSTAND.l), alignContent: 'start' }}>

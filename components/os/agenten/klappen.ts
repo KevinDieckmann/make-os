@@ -1,5 +1,5 @@
 // ─── Agenten-Seite: Seitenfelder ein- und ausklappen (09.10., Aufräumen nach dem Muster der Claude-App) ───────────────────
-// Kevin 09.10.: „Es reicht, wenn wir links und rechts beides zuklappen können, damit der Chat größer und übersichtlicher wird.“
+// Auftrag 09.10.: „Es reicht, wenn wir links und rechts beides zuklappen können, damit der Chat größer und übersichtlicher wird.“
 // Rein (getestet in tests/agenten-aufraeumen.test.ts): wo ein Feld steht (NEBEN dem Gespräch oder als SCHUBLADE darüber), welche Taste
 // klappt und was je Browser gemerkt wird. Die Seite (AgentenSeite.tsx) hält nur den Zustand und ruft diese Regeln.
 //   • links  = die Liste (ZOE, Heads, Threads)      — ⌘B bzw. Strg+B

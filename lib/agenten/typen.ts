@@ -213,11 +213,20 @@ export interface LaufZustand {
   abgebrochenVon?: string;
   /**
    * Worauf ein Lauf mit Status `wartet` wartet (Paket 4b, additiv): `business-frei` = der Takt holt ihn nach dem Ende des Rahmens
-   * EINMAL nach (lib/agenten/zeitplan.ts `businessFreiNachholen`); `not-aus` = erst nach dem Lösen und von Hand. Fehlt das Feld,
+   * EINMAL nach (lib/agenten/zeitplan.ts `businessFreiNachholen`); `not-aus` = erst nach dem Lösen und von Hand; `head-aus` (Nachschliff 09.10.) =
+   * der Head war ausgeschaltet — beim Wiedereinschalten EINMAL neu eingereiht (lib/agenten/einstellung.ts `laeufeNachHeadAn`). Fehlt das Feld,
    * erkennt der Takt „Business-frei“ zusätzlich am Grund (`fehler`), den der Kern schreibt.
    */
-  wartetAuf?: 'business-frei' | 'not-aus' | 'plan';
+  wartetAuf?: 'business-frei' | 'not-aus' | 'plan' | 'head-aus';
 }
+
+/**
+ * Nur eingereiht (Rundgang 09.10. „Agenten live“): der Lauf steht in der Warteschlange und hat noch nicht begonnen — kein Grund, keine Schritte,
+ * kein „wartet auf …“. Der Thread trägt dann den Status `wartet`, braucht aber NIEMANDEN: vorher stand jeder frisch beauftragte Mitarbeiter als
+ * „⚑ … fragt“ mit Antwortfeld unter „Wartet auf dich“, bis der Arbeiter ihn nahm. Rein.
+ */
+export const laufEingereiht = (f: { status: FadenStatus; lauf?: Pick<LaufZustand, 'status' | 'fehler' | 'wartetAuf' | 'schritte'> }): boolean =>
+  f.status === 'wartet' && !!f.lauf && f.lauf.status === 'wartet' && !f.lauf.fehler && !f.lauf.wartetAuf && !(f.lauf.schritte?.length);
 
 // ── Arbeitsstand, Aufträge an Mitarbeiter, Plan-Freigabe (Paket 1 in faeden.ts erweitert; seit Paket 4b im Vertrag) ────────
 
@@ -703,6 +712,8 @@ export interface FadenKurz {
   aktualisiert: string;
   elternId?: string;
   ungelesen?: boolean;
+  /** `status: 'wartet'`, aber nur eingereiht (`laufEingereiht`) — wartet auf den Arbeiter, nicht auf die Person. */
+  eingereiht?: boolean;
 }
 /**
  * Eine Kennzahl im Kopf eines Heads. `hinweis` (Rundgang 09.10.): warum der Index (noch) keinen Wert hat — der Satz der Lücke aus dem
@@ -794,7 +805,12 @@ export type SkillAnfrage =
    */
   | { aktion: 'mitarbeiter-probelauf'; headId: string; id?: string; entwurf?: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'stufe'>; eingabe: string; kostenBestaetigt?: boolean };
 /** GET /api/agenten/laeufe (Paket 3). */
-export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[]; /** Stand je geplanter Aufgabe (Pausieren/Löschen mit Stand, Paket 4b im Vertrag). */ planStaende?: Record<string, string> }
+export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[]; /** Stand je geplanter Aufgabe (Pausieren/Löschen mit Stand, Paket 4b im Vertrag). */ planStaende?: Record<string, string>;
+  /**
+   * Ist die Hintergrund-KI für diese Person an (Instanz UND Person, lib/datenschutz/ki-einstellungen.ts)? Ohne sie reiht der Takt KEINE geplante Aufgabe
+   * ein (lib/agenten/zeitplan.ts) — Rundgang 09.10. „Agenten live“: eine geplante Aufgabe blieb still liegen, das Fenster „Geplant“ sagte „an“.
+   */
+  hintergrundKi?: boolean }
 /** POST /api/agenten/laeufe (Paket 3). */
 export type LaeufeAnfrage =
   // `kostenBestaetigt` nach der Rückfrage (409 `kostenBestaetigen`), `trotzdem` in einer Business-freien Zeit (409 `businessFrei`) — die Route

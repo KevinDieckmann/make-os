@@ -57,7 +57,9 @@ export interface InnenLage {
   csp: { meldungen7d: number; top?: string };
   verschluesselt: boolean;
   /** KI-Schlüssel da? Guthaben leer (seit)? — aus lib/anthropic.ts, dem einen Weg für alle Modellaufrufe. */
-  ki: { schluessel: boolean; guthabenLeerSeit: string | null };
+  ki: { schluessel: boolean; guthabenLeerSeit: string | null;
+    /** KI-Prüfendpunkt (09.10., lib/ki/pruefendpunkt.ts): gesetzt? wirksam? Produktion ohne Demo? — nur Zustände, nie die Adresse. */
+    pruef?: { gesetzt: boolean; aktiv: boolean; produktion: boolean } };
   /** Datenschicht (29.09., Paket D-A): Messwerte, Sicherungsfehler, Klartext, .tmp-Reste, zweiter Schreiber, Schlüsselquelle. */
   datenschicht?: DatenschichtLage;
   /** Ergebnis der letzten nächtlichen Sicherung (deploy/sicherung.sh → daten/system/sicherung.json). */
@@ -116,7 +118,7 @@ export interface ZugangLage {
    */
   zulieferer?: { aktiv: boolean; altbestand: boolean; uebernommen: boolean };
   /** Start-Riegel (lib/zugang/start-riegel.ts): Modus und Mängel (nur Namen, nie Werte). */
-  riegel?: { modus: 'entwicklung' | 'aus' | 'lokal' | 'scharf' | 'streng'; maengel: { was: string; art: 'fehlt' | 'zu-kurz'; hart: boolean }[] };
+  riegel?: { modus: 'entwicklung' | 'aus' | 'lokal' | 'scharf' | 'streng'; maengel: { was: string; art: 'fehlt' | 'zu-kurz' | 'gesetzt'; hart: boolean }[] };
 }
 
 /**
@@ -139,13 +141,24 @@ export function zugangBefunde(z: ZugangLage | undefined, jetzt: string): Befund[
   }
   const r = z.riegel;
   if (r && r.modus !== 'entwicklung' && r.modus !== 'lokal') {
-    const liste = r.maengel.map(m => `${m.was} ${m.art === 'fehlt' ? 'fehlt' : 'zu kurz'}`).join(', ');
+    const liste = r.maengel.map(m => `${m.was} ${m.art === 'fehlt' ? 'fehlt' : m.art === 'gesetzt' ? 'gesetzt' : 'zu kurz'}`).join(', ');
     if (r.modus === 'aus') b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'rot', wert: 'ausgeschaltet', satz: 'MAKE_OS_START_RIEGEL=aus — nur für Sandbox/Prüfbau; auf dieser Instanz die Zeile aus der .env nehmen' });
     else if (r.maengel.length) b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gelb', wert: `${r.modus}: ${liste}`, satz: 'fehlende oder kurze Geheimnisse setzen (openssl rand -hex 32), dann MAKE_OS_START_RIEGEL=streng (UPDATES.md › „Zugang & Schlüssel härten“)' });
     else if (r.modus === 'scharf') b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'scharf — alle Geheimnisse gesetzt', satz: 'bereit für MAKE_OS_START_RIEGEL=streng (dann bricht auch ein kurzer Schlüssel oder fehlender Pepper den Start ab)' });
     else b.push({ id: 'start-riegel', bereich: 'sicherheit', label: 'Start-Riegel', ampel: 'gruen', wert: 'streng', satz: 'ohne Datenschlüssel, Pepper oder SESSION_SECRET (je ≥ 32 Zeichen) startet MAKE OS nicht' });
   }
   return b;
+}
+
+/**
+ * KI-Prüfendpunkt (09.10., lib/ki/pruefendpunkt.ts): in Produktion ohne Demo gesetzt → ROT (wird ignoriert, gehört nicht in die .env); wirksam
+ * (Demo/Entwicklung, loopback) → gelb „Antworten sind erfunden“; gesetzt, aber ignoriert (kein loopback) → gelb. Nicht gesetzt → kein Befund.
+ */
+export function kiPruefBefunde(p: { gesetzt: boolean; aktiv: boolean; produktion: boolean } | undefined): Befund[] {
+  if (!p?.gesetzt) return [];
+  if (p.produktion && !p.aktiv) return [{ id: 'ki-pruefendpunkt', bereich: 'sicherheit', label: 'KI-Prüfendpunkt', ampel: 'rot', wert: 'gesetzt in Produktion', satz: 'MAKE_OS_KI_PRUEFENDPUNKT ist nur für lokale Prüfungen — wird hier ignoriert; die Zeile aus der .env nehmen und neu starten' }];
+  if (p.aktiv) return [{ id: 'ki-pruefendpunkt', bereich: 'app', label: 'KI-Prüfendpunkt', ampel: 'gelb', wert: 'Prüfmodell aktiv', satz: 'alle Modell-Antworten kommen vom nachgebauten Prüfmodell (lokal) — erfunden, kein echter KI-Aufruf' }];
+  return [{ id: 'ki-pruefendpunkt', bereich: 'app', label: 'KI-Prüfendpunkt', ampel: 'gelb', wert: 'gesetzt, aber ignoriert', satz: 'Ziel ist nicht 127.0.0.1/localhost/[::1] — die Variable entfernen' }];
 }
 
 /** Protokoll-Kette (HOI): Ergebnis der letzten Prüfung (lib/store/protokoll-kette.ts) — nur Zahlen und Dateinamen. */
@@ -572,6 +585,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
     if (dsch.produktion && !dsch.grabsteinOrdner) b.push({ id: 'grabsteine', bereich: 'sicherung', label: 'Grabsteine (Art. 17 nach Restore)', ampel: 'gelb', wert: 'kein eigener Ordner', satz: 'MAKE_OS_GRABSTEINE_DIR fehlt — die Grabsteine liegen im Container und gehen beim Neubau verloren; eigenes Volume /srv/make-os/grabsteine einbinden (DEPLOY.md).' });
   }
   const ki = innen.ki;
+  b.push(...kiPruefBefunde(innen.ki.pruef));
   b.push({ id: 'ki', bereich: 'app', label: 'KI-Guthaben', ampel: !ki.schluessel ? 'grau' : ki.guthabenLeerSeit ? 'rot' : 'gruen', wert: !ki.schluessel ? 'kein Schlüssel' : ki.guthabenLeerSeit ? `leer seit ${ki.guthabenLeerSeit.slice(11, 16)} Uhr` : 'verfügbar', satz: !ki.schluessel ? 'ANTHROPIC_API_KEY fehlt — Agenten mit KI stehen, Regel-Läufe laufen' : ki.guthabenLeerSeit ? 'console.anthropic.com aufladen — bis dahin pausieren alle KI-Aufrufe (halbstündlich ein Versuch), Regel-Läufe laufen weiter' : 'Modellaufrufe gehen durch' });
   const t = innen.takt;
   b.push({ id: 'takt', bereich: 'app', label: 'Arbeiter (Takt)', ampel: t.letzterLaufMinuten === null ? 'grau' : t.letzterLaufMinuten <= 5 ? 'gruen' : t.letzterLaufMinuten <= 30 ? 'gelb' : 'rot', wert: t.letzterLaufMinuten === null ? 'noch kein Lauf' : `vor ${t.letzterLaufMinuten} min · ${t.laufend} laufend · ${t.wartend} wartend`, satz: t.letzterLaufMinuten === null ? 'Arbeiter hat noch nichts gemeldet' : t.letzterLaufMinuten <= 5 ? 'holt fällige Läufe' : 'holt nichts mehr — Container arbeiter prüfen' });

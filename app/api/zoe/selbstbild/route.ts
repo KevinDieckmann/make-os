@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, nurHaushalt, nurInhaber, nurDerInhaber } from '@/lib/zugang/tor';
 import { blaetter } from '@/lib/zoe/selbstbild';
-import { schreibeEigene } from '@/lib/zoe/vault';
+import { dokuWurzelEingerichtet, schreibeEigene } from '@/lib/zoe/vault';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +24,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await nurInhaber(req))) return nurDerInhaber();
+  // Ohne Doku-Wurzel (Server, Demo-Instanz) gibt es keinen Ort fürs Selbstbild — das ist kein Fehler (Rundgang 09.10. „Agenten live“: vorher lief
+  // der Takt-Auftrag „selbstbild“ jeden Tag mehrfach in „Fehler“ und füllte Agenten › Fehler und die Fehlerquote des Head of IT).
+  if (!dokuWurzelEingerichtet()) return NextResponse.json({ ok: true, geschrieben: 0, von: 0, uebersprungen: 'keine Doku-Wurzel eingerichtet (MAKE_OS_DOKU_WURZEL)' });
   const liste = await blaetter();
   const ergebnisse = [];
   for (const b of liste) {
