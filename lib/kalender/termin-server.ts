@@ -57,7 +57,7 @@ async function nurVerbunden(): Promise<void> {
   if (Object.keys(await googleKalenderNamen()).length) return;
   // iCloud je Person (06.10.): eine eigene Verbindung reicht auch.
   if ((await import('./icloud-person').then(m => m.personenMitIcloud()).catch(() => [] as string[])).length) return;
-  throw new KalenderFehler('Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).', 409);
+  throw new KalenderFehler('Kein Kalender verbunden — unter Kalender › Einstellungen deinen iCloud- oder Google-Kalender verbinden.', 409);
 }
 
 /** Anlegen + Bezug + Protokoll. `schonDa`: der Termin mit dieser festen UID lag schon in iCloud (nichts doppelt). */

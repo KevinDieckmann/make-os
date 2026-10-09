@@ -15,6 +15,7 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeRoh, bestandFuer } from '@/lib/business/speicher';
 import { istMonate } from '@/lib/business/messen';
 import { localDay } from '@/lib/zeit';
+import { neustartMarke } from '@/lib/onboarding-neustart';
 import { bereichVon, bereichVonFirma, einheitAusGesellschaft, finanzOrtAus, finanzOrtName, istBusinessGesellschaft, istGesellschaft } from '@/lib/einheiten';
 import { ladeFinanzplan } from '@/lib/finanzen/plan/speicher';
 import { estGemeinsamFuer } from '@/lib/finanzen/est-gemeinsam';
@@ -210,7 +211,10 @@ export const steuerEinheit = (aufgabeId: string): string | undefined => einheitA
 export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): Promise<{ neu: number; erledigt: number }> {
   const hh = await haushaltDesInhabers();
   if (!hh || !istEchterHaushalt(hh)) return { neu: 0, erledigt: 0 };
-  const dran = new Map(f.filter(x => !x.erledigt && x.aufgabeAb <= heute && x.tage >= -30).map(x => [`steuer-${x.id}`, x]));
+  // Neustart (09.10.): Fristen VOR dem Tag des Neustarts legen keine Aufgabe an — ihr Stand (bezahlt/abgehakt) liegt im Archiv-Ordner, eine neue
+  // Instanz würde sie sonst sofort als „überfällig“ melden (Glocke, Heute, Einrichtung). Fristen ab dem Neustart-Tag laufen normal.
+  const neustartAb = (await neustartMarke().catch(() => null))?.am ?? null;
+  const dran = new Map(f.filter(x => !x.erledigt && x.aufgabeAb <= heute && x.tage >= -30 && !(neustartAb && x.datum < neustartAb)).map(x => [`steuer-${x.id}`, x]));
   const erledigtIds = new Set(f.filter(x => x.erledigt).map(x => `steuer-${x.id}`));
   const jetzt = new Date().toISOString();
   let neu = 0, erledigt = 0;

@@ -41,6 +41,11 @@ export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
     include: ['tests/**/*.test.ts'],
+    // Zeitgrenzen (09.10., vor dem Upload): viele Tests rufen Routen in-process auf (Import großer Module, Verschlüsselung, Bilder) — unter
+    // Last (volle Suite mit mehreren Arbeitern, CI-Rechner) reichten die 5 s der Vorgabe nicht immer, Tests flackerten ohne Fehler im Code.
+    // Tests mit eigener Grenze (vi.setConfig) behalten ihre.
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
     env: { TZ: testZone, MAKE_OS_FORMAT: process.env.MAKE_OS_FORMAT, MAKE_OS_KI_VORGABE: process.env.MAKE_OS_KI_VORGABE, MAKE_VAULT_DIR: process.env.MAKE_VAULT_DIR, MAKE_OS_DOKU_WURZEL: process.env.MAKE_OS_DOKU_WURZEL },
   },
 });

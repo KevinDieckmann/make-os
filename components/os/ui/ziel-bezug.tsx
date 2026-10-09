@@ -30,7 +30,7 @@ export function ZielBezug({ bereich, max = 1 }: { bereich: BezugBereich; max?: n
     return (
       <div className="ui-ziel-bezug" style={reihe}>
         <Link href={WEG.jahr()} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: ZEILE_HOEHE, fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>
-          Noch kein Jahresziel gesetzt — in der Planung anlegen ›
+          Noch kein gemeinsames Jahresziel — in der Planung anlegen ›
         </Link>
       </div>
     );

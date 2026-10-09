@@ -1261,10 +1261,10 @@ export const SCHRITTE: Schritt[] = [
     id: 'neustart', nurNeustart: true, samstag: true, etappe: 1, nr: '', ebene: 'gemeinsam', minuten: 10, pruefung: 'neustart',
     modul: 'grundlage',
     titel: 'Neustart: was mitkam, was neu ist',
-    warum: 'Ihr fangt bei null an — wie eine neue Instanz. Mitgekommen sind nur eure Konten, die Kartei mit der Markttraktion und die Aufgaben, die ihr selbst angelegt habt. Alles andere tragt ihr einmal sauber neu ein; danach zieht ihr die Schnittstellen.',
+    warum: 'Ihr fangt bei null an — wie eine neue Instanz. Mitgekommen sind die Kartei mit der Markttraktion und den CRM-Dateien und die Aufgaben, die ihr selbst angelegt habt (dazu, wenn beim Umzug gewählt, Bauplan, Gesellschafts-Register und Datenschutz-Einrichtung). Eure Konten habt ihr neu angelegt; alles andere tragt ihr einmal sauber neu ein, danach zieht ihr die Schnittstellen.',
     wie: [
-      'Mitgekommen: eure Konten (Anmeldung und, wo eingerichtet, der zweite Faktor), die Kartei samt Firmen und Markttraktion, eure eigenen Aufgaben und Projekte. Die Prüfung rechts zeigt, was übernommen wurde — nur Zähler.',
-      'Neu einzutragen: eigene und gemeinsame Ziele, Routinen, Gesundheit, Familie, Finanzen (Konten, Kosten, Kontostände, offene Posten), Gesellschaften und Absender, Planung.',
+      'Mitgekommen: die Kartei samt Firmen und Markttraktion, die CRM-Dateien, eure eigenen Aufgaben und Projekte — und, wenn beim Umzug gewählt, Bauplan, Gesellschafts-Register (mit Absendern) und Datenschutz-Einrichtung. Die Prüfung rechts zeigt, was übernommen wurde — nur Zähler.',
+      'Neu: eure Konten (dieselbe Adresse wie bisher, neuer zweiter Faktor). Neu einzutragen: eigene und gemeinsame Ziele, Routinen, Gesundheit, Familie, Finanzen (Konten, Kosten, Kontostände, offene Posten), Planung — Gesellschaften nur, wenn sie nicht mitkamen.',
       'Neu zu verbinden (Etappe „Schnittstellen“): Kalender, Postfächer, WHOOP, WhatsApp — im neuen Datenordner ist jede Verbindung neu, auch wenn sie vorher stand.',
       'Die Reihenfolge: erst Zugang, dann alles eingeben, dann die Schnittstellen, dann die Agenten.',
     ],
@@ -1453,7 +1453,7 @@ const KERN = 'kern' as const, DANACH = 'danach' as const;
 export const NEUSTART: readonly NeustartEintrag[] = [
   // 0 · Server und Instanz
   { id: 'update', etappe: 0 }, { id: 'pepper', etappe: 0 }, { id: 'sicherung', etappe: 0 }, { id: 'sicherung-mac', etappe: 0, gruppe: DANACH },
-  { id: 'vault', etappe: 0 }, { id: 'adresse', etappe: 0 }, { id: 'medienspeicher', etappe: 0, gruppe: DANACH },
+  { id: 'vault', etappe: 0 }, { id: 'adresse', etappe: 0 }, { id: 'medienspeicher', etappe: 0, gruppe: DANACH, optional: true },
   // 1 · Zugang, Sicherheit, Datenschutz
   { id: 'neustart', etappe: 1, gruppe: KERN }, { id: 'ich-zwei-faktor', etappe: 1, gruppe: KERN },
   { id: 'einladen', etappe: 1, gruppe: KERN }, { id: 'haushalt', etappe: 1, gruppe: KERN }, { id: 'zwei-faktor-pflicht', etappe: 1, gruppe: KERN },
@@ -1591,13 +1591,14 @@ export const NEUSTART: readonly NeustartEintrag[] = [
     warum: 'Paar-Gespräch, Business-freie Zeiten und Ausnahmezeit geben dem Familienbereich seinen Takt — jetzt, wo der gemeinsame Kalender verbunden ist, landet das Paar-Gespräch dort.',
   } },
   { id: 'ich-whoop', etappe: 8, gruppe: DANACH, optional: true }, { id: 'ich-buchungsseite', etappe: 8, gruppe: DANACH, optional: true },
-  { id: 'mail-umzug', etappe: 8, gruppe: DANACH }, { id: 'whatsapp', etappe: 8, gruppe: DANACH },
+  // Mail-Umzug und WhatsApp: eigener Termin (Kevin 09.10.) — sichtbar, aber die Karte auf Heute wartet nicht darauf.
+  { id: 'mail-umzug', etappe: 8, gruppe: DANACH, optional: true }, { id: 'whatsapp', etappe: 8, gruppe: DANACH, optional: true },
   // 9 · Agenten und ZOE (zweiter Schritt)
   { id: 'agenten', etappe: 9, gruppe: DANACH }, { id: 'ich-zoe', etappe: 9, gruppe: DANACH }, { id: 'brain', etappe: 9, gruppe: DANACH }, { id: 'uebergabe-probe', etappe: 9, gruppe: DANACH },
   // 10 · Abschluss
   { id: 'ich-bauplan', etappe: 10, gruppe: DANACH }, { id: 'datenstand', etappe: 10, gruppe: DANACH }, { id: 'hoi-gruen', etappe: 10, gruppe: DANACH }, { id: 'regeln', etappe: 10, gruppe: DANACH },
 ];
-/** Entfällt im Neustart: der Altbestand (es gibt keinen), „Einladung annehmen“ (die Konten kamen mit) und „Gesundheit für dich einrichten“ (aufgeteilt in eigene Schritte der Etappe Gesundheit). */
+/** Entfällt im Neustart: der Altbestand (es gibt keinen), „Einladung annehmen“ (das erledigt der Willkommens-Dialog beim Beitreten) und „Gesundheit für dich einrichten“ (aufgeteilt in eigene Schritte der Etappe Gesundheit). */
 export const NEUSTART_ENTFAELLT: readonly string[] = ['altbestand', 'zweite-einladung', 'ich-gesundheit-profil'];
 
 /**

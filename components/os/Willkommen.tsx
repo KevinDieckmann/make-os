@@ -70,7 +70,7 @@ export function Willkommen() {
           gehört, bleibt bei dir; was ihr teilt, seht ihr gemeinsam.
         </p>
         <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '10px 0 0' }}>
-          Die Einrichtung führt dich Schritt für Schritt — zuerst der zweite Faktor, dann deine Verbindungen.
+          Die Einrichtung führt dich Schritt für Schritt — zuerst der zweite Faktor, dann deine eigenen Dinge (Ziele, Gesundheit), die Verbindungen kommen danach.
         </p>
         <div style={{ display: 'grid', gap: 8, marginTop: 20 }}>
           <Knopf haupt href="/os/onboarding/ich" onClick={schliessen}>Zur Einrichtung</Knopf>

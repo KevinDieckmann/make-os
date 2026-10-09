@@ -93,7 +93,7 @@ async function vorab(req: Request): Promise<{ person: string } | NextResponse> {
   // iCloud ODER ein verbundener Google-Kalender (03.10.) ODER eine iCloud-Verbindung je Person (06.10.) — welcher, entscheidet
   // der Kalender des Termins.
   await hauptZugangAuffrischen();
-  if (!verbunden() && !Object.keys(await googleKalenderNamen()).length && !(await personenMitIcloud().catch(() => [] as string[])).length) return NextResponse.json({ ok: false, fehler: 'Kein Kalender verbunden — iCloud (deploy/icloud-verbinden.sh) oder Google (Kalender › Einstellungen).' }, { status: 409 });
+  if (!verbunden() && !Object.keys(await googleKalenderNamen()).length && !(await personenMitIcloud().catch(() => [] as string[])).length) return NextResponse.json({ ok: false, fehler: 'Kein Kalender verbunden — unter Kalender › Einstellungen deinen iCloud- oder Google-Kalender verbinden.' }, { status: 409 });
   return { person: z.person };
 }
 
