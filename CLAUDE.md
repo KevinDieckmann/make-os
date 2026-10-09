@@ -84,8 +84,8 @@ Kevin 08.10. (R9): „Malin wird gleichwertige zweite Inhaberin · Server-Zugang
   Haushaltsfrage. Haushalt der Inhaber/Personen im Haushalt nur über `haushaltDerInhaber`/`kontenImHaushaltDerInhaber` (bzw. `haushaltDesInhabers`).
 - **Haupt-Inhaber nur über `hauptInhaber`** (Einstellung `einstellungen.hauptInhaber`, bei der ersten Ernennung festgeschrieben — sonst das älteste
   Inhaber-Konto) bzw. `inhaberSpeicher()`/`istDerHauptInhaber`: nur für Dinge, die GENAU EINEN brauchen (Altbestand ohne Suffix, Systemlauf-Person,
-  Kalender-Haupt-Person, Persönliches an seinem Gerät: Mac-Adressbuch, Mac-Zulieferer, Apple-Erinnerungen). Meldungen „an den Inhaber“ an alle
-  (`alleInhaberSpeicher`). Der Haupt-Inhaber und der letzte Inhaber geben nie ab.
+  Kalender-Haupt-Person, Persönliches an seinem Gerät: Mac-Adressbuch, Mac-Zulieferer, Apple-Erinnerungen; seit 09.10. der Instanz-Export, weil er JEDEN
+  Bestand entschlüsselt enthält). Meldungen „an den Inhaber“ an alle (`alleInhaberSpeicher`, auch die KI-Budget-Glocke). Der Haupt-Inhaber und der letzte Inhaber geben nie ab.
 - **Inhaber heißt Verwaltung, nicht Einsicht:** neue Inhaber-Werkzeuge öffnen nie persönliche Bestände einer anderen Person (Muster: Einzel-
   Wiederherstellung → 403 über `personBestandNamen`). Wächter: `tests/zweite-inhaberin.test.ts` („zweiter Inhaber darf alles, was der erste darf“
   über das Routen-Register), Messlatte mit der zweiten Person als Inhaberin.

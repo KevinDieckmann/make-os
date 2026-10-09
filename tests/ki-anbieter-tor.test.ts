@@ -336,7 +336,8 @@ describe('Kein Modul außerhalb von lib/ki liest Tiefenberichte (Google-Bedingun
     const treffer = ['app', 'lib', 'components'].flatMap(o => lauf(path.join(WURZEL, o)))
       .filter(p => !p.includes(`${path.sep}lib${path.sep}ki${path.sep}`) && /ki-tiefenbericht|tiefenberichtFuer|lib\/ki\/tiefenbericht/.test(readFileSync(p, 'utf8')))
       .map(p => path.relative(WURZEL, p))
-      .filter(p => !['lib/crm/speicher-register.ts', 'lib/datenschutz/konto-daten.ts'].includes(p));
+      // person-weitere.ts: Art. 17 tilgt Nennungen Dritter (Nahtstellen-Prüfung 09.10.) — Löschen/Zählen, kein Lesen für Brain/ZOE/Agenten.
+      .filter(p => !['lib/crm/speicher-register.ts', 'lib/datenschutz/konto-daten.ts', 'lib/crm/person-weitere.ts'].includes(p));
     expect(treffer).toEqual([]);
   });
 });

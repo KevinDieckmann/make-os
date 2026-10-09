@@ -346,6 +346,10 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'agenten-plan--*', muster: /^agenten-plan--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'medien--*', muster: /^medien--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'medien-privat--*', muster: /^medien-privat--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // Anbieter-Tor (09.10., Nahtstellen-Prüfung): Auftragstexte der KI-Medien und Frage/Bericht/Quellen eines Tiefenberichts können Dritte
+  // nennen — getilgt, der Eintrag bleibt (Frist des Tiefenberichts 30 Tage, KI-Medien Papierkorb).
+  { name: 'ki-medien--*', muster: /^ki-medien--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'ki-tiefenbericht--*', muster: /^ki-tiefenbericht--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Übergabe-Journal (03.10., netz-recht): Kennungen der Person in `kontaktIds` → „[gelöscht]“, der Nachweis der Übergabe bleibt.
   { name: 'uebergabe-journal--*', muster: /^uebergabe-journal--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.

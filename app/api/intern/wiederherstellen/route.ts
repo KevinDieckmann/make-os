@@ -7,6 +7,11 @@
 // Seit 09.10. (R9 — mehrere gleichwertige Inhaber): „Inhaber“ heißt Verwaltung, nicht Einsicht — persönliche Bestände einer ANDEREN
 // Person (PERSON_BESTAENDE, z. B. Gesundheit, Zeit, eigene Ziele) liest und übernimmt kein Inhaber über diesen Weg (403); das bleibt
 // dem Skript am Server (Systemlauf) mit dem Einverständnis der Person.
+// Nahtstellen-Prüfung 09.10.: auch GEMEINSAME Bestände tragen Persönliches und Geheimnisse — „nur ich“-Aufgaben und -Familienthemen,
+// ungeteilte Reflexionen, private Kontakt-Notizen, ZOE-Gespräche je Person, Routinen der anderen, und `konten` (Passwort-Hash, Geheimnis
+// des zweiten Faktors). Die Tageskopie kennt keine Sicht. Darum per SITZUNG: Tage und Vorschau (nur Kennungen, Stände, Feldnamen) für
+// jeden nicht fremden Bestand; Inhalte (`liste`) und Übernahme NUR für die eigenen persönlichen Bestände (ohne Zugangsschlüssel). Alles
+// andere holt das Skript am Server (Systemlauf, scripts/einzel-wiederherstellen.mjs) — eine Oberfläche dafür gibt es nicht.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -32,6 +37,18 @@ async function fremderPersonenBestand(req: Request, bestand: string): Promise<bo
 }
 const FREMD = () => NextResponse.json({ ok: false, fehler: 'Persönlicher Bestand einer anderen Person — den holt nur das Skript am Server zurück, mit ihrem Einverständnis.' }, { status: 403 });
 
+/**
+ * Inhalte einer Tageskopie und Übernahme per Sitzung nur für EIGENE persönliche Bestände ohne Zugangsschlüssel (`export !== false`).
+ * Systemlauf (Skript am Server, ohne Person) = immer.
+ */
+async function inhaltErlaubt(req: Request, bestand: string): Promise<boolean> {
+  const ich = personStreng(req);
+  if (!ich) return true;
+  const eigen = personBestandNamen(ich, [bestand]);
+  return eigen.length > 0 && eigen.every(b => b.export);
+}
+const NUR_SKRIPT = () => NextResponse.json({ ok: false, fehler: 'Inhalte und Übernahme gemeinsamer Bestände nur über das Skript am Server (scripts/einzel-wiederherstellen.mjs) — eine Tageskopie trägt auch Persönliches der anderen Person und Zugangsgeheimnisse.' }, { status: 403 });
+
 export async function GET(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
   const u = new URL(req.url);
@@ -41,7 +58,10 @@ export async function GET(req: Request) {
   const liste = u.searchParams.get('liste');
   try {
     if (!tag) return NextResponse.json({ ok: true, bestand, tage: await tageskopien(bestand) });
-    if (liste !== null) return NextResponse.json({ ok: true, zeilen: await kopieZeilen(bestand, tag, liste, (u.searchParams.get('ids') ?? '').split(',').filter(Boolean)) });
+    if (liste !== null) {
+      if (!(await inhaltErlaubt(req, bestand))) return NUR_SKRIPT();
+      return NextResponse.json({ ok: true, zeilen: await kopieZeilen(bestand, tag, liste, (u.searchParams.get('ids') ?? '').split(',').filter(Boolean)) });
+    }
     return NextResponse.json({ ok: true, ...(await vorschau(bestand, tag)) });
   } catch (e) { return fehler(e); }
 }
@@ -51,6 +71,7 @@ export async function POST(req: Request) {
   let b: { bestand?: unknown; tag?: unknown; liste?: unknown; auswahl?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (await fremderPersonenBestand(req, String(b.bestand ?? ''))) return FREMD();
+  if (!(await inhaltErlaubt(req, String(b.bestand ?? '')))) return NUR_SKRIPT();
   const auswahl = b.auswahl && typeof b.auswahl === 'object' && !Array.isArray(b.auswahl) ? b.auswahl as Record<string, unknown> : null;
   if (!auswahl || Object.values(auswahl).some(v => v !== null && typeof v !== 'string')) return NextResponse.json({ ok: false, fehler: 'auswahl = { id: stand | null }' }, { status: 400 });
   try {

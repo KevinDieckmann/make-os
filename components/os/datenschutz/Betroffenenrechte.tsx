@@ -76,13 +76,13 @@ export function VertragsendeKarte({ i = 0 }: { i?: number }) {
     } catch { setMeldung({ text: 'Keine Verbindung.', gut: false }); }
     finally { setLaeuft(false); }
   }
-  if (!umfang) return null; // nur der Inhaber bekommt den Umfang — alle anderen sehen die Karte nicht (der Server sagt 403)
+  if (!umfang) return null; // nur der Haupt-Inhaber bekommt den Umfang — alle anderen (auch weitere Inhaber) sehen die Karte nicht (der Server sagt 403)
   return (
     <Karte i={i} id="vertragsende">
       <Ueberschrift farbe={LEUCHT.achtung}>Vertragsende: Export und Löschung der Instanz</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>
         Rückgabe aller Daten (AVV § 11): {umfang.bestaende} Bestände, {umfang.dateien} Dateien, {umfang.bilder} Bilder — entschlüsselt in einer JSON-Datei.
-        {umfang.medien ? ` Fotos & Videos (${umfang.medien}): Angaben und Liste der Dateien — die Dateien selbst vorher in der App herunterladen.` : ''} Nur für den Inhaber, mit Passwort{zweiterFaktor ? ' und Code' : ' (und Code, wenn der zweite Faktor an ist)'}; der Abruf steht im Protokoll.
+        {umfang.medien ? ` Fotos & Videos (${umfang.medien}): Angaben und Liste der Dateien — die Dateien selbst vorher in der App herunterladen.` : ''} Nur für den Haupt-Inhaber, mit Passwort{zweiterFaktor ? ' und Code' : ' (und Code, wenn der zweite Faktor an ist)'}; der Abruf steht im Protokoll.
       </div>
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         <Feldzeile label="Passwort"><input type="password" autoComplete="current-password" value={f.passwort} onChange={e => setF({ ...f, passwort: e.target.value })} style={feld} /></Feldzeile>

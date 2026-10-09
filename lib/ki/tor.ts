@@ -164,13 +164,13 @@ const MELDUNG_GESAMT: Record<Exclude<BudgetStufe, 0>, string> = {
 };
 
 /**
- * Die erreichte Warnstufe EINMAL an die Glocke des Inhabers (neutral, ohne Beträge). Monat: einmal je Stufe und Kalendermonat. Gesamt
+ * Die erreichte Warnstufe EINMAL an die Glocke jedes Inhabers (neutral, ohne Beträge). Monat: einmal je Stufe und Kalendermonat. Gesamt
  * (Paket 4b, `gesamtAb` gesetzt): einmal je Stufe und Gesamt-Grenze — eine neu gesetzte Grenze meldet neu. Wirft nie.
  */
 export async function budgetMelden(stufe: BudgetStufe, jetzt = new Date(), gesamtAb?: string): Promise<boolean> {
   if (!stufe) return false;
   try {
-    const [{ updateJson }, { inhaberSpeicher }, { melde }, { WEG }] = await Promise.all([
+    const [{ updateJson }, { alleInhaberSpeicher }, { melde }, { WEG }] = await Promise.all([
       import('@/lib/store/local-db'), import('@/lib/zugang/haushalt-inhaber'), import('@/lib/meldungen/melden'), import('@/lib/wege'),
     ]);
     const monat = jetzt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }).slice(0, 7);
@@ -184,8 +184,8 @@ export async function budgetMelden(stufe: BudgetStufe, jetzt = new Date(), gesam
       neu = true;
       return { ...(cur ?? {}), [feld]: { monat: schluessel, stufen: [...m.stufen, stufe] } };
     });
-    const an = neu ? await inhaberSpeicher() : null;
-    if (an) await melde({ an, art: 'zoe', titel: (gesamtAb ? MELDUNG_GESAMT : MELDUNG)[stufe], link: gesamtAb ? WEG.agenten() : WEG.datenschutz('ki') });
+    // An JEDEN Inhaber (09.10., Nahtstelle Budget × mehrere Inhaber): wer das Budget setzen darf, erfährt auch, dass es erreicht ist.
+    for (const an of neu ? await alleInhaberSpeicher() : []) await melde({ an, art: 'zoe', titel: (gesamtAb ? MELDUNG_GESAMT : MELDUNG)[stufe], link: gesamtAb ? WEG.agenten() : WEG.datenschutz('ki') });
     return neu;
   } catch { return false; /* die Glocke darf nie einen Lauf aufhalten */ }
 }
