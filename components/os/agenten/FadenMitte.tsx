@@ -154,6 +154,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
       {fa && <LaufKopf fa={fa} />}
       {auftrag && <Auftrag n={auftrag} k={k} />}
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel}
+        fadenId={fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer) ? fa.faden.id : undefined}
         leer={fa ? <Leer>Noch keine Antwort in diesem Thread.</Leer> : <Leerzustand symbol="↳" titel={`Neuer Thread mit ${name}`}>Schreib den Auftrag: Ziel, Format, Grenzen und Quellen — dann arbeitet {name} los.</Leerzustand>}
         onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}) } }) : undefined}
         unten={wartend ? <Schreibt name={name} /> : undefined} />

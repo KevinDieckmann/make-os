@@ -200,7 +200,7 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
   const sicht = new Set(heads.map(h => h.id));
   const umfang = await umfangFuer(person);
   const [einst, ki, konten, auftraege] = await Promise.all([
-    sicher(einstellungFuer(umfang.haushalt), { v: 1 as const, heads: {} }),
+    sicher(einstellungFuer(umfang.haushalt, person), { v: 1 as const, heads: {} }),
     sicher(kiSchalterFuer(null), { hintergrund: false } as { hintergrund: boolean }),
     sicher(ladeKonten(), { konten: [], einladungen: [] }),
     sicher(auftraegeLesen(), []),
@@ -218,7 +218,7 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
     const personen = new Set(konten.konten.map(k => k.speicher));
     const posten: (ZeitplanPosten & { laufPerson: string })[] = [];
     for (const s of await sicher(sichtbareSkills(person, heads, umfang), [])) {
-      if (!s.aktiv || s.ausloeser.art !== 'zeitplan' || einst.heads[s.headId]?.aktiv === false) continue;
+      if (!s.aktiv || s.ausloeser.art !== 'zeitplan' || einst.heads[s.headId]?.aktiv === false || einst.heads[s.headId]?.notAus) continue;
       const h = heads.find(x => x.id === s.headId)!;
       const lp = h.ebene === 'person' ? person : laufPersonFuerSkill(s, personen);
       const p = lp ? postenVon({ art: 'skill', id: s.id, titel: s.name, headId: s.headId, regel: regelVon(s.ausloeser), business: h.bereich === 'business', wichtig: s.stufe === 'stark' }) : null;
@@ -226,7 +226,7 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
     }
     for (const a of (await sicher(planLesen(person), { aufgaben: [], staende: {} })).aufgaben) {
       const ah = a.aktiv ? agentHead(a.agent) : null;
-      if (!ah || (ah.headId !== 'zoe' && (!sicht.has(ah.headId) || einst.heads[ah.headId]?.aktiv === false))) continue;
+      if (!ah || (ah.headId !== 'zoe' && (!sicht.has(ah.headId) || einst.heads[ah.headId]?.aktiv === false || einst.heads[ah.headId]?.notAus))) continue;
       const p = postenVon({ art: 'plan', id: a.id, titel: a.titel, headId: ah.headId === 'zoe' ? null : ah.headId, regel: regelVon(a.zeitplan), business: ah.bereich === 'business', wichtig: true });
       if (p) posten.push({ ...p, laufPerson: person });
     }
@@ -241,17 +241,18 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
   const hhSpannen = await sicher(haushaltFensterFuer(tagPlus(heute, -7), tagPlus(heute, GRENZEN.naechsteTage + 2)), []);
   const hhFrei = (t: Date) => istBusinessFrei(hhSpannen, wandzeit(t));
   if (!einst.notAus) {
-    const headsTakt = ['sales', 'marketing', 'event'].filter(h => sicht.has(h) && einst.heads[h]?.aktiv !== false);
+    const headsTakt = ['sales', 'marketing', 'event'].filter(h => sicht.has(h) && einst.heads[h]?.aktiv !== false && !einst.heads[h]?.notAus);
     if (headsTakt.length) {
-      const { faelligeModi } = await import('@/lib/heads/takt');
+      const { faelligeModi, powerHourPersonen } = await import('@/lib/heads/takt');
       const { AGENT_ID } = await import('@/lib/heads/prompt');
       const { leererStand, standName } = await import('@/lib/heads/stand');
       const { resolveAgent } = await import('@/lib/agent-config');
       const { ladeCrm } = await import('@/lib/crm/speicher');
       const { TEAM } = await import('@/lib/crm/team');
       const events = (await sicher(ladeCrm(), null))?.events ?? [];
-      const mitKonto = new Set(konten.konten.map(k => k.speicher));
-      const team = TEAM.map(t => t.id).filter(id => mitKonto.has(id));
+      // Dieselben Personen wie der Takt (lib/heads/takt.ts `powerHourPersonen`, Paket 4b: nie ein festes Kürzel).
+      const team = powerHourPersonen(TEAM, konten.konten);
+      const altRiegelPerson = konten.konten.find(k => k.rolle === 'inhaber')?.speicher ?? null;
       const teamFrei = new Map<string, Spanne[]>();
       for (const p of team) teamFrei.set(p, await personFrei(p));
       for (const h of headsTakt) {
@@ -264,14 +265,14 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
             haushaltFrei: hhFrei(t),
             personFrei: new Set(team.filter(p => istBusinessFrei(teamFrei.get(p) ?? [], wandzeit(t)))),
             warFrei: (tag, stunde) => istBusinessFrei(hhSpannen, wandAus(tag, stunde * 60)),
-          }),
+          }, { altRiegelPerson }),
           (m, t) => { sim.letzte[m.person ? `${m.modus}:${m.person}` : m.modus] = t.toISOString(); },
           ausserhalbTakt);
         raus.push(...headEintraege(h, treffer, person, jetzt));
       }
     }
     // Finanzchef: nur mit Schlüssel, eingeschaltet und Hintergrund-KI (wie `finanzchefFaellig`).
-    if (sicht.has('finanzen') && ki.hintergrund && einst.heads.finanzen?.aktiv !== false) {
+    if (sicht.has('finanzen') && ki.hintergrund && einst.heads.finanzen?.aktiv !== false && !einst.heads.finanzen?.notAus) {
       const { hasAnthropicKey } = await import('@/lib/anthropic');
       const { resolveAgent } = await import('@/lib/agent-config');
       if (hasAnthropicKey() && (await sicher(resolveAgent('finanzchef'), { enabled: false } as { enabled: boolean })).enabled) {

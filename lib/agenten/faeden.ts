@@ -11,12 +11,12 @@
 //     `merksatz`); nie Daten Dritter, nie aus einem Thread mit fremdem Text (R12).
 // Typen von Paket 0 werden nur ERWEITERT (lokale Felder, alle optional) — `Faden`/`Nachricht` aus typen.ts bleiben gültig.
 
-import { GRENZEN, agentSchluessel, type AgentRef, type Bereich, type Faden, type FadenBestand, type FadenKurz, type FadenStatus, type LaufZustand, type Merksatz, type Nachricht } from './typen';
+import { GRENZEN, agentSchluessel, type AgentRef, type AuftragKarte, type Bereich, type Brett, type BrettEintrag, type Faden, type FadenBestand, type FadenKurz, type FadenStatus, type LaufZustand, type Merksatz, type Nachricht, type PlanFreigabe } from './typen';
 
 // ── Erweiterte Formen (alle Zusatzfelder optional) ──────────────────────────────────────────────────────────────────────
 
-/** Auftrag an einen Mitarbeiter (R10): Ziel, Format, Grenzen, Quellen — Pflicht, vom Werkzeug-Schema erzwungen. */
-export interface AuftragKarte { ziel: string; format: string; grenzen: string; quellen: string }
+// Auftrag, Brett und Plan-Freigabe stehen seit Paket 4b im Vertrag (lib/agenten/typen.ts) — hier nur weitergereicht.
+export type { AuftragKarte } from './typen';
 
 /**
  * Metadaten eines Laufs (Lauf-Protokoll, R16) — angelehnt an OpenTelemetry GenAI (`gen_ai.operation.name` → `operation`,
@@ -46,38 +46,7 @@ export interface NachrichtKern extends Nachricht {
   lauf?: LaufSpan;
 }
 
-/** Ein Eintrag im gemeinsamen Arbeitsstand („Brett“) eines Auftrags — Herkunft und Fremdtext-Marke immer dabei (R9). */
-export interface BrettEintrag {
-  id: string;
-  art: 'aufgabe' | 'fund' | 'frage' | 'antwort' | 'entscheidung';
-  text: string;
-  /** `agentSchluessel` bzw. Speichername (Mensch im Head-Chat). */
-  von: string;
-  /** Aus welchem Thread. */
-  fadenId: string;
-  fremd: boolean;
-  am: string;
-  /** Bei `antwort`: auf welche Frage. Bei `frage`: offen/beantwortet. */
-  frageId?: string;
-  status?: 'offen' | 'beantwortet';
-  /** Fingerabdruck der Frage — dieselbe Frage wird nicht zweimal gestellt (R3). */
-  abdruck?: string;
-}
-/** Brett je Auftrag im Thread des Heads (Entscheidung, Fragerunde Teil 1 Nr. 9). `schreiber` = der EINE Thread, der Wirkung vorschlagen darf. */
-export interface Brett { id: string; ziel: string; schreiber: string; fadenIds: string[]; eintraege: BrettEintrag[]; erstellt: string }
-
-/** Plan-Freigabe vor großen Aufträgen (R14): mehr als 2 Mitarbeiter in einem Zug oder Schätzung über der Schwelle. */
-export interface PlanFreigabe {
-  id: string;
-  status: 'offen' | 'freigegeben' | 'abgelehnt';
-  grund: string;
-  auftraege: { mitarbeiterId: string; auftrag: AuftragKarte }[];
-  schaetzungCent?: number;
-  am: string;
-  entschiedenAm?: string;
-  /** Nur aus der Sitzung — nie aus einer Agenten-Nachricht. */
-  entschiedenVon?: string;
-}
+export type { Brett, BrettEintrag, PlanFreigabe } from './typen';
 
 export interface FadenKern extends Faden {
   nachrichten: NachrichtKern[];

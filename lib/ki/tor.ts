@@ -36,7 +36,14 @@ export const GRENZE_AUFTRAG_VORGABE_CENT = 1000;
  * Warnungen bei 80 % und 95 % an die Glocke des Inhabers; bei 100 % ruft kein Weg mehr ein Modell auf (`ki-gesperrt:budget` → die Läufe
  * nehmen ihr Regelwerk) + Glocke. Zusätzlich gilt die Grenze je Auftrag (Medien). Jede Stufe meldet sich höchstens einmal im Monat.
  */
-export interface BudgetStand { monatGrenzeCent: number | null; verbrauchtCent: number; auftragGrenzeCent: number; quelle: 'einstellung' | 'umgebung' | null }
+export interface BudgetStand {
+  monatGrenzeCent: number | null; verbrauchtCent: number; auftragGrenzeCent: number; quelle: 'einstellung' | 'umgebung' | null;
+  /**
+   * Gesamt-Grenze (Agenten-Bereich Paket 4b, z. B. ein Test-Budget): Euro-Cent ab `ab`, gezählt seit dem Setzen (fortlaufender Zähler in
+   * lib/zoe/verbrauch.ts minus Stand beim Setzen). Fehlt ohne Grenze. Gilt ZUSÄTZLICH zur Monatsgrenze — die strengere sperrt.
+   */
+  gesamt?: { grenzeCent: number; verbrauchtCent: number; ab: string };
+}
 export const BUDGET_WARNSTUFEN = [80, 95, 100] as const;
 export type BudgetStufe = 0 | (typeof BUDGET_WARNSTUFEN)[number];
 export interface BudgetLage { verbrauchtCent: number; grenzeCent: number | null; prozent: number | null; stufe: BudgetStufe; text: string }
@@ -51,13 +58,28 @@ export function budgetLage(b: Pick<BudgetStand, 'monatGrenzeCent' | 'verbrauchtC
   return { verbrauchtCent: verbraucht, grenzeCent: grenze, prozent, stufe, text: `${euroText(verbraucht)} von ${euroText(grenze)} (${Math.floor(prozent)} %)` };
 }
 
-/** Kosten und Klick prüfen (rein). Ohne Schätzung (Text) zählt nur das Monatsbudget. */
-export function kostenPruefen(e: { budget: Pick<BudgetStand, 'monatGrenzeCent' | 'verbrauchtCent' | 'auftragGrenzeCent'>; faehigkeit: Faehigkeit; schaetzung?: Schaetzung; bestaetigtCent?: number }): string | null {
+/** Die Lage der Gesamt-Grenze (rein) — wie `budgetLage`, Text mit „seit …“. */
+export function budgetLageGesamt(g: NonNullable<BudgetStand['gesamt']>): BudgetLage & { ab: string } {
+  const l = budgetLage({ monatGrenzeCent: g.grenzeCent, verbrauchtCent: g.verbrauchtCent });
+  const seit = new Date(g.ab).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric' });
+  return { ...l, ab: g.ab, text: `${l.text} seit ${seit}` };
+}
+/** Die strengere Stufe aus Monat und Gesamt (rein). */
+export function budgetStufe(b: Pick<BudgetStand, 'monatGrenzeCent' | 'verbrauchtCent' | 'gesamt'>): BudgetStufe {
+  const m = budgetLage(b).stufe;
+  const g = b.gesamt ? budgetLageGesamt(b.gesamt).stufe : 0;
+  return Math.max(m, g) as BudgetStufe;
+}
+
+/** Kosten und Klick prüfen (rein). Ohne Schätzung (Text) zählt nur das Budget (Monat und, falls gesetzt, gesamt). */
+export function kostenPruefen(e: { budget: Pick<BudgetStand, 'monatGrenzeCent' | 'verbrauchtCent' | 'auftragGrenzeCent' | 'gesamt'>; faehigkeit: Faehigkeit; schaetzung?: Schaetzung; bestaetigtCent?: number }): string | null {
   const { budget: b, schaetzung: s } = e;
   if (b.monatGrenzeCent !== null && b.verbrauchtCent >= b.monatGrenzeCent) return 'budget';
+  if (b.gesamt && b.gesamt.verbrauchtCent >= b.gesamt.grenzeCent) return 'budget';
   if (s) {
     if (s.euroCent > b.auftragGrenzeCent) return 'grenze-auftrag';
     if (b.monatGrenzeCent !== null && b.verbrauchtCent + s.euroCent > b.monatGrenzeCent) return 'budget';
+    if (b.gesamt && b.gesamt.verbrauchtCent + s.euroCent > b.gesamt.grenzeCent) return 'budget';
   }
   if (NUR_MIT_KLICK.includes(e.faehigkeit)) {
     if (!s) return 'kosten-rueckfrage';
@@ -97,20 +119,36 @@ const euroAusUmgebung = (v: string | undefined): number | null => {
   return Number.isFinite(n) && n >= 0 && String(v ?? '').trim() !== '' ? Math.round(n * 100) : null;
 };
 
+/** Die Gesamt-Grenze aus der Inhaber-Einstellung (ohne Verbrauch). */
+export interface GesamtGrenze { grenzeCent: number; ab: string; basisUsdCent: number }
+
 /** Nur die Grenzen (ohne Verbrauch zu lesen) — billig; askText ohne Anbieter-Tor fragt damit, ob überhaupt ein Budget gilt. */
-export async function budgetGrenzen(env: Record<string, string | undefined> = process.env): Promise<Pick<BudgetStand, 'monatGrenzeCent' | 'auftragGrenzeCent' | 'quelle'>> {
+export async function budgetGrenzen(env: Record<string, string | undefined> = process.env): Promise<Pick<BudgetStand, 'monatGrenzeCent' | 'auftragGrenzeCent' | 'quelle'> & { gesamtGrenze?: GesamtGrenze }> {
   const { ladeKiEinstellungen } = await import('@/lib/datenschutz/ki-einstellungen');
   const b = (await ladeKiEinstellungen()).instanz?.budget ?? {};
   const umgebung = euroAusUmgebung(env.MAKE_OS_KI_BUDGET_MONAT_EURO) ?? euroAusUmgebung(env.MAKE_OS_KI_BUDGET_EURO);
   const monat = typeof b.monatEuroCent === 'number' ? b.monatEuroCent : umgebung;
   const auftrag = typeof b.auftragEuroCent === 'number' ? b.auftragEuroCent : euroAusUmgebung(env.MAKE_OS_KI_GRENZE_AUFTRAG_EURO) ?? GRENZE_AUFTRAG_VORGABE_CENT;
-  return { monatGrenzeCent: monat, auftragGrenzeCent: auftrag, quelle: typeof b.monatEuroCent === 'number' ? 'einstellung' : umgebung !== null ? 'umgebung' : null };
+  const gesamtGrenze: GesamtGrenze | undefined = typeof b.gesamtEuroCent === 'number' && typeof b.gesamtAb === 'string'
+    ? { grenzeCent: b.gesamtEuroCent, ab: b.gesamtAb, basisUsdCent: typeof b.gesamtBasisUsdCent === 'number' ? b.gesamtBasisUsdCent : 0 } : undefined;
+  return { monatGrenzeCent: monat, auftragGrenzeCent: auftrag, quelle: typeof b.monatEuroCent === 'number' ? 'einstellung' : umgebung !== null ? 'umgebung' : null, ...(gesamtGrenze ? { gesamtGrenze } : {}) };
 }
 
-/** Budget-Stand (Server): Grenzen + Verbrauch des laufenden Monats in Euro-Cent. Für den Budget-Balken: `budgetLage(await budgetStand())`. */
+/** Budget-Stand (Server): Grenzen + Verbrauch des laufenden Monats (und seit Beginn der Gesamt-Grenze) in Euro-Cent. */
 export async function budgetStand(): Promise<BudgetStand> {
-  const { monatUsdCent } = await import('@/lib/zoe/verbrauch');
-  return { ...(await budgetGrenzen()), verbrauchtCent: inEuroCent(await monatUsdCent().catch(() => 0), usdEurKurs()) };
+  const { monatUsdCent, gesamtUsdCent } = await import('@/lib/zoe/verbrauch');
+  const { gesamtGrenze, ...g } = await budgetGrenzen();
+  const kurs = usdEurKurs();
+  const gesamt = gesamtGrenze
+    ? { grenzeCent: gesamtGrenze.grenzeCent, ab: gesamtGrenze.ab, verbrauchtCent: inEuroCent(Math.max(0, (await gesamtUsdCent().catch(() => gesamtGrenze.basisUsdCent)) - gesamtGrenze.basisUsdCent), kurs) }
+    : undefined;
+  return { ...g, verbrauchtCent: inEuroCent(await monatUsdCent().catch(() => 0), kurs), ...(gesamt ? { gesamt } : {}) };
+}
+
+/** Der Kopf-Balken der Agenten-Seite (Paket 4b): Monat (immer; ohne Grenze „nur gemessen“) und gesamt (falls gesetzt). `setzen` ergänzt die Route. */
+export async function budgetAnzeige(): Promise<{ monat: BudgetLage; gesamt?: BudgetLage & { ab: string }; stufe: BudgetStufe; setzen: false }> {
+  const b = await budgetStand();
+  return { monat: budgetLage(b), ...(b.gesamt ? { gesamt: budgetLageGesamt(b.gesamt) } : {}), stufe: budgetStufe(b), setzen: false };
 }
 
 const MELDUNG: Record<Exclude<BudgetStufe, 0>, string> = {
@@ -119,23 +157,35 @@ const MELDUNG: Record<Exclude<BudgetStufe, 0>, string> = {
   100: 'Das KI-Budget des Monats ist erreicht — es wird kein Modell mehr aufgerufen, automatische Läufe nutzen ihr Regelwerk',
 };
 
-/** Die erreichte Warnstufe EINMAL je Monat an die Glocke des Inhabers (neutral, ohne Beträge). Wirft nie. */
-export async function budgetMelden(stufe: BudgetStufe, jetzt = new Date()): Promise<boolean> {
+const MELDUNG_GESAMT: Record<Exclude<BudgetStufe, 0>, string> = {
+  80: 'Das KI-Gesamtbudget ist zu 80 % verbraucht',
+  95: 'Das KI-Gesamtbudget ist zu 95 % verbraucht — bald nutzen automatische Läufe ihr Regelwerk',
+  100: 'Das KI-Gesamtbudget ist erreicht — es wird kein Modell mehr aufgerufen, automatische Läufe nutzen ihr Regelwerk',
+};
+
+/**
+ * Die erreichte Warnstufe EINMAL an die Glocke des Inhabers (neutral, ohne Beträge). Monat: einmal je Stufe und Kalendermonat. Gesamt
+ * (Paket 4b, `gesamtAb` gesetzt): einmal je Stufe und Gesamt-Grenze — eine neu gesetzte Grenze meldet neu. Wirft nie.
+ */
+export async function budgetMelden(stufe: BudgetStufe, jetzt = new Date(), gesamtAb?: string): Promise<boolean> {
   if (!stufe) return false;
   try {
     const [{ updateJson }, { inhaberSpeicher }, { melde }, { WEG }] = await Promise.all([
       import('@/lib/store/local-db'), import('@/lib/zugang/haushalt-inhaber'), import('@/lib/meldungen/melden'), import('@/lib/wege'),
     ]);
     const monat = jetzt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }).slice(0, 7);
+    const feld = gesamtAb ? 'budgetGesamtMeldungen' : 'budgetMeldungen';
+    const schluessel = gesamtAb ?? monat;
     let neu = false;
-    await updateJson<{ budgetMeldungen?: { monat: string; stufen: number[] } }>('ki-stand', cur => {
-      const m = cur?.budgetMeldungen?.monat === monat ? cur.budgetMeldungen : { monat, stufen: [] };
+    await updateJson<Record<string, { monat: string; stufen: number[] } | undefined>>('ki-stand', cur => {
+      const alt = cur?.[feld];
+      const m = alt?.monat === schluessel ? alt : { monat: schluessel, stufen: [] };
       if (m.stufen.includes(stufe)) return cur ?? {};
       neu = true;
-      return { ...(cur ?? {}), budgetMeldungen: { monat, stufen: [...m.stufen, stufe] } };
+      return { ...(cur ?? {}), [feld]: { monat: schluessel, stufen: [...m.stufen, stufe] } };
     });
     const an = neu ? await inhaberSpeicher() : null;
-    if (an) await melde({ an, art: 'zoe', titel: MELDUNG[stufe], link: WEG.datenschutz('ki') });
+    if (an) await melde({ an, art: 'zoe', titel: (gesamtAb ? MELDUNG_GESAMT : MELDUNG)[stufe], link: gesamtAb ? WEG.agenten() : WEG.datenschutz('ki') });
     return neu;
   } catch { return false; /* die Glocke darf nie einen Lauf aufhalten */ }
 }
@@ -146,11 +196,14 @@ export async function budgetMelden(stufe: BudgetStufe, jetzt = new Date()): Prom
  */
 export async function budgetSperre(): Promise<'budget' | null> {
   const g = await budgetGrenzen().catch(() => null);
-  if (!g || g.monatGrenzeCent === null) return null;
-  const { monatUsdCent } = await import('@/lib/zoe/verbrauch');
-  const lage = budgetLage({ monatGrenzeCent: g.monatGrenzeCent, verbrauchtCent: inEuroCent(await monatUsdCent().catch(() => 0), usdEurKurs()) });
-  if (lage.stufe) void budgetMelden(lage.stufe);
-  return lage.stufe === 100 ? 'budget' : null;
+  if (!g || (g.monatGrenzeCent === null && !g.gesamtGrenze)) return null;
+  const b = await budgetStand().catch(() => null);
+  if (!b) return null;
+  const monat = b.monatGrenzeCent !== null ? budgetLage(b).stufe : 0;
+  const gesamt = b.gesamt ? budgetLageGesamt(b.gesamt).stufe : 0;
+  if (monat) void budgetMelden(monat);
+  if (gesamt && b.gesamt) void budgetMelden(gesamt, new Date(), b.gesamt.ab);
+  return monat === 100 || gesamt === 100 ? 'budget' : null;
 }
 
 /**
@@ -185,10 +238,10 @@ export async function anbieterTor(e: {
   const w = anbieterWaehlen({ faehigkeit: e.faehigkeit, kategorien, zustand: await anbieterZustaende(), streng: torModus() === 'streng', ausgefallen: e.ausgefallen });
   if (!w.ok) return { ...basis, ok: false, grund: w.grund };
   // Ohne Instanz-Budget wird der Verbrauch nicht gelesen (nur messen) — die Grenze je Auftrag gilt trotzdem.
-  const grenzen = await budgetGrenzen();
-  const budget: BudgetStand = grenzen.monatGrenzeCent === null ? { ...grenzen, verbrauchtCent: 0 } : await budgetStand();
-  const lage = budgetLage(budget);
-  if (lage.stufe) void budgetMelden(lage.stufe);
+  const { gesamtGrenze, ...grenzen } = await budgetGrenzen();
+  const budget: BudgetStand = grenzen.monatGrenzeCent === null && !gesamtGrenze ? { ...grenzen, verbrauchtCent: 0 } : await budgetStand();
+  if (budget.monatGrenzeCent !== null) { const st = budgetLage(budget).stufe; if (st) void budgetMelden(st); }
+  if (budget.gesamt) { const st = budgetLageGesamt(budget.gesamt).stufe; if (st) void budgetMelden(st, new Date(), budget.gesamt.ab); }
   const k = kostenPruefen({ budget, faehigkeit: e.faehigkeit, schaetzung: e.schaetzung, bestaetigtCent: e.bestaetigtCent });
   // Sprengt nur die Schätzung den Rest des Budgets, wird dieser Auftrag abgelehnt (`budget`), die Glocke meldet aber nicht „erreicht“.
   if (k) {

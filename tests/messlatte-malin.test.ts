@@ -321,6 +321,9 @@ const SYS = {
   // Agenten-Bereich (09.10., Paket 3): Werkstatt der Privat-Heads und geplante Hintergrundaufgaben je Person — nur die Person selbst.
   agentenSkill: 'MESSLATTE-SYS-AGENTEN-SKILL',
   agentenPlan: 'MESSLATTE-SYS-AGENTEN-PLAN',
+
+  // Agenten-Bereich Paket 4b (09.10.): der Abschnitt der Privat-Heads einer Person in `agenten-einstellung--<haushalt>` — nur sie selbst.
+  agentenEinstellung: 'MESSLATTE-SYS-AGENTEN-EINSTELLUNG',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -503,6 +506,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
       id: 'sk-messlatte', headId: 'assistenz', name: 'messlatte-skill', beschreibung: SYS.agentenSkill, anleitung: SYS.agentenSkill, werkzeuge: [], ausloeser: { art: 'hand' },
       eingabeFelder: [], freigabePflicht: false, ergebnis: 'faden', stufe: 'schnell', tests: [], erfolg: { laeufe: 0, angenommen: 0, abgelehnt: 0, fehler: 0 }, aktiv: false, version: 1, quelle: 'hand', angelegtVon: 'kevin',
     }] });
+    // Agenten-Bereich (Paket 4b): Kevins Einstellungen seines Privat-Heads (eigener Abschnitt im Bestand des Haushalts).
+    await db.saveJson('agenten-einstellung--haus-messlatte', { v: 1, heads: {}, personen: { kevin: { heads: { assistenz: { zustaendig: SYS.agentenEinstellung, budgetCentMonat: 1234, geaendertVon: 'kevin', geaendertAm: J } } } } });
     await db.saveJson('agenten-plan--kevin', { v: 1, aufgaben: [{ id: 'hg-messlatte', besitzer: 'kevin', agent: { art: 'head', headId: 'assistenz' }, titel: SYS.agentenPlan, auftrag: SYS.agentenPlan, zeitplan: { art: 'wiederkehrend', rhythmus: 'taeglich', uhrzeit: '08:00' }, aktiv: true, erstellt: J }] });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');

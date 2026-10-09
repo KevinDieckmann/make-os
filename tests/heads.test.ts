@@ -55,10 +55,14 @@ describe('Freigabe-Liste', () => {
 describe('Takt', () => {
   it('Sales werktags ab 7 Uhr einmal, Event nachfassen am Tag danach', () => {
     const do7 = new Date(2026, 8, 24, 7, 5);
-    expect(faelligeModi('sales', do7, leererStand(), [])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten (Kevin)', person: 'kevin' }]);
-    // Zu zweit: je Person ein eigener Riegel — Kevins Lauf sperrt Malins nicht.
-    expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { 'power_hour:kevin': '2026-09-24T05:10:00Z' } }, [], ['kevin', 'malin'])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten (Malin)', person: 'malin' }]);
-    expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { power_hour: '2026-09-24T05:10:00Z' } }, [])).toEqual([]);
+    // Paket 4b: kein festes Kürzel mehr — die Personen kommen vom Aufrufer (Team mit Konto bzw. Haushalt des Inhabers).
+    expect(faelligeModi('sales', do7, leererStand(), [])).toEqual([]);
+    expect(faelligeModi('sales', do7, leererStand(), [], ['person-a'])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten (Person-a)', person: 'person-a' }]);
+    // Zu zweit: je Person ein eigener Riegel — der Lauf der einen sperrt die andere nicht.
+    expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { 'power_hour:person-a': '2026-09-24T05:10:00Z' } }, [], ['person-a', 'person-b'])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten (Person-b)', person: 'person-b' }]);
+    // Der alte Riegel ohne Person gilt für den Inhaber (vom Aufrufer genannt), nie für ein festes Kürzel.
+    expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { power_hour: '2026-09-24T05:10:00Z' } }, [], ['person-a'], undefined, { altRiegelPerson: 'person-a' })).toEqual([]);
+    expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { power_hour: '2026-09-24T05:10:00Z' } }, [], ['person-a'])).toHaveLength(1);
     expect(faelligeModi('sales', new Date(2026, 8, 27, 9), leererStand(), [])).toEqual([]); // Sonntag
     expect(faelligeModi('event', new Date(2026, 8, 24, 9), leererStand(), [{ datum: '2026-09-23', status: 'durchgefuehrt' }])[0].modus).toBe('nachfassen');
   });

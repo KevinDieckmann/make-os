@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type {
-  AgentenAntwort, FadenAnfrage, FadenAntwort, FadenListeAntwort, FadenSendenAntwort, LaeufeAnfrage, LaeufeAntwort,
+  AgentenAntwort, EinstellungAnfrage, FadenAnfrage, FadenAntwort, FadenListeAntwort, FadenSendenAntwort, LaeufeAnfrage, LaeufeAntwort,
   SkillAnfrage, SkillAntwort, SkillsAntwort,
 } from '@/lib/agenten/typen';
 import type { KiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
@@ -171,3 +171,49 @@ export function useAbruf<T>(schluessel: string | null, laden: () => Promise<Abru
 
 /** Die Daten eines Abrufs oder null. */
 export const daten = <T,>(a: Abruf<T>): T | null => (a.zustand === 'da' ? a.daten : null);
+
+// ── Paket 4b: Einstellungen je Head, Not-Aus, Budget, Daumen, Probelauf ─────────────────────────────────────────────────
+// Eigene Wege (eigener Abschnitt, damit Paket 4a — ZOE auf Threads — oben ohne Berührung weiterbauen kann):
+//   POST /api/agenten { aktion: 'einstellung' | 'not-aus' } → Einstellungen je Head, Not-Aus für alle bzw. je Head
+//   PUT  /api/datenschutz/ki { ebene: 'instanz', anbieter: { budget } } → Instanz-Budget (Monat bzw. gesamt; nur der Inhaber — die Route
+//        entscheidet, die Seite zeigt das Formular nur mit `budget.setzen`)
+//   POST /api/agenten/faden { aktion: 'bewerten' } → Daumen an einer Antwort bzw. einem Bericht (ohne die ganze Seite neu zu laden)
+//   GET  /api/medien → Bilder für den Foto-Avatar eines Heads (nur, was die Person sieht)
+
+export const WEGE_4B = { budget: '/api/datenschutz/ki', medien: '/api/medien' } as const;
+
+/** Einstellung eines Heads bzw. Not-Aus schreiben. Danach lädt die Seite neu (Team, Kopf, Mitte). */
+export async function einstellungSenden(a: EinstellungAnfrage): Promise<Ergebnis<{ ok: true; stand?: string; angehalten?: number }>> {
+  const r = await senden<{ ok: true; stand?: string; angehalten?: number }>(WEGE.agenten, a);
+  if (r.ok) meldeNeu();
+  return r;
+}
+
+/** Instanz-Budget setzen (Euro-Cent; null = keine Grenze, nur messen). Nur der Inhaber — sonst 403 mit Satz. */
+export async function budgetSetzen(b: { monatEuroCent?: number | null; gesamtEuroCent?: number | null }): Promise<Ergebnis<unknown>> {
+  let r: Response;
+  try {
+    r = await fetch(WEGE_4B.budget, { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ ebene: 'instanz', anbieter: { budget: b } }) });
+  } catch { return { ok: false, kommt: false, status: 0, text: KEIN_NETZ }; }
+  let d: unknown = null;
+  try { d = await r.json(); } catch { /* leer */ }
+  if (!r.ok || (d && typeof d === 'object' && (d as { ok?: unknown }).ok === false)) return { ok: false, kommt: false, status: r.status, text: textAus(d, `Nicht gespeichert (${r.status}).`), daten: d };
+  meldeNeu();
+  return { ok: true, daten: d };
+}
+
+/** Daumen an einer Antwort bzw. einem Bericht (eigener Thread). `null` nimmt ihn zurück. Lädt die Seite nicht neu. */
+export async function bewerten(fadenId: string, nachrichtId: string, wert: 'hoch' | 'runter' | null): Promise<Ergebnis<{ ok: true }>> {
+  const a: FadenAnfrage = { aktion: 'bewerten', fadenId, nachrichtId, wert };
+  return senden<{ ok: true }>(WEGE.faden, a);
+}
+
+/** Bilder für den Foto-Avatar: nur Bilder (keine Videos), die die Person sieht — Kennung und Vorschau-Adresse. */
+export interface FotoWahl { id: string; name: string; vorschau: string }
+export async function ladeFotos(): Promise<Abruf<{ fotos: FotoWahl[] }>> {
+  const a = await holen<{ medien?: { id: string; art: string; name?: string }[] }>(WEGE_4B.medien);
+  if (a.zustand !== 'da') return a;
+  const fotos = (a.daten.medien ?? []).filter(m => m.art === 'bild' && /^md-[0-9a-f-]{36}$/.test(m.id)).slice(0, 48)
+    .map(m => ({ id: m.id, name: m.name ?? 'Bild', vorschau: `${WEGE_4B.medien}/inhalt?id=${m.id}&v=raster` }));
+  return { zustand: 'da', daten: { fotos } };
+}

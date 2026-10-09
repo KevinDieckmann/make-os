@@ -11,6 +11,7 @@ import { headDef } from './katalog';
 import { EINSTELLUNG_VORGABE, einstellungBestand, werkstattBestandFuer, type AgentRef, type AgentenEinstellung, type Merksatz, type Mitarbeiter, type Skill, type SkillKurz, type Umfang, type WerkstattBestand } from './typen';
 import { ausVorlage, eingebauteSkills, mitarbeiterListe, skillKurz, werkstattLesen } from './skills';
 import { loadJson } from '@/lib/store/local-db';
+import { mitPerson } from './einstellung';
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 
@@ -45,7 +46,7 @@ export async function skillLesen(skillId: string, umfang: Umfang): Promise<Skill
 export async function mitarbeiterFuerHead(headId: string, umfang: Umfang): Promise<Mitarbeiter[]> {
   const h = headDef(headId);
   if (!h) return [];
-  const [w, einst] = await Promise.all([werkstatt(h.ebene, umfang), einstellungFuer(umfang.haushalt)]);
+  const [w, einst] = await Promise.all([werkstatt(h.ebene, umfang), einstellungFuer(umfang.haushalt, umfang.person)]);
   const aus = new Set(Object.values(einst.heads).flatMap(e => e?.mitarbeiterAus ?? []));
   return mitarbeiterListe(h.id, w.mitarbeiter).map(m => (aus.has(m.id) ? { ...m, aktiv: false } : m));
 }
@@ -61,10 +62,14 @@ export async function gedaechtnisFuer(agent: AgentRef, umfang: Umfang): Promise<
   return m ? [...m.gedaechtnis] : [];
 }
 
-/** Einstellungen der Heads eines Haushalts (an/aus, Modell, Budget, Not-Aus …) — ohne Bestand die Vorgabe. */
-export async function einstellungFuer(haushalt: string | null): Promise<AgentenEinstellung> {
+/**
+ * Einstellungen der Heads eines Haushalts (an/aus, Modell, Budget, Not-Aus …) — ohne Bestand die Vorgabe. Seit Paket 4b mit `person`:
+ * die Privat-Heads der Ebene Person kommen aus IHREM Abschnitt (lib/agenten/einstellung.ts `mitPerson`); `personen` (die Abschnitte aller)
+ * gibt diese Funktion nie heraus. Ohne `person`: nur die Heads der Ebene Haushalt (Signatur von Paket 0 bleibt gültig).
+ */
+export async function einstellungFuer(haushalt: string | null, person?: string | null): Promise<AgentenEinstellung> {
   if (!haushalt || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(haushalt)) return { ...EINSTELLUNG_VORGABE, heads: {} };
   const e = await loadJson<AgentenEinstellung>(einstellungBestand(haushalt));
   if (!e || typeof e !== 'object') return { ...EINSTELLUNG_VORGABE, heads: {} };
-  return { ...EINSTELLUNG_VORGABE, ...e, heads: e.heads && typeof e.heads === 'object' ? e.heads : {} };
+  return mitPerson({ ...EINSTELLUNG_VORGABE, ...e, heads: e.heads && typeof e.heads === 'object' ? e.heads : {} }, person ?? null);
 }

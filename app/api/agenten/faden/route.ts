@@ -4,6 +4,9 @@
 //   senden          Head-/Mitarbeiter-Chat synchron (Modell; `modellSchranke`) bzw. mit `hintergrund: true` als Lauf
 //   umbenennen · gelesen · loeschen · teilen (nur Business, nur Besitzer) · plan (Plan-Freigabe per Klick) · abbrechen ·
 //   zweite-meinung (zwei Entwürfe, der Prüfer wählt) · gedaechtnis-weg (persönlichen Merksatz löschen)
+//   bewerten (Paket 4b: Daumen an einer Agenten-Antwort bzw. einem Bericht — nur die Besitzerin, nur Metadaten)
+// Paket 4b: Not-Aus (für alle bzw. je Head), ausgeschalteter Head und erreichtes Head-Budget sperren Senden an Heads/Mitarbeiter und die
+// zweite Meinung (409, ruhiger Satz; lib/agenten/einstellung.ts `laufSperre`). Offene Plan-Freigaben stehen zusätzlich im Stapel (Art `plan`).
 // Verlauf NUR aus dem Bestand `agenten-faeden--<person>` (nie vom Browser), Stand → 409, Grenzen → 413, `jsonBegrenzt`, `bauPruefen`
 // (über `eigenePerson(req, true)`). Nur die Person selbst (Dienstweg 403), keine Personen-Parameter.
 import { NextResponse } from 'next/server';
@@ -35,6 +38,24 @@ function protokoll(req: Request, f: FadenKern) {
   if (h.kategorien.includes('gesundheit') || h.kategorienMitEinwilligung?.includes('gesundheit')) leseZugriff(req, 'gesundheit', { betroffen: f.besitzer });
   if (h.kategorien.includes('finanzen')) leseZugriff(req, h.bereich === 'privat' ? 'haushalt' : 'finanzplan');
   if (h.kategorien.includes('crm')) leseZugriff(req, 'kontakte');
+}
+
+/**
+ * Paket 4b: Not-Aus, ausgeschalteter Head, Head-Budget — gesperrt ist das Senden an einen Head bzw. Mitarbeiter (der Agent aus der Anfrage
+ * oder aus dem eigenen Thread). ZOE regelt Paket 4a. 409 mit ruhigem Satz und dem Grund, nie ein Fehler.
+ */
+async function sperreFuerSenden(person: string, body: Record<string, unknown>): Promise<NextResponse | null> {
+  let headId: string | null = null;
+  const agent = body.agent && typeof body.agent === 'object' ? body.agent as Record<string, unknown> : null;
+  if (agent && (agent.art === 'head' || agent.art === 'mitarbeiter') && typeof agent.headId === 'string') headId = agent.headId;
+  else if (istFadenId(body.fadenId)) {
+    const f = (await bestandLesen(person)).faeden.find(x => x.id === body.fadenId);
+    if (f && f.agent.art !== 'zoe') headId = f.agent.headId;
+  }
+  if (!headId || !headDef(headId)) return null;
+  const { laufSperre } = await import('@/lib/agenten/einstellung');
+  const s = await laufSperre(person, headId).catch(() => null);
+  return s ? nein(409, s.text, { gesperrt: s.grund, hinweis: s.text }) : null;
 }
 
 export async function GET(req: Request) {
@@ -82,15 +103,22 @@ export async function POST(req: Request) {
 
   if (aktion === 'senden') {
     const schranke = modellSchranke(req); if (schranke) return schranke;
+    const gesperrt = await sperreFuerSenden(person, body);
+    if (gesperrt) return gesperrt;
     const a = await einmalig('agenten-faden', body.anfrageId, async () => {
       const r = await senden({ sicht, anfrage: body as unknown as SendenAnfrage, origin: innenAdresse(req) });
       return { status: r.status, body: r.body };
     });
+    // Offene Plan-Freigaben des Threads auch in den Stapel (Art `plan`, idempotent) — ein Fehler hält die Antwort nie auf.
+    const fid = (a.body as { faden?: { id?: unknown } } | null)?.faden?.id;
+    if (a.status === 200 && istFadenId(fid)) await import('@/lib/agenten/plan-stapel').then(m => m.planStapeln(person, fid)).catch(() => 0);
     return NextResponse.json(a.body, { status: a.status });
   }
   if (aktion === 'zweite-meinung') {
     const schranke = modellSchranke(req); if (schranke) return schranke;
     if (!istFadenId(fadenId)) return nein(400, 'Thread-Kennung ungültig.');
+    const gesperrt = await sperreFuerSenden(person, { fadenId });
+    if (gesperrt) return gesperrt;
     const { zweiteMeinung } = await import('@/lib/agenten/delegation');
     const r = await zweiteMeinung({ person, sicht, fadenId, origin: innenAdresse(req) });
     return r.ok ? NextResponse.json({ ok: true, faden: r.faden, stand: fadenStand(r.faden), antwort: r.antwort }) : nein(r.status, r.fehler);
@@ -136,6 +164,7 @@ export async function POST(req: Request) {
       if (!entscheidung || typeof body.planId !== 'string') return nein(400, 'Plan und Entscheidung (freigeben | ablehnen) fehlen.');
       const { planEntscheiden } = await import('@/lib/agenten/delegation');
       const r = await planEntscheiden({ person, fadenId, planId: body.planId, entscheidung, ...(stand !== undefined ? { stand } : {}) });
+      if (r.ok) await import('@/lib/agenten/plan-stapel').then(m => m.planStapelErledigen(person, fadenId, body.planId as string, entscheidung)).catch(() => {});
       return r.ok ? NextResponse.json({ ok: true, faden: r.faden, stand: fadenStand(r.faden), gestartet: r.gestartet }) : nein(r.status, r.fehler);
     }
     case 'loeschen': {
@@ -150,6 +179,23 @@ export async function POST(req: Request) {
         return { bestand: { ...b, faeden: b.faeden.filter(x => !weg.has(x.id)) }, e: true };
       });
       return r.ok ? NextResponse.json({ ok: true, geloescht: fadenId }) : nein(r.status, r.fehler);
+    }
+    case 'bewerten': {
+      // Paket 4b: Daumen an einer Agenten-Antwort bzw. einem Bericht — nur Metadaten (Wert, Zeit, optional ein Grund aus der festen Liste).
+      const wert = body.wert === 'hoch' || body.wert === 'runter' ? body.wert : body.wert === null ? null : undefined;
+      const nachrichtId = typeof body.nachrichtId === 'string' ? body.nachrichtId : '';
+      if (wert === undefined || !nachrichtId) return nein(400, 'Bewertung: Nachricht und Daumen (hoch | runter | null) fehlen.');
+      const { ABLEHNGRUENDE } = await import('@/lib/heads/lernen');
+      const grund = body.grund === undefined || body.grund === null ? undefined : String(body.grund);
+      if (grund !== undefined && (wert !== 'runter' || !ABLEHNGRUENDE.some(g => g.id === grund))) return nein(400, 'Grund nur beim Daumen runter und nur aus der Liste.');
+      const { daumenSetzen } = await import('@/lib/agenten/leistung');
+      return ergebnis(await fadenAendern(person, fadenId, f => {
+        const i = f.nachrichten.findIndex(n => n.id === nachrichtId);
+        if (i < 0) return { ok: false, status: 404, fehler: 'Diese Nachricht gibt es in dem Thread nicht.' };
+        const n = daumenSetzen(f.nachrichten[i], wert ? { wert, am: jetzt, ...(grund ? { grund } : {}) } : null);
+        if (!n) return { ok: false, status: 400, fehler: 'Bewerten lassen sich nur Antworten von Agenten und Berichte.' };
+        return { ...f, nachrichten: f.nachrichten.map((x, j) => (j === i ? n : x)) };
+      }));
     }
     default:
       return nein(400, `Unbekannte Aktion „${aktion.slice(0, 40)}“.`);

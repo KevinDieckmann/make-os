@@ -9,13 +9,13 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { haushaltDesInhabers, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
-import { fadenBestand, type AgentenAntwort, type HeadKarte, type Ueberblick, type UeberblickZeile } from './typen';
-import { headDef } from './katalog';
+import { fadenBestand, type AgentenAntwort, type AgentenEinstellung, type HeadDef, type HeadEinstellung, type HeadKarte, type Ueberblick, type UeberblickZeile } from './typen';
+import { headDef, KATALOG } from './katalog';
 import { einstellungFuer, mitarbeiterFuerHead, skillsFuerHead } from './skills-lesen';
 import { kennzahlWerte } from './kontext';
 import { WEG } from '@/lib/wege';
 import { fadenStand, fehler, kurz, ohneAbgelaufene, type Fehler, type FadenBestandKern, type FadenKern, type NachrichtKern } from './faeden';
-import { fadenSichtbar, headsFuer, type KontoSicht } from './sicht';
+import { fadenSichtbar, headSichtbar, headsFuer, type KontoSicht } from './sicht';
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const leer = (): FadenBestandKern => ({ v: 1, faeden: [] });
@@ -129,7 +129,9 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
   const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
   const h = (await kontoFuerSpeicher(person))?.haushalt;
   const u = { person, haushalt: h && /^[a-z0-9][a-z0-9-]{0,39}$/.test(h) ? h : null };
-  const [einstellung, faeden, { lies, vorschlagSichtbar }] = await Promise.all([einstellungFuer(u.haushalt), sichtbareFaeden(sicht), import('@/lib/zoe/stapel')]);
+  const [einstellung, faeden, { lies, vorschlagSichtbar }] = await Promise.all([einstellungFuer(u.haushalt, person), sichtbareFaeden(sicht), import('@/lib/zoe/stapel')]);
+  // Paket 4b: Einstellungen, Kosten und Rechte je Head, Instanz-Budget (lib/agenten/einstellung.ts, lib/ki/tor.ts).
+  const zusatz = await einstellungZusatz(person, sicht, u.haushalt, einstellung, faeden.filter(f => f.besitzer === person)).catch(e => { console.error('[agenten] Einstellungen nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return null; });
   const offen = (await lies('offen')).filter(v => vorschlagSichtbar(v, person, true));
   const plaeneOffen = (headId?: string) => faeden.filter(f => f.besitzer === person && (!headId || (f.agent.art !== 'zoe' && f.agent.headId === headId))).reduce((n, f) => n + (f.plaene ?? []).filter(p => p.status === 'offen').length, 0);
   let businessFrei = false;
@@ -145,9 +147,10 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
       mitarbeiterFuerHead(d.id, u).catch(() => []), skillsFuerHead(d.id, u).catch(() => []), kennzahlWerte(d, person).catch(() => []),
     ]);
     const eigene = faeden.filter(f => f.agent.art !== 'zoe' && f.agent.headId === d.id);
-    const gesperrt: HeadKarte['gesperrt'] = einstellung.notAus ? { grund: 'not-aus', text: 'Not-Aus ist gesetzt — die Agenten halten an.' }
-      : eh.aktiv === false ? { grund: 'aus', text: `${d.name} ist ausgeschaltet.` }
-        : businessFrei && d.bereich === 'business' ? { grund: 'business-frei', text: 'Gerade Business-frei — im Hintergrund ruht der Bereich.' } : undefined;
+    const sperre = zusatz?.sperre(d) ?? (einstellung.notAus ? { grund: 'not-aus' as const, text: 'Not-Aus ist gesetzt — die Agenten halten an.' } : eh.aktiv === false ? { grund: 'aus' as const, text: `${d.name} ist ausgeschaltet.` } : null);
+    const gesperrt: HeadKarte['gesperrt'] = sperre ?? (businessFrei && d.bereich === 'business' ? { grund: 'business-frei', text: 'Gerade Business-frei — im Hintergrund ruht der Bereich.' } : undefined);
+    const foto = zusatz ? await zusatz.foto(d, eh.foto) : null;
+    const einstellungSicht = zusatz?.sicht(d, eh);
     heads.push({
       id: d.id, name: d.name, kurz: d.kurz, auftrag: d.auftrag, bereich: d.bereich, ebene: d.ebene, farbe: d.farbe, ...(d.hinweis ? { hinweis: d.hinweis } : {}),
       aktiv: eh.aktiv !== false, ...(gesperrt ? { gesperrt } : {}), kennzahlen,
@@ -155,6 +158,8 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
       skills,
       zaehler: { freigaben: offen.filter(v => (v.anlass ?? '').startsWith(d.name)).length + plaeneOffen(d.id), laufend: eigene.filter(laufend).length, faeden: eigene.length },
       letzteFaeden: neueste(eigene).slice(0, 5).map(f => kurz(f, person)),
+      ...(foto ? { foto } : {}),
+      ...(einstellungSicht ? { einstellung: einstellungSicht } : {}),
     });
   }
 
@@ -201,5 +206,54 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
       ziele: ziele.slice(0, 5),
     },
     notAus: !!einstellung.notAus,
+    ...(zusatz ? { budget: zusatz.budget, notAusAendern: zusatz.notAusAendern, personen: zusatz.personen } : {}),
+  };
+}
+
+/**
+ * Paket 4b: was GET /api/agenten zu den Einstellungen mitbringt — je Head die wirksamen Werte, Kosten des Monats, Rechte und Stand; ein
+ * Foto nur, wenn die Person das Bild sieht; das Instanz-Budget; wählbare zuständige Personen. Privat-Heads: nur der eigene Abschnitt
+ * (`einstellung` kommt schon mit `mitPerson`).
+ */
+async function einstellungZusatz(person: string, sicht: KontoSicht, haushalt: string | null, einstellung: AgentenEinstellung, eigeneFaeden: readonly FadenKern[]) {
+  const [ein, leistung, { stufenModelle, modellVon }, kiE, tor, personen] = await Promise.all([
+    import('./einstellung'), import('./leistung'), import('@/lib/ki/modelle'), import('@/lib/datenschutz/ki-einstellungen'), import('@/lib/ki/tor'),
+    import('./einstellung').then(m => m.haushaltsPersonen()),
+  ]);
+  const { istInhaber } = await import('@/lib/zugang/haushalt-inhaber');
+  const [kostenHaus, kiDatei, budget, inhaber] = await Promise.all([
+    ein.kostenJeHeadMonat().catch(() => ({} as Record<string, number>)), kiE.ladeKiEinstellungen().catch(() => null), tor.budgetAnzeige().catch(() => null), istInhaber(person),
+  ]);
+  const ids = stufenModelle(process.env, kiDatei?.instanz?.modellStufen ?? null);
+  const modelle = { schnell: modellVon(ids.schnell)?.name ?? ids.schnell, ausgewogen: modellVon(ids.ausgewogen)?.name ?? ids.ausgewogen, stark: modellVon(ids.stark)?.name ?? ids.stark };
+  // Privat-Heads: Kosten nur aus den EIGENEN Threads (die Kostenmessung mischt Personen) — derselbe Monat wie `kostenHeadMonat`.
+  const { monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
+  const [j, m] = monatBerlin(new Date()).split('-').map(Number);
+  const von = new Date(Date.UTC(j, m - 1, 1)).toISOString(), bis = new Date(Date.UTC(m === 12 ? j + 1 : j, m === 12 ? 0 : m, 1)).toISOString();
+  const kostenPrivat = new Map<string, number>();
+  for (const h of KATALOG.filter(x => x.ebene === 'person' && headSichtbar(sicht, x.id))) kostenPrivat.set(h.id, leistung.fadenZahlen(eigeneFaeden, h.id, von, bis).kostenCent);
+  const kostenVon = (d: HeadDef) => (d.ebene === 'person' ? kostenPrivat.get(d.id) ?? 0 : kostenHaus[d.id] ?? 0);
+  let betrachter: Awaited<ReturnType<typeof import('@/lib/medien/server').betrachterFuer>> | undefined;
+  return {
+    sperre: (d: HeadDef) => ein.headSperre(einstellung, d, person, kostenVon(d)),
+    sicht: (d: HeadDef, eh: HeadEinstellung) => {
+      const lage = leistung.autonomieLage(d, eh as Parameters<typeof leistung.autonomieLage>[1], leistung.annahmeAus(0, 0));
+      return ein.einstellungSicht(d, eh, {
+        boden: lage.boden, wirksameAutonomie: lage.stufe, modelle, kostenCent: kostenVon(d),
+        aendern: ein.einstellungDarf(sicht, d, true), foto: null,
+      });
+    },
+    foto: async (d: HeadDef, id: string | undefined): Promise<string | null> => {
+      if (!id || !/^md-[0-9a-f-]{36}$/.test(id)) return null;
+      try {
+        const m = await import('@/lib/medien/server');
+        if (betrachter === undefined) betrachter = await m.betrachterFuer(person);
+        const x = betrachter ? await m.mediumFinden(betrachter, id) : null;
+        return x && x.medium.art === 'bild' && (d.ebene === 'person' || x.quelle.art === 'business') ? `/api/medien/inhalt?id=${id}&v=raster` : null;
+      } catch { return null; }
+    },
+    budget: budget ? { ...budget, setzen: inhaber } : undefined,
+    notAusAendern: ein.notAusDarf(sicht, null),
+    personen: haushalt ? personen.alle.map(p => ({ id: p.id, name: p.name })) : [],
   };
 }

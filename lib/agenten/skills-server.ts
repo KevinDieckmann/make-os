@@ -18,7 +18,7 @@ import {
 } from './typen';
 import {
   aktivierenFehlt, ausVorlage, eingebauteSkills, entwurfAusFaden, istEingebautId, merksatzHinzu, mitarbeiterAendern, mitarbeiterListe,
-  mitarbeiterPruefen, skillAendern, skillKurz, skillMdLesen, skillNeu, skillPruefen, standVon, testlaufAus, werkstattLesen,
+  mitarbeiterPruefen, skillAendern, skillKurz, skillMdLesen, skillNeu, skillPruefen, standVon, testlaufAus, textFeld, werkstattLesen,
   type GespeicherterSkill, type ProbeErgebnis, type SkillInhalt, type SkillKontext,
 } from './skills';
 import { kostenSchaetzen, GROSS_AB_CENT, type KostenSchaetzung } from './leistung';
@@ -372,6 +372,87 @@ export async function skillTestlaufAktion(person: string, id: unknown, opt: { ko
   });
   if (raus.ok) await protokoll(f.name, [{ liste: 'skills', op: 'geaendert', id: s.id, felder: ['testlauf'] }], person);
   return raus;
+}
+
+// ── Probelauf eines Mitarbeiters (Paket 4b; Fragerunde Teil 1 Nr. 7 „Probelauf ohne Wirkung“) ────────────────────────────
+
+export interface MitarbeiterProbeAuftrag { head: HeadDef; mitarbeiter: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'stufe'>; eingabe: string; person: string }
+export interface MitarbeiterProbeErgebnis { ok: boolean; text: string; werkzeuge?: string[]; kostenCent?: number }
+/** Führt EINEN Lauf mit Testeingabe ohne Wirkung aus. Paket 4a verdrahtet die echte Schleife im Trockenlauf; in Tests ein Fake. */
+export type MitarbeiterProbelaeufer = (a: MitarbeiterProbeAuftrag) => Promise<MitarbeiterProbeErgebnis>;
+
+/**
+ * Vorläufiger Probeläufer: EIN Modell-Aufruf OHNE Werkzeuge (es kann nichts wirken) — Rolle und Anleitung als System-Text, die
+ * Testeingabe als Eingabe; das Modell antwortet so, wie der Mitarbeiter antworten würde, und nennt die Werkzeuge, die es aufriefe.
+ * Daten aus Beständen gehen NICHT mit (die Testeingabe ist alles).
+ */
+export const kiMitarbeiterProbelauf: MitarbeiterProbelaeufer = async a => {
+  const { askJson } = await import('@/lib/anthropic');
+  const { MODEL_BY_TIER } = await import('@/lib/agent-config');
+  const system = [
+    `Du bist „${a.mitarbeiter.name}“, Mitarbeiter von ${a.head.name}. Rolle: ${a.mitarbeiter.rolle}`,
+    'Das ist ein PROBELAUF ohne Wirkung: Werkzeuge stehen nicht zur Verfügung, nichts wird gespeichert oder gesendet. Antworte so, wie du im echten Lauf antworten würdest.',
+    a.mitarbeiter.anleitung ? `<anleitung>\n${a.mitarbeiter.anleitung}\n</anleitung>` : '',
+    `Erlaubte Werkzeuge (nur nennen, nie ausführen): ${a.mitarbeiter.werkzeuge.join(', ') || 'keine'}.`,
+    'Antworte NUR mit JSON: {"ergebnis": string (≤ 3000 Zeichen), "werkzeuge": string[] (Namen, die du aufrufen würdest)}.',
+  ].filter(Boolean).join('\n\n');
+  const r = await askJson<{ ergebnis?: string; werkzeuge?: unknown }>({
+    system, user: `<testeingabe>\n${a.eingabe}\n</testeingabe>`, zweck: `agent-${a.head.id}`, model: MODEL_BY_TIER[a.mitarbeiter.stufe], maxTokens: 2500,
+    ki: { lauf: 'aufruf', person: a.person, kategorien: [...a.head.kategorien] },
+  });
+  if (!r.ok || !r.data) return { ok: false, text: r.error?.startsWith('ki-gesperrt') ? 'Probelauf gesperrt (System › Datenschutz).' : 'Kein auswertbares Ergebnis.' };
+  const werkzeuge = Array.isArray(r.data.werkzeuge) ? r.data.werkzeuge.filter((x): x is string => typeof x === 'string').slice(0, 30) : [];
+  return { ok: true, text: String(r.data.ergebnis ?? '').slice(0, 3_000) || '(leer)', werkzeuge };
+};
+
+let mitarbeiterProbeImpl: MitarbeiterProbelaeufer = kiMitarbeiterProbelauf;
+/** Paket 4a: die Gesprächsschleife im Trockenlauf hier einhängen; Tests: ein Fake. */
+export function mitarbeiterProbelaeuferVerdrahten(p: MitarbeiterProbelaeufer): void { mitarbeiterProbeImpl = p; }
+
+/**
+ * Probelauf eines Mitarbeiters (vorhanden über `id` oder ein Entwurf aus dem Dialog): Kostenschätzung (über `GROSS_AB_CENT` nur mit
+ * `kostenBestaetigt`), Sperre des Heads (Not-Aus, aus, Budget), dann EIN Lauf ohne Wirkung — das Ergebnis steht nur in einem eigenen
+ * Thread der Person („Probelauf: …“), Werkzeuge werden nur genannt. Nichts an der Werkstatt ändert sich.
+ */
+export async function mitarbeiterProbelaufAktion(person: string, headId: unknown, roh: { id?: unknown; entwurf?: unknown; eingabe?: unknown; kostenBestaetigt?: unknown }): Promise<Ergebnis<{ fadenId: string; schaetzung: KostenSchaetzung }>> {
+  const hk = await headKontext(person, headId);
+  if (!hk.ok) return hk;
+  const w = await werkstattLaden(hk.name);
+  let ma: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'stufe'> & { id?: string };
+  if (typeof roh.id === 'string' && roh.id) {
+    const m = mitarbeiterListe(hk.head.id, w.mitarbeiter).find(x => x.id === roh.id);
+    if (!m) return fehler(404, 'Diesen Mitarbeiter hat der Head nicht.');
+    ma = m;
+  } else {
+    const p = mitarbeiterPruefen(roh.entwurf, hk.head);
+    if (!p.ok) return fehler(p.status, p.fehler);
+    ma = p.wert;
+  }
+  const eingabe = textFeld(roh.eingabe, GRENZEN.auftragZeichen, 'Testeingabe');
+  if (!eingabe.ok) return fehler(eingabe.status, eingabe.fehler);
+  const schaetzung = kostenSchaetzen({ stufe: ma.stufe, art: 'probelauf' });
+  if (schaetzung.cent > GROSS_AB_CENT && roh.kostenBestaetigt !== true) return fehler(409, `Der Probelauf kostet ${schaetzung.text} — bitte bestätigen.`, { kostenBestaetigen: true, schaetzung });
+  const { laufSperre } = await import('./einstellung');
+  const sperre = await laufSperre(person, hk.head.id);
+  if (sperre) return fehler(409, sperre.text, { gesperrt: sperre.grund });
+  let e: MitarbeiterProbeErgebnis;
+  try { e = await mitarbeiterProbeImpl({ head: hk.head, mitarbeiter: ma, eingabe: eingabe.wert, person }); }
+  catch (x) { e = { ok: false, text: x instanceof Error ? x.message.slice(0, 160) : 'Fehler' }; }
+  const { bestandAendern } = await import('./faeden-server');
+  const { neuerFaden, anhaengen, fadenHinzu } = await import('./faeden');
+  const jetzt = new Date().toISOString();
+  const agent: AgentRef = ma.id ? { art: 'mitarbeiter', headId: hk.head.id, mitarbeiterId: ma.id } : { art: 'head', headId: hk.head.id };
+  const f = neuerFaden({ id: neueKennung('fd'), besitzer: person, agent, bereich: hk.head.bereich, titel: `Probelauf: ${ma.name}`, jetzt, kette: [agentSchluessel(agent)] });
+  const n = anhaengen(f, [
+    { id: neueKennung('nr'), rolle: 'person', von: person, text: eingabe.wert, zeit: jetzt },
+    { id: neueKennung('nr'), rolle: e.ok ? 'agent' : 'system', von: e.ok ? agentSchluessel(agent) : 'system', text: e.text, zeit: jetzt, ...(e.ok ? { ki: true as const } : {}), ...(e.werkzeuge?.length ? { werkzeuge: e.werkzeuge.map(name => ({ name, ok: true })) } : {}), ...(typeof e.kostenCent === 'number' ? { kosten: { cent: e.kostenCent } } : {}) },
+    { id: neueKennung('nr'), rolle: 'system', von: 'system', text: 'Probelauf ohne Wirkung — Werkzeuge wurden nur genannt, nichts gespeichert oder gesendet.', zeit: jetzt },
+  ], jetzt);
+  if (!n.ok) return fehler(n.status === 413 ? 413 : 409, n.fehler);
+  const fertig = { ...n.faden, status: (e.ok ? 'fertig' : 'fehler') as 'fertig' | 'fehler' };
+  const r = await bestandAendern<string>(person, b => { const x = fadenHinzu(b, fertig); return x.ok ? { bestand: x.bestand, e: fertig.id } : x; });
+  if (!r.ok) return fehler(r.status === 400 ? 400 : r.status === 413 ? 413 : 409, r.fehler);
+  return { ok: true, fadenId: r.e, schaetzung };
 }
 
 // ── Erfolgsquote (Paket 1 meldet Läufe und Entscheidungen) ─────────────────────────────────────────────────────────────

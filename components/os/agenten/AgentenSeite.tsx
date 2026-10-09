@@ -177,7 +177,7 @@ export function AgentenSeite() {
     <AgentenKontext wert={wert}>
       <Seite titel="Agenten" unter={form === 'handy' ? undefined : 'ZOE steuert die Heads — und du sprichst mit jedem direkt.'} rechts={<Kopfleiste />}>
         <ZoeReiter />
-        {notAus && <Hinweis art="achtung" titel="Not-Aus ist an">Alle Hintergrundläufe ruhen, Zeitpläne sind pausiert. Chats bleiben möglich.</Hinweis>}
+        {notAus && <Hinweis art="achtung" titel="Not-Aus ist an">Alle Agenten halten an: Hintergrundläufe, Zeitpläne und Aufträge an Heads ruhen. Mit ZOE sprechen geht weiter.</Hinweis>}
         {meldung && <Hinweis art={meldung.art} rolle={meldung.art === 'kritisch' ? 'alert' : 'status'} aktion={meldung.art === 'kritisch' ? <Knopf leise onClick={() => setMeldung(null)}>Schließen</Knopf> : undefined}>{meldung.text}</Hinweis>}
         {form === 'handy' && offenRisikoarm > 0 && handyReiter !== 'laeuft' && (
           <Hinweis art="info" aktion={<Knopf leise onClick={() => setHandyReiter('laeuft')}>Ansehen</Knopf>}>{offenRisikoarm} risikoarme Freigabe{offenRisikoarm === 1 ? '' : 'n'} — mit dem Daumen wischen.</Hinweis>

@@ -9,30 +9,28 @@
 // Oben rein (Server UND Browser), unten der Server-Teil (Imports nur dynamisch, damit die Oberfläche die reinen Teile nutzen kann).
 // Nur ZAHLEN — nie Inhalte, Namen oder Texte Dritter (auch nicht im Review-Bericht für ZOE).
 //
-// Kosten: bis das Anbieter-Tor da ist (Branch `ki-anbieter`, lib/ki/kosten.ts `kostenSchaetzen`), rechnet `kostenCent` mit
-// Annahme-Preisen je Modellstufe — die Schnittstelle (Stufe + Token → Cent) bleibt, beim Zusammenführen ruft sie lib/ki.
+// Kosten (seit Paket 4b): `kostenCent` rechnet über das Anbieter-Tor (lib/ki/kosten.ts — Katalogpreise aus lib/ki/modelle.ts, Kurs der
+// Instanz `MAKE_OS_KI_USD_EUR`) mit dem Modell hinter der Stufe (`stufenModelle`, Vorgabe bzw. Umgebung) — keine zweite Preisrechnung.
 // Gemessene Kosten (Threads, `LaufZustand.kostenCent`) gehen vor: „aus dem gemessenen Mittel, nie geraten“ (ARCHITEKTUR 6.2.7).
 
-import type { AgentenEinstellung, AutonomieStufe, Faden, HeadDef, HeadEinstellung, ModelTier, Nachricht, Skill } from './typen';
+import type { AgentenEinstellung, AutonomieStufe, Daumen, Faden, HeadDef, HeadEinstellung, ModelTier, Nachricht, Skill } from './typen';
+import { inEuroCent, kostenUsdCent, usdEurKurs } from '@/lib/ki/kosten';
+import { stufenModelle } from '@/lib/ki/modelle';
 
 // ── Kosten ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Ab dieser Schätzung (Cent) fragt die Oberfläche vor dem Start: „kostet ca. … — starten?“ (Antwort 16, R14 Plan-Freigabe). */
 export const GROSS_AB_CENT = 50;
-/** ANNAHME bis zum Anbieter-Tor: US-Dollar je Million Token je Stufe (Stand der Modell-Stufen in lib/agent-config.ts). */
-export const PREIS_ANNAHME_USD: Readonly<Record<ModelTier, { ein: number; aus: number }>> = {
-  schnell: { ein: 1, aus: 5 }, ausgewogen: { ein: 2, aus: 10 }, stark: { ein: 4, aus: 20 },
-};
-/** ANNAHME (nicht belegt) — derselbe Vorgabekurs wie im Anbieter-Tor. */
-export const USD_EUR_ANNAHME = 0.86;
 /** Token-Annahme je Lauf-Art, solange nichts gemessen ist (Mitarbeiter-Lauf: bis 6 Runden, R5). */
 export const TOKEN_ANNAHME = { probelauf: { ein: 4_000, aus: 800 }, lauf: { ein: 48_000, aus: 9_000 } } as const;
 
-/** Die Schnittstelle zum Anbieter-Tor: Stufe + Token → Euro-Cent (ungerundet). */
-export function kostenCent(o: { stufe: ModelTier; tokenEin: number; tokenAus: number }): number {
-  const p = PREIS_ANNAHME_USD[o.stufe];
-  const usd = (Math.max(0, o.tokenEin) / 1e6) * p.ein + (Math.max(0, o.tokenAus) / 1e6) * p.aus;
-  return usd * 100 * USD_EUR_ANNAHME;
+/**
+ * Stufe + Token → Euro-Cent (ungerundet) — über das Anbieter-Tor (lib/ki/kosten.ts): Modell der Stufe aus `stufenModelle` (Umgebung,
+ * sonst Vorgabe), Katalogpreis, Kurs der Instanz. `env` nur für Tests.
+ */
+export function kostenCent(o: { stufe: ModelTier; tokenEin: number; tokenAus: number }, env: Record<string, string | undefined> = typeof process !== 'undefined' ? process.env : {}): number {
+  const modell = stufenModelle(env)[o.stufe];
+  return inEuroCent(kostenUsdCent(modell, { 'token-ein': Math.max(0, o.tokenEin), 'token-aus': Math.max(0, o.tokenAus) }), usdEurKurs(env));
 }
 
 /** „0,42 €“ bzw. „ca. 0,42 €“ (unter einem Cent „< 0,01 €“). */
@@ -67,16 +65,19 @@ export function kostenSchaetzen(o: { stufe: ModelTier; art: 'probelauf' | 'lauf'
 // ── Daumen je Antwort (Speicher-Format) ───────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Daumen je Antwort (Antwort 17). SPEICHER-FORMAT: am `Nachricht`-Eintrag des Threads als Feld `daumen` (additiv; geschrieben von
- * Paket 1 über die Thread-Route, nur die Besitzerin des Threads, nur an Agenten-Nachrichten). `grund` nur aus `ABLEHNGRUENDE` der
- * Heads (lib/heads/lernen.ts) — nie Freitext Dritter.
+ * Daumen je Antwort (Antwort 17). SPEICHER-FORMAT: am `Nachricht`-Eintrag des Threads als Feld `daumen` (seit Paket 4b im Vertrag,
+ * `Nachricht.daumen`; geschrieben über die Aktion `bewerten` der Thread-Route, nur die Besitzerin des Threads, nur an Agenten-Antworten
+ * und Berichten). `grund` nur aus `ABLEHNGRUENDE` der Heads (lib/heads/lernen.ts) — nie Freitext Dritter.
  */
-export interface Daumen { wert: 'hoch' | 'runter'; am: string; grund?: string }
+export type { Daumen };
 export type NachrichtMitDaumen = Nachricht & { daumen?: Daumen };
 
-/** Daumen setzen bzw. entfernen (`null`) — rein, für die Thread-Route (Paket 1). Nur Agenten-Nachrichten. */
+/** Darf diese Nachricht einen Daumen tragen? Agenten-Antworten und Berichte aus einem Mitarbeiter-Thread. */
+export const bewertbar = (n: Pick<Nachricht, 'rolle' | 'verweis'>): boolean => n.rolle === 'agent' || (n.rolle === 'system' && n.verweis?.art === 'bericht');
+
+/** Daumen setzen bzw. entfernen (`null`) — rein, für die Aktion `bewerten` (Thread-Route). Nur bewertbare Nachrichten, sonst null. */
 export function daumenSetzen(n: Nachricht, d: Daumen | null): NachrichtMitDaumen | null {
-  if (n.rolle !== 'agent') return null;
+  if (!bewertbar(n)) return null;
   const { daumen: _d, ...rest } = n as NachrichtMitDaumen;
   return d ? { ...rest, daumen: { wert: d.wert, am: d.am, ...(d.grund ? { grund: d.grund.slice(0, 40) } : {}) } } : rest;
 }
@@ -312,7 +313,7 @@ export async function leistungFuerHead(person: string, head: HeadDef, monat?: st
   const name = werkstattBestandFuer(head.ebene, umfang);
   const skills = name ? (await werkstattLaden(name)).skills.filter(s => s.headId === head.id) : [];
   const annahme = await annahmeFuerHead(head, umfang.haushalt, jetzt);
-  const einst = await einstellungFuer(umfang.haushalt);
+  const einst = await einstellungFuer(umfang.haushalt, person);
   const fz = fadenZahlen(faeden, head.id, von, bis);
   const l = headLeistung({ headId: head.id, von, bis, faden: fz, entscheidungen: [{ angenommen: annahme.angenommen, abgelehnt: annahme.abgelehnt }], skills });
   return { ...l, annahme, autonomie: autonomieLage(head, einst.heads[head.id] as HeadEinstellungMitAutonomie | undefined, annahme) };
@@ -328,8 +329,9 @@ export async function gemesseneKosten(person: string, headId: string): Promise<n
 }
 
 /**
- * Autonomie per Klick setzen (Person aus der Sitzung, nur sichtbare Heads der Ebene Haushalt — „Festhalten in den Einstellungen des
- * Haushalts“). Verschärfen immer, lockern nur bis zum Boden und nur mit guter Quote.
+ * Autonomie per Klick setzen (Person aus der Sitzung, nur sichtbare Heads — „Festhalten in den Einstellungen des Haushalts“). Verschärfen
+ * immer, lockern nur bis zum Boden und nur mit guter Quote. Seit Paket 4b: Haushalts-Heads nur volle Mitglieder; Privat-Heads (Ebene Person)
+ * in den Abschnitt der Person (lib/agenten/einstellung.ts — dieselbe Schreibstelle wie „Einstellungen“).
  */
 export async function autonomieSetzen(person: string, headId: unknown, wunsch: unknown): Promise<{ ok: true; autonomie: AutonomieLage } | { ok: false; status: 400 | 403 | 404 | 409; fehler: string }> {
   const { headDef } = await import('./katalog');
@@ -337,30 +339,37 @@ export async function autonomieSetzen(person: string, headId: unknown, wunsch: u
   const { updateJson } = await import('@/lib/store/local-db');
   const { einstellungBestand, EINSTELLUNG_VORGABE } = await import('./typen');
   const { protokolliere } = await import('@/lib/store/aenderungsprotokoll');
+  const { headEinstellungVon } = await import('./einstellung');
   const head = typeof headId === 'string' ? headDef(headId) : null;
   if (!head) return { ok: false, status: 404, fehler: 'Diesen Head gibt es nicht.' };
   if (!(await headSichtbar(person, head.id))) return { ok: false, status: 403, fehler: 'Diesen Head siehst du nicht.' };
   const { haushalt } = await umfangFuer(person);
   if (!haushalt) return { ok: false, status: 409, fehler: 'Ohne Haushalt gibt es keine Einstellungen.' };
+  if (head.ebene !== 'person') {
+    const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+    if (!(await haushaltFuer(person))) return { ok: false, status: 403, fehler: 'Die Einstellungen dieses Heads ändern nur volle Mitglieder des Haushalts.' };
+  }
   const annahme = await annahmeFuerHead(head, haushalt);
   const jetzt = new Date().toISOString();
   let raus: { ok: true; autonomie: AutonomieLage } | { ok: false; status: 400 | 409; fehler: string } = { ok: false, status: 409, fehler: 'Nicht gespeichert.' };
   await updateJson<AgentenEinstellung>(einstellungBestand(haushalt), cur => {
     const e = cur ?? { ...EINSTELLUNG_VORGABE, heads: {} };
-    const alt = e.heads[head.id] as HeadEinstellungMitAutonomie | undefined;
+    const alt = headEinstellungVon({ ...e, heads: e.heads ?? {} }, head, person) as HeadEinstellungMitAutonomie;
     const p = autonomieWunschPruefen(head, alt, wunsch, annahme);
     if (!p.ok) { raus = p; return e; }
-    const neuH: HeadEinstellungMitAutonomie = { ...(alt ?? {}), autonomie: p.stufe, autonomieAm: jetzt, autonomieVon: person, autonomieGrund: 'hand' };
+    const neuH: HeadEinstellungMitAutonomie = { ...alt, autonomie: p.stufe, autonomieAm: jetzt, autonomieVon: person, autonomieGrund: 'hand' };
     raus = { ok: true, autonomie: autonomieLage(head, neuH, annahme) };
+    if (head.ebene === 'person') return { ...e, personen: { ...(e.personen ?? {}), [person]: { heads: { ...(e.personen?.[person]?.heads ?? {}), [head.id]: neuH } } } };
     return { ...e, heads: { ...e.heads, [head.id]: neuH }, geaendertAm: jetzt, geaendertVon: person };
   });
-  if (raus.ok) await protokolliere(einstellungBestand(haushalt), [{ liste: 'heads', op: 'geaendert', id: head.id, felder: ['autonomie'] }], { art: 'person', person }).catch(() => {});
+  if (raus.ok) await protokolliere(einstellungBestand(haushalt), [{ liste: head.ebene === 'person' ? 'personen' : 'heads', op: 'geaendert', id: head.id, felder: ['autonomie'] }], { art: 'person', person }).catch(() => {});
   return raus;
 }
 
 /**
  * Automatisch zurückstufen (Fragerunde 15 „zurück automatisch“): prüft die Quote aller Heads des Haushalts und schreibt die
  * Zurückstufung in die Einstellungen — läuft nach jeder Schreibaktion der Agenten-Routen und ist für den Morgenlauf gedacht.
+ * Seit Paket 4b auch in den Abschnitten der Personen (Privat-Heads der Ebene Person).
  */
 export async function autonomiePflegen(haushalt: string | null, jetzt = new Date()): Promise<string[]> {
   if (!haushalt) return [];
@@ -370,15 +379,26 @@ export async function autonomiePflegen(haushalt: string | null, jetzt = new Date
   const name = einstellungBestand(haushalt);
   const einst = await loadJson<AgentenEinstellung>(name).catch(() => null);
   if (!einst) return [];
-  const kandidaten = KATALOG.filter(h => { const e = einst.heads[h.id]; return !e?.autonomie || e.autonomie !== 'vorschlag'; });
+  const offen = (e: HeadEinstellung | undefined) => !e?.autonomie || e.autonomie !== 'vorschlag';
+  const haus = KATALOG.filter(h => h.ebene !== 'person' && offen(einst.heads[h.id]));
+  const privat = KATALOG.filter(h => h.ebene === 'person' && Object.values(einst.personen ?? {}).some(p => offen(p?.heads?.[h.id])));
   const quoten = new Map<string, Annahme>();
-  for (const h of kandidaten) quoten.set(h.id, await annahmeFuerHead(h, haushalt, jetzt));
+  for (const h of [...haus, ...privat]) quoten.set(h.id, await annahmeFuerHead(h, haushalt, jetzt));
+  const quote = (id: string) => quoten.get(id) ?? annahmeAus(0, 0);
   let geaendert: string[] = [];
   await updateJson<AgentenEinstellung>(name, cur => {
     if (!cur) return cur as unknown as AgentenEinstellung;
-    const r = autonomieZurueckstufen(cur, kandidaten, id => quoten.get(id) ?? annahmeAus(0, 0), jetzt.toISOString());
-    geaendert = r.heads;
-    return r.einst;
+    const r = autonomieZurueckstufen(cur, haus, quote, jetzt.toISOString());
+    geaendert = [...r.heads];
+    let neu = r.einst;
+    for (const [p, abschnitt] of Object.entries(cur.personen ?? {})) {
+      if (!abschnitt) continue;
+      const x = autonomieZurueckstufen({ v: 1, heads: abschnitt.heads ?? {} }, privat, quote, jetzt.toISOString());
+      if (!x.heads.length) continue;
+      geaendert = [...geaendert, ...x.heads.map(id => `${id}@${p}`)];
+      neu = { ...neu, personen: { ...(neu.personen ?? {}), [p]: { heads: x.einst.heads } } };
+    }
+    return neu;
   });
   return geaendert;
 }

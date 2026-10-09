@@ -8,7 +8,8 @@
 // • Skill-Editor (Antwort 7, Recherche 3.5): Name, Beschreibung, Anleitung mit Beispielen, Werkzeuge (nur die des Heads),
 //   Auslöser (von Hand · Zeitplan mit Bestätigung in Klartext · Ereignis), Eingabe-Felder, Freigabe-Pflicht, Ergebnis, Modell,
 //   Kostengrenze, Tests (≥ 3) und Testlauf vor dem Einschalten, Import SKILL.md (nur Entwurf, nichts ausführbar).
-// • Leitplanken, Geplant, Budget.
+// • Leitplanken, Geplant (Paket 4b: pausieren/fortsetzen/löschen mit Stand), Budget (Paket 4b: Grenze je Monat ODER gesamt setzen —
+//   nur der Inhaber; die Route entscheidet).
 // Solange eine Route 501 antwortet, sagt das Fenster ruhig „kommt mit dem nächsten Paket“ — nichts geht verloren, das Fenster
 // bleibt offen.
 
@@ -22,7 +23,7 @@ import {
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Fenster } from '../Fenster';
 import { Chip, Eigenschaft, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPillen, Pillen, Schalter, Schritte, Segmente, SymbolKnopf, Zeile, auswahl, eingabe, feld } from '../ui';
-import { anfrageId, fadenSenden, laeufeSenden, ladeSkill, skillSenden } from './daten';
+import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, skillSenden } from './daten';
 import { sichtbareHeads, useAgenten, type DialogArt } from './kontext';
 import {
   agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, euro, kostenImMonat, leererSkill, naechsterLaufText,
@@ -206,9 +207,24 @@ export function MitarbeiterDialog({ headId, vorlage, onZu }: { headId?: string; 
     werkzeuge: vorlage?.werkzeuge ? [...vorlage.werkzeuge] : [], auchFuer: vorlage?.auchFuer ? [...vorlage.auchFuer] : [], stufe: vorlage?.stufe ?? 'schnell',
   });
   const [meldung, setMeldung] = useState<Meldung>(null);
+  const [probe, setProbe] = useState<string | null>(null);
   const def = headDef(e.headId);
   const head = heads.find(h => h.id === e.headId);
   const nachbarn = heads.filter(h => h.id !== e.headId && h.bereich === head?.bereich);
+  /** Probelauf ohne Wirkung (Paket 4b): eine Testeingabe, ein Lauf ohne Werkzeuge — das Ergebnis steht in einem eigenen Thread. */
+  const probelauf = async (bestaetigt = false) => {
+    if (!probe?.trim()) { setMeldung({ art: 'info', text: 'Schreib eine Testeingabe — z. B. einen typischen Auftrag.' }); return; }
+    const r = await skillSenden({ aktion: 'mitarbeiter-probelauf', headId: e.headId, ...(vorlage?.id && vorlage.name === e.name ? { id: vorlage.id } : { entwurf: { name: e.name.trim(), rolle: e.rolle.trim(), anleitung: e.anleitung.trim() || undefined, werkzeuge: e.werkzeuge, stufe: e.stufe } }), eingabe: probe.trim(), ...(bestaetigt ? { kostenBestaetigt: true } : {}) });
+    if (!r.ok) {
+      const d = r.daten as { kostenBestaetigen?: boolean } | undefined;
+      if (r.status === 409 && d?.kostenBestaetigen && await w.bestaetigen({ titel: 'Probelauf starten?', text: r.text, ja: 'Starten' })) { void probelauf(true); return; }
+      setMeldung(ausErgebnis(r, 'Der Probelauf kommt mit dem nächsten Paket.'));
+      return;
+    }
+    const fadenId = (r.daten as { fadenId?: string }).fadenId;
+    w.melde('Probelauf fertig — das Ergebnis steht im Thread. Nichts wurde gespeichert oder gesendet.', 'gut');
+    if (fadenId) { onZu(); w.oeffne({ f: fadenId }); }
+  };
   const vorlagen = e.headId ? vorlagenFuer(e.headId) : [];
   const fehler = [
     ...(!e.headId ? ['Wähle den Head, zu dem der Mitarbeiter gehört.'] : []),
@@ -293,9 +309,17 @@ export function MitarbeiterDialog({ headId, vorlage, onZu }: { headId?: string; 
           <Rueckmeldung r={meldung} />
           <div style={{ display: 'flex', gap: ABSTAND.s, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <Knopf leise onClick={() => setSchritt(1)}>Ändern</Knopf>
-            <Knopf leise onClick={() => setMeldung({ art: 'info', text: 'Der Probelauf läuft ohne Wirkung und ohne Kosten — er kommt mit dem nächsten Paket.' })}>Probelauf</Knopf>
+            <Knopf leise onClick={() => setProbe(x => (x === null ? '' : null))}>Probelauf</Knopf>
             <Knopf haupt onClick={anlegen}>Anlegen</Knopf>
           </div>
+          {probe !== null && (
+            <form onSubmit={x => { x.preventDefault(); void probelauf(); }} style={{ display: 'grid', gap: ABSTAND.s }}>
+              <Feldzeile label="Testeingabe (ohne Wirkung — Werkzeuge werden nur genannt)">
+                <textarea value={probe} onChange={x => setProbe(x.target.value)} rows={3} style={{ ...eingabe, resize: 'vertical' }} placeholder="z. B. Ein typischer Auftrag, wie ihn der Head schicken würde" />
+              </Feldzeile>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Knopf typ="submit" aus={!probe.trim()}>Probelauf starten</Knopf></div>
+            </form>
+          )}
         </div>
       )}
     </Fenster>
@@ -548,8 +572,8 @@ export function LeitplankenFenster({ onZu }: { onZu: () => void }) {
     ['Daten', 'Jeder Head sieht nur die Daten seines Bereichs. Privat-Heads gehören dir; wer nur Business sieht, bekommt keine Privat-Heads. Gesundheit nur mit Einwilligung.'],
     ['Fremder Text', 'Liest ein Thread Web, Mails oder Notizen, gilt er ab dann als „nur Vorschlag“.'],
     ['Tiefe', `ZOE → Head → Mitarbeiter. Mitarbeiter delegieren nie weiter; höchstens ${GRENZEN.offeneLaeufeJePerson} Mitarbeiter-Läufe gleichzeitig, je Lauf höchstens ${GRENZEN.mitarbeiterRunden} Runden und ${GRENZEN.mitarbeiterWerkzeugAufrufe} Werkzeuge.`],
-    ['Kosten', 'Euro statt Credits. Erster Monat: nur messen. Danach Grenze je Head und Monat; bei 100 % arbeitet der Head mit dem Regelwerk weiter und die Glocke meldet sich.'],
-    ['Not-Aus', 'Hält alle Hintergrundläufe an und pausiert Zeitpläne. Chats bleiben möglich.'],
+    ['Kosten', 'Euro statt Credits. Ohne Grenze wird nur gemessen. Grenze für alles je Monat oder gesamt (der Inhaber) und je Head; Glocke bei 80 % und 95 %, bei 100 % arbeiten die Läufe mit dem Regelwerk weiter bzw. der Head pausiert.'],
+    ['Not-Aus', 'Für alle oder je Head: hält laufende Hintergrundläufe sofort an, Zeitpläne und Aufträge an Heads ruhen. Mit ZOE sprechen geht weiter.'],
     ['Business-frei', 'In Business-freien Zeiten ruhen alle Business-Agenten im Hintergrund.'],
   ];
   return (
@@ -561,7 +585,18 @@ export function LeitplankenFenster({ onZu }: { onZu: () => void }) {
 }
 
 export function GeplantFenster({ onZu }: { onZu: () => void }) {
-  const { laeufe, agenten, dialog, jetzt } = useAgenten();
+  const { laeufe, agenten, dialog, jetzt, melde, bestaetigen } = useAgenten();
+  const staende = laeufe.zustand === 'da' ? laeufe.daten.planStaende ?? {} : {};
+  /** Pausieren/Fortsetzen und Löschen mit dem Stand aus der letzten Antwort (Paket 4b) — 409 → neu laden. */
+  const schalten = async (id: string, aktiv: boolean) => {
+    const r = await laeufeSenden({ aktion: 'plan-aendern', id, teil: { aktiv }, stand: staende[id] ?? '' });
+    if (r.ok) melde(aktiv ? 'Läuft wieder nach Plan.' : 'Pausiert.', 'gut'); else melde(r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : r.text, 'kritisch');
+  };
+  const loeschen = async (id: string, titel: string) => {
+    if (!(await bestaetigen({ titel: 'Geplante Aufgabe löschen?', text: `„${titel}“ läuft danach nicht mehr.`, ja: 'Löschen', gefahr: true }))) return;
+    const r = await laeufeSenden({ aktion: 'plan-loeschen', id, stand: staende[id] ?? '' });
+    if (r.ok) melde('Gelöscht.', 'gut'); else melde(r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : r.text, 'kritisch');
+  };
   const heads = agenten.zustand === 'da' ? agenten.daten.heads : [];
   const plan = laeufe.zustand === 'da' ? laeufe.daten.plan : [];
   const zeitplaene = laeufe.zustand === 'da' ? laeufe.daten.naechstes.filter(n => n.art === 'zeitplan' || n.art === 'skill' || n.art === 'plan') : [];
@@ -573,7 +608,11 @@ export function GeplantFenster({ onZu }: { onZu: () => void }) {
       {plan.length > 0 && (
         <Liste>
           {plan.map(p => <Zeile key={p.id} titel={p.titel} umbrechen unter={`${wer(p.agent)} · ${zeitText(p.zeitplan)}${p.kostenGrenzeCent ? ` · höchstens ${euro(p.kostenGrenzeCent)}` : ''}${p.letzterLauf ? ` · zuletzt ${p.letzterLauf.slice(0, 10)}` : ''}`}
-            rechts={<Chip farbe={p.aktiv ? LEUCHT.gut : C.inkLeise}>{p.aktiv ? 'an' : 'pausiert'}</Chip>} />)}
+            rechts={<span style={{ display: 'flex', gap: ABSTAND.xs, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <Chip farbe={p.aktiv ? LEUCHT.gut : C.inkLeise}>{p.aktiv ? 'an' : 'pausiert'}</Chip>
+              <Knopf leise onClick={() => schalten(p.id, !p.aktiv)} ariaLabel={`„${p.titel}“ ${p.aktiv ? 'pausieren' : 'fortsetzen'}`}>{p.aktiv ? 'Pausieren' : 'Fortsetzen'}</Knopf>
+              <Knopf leise farbe={LEUCHT.kritisch} onClick={() => loeschen(p.id, p.titel)} ariaLabel={`„${p.titel}“ löschen`}>Löschen</Knopf>
+            </span>} />)}
         </Liste>
       )}
       {zeitplaene.length > 0 && (
@@ -589,21 +628,70 @@ export function GeplantFenster({ onZu }: { onZu: () => void }) {
   );
 }
 
+/** Euro-Eingabe („50“, „50,00“) → Cent; leer = null (keine Grenze). */
+const euroEingabe = (t: string): number | null | 'falsch' => {
+  const x = t.trim().replace(/\s|€/g, '').replace(/\./g, '').replace(',', '.');
+  if (!x) return null;
+  const n = Number(x);
+  return Number.isFinite(n) && n >= 0 && n <= 100_000 ? Math.round(n * 100) : 'falsch';
+};
+
+/**
+ * Kosten und Budget (Paket 4b): das Instanz-Budget vom Server — Grenze JE KALENDERMONAT (Vorgabe) und/oder GESAMT ab jetzt (z. B. ein
+ * Test-Budget). Setzen nur der Inhaber (`budget.setzen`, die Route entscheidet). Darunter die Kosten je Head in diesem Monat.
+ */
 export function BudgetFenster({ onZu }: { onZu: () => void }) {
-  const { laeufe, agenten, jetzt } = useAgenten();
+  const { laeufe, agenten, jetzt, melde } = useAgenten();
   const alle = laeufe.zustand === 'da' ? laeufe.daten.laeufe : [];
   const heads = agenten.zustand === 'da' ? agenten.daten.heads : [];
-  const gesamt = kostenImMonat(alle, jetzt);
-  const jeHead = heads.map(h => ({ h, cent: kostenImMonat(alle.filter(l => l.headId === h.id), jetzt) })).filter(x => x.cent > 0).sort((a, b) => b.cent - a.cent);
+  const b = agenten.zustand === 'da' ? agenten.daten.budget : undefined;
+  const jeHead = heads.map(h => ({ h, cent: h.einstellung?.kostenCentMonat ?? kostenImMonat(alle.filter(l => l.headId === h.id), jetzt) })).filter(x => x.cent > 0).sort((a, c) => c.cent - a.cent);
+  const [art, setArt] = useState<'monat' | 'gesamt'>(b?.gesamt && b.monat.grenzeCent === null ? 'gesamt' : 'monat');
+  const aktuell = art === 'gesamt' ? b?.gesamt?.grenzeCent ?? null : b?.monat.grenzeCent ?? null;
+  const [betrag, setBetrag] = useState(aktuell != null ? euroFeld(aktuell) : '');
+  const [meldung, setMeldung] = useState<Meldung>(null);
+  const wechsel = (a: 'monat' | 'gesamt') => { setArt(a); const g = a === 'gesamt' ? b?.gesamt?.grenzeCent ?? null : b?.monat.grenzeCent ?? null; setBetrag(g != null ? euroFeld(g) : ''); setMeldung(null); };
+  const speichern = async (aus = false) => {
+    const cent = aus ? null : euroEingabe(betrag);
+    if (cent === 'falsch') { setMeldung({ art: 'kritisch', text: 'Betrag in Euro, z. B. 50 oder 50,00 (höchstens 100.000 €).' }); return; }
+    const r = await budgetSetzen(art === 'gesamt' ? { gesamtEuroCent: cent } : { monatEuroCent: cent });
+    if (!r.ok) { setMeldung({ art: 'kritisch', text: r.text }); return; }
+    setMeldung(null);
+    melde(cent == null ? 'Keine Grenze — es wird nur gemessen.' : `Grenze gesetzt: ${euro(cent)} ${art === 'gesamt' ? 'gesamt ab jetzt' : 'je Kalendermonat'}.`, 'gut');
+  };
+  const teil = (t: { verbrauchtCent: number; grenzeCent: number | null; prozent: number | null; stufe: number; text: string }, label: string) => (
+    <Eigenschaft label={label}>
+      <span style={{ color: t.stufe >= 95 ? LEUCHT.kritisch : t.stufe >= 80 ? LEUCHT.achtung : C.ink }}>{t.grenzeCent == null ? `${euro(t.verbrauchtCent)} — keine Grenze, nur gemessen` : t.text}</span>
+    </Eigenschaft>
+  );
   return (
-    <Fenster titel="Kosten diesen Monat" onZu={onZu} breit={560}>
-      {laeufe.zustand === 'kommt' ? <Leer>Die Kosten je Head stehen hier, sobald die Läufe gemeldet werden.</Leer> : (
-        <>
-          <Eigenschaft label="Gesamt">{euro(gesamt)}</Eigenschaft>
-          {jeHead.length ? <Liste>{jeHead.map(x => <Zeile key={x.h.id} titel={x.h.name} rechts={<span style={{ fontVariantNumeric: 'tabular-nums' }}>{euro(x.cent)}</span>} />)}</Liste> : <Leer>Diesen Monat noch keine Kosten.</Leer>}
-        </>
-      )}
-      <Hinweis art="info">Erster Monat: nur messen. Danach eine Grenze je Head und Monat — Warnung ab 80 %, bei 100 % arbeitet der Head mit dem Regelwerk weiter und die Glocke meldet sich.</Hinweis>
+    <Fenster titel="Budget und Kosten" onZu={onZu} breit={600}>
+      {b ? (
+        <div style={{ display: 'grid', gap: ABSTAND.xs }}>
+          {teil(b.monat, 'Diesen Monat')}
+          {b.gesamt && teil(b.gesamt, 'Gesamt')}
+        </div>
+      ) : <Leer>Der Stand des Budgets kommt mit dem Agenten-Kern.</Leer>}
+      {b?.setzen ? (
+        <form onSubmit={x => { x.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: ABSTAND.s }}>
+          <Feldzeile label="Grenze gilt">
+            <Segmente liste={[{ id: 'monat', label: 'Je Kalendermonat' }, { id: 'gesamt', label: 'Gesamt ab jetzt' }]} aktiv={art} onWahl={wechsel} />
+          </Feldzeile>
+          <Feldzeile label={art === 'gesamt' ? 'Gesamt-Grenze in Euro (z. B. ein Test-Budget — zählt ab dem Speichern)' : 'Grenze je Kalendermonat in Euro'}>
+            <input value={betrag} onChange={x => setBetrag(x.target.value)} inputMode="decimal" placeholder="z. B. 50" aria-label="Betrag in Euro" style={eingabe} />
+          </Feldzeile>
+          <Rueckmeldung r={meldung} />
+          <div style={{ display: 'flex', gap: ABSTAND.s, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            {aktuell != null && <Knopf leise onClick={() => speichern(true)}>Keine Grenze (nur messen)</Knopf>}
+            <Knopf haupt typ="submit" aus={!betrag.trim()}>Grenze speichern</Knopf>
+          </div>
+        </form>
+      ) : b ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Die Grenze setzt der Inhaber der Instanz.</span> : null}
+      <div style={{ display: 'grid', gap: ABSTAND.s }}>
+        <span style={{ ...MIKRO }}>Je Head in diesem Monat</span>
+        {jeHead.length ? <Liste>{jeHead.map(x => <Zeile key={x.h.id} titel={x.h.name} rechts={<span style={{ fontVariantNumeric: 'tabular-nums' }}>{euro(x.cent)}{x.h.einstellung?.budgetCentMonat != null ? ` / ${euro(x.h.einstellung.budgetCentMonat)}` : ''}</span>} />)}</Liste> : <Leer>Diesen Monat noch keine Kosten.</Leer>}
+      </div>
+      <Hinweis art="info">Ohne Grenze wird nur gemessen. Mit Grenze: Glocke bei 80 % und 95 %; bei 100 % ruft kein Weg mehr ein Modell auf — automatische Läufe nutzen ihr Regelwerk, die Glocke meldet sich. Eine Grenze je Head stellst du in den Einstellungen des Heads ein.</Hinweis>
     </Fenster>
   );
 }

@@ -173,7 +173,15 @@ export interface Nachricht {
   /** KI-VO Art. 50: Text ist von einem KI-System erzeugt (Oberfläche: `<KiMarke />`). */
   ki?: true;
   kosten?: { cent: number };
+  /**
+   * Daumen der Besitzerin (Paket 4b, Aktion `bewerten` der Thread-Route) — an Agenten-Antworten und Berichten. Nur Metadaten:
+   * Wert, Zeit, optional ein Grund aus `ABLEHNGRUENDE` der Heads (nie Freitext). Fließt in die Leistung des Heads (lib/agenten/leistung.ts).
+   */
+  daumen?: Daumen;
 }
+
+/** Daumen je Antwort (Fragerunde 17). */
+export interface Daumen { wert: 'hoch' | 'runter'; am: string; grund?: string }
 
 /** Fortschritt eines Hintergrund-Laufs in Schritten (Antwort 8). */
 export interface LaufSchritt {
@@ -198,6 +206,50 @@ export interface LaufZustand {
   fehler?: string;
   /** Wer abgebrochen hat (Speichername aus der Sitzung). */
   abgebrochenVon?: string;
+  /**
+   * Worauf ein Lauf mit Status `wartet` wartet (Paket 4b, additiv): `business-frei` = der Takt holt ihn nach dem Ende des Rahmens
+   * EINMAL nach (lib/agenten/zeitplan.ts `businessFreiNachholen`); `not-aus` = erst nach dem Lösen und von Hand. Fehlt das Feld,
+   * erkennt der Takt „Business-frei“ zusätzlich am Grund (`fehler`), den der Kern schreibt.
+   */
+  wartetAuf?: 'business-frei' | 'not-aus' | 'plan';
+}
+
+// ── Arbeitsstand, Aufträge an Mitarbeiter, Plan-Freigabe (Paket 1 in faeden.ts erweitert; seit Paket 4b im Vertrag) ────────
+
+/** Auftrag an einen Mitarbeiter (R10): Ziel, Format, Grenzen, Quellen — Pflicht, vom Werkzeug-Schema erzwungen. */
+export interface AuftragKarte { ziel: string; format: string; grenzen: string; quellen: string }
+
+/** Ein Eintrag im gemeinsamen Arbeitsstand („Brett“) eines Auftrags — Herkunft und Fremdtext-Marke immer dabei (R9). */
+export interface BrettEintrag {
+  id: string;
+  art: 'aufgabe' | 'fund' | 'frage' | 'antwort' | 'entscheidung';
+  text: string;
+  /** `agentSchluessel` bzw. Speichername (Mensch im Head-Chat). */
+  von: string;
+  /** Aus welchem Thread. */
+  fadenId: string;
+  fremd: boolean;
+  am: string;
+  /** Bei `antwort`: auf welche Frage. Bei `frage`: offen/beantwortet. */
+  frageId?: string;
+  status?: 'offen' | 'beantwortet';
+  /** Fingerabdruck der Frage — dieselbe Frage wird nicht zweimal gestellt (R3). */
+  abdruck?: string;
+}
+/** Brett je Auftrag im Thread des Heads (Entscheidung, Fragerunde Teil 1 Nr. 9). `schreiber` = der EINE Thread, der Wirkung vorschlagen darf. */
+export interface Brett { id: string; ziel: string; schreiber: string; fadenIds: string[]; eintraege: BrettEintrag[]; erstellt: string }
+
+/** Plan-Freigabe vor großen Aufträgen (R14): mehr als 2 Mitarbeiter in einem Zug oder Schätzung über der Schwelle. */
+export interface PlanFreigabe {
+  id: string;
+  status: 'offen' | 'freigegeben' | 'abgelehnt';
+  grund: string;
+  auftraege: { mitarbeiterId: string; auftrag: AuftragKarte }[];
+  schaetzungCent?: number;
+  am: string;
+  entschiedenAm?: string;
+  /** Nur aus der Sitzung — nie aus einer Agenten-Nachricht. */
+  entschiedenVon?: string;
 }
 
 export interface Faden {
@@ -224,6 +276,17 @@ export interface Faden {
   planId?: string;
   erstellt: string;
   aktualisiert: string;
+  // Seit Paket 4b im Vertrag (Paket 1 hatte sie lokal in faeden.ts — alle optional, Bedeutung unverändert):
+  /** Per Knopf geteilt (nur Business): das Team liest mit. */
+  geteilt?: { am: string; von: string } | null;
+  /** Head-Thread: Bretter (Arbeitsstand) je Auftrag. */
+  bretter?: Brett[];
+  /** Offene und entschiedene Plan-Freigaben (Head-Thread) — auch als Stapel-Art `plan` (lib/agenten/plan-stapel.ts). */
+  plaene?: PlanFreigabe[];
+  /** Agenten-Kette von oben nach unten — kein Agent zweimal (R3). */
+  kette?: string[];
+  /** Löschfrist in Monaten nach der letzten Nachricht — ohne Angabe die Vorgabe (12). */
+  loeschfristMonate?: number;
 }
 
 /** Bestand `agenten-faeden--<person>`. */
@@ -363,15 +426,71 @@ export interface HeadEinstellung {
   zustaendig?: string;
   /** Mitarbeiter-Kennungen, die aus sind. */
   mitarbeiterAus?: string[];
+  /** Not-Aus je Head (Paket 4b): Läufe dieses Heads halten an, der Takt reiht nichts ein; Chats bleiben möglich. */
+  notAus?: { seit: string; von: string };
+  /** Foto-Avatar (Paket 4b): Kennung eines Bilds aus „Medien unterwegs“ (`md-…`) — gezeigt nur, wer das Medium sieht. Kein Upload-Zwang. */
+  foto?: string;
+  /** Letzte Änderung (vom Server gestempelt). */
+  geaendertAm?: string;
+  geaendertVon?: string;
 }
 export interface AgentenEinstellung {
   v: 1;
   /** Not-Aus (Antwort 6/12): alle Agenten-Läufe des Haushalts halten an — der Chat zeigt einen ruhigen Hinweis. */
   notAus?: { seit: string; von: string };
   heads: Partial<Record<string, HeadEinstellung>>;
+  /**
+   * Paket 4b: Einstellungen der Privat-Heads der Ebene Person — je Person (Schlüssel = Speichername). Nur sie selbst liest und schreibt
+   * sie (serverseitig gefiltert, nie in einer fremden Antwort). Wirksam gelesen über `einstellungFuer(haushalt, person)`.
+   */
+  personen?: Partial<Record<string, { heads: Partial<Record<string, HeadEinstellung>> }>>;
   geaendertAm?: string;
   geaendertVon?: string;
 }
+
+/** Welche Felder `POST /api/agenten { aktion: 'einstellung' }` je Head setzt (`null` = zurück auf die Vorgabe). Paket 4b. */
+export const EINSTELLUNG_FELDER = ['aktiv', 'stufe', 'aufwand', 'budgetCentMonat', 'autonomie', 'zustaendig', 'foto', 'mitarbeiterAus'] as const;
+export type EinstellungFeld = typeof EINSTELLUNG_FELDER[number];
+
+/** Was die Seite je Head über seine Einstellungen erfährt (GET /api/agenten, Paket 4b) — nur für Heads, die die Person sieht. */
+export interface HeadEinstellungSicht {
+  /** Wirksam (gesetzt, sonst Vorgabe des Katalogs bzw. der Boden der Autonomie). */
+  stufe: ModelTier;
+  aufwand: Aufwand;
+  autonomie: AutonomieStufe;
+  vorgabe: { stufe: ModelTier; aufwand: Aufwand; autonomie: AutonomieStufe };
+  /** Modell hinter jeder Stufe (aus lib/ki/modelle.ts, Name) — zum Wählen. */
+  modelle: Record<ModelTier, string>;
+  /** Monatsgrenze des Heads in Euro-Cent (null = nur messen). */
+  budgetCentMonat: number | null;
+  /** Kosten in diesem Monat (Euro-Cent): Haushalts-Heads aus der Kostenmessung, Privat-Heads nur aus den EIGENEN Threads. */
+  kostenCentMonat: number;
+  zustaendig: string | null;
+  notAus: { seit: string } | null;
+  foto: string | null;
+  /** Darf die Person diese Einstellungen ändern? (Serverregel — die Seite zeigt sonst nur an.) */
+  aendern: boolean;
+  /** Stand dieses Heads (409 bei veraltetem Stand). */
+  stand: string;
+}
+
+/** Instanz-Budget für den Kopf-Balken (Paket 4b, aus lib/ki/tor.ts). */
+export interface BudgetTeil { verbrauchtCent: number; grenzeCent: number | null; prozent: number | null; stufe: 0 | 80 | 95 | 100; text: string }
+export interface BudgetAnzeige {
+  /** Grenze je Kalendermonat (Berlin). Ohne Grenze: nur gemessen. */
+  monat: BudgetTeil;
+  /** Gesamt-Grenze ab `ab` (z. B. ein Test-Budget) — fehlt ohne Grenze. */
+  gesamt?: BudgetTeil & { ab: string };
+  /** Die strengere Stufe von beiden. */
+  stufe: 0 | 80 | 95 | 100;
+  /** Darf die Person die Grenzen setzen (nur der Inhaber)? */
+  setzen: boolean;
+}
+
+/** POST /api/agenten (Paket 4b). */
+export type EinstellungAnfrage =
+  | { aktion: 'einstellung'; headId: string; teil: Partial<Record<EinstellungFeld, unknown>>; stand: string }
+  | { aktion: 'not-aus'; an: boolean; headId?: string };
 export const EINSTELLUNG_VORGABE: AgentenEinstellung = { v: 1, heads: {} };
 
 // ── Hintergrundaufgaben (Bestand `agenten-plan--<person>`, Paket 3) und Warteschlange ──────────────────────────────────
@@ -457,8 +576,9 @@ export interface Naechstes {
 // ── Stapel-Arten des Agenten-Bereichs (lib/zoe/stapel.ts `StapelArt`; Freigabe baut Paket 3 in stapel-arten.ts) ────────
 
 /** Vorschläge von Agenten, die erst ein Klick wirksam macht: neuer Skill, neuer Mitarbeiter, Merksatz (C5). */
-export type AgentenStapelArt = 'skill' | 'mitarbeiter' | 'merksatz';
-export const AGENTEN_STAPEL_ARTEN: readonly AgentenStapelArt[] = ['skill', 'mitarbeiter', 'merksatz'];
+export type AgentenStapelArt = 'skill' | 'mitarbeiter' | 'merksatz' | 'plan';
+/** `plan` (Paket 4b): Plan-Freigabe vor großen Aufträgen auch über den Stapel — Bezug `<fadenId>:<planId>` (lib/agenten/plan-stapel.ts). */
+export const AGENTEN_STAPEL_ARTEN: readonly AgentenStapelArt[] = ['skill', 'mitarbeiter', 'merksatz', 'plan'];
 
 // ── Medien unterwegs (Bestände `medien--<haushalt>` / `medien-privat--<person>`, Paket 5) — ENTWURF, Richtungsfragen offen ─
 
@@ -570,6 +690,10 @@ export interface HeadKarte {
   skills: SkillKurz[];
   zaehler: { freigaben: number; laufend: number; faeden: number };
   letzteFaeden: FadenKurz[];
+  /** Foto-Avatar (Paket 4b) — eine eigene Route (`/api/medien/inhalt?…`), nur wenn die Person das Bild sieht; sonst das Kürzel. */
+  foto?: string;
+  /** Einstellungen des Heads (Paket 4b). */
+  einstellung?: HeadEinstellungSicht;
 }
 export interface UeberblickZeile { id: string; text: string; zeit?: string; headId?: string; link?: string }
 /** Überblick über dem ZOE-Chat (Antwort 1). „Nächste Tage“ kommen aus GET /api/agenten/laeufe (`naechstes`). */
@@ -591,6 +715,12 @@ export interface AgentenAntwort {
   ueberblick: Ueberblick;
   notAus: boolean;
   ki?: KiKennzeichen;
+  /** Paket 4b: Instanz-Budget (Kopf-Balken). */
+  budget?: BudgetAnzeige;
+  /** Paket 4b: darf die Person den Not-Aus für ALLE setzen bzw. lösen (volle Mitglieder)? */
+  notAusAendern?: boolean;
+  /** Paket 4b: wählbare zuständige Personen (Konten im Haushalt des Inhabers: Speichername + Anzeigename). */
+  personen?: { id: string; name: string }[];
 }
 /** GET /api/agenten/faden (Paket 1): `?id=` ein Thread, sonst Liste (`?agent=head:<id>` filtert). */
 export interface FadenAntwort { ok: true; faden: Faden; stand: string; kinder: FadenKurz[] }
@@ -600,7 +730,9 @@ export type FadenAnfrage =
   | { aktion: 'senden'; agent: AgentRef; text: string; fadenId?: string; stand?: string; anhaenge?: Anhang[]; anfrageId?: string; /** „+ Hintergrundaufgabe jetzt“: Thread + Lauf in der Warteschlange */ hintergrund?: boolean; kostenGrenzeCent?: number }
   | { aktion: 'umbenennen'; fadenId: string; titel: string; stand: string }
   | { aktion: 'gelesen'; fadenId: string }
-  | { aktion: 'loeschen'; fadenId: string; stand: string };
+  | { aktion: 'loeschen'; fadenId: string; stand: string }
+  /** Paket 4b: Daumen an einer Agenten-Antwort bzw. einem Bericht (`null` nimmt ihn zurück); nur die Besitzerin des Threads. */
+  | { aktion: 'bewerten'; fadenId: string; nachrichtId: string; wert: 'hoch' | 'runter' | null; grund?: string };
 export interface FadenSendenAntwort { ok: true; faden: Faden; stand: string; antwort?: Nachricht; stapelOffen: number; lauf?: { auftragId: string }; ki?: KiKennzeichen }
 /** GET /api/agenten/skills (Paket 3): `?head=<id>` (sonst alle sichtbaren), `?id=` ein Skill mit Anleitung. */
 export interface SkillsAntwort { ok: true; skills: SkillKurz[]; mitarbeiter: Mitarbeiter[]; gedaechtnis?: Merksatz[] }
@@ -615,9 +747,14 @@ export type SkillAnfrage =
   | { aktion: 'mitarbeiter-anlegen'; headId: string; mitarbeiter: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'auchFuer' | 'stufe'>; anfrageId?: string }
   | { aktion: 'mitarbeiter-aendern'; headId: string; id: string; teil: Partial<Mitarbeiter>; stand: string }
   | { aktion: 'merksatz'; agent: AgentRef; text: string }
-  | { aktion: 'merksatz-weg'; agent: AgentRef; id: string };
+  | { aktion: 'merksatz-weg'; agent: AgentRef; id: string }
+  /**
+   * Paket 4b: Probelauf eines Mitarbeiters — ein Lauf mit Testeingabe, ohne Wirkung (keine Werkzeuge), Ergebnis nur in einem eigenen
+   * Thread. Vorhandener Mitarbeiter (`id`) oder ein Entwurf aus dem Dialog (`entwurf`).
+   */
+  | { aktion: 'mitarbeiter-probelauf'; headId: string; id?: string; entwurf?: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'stufe'>; eingabe: string; kostenBestaetigt?: boolean };
 /** GET /api/agenten/laeufe (Paket 3). */
-export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[] }
+export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[]; /** Stand je geplanter Aufgabe (Pausieren/Löschen mit Stand, Paket 4b im Vertrag). */ planStaende?: Record<string, string> }
 /** POST /api/agenten/laeufe (Paket 3). */
 export type LaeufeAnfrage =
   | { aktion: 'planen'; aufgabe: Pick<Hintergrundaufgabe, 'agent' | 'titel' | 'auftrag' | 'zeitplan' | 'kostenGrenzeCent'>; anfrageId?: string }

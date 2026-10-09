@@ -48,6 +48,13 @@ export async function POST(req: Request) {
         await melde(a.id, token, 'fertig', 'Hintergrund-KI ist ausgeschaltet (System › Datenschutz) — nicht gelaufen.', true);
         return NextResponse.json({ ok: true, ergebnis: 'Hintergrund-KI aus' });
       }
+      // Not-Aus (für alle bzw. je Head), ausgeschalteter Head, Head-Budget erreicht (09.10., Agenten-Bereich Paket 4b): eine Entscheidung,
+      // kein Aussetzer — der Auftrag läuft nicht und wird nicht neu eingereiht.
+      const gesperrt = await import('@/lib/agenten/einstellung').then(m => m.auftragGesperrt(a)).catch(() => null);
+      if (gesperrt) {
+        await melde(a.id, token, 'fehler', gesperrt, true);
+        return NextResponse.json({ ok: true, ergebnis: gesperrt });
+      }
       const lauf = hintergrund
         ? await imHintergrund(() => runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined, { hintergrund: true }))
         : await runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined);
