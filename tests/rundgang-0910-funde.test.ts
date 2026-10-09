@@ -55,4 +55,10 @@ describe('Rundgang 09.10. — Funde', () => {
     const anderesJahr = werIstDran([k], { ...leererBestand(), chancen: [ch('ch-j', { erwartetAm: '2027-01-02', historie: [{ stufe: 'angebot', am: '2026-12-20', von: 'lena' }], geaendert: '2026-12-20', naechsterSchritt: { text: 'x', datum: '2026-12-30' } })] }, '2026-12-28', null);
     expect(anderesJahr.karten.flatMap(x => x.gruende).join(' | ')).toContain('Entscheidung bis 02.01.2027');
   });
+  it('Textprüfung 09.10.: Head of IT und Kalender › Planen in deutscher Zahl-/Datumsform', () => {
+    const hoi = lies('lib/hoi/lage.ts');
+    expect(hoi).not.toMatch(/toFixed\(1\)/);
+    expect(hoi).not.toContain('Head of IT · ${jetzt.slice(0, 10)}');
+    expect(lies('components/os/kalender/Planen.tsx')).not.toMatch(/\$\{d \/ 60\}h/);
+  });
 });

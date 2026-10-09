@@ -39,7 +39,7 @@ const BAUSTEINE: Baustein[] = [
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
 ];
 const ART_LABEL: Record<PlanArt, string> = { fokus: 'Fokus', reha: 'Reha', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Block' };
-const DAUERN = [15, 30, 60, 90, 120].map(d => ({ id: String(d), label: d < 60 ? `${d}m` : `${d / 60}h` }));
+const DAUERN = [15, 30, 60, 90, 120].map(d => ({ id: String(d), label: d < 60 ? `${d} min` : `${(d / 60).toLocaleString('de-DE')} h` }));
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const fmtH = (min: number) => (min / 60).toFixed(1).replace('.', ',');
 

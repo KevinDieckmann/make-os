@@ -19,7 +19,7 @@ describe('HOI: Brain-Index', () => {
   });
   it('keine Inhalte im Befund — nur Ort und Zahlen', () => {
     const b = brainIndexBefunde(index(), true, 5)[0];
-    expect(b.wert).toMatch(/tmpfs .* 24\.0 MB von 256 MB · 663 Notizen · Neubau 2\.1 s/);
+    expect(b.wert).toMatch(/tmpfs .* 24,0 MB von 256 MB · 663 Notizen · Neubau 2,1 s/);
   });
 });
 

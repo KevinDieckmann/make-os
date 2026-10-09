@@ -191,7 +191,7 @@ export function brainIndexBefunde(b: BrainIndexLage | null | undefined, verschlu
   const ortText = b.ort === 'tmpfs' ? 'tmpfs (nur Arbeitsspeicher)' : b.ort === 'arbeitsspeicher' ? 'Arbeitsspeicher des Prozesses' : 'Datei auf der Platte';
   return [{
     id: 'brain-index', bereich: 'sicherheit', label: 'Brain-Index (Suche)', ampel: rot ? 'rot' : gelb ? 'gelb' : 'gruen',
-    wert: `${ortText} · ${b.groesseMb.toFixed(1)} MB${b.grenzeMb ? ` von ${b.grenzeMb} MB` : ''} · ${b.notizen} Notizen${b.neubau.dauerMs != null ? ` · Neubau ${(b.neubau.dauerMs / 1000).toFixed(1)} s` : ''}`,
+    wert: `${ortText} · ${dez(b.groesseMb)} MB${b.grenzeMb ? ` von ${b.grenzeMb} MB` : ''} · ${b.notizen} Notizen${b.neubau.dauerMs != null ? ` · Neubau ${dez(b.neubau.dauerMs / 1000)} s` : ''}`,
     satz: rot ? 'Index im Klartext auf der Platte (Notweg MAKE_OS_BRAIN_INDEX_PLATTE=1) — Variable entfernen, docker compose up -d'
       : b.altDateiDa ? 'alter Klartext-Index liegt noch im Datenordner — wird beim nächsten Start überschrieben und gelöscht (oder: App neu starten)'
       : b.neubau.fehler ? `Neubau nach dem Start gescheitert: ${b.neubau.fehler.slice(0, 100)} — ZOE sucht bis dahin über die Dateien`
@@ -523,6 +523,8 @@ export interface SicherungLauf {
 }
 export interface DurchsichtKurz { zeit: string; bestaende: number; zeilen: number; fehler: number; klartext: number; alteHuellen: number; alteForm: number; spruenge: { name: string; vorher: number; nachher: number }[]; tmpReste: number; verbindungen: { fehler: number; warnung: number; hinweis: number } | { nichtGeprueft: string } }
 
+/** Eine Nachkommastelle in deutscher Form („0,4 MB“, nie „0.4“) — Textprüfung 09.10. */
+const dez = (x: number) => x.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const uhr = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} Tage`);
 
 export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: AussenLage | null, jetzt: string): Befund[] {
@@ -582,7 +584,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   // verweigert danach jedes Schreiben (BestandBeschaedigt) — ohne diesen Befund merkt das niemand, bis etwas fehlt.
   const kaputt = innen.bestaende.beschaedigt;
   if (kaputt?.anzahl) b.push({ id: 'beschaedigt', bereich: 'app', label: 'Bestand beschädigt beiseitegelegt', ampel: 'rot', wert: `${kaputt.anzahl} Datei${kaputt.anzahl === 1 ? '' : 'en'}: ${kaputt.bestaende.slice(0, 5).join(', ')}${kaputt.bestaende.length > 5 ? ' …' : ''}`, satz: 'liegt als .corrupt-… im Datenordner; der Bestand wird bis zur Prüfung nicht beschrieben — Kopie prüfen, aus backup/ oder der Sicherung wiederherstellen' });
-  b.push({ id: 'bestaende', bereich: 'app', label: 'Bestände', ampel: innen.bestaende.gesamtMb < 50 ? 'gruen' : innen.bestaende.gesamtMb < 200 ? 'gelb' : 'rot', wert: `${innen.bestaende.anzahl} Dateien · ${innen.bestaende.gesamtMb.toFixed(1)} MB`, satz: `größte: ${innen.bestaende.groesste.slice(0, 3).map(x => `${x.name} ${x.mb.toFixed(1)} MB`).join(', ')}` });
+  b.push({ id: 'bestaende', bereich: 'app', label: 'Bestände', ampel: innen.bestaende.gesamtMb < 50 ? 'gruen' : innen.bestaende.gesamtMb < 200 ? 'gelb' : 'rot', wert: `${innen.bestaende.anzahl} Dateien · ${dez(innen.bestaende.gesamtMb)} MB`, satz: `größte: ${innen.bestaende.groesste.slice(0, 3).map(x => `${x.name} ${dez(x.mb)} MB`).join(', ')}` });
 
   // ── Datenschicht, Sicherung, Durchsicht (29.09., Paket D-A) ──
   b.push(...datenschichtBefunde(innen, host, jetzt));
@@ -617,7 +619,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   return b;
 }
 
-const ms = (x: number | null) => (x === null ? '—' : x >= 1000 ? `${(x / 1000).toFixed(1)} s` : `${Math.round(x)} ms`);
+const ms = (x: number | null) => (x === null ? '—' : x >= 1000 ? `${dez(x / 1000)} s` : `${Math.round(x)} ms`);
 
 /** Befunde zur Datenschicht und zur Sicherung — rein, getestet (tests/hoi-datenschicht.test.ts). */
 export function datenschichtBefunde(innen: InnenLage, host: HostLage | null, jetzt: string): Befund[] {
@@ -708,7 +710,7 @@ export const nachRang = (l: Befund[]) => [...l].sort((a, b) => RANG[b.ampel] - R
 /** Kurztext für Telegram / Wochenbericht. */
 export function kurzbericht(befunde: Befund[], jetzt: string): string {
   const g = gesamt(befunde);
-  const kopf = `🛠 Head of IT · ${jetzt.slice(0, 10)} · ${g.ampel === 'gruen' ? 'alles grün' : g.ampel === 'gelb' ? `${g.gelb} gelb` : `${g.rot} ROT, ${g.gelb} gelb`}`;
+  const kopf = `🛠 Head of IT · ${jetzt.slice(8, 10)}.${jetzt.slice(5, 7)}.${jetzt.slice(0, 4)} · ${g.ampel === 'gruen' ? 'alles grün' : g.ampel === 'gelb' ? `${g.gelb} gelb` : `${g.rot} ROT, ${g.gelb} gelb`}`;
   const zeilen = nachRang(befunde).filter(b => b.ampel === 'rot' || b.ampel === 'gelb').slice(0, 8).map(b => `${b.ampel === 'rot' ? '🔴' : '🟡'} ${b.label}: ${b.wert} — ${b.satz}`);
   return [kopf, ...zeilen].join('\n');
 }
