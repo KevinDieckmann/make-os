@@ -69,7 +69,7 @@ async function ausfuehren(req: Request, p: string, b: Body): Promise<NextRespons
   switch (b.aktion) {
     case 'anlegen': {
       const skill = (b.skill && typeof b.skill === 'object' ? b.skill : {}) as Record<string, unknown>;
-      const e = await einmalig('agenten-skill', b.anfrageId, async () => { const r = await skillAnlegen(p, skill, 'hand'); return { status: r.ok ? 200 : (r as Fehler).status, body: r }; });
+      const e = await einmalig('agenten-skill', b.anfrageId, async () => { const r = await skillAnlegen(p, skill, 'hand'); return { status: r.ok ? 200 : (r as Fehler).status, body: r }; }, undefined, { wer: p });
       return alsAntwort(e);
     }
     case 'aendern': return skillAendernAktion(p, b.id, b.teil, b.stand);
@@ -83,7 +83,7 @@ async function ausfuehren(req: Request, p: string, b: Body): Promise<NextRespons
     case 'import': return skillImportAktion(p, b.headId, b.skillMd);
     case 'aus-faden': return skillAusFadenAktion(p, b.fadenId, b.headId);
     case 'mitarbeiter-anlegen': {
-      const e = await einmalig('agenten-mitarbeiter', b.anfrageId, async () => { const r = await mitarbeiterAnlegen(p, b.headId, b.mitarbeiter, 'hand'); return { status: r.ok ? 200 : (r as Fehler).status, body: r }; });
+      const e = await einmalig('agenten-mitarbeiter', b.anfrageId, async () => { const r = await mitarbeiterAnlegen(p, b.headId, b.mitarbeiter, 'hand'); return { status: r.ok ? 200 : (r as Fehler).status, body: r }; }, undefined, { wer: p });
       return alsAntwort(e);
     }
     case 'mitarbeiter-aendern': return mitarbeiterAendernAktion(p, b.headId, b.id, b.teil, b.stand);

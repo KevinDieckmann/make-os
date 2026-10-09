@@ -216,6 +216,14 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   // Agenten-Läufe je Person (08.10.): die von der Person ausgelösten Läufe (Ergebnisse) — Systemläufe ohne Person nicht.
   const al = await loadJson<Obj>('agent-log').catch(() => null);
   merke('agent-log', liste(al, 'entries').filter(e => (e as Obj).person === speicher));
+  // ZOE (Sicherheitsprüfung 09.10.): das Langzeit-Gedächtnis im Raum der Person, ihre Vorschläge im Freigabe-Stapel (auch die der Agenten:
+  // Merksatz, Skill, Plan, KI-Bild …) und ihre Läufe in der Warteschlange — bisher weder im Export noch beim Löschen.
+  const zg = await loadJson<Obj>('zoe-gedaechtnis').catch(() => null);
+  merke('zoe-gedaechtnis', liste(zg, 'fakten').filter(f => (f as Obj).raum === speicher && !(f as Obj).geloeschtAm));
+  const zs = await loadJson<Obj>('zoe-stapel').catch(() => null);
+  merke('zoe-stapel', liste(zs, 'vorschlaege').filter(v => (v as Obj).person === speicher));
+  const za = await loadJson<Obj>('zoe-auftraege').catch(() => null);
+  merke('zoe-auftraege', liste(za, 'auftraege').filter(a => (a as Obj).person === speicher).map(a => { const { pachtToken: _t, pachtBis: _b, ...r } = a as Obj; return r; }));
   // Onboarding (08.10. spät): gemeinsame Häkchen, die die Person gesetzt hat (Schritt, Zeitpunkt).
   const ob = await loadJson<{ erledigt?: Record<string, { at?: string; von?: string }> }>('onboarding').catch(() => null);
   merke('onboarding', Object.entries(ob?.erledigt ?? {}).filter(([, h]) => h?.von === speicher).map(([schritt, h]) => ({ schritt, at: h.at })));
@@ -387,6 +395,14 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
   }); return n; });
   // Agenten-Läufe (08.10.): die Läufe der Person sind ihre Ergebnisse (sieht sonst niemand) — sie fallen ganz weg, kein Nachweis nötig.
   await nurWenn('agent-log', async () => { let n = 0; await updateJson<Obj>('agent-log', cur => { const l = liste(cur, 'entries'); const r = l.filter(e => (e as Obj).person !== speicher); n = l.length - r.length; return n ? { ...(cur ?? {}), entries: r } : (cur as Obj); }); return n; });
+  // ZOE (Sicherheitsprüfung 09.10.): Gedächtnis im Raum der Person, ihre Vorschläge im Stapel (offen und entschieden — die Rechenschaft steht in
+  // zoe-entscheidungen--*), ihre Läufe in der Warteschlange und gemerkte Antworten (anfrageId) fallen weg. Vorher blieben sie stehen — und ein neues
+  // Konto mit demselben Speichernamen (lib/zugang/konten.ts `speicherName` vergibt frei gewordene Namen neu) hätte sie im ZOE-Prompt bzw. im Stapel gesehen.
+  const ohneEintraege = (name: string, feld: string, gehoert: (x: Obj) => boolean) => nurWenn(name, async () => { let n = 0; await updateJson<Obj>(name, cur => { const l = liste(cur, feld); const r = l.filter(x => !gehoert(x as Obj)); n = l.length - r.length; return n ? { ...(cur ?? {}), [feld]: r } : (cur as Obj); }); return n; });
+  await ohneEintraege('zoe-gedaechtnis', 'fakten', f => f.raum === speicher);
+  await ohneEintraege('zoe-stapel', 'vorschlaege', v => v.person === speicher);
+  await ohneEintraege('zoe-auftraege', 'auftraege', a => a.person === speicher);
+  await nurWenn('anfragen-ergebnis', async () => (await import('@/lib/store/anfragen')).anfragenOhnePerson(speicher));
   // WhatsApp (07.10.): gesendete Nachrichten bleiben (Geschäftskorrespondenz der Instanz), „wer gesendet hat“ wird „[gelöscht]“.
   await nurWenn('whatsapp-spiegel', async () => { let n = 0; await updateJson<Obj>('whatsapp-spiegel', cur => {
     const alt = (cur?.nachrichten ?? {}) as Record<string, Obj>;

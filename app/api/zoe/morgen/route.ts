@@ -22,7 +22,7 @@ import { haushaltVon, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
-import { offeneAnzahl, lies as liesStapel } from '@/lib/zoe/stapel';
+import { offeneAnzahlFuer, lies as liesStapel } from '@/lib/zoe/stapel';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
 import { localDay } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     regel = regelBericht(brain, zeit);
     // Regelwerk statt Fehlschlag, wenn die KI nicht kann (27.09.).
     if (!hasAnthropicKey() || guthabenLeer()) {
-      return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: !hasAnthropicKey() ? 'kein Schlüssel' : 'Guthaben leer', bericht: regelBericht(brain, zeit), gestapelt: 0, offen: await offeneAnzahl().catch(() => 0) });
+      return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: !hasAnthropicKey() ? 'kein Schlüssel' : 'Guthaben leer', bericht: regelBericht(brain, zeit), gestapelt: 0, offen: await offeneAnzahlFuer(person).catch(() => 0) });
     }
     // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b).
     lage = promptBrain(brain, { bereiche: kiS.bereiche });
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
     ki: kiAus(req, [...kategorien, 'aufgaben'], { person }),
   });
   // Gesperrt (Hintergrund-KI aus, Bereich aus): Regelwerk statt Fehlschlag — wie ohne Schlüssel (05.10.).
-  if (kiGesperrt(r)) return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: kiSperrText(r), bericht: regel, gestapelt: 0, offen: await offeneAnzahl().catch(() => 0) });
+  if (kiGesperrt(r)) return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: kiSperrText(r), bericht: regel, gestapelt: 0, offen: await offeneAnzahlFuer(person).catch(() => 0) });
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error?.slice(0, 200) ?? 'Modell nicht erreichbar.' }, { status: 200 });
 
   interface Block { type: string; name?: string; input?: Record<string, unknown> }
@@ -225,6 +225,6 @@ export async function POST(req: Request) {
     zeit,
     bericht: bericht.slice(0, 700),
     gestapelt,
-    offen: await offeneAnzahl().catch(() => 0),
+    offen: await offeneAnzahlFuer(person).catch(() => 0),
   });
 }

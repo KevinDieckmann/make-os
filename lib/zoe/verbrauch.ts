@@ -12,6 +12,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { kostenUsdCent, inEuroCent, usdEurKurs, type Mengen } from '@/lib/ki/kosten';
 import type { AnbieterId } from '@/lib/ki/anbieter';
+import { KATALOG } from '@/lib/agenten/katalog';
 
 // Preise (09.10., Paket 6a): aus dem Modell-Katalog lib/ki/modelle.ts — mit Stand und Quelle je Zeile, auch Haiku/Sonnet 5.5 und die
 // Medien-Einheiten (Bild, Sekunde Video, Minute Transkription, Aufgabe). Vorher stand hier eine eigene Tabelle (Stand 07.09.).
@@ -143,4 +144,17 @@ export async function monatUsdCent(heute = localDay(), vorgeladen?: Stand | null
   const s = vorgeladen !== undefined ? vorgeladen : await loadJson<Stand>('ki-verbrauch');
   const monat = heute.slice(0, 7);
   return (s?.tage ?? []).filter(t => t.tag.startsWith(monat)).reduce((a, t) => a + t.posten.reduce((b, p) => b + p.cent, 0), 0);
+}
+
+// ── Sicht je Konto (Sicherheitsprüfung 09.10.) ────────────────────────────────────────────────────────────────────────────
+/** Private Systemläufe (Ernährung, Leistung mit Körperwerten) — wie `PRIVAT_SYSTEMLAEUFE` der Läufe-Sicht. */
+const PRIVAT_ZWECKE = new Set(['ernaehrung-vorschlag', 'ernaehrung-rezept', 'performance']);
+const PRIVAT_HEADS = KATALOG.filter(h => h.bereich === 'privat').map(h => h.id).sort((a, b) => b.length - a.length);
+
+/** Gehört dieser Zweck in den Privat-Bereich? (`agent-<head>` bzw. `agent-<head>-…` eines Privat-Heads, private Systemläufe.) Rein. */
+export function zweckPrivat(zweck: string): boolean {
+  if (PRIVAT_ZWECKE.has(zweck)) return true;
+  if (!zweck.startsWith('agent-')) return false;
+  const rest = zweck.slice(6);
+  return PRIVAT_HEADS.some(h => rest === h || rest.startsWith(`${h}-`));
 }
