@@ -67,7 +67,7 @@ export function recoveryAus(r: unknown): WRecovery | null {
     sleepId: r.sleep_id.toLowerCase(), cycleId: zahl(r.cycle_id, 1, Number.MAX_SAFE_INTEGER), am, state,
     rec: rund(zahl(s.recovery_score, 0, 100)), hrv: rund(zahl(s.hrv_rmssd_milli, 0, 400)), rhr: rund(zahl(s.resting_heart_rate, 20, 250)),
     spo2: rund(zahl(s.spo2_percentage, 50, 100), 1), hautTemp: rund(zahl(s.skin_temp_celsius, 20, 45), 2),
-    kal: s.user_calibrating === true ? true : undefined,
+    kal: s.user_calibrating === true ? (true as const) : undefined,
   });
 }
 
