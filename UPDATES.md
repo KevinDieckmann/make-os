@@ -4,6 +4,62 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — KI-Etiketten, Bereich je Einheit, feste Personen im Agentenpfad (nur lokal — Branch `ki-etiketten`, Basis 297458af)
+
+Funde der Analyse „Trennung & Plattform“ (K1, K3, K4, K5, K6) — nur klare Fehler, keine Grundsatz-Umbauten. Wächter `tests/ki-etiketten.test.ts`
+(19 Fälle, alle vorher rot). Keine neue Route, kein neuer Bestand, keine Formänderung — der Rückweg zum alten Stand ist ohne Weiteres offen.
+
+**K1 (kritisch) — Ergebnisse von Fach-Agenten tragen ihre KI-Kategorien.** Bisher ging das Ergebnis von `run_agent` (ZOE) bzw. `fach_agent`
+(Mitarbeiter) ohne Etikett zurück an das Modell — z. B. „TAGESFORM (ROT, Recovery 37 %)“ auch ohne Einwilligung (b), am KI-Tor (Einwilligung,
+EU-Mindeststufe, Bereichs-Schalter) vorbei.
+- EINE Stelle `lib/zoe/agent-kategorien.ts`: feste Kategorien je Fach-Agent (`AGENT_KATEGORIEN`, z. B. Controlling = finanzen, Board = finanzen ·
+  aufgaben · crm), „gesundheit“ nur, wenn der Lauf sie wirklich im Prompt hatte (`AGENT_MIT_GESUNDHEIT` + Rückmeldung `gesundheit` der Routen
+  fokus, performance, ernaehrung/vorschlag, kalender/analyse, planung/vorschlag). `runAgent` liefert `AgentLauf.kategorien`; die Schleife nimmt sie
+  in den KI-Kontext des NÄCHSTEN Aufrufs (kimmi, `lib/agenten/delegation.ts` → `WerkzeugAntwort.kategorien` → `lib/agenten/gespraech.ts`).
+- `/api/fokus` liefert `recovery`/`zone`/`stand` nur noch mit Einwilligung (b); `runAgent('fokus')` schreibt Zone/Recovery nur dann in den Text.
+  `/api/performance` (Analyse) liefert `fuerZoe` (ohne (b): kein Gesamtindex, kein Gesundheits-Hebel — `indexFuerKi`); der Agentenlauf liest nur das.
+- kimmi bietet nur Fach-Agenten an, deren feste Kategorien für die Person frei sind (`agentSperre` = dieselbe Regel wie `werkzeugSperre`).
+- Neuer Fach-Agent → Zeile in `AGENT_KATEGORIEN` (Wächter).
+
+**K5 — Person im KI-Tor bei Systemläufen:** Board, OKR, Fokus, Controlling, Planung-Vorschlag und die Tageslauf-Schritte „Lage draußen“ und
+„Prioritäten-Wächter“ geben `kiAus(…, { person })` die Person, für die gerechnet wird (`laufPerson` bzw. Sitzung). Vorher `null` im Systemlauf:
+eigene Schalter griffen nicht, das KI-Protokoll stand ohne Person (Art. 15), und der Fokus-Lauf der Inhaberin MIT Einwilligung wurde gesperrt.
+
+**K3 — Bereich je Einheit im ZOE-/Agentenpfad:** Business-Zahlen rechneten „alles außer privat“ und zählten die Selbstständigkeit mit.
+- `geschaeftsKasse` (lib/make-one/finance-data.ts) nur Konten mit `bereichVonFirma(...) === 'business'` — wirkt auf Brain/ZOE, Schilde, Controlling-
+  Agent, Controlling-Seite, Head of Finance (Kasse) und `state/finance`.
+- Schilde (lib/risk.ts): überfällige Forderungen/Zahlungen nur Business-Posten (`bereichVonFirma`).
+- `kundenAusMandaten` (lib/crm/speicher.ts): nur Mandate einer Business-Gesellschaft (`bereichVonGesellschaft`, wie `ladeRoh`).
+- Board (`app/api/board/route.ts`): Aufgaben nach dem Aufgaben-Space (`spaceBereich`) statt der alten Projekt-Kategorie.
+- Mit der Instanz-Umstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`) zählt die Selbstständigkeit überall wieder mit (Test).
+- **Offen (anderer Agent, `lib/brain.ts`):** `geld.forderungen` (Zeile ~265, `r.firmaId !== 'privat'`) braucht dieselbe Regel
+  (`bereichVonFirma(r.firmaId) === 'business'`) — sonst stehen Forderungen der Selbstständigkeit weiter in `blockZahlen` (ZOE, Business-Heads).
+
+**K4 — feste Personen im Agentenpfad (Plattform-Regel):**
+- Head of Finance: Antwortschema `schemaFuer(personen)` und Prüfer `normalisiere(…, personen)` kennen die Speichernamen des Haushalts (aus den
+  Konten) + „beide“ + „steuerberater“; das Datenpaket trägt `personen` (Kennung + Vorname, KI-Kategorie `konto`). Ein angenommener Vorschlag wird
+  Aufgabe der genannten Person, sonst der annehmenden, sonst der ersten des Haushalts — vorher fest eine von zwei Personen.
+- Ist-Stand-Checkliste: `wer` = Speichername des Haupt-Inhabers bzw. „beide“, `werName` aus dem Konto; der Schritt „<Person> hat Zugang“ heißt
+  jetzt „Alle Konten dem Haushalt zugeordnet“ (Kennung `zugang`, zählt Konten ohne Haushalt und ohne „nur Business“). Gesellschaftsnamen aus lib/einheiten.ts.
+- Kalender-Agent (`lib/zoe/kalender-vorschlag.ts`): eigener Kalender = eigene iCloud-Verbindung (`eigenesBlockZiel`) bzw. Zuordnung `kalender.<speicher>`;
+  ohne beides nur der gemeinsame Kalender mit klarem Hinweis (`KEIN_EIGENER_KALENDER`) — vorher bekam jede Person außer einer festen den Kalender
+  der anderen als „eigenen“. Die Freigabe prüft den Zielkalender noch einmal (fremder Kalender → 403, nichts angelegt).
+- Aufgaben-Serien: Projekt ohne Besitz → „both“ (der Schreibweg löst auf) statt einer festen Person. Meeting-Last im Business-Index: Termine des
+  Inhabers (`Bestand.meetingVon` aus den Konten) + gemeinsame, statt „alles außer einer festen Person“. `computeIndex`: Person Pflicht,
+  `personDatei` = `speicherFuer` (eine Regel), Link immer mit `&fuer=`.
+
+**K6 — Task-Agent „autonom“ (Tageslauf):** Prioritäten der Ausrichtung tragen `bereich`; angelegt wird über `autoAufgabe` (lib/tageslauf.ts): nur
+„business“ wird Business, alles andere bleibt Privat und „nur ich“; kein „Warum“ des Modells (kann Gesundheit tragen) in der Beschreibung; im
+Systemlauf ohne Person wird nichts angelegt (vorher scheiterte es still).
+
+**Bewusst nicht angefasst (Dateien anderer Agenten) — offen:**
+- `lib/heads/lauf.ts:97,139`: alte Heads markieren immer `kalender` (bei ausgeschalteter Kalender-KI läuft der ganze Head als Regelwerk).
+- Gedächtnis (`lib/zoe/gedaechtnis.ts`, kimmi `liesFakten`) und `blockGedaechtnis`/`blockZiele` (lib/brain.ts) hängen an keinem KI-Schalter —
+  Vorschlag: am Bereich „Brain & Vault“ (Fakten im Prompt nur mit `bereiche.brain`, Gruppe `gedaechtnis` → Kategorie `brain` in `GRUPPE_KATEGORIE`).
+- Hintergrund-Aufträge (`starte_auftraege` → Warteschlange): das Ergebnis liegt ohne Etikett in der Warteschlange — wer es später an ein Modell
+  gibt, nimmt `AgentLauf.kategorien` mit (Takt/Warteschlange).
+- K2 (Konto-Sicht „nur Business“ im ZOE-Kern) ist ein eigenes Paket.
+
 ## 09.10.2026 — Agenten-Seite aufgeräumt (Claude-Muster) (nur lokal — Branch `agenten-aufraeumen`, Basis `agenten-nacht` a94d4052, `agenten-nacht` 1df0cdd9 eingemischt)
 
 Kevin 09.10.: „Das ganze Agent-System ist noch unübersichtlich, schau, wie du das sauberer hinbekommst. Bei Claude hier sieht das aufgeräumter und sauberer
