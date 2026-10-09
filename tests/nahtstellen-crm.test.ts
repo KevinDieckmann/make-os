@@ -160,6 +160,24 @@ describe('1 · POST /api/crm/person mit vorhandener Kennung (Wiederholung) — k
   });
 });
 
+// ── 1 · Prospecting → Kartei mit Ansprechpartner: Branche und Größe der Zielfirma gehen nicht verloren ─────────────────────────
+describe('1 · Prospecting mit Ansprechpartner: die neue Firma bekommt Branche und Größe (wie ohne Ansprechpartner)', () => {
+  it('firmaZusatz wirkt nur an einer NEUEN Firma', async () => {
+    const route = await import('@/app/api/crm/person/route') as unknown as Route;
+    const r = await route.POST(anfrage('/api/crm/person', sitzung('kevin'), 'POST', { aktion: 'anlegen', weg: 'prospecting', person: { vorname: 'Pro', nachname: 'Spekt', email: 'pro.spekt@ziel-industrie.example', firma: 'Ziel Industrie Naht GmbH', firmaZusatz: { branche: 'Maschinenbau', mitarbeiter: '50-200' } } }));
+    const d = await r.json() as { firmaId: string };
+    expect(r.status).toBe(200);
+    expect((await crm()).firmen.find(f => f.id === d.firmaId)).toMatchObject({ branche: 'Maschinenbau', mitarbeiter: '50-200' });
+    // An einer vorhandenen Firma ändert der Zusatz nichts.
+    const r2 = await route.POST(anfrage('/api/crm/person', sitzung('kevin'), 'POST', { aktion: 'anlegen', weg: 'prospecting', person: { vorname: 'Zwei', nachname: 'Spekt', email: 'zwei.spekt@ziel-industrie.example', firma: 'Ziel Industrie Naht', firmaZusatz: { branche: 'Anders' } } }));
+    expect(r2.status).toBe(200);
+    expect((await crm()).firmen.find(f => f.id === d.firmaId)?.branche).toBe('Maschinenbau');
+    // Zu lang → 413, nichts gespeichert.
+    const r3 = await route.POST(anfrage('/api/crm/person', sitzung('kevin'), 'POST', { aktion: 'anlegen', weg: 'prospecting', person: { nachname: 'Lang', firma: 'X', firmaZusatz: { branche: 'x'.repeat(161) } } }));
+    expect(r3.status).toBe(413);
+  });
+});
+
 // ── 1 · Import mit einer Firma, die im Papierkorb liegt: zurückholen wie „Person anlegen“ (1.6), nie an einer unsichtbaren Firma ───
 describe('1 · Import → Firmen-Abgleich: Firma im Papierkorb wird zurückgeholt (wie Person anlegen, Netzwerken, Anfrage)', () => {
   it('die Person hängt an einer sichtbaren Firma, nicht an einer im Papierkorb', async () => {

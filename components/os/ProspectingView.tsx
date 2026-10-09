@@ -134,7 +134,7 @@ export function ProspectingView() {
     if (!uebernahme) return;
     const mitPerson = !!(uebernahme.vorname.trim() || uebernahme.nachname.trim());
     const body = mitPerson
-      ? { aktion: 'anlegen', weg: 'prospecting', person: { vorname: uebernahme.vorname, nachname: uebernahme.nachname, email: uebernahme.email, position: uebernahme.position, firma: p.company, ...(p.domain ? { webseite: p.domain } : {}) } }
+      ? { aktion: 'anlegen', weg: 'prospecting', person: { vorname: uebernahme.vorname, nachname: uebernahme.nachname, email: uebernahme.email, position: uebernahme.position, firma: p.company, ...(p.domain ? { webseite: p.domain } : {}), firmaZusatz: { ...(p.industry ? { branche: p.industry } : {}), ...(p.size ? { mitarbeiter: p.size } : {}) } } }
       : { aktion: 'firma', firma: { name: p.company, ...(p.domain ? { webseite: p.domain } : {}), ...(p.industry ? { branche: p.industry } : {}), ...(p.size ? { mitarbeiter: p.size } : {}) } };
     const d = await fetch('/api/crm/person', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
     if (!d.ok || !d.firmaId) { setFehler(`Nicht übernommen — ${d.fehler ?? (mitPerson ? 'die Person hat keine Firma' : 'unbekannter Fehler')}`); return; }

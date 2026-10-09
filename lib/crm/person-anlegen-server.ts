@@ -76,7 +76,7 @@ export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg; perso
     firma = (await ladeCrm()).firmen.find(f => f.id === e.firmaId);
     if (!firma) return { ok: false, status: 404, fehler: 'Die gewählte Firma gibt es nicht (mehr) — bitte neu wählen.' };
   } else if (e.firma && regel.firmaAnlegen) {
-    const plan = await firmaSichern(e.firma, { email: e.email, webseite: e.webseite }, o.wer);
+    const plan = await firmaSichern(e.firma, { email: e.email, webseite: e.webseite }, o.wer, e.firmaZusatz ?? {});
     if (plan) {
       firma = plan.firma; firmaNeu = plan.art !== 'vorhanden';
       if (plan.art === 'zurueck') hinweise.push(`Die Firma „${plan.firma.name}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`);

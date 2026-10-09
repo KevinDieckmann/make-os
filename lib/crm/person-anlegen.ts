@@ -91,6 +91,11 @@ export interface PersonEingabe {
   vonKarte?: boolean;
   /** Eigener Text der ersten Aktivität (z. B. „… am Einlass angelegt — <Event>“). */
   anlass?: string;
+  /**
+   * Angaben zur Firma, nur für eine NEU angelegte (Prospecting: Branche, Größe) — eine vorhandene behält, was dort steht (`firmaSichern`).
+   * Nahtstellen 09.10.: vorher gingen sie nur über „aktion: firma“ mit — mit Ansprechpartner fielen Branche und Größe weg.
+   */
+  firmaZusatz?: { branche?: string; stadt?: string; mitarbeiter?: string };
 }
 export const PERSON_GRENZEN = { name: 80, email: 160, telefon: 60, position: 160, firma: 160, link: 300, schritt: 300, anlass: 300 } as const;
 
@@ -117,6 +122,12 @@ export function eingabeSaeubern(roh: unknown): { ok: true; e: PersonEingabe } | 
     anrede: (ANREDEN as readonly string[]).includes(String(o.anrede)) ? o.anrede as 'Sie' | 'Du' : undefined,
     zustaendig: wer(o.zustaendig), vonKarte: o.vonKarte === true, anlass: t('anlass', G.anlass),
   };
+  const z = o.firmaZusatz && typeof o.firmaZusatz === 'object' ? o.firmaZusatz as Record<string, unknown> : null;
+  if (z) {
+    const zusatz = Object.fromEntries((['branche', 'stadt', 'mitarbeiter'] as const).map(k => [k, typeof z[k] === 'string' ? (z[k] as string).replace(/\u0000/g, '').replace(/\s+/g, ' ').trim() : '']).filter(([, v]) => v));
+    if (Object.values(zusatz).some(v => v.length > G.firma)) zuLang.push('firmaZusatz');
+    else if (Object.keys(zusatz).length) e.firmaZusatz = zusatz;
+  }
   if (email && !e.email) return { ok: false, fehler: 'Die E-Mail sieht unvollständig aus — bitte prüfen oder leeren.', status: 400 };
   const s = o.naechsterSchritt && typeof o.naechsterSchritt === 'object' ? o.naechsterSchritt as Record<string, unknown> : null;
   if (s) {
