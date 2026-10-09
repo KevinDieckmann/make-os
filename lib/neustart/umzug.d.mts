@@ -28,7 +28,8 @@ export interface AufgabenBericht {
   neu: { aufgaben: number; projekte: number; listen: number };
   nicht: { papierkorb: number; archiv: number; modul: Record<string, number>; meilensteinListenLeer: number; listenArchiv: number; projektePapierkorb: number; projekteArchiv: number };
   uebernommenProjekte: { space: string; id: string }[];
-  umgehaengt: { listen: number; aufgaben: number };
+  /** `nurDateien`: Meilenstein-Listen ohne Aufgaben, die nur wegen ihrer Dateien mitzogen. */
+  umgehaengt: { listen: number; aufgaben: number; nurDateien: number };
   geloest: { ziel: number; zoe: number; abhaengig: number; liste: number };
 }
 export interface AufgabenErgebnis {
@@ -40,7 +41,8 @@ export interface AufgabenErgebnis {
   listenIds: Set<string>;
   projektIds: Set<string>;
 }
-export function aufgabenUebernehmen(stand: unknown, opt?: { kennung?: (praefix: string) => string; jetzt?: string; mitHeadAufgaben?: boolean }): AufgabenErgebnis;
+export function aufgabenUebernehmen(stand: unknown, opt?: { kennung?: (praefix: string) => string; jetzt?: string; mitHeadAufgaben?: boolean; dateiListen?: ReadonlySet<string>; dateiProjekte?: ReadonlySet<string> }): AufgabenErgebnis;
+export function dateiBezuege(eintraege: unknown): { dateiListen: Set<string>; dateiProjekte: Set<string> };
 export function belegKennungen(kartei: unknown): Set<string>;
 export function aufgabenDateienUebernehmen(datei: unknown, ctx: { projektUm: ReadonlyMap<string, string>; listeUm: ReadonlyMap<string, string>; aufgabenIds: ReadonlySet<string>; listenIds: ReadonlySet<string>; projektIds: ReadonlySet<string>; belege: ReadonlySet<string> }): { datei: { eintraege: Record<string, unknown>[] } & Record<string, unknown>; bericht: { alt: number; neu: number; nicht: number; beleg: number } };
 

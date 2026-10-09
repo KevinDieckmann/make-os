@@ -75,7 +75,7 @@ try {
     console.log(`Aufgaben: ${zahl(x.alt.aufgaben)} → ${zahl(x.neu.aufgaben)} · Projekte ${zahl(x.alt.projekte)} → ${zahl(x.neu.projekte)} · Listen ${zahl(x.alt.listen)} → ${zahl(x.neu.listen)}`);
     zeile('nicht: Papierkorb / „Neu anfangen“-Archiv', `${zahl(x.nicht.papierkorb)} / ${zahl(x.nicht.archiv)} Aufgaben (samt Unteraufgaben)`);
     for (const [g, n] of Object.entries(x.nicht.modul)) zeile(`nicht: ${g}`, `${zahl(n)}`);
-    if (x.uebernommenProjekte.length) zeile('Meilenstein-Listen → Projekt „Übernommen“', `${zahl(x.umgehaengt.listen)} Listen, ${zahl(x.umgehaengt.aufgaben)} Aufgaben (${x.uebernommenProjekte.map(p => p.space).join(', ')})`);
+    if (x.uebernommenProjekte.length) zeile('Meilenstein-Listen → Projekt „Übernommen“', `${zahl(x.umgehaengt.listen)} Listen, ${zahl(x.umgehaengt.aufgaben)} Aufgaben (${x.uebernommenProjekte.map(p => p.space).join(', ')})${x.umgehaengt.nurDateien ? ` — davon ${zahl(x.umgehaengt.nurDateien)} Liste(n) nur mit Dateien` : ''}`);
     if (x.nicht.meilensteinListenLeer) zeile('leere Meilenstein-Listen (fallen weg)', zahl(x.nicht.meilensteinListenLeer));
     zeile('gelöst: Ziel · ZOE-Auftrag · Abhängigkeit · Liste', `${x.geloest.ziel} · ${x.geloest.zoe} · ${x.geloest.abhaengig} · ${x.geloest.liste}`);
   }
