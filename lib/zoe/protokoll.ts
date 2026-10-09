@@ -2,7 +2,7 @@
 // Baustein 1 (07.09.). Jede Werkzeug-Ausführung wird hier festgehalten: was
 // ZOE getan hat, womit, was dabei herauskam — und wie man es zurücknimmt.
 //
-// Der Grund steht im Bauplan: ohne Protokoll kann Kevin weder nachvollziehen
+// Der Grund steht im Bauplan: ohne Protokoll kann niemand nachvollziehen
 // noch zurücknehmen. Und ohne die Rücknahme-Beschreibung, die beim Ausführen
 // entsteht, kann man sie später nicht mehr rekonstruieren — der alte Wert ist
 // dann längst überschrieben.
@@ -32,7 +32,7 @@ import { neueKennung } from '@/lib/kennung';
 export interface Ruecknahme {
   werkzeug: string;
   eingabe: Record<string, unknown>;
-  /** Was passiert, wenn Kevin darauf klickt. Ein Satz. */
+  /** Was passiert, wenn die Person darauf klickt. Ein Satz. */
   text: string;
 }
 

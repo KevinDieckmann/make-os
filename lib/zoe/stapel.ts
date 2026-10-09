@@ -3,7 +3,7 @@
 // wird nicht ausgeführt, sondern hier abgelegt — mit Vorher und Nachher, so
 // wie der Trockenlauf es gerechnet hat.
 //
-// Kevins Vorgabe vom 06.09.: gebündelt, morgens und abends. Deshalb sammelt
+// Vorgabe vom 06.09.: gebündelt, morgens und abends. Deshalb sammelt
 // der Stapel, statt zu unterbrechen. Und: einmal freigegeben darf ZOE den
 // Auftrag durcharbeiten — das ist das Feld `durcharbeiten`.
 //
@@ -11,7 +11,7 @@
 // die Ablehnung trägt einen Grund, damit ZOE beim nächsten Mal weiß, warum.
 
 //
-// 29.09. (B1, Kevin: „Alle Infos müssen immer sauber gespeichert werden“):
+// 29.09. (B1, Vorgabe „Alle Infos müssen immer sauber gespeichert werden“):
 //   · Jede Entscheidung trägt, WER entschieden hat (`entschiedenVon`), und geht in derselben Sperre dauerhaft in
 //     `zoe-entscheidungen--<haushalt>--<JJJJ-MM>` (lib/zoe/entscheidungen.ts). Gekürzt wird die Arbeitsliste nur um
 //     Einträge, die dort schon stehen (`protokolliert`) — Altbestand wird vor dem Kürzen nachgetragen, scheitert das,
@@ -60,7 +60,7 @@ export interface Vorschlag {
   person?: Person;
   /**
    * Woher er stammt. Wichtig fürs Etikett: bei einem Vorschlag aus dem
-   * Gespräch ist der Anlass Kevins eigener Satz, bei einem aus dem Morgen-
+   * Gespräch ist der Anlass der eigene Satz der Person, bei einem aus dem Morgen-
    * oder Abendlauf ist es ZOE' Herleitung. „Weil du gesagt hast" über eine
    * Herleitung zu schreiben, wäre eine kleine Lüge — und Vertrauen bricht an
    * kleinen Lügen.

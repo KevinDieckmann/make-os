@@ -1,5 +1,5 @@
 // ─── ZOE sieht die ganze Markttraktion — lesende Werkzeuge (28.09., Paket C7) ─────────────────
-// Kevin 28.09. ~22:50: „Mache ZOE auch für das CRM-System klar. ZOE soll nachher alles sehen und unterstützen
+// Vorgabe 28.09. ~22:50: „Mache ZOE auch für das CRM-System klar. ZOE soll nachher alles sehen und unterstützen
 // können.“ — und kurz darauf: die KOMPLETTE Markttraktion (alle Reiter der LEISTE in lib/crm/adresse.ts).
 // Das hebt die alte Regel „CRM-Dateiablage nie an ZOE“ auf, mit drei festen Leitplanken (lib/zoe/crm-sicht.ts):
 // Art. 18 ausgeblendet · private Notizen nur der handelnden Person · IBAN maskiert. Fremder Text steht nur im

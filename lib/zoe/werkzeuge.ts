@@ -20,7 +20,7 @@ import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
-import { GEHOERT_ZU_PRIVAT, finanzOrtAus, firmaAusAngabe, finanzOrtName, gehoertZuPrivat, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { GEHOERT_ZU_PRIVAT, finanzOrtAus, firmaAusAngabe, finanzOrtName, gehoertZuPrivat, istGesellschaft, istGesellschaftId, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
@@ -36,8 +36,8 @@ import { planTag } from '@/lib/planung/zeitstrahl';
 import { fokusSchreibSchluessel } from '@/lib/planung/jahr-fokus';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
 
-// ── ZOE plant: Block in den Kalender der Person (Kevins Ansage: „dass da auch drin geplant werden kann"). Seit F2 M8
-// (29.09., Kevin: „ZOE schreibt nur über den Stapel“) ist `plan_block` freigabepflichtig (Register, Gruppe „kalender“):
+// ── ZOE plant: Block in den Kalender der Person (Vorgabe: „dass da auch drin geplant werden kann"). Seit F2 M8
+// (29.09., Vorgabe „ZOE schreibt nur über den Stapel“) ist `plan_block` freigabepflichtig (Register, Gruppe „kalender“):
 // der Aufruf aus dem Gespräch oder einem Lauf legt einen Vorschlag in den Stapel, erst der Klick führt diese Funktion aus
 // (`erzwingen`). Angelegt wird über den Blöcke-Weg (lib/planung/bloecke-server.ts `blockAnlegen`: iCloud-Termin der Art
 // Fokus/Block im Kalender der Person → kalender-bezug → Änderungsprotokoll, ohne Teilnehmer) — nie über den Apple-Altweg,
@@ -47,7 +47,7 @@ const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${St
 const KEINE_PERSON_PLAN = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 
 async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON_PLAN; // Regel 5: nie ein Rückfall auf „kevin“
+  if (!person) return KEINE_PERSON_PLAN; // Regel 5: nie ein Rückfall auf eine feste Person
   const date = String(input.date ?? '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Fehlgeschlagen: date muss YYYY-MM-DD sein.';
   if (date < localDay()) return `Fehlgeschlagen: ${date} liegt in der Vergangenheit — plane ab heute (${localDay()}).`;
@@ -60,7 +60,6 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
 
   // Feste Termine — nichts wird überplant. Über denselben Lesepfad wie ZOE (R-Z #K4, für die Person gefiltert: private
   // der anderen nur „Belegt“, abgesagte fehlen). Ab dem Vortag gelesen: ein Termin über Mitternacht zählt mit (F2 M5).
-  // KEMARIS-Beispieldaten zählen seit K5 nicht mehr (`kal.kemaris` bleibt außen vor).
   const kal = await termineFuerZoe(person, tagePlus(date, -1), tagePlus(date, 1));
   const kollision = blockKollision(kal.termine, person, date, startMin, ende);
   if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
@@ -92,7 +91,7 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
 // schlägt ZOE danach vor, angelegt wird erst per Klick.
 const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON_PLAN; // S1 #17: kein Rückfall auf „kevin“ (Regel 5)
+  if (!person) return KEINE_PERSON_PLAN; // S1 #17: kein Rückfall auf eine feste Person (Regel 5)
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: freie Zeit nur für Personen des Haushalts.';
   const roh = Array.isArray(input.personen) ? input.personen.map(String) : typeof input.personen === 'string' ? String(input.personen).split(',') : [];
@@ -109,14 +108,14 @@ async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: 
   return `Freie Zeit (${dauerMin} Min.) für ${personen.join(' + ')} von ${r.von} bis ${r.bis} — ${r.vorschlaege.length} Möglichkeiten, die ersten ${zeilen.length}:\n${zeilen.join('\n')}\nNur ein Vorschlag: einen Termin legt erst ein Klick im Kalender an.`;
 }
 
-// ─── ZOE als Eingabe-Schicht: Kevin ruft zu, ZOE schreibt in die Stores.
+// ─── ZOE als Eingabe-Schicht: die Person ruft zu, ZOE schreibt in die Stores.
 // Interne Buchführung (nichts geht nach außen) — jede Erfassung wird im Chat
 // knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/Markttraktion.
 
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
-// Die eine Einheitenliste (28.09.): kdc · kdv · ug aus lib/einheiten.ts — „MAKE“/„UG“ → ug (MAKE Innovation GmbH), bei Unklarheit kdc.
+// Die eine Einheitenliste (28.09.): kdc · kdv · ug aus lib/einheiten.ts (`firmaAusAngabe`: Altnamen und Kurzformen → Kennung).
 const firmaId = (rein: unknown): Gesellschaftskennung => firmaAusAngabe(rein);
-/** Schreibt ZOE etwas auf die MAKE Innovation GmbH (ug), bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
+/** Schreibt ZOE etwas auf die Gesellschaft `ug`, bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
 const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string): F => (fid === UG_FIRMA.id && Array.isArray(f.firmen) && f.firmen.length && !f.firmen.some(x => x.id === UG_FIRMA.id) ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f);
 /** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|n26/i.test(String(rein ?? ''));
@@ -307,8 +306,8 @@ async function setzeFokus(input: Record<string, unknown>): Promise<string> {
 }
 
 // ── Gesundheit (23.09.): die Griffe, die ein Satz auslöst ───────────────────
-// Kevin antwortet abends auf Telegram mit „Reha gemacht, Juckreiz 4, sauber,
-// dankbar für den Anruf mit Malin" — und ZOE schreibt vier Bestände. Jedes
+// Eine Person antwortet abends auf Telegram mit einem Satz („Routine gemacht, Stimmung 4,
+// dankbar für ein gutes Gespräch“) — und ZOE schreibt mehrere Bestände. Jedes
 // Werkzeug ist frei: es erfasst nur, was die Person selbst gesagt hat.
 
 /** Persönliche Bestände brauchen eine ausdrücklich benannte Person — kein Rückfall auf den Inhaber (26.09.). */
@@ -469,7 +468,7 @@ async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: 
 }
 
 /**
- * Postfach lesen — Kevins Ansage: „Wenn ich ihm sage, hol dir die Infos, soll er den Agenten wirklich angreifen und die Information
+ * Postfach lesen — Vorgabe: „Wenn ich ihm sage, hol dir die Infos, soll er den Agenten wirklich angreifen und die Information
  * rausholen.“ Seit 06.10. (Inbox 2) aus dem EINEN Strom der eigenen Postfächer der Person (Gmail + IMAP, lib/inbox/zoe-sicht.ts) — nie
  * die Post einer anderen Person, nie ohne Person. Nur Kopf und Ausschnitt (KI-Grundsatz: Volltext nur beim Entwurf auf Klick).
  * Read-only — es wird nie geantwortet, verschoben oder gelöscht.
@@ -488,7 +487,7 @@ async function liesPostfach(input: Record<string, unknown>, _origin: string, per
 
 /**
  * Tagesform eintragen — damit ZOE Werte, die er gerade gelesen oder von
- * Kevin gehört hat, direkt ablegen kann, statt ihn auf /os/gesundheit zu
+ * der Person gehört hat, direkt ablegen kann, statt sie auf /os/gesundheit zu
  * schicken. Nur was übergeben wurde, wird geschrieben.
  */
 async function setzeVitalwerte(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
@@ -562,6 +561,17 @@ async function setzeZiele(input: Record<string, unknown>): Promise<string> {
   return `Erfasst: ${teile.join(' · ')}. Sichtbar im Controlling — Fortschritt und nötige Run-Rate rechnen sofort neu.`;
 }
 
+/**
+ * Welche Firma ein Planposten aus ZOE trägt (09.10., „neutral-rest-2“): eine Gesellschaft aus lib/einheiten.ts, eine des
+ * Gesellschafts-Registers (`g-…`) — oder ein Altwert, den der Liquiplan der Instanz schon trägt (eine frühere feste Zuordnung bleibt
+ * so zuordenbar, wie sie gespeichert ist; eine feste Firma steht nicht mehr im Code). Sonst keine Firma (= Business wie bisher). Rein.
+ */
+export function planpostenFirma(angabe: unknown, vorhanden: readonly { firmaId?: string }[]): string | undefined {
+  if (typeof angabe !== 'string' || !angabe) return undefined;
+  if (istGesellschaftId(angabe)) return angabe;
+  return /^[a-z][a-z0-9]{1,23}$/.test(angabe) && vorhanden.some(p => p.firmaId === angabe) ? angabe : undefined;
+}
+
 /** Wiederkehrende Kosten oder Einnahmen für die Liquiditäts-Planung. */
 async function erfassePlanposten(input: Record<string, unknown>): Promise<string> {
   if (istPrivatAngabe(input.firma) || String(input.kategorie ?? '') === 'privat') return PRIVAT_HINWEIS;
@@ -572,13 +582,13 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
   const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
   const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : localDay();
   const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
-  const firmaId = istGesellschaft(input.firma) || input.firma === 'kemaris' ? String(input.firma) : undefined;
   const sicher = input.sicher !== false;
 
   let aktion = '';
   await updateJson<{ posten: { id: string; titel: string; betrag: number; rhythmus: string; ab: string; sicher: boolean; kategorie?: string; firmaId?: string }[] }>('liquiplan', current => {
     const f = current ?? { posten: [] };
     f.posten = f.posten ?? [];
+    const firmaId = planpostenFirma(input.firma, f.posten);
     const idx = f.posten.findIndex(p => p.titel.toLowerCase() === titel.toLowerCase());
     if (idx >= 0) {
       f.posten[idx] = { ...f.posten[idx], betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) };
@@ -596,8 +606,8 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
 /**
  * Aufgabe anlegen — seit 07.09. ein echtes Werkzeug statt eines Knopfes.
  *
- * Vorher schlug ZOE eine Aufgabe vor und Kevin musste sie per Klick
- * bestätigen. Kevins Festlegung vom 06.09.: Aufgaben anlegen ist freie Hand.
+ * Vorher schlug ZOE eine Aufgabe vor und die Person musste sie per Klick
+ * bestätigen. Festlegung vom 06.09.: Aufgaben anlegen ist freie Hand.
  * Die Route hat eine eigene Dublettensperre — dieselbe Aufgabe zweimal
  * anzulegen ist also auch dann ausgeschlossen, wenn zwei Wege sie erzeugen.
  */
@@ -615,7 +625,10 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
   const title = String(input.title ?? '').trim().slice(0, 300);
   if (!title) return 'Fehlgeschlagen: title fehlt.';
   const PRIOS = ['low', 'medium', 'high', 'critical'];
-  const WER = ['kevin', 'malin', 'both'];
+  // Für wen: eine Person des Haushalts (Speichername aus den Konten) oder „both“ — nie eine feste Liste im Code (09.10.).
+  // Unbekannt → keine Angabe (die anlegende Person), wie bisher.
+  const { haushaltsSpeicher } = await import('@/lib/aufgaben/sicht');
+  const WER = [...(await haushaltsSpeicher().catch(() => [] as string[])), 'both'];
   const body = {
     title,
     description: input.why ? String(input.why).slice(0, 800) : undefined,
@@ -656,12 +669,12 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
 }
 
 /**
- * Mehrere Agenten auf einmal losschicken — Kevins Bedingung vom 06.09.
+ * Mehrere Agenten auf einmal losschicken — Bedingung vom 06.09.
  *
- * Der Unterschied zu run_agent: run_agent läuft IN dem Aufruf, auf den Kevin
+ * Der Unterschied zu run_agent: run_agent läuft IN dem Aufruf, auf den die Person
  * wartet (drei Runden, vier Läufe, dann ist das Zeitfenster zu). Das hier legt
  * die Aufträge in die Warteschlange; der Arbeiter nimmt sie sich und lässt sie
- * nebeneinander laufen, so viele wie die Maschine trägt. Kevin bekommt sofort
+ * nebeneinander laufen, so viele wie die Maschine trägt. Die Person bekommt sofort
  * eine Antwort und sieht die Ergebnisse einlaufen.
  */
 async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
@@ -693,15 +706,15 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
     const namen = auftraege.map(a => a.name).join(', ');
     return `${d.angelegt} Aufträge laufen jetzt im Hintergrund (${namen})`
       + `${d.schonDa ? `, ${d.schonDa} liefen schon` : ''}. `
-      + 'Sag Kevin, dass sie parallel laufen und die Ergebnisse unter /os/stapel einlaufen — er muss nicht warten.';
+      + 'Sag der Person, dass sie parallel laufen und die Ergebnisse unter /os/stapel einlaufen — sie muss nicht warten.';
   } catch (err) {
     return `Warteschlange nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
   }
 }
 
 /**
- * Sich etwas merken. Kevins Entscheidung vom 06.09.: sofort, nicht auf
- * Nachfrage — dafür sichtbar in einer Liste, aus der er rauswerfen kann.
+ * Sich etwas merken. Entscheidung vom 06.09.: sofort, nicht auf
+ * Nachfrage — dafür sichtbar in einer Liste, aus der die Person rauswerfen kann.
  */
 async function faktMerken(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const ARTEN = ['person', 'firma', 'vorliebe', 'entscheidung', 'termin', 'zahl', 'sonstiges'];
@@ -815,7 +828,7 @@ async function bauplanNotieren(input: Record<string, unknown>, _origin: string, 
   const { karteAnlegen } = await import('@/lib/bauplan/speicher');
   const { ARTEN } = await import('@/lib/bauplan/form');
   // Bilder und Seite kommen nur aus der Oberfläche, nie aus dem Gespräch.
-  if (!person) return KEINE_PERSON; // S1 #17: kein Rückfall auf „kevin“ (Regel 5)
+  if (!person) return KEINE_PERSON; // S1 #17: kein Rückfall auf eine feste Person (Regel 5)
   const k = await karteAnlegen({ ...input, bilder: undefined, seite: undefined, quelle: 'ZOE' }, person);
   if (!k) return 'Fehlgeschlagen: titel nötig.';
   return `Im Bauplan notiert (Ideen): „${k.titel}“ — ${ARTEN.find(a => a.id === k.art)?.label ?? 'Verbesserung'}, Bereich ${k.bereich}.`;
@@ -874,8 +887,8 @@ async function notizErgaenzen(input: Record<string, unknown>, _o: string, person
 
 
 // ── Markttraktion (Kartei): Kontakte finden, notieren, ansprechen ──────────────────────────────
-// Kevins Ansage vom 18.09.: „damit wir Kunden ansprechen können." Es gibt bewusst
-// KEIN Werkzeug zum Versenden: das bleibt eiserne Regel 3. Seit 29.09. (Kevin: „ZOE schreibt
+// Vorgabe vom 18.09.: „damit wir Kunden ansprechen können." Es gibt bewusst
+// KEIN Werkzeug zum Versenden: das bleibt eiserne Regel 3. Seit 29.09. (Vorgabe „ZOE schreibt
 // nur über den Stapel“, Paket D-B #90) sind notiere_kontakt, chance_anlegen und uebergeben
 // freigabepflichtig (lib/zoe/register.ts) — sie laufen erst nach dem Klick im Stapel.
 
@@ -965,14 +978,14 @@ async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, per
   if (!r.ok) return `Entwurf fehlgeschlagen: ${r.fehler}`;
   const { ampel } = await import('@/lib/crm/recht');
   const wege = ampel(treffer).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'zulässig' : c.farbe === 'gelb' ? 'nur persönlich' : 'NICHT zulässig'}`).join(', ') || 'kein Kanal hinterlegt';
-  return `ANSPRACHE-ENTWURF für ${anzeigename(treffer)}${treffer.firma ? ` (${treffer.firma})` : ''} — Kanäle: ${wege}\n\nBETREFF: ${r.entwurf.betreff}\n\nE-MAIL:\n${r.entwurf.email}\n\nLINKEDIN:\n${r.entwurf.linkedin}\n\n${r.entwurf.hinweis}\nNichts wurde versendet. Wenn Kevin es geschickt hat, mit notiere_kontakt (art: mail oder linkedin) festhalten.`;
+  return `ANSPRACHE-ENTWURF für ${anzeigename(treffer)}${treffer.firma ? ` (${treffer.firma})` : ''} — Kanäle: ${wege}\n\nBETREFF: ${r.entwurf.betreff}\n\nE-MAIL:\n${r.entwurf.email}\n\nLINKEDIN:\n${r.entwurf.linkedin}\n\n${r.entwurf.hinweis}\nNichts wurde versendet. Wenn die Person es geschickt hat, mit notiere_kontakt (art: mail oder linkedin) festhalten.`;
 }
 
 // ─── Markttraktion (24.09. nachts): Chance anlegen, Lage abfragen ─────────────────────
 
-/** Kontakt an Kevin oder Malin übergeben (25.09.) — Verlauf, nächster Schritt, Aufgabe. Nichts wird versendet. */
+/** Kontakt an eine andere Person des Teams übergeben (25.09.) — Verlauf, nächster Schritt, Aufgabe. Nichts wird versendet. */
 async function kontaktUebergeben(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return 'Nicht verfügbar: Übergeben geht nur im Gespräch mit Kevin oder Malin.';
+  if (!person) return 'Nicht verfügbar: Übergeben geht nur im Gespräch mit einer Person des Haushalts.';
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
@@ -1129,7 +1142,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   frag_gedaechtnis: { gruppe: 'gedaechtnis', lauf: fragGedaechtnis },
   plan_block: { gruppe: 'planer', lauf: planBlock },
   freie_zeit: { gruppe: 'kalender', lauf: freieZeit },
-  // Selbst nachsehen statt verweisen — Kevins Ansage.
+  // Selbst nachsehen statt verweisen — so vorgegeben.
   lies_postfach: { gruppe: 'inbox', lauf: liesPostfach },
   setze_vitalwerte: { gruppe: 'gesundheit', lauf: setzeVitalwerte },
   setze_ziele: { gruppe: 'finanzen', lauf: setzeZiele },
@@ -1155,7 +1168,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   // Markttraktion ganz (28.09., C7): lesen gekapselt mit Leitplanken; crm_vorschlag legt nur in den Stapel (Art „crm“).
   ...Object.fromEntries(Object.entries(CRM_LESE_LAEUFE).map(([n, lauf]) => [n, { gruppe: 'markttraktion', lauf: nurImHaushalt(lauf) }])),
   crm_vorschlag: { gruppe: 'crm', lauf: nurImHaushalt(CRM_VORSCHLAG_LAUF) },
-  // Projekt- und Aufgaben-Dateien lesen (28.09., C2 — Kevins Wahl): nur im Haushalt, nur die Aufgaben-Ablage, gekapselt.
+  // Projekt- und Aufgaben-Dateien lesen (28.09., C2): nur im Haushalt, nur die Aufgaben-Ablage, gekapselt.
   projekt_unterlagen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(projektUnterlagen) },
   datei_lesen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(dateiLesen) },
   // ZOE-Aufgaben (28.09., C4): meine_aufgaben, aufgabe_an_zoe — prüfen den Haushalt selbst (lib/zoe/aufgaben-werkzeuge.ts).

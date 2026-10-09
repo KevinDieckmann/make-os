@@ -1,6 +1,6 @@
 // ─── MAKE OS — Was die KI kostet ────────────────────────────────────────────
 // Baustein-Nachtrag (07.09.). Seit heute laufen Agenten im Hintergrund, nachts,
-// mehrere gleichzeitig. Ohne Mitschrift wüsste Kevin nach vier Wochen nicht,
+// mehrere gleichzeitig. Ohne Mitschrift wüsste der Inhaber nach vier Wochen nicht,
 // welcher davon die Rechnung treibt — und genau das ist der Moment, in dem man
 // aus Unsicherheit alles wieder abschaltet.
 //
@@ -103,7 +103,7 @@ export async function uebersicht(tage = 30): Promise<{
   heuteCent: number;
   summeCent: number;
   jeZweck: { zweck: string; cent: number; anzahl: number }[];
-  /** Euro (seit 09.10., Kurs der Instanz) — Kevin: „Euro“. */
+  /** Euro (seit 09.10., Kurs der Instanz). */
   euro: { kurs: number; heuteCent: number; summeCent: number; monatCent: number };
   jeAnbieter: { anbieter: AnbieterId; cent: number; anzahl: number }[];
 }> {

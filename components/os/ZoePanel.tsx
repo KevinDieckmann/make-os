@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 // ─── MAKE OS — ZOE (schwebend, frei beweglich) ───────────────────────────
-// Kevins Ansage: nicht starr — flexibel. Unten schwebt ein kleines, sanft
+// Vorgabe: nicht starr — flexibel. Unten schwebt ein kleines, sanft
 // pulsierendes Icon, das auf jeder /os-Seite mitgeht. Ein Klick öffnet den
 // Chat in Normalgröße; an der oberen linken Ecke zieht man ihn stufenlos so
 // groß, wie man arbeiten will, und am Kopf verschiebt man ihn frei über den
@@ -10,13 +10,13 @@ import Link from 'next/link';
 // Fähigkeiten unverändert: Agenten ausführen, Aufgaben anlegen (Klick-
 // Bestätigung), Blöcke direkt in den Planer legen (plan_block), Brain-Kontext.
 //
-// GEDÄCHTNIS (Kevin: „immer die Historie reingeben, damit wir das sauber
+// GEDÄCHTNIS (Vorgabe: „immer die Historie reingeben, damit wir das sauber
 // haben"): jedes Gespräch liegt als Datei im Bestand, nicht mehr nur in der
 // Sitzung. Beim Öffnen kommt der letzte Stand zurück, alte Gespräche stehen
 // unter „Verlauf", und der bisherige Zug geht bei jeder Frage mit an die KI —
 // vorher fing ZOE bei jeder Nachricht wieder bei null an.
 //
-// STIMME (Kevin: „und gleichzeitig auch mit ihm sprechen"): Mikrofon diktiert,
+// STIMME (Vorgabe: „und gleichzeitig auch mit ihm sprechen"): Mikrofon diktiert,
 // ZOE liest seine Antwort vor, und im Freihand-Betrieb hört er nach dem
 // Sprechen von selbst wieder zu — ein echtes Gespräch ohne Tastatur.
 //
@@ -147,7 +147,7 @@ export function ZoePanel() {
   const [thinking, setThinking] = useState(false);
   // Streaming (09.10.): der Text, während er entsteht, und das laufende Werkzeug — bis die fertige Antwort da ist.
   const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
-  // Wie viel vorbereitet ist und auf Kevin wartet (kommt aus jeder Antwort).
+  // Wie viel vorbereitet ist und auf die Person wartet (kommt aus jeder Antwort).
   const [stapelOffen, setStapelOffen] = useState(0);
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): Art + Kennung geht mit jeder Nachricht mit, bis man ihn löst.
   const [bezug, setBezug] = useState<CrmBezug | null>(null);
@@ -158,7 +158,8 @@ export function ZoePanel() {
   const [belegFehler, setBelegFehler] = useState<string | null>(null);
   const [belegGebucht, setBelegGebucht] = useState<string | null>(null);
   const [ueberDatei, setUeberDatei] = useState(false);
-  const [briefing, setBriefing] = useState('**Sir.** Ich bin da — frag mich, lass mich planen, oder schick mich los.');
+  // Eröffnung ohne Lagebericht: neutral, ohne feste Anrede — den Namen kennt ZOE erst aus dem Konto (`anredeSatz` im Gespräch).
+  const [briefing, setBriefing] = useState('**Ich bin da.** Frag mich, lass mich planen, oder schick mich los.');
   // Gedächtnis
   // Der ZOE-Thread dieses Gesprächs ('' = beim nächsten Senden ein neuer) und alle ZOE-Threads der Person.
   const [gespraechId, setGespraechId] = useState('');
@@ -170,7 +171,7 @@ export function ZoePanel() {
   const [freihand, setFreihand] = useState(false);
 
   const convoRef = useRef<HTMLDivElement>(null);
-  const beruehrt = useRef(false);   // hat Kevin schon getippt? dann nichts überschreiben
+  const beruehrt = useRef(false);   // schon getippt? dann nichts überschreiben
   const freihandRef = useRef(false);
   freihandRef.current = freihand;
   const vorlesenRef = useRef(false);
@@ -216,7 +217,7 @@ export function ZoePanel() {
     }).catch(() => {});
   }, []);
 
-  /** Gespräch sofort auf die Platte — Kevins Regel: gleicher Stand beim nächsten Reingucken. */
+  /** Gespräch sofort auf die Platte — Regel: gleicher Stand beim nächsten Reingucken. */
   /** Datei einlesen und von ZOE auswerten lassen. Schreibt noch nichts. */
   async function belegLesen(f: File) {
     setBelegFehler(null); setBeleg(null); setBelegGebucht(null);
@@ -241,7 +242,7 @@ export function ZoePanel() {
     setBelegLaeuft(null);
   }
 
-  /** Erst jetzt schreiben — Kevin hat die Zahlen gesehen. */
+  /** Erst jetzt schreiben — die Person hat die Zahlen gesehen. */
   async function belegUebernehmen(ziel: 'buchung' | 'rechnung') {
     if (!beleg) return;
     setBelegLaeuft('speichern');
@@ -365,8 +366,8 @@ export function ZoePanel() {
     fetch('/api/zoe/stapel').then(r => r.json()).then(d => setStapelOffen(Number(d.offen) || 0)).catch(() => {});
   }, []);
 
-  // Der Stapel-Stand auch ohne Gespräch — sonst sieht Kevin morgens nicht,
-  // dass etwas auf ihn wartet.
+  // Der Stapel-Stand auch ohne Gespräch — sonst sieht man morgens nicht,
+  // dass etwas wartet.
   useEffect(() => {
     fetch('/api/zoe/stapel')
       .then(r => r.json())
@@ -445,7 +446,7 @@ export function ZoePanel() {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }} onPointerDown={e => e.stopPropagation()}>
           {/* Gesprächs-Modus: ein Knopf für alles — Mikrofon an, Antwort wird
-              vorgelesen, danach hört er von selbst wieder zu. Kevins Ansage:
+              vorgelesen, danach hört er von selbst wieder zu. Vorgabe:
               „damit ich eine echte Konversation aufbauen kann." */}
           {stimme.kannHoeren && stimme.kannSprechen && (
             <button
@@ -465,7 +466,7 @@ export function ZoePanel() {
           )}
           {/* Weg ins volle Hirn. Das Symbol selbst öffnet weiter dieses Fenster:
               eine Frage im Vorbeigehen soll die Seite nicht verlassen, auf der
-              Kevin gerade arbeitet. Wer den ganzen Empfang will, geht hier. */}
+              man gerade arbeitet. Wer den ganzen Empfang will, geht hier. */}
           <Link href="/zoe" title="Zum Hirn — der ganze Empfang" className="zoe-hirn-link" style={chip(J)}>
             ◎ Hirn
           </Link>
@@ -642,7 +643,7 @@ export function ZoePanel() {
               {stimme.hoert ? '■' : <Mikro farbe={C.inkDim} />}
             </button>
           )}
-          {/* Beleg an ZOE geben — Kevins Ansage: „Rechnung fotografieren,
+          {/* Beleg an ZOE geben — Vorgabe: „Rechnung fotografieren,
               Zahlen landen im System." */}
           <button onClick={() => dateiWahl.current?.click()} disabled={thinking || !!belegLaeuft}
             aria-label="Beleg anhängen" title="Rechnung oder Quittung anhängen — ZOE liest die Zahlen heraus"

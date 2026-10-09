@@ -1,5 +1,5 @@
 // ─── MAKE OS — Mit dem Brain chatten (24.09.) ───────────────────────────────
-// Kevin: „bau bitte bei dem Wissen einen Chat mit rein, dass ich direkt mit
+// Vorgabe: „bau bitte bei dem Wissen einen Chat mit rein, dass ich direkt mit
 // dem Hirn chatten kann."
 //
 // Anders als ZOE: kein Werkzeug mit Wirkung, keine Live-Zahlen, keine
@@ -7,9 +7,9 @@
 // ganz, antwortet ausschließlich daraus und nennt die Quelle. Was nicht im
 // Brain steht, wird nicht erfunden. Ändern kann es nichts; dafür ist ZOE da.
 //
-// Die Sicht ist die der fragenden Person (lib/zoe/vault.ts, darfSehen):
-// Kevin fragt sein eigenes Brain und darf dabei auch Privates sehen, Malin
-// alles außer Kevins Privatem. Die Antwort geht nur an die Person zurück.
+// Die Sicht ist die der fragenden Person (lib/zoe/vault.ts, darfSehen): eigenes Privates ja,
+// das Private anderer Personen nie (symmetrisch, aus den Konten der Instanz).
+// Die Antwort geht nur an die Person zurück.
 
 import { askText, fremd, FREMD_REGEL, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { suche, notiz, type Sicht, type Treffer } from './vault';

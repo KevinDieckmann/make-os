@@ -1,4 +1,4 @@
-// ─── ZOE liest Projekt- und Aufgaben-Unterlagen (28.09., Paket C2 — Kevins Wahl) ───
+// ─── ZOE liest Projekt- und Aufgaben-Unterlagen (28.09., Paket C2) ───
 // Zwei Werkzeuge, beide nur lesend:
 //   projekt_unterlagen — Dateien (Metadaten) und Notizen eines Projekts bzw. einer Aufgabe
 //   datei_lesen        — Textinhalt EINER Datei (PDF/Word/Excel/PowerPoint/CSV/TXT/MD; Bilder nur Metadaten)
@@ -32,7 +32,7 @@ import type { Project, Task } from '@/types/tasks';
 export const AUFGABEN_DATEI_WERKZEUGE = ['projekt_unterlagen', 'datei_lesen'] as const;
 export const UNTERLAGEN_QUELLE = 'projekt-unterlagen';
 
-const NICHT_IM_HINTERGRUND = 'Nicht ausgeführt: Projekt- und Aufgaben-Dateien liest ZOE nur im Gespräch mit Kevin oder Malin — nicht im Hintergrund und nicht für andere Konten.';
+const NICHT_IM_HINTERGRUND = 'Nicht ausgeführt: Projekt- und Aufgaben-Dateien liest ZOE nur im Gespräch mit einer Person des Haushalts — nicht im Hintergrund und nicht für andere Konten.';
 
 async function haushalt(person: string | undefined): Promise<string | null> {
   if (!person || !(await personImHaushaltDesInhabers(person))) return null;

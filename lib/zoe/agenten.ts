@@ -1,6 +1,6 @@
 // ─── MAKE OS — ZOE führt die Fach-Agenten aus ────────────────────────────
 // Bis 07.09. erreichte ZOE sechs von 22 Agenten; der Rest lief nur auf
-// Knopfdruck in der Oberfläche. Kevins Ansage: „dass er dann wirklich die
+// Knopfdruck in der Oberfläche. Vorgabe: „dass er dann wirklich die
 // Agents auch einfach angreift." Also stehen hier alle, die ohne Eingabe vor
 // Ort laufen können — mit derselben Regel wie vorher: die Autonomie-Stufe des
 // Agenten bleibt maßgeblich, nichts geht ohne Freigabe nach außen.
@@ -79,7 +79,7 @@ const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
 
 /**
  * Ergebnisse halb gebauter Agenten bekommen einen Platz (27.09.): statt einer Textwand in der
- * Warteschlange werden sie Vorschläge im Stapel — über dasselbe Werkzeug, das Kevin auch im
+ * Warteschlange werden sie Vorschläge im Stapel — über dasselbe Werkzeug, das eine Person auch im
  * Gespräch freigäbe (`vorschlagen: true`, Quelle „lauf“). Nichts davon wird ausgeführt.
  */
 async function stapleAlle(liste: readonly (readonly [string, Record<string, unknown>])[], origin: string, person: string | undefined, anlass: string): Promise<number> {
@@ -250,10 +250,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
           + `${a.hebel ? ` Größter Hebel: ${a.hebel}.` : ''}${d.lage ? `\n${kuerze(d.lage, 700)}` : ''}`);
       }
       case 'content': {
-        if (!auftrag) return fehl('Content-Agent braucht ein Thema — frag Kevin, worüber geschrieben werden soll.');
+        if (!auftrag) return fehl('Content-Agent braucht ein Thema — frag die Person, worüber geschrieben werden soll.');
         const d = await post('/api/content', { thema: auftrag, format: 'linkedin', ablegen: true }, 150_000);
         if (!d.reply || d.needsKey) return fehl(`Content fehlgeschlagen: ${kuerze(d.error ?? d.reply, 200)}`);
-        return gut(`ENTWURF (${d.format}):\n${kuerze(d.reply, 2000)}\n(${d.abgelegt ? 'Liegt unter Content › Entwürfe von ZOE. ' : ''}Veröffentlichen bleibt bei Kevin.)`);
+        return gut(`ENTWURF (${d.format}):\n${kuerze(d.reply, 2000)}\n(${d.abgelegt ? 'Liegt unter Content › Entwürfe von ZOE. ' : ''}Veröffentlichen bleibt beim Menschen.)`);
       }
       // ── Systemläufe ──
       case 'tagesstart': {
@@ -293,10 +293,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         if (!liste.length) return gut(`Markttraktion: niemand fällig. Stand: ${st.gesamt ?? 0} Kontakte, ${st.ansprechbar ?? 0} ansprechbar.`);
         return gut(`HEUTE ANSPRECHEN — ${liste.length} von ${st.ansprechbar ?? '?'} ansprechbaren (${st.gesamt ?? '?'} gesamt):\n\n` + liste.map((p, i) =>
           `${i + 1}. ${p.kontakt.vorname} ${p.kontakt.nachname}${p.kontakt.firma ? ` · ${p.kontakt.firma}` : ''}${p.kontakt.position ? ` · ${p.kontakt.position}` : ''} [${p.kontakt.id}]\n   ${p.grund} · Kanal: ${p.kanaele.map(c => c.art).join(', ')}\n   Aufhänger: ${kuerze(p.kontakt.aufhaenger, 200)}`,
-        ).join('\n\n') + '\n\nEntwurf je Kontakt mit entwurf_ansprache; Versand bleibt bei Kevin.');
+        ).join('\n\n') + '\n\nEntwurf je Kontakt mit entwurf_ansprache; Versand bleibt beim Menschen.');
       }
       case 'outreach': {
-        // Erst das CRM — dort sind die Menschen, die Kevin wirklich meint.
+        // Erst das CRM — dort sind die Menschen, die die Person wirklich meint.
         // Die Zielliste (Prospecting) ist der Rückfall für reine Firmennamen.
         if (auftrag) {
           const kk = await get('/api/state/kontakte');
@@ -305,7 +305,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
           if (k) {
             const d = await post('/api/crm/entwurf', { id: k.id }, 150_000);
             if (!d.email) return fehl(`Entwurf fehlgeschlagen: ${kuerze(d.error, 200)}`);
-            return gut(`ANSPRACHE-ENTWURF für ${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]:\nBETREFF: ${d.betreff}\n\n${kuerze(d.email, 1500)}\n\nLINKEDIN: ${kuerze(d.linkedin, 600)}\n(Versand bleibt bei Kevin — nichts geht ohne ihn raus. Danach: notiere_kontakt.)`);
+            return gut(`ANSPRACHE-ENTWURF für ${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]:\nBETREFF: ${d.betreff}\n\n${kuerze(d.email, 1500)}\n\nLINKEDIN: ${kuerze(d.linkedin, 600)}\n(Versand bleibt beim Menschen — nichts geht ohne Freigabe raus. Danach: notiere_kontakt.)`);
           }
         } else {
           const heute = await get('/api/crm/ansprechen?n=1');
@@ -313,7 +313,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
           if (p?.kontakt?.id) {
             const d = await post('/api/crm/entwurf', { id: p.kontakt.id }, 150_000);
             if (!d.email) return fehl(`Entwurf fehlgeschlagen: ${kuerze(d.error, 200)}`);
-            return gut(`ANSPRACHE-ENTWURF für ${p.kontakt.vorname} ${p.kontakt.nachname}${p.kontakt.firma ? ` (${p.kontakt.firma})` : ''} [${p.kontakt.id}] — ${p.grund}:\nBETREFF: ${d.betreff}\n\n${kuerze(d.email, 1500)}\n\nLINKEDIN: ${kuerze(d.linkedin, 600)}\n(Versand bleibt bei Kevin.)`);
+            return gut(`ANSPRACHE-ENTWURF für ${p.kontakt.vorname} ${p.kontakt.nachname}${p.kontakt.firma ? ` (${p.kontakt.firma})` : ''} [${p.kontakt.id}] — ${p.grund}:\nBETREFF: ${d.betreff}\n\n${kuerze(d.email, 1500)}\n\nLINKEDIN: ${kuerze(d.linkedin, 600)}\n(Versand bleibt beim Menschen.)`);
           }
         }
         const st = await get('/api/state/prospects');
@@ -325,7 +325,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const d = await post('/api/outreach', { prospect: ziel, icp: String(st?.state?.icp ?? st?.icp ?? '') }, 150_000);
         const entwurf = d.reply ?? d.entwurf ?? d.text ?? d.email;
         if (!entwurf) return fehl(`Outreach fehlgeschlagen: ${kuerze(d.error, 200)}`);
-        return gut(`ANSPRACHE-ENTWURF für ${ziel.company}:\n${kuerze(entwurf, 2000)}\n(Versand bleibt bei Kevin — nichts geht ohne ihn raus.)`);
+        return gut(`ANSPRACHE-ENTWURF für ${ziel.company}:\n${kuerze(entwurf, 2000)}\n(Versand bleibt beim Menschen — nichts geht ohne Freigabe raus.)`);
       }
       case 'gesundheit': {
         // Der Takt aufs Handy — deterministisch, ohne Modell. Siehe
@@ -337,7 +337,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       }
       case 'markttraktion': {
         // Morgen-Nachricht und Freitags-Scoreboard — deterministisch, ohne
-        // Modell, nur an Kevin und Malin selbst (siehe markttraktionLauf).
+        // Modell, nur an die Personen des Teams selbst (siehe markttraktionLauf).
         return await markttraktionLauf(auftrag, new Date(), person);
       }
       case 'hoi': {
@@ -421,7 +421,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         return gut(`SELBSTBILD: ${d.geschrieben} von ${d.von} Blättern im Vault aktualisiert.`);
       }
       case 'finanzchef': {
-        // Der Takt gibt Modus und Person vor („modus:wochenreview person:kevin“) —
+        // Der Takt gibt Modus und Person vor („modus:wochenreview person:<speichername>“) —
         // dann läuft er mit Haushalt, und das Ergebnis hier trägt KEINE Beträge,
         // weil die Warteschlange allen Konten gehört. Ohne Person (ZOE): nur Business.
         const modus = /modus:(tagescheck|wochenreview|monatsabschluss|steuercheck)/.exec(auftrag)?.[1];
@@ -448,7 +448,7 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
         // Takt: „modus:power_hour“ — sonst eine Frage von ZOE (Antwort im Gespräch, keine Freigabe-Liste).
         const head = id.slice(5);
         const modus = /modus:([a-z_]+)/.exec(auftrag)?.[1];
-        // „person:malin“ — die Power Hour wird je Person vorbereitet (ihre Karten, ihre Freigabe).
+        // „person:<speichername>“ — die Power Hour wird je Person vorbereitet (ihre Karten, ihre Freigabe).
         const fuer = personAusText(auftrag);
         const r = await fetch(`${origin}/api/heads/${head}`, {
           method: 'POST', headers: { ...H, ...(fuer ? { 'x-make-person': fuer } : {}) },
@@ -464,7 +464,7 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
 (${d.neu ?? 0} neu in der Freigabe-Liste · ${d.bericht?.pruefung?.gestrichen?.length ?? 0} vom Prüfer gestrichen)`);
       }
       case 'meeting': {
-        if (!auftrag || auftrag.length < 80) return fehl('Meeting-Agent braucht ein Transkript oder ausführliche Notizen — bitte Kevin, sie einzusprechen oder einzufügen.');
+        if (!auftrag || auftrag.length < 80) return fehl('Meeting-Agent braucht ein Transkript oder ausführliche Notizen — bitte die Person, sie einzusprechen oder einzufügen.');
         const d = await post('/api/meeting', { transcript: auftrag }, 180_000);
         if (d.error) return fehl(`Meeting fehlgeschlagen: ${kuerze(d.error, 200)}`);
         const items = (d.actionItems ?? []) as { titel?: string; owner?: string; prio?: string; due?: string }[];

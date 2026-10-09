@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Das Hirn ─────────────────────────────────────────────────────
-// Nach Kevins Vorlage vom 07.09. (magnific, „Futuristic time machines design"):
+// Nach der Vorlage vom 07.09. (magnific, „Futuristic time machines design"):
 // konzentrische Ringe, feines technisches Linienwerk, ein leuchtender Kern.
 //
 // Bewusst GEZEICHNET und nicht als Bilddatei eingebunden. Nur so kann es
@@ -14,7 +14,7 @@
 // (an genau dem Fehler hing heute schon das Agenten-Hirn). Deshalb werden
 // auch alle Werte gerundet.
 //
-// AUFBAU (07.09., zweiter Durchgang). Kevins Einwand war berechtigt: das Bild
+// AUFBAU (07.09., zweiter Durchgang). Der Einwand war berechtigt: das Bild
 // war schön, aber tot. Es reagierte auf nichts. Jetzt gilt:
 //   · Das GERÜST (rund 400 Elemente) ist memoisiert und rechnet nur neu, wenn
 //     sich Zustand oder Auslastung ändern. Sonst würde jeder Bildschritt der
@@ -294,7 +294,7 @@ export function ZoeHirn({
   groesse?: number;
   /** Was ZOE gerade tut. Bestimmt Farbe, Takt und Weite. */
   zustand?: Zustand;
-  /** Lautstärke 0..1 — beim Zuhören die von Kevin, beim Sprechen die eigene. */
+  /** Lautstärke 0..1 — beim Zuhören die der Person, beim Sprechen die eigene. */
   pegel?: number;
   /** Sekunden seit dem Öffnen, aus useAtem — eine Uhr für die ganze Seite. */
   zeit?: number;

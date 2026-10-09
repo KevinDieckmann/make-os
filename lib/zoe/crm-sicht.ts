@@ -1,5 +1,5 @@
 // ─── ZOE sieht die Markttraktion — die eine Sicht mit den Leitplanken (28.09., Paket C7) ───
-// Kevin 28.09. ~22:50: „ZOE soll nachher alles sehen und unterstützen können.“ Alles, was die CRM-Werkzeuge
+// Vorgabe 28.09. ~22:50: „ZOE soll nachher alles sehen und unterstützen können.“ Alles, was die CRM-Werkzeuge
 // (lib/zoe/crm-werkzeuge.ts) und die Vorschläge (lib/zoe/crm-vorschlag.ts) lesen, geht durch DIESE Sicht — damit
 // die drei Leitplanken an genau einer Stelle sitzen und kein Werkzeug sie vergessen kann:
 //

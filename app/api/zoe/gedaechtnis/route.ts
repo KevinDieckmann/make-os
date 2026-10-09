@@ -1,6 +1,6 @@
 // ─── MAKE OS — ZOE' Gedächtnis (Route) ───────────────────────────────────
 // GET zeigt, was er sich gemerkt hat. DELETE wirft einen Fakt raus.
-// Kevins Bedingung: sofort merken, dafür sichtbar und jederzeit löschbar.
+// Bedingung: sofort merken, dafür sichtbar und jederzeit löschbar.
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
@@ -14,8 +14,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const p = new URL(req.url).searchParams;
   // Nach Raum gefiltert: die Liste zeigt nur den eigenen und den gemeinsamen
-  // Bestand. Ohne das sähe Kevin in der Oberfläche, was Malin ZOE erzählt
-  // hat — obwohl ZOE es ihm im Gespräch korrekt verschweigt.
+  // Bestand. Ohne das sähe eine Person in der Oberfläche, was eine andere ZOE
+  // erzählt hat — obwohl ZOE es ihr im Gespräch korrekt verschweigt.
   const fakten = await lies({
     thema: p.get('thema') ?? undefined,
     art: (p.get('art') as FaktArt) ?? undefined,

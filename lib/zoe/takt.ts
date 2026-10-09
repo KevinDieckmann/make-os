@@ -21,7 +21,7 @@ import { botenEingerichtet } from './an-person';
 import { alleSpeicher } from '@/lib/zugang/konten';
 import type { NeuerAuftrag } from './auftraege';
 
-/** Nachts ruht das System — Kevin soll schlafen, nicht das OS füttern. */
+/** Nachts ruht das System — die Menschen sollen schlafen, nicht das OS füttern. */
 const VON = 7;
 const BIS = 22;
 /** So lange muss der letzte Tageslauf her sein. */
@@ -244,7 +244,7 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     } catch (err) { console.error('[MAKE OS] ZOE-Aufgaben-Takt übersprungen:', err); }
   }
 
-  // 3) Der Abendlauf — ab 18 Uhr, einmal. Kevins Vorgabe: gebündelt morgens
+  // 3) Der Abendlauf — ab 18 Uhr, einmal. Vorgabe: gebündelt morgens
   //    UND abends. Der Morgen bereitet vor, der Abend räumt nach.
   const abendHeute = (auftraege?.auftraege ?? []).some(a =>
     a.name === 'abend' && a.tag === heute && a.status !== 'fehler');

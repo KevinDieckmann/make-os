@@ -6,6 +6,7 @@
 import { VORSCHLAG_ARTEN } from './crm-vorschlag';
 import type { CrmBezug, CrmBezugArt } from './crm-bezug';
 import { BEIDE, TEAM } from '@/lib/crm/team';
+import { GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
 
 export { crmBezugAus } from './crm-bezug';
 
@@ -94,7 +95,7 @@ export const CRM_WERKZEUG_DEFS = [
       behalten: { type: 'string' }, weg: { type: 'string' },
       befunde: { type: 'array', items: { type: 'string' }, description: 'reparierbare Befund-Kennungen aus datenqualitaet' },
       feld: { type: 'string' }, wahl: { type: 'string', enum: ['online', 'liste'] },
-      gesellschaft: { type: 'string', enum: ['kdc', 'kdv', 'ug'] },
+      gesellschaft: { type: 'string', enum: [...GESELLSCHAFTEN], description: GESELLSCHAFTEN.map(g => `${g} = ${finanzOrtName(g)}`).join(', ') },
       positionen: { type: 'array', items: { type: 'object', properties: { titel: { type: 'string' }, text: { type: 'string' }, menge: { type: 'number' }, einheit: { type: 'string' }, einzelpreis: { type: 'number', description: '€ netto' }, ust_satz: { type: 'number' }, basis: { type: 'string', enum: ['einmalig', 'monat', 'jahr'] }, laufzeit_monate: { type: 'number' }, leistung: { type: 'string' } } } },
       einleitung: { type: 'string' }, schluss: { type: 'string' }, gueltig_bis: { type: 'string' },
       kontakte: { type: 'array', items: { type: 'string' }, description: 'powerhour_reihenfolge / gaesteliste: Kennungen c-…' },

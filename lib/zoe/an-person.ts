@@ -1,5 +1,5 @@
 // ─── ZOE erreicht eine Person — EIN Sendeweg für Hinweise aufs Handy (Server, 08.10.2026) ─────────────────────────────────
-// Kevin 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Alles, was MAKE OS einer Person von sich aus schickt — Briefing am Morgen
+// Vorgabe 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Alles, was MAKE OS einer Person von sich aus schickt — Briefing am Morgen
 // (Gesundheits-Takt, Markttraktion), Wochenstart/Rückblick, Erinnerungen, Head of IT, Sicherheits-Hinweise der Anmeldung — geht über
 // `anPersonMelden`. Die Funktion wählt den Kanal:
 //

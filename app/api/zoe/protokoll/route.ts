@@ -4,7 +4,7 @@
 //
 // Rückgängig heißt hier: dasselbe Werkzeug noch einmal mit dem alten Wert.
 // Kein Schnappschuss der Datei — das würde fremde Änderungen mitlöschen, die
-// seitdem passiert sind (Malin arbeitet im zweiten Fenster).
+// seitdem passiert sind (eine andere Person arbeitet im zweiten Fenster).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';

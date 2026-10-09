@@ -1,5 +1,5 @@
 // ─── MAKE OS — ZOE-Verlauf ───────────────────────────────────────────────
-// Kevins Ansage: „ich möchte bei ZOE auch immer die Historie reingeben,
+// Vorgabe: „ich möchte bei ZOE auch immer die Historie reingeben,
 // damit wir das sauber haben."
 //
 // Zwei Dinge, die vorher fehlten:
@@ -16,12 +16,14 @@
  * neu geschrieben wird nur noch `nutzer` (Plattform-Regel, Paket 4a); der Altbestand mit der alten Kennung wird weiter gelesen
  * (`istNutzer`: alles, was nicht `zoe` ist, ist die Person).
  */
-export type Rolle = 'nutzer' | 'zoe' | 'kevin';
+export type Rolle = 'nutzer' | 'zoe';
+/** Was im Bestand stehen kann: neue Rollen und — im Altbestand — die frühere Kennung der Person (wird nie neu geschrieben). */
+export type GeleseneRolle = Rolle | (string & {});
 /** Ist das die Person (nicht ZOE)? — versteht neue (`nutzer`) und alte Einträge. */
 export const istNutzer = (rolle: unknown): boolean => rolle !== 'zoe';
 
 export interface VerlaufNachricht {
-  rolle: Rolle;
+  rolle: GeleseneRolle;
   text: string;
   /** ISO-Zeitpunkt. */
   zeit: string;
@@ -38,7 +40,7 @@ export interface Gespraech {
   /** Aus der ersten Frage abgeleitet, damit die Liste lesbar ist. */
   titel: string;
   nachrichten: VerlaufNachricht[];
-  /** Wem das Gespräch gehört (24.09.) — ohne Angabe: Kevin (aus der Zeit mit nur einem Konto). */
+  /** Wem das Gespräch gehört (24.09.) — ohne Angabe: der Inhaber der Instanz (aus der Zeit mit nur einem Konto). */
   person?: string;
 }
 

@@ -1,5 +1,5 @@
 // ─── ZOE-Entscheidungen dauerhaft festhalten (29.09., B1) ────────────────────
-// Kevin: „Alle Infos müssen immer sauber gespeichert werden — online in unserem Brain. Extrem wichtig.“
+// Vorgabe: „Alle Infos müssen immer sauber gespeichert werden — online in unserem Brain. Extrem wichtig.“
 // Die Arbeitslisten `zoe-stapel` (200 Erledigte) und `zoe-protokoll` (500 Einträge) werden gekürzt — vorher
 // verschwanden damit Freigaben, Ablehnungen und ZOE-Wirkungen samt der Person, die entschieden hat. Jetzt geht
 // jede Entscheidung (freigegeben · abgelehnt · fehlgeschlagen · zurück an ZOE) und jede Ausführung eines

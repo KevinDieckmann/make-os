@@ -1,15 +1,15 @@
 // ─── MAKE OS — ZOE' Werkzeug-Register ────────────────────────────────────
-// Baustein 1 (07.09.), nach Kevins Entscheidung vom 06.09.:
+// Baustein 1 (07.09.), nach der Entscheidung vom 06.09.:
 //
 //   frei     — Aufgaben, Postfach einordnen, eigener Kalender, CRM anreichern.
 //              Läuft durch, wird protokolliert, ist rücknehmbar.
 //   freigabe — Geld, Ziele, Kompass, Löschen, alles Ausgehende.
-//              Wird zum Vorschlag im Stapel, den Kevin morgens und abends
-//              durchgeht. Erst seine Freigabe führt aus.
+//              Wird zum Vorschlag im Stapel, den die Person morgens und abends
+//              durchgeht. Erst ihre Freigabe führt aus.
 //   nie      — gibt es hier bewusst noch nicht; die Stufe steht bereit, damit
 //              spätere Werkzeuge (Versand, Löschen von Beständen) sie tragen.
 //
-// 29.09. (Kevin: „ZOE schreibt nur über den Stapel“, Paket D-B #90/#93): alles, was ins CRM schreibt (notiere_kontakt,
+// 29.09. (Vorgabe „ZOE schreibt nur über den Stapel“, Paket D-B #90/#93): alles, was ins CRM schreibt (notiere_kontakt,
 // chance_anlegen, uebergeben, setze_kunde), und eine Aufgabe für eine ANDERE Person (create_task mit `wer`) ist
 // freigabepflichtig — auch VOR jedem Fremdtext. `risikoFuer` rechnet die Stufe je Aufruf (nie aus einem Satz im Gespräch).
 //
@@ -64,7 +64,7 @@ const eur = (n: unknown) => {
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(z))
     : '—';
 };
-// Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch die MAKE Innovation GmbH).
+// Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch `ug`).
 const firma = (rein: unknown) => firmaAusAngabe(rein);
 const text = (v: unknown, n = 120) => String(v ?? '').trim().slice(0, n);
 
@@ -201,7 +201,7 @@ async function vsMonatsabschluss(i: Record<string, unknown>): Promise<Vorschau> 
 // ── Das Register ───────────────────────────────────────────────────────────
 
 export const REGISTER: Record<string, Eintrag> = {
-  // Frei — Kevins Entscheidung: Aufgaben, Postfach, eigener Kalender, CRM.
+  // Frei — Entscheidung vom 06.09.: Aufgaben, Postfach, eigener Kalender, CRM.
   starte_auftraege: {
     gruppe: 'auftraege', risiko: 'frei',
     // Einreihen wirkt selbst nichts — jeder Auftrag geht beim Ausführen erneut
@@ -254,7 +254,7 @@ export const REGISTER: Record<string, Eintrag> = {
     vorschau: schlicht('Gesellschaften lesen', i => (i.name ? `„${text(i.name, 80)}“` : 'alle')),
   },
   monatsabschluss_erfassen: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsMonatsabschluss },
-  // Ideen an MAKE OS selbst — landen in „Ideen“; gebaut wird erst, was Kevin oder Malin nach „Bereit“ ziehen.
+  // Ideen an MAKE OS selbst — landen in „Ideen“; gebaut wird erst, was eine Person des Haushalts nach „Bereit“ zieht.
   bauplan_notieren: {
     gruppe: 'bauplan', risiko: 'frei',
     vorschau: schlicht('Im Bauplan notieren', i => `„${text(i.titel, 160)}“`),
@@ -273,7 +273,7 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kalender', risiko: 'frei',
     vorschau: schlicht('Freie Zeit suchen', i => `${Number(i.dauerMin) || 60} Min.${Array.isArray(i.personen) && i.personen.length ? ` mit ${(i.personen as unknown[]).map(String).join(', ').slice(0, 60)}` : ''}`),
   },
-  // F2 M8 (29.09., Kevin: „ZOE schreibt nur über den Stapel“): ein Block ist ein Termin im Kalender — erst der Klick im
+  // F2 M8 (29.09., Vorgabe „ZOE schreibt nur über den Stapel“): ein Block ist ein Termin im Kalender — erst der Klick im
   // Stapel legt ihn an (Blöcke-Weg, lib/planung/bloecke-server.ts). Gruppe „kalender“: Heute/Glocke zählen ihn als Kalender-Vorschlag.
   plan_block: {
     gruppe: 'kalender', risiko: 'freigabe',
@@ -319,7 +319,7 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kunden', risiko: 'freigabe',
     vorschau: schlicht('Kunde in der Markttraktion pflegen', i => `${text(i.name)}${i.status ? ` · ${String(i.status)}` : ''}`),
   },
-  // CRM (18.09.): finden und entwerfen frei; seit 29.09. (Kevin, #90) SCHREIBT ZOE ins CRM nur über den Stapel —
+  // CRM (18.09.): finden und entwerfen frei; seit 29.09. (#90) SCHREIBT ZOE ins CRM nur über den Stapel —
   // notieren, Deal anlegen, übergeben erst nach Freigabe. Ein Werkzeug zum VERSENDEN gibt es absichtlich nicht.
   suche_kontakt: {
     gruppe: 'kontakte', risiko: 'frei',
