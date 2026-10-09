@@ -21,6 +21,15 @@
 // worauf er wartet (`wartetAuf`, Text) und welche Zahlen der Datenkarte er einträgt (`datenOrt`). Ein Befund kann „leer“ sein (nichts zu prüfen
 // — dann entscheidet das Häkchen) oder „veraltet“ (nur fürs Bild der Datenbasis). „Zurückgefallen“ (B10) = ein Schritt mit Prüfung, der schon
 // einmal grün war (`gruen`, festgehalten im Morgenlauf) und jetzt rot ist — EINE Regel `zurueckgefallen`, für Heute-Karte und Einrichtung.
+//
+// Neustart (09.10., Kevin: „Wir fangen bei 0 an … Wir sind ein komplett ‚neuer‘ Kunde und wollen als Paar geonboardet werden. Jeder für sich.“ —
+// Nachtrag: „dass wir alles einmal eingeben müssen … Dann können wir alle Schnittstellen extrem sauber ziehen“): trägt die Instanz die Marke des
+// Neustarts (`Kontext.neustart`, lib/onboarding-neustart.ts), gilt ein eigener Ablauf — ALS DATEN unten (`NEUSTART_ETAPPEN`, `NEUSTART`,
+// `NEUSTART_ENTFAELLT`): (1) Zugang & Sicherheit → (2) alles eingeben (je Person Ziele, Alltag, Gesundheit; gemeinsam Planung, Familie, Finanzen;
+// „Business online“: Gesellschaft & Konten, Angebot & Vertrieb) → (3) Schnittstellen → (4) Agenten → Abschluss. Der Kern sind (1)+(2). Jeder
+// Schritt bekommt dort seine Fassung (`fassungFuer`: Etappe, Nummer, Kern/danach, Texte) — die Fertig-Regel bleibt `istFertig`. Ein Schritt, der
+// NICHT in der Tabelle steht (z. B. ein neuer Schritt eines anderen Pakets), landet über `neustartEtappeVon` in der passenden Etappe — ein
+// Gesundheits-Schritt „ich“ in „Meine Gesundheit“ — und behält seine Gruppe; niemand muss die Tabelle dafür anfassen.
 
 import { WEG } from '@/lib/wege';
 import { BUSINESS_EINHEITEN_NAMEN, UG_NAME } from '@/lib/einheiten';
@@ -85,10 +94,19 @@ export interface Schritt {
   stichtag?: true;
   /** Nur für Konten mit Zugang zu den Privat-Finanzen (nicht `finanzRecht: 'business'`) — sonst weder gezählt noch abhakbar. */
   privatFinanzen?: true;
+  /**
+   * Gehört in den Privat-Bereich (z. B. eigene Ziele) — wie Gesundheit, Familie und Privat-Finanzen hat ein Konto „nur Business“ ihn nicht
+   * (`istPrivatSchritt`, EINE Konto-Sicht).
+   */
+  privat?: true;
   /** Nur auf einer Instanz mit Altbestand im Code (Inhaber-Konto vor dem 09.10.2026, keine Demo) — `Kontext.altbestand`. */
   nurAltbestand?: true;
   /** Nur für Konten, die über eine Einladung kamen (jedes Konto außer dem Haupt-Inhaber) — `Kontext.eingeladen`. */
   nurEingeladen?: true;
+  /** Nur im Neustart (`Kontext.neustart`) — sonst weder gezählt noch abhakbar. Nummer und Gruppe kommen dann aus `fassungFuer`. */
+  nurNeustart?: true;
+  /** Nur in einer Fassung (`fassungFuer`, Neustart) gesetzt: Reihenfolge im Ablauf. Nie in `SCHRITTE`. */
+  reihe?: number;
   /** Modul (B4) — gesetzt an jedem Schritt (Wächter); fehlt es, gilt `grundlage`. */
   modul?: Modul;
   /** Voraussetzungen (Kennungen anderer Schritte, B4): nur Hinweis („erst …“) und Reihenfolge von „Als Nächstes“ — nie eine Sperre. */
@@ -119,8 +137,11 @@ export const ebeneMitId = (id: string): EbeneSeite | null => EBENEN.find(e => e.
  * gewachsene Instanz (z. B. ein Abschalten nach ihrem Upload) — eine neue Instanz zeigt ihn nicht.
  */
 export interface EtappenHinweis { titel: string; satz: string; wann: string; nurAltbestand?: true }
-/** `allgemein`: Titel/Satz für eine Instanz ohne Altbestand (ohne Upload-Tag und Daten) — gelesen nur über `etappenFuer`. */
-export interface Etappe { nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[]; allgemein?: { titel?: string; satz?: string } }
+/**
+ * `allgemein`: Titel/Satz für eine Instanz ohne Altbestand (ohne Upload-Tag und Daten) — gelesen nur über `etappenFuer`. `datenkarte`: in dieser
+ * Etappe werden Zahlen eingetragen — die Einrichtung verweist auf die Datenkarte.
+ */
+export interface Etappe { nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[]; allgemein?: { titel?: string; satz?: string }; datenkarte?: true }
 
 export const ETAPPEN: Etappe[] = [
   { nr: 0, titel: 'Am Upload-Tag und direkt danach', satz: 'Am Server, nur der Inhaber — am Abend des Uploads. Die zweite Kopie am Mac geht erst am Tag nach der ersten Nachtsicherung.',
@@ -130,12 +151,13 @@ export const ETAPPEN: Etappe[] = [
   { nr: 2, titel: 'Verbindungen', satz: 'Kalender, Postfächer und Geräte. Jede Person verbindet nur ihre eigenen Konten; niemand liest die Post einer anderen Person.',
     hinweise: [{ titel: 'ZOE aufs Handy über WhatsApp', wann: 'kommt in Phase 1', satz: 'ZOE bekommt eine eigene, zweite WhatsApp-Business-Nummer — nur für ZOE, getrennt von der Business-Nummer der Inbox. Telegram ist raus; bis dahin gibt es dafür keinen Schritt.' }] },
   { nr: 3, titel: 'Firmen & Zahlen', satz: 'Steckbrief, 0-Punkt, Kontostände, offene Posten, Privatkonten. Jede Zahl hat genau einen Eingabeort — siehe Datenkarte. Alle Zahlen kommen von Hand über die vorhandenen Formulare.',
+    datenkarte: true,
     hinweise: [
       { titel: 'Bank-Anbindung', wann: 'vorgezogen in Phase 1', satz: 'Bis dahin tragt ihr Kontostände und Buchungen von Hand ein bzw. lest Kontoauszüge ein.' },
       { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt in Phase 1', satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
     ] },
   { nr: 4, titel: 'Kontakte, Vertrieb & Mandate', satz: 'Kartei, Produkte, laufende Mandate, offene Deals und die Grundlagen des Vertriebs.' },
-  { nr: 5, titel: 'Planung & Finanzplan', satz: 'Ziele, Meilensteine, Finanzplan, Arbeitsrahmen und die gemeinsamen Rhythmen.' },
+  { nr: 5, titel: 'Planung & Finanzplan', satz: 'Ziele, Meilensteine, Finanzplan, Arbeitsrahmen und die gemeinsamen Rhythmen.', datenkarte: true },
   { nr: 6, titel: 'Gesundheit & Familie', satz: 'Gesundheit macht jede Person nur für sich. Familie richtet ihr gemeinsam ein.' },
   { nr: 7, titel: 'ZOE & Brain', satz: 'Wie viel die Agenten selbst tun dürfen, wie ZOE arbeitet und was im Brain steht.' },
   { nr: 8, titel: 'Abschluss', satz: 'Einmal durch alles gehen, den Datenstand prüfen, den Head of IT auf Grün bringen.' },
@@ -162,11 +184,27 @@ export const ABLAUF_ALLGEMEIN: { wann: string; was: string }[] = [
   { wann: 'Nach und nach', was: 'Alles mit „Nach und nach“: zweite Kopie der Sicherung und Probe, Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.' },
 ];
 
-/** Der Ablauf für diese Instanz: mit Altbestand der Fahrplan ihres Uploads (`ABLAUF`), sonst der neutrale ohne Datum. Rein. */
-export const ablaufFuer = (altbestand: boolean): readonly { wann: string; was: string }[] => (altbestand ? ABLAUF : ABLAUF_ALLGEMEIN);
+/**
+ * Der Ablauf im Neustart (Kevin 09.10., Nachtrag: „dass wir alles einmal eingeben müssen, was wir wollen. Dann können wir alle Schnittstellen
+ * extrem sauber ziehen“): Zugang → alles eingeben → Schnittstellen → Agenten. Ohne Datum, ohne Namen.
+ */
+export const ABLAUF_NEUSTART: { wann: string; was: string }[] = [
+  { wann: 'Zuerst · am Server', was: 'Etappe 0 — nur die Inhaber. Auf einem bestehenden Server ist das meiste schon grün; offen bleibt, was die neue Instanz braucht.' },
+  { wann: 'Der Kern · Zugang', was: 'Etappe 1 — jede Person: zweiter Faktor, Einwilligungen, eigene KI-Schalter, Handy, ein kurzer Rundgang; die Inhaber: Haushalt, Datenschutz, KI der Instanz.' },
+  { wann: 'Der Kern · alles eingeben', was: 'Etappen 2 bis 7 — jede Person ihre eigenen Ziele, ihren Alltag und ihre Gesundheit; gemeinsam Planung, Familie und Finanzen; dann „Business online“: Gesellschaft & Konten, Angebot & Vertrieb. Zahlen eintragen oder hochladen (Kontoauszug, Excel, OP-Liste).' },
+  { wann: 'Danach · Schnittstellen', was: 'Etappe 8 — Kalender, Postfächer, WHOOP und WhatsApp sauber neu verbinden, jede Person ihre eigenen.' },
+  { wann: 'Danach · Agenten und Abschluss', was: 'Etappen 9 und 10 — Agenten einstellen, ZOE und Brain; zum Schluss Datenstand und Head of IT.' },
+];
 
-/** Die Etappen für diese Instanz: ohne Altbestand mit neutralem Titel/Satz und ohne Hinweise, die nur die gewachsene Instanz betreffen. Rein. */
-export function etappenFuer(altbestand: boolean): Etappe[] {
+/** Der Ablauf für diese Instanz: im Neustart dessen Ablauf, mit Altbestand der Fahrplan ihres Uploads (`ABLAUF`), sonst der neutrale ohne Datum. Rein. */
+export const ablaufFuer = (altbestand: boolean, neustart = false): readonly { wann: string; was: string }[] => (neustart ? ABLAUF_NEUSTART : altbestand ? ABLAUF : ABLAUF_ALLGEMEIN);
+
+/**
+ * Die Etappen für diese Instanz: im Neustart die des Neustarts (`NEUSTART_ETAPPEN`); ohne Altbestand mit neutralem Titel/Satz und ohne Hinweise,
+ * die nur die gewachsene Instanz betreffen. Rein.
+ */
+export function etappenFuer(altbestand: boolean, neustart = false): Etappe[] {
+  if (neustart) return NEUSTART_ETAPPEN;
   if (altbestand) return ETAPPEN;
   return ETAPPEN.map(({ allgemein, hinweise, ...e }) => {
     const h = (hinweise ?? []).filter(x => !x.nurAltbestand);
@@ -439,6 +477,7 @@ export const SCHRITTE: Schritt[] = [
     modul: 'gesundheit',
     titel: 'Gesundheit: Einwilligung erklären',
     warum: 'Gesundheitsdaten sind besonders geschützt (Art. 9 DSGVO). MAKE OS erfasst sie erst, wenn du selbst einwilligst — jede Person für sich, niemand für eine andere. Der Inhaber macht das zuerst, vor der Übernahme des Altbestands (0.5).',
+    allgemein: { warum: 'Gesundheitsdaten sind besonders geschützt (Art. 9 DSGVO). MAKE OS erfasst sie erst, wenn du selbst einwilligst — jede Person für sich, niemand für eine andere. Ohne (a) bleiben Körper-Profil, Sport und WHOOP leer.' },
     wie: [
       '(a) Verarbeiten: MAKE OS speichert deine Gesundheitsdaten für deine eigenen Auswertungen. Ohne (a) wird nichts erfasst.',
       '(b) An die KI: ZOE und automatische Läufe dürfen deine Gesundheitswerte nutzen. Setzt (a) voraus.',
@@ -879,6 +918,10 @@ export const SCHRITTE: Schritt[] = [
       'Planung › Jahr: je Bereich die Jahresziele des laufenden Jahres, möglichst mit Zahl.',
       'Den Nordstern erst bearbeiten, wenn 0.5 „übernommen“ meldet — sonst entsteht eine zweite Fassung neben der übernommenen.',
     ],
+    allgemein: { wie: [
+      'Planung › Jahr: je Bereich die gemeinsamen Jahresziele des laufenden Jahres, möglichst mit Zahl.',
+      'Darüber in der Karte „Nordstern“ euren gemeinsamen Satz — eure eigenen Ziele trägt jede Person für sich ein.',
+    ] },
     danach: 'Geprüft wird, ob es Jahresziele für das laufende Jahr gibt (aus der Planung, nicht aus einer Vorgabe).',
     wo: { href: WEG.jahr(), label: 'Planung › Jahr' },
   },
@@ -959,7 +1002,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'finanzplan-business', spaeter: true, etappe: 5, nr: '5.6', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
-    modul: 'finanzen', nach: ['mandate', 'finanzplan'],
+    modul: 'finanzen', nach: ['mandate', 'finanzplan'], datenOrt: ['kosten-business'],
     titel: 'Finanzplan Business',
     warum: 'Der Business-Teil der Planung rechnet aus Mandaten, Sachkosten und dem Arbeitsplan.',
     wie: ['Finanzen › Business › Planung: Bausteine aus den Mandaten übernehmen, Sachkosten, Arbeitsplan setzen, offene Vorschläge entscheiden.'],
@@ -1208,6 +1251,149 @@ export const SCHRITTE: Schritt[] = [
     danach: 'Weiterbauen und Arbeiten kommen sich nicht in die Quere.',
     wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
   },
+
+  // ── Nur im Neustart (09.10.) — Etappe und Gruppe hier sind die des Neustarts; die Nummer rechnet `fassungFuer` ─────────────────────────
+  // Texte ohne Schritt-Nummern (die Nummern ergeben sich aus der Reihenfolge) und ohne Namen — Orte nur über WEG bzw. vorhandene Seiten.
+  {
+    id: 'neustart', nurNeustart: true, samstag: true, etappe: 1, nr: '', ebene: 'gemeinsam', minuten: 10, pruefung: 'neustart',
+    modul: 'grundlage',
+    titel: 'Neustart: was mitkam, was neu ist',
+    warum: 'Ihr fangt bei null an — wie eine neue Instanz. Mitgekommen sind nur eure Konten, die Kartei mit der Markttraktion und die Aufgaben, die ihr selbst angelegt habt. Alles andere tragt ihr einmal sauber neu ein; danach zieht ihr die Schnittstellen.',
+    wie: [
+      'Mitgekommen: eure Konten (Anmeldung und, wo eingerichtet, der zweite Faktor), die Kartei samt Firmen und Markttraktion, eure eigenen Aufgaben und Projekte. Die Prüfung rechts zeigt, was übernommen wurde — nur Zähler.',
+      'Neu einzutragen: eigene und gemeinsame Ziele, Routinen, Gesundheit, Familie, Finanzen (Konten, Kosten, Kontostände, offene Posten), Gesellschaften und Absender, Planung.',
+      'Neu zu verbinden (Etappe „Schnittstellen“): Kalender, Postfächer, WHOOP, WhatsApp — im neuen Datenordner ist jede Verbindung neu, auch wenn sie vorher stand.',
+      'Die Reihenfolge: erst Zugang, dann alles eingeben, dann die Schnittstellen, dann die Agenten.',
+    ],
+    danach: 'Abhaken, wenn alle wissen, was mitkam und was neu kommt.',
+  },
+  {
+    id: 'ich-ziele', nurNeustart: true, samstag: true, privat: true, etappe: 2, nr: '', ebene: 'ich', minuten: 20, pruefung: 'ziele-ich',
+    modul: 'planung',
+    titel: 'Meine eigenen Ziele',
+    warum: 'Neben den gemeinsamen Zielen hat jede Person ihre eigenen — privat, beruflich, für den Körper. Sie gehören nur dir: niemand sieht sie, außer du teilst sie.',
+    wie: [
+      'Planung › Kompass: oben dich selbst wählen und je Horizont (Jahr, Quartal, Monat, Woche) deinen Satz eintragen — das sind deine eigenen Ziele.',
+      'Was der ganze Haushalt sehen soll, gehört zu den gemeinsamen Jahreszielen (Planung › Jahr) — nicht hierher.',
+      'Ob jemand deine eigenen Ziele sieht, entscheidest du unter Konto › „Eigene Ziele teilen“. Vorgabe: niemand.',
+    ],
+    danach: 'Geprüft wird nur, ob du für das laufende Jahr ein eigenes Ziel oder einen eigenen Satz hast — nie, was drinsteht.',
+    wo: { href: '/os/kompass', label: 'Planung › Kompass' },
+  },
+  {
+    id: 'ich-koerper', nurNeustart: true, samstag: true, etappe: 3, nr: '', ebene: 'ich', minuten: 20, pruefung: 'koerper',
+    modul: 'gesundheit', nach: ['ich-gesundheit'],
+    titel: 'Körper-Profil',
+    warum: 'Dein Körper-Profil sagt, was gerade Aufmerksamkeit braucht und woran du arbeitest — die Grundlage für den Gesundheits-Index, für Vorschläge und (nur mit deiner Einwilligung) für ZOE. Nur du siehst es.',
+    wie: [
+      'Gesundheit › Körper: ein Leitsatz (was gerade zählt), deine Hebel — am besten je Hebel mit Kennzahl — und ein Stufenplan (jetzt · danach · später).',
+      'Optional Zusammenhänge und ein Hinweis; Symptom-Regler und Zähler „Sauber geblieben“ nur, wenn du sie willst.',
+      'Ohne deine Einwilligung (a) zur Gesundheit speichert MAKE OS nichts — sie steht unter Zugang & Datenschutz.',
+    ],
+    danach: 'Geprüft wird nur, ob dein Profil Inhalt hat — nie, was drinsteht. Andere Personen sehen den Reiter nicht.',
+    wo: { href: WEG.energie(), label: 'Gesundheit › Körper' },
+  },
+  {
+    id: 'ich-ernaehrung', nurNeustart: true, samstag: true, etappe: 3, nr: '', ebene: 'ich', minuten: 15, pruefung: 'ernaehrung',
+    modul: 'gesundheit', nach: ['ich-gesundheit'],
+    titel: 'Ernährungsprofil',
+    warum: 'Essensplan, Einkauf und Rezepte richten sich nach allen Profilen im Haushalt — ohne dein Profil plant MAKE OS an dir vorbei.',
+    wie: [
+      'Gesundheit › Ernährung: dein Profil mit Bedarf (in eigenen Worten), Ziel und Unverträglichem.',
+      'Gäste oder Kinder legt der Haushalt als eigene Profile an.',
+      'Vorschläge nennen nie eine Person — dein Profil sehen andere nur, wenn du Gesundheit mit ihnen teilst.',
+    ],
+    danach: 'Geprüft wird, ob dein Profil Bedarf, Ziel oder Unverträgliches trägt.',
+    wo: { href: WEG.ernaehrung(), label: 'Gesundheit › Ernährung' },
+  },
+  {
+    id: 'ich-sport', nurNeustart: true, samstag: true, etappe: 3, nr: '', ebene: 'ich', minuten: 15, pruefung: 'sport',
+    modul: 'gesundheit', nach: ['ich-gesundheit'],
+    titel: 'Sport: Einstieg und Ziele',
+    warum: 'Der Sport-Plan schlägt Wochen vor, die zu deinen Zielen passen — Hyrox, Laufen, Kraft oder Grundlagen. Vorschläge, keine Trainingsberatung.',
+    wie: [
+      'Sport: den Einstieg durchgehen (was du machst, wie oft, Ausgangswerte).',
+      'Mindestens ein Ziel anlegen, z. B. einen Wettkampf oder eine Zeit.',
+      'Die Woche ansehen und bei Bedarf anpassen.',
+    ],
+    danach: 'Geprüft wird: Einstieg fertig und mindestens ein Ziel.',
+    wo: { href: WEG.sport(), label: 'Gesundheit › Sport' },
+  },
+  {
+    id: 'ich-gesundheit-routinen', nurNeustart: true, samstag: true, etappe: 3, nr: '', ebene: 'ich', minuten: 10, pruefung: 'routinen-gesundheit',
+    modul: 'gesundheit', nach: ['ich-gesundheit'],
+    titel: 'Gesundheits-Routinen',
+    warum: 'Was dein Körper regelmäßig braucht — Bewegung, Reha, Schlaf, Vorsorge — steht dann auf Heute, abhakbar. Andere sehen deine Routinen nur als „Belegt“.',
+    wie: [
+      'Planung › Routinen: Routinen mit der Kategorie „Gesundheit“ anlegen, mit Tageszeit und Rhythmus.',
+      'Seltene Termine (z. B. Vorsorge) mit Rhythmus und nächstem Mal.',
+    ],
+    danach: 'Geprüft wird: mindestens eine aktive eigene Routine der Kategorie Gesundheit.',
+    wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
+  },
+  {
+    id: 'business-online', nurNeustart: true, samstag: true, etappe: 6, nr: '', ebene: 'gemeinsam', minuten: 5, pruefung: 'business-vorlage',
+    modul: 'planung',
+    titel: 'Plan „Business online“ anlegen',
+    warum: 'Die Strecke dieser und der nächsten Etappe als Plan: ein Jahresziel mit Meilensteinen in fester Reihenfolge und Aufgaben — so steht sie in Planung, Kapazität und Zeitstrahl, nicht nur hier.',
+    wie: [
+      'Unten die Gesellschaft wählen und „Plan anlegen“: ein Ziel und Meilensteine — Gesellschaft, Konten und 0-Punkt, Kosten, Angebot, Kartei, Pipeline, Vertrieb im Rhythmus, Schnittstellen, Agenten — jeweils mit Aufgaben.',
+      'Termine sind Vorschläge ab heute — in der Planung anpassen. Ein zweiter Klick ergänzt nur, was fehlt.',
+    ],
+    danach: 'Geprüft wird, ob der Plan in der Planung steht.',
+    wo: { href: WEG.jahr(), label: 'Planung › Jahr' },
+  },
+  {
+    id: 'konten-business', nurNeustart: true, samstag: true, etappe: 6, nr: '', ebene: 'gemeinsam', minuten: 15, pruefung: 'konten-business',
+    modul: 'finanzen', nach: ['steckbrief'],
+    titel: 'Bankkonten der Gesellschaften',
+    warum: 'Jedes Geschäftskonto steht genau einmal im Konten-Register — Liquidität, 0-Punkt, Business-Index und Finanzplanung lesen nur daraus. Hier dockt später auch die Bank-Anbindung an.',
+    wie: [
+      'Finanzen › Business › Liquidität › Kontostände: je Gesellschaft ihre Konten anlegen (Name, Art, Bank, IBAN — gezeigt wird sie nur maskiert).',
+      'Kredite und Depots auch eintragen — sie zählen nicht zur Kasse, gehören aber ins Bild.',
+      'Die Stände kommen mit dem 0-Punkt und danach von Hand oder per Kontoauszug-Datei.',
+    ],
+    danach: 'Geprüft wird: jede Business-Gesellschaft hat mindestens ein Konto im Register (nur Zähler).',
+    wo: { href: WEG.kontenRegister('business'), label: 'Finanzen › Business › Liquidität' },
+  },
+  {
+    id: 'angebot-entwurf', nurNeustart: true, samstag: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 15, pruefung: 'angebote', bestaetigen: true,
+    modul: 'markttraktion', nach: ['absender', 'produkte'],
+    titel: 'Angebotsvorlage: ein Angebot als Entwurf',
+    warum: 'Erst wenn ein Angebot einmal sauber aussieht — Absender, Positionen aus dem Produkt, Anrede, Einleitung und Schluss —, sitzt jedes weitere in Minuten.',
+    wie: [
+      'Markttraktion › Angebot: ein neues Angebot für einen echten Kontakt, Position aus einem Produkt, Anrede Sie oder Du.',
+      'Die Vorschau prüfen: Pflichtangaben, Nummernkürzel, Bank. Als Entwurf speichern — gestellt wird es erst, wenn es rausgeht.',
+    ],
+    danach: 'Geprüft wird, ob es mindestens ein Angebot gibt; dass es passt, bestätigst du mit dem Häkchen.',
+    wo: { href: WEG.angebot(), label: 'Markttraktion › Angebot' },
+  },
+  {
+    id: 'kampagne-start', nurNeustart: true, samstag: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 20,
+    modul: 'markttraktion', nach: ['kartei'],
+    titel: 'Follow-up-Kadenz und erste Kampagne',
+    warum: 'Die Pipeline lebt vom Nachfassen. Die Kadenz je Kreis sagt, wann wer wieder dran ist; eine erste Kampagne bringt neue Gespräche.',
+    wie: [
+      'Markttraktion › Follow-up › Kadenz: den Takt je Kreis (A bis D) prüfen und festlegen.',
+      'Marketing › Kampagnen: eine erste Kampagne aus einem Playbook planen — Segment, Kanal (die Kanal-Ampel beachten), Text.',
+      'MAKE OS versendet nichts selbst — jede Nachricht geht per Klick.',
+    ],
+    danach: 'Follow-up und Power Hour schlagen die Richtigen zur richtigen Zeit vor.',
+    wo: { href: WEG.followup('kadenz'), label: 'Markttraktion › Follow-up' },
+  },
+  {
+    id: 'powerhour', nurNeustart: true, samstag: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 15,
+    modul: 'markttraktion', nach: ['team', 'kampagne-start'],
+    titel: 'Power Hour einrichten',
+    warum: 'Eine feste Stunde für Anrufe und Nachrichten, in der MAKE OS die Reihenfolge vorgibt — je Person, damit nie zwei dieselbe Person anrufen.',
+    wie: [
+      'Planung › Routinen: in der Wochenvorlage je Person einen festen Block „Power Hour“ (Business).',
+      'Markttraktion › Überblick: Wochenziele im Scoreboard je Person.',
+      'Markttraktion › Follow-up › Power Hour einmal durchgehen.',
+    ],
+    danach: 'Die Power Hour füllt sich jede Woche selbst; im Kalender steht sie, sobald er verbunden ist.',
+    wo: { href: WEG.powerHour(), label: 'Markttraktion › Power Hour' },
+  },
 ];
 
 /** Ein Schritt per Kennung (null = unbekannt). */
@@ -1216,25 +1402,314 @@ export const schrittMitId = (id: string): Schritt | null => SCHRITTE.find(s => s
 /** Persönlich gespeichert und geprüft (Ebene „ich“)? */
 export const istPersoenlich = (s: Pick<Schritt, 'ebene'>): boolean => s.ebene === 'ich';
 
+// ── Neustart (09.10.): eigener Ablauf als Daten ──────────────────────────────────────────────────────────────────────────────────────────
+// Kevin: „Wir fangen bei 0 an … Wir sind ein komplett ‚neuer‘ Kunde und wollen als Paar geonboardet werden. Jeder für sich. Mit seinen privaten
+// Zielen, Gesundheit komplett, Ziele etc. … dann auch eine Strecke, wie man Business online bringt.“ Nachtrag: (1) Zugang & Sicherheit →
+// (2) ALLES eingeben → (3) Schnittstellen als eigene Etappe danach → (4) Agenten als zweiter Schritt. Der Kern sind (1)+(2).
+// Ehrlich: Google Drive ist nicht angebunden (kein Schritt), eine Bank-Anbindung gibt es noch nicht — bis dahin Kontoauszug-Dateien; das
+// Konten-Register ist die Andockstelle (Hinweis, kein Schritt).
+
+export const NEUSTART_ETAPPEN: Etappe[] = [
+  { nr: 0, titel: 'Server und Instanz', satz: 'Am Server, nur die Inhaber. Auf einem bestehenden Server ist das meiste schon eingerichtet — die Prüfungen zeigen es; offen bleibt, was die neue Instanz noch braucht.' },
+  { nr: 1, titel: 'Zugang, Sicherheit, Datenschutz', satz: 'Wer reinkommt, wie er sich ausweist, wer was sieht, eure Einwilligungen und ein kurzer Rundgang. Danach geht es ans Eingeben.' },
+  { nr: 2, titel: 'Meine Ziele und mein Alltag', satz: 'Jede Person für sich: eigene Ziele, Routinen, Arbeitszeit und die übernommenen Aufgaben. Niemand richtet das für eine andere Person ein.' },
+  { nr: 3, titel: 'Meine Gesundheit', satz: 'Komplett und nur für dich: Körper-Profil, Ernährung, Sport und Gesundheits-Routinen — nach deiner Einwilligung. Andere sehen höchstens, ob du eingerichtet bist, nie Inhalte.' },
+  { nr: 4, titel: 'Gemeinsam: Ziele, Planung, Familie', satz: 'Eure gemeinsamen Jahresziele und der Nordstern, Fokus, die übernommenen Projekte und die wichtigsten Menschen.' },
+  { nr: 5, titel: 'Finanzen: eintragen oder hochladen', satz: 'Privatkonten, Kontoauszüge, Fixkosten, Budget, Schulden und der Finanzplan — jede Zahl einmal, am richtigen Ort.', datenkarte: true,
+    hinweise: [
+      { titel: 'Bank-Anbindung', wann: 'kommt später', satz: 'Eine Anbindung an die Bank gibt es noch nicht. Bis dahin lest ihr je Konto Kontoauszug-Dateien ein (CAMT.053 oder CSV aus dem Online-Banking) — das Konten-Register ist die Stelle, an der die Bank später andockt. Kein eigener Schritt.' },
+      { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt später', satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
+    ] },
+  { nr: 6, titel: 'Business online: Gesellschaft & Konten', satz: 'Steckbrief, Absender, Bankkonten, Stichtag und 0-Punkt, Kontostände, offene Posten, Kosten und Steuerprofil — damit jede Gesellschaft mit sauberen Zahlen startet.', datenkarte: true },
+  { nr: 7, titel: 'Business online: Angebot & Vertrieb', satz: 'Team, Produkte, eine Angebotsvorlage, die übernommene Kartei, Mandate und Pipeline, Kadenz, erste Kampagne und die Power Hour.' },
+  { nr: 8, titel: 'Schnittstellen', satz: 'Erst jetzt, wo alles drin ist, verbindet ihr: Kalender, Postfächer, WHOOP, WhatsApp. Jede Person verbindet nur ihre eigenen Konten — im neuen Datenordner ist jede Verbindung neu, auch wenn sie vorher stand.',
+    hinweise: [
+      { titel: 'Google Drive', wann: 'nicht angebunden', satz: 'Dateien aus Google Drive kommen nicht von selbst — Unterlagen ladet ihr dort hoch, wo sie hingehören (Aufgaben, Unternehmen, Kartei). Kein Schritt.' },
+      { titel: 'ZOE aufs Handy über WhatsApp', wann: 'kommt später', satz: 'ZOE bekommt eine eigene WhatsApp-Business-Nummer, getrennt von der Nummer der Inbox. Bis dahin gibt es dafür keinen Schritt.' },
+    ] },
+  { nr: 9, titel: 'Agenten und ZOE', satz: 'Der zweite Schritt: wie viel die Agenten selbst tun dürfen, ZOE kennenlernen, das Brain — erst jetzt arbeiten sie mit euren echten Daten.' },
+  { nr: 10, titel: 'Abschluss', satz: 'Einmal durch alles gehen, den Datenstand prüfen, den Head of IT auf Grün bringen.' },
+];
+
+/**
+ * Ein Schritt im Neustart: Etappe, Gruppe (`zuerst` = Etappe 0 am Server, `kern` = zählt sofort, `danach` = Schnittstellen, Agenten, Abschluss —
+ * zählt auf Heute mit), optional, Bestätigung, eigene Voraussetzungen und Texte. Die Reihenfolge der Tabelle ist die Reihenfolge in der Etappe;
+ * die Nummer („6.3“) entsteht daraus. Texte hier tragen keine Schritt-Nummern.
+ */
+export interface NeustartEintrag {
+  id: string;
+  etappe: number;
+  gruppe?: 'zuerst' | 'kern' | 'danach';
+  optional?: true;
+  bestaetigen?: true;
+  nach?: string[];
+  texte?: Partial<Pick<Schritt, 'titel' | 'warum' | 'wie' | 'danach'>>;
+}
+
+const KERN = 'kern' as const, DANACH = 'danach' as const;
+export const NEUSTART: readonly NeustartEintrag[] = [
+  // 0 · Server und Instanz
+  { id: 'update', etappe: 0 }, { id: 'pepper', etappe: 0 }, { id: 'sicherung', etappe: 0 }, { id: 'sicherung-mac', etappe: 0, gruppe: DANACH },
+  { id: 'vault', etappe: 0 }, { id: 'adresse', etappe: 0 }, { id: 'medienspeicher', etappe: 0, gruppe: DANACH },
+  // 1 · Zugang, Sicherheit, Datenschutz
+  { id: 'neustart', etappe: 1, gruppe: KERN }, { id: 'ich-zwei-faktor', etappe: 1, gruppe: KERN },
+  { id: 'einladen', etappe: 1, gruppe: KERN }, { id: 'haushalt', etappe: 1, gruppe: KERN }, { id: 'zwei-faktor-pflicht', etappe: 1, gruppe: KERN },
+  { id: 'notfallmappe', etappe: 1, gruppe: KERN }, { id: 'datenschutz', etappe: 1, gruppe: KERN }, { id: 'ki-instanz', etappe: 1, gruppe: KERN },
+  { id: 'ich-sicht', etappe: 1, gruppe: KERN }, { id: 'ich-gesundheit', etappe: 1, gruppe: KERN }, { id: 'ich-ki', etappe: 1, gruppe: KERN },
+  { id: 'ich-handy', etappe: 1, gruppe: KERN }, { id: 'ich-rundgang', etappe: 1, gruppe: KERN },
+  { id: 'weitere-inhaber', etappe: 1, gruppe: DANACH, texte: {
+    danach: 'Beide Inhaber dürfen dasselbe. Der Haupt-Inhaber (das erste Konto) behält die Systemläufe und den Haushalts-Kalender und gibt die Rolle nicht ab.',
+  } },
+  { id: 'ssh-zweiter-schluessel', etappe: 1, gruppe: DANACH },
+  // 2 · Meine Ziele und mein Alltag (je Person)
+  { id: 'ich-ziele', etappe: 2, gruppe: KERN }, { id: 'ich-routinen', etappe: 2, gruppe: KERN },
+  { id: 'ich-arbeitsrahmen', etappe: 2, gruppe: KERN, nach: [], texte: { wie: [
+    'Planung › Routinen: die Wochenvorlage ist führend — Blöcke für Arbeit (Business) je Wochentag.',
+    'Kapazität: dein Grundwert in Stunden je Woche.',
+    'Urlaub später als „Abwesend“ im Kalender, sobald er verbunden ist; Zeit in einem fremden Kalender als Block (nächster Schritt).',
+  ] } },
+  { id: 'ich-woanders', etappe: 2, gruppe: KERN, optional: true, nach: ['ich-arbeitsrahmen'] },
+  { id: 'ich-aufgaben', etappe: 2, gruppe: KERN, bestaetigen: true, nach: [], texte: {
+    titel: 'Deine übernommenen Aufgaben sichten',
+    warum: 'Deine Aufgaben sind mit dem Neustart mitgekommen. Was auf dich zugewiesen ist, soll nicht in einer langen Liste untergehen.',
+    wie: ['Aufgaben › Filter „Meine“: was gilt noch?', 'Fälligkeiten setzen, Überfälliges neu datieren oder schließen; mit @Name holst du jemanden dazu.'],
+    danach: 'Geprüft wird: nichts auf dich überfällig; dass du durch bist, bestätigst du mit dem Häkchen.',
+  } },
+  // 3 · Meine Gesundheit (je Person) — weitere Gesundheits-Schritte „ich“ anderer Pakete landen über `neustartEtappeVon` hier (am Ende)
+  { id: 'ich-koerper', etappe: 3, gruppe: KERN }, { id: 'ich-ernaehrung', etappe: 3, gruppe: KERN }, { id: 'ich-sport', etappe: 3, gruppe: KERN },
+  { id: 'ich-gesundheit-routinen', etappe: 3, gruppe: KERN }, { id: 'ich-kopf-energie', etappe: 3, gruppe: KERN, optional: true },
+  // 4 · Gemeinsam: Ziele, Planung, Familie
+  { id: 'jahresziele', etappe: 4, gruppe: KERN, nach: [], texte: { titel: 'Gemeinsame Jahresziele und Nordstern' } },
+  { id: 'meilensteine-fokus', etappe: 4, gruppe: KERN },
+  { id: 'projekte', etappe: 4, gruppe: KERN, nach: [], texte: {
+    titel: 'Übernommene Projekte und Listen sichten',
+    warum: 'Eure eigenen Aufgaben sind mitgekommen — mit Projekten und Listen. Einmal durchgehen: was gilt noch, was fehlt, was ist erledigt.',
+    wie: ['Aufgaben › Überblick: je Space die Projekte durchsehen, Erledigtes abschließen, Fehlendes mit „+ Projekt“ (auch aus Vorlagen) anlegen.', 'Verantwortliche setzen; „nur ich“ für Persönliches.'],
+  } },
+  { id: 'familie-menschen', etappe: 4, gruppe: KERN },
+  { id: 'kompass', etappe: 4, gruppe: DANACH }, { id: 'rhythmen', etappe: 4, gruppe: DANACH },
+  // 5 · Finanzen: eintragen oder hochladen (Privat)
+  { id: 'ich-privatkonten', etappe: 5, gruppe: KERN, texte: {
+    titel: 'Privatkonten: Stand eintragen oder Kontoauszug hochladen',
+    wie: [
+      'Finanzen › Privat › Konten & Buchungen › Konten: eigene Konten mit Inhaber anlegen, gemeinsame nur einmal.',
+      'Je Konto den Stand mit Datum eintragen ODER „Kontoauszug einlesen“ (CAMT.053 oder CSV aus dem Online-Banking) — die Buchungen landen im Haushalt, mit Vorschau, Saldo-Prüfung und Rückgängig.',
+      'Den Zeitraum gemeinsam festlegen (z. B. ab Jahresbeginn), damit Fixkosten und Budget ein ganzes Bild haben. Eine Bank-Anbindung gibt es noch nicht.',
+    ],
+  } },
+  { id: 'privat-fixkosten', etappe: 5, gruppe: KERN, texte: { wie: [
+    'Fixkosten: aus den eingelesenen Buchungen erkennt der Haushalt wiederkehrende Zahlungen — durchgehen, bis keine mehr „Rhythmus unklar“ hat; Fehlendes von Hand ergänzen.',
+    'Budget je Kategorie und Schulden mit Rate — nur im Haushalt, nicht zusätzlich in der Finanzplanung.',
+    'Das Rücklage-Ziel im Privat-Index setzen.',
+  ] } },
+  { id: 'finanzplan', etappe: 5, gruppe: KERN, nach: ['ich-privatkonten'], texte: { wie: [
+    'Finanzen › Privat › Planung: leer beginnen oder ein vorhandenes Dokument hochladen; Gehälter, Netto-Tabelle, Darlehen.',
+    'Kontostände kommen aus dem Konten-Register und dem 0-Punkt — hier nicht doppelt.',
+    'Budget, Schulden und Fixkosten führt der Haushalt (Datenkarte).',
+  ] } },
+  { id: 'selbststaendigkeit', etappe: 5, gruppe: DANACH, texte: {
+    titel: 'Selbstständigkeit: Summen des laufenden Jahres',
+    warum: 'Die Einkommensteuer rechnet über das ganze Jahr. Startet ihr mitten im Jahr neu, gehören die Monate davor als Summen in die Finanzplanung — die alten Buchungen sind nicht mitgekommen.',
+  } },
+  // 6 · Business online: Gesellschaft & Konten
+  { id: 'business-online', etappe: 6, gruppe: KERN },
+  { id: 'steckbrief', etappe: 6, gruppe: KERN }, { id: 'absender', etappe: 6, gruppe: KERN }, { id: 'konten-business', etappe: 6, gruppe: KERN },
+  { id: 'stichtag', etappe: 6, gruppe: KERN, texte: {
+    titel: 'Stichtag des 0-Punkts wählen',
+    warum: 'Mit dem Neustart fängt jede Business-Gesellschaft bei null an. Ab dem Stichtag rechnet sie mit sauberen Zahlen — nehmt den Tag des Neustarts oder den Ersten des laufenden Monats, am besten denselben Tag, an dem die Finanzplanung beginnt.',
+    wie: [
+      'Der neue Datenordner hat keine alten Rechnungen, Zahlungen oder Buchungen — vor dem Stichtag gibt es nichts zu archivieren und nichts nachzutragen.',
+      'Was zum Stichtag offen war, kommt in den 0-Punkt; Kontostände danach tragen ein Datum nach dem Stichtag.',
+      'Fallen Stichtag und Planbeginn zusammen, braucht die Finanzplanung keinen Handwert für den ersten Planmonat.',
+    ],
+    danach: 'Abhaken, wenn alle den Stichtag kennen; der 0-Punkt trägt ihn je Gesellschaft ein.',
+  } },
+  { id: 'eroeffnung', etappe: 6, gruppe: KERN, texte: { wie: [
+    'Finanzen › Business › 0-Punkt: je Business-Gesellschaft den Stichtag und den Kontostand an diesem Tag.',
+    'Alle zum Stichtag offenen Forderungen und Verbindlichkeiten — von Hand oder aus Excel bzw. der OP-Liste („Offene Posten aus Excel einfügen“, mit Vorschau und Rückgängig).',
+    'Ein Eröffnungs-Posten, der später bezahlt wird: „Heute bezahlt“ an seiner Zeile.',
+  ] } },
+  { id: 'kontostaende', etappe: 6, gruppe: KERN, texte: { wie: [
+    'Liquidität › Kontostände: je Konto den aktuellen Stand mit Datum — oder „Kontoauszug einlesen“ (CAMT.053 oder CSV, mit Vorschau und Rückgängig).',
+    'Das Datum muss nach dem Stichtag liegen — sonst gilt der 0-Punkt.',
+    'Eine Bank-Anbindung gibt es noch nicht: bis dahin etwa einmal die Woche Stand oder Kontoauszug.',
+  ] } },
+  { id: 'offene-posten', etappe: 6, gruppe: KERN, texte: { wie: [
+    'Rechnungen & Zahlungen: gestellte Rechnungen nach dem Stichtag eintragen, Eingegangenes auf „bezahlt“.',
+    'Offene Zahlungen (Eingangsrechnungen) mit Fälligkeit.',
+    'Offenes vom Stichtag steht im 0-Punkt und wird dort gepflegt.',
+  ] } },
+  { id: 'finanzplan-business', etappe: 6, gruppe: KERN, nach: ['steckbrief', 'finanzplan'], texte: {
+    titel: 'Kosten und Finanzplan der Gesellschaften',
+    warum: 'Alle laufenden Kosten der Gesellschaften einmal sauber eintragen — Software, Miete, Personal, Beratung. Daraus rechnen Liquidität, Runway und Steuern; Umsätze kommen aus Mandaten und Produkten.',
+    wie: [
+      'Finanzen › Business › Planung: je Kostenposten einen Baustein (Stelle, Software, Miete, Rate) mit Betrag, Start und Rhythmus.',
+      'Umsatz-Bausteine aus den Mandaten übernehmen, sobald die Mandate geprüft sind (nächste Etappe).',
+      'Offene Vorschläge entscheiden und den Arbeitsplan setzen.',
+    ],
+  } },
+  { id: 'steuerprofil', etappe: 6, gruppe: KERN }, { id: 'monatsabschluss', etappe: 6, gruppe: KERN }, { id: 'business-grundlagen', etappe: 6, gruppe: KERN },
+  { id: 'register', etappe: 6, gruppe: DANACH }, { id: 'zahlenziele', etappe: 6, gruppe: DANACH },
+  // 7 · Business online: Angebot & Vertrieb
+  { id: 'team', etappe: 7, gruppe: KERN },
+  { id: 'produkte', etappe: 7, gruppe: KERN, bestaetigen: true, texte: { titel: 'Produkte prüfen und ergänzen' } },
+  { id: 'angebot-entwurf', etappe: 7, gruppe: KERN },
+  { id: 'kartei', etappe: 7, gruppe: KERN, texte: {
+    titel: 'Übernommene Kartei sichten und bereinigen',
+    warum: 'Die Kartei ist mit dem Neustart mitgekommen. Power Hour, Pipeline und Index rechnen mit ihr — Herkunft, Rechtsgrundlage, Kreis und Zuständigkeit müssen stimmen.',
+    wie: [
+      'Markttraktion › Zahnrad (Stammdaten) › Datenqualität: die Verbindungsprüfung laufen lassen, Dubletten und Firmen zusammenführen.',
+      'Bei den wichtigsten Menschen Kreis A oder B und „Zuständig“ setzen — sonst landet die Power Hour bei einer Person.',
+      'Herkunft und Rechtsgrundlage prüfen; neue Listen nur über den Import mit Vorschau (für Kontakte aus fremden Quellen läuft dann die Frist nach Art. 14).',
+    ],
+  } },
+  { id: 'mandate', etappe: 7, gruppe: KERN, bestaetigen: true, texte: {
+    titel: 'Laufende Mandate prüfen',
+    wie: [
+      'Mandate & Unternehmen › Mandate: jedes laufende Mandat mit Firma aus der Kartei, Produkt, Honorar, Rhythmus, Gesellschaft, Zahlungsziel und Zuständigkeit.',
+      'Fehlende Mandate von Hand oder aus Excel („Mandate aus Excel einfügen“, mit Vorschau und Rückgängig).',
+    ],
+  } },
+  { id: 'deals', etappe: 7, gruppe: KERN, texte: { titel: 'Pipeline: offene Deals prüfen' } },
+  { id: 'vertrieb', etappe: 7, gruppe: KERN, texte: {
+    titel: 'Positionierung, Wertelisten und Scoring',
+    wie: ['Marketing › Positionierung: Zielgruppe, Nutzen, Ton.', 'Zahnrad › Wertelisten: Verlustgründe und eigene Werte.', 'Qualifizierung & Scoring: den Standard lassen oder anpassen.'],
+  } },
+  { id: 'kampagne-start', etappe: 7, gruppe: KERN }, { id: 'powerhour', etappe: 7, gruppe: KERN },
+  { id: 'mandate-kapazitaet', etappe: 7, gruppe: DANACH }, { id: 'ich-visitenkarte', etappe: 7, gruppe: KERN, optional: true },
+  // 8 · Schnittstellen
+  { id: 'whoop-app', etappe: 8, gruppe: DANACH }, { id: 'google-app', etappe: 8, gruppe: DANACH },
+  { id: 'ich-icloud', etappe: 8, gruppe: DANACH }, { id: 'ich-google', etappe: 8, gruppe: DANACH }, { id: 'ich-gmail', etappe: 8, gruppe: DANACH },
+  { id: 'ich-postfaecher', etappe: 8, gruppe: DANACH }, { id: 'kalender-zuordnen', etappe: 8, gruppe: DANACH },
+  { id: 'familie-rahmen', etappe: 8, gruppe: DANACH, nach: ['kalender-zuordnen'], texte: {
+    warum: 'Paar-Gespräch, Business-freie Zeiten und Ausnahmezeit geben dem Familienbereich seinen Takt — jetzt, wo der gemeinsame Kalender verbunden ist, landet das Paar-Gespräch dort.',
+  } },
+  { id: 'ich-whoop', etappe: 8, gruppe: DANACH, optional: true }, { id: 'ich-buchungsseite', etappe: 8, gruppe: DANACH, optional: true },
+  { id: 'mail-umzug', etappe: 8, gruppe: DANACH }, { id: 'whatsapp', etappe: 8, gruppe: DANACH },
+  // 9 · Agenten und ZOE (zweiter Schritt)
+  { id: 'agenten', etappe: 9, gruppe: DANACH }, { id: 'ich-zoe', etappe: 9, gruppe: DANACH }, { id: 'brain', etappe: 9, gruppe: DANACH }, { id: 'uebergabe-probe', etappe: 9, gruppe: DANACH },
+  // 10 · Abschluss
+  { id: 'ich-bauplan', etappe: 10, gruppe: DANACH }, { id: 'datenstand', etappe: 10, gruppe: DANACH }, { id: 'hoi-gruen', etappe: 10, gruppe: DANACH }, { id: 'regeln', etappe: 10, gruppe: DANACH },
+];
+/** Entfällt im Neustart: der Altbestand (es gibt keinen), „Einladung annehmen“ (die Konten kamen mit) und „Gesundheit für dich einrichten“ (aufgeteilt in eigene Schritte der Etappe Gesundheit). */
+export const NEUSTART_ENTFAELLT: readonly string[] = ['altbestand', 'zweite-einladung', 'ich-gesundheit-profil'];
+
+/**
+ * Wohin ein Schritt im Neustart gehört, der NICHT in der Tabelle steht (z. B. ein neuer Schritt eines anderen Pakets) — aus Etappe, Ebene und
+ * Modul seiner Grundfassung. Ein Gesundheits-Schritt „ich“ landet in „Meine Gesundheit“. Rein.
+ */
+export function neustartEtappeVon(s: Pick<Schritt, 'etappe' | 'ebene' | 'modul' | 'privatFinanzen' | 'nurNeustart'>): number {
+  if (s.nurNeustart) return s.etappe;
+  switch (s.etappe) {
+    case 0: return 0;
+    case 1: return 1;
+    case 2: return 8;
+    case 3: return s.privatFinanzen ? 5 : 6;
+    case 4: return 7;
+    case 5: return modulVon(s) === 'finanzen' ? (s.privatFinanzen ? 5 : 6) : s.ebene === 'ich' ? 2 : 4;
+    case 6: return s.ebene === 'ich' ? (modulVon(s) === 'gesundheit' ? 3 : 2) : 4;
+    case 7: return 9;
+    default: return 10;
+  }
+}
+
+/**
+ * Schritt-Nummern in Texten der Grundfassung („Schritt 3.6“, „(1.8)“) auf die Nummern des Neustarts umschreiben — nur echte Schritt-Nummern
+ * (aus der Tabelle `nummern`), nie Daten wie „08.10.“ oder Zahlen wie „1.000“. Rein.
+ */
+export function nummernUmschreiben(text: string, nummern: ReadonlyMap<string, string>): string {
+  return text.replace(/(?<![\d.])(\d{1,2}\.\d{1,2}[a-z]?)(?![\d.a-z])/g, m => nummern.get(m) ?? m);
+}
+
+let neustartMerk: Map<string, Schritt> | null = null;
+/** Alle Fassungen des Neustarts (Kennung → Schritt), einmal gerechnet. Fehlt eine Kennung, entfällt der Schritt im Neustart. */
+function neustartFassungen(): Map<string, Schritt> {
+  if (neustartMerk) return neustartMerk;
+  const tabelle = new Map(NEUSTART.map(e => [e.id, e]));
+  const raus = new Set(NEUSTART_ENTFAELLT);
+  const reihe: { s: Schritt; e: NeustartEintrag | null; etappe: number }[] = [];
+  for (const { nr } of NEUSTART_ETAPPEN) {
+    for (const e of NEUSTART) { const s = e.etappe === nr ? schrittMitId(e.id) : null; if (s && !raus.has(s.id)) reihe.push({ s, e, etappe: nr }); }
+    for (const s of SCHRITTE) if (!tabelle.has(s.id) && !raus.has(s.id) && !s.nurAltbestand && neustartEtappeVon(s) === nr) reihe.push({ s, e: null, etappe: nr });
+  }
+  const zaehler = new Map<number, number>();
+  const nummern = new Map<string, string>();
+  const nrn = reihe.map(x => {
+    const z = (zaehler.get(x.etappe) ?? 0) + 1;
+    zaehler.set(x.etappe, z);
+    if (!x.s.nurNeustart) nummern.set(x.s.nr, `${x.etappe}.${z}`);
+    return `${x.etappe}.${z}`;
+  });
+  const umschreiben = (s: Schritt): Schritt => (s.nurNeustart ? s : {
+    ...s, titel: nummernUmschreiben(s.titel, nummern), warum: nummernUmschreiben(s.warum, nummern), wie: s.wie.map(w => nummernUmschreiben(w, nummern)),
+    ...(s.danach ? { danach: nummernUmschreiben(s.danach, nummern) } : {}),
+  });
+  neustartMerk = new Map(reihe.map(({ s, e, etappe }, i) => {
+    const gruppe = e?.gruppe ?? (s.samstag ? 'kern' : s.spaeter ? 'danach' : etappe === 0 ? 'zuerst' : 'danach');
+    // Grundfassung → neutrale Fassung (ohne Altbestand) → Nummern des Neustarts → Texte des Neustarts. `allgemein` fällt weg, damit `texteFuer`
+    // die Fassung nie wieder überschreibt.
+    const { allgemein, samstag: _s, spaeter: _p, ...basis } = s;
+    const f: Schritt = {
+      ...umschreiben({ ...basis, ...(allgemein ?? {}) }), ...(e?.texte ?? {}), etappe, nr: nrn[i], reihe: i,
+      ...(gruppe === 'kern' ? { samstag: true as const } : gruppe === 'danach' ? { spaeter: true as const } : {}),
+      ...(e?.optional ? { optional: true as const } : {}), ...(e?.bestaetigen ? { bestaetigen: true as const } : {}), ...(e?.nach ? { nach: e.nach } : {}),
+    };
+    return [s.id, f];
+  }));
+  return neustartMerk;
+}
+
+/**
+ * Die Fassung eines Schritts für diese Instanz: im Neustart Etappe, Nummer, Gruppe und Texte des Neustarts (`NEUSTART`); sonst der Schritt
+ * selbst (dasselbe Objekt). Ein im Neustart entfallener Schritt bleibt, wie er ist — `sichtbarFuer` blendet ihn aus. Rein.
+ */
+export function fassungFuer(s: Schritt, k: Pick<Kontext, 'neustart'> | null | undefined): Schritt {
+  return k?.neustart ? neustartFassungen().get(s.id) ?? s : s;
+}
+
+/** Alle Schritte des Neustarts in ihrer Reihenfolge (für Wächter und Übersichten — wer welchen hat, sagt `schritteFuer`). */
+export const neustartSchritte = (): Schritt[] => [...neustartFassungen().values()];
+
 /**
  * Wer schaut (aus dem Konto, nie ein Name): Rolle (`inhaber` = Inhaber-Rechte, seit R9 jeder Inhaber; `haupt` = Haupt-Inhaber), ob das
  * Konto über eine Einladung kam (`eingeladen` — fehlt die Angabe, gilt: wer nicht Inhaber ist), Zahl der Konten, Zugang zu den
  * Privat-Finanzen (`finanzRecht` ≠ business, im Haushalt der Inhaber) und ob die Instanz einen Altbestand im Code hatte (Haupt-Inhaber
  * vor dem 09.10.2026 angelegt, keine Demo — lib/onboarding-status.ts).
  */
-export interface Kontext { inhaber: boolean; haupt?: boolean; eingeladen?: boolean; personen: number; privatFinanzen?: boolean; altbestand?: boolean }
-
-/** Etappen-Reihenfolge (Etappe, dann Reihenfolge in SCHRITTE). */
-const nachEtappe = (l: readonly Schritt[]): Schritt[] => l.map((s, i) => ({ s, i: SCHRITTE.indexOf(s) >= 0 ? SCHRITTE.indexOf(s) : i })).sort((a, b) => a.s.etappe - b.s.etappe || a.i - b.i).map(x => x.s);
-
-/** Die Schritte einer Ebene, nach Etappe sortiert (die Ebenen-Seiten filtern damit; wer welchen Schritt hat, sagt `schrittFuer`). */
-export function schritteDerEbene(ebene: Ebene): Schritt[] {
-  return nachEtappe(SCHRITTE.filter(s => s.ebene === ebene));
+export interface Kontext {
+  inhaber: boolean; haupt?: boolean; eingeladen?: boolean; personen: number; privatFinanzen?: boolean; altbestand?: boolean;
+  /** Die Instanz trägt die Marke des Neustarts (lib/onboarding-neustart.ts) — dann gilt der Neustart-Ablauf (`fassungFuer`), nie ein Altbestand. */
+  neustart?: boolean;
+  /** Konto „nur Business“ (Konto-Sicht `nurBusiness`): kein Privat-Bereich — keine Privat-Schritte (`istPrivatSchritt`). */
+  nurBusiness?: boolean;
 }
 
-/** Sieht diese Person den Schritt überhaupt (Privat-Finanzen, Altbestand)? Gilt auch auf den Ebenen-Seiten. */
+/** Etappen-Reihenfolge (Etappe, dann die Reihenfolge der Fassung bzw. in SCHRITTE). */
+const nachEtappe = (l: readonly Schritt[]): Schritt[] => l.map((s, i) => ({ s, i: s.reihe ?? (SCHRITTE.indexOf(s) >= 0 ? SCHRITTE.indexOf(s) : i) })).sort((a, b) => a.s.etappe - b.s.etappe || a.i - b.i).map(x => x.s);
+
+/**
+ * Die Schritte einer Ebene, nach Etappe sortiert (die Ebenen-Seiten filtern damit; wer welchen Schritt hat, sagt `schrittFuer`). Mit Kontext in
+ * der Fassung dieser Instanz (Neustart: Etappe, Nummer, Gruppe aus `fassungFuer`) — ohne Kontext die Grundfassung aller Schritte.
+ */
+export function schritteDerEbene(ebene: Ebene, k?: Kontext | null): Schritt[] {
+  return nachEtappe(SCHRITTE.filter(s => s.ebene === ebene).map(s => fassungFuer(s, k ?? null)));
+}
+
+/**
+ * Ein Schritt im Privat-Bereich: Privat-Finanzen, Gesundheit, Familie oder ausdrücklich `privat` (eigene Ziele). Instanz-Schritte nie (die richtet
+ * ein Inhaber ein). Ein Konto „nur Business“ (`Kontext.privatFinanzen === false`, dieselbe Konto-Sicht wie überall) hat ihn nicht. Rein.
+ */
+export function istPrivatSchritt(s: Pick<Schritt, 'privatFinanzen' | 'privat' | 'modul' | 'ebene'>): boolean {
+  if (s.privatFinanzen || s.privat) return true;
+  return s.ebene !== 'instanz' && (modulVon(s) === 'gesundheit' || modulVon(s) === 'familie');
+}
+
+/** Sieht diese Person den Schritt überhaupt (Privat-Bereich, Altbestand, Neustart)? Gilt auch auf den Ebenen-Seiten. */
 export function sichtbarFuer(s: Schritt, k: Kontext | null): boolean {
   if (s.privatFinanzen && k && k.privatFinanzen === false) return false;
+  if (k && (k.nurBusiness || k.privatFinanzen === false) && istPrivatSchritt(s)) return false;
+  if (s.nurNeustart && !k?.neustart) return false;
+  if (k?.neustart && !neustartFassungen().has(s.id)) return false; // entfällt im Neustart (Altbestand, ersetzte Schritte)
   return !s.nurAltbestand || !!k?.altbestand;
 }
 
@@ -1247,9 +1722,12 @@ export function schrittFuer(s: Schritt, k: Kontext | null): boolean {
   return s.nurInhaber ? !!k?.inhaber : true;
 }
 
-/** Die Schritte, die eine Person betreffen — Meine Einrichtung, Gemeinsames, beim Inhaber die Instanz — in Etappen-Reihenfolge. */
+/**
+ * Die Schritte, die eine Person betreffen — Meine Einrichtung, Gemeinsames, beim Inhaber die Instanz — in Etappen-Reihenfolge und in der Fassung
+ * dieser Instanz (`fassungFuer`; ohne Neustart die Schritte selbst).
+ */
 export function schritteFuer(k: Kontext | null): Schritt[] {
-  return nachEtappe(SCHRITTE.filter(s => schrittFuer(s, k)));
+  return nachEtappe(SCHRITTE.filter(s => schrittFuer(s, k)).map(s => fassungFuer(s, k)));
 }
 
 /**
@@ -1271,20 +1749,24 @@ export function istFertig(s: Schritt, z: HakenZustand | null | undefined): boole
   return hand;
 }
 
-/** Zählt erst, wenn getan: optionale und spätere Schritte (einzeln bis 16.10.). */
+/** Zählt erst, wenn getan: optionale und spätere Schritte (einzeln bis 16.10. bzw. „danach“). */
 const zaehltErstWennGetan = (s: Schritt) => !!(s.optional || s.spaeter);
 
 /**
  * Fortschritt über eine Schrittliste. „Als Nächstes“ ist der erste offene, zählende Schritt in Etappen-Reihenfolge, dessen Voraussetzungen
  * (`nach`, soweit sie in DIESER Liste stehen und zählen) getan sind — sonst der erste offene. Voraussetzungen sperren nie, sie ordnen nur.
+ * `alle` (Heute-Karte, Neustart): auch die späteren Schritte zählen sofort mit — „fertig“ heißt dann: jeder nicht-optionale Schritt getan;
+ * „Als Nächstes“ nimmt trotzdem zuerst den Kern (alles außer „später“). Ohne `alle` bleibt es bei „Späteres zählt erst, wenn getan“.
  */
-export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | null | undefined): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
+export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | null | undefined, o: { alle?: boolean } = {}): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
   const sortiert = nachEtappe(schritte);
-  const zaehlen = sortiert.filter(s => !zaehltErstWennGetan(s) || istFertig(s, z));
+  const zaehlen = sortiert.filter(s => (o.alle ? !s.optional : !zaehltErstWennGetan(s)) || istFertig(s, z));
   const offen = zaehlen.filter(s => !istFertig(s, z));
   const offenIds = new Set(offen.map(s => s.id));
-  const bereit = offen.find(s => !(s.nach ?? []).some(id => offenIds.has(id)));
-  return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster: bereit ?? offen[0] ?? null };
+  const bereit = (l: readonly Schritt[]) => l.find(s => !(s.nach ?? []).some(id => offenIds.has(id)));
+  const vorn = offen.filter(s => !s.spaeter);
+  const naechster = bereit(vorn) ?? vorn[0] ?? bereit(offen) ?? offen[0] ?? null;
+  return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster };
 }
 
 /** Restzeit als Text — EINE Stelle für Übersicht und Heute-Widget, deutsche Zahlform („rund 8,8 Std.“, nie „8.8“). */
@@ -1300,7 +1782,8 @@ export function restzeitText(minuten: number): string {
  */
 export function offeneVoraussetzungen(s: Schritt, k: Kontext | null, z: HakenZustand | null | undefined): Schritt[] {
   return (s.nach ?? []).map(schrittMitId).filter((v): v is Schritt =>
-    !!v && sichtbarFuer(v, k) && !(v.nurMitMehreren && k && k.personen < 2) && !(v.nurEingeladen && !schrittFuer(v, k)) && !istFertig(v, z));
+    !!v && sichtbarFuer(v, k) && !(v.nurMitMehreren && k && k.personen < 2) && !(v.nurEingeladen && !schrittFuer(v, k)))
+    .map(v => fassungFuer(v, k)).filter(v => !istFertig(v, z));
 }
 
 /**
@@ -1346,10 +1829,16 @@ export const GRUPPEN_ALLGEMEIN: Record<Gruppe, { titel: string; satz: string }> 
   samstag: { titel: 'Der Kern', satz: 'Das Wichtigste in einem Zug — von oben nach unten.' },
   spaeter: { titel: 'Nach und nach', satz: 'Zählt erst, wenn getan — in eigenem Tempo, jede Person und gemeinsam.' },
 };
-/** Die Gruppen-Namen für diese Instanz. Rein. */
-export const gruppenFuer = (altbestand: boolean): Record<Gruppe, { titel: string; satz: string }> => (altbestand ? GRUPPEN : GRUPPEN_ALLGEMEIN);
+/** Die drei Gruppen im Neustart: zuerst der Server, dann der Kern (Zugang + alles eingeben), danach Schnittstellen, Agenten, Abschluss. */
+export const GRUPPEN_NEUSTART: Record<Gruppe, { titel: string; satz: string }> = {
+  freitag: { titel: 'Zuerst · am Server', satz: 'Etappe 0 — nur die Inhaber; auf einem bestehenden Server ist das meiste schon erledigt, die Prüfungen zeigen es.' },
+  samstag: { titel: 'Der Kern', satz: 'Erst Zugang und Sicherheit, dann alles eingeben — jede Person für sich und gemeinsam, von oben nach unten.' },
+  spaeter: { titel: 'Danach', satz: 'Schnittstellen, Agenten und Abschluss — wenn alles eingegeben ist. Zählt mit: die Karte auf Heute bleibt, bis alles steht.' },
+};
+/** Die Gruppen-Namen für diese Instanz (`neustart` vor `altbestand`). Rein. */
+export const gruppenFuer = (altbestand: boolean, neustart = false): Record<Gruppe, { titel: string; satz: string }> => (neustart ? GRUPPEN_NEUSTART : altbestand ? GRUPPEN : GRUPPEN_ALLGEMEIN);
 
-/** Minuten des Samstag-Kerns für eine Person (ohne optionale) — für den Wächter „≈ 8 h“. */
+/** Minuten des Kerns (Samstag bzw. im Neustart „Der Kern“) für eine Person, ohne optionale — für den Wächter „≈ 8 h“ und die Schätzung. */
 export const samstagMinuten = (k: Kontext): number => schritteFuer(k).filter(s => s.samstag && !s.optional).reduce((n, s) => n + s.minuten, 0);
 
 /** Wer den Schritt macht — für den Chip. */
@@ -1411,6 +1900,7 @@ export const DATENKARTE: DatenkartenZeile[] = [
   { id: 'arbeitszeit', fakt: 'Arbeitszeit', hier: 'Wochenvorlage (Planung › Routinen)', nicht: 'Kalender-Arbeitsfenster, Beratertage', href: WEG.routinen(), etappe: 5 },
   { id: 'arbeitszeit-aussen', fakt: 'Arbeitszeit außerhalb (fremder Kalender)', hier: 'Blöcke bzw. Abwesenheit (Schritt 2.6)', nicht: '–', href: WEG.routinen(), etappe: 2 },
   { id: 'urlaub', fakt: 'Urlaub', hier: 'Kalender „Abwesend“', nicht: 'Ausnahme in der Kapazität', href: WEG.kalender(), etappe: 5 },
+  { id: 'kosten-business', fakt: 'Laufende Kosten der Gesellschaften (Software, Miete, Personal …)', hier: 'Finanzplanung › Business (Kosten-Bausteine)', nicht: 'Rechnungen & Zahlungen (nur echte Rechnungen), Monatsabschluss (nur das Ist)', href: WEG.finanzplanung('business'), etappe: 5 },
   { id: 'privat-ist', fakt: 'Budget, Schulden, Fixkosten und Ist privat', hier: 'Haushalt (Privat › Konten & Buchungen) — er führt das Ist', nicht: 'Finanzplanung (liest ab Phase 1 aus dem Haushalt)', href: WEG.privat('fixkosten'), etappe: 3 },
   { id: 'ruecklage', fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
   { id: 'geburtstage', fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },

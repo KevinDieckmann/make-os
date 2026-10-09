@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { MODULE, datenStandVon, modulVon, schrittFuer, sichtbarFuer, SCHRITTE, texteFuer, type DatenStand, type Modul, type Schritt } from '@/lib/make-one/onboarding-data';
+import { MODULE, datenStandVon, fassungFuer, modulVon, schrittFuer, sichtbarFuer, SCHRITTE, texteFuer, type DatenStand, type Modul, type Schritt } from '@/lib/make-one/onboarding-data';
 import { useOnboarding, DatenkarteKarte, type Zustand } from './OnboardingView';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, Fortschritt, Hinweis, LEUCHT } from './ui';
 
@@ -29,9 +29,10 @@ const absatz: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeigh
  */
 export function datenbasisZeilen(z: Pick<Zustand, 'befunde' | 'ich'> | null): { s: Schritt; stand: DatenStand }[] {
   if (!z) return [];
+  // In der Fassung dieser Instanz (Neustart: Nummer und Texte des Neustarts, `fassungFuer`).
   return SCHRITTE
     .filter(s => !!s.pruefung && !!z.befunde[s.pruefung] && (schrittFuer(s, z.ich) || (s.ebene === 'gemeinsam' && sichtbarFuer(s, z.ich))))
-    .map(s => ({ s, stand: datenStandVon(z.befunde[s.pruefung!]) }));
+    .map(s => ({ s: fassungFuer(s, z.ich), stand: datenStandVon(z.befunde[s.pruefung!]) }));
 }
 
 export function DatenbasisView() {

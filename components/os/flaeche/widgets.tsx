@@ -625,8 +625,9 @@ function EventWidget({ titel, i }: WidgetProps) {
 
 // ── Einrichtung · x von y (08.10. spät, Onboarding B5) ─────────────────────
 // Vorne auf Heute, solange die eigene Einrichtung offen ist: die eigenen Schritte („Meine Einrichtung“), die gemeinsamen und — beim
-// Inhaber — die der Instanz (lib/make-one/onboarding-data.ts `schritteFuer`). Gezählt werden Freitag + Samstag-Kern; „einzeln bis
-// 16.10.“ zählt erst, wenn getan (Nachbesserung 08.10. spät). „Als Nächstes“ = erster offener Kern-Schritt in Etappen-Reihenfolge.
+// Inhaber — die der Instanz (lib/make-one/onboarding-data.ts `schritteFuer`, im Neustart in dessen Fassung). Seit 09.10. (Kevin: „Dieser
+// Onboarding-Reiter ist auch immer auf dem Heute-Bildschirm zu sehen, bis wir alles abgeschlossen haben“): gezählt wird JEDER nicht-optionale
+// Schritt (`alle`) — die Karte verschwindet erst, wenn alles steht. „Als Nächstes“ = erster offener Kern-Schritt, danach der Rest.
 // Daten aus /api/onboarding (persönliche Befunde nur der Person der Sitzung). Fertig oder ohne Zugang → keine Karte.
 // B10 (Update 2, „dauerhafte Ampel“): fällt ein Schritt zurück, der schon einmal grün war (`zurueckgefallen` — dieselbe Regel wie die
 // Einrichtung), steht hier „1 Punkt braucht dich“ — auch wenn die Einrichtung sonst fertig ist. Keine zweite Glocke.
@@ -655,7 +656,7 @@ function EinrichtungWidget({ titel, i }: WidgetProps) {
       </Karte>
     );
   }
-  const f = fortschrittVon(meine, d.z);
+  const f = fortschrittVon(meine, d.z, { alle: true });
   if (!f.gesamt || f.fertig >= f.gesamt) return null;
   return (
     <Karte i={i} akzent={LEUCHT.schlaf}>
