@@ -13,7 +13,7 @@ import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
-import { wer, nameVon, BEIDE } from './team';
+import { wer, nameVon, BEIDE, TEAM } from './team';
 import { markttraktion, mandateLink } from './adresse';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import type { CrmBestand, CrmListe } from './typen';
@@ -40,7 +40,8 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
   const an = wer(b.an);
   const notiz = String(b.notiz ?? '').trim().slice(0, 600);
   const frist = tagOk(b.frist);
-  if (!art || !an) return { ok: false, fehler: 'art und an (kevin, malin, beide) nötig.', status: 400 };
+  // Die erlaubten Kürzel aus dem Team der Instanz (Nahtstellen 09.10.: vorher fest „kevin, malin“ im Text).
+  if (!art || !an) return { ok: false, fehler: `art und an (${[...TEAM.map(t => t.id), BEIDE].join(', ')}) nötig.`, status: 400 };
   const jetzt = new Date().toISOString();
   const vonName = nameVon(person);
   let titel = '';

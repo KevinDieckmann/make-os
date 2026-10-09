@@ -213,3 +213,23 @@ describe('1 · Anfrage → Import: Angaben der Person bleiben (vonHand wie bei �
     expect(konf.some(x => x.kontaktId === d.kontaktId && x.feld === 'telefon')).toBe(true);
   });
 });
+
+// ── 2 · Team: keine festen Namen in Laufzeit-Code der Markttraktion; unsere Instanz verhält sich wie vorher ──────────────────────
+describe('2 · Team aus der Instanz — keine festen Namen (Übergabe-Text, Brain-Übernahme)', () => {
+  it('Übergabe ohne gültiges „an“ nennt die Kürzel des Teams, nicht feste Namen', async () => {
+    const src = readFileSync(path.join(process.cwd(), 'lib/crm/uebergabe.ts'), 'utf8');
+    expect(src).not.toMatch(/['"`](kevin|malin)['"`]|\(kevin, malin/);
+  });
+  it('Brain-Übernahme: die Sales-Verantwortung hält die Beziehung selbst, sonst „beide“ (für unsere Kürzel wie vorher)', async () => {
+    const { ausBrain } = await import('@/lib/crm/umzug');
+    const { leererBestand } = await import('@/lib/crm/speicher');
+    const { verantwortlich, TEAM } = await import('@/lib/crm/team');
+    const d = { kunden: [{ name: 'Brain Kunde GmbH', ansprechpartner: [{ name: 'Bea Brain' }], status: 'kunde' }] };
+    const v = verantwortlich('sales');
+    const ander = TEAM.find(t => t.id !== v)?.id ?? 'andere-person';
+    const besitzer = (p: string) => ausBrain(d, leererBestand(), [], '2026-10-09', '2026-10-09T09:00:00.000Z', p).kontakte.find(k => k.nachname === 'Brain')?.besitzer;
+    expect(besitzer(v)).toBe(v);
+    expect(besitzer(ander)).toBe('beide');
+    expect(readFileSync(path.join(process.cwd(), 'lib/crm/umzug.ts'), 'utf8')).not.toMatch(/['"`](kevin|malin)['"`]/);
+  });
+});
