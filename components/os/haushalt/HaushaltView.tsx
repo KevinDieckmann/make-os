@@ -84,7 +84,7 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
           ) : (
             <Leerzustand symbol="€" ton={LEUCHT.geld} titel="Noch keine Konten und Buchungen"
               aktion={<Knopf haupt voll farbe={LEUCHT.geld} href={WEG.privat('buchungen')}>Konto anlegen</Knopf>}>
-              Legt zuerst eure Konten an — unter Konten &amp; Buchungen mit Stand und Datum. Dort lest ihr am Konto auch den Kontoauszug ein (CAMT.053 oder CSV) — Kategorien und Regeln wachsen mit.
+              Legt zuerst eure Konten an — mit Stand und Datum. Danach lest ihr unter Konten &amp; Buchungen › Kontoauszug einlesen (am Konto: CAMT.053 oder CSV) die Buchungen ein — Kategorien und Regeln wachsen mit.
             </Leerzustand>
           )}
         </Karte>
