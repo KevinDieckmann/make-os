@@ -23,6 +23,7 @@ import { BUSINESS_VORGABE_SPACE, bereichVon, istFinanzOrt } from '@/lib/einheite
 import { bereichVonSpace, istSonstigeProjekt, mandantSpaceId, sonstigeProjektId } from '@/lib/aufgaben/struktur';
 import type { DateiArt } from '@/lib/dateien/regeln';
 import { WEG } from '@/lib/wege';
+import { tagVon } from '@/lib/zeit';
 import { gespraechPfad } from './strom';
 
 export type Raum = 'privat' | 'business';
@@ -193,7 +194,7 @@ const ohneSteuerzeichen = (t: string) => t.replace(/[\u0000-\u0008\u000B\u000C\u
 /** Die Mail selbst als Textdatei (nur für die Projekt-Ablage — die CRM-Ablage nimmt keine Textdateien). Server baut sie aus dem eigenen Spiegel. */
 export function mailAlsText(n: { von: { email: string; name?: string }; an: readonly { email: string; name?: string }[]; cc: readonly { email: string; name?: string }[]; am: string; betreff: string; text: string }): { name: string; text: string } {
   const adr = (a: { email: string; name?: string }) => (a.name ? `${a.name} <${a.email}>` : a.email);
-  const tag = /^\d{4}-\d{2}-\d{2}/.test(n.am) ? n.am.slice(0, 10) : '';
+  const tag = /^\d{4}-\d{2}-\d{2}/.test(n.am) ? tagVon(n.am) : '';
   const kopf = [`Von: ${adr(n.von)}`, n.an.length ? `An: ${n.an.map(adr).join(', ')}` : '', n.cc.length ? `Cc: ${n.cc.map(adr).join(', ')}` : '', `Datum: ${n.am}`, `Betreff: ${n.betreff.replace(/\s+/g, ' ').trim()}`].filter(Boolean);
   const betreff = n.betreff.replace(/[^\p{L}\p{N} _-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
   return { name: `Mail ${tag}${betreff ? ` ${betreff}` : ''}.txt`.replace(/\s+/g, ' '), text: ohneSteuerzeichen(`${kopf.join('\n')}\n\n${n.text}`) };
