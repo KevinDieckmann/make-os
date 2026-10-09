@@ -407,3 +407,31 @@ describe('(B5) Kosten je Zweck: ein Konto „nur Business“ sieht keine Kosten 
     expect(b).toContain('agent-gesundheit');
   });
 });
+
+describe('(B6) Läufe in der Warteschlange: Systemläufe, die für die Inhaberin liefen, nur neutral — nie ihr Ergebnis bei anderen', () => {
+  it('GET /api/zoe/auftraege: zweite Person und Partner sehen keinen Morgenbericht, Partner keinen privaten Systemlauf, niemand ein Pacht-Token', async () => {
+    const J = new Date().toISOString();
+    const { localDay } = await import('@/lib/zeit');
+    const basis = { zeit: J, tag: localDay(), art: 'agent', eingabe: {}, versuche: 1, begonnen: J, beendet: J };
+    const vorher = await db.loadJson<{ auftraege: unknown[] }>('zoe-auftraege');
+    await db.saveJson('zoe-auftraege', { auftraege: [...(vorher?.auftraege ?? []),
+      // Der Morgenlauf des Takts läuft ohne Person — gerechnet aber für die Inhaberin (`laufPerson`): ihr Bericht steht im Ergebnis.
+      { ...basis, id: 'au-naht-morgen', name: 'morgen', schluessel: 'naht-morgen', status: 'fertig', anlass: 'Takt: Morgenlauf', ergebnis: 'MORGENLAUF: NAHT-A-MORGENBERICHT' },
+      { ...basis, id: 'au-naht-gesund', name: 'gesundheit', schluessel: 'naht-gesund', status: 'fertig', anlass: 'Takt: Gesundheit', ergebnis: 'NAHT-A-GESUNDHEITSTAKT' },
+      { ...basis, id: 'au-naht-lauf', name: 'tageslauf', schluessel: 'naht-lauf', status: 'laeuft', anlass: 'Takt: Tageslauf', pachtToken: 'NAHT-PACHT-TOKEN', pachtBis: J },
+      { ...basis, id: 'au-naht-eigen', name: 'research', schluessel: 'naht-eigen', status: 'fertig', person: 'person-b', auftrag: 'NAHT-B-EIGENER-AUFTRAG', ergebnis: 'NAHT-B-EIGENES-ERGEBNIS' },
+    ] });
+    const route = (await import('@/app/api/zoe/auftraege/route')) as unknown as { GET: H };
+    const lesen = async (p: string) => (await route.GET(new Request('http://test/api/zoe/auftraege', { headers: sitzung(p) }))).text();
+    const b = await lesen('person-b');
+    expect(b).not.toContain('NAHT-A-MORGENBERICHT');
+    expect(b).not.toContain('NAHT-A-GESUNDHEITSTAKT');
+    expect(b).not.toContain('NAHT-PACHT-TOKEN');
+    expect(b).toContain('au-naht-morgen'); // neutral da (Name, Status) — der Puls zählt ihn
+    expect(b).toContain('NAHT-B-EIGENES-ERGEBNIS'); // das Eigene voll
+    const p = await lesen('partner');
+    expect(p).not.toContain('NAHT-A-MORGENBERICHT');
+    expect(p).not.toContain('au-naht-gesund'); // privater Systemlauf: für „nur Business“ gar nicht
+    expect(p).not.toContain('NAHT-B-EIGENES-ERGEBNIS');
+  });
+});
