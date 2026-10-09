@@ -52,8 +52,9 @@ export async function ladeCrm(): Promise<CrmBestand> {
 
 /**
  * 1.15 (09.10., Woche 2): das System-Segment „Vernetzen · kalte Leads“ gibt es ab dem ERSTEN Laden — vorher entstand es erst beim ersten
- * Import, und die Qualifizierungs-Runde verwies ins Leere. Beim Lesen ergänzt (Lesen schreibt nicht), mit der nächsten Änderung am Bestand
- * dauerhaft (`crmSchreiben`) — idempotent über die feste Kennung; die feste Zeit hält den Stand (Fingerabdruck) bis dahin gleich.
+ * Import, und die Qualifizierungs-Runde verwies ins Leere. Beim Lesen ergänzt (Lesen schreibt nicht); dauerhaft wird es erst, wenn jemand
+ * das Segment selbst ändert (`wendeCrmAn`) oder ein Import es anlegt — andere Schreibungen bleiben bit-gleich. Idempotent über die feste
+ * Kennung; die feste Zeit hält den Stand (Fingerabdruck) gleich, solange es nur gelesen wird.
  */
 export const SEGMENT_VERNETZEN_START = '2026-01-01T00:00:00.000Z';
 export function mitSegmentVernetzen<B extends Pick<CrmBestand, 'segmente'>>(b: B): B {
@@ -621,7 +622,9 @@ const personenImLauf = new AsyncLocalStorage<readonly PersonSchranke[]>();
  * `personen` (Kartei) nur für Aufrufe außerhalb von `aendereCrm` (Tests); sonst gilt die Kartei aus der laufenden
  * Änderung. Ohne beides prüft die Personen-Schranke nicht.
  */
-export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string, kontext?: VerweisKontext, personen?: readonly PersonSchranke[]): CrmAnwendung {
+export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: string, person: string, kontext?: VerweisKontext, personen?: readonly PersonSchranke[]): CrmAnwendung {
+  // 1.15: eine Änderung am System-Segment „Vernetzen“ trifft es, auch wenn es bisher nur gelesen (nicht gespeichert) war.
+  const b = roh.some(o => o.liste === 'segmente' && (o.id === SEGMENT_VERNETZEN_ID || (o.eintrag as { id?: unknown } | undefined)?.id === SEGMENT_VERNETZEN_ID)) ? mitSegmentVernetzen(gespeichert) : gespeichert;
   let angewandt = 0;
   // Erst Stand und Verweise (gegen den Bestand IN der Sperre), dann die Regeln — ein Konflikt lehnt alles ab.
   const konflikte = crmKonflikte(b, roh);
@@ -800,7 +803,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   const person = personVon(protokollWer);
   const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => {
     // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
-    const basis = mitSegmentVernetzen(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand);
+    const basis = firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand;
     const kontakte = (await loadJson<Kartei>('kontakte'))?.kontakte ?? [];
     const roh = await personenImLauf.run(kontakte, () => mut(basis));
     // Auch eine Funktions-Änderung geht durch die Personen-Schranke (nur NEUE Teilnahmen/Kampagnen-Personen) — wer sie aufruft, bekommt

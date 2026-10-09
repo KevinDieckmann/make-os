@@ -544,7 +544,7 @@ describe('1.14 · Route /api/state/prospects — Einzeländerungen mit Stand, IC
 });
 
 describe('1.15 · Segment „Vernetzen“ ab dem ersten Laden', () => {
-  it('ladeCrm zeigt es ohne Import (Lesen schreibt nicht); die nächste Änderung legt es dauerhaft ab — genau einmal', async () => {
+  it('ladeCrm zeigt es ohne Import (Lesen schreibt nicht); andere Änderungen bleiben bit-gleich; eine Änderung AM Segment legt es ab — genau einmal', async () => {
     const { ladeCrm, aendereCrm, SEGMENT_VERNETZEN_START } = await import('@/lib/crm/speicher');
     const { SEGMENT_VERNETZEN_ID } = await import('@/lib/crm/import-konflikte');
     await db.updateJson<CrmBestand>('crm', cur => ({ ...(cur as CrmBestand), segmente: [] }));
@@ -555,8 +555,15 @@ describe('1.15 · Segment „Vernetzen“ ab dem ersten Laden', () => {
     expect(seg[0]).toMatchObject({ name: 'Vernetzen · kalte Leads', kriterien: { temperatur: ['kalt'] }, geaendert: SEGMENT_VERNETZEN_START });
     expect((await db.loadJson<CrmBestand>('crm'))?.segmente).toEqual([]); // nur gelesen
     await aendereCrm(c => ({ ...c, firmen: [...c.firmen, firma('f-segment-anlass')] }));
-    expect((await db.loadJson<CrmBestand>('crm'))?.segmente.filter(s => s.id === SEGMENT_VERNETZEN_ID)).toHaveLength(1);
-    await aendereCrm(c => c);
-    expect((await ladeCrm()).segmente.filter(s => s.id === SEGMENT_VERNETZEN_ID)).toHaveLength(1);
+    expect((await db.loadJson<CrmBestand>('crm'))?.segmente).toEqual([]); // eine andere Änderung schreibt es nicht mit
+    // Über den echten Schreibweg (PATCH /api/crm/bestand, mit dem Stand aus dem Lesen): die Änderung am Segment legt es ab.
+    const bestand = await import('@/app/api/crm/bestand/route');
+    const g = await (await bestand.GET(anfrage('/api/crm/bestand', sitzung('kevin')))).json() as { stand: { segmente: { id: string; stand?: string }[] } };
+    const st = g.stand.segmente.find(x => x.id === SEGMENT_VERNETZEN_ID)?.stand;
+    expect(st).toBeTruthy();
+    const r = await bestand.PATCH(anfrage('/api/crm/bestand', sitzung('kevin'), 'PATCH', { ops: [{ liste: 'segmente', op: 'teil', id: SEGMENT_VERNETZEN_ID, felder: { beschreibung: 'Erst vernetzen.' }, stand: st }] }));
+    expect(r.status).toBe(200);
+    expect((await db.loadJson<CrmBestand>('crm'))?.segmente.filter(x => x.id === SEGMENT_VERNETZEN_ID)).toEqual([expect.objectContaining({ beschreibung: 'Erst vernetzen.' })]);
+    expect((await ladeCrm()).segmente.filter(x => x.id === SEGMENT_VERNETZEN_ID)).toHaveLength(1);
   });
 });

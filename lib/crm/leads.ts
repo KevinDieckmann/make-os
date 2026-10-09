@@ -180,7 +180,7 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     // 1.11: aktives Mandat (an der Firma oder einer der Personen) bzw. Firmenrolle „Kunde“ → „Kunde“ — gilt für den abgeleiteten Status
     // und für ein gesetztes „Neu“ (daran hat niemand gearbeitet); ein bewusst gesetzter anderer Status (z. B. Qualifizierung für einen
     // Folgeauftrag) bleibt.
-    const kundeAktiv = (!!firma && firma.rolle === 'kunde') || crm.mandate.some(m => m.status === 'aktiv' && ((!!firma && mandatZuFirma(m, firma)) || m.kontaktIds.some(id => ids.includes(id))));
+    const kundeAktiv = (!!firma && firma.rolle === 'kunde') || crm.mandate.some(m => m.status === 'aktiv' && ((!!firma && mandatZuFirma(m, firma)) || (m.kontaktIds ?? []).some(id => ids.includes(id))));
     const gesetztNeu = lead?.status === 'neu';
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
