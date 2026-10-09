@@ -59,7 +59,9 @@ export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg; perso
   // 1 · Art. 18 — vor jeder Wirkung (auch keine Firma).
   const alle = await kontakteFuerVerarbeitung({ mitEingeschraenkten: true });
   const schon = alle.find(k => k.id === id);
-  if (schon) return { ok: true, kontaktId: id, neu: false, kontakt: schon, hinweise: [] }; // Wiederholung: steht schon
+  // Wiederholung: steht schon. Die Antwort läuft wie jede andere durch `fuerPerson` (Nahtstellen 09.10.: vorher roh — fremde private Notiz
+  // und volle IBAN gingen an den Browser, wenn die Kennung einer vorhandenen Person kam).
+  if (schon) return { ok: true, kontaktId: id, neu: false, kontakt: fuerPerson(schon, o.person ?? ''), hinweise: [] };
   const merkmale = { vorname: e.vorname, nachname: e.nachname, firma: e.firma, email: e.email, telefon: e.telefon, mobil: e.mobil };
   if (trifftEingeschraenkte({ kontakt: merkmale }, alle, id)) return { ok: false, status: 409, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true };
   // 2 · Dublette (gleiche Mail oder Nummer + Nachname) — nie doppelt anlegen.
@@ -88,10 +90,12 @@ export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg; perso
   const sperrEintraege = await sperrlisteLaden();
   let fertig: Kontakt | null = null;
   let fehler: PersonAnlegenErgebnis | null = null;
+  // Zwei gleiche Anfragen gleichzeitig: die zweite findet die Person erst IN der Sperre — dann ist es eine Wiederholung (kein zweites Follow-up).
+  let schonInSperre = false;
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     const da = f.kontakte.find(k => k.id === id);
-    if (da) { fertig = da; return f; }
+    if (da) { fertig = da; schonInSperre = true; return f; }
     const dd = dublettePruefen(merkmale, f.kontakte, id);
     if (dd.gleich) { fehler = { ok: false, status: 409, fehler: dublettenText(dd.gleich), dublette: { id: dd.gleich.kontakt.id, name: anzeigename(dd.gleich.kontakt) } }; return f; }
     const s = neuanlageSperre(sauber, sperrEintraege, heute);
@@ -105,6 +109,7 @@ export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg; perso
   if (abgelehnt) return abgelehnt;
   const k = fertig as Kontakt | null;
   if (!k) return { ok: false, status: 500, fehler: 'Nicht angelegt.' };
+  if (schonInSperre) return { ok: true, kontaktId: k.id, neu: false, kontakt: fuerPerson(k, o.person ?? ''), hinweise: [] };
   if (k.werbesperre) await sperren([k], 'werbesperre', heute); // Sperrliste trägt die neue Person (idempotent)
 
   // 5 · Follow-up aus dem nächsten Schritt.

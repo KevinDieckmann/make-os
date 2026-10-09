@@ -67,10 +67,15 @@ export async function POST(req: Request) {
   }
   // 1.8: die Firma einer NEUEN Person über den EINEN Weg sichern (nicht, wenn die Mail/Nummer schon eine Person der Kartei trifft — die behält ihre Firma).
   const neuFirma = !b.kontaktId && typeof b.neu?.firma === 'string' ? b.neu.firma.trim() : '';
+  let gesichert: { id: string; name: string } | undefined;
   if (neuFirma) {
     const kartei = await kontakteLaden();
     const n = b.neu ?? {};
-    if (!dublettePruefen({ vorname: n.vorname, nachname: n.nachname, email: n.email, telefon: n.telefon }, kartei, '').gleich) await firmaSichern(neuFirma, { email: n.email }, werAus(req));
+    if (!dublettePruefen({ vorname: n.vorname, nachname: n.nachname, email: n.email, telefon: n.telefon }, kartei, '').gleich) {
+      // Die gefundene bzw. angelegte Firma geht an den Bau (Nahtstellen 09.10.) — nie ein zweites Suchen nur über den genauen Namen.
+      const plan = await firmaSichern(neuFirma, { email: n.email }, werAus(req));
+      if (plan) gesichert = { id: plan.firma.id, name: plan.firma.name };
+    }
   }
   const crm = await ladeCrm();
   const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
@@ -84,7 +89,7 @@ export async function POST(req: Request) {
   let bau: Bau | null = null; let fehler = '';
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
-    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre });
+    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre, ...(gesichert && crm.firmen.some(x => x.id === gesichert!.id) ? { firma: gesichert } : {}) });
     if (!r.ok) { fehler = r.fehler; return f; }
     bau = r.bau;
     const i = f.kontakte.findIndex(x => x.id === r.bau.kontakt.id);

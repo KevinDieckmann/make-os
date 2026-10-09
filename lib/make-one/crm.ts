@@ -781,6 +781,10 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
   for (const k of bestand) indizieren(k);
   // Rückfall für eine NEUE Adresse (28.09., #11): dieselbe HubSpot-ID oder derselbe Name bei derselben Firma —
   // nur eindeutig (mehrdeutig = null). So hängt die neue Adresse an, statt die Person doppelt anzulegen.
+  // Seit 09.10. (Nahtstellen-Prüfung) auch für Zeilen OHNE Mail: eine Person, die über Kartei, Anfrage oder Netzwerken MIT Mail angelegt
+  // wurde, trägt den Schlüssel `m:…` — eine Listenzeile ohne Mail (Schlüssel `n:Name|Firma` bzw. `h:…`) fand sie nie und legte still eine
+  // zweite Akte an (`moeglicheDubletten` meldet gleiche Firma nicht). Ohne Mail IST Name + Firma der Schlüssel des Imports — derselbe
+  // eindeutige Treffer gilt also auch hier.
   const eindeutig = (schl: (k: Kontakt) => string | null) => { const m = new Map<string, string | null>(); for (const k of bestand) { const x = schl(k); if (x) m.set(x, m.has(x) ? null : k.id); } return m; };
   const hubKey = (k: Pick<Kontakt, 'hubspotId'>) => ((k.hubspotId ?? '').trim() ? `h:${norm(k.hubspotId!)}` : null);
   const nameKey = (k: Pick<Kontakt, 'vorname' | 'nachname' | 'firma'>) => { const n = normName(k.vorname, k.nachname), f = normFirma(k.firma); return n.length >= 5 && f ? `n:${n}|${f}` : null; };
@@ -808,7 +812,7 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
       const kand = a ? nachId.get(a) : undefined;
       if (kand && !direkt.has(kand.id) && !perUebergang.has(kand.id) && namenVertraeglich(kand, k)) { altId = kand.id; perUebergang.add(kand.id); }
     }
-    if (!altId && mailSchluessel(k.email)) {
+    if (!altId) {
       const h = hubKey(k), n = nameKey(k);
       const id = (h ? nachHub.get(h) : undefined) ?? (n ? nachName.get(n) : undefined);
       const kand = id ? nachId.get(id) : undefined;
