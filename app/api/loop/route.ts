@@ -163,7 +163,7 @@ export async function POST(req: Request) {
     const letzteSache = (letzte?.payload as { eineSache?: string } | undefined)?.eineSache;
 
     const system = [
-      `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${name}. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.',
+      `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${name}. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.`,
       nordsternSatz(g.nordstern),
       'Du bekommst FERTIGE Kennzahlen — rechne nicht neu, erfinde nichts. Sei ehrlich, auch wenn der Kurs nicht reicht.',
       'Verknüpfe die Bereiche: Was bedeutet die Pipeline für den Umsatz? Was blockiert die Ausführung? Wo ist der eine Hebel?',
