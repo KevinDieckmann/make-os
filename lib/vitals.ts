@@ -106,6 +106,12 @@ function daysBetween(from: string, to: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
+/** Trägt der Tag einen Kernwert (Recovery, Schlaf, HRV, Ruhepuls) oder eine Notiz? */
+export function hatKernwert(v: DayVitals | undefined): boolean {
+  if (!v || typeof v !== 'object') return false;
+  return VITAL_FELDER.some(f => typeof v[f] === 'number' && Number.isFinite(v[f])) || (typeof v.note === 'string' && !!v.note);
+}
+
 /** Die Werte, mit denen gerechnet werden soll — heute, sonst der letzte bekannte Stand, sonst keine (0 = keine Angabe).
  *  `person` ist Pflicht (Regel 5, kein Rückfall auf eine feste Person): wer für niemanden rechnet, liest keine Werte. */
 export async function resolveVitals(today: string | undefined, person: string): Promise<ResolvedVitals> {
@@ -113,7 +119,9 @@ export async function resolveVitals(today: string | undefined, person: string): 
   const keine: ResolvedVitals = { rec: 0, sleep: 0, hrv: 0, rhr: 0, stand: '—', heute: false, alterTage: 999, fallback: true };
   try {
     const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
-    const days = Object.keys(log).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= tag).sort();
+    // Nur Tage mit einem Kernwert oder einer Notiz (09.10.): ein Tag, an dem bisher nur Zusatzwerte stehen (z. B. Schritte des laufenden
+    // WHOOP-Zyklus nach Mitternacht), verdrängt den letzten echten Morgen-Check nicht.
+    const days = Object.keys(log).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= tag && hatKernwert(log[d])).sort();
     const latest = days[days.length - 1];
     if (!latest) return keine;
     const v = log[latest] ?? {};

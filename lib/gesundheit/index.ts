@@ -21,6 +21,7 @@ import { WEG } from '@/lib/wege';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 import { modulZaehlt, MODUL_INFO, type ModulStand } from './module';
 import { GES_TERMIN, GES_BLOCK } from './muster';
+import { belastungQuote, strainRahmen } from './belastung';
 
 export { GES_TERMIN, GES_BLOCK };
 
@@ -49,6 +50,10 @@ export const GESUNDHEIT_KENNZAHLEN: KennzahlDefBasis[] = [
     formel: 'Ø Ruhepuls 7 Tage − Ø 30 Tage (Schläge)', quelle: 'Morgen-Check / Whoop', luecke: '30-Tage-Basis fehlt (mind. 10 Werte)', pflegen: MORGEN },
   { id: 'stress', label: 'Stress (Journal)', saeule: 'er', gruppe: 'Journal', einheit: 'punkte', richtung: 'niedrig', gruen: 2.5, rot: 3.5,
     formel: 'Ø Stress 1–5 der letzten 7 Journal-Tage', quelle: 'Journal', luecke: 'Kein Journal-Eintrag mit Stress in 7 Tagen', pflegen: JOURNAL },
+  // 09.10. (WHOOP-Zusatzwerte): zählt nur, wenn WHOOP den Wert in den letzten 30 Tagen geliefert hat (`kennzahlenFuer`) — ohne diese
+  // Werte ist der Index bit-gleich zum Stand davor (Test in tests/gesundheit-index.test.ts).
+  { id: 'schlafleistung', label: 'Schlaf gegen Bedarf', saeule: 'er', gruppe: 'Whoop', einheit: 'prozent', richtung: 'hoch', gruen: 85, rot: 70,
+    formel: 'Ø Schlaf-Leistung (geschlafen ÷ Schlafbedarf, WHOOP) der letzten 7 Tage (mind. 3 Werte)', quelle: 'Whoop', luecke: 'Weniger als 3 Werte in 7 Tagen', pflegen: MORGEN },
   { id: 'datenstand', label: 'Datenstand Whoop', saeule: 'er', gruppe: 'Whoop', einheit: 'tage', richtung: 'niedrig', gruen: 1, rot: 3,
     formel: 'Tage seit dem letzten Whoop-Wert', quelle: 'Morgen-Check / Whoop-Sync', luecke: 'Noch kein Whoop-Wert eingetragen', pflegen: { text: 'Whoop verbinden', href: WEG.verbindungen() } },
   // ── Bewegung & Aufbau
@@ -58,6 +63,9 @@ export const GESUNDHEIT_KENNZAHLEN: KennzahlDefBasis[] = [
     formel: 'Tage mit Reha-Routine ÷ 7', quelle: 'Routinen-Häkchen', luecke: 'Keine Reha-Routine angelegt oder abgehakt', pflegen: ROUTINEN },
   { id: 'bewegung', label: 'Bewegung geplant', saeule: 'ba', gruppe: 'Kalender', einheit: 'stunden', richtung: 'hoch', gruen: 3, rot: 1,
     formel: 'Ø Stunden Sport-/Reha-Blöcke je Woche (letzte 4 Wochen)', quelle: 'Wochenplan', luecke: 'In 4 Wochen kein Block im Wochenplan', pflegen: { text: 'Woche planen', href: WEG.woche() } },
+  // Belastung zur Tagesform (09.10.): Rahmen je Recovery-Zone aus lib/gesundheit/belastung.ts (eigene Regel, Annahme) — nur mit Strain-Werten.
+  { id: 'belastung', label: 'Belastung zur Tagesform', saeule: 'ba', gruppe: 'Whoop', einheit: 'prozent', richtung: 'hoch', gruen: 85, rot: 60,
+    formel: 'Tage, an denen der Strain nicht über dem Rahmen der Recovery lag ÷ Tage mit Strain und Recovery (7 Tage, mind. 3)', quelle: 'Whoop (Strain, Recovery)', luecke: 'Weniger als 3 Tage mit Strain und Recovery in 7 Tagen', pflegen: MORGEN },
   { id: 'termine', label: 'Gesundheitstermine', saeule: 'ba', gruppe: 'Kalender', einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 0,
     formel: 'Arzt-, Physio-, Trainingstermine in den nächsten 4 Wochen', quelle: 'Kalender', luecke: 'Kalender-Stand fehlt', pflegen: { text: 'Kalender öffnen', href: WEG.woche() } },
   { id: 'energie', label: 'Energie (Journal)', saeule: 'ba', gruppe: 'Journal', einheit: 'punkte', richtung: 'hoch', gruen: 3.5, rot: 2.5,
@@ -123,6 +131,11 @@ function werte(b: GesundheitBestand, feld: 'rec' | 'sleep' | 'hrv' | 'rhr', n: n
 const whoopDetails = (l: { tag: string; wert: number }[], einheit: string, g: Schwelle, fuer: string, n = 3): Detail[] =>
   l.slice(0, n).map(x => ({ titel: tagKurz(x.tag), wert: `${zahl(x.wert, einheit === 'h' ? 1 : 0)} ${einheit}`.trim(), href: WEG.gesundheit('morgen', fuer), ampel: ampelVon(x.wert, g) }));
 
+/** WHOOP-Zusatzwerte eines Feldes über n Tage (heute zuerst), nur echte Zahlen (09.10.). */
+function zusatzWerte(b: GesundheitBestand, feld: 'schlafLeistung' | 'strain', n: number): { tag: string; wert: number }[] {
+  return tageZurueck(b.heute, n).map(t => ({ tag: t, wert: b.vitals[t]?.[feld] })).filter((x): x is { tag: string; wert: number } => typeof x.wert === 'number');
+}
+
 /** Journal-Werte eines Feldes über 7 Tage. */
 function journal(b: GesundheitBestand, feld: 'energy' | 'stress'): { tag: string; wert: number }[] {
   return tageZurueck(b.heute, 7).map(t => ({ tag: t, wert: b.journal[t]?.[feld] })).filter((x): x is { tag: string; wert: number } => typeof x.wert === 'number');
@@ -166,6 +179,20 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
     const a = mittel(l7.map(x => x.wert))!, basis = mittel(l30.map(x => x.wert))!;
     const w = a - basis;
     return { wert: w, anzeige: `${w > 0 ? '+' : ''}${zahl(w)} bpm`, quelle: `Ø ${zahl(a, 0)} bpm (7 Tage) gegen Ø ${zahl(basis, 0)} bpm (30 Tage)`, details: [{ titel: 'Ø 7 Tage', wert: `${zahl(a, 0)} bpm`, href: WEG.gesundheit('morgen', b.person) }, { titel: 'Basis 30 Tage', wert: `${zahl(basis, 0)} bpm`, unter: `${l30.length} Werte`, href: WEG.gesundheit('morgen', b.person) }] };
+  },
+  schlafleistung(b) {
+    const l = zusatzWerte(b, 'schlafLeistung', 7);
+    if (l.length < 3) return { luecke: `${l.length} Wert${l.length === 1 ? '' : 'e'} in 7 Tagen — mindestens 3 nötig`, details: [{ titel: 'WHOOP-Abgleich', href: WEG.gesundheit('morgen', b.person) }] };
+    const w = mittel(l.map(x => x.wert))!;
+    return { wert: w, anzeige: pz(w), quelle: `Ø über ${l.length} Nächte`, details: l.slice(0, 3).map(x => ({ titel: tagKurz(x.tag), wert: pz(x.wert), unter: typeof b.vitals[x.tag]?.schlafBedarf === 'number' ? `Bedarf ${zahl(b.vitals[x.tag].schlafBedarf!)} h` : undefined, href: WEG.gesundheit('morgen', b.person), ampel: ampelVon(x.wert, grenzen(b, 'schlafleistung')) })) };
+  },
+  belastung(b) {
+    const tage = tageZurueck(b.heute, 7).map(t => ({ tag: t, strain: b.vitals[t]?.strain, rec: b.vitals[t]?.rec }));
+    const q = belastungQuote(tage);
+    if (!q) return { luecke: 'Weniger als 3 Tage mit Strain und Recovery in 7 Tagen', details: [{ titel: 'WHOOP-Abgleich', href: WEG.gesundheit('morgen', b.person) }] };
+    const w = q.quote * 100;
+    return { wert: w, anzeige: pz(w), quelle: `${q.tage - q.drueber} von ${q.tage} Tagen im Rahmen der Tagesform${q.drueber ? ` · ${q.drueber}× drüber` : ''}`,
+      details: tage.filter(t => typeof t.strain === 'number' && strainRahmen(t.rec)).slice(0, 3).map(t => { const r = strainRahmen(t.rec)!; const drueber = (t.strain as number) > r.bis; return { titel: tagKurz(t.tag), wert: `Strain ${zahl(t.strain as number)}`, unter: `Rahmen ${r.von > 0 ? `${r.von}–${r.bis}` : `bis ${r.bis}`}`, href: WEG.gesundheit('morgen', b.person), ampel: drueber ? 'rot' as Ampel : 'gruen' as Ampel }; }) };
   },
   stress(b) {
     const l = journal(b, 'stress');
@@ -282,10 +309,14 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
  * Die Tagebücher der Module (Symptom-Tagebuch, Zähler) zählen nur, wenn die Person das Modul führt — an UND in 60 Tagen
  * geführt (EINE Regel `modulZaehlt`, lib/gesundheit/module.ts). Sonst sind sie keine Messlücke, sondern gar nicht da.
  */
-export function kennzahlenFuer(b: Pick<GesundheitBestand, 'haut' | 'streak' | 'heute' | 'module'>): KennzahlDefBasis[] {
+export function kennzahlenFuer(b: Pick<GesundheitBestand, 'haut' | 'streak' | 'heute' | 'module'> & { vitals?: GesundheitBestand['vitals'] }): KennzahlDefBasis[] {
   const fuehrtHaut = modulZaehlt(b.module?.haut, b.haut, b.heute);
   const fuehrtStreak = modulZaehlt(b.module?.serie, b.streak, b.heute);
-  return GESUNDHEIT_KENNZAHLEN.filter(k => (k.id !== 'haut' && k.id !== 'schuebe' || fuehrtHaut) && (k.id !== 'streak' || fuehrtStreak));
+  // WHOOP-Zusatzwerte (09.10.): die Kennzahl gibt es nur, wenn WHOOP den Wert in den letzten 30 Tagen geliefert hat — sonst ist sie keine
+  // Messlücke, sondern gar nicht da (wie die Module). So bleibt der Index ohne diese Werte bit-gleich.
+  const liefert = (feld: 'strain' | 'schlafLeistung') => !!b.vitals && tageZurueck(b.heute, 30).some(t => typeof b.vitals![t]?.[feld] === 'number');
+  const zusatz: Record<string, boolean> = { belastung: liefert('strain'), schlafleistung: liefert('schlafLeistung') };
+  return GESUNDHEIT_KENNZAHLEN.filter(k => (k.id !== 'haut' && k.id !== 'schuebe' || fuehrtHaut) && (k.id !== 'streak' || fuehrtStreak) && (zusatz[k.id] ?? true));
 }
 
 export function berechneGesundheit(b: GesundheitBestand): GesundheitsIndex {

@@ -114,7 +114,9 @@ describe('Gesundheits-Index', () => {
     const pi = berechneGesundheit(leer);
     expect(pi.index).toBeNull();
     expect(pi.label).toBe('Noch keine Daten');
-    expect(pi.luecken).toBe(GESUNDHEIT_KENNZAHLEN.length - 3);
+    // ohne die Tagebücher (haut, schuebe, streak) und ohne WHOOP-Zusatzwerte (belastung, schlafleistung — 09.10.)
+    expect(pi.luecken).toBe(GESUNDHEIT_KENNZAHLEN.length - 5);
+    expect(pi.luecken).toBe(kennzahlenFuer(leer).length);
     for (const x of pi.saeulen.flatMap(s => s.kennzahlen)) {
       expect(x.gemessen, x.id).toBe(false);
       expect(x.ampel, x.id).toBe('grau');
