@@ -4,7 +4,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vites
 import { mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { GmailFake } from './fixtures/gmail-fake';
+import { GmailFake, GMAIL_SCOPE } from './fixtures/gmail-fake';
 import { KONTEN, umgebung } from './fixtures/gmail-setup';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-gmail-v-'));
@@ -14,14 +14,15 @@ process.env.MAKE_OS_KEY = 'dienst-test-gmail-verbinden';
 
 type R = { GET?: (r: Request) => Promise<Response>; POST?: (r: Request) => Promise<Response> };
 let V: typeof import('@/lib/google/verbindung'), S: typeof import('@/lib/gmail/stand'), CS: typeof import('@/lib/kalender/google/stand'), db: typeof import('@/lib/store/local-db');
-let verbinden: R, rueckruf: R, status: R, kalenderAbgleich: typeof import('@/lib/kalender/google/abgleich');
+let verbinden: R, rueckruf: R, status: R, kalenderStatus: R, kalenderAbgleich: typeof import('@/lib/kalender/google/abgleich'), gmailAbgleich: typeof import('@/lib/gmail/abgleich');
 let g: GmailFake;
 const sitzung = (person: string) => ({ 'x-make-user': person, 'content-type': 'application/json' });
 const dienst = { 'x-make-key': 'dienst-test-gmail-verbinden', 'x-make-person': 'kevin', 'content-type': 'application/json' };
 
 beforeAll(async () => {
   V = await import('@/lib/google/verbindung'); S = await import('@/lib/gmail/stand'); CS = await import('@/lib/kalender/google/stand'); db = await import('@/lib/store/local-db');
-  kalenderAbgleich = await import('@/lib/kalender/google/abgleich');
+  kalenderAbgleich = await import('@/lib/kalender/google/abgleich'); gmailAbgleich = await import('@/lib/gmail/abgleich');
+  kalenderStatus = await import('../app/api/kalender/google/route') as R;
   verbinden = await import('../app/api/google/verbinden/route') as R; rueckruf = await import('../app/api/google/rueckruf/route') as R; status = await import('../app/api/google/status/route') as R;
 });
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));
@@ -79,6 +80,47 @@ describe('Gmail verbinden — inkrementell', () => {
     expect(rm.headers.get('location')).toBe('https://app.makeinnovation.test/os/inbox?google=verbunden');
     expect((await CS.ladeGoogleStand('kevin'))!.kalenderId).toBe('team@group.calendar.google.test');   // unverändert
     expect((await V.ladeVerbindung('kevin'))!.funktionen).toEqual(expect.arrayContaining(['kalender', 'gmail']));
+  });
+  it('Kalender NACH Gmail (09.10.): die Kalender-Freigabe ergänzt inkrementell — EINE Verbindung, beide Funktionen bereit, Gmail-Spiegel unberührt', async () => {
+    g.mail({ id: 'start0001', von: 'anna@firma.example.invalid', betreff: 'Erste', text: 'x' });
+    const alleScopes = g.basis.scopeGewaehrt;
+    // Erst nur Gmail: Google gewährt nur basis + gmail.modify.
+    g.basis.scopeGewaehrt = `openid https://www.googleapis.com/auth/userinfo.email ${GMAIL_SCOPE}`;
+    const m = await start(['gmail']);
+    expect((await zurueck(m.d.url!)).headers.get('location')).toBe('https://app.makeinnovation.test/os/inbox?google=verbunden');
+    await vi.waitFor(async () => { const st = await S.ladeGmailStand('kevin'); expect(st?.koepfe.start0001 && st.at).toBeTruthy(); });
+    await vi.waitFor(() => expect(gmailAbgleich.gmailAbgleichLaeuft('kevin')).toBe(false));   // auch ein Nachlauf ist durch
+    const spiegel = async () => { const st = await S.ladeGmailStand('kevin'); return JSON.stringify({ koepfe: st?.koepfe, historyId: st?.historyId, aliase: st?.aliase }); };
+    const gmailVorher = await spiegel();
+    const kalStatus = async () => (await kalenderStatus.GET!(new Request('http://localhost/api/kalender/google', { headers: sitzung('kevin') }))).json() as Promise<{ verbunden: boolean; bereit: string[]; kalender: unknown }>;
+    // Das sieht der Kalender: Google verbunden, aber die Kalender-Funktion ist NICHT bereit (→ Karte „Kalender bei Google freigeben“).
+    const vorher = await kalStatus();
+    expect(vorher).toMatchObject({ verbunden: true, bereit: ['basis', 'gmail'], kalender: null });
+    expect(await gmailAbgleich.gmailBereit('kevin')).toBe(true);
+    // „Kalender-Freigabe ergänzen“: gleiche Anmeldung, nur die Funktion kalender — Google schlägt dasselbe Konto vor und fragt alles zusammen an.
+    const k = await start(['kalender']);
+    const q = new URL(k.d.url!).searchParams;
+    expect(q.get('login_hint')).toBe('kevin@makeinnovation.test');
+    expect(q.get('include_granted_scopes')).toBe('true');
+    expect(q.get('scope')!.split(' ')).toEqual(expect.arrayContaining([GMAIL_SCOPE, 'https://www.googleapis.com/auth/calendar.events']));
+    g.basis.scopeGewaehrt = alleScopes;   // Google gibt bei include_granted_scopes die Vereinigung zurück
+    const rk = await zurueck(k.d.url!);
+    expect(rk.headers.get('location')).toBe('https://app.makeinnovation.test/os/kalender?google=verbunden');
+    const v = (await V.ladeVerbindung('kevin'))!;
+    expect(v.funktionen).toEqual(expect.arrayContaining(['basis', 'gmail', 'kalender']));
+    expect(v.scopes).toEqual(expect.arrayContaining([GMAIL_SCOPE, 'https://www.googleapis.com/auth/calendar.events']));
+    expect(v.refreshToken).toBe('erneuerung-geheim-1');
+    const nachher = await kalStatus();
+    expect(nachher.bereit).toEqual(expect.arrayContaining(['basis', 'gmail', 'kalender']));
+    expect(nachher.kalender).toBeTruthy();   // Hauptkalender gewählt
+    expect(await gmailAbgleich.gmailBereit('kevin')).toBe(true);
+    expect(await spiegel()).toBe(gmailVorher);   // der Rückruf richtet nur den Kalender ein
+  });
+  it('Nur der Kalender verbunden: Gmail ist NICHT bereit (die Inbox zeigt „Gmail verbinden“)', async () => {
+    const k = await start(['kalender']);
+    await zurueck(k.d.url!);
+    expect((await V.ladeVerbindung('kevin'))!.funktionen).not.toContain('gmail');
+    expect(await gmailAbgleich.gmailBereit('kevin')).toBe(false);
   });
   it('Fehler führen in die Inbox zurück: fehlende Freigabe (scope-fehlt), fremde Domain, abgebrochen', async () => {
     g.basis.scopeGewaehrt = 'openid https://www.googleapis.com/auth/userinfo.email';

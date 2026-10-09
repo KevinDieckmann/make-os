@@ -9,6 +9,9 @@
 //   · Umzug: Vorschau, dann ein ausdrücklicher Klick — vorher wird jeder Termin gesichert
 // Am Handy bedienbar: Tasten ≥ 44 px, Eingaben 16 px.
 // Daten nur über /api/google/* (allgemeine Verbindung) und /api/kalender/google* (Kalender) — nie Tokens im Browser.
+// 09.10.: Ist Google verbunden, aber die Kalender-Freigabe fehlt (z. B. zuerst nur Gmail verbunden oder ein Häkchen bei Google
+// weggelassen), ist der Hauptknopf „Kalender-Freigabe ergänzen“ — derselbe Weg ergänzt inkrementell, Gmail bleibt. Abgleich,
+// Kalender wählen und Umzug erst, wenn die Freigabe da ist; Trennen bleibt, ist aber nicht mehr der einzige Weg.
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -16,6 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { LEUCHT, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, GOOGLE_NICHT_EINGERICHTET } from './google-verbinden';
+import { googleKalenderBereit } from '@/lib/kalender/verbinden-anzeige';
 
 interface Stand {
   ok: boolean; konfiguriert: boolean; verbunden: boolean; konto?: string; seit?: string; erlaubteDomain?: boolean;
@@ -92,7 +96,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
     if (f) setHinweis({ text: f.fehler, achtung: true });
   };
   const trennen = async () => {
-    if (!(await bestaetigen({ titel: 'Google trennen?', text: 'Der Zugriff wird bei Google widerrufen, die Google-Termine verschwinden aus MAKE OS (sie bleiben in Google). Neue Business-Termine landen wieder in iCloud.', ja: 'Trennen', gefahr: true }))) return;
+    if (!(await bestaetigen({ titel: 'Google trennen?', text: `Der Zugriff wird bei Google widerrufen, die Google-Termine verschwinden aus MAKE OS (sie bleiben in Google). Neue Business-Termine landen wieder in iCloud.${s?.bereit?.includes('gmail') ? ' Gmail in der Inbox wird damit ebenfalls getrennt.' : ''}`, ja: 'Trennen', gefahr: true }))) return;
     setArbeit('trennen');
     const r = await post('/api/google/trennen');
     setArbeit(null);
@@ -136,6 +140,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise };
   const box: CSSProperties = { display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' };
   const gebe = (k: string) => arbeit === k;
+  const kalenderDa = !!s && googleKalenderBereit(s);
 
   return (
     <div style={box} data-google="verbindung">
@@ -143,6 +148,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
         <span style={{ fontWeight: 700, fontSize: 14 }}>Google Kalender (MAKE)</span>
         {s?.verbunden && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.schlaf, border: `1px solid ${LEUCHT.schlaf}55`, borderRadius: 999, padding: '1px 8px' }}>verbunden</span>}
         {s?.getrennt && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.kritisch, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 999, padding: '1px 8px' }}>getrennt</span>}
+        {s?.verbunden && !kalenderDa && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '1px 8px' }}>Kalender-Freigabe fehlt</span>}
       </div>
       <div style={klein}>Deine MAKE-Termine liegen bei Google (Workspace) und gleichen in beide Richtungen ab. Privat, Familie und Gemeinsam bleiben in MAKE OS und iCloud.</div>
       {hinweis && <div role="status" style={{ fontSize: 13, color: hinweis.achtung ? LEUCHT.achtung : C.ink, background: hinweis.achtung ? `${LEUCHT.achtung}14` : 'rgba(255,255,255,.04)', borderRadius: 9, padding: '8px 10px' }}>{hinweis.text}</div>}
@@ -158,7 +164,20 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
           <div style={klein}>Du meldest dich bei Google mit deinem Workspace-Konto an{s.erlaubteDomain ? ' (nur die eingestellte Domain wird angenommen)' : ''}. MAKE OS bekommt Zugriff auf Termine — keine Mails und keine Dateien; Gmail verbindest du getrennt in der Inbox (nur wenn du willst).</div>
         </>
       )}
-      {s?.verbunden && (
+      {s?.verbunden && !kalenderDa && (
+        <>
+          <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+            <span>Verbunden als <b>{s.konto}</b> · für den Kalender fehlt noch die Freigabe bei Google.</span>
+            <span style={klein}>Ergänze sie mit einem Klick: Google fragt nur die Kalender-Freigabe dazu — die Verbindung bleibt dieselbe, Gmail bleibt verbunden.</span>
+            <span style={klein}>Gmail (Inbox): {s.bereit?.includes('gmail') ? 'verbunden' : 'nicht verbunden'} — <Link href="/os/inbox" style={{ color: C.aktiv, textDecoration: 'none' }}>in der Inbox {s.bereit?.includes('gmail') ? 'öffnen' : 'verbinden'} ›</Link></span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Taste aus={!!arbeit} onClick={() => void verbinden()}>{gebe('verbinden') ? 'öffnet Google …' : 'Kalender-Freigabe ergänzen'}</Taste>
+            <Taste leise aus={!!arbeit} onClick={() => void trennen()}>{gebe('trennen') ? 'trennt …' : 'Trennen'}</Taste>
+          </div>
+        </>
+      )}
+      {s?.verbunden && kalenderDa && (
         <>
           <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
             <span>Verbunden als <b>{s.konto}</b>{s.kalender ? <> · Kalender „{s.kalender.name}“{s.kalender.schreibbar ? '' : ' (nur lesbar)'}</> : ' · wird eingerichtet …'}</span>

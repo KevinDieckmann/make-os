@@ -204,6 +204,30 @@ Werte nicht** — mit Teilen schon), `tests/gesundheit-index.test.ts`, Messlatte
 durchgehen. **Rückweg:** nur optionale Felder; der alte Stand verwirft Zonen/Messwerte an Läufen beim nächsten Speichern des Sports (der nächste
 Abgleich bringt sie wieder) und ignoriert `felder` im Spiegel.
 
+## 09.10.2026 — Google: Kalender-Freigabe ergänzen ohne Trennen (nur lokal — Branch `google-freigabe`, Basis a063e73a)
+
+Befund live: Kevin hat zuerst Gmail verbunden. Danach zeigte der Business-Kalender nur „MAKE Innovation · Google verbunden“ (keine Karte),
+der Google-Kalender fehlte im Termin-Dialog, und die Einstellungen meldeten „Für den Kalender fehlt eine Freigabe“ — mit „Trennen“ als einzigem
+Ausweg (das meldet auch Gmail ab). Ursache: Karte und Einstellungen fragten nur „Google verbunden?“ (allgemeine Verbindung), nicht „Funktion
+`kalender` bereit?“ (`googleStatus().bereit`). Der Server konnte schon immer inkrementell ergänzen — es fehlte nur der Knopf.
+
+- **Rein** `lib/kalender/verbinden-anzeige.ts`: `GoogleKurz.bereit`, `googleKalenderBereit` (verbunden UND `bereit` enthält „kalender“),
+  `googleKalenderFreigabeFehlt`. Business zeigt die Karte, solange der Kalender nicht bereit ist — auch wenn Gmail verbunden ist.
+- **Business-Karte** (`VerbindenKarten.tsx`): fehlt nur die Kalender-Freigabe, heißt sie „Kalender bei Google freigeben“ (Titel + Knopf, „Gmail
+  bleibt verbunden“), derselbe Weg `googleKalenderVerbinden()`.
+- **Einstellungen** (`GoogleVerbindung.tsx`): Abzeichen „Kalender-Freigabe fehlt“, Hauptknopf „Kalender-Freigabe ergänzen“ (POST
+  `/api/google/verbinden { funktionen: ['kalender'] }` → Google mit `login_hint` + `include_granted_scopes` → Rückruf richtet nur den Kalender ein,
+  Hauptkalender gewählt, Gmail-Spiegel unberührt). „Jetzt abgleichen“, „Kalender wählen“ und der Umzug erst, wenn die Freigabe da ist; „Trennen“
+  bleibt (Rückfrage nennt jetzt, dass Gmail mit getrennt wird).
+- Umgekehrt (Kalender verbunden, Gmail fehlt) zeigt die Inbox schon „Gmail verbinden“ (`gmailBereit`) — geprüft, unverändert.
+- Tests: `tests/kalender-verbinden-karten.test.ts` (Anzeige nur-Gmail → Karte, Freigabe-Karte, Einstellungen), `tests/gmail-verbinden.test.ts`
+  („Kalender NACH Gmail“: eine Verbindung, Funktionen gmail + kalender bereit, gleiches Refresh-Token, Gmail-Spiegel unverändert; „nur Kalender“ →
+  Gmail nicht bereit).
+- **So testet ihr:** Mit einem Konto, bei dem nur Gmail verbunden ist: Kalender › Business → Karte „Kalender bei Google freigeben“ → bei Google
+  bestätigen → zurück im Kalender, „MAKE <Vorname> (Google)“ erscheint, die Inbox zeigt Gmail weiter. Kalender › Einstellungen zeigt vorher
+  „Kalender-Freigabe ergänzen“ statt nur „Trennen“.
+- Rückweg: nur Oberfläche + reine Anzeige-Regel, keine Daten.
+
 ## 09.10.2026 — Kalender: linke Spalte einklappbar (nur lokal — Branch `kalender-klappen`, Basis `agenten-nacht` 43bb4c14)
 
 Kevin 09.10.: „Guck mal, ob du den Kalender links einklappbar machen kannst, das sieht noch so verloren aus. Die Monatsansicht etc. einfach

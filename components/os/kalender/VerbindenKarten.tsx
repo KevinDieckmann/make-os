@@ -11,29 +11,41 @@ import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { UG_NAME } from '@/lib/einheiten';
 import { Karte, Knopf, Hinweis, LEUCHT } from '../ui';
-import { verbindenAnzeige, firmaOhneRechtsform, type GoogleKurz, type IcloudKurz, type KalenderBereich } from '@/lib/kalender/verbinden-anzeige';
+import { verbindenAnzeige, firmaOhneRechtsform, googleKalenderFreigabeFehlt, type GoogleKurz, type IcloudKurz, type KalenderBereich } from '@/lib/kalender/verbinden-anzeige';
 import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_NICHT_EINGERICHTET } from './google-verbinden';
 import { IcloudVerbindung } from './IcloudVerbindung';
 
 /** Die Firma, deren Google Workspace den Business-Kalender trägt — aus der Instanz (lib/einheiten.ts), ohne Rechtsform. */
 export const FIRMA = firmaOhneRechtsform(UG_NAME);
 
-/** Karte „<Firma> verbinden“ (nur Darstellung — testbar ohne Netz). */
+/** Text der Freigabe-Karte (Google schon verbunden, z. B. für Gmail — nur der Kalender fehlt). */
+export const KALENDER_FREIGEBEN = 'Kalender bei Google freigeben';
+
+/**
+ * Karte „<Firma> verbinden“ (nur Darstellung — testbar ohne Netz). Ist Google schon verbunden (z. B. zuerst nur für Gmail), fehlt
+ * aber die Kalender-Freigabe, heißt sie „Kalender bei Google freigeben“ — derselbe Weg ergänzt die Freigabe, Gmail bleibt verbunden.
+ */
 export function GoogleVerbindenKarte({ stand, firma = FIRMA, arbeit, fehler, onVerbinden }: { stand: GoogleKurz; firma?: string; arbeit?: boolean; fehler?: string | null; onVerbinden: () => void }) {
   const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55 } as const;
+  const freigabe = googleKalenderFreigabeFehlt(stand);
   return (
     <Karte i={0} akzent={LEUCHT.puls}>
-      <div data-verbinden="google" style={{ display: 'grid', gap: 8 }}>
-        <div style={{ fontWeight: 700, fontSize: TYP.body }}>{firma} verbinden</div>
+      <div data-verbinden="google" data-freigabe={freigabe ? '' : undefined} style={{ display: 'grid', gap: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: TYP.body }}>{freigabe ? KALENDER_FREIGEBEN : `${firma} verbinden`}</div>
         {stand.getrennt && <div style={{ fontSize: 13, color: LEUCHT.kritisch }}>Die Verbindung ist nicht mehr gültig ({stand.getrennt.grund}). Bitte neu verbinden.</div>}
-        <div style={klein}>
-          Die Business-Termine von {firma} erscheinen hier im Kalender und gleichen in beide Richtungen mit deinem Google Kalender (Workspace) ab.
-          Du meldest dich bei Google mit deinem Workspace-Konto an; MAKE OS bekommt nur die Freigabe für den Kalender — keine Mails, keine Dateien.
-        </div>
+        {freigabe
+          ? <div style={klein}>
+              Google ist schon verbunden{stand.konto ? ` (${stand.konto})` : ''}, aber für den Kalender fehlt noch die Freigabe. Bei Google bestätigst du sie dazu —
+              die Verbindung bleibt dieselbe, Gmail bleibt verbunden. Danach erscheinen die Business-Termine von {firma} hier im Kalender.
+            </div>
+          : <div style={klein}>
+              Die Business-Termine von {firma} erscheinen hier im Kalender und gleichen in beide Richtungen mit deinem Google Kalender (Workspace) ab.
+              Du meldest dich bei Google mit deinem Workspace-Konto an; MAKE OS bekommt nur die Freigabe für den Kalender — keine Mails, keine Dateien.
+            </div>}
         {fehler && <Hinweis art="achtung" rolle="status">{fehler}</Hinweis>}
         {!stand.konfiguriert
           ? <div style={{ ...klein, color: LEUCHT.achtung }}>{GOOGLE_NICHT_EINGERICHTET}</div>
-          : <div><Knopf haupt onClick={onVerbinden} aus={arbeit}>{arbeit ? 'öffnet Google …' : stand.getrennt ? 'Neu verbinden' : `${firma} verbinden`}</Knopf></div>}
+          : <div><Knopf haupt onClick={onVerbinden} aus={arbeit}>{arbeit ? 'öffnet Google …' : freigabe ? KALENDER_FREIGEBEN : stand.getrennt ? 'Neu verbinden' : `${firma} verbinden`}</Knopf></div>}
       </div>
     </Karte>
   );
