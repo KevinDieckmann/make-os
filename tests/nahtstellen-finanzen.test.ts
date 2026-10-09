@@ -331,6 +331,30 @@ describe('I · 0-Punkt-OP-Liste (Daten-Assistent) ↔ Rechnung im Finanzplan: di
   });
 });
 
+describe('J · Mandate-Tabelle zurücknehmen, wenn inzwischen eine Rechnung am Mandat hängt', () => {
+  it('die Rechnung (auch ein Entwurf) sperrt: Mandat bleibt, Konflikt gezählt — keine Rechnung zeigt ins Leere', async () => {
+    const mt = await import('@/app/api/crm/mandate-tabelle/route') as Route;
+    const { tabelleLesen, zeilenAufbereiten, datensaetzeBauen } = await import('@/lib/tabelle/einfuegen');
+    const { MANDAT_FELDER } = await import('@/lib/crm/mandate-tabelle');
+    const g = tabelleLesen('Kunde\tTitel\tHonorar netto/Monat\nTabelle Beispiel GmbH\tBegleitung\t2.000,00\n');
+    if (!g.ok) throw new Error(g.fehler);
+    const a = zeilenAufbereiten(g.zeilen, MANDAT_FELDER);
+    const zeilen = datensaetzeBauen(a, a.vorschlag);
+    const v = await (await mt.POST!(anfrage('/api/crm/mandate-tabelle', 'pa', { aktion: 'vorschau', zeilen, gesellschaft: 'ug' }))).json() as { basis: string };
+    const u = await (await mt.POST!(anfrage('/api/crm/mandate-tabelle', 'pa', { aktion: 'uebernehmen', zeilen, gesellschaft: 'ug', basis: v.basis }))).json() as { ok: boolean; laufId: string };
+    expect(u.ok).toBe(true);
+    const crm = await db.loadJson<{ mandate: { id: string; kunde: string }[] }>('crm');
+    const m = crm!.mandate.find(x => x.kunde === 'Tabelle Beispiel GmbH')!;
+    const { entwurfNeu } = await import('@/lib/finanzen/rechnung/server');
+    const r = await entwurfNeu({ quelle: 'mandat', mandatId: m.id, person: 'pa', haushalt: 'h-n', sicht: 'privat' });
+    expect(r.rechnung.betrag).toBe(2380);   // 2.000 € netto + 19 % über ust.ts
+    const z = await (await mt.POST!(anfrage('/api/crm/mandate-tabelle', 'pa', { aktion: 'zurueck', laufId: u.laufId }))).json() as { ok: boolean; mandate: number; konflikte: number };
+    expect(z).toMatchObject({ ok: true, mandate: 0 });
+    expect(z.konflikte).toBeGreaterThanOrEqual(1);
+    expect((await db.loadJson<{ mandate: { id: string }[] }>('crm'))!.mandate.some(x => x.id === m.id)).toBe(true);
+  });
+});
+
 describe('Regel „dieselbe Zahlung“ (rein)', () => {
   it('Name ohne Rechtsform und Allerweltswörter, Nummer ohne Trennzeichen, Fenster 14 Tage, Betrag auf den Cent', async () => {
     const { gleicheZahlung, namenPassen, nummerImText, trefferStufe } = await import('@/lib/finanzen/zahlung-abgleich');
