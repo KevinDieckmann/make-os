@@ -6,6 +6,23 @@ Agenten-System und ZOE sauber überall angebunden sind.“ Vier unabhängige Dur
 
 ---
 
+## 0. Stand nach den Korrekturen (09.10. abends, `agenten-nacht`)
+
+Alle Befunde „kritisch“ und „wichtig“ sind behoben. Die Entscheidungen E1, E3 und E4 sind gebaut, jede Änderung hat einen Wächtertest, der vorher rot war.
+
+| Paket | Was es behebt |
+|---|---|
+| ZOE-Schreibwege | K1 (Finanz-Werkzeuge über die Routen, „nur Business“ nie in private Finanzen), K2 (Head of Finance ohne Privat-Einheit), Firma-Rückfall, CRM-Altwerkzeuge, Meilenstein/Fokus über die Route, `suche_arbeit`, Forderungen nach Bereich, `starte_auftraege` ohne stilles Kürzen |
+| Takt robust | K4 (Not-Aus fail-closed), Warteschlange/Head-Vorschläge nie gekürzt, Pacht mit Herzschlag, kein Engpass am Morgenlauf, CRM-Signale im Takt, Berliner Zeit, verpasste Wochen-/Monatsläufe |
+| Agenten-Datenschicht | Not-Aus/Autonomie der alten Heads, Rücknahme mit Papierkorb, Skill-Quote, Löschfrist der Threads, Tempo (RAUSCHEN), Gedächtnis/Finance nie kürzen, Empfang, Stapel-Dubletten, Messpunkt im HOI |
+| KI-Etiketten | K3 (Gesundheit über Fach-Agenten nur mit Einwilligung), Person im KI-Tor bei Systemläufen, Bereich je Einheit in Kasse/Schilden/Board, feste Personen im Head of Finance und Kalender-Vorschlag |
+| E1 Ereignisstelle | Mail/WhatsApp, Zahlungseingang, Deal-Stufe/SQL, Anfrage, „An ZOE geben“ (sofort), Absage → Ereignis-Skills und Heads; kein Nachfassen bei frischer Antwort |
+| E3 Gesprächs-Ablage | Index + je Thread eine Datei; Takt/Listen lesen nur den Index; KI-Protokoll je Tag |
+| E4 Konto-Sicht | „Nur Business“ sieht in Aufgaben und über ZOE nichts Privates; Partner bekommt Business-Unterlagen (Routinen/Ziele/Meilensteine + Demo-Konto: Folgepaket) |
+| Kleinkram (Hauptsitzung) | alte Heads ohne Kalenderzwang, Head of Finance Datenblock mit crypto-Kennung, Test-Schutz gegen den echten Vault |
+
+**Offen (Entscheidungen):** E2 alte Heads überführen (nach Update 2), E5 fehlende Bereiche (Woche, Aufgaben abhaken, Kapazität, Steuern, Finanzplanung, Sport), E6 Plattform (CRM-Team aus Konten, Kalender als Personenliste, Instanz-Werte zur Laufzeit), E7 Steuern EINE Quelle, E8 Systemläufe je Person, E9 freie Gesellschaften. Dazu die Einzelfragen der Pakete (UPDATES.md, jeweils am Abschnittsende).
+
 ## 1. Urteil in fünf Sätzen
 
 1. **Lesen ist gut gebaut:** ZOE und die Agenten holen fast alles über die offiziellen Filterstellen der Bereiche (Aufgaben-Sicht, `crmSicht`,
@@ -63,7 +80,7 @@ Sport** hat aber kein Head Daten. Eine Frage dazu landet im Leeren.
 
 ---
 
-## 4. Befunde nach Schwere (Stand: in Arbeit = ein Korrektur-Agent läuft gerade)
+## 4. Befunde nach Schwere (Stand 09.10. abends: alle unten mit „in Arbeit“ markierten sind behoben — siehe Abschnitt 0)
 
 ### Kritisch
 | # | Befund | Folge | Stand |
