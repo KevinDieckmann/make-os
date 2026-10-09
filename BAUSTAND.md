@@ -49,6 +49,11 @@
   + neutral-rest + eigene Korrekturen. Volle Suite (Stand 97d8b7cd): 521 Dateien / 6.829 Tests grün; danach je Merge tsc 0 + Bereichs-Tests grün. Demo-Rundgang
   (`scratchpad/rundgang-0910/bilder`, 13 Bilder) — Funde gehen an `rundgang-funde`. Laufen: `daten-assistenten` (B9 a–c), `brain-neutral`, `rundgang-funde`.
   Offene Fragen gesammelt (`scratchpad/bericht/fragen.md`) → Klickrunde mit Kevin. **Upload Fr:** weiter `entwicklung` (unverändert seit 08.10. + Doku); agenten-nacht = Update 2.
+- **ENDSTAND 09.10. (Endprüfung, Kevin: „das muss perfekt laufen“):** `agenten-nacht` → **3f60b30b** (+ Rundgang-Funde cbe4c48a) = alles aus der Nacht inkl.
+  daten-assistenten, brain-neutral, rundgang-funde, neutral-rest-2, gesundheit-module, medien-nachzug, Nahtstellen Zugang/CRM/Finanzen, Agenten-Härtetest (41 Fälle),
+  Sicherheits-Korrektur Instanz-Export. Geprüft: tsc 0 · ESLint 0 Fehler · volle Suite 540 Dateien / 7.222 Tests grün · Produktionsbau Demo ok · Seiten-Durchlauf 185 Aufrufe
+  (beide Rollen + Handy) ohne einen Fehler · Rundgang-Bilder `scratchpad/rundgang-0910/bilder-ende`. Offene Fragen: `scratchpad/bericht/fragen.md` → Klickrunde.
+  `entwicklung` (Upload-Stand) unverändert; Hotfix `instanz-export-schutz` (73ac1e83, Basis entwicklung) wartet auf Kevins Wort.
 - **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
   wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
   Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
