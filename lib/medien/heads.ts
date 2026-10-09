@@ -8,6 +8,8 @@
 //   MEDIEN_STAPEL_ART.freigeben                 Klick: Texte (Herkunft „ki“) und Zuschnitt-Rechtecke ans Medium; zuschneiden tut danach der
 //                                               Browser (neues Medium „abgeleitet von“, das Original bleibt)
 // Die KI-Aufrufe selbst baut Paket 1/6a — hier nichts mit Modellen.
+// Paket 4c (09.10.): die Stapel-Art leitet KI-Vorschläge (erzeugtes Bild übernehmen, Video/Bild per Klick erzeugen) an lib/medien/ki-stapel.ts;
+// `medienAuftraegeFuerHead` listet alle Aufträge eines Heads (für das Agenten-Werkzeug `medien_suchen`, lib/agenten/medien-werkzeuge.ts).
 
 import { medienBestand, GRENZEN, HEAD_AUFTRAEGE, type MediumFuerHead, type Zuschnitt, type HeadAuftragArt } from './typen';
 import { medienFuerHeadRein, rechteckOk, text, type Fehler } from './regeln';
@@ -30,6 +32,7 @@ export async function medienFuerHead(person: string, headId: string, auftragId: 
       id: m.id, art: m.art, typ: m.typ, ...(m.name ? { name: m.name } : {}), ...(m.aufgenommen ? { aufgenommen: m.aufgenommen } : {}),
       ...(album ? { albumTitel: album.titel } : {}), auftrag: zugang.auftrag, ...(zugang.notiz ? { notiz: zugang.notiz } : {}), mitPersonen,
       freigabe: m.marketing.status, ...(m.marketing.kanaele ? { kanaele: m.marketing.kanaele } : {}), ...(m.texte ? { texte: m.texte } : {}),
+      ...(m.urheber.art === 'ki' && m.urheber.ki ? { ki: { anbieter: m.urheber.ki.anbieter, modell: m.urheber.ki.modell, zeichenNoetig: m.urheber.ki.zeichenNoetig } } : {}),
       vorschauLaden: async () => {
         const v = m.varianten[variante];
         const bytes = await variantenBytes(m, variante, v).catch(() => null);
@@ -37,6 +40,23 @@ export async function medienFuerHead(person: string, headId: string, auftragId: 
       },
     };
   });
+}
+
+/**
+ * Alle Aufträge, unter denen ein Head gerade Medien sieht (Paket 4c, Agenten-Werkzeug `medien_suchen`) — dieselbe Regel wie `medienFuerHead`
+ * (nur Business, nur ausdrücklich gegeben, nichts Gesperrtes), je Auftrag gruppiert. Leere Liste für Heads ohne Medien-Bezug.
+ */
+export async function medienAuftraegeFuerHead(person: string, headId: string): Promise<{ auftragId: string; medien: MediumFuerHead[] }[]> {
+  const b = await betrachterFuer(person);
+  if (!b) return [];
+  const business = await ladeKatalog(medienBestand(b.haushalt));
+  const ids = Array.from(new Set(business.medien.flatMap(m => m.heads.filter(h => h.head === headId).map(h => h.auftragId))));
+  const raus: { auftragId: string; medien: MediumFuerHead[] }[] = [];
+  for (const auftragId of ids) {
+    const medien = await medienFuerHead(person, headId, auftragId);
+    if (medien.length) raus.push({ auftragId, medien });
+  }
+  return raus;
 }
 
 /** Was ein Head vorschlagen kann (je Medium). */
@@ -87,7 +107,9 @@ type Eingabe = { head?: unknown; auftragId?: unknown; auswahl?: unknown; zuschni
 
 /** Freigabe der Stapel-Art `medien` (lib/zoe/stapel-arten.ts). Erneut gegen die Sicht geprüft — ein inzwischen gesperrtes Medium fällt heraus. */
 export const MEDIEN_STAPEL_ART: import('@/lib/zoe/stapel-arten').StapelArtFreigabe = {
-  freigeben: async (vIn, person) => {
+  freigeben: async (vIn, person, opt) => {
+    // Paket 4c: KI-Vorschläge (erzeugtes Bild übernehmen; Video bzw. Bild erst per Klick erzeugen) haben eigene Regeln.
+    if (vIn.werkzeug !== MEDIEN_WERKZEUG) return (await import('./ki-stapel')).KI_STAPEL.freigeben(vIn, person, opt ?? {});
     const { beanspruche, entscheide, loslassen } = await import('@/lib/zoe/stapel');
     const b = await betrachterFuer(person);
     if (!b) return { ok: false, status: 403, fehler: 'Nur im Haushalt des Inhabers.' };
@@ -133,6 +155,7 @@ export const MEDIEN_STAPEL_ART: import('@/lib/zoe/stapel-arten').StapelArtFreiga
       return { ok: true, text: text2 };
     } catch (err) { await loslassen(v.id); throw err; }
   },
+  nachAblehnen: async (v, person) => (v.werkzeug !== MEDIEN_WERKZEUG ? (await import('./ki-stapel')).KI_STAPEL.nachAblehnen?.(v, person) : null),
 };
 
 export { HEAD_AUFTRAEGE };

@@ -3,6 +3,7 @@
 // PUT { ebene: 'instanz', schalter }          → nur der Inhaber (Sitzung; Dienstweg 403)
 // PUT { ebene: 'person', schalter }           → nur die Person selbst (Sitzung) — schränkt nur ein, öffnet nie über die Instanz
 // PUT { ebene: 'person', telegramVoll, fassung } → Ausnahme „ZOE-Antworten vollständig über Telegram“ (nur selbst, mit Fassung)
+// PUT { ebene: 'person', bilderAnKi }          → „Bilder an die KI“ (Paket 4c, KI-Kategorie `medien`, Vorgabe aus) — nur die Person selbst
 // PUT { ebene: 'instanz', anbieter: { medien, budget, modellStufen } } → Anbieter-Tor (09.10., nur der Inhaber): neue KI-Fähigkeiten an/aus,
 //   Budget (Euro-Cent; null = nur messen), Modellstufen „bisher“/„neu“. GET zeigt dazu die Zugänge (nur ja/nein, Stufe, Region — nie Schlüssel).
 //   Seit Paket 4b auch `budget.gesamtEuroCent` (Gesamt-Grenze ab jetzt, z. B. ein Test-Budget; null = aus) — EINE Schreibstelle
@@ -43,7 +44,7 @@ async function antwort(person: string) {
     vorgabe: d.vorgabe, festgelegtAm: d.festgelegtAm,
     vorgabeSchalter: vorgabeSchalter(d.vorgabe),
     instanz: instanzSchalter(d),
-    eigen: { hintergrund: eigen.hintergrund ?? null, websuche: eigen.websuche ?? null, bereiche: eigen.bereiche ?? {} },
+    eigen: { hintergrund: eigen.hintergrund ?? null, websuche: eigen.websuche ?? null, bereiche: eigen.bereiche ?? {}, bilderAnKi: eigen.bilderAnKi === true },
     wirksam: wirksameSchalter(d, person),
     telegramVoll: eigen.telegramVoll ?? null,
     telegramHinweis: { text: TELEGRAM_VOLL_HINWEIS, fassung: TELEGRAM_VOLL_FASSUNG },
@@ -76,7 +77,7 @@ export async function PUT(req: Request) {
   const person = selbst(req);
   if (!person) return VERBOTEN('Nur mit Anmeldung — der Dienstweg stellt keine Datenschutz-Schalter.');
   if (zuGross(req, 8_000)) return ZU_GROSS(8_000);
-  let b: { ebene?: unknown; schalter?: unknown; telegramVoll?: unknown; fassung?: unknown; person?: unknown; anbieter?: unknown };
+  let b: { ebene?: unknown; schalter?: unknown; telegramVoll?: unknown; fassung?: unknown; person?: unknown; anbieter?: unknown; bilderAnKi?: unknown };
   try { b = await jsonBegrenzt(req, 8_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.person !== undefined && b.person !== person) return VERBOTEN('Schalter einer anderen Person stellt nur sie selbst.');
   const neu = schalterSaeubern(b.schalter);
@@ -108,8 +109,10 @@ export async function PUT(req: Request) {
       ...alt, ...neu,
       ...(neu.bereiche ? { bereiche: { ...(alt.bereiche ?? {}), ...neu.bereiche } } : {}),
       ...(typeof b.telegramVoll === 'boolean' ? { telegramVoll: b.telegramVoll ? { seit: new Date().toISOString(), fassung: TELEGRAM_VOLL_FASSUNG } : undefined } : {}),
+      ...(typeof b.bilderAnKi === 'boolean' ? { bilderAnKi: b.bilderAnKi } : {}),
     };
     if (!p.telegramVoll) delete p.telegramVoll;
+    if (!p.bilderAnKi) delete p.bilderAnKi;
     return { ...d, personen: { ...(d.personen ?? {}), [person]: p } };
   });
   return NextResponse.json(await antwort(person));

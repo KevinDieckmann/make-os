@@ -9,6 +9,8 @@
 //   4  Ablauf: freigegeben und `bis` vorbei → „abgelaufen“ + Aufgabe an die Person, die freigegeben hat
 //   5  Rohmaterial mit erkennbaren Personen, seit der Frist („medien-roh“, 12 Monate) nicht freigegeben → EINE Prüf-Aufgabe, nie löschen
 //   6  Schlüssel je Medium mit dem aktiven Datenschlüssel neu wickeln (nach einer Rotation; die Videos bleiben unberührt)
+//   7  Paket 4c: fertige KI-Medien des Altbestands `ki-medien--<haushalt>` einmal in die EINE Ablage übernehmen (lib/medien/ki-ablage.ts,
+//      idempotent; der Altbestand bleibt liegen)
 // Aufgaben nur über den Aufgaben-Schreibweg (`systemAufgabenAendern`), Titel ohne Namen und ohne Inhalte.
 
 import { localDay, tagePlus, tagVon } from '@/lib/zeit';
@@ -19,7 +21,7 @@ import { ladeKatalog, katalogAendern, lageFuer, haushaltsPersonen, objekteLoesch
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 
 export interface PflegeFristen { uploadTage: number; papierkorbTage: number; rohMonate: number }
-export interface PflegeErgebnis { sitzungen: number; papierkorb: number; gesperrt: number; abgelaufen: number; roh: number; art17: number; schluessel: number }
+export interface PflegeErgebnis { sitzungen: number; papierkorb: number; gesperrt: number; abgelaufen: number; roh: number; art17: number; schluessel: number; kiUebernommen?: number }
 
 /** Reine Auswertung eines Business-Katalogs: was zu sperren, was abgelaufen, was Rohmaterial über der Frist ist. */
 export function pflegeAuswerten(kat: MedienKatalog, lage: Lage, rohSeit: string): { sperren: { id: string; grund: NonNullable<Medium['marketing']['sperrGrund']> }[]; ablauf: string[]; roh: number; art17: number } {
@@ -98,6 +100,13 @@ export async function medienPflege(f: PflegeFristen, jetzt = new Date()): Promis
       }) } }));
     }
     await aufgabenAbgleichen(kat, a, jetztIso).catch(e => console.error('[medien-pflege] Aufgaben:', e instanceof Error ? e.message : e));
+  });
+
+  // 7 · KI-Medien des Altbestands (Lese-Übergang, Paket 4c)
+  await schritt('ki-uebernahme', async () => {
+    const { kiMedienUebernehmen } = await import('./ki-ablage');
+    const u = await kiMedienUebernehmen(haushalt);
+    if (u.uebernommen) r.kiUebernommen = u.uebernommen;
   });
   return r;
 }

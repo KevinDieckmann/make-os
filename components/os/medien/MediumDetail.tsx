@@ -5,19 +5,24 @@
 // „Erkennbare Personen?“ + Personen von Hand markieren (keine Gesichtserkennung), Freigabe fürs Marketing (Kanäle + bis-Datum, Vier-Augen bei
 // erkennbaren Personen, Lizenz-Nachweis bei fremden Fotografen), an einen Head geben (mit Auftrag), Texte, Vorschläge der Heads (Zuschnitt
 // führt erst der Klick aus), Papierkorb. Der Server prüft alles — die Oberfläche zeigt nur die Gründe vorab.
+// Paket 4c (09.10.): KI-Medien tragen die KI-Marke, Herkunft (Modell, Kennzeichnung) und die Herkunftsangabe zum Laden; Freigabe nur mit
+// bestätigter Kennzeichnung (sichtbar bei realistischen Personen/Orten); ein offener Agenten-Vorschlag verweist in den Freigabe-Stapel.
+// „An Head geben …“ nur an Heads mit Medien-Bezug (MEDIEN_HEADS) und legt dort einen Thread mit Auftrag + Medium an (POST /api/agenten/faden).
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Star, X, Play, Download, Trash2, RotateCcw, Scissors } from 'lucide-react';
 import { Knopf, Hinweis, Segmente, MehrfachPillen, Feldzeile, Chip, eingabe, auswahl, Beschriftung, useRueckfrage } from '../ui';
 import { Fenster } from '../Fenster';
 import { KiMarke } from '../KiMarke';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { headsIm } from '@/lib/agenten/katalog';
+import { headDef } from '@/lib/agenten/katalog';
+import { WEG } from '@/lib/wege';
 import { freigabeGruende, sperrText } from '@/lib/medien/regeln';
 import { geteilteMedienSchlange } from '@/lib/medien/warteschlange';
 import { suchPasst } from '@/lib/text/such-norm';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { KANAELE, KANAL_NAME, HEAD_AUFTRAEGE, TEXTE, type MediumSicht, type MedienListeAntwort, type Kanal, type HeadAuftragArt, type Medium, type Album, type MedienEinwilligung } from '@/lib/medien/typen';
+import { KANAELE, KANAL_NAME, HEAD_AUFTRAEGE, MEDIEN_HEADS, TEXTE, type MediumSicht, type MedienListeAntwort, type Kanal, type HeadAuftragArt, type Medium, type Album, type MedienEinwilligung } from '@/lib/medien/typen';
 import { inhaltUrl, medienAktion, groesseText } from './daten';
 import { EinwilligungFenster } from './Einwilligung';
 
@@ -60,6 +65,7 @@ export function MediumDetail({ m, daten, onZu, onGeaendert }: { m: MediumSicht; 
         <Chip farbe={STATUS_FARBE[m.marketing.wirksam]}>{STATUS_TEXT[m.marketing.wirksam]}</Chip>
         <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{groesseText(m.groesse)}{m.aufgenommen ? ` · ${new Date(m.aufgenommen).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' })}` : ''}</span>
       </div>
+      {m.urheber.art === 'ki' && m.urheber.ki && <KiHerkunft m={m} />}
       {m.marketing.wirksamGrund && <Hinweis art="kritisch" rolle="status">{m.marketing.wirksamGrund}</Hinweis>}
       {fehler && <Hinweis art="achtung" rolle="alert">{fehler}</Hinweis>}
       {text && <Hinweis art="gut" rolle="status">{text}</Hinweis>}
@@ -75,7 +81,7 @@ export function MediumDetail({ m, daten, onZu, onGeaendert }: { m: MediumSicht; 
           {m.darfAendern && <Ordnen m={m} alben={alben} privat={daten.rechte.privat} tun={tun} />}
           <Personen m={m} daten={daten} kontakte={kontakte} nameVon={nameVon} tun={tun} />
           {m.bereich === 'business' && <Freigabe m={m} daten={daten} album={album} tun={tun} />}
-          {m.bereich === 'business' && m.darfAendern && <AnHead m={m} tun={tun} />}
+          {m.bereich === 'business' && m.darfAendern && <AnHead m={m} onGeaendert={onGeaendert} />}
           <Texte m={m} tun={tun} />
           {!!m.vorschlaege?.length && <Vorschlaege m={m} onGeaendert={onGeaendert} />}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -86,6 +92,22 @@ export function MediumDetail({ m, daten, onZu, onGeaendert }: { m: MediumSicht; 
         </>
       )}
     </Fenster>
+  );
+}
+
+/** KI-generiert (Paket 4c, KI-VO Art. 50): Marke, Modell, Kennzeichnung, Herkunftsangabe — und der offene Vorschlag eines Agenten. */
+function KiHerkunft({ m }: { m: MediumSicht }) {
+  const k = m.urheber.ki!;
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <KiMarke text={`KI-generiert · ${k.modell}`} />
+        <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kennzeichnung in der Datei: {[k.kennzeichnung.synthid && 'SynthID', k.kennzeichnung.c2pa && 'C2PA'].filter(Boolean).join(' + ') || '—'} · bleibt unverändert</span>
+        <a href={`/api/medien/inhalt?id=${encodeURIComponent(m.id)}&herkunft=1&download=1`} style={{ color: C.aktiv, fontSize: TYP.bedien, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Herkunftsangabe laden</a>
+      </div>
+      {k.zeichenNoetig && <Hinweis art="info">Realistische Personen oder Orte: beim Veröffentlichen sichtbar „KI-generiert“ zeigen (KI-VO Art. 50 Abs. 4).</Hinweis>}
+      {k.vorschlag === 'offen' && <Hinweis art="achtung">{TEXTE.kiVorschlag} <Link href={WEG.freigaben()} style={{ color: C.aktiv }}>Zum Freigabe-Stapel ›</Link></Hinweis>}
+    </div>
   );
 }
 
@@ -197,13 +219,16 @@ function Freigabe({ m, daten, album, tun }: { m: MediumSicht; daten: MedienListe
   const f = m.marketing;
   const [kanaele, setKanaele] = useState<Kanal[]>(f.kanaele ?? album?.vorgabe?.kanaele ?? ['website', 'social']);
   const [bis, setBis] = useState(f.bis ?? inZweiJahren());
+  const [kiZeichen, setKiZeichen] = useState(false);
   const heute = localDay();
+  const kiPflicht = m.urheber.art === 'ki' && !!m.urheber.ki?.zeichenNoetig;
   // Vorab dieselben Gründe wie der Server (der prüft trotzdem — auch Art. 18 und Werbesperre, die die Oberfläche nicht kennt).
   const gruende = freigabeGruende(
-    { ...(m as unknown as Medium), urheber: { art: m.urheber.art, ...(m.urheber.lizenz ? { lizenz: {} as NonNullable<Medium['urheber']['lizenz']> } : {}) } },
+    { ...(m as unknown as Medium), urheber: { art: m.urheber.art, ...(m.urheber.lizenz ? { lizenz: {} as NonNullable<Medium['urheber']['lizenz']> } : {}), ...(m.urheber.ki ? { ki: m.urheber.ki } : {}) } },
     album ? ({ ...album, von: '', angelegt: '' } as unknown as Album) : undefined, kanaele, bis,
     { heute, einwilligungen: daten.einwilligungen as unknown as MedienEinwilligung[], kontaktSperre: () => null },
-  );
+    { kiZeichenBestaetigt: kiZeichen },
+  ).filter(g => !kiPflicht || g !== TEXTE.kiZeichen);
   const vierAugen = m.erkennbarePersonen === 'ja' && f.status === 'angefragt' && f.angefragtVon === daten.ich;
   return (
     <div style={{ display: 'grid', gap: 10 }}>
@@ -213,11 +238,17 @@ function Freigabe({ m, daten, album, tun }: { m: MediumSicht; daten: MedienListe
         <>
           <MehrfachPillen liste={KANAELE.map(k => ({ id: k, label: KANAL_NAME[k] }))} aktiv={kanaele} onWahl={setKanaele} />
           <Feldzeile label="Nutzbar bis"><input type="date" value={bis} min={heute} onChange={e => setBis(e.target.value)} style={eingabe} /></Feldzeile>
+          {kiPflicht && (
+            <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, fontSize: TYP.body, color: C.ink }}>
+              <input type="checkbox" checked={kiZeichen} onChange={e => setKiZeichen(e.target.checked)} style={{ width: 22, height: 22 }} />
+              Beim Veröffentlichen zeige ich sichtbar „KI-generiert“ (Pflicht bei realistischen Personen/Orten).
+            </label>
+          )}
           {gruende.map((g, i) => <Hinweis key={i} art="achtung">{g}</Hinweis>)}
           {vierAugen && <Hinweis art="info">Vier-Augen-Prinzip: Erkennbare Personen — freigeben muss eine andere Person.</Hinweis>}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {f.status !== 'angefragt' && <Knopf leise onClick={() => tun({ aktion: 'freigabe', schritt: 'anfragen', kanaele, bis }, 'Freigabe angefragt.')}>Freigabe anfragen</Knopf>}
-            {daten.rechte.freigeben && <Knopf haupt farbe={LEUCHT.gut} aus={gruende.length > 0 || vierAugen || (m.erkennbarePersonen === 'ja' && f.status !== 'angefragt')} onClick={() => tun({ aktion: 'freigabe', schritt: 'freigeben', kanaele, bis }, 'Freigegeben.')}>Freigeben</Knopf>}
+            {daten.rechte.freigeben && <Knopf haupt farbe={LEUCHT.gut} aus={gruende.length > 0 || (kiPflicht && !kiZeichen) || vierAugen || (m.erkennbarePersonen === 'ja' && f.status !== 'angefragt')} onClick={() => tun({ aktion: 'freigabe', schritt: 'freigeben', kanaele, bis, ...(m.urheber.art === 'ki' ? { kiZeichenBestaetigt: kiZeichen || !kiPflicht } : {}) }, 'Freigegeben.')}>Freigeben</Knopf>}
             {daten.rechte.freigeben && f.status === 'angefragt' && <Knopf leise onClick={() => tun({ aktion: 'freigabe', schritt: 'ablehnen' }, 'Abgelehnt.')}>Ablehnen</Knopf>}
           </div>
         </>
@@ -227,7 +258,7 @@ function Freigabe({ m, daten, album, tun }: { m: MediumSicht; daten: MedienListe
         {f.status === 'gesperrt' && (f.sperrGrund === 'hand' || !f.sperrGrund) && <Knopf leise onClick={() => tun({ aktion: 'freigabe', schritt: 'entsperren' }, 'Entsperrt.')}>Entsperren</Knopf>}
         {f.status === 'gesperrt' && f.sperrGrund && f.sperrGrund !== 'hand' && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{sperrText(f.sperrGrund)}</span>}
       </div>
-      <Urheber m={m} tun={tun} />
+      {m.urheber.art !== 'ki' && <Urheber m={m} tun={tun} />}
     </div>
   );
 }
@@ -247,7 +278,7 @@ function Urheber({ m, tun }: { m: MediumSicht; tun: Tun }) {
   };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <Segmente liste={[{ id: 'team' as const, label: 'Von uns aufgenommen' }, { id: 'extern' as const, label: 'Fremde Fotografin/Fotograf' }]} aktiv={m.urheber.art} onWahl={a => void tun({ aktion: 'aendern', urheber: { art: a, ...(m.urheber.name ? { name: m.urheber.name } : {}) } })} umbrechen />
+      <Segmente liste={[{ id: 'team' as const, label: 'Von uns aufgenommen' }, { id: 'extern' as const, label: 'Fremde Fotografin/Fotograf' }]} aktiv={m.urheber.art === 'extern' ? 'extern' : 'team'} onWahl={a => void tun({ aktion: 'aendern', urheber: { art: a, ...(m.urheber.name ? { name: m.urheber.name } : {}) } })} umbrechen />
       {m.urheber.art === 'extern' && (
         m.urheber.lizenz
           ? <a href={`/api/medien/beleg?art=lizenz&id=${encodeURIComponent(m.id)}`} style={{ color: C.aktiv, fontSize: TYP.bedien, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Lizenz-Nachweis: {m.urheber.lizenz.name} ›</a>
@@ -260,18 +291,50 @@ function Urheber({ m, tun }: { m: MediumSicht; tun: Tun }) {
   );
 }
 
-function AnHead({ m, tun }: { m: MediumSicht; tun: Tun }) {
-  const heads = headsIm('business');
-  const [head, setHead] = useState(heads.find(h => h.id === 'marketing')?.id ?? heads[0]?.id ?? '');
+/**
+ * „An Head geben …“ (Paket 4c): nur an Heads mit Medien-Bezug. Erst die Aktion am Medium (der Server prüft, ob es an Heads darf, und vergibt den
+ * Auftrag), dann EIN Thread beim Head über den vorhandenen Weg (POST /api/agenten/faden, im Hintergrund) mit Auftrag und dem Medium als Anhang.
+ */
+function AnHead({ m, onGeaendert }: { m: MediumSicht; onGeaendert: () => void }) {
+  const heads = MEDIEN_HEADS.map(id => headDef(id)).filter((h): h is NonNullable<typeof h> => !!h);
+  const [head, setHead] = useState<string>(heads[0]?.id ?? '');
   const [auftrag, setAuftrag] = useState<HeadAuftragArt[]>(['auswahl', 'text']);
   const [notiz, setNotiz] = useState('');
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [faden, setFaden] = useState<{ head: string; id: string } | null>(null);
+  const entziehen = async (h: { head: string; auftragId: string }) => {
+    setFehler(null);
+    const r = await medienAktion({ id: m.id, stand: m.stand, aktion: 'head-entziehen', auftragId: h.auftragId, head: h.head });
+    if (!r.ok) setFehler(r.fehler ?? 'Nicht gespeichert.'); else onGeaendert();
+  };
+  const geben = async () => {
+    setFehler(null); setFaden(null);
+    const r = await medienAktion({ id: m.id, stand: m.stand, aktion: 'an-head', head, auftrag, ...(notiz ? { notiz } : {}) });
+    if (!r.ok) { setFehler(r.fehler ?? 'Nicht gespeichert.'); return; }
+    const neu = (r.medium as MediumSicht | undefined)?.heads.filter(h => h.head === head).slice(-1)[0];
+    const name = headDef(head)?.name ?? head;
+    const text = [
+      `Medien-Auftrag aus „Fotos & Videos“: ${auftrag.map(a => AUFTRAG_NAME[a]).join(', ')}.`,
+      `Medium: ${m.name ? `„${m.name}“ ` : ''}(${m.id})${m.albumTitel ? ` · Album „${m.albumTitel}“` : ''}${neu ? ` · Auftrag ${neu.auftragId}` : ''}.`,
+      notiz ? `Notiz: ${notiz}` : '',
+      'Bitte nur vorschlagen — übernommen wird per Klick.',
+    ].filter(Boolean).join('\n');
+    try {
+      const t = await fetch('/api/agenten/faden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'senden', agent: { art: 'head', headId: head }, text, anhaenge: [{ art: 'medium', id: m.id, ...(m.name ? { name: m.name } : {}) }], hintergrund: true, anfrageId: crypto.randomUUID() }) });
+      const d = await t.json().catch(() => null);
+      if (!t.ok || !d?.ok) setFehler(`An ${name} gegeben — der Thread ließ sich nicht anlegen: ${d?.fehler ?? `Fehler ${t.status}`}. Im Agenten-Bereich neu senden.`);
+      else setFaden({ head, id: d.faden.id });
+    } catch { setFehler(`An ${name} gegeben — der Thread ließ sich ohne Netz nicht anlegen. Im Agenten-Bereich neu senden.`); }
+    setNotiz('');
+    onGeaendert();
+  };
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <Beschriftung>An einen Head geben</Beschriftung>
       {m.heads.map(h => (
         <div key={`${h.head}-${h.auftragId}`} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minHeight: 44 }}>
-          <span style={{ fontSize: TYP.body, flex: 1 }}>{heads.find(x => x.id === h.head)?.name ?? h.head} · {h.auftrag.map(a => AUFTRAG_NAME[a]).join(', ')}</span>
-          <Knopf leise onClick={() => tun({ aktion: 'head-entziehen', auftragId: h.auftragId, head: h.head }, 'Auftrag entzogen.')}>Entziehen</Knopf>
+          <span style={{ fontSize: TYP.body, flex: 1 }}>{headDef(h.head)?.name ?? h.head} · {h.auftrag.map(a => AUFTRAG_NAME[a]).join(', ')}</span>
+          <Knopf leise onClick={() => entziehen(h)}>Entziehen</Knopf>
         </div>
       ))}
       <select value={head} onChange={e => setHead(e.target.value)} style={{ ...auswahl, width: '100%', fontSize: 16, minHeight: 48 }} aria-label="Head">
@@ -279,8 +342,10 @@ function AnHead({ m, tun }: { m: MediumSicht; tun: Tun }) {
       </select>
       <MehrfachPillen liste={HEAD_AUFTRAEGE.map(a => ({ id: a, label: AUFTRAG_NAME[a] }))} aktiv={auftrag} onWahl={setAuftrag} />
       <input value={notiz} onChange={e => setNotiz(e.target.value)} placeholder="Notiz zum Auftrag (optional)" maxLength={2000} style={eingabe} aria-label="Notiz zum Auftrag" />
-      <Hinweis art="info">Der Head sieht nur dieses Medium (Vorschau, nie das Original) und schlägt nur vor — übernommen wird erst nach deinem Klick.{m.erkennbarePersonen === 'ja' ? ' Erkennbare Personen: ob das Bild an die KI geht, entscheidet der KI-Schalter „Bilder mit Personen“.' : ''}</Hinweis>
-      <div><Knopf onClick={() => tun({ aktion: 'an-head', head, auftrag, ...(notiz ? { notiz } : {}) }, 'An den Head gegeben.')} aus={!auftrag.length}>An Head geben</Knopf></div>
+      <Hinweis art="info">Der Head sieht nur dieses Medium (Vorschau, nie das Original) und schlägt nur vor — übernommen wird erst nach deinem Klick. Es entsteht ein Thread beim Head.{m.erkennbarePersonen === 'ja' ? ' Erkennbare Personen: an die Bild-KI geht das Foto nur mit deren Einwilligung „KI“ und deinem Schalter „Bilder an die KI“.' : ''}</Hinweis>
+      {fehler && <Hinweis art="achtung" rolle="alert">{fehler}</Hinweis>}
+      {faden && <Hinweis art="gut" rolle="status">An {headDef(faden.head)?.name ?? faden.head} gegeben. <Link href={WEG.agenten({ h: faden.head, f: faden.id })} style={{ color: C.aktiv }}>Zum Thread ›</Link></Hinweis>}
+      <div><Knopf onClick={geben} aus={!auftrag.length || !head}>An Head geben</Knopf></div>
     </div>
   );
 }

@@ -16,6 +16,8 @@
 // der von der Nachtsicherung ausgenommen ist), verschlüsselt je Segment mit einem Schlüssel je Medium (lib/medien/krypto.ts).
 
 import type { Bereich, Medium as VertragMedium, MedienAntwort } from '@/lib/agenten/typen';
+import type { AnbieterId } from '@/lib/ki/anbieter';
+import type { SichtbarAngabe } from '@/lib/ki/kennzeichnung';
 
 export { medienBestand, medienPrivatBestand } from '@/lib/agenten/typen';
 export type { Bereich };
@@ -142,10 +144,23 @@ export interface MarketingFreigabe {
   angefragtVon?: string; angefragtAm?: string;
   /** Redaktionell verantwortlich (RECHT.md 7 #6) — nie ein Agent, nie der Dienstweg. */
   freigegebenVon?: string; freigegebenAm?: string;
+  /**
+   * KI-generiertes Medium (Paket 4c, KI-VO Art. 50): beim Freigeben bestätigt, dass es nach außen gekennzeichnet wird — `sichtbar` = das sichtbare
+   * Zeichen „KI-generiert“ ist Pflicht (realistische Personen/Orte), sonst genügt die maschinenlesbare Kennzeichnung in der Datei.
+   */
+  kiKennzeichnung?: { sichtbar: boolean; bestaetigtVon: string; am: string };
   sperrGrund?: SperrGrund; gesperrtAm?: string;
   /** Nur der Server, nur anhängend. */
   verlauf: { am: string; von: string; nach: FreigabeStatus; grund?: string }[];
 }
+
+/**
+ * Business-Heads mit Medien-Bezug (09.10., Paket 4c — Kevin 08.10.: „gehen dann direkt an die Head ofs … wenn gewollt“): nur diese bekommen Medien
+ * per „An Head geben …“ (Server: `mediumAktion` › `an-head`; Oberfläche: Detailansicht). Andere Business-Heads arbeiten nicht mit Bildern.
+ */
+export const MEDIEN_HEADS = ['marketing', 'event', 'sales'] as const;
+export type MedienHead = (typeof MEDIEN_HEADS)[number];
+export const istMedienHead = (h: unknown): h is MedienHead => typeof h === 'string' && (MEDIEN_HEADS as readonly string[]).includes(h);
 
 /** „An Head gegeben“ — ausdrücklich, mit Auftrag (Kevin: Heads sehen nur das). */
 export type HeadAuftragArt = 'auswahl' | 'zuschnitt' | 'text';
@@ -188,11 +203,37 @@ export interface MedienTexte {
   von: string;
 }
 
-/** Fremde Fotografen: Lizenz-Nachweis als Datei ist Pflicht vor jeder Freigabe (Kevin 09.10.). */
+/**
+ * Von der KI erzeugt (Paket 4c — EINE Ablage: KI-Bilder und -Videos sind Medien wie alle anderen, nur mit dieser Herkunft). Die Bytes des Anbieters
+ * liegen UNVERÄNDERT als Original (SynthID in den Pixeln, C2PA in den Metadaten — nie umkodieren, nie säubern); diese Angaben sind die zweite,
+ * eigene Schicht der Kennzeichnung (lib/ki/kennzeichnung.ts `herkunftsAngabe`). Nie änderbar — auch nicht von Hand auf „von uns aufgenommen“.
+ */
+export interface KiHerkunft {
+  anbieter: AnbieterId;
+  modell: string;
+  erzeugtAm: string;
+  /** Was der Anbieter einbettet + unsere eigene Marke. */
+  kennzeichnung: { synthid: boolean; c2pa: boolean; eigeneMarke: true };
+  /** Angabe beim Erzeugen (realistische Personen/Orte → sichtbares Zeichen beim Veröffentlichen). */
+  sichtbar?: SichtbarAngabe;
+  zeichenNoetig: boolean;
+  /** Eigener Auftragstext (der Person bzw. des Agenten) — ≤ 4.000 Zeichen, kein Text Dritter. */
+  prompt: string;
+  kosten?: { euroCent: number; geschaetzt: boolean };
+  /** Vorgeschlagen von einem Head bzw. Mitarbeiter (`agentSchluessel`) — dann gilt `vorschlag`, bis ein Mensch im Stapel entscheidet. */
+  agent?: string;
+  /** offen = liegt im Freigabe-Stapel (nicht freigebbar, nicht an Heads) · uebernommen · verworfen (Papierkorb). */
+  vorschlag?: 'offen' | 'uebernommen' | 'verworfen';
+  /** Übernommen aus der früheren Ablage `ki-medien--<haushalt>` (Kennung `km-…`). */
+  alt?: string;
+}
+
+/** Fremde Fotografen: Lizenz-Nachweis als Datei ist Pflicht vor jeder Freigabe (Kevin 09.10.). KI: `ki` statt Lizenz (Paket 4c). */
 export interface Urheber {
-  art: 'team' | 'extern';
+  art: 'team' | 'extern' | 'ki';
   name?: string;
   lizenz?: ObjektVerweis & { name: string; am: string; von: string; schluessel: GewickelterSchluessel };
+  ki?: KiHerkunft;
 }
 
 export interface Medium {
@@ -231,7 +272,8 @@ export interface Medium {
   heads: HeadZugang[];
   texte?: MedienTexte;
   vorschlaege?: HeadVorschlagAmMedium[];
-  abgeleitetVon?: { id: string; art: 'zuschnitt'; vorschlagId?: string };
+  /** `zuschnitt` = im Browser zugeschnitten; `ki` = von der KI bearbeitet (Paket 4c — Personen und Einwilligungen gehen mit). */
+  abgeleitetVon?: { id: string; art: 'zuschnitt' | 'ki'; vorschlagId?: string };
   geloeschtAm?: string; geloeschtVon?: string;
   geaendert: string; geaendertVon?: string;
 }
@@ -316,7 +358,7 @@ export interface UploadMeta {
   original?: boolean;
   erkennbarePersonen?: 'ja' | 'nein' | 'unklar';
   urheber?: { art: 'team' | 'extern'; name?: string };
-  abgeleitetVon?: { id: string; art: 'zuschnitt'; vorschlagId?: string };
+  abgeleitetVon?: { id: string; art: 'zuschnitt' | 'ki'; vorschlagId?: string };
 }
 
 // ── Was der Browser bekommt (nie Schlüssel, nie Objekt-Namen, nie Salze) ──────────────────────────────────────────────
@@ -338,7 +380,7 @@ export interface MediumSicht extends VertragMedium {
   favoriten: number;
   erkennbarePersonen?: 'ja' | 'nein' | 'unklar';
   personen: PersonImBild[];
-  urheber: { art: 'team' | 'extern'; name?: string; lizenz?: { name: string; am: string } };
+  urheber: { art: 'team' | 'extern' | 'ki'; name?: string; lizenz?: { name: string; am: string }; ki?: KiHerkunft };
   marketing: MarketingFreigabe & { wirksam: FreigabeStatus; wirksamGrund?: string };
   heads: HeadZugang[];
   texte?: MedienTexte;
@@ -388,6 +430,8 @@ export interface MediumFuerHead {
   freigabe: FreigabeStatus;
   kanaele?: Kanal[];
   texte?: MedienTexte;
+  /** Von der KI erzeugt (Herkunft, Kennzeichnung) — Paket 4c. */
+  ki?: Pick<KiHerkunft, 'anbieter' | 'modell' | 'zeichenNoetig'>;
   /** Ansicht (Foto) bzw. Poster (Video) — JPEG/PNG ≤ 1568 px. */
   vorschauLaden: () => Promise<{ bytes: Buffer; typ: string } | null>;
 }
@@ -400,4 +444,6 @@ export const TEXTE = {
   tonGesperrt: 'Ton nicht freigegeben — das Video wird nicht abgespielt und nicht geteilt. Ton freigeben (nur mit Zustimmung aller) oder ohne Ton neu hochladen.',
   appOffen: 'Für große Videos die App offen lassen — iOS hält Uploads im Hintergrund an. Abgebrochenes geht beim nächsten Öffnen weiter.',
   hinweis: 'Hinweis, keine Rechtsberatung.',
+  kiZeichen: 'KI-generiert mit realistischen Personen oder Orten: beim Veröffentlichen sichtbar „KI-generiert“ zeigen (KI-VO Art. 50 Abs. 4) — bitte bestätigen.',
+  kiVorschlag: 'Vorschlag eines Agenten — erst im Freigabe-Stapel übernehmen.',
 } as const;

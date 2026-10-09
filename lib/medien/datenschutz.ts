@@ -52,7 +52,7 @@ export function businessOhnePerson(k: MedienKatalog, p: string): { katalog: Medi
     const neu: Medium = {
       ...m, von: t(m.von)!,
       personen: m.personen.map(x => ({ ...x, markiertVon: t(x.markiertVon)!, ...(x.konto === p ? { konto: (n++, GELOESCHT) } : {}) })),
-      marketing: { ...m.marketing, ...(m.marketing.angefragtVon ? { angefragtVon: t(m.marketing.angefragtVon) } : {}), ...(m.marketing.freigegebenVon ? { freigegebenVon: t(m.marketing.freigegebenVon) } : {}), verlauf: m.marketing.verlauf.map(v => ({ ...v, von: t(v.von)! })) },
+      marketing: { ...m.marketing, ...(m.marketing.angefragtVon ? { angefragtVon: t(m.marketing.angefragtVon) } : {}), ...(m.marketing.freigegebenVon ? { freigegebenVon: t(m.marketing.freigegebenVon) } : {}), ...(m.marketing.kiKennzeichnung ? { kiKennzeichnung: { ...m.marketing.kiKennzeichnung, bestaetigtVon: t(m.marketing.kiKennzeichnung.bestaetigtVon)! } } : {}), verlauf: m.marketing.verlauf.map(v => ({ ...v, von: t(v.von)! })) },
       heads: m.heads.map(h => ({ ...h, von: t(h.von)! })),
       ...(m.texte ? { texte: { ...m.texte, von: t(m.texte.von)! } } : {}),
       ...(m.vorschlaege ? { vorschlaege: m.vorschlaege.map(v => ({ ...v, freigegebenVon: t(v.freigegebenVon)! })) } : {}),

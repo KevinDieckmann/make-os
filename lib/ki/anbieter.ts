@@ -95,8 +95,10 @@ export const KI_ANBIETER: readonly KiAnbieter[] = [
     umgebung: ['GOOGLE_VERTEX_PROJEKT', 'GOOGLE_VERTEX_DIENSTKONTO'],
     // Medienmodelle laufen `global` bzw. `us-central1` (Veo) — Google LLC ist DPF-zertifiziert (abgefragt 08.10.).
     stufe: 'dpf', region: 'global / us-central1 (Google)', faehigkeiten: ['bild', 'video', 'tiefenbericht'], kennzeichnung: ['synthid', 'c2pa'],
-    // Nur Aufträge ohne Personenbezug: Motiv, Marke, Thema. Fotos realer Personen als Eingabe gibt es in Version 1 nicht.
-    kategorien: ['allgemein', 'web'],
+    // Aufträge ohne Personenbezug: Motiv, Marke, Thema. Seit Paket 4c (09.10.) auch `medien` = ein Foto der Ablage als Vorlage (Bild bearbeiten) —
+    // nur mit dem Schalter der Person „Bilder an die KI“ und nur, wenn das Foto hinaus darf (lib/medien/regeln.ts `anKiGruende`: erkennbare
+    // Personen nur mit Einwilligung „KI“, nie Minderjährige, nie Privat). Drittland (DPF) — im Einwilligungstext prüfen lassen (Bericht 4c).
+    kategorien: ['allgemein', 'web', 'medien'],
     quelle: 'MODELLE.md 2.2–2.4 (I1–I5, V1–V4, R5); Google-Bedingungen für Grounding/Deep Research beachten (lib/ki/tiefenbericht.ts)',
   },
   {

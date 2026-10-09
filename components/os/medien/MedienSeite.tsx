@@ -113,8 +113,12 @@ function Kachel({ m, onClick }: { m: MediumSicht; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="fassbar" aria-label={`${m.art === 'video' ? 'Video' : 'Foto'} ${m.name ?? ''} öffnen`}
       style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 12, overflow: 'hidden', border: `1px solid ${markiert ? `${markiert}66` : 'rgba(255,255,255,.08)'}`, padding: 0, background: 'rgba(255,255,255,.04)', cursor: 'pointer', minHeight: 48 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- verschlüsselte Inhalte über die eigene Route */}
-      <img src={inhaltUrl(m.id, 'raster')} alt={m.texte?.alt ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: m.meineWahl === 'abgelehnt' ? 0.4 : 1 }} />
+      {m.varianten.includes('raster')
+        // eslint-disable-next-line @next/next/no-img-element -- verschlüsselte Inhalte über die eigene Route
+        ? <img src={inhaltUrl(m.id, 'raster')} alt={m.texte?.alt ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: m.meineWahl === 'abgelehnt' ? 0.4 : 1 }} />
+        // Ohne Vorschau (z. B. KI-Video — der Server wandelt nichts um): ruhiges Symbol statt eines leeren Bildes.
+        : <span style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', color: C.inkDim }}>{m.art === 'video' ? <Video size={28} aria-hidden /> : <ImageIcon size={28} aria-hidden />}</span>}
+      {m.urheber.art === 'ki' && <span title="KI-generiert (KI-VO Art. 50)" style={{ position: 'absolute', right: 6, top: 6, background: 'rgba(0,0,0,.6)', borderRadius: 8, padding: '1px 6px', color: '#fff', fontSize: TYP.bedien, fontWeight: 700 }}>KI{m.urheber.ki?.vorschlag === 'offen' ? ' · Vorschlag' : ''}</span>}
       <span style={{ position: 'absolute', left: 6, bottom: 6, display: 'flex', gap: 4 }}>
         {m.art === 'video' && <span style={{ background: 'rgba(0,0,0,.6)', borderRadius: 8, padding: '2px 6px', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: TYP.bedien }}><Video size={13} aria-hidden />{m.dauerSek ? `${Math.floor(m.dauerSek / 60)}:${String(Math.round(m.dauerSek % 60)).padStart(2, '0')}` : ''}</span>}
         {m.meineWahl === 'favorit' && <span style={{ background: 'rgba(0,0,0,.6)', borderRadius: 8, padding: '2px 5px', color: LEUCHT.achtung, display: 'inline-flex' }}><Star size={13} aria-hidden /></span>}

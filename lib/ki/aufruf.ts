@@ -5,6 +5,10 @@
 // Eiserne Regel 3) — die Agenten (Paket 0) docken über diese Funktionen an, nie am Adapter vorbei.
 // Video und Tiefenbericht laufen asynchron: Start hier (nur mit bestätigter Schätzung), Abholen im Takt über die Warteschlange
 // (`art: 'agent', name: 'ki-medien'` → `kiAuftraegeAbholen`), Ergebnis SOFORT verschlüsselt in die eigene Ablage (Veo: 2 Tage beim Anbieter).
+// Seit Paket 4c (09.10.) ist das die EINE Medien-Ablage (lib/medien/ki-ablage.ts): Bilder und fertige Videos werden Medien mit `urheber.art = 'ki'`
+// — dieselbe Verschlüsselung, Freigabe und Filterstelle wie hochgeladene Fotos. `ki-medien--<haushalt>` bleibt Auftragsbuch laufender Videos.
+// Bild bearbeiten: `vorlage` = ein Foto der Ablage — geprüft an EINER Stelle (`kiVorlageLaden`: nur Business, Personen nur mit Einwilligung „KI“),
+// dazu die KI-Kategorie `medien` (Schalter der Person „Bilder an die KI“, Vorgabe aus — KI-Tor).
 
 import type { KiKontext } from '@/lib/datenschutz/ki-tor';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -13,6 +17,7 @@ import { vertexKonfig } from './konfig';
 import { kostenSchaetzen, type Schaetzung } from './kosten';
 import { anbieterKennzeichnung, sichtbaresZeichen, type SichtbarAngabe } from './kennzeichnung';
 import { mediumAblegen, mediumAbschliessen, laufendeMedien, medienAufraeumen, neueMedienKennung, PROMPT_MAX, type KiMedium } from './medien';
+import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { tiefenberichtAnlegen, tiefenberichtAbschliessen, laufendeTiefenberichte, tiefenberichteAufraeumen, FRAGE_MAX } from './tiefenbericht';
 import { KiAnbieterFehler } from './adapter/http';
 import type { AnbieterId, Faehigkeit } from './anbieter';
@@ -48,58 +53,116 @@ const fehlerStatus = (e: unknown) => (e instanceof KiAnbieterFehler && e.status 
 
 export interface BildEingabe {
   ki: KiKontext;
-  /** Haushalt der Sitzung (haushaltVon) — nie aus der Anfrage. */
-  haushalt: string;
+  /** Haushalt der Sitzung (haushaltVon) — nur zur Prüfung: Medien gibt es nur im Haushalt des Inhabers (sonst 403, bevor etwas kostet). */
+  haushalt?: string;
   prompt: string;
   modell?: 'gemini-nano-banana-2.1' | 'gemini-3-pro-image';
   aufloesung?: '1k' | '2k' | '4k';
   seitenverhaeltnis?: '1:1' | '4:5' | '3:4' | '16:9' | '9:16';
+  /** Altweg (6a): „nur-ich“ → Privat der auslösenden Person (Unsortiert sieht nur sie); sonst Business. `bereich` geht vor. */
   sichtbarkeit?: 'haushalt' | 'nur-ich';
+  bereich?: 'business' | 'privat';
   sichtbar?: SichtbarAngabe;
   zweck?: string;
+  /** Bild bearbeiten (Paket 4c): ein Foto der EINEN Ablage als Vorlage — mit `headId` nur, wenn es diesem Head gegeben wurde. */
+  vorlage?: { mediumId: string; headId?: string };
+  album?: string;
+  name?: string;
+  /** Vorschlag eines Agenten (`agentSchluessel`): das Medium bleibt „Vorschlag offen“, bis ein Mensch im Stapel entscheidet. */
+  agent?: string;
+  /** false = der Mensch hat schon per Klick entschieden (Auftrag aus dem Stapel) — dann gilt das Bild gleich als übernommen. */
+  agentVorschlag?: boolean;
 }
 
-/** Ein Bild erzeugen (frei bis zum Budget, Kevin 08.10.) — ablegen, protokollieren, Kosten buchen. */
-export async function kiBild(e: BildEingabe): Promise<KiWegErgebnis<{ medien: KiMedium[]; schaetzung: Schaetzung; zeichen: ReturnType<typeof sichtbaresZeichen> }>> {
+/** Was ein KI-Weg über ein abgelegtes Medium zurückgibt (keine Schlüssel, keine Objekte). */
+export interface KiMediumErgebnis {
+  id: string;
+  art: 'bild' | 'video';
+  mime: string;
+  bereich: 'business' | 'privat';
+  anbieter: AnbieterId;
+  modell: string;
+  kennzeichnung: { synthid: boolean; c2pa: boolean; eigeneMarke: true };
+  zeichenNoetig: boolean;
+  kosten: { euroCent: number; geschaetzt: boolean };
+  vorschlag?: 'offen';
+}
+const ergebnisVon = (m: import('@/lib/medien/typen').Medium): KiMediumErgebnis => ({
+  id: m.id, art: m.art, mime: m.typ, bereich: m.bereich, anbieter: m.urheber.ki!.anbieter, modell: m.urheber.ki!.modell, kennzeichnung: m.urheber.ki!.kennzeichnung,
+  zeichenNoetig: m.urheber.ki!.zeichenNoetig, kosten: m.urheber.ki!.kosten ?? { euroCent: 0, geschaetzt: true }, ...(m.urheber.ki!.vorschlag === 'offen' ? { vorschlag: 'offen' as const } : {}),
+});
+
+/** Darf die Person überhaupt Medien ablegen (Haushalt des Inhabers; Privat nur als volles Mitglied)? Vor jedem Aufruf, der kostet. */
+async function ablageMoeglich(person: string, bereich: 'business' | 'privat', haushalt?: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const { betrachterFuer } = await import('@/lib/medien/server');
+  const b = await betrachterFuer(person);
+  if (!b || (haushalt && haushalt !== b.haushalt)) return { ok: false, status: 403, error: 'KI-Medien gibt es nur im Haushalt des Inhabers.' };
+  if (bereich === 'privat' && !b.voll) return { ok: false, status: 403, error: 'Privat gibt es nur für volle Mitglieder des Haushalts.' };
+  return { ok: true };
+}
+
+/** Ein Bild erzeugen bzw. ein Foto bearbeiten (frei bis zum Budget, Kevin 08.10.) — in die EINE Ablage, protokollieren, Kosten buchen. */
+export async function kiBild(e: BildEingabe): Promise<KiWegErgebnis<{ medien: KiMediumErgebnis[]; schaetzung: Schaetzung; zeichen: ReturnType<typeof sichtbaresZeichen> }>> {
   const person = e.ki.person;
   if (!person || !PERSON.test(person)) return { ok: false, status: 401, error: 'Bilder nur für eine angemeldete Person.' };
   if (!e.prompt.trim()) return { ok: false, status: 400, error: 'Beschreibung fehlt.' };
   if (e.prompt.length > PROMPT_MAX) return { ok: false, status: 413, error: `Beschreibung zu lang (höchstens ${PROMPT_MAX} Zeichen).` };
+  const bereich = e.bereich ?? (e.sichtbarkeit === 'nur-ich' ? 'privat' : 'business');
+  const ablage = await ablageMoeglich(person, bereich, e.haushalt);
+  if (!ablage.ok) return ablage;
+  // Bild bearbeiten: die Vorlage ist ein Foto der Ablage — EINE Prüfstelle am Medium (Personen nur mit Einwilligung „KI“, nie Privat/Minderjährige).
+  let vorlage: { medium: import('@/lib/medien/typen').Medium; bytes: Buffer; typ: string } | null = null;
+  if (e.vorlage) {
+    const { kiVorlageLaden } = await import('@/lib/medien/ki-ablage');
+    const v = await kiVorlageLaden(person, e.vorlage.mediumId, e.vorlage.headId ? { headId: e.vorlage.headId } : {});
+    if (!v.ok) return { ok: false, status: v.status, error: v.fehler };
+    vorlage = v;
+  }
+  // Pixel eines Fotos gehen hinaus → Kategorie `medien` (Schalter „Bilder an die KI“ der Person, KI-Tor).
+  const ki: KiKontext = vorlage ? { ...e.ki, kategorien: Array.from(new Set<KiKategorie>([...(e.ki.kategorien?.length ? e.ki.kategorien : ['allgemein' as const]), 'medien'])) } : e.ki;
   const modell = e.modell ?? 'gemini-nano-banana-2.1';
   const schaetzung = kostenSchaetzen({ faehigkeit: 'bild', modell, anzahl: 1, aufloesung: e.aufloesung ?? '1k' });
-  const zweck = e.zweck ?? 'ki-bild';
-  const tor = await anbieterTor({ faehigkeit: 'bild', ki: e.ki, schaetzung });
-  if (!tor.ok) { await protokoll({ zweck, ki: e.ki, faehigkeit: 'bild', modell, ergebnis: 'gesperrt', grund: tor.grund, lauf: tor.lauf, person: tor.person }); return gesperrt(tor.grund, schaetzung); }
+  const zweck = e.zweck ?? (vorlage ? 'ki-bild-bearbeiten' : 'ki-bild');
+  const tor = await anbieterTor({ faehigkeit: 'bild', ki, schaetzung });
+  if (!tor.ok) { await protokoll({ zweck, ki, faehigkeit: 'bild', modell, ergebnis: 'gesperrt', grund: tor.grund, lauf: tor.lauf, person: tor.person }); return gesperrt(tor.grund, schaetzung); }
   const v = vertexKonfig();
   if (!v) return gesperrt('anbieter-nicht-eingerichtet', schaetzung);
-  const basis = { zweck, ki: e.ki, faehigkeit: 'bild' as const, modell, anbieter: tor.anbieter, region: tor.region, stufe: tor.stufe, lauf: tor.lauf, person: tor.person };
+  const basis = { zweck, ki, faehigkeit: 'bild' as const, modell, anbieter: tor.anbieter, region: tor.region, stufe: tor.stufe, lauf: tor.lauf, person: tor.person };
+  let r: { bilder: { mime: string; bytes: Buffer }[] };
   try {
     const { vertexBild } = await import('./adapter/google-vertex');
-    const r = await vertexBild(v, { modell, prompt: await hinaus(tor, e.prompt), aufloesung: e.aufloesung, seitenverhaeltnis: e.seitenverhaeltnis });
-    const zeichen = sichtbaresZeichen(e.sichtbar ?? { realistisch: false });
-    const medien: KiMedium[] = [];
-    for (const b of r.bilder) {
-      medien.push(await mediumAblegen(e.haushalt, {
-        art: 'bild', status: 'fertig', mime: b.mime, anbieter: tor.anbieter, modell, person, sichtbarkeit: e.sichtbarkeit ?? 'haushalt', prompt: e.prompt,
-        kennzeichnung: { ...anbieterKennzeichnung(tor.anbieter), eigeneMarke: true }, ...(e.sichtbar ? { sichtbar: e.sichtbar } : {}), zeichenNoetig: zeichen.noetig,
-        kosten: { euroCent: schaetzung.euroCent, geschaetzt: schaetzung.ca },
-      }, b.bytes));
-    }
-    const { notiereMengen } = await import('@/lib/zoe/verbrauch');
-    await notiereMengen(modell, zweck, { [`bild@${e.aufloesung ?? '1k'}`]: r.bilder.length }, tor.anbieter).catch(() => undefined);
-    await protokoll({ ...basis, ergebnis: 'ok', kostenCent: schaetzung.euroCent * r.bilder.length });
-    return { ok: true, medien, schaetzung, zeichen };
+    r = await vertexBild(v, { modell, prompt: await hinaus(tor, e.prompt), aufloesung: e.aufloesung, seitenverhaeltnis: e.seitenverhaeltnis, ...(vorlage ? { referenzen: [{ mime: vorlage.typ, bytes: vorlage.bytes }] } : {}) });
   } catch (err) {
     await protokoll({ ...basis, ergebnis: 'fehler' });
     return { ok: false, status: fehlerStatus(err), error: fehlerText(err) };
   }
+  const { notiereMengen } = await import('@/lib/zoe/verbrauch');
+  await notiereMengen(modell, zweck, { [`bild@${e.aufloesung ?? '1k'}`]: r.bilder.length }, tor.anbieter).catch(() => undefined);
+  await protokoll({ ...basis, ergebnis: 'ok', kostenCent: schaetzung.euroCent * r.bilder.length });
+  const zeichen = sichtbaresZeichen(e.sichtbar ?? { realistisch: !!vorlage });
+  const { kiMediumAblegen } = await import('@/lib/medien/ki-ablage');
+  const medien: KiMediumErgebnis[] = [];
+  for (const b of r.bilder) {
+    const a = await kiMediumAblegen({
+      person, bereich, bytes: b.bytes, ...(e.album ? { album: e.album } : {}), ...(e.name ? { name: e.name } : {}), ...(vorlage ? { quelle: vorlage.medium } : {}),
+      herkunft: {
+        anbieter: tor.anbieter, modell, kennzeichnung: { ...anbieterKennzeichnung(tor.anbieter), eigeneMarke: true }, ...(e.sichtbar ? { sichtbar: e.sichtbar } : {}), zeichenNoetig: zeichen.noetig,
+        prompt: e.prompt, kosten: { euroCent: schaetzung.euroCent, geschaetzt: schaetzung.ca }, ...(e.agent ? { agent: e.agent, vorschlag: e.agentVorschlag === false ? 'uebernommen' as const : 'offen' as const } : {}),
+      },
+    });
+    // Bezahlt ist es schon — scheitert die Ablage (z. B. ein Format, das der Medienspeicher nicht kennt), sagt die Antwort das offen.
+    if (!a.ok) return { ok: false, status: a.status, error: `Bild erzeugt, aber nicht abgelegt: ${a.fehler}` };
+    medien.push(ergebnisVon(a.medium));
+  }
+  return { ok: true, medien, schaetzung, zeichen };
 }
 
 // ── Video (asynchron) ─────────────────────────────────────────────────────────
 
 export interface VideoEingabe {
   ki: KiKontext;
-  haushalt: string;
+  /** Haushalt der Sitzung — nur zur Prüfung (Medien gibt es nur im Haushalt des Inhabers). */
+  haushalt?: string;
   prompt: string;
   modell?: 'gemini-omni-1.1-flash' | 'veo-3.1-generate-001';
   sekunden: number;
@@ -108,7 +171,12 @@ export interface VideoEingabe {
   /** Der per Klick bestätigte Betrag (Euro-Cent) — ohne ihn fragt das Tor zurück (409 mit Schätzung). */
   bestaetigtCent?: number;
   sichtbarkeit?: 'haushalt' | 'nur-ich';
+  bereich?: 'business' | 'privat';
   sichtbar?: SichtbarAngabe;
+  album?: string;
+  name?: string;
+  /** Wer es vorgeschlagen hat (`agentSchluessel`) — gestartet wird ein Video trotzdem nur per Klick (NUR_MIT_KLICK). */
+  agent?: string;
 }
 /** Längen je Modell (MODELLE.md 2.4): Omni Flash bis 40 s in 10-s-Schritten, Veo 3.1 4/6/8 s. */
 export function videoLaengeErlaubt(modell: string, sekunden: number): boolean {
@@ -124,6 +192,9 @@ export async function kiVideoStarten(e: VideoEingabe): Promise<KiWegErgebnis<{ m
   if (!videoLaengeErlaubt(modell, e.sekunden)) return { ok: false, status: 400, error: 'Länge passt nicht zum Modell (Omni Flash 10–40 s in 10er-Schritten, Veo 3.1: 4, 6 oder 8 s).' };
   if (!e.prompt.trim()) return { ok: false, status: 400, error: 'Beschreibung fehlt.' };
   if (e.prompt.length > PROMPT_MAX) return { ok: false, status: 413, error: `Beschreibung zu lang (höchstens ${PROMPT_MAX} Zeichen).` };
+  const bereich = e.bereich ?? (e.sichtbarkeit === 'nur-ich' ? 'privat' : 'business');
+  const ablage = await ablageMoeglich(person, bereich, e.haushalt);
+  if (!ablage.ok) return ablage;
   const schaetzung = kostenSchaetzen({ faehigkeit: 'video', modell, sekunden: e.sekunden, aufloesung: e.aufloesung ?? '1080p' });
   const tor = await anbieterTor({ faehigkeit: 'video', ki: e.ki, schaetzung, bestaetigtCent: e.bestaetigtCent });
   if (!tor.ok) { await protokoll({ zweck: 'ki-video', ki: e.ki, faehigkeit: 'video', modell, ergebnis: 'gesperrt', grund: tor.grund, lauf: tor.lauf, person: tor.person }); return gesperrt(tor.grund, schaetzung); }
@@ -134,10 +205,14 @@ export async function kiVideoStarten(e: VideoEingabe): Promise<KiWegErgebnis<{ m
     const { vertexVideoStarten } = await import('./adapter/google-vertex');
     const { operation } = await vertexVideoStarten(v, { modell, prompt: await hinaus(tor, e.prompt), sekunden: e.sekunden, aufloesung: e.aufloesung, seitenverhaeltnis: e.seitenverhaeltnis });
     const zeichen = sichtbaresZeichen(e.sichtbar ?? { realistisch: true });
-    const medium = await mediumAblegen(e.haushalt, {
-      id: neueMedienKennung(), art: 'video', status: 'laeuft', operation, anbieter: tor.anbieter, modell, person, sichtbarkeit: e.sichtbarkeit ?? 'haushalt', prompt: e.prompt,
+    // Auftragsbuch (ki-medien) bis zum Abholen; das fertige Video legt der Takt in die EINE Ablage (`ziel`).
+    const { betrachterFuer } = await import('@/lib/medien/server');
+    const haushalt = e.haushalt ?? (await betrachterFuer(person))!.haushalt;
+    const medium = await mediumAblegen(haushalt, {
+      id: neueMedienKennung(), art: 'video', status: 'laeuft', operation, anbieter: tor.anbieter, modell, person, sichtbarkeit: bereich === 'privat' ? 'nur-ich' : 'haushalt', prompt: e.prompt,
       kennzeichnung: { ...anbieterKennzeichnung(tor.anbieter), eigeneMarke: true }, ...(e.sichtbar ? { sichtbar: e.sichtbar } : {}), zeichenNoetig: zeichen.noetig,
       kosten: { euroCent: schaetzung.euroCent, geschaetzt: schaetzung.ca }, mengen: schaetzung.mengen,
+      ziel: { bereich, ...(e.album ? { album: e.album } : {}), ...(e.name ? { name: e.name } : {}), ...(e.agent ? { agent: e.agent } : {}) },
     });
     await offenAendern(+1);
     await protokoll({ ...basis, ergebnis: 'ok', kostenCent: schaetzung.euroCent });
@@ -229,8 +304,21 @@ export async function kiAuftraegeAbholen(jetzt = new Date()): Promise<{ fertig: 
         const r = await vertexVideoAbholen(v, m.modell, m.operation!);
         if (!r.fertig) { offen++; continue; }
         if (!r.videos.length) { await mediumAbschliessen(h, m.id, { fehler: r.gefiltert ? 'vom Anbieter gefiltert' : 'kein Video in der Antwort' }); fehler++; continue; }
-        await mediumAbschliessen(h, m.id, { bytes: r.videos[0].bytes, mime: r.videos[0].mime });
         if (m.mengen) await notiereMengen(m.modell, 'ki-video', m.mengen, m.anbieter).catch(() => undefined);
+        // In die EINE Ablage (Paket 4c). Scheitert das (Speicher voll, Person nicht mehr im Haushalt), bleibt das bezahlte Video verschlüsselt
+        // im Auftragsbuch liegen — die Übernahme versucht es erneut, nichts geht verloren.
+        const { kiMediumAblegen } = await import('@/lib/medien/ki-ablage');
+        const a = await kiMediumAblegen({
+          person: m.person, bereich: m.ziel?.bereich ?? (m.sichtbarkeit === 'nur-ich' ? 'privat' : 'business'), bytes: r.videos[0].bytes,
+          ...(m.ziel?.album ? { album: m.ziel.album } : {}), ...(m.ziel?.name ? { name: m.ziel.name } : {}),
+          herkunft: { anbieter: m.anbieter, modell: m.modell, erzeugtAm: m.erzeugtAm, kennzeichnung: m.kennzeichnung, ...(m.sichtbar ? { sichtbar: m.sichtbar } : {}), zeichenNoetig: m.zeichenNoetig, prompt: m.prompt, kosten: m.kosten, ...(m.ziel?.agent ? { agent: m.ziel.agent } : {}) },
+        });
+        if (a.ok) {
+          await mediumAbschliessen(h, m.id, { uebernommenAls: a.medium.id });
+          const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
+          // Art `medien` zählt als Business (Business-freie Zeiten); ein privates Video meldet sich neutral als Agenten-Ergebnis.
+          await melde({ an: m.person, art: a.medium.bereich === 'business' ? 'medien' : 'agenten', titel: 'Ein KI-Video ist fertig', link: WEG.medien({ id: a.medium.id }) });
+        } else await mediumAbschliessen(h, m.id, { bytes: r.videos[0].bytes, mime: r.videos[0].mime });
         fertig++;
       } catch (err) {
         await mediumAbschliessen(h, m.id, { versuch: true });
@@ -238,6 +326,9 @@ export async function kiAuftraegeAbholen(jetzt = new Date()): Promise<{ fertig: 
       }
     }
     await medienAufraeumen(h, jetzt).catch(() => 0);
+    // Lese-Übergang (Paket 4c): fertige Einträge des Altbestands einmal in die EINE Ablage.
+    const { kiMedienUebernehmen } = await import('@/lib/medien/ki-ablage');
+    await kiMedienUebernehmen(h);
   }
   for (const k of konten) {
     const p = k.speicher;

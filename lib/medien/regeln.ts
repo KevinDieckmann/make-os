@@ -14,7 +14,7 @@
 // Rechtliche Einordnung: Hinweis, keine Rechtsberatung (research/agenten/RECHT.md Teil 3, 7).
 
 import {
-  GRENZEN, KANAELE, KANAL_NAME, HEAD_AUFTRAEGE, ZWECKE, KANTE_OHNE_ORIGINAL,
+  GRENZEN, KANAELE, KANAL_NAME, HEAD_AUFTRAEGE, ZWECKE, KANTE_OHNE_ORIGINAL, TEXTE, istMedienHead, MEDIEN_HEADS,
   type Album, type AlbumSicht, type AlbumSichtEintrag, type Bereich, type EinwilligungSicht, type FreigabeStatus, type HeadAuftragArt,
   type HeadZugang, type Kanal, type MarketingFreigabe, type MedienEinwilligung, type MedienKatalog, type Medium, type MediumSicht,
   type PersonImBild, type SperrGrund, type Variante, type EinwilligungZweck, type Zuschnitt,
@@ -141,10 +141,15 @@ const deckt = (e: MedienEinwilligung, kanaele: readonly Kanal[]) => kanaele.ever
  * Warum dieses Medium (noch) nicht fürs Marketing freigegeben werden kann — leer = es kann. Ganze Sätze; die Oberfläche zeigt sie,
  * der Server lehnt mit dem ersten ab (400). `album` = sein Album (öffentliches Event?).
  */
-export function freigabeGruende(m: Medium, album: Album | undefined, kanaele: readonly Kanal[], bis: string | undefined, l: Lage): string[] {
+export function freigabeGruende(m: Medium, album: Album | undefined, kanaele: readonly Kanal[], bis: string | undefined, l: Lage, opt: { kiZeichenBestaetigt?: boolean } = {}): string[] {
   const g: string[] = [];
   if (m.bereich !== 'business') g.push('Nur Business-Medien gehen ins Marketing — Privates bleibt im Haushalt.');
   if (m.geloeschtAm) g.push('Das Medium liegt im Papierkorb.');
+  // KI-generiert (Paket 4c, KI-VO Art. 50): nie ohne Kennzeichen nach außen; ein offener Agenten-Vorschlag ist noch kein Medium des Haushalts.
+  if (m.urheber.art === 'ki') {
+    if (m.urheber.ki?.vorschlag === 'offen') g.push(TEXTE.kiVorschlag);
+    if (m.urheber.ki?.zeichenNoetig && !opt.kiZeichenBestaetigt) g.push(TEXTE.kiZeichen);
+  }
   if (!m.ortsdatenEntfernt) g.push('Ortsdaten wurden nicht sicher entfernt — so geht es nicht nach außen. Bitte erneut hochladen.');
   if (m.art === 'video' && m.ton === 'nicht-freigegeben') g.push('Der Ton ist nicht freigegeben (§ 201 StGB) — ohne Ton neu hochladen oder Ton freigeben.');
   if (!kanaele.length) g.push('Bitte mindestens einen Kanal wählen.');
@@ -190,9 +195,41 @@ export function anHeadGruende(m: Medium, l: Lage): string[] {
   if (m.erkennbarePersonen === 'unklar') g.push('„Erkennbare Personen: unklar“ — bitte vorher klären.');
   if (m.personen.some(p => p.minderjaehrig)) g.push('Minderjährige gehen nie an eine Bild-KI.');
   if (m.art === 'video' && m.ton === 'nicht-freigegeben') g.push('Video mit nicht freigegebenem Ton.');
+  if (m.urheber.art === 'ki' && m.urheber.ki?.vorschlag === 'offen') g.push(TEXTE.kiVorschlag);
   const w = wirksamerStatus(m, l);
   if (w.status === 'gesperrt') g.push(sperrText(w.grund ?? 'hand'));
   return g;
+}
+
+/**
+ * Darf das BILD dieses Mediums (Pixel) an einen KI-Anbieter (Paket 4c: Bild bearbeiten, ein Head sieht die Vorschau)? Gründe als Sätze (leer = ja).
+ * Kevin 08.10./09.10.: Medien mit erkennbaren Personen nur, wenn die Einwilligung die KI-Bearbeitung deckt (Zweck „ki“ — RECHT.md 3.1); Privat nie an
+ * Business-Heads; Gesundheits- und Familienbilder nie (sie liegen im Privat-Bereich); Minderjährige nie (RECHT.md 7 #17); Unbekannte können nicht
+ * einwilligen. Den Schalter der Person („Bilder an die KI“, KI-Kategorie `medien`) prüft das KI-Tor — hier nur, was am Medium hängt.
+ * Hinweis, keine Rechtsberatung.
+ */
+export function anKiGruende(m: Medium, l: Lage): string[] {
+  const g: string[] = [];
+  if (m.bereich !== 'business') g.push('Private Medien gehen nie an die KI der Heads — Privates bleibt im Haushalt.');
+  if (m.geloeschtAm) g.push('Das Medium liegt im Papierkorb.');
+  if (m.art !== 'bild') g.push('Nur Fotos gehen als Vorlage an die KI.');
+  if (m.urheber.art === 'extern') g.push('Fremde Fotografin bzw. fremder Fotograf: die Lizenz deckt keine KI-Bearbeitung — nicht an die KI.');
+  if (m.urheber.art === 'ki' && m.urheber.ki?.vorschlag === 'offen') g.push(TEXTE.kiVorschlag);
+  if (!m.erkennbarePersonen) g.push('Bitte zuerst beantworten: Sind Personen erkennbar?');
+  if (m.erkennbarePersonen === 'unklar') g.push('„Erkennbare Personen: unklar“ — bitte vorher klären.');
+  if (m.personen.some(p => p.minderjaehrig)) g.push('Minderjährige gehen nie an eine Bild-KI.');
+  const w = wirksamerStatus(m, l);
+  if (w.status === 'gesperrt') g.push(sperrText(w.grund ?? 'hand'));
+  if (m.erkennbarePersonen === 'ja') {
+    if (!m.personen.length) g.push('Erkennbare Personen: bitte markieren, wer zu sehen ist.');
+    for (const p of m.personen) {
+      if (p.art === 'unbekannt') { g.push('Erkennbare unbekannte Personen können nicht einwilligen — so geht das Bild nicht an die KI.'); continue; }
+      const e = einwilligungVon(l, p.einwilligungId);
+      if (!e || e.widerruf) g.push('Eine abgebildete Person hat keine (gültige) Einwilligung — ohne sie geht das Bild nicht an die KI.');
+      else if (!e.zwecke.includes('ki')) g.push('Die Einwilligung einer abgebildeten Person deckt keine KI-Bearbeitung (Zweck „KI“ fehlt).');
+    }
+  }
+  return Array.from(new Set(g));
 }
 
 export interface HeadEintrag { medium: Medium; zugang: HeadZugang; mitPersonen: boolean }
@@ -232,7 +269,7 @@ export function alsSicht(m: Medium, q: Quelle, b: Betrachter, l: Lage): MediumSi
     favoriten: Object.values(m.auswahl ?? {}).filter(x => x === 'favorit').length,
     ...(m.erkennbarePersonen ? { erkennbarePersonen: m.erkennbarePersonen } : {}),
     personen: m.personen,
-    urheber: { art: m.urheber.art, ...(m.urheber.name ? { name: m.urheber.name } : {}), ...(m.urheber.lizenz ? { lizenz: { name: m.urheber.lizenz.name, am: m.urheber.lizenz.am } } : {}) },
+    urheber: { art: m.urheber.art, ...(m.urheber.name ? { name: m.urheber.name } : {}), ...(m.urheber.lizenz ? { lizenz: { name: m.urheber.lizenz.name, am: m.urheber.lizenz.am } } : {}), ...(m.urheber.ki ? { ki: m.urheber.ki } : {}) },
     marketing: { ...m.marketing, wirksam: w.status, ...(w.grund ? { wirksamGrund: sperrText(w.grund) } : {}) },
     heads: m.heads, ...(m.texte ? { texte: m.texte } : {}), ...(m.vorschlaege?.length ? { vorschlaege: m.vorschlaege } : {}),
     ...(m.abgeleitetVon ? { abgeleitetVon: m.abgeleitetVon } : {}), ...(m.geloeschtAm ? { geloeschtAm: m.geloeschtAm } : {}),
@@ -353,6 +390,8 @@ export function mediumAktion(k: Kontext, mediumId: string, a: Record<string, unk
         if (ziel) m.album = ziel; else delete m.album;
       }
       if ('urheber' in a) {
+        // KI-Herkunft bleibt (KI-VO Art. 50) — ein KI-Medium wird nie von Hand zu „von uns aufgenommen“.
+        if (m.urheber.art === 'ki') return F(409, 'Von der KI erzeugt — die Herkunft bleibt und lässt sich nicht ändern.');
         const u = a.urheber as { art?: unknown; name?: unknown } | null;
         if (!u || (u.art !== 'team' && u.art !== 'extern')) return F(400, 'Urheber: team oder extern.');
         const n = text(u.name, GRENZEN.name);
@@ -438,13 +477,15 @@ export function mediumAktion(k: Kontext, mediumId: string, a: Record<string, unk
         const kan = kanaeleAus(a.kanaele ?? f.kanaele);
         const bis = typeof a.bis === 'string' ? a.bis : f.bis;
         const album = m.album ? kat.alben.find(x => x.id === m.album) : undefined;
-        const gruende = freigabeGruende(m, album, kan, bis, k.lage);
+        const gruende = freigabeGruende(m, album, kan, bis, k.lage, { kiZeichenBestaetigt: a.kiZeichenBestaetigt === true });
         if (gruende.length) return F(400, gruende[0]);
         if (m.erkennbarePersonen === 'ja') {
           if (f.status !== 'angefragt') return F(409, 'Erkennbare Personen: Vier-Augen-Prinzip — erst anfragen, dann gibt eine andere Person frei.');
           if (f.angefragtVon === k.b.person) return F(403, 'Erkennbare Personen: Vier-Augen-Prinzip — freigeben muss eine andere Person als die, die angefragt hat.');
         }
         Object.assign(f, { status: 'freigegeben', kanaele: kan, bis, freigegebenVon: k.b.person, freigegebenAm: k.jetzt });
+        // KI-generiert: die Kennzeichnung nach außen ist Teil der Freigabe (sichtbar bei realistischen Personen/Orten — bestätigt).
+        if (m.urheber.art === 'ki') f.kiKennzeichnung = { sichtbar: !!m.urheber.ki?.zeichenNoetig, bestaetigtVon: k.b.person, am: k.jetzt };
         delete f.sperrGrund; delete f.gesperrtAm;
         if (!verlauf('freigegeben')) return F(413, 'Verlauf voll.');
       } else if (schritt === 'ablehnen') {
@@ -473,6 +514,7 @@ export function mediumAktion(k: Kontext, mediumId: string, a: Record<string, unk
       if (gruende.length) return F(400, gruende[0]);
       const head = String(a.head ?? '');
       if (headDef(head)?.bereich !== 'business') return F(400, 'Head unbekannt — Medien gehen nur an Business-Heads.');
+      if (!istMedienHead(head)) return F(400, `Medien gehen nur an Heads, die mit Bildern arbeiten (${MEDIEN_HEADS.map(h => headDef(h)?.kurz ?? h).join(', ')}).`);
       const auftrag = auftragAus(a.auftrag);
       if (!auftrag.length) return F(400, 'Bitte den Auftrag wählen (Auswahl, Zuschnitt, Texte).');
       const notiz = text(a.notiz, GRENZEN.notiz);

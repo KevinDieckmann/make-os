@@ -40,7 +40,7 @@ export const PERSON_OK = /^[a-z0-9-]{1,40}$/;
 const BEZUG_ID_OK = /^[A-Za-z0-9_-]{1,80}$/;
 const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin', 'netzwerken'];
 export const MELDUNG_ID_OK = /^[A-Za-z0-9:_.-]{1,160}$/;
-export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender', 'netzwerken', 'sicherheit', 'vertrag', 'postfach', 'verbindung', 'agenten'];
+export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender', 'netzwerken', 'sicherheit', 'vertrag', 'postfach', 'verbindung', 'agenten', 'medien'];
 
 /** Gespeicherte Arten: die fünf der Schnittstelle + die Sammelmeldung der Grenze. */
 export type GespeicherteArt = MeldungArt | 'sammel';
@@ -324,8 +324,11 @@ function kurzSchluessel(s: string): string {
 
 // ── Business-frei (08.10., Lücke 7) ─────────────────────────────────────────
 
-/** Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften). */
-export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke']);
+/**
+ * Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften; Paket 4c: `medien` — Freigaben fürs Marketing
+ * und KI-Videos aus dem Agenten-Bereich, beides nur im Business).
+ */
+export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien']);
 
 /**
  * Ist eine Meldung Business? Arten aus `BUSINESS_ARTEN`, Buchungs-Bezüge, abgeleitete Business-Fristen (`business`) und alles mit

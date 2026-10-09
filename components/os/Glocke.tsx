@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, ImageIcon, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -110,6 +110,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   verbindung: { Icon: Unplug, label: 'Verbindung', farbe: C.achtung },
   // 09.10. (Agenten-Bereich): ein Lauf eines Heads/Mitarbeiters ist fertig — neutral, Link auf den Thread.
   agenten: { Icon: Sparkles, label: 'Agenten', farbe: C.aktiv },
+  // 09.10. (Paket 4c): ein Medium wartet auf deine Freigabe bzw. ein KI-Video ist fertig.
+  medien: { Icon: ImageIcon, label: 'Fotos & Videos', farbe: C.aktiv },
   // 08.10. (Lücke 7): Business-Hinweise, die während einer Business-freien Zeit kamen — gesammelt, danach EINE Meldung.
   businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
 };
