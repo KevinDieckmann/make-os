@@ -21,7 +21,7 @@ export interface HeadVorschlag extends Vorschlag {
   auto?: { am: string; wirkung: string; rueckgaengig?: { art: 'schritt' | 'aufgabe'; kontaktId?: string; vorher?: { text: string; datum: string } | null; aufgabeId?: string } };
 }
 export interface HeadBericht { id: string; zeit: string; modus: string; ausgeloest: 'hand' | 'takt' | 'zoe'; person?: string; frage?: string; antwort: Antwort; pruefung: Pruefung & { korrigiert: boolean }; modell: string; dauer_ms: number; /** 'ki' = Modell hat geprüft und ergänzt · 'regelwerk' = ohne Modell (kein Schlüssel, Ausfall). */ quelle?: 'ki' | 'regelwerk'; /** Warum der Grundlauf ohne Modell lief. */ ohneKiGrund?: string; /** Tokens dieses Laufs inkl. Cache, Aufrufe, request-ids. */ verbrauch?: { ein: number; aus: number; cacheLesen: number; cacheSchreiben: number; aufrufe: number; requestIds: string[] } }
-export interface HeadStand { berichte: HeadBericht[]; vorschlaege: HeadVorschlag[]; letzte: Record<string, string>; versuche: Record<string, string>; ruhig?: { zeit: string; text: string }; /** Merksätze des Heads (von euch oder angenommen aus seinen Vorschlägen). */ gedaechtnis?: Merksatz[]; /** Interne Kleinigkeiten selbst erledigen (Standard: an, Kevin 25.09.). */ autonomie?: 'intern' | 'aus' }
+export interface HeadStand { berichte: HeadBericht[]; vorschlaege: HeadVorschlag[]; letzte: Record<string, string>; versuche: Record<string, string>; ruhig?: { zeit: string; text: string }; /** Merksätze des Heads (von euch oder angenommen aus seinen Vorschlägen). */ gedaechtnis?: Merksatz[]; /** Interne Kleinigkeiten selbst erledigen (Standard: an, Kevin 25.09.). */ autonomie?: 'intern' | 'aus'; /** Freigabe-Liste voll (09.10., Takt robust): letzter Lauf, der neue Vorschläge ablehnen musste — nur Zeit und Anzahl. */ voll?: { zeit: string; abgelehnt: number } }
 
 export const standName = (h: HeadId) => `head-${h}`;
 export const leererStand = (): HeadStand => ({ berichte: [], vorschlaege: [], letzte: {}, versuche: {} });
@@ -35,18 +35,32 @@ export function aehnlich(a: Pick<Vorschlag, 'art' | 'titel' | 'kontakt_id'>, b: 
   return verein > 0 && schnitt / verein >= 0.5;
 }
 
-export function mischen(alt: HeadVorschlag[], neu: Vorschlag[], berichtId: string, jetzt: string, modus?: string): { liste: HeadVorschlag[]; neu: number; aktualisiert: number } {
+/**
+ * Grenzen der Freigabe-Liste (09.10., Takt robust — „Nie abschneiden, ablehnen“): vorher schnitt `slice(-120)` die ältesten Einträge ab,
+ * auch OFFENE, die noch niemand entschieden hatte. Jetzt: offene bleiben immer; entschiedene nach Frist (90 Tage, angenommene ohne Frist —
+ * sie halten die Dublettenprüfung) und davon höchstens `ENTSCHIEDEN_MAX` jüngste. Liegen schon `OFFEN_MAX` offene, werden NEUE abgelehnt
+ * (gezählt, Lagebild des Head of IT) statt alte wegzuschneiden.
+ */
+export const ENTSCHIEDEN_MAX = 120;
+export const OFFEN_MAX = 200;
+
+export function mischen(alt: HeadVorschlag[], neu: Vorschlag[], berichtId: string, jetzt: string, modus?: string): { liste: HeadVorschlag[]; neu: number; aktualisiert: number; abgelehnt: number } {
   const liste = alt.map(v => ({ ...v }));
-  let n = 0, a = 0;
+  let n = 0, a = 0, abgelehnt = 0;
+  let offene = liste.filter(x => x.status === 'offen').length;
   for (const v of neu) {
     const gleich = liste.filter(x => x.dedup_schluessel === v.dedup_schluessel || aehnlich(x, v));
     const offen = gleich.find(x => x.status === 'offen');
     if (offen) { Object.assign(offen, { ...v, id: offen.id, status: 'offen', erstellt: offen.erstellt, aktualisiert: jetzt, berichtId, ...(modus ? { modus } : {}) }); a++; continue; }
     if (gleich.some(x => x.status === 'angenommen')) continue;
     if (gleich.some(x => x.status === 'abgelehnt' && Date.parse(jetzt) - Date.parse(x.entschieden ?? x.aktualisiert) < 30 * TAG)) continue;
+    if (offene >= OFFEN_MAX) { abgelehnt++; continue; }
     liste.push({ ...v, id: `hs-${Date.parse(jetzt).toString(36)}-${n}`, status: 'offen', erstellt: jetzt, aktualisiert: jetzt, berichtId, ...(modus ? { modus } : {}) });
-    n++;
+    n++; offene++;
   }
-  const frisch = liste.filter(x => x.status === 'offen' || x.status === 'angenommen' || Date.parse(jetzt) - Date.parse(x.entschieden ?? x.aktualisiert) < 90 * TAG);
-  return { liste: frisch.slice(-120), neu: n, aktualisiert: a };
+  const zeitVon = (x: HeadVorschlag) => Date.parse(x.entschieden ?? x.aktualisiert);
+  const entschieden = liste.filter(x => x.status !== 'offen' && (x.status === 'angenommen' || Date.parse(jetzt) - zeitVon(x) < 90 * TAG))
+    .sort((x, y) => zeitVon(y) - zeitVon(x)).slice(0, ENTSCHIEDEN_MAX);
+  const bleibt = new Set(entschieden);
+  return { liste: liste.filter(x => x.status === 'offen' || bleibt.has(x)), neu: n, aktualisiert: a, abgelehnt };
 }
