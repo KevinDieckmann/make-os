@@ -13,6 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, Hinweis, Schalter, Klappbar, Leer, LEUCHT, useRueckfrage } from './ui';
 import { Wahl } from './crm/Wahl';
 import type { Vorschau } from '@/lib/zulieferer/erinnerungen';
+import { useInhaber } from './useInhaber';
 
 interface Lage { aktiv: boolean; quelle: string; quelleText: string; umgebung: 'an' | 'aus' | null; uebernahmeAm: string | null; altbestand: boolean; spiegel: { erinnerungen: boolean; kontakte: boolean } }
 interface Stand {
@@ -41,7 +42,9 @@ export function ZuliefererKarte({ i = 0 }: { i?: number }) {
     const d = await r.json().catch(() => null) as (Stand & { ok?: boolean }) | null;
     if (d?.ok) setS(d);
   };
-  useEffect(() => { void laden(); }, []);
+  // Nur Inhaber (die Route ist die Schranke) — sonst gar keine Anfrage (09.10., Seiten-Durchlauf: 403 in der Konsole der zweiten Person).
+  const inhaber = useInhaber();
+  useEffect(() => { if (inhaber) void laden(); else if (inhaber === false) setDarf(false); }, [inhaber]);
 
   const v = s?.uebernahme.vorschau;
   const neue = useMemo(() => (v?.zeilen ?? []).filter(z => !z.schon && !ohne.has(z.kennung) && (erledigte || !z.erledigt)), [v, ohne, erledigte]);

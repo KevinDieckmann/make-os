@@ -7,6 +7,7 @@
 // Dateiauswahl. Danach rechnen Gesundheit und Wachstums-Score mit den Werten.
 
 import { useEffect, useRef, useState } from 'react';
+import { useInhaber } from './useInhaber';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, Hinweis, LEUCHT } from './ui';
 
@@ -26,7 +27,9 @@ export function WhoopImport({ onFertig, kurz }: { onFertig?: () => void; kurz?: 
   const datei = useRef<HTMLInputElement>(null);
 
   const pruefen = () => fetch('/api/import/whoop').then(r => r.json()).then(d => { setBereit(d.downloads ?? null); setAufDemMac(d.aufDemMac !== false); }).catch(() => setBereit(null));
-  useEffect(() => { void pruefen(); }, []);
+  // Nur Inhaber (die Route ist die Schranke) — sonst keine Anfrage und kein Knopf (09.10., Seiten-Durchlauf).
+  const inhaber = useInhaber();
+  useEffect(() => { if (inhaber) void pruefen(); }, [inhaber]);
 
   async function einlesen(koerper: BodyInit, json: boolean) {
     setLaeuft(true); setErgebnis(null);
@@ -42,6 +45,7 @@ export function WhoopImport({ onFertig, kurz }: { onFertig?: () => void; kurz?: 
   };
 
   const alt = bereit && Date.now() - Date.parse(bereit.zeit) > 2 * 86400_000;
+  if (inhaber === false) return null;
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       {!kurz && (
