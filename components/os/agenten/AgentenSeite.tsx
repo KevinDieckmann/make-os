@@ -71,7 +71,7 @@ function Schublade({ id, seite, offen, onZu, label, children }: { id: string; se
     <>
       {offen && <div className="agenten-schleier" aria-hidden onClick={onZu} />}
       <div id={id} role="dialog" aria-modal="false" aria-label={label} className="agenten-schublade" data-zu={offen ? undefined : ''} aria-hidden={offen ? undefined : true}
-        style={{ position: 'fixed', top: 0, bottom: 0, [seite]: 0, zIndex: 60, width: `min(${SPALTE.schublade}px, 92vw)`, boxSizing: 'border-box', overflowY: 'auto', overscrollBehavior: 'contain',
+        style={{ position: 'fixed', top: 0, bottom: 0, ...(seite === 'links' ? { left: 'var(--agenten-x, 0px)' } : { right: 0 }), zIndex: 80, width: `min(${SPALTE.schublade}px, 92vw)`, boxSizing: 'border-box', overflowY: 'auto', overscrollBehavior: 'contain',
           padding: ABSTAND.l, background: FLAECHE_STIL.gehoben.background, boxShadow: FLAECHE_STIL.gehoben.boxShadow, [seite === 'links' ? 'borderRight' : 'borderLeft']: `1px solid ${RAND.stark}`,
           transform: offen ? 'none' : `translateX(${seite === 'links' ? '-' : ''}100%)` }}>
         {children}
@@ -139,18 +139,25 @@ export function AgentenFlaeche({ handyReiter = 'gespraech', setHandyReiter }: { 
   );
 }
 
-/** Gemessene Breite der Fläche (ResizeObserver) — null, bis gemessen ist. */
-function useBreite(): [React.RefObject<HTMLDivElement>, number | null] {
+/**
+ * Gemessene Breite der Fläche (ResizeObserver) — null, bis gemessen ist — und ihr linker Rand im Fenster (die Liste als Schublade beginnt
+ * dort, rechts neben der Leiste der App; klappt die Leiste ein, ändert sich die Breite und der Rand wird neu gelesen).
+ */
+function useBreite(): [React.RefObject<HTMLDivElement>, number | null, number] {
   const ref = useRef<HTMLDivElement>(null);
-  const [breite, setBreite] = useState<number | null>(null);
+  const [mass, setMass] = useState<{ breite: number | null; x: number }>({ breite: null, x: 0 });
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(e => { const b = Math.round(e[0]?.contentRect.width ?? 0); if (b > 0) setBreite(x => (x === b ? x : b)); });
+    const ro = new ResizeObserver(e => {
+      const b = Math.round(e[0]?.contentRect.width ?? 0);
+      const x = Math.max(0, Math.round(el.getBoundingClientRect().left - SPALTE_ABSTAND));
+      if (b > 0) setMass(m => (m.breite === b && m.x === x ? m : { breite: b, x }));
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  return [ref, breite];
+  return [ref, mass.breite, mass.x];
 }
 
 export function AgentenSeite() {
@@ -159,7 +166,7 @@ export function AgentenSeite() {
   const { wahl, space } = useSpace();
   const breit = useBreit();
   const handy = useHandy();
-  const [flaecheRef, platz] = useBreite();
+  const [flaecheRef, platz, linkerRand] = useBreite();
   const lage = lageAus(platz, breit);
   const form: Form = handy ? 'handy' : lage.form;
 
@@ -226,13 +233,13 @@ export function AgentenSeite() {
     setEntwurf(null);
     setNeu(null);
     setHandyReiter('gespraech');
-    setSchublade(x => (x.links ? { ...x, links: false } : x)); // die Liste als Schublade schließt, sobald man etwas daraus öffnet
+    setSchublade(x => (x.links || x.rechts ? { links: false, rechts: false } : x)); // Schubladen schließen, sobald man etwas daraus öffnet (das Gespräch liegt darunter)
     const ziel = WEG.agenten(o);
     if (ersetzen) router.replace(ziel, { scroll: false }); else router.push(ziel, { scroll: false });
   }, [router]);
   const starteEntwurf = useCallback((e: { headId: string; mitarbeiterId: string } | null) => {
     setEntwurf(e);
-    if (e) { setNeu(null); setHandyReiter('gespraech'); setSchublade(x => (x.links ? { ...x, links: false } : x)); }
+    if (e) { setNeu(null); setHandyReiter('gespraech'); setSchublade(x => (x.links || x.rechts ? { links: false, rechts: false } : x)); }
   }, []);
   // „Neuer Thread“: an den Ort gehen (ZOE bzw. Head ohne Thread in der Adresse), dann leer anfangen (`oeffne` hebt `neu` auf — darum danach).
   const starteNeu = useCallback((ziel: string) => {
@@ -275,7 +282,7 @@ export function AgentenSeite() {
         {form === 'handy' && offenRisikoarm > 0 && handyReiter !== 'laeuft' && (
           <Hinweis art="info" aktion={<Knopf leise onClick={() => setHandyReiter('laeuft')}>Ansehen</Knopf>}>{offenRisikoarm} risikoarme Freigabe{offenRisikoarm === 1 ? '' : 'n'} — mit dem Daumen wischen.</Hinweis>
         )}
-        <div ref={flaecheRef} style={{ minWidth: 0 }}>
+        <div ref={flaecheRef} style={{ minWidth: 0, ['--agenten-x' as string]: `${linkerRand}px` }}>
           <AgentenFlaeche handyReiter={handyReiter} setHandyReiter={setHandyReiter} />
         </div>
       </Seite>

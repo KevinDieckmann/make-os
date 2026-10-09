@@ -22,7 +22,7 @@ import { euro, kostenImMonat } from './regeln';
 export interface MenueEintrag { label: string; satz?: string; tun: () => void; gefahr?: boolean }
 
 /** Ein Menü unter einem Knopf: Esc und Klick daneben schließen; die Einträge sind ganze Knöpfe (≥ 44 px). */
-export function Menue({ knopf, eintraege, ariaLabel, rechts, oben }: { knopf: (offen: boolean, umschalten: () => void) => ReactNode; eintraege: readonly MenueEintrag[]; ariaLabel: string; rechts?: boolean; /** Öffnet nach oben (unten im Hintergrund-Feld). */ oben?: boolean }) {
+export function Menue({ knopf, eintraege, ariaLabel, rechts, oben, voll }: { knopf: (offen: boolean, umschalten: () => void) => ReactNode; eintraege: readonly MenueEintrag[]; ariaLabel: string; rechts?: boolean; /** Öffnet nach oben (unten im Hintergrund-Feld). */ oben?: boolean; /** So breit wie der Platz der Zeile (in der schmalen Liste — sonst schnitte der Rand des Feldes das Menü ab). */ voll?: boolean }) {
   const [offen, setOffen] = useState(false);
   const wurzel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -34,10 +34,10 @@ export function Menue({ knopf, eintraege, ariaLabel, rechts, oben }: { knopf: (o
     return () => { window.removeEventListener('mousedown', zu); window.removeEventListener('keydown', taste); };
   }, [offen]);
   return (
-    <div ref={wurzel} style={{ position: 'relative' }}>
+    <div ref={wurzel} style={{ position: 'relative', ...(voll ? { flex: '1 1 auto', minWidth: 0 } : {}) }}>
       {knopf(offen, () => setOffen(o => !o))}
       {offen && (
-        <div role="menu" aria-label={ariaLabel} style={{ position: 'absolute', [oben ? 'bottom' : 'top']: `calc(100% + ${ABSTAND.s}px)`, [rechts ? 'right' : 'left']: 0, zIndex: 30, minWidth: 260,
+        <div role="menu" aria-label={ariaLabel} style={{ position: 'absolute', [oben ? 'bottom' : 'top']: `calc(100% + ${ABSTAND.s}px)`, ...(voll ? { left: 0, right: 0 } : { [rechts ? 'right' : 'left']: 0, minWidth: 260 }), zIndex: 30,
           ...FLAECHE_STIL.gehoben, border: `1px solid ${RAND.stark}`, borderRadius: ECKE.flach, padding: ABSTAND.s, display: 'grid', gap: 2 }}>
           {eintraege.map(e => (
             <button key={e.label} type="button" role="menuitem" onClick={() => { setOffen(false); e.tun(); }} className="fassbar"
@@ -76,7 +76,7 @@ export function NeuMenue({ symbol }: { symbol?: boolean }) {
     : { label: 'Thread', satz: head ? `Neuer Thread mit ${head.kurz}` : 'Neues Gespräch mit ZOE', tun: () => starteNeu?.(head ? head.id : 'zoe') };
   const eintraege: MenueEintrag[] = [thread, ...NEU.map(n => ({ label: n.label, satz: n.satz, tun: () => dialog(n.art(headId)) }))];
   return (
-    <Menue ariaLabel="Neu anlegen" eintraege={eintraege}
+    <Menue ariaLabel="Neu anlegen" eintraege={eintraege} voll={!symbol}
       knopf={(offen, um) => symbol
         ? <SymbolKnopf ariaLabel="Neu anlegen" offen={offen} onClick={um}><Plus size={18} /></SymbolKnopf>
         : <Knopf leise onClick={um} ariaLabel={offen ? 'Menü „Neu“ schließen' : 'Neu anlegen'}><Plus size={16} aria-hidden /> Neu ▾</Knopf>} />

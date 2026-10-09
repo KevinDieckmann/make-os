@@ -23,7 +23,7 @@ import { meldeNeu } from './daten';
 import { NeuMenue } from './Kopfleiste';
 import { fadenStatusFarbe, fadenStatusName, wartendeFaeden } from './regeln';
 import { TASTE_TEXT } from './klappen';
-import { KUGEL_GROESSE, LISTE_THREADS } from './masse';
+import { KUGEL_GROESSE, LISTE_THREADS, SPALTE_EINS } from './masse';
 
 /** Ein kleiner Zustandspunkt — nur, wenn es einen Zustand gibt (läuft · wartet · Freigabe · Fehler). */
 function Punkt({ farbe, puls }: { farbe: string; puls?: boolean }) {
@@ -36,7 +36,7 @@ function ListenZeile({ aktiv, onClick, links, titel, rechts, einzug = 0, ariaLab
 }) {
   return (
     <button type="button" onClick={onClick} aria-current={aktiv ? 'page' : undefined} aria-label={ariaLabel} title={hinweis} className="fassbar"
-      style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s + 2, width: '100%', minHeight: ZIEL.handy, padding: `${ABSTAND.xs}px ${ABSTAND.s}px ${ABSTAND.xs}px ${ABSTAND.s + einzug}px`,
+      style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s + 2, width: '100%', flex: '1 1 auto', minWidth: 0, minHeight: ZIEL.handy, padding: `${ABSTAND.xs}px ${ABSTAND.s}px ${ABSTAND.xs}px ${ABSTAND.s + einzug}px`,
         borderRadius: ECKE.eingabe, border: `1px solid ${aktiv ? TIEF.rand(C.aktiv) : 'transparent'}`, background: aktiv ? TIEF.flaeche(C.aktiv) : 'transparent',
         color: aktiv ? C.ink : C.inkDim, fontFamily: SCHRIFT.text, textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }}>
       {links}
@@ -70,7 +70,7 @@ function ThreadListe({ threads, wer, aktivId, oeffnen, alle, ariaLabel }: {
   const rest = threads.length - zeigen.length;
   if (!threads.length) return <div style={{ padding: `${ABSTAND.xs}px ${ABSTAND.s}px ${ABSTAND.xs}px ${ZIEL.rechner + ABSTAND.s}px`, fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Threads.</div>;
   return (
-    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }} aria-label={ariaLabel}>
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: 2, minWidth: 0 }} aria-label={ariaLabel}>
       {zeigen.map(f => {
         const p = fadenPunkt(f);
         const name = wer(f);
@@ -99,8 +99,8 @@ function HeadEintrag({ h, offen, umschalten, threads, suche }: { h: HeadKarte; o
   const maName = (f: FadenKurz) => (f.agent.art === 'mitarbeiter' ? h.mitarbeiter.find(m => m.id === (f.agent as { mitarbeiterId: string }).mitarbeiterId)?.name ?? 'Mitarbeiter' : h.kurz);
   const aktivId = auswahl.art === 'faden' || auswahl.art === 'head' ? auswahl.fadenId : undefined;
   return (
-    <li style={{ display: 'grid', gap: 2 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, opacity: gesperrt ? 0.62 : 1 }}>
+    <li style={{ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: 2, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, opacity: gesperrt ? 0.62 : 1 }}>
         <SymbolKnopf ariaLabel={offen ? `${h.kurz} zuklappen` : `${h.kurz} aufklappen — Threads`} offen={offen} onClick={umschalten}>
           {offen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </SymbolKnopf>
@@ -149,10 +149,9 @@ export function Team() {
   const keinTreffer = sucht && !zoePasst && !zoeTreffer.length && !zeilen.length;
 
   return (
-    <nav aria-label="Team" style={{ display: 'grid', gap: ABSTAND.m, alignContent: 'start' }}>
+    <nav aria-label="Team" style={{ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: ABSTAND.m, alignContent: 'start', minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.xs }}>
         <NeuMenue />
-        <span style={{ flex: 1 }} />
         {form !== 'handy' && felder && (
           <SymbolKnopf ariaLabel={`Liste zuklappen (${TASTE_TEXT.links})`} offen steuert="agenten-liste" onClick={() => felder.umschalten('links', false)}><PanelLeftClose size={18} /></SymbolKnopf>
         )}
@@ -167,8 +166,8 @@ export function Team() {
       </div>
 
       {(zoePasst || zoeTreffer.length > 0) && (
-        <div style={{ display: 'grid', gap: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: 2, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
             <SymbolKnopf ariaLabel={zoeOffen ? 'ZOE-Gespräche zuklappen' : 'ZOE-Gespräche aufklappen'} offen={zoeOffen} onClick={() => umschalten('zoe')}>
               {zoeOffen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </SymbolKnopf>
@@ -187,12 +186,12 @@ export function Team() {
       {keinTreffer && <Leer symbol="⌕" aktion={<Knopf leise onClick={() => setSuche('')}>Suche leeren</Knopf>}>Nichts gefunden für „{suche.trim()}“.</Leer>}
 
       {gruppen.map(g => (
-        <section key={g.b} aria-label={g.b === 'business' ? 'Business' : 'Privat'} style={{ display: 'grid', gap: 2 }}>
+        <section key={g.b} aria-label={g.b === 'business' ? 'Business' : 'Privat'} style={{ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: 2, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, ...MIKRO, margin: `${ABSTAND.xs}px 0`, paddingLeft: ABSTAND.s }}>
             <span aria-hidden style={{ width: 8, height: 8, borderRadius: RADIUS.pille, background: bereichFarbe(g.b) }} />
             {g.b === 'business' ? 'Business' : 'Privat'}
           </div>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: 2, minWidth: 0 }}>
             {g.zeilen.map(z => <HeadEintrag key={z.h.id} h={z.h} threads={z.threads} suche={sucht} offen={sucht ? z.threads.length > 0 && !suchPasst([z.h.name, z.h.kurz], suche) || !!offen[z.h.id] : !!offen[z.h.id]} umschalten={() => umschalten(z.h.id)} />)}
           </ul>
         </section>
