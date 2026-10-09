@@ -4,6 +4,74 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten-Seite aufgeräumt (Claude-Muster) (nur lokal — Branch `agenten-aufraeumen`, Basis `agenten-nacht` a94d4052, `agenten-nacht` 1df0cdd9 eingemischt)
+
+Kevin 09.10.: „Das ganze Agent-System ist noch unübersichtlich, schau, wie du das sauberer hinbekommst. Bei Claude hier sieht das aufgeräumter und sauberer
+aus — ist das gleiche Prinzip.“ Danach: „Ich glaube, es reicht, wenn wir links und rechts beides zuklappen können, damit der Chat größer und übersichtlicher
+wird.“ Entschieden (Klickrunde): **Zuklappen + aufräumen.** Nur die Oberfläche (`components/os/agenten/*`) — keine Route, kein Bestand, keine Regel des
+Servers geändert; jede Funktion bleibt erreichbar, sie liegt nur ordentlicher.
+
+**Aufbau jetzt:** links die **Liste** (wie die Seitenleiste der Claude-App) · Mitte **nur das Gespräch** (eine Kopfzeile, Verlauf, Feld — höchstens 760 px breit
+und mittig) · rechts der **Hintergrund** (wie „Hintergrundaufgaben“). Links und rechts klappen ein; der Zustand wird je Browser gemerkt (`make-agenten-links`,
+`make-agenten-rechts`, Vorgabe offen). Ob die Seiten neben dem Gespräch oder als **Schublade** darüber stehen, entscheidet der gemessene Platz der Fläche
+(die Leiste der App nimmt mit): breit = drei Spalten; mittel = Liste daneben, Hintergrund als Schublade (startet zu); Tablet hochkant = beide als Schublade.
+Handy bleibt bei den Reitern Gespräch · Team · Läuft.
+
+**Tastenkürzel:** ⌘B bzw. Strg+B = Liste auf/zu · ⌘. bzw. Strg+. = Hintergrund auf/zu · Esc schließt eine offene Schublade. Nie in Eingabefeldern, nie über einem
+offenen Fenster; keine andere Stelle der App belegt ⌘B oder ⌘. (geprüft, Wächter).
+
+| Vorher | Jetzt |
+|---|---|
+| Kopfleiste über der Seite: „+ Neu ▾“ | oben in der Liste „Neu ▾“ (neu: „Thread“ = neues Gespräch mit ZOE bzw. dem gewählten Head/Mitarbeiter); ist die Liste zu, „+“ in der Kopfzeile des Gesprächs |
+| Kopfleiste: Freigaben (Zahl) | rechts „Wartet auf dich (n)“ mit „Alle ›“ zur Freigaben-Seite; ist rechts zu, zeigt die Kopfzeile „⚑ n warten“ (Klick öffnet); außerdem ZOE-Reiter „Freigaben“ |
+| Kopfleiste: Geplant | rechts Abschnitt „Geplant (n)“ (das frühere „Als Nächstes“, Eisenhower, kritisch pulsiert) + „Zeitpläne ›“ (dasselbe Fenster wie vorher) |
+| Kopfleiste: Budget-Balken, Not-Aus, „⋯“ | unten im Hintergrund: Budget-Balken, Not-Aus (Rückfrage wie bisher), „⋯“ = Leitplanken · Budget und Kosten (je Head) · Zeitpläne · Bisherige Übersicht |
+| Seitenkopf mit Untertitel | nur Titel „Agenten“ + ZOE-Reiter |
+| Team: Heads mit Untertitel („3 Threads · 1 läuft“, „steuert die Heads“) und ⚑-Zahl | nur Namen + Kugel; ein Punkt nur bei Zustand (Freigabe pulsiert · wartet · läuft), Details in Tooltip/Ansage; Suchfeld filtert Heads und Threads |
+| Team: aufgeklappt nur Mitarbeiter-Threads + Mitarbeiter ohne Thread | aufgeklappt ALLE Threads des Heads (eigene und die seiner Mitarbeiter) nur mit Titel, ab sechs „+ n weitere“; ZOE ist ebenfalls aufklappbar (ihre Gespräche). Mitarbeiter ohne Thread: Info › Mitarbeiter › „Thread starten“ bzw. „Neu ▾ › Auftrag“ |
+| ZOE-Mitte: Briefing + Überblick-Karte (passiert, in Arbeit, nächste Tage, wartet, Jahresziele) + Vorschläge über dem Chat | Briefing, „Seit deinem letzten Besuch“ (höchstens 3 Zeilen, „+ n weitere“) und Vorschläge NUR solange das Gespräch leer ist; „Woran gearbeitet wird“ und Jahresziele unter **Info** (ⓘ in der Kopfzeile); „Wartet“ und „nächste Tage“ rechts |
+| ZOE: „Neues Gespräch“ / „Gespräch löschen“ / Head-Chips unter dem Chat | „Neues Gespräch“ als Stift in der Kopfzeile und unter ⋯; „Gespräch löschen“ unter ⋯; Heads stehen links |
+| Head-Kopf: Auftrag, 3 Kennzahlen, „Sieht / sieht nicht“, Skill- und Mitarbeiter-Chips; sieben Reiter | Kopfzeile mit drei Reitern **Chat · Aktivität · Info**; Info = Auftrag, „Sieht / sieht nicht“, Kennzahlen, Hinweis + aufklappbare Abschnitte Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen |
+| Head: Thread-Chips über dem Chat, „+ Neuer Thread“, „Thread löschen“ | Threads links unter dem Head; „Neuer Thread“ als Stift in der Kopfzeile, unter ⋯ und „Neu ▾ › Thread“; ⋯ außerdem Auftrag, Hintergrundaufgabe, Mitarbeiter/Skill anlegen, Einstellungen (springt zu Info › Einstellungen), Thread löschen |
+| Mitarbeiter-Thread: Brotkrumen-Zeile + großer Kopf mit Rolle; „Thread löschen“ neben dem Feld | EINE Kopfzeile „Head › Mitarbeiter › „Thread““ mit Zustand; ⋯ = Zweite Meinung, zum Head, Thread löschen; „Zweite Meinung“ bleibt auch am Feld |
+| @-Chips immer über dem Eingabefeld | erscheinen beim Tippen von „@“ |
+| Läuft: Zeile mit Head-Chip | Karte wie in der Claude-App: Titel, „Head › Mitarbeiter“, Schritt · Dauer · Kosten in Euro, „Ansehen ›“, „Stopp“ |
+| Fertig (n) und Fehler (n) getrennt eingeklappt | „Fertig / Fehler (n)“ eingeklappt, Fehler zuerst (mit „Neu starten“) |
+
+**So testet ihr (in Klicks):** 1. ZOE › Agenten. Links Liste, Mitte ZOE, rechts Hintergrund. 2. ⌘B → Liste zu (Knopf links in der Kopfzeile geht genauso);
+⌘. → Hintergrund zu; Kopfzeile zeigt „⚑ n warten“, Klick öffnet rechts wieder. Seite neu laden → bleibt, wie verlassen. 3. Beide zu → Gespräch mittig.
+4. Links „Sales“ → Kopfzeile mit Chat · Aktivität · Info; „Info“ → Auftrag, Kennzahlen, Abschnitte aufklappen. 5. Pfeil vor „Sales“ → Threads; einen
+antippen. ⋯ → „Thread löschen“ (Rückfrage). 6. „Neu ▾ › Thread“ → leerer Thread mit Sales. 7. Fenster schmal ziehen (~1.000 px) → rechts als Schublade
+(Knopf in der Kopfzeile, Esc schließt). 8. Handy: Gespräch · Team · Läuft wie bisher; unter „Läuft“ unten Budget, Not-Aus, ⋯.
+
+**Gemeinsame Dateien:** `components/os/ui/knoepfe.tsx` (`SymbolKnopf` additiv: `gedrueckt` → aria-pressed, `offen`/`steuert` → aria-expanded/-controls),
+`app/globals.css` (`.agenten-seitenfeld`, `.agenten-schublade`, `.agenten-schleier`, reduzierte Bewegung). Neu: `components/os/agenten/klappen.ts` (rein: Lage,
+Tasten, Merker), `GespraechKopf.tsx`. `Kopfleiste.tsx` trägt jetzt die Bedienteile (Menue, NeuMenue, BudgetBalken, Not-Aus, MehrMenue), die Kopfleiste
+selbst gibt es nicht mehr.
+
+**Mit `agenten-nacht` 1df0cdd9 zusammengeführt** (agenten-live, agenten-nachschliff, Head of Finance) — jede Live-Korrektur an ihrem neuen Ort:
+„Thread löschen“ (Head, Mitarbeiter) und „Gespräch löschen“ (ZOE) über den EINEN Weg `fadenLoeschen` jetzt unter ⋯ der Kopfzeile (erst weg vom Thread, dann
+löschen); Status „eingereiht“ (`fadenStatusName`/`fadenStatusFarbe`) an Punkt und Ansage der Liste und am Zustand in der Kopfzeile; „Wartet auf dich“ zählt
+eingereihte Läufe nicht (`wartendeFaeden`); Verlaufsende-Anker und deckendes Feld im Chat; Budget-Ansage „Kosten gesamt … — Budget öffnen“; Neuladen nach
+fertigem Lauf; Detail der Freigabe und Titel ohne doppelte Zahl in „Wartet“/„Geplant“. Die Meldung nach „@Head …“ sagt wieder „steht links unter …“ — seit
+dem Aufräumen stehen die Threads des Heads tatsächlich links.
+
+**Sichtprüfung** (Demo-Instanz, Produktionsbau, headless Chrome): 1.440 px alles offen / Liste zu / beide zu / Head-Chat / Head-Info / „Neu ▾“ offen,
+1.000 px Hintergrund- und Listen-Schublade, 390 px Gespräch · Team · Läuft — keine waagrechte Scrollleiste. Dabei gefunden und behoben: die Liste lief mit
+langen Thread-Titeln unter das Gespräch (Grid ohne `minmax(0, 1fr)`), der Name des Heads wurde von den Reitern auf „H.“ gedrückt (Reiter jetzt als zweite
+Zeile der Kopfzeile), die rechte Schublade stand links, „Neu ▾“ wurde vom Rand der Liste abgeschnitten, die ZOE-Kugel lag über der Schublade.
+
+**Tests:** neu `tests/agenten-aufraeumen.test.ts` (16: jede frühere Aktion erreichbar, Liste nur Namen, Einklappen gemerkt, Tasten, Lage, Schublade,
+Kopfzeile); angepasst `tests/agenten-oberflaeche.test.ts`, `tests/rundgang-funde.test.ts` (dieselben Zusagen am neuen Ort). Grün: `tests/{agenten,design,
+aufraeumen,spaces,messlatte,rundgang}*` (44 Dateien, 635 Tests) und repo-sauber/kennungen/neutral-rest/plattform (58). **Rückweg:** nur Oberfläche;
+die zwei Merker im Browser stören den alten Stand nicht.
+
+**Offen / Fragen an Kevin**
+- Soll „Woran gearbeitet wird“ (heute unter ZOE › Info) zusätzlich rechts als Zeile stehen, oder reicht „Läuft“?
+- Mitarbeiter ohne Thread stehen nicht mehr in der Liste (nur Info › Mitarbeiter und „Neu ▾ › Auftrag“). Wieder einblenden, z. B. als „+ Thread mit …“ unter
+  dem aufgeklappten Head?
+- Threads umbenennen kann der Server schon (`umbenennen`) — als Eintrag unter ⋯ dazunehmen?
+
 ## 09.10.2026 — Agenten: Nachschliff (nur lokal — Branch `agenten-nachschliff`, Basis `agenten-nacht` a94d4052)
 
 Kevin 09.10.: „Das muss perfekt laufen. Denke immer einen Schritt weiter.“ Die Punkte, die „Agenten-Durchstich“ und „Sicherheit an den Nahtstellen“ als

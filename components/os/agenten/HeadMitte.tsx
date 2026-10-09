@@ -1,60 +1,54 @@
 'use client';
 
-// ─── Agenten-Seite: die Mitte mit einem Head (09.10., Paket 2) ─────────────────────────────────────────────────────────
-// Fragerunde 5: „Reiter Chat · Aktivität · Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen · Kopf mit
-// Auftrag + 3 Kennzahlen + Skills als Chips · Vorschläge als Karte im Chat · Delegation als aufklappbare Karte.“
+// ─── Agenten-Seite: die Mitte mit einem Head (09.10., Paket 2; Aufräumen 09.10. abends nach dem Claude-Muster) ─────────────────
+// Fragerunde 5: „Reiter Chat · Aktivität · Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen · Kopf mit Auftrag + 3 Kennzahlen
+// + Skills als Chips · Vorschläge als Karte im Chat · Delegation als aufklappbare Karte.“
+// Aufräumen 09.10. (Auftrag: „Mitte nur Gespräch“): über dem Chat steht NUR die Kopfzeile (Kugel, Name, Bereich, Reiter, „Neuer Thread“, ⋯).
+// Drei Reiter statt sieben — Chat · Aktivität · Info; „Info“ bündelt, was vorher über dem Chat und in fünf Reitern stand: Auftrag,
+// „Sieht / sieht nicht“, Kennzahlen, Hinweis und die aufklappbaren Abschnitte Mitarbeiter (Thread starten, Duplizieren) · Skills ·
+// Gedächtnis · Leistung · Einstellungen. Die Thread-Chips über dem Chat entfallen — die Threads stehen links unter dem Head; „Neuer Thread“
+// steht in der Kopfzeile und unter „Neu ▾“, „Thread löschen“ unter ⋯.
 // „Wenn ich auf Heads bin, chatte ich im nächsten Fenster auch nur mit ihnen.“ — der Chat hier spricht NUR mit diesem Head;
-// @Mitarbeiter im Feld (oder ein Chip) legt einen neuen Mitarbeiter-Thread an.
-// Was der Head sieht, entscheidet der Server; der Kopf zeigt es nur an („Sieht / sieht nicht“, aus den KI-Kategorien des Katalogs).
+// @Mitarbeiter im Feld legt einen neuen Mitarbeiter-Thread an. Was der Head sieht, entscheidet der Server; Info zeigt es nur an.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP, ZIEL } from '@/lib/make-one/design';
 import { headDef } from '@/lib/agenten/katalog';
-import { TON_SATZ, GRENZEN, type Aufwand, type AutonomieStufe, type EinstellungFeld, type FadenAntwort, type HeadDef, type HeadKarte, type ModelTier, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
+import { TON_SATZ, GRENZEN, type Aufwand, type AutonomieStufe, type EinstellungFeld, type FadenAntwort, type FadenKurz, type HeadDef, type HeadKarte, type ModelTier, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
-import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, Schalter, Segmente, SymbolKnopf, Wahl, Zeile, auswahl, eingabe } from '../ui';
+import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Klappbar, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, Schalter, Segmente, SymbolKnopf, Zeile, auswahl, eingabe } from '../ui';
 import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
+import { GespraechKopf } from './GespraechKopf';
 import { LaufZeile } from './Hintergrund';
 import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import {
   ansprache, ansprechbarFuer, ausloeserText, euro, fadenStatusName, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
 } from './regeln';
-import { KUGEL_GROESSE } from './masse';
+import { einSpaltig, KUGEL_GROESSE } from './masse';
 
-type ReiterId = 'chat' | 'aktivitaet' | 'mitarbeiter' | 'skills' | 'gedaechtnis' | 'leistung' | 'einstellungen';
-const REITER: { id: ReiterId; label: string }[] = [
-  { id: 'chat', label: 'Chat' }, { id: 'aktivitaet', label: 'Aktivität' }, { id: 'mitarbeiter', label: 'Mitarbeiter' }, { id: 'skills', label: 'Skills' },
-  { id: 'gedaechtnis', label: 'Gedächtnis' }, { id: 'leistung', label: 'Leistung' }, { id: 'einstellungen', label: 'Einstellungen' },
+type ReiterId = 'chat' | 'aktivitaet' | 'info';
+/** Die Abschnitte unter „Info“ — früher je ein Reiter (Adresse, Tests und „⋯ › Einstellungen“ springen weiter direkt hinein). */
+export type InfoAbschnitt = 'mitarbeiter' | 'skills' | 'gedaechtnis' | 'leistung' | 'einstellungen';
+const INFO_ABSCHNITTE: readonly { id: InfoAbschnitt; label: string }[] = [
+  { id: 'mitarbeiter', label: 'Mitarbeiter' }, { id: 'skills', label: 'Skills' }, { id: 'gedaechtnis', label: 'Gedächtnis' },
+  { id: 'leistung', label: 'Leistung' }, { id: 'einstellungen', label: 'Einstellungen' },
 ];
+const istInfoAbschnitt = (x: string): x is InfoAbschnitt => INFO_ABSCHNITTE.some(a => a.id === x);
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: C.inkLeise } as const;
 const AUFWAND_NAME = { low: 'gering', medium: 'mittel', high: 'hoch' } as const;
+const neuesteZuerst = (a: FadenKurz, b: FadenKurz) => Date.parse(b.aktualisiert) - Date.parse(a.aktualisiert);
 
-// ── Kopf ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// ── Info: über den Head (Auftrag, Sieht / sieht nicht, Kennzahlen, Hinweis) ─────────────────────────────────────────────
 
-export function HeadKopf({ k, def }: { k: HeadKarte | null; def: HeadDef | null }) {
-  const { dialog, starteEntwurf, form } = useAgenten();
-  const handy = form === 'handy';
-  const chips = handy ? 3 : 6;
-  const name = k?.name ?? def?.name ?? 'Head';
-  const kurz = k?.kurz ?? def?.kurz ?? name;
-  const farbe = headFarbe(k?.farbe ?? def?.farbe);
-  const bereich = k?.bereich ?? def?.bereich;
+export function HeadUeber({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
+  const { form } = useAgenten();
   const sicht = def ? sichtVon(def) : null;
-  const skills = k?.skills ?? [];
   return (
-    <header style={{ display: 'grid', gap: ABSTAND.m }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.m }}>
-        <KuerzelKugel name={kurz} farbe={farbe} bereich={bereich} groesse={KUGEL_GROESSE.kopf} foto={fotoVon(k)} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink, display: 'flex', alignItems: 'center', gap: ABSTAND.s, flexWrap: 'wrap' }}>
-            {name}{bereich && <Chip farbe={bereichFarbe(bereich)}>{bereich === 'business' ? 'Business' : 'Privat'}</Chip>}
-          </h2>
-          <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{k?.auftrag ?? def?.auftrag}</div>
-        </div>
-      </div>
+    <section aria-label={`Über ${k.kurz}`} style={{ display: 'grid', gap: ABSTAND.m }}>
+      <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55 }}>{k.auftrag}</div>
       {sicht && (
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
           <b style={{ color: C.ink }}>Sieht:</b> {sicht.sieht.join(' · ') || '—'}
@@ -62,69 +56,28 @@ export function HeadKopf({ k, def }: { k: HeadKarte | null; def: HeadDef | null 
           {sicht.siehtNicht.length > 0 && <> &nbsp; <b style={{ color: C.ink }}>Sieht nicht:</b> {sicht.siehtNicht.join(' · ')}</>}
         </div>
       )}
-      {k && k.kennzahlen.length > 0 && (
-        <Raster min={handy ? 120 : 200}>
+      {k.kennzahlen.length > 0 && (
+        <Raster min={form === 'handy' ? 120 : 160}>
           {k.kennzahlen.slice(0, 3).map(z => <Kennzahl key={z.id} klein wert={z.wert ?? undefined} label={z.label} ton={z.ampel ? AMPEL[z.ampel] : undefined} unter={z.wert == null ? z.hinweis : undefined} />)}
         </Raster>
       )}
-      {(skills.length > 0 || k) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.xs, flexWrap: 'wrap' }}>
-          <span style={{ ...MIKRO, marginRight: ABSTAND.xs }}>Skills</span>
-          {skills.slice(0, chips).map(s => <Wahl key={s.id} klein an={false} farbe={farbe} onClick={() => dialog({ art: 'skill', headId: s.headId, skillId: s.id })}>/{s.name}{s.eingebaut ? ' 🔒' : ''}</Wahl>)}
-          {skills.length > chips && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>+{skills.length - chips}</span>}
-          {k && <SymbolKnopf ariaLabel="Neuer Skill" onClick={() => dialog({ art: 'skill', headId: k.id })}><Plus size={16} /></SymbolKnopf>}
-        </div>
-      )}
-      {k && k.mitarbeiter.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.xs, flexWrap: 'wrap' }}>
-          <span style={{ ...MIKRO, marginRight: ABSTAND.xs }}>Mitarbeiter</span>
-          {k.mitarbeiter.filter(m => m.aktiv).slice(0, chips).map(m => <Wahl key={m.id} klein an={false} farbe={farbe} onClick={() => starteEntwurf({ headId: k.id, mitarbeiterId: m.id })}>{m.name}</Wahl>)}
-          {k.mitarbeiter.filter(m => m.aktiv).length > chips && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>+{k.mitarbeiter.filter(m => m.aktiv).length - chips}</span>}
-          <SymbolKnopf ariaLabel="Neuer Mitarbeiter" onClick={() => dialog({ art: 'mitarbeiter', headId: k.id })}><Plus size={16} /></SymbolKnopf>
-        </div>
-      )}
-      {k?.hinweis && <Hinweis art="info">{k.hinweis}</Hinweis>}
-      {k?.gesperrt && <Hinweis art="info" titel="Gerade ruhig">{k.gesperrt.text}</Hinweis>}
-    </header>
+      {k.hinweis && <Hinweis art="info">{k.hinweis}</Hinweis>}
+    </section>
   );
 }
 
 // ── Reiter Chat ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }) {
+function HeadChat({ k, fadenId, faden, threads }: { k: HeadKarte; fadenId?: string; faden: Abruf<FadenAntwort>; threads: readonly FadenKurz[] }) {
   const w = useAgenten();
-  const { stapel, oeffne, melde, dialog, form, faeden, bestaetigen } = w;
+  const { stapel, oeffne, melde, dialog, form } = w;
   const heads = w.agenten.zustand === 'da' ? w.agenten.daten.heads : [];
-  // Threads dieses Heads, jüngster zuerst. Ohne Thread in der Adresse öffnet der jüngste (der Verlauf geht weiter);
-  // „+ Neuer Thread“ beginnt bewusst leer.
-  const threads = (faeden.zustand === 'da' ? faeden.daten.faeden : k.letzteFaeden)
-    .filter(f => f.agent.art === 'head' && f.agent.headId === k.id)
-    .sort((a, b) => Date.parse(b.aktualisiert) - Date.parse(a.aktualisiert));
-  const [neu, setNeu] = useState(false);
-  const fadenId = ausAdresse ?? (neu ? undefined : threads[0]?.id);
-  const vorgegeben = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
-  const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `faden:${fadenId}` : null, () => ladeFaden(fadenId!));
-  const faden: { stand: Abruf<FadenAntwort> } = vorgegeben ? { stand: { zustand: 'da', daten: vorgegeben } } : geladen;
   const [wartend, setWartend] = useState<Nachricht | null>(null);
   // Streaming: der Text, während er entsteht, und das laufende Werkzeug.
   const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
   const laeuft = !!wartend;
   const ansprechbar = ansprechbarFuer('head', heads, k.id);
-  const fa = fadenId && faden.stand.zustand === 'da' ? faden.stand.daten : null;
-  const neuerThread = () => { setNeu(true); if (ausAdresse) oeffne({ h: k.id }); };
-  // Nur eigene Threads (ein geteilter gehört der anderen Person — die Route lehnt ihn ohnehin ab).
-  const eigenerThread = !!fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer;
-  const loeschen = async () => {
-    if (!fa) return;
-    if (!(await bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ und die Threads seiner Mitarbeiter werden gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
-    // Erst weg vom Thread, dann löschen — sonst lädt die offene Ansicht den gelöschten Thread noch einmal (404 „gibt es nicht“).
-    const { id, stand, titel } = { id: fa.faden.id, stand: fa.stand, titel: fa.faden.titel };
-    setNeu(true);
-    oeffne({ h: k.id }, true);
-    const r = await fadenLoeschen(id, stand);
-    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
-    melde(`Thread „${titel}“ gelöscht.`, 'gut');
-  };
+  const fa = fadenId && faden.zustand === 'da' ? faden.daten : null;
 
   const senden = async (text: string): Promise<boolean> => {
     const an = ansprache(text, ansprechbar);
@@ -145,26 +98,19 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
       if (r.status === 409) meldeNeu();
       return false;
     }
-    setNeu(false);
+    // Ein neuer Thread bekommt seine Adresse (das hebt auch „Neuer Thread“ auf).
     if (!fa || fa.faden.id !== r.daten.faden.id) oeffne({ h: k.id, f: r.daten.faden.id }, true);
     return true;
   };
 
   const nachrichten = [...(fa?.faden.nachrichten ?? []), ...(wartend ? [wartend] : [])];
-  const leer = faden.stand.zustand === 'kommt'
+  const leer = faden.zustand === 'kommt'
     ? <Leer>Der Chat mit {k.kurz} kommt mit dem Agenten-Kern.</Leer>
-    : faden.stand.zustand === 'laedt' && fadenId ? <Leer>Thread wird geladen …</Leer>
-    : faden.stand.zustand === 'fehler' || faden.stand.zustand === 'gesperrt' ? <Hinweis art="kritisch">{faden.stand.text}</Hinweis>
+    : faden.zustand === 'laedt' && fadenId ? <Leer>Thread wird geladen …</Leer>
+    : faden.zustand === 'fehler' || faden.zustand === 'gesperrt' ? <Hinweis art="kritisch">{faden.text}</Hinweis>
     : <Leerzustand symbol="✦" titel={`Frag ${k.kurz}`}>Er sieht nur die Daten seines Bereichs. Mit @Name beauftragst du einen seiner Mitarbeiter.</Leerzustand>;
   return (
-    <div style={{ display: 'grid', gap: ABSTAND.l }}>
-      {threads.length > 0 && (
-        <div className="ui-pillen ui-pillen-einzeilig" aria-label="Threads">
-          <Wahl klein an={!fadenId} onClick={neuerThread}>+ Neuer Thread</Wahl>
-          {threads.slice(0, 8).map(t => <Wahl key={t.id} klein an={t.id === fadenId} onClick={() => { setNeu(false); oeffne({ h: k.id, f: t.id }); }}>{t.titel}{t.status === 'wartet' && !t.eingereiht ? ' ⚑' : ''}</Wahl>)}
-        </div>
-      )}
-      {eigenerThread && <div><Knopf leise farbe={LEUCHT.kritisch} onClick={loeschen}>Thread löschen</Knopf></div>}
+    <div style={einSpaltig(ABSTAND.l)}>
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel} leer={leer} fadenId={fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer ? fa.faden.id : undefined}
         onAlsSkill={(n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(fa ? { ausFaden: fa.faden.id } : {}) } })}
         unten={laeuft ? <Schreibt name={k.kurz} entsteht={entsteht} /> : undefined} />
@@ -175,7 +121,7 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
   );
 }
 
-// ── Reiter Aktivität · Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen ──────────────────────────────────────
+// ── Reiter Aktivität · Info-Abschnitte Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen ────────────────────────
 
 function Aktivitaet({ k }: { k: HeadKarte }) {
   const { laeufe, faeden, oeffne, jetzt } = useAgenten();
@@ -449,43 +395,114 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
   );
 }
 
+// ── Reiter Info ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: HeadDef | null; skills: Abruf<SkillsAntwort>; offen: readonly InfoAbschnitt[]; umschalten: (a: InfoAbschnitt) => void }) {
+  const anzahl: Partial<Record<InfoAbschnitt, number>> = {
+    mitarbeiter: k.mitarbeiter.length,
+    skills: skills.zustand === 'da' ? skills.daten.skills.filter(s => s.headId === k.id).length : k.skills.length,
+  };
+  return (
+    <div style={einSpaltig(ABSTAND.l)}>
+      <HeadUeber k={k} def={def} />
+      {INFO_ABSCHNITTE.map(a => (
+        <Klappbar key={a.id} id={`agenten-${k.id}-${a.id}`} titel={a.label} offen={offen.includes(a.id)} umschalten={() => umschalten(a.id)}
+          rechts={anzahl[a.id] ? <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{anzahl[a.id]}</span> : undefined}>
+          {a.id === 'mitarbeiter' && <MitarbeiterReiter k={k} skills={skills} />}
+          {a.id === 'skills' && <SkillsReiter k={k} skills={skills} />}
+          {a.id === 'gedaechtnis' && <Gedaechtnis k={k} def={def} skills={skills} />}
+          {a.id === 'leistung' && <LeistungReiter k={k} skills={skills} />}
+          {a.id === 'einstellungen' && <Einstellungen k={k} def={def} />}
+        </Klappbar>
+      ))}
+    </div>
+  );
+}
+
 // ── Die Mitte mit Head ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type HeadReiterId = ReiterId;
+/** Womit die Mitte startet: ein Reiter oder (wie früher die eigenen Reiter) direkt ein Abschnitt unter „Info“. */
+export type HeadReiterId = ReiterId | InfoAbschnitt;
 
-export function HeadMitte({ headId, fadenId, startReiter = 'chat' }: { headId: string; fadenId?: string; startReiter?: ReiterId }) {
+export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }: { headId: string; fadenId?: string; startReiter?: HeadReiterId }) {
   const w = useAgenten();
+  const { faeden, oeffne, dialog, melde, bestaetigen, starteNeu } = w;
   const k = headKarte(w, headId);
   const def = headDef(headId);
-  const [reiter, setReiter] = useState<ReiterId>(startReiter);
+  const [reiter, setReiter] = useState<ReiterId>(istInfoAbschnitt(startReiter) ? 'info' : startReiter);
+  const [offen, setOffen] = useState<InfoAbschnitt[]>(istInfoAbschnitt(startReiter) ? [startReiter] : []);
+  const [springe, setSpringe] = useState<InfoAbschnitt | null>(null);
   const vorgegeben = w.vorlage?.skills?.[headId];
   const geladen = useAbruf<SkillsAntwort>(k && !vorgegeben ? `skills:${headId}` : null, () => ladeSkills(headId));
   const skills: { stand: Abruf<SkillsAntwort> } = vorgegeben ? { stand: { zustand: 'da', daten: vorgegeben } } : geladen;
-  const farbe = headFarbe(k?.farbe ?? def?.farbe);
+  // Der Thread im Chat: aus der Adresse, sonst der jüngste dieses Heads (der Verlauf geht weiter); „Neuer Thread“ beginnt bewusst leer.
+  const threads = (faeden.zustand === 'da' ? faeden.daten.faeden : k?.letzteFaeden ?? [])
+    .filter(f => f.agent.art === 'head' && f.agent.headId === headId).sort(neuesteZuerst);
+  const neu = w.neu?.ziel === headId;
+  const fadenId = ausAdresse ?? (neu ? undefined : threads[0]?.id);
+  const fadenVorgabe = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
+  const fadenGeladen = useAbruf<FadenAntwort>(fadenId && !fadenVorgabe ? `faden:${fadenId}` : null, () => ladeFaden(fadenId!));
+  const faden: Abruf<FadenAntwort> = fadenVorgabe ? { zustand: 'da', daten: fadenVorgabe } : fadenGeladen.stand;
+  const fa = fadenId && faden.zustand === 'da' ? faden.daten : null;
+  // „⋯ › Einstellungen“: Info öffnen, den Abschnitt aufklappen und hinscrollen.
+  useEffect(() => {
+    if (!springe) return;
+    document.getElementById(`agenten-${headId}-${springe}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    setSpringe(null);
+  }, [springe, headId]);
 
   if (!k) {
     return (
-      <div style={{ display: 'grid', gap: ABSTAND.l }}>
-        <HeadKopf k={null} def={def} />
+      <div style={einSpaltig(ABSTAND.l)}>
+        <GespraechKopf avatar={<KuerzelKugel name={def?.kurz ?? 'Head'} farbe={headFarbe(def?.farbe)} bereich={def?.bereich} groesse={KUGEL_GROESSE.liste} />} titel={def?.name ?? 'Head'} />
         {w.agenten.zustand === 'da'
           ? <Hinweis art="info">Diesen Head gibt es für dich nicht — welche Heads du siehst, entscheidet der Server.</Hinweis>
           : <Leerzustand symbol="✦" titel={def ? `${def.kurz} kommt` : 'Head'}>{w.agenten.zustand === 'laedt' ? 'Wird geladen …' : 'Der Chat mit den Heads kommt mit dem Agenten-Kern. ZOE ist schon da.'}</Leerzustand>}
       </div>
     );
   }
+  const farbe = headFarbe(k.farbe);
+  const neuerThread = () => { setReiter('chat'); starteNeu?.(k.id); };
+  const zuAbschnitt = (a: InfoAbschnitt) => { setReiter('info'); setOffen(o => (o.includes(a) ? o : [...o, a])); setSpringe(a); };
+  // Nur eigene Threads (ein geteilter gehört der anderen Person — die Route lehnt ihn ohnehin ab).
+  const geteilt = fa ? !!(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer : false;
+  // Den offenen Thread löschen (Rundgang 09.10. „Agenten live“; Server: samt der Threads seiner Mitarbeiter) — mit Rückfrage, über EINEN Weg
+  // (`fadenLoeschen`). Erst weg vom Thread (leerer neuer Thread), dann löschen — sonst lädt die offene Ansicht den gelöschten noch einmal (404).
+  const loeschen = async () => {
+    if (!fa) return;
+    if (!(await bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ und die Threads seiner Mitarbeiter werden gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    const { id, stand, titel } = { id: fa.faden.id, stand: fa.stand, titel: fa.faden.titel };
+    if (starteNeu) starteNeu(k.id); else oeffne({ h: k.id }, true);
+    const r = await fadenLoeschen(id, stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    melde(`Thread „${titel}“ gelöscht.`, 'gut');
+  };
   return (
-    <div style={{ display: 'grid', gap: ABSTAND.l, alignContent: 'start' }}>
-      <HeadKopf k={k} def={def} />
-      <div className="ui-reiter-zeile">
-        <Reiter ariaLabel={`${k.kurz}: Bereiche`} farbe={farbe} liste={REITER.map(r => ({ id: r.id, label: r.id === 'chat' && k.zaehler.freigaben ? `Chat · ⚑ ${k.zaehler.freigaben}` : r.label }))} aktiv={reiter} onWahl={setReiter} />
-      </div>
-      {reiter === 'chat' && <HeadChat k={k} fadenId={fadenId} />}
+    <div style={{ ...einSpaltig(ABSTAND.l), alignContent: 'start' }}>
+      <GespraechKopf
+        avatar={<KuerzelKugel name={k.kurz} farbe={farbe} bereich={k.bereich} groesse={KUGEL_GROESSE.liste} foto={fotoVon(k)} />}
+        titel={k.name} chip={<Chip farbe={bereichFarbe(k.bereich)}>{k.bereich === 'business' ? 'Business' : 'Privat'}</Chip>}
+        zusatz={reiter === 'chat' ? (fa ? fa.faden.titel : neu ? 'Neuer Thread' : undefined) : undefined}
+        reiter={(
+          <div className="ui-reiter-zeile" style={{ minWidth: 0 }}>
+            <Reiter ariaLabel={`${k.kurz}: Bereiche`} farbe={farbe} aktiv={reiter} onWahl={setReiter}
+              liste={[{ id: 'chat', label: k.zaehler.freigaben ? `Chat · ⚑ ${k.zaehler.freigaben}` : 'Chat' }, { id: 'aktivitaet', label: 'Aktivität' }, { id: 'info', label: 'Info' }]} />
+          </div>
+        )}
+        neu={{ label: 'Neuer Thread', tun: neuerThread }}
+        menue={[
+          { label: 'Neuer Thread', satz: `Leer anfangen — die bisherigen bleiben links unter ${k.kurz}`, tun: neuerThread },
+          { label: 'Auftrag …', satz: 'Ziel, Format, Grenzen, Quellen — an diesen Head oder einen Mitarbeiter', tun: () => dialog({ art: 'auftrag', agent: { art: 'head', headId: k.id } }) },
+          { label: 'Hintergrundaufgabe …', satz: 'Jetzt, einmal geplant oder wiederkehrend', tun: () => dialog({ art: 'hintergrund', agent: { art: 'head', headId: k.id } }) },
+          { label: 'Mitarbeiter anlegen', satz: 'Aus Vorlage oder beschreiben', tun: () => dialog({ art: 'mitarbeiter', headId: k.id }) },
+          { label: 'Skill anlegen', satz: 'Anleitung mit Beispielen, Werkzeugen und Tests', tun: () => dialog({ art: 'skill', headId: k.id }) },
+          { label: 'Einstellungen', satz: 'Modell, Aufwand, Autonomie, Budget, Not-Aus dieses Heads', tun: () => zuAbschnitt('einstellungen') },
+          ...(fa && !geteilt ? [{ label: 'Thread löschen', satz: 'Mit allen Aufträgen darin an Mitarbeiter', gefahr: true, tun: () => { void loeschen(); } }] : []),
+        ]} />
+      {k.gesperrt && <Hinweis art="info" titel="Gerade ruhig">{k.gesperrt.text}</Hinweis>}
+      {reiter === 'chat' && <HeadChat k={k} fadenId={fadenId} faden={faden} threads={threads} />}
       {reiter === 'aktivitaet' && <Aktivitaet k={k} />}
-      {reiter === 'mitarbeiter' && <MitarbeiterReiter k={k} skills={skills.stand} />}
-      {reiter === 'skills' && <SkillsReiter k={k} skills={skills.stand} />}
-      {reiter === 'gedaechtnis' && <Gedaechtnis k={k} def={def} skills={skills.stand} />}
-      {reiter === 'leistung' && <LeistungReiter k={k} skills={skills.stand} />}
-      {reiter === 'einstellungen' && <Einstellungen k={k} def={def} />}
+      {reiter === 'info' && <HeadInfo k={k} def={def} skills={skills.stand} offen={offen} umschalten={a => setOffen(o => (o.includes(a) ? o.filter(x => x !== a) : [...o, a]))} />}
     </div>
   );
 }

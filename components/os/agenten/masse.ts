@@ -2,17 +2,31 @@
 // Die Seite selbst nimmt Farben, Schrift, Ecken, Ränder und Tippziele NUR aus lib/make-one/design.ts (DESIGN_STANDARD.md);
 // was es dort nicht gibt — die Breite der Spalten und die Größe der Kugeln — steht HIER an einer Stelle, nie verstreut.
 
-import { ZIEL } from '@/lib/make-one/design';
+import { ABSTAND, ZIEL } from '@/lib/make-one/design';
 
-/** Spaltenbreiten ab `SPALTEN_AB` (1.180 px): Team links, Hintergrund rechts, die Mitte nimmt den Rest. */
+/**
+ * Spaltenbreiten (Aufräumen 09.10., Claude-Muster): Liste links, Hintergrund rechts, die Mitte nimmt den Rest — das Gespräch steht darin
+ * höchstens `lese` breit und mittig (sind beide Seiten zu, keine 2.000-px-Zeile). Ob die Seiten NEBEN dem Gespräch oder als Schublade
+ * DARÜBER stehen, entscheidet der gemessene Platz (klappen.ts `lageAus`), nicht nur die Fensterbreite — die Leiste der App nimmt mit.
+ */
 export const SPALTE = {
-  team: 272,
-  rechts: 340,
-  /** Team-Spalte bei mittlerer Breite (720–1.180 px, zwei Spalten). */
-  teamMittel: 236,
+  team: 248,
+  rechts: 320,
   /** Mitte mindestens so breit, sonst bricht der Chat. */
   mitteMin: 420,
+  /** Lesebreite des Gesprächs (Kopfzeile, Verlauf, Feld). */
+  lese: 760,
+  /** Breite einer Schublade (Liste bzw. Hintergrund über dem Gespräch). */
+  schublade: 340,
 } as const;
+/** Abstand zwischen Seitenfeld und Gespräch. */
+export const SPALTE_ABSTAND = ABSTAND.xl;
+/** Ab diesem Platz stehen Liste, Gespräch und Hintergrund nebeneinander. */
+export const DREI_SPALTEN_AB = SPALTE.team + SPALTE.mitteMin + SPALTE.rechts + 2 * SPALTE_ABSTAND;
+/** Ab diesem Platz steht die Liste neben dem Gespräch (der Hintergrund als Schublade). */
+export const ZWEI_SPALTEN_AB = SPALTE.team + SPALTE.mitteMin + SPALTE_ABSTAND;
+/** So viele Threads zeigt ein aufgeklappter Head in der Liste — der Rest hinter „+ n weitere“ (nichts unerreichbar). */
+export const LISTE_THREADS = 6;
 
 /**
  * EINE Spalte, die nie breiter wird als ihr Platz (Rundgang 09.10., Handy 390 px: ein langer Knopftext im Überblick schob die Karte

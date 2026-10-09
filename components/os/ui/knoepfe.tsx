@@ -267,9 +267,12 @@ export function HakenZiel({ an, onChange, farbe, label }: { an: boolean; onChang
  * Kleiner Symbolknopf (✕, Stift, Mehr ⋯) mit Tippziel 40 px (Handy 44) — Zweitaktionen stehen mit Abstand (`ui-symbole`), gefährliche (löschen) nie
  * direkt neben der häufigen. `gefahr` färbt die Beschriftung rot, `ariaLabel` ist Pflicht (das Zeichen allein sagt nichts).
  */
-export function SymbolKnopf({ children, onClick, ariaLabel, titel, gefahr, aus, eingebettet }: { children: ReactNode; onClick?: () => unknown; ariaLabel: string; titel?: string; gefahr?: boolean; aus?: boolean; /** In einer Pille/Chip: das Tippziel ragt über die Pille hinaus, statt sie aufzublähen. */ eingebettet?: boolean }) {
+export function SymbolKnopf({ children, onClick, ariaLabel, titel, gefahr, aus, eingebettet, gedrueckt, offen, steuert }: { children: ReactNode; onClick?: () => unknown; ariaLabel: string; titel?: string; gefahr?: boolean; aus?: boolean; /** In einer Pille/Chip: das Tippziel ragt über die Pille hinaus, statt sie aufzublähen. */ eingebettet?: boolean;
+  /** Umschalter (z. B. „Info“): an/aus als `aria-pressed`, an = Akzentfarbe (09.10.). */ gedrueckt?: boolean;
+  /** Klappt etwas auf (Seitenfeld, Menü): `aria-expanded`, mit `steuert` = Kennung des Bereichs (`aria-controls`). */ offen?: boolean; steuert?: string }) {
   return (
     <button type="button" onClick={() => { void onClick?.(); }} disabled={aus} aria-label={ariaLabel} title={titel ?? ariaLabel} className={`ui-symbol fassbar${eingebettet ? ' ui-symbol-ein' : ''}`}
-      style={{ color: gefahr ? LEUCHT.kritisch : C.inkDim }}>{children}</button>
+      aria-pressed={gedrueckt} aria-expanded={offen} aria-controls={steuert}
+      style={{ color: gefahr ? LEUCHT.kritisch : gedrueckt ? C.aktiv : C.inkDim }}>{children}</button>
   );
 }

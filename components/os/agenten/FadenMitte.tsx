@@ -1,33 +1,34 @@
 'use client';
 
-// ─── Agenten-Seite: die Mitte mit einem Mitarbeiter-Thread (09.10., Paket 2) ───────────────────────────────────────────
-// Brotkrumen „Head › Mitarbeiter › Thread“, darunter der Auftrag des Heads (Ziel · Format · Grenzen · Quellen), der Fortschritt
+// ─── Agenten-Seite: die Mitte mit einem Mitarbeiter-Thread (09.10., Paket 2; Aufräumen 09.10. abends) ──────────────────────
+// Kopfzeile „Head › Mitarbeiter › „Thread““ (Aufräumen: EINE Zeile mit Kugel, Zustand und ⋯ — Zweite Meinung, zum Head, Thread löschen),
+// darunter der Auftrag des Heads (Ziel · Format · Grenzen · Quellen), der Fortschritt
 // in Schritten mit Dauer und Kosten, der Verlauf und das eigene Feld — mit jedem Mitarbeiter kann man direkt sprechen
 // (Antwort 4). „Zweite Meinung“ (Fragerunde 10) schickt das Ergebnis zur Prüfung an den Head zurück — in seinen Thread.
 // Ohne Kennung (`entwurf`) ist es ein neuer Thread: das erste Senden legt ihn an.
 
 import { useState } from 'react';
-import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, SCHRIFT, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
+import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
 import { laufEingereiht, type FadenAntwort, type HeadKarte, type LaufSchritt, type Nachricht } from '@/lib/agenten/typen';
 import { Chip, Eigenschaft, Hinweis, Karte, Knopf, Leer, Leerzustand } from '../ui';
 import { KuerzelKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
+import { GespraechKopf } from './GespraechKopf';
 import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import { agentAusSchluessel, dauerText, delegationTeile, euro, euroAusUsd, fadenStatusName, zeitKurz } from './regeln';
-import { KUGEL_GROESSE } from './masse';
+import { einSpaltig, KUGEL_GROESSE } from './masse';
 
 const SCHRITT_ZEICHEN: Readonly<Record<LaufSchritt['status'], string>> = { offen: '○', laeuft: '◐', fertig: '✓', fehler: '✕', uebersprungen: '–' };
 const SCHRITT_FARBE: Readonly<Record<LaufSchritt['status'], string>> = { offen: C.inkLeise, laeuft: C.aktiv, fertig: LEUCHT.gut, fehler: LEUCHT.kritisch, uebersprungen: C.inkLeise };
 
-function Brotkrumen({ k, mitarbeiter, titel }: { k: HeadKarte | null; mitarbeiter: string; titel?: string }) {
+/** „Head ›“ vor dem Namen des Mitarbeiters — der Head ist ein Sprung zurück zu ihm. */
+function Brotkrumen({ k }: { k: HeadKarte | null }) {
   const { oeffne } = useAgenten();
   return (
-    <nav aria-label="Brotkrumen" style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.xs, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+    <nav aria-label="Brotkrumen" style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.xs, flex: '0 0 auto', fontSize: TYP.bedien, color: C.inkDim }}>
       {k ? <button type="button" onClick={() => oeffne({ h: k.id })} className="fassbar" style={{ background: 'none', border: 'none', padding: `0 ${ABSTAND.xs}px`, minHeight: ZIEL.rechner, color: C.inkDim, font: 'inherit', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>{k.kurz}</button> : <span>Head</span>}
       <span aria-hidden>›</span>
-      <span>{mitarbeiter}</span>
-      {titel && <><span aria-hidden>›</span><span style={{ color: C.ink, fontWeight: 600 }}>„{titel}“</span></>}
     </nav>
   );
 }
@@ -136,6 +137,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
     return true;
   };
 
+  // Nur eigene Threads löschen (Rundgang 09.10. „Agenten live“, über EINEN Weg `fadenLoeschen`); seit dem Aufräumen unter ⋯ in der Kopfzeile.
   const eigen = !!fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer);
   const loeschen = async () => {
     if (!fa) return;
@@ -158,16 +160,16 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
 
   const nachrichten = [...rest, ...(wartend ? [wartend] : [])];
   return (
-    <div style={{ display: 'grid', gap: ABSTAND.l, alignContent: 'start' }}>
-      <Brotkrumen k={k} mitarbeiter={name} titel={fa?.faden.titel} />
-      <header style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.m }}>
-        <KuerzelKugel name={name} farbe={farbe} bereich={k?.bereich} groesse={KUGEL_GROESSE.kopf} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink }}>{name}</h2>
-          <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{m?.rolle ?? (fa ? fadenStatusName({ status: fa.faden.status, eingereiht: laufEingereiht(fa.faden) }) : '')}</div>
-        </div>
-        {fa && <Chip farbe={fa.faden.status === 'wartet' && !laufEingereiht(fa.faden) ? LEUCHT.achtung : fa.faden.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{fadenStatusName({ status: fa.faden.status, eingereiht: laufEingereiht(fa.faden) })}</Chip>}
-      </header>
+    <div style={{ ...einSpaltig(ABSTAND.l), alignContent: 'start' }}>
+      <GespraechKopf vor={<Brotkrumen k={k} />} titel={name}
+        avatar={<KuerzelKugel name={name} farbe={farbe} bereich={k?.bereich} groesse={KUGEL_GROESSE.liste} />}
+        zusatz={fa ? `› „${fa.faden.titel}“` : '› Neuer Thread'}
+        chip={fa ? <Chip farbe={fa.faden.status === 'wartet' && !laufEingereiht(fa.faden) ? LEUCHT.achtung : fa.faden.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{fadenStatusName({ status: fa.faden.status, eingereiht: laufEingereiht(fa.faden) })}</Chip> : undefined}
+        menue={[
+          ...(fa && k ? [{ label: 'Zweite Meinung', satz: `${k.kurz} prüft das Ergebnis kritisch`, tun: () => { void zweiteMeinung(); } }] : []),
+          ...(k ? [{ label: `Zu ${k.kurz}`, satz: 'Chat, Aktivität und Info des Heads', tun: () => oeffne({ h: k.id }) }] : []),
+          ...(eigen ? [{ label: 'Thread löschen', satz: 'Läuft er noch, erst „Stopp“', gefahr: true, tun: () => { void loeschen(); } }] : []),
+        ]} />
       {fa?.faden.fremdGelesen && <Hinweis art="info">Dieser Thread hat fremden Text gelesen (Web, Mails, Notizen) — alles Schreibende geht ab jetzt nur als Vorschlag.</Hinweis>}
       {fa && <LaufKopf fa={fa} />}
       {auftrag && <Auftrag n={auftrag} k={k} />}
@@ -177,7 +179,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
         onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}), ...(fa ? { ausFaden: fa.faden.id } : {}) } }) : undefined}
         unten={wartend ? <Schreibt name={name} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={fa ? `Nachricht an ${name} …` : `Auftrag an ${name} — Ziel, Format, Grenzen, Quellen …`} onSenden={senden} laeuft={!!wartend}
-        zusatz={fa ? <>{eigen && <Knopf leise farbe={LEUCHT.kritisch} onClick={loeschen}>Thread löschen</Knopf>}{k && <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf>}</> : undefined}
+        zusatz={fa && k ? <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf> : undefined}
         unten={form === 'handy' ? 'var(--agenten-feld-unten, 0px)' : undefined} />
     </div>
   );
