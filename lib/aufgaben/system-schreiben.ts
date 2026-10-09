@@ -18,6 +18,12 @@ export interface SystemAenderungen {
   neu?: Record<string, unknown>[];
   /** Teil-Änderungen bestehender Aufgaben: nur die genannten Felder (`null` leert). */
   teile?: { id: string; felder: Partial<Record<keyof Task, unknown>> }[];
+  /**
+   * In den Papierkorb legen (09.10., Agenten-Datenschicht — „Rückgängig“ eines Heads löschte vorher hart): samt Unteraufgaben über die
+   * Papierkorb-Kette, mit Protokoll; Notiz, Felder und Dateien bleiben. NIE endgültig: liegt eine Kennung schon im Papierkorb (oder fehlt
+   * sie), passiert nichts.
+   */
+  loeschen?: string[];
 }
 
 /**
@@ -41,6 +47,10 @@ export function systemOps(stand: TasksState, a: SystemAenderungen, personen: rea
   for (const { id, felder } of a.teile ?? []) {
     const alt = nachId.get(id);
     if (alt) ops.tasks.push(teilOp(id, alt, felder));
+  }
+  for (const id of a.loeschen ?? []) {
+    const alt = nachId.get(id);
+    if (alt && !alt.geloeschtAm) ops.tasks.push({ op: 'delete', id } as Op<Task>);
   }
   return ops;
 }

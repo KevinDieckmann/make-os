@@ -18,6 +18,8 @@ interface Zustand {
   ringe: Record<MessArt, number[]>;
   zaehler: Record<ZaehlArt, number>;
   parse: Map<string, { letzteMs: number; maxMs: number; zeichen: number; zeit: number }>;
+  /** Schreibdauer je Bestand (09.10., Agenten-Datenschicht): letzte/größte — für den HOI-Befund „Agenten-Bestände“. */
+  schreib?: Map<string, { letzteMs: number; maxMs: number; zeit: number }>;
   seit: string;
 }
 
@@ -36,6 +38,22 @@ export function messe(art: MessArt, ms: number): void {
 }
 
 export function zaehle(art: ZaehlArt, n = 1): void { Z.zaehler[art] = (Z.zaehler[art] ?? 0) + n; }
+
+/** Schreibdauer eines Bestands (local-db `schreibeDatei`) — nur Name und Zahlen. */
+export function schreibMessen(bestand: string, ms: number): void {
+  const m = (Z.schreib ??= new Map());
+  const alt = m.get(bestand);
+  const w = Math.round(ms * 10) / 10;
+  m.set(bestand, { letzteMs: w, maxMs: Math.max(alt?.maxMs ?? 0, w), zeit: Date.now() });
+  if (m.size > 2000) m.delete(m.keys().next().value as string);
+}
+
+/** Größte gemessene Schreibdauer der Bestände, deren Name `passt` (ms) — oder null, wenn keiner gemessen ist. */
+export function schreibMaxFuer(passt: (bestand: string) => boolean): number | null {
+  let max: number | null = null;
+  for (const [b, x] of Array.from(Z.schreib ?? new Map<string, { maxMs: number }>())) if (passt(b)) max = Math.max(max ?? 0, x.maxMs);
+  return max;
+}
 
 export function parseMessen(bestand: string, ms: number, zeichen: number): void {
   const alt = Z.parse.get(bestand);
@@ -73,4 +91,5 @@ export function messwerteLeeren(): void {
   for (const k of Object.keys(Z.ringe) as MessArt[]) Z.ringe[k] = [];
   for (const k of Object.keys(Z.zaehler) as ZaehlArt[]) Z.zaehler[k] = 0;
   Z.parse.clear();
+  Z.schreib?.clear();
 }

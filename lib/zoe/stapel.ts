@@ -116,8 +116,10 @@ export async function lege(v: Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>)
   await updateJsonAsync<Stand>('zoe-stapel', async current => {
     const liste = current?.vorschlaege ?? [];
     const offen = liste.filter(x => AKTIV.has(x.status));
-    // Liegt dieselbe Wirkung schon offen da, kommt nichts Zweites dazu.
-    schonDa = offen.find(x => kennung(x.werkzeug, x.eingabe) === kennung(vorschlag.werkzeug, vorschlag.eingabe));
+    // Liegt dieselbe Wirkung schon offen da, kommt nichts Zweites dazu — aber nur für DIESELBE Person (09.10., Agenten-Datenschicht):
+    // vorher verschwand der Vorschlag der einen Person still, wenn die andere denselben offen hatte (den sie nie sieht), und der
+    // Aufrufer bekam den fremden Vorschlag zurück. Personlose (System-)Vorschläge gleichen nur personlose ab.
+    schonDa = offen.find(x => (x.person ?? null) === (vorschlag.person ?? null) && kennung(x.werkzeug, x.eingabe) === kennung(vorschlag.werkzeug, vorschlag.eingabe));
     if (schonDa) return { vorschlaege: liste };
     const erledigt = liste.filter(x => !AKTIV.has(x.status));
     const platz = Math.max(0, GRENZE - offen.length - 1);
@@ -278,6 +280,14 @@ export async function entscheide(
   });
   // Wichtiges Ereignis fürs Brain: den _App-Spiegel gebündelt nachziehen (nur wenn eingeschaltet, nie blockierend).
   if (raus && process.env.MAKE_OS_APP_SPIEGEL?.trim() === 'an') void import('@/lib/brain/app-spiegel').then(m => m.spiegelAnstossen()).catch(() => {});
+  // Erfolgsquote je Skill (09.10., Agenten-Datenschicht D7): stammt der Vorschlag aus einem Agenten-Lauf (Anlass „<Head>: …“), zählt die
+  // Entscheidung beim Skill dieses Laufs (lib/agenten/skills-server.ts `skillEntscheidungZaehlen`). Genau einmal — `entscheide` entscheidet
+  // nur Offenes. „fehlgeschlagen“ zählt hier nicht (der Lauf selbst zählt Fehler).
+  const r = raus as Vorschlag | null;
+  if (r && (status === 'freigegeben' || status === 'abgelehnt')) {
+    const { headVonVorschlag } = await import('@/lib/agenten/katalog');
+    if (headVonVorschlag(r)) await (await import('@/lib/agenten/skills-server')).skillEntscheidungZaehlen(r, status === 'freigegeben' ? 'angenommen' : 'abgelehnt').catch(() => null);
+  }
   return raus;
 }
 

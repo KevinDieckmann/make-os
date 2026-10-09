@@ -102,6 +102,29 @@ export interface InnenLage {
   protokollKette?: KettenLage | null;
   /** Zugang & Schlüssel (05.10.): Zulieferer-Schlüssel, Übergang, Start-Riegel — nur Zustände, nie Werte. */
   zugang?: ZugangLage;
+  /** Agenten-Bestände (09.10., Agenten-Datenschicht): Größe und Schreibdauer der Threads, des KI-Protokolls usw. — nur Zahlen. */
+  agentenBestaende?: AgentenBestandLage | null;
+}
+
+/**
+ * Agenten-Bestände (09.10., Agenten-Datenschicht): jede Nachricht/jeder Modellaufruf schreibt den GANZEN Bestand (Threads je Person,
+ * KI-Protokoll je Monat) — wird er groß, wird jedes Schreiben teuer. Der HOI meldet das, bevor es hängt: Befund ab 5 MB oder 200 ms.
+ * Nur Zahlen, nie Bestandsnamen (sie tragen den Speichernamen einer Person). Muster an EINER Stelle (innen.ts zählt, hier wird bewertet).
+ */
+export interface AgentenBestandLage { anzahl: number; groesstesMb: number; ueberGrenze: number; schreibenMaxMs: number | null }
+export const AGENTEN_BESTAND = /^(agenten-(faeden|skills|skills-privat|plan|einstellung)--[a-z0-9-]+|ki-protokoll--\d{4}-\d{2}|ki-verbrauch|head-(sales|marketing|event)|heads-replay-[a-z]+|finanzchef|haushalt-chef--[a-z0-9-]+|zoe-auftraege|zoe-stapel|zoe-gedaechtnis|agent-log)$/;
+export const AGENTEN_BESTAND_MB = 5;
+export const AGENTEN_SCHREIBEN_MS = 200;
+export function agentenBestandBefunde(a: AgentenBestandLage | null | undefined): Befund[] {
+  if (!a || !a.anzahl) return [];
+  const gross = a.ueberGrenze > 0, langsam = (a.schreibenMaxMs ?? 0) > AGENTEN_SCHREIBEN_MS;
+  const ms0 = (x: number) => (x >= 1000 ? `${(x / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s` : `${Math.round(x)} ms`);
+  const was = [gross ? `${a.ueberGrenze} über ${AGENTEN_BESTAND_MB} MB` : '', langsam ? `Schreiben über ${AGENTEN_SCHREIBEN_MS} ms` : ''].filter(Boolean).join(' · ');
+  return [{
+    id: 'agenten-bestaende', bereich: 'app', label: 'Agenten-Bestände', ampel: gross || langsam ? 'gelb' : 'gruen',
+    wert: `${a.anzahl} Dateien · größte ${a.groesstesMb.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB${a.schreibenMaxMs != null ? ` · Schreiben max ${ms0(a.schreibenMaxMs)}` : ''}`,
+    satz: gross || langsam ? `${was} — jede Nachricht schreibt den ganzen Bestand: Threads je Thread teilen, KI-Protokoll in Tagesdateien (Entscheidung offen, UPDATES.md 09.10.)` : 'klein genug — jede Nachricht schreibt den ganzen Bestand, das trägt noch',
+  }];
 }
 
 /** Zugang & Schlüssel (05.10., Paket „Zugang & Schlüssel härten“). */
@@ -602,6 +625,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
 
   // ── Datenschicht, Sicherung, Durchsicht (29.09., Paket D-A) ──
   b.push(...datenschichtBefunde(innen, host, jetzt));
+  b.push(...agentenBestandBefunde(innen.agentenBestaende));
   // ── iCloud-Kalender (R-K1 #51/#K5) ──
   b.push(...kalenderBefunde(innen.kalender, jetzt));
   b.push(...googleKalenderBefunde(innen.kalenderGoogle));

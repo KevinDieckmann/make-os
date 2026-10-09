@@ -18,7 +18,8 @@
 //   ZOE-Arbeitslisten          90 Tage     zoe-protokoll + entschiedene Vorschläge in zoe-stapel (nur, was dauerhaft
 //                                          in zoe-entscheidungen steht — sonst erst nachtragen, nie still)
 //   ZOE-Entscheidungen         36 Monate   Monatsdateien geleert (Vermerk bleibt) — wie das Änderungsprotokoll
-//   Gespräche mit ZOE          12 Monate   Gespräche, deren letzte Nachricht älter ist, fallen weg
+//   Gespräche mit ZOE          12 Monate   Gespräche und Agenten-Threads (agenten-faeden--*), deren letzte Nachricht älter ist,
+//     und den Agenten                        fallen weg (laufende Threads bleiben)
 //   ZOE-Gedächtnis             24 Monate   Fakten, die so lange nicht erneuert wurden, fallen weg
 //   Postfach-Zwischenspeicher  30 Tage     Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach bleibt beim Anbieter
 //   Kalender-Zwischenspeicher  12 Monate   vergangene Termine im Zwischenspeicher
@@ -84,7 +85,9 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   // 29.09. (Paket D-B #73/#93)
   { id: 'zoe-arbeitslisten', titel: 'ZOE-Protokoll und entschiedene Vorschläge', einheit: 'tage', standard: 90, min: 30, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Arbeitslisten von ZOE (Kennungen und Feldnamen). Die Entscheidung selbst bleibt in den ZOE-Entscheidungen.' },
   { id: 'zoe-entscheidungen', titel: 'ZOE-Entscheidungen (dauerhaft)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2 DSGVO', hinweis: 'Monatsdateien älter als die Frist werden geleert (Vermerk bleibt).' },
-  { id: 'zoe-verlauf', titel: 'Gespräche mit ZOE', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Gespräche, deren letzte Nachricht älter ist, fallen weg.' },
+  // 09.10. (Agenten-Datenschicht D8): dieselbe Frist gilt für die Threads mit ZOE, den Heads und Mitarbeitern (agenten-faeden--<person>,
+  // seit Paket 4a sind ZOE-Gespräche Threads) — vorher fest 12 Monate im Code und nur beim nächsten Schreiben; jetzt täglich im Lauf.
+  { id: 'zoe-verlauf', titel: 'Gespräche mit ZOE und den Agenten (Threads)', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Gespräche und Threads, deren letzte Nachricht älter ist, fallen weg — je Person, auch wenn niemand mehr schreibt. Ein Thread, dessen Lauf noch wartet oder läuft, bleibt bis zum Ende des Laufs.' },
   { id: 'zoe-gedaechtnis', titel: 'ZOE-Gedächtnis (Fakten)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. d, e DSGVO', hinweis: 'Fakten, die so lange nicht erneuert wurden, fallen weg.' },
   { id: 'postfach-caches', titel: 'Postfach-Zwischenspeicher', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Zwischengespeicherte Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach selbst bleibt beim Anbieter.' },
   { id: 'kalender-caches', titel: 'Kalender-Zwischenspeicher', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Vergangene Termine im Zwischenspeicher — der Kalender selbst bleibt beim Anbieter.' },

@@ -55,10 +55,20 @@ export function aehnlich(a: Pick<VorschlagRoh, 'art' | 'titel'>, b: Pick<Vorschl
   return verein > 0 && schnitt / verein >= 0.5;
 }
 
-/** Neue Vorschläge in die Freigabe-Liste einsortieren. Rein, getestet. */
-export function vorschlaegeMischen(alt: ChefVorschlag[], neu: VorschlagRoh[], berichtId: string, jetzt: string): { liste: ChefVorschlag[]; neu: number; aktualisiert: number } {
+/** Höchstens so viele Einträge in der Freigabe-Liste — gekürzt wird nur Entschiedenes, nie Offenes. */
+export const VORSCHLAEGE_GRENZE = 120;
+
+/**
+ * Neue Vorschläge in die Freigabe-Liste einsortieren. Rein, getestet.
+ * 09.10. (Agenten-Datenschicht): vorher `slice(-120)` — bei vielen offenen Vorschlägen fielen die ältesten OFFENEN still heraus. Jetzt
+ * fallen über der Grenze nur entschiedene weg: erst abgelehnte/erledigte, dann angenommene (je die ältesten zuerst); Offenes nie. Sind
+ * schon so viele offen wie die Grenze, kommt kein neuer Vorschlag dazu (`abgewiesen`) — der Head nennt ihn wieder, sobald Platz ist.
+ */
+export function vorschlaegeMischen(alt: ChefVorschlag[], neu: VorschlagRoh[], berichtId: string, jetzt: string): { liste: ChefVorschlag[]; neu: number; aktualisiert: number; abgewiesen: number } {
   const liste = alt.map(v => ({ ...v }));
-  let n = 0, a = 0;
+  let n = 0, a = 0, abgewiesen = 0;
+  const bleibt = (x: ChefVorschlag) => x.status === 'offen' || x.status === 'angenommen';
+  const istOffen = (x: ChefVorschlag) => x.status === 'offen';
   for (const v of neu) {
     // Erst über den Schlüssel, dann unscharf — das Modell formuliert nicht jedes Mal gleich.
     const gleich = liste.filter(x => x.dedup_schluessel === v.dedup_schluessel || aehnlich(x, v));
@@ -69,12 +79,18 @@ export function vorschlaegeMischen(alt: ChefVorschlag[], neu: VorschlagRoh[], be
     }
     if (gleich.some(x => x.status === 'angenommen')) continue; // läuft schon
     if (gleich.some(x => x.status === 'abgelehnt' && Date.parse(jetzt) - Date.parse(x.entschieden ?? x.aktualisiert) < 30 * TAG)) continue;
+    if (liste.filter(istOffen).length >= VORSCHLAEGE_GRENZE) { abgewiesen++; continue; }
     liste.push({ ...v, id: `hv-${Date.parse(jetzt).toString(36)}-${n}`, status: 'offen', erstellt: jetzt, aktualisiert: jetzt, berichtId });
     n++;
   }
-  // Aufräumen: Entschiedenes nach 90 Tagen raus, höchstens 120 Einträge.
-  const frisch = liste.filter(x => x.status === 'offen' || x.status === 'angenommen' || Date.parse(jetzt) - Date.parse(x.entschieden ?? x.aktualisiert) < 90 * TAG);
-  return { liste: frisch.slice(-120), neu: n, aktualisiert: a };
+  // Aufräumen: Entschiedenes nach 90 Tagen raus; über der Grenze die ältesten ENTSCHIEDENEN (erst abgelehnt/erledigt, dann angenommen) — Offenes nie.
+  const frisch = liste.filter(x => bleibt(x) || Date.parse(jetzt) - Date.parse(x.entschieden ?? x.aktualisiert) < 90 * TAG);
+  let ueber = frisch.length - VORSCHLAEGE_GRENZE;
+  const raus = new Set<ChefVorschlag>();
+  for (const darf of [(x: ChefVorschlag) => !bleibt(x), (x: ChefVorschlag) => x.status === 'angenommen']) {
+    for (const x of frisch) { if (ueber <= 0) break; if (!raus.has(x) && darf(x)) { raus.add(x); ueber--; } }
+  }
+  return { liste: frisch.filter(x => !raus.has(x)), neu: n, aktualisiert: a, abgewiesen };
 }
 
 /** Frühere Vorschläge fürs Datenpaket — knapp, mit Status. */

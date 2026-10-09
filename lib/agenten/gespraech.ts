@@ -423,8 +423,8 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
     await zugZuruecknehmenFuer(person, faden.id, n.id).catch(() => false);
     return nein(500, 'Intern ist etwas schiefgegangen — bitte noch einmal versuchen. Nichts gespeichert.');
   }
-  const { logRun } = await import('@/lib/agent-log');
-  await logRun(`faden:${head.id}`, 'Agenten-Chat', e.span, { person });
+  // Agenten-Datenschicht (09.10.): kein Eintrag mehr im Ring `agent-log` (200 Einträge) — Chat-Züge und Thread-Läufe fluteten ihn und schoben
+  // Loop-Historie und ZOEs „letzte Läufe“ hinaus. Der Lauf steht mit seinem Span an der Nachricht im Thread (`lauf`), der Auftrag in der Warteschlange.
   const schonGelaufen = () => e.werkzeuge.map(w => `${w.name}${w.gestapelt ? ' (Vorschlag im Stapel)' : w.ok ? '' : ' (fehlgeschlagen)'}`).join(', ');
   // Streaming (09.10.): der Browser hat die Verbindung geschlossen — keine halbe Antwort im Thread. Lief noch kein Werkzeug, geht auch
   // die Nachricht der Person wieder heraus (der Zug hat nicht stattgefunden; das Feld im Browser behält den Text). 499 = nichts gemerkt

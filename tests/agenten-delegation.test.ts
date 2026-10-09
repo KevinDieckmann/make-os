@@ -122,10 +122,10 @@ describe('Lauf im Hintergrund', () => {
     expect(g.titel).toBe('Ein Agenten-Ergebnis liegt bereit');
     // Nachschliff 09.10.: das fertige Ergebnis verlinkt dorthin, wo der Auftrag gegeben wurde (hier der Head-Thread mit dem Bericht).
     expect(g.link).toContain(headId);
-    const log = (await db.loadJson<{ entries: { agent: string; person?: string; payload: unknown }[] }>('agent-log'))!.entries.filter(e => e.agent === 'faden:sales');
-    expect(log.length).toBeGreaterThan(0);
-    expect(JSON.stringify(log)).not.toMatch(/Zwei Entwürfe/);
-    expect(log.every(e => e.person === 'person-a')).toBe(true);
+    // Agenten-Datenschicht (09.10.): Thread-Läufe stehen NICHT mehr im Ring `agent-log` (sie schoben Loop-Historie und „letzte Läufe“
+    // hinaus) — der Span steht an der Nachricht im Thread (oben `ergebnis.lauf`).
+    const log = ((await db.loadJson<{ entries: { agent: string; person?: string; payload: unknown }[] }>('agent-log'))?.entries ?? []).filter(e => e.agent.startsWith('faden:'));
+    expect(log).toEqual([]);
   });
   it('Abbruch nach 2 Runden ohne Fortschritt („festgefahren“) — Bericht trotzdem zurück', async () => {
     const id = (await fs.bestandLesen('person-a')).faeden.find(f => f.agent.art === 'mitarbeiter' && f.agent.mitarbeiterId === 'sales-recherche' && f.lauf?.status === 'wartet')!.id;

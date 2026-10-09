@@ -18,6 +18,7 @@ import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
+import { ladeAufgaben } from '@/lib/aufgaben/sicht';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -87,6 +88,17 @@ function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string |
 // auf ein festes Kürzel (Regel 5): `headLauf` rechnet ohne Person, die Vorschläge gehen an die zuständige Person.
 const SYSTEMLAUF_NUR_TAKT = { ok: false, fehler: 'Ohne Person nur Takt-Läufe der Heads (keine Power Hour, keine Frage, keine Entscheidung).' } as const;
 
+/**
+ * Not-Aus, „Head aus“ und Budget des Agenten-Bereichs (09.10., Agenten-Datenschicht D1): der Schalter unter /os/agenten (`agents-config`)
+ * war die einzige Prüfung dieser Route — ein Lauf von Hand lief trotz Not-Aus, ausgeschaltetem Head oder erreichtem Budget. Jetzt gilt
+ * dieselbe Sperre wie für Threads, Arbeiter und Takt (lib/agenten/einstellung.ts `laufSperre`); 409 mit ruhigem Satz, kein Modellaufruf.
+ */
+async function laufGesperrt(person: string | null, h: HeadId): Promise<Response | null> {
+  const { laufSperre } = await import('@/lib/agenten/einstellung');
+  const s = await laufSperre(person, h);
+  return s ? NextResponse.json({ ok: false, fehler: s.text, gesperrt: s.grund }, { status: 409 }) : null;
+}
+
 export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
   const zugang = await imHaushaltOderSystemlauf(req);
   if (!zugang) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
@@ -103,12 +115,14 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   if (zugang.person === null) {
     const modus = String(b.modus ?? 'frage');
     if (b.aktion !== 'lauf' || b.ausgeloest !== 'takt' || NUR_MIT_PERSON.has(modus)) return NextResponse.json(SYSTEMLAUF_NUR_TAKT, { status: 403 });
+    const gesperrt = await laufGesperrt(null, h); if (gesperrt) return gesperrt;
     const r = await headLauf({ head: h, modus, person: null, ausgeloest: 'takt' });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
   const person = zugang.person;
 
   if (b.aktion === 'lauf') {
+    const gesperrt = await laufGesperrt(person, h); if (gesperrt) return gesperrt;
     const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
@@ -144,11 +158,26 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     if (!v) return NextResponse.json({ ok: false, fehler: 'Nichts selbst Übernommenes mit dieser Kennung.' }, { status: 404 });
     const r = v.auto!.rueckgaengig!;
     const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
-    const tasks = (await loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))?.tasks ?? [];
-    const aufgabe = r.aufgabeId ? tasks.find(t => t.id === r.aufgabeId) as { status?: string; createdAt?: string; updatedAt?: string } | undefined : undefined;
+    // Agenten-Datenschicht (09.10., U1): die Aufgabe über den Aufgaben-Schreibweg (übernommen, mit Papierkorb) lesen — nie roh aus `tasks`.
+    const imKorb = (t: { geloeschtAm?: string } | undefined) => !!t?.geloeschtAm;
+    const aufgabe0 = r.aufgabeId ? (await ladeAufgaben()).tasks.find(t => t.id === r.aufgabeId) : undefined;
+    const aufgabe = imKorb(aufgabe0) ? undefined : aufgabe0;
     if (!ruecknehmbar(v, kontakte.find(k => k.id === r.kontaktId), aufgabe)) return NextResponse.json({ ok: false, fehler: 'Inzwischen von Hand geändert — bitte dort anpassen.' }, { status: 409 });
     if (r.art === 'schritt' && r.kontaktId) await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === r.kontaktId ? { ...k, naechsterSchritt: r.vorher ?? undefined, geaendertAm: tagVon(jetzt) } : k)) }), werAus(req));
-    if (r.art === 'aufgabe' && r.aufgabeId) await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => ({ ...(cur ?? { tasks: [] }), tasks: (cur?.tasks ?? []).filter(t => t.id !== r.aufgabeId) }));
+    // U1: vorher hart aus `tasks` gefiltert (ohne Papierkorb, Verlauf, Protokoll; Unteraufgaben blieben verwaist liegen). Jetzt in den
+    // Papierkorb über den EINEN Schreibweg — samt Unteraufgaben (Papierkorb-Kette), wiederherstellbar 30 Tage. Geprüft wird IN der Sperre
+    // noch einmal: wer sie inzwischen bearbeitet hat, behält sie (409).
+    if (r.art === 'aufgabe' && r.aufgabeId) {
+      let geaendert = false;
+      const erg = await systemAufgabenAendern(stand => {
+        const t = stand.tasks.find(x => x.id === r.aufgabeId);
+        if (!t || imKorb(t)) return {};
+        if (!ruecknehmbar(v, undefined, t)) { geaendert = true; return {}; }
+        return { loeschen: [t.id] };
+      }, { person, wer: werAus(req), jetzt });
+      if (geaendert) return NextResponse.json({ ok: false, fehler: 'Inzwischen von Hand geändert — bitte dort anpassen.' }, { status: 409 });
+      if (!erg.ok) return NextResponse.json({ ok: false, fehler: erg.fehler ?? 'Aufgabe nicht zurückgenommen.' }, { status: erg.status === 200 ? 409 : erg.status });
+    }
     await updateJson<HeadStand>(standName(h), s => { const x = { ...leererStand(), ...(s ?? {}) }; return { ...x, vorschlaege: x.vorschlaege.map(y => (y.id === v.id ? { ...y, status: 'abgelehnt' as const, grund: 'unpassend', entschieden: jetzt, aktualisiert: jetzt, von: person } : y)) }; });
     return NextResponse.json({ ok: true, text: `Zurückgenommen: ${v.auto!.wirkung}.` });
   }

@@ -691,8 +691,8 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
     const { melde } = await import('@/lib/meldungen/melden');
     await melde({ an: person, art: 'agenten', titel: voll ? 'Ein Agenten-Thread ist voll — bitte einen neuen anlegen' : 'Ein Agenten-Ergebnis liegt bereit', link: WEG.agenten({ ...(zielHead ? { h: zielHead } : {}), f: ziel.id }) });
   }
-  const { logRun } = await import('@/lib/agent-log');
-  await logRun(`faden:${headId}`, 'Agenten-Lauf', e.span, { person });
+  // Agenten-Datenschicht (09.10.): kein Eintrag mehr im Ring `agent-log` (200 Einträge) — Chat-Züge und Thread-Läufe fluteten ihn und schoben
+  // Loop-Historie und ZOEs „letzte Läufe“ hinaus. Der Lauf steht mit seinem Span an der Nachricht im Thread (`lauf`), der Auftrag in der Warteschlange.
 }
 
 // ── Zweite Meinung ──────────────────────────────────────────────────────────────────────────────────────────────────────
