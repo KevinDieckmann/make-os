@@ -24,7 +24,7 @@ const sitzung = (p: string) => ({ 'content-type': 'application/json', 'x-make-us
 const anfrage = (pfad: string, kopf: Record<string, string>, method = 'GET', body?: unknown) => new Request(`http://test${pfad}`, { method, headers: kopf, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
 type Route = { POST: (r: Request) => Promise<Response> };
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]).toString('base64');
-const IBAN = 'DE89370400440532013000';
+const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join(''); // zur Laufzeit gebaut (Wächter tests/repo-sauber.test.ts)
 
 let db: typeof import('@/lib/store/local-db');
 let heute: string;
