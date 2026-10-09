@@ -4,6 +4,33 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Plattform neutral, Rest 2: die ZOE-Dateien (nur lokal — Branch `neutral-rest-2`, Basis `agenten-nacht` a2b8a5ee)
+
+Der Durchgang „neutral-rest“ durfte die ZOE-Dateien nicht anfassen (Status-Zeile „kimmi, werkzeuge.ts, register.ts, agenten.ts, heads/takt.ts,
+ZoePanel/ZoeStart — offen (gesperrt)“ weiter unten). Jetzt: Personen aus den Konten bzw. dem CRM-Team der Instanz, Firmen aus lib/einheiten.ts
+und dem Gesellschafts-Register, keine feste Anrede — in `lib/zoe/**`, `app/api/zoe/**`, kimmi, `components/os/Zoe*.tsx`, ZOE-Verlauf auch in
+den Kommentaren. kimmi, `lib/zoe/werkzeug-defs.ts` und `lib/heads/takt.ts` waren seit Paket 4a/4b schon neutral.
+
+**Was sich ändert (Klickweg zum Prüfen)**
+- **ZOE (schwebendes Fenster, Empfang):** Eröffnung ohne „Sir“ — „Ich bin da.“; den Vornamen nennt ZOE im Gespräch wie bisher aus dem Konto (`anredeSatz`).
+- **ZOE „Aufgabe für …“ (`create_task`):** gültig ist jede Person des Haushalts (Konten) oder „both“; Unbekanntes → die anlegende Person (wie vorher).
+  Für euch dieselbe Liste wie bisher; ein weiteres Konto im Haushalt ist jetzt wählbar (für eine andere Person weiter nur mit Freigabe).
+- **ZOE-Vorschläge Markttraktion (`crm_vorschlag`):** Zuständig/Stimme aus dem CRM-Team der Instanz (`TEAM`, für euch unverändert), Fehlertexte nennen
+  die Kennungen zur Laufzeit; Angebots-Gesellschaft aus lib/einheiten.ts.
+- **ZOE „Planposten“ (`erfasse_planposten`):** Firma = Gesellschaft, Register-Gesellschaft (`g-…`) oder eine Altzuordnung, die der Liquiplan schon trägt;
+  die feste Kennung einer Beteiligung steht nicht mehr im Code (das Werkzeug-Schema bot sie seit 4a ohnehin nicht mehr an).
+- **Texte an das Modell** (Agenten-Ergebnisse, Werkzeug-Antworten): „Versand bleibt beim Menschen“, „frag die Person …“ statt eines Vornamens.
+- **Intern:** `PERSON_LABEL`/`RAUM_LABEL` entfernt (`nameVon` liefert dasselbe); der Speichername des Erstkontos steht nur noch EINMAL (`ERSTKONTO` in
+  lib/zoe/raum.ts); Gedächtnis-Fakten verlangen den Raum (der stille Rückfall auf eine feste Person war ungenutzt); ZOE-Verlauf-Typ ohne Personen-Rolle.
+
+**Rückweg:** keine Datenänderung — kein Bestand wird umgeschrieben (gespeicherte Rollen, Räume, Zuordnungen, Altkennungen bleiben und werden gelesen).
+
+**Offen (Plattform-Schuld, nicht in diesem Paket):** `ERSTKONTO` (Bestände ohne Suffix + Dienstweg ohne Person in `personAus`) je Instanz aus der Einrichtung;
+Kalendermodell (Kalender-Einstellungen mit festen Plätzen je Person, `vorschlagsKalender`); Haut-Tagebuch/Streak-Werkzeuge (Gesundheits-Module, Paket 2).
+
+Wächter: `tests/neutral-rest.test.ts` › 4 (ganzer Quelltext der ZOE-Dateien ohne Vornamen/Firmen/Diagnosen/„Sir“, Kennungen nur mit Grund, Verhalten mit
+erfundenen Konten: create_task, Planposten-Altwert, crm_vorschlag, ZOE-Verlauf-Altbestand, Räume/Gedächtnis).
+
 ## 09.10.2026 — Brain-/Vault-Sicht ohne feste Personen (PRIVATE_INHALTE_SUCHE.md Paket 5 „Vault- und Brain-Sicht“; nur lokal — Branch `brain-neutral`, Basis `agenten-nacht` c9c65695)
 
 Plattform-Regel „Nichts Persönliches fest einbauen“: Wer im Obsidian-Brain was sieht, wem eine Notiz ohne `owner` gehört, für wen eine Regel gilt
@@ -424,7 +451,7 @@ Wächter: `tests/neutral-rest.test.ts`.
 | B · outreach / ansprache / prospecting / content | erledigt | `lib/crm/absender.ts`, ICP leer, Sprachregeln über Brain-Regeln |
 | B · meeting / delegation | erledigt | Projekte aus den Aufgaben, Konten/Inhaber aus dem Team |
 | B · Heads (prompt.ts, pruefer.ts) | erledigt | Gesellschaften aus lib/einheiten.ts, Team aus dem Paket, `MAKE_OS_VERBOTENE_WOERTER` |
-| B · kimmi, werkzeuge.ts, register.ts, agenten.ts, heads/takt.ts, ZoePanel/ZoeStart | **offen (gesperrt)** | parallele Pakete; noch fest: kimmi `firma`-enum mit `kemaris`, werkzeuge `input.firma === 'kemaris'`, Standardperson `kevin` im Heads-Takt, Anrede in ZoePanel/ZoeStart, „Kevins MAKE OS“ in agenten.ts |
+| B · kimmi, werkzeuge.ts, register.ts, agenten.ts, heads/takt.ts, ZoePanel/ZoeStart | erledigt (Rest 2) | Branch `neutral-rest-2` (Abschnitt oben); offen bleiben nur `ERSTKONTO` und das Kalendermodell |
 | B · Head of Finance `verantwortlich` (kevin/malin/beide) | **offen** | Schema + gespeicherte Vorschläge + Prüfer + Ansicht; braucht Umstellung mit Lesen alter Werte |
 | C · Journal-Merkmale (Substanz, Körperstelle) | erledigt | allgemein, Zähler nur mit eigener Einstellung |
 | C · Ernährungs-Startgrundsätze aus einem Profil | erledigt | Start leer |
