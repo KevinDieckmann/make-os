@@ -156,6 +156,24 @@ describe('1 · POST /api/crm/person mit vorhandener Kennung (Wiederholung) — k
   });
 });
 
+// ── 1 · Import mit einer Firma, die im Papierkorb liegt: zurückholen wie „Person anlegen“ (1.6), nie an einer unsichtbaren Firma ───
+describe('1 · Import → Firmen-Abgleich: Firma im Papierkorb wird zurückgeholt (wie Person anlegen, Netzwerken, Anfrage)', () => {
+  it('die Person hängt an einer sichtbaren Firma, nicht an einer im Papierkorb', async () => {
+    const { firmenId } = await import('@/lib/crm/firmen');
+    const id = firmenId('Korb Firma GmbH');
+    await db.updateJson<CrmBestand>('crm', c => ({ ...c!, firmen: [...c!.firmen, { id, name: 'Korb Firma GmbH', rolle: 'offen', geaendert: '2026-09-01T09:00:00.000Z', geloeschtAm: '2026-10-01T09:00:00.000Z' }] }));
+    const imp = await import('@/app/api/crm/import/route') as unknown as Route;
+    const r = await imp.POST(anfrage('/api/crm/import', sitzung('kevin'), 'POST', { csv: 'VORNAME;NACHNAME;EMAIL;FIRMA\nKorb;Person;korb.person@korb-firma.example;Korb Firma GmbH\n', name: 'l3.csv' }));
+    expect(r.status).toBe(200);
+    const k = (await kartei()).find(x => x.email === 'korb.person@korb-firma.example')!;
+    expect(k.firmaId).toBe(id);
+    const f = (await crm()).firmen.find(x => x.id === id)!;
+    expect(f.geloeschtAm).toBeUndefined();
+    const { ZURUECK_VERMERK } = await import('@/lib/crm/ablage');
+    expect(f.notiz ?? '').toContain(ZURUECK_VERMERK);
+  });
+});
+
 // ── 1 · „Online gewinnt“ auch für Personen aus einer Anfrage: was die Person selbst angab, überschreibt kein späterer Import ────────
 describe('1 · Anfrage → Import: Angaben der Person bleiben (vonHand wie bei „Person anlegen“ und Netzwerken)', () => {
   it('Telefon aus der Anfrage wird vom Import nicht still überschrieben, sondern als Konflikt vorgelegt', async () => {
