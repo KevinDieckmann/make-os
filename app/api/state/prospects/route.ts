@@ -5,7 +5,7 @@
 // PATCH { ops: [{ op: 'upsert' | 'teil' | 'delete', eintrag | id, felder?, stand? }], icp? }   (Woche 2 · 1.14, 09.10.)
 //         → Einzeländerungen mit Stand (409 + `konflikte` bei fremder Änderung, nichts gespeichert); `icp` setzt das EIGENE Profil
 //           (≤ 3000 Zeichen, sonst 413 — nie gekürzt). Antwort mit den neuen Ständen.
-// PUT   → ICP + ganze Liste — nur noch für den Prospect-Agenten (lib/zoe/agenten.ts); der Browser schreibt per PATCH.
+// PUT   → ICP + ganze Liste — nur noch Altweg (ältere Arbeiter); Browser UND Prospect-Agent (lib/zoe/agenten.ts, seit 09.10.) schreiben per PATCH mit Stand.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';

@@ -17,7 +17,7 @@ import { localDay } from '@/lib/zeit';
 import { wandzeit } from '@/lib/kalender/zeit';
 import { artFuerStunde, tagKey, type LaufArt } from '@/lib/tageslauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
-import { botenEingerichtet, botenKanalFuer } from './an-person';
+import { botenEingerichtet } from './an-person';
 import { alleSpeicher } from '@/lib/zugang/konten';
 import type { NeuerAuftrag } from './auftraege';
 
@@ -147,22 +147,19 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   }
 
   // 0b) Markttraktion (25.09.): werktags ab 7:30 die Morgen-Nachricht, freitags
-  //     ab 15 Uhr das Wochen-Scoreboard — je Person im Team mit Konto, und nur,
-  //     wer einen Boten hat (seit 08.10. ZOE auf WhatsApp oder Telegram — sonst stünde der Auftrag jede Minute
-  //     neu in der Schlange, ohne dass ihn jemand zustellen kann). Wie der
-  //     Gesundheits-Takt unabhängig vom Morgenlauf. Riegel je Person und Slot
-  //     in markttraktion-takt.json (lib/crm/scoreboard.ts).
-  if (bote) {
+  //     ab 15 Uhr das Wochen-Scoreboard — je Person im Team mit Konto. Seit dem Feinschliff 09.10. auch ohne Boten: der Lauf stellt dann über
+  //     den EINEN Sendeweg `anPersonMelden` die Glocke zu (neutral) und setzt den Riegel — der Auftrag steht also nicht jede Minute neu in der
+  //     Schlange. Wie der Gesundheits-Takt unabhängig vom Morgenlauf. Riegel je Person und Slot in markttraktion-takt.json (lib/crm/scoreboard.ts).
+  {
     try {
       const { faelligeRhythmen, rhythmusStand, RHYTHMUS_SPEICHER } = await import('@/lib/crm/scoreboard');
       const { TEAM } = await import('@/lib/crm/team');
       const [mitKonto, riegel] = await Promise.all([alleSpeicher(), loadJson<unknown>(RHYTHMUS_SPEICHER)]);
-      const mitBoten: string[] = [];
-      for (const p of TEAM.map(t => t.id)) if (mitKonto.includes(p) && (await botenKanalFuer(p)) !== null) mitBoten.push(p);
+      const mitKontoImTeam = TEAM.map(t => t.id).filter(p => mitKonto.includes(p));
       // Business-frei (08.10., Lücke 7): wer gerade Business-frei ist, bekommt keine Markttraktion-Nachricht — sie kommt danach,
       // solange ihr Zeitfenster am Tag noch offen ist.
       const { nichtBusinessFrei } = await import('@/lib/arbeitsrahmen/server');
-      const personen = await nichtBusinessFrei(mitBoten, jetzt);
+      const personen = await nichtBusinessFrei(mitKontoImTeam, jetzt);
       const dran = faelligeRhythmen(rhythmusStand(riegel), personen, jetzt);
       if (dran.length) {
         raus.push({
