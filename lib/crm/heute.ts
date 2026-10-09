@@ -26,6 +26,7 @@ import { nachfassText } from './marke';
 import { taktVon, dealWiedervorlagen, kadenzBasis } from './followup';
 import { haeltBeziehung, zustaendig, wer, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
+import { tagKurz } from '@/lib/zeit/kalender-kern';
 import { weltDerKampagne } from './kampagnen-welt';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
@@ -115,6 +116,8 @@ export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'fo
  * „Versprechen“ wie ein Follow-up. Ohne Angabe wie bisher.
  */
 export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, n = 12, aufgaben: readonly PowerHourAufgabe[] = []): Auswahl {
+  // Daten in Texten deutsch kurz („23.10.“, mit Jahr nur außerhalb des laufenden) — Rundgang 09.10.: „Entscheidung bis 2026-10-23“ stand so auf Heute.
+  const tagDe = (t: string) => tagKurz(t.slice(0, 10), heute) || t;
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const chancenJe = new Map<string, Chance[]>();
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) for (const id of c.kontaktIds) chancenJe.set(id, [...(chancenJe.get(id) ?? []), c]);
@@ -162,7 +165,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     // Ein offenes echtes Follow-up zu diesem Gast und Event (z. B. aus „Netzwerken“) führt — kein zweiter Eintrag aus demselben Anlass (M1).
     if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;
     const bis = followUpBis(ev);
-    nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `${nachfassText(ev)} bis ${bis}` : `${nachfassText(ev)} überfällig`, { bezug: ev.id });
+    nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `${nachfassText(ev)} bis ${tagDe(bis)}` : `${nachfassText(ev)} überfällig`, { bezug: ev.id });
   }
   // 1b Echte Follow-ups (27.09.): die Follow-up-Ebene führt — was dort fällig ist, liegt auch hier oben (Prüfbericht, Punkt 1).
   for (const f of (crm.followups ?? []).filter(f => f.status === 'offen' && f.faellig <= heute && f.kontaktId)) {
@@ -197,9 +200,9 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     const faellig = !!c.naechsterSchritt && c.naechsterSchritt.datum <= heute;
     const bald = !!c.erwartetAm && tage(heute, c.erwartetAm) >= 0 && tage(heute, c.erwartetAm) <= 14;
     if (!k && (faellig || g.ampel === 'rot' || bald)) { aus.ohnePerson++; continue; }
-    if (faellig) nimm(k, 'chancen', 40 + wertPunkte, `„${c.titel}“: ${c.naechsterSchritt!.text} (fällig ${c.naechsterSchritt!.datum})${ueber}`, { chance: c });
+    if (faellig) nimm(k, 'chancen', 40 + wertPunkte, `„${c.titel}“: ${c.naechsterSchritt!.text} (fällig ${tagDe(c.naechsterSchritt!.datum)})${ueber}`, { chance: c });
     else if (g.ampel === 'rot') nimm(k, 'chancen', 30 + wertPunkte, `„${c.titel}“ hängt: ${g.gruende[0]}${ueber}`, { chance: c });
-    else if (bald) nimm(k, 'chancen', 20 - Math.round(tage(heute, c.erwartetAm!) / 14 * 20) + wertPunkte, `„${c.titel}“: Entscheidung bis ${c.erwartetAm}${ueber}`, { chance: c });
+    else if (bald) nimm(k, 'chancen', 20 - Math.round(tage(heute, c.erwartetAm!) / 14 * 20) + wertPunkte, `„${c.titel}“: Entscheidung bis ${tagDe(c.erwartetAm!)}${ueber}`, { chance: c });
   }
   // 4 Kunden
   for (const m of crm.mandate.filter(m => m.status === 'aktiv')) {

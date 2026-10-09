@@ -3,6 +3,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { restzeitText } from '@/lib/make-one/onboarding-data';
+import { werIstDran } from '@/lib/crm/heute';
+import { leererBestand } from '@/lib/crm/speicher';
+import type { Chance } from '@/lib/crm/typen';
+import type { Kontakt } from '@/lib/make-one/crm';
 
 const lies = (p: string) => readFileSync(p, 'utf8');
 
@@ -35,5 +39,20 @@ describe('Rundgang 09.10. — Funde', () => {
   it('ZOE-Kugel am Handy auf der Agenten-Seite ausgeblendet (Reiter bleiben frei)', () => {
     expect(lies('components/os/agenten/AgentenSeite.tsx')).toContain('className="agenten-reiter-handy"');
     expect(lies('app/globals.css')).toMatch(/body:has\(\.agenten-reiter-handy\) \.zoe-fab \{ display: none !important; \}/);
+  });
+  it('„Wer heute dran ist“: Daten deutsch kurz statt ISO („Entscheidung bis 23.10.“, „fällig 08.10.“)', () => {
+    const k: Kontakt = { id: 'c-a', vorname: 'Erika', nachname: 'Beispiel', eignung: '', prio: '', stufe: 'gespraech', telefon: '030', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01' };
+    const ch = (id: string, x: Partial<Chance>): Chance => ({ id, titel: `Deal ${id}`, kontaktIds: ['c-a'], art: 'retainer', wert: { betrag: 1000, basis: 'monat' }, stufe: 'angebot',
+      historie: [{ stufe: 'angebot', am: '2026-10-05', von: 'lena' }], gesellschaft: 'kdc', besitzer: 'lena', angelegt: '2026-10-01', geaendert: '2026-10-05', ...x } as Chance);
+    const heute = '2026-10-09';
+    const bald = werIstDran([k], { ...leererBestand(), chancen: [ch('ch-b', { erwartetAm: '2026-10-23', naechsterSchritt: { text: 'Nachfassen', datum: '2026-10-20' } })] }, heute, null);
+    const t1 = bald.karten.flatMap(x => x.gruende).join(' | ');
+    expect(t1).toContain('Entscheidung bis 23.10.');
+    expect(t1).not.toMatch(/\b2026-\d\d-\d\d\b/);
+    const faellig = werIstDran([k], { ...leererBestand(), chancen: [ch('ch-f', { naechsterSchritt: { text: 'Angebot nachfassen', datum: '2026-10-08' } })] }, heute, null);
+    const t2 = faellig.karten.flatMap(x => x.gruende).join(' | ');
+    expect(t2).toContain('(fällig 08.10.)');
+    const anderesJahr = werIstDran([k], { ...leererBestand(), chancen: [ch('ch-j', { erwartetAm: '2027-01-02', historie: [{ stufe: 'angebot', am: '2026-12-20', von: 'lena' }], geaendert: '2026-12-20', naechsterSchritt: { text: 'x', datum: '2026-12-30' } })] }, '2026-12-28', null);
+    expect(anderesJahr.karten.flatMap(x => x.gruende).join(' | ')).toContain('Entscheidung bis 02.01.2027');
   });
 });
