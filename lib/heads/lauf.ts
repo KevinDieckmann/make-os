@@ -30,6 +30,7 @@ import { grundlauf } from './grundlauf';
 import { normalisiere, pruefe, korrekturAuftrag, qualitaet, type Antwort, type Pruefung, type Vorschlag } from './pruefer';
 import { leererStand, standName, mischen, type HeadStand, type HeadBericht, type HeadVorschlag } from './stand';
 import { automatisch, aufgabeAus, OHNE_AUTO_MODI } from './autonomie';
+import { autonomieWirksam } from '@/lib/agenten/leistung';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import { belege } from './belege';
 import { BEIDE } from '@/lib/crm/team';
@@ -210,6 +211,9 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string |
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const plan = st.vorschlaege.filter(v => v.berichtId === berichtId && v.status === 'offen').map(v => ({ v, w: automatisch(v, v.kontakt_id ? nachId.get(v.kontakt_id) : undefined) })).filter((x): x is { v: HeadVorschlag; w: 'schritt' | 'aufgabe' } => !!x.w);
   if (!plan.length) return 0;
+  // Agenten-Datenschicht (09.10., D2): die strengere Stufe gilt — neben dem alten Schalter (`autonomie: 'aus'` oben) auch die Stufe aus den
+  // Einstellungen des Agenten-Bereichs samt Auto-Zurückstufen bei schlechter Annahmequote (lib/agenten/leistung.ts `autonomieWirksam`).
+  if ((await autonomieWirksam(head)) === 'vorschlag') return 0;
   const erledigt = new Map<string, HeadVorschlag['auto']>();
   const schritte = plan.filter(p => p.w === 'schritt');
   if (schritte.length) {

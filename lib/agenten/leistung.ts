@@ -414,6 +414,29 @@ export async function autonomiePflegen(haushalt: string | null, jetzt = new Date
   return geaendert;
 }
 
+/**
+ * Die WIRKSAME Autonomie-Stufe eines Haushalts-Heads (Server; 09.10., Agenten-Datenschicht D2) — für den alten Heads-Lauf
+ * (lib/heads/lauf.ts `autoUebernehmen`). Vorher las er nur `head-<id>.autonomie === 'aus'`: eine Stufe „vorschlag“ aus den Einstellungen
+ * des Agenten-Bereichs (per Klick oder automatisch zurückgestuft, `autonomiePflegen`) erreichte ihn nie. Jetzt dieselbe Regel wie überall
+ * (`autonomieLage`: Einstellung, Boden, schlechte Annahmequote → sofort „vorschlag“, auch bevor es gespeichert ist). Privat-Heads (Ebene
+ * Person) und Fehler → „vorschlag“: die strengere Stufe gilt.
+ */
+export async function autonomieWirksam(headId: string, jetzt = new Date()): Promise<AutonomieStufe> {
+  try {
+    const { headDef } = await import('./katalog');
+    const head = headDef(headId);
+    if (!head || head.ebene === 'person') return 'vorschlag';
+    const [{ loadJson }, { einstellungBestand }, { haushaltDesInhabers }] = await Promise.all([import('@/lib/store/local-db'), import('./typen'), import('@/lib/zugang/haushalt-inhaber')]);
+    const haushalt = await haushaltDesInhabers();
+    const einst = haushalt ? await loadJson<AgentenEinstellung>(einstellungBestand(haushalt)) : null;
+    const annahme = await annahmeFuerHead(head, haushalt, jetzt);
+    return autonomieLage(head, einst?.heads?.[head.id] as HeadEinstellungMitAutonomie | undefined, annahme).stufe;
+  } catch (e) {
+    console.error('[agenten-leistung] Autonomie nicht lesbar — der Head schlägt nur vor:', e instanceof Error ? e.message.slice(0, 120) : e);
+    return 'vorschlag';
+  }
+}
+
 /** Daten für ZOEs Monatsreview (Paket 4 holt sie): Business-Heads des Haushalts + eigene Privat-Heads — nur Zahlen. */
 export async function reviewDaten(person: string, monat?: string): Promise<ReviewDaten> {
   const { sichtbareHeads } = await import('./skills-server');

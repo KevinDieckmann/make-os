@@ -33,7 +33,7 @@ import {
   HUELLE as HUELLE_KERN, SchluesselFehlt as SchluesselFehltKern, EntschluesselungFehlgeschlagen,
   schluesselRing, huellenVersion, huelleOeffnen, huelleV1Schreiben, huelleImModus, huelleAktuell, formatModus, schreibVersion,
 } from './huelle.mjs';
-import { messe, zaehle, parseMessen } from './messwerte';
+import { messe, zaehle, parseMessen, schreibMessen } from './messwerte';
 import { migriere, mitVersion, ohneVersion } from './schema';
 import { localDay } from '@/lib/zeit';
 
@@ -426,7 +426,9 @@ async function schreibeDatei(name: string, dest: string, text: string): Promise<
   await atomarSchreiben(dest, aktiv ? huelleImModus(text, aktiv, name) : text);
   Z.zaehler.set(name, (Z.zaehler.get(name) ?? 0) + 1);
   try { merkeGelesen(name, await fs.stat(dest), { text, version: aktiv ? schreibVersion() : 0, kid: aktiv?.kid ?? null }); } catch { cacheWeg(name); }
-  messe('schreiben', performance.now() - t0);
+  const dauer = performance.now() - t0;
+  messe('schreiben', dauer);
+  schreibMessen(name, dauer);
   standErhoehen(name);
 }
 

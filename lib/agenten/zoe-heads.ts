@@ -140,8 +140,8 @@ export async function headFragen(input: Record<string, unknown>, origin: string,
     sicht, umfang: u, faden: k.faden, modus: 'chat', origin, hintergrund: false, handler: ohne, gedaechtnis: gedaechtnisFuer(bestand, agent), nurLesen: true,
     zusatz: 'ZOE FRAGT DICH: Beantworte die Frage knapp mit dem, was du in deinem Bereich siehst (Zahlen genau so, wie sie kommen). Du legst nichts an und delegierst nicht. Fehlt dir etwas, sag es offen.',
   });
-  const { logRun } = await import('@/lib/agent-log');
-  await logRun(`faden:${head.id}`, 'ZOE fragt', e.span, { person });
+  // Agenten-Datenschicht (09.10.): kein Eintrag mehr im Ring `agent-log` (200 Einträge) — Chat-Züge und Thread-Läufe fluteten ihn und schoben
+  // Loop-Historie und ZOEs „letzte Läufe“ hinaus. Der Lauf steht mit seinem Span an der Nachricht im Thread (`lauf`), der Auftrag in der Warteschlange.
   if (!e.ki) return `Nicht beantwortet: ${e.grund ?? 'keine Antwort'}.`;
   return `ANTWORT von ${head.name} (Daten aus seinem Bereich):\n${e.text}`;
 }

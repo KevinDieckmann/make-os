@@ -506,6 +506,31 @@ export async function skillErfolgZaehlen(umfang: Umfang, skillId: string, was: '
   return false;
 }
 
+/**
+ * Die Stapel-Entscheidung zu einem Vorschlag, den ein Skill-Lauf erzeugt hat, in der Erfolgsquote dieses Skills zählen (09.10.,
+ * Agenten-Datenschicht D7). Vorher zählte nur der Lauf (und der Fehler) — „angenommen“/„abgelehnt“ nie, die Quote stand damit bei jedem
+ * gescheiterten Lauf auf 0 %. Gefunden wird der Skill über den Thread der Person, dessen Nachricht den Vorschlag trägt (`werkzeuge[].vorschlagId`),
+ * und dessen Vorfahren (ein Skill-Lauf kann an Mitarbeiter delegieren). Nur die Threads der Person, für die vorgeschlagen wurde — nie fremde.
+ * `zurueck` an ZOE zählt wie abgelehnt (wie die Annahmequote der Heads). Liefert die Skill-Kennung oder null (kein Skill-Vorschlag). Wirft nie.
+ */
+export async function skillEntscheidungZaehlen(v: { id: string; person?: string }, entscheidung: 'angenommen' | 'abgelehnt', jetzt = new Date()): Promise<string | null> {
+  try {
+    if (!v.person || !/^[a-z0-9-]{1,40}$/.test(v.person)) return null;
+    const faeden = (await loadJson<FadenBestand>(fadenBestand(v.person)))?.faeden ?? [];
+    const quelle = faeden.find(f => (f.nachrichten ?? []).some(n => (n.werkzeuge ?? []).some(w => w.vorschlagId === v.id)));
+    if (!quelle) return null;
+    const nachId = new Map(faeden.map(f => [f.id, f]));
+    const gesehen = new Set<string>();
+    let f: typeof quelle | undefined = quelle;
+    while (f && !f.skillId && f.elternId && !gesehen.has(f.id)) { gesehen.add(f.id); f = nachId.get(f.elternId); }
+    if (!f?.skillId) return null;
+    return (await skillErfolgZaehlen(await umfangFuer(v.person), f.skillId, entscheidung, jetzt)) ? f.skillId : null;
+  } catch (e) {
+    console.error('[agenten-skills] Entscheidung nicht gezählt:', e instanceof Error ? e.message.slice(0, 120) : e);
+    return null;
+  }
+}
+
 // ── Mitarbeiter ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Eigenen Mitarbeiter anlegen (Antwort 4: „selbst anlegen“). `quelle` vorschlag nur über den Stapel. */

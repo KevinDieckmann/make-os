@@ -106,7 +106,12 @@ export const KERN_GRENZEN = {
   ratJeLauf: 2,
 } as const;
 
-/** Fristen (Entscheidung 09.10.: Threads 12 Monate nach der letzten Nachricht) — Felder mit Vorgabe. */
+/**
+ * Fristen (Entscheidung 09.10.: Threads 12 Monate nach der letzten Nachricht) — Felder mit Vorgabe. Seit der Agenten-Datenschicht (09.10.)
+ * kommt die Thread-Frist aus der EINEN Fristen-Tabelle (lib/crm/loeschfristen.ts, Frist „zoe-verlauf“ — Gespräche mit ZOE und den Agenten,
+ * unter Stammdaten › Datenschutz einstellbar; der Server reicht sie herein: lib/agenten/faeden-server.ts `fadenFristMonate`). `fadenMonate`
+ * ist nur der Rückfall, wenn die Tabelle nicht lesbar ist (= ihr Standard).
+ */
 export const FRISTEN = { fadenMonate: 12, gedaechtnisMonate: 12 } as const;
 
 export type Fehler = { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string };
@@ -392,17 +397,20 @@ const monateZurueck = (jetzt: string, monate: number): string => {
   d.setUTCMonth(d.getUTCMonth() - monate);
   return d.toISOString();
 };
-/** Letzte Nachricht (sonst `aktualisiert`) älter als die Frist — und kein Lauf offen? */
-export function abgelaufen(f: FadenKern, jetzt: string): boolean {
+/**
+ * Letzte Nachricht (sonst `aktualisiert`) älter als die Frist — und kein Lauf offen? `monate` = wirksame Frist der Instanz (Tabelle), eine
+ * eigene Frist am Thread (`loeschfristMonate`) gewinnt.
+ */
+export function abgelaufen(f: FadenKern, jetzt: string, monate: number = FRISTEN.fadenMonate): boolean {
   if (f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft')) return false;
   const letzte = f.nachrichten[f.nachrichten.length - 1]?.zeit ?? f.aktualisiert;
-  return letzte < monateZurueck(jetzt, f.loeschfristMonate ?? FRISTEN.fadenMonate);
+  return letzte < monateZurueck(jetzt, f.loeschfristMonate ?? monate);
 }
-/** Bestand ohne abgelaufene Threads und ohne abgelaufene persönliche Merksätze. */
-export function ohneAbgelaufene(b: FadenBestandKern, jetzt: string): FadenBestandKern {
+/** Bestand ohne abgelaufene Threads und ohne abgelaufene persönliche Merksätze. `fadenMonate` = wirksame Thread-Frist (Tabelle). */
+export function ohneAbgelaufene(b: FadenBestandKern, jetzt: string, fadenMonate: number = FRISTEN.fadenMonate): FadenBestandKern {
   const grenze = monateZurueck(jetzt, FRISTEN.gedaechtnisMonate);
   const gedaechtnis = b.gedaechtnis ? Object.fromEntries(Object.entries(b.gedaechtnis).map(([k, l]) => [k, (l ?? []).filter(m => m.am >= grenze)]).filter(([, l]) => (l as Merksatz[]).length)) : undefined;
-  return { ...b, faeden: b.faeden.filter(f => !abgelaufen(f, jetzt)), ...(gedaechtnis ? { gedaechtnis } : {}) };
+  return { ...b, faeden: b.faeden.filter(f => !abgelaufen(f, jetzt, fadenMonate)), ...(gedaechtnis ? { gedaechtnis } : {}) };
 }
 
 // ── Gedächtnis „Persönlich“ ─────────────────────────────────────────────────────────────────────────────────────────────

@@ -44,7 +44,28 @@ export interface Fakt {
 
 interface Stand { fakten: Fakt[] }
 
-const GRENZE = 1200;
+export const GRENZE = 1200;
+
+/**
+ * Über der Grenze wird nie still gekürzt (09.10., Agenten-Datenschicht — vorher `slice(0, 1200)`: der älteste AKTIVE Fakt fiel weg).
+ * Platz machen dürfen nur Einträge, die nichts mehr tragen: zuerst die Nachweise vergessener Fakten (älteste zuerst), dann Fakten, deren
+ * eigene Frist (`bis`) abgelaufen ist. Reicht das nicht, wird nichts gemerkt: `GedaechtnisVoll` (413-Satz, beginnt mit „Fehlgeschlagen“ —
+ * so erkennen Werkzeug-Aufruf und Stapel den Fehlschlag). Rein, getestet (tests/agenten-datenschicht.test.ts).
+ */
+export class GedaechtnisVoll extends Error {
+  readonly status = 413;
+  constructor() { super(`Fehlgeschlagen: Das Gedächtnis ist voll (höchstens ${GRENZE.toLocaleString('de-DE')} Fakten) — erst Fakten unter ZOE › Gedächtnis vergessen, dann neu merken. Nichts gemerkt.`); }
+}
+export function platzMachen(liste: readonly Fakt[], heute: string, grenze = GRENZE): Fakt[] | null {
+  if (liste.length <= grenze) return [...liste];
+  let ueber = liste.length - grenze;
+  const raus = new Set<number>();
+  // Liste: neueste zuerst — also von hinten (älteste) her.
+  for (const regel of [(f: Fakt) => !!f.geloeschtAm, (f: Fakt) => !f.geloeschtAm && !!f.bis && f.bis < heute]) {
+    for (let i = liste.length - 1; i >= 0 && ueber > 0; i--) if (!raus.has(i) && regel(liste[i])) { raus.add(i); ueber--; }
+  }
+  return ueber > 0 ? null : liste.filter((_, i) => !raus.has(i));
+}
 
 /**
  * Ein vergessener Fakt (Nachschliff 09.10.: „vergessen heißt vergessen“): nur Kennung, Raum, Art und die Zeitpunkte bleiben als Nachweis —
@@ -77,7 +98,9 @@ export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag'>): Promise<{ f
     const liste = alle.filter(f => !f.geloeschtAm);
     const da = liste.find(f => kennung(f.thema, f.satz) === kennung(fakt.thema, fakt.satz));
     if (da) { warNeu = false; return { fakten: alle }; }
-    return { fakten: [fakt, ...alle].slice(0, GRENZE) };
+    const mitNeu = platzMachen([fakt, ...alle], fakt.tag);
+    if (!mitNeu) throw new GedaechtnisVoll();
+    return { fakten: mitNeu };
   });
   return { fakt, neu: warNeu };
 }

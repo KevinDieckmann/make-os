@@ -22,7 +22,14 @@ const ablage = new Map<string, { v: number; t: number; wert: unknown; laeuft?: P
 // 29.09. (Paket D-C): dazu die Idempotenz-Ablage (`anfragen-ergebnis`, jede wiederholbare Wirkung schreibt zweimal), das
 // Absichtsprotokoll (`absichten--*`, je Schritt eines Mehr-Bestand-Vorgangs) und die Weiterleitungstabelle des
 // Kennungs-Umzugs (`kennung-alias--*`) — keiner davon geht in einen Index ein.
-const RAUSCHEN = /^(anfragen-ergebnis|absichten--.*|kennung-alias--.*|anwesenheit|nutzung|aenderungen|agent-log|zoe-auftraege|zoe-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf(--.*)?|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung|meldungen--.*|aenderungsprotokoll--.*|leseprotokoll--.*|protokoll-siegel|protokoll-pruefung|zoe-stapel|zoe-protokoll|zoe-entscheidungen--.*|brain-app-spiegel|fokus-laufend--.*|whatsapp-zustand|medien-uploads)$/;
+// 09.10. (Agenten-Datenschicht): `verbrauch` gibt es nicht mehr (heißt `ki-verbrauch`) — dazu die Bestände der Agenten, die je
+// Modellaufruf bzw. Lauf-Schritt geschrieben werden: Kostenmessung (`ki-verbrauch`), KI-Protokoll (`ki-protokoll--<Monat>`), Threads,
+// Werkstatt, Hintergrundaufgaben und Einstellungen des Agenten-Bereichs (`agenten-*--*`), Stand und Replay der Heads (`head-*`,
+// `heads-replay-*`) und des Head of Finance (`finanzchef`, `haushalt-chef--*`). Vorher machte JEDER Modellaufruf alle gemerkten Indizes
+// ungültig. Eingang nur mit TTL: die Onboarding-Befunde (60 s) zählen Heads/Threads; die Traktion trägt den Stand der Head-Bestände im
+// Schlüssel (app/api/crm/traktion). Dazu der Gruß des Empfangs (`zoe-empfang`, je Person und Stunde). Nicht Rauschen bleiben
+// `finanzchef-einstellung` und `agents-config` (selten geschrieben).
+const RAUSCHEN = /^(anfragen-ergebnis|absichten--.*|kennung-alias--.*|anwesenheit|nutzung|aenderungen|agent-log|zoe-auftraege|zoe-verlauf(--.*)?|ki-verbrauch|ki-protokoll--.*|agenten-(faeden|skills|skills-privat|plan|einstellung)--.*|head-(sales|marketing|event)|heads-replay-.*|finanzchef|haushalt-chef--.*|zoe-empfang|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf(--.*)?|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung|meldungen--.*|aenderungsprotokoll--.*|leseprotokoll--.*|protokoll-siegel|protokoll-pruefung|zoe-stapel|zoe-protokoll|zoe-entscheidungen--.*|brain-app-spiegel|fokus-laufend--.*|whatsapp-zustand|medien-uploads)$/;
 export const istRauschen = (name?: string): boolean => !!name && RAUSCHEN.test(name);
 
 /** local-db ruft das nach jedem Schreiben — dann rechnet der nächste Aufruf neu. Rauschen (siehe oben) lässt den Stand stehen. */

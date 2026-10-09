@@ -15,7 +15,7 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { kennzahlen } from '@/lib/crm/kennzahlen';
@@ -60,7 +60,10 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const ich = personAus(req);
   // Tempo (26.09.): die ganze Antwort eine Minute merken (je Person) — jede Schreibung setzt zurück.
-  const body = await merken(`traktion:${ich}:${localDay()}`, 60_000, async () => {
+  // 09.10. (Agenten-Datenschicht): die Head-Bestände sind Rauschen (lib/store/memo.ts, jeder Lauf schreibt) — ihr Stand steht deshalb im
+  // Schlüssel, damit eine Entscheidung oder ein Lauf die Zahl offener Vorschläge sofort zeigt.
+  const headStand = await speicherStand(HEADS.map(h => standName(h)));
+  const body = await merken(`traktion:${ich}:${localDay()}:${headStand}`, 60_000, async () => {
   const heute = localDay();
   const [roh, crm, ...staende] = await Promise.all([
     loadJson<{ kontakte: Kontakt[] }>('kontakte'), ladeCrm(),

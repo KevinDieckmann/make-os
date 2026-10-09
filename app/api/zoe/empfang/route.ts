@@ -14,7 +14,7 @@ import { gatherBrain, promptBrain, brainKategorien } from '@/lib/brain';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
 import { modellSchranke } from '@/lib/zugang/umfang';
@@ -99,8 +99,11 @@ export async function GET(req: Request) {
   const text = (r.text ?? '').trim()
     || `Schön, dass du da bist, ${name}. Womit fangen wir an?`;
 
-  // Nur den aktuellen und den vorherigen Schlüssel behalten — die Datei soll
-  // nicht mit jeder Stunde wachsen.
-  await saveJson<Stand>('zoe-empfang', { je: { [schluessel]: { stunde, text } } });
+  // Je Person ändern (09.10., Agenten-Datenschicht): vorher ersetzte `saveJson` die ganze Datei mit nur diesem Schlüssel — der Gruß der
+  // anderen Person derselben Stunde war weg (und kostete beim nächsten Öffnen einen zweiten Modellaufruf). Jetzt ein Teil-Merge in der
+  // Sperre: der eigene Eintrag kommt dazu, behalten werden nur Einträge der laufenden Stunde (die Datei wächst nicht mit jeder Stunde).
+  await updateJson<Stand>('zoe-empfang', cur => ({
+    je: { ...Object.fromEntries(Object.entries(cur?.je ?? {}).filter(([k, v]) => k !== schluessel && v?.stunde === stunde)), [schluessel]: { stunde, text } },
+  }));
   return NextResponse.json({ text, gehalten: false });
 }

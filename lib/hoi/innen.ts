@@ -8,13 +8,13 @@ import { absichtenLage, MINDEST_ALTER_MS } from '@/lib/store/absichten-fortsetze
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadJson, datenOrdner, datenSchluessel, datenschichtLage } from '@/lib/store/local-db';
-import { messBild } from '@/lib/store/messwerte';
+import { messBild, schreibMaxFuer } from '@/lib/store/messwerte';
 import { schluesselQuelle, formatModus, formatModusUnbekannt } from '@/lib/store/huelle.mjs';
 import { fremderSchreiber } from '@/lib/store/betrieb';
 import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
-import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage, type IcloudPersonenLage } from './lage';
+import { befundeAus, gesamt, kurzbericht, nachRang, AGENTEN_BESTAND, AGENTEN_BESTAND_MB, type AgentenBestandLage, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage, type IcloudPersonenLage } from './lage';
 import { verbunden as kalenderVerbunden, ladeStand as kalenderStand, abgleichAlter, tzVersion } from '@/lib/kalender/icloud';
 import { ladeSicherungStand } from '@/lib/kalender/sicherung-server';
 import { googleLage } from '@/lib/kalender/google/lage';
@@ -63,6 +63,16 @@ async function bestaende(): Promise<InnenLage['bestaende']> {
     const liste = groessen.filter((g): g is { name: string; mb: number } => !!g);
     return { anzahl: liste.length, gesamtMb: liste.reduce((s, g) => s + g.mb, 0), groesste: [...liste].sort((a, b) => b.mb - a.mb).slice(0, 3).map(g => ({ name: g.name, mb: Math.round(g.mb * 100) / 100 })), beschaedigt };
   } catch { return { anzahl: 0, gesamtMb: 0, groesste: [] }; }
+}
+
+/** Agenten-Bestände (09.10., Agenten-Datenschicht): Anzahl, größte Datei, über 5 MB, längste Schreibdauer — nur Zahlen, nie Namen. */
+async function agentenBestaende(): Promise<AgentenBestandLage | null> {
+  try {
+    const ordner = datenOrdner();
+    const namen = (await fs.readdir(ordner)).filter(f => f.endsWith('.json') && AGENTEN_BESTAND.test(f.slice(0, -5)));
+    const mb = (await Promise.all(namen.map(async n => { try { return (await fs.stat(path.join(ordner, n))).size / 1_048_576; } catch { return 0; } })));
+    return { anzahl: namen.length, groesstesMb: Math.round(Math.max(0, ...mb) * 100) / 100, ueberGrenze: mb.filter(x => x > AGENTEN_BESTAND_MB).length, schreibenMaxMs: schreibMaxFuer(n => AGENTEN_BESTAND.test(n)) };
+  } catch { return null; }
 }
 
 /** Datenschicht-Messwerte dieses Prozesses (29.09., Paket D-A #87/#75/#8/#9/#50) — nur Zähler. */
@@ -187,6 +197,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     },
     brainIndex: await brainIndexLage(),
     protokollKette: await kettenLage().catch(() => null),
+    agentenBestaende: await agentenBestaende(),
   };
 }
 
