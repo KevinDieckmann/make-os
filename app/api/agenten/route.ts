@@ -4,6 +4,8 @@
 // Zahl, Jahresziele, Kurz-Briefing regelbasiert). `?seit=<ISO>` = letzter Besuch (der Browser merkt ihn sich; Lesen schreibt nie),
 // ohne Angabe die letzten 24 Stunden. Seit Paket 4b je Head die Einstellungen (wirksam, Kosten, Rechte, Stand), das Instanz-Budget und
 // die wählbaren zuständigen Personen — Privat-Heads nur mit dem EIGENEN Abschnitt (lib/agenten/einstellung.ts `mitPerson`).
+// Seit dem Feinschliff (09.10.) je Head die Indexwerte im Kopf (lib/agenten/kontext.ts `kennzahlWerte`: Traktion, Privat nur mit privatem
+// Finanzzugang, Gesundheit nur eigene mit Einwilligung (a), Business) — Lese-Protokoll für Gesundheit und Haushalt.
 // POST (Paket 4b, `EinstellungAnfrage`):
 //   einstellung  { headId, teil, stand } — Modell, Aufwand, Budget je Head, Autonomie (nur verschärfen), zuständige Person, an/aus, Foto,
 //                Mitarbeiter aus; Haushalts-Heads nur volle Mitglieder, Privat-Heads nur die Person selbst (403), Stand → 409, Prüfung → 400
@@ -14,6 +16,7 @@ import { eigenePerson } from '@/lib/zugang/tor';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { AGENTEN_NUR_SELBST } from '@/lib/agenten/typen';
 import { agentenAntwort } from '@/lib/agenten/faeden-server';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +30,13 @@ export async function GET(req: Request) {
   const t = roh ? Date.parse(roh) : NaN;
   const seit = new Date(Number.isFinite(t) && t <= Date.now() ? t : Date.now() - 24 * 3_600_000).toISOString();
   try {
-    return NextResponse.json(await agentenAntwort(z.person, seit), { headers: { 'Cache-Control': 'no-store' } });
+    const a = await agentenAntwort(z.person, seit);
+    // Feinschliff 09.10.: der Kopf eines Heads trägt Indexwerte — Gesundheit (Art. 9, nur die eigenen Werte) bzw. der Privat-Index des
+    // Haushalts stehen dann im Lese-Protokoll wie auf ihren Seiten (nur Bereich und Person, nie Werte).
+    const geliefert = (index: string) => a.heads.some(h => h.kennzahlen.some(k => k.id.startsWith(`${index}:`) && k.wert !== null));
+    if (geliefert('gesundheit')) leseZugriff(req, 'gesundheit', { betroffen: z.person });
+    if (geliefert('privat')) leseZugriff(req, 'haushalt');
+    return NextResponse.json(a, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     const fehler = `Agenten-Bereich gerade nicht lesbar (${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}).`;
     return NextResponse.json({ ok: false, fehler, error: fehler }, { status: 500 });

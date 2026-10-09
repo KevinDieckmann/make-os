@@ -144,7 +144,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
     const eh = einstellung.heads[d.id] ?? {};
     const aus = new Set(eh.mitarbeiterAus ?? []);
     const [ms, skills, kennzahlen] = await Promise.all([
-      mitarbeiterFuerHead(d.id, u).catch(() => []), skillsFuerHead(d.id, u).catch(() => []), kennzahlWerte(d, person).catch(() => []),
+      mitarbeiterFuerHead(d.id, u).catch(() => []), skillsFuerHead(d.id, u).catch(() => []), kennzahlWerte(d, sicht).catch(() => []),
     ]);
     const eigene = faeden.filter(f => f.agent.art !== 'zoe' && f.agent.headId === d.id);
     const sperre = zusatz?.sperre(d) ?? (einstellung.notAus ? { grund: 'not-aus' as const, text: 'Not-Aus ist gesetzt — die Agenten halten an.' } : eh.aktiv === false ? { grund: 'aus' as const, text: `${d.name} ist ausgeschaltet.` } : null);
@@ -231,7 +231,7 @@ async function einstellungZusatz(person: string, sicht: KontoSicht, haushalt: st
   const [j, m] = monatBerlin(new Date()).split('-').map(Number);
   const von = new Date(Date.UTC(j, m - 1, 1)).toISOString(), bis = new Date(Date.UTC(m === 12 ? j + 1 : j, m === 12 ? 0 : m, 1)).toISOString();
   const kostenPrivat = new Map<string, number>();
-  for (const h of KATALOG.filter(x => x.ebene === 'person' && headSichtbar(sicht, x.id))) kostenPrivat.set(h.id, leistung.fadenZahlen(eigeneFaeden, h.id, von, bis).kostenCent);
+  for (const h of KATALOG.filter(x => x.ebene === 'person' && headSichtbar(sicht, x.id))) kostenPrivat.set(h.id, leistung.fadenZahlen(eigeneFaeden, h.id, von, bis).kostenEuroCent);
   const kostenVon = (d: HeadDef) => (d.ebene === 'person' ? kostenPrivat.get(d.id) ?? 0 : kostenHaus[d.id] ?? 0);
   let betrachter: Awaited<ReturnType<typeof import('@/lib/medien/server').betrachterFuer>> | undefined;
   return {
