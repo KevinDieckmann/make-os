@@ -6,6 +6,60 @@
 - Server: **`38f88dc0` (07.10. ~18:28)** — Aufgaben v3 (Malin), Inbox 2 + WhatsApp (ohne Einrichtung aus), iCloud je Person, Blöcke ins eigene iCloud, Verbinden-Karten im Kalender, HOI-Befunde, Einwilligung WhatsApp, Telefon-Dubletten. Websites unverändert (alte „Klar“).
 - Sicherung `vor-upload-2026-10-07-1618.tar.gz`, Rückweg-Bild `make-os:6b10a5ba` (ALTES-BILD-OK). Platte danach 5,3 GB frei — alte Bilder 70603154/db93e88/5aca6f5 nur auf Kevins Wort löschen.
 
+## Nacht 08./09.10. — Agenten-Bereich + Medien unterwegs + KI-Anbieter (Kevin: „durchziehen die Nacht“)
+- **Entscheidungen:** ENTSCHEIDUNGEN_FRAGEBOGEN.md › „Agenten-Bereich — Antworten“, „Nachtrag Bilder und Videos unterwegs“, „Teil 1 nach der Recherche“.
+  Recherchen: `AGENTEN_KONZEPT.md`, `research/agenten/{ARCHITEKTUR,MARKT_UX,MODELLE}.md` (Medien + Recht laufen noch → Fragerunde Teil 2).
+- **Basis aller Pakete:** Branch `nach-upload` (Probe-Zusammenführung der 6 fertigen Pakete). Nichts davon geht mit dem Freitags-Upload online.
+- **Reihenfolge (höchstens 3 Bau-Agenten parallel):** Paket 0 `agenten-vertrag` (läuft) + Paket 6a `ki-anbieter` (läuft) → danach Paket 1 `agenten-kern`,
+  Paket 2 `agenten-seite`, Paket 3 `agenten-skills` → Paket 5 `medien` (nach Kevins Antworten Teil 2) → Paket 4 Verdrahtung (ZOE steuert Heads, ZOE ≤ 20 Werkzeuge,
+  Streaming) erst nach dem Merge von 1–3.
+- **Befunde für alle:** Register Anthropic SCC statt DPF (in 6a) · Modellstufen Haiku/Sonnet/Opus 5.5 nach Eval-Vergleich (in 6a) · ZOE hat ~66 Werkzeuge (Paket 4).
+- **Stand 09.10. ~01 Uhr:** Paket 0 fertig (`agenten-vertrag` a7919902, Basis nach-upload; C11 = Datei-Zuordnung). Laufen (4, Kevin: „90 % Last, ich gehe
+  pennen“): `ki-anbieter` (6a), `agenten-kern` (1), `agenten-seite` (2), `medien` (5). Danach `agenten-skills` (3), dann Paket 4. Morgens: Integration
+  `agenten-nacht` (Merge 1 → 3 → 5 → 2 → 6a), volle Suite, Demo-Bau, Rundgang mit Bildern, Bericht an Kevin.
+- **WARTESCHLANGE DER NACHT (Kevin 09.10. ~01 Uhr: „die ganze Zeit programmieren, bis alles fertig ist — kein Leerlauf, ich will dich morgen früh noch
+  programmieren sehen“). Immer 4 Agenten belegt halten; jeder fertige Platz bekommt sofort das Nächste:**
+  1. `agenten-skills` (Paket 3: Skills, Läufe, Als Nächstes, Takt-Zeile) — Basis agenten-vertrag.
+  2. Integration `agenten-nacht` (Hauptsitzung): nach-upload + vertrag + kern + skills + medien + seite + ki-anbieter; Konflikte lösen, volle Suite.
+  3. Paket 4 Verdrahtung auf `agenten-nacht`: ZOE steuert Heads (`an_head`, `head_fragen`), ZOE ≤ 20 Werkzeuge, gemeinsame Schleife, Streaming, KI-Kategorie
+     `familie`, Einstellungen schreiben, Heads im Takt ohne festes Kürzel, Demo-Saat für Agenten/Medien.
+  4. Markttraktion-Befunde Woche 1 (MARKTTRAKTION_BEFUND.md, ohne Kevins offene Fragebogen-Themen) — Trichter ohne kalte Leads, veraltete Regeltexte, übrige Fehler.
+  5. Plattform neutralisieren Paket 1–2 (PRIVATE_INHALTE_SUCHE.md: feste kevin/malin-Stellen, Prompts) — auf agenten-nacht, nach Paket 4.
+  6. Zweite Inhaberin (R9, Update 2) + Onboarding B1 (Spuren neutral) — ONBOARDING_PLAN.md.
+  7. Bank-Übergang: CAMT.053/CSV-Import je Konto ins Konten-Register (R3/R8, unabhängig von finAPI).
+  8. Morgens: Demo-Bau aus agenten-nacht, Rundgang mit Bildern, Bericht.
+- **Stand 09.10. ~01:30:** In `agenten-nacht` (Worktree `scratchpad/nacht`) zusammengeführt: ki-anbieter (6a), `agenten-kern` (1, 1237876f), `agenten-seite`
+  (2, 75e5585e) + Kategorien-Fix — tsc 0, Agenten-/UI-Tests grün. Laufen (4): `medien` (5), `agenten-skills` (3), `markttraktion-w1` (Woche-1-Befunde, Basis
+  nach-upload), `kontoauszug` (CAMT/CSV → Konten-Register, Basis nach-upload). Danach: Paket 4a (ZOE steuert Heads, Schleife, ≤ 20 Werkzeuge, Verlauf neutral,
+  ZoePanel auf Threads) ∥ 4b (Einstellungen/Not-Aus/Budget 50 €, Vertragsergänzungen, Takt ohne Kürzel) → zweite Inhaberin + B1 → Plattform neutralisieren.
+- **Stand 09.10. ~02:00:** `agenten-nacht` = nach-upload + 0 + 6a + 1 Kern + 2 Oberfläche + 5 Medien (a1710c55) + 3 Skills (498fa9a6) → **0ff3187a**, tsc 0,
+  44 Agenten-/Medien-/ZOE-Testdateien (635 Tests) grün. Laufen (4): `markttraktion-w1`, `kontoauszug`, `zweite-inhaberin` (alle Basis nach-upload), `agenten-p4a`
+  (ZOE steuert Heads, Basis 0ff3187a). Wartet: 4b (Einstellungen/Not-Aus/Budget 50 €, Paket-3-Haken), 4c (Medien ↔ Heads, Nano Banana, Demo-Saat).
+  Offene Fragen der Pakete 1/2/3/5 → Morgen-Bericht (Familie-Leser „nur ich“, Pläne im gemeinsamen Raum, iOS-Kurzbefehl, Bucket-Adress-Stil, MOV-Prüfung am iPhone).
+- **Stand 09.10. ~03:00:** In `agenten-nacht` zusätzlich: `kontoauszug` (CAMT/CSV), `markttraktion-w1` (alle Woche-1-Befunde + Kleinkram), `zweite-inhaberin`
+  (R9 + Onboarding B1/B5), eigene Korrekturen (Buchungen nie kürzen 2cb556be; Zugang loop/verbesserung + Apple-Erinnerungen d9c0530c) — tsc 0, 822 Tests der Bereiche
+  grün. Laufen (4): 4a ZOE ↔ Heads, 4b Einstellungen/Budget, 4c Medien ↔ Heads + Demo-Saat, `neutral-rest`. Bereit: Gegenprüfung Agenten (nach 4a–c),
+  Markttraktion Woche 2 Teil A (Ein Weg „Person anlegen“, Prospecting → Kartei …) und Teil B (ein Rechnungs-Anleger, Follow-up/Kampagnen-Rest, 7.3 über `anPersonMelden`).
+  Für Kevin notiert: alter Haushalts-Import teilte Semikolon-CSV falsch („-12,34“ → „-12,00“) — bisher importierte Semikolon-CSVs prüfen (N26 nicht betroffen).
+- **Stand 09.10. ~03:00 (Uhr des Macs):** `agenten-nacht` → **97d8b7cd**: zusätzlich 4a (ZOE ↔ Heads), 4b (Einstellungen/Not-Aus/Budget), 4c (Medien ↔ Heads,
+  KI-Medien, Demo-Saat), `neutral-rest`, eigene Verdrahtung (Privat-Head-Einstellungen mit Person, `laufSperre` im Lauf, `wartetAuf`, Medien-Werkzeuge in `agentLauf`),
+  Test-Anpassung MQL. tsc 0. Volle Suite läuft. Agenten (4): Gegenprüfung Agenten, Markttraktion W2a, W2b, Onboarding Update 2. Bereit: Streaming.
+- **Stand 09.10. ~09:30 (Morgen):** `agenten-nacht` → **16fb4c82** = nach-upload + Agenten-Bereich komplett (0–5, 6a, 4a ZOE ↔ Heads, 4b Einstellungen/Not-Aus/
+  Budget, 4c KI-Medien/Demo-Saat, Gegenprüfung 11 Funde, Streaming, Feinschliff) + Kontoauszug + Markttraktion W1/W2a/W2b + zweite Inhaberin/Onboarding B1 + Onboarding U2
+  + neutral-rest + eigene Korrekturen. Volle Suite (Stand 97d8b7cd): 521 Dateien / 6.829 Tests grün; danach je Merge tsc 0 + Bereichs-Tests grün. Demo-Rundgang
+  (`scratchpad/rundgang-0910/bilder`, 13 Bilder) — Funde gehen an `rundgang-funde`. Laufen: `daten-assistenten` (B9 a–c), `brain-neutral`, `rundgang-funde`.
+  Offene Fragen gesammelt (`scratchpad/bericht/fragen.md`) → Klickrunde mit Kevin. **Upload Fr:** weiter `entwicklung` (unverändert seit 08.10. + Doku); agenten-nacht = Update 2.
+- **ENDSTAND 09.10. (Endprüfung, Kevin: „das muss perfekt laufen“):** `agenten-nacht` → **3f60b30b** (+ Rundgang-Funde cbe4c48a) = alles aus der Nacht inkl.
+  daten-assistenten, brain-neutral, rundgang-funde, neutral-rest-2, gesundheit-module, medien-nachzug, Nahtstellen Zugang/CRM/Finanzen, Agenten-Härtetest (41 Fälle),
+  Sicherheits-Korrektur Instanz-Export. Geprüft: tsc 0 · ESLint 0 Fehler · volle Suite 540 Dateien / 7.222 Tests grün · Produktionsbau Demo ok · Seiten-Durchlauf 185 Aufrufe
+  (beide Rollen + Handy) ohne einen Fehler · Rundgang-Bilder `scratchpad/rundgang-0910/bilder-ende`. Offene Fragen: `scratchpad/bericht/fragen.md` → Klickrunde.
+  `entwicklung` (Upload-Stand) unverändert; Hotfix `instanz-export-schutz` (73ac1e83, Basis entwicklung) wartet auf Kevins Wort.
+- **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
+  wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
+  Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
+- **Aufgaben für Kevin (aus Teil 2):** externen Datenschutzbeauftragten benennen · Anwalt prüft RECHT.md Teil 9 (12 Punkte) · Aufbewahrung im Anthropic-DPA
+  schriftlich klären · Hetzner Object Storage anlegen (Medien) · Google-Cloud-Projekt + Vertex-Dienstkonto EU (KI-Anbieter).
+
 ## Stand 08.10. spät (auf `entwicklung`, 135 Commits vor `origin/main`, nicht online — Upload Fr 09.10. auf Kevins Wort)
 - **Gemergt seit dem Abend:** Teil 3 (`finanzplan-blaetter`, `privat-raus-koerper`, `privat-raus-nordstern` — `lib/make-one/health-data.ts` gelöscht) ·
   `onboarding-b0` + `onboarding-fix` (76 Schritte, Samstag-Kern ≈ 7¾ h, ehrliche Prüfungen) · `vor-upload-datenschutz` (ZOE-Grundauftrag ohne Persönliches,
@@ -23,7 +77,23 @@
   Pflichtangaben 409, Stornorechnung, Angebot → Rechnung, Mandat → Monatsentwurf, Mahnstufen nur Vorschlag, Route `/api/rechnung`).
 - **Fertig auf Branch (nach dem Upload mergen):** `inbox-teilen` (26e8f7f4; Lücke 6 — Übergeben als freigegebene Kopie, Team-Postfach (IMAP + Business)
   mit „wer kümmert sich“, Suche über die eigenen Spiegel; Filterstelle `postfachSichtbar`).
-- **In Arbeit (Agent):** `zoe-whatsapp` (Lücke 5).
+- **Fertig auf Branch:** `zoe-whatsapp` (aca975f7; Lücke 5 — eigene ZOE-Nummer `WHATSAPP_ZOE_*`, Kanal je Person mit Code + Einwilligung, EIN Sendeweg
+  `anPersonMelden` (WhatsApp → Telegram → Glocke), Eingang über `/api/kimmi` mit `fremd()`, „Aufgabe:/Notiz:“ nur Vorschlag, „ja <Kennung>“).
+- **Probe-Zusammenführung `nach-upload`** (Worktree im Scratchpad): konten-register + business-frei + rechnungen-pdf + inbox-teilen + zoe-whatsapp, Konflikte
+  gelöst (UPDATES, Imports, Lese-Bereiche, Markttraktion-Takt = Boten-Kanal UND Business-frei). Volle Suite vor zoe-whatsapp 6.239/6.240 (Test-IBAN behoben,
+  84235d62); danach tsc 0 + betroffene Tests grün. → nach dem Freitags-Upload so in `entwicklung` mergen.
+- **Fertig auf Branch:** `zulieferer-aus` (1703ec77; Lücke 10 — Schalter `zuliefererLage` (Umgebung > Einstellung > Übernahme > Altbestand > neu aus),
+  Erinnerungen → Aufgaben nur Inhaber mit Vorschau/Bestätigen (Absicht `erinnerungen-uebernahme`, `ar-…`), `/api/zulieferung` 410, `vv-mac-m365` archiviert,
+  `scripts/mac-zulieferer-entfernen.sh`). In `nach-upload` zusammengeführt (Verzeichnis-Optionen kombiniert), tsc 0; volle Suite auf `nach-upload`
+  (6 Pakete): 486 Dateien / 6.326 Tests grün.
+- **Recherche fertig:** `AGENTEN_KONZEPT.md` (fb9b4639) — Bestand, Markt mit Quellen, Zielbild, Bauplan (Paket 0 Vertrag → agenten-kern · agenten-seite ·
+  agenten-skills → Paket 4 ZOE steuert Heads). Wartet auf Kevins Antworten im Agenten-Fragebogen.
+- **Fragen für die nächste Klickrunde (Zulieferer):** (1) Sicherungs-Abholung auf den Mac behalten? (2) Übernahme schaltet den Zulieferer gleich aus — oder
+  eigener Klick? (3) `~/.make-os/zulieferer.env` mit dem Dienstschlüssel löschen, danach `MAKE_OS_KEY` rotieren und `MAKE_OS_ZULIEFERER=aus` fest setzen?
+  (4) `vv-mac-m365` (auch M365, nicht angebunden) archivieren — ok?
+- **Fragen für die nächste Klickrunde (ZOE auf WhatsApp):** (1) Inhalt der Montags-Wochenstart-Nachricht? (2) Sicherheits-Hinweise ohne Boten in die Glocke?
+  (3) Glocken-Erinnerungen über WhatsApp freischalten? (4) Eigene Meta-App für ZOE (Webhook je App) — bei Meta prüfen. (5) Telegram behalten oder abschalten?
+  (6) Transkription: welcher EU-Dienst? (7) Sprachnachrichten 30 Tage, höchstens eine Vorlage je 20 h — so lassen?
 - **Fragen für die nächste Klickrunde (Inbox teilen):** (1) Erledigt/Gelesen im Team-Postfach für alle oder je Person? (2) Screener im Team-Postfach gemeinsam?
   (3) ZOE/Tageslauf der zweiten Person sehen Team-Postfächer (Kopf + Ausschnitt), keine Übergaben — ok? (4) Antwort auf Übergabe nur aus derselben Gesellschaft?
   (5) Lagebild zählt Team-Gespräche nur bei der zuständigen Person? (6) WhatsApp Erledigt/Später ganz gemeinsam? (7) Eigener VVT-Eintrag für Übergaben/Team-Postfach?
