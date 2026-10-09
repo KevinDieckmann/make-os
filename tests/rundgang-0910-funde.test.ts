@@ -34,6 +34,6 @@ describe('Rundgang 09.10. — Funde', () => {
 
   it('ZOE-Kugel am Handy auf der Agenten-Seite ausgeblendet (Reiter bleiben frei)', () => {
     expect(lies('components/os/agenten/AgentenSeite.tsx')).toContain('className="agenten-reiter-handy"');
-    expect(lies('app/globals.css')).toMatch(/body:has\(\.agenten-reiter-handy\) \.zoe-fab \{ display: none; \}/);
+    expect(lies('app/globals.css')).toMatch(/body:has\(\.agenten-reiter-handy\) \.zoe-fab \{ display: none !important; \}/);
   });
 });
