@@ -12,22 +12,24 @@ import path from 'node:path';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import { bildAblegen, bildEntfernen, bildOeffnen } from '@/lib/store/bild-ablage';
 import { bilderFaellig, VERWAIST_TAGE } from './bilder-frist';
-import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { SEED, mitBlock, type BacklogItem } from '@/lib/make-one/backlog-data';
 import { neueKarte, bildNameOk, type BauplanDatei } from './board';
 import { neueKennung } from '@/lib/kennung';
 
 export async function ladeBauplan(): Promise<BauplanDatei> {
   const f = await loadJson<BauplanDatei>('backlog');
-  if (f && Array.isArray(f.items) && f.items.length) return { items: f.items, etappen: f.etappen ?? [] };
+  // Block beim Lesen übersetzen (09.10.: die frühere Personen-Kennung gilt als „inhaber“ — gespeichert bleibt sie bis zur Änderung).
+  if (f && Array.isArray(f.items) && f.items.length) return { items: f.items.map(mitBlock), etappen: f.etappen ?? [] };
   const jetzt = new Date().toISOString();
   return { items: SEED.map(s => ({ ...s, angelegt: jetzt })), etappen: [] };
 }
 
 export async function aendereBauplan(mut: (d: BauplanDatei) => BauplanDatei): Promise<BauplanDatei> {
-  return updateJson<BauplanDatei>('backlog', cur => {
+  const d = await updateJson<BauplanDatei>('backlog', cur => {
     const basis: BauplanDatei = cur && Array.isArray(cur.items) && cur.items.length ? { ...cur, etappen: cur.etappen ?? [] } : { items: SEED.map(s => ({ ...s, angelegt: new Date().toISOString() })), etappen: [] };
     return mut(basis);
   });
+  return { ...d, items: d.items.map(mitBlock) };
 }
 
 /** Neue Karte oben in „Ideen“ — aus dem Formular, dem Knopf auf jeder Seite oder von ZOE. */

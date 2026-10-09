@@ -12,7 +12,7 @@ import { PHASEN } from '@/lib/make-one/roadmap-data';
 import { KAT_LABEL, BLOCK_LABEL, type BacklogItem } from '@/lib/make-one/backlog-data';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from '../ui';
 
-const blockColor = (b: string) => (b === 'frei' ? LEUCHT.gut : b === 'kevin' ? LEUCHT.achtung : C.inkLeise);
+const blockColor = (b: string) => (b === 'frei' ? LEUCHT.gut : b === 'inhaber' ? LEUCHT.achtung : C.inkLeise);
 const katColor = (k: string) => (k === 'anbindung' ? LEUCHT.puls : k === 'agent' ? LEUCHT.agenten : k === 'qualitaet' ? LEUCHT.gut : LEUCHT.schlaf);
 export function Phasen() {
   const [items, setItems] = useState<BacklogItem[]>([]);
@@ -53,7 +53,7 @@ export function Phasen() {
               const eigene = jePhase(p.id);
               const done = eigene.filter(i => i.status === 'erledigt').length;
               const meine = eigene.filter(i => i.status !== 'erledigt' && i.block === 'frei').length;
-              const deine = eigene.filter(i => i.status !== 'erledigt' && i.block === 'kevin').length;
+              const deine = eigene.filter(i => i.status !== 'erledigt' && i.block === 'inhaber').length;
               const auf = offen === p.id;
               const pct = eigene.length ? (done / eigene.length) * 100 : 0;
               const farbe = pct === 100 ? LEUCHT.gut : LEUCHT.puls;
@@ -88,7 +88,7 @@ export function Phasen() {
                               <Chip farbe={blockColor(i.block)}>{BLOCK_LABEL[i.block]}</Chip>
                             </div>
                             {i.warum && <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>{i.warum}</p>}
-                            {i.block === 'kevin' && i.brauche && (
+                            {i.block === 'inhaber' && i.brauche && (
                               <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>
                                 <b style={{ color: LEUCHT.achtung }}>Du brauchst: </b>{i.brauche}
                               </p>

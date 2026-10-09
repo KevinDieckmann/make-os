@@ -18,7 +18,7 @@ import { Fenster, Bilder, ART_FARBE, PRIO, klein, titelKlein, zeitpunkt, Kopf, p
 
 export type Tu = (body: Record<string, unknown>, vorher?: (l: BacklogItem[]) => BacklogItem[]) => Promise<{ ok: boolean; fehler?: string }>;
 
-const WARTET: { id: 'frei' | 'kevin' | 'extern'; label: string }[] = [{ id: 'frei', label: 'Niemand' }, { id: 'kevin', label: 'Kevin' }, { id: 'extern', label: 'Extern' }];
+const WARTET: { id: 'frei' | 'inhaber' | 'extern'; label: string }[] = [{ id: 'frei', label: 'Niemand' }, { id: 'inhaber', label: 'Inhaber' }, { id: 'extern', label: 'Extern' }];
 
 /** Textfeld, das beim Verlassen speichert — und nicht überschrieben wird, solange man tippt. */
 function TextFeld({ wert, onFertig, zeilen = 2, platz, gross }: { wert?: string; onFertig: (t: string) => void; zeilen?: number; platz?: string; gross?: boolean }) {
@@ -148,7 +148,7 @@ export function KarteDetail({ karte, items, etappen, ich, namen, tu, onZu }: {
         <h3 style={{ ...titelKlein, margin: 0 }}>Kommentare{karte.kommentare?.length ? ` · ${karte.kommentare.length}` : ''}</h3>
         {(karte.kommentare ?? []).map((k, n) => (
           <div key={n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <Kopf name={namen[k.von] ?? k.von} farbe={personFarbe(k.von)} />
+            <Kopf name={namen[k.von] ?? k.von} farbe={personFarbe(k.von, ich, namen)} />
             <div style={{ minWidth: 0 }}>
               <div style={klein}><b style={{ color: C.inkDim }}>{namen[k.von] ?? k.von}</b> · {zeitpunkt(k.am)}</div>
               <div style={{ fontSize: TYP.bedien, lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: k.text.startsWith('Passt noch nicht:') ? LEUCHT.achtung : C.ink }}>{k.text}</div>

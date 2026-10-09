@@ -141,7 +141,7 @@ export function felderSaeubern(f: Record<string, unknown>): Partial<BacklogItem>
   if ('art' in f && ARTEN.some(a => a.id === f.art)) raus.art = f.art as Art;
   if ('bereich' in f && (BEREICHE as readonly string[]).includes(String(f.bereich))) raus.bereich = String(f.bereich);
   if ('prio' in f && [1, 2, 3].includes(Number(f.prio))) raus.prio = Number(f.prio) as 1 | 2 | 3;
-  if ('block' in f && ['frei', 'kevin', 'extern'].includes(String(f.block))) raus.block = f.block as BacklogItem['block'];
+  if ('block' in f && ['frei', 'inhaber', 'extern'].includes(String(f.block))) raus.block = f.block as BacklogItem['block'];
   if ('ziel' in f) raus.ziel = tagOk(f.ziel);
   if ('etappe' in f) raus.etappe = /^e-[a-z0-9-]{2,40}$/.test(String(f.etappe ?? '')) ? String(f.etappe) : undefined;
   if ('bilder' in f && Array.isArray(f.bilder)) raus.bilder = f.bilder.filter(bildNameOk).slice(0, 6);

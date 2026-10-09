@@ -235,7 +235,7 @@ export function ErfassenFormular({ seite, melden, onFertig, onAbbruch }: { seite
 /** Wer bin ich, wie heißen die anderen — für Daumen, Kommentare und „von“. */
 export function useIch() {
   const [ich, setIch] = useState('');
-  const [namen, setNamen] = useState<Record<string, string>>({ kevin: 'Kevin', malin: 'Malin' });
+  const [namen, setNamen] = useState<Record<string, string>>({});
   useEffect(() => {
     fetch('/api/konto/ich').then(r => r.json()).then((d: { ich?: { speicher: string; name?: string }; andere?: { speicher: string; name?: string }[] }) => {
       if (!d.ich) return;
@@ -254,4 +254,5 @@ export const zeitpunkt = (iso?: string) => (iso ? new Date(iso).toLocaleString('
 export function Kopf({ name, farbe = C.inkDim }: { name: string; farbe?: string }) {
   return <span title={name} style={{ width: 22, height: 22, borderRadius: '50%', display: 'inline-grid', placeItems: 'center', fontSize: 11, fontWeight: 700, color: C.grund, background: farbe, flex: '0 0 auto' }}>{(name[0] ?? '?').toUpperCase()}</span>;
 }
-export const personFarbe = (p?: string) => (p === 'malin' ? LEUCHT.beziehung : p === 'kevin' ? LEUCHT.puls : LEUCHT.agenten);
+/** Farbe eines Absenders: ich · andere Person des Haushalts · alles andere (Claude, Loop, System) — 09.10.: keine festen Namen. */
+export const personFarbe = (p?: string, ich?: string, namen: Record<string, string> = {}) => (p && p === ich ? LEUCHT.puls : p && namen[p] ? LEUCHT.beziehung : LEUCHT.agenten);

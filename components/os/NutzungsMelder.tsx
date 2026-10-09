@@ -41,7 +41,8 @@ export function NutzungsMelder() {
       Promise.resolve({ person: personLesen() })
         .then(a => fetch('/api/state/nutzung', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pfad, person: a?.person ?? 'kevin', sekunden: Math.round(dauer / 1000) }),
+          // Die Person setzt der Server aus der Sitzung (`personAus`) — hier nur, wenn sie im Browser bekannt ist (09.10.: kein fester Rückfall).
+          body: JSON.stringify({ pfad, ...(a?.person ? { person: a.person } : {}), sekunden: Math.round(dauer / 1000) }),
           keepalive: true,
         }))
         .catch(() => { /* Mitschreiben darf nie stören */ });

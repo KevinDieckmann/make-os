@@ -111,7 +111,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   const anlegen = () => {
     const p = parseSchnell(neu.trim(), state.projects, undefined, personen); if (!p.title) return;
     // @Name aus dem Team, eine Verantwortliche (29.09., F4): ohne @ = ich, „@beide“ = ich + die anderen beteiligt.
-    const z = schnellZustaendigkeit(p, personLesen() || personen[0]?.speicher || 'kevin', personen.map(x => x.speicher));
+    const z = schnellZustaendigkeit(p, personLesen() || personen[0]?.speicher || '', personen.map(x => x.speicher));
     // Die Firma der Einheit bestimmt auch den Bereich (05.10.: Selbstständigkeit → Privat, `bereichVon`).
     const ehFirma = eh !== 'alle' && eh !== 'ohne' ? gesellschaftAusEinheit(eh) : undefined;
     const space = sp === 'privat' || sp === 'business' ? sp : eh !== 'alle' ? (ehFirma ? bereichVon(ehFirma) : 'business') : undefined;

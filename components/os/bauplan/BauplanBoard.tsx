@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Bauplan (25.09.) — hier verbessern Kevin und Malin MAKE OS ─────────────
+// ─── Bauplan (25.09.) — hier verbessert der Haushalt MAKE OS ─────────────
 // Board: Ideen → Bereit → In Arbeit → Zum Testen → Fertig. Karten ziehen
 // (auch innerhalb einer Spalte: oben = zuerst), öffnen, abnehmen. Claude baut
 // „Bereit“ von oben ab und gibt mit „So testet ihr“ nach „Zum Testen“; erst
@@ -73,7 +73,7 @@ export function BauplanBoard() {
   const gefiltert = Object.fromEntries(SPALTEN.map(s => [s.id, spalten[s.id].filter(passt)])) as Record<Spalte, BacklogItem[]>;
   const filterAn = !!(suche.trim() || bereich || art || nurDaumen);
   const schlange = warteschlange(alle);
-  const brauchtKevin = alle.filter(i => !i.verworfen && i.block === 'kevin' && spalteVon(i) !== 'fertig');
+  const brauchtInhaber = alle.filter(i => !i.verworfen && i.block === 'inhaber' && spalteVon(i) !== 'fertig');
   const verworfen = alle.filter(i => i.verworfen);
   const karte = offen ? alle.find(i => i.id === offen) : undefined;
 
@@ -132,7 +132,7 @@ export function BauplanBoard() {
           <Zahl wert={zahl(spalten.idee.length)} label="Ideen" />
           <Zahl wert={zahl(schlange.length)} label="baut Claude als Nächstes" farbe={LEUCHT.puls} />
           <Zahl wert={zahl(spalten.test.length)} label="warten auf eure Abnahme" farbe={LEUCHT.achtung} />
-          <Zahl wert={zahl(brauchtKevin.length)} label="warten auf Kevin" farbe={brauchtKevin.length ? LEUCHT.kritisch : undefined} />
+          <Zahl wert={zahl(brauchtInhaber.length)} label="warten auf den Inhaber" farbe={brauchtInhaber.length ? LEUCHT.kritisch : undefined} />
           <Zahl wert={zahl(spalten.fertig.length)} label="fertig" farbe={LEUCHT.gut} />
         </div>
         {schlange[0] && (
@@ -249,14 +249,14 @@ function KarteMini({ k, namen, ich, heute, frisch, zieht, onOeffnen, onZiehStart
         {k.prio === 1 && spalteVon(k) !== 'fertig' && <span style={{ color: LEUCHT.achtung, marginLeft: 'auto' }}>Jetzt</span>}
       </div>
       <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.35, color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{k.titel}</div>
-      {k.block === 'kevin' && spalteVon(k) !== 'fertig' && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, fontWeight: 600 }}>wartet auf Kevin{k.brauche ? `: ${k.brauche}` : ''}</div>}
+      {k.block === 'inhaber' && spalteVon(k) !== 'fertig' && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, fontWeight: 600 }}>wartet auf den Inhaber{k.brauche ? `: ${k.brauche}` : ''}</div>}
       {zurueck && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{zuletzt!.text}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: TYP.bedien, color: C.inkLeise }}>
         {d.length > 0 && <span title={d.map(p => namen[p] ?? p).join(', ')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: d.includes(ich) ? LEUCHT.gut : C.inkLeise }}><ThumbsUp size={12} /> {d.length}</span>}
         {n > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageSquare size={12} /> {n}</span>}
         {(k.bilder?.length ?? 0) > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><BildIcon size={12} /> {k.bilder!.length}</span>}
         {faellig && <span style={{ color: faellig }}>bis {datumKurz(k.ziel)}</span>}
-        {k.von && <span style={{ marginLeft: 'auto' }}><Kopf name={namen[k.von] ?? k.von} farbe={personFarbe(k.von)} /></span>}
+        {k.von && <span style={{ marginLeft: 'auto' }}><Kopf name={namen[k.von] ?? k.von} farbe={personFarbe(k.von, ich, namen)} /></span>}
       </div>
     </div>
   );
