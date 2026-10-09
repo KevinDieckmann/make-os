@@ -203,7 +203,7 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
       input_schema: obj({
         auftraege: {
           type: 'array',
-          description: 'Bis zu 20 Agentenläufe, die nebeneinander laufen sollen',
+          description: 'Höchstens 20 Agentenläufe, die nebeneinander laufen sollen — mehr wird abgelehnt (nichts gestartet), dann in Teilen schicken',
           items: obj({ agent: { type: 'string', enum: agenten, description: 'Welcher Agent' }, auftrag: { type: 'string', description: 'Konkreter Auftrag für diesen Agenten (optional)' } }, ['agent']),
         },
       }, ['auftraege']),

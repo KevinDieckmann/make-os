@@ -8,7 +8,7 @@ Stand hier und einen Stand, der online ist.“
 
 Anlass: die Abdeckungs-Analyse (nur gelesen) fand Werkzeuge von ZOE/Agenten, die an den offiziellen Schreibwegen vorbei schrieben und die
 Finanz-Trennung verletzten. Jeder Fund wurde nachgeprüft; behoben ist, was sich bestätigt hat. Wächter `tests/zoe-schreibwege.test.ts`
-(26 Fälle, vorher alle rot).
+(28 Fälle; die 26 der Funde waren auf der Basis alle rot).
 
 **Eine Stelle für den internen Hop:** `lib/zoe/innen.ts` (`innen(pfad, methode, body, person)`) — ruft eine eigene Route im Prozess mit
 Dienstschlüssel + `x-make-person` der AUSLÖSENDEN Person (bei der Freigabe: wer im Stapel klickte), ohne Person nie (401). Dieselben Prüfungen
@@ -24,6 +24,15 @@ wie ein Klick; `crm_vorschlag` und der Kalender-Vorschlag nutzen sie weiter (aus
 | #5 Meilenstein/Fokus | `setze_meilenstein`/`setze_fokus` mit `updateJson` — ohne `listePatchen`, Bezugsprüfung, Liste je Meilenstein, Protokoll | `PATCH /api/state/meilensteine` (upsert mit Stand → Kette, `meilensteinBezugPruefen`, `ohneToteVerweise`, `meilensteinStrukturSichern`, Ziele nachziehen, Protokoll) bzw. `PUT /api/state/ziele` (jetzt mit Protokoll, ohne den Satz). |
 | #6 `suche_arbeit` | las Brain und CRM auch bei ausgeschaltetem Bereich; KI-Protokoll nur „aufgaben“; Privat-Space für jedes Haushaltskonto | Teilquellen je Schalter (`arbeitQuellen`), kimmi nennt genau die gelesenen Kategorien (`arbeitKategorien`), Agenten nur die aktiven Kategorien des Heads; Privat-Space nur für volle Mitglieder (`haushaltFuer`). |
 | klein | `haushalt_*` Kategorie `finanzen`; `hake_routine` hinter der Gesundheits-Einwilligung „an die KI“; Brain-Block „PIPELINE“ aus `prospects` | `haushalt_*` = `finanzen-privat` (zählt am Schalter Finanzen, KI-Tor mit privatem Finanzzugang); `hake_routine` neutral — das Werkzeug prüft je Routine: (a) zum Schreiben, Business-Routinen mit Bereich „Aufgaben & Ziele“, Privat-Routinen nur mit (b); Block heißt „PROSPECTING (recherchierte Firmen, keine Deals)“. |
+
+**Nie still kürzen (Zusatz der Hauptsitzung):** `starte_auftraege` kürzte auf 20 Aufträge (`.slice(0, 20)`) — jetzt über der Grenze `AUFTRAEGE_MAX`
+NICHTS eingereiht und ein klarer Satz an das Modell („Nicht eingereiht: höchstens 20 … — nichts gestartet. Bitte aufteilen“). `fakt_merken` gibt den
+413-Satz `GedaechtnisVoll` (aus dem Merge `agenten-datenschicht`) an das Modell weiter statt abzustürzen. Texte „Nicht erfasst/notiert/eingereiht“ und
+„NICHT vermerkt“ zählen in `fuehreAus`, kimmi und den Agenten als Fehlschlag (vorher galt eine abgelehnte Wirkung im Stapel als „freigegeben“).
+
+**Brain-Block GELD (Zusatz der Hauptsitzung):** `gatherBrain` filterte die Forderungen mit `firmaId !== 'privat'` — die Selbstständigkeit zählte als
+Business. Jetzt EINE Regel `geldAus` (lib/brain.ts) über `bereichVonFirma`; mit `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` zählt sie
+wieder mit (Wächter `tests/zoe-schreibwege-geld.test.ts`).
 
 **Routen (nur additiv, verhalten sich für die Oberfläche gleich):** `state/finanzplan` PATCH (ops und `bezahlt`) schreibt jetzt das Änderungsprotokoll
 (Kennungen + Feldnamen), Kontostand über den Dienstweg steht im Konten-Register mit Herkunft „zoe“; `state/liquiplan` PATCH/PUT kürzen nicht mehr still

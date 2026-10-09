@@ -398,6 +398,35 @@ describe('Kleines (Funde klein)', () => {
   });
 });
 
+describe('Nie still kürzen (Takt-Fund, Datenschicht-Merge)', () => {
+  it('starte_auftraege: mehr als 20 Aufträge → abgelehnt mit Satz, NICHTS eingereiht; die Stapel-Freigabe gilt als fehlgeschlagen', async () => {
+    const { AUFTRAEGE_MAX } = await import('@/lib/zoe/werkzeuge');
+    const aufrufe: unknown[] = [];
+    const vorher = globalThis.fetch;
+    globalThis.fetch = (async (...a: unknown[]) => { aufrufe.push(a); return new Response(JSON.stringify({ ok: true, angelegt: 1, schonDa: 0 }), { headers: { 'content-type': 'application/json' } }); }) as typeof fetch;
+    try {
+      const viele = Array.from({ length: AUFTRAEGE_MAX + 1 }, (_, i) => ({ agent: 'research', auftrag: `Teil ${i + 1}` }));
+      const t = await lauf('starte_auftraege', { auftraege: viele }, 'pia');
+      expect(t).toMatch(/^Nicht eingereiht: höchstens 20 Aufträge je Aufruf \(genannt: 21\) — nichts gestartet/);
+      expect(aufrufe).toHaveLength(0);
+      const { fuehreAus } = await import('@/lib/zoe/ausfuehren');
+      expect((await fuehreAus('starte_auftraege', { auftraege: viele }, 'http://test', { person: 'pia', erzwingen: true })).ok).toBe(false);
+      expect(aufrufe).toHaveLength(0);
+      // Genau an der Grenze geht es durch (ein Aufruf an die Warteschlange).
+      expect(await lauf('starte_auftraege', { auftraege: viele.slice(0, AUFTRAEGE_MAX) }, 'pia')).toMatch(/Aufträge laufen jetzt im Hintergrund/);
+      expect(aufrufe).toHaveLength(1);
+    } finally { globalThis.fetch = vorher; }
+  });
+  it('fakt_merken: Gedächtnis voll → der 413-Satz geht an das Modell, nichts gemerkt, kein Absturz', async () => {
+    const g = await import('@/lib/zoe/gedaechtnis');
+    const spy = vi.spyOn(g, 'merke').mockRejectedValue(new g.GedaechtnisVoll());
+    try {
+      const t = await lauf('fakt_merken', { thema: 'Probe', satz: 'Ein Satz' }, 'pia');
+      expect(t).toMatch(/^Fehlgeschlagen: Das Gedächtnis ist voll/);
+    } finally { spy.mockRestore(); }
+  });
+});
+
 describe('Wächter: kein ZOE-Werkzeug schreibt an den Routen vorbei', () => {
   it('lib/zoe schreibt finanzplan/liquiplan/finance/meilensteine/ziele und die Kartei nie direkt', () => {
     const wurzel = path.join(__dirname, '..', 'lib', 'zoe');

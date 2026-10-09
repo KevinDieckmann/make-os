@@ -294,7 +294,7 @@ export async function POST(req: Request) {
       let headFragenBudget = HEAD_FRAGEN_JE_ZUG;
       const anlass = message.slice(0, 200);
       const zoeKontext = (z: { fremdGelesen: boolean; vertraulich: boolean }) => ({ ...(zug ? { fadenId: zug.faden.id } : {}), fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich });
-      const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet/i;
+      const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet|nicht erfasst|nicht notiert|nicht eingereiht|nicht vermerkt/i;
 
       // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des ZOE-Gesprächs: 3 Runden, parallel, Register-Stufe.
       const aus = await schleife({

@@ -545,6 +545,8 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
  * nebeneinander laufen, so viele wie die Maschine trägt. Die Person bekommt sofort
  * eine Antwort und sieht die Ergebnisse einlaufen.
  */
+/** Höchstzahl Aufträge je Aufruf von `starte_auftraege` — darüber wird abgelehnt, nie gekürzt. */
+export const AUFTRAEGE_MAX = 20;
 async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
   const roh = Array.isArray(input.auftraege) ? input.auftraege : [];
   const auftraege = roh
@@ -556,9 +558,11 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
       auftrag: x!.auftrag ? String(x!.auftrag).slice(0, 4000) : undefined,
       anlass: input.anlass ? String(input.anlass).slice(0, 200) : undefined,
     }))
-    .filter(a => a.name)
-    .slice(0, 20);
+    .filter(a => a.name);
   if (!auftraege.length) return 'Fehlgeschlagen: keine Agenten angegeben.';
+  // Nie still kürzen (09.10., Takt-Fund — vorher `.slice(0, 20)`: der 21. Auftrag fiel weg, das Modell hielt ihn für eingereiht). Über der
+  // Grenze wird NICHTS eingereiht, und das Modell erfährt es in einem Satz.
+  if (auftraege.length > AUFTRAEGE_MAX) return `Nicht eingereiht: höchstens ${AUFTRAEGE_MAX} Aufträge je Aufruf (genannt: ${auftraege.length}) — nichts gestartet. Bitte aufteilen und in Teilen schicken.`;
   // Härtetest 09.10.: nur Fach-Agenten — Systemläufe des Takts (Morgenlauf, Löschfristen, Agenten-Lauf `faden` …) startet kein Gespräch;
   // sie liefen sonst auf Zuruf (oder auf einen eingeschleusten Satz) mit Modellkosten bzw. Wirkung außerhalb ihres Takts.
   const { SYSTEM_LAEUFE } = await import('./agenten');
@@ -595,15 +599,22 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
   const satz = String(input.satz ?? '').trim().slice(0, 500);
   if (!thema || !satz) return 'Fehlgeschlagen: thema und satz nötig.';
   if (!person) return KEINE_PERSON;
-  const { merke } = await import('./gedaechtnis');
+  const { merke, GedaechtnisVoll } = await import('./gedaechtnis');
   const GEMEINSAM = ['gemeinsam', 'beide', 'both'];
-  const { neu } = await merke({
-    art: (ARTEN.includes(String(input.art)) ? String(input.art) : 'sonstiges') as FaktArt,
-    raum: GEMEINSAM.includes(String(input.raum ?? '')) ? 'gemeinsam' : person,
-    thema, satz,
-    woher: input.woher ? String(input.woher).slice(0, 200) : undefined,
-    bis: /^\d{4}-\d{2}-\d{2}$/.test(String(input.bis ?? '')) ? String(input.bis) : undefined,
-  });
+  let neu: boolean;
+  try {
+    ({ neu } = await merke({
+      art: (ARTEN.includes(String(input.art)) ? String(input.art) : 'sonstiges') as FaktArt,
+      raum: GEMEINSAM.includes(String(input.raum ?? '')) ? 'gemeinsam' : person,
+      thema, satz,
+      woher: input.woher ? String(input.woher).slice(0, 200) : undefined,
+      bis: /^\d{4}-\d{2}-\d{2}$/.test(String(input.bis ?? '')) ? String(input.bis) : undefined,
+    }));
+  } catch (e) {
+    // Gedächtnis voll (09.10., Agenten-Datenschicht): nie still kürzen — der 413-Satz geht an das Modell („Fehlgeschlagen: …“, nichts gemerkt).
+    if (e instanceof GedaechtnisVoll) return e.message;
+    throw e;
+  }
   return neu
     ? `Gemerkt: ${thema} — ${satz}`
     : `Wusste ich schon: ${thema} — ${satz} (nicht doppelt abgelegt).`;

@@ -137,7 +137,7 @@ export interface LaufErgebnis {
 
 /** Anlass der Stapel-Vorschläge — beginnt immer mit dem Namen des Heads (Zähler „Freigaben je Head“ im Überblick). */
 export const anlassVon = (head: HeadDef, m: Pick<Mitarbeiter, 'name'> | null, titel: string): string => `${head.name}${m ? ` · ${m.name}` : ''}: ${titel}`.slice(0, 200);
-const OK_TEXT = (t: string) => !/^(Fehlgeschlagen|Nicht ausgeführt|Nicht angeboten|Unbekannt)/i.test(t.trim()) && !/fehlgeschlagen|nicht erreichbar|nicht lesbar/i.test(t.slice(0, 200));
+const OK_TEXT = (t: string) => !/^(Fehlgeschlagen|Nicht ausgeführt|Nicht angeboten|Unbekannt|Nicht erfasst|Nicht notiert|Nicht eingereiht)/i.test(t.trim()) && !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht vermerkt/i.test(t.slice(0, 200));
 
 /**
  * Text eines Skills/Mitarbeiters, der aus fremd gelesenem Text entstand (Nahtstellen-Prüfung 09.10., Punkt 8): gekapselt (`fremd()`), nie mit dem

@@ -122,7 +122,8 @@ export async function fuehreAus(
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
   // Nachschliff 09.10.: „Nicht eingeplant“ (plan_block in einer Business-freien Zeit) ist ein Fehlschlag — vorher galt der Vorschlag im Stapel als
   // „freigegeben“, obwohl kein Block angelegt war.
-  const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|nicht eingeplant|Kollision|Kein Meilenstein|Nicht ausgeführt/i.test(text.slice(0, 200));
+  // 09.10. (ZOE-Schreibwege): auch „Nicht erfasst“, „Nicht notiert“, „Nicht eingereiht“, „NICHT vermerkt“ — sonst galt eine abgelehnte Wirkung im Stapel als freigegeben.
+  const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|nicht eingeplant|Kollision|Kein Meilenstein|Nicht ausgeführt|nicht erfasst|nicht notiert|nicht eingereiht|nicht vermerkt/i.test(text.slice(0, 200));
   await notiere({
     // Selbst gekapselte Leser (Dateien, Notizen): nur die Kopfzeile — nie Inhalte ins Protokoll.
     werkzeug: name, gruppe, risiko, eingabe: input, ergebnis: (SELBST_GEKAPSELT.has(name) ? text.split('\n')[0] : text).slice(0, 600), ok,
