@@ -41,7 +41,7 @@ import { ZoeKugel, type ZoeZustand } from './kugel';
 import { KUGEL } from '@/lib/make-one/design';
 
 import { localDay } from '@/lib/zeit';
-import { neueKennung } from '@/lib/kennung';
+import { neueKennung, zufallsUuid } from '@/lib/kennung';
 import { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
 import { postMitStrom } from '@/lib/http/strom-client';
 /** Was ZOE aus einem Foto/PDF gelesen hat — Vorschlag, noch nicht gebucht. */
@@ -332,9 +332,12 @@ export function ZoePanel() {
     try {
       // Der Verlauf liegt im ZOE-Thread auf dem Server — hier geht nur die neue Nachricht mit (Paket 4a). Mit Strom (09.10.): der Text
       // erscheint, während er entsteht; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON in lib/http/strom-client.ts).
-      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: gespraechId || 'neu', space: aktiverSpace, ...(bezug ? { bezug } : {}) },
+      // `anfrageId` (Härtetest 09.10.): der Rückfall auf JSON nach einem Netzfehler lässt den Zug auf dem Server nie zweimal laufen.
+      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: gespraechId || 'neu', space: aktiverSpace, anfrageId: zufallsUuid(), ...(bezug ? { bezug } : {}) },
         e => setEntsteht(s => entstehendNach(s, e)));
       if (r.netz) throw new Error('netz');
+      // Der Zug hat nicht stattgefunden (Modell, Sperre, Schlüssel — `ok: false`): der Satz erscheint, die Frage kommt zurück ins Feld (nie verloren).
+      if ((r.body as { ok?: unknown } | null)?.ok === false) setAsk(a => a || q);
       if (r.unterbrochen) {
         // Abgerissen: der Server hat nichts Halbes gespeichert — den Thread neu laden, statt still noch einmal zu senden (Kosten).
         const f = gespraechId ? await ladeZoeFaden(gespraechId) : null;
@@ -356,6 +359,7 @@ export function ZoePanel() {
     } catch {
       const fehler: Msg = { role: 'kimmi', text: 'Ich konnte gerade nicht antworten — versuch es nochmal.', zeit: new Date().toISOString() };
       setConvo(c => [...c, fehler]);
+      setAsk(a => a || q); // keine Verbindung: die Frage bleibt im Feld (Härtetest 09.10.)
     } finally {
       setThinking(false);
       setEntsteht(ENTSTEHEND_LEER);

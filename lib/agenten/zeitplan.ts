@@ -400,6 +400,9 @@ export async function zeitplaeneFaellig(jetzt: Date = new Date()): Promise<Faell
   try {
     const { kandidaten, personen, notAus } = await kandidatenLaden();
     if (notAus) return [];
+    // Härtetest 09.10.: ist das Instanz-Budget (Monat bzw. gesamt) erreicht, reiht der Takt keine Agenten-Läufe ein — sie scheiterten nur am
+    // KI-Tor, jeder mit Thread „fehler“ und Glocke (bis zu 12 je Head und Tag). Die Glocke „Budget erreicht“ kommt einmal aus dem Tor.
+    if (await import('@/lib/ki/tor').then(m => m.budgetSperre()).catch(() => null)) return [];
     const { loadJson } = await import('@/lib/store/local-db');
     const wartend: { person: string; faden: Faden }[] = [];
     for (const p of personen) {

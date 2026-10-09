@@ -22,7 +22,10 @@ export interface Antwort<T> { status: number; body: T; wiederholt?: boolean }
  * `fn` höchstens einmal je (art, anfrageId) wirken lassen. Ohne gültige anfrageId läuft `fn` wie bisher.
  * Wirft `fn`, wird die Reservierung freigegeben (ein neuer Versuch darf laufen).
  */
-export async function einmalig<T>(art: string, anfrageId: unknown, fn: () => Promise<Antwort<T>>, jetzt = () => Date.now()): Promise<Antwort<T | { ok: false; error: string }>> {
+export async function einmalig<T>(art: string, anfrageId: unknown, fn: () => Promise<Antwort<T>>, jetzt = () => Date.now(), o: {
+  /** Was als Wirkung gilt und gemerkt wird — Vorgabe 2xx. Der ZOE-Chat antwortet auch bei Fehlern mit 200 (`ok: false`, Kanäle lesen `reply`) und merkt die nicht (Härtetest 09.10.). */
+  merken?: (r: Antwort<T>) => boolean;
+} = {}): Promise<Antwort<T | { ok: false; error: string }>> {
   if (typeof anfrageId !== 'string' || !ANFRAGE_ID_OK.test(anfrageId)) return fn();
   const schluessel = `${art}:${anfrageId}`;
   let vorher: Eintrag | undefined;
@@ -46,7 +49,7 @@ export async function einmalig<T>(art: string, anfrageId: unknown, fn: () => Pro
   // Nur eine Wirkung wird gemerkt (2xx). Eine Ablehnung (4xx) hat nichts angelegt — ein neuer Versuch darf laufen.
   await updateJson<Speicher>(ANFRAGEN_SPEICHER, cur => {
     const a = { ...(cur?.anfragen ?? {}) };
-    if (r.status >= 200 && r.status < 300) a[schluessel] = { zeit: new Date(jetzt()).toISOString(), art, status: 'fertig', antwortStatus: r.status, antwort: r.body };
+    if (o.merken ? o.merken(r) : r.status >= 200 && r.status < 300) a[schluessel] = { zeit: new Date(jetzt()).toISOString(), art, status: 'fertig', antwortStatus: r.status, antwort: r.body };
     else delete a[schluessel];
     return { anfragen: a };
   });

@@ -16,7 +16,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { FREMD_AGENTEN, FREMD_WERKZEUGE } from '@/lib/zoe/fremd';
 import { verlaufFremd, verlaufVertraulich } from '@/lib/zoe/gespraech-schutz';
 import { GRENZEN, type AgentRef, type Bereich } from './typen';
-import { anhaengen, fadenHinzu, fehler, fuerPrompt, istFadenId, textAbdruck, titelAus, type Fehler, type FadenKern, type NachrichtKern, type PromptNachricht } from './faeden';
+import { anhaengen, fadenHinzu, fehler, fuerPrompt, istFadenId, textAbdruck, titelAus, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type NachrichtKern, type PromptNachricht } from './faeden';
 import { bestandAendern, bestandLesen, fadenAendern } from './faeden-server';
 
 export const ZOE: AgentRef = { art: 'zoe' };
@@ -65,6 +65,10 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
   let voll = false;
   const r = await fadenAendern(person, wunsch, f => {
     if (f.agent.art !== 'zoe' || f.besitzer !== person) return fehler(404, 'Diesen ZOE-Thread gibt es nicht.');
+    // Ein Zug je Thread (Härtetest 09.10.): steht die letzte Nachricht der Person noch unbeantwortet da, läuft ihr Zug gerade (zweiter Tab,
+    // Doppelklick) — sonst liefen zwei Züge über denselben Verlauf und die Antworten überkreuzten sich. Nach `ZUG_SPERRE_MS` gilt sie als
+    // liegen geblieben (Neustart mitten im Zug) und sperrt nicht mehr.
+    if (zugLaeuft(f, Date.parse(jetzt))) return fehler(409, ZUG_LAEUFT);
     const x = anhaengen(f, [n], jetzt);
     if (!x.ok) { voll = x.status === 413; return x; }
     return { ...x.faden, status: 'offen', gelesenAm: jetzt };
@@ -81,6 +85,19 @@ export async function zoeAntwortAnhaengen(person: string, fadenId: string, text:
     return x.ok ? { ...x.faden, fremdGelesen: f.fremdGelesen || o.fremdGelesen, vertraulich: f.vertraulich || o.vertraulich, gelesenAm: jetzt } : x;
   });
   return r.ok ? r.faden : null;
+}
+
+/**
+ * Ein Hinweis der Software in den ZOE-Thread (Härtetest 09.10.): der Zug brach ab bzw. scheiterte, NACHDEM schon Werkzeuge gewirkt hatten — die
+ * Frage bleibt dann stehen, und der Thread sagt, was passiert ist (nie still, nie eine erfundene Antwort). Marken nur ODER.
+ */
+export async function zoeHinweisAnhaengen(person: string, fadenId: string, text: string, o: { fremdGelesen: boolean; vertraulich: boolean; werkzeuge?: NachrichtKern['werkzeuge'] }): Promise<boolean> {
+  const jetzt = iso();
+  const r = await fadenAendern(person, fadenId, f => {
+    const x = anhaengen(f, [{ id: neueKennung('nr'), rolle: 'system', von: 'system', text: grenze(text), zeit: jetzt, ...(o.werkzeuge?.length ? { werkzeuge: o.werkzeuge } : {}) }], jetzt);
+    return x.ok ? { ...x.faden, fremdGelesen: f.fremdGelesen || o.fremdGelesen, vertraulich: f.vertraulich || o.vertraulich } : x;
+  });
+  return r.ok;
 }
 
 /** Ein EIGENER ZOE-Thread (für Werkzeuge im Zug: an_head hängt „gesendet“ an). */

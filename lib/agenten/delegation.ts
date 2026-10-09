@@ -501,7 +501,33 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
     if (bf.frei) { await laufEnde(person, fadenId, 'wartet', 'ruht in der Business-freien Zeit — danach neu starten.', 'business-frei'); return { status: 200, ok: true, fadenId, ergebnis: 'Business-frei: ruht', laufStatus: 'wartet' }; }
   }
   const start = iso();
-  await fadenAendern(person, fadenId, x => ({ ...x, status: 'laeuft', lauf: { ...(x.lauf ?? laufWartet(start)), status: 'laeuft', start, schritte: [] } }));
+  // Härtetest 09.10.: „läuft“ setzen und prüfen in EINER Sperre — holt der Arbeiter denselben Auftrag zweimal (Pacht abgelaufen, zwei
+  // Arbeiter), laufen sonst beide los (beide lasen vorher „wartet“) und das Modell läuft doppelt. Abgebrochen bleibt abgebrochen.
+  let schon: 'laeuft' | 'abgebrochen' | null = null;
+  const gestartet = await fadenAendern(person, fadenId, x => {
+    if (x.lauf?.status === 'abgebrochen') { schon = 'abgebrochen'; return fehler(409, 'abgebrochen'); }
+    if (x.lauf?.status === 'laeuft' && Date.now() - Date.parse(x.lauf.start) < KERN_GRENZEN.laufMs + 60_000) { schon = 'laeuft'; return fehler(409, 'läuft schon'); }
+    return { ...x, status: 'laeuft', lauf: { ...(x.lauf ?? laufWartet(start)), status: 'laeuft', start, schritte: [] } };
+  });
+  if (!gestartet.ok) {
+    if (schon === 'abgebrochen') return { status: 200, ok: true, fadenId, ergebnis: 'abgebrochen — nicht gelaufen', laufStatus: 'abgebrochen' };
+    if (schon === 'laeuft') return { status: 200, ok: true, fadenId, ergebnis: 'läuft schon — nicht doppelt gestartet', laufStatus: 'laeuft' };
+    return { status: gestartet.status, ok: false, fadenId, ergebnis: gestartet.fehler };
+  }
+  try {
+    return await threadLaufen(person, fadenId, f, sicht, u, o, { head, mitarbeiter, einstellung, hintergrund, skill });
+  } catch (x) {
+    // Härtetest 09.10.: ein interner Fehler mitten im Lauf — der Thread bleibt nie „läuft“, er endet sichtbar mit „fehler“ (neu starten von Hand).
+    const grund = `Interner Fehler im Lauf (${x instanceof Error ? x.message.slice(0, 120) : 'unbekannt'}) — bitte neu starten.`;
+    console.warn('[agenten-lauf]', grund);
+    await laufEnde(person, fadenId, 'fehler', grund).catch(() => {});
+    return { status: 200, ok: false, fadenId, ergebnis: `fehler (${grund})`, laufStatus: 'fehler' };
+  }
+}
+
+/** Der eigentliche Lauf (nachdem „läuft“ gesetzt ist) — Ergebnis in Thread, Bericht, Brett, Glocke. */
+async function threadLaufen(person: string, fadenId: string, f: FadenKern, sicht: KontoSicht, u: Umfang, o: { origin: string; hintergrund: boolean }, a: { head: HeadDef; mitarbeiter: Mitarbeiter | null; einstellung: AgentenEinstellung; hintergrund: boolean; skill?: Skill | null }): Promise<FadenLaufErgebnis> {
+  const { head, mitarbeiter, einstellung, hintergrund, skill } = a;
   const bestand = await bestandLesen(person);
   const kopf = f.elternId ? bestand.faeden.find(x => x.id === f.elternId) ?? null : null;
   const brett = brettVon(kopf, f.brettId);
@@ -529,6 +555,40 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
   });
   await ergebnisSchreiben(person, f, ergebnis, hintergrund);
   return { status: 200, ok: ergebnis.ok, fadenId, ergebnis: `${ergebnis.status}${ergebnis.grund ? ` (${ergebnis.grund})` : ''}`, laufStatus: ergebnis.status };
+}
+
+/**
+ * Verwaiste Läufe aufräumen (Härtetest 09.10., im Takt): „läuft“ ohne Prozess dahinter (Neustart mitten im Lauf) bzw. „wartet“ auf einen Auftrag,
+ * den der Arbeiter aufgegeben hat — der Thread endet sichtbar mit „fehler“ und einem Satz, die Person bekommt EINE Glocke; neu starten geht von
+ * Hand. Regel rein in faeden.ts `verwaistGrund`. Wirft nie (der Takt läuft weiter). Gibt die Zahl der beendeten Läufe zurück.
+ */
+export async function verwaisteLaeufeAufraeumen(jetzt: number = Date.now()): Promise<number> {
+  try {
+    const [{ haushaltsPersonen }, { lies }, { verwaistGrund }] = await Promise.all([import('./einstellung'), import('@/lib/zoe/auftraege'), import('./faeden')]);
+    const personen = (await haushaltsPersonen()).alle.map(p => p.id);
+    const auftraege = await lies().catch(() => []);
+    let n = 0;
+    for (const person of personen) {
+      const b = await bestandLesen(person).catch(() => null);
+      for (const f of b?.faeden ?? []) {
+        if (!verwaistGrund(f, auftraege, jetzt)) continue;
+        let grund: string | null = null;
+        const r = await fadenAendern(person, f.id, x => {
+          grund = verwaistGrund(x, auftraege, jetzt);
+          return grund && x.lauf ? { ...x, status: 'fehler', lauf: { ...x.lauf, status: 'fehler', ende: iso(jetzt), fehler: grund } } : x;
+        });
+        if (!r.ok || !grund) continue;
+        n++;
+        const headId = f.agent.art === 'zoe' ? null : f.agent.headId;
+        const { melde } = await import('@/lib/meldungen/melden');
+        await melde({ an: person, art: 'agenten', titel: 'Ein Agenten-Lauf wurde unterbrochen — bitte neu starten', link: WEG.agenten({ ...(headId ? { h: headId } : {}), f: f.id }) }).catch(() => {});
+      }
+    }
+    return n;
+  } catch (e) {
+    console.error('[agenten-lauf] Aufräumen übersprungen:', e instanceof Error ? e.message.slice(0, 120) : e);
+    return 0;
+  }
 }
 
 async function laufEnde(person: string, fadenId: string, status: 'wartet' | 'fehler', grund: string, wartetAuf?: 'business-frei' | 'not-aus' | 'plan'): Promise<void> {

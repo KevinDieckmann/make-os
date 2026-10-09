@@ -213,6 +213,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
     },
     notAus: !!einstellung.notAus,
     ...(zusatz ? { budget: zusatz.budget, notAusAendern: zusatz.notAusAendern, personen: zusatz.personen } : {}),
+    kurs: (await import('@/lib/ki/kosten')).usdEurKurs(),
   };
 }
 

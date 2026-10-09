@@ -742,6 +742,8 @@ export interface AgentenAntwort {
   notAusAendern?: boolean;
   /** Paket 4b: wählbare zuständige Personen (Konten im Haushalt des Inhabers: Speichername + Anzeigename). */
   personen?: { id: string; name: string }[];
+  /** Härtetest 09.10.: Kurs Euro je US-Dollar der Instanz (lib/ki/kosten.ts) — die Oberfläche rechnet gemessene US-Cent damit in Euro um. */
+  kurs?: number;
 }
 /** GET /api/agenten/faden (Paket 1): `?id=` ein Thread, sonst Liste (`?agent=head:<id>` filtert). */
 export interface FadenAntwort { ok: true; faden: Faden; stand: string; kinder: FadenKurz[] }
