@@ -18,7 +18,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUC
 interface Termin { titel: string; date: string; zeit: string }
 interface Meilenstein { id?: string; titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
 
-const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|infiltration|neurolog|orthop|training|sport|gym|fitness|schwimm|massage|therapie/i;
+const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|untersuchung|klinik|krankenhaus|facharzt|neurolog|orthop|training|sport|gym|fitness|schwimm|massage|therapie/i;
 const GES_BLOCK = /sport|train|gym|lauf|schwimm|spazier|bewegung|yoga|dehn/i;
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };

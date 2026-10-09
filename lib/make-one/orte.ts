@@ -39,6 +39,12 @@ function musterFuer(o: { id: FinanzOrt; label: string; kurz: string }): RegExp {
   return teile.length ? new RegExp(teile.join('|'), 'i') : /(?!)/;
 }
 
+/**
+ * Allgemeine Business-Wörter ohne eigene Gesellschaft (eigene Module von MAKE OS) — gelten als Business-Standard. Sie stehen VOR Privat:
+ * Übergabe-Aufgaben aus der Markttraktion tragen einen Link mit der Kontakt-Kennung, die „privat“ enthalten kann (so war es auch vorher).
+ */
+const BUSINESS_WOERTER = /markttraktion/i;
+
 /** Reihenfolge der Erkennung wie früher: Gesellschaften vor Privat (ein „Haushalt“ in einer Firmen-Aufgabe macht sie nicht privat). */
 export const ORTE: Ort[] = [...FINANZ_ORTE.filter(o => o.id !== 'privat'), ...FINANZ_ORTE.filter(o => o.id === 'privat')]
   .map(o => ({ id: o.id, label: o.label, kurz: o.kurz, farbe: ORT_FARBE[o.id], muster: musterFuer(o) }));
@@ -60,7 +66,10 @@ export function ortVon(
   if (hand) return ORT[hand] ? (hand as FinanzOrt) : ORT_BUSINESS_STANDARD;
   // Der Text schlägt alles andere: „Selbständigkeit: Buchhaltung“ gehört zur Selbstständigkeit.
   const text = `${t.title} ${t.description ?? ''}`;
-  for (const o of ORTE) if (o.muster.test(text)) return o.id;
+  for (const o of ORTE) {
+    if (o.id === 'privat' && BUSINESS_WOERTER.test(text)) return ORT_BUSINESS_STANDARD;
+    if (o.muster.test(text)) return o.id;
+  }
   // Projekte aus dem ersten Startbestand (Altbestand, alt-projekte.ts): privat bleibt privat — neue Projekte tragen ihren Space selbst.
   if (altProjekt(t.projectId)?.privat) return 'privat';
   return ORT_BUSINESS_STANDARD;
