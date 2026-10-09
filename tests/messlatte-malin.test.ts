@@ -326,8 +326,26 @@ const SYS = {
 
   // Agenten-Bereich Paket 4b (09.10.): der Abschnitt der Privat-Heads einer Person in `agenten-einstellung--<haushalt>` — nur sie selbst.
   agentenEinstellung: 'MESSLATTE-SYS-AGENTEN-EINSTELLUNG',
+
+  // Nahtstellen-Prüfung 09.10.: Bestände der Nacht, die bisher keine Marke trugen — der Zähler „Sauber geblieben“ (Modul `serie`, Altbestand
+  // ohne Suffix = Erstkonto) und das Gedächtnis des Privat-Heads (Werkstatt je Person).
+  streak: 'MESSLATTE-SYS-STREAK-NOTIZ',
+  agentenGedaechtnis: 'MESSLATTE-SYS-AGENTEN-GEDAECHTNIS',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
+
+/**
+ * Nahtstellen-Prüfung 09.10.: Privates des HAUSHALTS (nicht einer Person) — die volle Haushaltsperson (Malin) darf es sehen, ein Konto mit
+ * Finanzrecht „nur Business“ (Partner), ein Konto ohne Haushalt (Testkunde) und ein fremder Haushalt nie: Privat-Konto im Konten-Register,
+ * Haushaltsbuchung (Verwendungszweck), Familie, privates Album „Haushalt“ (Medien).
+ */
+const HAUSHALT_PRIVAT = {
+  konto: 'MESSLATTE-HH-KONTO-PRIVAT',
+  buchung: 'MESSLATTE-HH-BUCHUNG-ZWECK',
+  familie: 'MESSLATTE-HH-FAMILIE-THEMA',
+  medium: 'MESSLATTE-HH-MEDIUM-HAUSHALT',
+  album: 'MESSLATTE-HH-ALBUM-HAUSHALT',
+};
 
 /**
  * Bewusst erlaubt (Kevins frühere Entscheidungen) — die Marke darf in genau dieser Route auftauchen. Leer seit 08.10. (Phase 0):
@@ -352,6 +370,8 @@ const VARIANTEN = [
 const ZUSATZ: Record<string, string> = {
   'state/flaeche': 'seite=heute',
   'aufgaben/zeit': 'ids=t-messlatte-geheim',
+  // Werkstatt mit Gedächtnis kommt nur je Head (09.10.) — die zweite Person sieht dabei IHREN Privat-Head „Assistenz“.
+  'agenten/skills': 'head=assistenz',
 };
 /** Werte für dynamische Segmente. */
 const SEGMENTE: Record<string, string | string[]> = { head: 'sales', slug: 'messlatte-0123456789abcdef01234567', token: 'x', pfad: ['wissen'] };
@@ -436,6 +456,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     const familie = (await import('@/app/api/familie/route')) as unknown as { PATCH: Handler };
     const fa = await schreiben(familie.PATCH, 'PATCH', '/api/familie', 'kevin', { ops: [
       { liste: 'themen', op: 'upsert', eintrag: { id: 'ft-messlatte', titel: SYS.thema, art: 'unklar', status: 'offen', hut: 'privat', sichtbarkeit: 'nur-ich' } },
+      // Nahtstellen 09.10.: ein Thema für den ganzen Haushalt (Malin darf es sehen, Partner/Testkunde/fremder Haushalt nie).
+      { liste: 'themen', op: 'upsert', eintrag: { id: 'ft-messlatte-h', titel: HAUSHALT_PRIVAT.familie, art: 'unklar', status: 'offen', hut: 'privat' } },
       { liste: 'reparaturen', op: 'upsert', eintrag: { id: 'fr-messlatte', datum: H, pauseBis: null, reflexionen: [{ person: 'kevin', gefuehle: SYS.reflexion, meineSicht: SYS.reflexion, meinAnteil: '', wunsch: '', geteilt: false }], abgeschlossen: null, vereinbarung: '' } },
     ] });
     expect(fa.status, await fa.clone().text()).toBe(200);
@@ -499,19 +521,31 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     }
 
     // Medien unterwegs (09.10., Paket 5): privates Album „nur ich“ mit einem Medium (Name trägt die Marke) — nur Kevin sieht es.
-    await db.saveJson('medien-privat--kevin', { v: 1, alben: [{ id: 'al-messlatte', bereich: 'privat', art: 'frei', titel: SYS.medienAlbum, sicht: 'nur-ich', von: 'kevin', angelegt: J }], medien: [{
-      id: 'md-00000000-0000-4000-8000-0000000000aa', art: 'bild', bereich: 'privat', von: 'kevin', album: 'al-messlatte', hochgeladen: J, typ: 'image/jpeg', groesse: 10, name: SYS.medium,
-      ortsdatenEntfernt: true, schluessel: { kid: null, dek: Buffer.alloc(32).toString('base64') }, varianten: {}, personen: [], urheber: { art: 'team' }, marketing: { status: 'intern', verlauf: [] }, heads: [], geaendert: J,
-    }] });
+    // Nahtstellen 09.10.: dazu ein Album „Haushalt“ mit einem Medium — volle Mitglieder sehen es, Partner/Testkunde/fremder Haushalt nie.
+    const mdBasis = { art: 'bild', bereich: 'privat', von: 'kevin', hochgeladen: J, typ: 'image/jpeg', groesse: 10, ortsdatenEntfernt: true, schluessel: { kid: null, dek: Buffer.alloc(32).toString('base64') }, varianten: {}, personen: [], urheber: { art: 'team' }, marketing: { status: 'intern', verlauf: [] }, heads: [], geaendert: J };
+    await db.saveJson('medien-privat--kevin', { v: 1, alben: [
+      { id: 'al-messlatte', bereich: 'privat', art: 'frei', titel: SYS.medienAlbum, sicht: 'nur-ich', von: 'kevin', angelegt: J },
+      { id: 'al-messlatte-h', bereich: 'privat', art: 'frei', titel: HAUSHALT_PRIVAT.album, sicht: 'haushalt', von: 'kevin', angelegt: J },
+    ], medien: [
+      { ...mdBasis, id: 'md-00000000-0000-4000-8000-0000000000aa', album: 'al-messlatte', name: SYS.medium },
+      { ...mdBasis, id: 'md-00000000-0000-4000-8000-0000000000ab', album: 'al-messlatte-h', name: HAUSHALT_PRIVAT.medium },
+    ] });
 
     // Agenten-Bereich (Paket 3): Kevins Privat-Skill (Head „Persönliche Assistenz“) und seine geplante Hintergrundaufgabe.
-    await db.saveJson('agenten-skills-privat--kevin', { v: 1, mitarbeiter: [], gedaechtnis: {}, skills: [{
+    await db.saveJson('agenten-skills-privat--kevin', { v: 1, mitarbeiter: [], gedaechtnis: { assistenz: [{ id: 'ms-messlatte', text: SYS.agentenGedaechtnis, am: J, von: 'kevin', quelle: 'hand' }] }, skills: [{
       id: 'sk-messlatte', headId: 'assistenz', name: 'messlatte-skill', beschreibung: SYS.agentenSkill, anleitung: SYS.agentenSkill, werkzeuge: [], ausloeser: { art: 'hand' },
       eingabeFelder: [], freigabePflicht: false, ergebnis: 'faden', stufe: 'schnell', tests: [], erfolg: { laeufe: 0, angenommen: 0, abgelehnt: 0, fehler: 0 }, aktiv: false, version: 1, quelle: 'hand', angelegtVon: 'kevin',
     }] });
     // Agenten-Bereich (Paket 4b): Kevins Einstellungen seines Privat-Heads (eigener Abschnitt im Bestand des Haushalts).
     await db.saveJson('agenten-einstellung--haus-messlatte', { v: 1, heads: {}, personen: { kevin: { heads: { assistenz: { zustaendig: SYS.agentenEinstellung, budgetCentMonat: 1234, geaendertVon: 'kevin', geaendertAm: J } } } } });
     await db.saveJson('agenten-plan--kevin', { v: 1, aufgaben: [{ id: 'hg-messlatte', besitzer: 'kevin', agent: { art: 'head', headId: 'assistenz' }, titel: SYS.agentenPlan, auftrag: SYS.agentenPlan, zeitplan: { art: 'wiederkehrend', rhythmus: 'taeglich', uhrzeit: '08:00' }, aktiv: true, erstellt: J }] });
+
+    // Nahtstellen 09.10.: Zähler „Sauber geblieben“ (Modul `serie` — im Körper-Profil oben an) des Erstkontos, Altbestand ohne Suffix.
+    await db.saveJson('streak', { [H]: { sauber: true, craving: 2, notiz: SYS.streak, at: J } });
+    // Privates des Haushalts: ein Privat-Konto im Konten-Register und eine Haushaltsbuchung (Verwendungszweck, wie ihn der Kontoauszug bringt).
+    await db.saveJson('konten--haus-messlatte', { v: 1, konten: [{ id: 'kt-00000000-0000-4000-8000-0000000000c1', name: HAUSHALT_PRIVAT.konto, art: 'giro', ort: 'privat', person: 'kevin', staende: [{ id: 'ks-00000000-0000-4000-8000-0000000000c1', betrag: 1234.5, datum: H, quelle: 'hand', erfasstVon: 'kevin', erfasstAm: J }], angelegtVon: 'kevin', angelegtAm: J }] });
+    await db.saveJson('haushalt-buchungen--haus-messlatte', { einheiten: 2, buchungen: [{ id: 'hb-messlatte', stand: J, konto_id: 'hk-messlatte', datum: H, betrag: -1234, beschreibung: HAUSHALT_PRIVAT.buchung, empfaenger: HAUSHALT_PRIVAT.buchung, kategorie_id: null, ist_umbuchung: false, ist_fixkosten: false, turnus: 'einmalig', einheit: 'privat', zeilen_hash: null, notiz: null, import_id: null, erfasst_von: 'kevin', geaendert: J }] });
+    await db.saveJson('haushalt-stamm--haus-messlatte', { einheiten: 2, konten: [{ id: 'hk-messlatte', stand: J, name: HAUSHALT_PRIVAT.konto, inhaber: 'gemeinsam', einheit: 'privat', iban_suffix: null, bank: null, waehrung: 'EUR', aktiv: true }], kategorien: [], regeln: [], aliase: {} });
 
     const { ROUTEN_REGISTER } = await import('@/lib/zugang/routen-register');
     routen = Object.entries(ROUTEN_REGISTER)
@@ -582,6 +616,53 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
         if (r === 'frist' || 'fehler' in r) { lecks.push(`intern/wiederherstellen${q}: keine Antwort`); continue; }
         if (r.status !== 403) lecks.push(`intern/wiederherstellen${q}: ${r.status} statt 403`);
       }
+      expect(lecks).toEqual([]);
+    } finally { await db.saveJson('konten', vorher); }
+  }, 900_000);
+
+  // ─── Nahtstellen-Prüfung 09.10.: die Rollen OHNE Privatbereich ──────────────────────────────────────────────────────────
+  // Partner mit Finanzrecht „nur Business“ (Haushalt des Inhabers), Testkunde ohne Haushalt, Konto eines fremden Haushalts: keine Antwort
+  // trägt eine Marke aus Kevins persönlichen Beständen ODER aus dem Privaten des Haushalts (Konten-Register privat, Haushaltsbuchung, Familie,
+  // Album „Haushalt“). Gegenprobe: jede Haushalts-Marke kommt bei Kevin an.
+  it('Gegenprobe Haushalt: jede Marke aus dem Privaten des Haushalts kommt bei Kevin an', async () => {
+    const gefunden = new Set<string>();
+    for (const pfad of routen) {
+      for (const v of ['', VARIANTEN[2]]) {
+        const r = await rufeGet(pfad, v, 'kevin');
+        if (r === 'frist' || 'fehler' in r) continue;
+        for (const [name, marke] of Object.entries(HAUSHALT_PRIVAT)) if (r.text.includes(marke)) gefunden.add(name);
+      }
+    }
+    expect(Object.keys(HAUSHALT_PRIVAT).filter(n => !gefunden.has(n))).toEqual([]);
+  }, 900_000);
+
+  it('Partner („nur Business“), Testkunde ohne Haushalt, fremder Haushalt: keine Antwort trägt Privates (Person oder Haushalt)', async () => {
+    const db = await import('@/lib/store/local-db');
+    const vorher = await db.loadJson('konten');
+    await db.saveJson('konten', { konten: [
+      konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied'), konto('k3', 'dritte', 'mitglied'),
+      { ...konto('k4', 'partner', 'mitglied'), finanzRecht: 'business' },
+      { ...konto('k5', 'kunde', 'mitglied'), haushalt: undefined },
+      { ...konto('k6', 'fremd', 'mitglied'), haushalt: 'anderer-haus' },
+    ], einladungen: [] });
+    try {
+      const marken: Record<string, string> = { ...ALLE_MARKEN, ...HAUSHALT_PRIVAT };
+      const lecks: string[] = [];
+      const erreicht: Record<string, number> = {};
+      for (const wer of ['partner', 'kunde', 'fremd']) {
+        for (const pfad of routen) {
+          for (const v of VARIANTEN) {
+            const r = await rufeGet(pfad, v, wer);
+            if (r === 'frist' || 'fehler' in r) continue;
+            if (v === '' && r.status === 200) erreicht[wer] = (erreicht[wer] ?? 0) + 1;
+            for (const [name, marke] of Object.entries(marken)) if (r.text.includes(marke)) lecks.push(`${wer}: ${pfad}${v} (${r.status}) → ${name}`);
+          }
+        }
+      }
+      // Gegenprobe der Rollen: der Partner kommt durch viele Tore (Haushalt des Inhabers), Testkunde/fremder Haushalt nur durch eigene Wege.
+      expect(erreicht.partner ?? 0).toBeGreaterThan(100);
+      expect(erreicht.kunde ?? 0).toBeGreaterThan(5);
+      expect(erreicht.fremd ?? 0).toBeGreaterThan(5);
       expect(lecks).toEqual([]);
     } finally { await db.saveJson('konten', vorher); }
   }, 900_000);
