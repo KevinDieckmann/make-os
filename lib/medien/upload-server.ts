@@ -465,7 +465,7 @@ export async function lizenzAblegen(person: string, mediumId: string, name: stri
   return w.ok ? { ok: true, text: 'Lizenz-Nachweis abgelegt.' } : w;
 }
 
-/** Beleg lesen: Lizenz (wer das Medium sieht) bzw. Unterschrift (nur wer freigeben darf). */
+/** Beleg lesen: Lizenz (wer das Medium sieht) bzw. Unterschrift (wer freigeben darf — und die Person selbst, deren Einwilligung es ist). */
 export async function belegLesen(person: string, art: string, id: string): Promise<Antwort<{ bytes: Buffer; typ: string; name: string }>> {
   const b = await betrachterFuer(person);
   if (!b) return F(403, 'Nur im Haushalt des Inhabers.');
@@ -478,8 +478,9 @@ export async function belegLesen(person: string, art: string, id: string): Promi
   }
   if (art === 'unterschrift') {
     const { darfFreigeben } = await import('./regeln');
-    if (!darfFreigeben(b)) return F(403, 'Unterschriften sehen die Marketing-Verantwortliche und volle Mitglieder.');
     const e = ((await ladeKatalog(medienBestand(b.haushalt))).einwilligungen ?? []).find(x => x.id === id);
+    // Die eigene Unterschrift sieht auch die Person selbst (Art. 15 — Konto-Export nennt den Weg), sonst nur, wer freigeben darf.
+    if (!darfFreigeben(b) && e?.person.konto !== b.person) return F(403, 'Unterschriften sehen die Marketing-Verantwortliche und volle Mitglieder.');
     if (!e?.unterschrift) return F(404, 'Unterschrift nicht gefunden.');
     const bytes = await variantenBytes({ id: e.id, schluessel: e.unterschrift.schluessel }, 'unterschrift', e.unterschrift);
     return bytes ? { ok: true, bytes, typ: 'image/png', name: `unterschrift-${e.id}.png` } : F(404, 'Unterschrift nicht gefunden.');

@@ -11,44 +11,22 @@
 
 import path from 'node:path';
 import { datenOrdner } from '@/lib/store/local-db';
+import { objektOk, praefixOk, praefixAus, s3Angegeben, s3KonfigAus, type S3Konfig } from './s3-kern.mjs';
 
 export type SpeicherModus = 'ordner' | 's3' | 'aus';
 
-export interface S3Konfig {
-  modus: 's3';
-  endpunkt: string;
-  bucket: string;
-  zugang: string;
-  geheimnis: string;
-  region: string;
-  /** `pfad` = https://endpunkt/bucket/objekt (Vorgabe) · `host` = https://bucket.endpunkt/objekt. */
-  stil: 'pfad' | 'host';
-  praefix: string;
-}
+// Namen und der S3-Teil der Konfiguration liegen in lib/medien/s3-kern.mjs (auch das Löschskript liest sie dort) — hier nur weitergereicht.
+export { objektOk, praefixOk };
+export type { S3Konfig };
 export interface OrdnerKonfig { modus: 'ordner'; ordner: string; grenze: number; praefix: string }
 export type MedienKonfig = S3Konfig | OrdnerKonfig | { modus: 'aus'; praefix: string };
 
-const OBJEKT_OK = /^[a-z0-9][a-z0-9-]{0,62}(\/[a-z0-9][a-z0-9-]{0,80}){1,4}$/;
-const PRAEFIX_OK = /^[a-z0-9][a-z0-9-]{0,62}$/;
-
-/** Ein zulässiger Objekt-Name (keine Punkte, keine Pfad-Tricks, nur Kennungen). */
-export const objektOk = (o: string): boolean => OBJEKT_OK.test(o) && !o.includes('..');
-
 /** Konfiguration aus der Umgebung (Instanz-fähig: nichts fest im Code). Unvollständiges S3 → Ordner (der HOI sagt es). */
 export function medienKonfig(env: NodeJS.ProcessEnv = process.env): MedienKonfig {
-  const praefixRoh = (env.MAKE_OS_MEDIEN_PRAEFIX ?? '').trim().toLowerCase();
-  const praefix = PRAEFIX_OK.test(praefixRoh) ? praefixRoh : 'm';
+  const praefix = praefixAus(env);
   if ((env.MAKE_OS_MEDIEN ?? '').trim().toLowerCase() === 'aus') return { modus: 'aus', praefix };
-  const endpunkt = (env.MAKE_OS_MEDIEN_S3_ENDPUNKT ?? '').trim().replace(/\/+$/, '');
-  const bucket = (env.MAKE_OS_MEDIEN_S3_BUCKET ?? '').trim();
-  const zugang = (env.MAKE_OS_MEDIEN_S3_ZUGANG ?? '').trim();
-  const geheimnis = (env.MAKE_OS_MEDIEN_S3_GEHEIMNIS ?? '').trim();
-  if (endpunkt && bucket && zugang && geheimnis && /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(endpunkt) && /^[a-z0-9][a-z0-9.-]{1,62}$/.test(bucket)) {
-    // Region: ausdrücklich, sonst der erste Teil des Hosts (Hetzner: nbg1.your-objectstorage.com → nbg1). [A] am echten Bucket prüfen.
-    const region = (env.MAKE_OS_MEDIEN_S3_REGION ?? '').trim() || new URL(endpunkt).hostname.split('.')[0] || 'us-east-1';
-    const stil = (env.MAKE_OS_MEDIEN_S3_STIL ?? '').trim().toLowerCase() === 'host' ? 'host' : 'pfad';
-    return { modus: 's3', endpunkt, bucket, zugang, geheimnis, region, stil, praefix };
-  }
+  const s3 = s3KonfigAus(env);
+  if (s3) return s3;
   const mb = Number(env.MAKE_OS_MEDIEN_ORDNER_MB ?? '');
   const grenze = (Number.isFinite(mb) && mb >= 50 ? Math.floor(mb) : 2048) * 1024 * 1024;
   const ordner = (env.MAKE_OS_MEDIEN_DIR ?? '').trim() || path.join(datenOrdner(), 'medien');
@@ -57,8 +35,7 @@ export function medienKonfig(env: NodeJS.ProcessEnv = process.env): MedienKonfig
 
 /** Teilweise eingerichtet (eine S3-Variable fehlt)? Dann läuft der Ordner — der HOI nennt es. */
 export function s3Unvollstaendig(env: NodeJS.ProcessEnv = process.env): boolean {
-  const n = ['MAKE_OS_MEDIEN_S3_ENDPUNKT', 'MAKE_OS_MEDIEN_S3_BUCKET', 'MAKE_OS_MEDIEN_S3_ZUGANG', 'MAKE_OS_MEDIEN_S3_GEHEIMNIS'].filter(k => (env[k] ?? '').trim()).length;
-  return n > 0 && medienKonfig(env).modus !== 's3';
+  return s3Angegeben(env) && medienKonfig(env).modus !== 's3';
 }
 
 export class SpeicherFehler extends Error {
@@ -81,6 +58,13 @@ export interface MedienSpeicher {
   loeschen(objekt: string): Promise<void>;
   /** Nur Ordner: belegte Bytes (Medien + offene Stücke). */
   belegt?(): Promise<number>;
+  /**
+   * Alle Objekte unter `<präfix>/` — Name und gespeicherte Größe (Chiffrat), seitenweise (09.10., Nachzug: Instanz-Export und
+   * Instanz löschen, lib/medien/instanz.ts). Namen, die nicht `objektOk` sind, kommen mit `fremd: true` (nie löschen, nur nennen).
+   */
+  auflisten?(praefix: string): AsyncGenerator<{ objekt: string; bytes: number; fremd?: true }>;
+  /** Offene mehrteilige Uploads unter `<präfix>/` (S3: belegen Platz, bis sie abgebrochen sind; Ordner: Stück-Ordner). */
+  offeneUploads?(praefix: string): AsyncGenerator<{ objekt: string; upload: string }>;
 }
 
 const G = globalThis as unknown as { __makeosMedienSpeicher?: { schluessel: string; s: MedienSpeicher }; __makeosMedienSpeicherTest?: MedienSpeicher | null };

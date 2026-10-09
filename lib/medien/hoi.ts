@@ -3,7 +3,8 @@
 //   Speicher „Ordner“ auf dem Server   gelb  „Medienspeicher nicht eingerichtet“ — die Medien liegen auf der Server-Platte und sind von der
 //                                            Nachtsicherung ausgenommen (Plattenausfall = weg); Object Storage einrichten
 //   S3 halb eingerichtet               gelb  eine Variable fehlt — es läuft der Ordner
-//   belegt ≥ 80 % / ≥ 95 % der Grenze  gelb / rot  „Speicher fast voll“
+//   belegt ≥ 80 % / ≥ 95 % der Grenze  gelb / rot  „Speicher fast voll“ — Ordner-Rückfall (Grenze MAKE_OS_MEDIEN_ORDNER_MB, Vorgabe 2 GB);
+//                                            zählt Medien UND liegengebliebene Stücke (voll ist voll), Wächter tests/medien-nachzug.test.ts
 //   Schlüssel mit altem Datenschlüssel gelb  vor dem Entfernen des alten Datenschlüssels erst umschlüsseln lassen (Rotation, Pflege)
 //   offene Uploads älter als 1 Tag     grau  Zähler (räumt die Pflege nach 7 Tagen weg)
 
@@ -20,7 +21,7 @@ export interface MedienLage {
   uploadsAlt: number;
 }
 
-const gb = (n: number) => `${(n / 1024 ** 3).toFixed(n >= 10 * 1024 ** 3 ? 0 : 1)} GB`;
+const gb = (n: number) => `${(n / 1024 ** 3).toFixed(n >= 10 * 1024 ** 3 ? 0 : 1).replace('.', ',')} GB`;
 
 /** Befunde aus der Lage (rein). `server` = Produktion (dort ist der Ordner nur ein Notbehelf). */
 export function medienBefunde(l: MedienLage | null | undefined, server = process.env.NODE_ENV === 'production'): Befund[] {

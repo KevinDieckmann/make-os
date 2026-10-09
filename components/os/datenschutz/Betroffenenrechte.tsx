@@ -50,7 +50,7 @@ export function Art14VorlageKarte({ d, onGeaendert, i = 0 }: { d: EinrichtungAnt
 }
 
 export function VertragsendeKarte({ i = 0 }: { i?: number }) {
-  const [umfang, setUmfang] = useState<{ bestaende: number; dateien: number; bilder: number } | null>(null);
+  const [umfang, setUmfang] = useState<{ bestaende: number; dateien: number; bilder: number; medien?: number } | null>(null);
   const [f, setF] = useState({ passwort: '', code: '' });
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
@@ -81,7 +81,8 @@ export function VertragsendeKarte({ i = 0 }: { i?: number }) {
     <Karte i={i} id="vertragsende">
       <Ueberschrift farbe={LEUCHT.achtung}>Vertragsende: Export und Löschung der Instanz</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>
-        Rückgabe aller Daten (AVV § 11): {umfang.bestaende} Bestände, {umfang.dateien} Dateien, {umfang.bilder} Bilder — entschlüsselt in einer JSON-Datei. Nur für den Inhaber, mit Passwort{zweiterFaktor ? ' und Code' : ' (und Code, wenn der zweite Faktor an ist)'}; der Abruf steht im Protokoll.
+        Rückgabe aller Daten (AVV § 11): {umfang.bestaende} Bestände, {umfang.dateien} Dateien, {umfang.bilder} Bilder — entschlüsselt in einer JSON-Datei.
+        {umfang.medien ? ` Fotos & Videos (${umfang.medien}): Angaben und Liste der Dateien — die Dateien selbst vorher in der App herunterladen.` : ''} Nur für den Inhaber, mit Passwort{zweiterFaktor ? ' und Code' : ' (und Code, wenn der zweite Faktor an ist)'}; der Abruf steht im Protokoll.
       </div>
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         <Feldzeile label="Passwort"><input type="password" autoComplete="current-password" value={f.passwort} onChange={e => setF({ ...f, passwort: e.target.value })} style={feld} /></Feldzeile>

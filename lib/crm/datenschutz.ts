@@ -68,6 +68,8 @@ export interface DatenschutzUmfeld {
   agenten: { aktiv: number; gesamt: number };
   /** Pannen-Register (05.10., Zusatz): offene Pannen und davon dringende (Meldung/Benachrichtigung fällig). Optional. */
   pannen?: { offen: number; dringend: number };
+  /** Medien (09.10., Nachzug): Zähler über Freigaben und Einwilligungen — fehlt/null, wenn es keine Business-Medien gibt (dann kein Prüfpunkt). */
+  medien?: import('@/lib/medien/datenschutz').MedienPruefZahlen | null;
 }
 
 const W = {
@@ -79,7 +81,34 @@ const W = {
   konto: { text: 'Konto › Zweiter Faktor', href: WEG.konto() },
   agenten: { text: 'Agenten einzeln abschalten', href: WEG.agenten() },
   hoi: { text: 'Head of IT › Sicherung (age einrichten, DEPLOY.md)', href: '/os/hoi' },
+  medienFrei: { text: 'Fotos & Videos › Freigegeben', href: WEG.medien({ filter: 'freigegeben' }) },
+  medienGesperrt: { text: 'Fotos & Videos › Gesperrt', href: WEG.medien({ filter: 'gesperrt' }) },
+  medienRoh: { text: 'Fotos & Videos › Rohmaterial', href: WEG.medien({ filter: 'roh' }) },
 } as const;
+
+/** Prüfpunkt „Medien: Einwilligungen und Freigaben“ (09.10., Nachzug) — nur Zähler, nie Namen. Rein. */
+export function medienPruefpunkt(m: NonNullable<DatenschutzUmfeld['medien']>): Pruefpunkt {
+  const n = (x: number, eins: string, viele: string) => `${x} ${x === 1 ? eins : viele}`;
+  const teile = [
+    n(m.medien, 'Business-Medium', 'Business-Medien'), `${m.freigegeben} freigegeben`,
+    ...(m.angefragt ? [`${m.angefragt} angefragt`] : []),
+    `${n(m.einwilligungen, 'Einwilligung', 'Einwilligungen')}${m.widerrufen ? ` (${m.widerrufen} widerrufen)` : ''}`,
+    ...(m.personenOffen ? [`${m.personenOffen} mit ungeklärter Personenfrage (gehen nicht hinaus)`] : []),
+  ];
+  const probleme = [
+    ...(m.ohneDeckung ? [`${n(m.ohneDeckung, 'Freigabe trägt', 'Freigaben tragen')} nicht mehr (z. B. Einwilligung deckt einen Kanal nicht) — zurücknehmen oder Einwilligung ergänzen`] : []),
+    ...(m.gesperrtFreigegeben ? [`${m.gesperrtFreigegeben} freigegeben, aber gesperrt (Widerruf, Löschung, Einschränkung, Werbesperre) — aus Website, Social Media und Newsletter entfernen`] : []),
+    ...(m.abgelaufen ? [`${m.abgelaufen} Freigabe(n) abgelaufen — aus den Kanälen nehmen`] : []),
+    ...(m.roh ? [`${m.roh} Rohmaterial mit erkennbaren Personen über der Prüffrist — löschen oder begründen`] : []),
+  ];
+  const status: PruefStatus = m.ohneDeckung ? 'offen' : probleme.length ? 'teilweise' : 'erfuellt';
+  const weg = m.ohneDeckung ? W.medienFrei : m.gesperrtFreigegeben || m.abgelaufen ? W.medienGesperrt : m.roh ? W.medienRoh : undefined;
+  return {
+    id: 'medien', titel: 'Medien: Einwilligungen und Freigaben', status,
+    befund: `${teile.join(' · ')}${probleme.length ? ` — ${probleme.join('; ')}` : ''}`,
+    norm: 'Art. 6, 7, 17 DSGVO; §§ 22, 23 KUG (Hinweis, keine Rechtsberatung)', ...(weg ? { weg } : {}),
+  };
+}
 
 export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: string, anmeldung: { konten: number; mitPasswort: number }, loeschMonate = 24, umfeld?: DatenschutzUmfeld): Pruefpunkt[] {
   const n = kontakte.length || 1;
@@ -142,6 +171,8 @@ export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: stri
   raus.push({ id: 'sicherung', titel: 'Sicherungen verschlüsselt (age)', status: s?.verfahren === 'age' ? 'erfuellt' : 'teilweise',
     befund: !s ? 'unbekannt — keine Statusdatei vom Server (lokal normal; auf dem Server schreibt deploy/sicherung.sh system/sicherung.json)' : s.verfahren === 'age' ? `age (privater Schlüssel nicht auf dem Server)${s.zeit ? ` · letzte ${tagVon(s.zeit)}` : ''}` : s.verfahren === 'openssl' ? 'Übergangsverfahren (openssl mit Passwort auf demselben Server) — age einrichten' : 'Verfahren nicht gemeldet',
     norm: 'Art. 32 Abs. 1 lit. a, c DSGVO', ...(s?.verfahren === 'age' ? {} : { weg: W.hoi }) });
+  // ── Medien (09.10., Nachzug): nur, wenn es Business-Medien bzw. Einwilligungen gibt ──
+  if (umfeld.medien && (umfeld.medien.medien > 0 || umfeld.medien.einwilligungen > 0)) raus.push(medienPruefpunkt(umfeld.medien));
   // ── Datenpannen (Art. 33/34): Meldung binnen 72 h, Benachrichtigung bei hohem Risiko ──
   if (umfeld.pannen) {
     const p = umfeld.pannen;
@@ -446,11 +477,25 @@ const START_DRITTLAND_ALT = 'Anthropic (USA) nur für KI-Auswertung: Standardver
 const START_DRITTLAND = 'Anthropic (USA) nur für KI-Auswertung: Standardvertragsklauseln (Anthropic ist nicht im EU-US Data Privacy Framework)';
 const VV_ZOE_DRITTLAND_ALT = 'USA: Data Privacy Framework bzw. Standardvertragsklauseln — prüfen';
 const VV_ZOE_DRITTLAND = 'USA (Anthropic): Standardvertragsklauseln — Anthropic ist nicht im EU-US Data Privacy Framework; Gesundheit, Privat-Finanzen und Familie über das Anbieter-Tor nur in der EU (Google Vertex, Region eu), sobald eingerichtet';
+/**
+ * Medien (09.10., Nachzug Paket 5/4c): seit den KI-Medien gehen Fotos auf Klick auch als Vorlage an die Bild-KI (Google Vertex, nur mit Einwilligung
+ * „KI“ aller erkennbaren Personen) und KI-Bilder/-Videos entstehen dort — Empfänger, Kennungen und Drittland nennen das. Alte Fassungen werden gehoben.
+ */
+const VV_MEDIEN_EMPFAENGER_ALT = 'Haushalt/Team (Privat nur die Person bzw. Alben „Haushalt“); Hetzner (Server und Object Storage, Deutschland — nur Chiffrat); Anthropic nur für Medien, die ausdrücklich einem Head gegeben sind (Vorschaubild ≤ 1568 px, nie Minderjährige)';
+const VV_MEDIEN_EMPFAENGER = `${VV_MEDIEN_EMPFAENGER_ALT}; Google Cloud Vertex AI nur auf Klick: Business-Fotos als Vorlage für die Bild-KI (nur mit Einwilligung „KI“ aller erkennbaren Personen, nie Minderjährige, nur mit dem Schalter „Bilder an die KI“) und KI-erzeugte Bilder/Videos`;
+const VV_MEDIEN_DRITTLAND_ALT = 'Speicher keines (Hetzner, Deutschland); Anthropic: USA — Standardvertragsklauseln, prüfen';
+const VV_MEDIEN_DRITTLAND = 'Speicher keines (Hetzner, Deutschland); Anthropic: USA — Standardvertragsklauseln (nicht im EU-US Data Privacy Framework); Google Vertex (Bilder, Video): global bzw. USA — Data Privacy Framework und Standardvertragsklauseln';
+const VV_MEDIEN_EMPFAENGER_IDS: readonly string[] = ['hetzner', 'anthropic', 'google-vertex'];
+/** Empfänger-Kennungen, die eine neuere Fassung ergänzt — nur, solange die gespeicherte Liste GENAU eine alte ist (von Hand Geändertes bleibt). */
+const ALTE_EMPFAENGER_IDS: Record<string, { alt: readonly (readonly string[])[]; neu: readonly string[] }> = {
+  'vv-medien': { alt: [['hetzner', 'anthropic']], neu: VV_MEDIEN_EMPFAENGER_IDS },
+};
 /** Fassungen, die der Nachtrag ersetzt, solange niemand sie von Hand geändert hat (vorhandene Verzeichnisse). */
 const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: string | string[]; neu: string }>>> = {
   'vv-gesellschaften': { loeschfrist: { alt: 'Papierkorb 30 Tage; Verträge/Beschlüsse als Geschäftsunterlagen 6 bzw. 10 Jahre (§ 257 HGB); Art. 17 einer Person tilgt ihre Kennung (auch im Papierkorb), Cap-Table und Vertrag bleiben', neu: GES_LOESCHFRIST } },
   'vv-kapazitaet': { loeschfrist: { alt: ['bis zur Löschung durch Person bzw. Inhaber; Erholung wird nicht gespeichert (Rechnung im Speicher höchstens 60 s); offen: Einträge deaktivierter Team-Personen', KAPA_LOESCHFRIST_0410, KAPA_LOESCHFRIST_0510], neu: KAPA_LOESCHFRIST } },
   'vv-zoe': { drittland: { alt: VV_ZOE_DRITTLAND_ALT, neu: VV_ZOE_DRITTLAND } },
+  'vv-medien': { empfaenger: { alt: VV_MEDIEN_EMPFAENGER_ALT, neu: VV_MEDIEN_EMPFAENGER }, drittland: { alt: VV_MEDIEN_DRITTLAND_ALT, neu: VV_MEDIEN_DRITTLAND } },
 };
 
 export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
@@ -604,7 +649,7 @@ export function verarbeitungenPlattform(jetzt: string): Verarbeitung[] {
     v('vv-aufgaben-zeit', { zweck: 'Aufgaben, Projekte, Meilensteine und Ziele führen; Zeit und Fokus messen und planen', personen: 'Personen des Haushalts/Teams; in Aufgaben genannte Kontakte', daten: 'Aufgaben (Titel, Beschreibung, Fälligkeit, Zuständigkeit, Verweise), Dateien zu Aufgaben, Fokus-Blöcke und gemessene Zeiten je Person', rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitsorganisation), lit. f', empfaenger: 'Haushalt/Team; Hetzner; Anthropic (ZOE-Vorschläge, gekapselt)', empfaengerIds: ['hetzner', 'anthropic'], drittland: USA, loeschfrist: 'Papierkorb 30 Tage; sonst bis zur Löschung; Art. 17 einer Person tilgt Namen und Verweise in Aufgaben' }),
     v('vv-kampagnen', { zweck: 'Kampagnen und Newsletter an Personen mit Einwilligung; Lead-Score und Qualifizierung zur Priorisierung der Ansprache', personen: 'Interessenten, Kontakte mit Einwilligung', daten: 'Einwilligungs-Nachweis (Double-Opt-in), Kampagnen-Schritte, Öffnungen/Klicks (beim Versanddienst), Scoring-Antworten und Stufe (MQL/SQL)', rechtsgrundlage: 'Werbung: Art. 6 Abs. 1 lit. a DSGVO, § 7 UWG; Scoring: Art. 6 Abs. 1 lit. f — Profiling ohne automatisierte Entscheidung (Art. 22), Widerspruch nach Art. 21 jederzeit', empfaenger: 'Haushalt; Newsletter-Werkzeug (sobald in Gebrauch); Hetzner; Anthropic (Entwürfe, gekapselt)', empfaengerIds: ['newsletter', 'hetzner', 'anthropic'], drittland: 'je nach Versanddienst — EU bevorzugt', loeschfrist: 'Einwilligungs-Nachweis mit dem Kontakt, auch nach Widerruf als Nachweis (Art. 7 Abs. 1); Scoring mit dem Kontakt (Frist der Kartei); Werbesperre bleibt' }),
     v('vv-sicherungen', { zweck: 'Wiederherstellbarkeit (Art. 32 Abs. 1 lit. c) und Sicherheit: nächtliche Sicherung, Tageskopien je Bestand, Server-/Sicherheitsprotokolle, Head of IT, Außenprüfung', personen: 'alle Personen, deren Daten in der Instanz liegen; Zugreifende (Netzadressen)', daten: 'verschlüsselte Abbilder aller Bestände; Protokolle: Zeit, Netzadresse, Anfrage, Fehler (keine Inhalte), CSP-Meldungen, Lage-Zahlen', rechtsgrundlage: 'Art. 6 Abs. 1 lit. c, f DSGVO i. V. m. Art. 32', empfaenger: 'Hetzner (Server, Abbilder 7 Tage); Healthchecks (nur Ping); GitHub (Außenprüfung: nur Erreichbarkeit)', empfaengerIds: ['hetzner', 'healthchecks', 'github'], drittland: 'keines für die Sicherungen (Hetzner, Deutschland); GitHub: USA — prüfen', loeschfrist: SICHERUNG_SATZ, toms: 'age-Verschlüsselung der Sicherung (privater Schlüssel nicht auf dem Server), Grabsteine außerhalb des Datenordners, Probe-Wiederherstellung' }),
-    v('vv-medien', { zweck: 'Fotos und Videos mit der Handykamera geordnet ablegen (Events, Kunden/Mandate, Projekte, privat), fürs Marketing freigeben (Kanäle, bis-Datum) und auf Wunsch einem Head mit Auftrag zur Auswahl, für Zuschnitt-Vorschläge und Texte geben — Wirkung nur nach Klick eines Menschen', personen: 'Personen des Haushalts/Teams; auf Bildern erkennbare Gäste, Vortragende, Kundinnen und Kunden, Kinder (nur mit Einwilligung der Sorgeberechtigten)', daten: 'Bilder und Videos (ohne Ortsdaten; Ton nur mit Schalter, § 201 StGB), Aufnahmezeit, Album, von Hand markierte Personen (Kennung, Rolle — keine Gesichtserkennung), Freigaben, Einwilligungen (Wortlaut, Fassung, Zeitpunkt, Unterschrift), Lizenz-Nachweise fremder Fotografen', rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Dokumentation, Öffentlichkeitsarbeit; KUG-Wertungen § 23) — Porträts, nicht öffentliche Veranstaltungen, Beschäftigte und Minderjährige nur mit Einwilligung (Art. 6 Abs. 1 lit. a, Art. 7); Privates im Haushalt Art. 2 Abs. 2 lit. c; Widerruf und Einschränkung sperren sofort', empfaenger: 'Haushalt/Team (Privat nur die Person bzw. Alben „Haushalt“); Hetzner (Server und Object Storage, Deutschland — nur Chiffrat); Anthropic nur für Medien, die ausdrücklich einem Head gegeben sind (Vorschaubild ≤ 1568 px, nie Minderjährige)', empfaengerIds: ['hetzner', 'anthropic'], drittland: 'Speicher keines (Hetzner, Deutschland); Anthropic: USA — Standardvertragsklauseln, prüfen', loeschfrist: 'Papierkorb 30 Tage, dann samt Dateien; unfertige Uploads 7 Tage; Rohmaterial mit erkennbaren Personen nach 12 Monaten ohne Freigabe → Prüf-Aufgabe (nie automatisch); Freigaben enden am bis-Datum; Einwilligungen als Nachweis auch nach Widerruf', toms: 'Verschlüsselung je Segment mit Schlüssel je Medium (gewickelt mit dem Datenschlüssel, nie im Browser), Objekte unter zufälligen Namen ohne Metadaten, Exif/GPS entfernt, Vier-Augen-Freigabe bei erkennbaren Personen, Medien nicht in der Nachtsicherung des Datenordners' }),
+    v('vv-medien', { zweck: 'Fotos und Videos mit der Handykamera geordnet ablegen (Events, Kunden/Mandate, Projekte, privat), fürs Marketing freigeben (Kanäle, bis-Datum) und auf Wunsch einem Head mit Auftrag zur Auswahl, für Zuschnitt-Vorschläge und Texte geben — Wirkung nur nach Klick eines Menschen', personen: 'Personen des Haushalts/Teams; auf Bildern erkennbare Gäste, Vortragende, Kundinnen und Kunden, Kinder (nur mit Einwilligung der Sorgeberechtigten)', daten: 'Bilder und Videos (ohne Ortsdaten; Ton nur mit Schalter, § 201 StGB), Aufnahmezeit, Album, von Hand markierte Personen (Kennung, Rolle — keine Gesichtserkennung), Freigaben, Einwilligungen (Wortlaut, Fassung, Zeitpunkt, Unterschrift), Lizenz-Nachweise fremder Fotografen', rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Dokumentation, Öffentlichkeitsarbeit; KUG-Wertungen § 23) — Porträts, nicht öffentliche Veranstaltungen, Beschäftigte und Minderjährige nur mit Einwilligung (Art. 6 Abs. 1 lit. a, Art. 7); Privates im Haushalt Art. 2 Abs. 2 lit. c; Widerruf und Einschränkung sperren sofort', empfaenger: VV_MEDIEN_EMPFAENGER, empfaengerIds: [...VV_MEDIEN_EMPFAENGER_IDS], drittland: VV_MEDIEN_DRITTLAND, loeschfrist: 'Papierkorb 30 Tage, dann samt Dateien; unfertige Uploads 7 Tage; Rohmaterial mit erkennbaren Personen nach 12 Monaten ohne Freigabe → Prüf-Aufgabe (nie automatisch); Freigaben enden am bis-Datum; Einwilligungen als Nachweis auch nach Widerruf', toms: 'Verschlüsselung je Segment mit Schlüssel je Medium (gewickelt mit dem Datenschlüssel, nie im Browser), Objekte unter zufälligen Namen ohne Metadaten, Exif/GPS entfernt, Vier-Augen-Freigabe bei erkennbaren Personen, Medien nicht in der Nachtsicherung des Datenordners' }),
     v('vv-bauplan', { zweck: 'Verbesserung der Software: Ideen, Fehler, Abnahmen, Bildschirmfotos von Hand angehängt', personen: 'Personen des Haushalts; Personen, die auf einem Bildschirmfoto zu sehen sind (z. B. Kontakte in einer Liste)', daten: 'Karten (Titel, Beschreibung, Kommentare, wer), Bildschirmfotos (können Personendaten zeigen)', rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Weiterentwicklung und Fehlerbehebung)', empfaenger: 'Haushalt; Hetzner; Anthropic nur für Kartentexte (ZOE), nie die Bilder', empfaengerIds: ['hetzner', 'anthropic'], drittland: USA, loeschfrist: 'Bildschirmfotos fertiger oder verworfener Karten 90 Tage nach Abschluss, nicht zugeordnete nach 7 Tagen (Frist „bauplan-bilder“); Karten bis zur Löschung', toms: 'Bildschirmfotos verschlüsselt abgelegt (wie die Dateiablage), nur angemeldet abrufbar; vor dem Anhängen Personendaten möglichst schwärzen' }),
   ];
 }
@@ -631,6 +676,8 @@ export function alteFassungenHeben(vorhanden: readonly Verarbeitung[]): Verarbei
       if ((Array.isArray(w.alt) ? w.alt : [w.alt]).includes(String(x[k]))) { x = { ...x, [k]: w.neu }; gehoben = true; }
     }
     if (!x.empfaengerIds && START_EMPFAENGER[x.id]) { x = { ...x, empfaengerIds: START_EMPFAENGER[x.id] }; gehoben = true; }
+    const ids = ALTE_EMPFAENGER_IDS[x.id], vorher = x.empfaengerIds;
+    if (ids && vorher && ids.alt.some(a => a.length === vorher.length && a.every((v, i) => v === vorher[i]))) { x = { ...x, empfaengerIds: [...ids.neu] }; gehoben = true; }
     return x;
   });
   return gehoben ? neu : [...vorhanden];

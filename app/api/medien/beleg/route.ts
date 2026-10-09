@@ -1,7 +1,8 @@
 // ─── Medien: Belege — Lizenz-Nachweis fremder Fotografen, Unterschrift einer Einwilligung (09.10., Paket 5) ───────────────────
 // POST ?id=<md-…>&name=<Dateiname>   Lizenz-Nachweis (PDF/JPEG/PNG ≤ 8 MB, roh) — Pflicht vor jeder Freigabe eines fremden Fotos (Kevin 09.10.)
 // GET  ?art=lizenz&id=<md-…>          Nachweis herunterladen (wer das Medium sieht)
-// GET  ?art=unterschrift&id=<ew-…>    Unterschrift ansehen (nur, wer freigeben darf) — beides als Download, nosniff, Sandbox
+// GET  ?art=unterschrift&id=<ew-…>    Unterschrift ansehen (wer freigeben darf, und die Person selbst, deren Einwilligung es ist — Art. 15)
+//                                     — beides als Download, nosniff, Sandbox
 import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/zugang/tor';
 import { MEDIEN_NUR_SELBST } from '@/lib/agenten/typen';

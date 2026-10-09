@@ -40,7 +40,8 @@ export function pflegeAuswerten(kat: MedienKatalog, lage: Lage, rohSeit: string)
   return { sperren, ablauf, roh, art17 };
 }
 
-const monateZurueck = (heute: string, n: number) => {
+/** Kalendertag `n` Monate vor `heute` (Grenze der Frist „medien-roh“; auch die Selbstprüfung, lib/medien/datenschutz.ts). */
+export const monateZurueck = (heute: string, n: number) => {
   const d = new Date(`${heute}T12:00:00Z`);
   d.setUTCMonth(d.getUTCMonth() - n);
   return d.toISOString().slice(0, 10);
