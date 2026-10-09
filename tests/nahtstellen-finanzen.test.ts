@@ -315,6 +315,22 @@ describe('H · Vorschau sagt, wo dasselbe Geld sonst doppelt zählt oder still w
   });
 });
 
+describe('I · 0-Punkt-OP-Liste (Daten-Assistent) ↔ Rechnung im Finanzplan: dieselbe Rechnung zählt einmal', () => {
+  it('gleiche Gesellschaft + gleiche Rechnungsnummer: einmal als offener Posten; im Finanzplan bezahlt → erledigt; ohne Nummer bzw. ohne Eröffnung wie bisher', async () => {
+    const { abEroeffnung } = await import('@/lib/business/eroeffnung');
+    const e = { id: 'er-op-1', firma: 'ug' as const, stichtag: '2026-10-01', kontostand: 0, gesetztVon: 'pa', gesetztAm: '2026-10-01T08:00:00Z',
+      forderungen: [{ name: 'Altkunde Beispiel GmbH', betrag: 500, rechnungsnr: 'RE-2026-0031' }, { name: 'Ohne Nummer Beispiel', betrag: 70 }] };
+    // Ältere Rechnung ohne Rechnungsdatum, fällig nach dem Stichtag — sie wird nicht archiviert.
+    const r = (status: string) => ({ id: 'r-op', firmaId: 'ug', kunde: 'Altkunde Beispiel GmbH', titel: 'Beratung', betrag: 500, status, nummer: 're 2026 0031', faellig: '2026-10-15' });
+    const offen = (b: { rechnungen?: { betrag: number; status: string }[] }) => (b.rechnungen ?? []).filter(x => x.status !== 'bezahlt' && x.status !== 'storniert').reduce((s, x) => s + x.betrag, 0);
+    expect(offen(abEroeffnung({ rechnungen: [r('gestellt')] }, { ug: e }))).toBe(570);
+    expect(offen(abEroeffnung({ rechnungen: [r('bezahlt')] }, { ug: e }))).toBe(70);
+    expect(offen(abEroeffnung({ rechnungen: [{ ...r('gestellt'), nummer: 'RE-2026-9999' }] }, { ug: e }))).toBe(1070);
+    const ohne = { rechnungen: [r('gestellt')] };
+    expect(abEroeffnung(ohne, {}).rechnungen).toBe(ohne.rechnungen);
+  });
+});
+
 describe('Regel „dieselbe Zahlung“ (rein)', () => {
   it('Name ohne Rechtsform und Allerweltswörter, Nummer ohne Trennzeichen, Fenster 14 Tage, Betrag auf den Cent', async () => {
     const { gleicheZahlung, namenPassen, nummerImText, trefferStufe } = await import('@/lib/finanzen/zahlung-abgleich');
