@@ -1,7 +1,7 @@
 // ─── Postfächer — der Bereich eines Postfachs: Privat · Gesellschaft · Kunde (rein, client-sicher, 09.10.2026) ──────────────
 // Kevin 09.10.: „Es wäre geil, wenn wir ein zweites Google-Konto auch verbinden könnten … Wir haben da auch von den Kunden Postfächer.“
-// — „Man muss da auf das Postfach klicken, z. B. MAKE Innovation oder KD Ventures oder z. B., wenn noch OneBanking dazukommt, auch
-// OneBanking.“ Ein Kundenpostfach (eine Adresse von uns in der Domain eines Kunden) bekommt den Bereich DES KUNDEN — dieselbe
+// — „Man muss da auf das Postfach klicken, z. B. MAKE Innovation oder KD Ventures oder …“ (dazu ein Kunde mit eigenem Namen). Ein
+// Kundenpostfach (eine Adresse von uns in der Domain eines Kunden) bekommt den Bereich DES KUNDEN — dieselbe
 // Kennung wie der Mandanten-Space der Aufgaben (lib/aufgaben/struktur.ts): `m-<firmaId>` = CRM-Firma mit aktivem Mandat.
 //
 // Die Form des Bereichs (EINE Stelle — Ansicht, Strom, Register und Postfächer-Seite lesen nur hierüber):
