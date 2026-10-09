@@ -53,7 +53,7 @@ describe('Prüfliste: gestellte Rechnungen werden nicht gelöscht', () => {
       expect(nach(r.id).aktionen.includes('entfernen'), r.status).toBe(rechnungSchutz(r, null) === null);
     }
     expect(nach('r-geplant').vorschlag).toBe('entfernen');
-    expect(nach('r-gestellt')).toMatchObject({ vorschlag: 'behalten', aktionen: ['kdc', 'kdv', 'ug', 'kemaris', 'behalten'] });
+    expect(nach('r-gestellt')).toMatchObject({ vorschlag: 'behalten', aktionen: ['kdc', 'kdv', 'ug', 'behalten'] });
     expect(nach('r-bezahlt').grund).toContain('nicht gelöscht');
   });
 
@@ -88,19 +88,20 @@ import { AKTION_TEXT, ZUORDNUNGEN, istZuordnung, zuordnungName } from '../lib/fi
 import { GESELLSCHAFTEN, finanzOrtName } from '../lib/einheiten';
 
 describe('Prüfliste: Zuordnen zu allen Gesellschaften', () => {
-  it('alle drei Gesellschaften aus lib/einheiten.ts plus KEMARIS', () => {
-    expect(ZUORDNUNGEN).toEqual([...GESELLSCHAFTEN, 'kemaris']);
+  it('genau die Gesellschaften aus lib/einheiten.ts — keine feste Beteiligung mehr (09.10., Plattform-Regel)', () => {
+    expect(ZUORDNUNGEN).toEqual([...GESELLSCHAFTEN]);
     expect(ZUORDNUNGEN).toContain('ug');
     for (const g of GESELLSCHAFTEN) expect(AKTION_TEXT[g]).toBe(`gehört zu: ${finanzOrtName(g)}`);
     expect(AKTION_TEXT.ug).toBe('gehört zu: MAKE Innovation GmbH');
-    expect(AKTION_TEXT.kemaris).toBe('gehört zu: KEMARIS');
+    expect(istZuordnung('kemaris')).toBe(false);
+    expect(zuordnungName('altwert')).toBe('altwert'); // ein gespeicherter Altwert wird roh genannt, nie still umgedeutet
     expect(istZuordnung('ug')).toBe(true);
     expect(istZuordnung('entfernen')).toBe(false);
     expect(istZuordnung('privat')).toBe(false);
   });
   it('firmenloser Planposten lässt sich der UG zuordnen', () => {
     const l = pruefliste({ finanzplan: null, buchungen: null, liquiplan: { posten: [{ id: 'p9', titel: 'Hosting', betrag: -20, rhythmus: 'monatlich' }] } }, h);
-    expect(l[0].aktionen).toEqual(['kdc', 'kdv', 'ug', 'kemaris', 'entfernen', 'behalten']);
+    expect(l[0].aktionen).toEqual(['kdc', 'kdv', 'ug', 'entfernen', 'behalten']);
   });
   it('gestellte Rechnung → UG: verschoben mit Vermerk, nichts gelöscht', () => {
     const r: Rechnung = { id: 'r-ug', firmaId: 'privat', kunde: 'Kunde B', titel: 'Lizenz', betrag: 59.5, status: 'gestellt', nummer: 'RE-2' };
