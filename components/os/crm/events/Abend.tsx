@@ -162,7 +162,10 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
   const emailOk = !karte?.email || !!emailNormal(karte.email);
   const ok = !!karte?.nachname?.trim() && !dubl.mail && emailOk && !laeuft;
   const setze = (teil: Partial<VisitenkartenDaten>) => setKarte(k => (k ? { ...k, ...teil } : k));
-  const fertig = (x: { id: string; name: string; neu: boolean }) => { setErledigt(x); setKarte(null); setRunde(r => r + 1); };
+  // Die Dublette, die erst der Server erkennt (Nahtstellen 09.10.): gleiche Nummer + Nachname — die Karte zeigt nur Mail/Name. Dann dieselbe
+  // Person mit einem Tipp als da eintragen (wie bei der Mail-Dublette), statt nur „ließ sich nicht anlegen“.
+  const [serverDublette, setServerDublette] = useState<{ id: string; name: string } | null>(null);
+  const fertig = (x: { id: string; name: string; neu: boolean }) => { setErledigt(x); setKarte(null); setServerDublette(null); setRunde(r => r + 1); };
 
   /** Als „da“ eintragen — steht die Person schon auf der Liste (z. B. eingeladen), nur ihren Status ändern. Liefert, ob es gespeichert ist. */
   const eintragen = async (kontaktId: string): Promise<boolean> => {
@@ -170,17 +173,17 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
     if (t) return gastSetzen(api, t, { status: 'da', eingechecktVon: api.ich ?? undefined });
     return api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId, status: 'da', rolle: 'gast', ...(api.ich ? { eingechecktVon: api.ich } : {}) });
   };
-  const bestehend = async (k: Kontakt) => {
+  const bestehend = async (k: Pick<Kontakt, 'id'> & { name: string }) => {
     if (laeuft) return;
     setLaeuft(true); setFehler(null);
     try {
-      if (await eintragen(k.id)) fertig({ id: k.id, name: anzeigename(k), neu: false });
-      else setFehler(`${anzeigename(k)} ist NICHT als da eingetragen — der Grund steht oben. Bitte noch einmal.`);
+      if (await eintragen(k.id)) fertig({ id: k.id, name: k.name, neu: false });
+      else setFehler(`${k.name} ist NICHT als da eingetragen — der Grund steht oben. Bitte noch einmal.`);
     } finally { setLaeuft(false); }
   };
   const anlegen = async () => {
     if (!karte || !ok) return;
-    setLaeuft(true); setFehler(null);
+    setLaeuft(true); setFehler(null); setServerDublette(null);
     try {
       const d: VisitenkartenDaten = { ...karte, email: karte.email ? emailNormal(karte.email) : undefined };
       const name = [d.vorname, d.nachname].filter(Boolean).join(' ') || d.firma || 'Die Person';
@@ -191,7 +194,7 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
         ...(d.firma?.trim() ? { firma: d.firma.trim() } : {}), vonKarte: true, anlass: `Per Visitenkarte am Einlass angelegt — ${e.titel}`.slice(0, 300),
       });
       // Erst wenn die Person gespeichert ist, wird sie als „da“ eingetragen — nie eine Teilnahme ohne Person in der Kartei.
-      if (!r.ok || !r.kontaktId) { setFehler(`${name} ließ sich nicht anlegen — ${r.fehler ?? 'nichts eingetragen'}. Die Karte bleibt stehen.`); return; }
+      if (!r.ok || !r.kontaktId) { if (r.dublette) setServerDublette(r.dublette); setFehler(`${name} ließ sich nicht anlegen — ${r.fehler ?? 'nichts eingetragen'}${r.dublette ? '' : '. Die Karte bleibt stehen.'}`); return; }
       if (!(await eintragen(r.kontaktId))) { setFehler(`${name} ist angelegt, aber NICHT als da eingetragen — bitte oben über die Suche einchecken.`); return; }
       fertig({ id: r.kontaktId, name, neu: true });
     } finally { setLaeuft(false); }
@@ -199,8 +202,9 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      <VisitenkarteKnopf key={runde} gross onErkannt={d => { setErledigt(null); setFehler(null); setKarte(d); }} />
+      <VisitenkarteKnopf key={runde} gross onErkannt={d => { setErledigt(null); setFehler(null); setServerDublette(null); setKarte(d); }} />
       {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
+      {serverDublette && <GrossKnopf an farbe={LEUCHT.gut} onClick={() => void bestehend(serverDublette)}>{`${serverDublette.name} als da eintragen`}</GrossKnopf>}
       {erledigt && !karte && (
         <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>
           ✓ {erledigt.name} {erledigt.neu ? 'angelegt und ' : ''}als da eingetragen ·{' '}
@@ -220,13 +224,13 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
           {dubl.mail && (
             <div style={{ display: 'grid', gap: 8 }}>
               <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dubl.mail)}{dubl.mail.firma ? ` (${dubl.mail.firma})` : ''} — nicht doppelt anlegen.</div>
-              <GrossKnopf an farbe={LEUCHT.gut} onClick={() => void bestehend(dubl.mail!)}>{`${anzeigename(dubl.mail)} als da eintragen`}</GrossKnopf>
+              <GrossKnopf an farbe={LEUCHT.gut} onClick={() => void bestehend({ id: dubl.mail!.id, name: anzeigename(dubl.mail!) })}>{`${anzeigename(dubl.mail)} als da eintragen`}</GrossKnopf>
             </div>
           )}
           {!dubl.mail && dubl.name && (
             <div style={{ display: 'grid', gap: 8 }}>
               <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Achtung: {anzeigename(dubl.name)}{dubl.name.firma ? ` (${dubl.name.firma})` : ''} gibt es schon — gleiche Person?</div>
-              <GrossKnopf an={false} farbe={LEUCHT.gut} onClick={() => void bestehend(dubl.name!)}>{`Ja — ${anzeigename(dubl.name)} als da eintragen`}</GrossKnopf>
+              <GrossKnopf an={false} farbe={LEUCHT.gut} onClick={() => void bestehend({ id: dubl.name!.id, name: anzeigename(dubl.name!) })}>{`Ja — ${anzeigename(dubl.name)} als da eintragen`}</GrossKnopf>
             </div>
           )}
           {!emailOk && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Die E-Mail sieht unvollständig aus — bitte prüfen oder leeren.</div>}

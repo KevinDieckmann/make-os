@@ -3,7 +3,7 @@
 // was DAZWISCHEN brechen kann: dieselbe Person über verschiedene Anlege-Wege, Art. 18 auf jedem Weg, die Firma einer Anfrage, die Antwort
 // einer Wiederholung, das Team zwischen Konten und Markttraktion. Über die echten Routen, eigener Datenordner, nur erfundene Daten.
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -81,12 +81,16 @@ describe('1 · dieselbe Person über verschiedene Wege → EINE Akte', () => {
     expect(r.status, d.fehler).toBe(200);
     expect(d.kontaktId).toBe(id);
   });
-  it('Make.One-Abend (gleiche Nummer + Nachname, ohne Mail) → 409 Dublette mit der vorhandenen Akte', async () => {
+  it('Make.One-Abend (gleiche Nummer + Nachname, ohne Mail) → 409 Dublette mit der vorhandenen Akte — der Einlass bietet „als da eintragen“ an', async () => {
     const route = await import('@/app/api/crm/person/route') as unknown as Route;
     const r = await route.POST(anfrage('/api/crm/person', sitzung('malin'), 'POST', { aktion: 'anlegen', weg: 'makeone', person: { vorname: 'E.', nachname: 'Wegemann', telefon: '030 5551234', vonKarte: true } }));
     const d = await r.json() as { ok: boolean; dublette?: { id: string } };
     expect(r.status).toBe(409);
     expect(d.dublette?.id).toBe(id);
+    // Die Karte am Einlass kennt nur Mail/Name — die Nummern-Dublette kommt vom Server und wird mit einem Tipp eingecheckt (nicht nur „ließ sich nicht anlegen“).
+    const abend = readFileSync(path.join(process.cwd(), 'components/os/crm/events/Abend.tsx'), 'utf8');
+    expect(abend).toMatch(/if \(r\.dublette\) setServerDublette\(r\.dublette\)/);
+    expect(abend).toMatch(/bestehend\(serverDublette\)/);
   });
   it('Import einer Zeile OHNE Mail (gleicher Name, gleiche Firma) legt keine zweite Akte an', async () => {
     const route = await import('@/app/api/crm/import/route') as unknown as Route;
