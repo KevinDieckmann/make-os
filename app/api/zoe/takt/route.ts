@@ -14,6 +14,7 @@ import { faellig } from '@/lib/zoe/takt';
 import { reihe } from '@/lib/zoe/auftraege';
 import { alleSichten } from '@/lib/business/speicher';
 import { kalenderJobsImTakt } from '@/lib/kalender/takt-jobs';
+import { crmSignaleImTakt } from '@/lib/crm/signale-server';
 import { gmailJobsImTakt } from '@/lib/gmail/takt';
 import { postfachJobsImTakt } from '@/lib/postfach/takt';
 import { whatsappJobsImTakt } from '@/lib/whatsapp/takt';
@@ -68,7 +69,11 @@ export async function POST(req: Request) {
   // und Heute lesen den Stand auch ohne offene Seite), sonst die Tagessicherung (R-K1 #K5, 03:00–05:00, frühestens 30 Min.
   // nach dem Start), sonst der Event-Spiegel (K6a, alle 30 Min.; U1 B3: nur eigene, künftige Termine, Absagen → Glocke).
   // Nie blockierend; Fehler als eine Zeile `[kalender-sicherung] …` / `[spiegel] …` (lib/kalender/takt-jobs.ts).
-  await kalenderJobsImTakt().catch(() => {});
+  const kalenderJob = await kalenderJobsImTakt().catch(() => 'wartet' as const);
+  // CRM-Signale (09.10., Takt robust): vergangene Termine → Verlauf und „letzter Kontakt“ — vorher nur, wenn jemand die Markttraktion
+  // öffnete. Gestaffelt wie die Kalender-Jobs: nur, wenn dieser Takt keinen iCloud-Job hat und iCloud nicht pausiert; alle 10 Min.
+  // Systemlauf ohne KI, nie blockierend (lib/crm/signale-server.ts).
+  void crmSignaleImTakt(kalenderJob).catch(() => {});
   // Gmail (03.10.): Abgleich je verbundener Person (alle 2 Min., mit Push alle 15) — nie blockierend, Fehler als eine Zeile `[gmail] …`.
   void gmailJobsImTakt().catch(() => {});
   // Inbox 2 (06.10.): IMAP-Postfächer je Person (alle 2 Min., mit IDLE alle 15 + sofort bei neuer Post) — nie blockierend, `[postfach] …`.
@@ -85,11 +90,13 @@ export async function POST(req: Request) {
   void import('@/lib/agenten/delegation').then(m => m.verwaisteLaeufeAufraeumen()).catch(() => {});
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });
-  const { angelegt, schonDa } = await reihe(dran.map(f => f.auftrag));
+  const { angelegt, schonDa, abgelehnt } = await reihe(dran.map(f => f.auftrag));
   return NextResponse.json({
     ok: true,
     eingereiht: angelegt.length,
     schonDa,
+    // Warteschlange voll (09.10.): abgelehnt statt gekürzt — der Head of IT zeigt es rot.
+    ...(abgelehnt ? { abgelehnt } : {}),
     was: dran.map(f => `${f.id} (${f.grund})`),
   });
 }
