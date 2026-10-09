@@ -129,7 +129,7 @@ export const KATALOG: readonly HeadDef[] = [
     kontext: 'brain',
     kennzahlen: [{ index: 'business', id: 'fokuszeit' }, { index: 'business', id: 'meetinglast' }, { index: 'business', id: 'delegation' }],
     stufe: 'ausgewogen', aufwand: 'low',
-    offen: '`lies_postfach`, `create_task`, `suche_arbeit` kennen heute keinen Bereich — im Head-Lauf nur Business-Postfächer und Business-Spaces (Paket 1).',
+    offen: '`lies_postfach`, `create_task`, `suche_arbeit` kennen heute keinen Bereich — im Head-Lauf nur Business-Postfächer und Business-Spaces (Paket 1); `meine_aufgaben`, `projekt_unterlagen`, `datei_lesen` ebenso (Feinschliff 09.10., Eingabe `space`).',
     mitarbeiter: [
       { id: 'operations-inbox', name: 'Inbox-Triage', rolle: 'Ordnet die Business-Postfächer: was wartet, was zu tun ist, was weg kann — alles nur Vorschlag.',
         werkzeuge: ['lies_postfach', 'create_task'], agentId: 'inbox', stufe: 'schnell' },

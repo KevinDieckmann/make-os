@@ -267,9 +267,12 @@ export function skillKandidat(s: Skill, person: string | null): ZeitplanKandidat
   return { art: 'skill', id: s.id, headId: h.id, bereich: h.bereich, person, regel, stufe: s.stufe, eingabe: { art: 'skill', skillId: s.id, headId: h.id, ausloeser: 'zeitplan' } };
 }
 
-/** Hintergrundaufgabe → Kandidat (nur aktiv). Rein. */
+/**
+ * Hintergrundaufgabe → Kandidat (nur aktiv). Rein. Eine (alte) Aufgabe bei ZOE wird nie eingereiht — ein ZOE-Thread läuft nicht im Hintergrund
+ * (Planen lehnt sie seit dem Feinschliff 09.10. ab, lib/agenten/plan-server.ts `ZOE_NICHT_GEPLANT`); sonst stünde sie jeden Tag neu in der Schlange.
+ */
 export function planKandidat(p: Hintergrundaufgabe): ZeitplanKandidat | null {
-  if (!p.aktiv || !PERSON.test(p.besitzer)) return null;
+  if (!p.aktiv || !PERSON.test(p.besitzer) || p.agent.art === 'zoe') return null;
   const ah = agentHead(p.agent);
   const regel = regelVon(p.zeitplan);
   if (!ah || !regel) return null;

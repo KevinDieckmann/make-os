@@ -252,10 +252,17 @@ const imHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
   return lauf(input, origin, person);
 };
 
-/** Was liegt bei ZOE — nur die eigenen Aufträge, nur Titel/Status/Deadline (keine Notizen). */
-async function meineAufgaben(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const s = zoeAufgaben(await ladeAufgabenSicht(person ?? null), { auftraggeberin: person });
-  if (!s.alle.length) return 'Bei ZOE liegt keine Aufgabe dieser Person.';
+/**
+ * Was liegt bei ZOE — nur die eigenen Aufträge, nur Titel/Status/Deadline (keine Notizen). `space` (privat | business, optional) begrenzt auf
+ * einen Bereich — der Agenten-Bereich setzt ihn fest auf den Bereich des Heads (lib/agenten/werkzeuge.ts `eingabeImBereich`, Feinschliff 09.10.).
+ */
+async function meineAufgaben(i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const stand = await ladeAufgabenSicht(person ?? null);
+  const bereich = i.space === 'privat' || i.space === 'business' ? i.space : null;
+  const { bereichVonSpace } = await import('@/lib/aufgaben/struktur');
+  const imBereich = bereich ? { ...stand, tasks: stand.tasks.filter(t => bereichVonSpace(t.spaceId) === bereich) } : stand;
+  const s = zoeAufgaben(imBereich, { auftraggeberin: person });
+  if (!s.alle.length) return bereich ? `Bei ZOE liegt keine Aufgabe dieser Person im Bereich ${bereich === 'privat' ? 'Privat' : 'Business'}.` : 'Bei ZOE liegt keine Aufgabe dieser Person.';
   const zeile = (t: Task) => `- „${kurz(t.title, 100)}“ [${t.id}] · ${ZOE_STATUS_LABEL[t.zoe!.status]}${t.dueDate ? ` · fällig ${t.dueDate.slice(0, 10)}` : ''}`;
   const block = (titel: string, l: Task[]) => (l.length ? [`${titel} (${l.length}):`, ...l.slice(0, 20).map(zeile), ...(l.length > 20 ? [`… und ${l.length - 20} weitere`] : [])] : []);
   return [

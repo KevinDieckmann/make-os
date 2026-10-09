@@ -225,9 +225,10 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
       if (p) posten.push({ ...p, laufPerson: lp! });
     }
     for (const a of (await sicher(planLesen(person), { aufgaben: [], staende: {} })).aufgaben) {
-      const ah = a.aktiv ? agentHead(a.agent) : null;
-      if (!ah || (ah.headId !== 'zoe' && (!sicht.has(ah.headId) || einst.heads[ah.headId]?.aktiv === false || einst.heads[ah.headId]?.notAus))) continue;
-      const p = postenVon({ art: 'plan', id: a.id, titel: a.titel, headId: ah.headId === 'zoe' ? null : ah.headId, regel: regelVon(a.zeitplan), business: ah.bereich === 'business', wichtig: true });
+      // Eine (alte) Aufgabe bei ZOE läuft nie (Feinschliff 09.10., dieselbe Regel wie `planKandidat`) — sie steht auch nicht unter „Als Nächstes“.
+      const ah = a.aktiv && a.agent.art !== 'zoe' ? agentHead(a.agent) : null;
+      if (!ah || !sicht.has(ah.headId) || einst.heads[ah.headId]?.aktiv === false || einst.heads[ah.headId]?.notAus) continue;
+      const p = postenVon({ art: 'plan', id: a.id, titel: a.titel, headId: ah.headId, regel: regelVon(a.zeitplan), business: ah.bereich === 'business', wichtig: true });
       if (p) posten.push({ ...p, laufPerson: person });
     }
     const spannen = new Map<string, Spanne[]>();

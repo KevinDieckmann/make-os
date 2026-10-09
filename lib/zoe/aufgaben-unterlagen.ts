@@ -84,10 +84,18 @@ function antwort(kopf: string, koerper: string, teil: unknown, weiter: (t: numbe
   return `${kopf}${mehr}\n${fremd(UNTERLAGEN_QUELLE, a.text)}`;
 }
 
+/**
+ * `space` (privat | business, optional) begrenzt auf einen Bereich — der Agenten-Bereich setzt ihn fest auf den Bereich des Heads
+ * (lib/agenten/werkzeuge.ts `eingabeImBereich`, Feinschliff 09.10.): ein Business-Head findet weder Projekte noch Aufgaben noch Dateien aus Privat.
+ */
+const bereichAus = (i: Record<string, unknown>): 'privat' | 'business' | null => (i.space === 'privat' || i.space === 'business' ? i.space : null);
+
 async function unterlagen(input: Record<string, unknown>, person?: string): Promise<string> {
   const h = await haushalt(person);
   if (!h) return NICHT_IM_HINTERGRUND;
-  const state = await ladeAufgabenSicht(person ?? null); // Sichtfilter „nur ich“ (29.09.)
+  const sicht = await ladeAufgabenSicht(person ?? null); // Sichtfilter „nur ich“ (29.09.)
+  const nur = bereichAus(input);
+  const state = nur ? { ...sicht, projects: sicht.projects.filter(p => bereichVonSpace(p.spaceId) === nur), tasks: sicht.tasks.filter(t => bereichVonSpace(t.spaceId) === nur) } : sicht;
   const aufgabeSuche = String(input.aufgabe ?? '').trim();
   const projektSuche = String(input.projekt ?? '').trim();
   if (!aufgabeSuche && !projektSuche) return 'Fehlgeschlagen: projekt oder aufgabe angeben (Kennung oder Titel).';
@@ -129,7 +137,8 @@ async function lesen(input: Record<string, unknown>, person?: string): Promise<s
   const id = String(input.datei ?? '').trim();
   if (!DATEI_ID.test(id)) return 'Fehlgeschlagen: datei braucht die Kennung (d-…) aus projekt_unterlagen.';
   const d = await aufgabenDateiLesen(h, id);
-  if (!d) return 'Fehlgeschlagen: Diese Kennung ist keine Projekt- oder Aufgaben-Datei (die CRM-Ablage liest ZOE nicht) — oder die Datei fehlt.';
+  const nur = bereichAus(input);
+  if (!d || (nur && d.eintrag.bereich !== nur)) return 'Fehlgeschlagen: Diese Kennung ist keine Projekt- oder Aufgaben-Datei (die CRM-Ablage liest ZOE nicht) — oder die Datei fehlt.';
   const g = typGruppe(d.eintrag.datei.typ);
   const meta = [`Datei: ${d.eintrag.datei.name}`, `Typ: ${TYP_LABEL[g]} · ${groesseText(d.eintrag.datei.groesse)} · von ${d.eintrag.hochgeladenVon} am ${datum(d.eintrag.hochgeladenAm)}`, d.eintrag.notiz ? `Beschreibung: ${d.eintrag.notiz}` : ''].filter(Boolean).join('\n');
   let inhalt: Awaited<ReturnType<typeof textAuslesen>>;
