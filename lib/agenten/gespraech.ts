@@ -30,6 +30,7 @@ import { mitarbeiterFuerHead, skillsFuerHead, einstellungFuer, gedaechtnisFuer a
 import { GRENZEN, TON_SATZ, agentSchluessel, type Anhang, type AgentRef, type AgentenEinstellung, type HeadDef, type KiKategorie, type LaufSchritt, type Merksatz, type Mitarbeiter, type ModelTier, type Nachricht, type Skill, type Umfang } from './typen';
 import { headSichtbar, kategorienFuer, type KontoSicht } from './sicht';
 import { kontextFuer } from './kontext';
+import { istMedienWerkzeug, medienAngebotErgaenzen, medienWerkzeugAusfuehren } from './medien-werkzeuge';
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
 import { anhaengen, brettText, fadenHinzu, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
 import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern } from './faeden-server';
@@ -201,6 +202,9 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
     brett: !!e.brett, helfer: !!e.faden.helfer, offeneFragen: !!e.offeneFragen, agentId: m?.agentId, stufe, lesend: LESEND,
     ...(e.nurLesen ? { nurLesen: true } : {}),
   });
+  // Paket 4c (Merge 09.10.): die Medien-Werkzeuge der Medien-Heads (Marketing, Event, Sales) bzw. des Mitarbeiters „Bild & Video“ — nie im
+  // Trockenlauf/„nur lesen“ (Bilder kosten Geld, Vorschläge landen im Stapel); `medienWerkzeugeFuer` prüft Bereich, Head und Schalter.
+  if (!e.nurLesen && !e.trocken) medienAngebotErgaenzen(angebot, { art: m ? 'mitarbeiter' : 'head', head, mitarbeiter: m ?? null, schalter, helfer: !!e.faden.helfer });
   for (const w of angebot.register) { const k = kategorieVonWerkzeug(w, gruppeVon(w)); if (k) kategorien.add(k); }
 
   const skills = (await skillsFuerHead(head.id, e.umfang)).filter(s => s.aktiv && (!m || !s.mitarbeiterId || s.mitarbeiterId === m.id));
@@ -250,7 +254,9 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
       const wname = u.name;
       const input = u.input;
       if (angebot.agenten.has(wname)) {
-        const w = await e.handler.ausfuehren(wname, input, s);
+        const w = istMedienWerkzeug(wname)
+          ? await medienWerkzeugAusfuehren(wname, input, { person, head, agent: e.faden.agent, hintergrund: e.hintergrund, fremdGelesen: z.fremdGelesen, titel: e.faden.titel })
+          : await e.handler.ausfuehren(wname, input, s);
         // Agenten-Werkzeuge kapseln selbst (Rat, Fach-Agent) — ihre Marke übernimmt die Schleife aus dem Stand des Handlers.
         if (s.fremdGelesen) z.fremdGelesen = true;
         if (s.vertraulich) z.vertraulich = true;
