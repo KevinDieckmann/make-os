@@ -36,6 +36,8 @@ export const NEUTRAL: Readonly<Record<string, string>> = {
   [LAUF_AGENT]: 'Agenten-Lauf',
 };
 export const neutralerTitel = (name: string): string => NEUTRAL[name] ?? 'Hintergrund-Lauf';
+/** Systemläufe aus dem Privat-Bereich (Gesundheit, Ernährung, Leistung mit Körperwerten) — nur für Konten mit Privat-Bereich (Gegenprüfung 09.10.). */
+export const PRIVAT_SYSTEMLAEUFE: ReadonlySet<string> = new Set(['gesundheit', 'ernaehrung', 'performance']);
 
 /** Was das Lesemodell aus der Warteschlange braucht. */
 export interface AuftragRoh {
@@ -119,8 +121,11 @@ function ausFaden(f: Faden, basis: Partial<Lauf>): Partial<Lauf> {
  * Das Lesemodell (rein) — die EINE Filterstelle. `person` = die Person der Sitzung. Eigene Läufe voll, Systemläufe neutral,
  * fremde nie. Laufende zuerst, dann die jüngsten fertigen der letzten `LAEUFE_TAGE` Tage, höchstens `LAEUFE_MAX`.
  */
-export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Date()): Lauf[] {
+export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Date(), opt: { privat?: boolean } = {}): Lauf[] {
   const grenze = new Date(jetzt.getTime() - LAEUFE_TAGE * 864e5).toISOString();
+  // Gegenprüfung 09.10.: Konten ohne Privat-Bereich („nur Business“) sehen Systemläufe aus Privat nicht einmal neutral.
+  const privatSehen = opt.privat !== false;
+  const systemSichtbar = (name: string) => privatSehen || !PRIVAT_SYSTEMLAEUFE.has(name);
   const raus: Lauf[] = [];
   const gesehen = new Set<string>();
   const headNamen = new Set(['head-sales', 'head-marketing', 'head-event', 'finanzchef']);
@@ -139,7 +144,7 @@ export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Da
       titel: neutralerTitel(a.name), status, start, ...(ende ? { ende } : {}), ...(dauer(start, ende) !== undefined ? { dauerMs: dauer(start, ende) } : {}),
       link: WEG.agenten(), aktionen: [],
     };
-    if (!eigen) { raus.push(basis); gesehen.add(a.id); continue; } // Systemlauf: neutral, ohne Aktionen
+    if (!eigen) { if (systemSichtbar(a.name)) raus.push(basis); gesehen.add(a.id); continue; } // Systemlauf: neutral, ohne Aktionen
     if (a.art === 'agent' && a.name === LAUF_AGENT) {
       const l: Lauf = { ...basis, ...agentenLauf(a, q) };
       const f = fadenZu(a, q);
@@ -188,6 +193,7 @@ export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Da
   for (const e of q.log) {
     if (e.person && e.person !== person) continue;
     if (e.ts < grenze || headNamen.has(e.agent) || e.agent === LAUF_AGENT || e.agent.startsWith('faden')) continue;
+    if (!e.person && !systemSichtbar(e.agent)) continue;
     const t = Date.parse(e.ts);
     if (beendete.some(b => b.name === e.agent && Math.abs(b.t - t) < 120_000)) continue;
     raus.push({ id: `log:${e.id}`, quelle: e.person ? 'auftrag' : 'takt', art: 'einmalig', titel: e.person ? (e.title || neutralerTitel(e.agent)).slice(0, 140) : neutralerTitel(e.agent), status: 'fertig', start: e.ts, ende: e.ts, link: WEG.agenten(), aktionen: [] });
@@ -211,6 +217,8 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
   const sicher = async <T,>(p: Promise<T>, leer: T): Promise<T> => p.catch(e => { console.error('[agenten-laeufe] Quelle nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return leer; });
   const heads = await sichtbareHeads(person);
   const sicht = new Set(heads.map(h => h.id));
+  const { sichtLaden } = await import('./faeden-server');
+  const privat = (await sichtLaden(person).catch(() => null))?.vollesMitglied === true;
   const umfang = await umfangFuer(person);
   const [auftraege, faedenRoh, planRoh, log, skills] = await Promise.all([
     sicher(lies(), []),
@@ -240,7 +248,7 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
     skills: new Map(skills.map(s => [s.id, { name: s.name, headId: s.headId, zeitplan: s.ausloeser.art === 'zeitplan' }])),
     berichte,
     log,
-  }, person, jetzt);
+  }, person, jetzt, { privat });
 }
 
 // ── Server: abbrechen, neu starten ───────────────────────────────────────────────────────────────────────────────────────

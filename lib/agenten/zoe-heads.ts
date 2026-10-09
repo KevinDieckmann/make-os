@@ -84,6 +84,9 @@ export async function anHead(input: Record<string, unknown>, _origin: string, pe
   const a = await agentAufloesen(agent, u);
   if ('ok' in a && a.ok === false) return `Nicht ausgeführt: ${a.fehler}`;
   if ('einstellung' in a && a.einstellung.notAus) return 'Nicht ausgeführt: Not-Aus ist gesetzt — die Agenten halten an.';
+  // Gegenprüfung 09.10.: Not-Aus, „aus“ und Monatsbudget DIESES Heads schon hier — sonst entstünde ein Thread, dessen Lauf gleich wieder anhält.
+  const sperre = await (await import('./einstellung')).laufSperre(person, head.id).catch(() => null);
+  if (sperre) return `Nicht ausgeführt: ${sperre.text}`;
 
   const zoe = kontext?.zoe;
   const jetzt = iso();

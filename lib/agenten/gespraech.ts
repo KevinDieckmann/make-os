@@ -179,6 +179,10 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
   if ('ok' in a && a.ok === false) return leer('fehler', a.fehler);
   const { head, mitarbeiter: m, einstellung } = a as Aufgeloest;
   if (einstellung.notAus) return leer('abgebrochen', 'Not-Aus ist gesetzt — Agenten halten an.');
+  // Gegenprüfung 09.10.: Not-Aus, „aus“ und Monatsbudget DIESES Heads an der EINEN Stelle jedes Laufs — so gelten sie auch für Wege, die
+  // nicht über die Thread-Route kommen (ZOE `head_fragen`, Skill-Testlauf, Zweite Meinung). Vorher prüfte agentLauf nur den Not-Aus für alle.
+  const sperre = await (await import('./einstellung')).laufSperre(person, head.id).catch(() => null);
+  if (sperre) return leer(sperre.grund === 'not-aus' ? 'abgebrochen' : 'wartet', sperre.text);
   if (!hasAnthropicKey()) return leer('fehler', 'Kein KI-Schlüssel hinterlegt — der Agent antwortet erst mit Schlüssel.');
   const eh = einstellung.heads[head.id] ?? {};
   const stufe: ModelTier = e.skill?.stufe ?? m?.stufe ?? eh.stufe ?? head.stufe;
@@ -344,6 +348,10 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
   const an = anhaengePruefen(a.anhaenge);
   if (!an.ok) return nein(an.status, an.fehler);
   const grenze = typeof a.kostenGrenzeCent === 'number' && Number.isFinite(a.kostenGrenzeCent) && a.kostenGrenzeCent > 0 ? Math.round(a.kostenGrenzeCent) : undefined;
+  // Gegenprüfung 09.10.: „≤ 3 offene Läufe je Person“ gilt auch für „+ Hintergrundaufgabe jetzt“ (vorher nur für Mitarbeiter und `an_head`).
+  if (a.hintergrund === true && offeneLaeufeAlle(await bestandLesen(person)) >= GRENZEN.offeneLaeufeJePerson) {
+    return nein(409, `Höchstens ${GRENZEN.offeneLaeufeJePerson} offene Läufe gleichzeitig — warte, bis einer fertig ist (oder brich einen ab).`);
+  }
   const jetzt = new Date().toISOString();
   const n: NachrichtKern = { id: neueKennung('nr'), rolle: 'person', von: person, text: t.text, zeit: jetzt, ...(an.anhaenge.length ? { anhaenge: an.anhaenge } : {}) };
 
@@ -376,6 +384,8 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
 
   const bestand = await bestandLesen(person);
   const offeneBretter = (faden.bretter ?? []).filter(b => offeneFragen(b).length);
+  // Gegenprüfung 09.10.: Fragen im Arbeitsstand, die aus fremdem Lesen kamen, machen den Zug „fremd gelesen“ (wie im Lauf, delegation.ts).
+  if (!faden.fremdGelesen && offeneBretter.some(b => b.eintraege.some(x => x.fremd))) faden = { ...faden, fremdGelesen: true };
   const laufId = neueKennung('lauf');
   const ctx = { sicht, umfang: u, origin: o.origin, hintergrund: false, modus: 'chat' as const, faden, head, mitarbeiter, einstellung, laufId };
   const e = await agentLauf({
@@ -401,6 +411,10 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
   const { kiKennzeichen } = await import('@/lib/datenschutz/ki-kennzeichnung');
   return { status: 200, body: { ok: true, faden: r.faden, stand: r.stand, antwort, stapelOffen: await stapelOffenFuer(person), ki: kiKennzeichen(), ...(e.hinweis ? { hinweis: e.hinweis } : {}) } };
 }
+
+/** Alle offenen Läufe der Person (Heads und Mitarbeiter, wartet/läuft) — ZOE läuft nicht im Hintergrund. */
+export const offeneLaeufeAlle = (b: Pick<FadenKern, 'agent' | 'lauf'>[] | { faeden: Pick<FadenKern, 'agent' | 'lauf'>[] }): number =>
+  (Array.isArray(b) ? b : b.faeden).filter(f => f.agent.art !== 'zoe' && !!f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft')).length;
 
 /** Offene Freigaben der Person im Stapel (eigene; im Haushalt auch die des Systems). */
 export async function stapelOffenFuer(person: string): Promise<number> {
