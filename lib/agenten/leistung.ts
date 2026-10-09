@@ -119,7 +119,12 @@ export function annahmeAusEntscheidungen(eintraege: readonly { typ: string; ents
 }
 
 /** Läufe, Kosten und Daumen aus Threads eines Heads im Zeitraum (rein). */
-export function fadenZahlen(faeden: readonly Faden[], headId: string, vonIso: string, bisIso: string): { laeufe: { gesamt: number; fertig: number; fehler: number; abgebrochen: number }; kostenCent: number; gemessenCent: number[]; daumen: { hoch: number; runter: number } } {
+/**
+ * Läufe, Kosten und Daumen eines Heads in den Threads im Zeitraum (rein). Die Threads messen in US-Cent (`LaufZustand.kostenCent`,
+ * `Nachricht.kosten.cent` — wie die Kostenmessung); zurück kommen EURO-Cent (`kostenEuroCent`, `gemessenEuroCent`) über den Kurs der Instanz
+ * (lib/ki/kosten.ts `inEuroCent`) — die Einheit der Budgets und Grenzen (Feinschliff 09.10.; vorher wurde US-Cent gegen Euro-Cent verglichen).
+ */
+export function fadenZahlen(faeden: readonly Faden[], headId: string, vonIso: string, bisIso: string, kurs: number = usdEurKurs(typeof process !== 'undefined' ? process.env : {})): { laeufe: { gesamt: number; fertig: number; fehler: number; abgebrochen: number }; kostenEuroCent: number; gemessenEuroCent: number[]; daumen: { hoch: number; runter: number } } {
   const laeufe = { gesamt: 0, fertig: 0, fehler: 0, abgebrochen: 0 };
   const daumen = { hoch: 0, runter: 0 };
   const gemessen: number[] = [];
@@ -132,7 +137,7 @@ export function fadenZahlen(faeden: readonly Faden[], headId: string, vonIso: st
       if (l.status === 'fertig') laeufe.fertig++;
       else if (l.status === 'fehler') laeufe.fehler++;
       else if (l.status === 'abgebrochen') laeufe.abgebrochen++;
-      if (Number.isFinite(l.kostenCent)) { kosten += l.kostenCent; if (l.status === 'fertig') gemessen.push(l.kostenCent); }
+      if (Number.isFinite(l.kostenCent)) { kosten += l.kostenCent; if (l.status === 'fertig') gemessen.push(Math.round(inEuroCent(l.kostenCent, kurs) * 100) / 100); }
     }
     for (const n of f.nachrichten) {
       if (n.zeit < vonIso || n.zeit >= bisIso) continue;
@@ -141,7 +146,7 @@ export function fadenZahlen(faeden: readonly Faden[], headId: string, vonIso: st
       if (d && d.am >= vonIso && d.am < bisIso) daumen[d.wert]++;
     }
   }
-  return { laeufe, kostenCent: Math.round(kosten * 100) / 100, gemessenCent: gemessen, daumen };
+  return { laeufe, kostenEuroCent: Math.round(inEuroCent(kosten, kurs) * 100) / 100, gemessenEuroCent: gemessen, daumen };
 }
 
 export interface HeadLeistung {
@@ -154,6 +159,7 @@ export interface HeadLeistung {
   /** Erfolgsquote je Skill (angenommen ÷ entschieden inkl. Fehler). */
   skills: { id: string; name: string; laeufe: number; quote: number | null }[];
   kosten: {
+    /** Euro-Cent (aus den gemessenen US-Cent der Threads umgerechnet, `fadenZahlen`). */
     cent: number;
     /** Kosten je Ergebnis = Kosten ÷ (fertige Läufe + angenommene Vorschläge) — null ohne Ergebnis. */
     jeErgebnisCent: number | null;
@@ -176,7 +182,7 @@ export function headLeistung(o: {
     annahme: annahmeAus(angenommen, abgelehnt),
     daumen: o.faden.daumen,
     skills: o.skills.map(s => { const n = s.erfolg.angenommen + s.erfolg.abgelehnt + s.erfolg.fehler; return { id: s.id, name: s.name, laeufe: s.erfolg.laeufe, quote: n ? s.erfolg.angenommen / n : null }; }),
-    kosten: { cent: o.faden.kostenCent, jeErgebnisCent: ergebnisse ? Math.round((o.faden.kostenCent / ergebnisse) * 100) / 100 : null },
+    kosten: { cent: o.faden.kostenEuroCent, jeErgebnisCent: ergebnisse ? Math.round((o.faden.kostenEuroCent / ergebnisse) * 100) / 100 : null },
   };
 }
 
@@ -319,13 +325,13 @@ export async function leistungFuerHead(person: string, head: HeadDef, monat?: st
   return { ...l, annahme, autonomie: autonomieLage(head, einst.heads[head.id] as HeadEinstellungMitAutonomie | undefined, annahme) };
 }
 
-/** Gemessene Kosten der letzten fertigen Läufe eines Heads (eigene Threads) — Grundlage der Schätzung. */
+/** Gemessene Kosten der letzten fertigen Läufe eines Heads (eigene Threads) in EURO-Cent — Grundlage der Schätzung (`kostenSchaetzen`). */
 export async function gemesseneKosten(person: string, headId: string): Promise<number[]> {
   const { loadJson } = await import('@/lib/store/local-db');
   const { fadenBestand } = await import('./typen');
   const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden ?? [];
   return faeden.filter(f => f.agent.art !== 'zoe' && f.agent.headId === headId && f.lauf?.status === 'fertig' && Number.isFinite(f.lauf.kostenCent))
-    .sort((a, b) => (a.lauf!.start < b.lauf!.start ? -1 : 1)).map(f => f.lauf!.kostenCent).slice(-20);
+    .sort((a, b) => (a.lauf!.start < b.lauf!.start ? -1 : 1)).map(f => inEuroCent(f.lauf!.kostenCent)).slice(-20);
 }
 
 /**

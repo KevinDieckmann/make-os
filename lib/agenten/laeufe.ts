@@ -15,6 +15,7 @@
 import { headDef } from './katalog';
 import { LAUF_AGENT, type Faden, type Hintergrundaufgabe, type Lauf, type LaufQuelle, type LaufStatus } from './typen';
 import { WEG } from '@/lib/wege';
+import { inEuroCent } from '@/lib/ki/kosten';
 
 /** Fehlertext eines von Hand abgebrochenen Auftrags in der Warteschlange — ohne Namen (die Warteschlange ist geteilt). */
 export const ABGEBROCHEN = 'Abgebrochen von Hand.';
@@ -112,7 +113,8 @@ function ausFaden(f: Faden, basis: Partial<Lauf>): Partial<Lauf> {
     status: l.status, start: l.start, ...(l.ende ? { ende: l.ende } : {}),
     ...(dauer(l.start, l.ende) !== undefined ? { dauerMs: dauer(l.start, l.ende) } : {}),
     ...(l.schritte.length ? { schritte: { gesamt: l.schritte.length, fertig: l.schritte.filter(s => s.status === 'fertig' || s.status === 'uebersprungen').length, ...(l.schritte.find(s => s.status === 'laeuft') ? { aktuell: l.schritte.find(s => s.status === 'laeuft')!.titel } : {}) } } : {}),
-    kosten: { cent: l.kostenCent, ...(l.kostenGrenzeCent ? { grenzeCent: l.kostenGrenzeCent } : {}) },
+    // Euro-Cent wie die Grenze (der Thread misst US-Cent — umgerechnet über lib/ki/kosten.ts, Feinschliff 09.10.).
+    kosten: { cent: Math.round(inEuroCent(l.kostenCent) * 100) / 100, ...(l.kostenGrenzeCent ? { grenzeCent: l.kostenGrenzeCent } : {}) },
     fadenId: f.id, link: WEG.agenten({ f: f.id }),
   };
 }

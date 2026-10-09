@@ -355,7 +355,7 @@ export async function kostenHeadMonat(head: Pick<HeadDef, 'id' | 'ebene'>, perso
     const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden ?? [];
     const [j, m] = monat.split('-').map(Number);
     const von = new Date(Date.UTC(j, m - 1, 1)).toISOString(), bis = new Date(Date.UTC(m === 12 ? j + 1 : j, m === 12 ? 0 : m, 1)).toISOString();
-    return fadenZahlen(faeden, head.id, von, bis).kostenCent;
+    return fadenZahlen(faeden, head.id, von, bis).kostenEuroCent;
   }
   return (await kostenJeHeadMonat(jetzt))[head.id] ?? 0;
 }

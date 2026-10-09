@@ -30,12 +30,15 @@ const VORSCHLAG = 'Im Agenten-Bereich wirkt das nur als VORSCHLAG im Freigabe-St
 const firmen = () => BUSINESS_GESELLSCHAFTEN.map(g => `${g} = ${finanzOrtName(g)}`).join(', ');
 
 /** Felder, die im Agenten-Bereich der Head festlegt (`eingabeImBereich`) — sie stehen dort gar nicht erst im Schema. */
-const FEST_IM_BEREICH: Readonly<Record<string, readonly string[]>> = { create_task: ['wer', 'space', 'einheit'], setze_fokus: ['space'], gesundheits_index: ['person'] };
+const FEST_IM_BEREICH: Readonly<Record<string, readonly string[]>> = { create_task: ['wer', 'space', 'einheit'], setze_fokus: ['space'], gesundheits_index: ['person'], meine_aufgaben: ['space'], projekt_unterlagen: ['space'], datei_lesen: ['space'] };
 /** Werkzeuge mit einer Gesellschaft — im Agenten-Bereich nur die Business-Gesellschaften (die Selbstständigkeit gehört zu Privat). */
 const MIT_FIRMA = new Set(['erfasse_planposten', 'setze_kontostand', 'erfasse_rechnung']);
 const ZUSATZ: Readonly<Record<string, string>> = {
   lies_postfach: 'Im Agenten-Bereich: nur die Postfächer im Bereich dieses Heads.',
   suche_arbeit: 'Im Agenten-Bereich: nur Bestände im Bereich dieses Heads.',
+  meine_aufgaben: 'Im Agenten-Bereich: nur Aufgaben im Bereich dieses Heads.',
+  projekt_unterlagen: 'Im Agenten-Bereich: nur Projekte und Aufgaben im Bereich dieses Heads.',
+  datei_lesen: 'Im Agenten-Bereich: nur Dateien im Bereich dieses Heads.',
   gesundheits_index: 'Im Agenten-Bereich: nur die eigenen Werte der Person — Wellness, keine Diagnose.',
 };
 
@@ -173,8 +176,14 @@ export function eingabeImBereich(name: string, input: Record<string, unknown>, h
   if (name === 'create_task') { e.space = head.bereich; delete e.wer; if (head.bereich === 'privat') delete e.einheit; }
   if (name === 'setze_fokus') e.space = head.bereich;
   if (name === 'gesundheits_index') delete e.person;
+  // Feinschliff 09.10.: Aufgaben-Leser ohne eigenen Bereich — wie `lies_postfach`/`suche_arbeit` nur im Bereich des Heads (z. B. Operations nur
+  // Business). Das Werkzeug filtert serverseitig über `space`; was das Modell dort angibt, gilt nicht.
+  if (BEREICH_IN_EINGABE.has(name)) e.space = head.bereich;
   return e;
 }
+
+/** Lesende Werkzeuge, die den Bereich als Eingabe `space` nehmen (der Kern setzt ihn fest auf den des Heads). */
+export const BEREICH_IN_EINGABE: ReadonlySet<string> = new Set(['meine_aufgaben', 'projekt_unterlagen', 'datei_lesen']);
 
 /** Lesende Werkzeuge, die der Kern selbst auf den Bereich beschränkt (statt des ZOE-Lesers über alle Bereiche). */
 export const BEREICHS_LESER = new Set(['lies_postfach', 'suche_arbeit']);

@@ -172,6 +172,7 @@ export interface Nachricht {
   anhaenge?: Anhang[];
   /** KI-VO Art. 50: Text ist von einem KI-System erzeugt (Oberfläche: `<KiMarke />`). */
   ki?: true;
+  /** Gemessene Kosten dieser Antwort in US-CENT (wie `ki-verbrauch`) — angezeigt und verglichen nur über `inEuroCent` (lib/ki/kosten.ts). */
   kosten?: { cent: number };
   /**
    * Daumen der Besitzerin (Paket 4b, Aktion `bewerten` der Thread-Route) — an Agenten-Antworten und Berichten. Nur Metadaten:
@@ -200,8 +201,12 @@ export interface LaufZustand {
   schritte: LaufSchritt[];
   start: string;
   ende?: string;
+  /**
+   * Gemessene Kosten des Laufs in US-CENT (die Schleife misst wie `ki-verbrauch`). Einheiten seit dem Feinschliff 09.10. ausdrücklich:
+   * Grenzen/Budgets sind Euro-Cent — umgerechnet NUR über lib/ki/kosten.ts (`inEuroCent` / `inUsdCent`, Kurs der Instanz).
+   */
   kostenCent: number;
-  /** Kostengrenze je Aufgabe (Antwort 8) — erreicht → Lauf hält an, Status `fehler` mit Grund. */
+  /** Kostengrenze je Aufgabe (Antwort 8) in EURO-Cent — erreicht → Lauf hält an, Status `fehler` mit Grund. */
   kostenGrenzeCent?: number;
   fehler?: string;
   /** Wer abgebrochen hat (Speichername aus der Sitzung). */
@@ -543,6 +548,7 @@ export interface Lauf {
   ende?: string;
   dauerMs?: number;
   schritte?: { gesamt: number; fertig: number; aktuell?: string };
+  /** Beides EURO-Cent (das Lesemodell rechnet die gemessenen US-Cent des Threads um, lib/agenten/laeufe.ts). */
   kosten?: { cent: number; grenzeCent?: number };
   /** Über `WEG` gebaut, nie von Hand. */
   link: string;

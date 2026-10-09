@@ -197,7 +197,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       }
       case 'prospect': {
         const st = await get('/api/state/prospects');
-        const liste = (st?.state?.prospects ?? st?.prospects ?? []) as { company?: string; score?: number }[];
+        const liste = (st?.state?.prospects ?? st?.prospects ?? []) as { id?: string; company?: string; score?: number; stand?: string }[];
         const offen = liste.filter(p => p.score == null).slice(0, 5);
         if (!offen.length) return gut(`PROSPECTING: alle ${liste.length} Firmen sind bereits bewertet.`);
         const icp = String(st?.state?.icp ?? st?.icp ?? '');
@@ -206,15 +206,22 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
           const e = ergebnisse[i] as { score?: number; fit?: string } | null;
           return e?.score != null ? `• ${p.company}: ${e.score}/100 — ${kuerze(e.fit, 90)}` : `• ${p.company}: nicht bewertbar`;
         });
-        // „Die Werte stehen in der Zielliste“ stimmte bis 27.09. nicht — die Route bewertet nur, gespeichert hat bisher allein der Browser.
-        let gespeichert = 0;
-        try {
-          const frisch = await get('/api/state/prospects');
-          const alle = (frisch?.state?.prospects ?? []) as Record<string, unknown>[];
-          const neu = alle.map(p => { const i = offen.findIndex(o => o.company === p.company); const e = i >= 0 ? ergebnisse[i] as { score?: number; fit?: string; angle?: string } | null : null; if (!e || e.score == null) return p; gespeichert++; return { ...p, score: e.score, fit: e.fit ?? '', angle: e.angle ?? '', bewertet: new Date().toISOString() }; });
-          if (gespeichert) await fetch(`${origin}/api/state/prospects`, { method: 'PUT', headers: H, body: JSON.stringify({ icp: String(frisch?.state?.icp ?? icp), prospects: neu }), signal: AbortSignal.timeout(30_000) });
-        } catch { gespeichert = 0; }
-        return gut(`PROSPECTING — ${offen.length} von ${liste.length} bewertet:\n${zeilen.join('\n')}\n(${gespeichert ? `${gespeichert} Werte in der Zielliste gespeichert.` : 'Speichern in die Zielliste nicht gelungen — Werte oben.'})`);
+        // Feinschliff 09.10.: Einzeländerungen MIT Stand (PATCH, Woche 2 · 1.14) statt die ganze Liste zurückzuschreiben (PUT) — hat jemand die
+        // Zeile seit dem Lesen geändert, lehnt die Route ab (409) und nichts wird überschrieben; die Werte stehen dann nur hier im Ergebnis.
+        const ops = offen.flatMap((p, i) => {
+          const e = ergebnisse[i] as { score?: number; fit?: string; angle?: string } | null;
+          if (!e || e.score == null || typeof p.id !== 'string' || typeof p.stand !== 'string') return [];
+          return [{ op: 'teil', id: p.id, stand: p.stand, felder: { score: e.score, fit: e.fit ?? '', angle: e.angle ?? '' } }];
+        });
+        let gespeichert = 0, konflikt = false;
+        if (ops.length) {
+          try {
+            const r = await fetch(`${origin}/api/state/prospects`, { method: 'PATCH', headers: H, body: JSON.stringify({ ops }), signal: AbortSignal.timeout(30_000) });
+            if (r.ok) gespeichert = ops.length; else konflikt = r.status === 409;
+          } catch { gespeichert = 0; }
+        }
+        const fuss = gespeichert ? `${gespeichert} Werte in der Zielliste gespeichert.` : konflikt ? 'Nicht gespeichert: die Zielliste wurde inzwischen geändert — Werte oben, bitte neu bewerten lassen.' : 'Speichern in die Zielliste nicht gelungen — Werte oben.';
+        return gut(`PROSPECTING — ${offen.length} von ${liste.length} bewertet:\n${zeilen.join('\n')}\n(${fuss})`);
       }
       case 'planung': {
         const mo = new Date(); mo.setDate(mo.getDate() - ((mo.getDay() + 6) % 7));
@@ -474,18 +481,14 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
 }
 
 // ── Markttraktion im Takt (25.09.) ─────────────────────────────────────────
-// Was der Lauf „markttraktion“ tut: für jede fällige Person (Team, Konto,
-// mit Boten) den Text bauen (lib/crm/scoreboard.ts — morgenText werktags,
-// wochenText freitags), über den Boten schicken (ZOE auf WhatsApp, sonst Telegram) und den Riegel setzen. Die
-// Nachricht geht an Kevin oder Malin selbst, nie an Kunden; sie trägt nur
-// Zahlen, keine Beträge und keine Namen von Kontakten. Nicht zugestellt →
-// ein Fehlversuch, nach drei ist für den Tag Ruhe (kein Minutentakt).
-// Ein Slot als Auftrag („woche“, „morgen person:malin“) schickt sofort —
-// für ZOE auf Zuruf.
+// Was der Lauf „markttraktion“ tut: für jede fällige Person (Team, Konto) den Text bauen (lib/crm/scoreboard.ts — morgenText werktags,
+// wochenText freitags) und über den EINEN Sendeweg `anPersonMelden` schicken (ZOE auf WhatsApp, sonst Telegram — und seit dem Feinschliff
+// 09.10. ohne Boten-Kanal die Glocke), dann den Riegel setzen. Die Nachricht geht an Personen des Teams selbst, nie an Kunden. Zahlen nur mit
+// der Ausnahme der Person (`inhalteErlaubtFuer` — WhatsApp „Inhalte senden“, sonst Telegram „vollständig“), sonst ein neutraler Hinweis mit
+// Link (Telegram-Regel, Woche 2 · 7.3). Nicht zugestellt → ein Fehlversuch, nach drei ist für den Tag Ruhe (kein Minutentakt).
+// Ein Slot als Auftrag („woche“, „morgen person:<speicher>“) schickt sofort — für ZOE auf Zuruf.
 async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: string): Promise<AgentLauf> {
-  // EIN Sendeweg (08.10.): ZOE auf WhatsApp, sonst Telegram (lib/zoe/an-person.ts).
-  const { anPersonMelden, botenEingerichtet, botenKanalFuer } = await import('./an-person');
-  if (!(await botenEingerichtet())) return fehl('Kein Bote eingerichtet (ZOE auf WhatsApp oder Telegram) — die Markttraktion hat keinen Weg aufs Handy.');
+  const { anPersonMelden, inhalteErlaubtFuer } = await import('./an-person');
   const { loadJson, updateJson } = await import('@/lib/store/local-db');
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const { alleSpeicher } = await import('@/lib/zugang/konten');
@@ -495,8 +498,8 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: s
 
   const heute = localDay(jetzt);
   const [mitKonto, riegel] = await Promise.all([alleSpeicher(), loadJson<unknown>(S.RHYTHMUS_SPEICHER)]);
-  const personen: string[] = [];
-  for (const p of TEAM.map(t => t.id)) if (mitKonto.includes(p) && (await botenKanalFuer(p)) !== null) personen.push(p);
+  // Jede Person im Team mit Konto — ohne Boten-Kanal bekommt sie die Glocke (vorher fiel sie ganz heraus).
+  const personen = TEAM.map(t => t.id).filter(p => mitKonto.includes(p));
   const zwang = S.RHYTHMUS_SLOTS.find(s => new RegExp(`(^|\\s)${s}(\\s|$)`).test(auftrag.trim()));
   // Sofort-Versand nur an die Person des Laufs; „person:x“ im Text gilt nur für den Takt (26.09.).
   const nur = person ?? /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
@@ -506,16 +509,19 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: s
   const dran = zwang
     ? personen.filter(p => !nur || p === nur).map(person => ({ person, slot: zwang }))
     : S.faelligeRhythmen(S.rhythmusStand(riegel), await nichtBusinessFrei(personen, jetzt), jetzt);
-  if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team hat einen Boten (ZOE auf WhatsApp oder Telegram).');
+  if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team hat ein Konto.');
 
   // Art. 18 zentral (29.09., #72): eingeschränkte Personen stehen nie in der Morgen-/Wochennachricht.
   const [kontakte, crm] = await Promise.all([(await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung(), ladeCrm()]);
-  const o = { adresse: aussenAdresse() };
+  const adresse = aussenAdresse();
   const ergebnisse: { person: string; slot: typeof dran[number]['slot']; ok: boolean; zeile: string }[] = [];
   for (const { person, slot } of dran) {
+    // Inhalte (Zahlen) nur mit der Ausnahme DES Kanals, der genutzt wird — ohne Kanal (Glocke) gilt die Vorgabe: neutral.
+    const o = { adresse, inhalte: await inhalteErlaubtFuer(person).catch(() => false) };
     const text = slot === 'morgen' ? S.morgenText(person, kontakte, crm, heute, o) : S.wochenText(person, kontakte, crm, heute, o);
-    const r = await anPersonMelden(person, slot === 'morgen' ? 'markttraktion' : 'rueckblick', text, { link: '/os/markttraktion' });
-    ergebnisse.push({ person, slot, ok: r.erreicht > 0, zeile: `${nameVon(person)} · ${slot === 'morgen' ? 'Morgen' : 'Wochen-Scoreboard'}: ${r.erreicht > 0 ? 'gesendet' : r.fehler ?? 'nicht zugestellt'}` });
+    const r = await anPersonMelden(person, slot === 'morgen' ? 'markttraktion' : 'rueckblick', text, { link: S.MARKTTRAKTION_PFAD, glocke: true });
+    const zugestellt = r.erreicht > 0 || r.kanal === 'glocke';
+    ergebnisse.push({ person, slot, ok: zugestellt, zeile: `${nameVon(person)} · ${slot === 'morgen' ? 'Morgen' : 'Wochen-Scoreboard'}: ${r.kanal === 'glocke' ? 'Glocke' : zugestellt ? 'gesendet' : r.fehler ?? 'nicht zugestellt'}` });
   }
   await updateJson<unknown>(S.RHYTHMUS_SPEICHER, cur => ergebnisse.reduce((s, e) => S.markiereRhythmus(s, e.person, e.slot, heute, e.ok), S.rhythmusStand(cur)));
   return gut(`MARKTTRAKTION: ${ergebnisse.map(e => e.zeile).join(' · ')}`);

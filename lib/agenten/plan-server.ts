@@ -29,12 +29,18 @@ export async function planLesen(person: string): Promise<{ aufgaben: Hintergrund
   return { aufgaben, staende: Object.fromEntries(aufgaben.map(a => [a.id, standVon(a)])) };
 }
 
-/** Der Agent einer Aufgabe: ZOE, ein sichtbarer Head oder ein Mitarbeiter dieses Heads — mit der Modellstufe für die Schätzung. */
+/**
+ * Grund, warum eine Hintergrundaufgabe nicht bei ZOE liegen kann (Feinschliff 09.10.): ein ZOE-Thread läuft nicht im Hintergrund — ZOE antwortet im
+ * Gespräch und beauftragt dort einen Head (`an_head`). Vorher ließ sich so eine Aufgabe planen und lief dann nie (der Lauf lehnte mit 409 ab).
+ */
+export const ZOE_NICHT_GEPLANT = 'Eine Hintergrundaufgabe läuft bei einem Head oder einem seiner Mitarbeiter — ZOE arbeitet im Gespräch (dort kann sie die Aufgabe an einen Head geben). Bitte einen Head wählen.';
+
+/** Der Agent einer Aufgabe: ein sichtbarer Head oder ein Mitarbeiter dieses Heads — mit der Modellstufe für die Schätzung. ZOE → 400. */
 async function agentPruefen(person: string, roh: unknown): Promise<Ergebnis<{ agent: AgentRef; stufe: ModelTier; headId: string | null }>> {
-  if (!roh || typeof roh !== 'object') return fehler(400, 'Wer soll es tun? ZOE, ein Head oder ein Mitarbeiter.');
+  if (!roh || typeof roh !== 'object') return fehler(400, 'Wer soll es tun? Ein Head oder ein Mitarbeiter.');
   const a = roh as Record<string, unknown>;
-  if (a.art === 'zoe') return { ok: true, agent: { art: 'zoe' }, stufe: 'ausgewogen', headId: null };
-  if ((a.art !== 'head' && a.art !== 'mitarbeiter') || typeof a.headId !== 'string') return fehler(400, 'Wer soll es tun? ZOE, ein Head oder ein Mitarbeiter.');
+  if (a.art === 'zoe') return fehler(400, ZOE_NICHT_GEPLANT);
+  if ((a.art !== 'head' && a.art !== 'mitarbeiter') || typeof a.headId !== 'string') return fehler(400, 'Wer soll es tun? Ein Head oder ein Mitarbeiter.');
   const head = headDef(a.headId);
   if (!head) return fehler(404, 'Diesen Head gibt es nicht.');
   if (!(await headSichtbar(person, head.id))) return fehler(403, 'Diesen Head siehst du nicht.');

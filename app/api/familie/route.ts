@@ -14,9 +14,9 @@ import { updateJson } from '@/lib/store/local-db';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { familieName, ladeFamilie, wendeFamilieAn, setzeFelder, startBestand } from '@/lib/familie/speicher';
-import { pflegeRhythmus, naechstesGespraech, wichtigeTage, kontaktFaellig, sichtFuer, agendaVorbereiten } from '@/lib/familie/logik';
+import { pflegeRhythmus, naechstesGespraech, wichtigeTage, kontaktFaellig, agendaVorbereiten, familieFuerPerson } from '@/lib/familie/logik';
 import { LOVEMAP_FRAGEN } from '@/lib/familie/katalog';
-import { LISTEN, type Familie } from '@/lib/familie/typen';
+import type { Familie } from '@/lib/familie/typen';
 import { VisionVerboten } from '@/lib/familie/vision';
 import type { ListenOp } from '@/lib/sync';
 import { ladeKonten } from '@/lib/zugang/konten';
@@ -28,13 +28,9 @@ export const dynamic = 'force-dynamic';
 
 const KEIN = { ok: false, fehler: 'Familie & Partnerschaft gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter System → Konto frei.' };
 
-function sicht(f: Familie, person: string): Familie {
-  const s = { ...f } as Familie & Record<string, unknown>;
-  for (const l of LISTEN) (s as Record<string, unknown>)[l] = sichtFuer(f[l] as unknown as { von: string; sichtbarkeit?: string }[], person);
-  // Reparatur: fremde Reflexionen erst, wenn sie geteilt sind.
-  s.reparaturen = s.reparaturen.map(r => ({ ...r, reflexionen: r.reflexionen.filter(x => x.person === person || x.geteilt) }));
-  return s;
-}
+// Sicht der Person: die EINE Filterstelle des Familien-Moduls (`familieFuerPerson`, lib/familie/logik.ts) — dieselbe liest der
+// Agenten-Kontext des Heads „Familie & Partnerschaft“.
+const sicht = familieFuerPerson;
 
 /** Wer gehört zum Haushalt — für Namen und die Wahl „wer plant, wer trägt“. */
 async function mitglieder(haushalt: string) {

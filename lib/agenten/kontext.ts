@@ -7,7 +7,9 @@
 //               privatem Finanzzugang (`KontoSicht.privatFinanzen`).
 //   hoi         IT: das Lagebild aus Zählern (lib/hoi) — nie Personen, Adressen, Inhalte.
 //   brain       alle anderen: Ausschnitte von `gatherBrain` NUR in den aktiven KI-Kategorien des Heads (Aufgaben nur im Bereich des
-//               Heads; Termine nur bei Privat-Heads — Business-Heads fragen `freie_zeit`, das nur Zeiten liefert).
+//               Heads; Termine nur bei Privat-Heads — Business-Heads fragen `freie_zeit`, das nur Zeiten liefert). Seit dem Feinschliff
+//               (09.10.) dazu Familie (`familienTeil` → lib/familie/logik.ts `familieAuszug`) und Ernährung (`ernaehrungTeil` →
+//               `profileFuerBetrachter`) — je über die EINE Filterstelle ihres Moduls.
 // Ein Recherche-Mitarbeiter mit Web-Agent bekommt KEIN Datenpaket (Map-Reduce, R9: nie Websuche und private Daten im selben Lauf).
 // Alles steht in einem Daten-Rahmen; Text Dritter gekapselt. `fremd`/`vertraulich` gehen an den Thread (gespraech-schutz-Regeln).
 
@@ -119,8 +121,83 @@ async function brainKontext(head: HeadDef, person: string, kats: Set<KiKategorie
     const p = await datenschutzPunkte(heute).catch(() => null);
     if (p) teile.push(daten('datenschutz', p));
   }
+  // Feinschliff 09.10.: Familie und Ernährung bekommen ihren Bestand — je über die EINE Filterstelle ihres Moduls.
+  let hinweis: string | undefined;
+  if (head.id === 'familie') {
+    const t = await familienTeil(person, heute, kats);
+    if (t.text) { teile.push(t.text); genutzt.add('familie'); vertraulich = true; fremd = true; }
+    hinweis = t.hinweis;
+  }
+  if (head.id === 'ernaehrung') {
+    const t = await ernaehrungTeil(person, kats);
+    if (t.text) { teile.push(t.text); fremd = true; vertraulich = true; if (t.gesundheit) genutzt.add('gesundheit'); }
+  }
   teile.push(blockZiele(b));
-  return { text: `KONTEXT DES BEREICHS (nur lesen):\n${teile.filter(Boolean).join('\n\n')}`, kategorien: Array.from(genutzt), fremd, vertraulich };
+  return { text: `KONTEXT DES BEREICHS (nur lesen):\n${teile.filter(Boolean).join('\n\n')}`, kategorien: Array.from(genutzt), fremd, vertraulich, ...(hinweis ? { hinweis } : {}) };
+}
+
+/**
+ * Familie & Partnerschaft: der Bestand `familie--<haushalt>` der Person — NUR über `familieAuszug` (lib/familie/logik.ts → `familieFuerPerson`:
+ * „nur ich“ und ungeteilte Reflexionen der anderen Person nie; nur Titel, Datum, Art, Status — nie Gefühle oder Reflexionstexte).
+ * An die KI nur, wenn der Bereich „Familie“ an ist UND ein Weg mit der Mindeststufe (EU, lib/ki/anbieter.ts) offen — sonst bleibt der
+ * Auszug draußen und der Head sagt es (statt dass der ganze Aufruf gesperrt wird). Lesen schreibt nie (kein Startbestand).
+ */
+export async function familienTeil(person: string, heute: string, kats: ReadonlySet<KiKategorie>): Promise<{ text: string; hinweis?: string }> {
+  if (!kats.has('familie')) return { text: '', hinweis: 'Familie & Partnerschaft ist für die KI ausgeschaltet (System › Datenschutz) — der Head sieht die Einträge nicht.' };
+  const { kategorienMoeglich } = await import('@/lib/ki/tor');
+  if (!(await kategorienMoeglich(['familie']).catch(() => false))) return { text: '', hinweis: 'Familien-Einträge gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (System › Datenschutz › KI).' };
+  const [{ haushaltFuer }, { loadJson }, { familieName, startBestand }, { familieAuszug }] = await Promise.all([
+    import('@/lib/finanzen/haushalt/zugriff'), import('@/lib/store/local-db'), import('@/lib/familie/speicher'), import('@/lib/familie/logik'),
+  ]);
+  const h = await haushaltFuer(person);
+  if (!h) return { text: '', hinweis: 'Familie & Partnerschaft gibt es nur für Konten mit Haushalt.' };
+  const roh = await loadJson<import('@/lib/familie/typen').Familie>(familieName(h.haushalt));
+  if (!roh) return { text: daten('familie', 'Noch nichts eingetragen.') };
+  const a = familieAuszug({ ...startBestand(new Date().toISOString()), ...roh }, person, heute);
+  return { text: `FAMILIE & PARTNERSCHAFT (nur Titel, Datum, Art — nie Gefühle):\n${daten('familie', a.text)}` };
+}
+
+/**
+ * Ernährung & Einkauf: Plan, Einkaufsliste und gespeicherte Gerichte (gemeinsam im Haushalt). Profile NUR über `profileFuerBetrachter`
+ * (eigene, Gäste, und fremde nur, wenn die Person ihre Gesundheit teilt) und dann `profilFuerKi`: mit der Kategorie Gesundheit ((a)+(b) der
+ * fragenden Person) und der Einwilligung der Profil-Inhaberin (eigene (b), fremde (b)+(c)+Teilen — `gesundheitFuerZoe`) vollständig, sonst
+ * nur Küchenregeln („nie“). Profile ohne Namen (eigenes / geteilt / Gast) — Vorschläge bleiben personenneutral.
+ */
+export async function ernaehrungTeil(person: string, kats: ReadonlySet<KiKategorie>): Promise<{ text: string; gesundheit: boolean }> {
+  const [{ loadJson }, M, { profilFuerKi }, { kontoFuerSpeicher }] = await Promise.all([
+    import('@/lib/store/local-db'), import('@/lib/ernaehrung/modell'), import('@/lib/datenschutz/gesundheit-ki'), import('@/lib/zugang/konten'),
+  ]);
+  const f = M.sauberDatei(await loadJson<import('@/lib/ernaehrung/modell').ErnaehrungFile>('ernaehrung'));
+  const fremde = Array.from(new Set(f.profile.filter(p => p.konto && p.person !== person).map(p => p.person)));
+  const teilt = new Set<string>();
+  for (const p of fremde) if ((await kontoFuerSpeicher(p).catch(() => null))?.teilt?.gesundheit?.includes(person)) teilt.add(p);
+  const sichtbar = M.profileFuerBetrachter(f.profile, person, teilt);
+  let gesundheit = false;
+  const profile: string[] = [];
+  let gast = 0;
+  for (const p of sichtbar) {
+    let frei = false;
+    if (p.konto && kats.has('gesundheit')) {
+      const { gesundheitFuerZoe } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+      frei = await gesundheitFuerZoe(p.person, person).catch(() => false);
+    }
+    const x = profilFuerKi(p, frei);
+    if (frei && (x.bedarf || x.ziel || x.unvertraeglich.length)) gesundheit = true;
+    const wer = !p.konto ? `Gast ${++gast}` : p.person === person ? 'eigenes Profil' : 'geteiltes Profil (weitere Person im Haushalt)';
+    const teile = [x.bedarf ? `Bedürfnisse: ${x.bedarf}` : '', x.unvertraeglich.length ? `verträgt nicht: ${x.unvertraeglich.join(', ')}` : '', x.nie.length ? `nie: ${x.nie.join(', ')}` : '', x.gern.length ? `gern: ${x.gern.join(', ')}` : '', x.ziel ? `Ziel: ${x.ziel}` : ''].filter(Boolean);
+    if (teile.length) profile.push(`- ${wer}: ${teile.join(' · ')}`);
+  }
+  const tage = Object.entries(f.plan).filter(([, m]) => Object.values(m ?? {}).some(Boolean)).map(([t, m]) => `- ${t}: ${Object.entries(m ?? {}).filter(([, v]) => v).map(([k, v]) => `${k} ${String(v).slice(0, 60)}`).join(' · ')}`);
+  const einkauf = f.einkauf.filter(e => !e.erledigt).slice(0, 40).map(e => `- ${e.text.slice(0, 60)}${e.menge ? ` (${e.menge.slice(0, 20)})` : ''}`);
+  const gerichte = f.gerichte.slice().sort((a, b) => Number(b.favorit) - Number(a.favorit)).slice(0, 30).map(g => `- ${g.favorit ? '★ ' : ''}${g.name.slice(0, 60)}${g.tags.length ? ` [${g.tags.slice(0, 3).join(', ')}]` : ''}`);
+  const text = [
+    f.grundsaetze ? `Grundsätze: ${f.grundsaetze.slice(0, 600)}` : '',
+    `Wochenplan:\n${tage.join('\n') || 'leer'}`,
+    `Einkaufsliste (offen):\n${einkauf.join('\n') || 'leer'}`,
+    `Gespeicherte Gerichte:\n${gerichte.join('\n') || 'keine'}`,
+    profile.length ? `Profile (personenneutral — nenne in Vorschlägen keine Person):\n${profile.join('\n')}` : '',
+  ].filter(Boolean).join('\n\n');
+  return { text: `ERNÄHRUNG & EINKAUF (gemeinsam im Haushalt):\n${daten('ernaehrung', text)}`, gesundheit };
 }
 
 /** Datenschutz-Selbstprüfung (offene Punkte) für den Head Recht & Datenschutz — nur Titel, Status, Befund (keine Personen). */
@@ -137,12 +214,24 @@ async function datenschutzPunkte(heute: string): Promise<string> {
 
 // ── Kennzahlen im Kopf des Heads ────────────────────────────────────────────────────────────────────────────────────────
 
+type Werte = Map<string, { anzeige: string | null; ampel: KennzahlWert['ampel'] }>;
+/** Kennzahl → Anzeige + Ampel aus einem Index des gemeinsamen Kerns (lib/kennzahlen/kern.ts) — nie eine eigene Rechnung. */
+const werteAus = (idx: { saeulen: readonly { kennzahlen: readonly { id: string; anzeige: string | null; ampel: KennzahlWert['ampel'] }[] }[] }): Werte => {
+  const m: Werte = new Map();
+  for (const s of idx.saeulen) for (const k of s.kennzahlen) m.set(k.id, { anzeige: k.anzeige, ampel: k.ampel });
+  return m;
+};
+
 /**
- * Die Kennzahlen eines Heads mit Beschriftung — Werte aus dem Business-Index (gerechnet wie das Cockpit, gemerkt); die anderen
- * Indizes (Traktion, Privat, Gesundheit) liefern hier vorerst nur die Beschriftung (`wert: null`, Ampel grau) — ihre Werte stehen
- * auf ihren Seiten. Gesundheit nur bei Heads mit der Kategorie (Katalog-Wächter) und damit nur für die Person selbst.
+ * Die Kennzahlen eines Heads mit Beschriftung — Werte aus den vorhandenen Indizes, je gemerkt (`merken`), gerechnet wie auf ihren Seiten:
+ *   business    Business-Index (Gesamt, wie das Cockpit)
+ *   traktion    Traktions-Index (Sales · Marketing · Event, wie der Markttraktion-Überblick) — nur im Haushalt des Inhabers
+ *   privat      Privat-Index des Haushalts — NUR mit privatem Finanzzugang (`KontoSicht.privatFinanzen`)
+ *   gesundheit  Gesundheits-Index der EIGENEN Person — NUR mit Einwilligung (a) „verarbeiten“ (der Head gehört der Person; geteilt kommt
+ *               im Kopf nicht vor, die Ansicht einer anderen Person zeigt diesen Head gar nicht)
+ * Was nicht darf oder nicht lesbar ist: Wert fehlt (`wert: null`, grau) — nie ein Fehler der ganzen Antwort.
  */
-export async function kennzahlWerte(head: HeadDef, person: string): Promise<KennzahlWert[]> {
+export async function kennzahlWerte(head: HeadDef, sicht: KontoSicht): Promise<KennzahlWert[]> {
   if (!head.kennzahlen.length) return [];
   const [{ KENNZAHL }, { TRAKTION_KENNZAHLEN }, { PRIVAT_KENNZAHLEN }, { GESUNDHEIT_KENNZAHLEN }] = await Promise.all([
     import('@/lib/business/register'), import('@/lib/crm/traktion-index'), import('@/lib/privat/index'), import('@/lib/gesundheit/index'),
@@ -151,22 +240,56 @@ export async function kennzahlWerte(head: HeadDef, person: string): Promise<Kenn
     : index === 'traktion' ? TRAKTION_KENNZAHLEN.find(k => k.id === id)?.label
       : index === 'privat' ? PRIVAT_KENNZAHLEN.find(k => k.id === id)?.label
         : GESUNDHEIT_KENNZAHLEN.find(k => k.id === id)?.label) ?? id;
-  let business: Map<string, { anzeige: string | null; ampel: KennzahlWert['ampel'] }> | null = null;
-  if (head.kennzahlen.some(k => k.index === 'business')) business = await businessWerte(person).catch(() => null);
+  const braucht = (i: string) => head.kennzahlen.some(k => k.index === i);
+  const quellen: Partial<Record<string, Werte | null>> = {};
+  if (braucht('business')) quellen.business = await businessWerte(sicht.person).catch(() => null);
+  if (braucht('traktion') && sicht.imHaushalt) quellen.traktion = await traktionWerte().catch(() => null);
+  if (braucht('privat') && sicht.privatFinanzen) quellen.privat = await privatWerte(sicht.person).catch(() => null);
+  if (braucht('gesundheit') && sicht.imHaushalt && sicht.gesundheit.verarbeiten) quellen.gesundheit = await gesundheitWerte(sicht.person).catch(() => null);
   return head.kennzahlen.map(k => {
-    const w = k.index === 'business' ? business?.get(k.id) : undefined;
+    const w = quellen[k.index]?.get(k.id);
     return { id: `${k.index}:${k.id}`, label: label(k.index, k.id), wert: w?.anzeige ?? null, ampel: w?.ampel ?? 'grau' };
   });
 }
 
-async function businessWerte(person: string): Promise<Map<string, { anzeige: string | null; ampel: KennzahlWert['ampel'] }>> {
+async function businessWerte(person: string): Promise<Werte> {
   const { merken } = await import('@/lib/store/memo');
   return merken(`agenten-kennzahlen-business:${person}`, 60_000, async () => {
     const [{ ladeRoh, bestandFuer }, { berechne }, { zeitBildFuer }] = await Promise.all([import('@/lib/business/speicher'), import('@/lib/business/index'), import('@/lib/zeitmessung/speicher')]);
     const zeit = await zeitBildFuer(person).catch(() => null);
-    const bi = berechne(bestandFuer(await ladeRoh(), 'gesamt', zeit));
-    const m = new Map<string, { anzeige: string | null; ampel: KennzahlWert['ampel'] }>();
-    for (const s of bi.saeulen) for (const k of s.kennzahlen) m.set(k.id, { anzeige: k.anzeige, ampel: k.ampel });
-    return m;
+    return werteAus(berechne(bestandFuer(await ladeRoh(), 'gesamt', zeit)));
+  });
+}
+
+/** Traktions-Index wie der Markttraktion-Überblick (dieselbe Funktion, dieselben Schwellen, ganze Kartei — es wird nur gezählt). */
+async function traktionWerte(): Promise<Werte> {
+  const [{ merken }, { localDay }] = await Promise.all([import('@/lib/store/memo'), import('@/lib/zeit')]);
+  const heute = localDay();
+  return merken(`agenten-kennzahlen-traktion:${heute}`, 60_000, async () => {
+    const [{ kontakteFuerVerarbeitung }, { ladeCrm }, { traktionsIndex, ersterLauf }, { ladeIndexDatei }] = await Promise.all([
+      import('@/lib/crm/verarbeitung'), import('@/lib/crm/speicher'), import('@/lib/crm/traktion-index'), import('@/lib/kennzahlen/speicher'),
+    ]);
+    const [kontakte, crm, datei] = await Promise.all([kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), ladeCrm(), ladeIndexDatei('traktion-index')]);
+    return werteAus(traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, ersterLauf: ersterLauf(datei, heute) }));
+  });
+}
+
+/** Privat-Index des Haushalts der Person (nur rechnen, nichts schreiben — `privatIndexFuer`). */
+async function privatWerte(person: string): Promise<Werte | null> {
+  const [{ merken }, { haushaltFuer }] = await Promise.all([import('@/lib/store/memo'), import('@/lib/finanzen/haushalt/zugriff')]);
+  const h = await haushaltFuer(person);
+  if (!h) return null;
+  return merken(`agenten-kennzahlen-privat:${h.haushalt}`, 60_000, async () => {
+    const { privatIndexFuer } = await import('@/lib/privat/speicher');
+    return werteAus((await privatIndexFuer(h.haushalt)).pi);
+  });
+}
+
+/** Gesundheits-Index der Person selbst (nur rechnen — `gesundheitsIndexFuer`). */
+async function gesundheitWerte(person: string): Promise<Werte> {
+  const { merken } = await import('@/lib/store/memo');
+  return merken(`agenten-kennzahlen-gesundheit:${person}`, 60_000, async () => {
+    const { gesundheitsIndexFuer } = await import('@/lib/gesundheit/speicher');
+    return werteAus(await gesundheitsIndexFuer(person));
   });
 }

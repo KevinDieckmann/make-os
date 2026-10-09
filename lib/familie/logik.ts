@@ -5,7 +5,7 @@
 // tägliche Rituale, Neues, Wertschätzung, Reparatur, Grenzen, Mental Load,
 // wichtige Tage).
 
-import type { Familie, WichtigerTag, Mensch, Gespraech, Einstellungen } from './typen';
+import { LISTEN, type Familie, type WichtigerTag, type Mensch, type Gespraech, type Einstellungen } from './typen';
 import { alsTagesSchluessel } from '@/lib/kalender/geburtstag';
 
 const tag = (d: Date) => d.toISOString().slice(0, 10);
@@ -139,4 +139,42 @@ export function agendaVorbereiten(f: Familie, heute: string, person: string) {
 /** Was eine Person sehen darf: alles „paar“, dazu eigenes „nur-ich“. */
 export function sichtFuer<T extends { von: string; sichtbarkeit?: string }>(liste: T[], person: string): T[] {
   return liste.filter(x => x.sichtbarkeit !== 'nur-ich' || x.von === person);
+}
+
+/**
+ * Der ganze Bestand, wie ihn `person` sehen darf — die EINE Filterstelle des Familien-Moduls (vorher lokal in app/api/familie):
+ * jede Liste über `sichtFuer` („nur ich“ der anderen Person nie), Reparatur-Reflexionen der anderen erst, wenn sie geteilt sind.
+ * Route (Antwort) und Agenten-Kontext (Head „Familie & Partnerschaft“) lesen NUR hierüber.
+ */
+export function familieFuerPerson(f: Familie, person: string): Familie {
+  const s = { ...f } as Familie & Record<string, unknown>;
+  for (const l of LISTEN) (s as Record<string, unknown>)[l] = sichtFuer(((f[l] ?? []) as unknown as { von: string; sichtbarkeit?: string }[]), person);
+  s.reparaturen = s.reparaturen.map(r => ({ ...r, reflexionen: r.reflexionen.filter(x => x.person === person || x.geteilt) }));
+  return s;
+}
+
+const kurzText = (t: unknown, n: number) => { const e = String(t ?? '').replace(/\s+/g, ' ').trim(); return e.length > n ? `${e.slice(0, n - 1)}…` : e; };
+
+/**
+ * Auszug für die KI (Head „Familie & Partnerschaft“, 09.10. Feinschliff): NUR Titel, Datum, Art und Status — nie Gefühle, Reflexionen,
+ * Wertschätzungen, Wünsche, Love-Map, Profile, Visionen oder Notizen. Läuft selbst durch `familieFuerPerson` (nie roh); Archiviertes fällt weg.
+ * Rein — die Kapselung (`daten`) und die Freigabe der KI-Kategorie macht der Aufrufer.
+ */
+export function familieAuszug(roh: Familie, person: string, heute: string): { text: string; eintraege: number } {
+  const f = familieFuerPerson(roh, person);
+  const aktiv = <T extends { archiviertAm?: string }>(l: readonly T[] | undefined) => (l ?? []).filter(x => !x.archiviertAm);
+  const zeilen: string[] = [];
+  let n = 0;
+  const block = (titel: string, l: string[]) => { if (l.length) { zeilen.push(`${titel}:`, ...l.map(x => `- ${x}`)); n += l.length; } };
+  const g = naechstesGespraech(f.einstellungen, heute, f.gespraeche);
+  zeilen.push(`Nächstes Paar-Gespräch: ${g.datum}${g.laufend ? ' (geplant)' : ''}${f.einstellungen.ausnahmeBis && f.einstellungen.ausnahmeBis >= heute ? ` · Ausnahmezeit bis ${f.einstellungen.ausnahmeBis}` : ''}`);
+  block('Dates (nächste 60 Tage und die letzten 30)', aktiv(f.dates).filter(d => d.datum >= plus(heute, -30) && d.datum <= plus(heute, 60)).sort((a, b) => a.datum.localeCompare(b.datum))
+    .slice(0, 20).map(d => `${d.datum} · ${kurzText(d.titel, 80)} · ${d.status}`));
+  block('Wichtige Tage (60 Tage)', wichtigeTage(aktiv(f.tage), heute, 60, aktiv(f.menschen)).slice(0, 20)
+    .map(t => `${t.am} · ${kurzText(t.titel, 80)} · ${t.art} · Aktion ${t.aktion}${t.erledigt ? ' · vorbereitet' : t.faelligAb <= heute ? ' · jetzt vorbereiten' : ''}`));
+  block('Kontakt fällig', kontaktFaellig(aktiv(f.menschen), heute).slice(0, 10).map(m => `${kurzText(m.name, 60)} (${m.rolle}) · ${m.seit === null ? 'noch nie' : `seit ${m.seit} Tagen`}`));
+  block('Offene Themen fürs Gespräch', aktiv(f.themen).filter(t => t.status === 'offen' || t.status === 'geparkt').slice(0, 15).map(t => `${kurzText(t.titel, 80)} · ${t.art} · ${t.status}`));
+  block('Offene Vereinbarungen', aktiv(f.vereinbarungen).filter(v => v.status === 'offen').slice(0, 15).map(v => `${kurzText(v.text, 80)}${v.faellig ? ` · bis ${v.faellig}` : ''}`));
+  block('Date-Ideen', aktiv(f.ideen).slice(0, 15).map(i => `${kurzText(i.titel, 60)} · ${i.dauer}${i.neu ? ' · neu' : ''}${i.tags.length ? ` · ${i.tags.slice(0, 3).join(', ')}` : ''}`));
+  return { text: zeilen.join('\n'), eintraege: n };
 }
