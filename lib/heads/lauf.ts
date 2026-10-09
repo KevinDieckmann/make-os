@@ -95,7 +95,11 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   // Nachschliff 09.10.: Nordstern + Business-Jahresziele (EINE Lesestelle, Business-Heads nie Privat; Systemlauf = Haushalt des Inhabers).
   const { zieleFuerHead } = await import('@/lib/planung/jahresziele-sicht');
   const ziele = await zieleFuerHead({ person: a.person, privat: false, heute });
-  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person ?? ''), crm, heute, a.person, alt, ziele) as Record<string, unknown>;
+  // Kalender nur, wenn er für die KI frei ist (Analyse 09.10., „nur Markttraktion“): sonst ohne Termin-Zeiten und ohne Etikett „kalender“ —
+  // vorher fiel der ganze Head-Lauf aufs Regelwerk zurück, sobald der Kalender-Bereich aus war.
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const mitKalender = (await kiSchalterFuer(a.person ?? null).catch(() => null))?.bereiche.kalender === true;
+  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele) as Record<string, unknown>;
 
   // Nichts zu tun → ohne Modell.
   const leer = a.head === 'sales' && a.modus === 'power_hour' ? !(daten.karten as unknown[]).length
@@ -137,7 +141,7 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     const erste = [{ role: 'user', content: [{ type: 'text', text: daten_, cache_control: { type: 'ephemeral' } }, { type: 'text', text: aufg }] }];
     const ruf = (messages: unknown[], zweck: string) => askText({ system: SYSTEM[a.head], user: '', messages, model: modell, effort: review ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: review ? 16000 : 10000, timeoutMs: 200_000, zweck,
       // Datenschutz (05.10.): der Takt läuft als Hintergrund (Schalter, Pseudonymisierung der Kontaktnamen), von Hand/ZOE als Aufruf.
-      ki: { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person, kategorien: ['crm', 'kalender'] } });
+      ki: { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person, kategorien: mitKalender ? ['crm', 'kalender'] : ['crm'] } });
     const r1 = await ruf(erste, `${AGENT_ID[a.head]}-${a.modus}`);
     zaehle(r1);
     const roh1 = r1.ok ? normalisiere(extractJson(r1.text), a.head) : null;
