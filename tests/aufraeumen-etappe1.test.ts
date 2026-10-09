@@ -207,4 +207,13 @@ describe('Nur zwei Bereiche — Zeitmessung', () => {
     expect(lies('app/api/state/anwesenheit/route.ts')).toContain('istSpace(body.space) ? body.space : null');
     expect(lies('components/os/Kopf.tsx')).toContain('<FokusZaehler pfad={pfad} space={space} />');
   });
+  it('Suche (⌘K): im Bereich des Kopfs, auf Knopf auch im anderen — gekennzeichnet; „nur Business“ ohne Knopf', () => {
+    const s = lies('components/os/Schnellsuche.tsx');
+    expect(s).toContain('Auch in {SPACE_LABEL[anderer]} suchen');
+    expect(s).toContain('aria-pressed={auchAnders}');
+    expect(s).toContain("anders: anderer");
+    expect(s).toContain('nurBusiness === false &&');
+    // Beim Schließen fällt die Option zurück — die nächste Suche beginnt wieder im eigenen Bereich.
+    expect(s).toContain('setAuchAnders(false); }, []);');
+  });
 });
