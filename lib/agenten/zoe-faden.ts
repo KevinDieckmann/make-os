@@ -16,8 +16,8 @@ import { loadJson } from '@/lib/store/local-db';
 import { FREMD_AGENTEN, FREMD_WERKZEUGE } from '@/lib/zoe/fremd';
 import { verlaufFremd, verlaufVertraulich } from '@/lib/zoe/gespraech-schutz';
 import { GRENZEN, type AgentRef, type Bereich } from './typen';
-import { anhaengen, fadenHinzu, fehler, fuerPrompt, istFadenId, textAbdruck, titelAus, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type NachrichtKern, type PromptNachricht } from './faeden';
-import { bestandAendern, bestandLesen, fadenAendern } from './faeden-server';
+import { anhaengen, fehler, fuerPrompt, istFadenId, textAbdruck, titelAus, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type FadenKopfKern, type NachrichtKern, type PromptNachricht } from './faeden';
+import { ablageAendernFuer, bestandLesen, fadenAendern, fadenAnlegen } from './faeden-server';
 
 export const ZOE: AgentRef = { art: 'zoe' };
 const iso = () => new Date().toISOString();
@@ -61,9 +61,9 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
     const f0: FadenKern = { id: neueKennung('fd'), besitzer: person, agent: ZOE, bereich: o.bereich, titel: titelAus(titel), status: 'offen', fremdGelesen: false, vertraulich: false, nachrichten: [], erstellt: jetzt, aktualisiert: jetzt, gelesenAm: jetzt, kette: ['zoe'] };
     const x = anhaengen(f0, [n], jetzt);
     if (!x.ok) return x;
-    const r = await bestandAendern<FadenKern>(person, b => { const y = fadenHinzu(b, x.faden); return y.ok ? { bestand: y.bestand, e: x.faden } : y; });
+    const r = await fadenAnlegen(person, x.faden);
     if (!r.ok) return r;
-    return { faden: r.e, prompt: fuerPrompt(r.e, ZOE, fremd), fortsetzung: false, nachrichtId: n.id };
+    return { faden: r.faden, prompt: fuerPrompt(r.faden, ZOE, fremd), fortsetzung: false, nachrichtId: n.id };
   };
   if (wunsch === 'neu') return neu(text);
   if (!istFadenId(wunsch)) return fehler(400, 'Thread-Kennung ungültig.');
@@ -105,8 +105,8 @@ export async function zoeHinweisAnhaengen(person: string, fadenId: string, text:
   return r.ok;
 }
 
-/** Ein EIGENER ZOE-Thread (für Werkzeuge im Zug: an_head hängt „gesendet“ an). */
-export async function eigenerZoeFaden(person: string, id: unknown): Promise<FadenKern | null> {
+/** Ein EIGENER ZOE-Thread — sein Kopf aus dem Index (E3: nichts weiter geladen; gibt es ihn, gehört er der Person?). */
+export async function eigenerZoeFaden(person: string, id: unknown): Promise<FadenKopfKern | null> {
   if (!istFadenId(id)) return null;
   const f = (await bestandLesen(person)).faeden.find(x => x.id === id);
   return f && f.agent.art === 'zoe' && f.besitzer === person ? f : null;
@@ -150,16 +150,16 @@ export async function zoeVerlaufUebernehmen(person: string): Promise<number> {
   const alt = await inhaberSpeicher();
   const meine = (Array.isArray(v?.gespraeche) ? v!.gespraeche : []).filter(g => (g?.person ?? alt) === person);
   const jetzt = iso();
-  const r = await bestandAendern<number>(person, best => {
-    if (best.zoeUebernahme) return { bestand: best, e: 0 };
-    let neu = best, n = 0;
+  const r = await ablageAendernFuer<number>(person, t => {
+    if (t.index().zoeUebernahme) return { e: 0 };
+    let n = 0;
     for (const g of meine) {
       const f = fadenAusGespraech(g, person, jetzt);
-      if (!f || neu.faeden.some(x => x.id === f.id)) continue;
-      const y = fadenHinzu(neu, f);
-      if (y.ok) { neu = y.bestand; n++; }
+      if (!f || t.kopf(f.id)) continue;
+      if (!t.hinzu(f)) n++;
     }
-    return { bestand: { ...neu, zoeUebernahme: { am: jetzt, anzahl: n } }, e: n };
+    t.indexFelder(z => ({ ...z, zoeUebernahme: { am: jetzt, anzahl: n } }));
+    return { e: n };
   });
   return r.ok ? r.e : 0;
 }
@@ -174,18 +174,18 @@ export async function zoeKanalZug(person: string, kanal: 'telegram' | 'whatsapp'
   const id = `fd-${kanal === 'telegram' ? 'tg' : 'wa'}-${localDay(jetzt)}`;
   const zeit = jetzt.toISOString();
   const neu = [personNachricht(person, grenze(frage), zeit), zoeNachricht(grenze(antwort), zeit, { ki: true })];
-  const r = await bestandAendern<string>(person, b => {
-    const f = b.faeden.find(x => x.id === id);
+  const r = await ablageAendernFuer<string>(person, async t => {
+    const f = await t.faden(id);
     if (f) {
       const x = anhaengen(f, neu, zeit);
       if (!x.ok) return x;
-      return { bestand: { ...b, faeden: b.faeden.map(y => (y.id === id ? { ...x.faden, fremdGelesen: true } : y)) }, e: id };
+      t.setze({ ...x.faden, fremdGelesen: true });
+      return { e: id };
     }
     const f0: FadenKern = { id, besitzer: person, agent: ZOE, bereich: 'privat', titel: titelAus(`${kanal === 'telegram' ? 'Telegram' : 'WhatsApp'} · ${frage}`), status: 'offen', fremdGelesen: true, vertraulich: false, nachrichten: [], erstellt: zeit, aktualisiert: zeit, kette: ['zoe'] };
     const x = anhaengen(f0, neu, zeit);
     if (!x.ok) return x;
-    const y = fadenHinzu(b, x.faden);
-    return y.ok ? { bestand: y.bestand, e: id } : y;
+    return t.hinzu(x.faden) ?? { e: id };
   });
   return r.ok ? r.e : id;
 }

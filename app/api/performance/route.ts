@@ -134,5 +134,8 @@ export async function POST(req: Request) {
   if (!r.ok || !r.data) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: r.error ?? 'Analyse fehlgeschlagen.' });
 
   await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data }, { person: fuer });
-  return NextResponse.json({ aktuell, verlauf: file.snapshots, ...r.data });
+  // `fuerZoe` (09.10., KI-Etiketten): was ein Agentenlauf an ein Modell weitergeben darf — ohne Einwilligung (b) weder der Gesamtindex
+  // (er enthält die Gesundheits-Säule) noch ein Gesundheits-Hebel (`indexFuerKi`), dazu die Marke, ob Gesundheit im Prompt stand.
+  const fuerZoe = { index: fuerKi.index, ...(fuerKi.index != null ? { label: aktuell.label } : {}), abdeckung: aktuell.abdeckung, hebel: fuerKi.hebel ?? null, gesundheit: frei };
+  return NextResponse.json({ aktuell, verlauf: file.snapshots, ...r.data, fuerZoe });
 }

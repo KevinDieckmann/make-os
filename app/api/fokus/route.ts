@@ -34,12 +34,15 @@ export async function POST(req: Request) {
   // Ohne Wert (0 = keine Angabe) keine Zone aus einer erfundenen Zahl: dann wie GELB (mit Puffer), ehrlich ohne Recovery.
   const rec = v.rec;
   const zone = tagesZone(rec);
+  // Art. 9 (09.10., KI-Etiketten): Recovery und Zone gehen nur mit Einwilligung (b) aus der Route — die Antwort liest auch ZOE (`run_agent`)
+  // und gibt sie an das Modell weiter. Die Oberfläche zeigt nur `reply`; die eigenen Werte stehen unter Gesundheit.
+  const koerperWerte = b.gesundheitFrei ? { recovery: rec, zone } : {};
 
   if (!hasAnthropicKey()) {
-    return NextResponse.json({ reply: 'Mir fehlt noch dein Anthropic-Key (.env.local), dann richte ich deinen Tag nach deiner Recovery aus.', recovery: rec, zone, needsKey: true });
+    return NextResponse.json({ reply: 'Mir fehlt noch dein Anthropic-Key (.env.local), dann richte ich deinen Tag nach deiner Recovery aus.', ...koerperWerte, needsKey: true });
   }
   const agent = await resolveAgent('fokus');
-  if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), reply: '', recovery: rec, zone });
+  if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), reply: '', ...koerperWerte });
 
   // Aufgaben kommen aus dem Brain — kein Mock-Fallback mehr: leer ist leer.
   const taskLines = blockAufgaben(b, 15);
@@ -78,11 +81,15 @@ export async function POST(req: Request) {
     : 'KEINE GESUNDHEITSWERTE: Die Person hat nicht eingewilligt, dass sie an die KI gehen. Plane nach den Aufgaben mit mittlerer Last (wie GELB) und frag nicht nach Werten; unter **Tagesform** und **Körper** nur ein allgemeiner Satz.';
   const message = `${koerper}${eigeneAngaben ? `\n\n${eigeneAngaben}` : ''}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
 
+  // Gesundheit im Prompt (Werte oder eigenes Körper-Profil) — das melden wir auch zurück (`gesundheit`), damit, wer den Text weitergibt, das Etikett trägt.
+  const mitGesundheit = b.gesundheitFrei || !!eigeneAngaben;
+  // Person im KI-Tor (09.10., K5): auch im Systemlauf die Person, für die gerechnet wird — ihre eigenen Schalter und Einwilligung (b)
+  // gelten, das KI-Protokoll trägt sie (vorher `null`: der Lauf mit Einwilligung wurde im Systemlauf fälschlich gesperrt).
   const r = await askText({ zweck: 'fokus', system, user: message, maxTokens: 4000, model: agent.model,
-    ki: kiAus(req, b.gesundheitFrei || eigeneAngaben ? ['aufgaben', 'gesundheit'] : ['aufgaben']) });
-  if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });
+    ki: kiAus(req, mitGesundheit ? ['aufgaben', 'gesundheit'] : ['aufgaben'], { person: fuer }) });
+  if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', ...koerperWerte });
 
   // Der Titel des Laufs geht später als Gedächtnis in andere Prompts (blockGedaechtnis) — deshalb ohne Gesundheitswert.
   await logRun('fokus', 'Tagesplan erstellt', { ...(b.gesundheitFrei ? { zone, recovery: rec } : {}), reply: r.text.slice(0, 1500) }, { person: fuer });
-  return NextResponse.json({ reply: r.text, recovery: rec, zone, stand: v.stand, heute: v.heute });
+  return NextResponse.json({ reply: r.text, ...koerperWerte, gesundheit: mitGesundheit, ...(b.gesundheitFrei ? { stand: v.stand, heute: v.heute } : {}) });
 }

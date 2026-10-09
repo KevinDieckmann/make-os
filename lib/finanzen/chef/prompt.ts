@@ -82,7 +82,7 @@ Antworte ausschließlich im vorgegebenen JSON-Schema; die App rendert daraus. Fr
 - zusammenfassung: zwei bis vier Sätze, das Wichtigste zuerst: Lage, wichtigste Konsequenz, wichtigste Handlung.
 - ampel: je Bereich (business, haushalt nur wenn Daten da, gesamt nur wenn Daten da) eine Farbe mit Grund in einem Satz; grau, wenn die Daten keine Bewertung tragen.
 - befunde: "was" ist der Fakt mit Zahl, "bedeutung" sagt, was daraus folgt und was zu tun ist.
-- vorschlaege: Titel als Handlung („USt Q3 auf dem Geschäftskonto bereitstellen“), begruendung in ein bis zwei Sätzen mit Zahl, betrag_eur nur aus den Daten (sonst null), frist als ISO-Datum aus den Daten (sonst null), prioritaet, verantwortlich (kevin, malin, beide, steuerberater), quelle, dedup_schluessel (art:gegenstand:zeitraum, z. B. "mahnen:kunde-x:2026-09").
+- vorschlaege: Titel als Handlung („USt Q3 auf dem Geschäftskonto bereitstellen“), begruendung in ein bis zwei Sätzen mit Zahl, betrag_eur nur aus den Daten (sonst null), frist als ISO-Datum aus den Daten (sonst null), prioritaet, verantwortlich (eine kennung aus daten.personen, „beide“ für alle Personen des Haushalts gemeinsam, oder „steuerberater“), quelle, dedup_schluessel (art:gegenstand:zeitraum, z. B. "mahnen:kunde-x:2026-09").
 - fragen: nur Fragen, deren Antwort eine Aussage oder einen Vorschlag ändert; höchstens drei.
 - datenluecken: was fehlt und welche Aussage deshalb fehlt.
 - antwort: nur im Modus frage, sonst null. bericht_markdown: nur wenn der Auftrag ihn verlangt, sonst null.
@@ -126,11 +126,18 @@ Beantworte die Frage im ersten Satz von "antwort". Danach die zugrunde liegenden
 const TEXT = { type: 'string' } as const;
 const ENUM = (werte: string[]) => ({ type: 'string', enum: werte });
 const BEREICH = ENUM(['business', 'haushalt', 'gesamt', 'steuern', 'daten']);
-const WER = ENUM(['kevin', 'malin', 'beide', 'steuerberater']);
+/** Wer verantwortlich sein kann (09.10., Plattform-Regel): die Personen des Haushalts aus den Konten + „beide“ + „steuerberater“ — nie feste Namen. */
+export const WER_FEST = ['beide', 'steuerberater'] as const;
+export const werWerte = (personen: readonly string[] = []): string[] => Array.from(new Set([...personen.filter(p => /^[a-z0-9][a-z0-9-]{0,39}$/.test(p)), ...WER_FEST]));
 export const ARTEN = ['zahlung_bereitstellen', 'ruecklage', 'sparen', 'tilgen', 'kuendigen_pruefen', 'mahnen', 'beleg', 'klaeren', 'steuer', 'budget', 'daten', 'abschluss'] as const;
 
-/** Antwortschema (output_config.format). Längen prüft der Code, nicht das Schema. */
-export const SCHEMA = {
+/**
+ * Antwortschema (output_config.format) für die Personen eines Haushalts (Speichernamen aus den Konten, 09.10.). Längen prüft der Code,
+ * nicht das Schema. Je Instanz stabil (dieselben Konten → dasselbe Schema).
+ */
+export function schemaFuer(personen: readonly string[] = []) {
+  const WER = ENUM(werWerte(personen));
+  return {
   type: 'object', additionalProperties: false,
   required: ['modus', 'status', 'zusammenfassung', 'ampel', 'befunde', 'vorschlaege', 'fragen', 'datenluecken', 'antwort', 'bericht_markdown'],
   properties: {
@@ -149,11 +156,15 @@ export const SCHEMA = {
     antwort: { type: ['string', 'null'] },
     bericht_markdown: { type: ['string', 'null'] },
   },
-} as const;
+  } as const;
+}
+/** Das Schema ohne Personen (nur „beide“/„steuerberater“) — für Aufrufer ohne Konten-Bezug. */
+export const SCHEMA = schemaFuer();
 
 /** Was die Felder bedeuten — geht mit ins Datenpaket (Anthropic: Bedeutung explizit machen). */
 export const DEFINITIONEN: Record<string, string> = {
-  'business.kasse': 'Summe der Kontostände der Firmenkonten (kdv, kdc). quelle: konten = aus den Konten, manuell = alte Einzelzahl, keine = nichts gepflegt. alter_tage = Alter des ältesten Kontostands.',
+  personen: 'Die Personen des Haushalts (kennung = Wert für verantwortlich, name = Vorname). Andere Namen gibt es nicht — „beide“ heißt: alle gemeinsam.',
+  'business.kasse': 'Summe der Kontostände der Firmenkonten im Business-Bereich (ohne Privat-Einheiten). quelle: konten = aus den Konten, manuell = alte Einzelzahl, keine = nichts gepflegt. alter_tage = Alter des ältesten Kontostands.',
   'business.controlling': 'Manuell gepflegte Monatszahlen ab Startmonat. run_rate_noetig = fehlender Zielumsatz / rest_monate (ab heute). runway_monate = kasse / avg_burn (Ø Kosten ohne Umsatz). leere_monate = Monate seit Start ohne Zahlen.',
   'business.liquiditaet_12_wochen': 'Vorschau aus Kontoständen, gestellten Rechnungen, offenen Zahlungen und Planposten, nur Business. davon_unsicher = geplante, nicht gestellte Eingänge.',
   'business.forderungen': 'Gestellte, noch nicht bezahlte Ausgangsrechnungen; ueberfaellig mit Tagen seit Fälligkeit.',

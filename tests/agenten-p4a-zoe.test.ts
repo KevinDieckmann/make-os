@@ -35,7 +35,7 @@ let db: typeof import('@/lib/store/local-db');
 const J = '2026-10-01T08:00:00.000Z';
 const GEHEIM = 'MARKE-ANDERE-PERSON-7731';
 const BROWSER = 'MARKE-AUS-DEM-BROWSER-2208';
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 const zoeFaeden = async (p: string) => (await bestand(p)).filter(f => f.agent.art === 'zoe');
 const systemText = (b: Record<string, unknown>) => JSON.stringify(b.system ?? '');
 const fragen = (person: string, body: Record<string, unknown>) => rufe(kimmi.POST, '/api/kimmi', sitzung(person), body);

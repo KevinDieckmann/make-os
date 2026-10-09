@@ -18,12 +18,12 @@
 //   ZOE-Arbeitslisten          90 Tage     zoe-protokoll + entschiedene Vorschläge in zoe-stapel (nur, was dauerhaft
 //                                          in zoe-entscheidungen steht — sonst erst nachtragen, nie still)
 //   ZOE-Entscheidungen         36 Monate   Monatsdateien geleert (Vermerk bleibt) — wie das Änderungsprotokoll
-//   Gespräche mit ZOE          12 Monate   Gespräche und Agenten-Threads (agenten-faeden--*), deren letzte Nachricht älter ist,
-//     und den Agenten                        fallen weg (laufende Threads bleiben)
+//   Gespräche mit ZOE          12 Monate   Gespräche und Agenten-Threads (Index agenten-faeden--*, je Thread agenten-faden--*), deren
+//     und den Agenten                        letzte Nachricht älter ist, fallen weg (laufende Threads bleiben)
 //   ZOE-Gedächtnis             24 Monate   Fakten, die so lange nicht erneuert wurden, fallen weg
 //   Postfach-Zwischenspeicher  30 Tage     Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach bleibt beim Anbieter
 //   Kalender-Zwischenspeicher  12 Monate   vergangene Termine im Zwischenspeicher
-//   Umzugs-Kopien (archiv/)    30 Tage     crm-vor-*, make-orga-*, business-vor-*, kategorien-vor-* — andere Archiv-Dateien
+//   Umzugs-Kopien (archiv/)    30 Tage     crm-vor-*, make-orga-*, business-vor-*, kategorien-vor-*, agenten-vor-teilung-* — andere Archiv-Dateien
 //                                          bleiben (dokumentiert, nie automatisch)
 //   Altbestand Netzwerk        24 Monate   KEINE automatische Löschung — zählt in die Löschfrist-Aufgabe (stilllegen)
 //   Grabsteine                 13 Monate   außerhalb des Datenordners; länger als jede Sicherung (lib/datenschutz/grabsteine.ts)
@@ -93,7 +93,7 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'zoe-gedaechtnis', titel: 'ZOE-Gedächtnis (Fakten)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. d, e DSGVO', hinweis: 'Fakten, die so lange nicht erneuert wurden, fallen weg.' },
   { id: 'postfach-caches', titel: 'Postfach-Zwischenspeicher', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Zwischengespeicherte Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach selbst bleibt beim Anbieter.' },
   { id: 'kalender-caches', titel: 'Kalender-Zwischenspeicher', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Vergangene Termine im Zwischenspeicher — der Kalender selbst bleibt beim Anbieter.' },
-  { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, Kennungs-Umzug, Firmen zusammenführen, MAKE.ORGA, Business, Kategorien). Andere Archiv-Dateien bleiben — nie automatisch.' },
+  { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, Kennungs-Umzug, Firmen zusammenführen, MAKE.ORGA, Business, Kategorien, Agenten-Threads vor der Teilung). Andere Archiv-Dateien bleiben — nie automatisch.' },
   { id: 'netzwerk', titel: 'Altbestand Netzwerk (vor der Kartei)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch: Einträge ohne Kontakt seit der Frist zählen in die Löschfrist-Aufgabe. Der Altbestand wird stillgelegt (in die Kartei übernehmen oder löschen).' },
   { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung (bis zu 12 Monate), damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
   // 29.09. (K4): Terminbuchungen der öffentlichen Buchungsseiten.
@@ -285,7 +285,8 @@ export function vorGrenzeRaus<T>(liste: readonly T[] | undefined, grenze: string
 }
 
 /** Archiv-Datei eine Umzugs-/Aufräum-Kopie? (lib/store/archiv.ts-Aufrufer: crm-vor-* — auch Brain-Umzug, Kennungs-Umzug, Firmen zusammenführen —, make-orga-*, business-vor-*, kategorien-vor-*) */
-export const istUmzugsKopie = (datei: string) => /^(crm-vor-|make-orga-|business-vor-|kategorien-vor-)[a-z0-9._-]*\.json$/i.test(datei);
+// 09.10. (E3): `agenten-vor-teilung-<person>-<zeit>` — der Altbestand der Threads vor der Teilung in Index + je Thread (lib/agenten/faeden-ablage.ts).
+export const istUmzugsKopie = (datei: string) => /^(crm-vor-|make-orga-|business-vor-|kategorien-vor-|agenten-vor-teilung-)[a-z0-9._-]*\.json$/i.test(datei);
 
 /** Tag einer Archiv-Datei aus dem Namen (ISO-Zeit oder Millisekunden) — null, wenn keiner drinsteht. */
 export function archivTag(datei: string): string | null {

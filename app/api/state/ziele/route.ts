@@ -27,7 +27,7 @@ import { localDay } from '@/lib/zeit';
 import { meilensteinStrukturSichern, meilensteinListenArchivieren, zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ohneToteVerweise, zielVerweiseLoesen } from '@/lib/planung/meilenstein-kette';
-import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
+import { protokolliere, protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-server';
 import { eigeneZieleLesbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
@@ -117,13 +117,17 @@ export async function PUT(req: Request) {
   if (typeof body.fokus !== 'string' || !h || !FOKUS_SCHLUESSEL.test(h) || (/(?:^|:)jahr:\d{4}$/.test(h) && !istJahrFokusSchluessel(h, laufendesJahr()))) {
     return NextResponse.json({ ok: false, error: 'horizont + fokus (tag|woche|monat|quartal|jahr|prio:<thema>) nötig.' }, { status: 400 });
   }
+  let fokusVorher: Record<string, string> = {};
   const next = await updateJson<ZieleDatei>(sp.name, current => {
     const basis = datei(current);
+    fokusVorher = { ...basis.fokus };
     // Das laufende Jahr steht mit und ohne Jahr (alte Leser, alter Online-Stand), andere Jahre nur mit (30.09.).
     const text = (body.fokus as string).slice(0, 300);
     basis.fokus = { ...basis.fokus, ...Object.fromEntries(fokusSchreibSchluessel(h, laufendesJahr()).map(k => [k, text])) };
     return basis;
   });
+  // Änderungsprotokoll (09.10., „ZOE-Schreibwege“ — `setze_fokus` schreibt seither über diesen Weg): nur „fokus geändert“, nie der Satz.
+  await protokolliereBestand(sp.name, { fokus: fokusVorher }, { fokus: datei(next).fokus }, werAus(req));
   return NextResponse.json({ ok: true, fuer: sp.fuer, ...await mitStaenden(datei(next)) });
 }
 

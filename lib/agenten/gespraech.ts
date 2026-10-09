@@ -33,8 +33,8 @@ import { headSichtbar, kategorienFuer, type KontoSicht } from './sicht';
 import { kontextFuer } from './kontext';
 import { istMedienWerkzeug, medienAngebotErgaenzen, medienWerkzeugAusfuehren } from './medien-werkzeuge';
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
-import { anhaengen, brettText, fadenHinzu, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
-import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern, zugZuruecknehmenFuer } from './faeden-server';
+import { anhaengen, brettText, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
+import { bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, zugZuruecknehmenFuer } from './faeden-server';
 
 /** Ein Satz für den Gesundheits-Head (Entscheidung 09.10., Fragerunde Teil 2 Nr. 18): Wellness, nie Diagnose oder Therapie. */
 export const WELLNESS_SATZ = 'Du bist ein Wellness-Coach: keine Diagnose, keine Therapie, keine medizinische Beratung. Du arbeitest nur mit den EIGENEN Werten dieser Person; bei Beschwerden verweist du ruhig auf Ärztin oder Arzt.';
@@ -67,7 +67,8 @@ export async function aktiveMitarbeiter(head: HeadDef, u: Umfang, e: AgentenEins
 
 // ── Werkzeug-Handler (aus delegation.ts) ────────────────────────────────────────────────────────────────────────────────
 
-export interface WerkzeugAntwort { text: string; ok: boolean; fortschritt?: boolean; gestapelt?: boolean; vorschlagId?: string; /** Lauf endet danach mit „wartet“. */ wartet?: string; /** Fremd-Quelle (lib/zoe/fremd.ts), wenn das Ergebnis Text Dritter trägt — die Schleife setzt dann „fremd gelesen“ (Nachschliff 09.10., `medien_suchen`). */ quelle?: string }
+export interface WerkzeugAntwort { text: string; ok: boolean; fortschritt?: boolean; gestapelt?: boolean; vorschlagId?: string; /** Lauf endet danach mit „wartet“. */ wartet?: string; /** Fremd-Quelle (lib/zoe/fremd.ts), wenn das Ergebnis Text Dritter trägt — die Schleife setzt dann „fremd gelesen“ (Nachschliff 09.10., `medien_suchen`). */ quelle?: string;
+  /** KI-Kategorien des Ergebnisses (09.10., KI-Etiketten — z. B. `fach_agent`): die Schleife nimmt sie in den KI-Kontext der nächsten Runde. */ kategorien?: KiKategorie[] }
 export interface SchleifenStand { fremdGelesen: boolean; vertraulich: boolean; ratGenutzt: number; hilfeGenutzt: number; kategorien: KiKategorie[]; verlaufText: () => string; delegiert: number }
 export interface AgentenHandler {
   /** Vor einer Runde: welche `an_mitarbeiter`-Aufrufe in eine Plan-Freigabe gehen (R14) — Kennungen der Aufrufe. */
@@ -137,7 +138,7 @@ export interface LaufErgebnis {
 
 /** Anlass der Stapel-Vorschläge — beginnt immer mit dem Namen des Heads (Zähler „Freigaben je Head“ im Überblick). */
 export const anlassVon = (head: HeadDef, m: Pick<Mitarbeiter, 'name'> | null, titel: string): string => `${head.name}${m ? ` · ${m.name}` : ''}: ${titel}`.slice(0, 200);
-const OK_TEXT = (t: string) => !/^(Fehlgeschlagen|Nicht ausgeführt|Nicht angeboten|Unbekannt)/i.test(t.trim()) && !/fehlgeschlagen|nicht erreichbar|nicht lesbar/i.test(t.slice(0, 200));
+const OK_TEXT = (t: string) => !/^(Fehlgeschlagen|Nicht ausgeführt|Nicht angeboten|Unbekannt|Nicht erfasst|Nicht notiert|Nicht eingereiht)/i.test(t.trim()) && !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht vermerkt/i.test(t.slice(0, 200));
 
 /**
  * Text eines Skills/Mitarbeiters, der aus fremd gelesenem Text entstand (Nahtstellen-Prüfung 09.10., Punkt 8): gekapselt (`fremd()`), nie mit dem
@@ -216,7 +217,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
   if (e.skill) liste = liste.filter(w => e.skill!.werkzeuge.includes(w));
   const angebot = werkzeugAngebot({
     art: m ? 'mitarbeiter' : 'head', liste, kategorien: kats, schalter, gesundheitKi, head, mitarbeiter: mitarbeiterListeHead,
-    brett: !!e.brett, helfer: !!e.faden.helfer, offeneFragen: !!e.offeneFragen, agentId: m?.agentId, stufe, lesend: LESEND,
+    brett: !!e.brett, helfer: !!e.faden.helfer, offeneFragen: !!e.offeneFragen, agentId: m?.agentId, stufe, lesend: LESEND, privatFinanzen: e.sicht.privatFinanzen,
     ...(e.nurLesen ? { nurLesen: true } : {}),
   });
   // Paket 4c (Merge 09.10.): die Medien-Werkzeuge der Medien-Heads (Marketing, Event, Sales) bzw. des Mitarbeiters „Bild & Video“ — nie im
@@ -279,7 +280,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
         // Agenten-Werkzeuge kapseln selbst (Rat, Fach-Agent) — ihre Marke übernimmt die Schleife aus dem Stand des Handlers.
         if (s.fremdGelesen) z.fremdGelesen = true;
         if (s.vertraulich) z.vertraulich = true;
-        return { inhalt: w.text, ok: w.ok, ...(w.quelle && w.ok ? { quelle: w.quelle } : {}), ...(w.fortschritt !== undefined ? { fortschritt: w.fortschritt } : {}), ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}), ...(w.wartet ? { wartet: w.wartet } : {}) };
+        return { inhalt: w.text, ok: w.ok, ...(w.quelle && w.ok ? { quelle: w.quelle } : {}), ...(w.fortschritt !== undefined ? { fortschritt: w.fortschritt } : {}), ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}), ...(w.wartet ? { wartet: w.wartet } : {}), ...(w.kategorien?.length ? { kategorien: w.kategorien } : {}) };
       }
       if (!angebot.register.has(wname)) return { inhalt: 'Nicht angeboten — dieses Werkzeug gehört nicht zu deinem Bereich.', ok: false };
       const ein = eingabeImBereich(wname, input, head);
@@ -287,8 +288,11 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
       if (geprueft) return { inhalt: geprueft, ok: false };
       const kat = kategorieVonWerkzeug(wname, gruppeVon(wname));
       if (BEREICHS_LESER.has(wname)) {
-        const roh = wname === 'lies_postfach' ? await postfachImBereich(person, head.bereich, ein) : await arbeitImBereich(person, head.bereich, ein);
-        return { inhalt: roh, ok: OK_TEXT(roh), quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kat ? { kategorien: [kat] } : {}) };
+        const roh = wname === 'lies_postfach' ? await postfachImBereich(person, head.bereich, ein) : await arbeitImBereich(person, head.bereich, ein, new Set(kats));
+        // suche_arbeit: genau die Kategorien, die gelesen wurden (09.10., Funde #6) — Aufgaben, und nur mit aktiver Kategorie Markttraktion/Brain.
+        const gelesen = wname === 'suche_arbeit' ? (await import('@/lib/zoe/arbeit-werkzeug')).arbeitQuellen(ein, { aufgaben: kats.includes('aufgaben'), crm: kats.includes('crm'), brain: kats.includes('brain') }).kategorien : [];
+        const kategorienRoh = Array.from(new Set([...(kat ? [kat] : []), ...gelesen]));
+        return { inhalt: roh, ok: OK_TEXT(roh), quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kategorienRoh.length ? { kategorien: kategorienRoh } : {}) };
       }
       if (e.trocken && (!LESEND.has(wname) || wname === 'crm_vorschlag')) {
         const { vorschauVon } = await import('@/lib/zoe/register');
@@ -392,9 +396,9 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
     const x = anhaengen(f0, [n], jetzt);
     if (!x.ok) return nein(x.status, x.fehler);
     const neu = { ...x.faden, gelesenAm: jetzt };
-    const r = await bestandAendern<FadenKern>(person, b => { const y = fadenHinzu(b, neu); return y.ok ? { bestand: y.bestand, e: neu } : y; });
+    const r = await fadenAnlegen(person, neu);
     if (!r.ok) return nein(r.status, r.fehler);
-    faden = r.e;
+    faden = r.faden;
   }
 
   if (a.hintergrund === true) {

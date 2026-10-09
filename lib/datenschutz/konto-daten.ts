@@ -37,7 +37,7 @@ export const GELOESCHT = '[gelöscht]';
  * heißt IMMER `<basis>--<speicher>` — `<basis>` selbst ist ein GETEILTER Bestand (Onboarding: `onboarding` = gemeinsame Häkchen) und
  * gehört nie einer Person (sonst fiele er beim Erstkonto über `speicherFuer` in Export und Löschen).
  */
-export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?: string; nurMitSuffix?: true }[] = [
+export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?: string; nurMitSuffix?: true; /** Je Person VIELE Bestände `<basis>--<speicher>--<kennung>` (E3: je Thread eine Datei). */ jeEintrag?: RegExp }[] = [
   { basis: 'zeit' }, { basis: 'fokus-laufend' }, { basis: 'wochenplan' }, { basis: 'sport' }, { basis: 'vitals' }, { basis: 'haut' },
   { basis: 'streak' }, { basis: 'health-log' }, { basis: 'journal' }, { basis: 'ziele-eigen' }, { basis: 'visitenkarten' },
   { basis: 'meldungen' }, { basis: 'performance' }, { basis: 'flaeche' }, { basis: 'kalender-google' }, { basis: 'gmail-stand' }, { basis: 'gmail-text' },
@@ -68,6 +68,9 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   // `agenten-skills--<haushalt>`, `medien--<haushalt>`). Die Dateien der privaten Medien entfernt Paket 5 beim Konto-Löschen vorher;
   // im Export steht `medien-privat--<person>` nicht roh, sondern in eigener Form unter `medien` (ohne Schlüssel — `EIGENE_FORM`).
   { basis: 'agenten-faeden', nurMitSuffix: true },
+  // E3 (09.10., „Gesprächs-Ablage teilen“): der Index oben trägt nur Köpfe — je Thread eine Datei `agenten-faden--<speicher>--<id>`, ganz in
+  // den Export, beim Löschen alle entfernt (samt Tagessicherungen).
+  { basis: 'agenten-faden', nurMitSuffix: true, jeEintrag: /^fd-[a-z0-9-]{1,80}$/ },
   { basis: 'agenten-skills-privat', nurMitSuffix: true },
   { basis: 'agenten-plan', nurMitSuffix: true },
   { basis: 'medien-privat', nurMitSuffix: true },
@@ -81,7 +84,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'absichten--*': 'Absichtsprotokoll je Haushalt (technisch, kurzlebig)',
   'aenderungsprotokoll--*': 'Protokoll je Haushalt und Monat — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
   'leseprotokoll--*': 'Protokoll je Haushalt und Monat — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
-  'ki-protokoll--*': 'KI-Protokoll je Monat — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
+  'ki-protokoll--*': 'KI-Protokoll je Tag (Altbestand je Monat) — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
   'zoe-entscheidungen--*': 'Entscheidungen je Haushalt und Monat (Rechenschaft)',
   'aufgaben-dateien--*': 'Dateien zu Aufgaben je Haushalt',
   'ki-medien--*': 'Von der KI erzeugte Medien je Haushalt (Marketing-Material des Haushalts; „nur ich“-Medien sieht nur die auslösende Person) — seit Paket 4c nur Auftragsbuch laufender Videos und Altbestand; fertige KI-Medien liegen in medien--*/medien-privat--*',
@@ -125,6 +128,11 @@ export function personBestandNamen(speicher: string, vorhanden: readonly string[
   const da = new Set(vorhanden);
   const raus = new Map<string, boolean>();
   for (const b of PERSON_BESTAENDE) {
+    if (b.jeEintrag) {
+      const vorn = `${b.basis}--${speicher}--`;
+      for (const n of vorhanden) if (n.startsWith(vorn) && b.jeEintrag.test(n.slice(vorn.length))) raus.set(n, b.export !== false);
+      continue;
+    }
     for (const n of b.nurMitSuffix ? [`${b.basis}--${speicher}`] : [`${b.basis}--${speicher}`, speicherFuer(b.basis, speicher)]) if (da.has(n)) raus.set(n, b.export !== false);
   }
   return Array.from(raus, ([name, ex]) => ({ name, export: ex })).sort((a, b) => a.name.localeCompare(b.name));
@@ -134,7 +142,8 @@ async function bestandsNamen(): Promise<string[]> {
   return (await fs.readdir(datenOrdner()).catch(() => [] as string[])).filter(n => n.endsWith('.json')).map(n => n.slice(0, -5)).sort();
 }
 
-const PROTOKOLL = /^(aenderungsprotokoll|leseprotokoll)--[a-z0-9-]+--\d{4}-\d{2}$|^ki-protokoll--\d{4}-\d{2}$/;
+// KI-Protokoll seit E3 (09.10.) je Tag (`ki-protokoll--JJJJ-MM-TT`), Altbestand je Monat.
+const PROTOKOLL = /^(aenderungsprotokoll|leseprotokoll)--[a-z0-9-]+--\d{4}-\d{2}$|^ki-protokoll--\d{4}-\d{2}(-\d{2})?$/;
 const PERSON_FELDER = ['person', 'speicher', 'betroffen', 'von'] as const;
 
 /** Nennt ein Protokoll-Eintrag die Person (in einem der Personen-Felder)? Rein. */
@@ -366,6 +375,11 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     try { if (await bestandEntfernen(b.name, { tageskopien: true })) bericht.bestaende.push(b.name); }
     catch (e) { console.error(`[konto-loeschen] ${b.name}:`, e instanceof Error ? e.message : e); }
   }
+  // 4b. E3 (09.10.): die Archivkopie der Threads vor der Teilung (Altbestand, sonst bis zur Frist „archiv-umzug“ im Archiv).
+  try {
+    const n = await (await import('@/lib/agenten/faeden-ablage')).teilungsKopienEntfernen(speicher);
+    if (n) zaehl(bericht.eintraege, 'archiv/agenten-vor-teilung', n);
+  } catch (e) { console.error('[konto-loeschen] Archivkopie der Threads:', e instanceof Error ? e.message : e); }
 
   // 5. Geteilte Bestände: eigene Einträge raus.
   const sicher = async (name: string, f: () => Promise<number>) => { try { zaehl(bericht.eintraege, name, await f()); } catch (e) { console.error(`[konto-loeschen] ${name}:`, e instanceof Error ? e.message : e); } };

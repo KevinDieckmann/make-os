@@ -195,7 +195,9 @@ describe('Ist-Stand-Checkliste', () => {
     expect(s.grundlage.erledigt).toBe(true);
     expect(s.planung.detail).toMatch(/8 Posten/);
     expect(s.rechtsform.erledigt).toBe(true);
-    expect(s.malin.erledigt).toBe(false);
+    // Plattform-Regel (09.10.): kein Schritt „<feste Person> hat Zugang“ mehr — „Alle Konten dem Haushalt zugeordnet“.
+    expect(s.zugang.erledigt).toBe(true);
+    expect(istStand({ ...basis, haushalt: { ...basis.haushalt, ohneHaushalt: 1 } }).find(x => x.id === 'zugang')?.erledigt).toBe(false);
   });
   it('ohne Haushalt nur Business-Punkte', () => {
     expect(istStand({ ...basis, haushalt: null }).every(x => x.bereich === 'business')).toBe(true);

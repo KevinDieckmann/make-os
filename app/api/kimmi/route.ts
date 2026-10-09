@@ -17,11 +17,14 @@ import { hasAnthropicKey, fremd, FREMD_REGEL, modellFehlerText } from '@/lib/ant
 import { fuerPrompt, istNutzer, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, SYSTEM_LAEUFE, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
+import { agentKategorien, agentSperre } from '@/lib/zoe/agent-kategorien';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN, LESEND } from '@/lib/zoe/gespraech-schutz';
 import { brainAnweisung } from '@/lib/zoe/vault';
-import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, personStreng, privatFinanzZugang } from '@/lib/finanzen/haushalt/zugriff';
+import { FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/finanz-werkzeuge';
+import { arbeitKategorien } from '@/lib/zoe/arbeit-werkzeug';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/zoe/gedaechtnis';
@@ -200,7 +203,9 @@ export async function POST(req: Request) {
   const crmErlaubt = await crmWerkzeugErlaubt(personStreng(req));
   // Nur Fach-Agenten (Härtetest 09.10.): Systemläufe des Takts (Morgenlauf, Löschfristen, Agenten-Lauf `faden` …) standen bisher mit im
   // Angebot von run_agent/starte_auftraege — ein Zuruf (oder ein eingeschleuster Satz) hätte sie mit Modellkosten außer der Reihe gestartet.
-  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)));
+  // KI-Etiketten (09.10.): nur Fach-Agenten, deren feste Kategorien für die Person frei sind (KI-Schalter je Bereich) — ein für ZOE
+  // ausgeschalteter Bereich kommt so auch nicht über das Ergebnis eines Fach-Agenten zurück ins Gespräch (lib/zoe/agent-kategorien.ts).
+  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)) && !agentSperre(a, kiS, gesundheitKi));
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
   const crmBezug = crmErlaubt && kiS.bereiche.crm ? crmBezugAus(payload.bezug) : null;
 
@@ -221,9 +226,13 @@ export async function POST(req: Request) {
   // nach Regelwerk; Fach-Werkzeuge laufen über die Heads. Gesperrte Bereiche und Gesundheit ohne Einwilligung gar nicht erst anbieten.
   const defs = werkzeugDefs({ personen: await haushaltsSpeicher().catch(() => []), agenten: agentenAngebot, heads: heads.map(h => ({ id: h.id, kurz: h.kurz, name: h.name })) });
   const NUR_HAUSHALT_DES_INHABERS: readonly string[] = [...CRM_WERKZEUGE, ...AUFGABEN_DATEI_WERKZEUGE, 'meine_aufgaben', 'aufgabe_an_zoe', 'suche_arbeit'];
+  // Finanzbestände `finanzplan`/`liquiplan` (Routen-Klasse `finanz-privat`, 09.10. Funde Abdeckung #1): nur mit privatem Finanzzugang anbieten —
+  // ein Konto „nur Business“ bekommt die Werkzeuge gar nicht (die Route lehnte die Wirkung ohnehin ab).
+  const privatFinanzen = !!(await privatFinanzZugang(req).catch(() => null));
   const darf = (name: string): boolean => {
     if (!WERKZEUGE[name]) return name === 'run_agent' || name === 'open_agent';
     if (NUR_HAUSHALT_DES_INHABERS.includes(name) && !crmErlaubt) return false;
+    if (FINANZPLAN_ALTWEG_WERKZEUGE.has(name) && !privatFinanzen) return false;
     if (gruppeVon(name) === 'haushalt' && !haushalt) return false;
     if ((name === 'an_head' || name === 'head_fragen') && !heads.length) return false;
     return !werkzeugSperre(kategorieVonWerkzeug(name, gruppeVon(name)), kiS, gesundheitKi);
@@ -288,7 +297,7 @@ export async function POST(req: Request) {
       let headFragenBudget = HEAD_FRAGEN_JE_ZUG;
       const anlass = message.slice(0, 200);
       const zoeKontext = (z: { fremdGelesen: boolean; vertraulich: boolean }) => ({ ...(zug ? { fadenId: zug.faden.id } : {}), fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich });
-      const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet/i;
+      const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet|nicht erfasst|nicht notiert|nicht eingereiht|nicht vermerkt/i;
 
       // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des ZOE-Gesprächs: 3 Runden, parallel, Register-Stufe.
       const aus = await schleife({
@@ -323,6 +332,10 @@ export async function POST(req: Request) {
             const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z) });
             const k = kategorieVonWerkzeug(name, gruppeVon(name));
             const kats: KiKategorie[] = k ? [k] : [];
+            // suche_arbeit (09.10., Funde #6): Brain und Markttraktion lesen nur, wenn eingeschaltet — und genau diese Kategorien stehen im Protokoll.
+            if (name === 'suche_arbeit') kats.push(...(await arbeitKategorien(a.input ?? {}, person).catch(() => [] as KiKategorie[])));
+            // hake_routine ist neutral (09.10.): Routinen-Namen sind Planung — Privat-Routinen nur mit Einwilligung (b), dann auch Gesundheit.
+            if (name === 'hake_routine') kats.push('aufgaben', ...(gesundheitKi ? ['gesundheit' as const] : []));
             // head_fragen: die Antwort trägt die Kategorien, mit denen der Head lief (Schalter, Einwilligung — nie mehr).
             if (name === 'head_fragen' && lauf.ok) kats.push(...(await headFrageKategorien(person, String(a.input?.head ?? '')).catch(() => [] as KiKategorie[])));
             const quelle = FREMD_WERKZEUGE[name] ?? null;
@@ -341,7 +354,9 @@ export async function POST(req: Request) {
             return { inhalt: l.text, ok: l.gestapelt || !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
           }
           const l = await runAgent(agentId as Ausfuehrbar, String(a.input?.auftrag ?? ''), origin, person);
-          return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}) };
+          // KI-Etiketten (09.10.): das Ergebnis trägt seine Kategorien (Gesundheit nur, wenn der Lauf sie mit (b) hatte) — die Schleife nimmt
+          // sie in den Zustand, der NÄCHSTE Modellaufruf trägt sie, das KI-Tor greift (vorher ging z. B. die Tagesform ohne Etikett weiter).
+          return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), kategorien: l.kategorien ?? agentKategorien(agentId, false) };
         },
       });
 

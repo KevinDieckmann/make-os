@@ -44,31 +44,64 @@ export function arbeitAntwort(eintraege: readonly Eintrag[], durchsucht: { app: 
   return `${kopf}\n${fremd(ARBEIT_QUELLE, zeilen.join('\n'))}\nLinks bitte so weitergeben (Pfad in der App).`;
 }
 
+/** Welche App-Arten zu welcher KI-Kategorie gehören (Angebote und Mandate sind Markttraktion, der Rest Aufgaben & Ziele). */
+export const ART_KATEGORIE: Readonly<Record<AppArt, 'aufgaben' | 'crm'>> = { aufgabe: 'aufgaben', kommentar: 'aufgaben', projekt: 'aufgaben', angebot: 'crm', mandat: 'crm' };
+
+/**
+ * Welche Teilquellen ein Aufruf liest — nach den KI-Schaltern der Person bzw. den Kategorien des Heads (09.10., Funde Abdeckung #6).
+ * Vorher las das Werkzeug (Kategorie „aufgaben“) auch Brain und CRM, wenn diese Bereiche für ZOE ausgeschaltet waren, und das
+ * KI-Protokoll nannte nur „aufgaben“. Rein und getestet: dieselbe Rechnung für die Ausführung und die Kategorien des KI-Protokolls.
+ */
+export function arbeitQuellen(input: Record<string, unknown>, erlaubt: { aufgaben: boolean; crm: boolean; brain: boolean }): { arten: AppArt[]; brain: boolean; kategorien: ('aufgaben' | 'crm' | 'brain')[] } {
+  const art = ARTEN.find(a => a === input.art);
+  const nurApp = input.nur === 'app' || !!art;
+  const nurBrain = input.nur === 'brain';
+  const arten = nurBrain ? [] : (art ? [art] : [...ARTEN]).filter(a => erlaubt[ART_KATEGORIE[a]]);
+  const brain = !nurApp && erlaubt.brain;
+  const kategorien = Array.from(new Set([...arten.map(a => ART_KATEGORIE[a]), ...(brain ? ['brain' as const] : [])]));
+  return { arten, brain, kategorien };
+}
+
+/** Die Kategorien, die ein Aufruf von `suche_arbeit` an das Modell gibt (kimmi: KI-Protokoll/Tor) — aus den Schaltern der Person. */
+export async function arbeitKategorien(input: Record<string, unknown>, person: string | null | undefined): Promise<('aufgaben' | 'crm' | 'brain')[]> {
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const s = await kiSchalterFuer(person ?? null);
+  return arbeitQuellen(input, { aufgaben: s.bereiche.aufgaben, crm: s.bereiche.crm, brain: s.bereiche.brain }).kategorien;
+}
+
 async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   if (!person) return KEINE_PERSON;
   if (!(await personImHaushaltDesInhabers(person))) return NUR_HAUSHALT;
   const frage = String(input.frage ?? input.suche ?? '').replace(/\u0000/g, '').trim();
   if (!frage) return 'Fehlgeschlagen: frage fehlt (Stichworte).';
   if (frage.length > 300) return 'Nicht ausgeführt: die Frage ist länger als 300 Zeichen — bitte Stichworte.';
-  const art = ARTEN.find(a => a === input.art);
-  const nurApp = input.nur === 'app' || !!art;
-  const nurBrain = input.nur === 'brain';
   const anzahl = Math.max(1, Math.min(20, Number(input.anzahl) || 8));
   const haushalt = await haushaltDesInhabers();
   if (!haushalt) return NUR_HAUSHALT;
+  // Teilquellen nach den KI-Schaltern der Person (09.10., Funde #6): Brain bzw. Markttraktion aus → diese Treffer gar nicht erst lesen.
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const s = await kiSchalterFuer(person);
+  const q = arbeitQuellen(input, { aufgaben: s.bereiche.aufgaben, crm: s.bereiche.crm, brain: s.bereiche.brain });
+  // Den Privat-Space sieht nur ein volles Haushaltsmitglied (09.10., Funde #6): ein Konto „nur Business“ (`finanzRecht: 'business'`) nie.
+  const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+  const privat = !!(await haushaltFuer(person).catch(() => null));
   let app: { treffer: AppTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
-  if (!nurBrain) {
+  if (q.arten.length) {
     const A = await import('@/lib/brain/app-index');
     try { await A.appIndexAktualisieren(); } catch (e) { return `Fehlgeschlagen: Such-Index nicht lesbar (${e instanceof Error ? e.message.slice(0, 120) : 'unbekannt'}).`; }
-    // Person im Haushalt des Inhabers → sie sieht auch den Privat-Space dieses Haushalts.
-    app = A.appSuche(frage, { haushalt, privat: true }, anzahl, art ? [art] : undefined);
+    app = A.appSuche(frage, { haushalt, privat }, anzahl, q.arten);
   }
   // Das Brain (Vault) mit der Sicht der Person — Sicht vor dem Ranking (lib/zoe/vault.ts `suche`).
   let brain: { treffer: BrainTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
-  if (!nurApp) {
+  if (q.brain) {
     try { const { suche } = await import('./vault'); brain = await suche(frage, anzahl, { person }); } catch { /* Brain nicht lesbar — App-Treffer reichen */ }
   }
-  return arbeitAntwort(mischen(app.treffer, brain.treffer, anzahl), { app: app.durchsucht, brain: brain.durchsucht });
+  const art = ARTEN.find(a => a === input.art);
+  const wollteBrain = input.nur !== 'app' && !art;
+  const wollteCrm = input.nur !== 'brain' && (!art || ART_KATEGORIE[art] === 'crm');
+  const aus = [wollteBrain && !s.bereiche.brain ? 'Brain' : '', wollteCrm && !s.bereiche.crm ? 'Angebote/Mandate' : ''].filter(Boolean);
+  const antwort = arbeitAntwort(mischen(app.treffer, brain.treffer, anzahl), { app: app.durchsucht, brain: brain.durchsucht });
+  return aus.length ? `${antwort}\n(Für ZOE ausgeschaltet und nicht durchsucht: ${aus.join(', ')}.)` : antwort;
 }
 
 export const ARBEIT_WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {

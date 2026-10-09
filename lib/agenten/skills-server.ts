@@ -12,8 +12,8 @@
 
 import { headDef, KATALOG } from './katalog';
 import {
-  GRENZEN, agentSchluessel, fadenBestand, werkstattBestandFuer,
-  type AgentRef, type FadenBestand, type HeadDef, type Merksatz, type Mitarbeiter, type Skill, type SkillKurz, type SkillTest, type Umfang,
+  GRENZEN, agentSchluessel, werkstattBestandFuer,
+  type AgentRef, type HeadDef, type Merksatz, type Mitarbeiter, type Skill, type SkillKurz, type SkillTest, type Umfang,
   type WerkstattBestand,
 } from './typen';
 import {
@@ -216,7 +216,8 @@ const nameFrei = (w: Werkstatt, headId: string, name: string, ausser?: string) =
  */
 async function fadenFremd(person: string, fadenId: unknown): Promise<boolean> {
   if (typeof fadenId !== 'string' || !fadenId) return false;
-  const f = (await loadJson<FadenBestand>(fadenBestand(person)))?.faeden?.find(x => x.id === fadenId);
+  const { indexLesen } = await import('./faeden-ablage');
+  const f = (await indexLesen(person)).faeden.find(x => x.id === fadenId); // der Kopf genügt (E3): die Marke steht am Thread
   return !f || !!f.fremdGelesen;
 }
 
@@ -309,7 +310,8 @@ export async function skillImportAktion(person: string, headId: unknown, skillMd
 /** „Das als Skill speichern“ aus einem eigenen Thread (nur lesend aus `agenten-faeden--<person>`). Entwurf, nie aktiv. */
 export async function skillAusFadenAktion(person: string, fadenId: unknown, headIdWahl?: unknown): Promise<Ergebnis<{ skill: GespeicherterSkill; stand: string }>> {
   if (typeof fadenId !== 'string' || !/^fd-[a-z0-9-]{1,60}$/.test(fadenId)) return fehler(400, 'Thread-Kennung fehlt.');
-  const f = (await loadJson<FadenBestand>(fadenBestand(person)))?.faeden?.find(x => x.id === fadenId);
+  const { fadenLesen } = await import('./faeden-ablage');
+  const f = await fadenLesen(person, fadenId); // der ganze Thread (E3) — der Entwurf liest die Nachrichten
   if (!f || f.besitzer !== person) return fehler(404, 'Thread nicht gefunden.');
   const headId = f.agent.art === 'zoe' ? headIdWahl : f.agent.headId;
   const hk = await headKontext(person, headId);
@@ -469,8 +471,8 @@ export async function mitarbeiterProbelaufAktion(person: string, headId: unknown
   let e: MitarbeiterProbeErgebnis;
   try { e = await mitarbeiterProbeImpl({ head: hk.head, mitarbeiter: ma, eingabe: eingabe.wert, person }); }
   catch (x) { e = { ok: false, text: x instanceof Error ? x.message.slice(0, 160) : 'Fehler' }; }
-  const { bestandAendern } = await import('./faeden-server');
-  const { neuerFaden, anhaengen, fadenHinzu } = await import('./faeden');
+  const { fadenAnlegen } = await import('./faeden-server');
+  const { neuerFaden, anhaengen } = await import('./faeden');
   const jetzt = new Date().toISOString();
   const agent: AgentRef = ma.id ? { art: 'mitarbeiter', headId: hk.head.id, mitarbeiterId: ma.id } : { art: 'head', headId: hk.head.id };
   const f = neuerFaden({ id: neueKennung('fd'), besitzer: person, agent, bereich: hk.head.bereich, titel: `Probelauf: ${ma.name}`, jetzt, kette: [agentSchluessel(agent)] });
@@ -481,9 +483,9 @@ export async function mitarbeiterProbelaufAktion(person: string, headId: unknown
   ], jetzt);
   if (!n.ok) return fehler(n.status === 413 ? 413 : 409, n.fehler);
   const fertig = { ...n.faden, status: (e.ok ? 'fertig' : 'fehler') as 'fertig' | 'fehler' };
-  const r = await bestandAendern<string>(person, b => { const x = fadenHinzu(b, fertig); return x.ok ? { bestand: x.bestand, e: fertig.id } : x; });
+  const r = await fadenAnlegen(person, fertig);
   if (!r.ok) return fehler(r.status === 400 ? 400 : r.status === 413 ? 413 : 409, r.fehler);
-  return { ok: true, fadenId: r.e, schaetzung };
+  return { ok: true, fadenId: r.faden.id, schaetzung };
 }
 
 // ── Erfolgsquote (Paket 1 meldet Läufe und Entscheidungen) ─────────────────────────────────────────────────────────────
@@ -516,13 +518,23 @@ export async function skillErfolgZaehlen(umfang: Umfang, skillId: string, was: '
 export async function skillEntscheidungZaehlen(v: { id: string; person?: string }, entscheidung: 'angenommen' | 'abgelehnt', jetzt = new Date()): Promise<string | null> {
   try {
     if (!v.person || !/^[a-z0-9-]{1,40}$/.test(v.person)) return null;
-    const faeden = (await loadJson<FadenBestand>(fadenBestand(v.person)))?.faeden ?? [];
-    const quelle = faeden.find(f => (f.nachrichten ?? []).some(n => (n.werkzeuge ?? []).some(w => w.vorschlagId === v.id)));
-    if (!quelle) return null;
-    const nachId = new Map(faeden.map(f => [f.id, f]));
-    const gesehen = new Set<string>();
-    let f: typeof quelle | undefined = quelle;
-    while (f && !f.skillId && f.elternId && !gesehen.has(f.id)) { gesehen.add(f.id); f = nachId.get(f.elternId); }
+    // E3 (09.10.): Kette und Skill stehen in den Köpfen (Index) — ganz geladen werden nur Threads, deren Kette zu einem Skill-Lauf führt, die
+    // jüngsten zuerst, bis die Nachricht mit dem Vorschlag gefunden ist (vorher: alle Nachrichten aller Threads).
+    const { indexLesen, fadenLesen } = await import('./faeden-ablage');
+    const koepfe = (await indexLesen(v.person)).faeden;
+    const nachId = new Map(koepfe.map(f => [f.id, f]));
+    const skillVon = (k: (typeof koepfe)[number]): string | null => {
+      const gesehen = new Set<string>();
+      let f: (typeof koepfe)[number] | undefined = k;
+      while (f && !f.skillId && f.elternId && !gesehen.has(f.id)) { gesehen.add(f.id); f = nachId.get(f.elternId); }
+      return f?.skillId ?? null;
+    };
+    const kandidaten = koepfe.filter(k => skillVon(k)).sort((a, b) => (b.geschrieben ?? b.aktualisiert).localeCompare(a.geschrieben ?? a.aktualisiert));
+    let f: { skillId?: string } | null = null;
+    for (const k of kandidaten) {
+      const ganz = await fadenLesen(v.person, k.id);
+      if (ganz?.nachrichten.some(n => (n.werkzeuge ?? []).some(w => w.vorschlagId === v.id))) { f = { skillId: skillVon(k) ?? undefined }; break; }
+    }
     if (!f?.skillId) return null;
     return (await skillErfolgZaehlen(await umfangFuer(v.person), f.skillId, entscheidung, jetzt)) ? f.skillId : null;
   } catch (e) {

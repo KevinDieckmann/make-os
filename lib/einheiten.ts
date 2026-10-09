@@ -251,6 +251,13 @@ export const BUSINESS_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSC
  * Woche 2 · 4.11): die erste Business-Gesellschaft der Instanz. Oberflächen nehmen diese Stelle, nie eine feste Kennung (Plattform-Regel).
  */
 export const BUSINESS_VORGABE_SPACE: Gesellschaftskennung = BUSINESS_GESELLSCHAFTEN[0] ?? GESELLSCHAFTEN[GESELLSCHAFTEN.length - 1];
+/**
+ * Die Einheit, deren Ist die „Grundlage“ (V1-Export der Buchhaltung) trägt — das Einzelunternehmen der Instanz (Rechtsart, unsere: die
+ * Selbstständigkeit). Ob die Grundlage in Business-Sichten (Business-Index, Head of Finance Business) erscheint, entscheidet ihr Bereich.
+ */
+export const GRUNDLAGE_EINHEIT: Gesellschaftskennung | undefined = GESELLSCHAFTEN.find(g => RECHTSART[g] === 'einzelunternehmen');
+/** Gehört die Grundlage zum Business? Nur, wenn ihre Einheit dort steht (Vorgabe: nein — sie gehört zu Privat). */
+export const grundlageImBusiness = (): boolean => !!GRUNDLAGE_EINHEIT && BEREICH_JE_EINHEIT[GRUNDLAGE_EINHEIT] === 'business';
 /** Die festen Einheiten, die zu Privat gehören (unsere Instanz: die Selbstständigkeit). */
 export const PRIVAT_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSCHAFTEN.filter(g => BEREICH_JE_EINHEIT[g] === 'privat');
 /** Eine feste Gesellschaft im Business-Bereich? (Rechnen im Business-Index, Business-Sichten.) */
@@ -321,12 +328,37 @@ export function finanzOrtAus(roh: unknown): FinanzOrt | undefined {
  * „KD Ventures UG“ bleibt kdv (Ventures zuerst).
  */
 export function firmaAusAngabe(roh: unknown): Gesellschaftskennung {
+  return firmaErkennen(roh) ?? 'kdc';
+}
+
+/** Die Gesellschaft, die eine freie Angabe EINDEUTIG nennt — sonst undefined (kein Rückfall). Rein. */
+export function firmaErkennen(roh: unknown): Gesellschaftskennung | undefined {
   const t = String(roh ?? '');
   const genau = finanzOrtAus(t);
   if (genau && genau !== 'privat') return genau;
   if (/ventures|kdv|kd management/i.test(t)) return 'kdv';
   if (/\bmake\b|\bug\b/i.test(t)) return 'ug';
-  return 'kdc';
+  return undefined;
+}
+
+/**
+ * Die Business-Gesellschaft aus einer freien Angabe (ZOE-Werkzeuge und Heads, 09.10. — Funde der Abdeckungs-Analyse #3): OHNE den
+ * stillen Rückfall von `firmaAusAngabe` auf die Selbstständigkeit. Ohne Angabe gilt nur die EINZIGE Business-Gesellschaft der Instanz
+ * (sonst „welche?“); eine Angabe muss eine Gesellschaft eindeutig nennen; eine Privat-Einheit (`BUSINESS_GESELLSCHAFTEN` entscheidet,
+ * je Instanz umstellbar) wird abgelehnt — sie gehört zu Privat. Rein.
+ */
+export function businessFirmaAus(roh: unknown): { ok: true; firma: Gesellschaftskennung } | { ok: false; fehler: string } {
+  const t = String(roh ?? '').trim();
+  const liste = BUSINESS_GESELLSCHAFTEN.map(g => `${g} (${finanzOrtName(g)})`).join(', ');
+  if (!t) {
+    if (BUSINESS_GESELLSCHAFTEN.length === 1) return { ok: true, firma: BUSINESS_GESELLSCHAFTEN[0] };
+    return { ok: false, fehler: `firma fehlt — welche Gesellschaft? ${liste || 'Es gibt keine Business-Gesellschaft.'}` };
+  }
+  if (finanzOrtAus(t) === 'privat') return { ok: false, fehler: 'Das ist privat — dafür gibt es die Werkzeuge der Haushaltsfinanzen.' };
+  const g = firmaErkennen(t);
+  if (!g) return { ok: false, fehler: `„${t.slice(0, 60)}“ ist keine bekannte Gesellschaft — firma: ${liste}.` };
+  if (!BUSINESS_GESELLSCHAFTEN.includes(g)) return { ok: false, fehler: GEHOERT_ZU_PRIVAT(g) };
+  return { ok: true, firma: g };
 }
 
 // ── Rechenkern v3 (lib/finanzen/rechenkern.ts) — Namen bleiben, Zuordnung hier ──

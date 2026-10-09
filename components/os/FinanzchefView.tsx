@@ -288,7 +288,7 @@ function IstStand({ liste }: { liste: Schritt[] }) {
                   <span style={{ fontWeight: 600, color: x.erledigt ? C.inkDim : C.ink }}>{x.titel}</span>
                   <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>{x.detail}</span>
                 </span>
-                {!x.erledigt && <Chip farbe={x.wer === 'malin' ? LEUCHT.beziehung : x.wer === 'beide' ? LEUCHT.puls : LEUCHT.geld}>{x.wer === 'beide' ? 'beide' : x.wer === 'malin' ? 'Malin' : 'Kevin'}</Chip>}
+                {!x.erledigt && <Chip farbe={x.wer === 'beide' ? LEUCHT.puls : LEUCHT.geld}>{x.werName ?? x.wer}</Chip>}
               </Link>
             ))}
           </div>

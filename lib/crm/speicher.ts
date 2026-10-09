@@ -34,7 +34,7 @@ import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
 import type { Gesellschaft } from './typen';
-import { istRegisterKennung } from '@/lib/einheiten';
+import { bereichVonGesellschaft, istRegisterKennung } from '@/lib/einheiten';
 
 const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
 
@@ -872,11 +872,16 @@ export async function aendereCrmAsync(mut: (b: CrmBestand) => Promise<CrmBestand
   return crmSchreiben(mut, protokollWer);
 }
 
-/** Kunden-Sicht aus den Mandaten — für Score, ZOE-Kontext und Loops (vorher eigener Speicher „kunden“). */
+/**
+ * Kunden-Sicht aus den Mandaten — für Score, ZOE-Kontext und Loops (vorher eigener Speicher „kunden“).
+ * Bereich je Einheit (09.10., K3): nur Mandate einer Business-Gesellschaft (`bereichVonGesellschaft`, wie `ladeRoh`) — die Zahl geht als
+ * Business-Kennzahl in ZOE und die Business-Heads; Mandate einer Privat-Einheit (Selbstständigkeit unter Privat) zählen hier nicht.
+ */
 export function kundenAusMandaten(b: CrmBestand): { kunden: { name: string; status: 'aktiv' | 'gespraech' | 'ruht'; cashflow?: number }[] } {
   const je = new Map<string, { name: string; status: 'aktiv' | 'gespraech' | 'ruht'; cashflow: number }>();
   const rang = { aktiv: 0, gespraech: 1, ruht: 2 } as const;
   for (const m of b.mandate) {
+    if (bereichVonGesellschaft(m.gesellschaft) !== 'business') continue;
     const s = m.status === 'aktiv' ? 'aktiv' : m.status === 'angebot' || m.status === 'verhandlung' ? 'gespraech' : 'ruht';
     const alt = je.get(m.kunde) ?? { name: m.kunde, status: s, cashflow: 0 };
     je.set(m.kunde, { name: m.kunde, status: rang[s] < rang[alt.status] ? s : alt.status, cashflow: alt.cashflow + (m.status === 'aktiv' && m.honorar.basis === 'monat' ? m.honorar.betrag : 0) });

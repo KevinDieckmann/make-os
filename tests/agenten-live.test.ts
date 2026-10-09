@@ -43,7 +43,7 @@ let m: ModellFake;
 let db: typeof import('@/lib/store/local-db');
 const WURZEL = path.resolve(__dirname, '..');
 const quelle = (p: string) => readFileSync(path.join(WURZEL, p), 'utf8');
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 
 beforeAll(async () => {
   await kontenSaeen();

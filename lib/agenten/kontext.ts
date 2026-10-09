@@ -76,6 +76,8 @@ async function finanzKontext(head: HeadDef, sicht: KontoSicht, kats: Set<KiKateg
   if (!kats.has('finanzen')) return LEER('Finanzen sind für die KI ausgeschaltet (System › Datenschutz).');
   const { ladeFinanzbild } = await import('@/lib/finanzen/chef/lauf');
   if (head.bereich === 'business') {
+    // Ohne Haushalt = Business-Sicht (09.10., Funde Abdeckung #2): das Finanzbild selbst lässt die Grundlage einer Privat-Einheit (V1-Export der
+    // Selbstständigkeit) und die Einkommensteuer weg (lib/finanzen/chef/finanzbild.ts) — für jedes Konto, auch volle Mitglieder im Business-Head.
     const { bild } = await ladeFinanzbild(null);
     const teil = { stichtag: bild.stichtag, business: bild.business, steuern: bild.steuern, hinweise: bild.hinweise.filter(h => h.bereich !== 'haushalt' && h.bereich !== 'gesamt') };
     return { text: `FINANZBILD BUSINESS (nur die Business-Gesellschaften; Hinweis, keine Steuerberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen'], fremd: true, vertraulich: true };
@@ -86,7 +88,7 @@ async function finanzKontext(head: HeadDef, sicht: KontoSicht, kats: Set<KiKateg
   if (!h) return LEER('Kein Zugang zu den privaten Haushaltsfinanzen.');
   const { bild } = await ladeFinanzbild(h.haushalt);
   const teil = { stichtag: bild.stichtag, haushalt: bild.haushalt, gesamt: bild.gesamt, entnahmen_abgleich: bild.entnahmen_abgleich, steuern: bild.steuern, hinweise: bild.hinweise.filter(x => x.bereich !== 'business') };
-  return { text: `FINANZBILD PRIVAT (Haushalt; Hinweis, keine Steuer- oder Anlageberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen'], fremd: true, vertraulich: true };
+  return { text: `FINANZBILD PRIVAT (Haushalt; Hinweis, keine Steuer- oder Anlageberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen', 'finanzen-privat'], fremd: true, vertraulich: true };
 }
 
 async function hoiKontext(): Promise<HeadKontext> {

@@ -45,6 +45,10 @@ Bedingung des Skills als Daten; der Agent holt Inhalte über seine Werkzeuge) bz
 jeden Lauf (`sperrenFiltern`, neu ausgelagert aus `faellig`: KI-Läufe, Head-Budget, Fehlerpause). Der Cursor (`ereignisCursorNachziehen`, POST des
 Takts VOR dem Einreihen) rückt bis vor das erste wartende/fällige Ereignis — erledigt ist ein Ereignis erst, wenn sein Auftrag in der Warteschlange
 steht; GET (Vorschau) schreibt nie. Die Tages-Runde der ZOE-Aufgaben zählt einen Ereignis-Lauf nicht als „heute gelaufen“.
+**Fail-closed:** ist ein Bestand der Auswertung nicht lesbar (Warteschlange, Werkstatt, Sicht, KI-Schalter, Business-frei, Aufgaben), wirft sie —
+nichts wird eingereiht, der Cursor bleibt, kein Ereignis verfällt deshalb (nie `.catch(() => [])` auf diesen Lesungen); beschädigte
+Agenten-Einstellungen = „wartet“. Nach dem Merge mit `agenten-nacht` (E3, KI-Etiketten): das Heads-Paket nimmt nur Ereignis-Arten, deren
+KI-Kategorie frei ist (Mail/WhatsApp → `postfach`, Zahlung → `finanzen`, Absage → `kalender`, sonst `crm`), und trägt sie ins Etikett des Laufs.
 
 **Weitere Leser:** Heads-Paket (`lib/heads/lauf.ts`) bekommt `seit_letztem_lauf` (lib/ereignisse/leser.ts: nur Business, nur für die Person des Laufs
 sichtbar, Systemlauf ohne personengebundene; Kennungen über die Kartei/das CRM des Pakets aufgelöst, Werbesperre/Art. 18 fallen samt Ereignis heraus).
@@ -92,6 +96,89 @@ fälliger Lauf (Head-Budget erreicht) wartet bis 72 h und zählt nicht als „ge
 **Rückweg:** nur ein neuer Bestand und optionale Felder (`WebhookErgebnis.eingang`, `ausgefiltert.geschrieben`, Skill-Arten) — der alte Stand
 ignoriert den Bestand; ein Skill mit einer neuen Art (z. B. „Deal in neuer Stufe“) gilt dort als ungültiger Auslöser und lässt sich erst nach Ändern
 speichern (er läuft dort ohnehin nicht).
+
+## 09.10.2026 — ZOE-Schreibwege über die offiziellen Routen, Finanz-Trennung (nur lokal — Branch `zoe-schreibwege`, Basis `agenten-nacht` 297458af)
+
+Anlass: die Abdeckungs-Analyse (nur gelesen) fand Werkzeuge von ZOE/Agenten, die an den offiziellen Schreibwegen vorbei schrieben und die
+Finanz-Trennung verletzten. Jeder Fund wurde nachgeprüft; behoben ist, was sich bestätigt hat. Wächter `tests/zoe-schreibwege.test.ts`
+(28 Fälle; die 26 der Funde waren auf der Basis alle rot).
+
+**Eine Stelle für den internen Hop:** `lib/zoe/innen.ts` (`innen(pfad, methode, body, person)`) — ruft eine eigene Route im Prozess mit
+Dienstschlüssel + `x-make-person` der AUSLÖSENDEN Person (bei der Freigabe: wer im Stapel klickte), ohne Person nie (401). Dieselben Prüfungen
+wie ein Klick; `crm_vorschlag` und der Kalender-Vorschlag nutzen sie weiter (aus `crm-vorschlag.ts` nur noch weitergereicht).
+**Regel: neue schreibende ZOE-Werkzeuge nur über `innen()` — nie `updateJson`/`aendereKontakte` am Schreibweg vorbei** (Wächter-Scan im Test).
+
+| Fund | Vorher | Jetzt |
+|---|---|---|
+| #1 Finanz-Werkzeuge (kritisch) | `setze_kontostand`, `erfasse_rechnung`, `erfasse_zahlung`, `erfasse_planposten`, `setze_ziele` schrieben direkt in `finanzplan`/`liquiplan`/`finance`: ohne Fassung/409, ohne Protokoll, ohne `privatFinanzZugang` — ein Konto „nur Business“ schrieb über ZOE, was die Route verweigert; „bezahlt“ ohne Buchung und ohne `bezahltAm`; Kontostand/Zahlung auf ganze Euro | `lib/zoe/finanz-werkzeuge.ts` → `GET/PATCH /api/state/finanzplan` (Fassung je Eintrag, `aktion: 'bezahlt'` = Status + `bezahltAm` + Buchung `bu-re-<id>` in EINER Sperre), `PATCH /api/state/liquiplan`, `PATCH /api/state/finance`. Beträge auf den Cent (auch `sauberFile` hält den Kontostand jetzt auf den Cent). Finanzplan-Altweg/Liquiplan (`finanz-privat`): nur mit privatem Finanzzugang — kimmi bietet die vier Werkzeuge einem Konto „nur Business“ nicht an, die Agenten (`werkzeugAngebot({ privatFinanzen })`) ebenso, der Stapel zeigt ihm solche Vorschläge nicht und lässt ihn nicht freigeben (404), die Vorschau (`vsKontostand`, `vsRechnung`, `vsPlanposten`) liest für ihn nichts. `setze_ziele` bleibt für Business-Partner (Route-Klasse `haushalt`). Wiederholung derselben Freigabe legt nichts doppelt an (Kennung aus der Vorschlags-Kennung, `WerkzeugKontext.vorschlagId`, nur von `fuehreAus` bei der Freigabe gesetzt). |
+| #2 Head of Finance Business (kritisch) | `baueFinanzbild` gab ohne Haushalt die Grundlage (V1-Export der Selbstständigkeit: Entnahmen, größter Kunde, RV-Hinweis) und ESt-Termine heraus — an den Business-Head, auch für „nur Business“ | Ohne Haushalt = Business-Sicht: Grundlage nur, wenn ihre Einheit zum Business gehört (`grundlageImBusiness`, `GRUNDLAGE_EINHEIT` in lib/einheiten.ts — wie `ladeRoh`), keine ESt; Datenpaket und `GET /api/finanzchef` ohne Rechtsform/ESt einer Privat-Einheit (`einstellungFuerBusiness`), die Checkliste ohne Konten/Rechnungen/Planposten einer Privat-Einheit. Der Privat-Kontext trägt jetzt die Kategorie `finanzen-privat`. |
+| #3 Stiller Rückfall auf die Selbstständigkeit | `firmaAusAngabe` ohne Angabe → Selbstständigkeit; `erfasse_zahlung` ohne Feld `firma`; Agenten-Schema ohne Prüfung | `businessFirmaAus` (lib/einheiten.ts): ohne Angabe nur die EINZIGE Business-Gesellschaft, Privat-Einheit und Unbekanntes abgelehnt (serverseitig gegen `BUSINESS_GESELLSCHAFTEN`). `erfasse_zahlung` hat `firma`, `MIT_FIRMA` ergänzt, die Beschreibungen nennen nur Business-Gesellschaften. `erfasse_planposten` lehnt eine Privat-Einheit und Posten einer Privat-Einheit ab (ohne/unbekannte Angabe bleibt „ohne Firma“ = Business, wie bisher). `firmaAusAngabe` hat sonst keine Aufrufer mehr (Tests bleiben). |
+| #4 CRM-Altwerkzeuge | `notiere_kontakt` schrieb mit `aendereKontakte` direkt: ohne Anlass-Pflicht (§ 7 Abs. 2 UWG), ohne Sperrliste bei „sperre“, ohne CRM-Folgen und Idempotenz; `chance_anlegen` am Deal-Weg vorbei | `notiere_kontakt` → `POST /api/crm/aktivitaet` (neues Feld `anlass`; Vorschlags-Kennung = Idempotenz + „aus ZOE, freigegeben von …“), `chance_anlegen` → `POST /api/crm/deal` (feste Kennung `ch-<Vorschlag>`, auch mit „trotzdem“ nie doppelt). Name, Eingabe, Stufe (Freigabe) bleiben. |
+| #5 Meilenstein/Fokus | `setze_meilenstein`/`setze_fokus` mit `updateJson` — ohne `listePatchen`, Bezugsprüfung, Liste je Meilenstein, Protokoll | `PATCH /api/state/meilensteine` (upsert mit Stand → Kette, `meilensteinBezugPruefen`, `ohneToteVerweise`, `meilensteinStrukturSichern`, Ziele nachziehen, Protokoll) bzw. `PUT /api/state/ziele` (jetzt mit Protokoll, ohne den Satz). |
+| #6 `suche_arbeit` | las Brain und CRM auch bei ausgeschaltetem Bereich; KI-Protokoll nur „aufgaben“; Privat-Space für jedes Haushaltskonto | Teilquellen je Schalter (`arbeitQuellen`), kimmi nennt genau die gelesenen Kategorien (`arbeitKategorien`), Agenten nur die aktiven Kategorien des Heads; Privat-Space nur für volle Mitglieder (`haushaltFuer`). |
+| klein | `haushalt_*` Kategorie `finanzen`; `hake_routine` hinter der Gesundheits-Einwilligung „an die KI“; Brain-Block „PIPELINE“ aus `prospects` | `haushalt_*` = `finanzen-privat` (zählt am Schalter Finanzen, KI-Tor mit privatem Finanzzugang); `hake_routine` neutral — das Werkzeug prüft je Routine: (a) zum Schreiben, Business-Routinen mit Bereich „Aufgaben & Ziele“, Privat-Routinen nur mit (b); Block heißt „PROSPECTING (recherchierte Firmen, keine Deals)“. |
+
+**Nie still kürzen (Zusatz der Hauptsitzung):** `starte_auftraege` kürzte auf 20 Aufträge (`.slice(0, 20)`) — jetzt über der Grenze `AUFTRAEGE_MAX`
+NICHTS eingereiht und ein klarer Satz an das Modell („Nicht eingereiht: höchstens 20 … — nichts gestartet. Bitte aufteilen“). `fakt_merken` gibt den
+413-Satz `GedaechtnisVoll` (aus dem Merge `agenten-datenschicht`) an das Modell weiter statt abzustürzen. Texte „Nicht erfasst/notiert/eingereiht“ und
+„NICHT vermerkt“ zählen in `fuehreAus`, kimmi und den Agenten als Fehlschlag (vorher galt eine abgelehnte Wirkung im Stapel als „freigegeben“).
+
+**Brain-Block GELD (Zusatz der Hauptsitzung):** `gatherBrain` filterte die Forderungen mit `firmaId !== 'privat'` — die Selbstständigkeit zählte als
+Business. Jetzt EINE Regel `geldAus` (lib/brain.ts) über `bereichVonFirma`; mit `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` zählt sie
+wieder mit (Wächter `tests/zoe-schreibwege-geld.test.ts`).
+
+**Routen (nur additiv, verhalten sich für die Oberfläche gleich):** `state/finanzplan` PATCH (ops und `bezahlt`) schreibt jetzt das Änderungsprotokoll
+(Kennungen + Feldnamen), Kontostand über den Dienstweg steht im Konten-Register mit Herkunft „zoe“; `state/liquiplan` PATCH/PUT kürzen nicht mehr still
+bei 200 Posten bzw. 300 Änderungen (413 statt `.slice`), PATCH schreibt das Protokoll; `state/finance` PATCH und `state/ziele` PUT schreiben das Protokoll.
+
+**Bewusst nicht geändert / offen (für Kevin):**
+- Ein Konto „nur Business“ kann über ZOE keine Kontostände, Rechnungen, Zahlungen oder Planposten erfassen — wie in der Oberfläche über diese Bestände
+  (Klasse `finanz-privat`). Ein Business-Schreibweg dafür (z. B. Rechnungen über `/api/rechnung`, Konten-Register) wäre ein eigenes Paket.
+- Die Business-Finanzwerkzeuge erfassen nichts mehr für die Selbstständigkeit (sie gehört zu Privat). Ein ZOE-Werkzeug für Rechnungen/Konten der
+  Selbstständigkeit im Privat-Bereich gibt es noch nicht.
+- Head-of-Finance-Steuern: ob USt/GewSt-Termine der Chef-Einstellung zur Selbstständigkeit gehören, ist nicht eindeutig — in der Business-Sicht fällt nur
+  die Einkommensteuer weg. Die doppelte Steuerlogik (Fund #8, Finanzchef vs. Steuern-Modul) ist nicht Teil dieses Pakets.
+- Doppelte Lese-Werkzeuge (`suche_kontakt` ↔ `crm_suche`, `crm_lage` ↔ `kennzahlen`/`sales_lage`) laufen schon über dieselbe Sicht (`crmSicht`); sie
+  zusammenzulegen änderte Ausgabe und Aufrufform — nicht gemacht.
+
+**Rückweg:** keine neue Bestandsform; `sauberFile` rundet Kontostände auf den Cent statt auf ganze Euro (ganze Beträge bit-gleich). Der alte Stand liest
+Cent-Kontostände (Zahl) ohne Fehler.
+
+## 09.10.2026 — E3 Gesprächs-Ablage geteilt, KI-Protokoll je Tag (nur lokal — Branch `ablage-teilen`, Basis 9da50851)
+
+Kevin 09.10. (E3, ANALYSE_AGENTEN_DATEN.md 5 C): „Ja, jetzt“ — solange nichts davon online ist. Vorher war `agenten-faeden--<person>` EINE Datei mit allen
+Threads, Nachrichten, Brettern, Plänen und Merksätzen (≤ 2.000 Threads × 400 Nachrichten): jede Nachricht schrieb die ganze Datei, der Takt las sie jede
+Minute zweimal, „Läuft“ alle 30 s. `ki-protokoll--<Monat>` schrieb bei jedem Modellaufruf die ganze Monatsdatei (bis 60.000 Zeilen).
+
+| Was | Vorher | Jetzt |
+|---|---|---|
+| Ablage der Threads | eine Datei je Person | **Index** `agenten-faeden--<person>` (`FadenIndexKern`, `v: 2`): je Thread nur der Kopf — Kennung, Agent, Titel, Status, Lauf, Skill/Plan, Zeiten, `zaehler` (Nachrichten, Bretter, offene Pläne/Fragen), `letzte`, `letzteAntwort`, `geschrieben` — dazu Gedächtnis „Persönlich“ und die ZOE-Marke. **Je Thread** `agenten-faden--<person>--<id>` (`FadenDateiKern`): der ganze Thread. Kopf NUR aus `kopfVon` (lib/agenten/faeden.ts). |
+| Schreiben | `bestandAendern` (ganze Datei) | EINE Schreibstelle `ablageAendern` (lib/agenten/faeden-ablage.ts, über faeden-server.ts `ablageAendernFuer`/`fadenAendern`/`fadenAnlegen`/`faedenAendernWo`/`indexAendern`): Sperre des **Index**, darin je Thread (Rangfolge erst Index, dann Thread — jeder Thread wird nur in der Sperre seines Index geschrieben); lädt nur die Threads, die die Änderung braucht; Stand/409 je Thread wie bisher, 413 statt kürzen. Eine Nachricht schreibt nur Index + ihren Thread (gemessen im Test). |
+| Lesen | ganze Datei | Takt (`zeitplaeneFaellig`, liest weiter roh — Kopf-Felder genügen), „Läuft“ (`laeufeLesen`), „Als Nächstes“, Liste links, `?agent=`, Kosten-Schätzung, Not-Aus/„Head an“-Auswahl, verwaiste Läufe: **nur der Index**. Ganz geladen wird nur, was Nachrichten braucht: `?id=` (ein Thread), Lauf/Chat (der Thread, beim Brett der Head-Thread), Überblick „seit deinem letzten Besuch“ (nur seitdem geschriebene, höchstens 200), Leistung/Kosten je Monat (nur in dem Monat geschriebene Threads des Heads), Skill-Quote (nur Threads einer Skill-Kette, jüngste zuerst). Der Index ist je Person zwischengespeichert, solange sich die Datei nicht ändert. |
+| Löschen | aus der Datei gefiltert | Kopf verlässt den Index, danach die Datei samt Tagessicherungen (`bestandEntfernen`); Kinder mit. |
+| Morgenlauf (Schritt 11a) | Frist über die ganze Datei | über den Index: abgelaufene Köpfe + Dateien; dazu Waisen (Datei ohne Kopf nach einem Absturz) und Köpfe ohne Datei (`agenten-faeden (Waisen)`); ruhender Altbestand zieht hier spätestens um. |
+| KI-Protokoll | `ki-protokoll--JJJJ-MM` | **Tagesdateien** `ki-protokoll--JJJJ-MM-TT` (Berliner Tag, ≤ 20.000 Zeilen, darüber `ueberlauf`); gelesen werden Tage UND die alte Monatsdatei; Aufbewahrung 12 Monate: alte Tagesdateien gehen samt Tagessicherungen, alte Monatsdateien werden geleert (Marke `bereinigt`). Keine Hash-Kette (war nie in `MONATS_FAMILIEN`). Art. 15 `?auskunft=1` unverändert. |
+
+**Übernahme (Altbestand, Demo/lokal/Tests):** Lesen versteht die alte Datei ohne zu schreiben. Das erste Schreiben (bzw. der Morgenlauf) zieht EINMAL um:
+Archivkopie `archiv/agenten-vor-teilung-<person>-<zeit>.json` (Umzugs-Kopie, Frist „archiv-umzug“ 30 Tage, Konto löschen entfernt sie), dann je Thread die
+Datei, dann der Index (`teilung: { am, anzahl }`) — idempotent, ohne Verlust (auch ein als Altbestand zurückgeschriebener Index behält die Nachrichten
+seiner Threads). Thread-Kennungen der Ablage: `fd-[a-z0-9-]{1,80}` (`istAblageId` — weiter als die Routen, damit nichts verloren geht).
+
+**Nachgezogen:** Speicher-Register (`agenten-faden--*` mit Angaben, Frist „zoe-verlauf“; `ki-protokoll--*` je Tag) · Konto-Export/-Löschen (`PERSON_BESTAENDE`
+`agenten-faden` mit `jeEintrag` — jeder Thread ganz in den Export, alle beim Löschen weg; KI-Protokoll-Tage in den Protokollen) · Art. 15/17 (`agenten-faden--*`
+getilgt, in der Sperre des Index — `WeitererSpeicher.aussen`) · RAUSCHEN (`agenten-faden--*`) · HOI (`AGENTEN_BESTAND` mit Thread-Dateien und Tages-Protokoll,
+Satz angepasst) · Demo-Saat (über `ablageAendernFuer`) · Instanz-Export, Sicherung, Rotation, Umschlüsseln (laufen über alle Dateien des Datenordners — nichts
+zu tun). Wächter: `tests/agenten-ablage.test.ts` (16 Fälle: Kopf/Teilen rein, nur Index + ein Thread geschrieben, Takt/Läufe/„Als Nächstes“/Liste parsen keine
+Thread-Datei, 409/413/Löschen, Umzug ohne Verlust + idempotent, Morgenlauf mit Waisen, Register/Rauschen/HOI, Art. 17, Konto, KI-Protokoll je Tag).
+
+**Für das Zusammenführen:** `lib/agenten/zeitplan.ts` ist NICHT geändert — es liest `agenten-faeden--<p>` weiter roh und braucht nur Kopf-Felder (`skillId`,
+`planId`, `erstellt`, `lauf`, `agent`, `besitzer`, `aktualisiert`); der Typ dort (`FadenBestand`) behauptet noch Nachrichten. Wer dort neu liest: `indexLesen`
+(lib/agenten/faeden-ablage.ts). `app/api/kimmi` unverändert (`eigenerZoeFaden` liefert jetzt den Kopf — dort nur auf „gibt es“ geprüft). `bestandAendern` gibt es
+nicht mehr; `bestandLesen` liefert den Index (Köpfe), ganze Threads über `eigenerFaden`/`faedenSeit`/`alleFaedenLesen`.
+
+**Rückweg:** Der alte Stand kennt das Format nicht (er läse den Index als Bestand ohne Nachrichten und schriebe ihn so zurück). Die Bestände sind nicht online
+— vor einem Rückweg mit lokalen/Demo-Daten die Archivkopie `archiv/agenten-vor-teilung-*` zurückspielen bzw. die Ablage neu säen. Das KI-Protokoll je Tag liest
+der alte Stand nicht (er sähe nur Monatsdateien) — nur Metadaten, nichts geht verloren, die Tagesdateien bleiben liegen.
 
 ## 09.10.2026 — Agenten-Datenschicht: zwei Welten angeglichen, Fristen, nie kürzen (nur lokal — Branch `agenten-datenschicht`, Basis 297458af)
 
@@ -167,6 +254,62 @@ das entscheidet Kevin.
 Business-Partner ungeprüft) · Monats-Skills holen höchstens 6 Tage zurück nach (nicht den ganzen Monat — sonst müsste die Warteschlange länger als 7 Tage
 behalten werden) · `starte_auftraege` in `lib/zoe/werkzeuge.ts` kürzt auf 20 (nicht angefasst — paralleler Agent). Rückweg: nur optionale Felder
 (`nichtVor`, `abgelehnt`, `voll`, `laeuft`) — der alte Stand ignoriert sie.
+
+## 09.10.2026 — KI-Etiketten, Bereich je Einheit, feste Personen im Agentenpfad (nur lokal — Branch `ki-etiketten`, Basis 297458af)
+
+Funde der Analyse „Trennung & Plattform“ (K1, K3, K4, K5, K6) — nur klare Fehler, keine Grundsatz-Umbauten. Wächter `tests/ki-etiketten.test.ts`
+(19 Fälle, alle vorher rot). Keine neue Route, kein neuer Bestand, keine Formänderung — der Rückweg zum alten Stand ist ohne Weiteres offen.
+
+**K1 (kritisch) — Ergebnisse von Fach-Agenten tragen ihre KI-Kategorien.** Bisher ging das Ergebnis von `run_agent` (ZOE) bzw. `fach_agent`
+(Mitarbeiter) ohne Etikett zurück an das Modell — z. B. „TAGESFORM (ROT, Recovery 37 %)“ auch ohne Einwilligung (b), am KI-Tor (Einwilligung,
+EU-Mindeststufe, Bereichs-Schalter) vorbei.
+- EINE Stelle `lib/zoe/agent-kategorien.ts`: feste Kategorien je Fach-Agent (`AGENT_KATEGORIEN`, z. B. Controlling = finanzen, Board = finanzen ·
+  aufgaben · crm), „gesundheit“ nur, wenn der Lauf sie wirklich im Prompt hatte (`AGENT_MIT_GESUNDHEIT` + Rückmeldung `gesundheit` der Routen
+  fokus, performance, ernaehrung/vorschlag, kalender/analyse, planung/vorschlag). `runAgent` liefert `AgentLauf.kategorien`; die Schleife nimmt sie
+  in den KI-Kontext des NÄCHSTEN Aufrufs (kimmi, `lib/agenten/delegation.ts` → `WerkzeugAntwort.kategorien` → `lib/agenten/gespraech.ts`).
+- `/api/fokus` liefert `recovery`/`zone`/`stand` nur noch mit Einwilligung (b); `runAgent('fokus')` schreibt Zone/Recovery nur dann in den Text.
+  `/api/performance` (Analyse) liefert `fuerZoe` (ohne (b): kein Gesamtindex, kein Gesundheits-Hebel — `indexFuerKi`); der Agentenlauf liest nur das.
+- kimmi bietet nur Fach-Agenten an, deren feste Kategorien für die Person frei sind (`agentSperre` = dieselbe Regel wie `werkzeugSperre`).
+- Neuer Fach-Agent → Zeile in `AGENT_KATEGORIEN` (Wächter).
+
+**K5 — Person im KI-Tor bei Systemläufen:** Board, OKR, Fokus, Controlling, Planung-Vorschlag und die Tageslauf-Schritte „Lage draußen“ und
+„Prioritäten-Wächter“ geben `kiAus(…, { person })` die Person, für die gerechnet wird (`laufPerson` bzw. Sitzung). Vorher `null` im Systemlauf:
+eigene Schalter griffen nicht, das KI-Protokoll stand ohne Person (Art. 15), und der Fokus-Lauf der Inhaberin MIT Einwilligung wurde gesperrt.
+
+**K3 — Bereich je Einheit im ZOE-/Agentenpfad:** Business-Zahlen rechneten „alles außer privat“ und zählten die Selbstständigkeit mit.
+- `geschaeftsKasse` (lib/make-one/finance-data.ts) nur Konten mit `bereichVonFirma(...) === 'business'` — wirkt auf Brain/ZOE, Schilde, Controlling-
+  Agent, Controlling-Seite, Head of Finance (Kasse) und `state/finance`.
+- Schilde (lib/risk.ts): überfällige Forderungen/Zahlungen nur Business-Posten (`bereichVonFirma`).
+- `kundenAusMandaten` (lib/crm/speicher.ts): nur Mandate einer Business-Gesellschaft (`bereichVonGesellschaft`, wie `ladeRoh`).
+- Board (`app/api/board/route.ts`): Aufgaben nach dem Aufgaben-Space (`spaceBereich`) statt der alten Projekt-Kategorie.
+- Mit der Instanz-Umstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`) zählt die Selbstständigkeit überall wieder mit (Test).
+- **Offen (anderer Agent, `lib/brain.ts`):** `geld.forderungen` (Zeile ~265, `r.firmaId !== 'privat'`) braucht dieselbe Regel
+  (`bereichVonFirma(r.firmaId) === 'business'`) — sonst stehen Forderungen der Selbstständigkeit weiter in `blockZahlen` (ZOE, Business-Heads).
+
+**K4 — feste Personen im Agentenpfad (Plattform-Regel):**
+- Head of Finance: Antwortschema `schemaFuer(personen)` und Prüfer `normalisiere(…, personen)` kennen die Speichernamen des Haushalts (aus den
+  Konten) + „beide“ + „steuerberater“; das Datenpaket trägt `personen` (Kennung + Vorname, KI-Kategorie `konto`). Ein angenommener Vorschlag wird
+  Aufgabe der genannten Person, sonst der annehmenden, sonst der ersten des Haushalts — vorher fest eine von zwei Personen.
+- Ist-Stand-Checkliste: `wer` = Speichername des Haupt-Inhabers bzw. „beide“, `werName` aus dem Konto; der Schritt „<Person> hat Zugang“ heißt
+  jetzt „Alle Konten dem Haushalt zugeordnet“ (Kennung `zugang`, zählt Konten ohne Haushalt und ohne „nur Business“). Gesellschaftsnamen aus lib/einheiten.ts.
+- Kalender-Agent (`lib/zoe/kalender-vorschlag.ts`): eigener Kalender = eigene iCloud-Verbindung (`eigenesBlockZiel`) bzw. Zuordnung `kalender.<speicher>`;
+  ohne beides nur der gemeinsame Kalender mit klarem Hinweis (`KEIN_EIGENER_KALENDER`) — vorher bekam jede Person außer einer festen den Kalender
+  der anderen als „eigenen“. Die Freigabe prüft den Zielkalender noch einmal (fremder Kalender → 403, nichts angelegt).
+- Aufgaben-Serien: Projekt ohne Besitz → „both“ (der Schreibweg löst auf) statt einer festen Person. Meeting-Last im Business-Index: Termine des
+  Inhabers (`Bestand.meetingVon` aus den Konten) + gemeinsame, statt „alles außer einer festen Person“. `computeIndex`: Person Pflicht,
+  `personDatei` = `speicherFuer` (eine Regel), Link immer mit `&fuer=`.
+
+**K6 — Task-Agent „autonom“ (Tageslauf):** Prioritäten der Ausrichtung tragen `bereich`; angelegt wird über `autoAufgabe` (lib/tageslauf.ts): nur
+„business“ wird Business, alles andere bleibt Privat und „nur ich“; kein „Warum“ des Modells (kann Gesundheit tragen) in der Beschreibung; im
+Systemlauf ohne Person wird nichts angelegt (vorher scheiterte es still).
+
+**Bewusst nicht angefasst (Dateien anderer Agenten) — offen:**
+- `lib/heads/lauf.ts:97,139`: alte Heads markieren immer `kalender` (bei ausgeschalteter Kalender-KI läuft der ganze Head als Regelwerk).
+- Gedächtnis (`lib/zoe/gedaechtnis.ts`, kimmi `liesFakten`) und `blockGedaechtnis`/`blockZiele` (lib/brain.ts) hängen an keinem KI-Schalter —
+  Vorschlag: am Bereich „Brain & Vault“ (Fakten im Prompt nur mit `bereiche.brain`, Gruppe `gedaechtnis` → Kategorie `brain` in `GRUPPE_KATEGORIE`).
+- Hintergrund-Aufträge (`starte_auftraege` → Warteschlange): das Ergebnis liegt ohne Etikett in der Warteschlange — wer es später an ein Modell
+  gibt, nimmt `AgentLauf.kategorien` mit (Takt/Warteschlange).
+- K2 (Konto-Sicht „nur Business“ im ZOE-Kern) ist ein eigenes Paket.
 
 ## 09.10.2026 — Agenten-Seite aufgeräumt (Claude-Muster) (nur lokal — Branch `agenten-aufraeumen`, Basis `agenten-nacht` a94d4052, `agenten-nacht` 1df0cdd9 eingemischt)
 

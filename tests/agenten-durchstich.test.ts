@@ -56,7 +56,7 @@ const INTERN: Record<string, () => { POST?: H; GET?: H }> = {
 };
 const interneAufrufe: string[] = [];
 
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 const fadenVon = async (p: string, id: unknown) => (await bestand(p)).find(f => f.id === id);
 const auftraege = async () => (await db.loadJson<{ auftraege: { id: string; name: string; status: string; person?: string; eingabe: Record<string, unknown>; anlass?: string; fehler?: string; zeit: string }[] }>('zoe-auftraege'))?.auftraege ?? [];
 const glocke = async (p: string) => (await db.loadJson<{ eintraege?: { art: string; titel: string; link?: string; gelesen?: boolean }[] }>(`meldungen--${p}`))?.eintraege ?? [];

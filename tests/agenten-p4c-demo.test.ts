@@ -36,7 +36,7 @@ beforeAll(async () => {
 afterAll(async () => { (await import('@/lib/ki/adapter/http'))._kiFetchSetzen(null); vi.restoreAllMocks(); rmSync(wurzel, { recursive: true, force: true }); });
 
 type Faden = import('@/lib/agenten/faeden').FadenKern;
-const faeden = async (p: string) => ((await db.loadJson<{ faeden: Faden[] }>(`agenten-faeden--${p}`))?.faeden ?? []);
+const faeden = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 
 describe('Demo-Saat: Agenten-Bereich', () => {
   it('je Business-Head mindestens ein Thread mit gespeicherter Antwort (KI-gekennzeichnet), zwei Mitarbeiter-Threads mit Bericht', async () => {

@@ -37,6 +37,7 @@ import { BEIDE } from '@/lib/crm/team';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { neueKennung } from '@/lib/kennung';
+import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 
 /** Gespeicherte Fälle für Evals (lib/heads/eval.ts, /api/heads/eval). */
 export interface ReplayFall { zeit: string; modus: string; person: string; heute: string; quelle: 'ki' | 'regelwerk'; modell: string; daten: Record<string, unknown>; roh: Antwort }
@@ -95,11 +96,21 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   // Nachschliff 09.10.: Nordstern + Business-Jahresziele (EINE Lesestelle, Business-Heads nie Privat; Systemlauf = Haushalt des Inhabers).
   const { zieleFuerHead } = await import('@/lib/planung/jahresziele-sicht');
   const ziele = await zieleFuerHead({ person: a.person, privat: false, heute });
-  // 09.10. (E1 Ereignisse): wer der Person gerade geschrieben hat (eigene Postfächer — nie fremde), und was seit dem letzten Lauf passiert ist.
+  // Kalender nur, wenn er für die KI frei ist (Analyse 09.10., „nur Markttraktion“): sonst ohne Termin-Zeiten und ohne Etikett „kalender“ —
+  // vorher fiel der ganze Head-Lauf aufs Regelwerk zurück, sobald der Kalender-Bereich aus war.
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const schalter = await kiSchalterFuer(a.person ?? null).catch(() => null);
+  const mitKalender = schalter?.bereiche.kalender === true;
+  // 09.10. (E1 Ereignisse): wer der Person gerade geschrieben hat (eigene Postfächer — nie fremde; wirkt nur als Filter der Power Hour) und was
+  // seit dem letzten Lauf passiert ist — nur Arten, deren KI-Bereich frei ist; ihre Kategorien gehen ins Etikett.
   const ev = await import('@/lib/ereignisse/leser').catch(() => null);
   const geradeGeschrieben = a.person && ev ? await ev.geradeGeschriebenFuer(a.person).catch(() => new Set<string>()) : new Set<string>();
-  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person ?? ''), crm, heute, a.person, alt, ziele, { geradeGeschrieben }) as Record<string, unknown>;
-  if (ev && a.modus !== 'frage') { const seit = await ev.seitLetztemLauf(a.person, alt.letzte[r] ?? '', kontakte, crm).catch(() => null); if (seit) daten.seit_letztem_lauf = seit; }
+  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben }) as Record<string, unknown>;
+  const ereignisKategorien: KiKategorie[] = [];
+  if (ev && a.modus !== 'frage') {
+    const seit = await ev.seitLetztemLauf(a.person, alt.letzte[r] ?? '', kontakte, crm, k => (k === 'postfach' || k === 'crm' ? true : !!schalter?.bereiche[k as keyof NonNullable<typeof schalter>['bereiche']])).catch(() => null);
+    if (seit) { daten.seit_letztem_lauf = seit.paket; ereignisKategorien.push(...seit.kategorien); }
+  }
 
   // Nichts zu tun → ohne Modell.
   const leer = a.head === 'sales' && a.modus === 'power_hour' ? !(daten.karten as unknown[]).length
@@ -141,7 +152,7 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     const erste = [{ role: 'user', content: [{ type: 'text', text: daten_, cache_control: { type: 'ephemeral' } }, { type: 'text', text: aufg }] }];
     const ruf = (messages: unknown[], zweck: string) => askText({ system: SYSTEM[a.head], user: '', messages, model: modell, effort: review ? 'high' : 'medium', schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens: review ? 16000 : 10000, timeoutMs: 200_000, zweck,
       // Datenschutz (05.10.): der Takt läuft als Hintergrund (Schalter, Pseudonymisierung der Kontaktnamen), von Hand/ZOE als Aufruf.
-      ki: { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person, kategorien: ['crm', 'kalender'] } });
+      ki: { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person, kategorien: Array.from(new Set<KiKategorie>([...(mitKalender ? ['crm', 'kalender'] as const : ['crm'] as const), ...ereignisKategorien])) } });
     const r1 = await ruf(erste, `${AGENT_ID[a.head]}-${a.modus}`);
     zaehle(r1);
     const roh1 = r1.ok ? normalisiere(extractJson(r1.text), a.head) : null;

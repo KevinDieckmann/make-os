@@ -55,7 +55,7 @@ let altFetch: typeof fetch;
 
 const INTERN: Record<string, () => { POST?: H; GET?: H }> = { '/api/agenten/faden/lauf': () => fadenLaufRoute };
 
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 const fadenVon = async (p: string, id: unknown) => (await bestand(p)).find(f => f.id === id);
 const auftraege = async () => (await db.loadJson<{ auftraege: { id: string; name: string; status: string; person?: string; eingabe: Record<string, unknown>; anlass?: string }[] }>('zoe-auftraege'))?.auftraege ?? [];
 const glocken = async (p: string) => ((await db.loadJson<{ eintraege?: { art: string; titel: string; link?: string }[] }>(`meldungen--${p}`))?.eintraege ?? []).filter(g => g.art === 'agenten');
@@ -443,5 +443,22 @@ describe('(7) „Head an“: Läufe, die nur wegen „Head aus“ warteten, lauf
     expect((await einstellung('person-a', 'event', { aktiv: true })).status).toBe(200);
     expect((await auftraege()).filter(a => a.eingabe.fadenId === fadenId)).toEqual([]);
     expect((await fadenVon('person-a', fadenId))!.lauf?.fehler ?? '').toMatch(/Monatsbudget/);
+  });
+});
+
+// ── Analyse 09.10. (Trennung/Plattform, klein): alte Heads hängen nicht mehr am Kalender-Schalter ─────────────────────────────
+
+describe('Alte Heads: Kalender-Bereich für die KI aus → der Lauf nutzt trotzdem das Modell (ohne Termin-Zeiten, ohne Etikett „kalender“)', () => {
+  afterAll(async () => {
+    const { aendereKiEinstellungen } = await import('@/lib/datenschutz/ki-einstellungen');
+    await aendereKiEinstellungen(d => ({ ...d, instanz: { ...(d.instanz ?? {}), bereiche: { ...(d.instanz?.bereiche ?? {}), kalender: true } } }));
+  });
+  it('Sales-Wochenreview von Hand mit Kalender aus: Modellaufruf findet statt (vorher: KI-Tor gesperrt → nur Regelwerk)', async () => {
+    const { aendereKiEinstellungen } = await import('@/lib/datenschutz/ki-einstellungen');
+    await aendereKiEinstellungen(d => ({ ...d, instanz: { ...(d.instanz ?? {}), bereiche: { ...(d.instanz?.bereiche ?? {}), kalender: false } } }));
+    ki.folge.push(text(JSON.stringify({ status: 'gruen', zusammenfassung: 'Ruhige Woche.', vorschlaege: [] })), text(JSON.stringify({ status: 'gruen', zusammenfassung: 'Ruhige Woche.', vorschlaege: [] })));
+    const { headLauf } = await import('@/lib/heads/lauf');
+    await headLauf({ head: 'sales', modus: 'wochenreview', person: 'person-a', ausgeloest: 'hand' });
+    expect(ki.anfragen.length).toBeGreaterThan(0);
   });
 });

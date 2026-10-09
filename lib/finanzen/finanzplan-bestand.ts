@@ -191,7 +191,8 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       // Konto `ug` mit Altnamen (UG_ALTNAMEN) heißt beim Lesen wie in lib/einheiten.ts (30.09.) — gespeichert beim nächsten Schreiben.
       name: kontoName(String(x.id ?? ''), String(x.name ?? '').slice(0, 120)),
       bank: String(x.bank ?? '').slice(0, 60),
-      kontostand: x.kontostand == null || !isFinite(Number(x.kontostand)) ? null : Math.round(Number(x.kontostand)),
+      // Auf den Cent (09.10.; vorher ganze Euro — „Geld auf den Cent“, CLAUDE.md). Ganze Beträge bleiben bit-gleich.
+      kontostand: x.kontostand == null || !isFinite(Number(x.kontostand)) ? null : Math.round(Number(x.kontostand) * 100) / 100,
       stand: typeof x.stand === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.stand) ? x.stand : null,
     })).filter(x => x.name),
     rechnungen: (Array.isArray(f?.rechnungen) ? f!.rechnungen : []).map(x => mitZusatz(x, {

@@ -269,7 +269,7 @@ export const KATALOG: readonly HeadDef[] = [
   {
     id: 'finanzen-privat', name: 'Finanzen privat', kurz: 'Finanzen privat', bereich: 'privat', ebene: 'person', ton: 'sorgfaeltig', farbe: 'geld',
     auftrag: 'Hält Budget, Fixkosten, offene Rechnungen und private Steuerfristen im Blick — auch eine Einheit, die zu Privat gehört.',
-    kategorien: ['finanzen-privat', 'finanzen', 'aufgaben'],  // Werkzeuge wie haushalt_stand tragen heute noch `finanzen` (lib/datenschutz/ki-werkzeuge.ts) — Paket 4 ordnet sie `finanzen-privat` zu.
+    kategorien: ['finanzen-privat', 'finanzen', 'aufgaben'],  // haushalt_* tragen seit 09.10. `finanzen-privat` (lib/datenschutz/ki-werkzeuge.ts).
     werkzeugGruppen: ['haushalt', 'aufgaben'],
     werkzeuge: ['haushalt_stand', 'haushalt_buchungen', 'haushalt_zuordnen', 'haushalt_rechnung_bezahlt', 'haushalt_rechnung_erfassen', 'create_task'],
     kontext: 'finanzchef', eingebaut: { quelle: 'finanzchef', modi: FINANZCHEF_MODI }, voraussetzung: 'privat-finanzen',

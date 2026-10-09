@@ -126,7 +126,9 @@ describe('Die Kennzahlen', () => {
     const fokus = leer({ bloecke: [{ date: '2026-09-22', dauerMin: 600, art: 'fokus' }, { date: '2026-09-15', dauerMin: 1800, art: 'fokus' }, { date: '2026-09-15', dauerMin: 999, art: 'reha' }] });
     expect(wert('fokuszeit', fokus)).toBe(10);
     const termine = [{ start: '2026-09-22T09:00:00', ende: '2026-09-22T11:00:00', owner: 'kevin' }, { start: '2026-09-23T09:00:00', ende: '2026-09-23T15:00:00', owner: 'both' }, { start: '2026-09-23T09:00:00', ende: '2026-09-23T19:00:00', owner: 'malin' }];
-    expect(wert('meetinglast', leer({ termine }))).toBe(2);
+    // Plattform-Regel (09.10.): gezählt werden die Termine des Inhabers (`meetingVon`, aus den Konten) und die gemeinsamen.
+    expect(wert('meetinglast', leer({ termine, meetingVon: 'kevin' }))).toBe(2);
+    expect(wert('meetinglast', leer({ termine, meetingVon: 'malin' }))).toBe(4);
     expect(mess('meetinglast', leer({ termine, termineVollstaendig: false }))).toHaveProperty('luecke');
     const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'ZOE' })).concat([{ status: 'fertig', beendet: '2026-09-20T10:00:00Z', anlass: 'Takt: Morgenlauf' }]);
     expect(wert('delegation', leer({ auftraege }))).toBe(2);

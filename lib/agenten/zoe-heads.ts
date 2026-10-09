@@ -17,8 +17,8 @@ import type { WerkzeugKontext } from '@/lib/zoe/werkzeuge';
 import { GRENZEN, agentSchluessel, type AgentRef, type HeadDef, type KiKategorie } from './typen';
 import { headDef, KATALOG } from './katalog';
 import { headSichtbar, kategorienFuer, headsFuer, type KontoSicht } from './sicht';
-import { anhaengen, auftragText, fadenHinzu, gedaechtnisFuer, neuerFaden, offeneLaeufe, textPruefen, type AuftragKarte, type FadenKern, type NachrichtKern } from './faeden';
-import { bestandAendern, bestandLesen, sichtLaden } from './faeden-server';
+import { anhaengen, auftragText, gedaechtnisFuer, neuerFaden, offeneLaeufe, textPruefen, type AuftragKarte, type FadenKern, type FadenKopfKern, type NachrichtKern } from './faeden';
+import { ablageAendernFuer, bestandLesen, sichtLaden } from './faeden-server';
 
 const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 const UNBEKANNT = 'Nicht ausgeführt: Diesen Head gibt es für diese Person nicht (oder er ist nicht sichtbar).';
@@ -62,7 +62,7 @@ export const auftragVonZoe = (ziel: string): AuftragKarte => ({
 });
 
 /** Offene Läufe, die ZOE angestoßen hat (Heads mit Auftrag aus einem ZOE-Thread) — zählen in die Grenze „≤ 3 offene Läufe je Person“ mit. */
-const offeneHeadLaeufe = (b: { faeden: FadenKern[] }): number =>
+const offeneHeadLaeufe = (b: { faeden: readonly Pick<FadenKopfKern, 'agent' | 'kette' | 'lauf'>[] }): number =>
   b.faeden.filter(f => f.agent.art === 'head' && f.kette?.[0] === 'zoe' && f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft')).length;
 
 /**
@@ -94,21 +94,24 @@ export async function anHead(input: Record<string, unknown>, _origin: string, pe
   // Vom Stapel freigegeben (nach Fremdtext im Gespräch gestapelt): der Auftragstext kann Fremdtext tragen — der Head arbeitet dann „nur Vorschlag“.
   const fremdGelesen = !!zoe?.fremdGelesen || !!kontext?.freigegebenVon;
   const vertraulich = !!zoe?.vertraulich || !!kontext?.freigegebenVon;
-  const r = await bestandAendern<FadenKern>(person, b => {
+  // E3 (09.10.): EINE Sperre über den Index; geladen wird nur der ZOE-Thread (Eltern), geschrieben Eltern, Kind und Index.
+  const r = await ablageAendernFuer<FadenKern>(person, async ab => {
+    const b = ab.index();
     if (offeneLaeufe(b) + offeneHeadLaeufe(b) >= GRENZEN.offeneLaeufeJePerson) return { ok: false, status: 409, fehler: `Höchstens ${GRENZEN.offeneLaeufeJePerson} offene Läufe gleichzeitig — warte, bis einer fertig ist.` };
-    const eltern = zoe?.fadenId ? b.faeden.find(f => f.id === zoe.fadenId && f.agent.art === 'zoe' && f.besitzer === person) : undefined;
+    const ek = zoe?.fadenId ? ab.kopf(zoe.fadenId) : null;
+    const eltern = ek && ek.agent.art === 'zoe' && ek.besitzer === person ? await ab.faden(ek.id) ?? undefined : undefined;
     const kind = neuerFaden({ id: neueKennung('fd'), besitzer: person, agent, bereich: head.bereich, titel: t.text, jetzt, ...(eltern ? { elternId: eltern.id } : {}), fremdGelesen: fremdGelesen || !!eltern?.fremdGelesen, vertraulich: vertraulich || !!eltern?.vertraulich, kette: ['zoe', agentSchluessel(agent)] });
     const nachricht: NachrichtKern = { id: neueKennung('nr'), rolle: 'agent', von: 'zoe', text: auftragText(karte), zeit: jetzt, auftrag: karte };
     const k = anhaengen(kind, [nachricht], jetzt);
     if (!k.ok) return k;
-    let faeden = b.faeden;
+    const mit = ab.hinzu(k.faden);
+    if (mit) return mit;
     if (eltern) {
       const gesendet: NachrichtKern = { id: neueKennung('nr'), rolle: 'system', von: 'system', text: `An ${head.name} gesendet: „${k.faden.titel}“`, zeit: jetzt, verweis: { art: 'gesendet', fadenId: kind.id, titel: k.faden.titel }, auftrag: karte };
       const e = anhaengen(eltern, [gesendet], jetzt);
-      if (e.ok) faeden = faeden.map(f => (f.id === eltern.id ? e.faden : f));
+      if (e.ok) ab.setze(e.faden);
     }
-    const mit = fadenHinzu({ ...b, faeden }, k.faden);
-    return mit.ok ? { bestand: mit.bestand, e: k.faden } : mit;
+    return { e: k.faden };
   });
   if (!r.ok) return `Nicht ausgeführt: ${r.fehler}`;
   await einreihen(person, r.e.id, { hintergrund: false });
@@ -147,7 +150,7 @@ export async function headFragen(input: Record<string, unknown>, origin: string,
 }
 
 /** Beim Bericht eines Head-Laufs: ist der Eltern-Thread ein ZOE-Thread? (dann geht der Bericht dorthin — delegation.ts) */
-export async function zoeEltern(person: string, f: Pick<FadenKern, 'elternId' | 'agent'>): Promise<FadenKern | null> {
+export async function zoeEltern(person: string, f: Pick<FadenKern, 'elternId' | 'agent'>): Promise<FadenKopfKern | null> {
   if (f.agent.art !== 'head' || !f.elternId) return null;
   const e = (await bestandLesen(person)).faeden.find(x => x.id === f.elternId);
   return e && e.agent.art === 'zoe' ? e : null;

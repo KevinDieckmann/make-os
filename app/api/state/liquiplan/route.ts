@@ -15,6 +15,7 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
 import { istFinanzOrt, istRegisterKennung } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
+import { werAus, protokolliereBestand } from '@/lib/store/aenderungsprotokoll';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +96,8 @@ export async function PUT(req: Request) {
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.posten)) return NextResponse.json({ ok: false, error: 'posten fehlt.' }, { status: 400 });
 
-  const posten = body.posten.slice(0, 200).map(sauber).filter((x): x is Planposten => !!x);
+  if (body.posten.length > MAX_POSTEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_POSTEN} Planposten (geschickt: ${body.posten.length}) — gekürzt wird nie.` }, { status: 413 });
+  const posten = body.posten.map(sauber).filter((x): x is Planposten => !!x);
   const { ok, next } = await updateGeschuetzt<Datei>('liquiplan', { posten }, d => d.posten?.length ?? 0, 4);
   if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Planposten gelöscht.' }, { status: 409 });
   return NextResponse.json({ ok: true, ...next });
@@ -110,13 +112,30 @@ export async function PATCH(req: Request) {
   if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
   let body: { ops?: ListenOp[] };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const ops = (Array.isArray(body.ops) ? body.ops : []).filter(o => o.liste === 'posten').slice(0, 300);
+  // Nie still kürzen (09.10., „ZOE-Schreibwege“ — ZOE schreibt seither über diesen Weg): zu viele Änderungen bzw. Posten → 413, nichts geschrieben.
+  const roh = (Array.isArray(body.ops) ? body.ops : []).filter(o => o.liste === 'posten');
+  if (roh.length > MAX_OPS) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_OPS} Änderungen je Aufruf (geschickt: ${roh.length}).` }, { status: 413 });
+  const ops = roh;
   if (!ops.length) return NextResponse.json({ ok: true, angewandt: 0 });
   let angewandt = 0;
+  let zuViele = 0;
+  let vorher: Datei | null = null;
   const next = await updateJson<Datei>('liquiplan', current => {
+    vorher = current ?? null;
     const r = wendeAn((current?.posten ?? []) as unknown as Record<string, unknown>[], ops, 'id', roh => sauber(roh as Partial<Planposten>, 0) as unknown as Record<string, unknown> | null);
+    const liste = r.liste as unknown as Planposten[];
+    // Über der Grenze und gewachsen: ablehnen, den Bestand unverändert lassen (ein Altbestand darüber bleibt bearbeitbar).
+    if (liste.length > MAX_POSTEN && liste.length > (current?.posten?.length ?? 0)) { zuViele = liste.length; return current ?? { posten: [] }; }
     angewandt = r.angewandt;
-    return { posten: (r.liste as unknown as Planposten[]).slice(0, 200) };
+    return { posten: liste };
   });
+  if (zuViele) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_POSTEN} Planposten (jetzt wären es ${zuViele}). Erst Erledigtes aufräumen — gekürzt wird nie.` }, { status: 413 });
+  // Änderungsprotokoll (09.10.): Kennungen + Feldnamen, nie Werte.
+  await protokolliereBestand('liquiplan', vorher, next, werAus(req));
   return NextResponse.json({ ok: true, angewandt, stand: next });
 }
+
+/** Höchstzahl Planposten — darüber wird abgelehnt (413), nie gekürzt (09.10.; vorher schnitt der PATCH still bei 200 ab). */
+const MAX_POSTEN = 200;
+/** Höchstzahl Einzeländerungen je PATCH — darüber 413 statt still nur die ersten 300. */
+const MAX_OPS = 300;

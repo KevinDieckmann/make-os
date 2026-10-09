@@ -7,6 +7,7 @@ import { schwellen } from '@/lib/schwellen';
 import { geschaeftsKasse, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { werAus, protokolliereBestand } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,7 +88,9 @@ export async function PATCH(req: Request) {
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const zahl = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
   let angewandt = 0;
+  let vorher: FinanceState | null = null;
   const next = await updateJson<FinanceState>('finance', current => {
+    vorher = current ?? null;
     const f: FinanceState = current ?? { ...DEFAULT_FINANCE, months: DEFAULT_FINANCE.months.map(m => ({ ...m })) };
     // Monate: nur Umsatz/Kosten eines bekannten Monats — das Raster bleibt immer zwölf lang.
     const monatsOps = (body.ops ?? []).filter(o => o.liste === 'months' && o.op === 'upsert');
@@ -104,5 +107,7 @@ export async function PATCH(req: Request) {
     if ('startMonat' in fe && zahl(fe.startMonat) !== undefined && zahl(fe.startMonat)! >= 0 && zahl(fe.startMonat)! <= 11) { neu.startMonat = zahl(fe.startMonat); angewandt++; }
     return neu;
   });
+  // Änderungsprotokoll (09.10., „ZOE-Schreibwege“ — `setze_ziele` schreibt seither über diesen Weg): Feldnamen, nie Werte.
+  if (angewandt) await protokolliereBestand('finance', vorher, next, werAus(req));
   return NextResponse.json({ ok: true, angewandt, stand: next });
 }

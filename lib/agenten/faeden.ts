@@ -1,6 +1,8 @@
 // ─── Agenten-Bereich: Threads — die Regeln (09.10., Paket 1 „Kern“; AGENTEN_KONZEPT.md C3/C4, ARCHITEKTUR.md Teil 8) ───────
-// Rein (ohne Server-Module, getestet in tests/agenten-faeden.test.ts). Die Schreibstelle ist faeden-server.ts; der Bestand ist
-// `agenten-faeden--<person>` (`fadenBestand`, lib/agenten/typen.ts). Regeln:
+// Rein (ohne Server-Module, getestet in tests/agenten-faeden.test.ts). Die Schreibstelle ist faeden-server.ts (Ablage: faeden-ablage.ts).
+// Seit E3 (09.10., „Gesprächs-Ablage teilen“) liegen die Threads einer Person in ZWEI Arten von Beständen: der Index `agenten-faeden--<person>`
+// (`fadenBestand`: je Thread nur der Kopf — `FadenKopfKern`, gerechnet NUR über `kopfVon` — und das Gedächtnis „Persönlich“) und je Thread
+// `agenten-faden--<person>--<id>` (`fadenDateiBestand`: Nachrichten, Bretter, Pläne). Regeln:
 //   • Der Verlauf liegt NUR auf dem Server — der Prompt liest ihn hier (`fuerPrompt`: die letzten 16 Nachrichten + eine
 //     serverseitig gerechnete Kurzfassung der älteren). Der Browser schickt nur die neue Nachricht.
 //   • `fremdGelesen`/`vertraulich` stehen am Thread und setzt nur der Server (Lauf, Werkzeug, Bericht) — vererbt vom Eltern- auf
@@ -11,7 +13,7 @@
 //     `merksatz`); nie Daten Dritter, nie aus einem Thread mit fremdem Text (R12).
 // Typen von Paket 0 werden nur ERWEITERT (lokale Felder, alle optional) — `Faden`/`Nachricht` aus typen.ts bleiben gültig.
 
-import { GRENZEN, agentSchluessel, laufEingereiht, type AgentRef, type AuftragKarte, type Bereich, type Brett, type BrettEintrag, type Faden, type FadenBestand, type FadenKurz, type FadenStatus, type LaufZustand, type Merksatz, type Nachricht, type PlanFreigabe } from './typen';
+import { GRENZEN, agentSchluessel, laufEingereiht, type AgentRef, type AuftragKarte, type Bereich, type Brett, type BrettEintrag, type Faden, type FadenBestand, type FadenKopf, type FadenKurz, type FadenStatus, type LaufZustand, type Merksatz, type Nachricht, type PlanFreigabe } from './typen';
 
 // ── Erweiterte Formen (alle Zusatzfelder optional) ──────────────────────────────────────────────────────────────────────
 
@@ -72,8 +74,8 @@ export interface FadenKern extends Faden {
   hintergrund?: boolean;
 }
 
-export interface FadenBestandKern extends FadenBestand {
-  faeden: FadenKern[];
+/** Was Index und Altbestand neben den Threads tragen (Gedächtnis „Persönlich“, Marke der ZOE-Übernahme). */
+interface BestandZusatz {
   /** Gedächtnis „Persönlich“ je Agent (`agentSchluessel`) — nur die Person selbst sieht es. */
   gedaechtnis?: Partial<Record<string, Merksatz[]>>;
   /**
@@ -81,6 +83,73 @@ export interface FadenBestandKern extends FadenBestand {
    * beim ersten Lesen; danach nie wieder (der alte Bestand bleibt liegen).
    */
   zoeUebernahme?: { am: string; anzahl: number };
+}
+
+/** Altbestand (vor E3): EINE Datei mit allen Threads ganz. Nur noch Lesen und Umzug (faeden-ablage.ts) — und reine Tests. */
+export interface FadenBestandKern extends FadenBestand, BestandZusatz {
+  faeden: FadenKern[];
+}
+
+/** Kopf eines Threads im Index (E3) — `FadenKern` ohne Nachrichten, Bretter, Pläne, Kurzfassung; Zähler aus `kopfVon`. */
+export type FadenKopfKern = Omit<FadenKern, 'nachrichten' | 'kurzfassung' | 'bretter' | 'plaene'> & Pick<FadenKopf, 'zaehler' | 'letzte' | 'letzteAntwort' | 'geschrieben'>;
+/** Index `agenten-faeden--<person>` (E3, 09.10.). `teilung` = wann der Altbestand umzog (einmal, mit Zahl). */
+export interface FadenIndexKern extends BestandZusatz {
+  v: 2;
+  faeden: FadenKopfKern[];
+  teilung?: { am: string; anzahl: number };
+}
+/** Ein Thread `agenten-faden--<person>--<id>`. */
+export interface FadenDateiKern { v: 1; faden: FadenKern }
+
+/** Ist der gelesene Bestand schon der Index (E3)? Sonst Altbestand bzw. leer. Rein. */
+export const istIndex = (roh: unknown): roh is FadenIndexKern => !!roh && typeof roh === 'object' && (roh as { v?: unknown }).v === 2 && Array.isArray((roh as { faeden?: unknown }).faeden);
+
+/**
+ * Der Kopf eines Threads (rein) — die EINE Stelle, die ihn rechnet. `geschrieben` = Server-Zeit des Schreibens (beim Umzug die späteste Zeit,
+ * die der Thread kennt). Nachrichten, Bretter, Pläne und Kurzfassung stehen nur im Thread selbst.
+ */
+export function kopfVon(f: FadenKern, geschrieben: string): FadenKopfKern {
+  const { nachrichten: roh, kurzfassung: _k, bretter, plaene, zaehler: _z, letzte: _l, letzteAntwort: _a, geschrieben: _g, ...kopf } = f as FadenKern & Partial<Pick<FadenKopfKern, 'zaehler' | 'letzte' | 'letzteAntwort' | 'geschrieben'>>;
+  const nachrichten = Array.isArray(roh) ? roh : [];
+  const l = nachrichten[nachrichten.length - 1];
+  let antwort: string | undefined;
+  for (let i = nachrichten.length - 1; i >= 0; i--) if (nachrichten[i].rolle !== 'person') { antwort = nachrichten[i].zeit; break; }
+  return {
+    ...kopf,
+    zaehler: {
+      nachrichten: nachrichten.length, bretter: bretter?.length ?? 0, plaeneOffen: (plaene ?? []).filter(p => p.status === 'offen').length,
+      fragenOffen: (bretter ?? []).reduce((n, b) => n + offeneFragen(b).length, 0),
+    },
+    ...(l ? { letzte: { id: l.id, rolle: l.rolle, zeit: l.zeit } } : {}),
+    ...(antwort ? { letzteAntwort: antwort } : {}),
+    geschrieben,
+  };
+}
+
+/** Späteste Zeit, die ein (Alt-)Thread kennt — `geschrieben` beim Umzug (dann laden Zeitraum-Leser ihn sicher mit). Rein. */
+export function spaetesteZeit(f: FadenKern): string {
+  let z = f.aktualisiert ?? f.erstellt ?? '';
+  const mehr = (x: string | undefined) => { if (x && x > z) z = x; };
+  for (const n of f.nachrichten ?? []) { mehr(n.zeit); mehr(n.daumen?.am); }
+  mehr(f.lauf?.start); mehr(f.lauf?.ende); mehr(f.gelesenAm); mehr(f.geteilt?.am ?? undefined);
+  return z;
+}
+
+/**
+ * Altbestand teilen (rein): je Thread die ganze Fassung (für `agenten-faden--<person>--<id>`) und der Index mit den Köpfen, dem Gedächtnis und
+ * der Marke der ZOE-Übernahme. Nichts geht verloren; die Reihenfolge bleibt.
+ */
+export function teilen(alt: Partial<FadenBestandKern> | null, jetzt: string): { index: FadenIndexKern; faeden: FadenKern[] } {
+  const faeden = (Array.isArray(alt?.faeden) ? alt!.faeden : []).filter(f => f && typeof f === 'object' && istAblageId(f.id)).map(f => ({ ...f, nachrichten: Array.isArray(f.nachrichten) ? f.nachrichten : [] }));
+  return {
+    faeden,
+    index: {
+      v: 2, faeden: faeden.map(f => kopfVon(f, spaetesteZeit(f))),
+      ...(alt?.gedaechtnis ? { gedaechtnis: alt.gedaechtnis } : {}),
+      ...(alt?.zoeUebernahme ? { zoeUebernahme: alt.zoeUebernahme } : {}),
+      teilung: { am: jetzt, anzahl: faeden.length },
+    },
+  };
 }
 
 /** Zusätzliche Grenzen des Kerns (die gemeinsamen stehen in `GRENZEN`, typen.ts). */
@@ -160,6 +229,12 @@ export function titelAus(text: string): string {
 
 const ID = /^fd-[a-z0-9-]{8,60}$/;
 export const istFadenId = (v: unknown): v is string => typeof v === 'string' && ID.test(v);
+/**
+ * Kennung, unter der ein Thread in der Ablage liegen kann (E3: `agenten-faden--<person>--<id>`) — weiter gefasst als `istFadenId` (was Routen
+ * annehmen), damit beim Umzug KEIN Thread des Altbestands verloren geht, auch mit kurzer Kennung.
+ */
+const ABLAGE_ID = /^fd-[a-z0-9-]{1,80}$/;
+export const istAblageId = (v: unknown): v is string => typeof v === 'string' && ABLAGE_ID.test(v);
 
 // ── Anlegen und Anhängen ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -177,10 +252,16 @@ export function neuerFaden(o: { id: string; besitzer: string; agent: AgentRef; b
   };
 }
 
-/** Thread in den Bestand — über `GRENZEN.faedenJePerson` → 413. */
+/** Darf ein Thread mit dieser Kennung dazu? Schon da → 409, über `GRENZEN.faedenJePerson` → 413 (nie kürzen). Rein. */
+export function fadenHinzuPruefen(faeden: readonly { id: string }[], id: string): Fehler | null {
+  if (faeden.some(x => x.id === id)) return fehler(409, 'Diesen Thread gibt es schon.');
+  if (faeden.length >= GRENZEN.faedenJePerson) return fehler(413, `Höchstens ${GRENZEN.faedenJePerson.toLocaleString('de-DE')} Threads je Person — bitte alte löschen. Nichts angelegt.`);
+  return null;
+}
+/** Thread in einen (Alt-)Bestand — über `GRENZEN.faedenJePerson` → 413. Geschrieben wird seit E3 über `Arbeit.hinzu` (faeden-ablage.ts). */
 export function fadenHinzu(b: FadenBestandKern, f: FadenKern): { ok: true; bestand: FadenBestandKern } | Fehler {
-  if (b.faeden.some(x => x.id === f.id)) return fehler(409, 'Diesen Thread gibt es schon.');
-  if (b.faeden.length >= GRENZEN.faedenJePerson) return fehler(413, `Höchstens ${GRENZEN.faedenJePerson.toLocaleString('de-DE')} Threads je Person — bitte alte löschen. Nichts angelegt.`);
+  const x = fadenHinzuPruefen(b.faeden, f.id);
+  if (x) return x;
   return { ok: true, bestand: { ...b, faeden: [...b.faeden, f] } };
 }
 
@@ -215,13 +296,23 @@ export function zugLaeuft(f: Pick<FadenKern, 'nachrichten' | 'lauf'>, jetztMs: n
  */
 export function zugZuruecknehmen(b: FadenBestandKern, fadenId: string, nachrichtId: string): FadenBestandKern | null {
   const f = b.faeden.find(x => x.id === fadenId);
-  const letzte = f?.nachrichten[f.nachrichten.length - 1];
-  if (!f || !letzte || letzte.id !== nachrichtId || letzte.rolle !== 'person') return null;
+  const r = f ? zugZuruecknehmenFaden(f, nachrichtId) : null;
+  if (!r) return null;
+  if (r === 'leer') return { ...b, faeden: b.faeden.filter(x => x.id !== fadenId && x.elternId !== fadenId) };
+  return { ...b, faeden: b.faeden.map(x => (x.id === fadenId ? r : x)) };
+}
+/**
+ * Dieselbe Regel für EINEN Thread (E3): der Thread ohne die Nachricht, `'leer'` (sie war die einzige — der Thread samt seiner direkten Kinder
+ * fällt weg) oder null (nichts zu tun). Rein.
+ */
+export function zugZuruecknehmenFaden(f: FadenKern, nachrichtId: string): FadenKern | 'leer' | null {
+  const letzte = f.nachrichten[f.nachrichten.length - 1];
+  if (!letzte || letzte.id !== nachrichtId || letzte.rolle !== 'person') return null;
   const nachrichten = f.nachrichten.slice(0, -1);
-  if (!nachrichten.length) return { ...b, faeden: b.faeden.filter(x => x.id !== fadenId && x.elternId !== fadenId) };
+  if (!nachrichten.length) return 'leer';
   const kf = kurzfassung(nachrichten);
   const { kurzfassung: _alt, ...rest } = f;
-  return { ...b, faeden: b.faeden.map(x => (x.id === fadenId ? { ...rest, nachrichten, ...(kf ? { kurzfassung: kf } : {}) } : x)) };
+  return { ...rest, nachrichten, ...(kf ? { kurzfassung: kf } : {}) };
 }
 
 // ── Prompt: die letzten 16 Nachrichten + Kurzfassung ────────────────────────────────────────────────────────────────────
@@ -281,13 +372,17 @@ export const auftragText = (a: AuftragKarte): string => `Ziel: ${a.ziel}\nFormat
 
 // ── Lesemodell ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Hat der Thread seit dem letzten Lesen etwas Neues von Agent oder Software? */
-export function ungelesen(f: FadenKern): boolean {
-  const letzte = [...f.nachrichten].reverse().find(n => n.rolle !== 'person');
-  return !!letzte && letzte.zeit > (f.gelesenAm ?? '');
+/** Thread ganz (mit Nachrichten) oder nur sein Kopf (Index, E3). */
+export type FadenOderKopf = FadenKern | FadenKopfKern;
+const ganz = (f: FadenOderKopf): f is FadenKern => Array.isArray((f as FadenKern).nachrichten);
+
+/** Hat der Thread seit dem letzten Lesen etwas Neues von Agent oder Software? (ganz oder Kopf) */
+export function ungelesen(f: FadenOderKopf): boolean {
+  const letzte = ganz(f) ? [...f.nachrichten].reverse().find(n => n.rolle !== 'person')?.zeit : f.letzteAntwort;
+  return !!letzte && letzte > (f.gelesenAm ?? '');
 }
 
-export function kurz(f: FadenKern, betrachter: string): FadenKurz & { geteilt?: true; besitzer?: string } {
+export function kurz(f: FadenOderKopf, betrachter: string): FadenKurz & { geteilt?: true; besitzer?: string } {
   return {
     id: f.id, titel: f.titel, agent: f.agent, status: f.status, aktualisiert: f.aktualisiert,
     ...(f.elternId ? { elternId: f.elternId } : {}),
@@ -306,8 +401,8 @@ export function passtAgent(f: Pick<Faden, 'agent'>, filter: string | null): bool
   return s === filter;
 }
 
-/** Offene Läufe eines Bestands (wartet/läuft) — die Grenze „≤ 3 offene Mitarbeiter-Läufe je Person“ (C3). */
-export function offeneLaeufe(b: Pick<FadenBestandKern, 'faeden'>): number {
+/** Offene Läufe eines Bestands bzw. Index (wartet/läuft) — die Grenze „≤ 3 offene Mitarbeiter-Läufe je Person“ (C3). */
+export function offeneLaeufe(b: { faeden: readonly Pick<FadenKern, 'agent' | 'lauf'>[] }): number {
   return b.faeden.filter(f => f.agent.art === 'mitarbeiter' && f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft')).length;
 }
 
@@ -401,13 +496,16 @@ const monateZurueck = (jetzt: string, monate: number): string => {
  * Letzte Nachricht (sonst `aktualisiert`) älter als die Frist — und kein Lauf offen? `monate` = wirksame Frist der Instanz (Tabelle), eine
  * eigene Frist am Thread (`loeschfristMonate`) gewinnt.
  */
-export function abgelaufen(f: FadenKern, jetzt: string, monate: number = FRISTEN.fadenMonate): boolean {
+export function abgelaufen(f: FadenOderKopf, jetzt: string, monate: number = FRISTEN.fadenMonate): boolean {
   if (f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft')) return false;
-  const letzte = f.nachrichten[f.nachrichten.length - 1]?.zeit ?? f.aktualisiert;
+  const letzte = (ganz(f) ? f.nachrichten[f.nachrichten.length - 1]?.zeit : f.letzte?.zeit) ?? f.aktualisiert;
   return letzte < monateZurueck(jetzt, f.loeschfristMonate ?? monate);
 }
-/** Bestand ohne abgelaufene Threads und ohne abgelaufene persönliche Merksätze. `fadenMonate` = wirksame Thread-Frist (Tabelle). */
-export function ohneAbgelaufene(b: FadenBestandKern, jetzt: string, fadenMonate: number = FRISTEN.fadenMonate): FadenBestandKern {
+/**
+ * Bestand bzw. Index ohne abgelaufene Threads und ohne abgelaufene persönliche Merksätze. `fadenMonate` = wirksame Thread-Frist (Tabelle).
+ * Beim Index fallen nur die Köpfe heraus — die Thread-Dateien entfernt die Ablage (faeden-ablage.ts) gleich danach.
+ */
+export function ohneAbgelaufene<B extends { faeden: readonly FadenOderKopf[]; gedaechtnis?: Partial<Record<string, Merksatz[]>> }>(b: B, jetzt: string, fadenMonate: number = FRISTEN.fadenMonate): B {
   const grenze = monateZurueck(jetzt, FRISTEN.gedaechtnisMonate);
   const gedaechtnis = b.gedaechtnis ? Object.fromEntries(Object.entries(b.gedaechtnis).map(([k, l]) => [k, (l ?? []).filter(m => m.am >= grenze)]).filter(([, l]) => (l as Merksatz[]).length)) : undefined;
   return { ...b, faeden: b.faeden.filter(f => !abgelaufen(f, jetzt, fadenMonate)), ...(gedaechtnis ? { gedaechtnis } : {}) };
@@ -436,14 +534,14 @@ export function gedaechtnisFuer(b: Pick<FadenBestandKern, 'gedaechtnis'>, a: Age
   return [...(b.gedaechtnis?.[`head:${a.headId}`] ?? []), ...eigene];
 }
 
-export function merksatzHinzu(b: FadenBestandKern, schluessel: string, m: Merksatz): { ok: true; bestand: FadenBestandKern } | Fehler {
+export function merksatzHinzu<B extends Pick<FadenBestandKern, 'gedaechtnis'>>(b: B, schluessel: string, m: Merksatz): { ok: true; bestand: B } | Fehler {
   const liste = b.gedaechtnis?.[schluessel] ?? [];
   if (liste.some(x => textAbdruck(x.text) === textAbdruck(m.text))) return { ok: true, bestand: b };
   if (liste.length >= GRENZEN.merksaetzeJeAgent) return fehler(413, `Höchstens ${GRENZEN.merksaetzeJeAgent} Merksätze je Agent — bitte alte löschen. Nichts abgelegt.`);
   return { ok: true, bestand: { ...b, gedaechtnis: { ...(b.gedaechtnis ?? {}), [schluessel]: [...liste, m] } } };
 }
 
-export function merksatzWeg(b: FadenBestandKern, schluessel: string, id: string): { ok: true; bestand: FadenBestandKern } | Fehler {
+export function merksatzWeg<B extends Pick<FadenBestandKern, 'gedaechtnis'>>(b: B, schluessel: string, id: string): { ok: true; bestand: B } | Fehler {
   const liste = b.gedaechtnis?.[schluessel] ?? [];
   if (!liste.some(m => m.id === id)) return fehler(404, 'Diesen Merksatz gibt es nicht.');
   const rest = liste.filter(m => m.id !== id);

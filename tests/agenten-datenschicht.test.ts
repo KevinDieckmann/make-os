@@ -303,7 +303,7 @@ describe('(7) Chat-Züge schreiben nicht mehr in den Ring `agent-log`', () => {
     expect(r.status, JSON.stringify(r.d)).toBe(200);
     const log = (await db.loadJson<{ entries: { agent: string }[] }>('agent-log'))!.entries;
     expect(log.map(e => e.agent)).toEqual(['loop-morgen']);
-    const f = (await db.loadJson<{ faeden: FadenKern[] }>('agenten-faeden--person-a'))!.faeden[0];
+    const f = (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen('person-a'))[0]; // E3: der Thread liegt in seiner Datei
     expect(f.nachrichten.some(n => (n as { lauf?: { operation?: string } }).lauf?.operation === 'chat')).toBe(true);
     for (const d of ['lib/agenten/gespraech.ts', 'lib/agenten/delegation.ts', 'lib/agenten/zoe-heads.ts']) expect(quelle(d), d).not.toMatch(/logRun\(`faden:/);
   });

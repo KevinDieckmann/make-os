@@ -229,10 +229,17 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ── Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“; Namen: lib/agenten/typen.ts, AGENTEN_KONZEPT.md C4/C11) ──
   // Threads, Skills, Hintergrundaufgaben können Text Dritter tragen (Kontaktnamen, Mails, Web) → Art. 17 tilgt Nennungen (person-weitere.ts),
   // der Eintrag bleibt. Bestände je Person gehören zu Konto-Export/-Löschen (lib/datenschutz/konto-daten.ts PERSON_BESTAENDE).
-  mit(T('agenten-faeden--*', 'Threads je Person mit ZOE, Heads und Mitarbeitern (Nachrichten, Berichte, Lauf-Fortschritt, Kosten) — auch Business-Threads gehören der Person (Antwort 13); Nennungen Dritter getilgt, der Thread bleibt.', 'zoe-verlauf'), {
+  mit(T('agenten-faeden--*', 'Index der Threads je Person mit ZOE, Heads und Mitarbeitern (seit E3, 09.10.: je Thread nur der Kopf — Titel, Agent, Status, Lauf-Fortschritt, Kosten, Zähler — und das Gedächtnis „Persönlich“; Altbestand: alle Threads ganz) — auch Business-Threads gehören der Person (Antwort 13); Nennungen Dritter getilgt, der Thread bleibt.', 'zoe-verlauf'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); Daten Dritter darin Art. 6 Abs. 1 lit. f (eigene Arbeit organisieren); Gesundheitswerte nur über die Art.-9-Wege mit Einwilligung (b)',
     art15: 'die Person sieht ihre Threads im Agenten-Bereich; Konto › Meine Daten exportiert den Bestand; Kontakte: die Auskunft nennt Threads, die sie nennen',
     loeschfrist: 'Frist „zoe-verlauf“ (Vorgabe 12 Monate nach der letzten Nachricht, Stammdaten › Datenschutz): der tägliche Löschfristen-Lauf entfernt abgelaufene Threads und persönliche Merksätze je Person (laufende Threads bleiben bis zum Ende des Laufs; 09.10., Agenten-Datenschicht); vorher löscht die Person den Thread bzw. ihr Konto',
+  }),
+  // E3 (09.10., „Gesprächs-Ablage teilen“): je Thread eine Datei — der Index (oben) trägt nur Köpfe. Geschrieben nur in der Sperre des Index
+  // (lib/agenten/faeden-ablage.ts); Art. 17 tilgt hier in derselben Sperre (person-weitere.ts `aussen`).
+  mit(T('agenten-faden--*', 'EIN Thread je Datei (agenten-faden--<person>--<id>): Nachrichten, Berichte, Arbeitsstand (Bretter), Plan-Freigaben, Lauf-Fortschritt, Kosten — gehört der Person (auch Business-Threads, Antwort 13); Nennungen Dritter getilgt, der Thread bleibt.', 'zoe-verlauf'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); Daten Dritter darin Art. 6 Abs. 1 lit. f (eigene Arbeit organisieren); Gesundheitswerte nur über die Art.-9-Wege mit Einwilligung (b)',
+    art15: 'die Person sieht ihre Threads im Agenten-Bereich; Konto › Meine Daten exportiert jeden Thread; Kontakte: die Auskunft nennt Threads, die sie nennen',
+    loeschfrist: 'Frist „zoe-verlauf“ wie der Index: fällt der Kopf aus dem Index (Löschfrist, Löschen, Konto löschen), geht die Datei samt Tagessicherungen; Dateien ohne Kopf räumt der Löschfristen-Lauf (09.10., E3)',
   }),
   mit(T('agenten-skills--*', 'Werkstatt der Heads je Haushalt (Business-Heads, Familie): Skills (Anleitung, Beispiele, Tests, Erfolgsquote), eigene Mitarbeiter, Gedächtnis (Merksätze) — wer angelegt/freigegeben hat (Speichername); Anleitungen können Dritte nennen → getilgt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die Arbeitsweise der Agenten des Haushalts festhalten',
@@ -476,10 +483,10 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'GET /api/datenschutz/ki (eigene Schalter), System › Datenschutz',
     loeschfrist: 'solange das Konto bzw. die Instanz besteht',
   }),
-  mit(H('ki-protokoll--*', 'KI-Protokoll je Monat: je Modell-Aufruf NUR Metadaten — Zeit, Zweck, Lauf-Art, Person (Konto), Datenkategorien, Anzahl, pseudonymisiert ja/nein, gesperrt mit Grund. Nie Inhalte, nie Kennungen oder Namen Dritter (lib/datenschutz/ki-protokoll.ts).'), {
+  mit(H('ki-protokoll--*', 'KI-Protokoll je Tag (seit E3, 09.10.: ki-protokoll--JJJJ-MM-TT; Altbestand je Monat ki-protokoll--JJJJ-MM, weiter gelesen): je Modell-Aufruf NUR Metadaten — Zeit, Zweck, Lauf-Art, Person (Konto), Datenkategorien, Anzahl, pseudonymisiert ja/nein, gesperrt mit Grund. Nie Inhalte, nie Kennungen oder Namen Dritter (lib/datenschutz/ki-protokoll.ts).'), {
     rechtsgrundlage: 'Art. 5 Abs. 2, Art. 30 DSGVO (Rechenschaft), Art. 6 Abs. 1 lit. c/f',
     art15: 'GET /api/datenschutz/ki-protokoll?auskunft=1 (Empfänger, Kategorien, Zeitraum, eigene Zeilen); Kontakte: Kategorie „crm“ in der Kontakt-Auskunft',
-    loeschfrist: '12 Monate (ältere Monate leert das Protokoll beim Schreiben, Marke „bereinigt“)',
+    loeschfrist: '12 Monate (Tagesdateien älter als die Aufbewahrung entfernt das Protokoll einmal am Tag samt Tagessicherungen; alte Monatsdateien werden geleert, Marke „bereinigt“)',
   }),
   // Anbieter-Tor (09.10., Paket 6a, lib/ki/): erzeugte Medien je Haushalt, Tiefenberichte je Person, Zähler laufender Aufträge.
   mit(T('ki-medien--*', 'Von der KI erzeugte Bilder und Videos je Haushalt (Metadaten): Art, Anbieter, Modell, eigener Auftragstext der auslösenden Person (keine Daten Dritter — die Medien-Zugänge nehmen nur die Kategorien „allgemein“/„web“), Kennzeichnung (SynthID/C2PA), Kosten, wer ausgelöst hat, Sichtbarkeit (Haushalt oder nur ich), Papierkorb. Dateien in <daten>/ki-medien (lib/ki/medien.ts). Seit Paket 4c (09.10.) nur noch Auftragsbuch laufender Video-Aufträge und Altbestand: fertige KI-Medien liegen als Medien (urheber „ki“) in medien--*/medien-privat--* (lib/medien/ki-ablage.ts, Marke uebernommenAls).'), {

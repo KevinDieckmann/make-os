@@ -12,7 +12,9 @@ export const GRUPPE_KATEGORIE: Record<string, KiKategorie> = {
   kontakte: 'crm', markttraktion: 'crm', crm: 'crm', kunden: 'crm',
   kalender: 'kalender', planer: 'kalender',
   aufgaben: 'aufgaben', 'aufgaben-dateien': 'aufgaben', meilensteine: 'aufgaben', fokus: 'aufgaben',
-  finanzen: 'finanzen', haushalt: 'finanzen', business: 'finanzen',
+  // Haushaltsfinanzen (09.10., Funde Abdeckung klein): `finanzen-privat` — zählt am Schalter „Finanzen“ (`werkzeugSperre`) und geht im KI-Tor nur mit
+  // privatem Finanzzugang an das Modell (lib/datenschutz/ki-tor.ts); der Head „Finanzen privat“ trägt die Kategorie.
+  finanzen: 'finanzen', haushalt: 'finanzen-privat', business: 'finanzen',
   wissen: 'brain',
   gesundheit: 'gesundheit',
   inbox: 'postfach',
@@ -28,6 +30,11 @@ export const GRUPPE_KATEGORIE: Record<string, KiKategorie> = {
  */
 export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = {
   einkauf_setzen: null, an_head: null, head_fragen: null,
+  // Routinen abhaken (09.10., Funde klein): neutral statt „Gesundheit“ — eine Business-Routine braucht keine Gesundheits-Einwilligung. Das
+  // Werkzeug prüft je Routine selbst (lib/zoe/werkzeuge.ts `hakeRoutine`): Einwilligung (a) zum Schreiben (`health-log` ist Art. 9, wie in der
+  // Oberfläche), Business-Routinen nur mit eingeschaltetem Bereich „Aufgaben & Ziele“, Privat-Routinen nur mit (b) „an die KI“ (ihre Namen
+  // gehen an das Modell). Neutral, damit der Gesundheits-Head (Kategorie Gesundheit) das Werkzeug behält; kimmi nennt die Kategorien im Protokoll.
+  hake_routine: null,
   medien_suchen: null, medien_vorschlagen: null, bild_erzeugen: null, video_starten: null, bild_bearbeiten: 'medien',
 };
 
@@ -45,6 +52,8 @@ export function werkzeugSperre(k: KiKategorie | null, s: KiSchalter, gesundheitK
   if (!k) return null;
   if (k === 'gesundheit') return gesundheitKi ? null : SPERRE_GESUNDHEIT;
   if (k === 'medien') return s.bilder === true ? null : SPERRE_MEDIEN;
+  // Private Finanzen zählen zusätzlich am Schalter „Finanzen“ (lib/datenschutz/ki-einstellungen.ts, Paket 6a).
+  if (k === 'finanzen-privat') return s.bereiche.finanzen ? null : SPERRE_BEREICH('finanzen');
   if (istBereich(k) && !s.bereiche[k]) return SPERRE_BEREICH(k);
   return null;
 }

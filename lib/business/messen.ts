@@ -57,8 +57,13 @@ export interface Bestand {
   mandate: Mandat[];
   chancen: Chance[];
   traktion: { score: number | null; text: string; welten?: { id: string; label: string; score: number | null }[] };
-  /** Kalender: Termine mit Uhrzeit (Wandzeit), owner kevin|malin|both */
+  /** Kalender: Termine mit Uhrzeit (Wandzeit), owner = Speichername der Person bzw. „beide“/„both“ (gemeinsam) */
   termine: { start: string; ende: string; owner?: string }[];
+  /**
+   * Wessen Meeting-Last zählt (09.10., Plattform-Regel): Speichername des Inhabers aus den Konten (`ladeRoh`). Gezählt werden seine und die
+   * gemeinsamen Termine — vorher hieß es fest „alles außer einer bestimmten Person“. Fehlt das Feld: nur gemeinsame und Termine ohne Person.
+   */
+  meetingVon?: string | null;
   /** true = der Kalender-Stand reicht mindestens 4 Wochen zurück (iCloud); der Mac-Stand nur einen Tag. */
   termineVollstaendig: boolean;
   /** Planer-Blöcke der letzten Wochen */
@@ -548,13 +553,14 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   meetinglast(b) {
     if (!b.termineVollstaendig) return { luecke: 'Braucht den iCloud-Kalender (der Mac-Stand reicht nur einen Tag zurück)', details: [{ titel: 'Kalender öffnen', href: WEG.woche() }] };
     const ab = tagMinus(b.heute, 28);
-    const zaehlt = (t: { start: string; owner?: string }, von: string, bis: string) => t.start.slice(0, 10) >= von && t.start.slice(0, 10) <= bis && t.owner !== 'malin';
+    const gemeinsam = (o?: string) => !o || o === 'beide' || o === 'both';
+    const zaehlt = (t: { start: string; owner?: string }, von: string, bis: string) => t.start.slice(0, 10) >= von && t.start.slice(0, 10) <= bis && (gemeinsam(t.owner) || (!!b.meetingVon && t.owner === b.meetingVon));
     const dauer = (t: { start: string; ende: string }) => Math.max(0, Math.min(12, (Date.parse(t.ende) - Date.parse(t.start)) / 3_600_000));
     const l = b.termine.filter(t => zaehlt(t, ab, tagMinus(b.heute, 1)));
     const h = l.reduce((s, t) => s + dauer(t), 0);
     const w = h / 4;
     const g = grenzen(b, 'meetinglast', 20, 30);
-    return { wert: w, anzeige: `${zahl(w)} h/Woche`, quelle: `${l.length} Termine, ${zahl(h)} h in 4 Wochen (Kevin + gemeinsam)`,
+    return { wert: w, anzeige: `${zahl(w)} h/Woche`, quelle: `${l.length} Termine, ${zahl(h)} h in 4 Wochen (Inhaber + gemeinsam)`,
       details: vierWochen(b.heute).reverse().map(x => {
         const wl = b.termine.filter(t => zaehlt(t, x.von, x.bis < b.heute ? x.bis : tagMinus(b.heute, 1)));
         const wh = wl.reduce((s, t) => s + dauer(t), 0);
