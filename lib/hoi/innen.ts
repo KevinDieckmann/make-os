@@ -28,7 +28,8 @@ import { zuliefererSchluessel } from '@/lib/zugang/intern';
 import { altSchluesselZuletzt } from '@/lib/zugang/zulieferer';
 import { riegelBild } from '@/lib/zugang/start-riegel-lauf';
 import { ladeKonten } from '@/lib/zugang/konten';
-import type { BrainIndexLage, KettenLage } from './lage';
+import type { BrainIndexLage, KettenLage, TaktRobustLage } from './lage';
+import { localDay } from '@/lib/zeit';
 
 export const HOI_AUSSEN = 'hoi-aussen';
 export const HOI_CSP = 'hoi-csp';
@@ -187,7 +188,34 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     },
     brainIndex: await brainIndexLage(),
     protokollKette: await kettenLage().catch(() => null),
+    taktRobust: await taktRobustLage(new Date(jetzt)).catch(() => null),
   };
+}
+
+/**
+ * Takt robust (09.10.): Warteschlange (voll?), Agenten-Sperre (lesbar?), Morgenlauf (hakt?), Freigabe-Listen der Heads (voll?) — nur Zahlen.
+ * Dieselben Regeln wie der Takt selbst (`tagesstartLage`, `tagesstartLaeuft` in lib/zoe/takt.ts).
+ */
+export async function taktRobustLage(jetzt: Date): Promise<TaktRobustLage> {
+  const [{ warteschlangeLage }, { agentenEinstellungLesbar }, takt, { wandzeit }] = await Promise.all([
+    import('@/lib/zoe/auftraege'), import('@/lib/agenten/einstellung'), import('@/lib/zoe/takt'), import('@/lib/kalender/zeit'),
+  ]);
+  const heute = localDay(jetzt), h = Number(wandzeit(jetzt).slice(11, 13));
+  const [warteschlange, sperreLesbar, start, auftraege] = await Promise.all([
+    warteschlangeLage(jetzt), agentenEinstellungLesbar().catch(() => false),
+    loadJson<{ lastRun?: string; laeuft?: { tag?: string; seit?: string } }>('tagesstart').catch(() => null), lies().catch(() => []),
+  ]);
+  let tagesstart: TaktRobustLage['tagesstart'] = null;
+  if (h >= 7 && start?.lastRun !== heute) {
+    const l = takt.tagesstartLage(auftraege, heute, h, takt.tagesstartLaeuft(start, heute, jetzt));
+    tagesstart = { fehlversuche: l.fehlversuche, laeuft: l.laeuft, umgangen: l.umgehen };
+  }
+  const headsVoll: TaktRobustLage['headsVoll'] = [];
+  for (const head of ['sales', 'marketing', 'event']) {
+    const s = await loadJson<{ voll?: { zeit: string; abgelehnt: number } }>(`head-${head}`).catch(() => null);
+    if (s?.voll && jetzt.getTime() - Date.parse(s.voll.zeit) < 7 * 864e5) headsVoll.push({ head, abgelehnt: s.voll.abgelehnt });
+  }
+  return { warteschlange, sperreLesbar, tagesstart, headsVoll };
 }
 
 /** Der Lagebericht des Hosts — Klartext-JSON vom Cron-Skript, kein Bestand der App. */
