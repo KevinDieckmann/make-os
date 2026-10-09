@@ -185,6 +185,8 @@ export function kiSperrText(r: { error?: string } | null | undefined): string {
   if (g === 'budget') return 'Das KI-Budget des Monats ist erreicht';
   if (g === 'grenze-auftrag') return 'Der Auftrag kostet mehr als die Grenze je Auftrag (System › Datenschutz › KI)';
   if (g === 'kosten-rueckfrage') return 'Erst die Kostenschätzung bestätigen';
+  // Paket 4c: Pixel eines Fotos ohne den Schalter der Person.
+  if (g === 'medien-aus') return 'Fotos gehen nur an die KI, wenn du „Bilder an die KI“ einschaltest (System › Datenschutz › KI)';
   return 'Durch die Datenschutz-Einstellungen gesperrt (System › Datenschutz)';
 }
 

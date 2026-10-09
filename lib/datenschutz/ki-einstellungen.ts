@@ -31,17 +31,28 @@ export const KI_BEREICH_LABEL: Record<KiBereich, string> = {
  * keine eigenen Bereichs-Schalter (die Bereiche bleiben, wie sie sind — Privat-Finanzen zählen zusätzlich als `finanzen`), aber eine
  * Mindeststufe im Anbieter-Tor (lib/ki/anbieter.ts `MINDESTSTUFE`). Aufrufer geben sie an, sobald solche Daten im Prompt stehen.
  */
-export type KiKategorie = KiBereich | 'gesundheit' | 'familie' | 'finanzen-privat' | 'postfach' | 'web' | 'konto' | 'allgemein';
-export const KI_KATEGORIEN: readonly KiKategorie[] = [...KI_BEREICHE, 'gesundheit', 'familie', 'finanzen-privat', 'postfach', 'web', 'konto', 'allgemein'];
+/**
+ * Seit 09.10. (Paket 4c) zusätzlich `medien`: die PIXEL eines Fotos aus der Medien-Ablage gehen an einen KI-Anbieter (Bild bearbeiten, ein Head sieht
+ * ein Bild). Kein Bereichs-Schalter, sondern ein eigener Schalter je Person „Bilder an die KI“ (`KiPersonSchalter.bilderAnKi`, Vorgabe AUS) — das
+ * KI-Tor sperrt ohne ihn (`medien-aus`). Ob das Bild selbst hinaus darf (Personen nur mit Einwilligung „KI“), prüft lib/medien/regeln.ts `anKiGruende`.
+ */
+export type KiKategorie = KiBereich | 'gesundheit' | 'familie' | 'finanzen-privat' | 'postfach' | 'web' | 'konto' | 'medien' | 'allgemein';
+export const KI_KATEGORIEN: readonly KiKategorie[] = [...KI_BEREICHE, 'gesundheit', 'familie', 'finanzen-privat', 'postfach', 'web', 'konto', 'medien', 'allgemein'];
 export const istBereich = (k: string): k is KiBereich => (KI_BEREICHE as readonly string[]).includes(k);
 
-export interface KiSchalter { hintergrund: boolean; websuche: boolean; bereiche: Record<KiBereich, boolean> }
+export interface KiSchalter {
+  hintergrund: boolean; websuche: boolean; bereiche: Record<KiBereich, boolean>;
+  /** Paket 4c: „Bilder an die KI“ (KI-Kategorie `medien`) — nur je Person, Vorgabe aus (fehlt = aus). */
+  bilder?: boolean;
+}
 export interface KiPersonSchalter {
   hintergrund?: boolean;
   websuche?: boolean;
   bereiche?: Partial<Record<KiBereich, boolean>>;
   /** Ausnahme „ZOE-Antworten vollständig über Telegram“ (unverschlüsselt, Drittland) — Zeitpunkt + Fassung des Hinweises. */
   telegramVoll?: { seit: string; fassung: string };
+  /** Paket 4c: „Bilder an die KI“ (Fotos aus der Medien-Ablage an einen KI-Anbieter, z. B. zum Bearbeiten) — nur die Person selbst, Vorgabe aus. */
+  bilderAnKi?: boolean;
 }
 export type KiVorgabe = 'kompatibel' | 'sparsam';
 /** Neue KI-Fähigkeiten (09.10., Paket 6a, lib/ki/tor.ts) — je Instanz vom Inhaber eingeschaltet; fehlt = aus (auch „kompatibel“). */
@@ -99,6 +110,8 @@ export function wirksameSchalter(d: KiEinstellungenDatei, person: string | null 
     hintergrund: i.hintergrund && (p.hintergrund ?? true),
     websuche: i.websuche && (p.websuche ?? true),
     bereiche: Object.fromEntries(KI_BEREICHE.map(b => [b, i.bereiche[b] && (p.bereiche?.[b] ?? true)])) as Record<KiBereich, boolean>,
+    // Paket 4c: nur die Person selbst öffnet „Bilder an die KI“ (Systemlauf ohne Person: nie).
+    ...(p.bilderAnKi === true ? { bilder: true } : {}),
   };
 }
 

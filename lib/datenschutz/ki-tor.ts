@@ -6,6 +6,7 @@
 //   2. Kategorie „gesundheit“ ohne Einwilligung (b)     → gesperrt `einwilligung-gesundheit` (Systemlauf ohne Person: immer)
 //   3. ein Bereich (crm, kalender, aufgaben, finanzen, brain) für ZOE nicht erlaubt → gesperrt `bereich-<x>`
 //   4. Web-Suche gewünscht, aber aus                    → das Werkzeug fällt weg (der Aufruf läuft ohne)
+//   4b. Kategorie „medien“ (Pixel eines Fotos, Paket 4c) ohne den Schalter der Person „Bilder an die KI“ → gesperrt `medien-aus`
 //   5. Hintergrund-Lauf                                 → Namen der CRM-Kontakte pseudonymisiert (lib/datenschutz/pseudonym.ts)
 //
 // Ein Hintergrund-Lauf im selben Prozess (AsyncLocalStorage, lib/datenschutz/ki-lauf.ts) gilt immer als Hintergrund —
@@ -42,6 +43,7 @@ export function torEntscheiden(s: KiSchalter, gesundheitKi: boolean, k: { lauf: 
   if (k.lauf === 'hintergrund' && !s.hintergrund) return { ...basis, ok: false, grund: 'hintergrund-aus' };
   if (k.kategorien.includes('gesundheit') && !gesundheitKi) return { ...basis, ok: false, grund: 'einwilligung-gesundheit' };
   for (const kat of k.kategorien) if (istBereich(kat) && !s.bereiche[kat]) return { ...basis, ok: false, grund: `bereich-${kat}` };
+  if (k.kategorien.includes('medien') && s.bilder !== true) return { ...basis, ok: false, grund: 'medien-aus' };
   return { ...basis, ok: true, websuche: websucheGewuenscht && s.websuche, pseudonym: k.lauf === 'hintergrund' && k.pseudonym !== false };
 }
 

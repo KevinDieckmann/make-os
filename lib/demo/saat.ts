@@ -9,6 +9,7 @@
 // Name, keine Firma, kein Betrag aus unserem Bestand (Wächter tests/repo-sauber.test.ts, tests/demo.test.ts).
 // Schutzregeln (wann gesät/zurückgesetzt werden darf): lib/demo/schutz.ts. Aufrufer: scripts/demo-saat.mjs und
 // lib/demo/server.ts (Knopf „Demo zurücksetzen“). Doku: DEMO.md.
+// Agenten-Bereich und „Fotos & Videos“ (Paket 4c): lib/demo/saat-agenten.ts — ohne KI-Schlüssel vollständig (gespeicherte Antworten, kein Modell).
 
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -416,6 +417,11 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { op: 'eintrag', liste: 'zusammenhaenge', eintrag: { text: 'Mehr Schlaf → mehr Energie am Nachmittag (Beispiel)' } },
   ] });
   schritt('Körper-Profil', 1);
+
+  // 14b) Agenten-Bereich und Fotos & Videos (Paket 4c): Threads mit Berichten je Business-Head, Mitarbeiter-Aufträge, Skills (einer aktiv),
+  //      geplante Hintergrundaufgaben, ein Album mit drei erzeugten Farbflächen (eins freigegeben, eins angefragt, eins beim Head of Marketing).
+  const { agentenUndMedienSaen } = await import('./saat-agenten');
+  for (const s of await agentenUndMedienSaen({ lena: LENA, jonas: JONAS, haushalt: DEMO_HAUSHALT, heute, jetzt })) schritt(s.name, s.anzahl);
 
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;

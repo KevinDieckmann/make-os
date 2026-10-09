@@ -201,8 +201,28 @@ export async function aktionAusfuehren(person: string, a: Record<string, unknown
   if (!ort) return { ok: false, status: 404, fehler: 'Medium nicht gefunden.' };
   const r = await katalogAendern(ort.name, async kat => mediumAktion(await kontextFuer(b, { ...ort.quelle, katalog: kat }), id, a));
   if (!r.ok) return r;
+  if (art === 'freigabe' && a.schritt === 'anfragen') await freigabeAngefragtMelden(b, r.medium).catch(e => console.error('[medien] Glocke Freigabe:', e instanceof Error ? e.message : e));
   const k = await kontextFuer(b, { ...ort.quelle, katalog: r.katalog });
   return { ok: true, medium: alsSicht(r.medium, k.quelle, b, k.lage) };
+}
+
+/**
+ * Glocke „Freigabe angefragt“ (Paket 4c) an die ZWEITE Person: wenn das Vier-Augen-Prinzip gilt (erkennbare Personen) oder die anfragende Person
+ * selbst nicht freigeben darf — an alle anderen im Haushalt, die freigeben dürfen (Marketing-Verantwortliche, volle Mitglieder). Text neutral,
+ * ohne Bild- oder Albumnamen; nie an die anfragende Person selbst (melde() verweigert das ohnehin).
+ */
+async function freigabeAngefragtMelden(b: Betrachter, m: Medium): Promise<number> {
+  if (m.erkennbarePersonen !== 'ja' && darfFreigeben(b)) return 0;
+  const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
+  let n = 0;
+  for (const p of await haushaltsPersonen()) {
+    if (p === b.person) continue;
+    const andere = await betrachterFuer(p);
+    if (!andere || !darfFreigeben(andere)) continue;
+    await melde({ an: p, von: b.person, art: 'medien', titel: m.erkennbarePersonen === 'ja' ? 'Ein Foto wartet auf deine Freigabe (Vier-Augen)' : 'Ein Medium wartet auf deine Freigabe', link: WEG.medien({ id: m.id }) });
+    n++;
+  }
+  return n;
 }
 
 /** Wo liegt ein Medium (auch im Papierkorb, wenn die Person es ändern darf)? */

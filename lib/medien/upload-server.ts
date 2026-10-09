@@ -348,7 +348,7 @@ export function rangeLesen(kopf: string | null, gesamt: number): { von: number; 
 }
 
 /** Ein Medium (Variante) als Antwort — nur, wer es sieht. Video mit nicht freigegebenem Ton: nie das Original. */
-export async function inhaltLesen(person: string, id: string, variante: Variante, range: string | null, wennNicht: string | null): Promise<Antwort<{ inhalt: InhaltAntwort; mitPersonen: boolean }>> {
+export async function inhaltLesen(person: string, id: string, variante: Variante, range: string | null, wennNicht: string | null): Promise<Antwort<{ inhalt: InhaltAntwort; mitPersonen: boolean; ki: boolean }>> {
   const b = await betrachterFuer(person);
   if (!b) return F(403, 'Nur im Haushalt des Inhabers.');
   const f = await mediumFinden(b, id);
@@ -360,22 +360,25 @@ export async function inhaltLesen(person: string, id: string, variante: Variante
   if (!v) return F(404, 'Diese Ansicht gibt es nicht.');
   const etag = `"${v.sha256.slice(0, 40)}"`;
   const mitPersonen = m.erkennbarePersonen === 'ja' || m.personen.length > 0;
+  // KI-generiert (Paket 4c, KI-VO Art. 50): die Datei trägt SynthID/C2PA unverändert; der Kopf sagt es zusätzlich (zweite Schicht).
+  const ki = m.urheber.art === 'ki';
   const grund: Record<string, string> = {
     'Content-Type': v.typ, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox",
     ETag: etag, 'Accept-Ranges': variante === 'original' ? 'bytes' : 'none',
+    ...(ki ? { 'X-KI-Generiert': '1' } : {}),
     // Kevin 09.10.: Vorschaubilder verschlüsselt + privater Zwischenspeicher im Browser; das Original nie zwischengespeichert.
     'Cache-Control': variante === 'original' ? 'private, no-store' : 'private, max-age=604800',
   };
-  if (wennNicht && wennNicht === etag && variante !== 'original') return { ok: true, mitPersonen, inhalt: { status: 304, kopf: grund, strom: null } };
+  if (wennNicht && wennNicht === etag && variante !== 'original') return { ok: true, mitPersonen, ki, inhalt: { status: 304, kopf: grund, strom: null } };
   const speicher = await medienSpeicher();
   if (!speicher) return F(503, 'Medien sind auf dieser Instanz ausgeschaltet.');
   const dek = schluesselOeffnen(m.schluessel, m.id);
   const r = variante === 'original' ? rangeLesen(range, v.bytes) : null;
-  if (r === 'ungueltig') return { ok: true, mitPersonen, inhalt: { status: 416, kopf: { ...grund, 'Content-Range': `bytes */${v.bytes}` }, strom: null } };
+  if (r === 'ungueltig') return { ok: true, mitPersonen, ki, inhalt: { status: 416, kopf: { ...grund, 'Content-Range': `bytes */${v.bytes}` }, strom: null } };
   const von = r ? r.von : 0, bis = r ? r.bis : v.bytes - 1;
   const strom = entschluesselterStrom(speicher, dek, { mediumId: m.id, variante }, v, von, bis);
   return {
-    ok: true, mitPersonen,
+    ok: true, mitPersonen, ki,
     inhalt: { status: r ? 206 : 200, kopf: { ...grund, 'Content-Length': String(bis - von + 1), ...(r ? { 'Content-Range': `bytes ${von}-${bis}/${v.bytes}` } : {}) }, strom },
   };
 }

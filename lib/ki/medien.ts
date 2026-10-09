@@ -8,6 +8,13 @@
 //     bis der Takt sie abholt (lib/ki/aufruf.ts `kiAuftraegeAbholen`).
 // Sicht serverseitig (Plattform-Regel „Trennung serverseitig“): nur der eigene Haushalt; „nur-ich“ nur die auslösende Person; Papierkorb 30
 // Tage, danach endgültig (Datei + Eintrag). Keine Personendaten im Auftragstext vorgesehen (Kategorien des Zugangs: allgemein/web).
+//
+// SEIT PAKET 4c (09.10.) — EINE Medien-Ablage: neue KI-Bilder und fertige KI-Videos landen als Medien in `medien--<haushalt>` bzw.
+// `medien-privat--<person>` (lib/medien/ki-ablage.ts, Herkunft `urheber.art = 'ki'`). Dieser Bestand ist nur noch
+//   · das AUFTRAGSBUCH laufender Video-Aufträge (`status: 'laeuft'`, `operation`, `ziel`) — der Takt holt ab und legt das Ergebnis in die EINE
+//     Ablage (`uebernommenAls` = Kennung des Mediums, keine Datei mehr hier), und
+//   · der LESE-ÜBERGANG des Altbestands: fertige Einträge (mit Datei in `<daten>/ki-medien`) übernimmt `kiMedienUebernehmen` einmal; der Eintrag
+//     bleibt mit der Marke `uebernommenAls` liegen (Rückweg), seine Datei ebenso (Papierkorb-Regel unten unverändert).
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { bildAblegen, bildOeffnen, bildEntfernen } from '@/lib/store/bild-ablage';
@@ -51,6 +58,10 @@ export interface KiMedium {
   versuche?: number;
   fehler?: string;
   geloeschtAm?: string;
+  /** Paket 4c: wohin das fertige Video in der EINEN Ablage geht (Bereich, Album, Name, vorschlagender Agent). */
+  ziel?: { bereich: 'business' | 'privat'; album?: string; name?: string; agent?: string };
+  /** Paket 4c: in die EINE Ablage übernommen als Medium `md-…` (Auftragsbuch bzw. Altbestand bleiben liegen). */
+  uebernommenAls?: string;
 }
 interface MedienDatei { medien: KiMedium[] }
 
@@ -72,7 +83,7 @@ export async function mediumAblegen(haushalt: string, m: Omit<KiMedium, 'id' | '
 }
 
 /** Ein laufendes Medium fertig machen bzw. als gescheitert markieren (Takt). */
-export async function mediumAbschliessen(haushalt: string, id: string, e: { bytes?: Buffer; mime?: string; fehler?: string; versuch?: boolean }): Promise<KiMedium | null> {
+export async function mediumAbschliessen(haushalt: string, id: string, e: { bytes?: Buffer; mime?: string; fehler?: string; versuch?: boolean; uebernommenAls?: string }): Promise<KiMedium | null> {
   if (!HAUSHALT.test(haushalt) || !ID.test(id)) return null;
   if (e.bytes) await bildAblegen('ki-medien', dateiName(id), e.bytes);
   let raus: KiMedium | null = null;
@@ -80,6 +91,8 @@ export async function mediumAbschliessen(haushalt: string, id: string, e: { byte
     medien: (cur?.medien ?? []).map(x => {
       if (x.id !== id) return x;
       const { operation: _op, ...rest } = x;
+      // Paket 4c: in die EINE Ablage übernommen — fertig ohne eigene Datei (bzw. Altbestand mit Marke).
+      if (e.uebernommenAls) return (raus = { ...rest, status: 'fertig', uebernommenAls: e.uebernommenAls, ...(x.fertigAm ? {} : { fertigAm: new Date().toISOString() }) });
       raus = e.bytes ? { ...rest, status: 'fertig', bytes: e.bytes.length, ...(e.mime ? { mime: e.mime } : {}), fertigAm: new Date().toISOString() }
         : e.fehler ? { ...rest, status: 'fehler', fehler: e.fehler.slice(0, 200), fertigAm: new Date().toISOString() }
         : e.versuch ? { ...x, versuche: (x.versuche ?? 0) + 1 } : x;

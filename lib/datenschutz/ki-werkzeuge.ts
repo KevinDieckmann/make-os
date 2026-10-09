@@ -18,8 +18,15 @@ export const GRUPPE_KATEGORIE: Record<string, KiKategorie> = {
   inbox: 'postfach',
 };
 
-/** Ausnahmen je Werkzeug: die Einkaufsliste steht in der Gruppe „gesundheit“, ist aber keine Gesundheitsangabe. */
-export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = { einkauf_setzen: null };
+/**
+ * Ausnahmen je Werkzeug: die Einkaufsliste steht in der Gruppe „gesundheit“, ist aber keine Gesundheitsangabe.
+ * Paket 4c: die Medien-Werkzeuge des Agenten-Bereichs (lib/agenten/medien-werkzeuge.ts, nicht im ZOE-Register) — `bild_bearbeiten` schickt die
+ * PIXEL eines Fotos hinaus (Kategorie `medien`, Schalter „Bilder an die KI“); suchen, erzeugen (aus Text) und Vorschläge lesen keine Bildinhalte.
+ */
+export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = {
+  einkauf_setzen: null,
+  medien_suchen: null, medien_vorschlagen: null, bild_erzeugen: null, video_starten: null, bild_bearbeiten: 'medien',
+};
 
 export const kategorieVonGruppe = (gruppe: string): KiKategorie | null => GRUPPE_KATEGORIE[gruppe] ?? null;
 /** Kategorie eines Werkzeugs (Ausnahme vor Gruppe). */
@@ -28,11 +35,13 @@ export const kategorieVonWerkzeug = (name: string, gruppe: string): KiKategorie 
 
 export const SPERRE_BEREICH = (k: KiKategorie) => `Nicht ausgeführt: Der Bereich „${istBereich(k) ? KI_BEREICH_LABEL[k] : k}“ ist für ZOE ausgeschaltet (System › Datenschutz).`;
 export const SPERRE_GESUNDHEIT = 'Nicht ausgeführt: Gesundheitsdaten gehen nur mit der Einwilligung „An die KI geben“ an ZOE (System › Datenschutz › Gesundheit). Sag das der Person ruhig und ohne Druck.';
+export const SPERRE_MEDIEN = 'Nicht ausgeführt: Fotos gehen nur an die KI, wenn die Person „Bilder an die KI“ einschaltet (System › Datenschutz › KI). Sag das ruhig und ohne Druck.';
 
 /** Warum ein Werkzeug dieser Gruppe gerade nicht laufen darf — oder null (rein). */
 export function werkzeugSperre(k: KiKategorie | null, s: KiSchalter, gesundheitKi: boolean): string | null {
   if (!k) return null;
   if (k === 'gesundheit') return gesundheitKi ? null : SPERRE_GESUNDHEIT;
+  if (k === 'medien') return s.bilder === true ? null : SPERRE_MEDIEN;
   if (istBereich(k) && !s.bereiche[k]) return SPERRE_BEREICH(k);
   return null;
 }

@@ -59,8 +59,11 @@ export const KATALOG: readonly HeadDef[] = [
     stufe: 'ausgewogen', aufwand: 'medium',
     mitarbeiter: [
       { id: 'marketing-design', name: 'Design', rolle: 'Schreibt Briefings, pflegt Vorlagen und prüft Beiträge, Einladungen und Kampagnen gegen das eigene Erscheinungsbild.',
-        werkzeuge: ['marketing_lage', 'kampagnen_lage', 'suche_wissen', 'lies_notiz', 'crm_vorschlag'], stufe: 'ausgewogen', auchFuer: ['event'],
-        offen: 'Bilder erzeugen braucht einen Bild-Anbieter (Antwort 14, Feld `anbieter`) — bis dahin Briefings und Texte; Fotos kommen aus „Medien unterwegs“ (Paket 5).' },
+        werkzeuge: ['marketing_lage', 'kampagnen_lage', 'suche_wissen', 'lies_notiz', 'crm_vorschlag'], stufe: 'ausgewogen', auchFuer: ['event'] },
+      // Paket 4c (09.10.): Bilder und Videos erzeugt bzw. bearbeitet „Bild & Video“ über das Anbieter-Tor — seine Medien-Werkzeuge sind Agenten-
+      // Werkzeuge (nicht im ZOE-Register): lib/agenten/medien-werkzeuge.ts `MEDIEN_AGENTEN`. Hier stehen nur seine Register-Werkzeuge.
+      { id: 'marketing-bild-video', name: 'Bild & Video', rolle: 'Wählt aus gegebenen Fotos und Videos aus, schlägt Zuschnitte und Texte vor, erzeugt und bearbeitet Bilder mit der Bild-KI und schlägt kurze Videos vor — mit Kostenschätzung, KI-Kennzeichnung und nur als Vorschlag; ein Video startet erst ein Klick.',
+        werkzeuge: ['marketing_lage', 'kampagnen_lage', 'events_lage', 'crm_suche', 'suche_wissen', 'lies_notiz'], stufe: 'schnell', auchFuer: ['event', 'sales'] },
       { id: 'marketing-kampagnen', name: 'Kampagnen', rolle: 'Plant Kampagnen nach den Playbooks: Segment, Kanal mit Rechts-Ampel, Texte und Nachfassen.',
         werkzeuge: ['kampagnen_lage', 'marketing_lage', 'crm_suche', 'kontakt_akte', 'qualifizierung_lage', 'kennzahlen', 'crm_vorschlag'], stufe: 'ausgewogen' },
       { id: 'marketing-social', name: 'Social Media & LinkedIn', rolle: 'Entwirft Beiträge und Netzwerk-Nachrichten in der eigenen Sprache — veröffentlicht und verschickt wird von Hand.',

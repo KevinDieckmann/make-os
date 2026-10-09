@@ -70,6 +70,8 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   if (m.art === 'verbindung') return 'Eine Verbindung braucht eine neue Anmeldung — Details in MAKE OS';
   // Agenten-Bereich (09.10.): nie Inhalte eines Laufs auf einen Messenger — nur, dass etwas bereitliegt.
   if (m.art === 'agenten') return 'Ein Agenten-Ergebnis liegt bereit — Details in MAKE OS';
+  // Paket 4c: nie Bild- oder Albumnamen auf einen Messenger.
+  if (m.art === 'medien') return 'Bei Fotos & Videos wartet etwas auf dich — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
   return m.titel;
 }

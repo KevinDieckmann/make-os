@@ -19,7 +19,7 @@ type Bereich = 'crm' | 'kalender' | 'aufgaben' | 'finanzen' | 'brain';
 interface Schalterwerte { hintergrund: boolean; websuche: boolean; bereiche: Record<Bereich, boolean> }
 interface KDaten {
   vorgabe: 'kompatibel' | 'sparsam'; instanz: Schalterwerte; wirksam: Schalterwerte; inhaber: boolean;
-  eigen: { hintergrund: boolean | null; websuche: boolean | null; bereiche: Partial<Record<Bereich, boolean>> };
+  eigen: { hintergrund: boolean | null; websuche: boolean | null; bereiche: Partial<Record<Bereich, boolean>>; bilderAnKi?: boolean };
   bereiche: { id: Bereich; label: string }[];
   telegramVoll: { seit: string; fassung: string } | null; telegramHinweis: { text: string; fassung: string };
 }
@@ -61,6 +61,14 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
 
   const stellen = async (ebene: 'instanz' | 'person', schalter: { hintergrund?: boolean; websuche?: boolean; bereiche?: Partial<Record<Bereich, boolean>> }) => {
     const r = await fetch('/api/datenschutz/ki', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ebene, schalter }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) setK(d); else setMeldung(d.error ?? 'Nicht gespeichert.');
+  };
+
+  /** „Bilder an die KI“ (Paket 4c): nur die Person selbst, Vorgabe aus, mit Rückfrage beim Einschalten. */
+  const bilder = async (an: boolean) => {
+    if (an && !(await bestaetigen({ titel: 'Bilder an die KI geben?', text: 'Fotos aus „Fotos & Videos“ dürfen dann zum Bearbeiten an den eingerichteten Bild-Anbieter gehen (Drittland möglich). Nur Business-Fotos, nur wenn sie einem Head gegeben wurden, und Fotos mit erkennbaren Personen nur, wenn deren Einwilligung „KI“ vorliegt — nie Minderjährige, nie Privates. Jederzeit wieder aus.', ja: 'Einschalten' }))) return;
+    const r = await fetch('/api/datenschutz/ki', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ebene: 'person', bilderAnKi: an }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok) setK(d); else setMeldung(d.error ?? 'Nicht gespeichert.');
   };
@@ -120,6 +128,7 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
               {k.bereiche.map(b => (
                 <Schalter key={b.id} karte an={k.eigen.bereiche[b.id] ?? true} aus={!k.instanz.bereiche[b.id]} onChange={v => void stellen('person', { bereiche: { [b.id]: v } })} beschreibung={k.instanz.bereiche[b.id] ? `ZOE darf ${b.label} lesen und an das Modell geben.` : 'Für die ganze Instanz ausgeschaltet.'}>{b.label}</Schalter>
               ))}
+              <Schalter karte an={!!k.eigen.bilderAnKi} onChange={v => void bilder(v)} beschreibung="Fotos aus „Fotos & Videos“ zum Bearbeiten an den Bild-Anbieter — nur Business, nur einem Head gegeben, Personen nur mit Einwilligung „KI“. Vorgabe aus.">Bilder an die KI</Schalter>
             </div>
             {k.inhaber && (
               <div style={{ marginTop: 18 }}>

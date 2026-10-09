@@ -92,7 +92,7 @@ export const agentVon = (a: Ansprechbar): AgentRef =>
 
 export const KATEGORIE_NAME: Readonly<Record<KiKategorie, string>> = {
   crm: 'CRM', kalender: 'Kalender', aufgaben: 'Aufgaben', finanzen: 'Finanzen', brain: 'Brain', gesundheit: 'Gesundheit',
-  postfach: 'Postfach', web: 'Web', konto: 'Konto', allgemein: 'Allgemeines', familie: 'Familie', 'finanzen-privat': 'Private Finanzen',
+  postfach: 'Postfach', web: 'Web', konto: 'Konto', allgemein: 'Allgemeines', familie: 'Familie', 'finanzen-privat': 'Private Finanzen', medien: 'Fotos & Videos',
 };
 /** Was ein Head sieht und — als Vergleich — die großen Bereiche, die er NICHT sieht. */
 export function sichtVon(h: Pick<HeadDef, 'kategorien' | 'kategorienMitEinwilligung'>): { sieht: string[]; mitEinwilligung: string[]; siehtNicht: string[] } {

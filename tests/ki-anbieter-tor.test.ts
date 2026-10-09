@@ -233,8 +233,11 @@ describe('Bilder: frei bis zum Budget, Kennzeichnung bleibt, Sicht serverseitig'
     expect(r.zeichen.noetig).toBe(true);
     const m = r.medien[0];
     expect(m).toMatchObject({ art: 'bild', mime: 'image/png', anbieter: 'google-vertex', kennzeichnung: { synthid: true, c2pa: true, eigeneMarke: true }, zeichenNoetig: true });
-    const offen = await medien.mediumOeffnen('h-test', 'jonas', m.id);
+    // Seit Paket 4c: EINE Ablage (lib/medien/ki-ablage.ts) — das Bild ist ein Medium, die Bytes bleiben unverändert.
+    const { kiMediumOeffnen } = await import('@/lib/medien/ki-ablage');
+    const offen = await kiMediumOeffnen('jonas', m.id);
     expect(offen?.bytes.equals(PNG_MIT_KENNZEICHNUNG)).toBe(true);
+    expect(offen?.medium.urheber.art).toBe('ki');
     await warte();
     const v = JSON.stringify(await db.loadJson('ki-verbrauch'));
     expect(v).toMatch(/"anbieter":"google-vertex"/);
@@ -251,13 +254,17 @@ describe('Bilder: frei bis zum Budget, Kennzeichnung bleibt, Sicht serverseitig'
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const id = r.medien[0].id;
-    expect((await medien.medienFuer('h-test', 'lena')).some(x => x.id === id)).toBe(true);
-    expect((await medien.medienFuer('h-test', 'jonas')).some(x => x.id === id)).toBe(false);
-    expect(await medien.mediumOeffnen('h-test', 'jonas', id)).toBeNull();
+    // Seit Paket 4c: „nur ich“ = Privat der Person in der EINEN Ablage (Unsortiert sieht nur sie) — dieselbe Filterstelle wie hochgeladene Fotos.
+    const { medienListe, aktionAusfuehren } = await import('@/lib/medien/server');
+    const { kiMediumOeffnen } = await import('@/lib/medien/ki-ablage');
+    expect((await medienListe('lena'))?.medien.some(x => x.id === id)).toBe(true);
+    expect((await medienListe('jonas'))?.medien.some(x => x.id === id)).toBe(false);
+    expect(await kiMediumOeffnen('jonas', id)).toBeNull();
+    expect(await medienListe('gast')).toBeNull();
+    expect(await aktionAusfuehren('jonas', { aktion: 'loeschen', id })).toMatchObject({ ok: false, status: 404 });
+    expect(await aktionAusfuehren('lena', { aktion: 'loeschen', id })).toMatchObject({ ok: true });
+    expect((await medienListe('lena'))?.medien.some(x => x.id === id)).toBe(false);
     expect(await medien.medienFuer('h-fremd', 'gast')).toEqual([]);
-    expect(await medien.mediumLoeschen('h-test', 'jonas', id)).toBe(false);
-    expect(await medien.mediumLoeschen('h-test', 'lena', id)).toBe(true);
-    expect((await medien.medienFuer('h-test', 'lena')).some(x => x.id === id)).toBe(false);
   });
   it('Medien-Zugang nimmt keine CRM-Daten', async () => {
     vertexEinrichten({ medien: true });
@@ -282,9 +289,13 @@ describe('Video und Tiefenbericht: nur mit Klick, asynchron abgeholt', () => {
     expect(await aufruf.kiAuftraegeOffen()).toBe(1);
     const r = await aufruf.kiAuftraegeAbholen();
     expect(r).toMatchObject({ fertig: 1, offen: 0, fehler: 0 });
+    // Seit Paket 4c: das Auftragsbuch (ki-medien) trägt nur die Marke, das Video liegt als Medium in der EINEN Ablage.
     const v = (await medien.medienFuer('h-test', 'lena')).find(x => x.art === 'video')!;
-    expect(v).toMatchObject({ status: 'fertig', mime: 'video/mp4' });
-    expect((await medien.mediumOeffnen('h-test', 'lena', v.id))?.bytes.equals(MP4)).toBe(true);
+    expect(v).toMatchObject({ status: 'fertig', uebernommenAls: expect.stringMatching(/^md-/) });
+    const { kiMediumOeffnen } = await import('@/lib/medien/ki-ablage');
+    const o = await kiMediumOeffnen('lena', v.uebernommenAls!);
+    expect(o?.bytes.equals(MP4)).toBe(true);
+    expect(o?.medium).toMatchObject({ art: 'video', typ: 'video/mp4', urheber: { art: 'ki' } });
     expect(await aufruf.kiAuftraegeOffen()).toBe(0);
   });
   it('Grenze je Auftrag gilt zusätzlich zum Budget', async () => {
