@@ -33,6 +33,7 @@ Selbstständigkeit; Unteraufgaben über die Kette; Projekte, Listen (unbekanntes
   (`NUR_BUSINESS_PRIVAT`), Server-Schreiber ausgenommen. Zuständig/beteiligt an einer Privat-Aufgabe wird ein Konto „nur Business“ nicht (400, nur neu
   gesetzte Personen); Meldungen über Privat-Aufgaben erreichen es nie (`haushaltsPersonen` trägt `nurBusiness`).
 - `/api/tasks/create`: Privat-Elternteil/-Meilenstein 404, kein „gibt es schon“ mit der Kennung einer Privat-Aufgabe, ohne Ort im Business.
+- `/api/aufgaben/zeit?ids=`: zählt nur Aufgaben, die die Person sieht (vorher auch fremde „nur ich“ und — für den Partner — Privat).
 - **Neu für den Partner:** Projekt-/Aufgaben-Dateien des Business (`aufgabenDateienZugang`, `aufgabenDateiSichtbar` in lib/dateien/aufgaben-ablage.ts) —
   Route `/api/aufgaben/dateien`, Export und ZOE `projekt_unterlagen`/`datei_lesen` (vorher bekam er keine). `datei_lesen` und der Export prüfen jetzt auch
   „nur ich“ (vorher nicht).
