@@ -123,7 +123,8 @@ describe('(8) Agenten-Werkstatt: Skills und Mitarbeiter aus fremd gelesenem Text
     const sys = systemVon(ki.anfragen[0]);
     expect(sys).toMatch(/<fremde_daten quelle=\\"skill-anleitung\\">\\nMARKE-SKILL-ANLEITUNG/);
     expect(sys).not.toMatch(/Anleitung von einem Menschen freigegeben\):\\nMARKE-SKILL-ANLEITUNG/);
-    // skill_laden liefert dieselbe Anleitung gekapselt.
+    // Eingeschaltet (nach bestandenem Testlauf, per Klick) liefert skill_laden dieselbe Anleitung gekapselt.
+    expect((await rufe(skills.POST, '/api/agenten/skills', sitzung('person-a'), { aktion: 'aktivieren', id: sk.id, stand: tl.d.stand })).status).toBe(200);
     ki.folge.push(werkzeug(['skill_laden', { skill: sk.id }]), text('Geladen.'));
     await senden('person-a', { agent: { art: 'head', headId: 'sales' }, text: 'Lade den Skill.' });
     const erg = letzteErgebnisse(ki.anfragen.at(-1)!)[0];

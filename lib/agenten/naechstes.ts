@@ -293,8 +293,9 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
       const { TEAM } = await import('@/lib/crm/team');
       const events = (await sicher(ladeCrm(), null))?.events ?? [];
       // Dieselben Personen wie der Takt (lib/heads/takt.ts `powerHourPersonen`, Paket 4b: nie ein festes Kürzel).
-      const team = powerHourPersonen(TEAM, konten.konten);
-      const altRiegelPerson = konten.konten.find(k => k.rolle === 'inhaber')?.speicher ?? null;
+      const team = powerHourPersonen(TEAM, konten.konten, konten.einstellungen);
+      // Nahtstellen-Prüfung Punkt 9: der Haupt-Inhaber aus der zentralen Regel (lib/zugang/inhaber.ts).
+      const altRiegelPerson = (await import('@/lib/zugang/inhaber')).hauptInhaber(konten)?.speicher ?? null;
       const teamFrei = new Map<string, Spanne[]>();
       for (const p of team) teamFrei.set(p, await personFrei(p));
       for (const h of headsTakt) {

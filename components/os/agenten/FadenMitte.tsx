@@ -161,7 +161,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel}
         fadenId={fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer) ? fa.faden.id : undefined}
         leer={fa ? <Leer>Noch keine Antwort in diesem Thread.</Leer> : <Leerzustand symbol="↳" titel={`Neuer Thread mit ${name}`}>Schreib den Auftrag: Ziel, Format, Grenzen und Quellen — dann arbeitet {name} los.</Leerzustand>}
-        onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}) } }) : undefined}
+        onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}), ...(fa ? { ausFaden: fa.faden.id } : {}) } }) : undefined}
         unten={wartend ? <Schreibt name={name} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={fa ? `Nachricht an ${name} …` : `Auftrag an ${name} — Ziel, Format, Grenzen, Quellen …`} onSenden={senden} laeuft={!!wartend}
         zusatz={fa && k ? <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf> : undefined}

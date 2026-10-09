@@ -67,13 +67,18 @@ async function headsKontext(head: HeadDef, person: string, kats: Set<KiKategorie
   };
 }
 
+/**
+ * Finanz-Heads. `fremd: true` (Nahtstellen-Prüfung 09.10., Punkt 7): die Hinweise des Finanzbilds zitieren Verwendungszweck/Gegenseite aus dem
+ * Kontoauszug (lib/finanzen/chef/auffaellig.ts) bzw. Lieferanten aus Belegen — Text Dritter. Damit greifen die Regeln „fremd gelesen“ (kein
+ * persönlicher Merksatz, „Skill aus Thread“ ohne Agenten-Text, Werkstatt-Vorschläge gekapselt).
+ */
 async function finanzKontext(head: HeadDef, sicht: KontoSicht, kats: Set<KiKategorie>): Promise<HeadKontext> {
   if (!kats.has('finanzen')) return LEER('Finanzen sind für die KI ausgeschaltet (System › Datenschutz).');
   const { ladeFinanzbild } = await import('@/lib/finanzen/chef/lauf');
   if (head.bereich === 'business') {
     const { bild } = await ladeFinanzbild(null);
     const teil = { stichtag: bild.stichtag, business: bild.business, steuern: bild.steuern, hinweise: bild.hinweise.filter(h => h.bereich !== 'haushalt' && h.bereich !== 'gesamt') };
-    return { text: `FINANZBILD BUSINESS (nur die Business-Gesellschaften; Hinweis, keine Steuerberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen'], fremd: false, vertraulich: true };
+    return { text: `FINANZBILD BUSINESS (nur die Business-Gesellschaften; Hinweis, keine Steuerberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen'], fremd: true, vertraulich: true };
   }
   if (!sicht.privatFinanzen) return LEER('Kein Zugang zu den privaten Haushaltsfinanzen.');
   const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
@@ -81,7 +86,7 @@ async function finanzKontext(head: HeadDef, sicht: KontoSicht, kats: Set<KiKateg
   if (!h) return LEER('Kein Zugang zu den privaten Haushaltsfinanzen.');
   const { bild } = await ladeFinanzbild(h.haushalt);
   const teil = { stichtag: bild.stichtag, haushalt: bild.haushalt, gesamt: bild.gesamt, entnahmen_abgleich: bild.entnahmen_abgleich, steuern: bild.steuern, hinweise: bild.hinweise.filter(x => x.bereich !== 'business') };
-  return { text: `FINANZBILD PRIVAT (Haushalt; Hinweis, keine Steuer- oder Anlageberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen'], fremd: false, vertraulich: true };
+  return { text: `FINANZBILD PRIVAT (Haushalt; Hinweis, keine Steuer- oder Anlageberatung):\n${daten('finanzbild', JSON.stringify(teil))}`, kategorien: ['allgemein', 'finanzen'], fremd: true, vertraulich: true };
 }
 
 async function hoiKontext(): Promise<HeadKontext> {

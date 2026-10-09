@@ -471,7 +471,7 @@ export function eingebauteSkills(head: HeadDef): SkillKurz[] {
 
 export const skillKurz = (s: Skill): SkillKurz => ({
   id: s.id, headId: s.headId, ...(s.mitarbeiterId ? { mitarbeiterId: s.mitarbeiterId } : {}), name: s.name, beschreibung: s.beschreibung,
-  ausloeser: s.ausloeser, aktiv: s.aktiv, erfolg: s.erfolg,
+  ausloeser: s.ausloeser, aktiv: s.aktiv, erfolg: s.erfolg, ...(s.ausFremdemText ? { ausFremdemText: true as const } : {}),
 });
 
 /** Erfolgsquote eines Skills (Antwort 7): angenommen ÷ (angenommen + abgelehnt + Fehler) — oder null ohne Entscheidung. Rein. */

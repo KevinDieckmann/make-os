@@ -326,6 +326,11 @@ export interface SkillEntwurf {
   kostenGrenzeCent?: number;
   tests: SkillTest[];
   quelle: 'hand' | 'gespraech' | 'import' | 'vorschlag';
+  /**
+   * „Als Skill speichern“ (Nahtstellen-Prüfung 09.10., Punkt 8): aus welchem Thread der Text kam — der Server prüft, ob er fremd gelesen ist, und
+   * kennzeichnet den Skill dann (`ausFremdemText`, im Prompt gekapselt). Die Oberfläche entscheidet das nie selbst.
+   */
+  ausFaden?: string;
 }
 
 export function leererSkill(headId: string, vorlage?: Partial<SkillEntwurf>): SkillEntwurf {

@@ -296,10 +296,11 @@ export async function kandidatenLaden(sicht?: HeadSichtPruefer): Promise<Kandida
   const { loadJson } = await import('@/lib/store/local-db');
   const { ladeKonten } = await import('@/lib/zugang/konten');
   const pruefer = sicht ?? (await import('./skills-server')).headSichtbar;
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  const haushalt = inhaber?.haushalt ?? null;
-  const personen = konten.filter(k => k.speicher === inhaber?.speicher || (!!haushalt && k.haushalt === haushalt)).map(k => k.speicher).filter(p => PERSON.test(p));
+  // Nahtstellen-Prüfung Punkt 9: Haushalt und Personen über die zentrale Regel (lib/zugang/inhaber.ts), nie eine eigene Inhaber-Suche.
+  const { haushaltDerInhaber, kontenImHaushaltDerInhaber } = await import('@/lib/zugang/inhaber');
+  const st = await ladeKonten();
+  const haushalt = haushaltDerInhaber(st);
+  const personen = kontenImHaushaltDerInhaber(st).map(k => k.speicher).filter(p => PERSON.test(p));
   const personSet = new Set(personen);
   // Roh mit den Abschnitten der Personen (Paket 4b) — `headEinstellungVon` wählt je Kandidat den richtigen; nie nach außen gegeben.
   const roh = haushalt ? await loadJson<AgentenEinstellung>(einstellungBestand(haushalt)).catch(() => null) : null;

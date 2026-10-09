@@ -210,11 +210,25 @@ export async function skillMitStand(person: string, id: string): Promise<Ergebni
 const skillsDesHeads = (w: Werkstatt, headId: string) => w.skills.filter(s => s.headId === headId);
 const nameFrei = (w: Werkstatt, headId: string, name: string, ausser?: string) => !skillsDesHeads(w, headId).some(s => s.name === name && s.id !== ausser);
 
-/** Einen Skill anlegen (Entwurf, nie aktiv). `quelle`: hand · gespraech · import · vorschlag (nur über den Stapel). */
-export async function skillAnlegen(person: string, roh: unknown, quelle: Skill['quelle'] = 'hand'): Promise<Ergebnis<{ skill: GespeicherterSkill; stand: string }>> {
+/**
+ * Ist dieser Thread (der Person) „fremd gelesen“? Für „Als Skill speichern“ (Nahtstellen-Prüfung 09.10., Punkt 8): die Oberfläche gibt den Thread
+ * mit (`ausFaden`), der Server entscheidet. Eine Kennung, die es (nicht mehr) gibt, gilt vorsichtshalber als fremd.
+ */
+async function fadenFremd(person: string, fadenId: unknown): Promise<boolean> {
+  if (typeof fadenId !== 'string' || !fadenId) return false;
+  const f = (await loadJson<FadenBestand>(fadenBestand(person)))?.faeden?.find(x => x.id === fadenId);
+  return !f || !!f.fremdGelesen;
+}
+
+/**
+ * Einen Skill anlegen (Entwurf, nie aktiv). `quelle`: hand · gespraech · import · vorschlag (nur über den Stapel). `ausFremdemText` (Punkt 8):
+ * der Inhalt kam aus fremd gelesenem Text — gesetzt vom Stapel (Vorschlag aus so einem Thread) bzw. hier aus `ausFaden` („Als Skill speichern“).
+ */
+export async function skillAnlegen(person: string, roh: unknown, quelle: Skill['quelle'] = 'hand', opt: { ausFremdemText?: boolean } = {}): Promise<Ergebnis<{ skill: GespeicherterSkill; stand: string }>> {
   const r = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
   const hk = await headKontext(person, r.headId);
   if (!hk.ok) return hk;
+  const ausFremd = !!opt.ausFremdemText || (r.ausFaden !== undefined && (await fadenFremd(person, r.ausFaden)));
   const am = new Date().toISOString();
   const raus = await inWerkstatt<Ergebnis<{ skill: GespeicherterSkill; stand: string }>>(hk.name, (w, halt) => {
     const p = skillPruefen(r, kontext(hk.head, w));
@@ -222,7 +236,7 @@ export async function skillAnlegen(person: string, roh: unknown, quelle: Skill['
     const inhalt = (p as { wert: SkillInhalt }).wert;
     if (skillsDesHeads(w, hk.head.id).length >= GRENZEN.skillsJeHead) halt(fehler(413, `Höchstens ${GRENZEN.skillsJeHead} Skills je Head.`));
     if (!nameFrei(w, hk.head.id, inhalt.name)) halt(fehler(409, `Einen Skill „${inhalt.name}“ hat dieser Head schon.`));
-    const skill = skillNeu(inhalt, { id: neueKennung('sk'), headId: hk.head.id, quelle, von: person, am });
+    const skill: GespeicherterSkill = { ...skillNeu(inhalt, { id: neueKennung('sk'), headId: hk.head.id, quelle, von: person, am }), ...(ausFremd ? { ausFremdemText: true as const } : {}) };
     return { neu: { ...w, skills: [...w.skills, skill] }, raus: { ok: true, skill, stand: standVon(skill) } };
   });
   if (raus.ok) await protokoll(hk.name, [{ liste: 'skills', op: 'neu', id: raus.skill.id }], person);
@@ -495,7 +509,7 @@ export async function skillErfolgZaehlen(umfang: Umfang, skillId: string, was: '
 // ── Mitarbeiter ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Eigenen Mitarbeiter anlegen (Antwort 4: „selbst anlegen“). `quelle` vorschlag nur über den Stapel. */
-export async function mitarbeiterAnlegen(person: string, headId: unknown, roh: unknown, quelle: 'hand' | 'vorschlag' = 'hand'): Promise<Ergebnis<{ mitarbeiter: Mitarbeiter; stand: string }>> {
+export async function mitarbeiterAnlegen(person: string, headId: unknown, roh: unknown, quelle: 'hand' | 'vorschlag' = 'hand', opt: { ausFremdemText?: boolean } = {}): Promise<Ergebnis<{ mitarbeiter: Mitarbeiter; stand: string }>> {
   const hk = await headKontext(person, headId);
   if (!hk.ok) return hk;
   const raus = await inWerkstatt<Ergebnis<{ mitarbeiter: Mitarbeiter; stand: string }>>(hk.name, (w, halt) => {
@@ -505,7 +519,7 @@ export async function mitarbeiterAnlegen(person: string, headId: unknown, roh: u
     const alle = mitarbeiterListe(hk.head.id, w.mitarbeiter).filter(m => m.headId === hk.head.id);
     if (alle.length >= GRENZEN.mitarbeiterJeHead) halt(fehler(413, `Höchstens ${GRENZEN.mitarbeiterJeHead} Mitarbeiter je Head.`));
     if (alle.some(m => m.name.toLowerCase() === inhalt.name.toLowerCase())) halt(fehler(409, `Einen Mitarbeiter „${inhalt.name}“ hat dieser Head schon.`));
-    const m: Mitarbeiter = { id: neueKennung('ma'), headId: hk.head.id, ...inhalt, gedaechtnis: [], quelle, angelegtVon: person, ...(quelle === 'vorschlag' ? { freigegebenVon: person } : {}) };
+    const m: Mitarbeiter = { id: neueKennung('ma'), headId: hk.head.id, ...inhalt, gedaechtnis: [], quelle, angelegtVon: person, ...(quelle === 'vorschlag' ? { freigegebenVon: person } : {}), ...(opt.ausFremdemText ? { ausFremdemText: true as const } : {}) };
     return { neu: { ...w, mitarbeiter: [...w.mitarbeiter, m] }, raus: { ok: true, mitarbeiter: m, stand: standVon(m) } };
   });
   if (raus.ok) await protokoll(hk.name, [{ liste: 'mitarbeiter', op: 'neu', id: raus.mitarbeiter.id }], person);
@@ -612,7 +626,10 @@ export async function merksatzWegAktion(person: string, agentRoh: unknown, id: u
 export const AGENTEN_GRUPPE = 'agenten';
 const kurzT = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
-export interface VorschlagHerkunft { person: string; agent: AgentRef; anlass?: string; quelle?: Vorschlag['quelle'] }
+export interface VorschlagHerkunft { person: string; agent: AgentRef; anlass?: string; quelle?: Vorschlag['quelle'];
+  /** Der vorschlagende Lauf hatte fremden Text gelesen (Punkt 8) — der Vorschlag trägt die Marke, der übernommene Skill/Mitarbeiter auch. */
+  fremd?: boolean }
+const AUS_FREMD_TITEL = ' (aus fremdem Text — wird gekapselt)';
 
 async function vorschlagBasis(h: VorschlagHerkunft, headId: string): Promise<Ergebnis<{ head: HeadDef; w: Werkstatt; name: string }>> {
   const hk = await headKontext(h.person, headId);
@@ -627,8 +644,8 @@ export async function vorschlagSkillLegen(h: VorschlagHerkunft, headId: string, 
   const p = skillPruefen(entwurf, kontext(b.head, b.w));
   if (!p.ok) return fehler(p.status, p.fehler);
   const vorschlag = await lege({
-    werkzeug: 'skill_vorschlagen', gruppe: AGENTEN_GRUPPE, titel: `Neuer Skill „${p.wert.name}“ für ${b.head.name}`,
-    nachher: kurzT(p.wert.beschreibung, 300), eingabe: { headId: b.head.id, entwurf: p.wert, von: agentSchluessel(h.agent) },
+    werkzeug: 'skill_vorschlagen', gruppe: AGENTEN_GRUPPE, titel: `Neuer Skill „${p.wert.name}“ für ${b.head.name}${h.fremd ? AUS_FREMD_TITEL : ''}`,
+    nachher: kurzT(p.wert.beschreibung, 300), eingabe: { headId: b.head.id, entwurf: p.wert, von: agentSchluessel(h.agent), ...(h.fremd ? { ausFremdemText: true } : {}) },
     ...(h.anlass ? { anlass: kurzT(h.anlass, 400) } : {}), person: h.person, quelle: h.quelle ?? 'gespraech', bezug: { art: 'skill', id: b.head.id },
   });
   return { ok: true, vorschlag };
@@ -641,8 +658,8 @@ export async function vorschlagMitarbeiterLegen(h: VorschlagHerkunft, headId: st
   const p = mitarbeiterPruefen(entwurf, b.head);
   if (!p.ok) return fehler(p.status, p.fehler);
   const vorschlag = await lege({
-    werkzeug: 'mitarbeiter_vorschlagen', gruppe: AGENTEN_GRUPPE, titel: `Neuer Mitarbeiter „${p.wert.name}“ für ${b.head.name}`,
-    nachher: kurzT(p.wert.rolle, 300), eingabe: { headId: b.head.id, entwurf: p.wert, von: agentSchluessel(h.agent) },
+    werkzeug: 'mitarbeiter_vorschlagen', gruppe: AGENTEN_GRUPPE, titel: `Neuer Mitarbeiter „${p.wert.name}“ für ${b.head.name}${h.fremd ? AUS_FREMD_TITEL : ''}`,
+    nachher: kurzT(p.wert.rolle, 300), eingabe: { headId: b.head.id, entwurf: p.wert, von: agentSchluessel(h.agent), ...(h.fremd ? { ausFremdemText: true } : {}) },
     ...(h.anlass ? { anlass: kurzT(h.anlass, 400) } : {}), person: h.person, quelle: h.quelle ?? 'gespraech', bezug: { art: 'mitarbeiter', id: b.head.id },
   });
   return { ok: true, vorschlag };
@@ -695,14 +712,15 @@ const entwurfAus = (v: Vorschlag, eingabe?: Record<string, unknown> | null): unk
 export const SKILL_STAPEL_ART: StapelArtFreigabe = {
   freigeben: (v, person, opt) => freigabeAblauf(v, person, 'skill', 'skill_vorschlagen', async x => {
     const entwurf = entwurfAus(x, opt.eingabe);
-    const r = await skillAnlegen(person, { ...(entwurf as object), headId: x.eingabe.headId }, 'vorschlag');
+    // Die Marke „aus fremdem Text“ steht am Vorschlag (vom Server gesetzt) — eine bearbeitete Fassung behält sie (Punkt 8).
+    const r = await skillAnlegen(person, { ...(entwurf as object), headId: x.eingabe.headId, ausFaden: undefined }, 'vorschlag', { ausFremdemText: x.eingabe.ausFremdemText === true });
     return ergebnisAus(r, r.ok ? `Skill-Entwurf „${r.skill.name}“ angelegt — aktiv erst nach Testlauf und Klick.` : '');
   }),
 };
 
 export const MITARBEITER_STAPEL_ART: StapelArtFreigabe = {
   freigeben: (v, person, opt) => freigabeAblauf(v, person, 'mitarbeiter', 'mitarbeiter_vorschlagen', async x => {
-    const r = await mitarbeiterAnlegen(person, x.eingabe.headId, entwurfAus(x, opt.eingabe), 'vorschlag');
+    const r = await mitarbeiterAnlegen(person, x.eingabe.headId, entwurfAus(x, opt.eingabe), 'vorschlag', { ausFremdemText: x.eingabe.ausFremdemText === true });
     return ergebnisAus(r, r.ok ? `Mitarbeiter „${r.mitarbeiter.name}“ angelegt.` : '');
   }),
 };

@@ -435,6 +435,7 @@ export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string;
         <span style={{ flex: 1 }} />
         {geladen && <Chip farbe={geladen.aktiv ? LEUCHT.gut : C.inkDim}>{geladen.aktiv ? 'an' : 'aus'} · Version {geladen.version}</Chip>}
         {e.quelle === 'gespraech' && <Chip farbe={C.aktiv}>aus dem Chat</Chip>}
+        {geladen?.ausFremdemText && <Chip farbe={LEUCHT.achtung}>aus fremdem Text — im Prompt gekapselt</Chip>}
       </div>
 
       {ansicht === 'bauen' && (

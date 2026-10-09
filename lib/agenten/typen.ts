@@ -354,6 +354,12 @@ export interface Skill {
   angelegtVon: string;
   freigegebenVon?: string;
   geaendertAm?: string;
+  /**
+   * Nahtstellen-Prüfung 09.10. (Punkt 8): Inhalt entstand (auch) aus fremd gelesenem Text — Vorschlag eines Agenten in einem Thread mit Text
+   * Dritter oder „Als Skill speichern“ aus so einem Thread. Setzt NUR der Server; der Prompt kapselt Anleitung/Rolle/Beschreibung dann mit
+   * `fremd()` und nennt sie nie „von einem Menschen geschrieben“, ein Lauf damit gilt als „fremd gelesen“. Bleibt auch nach Änderungen stehen.
+   */
+  ausFremdemText?: true;
 }
 /** Was immer im Prompt steht (Name + Beschreibung) und was Listen zeigen. Eingebaute Skills: `id` = `eingebaut:<quelle>:<modus>`. */
 export interface SkillKurz {
@@ -366,6 +372,8 @@ export interface SkillKurz {
   aktiv: boolean;
   eingebaut?: true;
   erfolg?: SkillErfolg;
+  /** Aus fremd gelesenem Text entstanden (siehe `Skill.ausFremdemText`) — die Beschreibung steht im Prompt gekapselt. */
+  ausFremdemText?: true;
 }
 
 /** Ein Merksatz im Gedächtnis eines Heads oder Mitarbeiters (Antwort 4/10) — kurze Regel, immer im Prompt. */
@@ -403,6 +411,12 @@ export interface Mitarbeiter {
   quelle: 'vorlage' | 'hand' | 'vorschlag';
   angelegtVon?: string;
   freigegebenVon?: string;
+  /**
+   * Nahtstellen-Prüfung 09.10. (Punkt 8): Inhalt entstand (auch) aus fremd gelesenem Text — Vorschlag eines Agenten in einem Thread mit Text
+   * Dritter oder „Als Skill speichern“ aus so einem Thread. Setzt NUR der Server; der Prompt kapselt Anleitung/Rolle/Beschreibung dann mit
+   * `fremd()` und nennt sie nie „von einem Menschen geschrieben“, ein Lauf damit gilt als „fremd gelesen“. Bleibt auch nach Änderungen stehen.
+   */
+  ausFremdemText?: true;
 }
 
 /**

@@ -24,6 +24,7 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { AGENT_ID, HEAD_NAME, type HeadId } from './prompt';
 import { TEAM } from '@/lib/crm/team';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { hauptInhaber, kontenImHaushaltDerInhaber, type InhaberKern, type InhaberStand } from '@/lib/zugang/inhaber';
 import { leererStand, standName, type HeadStand } from './stand';
 import { localDay } from '@/lib/zeit';
 import { tagPlus, wandAus } from '@/lib/kalender/zeit';
@@ -133,21 +134,24 @@ async function headsRahmen(jetzt: Date, personen: readonly string[]): Promise<He
  * Wer eine Power Hour bekommt (rein): Team-Mitglieder (`TEAM`) mit Konto; gibt es keines, die Konten im Haushalt des Inhabers (Inhaber
  * zuerst) — so läuft der Takt auch in einer neuen Instanz mit anderen Speichernamen. Nie ein festes Kürzel.
  */
-export function powerHourPersonen(team: readonly { id: string }[], konten: readonly { speicher: string; rolle?: string; haushalt?: string }[]): string[] {
+export function powerHourPersonen(team: readonly { id: string }[], konten: readonly { speicher: string; rolle?: string; haushalt?: string }[], einstellungen?: InhaberStand['einstellungen']): string[] {
   const mitKonto = new Set(konten.map(k => k.speicher));
   const ausTeam = team.map(t => t.id).filter(id => mitKonto.has(id));
   if (ausTeam.length) return ausTeam;
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return [];
-  return [inhaber.speicher, ...konten.filter(k => k.speicher !== inhaber.speicher && !!inhaber.haushalt && k.haushalt === inhaber.haushalt).map(k => k.speicher)];
+  // Nahtstellen-Prüfung Punkt 9: der Haupt-Inhaber und sein Haushalt aus der zentralen Regel (lib/zugang/inhaber.ts) — mit zwei Inhabern zählt
+  // die ausdrückliche Wahl, sonst das älteste Inhaber-Konto (dieselbe Wahl wie vorher).
+  const st: InhaberStand = { konten: konten.map(k => ({ speicher: k.speicher, rolle: (k.rolle ?? 'mitglied') as InhaberKern['rolle'], ...(k.haushalt ? { haushalt: k.haushalt } : {}) })), einstellungen };
+  const haupt = hauptInhaber(st);
+  if (!haupt) return [];
+  return [haupt.speicher, ...kontenImHaushaltDerInhaber(st).filter(k => k.speicher !== haupt.speicher).map(k => k.speicher)];
 }
 
 export async function headsFaellig(jetzt: Date): Promise<Faellig[]> {
   const crm = await ladeCrm();
   // Nur Personen mit Konto bekommen eine vorbereitete Power Hour (Team der Instanz, sonst der Haushalt des Inhabers).
-  const { konten } = await ladeKonten();
-  const personen = powerHourPersonen(TEAM, konten);
-  const altRiegelPerson = konten.find(k => k.rolle === 'inhaber')?.speicher ?? null;
+  const kst = await ladeKonten();
+  const personen = powerHourPersonen(TEAM, kst.konten, kst.einstellungen);
+  const altRiegelPerson = hauptInhaber(kst)?.speicher ?? null;
   const rahmen = await headsRahmen(jetzt, personen);
   const raus: Faellig[] = [];
   for (const head of ['sales', 'marketing', 'event'] as HeadId[]) {
