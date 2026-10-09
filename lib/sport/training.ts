@@ -32,7 +32,8 @@ export function sportSchluessel(name: string): string {
 
 /**
  * Sportart → Sparte (Vorgabe für jede Instanz). Nur, was NICHT „Sonstiges“ ist, steht hier; alles andere (Ballsport, Kampfsport, Tanz,
- * „Activity“, „Other“ …) zählt als Sonstiges. Die Person stellt eine Sportart unter Sport › Training › „Sportarten zuordnen“ um.
+ * „Other“ …) zählt als „Anderes Training“; „Activity“ (WHOOPs allgemeine Bewegung) als Alltagsbewegung. Die Person stellt eine Sportart
+ * unter Sport › Training › „Sportarten zuordnen“ um.
  */
 export const SPORT_ZUORDNUNG: Readonly<Record<string, Klasse>> = {
   // Laufen
@@ -54,7 +55,7 @@ export const SPORT_ZUORDNUNG: Readonly<Record<string, Klasse>> = {
   // Alltag (zählt nicht als Training)
   'walking': 'alltag', 'dog-walking': 'alltag', 'stroller-walking': 'alltag', 'commuting': 'alltag', 'manual-labor': 'alltag', 'yard-work': 'alltag',
   'cooking': 'alltag', 'cleaning': 'alltag', 'dedicated-parenting': 'alltag', 'babywearing': 'alltag', 'toddlerwearing': 'alltag', 'gaming': 'alltag',
-  'watching-sports': 'alltag', 'high-stress-work': 'alltag', 'public-speaking': 'alltag', 'stage-performance': 'alltag', 'musical-performance': 'alltag',
+  'activity': 'alltag', 'watching-sports': 'alltag', 'high-stress-work': 'alltag', 'public-speaking': 'alltag', 'stage-performance': 'alltag', 'musical-performance': 'alltag',
   'caddying': 'alltag', 'coaching': 'alltag', 'operations-tactical': 'alltag', 'operations-medical': 'alltag', 'operations-flying': 'alltag', 'operations-water': 'alltag',
 };
 

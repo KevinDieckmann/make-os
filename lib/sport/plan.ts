@@ -3,9 +3,10 @@
 // ist ein Rahmen, den sie selbst umstellt.
 
 import type { Disziplin, PlanArt, Sparte, SportStand, Woche, Wochentag, Ziel } from './modell';
-import { WOCHENTAGE, leereWoche } from './modell';
+import { SPARTEN, WOCHENTAGE, leereWoche } from './modell';
 import { montagVon, tagPlus, tageZwischen } from './pace';
 import { alleEinheiten, inWoche, summe, zaehlende } from './training';
+import { einheitenVon, geplanteEinheiten } from './plan-bau';
 
 /** Wochen bis zu einem Datum (aufgerundet, nie negativ). */
 export function wochenBis(heute: string, datum: string): number {
@@ -39,21 +40,32 @@ export function vorschlagWoche(art: Disziplin, tageProWoche: number): Woche {
     kraft: ['gym', 'gym', 'lauf', 'gym', 'gym', 'lauf'],
     grundlagen: ['lauf', 'gym', 'lauf', 'gym', 'lauf', 'gym'],
   };
-  const dauer: Record<PlanArt, number> = { lauf: 45, gym: 60, hyrox: 60, ruhe: 0, frei: 0 };
+  const dauer: Record<PlanArt, number> = { lauf: 45, gym: 60, hyrox: 60, rad: 60, ausdauer: 45, mobility: 30, sonstiges: 45, ruhe: 0, frei: 0 };
   REIHE.slice(0, n).forEach((t, i) => { const a = folge[art][i]; w[t] = { art: a, dauerMin: dauer[a] }; });
   w.so = w.so.art === 'frei' ? { art: 'ruhe' } : w.so;
   if (!WOCHENTAGE.some(t => w[t].art === 'ruhe')) { const frei = WOCHENTAGE.find(t => w[t].art === 'frei'); if (frei) w[frei] = { art: 'ruhe' }; }
   return w;
 }
 
-export interface Umfang { einheiten: number; minuten: number; je: Record<PlanArt, number>; ruhetage: number }
+export interface Umfang {
+  /** Geplante Einheiten (09.10.: je Einheit — ein Tag kann mehrere tragen; ältere Pläne: je Trainingstag eine). */
+  einheiten: number; minuten: number;
+  /** Tage je Art (die Art eines Tages = Sparte seiner ersten Einheit; Ruhe/frei). */
+  je: Record<PlanArt, number>; ruhetage: number;
+  /** Einheiten je Sparte. */
+  jeSparte: Record<Sparte, number>;
+}
 
 /** Was der Wochenplan vorsieht. */
 export function planUmfang(w: Woche): Umfang {
-  const je: Record<PlanArt, number> = { hyrox: 0, lauf: 0, gym: 0, ruhe: 0, frei: 0 };
-  let minuten = 0;
-  for (const t of WOCHENTAGE) { je[w[t].art] += 1; minuten += w[t].dauerMin ?? 0; }
-  return { einheiten: je.hyrox + je.lauf + je.gym, minuten, je, ruhetage: je.ruhe };
+  const je = Object.fromEntries([...SPARTEN, 'ruhe', 'frei'].map(a => [a, 0])) as Record<PlanArt, number>;
+  const jeSparte = Object.fromEntries(SPARTEN.map(a => [a, 0])) as Record<Sparte, number>;
+  let minuten = 0, einheiten = 0;
+  for (const t of WOCHENTAGE) {
+    je[w[t].art] += 1;
+    for (const e of einheitenVon(w[t], t)) { einheiten++; jeSparte[e.sparte] += 1; minuten += e.dauerMin ?? 0; }
+  }
+  return { einheiten, minuten, je, ruhetage: je.ruhe, jeSparte };
 }
 
 export interface WocheIst {
@@ -81,12 +93,13 @@ export interface PlanIst { montag: string; plan: number; ist: number; anteil: nu
 
 /** Plan gegen Ist je Woche, älteste zuerst — so sieht man, ob der Rahmen hält. */
 export function planIst(stand: SportStand, heute: string, wochen = 8): PlanIst[] {
-  const plan = planUmfang(stand.woche).einheiten;
   const start = montagVon(heute);
   const alle = alleEinheiten(stand);
   const r: PlanIst[] = [];
   for (let i = wochen - 1; i >= 0; i--) {
     const montag = tagPlus(start, -7 * i);
+    // Plan je Woche (09.10.): der Block bzw. die Standardwoche DIESER Woche, mit Phase (lib/sport/plan-bau.ts).
+    const plan = geplanteEinheiten(stand, montag).length;
     const ist = summe(inWoche(alle, montag)).einheiten;
     r.push({ montag, plan, ist, anteil: plan > 0 ? Math.min(1, ist / plan) : 0 });
   }

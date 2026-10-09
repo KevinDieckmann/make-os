@@ -29,10 +29,10 @@ const MAX_OPS = 100;
 
 export interface VitalTag { schlafH?: number; hrv?: number; ruhepuls?: number; recovery?: number }
 
-/** Die Vitalwerte der Person (Whoop-Export oder Morgen-Check) der letzten 14 Tage — nur die, die es gibt. */
+/** Die Vitalwerte der Person (WHOOP oder Morgen-Check) der letzten 28 Tage — nur die, die es gibt. */
 async function vitalsFuer(person: string, heute: string): Promise<Record<string, VitalTag>> {
   const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
-  const ab = tagPlus(heute, -14);
+  const ab = tagPlus(heute, -28); // 28 Tage (09.10.): Bezug für die Entlastungs-Regel (lib/sport/entlastung.ts, 14 Tage vor dem Fenster)
   const r: Record<string, VitalTag> = {};
   for (const [tag, v] of Object.entries(log)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tag) || tag < ab || tag > heute || !v) continue;

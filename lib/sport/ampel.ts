@@ -4,6 +4,7 @@
 // Ein Hinweis, keine Trainingsberatung. Ohne Werte sagt die Ampel ehrlich „unbekannt“.
 
 import type { ErholungTag, PlanArt } from './modell';
+import { PLAN_LABEL } from './modell';
 
 export type Stufe = 'gruen' | 'gelb' | 'rot' | 'unbekannt';
 export interface Ampel { stufe: Stufe; punkte: number | null; text: string; gruende: string[] }
@@ -52,6 +53,6 @@ export function ampel(t: ErholungTag | undefined, geplant: PlanArt, bezug: Bezug
   return { stufe: 'rot', punkte, gruende, text: geplant === 'frei' ? 'Wenig erholt. Heute lieber Pause oder Spaziergang.' : `Wenig erholt. Statt ${label(geplant)} heute leicht bewegen oder tauschen mit einem Ruhetag.` };
 }
 
-const label = (a: PlanArt) => ({ hyrox: 'Hyrox', lauf: 'Lauf', gym: 'Gym', ruhe: 'Ruhe', frei: 'frei' })[a];
+const label = (a: PlanArt) => PLAN_LABEL[a];
 
 export const AMPEL_LABEL: Record<Stufe, string> = { gruen: 'Grün', gelb: 'Gelb', rot: 'Rot', unbekannt: 'Offen' };

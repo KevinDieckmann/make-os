@@ -11,12 +11,13 @@ import { neueKennung } from '@/lib/kennung';
 // Reine Logik, keine Ein-/Ausgabe — getestet in tests/sport-*.test.ts.
 
 export type Disziplin = 'hyrox' | 'lauf' | 'kraft' | 'grundlagen';
-export type PlanArt = 'hyrox' | 'lauf' | 'gym' | 'ruhe' | 'frei';
+/** Art eines Plan-Tags: eine Sparte (09.10.: auch Rad, Ausdauer, Mobility, Sonstiges) oder Ruhe/frei. */
+export type PlanArt = Sparte | 'ruhe' | 'frei';
 export type Wochentag = 'mo' | 'di' | 'mi' | 'do' | 'fr' | 'sa' | 'so';
 export const WOCHENTAGE: Wochentag[] = ['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'];
 export const WOCHENTAG_LABEL: Record<Wochentag, string> = { mo: 'Mo', di: 'Di', mi: 'Mi', do: 'Do', fr: 'Fr', sa: 'Sa', so: 'So' };
 export const DISZIPLIN_LABEL: Record<Disziplin, string> = { hyrox: 'Hyrox', lauf: 'Laufen', kraft: 'Kraft', grundlagen: 'Grundlagen' };
-export const PLAN_LABEL: Record<PlanArt, string> = { hyrox: 'Hyrox', lauf: 'Lauf', gym: 'Gym', ruhe: 'Ruhe', frei: 'frei' };
+export const PLAN_LABEL: Record<PlanArt, string> = { hyrox: 'Hyrox', lauf: 'Lauf', gym: 'Gym', rad: 'Rad', ausdauer: 'Ausdauer', mobility: 'Mobility', sonstiges: 'Sonstiges', ruhe: 'Ruhe', frei: 'frei' };
 
 export type StationId = 'skierg' | 'sledPush' | 'sledPull' | 'bbj' | 'rudern' | 'farmers' | 'lunges' | 'wallballs';
 export type LaufArt = 'locker' | 'intervall' | 'tempo' | 'longrun' | 'wettkampf';
@@ -36,8 +37,8 @@ export type Klasse = Sparte | 'erholung' | 'alltag';
 export const SPARTEN: Sparte[] = ['lauf', 'gym', 'hyrox', 'rad', 'ausdauer', 'mobility', 'sonstiges'];
 export const KLASSEN: Klasse[] = [...SPARTEN, 'erholung', 'alltag'];
 export const KLASSE_LABEL: Record<Klasse, string> = {
-  lauf: 'Laufen', gym: 'Gym & Kraft', hyrox: 'Hyrox & Functional', rad: 'Rad', ausdauer: 'Ausdauer', mobility: 'Mobility & Yoga', sonstiges: 'Sonstiges',
-  erholung: 'Erholung', alltag: 'Alltag',
+  lauf: 'Laufen', gym: 'Gym & Kraft', hyrox: 'Hyrox & Functional', rad: 'Rad', ausdauer: 'Ausdauer', mobility: 'Mobility & Yoga', sonstiges: 'Anderes Training',
+  erholung: 'Erholung', alltag: 'Alltagsbewegung',
 };
 /** Zählt eine Klasse als Trainingseinheit? (Erholung und Alltag stehen in der Liste, zählen aber nicht.) */
 export const zaehltAlsTraining = (k: Klasse): k is Sparte => k !== 'erholung' && k !== 'alltag';
@@ -58,6 +59,8 @@ export interface Ziel {
   notiz?: string;
   angelegt: string;
   erledigt?: boolean;
+  /** Referenzzeit für die Prognose (09.10.): z. B. 10 km in 57:30 — ohne Angabe nimmt der Rechner Bestzeit bzw. Ausgangswert. */
+  referenz?: { distanzKm: number; sek: number };
 }
 
 export interface Ausgang {
@@ -71,8 +74,62 @@ export interface Ausgang {
   tageProWoche?: number;
 }
 
-export interface PlanTag { art: PlanArt; dauerMin?: number; notiz?: string }
+/**
+ * Ein Plan-Tag. Seit 09.10. (Plan-Baukasten) optional mit EINHEITEN (bis 4 je Tag) — dann ist `art` die Sparte der ersten Einheit und
+ * `dauerMin` die Summe (abgeleitet, `saeuberePlanTag`), damit alle älteren Leser (Ampel, Kachel, „Für dich“) weiter stimmen.
+ * Ohne Einheiten gilt der Tag wie bisher als EINE Einheit seiner Art (`einheitenVon`, lib/sport/plan-bau.ts).
+ */
+export interface PlanTag { art: PlanArt; dauerMin?: number; notiz?: string; einheiten?: PlanEinheit[] }
 export type Woche = Record<Wochentag, PlanTag>;
+
+/** Art einer geplanten Einheit — was in der Einheit passiert (Vorschlag der Struktur, keine Trainingsberatung). */
+export type EinheitTyp = 'grundlage' | 'locker' | 'intervall' | 'tempo' | 'longrun' | 'kraft' | 'technik' | 'stationen' | 'simulation' | 'wettkampf' | 'mobility' | 'erholung';
+export type Intensitaet = 'leicht' | 'mittel' | 'hart';
+export const INTENSITAETEN: Intensitaet[] = ['leicht', 'mittel', 'hart'];
+export const INTENSITAET_LABEL: Record<Intensitaet, string> = { leicht: 'leicht', mittel: 'mittel', hart: 'hart' };
+export const EINHEIT_TYPEN: { id: EinheitTyp; label: string; intensitaet: Intensitaet }[] = [
+  { id: 'grundlage', label: 'Grundlage', intensitaet: 'leicht' }, { id: 'locker', label: 'Locker', intensitaet: 'leicht' },
+  { id: 'intervall', label: 'Intervall', intensitaet: 'hart' }, { id: 'tempo', label: 'Tempo', intensitaet: 'hart' },
+  { id: 'longrun', label: 'Lang', intensitaet: 'mittel' }, { id: 'kraft', label: 'Kraft', intensitaet: 'mittel' },
+  { id: 'technik', label: 'Technik', intensitaet: 'leicht' }, { id: 'stationen', label: 'Stationen', intensitaet: 'hart' },
+  { id: 'simulation', label: 'Simulation', intensitaet: 'hart' }, { id: 'wettkampf', label: 'Wettkampf', intensitaet: 'hart' },
+  { id: 'mobility', label: 'Mobility', intensitaet: 'leicht' }, { id: 'erholung', label: 'Erholung', intensitaet: 'leicht' },
+];
+export const TYP_LABEL = Object.fromEntries(EINHEIT_TYPEN.map(t => [t.id, t.label])) as Record<EinheitTyp, string>;
+
+/** Eine geplante Einheit (Plan-Baukasten, 09.10.). */
+export interface PlanEinheit {
+  id: string;
+  sparte: Sparte;
+  typ?: EinheitTyp;
+  dauerMin?: number;
+  /** Ohne Angabe gilt die Vorgabe des Typs (`intensitaetVon`, lib/sport/plan-bau.ts). */
+  intensitaet?: Intensitaet;
+  /** Zielzone 1–5 (Herzfrequenz). */
+  zone?: number;
+  /** Strain-Ziel der Einheit (0–21) — optional, damit „Belastung gegen Plan“ etwas hat. */
+  strain?: number;
+  /** Geplante Uhrzeit „HH:MM“ (Vorgabe für den Kalender-Block). */
+  uhrzeit?: string;
+  notiz?: string;
+}
+
+/** Eine Wochen-Vorlage der Person (eigene) — die Startvorlagen stehen im Code (lib/sport/plan-bau.ts), nie im Bestand. */
+export interface PlanVorlage {
+  id: string;
+  name: string;
+  woche: Woche;
+  notiz?: string;
+  /** Von ZOE vorgeschlagen und von der Person übernommen (nur Anzeige). */
+  vonZoe?: true;
+}
+/** Phase einer Block-Woche: Aufbau (voll), Deload (leichter), Taper (vor dem Wettkampf). */
+export type BlockPhase = 'aufbau' | 'deload' | 'taper';
+export const BLOCK_PHASEN: BlockPhase[] = ['aufbau', 'deload', 'taper'];
+export const PHASE_LABEL: Record<BlockPhase, string> = { aufbau: 'Aufbau', deload: 'Deload', taper: 'Taper' };
+export interface BlockWoche { vorlage: string; phase: BlockPhase }
+/** Ein Block: Wochen nacheinander ab `start` (Montag), je Woche eine Vorlage und eine Phase; optional auf ein Ziel hin. */
+export interface PlanBlock { id: string; start: string; wochen: BlockWoche[]; zielId?: string }
 
 export interface HyroxEinheit {
   id: string;
@@ -193,7 +250,49 @@ export interface SportStand {
   training?: TrainingEinheit[];
   /** Eigene Zuordnung je Sportart (Schlüssel wie `sportSchluessel`, lib/sport/training.ts) — fehlt, solange die Person nichts umstellt. */
   sportArten?: Record<string, Klasse>;
+  /** Eigene Wochen-Vorlagen (09.10., Plan-Baukasten) — fehlt, solange es keine gibt. */
+  planVorlagen?: PlanVorlage[];
+  /** Der laufende Block (Aufbau → Deload …) — fehlt ohne Block; dann gilt `woche` jede Woche. */
+  block?: PlanBlock;
+  /** Phase einzelner Wochen, von der Person gesetzt (z. B. „Entlastung annehmen“ nach dem HRV-Trend) — Schlüssel = Montag. */
+  wochenPhase?: Record<string, BlockPhase>;
+  /**
+   * Plan für einzelne Tage (09.10.): gewinnt über Woche/Block — verschobene Einheiten, die Taper-Tage vor einem Wettkampf. Schlüssel = Datum.
+   * Ein Tag mit `{ art: 'frei' }` heißt „an diesem Tag nichts“ (die Einheit wurde weggeschoben).
+   */
+  tage?: Record<string, PlanTag>;
+  /** Einstellungen der Person (09.10.) — fehlt, solange alles auf Vorgabe steht. */
+  einstellungen?: SportEinstellungen;
 }
+
+/** Was im Gesundheits-Cockpit zuerst steht (je Person; Vorgabe Tagesform). */
+export type Zuerst = 'tagesform' | 'schlaf' | 'training' | 'countdown';
+export const ZUERST: Zuerst[] = ['tagesform', 'schlaf', 'training', 'countdown'];
+export const ZUERST_LABEL: Record<Zuerst, string> = { tagesform: 'Tagesform', schlaf: 'Schlaf', training: 'Training heute', countdown: 'Countdown' };
+/** Regel „Entlastung nach HRV-Trend“ (lib/sport/entlastung.ts) — jede Zahl einstellbar, ohne Angabe die Vorgabe dort. */
+export interface EntlastungEinstellung {
+  /** Wie viele der letzten Tage betrachtet werden (2–7). */
+  fensterTage?: number;
+  /** Ab wie vielen auffälligen Tagen im Fenster eine Entlastung vorgeschlagen wird. */
+  mindestTage?: number;
+  /** HRV gilt als auffällig unter diesem Anteil des Bezugs (0,70–0,99). */
+  hrvAnteil?: number;
+  /** Ruhepuls gilt als auffällig über Bezug + so vielen Schlägen (1–15). */
+  pulsPlus?: number;
+  /** Aus = keine Vorschläge. */
+  aus?: boolean;
+}
+export interface SportEinstellungen {
+  zuerst?: Zuerst;
+  entlastung?: EntlastungEinstellung;
+  /** Umfang einer Deload-Woche in % (40–90). */
+  deloadProzent?: number;
+  /** Umfang einer Taper-Woche in % (30–90). */
+  taperProzent?: number;
+}
+
+/** Grenzen des Plan-Baukastens — darüber lehnt der Schritt ab (nie still kürzen). */
+export const PLAN_GRENZEN = { einheitenJeTag: 4, vorlagen: 30, blockWochen: 52, tage: 120 } as const;
 
 // ── Grundzustand und Prüfung ─────────────────────────────────────────────────
 
@@ -201,7 +300,8 @@ export const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 export const STATION_IDS: StationId[] = ['skierg', 'sledPush', 'sledPull', 'bbj', 'rudern', 'farmers', 'lunges', 'wallballs'];
 const DISZIPLINEN: Disziplin[] = ['hyrox', 'lauf', 'kraft', 'grundlagen'];
-const PLAN_ARTEN: PlanArt[] = ['hyrox', 'lauf', 'gym', 'ruhe', 'frei'];
+const PLAN_ARTEN: PlanArt[] = [...SPARTEN, 'ruhe', 'frei'];
+const TYP_IDS = EINHEIT_TYPEN.map(t => t.id);
 const LAUF_ART_IDS: LaufArt[] = ['locker', 'intervall', 'tempo', 'longrun', 'wettkampf'];
 const QUELLEN: Quelle[] = ['hand', 'apple-health', 'strava', 'whoop'];
 const GRUPPEN: Muskelgruppe[] = ['beine', 'ruecken', 'brust', 'schulter', 'rumpf', 'ganzkoerper', 'hyrox'];
@@ -241,6 +341,10 @@ export function saeubereZiel(e: unknown): Ziel | null {
   const kg = zahl(e.zielKg, 0.5, 1000); if (kg) z.zielKg = Math.round(kg * 10) / 10;
   const n = text(e.notiz, 600); if (n) z.notiz = n;
   if (e.erledigt === true) z.erledigt = true;
+  if (istObj(e.referenz)) {
+    const rk = zahl(e.referenz.distanzKm, 1, 100); const rs = ganz(e.referenz.sek, 60, 24 * 3600);
+    if (rk && rs) z.referenz = { distanzKm: Math.round(rk * 100) / 100, sek: rs };
+  }
   return z;
 }
 
@@ -255,12 +359,34 @@ export function saeubereAusgang(a: unknown): Ausgang {
   return r;
 }
 
+export function saeuberePlanEinheit(e: unknown): PlanEinheit | null {
+  if (!istObj(e)) return null;
+  const eid = id(e.id); const sparte = aus(e.sparte, SPARTEN);
+  if (!eid || !sparte) return null;
+  const p: PlanEinheit = { id: eid, sparte };
+  const t = aus(e.typ, TYP_IDS); if (t) p.typ = t;
+  const d = ganz(e.dauerMin, 5, 600); if (d) p.dauerMin = d;
+  const i = aus(e.intensitaet, INTENSITAETEN); if (i) p.intensitaet = i;
+  const z = ganz(e.zone, 1, 5); if (z) p.zone = z;
+  const st = zahl(e.strain, 0, 21); if (st !== undefined) p.strain = Math.round(st * 10) / 10;
+  const uz = uhrzeit(e.uhrzeit); if (uz) p.uhrzeit = uz;
+  const n = text(e.notiz, 200); if (n) p.notiz = n;
+  return p;
+}
+
 export function saeuberePlanTag(t: unknown): PlanTag {
   if (!istObj(t)) return { art: 'frei' };
+  const n = text(t.notiz, 200);
+  // Mit Einheiten (09.10.): Art und Dauer folgen den Einheiten — so lesen ältere Stellen denselben Tag.
+  const einheiten = Array.isArray(t.einheiten) ? eindeutig(t.einheiten.map(saeuberePlanEinheit).filter((x): x is PlanEinheit => !!x)) : [];
+  if (einheiten.length) {
+    const summe = einheiten.reduce((acc, e) => acc + (e.dauerMin ?? 0), 0);
+    return { art: einheiten[0].sparte, ...(summe ? { dauerMin: summe } : {}), ...(n ? { notiz: n } : {}), einheiten };
+  }
   const art = aus(t.art, PLAN_ARTEN) ?? 'frei';
   const p: PlanTag = { art };
   const d = ganz(t.dauerMin, 5, 600); if (d && art !== 'ruhe' && art !== 'frei') p.dauerMin = d;
-  const n = text(t.notiz, 200); if (n) p.notiz = n;
+  if (n) p.notiz = n;
   return p;
 }
 
@@ -372,6 +498,58 @@ export function saeubereTraining(e: unknown): TrainingEinheit | null {
   return t;
 }
 
+export function saeuberePlanVorlage(e: unknown): PlanVorlage | null {
+  if (!istObj(e)) return null;
+  const vid = id(e.id); const name = text(e.name, 60);
+  if (!vid || !name) return null;
+  const v: PlanVorlage = { id: vid, name, woche: saeubereWoche(e.woche) };
+  const n = text(e.notiz, 600); if (n) v.notiz = n;
+  if (e.vonZoe === true) v.vonZoe = true;
+  return v;
+}
+
+export function saeubereBlock(e: unknown): PlanBlock | null {
+  if (!istObj(e)) return null;
+  const bid = id(e.id); const start = tag(e.start);
+  if (!bid || !start || !Array.isArray(e.wochen)) return null;
+  const wochen = e.wochen.map(w => {
+    if (!istObj(w)) return null;
+    const v = id(w.vorlage); const ph = aus(w.phase, BLOCK_PHASEN);
+    return v && ph ? { vorlage: v, phase: ph } : null;
+  }).filter((w): w is BlockWoche => !!w);
+  if (!wochen.length) return null;
+  const b: PlanBlock = { id: bid, start, wochen };
+  const z = id(e.zielId); if (z) b.zielId = z;
+  return b;
+}
+
+/** Einstellungen der Person: nur bekannte Felder in ihren Grenzen — leer = keine (die Vorgaben gelten). */
+export function saeubereEinstellungen(e: unknown): SportEinstellungen | undefined {
+  if (!istObj(e)) return undefined;
+  const r: SportEinstellungen = {};
+  const z = aus(e.zuerst, ZUERST); if (z) r.zuerst = z;
+  if (istObj(e.entlastung)) {
+    const en: EntlastungEinstellung = {};
+    const f = ganz(e.entlastung.fensterTage, 2, 7); if (f) en.fensterTage = f;
+    const m = ganz(e.entlastung.mindestTage, 1, 7); if (m) en.mindestTage = Math.min(m, en.fensterTage ?? 7);
+    const h = zahl(e.entlastung.hrvAnteil, 0.7, 0.99); if (h !== undefined) en.hrvAnteil = Math.round(h * 100) / 100;
+    const pp = ganz(e.entlastung.pulsPlus, 1, 15); if (pp) en.pulsPlus = pp;
+    if (e.entlastung.aus === true) en.aus = true;
+    if (Object.keys(en).length) r.entlastung = en;
+  }
+  const d = ganz(e.deloadProzent, 40, 90); if (d) r.deloadProzent = d;
+  const t = ganz(e.taperProzent, 30, 90); if (t) r.taperProzent = t;
+  return Object.keys(r).length ? r : undefined;
+}
+
+/** Phase je Woche (Montag → Phase) — nur gültige Tage und Phasen. */
+export function saeubereWochenPhase(e: unknown): Record<string, BlockPhase> | undefined {
+  if (!istObj(e)) return undefined;
+  const r: Record<string, BlockPhase> = {};
+  for (const [k, v] of Object.entries(e)) { const ph = aus(v, BLOCK_PHASEN); if (TAG.test(k) && ph) r[k] = ph; }
+  return Object.keys(r).length ? r : undefined;
+}
+
 /** Die eigene Zuordnung je Sportart: nur gültige Schlüssel und Klassen (höchstens 200 Sportarten). */
 export function saeubereSportArten(v: unknown): Record<string, Klasse> | undefined {
   if (!istObj(v)) return undefined;
@@ -415,6 +593,11 @@ export function saeubere(raw: unknown): SportStand {
   if (istObj(raw.erholung)) for (const [d, e] of Object.entries(raw.erholung)) { if (!TAG.test(d)) continue; const t = saeubereErholung(e); if (t) s.erholung[d] = t; }
   if (Array.isArray(raw.training)) { const t = nachDatum(eindeutig(raw.training.map(saeubereTraining).filter((x): x is TrainingEinheit => !!x))).slice(0, 5000); if (t.length) s.training = t; }
   const sa = saeubereSportArten(raw.sportArten); if (sa) s.sportArten = sa;
+  if (Array.isArray(raw.planVorlagen)) { const v = eindeutig(raw.planVorlagen.map(saeuberePlanVorlage).filter((x): x is PlanVorlage => !!x)); if (v.length) s.planVorlagen = v; }
+  const bl = saeubereBlock(raw.block); if (bl) s.block = bl;
+  const wp = saeubereWochenPhase(raw.wochenPhase); if (wp) s.wochenPhase = wp;
+  if (istObj(raw.tage)) { const t: Record<string, PlanTag> = {}; for (const [k, v] of Object.entries(raw.tage)) if (TAG.test(k) && istObj(v)) t[k] = saeuberePlanTag(v); if (Object.keys(t).length) s.tage = t; }
+  const en = saeubereEinstellungen(raw.einstellungen); if (en) s.einstellungen = en;
   return s;
 }
 
@@ -445,7 +628,26 @@ export type Op =
   /** Was die Person an einer (auch importierten) Einheit setzt: „zählt als“, Gefühl, Notiz — `null` leert. */
   | { op: 'training-anmerken'; id: string; art?: Klasse | null; gefuehl?: number | null; notiz?: string | null }
   /** Eigene Zuordnung einer Sportart (`null` = zurück auf die Vorgabe). */
-  | { op: 'sportart'; sport: string; klasse: Klasse | null };
+  | { op: 'sportart'; sport: string; klasse: Klasse | null }
+  /** Plan-Baukasten (09.10.): eigene Wochen-Vorlage anlegen/ändern bzw. entfernen; Block setzen (`null` = beenden). */
+  | { op: 'plan-vorlage'; eintrag: unknown }
+  | { op: 'plan-vorlage-weg'; id: string }
+  | { op: 'plan-block'; block: unknown | null }
+  /** Phase einer einzelnen Woche setzen (z. B. Entlastung annehmen) — `null` = zurück auf Block/Standard. */
+  | { op: 'wochen-phase'; montag: string; phase: BlockPhase | null }
+  /** Einstellungen ändern (zusammengeführt; ein Feld mit `null` geht zurück auf die Vorgabe). */
+  | { op: 'einstellungen'; werte: unknown }
+  /** Plan einzelner Tage setzen (`null` = zurück auf Woche/Block) — mehrere auf einmal (z. B. Taper-Tage, Verschieben). */
+  | { op: 'plan-tage'; tage: Record<string, unknown | null> };
+
+/** Prüft die Einheiten je Tag gegen die Grenze, bevor gesäubert wird (sonst fiele ein Teil still weg). */
+function einheitenGrenze(woche: unknown): void {
+  if (!istObj(woche)) return;
+  for (const t of WOCHENTAGE) {
+    const tg = woche[t];
+    if (istObj(tg) && Array.isArray(tg.einheiten) && tg.einheiten.length > PLAN_GRENZEN.einheitenJeTag) throw new Error(`Höchstens ${PLAN_GRENZEN.einheitenJeTag} Einheiten je Tag (${WOCHENTAG_LABEL[t]}).`);
+  }
+}
 
 const setze = <T extends { id: string }>(liste: T[], e: T) => [e, ...liste.filter(x => x.id !== e.id)];
 
@@ -457,7 +659,7 @@ export function wendeAn(stand: SportStand, op: Op): SportStand {
     case 'ziel': { const z = saeubereZiel(op.eintrag); if (!z) throw new Error('Ziel unvollständig: Art, Titel und eine Kennung braucht es.'); s.ziele = setze(s.ziele, z).sort((a, b) => (a.datum ?? '9999') < (b.datum ?? '9999') ? -1 : 1); return s; }
     case 'ziel-weg': s.ziele = s.ziele.filter(z => z.id !== op.id); return s;
     case 'ausgang': s.ausgang = saeubereAusgang({ ...s.ausgang, ...(istObj(op.werte) ? op.werte : {}), kraft: { ...s.ausgang.kraft, ...(istObj(op.werte) && istObj(op.werte.kraft) ? op.werte.kraft : {}) } }); return s;
-    case 'woche': s.woche = saeubereWoche(op.tage); { const ps = tag(op.planStart); if (ps) s.planStart = ps; } return s;
+    case 'woche': einheitenGrenze(op.tage); s.woche = saeubereWoche(op.tage); { const ps = tag(op.planStart); if (ps) s.planStart = ps; } return s;
     case 'hyrox': { const h = saeubereHyrox(op.eintrag); if (!h) throw new Error('Hyrox-Einheit braucht Datum und Kennung.'); s.hyrox = nachDatum(setze(s.hyrox, h)); return s; }
     case 'hyrox-weg': s.hyrox = s.hyrox.filter(h => h.id !== op.id); return s;
     case 'lauf': { const l = saeubereLauf(op.eintrag); if (!l) throw new Error('Lauf braucht Datum, Distanz und Zeit.'); s.laeufe = nachDatum(setze(s.laeufe, l)); return s; }
@@ -512,6 +714,85 @@ export function wendeAn(stand: SportStand, op: Op): SportStand {
       else { const kl = aus(op.klasse, KLASSEN); if (!kl) throw new Error('Unbekannte Sparte.'); neu[k] = kl; }
       if (Object.keys(neu).length > 200) throw new Error('Höchstens 200 eigene Zuordnungen.');
       if (Object.keys(neu).length) s.sportArten = neu; else delete s.sportArten;
+      return s;
+    }
+    case 'plan-vorlage': {
+      const roh = istObj(op.eintrag) ? op.eintrag : {};
+      if (typeof roh.id === 'string' && roh.id.startsWith('start-')) throw new Error('Startvorlagen bleiben, wie sie sind — speichere eine Kopie unter eigenem Namen.');
+      einheitenGrenze(roh.woche);
+      const v = saeuberePlanVorlage(roh);
+      if (!v) throw new Error('Vorlage braucht einen Namen.');
+      const liste = s.planVorlagen ?? [];
+      const da = liste.some(x => x.id === v.id);
+      if (!da && liste.length >= PLAN_GRENZEN.vorlagen) throw new Error(`Höchstens ${PLAN_GRENZEN.vorlagen} eigene Vorlagen — entferne eine ältere.`);
+      s.planVorlagen = da ? liste.map(x => (x.id === v.id ? v : x)) : [...liste, v];
+      return s;
+    }
+    case 'plan-vorlage-weg': {
+      if (s.block?.wochen.some(w => w.vorlage === op.id)) throw new Error('Die Vorlage steckt im laufenden Block — erst den Block ändern oder beenden.');
+      const rest = (s.planVorlagen ?? []).filter(v => v.id !== op.id);
+      if (rest.length) s.planVorlagen = rest; else delete s.planVorlagen;
+      return s;
+    }
+    case 'plan-block': {
+      if (op.block === null) { delete s.block; return s; }
+      const roh = istObj(op.block) ? op.block : {};
+      const n = Array.isArray(roh.wochen) ? roh.wochen.length : 0;
+      if (n > PLAN_GRENZEN.blockWochen) throw new Error(`Ein Block hat höchstens ${PLAN_GRENZEN.blockWochen} Wochen.`);
+      const b = saeubereBlock(roh);
+      if (!b) throw new Error('Block braucht einen Start und mindestens eine Woche.');
+      if (b.wochen.length !== n) throw new Error('Eine Block-Woche ist unvollständig (Vorlage und Phase).');
+      if (new Date(`${b.start}T12:00:00Z`).getUTCDay() !== 1) throw new Error('Ein Block beginnt an einem Montag.');
+      if (b.zielId && !s.ziele.some(z => z.id === b.zielId)) throw new Error('Das Ziel des Blocks gibt es nicht.');
+      // Vorlage je Woche: die Standardwoche, eine Startvorlage (im Code, `start-…`) oder eine eigene.
+      const unbekannt = b.wochen.find(w => w.vorlage !== 'standard' && !w.vorlage.startsWith('start-') && !(s.planVorlagen ?? []).some(v => v.id === w.vorlage));
+      if (unbekannt) throw new Error('Eine Vorlage des Blocks gibt es nicht.');
+      s.block = b;
+      return s;
+    }
+    case 'wochen-phase': {
+      const m = tag(op.montag);
+      if (!m || new Date(`${m}T12:00:00Z`).getUTCDay() !== 1) throw new Error('Eine Woche beginnt an einem Montag.');
+      const neu: Record<string, BlockPhase> = { ...(s.wochenPhase ?? {}) };
+      if (op.phase === null) delete neu[m];
+      else { const ph = aus(op.phase, BLOCK_PHASEN); if (!ph) throw new Error('Unbekannte Phase.'); neu[m] = ph; }
+      // Nur das letzte Jahr zählt für den Plan — ältere Einträge fallen beim Schreiben weg (keine Daten, nur ein Merker je Woche).
+      const grenze = new Date(`${m}T12:00:00Z`); grenze.setUTCDate(grenze.getUTCDate() - 371);
+      for (const k of Object.keys(neu)) if (k < grenze.toISOString().slice(0, 10)) delete neu[k];
+      if (Object.keys(neu).length) s.wochenPhase = neu; else delete s.wochenPhase;
+      return s;
+    }
+    case 'plan-tage': {
+      if (!istObj(op.tage)) throw new Error('Keine Tage.');
+      const neu: Record<string, PlanTag> = { ...(s.tage ?? {}) };
+      let juengster = '';
+      for (const [k, v] of Object.entries(op.tage)) {
+        if (!TAG.test(k)) throw new Error('Tag ungültig.');
+        if (k > juengster) juengster = k;
+        if (v === null) { delete neu[k]; continue; }
+        if (istObj(v) && Array.isArray(v.einheiten) && v.einheiten.length > PLAN_GRENZEN.einheitenJeTag) throw new Error(`Höchstens ${PLAN_GRENZEN.einheitenJeTag} Einheiten je Tag.`);
+        neu[k] = saeuberePlanTag(v);
+      }
+      // Tage, die mehr als 60 Tage hinter dem jüngsten geschriebenen liegen, braucht kein Plan mehr (nur Planwerte, keine Erfassung).
+      if (juengster) { const g = new Date(`${juengster}T12:00:00Z`); g.setUTCDate(g.getUTCDate() - 60); for (const k of Object.keys(neu)) if (k < g.toISOString().slice(0, 10)) delete neu[k]; }
+      if (Object.keys(neu).length > PLAN_GRENZEN.tage) throw new Error(`Höchstens ${PLAN_GRENZEN.tage} geplante Einzeltage.`);
+      if (Object.keys(neu).length) s.tage = neu; else delete s.tage;
+      return s;
+    }
+    case 'einstellungen': {
+      if (!istObj(op.werte)) throw new Error('Keine Einstellungen.');
+      const alt = (s.einstellungen ?? {}) as Record<string, unknown>;
+      const zusammen: Record<string, unknown> = { ...alt };
+      for (const [k, v] of Object.entries(op.werte)) {
+        if (v === null) delete zusammen[k];
+        else if (k === 'entlastung' && istObj(v)) {
+          const e2: Record<string, unknown> = { ...(istObj(alt.entlastung) ? alt.entlastung : {}) };
+          for (const [ek, ev] of Object.entries(v)) { if (ev === null) delete e2[ek]; else e2[ek] = ev; }
+          zusammen.entlastung = e2;
+        } else zusammen[k] = v;
+      }
+      const en = saeubereEinstellungen(zusammen);
+      if (en) s.einstellungen = en; else delete s.einstellungen;
       return s;
     }
     default: throw new Error('Unbekannter Schritt.');

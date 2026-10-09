@@ -195,7 +195,7 @@ async function kalender(person: string, heute: string): Promise<FlussReihe> {
 async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
   // Routinen im Umfang der Person (09.10., E4-Rest — lib/planung/bereich-sicht-server.ts): „nur Business“ ohne Privat, außerhalb des Haushalts keine.
   const { routinenSichtbarFuer } = await import('@/lib/planung/bereich-sicht-server');
-  const [{ saeubere }, { alleEinheiten, zaehlende }, { planUmfang }] = await Promise.all([import('@/lib/sport/modell'), import('@/lib/sport/training'), import('@/lib/sport/plan')]);
+  const [{ saeubere }, { alleEinheiten, zaehlende }, { geplanteEinheiten }, { montagVon }] = await Promise.all([import('@/lib/sport/modell'), import('@/lib/sport/training'), import('@/lib/sport/plan-bau'), import('@/lib/sport/pace')]);
   const [roh, r] = await Promise.all([
     loadJson<unknown>(speicherFuer('sport', person)).catch(() => null),
     loadJson<import('@/lib/planung/typen').RoutinenDatei>('routinen').catch(() => null),
@@ -203,7 +203,8 @@ async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
   const sport = roh ? saeubere(roh) : null;
   // ALLE Einheiten (09.10.): auch die importierten Trainings (WHOOP), ohne Doppelte — EINE Stelle (lib/sport/training.ts `alleEinheiten`).
   const einheiten = sport ? zaehlende(alleEinheiten(sport)).map(e => e.datum) : [];
-  const planJeWoche = sport?.einstieg.fertig ? planUmfang(sport.woche).einheiten : 0;
+  // Plan der laufenden Woche (Block oder Standardwoche, mit Phase — lib/sport/plan-bau.ts).
+  const planJeWoche = sport?.einstieg.fertig ? geplanteEinheiten(sport, montagVon(heute)).length : 0;
   const routinen = (await routinenSichtbarFuer(r?.routinen ?? [], person)).filter(x => x.aktiv && x.kategorie === 'gesundheit' && tag(x.naechstesMal));
   return flussGesundheit({
     heute, planJeWoche, planAb: tag(sport?.planStart), link: WEG.gesundheit(),
