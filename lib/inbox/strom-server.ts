@@ -34,7 +34,6 @@ import { geteiltePostfaecherFuer, ladeGeteilt, personenMitBlick, teamPersonen, t
 import { postfachTeilbar, standVon, type GespraechTeam, type TeamZustand, type UebergabeZeile } from './teilen';
 import { uebergabeZeilenFuer } from './uebergaben-speicher';
 import { leisteBauen, type LeisteEintrag } from './ansicht';
-import { adresseMaskiert } from '@/lib/zugang/konten';
 
 /**
  * Filter einer Sicht. `space` = Privat/Business (die harte Grenze), `bereich` = genau ein Bereich, `ohne` = Bereiche, die unter „Alle“
