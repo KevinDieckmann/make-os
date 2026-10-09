@@ -686,3 +686,52 @@ C11 und C8/C4 abweichen, gilt C11. Kevins Antworten 1–16 (ENTSCHEIDUNGEN_FRAGE
 
 **Offen nach Paket 0:** KI-Kategorie `familie` (Schalter, ggf. Einwilligung) · Anbieter-Tor für andere Modelle · Löschfrist der Threads
 (C10 Frage 11) · zuständige Person für Gesundheit als Instanz-Einstellung (C10 Frage 10) · Medien-Richtungsfragen · Einstellungen schreiben.
+
+## Paket 4 — so verdrahtet (09.10.2026, Paket 4a, Branch `agenten-p4a`)
+
+**Die eine Schleife** `lib/agenten/schleife.ts`: ZOE (`app/api/kimmi`) und Heads/Mitarbeiter (`lib/agenten/gespraech.ts` `agentLauf`) rufen das
+Modell nur noch dort. Gemeinsam: `askText` mit `ki`, Kapselung von Text Dritter (`FREMD_WERKZEUGE`/`FREMD_AGENTEN`, `SELBST_GEKAPSELT`), „fremd
+gelesen“/„vertraulich“ fürs ganze Gespräch, Kategorien wachsen mit, nur Metadaten im Protokoll. Parameter: Runden (ZOE 3; Head-Chat
+`GRENZEN.headRunden` = 3; Lauf `GRENZEN.mitarbeiterRunden` = 6), parallel (ZOE) oder nacheinander (Heads), gleiche Aufrufe nur einmal, Budget
+(Heads 14), letzte Runde ohne Werkzeuge (Heads), Zeit-/Kostengrenze, Abbruch, Stillstand nach 2 Runden (Lauf), Plan-Freigabe (`vorRunde`). Jede
+Wirkung im Handler über `fuehreAus`; im Agenten-Bereich alles Schreibende nur als Vorschlag; Skill-Testlauf im Trockenlauf (`trocken`).
+
+**Die eine Werkzeug-Quelle** `lib/zoe/werkzeug-defs.ts` (`werkzeugDefs({ personen, agenten, heads })`) + Teil-Quellen `crm-werkzeug-defs.ts`,
+`aufgaben-werkzeuge.ts`, `arbeit-werkzeug.ts`. Agenten lesen dieselbe Stelle über `agentenDef` (lib/agenten/werkzeuge.ts). Personen zur Laufzeit,
+CRM-Zuständige aus dem Team der Instanz.
+
+**ZOE steuert die Heads** (`lib/agenten/zoe-heads.ts`): `an_head` (frei, reiht nur ein → Thread beim Head, Eltern = ZOE-Thread, Bericht zurück in
+den ZOE-Thread + Glocke) und `head_fragen` (synchron, nur Kontext + lesende Werkzeuge des Heads, Antwort `fremd('agent')`). Der Prompt nennt die
+Heads, die die Person sieht (`headsImPrompt`), statt `agentRoster()`. Thread-Kontext reicht kimmi über `WerkzeugKontext.zoe` (nur Server).
+
+**ZOE auf Threads** (`lib/agenten/zoe-faden.ts`): ZOE-Gespräch = Thread `zoe` der Person; `/api/kimmi` mit `zoeFaden` (Kennung | `neu`) liest den
+Verlauf aus dem Thread. Einmalige Übernahme von `zoe-verlauf` beim ersten Lesen (Marke `zoeUebernahme`). ZoePanel, Empfang, Agenten-Seite, Telegram
+und WhatsApp schreiben in Threads.
+
+**ZOE ≤ 20 Werkzeuge** (`lib/zoe/werkzeug-wahl.ts`): Kern + Bereich nach Regelwerk (Frage, letzte Fragen, Bezug), reihum, höchstens 20; nicht
+angebotene Werkzeuge lehnt kimmi ab („frag den Head“). Bereiche mit `*` stehen hinter Platz 11 (rücken nur nach, wenn Platz ist — es gibt sie
+auch beim Head).
+
+| Werkzeug | ZOE | Heads |
+|---|---|---|
+| an_head, head_fragen, suche_arbeit, lies_notiz, create_task, meine_aufgaben, freie_zeit, fakt_merken, frag_gedaechtnis | **Kern** (immer) | create_task: alle außer Gesundheit · suche_arbeit: Operations, Strategie, Produkt, Recht, Research, Assistenz · lies_notiz: Marketing, IT, Strategie, Produkt, Recht, Research · meine_aufgaben: Operations, Produkt, Assistenz · freie_zeit: Sales, Event, Operations, Kundenerfolg, Familie, Assistenz |
+| crm_lage, suche_kontakt, notiere_kontakt, chance_anlegen, uebergeben | Bereich vertrieb | — (nur ZOE; im Agenten-Bereich über `crm_vorschlag`) |
+| crm_suche, kontakt_akte, firma_akte, pipeline, sales_lage, crm_vorschlag | Bereich vertrieb (crm_vorschlag auch marketing, event, crm-pflege) | Sales (pipeline, sales_lage), Sales/Marketing/Event/Kundenerfolg (übrige) |
+| entwurf_ansprache*, angebote_lage*, mandate_lage*, setze_kunde*, qualifizierung_lage* | Bereich vertrieb* (entwurf_ansprache, qualifizierung_lage auch marketing) | Sales, Marketing, Event, Kundenerfolg, Finanzen |
+| marketing_lage, kampagnen_lage, kennzahlen | Bereich marketing (kennzahlen auch event) | Marketing, Event, Sales, Strategie |
+| events_lage, besuche_lage | Bereich event | Event, Marketing |
+| datenqualitaet, stammdaten_lage, crm_datei_lesen | Bereich crm-pflege | Sales (datenqualitaet), Sales/Marketing/Kundenerfolg (crm_datei_lesen) |
+| heads_lage, run_agent, starte_auftraege, open_agent | Bereich agenten | — (Fach-Agenten sind Mitarbeiter-Vorlagen der Heads) |
+| business_index, gesellschaften_lesen, setze_kontostand, erfasse_rechnung, erfasse_zahlung, erfasse_planposten, monatsabschluss_erfassen, setze_ziele | Bereich finanzen (business_index, gesellschaften_lesen auch business; setze_ziele auch planung) | Finanzen, Strategie, Recht |
+| haushalt_stand, haushalt_buchungen, haushalt_zuordnen, haushalt_rechnung_bezahlt, haushalt_rechnung_erfassen | Bereich haushalt (nur mit Haushaltszugang) | Finanzen privat |
+| gesundheits_index, setze_vitalwerte, hake_routine, journal_eintrag, haut_eintrag, streak_eintrag | Bereich gesundheit (nur mit Einwilligung (b)) | Gesundheit (ohne haut/streak) |
+| einkauf_setzen | Bereich ernaehrung | Ernährung |
+| plan_block | Bereich kalender | Operations, Assistenz |
+| aufgabe_an_zoe, projekt_unterlagen, datei_lesen | Bereich aufgaben | Operations, Assistenz, Kundenerfolg |
+| setze_meilenstein, setze_fokus | Bereich planung | Operations, Strategie, Assistenz |
+| suche_wissen, notiz_anlegen, notiz_ergaenzen | Bereich wissen | Marketing, IT, Strategie, Produkt, Recht, Research (ohne notiz_ergaenzen) |
+| lies_postfach | Bereich inbox | Operations |
+| bauplan_notieren | Bereich bauplan | IT, Produkt |
+
+Wächter: `tests/agenten-p4a-schleife.test.ts`, `tests/agenten-p4a-zoe.test.ts` (u. a. „kein Zug > 20“, „jedes bisherige Werkzeug erreichbar“),
+`tests/agenten-p4a-verdrahtung.test.ts`.

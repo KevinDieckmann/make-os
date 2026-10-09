@@ -106,7 +106,8 @@ describe('Gespräch: run_agent umgeht den Schutz nicht (#90/#91)', () => {
     runAgent.mockClear();
     antworten = [[{ type: 'tool_use', id: 't2', name: 'run_agent', input: { agent: 'research', auftrag: 'Wetter in Hamburg' } }]];
     const { POST } = await import('@/app/api/kimmi/route');
-    await POST(new Request('http://test/api/kimmi', { method: 'POST', headers: sitzung('kevin'), body: JSON.stringify({ message: 'Wie wird das Wetter?' }) }));
+    // Seit Paket 4a (≤ 20 Werkzeuge je Zug) gibt es run_agent nur, wenn der Zug auf Fach-Agenten zielt („recherchier …“).
+    await POST(new Request('http://test/api/kimmi', { method: 'POST', headers: sitzung('kevin'), body: JSON.stringify({ message: 'Recherchier, wie das Wetter wird.' }) }));
     expect(runAgent).toHaveBeenCalledTimes(1);
   });
 });

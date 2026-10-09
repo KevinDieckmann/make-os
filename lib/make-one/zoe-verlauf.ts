@@ -11,7 +11,14 @@
 // Ein Gespräch ist der Behälter, Nachrichten liegen darin. Beim Öffnen kommt
 // das letzte Gespräch zurück; „Neu" archiviert es, statt es zu löschen.
 
-export type Rolle = 'kevin' | 'zoe';
+/**
+ * Wer spricht: `nutzer` (die Person, mit der ZOE spricht) oder `zoe`. Bis 09.10. hieß die Nutzer-Rolle nach einer festen Person —
+ * neu geschrieben wird nur noch `nutzer` (Plattform-Regel, Paket 4a); der Altbestand mit der alten Kennung wird weiter gelesen
+ * (`istNutzer`: alles, was nicht `zoe` ist, ist die Person).
+ */
+export type Rolle = 'nutzer' | 'zoe' | 'kevin';
+/** Ist das die Person (nicht ZOE)? — versteht neue (`nutzer`) und alte Einträge. */
+export const istNutzer = (rolle: unknown): boolean => rolle !== 'zoe';
 
 export interface VerlaufNachricht {
   rolle: Rolle;
@@ -64,7 +71,7 @@ export function fuerPrompt(nachrichten: VerlaufNachricht[], wieViele = GRENZEN.i
   const teil = nachrichten.slice(-wieViele).filter(n => n.text.trim());
   const raus: { role: 'user' | 'assistant'; content: string }[] = [];
   for (const n of teil) {
-    const role = n.rolle === 'kevin' ? 'user' as const : 'assistant' as const;
+    const role = istNutzer(n.rolle) ? 'user' as const : 'assistant' as const;
     if (!raus.length && role === 'assistant') continue;
     const letzte = raus[raus.length - 1];
     if (letzte && letzte.role === role) letzte.content = `${letzte.content}\n\n${n.text}`;

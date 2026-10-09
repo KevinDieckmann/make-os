@@ -13,7 +13,9 @@ export const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'f
   'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage', 'marketing_lage',
   'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag',
   // K6a (29.09.): freie Zeit — nur Zeiten, nichts wird angelegt.
-  'freie_zeit']);
+  'freie_zeit',
+  // Paket 4a (09.10.): einen Head fragen — er bekommt nur lesende Werkzeuge und legt nichts an.
+  'head_fragen']);
 /**
  * Im Gespräch immer nur Vorschlag. `notiz_ergaenzen` seit S1 #12 (29.09.): es schreibt wie `notiz_anlegen` dauerhaft in
  * den Vault (Offene Fragen, Taskmanagement, Zoe-Log) — ein eingeschleuster Satz darf sich dort nicht selbst anhängen.
@@ -50,7 +52,9 @@ export const WEB_AGENTEN = new Set(['research', 'content', 'prospect', 'prospect
  */
 export const VERTRAULICHE_QUELLEN = new Set(['postfach', 'kontakte', 'crm', 'bank', 'notizen', 'gedaechtnis', 'projekt-unterlagen', 'aufgaben', 'arbeitsbestaende', 'markttraktion', 'crm-ablage', 'meeting',
   // 29.09. (#K1/#K4): Termine (Arzt, Reha, Mandanten) sind vertraulich.
-  'kalender']);
+  'kalender',
+  // 09.10. (Paket 4a): die Antwort eines Heads (head_fragen) trägt Daten seines Bereichs — Kartei, Finanzen, Termine.
+  'agent']);
 
 /** Soll dieser Agent nur als Vorschlag (Stapel) gestartet werden statt zu laufen? */
 export function agentNurVorschlag(agent: string, fremdGelesen: boolean, vertraulich: boolean): boolean {

@@ -13,12 +13,12 @@
 //     Hinweis (lib/arbeitsrahmen).
 // Agenten-Werkzeuge (Delegation, Brett, Hilfe, Rat, Merksätze, Vorschläge) liefert ein Handler aus delegation.ts.
 
-import { askText, fremd, FREMD_REGEL, hasAnthropicKey, kiGesperrt, kiSperrText } from '@/lib/anthropic';
+import { fremd, FREMD_REGEL, hasAnthropicKey } from '@/lib/anthropic';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
-import { kosten } from '@/lib/zoe/verbrauch';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
-import { LESEND, nurVorschlag, VERTRAULICHE_QUELLEN, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
-import { FREMD_WERKZEUGE, SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
+import { LESEND, nurVorschlag, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
+import { FREMD_WERKZEUGE } from '@/lib/zoe/fremd';
+import { schleife, type AufrufErgebnis } from './schleife';
 import { kiSchalterFuer, type KiSchalter } from '@/lib/datenschutz/ki-einstellungen';
 import { kategorieVonWerkzeug } from '@/lib/datenschutz/ki-werkzeuge';
 import { gruppeVon } from '@/lib/zoe/register';
@@ -43,7 +43,7 @@ export interface Aufgeloest { head: HeadDef; mitarbeiter: Mitarbeiter | null; ei
 
 /** Head (und ggf. Mitarbeiter) zu einem Agenten — mit Einstellungen; Mitarbeiter nur, wenn er diesem Head zur Verfügung steht und an ist. */
 export async function agentAufloesen(a: AgentRef, u: Umfang): Promise<Aufgeloest | Fehler> {
-  if (a.art === 'zoe') return fehler(400, 'ZOE spricht bis zur Verdrahtung (Paket 4) über das bestehende Gespräch.');
+  if (a.art === 'zoe') return fehler(400, 'ZOE spricht nur über ihr Gespräch (ZOE-Thread über /api/kimmi) — nicht über den Head-Chat.');
   const head = headDef(a.headId);
   if (!head) return fehler(404, 'Diesen Head gibt es nicht.');
   const einstellung = await einstellungFuer(u.haushalt);
@@ -98,6 +98,13 @@ export interface LaufEingabe {
   kostenGrenzeCent?: number;
   /** Ohne Werkzeuge (z. B. „Zweite Meinung“). */
   ohneWerkzeuge?: boolean;
+  /** Nur lesende Register-Werkzeuge, keine Agenten-Werkzeuge (keine Delegation, keine Vorschläge) — ZOE fragt einen Head (`head_fragen`). */
+  nurLesen?: boolean;
+  /**
+   * Trockenlauf (Skill-Testlauf, Paket 4a): lesende Werkzeuge lesen; alles, was schreiben oder in den Stapel legen würde, zeigt nur seine
+   * Vorschau (lib/zoe/register.ts `vorschauVon`) — es entsteht nichts.
+   */
+  trocken?: boolean;
   /** Vor jeder Runde (Lauf): abgebrochen / Not-Aus? */
   abbrechen?: () => Promise<string | null>;
   jetzt?: () => number;
@@ -117,15 +124,10 @@ export interface LaufErgebnis {
   span: LaufSpan;
   schritte: LaufSchritt[];
   kostenCent: number;
+  /** Die KI-Kategorien, die im Lauf an das Modell gingen (Paket 4a: Probelauf, ZOE fragt einen Head). */
+  kategorien?: KiKategorie[];
 }
 
-interface Block { type: string; id?: string; name?: string; text?: string; input?: Record<string, unknown> }
-
-function stabil(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(stabil).join(',')}]`;
-  if (v && typeof v === 'object') { const o = v as Record<string, unknown>; return `{${Object.keys(o).sort().map(k => `${k}:${stabil(o[k])}`).join(',')}}`; }
-  return JSON.stringify(v ?? null);
-}
 /** Anlass der Stapel-Vorschläge — beginnt immer mit dem Namen des Heads (Zähler „Freigaben je Head“ im Überblick). */
 export const anlassVon = (head: HeadDef, m: Pick<Mitarbeiter, 'name'> | null, titel: string): string => `${head.name}${m ? ` · ${m.name}` : ''}: ${titel}`.slice(0, 200);
 const OK_TEXT = (t: string) => !/^(Fehlgeschlagen|Nicht ausgeführt|Nicht angeboten|Unbekannt)/i.test(t.trim()) && !/fehlgeschlagen|nicht erreichbar|nicht lesbar/i.test(t.slice(0, 200));
@@ -165,13 +167,9 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
   const start = jetzt();
   const person = e.sicht.person;
   const laufId = e.laufId ?? neueKennung('lauf');
-  const werkzeuge: LaufErgebnis['werkzeuge'] = [];
-  const schritte: LaufSchritt[] = [];
-  const token = { ein: 0, aus: 0, cache_lesen: 0, cache_schreiben: 0 };
-  let cent = 0, runden = 0, aufrufe = 0;
   const leer = (status: LaufErgebnis['status'], grund: string, extra: Partial<LaufErgebnis> = {}): LaufErgebnis => ({
-    ok: status === 'fertig', status, text: extra.text ?? grund, ki: false, grund, werkzeuge, fremdGelesen: e.faden.fremdGelesen, vertraulich: e.faden.vertraulich, schritte, kostenCent: cent,
-    span: { lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent', modell: '-', runden, werkzeug_aufrufe: aufrufe, token, cent: Math.round(cent * 100) / 100, dauer_ms: jetzt() - start, ergebnis: `${status === 'fertig' ? 'ok' : status}:${grund}` },
+    ok: status === 'fertig', status, text: extra.text ?? grund, ki: false, grund, werkzeuge: [], fremdGelesen: e.faden.fremdGelesen, vertraulich: e.faden.vertraulich, schritte: [], kostenCent: 0,
+    span: { lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent', modell: '-', runden: 0, werkzeug_aufrufe: 0, token: { ein: 0, aus: 0, cache_lesen: 0, cache_schreiben: 0 }, cent: 0, dauer_ms: jetzt() - start, ergebnis: `${status === 'fertig' ? 'ok' : status}:${grund}` },
     ...extra,
   });
 
@@ -200,6 +198,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
   const angebot = werkzeugAngebot({
     art: m ? 'mitarbeiter' : 'head', liste, kategorien: kats, schalter, gesundheitKi, head, mitarbeiter: mitarbeiterListeHead,
     brett: !!e.brett, helfer: !!e.faden.helfer, offeneFragen: !!e.offeneFragen, agentId: m?.agentId, stufe, lesend: LESEND,
+    ...(e.nurLesen ? { nurLesen: true } : {}),
   });
   for (const w of angebot.register) { const k = kategorieVonWerkzeug(w, gruppeVon(w)); if (k) kategorien.add(k); }
 
@@ -223,109 +222,74 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
     return `${(x as { role: string }).role}: ${typeof c === 'string' ? c : JSON.stringify(c)}`;
   }).join('\n').slice(-20_000);
   const s = { fremdGelesen: stand.fremdGelesen, vertraulich: stand.vertraulich, ratGenutzt: 0, hilfeGenutzt: 0, kategorien: Array.from(kategorien), verlaufText, delegiert: 0 } as SchleifenStand;
-
-  const maxRunden = e.modus === 'chat' ? GRENZEN.headRunden : GRENZEN.mitarbeiterRunden;
-  const deadline = start + (e.modus === 'chat' ? 4 * 60_000 : KERN_GRENZEN.laufMs);
-  let budget = GRENZEN.mitarbeiterWerkzeugAufrufe;
-  const frueher = new Map<string, string>();
-  let text = '', ki = false, still = 0;
-  let status: LaufErgebnis['status'] = 'fertig';
-  let grund = '';
   const kiLauf = e.modus === 'chat' ? 'gespraech' as const : e.hintergrund ? 'hintergrund' as const : 'aufruf' as const;
 
-  for (let runde = 0; runde < maxRunden; runde++) {
-    if (e.abbrechen) { const g = await e.abbrechen(); if (g) { status = 'abgebrochen'; grund = g; break; } }
-    const rest = deadline - jetzt();
-    if (rest <= 5_000) { status = runden ? 'fertig' : 'fehler'; grund = 'Zeitgrenze erreicht (5 Minuten)'; break; }
-    if (e.kostenGrenzeCent && cent >= e.kostenGrenzeCent) { status = 'abgebrochen'; grund = 'Kostengrenze des Laufs erreicht'; break; }
-    const mitWerkzeugen = !e.ohneWerkzeuge && runde < maxRunden - 1 && budget > 0;
-    s.kategorien = Array.from(kategorien);
-    const r = await askText({
-      system, user: '', messages, model: modell, effort: aufwand, maxTokens: 6000, cacheSystem: true,
-      tools: mitWerkzeugen ? angebot.tools : [], timeoutMs: Math.min(180_000, rest), zweck: `agent-${head.id}`,
-      ki: { lauf: kiLauf, person, kategorien: Array.from(kategorien) },
-    });
-    runden++;
-    if (r.usage) {
-      token.ein += r.usage.ein; token.aus += r.usage.aus; token.cache_lesen += r.usage.cacheLesen; token.cache_schreiben += r.usage.cacheSchreiben;
-      cent += kosten(modell, r.usage.ein, r.usage.aus, r.usage.cacheLesen, r.usage.cacheSchreiben);
-    }
-    if (!r.ok) {
-      status = 'fehler'; grund = kiGesperrt(r) ? kiSperrText(r) : r.error === 'guthaben-leer' ? 'KI-Guthaben ist leer' : `Modell nicht erreichbar (${r.status || 'offline'})`;
-      break;
-    }
-    const content: Block[] = Array.isArray((r.raw as { content?: Block[] })?.content) ? (r.raw as { content: Block[] }).content : [];
-    if (r.text) { text = [text, r.text].filter(Boolean).join('\n\n'); ki = true; }
-    const uses = content.filter(b => b.type === 'tool_use');
-    if (!uses.length || r.stopReason !== 'tool_use' || !mitWerkzeugen) break;
-    messages.push({ role: 'assistant', content });
-
-    const plan = e.handler.planPruefen ? await e.handler.planPruefen(uses.filter(u => u.name === 'an_mitarbeiter').map(u => ({ id: u.id!, input: u.input ?? {} })), s) : { zurueck: new Set<string>() };
-    const ergebnisse: unknown[] = [];
-    let fortschritt = false;
-    let wartet: string | undefined;
-    const schritt: LaufSchritt = { id: `s${runde + 1}`, titel: `Runde ${runde + 1}: ${uses.map(u => u.name).join(', ')}`, status: 'fertig', start: new Date(jetzt()).toISOString() };
-    for (const u of uses) {
-      const wname = u.name ?? '';
-      const input = u.input ?? {};
-      const schluessel = `${wname}:${stabil(input)}`;
-      let inhalt: string;
-      if (plan.zurueck.has(u.id!)) { inhalt = plan.text ?? 'Wartet auf die Plan-Freigabe per Klick.'; werkzeuge.push({ name: wname, ok: true, gestapelt: true }); ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: inhalt }); continue; }
-      if (frueher.has(schluessel)) { ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: `(Gleicher Aufruf wie vorhin — dieselbe Antwort.)\n${frueher.get(schluessel)}` }); continue; }
-      if (budget <= 0) { ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: 'Nicht ausgeführt: Werkzeug-Budget dieses Laufs erschöpft (14).' }); continue; }
-      budget--; aufrufe++;
+  // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des Agenten-Bereichs: nacheinander, gleiche Aufrufe nur
+  // einmal, 14 Aufrufe, letzte Runde ohne Werkzeuge, Plan-Freigabe vor großen Aufträgen, Prüfer bei Außenwirkung, Stillstand (Lauf),
+  // und JEDE schreibende Wirkung nur als Vorschlag (`vorschlagen`, Antwort 10).
+  const aus = await schleife({
+    system, messages, tools: e.ohneWerkzeuge ? [] : angebot.tools,
+    runden: e.modus === 'chat' ? GRENZEN.headRunden : GRENZEN.mitarbeiterRunden,
+    letzteRundeOhneWerkzeuge: true, doppeltErkennen: true, werkzeugBudget: GRENZEN.mitarbeiterWerkzeugAufrufe,
+    deadline: start + (e.modus === 'chat' ? 4 * 60_000 : KERN_GRENZEN.laufMs),
+    ...(e.kostenGrenzeCent ? { kostenGrenzeCent: e.kostenGrenzeCent } : {}),
+    ...(e.modus === 'lauf' ? { stillstand: KERN_GRENZEN.stillstandRunden } : {}),
+    ...(e.abbrechen ? { abbrechen: e.abbrechen } : {}),
+    jetzt,
+    zustand: { fremdGelesen: s.fremdGelesen, vertraulich: s.vertraulich, kategorien },
+    ask: { model: modell, effort: aufwand, maxTokens: 6000, cacheSystem: true, timeoutMs: 180_000, zweck: `agent-${head.id}`, ki: { lauf: kiLauf, person } },
+    vorRunde: async (uses, z) => {
+      if (!e.handler.planPruefen) return { zurueck: new Set<string>() };
+      Object.assign(s, { fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich, kategorien: Array.from(z.kategorien) });
+      return e.handler.planPruefen(uses.filter(u => u.name === 'an_mitarbeiter').map(u => ({ id: u.id, input: u.input })), s);
+    },
+    ausfuehren: async (u, z): Promise<AufrufErgebnis> => {
+      // Der Handler sieht den Zustand der Schleife (fremd gelesen, vertraulich, Kategorien) — und schreibt Zähler (Rat, Hilfe) zurück.
+      Object.assign(s, { fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich, kategorien: Array.from(z.kategorien) });
+      const wname = u.name;
+      const input = u.input;
       if (angebot.agenten.has(wname)) {
         const w = await e.handler.ausfuehren(wname, input, s);
-        inhalt = w.text;
-        werkzeuge.push({ name: wname, ok: w.ok, ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}) });
-        if (w.ok && (w.fortschritt ?? true)) fortschritt = true;
-        if (w.wartet) wartet = w.wartet;
-      } else if (angebot.register.has(wname)) {
-        const ein = eingabeImBereich(wname, input, head);
-        const geprueft = e.handler.pruefen ? await e.handler.pruefen(wname, ein, s) : null;
-        if (geprueft) { inhalt = geprueft; werkzeuge.push({ name: wname, ok: false }); }
-        else if (BEREICHS_LESER.has(wname)) {
-          const roh = wname === 'lies_postfach' ? await postfachImBereich(person, head.bereich, ein) : await arbeitImBereich(person, head.bereich, ein);
-          const quelle = FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende';
-          s.fremdGelesen = true; if (VERTRAULICHE_QUELLEN.has(quelle)) s.vertraulich = true;
-          inhalt = SELBST_GEKAPSELT.has(wname) ? roh : fremd(quelle, roh);
-          werkzeuge.push({ name: wname, ok: OK_TEXT(roh) });
-          if (OK_TEXT(roh)) fortschritt = true;
-        } else {
-          const vorschlagen = !LESEND.has(wname) || nurVorschlag(wname, ein, s.fremdGelesen);
-          // Wissen im Business nur in der Agenten-Sicht (nie private Notizen der Person in einem teilbaren Business-Thread).
-          const leseSicht = head.bereich === 'business' && (wname === 'suche_wissen' || wname === 'lies_notiz');
-          const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht });
-          const quelle = FREMD_WERKZEUGE[wname] ?? null;
-          if (quelle && lauf.ok) { s.fremdGelesen = true; if (VERTRAULICHE_QUELLEN.has(quelle)) s.vertraulich = true; }
-          inhalt = quelle && lauf.ok && !SELBST_GEKAPSELT.has(wname) ? fremd(quelle, lauf.text) : lauf.text;
-          werkzeuge.push({ name: wname, ok: lauf.ok, ...(lauf.gestapelt ? { gestapelt: true } : {}) });
-          if (lauf.ok) fortschritt = true;
-        }
-      } else {
-        inhalt = 'Nicht angeboten — dieses Werkzeug gehört nicht zu deinem Bereich.';
-        werkzeuge.push({ name: wname, ok: false });
+        // Agenten-Werkzeuge kapseln selbst (Rat, Fach-Agent) — ihre Marke übernimmt die Schleife aus dem Stand des Handlers.
+        if (s.fremdGelesen) z.fremdGelesen = true;
+        if (s.vertraulich) z.vertraulich = true;
+        return { inhalt: w.text, ok: w.ok, ...(w.fortschritt !== undefined ? { fortschritt: w.fortschritt } : {}), ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}), ...(w.wartet ? { wartet: w.wartet } : {}) };
       }
-      frueher.set(schluessel, inhalt);
-      ergebnisse.push({ type: 'tool_result', tool_use_id: u.id, content: inhalt });
-    }
-    schritt.ende = new Date(jetzt()).toISOString();
-    schritte.push(schritt);
-    messages.push({ role: 'user', content: ergebnisse });
-    if (wartet) { status = 'wartet'; grund = wartet; break; }
-    still = fortschritt ? 0 : still + 1;
-    if (e.modus === 'lauf' && still >= KERN_GRENZEN.stillstandRunden) { status = 'abgebrochen'; grund = 'festgefahren — zwei Runden ohne Fortschritt'; break; }
-  }
+      if (!angebot.register.has(wname)) return { inhalt: 'Nicht angeboten — dieses Werkzeug gehört nicht zu deinem Bereich.', ok: false };
+      const ein = eingabeImBereich(wname, input, head);
+      const geprueft = e.handler.pruefen ? await e.handler.pruefen(wname, ein, s) : null;
+      if (geprueft) return { inhalt: geprueft, ok: false };
+      const kat = kategorieVonWerkzeug(wname, gruppeVon(wname));
+      if (BEREICHS_LESER.has(wname)) {
+        const roh = wname === 'lies_postfach' ? await postfachImBereich(person, head.bereich, ein) : await arbeitImBereich(person, head.bereich, ein);
+        return { inhalt: roh, ok: OK_TEXT(roh), quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kat ? { kategorien: [kat] } : {}) };
+      }
+      if (e.trocken && (!LESEND.has(wname) || wname === 'crm_vorschlag')) {
+        const { vorschauVon } = await import('@/lib/zoe/register');
+        const vs = await vorschauVon(wname, ein, person);
+        return { inhalt: `TROCKENLAUF — nicht ausgeführt, nur gezeigt: ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}`, ok: true, ...(kat ? { kategorien: [kat] } : {}) };
+      }
+      const vorschlagen = !LESEND.has(wname) || nurVorschlag(wname, ein, z.fremdGelesen);
+      // Wissen im Business nur in der Agenten-Sicht (nie private Notizen der Person in einem teilbaren Business-Thread).
+      const leseSicht = head.bereich === 'business' && (wname === 'suche_wissen' || wname === 'lies_notiz');
+      const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht });
+      const quelle = FREMD_WERKZEUGE[wname] ?? null;
+      return { inhalt: lauf.text, ok: lauf.ok, ...(quelle && lauf.ok ? { quelle } : {}), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(kat ? { kategorien: [kat] } : {}) };
+    },
+  });
 
+  const status = aus.status;
+  const grund = aus.grund ?? '';
   const span: LaufSpan = {
     lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent',
-    modell, runden, werkzeug_aufrufe: aufrufe, token, cent: Math.round(cent * 100) / 100, dauer_ms: jetzt() - start,
-    ergebnis: status === 'fertig' ? (werkzeuge.some(w => w.gestapelt) ? 'gestapelt' : 'ok') : `${status}:${grund}`.slice(0, 120),
+    modell, runden: aus.runden, werkzeug_aufrufe: aus.werkzeugAufrufe, token: aus.token, cent: aus.cent, dauer_ms: jetzt() - start,
+    ergebnis: status === 'fertig' ? (aus.aufrufe.some(w => w.gestapelt) ? 'gestapelt' : 'ok') : `${status}:${grund}`.slice(0, 120),
   };
   const ohneText = status === 'fehler' ? `Das hat nicht geklappt: ${grund}.` : status === 'abgebrochen' ? `Abgebrochen: ${grund}.` : status === 'wartet' ? `Wartet: ${grund}.` : 'Keine Antwort erzeugt — bitte noch einmal fragen.';
   return {
-    ok: status === 'fertig' || status === 'wartet', status, text: text || ohneText, ki, ...(grund ? { grund } : {}), ...(hinweise.length ? { hinweis: hinweise.join(' ') } : {}),
-    werkzeuge, fremdGelesen: s.fremdGelesen, vertraulich: s.vertraulich, span, schritte, kostenCent: Math.round(cent * 100) / 100,
+    ok: status === 'fertig' || status === 'wartet', status, text: aus.text || ohneText, ki: aus.ki, ...(grund ? { grund } : {}), ...(hinweise.length ? { hinweis: hinweise.join(' ') } : {}),
+    werkzeuge: aus.aufrufe, fremdGelesen: aus.zustand.fremdGelesen, vertraulich: aus.zustand.vertraulich, span, schritte: aus.schritte, kostenCent: aus.cent,
+    kategorien: aus.zustand.kategorien,
   };
 }
 
@@ -358,7 +322,7 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
   const { sicht, anfrage: a } = o;
   const person = sicht.person;
   if (!a.agent || typeof a.agent !== 'object') return nein(400, 'Agent fehlt.');
-  if (a.agent.art === 'zoe') return nein(400, 'ZOE spricht bis zur Verdrahtung (Paket 4) über das bestehende Gespräch.');
+  if (a.agent.art === 'zoe') return nein(400, 'ZOE spricht nur über ihr Gespräch (ZOE-Thread über /api/kimmi) — nicht über den Head-Chat.');
   if ((a.agent.art !== 'head' && a.agent.art !== 'mitarbeiter') || typeof a.agent.headId !== 'string') return nein(400, 'Agent ungültig.');
   if (!headSichtbar(sicht, a.agent.headId)) return nein(403, 'Diesen Head siehst du nicht.');
   const agent: AgentRef = a.agent.art === 'head' ? { art: 'head', headId: a.agent.headId } : { art: 'mitarbeiter', headId: a.agent.headId, mitarbeiterId: String((a.agent as { mitarbeiterId?: unknown }).mitarbeiterId ?? '') };

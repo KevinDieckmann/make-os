@@ -7,8 +7,8 @@
 //   • Einzeländerungen mit Stand (409 + aktueller Eintrag), Grenzen 413, Änderungsprotokoll nur Kennung + Feldnamen.
 //   • Vorschläge von Agenten (Skill, Mitarbeiter, Merksatz) kommen NUR über den Stapel (`vorschlagSkillLegen` …, Arten in
 //     lib/zoe/stapel-arten.ts) — der Klick der Person übernimmt; ein Skill ist danach ein Entwurf, aktiv erst nach Testlauf + Klick.
-//   • Testlauf: ohne Wirkung. Der Probeläufer ist eine Schnittstelle (`probelaeuferVerdrahten`): Paket 1 hängt die echte Schleife mit
-//     allen Werkzeugen im Trockenlauf an; bis dahin ein Modell-Aufruf OHNE Werkzeuge (nichts kann wirken) über `askText` + KI-Tor.
+//   • Testlauf: ohne Wirkung. Seit Paket 4a läuft er durch die echte Schleife im Trockenlauf (lib/agenten/probelauf.ts); Tests tauschen
+//     ihn über `probelaeuferVerdrahten` aus. Sicht: die EINE Filterstelle lib/agenten/sicht.ts (`headSichtbarKern`).
 
 import { headDef, KATALOG } from './katalog';
 import {
@@ -67,8 +67,16 @@ export async function vorlaeufigHeadSichtbar(person: string, headId: string): Pr
   return true;
 }
 
-let sichtImpl: HeadSichtbar = vorlaeufigHeadSichtbar;
-/** Beim Zusammenführen: `sichtVerdrahten(headSichtbar)` aus lib/agenten/sicht.ts (Paket 1). */
+/**
+ * Die EINE Filterstelle (lib/agenten/sicht.ts `headSichtbar` über die Sicht des Kontos, faeden-server.ts `sichtLaden`) — seit Paket 4a
+ * (09.10.) verdrahtet; die vorläufige Regel oben bleibt nur als Vergleich in den Tests. Geladen erst beim Aufruf (kein Import-Kreis).
+ */
+export const headSichtbarKern: HeadSichtbar = async (person, headId) => {
+  const [{ sichtLaden }, sicht] = await Promise.all([import('./faeden-server'), import('./sicht')]);
+  return sicht.headSichtbar(await sichtLaden(person), headId);
+};
+let sichtImpl: HeadSichtbar = headSichtbarKern;
+/** Austausch der Filterstelle — nur noch für Tests (der Betrieb nimmt `headSichtbarKern`). */
 export function sichtVerdrahten(f: HeadSichtbar): void { sichtImpl = f; }
 export const headSichtbar: HeadSichtbar = (person, headId) => sichtImpl(person, headId);
 /** Alle Heads, die die Person sieht (Katalog-Reihenfolge). */
@@ -331,8 +339,13 @@ export const kiProbelauf: Probelaeufer = async a => {
   return { ok, werkzeuge, ...(typeof r.data.notiz === 'string' && r.data.notiz ? { notiz: r.data.notiz.slice(0, 200) } : {}) };
 };
 
-let probelaeuferImpl: Probelaeufer = kiProbelauf;
-/** Beim Zusammenführen (Paket 1): die Gesprächsschleife mit allen Werkzeugen im Trockenlauf; in Tests ein Fake. */
+/**
+ * Der echte Probeläufer (Paket 4a): die EINE Gesprächsschleife des Heads mit dem Skill im TROCKENLAUF — lesende Werkzeuge lesen,
+ * alles andere zeigt nur, was es täte (Vorschau), nichts wird angelegt oder gestapelt (lib/agenten/probelauf.ts). Geladen beim Aufruf.
+ */
+export const schleifenProbelauf: Probelaeufer = async a => (await import('./probelauf')).probelauf(a);
+let probelaeuferImpl: Probelaeufer = schleifenProbelauf;
+/** Austausch des Probeläufers — in Tests ein Fake; `kiProbelauf` (ein Aufruf ohne Werkzeuge) bleibt als einfacher Weg. */
 export function probelaeuferVerdrahten(p: Probelaeufer): void { probelaeuferImpl = p; }
 
 /**

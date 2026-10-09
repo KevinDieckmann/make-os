@@ -7,7 +7,8 @@
 //   GET/POST /api/agenten/skills          → Skills, Mitarbeiter, Gedächtnis (Paket 3)
 //   GET/POST /api/agenten/laeufe          → Hintergrundaufgaben, Als Nächstes, Geplant (Paket 3)
 //   GET/POST /api/zoe/stapel              → „Wartet auf dich“: die offenen Freigaben (vorhanden, unverändert)
-//   POST     /api/kimmi                   → der ZOE-Chat in der Mitte — VORERST, bis Paket 4 ZOE auf Threads umstellt
+//   POST     /api/kimmi                   → der ZOE-Chat in der Mitte — auf dem ZOE-Thread der Person (`zoeFaden`, Paket 4a): der Server
+//                                          liest den Verlauf aus dem Thread; ZoePanel, Empfang und diese Seite zeigen denselben Thread
 // Typen: lib/agenten/typen.ts. Solange eine Route 501 antwortet (Stub), ist der Zustand `kommt` — die Seite zeigt dann einen
 // ruhigen Leerzustand, nie einen Fehler. 401/403 = `gesperrt` (die Route hat entschieden, die Seite blendet nichts selbst aus).
 // Schreiben geht immer mit `x-make-bau` (setzt die BauWache am Fenster) — 409 `neuLaden` kommt als Text an.
@@ -91,8 +92,8 @@ export async function senden<T>(url: string, body: unknown): Promise<Ergebnis<T>
 
 /** Die offenen Freigaben der Person (Antwort von GET /api/zoe/stapel). */
 export interface StapelAntwort { ok: true; vorschlaege: VorschlagKurz[]; offen: number }
-/** Antwort des ZOE-Chats (POST /api/kimmi). */
-export interface ZoeAntwort { reply?: string; stapelOffen?: number; ran?: { agent: string; ok: boolean }[]; ki?: KiKennzeichen; needsKey?: boolean; error?: string }
+/** Antwort des ZOE-Chats (POST /api/kimmi). `fadenId` = der ZOE-Thread, in dem der Zug steht (Paket 4a). */
+export interface ZoeAntwort { reply?: string; stapelOffen?: number; ran?: { agent: string; ok: boolean }[]; ki?: KiKennzeichen; needsKey?: boolean; error?: string; fadenId?: string; titel?: string }
 
 const q = (basis: string, p: Record<string, string | undefined>) => {
   const s = new URLSearchParams();
@@ -136,10 +137,11 @@ export async function stapelEntscheiden(b: { id: string; entscheidung: 'freigebe
   return r;
 }
 /**
- * Der ZOE-Chat der Mitte über das bestehende /api/kimmi (bis Paket 4). Das bisherige Gespräch geht als `context` mit — der
- * Server markiert ihn als Text Dritter, ab dem zweiten Zug schlägt ZOE Schreibendes also nur vor (sicher statt bequem).
+ * Der ZOE-Chat der Mitte (Paket 4a): die Nachricht geht in den ZOE-Thread der Person (`zoeFaden` = Kennung oder 'neu') — der Server
+ * liest den Verlauf aus dem Thread (nie vom Browser), „fremd gelesen“ steht am Thread. Kein `context` mehr: der wäre Text Dritter, und
+ * ZOE dürfte ab dem zweiten Zug nur noch vorschlagen.
  */
-export async function zoeFragen(b: { message: string; space: 'privat' | 'business'; context?: string }): Promise<Ergebnis<ZoeAntwort>> {
+export async function zoeFragen(b: { message: string; space: 'privat' | 'business'; zoeFaden: string }): Promise<Ergebnis<ZoeAntwort>> {
   const r = await senden<ZoeAntwort>(WEGE.zoe, b);
   if (r.ok) meldeNeu();
   return r;

@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { GRENZEN, titelAus, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { personAus } from '@/lib/zoe/raum';
+import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,8 @@ function sauber(g: Partial<Gespraech>): Gespraech | null {
   const nachrichten: VerlaufNachricht[] = (Array.isArray(g.nachrichten) ? g.nachrichten : [])
     .slice(-GRENZEN.nachrichtenProGespraech)
     .map(n => ({
-      rolle: n?.rolle === 'zoe' ? 'zoe' as const : 'kevin' as const,
+      // Neu geschrieben nur noch `nutzer` (Paket 4a); alte Einträge (mit der alten, personenbezogenen Kennung) bleiben lesbar (lib/make-one/zoe-verlauf.ts `istNutzer`).
+      rolle: n?.rolle === 'zoe' ? 'zoe' as const : 'nutzer' as const,
       text: String(n?.text ?? '').slice(0, GRENZEN.zeichenProNachricht),
       zeit: istZeit(n?.zeit) ? n.zeit : jetzt,
       ...(Array.isArray(n?.ran) && n.ran.length
@@ -34,7 +36,7 @@ function sauber(g: Partial<Gespraech>): Gespraech | null {
         : {}),
     }))
     .filter(n => n.text.trim());
-  const ersteFrage = nachrichten.find(n => n.rolle === 'kevin')?.text ?? '';
+  const ersteFrage = nachrichten.find(n => n.rolle !== 'zoe')?.text ?? '';
   return {
     id,
     begonnen: istZeit(g.begonnen) ? g.begonnen : (nachrichten[0]?.zeit ?? jetzt),
@@ -47,16 +49,19 @@ function sauber(g: Partial<Gespraech>): Gespraech | null {
 /**
  * Gespräche gehören der Person, die sie geführt hat (24.09.). Vorher sah jedes
  * Konto jedes Gespräch — seit ZOE auch private Finanzen kennt, geht das
- * nicht mehr. Gespräche ohne Zuordnung stammen aus der Zeit mit nur Kevins
- * Konto und gehören ihm.
+ * nicht mehr. Gespräche ohne Zuordnung stammen aus der Zeit mit nur einem Konto
+ * und gehören dem Inhaber der Instanz (`alt` = dessen Speichername, nie ein fester Name — Paket 4a).
+ * Seit 09.10. (Paket 4a) liest die Oberfläche ZOE-Threads (lib/agenten/zoe-faden.ts übernimmt diesen Bestand einmal); die Route bleibt
+ * für ältere Fenster und den Rückweg.
  */
-const gehoert = (g: { person?: string }, person: string) => (g.person ?? 'kevin') === person;
+const gehoert = (g: { person?: string }, person: string, alt: string | null) => (g.person ?? alt) === person;
 
 export async function GET(req: Request) {
   if (!personStreng(req)) return ohnePerson();
   const person = personAus(req);
+  const alt = await inhaberSpeicher();
   const f = await loadJson<Datei>('zoe-verlauf');
-  const gespraeche = (Array.isArray(f?.gespraeche) ? f.gespraeche : []).filter(g => gehoert(g, person))
+  const gespraeche = (Array.isArray(f?.gespraeche) ? f.gespraeche : []).filter(g => gehoert(g, person, alt))
     .slice()
     .sort((a, b) => (b.zuletzt ?? '').localeCompare(a.zuletzt ?? ''));
   return NextResponse.json({
@@ -77,12 +82,13 @@ export async function PUT(req: Request) {
   if (!g.nachrichten.length) return NextResponse.json({ ok: true, uebersprungen: true });
 
   const person = personAus(req);
+  const alt = await inhaberSpeicher();
   let fremd = false;
   const next = await updateJson<Datei>('zoe-verlauf', current => {
     const f = current ?? { gespraeche: [] };
     f.gespraeche = Array.isArray(f.gespraeche) ? f.gespraeche : [];
     const i = f.gespraeche.findIndex(x => x.id === g.id);
-    if (i >= 0 && !gehoert(f.gespraeche[i], person)) { fremd = true; return f; }
+    if (i >= 0 && !gehoert(f.gespraeche[i], person, alt)) { fremd = true; return f; }
     g.person = person;
     // Kürzer als der gespeicherte Stand? Dann ist der Client hinterher —
     // die Historie wird nicht beschnitten.
@@ -94,7 +100,7 @@ export async function PUT(req: Request) {
     // die Zukunft datierte) Gespräche anlegte, verdrängte die der anderen Person endgültig.
     const zaehler = new Map<string, number>();
     f.gespraeche = f.gespraeche.filter(x => {
-      const wer = x.person ?? 'kevin'; // Altbestand ohne Person = Erstkonto (wie `gehoert`)
+      const wer = x.person ?? alt ?? ''; // Altbestand ohne Person = Inhaber (wie `gehoert`)
       const n = (zaehler.get(wer) ?? 0) + 1;
       zaehler.set(wer, n);
       return n <= GRENZEN.gespraeche;
@@ -102,7 +108,7 @@ export async function PUT(req: Request) {
     return f;
   });
   if (fremd) return NextResponse.json({ ok: false, error: 'Nicht dein Gespräch.' }, { status: 403 });
-  return NextResponse.json({ ok: true, anzahl: next.gespraeche.filter(x => gehoert(x, person)).length });
+  return NextResponse.json({ ok: true, anzahl: next.gespraeche.filter(x => gehoert(x, person, alt)).length });
 }
 
 /** Ein einzelnes Gespräch entfernen. */
@@ -111,9 +117,10 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
   const person = personAus(req);
+  const alt = await inhaberSpeicher();
   const next = await updateJson<Datei>('zoe-verlauf', current => {
     const f = current ?? { gespraeche: [] };
-    f.gespraeche = (f.gespraeche ?? []).filter(g => g.id !== id || !gehoert(g, person));
+    f.gespraeche = (f.gespraeche ?? []).filter(g => g.id !== id || !gehoert(g, person, alt));
     return f;
   });
   return NextResponse.json({ ok: true, anzahl: next.gespraeche.length });

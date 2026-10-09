@@ -35,10 +35,12 @@ describe('ZOE: Browser-Kontext zählt als Fremdtext, Gedächtnis/Notiz nur als V
     const route = readFileSync('app/api/kimmi/route.ts', 'utf8');
     expect(route).toMatch(/const kontextFremd = kontextIstFremd\(payload\.context\);/);
     // 29.09. (#K1): Termintitel im Prompt zählen ebenfalls als Fremdtext.
-    expect(route).toMatch(/let fremdGelesen = kontextFremd \|\| lage\.kalenderFremd \|\| verlaufFremd\(payload\.verlauf, quelleVon\);/);
-    expect(route).toMatch(/const vorschlagen = nurVorschlag\(name, l\.input, fremdGelesen\)( \|\| webAuftrag)?;/);
+    // Seit Paket 4a (09.10.) steht die Marke am ZOE-Thread (Server); ohne Thread wie bisher aus dem Verlauf. Die Schleife ist EINE
+    // (lib/agenten/schleife.ts) — sie reicht den laufenden Zustand `z` an den Handler der Route.
+    expect(route).toMatch(/const fremdGelesen = kontextFremd \|\| lage\.kalenderFremd \|\| \(zug \? zug\.faden\.fremdGelesen : verlaufFremd\(payload\.verlauf, quelleVon\)\);/);
+    expect(route).toMatch(/const vorschlagen = nurVorschlag\(name, a\.input, z\.fremdGelesen\)( \|\| webAuftrag)?;/);
     // 29.09. (D-B #90): run_agent geht durch denselben Schutz (agentNurVorschlag) statt daran vorbei.
-    expect(route).toMatch(/agentNurVorschlag\(agentId, fremdGelesen, vertraulich\)/);
+    expect(route).toMatch(/agentNurVorschlag\(agentId, z\.fremdGelesen, z\.vertraulich\)/);
     // Der Kontext wird VOR dem Einpacken geprüft (fremd() macht aus „leer“ sonst Text).
     expect(route.indexOf('kontextIstFremd(payload.context)')).toBeLessThan(route.indexOf("payload.context = fremd('client'"));
   });

@@ -4,6 +4,55 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten-Bereich Paket 4a „ZOE steuert die Heads“: EINE Schleife, EINE Werkzeug-Quelle, ≤ 20 Werkzeuge, ZOE auf Threads (nur lokal — Branch `agenten-p4a`, Basis `agenten-nacht` 0ff3187a)
+
+Grundlage: AGENTEN_KONZEPT.md C3/C8/C11 (Paket 4), ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich (Antworten 10/11) und Teil 1 (Nr. 1, 11, 13:
+„ZOE ≤ 20 Werkzeuge, Rest zu den Heads“ · „ZOE beauftragt nur Heads“). Doku der Verdrahtung: AGENTEN_KONZEPT.md › „Paket 4 — so verdrahtet“.
+
+- **EINE Gesprächsschleife** `lib/agenten/schleife.ts`: ZOE (`app/api/kimmi`) und Head-/Mitarbeiter-Chat (`lib/agenten/gespraech.ts`) nutzen sie —
+  Modell nur über `askText` + `ki`, Text Dritter gekapselt, „fremd gelesen“/„vertraulich“ fürs ganze Gespräch, Kategorien wachsen mit, Protokoll
+  nur Metadaten. Unterschiede als Parameter (ZOE: 3 Runden, parallel, Register-Stufe · Heads: `GRENZEN.headRunden`/`mitarbeiterRunden`,
+  nacheinander, gleiche Aufrufe nur einmal, 14 Aufrufe, letzte Runde ohne Werkzeuge, alles Schreibende nur Vorschlag, Stillstand/Abbruch).
+- **Werkzeug-Beschreibungen EINE Quelle** `lib/zoe/werkzeug-defs.ts` (+ die vorhandenen Teil-Quellen CRM/Aufgaben/Arbeit): die rund 30 Kopien
+  in `lib/agenten/werkzeuge.ts` sind weg — die Agenten-Fassung wird abgeleitet (`agentenDef`: Felder des Bereichs fallen weg, Business-
+  Gesellschaften, „nur Vorschlag“). Keine Personen-Kürzel mehr in Beschreibungen/Schemas: Personen zur Laufzeit (Speichernamen des
+  Haushalts), Zuständige = CRM-Team der Instanz (`lib/crm/team.ts`).
+- **ZOE steuert die Heads** (`lib/agenten/zoe-heads.ts`, Register-Gruppe `agenten`): `an_head { head, auftrag }` (frei — reiht nur ein:
+  Thread beim Head mit Eltern = ZOE-Thread, „An … gesendet“ im ZOE-Thread, Lauf über die Warteschlange `faden`; der Bericht kommt als Verweis
+  in den ZOE-Thread und als neutrale Glocke) und `head_fragen { head, frage }` (synchroner Head-Lauf NUR mit dem Kontext dieses Heads, nur
+  lesende Werkzeuge, Antwort als `fremd('agent')`, in `LESEND`, Quelle `agent` vertraulich). Heads immer für die AUSLÖSENDE Person
+  (`lib/agenten/sicht.ts`) — ein Konto „nur Business“ erreicht keinen Privat-Head. Der ZOE-Prompt nennt die Heads statt `agentRoster()`.
+- **ZOE ≤ 20 Werkzeuge** (`lib/zoe/werkzeug-wahl.ts`): fester Kern (an_head, head_fragen, suche_arbeit, lies_notiz, create_task, meine_aufgaben,
+  freie_zeit, fakt_merken, frag_gedaechtnis) + die Werkzeuge des Bereichs, auf den der Zug zielt (Regelwerk aus Frage, letzten Fragen, Bezug;
+  mehrere Bereiche reihum), höchstens 20. Nicht angebotene Werkzeuge lehnt kimmi ab („frag den Head“). Jedes bisherige Werkzeug bleibt erreichbar
+  (Kern, Bereich oder Head — Wächter).
+- **Gesprächsverlauf neutral:** Rolle `nutzer` statt einer personenbezogenen Kennung (`lib/make-one/zoe-verlauf.ts` `istNutzer` liest beide);
+  Altbestand ohne Person gehört dem Inhaber (`inhaberSpeicher`), nie einem festen Namen.
+- **ZoePanel, Empfang und Agenten-Seite auf Threads** (`lib/agenten/zoe-faden.ts`): das ZOE-Gespräch ist ein Thread `zoe` der Person
+  (`agenten-faeden--<person>`), alle drei zeigen denselben (den jüngsten bzw. den aus der Adresse). `/api/kimmi` nimmt `zoeFaden` (Kennung oder
+  `neu`): Verlauf NUR vom Server, „fremd gelesen“ am Thread (A12 geschlossen). Einmalige Übernahme des alten `zoe-verlauf` beim ersten Lesen
+  (GET `/api/agenten/faden`, idempotent, Marke `zoeUebernahme`, alter Bestand bleibt liegen). Telegram/WhatsApp schreiben in einen ZOE-Thread je
+  Kanal und Tag (`zoeKanalZug`). Der Umweg aus Paket 2 (Gespräch als `context`) ist zurückgebaut.
+- **Paket-3-Haken verdrahtet:** Werkstatt-Sicht = EINE Filterstelle (`headSichtbarKern`); Probeläufer = die echte Schleife im TROCKENLAUF
+  (`lib/agenten/probelauf.ts`: lesende Werkzeuge lesen, Schreibendes zeigt nur die Vorschau, nichts wird angelegt); `skill_vorschlagen` /
+  `mitarbeiter_vorschlagen` / `merksatz_vorschlagen` über `vorschlag*Legen`; Skill-Läufe zählen `skillErfolgZaehlen`, Plan-Läufe
+  `planLaufVermerken`; die Lauf-Eingabe darf `headId`/`batch` tragen (die Route ignoriert unbekannte Felder).
+- **Beim Anfassen neutralisiert:** „Kevins Freigabe-Stapel“ im Werkzeug-Text, „freie Zeit nur für Kevin und Malin“, `istPrivatAngabe` ohne
+  Namen, `zustaendig`/`stimme`/`fuer`-Enums der Markttraktion aus dem Team der Instanz, Register-Titel „Kontakt im Team übergeben“.
+
+**Tests:** `tests/agenten-p4a-schleife.test.ts` (EINE Schleife, Regeln, Rolle `nutzer`), `tests/agenten-p4a-zoe.test.ts` (Threads + Übernahme,
+`an_head` + Bericht, `head_fragen` nur Kontext des Heads, Sicht „nur Business“, ≤ 20, Erreichbarkeit, eine Quelle), `tests/agenten-p4a-verdrahtung.test.ts`
+(Sicht, Trockenlauf, Vorschläge, Erfolgsquote, Plan-Start, headId/batch). Angepasst (begründet): `integritaet-zugang`, `zoe-crm` (alle CRM-Werkzeuge
+ERREICHBAR statt alle in jedem Zug), `zoe-nur-stapel` (Recherche-Frage), `k1-betrieb` (Regeln stehen jetzt in Route + Schleife), `zoe-whatsapp-route`
+(Thread statt `zoe-verlauf`), `agenten-freigabe` (Form der Stapel-Art `merksatz`), `agenten-oberflaeche` (aktueller ZOE-Thread statt Kontext).
+
+**Rückweg:** neue Dateien und optionale Felder (`zoeUebernahme`, `WerkzeugKontext.zoe`); der alte `zoe-verlauf` bleibt unverändert liegen — der
+alte Stand liest ihn weiter (ZOE-Gespräche, die nach dem Upload nur in Threads stehen, sieht der alte Stand nicht). Telegram/WhatsApp-Antworten
+nach dem Upload stehen nur im Thread.
+
+**Offen (nicht in 4a):** Streaming (`askStream`), Einstellungen schreiben / Not-Aus / Budget je Head (Paket 4b), ZOE-Hintergrundaufgaben
+(`agenten-plan` mit Agent `zoe` lehnt weiter ab), Familie-KI-Kategorie im Katalog, `AI_CEO_MODUL.md` D3.3.
+
 ## 09.10.2026 — KI-Anbieter-Tor: Claude in der EU, Bilder, Video, Tiefenbericht, Transkription, Budget (Paket 6a; nur lokal — Branch `ki-anbieter`)
 
 Kevin 08.10. spät (ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich Teil 1, Antworten 14, 16, 19–25), Grundlage `research/agenten/MODELLE.md`:

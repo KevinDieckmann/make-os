@@ -22,11 +22,10 @@ import { ladeStand, aendereStand, loeseCode, personFuerChat, sendeAnChat } from 
 import { nameVon } from '@/lib/zoe/raum';
 import { nachrichtFuer } from '@/lib/gesundheit/lauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
 import { istDienst } from '@/lib/zugang/dienst';
 import { localDay } from '@/lib/zeit';
 import { innenAdresse, aussenAdresse } from '@/lib/innen';
-import { GRENZEN, titelAus, type Gespraech } from '@/lib/make-one/zoe-verlauf';
 import { telegramVollFuer } from '@/lib/datenschutz/ki-einstellungen';
 import { TELEGRAM_FREMD, appLink, hinweisNeueNachricht } from '@/lib/datenschutz/telegram-text';
 
@@ -47,26 +46,13 @@ interface Update {
 // Neutral (Plattform-Regel, 05.10.): kein Name, kein Haushalt — ein fremder Chat erfährt nur, dass es eine private Instanz ist.
 const FREMD = TELEGRAM_FREMD;
 
-/** Frage und Antwort aus Telegram in den ZOE-Verlauf der Person (ein Gespräch je Tag) — dort liest sie die Antwort. */
+/**
+ * Frage und Antwort aus Telegram in den ZOE-Thread der Person (ein Thread je Tag, Paket 4a — vorher `zoe-verlauf`) — dort liest sie die
+ * Antwort; ZoePanel, Empfang und Agenten-Seite zeigen denselben Thread (lib/agenten/zoe-faden.ts).
+ */
 async function inDenVerlauf(person: string, frage: string, antwort: string, jetzt: Date): Promise<string> {
-  const tag = localDay(jetzt);
-  const id = `tg-${tag}`;
-  const zeit = jetzt.toISOString();
-  await updateJson<{ gespraeche: Gespraech[] }>('zoe-verlauf', cur => {
-    const f = { gespraeche: Array.isArray(cur?.gespraeche) ? cur!.gespraeche : [] };
-    const i = f.gespraeche.findIndex(g => g.id === id && (g.person ?? 'kevin') === person);
-    const neu = [{ rolle: 'kevin' as const, text: frage.slice(0, GRENZEN.zeichenProNachricht), zeit }, { rolle: 'zoe' as const, text: antwort.slice(0, GRENZEN.zeichenProNachricht), zeit }];
-    if (i >= 0) {
-      const g = f.gespraeche[i];
-      f.gespraeche[i] = { ...g, zuletzt: zeit, nachrichten: [...g.nachrichten, ...neu].slice(-GRENZEN.nachrichtenProGespraech) };
-    } else {
-      f.gespraeche.push({ id, begonnen: zeit, zuletzt: zeit, titel: `Telegram · ${titelAus(frage)}`, nachrichten: neu, person });
-    }
-    f.gespraeche.sort((a, b) => (b.zuletzt ?? '').localeCompare(a.zuletzt ?? ''));
-    f.gespraeche = f.gespraeche.slice(0, GRENZEN.gespraeche);
-    return f;
-  });
-  return id;
+  const { zoeKanalZug } = await import('@/lib/agenten/zoe-faden');
+  return zoeKanalZug(person, 'telegram', frage, antwort, jetzt);
 }
 
 export async function GET(req: Request) {

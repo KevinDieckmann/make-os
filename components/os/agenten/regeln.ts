@@ -17,7 +17,7 @@ const ZONE = 'Europe/Berlin';
 
 /** Was die Mitte zeigt: ZOE (ohne Auswahl), einen Head (mit oder ohne Thread) oder einen Mitarbeiter-Thread. */
 export type Auswahl =
-  | { art: 'zoe' }
+  | { art: 'zoe'; /** Ein bestimmter ZOE-Thread aus der Adresse (Paket 4a) — sonst der jüngste. */ fadenId?: string }
   | { art: 'head'; headId: string; fadenId?: string }
   | { art: 'faden'; fadenId: string; headId?: string };
 
@@ -31,7 +31,7 @@ export function auswahlAus(h: string | null | undefined, f: string | null | unde
   if (faden) {
     const k = faeden.find(x => x.id === faden);
     if (k?.agent.art === 'head') return { art: 'head', headId: k.agent.headId, fadenId: faden };
-    if (k?.agent.art === 'zoe') return { art: 'zoe' };
+    if (k?.agent.art === 'zoe') return { art: 'zoe', fadenId: faden };
     if (!k && head) return { art: 'head', headId: head, fadenId: faden };
     return { art: 'faden', fadenId: faden, ...(k?.agent.art === 'mitarbeiter' ? { headId: k.agent.headId } : head ? { headId: head } : {}) };
   }
@@ -398,18 +398,11 @@ export function absenderVon(von: string, heads: readonly HeadKarte[]): { name: s
 }
 
 /**
- * Das bisherige ZOE-Gespräch der Seite als Text für `context` (bis Paket 4 die Threads bringt): die letzten Züge, höchstens
- * `max` Zeichen, das Jüngste zählt. Leer ohne Vorgeschichte.
+ * Der ZOE-Thread, den Panel, Empfang und Agenten-Seite zeigen (Paket 4a): der jüngste ZOE-Thread der Person. Seit dem Umzug auf Threads
+ * geht kein Gespräch mehr als `context` an ZOE (der Umweg aus Paket 2 ist zurückgebaut) — der Server liest den Verlauf aus dem Thread.
  */
-export function gespraechAlsKontext(zuege: readonly { wer: 'ich' | 'zoe'; text: string }[], max = 3_500): string {
-  const zeilen = zuege.map(z => `${z.wer === 'ich' ? 'Ich' : 'ZOE'}: ${z.text.replace(/\s+/g, ' ').trim()}`);
-  let raus = '';
-  for (let i = zeilen.length - 1; i >= 0; i--) {
-    const neu = raus ? `${zeilen[i]}\n${raus}` : zeilen[i];
-    if (neu.length > max) break;
-    raus = neu;
-  }
-  return raus ? `Bisheriges Gespräch auf der Agenten-Seite:\n${raus}` : '';
+export function zoeFadenAktuell(faeden: readonly FadenKurz[]): string | undefined {
+  return [...faeden].filter(f => f.agent.art === 'zoe').sort((a, b) => b.aktualisiert.localeCompare(a.aktualisiert))[0]?.id;
 }
 
 /** Eine Zeile des Überblicks mit der Farbe ihres Heads (Anzeige). */
