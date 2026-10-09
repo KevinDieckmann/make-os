@@ -21,7 +21,7 @@ import { centZuEuro, kurzHash, vergleichsText } from './text';
 import type { Auszug, AuszugEintrag, LeseErgebnis, Pruefsumme } from './typen';
 import { ibanGrundform, ibanMaskiert } from '@/lib/crm/zahlung';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import { centAus, naechsteZahlung } from '@/lib/finanzen/zahlung-abgleich';
+import { centAus, naechsteZahlung, namenPassen, nummerImText } from '@/lib/finanzen/zahlung-abgleich';
 import { N26_KATEGORIEN, istUmbuchungText, katIdFinder, vorbereiten, type Entwurf, type Rohbuchung } from '@/lib/finanzen/haushalt/import';
 import type { Buchung as HaushaltBuchung, Einheit, Regel } from '@/lib/finanzen/haushalt/typen';
 import { einordnen, katNamen, type Einordnung } from '@/lib/finanzen/haushalt/einordnung';
@@ -342,6 +342,45 @@ export function haushaltZeilen(p: Plan, auszug: Auszug, h: { regeln: Regel[]; ka
   const entwuerfe = vorbereiten(geb.map(({ e }) => haushaltRoh(e, umb(e))), p.ziel.haushaltKontoId, h.regeln, katIdFinder(h.kategorien), p.ziel.einheit, laufId, person);
   const nachIndex = new Map(geb.map(({ i }, n) => [i, entwuerfe[n]]));
   return p.zeilen.filter(z => z.status === 'neu').map(z => ({ ...nachIndex.get(z.i)!, id: neueId(), stand: 1, geaendert: jetzt }));
+}
+
+// ── Offene Posten, die ein neuer Umsatz begleicht (09.10., Nahtstellen) ─────────────────────────────────────────────────────────────
+// Der Saldo des Kontoauszugs enthält die Zahlung schon — steht die Rechnung (bzw. die offene Forderung/Verbindlichkeit des 0-Punkts, die offene
+// Zahlung) weiter als offen da, zählt die Liquidität dasselbe Geld zweimal („kommt rein“ + Kontostand). Bezahlt setzt nur ein Mensch per Klick —
+// die Vorschau sagt, wo. Gleiche Regel wie lib/finanzen/zahlung-abgleich.ts, aber ohne Fenster nach hinten (eine Rechnung kann spät bezahlt werden):
+// Betrag auf den Cent, Umsatz nicht vor dem Rechnungsdatum, Rechnungsnummer im Zweck oder Name passt.
+
+export interface OffenerPostenKurz {
+  art: 'rechnung' | 'forderung' | 'verbindlichkeit' | 'zahlung';
+  name: string;
+  /** Cent, mit Vorzeichen aus Sicht des Kontos: + erwarteter Eingang, − erwarteter Ausgang. */
+  cent: number;
+  nummer?: string;
+  /** Rechnungsdatum (falls bekannt) — ein Umsatz davor passt nie. */
+  datum?: string;
+}
+
+const ART_TEXT: Record<OffenerPostenKurz['art'], (o: OffenerPostenKurz) => string> = {
+  rechnung: o => `zur offenen Rechnung ${o.nummer ?? o.name} — nach dem Übernehmen dort „bezahlt“ setzen (die Buchung wird verknüpft, nicht verdoppelt)`,
+  forderung: o => `zur offenen Forderung des 0-Punkts (${o.name}${o.nummer ? `, ${o.nummer}` : ''}) — dort „bezahlt am“ setzen`,
+  verbindlichkeit: o => `zur offenen Verbindlichkeit des 0-Punkts (${o.name}${o.nummer ? `, ${o.nummer}` : ''}) — dort „bezahlt am“ setzen`,
+  zahlung: o => `zur offenen Zahlung an ${o.name} — dort als bezahlt vermerken`,
+};
+
+/** Hinweise: welcher NEUE Umsatz welchen offenen Posten begleicht (je Posten höchstens ein Umsatz). Rein. */
+export function offeneHinweise(p: Plan, auszug: Auszug, offene: readonly OffenerPostenKurz[]): string[] {
+  const frei = [...offene];
+  const raus: string[] = [];
+  for (const z of p.zeilen) {
+    if (z.status !== 'neu') continue;
+    const e = auszug.eintraege[z.i];
+    const i = frei.findIndex(o => o.cent === e.cent && (!o.datum || e.datum >= o.datum)
+      && ((o.nummer && nummerImText(o.nummer, `${e.zweck} ${e.gegenpartei}`)) || namenPassen(e.gegenpartei || e.zweck, o.name)));
+    if (i < 0) continue;
+    const o = frei.splice(i, 1)[0];
+    raus.push(`Der Umsatz vom ${e.datum.split('-').reverse().join('.')} (${(Math.abs(e.cent) / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €) passt ${ART_TEXT[o.art](o)} — sonst zählt die Liquidität dasselbe Geld zweimal.`);
+  }
+  return raus;
 }
 
 /** Für die Anzeige: Ziel in einem Satz. */

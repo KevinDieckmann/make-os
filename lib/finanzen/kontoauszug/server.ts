@@ -21,16 +21,16 @@ import { localDay } from '@/lib/zeit';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { ibanGrundform } from '@/lib/crm/zahlung';
-import { finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { finanzOrtAus, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import { ladeRegister, standAusAuszug, auszugStandZuruecknehmen, haushaltKontoVerknuepfen, firmaVorAuszug, firmaVorherHerstellen, type FirmaVorher } from '@/lib/finanzen/konten/server';
-import { istPrivatOrt, ortName, sichtbarIn, type KontenSicht, type KontoOrt, type RegisterKonto } from '@/lib/finanzen/konten/register';
+import { istPrivatOrt, ortName, regiert, sichtbarIn, ZUR_KASSE, type KontenSicht, type KontoOrt, type RegisterKonto } from '@/lib/finanzen/konten/register';
 import { ladeHaushalt, aendereStamm, aendereBuchungen } from '@/lib/finanzen/haushalt/speicher';
 import type { Buchung as HaushaltBuchung, Konto as HaushaltKonto } from '@/lib/finanzen/haushalt/typen';
 import { auszugLesen } from './lesen';
 import { centZuEuro, vergleichsText } from './text';
 import {
-  auszugZuordnen, planBauen, planHatWirkung, businessZeilen, haushaltZeilen, fpBusiness, fpHaushalt, zielSatz, BUSINESS_PRAEFIX, kontoMarke,
-  type BusinessBuchung, type Plan, type PlanZeile, type Ziel,
+  auszugZuordnen, planBauen, planHatWirkung, businessZeilen, haushaltZeilen, fpBusiness, fpHaushalt, zielSatz, BUSINESS_PRAEFIX, kontoMarke, offeneHinweise,
+  type BusinessBuchung, type OffenerPostenKurz, type Plan, type PlanZeile, type Ziel,
 } from './plan';
 import type { Auszug, CsvInfo, Pruefsumme } from './typen';
 
@@ -123,6 +123,54 @@ interface Vorbereitet {
   haushaltStamm?: { regeln: HaushaltDaten['stamm']['regeln']; kategorien: { id: string; name: string }[] };
 }
 
+/**
+ * Was die Liquidität für diese Gesellschaft noch als offen zählt: Rechnungen (gestellt, nicht bezahlt/storniert), offene Zahlungen und die offenen
+ * Posten des 0-Punkts — dieselbe Sicht wie die Liquidität (`mitEroeffnung`: vor dem 0-Punkt Archiviertes zählt nicht).
+ */
+async function offenePosten(ort: Gesellschaftskennung): Promise<OffenerPostenKurz[]> {
+  try {
+    const { mitEroeffnung } = await import('@/lib/business/eroeffnung-server');
+    type R = { id: string; firmaId?: string; kunde: string; betrag: number; status: string; nummer?: string; datum?: string; art?: string; eroeffnung?: true };
+    type Z = { id: string; firmaId?: string; an: string; betrag: number; status: string; eroeffnung?: true };
+    const fp = await loadJson<{ rechnungen?: R[]; zahlungen?: Z[] }>('finanzplan');
+    const b = await mitEroeffnung({ rechnungen: fp?.rechnungen ?? [], zahlungen: fp?.zahlungen ?? [] });
+    const meine = (f?: string) => (istGesellschaft(f) ? f : finanzOrtAus(f)) === ort;
+    return [
+      ...(b.rechnungen ?? []).filter(r => meine(r.firmaId) && r.art !== 'storno' && !['geplant', 'bezahlt', 'storniert'].includes(r.status) && r.betrag > 0)
+        .map(r => ({ art: r.eroeffnung ? 'forderung' as const : 'rechnung' as const, name: r.kunde, cent: Math.round(r.betrag * 100), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.datum ? { datum: r.datum } : {}) })),
+      ...(b.zahlungen ?? []).filter(z => meine(z.firmaId) && z.status === 'offen' && z.betrag > 0)
+        .map(z => ({ art: z.eroeffnung ? 'verbindlichkeit' as const : 'zahlung' as const, name: z.an, cent: -Math.round(z.betrag * 100) })),
+    ];
+  } catch (err) { console.error('[kontoauszug] offene Posten nicht lesbar:', err instanceof Error ? err.message : err); return []; }
+}
+
+/**
+ * Übergang zum Konten-Register sichtbar machen: führt das Register die Gesellschaft noch nicht, macht dieser Saldo es zur Quelle — der bisher von
+ * Hand gepflegte Kontostand gilt dann nicht mehr, und weitere Kassen-Konten dieser Gesellschaft ohne Stand zählen bis zu ihrem ersten Stand mit 0 €.
+ */
+function uebergangHinweise(p: Plan, konto: RegisterKonto, alle: readonly RegisterKonto[]): string[] {
+  if (p.saldo?.status !== 'neu' || !istGesellschaft(konto.ort) || !ZUR_KASSE[konto.art] || regiert(alle, o => o === konto.ort)) return [];
+  const ohne = alle.filter(k => k.id !== konto.id && k.ort === konto.ort && !k.archiviertAm && ZUR_KASSE[k.art] && !k.staende.length);
+  const raus = [`Mit diesem Saldo führt das Konten-Register den Kontostand von ${ortName(konto.ort)} — ein bisher von Hand gepflegter Kontostand gilt dann nicht mehr („Rückgängig“ stellt ihn wieder her).`];
+  if (ohne.length) raus.push(`${ohne.length} weitere${ohne.length === 1 ? 's Konto' : ' Konten'} von ${ortName(konto.ort)} ${ohne.length === 1 ? 'hat' : 'haben'} noch keinen Stand — bis dahin ${ohne.length === 1 ? 'zählt es' : 'zählen sie'} mit 0 €. Bitte dort einen Stand eintragen.`);
+  return raus;
+}
+
+/**
+ * Privat: führt das Register die Privat-Konten noch nicht, rechnet die Finanzplanung mit ihren eigenen Kontoständen (Posten „Konto“). Ab diesem
+ * Saldo zählen nur noch die Konten im Register — was dort fehlt, fiele still aus Runway und „frei“ heraus.
+ */
+async function privatPlanHinweis(haushalt: string, alle: readonly RegisterKonto[]): Promise<string[]> {
+  try {
+    const plan = await loadJson<{ posten?: { id?: string; art?: string; einheit?: string; betrag?: number | null }[] }>(`finanzen-plan--${haushalt}`);
+    const verknuepft = new Set(alle.map(k => k.alt?.posten).filter(Boolean));
+    const fehlen = (plan?.posten ?? []).filter(x => x?.art === 'konto' && x.einheit === 'privat' && typeof x.betrag === 'number' && !verknuepft.has(x.id));
+    if (!fehlen.length) return [];
+    const summe = Math.round(fehlen.reduce((t, x) => t + (x.betrag ?? 0), 0) * 100) / 100;
+    return [`Die Finanzplanung rechnet Privat bisher mit ${fehlen.length === 1 ? 'einem eigenen Kontostand' : `${fehlen.length} eigenen Kontoständen`} (zusammen ${summe.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €). Ab diesem Saldo zählen nur noch die Konten im Konten-Register — die übrigen bitte dort anlegen bzw. „Übernehmen“, sonst fehlen sie in Runway und „frei“.`];
+  } catch { return []; }
+}
+
 /** Lesen + Zuordnen (rein). */
 function planEingang(bytes: Uint8Array, spalten: unknown, konto: RegisterKonto, andere: RegisterKonto[]) {
   const l = auszugLesen(bytes, { spalten });
@@ -185,6 +233,10 @@ async function vorbereiten(ctx: Kontext, kontoId: unknown, bytes: Uint8Array, sp
     auszug: e.auszug, konto: { id: konto.id, name: konto.name, ...(konto.iban ? { iban: konto.iban } : {}), staende: konto.staende }, ziel,
     ...(business ? { business, abgeglichen, rechnungNummern } : {}), ...(haushalt ? { haushalt } : {}), eigeneIbans, heute: localDay(ctx.jetzt ?? new Date()), hinweise: e.hinweise,
   });
+  // Nahtstellen 09.10.: Hinweise, wo dasselbe Geld sonst doppelt zählt bzw. still wegfällt (ändern nichts — die Vorschau-Kennung bleibt gleich).
+  if (ziel.art === 'business') plan.hinweise.push(...offeneHinweise(plan, e.auszug, await offenePosten(ziel.ort)));
+  plan.hinweise.push(...uebergangHinweise(plan, konto, register.konten));
+  if (plan.saldo?.status === 'neu' && istPrivatOrt(konto.ort) && !regiert(register.konten, istPrivatOrt)) plan.hinweise.push(...await privatPlanHinweis(ctx.haushalt, register.konten));
   return {
     ok: true, plan, konto, auszug: e.auszug, format: e.format, ...('csv' in e && e.csv ? { csv: e.csv } : {}), eigeneIbans,
     ...(neu ? { haushaltKontoNeu: neu } : {}), ...(tot ? { toteVerknuepfung: tot } : {}), ...(hh ? { haushaltStamm: { regeln: hh.stamm.regeln, kategorien: hh.stamm.kategorien } } : {}),

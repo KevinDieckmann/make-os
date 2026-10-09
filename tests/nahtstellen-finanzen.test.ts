@@ -78,6 +78,7 @@ beforeAll(async () => {
       rechnung('r-a4', 'Dritte Beispiel KG', 'RE-2026-0044', 595),
       rechnung('r-a5', 'Gleichbetrag Kunde GmbH', 'RE-2026-0045', 1000),
       rechnung('r-a6', 'Gleichbetrag Kunde GmbH', 'RE-2026-0046', 1000),
+      rechnung('r-h1', 'Offen Beispiel GmbH', 'RE-2026-0050', 714),
     ],
     zahlungen: [], merkposten: [], produkte: [], uhrwerk: { letztesMeeting: null, agenda: [] },
   });
@@ -277,6 +278,40 @@ describe('G · gemischtes Angebot: Einmalposten-Rechnung (Woche 1) und „Rechnu
     const voll = await entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', ...z });
     expect(voll.vorhanden).toBe(false);
     expect(await zahl()).toBe(2);
+  });
+});
+
+describe('H · Vorschau sagt, wo dasselbe Geld sonst doppelt zählt oder still wegfällt', () => {
+  const vorschau = async (kontoId: string, iban: string, posten: CamtPosten[], ende?: { betrag: string; datum: string }) => {
+    const datei = { inhalt: bytesZuBase64(utf8(camt({ iban, posten, ...(ende ? { ende } : {}) }))) };
+    const r = await auszug.POST!(anfrage('/api/finanzen/konten/auszug', 'pa', { aktion: 'vorschau', kontoId, datei }));
+    const j = await r.json() as { hinweise: string[]; zeilen: { status: string }[] };
+    expect(r.status, JSON.stringify(j)).toBe(200);
+    return j;
+  };
+  it('Eingang passt zu einer offenen Rechnung bzw. zu einer offenen Forderung des 0-Punkts → Hinweis „dort bezahlt setzen“ (gebucht wird trotzdem nur der Umsatz)', async () => {
+    const v = await vorschau(ugKonto, IBAN_UG, [{ betrag: '714.00', datum: tag(-1), name: 'Offen Beispiel GmbH', zweck: ['RE-2026-0050'] }]);
+    expect(v.zeilen[0].status).toBe('neu');
+    expect(v.hinweise.join(' ')).toMatch(/offenen Rechnung RE-2026-0050.*„bezahlt“/);
+    await db.saveJson('business-eroeffnung', { eintraege: [{ id: 'er-hinweis-1', firma: 'kdv', stichtag: tag(-60), kontostand: 0, forderungen: [{ name: 'Altkunde Beispiel GmbH', betrag: 333, rechnungsnr: 'AR-2026-77' }], gesetztVon: 'pa', gesetztAm: new Date().toISOString() }] });
+    const w = await vorschau(kdvKonto, IBAN_KDV, [{ betrag: '333.00', datum: tag(-1), name: 'ALTKUNDE BEISPIEL', zweck: ['Ausgleich AR-2026-77'] }]);
+    expect(w.hinweise.join(' ')).toMatch(/offenen Forderung des 0-Punkts.*„bezahlt am“/);
+    await db.saveJson('business-eroeffnung', { eintraege: [] });
+  });
+  it('erster Saldo einer Gesellschaft: Übergang zum Konten-Register und Konten ohne Stand werden genannt', async () => {
+    await konten.POST!(anfrage('/api/finanzen/konten', 'pa', { ops: [{ op: 'konto-neu', konto: { name: 'Tagesgeld KDV', art: 'tagesgeld', ort: 'kdv' } }] }));
+    const v = await vorschau(kdvKonto, IBAN_KDV, [{ betrag: '5.00', dbit: true, datum: tag(-1), name: 'Gebühr Beispiel', zweck: ['Entgelt'] }], { betrag: '995.00', datum: tag(-1) });
+    const t = v.hinweise.join(' ');
+    expect(t).toMatch(/führt das Konten-Register den Kontostand/);
+    expect(t).toMatch(/1 weiteres Konto .* noch keinen Stand/);
+  });
+  it('erster Privat-Saldo: die eigenen Kontostände der Finanzplanung, die dann nicht mehr zählen, werden genannt', async () => {
+    await db.saveJson('finanzen-plan--h-n', { posten: [{ id: 'po-tagesgeld', art: 'konto', einheit: 'privat', name: 'Tagesgeld', betrag: 2000 }] });
+    const iban = testIban('10010010', '987650002');
+    const r = await konten.POST!(anfrage('/api/finanzen/konten', 'pa', { ops: [{ op: 'konto-neu', konto: { name: 'Girokonto Zwei', art: 'giro', ort: 'privat', person: 'pa', iban } }] }));
+    const id = (await r.json()).neu[0] as string;
+    const v = await vorschau(id, iban, [{ betrag: '1.00', dbit: true, datum: tag(-1), name: 'Kiosk Beispiel', zweck: ['Zeitung'] }], { betrag: '100.00', datum: tag(-1) });
+    expect(v.hinweise.join(' ')).toMatch(/einem eigenen Kontostand \(zusammen 2\.000,00 €\)/);
   });
 });
 
