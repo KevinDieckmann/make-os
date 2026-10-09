@@ -26,8 +26,7 @@ delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 vi.mock('@/lib/zeit', async orig => ({ ...(await orig<typeof import('@/lib/zeit')>()), localDay: () => '2026-10-05' }));
 vi.mock('@/lib/kalender/zoe-sicht-server', () => ({
   termineFuerZoe: async (person: string) => ({
-    stand: null, quelle: 'icloud', kemarisStand: null, einstellungen: { space: { 'Arbeit': 'business', 'Privat Kevin': 'privat', 'Privat Malin': 'privat' } },
-    kemaris: [{ id: 'm365-0', titel: 'Spiegeltermin', start: '2026-10-06T09:00:00', ende: '2026-10-06T10:00:00', ganztags: false, kalender: 'KEMARIS', wer: 'kevin' }],
+    stand: null, quelle: 'icloud', einstellungen: { space: { 'Arbeit': 'business', 'Privat Kevin': 'privat', 'Privat Malin': 'privat' } },
     termine: [
       { id: 'u-kunde', titel: 'Kundentermin Beispiel', start: '2026-10-07T10:00:00', ende: '2026-10-07T11:00:00', ganztags: false, kalender: 'Arbeit', wer: 'kevin', bezug: { kontaktId: 'k-1', firmaId: 'f-1' } },
       { id: 'u-kino', titel: 'Kino zu zweit', start: '2026-10-09T20:00:00', ende: '2026-10-09T22:00:00', ganztags: false, kalender: 'Privat Kevin', wer: 'beide' },

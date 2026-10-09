@@ -14,7 +14,9 @@ import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { askJson } from '@/lib/anthropic';
-import { nameVon, speicherFuer } from '@/lib/zoe/raum';
+import { speicherFuer } from '@/lib/zoe/raum';
+import { vornameVon } from '@/lib/zoe/grundauftrag';
+import { absenderLaden, absenderZeilen } from '@/lib/crm/absender';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { gatherBrain } from '@/lib/brain';
@@ -102,14 +104,15 @@ export async function POST(req: Request) {
   const wd = WD[new Date(`${today}T12:00:00`).getDay()];
 
   const g = await gather(today, person);
-  const name = nameVon(person);
+  // Name aus dem Konto der auslösenden Person (09.10.: nie mehr ein fester Name im Prompt).
+  const name = await vornameVon(person);
   const eigeneAngaben = await eigenerGesundheitsKontext(person);
 
   // ───────────────────────────────── MORGEN-LOOP ─────────────────────────────
   if (loop === 'morgen') {
     const vit = g.vitals;
     const system = [
-      'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den MORGEN-LOOP: eine ruhige, konkrete Tagesausrichtung.',
+      `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${name}. Erzeuge den MORGEN-LOOP: eine ruhige, konkrete Tagesausrichtung.`,
       `Die Person heute: ${name}. ${nordsternSatz(g.nordstern)}`,
       KONTEXT_REGEL,
       'Regeln: max 3 echte Prioritäten für heute (nicht mehr — Überladung ist das Problem). Berücksichtige Recovery UND die echten Termine (freie Zeit realistisch einschätzen). Wenn Recovery niedrig oder der Tag voll ist: weniger vornehmen, das offen sagen.',
@@ -128,7 +131,7 @@ export async function POST(req: Request) {
       // Ehrlich über die Datenlage: der Kalender-Cache wird nur beim Öffnen von
       // /os/kalender erneuert. Ohne diesen Hinweis behauptet der Loop „dein Tag
       // ist frei", obwohl in Wahrheit nur der Cache alt ist.
-      `TERMINE HEUTE (${g.todaysEvents.length})${g.calStale ? ` — ACHTUNG: Kalender-Stand ist ${g.calAgeH} Std. alt, also womöglich unvollständig. Sag das offen und rate Kevin, /os/kalender einmal zu öffnen, statt den Tag als frei zu bezeichnen.` : ''}:`,
+      `TERMINE HEUTE (${g.todaysEvents.length})${g.calStale ? ` — ACHTUNG: Kalender-Stand ist ${g.calAgeH} Std. alt, also womöglich unvollständig. Sag das offen und rate ${name}, /os/kalender einmal zu öffnen, statt den Tag als frei zu bezeichnen.` : ''}:`,
       g.todaysEvents.map(fmtEvent).join('\n') || (g.calStale ? '(nichts im veralteten Stand — nicht als „frei" werten)' : '(keine)'),
       '',
       `ÜBERFÄLLIG (${g.overdue.length}):`, g.overdue.map(fmtTask).join('\n') || '(keine)',
@@ -139,7 +142,7 @@ export async function POST(req: Request) {
       // Verbindung zum Index: der Morgen soll auf die schwächste Säule einzahlen.
       g.perf.index != null
         ? `PERFORMANCE-INDEX: ${g.perf.index} (${g.perf.label}), Datenbasis ${Math.round(g.perf.abdeckung * 100)}%. Schwächste tragende Säule: ${g.perf.hebel ?? '—'}. Wenn Recovery und Termine es hergeben, lass EINE Priorität auf diese Säule einzahlen — sonst lass es bewusst weg und sag warum.`
-        : 'PERFORMANCE-INDEX: noch nicht berechenbar — sag Kevin, was ihm dafür fehlt.',
+        : `PERFORMANCE-INDEX: noch nicht berechenbar — sag ${name}, was dafür fehlt.`,
     ].join('\n');
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000,
@@ -160,14 +163,14 @@ export async function POST(req: Request) {
     const letzteSache = (letzte?.payload as { eineSache?: string } | undefined)?.eineSache;
 
     const system = [
-      'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.',
+      `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${name}. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.`,
       nordsternSatz(g.nordstern),
       'Du bekommst FERTIGE Kennzahlen — rechne nicht neu, erfinde nichts. Sei ehrlich, auch wenn der Kurs nicht reicht.',
       'Verknüpfe die Bereiche: Was bedeutet die Pipeline für den Umsatz? Was blockiert die Ausführung? Wo ist der eine Hebel?',
       letzteSache
         ? `RÜCKKOPPLUNG — letzte Woche hast DU als „die eine Sache" benannt: „${letzteSache}". Prüfe an den Daten, ob das passiert ist, und sag es offen im Feld "vorwocheStatus". Wenn es NICHT passiert ist: wiederhole die Empfehlung NICHT wortgleich, sondern brich sie auf eine kleinere, konkretere Teilhandlung herunter (z. B. „Nachricht an Firma X entwerfen" statt „kontaktieren") und benenne, was die Hürde sein könnte.`
         : 'Es gibt noch keinen Vorwochen-Vergleich — lass "vorwocheStatus" leer.',
-      'Antworte NUR als JSON: {"lage":"<2-3 Sätze ehrliche Wochenlage>","vorwocheStatus":"<wurde die letzte „eine Sache" erledigt? ehrlich, sonst leer>","fortschritt":["<was diese Woche wirklich vorwärts ging>"],"stillstand":["<wo nichts passiert ist und warum das teuer ist>"],"eineSache":"<DIE eine Sache, die nächste Woche zählt — klein und konkret genug, dass sie wirklich passiert>","fokus":[{"titel":"<konkreter Fokus>","warum":"<1 Satz>"}],"schutz":"<1 Satz: was Kevin sich nächste Woche freihalten muss>"}',
+      'Antworte NUR als JSON: {"lage":"<2-3 Sätze ehrliche Wochenlage>","vorwocheStatus":"<wurde die letzte „eine Sache" erledigt? ehrlich, sonst leer>","fortschritt":["<was diese Woche wirklich vorwärts ging>"],"stillstand":["<wo nichts passiert ist und warum das teuer ist>"],"eineSache":"<DIE eine Sache, die nächste Woche zählt — klein und konkret genug, dass sie wirklich passiert>","fokus":[{"titel":"<konkreter Fokus>","warum":"<1 Satz>"}],"schutz":"<1 Satz: was die Person sich nächste Woche freihalten muss>"}',
     ].join('\n');
 
     const user = [
@@ -201,15 +204,15 @@ export async function POST(req: Request) {
 
   // ──────────────────────────────── RÜCKBLICK-LOOP ───────────────────────────
   // Selbst-Verbesserung: schaut auf die Historie der Loops und fragt, was das
-  // System besser machen muss (nicht Kevin — das System).
+  // System besser machen muss (nicht die Person — das System).
   if (loop === 'rueckblick') {
     if (g.loopLog.length < 2) {
       return NextResponse.json({ loop, hinweis: 'Noch zu wenig Historie — lass Morgen-/Wochen-Loop erst ein paar Mal laufen, dann kann ich Muster erkennen.', anzahl: g.loopLog.length });
     }
     const system = [
-      'Du bist ZOE im Selbst-Rückblick. Du siehst die Historie deiner eigenen Loop-Ergebnisse für Kevin.',
+      `Du bist ZOE im Selbst-Rückblick. Du siehst die Historie deiner eigenen Loop-Ergebnisse für ${name}.`,
       'Frage dich ehrlich: Welche Empfehlungen wiederholen sich (= wurden nie umgesetzt)? Wo hat das System danebengelegen? Was fehlt dir an Daten, um besser zu werden?',
-      'Kritisiere DICH und das System, nicht Kevin. Konkret, keine Floskeln.',
+      `Kritisiere DICH und das System, nicht ${name}. Konkret, keine Floskeln.`,
       'Antworte NUR als JSON: {"muster":["<wiederkehrendes Muster in den Empfehlungen>"],"blindeFlecken":["<was dem System an Daten/Fähigkeit fehlt>"],"verbesserungen":[{"was":"<konkrete Verbesserung am System>","warum":"<1 Satz>"}]}',
     ].join('\n');
     const user = g.loopLog.slice(-12).map(e => `[${e.ts.slice(0, 16)}] ${e.agent} — ${e.title}\n${JSON.stringify(e.payload).slice(0, 900)}`).join('\n\n');
@@ -241,7 +244,7 @@ export async function POST(req: Request) {
     const msBiz = (msF?.meilensteine ?? []).filter(x => x.bereich === 'business' && meilensteinSpace(x) === 'business' && !x.erledigt);
     const msGes = (msF?.meilensteine ?? []).filter(x => x.bereich === 'gesundheit' && !x.erledigt);
     const formatJson = 'Antworte NUR als JSON: {"lage":"<2-3 Sätze ehrliche Lage>","punkte":[{"titel":"<konkret>","warum":"<1 Satz>"}],"eineSache":"<DIE eine Handlung — klein genug, dass sie wirklich passiert>","warnung":"<optional, sonst leer>"} — maximal 4 punkte.';
-    const kopf = 'Du bist ZOE, Kevins Chief of Staff. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.';
+    const kopf = `Du bist ZOE, Chief of Staff von ${name}. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.`;
 
     // Gesundheits-Loop nur mit Einwilligung (b) — sonst geht kein Wert an die KI (Art. 9, 05.10.).
     if (loop === 'gesundheit' && !g.gesundheitFrei) return NextResponse.json({ error: 'Der Gesundheits-Loop braucht deine Einwilligung „An die KI geben“ (System › Datenschutz).', loop, einwilligung: 'gesundheit' });
@@ -276,15 +279,17 @@ export async function POST(req: Request) {
     } else if (loop === 'marketing') {
       label = 'Marketing-Loop';
       const contentLaeufe = g.log.filter(l => l.agent === 'content').slice(0, 3);
+      // 09.10.: keine feste Marke, Zielgruppe oder Sprachregel mehr — Produkte aus dem Katalog, Sprachregeln in den Brain-Regeln.
+      const [absender, icp] = await Promise.all([absenderLaden(person), loadJson<{ icp?: string }>('prospects').then(f => (f?.icp ?? '').trim()).catch(() => '')]);
       system = [kopf,
-        'MARKETING-LOOP: Sichtbarkeit für KEMARIS/POINCAP aufbauen. punkte = konkrete Content-/Sichtbarkeits-Ideen (Format + Thema).',
-        'SPRACHREGELN: NIEMALS Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting. Stattdessen wo passend: Steuerungslücke, Echtzeit-Finanzbild, Kapitalstau, Souveränität, Capital Readiness.',
+        'MARKETING-LOOP: Sichtbarkeit für die eigenen Gesellschaften und Produkte aufbauen. punkte = konkrete Content-/Sichtbarkeits-Ideen (Format + Thema).',
+        ...absenderZeilen(absender).slice(1),
         formatJson].join('\n');
       user = [
         `Stichtag ${wd}, ${today}.`,
         `SICHTBARKEITS-MEILENSTEINE: ${msBiz.filter(x => /podcast|magazin|launch|presse|landing/i.test(x.titel)).map(x => `${x.titel} (${x.fortschritt}%${x.faellig ? `, ${x.faellig}` : x.zeitfenster ? `, ${x.zeitfenster}` : ''})`).join(' · ') || 'keine gepflegt'}`,
         `LETZTE CONTENT-LÄUFE: ${contentLaeufe.map(l => l.title).join(' · ') || 'keine — der Content-Agent liegt brach'}`,
-        `ZIELGRUPPE: inhaber-/familiengeführter Mittelstand DACH (50–500 MA), Entscheider GF/CFO/Leitung Controlling. Kanäle bisher: LinkedIn, Landingpage F&F.`,
+        icp ? `ZIELGRUPPE (ideales Kundenprofil aus Prospecting — Daten): <daten quelle="kundenprofil">${icp.slice(0, 900)}</daten>` : 'ZIELGRUPPE: kein Kundenprofil hinterlegt — allgemein bleiben.',
         // 08.10. abends: die frühere Zeile „KONTEXT: <Launch-Termin> · Volllaunch …“ ist weg — sie stammte aus der gelöschten festen
         // Meilenstein-Liste (fester Rückfall-Termin). Launch-Termine stehen jetzt nur noch, wenn sie als Meilenstein gepflegt sind
         // (Zeile SICHTBARKEITS-MEILENSTEINE oben, aus dem Bestand) — ohne Meilensteine steht im Kontext nichts Erfundenes.
@@ -294,7 +299,7 @@ export async function POST(req: Request) {
       const blocked = g.open.filter(t => (t as { status?: string }).status === 'blocked');
       const delegiert = g.open.filter(t => /— Delegiert an /.test((t as { description?: string }).description ?? ''));
       const wochenMin = wplanF.reduce((s, b2) => s + (b2.dauerMin || 0), 0);
-      system = [kopf, `OPERATIONS-LOOP: Ausführung entstopfen und Kevin entlasten. punkte = Entlastungs-Moves (was, und WER es übernimmt — Team: ${delegierbar(await teamFuerAnfrage(req)).map(t => t.kurz).join(', ')}).`, formatJson].join('\n');
+      system = [kopf, `OPERATIONS-LOOP: Ausführung entstopfen und ${name} entlasten. punkte = Entlastungs-Moves (was, und WER es übernimmt — Team: ${delegierbar(await teamFuerAnfrage(req)).map(t => t.kurz).join(', ')}).`, formatJson].join('\n');
       user = [
         `Stichtag ${wd}, ${today}.`,
         `AUSFÜHRUNG: ${g.open.length} offen · ${g.overdue.length} überfällig · ${g.critical.length} kritisch · ${blocked.length} blockiert · ${delegiert.length} bereits delegiert.`,

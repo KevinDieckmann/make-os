@@ -400,7 +400,7 @@ export function WissenView() {
 
   // Der Inhalt des gewählten Reiters — EINE Stelle für breit und schmal (Praxis-Fund 04.10.: am Handy zeigten „Regeln“ und
   // „Inbox“ die Stöbern-Liste, weil der schmale Zweig nur zwei Fälle kannte).
-  const reiterInhalt = modus === 'fragen' ? chatKarte : modus === 'stoebern' ? listeKarte : <><Karte i={0}>{umschalter}</Karte>{modus === 'regeln' ? <Regeln ich={stand?.person ?? 'kevin'} /> : <Inbox ich={stand?.person ?? 'kevin'} oeffne={oeffne} />}</>;
+  const reiterInhalt = modus === 'fragen' ? chatKarte : modus === 'stoebern' ? listeKarte : <><Karte i={0}>{umschalter}</Karte>{modus === 'regeln' ? <Regeln ich={stand?.person ?? ''} /> : <Inbox ich={stand?.person ?? ''} oeffne={oeffne} />}</>;
   return (
     <Seite
       titel="Brain"

@@ -180,7 +180,7 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
         </div>
         <div className="nur-tastatur" style={{ ...kleinText, marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <span><span className="taste">1</span>–<span className="taste">4</span> Kreis A–D</span>
-          <span><span className="taste">k</span> <span className="taste">m</span> <span className="taste">b</span> Kevin · Malin · Beide</span>
+          <span>{TEAM.map(m => <span key={m.id}><span className="taste">{m.name.charAt(0).toLowerCase()}</span> </span>)}<span className="taste">b</span> {[...TEAM.map(m => m.name), 'Beide'].join(' · ')}</span>
           <span><span className="taste">a</span> Sie/Du</span>
           <span><span className="taste">s</span> überspringen</span>
           <span><span className="taste">z</span> zurück</span>

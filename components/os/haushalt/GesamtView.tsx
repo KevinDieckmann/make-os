@@ -42,7 +42,7 @@ export function GesamtView() {
       <Karte i={1} ton={b.deckung === null ? undefined : b.deckung >= 100 ? LEUCHT.gut : LEUCHT.kritisch}>
         <Ueberschrift farbe={LEUCHT.geld}>Was die Selbstständigkeit mindestens bringen muss</Ueberschrift>
         <Stufe n="1" href={WEG.privat('fixkosten')} titel="Privater Sockel" wert={`${eur(b.sockel, false)} / Monat`} quelle="Fixkosten + Kreditraten, 12 volle Monate · Finanzen › Privat › Konten & Buchungen › Fixkosten" />
-        <Stufe n="−" href={WEG.privat('einnahmen')} titel="Planbares Einkommen ohne Kevins Entnahme" wert={`${eur(b.planbarOhneEntnahme, false)} / Monat`} quelle="Gehalt & andere planbare Eingänge, Schnitt der letzten 3 vollen Monate" />
+        <Stufe n="−" href={WEG.privat('einnahmen')} titel="Planbares Einkommen ohne Entnahme aus dem Geschäft" wert={`${eur(b.planbarOhneEntnahme, false)} / Monat`} quelle="Gehalt & andere planbare Eingänge, Schnitt der letzten 3 vollen Monate" />
         <Stufe n="=" href={WEG.grundlage()} titel="Nötige Entnahme aus der Selbstständigkeit" wert={`${eur(b.noetigeEntnahme, false)} / Monat`} quelle={`tatsächlich entnommen: ${eur(b.entnahmeIst, false)} / Monat (3 volle Monate)`} farbe={b.entnahmeIst >= b.noetigeEntnahme ? LEUCHT.gut : LEUCHT.achtung} stark />
         <Stufe n="÷" titel={`Steuerrücklage ${q === null ? '— bitte als Annahme setzen' : `${q} % (Annahme)`}`} wert={b.noetigerGewinn === null ? '–' : `${eur(b.noetigerGewinn, false)} / Monat`} quelle="nötiger Gewinn vor Steuern — pauschal, keine Steuerberechnung" />
         <Stufe n="+" href={WEG.planposten()} titel="Betriebs-Fixkosten" wert={b.betriebsFix === null ? '–' : `${eur(b.betriebsFix, false)} / Monat`} quelle={business ? `brutto, aus der Grundlage (Malins altes Cockpit, Stand ${datumDe(business.stand)})` : 'keine Grundlage geladen'} />
@@ -56,7 +56,7 @@ export function GesamtView() {
           </label>
           <Knopf leise onClick={async () => { const n = quote.trim() === '' ? null : Number(quote.replace(',', '.')); const d = await aktion({ aktion: 'steuerquote', steuerquote: n }); if (d?.ok) { melde('ok', 'Annahme gespeichert'); await laden(); } }}>Übernehmen</Knopf>
         </div>
-        <Hinweis>Vereinfachung mit Absicht: Die Steuerrücklage ist ein pauschaler Anteil, kein Steuerbescheid. Die Betriebs-Fixkosten stammen aus Malins altem Cockpit (brutto) und sind nur so aktuell wie dessen letzter Export. Kein Sparziel eingerechnet — der Mindestumsatz deckt das Leben, nicht mehr.</Hinweis>
+        <Hinweis>Vereinfachung mit Absicht: Die Steuerrücklage ist ein pauschaler Anteil, kein Steuerbescheid. Die Betriebs-Fixkosten stammen aus dem früheren Finanz-Cockpit (Altsystem, brutto) und sind nur so aktuell wie dessen letzter Export. Kein Sparziel eingerechnet — der Mindestumsatz deckt das Leben, nicht mehr.</Hinweis>
       </Karte>
       <Karte i={2}>
         <Ueberschrift>Wo die Zahlen herkommen</Ueberschrift>

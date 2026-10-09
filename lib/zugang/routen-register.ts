@@ -99,7 +99,6 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'kalender/sicherung': r('GET,POST', 'haushalt', 'Sicherung/Wiederherstellung des Haushalts-Kalenders (Grabsteine, S1).'),
   'kalender/spiegel': r('GET,POST', 'haushalt', 'Spiegel-Termine des Haushalts; Löschen nur von Hand (S1).'),
   'kalender/termin': r('POST,PATCH,DELETE', 'haushalt', 'Termine im Haushalts-Kalender schreiben (der einzige Schreibweg).'),
-  'kemaris-calendar': r('GET', 'offen', 'Liefert seit K5 nur einen festen Leerstand („nicht angebunden“), liest und schreibt nichts.'),
   'planung/bloecke': r('GET', 'haushalt', 'Planungsblöcke = Termine im Haushalts-Kalender.'),
   'planung/uebernahme': r('GET,POST', 'haushalt', 'Übernahme des alten Wochenplans in den Kalender; Ausführen nur von Hand (S1).'),
   'state/kalender-einstellungen': r('GET,PUT', 'haushalt', 'Kalender-Zuordnung des Haushalts.'),
@@ -400,4 +399,6 @@ export const ENTFERNTE_ROUTEN = ['apple-calendar/create', 'apple-calendar/termin
   // Postfach → Space-Zuordnung der alten Inbox (jetzt: Bereich je Postfach im Register `postfaecher--<person>`).
   'state/spaces',
   // WHOOP (08.10.): der gemeinsame Abgleich des Inhabers (API v1) — ersetzt durch whoop/* je Person.
-  'whoop/sync'] as const;
+  'whoop/sync',
+  // Plattform neutral (09.10.): fester Leerstand einer M365-Quelle einer Beteiligung (seit K5 ohne Daten, ohne Aufrufer).
+  'kemaris-calendar'] as const;

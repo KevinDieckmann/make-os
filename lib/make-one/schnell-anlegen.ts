@@ -97,8 +97,8 @@ export function zielVorschlag(rest: string, ziele: readonly SchnellZiel[]): Schn
 
 /** Eine Person mit Konto für „@Name“ — aus dem Team (`usePersonen`: Vorname, Kurzname, Speichername). */
 export interface SchnellPerson { speicher: string; namen: readonly string[] }
-/** Rückfall, solange das Team nicht geladen ist — dieselben Speichernamen wie `usePersonen` (Regel 11: keine Namen im Code). */
-const STANDARD_PERSONEN: readonly SchnellPerson[] = [{ speicher: 'kevin', namen: ['kevin'] }, { speicher: 'malin', namen: ['malin'] }];
+/** Solange das Team nicht geladen ist, erkennt „@Name“ niemanden (09.10.: kein Rückfall auf feste Namen — Regel 11). */
+const STANDARD_PERSONEN: readonly SchnellPerson[] = [];
 const ALLE_WOERTER = new Set(['beide', 'alle']);
 
 /** Umlaut-tolerante Schlüssel eines Namens: „Jürgen“ → { juergen, jurgen }. */

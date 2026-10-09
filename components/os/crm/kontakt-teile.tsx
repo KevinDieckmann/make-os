@@ -195,12 +195,12 @@ function GeburtstagFeld({ k, setze }: { k: Kontakt; setze: Setze }) {
 }
 
 /**
- * LinkedIn an der Person (25.09.): Profil, Stand je Profil (Kevin, Malin) und
+ * LinkedIn an der Person (25.09.): Profil, Stand je Profil (je Person des Teams) und
  * der nächste Schritt für das eigene Profil — dieselben Schritte wie in der
  * Vernetzen-Runde (/api/crm/netzwerk). Versendet wird nichts.
  */
 export function LinkedInTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
-  const ich = api.ich ?? 'kevin';
+  const ich = api.ich ?? ''; // eigene Person aus der Server-Antwort — bis sie da ist, keine (kein fester Rückfall)
   const heute = api.crm?.heute ?? localDay();
   const profil = profilAdresse(k.linkedin);
   const [url, setUrl] = useState('');

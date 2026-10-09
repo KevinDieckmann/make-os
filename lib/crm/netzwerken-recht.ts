@@ -1,5 +1,5 @@
 // ─── Netzwerken — Recht an einer Stelle (rein, client-sicher, getestet; 03.10., Paket „netz-recht“) ───
-// Kevins Entscheidung: Kontakte, die Kevin/Malin als Interim CSO/Head of Sales für einen Kunden auf einer Veranstaltung kennenlernen,
+// Entscheidung des Inhabers (03.10.): Kontakte, die wir als Interim CSO/Head of Sales für einen Kunden auf einer Veranstaltung kennenlernen,
 // „gehören immer auch uns“. MAKE ist EIGENER Verantwortlicher (Art. 6 Abs. 1 lit. f DSGVO, Interessenabwägung `LIA_NETZWERKEN`,
 // DATENSCHUTZ_NETZWERKEN.md), es gibt KEINE Sperre für die eigene Akquise. Die Weitergabe an den Kunden ist eine ÜBERMITTLUNG an einen
 // Dritten (keine Auftragsverarbeitung): Transparenz (Art. 13 — Empfänger nennen), Protokoll mit Empfänger am Event, Auskunft (Art. 15 —
@@ -15,7 +15,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event, Firma } from './typen';
-import { UG_NAME } from '@/lib/einheiten';
+import { VERANTWORTLICHER_FEHLT } from '@/lib/datenschutz/einrichtung';
 
 // ── Festwerte ───────────────────────────────────────────────────────────────
 
@@ -27,25 +27,24 @@ export const DANKE_FRIST_TAGE = 14;
 export const INFO_FRIST_TAGE = 3;
 
 /**
- * Kontaktweg für Betroffene (Auskunft, Berichtigung, Löschung, Widerspruch) und die Seite mit den Hinweisen. Standard: MAKE.
- * Eine andere Instanz setzt `NEXT_PUBLIC_MAKE_DATENSCHUTZ_MAIL` / `NEXT_PUBLIC_MAKE_DATENSCHUTZ_SEITE` beim Bauen (Plattform-Regel:
- * Adressen kommen aus der Einrichtung) — die Literale stehen so da, damit Next sie beim Bauen einsetzt.
+ * Kontaktweg für Betroffene (Auskunft, Berichtigung, Löschung, Widerspruch) und die Seite mit den Hinweisen. Plattform-Regel: der
+ * Verantwortliche steht NIE fest im Code (08.10./09.10., Paket „neutral-rest“) — die Angaben kommen aus der Datenschutz-Einrichtung
+ * (System › Datenschutz, `verantwortlicherWirksam`) bzw. beim Bauen aus `NEXT_PUBLIC_MAKE_DATENSCHUTZ_MAIL` / `…_SEITE` (die Literale stehen
+ * so da, damit Next sie einsetzt). Fehlt beides, steht im Entwurf sichtbar `VERANTWORTLICHER_FEHLT` bzw. `KONTAKTWEG_FEHLT` und `fehlt: true`
+ * — die Oberfläche zeigt dazu einen Hinweis; nie ein Name oder eine Adresse aus dem Code.
  */
-export const DATENSCHUTZ_MAIL_STANDARD = 'hello@makeinnovation.de';
-export const DATENSCHUTZ_SEITE_STANDARD = 'makeinnovation.de/datenschutz#kontakte';
-export interface DatenschutzAngaben { mail: string; seite: string; verantwortlich: string }
+export const KONTAKTWEG_FEHLT = '[Kontaktweg fehlt — unter System › Datenschutz eintragen]';
+export interface DatenschutzAngaben { mail: string; seite: string; verantwortlich: string; /** Nichts eingerichtet: Verantwortlicher und/oder Kontaktweg fehlen. */ fehlt?: boolean }
 export function datenschutzAngaben(): DatenschutzAngaben {
-  return {
-    mail: process.env.NEXT_PUBLIC_MAKE_DATENSCHUTZ_MAIL || DATENSCHUTZ_MAIL_STANDARD,
-    seite: process.env.NEXT_PUBLIC_MAKE_DATENSCHUTZ_SEITE || DATENSCHUTZ_SEITE_STANDARD,
-    verantwortlich: UG_NAME,
-  };
+  const mail = process.env.NEXT_PUBLIC_MAKE_DATENSCHUTZ_MAIL || '';
+  const seite = process.env.NEXT_PUBLIC_MAKE_DATENSCHUTZ_SEITE || '';
+  return { mail, seite, verantwortlich: VERANTWORTLICHER_FEHLT, fehlt: true };
 }
 
 /**
  * Die Angaben aus der Datenschutz-Einrichtung (05.10., EINE Quelle — System › Datenschutz): Verantwortlicher = Name/Firma, Kontaktweg =
- * Datenschutzbeauftragter, sonst die Kontakt-Mail; Seite = Datenschutzhinweis der Einrichtung. Ohne Einrichtung der Standard oben (Umgebung
- * bzw. MAKE) — Kunden-Instanzen brauchen dafür KEINE Build-Variable mehr (der Server liest die Einrichtung zur Laufzeit).
+ * Datenschutzbeauftragter, sonst die Kontakt-Mail; Seite = Datenschutzhinweis der Einrichtung. Ohne Einrichtung (`v` leer): „fehlt“ —
+ * Kunden-Instanzen brauchen dafür KEINE Build-Variable (der Server liest die Einrichtung zur Laufzeit).
  */
 export function datenschutzAngabenAus(v: { name: string; mail: string; dsb?: { mail?: string }; seite?: string } | null | undefined): DatenschutzAngaben {
   const basis = datenschutzAngaben();
@@ -71,8 +70,9 @@ export function datenschutzHinweisText(o: { du: boolean; kunde?: string; angaben
   const a = o.angaben ?? datenschutzAngaben();
   const dein = o.du ? 'deine' : 'Ihre', deiner = o.du ? 'deiner' : 'Ihrer', dir = o.du ? 'dir' : 'Ihnen', dein2 = o.du ? 'deiner' : 'Ihrer';
   const erste = o.quelle === 'bestand' ? `Ich verarbeite ${dein} Kontaktdaten, um mit ${dir} in Verbindung zu bleiben` : `Ich habe mir ${dein} Kontaktdaten von ${deiner} Visitenkarte notiert, um mit ${dir} in Verbindung zu bleiben`;
+  const weg = [a.mail, a.seite].filter(Boolean).join(' · ') || KONTAKTWEG_FEHLT;
   const zeilen = [
-    `Datenschutz: ${erste} (Art. 6 Abs. 1 lit. f DSGVO, Verantwortlich: ${a.verantwortlich}). Werbung sende ich nur mit ${dein2} Einwilligung. Auskunft, Berichtigung, Löschung, Widerspruch: ${a.mail} · ${a.seite}`,
+    `Datenschutz: ${erste} (Art. 6 Abs. 1 lit. f DSGVO, Verantwortlich: ${a.verantwortlich}). Werbung sende ich nur mit ${dein2} Einwilligung. Auskunft, Berichtigung, Löschung, Widerspruch: ${weg}`,
   ];
   const kunde = (o.kunde ?? '').replace(/\s+/g, ' ').trim();
   if (kunde) zeilen.push(`Wir waren für ${kunde} auf der Veranstaltung und geben ${dein} Kontaktdaten an ${kunde} weiter.`);

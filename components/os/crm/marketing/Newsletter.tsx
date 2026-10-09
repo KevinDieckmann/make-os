@@ -167,7 +167,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
-          {!a.stimme && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Absender im Versandwerkzeug — Kevin, Malin oder die Marke?</span>}
+          {!a.stimme && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Absender im Versandwerkzeug — {[...TEAM.map(m => m.name), 'die Marke'].join(', ')}?</span>}
         </div>
       </Feldzeile>
       <Feldzeile label="Freigabe">

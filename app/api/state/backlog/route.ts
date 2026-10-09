@@ -8,7 +8,7 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
-import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { SEED, blockAus, mitBlock, type BacklogItem } from '@/lib/make-one/backlog-data';
 import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   // Erststart: mit dem, was aus Audit/Review/Gesprächen bekannt ist — nur ANGEZEIGT. Ein lesender GET schreibt nicht
   // (05.10., Routen-Register): gespeichert wird der Startbestand mit dem ersten PUT/POST (POST legt ihn selbst an).
   if (!file || !Array.isArray(file.items) || !file.items.length) return NextResponse.json({ items: seeded(), startbestand: true });
-  return NextResponse.json({ items: file.items });
+  return NextResponse.json({ items: file.items.map(mitBlock) });
 }
 
 export async function PUT(req: Request) {
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     kategorie: (['anbindung', 'agent', 'qualitaet', 'idee'] as const).includes(body.kategorie as never) ? body.kategorie! : 'idee',
     status: (['offen', 'laufend', 'erledigt'] as const).includes(body.status as never) ? body.status! : 'offen',
     prio: ([1, 2, 3] as const).includes(body.prio as never) ? body.prio! : 2,
-    block: (['frei', 'kevin', 'extern'] as const).includes(body.block as never) ? body.block! : 'frei',
+    block: blockAus(body.block),
     brauche: body.brauche?.trim() || undefined,
     quelle: body.quelle?.trim() || undefined,
     phase: body.phase?.trim() || undefined,

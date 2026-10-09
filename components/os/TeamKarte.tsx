@@ -1,10 +1,10 @@
 'use client';
 // ─── MAKE OS — Karte „Team“ (28.09., U4) ────────────────────────────────────
-// Hier wird das Team gepflegt: anlegen, ändern, deaktivieren. Kevin und Malin
+// Hier wird das Team gepflegt: anlegen, ändern, deaktivieren. Personen mit Konto
 // kommen fest aus den Konten (Name dort), Kurzwort/Rolle/Bereich hier. Das
 // Kurzwort ist ein Wort — es steht im Delegiert-Marker der Aufgaben.
-// Ist der Speicher leer, gelten Rollen-Platzhalter und die Karte bittet, das
-// Team einmal einzutragen. Keine automatische Übernahme aus alten Ständen.
+// Ist der Speicher leer, stehen nur die Konten mit ihrer Konto-Rolle da und die
+// Karte bittet, das Team einmal einzutragen (09.10.: keine Platzhalter mehr).
 // DSGVO-Nachtrag 04.10.: Deaktivieren erst nach Rückfrage — 30 Tage danach löscht der Morgenlauf die Kapazitätsdaten der
 // Person (lib/kapazitaet/aufraeumen.ts); bis dahin zeigt die Zeile den Löschtag und die Auskunft (Art. 15, nur der Inhaber).
 
@@ -87,7 +87,7 @@ export function TeamKarte({ i = 3 }: { i?: number }) {
     <Karte i={i}>
       <Ueberschrift farbe={LEUCHT.beziehung} rechts={pflegbar && !entwurf ? <Knopf leise onClick={() => { setEntwurf({ ...leer }); setMeldung(null); }}>+ Person</Knopf> : undefined}>Team — wer was trägt</Ueberschrift>
       {pflegbar && !ausDaten && (
-        <Leer>Team einmal eintragen: Noch stehen hier nur Rollen als Platzhalter. Leg die Personen mit Name, Kurzwort und Rolle an — Delegation, Inbox und ZOE nutzen dann die echten Namen.</Leer>
+        <Leer>Team einmal eintragen: Noch stehen hier nur die Konten mit ihrer Konto-Rolle. Rollen und weitere Personen mit Name, Kurzwort und Rolle anlegen — Delegation, Inbox und ZOE nutzen dann genau diese Angaben.</Leer>
       )}
       {entwurf && (
         <div style={{ display: 'grid', gap: 8, margin: '4px 0 14px' }}>
@@ -124,7 +124,7 @@ export function TeamKarte({ i = 3 }: { i?: number }) {
         ))}
       </Liste>
       {dialog}
-      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '10px 0 0' }}>Die Grundlage für jede Delegation. Kevin und Malin kommen aus den Konten; das Kurzwort steht im Marker „Delegiert an …“.</p>
+      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '10px 0 0' }}>Die Grundlage für jede Delegation. Wer ein Konto hat, kommt aus den Konten; das Kurzwort steht im Marker „Delegiert an …“.</p>
     </Karte>
   );
 }

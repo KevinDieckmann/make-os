@@ -18,7 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import { kanalStatus, type Kanal } from '@/lib/crm/recht';
 import { pruefeText } from '@/lib/finanzen/chef/pruefung';
-import { ARTEN, SIGNAL_TYPEN, type HeadId } from './prompt';
+import { ARTEN, SIGNAL_TYPEN, verbotenMuster, type HeadId } from './prompt';
 import { PLAYBOOKS } from '@/lib/crm/kampagnen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
@@ -79,7 +79,9 @@ export function normalisiere(roh: unknown, head: HeadId): Antwort {
   };
 }
 
-const VERBOTEN = /\b(dashboard|tool|disruption|reporting)\b|einfach zu bedienen/i;
+// Dieselbe Liste wie im Prompt (lib/heads/prompt.ts `verboteneWoerter`: allgemeiner Werbesprech + Instanz-Einstellung
+// MAKE_OS_VERBOTENE_WOERTER) — 09.10.: keine CI-Wortliste einer Firma mehr fest im Code.
+const VERBOTEN = verbotenMuster();
 const PLATZHALTER = /\[[^\]]{1,30}\]|\{\{|\bXXX\b|<(name|firma|vorname)>/i;
 const DU = /\b(du|dich|dir|dein|deine|deinen|deinem|deiner|euch|euer)\b/i;
 const SIE_FORMELL = /(?:^|[.!?]\s+|,\s*)?\b(Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer)\b/;

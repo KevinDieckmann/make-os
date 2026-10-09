@@ -11,7 +11,7 @@ import { hauptInhaber } from '@/lib/zugang/inhaber';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers, karteiZugang, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import {
-  teamZusammen, platzhalterTeam, KURZ_OK, FARBE_OK, TEAM_ID_OK, KONTO_PRAEFIX, kurzAus,
+  teamZusammen, ohneTeam, KURZ_OK, FARBE_OK, TEAM_ID_OK, KONTO_PRAEFIX, kurzAus,
   type TeamEintrag, type TeamKonto, type TeamPerson,
 } from './team-typen';
 import { neueKennung } from '@/lib/kennung';
@@ -39,34 +39,34 @@ export async function ladeTeamEintraege(haushalt: string): Promise<TeamEintrag[]
   return Array.isArray(f?.team) ? f.team : [];
 }
 
-/** Team + „kommt es aus den Daten?“ für einen Haushalt. `null` = kein Haushalt → nur Platzhalter. */
+/** Team + „kommt es aus den Daten?“ für einen Haushalt. `null` = kein Haushalt → kein Team. */
 export async function teamStand(haushalt: string | null): Promise<{ team: TeamPerson[]; ausDaten: boolean }> {
-  if (!haushalt || !HAUSHALT_OK.test(haushalt)) return { team: platzhalterTeam(), ausDaten: false };
+  if (!haushalt || !HAUSHALT_OK.test(haushalt)) return { team: ohneTeam(), ausDaten: false };
   const [konten, eintraege] = await Promise.all([kontenDesHaushalts(haushalt), ladeTeamEintraege(haushalt)]);
   const staende = new Map(mitStand(eintraege).map(e => [e.id, e.stand]));
   return teamZusammen(konten, eintraege, staende);
 }
 
-/** Das Team eines Haushalts (Konten + Speicher; Rückfall Platzhalter). */
+/** Das Team eines Haushalts (Konten + Speicher; ohne Speicher nur die Konten mit neutraler Rolle). */
 export async function teamVon(haushalt: string | null): Promise<TeamPerson[]> {
   return (await teamStand(haushalt)).team;
 }
 
-/** Nur lesen, nie danach schreiben: ein unlesbarer Bestand fällt für Prompts auf die Platzhalter zurück. */
+/** Nur lesen, nie danach schreiben: ein unlesbarer Bestand fällt für Prompts auf „kein Team“ zurück. */
 async function teamSicher(haushalt: string | null): Promise<TeamPerson[]> {
-  try { return await teamVon(haushalt); } catch { return platzhalterTeam(); }
+  try { return await teamVon(haushalt); } catch { return ohneTeam(); }
 }
 
-/** Team für eine Person: gehört sie zum Haushalt des Inhabers, dessen Team — sonst die Platzhalter. */
+/** Team für eine Person: gehört sie zum Haushalt des Inhabers, dessen Team — sonst keins. */
 export async function teamFuerPerson(person: string | null | undefined): Promise<TeamPerson[]> {
-  if (!(await personImHaushaltDesInhabers(person))) return platzhalterTeam();
+  if (!(await personImHaushaltDesInhabers(person))) return ohneTeam();
   return teamSicher(await haushaltDesInhabers());
 }
 
-/** Team für eine Anfrage (Sitzung oder Dienstweg): Haushalt des Inhabers, sonst die Platzhalter. */
+/** Team für eine Anfrage (Sitzung oder Dienstweg): Haushalt des Inhabers, sonst keins. */
 export async function teamFuerAnfrage(req: Request): Promise<TeamPerson[]> {
   const w = await karteiZugang(req).catch(() => null);
-  if (!w) return platzhalterTeam();
+  if (!w) return ohneTeam();
   return teamSicher(await haushaltDesInhabers());
 }
 

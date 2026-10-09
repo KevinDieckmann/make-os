@@ -253,12 +253,13 @@ describe('Wächter K5', () => {
     expect(existsSync(path.join(WURZEL, 'app/api/apple-calendar/create/route.ts'))).toBe(false);
     expect(existsSync(path.join(WURZEL, 'app/api/apple-calendar/termin/route.ts'))).toBe(false);
   });
-  it('keine KEMARIS-Beispieldaten mehr in Heute, Tagesplan, Energie, Signalen, Vorschlag (M365 kommt echt)', () => {
-    // Offen für Paket R-Z: der ZOE-Lesepfad (lib/kalender/zoe-sicht-server.ts, genutzt von Brain, plan_block, Vorschlag,
-    // Netzwerk) liest den Bestand noch als `kemaris` — die K5-Leser nehmen nur `termine`. Die Route liefert nichts mehr.
-    const leser = QUELLEN.filter(p => /\/api\/kemaris-calendar|'kemaris-calendar'\)/.test(lies(p)) && !['app/api/kemaris-calendar/route.ts', 'lib/brain.ts', 'lib/kalender/zoe-sicht-server.ts'].includes(p));
+  it('keine Beispieldaten einer festen M365-Quelle mehr — Route und Lesepfad sind weg (09.10., Plattform-Regel)', () => {
+    // Bis 09.10. lieferte eine feste Route einer Beteiligung einen Leerstand, und der ZOE-Lesepfad las ihren Bestand mit.
+    // Der Bestand selbst bleibt nur für Datenschutz (Register, Art. 17, Löschfristen) bekannt.
+    const leser = QUELLEN.filter(p => /\/api\/kemaris-calendar|loadJson[^(]*\('kemaris-calendar'\)/.test(lies(p)));
     expect(leser).toEqual([]);
-    expect(lies('app/api/kemaris-calendar/route.ts')).not.toMatch(/saveJson|EVENTS/);
+    expect(existsSync(path.join(WURZEL, 'app/api/kemaris-calendar/route.ts'))).toBe(false);
+    expect(lies('lib/kalender/zoe-sicht-server.ts')).not.toMatch(/kemaris|M365/i);
   });
   it('das Alt-Dashboard /calendar und sein Kontext sind weg (kein Abruf auf /anmelden)', () => {
     expect(QUELLEN.filter(p => /CalendarContext|useCalendar\b|MOCK_CALENDAR_EVENTS|components\/calendar\//.test(lies(p)) && !p.startsWith('app/layout.tsx'))).toEqual([]);

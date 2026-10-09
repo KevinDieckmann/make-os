@@ -70,7 +70,7 @@ export function Planung({ items, etappen, tu, onOeffnen }: { items: BacklogItem[
         <Ueberschrift farbe={LEUCHT.agenten} rechts={!form ? <Knopf leise onClick={() => setForm({ name: '' })}>+ Etappe</Knopf> : undefined}>Etappen</Ueberschrift>
         {form && (
           <div style={{ display: 'grid', gap: 8, marginBottom: 14, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-            <input autoFocus value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') void speichern(); }} placeholder="Name der Etappe, z. B. „Malin arbeitet täglich damit“" style={{ ...feld, fontSize: TYP.bedien }} />
+            <input autoFocus value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') void speichern(); }} placeholder="Name der Etappe, z. B. „Wir arbeiten täglich damit“" style={{ ...feld, fontSize: TYP.bedien }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <label style={{ display: 'grid', gap: 4 }}><span style={klein}>Zieldatum</span><input type="date" value={form.ziel ?? ''} onChange={e => setForm({ ...form, ziel: e.target.value })} style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '8px 12px', colorScheme: 'dark' }} /></label>
               <label style={{ display: 'grid', gap: 4, flex: '1 1 240px' }}><span style={klein}>Worum geht es? (optional)</span><input value={form.beschreibung ?? ''} onChange={e => setForm({ ...form, beschreibung: e.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px' }} /></label>
@@ -78,7 +78,7 @@ export function Planung({ items, etappen, tu, onOeffnen }: { items: BacklogItem[
             <div style={{ display: 'flex', gap: 8 }}><Knopf aus={!form.name?.trim()} onClick={() => void speichern()}>Speichern</Knopf><Knopf leise onClick={() => setForm(null)}>Abbrechen</Knopf></div>
           </div>
         )}
-        {!liste.length && !form && <div style={klein}>Noch keine Etappe. Eine Etappe bündelt Karten zu einem Ziel mit Datum, z. B. „Finanzen mit Malin fertig“ bis 10.10.</div>}
+        {!liste.length && !form && <div style={klein}>Noch keine Etappe. Eine Etappe bündelt Karten zu einem Ziel mit Datum, z. B. „Finanzen fertig“ bis 10.10.</div>}
         <div style={{ display: 'grid', gap: 12 }}>
           {liste.map(e => {
             const st = etappenStand(items, e);

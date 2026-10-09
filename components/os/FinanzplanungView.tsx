@@ -195,7 +195,7 @@ export function FinanzplanungView() {
           Finanzmeeting · 2× im Monat
         </Ueberschrift>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 4 }}>
-          <b style={{ color: C.ink }}>Rollen:</b> Malin bereitet vor, gleicht ab und prüft · Kevin entscheidet und gibt frei.
+          <b style={{ color: C.ink }}>Rollen:</b> Eine Person bereitet vor, gleicht ab und prüft · der Inhaber entscheidet und gibt frei.
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', columnGap: 24 }}>
           {uhrwerk.agenda.map(a => {

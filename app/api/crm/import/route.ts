@@ -7,7 +7,7 @@
 // Lücken. Von Hand gepflegte Felder, die abweichen, werden NICHT überschrieben,
 // sondern als Konflikte zurückgegeben und im Speicher `crm-import-konflikte`
 // abgelegt, bis jemand sie einzeln entscheidet (aktion 'konflikt').
-//   POST { csv, name } | { pfad } | {}     → schreiben
+//   POST { csv, name }                     → schreiben (nur Upload; ohne csv → 400)
 //   POST { …, vorschau: true }             → alles rechnen, nichts schreiben
 //   POST { aktion: 'konflikt', kontaktId, feld, wahl: 'online' | 'liste' }
 //   POST { aktion: 'rueckgaengig', laufId }→ Import-Lauf zurücknehmen (K2 #25, lib/crm/import-lauf.ts)
@@ -41,9 +41,6 @@
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { homedir } from 'node:os';
 import { loadJson, schrumpftZuStark, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { csvLesenMitBefund, trennerVon } from '@/lib/make-one/csv';
 import { importieren, pipelineStand, istStammdatenFeld, saeubereKontakt, teilAnwenden, bezuegeSynchron, serverStempel, VON_HAND_MAX, type Kontakt } from '@/lib/make-one/crm';
@@ -72,8 +69,7 @@ class ImportAbgelehnt extends Error {}
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ORDNER = join(homedir(), 'Desktop', 'CRM Leadordner');
-const STANDARD = join(ORDNER, 'CRM_MASTER_Hauptdatei.csv');
+// 09.10. (Paket „neutral-rest“): kein fester Ordner auf einem Mac-Schreibtisch mehr — die Liste kommt nur als Upload (`csv`).
 
 interface Bestand { kontakte: Kontakt[] }
 
@@ -85,7 +81,7 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, ...st, laeufe });
 }
 
-type Body = { pfad?: string; csv?: string; name?: string; vorschau?: boolean; aktion?: string; kontaktId?: string; feld?: string; wahl?: string; laufId?: string; firmaWechsel?: string };
+type Body = { csv?: string; name?: string; vorschau?: boolean; aktion?: string; kontaktId?: string; feld?: string; wahl?: string; laufId?: string; firmaWechsel?: string };
 
 export async function POST(req: Request) {
   const wer = await imHaushaltDesInhabers(req);
@@ -97,20 +93,11 @@ export async function POST(req: Request) {
   if (body.aktion === 'konflikt') return konfliktLoesen(body, { art: 'import', person: wer.person });
   if (body.aktion === 'rueckgaengig') return rueckgaengig(body, wer.person);
 
-  let text: string;
-  let quelle: string;
-  if (typeof body.csv === 'string' && body.csv.trim()) {
-    text = body.csv.replace(/^﻿/, '');
-    quelle = `Upload: ${String(body.name ?? 'CSV').replace(/[^\w.\- ]/g, '').slice(0, 80) || 'CSV'}`;
-  } else {
-    const pfad = resolve(body.pfad ? join(ORDNER, body.pfad) : STANDARD);
-    if (!pfad.startsWith(ORDNER + '/') && pfad !== STANDARD) {
-      return NextResponse.json({ error: 'Nur Dateien aus dem CRM Leadordner.' }, { status: 400 });
-    }
-    try { text = await readFile(pfad, 'utf8'); }
-    catch { return NextResponse.json({ error: 'Datei nicht lesbar — auf dem Server gibt es keinen Schreibtisch. Bitte die CSV-Datei über „Datei wählen“ hochladen.' }, { status: 404 }); }
-    quelle = pfad.replace(homedir(), '~');
+  if (typeof body.csv !== 'string' || !body.csv.trim()) {
+    return NextResponse.json({ error: 'Keine Datei — bitte die CSV-Datei über „CSV-Datei wählen“ hochladen.' }, { status: 400 });
   }
+  const text = body.csv.replace(/^﻿/, '');
+  const quelle = `Upload: ${String(body.name ?? 'CSV').replace(/[^\w.\- ]/g, '').slice(0, 80) || 'CSV'}`;
 
   const befund = csvLesenMitBefund(text, trennerVon(text));
   const zeilen = befund.zeilen;

@@ -1,7 +1,7 @@
 // ─── MAKE OS — Rituale (privat · MAKE.One) ──────────────────────────────────
-// Log: { "YYYY-MM-DD": ["sunday-dinner", ...] } — welche Rituale gehalten
-// wurden. Speist die Säule „Beziehung & Team": die einzige Größe dort, die
-// Kevin aktiv steuern kann.
+// Log: { "YYYY-MM-DD": ["<ritual-kennung>", ...] } — welche Rituale gehalten
+// wurden (Kennungen der Rituale im Familie-Bestand). Speist die Säule
+// „Familie & Partnerschaft“, solange der Pflege-Rhythmus noch nicht läuft.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 type RitualLog = Record<string, string[]>;
 
 // Je Person (24.09.): der Score las schon immer rituale--<person>, die Route
-// schrieb aber für alle in „rituale“ — Malins Häkchen landeten bei Kevin.
+// schrieb aber für alle in „rituale“ — Häkchen der zweiten Person landeten beim Erstkonto.
 const name = (req: Request) => personDatei('rituale', personAus(req));
 
 export async function GET(req: Request) {

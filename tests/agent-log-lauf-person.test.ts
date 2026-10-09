@@ -25,7 +25,7 @@ vi.mock('@/lib/anthropic', async orig => ({
   askText: async (o: { system?: string; user?: string }) => { prompts.push(`${o.system ?? ''}\n${o.user ?? ''}`); return { ok: true, text: 'Plan für heute' }; },
 }));
 vi.mock('@/lib/kalender/zoe-sicht-server', () => ({
-  termineFuerZoe: async () => ({ stand: null, quelle: 'icloud', kemaris: [], kemarisStand: null, einstellungen: {}, termine: [] }),
+  termineFuerZoe: async () => ({ stand: null, quelle: 'icloud', einstellungen: {}, termine: [] }),
 }));
 
 const NUR_ICH = 'LAUF-NUR-ICH-AUFGABE-A';

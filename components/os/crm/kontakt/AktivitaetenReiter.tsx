@@ -30,10 +30,11 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import {
   aufbereiten, filtern, zaehlen, gruppieren, unterAus, filterGesetzt, istAktAnker,
-  UNTER_REITER, FILTER_ARTEN, ZEITRAEUME, PERSONEN_FILTER, FILTER_START,
+  UNTER_REITER, FILTER_ARTEN, ZEITRAEUME, personenFilter, FILTER_START,
   type Unter, type AktFilter, type Eintrag,
 } from '@/lib/crm/aktivitaeten';
 import type { CrmApi } from '../daten';
+import { TEAM } from '@/lib/crm/team';
 import { Karte, Leer, Knopf, feld, LEUCHT, Schalter } from '../../ui';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { AktivitaetKarte, NeuFormular, NEU_KNOEPFE, KATEGORIE_FARBE, type NeuArt } from './aktivitaeten-teile';
@@ -190,7 +191,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
               leer={`Aktivität (${FILTER_ARTEN.length}/${FILTER_ARTEN.length})`} klein />
           )}
           <Wahl label="Zeitraum" liste={ZEITRAEUME} wert={filter.zeitraum} onWahl={zeitraum => setze({ zeitraum })} klein farbe={filter.zeitraum === 'beginn' ? C.inkDim : C.aktiv} />
-          <Wahl label="Aktivität zugewiesen" liste={PERSONEN_FILTER} wert={filter.person} onWahl={person => setze({ person })} onLeeren={() => setze({ person: null })} leerenLabel="alle Personen" leer="Person: alle" klein />
+          <Wahl label="Aktivität zugewiesen" liste={personenFilter(TEAM)} wert={filter.person} onWahl={person => setze({ person })} onLeeren={() => setze({ person: null })} leerenLabel="alle Personen" leer="Person: alle" klein />
           {aktiv === 'alle' && systemZahl > 0 && (
             <Schalter an={filter.system} onChange={system => setze({ system })}>Systemereignisse zeigen ({systemZahl})</Schalter>
           )}

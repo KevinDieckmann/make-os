@@ -11,8 +11,8 @@
 // Beide sehen alles (Kevins Entscheidung); nur die private Notiz an einer
 // Person sieht allein, wer sie geschrieben hat.
 //
-// MAKE OS ist Kevins und Malins System — das Team steht deshalb hier fest.
-// Kommt jemand dazu, wird er hier eingetragen (Kürzel = Speichername des Kontos).
+// Die Team-Liste steht in ./team-liste.ts (Vorgabe bzw. Build-Variable je Instanz, Kürzel = Speichername des Kontos).
+// Offen (MARKTTRAKTION_BEFUND 6.4): das Team aus den Konten des Haushalts.
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -23,38 +23,16 @@ import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
 import { WEG } from '@/lib/wege';
+import { TEAM, BEIDE, type Mitglied } from './team-liste';
 
-export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
-const WELTEN: readonly Welt[] = ['sales', 'marketing', 'event'];
-/**
- * Team je Instanz (05.10., Demo-Instanz — Plattform-Regel „Namen aus der Umgebung“): `NEXT_PUBLIC_MAKE_OS_CRM_TEAM` (JSON-Liste
- * `[{ "id": "<speicher>", "name": "…", "farbe": "#rrggbb", "verantwortet": ["sales"] }]`, 1–4 Einträge) ersetzt die zwei festen
- * Einträge. Ohne Variable bleibt alles wie bisher (unsere Instanz). Ungültiges → Vorgabe. Der große Umbau (Team aus den Konten,
- * PLATTFORM_PLAN Paket 1) steht noch aus.
- */
-function teamAusUmgebung(): Mitglied[] | null {
-  const roh = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_MAKE_OS_CRM_TEAM : undefined;
-  if (!roh) return null;
-  try {
-    const l = JSON.parse(roh) as unknown;
-    if (!Array.isArray(l) || !l.length || l.length > 4) return null;
-    const aus = l.map(x => x as Record<string, unknown>).map(x => ({
-      id: String(x.id ?? ''), name: String(x.name ?? '').trim().slice(0, 40), farbe: /^#[0-9a-fA-F]{6}$/.test(String(x.farbe)) ? String(x.farbe) : '#58D9CD',
-      verantwortet: (Array.isArray(x.verantwortet) ? x.verantwortet : []).filter((w): w is Welt => WELTEN.includes(w as Welt)),
-    }));
-    return aus.every(m => /^[a-z0-9-]{1,40}$/.test(m.id) && m.id !== 'beide' && m.name) && new Set(aus.map(m => m.id)).size === aus.length ? aus : null;
-  } catch { return null; }
-}
-export const TEAM: Mitglied[] = teamAusUmgebung() ?? [
-  { id: 'kevin', name: 'Kevin', farbe: '#58D9CD', verantwortet: ['sales'] },
-  { id: 'malin', name: 'Malin', farbe: '#A79BFF', verantwortet: ['marketing', 'event'] },
-];
-export const BEIDE = 'beide';
+// Die Liste selbst (Vorgabe bzw. NEXT_PUBLIC_MAKE_OS_CRM_TEAM) steht seit 09.10. in ./team-liste.ts (rein, ohne Importe) — so lesen
+// auch Dateien, die team.ts einbindet, dieselbe Liste.
+export { TEAM, BEIDE, type Mitglied };
 
 export const verantwortlich = (w: Welt): string => TEAM.find(t => t.verantwortet.includes(w))?.id ?? TEAM[0].id;
 export const mitglied = (id?: string | null) => TEAM.find(t => t.id === id);
 export const nameVon = (id?: string | null) => (id === BEIDE ? 'Beide' : mitglied(id)?.name ?? (id ? id.charAt(0).toUpperCase() + id.slice(1) : '—'));
-/** Die andere Person im Team — für „an Malin übergeben“ / „an Kevin übergeben“. */
+/** Die andere Person im Team — für „an <Name> übergeben“. */
 export const anderer = (person: string) => TEAM.find(t => t.id !== person)?.id ?? person;
 
 /** Zuständigkeit säubern: Team-Kürzel oder „beide“, sonst nichts. */

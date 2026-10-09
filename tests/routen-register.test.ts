@@ -44,7 +44,6 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'whatsapp/webhook': ['GET', 'POST'], // Meta: Verify-Token bzw. X-Hub-Signature-256 — prüft die Route selbst (tests/whatsapp-webhook.test.ts)
   'zoe/whatsapp/webhook': ['GET', 'POST'], // ZOE-Nummer (08.10.): Verify-Token bzw. X-Hub-Signature-256 der ZOE-Nummer — prüft die Route selbst (tests/zoe-whatsapp-route.test.ts)
   'jarvis/[...pfad]': ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // nur 308 → /api/zoe/*
-  'kemaris-calendar': ['GET'], // fester Leerstand
   'state/aenderungen': ['POST'], // nur 405
 };
 

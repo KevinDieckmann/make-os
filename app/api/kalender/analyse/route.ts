@@ -94,11 +94,8 @@ export async function POST(req: Request) {
 
   // Derselbe Lesepfad wie die Kalender-Sicht, für die fragende Person gefiltert (Befund 1, #K4).
   const kal = await termineFuerZoe(zugang.person, today, tagePlus(today, 8));
-  const schluessel = (e: Ev) => `${(e.title ?? '').toLowerCase().trim()}|${(e.startDate ?? '').slice(0, 16)}`;
   const alsEv = (t: ZoeTermin): Ev => ({ title: t.titel, startDate: t.start, endDate: t.ende, calendarName: t.kalender, allDay: t.ganztags, ...(t.fremd ? { fremd: true } : {}) });
-  const icloud: Ev[] = kal.termine.map(alsEv);
-  const bekannt = new Set(icloud.map(schluessel));
-  const events: Ev[] = [...icloud, ...kal.kemaris.map(alsEv).filter(e => !bekannt.has(schluessel(e)))]
+  const events: Ev[] = kal.termine.map(alsEv)
     .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
   // Vorschläge nur in die Kalender der Einstellungen — Standard: der eigene der fragenden Person (Nachtrag 29.09.).
   const kalender = vorschlagsKalender(kal.einstellungen, zugang.person);

@@ -172,7 +172,7 @@ export function EinstellungenKarte({ einstellungen, onGespeichert }: { einstellu
         <Knopf leise onClick={() => void speichern()}>Speichern</Knopf>
         {meldung && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{meldung}</span>}
       </div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Köpfe: Vollzeit-Köpfe im Geschäft (Kevin 1,0 · Teilzeit anteilig) — für „Umsatz je Kopf“. Kapazität: Tage, die ihr im Monat verkaufen könnt (ohne Vertrieb, Verwaltung, Urlaub) — für die Auslastung. Jahresziele je Firma: für Umsatz-Kurs und Pipeline-Deckung der Firma; das Gesamtziel kommt aus dem Controlling.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Köpfe: Vollzeit-Köpfe im Geschäft (Vollzeit 1,0 · Teilzeit anteilig) — für „Umsatz je Kopf“. Kapazität: Tage, die ihr im Monat verkaufen könnt (ohne Vertrieb, Verwaltung, Urlaub) — für die Auslastung. Jahresziele je Firma: für Umsatz-Kurs und Pipeline-Deckung der Firma; das Gesamtziel kommt aus dem Controlling.</div>
     </Karte>
   );
 }

@@ -272,7 +272,7 @@ export async function patchen(haushalt: string, teil: Exclude<Teil, 'stamm'> | '
     }
   } catch (err) {
     console.error('[haushalt/patchen]', teil, err instanceof Error ? err.message : err);
-    return { ok: false, status: 500, fehler: 'Nicht gespeichert — der Bestand konnte nicht geschrieben werden. Bitte gleich noch einmal; bleibt es, Kevin Bescheid geben.' };
+    return { ok: false, status: 500, fehler: 'Nicht gespeichert — der Bestand konnte nicht geschrieben werden. Bitte gleich noch einmal; bleibt es, dem Inhaber Bescheid geben.' };
   }
   return ergebnis;
 }

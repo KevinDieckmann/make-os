@@ -19,6 +19,7 @@ import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
+import { vornameVon } from '@/lib/zoe/grundauftrag';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -110,14 +111,14 @@ export async function POST(req: Request) {
   }).join('\n');
 
   const system = [
-    'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du ordnest seinen Performance-Index ein.',
+    `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${await vornameVon(fuer)}. Du ordnest den Performance-Index dieser Person ein.`,
     // S1 #9: kein fester Gesundheitskontext mehr im Prompt.
     // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
     await nordsternSatzFuer(fuer),
     'Du bekommst FERTIG GERECHNETE Werte — rechne nichts nach, erfinde nichts.',
-    'WICHTIG: Faktoren ohne Daten sind KEINE schlechten Werte, sondern eine Messlücke. Behandle sie als „wissen wir nicht" und sag, was Kevin eintragen müsste, damit die Zahl echt wird.',
+    'WICHTIG: Faktoren ohne Daten sind KEINE schlechten Werte, sondern eine Messlücke. Behandle sie als „wissen wir nicht" und sag, was die Person eintragen müsste, damit die Zahl echt wird.',
     'Sei nüchtern und konkret. Kein Startup-Sprech. Gesundheitsdaten sind privat.',
-    'Antworte NUR als JSON: {"lage":"<2-3 Sätze: wo steht er wirklich, wie belastbar ist die Zahl>","hebel":{"saeule":"<Name>","warum":"<1-2 Sätze>","schritt":"<EINE konkrete Handlung diese Woche>"},"staerke":"<1 Satz: was trägt>","messluecke":"<1 Satz: was fehlt, damit der Index ehrlich misst — leer wenn nichts fehlt>"}',
+    'Antworte NUR als JSON: {"lage":"<2-3 Sätze: wo steht die Person wirklich, wie belastbar ist die Zahl>","hebel":{"saeule":"<Name>","warum":"<1-2 Sätze>","schritt":"<EINE konkrete Handlung diese Woche>"},"staerke":"<1 Satz: was trägt>","messluecke":"<1 Satz: was fehlt, damit der Index ehrlich misst — leer wenn nichts fehlt>"}',
   ].join('\n');
 
   const user = [

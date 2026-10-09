@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
   await archivSchreiben(`business-vor-entflechtung-${archivZeit(zeit)}.json`, { _zeit: zeit, _von: z.person, entscheidungen: ent, ...vorher }, 1);
 
-  // Zuordnen (kdc · kdv · ug · kemaris) verschiebt, alles andere nimmt aus dem Business-Speicher.
+  // Zuordnen (kdc · kdv · ug — `ZUORDNUNGEN`) verschiebt, alles andere nimmt aus dem Business-Speicher.
   // Vorher stand die Liste hier fest (ohne ug) — eine UG-Zuordnung wäre als „weg“ gezählt worden.
   const weg = (q: Quelle) => new Set(ent.filter(e => e.quelle === q && !istZuordnung(e.aktion)).map(e => e.id));
   const neuFirma = new Map(ent.filter(e => istZuordnung(e.aktion)).map(e => [e.id, e.aktion]));

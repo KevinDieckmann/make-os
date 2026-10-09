@@ -158,6 +158,90 @@ sichtbar bei realistischen Personen/Orten) und Fragerunde Teil 2 Nr. 11/12 (Head
   ließe ein KI-Medium als „von uns aufgenommen“ ändern — nach dem Upload nicht zurückgehen, ohne das zu wissen.
 - Tests: `tests/agenten-p4c.test.ts` (17), `tests/agenten-p4c-demo.test.ts` (4); `tests/ki-anbieter-tor.test.ts` auf die EINE Ablage umgestellt.
 
+## 09.10.2026 nachts — Plattform neutral: Rest-Durchgang (Pakete 4 „Rückfälle nach außen“, 6 „Firmen“, Rest B–H; nur lokal — Branch `neutral-rest`, Basis `agenten-nacht` 2e02f451)
+
+Kevin 01.10./04.10.: „Sofort so bauen, dass wir ein richtiges Tool daraus machen können.“ Grundlage: PRIVATE_INHALTE_SUCHE.md (Teil 2 B–H) und
+MARKTTRAKTION_BEFUND.md 6.5. Keine festen Personen, Firmen, Produkte, Ziele oder privaten Inhalte mehr in den Prompts, Vorgaben und Texten der
+angefassten Stellen; feste Kennungen aus dem Altbestand werden beim LESEN übersetzt, gespeicherte Daten bleiben, wie sie sind.
+Wächter: `tests/neutral-rest.test.ts`.
+
+**Was sich ändert (Klickweg zum Prüfen)**
+- **Netzwerken › Heute › Danke-Mail:** ohne Datenschutz-Einrichtung steht im Text sichtbar „Verantwortlicher fehlt …“ / „[Kontaktweg fehlt …]“,
+  darüber ein Hinweis mit Link zu Einstellungen › Datenschutz › Verantwortlicher. Mit Einrichtung: wie bisher deren Angaben.
+- **Konto › Team:** ohne gepflegte Einträge stehen nur die Konten, Rolle „Inhaber“ bzw. „Mitglied“ (keine Platzhalter-Rollen mehr). ZOE-Prompts
+  sagen dann „kein Team hinterlegt“.
+- **Wachstums-Score › Familie & Partnerschaft:** „Rituale gehalten“ zählt die Rituale aus Familie (Bestand), nicht mehr vier feste Paar-Rituale.
+- **Kompass:** Filter „Ort“ = Privat + Gesellschaften aus lib/einheiten.ts; Filter „Wer“ = Personen des Haushalts.
+- **Meeting-Agent:** ordnet Action-Items den eigenen Projekten (die die Person sieht) und den Konten zu; ohne Treffer „Sonstige“.
+- **Erstansprache, Outreach, Content:** Absender = auslösende Person (Name aus dem Konto), Produkte nur aus Markttraktion › Produkte (aktiv);
+  ohne Produkt wird keins beschrieben. Kundenprofil (Prospecting) startet leer; Bewerten ohne Profil → Hinweis.
+- **Heads:** Rollen ohne Personennamen; verbotene Wörter = allgemeiner Werbesprech + eigene Liste der Instanz (siehe Einmal-Schritte).
+- **Bauplan:** „wartet auf den Inhaber“ (Kennung `inhaber`); alte Karten mit der früheren Personen-Kennung erscheinen genauso.
+- **Markttraktion › Stammdaten › Austausch:** Import nur noch per „CSV-Datei wählen“ (kein Mac-Schreibtisch-Ordner).
+- **Journal:** Merkmale allgemein; „Sauber geblieben“ nur, wenn der Zähler im eigenen Körper-Profil an ist.
+- **Liquidität:** Planposten lassen sich jetzt auch der MAKE Innovation GmbH (`ug`) und Register-Gesellschaften zuordnen (vorher fiel `ug` still weg).
+- Entfernt: Route `/api/kemaris-calendar` (lieferte seit K5 nur Leerstand) samt Lesepfad in `termineFuerZoe`, Brain, Lichtfäden, Seil, Fluss,
+  Kalender-Analyse, Brain-Kugel. Nebenwirkung: das Brain meldet nicht mehr dauernd „Teilquelle veraltet“.
+
+**Einmal-Schritte (Kevin, nach dem Upload)**
+1. Einstellungen › Datenschutz › Verantwortlicher prüfen (sonst zeigt die Danke-Mail Platzhalter statt der bisherigen MAKE-Angaben).
+2. Konto › Team: Rollen/Bereiche der Konten einmal eintragen (die früheren Vorgaben aus dem Code sind weg).
+3. Eigene CI-Wörter für die Heads in die Server-`.env`: `MAKE_OS_VERBOTENE_WOERTER="dashboard,tool,reporting"` (Komma-getrennt) — ohne
+   die Variable prüft der Head nur allgemeinen Werbesprech. Sprachregeln für Content/Erstansprache als freigegebene Brain-Regel pflegen.
+4. Lokal am Mac: die Brain-Doku-Wurzel wird jetzt als erster Ordner „MAKE OS“ im iCloud Drive gefunden; sonst `MAKE_OS_DOKU_WURZEL=<pfad>`
+   in `.env.local`. Auf dem Server ändert sich nichts.
+5. Markttraktion › Marketing › Positionierung bzw. Prospecting: Zielgruppe/Kundenprofil eintragen (die Vorgabe mit Produkt und Zielgruppe ist weg —
+   ein bereits gespeichertes Profil bleibt).
+
+**Rückweg** (alter Stand): Nur Code-Änderungen plus diese Datenwirkungen —
+- Bauplan: Karten, deren Block nach dem Upload geändert wurde, tragen `inhaber`; der alte Stand zeigt sie nicht als „wartet auf …“ (sie bleiben aus
+  der Warteschlange wie vorher).
+- Ordnung/Liquiplan: neu gespeicherte Zuordnungen `ug`/`g-…` kennt der alte Stand nicht (Ordnung: ignoriert; Liquiplan: verwirft beim nächsten Speichern).
+- Neue Journal-Merkmale `sauber` zeigt der alte Stand als Rohkennung.
+- Neue Verzeichnis-Einträge (nur Instanzen ohne bisherige Einträge) tragen „Konten des Haushalts“ statt Vornamen — gespeicherte bleiben unverändert.
+
+**Status je Fund** (PRIVATE_INHALTE_SUCHE.md Teil 2 / MARKTTRAKTION_BEFUND 6.5)
+
+| Fund | Status | Wie bzw. warum offen |
+|---|---|---|
+| A · Datenschutz-Rückfall Danke-Mail (netzwerken-recht) | erledigt | `VERANTWORTLICHER_FEHLT` + `KONTAKTWEG_FEHLT`, Hinweis in Netzwerken › Heute |
+| A · Gmail Message-ID-Domain | erledigt | `messageIdDomain`: Absender → `MAKE_OS_ADRESSE` → `.invalid` |
+| B · Ziele/Namen in board, performance, loop (+ Wochen/Bereiche), research, finanzchef, konsolidierung, brain-chat, selbstbild, ausfuehren, verbesserung, kontakt-frage | erledigt | Name aus dem Konto (`vornameVon`), Gesellschaften aus lib/einheiten.ts, Ziele kamen schon aus den Daten |
+| B · outreach / ansprache / prospecting / content | erledigt | `lib/crm/absender.ts`, ICP leer, Sprachregeln über Brain-Regeln |
+| B · meeting / delegation | erledigt | Projekte aus den Aufgaben, Konten/Inhaber aus dem Team |
+| B · Heads (prompt.ts, pruefer.ts) | erledigt | Gesellschaften aus lib/einheiten.ts, Team aus dem Paket, `MAKE_OS_VERBOTENE_WOERTER` |
+| B · kimmi, werkzeuge.ts, register.ts, agenten.ts, heads/takt.ts, ZoePanel/ZoeStart | **offen (gesperrt)** | parallele Pakete; noch fest: kimmi `firma`-enum mit `kemaris`, werkzeuge `input.firma === 'kemaris'`, Standardperson `kevin` im Heads-Takt, Anrede in ZoePanel/ZoeStart, „Kevins MAKE OS“ in agenten.ts |
+| B · Head of Finance `verantwortlich` (kevin/malin/beide) | **offen** | Schema + gespeicherte Vorschläge + Prüfer + Ansicht; braucht Umstellung mit Lesen alter Werte |
+| C · Journal-Merkmale (Substanz, Körperstelle) | erledigt | allgemein, Zähler nur mit eigener Einstellung |
+| C · Ernährungs-Startgrundsätze aus einem Profil | erledigt | Start leer |
+| C · Gesundheits-Termin-Muster mit Behandlungsart | erledigt | allgemeine Fachrichtungen (index.ts, EnergieView, Stichworte) |
+| C · Haut-Tagebuch/Streak als feste Module + Index-Kennzahlen, Journal-Feldnamen `haut`/`ruecken` | **offen** | Paket 2 (optionale Module je Person) |
+| D · Team-Rückfall + Paar-Rituale | erledigt | team-data.ts entfernt, Rituale aus Familie |
+| D · CRM-Team-Vorgabe (lib/crm/team-liste.ts) | **offen** | MARKTTRAKTION_BEFUND 6.4 — Team aus den Konten (Kevins Wort/Plattform-Paket 1) |
+| D · Bauplan „wartet auf Kevin“ | erledigt | Kennung `inhaber`, `blockAus`/`mitBlock` |
+| E · Browser-Rückfälle `?? 'kevin'` (Vernetzen, LinkedIn-Teil, Schnell erfassen, Nutzung, Brain, Widget, hilfe, Vorlagen) | erledigt | eigene Person aus Sitzung/Server, sonst leer |
+| E · Personenlisten Schnelleingabe/Kompass/Meeting | erledigt | aus dem Team |
+| E · CRM 6.5 (Aktivitäten-Filter, Kartei-Hinweis, Import-Owner, Runden, Texte) | erledigt | Team-Liste zur Laufzeit |
+| E · Vault-Pfad (iCloud-Ordnername) | erledigt | `MAKE_OS_DOKU_WURZEL` bzw. Suche „MAKE OS“ im iCloud Drive |
+| E · CRM-Import-Ordner | erledigt | nur Upload |
+| E · tasks/create Owner-Liste | erledigt | jede Person des Haushalts (Prüfung im Schreibweg) |
+| E · Kalendermodell (kevin/malin/beide, `wemGehoert`, `space.ts`-Namenserkennung, icloud CAL_MAP, bloecke-server, kalender-vorschlag) | **offen** | ausdrücklich nicht in diesem Paket (Kalendermodell „Wer = Konten“); `space.ts` erkennt Business noch am Kalendernamen — vor dem Umbau Einstellungen › Kalender › Bereich prüfen |
+| E · `speicherFuer`-Sonderfall Erstkonto, `personAus`-Rückfall, `personDatei` | **offen** | braucht Migration der Bestände ohne Suffix |
+| E · Vault-/Brain-Sicht (darfSehen, inbox, regeln, gedaechtnis) | **offen** | Paket 5 |
+| E · Owner-Typ `'kevin' \| 'malin' \| 'both'` (types/common.ts) und Rückfälle in saeubern/serie/struktur/steuern/haushalt-aufgaben | **offen** | Typ-Umbau |
+| E · Finanz-Auswahlen Kevin/Malin/Beide (Monat, Verpflichtungen, Überblick, Haushalt-Stammdaten/Schulden), privatNotizVerfasser, crm/umzug | **offen** | Finanzkern-Personen bzw. Altbestand-Regel |
+| E · business/messen Meeting-Last, startflaeche, arbeitsplatz/bauzeit, konten RESERVIERTE_SPEICHER, wochenplan-übernahme | **offen** | klein, aber an Kalender-/Konto-Modell gekoppelt |
+| F · organisation-data.ts | erledigt | `lib/make-one/orte.ts` aus lib/einheiten.ts |
+| F · Kennung `kemaris` (entflechtung, liquiplan, ordnung, pruefliste) | erledigt | Gesellschaften + Register; Altwerte bleiben und lesen sich als Business |
+| F · finanzplan-bestand Rückfallname | erledigt | `KERN_EINHEITEN` |
+| F · Stichworte, Fokus, Ordnung, Agents-data, Research, Tagesplan, Widget | erledigt | allgemein; Startbestand-Projektkennungen nur in `lib/make-one/alt-projekte.ts` |
+| F · kemaris-calendar (Route + Lesestellen) | erledigt | entfernt (`ENTFERNTE_ROUTEN`); Bestandsname bleibt nur für Register/Art. 17/Löschfristen |
+| G · Finanzkern-Feldnamen (Gehalt 1/2, Partnerdarlehen, `astarna`, `exit1/2`) | **offen** | Kern-Regel — Kevins Wort; nur sichtbare Beschriftungen neutral (Provisionskunden, Ausstieg Tranche) |
+| G · Grundlage/Altsystem-Texte | erledigt | „früheres Finanz-Cockpit (Altsystem)“ |
+| H · Verzeichnis-Vorlagen (Vornamen als Empfänger) | erledigt | „Konten des Haushalts“ (nur neue Einträge) |
+| H · Hinweise/Platzhalter/Meldungen mit Vornamen | erledigt | Einrichtung, Gesamt, Bauplan, Kalender, Steuer, Abschluss, Ernährung, Kompass, Finanzplanung, Mac, Speicher, Haushalt-ZOE |
+| H · Kommentare mit Namen (≈ 1.370) | **offen** | beim Anfassen; Wächter gegen neue Fälle in Prompts/Standards |
+
 ## 09.10.2026 — KI-Anbieter-Tor: Claude in der EU, Bilder, Video, Tiefenbericht, Transkription, Budget (Paket 6a; nur lokal — Branch `ki-anbieter`)
 
 Kevin 08.10. spät (ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich Teil 1, Antworten 14, 16, 19–25), Grundlage `research/agenten/MODELLE.md`:

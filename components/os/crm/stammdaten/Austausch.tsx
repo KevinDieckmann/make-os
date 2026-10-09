@@ -35,7 +35,7 @@ interface Vorschau {
 const WARN_LABEL: Record<WarnArt, string> = { spalten: 'verrutschte Zeilen', excel_zahl: 'Excel-Kurzform (E+)', plz_null: 'PLZ ohne führende Null', datum: 'unlesbares Datum' };
 const LAUF_GRUND: Record<LaufKonflikt['grund'], string> = { 'seitdem geändert': 'seitdem geändert', 'nicht mehr da': 'nicht mehr da', 'inzwischen verknüpft': 'inzwischen verknüpft (Deal, Mandat, Datei, Aufgabe …)' };
 /** Die gewählte Quelle: hochgeladene Datei oder der Mac-Schreibtisch (leer). */
-type Quelle = { csv: string; name: string } | Record<string, never>;
+type Quelle = { csv: string; name: string };
 
 const FELD_LABEL: Record<string, string> = {
   aufhaenger: 'Gesprächsaufhänger', notiz: 'Notiz', kategorie: 'Kategorie', typ: 'Kontakttyp', eignung: 'Vertriebseignung', prio: 'Priorität',
@@ -85,7 +85,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
     const r = await post(quelle);
     if (r.error || r.fehler) { setMeldung(r.error ?? r.fehler); return; }
     const kn = (r.konflikte as Konflikt[] | undefined)?.length ?? 0;
-    setMeldung(`${'name' in quelle ? `${quelle.name}: ` : ''}${r.zeilen} Zeilen — ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · ${kn} Konflikte zum Entscheiden · ${r.ohneBesitzer} ohne Zuständige/n${r.gesperrt ? ` · ${r.gesperrt} gesperrt übersprungen` : ''} · Firmen: ${r.firmen?.neu ?? 0} neu.${r.laufId ? ' Rückgängig: unten unter „Import-Läufe“.' : ''}`);
+    setMeldung(`${quelle.name}: ${r.zeilen} Zeilen — ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · ${kn} Konflikte zum Entscheiden · ${r.ohneBesitzer} ohne Zuständige/n${r.gesperrt ? ` · ${r.gesperrt} gesperrt übersprungen` : ''} · Firmen: ${r.firmen?.neu ?? 0} neu.${r.laufId ? ' Rückgängig: unten unter „Import-Läufe“.' : ''}`);
     setQuelle(null); setVorschau(null);
     await standLaden(); laden(); void api.laden();
   };
@@ -135,12 +135,11 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
               await vorschauen({ csv, name: datei.name });
             }} />
           </label>
-          <Knopf leise aus={laeuft} onClick={() => void vorschauen({})}>Vom Mac-Schreibtisch (CRM Leadordner)</Knopf>
         </div>
 
         {vorschau && quelle && (
           <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 14, border: `1px solid ${C.linie}`, background: C.flaecheHoch }}>
-            <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 10 }}>2 · Vorschau{'name' in quelle ? ` — ${quelle.name}` : ' — Schreibtisch'} · {vorschau.zeilen} Zeilen · noch nichts geschrieben</div>
+            <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 10 }}>2 · Vorschau — {quelle.name} · {vorschau.zeilen} Zeilen · noch nichts geschrieben</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
               <Zahl wert={String(vorschau.neu)} label="neu" farbe={LEUCHT.gut} />
               <Zahl wert={String(vorschau.aktualisiert)} label="aktualisiert" farbe={C.aktiv} />

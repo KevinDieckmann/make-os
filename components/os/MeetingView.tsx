@@ -15,7 +15,7 @@ import { neueKennung } from '@/lib/kennung';
 import { ZoeReiter } from './ZoeReiter';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
-interface Protokoll { titel: string; zusammenfassung: string; entscheidungen: string[]; actionItems: ActionItem[]; }
+interface Protokoll { titel: string; zusammenfassung: string; entscheidungen: string[]; actionItems: ActionItem[]; projekte?: { id: string; label: string }[]; personen?: { id: string; label: string }[] }
 interface Termin { id: string; title?: string; startDate?: string }
 interface Meeting {
   id: string; datum: string; titel: string; terminTitel?: string;
@@ -24,10 +24,9 @@ interface Meeting {
   transcript?: string;
 }
 
-const PROJECTS: Record<string, string> = {
-  'proj-ig': 'IG', 'proj-capos': 'CapOS', 'proj-kdm': 'Holding', 'proj-health': 'Gesundheit', 'proj-make': 'MAKE.One', 'proj-privat': 'Privat',
-};
-const ownerLabel = (o: string) => (o === 'both' ? 'Ma+Ke' : o === 'malin' ? 'Malin' : 'Kevin');
+/** Namen aus der Antwort des Meeting-Agenten (Konten des Haushalts, eigene Projekte) — nie feste Namen im Code (09.10.). */
+const ownerLabel = (o: string, p?: Protokoll | null) => (o === 'both' ? 'gemeinsam' : p?.personen?.find(x => x.id === o)?.label ?? o);
+const projektLabel = (id: string, p?: Protokoll | null) => (id ? p?.projekte?.find(x => x.id === id)?.label ?? id : 'Sonstige');
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
 const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', maxWidth: '100%' };
 
@@ -79,7 +78,7 @@ export function MeetingView() {
           body: JSON.stringify({
             id, datum: localDay(), titel: p.titel, transcript,
             zusammenfassung: p.zusammenfassung, entscheidungen: p.entscheidungen,
-            aufgaben: p.actionItems.map((a: ActionItem) => ({ text: a.titel, wer: ownerLabel(a.owner), frist: a.due })),
+            aufgaben: p.actionItems.map((a: ActionItem) => ({ text: a.titel, wer: ownerLabel(a.owner, p), frist: a.due })),
             terminId: termin?.id, terminTitel: termin?.title,
           }), keepalive: true,
         }).then(() => ladeVerlauf()).catch(() => {});
@@ -93,7 +92,7 @@ export function MeetingView() {
     try {
       const r = await fetch('/api/tasks/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: it.titel, description: `Aus Meeting „${prot?.titel ?? ''}" übernommen.`, projectId: it.projectId, owner: it.owner, priority: it.prio, dueDate: it.due }),
+        body: JSON.stringify({ title: it.titel, description: `Aus Meeting „${prot?.titel ?? ''}" übernommen.`, ...(it.projectId ? { projectId: it.projectId } : {}), ...(it.owner ? { owner: it.owner } : {}), priority: it.prio, dueDate: it.due }),
       });
       const d = await r.json();
       setCreated(c => ({ ...c, [i]: d.ok ? 'ok' : 'err' }));
@@ -166,7 +165,7 @@ export function MeetingView() {
               <Zeile key={i}
                 links={<Chip farbe={prioFarbe(it.prio)}>{it.prio}</Chip>}
                 titel={it.titel}
-                unter={[ownerLabel(it.owner), PROJECTS[it.projectId] ?? it.projectId, it.due].filter(Boolean).join(' · ')}
+                unter={[ownerLabel(it.owner, prot), projektLabel(it.projectId, prot), it.due].filter(Boolean).join(' · ')}
                 rechts={
                   <Knopf leise={created[i] !== 'err'} farbe={created[i] === 'err' ? LEUCHT.kritisch : undefined} onClick={() => toTask(it, i)} aus={created[i] === 'busy' || created[i] === 'ok'}>
                     {created[i] === 'ok' ? '✓ Aufgabe' : created[i] === 'busy' ? '…' : created[i] === 'err' ? 'Fehler' : '→ Aufgabe'}

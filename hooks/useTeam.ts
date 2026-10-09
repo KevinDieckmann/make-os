@@ -6,11 +6,11 @@
 // kommt der aktuelle Stand zurück und ersetzt die Sicht.
 
 import { useCallback, useEffect, useState } from 'react';
-import { platzhalterTeam, type TeamAntwort, type TeamEintrag, type TeamPerson } from '@/lib/make-one/team-typen';
+import { ohneTeam, type TeamAntwort, type TeamEintrag, type TeamPerson } from '@/lib/make-one/team-typen';
 
 interface Stand { team: TeamPerson[]; ausDaten: boolean; geladen: boolean; gesperrt: boolean }
 
-let stand: Stand = { team: platzhalterTeam(), ausDaten: false, geladen: false, gesperrt: false };
+let stand: Stand = { team: ohneTeam(), ausDaten: false, geladen: false, gesperrt: false };
 let etag: string | null = null;
 let laeuft: Promise<void> | null = null;
 const hoerer = new Set<(s: Stand) => void>();
@@ -22,7 +22,7 @@ async function laden(): Promise<void> {
     try {
       const r = await fetch('/api/team', { cache: 'no-store', headers: etag ? { 'If-None-Match': etag } : {} });
       if (r.status === 304) { if (!stand.geladen) setzen({ ...stand, geladen: true }); return; }
-      if (r.status === 403) { etag = null; setzen({ team: platzhalterTeam(), ausDaten: false, geladen: true, gesperrt: true }); return; }
+      if (r.status === 403) { etag = null; setzen({ team: ohneTeam(), ausDaten: false, geladen: true, gesperrt: true }); return; }
       const d = (await r.json()) as TeamAntwort;
       if (!r.ok || !Array.isArray(d.team)) { etag = null; return; }
       etag = r.headers.get('etag');

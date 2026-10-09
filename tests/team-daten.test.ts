@@ -38,25 +38,26 @@ beforeAll(async () => {
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
-describe('Rückfall bei leerem Speicher', () => {
-  it('ohne Haushalt: nur Rollen-Platzhalter aus team-data.ts', async () => {
+describe('Rückfall bei leerem Speicher (09.10.: nur Konten mit neutraler Rolle, keine Platzhalter)', () => {
+  it('ohne Haushalt: kein Team — keine Rollen oder Personen aus dem Code', async () => {
     const t = await speicher.teamStand(null);
     expect(t.ausDaten).toBe(false);
-    expect(t.team.every(p => p.quelle === 'platzhalter')).toBe(true);
-    expect(typen.delegierbar(t.team).some(p => p.kurz === 'Kevin')).toBe(false);
+    expect(t.team).toEqual([]);
   });
 
-  it('leerer Speicher: Konten als feste Einträge + Platzhalter, Hinweis „einmal eintragen“ (ausDaten false)', async () => {
+  it('leerer Speicher: nur die Konten, Rolle aus der Konto-Rolle, Hinweis „einmal eintragen“ (ausDaten false)', async () => {
     const r = await route.GET(anfrage(sitzung('malin')));
     expect(r.status).toBe(200);
     const d = await r.json();
     expect(d.ausDaten).toBe(false);
-    const konten = d.team.filter((p: { quelle: string }) => p.quelle === 'konto');
-    expect(konten.map((p: { kurz: string }) => p.kurz)).toEqual(['Kevin', 'Malin']);
-    expect(konten[0].inhaber).toBe(true);
-    // Kevin/Malin nicht doppelt als Platzhalter
-    expect(d.team.filter((p: { kurz: string }) => p.kurz === 'Malin').length).toBe(1);
-    expect(d.team.some((p: { quelle: string }) => p.quelle === 'platzhalter')).toBe(true);
+    expect(d.team.every((p: { quelle: string }) => p.quelle === 'konto')).toBe(true);
+    expect(d.team.map((p: { kurz: string; rolle: string; bereich?: string }) => [p.kurz, p.rolle, p.bereich])).toEqual([['Kevin', 'Inhaber', undefined], ['Malin', 'Mitglied', undefined]]);
+    expect(d.team[0].inhaber).toBe(true);
+  });
+
+  it('ein Konto erbt nie Rollen über seinen Namen; Inhaber nur über die Konto-Rolle', () => {
+    const { team } = typen.teamZusammen([{ speicher: 'kevin', name: 'Kevin', rolle: 'mitglied' }, { speicher: 'pia', name: 'Pia', rolle: 'inhaber' }], []);
+    expect(team.map(p => [p.kurz, p.rolle, !!p.inhaber])).toEqual([['Kevin', 'Mitglied', false], ['Pia', 'Inhaber', true]]);
   });
 });
 
@@ -149,16 +150,15 @@ describe('Leser: Delegation und Prompts aus den Daten', () => {
     expect(typen.delegierbar(team).some(p => p.kurz === 'Kevin')).toBe(false);
   });
 
-  it('Prompt-Zeilen tragen die Namen aus den Daten — nie die Platzhalter, sobald Daten da sind', async () => {
+  it('Prompt-Zeilen tragen die Namen aus den Daten', async () => {
     const zeilen = typen.teamZeilenAus(await speicher.teamFuerPerson('malin'));
     expect(zeilen.some(z => z.startsWith('Test Person (Testperson)'))).toBe(true);
     expect(zeilen.some(z => z.includes('Person A'))).toBe(false);
   });
 
-  it('eine Person außerhalb des Haushalts bekommt nur die Platzhalter', async () => {
+  it('eine Person außerhalb des Haushalts bekommt kein Team', async () => {
     const team = await speicher.teamFuerPerson('fremd');
-    expect(team.some(p => p.name === 'Test Person')).toBe(false);
-    expect(team.every(p => p.quelle === 'platzhalter')).toBe(true);
+    expect(team).toEqual([]);
     const req = new Request('http://test/api/delegation', { method: 'POST', headers: sitzung('fremd') });
     expect((await speicher.teamFuerAnfrage(req)).some(p => p.name === 'Test Person')).toBe(false);
     const inhaber = new Request('http://test/api/delegation', { method: 'POST', headers: sitzung('kevin') });

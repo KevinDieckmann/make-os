@@ -1,13 +1,20 @@
 // ─── MAKE OS — Bauplan: was am System selbst noch zu tun ist ────────────────
-// Bewusst GETRENNT von Kevins echten Aufgaben (/os/aufgaben). Hier steht, was
+// Bewusst GETRENNT von den echten Aufgaben (/os/aufgaben). Hier steht, was
 // an MAKE OS gebaut, angebunden oder verbessert werden muss — Anbindungen,
-// Agenten, Qualität, Ideen. Kevin und ich tragen hier ein, was unterwegs
+// Agenten, Qualität, Ideen. Der Haushalt und Claude tragen hier ein, was unterwegs
 // auffällt, damit nichts verloren geht.
 
 export type BacklogStatus = 'offen' | 'laufend' | 'erledigt';
 export type BacklogKat = 'anbindung' | 'agent' | 'qualitaet' | 'idee';
-/** Wer muss ran, damit es weitergeht. */
-export type BacklogBlock = 'frei' | 'kevin' | 'extern';
+/** Wer muss ran, damit es weitergeht. `inhaber` = der Inhaber der Instanz (09.10.: vorher stand hier ein fester Name). */
+export type BacklogBlock = 'frei' | 'inhaber' | 'extern';
+/**
+ * Block beim LESEN: `frei`/`extern` bleiben, jeder andere nicht leere Wert (Altbestand: die frühere Personen-Kennung) gilt als
+ * `inhaber` — gespeichert wird erst, wenn jemand den Block ändert. Fehlt er, ist die Karte frei.
+ */
+export const blockAus = (v: unknown): BacklogBlock => (v === 'frei' || v === 'extern' || v === 'inhaber' ? v : v ? 'inhaber' : 'frei');
+/** Eine Karte mit gelesenem Block — für jede Ausgabe an den Browser bzw. an Leser. */
+export const mitBlock = <T extends { block?: unknown }>(i: T): T & { block: BacklogBlock } => ({ ...i, block: blockAus(i.block) });
 
 export const KAT_LABEL: Record<BacklogKat, string> = {
   anbindung: 'Anbindung', agent: 'Agent', qualitaet: 'Qualität', idee: 'Idee',
@@ -16,7 +23,7 @@ export const STATUS_LABEL: Record<BacklogStatus, string> = {
   offen: 'Offen', laufend: 'Läuft', erledigt: 'Erledigt',
 };
 export const BLOCK_LABEL: Record<BacklogBlock, string> = {
-  frei: 'kann ich bauen', kevin: 'braucht dich', extern: 'wartet auf Dritte',
+  frei: 'kann ich bauen', inhaber: 'braucht dich', extern: 'wartet auf Dritte',
 };
 
 export interface BacklogItem {
@@ -28,7 +35,7 @@ export interface BacklogItem {
   /** 1 = als Nächstes, 3 = irgendwann */
   prio: 1 | 2 | 3;
   block: BacklogBlock;
-  /** Was Kevin konkret tun muss, wenn block = 'kevin'. */
+  /** Was der Inhaber konkret tun muss, wenn block = 'inhaber'. */
   brauche?: string;
   /** Woher der Punkt kommt (Audit, Review, Gespräch …). */
   quelle?: string;
@@ -44,7 +51,7 @@ export interface BacklogItem {
   rang?: number;
   art?: import('@/lib/bauplan/form').Art;
   bereich?: string;
-  /** Wer es eingetragen hat (kevin, malin, claude, loop). */
+  /** Wer es eingetragen hat (Speichername einer Person, claude, loop). */
   von?: string;
   /** Vorlage: Was ist das Problem, was wünschst du dir, woran merken wir, dass es fertig ist. */
   problem?: string;
@@ -54,7 +61,7 @@ export interface BacklogItem {
   seite?: string;
   /** Bildschirmfotos (Dateinamen unter .data/bauplan-bilder). */
   bilder?: string[];
-  /** Wer die Karte hochstuft (kevin, malin). */
+  /** Wer die Karte hochstuft (Speichernamen). */
   daumen?: string[];
   kommentare?: { von: string; am: string; text: string }[];
   /** Was gebaut wurde und wie ihr es testet — schreibt Claude beim Abgeben. */
@@ -70,7 +77,7 @@ export interface BacklogItem {
 /** Startbestand: alles, was aus Audit, Review und Gesprächen offen ist. */
 export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
   {
-    id: 'whoop-api', titel: 'Whoop-API anbinden', kategorie: 'anbindung', status: 'offen', prio: 1, block: 'kevin',
+    id: 'whoop-api', titel: 'Whoop-API anbinden', kategorie: 'anbindung', status: 'offen', prio: 1, block: 'inhaber',
     warum: 'Dann kommen Recovery, Schlaf, HRV und Ruhepuls jeden Morgen von selbst — der Morgen-Check entfällt und der Tagesstart hat echte Tageswerte.',
     brauche: 'App auf developer.whoop.com registrieren → Client-ID + Secret in .env.local. Danach einmal autorisieren (OAuth), Refresh-Token bleibt lokal.',
     quelle: 'Gespräch 31.07.',
@@ -81,20 +88,20 @@ export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
     quelle: 'Gespräch 31.07.',
   },
   {
-    id: 'miro-api', titel: 'Miro live anbinden', kategorie: 'anbindung', status: 'offen', prio: 2, block: 'kevin',
+    id: 'miro-api', titel: 'Miro live anbinden', kategorie: 'anbindung', status: 'offen', prio: 2, block: 'inhaber',
     warum: 'Das Strategieboard ist eure Wahrheit für Aufgaben, Meilensteine und Team. Aktuell ist der Stand manuell abgeschrieben und veraltet mit jeder Planung.',
     brauche: 'Miro-API-Token aus deinem Miro-Konto (Developer → Create app).',
     quelle: 'Audit',
   },
   {
-    id: 'hubspot-crm', titel: 'CRM-Agent an HubSpot', kategorie: 'agent', status: 'offen', prio: 2, block: 'kevin',
+    id: 'hubspot-crm', titel: 'CRM-Agent an HubSpot', kategorie: 'agent', status: 'offen', prio: 2, block: 'inhaber',
     warum: 'Aus der Prospecting-Liste würden echte Deals mit Forecast und Next-Best-Action — der Schritt von „Liste" zu „Pipeline".',
     brauche: 'HubSpot in den claude.ai-Connector-Einstellungen autorisieren.',
     quelle: 'Audit',
   },
   {
-    id: 'm365-live', titel: 'M365 live (Postfach + Firmenkalender)', kategorie: 'anbindung', status: 'offen', prio: 2, block: 'kevin',
-    warum: 'Seit Inbox 2 (06.10.) ist Microsoft 365 als Postfach-Quelle raus; offen ist nur noch der KEMARIS-Kalender.',
+    id: 'm365-live', titel: 'M365 live (Postfach + Firmenkalender)', kategorie: 'anbindung', status: 'offen', prio: 2, block: 'inhaber',
+    warum: 'Seit Inbox 2 (06.10.) ist Microsoft 365 als Postfach-Quelle raus; offen ist nur noch ein Firmenkalender aus M365.',
     brauche: 'Azure App-Registrierung (Client-ID/Secret + Graph-Berechtigungen Mail.Read, Calendars.Read).',
     quelle: 'Audit',
   },
@@ -104,7 +111,7 @@ export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
     quelle: 'Prospecting-Bau',
   },
   {
-    id: 'meeting-transkript', titel: 'Meeting-Mitschrift automatisch', kategorie: 'agent', status: 'offen', prio: 3, block: 'kevin',
+    id: 'meeting-transkript', titel: 'Meeting-Mitschrift automatisch', kategorie: 'agent', status: 'offen', prio: 3, block: 'inhaber',
     warum: 'Heute fügst du das Transkript ein. Mit Anbindung an Granola/Fireflies entstehen Protokoll und Action-Items ohne Zutun.',
     brauche: 'Entscheidung, welches Werkzeug du nutzt — dann dessen API-Zugang.',
     quelle: 'Meeting-Bau',
@@ -126,7 +133,7 @@ export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
   },
   {
     id: 'supabase-umzug', titel: 'Von Dateien auf echte Datenbank',  kategorie: 'qualitaet', status: 'offen', prio: 3, block: 'frei',
-    warum: 'Alles liegt als JSON unter .data/. Reicht für einen Nutzer auf einem Mac. Sobald du von unterwegs oder mit Malin zugreifen willst, braucht es Supabase.',
+    warum: 'Alles liegt als JSON unter .data/. Reicht für einen Nutzer auf einem Mac. Sobald du von unterwegs oder zu zweit zugreifen willst, braucht es Supabase.',
     quelle: 'Audit',
   },
 ];

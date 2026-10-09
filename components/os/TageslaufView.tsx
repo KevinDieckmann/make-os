@@ -44,7 +44,7 @@ export function TageslaufView() {
     try {
       const r = await fetch('/api/tasks/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: titel, description: beschreibung, priority: 'high', projectId: 'proj-kdm' }),
+        body: JSON.stringify({ title: titel, description: beschreibung, priority: 'high', space: 'business' }),
       });
       const d = await r.json();
       setAngelegt(u => ({ ...u, [key]: d.ok ? (d.duplikat ? 'dupl' : 'ok') : 'err' }));

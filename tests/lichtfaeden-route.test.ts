@@ -13,7 +13,7 @@ delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
 vi.mock('@/lib/kalender/zoe-sicht-server', () => ({
   termineFuerZoe: async () => ({
-    stand: null, quelle: 'icloud', kemaris: [], kemarisStand: null, einstellungen: { space: { Arbeit: 'business' } },
+    stand: null, quelle: 'icloud', einstellungen: { space: { Arbeit: 'business' } },
     termine: [
       { id: 'Privat|u1', titel: 'Geheimes Treffen Malin', start: '2026-10-20T18:00:00', ende: '2026-10-20T20:00:00', ganztags: false, kalender: 'Malin', art: 'termin', sichtbarkeit: 'privat', wer: 'malin' },
       { id: 'Malin|u2', titel: 'Physiotherapie', start: '2026-10-21T08:00:00', ende: '2026-10-21T09:00:00', ganztags: false, kalender: 'Malin', art: 'termin', sichtbarkeit: 'standard', wer: 'malin' },

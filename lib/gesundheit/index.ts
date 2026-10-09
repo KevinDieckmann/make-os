@@ -105,7 +105,7 @@ function ampelVon(w: number, g: Schwelle): Ampel {
   return hoch ? (w >= g.gruen ? 'gruen' : w < g.rot ? 'rot' : 'gelb') : (w <= g.gruen ? 'gruen' : w > g.rot ? 'rot' : 'gelb');
 }
 const tagPlus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-export const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|infiltration|neurolog|orthop|dermat|hautarzt|training|sport|gym|fitness|schwimm|massage|therapie/i;
+export const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|untersuchung|klinik|krankenhaus|facharzt|neurolog|orthop|dermat|hautarzt|training|sport|gym|fitness|schwimm|massage|therapie/i;
 export const GES_BLOCK = /sport|train|gym|lauf|schwimm|spazier|bewegung|yoga|dehn|reha|physio/i;
 
 /** Whoop-Werte eines Feldes über n Tage (heute zuerst), nur echte Zahlen. */

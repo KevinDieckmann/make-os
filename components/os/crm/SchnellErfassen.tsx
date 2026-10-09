@@ -109,7 +109,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
 
   const waehle = (x: Kontakt) => { setPersonId(x.id); setGesucht(true); setSuche(''); setMarkiert(0); setChance(null); };
   const artWahl = (a: Art) => { setArt(a); setErgebnis(ARTEN.find(x => x.id === a)?.start ?? null); };
-  const besitzer = (x: Kontakt) => { const h = haeltBeziehung(x); return h === BEIDE ? api.ich ?? 'kevin' : h; };
+  // Gemeinsame Beziehung → die eigene Person (aus der Sitzung); bis sie da ist, bleibt es gemeinsam (kein fester Rückfall).
+  const besitzer = (x: Kontakt) => { const h = haeltBeziehung(x); return h === BEIDE ? api.ich ?? h : h; };
   const erledigt = (text: string) => { setFertig(text); setTimeout(() => zu.current(), 1300); };
 
   /** Ergebnis ohne Notiz (Mailbox, nicht erreicht, kein Bedarf, Sperre) — ein Tipp, gespeichert. */

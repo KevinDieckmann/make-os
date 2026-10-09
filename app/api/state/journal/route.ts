@@ -24,7 +24,7 @@ export interface JournalEntry {
   stress?: number; // 1–5
   haut?: string;   // 'ruhig' | 'schub'
   ruecken?: string;// 'ok' | 'schmerz'
-  flags?: string[];// z.B. antiinflamm, bewegt, cannabis, gutgeschlafen
+  flags?: string[];// allgemeine Merkmale, z.B. bewegt, gutgeschlafen, sauber (Zähler laut Körper-Profil)
   at?: string;
 }
 export type Journal = Record<string, JournalEntry>;

@@ -1,6 +1,6 @@
 // Bauplan als Board (25.09.): Spalten, Ziehen, Eingang, Etappen, Warteschlange.
 import { describe, it, expect } from 'vitest';
-import type { BacklogItem } from '../lib/make-one/backlog-data';
+import { blockAus, type BacklogItem } from '../lib/make-one/backlog-data';
 import { spalteVon, statusAus, artVon, board, verschieben, neueKarte, felderSaeubern, bereichAusSeite, etappenStand, warteschlange, bildNameOk, titelTeilen, GRENZE } from '../lib/bauplan/board';
 
 const J = '2026-09-25T10:00:00.000Z';
@@ -48,13 +48,16 @@ describe('Eingang', () => {
     expect(bildNameOk('0d7c2f3e-1111-2222-3333-444455556666.png')).toBe(true);
   });
   it('Felder ändern: nur Erlaubtes, Leeres löscht', () => {
-    expect(felderSaeubern({ titel: 'Neu', art: 'neu', prio: 9, block: 'kevin', etappe: 'e-live', warum: '', status: 'erledigt', ergebnis: 'Gebaut' })).toEqual({ titel: 'Neu', art: 'neu', block: 'kevin', etappe: 'e-live', warum: undefined, ergebnis: 'Gebaut' });
+    expect(felderSaeubern({ titel: 'Neu', art: 'neu', prio: 9, block: 'inhaber', etappe: 'e-live', warum: '', status: 'erledigt', ergebnis: 'Gebaut' })).toEqual({ titel: 'Neu', art: 'neu', block: 'inhaber', etappe: 'e-live', warum: undefined, ergebnis: 'Gebaut' });
+    // 09.10.: „wartet auf …“ ist eine Rolle, kein Name — die frühere Personen-Kennung wird beim Lesen zu „inhaber“, neu nie geschrieben.
+    expect(felderSaeubern({ block: 'kevin' })).toEqual({});
+    expect([blockAus('kevin'), blockAus('frei'), blockAus('extern'), blockAus(undefined)]).toEqual(['inhaber', 'frei', 'extern', 'frei']);
   });
 });
 
 describe('Planung und Warteschlange', () => {
   it('Etappen-Fortschritt; Claude baut Bereit von oben, ohne Karten, die auf Kevin warten', () => {
-    const items = [k('a', { etappe: 'e-1', spalte: 'fertig' }), k('b', { etappe: 'e-1', spalte: 'test' }), k('c', { etappe: 'e-1', spalte: 'bereit', rang: 20 }), k('d', { spalte: 'bereit', rang: 10, block: 'kevin' }), k('e', { spalte: 'bereit', rang: 30 })];
+    const items = [k('a', { etappe: 'e-1', spalte: 'fertig' }), k('b', { etappe: 'e-1', spalte: 'test' }), k('c', { etappe: 'e-1', spalte: 'bereit', rang: 20 }), k('d', { spalte: 'bereit', rang: 10, block: 'inhaber' }), k('e', { spalte: 'bereit', rang: 30 })];
     expect(etappenStand(items, { id: 'e-1' })).toEqual({ gesamt: 3, fertig: 1, imTest: 1, anteil: 1 / 3 });
     expect(warteschlange(items).map(i => i.id)).toEqual(['c', 'e']);
   });

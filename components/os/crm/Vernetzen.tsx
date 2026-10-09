@@ -33,7 +33,8 @@ const kopieren = async (t: string) => { try { await navigator.clipboard.writeTex
 const kleinText = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
 export function VernetzenRunde({ api, kampagneId, zuKontakt, zurueck, zuKampagne }: { api: CrmApi; kampagneId?: string; zuKontakt: (id: string) => void; zurueck: () => void; zuKampagne: (id: string | null) => void }) {
-  const ich = api.ich ?? 'kevin';
+  // Eigene Person aus der Server-Antwort (Sitzung) — bis sie da ist, keine (09.10.: kein Rückfall auf einen festen Namen).
+  const ich = api.ich ?? '';
   const heute = api.crm?.heute ?? '';
   const kampagnen = useMemo(() => (api.crm?.stand.kampagnen ?? []).filter(k => k.playbook === 'vernetzen' && k.status !== 'abgebrochen'), [api.crm]);
   const kampagne = kampagneId ? kampagnen.find(k => k.id === kampagneId) : undefined;
@@ -292,7 +293,7 @@ export function VernetzenEinstellungen({ k, api }: { k: Kampagne; api: CrmApi })
   const setze = (teil: Partial<VernetzenEinstellung>) => void api.teil('kampagnen', k.id, { vernetzen: { ...e, ...teil } });
   const ampel = vernetzenAmpel(e);
   const beispiel = (api.kontakte ?? []).find(x => k.kontaktIds.includes(x.id)) ?? { vorname: 'Anna', nachname: 'Beispiel', firma: 'Beispiel GmbH', anrede: 'Sie' as const };
-  const absender = nameVon(api.ich ?? 'kevin');
+  const absender = api.ich ? nameVon(api.ich) : '';
   const text = (label: string, wert: string, max: number | null, onFertig: (t: string) => void) => (
     <div style={{ display: 'grid', gap: 4 }}>
       <span style={kleinText}>{label}{max ? ` · ${wert.length}/${max}` : ''}</span>

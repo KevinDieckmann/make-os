@@ -77,10 +77,11 @@ describe('3 · Art. 13: der Datenschutzhinweis in der Danke-Mail', () => {
     expect(h).toContain('Wir waren für Kundenwerk GmbH auf der Veranstaltung und geben Ihre Kontaktdaten an Kundenwerk GmbH weiter.');
     expect(datenschutzHinweisText({ du: false, angaben: a })).not.toContain('Wir waren für');
   });
-  it('steht am Ende der Entwurfs-Mail (nach Gruß und Absender), mit Standard-Angaben der Instanz', () => {
+  it('steht am Ende der Entwurfs-Mail (nach Gruß und Absender); ohne Einrichtung sichtbar „fehlt“ statt fester Angaben aus dem Code', () => {
     const e = dankeEntwurf({ vorname: 'Anna', nachname: 'Beispiel', anrede: 'Sie', eventTitel: 'X', wann: 'gestern', absender: 'Kevin' });
     expect(e.text.split('\n').slice(-2)[0]).toBe('—');
-    expect(e.text).toMatch(/Datenschutz: Ich habe mir Ihre Kontaktdaten .* hello@makeinnovation\.de · makeinnovation\.de\/datenschutz#kontakte$/);
+    expect(e.text).toMatch(/Datenschutz: Ich habe mir Ihre Kontaktdaten .*Verantwortlich: Verantwortlicher fehlt — unter System › Datenschutz eintragen\).* \[Kontaktweg fehlt — unter System › Datenschutz eintragen\]$/);
+    expect(e.text).not.toMatch(/makeinnovation|MAKE Innovation/);
     expect(dankeEntwurf({ nachname: 'B', anrede: 'Sie', eventTitel: 'X', wann: 'neulich', absender: 'Kevin', datenschutz: a }).text).toContain('datenschutz@beispiel.example');
   });
 });
@@ -190,7 +191,7 @@ describe('Selbstprüfung: Information bei Veranstaltungs-Kontakten und VVT', () 
     for (const v of neu.filter(x => VV_NETZWERKEN_IDS.includes(x.id))) {
       for (const f of ['zweck', 'personen', 'daten', 'rechtsgrundlage', 'empfaenger', 'drittland', 'loeschfrist', 'toms', 'verantwortlich'] as const) expect(v[f], `${v.id}.${f}`).toBeTruthy();
     }
-    expect(neu.find(v => v.id === 'vv-netzwerken')!.empfaenger).toMatch(/Kevin, Malin.*Hetzner.*Microsoft 365.*Apple iCloud.*Anthropic/);
+    expect(neu.find(v => v.id === 'vv-netzwerken')!.empfaenger).toMatch(/Konten des Haushalts.*Hetzner.*Microsoft 365.*Apple iCloud.*Anthropic/);
     expect(neu.find(v => v.id === 'vv-besuche-kunde')!.rechtsgrundlage).toMatch(/lit\. f/);
   });
   it('fehlt eines davon im Verzeichnis, steht die Selbstprüfung auf „teilweise“ und nennt es', () => {

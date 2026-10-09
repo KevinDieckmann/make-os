@@ -40,8 +40,8 @@ export const SCHRIFT = {
 /**
  * Zehn Farben. Getrennt nach Rolle:
  *   Flächen · Text · Interaktion · Zustand
- * Firmenfarben (Ventures, KEMARIS, …) sind KEINE Systemfarben — sie leben in
- * organisation-data.ts und dürfen nur als kleiner Erkennungspunkt auftreten,
+ * Farben der Orte/Gesellschaften sind KEINE Systemfarben — sie leben in
+ * lib/make-one/orte.ts und dürfen nur als kleiner Erkennungspunkt auftreten,
  * nie als Fläche.
  */
 export const FARBE = {

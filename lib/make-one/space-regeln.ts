@@ -1,10 +1,10 @@
 // ─── MAKE OS — Space-Regeln (26.09., Kevin: „die Aufteilung muss überall greifen“) ──
-// Jeder Eintrag gehört zu Privat oder Business. Aufgaben: der Ort (Organisation)
-// gibt den Space vor — Privat ist Privat, alles andere (KD Ventures, Consulting,
-// KEMARIS) ist Business; eine Aufgabe kann per Klick abweichen (`space`).
+// Jeder Eintrag gehört zu Privat oder Business. Aufgaben: der Ort (lib/make-one/orte.ts)
+// gibt den Space vor — Privat (und Privat-Einheiten) ist Privat, jede andere Gesellschaft
+// ist Business; eine Aufgabe kann per Klick abweichen (`space`).
 // Client-safe, keine Server-Importe.
 
-import { orgVon } from './organisation-data';
+import { ortVon } from './orte';
 import { bereichVon, istGesellschaft } from '@/lib/einheiten';
 
 export type SpaceId = 'privat' | 'business';
@@ -14,8 +14,8 @@ export const SPACE_FARBE: Record<SpaceId, string> = { privat: '#D9A45B', busines
 export const istSpace = (v: unknown): v is SpaceId => v === 'privat' || v === 'business';
 
 /**
- * Organisation → Space: „privat“ ist Privat — und seit 05.10. jede Einheit, die zu Privat gehört (lib/einheiten.ts `bereichVon`,
- * unsere Instanz: die Selbstständigkeit `kdc`, Kevin: „Ja, überall unter Privat“). KD Ventures, KEMARIS und alles andere: Business.
+ * Ort → Space: „privat“ ist Privat — und seit 05.10. jede Einheit, die zu Privat gehört (lib/einheiten.ts `bereichVon`,
+ * unsere Instanz: die Selbstständigkeit `kdc`). Jede andere Gesellschaft und jeder unbekannte Altwert: Business.
  */
 export const spaceVonOrg = (org: string): SpaceId => (org === 'privat' || (istGesellschaft(org) && bereichVon(org) === 'privat') ? 'privat' : 'business');
 /** Bereich eines Aufgaben-Space (`privat` · kdc · kdv · ug · `m-<firma>`): Privat und Privat-Einheiten → privat, Firmen und Mandanten → business. */
@@ -28,7 +28,7 @@ export const spaceBereich = (spaceId: string): SpaceId => (spaceId === 'privat' 
  */
 export function spaceVonAufgabe(t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId; spaceId?: string }, orgZuordnung: Record<string, string> = {}): SpaceId {
   if (typeof t.spaceId === 'string' && t.spaceId) return spaceBereich(t.spaceId);
-  return t.space ?? spaceVonOrg(orgVon(t, orgZuordnung));
+  return t.space ?? spaceVonOrg(ortVon(t, orgZuordnung));
 }
 
 // ── Fokus je Space (26.09., Kevin: „Privat und Business separat aufbauen“) ──

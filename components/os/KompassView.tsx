@@ -19,7 +19,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { THEMEN, STANDARD_ORDNUNG, sortierteThemen, themenMit, themaVon } from '@/lib/make-one/ordnung-data';
-import { ORGS } from '@/lib/make-one/organisation-data';
+import { ORTE } from '@/lib/make-one/orte';
 import { STICHWORTE, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { FAECHER } from '@/lib/inbox/faecher';
 import { WER_LABEL, einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
@@ -31,6 +31,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zah
 import { neueKennung } from '@/lib/kennung';
 import { suchPasst } from '@/lib/text/such-norm';
 import { PlanerLeiste } from './PlanerLeiste';
+import { usePersonen } from './aufgaben/hilfe';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -65,6 +66,8 @@ const HORIZONTE = [
 ];
 
 export function KompassView() {
+  // Personen des Haushalts aus dem Team (09.10.: keine festen Namen im Filter „Wer“).
+  const teamPersonen = usePersonen();
   const { state } = useTasks();
 
   // ── Lage & Regler ──
@@ -523,7 +526,7 @@ export function KompassView() {
         <Ueberschrift farbe={LEUCHT.puls} rechts="Einmal einstellen, dann mit einem Klick aufrufen.">Eigene Filter</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input value={neuName} onChange={e => setNeuName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') filterAnlegen(); }}
-            placeholder="Name, z. B. Was Malin heute macht — oder: Alles zum Steuerberater" aria-label="Neuer Filter"
+            placeholder="Name, z. B. Was heute ansteht — oder: Alles zum Steuerberater" aria-label="Neuer Filter"
             style={{ ...feld, width: 'auto', flex: '1 1 220px', minWidth: 0 }} />
           <Knopf onClick={filterAnlegen}>+ Anlegen</Knopf>
         </div>
@@ -536,10 +539,10 @@ export function KompassView() {
             const treffer = f.wo === 'aufgaben' ? trefferVon(f) : null;
             const teile = [
               ...(f.themen ?? []).map(x => THEMA_EIGEN[x]?.label),
-              ...(f.orgs ?? []).map(x => ORGS.find(o => o.id === x)?.kurz),
+              ...(f.orgs ?? []).map(x => ORTE.find(o => o.id === x)?.kurz),
               ...(f.prios ?? []).map(x => PRIOS.find(p => p[0] === x)?.[1]),
               ...(f.wege ?? []).map(x => WER_LABEL[x as keyof typeof WER_LABEL]),
-              ...(f.stichworte ?? []).map(x => STICHWORTE.find(s => s.id === x)?.label ?? eigeneSw.find(s => s.id === x)?.label),
+              ...(f.stichworte ?? []).map(x => STICHWORTE.find(s => s.id === x)?.label ?? eigeneSw.find(s => s.id === x)?.label ?? x),
             ].filter(Boolean);
             return (
               <div key={f.id} style={{ background: auf ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.03)', borderRadius: 14, padding: '10px 14px', transition: 'background .2s ease' }}>
@@ -563,10 +566,10 @@ export function KompassView() {
                     {f.wo === 'aufgaben' ? (
                       <>
                         {reihe('Thema', THEMEN.map(b => chip((f.themen ?? []).includes(b.id), b.farbe, b.label, () => patch(f.id, { themen: kippen(f.themen, b.id) }), b.id)))}
-                        {reihe('Ort', ORGS.map(o => chip((f.orgs ?? []).includes(o.id), o.farbe, o.kurz, () => patch(f.id, { orgs: kippen(f.orgs, o.id) }), o.id)))}
+                        {reihe('Ort', ORTE.map(o => chip((f.orgs ?? []).includes(o.id), o.farbe, o.kurz, () => patch(f.id, { orgs: kippen(f.orgs, o.id) }), o.id)))}
                         {reihe('Stufe', PRIOS.map(([key, label]) => chip((f.prios ?? []).includes(key), C.aktiv, label, () => patch(f.id, { prios: kippen(f.prios, key) }), key)))}
                         {reihe('Weg', (['zoe', 'gemeinsam', 'mensch'] as const).map(w => chip((f.wege ?? []).includes(w), C.aktiv, WER_LABEL[w], () => patch(f.id, { wege: kippen(f.wege, w) }), w)))}
-                        {reihe('Wer', (['kevin', 'malin', 'both'] as const).map(p => chip(f.besitzer === p, C.aktiv, p === 'both' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin', () => patch(f.id, { besitzer: f.besitzer === p ? undefined : p }), p)))}
+                        {reihe('Wer', [...teamPersonen.map(p => ({ id: p.speicher, label: p.name })), { id: 'both', label: 'Beide' }].map(p => chip(f.besitzer === p.id, C.aktiv, p.label, () => patch(f.id, { besitzer: f.besitzer === p.id ? undefined : p.id }), p.id)))}
                       </>
                     ) : (
                       reihe('Fach', FAECHER.map(fa => chip((f.faecher ?? []).includes(fa.id), C.aktiv, fa.label, () => patch(f.id, { faecher: kippen(f.faecher, fa.id) }), fa.id)))

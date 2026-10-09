@@ -34,7 +34,7 @@ export interface Baustein { art: PlanArt; titel: string; dauerMin: number; taskI
 
 const BAUSTEINE: Baustein[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
-  { art: 'reha', titel: 'Reha / Rücken', dauerMin: 30 },
+  { art: 'reha', titel: 'Reha / Training', dauerMin: 30 },
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
 ];

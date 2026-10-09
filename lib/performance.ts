@@ -9,7 +9,6 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { gesundheitsIndexFuer } from '@/lib/gesundheit/speicher';
-import { RITUALE } from '@/lib/make-one/team-data';
 import { agentenFaktoren, agentenEingabe } from '@/lib/agenten-score';
 import { DEPARTMENTS } from '@/lib/make-one/agents-data';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
@@ -229,7 +228,8 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // Mit Haushalt zählt der Pflege-Rhythmus des Paares (lib/familie/logik.ts):
   // gemeinsame Rhythmen über 28 Tage, nie eine Person, nie Gefühle. Ohne
   // Haushalt bleibt der alte Weg (Journal-Stimmung + Rituale).
-  const rhythmus: Rhythmus | null = zugang ? pflegeRhythmus(await ladeFamilie(zugang.haushalt), today) : null;
+  const fam = zugang ? await ladeFamilie(zugang.haushalt) : null;
+  const rhythmus: Rhythmus | null = fam ? pflegeRhythmus(fam, today) : null;
   const familie: Faktor[] | null = rhythmus && rhythmus.score != null
     ? rhythmus.bausteine.map(b => ({ label: b.titel, wert: clamp(b.wert * 100), echt: true, quelle: `${b.text} · Gewicht ${b.gewicht}` }))
     : null;
@@ -237,20 +237,24 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const sozial: Faktor[] = [
     { label: 'Stimmung (Journal)', wert: 0, echt: false, quelle: 'kommt aus deinen Journal-Einträgen — noch keine da' },
   ];
-  // Rituale: gehaltene Verabredungen mit Malin und dem Team — die einzige
-  // Größe hier, die Kevin aktiv steuern kann.
-  // Die Rituale haben verschiedene Rhythmen (Sunday Dinner wöchentlich, Handy
-  // weg täglich). Die ehrliche Frage ist deshalb nicht „wie oft", sondern
-  // „welche davon haben diese Woche stattgefunden".
+  // Rituale (09.10., Paket „neutral-rest“): welche Rituale es gibt, steht im Familie-Bestand des Haushalts (/os/familie) —
+  // nie mehr eine feste Liste im Code. Gehalten = Rituale, die diese Woche abgehakt wurden (gemeinsame Ritualtage der
+  // Familie, dazu der alte persönliche Log, soweit seine Kennungen zu einem Ritual der Familie gehören). Die Rituale haben
+  // verschiedene Rhythmen — die ehrliche Frage ist deshalb nicht „wie oft“, sondern „welche davon fanden diese Woche statt“.
   const rl = ritualLog ?? {};
-  const gehalteneRituale = new Set(letzte7.flatMap(d => rl[d] ?? []));
-  const ritualTage = letzte7.filter(d => (rl[d]?.length ?? 0) > 0);
-  if (ritualTage.length) {
+  const ritualIds = new Set((fam?.rituale ?? []).map(r => r.id));
+  const gehalteneRituale = new Set([
+    ...letzte7.flatMap(d => rl[d] ?? []),
+    ...(fam?.ritualtage ?? []).filter(t => letzte7.includes(t.datum)).flatMap(t => t.erledigt),
+  ].filter(id => ritualIds.has(id)));
+  if (!ritualIds.size) {
+    sozial.push({ label: 'Rituale gehalten', wert: 0, echt: false, quelle: 'noch keine Rituale hinterlegt — auf /os/familie' });
+  } else if (gehalteneRituale.size) {
     sozial.push({
       label: 'Rituale gehalten',
-      wert: clamp((gehalteneRituale.size / RITUALE.length) * 100),
+      wert: clamp((gehalteneRituale.size / ritualIds.size) * 100),
       echt: true,
-      quelle: `${gehalteneRituale.size} von ${RITUALE.length} Ritualen diese Woche`,
+      quelle: `${gehalteneRituale.size} von ${ritualIds.size} Ritualen diese Woche`,
     });
   } else {
     sozial.push({ label: 'Rituale gehalten', wert: 0, echt: false, quelle: 'noch keins abgehakt — auf /os/familie' });

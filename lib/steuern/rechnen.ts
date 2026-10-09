@@ -154,7 +154,7 @@ export function fristen(e: SteuerEinstellungen, heute: string, erledigt: Record<
     dazu('privat', { datum: t.datum, art: 'est', titel: t.titel, hinweis: 'gemeinsam: Gehalt und Gewinn der Selbstständigkeit', ...(e.vorauszahlung.est ? { betrag: e.vorauszahlung.est } : {}), href: WEG.steuern('ruecklage') });
   }
   for (let j = Number(heute.slice(0, 4)) - 2; j <= Number(heute.slice(0, 4)); j++) {
-    dazu('privat', { datum: erklaerungsFrist(j, e.mitBerater), art: 'erklaerung', titel: `Einkommensteuererklärung ${j}`, hinweis: `Kevin & Malin${e.mitBerater ? ' — Frist mit Steuerberater' : ''}`, href: WEG.steuern('uebergabe') });
+    dazu('privat', { datum: erklaerungsFrist(j, e.mitBerater), art: 'erklaerung', titel: `Einkommensteuererklärung ${j}`, hinweis: `Haushalt${e.mitBerater ? ' — Frist mit Steuerberater' : ''}`, href: WEG.steuern('uebergabe') });
   }
   return raus.sort((a, b) => a.datum.localeCompare(b.datum) || a.einheit.localeCompare(b.einheit));
 }

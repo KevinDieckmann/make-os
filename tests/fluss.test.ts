@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => undefined })
 vi.mock('@/lib/zeit', async orig => ({ ...(await orig<typeof import('@/lib/zeit')>()), localDay: () => '2026-10-04' }));
 vi.mock('@/lib/kalender/zoe-sicht-server', () => ({
   termineFuerZoe: async (person: string) => ({
-    stand: null, quelle: 'icloud', kemaris: [], kemarisStand: null, einstellungen: null,
+    stand: null, quelle: 'icloud', einstellungen: null,
     termine: [
       // Für Kevin ist Malins privater Termin schon maskiert (wie `fuerZoe`) — er darf nie als seine Zeit zählen.
       { id: 'u1', titel: person === 'malin' ? 'Geheimes Treffen' : 'Belegt', start: '2026-10-06T18:00:00', ende: '2026-10-06T20:00:00', ganztags: false, wer: 'malin', ...(person === 'malin' ? {} : { maskiert: true }) },

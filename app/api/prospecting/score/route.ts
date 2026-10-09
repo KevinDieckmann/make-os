@@ -23,6 +23,8 @@ export async function POST(req: Request) {
   const p = payload.prospect ?? {};
   const icp = (payload.icp ?? '').trim();
   if (!p.company) return NextResponse.json({ error: 'Kein Unternehmen angegeben.' }, { status: 400 });
+  // Ohne Kundenprofil gibt es nichts zu messen (09.10.: kein Standard-Profil mehr im Code).
+  if (!icp) return NextResponse.json({ error: 'Erst das ideale Kundenprofil eintragen — dagegen wird bewertet.' }, { status: 400 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key (.env.local).', needsKey: true });
 
   // Deine Einstellungen aus /os/agenten gelten wirklich.
@@ -30,11 +32,11 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
   const system = [
-    'Du bist der Prospecting-Agent in Kevins MAKE OS und qualifizierst Firmen gegen ein ideales Kundenprofil (ICP) für "POINCAP".',
+    'Du bist der Prospecting-Agent in MAKE OS und qualifizierst Firmen gegen das ideale Kundenprofil (ICP) dieser Instanz (steht unten, Daten).',
     'Bewerte NÜCHTERN und ehrlich. Wenn du eine Firma nicht kennst, leite den Fit aus Branche/Größe/Region ab und sag das offen — erfinde keine Fakten.',
     'Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, kein Fließtext, kein Markdown:',
     '{"score": <0-100 int>, "fit": "<1-2 Sätze: warum passt/passt nicht>", "angle": "<1 Satz: konkreter Aufhänger für die Erstansprache>"}',
-    'score: Wie gut passt die Firma auf das ICP (Branche, Größe, wahrscheinliche Controlling-Schmerzen)? 80+ = starker Fit, 50-79 = prüfen, <50 = eher nein.',
+    'score: Wie gut passt die Firma auf das ICP (Branche, Größe, wahrscheinliche Schmerzpunkte laut ICP)? 80+ = starker Fit, 50-79 = prüfen, <50 = eher nein.',
     'Kein Startup-Sprech. Deutsch.',
   ].join('\n');
 

@@ -188,7 +188,7 @@ export function useCrm() {
     return schreibe({ liste, op: 'teil', id, felder }, 'Nicht gespeichert.');
   }, [schreibe]);
 
-  /** An Kevin oder Malin übergeben (/api/crm/uebergabe) — danach neu laden. */
+  /** An eine andere Person des Teams übergeben (/api/crm/uebergabe) — danach neu laden. */
   const uebergeben = useCallback(async (body: { art: string; id?: string; ids?: string[]; an: string; notiz?: string; frist?: string }) => {
     unterwegs.current++;
     neuerVersuch();

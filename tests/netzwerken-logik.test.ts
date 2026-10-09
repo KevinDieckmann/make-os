@@ -166,7 +166,7 @@ describe('Danke-Mail', () => {
     expect(du.betreff).toBe('Danke für das Gespräch bei Stammtisch Beispielstadt');
     expect(du.text.startsWith('Hallo Anna,\n\nschön, dich gestern bei Stammtisch Beispielstadt kennengelernt zu haben.\nDanke für das Gespräch — ich habe es gern geführt.\n\nWie besprochen: Unser Termin ist am Montag, 05.10. um 10:30 Uhr.\n\nBis bald und viele Grüße\nKevin\n\n—\nDatenschutz: ')).toBe(true);
     // Art. 13 (netz-recht): der Hinweis steht am Ende — wer, wozu, Rechtsgrundlage, Werbung nur mit Einwilligung, Rechte und wohin.
-    expect(du.text).toMatch(/Datenschutz: Ich habe mir deine Kontaktdaten von deiner Visitenkarte notiert, um mit dir in Verbindung zu bleiben \(Art\. 6 Abs\. 1 lit\. f DSGVO, Verantwortlich: .+\)\. Werbung sende ich nur mit deiner Einwilligung\. Auskunft, Berichtigung, Löschung, Widerspruch: \S+@\S+ · \S+#kontakte$/);
+    expect(du.text).toMatch(/Datenschutz: Ich habe mir deine Kontaktdaten von deiner Visitenkarte notiert, um mit dir in Verbindung zu bleiben \(Art\. 6 Abs\. 1 lit\. f DSGVO, Verantwortlich: .+\)\. Werbung sende ich nur mit deiner Einwilligung\. Auskunft, Berichtigung, Löschung, Widerspruch: (\S+@\S+ · \S+#kontakte|\[Kontaktweg fehlt — unter System › Datenschutz eintragen\])$/);
     const sie = dankeEntwurf({ vorname: 'Anna', nachname: 'Beispiel', anrede: 'Sie', eventTitel: 'Stammtisch Beispielstadt', wann: 'gestern', schritt: 'followup', absender: 'Kevin' });
     expect(sie.text).toContain('Guten Tag Anna Beispiel,');
     expect(sie.text).toContain('schön, Sie gestern bei Stammtisch Beispielstadt kennengelernt zu haben.');

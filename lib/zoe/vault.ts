@@ -25,7 +25,8 @@
 import { readdir, readFile, stat, appendFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { join, basename, relative, sep, dirname } from 'node:path';
 import { homedir } from 'node:os';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { KERN_EINHEITEN, BEREICH_JE_EINHEIT } from '@/lib/einheiten';
 import { createHash } from 'node:crypto';
 
 const HEIM = homedir();
@@ -38,7 +39,23 @@ const ausHeim = (p: string) => p.replace(/^~(?=$|\/)/, HEIM);
  */
 const MAC_VAULT_NEU = join(HEIM, 'Vaults', 'MAKE', 'Make.Claude');
 export const BRAIN = process.env.MAKE_VAULT_DIR?.trim() ? ausHeim(process.env.MAKE_VAULT_DIR.trim()) : existsSync(MAC_VAULT_NEU) ? MAC_VAULT_NEU : join(HEIM, 'Desktop', 'MAKE', 'Make.Claude');
-const ICLOUD = join(HEIM, 'Library/Mobile Documents/com~apple~CloudDocs/Make Privat ❤️/MAKE OS');
+/**
+ * Die Doku der Software (Obsidian-Ordner mit Karte, Entscheidungen und den Selbstbild-Notizen von ZOE). Ort aus
+ * `MAKE_OS_DOKU_WURZEL` (Pfad; „aus“ = keine Doku-Wurzel, so in Tests und Demo). Ohne Variable am Mac: der erste Ordner
+ * „MAKE OS“ auf oberster Ebene eines Ordners im iCloud Drive — 09.10.: kein privater Ordnername mehr im Code. Auf dem Server
+ * gibt es den Ort nicht (keine Doku-Wurzel).
+ */
+function dokuWurzel(): string | null {
+  const v = process.env.MAKE_OS_DOKU_WURZEL?.trim();
+  if (v === 'aus') return null;
+  if (v) return ausHeim(v);
+  const drive = join(HEIM, 'Library/Mobile Documents/com~apple~CloudDocs');
+  try {
+    for (const n of readdirSync(drive).sort()) { const p = join(drive, n, 'MAKE OS'); if (existsSync(p)) return p; }
+  } catch { /* kein iCloud Drive (Server, Linux) */ }
+  return null;
+}
+const DOKU = dokuWurzel();
 
 export interface Wurzel {
   id: string; name: string;
@@ -53,8 +70,8 @@ export interface Wurzel {
 /** Reihenfolge = Rang: bei inhaltsgleichen Notizen gewinnt die erste Wurzel. */
 export const WURZELN: Wurzel[] = [
   { id: 'make', name: 'Obsidian · MAKE Brain', pfad: BRAIN, vault: dirname(BRAIN), obsidian: basename(dirname(BRAIN)) },
-  // Tests und Proben mit eigenem Vault (MAKE_OS_DOKU_WURZEL=aus) lesen die iCloud-Doku nicht mit (27.09.).
-  ...(process.env.MAKE_OS_DOKU_WURZEL === 'aus' ? [] : [{ id: 'makeos', name: 'MAKE OS · Doku (iCloud)', pfad: ICLOUD, vault: ICLOUD, obsidian: basename(ICLOUD) }]),
+  // Tests und Proben mit eigenem Vault (MAKE_OS_DOKU_WURZEL=aus) lesen die Doku nicht mit (27.09.).
+  ...(DOKU ? [{ id: 'makeos', name: 'MAKE OS · Doku', pfad: DOKU, vault: DOKU, obsidian: basename(DOKU) }] : []),
 ];
 
 /** Technischer Ballast — nichts davon ist Wissen. */
@@ -151,7 +168,8 @@ export function bereichVon(id: string): string {
   if (id.startsWith('makeos/')) return 'MAKE OS';
   const teil = id.split('/')[2] ?? '';
   if (/^00\./.test(teil)) return 'Fundament';
-  if (/KD Ventures/i.test(teil)) return 'Business';
+  // Ordner, die eine Business-Gesellschaft der Instanz nennen (Namen aus lib/einheiten.ts — 09.10.: kein Firmenname im Code).
+  if (KERN_EINHEITEN.some(e => BEREICH_JE_EINHEIT[e.id] === 'business' && teil.toLocaleLowerCase('de-DE').includes(e.label.toLocaleLowerCase('de-DE')))) return 'Business';
   if (/privat/i.test(teil)) return 'Privat';
   if (/Protokolle/i.test(teil)) return 'Protokolle';
   if (/Quellen/i.test(teil)) return 'Quellen';
@@ -508,7 +526,8 @@ export async function schreibeEigene(name: string, text: string):
   Promise<{ ok: boolean; pfad?: string; fehler?: string }> {
   const datei = sauber(name);
   if (!datei) return { ok: false, fehler: 'Kein Name.' };
-  const ziel = join(ICLOUD, EIGENER_ORDNER, `${datei}.md`);
+  if (!DOKU) return { ok: false, fehler: 'Keine Doku-Wurzel eingerichtet (MAKE_OS_DOKU_WURZEL).' };
+  const ziel = join(DOKU, EIGENER_ORDNER, `${datei}.md`);
   try {
     let alt = '';
     try { alt = await readFile(ziel, 'utf8'); } catch { /* neu, das ist in Ordnung */ }

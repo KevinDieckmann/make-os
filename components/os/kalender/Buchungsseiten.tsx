@@ -146,7 +146,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
             <button onClick={() => void kopieren(s)} disabled={!s.aktiv} style={{ background: 'none', border: 'none', color: s.aktiv ? LEUCHT.puls : C.inkLeise, cursor: s.aktiv ? 'pointer' : 'default', fontSize: TYP.bedien, fontFamily: SCHRIFT.text, flex: '0 0 auto' }}>{kopiert === s.id ? 'kopiert ✓' : 'Link kopieren'}</button>
           </div>
         ))}
-        {stand && !stand.seiten.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Buchungsseite — z. B. „30 min mit Kevin“.</span>}
+        {stand && !stand.seiten.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Buchungsseite — z. B. „30 min Kennenlernen“.</span>}
       </div>
       {(anfragen.length > 0 || vorlaeufig.length > 0 || kommend.length > 0 || abgesagtMitTermin.length > 0) && (
         <button onClick={() => setOffen(!offen)} style={{ background: 'none', border: 'none', color: anfragen.length ? LEUCHT.achtung : C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', padding: 0, marginTop: 10, fontFamily: SCHRIFT.text, fontWeight: 600 }}>

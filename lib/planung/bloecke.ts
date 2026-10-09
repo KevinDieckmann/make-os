@@ -83,7 +83,7 @@ export function gehoertZu(t: Pick<BlockQuelle, 'wer' | 'von'>, person: string): 
   return t.wer === person || t.wer === 'beide';
 }
 
-/** Art eines vorgeschlagenen Schutz-Blocks aus seinem Titel (Kalender-Agent): Reha/Rücken → reha, Fokus/Deep → fokus, Pause → pause, sonst block. */
+/** Art eines vorgeschlagenen Schutz-Blocks aus seinem Titel (Kalender-Agent): Reha/Physio/Mobility → reha, Fokus/Deep → fokus, Pause → pause, sonst block. */
 export function planArtAusTitel(titel: string): PlanArt {
   const t = titel.toLowerCase();
   if (/reha|rücken|ruecken|physio|mobility/.test(t)) return 'reha';
