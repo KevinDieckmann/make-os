@@ -13,7 +13,8 @@ import { feld, Chip, Fortschritt, LEUCHT, type Bestaetigung } from '../../ui';
 import type { CrmAblage } from '../ablage';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
-import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
+import { teilAenderung, gastTeilnahme, netzwerkenHerkunft, begegnungenNachgefasst, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
+import { neueId } from '../daten';
 import { followUpEingabe, hebtLead, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
 import { MARKE_EVENTS, nachgefasstText, EVENT_REIHEN, reiheVon, reiheName } from '@/lib/crm/marke';
 import { statusLabel } from '@/lib/crm/leads';
@@ -47,6 +48,21 @@ export function eventSetzen(api: CrmApi, e: Event, teil: Partial<Event>): Promis
   return Object.keys(felder).length ? api.teil('events', e.id, felder) : Promise.resolve(true);
 }
 /** Teilnahme ändern (Status, Notiz, Nachfassen, Weg, lädt ein …): nur diese Felder — zwei Geräte am Einlass stören sich nicht. */
+/**
+ * Gast für ein Make.One-Event vormerken — EIN Weg im Browser (08.10., Woche 2 · 5.15) für Gästeliste UND Schnellleiste, gleich dem Server
+ * (`gastVormerken`): `gastTeilnahme` (Einladungsweg, einlädt, Herkunft) und danach die Begegnungen bei besuchten Events als „nachgefasst“
+ * (`begegnungenNachgefasst`) — vorher setzte nur die Schnellleiste den Stempel, aus der Gästeliste blieb die Begegnung in der Power Hour.
+ */
+export async function gastVormerkenMitNachfassen(api: CrmApi, a: { eventId: string; k: Kontakt; weg: Weg; einladenDurch?: string; heute: string }): Promise<boolean> {
+  const stand = api.crm?.stand;
+  if (!stand) return false;
+  const jetzt = new Date().toISOString();
+  const ok = await api.setze('teilnahmen', gastTeilnahme({ id: neueId('t'), eventId: a.eventId, kontaktId: a.k.id, weg: a.weg, jetztIso: jetzt, ...(a.einladenDurch ? { einladenDurch: a.einladenDurch } : {}), herkunft: netzwerkenHerkunft(stand.teilnahmen, a.k.id) }) as unknown as { id: string } & Record<string, unknown>);
+  if (!ok) return false;
+  for (const t of begegnungenNachgefasst(stand, a.k.id, a.heute, api.ich ?? 'system', jetzt)) await api.teil('teilnahmen', t.id, { followUpAm: a.heute });
+  return true;
+}
+
 export function gastSetzen(api: CrmApi, t: Teilnahme, teil: Partial<Teilnahme>): Promise<boolean> {
   const felder = teilAenderung(t, teil);
   return Object.keys(felder).length ? api.teil('teilnahmen', t.id, felder) : Promise.resolve(true);

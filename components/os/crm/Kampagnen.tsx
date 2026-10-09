@@ -26,7 +26,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { dealAkte } from '@/lib/crm/adresse';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT, ZeileAktionen } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT, ZeileAktionen, Hinweis } from '../ui';
 import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte, type CrmAblage } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus } from '@/lib/crm/recht';
@@ -43,6 +43,7 @@ import { VernetzenEinstellungen } from './Vernetzen';
 import { DealAusQuelle } from './marketing/DealAusQuelle';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { NEU_MAX, kampagneInPowerHour } from '@/lib/crm/heute';
+import { weltDerKampagne, sichtbareKampagnen } from '@/lib/crm/kampagnen-welt';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number })[];
@@ -83,22 +84,26 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
     if (!r.ok) return;
     setOffen(r.kampagne.id); setSegmentPlan(null);
     // Die neue Kampagne soll sichtbar sein, auch wenn gerade nach der anderen Person gefiltert ist.
-    if (!passtWer(wahl, r.kampagne.zustaendig, 'sales', ich)) setWahl('alle');
+    if (!passtWer(wahl, r.kampagne.zustaendig, weltDerKampagne(r.kampagne), ich)) setWahl('alle');
     // 5.2 (08.10.): der Hinweis des Servers (rote Ampel nicht aufgenommen, gelbe nur persönlich) geht nicht mehr verloren — „0 Personen“ hat einen Grund.
-    setMeldung(`Entwurf „${r.kampagne.name}“ mit ${r.kampagne.kontaktIds.length} Personen angelegt — zuständig ${nameVon(zustaendig(r.kampagne.zustaendig, 'sales'))}.${typeof r.hinweis === 'string' && r.hinweis ? ` ${r.hinweis}` : ''} Als Nächstes: Personen prüfen, dann den ersten Schritt angehen.`);
+    setMeldung(`Entwurf „${r.kampagne.name}“ mit ${r.kampagne.kontaktIds.length} Personen angelegt — zuständig ${nameVon(zustaendig(r.kampagne.zustaendig, weltDerKampagne(r.kampagne)))}.${typeof r.hinweis === 'string' && r.hinweis ? ` ${r.hinweis}` : ''} Als Nächstes: ${r.kampagne.kontaktIds.length ? 'Personen prüfen, dann den ersten Schritt angehen' : 'Personen über die Suche in der Kampagne hinzufügen'}.`);
   };
   const alleRoh = api.crm?.stand.kampagnen ?? [];
   const archivZahl = alleRoh.filter(k => k.archiviertAm).length;
   const alleKampagnen = alleRoh.filter(k => (sicht === 'archiv' ? !!k.archiviertAm : !k.archiviertAm)).sort((a, b) => STATUS.findIndex(s => s.id === a.status) - STATUS.findIndex(s => s.id === b.status) || b.geaendert.localeCompare(a.geaendert));
-  const kampagnen = alleKampagnen.filter(k => passtWer(wahl, k.zustaendig, 'sales', ich));
-  const zahlen = werZahlen(alleKampagnen, k => k.zustaendig, 'sales', ich);
+  // 6.6 (08.10.): die Welt einer Kampagne kommt aus ihrem Playbook (`weltDerKampagne`) — nicht mehr fest „sales“.
+  // 5.7: die Kampagne aus dem Link (`k`) steht immer da — auch archiviert oder bei gemerktem Filter „Meins“.
+  const kampagnen = sichtbareKampagnen(alleRoh, { sicht, offen, passt: k => passtWer(wahl, k.zustaendig, weltDerKampagne(k), ich) })
+    .sort((a, b) => STATUS.findIndex(s => s.id === a.status) - STATUS.findIndex(s => s.id === b.status) || b.geaendert.localeCompare(a.geaendert));
+  const zahlen = werZahlen(alleKampagnen, k => zustaendig(k.zustaendig, weltDerKampagne(k)), 'sales', ich);
   const segment = segmentPlan ? api.crm?.stand.segmente.find(s => s.id === segmentPlan) : undefined;
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt …</Leer>}</Karte>;
 
   return (
     <>
       <HeadPanel head={head} standardModus="kampagne" zuKontakt={zuKontakt} i={0} nachEntscheid={() => { void laden(); void api.laden(); }} />
-      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
+      {/* 5.5 (08.10.): ist eine Kampagne offen, steht die Meldung an ihr (unten im Detail), nicht außer Sicht oben. */}
+      {meldung && !offen && <Hinweis art={/nicht|Fehl|keine/i.test(meldung) ? 'achtung' : 'gut'} rolle="status" aktion={<Knopf leise onClick={() => setMeldung('')}>ok</Knopf>}>{meldung}</Hinweis>}
 
       {segment && (
         <Karte i={1} akzent={LEUCHT.business}>
@@ -115,7 +120,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
         <AblageReiter sicht={sicht} onSicht={setSicht} name="Kampagnen" liste={alleRoh.length - archivZahl} archiv={archivZahl} korb={ablage.korb.length} />
       )}
       {sicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="kampagnen" />}
-      {sicht !== 'papierkorb' && (alleKampagnen.length > 0 || sicht === 'archiv') && (
+      {sicht !== 'papierkorb' && (alleKampagnen.length > 0 || sicht === 'archiv' || kampagnen.length > 0) && (
         <Karte i={1}>
           <Ueberschrift rechts={sicht === 'archiv' ? `${alleKampagnen.length} im Archiv` : `${kampagnen.filter(k => k.status === 'aktiv').length} aktiv`}>{sicht === 'archiv' ? 'Archiv · Kampagnen' : 'Kampagnen'}</Ueberschrift>
           <div style={{ marginBottom: 6 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
@@ -129,9 +134,9 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
                     titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
-                    rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, 'sales')} groesse={18} /></span>} />
+                    rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.archiviertAm && sicht !== 'archiv' && <Chip farbe={C.inkLeise}>archiviert</Chip>}{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, weltDerKampagne(k))} groesse={18} /></span>} />
                   </ZeileAktionen>
-                  {offen === k.id && <KampagnenDetail k={k} api={api} ablage={ablage} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} />}
+                  {offen === k.id && <KampagnenDetail k={k} api={api} ablage={ablage} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} meldung={meldung} setMeldung={setMeldung} />}
                 </div>
               );
             })}
@@ -164,7 +169,8 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
       </Karte>
 
       <Karte i={3}>
-        <Ueberschrift>Bewährtes Vorgehen</Ueberschrift>
+        {/* 5.6 (08.10.): eine eigene (leere) Kampagne geht auch ohne Segment — Personen danach über die Suche hinzufügen. */}
+        <Ueberschrift rechts={<Knopf leise onClick={() => planen('eigen')}>Eigene Kampagne</Knopf>}>Bewährtes Vorgehen</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 10 }}>
           {d.playbooks.map(p => (
             <div key={p.id} style={{ padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 6, alignContent: 'start' }}>
@@ -172,7 +178,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
               <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.warum}</div>
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kanal: {KANAL_LABEL[p.kanal]} · Messgröße: {p.kennzahl} · {p.fuer.map(f => (f === 'head-sales' ? 'Sales' : 'Marketing')).join(' & ')}</div>
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>⚖ {p.recht}</div>
-              <div><Knopf leise aus={!p.anzahl} onClick={() => planen(p.id)}>Kampagne planen</Knopf></div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><Knopf leise aus={!p.anzahl} onClick={() => planen(p.id)}>Kampagne planen</Knopf>{!p.anzahl && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zielgruppe heute leer — „Eigene Kampagne“ geht immer.</span>}</div>
             </div>
           ))}
         </div>
@@ -206,7 +212,7 @@ function kampagneLoeschen(ablage: CrmAblage, k: Kampagne) {
   ablage.loeschen(k.id, k.name, { archivAnbieten: true, text: 'Die Kampagne läuft noch. Im Papierkorb ist sie überall ausgeblendet; die Ergebnisse im Verlauf der Personen bleiben. Ist sie nur vorbei, ist Archivieren der ruhigere Weg.' });
 }
 
-function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k: Kampagne; api: CrmApi; ablage: CrmAblage; pb?: Playbook; z?: KampagnenZahlen; heute: string; post: (b: Record<string, unknown>) => Promise<{ ok?: boolean; angelegt?: number; an?: string }>; zuKontakt: (id: string) => void }) {
+function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt, meldung, setMeldung }: { k: Kampagne; api: CrmApi; ablage: CrmAblage; pb?: Playbook; z?: KampagnenZahlen; heute: string; post: (b: Record<string, unknown>) => Promise<{ ok?: boolean; angelegt?: number; an?: string; fehler?: string; hinweis?: string }>; zuKontakt: (id: string) => void; meldung: string; setMeldung: (t: string) => void }) {
   const router = useRouter();
   const [suche, setSuche] = useState('');
   const [alle, setAlle] = useState(false);
@@ -219,9 +225,10 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k:
   const nachId = new Map((api.kontakte ?? []).map(x => [x.id, x]));
   const letztes = new Map<string, { ergebnis: KampagnenErgebnis; von?: string }>();
   for (const e of [...k.ergebnisse].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(e.kontaktId, { ergebnis: e.ergebnis, von: e.von });
-  const fuehrt = zustaendig(k.zustaendig, 'sales');
+  const welt = weltDerKampagne(k);
+  const fuehrt = zustaendig(k.zustaendig, welt);
   // Aufgaben gehen an die Zuständigkeit; bei „beide“ an mich.
-  const aufgabenAn = bearbeiterFuer(k.zustaendig, 'sales', api.ich ?? fuehrt);
+  const aufgabenAn = bearbeiterFuer(k.zustaendig, welt, api.ich ?? fuehrt);
   const jePerson = kampagneJePerson(k);
   const inPowerHour = useKampagneInPowerHour(k, fuehrt === BEIDE ? api.ich ?? fuehrt : fuehrt);
   // Was als Nächstes zu tun ist — fällige Schritte vor offenen Personen vor Abschluss.
@@ -237,6 +244,10 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k:
   const personen = k.kontaktIds.map(id => nachId.get(id)).filter((x): x is NonNullable<typeof x> => !!x);
   return (
     <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+      {/* 5.5 (08.10.): Meldungen AM Detail — Fehler und Bestätigungen (auch der Speicher-Weg: Kanal, Personen) stehen hier, nicht außer Sicht oben. */}
+      {meldung && <Hinweis art={/nicht|Fehl|keine Verbindung/i.test(meldung) ? 'achtung' : 'gut'} rolle="status" aktion={<Knopf leise onClick={() => setMeldung('')}>ok</Knopf>}>{meldung}</Hinweis>}
+      {api.fehler && <Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => api.setFehler(null)}>ok</Knopf>}>{api.fehler}</Hinweis>}
+      {api.hinweis && <Hinweis art="achtung" rolle="status" aktion={<Knopf leise onClick={() => api.setHinweis(null)}>ok</Knopf>}>{api.hinweis}</Hinweis>}
       {z && <Raster min={110}><Zahl wert={String(z.personen)} label="Personen" /><Zahl wert={String(z.angesprochen)} label="angesprochen" /><Zahl wert={String(z.reagiert)} label="reagiert" /><Zahl wert={String(z.gespraeche)} label="Gespräche" farbe={LEUCHT.gut} /><Zahl wert={String(z.chancen)} label="Chancen" farbe={LEUCHT.business} /></Raster>}
       {naechstes && <div style={{ fontSize: TYP.bedien, color: C.ink }}>Als Nächstes: {naechstes}</div>}
       {jePerson.length > 0 && (
@@ -253,7 +264,7 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k:
       {k.playbook === 'vernetzen' && <VernetzenEinstellungen k={k} api={api} />}
       <Feldzeile label="Zuständig">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <ZustaendigWahl wert={k.zustaendig} welt="sales" onWahl={wert => void api.teil('kampagnen', k.id, { zustaendig: wert })} />
+          <ZustaendigWahl wert={k.zustaendig} welt={welt} onWahl={wert => void api.teil('kampagnen', k.id, { zustaendig: wert })} />
           <Uebergeben api={api} art="kampagne" id={k.id} jetzt={fuehrt} klein />
         </div>
       </Feldzeile>
@@ -300,7 +311,7 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt }: { k:
                 <button onClick={() => setze({ kontaktIds: k.kontaktIds.filter(i => i !== x.id) })} aria-label="Aus der Kampagne nehmen" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Pillen liste={ERGEBNISSE} aktiv={e} onWahl={ergebnis => void post({ aktion: 'ergebnis', id: k.id, kontaktId: x.id, ergebnis, ...(api.ich ? { von: api.ich } : {}) })} farbe={ERGEBNISSE.find(r => r.id === e)?.farbe ?? LEUCHT.puls} />
+                <Pillen liste={ERGEBNISSE} aktiv={e} onWahl={async ergebnis => { const r = await post({ aktion: 'ergebnis', id: k.id, kontaktId: x.id, ergebnis, ...(api.ich ? { von: api.ich } : {}) }); if (r.ok) setMeldung(`„${ERGEBNISSE.find(y => y.id === ergebnis)?.label}“ bei ${anzeigename(x)} festgehalten — steht im Verlauf der Person.${r.hinweis ? ` ${r.hinweis}` : ''}`); }} farbe={ERGEBNISSE.find(r => r.id === e)?.farbe ?? LEUCHT.puls} />
                 {e === 'chance' && (offenerDeal(x.id)
                   ? <Knopf leise onClick={() => zuDeal(offenerDeal(x.id)!.id)}>Zum Deal ›</Knopf>
                   : <Knopf leise farbe={LEUCHT.business} onClick={() => setDealFuer(dealFuer === x.id ? null : x.id)}>{dealFuer === x.id ? 'Abbrechen' : 'Deal aus dieser Kampagne'}</Knopf>)}

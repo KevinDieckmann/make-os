@@ -13,6 +13,8 @@
 // neue Person (Herkunft „Veranstaltung“, keine Einwilligung), gleich „da“.
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Fortschritt, Leer, Chip, LEUCHT } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
@@ -133,6 +135,10 @@ export function Abend({ e, api, zuKontakt }: ReiterProps) {
       <div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Noch nicht in der Kartei? Visitenkarte fotografieren — neue Person, direkt als „da“:</div>
         <SpontanPerKarte e={e} api={api} zuKontakt={zuKontakt} />
+      </div>
+      {/* 5.12 (08.10.): drei Erfass-Wege, eine Wirkung — wer mehr festhalten will (nächster Schritt, Lead, Danke-Mail), erfasst über Netzwerken. */}
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        Mit nächstem Schritt, Lead und Danke-Mail? <Link href={WEG.netzwerken({ event: e.id })} style={{ color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Ausführlich erfassen ›</Link>
       </div>
     </div>
   );

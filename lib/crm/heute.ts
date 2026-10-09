@@ -26,6 +26,7 @@ import { nachfassText } from './marke';
 import { taktVon, dealWiedervorlagen, kadenzBasis } from './followup';
 import { haeltBeziehung, zustaendig, wer, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
+import { weltDerKampagne } from './kampagnen-welt';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { personenDerFirma } from './stationen';
@@ -102,7 +103,7 @@ export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'fo
   if (c.chance) return zustaendig(c.chance.besitzer, 'sales');
   if (c.bezug) {
     const m = crm.mandate.find(x => x.id === c.bezug); if (m) return zustaendig(m.zustaendig, 'sales');
-    const kp = (crm.kampagnen ?? []).find(x => x.id === c.bezug); if (kp) return zustaendig(kp.zustaendig, 'sales');
+    const kp = (crm.kampagnen ?? []).find(x => x.id === c.bezug); if (kp) return zustaendig(kp.zustaendig, weltDerKampagne(kp)); // 6.6: Welt nach Playbook
     const t = crm.teilnahmen.find(x => x.eventId === c.bezug && x.kontaktId === c.kontakt.id); if (t?.einladenDurch) return t.einladenDurch;
   }
   return haeltBeziehung(c.kontakt);

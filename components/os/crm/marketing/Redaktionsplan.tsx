@@ -23,6 +23,7 @@
 // Archiv, zurückholbar) und Löschen (Papierkorb 30 Tage, Rückgängig; steckt er in einer Ausgabe → Rückfrage).
 
 import { localDay } from '@/lib/zeit';
+import { anfrageKanalAusBeitrag } from '@/lib/crm/anfragen';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, feld, LEUCHT, ZeileAktionen } from '../../ui';
@@ -285,11 +286,20 @@ function BeitragKarte({ b, api, ablage, einstellung, heute, zuKontakt, schliesse
   };
   const eintragen = async (kontaktId: string) => {
     if (b.wirkung.some(x => x.kontaktId === kontaktId && x.art === art)) { setHinweis('Schon eingetragen.'); return; }
+    // 5.10 (08.10.): „Anfrage“ läuft über DEN Anfrage-Weg (/api/crm/anfrage) — Verlauf, Follow-up „beantworten“, Lead, Einwilligung
+    // „Antwort auf Anfrage“ und die Wirkung am Beitrag in einem. Vorher entstand nur die Wirkung, zählte aber im Trichter.
+    if (art === 'anfrage') {
+      const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', kontaktId, kanal: anfrageKanalAusBeitrag(b.kanal), bezug: { art: 'beitrag', id: b.id }, text: notiz.trim() || `Anfrage auf den Beitrag „${b.titel}“` }) })
+        .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts eingetragen.' })) as { ok?: boolean; fehler?: string; text?: string; hinweis?: string };
+      setHinweis(r.ok ? [r.text ?? `Anfrage von ${name(kontaktId)} eingetragen.`, r.hinweis].filter(Boolean).join(' ') : r.fehler ?? 'Nicht eingetragen.');
+      if (r.ok) { setNotiz(''); void api.laden(true); }
+      return;
+    }
     const neu = { kontaktId, art, am: heute, ...(notiz.trim() ? { notiz: notiz.trim().slice(0, 300) } : {}) };
     await teil({ wirkung: [...b.wirkung, neu] });
     // Gespräch und Anfrage gehören in den Verlauf der Person — mit Bezug auf den Beitrag.
     if (art !== 'reaktion') {
-      const r = await api.aktivitaet({ id: kontaktId, art: art === 'anfrage' ? 'antwort' : 'gespraech', text: `Aus Beitrag „${b.titel}“${notiz.trim() ? ` — ${notiz.trim()}` : ''}`.slice(0, 3000), bezug: b.id }).catch(() => null);
+      const r = await api.aktivitaet({ id: kontaktId, art: 'gespraech', text: `Aus Beitrag „${b.titel}“${notiz.trim() ? ` — ${notiz.trim()}` : ''}`.slice(0, 3000), bezug: b.id }).catch(() => null);
       setHinweis(r?.ok ? `${WIRKUNG_ARTEN.find(x => x.id === art)?.label} bei ${name(kontaktId)} eingetragen — steht auch im Verlauf.` : 'Wirkung eingetragen, der Verlauf der Person war nicht erreichbar.');
     } else setHinweis(`Reaktion von ${name(kontaktId)} eingetragen.`);
     setNotiz('');

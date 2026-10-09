@@ -22,7 +22,7 @@ import { kanalStatus, type KanalStatus } from './recht';
 import { kontextAus, imSegment } from './segmente';
 import { TEAM, BEIDE, wer, zustaendig, verantwortlich, haeltBeziehung, nameVon } from './team';
 import { markttraktion } from './adresse';
-import { markeVon, istNetzwerkenEvent, reiheVon, titelMitReihe } from './marke';
+import { markeVon, istNetzwerkenEvent, reiheVon, titelMitReihe, eventName } from './marke';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -578,6 +578,32 @@ export function gastVormerken(b: CrmBestand, a: { id: string; eventId: string; k
     if (geaendert.size) teilnahmen = teilnahmen.map(t => geaendert.get(t.id) ?? t);
   }
   return { bestand: teilnahmen === b.teilnahmen ? b : { ...b, teilnahmen }, angelegt: !schon };
+}
+
+/**
+ * Einladungstext zum Kopieren (08.10., Woche 2 · 5.16 — vorher gab es nur Kalender-Datei und ZOE): je Ampel des Einladungskanals der Person.
+ *   grün  Mail-Text (die Grundlage für eine Einladung per Mail ist da)
+ *   gelb  persönlicher Text (Gespräch, Telefon mit Anlass, persönliche Nachricht — keine Werbe-Mail)
+ *   rot   KEIN Text (Werbesperre, Einschränkung, keine Grundlage) — null
+ * Immer mit Werbe-Hinweis: eine Einladung zum eigenen Event ist Werbung (§ 7 UWG). Nach außen nur der Name aus `eventName`/`titelMitReihe`
+ * (Marke), keine Gästeliste, keine internen Ziele. Anrede Sie/Du aus der Akte. MAKE OS verschickt nichts. Hinweis, keine Rechtsberatung.
+ */
+export function einladungText(e: Pick<Event, 'titel' | 'datum' | 'uhrzeit' | 'ort' | 'marke' | 'reihe'>, k: Pick<Kontakt, 'vorname' | 'nachname' | 'anrede'>, farbe: 'gruen' | 'gelb' | 'rot'): { text: string; weg: 'mail' | 'persoenlich'; hinweis: string } | null {
+  if (farbe === 'rot') return null;
+  const du = k.anrede === 'Du';
+  const name = eventName(e);
+  const tag = /^\d{4}-\d{2}-\d{2}$/.test(e.datum) ? `${e.datum.slice(8, 10)}.${e.datum.slice(5, 7)}.${e.datum.slice(0, 4)}` : e.datum;
+  const wann = `am ${tag}${e.uhrzeit ? ` um ${e.uhrzeit} Uhr` : ''}${e.ort ? ` (${e.ort})` : ''}`;
+  const gruss = du ? `Hallo ${k.vorname || k.nachname || ''},`.replace(' ,', ',') : `Guten Tag${k.nachname ? ` ${[k.vorname, k.nachname].filter(Boolean).join(' ')}` : ''},`;
+  const kern = du
+    ? `wir laden zu „${name}“ ein — ${wann}. Ich würde mich freuen, wenn du dabei bist. Sag mir einfach kurz Bescheid, ob es passt.`
+    : `wir laden zu „${name}“ ein — ${wann}. Wir würden uns freuen, wenn Sie dabei sind. Geben Sie mir gern kurz Bescheid, ob es passt.`;
+  const schluss = du ? 'Viele Grüße' : 'Freundliche Grüße';
+  const weg = farbe === 'gruen' ? 'mail' as const : 'persoenlich' as const;
+  const hinweis = weg === 'mail'
+    ? 'Einladung zum eigenen Event ist Werbung (§ 7 UWG) — per Mail nur, weil die Grundlage vorliegt (Ampel grün). Hinweis, keine Rechtsberatung.'
+    : 'Einladung zum eigenen Event ist Werbung (§ 7 UWG) — ohne Mail-Grundlage nur persönlich (Gespräch, Anruf mit Anlass), nicht als Werbe-Mail. Hinweis, keine Rechtsberatung.';
+  return { text: `${gruss}\n\n${kern}\n\n${schluss}`, weg, hinweis };
 }
 
 // ── Kalender-Datei (RFC 5545) ───────────────────────────────────────────────

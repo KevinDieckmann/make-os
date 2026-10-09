@@ -51,6 +51,11 @@ export const ANFRAGE_KANAELE: AnfrageKanalInfo[] = [
   { id: 'whatsapp', label: 'WhatsApp', followUp: 'nachricht', einwilligung: 'whatsapp' },
 ];
 export const kanalInfo = (id: string): AnfrageKanalInfo | undefined => ANFRAGE_KANAELE.find(k => k.id === id);
+/**
+ * Über welchen Anfrage-Kanal eine Anfrage auf einen BEITRAG kam (08.10., Woche 2 · 5.10): Redaktionsplan „Wirkung: Anfrage“ geht jetzt über
+ * denselben Weg wie jede Anfrage (`/api/crm/anfrage`) — LinkedIn-Beitrag → LinkedIn, Blog → Website, Newsletter/Podcast/Vortrag → Mail.
+ */
+export const anfrageKanalAusBeitrag = (kanal: string): AnfrageKanal => (kanal === 'linkedin' ? 'linkedin' : kanal === 'blog' ? 'website' : 'mail');
 export const ANFRAGE_TAGE = 30;
 export const GRENZEN = { text: 3000, name: 80, firma: 160, email: 160, telefon: 60 } as const;
 
@@ -171,7 +176,10 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     }
   }
   if (basis.eingeschraenkt) return { ok: false, fehler: `${anzeigename(basis)}: Verarbeitung eingeschränkt (Art. 18) — nichts festhalten, erst unter Kontakt › Datenschutz klären.` };
-  if (basis.werbesperre && !neuePerson) return { ok: false, fehler: `${anzeigename(basis)} hat eine Werbesperre. Antworten ja — aber in der Karteikarte, nicht über den Eingang.` };
+  // Werbesperre (08.10., Woche 2 · 5.9): vorher 400 — die Anfrage ging verloren, eine neue Person auf der Sperrliste wurde dagegen erfasst.
+  // Jetzt wird sie festgehalten (Verlauf, Follow-up „beantworten“), aber OHNE Einwilligung und ohne Kampagne — antworten ja, Werbung nie.
+  const gesperrt = !!basis.werbesperre;
+  if (gesperrt && !neuePerson) hinweis = [hinweis, `${anzeigename(basis)} hat eine Werbesperre — die Anfrage ist festgehalten und wird beantwortet, aber ohne Werbung; keine Einwilligung vermerkt.`].filter(Boolean).join(' ');
 
   // Bezug prüfen — nur, was es gibt.
   const bz = e.bezug && idOk(e.bezug.id) ? e.bezug : undefined;
@@ -189,7 +197,7 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   let kontakt: Kontakt = { ...wendeAktivitaetAn(basis, { art, text: aktivitaetText, von: ctx.person, bezug: bezugId, stufe: stufeNachAnfrage(basis.stufe) }, datum, jetztAm, tagPlus), geaendertAm: ctx.heute };
 
   // Einwilligung „Antwort auf Anfrage“ für den Kanal, über den die Person geschrieben hat — nur, wenn dort noch keine gültige steht.
-  if (info.einwilligung) {
+  if (info.einwilligung && !gesperrt) {
     const hat = (kontakt.einwilligungen ?? []).some(x => x.kanal === info.einwilligung && !x.widerrufenAm);
     const erreichbar = info.einwilligung === 'mail' ? !!kontakt.email : info.einwilligung === 'telefon' ? !!(kontakt.telefon || kontakt.sms) : true;
     if (!hat && erreichbar) kontakt = { ...kontakt, einwilligungen: [...(kontakt.einwilligungen ?? []), { kanal: info.einwilligung, grundlage: 'anfrage', erteiltAm: datum, nachweis: `Anfrage über ${info.label} am ${datum}${bezugText}` }] };
@@ -211,11 +219,13 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   const wirkung = beitrag && !beitrag.wirkung.some(w => w.kontaktId === kontakt.id && w.art === 'anfrage')
     ? { beitragId: beitrag.id, eintrag: { kontaktId: kontakt.id, art: 'anfrage' as const, am: datum, notiz: text.slice(0, 300) } } : undefined;
   // Kampagne: die Person ist dabei und hat reagiert.
-  const kp = kampagne ? { id: kampagne.id, kontaktIds: kampagne.kontaktIds.includes(kontakt.id) ? kampagne.kontaktIds : [...kampagne.kontaktIds, kontakt.id], ergebnis: { kontaktId: kontakt.id, ergebnis: 'reagiert' as const, am: datum, von: ctx.person } } : undefined;
+  if (kampagne && gesperrt) hinweis = [hinweis, `Nicht in die Kampagne „${kampagne.name}“ aufgenommen (Werbesperre).`].filter(Boolean).join(' ');
+  const kp = kampagne && !gesperrt ? { id: kampagne.id, kontaktIds: kampagne.kontaktIds.includes(kontakt.id) ? kampagne.kontaktIds : [...kampagne.kontaktIds, kontakt.id], ergebnis: { kontaktId: kontakt.id, ergebnis: 'reagiert' as const, am: datum, von: ctx.person } } : undefined;
 
   // Follow-up „Anfrage beantworten“ — fällig heute, über die eine Follow-up-Logik.
   const followUp = neuesFollowUp({
-    id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: info.followUp,
+    // Bei Werbesperre „Sonstiges“: eine Antwort auf IHRE Anfrage ist keine Werbung — werbliche Arten stünden in keiner Fälligkeitsliste.
+    id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: gesperrt ? 'sonstig' : info.followUp,
     text: `${ANFRAGE_FOLLOWUP} — ${info.label}${beitrag ? `, „${beitrag.titel.slice(0, 60)}“` : kampagne ? `, „${kampagne.name.slice(0, 60)}“` : event ? `, „${event.titel.slice(0, 60)}“` : ''}`,
     faellig: ctx.heute, quelle: kampagne ? 'kampagne' : 'hand', notiz: text.slice(0, 1000),
   }, kontakt, ctx.person, ctx.jetzt);

@@ -17,17 +17,17 @@ import { Ueberschrift, Knopf, Chip, Punkt, Leer, LEUCHT, useRueckfrage } from '.
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
-import { mix, mixGruppe, gaesteVorschlag, einladerMit, arbeitJePerson, gastTeilnahme, netzwerkenHerkunft, type EinladerQuelle } from '@/lib/crm/eventplanung';
+import { mix, mixGruppe, gaesteVorschlag, einladerMit, arbeitJePerson, einladungText, type EinladerQuelle } from '@/lib/crm/eventplanung';
 import { followUpMoeglich } from '@/lib/crm/event-bruecke';
 import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { schrittLabel } from '@/lib/crm/netzwerken';
 import { WEG, eventLink } from '@/lib/wege';
-import { neueId, datum } from '../daten';
+import { datum } from '../daten';
 import { Pillen, Feld } from '../teile';
 import { Wahl } from '../Wahl';
 import { Person, WerFilter, useWerFilter, passtWer } from '../team';
-import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, followUpAnlegen, nachfassen, type ReiterProps, type Weg } from './gemeinsam';
+import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, followUpAnlegen, nachfassen, gastVormerkenMitNachfassen, type ReiterProps, type Weg } from './gemeinsam';
 
 const FOTO = [{ id: 'ja', label: 'Fotos ja' }, { id: 'nein', label: 'Fotos nein' }] as const;
 const WEG_LABEL: Record<Weg, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn' };
@@ -66,7 +66,8 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
   const bez = (k: Kontakt) => ({ hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) });
   const wegFuer = (k: Kontakt): Weg => (kanalStatus(k, 'einladung', bez(k)).farbe === 'gruen' ? 'mail' : 'persoenlich');
   // Dieselbe Vormerkung wie in der Kontaktakte und bei „Netzwerken“ (`gastTeilnahme`): Einladungsweg nach Ampel, Herkunft aus einer Begegnung bei einem besuchten Event.
-  const vormerken = (k: Kontakt) => api.setze('teilnahmen', gastTeilnahme({ id: neueId('t'), eventId: e.id, kontaktId: k.id, weg: wegFuer(k), jetztIso: new Date().toISOString(), herkunft: netzwerkenHerkunft(crm.stand.teilnahmen, k.id) }) as unknown as { id: string } & Record<string, unknown>);
+  // 5.15 (08.10.): derselbe Weg wie die Schnellleiste (`gastVormerkenMitNachfassen`) — mit dem Stempel „nachgefasst“ an den Begegnungen.
+  const vormerken = (k: Kontakt) => gastVormerkenMitNachfassen(api, { eventId: e.id, k, weg: wegFuer(k), heute });
   const alleAusSegment = async () => {
     if (!segment || !ausSegment.length) return;
     const liste = ausSegment.slice(0, 60);
@@ -158,6 +159,8 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
         {ws && ws.farbe !== 'gruen'
           ? <div style={{ fontSize: TYP.bedien, color: AMPEL[ws.farbe] }}>● {WEG_LABEL[t.einladungsweg!]}: {ws.grund} — besser persönlich einladen.</div>
           : !t.einladungsweg && <div title={einl.grund} style={{ fontSize: TYP.bedien, color: AMPEL[einl.farbe] }}>● Einladung per Mail: {einl.farbe === 'gruen' ? `zulässig (${einl.grund})` : 'nur persönlich'}</div>}
+        {/* 5.16 (08.10.): Einladungstext zum Kopieren — je Ampel (Mail nur bei grün; gelb nur persönlich), bei Rot keiner. */}
+        {(t.status === 'vorgemerkt' || t.status === 'eingeladen') && <EinladungKopieren e={e} k={k} farbe={einl.farbe} />}
         <Feld wert={t.notiz} platzhalter="Notiz (für den Abend und das Nachfassen)" onFertig={notiz => gastSetzen(api, t, { notiz: notiz || undefined })} />
       </div>
     );
@@ -226,6 +229,25 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
         {vorschlaege.length > 8 && <div style={{ marginTop: 8 }}><Leise onClick={() => setMehr(!mehr)}>{mehr ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</Leise></div>}
       </div>
       {dialog}
+    </div>
+  );
+}
+
+/** Einladungstext (5.16) zum Kopieren — der Text kommt aus `einladungText` (je Ampel; bei Rot gar keiner). MAKE OS verschickt nichts. */
+function EinladungKopieren({ e, k, farbe }: { e: ReiterProps['e']; k: Kontakt; farbe: 'gruen' | 'gelb' | 'rot' }) {
+  const [offen, setOffen] = useState(false);
+  const [kopiert, setKopiert] = useState(false);
+  const t = einladungText(e, k, farbe);
+  if (!t) return null;
+  if (!offen) return <div><Leise onClick={() => setOffen(true)}>Einladungstext {t.weg === 'mail' ? '(Mail)' : '(persönlich)'} ›</Leise></div>;
+  return (
+    <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>
+      <div style={{ fontSize: TYP.bedien, color: AMPEL[farbe] }}>⚖ {t.hinweis}</div>
+      <textarea readOnly value={t.text} rows={Math.min(10, t.text.split('\n').length + 1)} aria-label="Einladungstext" style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, color: C.ink, fontSize: TYP.bedien, padding: 8, fontFamily: 'inherit', resize: 'vertical' }} />
+      <div style={{ display: 'flex', gap: 10 }}>
+        <Knopf leise onClick={async () => { try { await navigator.clipboard.writeText(t.text); setKopiert(true); } catch { setKopiert(false); } }}>{kopiert ? 'Kopiert' : 'Kopieren'}</Knopf>
+        <Knopf leise onClick={() => setOffen(false)}>Schließen</Knopf>
+      </div>
     </div>
   );
 }
