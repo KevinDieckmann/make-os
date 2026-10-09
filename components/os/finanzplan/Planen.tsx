@@ -29,6 +29,7 @@ import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { useRueckfrage } from '../ui/zeile-aktionen';
 import { MonatsabschlussKarte } from '../business/Abschluss';
 import type { Monatsabschluss } from '@/lib/business/messen';
+import type { LaufKurz } from '@/lib/business/abschluss-tabelle';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 
 /** Blatt + Zeilen-Dialog + neue Zeile — für Privat und die MAKE Innovation GmbH (ug) gemeinsam. */
@@ -157,14 +158,14 @@ export function Selbst() {
  * eingetragenen Abschlüsse der Selbstständigkeit stehen hier wieder und lassen sich bearbeiten. Ohne Privat-Einheit (Instanz-Einstellung) keine Karte.
  */
 function SelbstMonatsabschluss() {
-  const [d, setD] = useState<{ firmen: { id: Gesellschaftskennung; label: string }[]; abschluesse: Monatsabschluss[] } | null>(null);
+  const [d, setD] = useState<{ firmen: { id: Gesellschaftskennung; label: string }[]; abschluesse: Monatsabschluss[]; abschlussLaeufe?: LaufKurz[] } | null>(null);
   const laden = useCallback(() => {
     fetch('/api/privat/abschluss', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => setD(x?.ok ? x : null)).catch(() => setD(null));
   }, []);
   useEffect(() => { laden(); }, [laden]);
   if (!d?.firmen.length) return null;
   return (
-    <MonatsabschlussKarte i={7} eintraege={d.abschluesse} firmen={d.firmen} adresse="/api/privat/abschluss" onGespeichert={laden}
+    <MonatsabschlussKarte i={7} eintraege={d.abschluesse} firmen={d.firmen} adresse="/api/privat/abschluss" laeufe={d.abschlussLaeufe} onGespeichert={laden}
       hinweis="Die Monatszahlen (BWA) der Selbstständigkeit — gespeichert im Privat-Bereich, nicht im Business-Index. Ältere Einträge aus dem Business-Cockpit stehen hier mit." />
   );
 }

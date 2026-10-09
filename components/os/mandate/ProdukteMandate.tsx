@@ -21,6 +21,7 @@ import { mandateLink, markttraktion } from '@/lib/crm/adresse';
 import { useCrm } from '../crm/daten';
 import { MandateUebersicht } from '../crm/Kunden';
 import { Produkte } from './Produkte';
+import { MandateTabelle } from './MandateTabelle';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 
 type Reiter = 'mandate' | 'produkte';
@@ -39,6 +40,8 @@ export function ProdukteMandate() {
       {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
       {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}
       {reiter === 'mandate' && <GewonneneOhneMandat api={api} />}
+      {/* Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig. */}
+      {reiter === 'mandate' && <MandateTabelle onGeaendert={() => api.laden(true)} />}
       <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Mandate entstehen meist aus einem gewonnenen Deal — <Link href={WEG.deals()} style={{ color: C.inkDim }}>Deals öffnen ›</Link></div>
     </Seite>
   );

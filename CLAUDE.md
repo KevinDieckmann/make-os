@@ -177,6 +177,17 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   Ereignis `make-eroeffnung-geaendert`); Monatsabschluss-Karte kennzeichnet archivierte Monate (`stichtage`); Unternehmen › Steckbrief verlinkt.
 - Tests: tests/nullpunkt.test.ts (rein, Kern, Route, Index vorher → nachher, Rechte, Historie/Rückgängig, bit-gleich ohne Eröffnung).
 
+## Daten-Assistenten — aus Excel/BWA einfügen (09.10., Branch `daten-assistenten`, nur lokal; ONBOARDING_PLAN.md › B9 a–c; UPDATES.md)
+- **EIN Leser** `lib/tabelle/einfuegen.ts` (rein; baut auf lib/finanzen/kontoauszug: Zeichensatz, Trenner, Zahlen, Daten) + Baustein `EinfuegeTabelle`
+  (`components/os/ui`): Einfügen/CSV → Zuordnung (Vorschlag nur aus Begriffen) → Vorschau vom SERVER (`VorschauAntwort` mit `basis`) → Übernehmen nur mit
+  der Basis (409) → Rückgängig nur Unverändertes. Nie kürzen (Grenzen → Fehler), leere Zellen ändern nichts. Neuer Assistent = Felder (`FeldDef`) + reine
+  Plan-Funktion + Schreiben über den VORHANDENEN Weg — nie ein zweiter CSV-Leser, nie am Schreibweg vorbei.
+- **Monatsabschluss** `lib/business/abschluss-tabelle(-server).ts` (`ABSCHLUSS_FELDER` steht nur dort): Aktionen `tabelle_*` in `/api/business` und
+  `/api/privat/abschluss`, je Monat `speichereAbschluss`, Lauf `abschluss-laeufe` (Bereich getrennt). **Offene Posten** `lib/business/eroeffnung-tabelle.ts`:
+  Übernahme/„bezahlt am“ = neue Fassung über `speichereEroeffnung`; `OffenerPosten.bezahltAm` → nicht mehr offen (`postenOffen`). **Mandate**
+  `lib/crm/mandate-tabelle(-server).ts` + `/api/crm/mandate-tabelle`: Firma über `firmaSichern`, Mandate über `aendereCrm`+`wendeCrmAn`, Kennung `m-tab-…`,
+  Gesellschaft Pflicht (nie „offen“), Rückgängig über Papierkorb → endgültig. Wächter: `tests/daten-assistenten-{rein,routen}.test.ts`.
+
 ## Demo-Instanz (05.10., nur lokal, Branch `demo-schnappschuss`; Anleitung `DEMO.md`)
 - **Saat** `scripts/demo-saat.mjs` → `lib/demo/server.ts` `demoSaenInLeerenOrdner` → `lib/demo/saat.ts` `demoSaen`: erfundener Haushalt
   `demo` (Lena/Jonas `@example.invalid`, Team-Person Mira), CRM, Unternehmen mit Holding + Gründungsfahrplan, Ziele/Meilensteine,

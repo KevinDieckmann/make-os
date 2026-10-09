@@ -4,6 +4,9 @@
 //      Monatsabschlüsse, Einstellungen, Geschäftsmodell (Umsatz je Linie/Produkt/Mandat)
 // POST { aktion: 'abschluss', firma, monat, umsatz?, kosten?, personal?, … }
 //      { aktion: 'abschluss_weg', firma, monat }
+//      { aktion: 'tabelle_vorschau' | 'tabelle_uebernehmen' | 'tabelle_zurueck', firma, zeilen, basis?, auswahl?, laufId? } — Monatsabschlüsse aus
+//        Excel/BWA einfügen (09.10., lib/business/abschluss-tabelle-server.ts): Vorschau schreibt nichts, Übernehmen nur mit der Vorschau-Kennung
+//        (409), Rückgängig nur Unverändertes; nur von Hand (Dienstweg 403), Bau-Kennung.
 //      { aktion: 'einstellungen', fte?: { kdv?, ug? }, ziele?: { kdv?, ug? }, kapazitaet?: { kdv?, ug? },
 //        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdv'|'ug', gruen, rot } | { id, sicht, zuruecksetzen: true } }
 // Seit 05.10. nur der Business-Bereich (lib/einheiten.ts `bereichVon`): die Selbstständigkeit (kdc) gehört zu Privat — keine Sicht,
@@ -22,6 +25,8 @@ import { SCOPES, HOLDING_VORGABE, type Scope } from '@/lib/business/register';
 import { GEHOERT_ZU_PRIVAT, istBusinessGesellschaft, istGesellschaft } from '@/lib/einheiten';
 import { personAus } from '@/lib/zoe/raum';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
+import { abschlussLaeufe, abschlussTabelleAktion } from '@/lib/business/abschluss-tabelle-server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,6 +63,8 @@ export async function GET(req: Request) {
     abschluesse: [...roh.abschluesse, ...roh.abschluesseArchiv].sort((a, b) => b.monat.localeCompare(a.monat) || a.firma.localeCompare(b.firma)).slice(0, 36),
     stichtage: Object.fromEntries(Object.entries(roh.eroeffnung).map(([f, e]) => [f, e!.stichtag])),
     einstellungen: await ladeEinstellungen(),
+    // Einfügungen aus Excel/BWA (09.10.) — nur Kennung, Gesellschaft, Zeitraum, Anzahl (für „Rückgängig“ nach dem Neuladen).
+    abschlussLaeufe: await abschlussLaeufe('business'),
     modell: geschaeftsmodell(roh.mandate, roh.leistungen, scope, fixkostenDer(bestandFuer(roh, scope, zeit))),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -76,6 +83,14 @@ export async function POST(req: Request) {
     if (!istBusinessGesellschaft(b.firma)) return NextResponse.json({ ok: false, fehler: GEHOERT_ZU_PRIVAT(b.firma) }, { status: 400 });
     await loescheAbschluss(String(b.firma), String(b.monat));
     return NextResponse.json({ ok: true });
+  }
+  if (typeof b.aktion === 'string' && b.aktion.startsWith('tabelle_')) {
+    // Viele Monate auf einmal: nur ein Mensch in der App (Human-in-the-Loop), nie ZOE oder ein Hintergrundlauf.
+    if (wer.dienst) return NextResponse.json({ ok: false, fehler: 'Einfügen aus Excel/BWA geht nur von Hand, nicht über den Dienstweg.' }, { status: 403 });
+    const alterBau = bauPruefen(req);
+    if (alterBau) return alterBau;
+    const r = await abschlussTabelleAktion('business', b, wer.person);
+    if (r) return NextResponse.json(r.body, { status: r.status });
   }
   if (b.aktion === 'einstellungen') {
     const r = await speichereEinstellungen(b);

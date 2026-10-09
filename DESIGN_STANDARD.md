@@ -52,6 +52,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 | `Aktionsleiste` | die Hauptaktion unten mitlaufend am Handy, über der Tastatur beim Tippen |
 | `Klappbar` | Abschnitt einer Seite zum Auf- und Zuklappen (08.10.): Kopfzeile = Knopf (Anzeigeschrift 18, Pfeil, optional Zähler), zugeklappt wird der Inhalt NICHT gerendert, Anker `#<id>`; keine Karte (der Inhalt trägt seine Karten) — Finanzen › Planung |
 | `ZeileAktionen` | Archivieren & Löschen an jeder Listenzeile: Handy nach links wischen, Rechner Knöpfe am Rand (siehe „Löschen & Archivieren“) |
+| `EinfuegeTabelle` | Daten-Assistent (09.10., B9 a–c): aus Excel einfügen (Tab-getrennt) oder CSV wählen → Spalten/Positionen zuordnen (Vorschlag, je Quelle eine Auswahl 44/16) → Vorschau vom Server (neu · geändert · gleich · entfällt · Fehler je Zeile, abwählbar per `HakenZiel`) → EINE Hauptaktion „n übernehmen“ → „Rückgängig“ im Hinweis. Liste statt breiter Tabelle (Handy). Leser: `lib/tabelle/einfuegen.ts` — kein zweiter CSV-Leser |
 | `Rueckfrage`/`useRueckfrage`, `RueckgaengigLeiste`/`useRueckgaengig` | Rückfrage statt `window.confirm` (Abbrechen hat den Fokus) · Hinweis unten mit „Rückgängig“ (10 s) |
 
 ## Regeln

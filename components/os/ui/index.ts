@@ -19,3 +19,5 @@ export { ZeileAktionen, RueckgaengigLeiste, useRueckgaengig, Rueckfrage, useRuec
 export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, LEUCHT, zoneFarbe, prioFarbe } from '../schlank';
 // Überblick „Für dich“ je Bereich (04.10. abends, DESIGN_STANDARD.md › Überblick): Ist 3 Monate · heute · Prognose aus echten Daten.
 export { FlussKarte, useFluss, flussPunkte, type FlussKarteProps } from './fluss';
+// Daten-Assistenten (09.10., ONBOARDING_PLAN.md › B9 a–c): aus Excel/BWA-CSV einfügen — Zuordnung, Vorschau vom Server, Übernehmen, Rückgängig.
+export { EinfuegeTabelle, type EinfuegeTabelleProps, type EinfuegeErgebnis } from './einfuegen';

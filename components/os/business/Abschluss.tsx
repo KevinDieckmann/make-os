@@ -10,9 +10,11 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, feld, LEUCHT, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Knopf, feld, LEUCHT, useRueckfrage, EinfuegeTabelle, type EinfuegeErgebnis } from '../ui';
 import { Pillen } from '../crm/teile';
 import type { Monatsabschluss } from '@/lib/business/messen';
+import { ABSCHLUSS_TABELLE_FELDER, abschlussAufbereiten, type LaufKurz } from '@/lib/business/abschluss-tabelle';
+import { monatLang, type Datensatz, type VorschauAntwort } from '@/lib/tabelle/einfuegen';
 import { KERN_EINHEITEN, istBusinessGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 // Die eine Einheitenliste (28.09.), seit 05.10. nur der Business-Bereich (`bereichVon`, unsere Instanz: KD Ventures · MAKE Innovation
@@ -40,8 +42,10 @@ async function senden(body: Record<string, unknown>, adresse = '/api/business') 
   return fetch(adresse, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
 }
 
-export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_LISTE, adresse = '/api/business', hinweis, i = 5, stichtage }: {
+export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_LISTE, adresse = '/api/business', hinweis, i = 5, stichtage, laeufe }: {
   eintraege: Monatsabschluss[]; onGespeichert: () => void;
+  /** Einfügungen aus Excel/BWA (09.10.) — die letzten mit „Rückgängig“ (Kennung, Zeitraum, Status; keine Werte). */
+  laeufe?: LaufKurz[];
   /** 0-Punkt je Gesellschaft (05.10.): Abschlüsse vor dem Stichtag-Monat sind archiviert — sie stehen hier weiter, zählen aber nicht. */
   stichtage?: Partial<Record<Firma, string>>;
   /** Firmen der Karte (Vorgabe: die Business-Gesellschaften; unter Privat: die Privat-Einheiten). */
@@ -60,6 +64,7 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_
   const [notiz, setNotiz] = useState('');
   const [meldung, setMeldung] = useState<{ ok: boolean; text: string } | null>(null);
   const [laeuft, setLaeuft] = useState(false);
+  const [tabelle, setTabelle] = useState(false);
   const vorhanden = eintraege.find(e => e.firma === firma && e.monat === monat);
   // Beim Wechsel von Firma/Monat: den gespeicherten Stand ins Formular.
   useEffect(() => {
@@ -83,11 +88,52 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert, firmen = FIRMA_
     if (r.ok) onGespeichert();
   };
 
+  // Daten-Assistent (09.10., B9 a): mehrere Monate aus Excel oder BWA-CSV — derselbe Schreibweg je Monat, Rückgängig über den Lauf.
+  const tabellePost = async (body: Record<string, unknown>) => senden({ ...body, firma }, adresse);
+  const zurueckFuer = (laufId: string) => async () => {
+    const r = await senden({ aktion: 'tabelle_zurueck', laufId }, adresse);
+    if (r.ok) onGespeichert();
+    return { ok: !!r.ok, text: r.text as string | undefined, fehler: r.fehler as string | undefined };
+  };
+  const firmaLabel = liste.find(f => f.id === firma)?.label ?? '';
+
   return (
     <Karte i={i}>
       <div id="abschluss" style={{ scrollMarginTop: 90 }} />
       <Ueberschrift farbe={LEUCHT.geld} rechts={<span>alles optional — jede Zahl schließt eine Messlücke</span>}>Monatsabschluss</Ueberschrift>
       {hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10, lineHeight: 1.45 }}>{hinweis}</div>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+        <Knopf leise onClick={() => setTabelle(!tabelle)}>{tabelle ? '▾ Einfügen schließen' : '▸ Mehrere Monate aus Excel oder BWA einfügen'}</Knopf>
+      </div>
+      {tabelle && (
+        <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+          <EinfuegeTabelle felder={ABSCHLUSS_TABELLE_FELDER} quelleWort="Position" einheit={{ eins: 'Monat', viele: 'Monate' }} farbe={LEUCHT.geld} kontext={firma}
+            aufbereiten={z => abschlussAufbereiten(z)}
+            beispiel={'Aus Excel: Monate in Zeilen oder Spalten (z. B. „Jan 2026“ | Umsatz | Kosten …) — oder unten eine BWA-CSV mit den Monaten als Spalten wählen.'}
+            oben={<div style={{ display: 'grid', gap: 6 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Für welche Gesellschaft?</span>
+              <Pillen liste={liste} aktiv={firma} onWahl={setFirma} farbe={LEUCHT.geld} />
+            </div>}
+            vorschau={async (zeilen: Datensatz[]) => (await tabellePost({ aktion: 'tabelle_vorschau', zeilen })) as VorschauAntwort | { ok: false; fehler?: string }}
+            uebernehmen={async (zeilen, basis, auswahl): Promise<EinfuegeErgebnis> => {
+              const r = await tabellePost({ aktion: 'tabelle_uebernehmen', zeilen, basis, ...(auswahl ? { auswahl } : {}) });
+              return { ok: !!r.ok, fehler: r.fehler, text: r.ok ? `${r.text} (${firmaLabel})` : undefined, vorschau: r.vorschau, ...(r.laufId ? { rueckgaengig: zurueckFuer(r.laufId) } : {}) };
+            }}
+            onGeaendert={onGespeichert} />
+          {!!laeufe?.length && (
+            <div style={{ display: 'grid', gap: 4, marginTop: 12 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>Letzte Einfügungen</span>
+              {laeufe.slice(0, 5).map(l => (
+                <div key={l.id} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise }}>
+                  <span>{liste.find(f => f.id === l.firma)?.label ?? l.firma} · {l.monate} Monat{l.monate === 1 ? '' : 'e'} ({monatLang(l.von)}{l.bis !== l.von ? ` – ${monatLang(l.bis)}` : ''}) · {new Date(l.am).toLocaleDateString('de-DE')}
+                    {l.status === 'zurueckgenommen' ? ' · zurückgenommen' : l.status === 'teilweise' ? ' · teilweise zurück' : ''}</span>
+                  {(l.status === 'uebernommen' || l.status === 'teilweise') && <Knopf leise onClick={async () => { const r = await zurueckFuer(l.id)(); setMeldung({ ok: r.ok, text: r.ok ? r.text ?? 'Zurückgenommen.' : r.fehler ?? 'Nicht zurückgenommen.' }); }}>Rückgängig</Knopf>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
         <Pillen liste={liste} aktiv={firma} onWahl={setFirma} farbe={LEUCHT.geld} />
         <input type="month" value={monat} max={letzterMonat()} onChange={e => setMonat(e.target.value)} aria-label="Monat" style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '7px 11px', colorScheme: 'dark' }} />

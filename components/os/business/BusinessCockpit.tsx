@@ -28,6 +28,7 @@ import { useZuZiel } from '../ziel';
 import type { Geschaeftsmodell } from '@/lib/business/modell';
 import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
+import type { LaufKurz } from '@/lib/business/abschluss-tabelle';
 import { SCOPES, SAEULEN_TEXT, scopeAus, type Scope } from '@/lib/business/register';
 import { GEHOERT_ZU_PRIVAT, gehoertZuPrivat, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
@@ -42,6 +43,8 @@ interface Antwort {
   abschluesse: Monatsabschluss[];
   /** 0-Punkt je Gesellschaft (Stichtag) — Abschlüsse davor sind archiviert. */
   stichtage?: Partial<Record<Gesellschaftskennung, string>>;
+  /** Einfügungen aus Excel/BWA (09.10.) — für „Rückgängig“ nach dem Neuladen. */
+  abschlussLaeufe?: LaufKurz[];
   einstellungen: { fte: Partial<Record<Gesellschaftskennung, number>>; ziele?: Partial<Record<Gesellschaftskennung, number>>; kapazitaet?: Partial<Record<Gesellschaftskennung, number>> };
   modell?: Geschaeftsmodell;
   fehler?: string;
@@ -172,7 +175,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
 
       {/* 0-Punkt (05.10.): Stichtag + Anfangsbestand je Gesellschaft — ab dort rechnet alles neu, Älteres bleibt archiviert. */}
       {d && <EroeffnungKarte onGeaendert={() => void laden()} />}
-      {d && <MonatsabschlussKarte eintraege={d.abschluesse} stichtage={d.stichtage} onGespeichert={() => void laden()} />}
+      {d && <MonatsabschlussKarte eintraege={d.abschluesse} stichtage={d.stichtage} laeufe={d.abschlussLaeufe} onGespeichert={() => void laden()} />}
       {d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
 
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>
