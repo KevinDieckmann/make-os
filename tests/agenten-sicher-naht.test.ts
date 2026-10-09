@@ -27,7 +27,7 @@ const ordner = await vi.hoisted(async () => {
 });
 
 import type { StromEreignis } from '@/lib/http/sse';
-import { konto, rufe, sitzung, text, werkzeug, type ModellAntwort } from './fixtures/agenten-kern';
+import { konto, rufe, sitzung, text, werkzeug } from './fixtures/agenten-kern';
 import { kiFake, type KiFake, type Vorlage } from './fixtures/ki-fake';
 
 type H = (r: Request) => Promise<Response>;
