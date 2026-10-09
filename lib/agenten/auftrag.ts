@@ -1,4 +1,4 @@
-// ─── Agenten-Bereich: der eigene Auftrag an einen Head (09.10.; Kevin: „Ich möchte, dass wir z. B. beim Onboarding im Thema Gesundheit
+// ─── Agenten-Bereich: der eigene Auftrag an einen Head (09.10.; Auftrag: „Ich möchte, dass wir z. B. beim Onboarding im Thema Gesundheit
 // wirklich auch einen Prompt jeweils für den Agenten schreiben müssen. Oder eine Datei hochgeladen werden kann.“) ─────────────────────────
 // Rein (Server UND Browser). Gespeichert wird der Auftrag als Feld `auftrag` der Head-Einstellung (lib/agenten/einstellung.ts — die EINE
 // Schreibstelle, Stand/409, Protokoll nur Feldnamen); hier stehen nur die Regeln:

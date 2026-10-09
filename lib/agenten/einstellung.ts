@@ -15,6 +15,8 @@
 // (`auftragGesperrt` in app/api/zoe/auftraege/lauf), die Thread-Routen lehnen Senden/Lauf ab (`laufSperre`), laufende Threads werden
 // angehalten (`laeufeAnhalten`: Status „abgebrochen“, offene Aufträge raus). Budget je Head: ab 80 % eine Glocke, ab 100 % pausiert der
 // Head (Chat, Lauf, Takt) bis zum Monatsende — eine Glocke je Stufe und Monat. Oben rein (Server UND Browser), unten der Server-Teil.
+// Seit 09.10.: der eigene Auftrag an den Head (`auftrag`, Regeln lib/agenten/auftrag.ts) — dieselben Rechte; mit Gesundheitsbezug nur mit
+// Einwilligung (a) gespeichert; `auftragAm`/`auftragVon` stempelt nur der Server; das Protokoll nennt nur den Feldnamen.
 
 import { headDef, KATALOG } from './katalog';
 import { auftragBrauchtEinwilligung, auftragSaeubern, type AuftragKiLage } from './auftrag';

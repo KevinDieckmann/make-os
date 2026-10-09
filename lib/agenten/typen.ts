@@ -487,7 +487,7 @@ export interface HeadEinstellung {
   /** Foto-Avatar (Paket 4b): Kennung eines Bilds aus „Medien unterwegs“ (`md-…`) — gezeigt nur, wer das Medium sieht. Kein Upload-Zwang. */
   foto?: string;
   /**
-   * Eigener Auftrag an diesen Head (09.10., Kevin: „beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten
+   * Eigener Auftrag an diesen Head (09.10., Auftrag: „beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten
    * schreiben“): Freitext ≤ `GRENZEN.headAuftragZeichen` (darüber 413, nie gekürzt). Privat-Heads der Ebene Person: im Abschnitt der Person —
    * nur sie liest und schreibt ihn; Heads der Ebene Haushalt: schreiben volle Mitglieder, lesen alle, die den Head sehen. Steht im System-Text
    * des Heads und seiner Mitarbeiter („Auftrag der Person für diesen Agenten“) — nur, wenn seine KI-Kategorie (lib/agenten/auftrag.ts

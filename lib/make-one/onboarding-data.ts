@@ -1061,7 +1061,7 @@ export const SCHRITTE: Schritt[] = [
     danach: 'An erschöpften Tagen plant die Kapazität weniger ein.',
     wo: { href: WEG.kapazitaet(), label: 'Planung › Kapazität' },
   },
-  // 09.10. (Kevin: „beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen
+  // 09.10. (Auftrag: „beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen
   // werden kann.“) — je Person, nur eigene; geprüft wird nur ja/nein (Auftrag gesetzt ODER mindestens eine Unterlage), nie ein Inhalt.
   {
     id: 'ich-gesundheit-agent', samstag: true, etappe: 6, nr: '6.2a', ebene: 'ich', minuten: 10, pruefung: 'gesundheit-agent',

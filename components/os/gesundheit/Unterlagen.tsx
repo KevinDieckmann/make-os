@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Gesundheit: eigene Unterlagen (09.10.; Kevin: „… Oder eine Datei hochgeladen werden kann.“) ─────────────────────────────────────────
+// ─── Gesundheit: eigene Unterlagen (09.10.; Auftrag: „… Oder eine Datei hochgeladen werden kann.“) ─────────────────────────────────────────
 // Hochladen, Liste, Herunterladen, Löschen — NUR die eigenen (die Route liefert nichts anderes; Trennung serverseitig). Daten nur über
 // /api/gesundheit/unterlagen. Ohne Einwilligung (a) speichert der Server nichts (403) — die Karte zeigt dann den Weg zur Einwilligung.
 // Ob der Gesundheits-Agent den Text lesen darf (Einwilligung (b)), sagt `ki.an` — die Karte nennt es ruhig. Eingebettet unter Gesundheit
@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FARBE as C, ABSTAND, TYP } from '@/lib/make-one/design';
+import { FARBE as C, ABSTAND, TYP, ZIEL } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import { groesseText, MAX_UNTERLAGE_BYTES, UNTERLAGEN_ANNEHMEN, type Unterlage } from '@/lib/gesundheit/unterlagen';
 import { Hinweis, Knopf, Leer, Liste, Zeile, useRueckfrage } from '../ui';
@@ -80,7 +80,7 @@ export function UnterlagenKarte({ kurz = false }: { kurz?: boolean }) {
               rechts={(
                 <span style={{ display: 'inline-flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
                   {/* Herunterladen ist keine Navigation (attachment) — ein schlichtes Download-Ziel, nie ein Link mit Vorabruf. */}
-                  <a href={`${PFAD}?id=${encodeURIComponent(u.id)}`} download={u.name} className="ui-knopf fassbar" aria-label={`${u.name} herunterladen`} style={{ color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, padding: '0 12px', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Laden</a>
+                  <a href={`${PFAD}?id=${encodeURIComponent(u.id)}`} download={u.name} className="ui-knopf fassbar" aria-label={`${u.name} herunterladen`} style={{ color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, padding: `0 ${ABSTAND.m}px`, minHeight: ZIEL.handy, display: 'inline-flex', alignItems: 'center' }}>Laden</a>
                   <Knopf leise onClick={() => entfernen(u)} ariaLabel={`${u.name} löschen`}>Löschen</Knopf>
                 </span>
               )} />

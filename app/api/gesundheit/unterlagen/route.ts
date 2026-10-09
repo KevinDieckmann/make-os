@@ -1,4 +1,4 @@
-// ─── MAKE OS — Gesundheit › Unterlagen: eigene Gesundheits-Unterlagen (09.10.; Kevin: „… oder eine Datei hochgeladen werden kann.“) ──────
+// ─── MAKE OS — Gesundheit › Unterlagen: eigene Gesundheits-Unterlagen (09.10.; Auftrag: „… oder eine Datei hochgeladen werden kann.“) ──────
 // Art. 9 DSGVO — NUR die Person der Sitzung (personStreng), kein `?fuer`, kein Dienstweg (403): auch wer seine Gesundheit teilt, teilt die
 // Unterlagen nicht, und der Inhaber sieht sie nie. Regeln: lib/gesundheit/unterlagen.ts, Ablage: lib/gesundheit/unterlagen-server.ts.
 // GET              → { ok, unterlagen, ki: { an }, grenzen } — nur Metadaten (Lese-Protokoll Art. 9). `ki.an` = der Gesundheits-Head darf den

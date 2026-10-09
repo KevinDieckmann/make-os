@@ -404,7 +404,7 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
 // ── Info › Dein Auftrag (09.10.) ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Der eigene Auftrag an den Head (Kevin 09.10.: „… einen Prompt jeweils für den Agenten schreiben“). Privat-Heads der Ebene Person: nur die Person
+ * Der eigene Auftrag an den Head (Auftrag 09.10.: „… einen Prompt jeweils für den Agenten schreiben“). Privat-Heads der Ebene Person: nur die Person
  * selbst; Heads des Haushalts: schreiben volle Mitglieder, lesen alle, die den Head sehen. Entschieden hat der Server (`einstellung.aendern`,
  * `einstellung.auftrag`); die Seite zeigt nur an. Speichern mit Stand (409 → neu laden), über der Grenze sagt der Server 413 — nie gekürzt.
  */
@@ -444,7 +444,7 @@ function AuftragAbschnitt({ k }: { k: HeadKarte }) {
           <Feldzeile label={person ? `Dein Auftrag an ${k.kurz}` : `Auftrag des Haushalts an ${k.kurz}`} fehler={fehler}>
             <textarea value={text} onChange={x => setText(x.target.value)} rows={6} aria-label={`Dein Auftrag an ${k.kurz}`}
               placeholder={person ? 'z. B. „Mein Ziel bis Juni: Halbmarathon unter 2 Stunden. Achte auf meinen Schlaf, schlag lieber weniger, aber verlässliche Einheiten vor.“' : 'z. B. „Wir duzen unsere Kunden. Vorschläge immer mit nächstem Schritt und Datum.“'}
-              style={{ ...eingabe, minHeight: 140, resize: 'vertical', lineHeight: 1.5 }} />
+              style={{ ...eingabe, minHeight: ZIEL.haupt * 3, resize: 'vertical', lineHeight: 1.5 }} />
           </Feldzeile>
           <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.m, flexWrap: 'wrap' }}>
             <Knopf typ="submit" haupt aus={!geaendert}>{text.trim() || !a.text ? 'Speichern' : 'Auftrag entfernen'}</Knopf>

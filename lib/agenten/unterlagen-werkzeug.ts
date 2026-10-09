@@ -1,5 +1,5 @@
 // ─── Agenten-Bereich: Gesundheits-Unterlagen für den Gesundheits-Head (09.10.) ──────────────────────────────────────────────────────
-// Kevin 09.10.: „… einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen werden kann.“ Die Unterlagen der Person
+// Auftrag 09.10.: „… einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen werden kann.“ Die Unterlagen der Person
 // (lib/gesundheit/unterlagen*.ts) liest NUR der Gesundheits-Head der Person (und die Mitarbeiter in seinem Bereich) — und NUR mit Einwilligung (b)
 // „An die KI geben“ und offenem KI-Weg (`gesundheitAnKi`). Ein Agenten-Werkzeug wie `medien_suchen` — NICHT im ZOE-Register (ZOE liest sie nie,
 // auch nicht über `head_fragen`: dort gibt es keine Agenten-Werkzeuge):

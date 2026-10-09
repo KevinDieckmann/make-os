@@ -1,5 +1,5 @@
 // ─── Gesundheits-Unterlagen je Person — Regeln (rein, client-sicher; 09.10.) ─────────────────────────────────────────────────────
-// Kevin 09.10.: „… beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen
+// Auftrag 09.10.: „… beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen
 // werden kann.“ Eine geschützte Ablage für Gesundheits-Unterlagen (Arztbrief, Laborwerte, Trainingsplan) — Art. 9 DSGVO:
 //   • gehört NUR der Person selbst: Bestand `gesundheit-unterlagen--<person>` (immer mit Suffix, auch das Erstkonto), Dateien verschlüsselt in der
 //     Bild-Ablage (Ordner `gesundheit-unterlagen`, lib/store/bild-ablage.ts — Hülle mit AAD, atomar, 0600); auch bei „Gesundheit teilen“ nie
