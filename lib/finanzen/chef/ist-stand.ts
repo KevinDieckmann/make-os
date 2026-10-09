@@ -16,7 +16,8 @@ export interface IstStandEingaben {
   leereControllingMonate: string[] | null;   // null = kein Controlling
   grundlageStand: string | null;
   planposten: number; zuKlaeren: number;
-  rechtsform: { kdv: string | null; kdc: string | null };
+  /** Business-Sicht (09.10.): ohne die Rechtsform einer Privat-Einheit (`einstellungFuerBusiness`) — fehlt ein Schlüssel, wird er nicht verlangt. */
+  rechtsform: { kdv?: string | null; kdc?: string | null };
   haushalt?: {
     umzug: boolean; buchungen: number; letzteBuchung: string | null; ohneKategorie: number;
     pruefposten: number; steuerquote: number | null; mitglieder: string[];
@@ -58,7 +59,7 @@ export function istStand(e: IstStandEingaben): Schritt[] {
     detail: gAlt === null ? 'kein Export geladen' : gAlt <= 14 ? `Stand vor ${gAlt} Tagen` : `Stand vor ${gAlt} Tagen — neuen Export laden` });
   s.push({ id: 'planung', bereich: 'business', titel: 'Liquiditätsplanung geklärt', erledigt: e.planposten > 0 && e.zuKlaeren === 0, wer: 'beide', link: WEG.liquiditaet(),
     detail: !e.planposten ? 'keine Planposten' : e.zuKlaeren ? `${e.zuKlaeren} Posten „zu klären“ — bestätigen (sicher) oder streichen` : `${e.planposten} Posten, alle geklärt` });
-  const rf = [e.rechtsform.kdv ? null : 'KD Ventures', e.rechtsform.kdc ? null : 'Consulting'].filter(Boolean);
+  const rf = ['kdv' in e.rechtsform && !e.rechtsform.kdv ? 'KD Ventures' : null, 'kdc' in e.rechtsform && !e.rechtsform.kdc ? 'Consulting' : null].filter(Boolean);
   s.push({ id: 'rechtsform', bereich: 'business', titel: 'Rechtsform und Steuer-Annahmen', erledigt: !rf.length, wer: 'kevin', link: '/os/finanzen?s=chef',
     detail: rf.length ? `Rechtsform fehlt: ${rf.join(', ')}` : 'eingetragen — USt-Rhythmus und Vorauszahlungen mit dem Steuerberater prüfen' });
   return s;

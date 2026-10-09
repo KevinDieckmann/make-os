@@ -19,7 +19,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
-import { firmaAusAngabe, finanzOrtName, istGesellschaft, kontoName } from '@/lib/einheiten';
+import { businessFirmaAus, finanzOrtName, istGesellschaft, kontoName } from '@/lib/einheiten';
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
 import { ARBEIT_REGISTER } from './arbeit-werkzeug';
 import { fokusImJahr } from '@/lib/planung/jahr-fokus';
@@ -61,27 +61,42 @@ interface Eintrag {
   vorschau: (input: Record<string, unknown>, person?: string) => Promise<Vorschau>;
 }
 
+// Auf den Cent (09.10.): ganze Beträge ohne Nachkommastellen, sonst mit Cent — nie auf ganze Euro gerundet.
 const eur = (n: unknown) => {
   const z = Number(n);
-  return isFinite(z)
-    ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(z))
-    : '—';
+  if (n === undefined || n === null || n === '' || !isFinite(z)) return '—';
+  const c = Math.round(z * 100) / 100;
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(c) ? 0 : 2, maximumFractionDigits: 2 }).format(c);
 };
-// Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch `ug`).
-const firma = (rein: unknown) => firmaAusAngabe(rein);
+// Dieselbe Zuordnung wie die Ausführung (09.10.: nur eine Business-Gesellschaft, ohne stillen Rückfall — lib/einheiten.ts `businessFirmaAus`).
+const firma = (rein: unknown) => businessFirmaAus(rein);
 const text = (v: unknown, n = 120) => String(v ?? '').trim().slice(0, n);
+/**
+ * Darf die Vorschau den Finanzbestand lesen? Wie die Route (`privatFinanzZugang`, 09.10. Funde Abdeckung #1): eine Person ohne privaten
+ * Finanzzugang (Konto „nur Business“) bekommt keinen Kontostand und keine Rechnung zu sehen — auch nicht im Vorher/Nachher des Stapels.
+ * Ohne Person (Systemlauf) liest sie wie bisher; solche Vorschläge zeigt der Stapel nur Personen mit Zugang.
+ */
+async function finanzLesbar(person?: string): Promise<boolean> {
+  if (!person) return true;
+  const { privatFinanzZugangFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+  return !!(await privatFinanzZugangFuer(person).catch(() => null));
+}
+const OHNE_ZUGANG: Vorschau = { titel: 'Finanzbestand ändern — ohne Zugang', nachher: 'nicht möglich: dafür fehlt der Zugang zu den Finanzbeständen' };
 
 
 // ── Trockenläufe ───────────────────────────────────────────────────────────
 // Jeder liest genau den Bestand, den die Ausführung anfassen würde. Dadurch
 // zeigt die Vorschau garantiert dieselbe Wirklichkeit wie der echte Lauf.
 
-async function vsKontostand(i: Record<string, unknown>): Promise<Vorschau> {
-  const fid = firma(i.firma);
-  const f = await loadJson<{ firmen?: { id: string; name: string; kontostand: number | null }[] }>('finanzplan');
-  const treffer = (f?.firmen ?? []).find(x => x.id === fid);
+async function vsKontostand(i: Record<string, unknown>, person?: string): Promise<Vorschau> {
+  const f = firma(i.firma);
+  if (!f.ok) return { titel: 'Kontostand setzen — abgelehnt', nachher: f.fehler };
+  if (!(await finanzLesbar(person))) return OHNE_ZUGANG;
+  const fid = f.firma;
+  const plan = await loadJson<{ firmen?: { id: string; name: string; kontostand: number | null }[] }>('finanzplan');
+  const treffer = (plan?.firmen ?? []).find(x => x.id === fid);
   return {
-    titel: `Kontostand ${treffer ? kontoName(treffer.id, treffer.name) : fid} setzen`,
+    titel: `Kontostand ${treffer ? kontoName(treffer.id, treffer.name) : finanzOrtName(fid)} setzen`,
     vorher: treffer?.kontostand != null ? eur(treffer.kontostand) : 'nicht gesetzt',
     nachher: eur(i.betrag),
     ...(treffer?.kontostand != null
@@ -90,14 +105,19 @@ async function vsKontostand(i: Record<string, unknown>): Promise<Vorschau> {
   };
 }
 
-async function vsRechnung(i: Record<string, unknown>): Promise<Vorschau> {
+async function vsRechnung(i: Record<string, unknown>, person?: string): Promise<Vorschau> {
   const kunde = text(i.kunde);
-  const f = await loadJson<{ rechnungen?: { kunde: string; titel: string; betrag: number; status: string }[] }>('finanzplan');
-  const r = (f?.rechnungen ?? []).find(x => x.kunde.toLowerCase() === kunde.toLowerCase());
+  const f = firma(i.firma);
+  if (!f.ok) return { titel: `Rechnung ${kunde} — abgelehnt`, nachher: f.fehler };
+  if (!(await finanzLesbar(person))) return OHNE_ZUGANG;
+  const plan = await loadJson<{ rechnungen?: { kunde: string; titel: string; betrag: number; status: string; firmaId?: string }[] }>('finanzplan');
+  // Wie die Ausführung: nur Rechnungen DIESER Gesellschaft (ohne Gesellschaft: Altbestand).
+  const r = (plan?.rechnungen ?? []).find(x => (x.firmaId === f.firma || !x.firmaId) && x.kunde.toLowerCase() === kunde.toLowerCase());
   const neu = [
     i.betrag != null ? eur(i.betrag) : r ? eur(r.betrag) : '—',
     i.status ? String(i.status) : r?.status,
     i.faellig ? `fällig ${tagDe(i.faellig)}` : undefined,
+    finanzOrtName(f.firma),
   ].filter(Boolean).join(' · ');
   return {
     titel: r ? `Rechnung ${kunde} ändern` : `Rechnung ${kunde} anlegen`,
@@ -107,14 +127,17 @@ async function vsRechnung(i: Record<string, unknown>): Promise<Vorschau> {
 }
 
 async function vsZahlung(i: Record<string, unknown>): Promise<Vorschau> {
+  const f = firma(i.firma);
+  if (!f.ok) return { titel: `Zahlung an ${text(i.an)} — abgelehnt`, nachher: f.fehler };
   return {
     titel: `Zahlung an ${text(i.an)} eintragen`,
-    nachher: `${eur(i.betrag)}${i.faellig ? ` · fällig ${tagDe(i.faellig)}` : ''} — geht in die Prioritätenliste`,
+    nachher: `${eur(i.betrag)}${i.faellig ? ` · fällig ${tagDe(i.faellig)}` : ''} · ${finanzOrtName(f.firma)} — geht in die Prioritätenliste`,
   };
 }
 
-async function vsPlanposten(i: Record<string, unknown>): Promise<Vorschau> {
+async function vsPlanposten(i: Record<string, unknown>, person?: string): Promise<Vorschau> {
   const titel = text(i.titel, 160);
+  if (!(await finanzLesbar(person))) return OHNE_ZUGANG;
   const l = await loadJson<{ posten?: { titel: string; betrag: number; rhythmus: string }[] }>('liquiplan');
   const p = (l?.posten ?? []).find(x => x.titel.toLowerCase() === titel.toLowerCase());
   const rhythmus = String(i.rhythmus ?? 'monatlich');

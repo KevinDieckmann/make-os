@@ -35,6 +35,8 @@ export async function fuehreAus(
   input: Record<string, unknown>,
   origin: string,
   opt: { erzwingen?: boolean; anlass?: string; person?: Person; vorschlagen?: boolean; quelle?: 'gespraech' | 'lauf'; hintergrund?: boolean; freigegebenVon?: string;
+    /** Nur bei der Freigabe aus dem Stapel (09.10.): die Kennung des Vorschlags — geht als Kontext an das Werkzeug (feste Kennungen, nichts doppelt). */
+    vorschlagId?: string;
     /** Das ZOE-Gespräch des Aufrufs (Thread + Marken, Paket 4a) — nur vom Server gesetzt, geht als Kontext an das Werkzeug (nie in den Stapel). */
     zoe?: { fadenId?: string; fremdGelesen?: boolean; vertraulich?: boolean };
     /** Der Agent, der aufruft (Anlass „<Head>: …“) — nur vom Agenten-Bereich gesetzt; geht als Kontext an selbst stapelnde Werkzeuge. */
@@ -114,7 +116,7 @@ export async function fuehreAus(
   // Projekt-/Aufgaben-Dateien (28.09., C2) liest ZOE im Hintergrund gar nicht: ohne Person lehnt das Werkzeug ab.
   const leseSicht = (opt.hintergrund || opt.quelle === 'lauf') && ((gruppe === 'wissen' && (name === 'suche_wissen' || name === 'lies_notiz')) || gruppe === 'aufgaben-dateien');
   // Bei der Freigabe (erzwingen) erfährt das Werkzeug, WER freigegeben hat (#94) — nie aus der Eingabe des Modells.
-  const kontext = opt.erzwingen || opt.zoe || opt.herkunft ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}) } : undefined;
+  const kontext = opt.erzwingen || opt.zoe || opt.herkunft ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}) } : undefined;
   const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person, kontext);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.

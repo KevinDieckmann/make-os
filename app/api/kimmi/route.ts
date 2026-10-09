@@ -21,7 +21,9 @@ import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN, LESEND } from '@/lib/zoe/gespraech-schutz';
 import { brainAnweisung } from '@/lib/zoe/vault';
-import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, personStreng, privatFinanzZugang } from '@/lib/finanzen/haushalt/zugriff';
+import { FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/finanz-werkzeuge';
+import { arbeitKategorien } from '@/lib/zoe/arbeit-werkzeug';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/zoe/gedaechtnis';
@@ -221,9 +223,13 @@ export async function POST(req: Request) {
   // nach Regelwerk; Fach-Werkzeuge laufen über die Heads. Gesperrte Bereiche und Gesundheit ohne Einwilligung gar nicht erst anbieten.
   const defs = werkzeugDefs({ personen: await haushaltsSpeicher().catch(() => []), agenten: agentenAngebot, heads: heads.map(h => ({ id: h.id, kurz: h.kurz, name: h.name })) });
   const NUR_HAUSHALT_DES_INHABERS: readonly string[] = [...CRM_WERKZEUGE, ...AUFGABEN_DATEI_WERKZEUGE, 'meine_aufgaben', 'aufgabe_an_zoe', 'suche_arbeit'];
+  // Finanzbestände `finanzplan`/`liquiplan` (Routen-Klasse `finanz-privat`, 09.10. Funde Abdeckung #1): nur mit privatem Finanzzugang anbieten —
+  // ein Konto „nur Business“ bekommt die Werkzeuge gar nicht (die Route lehnte die Wirkung ohnehin ab).
+  const privatFinanzen = !!(await privatFinanzZugang(req).catch(() => null));
   const darf = (name: string): boolean => {
     if (!WERKZEUGE[name]) return name === 'run_agent' || name === 'open_agent';
     if (NUR_HAUSHALT_DES_INHABERS.includes(name) && !crmErlaubt) return false;
+    if (FINANZPLAN_ALTWEG_WERKZEUGE.has(name) && !privatFinanzen) return false;
     if (gruppeVon(name) === 'haushalt' && !haushalt) return false;
     if ((name === 'an_head' || name === 'head_fragen') && !heads.length) return false;
     return !werkzeugSperre(kategorieVonWerkzeug(name, gruppeVon(name)), kiS, gesundheitKi);
@@ -323,6 +329,10 @@ export async function POST(req: Request) {
             const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z) });
             const k = kategorieVonWerkzeug(name, gruppeVon(name));
             const kats: KiKategorie[] = k ? [k] : [];
+            // suche_arbeit (09.10., Funde #6): Brain und Markttraktion lesen nur, wenn eingeschaltet — und genau diese Kategorien stehen im Protokoll.
+            if (name === 'suche_arbeit') kats.push(...(await arbeitKategorien(a.input ?? {}, person).catch(() => [] as KiKategorie[])));
+            // hake_routine ist neutral (09.10.): Routinen-Namen sind Planung — Privat-Routinen nur mit Einwilligung (b), dann auch Gesundheit.
+            if (name === 'hake_routine') kats.push('aufgaben', ...(gesundheitKi ? ['gesundheit' as const] : []));
             // head_fragen: die Antwort trägt die Kategorien, mit denen der Head lief (Schalter, Einwilligung — nie mehr).
             if (name === 'head_fragen' && lauf.ok) kats.push(...(await headFrageKategorien(person, String(a.input?.head ?? '')).catch(() => [] as KiKategorie[])));
             const quelle = FREMD_WERKZEUGE[name] ?? null;

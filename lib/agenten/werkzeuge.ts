@@ -14,7 +14,7 @@
 // beschränkt (`eingabeImBereich`, `BEREICHS_LESER`).
 
 import { gruppeVon } from '@/lib/zoe/register';
-import { WERKZEUGE } from '@/lib/zoe/werkzeuge';
+import { WERKZEUGE, FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/werkzeuge';
 import { werkzeugDefs, type WerkzeugDef } from '@/lib/zoe/werkzeug-defs';
 import { LESEND } from '@/lib/zoe/gespraech-schutz';
 import { kategorieVonWerkzeug, werkzeugSperre } from '@/lib/datenschutz/ki-werkzeuge';
@@ -32,7 +32,8 @@ const firmen = () => BUSINESS_GESELLSCHAFTEN.map(g => `${g} = ${finanzOrtName(g)
 /** Felder, die im Agenten-Bereich der Head festlegt (`eingabeImBereich`) — sie stehen dort gar nicht erst im Schema. */
 const FEST_IM_BEREICH: Readonly<Record<string, readonly string[]>> = { create_task: ['wer', 'space', 'einheit'], setze_fokus: ['space'], gesundheits_index: ['person'], meine_aufgaben: ['space'], projekt_unterlagen: ['space'], datei_lesen: ['space'] };
 /** Werkzeuge mit einer Gesellschaft — im Agenten-Bereich nur die Business-Gesellschaften (die Selbstständigkeit gehört zu Privat). */
-const MIT_FIRMA = new Set(['erfasse_planposten', 'setze_kontostand', 'erfasse_rechnung']);
+// 09.10. (Funde Abdeckung #3): auch `erfasse_zahlung` — und die Ausführung prüft es serverseitig (`businessFirmaAus`), das Schema allein reicht nie.
+const MIT_FIRMA = new Set(['erfasse_planposten', 'setze_kontostand', 'erfasse_rechnung', 'erfasse_zahlung']);
 const ZUSATZ: Readonly<Record<string, string>> = {
   lies_postfach: 'Im Agenten-Bereich: nur die Postfächer im Bereich dieses Heads.',
   suche_arbeit: 'Im Agenten-Bereich: nur Bestände im Bereich dieses Heads.',
@@ -135,12 +136,19 @@ export function werkzeugAngebot(o: {
   agentId?: string;
   stufe?: string;
   lesend: ReadonlySet<string>;
+  /**
+   * Privater Finanzzugang des Kontos (`KontoSicht.privatFinanzen`, 09.10. Funde Abdeckung #1): ohne ihn fallen die Werkzeuge auf den
+   * Finanzbeständen `finanzplan`/`liquiplan` weg (Routen-Klasse `finanz-privat`) — ein Konto „nur Business“ könnte den Vorschlag im Stapel
+   * ohnehin nicht freigeben. Fehlt die Angabe (Tests, Katalog-Prüfung), gilt die Liste ungefiltert.
+   */
+  privatFinanzen?: boolean;
 }): Angebot {
   const register = new Set<string>();
   for (const w of o.liste) {
     if (!WERKZEUGE[w] || !REGISTER_DEFS.has(w)) continue;
     if ((o.helfer || o.nurLesen) && !o.lesend.has(w)) continue;
     if (o.nurLesen && w === 'crm_vorschlag') continue; // legt in den Stapel — eine Frage legt nichts an
+    if (o.privatFinanzen === false && FINANZPLAN_ALTWEG_WERKZEUGE.has(w)) continue;
     const k = kategorieVonWerkzeug(w, gruppeVon(w));
     if (k && !o.kategorien.includes(k)) continue;
     if (werkzeugSperre(k, o.schalter, o.gesundheitKi)) continue;
@@ -207,7 +215,7 @@ export async function postfachImBereich(person: string, bereich: 'privat' | 'bus
 }
 
 /** Arbeitssuche nur im Bereich: Business-Heads ohne Privat-Space und ohne private Notizen (Agenten-Sicht des Brains). */
-export async function arbeitImBereich(person: string, bereich: 'privat' | 'business', input: Record<string, unknown>): Promise<string> {
+export async function arbeitImBereich(person: string, bereich: 'privat' | 'business', input: Record<string, unknown>, erlaubt?: ReadonlySet<string>): Promise<string> {
   const frage = String(input.frage ?? input.suche ?? '').replace(/\u0000/g, '').trim();
   if (!frage) return 'Fehlgeschlagen: frage fehlt (Stichworte).';
   if (frage.length > 300) return 'Nicht ausgeführt: die Frage ist länger als 300 Zeichen — bitte Stichworte.';
@@ -216,15 +224,17 @@ export async function arbeitImBereich(person: string, bereich: 'privat' | 'busin
   if (!haushalt) return 'Nicht ausgeführt: nur im Haushalt des Inhabers.';
   const anzahl = Math.max(1, Math.min(20, Number(input.anzahl) || 8));
   const A = await import('@/lib/brain/app-index');
-  const { mischen, arbeitAntwort } = await import('@/lib/zoe/arbeit-werkzeug');
+  const { mischen, arbeitAntwort, arbeitQuellen } = await import('@/lib/zoe/arbeit-werkzeug');
+  // Teilquellen nur in den aktiven Kategorien des Heads (Schalter, Katalog — 09.10., Funde #6): ohne „brain“ kein Vault, ohne „crm“ keine Angebote/Mandate.
+  const q = arbeitQuellen(input, erlaubt ? { aufgaben: erlaubt.has('aufgaben'), crm: erlaubt.has('crm'), brain: erlaubt.has('brain') } : { aufgaben: true, crm: true, brain: true });
   let app: { treffer: import('@/lib/brain/app-index').AppTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
-  if (input.nur !== 'brain') {
+  if (q.arten.length) {
     try { await A.appIndexAktualisieren(); } catch { /* ohne frischen Index: der vorhandene */ }
-    const r = A.appSuche(frage, { haushalt, privat: bereich === 'privat' }, anzahl);
+    const r = A.appSuche(frage, { haushalt, privat: bereich === 'privat' }, anzahl, q.arten);
     app = { treffer: bereich === 'privat' ? r.treffer.filter(t => t.privat) : r.treffer.filter(t => !t.privat), durchsucht: r.durchsucht };
   }
   let brain: { treffer: { id: string; titel: string; ausschnitt: string }[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
-  if (input.nur !== 'app') {
+  if (q.brain) {
     try { const { suche } = await import('@/lib/zoe/vault'); brain = await suche(frage, anzahl, bereich === 'privat' ? { person } : { person, agent: true }); } catch { /* Brain nicht lesbar */ }
   }
   return arbeitAntwort(mischen(app.treffer, brain.treffer, anzahl), { app: app.durchsucht, brain: brain.durchsucht });

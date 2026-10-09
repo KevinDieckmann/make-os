@@ -21,7 +21,7 @@ import { istDienst } from '@/lib/zugang/dienst';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { kontostandAusAltweg } from '@/lib/finanzen/konten/server';
 
-import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { werAus, protokolliereBestand } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,8 +95,8 @@ export async function PUT(req: Request) {
  * Konten-Register (08.10.): ein Kontostand, der über diesen bisherigen Weg kommt (ältere Fenster, Skripte), landet zusätzlich im Register —
  * aber nur für Gesellschaften, die das Register schon führt (sonst bleibt der Finanzplan die Quelle; übernommen wird nur per Klick).
  */
-async function insRegister(neu: { id: string; kontostand: number }[], person: string): Promise<void> {
-  for (const n of neu) await kontostandAusAltweg({ firma: n.id, betrag: n.kontostand, datum: localDay(), person, herkunft: 'liquiditaet' });
+async function insRegister(neu: { id: string; kontostand: number }[], person: string, herkunft: 'liquiditaet' | 'zoe' = 'liquiditaet'): Promise<void> {
+  for (const n of neu) await kontostandAusAltweg({ firma: n.id, betrag: n.kontostand, datum: localDay(), person, herkunft });
 }
 
 /**
@@ -119,7 +119,7 @@ export async function PATCH(req: Request) {
   if (!zugang) return keinFinanzZugang();
   let body: { ops?: unknown; felder?: Record<string, unknown>; aktion?: unknown; rechnungId?: unknown; am?: unknown; stand?: unknown; grund?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  if (body.aktion === 'bezahlt') return bezahlt(body);
+  if (body.aktion === 'bezahlt') return bezahlt(body, req);
   if (body.aktion === 'storno') return storno(body, req, zugang);
   if (body.aktion !== undefined) return NextResponse.json({ ok: false, error: 'Unbekannte Aktion.' }, { status: 400 });
   // Zu viele Änderungen auf einmal: ablehnen statt still nur die ersten 100 zu nehmen (28.09.).
@@ -138,7 +138,9 @@ export async function PATCH(req: Request) {
   let grenze: string | null = null;
   let neueStaende: { id: string; kontostand: number }[] = [];
   let abgelehnt: Extract<FpErgebnis, { ok: false }> | null = null;
+  let vorherStand: FinanzplanFile | null = null;
   const next = await updateJson<FinanzplanFile>('finanzplan', current => {
+    vorherStand = sauberFile(current);
     // Immer vom gesäuberten Bestand ausgehen — nie vom Rohzustand. Die Säuberung kürzt nichts (28.09.).
     // Stand-Prüfung, Rechnungs-Schutz und Änderung in DERSELBEN Sperre (lib/finanzen/finanzplan-bestand.ts).
     const e = fpOpsAnwenden(sauberFile(current), ops);
@@ -166,7 +168,10 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: false, error: nein.fehler, ...(nein.konflikte ? { konflikte: nein.konflikte } : {}), ...aktuell, stand: aktuell }, { status: nein.status });
   }
   if (grenze) return NextResponse.json({ ok: false, error: grenze }, { status: istGrenzFehler(grenze) ? 413 : 400 });
-  await insRegister(neueStaende, zugang.person);
+  // Änderungsprotokoll (09.10., „ZOE-Schreibwege“): Kennungen + Feldnamen, nie Werte — ZOE schreibt seither über diesen Weg (`werAus`: zoe + Person).
+  await protokolliereBestand('finanzplan', vorherStand, sauberFile(next), werAus(req));
+  // Kontostand über ZOE (Dienstweg mit Person) steht im Register mit Herkunft „zoe“ — wie bisher, als das Werkzeug ihn selbst eintrug.
+  await insRegister(neueStaende, zugang.person, istDienst(req) ? 'zoe' : 'liquiditaet');
   const stand = mitFassung(sauberFile(next));
   return NextResponse.json({ ok: true, angewandt, ...stand, stand });
 }
@@ -183,16 +188,18 @@ class KeinSchreiben extends Error {}
  * die Buchung zuerst (idempotent: gibt es sie schon, bleibt sie, wie sie ist). Schlägt
  * die Buchung fehl, bleibt die Rechnung unverändert; ein Wiederholen heilt alles.
  */
-async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unknown }) {
+async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unknown }, req: Request) {
   const id = typeof body.rechnungId === 'string' ? body.rechnungId.slice(0, 40) : '';
   if (!id) return NextResponse.json({ ok: false, error: 'rechnungId fehlt.' }, { status: 400 });
   const am = typeof body.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.am) ? body.am : localDay();
   const stand = typeof body.stand === 'string' && body.stand ? body.stand : undefined;
   let erg: BezahltErgebnis | null = null;
   let gebucht: 'neu' | 'vorhanden' | 'verknuepft' | null = null;
+  let vorherRechnung: FinanzplanFile['rechnungen'][number] | undefined;
   try {
     await updateJsonAsync<FinanzplanFile>('finanzplan', async current => {
       if (!current) { erg = { ok: false, status: 404, fehler: 'Noch kein Finanzplan angelegt.' }; throw new KeinSchreiben(); }
+      vorherRechnung = sauberFile(current).rechnungen.find(r => r.id === id);
       const e = bezahltAnwenden(sauberFile(current), id, am, stand);
       erg = e;
       if (!e.ok) throw new KeinSchreiben();
@@ -210,6 +217,8 @@ async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unkno
   if (!e) return NextResponse.json({ ok: false, error: 'Nicht gespeichert.' }, { status: 500 });
   const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
   if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}), ...stand2, stand: stand2 }, { status: e.status });
+  // Änderungsprotokoll (09.10.): nur Kennung + Feldnamen (status, bezahltAm) — die Buchung protokolliert ihr eigener Schreibweg.
+  if (!e.schonBezahlt) await protokolliereBestand('finanzplan', { rechnungen: [vorherRechnung ?? e.rechnung] }, { rechnungen: [e.rechnung] }, werAus(req));
   return NextResponse.json({ ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null, ...stand2, stand: stand2 });
 }
 

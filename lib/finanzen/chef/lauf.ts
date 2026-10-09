@@ -23,7 +23,7 @@ import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeHaushalt } from '../haushalt/speicher';
 import { buchungenSuchen } from '../haushalt/zoe';
 import { heuteBerlin, tagPlus, tageZwischen } from '../haushalt/monat';
-import { baueFinanzbild, type Finanzbild, type FinanzplanStand } from './finanzbild';
+import { baueFinanzbild, einstellungFuerBusiness, type Finanzbild, type FinanzplanStand } from './finanzbild';
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { SYSTEM, aufgabe, SCHEMA, DEFINITIONEN, MODUS_NAME, type Modus } from './prompt';
 import { normalisiere, pruefe, sauber, korrekturAuftrag, type Antwort, type Pruefung } from './pruefer';
@@ -73,11 +73,13 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
 /** Das Paket, das das Modell sieht — Meta, Einstellungen, Bedeutungen, Bild, frühere Vorschläge. */
 export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung, stand: ChefStand, modus: Modus, business: Record<string, unknown> | null = null) {
   const s = await schwellen();
+  // Business-Publikum (09.10., Funde Abdeckung #2): keine ESt-Vorauszahlung, keine Rechtsform einer Privat-Einheit — wie das Finanzbild.
+  const sichtbar = bild.umfang === 'business' ? einstellungFuerBusiness(einstellung) : einstellung;
   return {
     meta: { heute: bild.stichtag, publikum: bild.umfang === 'business' ? 'business' : 'haushalt', modus, letzter_lauf: stand.letzte[modus] ?? null },
     einstellungen: {
-      steuer: einstellung.steuer, steuerquote_haushalt_prozent: bild.haushalt ? (bild.haushalt.steuerquote_annahme_prozent ?? null) : undefined,
-      rechtsform: einstellung.rechtsform,
+      steuer: sichtbar.steuer, steuerquote_haushalt_prozent: bild.haushalt ? (bild.haushalt.steuerquote_annahme_prozent ?? null) : undefined,
+      rechtsform: sichtbar.rechtsform,
       schwellen: {
         sparquote_rot_unter_prozent: 0, sparquote_gelb_unter_prozent: 10, fixkostenquote_gelb_ab_prozent: 50, fixkostenquote_rot_ab_prozent: 60,
         schuldendienst_gelb_ab_prozent: 20, schuldendienst_rot_ab_prozent: 35, runway_rot_monate: s.runwayRot, runway_gelb_monate: s.runwayAmber,

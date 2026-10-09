@@ -11,30 +11,28 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { PRIO_NAME, tagDe } from './vorschau-text';
 import { aufgabenVonMeilenstein, fortschrittAusAufgaben } from '@/lib/planung/meilenstein-aufgaben';
-import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
-import { kettePruefen } from '@/lib/planung/meilenstein-kette';
-import { meilensteineSichtbarFuer, verborgeneMeilensteineFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { ZIEL_HORIZONTE, type ZieleDatei } from '@/lib/planung/typen';
 import { ladeAufgaben, ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { elternAusText } from '@/lib/aufgaben/ebenen';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
-import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
-import { GEHOERT_ZU_PRIVAT, finanzOrtAus, firmaAusAngabe, finanzOrtName, gehoertZuPrivat, istGesellschaft, istGesellschaftId, type Gesellschaftskennung } from '@/lib/einheiten';
+import { GEHOERT_ZU_PRIVAT, finanzOrtAus, finanzOrtName, gehoertZuPrivat, istGesellschaft } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
-import { CRM_VORSCHLAG_LAUF } from './crm-vorschlag';
+import { CRM_VORSCHLAG_LAUF, ausVorschlag } from './crm-vorschlag';
+import { innen, innenFehler, innenNein } from './innen';
+import { setzeKontostand, erfasseRechnung, erfasseZahlung, erfassePlanposten, setzeZiele } from './finanz-werkzeuge';
 import { neueKennung } from '@/lib/kennung';
 import type { PlanArt } from '@/types/planer';
 import { blockAnlegen } from '@/lib/planung/bloecke-server';
 import { verbunden as icloudVerbunden } from '@/lib/kalender/icloud';
 import { blockKollision } from '@/lib/planung/bloecke';
 import { planTag } from '@/lib/planung/zeitstrahl';
-import { fokusSchreibSchluessel } from '@/lib/planung/jahr-fokus';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
 
 // ── ZOE plant: Block in den Kalender der Person (Vorgabe: „dass da auch drin geplant werden kann"). Seit F2 M8
@@ -113,92 +111,11 @@ async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: 
 // Interne Buchführung (nichts geht nach außen) — jede Erfassung wird im Chat
 // knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/Markttraktion.
 
+// Finanzen (09.10., Funde der Abdeckungs-Analyse #1/#3): setze_kontostand, erfasse_rechnung, erfasse_zahlung, erfasse_planposten und
+// setze_ziele schreiben NUR über die Routen (lib/zoe/finanz-werkzeuge.ts → lib/zoe/innen.ts) — Zugang, Fassung/409, Protokoll, Buchung
+// bei „bezahlt“, Business-Gesellschaft ohne stillen Rückfall. Vorher hier direkt mit updateJson.
+export { planpostenFirma, FINANZPLAN_ALTWEG_WERKZEUGE } from './finanz-werkzeuge';
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
-// Die eine Einheitenliste (28.09.): kdc · kdv · ug aus lib/einheiten.ts (`firmaAusAngabe`: Altnamen und Kurzformen → Kennung).
-const firmaId = (rein: unknown): Gesellschaftskennung => firmaAusAngabe(rein);
-/** Schreibt ZOE etwas auf die Gesellschaft `ug`, bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
-const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string): F => (fid === UG_FIRMA.id && Array.isArray(f.firmen) && f.firmen.length && !f.firmen.some(x => x.id === UG_FIRMA.id) ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f);
-/** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
-const istPrivatAngabe = (rein: unknown) => /privat|haushalt|n26/i.test(String(rein ?? ''));
-const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.';
-
-async function setzeKontostand(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  const betrag = Number(input.betrag);
-  if (!isFinite(betrag)) return 'Fehlgeschlagen: betrag fehlt oder ist keine Zahl.';
-  const fid = firmaId(input.firma);
-  let name: string = fid;
-  await updateJson<{ firmen: { id: string; name: string; kontostand: number | null; stand: string | null }[] }>('finanzplan', current => {
-    const f = mitUgKonto(current ?? { firmen: [] }, fid);
-    f.firmen = (f.firmen ?? []).map(x => {
-      if (x.id !== fid) return x;
-      name = x.name;
-      return { ...x, kontostand: Math.round(betrag), stand: localDay() };
-    });
-    return f;
-  });
-  // Konten-Register (08.10.): führt es die Gesellschaft schon, kommt der Stand auch dort an (freigegeben von einem Menschen — `freigabe`).
-  const wer = kontext?.freigegebenVon ?? person;
-  if (wer) await (await import('@/lib/finanzen/konten/server')).kontostandAusAltweg({ firma: fid, betrag: Math.round(betrag), datum: localDay(), person: wer, herkunft: 'zoe' });
-  return `Erfasst: Kontostand ${name} = ${eurW(betrag)} (Stand heute).`;
-}
-
-async function erfasseRechnung(input: Record<string, unknown>): Promise<string> {
-  if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
-  const kunde = String(input.kunde ?? '').trim().slice(0, 120);
-  if (!kunde) return 'Fehlgeschlagen: kunde fehlt.';
-  const status = ['geplant', 'gestellt', 'bezahlt'].includes(String(input.status)) ? String(input.status) : undefined;
-  // Auf den Cent (28.09., K3) — vorher auf ganze Euro gerundet.
-  const betrag = input.betrag != null && isFinite(Number(input.betrag)) ? Math.max(0, Math.round(Number(input.betrag) * 100) / 100) : undefined;
-  const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
-  const titel = input.titel ? String(input.titel).slice(0, 200) : undefined;
-  let aktion = '';
-  let abgelehnt = '';
-  const fidR = firmaId(input.firma);
-  await updateJson<{ firmen?: { id: string }[]; rechnungen: { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
-    const f = mitUgKonto(current ?? { rechnungen: [] }, fidR);
-    f.rechnungen = f.rechnungen ?? [];
-    const idx = f.rechnungen.findIndex(r => r.kunde.toLowerCase() === kunde.toLowerCase() && (!titel || r.titel.toLowerCase().includes(titel.toLowerCase())));
-    if (idx >= 0) {
-      const r = f.rechnungen[idx];
-      const neu = { ...r, ...(betrag != null ? { betrag } : {}), ...(status ? { status } : {}), ...(faellig ? { faellig } : {}), ...(titel ? { titel } : {}) };
-      // Dieselbe Regel wie die Route (28.09., K3): ab „gestellt“ kein Zurück und kein neuer Betrag — stornieren.
-      const sauber = (x: unknown) => sauberFile({ rechnungen: [x as FpRechnung] }).rechnungen[0];
-      abgelehnt = rechnungSchutz(sauber(r), sauber(neu)) ?? '';
-      if (abgelehnt) return current ?? f;
-      f.rechnungen[idx] = neu;
-      aktion = `Rechnung ${kunde} aktualisiert: ${betrag != null ? eurW(betrag) : eurW(f.rechnungen[idx].betrag)}${status ? `, Status ${status}` : ''}${faellig ? `, fällig ${faellig}` : ''}`;
-    } else if (f.rechnungen.length >= GRENZEN.rechnungen) {
-      // Grenze erreicht: ablehnen, nie kürzen (28.09.) — der Bestand bleibt, wie er ist.
-      aktion = '';
-    } else {
-      f.rechnungen.push({ id: neueKennung('r'), firmaId: fidR, kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
-      aktion = `Neue Rechnung angelegt: ${kunde} ${betrag != null ? eurW(betrag) : 'ohne Betrag'} [${status ?? 'geplant'}]`;
-    }
-    return f;
-  });
-  if (abgelehnt) return `Fehlgeschlagen: ${abgelehnt}`;
-  if (!aktion) return `Fehlgeschlagen: höchstens ${GRENZEN.rechnungen} Rechnungen im Finanzplan — erst Erledigtes aufräumen.`;
-  return `Erfasst: ${aktion}. Sichtbar in der Finanzplanung.`;
-}
-
-async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
-  if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
-  const an = String(input.an ?? '').trim().slice(0, 120);
-  const betrag = Number(input.betrag);
-  if (!an || !isFinite(betrag)) return 'Fehlgeschlagen: an + betrag nötig.';
-  const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
-  let voll = false;
-  const fidZ = firmaId(input.firma);
-  await updateJson<{ firmen?: { id: string }[]; zahlungen: { id: string; firmaId: string; an: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
-    const f = mitUgKonto(current ?? { zahlungen: [] }, fidZ);
-    // Grenze wie im Schreibweg der Finanzplanung: ablehnen, nie kürzen (28.09.).
-    if ((f.zahlungen ?? []).length >= GRENZEN.zahlungen) { voll = true; return f; }
-    f.zahlungen = [...(f.zahlungen ?? []), { id: neueKennung('z'), firmaId: fidZ, an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
-    return f;
-  });
-  if (voll) return `Fehlgeschlagen: höchstens ${GRENZEN.zahlungen} Zahlungen im Finanzplan — erst Erledigtes aufräumen.`;
-  return `Erfasst: Zahlung an ${an} über ${eurW(betrag)}${faellig ? `, fällig ${faellig}` : ''} — steht in der Prioritätenliste.`;
-}
 
 /** Eine Auswahl per Namensteil: genau ein Treffer (ein exakter Name gewinnt), sonst ein Fehlertext. */
 function treffer<T extends { id: string; titel: string }>(liste: readonly T[], teil: string, was: string): T | string {
@@ -209,7 +126,15 @@ function treffer<T extends { id: string; titel: string }>(liste: readonly T[], t
   return l.length ? `${was} „${teil}“ ist nicht eindeutig (${l.slice(0, 4).map(x => x.titel).join(' · ')}) — genauer benennen.` : `Kein ${was} passt zu „${teil}“.`;
 }
 
+/**
+ * Meilenstein ändern (09.10., Funde der Abdeckungs-Analyse #5): NUR über `PATCH /api/state/meilensteine` (lib/zoe/innen.ts) — mit Stand
+ * (409, wenn inzwischen geändert), `listePatchen` (Protokoll), Kette und Bezugsprüfung (`kettePruefen`, `meilensteinBezugPruefen`: Bereiche
+ * getrennt, Ziel im geteilten Bestand), `ohneToteVerweise`, Fortschritt-Regel, Liste je Meilenstein (`meilensteinStrukturSichern`) und
+ * Ziele nachziehen — vorher schrieb das Werkzeug mit `updateJson` an alledem vorbei. Hier wird nur gesucht (was die Person sehen darf)
+ * und die Änderung als `teil` gebaut.
+ */
 async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON_PLAN;
   const suche = String(input.titel ?? '').trim().toLowerCase();
   if (!suche) return 'Fehlgeschlagen: titel fehlt.';
   const fortschritt = input.fortschritt != null && isFinite(Number(input.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(input.fortschritt)))) : undefined;
@@ -221,73 +146,62 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
   // Titel der Vorgänger (leere Liste = Kette lösen). Gilt wie alles hier nur über den Stapel (Register: freigabepflichtig).
   const zielText = input.ziel !== undefined ? String(input.ziel ?? '').trim() : undefined;
   const wartetRoh = input.wartet_auf !== undefined ? (Array.isArray(input.wartet_auf) ? input.wartet_auf : [input.wartet_auf]).map(x => String(x ?? '').trim()).filter(Boolean) : undefined;
-  let zielWahl: { id: string; titel: string } | null | string = null;
+  let zielWahl: { id: string; titel: string } | null = null;
   if (zielText) {
     const zd = await loadJson<ZieleDatei>('ziele');
     const alle = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(zd?.[h]) ? zd![h] : []).filter(z => !z.abgeleitetVon));
-    zielWahl = treffer(alle, zielText, 'Ziel');
-    if (typeof zielWahl === 'string') return `Fehlgeschlagen: ${zielWahl}`;
+    const t = treffer(alle, zielText, 'Ziel');
+    if (typeof t === 'string') return `Fehlgeschlagen: ${t}`;
+    zielWahl = t;
   }
-  let ergebnis = '';
+  // Lesen wie die Oberfläche: die Route liefert nur, was die Person sehen darf (eigene Ziele nur geteilt, 08.10.), je Zeile mit Stand.
+  type Ms = { id: string; titel: string; fortschritt: number; erledigt: boolean; abgeleitetVon?: string; stand?: string };
+  const g = await innen('/api/state/meilensteine', 'GET', null, person);
+  if (innenNein(g)) return `Fehlgeschlagen: ${innenFehler(g)}`;
+  const sichtbar = (Array.isArray(g.json.meilensteine) ? g.json.meilensteine : []) as Ms[];
+  const m = sichtbar.find(x => x.titel.toLowerCase().includes(suche));
+  if (!m) return `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}“. Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
+  const felder: Record<string, unknown> = {};
+  const teile: string[] = [];
+  if (faellig) {
+    felder.faellig = faellig;
+    teile.push(`auf ${faellig.slice(8)}.${faellig.slice(5, 7)}.${faellig.slice(0, 4)} verschoben`);
+  }
+  if (zielText !== undefined) {
+    // Ohne Ziel: `null` — JSON verwirft `undefined`; die Säuberung (lib/planung/meilensteine.ts) lässt das Feld dann weg.
+    if (zielWahl) { felder.zielId = zielWahl.id; teile.push(`zahlt auf das Ziel „${zielWahl.titel}“ ein`); }
+    else { felder.zielId = null; teile.push('ohne Ziel-Bezug'); }
+  }
+  if (wartetRoh) {
+    const ids: string[] = [];
+    for (const t of wartetRoh) {
+      const w = treffer(sichtbar.filter(x => x.id !== m.id), t, 'Meilenstein');
+      if (typeof w === 'string') return `Fehlgeschlagen: ${w}`;
+      if (!ids.includes(w.id)) ids.push(w.id);
+    }
+    felder.wartetAuf = ids.length ? ids : null;
+    teile.push(ids.length ? `wartet auf ${ids.map(id => `„${sichtbar.find(x => x.id === id)?.titel}“`).join(', ')}` : 'wartet auf niemanden mehr');
+  }
+  // Aus einem Jahresziel abgeleitet: das eigene Datum/Ziel/Kette gilt — sonst zöge die Kaskade es zurück.
+  if (m.abgeleitetVon && (faellig || zielText !== undefined || wartetRoh)) felder.angepasst = true;
   // Fortschritt-Regel (30.09., lib/planung/meilenstein-aufgaben.ts): mit Aufgaben rechnet er sich aus ihnen — dann nicht von Hand.
-  const aufgaben = await ladeAufgaben();
-  type Ms = { id: string; titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string; faellig?: string; abgeleitetVon?: string; angepasst?: boolean; zielId?: string; wartetAuf?: string[] };
-  // Eigene Ziele nur geteilt (08.10.): Meilensteine an einem nicht geteilten eigenen Ziel einer anderen Person gibt es für diese Person
-  // nicht — weder als Treffer noch in der Liste „Offene“ noch als Vorgänger (ohne Person: keiner an einem eigenen Ziel).
-  const verborgen = await verborgeneMeilensteineFuer(person ?? null);
-  await updateJson<{ meilensteine: Ms[] }>('meilensteine', current => {
-    const f = current ?? { meilensteine: [] };
-    const liste = f.meilensteine ?? [];
-    const sichtbar = liste.filter(x => !verborgen.has(x.id));
-    const m = sichtbar.find(x => x.titel.toLowerCase().includes(suche));
-    if (!m) {
-      ergebnis = `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}“. Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
-      return f;
-    }
-    // Kette zuerst prüfen — nichts wird halb geändert.
-    let wartetNeu: string[] | undefined;
-    if (wartetRoh) {
-      const ids: string[] = [];
-      for (const t of wartetRoh) {
-        const w = treffer(sichtbar.filter(x => x.id !== m.id), t, 'Meilenstein');
-        if (typeof w === 'string') { ergebnis = `Fehlgeschlagen: ${w}`; return f; }
-        if (!ids.includes(w.id)) ids.push(w.id);
-      }
-      wartetNeu = ids;
-      const nachher = liste.map(x => (x.id === m.id ? { ...x, wartetAuf: ids } : x));
-      const grund = kettePruefen(nachher, [m.id], liste);
-      if (grund) { ergebnis = `Fehlgeschlagen: ${grund.replace(/^Abgelehnt: /, '')}`; return f; }
-    }
-    const teile: string[] = [];
-    if (faellig) {
-      m.faellig = faellig;
-      // Aus einem Jahresziel abgeleitet: das eigene Datum gilt — sonst zöge die Kaskade den Termin des Ziels zurück.
-      if (m.abgeleitetVon) m.angepasst = true;
-      teile.push(`auf ${faellig.slice(8)}.${faellig.slice(5, 7)}.${faellig.slice(0, 4)} verschoben`);
-    }
-    if (zielText !== undefined) {
-      if (zielWahl && typeof zielWahl !== 'string') { m.zielId = zielWahl.id; teile.push(`zahlt auf das Ziel „${zielWahl.titel}“ ein`); }
-      else { delete m.zielId; teile.push('ohne Ziel-Bezug'); }
-      if (m.abgeleitetVon) m.angepasst = true;
-    }
-    if (wartetNeu) {
-      if (wartetNeu.length) { m.wartetAuf = wartetNeu; teile.push(`wartet auf ${wartetNeu.map(id => `„${liste.find(x => x.id === id)?.titel}“`).join(', ')}`); }
-      else { delete m.wartetAuf; teile.push('wartet auf niemanden mehr'); }
-      if (m.abgeleitetVon) m.angepasst = true;
-    }
-    const errechnet = m.id ? fortschrittAusAufgaben(aufgabenVonMeilenstein(aufgaben, m.id)) : null;
-    if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
-    else if (fortschritt != null && errechnet !== null) teile.push(`nicht von Hand gesetzt — der Fortschritt rechnet sich aus seinen Aufgaben (${errechnet} %); Aufgaben abhaken oder den Meilenstein als erledigt setzen`);
-    else if (fortschritt != null) { m.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
-    ergebnis = teile.length ? `Meilenstein „${m.titel}“ ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.`;
-    return f;
-  });
-  // Ziele mit Meilensteinen ziehen nach (Mittelwert, lib/planung/meilenstein-aufgaben-server.ts).
-  await zieleNachziehen();
-  return ergebnis.startsWith('Fehlgeschlagen') ? ergebnis : `Erfasst: ${ergebnis}`;
+  const errechnet = fortschrittAusAufgaben(aufgabenVonMeilenstein(await ladeAufgaben(), m.id));
+  if (erledigt) { felder.erledigt = true; felder.fortschritt = 100; felder.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
+  else if (fortschritt != null && errechnet !== null) teile.push(`nicht von Hand gesetzt — der Fortschritt rechnet sich aus seinen Aufgaben (${errechnet} %); Aufgaben abhaken oder den Meilenstein als erledigt setzen`);
+  else if (fortschritt != null) { felder.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
+  if (!Object.keys(felder).length) return teile.length ? `Erfasst: Meilenstein „${m.titel}“ ${teile.join(' und ')}.` : 'Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.';
+  // Als ganzer Eintrag (`upsert` mit Stand) wie die Oberfläche — dann zieht die Route auch die Liste des Meilensteins nach
+  // (`meilensteinStrukturSichern`); `null` lässt die Säuberung ein Feld weg (Ziel/Kette lösen).
+  const { stand, ...ohneStand } = m;
+  const r = await innen('/api/state/meilensteine', 'PATCH', { ops: [{ op: 'upsert', eintrag: { ...ohneStand, ...felder }, ...(stand ? { stand } : {}) }] }, person);
+  if (r.status === 409 && Array.isArray(r.json.konflikte) && (r.json.konflikte as unknown[]).length) return `Fehlgeschlagen: Der Meilenstein „${m.titel}“ wurde inzwischen geändert — nichts überschrieben, bitte noch einmal.`;
+  if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r).replace(/^Abgelehnt: /, '')}`;
+  return `Erfasst: Meilenstein „${m.titel}“ ${teile.join(' und ')}.`;
 }
 
-async function setzeFokus(input: Record<string, unknown>): Promise<string> {
+/** Fokus-Satz setzen (09.10.): NUR über `PUT /api/state/ziele` (gemeinsamer Bestand „wir“, Protokoll, Jahres-Schlüssel wie die Oberfläche). */
+async function setzeFokus(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON_PLAN;
   const h = String(input.horizont ?? '');
   if (!['tag', 'woche', 'monat', 'quartal', 'jahr'].includes(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
   // Fokus je Space (26.09.): ohne Angabe der gemeinsame Satz, sonst „privat:jahr“ / „business:jahr“.
@@ -297,12 +211,9 @@ async function setzeFokus(input: Record<string, unknown>): Promise<string> {
   const jahr = h === 'jahr' && input.jahr != null ? Number(input.jahr) : laufend;
   if (!Number.isInteger(jahr) || Math.abs(jahr - laufend) > 10) return 'Fehlgeschlagen: jahr als Jahreszahl angeben (höchstens 10 Jahre um heute).';
   const key = space ? `${space}:${h}` : h;
-  const schluessel = h === 'jahr' ? fokusSchreibSchluessel(`${key}:${jahr}`, laufend) : [key];
   const text = String(input.text ?? '').slice(0, 300);
-  await updateJson<{ fokus?: Record<string, string> } & Record<string, unknown>>('ziele', current => {
-    const f = current ?? {};
-    return { ...f, fokus: { ...(f.fokus ?? {}), ...Object.fromEntries(schluessel.map(k => [k, text])) } };
-  });
+  const r = await innen('/api/state/ziele', 'PUT', { horizont: h === 'jahr' ? `${key}:${jahr}` : key, fokus: text }, person);
+  if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r)}`;
   return `Erfasst: Fokus (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}${space ? `, ${space}` : ''}) = „${text}“. ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Home, in der Übersicht und lenkt die Planung.'}`;
 }
 
@@ -315,18 +226,31 @@ async function setzeFokus(input: Record<string, unknown>): Promise<string> {
 const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 const HEUTE_ODER = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : localDay());
 
+/**
+ * Routine abhaken (09.10., Funde klein): Kategorie „Aufgaben & Ziele“ statt „Gesundheit“ (lib/datenschutz/ki-werkzeuge.ts) — eine
+ * Business-Routine braucht keine Gesundheits-Einwilligung „an die KI“. Geschrieben wird wie in der Oberfläche (PUT /api/state/health:
+ * `health-log` ist Art. 9) nur mit Einwilligung (a); Privat-Routinen (ihre Namen gehen an das Modell, oft Gesundheit) zusätzlich nur mit
+ * (b) „an die KI“ — ohne (b) werden sie weder abgehakt noch aufgezählt.
+ */
 async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { routineAusZuruf } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
   if (!person) return KEINE_PERSON;
   const wer = person;
-  const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string }[] }>('routinen');
+  const { gesundheitStandFuer } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+  const g = await gesundheitStandFuer(wer);
+  if (!g.verarbeitungErlaubt) return 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (System › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.';
+  const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string; space?: string; einheit?: string }[] }>('routinen');
   // Nur Routinen, die diese Person sieht (eigene + gemeinsame) — nie die der anderen abhaken oder aufzählen.
-  const { sichtbarFuer } = await import('@/lib/planung/routinen');
-  const alle = sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer);
+  const { sichtbarFuer, spaceVonRoutine } = await import('@/lib/planung/routinen');
+  const privatAn = g.ki.an;
+  // Business-Routinen sind Planung: nur mit eingeschaltetem Bereich „Aufgaben & Ziele“ (System › Datenschutz).
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const planungAn = (await kiSchalterFuer(wer)).bereiche.aufgaben;
+  const alle = sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer).filter(r => (spaceVonRoutine(r as Parameters<typeof spaceVonRoutine>[0]) === 'privat' ? privatAn : planungAn));
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
   const ids = zurufe.map(z => routineAusZuruf(z, alle)).filter((x): x is string => !!x);
-  if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ')}`;
+  if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${privatAn ? '' : ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)'}${planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`;
   const erledigt = input.erledigt !== false;
   const datum = HEUTE_ODER(input.datum);
   await updateJson<Record<string, string[]>>(speicherFuer('health-log', wer), current => {
@@ -544,81 +468,6 @@ async function setzeVitalwerte(input: Record<string, unknown>, origin: string, p
   } catch (err) {
     return `Nicht gespeichert: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`;
   }
-}
-
-// Werkzeug-Register: Name → Gruppe (für die ⚙-Chips) + Ausführung.
-/** Jahresziele und Startmonat setzen — die Grundlage jeder Controlling-Zahl. */
-async function setzeZiele(input: Record<string, unknown>): Promise<string> {
-  const zielUmsatz = isFinite(Number(input.zielUmsatz)) ? Math.max(0, Math.round(Number(input.zielUmsatz))) : undefined;
-  const zielGewinn = isFinite(Number(input.zielGewinn)) ? Math.max(0, Math.round(Number(input.zielGewinn))) : undefined;
-  const cash = isFinite(Number(input.cash)) ? Math.round(Number(input.cash)) : undefined;
-  const MONATE = ['januar', 'februar', 'märz', 'maerz', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'dezember'];
-  let startMonat: number | undefined;
-  if (input.startMonat != null) {
-    const roh = String(input.startMonat).toLowerCase().trim();
-    const alsZahl = Number(roh);
-    if (isFinite(alsZahl) && alsZahl >= 0 && alsZahl <= 11) startMonat = Math.round(alsZahl);
-    else {
-      const i = MONATE.findIndex(m => roh.startsWith(m.slice(0, 3)));
-      // „maerz" liegt doppelt in der Liste — Index korrigieren.
-      if (i >= 0) startMonat = i > 3 ? i - 1 : i;
-    }
-  }
-  if (zielUmsatz == null && zielGewinn == null && cash == null && startMonat == null) {
-    return 'Fehlgeschlagen: nichts zu setzen (zielUmsatz, zielGewinn, cash oder startMonat angeben).';
-  }
-  const teile: string[] = [];
-  await updateJson<{ jahr: number; zielUmsatz: number; zielGewinn: number; cash: number; months: unknown[]; startMonat?: number }>('finance', current => {
-    const f = current ?? { jahr: new Date().getFullYear(), zielUmsatz: 0, zielGewinn: 0, cash: 0, months: [] };
-    if (zielUmsatz != null) { f.zielUmsatz = zielUmsatz; teile.push(`Ziel-Umsatz ${eurW(zielUmsatz)}`); }
-    if (zielGewinn != null) { f.zielGewinn = zielGewinn; teile.push(`Ziel-Gewinn ${eurW(zielGewinn)}`); }
-    if (cash != null) { f.cash = cash; teile.push(`Cash ${eurW(cash)}`); }
-    if (startMonat != null) { f.startMonat = startMonat; teile.push(`Start ab ${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][startMonat]}`); }
-    return f;
-  });
-  return `Erfasst: ${teile.join(' · ')}. Sichtbar im Controlling — Fortschritt und nötige Run-Rate rechnen sofort neu.`;
-}
-
-/**
- * Welche Firma ein Planposten aus ZOE trägt (09.10., „neutral-rest-2“): eine Gesellschaft aus lib/einheiten.ts, eine des
- * Gesellschafts-Registers (`g-…`) — oder ein Altwert, den der Liquiplan der Instanz schon trägt (eine frühere feste Zuordnung bleibt
- * so zuordenbar, wie sie gespeichert ist; eine feste Firma steht nicht mehr im Code). Sonst keine Firma (= Business wie bisher). Rein.
- */
-export function planpostenFirma(angabe: unknown, vorhanden: readonly { firmaId?: string }[]): string | undefined {
-  if (typeof angabe !== 'string' || !angabe) return undefined;
-  if (istGesellschaftId(angabe)) return angabe;
-  return /^[a-z][a-z0-9]{1,23}$/.test(angabe) && vorhanden.some(p => p.firmaId === angabe) ? angabe : undefined;
-}
-
-/** Wiederkehrende Kosten oder Einnahmen für die Liquiditäts-Planung. */
-async function erfassePlanposten(input: Record<string, unknown>): Promise<string> {
-  if (istPrivatAngabe(input.firma) || String(input.kategorie ?? '') === 'privat') return PRIVAT_HINWEIS;
-  const titel = String(input.titel ?? '').trim().slice(0, 160);
-  const betrag = Math.round(Number(input.betrag));
-  if (!titel || !isFinite(betrag) || betrag === 0) return 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).';
-  const RHY = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
-  const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
-  const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : localDay();
-  const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
-  const sicher = input.sicher !== false;
-
-  let aktion = '';
-  await updateJson<{ posten: { id: string; titel: string; betrag: number; rhythmus: string; ab: string; sicher: boolean; kategorie?: string; firmaId?: string }[] }>('liquiplan', current => {
-    const f = current ?? { posten: [] };
-    f.posten = f.posten ?? [];
-    const firmaId = planpostenFirma(input.firma, f.posten);
-    const idx = f.posten.findIndex(p => p.titel.toLowerCase() === titel.toLowerCase());
-    if (idx >= 0) {
-      f.posten[idx] = { ...f.posten[idx], betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) };
-      aktion = `${titel} aktualisiert`;
-    } else {
-      f.posten.push({ id: neueKennung('lp'), titel, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) });
-      aktion = `${titel} angelegt`;
-    }
-    return f;
-  });
-  const wie = rhythmus === 'einmalig' ? 'einmalig' : rhythmus === 'monatlich' ? 'monatlich' : rhythmus === 'quartal' ? 'je Quartal' : 'jährlich';
-  return `Erfasst: ${aktion} — ${betrag < 0 ? '−' : '+'}${eurW(Math.abs(betrag))} ${wie} ab ${ab}. Rechnet sofort in der Liquiditäts-Planung mit.`;
 }
 
 /**
@@ -936,58 +785,45 @@ async function kontaktFinden(hinweis: string) {
 /**
  * notiere_kontakt — seit 25.09. die Schnellnotiz: „Hab mit Marc telefoniert,
  * will Angebot bis Freitag“ setzt Verlauf (art + ergebnis), Notiz (bedarf)
- * und nächsten Schritt in EINEM Aufruf. Die Regeln sind dieselben wie in der
- * Power Hour (folgeAus + erfassungAnwenden, wie app/api/crm/aktivitaet):
- * Stufe nur vorwärts, Wiedervorlage = nächster Schritt, „sperre“ sperrt sofort.
+ * und nächsten Schritt in EINEM Aufruf.
+ *
+ * Seit 09.10. (Funde der Abdeckungs-Analyse #4) über DEN Weg der Oberfläche und von `crm_vorschlag`: `POST /api/crm/aktivitaet`
+ * (lib/zoe/innen.ts) — vorher schrieb das Werkzeug mit `aendereKontakte` direkt und ließ dabei die Anlass-Pflicht bei gelber
+ * Telefon-Ampel (§ 7 Abs. 2 UWG), die Sperrliste bei „sperre“, die CRM-Folgen (Deal-Ampel, Follow-ups, Kampagnen) und die
+ * Idempotenz aus. Name, Eingabe und Stufe (freigabepflichtig) bleiben; die Vorschlags-Kennung der Freigabe macht eine Wiederholung
+ * wirkungslos und kennzeichnet den Eintrag als „aus ZOE, freigegeben von …“.
  */
 async function notiereKontakt(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
+  if (!person) return KEINE_PERSON;
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
-  const { localDay } = await import('@/lib/zeit');
-  const { zoeNotiz, erfassungAnwenden } = await import('@/lib/crm/erfassen');
-  const heute = localDay();
-  const e = zoeNotiz(input, heute);
+  const { zoeNotiz } = await import('@/lib/crm/erfassen');
+  const e = zoeNotiz(input, localDay());
   if (typeof e === 'string') return e;
   const { treffer, mehrere } = await kontaktFinden(hinweis);
   if (!treffer) return `Kein Kontakt zu „${hinweis}“ gefunden — erst mit suche_kontakt nachsehen.`;
-  if (mehrere) {
-    const { anzeigename } = await import('@/lib/make-one/crm');
-    return `Mehrdeutig — meinst du ${mehrere.map(k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]`).join(' oder ')}? Bitte mit der ID erneut.`;
-  }
   const { STUFEN, STUFE_LABEL, anzeigename } = await import('@/lib/make-one/crm');
-  const { folgeAus } = await import('@/lib/crm/heute');
-  const { aendereKontakte } = await import('@/lib/crm/kartei-schreiben');
-  const stufe = STUFEN.includes(input.stufe as never) ? (input.stufe as import('@/lib/make-one/crm').Stufe) : undefined;
-  let nachher: import('@/lib/make-one/crm').Kontakt | null = null;
-  let folgeHinweis = '';
-  let eingeschraenkt = false;
-  await aendereKontakte<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>(current => {
-    const f = current ?? { kontakte: [] };
-    const i = f.kontakte.findIndex(k => k.id === treffer.id);
-    if (i < 0) return f;
-    const alt = f.kontakte[i];
-    // Art. 18 (U2): an einer eingeschränkten Person wird nichts festgehalten.
-    if (alt.eingeschraenkt) { eingeschraenkt = true; return f; }
-    const folge = e.ergebnis ? folgeAus(e.ergebnis, heute, alt.stufe) : null;
-    folgeHinweis = folge?.hinweis ?? '';
-    nachher = erfassungAnwenden(alt, {
-      art: e.art, text: e.text, von: person ?? 'zoe', ergebnis: e.ergebnis, notiz: e.notiz, stufe, wiedervorlage: e.wiedervorlage, naechster: e.naechster,
-      // #94 (29.09.): immer als ZOE-Eintrag gekennzeichnet, mit der Person, die ihn im Stapel freigegeben hat.
-      quelle: 'zoe', ...(kontext?.freigegebenVon ? { freigegebenVon: kontext.freigegebenVon } : {}),
-    }, folge, heute, new Date().toISOString());
-    f.kontakte[i] = nachher;
-    return f;
-  }, { art: 'zoe', ...(person ? { person } : {}) });
-  if (eingeschraenkt) return 'Nicht notiert: die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
-  if (!nachher) return 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.';
-  const n = nachher as import('@/lib/make-one/crm').Kontakt;
+  if (mehrere) return `Mehrdeutig — meinst du ${mehrere.map(k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]`).join(' oder ')}? Bitte mit der ID erneut.`;
+  const stufe = STUFEN.includes(input.stufe as never) ? String(input.stufe) : undefined;
+  const anlass = String(input.anlass ?? '').replace(/\s+/g, ' ').trim().slice(0, 600);
+  const vorschlagId = kontext?.vorschlagId ?? neueKennung('v');
+  const r = await innen('/api/crm/aktivitaet', 'POST', {
+    id: treffer.id, art: e.art, text: e.text, ergebnis: e.ergebnis, notiz: e.notiz, stufe, wiedervorlage: e.wiedervorlage, naechster: e.naechster,
+    ...(anlass ? { anlass } : {}), vorschlagId,
+  }, person);
+  if (r.json.anlassPflicht) return 'Nicht notiert: Anruf bei gelber Telefon-Ampel nur mit konkretem Anlass aus der Beziehung (mutmaßliche Einwilligung, § 7 Abs. 2 UWG) — bitte den Anlass nennen (anlass).';
+  if (r.json.eingeschraenkt) return 'Nicht notiert: die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
+  if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r)}`;
+  if (r.json.schonDa) return `Stand schon da: ${anzeigename(treffer)} · ${e.art} — derselbe Vorschlag, nichts doppelt notiert.`;
+  const n = r.json.kontakt as import('@/lib/make-one/crm').Kontakt | undefined;
+  if (!n) return 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.';
   const teile = [
     `Notiert: ${anzeigename(n)} · ${e.art}${e.ergebnis ? ` · ${e.ergebnis}` : ''}`,
     e.notiz?.bedarf ? `Bedarf: ${e.notiz.bedarf}` : '',
     e.naechster ? `nächster Schritt „${e.naechster.text}“ bis ${e.naechster.datum}${e.datumAngenommen ? ' (kein Datum genannt — in 5 Tagen angenommen, bei Bedarf ändern)' : ''}` : '',
-    n.werbesperre ? 'WERBESPERRE gesetzt' : `jetzt ${STUFE_LABEL[n.stufe]}${n.wiedervorlage ? ` · Wiedervorlage ${n.wiedervorlage}` : ''}`,
+    n.werbesperre ? 'WERBESPERRE gesetzt (auch auf der Sperrliste)' : `jetzt ${STUFE_LABEL[n.stufe]}${n.wiedervorlage ? ` · Wiedervorlage ${n.wiedervorlage}` : ''}`,
   ].filter(Boolean);
-  return `${teile.join(' · ')}.${folgeHinweis ? ` ${folgeHinweis}` : ''}`;
+  return `${teile.join(' · ')}.${typeof r.json.hinweis === 'string' && r.json.hinweis ? ` ${r.json.hinweis}` : ''}`;
 }
 
 async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, person?: string): Promise<string> {
@@ -1021,28 +857,41 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
   return r.ok ? `Übergeben: ${r.text}.` : `Fehlgeschlagen: ${r.fehler}`;
 }
 
-async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+/**
+ * Deal anlegen — seit 27.09. über den EINEN Anlageweg (lib/crm/deal-anlegen.ts), seit 09.10. (Funde #4) über dessen Route
+ * `POST /api/crm/deal` (lib/zoe/innen.ts) wie `crm_vorschlag` › deal_anlegen: Firma per Kennung, Kernfragen vom Lead, Pflicht zum
+ * nächsten Schritt, kein zweiter offener Deal ohne Absicht, Lead wird SQL. Feste Kennung aus der Vorschlags-Kennung — eine Wiederholung
+ * derselben Freigabe legt keinen zweiten Deal an.
+ */
+async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
   if (!person) return 'Fehlgeschlagen: CRM-Werkzeuge nur im Auftrag einer Person im Haushalt (Regel 5).';
-  // Seit 27.09. über den EINEN Anlageweg (lib/crm/deal-anlegen.ts): Firma per Kennung, Kernfragen vom Lead,
-  // Pflicht zum nächsten Schritt, kein zweiter offener Deal ohne Absicht, Lead wird SQL.
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
   if (!treffer) return `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`;
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
-  const { dealAnlegen } = await import('@/lib/crm/deal-anlegen');
   const { STUFEN } = await import('@/lib/crm/pipeline');
-  const stufe = STUFEN.some(x => x.id === input.stufe && x.offen) ? (String(input.stufe) as import('@/lib/crm/typen').ChancenStufe) : undefined;
+  const stufe = STUFEN.some(x => x.id === input.stufe && x.offen) ? String(input.stufe) : undefined;
   const betrag = Number(input.wert_monat) > 0 ? Math.round(Number(input.wert_monat)) : Number(input.wert_einmalig) > 0 ? Math.round(Number(input.wert_einmalig)) : 0;
   const basis = Number(input.wert_monat) > 0 ? 'monat' : 'einmalig';
   const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
-  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, stufe, besitzer: person, trotzdem: input.trotzdem === true }, person, undefined, { art: 'zoe', person });
-  if (!r.ok) return `Fehlgeschlagen: ${r.fehler}${r.offen ? ` (offener Deal: ${r.offen.id})` : ''}`;
-  // Quelle aus der Herkunft des Leads (08.10., 2.5), SQL nur bei erfüllten Kriterien (2.3) — sonst „direkt angelegt“.
-  return `Deal angelegt (${r.sql ? 'Lead ist jetzt SQL' : `direkt angelegt — Lead noch kein SQL${r.fehlt.length ? `, es fehlt: ${r.fehlt.join(', ')}` : ''}`}): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
+  const id = kontext?.vorschlagId ? ausVorschlag('ch', kontext.vorschlagId) : undefined;
+  if (id && ((await loadJson<{ chancen?: { id: string }[] }>('crm'))?.chancen ?? []).some(c => c.id === id)) return 'Deal stand schon da (derselbe Vorschlag) — nichts doppelt angelegt.';
+  const r = await innen('/api/crm/deal', 'POST', {
+    aktion: 'anlegen', ...(id ? { id } : {}), titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer',
+    wert: { betrag, basis }, schritt: { text: schritt, datum }, stufe, besitzer: person, trotzdem: input.trotzdem === true,
+  }, person);
+  if (innenNein(r)) {
+    const offen = r.json.offen as { id?: string } | undefined;
+    if (id && offen?.id === id) return 'Deal stand schon da (derselbe Vorschlag) — nichts doppelt angelegt.';
+    return `Fehlgeschlagen: ${innenFehler(r)}${offen?.id ? ` (offener Deal: ${offen.id})` : ''}`;
+  }
+  const c = r.json.chance as { titel?: string; stufe?: string } | undefined;
+  // Quelle aus der Herkunft des Leads (08.10., 2.5), SQL nur bei erfüllten Kriterien (2.3) — die Antwort der Route sagt es.
+  return `Deal angelegt: ${String(r.json.text ?? `„${c?.titel ?? ''}“`)} (${anzeigename(treffer)})${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
 }
 
 // crm_lage läuft seit 28.09. (C7) über lib/zoe/crm-werkzeuge.ts (gekapselt, ohne eingeschränkte Kontakte).
@@ -1133,6 +982,12 @@ export async function crmWerkzeugErlaubt(person: string | null | undefined): Pro
  */
 export interface WerkzeugKontext {
   freigegebenVon?: string;
+  /**
+   * Die Kennung des Vorschlags, der gerade freigegeben wird (09.10., „ZOE-Schreibwege“) — gesetzt NUR von `fuehreAus` bei der Freigabe
+   * aus dem Stapel, nie aus der Eingabe des Modells. Schreibwerkzeuge leiten daraus feste Kennungen ab (`ausVorschlag`), damit eine
+   * Wiederholung derselben Freigabe nichts doppelt anlegt, und die Aktivitäts-Route kennzeichnet damit „aus einem ZOE-Vorschlag“.
+   */
+  vorschlagId?: string;
   /**
    * Das ZOE-Gespräch, aus dem der Aufruf kommt (Paket 4a, 09.10.): Thread und Marken des Zugs — gesetzt NUR vom Server (kimmi über
    * `fuehreAus`), nie aus der Eingabe des Modells. `an_head` hängt den Head-Thread daran und vererbt die Marken.

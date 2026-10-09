@@ -216,7 +216,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
   if (e.skill) liste = liste.filter(w => e.skill!.werkzeuge.includes(w));
   const angebot = werkzeugAngebot({
     art: m ? 'mitarbeiter' : 'head', liste, kategorien: kats, schalter, gesundheitKi, head, mitarbeiter: mitarbeiterListeHead,
-    brett: !!e.brett, helfer: !!e.faden.helfer, offeneFragen: !!e.offeneFragen, agentId: m?.agentId, stufe, lesend: LESEND,
+    brett: !!e.brett, helfer: !!e.faden.helfer, offeneFragen: !!e.offeneFragen, agentId: m?.agentId, stufe, lesend: LESEND, privatFinanzen: e.sicht.privatFinanzen,
     ...(e.nurLesen ? { nurLesen: true } : {}),
   });
   // Paket 4c (Merge 09.10.): die Medien-Werkzeuge der Medien-Heads (Marketing, Event, Sales) bzw. des Mitarbeiters „Bild & Video“ — nie im
@@ -287,8 +287,11 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
       if (geprueft) return { inhalt: geprueft, ok: false };
       const kat = kategorieVonWerkzeug(wname, gruppeVon(wname));
       if (BEREICHS_LESER.has(wname)) {
-        const roh = wname === 'lies_postfach' ? await postfachImBereich(person, head.bereich, ein) : await arbeitImBereich(person, head.bereich, ein);
-        return { inhalt: roh, ok: OK_TEXT(roh), quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kat ? { kategorien: [kat] } : {}) };
+        const roh = wname === 'lies_postfach' ? await postfachImBereich(person, head.bereich, ein) : await arbeitImBereich(person, head.bereich, ein, new Set(kats));
+        // suche_arbeit: genau die Kategorien, die gelesen wurden (09.10., Funde #6) — Aufgaben, und nur mit aktiver Kategorie Markttraktion/Brain.
+        const gelesen = wname === 'suche_arbeit' ? (await import('@/lib/zoe/arbeit-werkzeug')).arbeitQuellen(ein, { aufgaben: kats.includes('aufgaben'), crm: kats.includes('crm'), brain: kats.includes('brain') }).kategorien : [];
+        const kategorienRoh = Array.from(new Set([...(kat ? [kat] : []), ...gelesen]));
+        return { inhalt: roh, ok: OK_TEXT(roh), quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kategorienRoh.length ? { kategorien: kategorienRoh } : {}) };
       }
       if (e.trocken && (!LESEND.has(wname) || wname === 'crm_vorschlag')) {
         const { vorschauVon } = await import('@/lib/zoe/register');

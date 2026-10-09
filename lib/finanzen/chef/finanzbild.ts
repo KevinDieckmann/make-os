@@ -18,7 +18,7 @@ import { bruecke, ENTNAHME_KATEGORIEN } from '../haushalt/gesamt';
 import { vollMonate, monatVon, tageZwischen, tagPlus, monatPlus } from '../haushalt/monat';
 import { steuertermine, type SteuerEinstellung, type Termin } from './steuertermine';
 import { auffaelligkeiten, type Auffaelligkeit } from './auffaellig';
-import { kontoName } from '@/lib/einheiten';
+import { kontoName, grundlageImBusiness, istBusinessGesellschaft } from '@/lib/einheiten';
 
 export type Schwere = 'hoch' | 'mittel' | 'niedrig';
 export interface Hinweis { schwere: Schwere; bereich: 'business' | 'haushalt' | 'gesamt' | 'daten' | 'steuern'; text: string; quelle: string }
@@ -44,8 +44,22 @@ const tagDe = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.sli
 const sbRate = (hh: Haushalt) => hh.schulden.filter(s => s.einheit === 'privat').reduce((a, s) => a + (Number(s.rate) || 0), 0);
 const ce = (cent: number) => r2(cent / 100); // Cent → Euro
 
+/**
+ * Was eine BUSINESS-Sicht (ohne Haushalt: Head of Finance Business, Konto „nur Business“) von den Einstellungen sehen darf (09.10., Funde
+ * Abdeckung #2): keine Einkommensteuer-Vorauszahlung (persönlich) und keine Rechtsform einer Privat-Einheit. Rein.
+ */
+export function einstellungFuerBusiness<E extends { steuer: SteuerEinstellung; rechtsform: Record<string, string | null> }>(e: E): E {
+  return { ...e, steuer: { ...e.steuer, estVorauszahlung: false }, rechtsform: Object.fromEntries(Object.entries(e.rechtsform).filter(([g]) => istBusinessGesellschaft(g))) as E['rechtsform'] };
+}
+
 export function baueFinanzbild(e: Eingaben) {
   const hinweise: Hinweis[] = [];
+  // Business-Sicht (ohne Haushalt) bekommt nichts aus Privat (09.10., Funde Abdeckung #2, „Sicht X bekommt nichts aus Y“): die Grundlage
+  // (V1-Export des Einzelunternehmens — Entnahmen, größter Kunde, RV-Hinweis) nur, wenn ihre Einheit zum Business gehört (wie der Business-
+  // Index, lib/business/speicher.ts `ladeRoh`); keine Einkommensteuer-Termine (persönlich). Mit Haushaltszugang wie bisher alles.
+  const businessSicht = !e.haushalt;
+  const grundlage0 = e.grundlage && (!businessSicht || grundlageImBusiness()) ? e.grundlage : null;
+  const steuerSicht: SteuerEinstellung & { ruecklageQuote: number | null } = businessSicht ? { ...e.steuer, estVorauszahlung: false } : e.steuer;
   const h = (schwere: Schwere, bereich: Hinweis['bereich'], text: string, quelle: string) => hinweise.push({ schwere, bereich, text, quelle });
   const jetzt = new Date(`${e.heute}T12:00:00`);
 
@@ -100,23 +114,23 @@ export function baueFinanzbild(e: Eingaben) {
     eingangsrechnungen_offen: { anzahl: number; summe_brutto: number; naechste: { lieferant: string; brutto: number; faellig: string }[] };
   };
   const abgleich: { monat: string; controlling_umsatz: number; grundlage_umsatz_netto: number; differenz: number }[] = [];
-  if (e.grundlage) {
-    const k = grundKennzahlen(e.grundlage.g);
-    const mb = monatsBild(e.grundlage.g);
+  if (grundlage0) {
+    const k = grundKennzahlen(grundlage0.g);
+    const mb = monatsBild(grundlage0.g);
     // Kundenkonzentration über 12 Monate — Klumpenrisiko und (ab 5/6) Rentenversicherungspflicht.
     const seit = `${monatPlus(e.heute.slice(0, 7), -12)}-01`;
     const jeKunde = new Map<string, number>();
-    for (const p of e.grundlage.g.umsatz) if (p.datum >= seit && p.netto > 0) jeKunde.set(p.wer || '(ohne Namen)', (jeKunde.get(p.wer || '(ohne Namen)') ?? 0) + p.netto);
+    for (const p of grundlage0.g.umsatz) if (p.datum >= seit && p.netto > 0) jeKunde.set(p.wer || '(ohne Namen)', (jeKunde.get(p.wer || '(ohne Namen)') ?? 0) + p.netto);
     const umsatz12 = Array.from(jeKunde.values()).reduce((a, b) => a + b, 0);
     const top = Array.from(jeKunde.entries()).sort((a, b) => b[1] - a[1])[0];
     const groesster = top && umsatz12 > 0 ? { name: top[0], anteil_prozent: r2(top[1] / umsatz12 * 100), umsatz_netto: r2(top[1]), kunden_gesamt: jeKunde.size } : null;
     if (groesster && groesster.anteil_prozent >= 83.3) h('mittel', 'steuern', `${groesster.name} bringt ${groesster.anteil_prozent.toLocaleString('de-DE')} % des Umsatzes der letzten 12 Monate — ab 5/6 von einem Auftraggeber kann Rentenversicherungspflicht entstehen (Hinweis, keine Steuerberatung).`, 'grundlage.umsatz');
     else if (groesster && groesster.anteil_prozent >= 50) h('niedrig', 'business', `Klumpenrisiko: ${groesster.name} bringt ${groesster.anteil_prozent.toLocaleString('de-DE')} % des Umsatzes der letzten 12 Monate.`, 'grundlage.umsatz');
     // Offene Eingangsrechnungen (UG) — was muss raus?
-    const ugOffen = e.grundlage.g.ugRechnungen.filter(r => !/bezahlt|paid/i.test(r.status));
+    const ugOffen = grundlage0.g.ugRechnungen.filter(r => !/bezahlt|paid/i.test(r.status));
     for (const r of ugOffen.filter(x => x.faellig && x.faellig < e.heute).slice(0, 2)) h('mittel', 'business', `Eingangsrechnung ${r.lieferant} (${euro(r.brutto)}) war am ${tagDe(r.faellig)} fällig.`, 'grundlage.ugRechnungen');
     grundlage = {
-      stand: e.grundlage.stand, von_monat: k.vonMonat, bis_monat: k.bisMonat,
+      stand: grundlage0.stand, von_monat: k.vonMonat, bis_monat: k.bisMonat,
       umsatz_netto_pro_monat: r2(k.umsatzProMonat), fixkosten_monat_brutto: r2(k.fixkostenMonatBrutto), unklassifiziert: k.offeneLuecken,
       monate: mb.slice(-6).map(z => ({ monat: z.monat, umsatz_netto: z.umsatzNetto, kosten_netto: z.kostenNetto, entnahmen: z.entnahmen, ergebnis: z.ergebnis })),
       groesster_kunde: groesster,
@@ -125,7 +139,7 @@ export function baueFinanzbild(e: Eingaben) {
         naechste: ugOffen.filter(r => r.faellig).sort((a, b) => a.faellig.localeCompare(b.faellig)).slice(0, 5).map(r => ({ lieferant: r.lieferant, brutto: r2(r.brutto), faellig: r.faellig })),
       },
     };
-    const alter = tageZwischen(e.grundlage.stand.slice(0, 10), e.heute);
+    const alter = tageZwischen(grundlage0.stand.slice(0, 10), e.heute);
     if (alter > 35) h('mittel', 'daten', `Business-Grundlage (V1-Export) ist ${alter} Tage alt — neuen Export aus dem Finanz-Dashboard laden.`, 'grundlage');
     if (k.offeneLuecken > 0) h('niedrig', 'daten', `${k.offeneLuecken} Posten in der Grundlage sind nicht klassifiziert.`, 'grundlage.offen');
     // Controlling-Monate gegen Grundlage (netto) — nur wo beide Zahlen haben.
@@ -140,10 +154,10 @@ export function baueFinanzbild(e: Eingaben) {
       }
     }
     if (abgleich.length) h('mittel', 'daten', `Controlling und Grundlage weichen beim Umsatz ab (${abgleich.map(a => a.monat).join(', ')}) — brutto/netto oder ein Tippfehler?`, 'finance.months ↔ grundlage');
-  } else h('niedrig', 'daten', 'Keine Business-Grundlage (V1-Export) geladen.', 'grundlage');
+  } else if (!businessSicht || grundlageImBusiness()) h('niedrig', 'daten', 'Keine Business-Grundlage (V1-Export) geladen.', 'grundlage');
 
   // ── Steuern: Fristen nie aus dem Gedächtnis ─────────────────────────────
-  const termine: Termin[] = steuertermine(e.heute, tagPlus(e.heute, 60), e.steuer);
+  const termine: Termin[] = steuertermine(e.heute, tagPlus(e.heute, 60), steuerSicht);
   for (const t of termine.filter(t => tageZwischen(e.heute, t.datum) <= 14)) h(tageZwischen(e.heute, t.datum) <= 5 ? 'hoch' : 'mittel', 'steuern', `${t.titel} am ${tagDe(t.datum)}.`, 'Steuerkalender');
 
   // ── Haushalt (nur mit Zugang) ───────────────────────────────────────────
@@ -237,7 +251,7 @@ export function baueFinanzbild(e: Eingaben) {
       grundlage,
       abgleich_controlling_grundlage: abgleich,
     },
-    steuern: { einstellung: e.steuer, termine_60_tage: termine },
+    steuern: { einstellung: steuerSicht, termine_60_tage: termine },
     haushalt,
     gesamt,
     entnahmen_abgleich: entnahmen,

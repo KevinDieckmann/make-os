@@ -360,9 +360,11 @@ export function blockZahlen(b: Brain): string {
   return extra ? `${kern} ${extra}.` : kern;
 }
 
+// Richtig beschriftet (09.10., Funde Abdeckung klein): `prospects` sind die Recherche-Ergebnisse des Prospecting-Agenten (Firmen), NICHT die
+// Deal-Pipeline der Markttraktion — die liest ZOE über `pipeline` (lib/zoe/crm-werkzeuge.ts). Vorher hieß der Block „PIPELINE“.
 function blockPipelineRoh(b: Brain): string {
-  if (!b.pipeline.gesamt) return 'PIPELINE: leer.';
-  return `PIPELINE: ${b.pipeline.gesamt} Firmen, ${b.pipeline.hot} starker Fit (80+), ${b.pipeline.kontaktiert} kontaktiert${b.pipeline.hot > 0 && b.pipeline.kontaktiert === 0 ? ' — der starke Fit liegt brach' : ''}.`;
+  if (!b.pipeline.gesamt) return 'PROSPECTING (recherchierte Firmen, keine Deals): leer. Die Deal-Pipeline steht in der Markttraktion (Werkzeug pipeline).';
+  return `PROSPECTING (recherchierte Firmen, keine Deals — die Deal-Pipeline über das Werkzeug pipeline): ${b.pipeline.gesamt} Firmen, ${b.pipeline.hot} starker Fit (80+), ${b.pipeline.kontaktiert} kontaktiert${b.pipeline.hot > 0 && b.pipeline.kontaktiert === 0 ? ' — der starke Fit liegt brach' : ''}.`;
 }
 
 function blockTermineRoh(b: Brain): string {

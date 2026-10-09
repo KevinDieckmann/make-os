@@ -26,6 +26,7 @@ import type { Risiko, Vorschau } from './register';
 import { crmSicht, eindeutig, EINGESCHRAENKT_NAME, NICHT_IM_HINTERGRUND, karteiFuerPruefung, type CrmSicht } from './crm-sicht';
 import { BEIDE, TEAM } from '@/lib/crm/team-liste';
 import { GESELLSCHAFTEN } from '@/lib/einheiten';
+import { innen, type InnenAntwort } from './innen';
 
 /** Kennungen des CRM-Teams der Instanz (lib/crm/team-liste.ts) — nie feste Namen im Code (09.10., „neutral-rest-2“). */
 const teamIds = (): string[] => TEAM.map(t => t.id);
@@ -523,43 +524,9 @@ export async function crmVorschlag(input: Eingabe, _origin: string, person?: str
 
 // ── Freigeben: über die normalen Schreibwege (Route im Prozess, Dienstweg mit Person) ──
 
-type Antwort = { status: number; json: Record<string, unknown> };
-type Handler = (req: Request, ctx: { params: Promise<Record<string, string>> }) => Promise<Response>;
-const ROUTEN: Record<string, () => Promise<Record<string, unknown>>> = {
-  '/api/crm/aktivitaet': () => import('@/app/api/crm/aktivitaet/route'),
-  '/api/crm/followup': () => import('@/app/api/crm/followup/route'),
-  '/api/crm/deal': () => import('@/app/api/crm/deal/route'),
-  '/api/crm/bestand': () => import('@/app/api/crm/bestand/route'),
-  '/api/state/kontakte': () => import('@/app/api/state/kontakte/route'),
-  '/api/crm/lead': () => import('@/app/api/crm/lead/route'),
-  '/api/crm/dubletten': () => import('@/app/api/crm/dubletten/route'),
-  '/api/crm/verbindungen': () => import('@/app/api/crm/verbindungen/route'),
-  '/api/crm/angebot': () => import('@/app/api/crm/angebot/route'),
-  '/api/crm/import': () => import('@/app/api/crm/import/route'),
-  '/api/tasks/create': () => import('@/app/api/tasks/create/route'),
-  '/api/heads/[head]': () => import('@/app/api/heads/[head]/route'),
-  // 29.09. (#K2): Kalender-Vorschläge des Kalender-Agenten — anlegen nur über den Termin-Schreibweg (lib/zoe/kalender-vorschlag.ts).
-  '/api/kalender/termin': () => import('@/app/api/kalender/termin/route'),
-};
-
-/**
- * Eine eigene Route im Prozess aufrufen — wie ein interner Hop (Regel 7): Dienstschlüssel + `x-make-person`.
- * Dieselben Prüfungen wie beim Klick; im Änderungsprotokoll steht `{ art: 'zoe', person }` (`werAus`).
- */
-export async function innen(pfad: keyof typeof ROUTEN, methode: 'POST' | 'PATCH', body: unknown, person: string, params?: Record<string, string>): Promise<Antwort> {
-  const schluessel = process.env.MAKE_OS_KEY;
-  if (!schluessel) return { status: 503, json: { fehler: 'Dienstschlüssel fehlt (MAKE_OS_KEY) — Freigabe gerade nicht möglich.' } };
-  const mod = await ROUTEN[pfad]();
-  const h = mod[methode] as Handler | undefined;
-  if (typeof h !== 'function') return { status: 405, json: { fehler: `${methode} ${pfad} gibt es nicht.` } };
-  // Dynamische Routen (Next 15.5): `params` ist ein Promise — wie Next es der Route übergibt.
-  const url = pfad.replace(/\[(\w+)\]/g, (_, n: string) => encodeURIComponent(params?.[n] ?? ''));
-  const res = await h(new Request(`http://innen${url}`, {
-    method: methode, headers: { 'content-type': 'application/json', 'x-make-key': schluessel, 'x-make-person': person }, body: JSON.stringify(body),
-  }), { params: Promise.resolve(params ?? {}) });
-  const json = await res.json().catch(() => ({})) as Record<string, unknown>;
-  return { status: res.status, json };
-}
+// Seit 09.10. liegt der interne Hop an EINER Stelle (lib/zoe/innen.ts) — dieselbe für die Finanz-, Planungs- und CRM-Altwerkzeuge.
+type Antwort = InnenAntwort;
+export { innen };
 
 const fehlerText = (a: Antwort) => String(a.json.fehler ?? a.json.error ?? `Abgelehnt (${a.status}).`);
 const statusVon = (n: number): Status => (n === 400 || n === 403 || n === 404 || n === 409 || n === 413 ? n : 409);
