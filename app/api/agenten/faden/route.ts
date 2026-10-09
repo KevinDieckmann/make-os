@@ -2,7 +2,9 @@
 // GET `?id=` → `FadenAntwort` (eigener oder geteilter Business-Thread, den die Person sieht), `?gedaechtnis=<agent>` → eigene
 // persönliche Merksätze dieses Agenten, sonst `FadenListeAntwort` (`?agent=head:<id>` filtert). POST `FadenAnfrage` (+ Kern-Aktionen):
 // ZOE-Threads (Agent `zoe`, Paket 4a) stehen hier mit in der Liste (`?agent=zoe`); geschrieben werden sie über /api/kimmi (`zoeFaden`).
-//   senden          Head-/Mitarbeiter-Chat synchron (Modell; `modellSchranke`) bzw. mit `hintergrund: true` als Lauf
+//   senden          Head-/Mitarbeiter-Chat synchron (Modell; `modellSchranke`) bzw. mit `hintergrund: true` als Lauf — mit
+//                   `Accept: text/event-stream` als Strom (09.10.: Text-Stücke, Werkzeug-Stände, am Ende `ende` = die JSON-Antwort;
+//                   lib/http/sse.ts). Alle Prüfungen davor antworten wie bisher mit JSON und Status.
 //   umbenennen · gelesen · loeschen · teilen (nur Business, nur Besitzer) · plan (Plan-Freigabe per Klick) · abbrechen ·
 //   zweite-meinung (zwei Entwürfe, der Prüfer wählt) · gedaechtnis-weg (persönlichen Merksatz löschen)
 //   bewerten (Paket 4b: Daumen an einer Agenten-Antwort bzw. einem Bericht — nur die Besitzerin, nur Metadaten)
@@ -24,6 +26,8 @@ import { fadenStand, istFadenId, kurz, merksatzWeg, passtAgent, textPruefen, tit
 import { headSichtbar, teilenErlaubt, type KontoSicht } from '@/lib/agenten/sicht';
 import { senden, type SendenAnfrage } from '@/lib/agenten/gespraech';
 import { zoeVerlaufUebernehmen } from '@/lib/agenten/zoe-faden';
+import { willStrom } from '@/lib/http/sse';
+import { sseAntwort, type StromArbeit } from '@/lib/http/sse-antwort';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -110,13 +114,20 @@ export async function POST(req: Request) {
     const schranke = modellSchranke(req); if (schranke) return schranke;
     const gesperrt = await sperreFuerSenden(person, body);
     if (gesperrt) return gesperrt;
-    const a = await einmalig('agenten-faden', body.anfrageId, async () => {
-      const r = await senden({ sicht, anfrage: body as unknown as SendenAnfrage, origin: innenAdresse(req) });
-      return { status: r.status, body: r.body };
-    });
-    // Offene Plan-Freigaben des Threads auch in den Stapel (Art `plan`, idempotent) — ein Fehler hält die Antwort nie auf.
-    const fid = (a.body as { faden?: { id?: unknown } } | null)?.faden?.id;
-    if (a.status === 200 && istFadenId(fid)) await import('@/lib/agenten/plan-stapel').then(m => m.planStapeln(person, fid)).catch(() => 0);
+    // Derselbe Weg mit und ohne Streaming — `strom` reicht nur Stücke und den Abbruch des Browsers durch (gespeichert wird das Endergebnis).
+    const arbeit = async (strom?: StromArbeit) => {
+      const a = await einmalig('agenten-faden', body.anfrageId, async () => {
+        const r = await senden({ sicht, anfrage: body as unknown as SendenAnfrage, origin: innenAdresse(req), ...(strom ? { strom: { ereignis: strom.sende, signal: strom.signal } } : {}) });
+        return { status: r.status, body: r.body };
+      });
+      // Offene Plan-Freigaben des Threads auch in den Stapel (Art `plan`, idempotent) — ein Fehler hält die Antwort nie auf.
+      const fid = (a.body as { faden?: { id?: unknown } } | null)?.faden?.id;
+      if (a.status === 200 && istFadenId(fid)) await import('@/lib/agenten/plan-stapel').then(m => m.planStapeln(person, fid)).catch(() => 0);
+      return a;
+    };
+    // Streaming (09.10.): nur, wenn der Browser es will und der Chat synchron antwortet (eine Hintergrundaufgabe hat nichts zu zeigen).
+    if (willStrom(req) && body.hintergrund !== true) return sseAntwort(req, arbeit);
+    const a = await arbeit();
     return NextResponse.json(a.body, { status: a.status });
   }
   if (aktion === 'zweite-meinung') {

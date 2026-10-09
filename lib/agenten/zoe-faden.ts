@@ -40,6 +40,8 @@ export interface ZoeZug {
   prompt: PromptNachricht[];
   /** Gab es vor dieser Nachricht schon Züge? */
   fortsetzung: boolean;
+  /** Die eben angehängte Nachricht der Person — bei einem abgebrochenen Strom geht sie wieder heraus (faeden.ts `zugZuruecknehmen`). */
+  nachrichtId: string;
 }
 
 /**
@@ -56,7 +58,7 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
     if (!x.ok) return x;
     const r = await bestandAendern<FadenKern>(person, b => { const y = fadenHinzu(b, x.faden); return y.ok ? { bestand: y.bestand, e: x.faden } : y; });
     if (!r.ok) return r;
-    return { faden: r.e, prompt: fuerPrompt(r.e, ZOE, fremd), fortsetzung: false };
+    return { faden: r.e, prompt: fuerPrompt(r.e, ZOE, fremd), fortsetzung: false, nachrichtId: n.id };
   };
   if (wunsch === 'neu') return neu(text);
   if (!istFadenId(wunsch)) return fehler(400, 'Thread-Kennung ungültig.');
@@ -68,7 +70,7 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
     return { ...x.faden, status: 'offen', gelesenAm: jetzt };
   });
   if (!r.ok) return voll ? neu(`Fortsetzung: ${text}`) : r;
-  return { faden: r.faden, prompt: fuerPrompt(r.faden, ZOE, fremd), fortsetzung: r.faden.nachrichten.length > 1 };
+  return { faden: r.faden, prompt: fuerPrompt(r.faden, ZOE, fremd), fortsetzung: r.faden.nachrichten.length > 1, nachrichtId: n.id };
 }
 
 /** Die Antwort von ZOE anhängen und die Marken des Zugs („fremd gelesen“, „vertraulich“) am Thread festhalten — nur ODER, nie zurück. */

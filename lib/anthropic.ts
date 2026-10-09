@@ -13,6 +13,8 @@ import type { KiKontext } from './datenschutz/ki-tor';
 import type { AnbieterId } from './ki/anbieter';
 import type { TextZiel } from './ki/adapter/anthropic-vertex';
 import { torModus } from './ki/konfig';
+import { NachrichtZusammenbau } from './ki/nachricht-strom';
+import { sseZerlegen } from './http/sse';
 export type { KiKontext } from './datenschutz/ki-tor';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -198,9 +200,23 @@ const istWebSuche = (t: unknown) => /^web_search/.test(String((t as { type?: unk
  *  Seit 05.10. geht JEDER Aufruf zuerst durch das KI-Tor (Datenschutz): gesperrt → `error: 'ki-gesperrt:<grund>'`,
  *  Status 403, nichts verlässt den Server; jeder Aufruf (auch ein gesperrter) bekommt eine Zeile im KI-Protokoll. */
 export async function askText(opts: AskOptions): Promise<AskResult> {
+  return kiAufruf(opts, (o, ziel) => askTextSenden(o, ziel));
+}
+
+/**
+ * Der Versand NACH dem Tor — ohne Strom (`askTextSenden`) oder im Strom (`askStream`). `pseudonymisiert` = die Texte tragen Platzhalter
+ * statt Namen; das Endergebnis übersetzt `kiAufruf` zurück, Stücke unterwegs nie (deshalb puffert `askStream` dann).
+ */
+type Sender = (opts: AskOptions, ziel: TextZiel | undefined, pseudonymisiert: boolean) => Promise<AskResult>;
+
+/**
+ * Die EINE Schranke vor jedem Modell-Aufruf (Schlüssel, Guthaben, KI-Tor, Budget, Anbieter-Tor, Web-Suche, Pseudonymisierung, KI-Protokoll) —
+ * `askText` und `askStream` gehen beide hier durch; nur der Versand am Ende unterscheidet sich.
+ */
+async function kiAufruf(opts: AskOptions, sender: Sender): Promise<AskResult> {
   // Anbieter-Tor (09.10., Paket 6a): nur mit MAKE_OS_KI_ANBIETER_TOR=an|streng — ohne die Variable läuft der Weg unten unverändert
   // (Anthropic direkt; Wächter tests/ki-anbieter-tor.test.ts „ohne Konfiguration wie heute“).
-  if (torModus() !== 'aus') return askTextUeberTor(opts);
+  if (torModus() !== 'aus') return askTextUeberTor(opts, sender);
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, status: 0, text: '', error: 'no-key' };
   if (guthabenLeer()) return { ok: false, status: 402, text: '', error: 'guthaben-leer' };
@@ -224,9 +240,9 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
   }
   const tools = webGewuenscht && !tor.websuche ? (opts.tools ?? []).filter(t => !istWebSuche(t)) : opts.tools;
   const ps = tor.pseudonym ? await pseudonymFuerLauf().catch(() => null) : null;
-  const r = await askTextSenden(ps
+  const r = await sender(ps
     ? { ...opts, tools, system: ps.ersetze(opts.system), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
-    : { ...opts, tools });
+    : { ...opts, tools }, undefined, !!ps);
   const websuche = webGewuenscht && tor.websuche;
   protokoll(r.ok ? 'ok' : 'fehler', { ...(ps?.ersetzt() ? { pseudonym: ps.ersetzt() } : {}), ...(websuche ? { websuche } : {}), ...(r.usage ? { tokenEin: r.usage.ein, tokenAus: r.usage.aus } : {}) });
   if (!ps) return r;
@@ -239,7 +255,7 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
  * ist der Aufruf gesperrt — nie still auf einen schwächer geschützten Weg. Leeres Guthaben bei Anthropic gilt als Ausfall (die nächste
  * Wahl nur, wenn sie mindestens so streng ist).
  */
-async function askTextUeberTor(opts: AskOptions): Promise<AskResult> {
+async function askTextUeberTor(opts: AskOptions, sender: Sender): Promise<AskResult> {
   const [{ anbieterTor }, { pseudonymFuerLauf }, { kiProtokollieren }, { anbieterEingerichtet }] = await Promise.all([import('./ki/tor'), import('./datenschutz/ki-tor'), import('./datenschutz/ki-protokoll'), import('./ki/konfig')]);
   if (!process.env.ANTHROPIC_API_KEY && !anbieterEingerichtet('anthropic-vertex-eu')) return { ok: false, status: 0, text: '', error: 'no-key' };
   const webGewuenscht = (opts.tools ?? []).some(istWebSuche);
@@ -261,18 +277,57 @@ async function askTextUeberTor(opts: AskOptions): Promise<AskResult> {
   }
   const tools = webGewuenscht && !tor.websuche ? (opts.tools ?? []).filter(t => !istWebSuche(t)) : opts.tools;
   const ps = tor.pseudonym ? await pseudonymFuerLauf().catch(() => null) : null;
-  const r = await askTextSenden(ps
+  const r = await sender(ps
     ? { ...opts, tools, system: ps.ersetze(opts.system), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
-    : { ...opts, tools }, ziel);
+    : { ...opts, tools }, ziel, !!ps);
   const websuche = webGewuenscht && tor.websuche;
   protokoll(r.ok ? 'ok' : 'fehler', { ...(ps?.ersetzt() ? { pseudonym: ps.ersetzt() } : {}), ...(websuche ? { websuche } : {}), ...(r.usage ? { tokenEin: r.usage.ein, tokenAus: r.usage.aus } : {}) });
   if (!ps) return r;
   return { ...r, text: ps.zurueck(r.text), ...(r.raw !== undefined ? { raw: ps.tiefZurueck(r.raw) } : {}) };
 }
 
-/** Der eigentliche Versand (nach dem Tor). `ziel` = anderer Zugang (Claude über Vertex EU); ohne: Anthropic direkt wie bisher. */
-async function askTextSenden(opts: AskOptions, ziel?: TextZiel): Promise<AskResult> {
+/** Abbruch von außen (der Browser hat die Verbindung geschlossen) — kein Fehler des Modells, keine Wiederholung. */
+export const KI_ABGEBROCHEN = 'abgebrochen';
+const abgebrochen = (): AskResult => ({ ok: false, status: 0, text: '', error: KI_ABGEBROCHEN });
+
+/** Verbrauch mitschreiben — schlägt es fehl, ist das egal: eine fehlende Kostenzeile darf niemals eine Antwort verhindern. */
+async function verbrauchNotieren(modell: string, zweck: string | undefined, usage: AskResult['usage'], anbieter?: AnbieterId): Promise<void> {
+  if (!usage) return;
+  try {
+    const { notiere } = await import('./zoe/verbrauch');
+    void notiere(modell, zweck ?? 'unbenannt', usage.ein, usage.aus, usage.cacheLesen, usage.cacheSchreiben, anbieter);
+  } catch { /* still */ }
+}
+
+/** Die Ereignisse einer Strom-Antwort lesen und in `zb` zusammensetzen; Text-Stücke gehen an `stueck` (in Reihenfolge). */
+async function stromLesen(res: Response, zb: NachrichtZusammenbau, stueck: (t: string) => void): Promise<void> {
+  const leser = res.body?.getReader();
+  if (!leser) {
+    for (const e of sseZerlegen(`${await res.text()}\n\n`).ereignisse) { const t = zb.anwenden(e.name, e.daten); if (t) stueck(t); }
+    return;
+  }
+  const dec = new TextDecoder();
+  let puffer = '';
+  for (;;) {
+    const { done, value } = await leser.read();
+    puffer += done ? dec.decode() : dec.decode(value, { stream: true });
+    const z = sseZerlegen(done ? `${puffer}\n\n` : puffer);
+    puffer = z.rest;
+    for (const e of z.ereignisse) { const t = zb.anwenden(e.name, e.daten); if (t) stueck(t); }
+    if (done || zb.fertig || zb.fehler) break;
+  }
+  if (zb.fertig || zb.fehler) await leser.cancel().catch(() => { /* schon zu */ });
+}
+
+/**
+ * Der eigentliche Versand (nach dem Tor). `ziel` = anderer Zugang (Claude über Vertex EU); ohne: Anthropic direkt wie bisher.
+ * `strom` (09.10.): mit `onText` und ohne `ziel` dieselbe Anfrage mit `stream: true` — die Ereignisse werden wieder zu EINER Antwort
+ * zusammengesetzt (lib/ki/nachricht-strom.ts), Text-Stücke gehen unterwegs an `onText`. Wiederholt wird nur, solange noch kein Stück
+ * gezeigt wurde. `strom.signal` bricht ab (Browser weg) — ohne Wiederholung; der bis dahin bekannte Verbrauch wird trotzdem verbucht.
+ */
+async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOptionen): Promise<AskResult> {
   const key = process.env.ANTHROPIC_API_KEY ?? '';
+  const imStrom = !ziel && typeof strom?.onText === 'function';
 
   const body: Record<string, unknown> = {
     model: opts.model ?? MODEL,
@@ -285,22 +340,31 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel): Promise<AskResu
   };
   if (opts.tools && opts.tools.length) body.tools = opts.tools;
   if (opts.schema || opts.effort) body.output_config = { ...(opts.schema ? { format: { type: 'json_schema', schema: opts.schema } } : {}), ...(opts.effort ? { effort: opts.effort } : {}) };
+  if (imStrom) body.stream = true;
 
   const timeoutMs = opts.timeoutMs ?? 90_000;
   const maxAttempts = (opts.retries ?? 2) + 1;
   let last: AskResult = { ok: false, status: 0, text: '', error: 'unbekannt' };
+  /** Hat die Oberfläche schon ein Stück gesehen? Dann keine Wiederholung mehr (sie sähe den Anfang doppelt). */
+  let gezeigt = false;
+  const stueck = (t: string) => { gezeigt = true; strom?.onText?.(t); };
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (strom?.signal?.aborted) return abgebrochen();
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const aussen = () => ctrl.abort();
+    strom?.signal?.addEventListener('abort', aussen, { once: true });
+    const zb = imStrom ? new NachrichtZusammenbau() : null;
     try {
       const res = ziel ? await ziel.senden(body, ctrl.signal) : await fetch(ENDPOINT, {
         method: 'POST',
-        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(imStrom ? { accept: 'text/event-stream' } : {}) },
         body: JSON.stringify(body),
         signal: ctrl.signal,
       });
-      clearTimeout(timer);
+      // Ohne Strom gilt die Zeitgrenze bis zur Antwort (wie bisher); im Strom bis zum letzten Stück.
+      if (!imStrom) clearTimeout(timer);
       if (!res.ok) {
         const detail = await res.text();
         // Strukturierte Ausgabe nicht verfügbar (Modell/Konto)? Einmal ohne —
@@ -326,25 +390,31 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel): Promise<AskResu
         if (RETRYABLE.has(res.status) && attempt < maxAttempts) { await sleep(700 * attempt); continue; }
         return last;
       }
-      const data = await res.json();
+      const requestId = res.headers.get('request-id') ?? undefined;
+      let data: unknown;
+      if (zb) {
+        await stromLesen(res, zb, stueck);
+        if (zb.fehler || !zb.fertig) {
+          // Fehler mitten im Strom (z. B. überlastet) bzw. abgerissen: der bekannte Verbrauch zählt; nochmal nur, solange nichts gezeigt wurde.
+          await verbrauchNotieren(String(body.model), opts.zweck, zb.verbrauch());
+          const art = zb.fehler?.art ?? 'abgerissen';
+          last = { ok: false, status: art === 'overloaded_error' ? 529 : 500, text: '', error: zb.fehler ? `${art}: ${zb.fehler.text}` : 'Strom abgerissen', requestId };
+          if (!gezeigt && attempt < maxAttempts && /overloaded|api_error|abgerissen/.test(art)) { await sleep(700 * attempt); continue; }
+          return last;
+        }
+        data = zb.nachricht();
+      } else data = await res.json();
       if (!ziel) merkeErfolg();
       // Verbrauch mitschreiben — an DIESER einen Stelle, durch die jeder
       // Modellaufruf geht. Je Route wäre es 21-mal dieselbe Zeile und beim
-      // 22. Mal vergessen. Schlägt es fehl, ist das egal: eine fehlende
-      // Kostenzeile darf niemals eine Antwort verhindern.
+      // 22. Mal vergessen.
       const u = (data as { usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } }).usage;
       const usage = u ? { ein: u.input_tokens ?? 0, aus: u.output_tokens ?? 0, cacheLesen: u.cache_read_input_tokens ?? 0, cacheSchreiben: u.cache_creation_input_tokens ?? 0 } : undefined;
-      const requestId = res.headers.get('request-id') ?? undefined;
-      try {
-        if (usage) {
-          const { notiere } = await import('./zoe/verbrauch');
-          void notiere(String(body.model), opts.zweck ?? 'unbenannt', usage.ein, usage.aus, usage.cacheLesen, usage.cacheSchreiben, ziel?.anbieter);
-        }
-      } catch { /* still */ }
+      await verbrauchNotieren(String(body.model), opts.zweck, usage, ziel?.anbieter);
       const text = extractText(data);
       const stopReason = (data as { stop_reason?: string }).stop_reason;
       // Denken hat das ganze Budget gefressen → einmal mit mehr Luft nachfassen.
-      if (!text && stopReason === 'max_tokens' && attempt < maxAttempts) {
+      if (!text && stopReason === 'max_tokens' && attempt < maxAttempts && !gezeigt) {
         // max(), nicht min(): bei bereits großem Budget darf das Nachfassen es
         // nicht VERKLEINERN.
         body.max_tokens = Math.max(Number(body.max_tokens), Math.min(8000, Number(body.max_tokens) * 2));
@@ -359,14 +429,45 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel): Promise<AskResu
       }
       return { ok: true, status: 200, text, stopReason, raw: data, usage, requestId, anbieter: ziel?.anbieter ?? 'anthropic' };
     } catch (err) {
-      clearTimeout(timer);
+      if (strom?.signal?.aborted) { await verbrauchNotieren(String(body.model), opts.zweck, zb?.verbrauch()); return abgebrochen(); }
       const aborted = err instanceof Error && err.name === 'AbortError';
+      if (zb) await verbrauchNotieren(String(body.model), opts.zweck, zb.verbrauch());
       last = { ok: false, status: 0, text: '', error: aborted ? `Timeout nach ${Math.round(timeoutMs / 1000)}s` : (err instanceof Error ? err.message : String(err)) };
-      if (!aborted && attempt < maxAttempts) { await sleep(700 * attempt); continue; }
+      if (!aborted && attempt < maxAttempts && !gezeigt) { await sleep(700 * attempt); continue; }
       return last;
+    } finally {
+      clearTimeout(timer);
+      strom?.signal?.removeEventListener('abort', aussen);
     }
   }
   return last;
+}
+
+/** Was `askStream` unterwegs meldet. */
+export interface StromOptionen {
+  /** Ein Stück Antworttext, in Reihenfolge — nur Text, nie Denken, nie Werkzeug-Eingaben. Gespeichert wird allein das Endergebnis. */
+  onText?: (stueck: string) => void;
+  /** Abbruch von außen (Browser weg): der Aufruf endet sofort mit `error: KI_ABGEBROCHEN`, ohne Wiederholung. */
+  signal?: AbortSignal;
+}
+
+/**
+ * Wie `askText`, aber die Antwort kommt in Stücken (Server-Sent Events der Messages-API, 09.10.) — für den ZOE- und Agenten-Chat
+ * („wie Claude“). DIESELBE Schranke wie `askText` (`kiAufruf`: Schlüssel, Guthaben, KI-Tor, Budget, Anbieter-Tor, Web-Suche,
+ * Pseudonymisierung, KI-Protokoll nur Metadaten) — kein zweiter Weg daran vorbei; gesperrt → dasselbe Ergebnis wie `askText`, es fließt
+ * kein Stück. Das Ergebnis hat dieselbe Form wie bei `askText` (`raw.content` vollständig, `usage` verbucht wie dort).
+ * Ohne Strom, Text am Ende als EIN Stück: Claude über Vertex EU (der Strom-Endpunkt dort ist noch nicht geprobt) und pseudonymisierte
+ * Läufe (Stücke trügen Platzhalter; erst das Endergebnis wird zurückübersetzt).
+ */
+export async function askStream(opts: AskOptions, strom: StromOptionen = {}): Promise<AskResult> {
+  if (strom.signal?.aborted) return abgebrochen();
+  let gepuffert = false;
+  const r = await kiAufruf(opts, (o, ziel, pseudonymisiert) => {
+    if (ziel || pseudonymisiert) { gepuffert = true; return askTextSenden(o, ziel, { signal: strom.signal }); }
+    return askTextSenden(o, undefined, strom);
+  });
+  if (gepuffert && r.ok && r.text) strom.onText?.(r.text);
+  return r;
 }
 
 /** Wie askText, aber mit Web-Suche — fällt sauber auf reine Antwort zurück,

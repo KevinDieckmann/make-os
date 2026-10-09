@@ -31,9 +31,12 @@ import { useLautstaerke } from '@/hooks/useLautstaerke';
 import { useAtem } from '@/hooks/useAtem';
 import { fuerStimme, ohneMarkdown } from '@/lib/make-one/zoe-verlauf';
 import { zustandVon, inWorte, wortVerzug, vorschlaege, tagesWort } from '@/lib/make-one/empfang';
+import { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
+import { postMitStrom } from '@/lib/http/strom-client';
 
-/** Ein Zug im Empfang — `ich` = die Person, mit der ZOE spricht (neutral, Paket 4a). */
-interface Zug { wer: 'ich' | 'zoe'; text: string }
+/** Ein Zug im Empfang — `ich` = die Person, mit der ZOE spricht (neutral, Paket 4a). `gestreamt` = stand schon beim Entstehen da
+ *  (09.10.) — dann kommt er nicht noch einmal Wort für Wort an. */
+interface Zug { wer: 'ich' | 'zoe'; text: string; gestreamt?: boolean }
 
 /** Text, der Wort für Wort ankommt. Der Schlüssel hängt am Text: ein neuer
  *  Satz läuft neu an, ein erneutes Rendern desselben Satzes nicht. */
@@ -87,6 +90,8 @@ export function ZoeStart() {
   const fadenRef = useRef('');
   const [eingabe, setEingabe] = useState('');
   const [denkt, setDenkt] = useState(false);
+  // Streaming (09.10.): der Text, während er entsteht, und das laufende Werkzeug.
+  const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
   const [stunde, setStunde] = useState(12);
   const gesprochen = useRef(false);
   const ende = useRef<HTMLDivElement>(null);
@@ -157,7 +162,7 @@ export function ZoeStart() {
     const b = requestAnimationFrame(() =>
       ende.current?.scrollIntoView({ behavior: atem.ruhig ? 'auto' : 'smooth', block: 'end' }));
     return () => cancelAnimationFrame(b);
-  }, [zuege.length, denkt, atem.ruhig]);
+  }, [zuege.length, denkt, atem.ruhig, entsteht.text]);
 
   const frag = useCallback(async (text: string) => {
     const q = text.trim();
@@ -165,19 +170,25 @@ export function ZoeStart() {
     setEingabe('');
     setZuege(z => [...z, { wer: 'ich', text: q }]);
     setDenkt(true);
+    setEntsteht(ENTSTEHEND_LEER);
+    let gezeigt = false;
     try {
-      const r = await fetch('/api/kimmi', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, zoeFaden: fadenRef.current || 'neu' }),
+      // Mit Strom (09.10.): der Text erscheint, während er entsteht; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON).
+      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: fadenRef.current || 'neu' }, e => {
+        if (e.art === 'text') gezeigt = true;
+        setEntsteht(s => entstehendNach(s, e));
       });
-      const d = await r.json();
+      if (r.netz) throw new Error('netz');
+      // Abgerissen: der Server hat nichts Halbes gespeichert — kein stilles zweites Senden (Kosten), nur ein ruhiger Satz.
+      const d = (r.body ?? {}) as { reply?: string; fadenId?: unknown };
       if (typeof d.fadenId === 'string' && d.fadenId) fadenRef.current = d.fadenId;
-      const antwort = d.reply ?? 'Dazu habe ich gerade keine Antwort.';
-      setZuege(z => [...z, { wer: 'zoe', text: antwort }]);
+      const antwort = r.unterbrochen ? 'Die Verbindung ist abgerissen — frag mich bitte noch einmal.' : d.reply ?? 'Dazu habe ich gerade keine Antwort.';
+      setZuege(z => [...z, { wer: 'zoe', text: antwort, ...(gezeigt && !r.unterbrochen ? { gestreamt: true } : {}) }]);
       stimme.lies(fuerStimme(antwort));
     } catch {
       setZuege(z => [...z, { wer: 'zoe', text: 'Ich bin gerade nicht erreichbar.' }]);
     }
+    setEntsteht(ENTSTEHEND_LEER);
     setDenkt(false);
   }, [denkt, stimme]);
 
@@ -394,12 +405,17 @@ export function ZoeStart() {
               borderRadius: RADIUS.behaelter, padding: z.wer === 'ich' ? `${A.s}px ${A.l}px` : 0,
               whiteSpace: 'pre-wrap',
             }}>
-              {z.wer === 'zoe'
+              {z.wer === 'zoe' && !z.gestreamt
                 ? <Ankunft text={ohneMarkdown(z.text)} />
-                : z.text}
+                : z.wer === 'zoe' ? ohneMarkdown(z.text) : z.text}
             </div>
           ))}
-          {denkt && <div style={{ alignSelf: 'flex-start', flex: '0 0 auto' }}><Denkpunkte farbe={ton.farbe} /></div>}
+          {/* Streaming (09.10.): der Text, während er entsteht — nur angehängt, kein Tipp-Effekt; Werkzeuge als „ruft … auf“. */}
+          {denkt && entsteht.text && (
+            <div style={{ alignSelf: 'flex-start', flex: '0 0 auto', maxWidth: '88%', fontSize: TYP.body, lineHeight: 1.6, color: C.ink, whiteSpace: 'pre-wrap' }}>{ohneMarkdown(entsteht.text)}</div>
+          )}
+          {denkt && entsteht.werkzeug && <div role="status" aria-live="polite" style={{ alignSelf: 'flex-start', flex: '0 0 auto', fontSize: TYP.bedien, color: C.inkLeise }}>ruft {entsteht.werkzeug} auf …</div>}
+          {denkt && !entsteht.text && !entsteht.werkzeug && <div style={{ alignSelf: 'flex-start', flex: '0 0 auto' }}><Denkpunkte farbe={ton.farbe} /></div>}
           <div ref={ende} style={{ flex: '0 0 auto' }} />
         </div>
         </div>
