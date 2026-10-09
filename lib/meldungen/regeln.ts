@@ -324,8 +324,11 @@ function kurzSchluessel(s: string): string {
 
 // ── Business-frei (08.10., Lücke 7) ─────────────────────────────────────────
 
-/** Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften). */
-export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke']);
+/**
+ * Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften; Paket 4c: `medien` — Freigaben fürs Marketing
+ * und KI-Videos aus dem Agenten-Bereich, beides nur im Business).
+ */
+export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien']);
 
 /**
  * Ist eine Meldung Business? Arten aus `BUSINESS_ARTEN`, Buchungs-Bezüge, abgeleitete Business-Fristen (`business`) und alles mit

@@ -4,6 +4,53 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten Paket 4c: Medien ↔ Heads, Bild & Video über das Anbieter-Tor, EINE Medien-Ablage, Demo-Saat (nur lokal — Branch `agenten-p4c`)
+
+Kevin 08.10. spät: Fotos/Videos unterwegs → nach Freigabe ins Marketing → „gehen dann direkt an die Head ofs … wenn gewollt“; andere KIs für andere
+Aufgaben (Nano Banana für Bilder, Veo für Video). Antworten 21/22 (Bilder frei bis zum Budget, Video nur mit Klick, Kennzeichnung nie entfernen,
+sichtbar bei realistischen Personen/Orten) und Fragerunde Teil 2 Nr. 11/12 (Heads sehen nur ausdrücklich Gegebenes, nur Business, nur Vorschläge).
+
+**Was neu ist**
+- **EINE Medien-Ablage.** KI-Bilder und fertige KI-Videos sind Medien wie hochgeladene Fotos (`medien--<haushalt>` bzw. `medien-privat--<person>`),
+  mit `urheber: { art: 'ki', ki: { anbieter, modell, kennzeichnung, zeichenNoetig, prompt, kosten, agent?, vorschlag? } }` — dieselbe Verschlüsselung je
+  Segment, dieselbe Freigabe, dieselbe Filterstelle (`medienFuerBetrachter`), derselbe Papierkorb. Bytes des Anbieters unverändert (SynthID/C2PA).
+  Schreibstelle `lib/medien/ki-ablage.ts` (`kiMediumAblegen`); `kiBild`/`kiVideoStarten`/`kiAuftraegeAbholen` (lib/ki/aufruf.ts) schreiben dorthin.
+- **`ki-medien--<haushalt>` (Entscheidung, konservativ):** bleibt nur Auftragsbuch laufender Videos (bis der Takt abholt) und Lese-Übergang. Fertige
+  Alt-Einträge übernimmt `kiMedienUebernehmen` EINMAL (feste Kennung `md-<uuid des km-…>`, Marke `uebernommenAls`) — im täglichen Medien-Lauf
+  (Schritt 7) und beim Abholen, **nie beim Lesen**. Der Altbestand und seine Dateien in `<daten>/ki-medien` bleiben liegen (Rückweg). Es gab dafür nie
+  eine Oberfläche oder Route — sichtbar wird ein Alt-Bild erst nach der Übernahme in „Fotos & Videos“.
+- **KI-Kennzeichnung (KI-VO Art. 50):** Freigabe eines KI-Mediums mit realistischen Personen/Orten nur mit bestätigtem sichtbarem Zeichen
+  (`kiZeichenBestaetigt`, gespeichert als `marketing.kiKennzeichnung`); die Herkunft lässt sich nie ändern (409); Inhalt mit Kopf `X-KI-Generiert`,
+  Download-Name `ki-generiert-…`, Herkunftsangabe als JSON (`/api/medien/inhalt?id=…&herkunft=1`). Galerie und Detail zeigen die KI-Marke.
+- **Mitarbeiter „Bild & Video“** (`marketing-bild-video`, Head of Marketing, hilft Event und Sales) mit Agenten-Werkzeugen (nicht im ZOE-Register):
+  `medien_suchen`, `medien_vorschlagen`, `bild_erzeugen`, `bild_bearbeiten`, `video_starten` (lib/agenten/medien-werkzeuge.ts). Heads Marketing/Event
+  lesen mit `medien_suchen`. Bilder: Schätzung in Euro, Budget/Grenze je Auftrag prüft das Anbieter-Tor VOR dem Aufruf; Ergebnis als Medium
+  „Vorschlag offen“ + Stapel (`ki_bild`: übernehmen / ablehnen → Papierkorb). Nach fremdem Text im Thread und für JEDES Video nur ein Auftrag im Stapel
+  (`ki_auftrag`) — erst der Klick erzeugt, mit genau der gezeigten Schätzung (nie als Sammelfreigabe).
+- **KI-Kategorie `medien` + Schalter „Bilder an die KI“** je Person (System › Datenschutz › KI-Schalter, Vorgabe aus; KI-Tor `medien-aus`). Fotos mit
+  erkennbaren Personen gehen nur hinaus, wenn jede markierte Person eine Einwilligung mit Zweck „KI“ hat — nie Unbekannte, nie Minderjährige, nie
+  Privat, nie fremde Fotografen (`anKiGruende`, lib/medien/regeln.ts; Prüfstelle `kiVorlageLaden`). Google Vertex nimmt dafür die Kategorie `medien`.
+- **„An Head geben …“** nur an Heads mit Medien-Bezug (Marketing, Event, Sales — `MEDIEN_HEADS`); legt danach EINEN Thread beim Head über den
+  vorhandenen Weg (POST /api/agenten/faden, im Hintergrund) mit Auftrag und dem Medium als Anhang an. **Glocke** (neue Art `medien`, Text neutral)
+  „Ein Foto wartet auf deine Freigabe (Vier-Augen)“ an die zweite Person; „Ein KI-Video ist fertig“ an die auslösende.
+- **Demo-Saat** (lib/demo/saat-agenten.ts): je Business-Head ein Thread mit gespeicherter Antwort (Sales/Marketing zwei), zwei Mitarbeiter-Threads mit
+  Bericht, drei Skills (einer aktiv, Zeitplan), zwei geplante Hintergrundaufgaben, ein Album mit drei erzeugten Farbflächen (freigegeben, angefragt, beim
+  Head of Marketing samt Vorschlag im Stapel). Kein Modellaufruf, kein Netz.
+
+**Für Kevin / das Zusammenführen**
+- **Einhängen in die Schleife (Paket 4a, bewusst nicht hier, weil 4a sie umbaut):** nach `werkzeugAngebot(…)` →
+  `medienAngebotErgaenzen(angebot, { art, head, mitarbeiter: m, schalter, helfer: !!faden.helfer })`; Handler → `mitMedien(handlerFuer(ctx), { person,
+  head, agent: faden.agent, hintergrund, titel: faden.titel })`. Bis dahin sind die Werkzeuge gebaut und getestet, aber im Chat noch nicht angeboten.
+  Optional (Vision): Bilder als Werkzeug-Ergebnis nur über `medienBilderFuerModell` und mit Kategorie `medien` im `ki` des Aufrufs.
+- **Nicht gebaut:** eigenes Budget je Head (`HeadEinstellung.budgetCentMonat`, Paket 4b) — es gelten das Instanz-Budget und die Grenze je Auftrag.
+  Video-Vorschaubild (Poster) und Raster großer Bilder (> 2 MB) erzeugt der Server nicht (keine Bild-Bibliothek) — die Galerie zeigt ein ruhiges Symbol.
+- **Recht (Anwalt):** Fotos mit Personen und Einwilligung „KI“ gehen an Google Vertex (`global`, Drittland, DPF) — der Einwilligungstext nennt die
+  KI-Bearbeitung, aber nicht das Drittland. Bitte mit RECHT.md Teil 9 prüfen lassen.
+- **Rückweg:** nur additive Felder (`urheber.art 'ki'`, `urheber.ki`, `abgeleitetVon.art 'ki'`, `marketing.kiKennzeichnung`, `KiMedium.ziel/uebernommenAls`,
+  `KiPersonSchalter.bilderAnKi`), neue Meldungsart `medien` (der alte Stand verwirft sie beim Lesen der Glocke), keine neuen Bestände. Der alte Stand
+  ließe ein KI-Medium als „von uns aufgenommen“ ändern — nach dem Upload nicht zurückgehen, ohne das zu wissen.
+- Tests: `tests/agenten-p4c.test.ts` (17), `tests/agenten-p4c-demo.test.ts` (4); `tests/ki-anbieter-tor.test.ts` auf die EINE Ablage umgestellt.
+
 ## 09.10.2026 — KI-Anbieter-Tor: Claude in der EU, Bilder, Video, Tiefenbericht, Transkription, Budget (Paket 6a; nur lokal — Branch `ki-anbieter`)
 
 Kevin 08.10. spät (ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich Teil 1, Antworten 14, 16, 19–25), Grundlage `research/agenten/MODELLE.md`:

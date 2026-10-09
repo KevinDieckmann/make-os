@@ -316,7 +316,8 @@ export async function kiAuftraegeAbholen(jetzt = new Date()): Promise<{ fertig: 
         if (a.ok) {
           await mediumAbschliessen(h, m.id, { uebernommenAls: a.medium.id });
           const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
-          await melde({ an: m.person, art: 'medien', titel: 'Ein KI-Video ist fertig', link: WEG.medien({ id: a.medium.id }) });
+          // Art `medien` zählt als Business (Business-freie Zeiten); ein privates Video meldet sich neutral als Agenten-Ergebnis.
+          await melde({ an: m.person, art: a.medium.bereich === 'business' ? 'medien' : 'agenten', titel: 'Ein KI-Video ist fertig', link: WEG.medien({ id: a.medium.id }) });
         } else await mediumAbschliessen(h, m.id, { bytes: r.videos[0].bytes, mime: r.videos[0].mime });
         fertig++;
       } catch (err) {

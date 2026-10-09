@@ -1454,6 +1454,17 @@ freigegeben … an die Head ofs, wenn gewollt.“ Antworten: ENTSCHEIDUNGEN_FRAG
 - **Heads:** nur über `medienFuerHead(person, headId, auftragId)` und Vorschläge nur über `medienVorschlagAblegen` → Stapel-Art `medien` (`heads.ts`); Zuschnitt
   führt der Browser nach Klick aus (neues Medium `abgeleitetVon`).
 - Tests `tests/medien-*.test.ts`; Saat-Marke in der Messlatte (`medien-privat--kevin`).
+- **KI-Medien (09.10., Paket 4c, Branch `agenten-p4c`; UPDATES.md):** EINE Ablage — KI-Bilder/-Videos sind Medien mit `urheber: { art: 'ki', ki }`,
+  geschrieben NUR über `kiMediumAblegen` (lib/medien/ki-ablage.ts; `kiBild`/`kiVideoStarten`/`kiAuftraegeAbholen` rufen es), Bytes unverändert (SynthID/C2PA),
+  Herkunft nie änderbar. `ki-medien--<haushalt>` ist nur noch Auftragsbuch laufender Videos + Lese-Übergang (`kiMedienUebernehmen` im Medien-Lauf und beim
+  Abholen, nie beim Lesen; Altbestand bleibt liegen). Freigabe eines KI-Mediums nur mit bestätigter Kennzeichnung (`kiZeichenBestaetigt` → `marketing.kiKennzeichnung`);
+  Inhalt mit `X-KI-Generiert`, `?herkunft=1` = Herkunftsangabe. Ein Foto geht als Vorlage an eine Bild-KI NUR über `kiVorlageLaden` (`anKiGruende`: Business,
+  Personen nur mit Einwilligung „KI“, nie Unbekannte/Minderjährige/fremde Fotografen) und mit KI-Kategorie `medien` (Schalter je Person „Bilder an die KI“,
+  `KiPersonSchalter.bilderAnKi`, Vorgabe aus → `KiSchalter.bilder`, Tor-Grund `medien-aus`). Agenten-Werkzeuge der Medien (nicht im ZOE-Register):
+  lib/agenten/medien-werkzeuge.ts (`MEDIEN_AGENTEN`: Heads Marketing/Event lesen, Mitarbeiter `marketing-bild-video` erzeugt) — Bilder als Vorschlag (Stapel
+  `ki_bild`), Video und alles nach Fremdtext nur als Auftrag (`ki_auftrag`, lib/medien/ki-stapel.ts, nie Sammelfreigabe). „An Head geben“ nur an `MEDIEN_HEADS`
+  (Thread über POST /api/agenten/faden); Glocke Art `medien` (neutral). Einhängen in die Schleife: `medienAngebotErgaenzen` + `mitMedien` (Kopf der Datei).
+  Tests `tests/agenten-p4c*.test.ts`.
 
 ## Kalender — Termine finden (29.09., Paket K4, nur lokal)
 - **Freie Zeit = EINE Lesefunktion, auf K1 aufgesetzt:** WANN jemand da ist, sagt nur K1 `verfuegbarkeitFuer` (beschäftigt/TRANSP, Abwesend, Arbeitsort, Arbeitszeit aus der Wochenvorlage `routinen.bloecke`, Feiertage NRW). `lib/kalender/freie-zeit.ts` übersetzt (`belegungenAus`, `arbeitszeitAus` — ohne Vorlage Mo–Fr 9–18, nicht an Feiertagen/ganz abwesenden Tagen —, `feiertageAus`) und ruft die reine Lückensuche `freieZeiten` (`lib/kalender/verfuegbar.ts`: Arbeitszeit je Tag oder Wochen-Fenster, Belegungen, Puffer, Vorlauf, Raster, max. je Tag; Zeitumstellung über Rundweg `wandzeit(ausWandzeit(x)) === x` + echte Dauer, doppelte Stunde = die spätere). `freieZeitFuer({ personen, dauerMin, … })` nutzen „Mit … planen“ (`GET /api/kalender/frei`), künftig ZOE (`freie_zeit`, nur lesen) und das Angebot. Gehaltene Buchungen zählen als belegt. Nie eine zweite Verfügbarkeits-Rechnung bauen; Feiertage/KW später aus K2 `lib/zeit/kalender-kern.ts` (über K1).
