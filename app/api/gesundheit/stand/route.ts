@@ -3,11 +3,14 @@
 // (Symptom-Tagebuch, Zähler „Sauber geblieben“ — lib/gesundheit/module.ts) — für die angemeldete Person oder per ?fuer=
 // für eine Person, die ihre Gesundheit mit ihr teilt. `module` = wirksamer Stand (an/aus); ein ausgeschaltetes Modul
 // liefert für JEDEN leere Werte (serverseitig, nicht nur ausgeblendet).
+// 09.10.: `koerperwerte` = die weiteren WHOOP-Tageswerte des Morgen-Check-Tages (Strain, Schlaf, Körper gegen den eigenen 7-Tage-Bezug —
+// lib/gesundheit/koerperwerte.ts). Dasselbe Tor wie die Vitalwerte: die Person selbst oder wer ihre Gesundheit geteilt bekommt (Art. 9).
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { ansichtPerson, personAus, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
-import { resolveVitals } from '@/lib/vitals';
+import { resolveVitals, type VitalsLog } from '@/lib/vitals';
+import { koerperwerteAus } from '@/lib/gesundheit/koerperwerte';
 import { localDay } from '@/lib/zeit';
 import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from '@/lib/gesundheit/eintraege';
 import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
@@ -28,8 +31,9 @@ export async function GET(req: Request) {
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const ich = personAus(req);
   const heute = localDay();
-  const [vitals, hautRoh, streakRoh, hl, journal, routinenF, tg, takt, koerper] = await Promise.all([
+  const [vitals, vitalsLog, hautRoh, streakRoh, hl, journal, routinenF, tg, takt, koerper] = await Promise.all([
     resolveVitals(heute, person),
+    loadJson<VitalsLog>(speicherFuer('vitals', person)),
     loadJson<HautLog>(speicherFuer('haut', person)),
     loadJson<StreakLog>(speicherFuer('streak', person)),
     loadJson<RoutinenLog>(speicherFuer('health-log', person)),
@@ -54,6 +58,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     person, ich, heute,
     vitals,
+    ...(!vitals.fallback ? { koerperwerte: koerperwerteAus(vitalsLog ?? {}, vitals.stand) } : {}),
     module: modulStand,
     haut: { trend: hautTrend(haut ?? {}, heute), tage: t14.map(d => ({ d, e: haut?.[d] ?? null })) },
     streak: streakStand(streak ?? {}, heute),

@@ -68,6 +68,21 @@ Kennzeichnung: **belegt** = offizielle Doku (developer.whoop.com) · **Annahme**
 - Welche `sport_name`-Werte es gibt, steht nicht auf den gelesenen Seiten → „Lauf“ = `sport_name` „running“ (Groß/klein egal) mit Distanz. **Annahme**
 **Quelle:** https://developer.whoop.com/api
 
+### 5a. Nachtrag 09.10.2026 (abgerufen am 09.10.2026) **belegt**
+- **Schlaf:** `score.sleep_needed` = `baseline_milli`, `need_from_sleep_debt_milli`, `need_from_recent_strain_milli`, `need_from_recent_nap_milli`;
+  `stage_summary` zusätzlich `total_no_data_time_milli`. MAKE OS: Schlafbedarf = Summe der vier Teile (der Nickerchen-Teil darf negativ sein —
+  Lesart **Annahme**, die Doku sagt nichts zum Vorzeichen), nie unter 0.
+- **Zyklus:** `step_count` steht **oben** am Zyklus (nicht in `score`); im laufenden Zyklus „reports the steps taken so far, and updates as the
+  Cycle continues“. Der laufende Zyklus hat nur `start` („If not present, the user is currently in this cycle“ zu `end`).
+  Quelle: https://developer.whoop.com/docs/developing/user-data/cycle
+- **Workout:** `score.zone_durations` = `zone_zero_milli` … `zone_five_milli`; dazu `altitude_gain_meter`, `altitude_change_meter`, `percent_recorded`.
+- **Einheiten:** aus den Feldnamen (`_milli` = ms, `_percentage` = %, `_meter`, `_celsius`, `kilojoule`). Für `respiratory_rate` nennt die Doku
+  keine Einheit → MAKE OS zeigt „Atemzüge/min“. **Annahme**
+- **Wann ein Zyklus beginnt** (Einschlafen oder Aufwachen), sagt die Doku nicht („Physiological Cycle … rather than calendar days“). MAKE OS ordnet
+  einen Zyklus seinem Ortstag zu, ab 18 Uhr Ortszeit dem Folgetag (`zyklusTag`, lib/whoop/abbilden.ts) — passt für beide Lesarten. **Annahme**
+- Nicht genutzt: `user/measurement/body` (kein Scope), `altitude_change_meter`, `total_no_data_time_milli`.
+**Quelle:** https://developer.whoop.com/api
+
 ## 6. Rate-Limits **belegt**
 100 Anfragen/Minute und 10.000/Tag (anhebbar). Köpfe `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` (Sekunden bis
 zum Zurücksetzen). Überschritten → `429`. Ein `Retry-After` nennt die Seite nicht → MAKE OS pausiert nach `X-RateLimit-Reset` (sonst Backoff).

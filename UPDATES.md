@@ -155,6 +155,55 @@ bleiben unberührt — Probe-Merge mit `inbox-ansicht` und `inbox-flows`: im Cod
 `lib/datenschutz/art15.ts`. **Nach dem Merge mit „Ansicht“ eine Zeile:** `waehlbar` in `stromFuer` aus `bereichWahlLaden()` (nach `space`
 gefiltert) statt aus allen Namen nehmen — sonst stehen dort auch Kunden mit beendetem Mandat (die der Server beim Zuordnen mit 400 ablehnt).
 
+## 09.10.2026 — Gesundheits-Cockpit: alle WHOOP-Werte, Strain-Ring (nur lokal — Branch `gesundheit-cockpit`, Basis a063e73a)
+
+Kevin 09.10.: „Strain wird nicht angezeigt — woran liegt das?“ — Befund: Strain kam in den WHOOP-Spiegel (`whoop-stand--<person>`), aber nie in die
+Vitalwerte; die Ringe waren Recovery · Schlaf · Anspannung (eigene Einschätzung). Dann: „Optimiere das Gesundheits-Cockpit mit allen Daten, die du
+bekommen kannst.“ Nachtrag: die große Neugestaltung wartet, bis die trainierende Person ihre Daten drin hat — Vorschlag zum Durchgehen in
+`research/gesundheit/COCKPIT_VORSCHLAG.md`.
+
+**Gebaut:**
+- **Daten (WHOOP API v2, kein neuer Scope):** der Spiegel trägt jetzt Schlafbedarf (`sleep_needed`, Summe der vier Teile) und Schlafschuld,
+  Atemfrequenz, Konsistenz, Störungen, Schlafzyklen, Kalibrier-Marke der Recovery, Schritte (`step_count`, oben am Zyklus), Höhenmeter, Anteil
+  aufgezeichnet und Minuten je Herzfrequenz-Zone 0–5 je Workout (Fakten: `research/whoop/FAKTEN_WHOOP.md` › 5a). Die Tageswerte gehen über
+  `MESS_FELDER` (lib/vitals.ts: Kern rec/sleep/hrv/rhr + `ZUSATZ_FELDER`) in `vitals--<person>` — neu optional: `strain`, `kcal`, `schritte`, `spo2`,
+  `hautTemp`, `atem`, `schlafLeistung`, `schlafKonsistenz`, `schlafEffizienz`, `schlafBedarf`, `phaseLeicht/Tief/Rem/Wach`, `stoerungen`
+  (Herkunft `whoop`, Handwert gewinnt je Feld wie bisher). Läufe und Trainings tragen Strain, kcal, Puls, Zonen, Höhenmeter (Säuberer kennt sie).
+  Ein Spiegel ohne die neuen Felder wird beim nächsten Abgleich **einmal voll** (90 Tage) geholt (`SPIEGEL_FELDER`).
+- **Zyklus-Tag:** ein Zyklus, der ab 18 Uhr Ortszeit beginnt, zählt zum Folgetag (`zyklusTag`, Annahme — die Doku sagt nicht, ob ein Zyklus mit
+  dem Einschlafen oder dem Aufwachen beginnt; beide Lesarten landen so richtig). Vorher stand der Strain von heute bei gestern, wenn man vor
+  Mitternacht schlafen ging.
+- **Gesundheit › Heute:** Ringe **Recovery · Schlaf · Strain** (0–21, Ampel nach der Tagesform: Rahmen grün 14–18, gelb 10–14, rot bis 10 — eigene
+  Regel, rein in `lib/gesundheit/belastung.ts`); der Satz darunter sagt, wie die Belastung zur Tagesform steht. Die **Anspannung 1–5** steht darunter
+  als „deine Einschätzung“ (in der geteilten Ansicht als Zeile). Zwei kleine Karten **Schlaf** (geschlafen gegen Bedarf, Phasen-Balken, Leistung ·
+  Konsistenz · Effizienz · Störungen) und **Körperwerte** (HRV, Ruhepuls, Atemfrequenz, SpO2, Hauttemperatur gegen den eigenen Ø der 7 Tage davor;
+  Energie, Schritte) — nur, wenn es die Werte gibt; Rechnung rein in `lib/gesundheit/koerperwerte.ts`, ausgeliefert von `/api/gesundheit/stand`
+  (`koerperwerte`, dasselbe Art.-9-Tor wie die Vitalwerte). Verlauf 30 Tage mit Strain. Die Seitenordnung ist sonst unverändert.
+- **Gesundheits-Index:** „Schlaf gegen Bedarf“ (Erholung & Schlaf) und „Belastung zur Tagesform“ (Bewegung & Aufbau) zählen NUR, wenn WHOOP den Wert
+  in den letzten 30 Tagen geliefert hat — ohne diese Werte ist der Index bit-gleich (Test).
+- `resolveVitals` überspringt Tage ohne Kernwert (sonst verdrängten nach Mitternacht die Schritte des laufenden Zyklus den letzten Morgen-Check).
+- `/api/whoop/status` zeigt weiter nur Recovery, Schlaf, Strain.
+
+Tests: `tests/whoop-abbilden.test.ts` (neue Größen, Zyklus-Tag, Zonen, Handwert je Feld, Sport idempotent nach der Säuberung), `tests/whoop-route.test.ts`
+(einmal voll nach dem Update), `tests/gesundheit-whoop-werte.test.ts` (Strain-Rahmen, Körperwerte, Index bit-gleich, **andere Person sieht die neuen
+Werte nicht** — mit Teilen schon), `tests/gesundheit-index.test.ts`, Messlatte, Design-Wächter grün.
+
+**So testet ihr:**
+1. Gesundheit öffnen (eigene Ansicht, WHOOP verbunden) → oben drei Ringe Recovery · Schlaf · Strain; unter dem Strain ein Chip „Spielraum“ / „im
+   Rahmen“ / „drüber“, im Satz darunter der Rahmen von heute.
+2. Darunter „Anspannung — deine Einschätzung“ 1–5 tippen → bleibt gesetzt (Neu laden).
+3. Kachel „WHOOP“ → „Jetzt abgleichen“ (der erste Lauf nach dem Update holt die 90 Tage noch einmal) → Seite neu laden → Karten „Schlaf“ (Bedarf,
+   Phasen) und „Körperwerte“ (gegen Ø 7 Tage) erscheinen.
+4. Reiter „Verlauf“ → zwischen Schlaf und HRV steht „Strain“, Säulen in der Farbe der Tagesform.
+5. Reiter „Index“ → unter Erholung & Schlaf „Schlaf gegen Bedarf“, unter Bewegung & Aufbau „Belastung zur Tagesform“.
+6. Als zweite Person ohne Teilen: die eigene Seite zeigt nur die eigenen Werte; die Ansicht der anderen Person gibt es nicht. Mit Teilen: Ringe und
+   Karten der anderen Person, aber keine WHOOP-Karte und kein Körper-Profil.
+7. Handy (375 px): Ringe nebeneinander, Karten untereinander, kein Querscrollen.
+
+**Offen (für Kevin/Malin):** Strain-Rahmen je Zone passend? Zyklus-Tag am Abend mit spätem Training prüfen. Vorschlag `COCKPIT_VORSCHLAG.md`
+durchgehen. **Rückweg:** nur optionale Felder; der alte Stand verwirft Zonen/Messwerte an Läufen beim nächsten Speichern des Sports (der nächste
+Abgleich bringt sie wieder) und ignoriert `felder` im Spiegel.
+
 ## 09.10.2026 — Kalender: linke Spalte einklappbar (nur lokal — Branch `kalender-klappen`, Basis `agenten-nacht` 43bb4c14)
 
 Kevin 09.10.: „Guck mal, ob du den Kalender links einklappbar machen kannst, das sieht noch so verloren aus. Die Monatsansicht etc. einfach

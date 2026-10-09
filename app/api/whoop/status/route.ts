@@ -26,7 +26,8 @@ export async function GET(req: Request) {
   if (stand) {
     const w = tageswerte(stand);
     const tag = Object.keys(w).sort().pop();
-    if (tag) { zuletzt = { tag, ...w[tag] }; delete (zuletzt as { hrv?: number }).hrv; delete (zuletzt as { rhr?: number }).rhr; }
+    // Nur die drei Größen der Karte (seit 09.10. trägt ein Tag viel mehr — die gehören in die Gesundheitsseite, nicht in den Status).
+    if (tag) { const t = w[tag]; zuletzt = { tag, ...(t.rec !== undefined ? { rec: t.rec } : {}), ...(t.sleep !== undefined ? { sleep: t.sleep } : {}), ...(t.strain !== undefined ? { strain: t.strain } : {}) }; }
     leseZugriff(req, 'gesundheit', { betroffen: z.person }); // Lese-Protokoll (Art. 9)
   }
   return NextResponse.json({
