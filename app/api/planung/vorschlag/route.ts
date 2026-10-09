@@ -152,7 +152,7 @@ export async function POST(req: Request) {
   ].filter(Boolean).join('\n');
 
   const r = await askJson<{ begruendung?: string; bloecke?: Block[] }>({ zweck: 'planung-vorschlag', system, user, maxTokens: 6000, timeoutMs: 150_000,
-    ki: kiAus(req, vitals || eigeneAngaben ? ['kalender', 'aufgaben', 'gesundheit'] : ['kalender', 'aufgaben']) });
+    ki: kiAus(req, vitals || eigeneAngaben ? ['kalender', 'aufgaben', 'gesundheit'] : ['kalender', 'aufgaben'], { person }) });
   if (!r.ok || !r.data) return NextResponse.json({ error: r.error ?? 'Kein Vorschlag.' }, { status: 200 });
 
   // Server-seitige Härtung: Raster, Grenzen, gültige Tage/Arten/taskIds — und
@@ -178,5 +178,6 @@ export async function POST(req: Request) {
     })
     .slice(0, 60);
 
-  return NextResponse.json({ begruendung: r.data.begruendung ?? '', bloecke, verworfen });
+  // `gesundheit` (09.10., KI-Etiketten): standen Vitalwerte/eigene Angaben im Prompt? Wer den Text weitergibt (ZOE `run_agent`), trägt das Etikett.
+  return NextResponse.json({ begruendung: r.data.begruendung ?? '', bloecke, verworfen, gesundheit: !!(vitals || eigeneAngaben) });
 }

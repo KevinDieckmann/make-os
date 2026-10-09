@@ -10,12 +10,12 @@
 // Findet der Prüfer etwas, bekommt das Modell genau eine Korrekturrunde mit
 // der Fehlerliste; was danach noch hakt, wird sichtbar markiert.
 
-import { MODI, ARTEN, type Modus } from './prompt';
+import { MODI, ARTEN, werWerte, type Modus } from './prompt';
 import { zahlenImText, zahlenAus, belegt, type Fund } from './pruefung';
 
 export type Farbe = 'gruen' | 'gelb' | 'rot' | 'grau';
 export interface Befund { titel: string; was: string; bedeutung: string; typ: 'fakt' | 'annahme' | 'hinweis'; schwere: 'hoch' | 'mittel' | 'niedrig'; bereich: string; steuerhinweis: boolean; quelle: string[] }
-export interface VorschlagRoh { titel: string; begruendung: string; betrag_eur: number | null; frist: string | null; prioritaet: 'hoch' | 'mittel' | 'niedrig'; verantwortlich: 'kevin' | 'malin' | 'beide' | 'steuerberater'; bereich: string; art: string; quelle: string[]; dedup_schluessel: string }
+export interface VorschlagRoh { titel: string; begruendung: string; betrag_eur: number | null; frist: string | null; prioritaet: 'hoch' | 'mittel' | 'niedrig'; /** Speichername einer Person des Haushalts, „beide“ oder „steuerberater“ (09.10.: nie feste Namen). */ verantwortlich: string; bereich: string; art: string; quelle: string[]; dedup_schluessel: string }
 export interface Antwort {
   modus: Modus; status: 'ruhig' | 'beobachten' | 'handeln'; zusammenfassung: string;
   ampel: { bereich: 'business' | 'haushalt' | 'gesamt'; farbe: Farbe; grund: string }[];
@@ -29,12 +29,15 @@ const S = (v: unknown, max = 600) => String(v ?? '').trim().slice(0, max);
 const aus = <T extends string>(v: unknown, werte: readonly T[], std: T): T => (werte as readonly string[]).includes(String(v)) ? v as T : std;
 const liste = (v: unknown) => (Array.isArray(v) ? v : []) as Record<string, unknown>[];
 const BEREICHE = ['business', 'haushalt', 'gesamt', 'steuern', 'daten'] as const;
-const WER = ['kevin', 'malin', 'beide', 'steuerberater'] as const;
 export const STEUER_SATZ = 'Hinweis, keine Steuerberatung.';
 
-/** Form sicherstellen — was fehlt oder falsch ist, wird ersetzt statt zu scheitern. */
-export function normalisiere(roh: unknown, modus: Modus): Antwort {
+/**
+ * Form sicherstellen — was fehlt oder falsch ist, wird ersetzt statt zu scheitern. `personen` = Speichernamen des Haushalts (aus den Konten):
+ * nur sie, „beide“ und „steuerberater“ sind als Verantwortliche gültig (09.10., Plattform-Regel), alles andere wird „beide“.
+ */
+export function normalisiere(roh: unknown, modus: Modus, personen: readonly string[] = []): Antwort {
   const r = (roh ?? {}) as Record<string, unknown>;
+  const WER = werWerte(personen);
   const befunde = liste(r.befunde).slice(0, 8).map(b => {
     const steuer = b.steuerhinweis === true || b.bereich === 'steuern';
     let bedeutung = S(b.bedeutung, 700);

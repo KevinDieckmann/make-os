@@ -22,6 +22,8 @@ import { istStand } from '@/lib/finanzen/chef/ist-stand';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { pruefliste, type Businessbestand } from '@/lib/finanzen/haushalt/entflechtung';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { hauptInhaber } from '@/lib/zugang/inhaber';
+import { haushaltsSpeicher } from '@/lib/aufgaben/sicht';
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 
 /** Die Checkliste „Ist-Stand“ — jeder Punkt aus den Daten abgeleitet. */
@@ -35,18 +37,23 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
   const ab = await mitEroeffnung({ firmen: fp?.firmen ?? [], rechnungen: fp?.rechnungen ?? [], planposten: (lp?.posten ?? []) as { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string; ab: string; rhythmus: string; bis?: string }[] });
   const business = ab.planposten.filter(p => p.firmaId !== 'privat');
   let hh = null as Parameters<typeof istStand>[0]['haushalt'];
+  const kontenStand = await ladeKonten();
   if (haushalt && bild.haushalt) {
     const h = await ladeHaushalt(haushalt);
     const privat = h.buchungen.filter(b => b.einheit === 'privat');
-    const konten = (await ladeKonten()).konten;
+    const konten = kontenStand.konten;
     hh = {
       umzug: !!h.meta.umzug, buchungen: privat.length,
       letzteBuchung: privat.map(b => b.datum).sort().pop() ?? null,
       ohneKategorie: privat.filter(b => !b.kategorie_id && !b.ist_umbuchung).length,
       pruefposten: istEchterHaushalt(haushalt) ? pruefliste({ finanzplan: fp, buchungen: bu, liquiplan: lp as Businessbestand['liquiplan'] }, h).length : 0,
       steuerquote: h.meta.steuerquote, mitglieder: konten.filter(k => k.haushalt === haushalt).map(k => k.speicher),
+      // Plattform-Regel (09.10.): statt „<feste Person> hat Zugang“ — Konten ohne Haushalt und ohne „nur Business“ (nur die Zahl).
+      ohneHaushalt: konten.filter(k => !k.haushalt && k.finanzRecht !== 'business').length,
     };
   }
+  // Wer die Inhaber-Schritte macht: der Haupt-Inhaber aus den Konten (Speichername + Vorname) — nie ein fester Name.
+  const haupt = hauptInhaber(kontenStand);
   return istStand({
     heute: bild.stichtag,
     firmen: ab.firmen.map(f => ({ id: f.id, name: kontoName(f.id, f.name), kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
@@ -55,6 +62,7 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
     grundlageStand: bild.business.grundlage?.stand ?? null,
     planposten: business.length, zuKlaeren: business.filter(p => !p.sicher && (p.notiz ?? '').startsWith('Zu klären')).length,
     rechtsform: einstellung.rechtsform, haushalt: hh,
+    inhaber: haupt ? { kennung: haupt.speicher, name: haupt.name.split(/\s+/)[0] || haupt.speicher } : null,
   });
 }
 
@@ -139,12 +147,16 @@ export async function POST(req: Request) {
     // Vorschläge ohne Beträge und mit Stichwort „haushalt“ (OKR lässt sie aus).
     const privat = !!u.haushalt && (v.bereich === 'haushalt' || v.bereich === 'gesamt');
     if ((status === 'angenommen' || status === 'erledigt') && (!u.haushalt || istEchterHaushalt(u.haushalt))) {
+      const personen = await haushaltsSpeicher().catch(() => [] as string[]);
       // Über den Schreibweg (29.09., Paket T1): Zeitstempel, Verlauf „durch System“, Serien, Sichtfilter.
       await systemAufgabenAendern(stand => {
         const da = stand.tasks.find(t => t.id === `hof-${v.id}`);
         if (status === 'erledigt') return da && da.status !== 'done' ? { teile: [{ id: da.id, felder: { status: 'done' } }] } : {};
         if (da) return {};
-        const wer = v.verantwortlich === 'malin' ? 'malin' : 'kevin';
+        // Zuständig (09.10., Plattform-Regel — vorher fest eine von zwei Personen): die genannte Person, wenn sie zum Haushalt gehört, sonst
+        // die Person, die angenommen hat, sonst die erste des Haushalts (Inhaber). „beide“/„steuerberater“ → die annehmende Person.
+        const wer = personen.includes(v.verantwortlich) ? v.verantwortlich : u.person && personen.includes(u.person) ? u.person : personen[0];
+        if (!wer) return {};
         return { neu: [{
           id: `hof-${v.id}`, title: (privat ? ohneBetraege(v.titel) : v.titel).slice(0, 200),
           description: privat ? 'Vorschlag des Head of Finance (Haushalt) — Details und Beträge unter Finanzen › Head of Finance.' : `Vorschlag des Head of Finance: ${v.begruendung}`,

@@ -20,8 +20,8 @@ import { vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { gatherBrain, blockIndex } from '@/lib/brain';
 import { resolveAgent } from '@/lib/agent-config';
 import {
-  schritteFuer, tagKey, MAX_LAEUFE, artFuerStunde,
-  type LaufArt, type Lauf, type LaufFile, type SchrittErgebnis,
+  schritteFuer, tagKey, MAX_LAEUFE, artFuerStunde, autoAufgabe,
+  type LaufArt, type Lauf, type LaufFile, type SchrittErgebnis, type AutoPrioritaet,
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
 import { personStreng, laufPerson } from '@/lib/finanzen/haushalt/zugriff';
@@ -177,7 +177,8 @@ export async function POST(req: Request) {
       user: `Heute ist ${wd}, ${heute}. Was ist die Lage?`,
       maxTokens: 5000,
       timeoutMs: 150_000,
-      ki: kiAus(req, ['allgemein']),
+      // Person im KI-Tor (09.10., K5): auch im Systemlauf die Person, für die der Lauf rechnet — ihre Schalter (Web-Suche) gelten.
+      ki: kiAus(req, ['allgemein'], { person: fuer }),
     });
     if (kiGesperrt(r)) return { stand: 'uebersprungen' as const, kurz: kiSperrText(r) };
     if (!r.ok || !r.text) return { stand: 'fehler' as const, kurz: r.error ?? 'Keine Antwort' };
@@ -213,7 +214,7 @@ export async function POST(req: Request) {
         `TERMINE HEUTE: ${heutigeTermine.map(e => e.title).join(' · ') || '(keine)'}`,
       ].join('\n'),
       maxTokens: 3000,
-      ki: kiAus(req, ['postfach', 'aufgaben', 'kalender']),
+      ki: kiAus(req, ['postfach', 'aufgaben', 'kalender'], { person: fuer }),
     });
     if (kiGesperrt(r)) return { stand: 'uebersprungen' as const, kurz: kiSperrText(r) };
     if (!r.ok || !r.data) return { stand: 'fehler' as const, kurz: r.error ?? 'Keine Antwort' };
@@ -251,7 +252,9 @@ export async function POST(req: Request) {
         'Regeln: max 3 Prioritäten. Bei niedriger Recovery oder vollem Tag: weniger, und sag es offen. Gesundheitsdaten sind privat.',
         'Wenn die Kette Ausfälle hatte (Kalender alt, kein Postfach-Zugriff), benenne das — lieber ehrlich unvollständig als falsch zuversichtlich.',
         'Kein Startup-Sprech. Deutsch, direkt, warm aber knapp.',
-        'Antworte NUR als JSON: {"gruss":"<1-2 Sätze Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz>","prioritaeten":[{"titel":"…","warum":"…","wann":"…"}],"schutz":"<1 Satz für Pausen und Ruhe>","warnung":"<optional, sonst leer>"}',
+        // Bereich je Priorität (09.10., K6): Privates bleibt privat — der Task-Agent legt nur Business-Prioritäten für den Haushalt sichtbar an.
+        'Jede Priorität trägt "bereich": "business" nur, wenn sie eine Firma/einen Kunden/die Arbeit betrifft — alles Persönliche (Gesundheit, Familie, Haushalt, Erholung) ist "privat". Titel ohne Gesundheitswerte.',
+        'Antworte NUR als JSON: {"gruss":"<1-2 Sätze Lage heute>","tagesform":"<gruen|gelb|rot>","warum":"<1 Satz>","prioritaeten":[{"titel":"…","warum":"…","wann":"…","bereich":"privat|business"}],"schutz":"<1 Satz für Pausen und Ruhe>","warnung":"<optional, sonst leer>"}',
       ].join('\n'),
       user: [
         `Heute ${wd}, ${heute}, ${jetzt.getHours()}:${String(jetzt.getMinutes()).padStart(2, '0')} Uhr. Lauf-Art: ${art}.`,
@@ -277,25 +280,23 @@ export async function POST(req: Request) {
     // „entwurf"/„freigabe" bleiben es Knöpfe — genau das stellt /os/agenten ein.
     try {
       const taskAgent = await resolveAgent('task');
-      const prios = Array.isArray((r.data as { prioritaeten?: { titel?: string; warum?: string; wann?: string }[] }).prioritaeten)
-        ? (r.data as { prioritaeten: { titel?: string; warum?: string; wann?: string }[] }).prioritaeten.slice(0, 3)
+      const prios = Array.isArray((r.data as { prioritaeten?: AutoPrioritaet[] }).prioritaeten)
+        ? (r.data as { prioritaeten: AutoPrioritaet[] }).prioritaeten.slice(0, 3)
         : [];
-      if (taskAgent.autonomy === 'autonom' && prios.length) {
+      // Nur für eine benannte Person (09.10., K6): im Systemlauf gibt es niemanden, dem die Aufgabe gehört (vorher scheiterte er still).
+      if (taskAgent.autonomy === 'autonom' && prios.length && personStreng(req)) {
         const auto: { titel: string; stand: string }[] = [];
         for (const p of prios) {
-          if (!p.titel) continue;
+          const aufgabe = autoAufgabe(p);
+          if (!aufgabe) continue;
           const res = await fetch(`${origin}/api/tasks/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(personKopf(req)) },
-            body: JSON.stringify({
-              title: p.titel,
-              description: [p.warum, p.wann ? `Wann: ${p.wann}` : '', 'Automatisch aus der Tages-Ausrichtung (Task-Agent: autonom).'].filter(Boolean).join(' · '),
-              priority: 'high', space: 'business', // ohne festes Projekt → „Sonstige“ im Business (09.10.: keine Altprojekt-Kennung)
-            }),
+            body: JSON.stringify(aufgabe),
             signal: AbortSignal.timeout(15_000),
           });
           const d2 = await res.json();
-          auto.push({ titel: p.titel, stand: d2.ok ? (d2.duplikat ? 'gab es schon' : 'angelegt') : 'fehler' });
+          auto.push({ titel: aufgabe.title, stand: d2.ok ? (d2.duplikat ? 'gab es schon' : 'angelegt') : 'fehler' });
         }
         (ausrichtung as Record<string, unknown>).autoAufgaben = auto;
       }

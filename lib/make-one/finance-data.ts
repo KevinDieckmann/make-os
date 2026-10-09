@@ -2,6 +2,8 @@
 // Du pflegst Ist-Umsatz/Kosten je Monat, Ziel & Cash. Alle Kennzahlen werden
 // deterministisch gerechnet (kein KI-Raten). Die KI liefert nur den Lagebericht.
 
+import { bereichVonFirma } from '@/lib/einheiten';
+
 export interface MonthRow { m: string; umsatz: number; kosten: number; }
 export interface FinanceState {
   jahr: number;
@@ -104,7 +106,9 @@ export function computeMetrics(s: FinanceState, jetzt: Date = new Date()): Finan
 export interface Kasse { betrag: number; quelle: 'konten' | 'manuell' | 'keine'; konten: number; stand: string | null }
 
 export function geschaeftsKasse(firmen: { id: string; kontostand?: number | null; stand?: string | null }[] | undefined, manuell: number | undefined): Kasse {
-  const mitStand = (firmen ?? []).filter(f => f.id !== 'privat' && typeof f.kontostand === 'number' && isFinite(f.kontostand));
+  // Bereich je Einheit (09.10., KI-Etiketten K3): nur Konten im Business-Bereich (`bereichVonFirma`) — ein Konto einer Privat-Einheit
+  // (die Selbstständigkeit, wenn sie unter Privat steht) zählt nicht zur Business-Kasse; vorher zählte alles außer „privat“.
+  const mitStand = (firmen ?? []).filter(f => bereichVonFirma(f.id) === 'business' && typeof f.kontostand === 'number' && isFinite(f.kontostand));
   if (mitStand.length) {
     const staende = mitStand.map(f => f.stand).filter((x): x is string => !!x).sort();
     return { betrag: mitStand.reduce((a, f) => a + (f.kontostand as number), 0), quelle: 'konten', konten: mitStand.length, stand: staende[0] ?? null };

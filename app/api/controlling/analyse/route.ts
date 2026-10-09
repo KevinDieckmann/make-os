@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     s.months.map((r, i) => `${MONTHS_DE[i]}: ${eur(r.umsatz)} / ${eur(r.kosten)}`).join('\n'),
   ].filter(Boolean).join('\n');
 
-  const r = await askJson<{ briefing?: string; fokus?: string[]; risiken?: string[] }>({ zweck: 'controlling-analyse', ki: kiAus(req, ['finanzen']), system, user: kpis, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ briefing?: string; fokus?: string[]; risiken?: string[] }>({ zweck: 'controlling-analyse', ki: kiAus(req, ['finanzen'], { person: personStreng(req) }), system, user: kpis, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ briefing: r.error ?? 'Analyse gerade nicht möglich — Kennzahlen stehen.', metrics: m });
 
   const out = {

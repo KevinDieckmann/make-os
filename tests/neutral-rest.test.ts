@@ -300,7 +300,7 @@ describe('4. ZOE-Dateien (Rest 2): keine festen Personen, Firmen oder Anreden �
   /** Lesecode mit Grund — jede weitere Speicher-Kennung im Code macht den Wächter rot. */
   const AUSNAHMEN_KENNUNG: Record<string, { zeilen: number; grund: string }> = {
     'lib/zoe/raum.ts': { zeilen: 1, grund: '`ERSTKONTO`: wie die Bestände der gewachsenen Instanz liegen (ohne Suffix) — nie Anzeige oder Rolle (Plattform-Schuld, UPDATES.md)' },
-    'lib/zoe/kalender-vorschlag.ts': { zeilen: 1, grund: 'Kalendermodell: Kalender-Einstellungen mit festen Plätzen je gewachsener Person — eigenes offenes Paket' },
+    // lib/zoe/kalender-vorschlag.ts: seit 09.10. (KI-Etiketten K4) ohne feste Person — der eigene Kalender kommt aus Zuordnung/eigener iCloud.
   };
   it('keine Personen-Kennung als Rückfall oder Sonderfall — Ausnahmen nur mit Grund', () => {
     const FEST = /'(kevin|malin)'/;

@@ -23,6 +23,7 @@ import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { laeufeFuer } from '@/lib/agent-log';
+import { speicherFuer } from '@/lib/zoe/raum';
 
 export interface Faktor {
   label: string;
@@ -107,12 +108,14 @@ interface CalCache { events: { title?: string; startDate?: string; endDate?: str
  * ehrlich „zu wenig Daten", statt Kevins Werte als ihre auszugeben.
  */
 export type Person = string;
-export const personDatei = (name: string, person: Person) => (person === 'kevin' ? name : `${name}--${person}`);
+/** Der Bestandsname je Person — EINE Regel mit `speicherFuer` (lib/zoe/raum.ts, 09.10.: vorher hier eine zweite Kopie mit festem Namen). */
+export const personDatei = (name: string, person: Person) => speicherFuer(name, person);
 
 /** Diese Bestände gehören einer Person. Alles andere teilen sich die beiden. */
 const PERSOENLICH = ['health-log', 'journal', 'rituale', 'vitals', 'haut', 'streak'];
 
-export async function computeIndex(today = localDay(), person: Person = 'kevin'): Promise<PerfIndex> {
+// Person Pflicht (09.10., Plattform-Regel): kein stiller Rückfall auf eine feste Person — alle Aufrufer nennen sie.
+export async function computeIndex(today: string = localDay(), person: Person): Promise<PerfIndex> {
   const p = (name: string) => (PERSOENLICH.includes(name) ? personDatei(name, person) : name);
   // Die Tagebücher der Gesundheits-Module (Symptom-Tagebuch, Zähler) zählen über den Gesundheits-Index — nur, wenn die
   // Person das Modul führt (lib/gesundheit/module.ts, 09.10.).
@@ -141,7 +144,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // jetzt dort als Kennzahlen — mit Schwellen, Verlauf und den Punkten dahinter.
   const gi = await gesundheitsIndexFuer(person, today).catch(() => null);
   const gesundheit: Faktor[] = (gi?.saeulen ?? []).map(s => ({
-    label: s.label, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn, href: `/os/gesundheit?s=index${person !== 'kevin' ? `&fuer=${person}` : ''}`,
+    label: s.label, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn, href: `/os/gesundheit?s=index&fuer=${person}`,
     quelle: s.score == null ? 'noch nichts gemessen' : `${s.kennzahlen.filter(k => k.gemessen).length} von ${s.kennzahlen.length} Kennzahlen gemessen${s.zuDuenn ? ' — zu wenig, zählt noch nicht' : ''}`,
   }));
 
