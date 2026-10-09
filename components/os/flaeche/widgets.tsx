@@ -417,8 +417,10 @@ function FinanzenPrivatWidget({ titel, i }: WidgetProps) {
 }
 
 // ── ZOE (Stapel) & Inbox ─────────────────────────────────────────────────
-function ZoeWidget({ e, titel, i }: WidgetProps) {
-  const stapel = useDaten<number>('/api/zoe/stapel', x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
+function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
+  // Je Sicht der Fläche (09.10. spät): Heute › Privat zählt nur Vorschläge aus Privat, › Business nur aus Business — der Server filtert.
+  const sicht = spaceAusFlaeche(seite);
+  const stapel = useDaten<number>(`/api/zoe/stapel${sicht === 'alle' ? '' : `?space=${sicht}`}`, x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
   const mitInbox = e.inbox === true;
   // Inbox 2 (06.10.): offen = Gespräche in Arbeit ohne Rundschreiben (EIN Strom, nur die eigenen Postfächer, /api/inbox).
   const inbox = useDaten<number>(mitInbox ? '/api/inbox' : '/api/zoe/stapel', x => (mitInbox ? ((x as { gespraeche?: { inArbeit?: boolean; fach?: string }[] }).gespraeche ?? []).filter(g => g.inArbeit && g.fach !== 'info' && g.fach !== 'warten').length : null));

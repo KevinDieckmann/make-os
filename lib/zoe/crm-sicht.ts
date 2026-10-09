@@ -113,3 +113,60 @@ export function eindeutig<T extends { id: string }>(liste: readonly T[], suche: 
   if (treffer.length === 1) return treffer[0];
   return treffer.length ? treffer.slice(0, 8) : null;
 }
+
+// ── Bereich erkennen (09.10. spät, lib/zoe/bereich.ts) — nur Kennung, Name zum Vergleichen und Bereich, nie Inhalte ─────────────────
+// Die Regel „Privat oder Business“ eines Vorschlags braucht die Namen der Markttraktion (b) und den Bereich eines CRM-Bezugs (a). Gelesen
+// wird hier — an der EINEN Stelle, an der ZOE die Kartei liest —, mit denselben Leitplanken: eingeschränkte Kontakte (Art. 18) fehlen ganz.
+// Was hier herausgeht, landet nie im Prompt: lib/zoe/bereich-server.ts vergleicht nur und speichert nur Kennungen am Vorschlag.
+
+type BereichOrtKurz = { id: string; name: string };
+type BereichKurz = { bereich: 'privat' | 'business'; ort?: BereichOrtKurz };
+
+/**
+ * Bereich einer CRM-Firma (rein): Business — außer ALLE ihre laufenden Deals/Mandate liegen bei einer Privat-Einheit (`bereichVonGesellschaft`,
+ * lib/einheiten.ts). Mit aktivem Mandat (Business) ist der Ort ihr Mandanten-Space.
+ */
+export function firmaBereichAus(crm: Pick<CrmBestand, 'firmen' | 'mandate' | 'chancen'>, firmaId: string | undefined, gesellschaftBereich: (g: string) => 'privat' | 'business'): BereichKurz {
+  if (!firmaId) return { bereich: 'business' };
+  const mandate = crm.mandate.filter(m => m.firmaId === firmaId && m.status !== 'beendet');
+  const deals = crm.chancen.filter(c => c.firmaId === firmaId);
+  const ges = [...mandate.map(m => m.gesellschaft), ...deals.map(c => c.gesellschaft)];
+  if (ges.length && ges.every(g => gesellschaftBereich(g) === 'privat')) return { bereich: 'privat' };
+  const f = crm.firmen.find(x => x.id === firmaId);
+  return { bereich: 'business', ...(f && mandate.some(m => m.status === 'aktiv') ? { ort: { id: `m-${firmaId}`, name: f.name } } : {}) };
+}
+
+/** Namen der Markttraktion zum ERKENNEN (Firmen, Kontakte ohne Art.-18-Personen) — mit ihrem Bereich. Nie an das Modell. */
+export async function crmBekannteNamen(): Promise<{ firmen: ({ id: string; name: string } & BereichKurz)[]; kontakte: ({ id: string; name: string } & BereichKurz)[] }> {
+  const { bereichVonGesellschaft } = await import('@/lib/einheiten');
+  const [roh, crm] = await Promise.all([loadJson<{ kontakte: Kontakt[] }>('kontakte'), ladeCrm()]);
+  const firmen = crm.firmen.map(f => ({ id: f.id, name: f.name, ...firmaBereichAus(crm, f.id, bereichVonGesellschaft) }));
+  const nachFirma = new Map(firmen.map(f => [f.id, f]));
+  const kontakte = (roh?.kontakte ?? []).filter(k => !k.eingeschraenkt).map(k => {
+    const f = k.firmaId ? nachFirma.get(k.firmaId) : undefined;
+    const bereich: 'privat' | 'business' = f?.bereich ?? 'business';
+    return { id: k.id, name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim(), bereich, ...(f?.ort ? { ort: f.ort } : {}) };
+  });
+  return { firmen, kontakte };
+}
+
+/**
+ * Bereich eines Vorschlags der Stapel-Art „crm“ aus seiner Bezugs-Kennung (`kontakt:c-…`, `firma:f-…`, `deal:…`, `mandat:…`, `angebot:…`,
+ * sonst Markttraktion allgemein): Business, außer der Eintrag gehört einer Privat-Einheit. Eingeschränkte Kontakte nennen nichts.
+ */
+export async function crmBezugBereich(bezugId: string): Promise<BereichKurz & { nennt?: { art: 'firma' | 'kontakt'; id: string }[] }> {
+  const { bereichVonGesellschaft } = await import('@/lib/einheiten');
+  const i = bezugId.indexOf(':');
+  const art = i > 0 ? bezugId.slice(0, i) : bezugId;
+  const id = i > 0 ? bezugId.slice(i + 1) : '';
+  if (!id || !['kontakt', 'firma', 'deal', 'mandat', 'angebot'].includes(art)) return { bereich: 'business' };
+  const crm = await ladeCrm();
+  const nachGesellschaft = (g: string | undefined): BereichKurz => ({ bereich: bereichVonGesellschaft(g) });
+  if (art === 'deal') return nachGesellschaft(crm.chancen.find(x => x.id === id)?.gesellschaft);
+  if (art === 'mandat') return nachGesellschaft(crm.mandate.find(x => x.id === id)?.gesellschaft);
+  if (art === 'angebot') return nachGesellschaft((crm.angebote ?? []).find(x => x.id === id)?.gesellschaft);
+  if (art === 'firma') return { ...firmaBereichAus(crm, id, bereichVonGesellschaft), nennt: [{ art: 'firma', id }] };
+  const k = ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === id);
+  if (!k || k.eingeschraenkt) return { bereich: 'business' };
+  return { ...firmaBereichAus(crm, k.firmaId, bereichVonGesellschaft), nennt: [{ art: 'kontakt', id }] };
+}

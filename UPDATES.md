@@ -4,6 +4,73 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — ZOE: Bereich erkennen, Stapel und Gedächtnis je Bereich (nur lokal — Branch `zoe-bereich`, Basis 4178e395)
+
+Befund live (Kevin, 09.10. spät): im Kopf-Schalter „Privat“ stand unter ZOE › Freigaben „Gedächtnis · Fakt merken — weil du gesagt hast:
+‚… gibt es nicht mehr‘“ — über eine Firma aus dem Business. Kevin: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und das
+dann auch dem richtigen Stapel zuordnen.“ Nachtrag (Kevin, später am Abend): der Kopf kennt nur noch Privat · Business (Branch `nur-zwei-bereiche`)
+— Vorschläge mit unklarem Bereich stehen deshalb in BEIDEN Sichten oben unter „Bereich wählen“.
+
+**Die Regel** (EINE Stelle, rein: `lib/zoe/bereich.ts` `bereichFuerVorschlag`; Bestand lesen: `lib/zoe/bereich-server.ts`):
+1. **(a) Fachlicher Bezug:** Aufgabe → Space der Aufgabe · CRM-Kontakt/-Firma/-Deal/-Mandat → Business, außer alle Deals/Mandate gehören einer
+   Privat-Einheit (`bereichVonGesellschaft`) · Kalender-Vorschlag → Space des Kalenders · Vorschlag eines Heads → Bereich des Heads · Gruppe
+   (Gesundheit, Haushalt, Familie → Privat; Markttraktion, Kontakte, Kunden, Business, Bauplan → Business) · ausdrückliche Angabe in der Eingabe
+   (`space`/`bereich`, `spaceId`/`einheit`/`firma` über den Bereich der Einheit).
+2. **(b) Inhalt:** nennt der Vorschlag eine Firma oder Person (voller Name) aus der Markttraktion oder eine eigene Gesellschaft — Namen nur aus dem
+   Bestand, nie aus dem Code, Art.-18-Personen nie — gilt deren Bereich. Widersprechen sich die Treffer, entscheidet (c).
+3. **(c) Gespräch:** der Bereich, in dem das Gespräch stattfand (der Browser schickt `space` wie bisher; Server prüft nur die Form; Heads: ihr Bereich).
+4. **(d) unklar:** kein Feld am Vorschlag — auch der ganze Altbestand. Steht in Privat UND Business oben unter „Bereich wählen“.
+
+**Gebaut:**
+- **Vorschlag trägt `bereich`** (+ `bereichQuelle` bezug · inhalt · gespraech · hand, `bereichOrt` Gesellschaft/Mandanten-Space wenn eindeutig,
+  `bereichNennt` = CRM-Kennungen, die der Inhalt nennt, `bereichVon` bei Hand). Gesetzt NUR von `lege()` (eine Angabe des Aufrufers zählt nicht) bzw.
+  von Hand; Erkennen scheitert nie das Ablegen (dann unklar).
+- **GET `/api/zoe/stapel?space=privat|business`** filtert SERVERSEITIG: Privat bekommt nie einen Business-Vorschlag und umgekehrt, unklare sehen beide
+  — immer nur die Person, der der Vorschlag gehört (bzw. der Haushalt bei Vorschlägen des Systems, wie bisher). Ohne `space` (ältere Aufrufer) alles.
+  Jeder Vorschlag trägt seinen `stand`; Antwort zählt `offen` und `unklar`. Ungültige Sicht → 400.
+- **POST `{ aktion: 'bereich', id, bereich, stand }`** = „Bereich wählen“/„Bereich ändern“: nur offene Vorschläge, nur die eigenen (sonst 404),
+  veralteter Stand → 409 mit dem aktuellen Vorschlag. **Freigeben mit `stand`** → 409, wenn sich der Vorschlag seitdem geändert hat (z. B. Bereich in
+  einem anderen Fenster). **„Alle freigeben“ mit `space`** nimmt nur Vorschläge GENAU dieses Bereichs (unklare brauchen erst ihren Bereich).
+- **Gedächtnis je Bereich:** Merksätze tragen `bereich` (aus dem freigegebenen Vorschlag; Altbestand ohne = neutral). EINE Filterstelle
+  `lies({ bereich })` (lib/zoe/gedaechtnis.ts) für den ZOE-Prompt, `frag_gedaechtnis` und `GET /api/zoe/gedaechtnis?space=`: ein Gespräch in
+  Privat bekommt nur Privat- und neutrale Merksätze, in Business nur Business- und neutrale.
+- **Besser schreiben, wo es hingehört:** nennt „Fakt merken“ einen Eintrag der Markttraktion, sagt das Werkzeug ZOE den Ort im Stapel („liegt unter
+  Business, nicht unter Privat“) und schlägt den CRM-Weg vor (crm_vorschlag: Notiz an der Person bzw. Qualifizierung der Firma mit „ruht“/„kein Fit“) —
+  nie automatisch. Nennt die Frage einen solchen Eintrag, bietet die Werkzeug-Wahl crm_vorschlag mit an. Neutrale Regel `MERKEN_WOHIN`
+  (lib/zoe/grundauftrag.ts) im ZOE-Prompt und in der Beschreibung von fakt_merken (keine Namen, keine Firmen).
+- **Oberfläche ZOE › Freigaben:** folgt dem Kopf-Schalter (der Server filtert), Etikett je Vorschlag (Privat · Business · „Bereich wählen“), oben der
+  Block „Bereich wählen“, im geöffneten Vorschlag Herkunft des Bereichs + Knöpfe Privat/Business + „Firma/Kontakt in der Markttraktion öffnen ›“;
+  Gedächtnis-Karte nur der Sicht (mit Bereich). **Zähler je Sicht:** ZoePanel, Heute-Widget „ZOE“ (Space der Fläche), „Steht an“ (je Bereich),
+  Glocke-Link der Kalender-Vorschläge in den Bereich, in dem sie stehen.
+- Konto löschen: `entschiedenVon`/`bereichVon` an Vorschlägen des Systems → „[gelöscht]“ (vorher blieb `entschiedenVon` stehen).
+- Tests: `tests/zoe-bereich.test.ts` (Regel a–d rein, Namensabgleich, Sichten, Werkzeug-Wahl, Zähler/Glocke), `tests/zoe-bereich-route.test.ts`
+  (Befund nachgestellt, Wächter „Sicht Privat bekommt keinen Business-Vorschlag“, Altbestand, Bereich wählen mit Stand/409, Freigeben mit Stand,
+  Sammelfreigabe je Sicht, Gedächtnis je Bereich in Route, Werkzeug und Prompt, Konto löschen). Alle `tests/zoe-*`, `agenten-*` (bis auf drei Fälle in
+  `agenten-durchstich` (6), die am Freitagabend in eine Business-freie Zeit laufen — zeitabhängig, unabhängig von diesem Paket), `messlatte-malin`,
+  `routen-register`, `datenschutz-register`, `vor-upload-datenschutz`, Design-/Phase-0-Wächter grün; tsc, ESLint grün.
+
+**So testet ihr:**
+1. Kopf auf **Privat**, ZOE öffnen, sagen: „<Name einer Firma aus der Markttraktion> gibt es nicht mehr“. ZOE antwortet, dass der Merksatz
+   **unter Business** wartet (nicht unter Privat) und schlägt zusätzlich einen Eintrag in der Markttraktion vor (Qualifizierung „ruht“/„kein Fit“ mit Notiz).
+2. ZOE › Freigaben (Kopf Privat): der Vorschlag ist NICHT da. Kopf auf **Business**: da, mit Etikett „Business“; aufklappen → „der Inhalt nennt eine
+   Firma aus dem Bestand“ + „Firma in der Markttraktion öffnen ›“.
+3. Kopf Privat, ZOE: „keine Termine vor 10 Uhr, merk dir das“ → Vorschlag unter Privat (Etikett „Privat“, „aus dem Gespräch im Bereich Privat“).
+4. Alte Vorschläge (vor dem Update) stehen in Privat UND Business oben unter „Bereich wählen“ → aufklappen, „Business“ klicken → Meldung, unter Privat
+   ist er weg, unter Business mit Etikett. In einem zweiten Fenster mit altem Stand „Freigeben“ → „Inzwischen geändert … Nichts freigegeben.“
+5. Business-Merksatz freigeben → ZOE › Freigaben › Gedächtnis zeigt ihn unter Business mit „· Business“, unter Privat nicht. ZOE in Privat fragen
+   „Was weißt du über <Firma>?“ → der Business-Merksatz kommt nicht vor; in Business schon.
+6. Heute (Privat bzw. Business): Karte „ZOE“ und „Steht an“ zählen nur die Vorschläge dieser Sicht (+ unklare).
+
+**Offen / Fragen an Kevin:**
+- Rechnet ein Deal/Mandat der Selbstständigkeit (Privat-Einheit), wird seine Firma als **Privat** erkannt (so sagt es die Regel „Bereich je Einheit“).
+  Soll eine Firma der Markttraktion IMMER Business sein, egal welche Gesellschaft den Deal führt?
+- Erkannt werden Namen aus Markttraktion (Firmen, Kontakte mit vollem Namen) und Gesellschafts-Register — nicht Projekt-, Ziel- oder
+  Meilenstein-Titel (zu viele Zufallstreffer bei kurzen Wörtern). Ist eines der Business-Themen nur ein Ziel/Projekt, landet der Fakt im Bereich des
+  Gesprächs bzw. unter „Bereich wählen“.
+- Ein unklarer Vorschlag lässt sich auch ohne Bereich freigeben (wird dann ein neutraler Merksatz) — oder soll die Freigabe erst nach „Bereich wählen“
+  gehen?
+- Die Agenten-Seite („Wartet auf dich“) zeigt weiter alle eigenen Vorschläge ohne Sicht-Filter.
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.

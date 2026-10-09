@@ -29,6 +29,8 @@ import { neueKennung } from '@/lib/kennung';
 import type { AgentenStapelArt } from '@/lib/agenten/typen';
 import { bereichVonSpace, istSpaceId } from '@/lib/aufgaben/struktur';
 import { finanzOrtAus } from '@/lib/einheiten';
+import { BUSINESS_GRUPPEN, PRIVAT_GRUPPEN, bereichAus, passtZurSicht, type Bereich, type BereichNennt, type BereichOrt, type BereichQuelle } from './bereich';
+import { fingerabdruck } from '@/lib/store/fingerabdruck';
 
 export type VorschlagStatus = 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
 /** Status, die noch nicht entschieden sind — sie werden nie gekürzt. */
@@ -84,7 +86,24 @@ export interface Vorschlag {
   inArbeit?: { seit: string; von: string };
   /** Steht dauerhaft in `zoe-entscheidungen` — erst dann darf die Arbeitsliste ihn kürzen. */
   protokolliert?: true;
+  /**
+   * Bereich (09.10. spät, Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): wohin der Vorschlag
+   * gehört — gesetzt von `lege` über die EINE Regel (lib/zoe/bereich.ts `bereichFuerVorschlag`) bzw. von Hand (`bereichSetzen`). FEHLT das
+   * Feld, ist er „unklar“ (auch der Altbestand): er steht in Privat UND Business oben, mit „Bereich wählen“.
+   */
+  bereich?: Bereich;
+  /** Woher der Bereich kommt: Bezug · Inhalt · Gespräch · von Hand. */
+  bereichQuelle?: BereichQuelle;
+  /** Gesellschaft bzw. Mandanten-Space, wenn eindeutig (nur Anzeige). */
+  bereichOrt?: BereichOrt;
+  /** CRM-Kennungen, die der Inhalt nennt (höchstens 3) — für den Weg „in der Markttraktion festhalten“. Nur Kennungen, nie Namen. */
+  bereichNennt?: BereichNennt[];
+  /** Wer den Bereich von Hand gesetzt hat (Speichername). */
+  bereichVon?: string;
 }
+
+/** Die Bereichs-Felder eines Vorschlags — `lege` setzt sie selbst, eine Angabe des Aufrufers zählt nicht. */
+const BEREICH_FELDER = ['bereich', 'bereichQuelle', 'bereichOrt', 'bereichNennt', 'bereichVon'] as const;
 
 interface Stand { vorschlaege: Vorschlag[] }
 
@@ -106,13 +125,27 @@ function kennung(werkzeug: string, eingabe: Record<string, unknown>): string {
   return `${werkzeug}:${sortiert}`;
 }
 
-export async function lege(v: Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>): Promise<Vorschlag> {
+/**
+ * Einen Vorschlag ablegen. Den Bereich (Privat/Business) setzt `lege` selbst über die EINE Regel (lib/zoe/bereich-server.ts
+ * `bereichErmitteln`: Bezug → Inhalt → `opt.gespraech` → unklar) — der Aufrufer gibt nur den geprüften Bereich des Gesprächs mit, wenn es
+ * einen gibt. Scheitert das Erkennen, liegt der Vorschlag „unklar“ (in beiden Sichten) — das Ablegen scheitert daran nie.
+ */
+export async function lege(v: Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>, opt: { gespraech?: Bereich | null } = {}): Promise<Vorschlag> {
+  const roh: Record<string, unknown> = { ...v };
+  for (const f of BEREICH_FELDER) delete roh[f];
+  const ohneBereich = roh as Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>;
+  const b = await (async () => {
+    try { return await (await import('./bereich-server')).bereichErmitteln(ohneBereich, { gespraech: bereichAus(opt.gespraech) }); }
+    catch { return { bereich: 'unklar' as const }; }
+  })();
   const vorschlag: Vorschlag = {
-    ...v,
+    ...ohneBereich,
     id: neueKennung('v'), // Paket D-C: zufällig, ohne Zeitanteil (lib/kennung.ts)
     zeit: new Date().toISOString(),
     tag: localDay(),
     status: 'offen',
+    ...(b.bereich !== 'unklar' ? { bereich: b.bereich, ...(b.quelle ? { bereichQuelle: b.quelle } : {}), ...(b.ort ? { bereichOrt: b.ort } : {}) } : {}),
+    ...(b.nennt?.length ? { bereichNennt: b.nennt } : {}),
   };
   let schonDa: Vorschlag | undefined;
   await updateJsonAsync<Stand>('zoe-stapel', async current => {
@@ -161,10 +194,7 @@ const sicht = (v: Vorschlag): Vorschlag => {
   return { ...rest, status: 'offen' };
 };
 
-/** Gruppen, deren Vorschläge immer im Business-Bereich liegen (Markttraktion, Kontakte, Kunden, Business-Zahlen, Bauplan). */
-const BUSINESS_GRUPPEN: ReadonlySet<string> = new Set(['markttraktion', 'kontakte', 'kunden', 'crm', 'business', 'bauplan']);
-/** Gruppen, deren Vorschläge immer im Privat-Bereich liegen (Gesundheit, Haushaltsfinanzen). */
-const PRIVAT_GRUPPEN: ReadonlySet<string> = new Set(['gesundheit', 'haushalt']);
+// Gruppen je Bereich: EINE Liste in lib/zoe/bereich.ts (BUSINESS_GRUPPEN, PRIVAT_GRUPPEN) — dieselbe für `vorschlagPrivat` und `bereichFuerVorschlag`.
 
 /**
  * Liegt ein Vorschlag (möglicherweise) im Privat-Bereich? (rein, 09.10., E4) — für Vorschläge des SYSTEMS (ohne Person), die ein Konto
@@ -172,7 +202,10 @@ const PRIVAT_GRUPPEN: ReadonlySet<string> = new Set(['gesundheit', 'haushalt']);
  * eine ausdrückliche Angabe in der Eingabe (`space`/`bereich` privat|business, `spaceId`/`einheit` über den Bereich der Einheit) —
  * ohne Angabe: im Zweifel privat (nie auf Verdacht zeigen).
  */
-export function vorschlagPrivat(v: { gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string } }): boolean {
+export function vorschlagPrivat(v: { gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string }; bereich?: unknown }): boolean {
+  // Ein Vorschlag mit Bereich „Privat“ (09.10. spät, lib/zoe/bereich.ts) ist privat — nur verschärfend: „Business“ allein öffnet ihn nie
+  // für ein Konto „nur Business“ (der Bereich kann aus dem Gespräch kommen); dafür gelten weiter die Regeln unten.
+  if (bereichAus(v.bereich) === 'privat') return true;
   if (v.bezug?.art === 'crm' || BUSINESS_GRUPPEN.has(v.gruppe)) return false;
   if (PRIVAT_GRUPPEN.has(v.gruppe)) return true;
   const e = v.eingabe ?? {};
@@ -199,7 +232,7 @@ export function vorschlagPrivat(v: { gruppe: string; eingabe?: Record<string, un
  * „nur Business“). Ohne ihn sieht sie von den Vorschlägen des Systems nur die sicher geschäftlichen (`vorschlagPrivat`). Fehlt das
  * Argument, gilt das Verhalten von vorher (volle Sicht) — jeder Leser an eine Person gibt es mit.
  */
-export const vorschlagSichtbar = (v: { person?: string; gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string } }, person: string | null, imHaushalt: boolean, privat = true): boolean => {
+export const vorschlagSichtbar = (v: { person?: string; gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string }; bereich?: unknown }, person: string | null, imHaushalt: boolean, privat = true): boolean => {
   if (!person) return false;
   if (v.person) return v.person === person && (imHaushalt || v.gruppe !== 'haushalt');
   return imHaushalt && (privat || !vorschlagPrivat(v));
@@ -219,26 +252,62 @@ export async function offeneAnzahl(): Promise<number> {
  * Offene Vorschläge, die DIESE Person sieht (eigene + die des Systems, `vorschlagSichtbar`) — die Zahl, die an eine Person geht (ZOE-Antwort,
  * Empfang, Morgenlauf). Sicherheitsprüfung 09.10.: dort stand `offeneAnzahl()` — die Zahl zählte die Vorschläge der anderen Person mit.
  */
-export async function offeneAnzahlFuer(person: string | null): Promise<number> {
-  return (await vorschlaegeFuer(person, 'offen')).length;
+export async function offeneAnzahlFuer(person: string | null, space: Bereich | null = null): Promise<number> {
+  return (await vorschlaegeFuer(person, 'offen', space)).length;
 }
 
 /**
  * Die Vorschläge, die `person` sieht (`vorschlagSichtbar` mit der EINEN Konto-Sicht, 09.10., E4: im Haushalt, Privat-Bereich nur ohne
  * „nur Business“). Für jeden Leser an eine Person (Zähler, Heute, Agenten-Bereich). Konten unlesbar → nichts (nie auf Verdacht zeigen).
+ * `space` (09.10. spät) = die Sicht Privat/Business (dieser Bereich + „unklar“); ohne = alle.
  */
-export async function vorschlaegeFuer(person: string | null, nur?: VorschlagStatus): Promise<Vorschlag[]> {
+export async function vorschlaegeFuer(person: string | null, nur?: VorschlagStatus, space: Bereich | null = null): Promise<Vorschlag[]> {
   if (!person) return [];
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const k = await kontoSicht(person).catch(() => null);
   if (!k) return [];
-  return (await lies(nur)).filter(v => vorschlagSichtbar(v, person, k.imHaushalt, k.privat));
+  // Sicht Privat/Business (09.10. spät): nur Vorschläge dieses Bereichs und die unklaren (in beiden), lib/zoe/bereich.ts `passtZurSicht`.
+  return (await lies(nur)).filter(v => vorschlagSichtbar(v, person, k.imHaushalt, k.privat) && passtZurSicht(v, space));
 }
 
 export async function hole(id: string): Promise<Vorschlag | null> {
   const s = await loadJson<Stand>('zoe-stapel');
   const v = (s?.vorschlaege ?? []).find(x => x.id === id);
   return v ? sicht(v) : null;
+}
+
+/**
+ * Stand eines Vorschlags (09.10. spät) — Fingerabdruck des Eintrags, wie ihn die Sicht zeigt. Die Route liefert ihn je Vorschlag mit; wer den
+ * Bereich setzt oder freigibt, schickt ihn zurück: hat sich der Vorschlag inzwischen geändert (anderes Fenster, andere Person, entschieden),
+ * gibt es 409 statt einer Entscheidung über etwas, das man so nicht gesehen hat.
+ */
+export const vorschlagStand = (v: Vorschlag): string => fingerabdruck(sicht(v) as unknown as Record<string, unknown>);
+
+export type BereichSetzen = { ok: true; v: Vorschlag } | { ok: false; status: 403 | 404 | 409; fehler: string; v?: Vorschlag };
+
+/**
+ * Bereich von Hand setzen (09.10. spät, „Bereich wählen“) — IN der Sperre: nur ein offener Vorschlag, nur mit passendem Stand (sonst 409 mit
+ * dem aktuellen Eintrag), nur wenn `pruefe` nichts einwendet (Sicht der Person → 404). Ein von Hand gesetzter Bereich gilt (Quelle „hand“);
+ * ein Ort, der nicht mehr zum Bereich passt, fällt weg.
+ */
+export async function bereichSetzen(id: string, bereich: Bereich, o: { von: string; stand?: string | null; pruefe?: (v: Vorschlag) => { status: 403 | 404 | 409; fehler: string } | null }): Promise<BereichSetzen> {
+  let raus: BereichSetzen = { ok: false, status: 404, fehler: 'Vorschlag nicht gefunden.' };
+  await updateJsonAsync<Stand>('zoe-stapel', async current => {
+    const liste = current?.vorschlaege ?? [];
+    const i = liste.findIndex(x => x.id === id);
+    if (i < 0) return current as Stand;
+    const v = sicht(liste[i]);
+    const nein = o.pruefe?.(v) ?? null;
+    if (nein) { raus = { ok: false, ...nein }; return current as Stand; }
+    if (v.status !== 'offen') { raus = { ok: false, status: 409, fehler: v.status === 'in_arbeit' ? 'Wird gerade übernommen — Bereich nicht geändert.' : `Schon entschieden (${v.status}) — Bereich nicht geändert.`, v }; return current as Stand; }
+    if (o.stand && o.stand !== vorschlagStand(v)) { raus = { ok: false, status: 409, fehler: 'Inzwischen geändert — bitte neu ansehen. Bereich nicht geändert.', v }; return current as Stand; }
+    const ortPasst = v.bereichOrt && v.bereich === bereich;
+    const { bereichOrt: _o, ...ohneOrt } = v;
+    const neu: Vorschlag = { ...(ortPasst ? v : ohneOrt), bereich, bereichQuelle: 'hand', bereichVon: String(o.von || 'system').slice(0, 40) };
+    raus = { ok: true, v: neu };
+    return { vorschlaege: liste.map((x, j) => (j === i ? neu : x)) };
+  });
+  return raus;
 }
 
 export type Anspruch = { ok: true; v: Vorschlag } | { ok: false; status: 403 | 404 | 409; fehler: string };

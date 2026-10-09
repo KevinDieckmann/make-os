@@ -181,8 +181,11 @@ export const WEG = {
   agenten: (o: { h?: string; f?: string; r?: string } = {}) => q('/os/agenten', { h: o.h, f: o.f, r: o.r }),
   /** Fotos & Videos (09.10., Paket 5): `album` = Album vorwählen, `id` = Medium öffnen, `filter` = gesperrt|roh|favoriten|freigegeben|papierkorb, `aufnehmen` = Aufnehmen-Blatt offen. */
   medien: (o: { album?: string; id?: string; filter?: string; aufnehmen?: boolean } = {}) => q('/os/medien', { album: o.album, id: o.id, filter: o.filter, aufnehmen: o.aufnehmen ? '1' : undefined }),
-  /** ZOE › Freigaben (08.10.): ohne Angabe „Offen“; `protokoll` = was ZOE getan hat (Rückgängig), Gedächtnis, Wissen. */
-  freigaben: (t?: FreigabenReiter) => q('/os/stapel', { t: t === 'protokoll' ? t : undefined }),
+  /**
+   * ZOE › Freigaben (08.10.): ohne Angabe „Offen“; `protokoll` = was ZOE getan hat (Rückgängig), Gedächtnis, Wissen. `space` (09.10. spät) =
+   * die Sicht, in der die Vorschläge stehen (privat · business) — nur, wo ein Link genau dorthin führen soll (Glocke, Heute).
+   */
+  freigaben: (t?: FreigabenReiter, space?: 'privat' | 'business') => q('/os/stapel', { t: t === 'protokoll' ? t : undefined, space }),
   /** Brain (05.10.): die Seite bzw. eine Notiz im Lesefenster (`?n=` — Kennung relativ zum Vault, wie /api/zoe/wissen sie liefert). */
   wissen: () => '/os/wissen',
   notiz: (id: string) => q('/os/wissen', { n: id }),

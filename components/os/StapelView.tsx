@@ -13,6 +13,10 @@
 // geladen (und im 5-s-Takt nachgefragt) wird nur im Reiter „Offen“ — das Protokoll lädt selbst.
 // 29.09. (#94/#97): ZOE-Aufgaben-Vorschläge zeigen je Feld „alt → neu“ mit Häkchen; „Alle freigeben“ nur für risikoarme
 // (nur Notiz-Entwurf/Unteraufgaben) — alles andere braucht einzeln einen Blick; freigegebene Chargen lassen sich zurücknehmen.
+// 09.10. spät (Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): die Liste folgt dem Kopf-Schalter —
+// der SERVER liefert unter Privat bzw. Business nur Vorschläge dieses Bereichs und die „unklaren“ (`?space=`; Privat bekommt nie einen
+// Business-Vorschlag und umgekehrt). Unklare stehen in beiden Sichten OBEN unter „Bereich wählen“. Jeder Vorschlag trägt sein Bereichs-Etikett;
+// „Bereich wählen“ setzt ihn vor der Freigabe (mit Stand, 409 bei veraltetem). Freigeben schickt den Stand mit.
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -29,10 +33,15 @@ import { useTasks } from '@/context/TasksContext';
 import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WERKZEUG, type ZoeFeld } from '@/lib/aufgaben/zoe';
 import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
 import { ZoeReiter } from './ZoeReiter';
+import { useSpace } from '@/hooks/useSpace';
+import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
+import { BEREICH_NAME, bereichGrund, bereichVonVorschlag, type Bereich, type BereichNennt, type BereichOrt, type BereichQuelle } from '@/lib/zoe/bereich';
 
-interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; /** Aus dem Gespräch oder aus einem Lauf — fürs Etikett des Anlasses. */ quelle?: 'gespraech' | 'lauf'; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
+interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; /** Aus dem Gespräch oder aus einem Lauf — fürs Etikett des Anlasses. */ quelle?: 'gespraech' | 'lauf'; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string };
+  /** Bereich (09.10. spät) — fehlt = unklar. */ bereich?: Bereich; bereichQuelle?: BereichQuelle; bereichOrt?: BereichOrt; bereichNennt?: BereichNennt[];
+  /** Stand vom Server — geht beim Freigeben und „Bereich wählen“ zurück (409, wenn inzwischen geändert). */ stand?: string }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
-interface Fakt { id: string; tag: string; art: string; thema: string; satz: string }
+interface Fakt { id: string; tag: string; art: string; thema: string; satz: string; bereich?: Bereich }
 interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] }
 /** Die Freigabe-Listen der Heads (eigene Speicher, eigene Seiten) — hier gebündelt sichtbar (27.09.). */
 interface HeadFreigaben { id: string; name: string; href: string; offen: number; titel: string[]; fehler?: boolean }
@@ -54,6 +63,8 @@ const STATUS: Record<string, { label: string; farbe: string }> = {
   offen: { label: 'offen', farbe: LEUCHT.achtung }, laeuft: { label: 'läuft', farbe: LEUCHT.puls }, fertig: { label: 'fertig', farbe: LEUCHT.gut }, fehler: { label: 'Fehler', farbe: LEUCHT.kritisch },
   in_arbeit: { label: 'wird übernommen', farbe: LEUCHT.puls }, freigegeben: { label: 'freigegeben', farbe: LEUCHT.gut }, abgelehnt: { label: 'abgelehnt', farbe: C.inkLeise }, fehlgeschlagen: { label: 'fehlgeschlagen', farbe: LEUCHT.kritisch },
 };
+/** Farbe je Bereich (Etikett): Privat und Business wie im Kopf-Schalter, „unklar“ als Achtung. */
+const BEREICH_FARBE: Record<Bereich | 'unklar', string> = { privat: SPACE_FARBE.privat, business: SPACE_FARBE.business, unklar: LEUCHT.achtung };
 const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(iso)) / 60000); return min < 1 ? 'gerade' : min < 60 ? `vor ${min} min` : min < 1440 ? `vor ${Math.floor(min / 60)} h` : `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`; };
 
 export function StapelView() {
@@ -62,6 +73,11 @@ export function StapelView() {
   /** Nur der Reiter „Offen“ braucht Stapel, Arbeiter, Heads, Gedächtnis und Verbrauch — das Protokoll lädt selbst (1-vCPU-Server). */
   const offenReiter = reiter === 'offen';
   const { bestaetigen, dialog } = useRueckfrage();
+  // Die Sicht des Kopf-Schalters (Privat · Business) — der Server filtert danach, die Seite zeigt nur, was er liefert. Ein noch vorhandenes
+  // „Alles“ im Kopf (bis der Kopf nur noch zwei Bereiche kennt) zeigt alles.
+  const { wahl, space } = useSpace();
+  const sichtSpace: Bereich | null = (wahl as string) === 'alles' ? null : space;
+  const sicht = sichtSpace ? `space=${sichtSpace}` : '';
   /** „Ändern & freigeben“: je Vorschlag die geänderten Felder (Text), erst beim Freigeben in ihre Form gebracht. */
   const [aendern, setAendern] = useState<Record<string, Record<string, string>>>({});
   const [vorschlaege, setVorschlaege] = useState<Vorschlag[]>([]);
@@ -82,11 +98,11 @@ export function StapelView() {
 
   const laden = useCallback(async () => {
     try {
-      const [s, a, g] = await Promise.all([fetch('/api/zoe/stapel?alle=1').then(r => r.json()), fetch('/api/zoe/auftraege').then(r => r.json()), fetch('/api/zoe/gedaechtnis').then(r => r.json())]);
+      const [s, a, g] = await Promise.all([fetch(`/api/zoe/stapel?alle=1${sicht ? `&${sicht}` : ''}`).then(r => r.json()), fetch('/api/zoe/auftraege').then(r => r.json()), fetch(`/api/zoe/gedaechtnis${sicht ? `?${sicht}` : ''}`).then(r => r.json())]);
       setVorschlaege(Array.isArray(s.vorschlaege) ? s.vorschlaege : []); setAuftraege(Array.isArray(a.auftraege) ? a.auftraege : []); setFakten(Array.isArray(g.fakten) ? g.fakten : []);
     } catch { /* offline — der alte Stand bleibt */ }
     setLaedt(false);
-  }, []);
+  }, [sicht]);
   useEffect(() => {
     if (!offenReiter) return;
     void laden();
@@ -123,15 +139,24 @@ export function StapelView() {
       return;
     }
     const eingabe = inhalt && auswahl ? nurGewaehlt(inhalt, auswahl) : aenderung?.eingabe ?? null;
-    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(eingabe ? { eingabe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    // Freigeben mit Stand (09.10. spät): hat sich der Vorschlag inzwischen geändert (z. B. Bereich in einem anderen Fenster), kommt 409 — nichts freigegeben.
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(eingabe ? { eingabe } : {}), ...(entscheidung === 'freigeben' && v.stand ? { stand: v.stand } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null);
     if (d.ok !== false) { setOffenId(null); setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; }); }
     void laden();
     if (inhalt) void rehydrate();
   }
+  /** „Bereich wählen“ (09.10. spät): Privat oder Business von Hand — mit dem Stand, den diese Seite gesehen hat. */
+  async function bereichWaehlen(v: Vorschlag, bereich: Bereich) {
+    setBusy(v.id);
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bereich', id: v.id, bereich, ...(v.stand ? { stand: v.stand } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    setMeldung(d.ok ? `„${v.titel}“ gehört jetzt zu ${BEREICH_NAME[bereich]}.${sichtSpace && sichtSpace !== bereich ? ` Du findest ihn unter „${BEREICH_NAME[bereich]}“.` : ''}` : (d.error ?? 'Bereich nicht geändert.'));
+    setBusy(null); void laden();
+  }
   async function alleFreigeben(gruppe?: string) {
     setBusy(gruppe ?? 'alle');
-    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    // „Alle freigeben“ nimmt nur, was diese Sicht zeigt (der Server filtert mit derselben Sicht).
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}), space: sichtSpace ?? 'alles' }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.error ?? `${d.erledigt ?? 0} risikoarme Vorschläge übernommen.${d.einzeln ? ` ${d.einzeln} brauchen einzeln einen Blick (ändern Status/Deadline, CRM oder anderes).` : ''}`); setBusy(null); void laden(); void rehydrate();
   }
   async function chargeZurueck(charge: string) {
@@ -146,10 +171,68 @@ export function StapelView() {
   }
 
   const offen = vorschlaege.filter(v => v.status === 'offen');
-  const risikoarmOffen = offen.filter(sammelTauglich);
+  // Unklare oben unter „Bereich wählen“ (in beiden Sichten), darunter die zugeordneten nach Gruppe. „Alle freigeben“ nimmt nur zugeordnete.
+  const unklar = offen.filter(v => bereichVonVorschlag(v) === 'unklar');
+  const zugeordnet = offen.filter(v => bereichVonVorschlag(v) !== 'unklar');
+  const risikoarmOffen = (sichtSpace ? zugeordnet : offen).filter(sammelTauglich);
   const entschieden = vorschlaege.filter(v => v.status !== 'offen').slice(0, 10);
-  const gruppen = Array.from(new Set(offen.map(v => v.gruppe)));
+  const gruppen = Array.from(new Set(zugeordnet.map(v => v.gruppe)));
   const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
+
+  /** Eine Zeile des Stapels mit aufklappbarem Detail (Vorher/Nachher, Ändern, Bereich, Art-Details, Grund). */
+  const zeileVon = (v: Vorschlag) => {
+    const feldFehler = darfAendern(v) && aendern[v.id] ? aenderungFehler(v.eingabe, aendern[v.id]) : [];
+    return (
+    <div key={v.id}>
+      <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={anlassText(v) ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
+        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><BereichEtikett v={v} /><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id || feldFehler.length > 0} titel={feldFehler.length ? `Erst „${feldFehler[0].schluessel}“ berichtigen: ${feldFehler[0].grund}` : undefined} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
+      {offenId === v.id && (
+        <div style={{ padding: '6px 2px 16px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
+            {v.vorher && <><span style={{ color: C.inkLeise }}>vorher</span><span>{v.vorher}</span></>}
+            <span style={{ color: C.inkLeise }}>nachher</span><span style={{ color: C.ink, fontWeight: 600 }}>{v.nachher}</span>
+            <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{v.werkzeug}</span>
+            <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
+          </div>
+          {/* Ändern & freigeben (08.10., vorher nur in der Vollansicht): die Felder, die das Werkzeug bekommt — Text und Zahl. */}
+          {darfAendern(v) && (aendern[v.id] ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+                {aenderbareFelder(v.eingabe).map(f => {
+                  // Zahl-Feld: daneben, was ZOE bekommt („= 1.500“), oder warum es so nicht geht.
+                  const lage = f.zahl ? feldNachAenderung(f, aendern[v.id][f.schluessel] ?? f.wert) : null;
+                  const fehler = lage && 'grund' in lage ? lage.grund : null;
+                  return (
+                  <label key={f.schluessel} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                    <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{f.schluessel}</span>
+                    <input value={aendern[v.id][f.schluessel] ?? f.wert} inputMode={f.zahl ? 'decimal' : undefined} aria-invalid={fehler ? true : undefined}
+                      onChange={e => { const wert = e.target.value; setAendern(a => ({ ...a, [v.id]: { ...a[v.id], [f.schluessel]: wert } })); }} style={feld} />
+                    {lage && (fehler
+                      ? <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</span>
+                      : 'wert' in lage && typeof lage.wert === 'number' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>= {zahlAnzeige(lage.wert)}</span>)}
+                  </label>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; })}>Änderungen verwerfen</Knopf></div>
+            </div>
+          ) : <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setAendern(a => ({ ...a, [v.id]: {} }))}>Felder ändern</Knopf></div>)}
+          <BereichWahl v={v} aus={busy === v.id} onWahl={b => bereichWaehlen(v, b)} />
+          {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
+          {aufgabenInhalt(v) && (
+            <div style={{ marginTop: 10 }}>
+              <FreigabeFelder inhalt={aufgabenInhalt(v)!} aufgabe={aufgabenStand.tasks.find(t => t.id === v.bezug!.id)} stand={zoeStandLesen(v.eingabe._stand)} eigene={aufgabenStand.statusEigen ?? []} bestand={aufgabenStand.tasks}
+                gewaehlt={haekchen[v.id] ?? alleFelder(aufgabenInhalt(v)!)} onWahl={f => setHaekchen(h => ({ ...h, [v.id]: f }))} />
+            </div>
+          )}
+          {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
+          {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
+          <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
+        </div>
+      )}
+    </div>
+    );
+  };
 
   return (
     <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts.">
@@ -159,12 +242,24 @@ export function StapelView() {
         aktiv={reiter} onWahl={t => router.push(WEG.freigaben(t), { scroll: false })} /></div>
       {reiter === 'protokoll' ? <StapelProtokoll /> : <>
       {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
+      {/* Sicht (09.10. spät): unter Privat bzw. Business nur dieser Bereich — unklare stehen in beiden oben, bis ihr Bereich gewählt ist. */}
+      {sichtSpace && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Vorschläge aus {BEREICH_NAME[sichtSpace]} — dazu oben die, bei denen ZOE den Bereich nicht sicher erkannt hat.</div>}
 
       <Spalten verhaeltnis="2:1">
         <Spalte>
       <Karte i={0} ton={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={risikoarmOffen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>{risikoarmOffen.length === offen.length ? `Alle ${offen.length} freigeben` : `${risikoarmOffen.length} risikoarme freigeben`}</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
         {!laedt && offen.length === 0 && <Leer>Nichts offen. ZOE legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
+        {/* Bereich wählen (09.10. spät): ZOE konnte Privat/Business nicht sicher erkennen — in beiden Sichten oben, ein Klick ordnet zu. */}
+        {unklar.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
+              <Punkt farbe={LEUCHT.achtung} /><span style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.04em', textTransform: 'uppercase' }}>Bereich wählen · {unklar.length}</span>
+            </div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '2px 0 4px' }}>ZOE konnte nicht sicher erkennen, ob das Privat oder Business ist. Öffne den Vorschlag und wähle den Bereich — dann steht er im richtigen Stapel.</div>
+            <Liste>{unklar.map(zeileVon)}</Liste>
+          </div>
+        )}
         {gruppen.map(gr => (
           <div key={gr} style={{ marginTop: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
@@ -173,58 +268,7 @@ export function StapelView() {
               {risikoarmOffen.filter(v => v.gruppe === gr).length > 1 && <Knopf leise onClick={() => alleFreigeben(gr)} aus={busy === gr} style={{ marginLeft: 'auto' }}>alle in {g(gr).label} freigeben</Knopf>}
             </div>
             <Liste>
-              {offen.filter(v => v.gruppe === gr).map(v => {
-                const feldFehler = darfAendern(v) && aendern[v.id] ? aenderungFehler(v.eingabe, aendern[v.id]) : [];
-                return (
-                <div key={v.id}>
-                  <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={anlassText(v) ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
-                    rechts={<span style={{ display: 'flex', gap: 6 }}><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id || feldFehler.length > 0} titel={feldFehler.length ? `Erst „${feldFehler[0].schluessel}“ berichtigen: ${feldFehler[0].grund}` : undefined} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
-                  {offenId === v.id && (
-                    <div style={{ padding: '6px 2px 16px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
-                        {v.vorher && <><span style={{ color: C.inkLeise }}>vorher</span><span>{v.vorher}</span></>}
-                        <span style={{ color: C.inkLeise }}>nachher</span><span style={{ color: C.ink, fontWeight: 600 }}>{v.nachher}</span>
-                        <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{v.werkzeug}</span>
-                        <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
-                      </div>
-                      {/* Ändern & freigeben (08.10., vorher nur in der Vollansicht): die Felder, die das Werkzeug bekommt — Text und Zahl. */}
-                      {darfAendern(v) && (aendern[v.id] ? (
-                        <div style={{ marginTop: 12 }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-                            {aenderbareFelder(v.eingabe).map(f => {
-                              // Zahl-Feld: daneben, was ZOE bekommt („= 1.500“), oder warum es so nicht geht.
-                              const lage = f.zahl ? feldNachAenderung(f, aendern[v.id][f.schluessel] ?? f.wert) : null;
-                              const fehler = lage && 'grund' in lage ? lage.grund : null;
-                              return (
-                              <label key={f.schluessel} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                                <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{f.schluessel}</span>
-                                <input value={aendern[v.id][f.schluessel] ?? f.wert} inputMode={f.zahl ? 'decimal' : undefined} aria-invalid={fehler ? true : undefined}
-                                  onChange={e => { const wert = e.target.value; setAendern(a => ({ ...a, [v.id]: { ...a[v.id], [f.schluessel]: wert } })); }} style={feld} />
-                                {lage && (fehler
-                                  ? <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</span>
-                                  : 'wert' in lage && typeof lage.wert === 'number' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>= {zahlAnzeige(lage.wert)}</span>)}
-                              </label>
-                              );
-                            })}
-                          </div>
-                          <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setAendern(a => { const { [v.id]: _weg, ...rest } = a; return rest; })}>Änderungen verwerfen</Knopf></div>
-                        </div>
-                      ) : <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setAendern(a => ({ ...a, [v.id]: {} }))}>Felder ändern</Knopf></div>)}
-                      {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
-                      {aufgabenInhalt(v) && (
-                        <div style={{ marginTop: 10 }}>
-                          <FreigabeFelder inhalt={aufgabenInhalt(v)!} aufgabe={aufgabenStand.tasks.find(t => t.id === v.bezug!.id)} stand={zoeStandLesen(v.eingabe._stand)} eigene={aufgabenStand.statusEigen ?? []} bestand={aufgabenStand.tasks}
-                            gewaehlt={haekchen[v.id] ?? alleFelder(aufgabenInhalt(v)!)} onWahl={f => setHaekchen(h => ({ ...h, [v.id]: f }))} />
-                        </div>
-                      )}
-                      {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
-                      {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
-                      <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
-                    </div>
-                  )}
-                </div>
-                );
-              })}
+              {zugeordnet.filter(v => v.gruppe === gr).map(zeileVon)}
             </Liste>
           </div>
         ))}
@@ -266,7 +310,7 @@ export function StapelView() {
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
           <Liste>
             {fakten.length === 0 && <Leer>ZOE hat sich noch nichts gemerkt. Sag ihm „merk dir …“.</Leer>}
-            {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>vergessen</button>} />)}
+            {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}${f.bereich ? ` · ${BEREICH_NAME[f.bereich]}` : ''}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>vergessen</button>} />)}
           </Liste>
         </Karte>
         <Karte i={4}>
@@ -288,6 +332,36 @@ export function StapelView() {
       </>}
       {dialog}
     </Seite>
+  );
+}
+
+/** Bereichs-Etikett an der Zeile (09.10. spät): Privat · Business · „Bereich wählen“ (unklar). */
+function BereichEtikett({ v }: { v: Vorschlag }) {
+  const b = bereichVonVorschlag(v);
+  return <Chip farbe={BEREICH_FARBE[b]}>{b === 'unklar' ? 'Bereich wählen' : `${BEREICH_NAME[b]}${v.bereichOrt ? ` · ${v.bereichOrt.name}` : ''}`}</Chip>;
+}
+
+/**
+ * Bereich im geöffneten Vorschlag (09.10. spät): woher er kommt, Knöpfe Privat/Business (setzen bzw. ändern, vor der Freigabe) und — nennt der
+ * Inhalt einen Eintrag der Markttraktion — der Weg dorthin.
+ */
+function BereichWahl({ v, aus, onWahl }: { v: Vorschlag; aus: boolean; onWahl: (b: Bereich) => void }) {
+  const b = bereichVonVorschlag(v);
+  return (
+    <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{bereichGrund(v)}</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{b === 'unklar' ? 'Bereich wählen' : 'Bereich ändern'}</span>
+        {(['privat', 'business'] as const).map(x => (
+          <Knopf key={x} leise={b !== x} farbe={BEREICH_FARBE[x]} aus={aus || b === x} onClick={() => onWahl(x)}>{BEREICH_NAME[x]}</Knopf>
+        ))}
+      </div>
+      {(v.bereichNennt ?? []).map(n => (
+        <Link key={`${n.art}:${n.id}`} href={n.art === 'firma' ? WEG.firma(n.id) : WEG.akte(n.id)} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none' }}>
+          {n.art === 'firma' ? 'Firma in der Markttraktion öffnen ›' : 'Kontakt in der Markttraktion öffnen ›'}
+        </Link>
+      ))}
+    </div>
   );
 }
 

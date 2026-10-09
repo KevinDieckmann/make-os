@@ -53,7 +53,7 @@ export interface Anstehend {
   fristen: AFrist[];
   followups: AFollowup[];
   buchungen: ABuchung[];
-  vorschlaege: { kalender: number; gesamt: number };
+  vorschlaege: AVorschlaege;
   geburtstage: AGeburtstag[];
   /** Danke-Mails nach einem Event (Netzwerken, 02.10.) — fehlt in älteren Ständen. */
   danke?: ADanke[];
@@ -64,15 +64,36 @@ export interface Anstehend {
   nachbereitZeiten: Record<string, TerminZeit>;
 }
 
+/** Offene ZOE-Vorschläge (Zahlen). `jeBereich` (09.10. spät, lib/zoe/bereich.ts): dieselben Zahlen je Bereich — „unklar“ zählt nur gesamt. */
+export interface AVorschlaegeZahl { kalender: number; gesamt: number }
+export interface AVorschlaege extends AVorschlaegeZahl { jeBereich?: { privat: AVorschlaegeZahl; business: AVorschlaegeZahl } }
+
+/**
+ * Wo die Kalender-Vorschläge im Stapel stehen (rein, 09.10. spät): alle in der Sicht Privat bzw. Business → dieser Bereich, sonst `undefined`
+ * (der Link lässt die Sicht dann, wie sie ist) — für Glocke und Heute (`WEG.freigaben(undefined, ort)`), damit die Liste zeigt, was die Zahl
+ * verspricht. Unklare zählen in beiden Sichten.
+ */
+export function vorschlagOrt(v: AVorschlaege | undefined): 'privat' | 'business' | undefined {
+  const k = v?.kalender ?? 0;
+  if (!k || !v?.jeBereich) return undefined;
+  return v.jeBereich.privat.kalender === k ? 'privat' : v.jeBereich.business.kalender === k ? 'business' : undefined;
+}
+
 /**
  * „Steht an“ für EINE Sicht (08.10., Markttraktion Woche 2 · 4.10 — serverseitig, die Route filtert): Heute › Privat zeigte CRM-Follow-ups
  * und Business-Fristen. Privat: keine Follow-ups und Nachbereitungen (CRM = Business), keine Danke-Mails (Netzwerken), nur Privat-Fristen,
- * nur Geburtstage aus der Familie. Business: nur Business-Fristen, Geburtstage aus dem CRM. Termine, Buchungsanfragen und ZOE-Vorschläge
- * bleiben in beiden (sie gehören der Person). Ohne Sicht („Alles“) unverändert.
+ * nur Geburtstage aus der Familie. Business: nur Business-Fristen, Geburtstage aus dem CRM. Termine und Buchungsanfragen bleiben in beiden
+ * (sie gehören der Person). ZOE-Vorschläge seit 09.10. spät nur die des Bereichs (lib/zoe/bereich.ts — „unklar“ nur unter Alles).
+ * Ohne Sicht („Alles“) unverändert.
  */
 export function anstehendFuerSpace(a: Anstehend, space: 'privat' | 'business' | null | undefined): Anstehend {
-  if (space === 'privat') return { ...a, followups: [], nachbereiten: [], danke: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
-  if (space === 'business') return { ...a, fristen: a.fristen.filter(f => f.business), geburtstage: a.geburtstage.filter(g => g.herkunft === 'crm') };
+  // Nur die Zahlen des Bereichs — `jeBereich` bleibt (der andere Bereich mit 0), damit `vorschlagOrt` den Link in diesen Bereich setzt.
+  const vorschlaege = (s: 'privat' | 'business'): AVorschlaege => {
+    const z = a.vorschlaege.jeBereich?.[s] ?? { kalender: 0, gesamt: 0 }, null0 = { kalender: 0, gesamt: 0 };
+    return { ...z, jeBereich: { privat: s === 'privat' ? z : null0, business: s === 'business' ? z : null0 } };
+  };
+  if (space === 'privat') return { ...a, vorschlaege: vorschlaege('privat'), followups: [], nachbereiten: [], danke: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
+  if (space === 'business') return { ...a, vorschlaege: vorschlaege('business'), fristen: a.fristen.filter(f => f.business), geburtstage: a.geburtstage.filter(g => g.herkunft === 'crm') };
   return a;
 }
 /** Sicht aus `?space=` — nur `privat`/`business`, alles andere = alles. */

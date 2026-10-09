@@ -317,7 +317,8 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
       const vorschlagen = !LESEND.has(wname) || nurVorschlag(wname, ein, z.fremdGelesen);
       // Wissen im Business nur in der Agenten-Sicht (nie private Notizen der Person in einem teilbaren Business-Thread).
       const leseSicht = head.bereich === 'business' && (wname === 'suche_wissen' || wname === 'lies_notiz');
-      const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), herkunft: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht });
+      // Bereich des Heads (09.10. spät): ordnet Vorschläge im Stapel zu und wählt die Merksätze (lib/zoe/bereich.ts, Regel (c)).
+      const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), herkunft: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht, bereich: head.bereich });
       const quelle = FREMD_WERKZEUGE[wname] ?? null;
       return { inhalt: lauf.text, ok: lauf.ok, ...(quelle && lauf.ok ? { quelle } : {}), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(kat ? { kategorien: [kat] } : {}) };
     },

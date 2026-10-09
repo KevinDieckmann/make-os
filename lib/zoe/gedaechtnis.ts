@@ -14,6 +14,7 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
+import { faktPasstZuBereich, type Bereich } from './bereich';
 
 /** Wozu ein Fakt gehört. Grob genug, dass ZOE nicht rätselt. */
 export type FaktArt = 'person' | 'firma' | 'vorliebe' | 'entscheidung' | 'termin' | 'zahl' | 'sonstiges';
@@ -39,6 +40,11 @@ export interface Fakt {
   raum: string;
   /** Ab wann er nicht mehr gilt — für Dinge mit Verfallsdatum. */
   bis?: string;
+  /**
+   * Bereich (09.10. spät, lib/zoe/bereich.ts): Privat oder Business — aus dem freigegebenen Vorschlag. Fehlt er (Altbestand), ist der
+   * Merksatz NEUTRAL und gilt in jedem Gespräch. Ein Gespräch im Bereich X bekommt nur Merksätze aus X und neutrale (`lies({ bereich })`).
+   */
+  bereich?: Bereich;
   geloeschtAm?: string;
 }
 
@@ -105,10 +111,14 @@ export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag'>): Promise<{ f
   return { fakt, neu: warNeu };
 }
 
-export async function lies(opt: { thema?: string; art?: FaktArt; raum?: Fakt['raum']; anzahl?: number } = {}): Promise<Fakt[]> {
+/**
+ * Merksätze lesen — die EINE Stelle, durch die sie in einen Prompt gehen (ZOE-Gespräch, frag_gedaechtnis). `bereich` (09.10. spät) = Bereich
+ * des Gesprächs: nur Merksätze dieses Bereichs und die neutralen (ohne Bereich); ohne Angabe („Alles“) alle.
+ */
+export async function lies(opt: { thema?: string; art?: FaktArt; raum?: Fakt['raum']; anzahl?: number; bereich?: Bereich | null } = {}): Promise<Fakt[]> {
   const s = await loadJson<Stand>('zoe-gedaechtnis');
   const heute = localDay();
-  let liste = (s?.fakten ?? []).filter(f => !f.geloeschtAm && (!f.bis || f.bis >= heute));
+  let liste = (s?.fakten ?? []).filter(f => !f.geloeschtAm && (!f.bis || f.bis >= heute) && faktPasstZuBereich(f, opt.bereich));
   if (opt.raum) liste = liste.filter(f => f.raum === opt.raum || f.raum === 'gemeinsam');
   if (opt.art) liste = liste.filter(f => f.art === opt.art);
   if (opt.thema) {

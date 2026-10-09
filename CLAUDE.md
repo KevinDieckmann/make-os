@@ -2406,6 +2406,18 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
 ## ZOE (27.09.)
 - Der Assistent heißt **ZOE** (immer groß in Texten). Code: `lib/zoe`, `app/zoe`, `/api/zoe/*`, Bestände `zoe-*`. Alte `jarvis-*`-Dateien werden beim ersten Lesen übernommen (local-db); `/jarvis` und `/api/jarvis/*` leiten um — beides nicht entfernen, solange alte Arbeiter, Boten oder Lesezeichen leben.
 
+### Bereich je Vorschlag und Merksatz (09.10. spät, Branch `zoe-bereich`, nur lokal; UPDATES.md)
+Kevin: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und das dann auch dem richtigen Stapel zuordnen.“
+- **EINE Regel** `bereichFuerVorschlag` (lib/zoe/bereich.ts, rein): (a) fachlicher Bezug (Aufgabe, CRM-Eintrag außer Privat-Einheit, Kalender, Head,
+  Gruppe, ausdrückliche Angabe der Eingabe) → (b) bekannte Namen im Inhalt (Markttraktion über `crmBekannteNamen` in crm-sicht.ts ohne Art.-18-Personen,
+  Gesellschafts-Register — nie Namen im Code) → (c) Bereich des Gesprächs → (d) unklar (kein Feld). Bestand lesen NUR in lib/zoe/bereich-server.ts.
+  Den Bereich setzt nur `lege()` bzw. „Bereich wählen“ (`bereichSetzen`, mit Stand) — nie ein Aufrufer, nie das Modell.
+- **Sicht serverseitig:** `/api/zoe/stapel?space=` und `vorschlaegeFuer(person, nur, space)` filtern über `passtZurSicht` (Privat nie Business und
+  umgekehrt, unklare in beiden); Sammelfreigabe nur `genauImBereich`. Neuer Leser/Zähler von Vorschlägen an eine Person in einer Sicht → dieselbe Funktion.
+- **Merksätze:** `Fakt.bereich` (ohne = neutral) — in Prompts NUR über `lies({ bereich })` (lib/zoe/gedaechtnis.ts). Der Bereich kommt über
+  `WerkzeugKontext.bereich` (von `fuehreAus`, bei der Freigabe der des Vorschlags). Neue Wege, die Merksätze an ein Modell geben, lesen darüber.
+- Neue Stapel-Art bzw. neuer Bezug: Auflösung in `bezugAufloesen` (bereich-server.ts) ergänzen + Fall in tests/zoe-bereich-route.test.ts.
+
 ### ZOE-Kugel + Brain-Kugel (05.10., Branch `kugeln`, nur lokal — UMBAU_ABEND_0410.md 1/3)
 - **Ein Kern** `components/os/kugel/*` (WebGL 1, eigene Shader, kein three.js) für ZOE und Brain. Farben NUR aus `KUGEL`/`KUGEL_BEREICH_FARBE`
   (design.ts, Granat/Smaragd + abgeleitete Töne über `mischHex`) — Wächter: kein Farb-Literal im Ordner. Leistung: `fps`-Deckel, Pause außer

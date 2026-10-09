@@ -27,7 +27,7 @@ import { dankeZeilen, dankeOffen } from '@/lib/crm/netzwerken';
 import { eventsOhneTermin } from '@/lib/crm/besuche';
 import { WEG } from '@/lib/wege';
 import {
-  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung, type ADanke,
+  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
 } from './anstehend';
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
@@ -46,11 +46,13 @@ async function buchungenLesen(person: string): Promise<ABuchung[]> {
  * Offene ZOE-Vorschläge der Person: alle und die Kalender-Vorschläge — dieselbe Sichtregel wie der Stapel selbst
  * (`vorschlagSichtbar`, F2 M6): eigene und die des Systems, nie die der anderen Person.
  */
-async function vorschlaegeZaehlen(person: string): Promise<{ kalender: number; gesamt: number }> {
+async function vorschlaegeZaehlen(person: string): Promise<AVorschlaege> {
   // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ zählt keine Vorschläge des Systems aus dem Privat-Bereich (`vorschlaegeFuer`).
-  const { vorschlaegeFuer } = await import('@/lib/zoe/stapel');
+  const [{ vorschlaegeFuer }, { passtZurSicht }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/zoe/bereich')]);
   const offen = await vorschlaegeFuer(person, 'offen');
-  return { gesamt: offen.length, kalender: offen.filter(v => v.bezug?.art === 'kalender' || v.gruppe === 'kalender').length };
+  const zahl = (l: typeof offen) => ({ gesamt: l.length, kalender: l.filter(v => v.bezug?.art === 'kalender' || v.gruppe === 'kalender').length });
+   // Je Bereich (09.10. spät): Heute › Privat bzw. Business zählt die Vorschläge dieses Bereichs und die unklaren (`passtZurSicht`, wie der Stapel).
+  return { ...zahl(offen), jeBereich: { privat: zahl(offen.filter(v => passtZurSicht(v, 'privat'))), business: zahl(offen.filter(v => passtZurSicht(v, 'business'))) } };
 }
 
 /** Danke-Mails nach einem Event (Netzwerken, 02.10.): je Event die Zahl der noch nicht verschickten mit Adresse — ab dem Folgetag. */

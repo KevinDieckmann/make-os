@@ -601,7 +601,7 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
  * Sich etwas merken. Entscheidung vom 06.09.: sofort, nicht auf
  * Nachfrage — dafür sichtbar in einer Liste, aus der die Person rauswerfen kann.
  */
-async function faktMerken(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function faktMerken(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
   const ARTEN = ['person', 'firma', 'vorliebe', 'entscheidung', 'termin', 'zahl', 'sonstiges'];
   const thema = String(input.thema ?? '').trim().slice(0, 120);
   const satz = String(input.satz ?? '').trim().slice(0, 500);
@@ -617,6 +617,8 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
       thema, satz,
       woher: input.woher ? String(input.woher).slice(0, 200) : undefined,
       bis: /^\d{4}-\d{2}-\d{2}$/.test(String(input.bis ?? '')) ? String(input.bis) : undefined,
+      // Bereich (09.10. spät): aus dem Vorschlag bzw. der Regel — nie aus der Eingabe des Modells. Ohne Bereich bleibt der Merksatz neutral.
+      ...(kontext?.bereich === 'privat' || kontext?.bereich === 'business' ? { bereich: kontext.bereich } : {}),
     }));
   } catch (e) {
     // Gedächtnis voll (09.10., Agenten-Datenschicht): nie still kürzen — der 413-Satz geht an das Modell („Fehlgeschlagen: …“, nichts gemerkt).
@@ -727,12 +729,13 @@ async function bauplanNotieren(input: Record<string, unknown>, _origin: string, 
 }
 
 /** Im eigenen Gedächtnis nachsehen, bevor geraten wird. */
-async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
   const { lies } = await import('./gedaechtnis');
   const thema = input.thema ? String(input.thema).slice(0, 120) : undefined;
   // Nur der eigene und der gemeinsame Raum — aus dem der anderen Person nichts.
   if (!person) return KEINE_PERSON;
-  const treffer = await lies({ thema, anzahl: 30, raum: person });
+  // Im Gespräch eines Bereichs nur dessen Merksätze und die neutralen (09.10. spät, dieselbe Stelle wie der Prompt: `lies({ bereich })`).
+  const treffer = await lies({ thema, anzahl: 30, raum: person, bereich: kontext?.bereich ?? null });
   if (!treffer.length) return thema ? `Nichts gemerkt zu „${thema}“.` : 'Das Gedächtnis ist noch leer.';
   return `GEDÄCHTNIS (${treffer.length}):\n` + treffer.map(f => `• [${f.art}] ${f.thema}: ${f.satz}${f.woher ? ` (${f.woher})` : ''}`).join('\n');
 }
@@ -1018,6 +1021,11 @@ export interface WerkzeugKontext {
    * (Freigaben-Zähler, „Als Nächstes“, Annahmequote: lib/agenten/katalog.ts `headVonVorschlag`).
    */
   herkunft?: string;
+  /**
+   * Bereich (09.10. spät, lib/zoe/bereich.ts) — gesetzt NUR von `fuehreAus`: bei der Freigabe der Bereich des Vorschlags, sonst der des
+   * Gesprächs. „Fakt merken“ legt den Merksatz in diesem Bereich ab, „frag_gedaechtnis“ liest nur diesen Bereich und Neutrales.
+   */
+  bereich?: 'privat' | 'business';
 }
 type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<string>;
 const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person, kontext) => {

@@ -12,6 +12,7 @@ import type { Person } from './raum';
 import { SELBST_GEKAPSELT } from './fremd';
 import { LESEND } from './gespraech-schutz';
 import { ZOE_BUSINESS_GRUPPEN, ZOE_ZURUECKGEHALTEN } from '@/lib/arbeitsrahmen/regel';
+import { bereichAus, BEREICH_NAME, type Bereich } from './bereich';
 
 export interface Lauf {
   /** Was dem Modell (oder dem Aufrufer) zurückgemeldet wird. */
@@ -40,7 +41,13 @@ export async function fuehreAus(
     /** Das ZOE-Gespräch des Aufrufs (Thread + Marken, Paket 4a) — nur vom Server gesetzt, geht als Kontext an das Werkzeug (nie in den Stapel). */
     zoe?: { fadenId?: string; fremdGelesen?: boolean; vertraulich?: boolean };
     /** Der Agent, der aufruft (Anlass „<Head>: …“) — nur vom Agenten-Bereich gesetzt; geht als Kontext an selbst stapelnde Werkzeuge. */
-    herkunft?: string } = {},
+    herkunft?: string;
+    /**
+     * Bereich (09.10. spät, lib/zoe/bereich.ts): im Gespräch der geprüfte Bereich des Gesprächs (Regel (c) beim Ablegen in den Stapel, Sicht
+     * des Gedächtnisses beim Lesen); bei der Freigabe (`erzwingen`) der Bereich des Vorschlags — „Fakt merken“ legt den Merksatz dort ab.
+     * Nur vom Server gesetzt, nie aus der Eingabe des Modells.
+     */
+    bereich?: Bereich | null } = {},
 ): Promise<Lauf> {
   const werk = WERKZEUGE[name];
   if (!werk) return { text: `Unbekanntes Werkzeug: ${name}.`, ok: false, gestapelt: false };
@@ -90,6 +97,7 @@ export async function fuehreAus(
   // einfach durchlaufen ließe. Der Unterschied ist nicht das Werkzeug,
   // sondern dass niemand danach gefragt hat.
   if ((risiko === 'freigabe' || opt.vorschlagen) && !opt.erzwingen) {
+    const gespraech = bereichAus(opt.bereich);
     const v = await lege({
       werkzeug: name, gruppe, titel: vs.titel, vorher: vs.vorher, nachher: vs.nachher,
       eingabe: input,
@@ -97,7 +105,7 @@ export async function fuehreAus(
       ...(opt.person ? { person: opt.person } : {}),
       // Ohne Angabe: aus dem Gespräch. Die Läufe sagen es ausdrücklich.
       quelle: opt.quelle ?? 'gespraech',
-    });
+    }, { gespraech });
     await notiere({
       werkzeug: name, gruppe, risiko, eingabe: input,
       ergebnis: `in den Stapel gelegt (${v.id})`, ok: true, quelle: 'zoe', ruecknahme: null,
@@ -105,7 +113,8 @@ export async function fuehreAus(
     });
     return {
       text: `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}. `
-        + 'Das liegt jetzt im Freigabe-Stapel der Person, die dich beauftragt hat. Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt.',
+        + `Das liegt jetzt im Freigabe-Stapel der Person, die dich beauftragt hat${stapelOrtSatz(bereichAus(v.bereich), gespraech)}. Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt.`
+        + (name === 'fakt_merken' && v.bereichNennt?.length ? ` ${crmWegSatz(v.bereichNennt)}` : ''),
       ok: true, gestapelt: true, vorschlagId: v.id,
     };
   }
@@ -116,7 +125,12 @@ export async function fuehreAus(
   // Projekt-/Aufgaben-Dateien (28.09., C2) liest ZOE im Hintergrund gar nicht: ohne Person lehnt das Werkzeug ab.
   const leseSicht = (opt.hintergrund || opt.quelle === 'lauf') && ((gruppe === 'wissen' && (name === 'suche_wissen' || name === 'lies_notiz')) || gruppe === 'aufgaben-dateien');
   // Bei der Freigabe (erzwingen) erfährt das Werkzeug, WER freigegeben hat (#94) — nie aus der Eingabe des Modells.
-  const kontext = opt.erzwingen || opt.zoe || opt.herkunft ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}) } : undefined;
+  // Bereich (09.10. spät): bei der Freigabe der des Vorschlags; sonst für „Fakt merken“ dieselbe Regel wie beim Ablegen (Bezug → Inhalt →
+  // Gespräch), für alle anderen der Bereich des Gesprächs (z. B. frag_gedaechtnis liest nur diesen Bereich und Neutrales).
+  const bereich = opt.erzwingen ? bereichAus(opt.bereich) : name === 'fakt_merken'
+    ? await (async () => { try { const b = await (await import('./bereich-server')).bereichErmitteln({ werkzeug: name, gruppe, titel: vs.titel, nachher: vs.nachher, eingabe: input, ...(opt.anlass ? { anlass: opt.anlass } : {}) }, { gespraech: bereichAus(opt.bereich) }); return b.bereich === 'unklar' ? null : b.bereich; } catch { return bereichAus(opt.bereich); } })()
+    : bereichAus(opt.bereich);
+  const kontext = opt.erzwingen || opt.zoe || opt.herkunft || bereich ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}), ...(bereich ? { bereich } : {}) } : undefined;
   const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person, kontext);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
@@ -134,6 +148,25 @@ export async function fuehreAus(
       : null,
   });
   return { text, ok, gestapelt: false };
+}
+
+/**
+ * Wo der Vorschlag im Stapel steht (09.10. spät) — ZOE sagt es dazu, wenn es nicht die Sicht des Gesprächs ist: sonst sucht die Person ihn
+ * unter „Privat“, obwohl er (zu Recht) unter „Business“ liegt. Rein.
+ */
+export function stapelOrtSatz(bereich: Bereich | null, gespraech: Bereich | null): string {
+  if (!bereich) return gespraech ? ` — oben mit „Bereich wählen“ (in Privat und Business), weil der Bereich unklar ist; sag das dazu` : '';
+  if (gespraech && bereich !== gespraech) return ` — unter „${BEREICH_NAME[bereich]}“ (nicht unter „${BEREICH_NAME[gespraech]}“), weil es dorthin gehört; sag das dazu`;
+  return '';
+}
+
+/**
+ * Hinweis nach „Fakt merken“ über eine Firma/Person der Markttraktion (09.10. spät): der Fakt gehört (auch) dorthin — ZOE schlägt den
+ * passenden Eintrag mit crm_vorschlag vor, nie automatisch. Nur Kennungen, keine Namen. Rein.
+ */
+export function crmWegSatz(nennt: readonly { art: 'firma' | 'kontakt'; id: string }[]): string {
+  const was = nennt.map(n => `${n.art === 'firma' ? 'Firma' : 'Person'} ${n.id}`).join(', ');
+  return `HINWEIS: Der Fakt nennt ${nennt.length === 1 ? 'einen Eintrag' : 'Einträge'} der Markttraktion (${was}). Betrifft er diesen Eintrag (gibt es nicht mehr, gewechselt, kein Interesse, neuer Stand), dann schlag ZUSÄTZLICH mit crm_vorschlag den passenden Eintrag dort vor — eine Notiz an der Person bzw. art qualifizierung mit lead_status „ruht“ oder „kein_fit“ und text als Notiz an der Firma —, mit kurzer Begründung. Nichts davon wirkt ohne Klick. Hast du crm_vorschlag in diesem Zug nicht, sag der Person, dass der Fakt auch in die Markttraktion gehört.`;
 }
 
 /** Für die Anzeige: welche Werkzeuge gibt es, und was darf jedes. */
