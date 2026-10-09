@@ -110,8 +110,9 @@ describe('Lifecycle-Vorschlag — alle Zweige, in dieser Reihenfolge', () => {
     expect(lifecycleVorschlag(k('a', { firmaId: 'f-x', lead: lead('neu') }), b, HEUTE)).toMatchObject({ id: 'sql', grund: expect.stringContaining('Firma') });
   });
   it('Marketing-Signal → MQL — nur bei Marketing-Herkunft: Antwort, Anfrage, beim eigenen Event dabei, Score warm', () => {
-    // Marketing-Herkunft: hier die selbst angegebene Anfrage über die Website (weitere Quellen: tests/marketing-lead.test.ts).
-    const mk = (x: Partial<Kontakt> = {}) => k('a', { herkunft: 'selbst', ...x });
+    // Marketing-Herkunft: hier eine Website-Anfrage als Quelle der Liste (weitere Quellen: tests/marketing-lead.test.ts). Seit Markttraktion
+    // Woche 1 (5.1) zählt die Datenschutz-Herkunft „selbst angegeben“ allein NICHT mehr als Marketing (auch eine überreichte Visitenkarte ist „selbst“).
+    const mk = (x: Partial<Kontakt> = {}) => k('a', { quelle: 'Website-Anfrage', ...x });
     expect(lifecycleVorschlag(mk({ aktivitaeten: [akt('2026-09-20T09:00:00Z', 'antwort')] }), bestand(), HEUTE)).toMatchObject({ id: 'mql', grund: 'Antwort am 20.09.' });
     expect(lifecycleVorschlag(k('a', { aktivitaeten: [akt('2026-09-21T09:00:00Z', 'antwort', { text: 'Anfrage über Webseite: Hallo' })] }), bestand(), HEUTE).grund).toBe('Anfrage am 21.09.');
     const ev = bestand({ events: [{ id: 'e1', titel: 'Stammtisch', format: 'stammtisch', ziel: 'Z', datum: '2026-09-10', status: 'durchgefuehrt', geaendert: J } as never], teilnahmen: [{ id: 't1', eventId: 'e1', kontaktId: 'c-a', status: 'da', geaendert: J }] });
