@@ -17,6 +17,16 @@ import { faelligerModus } from './plan';
 import { steuertermine } from './steuertermine';
 import { ladeEinstellung } from './lauf';
 import { leererStand, standName, type ChefStand } from './stand';
+import { wandzeit, wochentag as isoWochentag } from '@/lib/zeit/kalender-kern';
+
+/**
+ * Wochentag (wie getDay(): 0 = Sonntag) und Stunde in Berliner Wandzeit (09.10., Takt robust) — über den Kalender-Kern, nie die Zone
+ * der Maschine. Rein, getestet (tests/takt-robust.test.ts, auch mit MAKE_OS_TEST_TZ=UTC).
+ */
+export function berlinerUhr(jetzt: Date): { wochentag: number; stunde: number } {
+  const w = wandzeit(jetzt);
+  return { wochentag: isoWochentag(w.slice(0, 10)) % 7, stunde: Number(w.slice(11, 13)) };
+}
 
 /** Haushalt → ein Mitglied (alphabetisch erstes Konto), nur echte Haushalte. */
 export function haushalteAus(konten: { speicher: string; haushalt?: string }[]): Map<string, string> {
@@ -43,7 +53,9 @@ export async function finanzchefFaellig(jetzt: Date): Promise<Faellig[]> {
   for (const [haushalt, person] of ziele) {
     if (person && (await businessFreiJetzt(person, jetzt).catch(() => ({ frei: false }))).frei) continue;
     const stand = { ...leererStand(), ...((await loadJson<ChefStand>(standName(haushalt))) ?? {}) };
-    const m = faelligerModus(stand, heute, jetzt.getDay(), jetzt.getHours(), termine, jetzt);
+    // Berliner Wandzeit (09.10., Takt robust) — vorher getDay()/getHours() der Maschine.
+    const { wochentag, stunde } = berlinerUhr(jetzt);
+    const m = faelligerModus(stand, heute, wochentag, stunde, termine, jetzt);
     if (!m) continue;
     raus.push({
       id: `finanzchef-${haushalt ?? 'business'}`,

@@ -184,6 +184,11 @@ export interface ZeitplanKandidat {
   stufe?: ModelTier;
   /** Der Auftrag für /api/agenten/faden/lauf. */
   eingabe: LaufAuftrag;
+  /**
+   * Seit wann der Zeitplan so gilt (ISO: Skill `geaendertAm`, Hintergrundaufgabe `erstellt`) — ein verpasster Slot VOR diesem Zeitpunkt
+   * wird nie nachgeholt (09.10., Takt robust). Fehlt = keine Grenze.
+   */
+  seit?: string;
 }
 
 /** Was eingereiht wird: der `LaufAuftrag` plus zwei Felder für Zählung und Batch — Paket 1 liest nur den `LaufAuftrag`. */
@@ -224,6 +229,37 @@ export function autoLaeufeHeute(headId: string, heute: string, auftraege: readon
   return auftraege.filter(a => a.name === LAUF_AGENT && a.tag === heute && /^Takt:/.test(a.anlass ?? '') && a.eingabe?.headId === headId).length;
 }
 
+/** So weit zurück holt der Takt einen verpassten Wochen-/Monatslauf nach (Tage) — dieselbe Grenze wie bei den Heads (lib/heads/takt.ts). */
+export const NACHHOLEN_TAGE = 6;
+
+/** Lief dieser Kandidat schon einmal VOR dem Slot (Thread oder Auftrag)? Dann ist sein Zeitplan eingeführt. Rein. */
+function vorherGelaufen(k: Pick<ZeitplanKandidat, 'art' | 'id'>, slot: string, lage: Pick<ZeitplanLage, 'auftraege' | 'faeden'>): boolean {
+  const ab = ausWandzeit(slot).getTime();
+  return lage.auftraege.some(a => a.name === LAUF_AGENT && betrifft(a.eingabe, k) && Date.parse(a.zeit) < ab)
+    || lage.faeden.some(f => (k.art === 'skill' ? f.skillId === k.id : f.planId === k.id) && Date.parse(f.erstellt) < ab);
+}
+
+/**
+ * Verpasster Wochen-/Monatslauf (09.10., Takt robust — „nach App-Ausfall innerhalb der Periode EINMAL nachholen“, dieselbe Regel wie die
+ * Heads): ist heute kein Slot fällig, der jüngste Slot der letzten `NACHHOLEN_TAGE` Tage — wenn er seitdem nicht lief (Riegel = Warteschlange
+ * + Threads, also nur einmal), der Zeitplan damals schon galt (`seit`) und schon einmal lief (eingeführt — ein neuer Skill holt nichts
+ * „nach“). Täglich/werktags und einmalig holen wie bisher nur am selben Tag nach. Rein.
+ */
+export function verpassterSlot(k: Pick<ZeitplanKandidat, 'art' | 'id' | 'regel' | 'seit'>, jetztWand: string, frei: readonly Spanne[], lage: Pick<ZeitplanLage, 'auftraege' | 'faeden'>): string | null {
+  if (k.regel.art !== 'wiederkehrend' || (k.regel.rhythmus !== 'woechentlich' && k.regel.rhythmus !== 'monatlich')) return null;
+  if (!taktOffen(jetztWand, frei)) return null;
+  const heute = tagVon(jetztWand);
+  for (let d = 1; d <= NACHHOLEN_TAGE; d++) {
+    const slots = slotsAmTag(k.regel, tagPlus(heute, -d));
+    if (!slots.length) continue;
+    const slot = slots[slots.length - 1];
+    if (k.seit && Date.parse(k.seit) > ausWandzeit(slot).getTime()) return null;
+    if (schonGelaufen(k, slot, lage) || !vorherGelaufen(k, slot, lage)) return null;
+    return slot;
+  }
+  return null;
+}
+
 /** Was jetzt einzureihen ist (rein) — höchstens ein Lauf je Kandidat, Tageshöchstzahl je Head. Titel nie im Grund (Takt-Vorschau sieht der Haushalt). */
 export function zeitplaeneFaelligRein(kandidaten: readonly ZeitplanKandidat[], lage: ZeitplanLage): Faellig[] {
   if (!lage.kiHintergrund) return [];
@@ -233,7 +269,9 @@ export function zeitplaeneFaelligRein(kandidaten: readonly ZeitplanKandidat[], l
   for (const k of kandidaten) {
     if (lage.kiPerson && !lage.kiPerson(k.person)) continue;
     const frei = k.bereich === 'business' ? lage.frei(k.person) : [];
-    const slot = faelligerSlot(k.regel, jetztWand, frei);
+    const heuteSlot = faelligerSlot(k.regel, jetztWand, frei);
+    const nachgeholt = !heuteSlot ? verpassterSlot(k, jetztWand, frei, lage) : null;
+    const slot = heuteSlot ?? nachgeholt;
     if (!slot || schonGelaufen(k, slot, lage)) continue;
     const n = zaehler.get(k.headId) ?? autoLaeufeHeute(k.headId, heute, lage.auftraege);
     if (n >= AUTO_LAEUFE_JE_TAG) continue;
@@ -241,7 +279,7 @@ export function zeitplaeneFaelligRein(kandidaten: readonly ZeitplanKandidat[], l
     const eingabe: ZeitplanEingabe = { ...k.eingabe, headId: k.headId, ...(k.stufe === 'stark' ? { batch: true as const } : {}) };
     raus.push({
       id: `agenten-${k.art}-${k.id}`,
-      grund: k.art === 'skill' ? 'Agenten: Skill nach Zeitplan' : 'Agenten: geplante Hintergrundaufgabe',
+      grund: `${k.art === 'skill' ? 'Agenten: Skill nach Zeitplan' : 'Agenten: geplante Hintergrundaufgabe'}${nachgeholt ? ' (nachgeholt — verpasst)' : ''}`,
       auftrag: { art: 'agent', name: LAUF_AGENT, auftrag: JSON.stringify(eingabe), eingabe: eingabe as unknown as Record<string, unknown>, person: k.person, anlass: 'Takt: Agenten-Zeitplan' },
     });
   }
@@ -271,7 +309,7 @@ export function skillKandidat(s: Skill, person: string | null): ZeitplanKandidat
   const h = headDef(s.headId);
   const regel = regelVon(s.ausloeser);
   if (!h || !regel) return null;
-  return { art: 'skill', id: s.id, headId: h.id, bereich: h.bereich, person, regel, stufe: s.stufe, eingabe: { art: 'skill', skillId: s.id, headId: h.id, ausloeser: 'zeitplan' } };
+  return { art: 'skill', id: s.id, headId: h.id, bereich: h.bereich, person, regel, stufe: s.stufe, eingabe: { art: 'skill', skillId: s.id, headId: h.id, ausloeser: 'zeitplan' }, ...(s.geaendertAm ? { seit: s.geaendertAm } : {}) };
 }
 
 /**
@@ -283,7 +321,7 @@ export function planKandidat(p: Hintergrundaufgabe): ZeitplanKandidat | null {
   const ah = agentHead(p.agent);
   const regel = regelVon(p.zeitplan);
   if (!ah || !regel) return null;
-  return { art: 'plan', id: p.id, headId: ah.headId, bereich: ah.bereich, person: p.besitzer, regel, eingabe: { art: 'plan', planId: p.id } };
+  return { art: 'plan', id: p.id, headId: ah.headId, bereich: ah.bereich, person: p.besitzer, regel, eingabe: { art: 'plan', planId: p.id }, ...(p.erstellt ? { seit: p.erstellt } : {}) };
 }
 
 // ── Server: Kandidaten laden, Lage lesen (eine Zeile im Takt) ─────────────────────────────────────────────────────────────

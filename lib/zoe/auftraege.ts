@@ -18,7 +18,7 @@
 //     zu kreisen.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagePlus } from '@/lib/zeit';
 import type { Person } from './raum';
 import { neueKennung } from '@/lib/kennung';
 
@@ -45,6 +45,12 @@ export interface Auftrag {
    * wirkt der alte Läufer nicht mehr (kein doppeltes Ergebnis, kein Überschreiben).
    */
   pachtToken?: string;
+  /**
+   * Nicht vor diesem Zeitpunkt wieder übernehmen (09.10., Takt robust): nach einem Fehlschlag, der noch einmal darf, wartet der Auftrag
+   * 5 · 3^(n−1) Minuten (dieselbe Regel wie `wartenNachFehler` im Takt) — vorher stand er sofort wieder „offen“, und der Arbeiter nahm ihn
+   * 1,2 s später erneut (bei einer Zeitüberschreitung arbeitete der erste Lauf auf dem Server noch: doppelt).
+   */
+  nichtVor?: string;
   begonnen?: string;
   beendet?: string;
   ergebnis?: string;
@@ -59,10 +65,45 @@ export interface Auftrag {
   person?: Person;
 }
 
-interface Stand { auftraege: Auftrag[] }
+interface Stand {
+  auftraege: Auftrag[];
+  /** Abgelehnte Aufträge, weil die Warteschlange voll war (09.10., Takt robust) — je Berliner Tag, nur Zähler (Lagebild Head of IT). */
+  abgelehnt?: { tag: string; anzahl: number };
+}
 
-const GRENZE = 400;
+/**
+ * Aufräumen statt Abschneiden (09.10., Takt robust — CLAUDE.md „Nie abschneiden, ablehnen“). Vorher kürzte `reihe` die Liste stumm auf
+ * 400 Einträge; an einem vollen Tag fielen damit HEUTIGE Einträge heraus, die der Takt als Riegel liest (Morgen-/Abendlauf, Selbstbild,
+ * Fehlerpause, Tageshöchstzahl der Agenten) — die Läufe kamen doppelt, die Pause nach Fehlschlägen war weg.
+ * Jetzt: offene/laufende und Einträge von heute und gestern (Berliner Tag) bleiben IMMER; ältere erledigte bleiben `ERLEDIGT_TAGE` Tage,
+ * davon höchstens die `GRENZE` jüngsten. Wächst die Liste über `HARTE_GRENZE`, werden NEUE Aufträge abgelehnt (gezählt, Lagebild
+ * rot) — nie ein vorhandener weggeschnitten.
+ */
+export const GRENZE = 400;
+export const ERLEDIGT_TAGE = 7;
+export const HARTE_GRENZE = 2000;
 const MAX_VERSUCHE = 3;
+/** Läuft ein Auftrag länger, hält der Herzschlag seine Pacht nicht mehr — er fällt zurück (Arbeiter tot oder Lauf hängt). */
+export const LAUF_MAX_MS = 15 * 60_000;
+
+const erledigt = (a: Pick<Auftrag, 'status'>) => a.status === 'fertig' || a.status === 'fehler';
+
+/**
+ * Was bleibt (rein, getestet): offen/laufend und alles von heute/gestern immer; ältere erledigte nur `ERLEDIGT_TAGE` Tage und davon die
+ * `GRENZE` jüngsten. Die Reihenfolge der Liste bleibt.
+ */
+export function aufraeumen(liste: readonly Auftrag[], jetzt = new Date()): Auftrag[] {
+  const heute = localDay(jetzt), gestern = tagePlus(heute, -1), frist = tagePlus(heute, -ERLEDIGT_TAGE);
+  const geschuetzt = (a: Auftrag) => !erledigt(a) || a.tag >= gestern;
+  const aeltere = liste.filter(a => !geschuetzt(a) && a.tag >= frist)
+    .sort((x, y) => Date.parse(y.beendet ?? y.zeit) - Date.parse(x.beendet ?? x.zeit))
+    .slice(0, GRENZE);
+  const bleibt = new Set(aeltere);
+  return liste.filter(a => geschuetzt(a) || bleibt.has(a));
+}
+
+/** Pause nach dem n-ten Fehlversuch eines Auftrags (Minuten) — dieselbe Regel wie `wartenNachFehler` (lib/zoe/takt.ts). */
+export const pauseNachVersuch = (versuche: number): number => Math.min(5 * 3 ** (Math.max(1, versuche) - 1), 180);
 
 /** Gleiche Wirkung, gleicher Schlüssel. Bewusst über die Eingabe gebildet und
  *  nicht über die Zeit — sonst wäre jeder Auftrag für sich einzigartig und der
@@ -81,21 +122,28 @@ export interface NeuerAuftrag {
   person?: Person;
 }
 
-/** Mehrere auf einmal einreihen. Gibt zurück, was neu ist und was schon lief. */
-export async function reihe(neue: NeuerAuftrag[]): Promise<{ angelegt: Auftrag[]; schonDa: number }> {
+/**
+ * Mehrere auf einmal einreihen. Gibt zurück, was neu ist, was schon lief und was abgelehnt wurde, weil die Warteschlange voll ist
+ * (`HARTE_GRENZE`, 09.10.) — abgelehnt wird nur NEU, nie ein vorhandener Auftrag weggeschnitten.
+ */
+export async function reihe(neue: NeuerAuftrag[], jetzt = new Date()): Promise<{ angelegt: Auftrag[]; schonDa: number; abgelehnt: number }> {
   const angelegt: Auftrag[] = [];
-  let schonDa = 0;
+  let schonDa = 0, abgelehnt = 0;
   await updateJson<Stand>('zoe-auftraege', current => {
-    const liste = current?.auftraege ?? [];
-    const laufend = new Set(liste.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.schluessel));
+    angelegt.length = 0; schonDa = 0; abgelehnt = 0;
+    const liste = aufraeumen(current?.auftraege ?? [], jetzt);
+    const laufend = new Set(liste.filter(a => !erledigt(a)).map(a => a.schluessel));
+    let platz = HARTE_GRENZE - liste.length;
     for (const n of neue) {
       const eingabe = n.eingabe ?? {};
       const schluessel = schluesselFuer(n.art, n.name, eingabe, n.auftrag);
       if (laufend.has(schluessel)) { schonDa++; continue; }
+      if (platz <= 0) { abgelehnt++; continue; }
+      platz--;
       laufend.add(schluessel);
       angelegt.push({
         id: neueKennung('a'),
-        zeit: new Date().toISOString(), tag: localDay(),
+        zeit: jetzt.toISOString(), tag: localDay(jetzt),
         art: n.art, name: n.name, eingabe,
         ...(n.auftrag ? { auftrag: n.auftrag } : {}),
         ...(n.anlass ? { anlass: n.anlass } : {}),
@@ -103,11 +151,15 @@ export async function reihe(neue: NeuerAuftrag[]): Promise<{ angelegt: Auftrag[]
         schluessel, status: 'offen', versuche: 0,
       });
     }
-    const fertige = liste.filter(a => a.status === 'fertig' || a.status === 'fehler');
-    const aktive = liste.filter(a => a.status === 'offen' || a.status === 'laeuft');
-    return { auftraege: [...angelegt, ...aktive, ...fertige].slice(0, GRENZE) };
+    const heute = localDay(jetzt);
+    const vorher = current?.abgelehnt?.tag === heute ? current.abgelehnt.anzahl : 0;
+    return {
+      auftraege: [...angelegt, ...liste.filter(a => !erledigt(a)), ...liste.filter(erledigt)],
+      ...(abgelehnt || vorher ? { abgelehnt: { tag: heute, anzahl: vorher + abgelehnt } } : {}),
+    };
   });
-  return { angelegt, schonDa };
+  if (abgelehnt) console.error(`[Aufträge] Warteschlange voll (${HARTE_GRENZE}) — ${abgelehnt} neue Aufträge abgelehnt, nichts gekürzt.`);
+  return { angelegt, schonDa, abgelehnt };
 }
 
 /**
@@ -130,7 +182,10 @@ export async function nimm(anzahl: number, pachtSekunden = 300): Promise<Auftrag
     for (const a of naechste) {
       if (genommen.length >= anzahl) break;
       if (a.status !== 'offen') continue;
+      // Pause nach einem Fehlversuch (09.10.): erst wieder, wenn sie um ist.
+      if (a.nichtVor && Date.parse(a.nichtVor) > jetzt) continue;
       if (a.versuche >= MAX_VERSUCHE) { a.status = 'fehler'; a.fehler = `Nach ${MAX_VERSUCHE} Versuchen aufgegeben.`; continue; }
+      delete a.nichtVor;
       a.status = 'laeuft';
       a.versuche += 1;
       a.begonnen = new Date().toISOString();
@@ -138,7 +193,7 @@ export async function nimm(anzahl: number, pachtSekunden = 300): Promise<Auftrag
       a.pachtToken = neueKennung('pacht');
       genommen.push({ ...a });
     }
-    return { auftraege: naechste };
+    return { ...(current ?? {}), auftraege: naechste };
   });
   return genommen;
 }
@@ -152,22 +207,25 @@ export async function nimm(anzahl: number, pachtSekunden = 300): Promise<Auftrag
  * Arbeiter einen abgeschalteten Agenten am 07.09. dreimal hintereinander
  * angestoßen.
  */
-export async function melde(id: string, pachtToken: string, status: 'fertig' | 'fehler', text: string, endgueltig = false): Promise<boolean> {
+export async function melde(id: string, pachtToken: string, status: 'fertig' | 'fehler', text: string, endgueltig = false, jetzt = new Date()): Promise<boolean> {
   let angenommen = false;
   await updateJson<Stand>('zoe-auftraege', current => {
     const liste = current?.auftraege ?? [];
     return {
+      ...(current ?? {}),
       auftraege: liste.map(a => {
         // Nur der Halter der AKTUELLEN Pacht meldet (Paket D-A #20) — ein abgelaufener Läufer ändert nichts mehr.
         if (a.id !== id || a.status !== 'laeuft' || !a.pachtToken || a.pachtToken !== pachtToken) return a;
         angenommen = true;
+        // Ein Fehlschlag darf es nochmal versuchen — außer das Budget ist weg. Seit 09.10. erst nach einer Pause (`nichtVor`):
+        // eine Zeitüberschreitung heißt oft, dass der Lauf auf dem Server noch arbeitet.
+        const nochmal = status === 'fehler' && !endgueltig && a.versuche < MAX_VERSUCHE;
         return {
           ...a, status,
-          beendet: new Date().toISOString(),
+          beendet: jetzt.toISOString(),
           pachtBis: undefined, pachtToken: undefined,
           ...(status === 'fertig' ? { ergebnis: text.slice(0, 1200) } : { fehler: text.slice(0, 600) }),
-          // Ein Fehlschlag darf es nochmal versuchen — außer das Budget ist weg.
-          ...(status === 'fehler' && !endgueltig && a.versuche < MAX_VERSUCHE ? { status: 'offen' as AuftragStatus } : {}),
+          ...(nochmal ? { status: 'offen' as AuftragStatus, nichtVor: new Date(jetzt.getTime() + pauseNachVersuch(a.versuche) * 60_000).toISOString() } : {}),
         };
       }),
     };
@@ -194,7 +252,7 @@ export async function abbrechen(id: string, o: { text: string; pruefe?: (a: Auft
     const { pachtBis: _p, pachtToken: _t, ...rest } = a;
     const neu: Auftrag = { ...rest, status: 'fehler', fehler: o.text.slice(0, 600), beendet: new Date().toISOString(), versuche: MAX_VERSUCHE };
     raus = { ok: true, auftrag: neu };
-    return { auftraege: liste.map((x, j) => (j === i ? neu : x)) };
+    return { ...(current as Stand), auftraege: liste.map((x, j) => (j === i ? neu : x)) };
   });
   return raus;
 }
@@ -213,7 +271,7 @@ export async function abbrechenWo(passt: (a: Auftrag) => boolean, text: string):
       const { pachtBis: _p, pachtToken: _t, ...rest } = a;
       return { ...rest, status: 'fehler' as AuftragStatus, fehler: text.slice(0, 600), beendet: jetzt, versuche: MAX_VERSUCHE };
     });
-    return n ? { auftraege: neu } : (current as Stand);
+    return n ? { ...(current as Stand), auftraege: neu } : (current as Stand);
   });
   return ids;
 }
@@ -225,9 +283,46 @@ export async function pachtGueltig(id: string, pachtToken: unknown): Promise<Auf
   return a && a.status === 'laeuft' && a.pachtToken === pachtToken && (!a.pachtBis || Date.parse(a.pachtBis) >= Date.now()) ? a : null;
 }
 
+/**
+ * Pacht verlängern (09.10., Takt robust): solange ein Lauf lebt, hält die Lauf-Route seine Pacht im Minutentakt frisch — vorher lief die
+ * Pacht (300 s) ab, während Heads, Head of Finance und Agenten-Läufe bis 330–400 s rechnen durften, und ein zweiter Arbeiter nahm denselben
+ * Auftrag (doppelter Lauf, doppelte KI-Kosten). Nur der aktuelle Halter, nur solange der Auftrag läuft und höchstens `LAUF_MAX_MS` nach
+ * Beginn — danach fällt er zurück. Liefert, ob verlängert wurde.
+ */
+export async function pachtVerlaengern(id: string, pachtToken: string, pachtSekunden = 300, jetzt = new Date()): Promise<boolean> {
+  let ok = false;
+  await updateJson<Stand>('zoe-auftraege', current => {
+    ok = false;
+    const liste = current?.auftraege ?? [];
+    const i = liste.findIndex(a => a.id === id && a.status === 'laeuft' && a.pachtToken === pachtToken);
+    if (i < 0) return current as Stand;
+    const a = liste[i];
+    if (a.begonnen && jetzt.getTime() - Date.parse(a.begonnen) > LAUF_MAX_MS) return current as Stand;
+    ok = true;
+    return { ...(current as Stand), auftraege: liste.map((x, j) => (j === i ? { ...x, pachtBis: new Date(jetzt.getTime() + pachtSekunden * 1000).toISOString() } : x)) };
+  });
+  return ok;
+}
+
+/** Herzschlag eines Laufs: verlängert die Pacht alle `alleMs`, bis `stop()` (im `finally` der Lauf-Route) oder bis es nicht mehr geht. */
+export function pachtHalten(id: string, pachtToken: string, alleMs = 60_000): { stop: () => void } {
+  const t = setInterval(() => {
+    void pachtVerlaengern(id, pachtToken).then(ok => { if (!ok) clearInterval(t); }).catch(() => {});
+  }, alleMs);
+  (t as { unref?: () => void }).unref?.();
+  return { stop: () => clearInterval(t) };
+}
+
 export async function lies(): Promise<Auftrag[]> {
   const s = await loadJson<Stand>('zoe-auftraege');
   return s?.auftraege ?? [];
+}
+
+/** Für das Lagebild (Head of IT): Größe der Warteschlange und heute abgelehnte Aufträge — nur Zahlen. */
+export async function warteschlangeLage(jetzt = new Date()): Promise<{ gesamt: number; aktiv: number; grenze: number; abgelehntHeute: number }> {
+  const s = await loadJson<Stand>('zoe-auftraege');
+  const liste = s?.auftraege ?? [];
+  return { gesamt: liste.length, aktiv: liste.filter(a => !erledigt(a)).length, grenze: HARTE_GRENZE, abgelehntHeute: s?.abgelehnt?.tag === localDay(jetzt) ? s.abgelehnt.anzahl : 0 };
 }
 
 /** Systemläufe, deren Ergebnis nur Zahlen trägt — bleiben für alle lesbar (der Taktgeber liest „n Vorschläge“ des Verbesserungs-Loops). */

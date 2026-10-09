@@ -81,6 +81,51 @@ Stelle in einer Einheit (D6). Der neue HOI-Befund zeigt, wann (1)/(2) drängen.
 
 **Rückweg:** nur Verhalten und Fristen — keine neue Form. Der alte Stand liest alles; Threads, die der Lauf entfernt hat, bleiben weg (gewollt, Frist).
 
+## 09.10.2026 — Takt robust: Warteschlange, Not-Aus, Zeitzone, Signale (nur lokal — Branch `takt-robust`, Basis 297458af)
+
+Anlass: die Ereignis-Analyse (nur gelesen, `agenten-nacht`) fand Robustheits-Lücken im Takt. Jeder Fund nachgeprüft, alle bestätigt und behoben —
+je mit Wächter in `tests/takt-robust.test.ts` (vorher rot). Die vorgeschlagene EINE Ereignisstelle (`ereignisse--<haushalt>`) ist **nicht** gebaut —
+das entscheidet Kevin.
+
+- **Warteschlange nie still kürzen** (`lib/zoe/auftraege.ts`): statt `slice(0, 400)` räumt `aufraeumen` auf — offene/laufende und alles von heute/gestern
+  bleibt immer (die Riegel für Morgen-/Abendlauf, Selbstbild, Fehlerpause, Tageshöchstzahl der Agenten), ältere erledigte 7 Tage, davon die 400 jüngsten.
+  Über `HARTE_GRENZE` (2.000) lehnt `reihe` NEUE ab (`abgelehnt`, Zähler im Bestand, Lagebild rot) — nie ein vorhandener weg. `POST /api/zoe/auftraege`:
+  > 40 auf einmal → 413 (vorher stumm gekürzt); Warteschlange voll → 413. „Neu starten“ eines Agenten-Laufs: voll → 413.
+- **Head-Vorschläge** (`lib/heads/stand.ts` `mischen`): offene bleiben immer; entschiedene nach Frist (90 Tage, angenommene ohne Frist) und davon die 120
+  jüngsten; ab 200 offenen werden NEUE abgelehnt (`HeadStand.voll`, Lagebild rot) statt `slice(-120)` über alle (schnitt offene weg).
+- **Not-Aus fail-closed** (`lib/agenten/einstellung.ts`): Einstellungs-Bestand nicht lesbar (falscher Schlüssel) oder beschädigt beiseitegelegt
+  (`.corrupt-…`, local-db liest dann „leer“) = Not-Aus für alle (Lese-Modell `unlesbar`, nie gespeichert). `taktSperreFiltern`, `auftragGesperrt`,
+  `laufSperre` werten jeden Lesefehler als „gesperrt“ (nur Wartungsläufe `NOT_AUS_AUSGENOMMEN` laufen weiter, `nurWartung`); Kosten nicht lesbar →
+  ein gesetztes Budget gilt als erreicht (`kostenJeHeadMonat` wirft jetzt bei beschädigtem `ki-verbrauch`, die Anzeige fängt das ab). Lagebild:
+  „Agenten-Einstellungen nicht lesbar“ rot.
+- **Überlappende Läufe:** Herzschlag — die Lauf-Route hält die Pacht minütlich frisch (`pachtHalten`/`pachtVerlaengern`, höchstens `LAUF_MAX_MS`
+  15 Min. nach Beginn); vorher lief sie nach 300 s ab, während Heads/Head of Finance (400 s) und Agenten-Läufe (330 s) noch rechneten → zweiter
+  Arbeiter, doppelter Lauf. Arbeiter wartet bis 16 Min. auf die Antwort (`worker.mjs`, vorher 280 s). Fehlschlag mit neuem Versuch → erst nach Pause
+  (`Auftrag.nichtVor`, 5 · 3^(n−1) Min. wie `wartenNachFehler`) — vorher 1,2 s später wieder übernommen. Morgenlauf: Riegel `tagesstart.laeuft`
+  ({tag, seit}) in EINER Sperre gesetzt — ein zweiter Start, während der erste läuft, antwortet `{ uebersprungen, laeuft }`; nach 15 Min. gilt ein nie
+  beendeter Lauf als abgebrochen; der Takt reiht ihn nicht ein, solange er läuft; `runAgent` wartet 400 s (vorher 200 s bei bis zu ~340 s Laufzeit).
+- **Ein Engpass weniger** (`lib/zoe/takt.ts` `tagesstartLage`): hakt der Morgenlauf (≥ 3 Fehlversuche heute, oder ab 12 Uhr mindestens einer, und er
+  läuft nicht), laufen Morgen-/Abendlauf, Heads, Head of Finance, Tageslauf, Selbstbild trotzdem; er selbst wird weiter versucht. Not-Aus, Budget,
+  Hintergrund-KI aus gelten unverändert (dieselben Filter in `faellig`). Lagebild „Morgenlauf“: gelb (scheitert), rot (umgangen).
+- **CRM-Signale im Takt** (`lib/crm/signale-server.ts`): der Lauf aus `/api/crm/signale` ist jetzt EINE Funktion (`signaleLauf`); der Takt ruft sie
+  als Systemlauf alle 10 Min. (`crmSignaleImTakt`) — nur, wenn der Kalender-Job dieses Takts nichts mit iCloud angefangen hat (`spiegel`/`nichts`) und
+  iCloud nicht pausiert. Idempotent (Signal-Kennungen, eine Aktivität je Termin). Kein Modell, kein iCloud-Aufruf → Datenpflege wie der Kalender-Abgleich:
+  der Not-Aus der Agenten hält ihn bewusst nicht an. Die Oberfläche stößt weiter an (5-Min.-Riegel).
+- **Zeitzone:** Heads (`lib/heads/takt.ts`) und Head of Finance (`lib/finanzen/chef/takt.ts` `berlinerUhr`, `plan.ts`) rechnen Tag, Wochentag, Stunde
+  und „lief heute“ in Berliner Wandzeit (Kalender-Kern, `tagVon`) — vorher `getDay()/getHours()` der Maschine und der UTC-Tag des Zeitstempels.
+- **Verpasste Läufe einmal nachholen:** Heads-Wochen-/Monatsläufe und Nachfassen nach einem Event holen jetzt auch nach einem Ausfall nach (nicht nur nach
+  Business-frei) — der jüngste geplante Tag der letzten 6 Tage, nur wenn der Modus schon einmal lief (neue Instanz: nichts), einmal (Riegel `letzte`).
+  Skills/Hintergrundaufgaben wöchentlich/monatlich (`lib/agenten/zeitplan.ts` `verpassterSlot`): jüngster Slot der letzten 6 Tage, wenn er nicht lief,
+  der Zeitplan damals schon galt (`seit` = Skill `geaendertAm` bzw. `erstellt`) und er schon einmal lief. Täglich/werktags/einmalig wie bisher nur am selben Tag.
+- **Tageslauf mit Person:** der Takt reiht den Tageslauf mit dem Inhaber der Instanz als Person ein (aus den Konten — für ihn rechnete er schon), der
+  Morgenlauf gibt ihn dem Tageslauf mit — die Post wird nur für die eigene Person gelesen (vorher: „ohne Person keine Post“). Andere Personen bekommen
+  keinen eigenen Tageslauf (offen, siehe unten).
+
+**Offen / Kevin:** EINE Ereignisstelle (Analyse-Vorschlag) · Tageslauf je Person für alle Konten (KI-Kosten ×n, Sicht von `gatherBrain` für
+Business-Partner ungeprüft) · Monats-Skills holen höchstens 6 Tage zurück nach (nicht den ganzen Monat — sonst müsste die Warteschlange länger als 7 Tage
+behalten werden) · `starte_auftraege` in `lib/zoe/werkzeuge.ts` kürzt auf 20 (nicht angefasst — paralleler Agent). Rückweg: nur optionale Felder
+(`nichtVor`, `abgelehnt`, `voll`, `laeuft`) — der alte Stand ignoriert sie.
+
 ## 09.10.2026 — Agenten-Seite aufgeräumt (Claude-Muster) (nur lokal — Branch `agenten-aufraeumen`, Basis `agenten-nacht` a94d4052, `agenten-nacht` 1df0cdd9 eingemischt)
 
 Kevin 09.10.: „Das ganze Agent-System ist noch unübersichtlich, schau, wie du das sauberer hinbekommst. Bei Claude hier sieht das aufgeräumter und sauberer

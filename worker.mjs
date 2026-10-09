@@ -96,7 +96,9 @@ async function fuehreAus(auftrag) {
     const r = await fetch(`${ORT}/api/zoe/auftraege/lauf`, {
       // Pacht-Token (29.09., Paket D-A #20): ohne den aktuellen Token führt die App nicht aus.
       method: 'POST', headers: kopf, body: JSON.stringify({ id: auftrag.id, token: auftrag.pachtToken }),
-      signal: AbortSignal.timeout(280_000),
+      // 09.10. (Takt robust): so lange wie ein Lauf höchstens seine Pacht hält (Herzschlag bis LAUF_MAX_MS = 15 Min., lib/zoe/auftraege.ts) —
+      // vorher brach der Arbeiter nach 280 s ab, zählte den Platz als frei und nahm mehr, während der Lauf auf dem Server weiterrechnete.
+      signal: AbortSignal.timeout(16 * 60_000),
     });
     const d = await r.json();
     const s = Math.round((Date.now() - start) / 1000);

@@ -19,6 +19,7 @@ import { artFuerStunde, tagKey, type LaufArt } from '@/lib/tageslauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
 import { botenEingerichtet } from './an-person';
 import { alleSpeicher } from '@/lib/zugang/konten';
+import { nurWartung } from '@/lib/agenten/einstellung';
 import type { NeuerAuftrag } from './auftraege';
 
 /** Nachts ruht das System — die Menschen sollen schlafen, nicht das OS füttern. */
@@ -40,7 +41,33 @@ export function neuester<T extends { gestartet: string }>(liste: T[]): T | undef
 }
 
 /** Was der Takt von einem Auftrag braucht, um nach einem Fehlschlag zu warten. */
-export interface AuftragSpur { name: string; tag: string; status: string; zeit: string; beendet?: string; eingabe?: Record<string, unknown> }
+export interface AuftragSpur { name: string; tag: string; status: string; zeit: string; beendet?: string; eingabe?: Record<string, unknown>; versuche?: number; nichtVor?: string }
+
+/** So lange gilt ein gestarteter Morgenlauf als „läuft“ (Riegel in `tagesstart.laeuft`) — danach als abgebrochen. */
+export const TAGESSTART_LAEUFT_MIN = 15;
+
+/** Läuft der Morgenlauf gerade (Riegel von heute, jünger als `TAGESSTART_LAEUFT_MIN`)? Rein. */
+export function tagesstartLaeuft(s: { laeuft?: { tag?: string; seit?: string } } | null | undefined, heute: string, jetzt: Date): boolean {
+  const l = s?.laeuft;
+  return !!l?.seit && l.tag === heute && jetzt.getTime() - Date.parse(l.seit) < TAGESSTART_LAEUFT_MIN * 60_000;
+}
+
+/**
+ * Ein Engpass weniger (09.10., Takt robust): bis hierher wartete ALLES Weitere des Tages (Morgen-/Abendlauf, Heads, Head of Finance,
+ * Tageslauf, Selbstbild …) auf den Morgenlauf — hakte er, lief den ganzen Tag nichts davon. Jetzt laufen die übrigen Läufe trotzdem, sobald
+ * der Morgenlauf heute `TAGESSTART_UMGEHEN_AB` Fehlversuche hat oder ab `TAGESSTART_MITTAG` Uhr mindestens einen — nie, während er läuft.
+ * Der Morgenlauf selbst wird weiter versucht (mit Pause), der Head of IT zeigt den Zustand. Rein.
+ */
+export const TAGESSTART_UMGEHEN_AB = 3;
+export const TAGESSTART_MITTAG = 12;
+export function tagesstartLage(auftraege: readonly AuftragSpur[], heute: string, stunde: number, riegelLaeuft: boolean): { fehlversuche: number; laeuft: boolean; umgehen: boolean } {
+  const heutige = auftraege.filter(a => a.name === 'tagesstart' && a.tag === heute);
+  const laeuft = riegelLaeuft || heutige.some(a => a.status === 'laeuft');
+  // Fehlversuche: endgültig gescheiterte Aufträge mit ihren Versuchen, dazu offene in der Pause nach einem Fehlschlag.
+  const fehlversuche = heutige.reduce((n, a) => n + (a.status === 'fehler' ? Math.max(1, a.versuche ?? 1) : a.status === 'offen' && a.nichtVor ? Math.max(1, a.versuche ?? 1) : 0), 0);
+  const umgehen = !laeuft && (fehlversuche >= TAGESSTART_UMGEHEN_AB || (fehlversuche >= 1 && stunde >= TAGESSTART_MITTAG));
+  return { fehlversuche, laeuft, umgehen };
+}
 
 /**
  * Wofür ein Agenten-Lauf (`faden`) ist — Skill, Hintergrundaufgabe oder Thread (Durchstich 09.10.). Die Pause nach Fehlschlägen gilt je Ziel:
@@ -77,7 +104,7 @@ export interface Faellig {
 }
 
 interface TageslaufStand { laeufe?: { art: LaufArt; gestartet: string }[] }
-interface TagesstartStand { lastRun?: string }
+interface TagesstartStand { lastRun?: string; laeuft?: { tag?: string; seit?: string } }
 interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des Loops — auch ein übersprungener (27.09.) */ letzterLoopVersuch?: string }
 
 /**
@@ -101,7 +128,8 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
   const kiAn = (await kiSchalterFuer(null)).hintergrund;
   const roh1 = kiAn ? roh0 : roh0.filter(f => !KI_LAEUFE.has(f.auftrag.name));
   // Not-Aus (für alle bzw. je Head), ausgeschaltete Heads und erreichtes Head-Budget: nichts einreihen (09.10., Agenten-Bereich Paket 4b).
-  const roh = await import('@/lib/agenten/einstellung').then(m => m.taktSperreFiltern(roh1, jetzt)).catch(() => roh1);
+  // Fail-closed (09.10., Takt robust): ist die Sperre nicht prüfbar, laufen nur Wartungsläufe — nie alles, „weil nichts gelesen werden konnte“.
+  const roh = await import('@/lib/agenten/einstellung').then(m => m.taktSperreFiltern(roh1, jetzt)).catch(() => nurWartung(roh1));
   if (!roh.length) return roh;
   const auftraege = (await loadJson<{ auftraege?: AuftragSpur[] }>('zoe-auftraege'))?.auftraege ?? [];
   const heute = localDay(jetzt);
@@ -218,14 +246,21 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
 
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.
   const start = await loadJson<TagesstartStand>('tagesstart');
+  const auftraege = await loadJson<{ auftraege?: AuftragSpur[] }>('zoe-auftraege');
   if (start?.lastRun !== heute) {
-    raus.push({
-      id: 'tagesstart',
-      grund: `Morgenlauf für ${heute} steht noch aus`,
-      auftrag: { art: 'agent', name: 'tagesstart', anlass: 'Takt: Morgenlauf' },
-    });
-    // Der Tageslauf setzt auf dem Morgenlauf auf — heute noch nichts weiter.
-    return raus;
+    // Läuft er gerade (Riegel `laeuft`, 09.10.), nicht noch einmal einreihen — vorher reihte der Takt ihn nach einer Zeitüberschreitung
+    // neu ein, während der erste Lauf auf dem Server noch arbeitete.
+    const lage = tagesstartLage(auftraege?.auftraege ?? [], heute, h, tagesstartLaeuft(start, heute, jetzt));
+    if (!lage.laeuft) {
+      raus.push({
+        id: 'tagesstart',
+        grund: `Morgenlauf für ${heute} steht noch aus`,
+        auftrag: { art: 'agent', name: 'tagesstart', anlass: 'Takt: Morgenlauf' },
+      });
+    }
+    // Der Tageslauf setzt auf dem Morgenlauf auf — heute noch nichts weiter. Außer der Morgenlauf hakt (Engpass, 09.10.): dann laufen die
+    // übrigen Läufe trotzdem, der Head of IT zeigt es.
+    if (!lage.umgehen) return raus;
   }
 
   // 2) Der Morgenlauf — einmal am Tag, direkt nach dem Tagesstart. Er ist der
@@ -234,7 +269,6 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   //
   //    Ob er heute lief, steht in der Warteschlange selbst — kein zweiter
   //    Zähler, der mit der Wirklichkeit auseinanderlaufen könnte.
-  const auftraege = await loadJson<{ auftraege?: { name: string; tag: string; status: string }[] }>('zoe-auftraege');
   const morgenHeute = (auftraege?.auftraege ?? []).some(a =>
     a.name === 'morgen' && a.tag === heute && a.status !== 'fehler');
   if (!morgenHeute) {
@@ -319,7 +353,9 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     raus.push({
       id: `tageslauf-${h}`,
       grund: letzter ? `letzter Lauf vor ${Math.round(minutenSeit)} Minuten` : 'heute noch kein Lauf',
-      auftrag: { art: 'agent', name: 'tageslauf', auftrag: art === 'voll' ? 'puls' : art, anlass: 'Takt: Tageslauf' },
+      // 09.10. (Takt robust): mit der Person, für die er ohnehin rechnet (Inhaber der Instanz, aus den Konten) — vorher lief er ohne Person
+      // und übersprang deshalb die Post („ohne Person keine Post“), obwohl Lauf und Ergebnis dem Inhaber gehören. Post nur der eigenen Person.
+      auftrag: { art: 'agent', name: 'tageslauf', auftrag: art === 'voll' ? 'puls' : art, anlass: 'Takt: Tageslauf', person: inhaber },
     });
   }
 

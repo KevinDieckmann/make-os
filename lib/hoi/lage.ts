@@ -104,6 +104,8 @@ export interface InnenLage {
   zugang?: ZugangLage;
   /** Agenten-Bestände (09.10., Agenten-Datenschicht): Größe und Schreibdauer der Threads, des KI-Protokolls usw. — nur Zahlen. */
   agentenBestaende?: AgentenBestandLage | null;
+  /** Takt robust (09.10.): Warteschlange voll, Agenten-Sperre unlesbar, Morgenlauf hakt, Freigabe-Listen der Heads voll — nur Zahlen. */
+  taktRobust?: TaktRobustLage | null;
 }
 
 /**
@@ -125,6 +127,33 @@ export function agentenBestandBefunde(a: AgentenBestandLage | null | undefined):
     wert: `${a.anzahl} Dateien · größte ${a.groesstesMb.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB${a.schreibenMaxMs != null ? ` · Schreiben max ${ms0(a.schreibenMaxMs)}` : ''}`,
     satz: gross || langsam ? `${was} — jede Nachricht schreibt den ganzen Bestand: Threads je Thread teilen, KI-Protokoll in Tagesdateien (Entscheidung offen, UPDATES.md 09.10.)` : 'klein genug — jede Nachricht schreibt den ganzen Bestand, das trägt noch',
   }];
+}
+
+/** Takt robust (09.10.): was die Läufe still behindern könnte — nur Zahlen und Zustände, nie Inhalte. */
+export interface TaktRobustLage {
+  /** Warteschlange der Läufe: Einträge, offen/laufend, harte Grenze, heute abgelehnt (voll). */
+  warteschlange: { gesamt: number; aktiv: number; grenze: number; abgelehntHeute: number };
+  /** Agenten-Einstellungen lesbar? false = fail-closed angehalten (wie Not-Aus). */
+  sperreLesbar: boolean;
+  /** Morgenlauf heute (ab 7 Uhr, solange er nicht durch ist): Fehlversuche, läuft gerade, übrige Läufe laufen ohne ihn. null = durch/zu früh. */
+  tagesstart: { fehlversuche: number; laeuft: boolean; umgangen: boolean } | null;
+  /** Heads, deren Freigabe-Liste in den letzten 7 Tagen voll war (neue Vorschläge abgelehnt). */
+  headsVoll: { head: string; abgelehnt: number }[];
+}
+
+/** Befunde zu Takt und Warteschlange (09.10., Takt robust) — rein, getestet (tests/takt-robust.test.ts). */
+export function taktRobustBefunde(t: TaktRobustLage | null | undefined): Befund[] {
+  if (!t) return [];
+  const b: Befund[] = [];
+  const w = t.warteschlange;
+  b.push({ id: 'warteschlange', bereich: 'app', label: 'Warteschlange der Läufe', ampel: w.abgelehntHeute ? 'rot' : w.gesamt >= w.grenze * 0.8 ? 'gelb' : 'gruen',
+    wert: `${w.gesamt} von ${w.grenze} · ${w.aktiv} offen${w.abgelehntHeute ? ` · heute ${w.abgelehntHeute} abgelehnt` : ''}`,
+    satz: w.abgelehntHeute ? 'voll — neue Läufe werden abgelehnt (nichts gekürzt); hängende Läufe prüfen (Agenten › Läuft), Arbeiter-Container ansehen' : w.gesamt >= w.grenze * 0.8 ? 'fast voll — erledigte räumen sich nach 7 Tagen weg; staut sich etwas?' : 'aufgeräumt — erledigte nach 7 Tagen, nie gekürzt' });
+  if (!t.sperreLesbar) b.push({ id: 'agenten-sperre', bereich: 'app', label: 'Agenten-Einstellungen', ampel: 'rot', wert: 'nicht lesbar — alle Agenten angehalten', satz: 'der Bestand agenten-einstellung--<haushalt> ist beschädigt oder mit falschem Schlüssel — zur Sicherheit gilt Not-Aus; aus der Sicherung wiederherstellen (NOTFALL.md)' });
+  const s = t.tagesstart;
+  if (s && s.fehlversuche > 0) b.push({ id: 'morgenlauf', bereich: 'app', label: 'Morgenlauf', ampel: s.umgangen ? 'rot' : 'gelb', wert: `${s.fehlversuche} Fehlversuch${s.fehlversuche === 1 ? '' : 'e'} heute${s.laeuft ? ' · läuft gerade' : ''}`, satz: s.umgangen ? 'hakt — die übrigen Läufe (Heads, Head of Finance, Morgen-/Abendlauf, Tageslauf) laufen ohne ihn; Logs von /api/tagesstart prüfen' : 'scheitert — wird mit Pause erneut versucht; ab 3 Fehlversuchen bzw. ab Mittag laufen die übrigen Läufe ohne ihn' });
+  for (const h of t.headsVoll) b.push({ id: `heads-voll:${h.head}`, bereich: 'app', label: `Freigabe-Liste ${h.head}`, ampel: 'rot', wert: `voll — ${h.abgelehnt} neue Vorschläge abgelehnt`, satz: 'zu viele offene Vorschläge — entscheiden (annehmen/ablehnen), dann nimmt der Head wieder neue auf; gekürzt wird nichts' });
+  return b;
 }
 
 /** Zugang & Schlüssel (05.10., Paket „Zugang & Schlüssel härten“). */
@@ -638,6 +667,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...medienBefunde(innen.medien));
   b.push(...einrichtungBefunde(innen.einrichtung, innen));
   b.push(...zugangBefunde(innen.zugang, jetzt));
+  b.push(...taktRobustBefunde(innen.taktRobust));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
   b.push(...kettenBefunde(innen.protokollKette, jetzt));
