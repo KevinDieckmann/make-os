@@ -4,6 +4,60 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — E4 EINE Konto-Sicht: nur Business auch für Aufgaben und ZOE (nur lokal — Branch `konto-sicht`, Basis 8e2d3a41)
+
+Kevin 09.10. (Klickrunde E4): „Ja, Privates bleibt privat.“ Ein Konto mit `finanzRecht: 'business'` (Partner) sah bisher die Privat-Aufgaben des
+Haushalts — in der Aufgaben-Sicht und über ZOE (Titel/Notizen gingen an das Modell). „Nur Business“ prüften rund zwölf Stellen einzeln, der ZOE-Kern
+gar nicht (ANALYSE_AGENTEN_DATEN.md › 5 D, Analyse 4 › K2). Wächter `tests/konto-sicht.test.ts` (15 Fälle; 8 davon ohne den Filter rot) und die
+Messlatte (`tests/messlatte-malin.test.ts`: zwei neue Haushalts-Marken — Privat-Aufgabe und Aufgabe der Selbstständigkeit — im Partner-Durchlauf
+über alle lesenden Routen).
+
+**EINE Stelle:** `lib/zugang/konto-sicht.ts` (rein: `kontoSichtAus`, `privatAusblenden`, `bereichErlaubt`) + `lib/zugang/konto-sicht-server.ts`
+(`kontoSicht(person)` nur Konten, `kontoSichtLaden(person)` mit Gesundheits-Einwilligung, `privatAusgeblendetFuer(person)`). Felder: Rolle, Inhaber,
+Haushalt, Finanzrecht, `imHaushalt`, `privat` (sieht den Privat-Bereich des Haushalts), `business`, `nurBusiness`, `bereiche`, `vollesMitglied`
+(Haushalt eingetragen — Bestände je Haushalt), `privatFinanzen`, `gesundheit`. **Ausgeblendet wird NUR für `nurBusiness`** — Systemläufe ohne Person
+und volle Mitglieder unverändert (auch der Haupt-Inhaber ohne Haushalt-Eintrag sieht seine Privat-Aufgaben weiter). Der Agenten-Bereich nimmt
+dieselbe Stelle: `sichtLaden` (lib/agenten/faeden-server.ts) → `kontoSichtLaden`, `KontoSicht` in lib/agenten/sicht.ts ist ein Ausschnitt davon
+(dieselben Werte wie vorher, Test). Umgestellt ohne Verhaltensänderung: lib/zoe/vault.ts, lib/medien/server.ts, lib/agenten/einstellung.ts,
+lib/agenten/skills-server.ts, lib/onboarding-status.ts, `suche_arbeit`, Jahresziele in `gatherBrain`. **Regel: neue „nur Business“-Prüfung nur noch
+über die Konto-Sicht — nie wieder `finanzRecht === 'business'` in einer Stelle selbst.** (Rest mit eigenem Modell: lib/finanzen/haushalt/zugriff.ts
+`haushaltFuer`/`planZugangFuer` als Finanz-Kern, lib/inbox/teilen.ts `bereichZugang`, `zumInhaberPruefen`.)
+
+**Aufgaben** — was privat ist, steht rein in `lib/aufgaben/bereich-sicht.ts` (Bereich des Space über `bereichVonSpace`: Privat UND die
+Selbstständigkeit; Unteraufgaben über die Kette; Projekte, Listen (unbekanntes Projekt = ausgeblendet), eigene Status, Vorlagen mit Privat-Space):
+- Lesen: `ladeAufgabenSicht(person)` filtert jetzt auch den Bereich — damit Überblick, Kalender-Aufgaben, Glocke/Heute, Seil, Board, Indizes, Fluss,
+  Kugel, Dateien-Bezug, ZOE. `sichtFuerKonto(state, person)` = dieselbe Regel für Leser mit Bestand (GET `/api/state/tasks` samt 409-Antwort, Export);
+  `spacesFuer(state, person)` lässt Privat-Spaces weg (Leiste zeigt „Privat“/„Selbstständigkeit“ nicht), `verborgeneAufgabenFuer` kennt die
+  Privat-Aufgaben (Dateien daran 404).
+- Schreiben (`aufgabenAendern`): Vorhandenes im Privat-Bereich → 404 (wie „nur ich“), Neues/Verschobenes/Umgehängtes dorthin → 403
+  (`NUR_BUSINESS_PRIVAT`), Server-Schreiber ausgenommen. Zuständig/beteiligt an einer Privat-Aufgabe wird ein Konto „nur Business“ nicht (400, nur neu
+  gesetzte Personen); Meldungen über Privat-Aufgaben erreichen es nie (`haushaltsPersonen` trägt `nurBusiness`).
+- `/api/tasks/create`: Privat-Elternteil/-Meilenstein 404, kein „gibt es schon“ mit der Kennung einer Privat-Aufgabe, ohne Ort im Business.
+- **Neu für den Partner:** Projekt-/Aufgaben-Dateien des Business (`aufgabenDateienZugang`, `aufgabenDateiSichtbar` in lib/dateien/aufgaben-ablage.ts) —
+  Route `/api/aufgaben/dateien`, Export und ZOE `projekt_unterlagen`/`datei_lesen` (vorher bekam er keine). `datei_lesen` und der Export prüfen jetzt auch
+  „nur ich“ (vorher nicht).
+- Oberfläche: Aufgaben-Leiste ohne „Privat“, wenn der Server den Space nicht liefert; Schnell-Anlegen ohne Privat-Vorgabe; ein alter Link auf einen
+  Privat-Space führt zum Überblick.
+
+**ZOE-Kern:** `gatherBrain` (Aufgaben über die Sicht, Jahresziele über die Konto-Sicht), Schilde (`computeShields`: keine Titel von Privat-Aufgaben/
+-Meilensteinen für „nur Business“), Stapel (`vorschlagSichtbar(…, privat)` + `vorschlagPrivat` — Vorschläge des Systems ohne Person sieht ein Konto „nur
+Business“ nur, wenn sie sicher geschäftlich sind: Bezug CRM, Gruppen Markttraktion/Kontakte/Kunden/Business/Bauplan, ausdrücklich Business-Space; sonst
+im Zweifel privat), EINE Lesestelle `vorschlaegeFuer(person)` für Zähler, Heute, Agenten-Bereich; Agenten-Angebot (`PRIVAT_AGENTEN` = Ernährung,
+`agentFuerKonto` in kimmi und `runAgent`), Delegations-Runde (Partner: ohne Privat; GET zeigt nur Vorschläge zu sichtbaren Aufgaben), Wochenplan-Vorschlag
+(ohne Privat-Ziele/-Routinen), Lichtfäden (`ohnePrivatSpace` — der ganze Privat-Space fällt weg, auch kein „Belegt“), CRM-Werkzeuge (Aufgaben am Kontakt
+über `aufgabeImPrivat`: die Selbstständigkeit zählt nicht mehr als Business).
+
+**Bewusst nicht geändert / offen (für Kevin):**
+- Routinen, Ziele/Meilensteine, Fokus-Sätze in den eigenen Routen (`/api/state/routinen`, `/api/state/ziele`, `/api/state/meilensteine`) haben keinen
+  Bereichsfilter für „nur Business“ — die gemeinsamen Privat-Routinen/-Ziele sieht der Partner dort weiter (der ZOE-Kern filtert sie für ihn). Gleiche
+  Regel wäre ein eigenes kleines Paket (Ziel/Meilenstein über `wirksamerSpace`, Routine über `spaceVonRoutine`).
+- Mandanten-Spaces (`m-<firma>`) zählen immer als Business — „Bereich je Einheit“ für Mandate gibt es noch nicht (Analyse 4).
+- Vorlagen ohne Space gelten weiter überall (auch eine aus einem Privat-Projekt gespeicherte, wenn sie keinen Space trägt).
+- Der globale Kopf-Schalter (Alles · Privat · Business) zeigt dem Partner weiter „Privat“ — die Seiten liefern dort nichts Privates aus dem Haushalt.
+- Die Demo-Saat hat kein Konto „nur Business“ (Jonas ist volles Mitglied) — für eine Vorführung der Rolle wäre ein drittes erfundenes Konto nötig.
+
+**Rückweg:** keine neue Bestandsform, kein neues Feld im Bestand. Der alte Stand liest alles; was ein Partner jetzt ablehnt bekommt, konnte er dort schreiben.
+
 ## 09.10.2026 — ZOE-Schreibwege über die offiziellen Routen, Finanz-Trennung (nur lokal — Branch `zoe-schreibwege`, Basis `agenten-nacht` 297458af)
 
 Anlass: die Abdeckungs-Analyse (nur gelesen) fand Werkzeuge von ZOE/Agenten, die an den offiziellen Schreibwegen vorbei schrieben und die

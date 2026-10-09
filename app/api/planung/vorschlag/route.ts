@@ -27,8 +27,10 @@ import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
-import { sichtbarFuer } from '@/lib/planung/routinen';
-interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean; owner?: string }
+import { sichtbarFuer, spaceVonRoutine } from '@/lib/planung/routinen';
+import { wirksamerSpace } from '@/lib/planung/bereich';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean; owner?: string; space?: 'privat' | 'business'; einheit?: string }
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
   const [kal, tasksState, ziele, vitals, routinenF, reglerF, eigeneAngaben] = await Promise.all([
     termineFuerZoe(person, tage[0], tagePlus(tage[6], 1)),
     ladeAufgabenSicht(person), // Sichtfilter „nur ich“ (29.09.)
-    loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean }[]> & { fokus?: Record<string, string> }>('ziele'),
+    loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean; space?: 'privat' | 'business'; einheit?: string }[]> & { fokus?: Record<string, string> }>('ziele'),
     // Art. 9 (05.10.): Vitalwerte nur mit Einwilligung (b) der Person an die KI — sonst gar nicht erst lesen.
     gesundheitAnKi(person).then(frei => (frei ? resolveVitals(undefined, person) : null)).catch(() => null),
     loadJson<{ routinen: RoutineDef[] }>('routinen'),
@@ -98,13 +100,17 @@ export async function POST(req: Request) {
   // Routinen nur aus dem Planer (Bestand `routinen`) — nur aktive. Seit 08.10. abends kein Rückfall mehr auf feste Routinen
   // im Code (das waren die einer echten Person): ohne gepflegte Routinen plant der Vorschlag ohne Routinen.
   // Nur eigene und gemeinsame Routinen dieser Person (`sichtbarFuer`, Praxis-Fund 04.10.).
-  const rAlle: RoutineDef[] = sichtbarFuer<RoutineDef>((Array.isArray(routinenF?.routinen) ? routinenF!.routinen : []).filter(r => r.aktiv), person);
+  // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ plant ohne Routinen und Ziele aus dem Privat-Bereich (die Aufgaben filtert schon
+  // `ladeAufgabenSicht`). Konten unlesbar → wie „nur Business“ (nie auf Verdacht zeigen).
+  const ohnePrivat = await privatAusgeblendetFuer(person).catch(() => true);
+  const rAlle: RoutineDef[] = sichtbarFuer<RoutineDef>((Array.isArray(routinenF?.routinen) ? routinenF!.routinen : []).filter(r => r.aktiv && (!ohnePrivat || spaceVonRoutine(r) !== 'privat')), person);
   const rMorgen = rAlle.filter(r => r.wann === 'morgen').map(r => r.label);
   const rTag = rAlle.filter(r => r.wann === 'tag');
   const rAbend = rAlle.filter(r => r.wann === 'abend').map(r => r.label);
 
-  const monatsZiele = (ziele?.monat ?? []).filter(z => !z.erledigt);
-  const quartalsZiele = (ziele?.quartal ?? []).filter(z => !z.erledigt);
+  const zielSichtbar = (z: { space?: 'privat' | 'business'; einheit?: string }) => !ohnePrivat || (wirksamerSpace(z) ?? 'business') !== 'privat';
+  const monatsZiele = (ziele?.monat ?? []).filter(z => !z.erledigt && zielSichtbar(z));
+  const quartalsZiele = (ziele?.quartal ?? []).filter(z => !z.erledigt && zielSichtbar(z));
 
   const system = [
     FREMD_REGEL,

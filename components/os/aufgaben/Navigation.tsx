@@ -33,6 +33,7 @@ export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: Au
   const raum = adresse.ansicht === 'space' ? spaces.find(s => s.id === adresse.s) : undefined;
   const firmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'business');
   const privatFirmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'privat');
+  const privatDa = spaces.some(s => s.id === 'privat');
   const mandanten = spaces.filter(s => s.art === 'mandant' && !s.archiv);
   const archivZahl = spaces.filter(s => s.art === 'mandant' && s.archiv).length;
   const eintrag = (s: AufgabenSpace): WahlEintrag<string> => ({ id: s.id, label: s.label, punkt: s.farbe, ...(offenJe.get(s.id) ? { hinweis: `${offenJe.get(s.id)} offen` } : {}) });
@@ -41,9 +42,12 @@ export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: Au
     <nav aria-label="Aufgaben" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', padding: '8px 2px', marginBottom: 6 }}>
       <div role="tablist" style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: 3, flex: '0 0 auto', alignItems: 'center' }}>
         <button role="tab" aria-selected={adresse.ansicht === 'ueberblick'} onClick={() => gehe({ ansicht: 'ueberblick' })} style={reiterStil(adresse.ansicht === 'ueberblick')}>Überblick</button>
-        <button role="tab" aria-selected={raum?.id === 'privat'} onClick={() => zuSpace('privat')} style={reiterStil(raum?.id === 'privat')}>
-          Privat{offenJe.get('privat') ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get('privat')}</span> : null}
-        </button>
+        {/* Nur, wenn der Server den Space liefert — ein Konto „nur Business“ bekommt den Privat-Bereich gar nicht (09.10., E4). */}
+        {privatDa && (
+          <button role="tab" aria-selected={raum?.id === 'privat'} onClick={() => zuSpace('privat')} style={reiterStil(raum?.id === 'privat')}>
+            Privat{offenJe.get('privat') ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get('privat')}</span> : null}
+          </button>
+        )}
         {privatFirmen.map(s => (
           <button key={s.id} role="tab" aria-selected={raum?.id === s.id} onClick={() => zuSpace(s.id)} style={reiterStil(raum?.id === s.id)}>
             {s.label}{offenJe.get(s.id) ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get(s.id)}</span> : null}

@@ -24,6 +24,8 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { ohnePrivatBereich } from '@/lib/aufgaben/bereich-sicht';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,10 +46,15 @@ const RUNDE = 'delegation-runde';
 
 /** Die letzte abgelegte Runde (höchstens 7 Tage alt) — für die Aufgaben-Seite. */
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  const z = await imHaushaltDesInhabers(req);
+  if (!z) return nurHaushalt();
   const r = await loadJson<DelegationRunde>(RUNDE);
   const frisch = r && Date.now() - Date.parse(r.zeit) < 7 * 864e5 ? r : null;
-  return NextResponse.json({ ok: true, runde: frisch }, { headers: { 'Cache-Control': 'no-store' } });
+  // EINE Konto-Sicht (09.10., E4): die Runde liegt für den ganzen Haushalt — sie zeigt nur Vorschläge zu Aufgaben, die die Person
+  // sieht (ein Konto „nur Business“ keine aus dem Privat-Bereich, niemand fremde „nur ich“).
+  const sichtbar = frisch ? new Set((await ladeAufgabenSicht(z.person)).tasks.map(t => t.id)) : null;
+  const runde = frisch && sichtbar ? { ...frisch, vorschlaege: frisch.vorschlaege.filter(v => sichtbar.has(v.taskId)) } : null;
+  return NextResponse.json({ ok: true, runde }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
@@ -62,7 +69,9 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
   // Delegations-Runde geht an ein Modell und an Dritte: nie „nur ich“-Aufgaben (Systemsicht, 29.09.).
-  const [f, team] = await Promise.all([ladeAufgabenSicht(null), teamFuerAnfrage(req)]);
+  // Löst ein Konto „nur Business“ die Runde aus (ZOE `run_agent` „task“), geht nichts aus dem Privat-Bereich hinein (09.10., E4).
+  const [f0, team, ohnePrivat] = await Promise.all([ladeAufgabenSicht(null), teamFuerAnfrage(req), privatAusgeblendetFuer(personStreng(req))]);
+  const f = ohnePrivat ? ohnePrivatBereich(f0) : f0;
   // Wer delegiert: der Inhaber laut Team (Konto-Rolle bzw. Haupt-Inhaber) — nie über einen Namen erkannt.
   const inhaber = team.find(p => p.inhaber && p.speicher);
   const projekte = new Map((f?.projects ?? []).map(p => [p.id, p.category ?? '']));

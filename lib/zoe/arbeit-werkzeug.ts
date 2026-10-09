@@ -82,9 +82,10 @@ async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: 
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
   const s = await kiSchalterFuer(person);
   const q = arbeitQuellen(input, { aufgaben: s.bereiche.aufgaben, crm: s.bereiche.crm, brain: s.bereiche.brain });
-  // Den Privat-Space sieht nur ein volles Haushaltsmitglied (09.10., Funde #6): ein Konto „nur Business“ (`finanzRecht: 'business'`) nie.
-  const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
-  const privat = !!(await haushaltFuer(person).catch(() => null));
+  // Den Privat-Space sieht nur ein volles Haushaltsmitglied (09.10., Funde #6): ein Konto „nur Business“ (`finanzRecht: 'business'`) nie —
+  // über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts). Unlesbar → kein Privat.
+  const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
+  const privat = !!(await kontoSicht(person).catch(() => null))?.vollesMitglied;
   let app: { treffer: AppTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
   if (q.arten.length) {
     const A = await import('@/lib/brain/app-index');

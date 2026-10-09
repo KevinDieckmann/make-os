@@ -16,6 +16,9 @@ import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { WEG } from '@/lib/wege';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { bereichVonFirma } from '@/lib/einheiten';
+import { ohnePrivatBereich } from '@/lib/aufgaben/bereich-sicht';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 // Reha-Regel rein und browser-tauglich in lib/planung/reha-regel.ts (auch für die Tagesplanung) — hier nur weitergereicht.
 import { REHA_GEWOHNHEIT_TAGE, rehaFehltHeute } from '@/lib/planung/reha-regel';
@@ -37,7 +40,10 @@ const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', c
  */
 export async function computeShields(today = localDay(), person?: string | null): Promise<Shield[]> {
   const fuer = person ?? await inhaberSpeicher();
-  const [fplanRoh, fin, tasksF, msF, wplanF] = await Promise.all([
+  // EINE Konto-Sicht (09.10., E4): für ein Konto „nur Business“ nennen die Schilde nichts aus dem Privat-Bereich (Aufgaben-, Meilenstein-
+  // Titel) — sie gehen über `gatherBrain` an ZOE. Unlesbare Konten → wie „nur Business“ (nie auf Verdacht zeigen).
+  const ohnePrivat = await privatAusgeblendetFuer(person).catch(() => true);
+  const [fplanRoh, fin, tasksRoh, msRoh, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
@@ -48,6 +54,9 @@ export async function computeShields(today = localDay(), person?: string | null)
     // zur eigenen Routine gehört, `rehaFehltHeute`); ohne Konto keine.
     fuer ? planBloeckeLesen({ person: fuer, von: tagPlus(today, -REHA_GEWOHNHEIT_TAGE), bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
   ]);
+
+  const tasksF = tasksRoh && ohnePrivat ? ohnePrivatBereich(tasksRoh) : tasksRoh;
+  const msF = msRoh && ohnePrivat ? { ...msRoh, meilensteine: msRoh.meilensteine.filter(m => meilensteinSpace(m) !== 'privat') } : msRoh;
 
   // 0-Punkt (05.10.): Posten vor der Eröffnung einer Gesellschaft sind archiviert — sie lösen keinen Alarm mehr aus (lib/business/eroeffnung.ts).
   const fplan = fplanRoh ? await mitEroeffnung(fplanRoh) : null;

@@ -15,20 +15,14 @@
 
 import { headDef, KATALOG } from './katalog';
 import type { AgentRef, Faden, HeadDef, KiKategorie } from './typen';
+import type { KontoSicht as ZentraleKontoSicht } from '@/lib/zugang/konto-sicht';
 
-/** Was die Filterstelle über das anfragende Konto wissen muss — geladen auf dem Server (`sichtLaden`, faeden-server.ts). */
-export interface KontoSicht {
-  /** Speichername aus der Sitzung bzw. dem Auftrag. */
-  person: string;
-  /** Gehört die Person zum Haushalt des Inhabers? Sonst sieht sie nichts (fremder Haushalt, Testkunde). */
-  imHaushalt: boolean;
-  /** Volles Mitglied (Haushalt eingetragen, ohne `finanzRecht: 'business'`) — nur dann gibt es Privat-Heads. */
-  vollesMitglied: boolean;
-  /** Privater Finanzzugang (`privatFinanzZugang`): volles Mitglied UND Haushalt des Inhabers. */
-  privatFinanzen: boolean;
-  /** Gesundheits-Einwilligung der Person selbst: (a) verarbeiten, (b) an die KI. */
-  gesundheit: { verarbeiten: boolean; ki: boolean };
-}
+/**
+ * Was die Filterstelle über das anfragende Konto wissen muss — seit 09.10. (E4) die EINE Konto-Sicht (lib/zugang/konto-sicht.ts), geladen
+ * auf dem Server (`sichtLaden` → `kontoSichtLaden`). Hier nur der Ausschnitt, den der Agenten-Bereich liest: Person, im Haushalt, volles
+ * Mitglied (nur dann Privat-Heads), privater Finanzzugang, Gesundheits-Einwilligung (a)/(b) der Person selbst.
+ */
+export type KontoSicht = Pick<ZentraleKontoSicht, 'person' | 'imHaushalt' | 'vollesMitglied' | 'privatFinanzen' | 'gesundheit'>;
 
 /** Ein Thread mit den Feldern, die nur der Kern kennt (geteilt) — siehe faeden.ts. */
 type FadenSicht = Pick<Faden, 'besitzer' | 'agent' | 'bereich'> & { geteilt?: { am: string; von: string } | null };

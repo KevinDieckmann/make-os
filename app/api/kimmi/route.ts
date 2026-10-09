@@ -17,7 +17,8 @@ import { hasAnthropicKey, fremd, FREMD_REGEL, modellFehlerText } from '@/lib/ant
 import { fuerPrompt, istNutzer, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, SYSTEM_LAEUFE, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
-import { agentKategorien, agentSperre } from '@/lib/zoe/agent-kategorien';
+import { agentFuerKonto, agentKategorien, agentSperre } from '@/lib/zoe/agent-kategorien';
+import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN, LESEND } from '@/lib/zoe/gespraech-schutz';
@@ -205,7 +206,10 @@ export async function POST(req: Request) {
   // Angebot von run_agent/starte_auftraege — ein Zuruf (oder ein eingeschleuster Satz) hätte sie mit Modellkosten außer der Reihe gestartet.
   // KI-Etiketten (09.10.): nur Fach-Agenten, deren feste Kategorien für die Person frei sind (KI-Schalter je Bereich) — ein für ZOE
   // ausgeschalteter Bereich kommt so auch nicht über das Ergebnis eines Fach-Agenten zurück ins Gespräch (lib/zoe/agent-kategorien.ts).
-  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)) && !agentSperre(a, kiS, gesundheitKi));
+  // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ bekommt keine Fach-Agenten aus dem Privat-Bereich (`agentFuerKonto`).
+  const konto = await kontoSicht(person).catch(() => null);
+  const nurBusiness = !konto || konto.nurBusiness;
+  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)) && !agentSperre(a, kiS, gesundheitKi) && agentFuerKonto(a, nurBusiness));
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
   const crmBezug = crmErlaubt && kiS.bereiche.crm ? crmBezugAus(payload.bezug) : null;
 

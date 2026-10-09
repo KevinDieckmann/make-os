@@ -31,6 +31,7 @@ import { KERN_EINHEITEN, BEREICH_JE_EINHEIT } from '@/lib/einheiten';
 import { createHash } from 'node:crypto';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { hauptInhaber, kontenImHaushaltDerInhaber, type InhaberStand } from '@/lib/zugang/inhaber';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
 const HEIM = homedir();
 const ausHeim = (p: string) => p.replace(/^~(?=$|\/)/, HEIM);
@@ -114,7 +115,8 @@ const vorname = (roh: unknown): string => String(roh ?? '').replace(/[\u0000-\u0
 /** Die Personen der Vault-Sicht aus einem Konten-Stand (rein). */
 export function vaultPersonenAus(st: InhaberStand): VaultPersonen {
   const haupt = hauptInhaber(st);
-  const voll = kontenImHaushaltDerInhaber(st).filter(k => k.speicher === haupt?.speicher || k.finanzRecht !== 'business');
+  // „nur Business“ über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts).
+  const voll = kontenImHaushaltDerInhaber(st).filter(k => k.speicher === haupt?.speicher || !kontoSichtAus(st, k.speicher).nurBusiness);
   const reihe = haupt ? [haupt, ...voll.filter(k => k.speicher !== haupt.speicher)] : voll;
   return {
     eigentuemer: haupt?.speicher ?? null,

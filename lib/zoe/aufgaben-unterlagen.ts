@@ -17,11 +17,10 @@
 // der Route /api/kimmi).
 
 import { fremd } from '@/lib/anthropic';
-import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
+import { verborgeneAufgabenFuer } from '@/lib/aufgaben/sicht';
 import { bereichVonSpace } from '@/lib/aufgaben/struktur';
-import { aufgabenDateienListe, aufgabenDateiLesen, type AufgabenDatei } from '@/lib/dateien/aufgaben-ablage';
+import { aufgabenDateienListe, aufgabenDateiLesen, aufgabenDateienZugang, aufgabenDateiSichtbar, type AufgabenDatei } from '@/lib/dateien/aufgaben-ablage';
 import { textAuslesen, NichtLesbar } from '@/lib/dateien/text-auslesen';
 import { AblageFehler } from '@/lib/dateien/ablage';
 import { DATEI_ID, groesseText } from '@/lib/dateien/regeln';
@@ -34,9 +33,13 @@ export const UNTERLAGEN_QUELLE = 'projekt-unterlagen';
 
 const NICHT_IM_HINTERGRUND = 'Nicht ausgeführt: Projekt- und Aufgaben-Dateien liest ZOE nur im Gespräch mit einer Person des Haushalts — nicht im Hintergrund und nicht für andere Konten.';
 
-async function haushalt(person: string | undefined): Promise<string | null> {
-  if (!person || !(await personImHaushaltDesInhabers(person))) return null;
-  return (await haushaltFuer(person))?.haushalt ?? null;
+/**
+ * Zugang über die EINE Konto-Sicht (09.10., E4 — `aufgabenDateienZugang`): Personen im Haushalt der Inhaber mit Haushalt am Konto.
+ * Vorher nur volle Mitglieder (`haushaltFuer`) — ein Partner „nur Business“ bekam auch keine Business-Unterlagen. Jetzt bekommt er
+ * genau die des Business-Bereichs: Projekte/Aufgaben filtert schon `ladeAufgabenSicht`, Dateien `aufgabenDateiSichtbar`.
+ */
+async function haushalt(person: string | undefined) {
+  return aufgabenDateienZugang(person);
 }
 
 const klein = (s: string) => s.trim().toLocaleLowerCase('de-DE');
@@ -115,7 +118,8 @@ async function unterlagen(input: Record<string, unknown>, person?: string): Prom
     aufgabe = t;
     projekt = projekt ?? state.projects.find(p => p.id === t.projectId);
   }
-  const alle = await aufgabenDateienListe(h);
+  const verborgen = await verborgeneAufgabenFuer(h.person);
+  const alle = (await aufgabenDateienListe(h.haushalt)).filter(e => aufgabenDateiSichtbar(e, h, verborgen));
   const dateien = aufgabenDateienFuer(alle, aufgabe ? { aufgabeId: aufgabe.id } : { projektId: projekt!.id });
   const titelJe = new Map(state.tasks.map(t => [t.id, t.title]));
   const ziel = aufgabe ?? projekt!;
@@ -136,9 +140,9 @@ async function lesen(input: Record<string, unknown>, person?: string): Promise<s
   if (!h) return NICHT_IM_HINTERGRUND;
   const id = String(input.datei ?? '').trim();
   if (!DATEI_ID.test(id)) return 'Fehlgeschlagen: datei braucht die Kennung (d-…) aus projekt_unterlagen.';
-  const d = await aufgabenDateiLesen(h, id);
+  const d = await aufgabenDateiLesen(h.haushalt, id);
   const nur = bereichAus(input);
-  if (!d || (nur && d.eintrag.bereich !== nur)) return 'Fehlgeschlagen: Diese Kennung ist keine Projekt- oder Aufgaben-Datei (die CRM-Ablage liest ZOE nicht) — oder die Datei fehlt.';
+  if (!d || (nur && d.eintrag.bereich !== nur) || !aufgabenDateiSichtbar(d.eintrag, h, await verborgeneAufgabenFuer(h.person))) return 'Fehlgeschlagen: Diese Kennung ist keine Projekt- oder Aufgaben-Datei (die CRM-Ablage liest ZOE nicht) — oder die Datei fehlt.';
   const g = typGruppe(d.eintrag.datei.typ);
   const meta = [`Datei: ${d.eintrag.datei.name}`, `Typ: ${TYP_LABEL[g]} · ${groesseText(d.eintrag.datei.groesse)} · von ${d.eintrag.hochgeladenVon} am ${datum(d.eintrag.hochgeladenAm)}`, d.eintrag.notiz ? `Beschreibung: ${d.eintrag.notiz}` : ''].filter(Boolean).join('\n');
   let inhalt: Awaited<ReturnType<typeof textAuslesen>>;

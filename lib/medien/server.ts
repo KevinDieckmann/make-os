@@ -6,6 +6,7 @@
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { imHaushaltDerInhaber, kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
@@ -30,7 +31,8 @@ export async function betrachterFuer(person: string): Promise<Betrachter | null>
   const ich = st.konten.find(k => k.speicher === person);
   if (!ich || !imHaushaltDerInhaber(st, person)) return null;
   // Volles Mitglied = ohne Einschränkung „nur Business“ (auch der Inhaber selbst kann so eingeschränkt sein — dann sieht er kein Privat der anderen).
-  const voll = ich.finanzRecht !== 'business';
+  // Über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts).
+  const voll = !kontoSichtAus(st, person).nurBusiness;
   let marketing = false;
   try { marketing = (await import('@/lib/crm/team')).verantwortlich('marketing') === person; } catch { /* ohne Team-Zuordnung: nur volle Mitglieder */ }
   return { person, haushalt: await karteiHaushalt(), voll, marketing };

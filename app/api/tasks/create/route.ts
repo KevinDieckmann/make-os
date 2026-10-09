@@ -18,11 +18,13 @@ import { randomUUID } from 'crypto';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
-import { istSpaceId, spaceFuerAltAufgabe, sonstigeProjektId, istOffen } from '@/lib/aufgaben/struktur';
+import { istSpaceId, spaceFuerAltAufgabe, sonstigeProjektId, istOffen, bereichVonSpace } from '@/lib/aufgaben/struktur';
 import { bezugSauber, beteiligteSauber, ZuGross } from '@/lib/aufgaben/saeubern';
 import { orgZuordnung, aufgabenAendern, keineOps } from '@/lib/aufgaben/speicher';
 import { aufgabenSicht } from '@/lib/aufgaben/papierkorb';
 import { sichtFuer } from '@/lib/aufgaben/sicht';
+import { ohnePrivatBereich } from '@/lib/aufgaben/bereich-sicht';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import type { Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 
@@ -78,12 +80,18 @@ export async function POST(req: Request) {
   if (!owner && !zugang.person) return NextResponse.json({ ok: false, error: 'owner fehlt (Systemlauf ohne Person).' }, { status: 400 });
   const assignee: Owner = owner ?? (zugang.person as Owner);
 
+  // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ sieht den Privat-Bereich nicht — weder als Elternteil noch als Duplikat
+  // (sonst verriete „gibt es schon“ eine Privat-Aufgabe samt Kennung). Ohne ausdrücklichen Ort legt es im Business an; ausdrücklich nach
+  // Privat lehnt der Schreibweg ab (403).
+  const ohnePrivat = await privatAusgeblendetFuer(zugang.person);
+
   // Aufgabe am Meilenstein (30.09.): seine Liste sichern (idempotent) und dort anlegen — Space/Projekt/Liste kommen von ihm.
   if (body.meilensteinId !== undefined) {
     // Nur ein Meilenstein, den die anlegende Person sehen darf (08.10.: keiner an einem nicht geteilten eigenen Ziel einer anderen Person;
     // Systemlauf ohne Person: keiner an einem eigenen Ziel) — sonst 404 wie „gibt es nicht“.
     const ms = typeof body.meilensteinId === 'string' ? (await meilensteineSichtbarFuer((await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'))?.meilensteine, zugang.person)).find(m => m.id === body.meilensteinId) : undefined;
-    if (!ms) return NextResponse.json({ ok: false, error: 'Diesen Meilenstein gibt es nicht (mehr).' }, { status: 404 });
+    // Konto „nur Business“ (09.10., E4): ein Meilenstein im Privat-Bereich gibt es für es nicht.
+    if (!ms || (ohnePrivat && bereichVonSpace(meilensteinAufgabenSpace(ms)) === 'privat')) return NextResponse.json({ ok: false, error: 'Diesen Meilenstein gibt es nicht (mehr).' }, { status: 404 });
     await meilensteinStrukturSichern([ms.id], { person: zugang.person });
     const sp = meilensteinAufgabenSpace(ms);
     body.spaceId = sp; body.projectId = meilensteinProjektId(sp); body.listeId = meilensteinListeId(ms.id);
@@ -93,7 +101,8 @@ export async function POST(req: Request) {
   // Über den EINEN Schreibweg (29.09., Paket T1): Server-Felder (Anlegerin, Zeitstempel), eine Verantwortliche („both“ →
   // Anlegerin + Beteiligte), Prüfregeln (Datum, Person), Verlauf „angelegt“, Protokoll, Meldungen (gebündelt).
   const r = await aufgabenAendern(state0 => {
-    const state = sichtFuer(aufgabenSicht(state0), zugang.person);
+    const nurIch = sichtFuer(aufgabenSicht(state0), zugang.person);
+    const state = ohnePrivat ? ohnePrivatBereich(nurIch) : nurIch;
     // Duplikat-Schutz: gleiche (normalisierte) Überschrift + noch offen → nicht doppelt anlegen (der Papierkorb zählt nicht).
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
     // Am Meilenstein (30.09.) nur in seiner Liste prüfen — sonst landete „Vertrag prüfen“ bei einer gleichnamigen Aufgabe woanders.
@@ -124,7 +133,7 @@ export async function POST(req: Request) {
     if (dueDate && typeof body.dueTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(body.dueTime)) basis.dueTime = body.dueTime;
     // Space: ausdrücklich, sonst wie bei Altaufgaben (Privat/Business, Einheit, Ort, Projekt). Mit Elternteil erbt die
     // Unteraufgabe den Ort (die Übernahme im Schreibweg zieht ihn ohnehin von der Hauptaufgabe nach; Tiefe/Kreis prüft er).
-    basis.spaceId = eltern?.spaceId ?? (istSpaceId(body.spaceId) ? body.spaceId : spaceFuerAltAufgabe(basis, projekt, orgs));
+    basis.spaceId = eltern?.spaceId ?? (istSpaceId(body.spaceId) ? body.spaceId : spaceFuerAltAufgabe(ohnePrivat && body.space !== 'privat' && !projekt ? { ...basis, space: 'business' } : basis, projekt, orgs));
     if (eltern) { basis.projectId = eltern.projectId; if (eltern.listeId) basis.listeId = eltern.listeId; else delete basis.listeId; }
     if (!basis.projectId) basis.projectId = sonstigeProjektId(basis.spaceId);
     ergebnis = { id: basis.id };

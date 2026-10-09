@@ -27,6 +27,8 @@ import { entscheidungEintrag, haltFest, type EntscheidungArt } from './entscheid
 import type { Person } from './raum';
 import { neueKennung } from '@/lib/kennung';
 import type { AgentenStapelArt } from '@/lib/agenten/typen';
+import { bereichVonSpace, istSpaceId } from '@/lib/aufgaben/struktur';
+import { finanzOrtAus } from '@/lib/einheiten';
 
 export type VorschlagStatus = 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
 /** Status, die noch nicht entschieden sind — sie werden nie gekürzt. */
@@ -159,16 +161,48 @@ const sicht = (v: Vorschlag): Vorschlag => {
   return { ...rest, status: 'offen' };
 };
 
+/** Gruppen, deren Vorschläge immer im Business-Bereich liegen (Markttraktion, Kontakte, Kunden, Business-Zahlen, Bauplan). */
+const BUSINESS_GRUPPEN: ReadonlySet<string> = new Set(['markttraktion', 'kontakte', 'kunden', 'crm', 'business', 'bauplan']);
+/** Gruppen, deren Vorschläge immer im Privat-Bereich liegen (Gesundheit, Haushaltsfinanzen). */
+const PRIVAT_GRUPPEN: ReadonlySet<string> = new Set(['gesundheit', 'haushalt']);
+
+/**
+ * Liegt ein Vorschlag (möglicherweise) im Privat-Bereich? (rein, 09.10., E4) — für Vorschläge des SYSTEMS (ohne Person), die ein Konto
+ * „nur Business“ nur sieht, wenn sie sicher Business sind. Bezug CRM / Business-Gruppe → nein; Gesundheit/Haushalt → ja; sonst entscheidet
+ * eine ausdrückliche Angabe in der Eingabe (`space`/`bereich` privat|business, `spaceId`/`einheit` über den Bereich der Einheit) —
+ * ohne Angabe: im Zweifel privat (nie auf Verdacht zeigen).
+ */
+export function vorschlagPrivat(v: { gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string } }): boolean {
+  if (v.bezug?.art === 'crm' || BUSINESS_GRUPPEN.has(v.gruppe)) return false;
+  if (PRIVAT_GRUPPEN.has(v.gruppe)) return true;
+  const e = v.eingabe ?? {};
+  const wert = (k: string) => (typeof e[k] === 'string' ? (e[k] as string).trim() : '');
+  for (const k of ['space', 'bereich']) {
+    if (wert(k) === 'privat') return true;
+    if (wert(k) === 'business') return false;
+  }
+  for (const k of ['spaceId', 'einheit']) {
+    const id = wert(k);
+    if (!id) continue;
+    const ort = finanzOrtAus(id) ?? (istSpaceId(id) ? id : null);
+    if (ort) return bereichVonSpace(ort) === 'privat';
+  }
+  return true;
+}
+
 /**
  * Sieht/entscheidet `person` diesen Vorschlag? — EINE Regel (Route /api/zoe/stapel und Heute/Glocke, F2 M6): eigene und
  * die des Systems (ohne Person). `imHaushalt` = die Person gehört zum Haushalt des Inhabers (`personImHaushaltDesInhabers`).
  * Seit S1 (29.09.): Vorschläge des Systems (ohne Person) und die der Gruppe „haushalt“ NUR im Haushalt des Inhabers —
  * vorher sah jedes Konto (auch ohne Haushalt) die personlosen Vorschläge und konnte sie freigeben.
+ * Seit 09.10. (E4, EINE Konto-Sicht): `privat` = die Person sieht den Privat-Bereich (lib/zugang/konto-sicht.ts — nein für ein Konto
+ * „nur Business“). Ohne ihn sieht sie von den Vorschlägen des Systems nur die sicher geschäftlichen (`vorschlagPrivat`). Fehlt das
+ * Argument, gilt das Verhalten von vorher (volle Sicht) — jeder Leser an eine Person gibt es mit.
  */
-export const vorschlagSichtbar = (v: { person?: string; gruppe: string }, person: string | null, imHaushalt: boolean): boolean => {
+export const vorschlagSichtbar = (v: { person?: string; gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string } }, person: string | null, imHaushalt: boolean, privat = true): boolean => {
   if (!person) return false;
   if (v.person) return v.person === person && (imHaushalt || v.gruppe !== 'haushalt');
-  return imHaushalt;
+  return imHaushalt && (privat || !vorschlagPrivat(v));
 };
 
 export async function lies(nur?: VorschlagStatus): Promise<Vorschlag[]> {
@@ -186,10 +220,19 @@ export async function offeneAnzahl(): Promise<number> {
  * Empfang, Morgenlauf). Sicherheitsprüfung 09.10.: dort stand `offeneAnzahl()` — die Zahl zählte die Vorschläge der anderen Person mit.
  */
 export async function offeneAnzahlFuer(person: string | null): Promise<number> {
-  if (!person) return 0;
-  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  const imHaushalt = await personImHaushaltDesInhabers(person).catch(() => false);
-  return (await lies('offen')).filter(v => vorschlagSichtbar(v, person, imHaushalt)).length;
+  return (await vorschlaegeFuer(person, 'offen')).length;
+}
+
+/**
+ * Die Vorschläge, die `person` sieht (`vorschlagSichtbar` mit der EINEN Konto-Sicht, 09.10., E4: im Haushalt, Privat-Bereich nur ohne
+ * „nur Business“). Für jeden Leser an eine Person (Zähler, Heute, Agenten-Bereich). Konten unlesbar → nichts (nie auf Verdacht zeigen).
+ */
+export async function vorschlaegeFuer(person: string | null, nur?: VorschlagStatus): Promise<Vorschlag[]> {
+  if (!person) return [];
+  const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
+  const k = await kontoSicht(person).catch(() => null);
+  if (!k) return [];
+  return (await lies(nur)).filter(v => vorschlagSichtbar(v, person, k.imHaushalt, k.privat));
 }
 
 export async function hole(id: string): Promise<Vorschlag | null> {

@@ -36,6 +36,24 @@ export const aufgabenAblageName = (haushalt: string) => {
 export type AufgabenDatei = DateiEintrag & { projektId: string; bereich: Bereich; datei: NonNullable<DateiEintrag['datei']>; /** Liste des Projekts (30.09., Dateien am Meilenstein). */ listeId?: string };
 interface AblageDatei { eintraege: AufgabenDatei[] }
 
+/**
+ * Wer an die Projekt-Dateien darf (09.10., E4 — EINE Konto-Sicht, lib/zugang/konto-sicht.ts): Personen im Haushalt der Inhaber mit
+ * eingetragenem Haushalt. Volle Mitglieder sehen alles (wie bisher); ein Konto „nur Business“ (vorher ganz ohne Zugang) sieht und
+ * schreibt nur den Business-Bereich (`nurBusiness` → `aufgabenDateiSichtbar`). Sonst null (→ 403 bzw. „nicht im Haushalt“).
+ */
+export async function aufgabenDateienZugang(person: string | null | undefined): Promise<{ person: string; haushalt: string; nurBusiness: boolean } | null> {
+  const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
+  const k = await kontoSicht(person);
+  if (!k || !k.imHaushalt || !k.haushalt) return null;
+  return { person: k.person, haushalt: k.haushalt, nurBusiness: k.nurBusiness };
+}
+
+/** Sieht diese Person den Eintrag? Nicht an einer verborgenen Aufgabe („nur ich“, Privat für „nur Business“); „nur Business“ nur Business. */
+export function aufgabenDateiSichtbar(e: Pick<AufgabenDatei, 'aufgabeId' | 'bereich'>, z: { nurBusiness: boolean }, verborgen: ReadonlySet<string>): boolean {
+  if (e.aufgabeId && verborgen.has(e.aufgabeId)) return false;
+  return !z.nurBusiness || e.bereich === 'business';
+}
+
 /** Alle Einträge des Haushalts (nur Metadaten). */
 export async function aufgabenDateienListe(haushalt: string): Promise<AufgabenDatei[]> {
   return (await loadJson<AblageDatei>(aufgabenAblageName(haushalt)))?.eintraege ?? [];
@@ -60,7 +78,12 @@ export async function bezugAufloesen(projektId: string | undefined, aufgabeId: s
   if (!projektId) throw new AblageFehler('Bezug fehlt (Projekt oder Aufgabe).', 400);
   const p = state.projects.find(x => x.id === projektId);
   if (p) return { projektId, bereich: bereichVonSpace(p.spaceId), projektTitel: p.title };
-  if (istSonstigeProjekt(projektId)) return { projektId, bereich: bereichVonSpace(projektId.slice(SONSTIGE_PRAEFIX.length)), projektTitel: 'Sonstige' };
+  if (istSonstigeProjekt(projektId)) {
+    const bereich = bereichVonSpace(projektId.slice(SONSTIGE_PRAEFIX.length));
+    // Konto „nur Business“ (09.10., E4): „Sonstige“ eines Privat-Space gibt es für es nicht (Projekte/Aufgaben filtert schon die Sicht).
+    if (bereich === 'privat' && person && (await import('@/lib/zugang/konto-sicht-server').then(m => m.privatAusgeblendetFuer(person)))) throw new AblageFehler('Dieses Projekt gibt es nicht (mehr).', 404);
+    return { projektId, bereich, projektTitel: 'Sonstige' };
+  }
   throw new AblageFehler('Dieses Projekt gibt es nicht (mehr).', 404);
 }
 

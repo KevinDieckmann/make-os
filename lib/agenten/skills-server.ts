@@ -26,6 +26,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
 import { protokolliere, type Aenderung } from '@/lib/store/aenderungsprotokoll';
 import { kontoFuerSpeicher } from '@/lib/zugang/konten';
+import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 import { haushaltDesInhabers, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { HAUSHALT_OK, haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
@@ -52,9 +53,10 @@ export async function vorlaeufigHeadSichtbar(person: string, headId: string): Pr
   const h = headDef(headId);
   if (!h || !PERSON.test(person) || !(await personImHaushaltDesInhabers(person))) return false;
   if (h.bereich === 'privat') {
-    const k = await kontoFuerSpeicher(person);
-    if (k?.finanzRecht === 'business') return false;
-    if (h.ebene === 'haushalt' && !(await haushaltFuer(person))) return false;
+    // EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts): Privat nie für „nur Business“, Haushalts-Ebene nur volle Mitglieder.
+    const k = await kontoSicht(person);
+    if (!k || k.nurBusiness) return false;
+    if (h.ebene === 'haushalt' && !k.vollesMitglied) return false;
   }
   if (h.voraussetzung === 'gesundheit-ki') {
     const s = await gesundheitStandFuer(person);

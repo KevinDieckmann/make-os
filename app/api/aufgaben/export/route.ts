@@ -6,10 +6,9 @@
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
-import { ladeAufgaben, sichtFuer, mitNeutralenListen } from '@/lib/aufgaben/sicht';
+import { ladeAufgaben, sichtFuerKonto } from '@/lib/aufgaben/sicht';
 import { spacesFuer } from '@/lib/aufgaben/speicher';
-import { aufgabenDateienListe } from '@/lib/dateien/aufgaben-ablage';
+import { aufgabenDateienListe, aufgabenDateienZugang, aufgabenDateiSichtbar } from '@/lib/dateien/aufgaben-ablage';
 import { exportBauen, type ExportDatei } from '@/lib/aufgaben/export';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { berlinerTag } from '@/lib/aufgaben/wiederholung';
@@ -21,13 +20,16 @@ export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z || z.dienst) return NextResponse.json({ ...KARTEI_GESPERRT, error: 'Exportieren darf nur eine Person im Haushalt selbst.' }, { status: 403 });
   // Listen verborgener Meilensteine nur mit neutralem Namen (08.10., eigene Ziele nur geteilt) — wie jede Ausgabe des Bestands.
-  const state = await mitNeutralenListen(sichtFuer(await ladeAufgaben(), z.person), z.person);
-  const haushalt = (await haushaltFuer(z.person))?.haushalt;
-  const dateien: ExportDatei[] = haushalt ? (await aufgabenDateienListe(haushalt).catch(() => [])).map(d => ({
+  // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ exportiert nichts aus dem Privat-Bereich (Aufgaben, Projekte, Spaces, Dateien).
+  const state = await sichtFuerKonto(await ladeAufgaben(), z.person);
+  const dz = await aufgabenDateienZugang(z.person);
+  const sichtbar = new Set(state.tasks.map(t => t.id));
+  const dateien: ExportDatei[] = dz ? (await aufgabenDateienListe(dz.haushalt).catch(() => []))
+    .filter(d => (!d.aufgabeId || sichtbar.has(d.aufgabeId)) && aufgabenDateiSichtbar(d, dz, new Set())).map(d => ({
     id: d.id, name: d.datei.name, typ: d.datei.typ, groesse: d.datei.groesse, projektId: d.projektId, ...(d.aufgabeId ? { aufgabeId: d.aufgabeId } : {}),
     bereich: d.bereich, ...(d.notiz ? { notiz: d.notiz } : {}), angelegt: d.hochgeladenAm,
   })) : [];
-  const spaces = (await spacesFuer(state)).map(s => ({ id: s.id, label: s.label, bereich: s.bereich, art: s.art, ...(s.archiv ? { archiv: true } : {}) }));
+  const spaces = (await spacesFuer(state, z.person)).map(s => ({ id: s.id, label: s.label, bereich: s.bereich, art: s.art, ...(s.archiv ? { archiv: true } : {}) }));
   const jetzt = new Date();
   const datei = exportBauen(state, { spaces, dateien, von: z.person, jetzt: jetzt.toISOString() });
   // Auskunft/Umzug ist ein Ereignis: Protokoll ohne Werte.
