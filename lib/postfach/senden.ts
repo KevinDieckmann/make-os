@@ -5,7 +5,7 @@
 //     so geht eine KD-Ventures-Antwort nie aus Versehen über das private Postfach
 //   · Antwort im Gespräch: In-Reply-To + References + „Re:“; Empfänger Reply-To bzw. Absender (allen: + An/Cc ohne eigene Adresse)
 //   · Art. 18 → 409; § 7 UWG: werbliche Wörter + fehlende Grundlage → Rückfrage 409 `uwg`
-//   · nach dem Senden: Kopie in „Gesendet“ (APPEND) — außer der Anbieter legt sie selbst ab (Suche nach der Message-ID), danach
+//   · nach dem Senden: Kopie in „Gesendet“ (APPEND) — außer der Anbieter legt sie selbst ab (Gmail immer; sonst Suche nach der Message-ID), danach
 //     sofort ein Abgleich, damit die Antwort im Gespräch steht
 // Kein Text in Protokollen.
 
@@ -16,6 +16,7 @@ import { ladePostfach, zugangLesen } from './register';
 import { imapAbgleichen, sitzungFuer } from './abgleich';
 import { ladeImapStand, type ImapKopf } from './spiegel';
 import { leitungen, PostfachFehler, FEHLER_TEXT } from './transport';
+import { VOREINSTELLUNGEN } from './anbieter';
 import type { Postfach } from './typen';
 
 export interface ImapSendenEingabe {
@@ -89,7 +90,9 @@ export async function imapSenden(e: ImapSendenEingabe): Promise<ImapSendenErgebn
   }
   // Kopie in „Gesendet“: nur, wenn der Anbieter sie nicht selbst abgelegt hat (Suche nach der Message-ID). Fehler hier halten nichts auf.
   let abgelegt: ImapSendenErgebnis['abgelegt'] = 'nicht';
-  if (p.ordner?.gesendet && messageId) {
+  // Gmail (09.10., Kundenpostfächer) legt über SMTP Gesendetes selbst ab — eine zweite Kopie per APPEND wäre doppelt (Annahme, anbieter.ts).
+  if (p.anbieter && VOREINSTELLUNGEN[p.anbieter]?.legtGesendetAb) abgelegt = 'anbieter';
+  else if (p.ordner?.gesendet && messageId) {
     try {
       const s = await sitzungFuer(e.person, p);
       try {

@@ -1,5 +1,9 @@
 // ─── Inbox 2 — eigene Postfächer verbinden, einstellen, erneuern, trennen (06.10.2026) ─────────────────────────
-// GET  ?space=business → { ok, postfaecher, bereiche (wählbar), anbieter (Voreinstellungen + Anleitung), demo, absender (Screener), google }
+// GET  ?space=business → { ok, postfaecher, bereiche (wählbar), anbieter (Voreinstellungen + Anleitung), demo, absender (Screener), google,
+//      ohneBereich, nichtMoeglich }
+//      `bereiche` (09.10.): je Eintrag `art` privat · gesellschaft · kunde — Kunden = CRM-Firmen mit aktivem Mandat, Bereich `m-<firmaId>`
+//      (lib/postfach/bereich.ts). `ohneBereich`: eigene Postfächer ohne Bereich (nur Kennung, Quelle, maskierte Adresse) — in JEDER Sicht,
+//      damit „jetzt zuordnen“ auch in der Business-Sicht erscheint. `nichtMoeglich`: ehrliche Hinweise (Microsoft 365 nur mit OAuth).
 //      `space=business` (07.10. abends, Kevin-Regel „Business sieht nie Privat“): NUR Postfächer mit Business-Bereich, nur Business-Bereiche
 //      zur Wahl, nur Absender-Entscheidungen zu Gesprächen dieser Postfächer — serverseitig gefiltert (`postfaecherSicht`, dieselbe Stelle
 //      `imBereich` wie der Strom). Ohne Parameter bzw. `space=privat`: alle EIGENEN Postfächer (die Person verwaltet ihre Postfächer).
@@ -16,9 +20,8 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { eigenePerson, NUR_EIGENE_POST } from '@/lib/google/zugang';
-import { KERN_EINHEITEN } from '@/lib/einheiten';
-import { anbieterFuerFormular, VOREINSTELLUNGEN } from '@/lib/postfach/anbieter';
-import { bereichNamen, RegisterFehler } from '@/lib/postfach/register';
+import { anbieterFuerFormular, NICHT_MOEGLICH, VOREINSTELLUNGEN } from '@/lib/postfach/anbieter';
+import { bereichWahlLaden, RegisterFehler } from '@/lib/postfach/register';
 import { demoErlaubt, postfachEinstellen, postfachErneuern, postfachHinzufuegen, postfachTrennen } from '@/lib/postfach/verwalten';
 import { PostfachFehler } from '@/lib/postfach/transport';
 import { POSTFACH_ID } from '@/lib/postfach/typen';
@@ -35,9 +38,8 @@ export async function GET(req: Request) {
   if (z instanceof NextResponse) return z;
   const space = new URL(req.url).searchParams.get('space');
   if (space && space !== 'privat' && space !== 'business') return NextResponse.json({ ok: false, fehler: 'space ist ungültig.' }, { status: 400 });
-  const [roh, namen, absenderAlle] = await Promise.all([stromRoh(z.person), bereichNamen(), absenderListe(z.person)]);
+  const [roh, alleBereiche, absenderAlle] = await Promise.all([stromRoh(z.person), bereichWahlLaden(), absenderListe(z.person)]);
   const demo = demoErlaubt();
-  const alleBereiche = [{ id: 'privat', name: 'Privat' }, ...KERN_EINHEITEN.map(e => ({ id: e.id, name: e.label })), ...Object.entries(namen).filter(([id]) => id.startsWith('g-')).map(([id, name]) => ({ id, name }))];
   const eigene = roh.postfaecher.filter(p => !p.oeffentlich.fremd);
   const sicht = postfaecherSicht({ postfaecher: eigene.map(p => p.oeffentlich), gespraeche: roh.gespraeche.filter(g => eigene.some(p => p.id === g.postfachId)), bereiche: alleBereiche, absender: absenderAlle }, space === 'business' ? 'business' : null);
   // Team-Postfächer anderer Personen, die diese Person sieht — dieselbe Bereichs-Sicht (`imBereich` in postfaecherSicht).
@@ -49,7 +51,7 @@ export async function GET(req: Request) {
     bereiche: sicht.bereiche,
     ...(space === 'business' ? { nurBusiness: true } : {}),
     anbieter: anbieterFuerFormular(demo).map(a => { const v = VOREINSTELLUNGEN[a]; return { id: a, name: v.name, passwortWort: v.passwortWort, anleitung: v.anleitung, ...(v.link ? { link: v.link } : {}), ...(v.sendeHinweis ? { sendeHinweis: v.sendeHinweis } : {}), eigeneServer: a === 'eigen' }; }),
-    demo, absender: sicht.absender, google: roh.google, mitDirGeteilt,
+    demo, absender: sicht.absender, google: roh.google, mitDirGeteilt, ohneBereich: sicht.ohneBereich, nichtMoeglich: NICHT_MOEGLICH,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

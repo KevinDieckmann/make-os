@@ -20,11 +20,13 @@ import { uebergabeZeilenFuer } from '@/lib/inbox/uebergaben-speicher';
 import { antwortPostfaecher, neuerAlsKopie, uebergabeAktion, uebergabeFinden, uebergeben, UEBERGABE_BEFEHLE, type UebergabeBefehl } from '@/lib/inbox/uebergaben-server';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
+import { BEREICH_FORM } from '@/lib/postfach/bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const BEREICH = /^(privat|kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$/;
+// Bereich-Form (09.10.: auch `m-<firmaId>` = Kundenpostfach) — EINE Regel in lib/postfach/bereich.ts.
+const BEREICH = BEREICH_FORM;
 const UB_ID = /^ub-[0-9a-f-]{36}$/;
 const PERSON = /^[a-z0-9-]{1,40}$/;
 

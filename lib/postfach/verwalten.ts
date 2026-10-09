@@ -10,7 +10,7 @@ import { gmailAusschalten } from '@/lib/google/trennen';
 import { googleAdresse } from '@/lib/google/verbindung';
 import { zustandOhnePostfach } from '@/lib/inbox/zustand';
 import { teamOhnePostfach, teilenUmschalten } from '@/lib/inbox/teilen-server';
-import { VOREINSTELLUNGEN } from './anbieter';
+import { passwortFuer, VOREINSTELLUNGEN } from './anbieter';
 import { imapAbgleichen } from './abgleich';
 import { verbindungPruefen } from './pruefen';
 import { ladePostfach, neuesPostfachPruefen, postfachAendern, postfachAnlegen, registerEntfernen, RegisterFehler, serverAus, zugangErneuern } from './register';
@@ -30,9 +30,10 @@ export async function postfachHinzufuegen(person: string, b: Record<string, unkn
   return p;
 }
 
-export async function postfachErneuern(person: string, id: string, passwort: string): Promise<void> {
+export async function postfachErneuern(person: string, id: string, roh: string): Promise<void> {
   const p = await ladePostfach(person, id);
   if (!p || p.quelle !== 'imap' || !p.imap || !p.anbieter) throw new RegisterFehler('Dieses Postfach gibt es nicht.', 404);
+  const passwort = passwortFuer(p.anbieter, roh);
   if (!passwort || /[\r\n\u0000]/.test(passwort)) throw new RegisterFehler('Bitte das neue Passwort eintragen.');
   const pr = await verbindungPruefen({ anbieter: p.anbieter, imap: p.imap, benutzer: p.benutzer ?? p.adresse, passwort, adresse: p.adresse });
   await zugangErneuern(person, id, passwort, { ordner: { ...pr.ordner, ...(p.ordner?.archiv && !pr.ordner.archiv ? { archiv: p.ordner.archiv } : {}) }, idle: pr.idle });

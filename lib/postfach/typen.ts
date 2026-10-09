@@ -13,8 +13,12 @@ export const QUELLEN = ['gmail', 'imap', 'whatsapp'] as const;
 export type Quelle = typeof QUELLEN[number];
 export const istQuelle = (v: unknown): v is Quelle => (QUELLEN as readonly string[]).includes(v as string);
 
-/** Anbieter-Voreinstellungen (lib/postfach/anbieter.ts). `demo` gibt es nur in einer Demo-Instanz (MAKE_OS_DEMO=1). */
-export const ANBIETER = ['icloud', 'ionos', 'eigen', 'demo'] as const;
+/**
+ * Anbieter-Voreinstellungen (lib/postfach/anbieter.ts). `demo` gibt es nur in einer Demo-Instanz (MAKE_OS_DEMO=1). `google` (09.10.) =
+ * Gmail/Google Workspace über IMAP + SMTP mit App-Passwort — der Weg für Postfächer in der Domain eines KUNDEN (unsere Google-App ist
+ * „Intern“ und nimmt fremde Domains nicht an; research/inbox/KUNDENPOSTFAECHER.md).
+ */
+export const ANBIETER = ['icloud', 'google', 'ionos', 'eigen', 'demo'] as const;
 export type Anbieter = typeof ANBIETER[number];
 export const istAnbieter = (v: unknown): v is Anbieter => (ANBIETER as readonly string[]).includes(v as string);
 
