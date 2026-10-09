@@ -189,14 +189,15 @@ async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unkno
   const am = typeof body.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.am) ? body.am : localDay();
   const stand = typeof body.stand === 'string' && body.stand ? body.stand : undefined;
   let erg: BezahltErgebnis | null = null;
-  let gebucht: 'neu' | 'vorhanden' | null = null;
+  let gebucht: 'neu' | 'vorhanden' | 'verknuepft' | null = null;
   try {
     await updateJsonAsync<FinanzplanFile>('finanzplan', async current => {
       if (!current) { erg = { ok: false, status: 404, fehler: 'Noch kein Finanzplan angelegt.' }; throw new KeinSchreiben(); }
       const e = bezahltAnwenden(sauberFile(current), id, am, stand);
       erg = e;
       if (!e.ok) throw new KeinSchreiben();
-      if (e.buchung) gebucht = await buchungAnlegen(e.buchung);
+      // Steht der Zahlungseingang schon aus dem Kontoauszug da, wird er verknüpft statt verdoppelt (09.10., lib/finanzen/zahlung-abgleich.ts).
+      if (e.buchung) gebucht = await buchungAnlegen(e.buchung, { ...(e.rechnung.nummer ? { nummer: e.rechnung.nummer } : {}) });
       return e.schonBezahlt ? current : e.datei;
     });
   } catch (err) {

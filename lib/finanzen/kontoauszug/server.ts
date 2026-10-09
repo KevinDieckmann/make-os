@@ -22,7 +22,7 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { ibanGrundform } from '@/lib/crm/zahlung';
 import { finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
-import { ladeRegister, standAusAuszug, auszugStandZuruecknehmen, haushaltKontoVerknuepfen } from '@/lib/finanzen/konten/server';
+import { ladeRegister, standAusAuszug, auszugStandZuruecknehmen, haushaltKontoVerknuepfen, firmaVorAuszug, firmaVorherHerstellen, type FirmaVorher } from '@/lib/finanzen/konten/server';
 import { istPrivatOrt, ortName, sichtbarIn, type KontenSicht, type KontoOrt, type RegisterKonto } from '@/lib/finanzen/konten/register';
 import { ladeHaushalt, aendereStamm, aendereBuchungen } from '@/lib/finanzen/haushalt/speicher';
 import type { Buchung as HaushaltBuchung, Konto as HaushaltKonto } from '@/lib/finanzen/haushalt/typen';
@@ -65,6 +65,16 @@ export interface AuszugLauf {
   buchungen: { id: string; fp: string }[];
   /** Der Saldo-Stand dieses Laufs im Register (Kennung). */
   standId?: string;
+  /**
+   * Umsätze, die schon als Rechnung bezahlt, Beleg oder von Hand gebucht waren (09.10., lib/finanzen/zahlung-abgleich.ts): Kennung der vorhandenen
+   * Buchung + Fingerabdruck des Umsatz-Schlüssels — nichts angelegt; so schluckt dieselbe Buchung nie einen zweiten Umsatz. „Rückgängig“ leert die Liste.
+   */
+  abgeglichen?: { id: string; k: string }[];
+  /**
+   * Kontostand der Gesellschaft im Finanzplan vor diesem Lauf (nur Zahlen) — nur, wenn erst dieser Saldo das Register zur Quelle machte (09.10.):
+   * „Rückgängig“ stellt ihn wieder her (sonst stünde der Kontostand danach auf „unbekannt“).
+   */
+  firmaVorher?: FirmaVorher;
   status: LaufStatus;
   zurueck?: { am: string; von: string; entfernt: number; konflikte: number; schonWeg: number; standZurueck: number };
 }
@@ -164,9 +174,16 @@ async function vorbereiten(ctx: Kontext, kontoId: unknown, bytes: Uint8Array, sp
   const eigeneIbans = new Set(register.konten.filter(k => k.id !== konto.id && k.iban).map(k => ibanGrundform(k.iban)));
   const business = ziel.art === 'business' ? ((await loadJson<{ buchungen?: BusinessBuchung[] }>('buchungen'))?.buchungen ?? []) : undefined;
   const haushalt = ziel.art === 'haushalt' && hh ? { buchungen: hh.buchungen, regeln: hh.stamm.regeln, kategorien: hh.stamm.kategorien } : undefined;
+  // Business (09.10.): festgehaltene Zuordnungen „schon gebucht“ aller Läufe und die Rechnungsnummern (Nummer im Verwendungszweck).
+  const abgeglichen = new Map<string, string>();
+  const rechnungNummern = new Map<string, string>();
+  if (ziel.art === 'business') {
+    for (const l of await laeufeLaden(ctx.haushalt)) if (l.status !== 'zurueckgenommen') for (const a of l.abgeglichen ?? []) if (!abgeglichen.has(a.id)) abgeglichen.set(a.id, a.k);
+    for (const r of (await loadJson<{ rechnungen?: { id?: string; nummer?: string }[] }>('finanzplan'))?.rechnungen ?? []) if (r?.id && r.nummer) rechnungNummern.set(r.id, r.nummer);
+  }
   const plan = planBauen({
     auszug: e.auszug, konto: { id: konto.id, name: konto.name, ...(konto.iban ? { iban: konto.iban } : {}), staende: konto.staende }, ziel,
-    ...(business ? { business } : {}), ...(haushalt ? { haushalt } : {}), eigeneIbans, heute: localDay(ctx.jetzt ?? new Date()), hinweise: e.hinweise,
+    ...(business ? { business, abgeglichen, rechnungNummern } : {}), ...(haushalt ? { haushalt } : {}), eigeneIbans, heute: localDay(ctx.jetzt ?? new Date()), hinweise: e.hinweise,
   });
   return {
     ok: true, plan, konto, auszug: e.auszug, format: e.format, ...('csv' in e && e.csv ? { csv: e.csv } : {}), eigeneIbans,
@@ -190,6 +207,8 @@ export interface VorschauAntwort {
   hinweise: string[];
   ibanMaskiert?: string;
   basis: string;
+  /** Neue Zuordnungen „schon gebucht“ (Rechnung bezahlt, Beleg, von Hand) — werden beim Übernehmen festgehalten. */
+  abgleiche: number;
 }
 
 function antwortAus(v: Vorbereitet): VorschauAntwort {
@@ -200,6 +219,7 @@ function antwortAus(v: Vorbereitet): VorschauAntwort {
     zeilen: p.zeilen.map(({ i: _i, schluessel: _s, ...z }) => z),
     saldo: p.saldo ? { ...p.saldo, betrag: centZuEuro(p.saldo.cent) } : null,
     zahlen: p.zahlen, ...(p.einordnung ? { einordnung: p.einordnung } : {}), zeitraum: p.zeitraum, pruefung: p.pruefung, hinweise: p.hinweise, ...(p.ibanMaskiert ? { ibanMaskiert: p.ibanMaskiert } : {}), basis: p.basis,
+    abgleiche: p.abgleiche.length,
   };
 }
 
@@ -230,14 +250,17 @@ interface EinDaten {
   /** Fingerabdrücke der neuen Zeilen mit der Zahl gleicher Zeilen im Bestand zur Zeit der Vorschau (für die erneute Prüfung in der Sperre). */
   vorherFp: Record<string, number>;
   saldo?: { betrag: number; datum: string };
+  /** Neue Zuordnungen „schon gebucht“ (nur Kennungen + Fingerabdrücke). */
+  abgeglichen?: { id: string; k: string }[];
+  firmaVorher?: FirmaVorher;
   angelegt?: { id: string; fp: string }[];
   doppelt?: number;
   standId?: string | null;
 }
-interface ZurueckDaten { richtung: 'zurueck'; laufId: string; ziel: AuszugLauf['ziel']; buchungen: AuszugLauf['buchungen']; entfernt?: number; konflikte?: { id: string }[]; schonWeg?: number; standZurueck?: number }
+interface ZurueckDaten { richtung: 'zurueck'; laufId: string; ziel: AuszugLauf['ziel']; buchungen: AuszugLauf['buchungen']; ort?: KontoOrt; firmaVorher?: FirmaVorher; entfernt?: number; konflikte?: { id: string }[]; schonWeg?: number; standZurueck?: number }
 
 export type UebernahmeErgebnis =
-  | { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true }
+  | { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; /** Umsätze, die schon gebucht waren (Rechnung bezahlt, Beleg, von Hand) — zugeordnet, nicht angelegt. */ zugeordnet?: number }
   | (Fehler & { vorschau?: VorschauAntwort });
 
 /**
@@ -272,10 +295,14 @@ export async function auszugUebernehmen(ctx: Kontext, kontoId: unknown, bytes: U
     richtung: 'ein', laufId, kontoId: v.konto.id, ort: v.konto.ort, format: v.format, zeitraum: p.zeitraum, zahlen: p.zahlen, ziel: p.ziel,
     ...(v.haushaltKontoNeu ? { haushaltKontoNeu: v.haushaltKontoNeu } : {}), ...(v.toteVerknuepfung ? { toteVerknuepfung: v.toteVerknuepfung } : {}), zeilen, vorherFp,
     ...(p.saldo?.status === 'neu' ? { saldo: { betrag: centZuEuro(p.saldo.cent), datum: p.saldo.datum } } : {}),
+    ...(p.abgleiche.length ? { abgeglichen: p.abgleiche } : {}),
   };
+  // Macht erst dieser Saldo das Register zur Quelle der Gesellschaft? Dann den Kontostand von vorher festhalten (für „Rückgängig“).
+  const vorher = daten.saldo ? await firmaVorAuszug(ctx.haushalt, v.konto.id, daten.saldo) : null;
+  if (vorher) daten.firmaVorher = vorher;
   const b = await absichtBeginnen(ctx.haushalt, { art: 'kontoauszug', schluessel: laufId, schritte: SCHRITTE_EIN, daten: daten as unknown as Record<string, unknown>, person: ctx.person });
   const r = await laufEin(ctx.haushalt, b.absicht);
-  return { ok: true, lauf: r.lauf, angelegt: r.angelegt, doppelt: r.doppelt, saldo: p.saldo ? (p.saldo.status === 'neu' && !r.standId ? 'vorhanden' : p.saldo.status) : null };
+  return { ok: true, lauf: r.lauf, angelegt: r.angelegt, doppelt: r.doppelt, saldo: p.saldo ? (p.saldo.status === 'neu' && !r.standId ? 'vorhanden' : p.saldo.status) : null, ...(p.abgleiche.length ? { zugeordnet: p.abgleiche.length } : {}) };
 }
 
 /** Business-Bestand, der für dieses Register-Konto als Dublette zählen kann: gleiche Gesellschaft, nicht aus dem Auszug eines anderen Kontos. */
@@ -346,7 +373,8 @@ async function laufEin(haushalt: string, a: Absicht): Promise<{ lauf: AuszugLauf
     const jetzt = new Date();
     await v.schritt('lauf', async () => laeufeAendern(haushalt, l => (l.some(x => x.id === d.laufId) ? l : [...l, {
       id: d.laufId, kontoId: d.kontoId, ort: d.ort, ziel: d.ziel.art, ...(d.ziel.art === 'haushalt' ? { haushaltKonto: { id: d.ziel.haushaltKontoId, neu: d.ziel.neu } } : {}),
-      format: d.format, am: jetzt.toISOString(), von: person, zeitraum: d.zeitraum, zahlen: d.zahlen, buchungen: [], status: 'laeuft' as const,
+      format: d.format, am: jetzt.toISOString(), von: person, zeitraum: d.zeitraum, zahlen: d.zahlen, buchungen: [], ...(d.abgeglichen?.length ? { abgeglichen: d.abgeglichen } : {}),
+      ...(d.firmaVorher ? { firmaVorher: d.firmaVorher } : {}), status: 'laeuft' as const,
     }]), jetzt));
     await v.schritt('haushaltkonto', async () => {
       if (d.ziel.art !== 'haushalt') return;
@@ -385,7 +413,7 @@ export async function auszugZuruecknehmen(ctx: Kontext, laufId: unknown): Promis
   if (!sichtbarIn({ ort: konto?.ort ?? lauf.ort }, ctx.sicht)) return { ok: false, status: 403, fehler: 'Nicht erlaubt: Aus dem Business-Bereich werden nur Läufe der Business-Konten zurückgenommen.' };
   if (lauf.status === 'zurueckgenommen') return { ok: false, status: 409, fehler: 'Dieser Kontoauszug ist schon zurückgenommen.' };
   if (lauf.status === 'laeuft') return { ok: false, status: 409, fehler: 'Die Übernahme läuft noch (oder wird gerade fortgesetzt) — gleich noch einmal versuchen.' };
-  const daten: ZurueckDaten = { richtung: 'zurueck', laufId: lauf.id, ziel: lauf.ziel, buchungen: lauf.buchungen };
+  const daten: ZurueckDaten = { richtung: 'zurueck', laufId: lauf.id, ziel: lauf.ziel, buchungen: lauf.buchungen, ort: lauf.ort, ...(lauf.firmaVorher ? { firmaVorher: lauf.firmaVorher } : {}) };
   const b = await absichtBeginnen(ctx.haushalt, { art: 'kontoauszug', schluessel: `zurueck:${lauf.id}`, schritte: SCHRITTE_ZURUECK, daten: daten as unknown as Record<string, unknown>, person: ctx.person });
   const r = await laufZurueck(ctx.haushalt, b.absicht);
   const haushaltKonto = lauf.haushaltKonto?.neu ? 'Das dabei angelegte Haushalts-Konto bleibt bestehen (es kann weitere Buchungen tragen).' : undefined;
@@ -426,14 +454,21 @@ async function laufZurueck(haushalt: string, a: Absicht): Promise<{ lauf: Auszug
     const entfernt = b?.entfernt ?? v.daten<number>('entfernt') ?? 0;
     const konflikte = b?.konflikte ?? v.daten<{ id: string }[]>('konflikte') ?? [];
     const schonWeg = b?.schonWeg ?? v.daten<number>('schonWeg') ?? 0;
-    const s = await v.schritt('saldo', async () => auszugStandZuruecknehmen(haushalt, d.laufId, person), r => ({ standZurueck: r }));
+    const s = await v.schritt('saldo', async () => {
+      const n = await auszugStandZuruecknehmen(haushalt, d.laufId, person);
+      // Führt das Register die Gesellschaft danach nicht mehr, gilt wieder der Kontostand von vorher (idempotent).
+      if (d.firmaVorher && d.ort) await firmaVorherHerstellen(haushalt, d.ort, d.firmaVorher);
+      return n;
+    }, r => ({ standZurueck: r }));
     const standZurueck = s ?? v.daten<number>('standZurueck') ?? 0;
     let lauf: AuszugLauf | null = null;
     await v.schritt('protokoll', async () => laeufeAendern(haushalt, l => l.map(x => {
       if (x.id !== d.laufId) return x;
       const offen = new Set(konflikte.map(k => k.id));
+      // Zuordnungen „schon gebucht“ fallen weg — die vorhandenen Buchungen stehen einem späteren Kontoauszug wieder zur Verfügung.
+      const { abgeglichen: _ab, ...ohneAbgleich } = x;
       lauf = {
-        ...x, status: offen.size ? 'teilweise' : 'zurueckgenommen', buchungen: x.buchungen.filter(y => offen.has(y.id)),
+        ...ohneAbgleich, status: offen.size ? 'teilweise' : 'zurueckgenommen', buchungen: x.buchungen.filter(y => offen.has(y.id)),
         zurueck: { am: new Date().toISOString(), von: person, entfernt: (x.zurueck?.entfernt ?? 0) + entfernt, konflikte: offen.size, schonWeg, standZurueck: (x.zurueck?.standZurueck ?? 0) + standZurueck },
       };
       return lauf;

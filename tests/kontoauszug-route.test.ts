@@ -148,7 +148,8 @@ describe('Business-Konto (Gesellschaft): Vorschau → Übernehmen → zweiter Im
     const konto = (await registerLaden()).konten.find(k => k.id === ugKonto)!;
     expect(konto.staende).toHaveLength(1);
     expect(konto.staende[0].zurueckgenommenAm).toBeTruthy();
-    expect((await db.loadJson<{ firmen: { id: string; kontostand: number | null }[] }>('finanzplan'))!.firmen.find(f => f.id === 'ug')?.kontostand).toBeNull();
+    // Nahtstellen 09.10.: erst dieser Saldo machte das Register zur Quelle — Rückgängig stellt den Kontostand von vorher her (500 €, nicht „unbekannt“).
+    expect((await db.loadJson<{ firmen: { id: string; kontostand: number | null; stand: string | null }[] }>('finanzplan'))!.firmen.find(f => f.id === 'ug')).toMatchObject({ kontostand: 500, stand: tag(-30) });
     // Noch einmal: der geänderte bleibt Konflikt, nichts doppelt entfernt.
     const z2 = await sende<{ entfernt: number; konflikte: unknown[] }>('pa', { aktion: 'zuruecknehmen', laufId });
     expect(z2.j).toMatchObject({ entfernt: 0, konflikte: [expect.anything()] });

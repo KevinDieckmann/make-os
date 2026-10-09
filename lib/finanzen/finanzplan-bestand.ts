@@ -549,8 +549,11 @@ export const stornoBuchungsId = (rechnungId: string) => `bu-st-${rechnungId}`.sl
 
 /** Gegenbuchung zu einem Zahlungseingang einer stornierten Rechnung. */
 export function stornoBuchungFuer(eingang: RechnungsBuchung, r: Rechnung, am: string): RechnungsBuchung {
+  // Ist der Eingang ein verknüpfter Bank-Umsatz (Kontoauszug, 09.10.), gehört die Gegenbuchung NICHT zu dessen Lauf (`auszug`) und zu keinem Beleg —
+  // sonst nähme „Rückgängig“ des Kontoauszugs sie mit bzw. stünde sie als Beleg da.
+  const { auszug: _a, beleg: _b, ...basis } = eingang as RechnungsBuchung & { auszug?: string; beleg?: string };
   return {
-    ...eingang, id: stornoBuchungsId(r.id), datum: am, betrag: -Math.abs(eingang.betrag),
+    ...basis, id: stornoBuchungsId(r.id), datum: am, betrag: -Math.abs(eingang.betrag),
     zweck: `Storno${r.nummer ? ` Rechnung ${r.nummer}` : ''}${r.stornoGrund ? ` — ${r.stornoGrund}` : ''}`.slice(0, 200), rechnungId: r.id,
   };
 }

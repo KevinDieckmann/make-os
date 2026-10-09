@@ -40,6 +40,8 @@ export interface Buchung {
   rechnungId?: string;
   /** Lauf des Kontoauszug-Imports, der sie angelegt hat (09.10., `ka-…`) — nur für „Rückgängig“ (lib/finanzen/kontoauszug). */
   auszug?: string;
+  /** Ein übernommener Beleg ist diesem Bank-Umsatz zugeordnet (09.10., `b-…`, lib/finanzen/zahlung-abgleich.ts). */
+  beleg?: string;
 }
 
 interface Datei { buchungen: Buchung[] }
@@ -71,6 +73,7 @@ function sauber(b: Partial<Buchung>, _i: number): Buchung | null {
     ort: FINANZ_ORT_IDS.includes(b.ort as FinanzOrt) ? b.ort : finanzOrtAus(b.ort) ?? 'privat',
     ...(b.rechnungId ? { rechnungId: String(b.rechnungId).slice(0, 40) } : {}),
     ...(b.auszug ? { auszug: String(b.auszug).slice(0, 60) } : {}),
+    ...(b.beleg ? { beleg: String(b.beleg).slice(0, 60) } : {}),
   };
 }
 

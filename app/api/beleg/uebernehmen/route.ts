@@ -17,11 +17,13 @@ import { einmalig, type Antwort } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { gehoertZuPrivat } from '@/lib/einheiten';
+import { ausAuszug } from '@/lib/finanzen/kontoauszug/plan';
+import { centAus, naechsterUmsatz } from '@/lib/finanzen/zahlung-abgleich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck: string; konto: string; ort?: string }
+interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; auszug?: string; rechnungId?: string; beleg?: string }
 interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; netto?: number; ustSatz?: number }
 
 export async function POST(req: Request) {
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
   return NextResponse.json(r.wiederholt ? { ...(r.body as object), wiederholt: true } : r.body, { status: r.status });
 }
 
-type Antwortkoerper = { ok: boolean; error?: string; ziel?: string; angelegt?: string; wo?: string };
+type Antwortkoerper = { ok: boolean; error?: string; ziel?: string; angelegt?: string; wo?: string; /** Der Bank-Umsatz stand schon da (Kontoauszug) — nur zugeordnet. */ verknuepft?: true };
 
 async function uebernehmen(b: {
   ziel?: 'buchung' | 'rechnung'; partner?: string; datum?: string; betrag?: number; betragBrutto?: number; betragNetto?: number; ustSatz?: number;
@@ -88,9 +90,24 @@ async function uebernehmen(b: {
 
   // Standard: Buchung (Ausgabe)
   let angelegt = '';
+  let verknuepft = false;
   await updateJson<{ buchungen: Buchung[] }>('buchungen', current => {
     const f = current ?? { buchungen: [] };
     f.buchungen = Array.isArray(f.buchungen) ? f.buchungen : [];
+    // Eine Zahlung — einmal (09.10., lib/finanzen/zahlung-abgleich.ts): steht die Ausgabe schon aus dem Kontoauszug da (gleiche Gesellschaft, Betrag
+    // auf den Cent, ≤ 14 Tage, Name oder Rechnungsnummer passt, noch ohne Beleg), wird sie nur zugeordnet — keine zweite Buchung.
+    const bank = f.buchungen.filter(x => ausAuszug(x) && x.ort === firma && !x.rechnungId && !x.beleg && x.betrag < 0);
+    const treffer = naechsterUmsatz(
+      { datum, cent: -Math.round(betrag.brutto * 100), name: partner, ...(b.rechnungsnummer ? { nummer: String(b.rechnungsnummer).slice(0, 60) } : {}) }, bank,
+      x => ({ datum: x.datum, cent: centAus(x.betrag), gegenpartei: x.wer, zweck: x.zweck ?? '' }),
+    );
+    if (treffer) {
+      const kategorie = String(b.kategorie ?? '').slice(0, 40);
+      f.buchungen = f.buchungen.map(x => (x === treffer ? { ...x, beleg: neueKennung('b'), ...(kategorie && (!x.kategorie || x.kategorie === 'Sonstiges') ? { kategorie } : {}) } : x));
+      verknuepft = true;
+      angelegt = `schon aus dem Kontoauszug gebucht (${treffer.datum.split('-').reverse().join('.')}, ${euroText(treffer.betrag)}) — Beleg zugeordnet`;
+      return f;
+    }
     const neu: Buchung = {
       id: neueKennung('b'),
       datum,
@@ -108,5 +125,5 @@ async function uebernehmen(b: {
     angelegt = `${neu.zweck} · ${euroText(neu.betrag)} · ${neu.kategorie}`;
     return f;
   });
-  return antwort({ ok: true, ziel: 'buchung', angelegt, wo: WEG.buchungen({ privat: gehoertZuPrivat(firma) }) });
+  return antwort({ ok: true, ziel: 'buchung', angelegt, wo: WEG.buchungen({ privat: gehoertZuPrivat(firma) }), ...(verknuepft ? { verknuepft: true as const } : {}) });
 }
