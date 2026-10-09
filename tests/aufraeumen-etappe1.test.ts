@@ -7,12 +7,13 @@
 // 4. EINE Startseite: /os heißt „Heute“; /os/heute und /os/uebersicht leiten weiter, keine Weiterleitung verdeckt eine Seite,
 //    kein Code verlinkt mehr auf die alten Adressen.
 // 5. Kopf schlank (kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe), Namen „Finanzen“ und „Brain“.
-// 6. Nachbesserung 08.10. (Kevin nach der Demo): EIN Schalter oben — Alles · Privat · Business; Heute hat keinen eigenen; die Leiste
-//    zeigt bei „Alles“ die Gruppen Privat und Business; die Handy-Leiste hat höchstens fünf Einträge.
+// 6. Nachbesserung 08.10. (Kevin nach der Demo): EIN Schalter oben; Heute hat keinen eigenen; die Handy-Leiste hat höchstens fünf
+//    Einträge. Seit 09.10. (Kevin: „Oben der Knopf ‚Alles‘ kann raus — es gibt nur Business oder Privat“) hat der Schalter nur
+//    Privat · Business, die Leiste zeigt immer genau einen Space, Heute zeigt in beiden Sichten die Zeit Privat gegen Business.
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { SPACES, SPACE_WAHLEN, leisteFuer, ALLES_GRUPPEN, ZOE_BEREICH, ZOE_EINTRAG } from '../lib/make-one/spaces';
+import { SPACES, SPACE_WAHLEN, leisteFuer, ZOE_BEREICH, ZOE_EINTRAG } from '../lib/make-one/spaces';
 import { EINSTELLUNGEN_GRUPPEN, EINSTELLUNGEN_PFADE } from '../lib/make-one/einstellungen';
 import { SEITEN_SUCHE } from '../lib/make-one/seiten';
 import { DEPARTMENTS } from '../lib/make-one/agents-data';
@@ -47,15 +48,11 @@ describe('Aufräumen Etappe 1 — Leiste', () => {
       expect(l.map(e => e.label)).not.toContain('Zahlen');
     }
   });
-  it('„Alles“: höchstens zwölf Punkte, Heute vorn, ZOE dabei, darunter je eine Gruppe Privat und Business', () => {
-    const l = leisteFuer('alles');
-    expect(l.length).toBeLessThanOrEqual(12);
-    expect(l[0].label).toBe('Heute');
-    expect(l).toContain(ZOE_EINTRAG);
-    expect(ALLES_GRUPPEN.map(g => g.space)).toEqual(['privat', 'business']);
-    for (const g of ALLES_GRUPPEN) for (const e of g.eintraege) expect(leisteFuer(g.space)).toContain(e);
-    // Die Leiste rendert die Gruppen mit Überschrift (leistenBloecke).
-    expect(lies('components/os/Leiste.tsx')).toContain('leistenBloecke(wahl)');
+  it('nur zwei Bereiche (09.10.): die Leiste zeigt genau die Punkte des gewählten Space, ohne Gruppen „Alles“', () => {
+    expect(SPACE_WAHLEN).toEqual(SPACES.map(s => s.id));
+    const l = lies('components/os/Leiste.tsx');
+    expect(l).toContain('leisteFuer(wahl).map(');
+    for (const raus of ['ALLES_EINTRAEGE', 'ALLES_GRUPPEN', 'leistenBloecke', 'wahlInfo', "'alles'"]) expect(l, raus).not.toContain(raus);
   });
   it('Fokus, Kompass und Wachstum sind kein eigener Punkt, sondern Einstiege unter Planung (PlanerLeiste)', () => {
     for (const s of SPACES) expect(leisteFuer(s.id).map(e => e.label)).not.toEqual(expect.arrayContaining(['Fokus']));
@@ -135,14 +132,19 @@ describe('Aufräumen Etappe 1 — eine Startseite „Heute“', () => {
     const funde = code.filter(f => /['"`]\/os\/(heute|uebersicht)\b/.test(lies(f)));
     expect(funde).toEqual([]);
   });
-  it('Heute: Gruß und Datum einmal, je Sicht Steht an · Fokus · Termine · Aufgaben · Wachstums-Score; alte Flächen-Kennungen', () => {
+  it('Heute: Gruß und Datum einmal, je Sicht Steht an · Fokus · Termine · Aufgaben · Zeit · Wachstums-Score; alte Flächen-Kennungen', () => {
     const v = lies('components/os/HeuteView.tsx');
     expect(v).toContain('titel="Heute"');
     expect((v.match(/gruss\}/g) ?? []).length).toBe(1);
-    expect(v).toContain("{ alle: 'home', privat: 'uebersicht-privat', business: 'uebersicht-business' }");
+    // Seit 09.10. nur Privat und Business; die frühere Fläche `home` („Alles“) bleibt als Kennung bekannt (gespeicherte Layouts liegen).
+    expect(v).toContain("{ privat: 'uebersicht-privat', business: 'uebersicht-business' }");
+    expect(v).toContain("HEUTE_FLAECHE_FRUEHER_ALLES = 'home'");
     const std = v.slice(v.indexOf('export const HEUTE_STANDARD'));
-    const teile = [std.slice(std.indexOf('alle: ['), std.indexOf('privat: [')), std.slice(std.indexOf('privat: ['), std.indexOf('business: [')), std.slice(std.indexOf('business: ['), std.indexOf('\n};'))];
+    expect(std.slice(0, std.indexOf('\n};'))).not.toContain('alle: [');
+    const teile = [std.slice(std.indexOf('privat: ['), std.indexOf('business: [')), std.slice(std.indexOf('business: ['), std.indexOf('\n};'))];
     for (const t of teile) for (const art of ['anstehend', 'fokus', 'termine', 'aufgaben', 'score']) expect(t, art).toContain(`art: '${art}'`);
+    // „Das Ganze“ (Kevin 09.10.): in beiden Sichten die Zeit Privat gegen Business.
+    for (const t of teile) expect(t).toContain("{ id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } }");
     expect(lies('app/os/page.tsx')).toContain('<HeuteView />');
     // Nachbesserung 08.10.: kein zweiter Schalter auf Heute — die Sicht folgt dem Kopf.
     expect(v).not.toContain('<Segmente');
@@ -158,10 +160,15 @@ describe('Aufräumen Etappe 1 — Kopf', () => {
     for (const raus of ['/api/performance', 'WachstumsZahl', "'/os/heute'", 'SCHNELL', 'index.ziel', 'CalendarDays', 'InboxIcon']) expect(k, raus).not.toContain(raus);
     for (const rein of ['<SpaceSchalter', '<Glocke />', '<FokusZaehler', 'make-suche']) expect(k, rein).toContain(rein);
   });
-  it('EIN Schalter mit Alles · Privat · Business (Reihenfolge), am Handy kompakt', async () => {
-    expect(SPACE_WAHLEN).toEqual(['alles', 'privat', 'business']);
+  it('EIN Schalter mit Privat · Business (Reihenfolge, kein „Alles“ mehr — 09.10.), am Handy kompakt', async () => {
+    expect(SPACE_WAHLEN).toEqual(['privat', 'business']);
     const k = lies('components/os/Kopf.tsx');
     expect(k).toContain('SPACE_WAHLEN.map');
+    expect(k).not.toContain("'alles'");
+    expect(k).not.toContain('Privat und Business zusammen');
+    // Alte Adressen mit ?space=alles schreibt der Kopf einmal um (replace, kein Verlaufseintrag).
+    expect(k).toContain('adresseOhneAlles(pfad, suche, ');
+    expect(k).toContain('router.replace(ziel');
     expect((k.match(/<SpaceSchalter/g) ?? []).length).toBe(1);
     const css = lies('app/globals.css');
     expect(css).toMatch(/\.kopf-space button \{ min-height: 44px !important; padding: 0 8px !important; font-size: 12px/);
@@ -184,5 +191,29 @@ describe('Aufräumen Etappe 1 — Handy-Leiste', () => {
     expect(l).toContain('aria-label="Bereich im Menü"');
     expect(l).toContain('<MeldenZeile');
     expect(l).toContain('EINSTELLUNGEN.href');
+  });
+});
+
+// 09.10. (Kevin: „Und die Zeit wird jedes Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“): man ist immer in genau einem
+// Bereich — Anwesenheits-Ping und Fokus-Zähler tragen immer Privat oder Business, nie „alles“.
+describe('Nur zwei Bereiche — Zeitmessung', () => {
+  it('der Hook liefert immer einen konkreten Space; Ping und Fokus nehmen ihn; der Server nimmt nur privat|business', () => {
+    const hook = lies('hooks/useSpace.ts');
+    expect(hook).toContain('return { space: wahl, wahl, filter: wahl,');
+    expect(hook).not.toContain("'alles'");
+    const ping = lies('components/os/Mitarbeit.tsx');
+    expect(ping).toContain('const { space } = useSpace();');
+    expect(ping).toMatch(/search, space \}\)/);
+    expect(lies('app/api/state/anwesenheit/route.ts')).toContain('istSpace(body.space) ? body.space : null');
+    expect(lies('components/os/Kopf.tsx')).toContain('<FokusZaehler pfad={pfad} space={space} />');
+  });
+  it('Suche (⌘K): im Bereich des Kopfs, auf Knopf auch im anderen — gekennzeichnet; „nur Business“ ohne Knopf', () => {
+    const s = lies('components/os/Schnellsuche.tsx');
+    expect(s).toContain('Auch in {SPACE_LABEL[anderer]} suchen');
+    expect(s).toContain('aria-pressed={auchAnders}');
+    expect(s).toContain("anders: anderer");
+    expect(s).toContain('nurBusiness === false &&');
+    // Beim Schließen fällt die Option zurück — die nächste Suche beginnt wieder im eigenen Bereich.
+    expect(s).toContain('setAuchAnders(false); }, []);');
   });
 });

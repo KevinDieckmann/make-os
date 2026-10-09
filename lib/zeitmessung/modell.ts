@@ -236,6 +236,21 @@ export function bereicheNachZeit(s: ZeitSumme, space: ZeitSpace, n = 6): { berei
     .map(({ bereich, sek, bewusst }) => ({ bereich, sek, bewusst }));
 }
 
+/**
+ * Privat gegen Business (09.10., Kevin: „Die Zeit wird jedes Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“): seit es
+ * nur noch die zwei Bereiche gibt, trägt jede neue Minute genau einen. Je Bereich gesamt und bewusst, dazu der Anteil von Business an
+ * der zugeordneten Zeit (null ohne Messung). `ohne` = ältere Messung ohne Bereich (`gemeinsam`) — bleibt, wie sie ist, zählt nicht
+ * in den Anteil.
+ */
+export function privatGegenBusiness(s: ZeitSumme): { privat: number; business: number; bewusstPrivat: number; bewusstBusiness: number; ohne: number; anteilBusiness: number | null } {
+  const privat = s.gesamt.privat ?? 0, business = s.gesamt.business ?? 0;
+  const summe = privat + business;
+  return {
+    privat, business, bewusstPrivat: s.bewusst.privat ?? 0, bewusstBusiness: s.bewusst.business ?? 0, ohne: s.gesamt.gemeinsam ?? 0,
+    anteilBusiness: summe > 0 ? business / summe : null,
+  };
+}
+
 /** „1 h 20“, „25 min“, „—“ */
 export function zeitText(sek: number): string {
   if (!sek || sek < 60) return sek > 0 ? '< 1 min' : '—';

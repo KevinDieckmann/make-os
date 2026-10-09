@@ -110,11 +110,13 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const stand = useRef(p); stand.current = p;
   // Meilenstein ↔ Aufgaben (30.09.): Fortschritt aus den Aufgaben, sobald es welche gibt; Ziel aus seinen Meilensteinen.
   const { state: tasksState, rehydrate } = useTasks();
-  const { filter: spaceVorgabe, setzen: spaceSetzen } = useSpace(); // „Alles“ im Kopf = „alle“ (08.10.)
+  // Der Filter startet beim Bereich im Kopf; „alle“ ist nur noch ein Filter dieser Liste (seit 09.10. kein „Alles“ im Kopf) —
+  // er ändert den Kopf nicht, Privat/Business ziehen ihn mit.
+  const { filter: spaceVorgabe, setzen: spaceSetzen } = useSpace();
   const [spaceEigen, setSpaceEigen] = useState<SpaceFilter>('alle');
   useEffect(() => { if (!spaceProp) setSpaceEigen(spaceVorgabe); }, [spaceProp, spaceVorgabe]);
   const spaceFilter = spaceProp ?? spaceEigen;
-  const setSpace = (s: SpaceFilter) => { if (onSpace) onSpace(s); else setSpaceEigen(s); spaceSetzen(s === 'alle' ? 'alles' : s); };
+  const setSpace = (s: SpaceFilter) => { if (onSpace) onSpace(s); else setSpaceEigen(s); if (s !== 'alle') spaceSetzen(s); };
   const [einheitEigen, setEinheitEigen] = useState<string>('alle');
   const einheitFilter = einheitProp ?? einheitEigen;
   const setEinheitFilter = (e: string) => { if (onEinheit) onEinheit(e); else setEinheitEigen(e); };

@@ -62,16 +62,16 @@ describe('Flächen: Privates auf private, Business auf Business-Flächen', () =>
   it('Heute je Sicht: Aufgaben-Widgets je Space, keins mischt auf einer Space-Fläche', () => {
     const quelle = readFileSync(path.join(process.cwd(), 'components/os/HeuteView.tsx'), 'utf8');
     const std = quelle.slice(quelle.indexOf('export const HEUTE_STANDARD'));
-    const alle = std.slice(std.indexOf('alle: ['), std.indexOf('privat: ['));
     const privat = std.slice(std.indexOf('privat: ['), std.indexOf('business: ['));
     const business = std.slice(std.indexOf('business: ['), std.indexOf('\n};'));
     expect(privat).toMatch(/art: 'aufgaben'[^}]*space: 'privat'/);
     expect(privat).not.toMatch(/space: 'business'/);
     expect(business).toMatch(/art: 'aufgaben'[^}]*space: 'business'/);
     expect(business).not.toMatch(/space: 'privat'/);
-    expect(alle).toMatch(/id: 'aufgaben-privat', art: 'aufgaben'[^}]*space: 'privat'/);
-    expect(alle).toMatch(/id: 'aufgaben-business', art: 'aufgaben'[^}]*space: 'business'/);
-    expect(quelle).toContain("HEUTE_FLAECHE: Record<HeuteSicht, string> = { alle: 'home', privat: 'uebersicht-privat', business: 'uebersicht-business' }");
+    // 09.10. (nur zwei Bereiche): die frühere Sicht „Alles“ (`home`) wird nicht mehr gezeigt, ihre Kennung bleibt bekannt.
+    expect(std.slice(0, std.indexOf('\n};'))).not.toContain('alle: [');
+    expect(quelle).toContain("HEUTE_FLAECHE: Record<HeuteSicht, string> = { privat: 'uebersicht-privat', business: 'uebersicht-business' }");
+    expect(quelle).toContain("HEUTE_FLAECHE_FRUEHER_ALLES = 'home'");
     // Das Widget nimmt ohne Einstellung den Space seiner Fläche (Flaeche reicht `seite` durch).
     expect(readFileSync(path.join(process.cwd(), 'components/os/flaeche/Flaeche.tsx'), 'utf8')).toContain('seite={seite}');
     expect(readFileSync(path.join(process.cwd(), 'components/os/flaeche/widgets.tsx'), 'utf8')).toContain('str(e.space, spaceAusFlaeche(seite))');

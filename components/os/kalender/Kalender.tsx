@@ -125,7 +125,7 @@ export function Kalender() {
   const [anker, setAnker] = useState(heute);
   const [sicht, setSicht] = useState<'alle' | Wer>('alle');
   const [bereich, setBereich] = useState<Bereich>('alle');
-  // Der Schalter im Kopf (08.10.: Alles · Privat · Business) wählt den Bereich — „Alles“ = alle; im Kalender bleibt er umschaltbar.
+  // Der Schalter im Kopf wählt den Bereich (seit 09.10. nur Privat · Business); im Kalender bleibt er umschaltbar — auch auf „Alles“.
   const { filter: kopfBereich } = useSpace();
   useEffect(() => { setBereich(kopfBereich); }, [kopfBereich]);
   const { state: aufgabenStand } = useTasks();

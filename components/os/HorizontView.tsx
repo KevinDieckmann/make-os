@@ -94,7 +94,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const zr = istJahr ? { von: `${planJahr}-01-01`, bis: `${planJahr}-12-31`, label: String(planJahr) } : zeitraum(horizont, heute);
 
   // Ziele je Space (26.09., Kevin): Privat, Business, gemeinsam (ohne Space) — der Filter folgt der Adresse oder dem Merker.
-  // „Alles“ im Kopf (08.10.) = Filter „alle“ (`filter` aus useSpace).
+  // Startwert = Bereich im Kopf (seit 09.10. immer Privat oder Business); „alle“ bleibt ein Filter dieser Seite.
   const { filter: spaceVorgabe } = useSpace();
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   useEffect(() => { setSpaceFilter(spaceVorgabe); }, [spaceVorgabe]);

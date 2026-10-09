@@ -4,41 +4,33 @@
 // Seit 08.10. (Aufräumen Etappe 1) liest der Hook die Parameter über `useSearchParams`: auf Heute wechselt nur
 // `?space=` (gleicher Pfad) — mit dem alten Lesen aus `window.location` blieb der Space dort stehen.
 //
-// Nachbesserung 08.10. (Kevin: „ein Schalter, oben, mit Alles“): `wahl` = Alles · Privat · Business (der Schalter im Kopf, die
-// Leiste, Heute). `space` bleibt immer ein konkreter Space (Suche, ZOE, Zeitmessung): bei „Alles“ der Space der Seite, sonst der
-// zuletzt konkrete. `filter` = was Listen mit eigenem Bereichs-Filter zeigen: der Space der Adresse, sonst die Wahl („alle“ bei Alles).
+// Nur zwei Bereiche (09.10., Kevin: „Oben der Knopf ‚Alles‘ kann raus — es gibt nur Business oder Privat“): `wahl` ist IMMER ein
+// Space. `space` und `filter` sind seitdem dieselbe Wahl (die Felder bleiben für die Aufrufer); Listen mit eigenem Bereichs-Filter
+// („Alles“ im Kalender, „alle“ in der Planung) setzen ihn selbst. Ein alter Merker „alles“ gilt als der zuletzt konkrete Space,
+// sonst Business (`gemerkteWahlAus`); `bereit` sagt, ob der Merker schon gelesen ist (vorher steht die Vorgabe).
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { spaceVonAdresse, wahlVon, istSpaceWahl, SPACE_MERKER, SPACE_ZULETZT_MERKER, SPACE_EREIGNIS, type SpaceId, type SpaceWahl } from '@/lib/make-one/spaces';
+import { spaceVonAdresse, wahlVon, gemerkteWahlAus, SPACE_VORGABE, SPACE_MERKER, SPACE_ZULETZT_MERKER, SPACE_EREIGNIS, type SpaceId, type SpaceWahl } from '@/lib/make-one/spaces';
 
-/** Ohne Merker gilt „Alles“ (beide Bereiche) — so startet eine neue Instanz. */
 function gemerkteWahl(): SpaceWahl {
-  try { const v = localStorage.getItem(SPACE_MERKER); return istSpaceWahl(v) ? v : 'alles'; } catch { return 'alles'; }
+  try { return gemerkteWahlAus(localStorage.getItem(SPACE_MERKER), localStorage.getItem(SPACE_ZULETZT_MERKER)); } catch { return SPACE_VORGABE; }
 }
-function zuletztKonkret(): SpaceId {
-  try {
-    const z = localStorage.getItem(SPACE_ZULETZT_MERKER);
-    if (z === 'privat' || z === 'business') return z;
-    const w = localStorage.getItem(SPACE_MERKER);
-    return w === 'business' ? 'business' : 'privat';
-  } catch { return 'privat'; }
-}
+/** Beide Merker gleich halten — ältere Tabs lesen noch `make-space-zuletzt`. */
 function merke(w: SpaceWahl) {
-  try {
-    localStorage.setItem(SPACE_MERKER, w);
-    if (w !== 'alles') localStorage.setItem(SPACE_ZULETZT_MERKER, w);
-  } catch { /* egal */ }
+  try { localStorage.setItem(SPACE_MERKER, w); localStorage.setItem(SPACE_ZULETZT_MERKER, w); } catch { /* egal */ }
 }
 
 export interface SpaceStand {
-  /** Immer ein konkreter Space (bei „Alles“: der Space der Seite, sonst der zuletzt konkrete). */
+  /** Der Space der Wahl (seit 09.10. = `wahl`). */
   space: SpaceId;
-  /** Die Wahl im Kopf: Alles · Privat · Business. */
+  /** Die Wahl im Kopf: Privat · Business. */
   wahl: SpaceWahl;
-  /** Bereichs-Filter für Listen: Space der Adresse, sonst die Wahl (`alle` bei „Alles“). */
-  filter: SpaceId | 'alle';
+  /** Bereichs-Filter für Listen — seit 09.10. immer der Space der Wahl (eigene „alle“-Filter setzen die Seiten selbst). */
+  filter: SpaceId;
   ausAdresse: SpaceId | null;
   suche: string;
+  /** Der Merker ist gelesen (vorher gilt die Vorgabe Business — nichts darauf umschreiben). */
+  bereit: boolean;
   setzen: (s: SpaceWahl) => void;
 }
 
@@ -47,11 +39,10 @@ export function useSpace(): SpaceStand {
   const params = useSearchParams();
   const text = params?.toString() ?? '';
   const suche = text ? `?${text}` : '';
-  const [gemerkt, setGemerkt] = useState<SpaceWahl>('alles');
-  const [zuletzt, setZuletzt] = useState<SpaceId>('privat');
-  // Erst nach dem ersten Lesen des Merkers schreiben — sonst überschriebe der Startwert „Alles“ die gemerkte Wahl.
+  const [gemerkt, setGemerkt] = useState<SpaceWahl>(SPACE_VORGABE);
+  // Erst nach dem ersten Lesen des Merkers schreiben — sonst überschriebe die Vorgabe die gemerkte Wahl.
   const [geladen, setGeladen] = useState(false);
-  const lesen = useCallback(() => { setGemerkt(gemerkteWahl()); setZuletzt(zuletztKonkret()); setGeladen(true); }, []);
+  const lesen = useCallback(() => { setGemerkt(gemerkteWahl()); setGeladen(true); }, []);
   useEffect(() => { lesen(); }, [pfad, suche, lesen]);
   useEffect(() => {
     window.addEventListener(SPACE_EREIGNIS, lesen);
@@ -59,19 +50,17 @@ export function useSpace(): SpaceStand {
   }, [lesen]);
   const ausAdresse = spaceVonAdresse(pfad, suche);
   const wahl = wahlVon(pfad, suche, gemerkt);
-  const setzen = useCallback((s: SpaceWahl) => { merke(s); setGemerkt(s); if (s !== 'alles') setZuletzt(s); window.dispatchEvent(new Event(SPACE_EREIGNIS)); }, []);
-  // Die Adresse gewinnt: `?space=` bzw. eine Seite eines Space bei gemerktem Space wird gemerkt (bei „Alles“ bleibt „Alles“).
+  const setzen = useCallback((s: SpaceWahl) => { merke(s); setGemerkt(s); window.dispatchEvent(new Event(SPACE_EREIGNIS)); }, []);
+  // Die Adresse gewinnt: `?space=` bzw. eine Seite eines Space wird gemerkt; ein alter Merker „alles“ wird dabei konkret.
   useEffect(() => {
     if (!geladen) return;
-    const vorher = gemerkteWahl();
-    if (wahl !== vorher || (ausAdresse && ausAdresse !== zuletztKonkret())) {
+    let roh: string | null = null;
+    try { roh = localStorage.getItem(SPACE_MERKER); } catch { /* egal */ }
+    if (wahl !== roh) {
       merke(wahl);
-      if (ausAdresse) { try { localStorage.setItem(SPACE_ZULETZT_MERKER, ausAdresse); } catch { /* egal */ } }
       lesen();
       window.dispatchEvent(new Event(SPACE_EREIGNIS));
     }
-  }, [geladen, wahl, ausAdresse, lesen]);
-  const space: SpaceId = ausAdresse ?? (wahl === 'alles' ? zuletzt : wahl);
-  const filter: SpaceId | 'alle' = ausAdresse ?? (wahl === 'alles' ? 'alle' : wahl);
-  return { space, wahl, filter, ausAdresse, suche, setzen };
+  }, [geladen, wahl, lesen]);
+  return { space: wahl, wahl, filter: wahl, ausAdresse, suche, bereit: geladen, setzen };
 }

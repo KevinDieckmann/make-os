@@ -260,7 +260,7 @@ export function AgentenSeite() {
 
   const wert: AgentenWert = useMemo(() => ({
     agenten: agenten.stand, faeden: faeden.stand, laeufe: laeufe.stand, stapel: stapel.stand,
-    form, auswahl, entwurf, starteEntwurf, jetzt: new Date(), space, bereich: wahl === 'alles' ? 'alle' : wahl,
+    form, auswahl, entwurf, starteEntwurf, jetzt: new Date(), space, bereich: wahl, // seit 09.10. immer Privat oder Business (kein „Alles“ mehr im Kopf)
     oeffne, dialog: setDialog, bestaetigen, melde, felder, neu, starteNeu,
   }), [agenten.stand, faeden.stand, laeufe.stand, stapel.stand, form, auswahl, entwurf, starteEntwurf, space, wahl, oeffne, bestaetigen, melde, felder, neu, starteNeu]);
 
