@@ -1,5 +1,6 @@
 // ─── Wer gehört zu welchem Haushalt — und wer ist Inhaber? (nur Inhaber) ─────
-// GET → alle Konten mit ihrem Haushalt, Rolle und ob der zweite Faktor an ist; dazu der Haushalt der Inhaber.
+// GET → alle Konten mit ihrem Haushalt, Rolle und ob der zweite Faktor an ist; dazu der Haushalt der Inhaber und — solange es keinen gibt —
+// `vorschlaege` (Haushaltsnamen, unter denen schon Bestände liegen; lib/zugang/haushalt-vorschlag.ts).
 // PUT { speicher, haushalt | null, finanzRecht? }.
 // finanzRecht (04.10. spät): 'business' = nur die Business-Sicht der Finanzplanung (kein Privatzugang); null = alles; fehlt = unverändert.
 // Private Finanzen sieht nur, wer hier einem Haushalt zugeordnet ist.
@@ -15,6 +16,7 @@ import { ladeKonten, aendereKonten, type KontenStand } from '@/lib/zugang/konten
 import { personStreng, HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { personDerSitzung, istDienst } from '@/lib/zugang/tor';
 import { erneutPruefen } from '@/lib/zugang/erneut';
+import { haushaltVorschlaegeLesen } from '@/lib/zugang/haushalt-vorschlag';
 import { notiere, adresseGekuerzt } from '@/lib/zugang/anmeldungen';
 import { adresse } from '@/lib/zugang/drossel';
 import {
@@ -39,7 +41,11 @@ export async function GET(req: Request) {
     speicher: x.speicher, name: x.name, rolle: x.rolle, haushalt: x.haushalt ?? null, finanzRecht: x.finanzRecht ?? null,
     zweiterFaktorAn: !!x.zweiterFaktor, ...(istHauptInhaber(st, x.speicher) ? { hauptInhaber: true } : {}),
   }));
-  return NextResponse.json({ ok: true, konten: k, haushalt: haushaltDerInhaber(st) });
+  const haushalt = haushaltDerInhaber(st);
+  // Noch kein Haushalt der Inhaber (erstes Konto, z. B. nach dem Neustart-Umzug): Namen, unter denen schon Bestände liegen — die Karte bietet
+  // sie zum Eintragen an (Generalprobe 09.10.: sonst setzte „Freischalten“ fest „haushalt“, und CRM-/Aufgaben-Dateien fehlten).
+  const vorschlaege = haushalt ? [] : await haushaltVorschlaegeLesen();
+  return NextResponse.json({ ok: true, konten: k, haushalt, vorschlaege });
 }
 
 export async function PUT(req: Request) {

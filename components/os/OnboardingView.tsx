@@ -352,7 +352,7 @@ export function OnboardingUebersicht() {
   const meine = schritteFuer(z?.ich ?? null);
   // Neustart: alles außer Optionalem zählt sofort (wie die Karte auf Heute); der Kern steht eigens darunter.
   const neustart = !!z?.ich?.neustart;
-  const f = fortschrittVon(meine, z, { alle: neustart });
+  const f = fortschrittVon(meine, z, { alle: neustart, kernZuerst: neustart });
   const gruppen = abschnitte(meine, z);
   const alt = !!z?.ich?.altbestand;
   const namen = gruppenFuer(alt, neustart);

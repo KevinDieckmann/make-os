@@ -126,8 +126,15 @@ const hoiLage = (): Promise<HoiLage> => {
 /** Ein Befund aus dem HOI-Lagebild (fehlt = null). */
 const hoiBefund = async (id: string) => (await hoiLage()).befunde.find(b => b.id === id) ?? null;
 /** Ein Aufzählungs-Objekt (Einstellungen je Head) — wie viele wurden bewusst geändert (Server-Stempel `geaendertAm`)? */
+/** Felder, die eine Head-Einstellung nur „gestempelt“ oder mit dem persönlichen Auftrag tragen kann — das ist keine Einstellung des Heads. */
+const NUR_STEMPEL_ODER_AUFTRAG = new Set(['geaendertAm', 'geaendertVon', 'auftrag', 'auftragAm', 'auftragVon']);
+/**
+ * Wie viele Heads wirklich eingestellt sind (Stempel `geaendertAm` UND mindestens ein Feld außer Stempel/Auftrag). Generalprobe 09.10.: ein
+ * geschriebener Auftrag an den Gesundheits-Head (Etappe 3) machte „Autonomie der Agenten“ (Etappe 9) grün, ohne dass jemand etwas einstellte.
+ */
 const gestempelt = (o: unknown): number => Object.values(o && typeof o === 'object' ? o as Record<string, unknown> : {})
-  .filter(x => !!x && typeof x === 'object' && typeof (x as { geaendertAm?: unknown }).geaendertAm === 'string').length;
+  .filter(x => !!x && typeof x === 'object' && typeof (x as { geaendertAm?: unknown }).geaendertAm === 'string'
+    && Object.keys(x as object).some(k => !NUR_STEMPEL_ODER_AUFTRAG.has(k))).length;
 
 /** Wessen Befunde und mit welchen Rechten (aus dem Konto — nie aus der Adresse). */
 interface Umfang {

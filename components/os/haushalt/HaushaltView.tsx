@@ -16,6 +16,7 @@ import { katNamen } from '@/lib/finanzen/haushalt/einordnung';
 import { heuteBerlin, tageZwischen, datumDe } from '@/lib/finanzen/haushalt/monat';
 import { Karte, Leer, Leerzustand, Knopf, LEUCHT, FlussKarte } from '../ui';
 import { HAUSHALT_UNTER } from '@/lib/finanzen/navigation';
+import { WEG } from '@/lib/wege';
 import { useHaushalt, Meldungen } from './gemeinsam';
 import { Uebersicht } from './Uebersicht';
 import { Buchungen } from './Buchungen';
@@ -76,10 +77,14 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
               <Leer>Noch keine Daten in diesem Haushalt. Die Übernahme aus dem Altsystem füllt ihn: erst ein Probelauf mit Abgleich, dann die Übernahme.</Leer>
               <Knopf farbe={LEUCHT.geld} onClick={() => setUmzugAuf(true)}>Übernahme aus dem Altsystem</Knopf>
             </>
+          ) : aktiv === 'buchungen' ? (
+            // Generalprobe 09.10.: hier stand ein zweites „Konto anlegen“ (alte Stammdaten-Konten) unter dem des Konten-Registers — eine neue
+            // Instanz legte so Konten an der falschen Stelle an („Bisherige Stände noch nicht im Register“). Das Register darüber führt.
+            <Leer>Noch keine Buchungen. Konto oben im Register anlegen, es antippen und dort „Kontoauszug einlesen“ (CAMT.053 oder CSV).</Leer>
           ) : (
             <Leerzustand symbol="€" ton={LEUCHT.geld} titel="Noch keine Konten und Buchungen"
-              aktion={<Knopf haupt voll farbe={LEUCHT.geld} onClick={() => setStammAuf(true)}>Konto anlegen</Knopf>}>
-              Legt zuerst euer Konto an. Danach lest ihr unter Konten &amp; Buchungen › Kontoauszug einlesen die Buchungen ein — Kategorien und Regeln wachsen mit.
+              aktion={<Knopf haupt voll farbe={LEUCHT.geld} href={WEG.privat('buchungen')}>Konto anlegen</Knopf>}>
+              Legt zuerst eure Konten an — unter Konten &amp; Buchungen mit Stand und Datum. Dort lest ihr am Konto auch den Kontoauszug ein (CAMT.053 oder CSV) — Kategorien und Regeln wachsen mit.
             </Leerzustand>
           )}
         </Karte>

@@ -656,7 +656,7 @@ function EinrichtungWidget({ titel, i }: WidgetProps) {
       </Karte>
     );
   }
-  const f = fortschrittVon(meine, d.z, { alle: true });
+  const f = fortschrittVon(meine, d.z, { alle: true, kernZuerst: !!d.ich.neustart });
   if (!f.gesamt || f.fertig >= f.gesamt) return null;
   return (
     <Karte i={i} akzent={LEUCHT.schlaf}>

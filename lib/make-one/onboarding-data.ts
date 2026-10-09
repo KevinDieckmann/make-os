@@ -410,7 +410,10 @@ export const SCHRITTE: Schritt[] = [
     modul: 'grundlage', nach: ['einladen'],
     titel: 'Haushalt und Finanzrecht',
     warum: 'Ohne Haushalt sieht ein Konto keine privaten Finanzen, keine Familie und keine Ernährung. „Nur Business“ sperrt Privates auf dem Server — nicht bloß in der Oberfläche.',
-    wie: ['Konto › Haushalt: jedes Konto dem Haushalt zuordnen und bewusst entscheiden, ob es alles sieht oder nur Business.'],
+    wie: [
+      'Konto › Haushaltsfinanzen: beim ersten Konto zuerst den Namen des Haushalts eintragen — nach einem Neustart genau den Namen aus dem Bericht des Umzugs (die Karte schlägt ihn vor), sonst finden sich übernommene Dateien nicht.',
+      'Dann jedes weitere Konto dem Haushalt zuordnen und bewusst entscheiden, ob es alles sieht oder nur Business.',
+    ],
     danach: 'Jedes Konto sieht genau seinen Bereich.',
     wo: KONTO,
   },
@@ -1761,14 +1764,17 @@ const zaehltErstWennGetan = (s: Schritt) => !!(s.optional || s.spaeter);
  * `alle` (Heute-Karte, Neustart): auch die späteren Schritte zählen sofort mit — „fertig“ heißt dann: jeder nicht-optionale Schritt getan;
  * „Als Nächstes“ nimmt trotzdem zuerst den Kern (alles außer „später“). Ohne `alle` bleibt es bei „Späteres zählt erst, wenn getan“.
  */
-export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | null | undefined, o: { alle?: boolean } = {}): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
+export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | null | undefined, o: { alle?: boolean; kernZuerst?: boolean } = {}): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
   const sortiert = nachEtappe(schritte);
   const zaehlen = sortiert.filter(s => (o.alle ? !s.optional : !zaehltErstWennGetan(s)) || istFertig(s, z));
   const offen = zaehlen.filter(s => !istFertig(s, z));
   const offenIds = new Set(offen.map(s => s.id));
   const bereit = (l: readonly Schritt[]) => l.find(s => !(s.nach ?? []).some(id => offenIds.has(id)));
   const vorn = offen.filter(s => !s.spaeter);
-  const naechster = bereit(vorn) ?? vorn[0] ?? bereit(offen) ?? offen[0] ?? null;
+  // Neustart (Generalprobe 09.10.): „Als Nächstes“ zuerst aus dem Kern (Etappen 1–7) — die Server-Schritte der Etappe 0 sind beim Neustart
+  // schon gelaufen bzw. werden erst mit der nächsten Nachtsicherung grün; vorher stand dort dauerhaft „0.1 · Update einspielen“.
+  const kern = o.kernZuerst ? offen.filter(s => s.samstag && !s.spaeter) : [];
+  const naechster = bereit(kern) ?? kern[0] ?? bereit(vorn) ?? vorn[0] ?? bereit(offen) ?? offen[0] ?? null;
   return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster };
 }
 

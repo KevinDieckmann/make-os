@@ -188,7 +188,7 @@ describe('Neustart-Ablauf (Daten, rein)', () => {
     expect(leer.naechster?.samstag).toBe(true);
     expect(leer.gesamt).toBe(l.filter(s => !s.optional).length);
     const w = lies('components/os/flaeche/widgets.tsx');
-    expect(w).toContain('fortschrittVon(meine, d.z, { alle: true })');
+    expect(w).toContain('fortschrittVon(meine, d.z, { alle: true, kernZuerst: !!d.ich.neustart })');
     expect(w).toContain('zurueckgefallen(meine, d.z)');
   });
 

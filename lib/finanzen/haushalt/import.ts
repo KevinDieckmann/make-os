@@ -15,7 +15,7 @@
 
 import type { Buchung, Einheit, Regel } from './typen';
 import { normal, anwenden } from './regeln';
-import { csvZerlegen as zerlegen, kopfFinden, trennerErkennen } from '@/lib/finanzen/kontoauszug/csv';
+import { csvZerlegen as zerlegen, kopfFinden, spaltenVorschlag, trennerErkennen } from '@/lib/finanzen/kontoauszug/csv';
 
 export const N26_KATEGORIEN: Record<string, string> = {
   'lebensmittel': 'Lebensmittel',
@@ -119,8 +119,12 @@ export function ausCsv(text: string): { buchungen: Rohbuchung[]; kontrolle: Kont
   const t = zeilen.slice(Math.max(0, kopfFinden(zeilen))).map(z => z.zellen);
   const kopf = t[0].map(h => String(h).toLowerCase().trim());
   const idx = (r: RegExp) => kopf.findIndex(h => r.test(h));
-  const iDat = idx(/datum|date|booking/), iBes = idx(/verwendung|beschreib|description|referenz|payment reference/);
-  const iEmp = idx(/empfaenger|empfänger|partner|name|beguenstigt/), iBet = idx(/betrag|amount|wert/), iKat = idx(/kategorie|category/);
+  // Datum und Betrag zuerst über die Spaltenregeln der Bank-Auszüge (EINE Stelle, lib/finanzen/kontoauszug/csv.ts) — Generalprobe 09.10.: eine
+  // Bank-CSV mit „Buchungstag;Valuta;…“ bzw. „…;Wertstellung;…;Betrag“ ergab hier „Keine Buchung erkannt“ (kein „datum“ im
+  // Kopf, „Wertstellung“ als Betrag gedeutet). Die alten Muster bleiben Rückfall.
+  const { vorschlag } = spaltenVorschlag(t[0].map(h => String(h)));
+  const iDat = vorschlag.datum ?? idx(/datum|date|booking/), iBes = idx(/verwendung|beschreib|description|referenz|payment reference/);
+  const iEmp = idx(/empfaenger|empfänger|partner|name|beguenstigt/), iBet = vorschlag.betrag ?? idx(/betrag|amount|wert/), iKat = idx(/kategorie|category/);
   if (iDat < 0 || iBet < 0) return { buchungen: [], kontrolle: {} };
   const raus: Rohbuchung[] = [];
   for (const r of t.slice(1)) {
