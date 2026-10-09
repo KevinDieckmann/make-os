@@ -251,6 +251,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/streak': r('GET,PUT', 'person', 'Serien je Person; fremde nur mit Freigabe.'),
   'state/vitals': r('GET,PUT', 'person', 'Vitalwerte je Person (Art. 9); fremde nur mit Freigabe.'),
   'sport': r('GET,PUT', 'person', 'Sport je Person (personStreng, 401).'),
+  'sport/kalender': r('POST', 'person', 'Eine geplante Einheit der EIGENEN Person als Block in den eigenen Kalender — nur per Klick (Dienstweg 403), über blockAnlegen (personStreng).'),
   'import/whoop': r('GET,POST', 'inhaber', 'Whoop-Export des Inhabers.'),
   // WHOOP je Person (08.10., lib/whoop/*): Verbindung verwaltet nur die Person selbst (eigenePerson; Dienstweg 403), nie Tokens in Antworten.
   'whoop/status': r('GET', 'person', 'Stand der EIGENEN WHOOP-Verbindung (maskiert, nie Token/Kennung) + eigene letzte Werte mit Lese-Protokoll (eigenePerson).'),

@@ -46,7 +46,7 @@ export function SportView() {
       {d && !d.stand.einstieg.fertig && <Einstieg heute={d.heute} onFertig={ops => schicke(ops, 'Dein Plan steht.')} />}
       {d && d.stand.einstieg.fertig && (
         <>
-          {reiter === 'plan' && <ZielePlan stand={d.stand} heute={d.heute} schicke={schicke} onReiter={geheZu} />}
+          {reiter === 'plan' && <ZielePlan stand={d.stand} heute={d.heute} vitals={d.vitals} schicke={schicke} onReiter={geheZu} />}
           {reiter === 'training' && <TrainingTeil stand={d.stand} heute={d.heute} vorlagen={d.bibliothek.vorlagen} schicke={schicke} onReiter={geheZu} />}
           {reiter === 'hyrox' && <HyroxTeil stand={d.stand} heute={d.heute} schicke={schicke} />}
           {reiter === 'lauf' && <RunningTeil stand={d.stand} heute={d.heute} schicke={schicke} />}
