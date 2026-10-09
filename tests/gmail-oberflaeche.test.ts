@@ -64,9 +64,21 @@ describe('Inbox 2: Antworten und Gespräch (alle Quellen, auch Gmail)', () => {
     expect(antwort).not.toMatch(/useEffect\([^)]*los\(/);
     expect(antwort).toMatch(/titel: 'Entwurf verwerfen\?'/);
     const detail = quelle('components/os/inbox/Gespraech.tsx');
-    expect(detail).toMatch(/\/api\/crm\/followup/); expect(detail).toMatch(/\/api\/crm\/anfrage/); expect(detail).toMatch(/NeuerTermin/); expect(detail).toMatch(/type: 'ADD_TASK'/);
+    expect(detail).toMatch(/\/api\/crm\/followup/); expect(detail).toMatch(/\/api\/crm\/anfrage/); expect(detail).toMatch(/NeuerTermin/);
     expect(detail).not.toMatch(/dangerouslySetInnerHTML/);
-    for (const f of ['GmailText', 'Antwort', 'Gespraech', 'GmailVerbinden', 'InboxZwei', 'Postfaecher', 'BelegAusMail']) expect(quelle(`components/os/inbox/${f}.tsx`), f).not.toMatch(/dangerouslySetInnerHTML|innerHTML|document\.write/);
+    // Aufgabe (seit Inbox-Flows 09.10.): nur über den Flow „Aufgabe“ (Flows.tsx) und dort über den Aufgaben-Weg `aufgabeAnlegen`
+    // (Ort Bereich › Projekt › Liste) — keine eigene Direkt-Aufgabe mehr im Gespräch (die alte landete in `state.projects[0]`).
+    expect(detail).toMatch(/import \{[^}]*\bFlowAufgabe\b[^}]*\} from '\.\/Flows'/);
+    expect(detail).toMatch(/<FlowAufgabe\b/);
+    expect(detail).not.toMatch(/type: 'ADD_TASK|projects\[0\]/);
+    const flows = quelle('components/os/inbox/Flows.tsx');
+    expect(flows).toMatch(/import \{[^}]*\baufgabeAnlegen\b[^}]*\} from '\.\.\/aufgaben\/hilfe'/);
+    expect(flows.match(/aufgabeAnlegen\(/g)?.length).toBe(1);             // genau EIN Anlege-Weg …
+    expect(flows).toMatch(/<Knopf onClick=\{anlegen\}/);                   // … ausgelöst vom Knopf (bzw. Enter im Titelfeld)
+    expect(flows).not.toMatch(/useEffect\([^)]*anlegen\(/);
+    expect(flows).not.toMatch(/type: 'ADD_TASK|projects\[0\]/);
+    expect(quelle('components/os/aufgaben/hilfe.ts')).toMatch(/export function aufgabeAnlegen\((?:(?!\nexport )[\s\S])*?dispatch\(\{ type: 'ADD_TASK_MIT_ID'/);
+    for (const f of ['GmailText', 'Antwort', 'Gespraech', 'Flows', 'GmailVerbinden', 'InboxZwei', 'Postfaecher', 'BelegAusMail']) expect(quelle(`components/os/inbox/${f}.tsx`), f).not.toMatch(/dangerouslySetInnerHTML|innerHTML|document\.write/);
   });
   it('Tippziele und Eingaben: Felder über den Baustein `eingabe` (48 px, 16 px), Passwort nie vorbelegt und nie angezeigt', () => {
     const antwort = quelle('components/os/inbox/Antwort.tsx');

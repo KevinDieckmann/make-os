@@ -33,8 +33,7 @@ vi.mock('@/lib/brain', async orig => {
 vi.mock('@/lib/zoe/vault', async orig => ({ ...(await orig<typeof import('@/lib/zoe/vault')>()), brainAnweisung: async () => '' }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/agenten' }));
 
-import type { FadenKern } from '@/lib/agenten/faeden';
-import { kontenSaeen, rufe, sitzung, dienst, text, werkzeug } from './fixtures/agenten-kern';
+import { kontenSaeen, rufe, sitzung, dienst, text, werkzeug, HAUS } from './fixtures/agenten-kern';
 import { kiFake, type KiFake } from './fixtures/ki-fake';
 
 type H = (r: Request) => Promise<Response>;
@@ -78,6 +77,13 @@ const zoe = (person: string, body: Record<string, unknown>) => rufe(kimmi.POST, 
 beforeAll(async () => {
   await kontenSaeen();
   db = await import('@/lib/store/local-db');
+  // Business-frei ist nicht Gegenstand dieser Ketten (eigene Wächter: agenten-laeufe, business-frei*). Ohne Familien-Bestand gibt es
+  // keine Fenster — aber (5) legt ihn beim Lesen an (gatherBrain → performance → `ladeFamilie`) mit dem Standard der Familie
+  // (So ganztägig, Mo–Fr ab 20 Uhr). Danach scheiterte (6) abends und sonntags an 409 „Business-frei — trotzdem?“ (Head-Läufe
+  // ruhten, Folgefehler „kind undefined“ und „höchstens 3 offene Läufe“). Darum hier ausdrücklich OHNE Fenster — uhrzeitunabhängig.
+  const { familieName, startBestand } = await import('@/lib/familie/speicher');
+  const start = startBestand(new Date().toISOString());
+  await db.saveJson(familieName(HAUS), { ...start, einstellungen: { ...start.einstellungen, businessFrei: [] } });
   anthropic = await import('@/lib/anthropic');
   kimmi = (await import('@/app/api/kimmi/route')) as unknown as typeof kimmi;
   faden = (await import('@/app/api/agenten/faden/route')) as unknown as typeof faden;
