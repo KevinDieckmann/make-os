@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { lies, vergiss, type FaktArt } from '@/lib/zoe/gedaechtnis';
 import { personAus } from '@/lib/zoe/raum';
+import { bereichAus } from '@/lib/zoe/bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const p = new URL(req.url).searchParams;
+  // Sicht Privat/Business (09.10. spät): `?space=privat|business` → nur Merksätze dieses Bereichs und die neutralen; ohne bzw. `alles` → alle.
+  const space = p.get('space');
+  if (space && space !== 'alles' && !bereichAus(space)) return NextResponse.json({ ok: false, error: 'space ist privat, business oder alles.' }, { status: 400 });
   // Nach Raum gefiltert: die Liste zeigt nur den eigenen und den gemeinsamen
   // Bestand. Ohne das sähe eine Person in der Oberfläche, was eine andere ZOE
   // erzählt hat — obwohl ZOE es ihr im Gespräch korrekt verschweigt.
@@ -21,6 +25,7 @@ export async function GET(req: Request) {
     art: (p.get('art') as FaktArt) ?? undefined,
     raum: personAus(req),
     anzahl: Math.max(1, Math.min(500, Number(p.get('anzahl')) || 200)),
+    bereich: bereichAus(space),
   });
   return NextResponse.json({ ok: true, fakten });
 }

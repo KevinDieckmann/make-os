@@ -18,10 +18,16 @@
 // S1 (29.09.): Tor `imHaushaltDesInhabers` für GET und POST (403 sonst) — Vorschläge des Systems (ohne Person) sieht und
 // entscheidet nur der Haushalt des Inhabers; ausgeführt wird immer als die ausdrücklich benannte Person (`personStreng`),
 // nie mehr über den Rückfall `personAus` → „kevin“. Schreibaufrufe aus dem Browser prüfen die Bau-Kennung (`bauPruefen`).
+// 09.10. spät (Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): jeder Vorschlag trägt seinen
+// Bereich (lib/zoe/bereich.ts). GET `?space=privat|business` liefert NUR Vorschläge dieses Bereichs — serverseitig, nie nur versteckt;
+// „unklar“ (auch Altbestand) nur ohne `space` bzw. mit `space=alles`. Jeder Vorschlag trägt seinen `stand`; POST `{ aktion: 'bereich', id,
+// bereich, stand }` setzt den Bereich von Hand („Bereich wählen“), veraltet → 409. Freigeben mit `stand` prüft ihn ebenso (409 statt einer
+// Entscheidung über etwas, das man so nicht gesehen hat). „Alle freigeben“ mit `space` nimmt nur Vorschläge dieser Sicht.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
-import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, type Vorschlag } from '@/lib/zoe/stapel';
+import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, vorschlagStand, bereichSetzen, type Vorschlag } from '@/lib/zoe/stapel';
+import { bereichAus, passtZurSicht, type Bereich } from '@/lib/zoe/bereich';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
 import { innenAdresse } from '@/lib/innen';
@@ -82,6 +88,11 @@ function eingabeSauber(v: unknown, vorher: Record<string, unknown>): Sauber {
 const meiner = (v: Vorschlag, person: string, privatFinanzen: boolean, privat: boolean) =>
   vorschlagSichtbar(v, person, true, privat) && (privatFinanzen || !FINANZPLAN_ALTWEG_WERKZEUGE.has(v.werkzeug ?? ''));
 const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
+/** Ein Vorschlag, wie er an den Browser geht: mit seinem Stand. */
+const mitStand = (v: Vorschlag) => ({ ...v, stand: vorschlagStand(v) });
+/** Sicht aus `?space=` bzw. `space` im Körper: privat · business · alles (= ohne). Anderes → undefined (400). */
+const sichtAus = (v: unknown): Bereich | null | undefined => (v === undefined || v === null || v === '' || v === 'alles' ? null : bereichAus(v) ?? undefined);
+const SICHT_FALSCH = () => NextResponse.json({ ok: false, error: 'space ist privat, business oder alles.' }, { status: 400 });
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -89,12 +100,17 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return GESPERRT();
-  const alle = new URL(req.url).searchParams.get('alle') === '1';
+  const p = new URL(req.url).searchParams;
+  const alle = p.get('alle') === '1';
+  const space = sichtAus(p.get('space'));
+  if (space === undefined) return SICHT_FALSCH();
   const person = zugang.person;
   const privatFinanzen = !!(await privatFinanzZugang(req));
   const privat = !(await privatAusgeblendetFuer(person));
-  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, privatFinanzen, privat));
-  return NextResponse.json({ ok: true, vorschlaege: liste, offen: liste.filter(v => v.status === 'offen').length });
+  // Sicht Privat/Business serverseitig (09.10. spät): unter Privat kein Business-Vorschlag und umgekehrt; „unklar“ nur unter „Alles“.
+  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, privatFinanzen, privat) && passtZurSicht(v, space));
+  const offen = liste.filter(v => v.status === 'offen');
+  return NextResponse.json({ ok: true, space: space ?? 'alles', vorschlaege: liste.map(mitStand), offen: offen.length, unklar: offen.filter(v => !bereichAus(v.bereich)).length });
 }
 
 interface Eingang {
@@ -106,6 +122,13 @@ interface Eingang {
   /** Alles auf einmal freigeben; optional auf eine Gruppe beschränkt. */
   alle?: boolean;
   gruppe?: string;
+  /** Sicht der Sammelfreigabe (privat · business · alles) — nur Vorschläge dieses Bereichs (09.10. spät). */
+  space?: string;
+  /** `bereich`: den Bereich von Hand setzen (09.10. spät). */
+  aktion?: string;
+  bereich?: string;
+  /** Stand des Vorschlags, wie der Browser ihn gesehen hat (GET) — veraltet → 409. */
+  stand?: string;
 }
 
 export async function POST(req: Request) {
@@ -120,14 +143,30 @@ export async function POST(req: Request) {
   const privatFinanzen = !!(await privatFinanzZugang(req));
   const privat = !(await privatAusgeblendetFuer(wer));
   const darf = (v: Vorschlag) => (meiner(v, wer, privatFinanzen, privat) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
+  const stand = typeof body.stand === 'string' && body.stand ? body.stand.slice(0, 40) : null;
+  const VERALTET = 'Inzwischen geändert (Bereich oder Inhalt) — bitte neu ansehen. Nichts freigegeben.';
+  /** Sicht der Person UND (mit Stand) unverändert seit dem Ansehen — sonst nichts. */
+  const darfMitStand = (v: Vorschlag) => darf(v) ?? (stand && stand !== vorschlagStand(v) ? { status: 409 as const, fehler: VERALTET } : null);
+
+  // ── Bereich von Hand setzen („Bereich wählen“, 09.10. spät) ──
+  if (body.aktion === 'bereich') {
+    const id = String(body.id ?? '');
+    const bereich = bereichAus(body.bereich);
+    if (!id || !bereich) return NextResponse.json({ ok: false, error: 'id und bereich (privat oder business) angeben.' }, { status: 400 });
+    const r = await bereichSetzen(id, bereich, { von: wer, stand, pruefe: darf });
+    if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler, ...(r.v && r.status === 409 ? { vorschlag: mitStand(r.v) } : {}) }, { status: r.status });
+    return NextResponse.json({ ok: true, vorschlag: mitStand(r.v) });
+  }
+  if (body.aktion !== undefined) return NextResponse.json({ ok: false, error: 'Unbekannte Aktion.' }, { status: 400 });
 
   /** Ein gewöhnlicher Werkzeug-Vorschlag: beanspruchen (in der Sperre), ausführen, entscheiden. */
   const werkzeugFreigeben = async (id: string, eingabeNeu: Record<string, unknown> | null) => {
-    const a = await beanspruche(id, wer, darf);
+    const a = await beanspruche(id, wer, darfMitStand);
     if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null };
     const eingabe = eingabeNeu ?? a.v.eingabe;
     let lauf: { ok: boolean; text: string };
-    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: wer, freigegebenVon: wer, vorschlagId: a.v.id }); }
+    // Der Bereich des Vorschlags geht als Kontext an das Werkzeug (nie aus der Eingabe) — „Fakt merken“ legt den Merksatz in diesem Bereich ab.
+    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: wer, freigegebenVon: wer, vorschlagId: a.v.id, bereich: bereichAus(a.v.bereich) }); }
     catch (e) { await loslassen(id); throw e; }
     const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, ...(eingabeNeu ? { eingabe } : {}), von: wer, ausArbeit: true });
     return { ok: lauf.ok, status: 200 as const, text: lauf.text, vorschlag: raus };
@@ -135,7 +174,9 @@ export async function POST(req: Request) {
 
   // ── Sammel-Freigabe: „durcharbeiten" ──
   if (body.alle) {
-    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat));
+    const space = sichtAus(body.space);
+    if (space === undefined) return SICHT_FALSCH();
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat) && passtZurSicht(v, space));
     const offen = alleOffen.filter(sammelTauglich);
     const einzeln = alleOffen.length - offen.length;
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });
@@ -161,6 +202,8 @@ export async function POST(req: Request) {
   if (!meiner(v, wer, privatFinanzen, privat)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
   if (v.status === 'in_arbeit') return NextResponse.json({ ok: false, error: 'Wird gerade übernommen.' }, { status: 409 });
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
+  // Freigeben mit Stand (09.10. spät): hat sich der Vorschlag seit dem Ansehen geändert (z. B. Bereich in einem anderen Fenster), nichts freigeben.
+  if (body.entscheidung !== 'ablehnen' && stand && stand !== vorschlagStand(v)) return NextResponse.json({ ok: false, error: VERALTET, vorschlag: mitStand(v) }, { status: 409 });
 
   if (body.entscheidung === 'ablehnen') {
     const grund = typeof body.grund === 'string' ? body.grund.replace(/\u0000/g, '').trim() : '';

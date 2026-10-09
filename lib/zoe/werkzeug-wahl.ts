@@ -75,6 +75,11 @@ export interface WahlEingabe {
   /** Werkzeuge, die die Person überhaupt haben darf (KI-Schalter, Einwilligung, Haushalt) — nur daraus wird gewählt. */
   verfuegbar: ReadonlySet<string>;
   grenze?: number;
+  /**
+   * Die Frage nennt eine Firma oder Person aus der Markttraktion (Namen aus dem Bestand, vom Server erkannt — lib/zoe/bereich-server.ts
+   * `textNenntCrm`, 09.10. spät): der Vertrieb kommt dazu, damit ZOE einen Fakt dort vorschlagen kann (crm_vorschlag) statt nur zu merken.
+   */
+  crmGenannt?: boolean;
 }
 
 /** Bezug → das Werkzeug, mit dem ZOE zuerst nachsieht (wie crmBezugHinweis). */
@@ -100,11 +105,13 @@ export function zoeWerkzeugWahl(e: WahlEingabe): { namen: string[]; bereiche: st
   const namen: string[] = [];
   const nimm = (n: string) => { if (namen.length < grenze && e.verfuegbar.has(n) && !namen.includes(n)) namen.push(n); };
   for (const k of ZOE_KERN) nimm(k);
-  const bereiche = bereicheFuer(e.text, e.frueher ?? [], e.bezug);
+  const getroffen = bereicheFuer(e.text, e.frueher ?? [], e.bezug);
+  const bereiche = e.crmGenannt && !getroffen.includes('vertrieb') ? [...getroffen, 'vertrieb'] : getroffen;
   const listen = bereiche.map(id => {
     const b = ZOE_BEREICHE.find(x => x.id === id)!;
-    const vorne = id === 'vertrieb' && e.bezug ? BEZUG_WERKZEUG[e.bezug.art] : undefined;
-    return [...(vorne ? [vorne] : []), ...b.werkzeuge].filter(n => e.verfuegbar.has(n) && !namen.includes(n));
+    // Vorne: das Lese-Werkzeug des Bezugs; nennt die Frage einen Eintrag der Markttraktion, danach crm_vorschlag (der Weg „dort festhalten“).
+    const vorne = id === 'vertrieb' ? [...(e.bezug ? [BEZUG_WERKZEUG[e.bezug.art]] : []), ...(e.crmGenannt ? ['crm_vorschlag'] : [])].filter(Boolean) : [];
+    return Array.from(new Set([...vorne, ...b.werkzeuge])).filter(n => e.verfuegbar.has(n) && !namen.includes(n));
   });
   // Reihum: jeder getroffene Bereich bekommt erst sein wichtigstes Werkzeug, dann das zweite … (so verdrängt kein Bereich die anderen).
   for (let i = 0; namen.length < grenze && listen.some(l => l.length > i); i++) for (const l of listen) if (l[i]) nimm(l[i]);

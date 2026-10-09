@@ -427,6 +427,13 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
   const ohneEintraege = (name: string, feld: string, gehoert: (x: Obj) => boolean) => nurWenn(name, async () => { let n = 0; await updateJson<Obj>(name, cur => { const l = liste(cur, feld); const r = l.filter(x => !gehoert(x as Obj)); n = l.length - r.length; return n ? { ...(cur ?? {}), [feld]: r } : (cur as Obj); }); return n; });
   await ohneEintraege('zoe-gedaechtnis', 'fakten', f => f.raum === speicher);
   await ohneEintraege('zoe-stapel', 'vorschlaege', v => v.person === speicher);
+  // Vorschläge des Systems, die die Person entschieden bzw. deren Bereich sie gewählt hat (09.10. spät), bleiben (Arbeit des Haushalts) —
+  // „wer“ wird „[gelöscht]“ (die Rechenschaft steht getilgt in zoe-entscheidungen--*).
+  await nurWenn('zoe-stapel', async () => { let n = 0; await updateJson<Obj>('zoe-stapel', cur => {
+    const l = liste(cur, 'vorschlaege');
+    const r = l.map(x => { const v = x as Obj; if (v.entschiedenVon !== speicher && v.bereichVon !== speicher) return x; n++; return { ...v, ...(v.entschiedenVon === speicher ? { entschiedenVon: GELOESCHT } : {}), ...(v.bereichVon === speicher ? { bereichVon: GELOESCHT } : {}) }; });
+    return n ? { ...(cur ?? {}), vorschlaege: r } : (cur as Obj);
+  }); return n; });
   await ohneEintraege('zoe-auftraege', 'auftraege', a => a.person === speicher);
   await nurWenn('anfragen-ergebnis', async () => (await import('@/lib/store/anfragen')).anfragenOhnePerson(speicher));
   // WhatsApp (07.10.): gesendete Nachrichten bleiben (Geschäftskorrespondenz der Instanz), „wer gesendet hat“ wird „[gelöscht]“.

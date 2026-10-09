@@ -36,7 +36,9 @@ import { AUFGABEN_DATEI_WERKZEUGE } from '@/lib/zoe/aufgaben-unterlagen';
 import { crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
 import { BUSINESS_EINHEITEN_NAMEN, PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
-import { vornameVon, anredeSatz, firmenKennungen, gesellschaftenSatz } from '@/lib/zoe/grundauftrag';
+import { vornameVon, anredeSatz, firmenKennungen, gesellschaftenSatz, MERKEN_WOHIN } from '@/lib/zoe/grundauftrag';
+import { bereichAus } from '@/lib/zoe/bereich';
+import { textNenntCrm } from '@/lib/zoe/bereich-server';
 import { businessFreiJetzt } from '@/lib/arbeitsrahmen/server';
 import { bisText, businessFreiSatz } from '@/lib/arbeitsrahmen/regel';
 import { kategorienMoeglich } from '@/lib/ki/tor';
@@ -126,6 +128,8 @@ function systemPrompt(extra: string | undefined, live: string | undefined, forts
     'DEIN GEHIRN: Das Obsidian-Brain dieser Instanz (der Vault) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku, wenn sie eingerichtet ist. Mit suche_arbeit (Brain und App zugleich) bzw. suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Zoe_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
     `WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es ${n}, wenn dir ein Widerspruch auffällt.`,
     'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („die Steuerkanzlei ist jetzt bei einer anderen Bank", „keine Termine vor 10", „wir haben uns gegen X entschieden"), dann schlag ihn SOFORT mit fakt_merken vor — ohne zu fragen. fakt_merken (wie notiz_anlegen) landet im Gespräch immer als Vorschlag im Stapel; sag knapp, dass er dort auf eine Freigabe wartet. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
+    // Wohin ein Fakt gehört (09.10. spät): neutral, aus lib/zoe/grundauftrag.ts — Markttraktion statt nur Merksatz, Bereich je Vorschlag.
+    MERKEN_WOHIN,
     '',
     live ? `LIVE-ZUSTAND aus dem Brain (deine echten Daten gerade jetzt — beziehe dich konkret darauf, erfinde nichts dazu):\n${live}` : '',
     '',
@@ -154,7 +158,10 @@ export async function POST(req: Request) {
   if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
   // `zoeFaden` (Paket 4a): Kennung eines EIGENEN ZOE-Threads oder 'neu' — dann liest der Prompt den Verlauf NUR aus dem Thread
   // (Server), und „fremd gelesen“/„vertraulich“ stehen am Thread. Ohne `zoeFaden` (Telegram, WhatsApp, Tagesplan) wie bisher.
-  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bezug?: unknown; zoeFaden?: unknown; anfrageId?: unknown };
+  // `bereich` (09.10. spät): der Bereich des Gesprächs aus dem Kopf-Schalter (privat · business · alles) — fehlt er (Telegram, WhatsApp, ältere
+  // Fenster), gilt `space` wie bisher. Nur geprüft (`bereichAus`), nie mehr: er ordnet Vorschläge im Stapel zu (Regel (c), lib/zoe/bereich.ts)
+  // und wählt die Merksätze des Gesprächs.
+  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bereich?: unknown; bezug?: unknown; zoeFaden?: unknown; anfrageId?: unknown };
   try { payload = await jsonBegrenzt(req, 2_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = String(payload.message ?? '').trim().slice(0, 8000);
   // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
@@ -197,7 +204,9 @@ export async function POST(req: Request) {
   const live = [lage.text, haushaltBlock].filter(Boolean).join('\n\n');
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
   // den Kontext nicht auffrisst (siehe gedaechtnis.ts).
-  const gedaechtnis = await liesFakten({ anzahl: 120, raum: person }).then(faktenFuerPrompt).catch(() => '');
+  // Bereich des Gesprächs (09.10. spät): Merksätze nur aus diesem Bereich und die neutralen (EINE Stelle: `lies({ bereich })`).
+  const gespraechBereich = payload.bereich !== undefined ? bereichAus(payload.bereich) : bereichAus(payload.space);
+  const gedaechtnis = await liesFakten({ anzahl: 120, raum: person, bereich: gespraechBereich }).then(faktenFuerPrompt).catch(() => '');
   // Markttraktion (28.09., Integritätsprüfung K1): CRM-Werkzeuge und -Agenten nur für eine ausdrücklich benannte
   // Person im Haushalt des Inhabers (Sitzung oder Dienstweg mit Person) — ein anderes Konto bekommt sie gar nicht
   // angeboten; die Werkzeuge prüfen es zusätzlich selbst (lib/zoe/werkzeuge.ts `nurImHaushalt`).
@@ -260,7 +269,10 @@ export async function POST(req: Request) {
     const frueher = zug
       ? zug.faden.nachrichten.filter(x => x.rolle === 'person').slice(-3, -1).map(x => x.text)
       : (payload.verlauf ?? []).filter(x => istNutzer(x?.rolle)).slice(-2).map(x => String(x?.text ?? ''));
-    const wahl = payload.noTools ? { namen: [] as string[], bereiche: [] as string[] } : zoeWerkzeugWahl({ text: message, frueher, bezug: crmBezug, verfuegbar });
+    // Nennt die Frage eine Firma/Person der Markttraktion (Namen aus dem Bestand, lib/zoe/bereich-server.ts), kommt der Vertrieb mit crm_vorschlag
+    // dazu (09.10. spät) — so kann ZOE einen Fakt dort vorschlagen, wo er hingehört, statt nur einen Merksatz.
+    const crmGenannt = !payload.noTools && crmErlaubt && kiS.bereiche.crm ? await textNenntCrm([message, ...frueher]).catch(() => false) : false;
+    const wahl = payload.noTools ? { namen: [] as string[], bereiche: [] as string[] } : zoeWerkzeugWahl({ text: message, frueher, bezug: crmBezug, verfuegbar, crmGenannt });
     const angeboten = wahl.namen.map(n => alleDefs.find(d => d.name === n)).filter((d): d is WerkzeugDef => !!d);
     const angebotenSet = new Set(wahl.namen);
     /** Ein Zug, der nichts bewirkt hat, findet nicht statt: die Frage geht wieder aus dem Thread (das Feld im Browser behält sie). Gibt an, ob der Thread bleibt. */
@@ -333,7 +345,7 @@ export async function POST(req: Request) {
             // starte_auftraege mit einem Web-Agenten nach vertraulichem Lesen: nur als Vorschlag (#91).
             const webAuftrag = name === 'starte_auftraege' && z.vertraulich && Array.isArray(a.input?.auftraege) && (a.input.auftraege as unknown[]).some(x => WEB_AGENTEN.has(String((x as { agent?: unknown })?.agent ?? '')));
             const vorschlagen = nurVorschlag(name, a.input, z.fremdGelesen) || webAuftrag;
-            const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z) });
+            const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z), bereich: gespraechBereich });
             const k = kategorieVonWerkzeug(name, gruppeVon(name));
             const kats: KiKategorie[] = k ? [k] : [];
             // suche_arbeit (09.10., Funde #6): Brain und Markttraktion lesen nur, wenn eingeschaltet — und genau diese Kategorien stehen im Protokoll.
@@ -354,7 +366,7 @@ export async function POST(req: Request) {
           // run_agent darf nurVorschlag nicht umgehen (29.09., #90/#91): nach Fremdtext (außer reinen Lese-Agenten) und
           // Web-Agenten nach vertraulichem Lesen → als Auftrag in den Stapel (starte_auftraege, Freigabe per Klick).
           if (agentNurVorschlag(agentId, z.fremdGelesen, z.vertraulich)) {
-            const l = await fuehreAus('starte_auftraege', { auftraege: [{ agent: agentId, ...(a.input?.auftrag ? { auftrag: String(a.input.auftrag).slice(0, 4000) } : {}) }] }, origin, { anlass, person, vorschlagen: true });
+            const l = await fuehreAus('starte_auftraege', { auftraege: [{ agent: agentId, ...(a.input?.auftrag ? { auftrag: String(a.input.auftrag).slice(0, 4000) } : {}) }] }, origin, { anlass, person, vorschlagen: true, bereich: gespraechBereich });
             return { inhalt: l.text, ok: l.gestapelt || !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
           }
           const l = await runAgent(agentId as Ausfuehrbar, String(a.input?.auftrag ?? ''), origin, person);
@@ -388,7 +400,7 @@ export async function POST(req: Request) {
         // Es hat schon etwas gewirkt (Werkzeuge) bzw. ZOE hatte angefangen: die Antwort hält fest, was passiert ist — nie still.
         const reply = [aus.text, `⚠️ ${satz}${werkzeuge.length ? ` Schon ausgeführt: ${schonGelaufen()}.` : ''}`].filter(Boolean).join('\n\n');
         if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken, kostenCent: aus.cent });
-        return { status: 200, body: { reply, fehler: satz, error: roh, ran: aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok })), stapelOffen: await offeneAnzahlFuer(person).catch(() => 0), ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
+        return { status: 200, body: { reply, fehler: satz, error: roh, ran: aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok })), stapelOffen: await offeneAnzahlFuer(person, gespraechBereich).catch(() => 0), ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
       }
       const ran = aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok }));
       // create_task legt seit 07.09. direkt an (freie Hand laut Kompass) — es gibt deshalb keinen Bestätigungsknopf mehr.
@@ -406,7 +418,7 @@ export async function POST(req: Request) {
       const reply = aus.text || fallback;
       // ZOE-Thread: Antwort anhängen, Marken des Zugs festhalten (nur ODER — einmal fremd gelesen, bleibt das Gespräch es).
       if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken, kostenCent: aus.cent });
-      const stapelOffen = await offeneAnzahlFuer(person).catch(() => 0);
+      const stapelOffen = await offeneAnzahlFuer(person, gespraechBereich).catch(() => 0);
       // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
       return { status: 200, body: { reply, handoffs, ran, stapelOffen, ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
     } catch (err) {

@@ -182,7 +182,7 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
     },
     {
       name: 'fakt_merken',
-      description: 'Merkt sich einen dauerhaften Fakt. Nutze das SOFORT und ungefragt, wenn im Gespräch etwas fällt, das länger gilt: eine Person wechselt die Firma, eine Vorliebe, eine Entscheidung, eine wiederkehrende Zahl. NICHT für Tagesdaten, die ohnehin im Live-Zustand stehen. Kündige es nicht an — merk es dir einfach und rede weiter.',
+      description: 'Merkt sich einen dauerhaften Fakt. Nutze das SOFORT und ungefragt, wenn im Gespräch etwas fällt, das länger gilt: eine Person wechselt die Firma, eine Vorliebe, eine Entscheidung, eine wiederkehrende Zahl. NICHT für Tagesdaten, die ohnehin im Live-Zustand stehen. Kündige es nicht an — merk es dir einfach und rede weiter. Nennt der Fakt eine Firma oder Person aus der Markttraktion (gibt es nicht mehr, gewechselt, kein Interesse), schlag ZUSÄTZLICH mit crm_vorschlag den passenden Eintrag dort vor (Notiz bzw. Status „ruht“/„kein Fit“) — der Merksatz allein reicht dann nicht. Privat oder Business ordnet der Stapel selbst zu; ein Merksatz mischt nie beides.',
       input_schema: obj({
         thema: { type: 'string', description: 'Worum es geht — ein Name, eine Firma, ein Bereich' },
         satz: { type: 'string', description: 'Der Fakt, möglichst in der eigenen Formulierung der Person' },
