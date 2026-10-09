@@ -151,6 +151,12 @@ describe('(4)(7)(9) Oberfläche verdrahtet', () => {
     expect(quelle('components/os/agenten/daten.ts')).toMatch(/aktion: 'loeschen', fadenId, stand/);
     for (const d of ['HeadMitte.tsx', 'FadenMitte.tsx', 'ZoeMitte.tsx']) expect(quelle(`components/os/agenten/${d}`), d).toMatch(/fadenLoeschen\(/);
   });
+  it('ueberstand: misst am echten Feld (Handy: Feld höher) — > 0 heißt verdeckt', async () => {
+    const { ueberstand } = await import('@/components/os/agenten/Chat');
+    expect(ueberstand(470, 430, 844, 12)).toBe(52); // Handy-Fund aus dem Rundgang: Antwort 40 px unter der Feld-Oberkante
+    expect(ueberstand(400, 430, 844, 12)).toBeLessThanOrEqual(0);
+    expect(ueberstand(900, null, 844, 12)).toBe(68); // ohne Feld: Fensterrand
+  });
   it('Chat: rückt die neue Nachricht in Sicht; das Feld ist unten deckend; Karte ohne Werkzeug-Namen als Text', () => {
     const chat = quelle('components/os/agenten/Chat.tsx');
     expect(chat).toMatch(/useZurNeuesten\(!!unten\)/);

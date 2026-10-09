@@ -218,12 +218,37 @@ function ausMuster(system, user) {
   return o;
 }
 
+/**
+ * „Antworte NUR als JSON: {…}“ — die Vorlage aus dem Text nehmen und gültig machen (Auslassungen weg, „1|2|3“ → 1, „true|false“ → true). Gelingt das
+ * nicht, die Felder aus dem Muster (`ausMuster`). Die Werte bleiben die Platzhalter der Vorlage — erkennbar erfunden.
+ */
+function ausVorlage(text, user) {
+  const i = text.search(/JSON/);
+  const ab = i >= 0 ? text.slice(i) : '';
+  const start = ab.indexOf('{');
+  if (start < 0) return null;
+  let tiefe = 0, inStr = false, esc = false, ende = -1;
+  for (let k = start; k < ab.length; k++) {
+    const ch = ab[k];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true; else if (ch === '{') tiefe++; else if (ch === '}') { tiefe--; if (!tiefe) { ende = k; break; } }
+  }
+  if (ende < 0) return null;
+  const roh = ab.slice(start, ende + 1)
+    .replace(/\{\s*…\s*\}/g, '{}').replace(/,\s*…\s*(?=[,}\]])/g, '').replace(/\[\s*…\s*\]/g, '[]')
+    .replace(/(-?\d+(?:\.\d+)?)(\s*\|\s*-?\d+(?:\.\d+)?)+/g, '$1').replace(/true\s*\|\s*false|false\s*\|\s*true/g, 'true');
+  try { return JSON.parse(roh); } catch { return ausMuster(text, user); }
+}
+
 function antworte(b) {
   const l = lies(b);
   const rolle = rolleVon(l.system);
   const schema = b.output_config?.format?.schema;
   if (schema) return { ...text(JSON.stringify(ausSchema(schema))), art: 'json-schema', rolle };
   if (/Antworte NUR mit JSON|nur mit JSON|ausschließlich (?:mit )?JSON|NUR JSON/i.test(l.system) && !l.tools.size) return { ...text(JSON.stringify(ausMuster(l.system, l.frage))), art: 'json-muster', rolle };
+  // „Antworte (NUR|AUSSCHLIESSLICH|als reines) … JSON“ mit Vorlage im System- oder Nutzertext (Morgenlauf, Loop, Ernährung, Heads …).
+  const jsonText = [l.system, l.frage].find(t => /Antworte[^\n]{0,40}JSON/i.test(t));
+  if (jsonText && !l.tools.size) { const o = ausVorlage(jsonText, l.frage); if (o) return { ...text(JSON.stringify(o)), art: 'json-vorlage', rolle }; }
   if (l.nachWerkzeug) return { ...nachWerkzeug(l, rolle), art: 'nach-werkzeug', rolle };
   return { ...frischeAntwort(l, rolle), art: 'frisch', rolle };
 }

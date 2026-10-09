@@ -233,6 +233,9 @@ describe('Prüfmodell (scripts/ki-pruefmodell.mjs)', () => {
     expect(JSON.parse(a.content[0].text!)).toMatchObject({ stufe: 'gut', punkte: [expect.any(String)] });
     const b = await frage({ system: 'Du prüfst einen Testlauf. Antworte NUR mit JSON: {"erfuellt": boolean[] (je Erwartung), "notiz": string (≤ 200 Zeichen)}.', messages: [{ role: 'user', content: '<erwartungen>\n1. a\n2. b\n3. c\n</erwartungen>' }] });
     expect(JSON.parse(b.content[0].text!)).toMatchObject({ erfuellt: [true, true, true], notiz: expect.any(String) });
+    // „Antworte als reines JSON: {…}“ mit Vorlage (Loop, Morgenlauf, Ernährung …): gültiges JSON aus der Vorlage
+    const v = await frage({ system: 'Antworte als reines JSON: {"vorschlaege":[{"titel":"kurz","warum":"Beleg","prio":1|2|3}],"plan":{"mo":{"abend":"…"},…,"so":{…}},"ruhig": true|false}', messages: [{ role: 'user', content: 'x' }] });
+    expect(JSON.parse(v.content[0].text!)).toEqual({ vorschlaege: [{ titel: 'kurz', warum: 'Beleg', prio: 1 }], plan: { mo: { abend: '…' }, so: {} }, ruhig: true });
   });
   it('Fehler-Modus: 529 für genau eine Anfrage, danach wieder normal; „[pruef:401]“ in der Nachricht', async () => {
     await fetchAlt(`${basis}/_modus`, { method: 'POST', body: JSON.stringify({ fehler: '529', anzahl: 1 }) });

@@ -236,14 +236,25 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
 
 /**
  * Rundgang 09.10. („Agenten live“): neue Nachrichten und der entstehende Text standen UNTER dem klebenden Eingabefeld — man sah die Antwort nicht,
- * ohne selbst zu scrollen. Jetzt rückt das Ende des Verlaufs in Sicht, wenn ein Zug beginnt („schreibt …“ erscheint) und wenn er endet (die Antwort
- * steht da) — nie beim Laden oder Wechseln eines Threads (dann bleibt der Überblick oben), ohne Animation bei reduzierter Bewegung. Der Rand unten
- * hält Platz fürs Feld frei (am Handy zusätzlich über den Reitern: `--agenten-feld-unten`).
+ * ohne selbst zu scrollen. Jetzt rückt das Ende des Verlaufs über das Feld, wenn ein Zug beginnt („schreibt …“ erscheint) und wenn er endet (die Antwort
+ * steht da) — nie beim Laden oder Wechseln eines Threads (dann bleibt der Überblick oben), ohne Animation bei reduzierter Bewegung. Gemessen wird
+ * am echten Feld (am Handy ist es mit Chips und Reitern höher), gescrollt im nächsten scrollbaren Rahmen (`main`).
  */
-/** Wie viel Platz das klebende Feld unten braucht (Ansprech-Chips + Feld + Knöpfe) — Abstand für „in Sicht scrollen“. */
-const FELD_PLATZ = 240;
-const FELD_RAND = `calc(var(--agenten-feld-unten, 0px) + ${FELD_PLATZ}px)`;
-const ENDE_ANKER: CSSProperties = { display: 'block', height: 1, scrollMarginBottom: FELD_RAND };
+const ENDE_ANKER: CSSProperties = { display: 'block', height: 1 };
+/** Rein genug zum Testen: wie weit `el` über die Oberkante des Feldes (bzw. den Fensterrand) ragt — > 0 heißt „verdeckt“. */
+export function ueberstand(elUnten: number, feldOben: number | null, fensterHoehe: number, abstand: number): number {
+  return elUnten - ((feldOben ?? fensterHoehe) - abstand);
+}
+function ueberDasFeld(el: HTMLElement | null, ruhig: boolean): void {
+  if (!el || typeof window === 'undefined') return;
+  const feld = document.querySelector('form[aria-label="Nachricht"]');
+  const delta = ueberstand(el.getBoundingClientRect().bottom, feld ? feld.getBoundingClientRect().top : null, window.innerHeight, ABSTAND.m);
+  if (delta <= 0) return;
+  let p: HTMLElement | null = el.parentElement;
+  while (p && !(/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight)) p = p.parentElement;
+  (p ?? document.scrollingElement ?? document.documentElement).scrollBy({ top: delta, behavior: ruhig ? 'auto' : 'smooth' });
+}
+const ruhigGewuenscht = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 function useZurNeuesten(zugLaeuft: boolean) {
   const ref = useRef<HTMLElement | null>(null);
   const vorher = useRef<boolean | null>(null);
@@ -251,9 +262,8 @@ function useZurNeuesten(zugLaeuft: boolean) {
     const alt = vorher.current;
     vorher.current = zugLaeuft;
     if (alt === null || alt === zugLaeuft) return;
-    const ruhig = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     // Ein Bild später: dann steht die Antwort (statt „schreibt …“) schon im Verlauf.
-    const t = window.setTimeout(() => ref.current?.scrollIntoView({ block: 'end', behavior: ruhig ? 'auto' : 'smooth' }), 30);
+    const t = window.setTimeout(() => ueberDasFeld(ref.current, ruhigGewuenscht()), 30);
     return () => window.clearTimeout(t);
   }, [zugLaeuft]);
   return (el: HTMLElement | null) => { ref.current = el; };
@@ -269,16 +279,12 @@ export function Schreibt({ name, entsteht }: { name: string; entsteht?: { text: 
   const unten = useRef<HTMLDivElement>(null);
   const laenge = entsteht?.text.length ?? 0;
   // Der entstehende Text wächst nach unten — die Statuszeile bleibt über dem Feld in Sicht (nur, wenn sie darunter verschwände).
-  useEffect(() => {
-    const el = unten.current;
-    if (!el || typeof window === 'undefined') return;
-    if (el.getBoundingClientRect().bottom > window.innerHeight - FELD_PLATZ) el.scrollIntoView({ block: 'end' });
-  }, [laenge]);
-  if (!entsteht?.text) return <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_RAND }}>{status}</div>;
+  useEffect(() => { ueberDasFeld(unten.current, true); }, [laenge]);
+  if (!entsteht?.text) return <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</div>;
   return (
     <div style={{ display: 'grid', gap: ABSTAND.xs, maxWidth: NACHRICHT_MAX }}>
       <div style={{ fontSize: TYP.body, lineHeight: 1.55, color: C.ink, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{entsteht.text}</div>
-      <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_RAND }}>{status}</div>
+      <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</div>
     </div>
   );
 }
