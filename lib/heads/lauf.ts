@@ -177,9 +177,11 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   let neu = 0;
   await updateJson<HeadStand>(name, s => {
     const st = { ...leererStand(), ...(s ?? {}) };
-    const m = a.ausgeloest === 'zoe' ? { liste: st.vorschlaege, neu: 0 } : mischen(st.vorschlaege, antwort.vorschlaege, bericht.id, jetzt, a.modus);
+    const m = a.ausgeloest === 'zoe' ? { liste: st.vorschlaege, neu: 0, abgelehnt: 0 } : mischen(st.vorschlaege, antwort.vorschlaege, bericht.id, jetzt, a.modus);
     neu = m.neu;
-    return { ...st, berichte: [...st.berichte, bericht].slice(-30), vorschlaege: m.liste, letzte: { ...st.letzte, [r]: jetzt } };
+    // Freigabe-Liste voll (09.10., Takt robust): neue Vorschläge abgelehnt statt alte weggeschnitten — sichtbar im Lagebild des Head of IT.
+    const { voll: _v, ...ohneVoll } = st;
+    return { ...ohneVoll, ...(m.abgelehnt ? { voll: { zeit: jetzt, abgelehnt: m.abgelehnt } } : a.ausgeloest === 'zoe' && st.voll ? { voll: st.voll } : {}), berichte: [...st.berichte, bericht].slice(-30), vorschlaege: m.liste, letzte: { ...st.letzte, [r]: jetzt } };
   });
   // Fall für Evals ablegen (nur .data, nie im Repo): Datenpaket + erste, ungeprüfte Antwort.
   if (art.roh && a.modus !== 'frage') await updateJson<ReplayStand>(`heads-replay-${a.head}`, s => ({ faelle: [...(s?.faelle ?? []), { zeit: jetzt, modus: a.modus, person: a.person ?? 'system', heute, quelle: art.quelle, modell: bericht.modell, daten, roh: art.roh! }].slice(-25) }));

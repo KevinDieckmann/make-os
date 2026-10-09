@@ -6,7 +6,7 @@
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
-import { lies, melde, pachtGueltig } from '@/lib/zoe/auftraege';
+import { lies, melde, pachtGueltig, pachtHalten } from '@/lib/zoe/auftraege';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { runAgent, AUSFUEHRBAR, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { innenAdresse } from '@/lib/innen';
@@ -31,6 +31,9 @@ export async function POST(req: Request) {
   const token = a.pachtToken!;
 
   const origin = innenAdresse(req);
+  // Herzschlag (09.10., Takt robust): solange dieser Lauf lebt, bleibt seine Pacht frisch (höchstens `LAUF_MAX_MS`) — vorher lief sie nach
+  // 300 s ab, während Heads/Head of Finance/Agenten-Läufe bis 400 s rechneten, und ein zweiter Arbeiter nahm denselben Auftrag.
+  const herz = pachtHalten(a.id, token);
   try {
     if (a.art === 'agent') {
       if (!(AUSFUEHRBAR as readonly string[]).includes(a.name)) {
@@ -76,5 +79,7 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : String(err);
     await melde(a.id, token, 'fehler', msg);
     return NextResponse.json({ ok: false, error: msg.slice(0, 300) });
+  } finally {
+    herz.stop();
   }
 }

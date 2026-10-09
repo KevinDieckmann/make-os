@@ -24,14 +24,16 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { termineFuerZoe } from '@/lib/kalender/zoe-sicht-server';
 import { tagePlus } from '@/lib/zeit';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
-import { imHaushaltOderSystemlauf, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltOderSystemlauf, haushaltDesInhabers, inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { tagesstartLaeuft } from '@/lib/zoe/takt';
 import { aufgabenSerienNachziehen, papierkorbAufraeumen } from '@/lib/aufgaben/serie-server';
 import { produktePapierkorbAufraeumen, crmPapierkorbAufraeumen } from '@/lib/crm/produkte-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface StartLog { lastRun?: string }
+/** `laeuft` (09.10., Takt robust): Riegel „gestartet, noch nicht fertig“ — Tag + Beginn; `lastRun` am Ende löscht ihn. */
+interface StartLog { lastRun?: string; laeuft?: { tag: string; seit: string } }
 
 /** Was ist heute schon passiert und was fehlt? `person` = wer fragt (ohne: Systemlauf) — Läufe nur die eigenen + Systemläufe (08.10.). */
 async function status(today: string, person: string | null) {
@@ -75,6 +77,16 @@ export async function POST(req: Request) {
     const letzte = (await recentRuns(personStreng(req), { agent: 'loop-morgen', limit: 1 }))[0];
     return NextResponse.json({ ...st, uebersprungen: true, loop: letzte?.payload ?? null });
   }
+
+  // Riegel „läuft“ (09.10., Takt robust) — in EINER Sperre gesetzt: läuft der Morgenlauf heute schon (z. B. weil der Arbeiter nach einer
+  // Zeitüberschreitung neu anstieß, der erste Lauf aber noch arbeitet), tut ein zweiter Start nichts doppelt. Nach
+  // `TAGESSTART_LAEUFT_MIN` Minuten gilt ein nie beendeter Lauf als abgebrochen; `lastRun` am Ende löscht den Riegel.
+  let schonLaeuft = false;
+  await updateJson<StartLog>('tagesstart', cur => {
+    schonLaeuft = tagesstartLaeuft(cur, today, new Date());
+    return schonLaeuft ? (cur as StartLog) : { ...(cur ?? {}), laeuft: { tag: today, seit: new Date().toISOString() } };
+  });
+  if (schonLaeuft) return NextResponse.json({ ...st, uebersprungen: true, laeuft: true });
 
   const origin = innenAdresse(req);
   const schritte: { name: string; ok: boolean; info?: string }[] = [];
@@ -236,8 +248,11 @@ export async function POST(req: Request) {
   //    jetzt der Einstieg in den Tageslauf.
   let loop: unknown = null;
   try {
+    // 09.10. (Takt robust): der Tageslauf rechnet im Systemlauf ohnehin für den Inhaber (`laufPerson`) — er bekommt ihn jetzt auch als
+    // Person, sonst übersprang er die Post („ohne Person keine Post“). Post nur der eigenen Person; nie ein fester Name.
+    const fuer = person ?? (await inhaberSpeicher());
     const r = await fetch(`${origin}/api/tageslauf`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', ...dienst },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...dienst, ...(fuer ? { 'x-make-person': fuer } : {}) },
       body: JSON.stringify({ art: 'voll' }),
       signal: AbortSignal.timeout(240_000),
     });

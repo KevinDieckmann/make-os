@@ -11,6 +11,8 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const MAX_JE_AUFRUF = 40;
+
 export async function GET(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   // Sichtbar sind die eigenen Aufträge und die des Systems (ohne Person) — nie
@@ -35,9 +37,11 @@ export async function POST(req: Request) {
   const person = personStreng(req) ?? undefined;
   const neue = (Array.isArray(body.auftraege) ? body.auftraege : [])
     .filter(a => a && (a.art === 'werkzeug' || a.art === 'agent') && typeof a.name === 'string')
-    .slice(0, 40)
     .map(a => ({ ...a, person }));
   if (!neue.length) return NextResponse.json({ ok: false, error: 'Keine Aufträge übergeben.' }, { status: 400 });
-  const { angelegt, schonDa } = await reihe(neue);
+  // Nie still kürzen (09.10., Takt robust): mehr als 40 auf einmal → abgelehnt (vorher wurde der Rest stumm verworfen).
+  if (neue.length > MAX_JE_AUFRUF) return NextResponse.json({ ok: false, error: `Höchstens ${MAX_JE_AUFRUF} Aufträge auf einmal — nichts eingereiht.` }, { status: 413 });
+  const { angelegt, schonDa, abgelehnt } = await reihe(neue);
+  if (abgelehnt) return NextResponse.json({ ok: false, error: 'Die Warteschlange ist voll — nicht alle Aufträge eingereiht. Head of IT prüfen.', angelegt: angelegt.length, schonDa, abgelehnt, ids: angelegt.map(a => a.id) }, { status: 413 });
   return NextResponse.json({ ok: true, angelegt: angelegt.length, schonDa, ids: angelegt.map(a => a.id) });
 }

@@ -26,14 +26,22 @@ import { TEAM } from '@/lib/crm/team';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { hauptInhaber, kontenImHaushaltDerInhaber, type InhaberKern, type InhaberStand } from '@/lib/zugang/inhaber';
 import { leererStand, standName, type HeadStand } from './stand';
-import { localDay } from '@/lib/zeit';
-import { tagPlus, wandAus } from '@/lib/kalender/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
+import { tagPlus, wandAus, wandzeit } from '@/lib/kalender/zeit';
+import { wochentag } from '@/lib/zeit/kalender-kern';
 import { istBusinessFrei } from '@/lib/arbeitsrahmen/regel';
 
-const tag = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const liefHeute = (s: HeadStand, modus: string, heute: string) => (s.letzte[modus] ?? '').slice(0, 10) === heute;
+// Berliner Wandzeit (09.10., Takt robust): Tag, Wochentag und Stunde kommen aus dem Kalender-Kern — vorher aus getDay()/getHours() der
+// Maschine (stimmte nur, weil der Container TZ=Europe/Berlin setzt; ein Skript oder Test ohne TZ verschob Power Hour und Reviews).
+// `letzte` ist ein ISO-Zeitstempel (UTC) — sein Tag ist der Berliner Tag (`tagVon`), nie `.slice(0, 10)`.
+const liefHeute = (s: HeadStand, modus: string, heute: string) => !!s.letzte[modus] && tagVon(s.letzte[modus]) === heute;
 /** Lief der Modus am Tag `ab` oder später? */
-const liefSeit = (s: HeadStand, modus: string, ab: string) => (s.letzte[modus] ?? '').slice(0, 10) >= ab;
+const liefSeit = (s: HeadStand, modus: string, ab: string) => !!s.letzte[modus] && tagVon(s.letzte[modus]) >= ab;
+/** Wochentag wie getDay(): 0 = Sonntag … 6 = Samstag — aus dem Berliner Tag. */
+const wt = (tag: string) => wochentag(tag) % 7;
+const istMoFr = (tag: string) => { const w = wt(tag); return w >= 1 && w <= 5; };
+/** Erster Werktag (Mo–Fr) des Monats? Rein, über Kalendertage. */
+const ersterWerktagVon = (tag: string) => istMoFr(tag) && !Array.from({ length: Number(tag.slice(8, 10)) - 1 }, (_, i) => `${tag.slice(0, 8)}${String(i + 1).padStart(2, '0')}`).some(istMoFr);
 
 /** Business-frei für die Heads (Lücke 7) — ohne Angabe laufen sie wie bisher. */
 export interface HeadsRahmen {
@@ -50,40 +58,45 @@ export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, alleEvents
   // Business-frei (Lücke 7): solange der Haushalt frei ist, ruht jeder Head-Lauf — danach kommt er von selbst bzw. holt nach.
   if (rahmen?.haushaltFrei) return [];
   const roh = faelligeModiRoh(head, jetzt, s, alleEvents, personen, rahmen?.personFrei, opt.altRiegelPerson ?? null);
-  if (roh.length || !rahmen) return roh;
+  if (roh.length) return roh;
   return nachholen(head, jetzt, s, alleEvents, rahmen).slice(0, 1);
 }
 
-/** Tage vor heute (1 … 6), an denen `passt(tag, datum)` gilt — jüngster zuerst. */
-function letzteTage(jetzt: Date, passt: (d: Date) => boolean): string[] {
+/** Tage vor heute (1 … 6, Berliner Tage), an denen `passt(tag)` gilt — jüngster zuerst. */
+function letzteTage(heute: string, passt: (tag: string) => boolean): string[] {
   const raus: string[] = [];
-  for (let k = 1; k <= 6; k++) { const d = new Date(jetzt.getTime() - k * 864e5); if (passt(d)) raus.push(tag(d)); }
+  for (let k = 1; k <= 6; k++) { const t = tagPlus(heute, -k); if (passt(t)) raus.push(t); }
   return raus;
 }
-const ersterWerktagVon = (d: Date) => { const w = d.getDay(); return w >= 1 && w <= 5 && !Array.from({ length: d.getDate() - 1 }, (_, i) => new Date(d.getFullYear(), d.getMonth(), i + 1).getDay()).some(x => x >= 1 && x <= 5); };
 
 /**
- * Verpasste Wochen-/Monatsläufe und Nachfassen nach einem Event — nur, wenn der geplante Zeitpunkt in einer Business-freien Zeit
- * des Haushalts lag und der Lauf seitdem nicht lief. Rein (der Aufrufer prüft, dass JETZT nicht Business-frei ist).
+ * Verpasste Wochen-/Monatsläufe und Nachfassen nach einem Event (höchstens 6 Tage zurück, der jüngste geplante Tag zählt), wenn der Lauf
+ * seitdem nicht lief — EINMAL (der Riegel `letzte` des Modus). Zwei Gründe: der geplante Zeitpunkt lag in einer Business-freien Zeit des
+ * Haushalts (Lücke 7) ODER — seit 09.10. (Takt robust) — der Lauf ist eingeführt (lief schon einmal) und wurde verpasst, z. B. weil die
+ * App nicht lief. Ein nie gelaufener Modus (neue Instanz) wird nicht „nachgeholt“. Rein (der Aufrufer prüft, dass JETZT nicht
+ * Business-frei ist).
  */
-function nachholen(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], r: HeadsRahmen): { modus: string; grund: string }[] {
+function nachholen(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], r?: HeadsRahmen): { modus: string; grund: string }[] {
   const raus: { modus: string; grund: string }[] = [];
+  const heute = localDay(jetzt), monat = heute.slice(0, 7);
   const pruefe = (modus: string, grund: string, tage: string[], stunde: number) => {
-    const d = tage.find(t => r.warFrei(t, stunde));
-    if (d && !liefSeit(s, modus, d)) raus.push({ modus, grund: `${grund} (nachgeholt nach Business-frei)` });
+    const eingefuehrt = !!s.letzte[modus];
+    const d = tage.find(t => eingefuehrt || !!r?.warFrei(t, stunde));
+    if (!d || liefSeit(s, modus, d)) return;
+    raus.push({ modus, grund: `${grund} (${r?.warFrei(d, stunde) ? 'nachgeholt nach Business-frei' : 'nachgeholt — verpasst'})` });
   };
   if (head === 'sales') {
-    pruefe('wochenreview', 'Wochenreview Vertrieb', letzteTage(jetzt, d => d.getDay() === 5), 14);
-    pruefe('lead_review', 'Leads qualifizieren (Wochenstart)', letzteTage(jetzt, d => d.getDay() === 1), 9);
-    pruefe('kundenreview', 'Kundenreview zum Monatsanfang', letzteTage(jetzt, d => ersterWerktagVon(d) && d.getMonth() === jetzt.getMonth()), 9);
+    pruefe('wochenreview', 'Wochenreview Vertrieb', letzteTage(heute, t => wt(t) === 5), 14);
+    pruefe('lead_review', 'Leads qualifizieren (Wochenstart)', letzteTage(heute, t => wt(t) === 1), 9);
+    pruefe('kundenreview', 'Kundenreview zum Monatsanfang', letzteTage(heute, t => ersterWerktagVon(t) && t.slice(0, 7) === monat), 9);
   }
   if (head === 'marketing') {
-    pruefe('wochenplan', 'Wochenplan Marketing', letzteTage(jetzt, d => d.getDay() === 1), 8);
-    pruefe('monatsreview', 'Monatsreview Marketing', letzteTage(jetzt, d => ersterWerktagVon(d) && d.getMonth() === jetzt.getMonth()), 10);
+    pruefe('wochenplan', 'Wochenplan Marketing', letzteTage(heute, t => wt(t) === 1), 8);
+    pruefe('monatsreview', 'Monatsreview Marketing', letzteTage(heute, t => ersterWerktagVon(t) && t.slice(0, 7) === monat), 10);
   }
   if (head === 'event') {
     const events = alleEvents.filter(e => !istNetzwerkenEvent(e) && e.status !== 'abgesagt');
-    const tageNachEvent = letzteTage(jetzt, d => events.some(e => e.datum === tag(new Date(d.getTime() - 864e5))));
+    const tageNachEvent = letzteTage(heute, t => events.some(e => e.datum === tagPlus(t, -1)));
     pruefe('nachfassen', 'Nachfassen nach dem Event (48 h)', tageNachEvent, 8);
   }
   return raus;
@@ -92,9 +105,9 @@ function nachholen(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum:
 function faelligeModiRoh(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], personen: string[], personFrei: ReadonlySet<string> = new Set(), altRiegelPerson: string | null = null): { modus: string; grund: string; person?: string }[] {
   // Fremde Veranstaltungen aus „Netzwerken“ (Marke „Netzwerken“) sind keine Make.One-Events: kein Nachfassen/Countdown dafür.
   const events = alleEvents.filter(e => !istNetzwerkenEvent(e));
-  const heute = tag(jetzt), w = jetzt.getDay(), h = jetzt.getHours(), werktag = w >= 1 && w <= 5;
+  const heute = localDay(jetzt), w = wt(heute), h = Number(wandzeit(jetzt).slice(11, 13)), werktag = w >= 1 && w <= 5;
   const raus: { modus: string; grund: string; person?: string }[] = [];
-  const ersterWerktag = werktag && jetzt.getDate() <= 3 && !Array.from({ length: jetzt.getDate() - 1 }, (_, i) => new Date(jetzt.getFullYear(), jetzt.getMonth(), i + 1).getDay()).some(x => x >= 1 && x <= 5);
+  const ersterWerktag = Number(heute.slice(8, 10)) <= 3 && ersterWerktagVon(heute);
   if (head === 'sales') {
     for (const p of personen) if (werktag && h >= 7 && !personFrei.has(p) && !liefHeute(s, `power_hour:${p}`, heute) && !(p === altRiegelPerson && liefHeute(s, 'power_hour', heute))) raus.push({ modus: 'power_hour', grund: `Power Hour vorbereiten (${p.charAt(0).toUpperCase() + p.slice(1)})`, person: p });
     if (w === 5 && h >= 14 && !liefHeute(s, 'wochenreview', heute)) raus.push({ modus: 'wochenreview', grund: 'Wochenreview Vertrieb' });
@@ -108,8 +121,8 @@ function faelligeModiRoh(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { 
     if (ersterWerktag && h >= 10 && !liefHeute(s, 'monatsreview', heute)) raus.push({ modus: 'monatsreview', grund: 'Monatsreview Marketing' });
   }
   if (head === 'event' && h >= 8) {
-    const gestern = tag(new Date(jetzt.getTime() - 864e5));
-    const bald = events.some(e => e.status !== 'abgesagt' && e.datum > heute && e.datum <= tag(new Date(jetzt.getTime() + 7 * 864e5)));
+    const gestern = tagPlus(heute, -1);
+    const bald = events.some(e => e.status !== 'abgesagt' && e.datum > heute && e.datum <= tagPlus(heute, 7));
     if (events.some(e => e.datum === gestern && e.status !== 'abgesagt') && !liefHeute(s, 'nachfassen', heute)) raus.push({ modus: 'nachfassen', grund: 'Nachfassen nach dem Event (48 h)' });
     if (bald && !liefHeute(s, 'planung', heute)) raus.push({ modus: 'planung', grund: 'Countdown bis zum Event' });
   }

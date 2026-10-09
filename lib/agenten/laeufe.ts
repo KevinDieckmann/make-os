@@ -281,7 +281,7 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
 
 // ── Server: abbrechen, neu starten ───────────────────────────────────────────────────────────────────────────────────────
 
-export type LaufAktionErgebnis = { ok: true; text: string; auftragId?: string } | { ok: false; status: 400 | 403 | 404 | 409; fehler: string; [k: string]: unknown };
+export type LaufAktionErgebnis = { ok: true; text: string; auftragId?: string } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; [k: string]: unknown };
 
 /** Einen laufenden Thread-Lauf anhalten (Status `abgebrochen` am Thread, vor jeder Runde geprüft — R15). */
 export type FadenAbbruch = (person: string, fadenId: string) => Promise<boolean>;
@@ -359,8 +359,10 @@ export async function laufNeuStarten(person: string, laufId: unknown, opt: { tro
   }
   const pruef = await neuStartPruefen(person, eingabe!, opt);
   if (!pruef.ok) return pruef;
-  const { angelegt, schonDa } = await reihe([{ art: 'agent', name: LAUF_AGENT, auftrag: JSON.stringify(eingabe), eingabe: eingabe!, person, anlass: 'Neu gestartet von Hand' }]);
+  const { angelegt, schonDa, abgelehnt } = await reihe([{ art: 'agent', name: LAUF_AGENT, auftrag: JSON.stringify(eingabe), eingabe: eingabe!, person, anlass: 'Neu gestartet von Hand' }]);
   if (!angelegt.length && schonDa) return { ok: false, status: 409, fehler: 'Derselbe Lauf wartet schon.' };
+  // Takt robust (09.10.): die Warteschlange ist voll — abgelehnt statt gekürzt, sichtbar im Lagebild.
+  if (!angelegt.length && abgelehnt) return { ok: false, status: 413, fehler: 'Die Warteschlange ist voll — nichts eingereiht. Head of IT prüfen.' };
   // Durchstich 09.10.: ein Thread-Lauf bekommt seinen neuen Auftrag am Thread („wartet“) — vorher blieb ein abgebrochener Thread „abgebrochen“,
   // der Arbeiter übersprang ihn („abgebrochen — nicht gelaufen“) und „Neu starten“ tat still nichts (auch nach dem Not-Aus).
   if (eingabe!.art === 'faden' && typeof eingabe!.fadenId === 'string' && angelegt[0]) {
