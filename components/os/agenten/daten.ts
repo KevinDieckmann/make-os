@@ -88,6 +88,36 @@ export async function senden<T>(url: string, body: unknown): Promise<Ergebnis<T>
   return { ok: true, daten: d as T };
 }
 
+/**
+ * 409 mit Rückfrage (Gegenprüfung 09.10.): die Routen antworten bei Kosten über der Schwelle mit `kostenBestaetigen` (+ Schätzung im Satz)
+ * bzw. in einer Business-freien Zeit mit `businessFrei` — vorher zeigte die Seite das nur als Fehler, bestätigen ging nie. Hier: fragen,
+ * dann mit `kostenBestaetigt` bzw. `trotzdem` erneut senden. Sagt die Person nein, kommt ein Ergebnis ohne Text (nichts melden).
+ */
+export async function mitRueckfrage<T>(
+  sende: (zusatz: { kostenBestaetigt?: true; trotzdem?: true }) => Promise<Ergebnis<T>>,
+  bestaetigen: (b: { titel: string; text?: string; ja: string }) => Promise<boolean>,
+  titel: string,
+): Promise<Ergebnis<T>> {
+  let zusatz: { kostenBestaetigt?: true; trotzdem?: true } = {};
+  for (let i = 0; i < 3; i++) {
+    const r = await sende(zusatz);
+    if (r.ok || r.status !== 409) return r;
+    const d = (r.daten && typeof r.daten === 'object' ? r.daten : {}) as { kostenBestaetigen?: unknown; businessFrei?: unknown };
+    if (d.kostenBestaetigen === true && !zusatz.kostenBestaetigt) {
+      if (!(await bestaetigen({ titel, text: r.text, ja: 'Starten' }))) return { ...r, text: '' };
+      zusatz = { ...zusatz, kostenBestaetigt: true };
+      continue;
+    }
+    if (d.businessFrei === true && !zusatz.trotzdem) {
+      if (!(await bestaetigen({ titel: 'Trotzdem starten?', text: r.text, ja: 'Trotzdem' }))) return { ...r, text: '' };
+      zusatz = { ...zusatz, trotzdem: true };
+      continue;
+    }
+    return r;
+  }
+  return { ok: false, kommt: false, status: 409, text: 'Nicht gestartet.' };
+}
+
 // ── Lesen ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Die offenen Freigaben der Person (Antwort von GET /api/zoe/stapel). */

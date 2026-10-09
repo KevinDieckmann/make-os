@@ -23,7 +23,7 @@ import {
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Fenster } from '../Fenster';
 import { Chip, Eigenschaft, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPillen, Pillen, Schalter, Schritte, Segmente, SymbolKnopf, Zeile, auswahl, eingabe, feld } from '../ui';
-import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, skillSenden } from './daten';
+import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, mitRueckfrage, skillSenden } from './daten';
 import { sichtbareHeads, useAgenten, type DialogArt } from './kontext';
 import {
   agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, euro, kostenImMonat, leererSkill, naechsterLaufText,
@@ -136,8 +136,9 @@ export function AuftragDialog({ art, start, onZu }: { art: 'auftrag' | 'mehrere'
     }
     if (!agent) return;
     if (art === 'hintergrund' && wann !== 'jetzt' && zeitplan) {
-      const r = await laeufeSenden({ aktion: 'planen', aufgabe: { agent, titel: titel.trim(), auftrag: text, zeitplan, ...(cent ? { kostenGrenzeCent: cent } : {}) }, anfrageId: anfrageId() });
-      if (!r.ok) { setMeldung(ausErgebnis(r, 'Geplante Hintergrundaufgaben kommen mit dem nächsten Paket.')); return; }
+      const id = anfrageId();
+      const r = await mitRueckfrage(z => laeufeSenden({ aktion: 'planen', aufgabe: { agent, titel: titel.trim(), auftrag: text, zeitplan, ...(cent ? { kostenGrenzeCent: cent } : {}) }, anfrageId: z.kostenBestaetigt ? anfrageId() : id, ...(z.kostenBestaetigt ? { kostenBestaetigt: true } : {}) }), w.bestaetigen, 'Hintergrundaufgabe planen?');
+      if (!r.ok) { if (r.text) setMeldung(ausErgebnis(r, 'Geplante Hintergrundaufgaben kommen mit dem nächsten Paket.')); return; }
       w.melde(`„${titel.trim()}“ ist geplant.`, 'gut');
       onZu();
       return;
@@ -402,8 +403,9 @@ export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string;
   };
   const testlauf = async () => {
     if (!id) { setMeldung({ art: 'info', text: 'Erst speichern — der Testlauf prüft die gespeicherte Fassung, ohne Wirkung.' }); return; }
-    const r = await skillSenden({ aktion: 'testlauf', id });
-    if (!r.ok) { setMeldung(ausErgebnis(r, 'Der Testlauf kommt mit dem nächsten Paket.')); return; }
+    // Über der Kostenschwelle fragt der Server nach (409 `kostenBestaetigen`) — dann mit Bestätigung erneut (Gegenprüfung 09.10.).
+    const r = await mitRueckfrage(z => skillSenden({ aktion: 'testlauf', id, ...(z.kostenBestaetigt ? { kostenBestaetigt: true } : {}) }), w.bestaetigen, 'Testlauf starten?');
+    if (!r.ok) { if (r.text) setMeldung(ausErgebnis(r, 'Der Testlauf kommt mit dem nächsten Paket.')); return; }
     if (r.daten.skill) setGeladen(r.daten.skill);
     if (r.daten.stand) setStand(r.daten.stand);
     setMeldung({ art: r.daten.skill?.testlauf?.ok ? 'gut' : 'info', text: r.daten.skill?.testlauf?.ok ? 'Testlauf bestanden.' : 'Testlauf beendet — sieh dir die Ergebnisse an.' });

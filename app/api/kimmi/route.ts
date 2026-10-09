@@ -47,6 +47,9 @@ import { haushaltsSpeicher } from '@/lib/aufgaben/sicht';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/** Höchstens so viele Fragen an Heads (`head_fragen`) je ZOE-Zug (Gegenprüfung 09.10., Kosten). */
+const HEAD_FRAGEN_JE_ZUG = 3;
+
 
 
 // Live-Bewusstsein kommt jetzt aus dem Brain — derselben Kontextschicht, die
@@ -258,6 +261,9 @@ export async function POST(req: Request) {
     // Budgets je Zug (wie bisher): höchstens 8 Agentenläufe und 14 Werkzeuge.
     let laufBudget = 8;
     let werkBudget = 14;
+    // Gegenprüfung 09.10.: `head_fragen` ist ein ganzer Head-Lauf (bis zu 3 Modellaufrufe) und läuft auch nach fremdem Text (nur lesend) —
+    // höchstens HEAD_FRAGEN_JE_ZUG je Zug, damit ein eingeschleuster Satz („frag jeden Head …“) keine Kosten-Lawine auslöst.
+    let headFragenBudget = HEAD_FRAGEN_JE_ZUG;
     const anlass = message.slice(0, 200);
     const zoeKontext = (z: { fremdGelesen: boolean; vertraulich: boolean }) => ({ ...(zug ? { fadenId: zug.faden.id } : {}), fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich });
     const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet/i;
@@ -277,6 +283,7 @@ export async function POST(req: Request) {
         if (name === 'open_agent') return { inhalt: 'Notiert — erscheint als Vorschlag.', ok: true, zaehlt: false };
         // Nur, was in DIESEM Zug angeboten war (≤ 20) — alles andere über den zuständigen Head.
         if (!angebotenSet.has(name)) return { inhalt: 'Nicht angeboten in diesem Zug — frag den zuständigen Head (head_fragen) oder gib ihm den Auftrag (an_head).', ok: false, name: name === 'run_agent' ? String(a.input?.agent ?? '') : name };
+        if (name === 'head_fragen' && headFragenBudget-- <= 0) return { inhalt: `Nicht ausgeführt: höchstens ${HEAD_FRAGEN_JE_ZUG} Fragen an Heads je Zug — frag gezielt oder gib den Auftrag mit an_head.`, ok: false };
         if (WERKZEUGE[name]) {
           // CRM-Werkzeuge nur mit Zugang (28.09., K1) — auch wenn das Modell ein nicht angebotenes Werkzeug nennt.
           const gueltig = (crmErlaubt || !([...CRM_WERKZEUGE, ...AUFGABEN_DATEI_WERKZEUGE] as readonly string[]).includes(name)) && werkBudget-- > 0;

@@ -15,7 +15,7 @@ import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, SCHRIFT, TIEF, 
 import type { FadenKurz, Lauf, Naechstes } from '@/lib/agenten/typen';
 import { Chip, Fortschritt, Hinweis, Knopf, Leer, eingabe } from '../ui';
 import { headFarbe } from './Avatar';
-import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, stapelEntscheiden } from './daten';
+import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelEntscheiden } from './daten';
 import { useAgenten } from './kontext';
 import {
   dauerText, euro, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, zeitKurz,
@@ -179,9 +179,11 @@ export function LaufZeile({ l }: { l: Lauf }) {
   const dauer = l.dauerMs ?? (l.status === 'laeuft' ? jetzt.getTime() - Date.parse(l.start) : undefined);
   const tu = async (aktion: 'abbrechen' | 'neu-starten') => {
     if (aktion === 'abbrechen' && !(await bestaetigen({ titel: 'Lauf abbrechen?', text: `„${l.titel}“ hält an. Was schon fertig ist, bleibt.`, ja: 'Abbrechen', gefahr: true }))) return;
-    const r = await laeufeSenden({ aktion, laufId: l.id });
+    // Neu starten: Kosten über der Schwelle bzw. Business-frei fragen nach (409) — dann mit Bestätigung erneut (Gegenprüfung 09.10.).
+    const r = aktion === 'abbrechen' ? await laeufeSenden({ aktion, laufId: l.id })
+      : await mitRueckfrage(z => laeufeSenden({ aktion: 'neu-starten', laufId: l.id, ...z }), bestaetigen, `„${l.titel}“ neu starten?`);
     if (r.ok) melde(aktion === 'abbrechen' ? `„${l.titel}“ abgebrochen.` : `„${l.titel}“ startet neu.`, 'gut');
-    else melde(r.kommt ? 'Abbrechen und Neu starten kommen mit dem nächsten Paket.' : r.text, r.kommt ? 'info' : 'kritisch');
+    else if (r.text) melde(r.kommt ? 'Abbrechen und Neu starten kommen mit dem nächsten Paket.' : r.text, r.kommt ? 'info' : 'kritisch');
   };
   return (
     <li style={zeile}>

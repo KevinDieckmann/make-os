@@ -87,6 +87,19 @@ export function agentenDefs(o: { mitarbeiter: readonly Pick<Mitarbeiter, 'id' | 
   };
 }
 
+// ── Fach-Agenten (`fach_agent`) nach Bereich ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fach-Agenten (lib/zoe/agenten.ts), deren Ergebnis NUR Business-Daten bzw. nur den Auftrag trägt — nur sie laufen unter einem Business-Head
+ * (Gegenprüfung 09.10.). `okr` liest das ganze Brain (auch private Ziele), `inbox` die Lage ALLER Postfächer, `task` auch Aufgaben aus
+ * Privat-Projekten — ihr Ergebnis stünde sonst in einem Business-Thread, den man teilen kann („Sicht X bekommt nichts aus Y“). Privat-Heads
+ * gehören einer Person (bzw. den vollen Mitgliedern) und dürfen jeden Fach-Agenten ihres Katalogs nutzen.
+ */
+export const FACH_AGENTEN_BUSINESS: ReadonlySet<string> = new Set(['board', 'controlling', 'crm', 'prospect', 'prospecting', 'research', 'content', 'outreach', 'meeting']);
+/** Darf ein Mitarbeiter mit diesem Fach-Agenten ihn unter einem Head dieses Bereichs ausführen? Rein. */
+export const fachAgentErlaubt = (agentId: string | undefined | null, bereich: 'privat' | 'business'): boolean =>
+  !!agentId && (bereich !== 'business' || FACH_AGENTEN_BUSINESS.has(agentId));
+
 // ── Angebot: die Schnittmenge ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** Die Kategorien eines Heads, die gerade an die KI dürfen: Bereiche nach den Schaltern, Gesundheit nur mit (b), Web nur mit Web-Suche. */
@@ -139,7 +152,7 @@ export function werkzeugAngebot(o: {
     for (const w of MITARBEITER_WERKZEUGE) agenten.add(w);
     if (o.brett) { agenten.add('brett_eintragen'); if (!o.helfer) agenten.add('hilfe_anfragen'); }
     if (o.stufe === 'schnell') agenten.add('rat_holen');
-    if (o.agentId) agenten.add('fach_agent');
+    if (fachAgentErlaubt(o.agentId, o.head.bereich)) agenten.add('fach_agent');
   }
   const defs = agentenDefs({ mitarbeiter: o.mitarbeiter, headWerkzeuge: o.head.werkzeuge });
   const tools = [...Array.from(register).map(n => REGISTER_DEFS.get(n)!), ...Array.from(agenten).map(n => defs[n]).filter(Boolean)];

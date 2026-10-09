@@ -213,7 +213,8 @@ export function einstellungSicht(head: Pick<HeadDef, 'stufe' | 'aufwand'>, e: He
  * marketing|event>-…` (Takt der Heads), `finanzchef…` (Head of Finance). Sonst null (ZOE, Systemläufe, Medien).
  */
 export function headVonZweck(zweck: string): string | null {
-  const m = /^agent-([a-z0-9-]+?)(?:-skill-test)?$/.exec(zweck);
+  // `-bild` (Gegenprüfung 09.10.): Bilder, die ein Head bzw. sein Mitarbeiter erzeugt (lib/agenten/medien-werkzeuge.ts), zählen in SEIN Budget.
+  const m = /^agent-([a-z0-9-]+?)(?:-skill-test|-bild)?$/.exec(zweck);
   if (m && headDef(m[1])) return m[1];
   const h = /^head-(sales|marketing|event)(?:-|$)/.exec(zweck);
   if (h) return h[1];

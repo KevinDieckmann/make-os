@@ -369,6 +369,10 @@ export async function skillTestlaufAktion(person: string, id: unknown, opt: { ko
     return raus;
   }
   if (schaetzung.cent > GROSS_AB_CENT && !opt.kostenBestaetigt) return fehler(409, `Der Testlauf kostet ${schaetzung.text} — bitte bestätigen.`, { kostenBestaetigen: true, schaetzung });
+  // Gegenprüfung 09.10.: Not-Aus, „aus“ und Monatsbudget des Heads gelten auch für den Testlauf (bis zu 20 Fälle mit Modell) — wie beim
+  // Probelauf eines Mitarbeiters. Vorgemerkt („nachts“) wird weiter; geprüft wird, wenn er läuft.
+  const sperre = await (await import('./einstellung')).laufSperre(person, f.head.id);
+  if (sperre) return fehler(409, sperre.text, { gesperrt: sperre.grund });
   const ergebnisse: ProbeErgebnis[] = [];
   for (let i = 0; i < s.tests.length; i++) {
     try { ergebnisse.push(await probelaeuferImpl({ skill: s, head: f.head, test: s.tests[i], nr: i, person })); }

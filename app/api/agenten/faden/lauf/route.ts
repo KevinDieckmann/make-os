@@ -94,7 +94,12 @@ export async function POST(req: Request) {
     const r = hintergrund ? await imHintergrund(lauf) : await lauf();
     // Plan-Freigaben, die der Lauf angelegt hat, auch in den Stapel (Art `plan`, idempotent) — für den Head-Thread des Laufs.
     if (r.fadenId) await planStapelnFuer(person, r.fadenId).catch(() => 0);
-    return NextResponse.json({ ok: r.ok, ...(r.fadenId ? { fadenId: r.fadenId } : {}), ...(r.laufStatus ? { laufStatus: r.laufStatus } : {}), ergebnis: r.ergebnis, ...(r.ok ? {} : { fehler: r.ergebnis, error: r.ergebnis }) }, { status: r.status });
+    // Gegenprüfung 09.10.: ein Lauf, der GELAUFEN ist (Status steht am Thread — auch „fehler“/„abgebrochen“), ist für die Warteschlange
+    // erledigt — sonst reihte der Arbeiter ihn bis zu dreimal neu ein und der ganze Lauf (Modell, Vorschläge) liefe noch einmal. Neu
+    // starten geht von Hand (Läufe › „Neu starten“). `laufOk` sagt, wie er ausging.
+    const gelaufen = r.status === 200 && !!r.laufStatus;
+    const ok = r.ok || gelaufen;
+    return NextResponse.json({ ok, ...(gelaufen ? { laufOk: r.ok } : {}), ...(r.fadenId ? { fadenId: r.fadenId } : {}), ...(r.laufStatus ? { laufStatus: r.laufStatus } : {}), ergebnis: r.ergebnis, ...(ok ? {} : { fehler: r.ergebnis, error: r.ergebnis }) }, { status: r.status });
   } catch (e) {
     return nein(500, `Lauf fehlgeschlagen (${e instanceof Error ? e.message.slice(0, 160) : 'Fehler'}).`);
   }

@@ -741,7 +741,8 @@ export interface SkillAntwort { ok: true; skill: Skill; stand: string }
 export type SkillAnfrage =
   | { aktion: 'anlegen'; skill: Omit<Skill, 'id' | 'version' | 'erfolg' | 'aktiv' | 'angelegtVon' | 'freigegebenVon' | 'testlauf' | 'geaendertAm'>; anfrageId?: string }
   | { aktion: 'aendern'; id: string; teil: Partial<Skill>; stand: string }
-  | { aktion: 'testlauf'; id: string }
+  /** `kostenBestaetigt` nach der Rückfrage (409 `kostenBestaetigen` mit Schätzung), `nachts` = nur vormerken (Gegenprüfung 09.10.: im Vertrag nachgetragen). */
+  | { aktion: 'testlauf'; id: string; kostenBestaetigt?: boolean; nachts?: boolean }
   | { aktion: 'aktivieren' | 'deaktivieren' | 'loeschen'; id: string; stand: string }
   | { aktion: 'import'; headId: string; skillMd: string }
   | { aktion: 'mitarbeiter-anlegen'; headId: string; mitarbeiter: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'auchFuer' | 'stufe'>; anfrageId?: string }
@@ -757,9 +758,12 @@ export type SkillAnfrage =
 export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[]; /** Stand je geplanter Aufgabe (Pausieren/Löschen mit Stand, Paket 4b im Vertrag). */ planStaende?: Record<string, string> }
 /** POST /api/agenten/laeufe (Paket 3). */
 export type LaeufeAnfrage =
-  | { aktion: 'planen'; aufgabe: Pick<Hintergrundaufgabe, 'agent' | 'titel' | 'auftrag' | 'zeitplan' | 'kostenGrenzeCent'>; anfrageId?: string }
-  | { aktion: 'plan-aendern'; id: string; teil: Partial<Hintergrundaufgabe>; stand: string }
+  // `kostenBestaetigt` nach der Rückfrage (409 `kostenBestaetigen`), `trotzdem` in einer Business-freien Zeit (409 `businessFrei`) — die Route
+  // nahm beides schon an, der Vertrag nennt es seit der Gegenprüfung 09.10. (sonst konnte die Oberfläche teure Läufe nie bestätigen).
+  | { aktion: 'planen'; aufgabe: Pick<Hintergrundaufgabe, 'agent' | 'titel' | 'auftrag' | 'zeitplan' | 'kostenGrenzeCent'>; anfrageId?: string; kostenBestaetigt?: boolean }
+  | { aktion: 'plan-aendern'; id: string; teil: Partial<Hintergrundaufgabe>; stand: string; kostenBestaetigt?: boolean }
   | { aktion: 'plan-loeschen'; id: string; stand: string }
-  | { aktion: 'abbrechen' | 'neu-starten'; laufId: string };
+  | { aktion: 'abbrechen'; laufId: string }
+  | { aktion: 'neu-starten'; laufId: string; kostenBestaetigt?: boolean; trotzdem?: boolean };
 /** GET /api/medien (Paket 5). */
 export interface MedienAntwort { ok: true; medien: Medium[] }
