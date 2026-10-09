@@ -6,12 +6,15 @@
 #   ssh -t make@<server> sudo bash /srv/make-os/app/deploy/ki-anbieter-verbinden.sh mistral
 #   ssh -t make@<server> sudo bash /srv/make-os/app/deploy/ki-anbieter-verbinden.sh tor        # aus | an | streng
 #   ssh -t make@<server> sudo bash /srv/make-os/app/deploy/ki-anbieter-verbinden.sh budget     # Instanz-Budget je Monat in Euro
+#   ssh -t make@<server> sudo bash /srv/make-os/app/deploy/ki-anbieter-verbinden.sh anthropic  # Anthropic-Schlüssel tauschen (09.10.)
 #   … --entfernen vertex|mistral|tor|budget                                                     # Zeilen löschen
 #
 # vertex  fragt: Projekt-ID, den PFAD zur Schlüsseldatei des Dienstkontos AUF DEM SERVER (vorher per scp hochladen, z. B. nach
 #         /tmp/vertex.json — das Skript liest sie, prüft sie, legt sie Base64 in die .env und bietet an, die Datei sicher zu löschen),
 #         ob Claude in der EU freigeschaltet ist (Model Garden), die Region (eu oder europe-…), ob Bilder/Video/Tiefenbericht erlaubt sind,
 #         und ob Zero Data Retention bei Google bestätigt ist.
+# anthropic fragt: den API-Schlüssel (verdeckt, genau EINMAL einfügen), prüft ihn mit EINEM Mini-Aufruf (1 Token, Bruchteil eines
+#         Cents) bei api.anthropic.com — erkennt „falscher Schlüssel“ und „kein Guthaben“ VOR dem Speichern — und ersetzt ANTHROPIC_API_KEY.
 # mistral fragt: den API-Schlüssel (verdeckt, genau EINMAL einfügen) und ob Training-Opt-out + ZDR bei Mistral gesetzt sind.
 # Schreibt in /srv/make-os/app/.env (nur für make lesbar) und startet MAKE OS neu. Werte NIE in den Chat, NIE ins Repo; Schlüssel
 # erscheinen nirgends (nicht auf dem Bildschirm außer den letzten vier Zeichen, nicht in der Prozessliste, nicht im Log).
@@ -57,7 +60,8 @@ if [[ "${1:-}" == "--entfernen" ]]; then
     mistral) schreibe_env "$MISTRAL_MUSTER" "" ;;
     tor) schreibe_env "$TOR_MUSTER" "" ;;
     budget) schreibe_env "$BUDGET_MUSTER" "" ;;
-    *) echo "Was entfernen? vertex | mistral | tor | budget"; exit 1 ;;
+    anthropic) schreibe_env 'ANTHROPIC_API_KEY' "" ;;
+    *) echo "Was entfernen? vertex | mistral | tor | budget | anthropic"; exit 1 ;;
   esac
   neu_starten
   echo "Entfernt. Den Schlüssel bitte zusätzlich beim Anbieter widerrufen (Google: Dienstkonto-Schlüssel löschen; Mistral: API-Schlüssel löschen)."
@@ -65,6 +69,38 @@ if [[ "${1:-}" == "--entfernen" ]]; then
 fi
 
 case "${1:-}" in
+anthropic)
+  KEY=""
+  for versuch in 1 2 3; do
+    read -rsp "Anthropic-API-Schlüssel EINMAL einfügen, dann Enter (man sieht nichts): " ROH; echo
+    ROH="$(printf '%s' "$ROH" | tr -d '[:space:]')"
+    HAELFTE=$(( ${#ROH} / 2 ))
+    if [[ -z "$ROH" ]]; then echo "Da kam nichts an — bitte einfügen (Cmd+V), dann Enter."; continue; fi
+    if (( ${#ROH} % 2 == 0 )) && [[ "${ROH:0:$HAELFTE}" == "${ROH:$HAELFTE}" ]]; then echo "Der Schlüssel kam doppelt an — bitte genau EINMAL einfügen."; continue; fi
+    if [[ "$ROH" =~ ^sk-ant-[A-Za-z0-9_-]{20,300}$ ]]; then KEY="$ROH"; echo "Erkannt: ${#KEY} Zeichen, endet auf ••••${KEY: -4}"; break; fi
+    echo "Das sieht nicht wie ein Anthropic-Schlüssel aus (beginnt mit sk-ant-)."
+  done
+  unset ROH
+  [[ -n "$KEY" ]] || { echo "Abbruch nach drei Versuchen — nichts gespeichert."; exit 1; }
+  # Probe: EIN Aufruf mit 1 Ausgabe-Token. Der Schlüssel geht über die Standardeingabe an curl (nie in die Prozessliste).
+  ANTWORT="$(mktemp)"; chmod 600 "$ANTWORT"
+  CODE="$(printf 'header = "x-api-key: %s"\n' "$KEY" | curl -sS -m 30 -o "$ANTWORT" -w '%{http_code}' -K - \
+    -H 'anthropic-version: 2023-06-01' -H 'content-type: application/json' \
+    -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"ok"}]}' \
+    https://api.anthropic.com/v1/messages || echo 000)"
+  if grep -qi 'credit balance' "$ANTWORT"; then FEHLER="kein Guthaben in der Organisation dieses Schlüssels — in der Console die Organisation mit Guthaben wählen bzw. aufladen"
+  elif [[ "$CODE" == "401" ]]; then FEHLER="Anthropic kennt den Schlüssel nicht (401) — gelöscht oder falsch kopiert?"
+  elif [[ "$CODE" == "403" ]]; then FEHLER="der Schlüssel darf keine Nachrichten senden (403) — Rechte/Workspace in der Console prüfen"
+  elif [[ "$CODE" == "200" ]]; then FEHLER=""
+  else FEHLER="unerwartete Antwort (HTTP $CODE) — später noch einmal"
+  fi
+  rm -f "$ANTWORT"
+  if [[ -n "$FEHLER" ]]; then unset KEY; echo "Abbruch, nichts gespeichert: $FEHLER."; exit 1; fi
+  echo "Probe bestanden: Schlüssel gültig, Guthaben vorhanden."
+  schreibe_env 'ANTHROPIC_API_KEY' "ANTHROPIC_API_KEY=${KEY}"
+  unset KEY
+  echo "Gespeichert (nur für den Nutzer make lesbar). Den alten Schlüssel bitte in der Anthropic-Console löschen."
+  ;;
 vertex)
   read -rp "Projekt-ID in Google Cloud (z. B. make-os-123456), dann Enter: " PROJEKT
   PROJEKT="$(printf '%s' "$PROJEKT" | tr -d '[:space:]')"
@@ -139,7 +175,7 @@ budget)
   echo "Hinweis: Eine Inhaber-Einstellung in MAKE OS (System › Datenschutz › KI) geht der Umgebung vor."
   ;;
 *)
-  echo "Aufruf: ki-anbieter-verbinden.sh vertex | mistral | tor | budget   (oder --entfernen <dasselbe>)"; exit 1 ;;
+  echo "Aufruf: ki-anbieter-verbinden.sh anthropic | vertex | mistral | tor | budget   (oder --entfernen <dasselbe>)"; exit 1 ;;
 esac
 neu_starten
 echo "Fertig. Prüfen: docker compose exec app node scripts/ki-anbieter-pruefen.mjs"
