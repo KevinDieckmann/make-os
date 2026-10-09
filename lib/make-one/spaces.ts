@@ -17,17 +17,24 @@
 // des Space · Kontakte · ZOE. Der Space wird oben im Kopf gewählt (Privat | Business), die Leiste zeigt nur seine Punkte.
 // `passt` legt den Space fest (Muster mit Parametern), `auch` hebt nur hervor (gemeinsame Seiten ohne Space — Inbox, Kalender,
 // Heute, ZOE …). Unten: Einstellungen (/os/system), „Problem oder Idee melden“, Konto.
+//
+// Nur noch zwei Bereiche (09.10., Kevin: „Oben der Knopf ‚Alles‘ kann raus — es gibt nur Business oder Privat. Und die Zeit wird
+// jedes Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“): Die Wahl im Kopf ist IMMER Privat oder Business — die
+// Nachbesserung vom 08.10. („Alles“ als dritter Knopf mit eigener Leiste) ist zurückgenommen. Man ist immer in genau einem Bereich,
+// dadurch ordnet die Zeitmessung jede Minute eindeutig zu; „das Ganze“ zeigt die Zeit-Karte auf Heute (Privat gegen Business).
+// Alte Adressen mit `?space=alles` und ein gemerktes „alles“ gelten als „kein Parameter“ bzw. „der zuletzt konkrete Space“.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, LayoutGrid } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
-import { FARBE } from './design';
 
 export type { SpaceId };
-/** Die Wahl im Kopf: beide Bereiche („alles“) oder ein Space. */
-export type SpaceWahl = 'alles' | SpaceId;
-export const SPACE_WAHLEN: readonly SpaceWahl[] = ['alles', 'privat', 'business'];
-export const istSpaceWahl = (v: unknown): v is SpaceWahl => v === 'alles' || v === 'privat' || v === 'business';
+/** Die Wahl im Kopf — seit 09.10. genau ein Bereich (Privat · Business), nie mehr „alles“. Name bleibt für die Aufrufer. */
+export type SpaceWahl = SpaceId;
+export const SPACE_WAHLEN: readonly SpaceWahl[] = ['privat', 'business'];
+export const istSpaceWahl = (v: unknown): v is SpaceWahl => v === 'privat' || v === 'business';
+/** Ohne Merker (neue Instanz, gelöschter Browser-Speicher, alter Merker „alles“ ohne zuletzt konkreten Space): Business. */
+export const SPACE_VORGABE: SpaceId = 'business';
 export interface SpaceEintrag {
   href: string; label: string; icon: LucideIcon;
   /** Muster, die den Space festlegen (aktiverSpaceEintrag, spaceVonAdresse). */
@@ -96,39 +103,8 @@ export const SPACES: Space[] = [
   },
 ];
 
-const eintrag = (id: SpaceId, label: string): SpaceEintrag => SPACES.find(s => s.id === id)!.eintraege.find(e => e.label === label)!;
-
-/**
- * „Alles“ (08.10.): die gemeinsamen Punkte ohne Space-Parameter — die Seiten zeigen dann beide Bereiche (Inbox: alle eigenen
- * Postfächer, Kalender: Bereich „alle“, Aufgaben: Überblick über Privat, Firmen und Mandanten, Planung: Filter „alle“, Finanzen:
- * Gesamt). Kontakte = die Kartei der Markttraktion (dort stehen alle Personen; das private Kontaktbuch hebt den Punkt mit hervor).
- */
-export const ALLES_EINTRAEGE: SpaceEintrag[] = [
-  { href: '/os', label: 'Heute', icon: Sun, passt: [], auch: ['=/os'] },
-  { href: '/os/inbox', label: 'Inbox', icon: Inbox, passt: [], auch: ['/os/inbox'] },
-  { href: '/os/kalender', label: 'Kalender', icon: CalendarDays, passt: [], auch: ['/os/kalender', '/os/planung/woche'] },
-  { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: [], auch: ['/os/aufgaben'] },
-  { href: '/os/planung/jahr', label: 'Planung', icon: Target, zeitId: 'ziele-planung', passt: [], auch: ['/os/planung', '/os/fokus', '/os/kompass', '/os/wachstum', '/os/saeule'] },
-  { href: '/os/finanzen?s=gesamt', label: 'Finanzen', icon: Wallet, passt: [], auch: ['/os/finanzen'] },
-  { href: '/os/markttraktion?s=kontakte', label: 'Kontakte', icon: BookUser, passt: [], auch: ['/os/markttraktion?s=kontakte', '/os/menschen'] },
-  ZOE_EINTRAG,
-];
-
-/** Unter „Alles“ je eine kleine Gruppe: die Bereiche, die nur einen Space kennen (dieselben Einträge wie in der Space-Leiste). */
-export const ALLES_GRUPPEN: { space: SpaceId; label: string; farbe: string; eintraege: SpaceEintrag[] }[] = [
-  { space: 'privat', label: 'Privat', farbe: SPACE_FARBE.privat, eintraege: [eintrag('privat', 'Gesundheit'), eintrag('privat', 'Familie')] },
-  { space: 'business', label: 'Business', farbe: SPACE_FARBE.business, eintraege: [eintrag('business', 'Markttraktion'), eintrag('business', 'Mandate & Unternehmen')] },
-];
-
-/** Anzeige der Wahl (Kopf, Leiste, Handy-Blatt): Name, Farbe, Startadresse, Text der Suche. */
-export const ALLES = { id: 'alles' as const, label: 'Alles', farbe: FARBE.aktiv, icon: LayoutGrid, start: '/os', suche: 'Überall suchen: Aufgaben, Kontakte, Seiten' };
-export function wahlInfo(w: SpaceWahl): { id: SpaceWahl; label: string; farbe: string; icon: LucideIcon; start: string; suche: string } {
-  return w === 'alles' ? ALLES : spaceVon(w);
-}
-
-/** Die Leiste einer Wahl: Space = seine Punkte, dann ZOE; „Alles“ = die gemeinsamen Punkte samt ZOE, dann die Gruppen. */
-export const leisteFuer = (id: SpaceWahl): SpaceEintrag[] =>
-  id === 'alles' ? [...ALLES_EINTRAEGE, ...ALLES_GRUPPEN.flatMap(g => g.eintraege)] : [...spaceVon(id).eintraege, ZOE_EINTRAG];
+/** Die Leiste eines Space: seine Punkte, dann ZOE (gemeinsam für beide). */
+export const leisteFuer = (id: SpaceWahl): SpaceEintrag[] => [...spaceVon(id).eintraege, ZOE_EINTRAG];
 
 /**
  * Passt eine Adresse zu einem Muster? Pfad: gleich oder Unterpfad („/os/planung“
@@ -177,42 +153,65 @@ export function spaceVonAdresse(pfad: string, suche = ''): SpaceId | null {
   return aktiverSpaceEintrag(pfad, suche).space;
 }
 
-/** Die Wahl aus dem Parameter `space` allein (privat · business · alles), sonst null. */
+/** Die Wahl aus dem Parameter `space` allein (privat · business), sonst null — ein altes `?space=alles` zählt wie kein Parameter. */
 export function wahlAusParameter(suche = ''): SpaceWahl | null {
   const q = new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche).get('space');
   return istSpaceWahl(q) ? q : null;
 }
 
 /**
- * Die wirksame Wahl (08.10.): `?space=` gewinnt (auch `alles`). Ist „Alles“ gemerkt, bleibt es — Seiten nur eines Bereichs
- * (Gesundheit, Markttraktion …) lassen den Schalter stehen. Ist ein Space gemerkt, legt die Seite ihn fest wie bisher.
+ * Die wirksame Wahl (seit 09.10. immer ein Space): `?space=privat|business` gewinnt, sonst legt die Seite den Space fest
+ * (Gesundheit → Privat, Markttraktion → Business …), sonst gilt der gemerkte. `?space=alles` (alte Links, Lesezeichen) zählt nicht.
  */
 export function wahlVon(pfad: string, suche: string, gemerkt: SpaceWahl): SpaceWahl {
-  const p = wahlAusParameter(suche);
-  if (p) return p;
-  if (gemerkt === 'alles') return 'alles';
-  return aktiverSpaceEintrag(pfad, suche).space ?? gemerkt;
+  return wahlAusParameter(suche) ?? aktiverSpaceEintrag(pfad, suche).space ?? gemerkt;
+}
+
+/**
+ * Der gemerkte Space aus den beiden Merkern (rein, getestet): `make-space` = privat|business gewinnt; ein altes „alles“ (oder
+ * nichts) nimmt den zuletzt konkreten (`make-space-zuletzt`), sonst die Vorgabe Business. Ein Konto „nur Business“ ist immer
+ * Business (der Server liefert ihm unter Privat nichts aus dem Haushalt).
+ */
+export function gemerkteWahlAus(merker: string | null | undefined, zuletzt: string | null | undefined, nurBusiness = false): SpaceWahl {
+  if (nurBusiness) return 'business';
+  if (istSpaceWahl(merker)) return merker;
+  if (istSpaceWahl(zuletzt)) return zuletzt;
+  return SPACE_VORGABE;
+}
+
+/** Steht noch das alte `?space=alles` in der Adresse (Links und Lesezeichen aus der Zeit mit drei Knöpfen, 08.10.)? */
+export const altesAlles = (suche = ''): boolean => new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche).get('space') === 'alles';
+
+/**
+ * Die Adresse ohne das alte `?space=alles` (09.10.): der Parameter wird auf den wirksamen Space gesetzt, alle anderen bleiben in
+ * ihrer Reihenfolge. Ohne `space=alles` → null (nichts umschreiben). Der Kopf ersetzt die Adresse damit (replace, kein Verlaufseintrag).
+ */
+export function adresseOhneAlles(pfad: string, suche: string, wahl: SpaceWahl): string | null {
+  if (!altesAlles(suche)) return null;
+  const q = new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche);
+  q.set('space', wahl);
+  return `${pfad}?${q.toString()}`;
 }
 
 export const spaceVon = (id: SpaceId): Space => SPACES.find(s => s.id === id) ?? SPACES[0];
-/** Merker der Wahl im Kopf (`alles` | `privat` | `business`; alte Stände tragen nur einen Space). */
+/** Merker der Wahl im Kopf (`privat` | `business`; ein Stand vom 08.10. kann noch `alles` tragen — gilt dann `make-space-zuletzt`). */
 export const SPACE_MERKER = 'make-space';
-/** Der zuletzt konkrete Space — für Stellen, die einen Space brauchen (Suche, ZOE, Zeitmessung), auch bei „Alles“. */
+/** Der zuletzt konkrete Space — Rückfall für einen alten Merker „alles“; wird mit `make-space` gleich gehalten. */
 export const SPACE_ZULETZT_MERKER = 'make-space-zuletzt';
 export const SPACE_EREIGNIS = 'make-space-gewechselt';
 
 /**
- * Wohin der Schalter im Kopf führt (08.10.): steht man auf einem Punkt der Leiste, der in der neuen Wahl ein Gegenstück gleichen
- * Namens hat (Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, Kontakte), geht es dorthin; trifft die Seite den Punkt der neuen
- * Wahl schon (z. B. Gesundheit bei „Alles“ — die Gruppe Privat), bleibt man stehen (null). Eine Seite eines Space ohne Gegenstück
- * führt zu Heute der neuen Wahl. Gemeinsame Seiten (Konto, Einstellungen, ZOE …) bleiben stehen (null).
+ * Wohin der Schalter im Kopf führt (08.10.): steht man auf einem Punkt der Leiste, der im anderen Space ein Gegenstück gleichen
+ * Namens hat (Heute, Inbox, Kalender, Aufgaben, Planung, Finanzen, Kontakte), geht es dorthin; trifft die Seite den Punkt des
+ * neuen Space schon (z. B. Finanzen › Gesamt unter Privat), bleibt man stehen (null). Eine Seite eines Space ohne Gegenstück
+ * führt zu Heute des neuen Space. Gemeinsame Seiten (Konto, Einstellungen, ZOE …) bleiben stehen (null).
  */
 export function wechselZiel(pfad: string, suche: string, nach: SpaceWahl): string | null {
   const reihe: SpaceWahl[] = [...SPACE_WAHLEN.filter(w => w !== nach), nach];
   let punkt: SpaceEintrag | null = null;
   for (const w of reihe) { punkt = aktiverLeistenPunkt(w, pfad, suche); if (punkt) break; }
-  const start = wahlInfo(nach).start;
-  if (!punkt || punkt === ZOE_EINTRAG) return spaceVonAdresse(pfad, suche) || wahlAusParameter(suche) ? start : null;
+  const start = spaceVon(nach).start;
+  if (!punkt || punkt === ZOE_EINTRAG) return spaceVonAdresse(pfad, suche) ? start : null;
   const ziel = leisteFuer(nach).find(e => e.label === punkt!.label);
   if (!ziel) return start;
   // Schon da (die Seite trifft den Punkt der neuen Wahl) und kein widersprechender ?space= → stehen bleiben, nur die Wahl wechselt.

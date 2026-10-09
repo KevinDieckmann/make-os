@@ -28,7 +28,7 @@ import { TAGE, MAHLZEITEN, type ErnaehrungFile } from '@/lib/ernaehrung/modell';
 import type { Breite, Einstellungen, Wert } from '@/lib/flaeche/modell';
 import { spaceVonAufgabe, fokusFuerSpace, SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { spaceVonKalender } from '@/lib/kalender/space';
-import { bereicheNachZeit, zeitText, type ZeitBild } from '@/lib/zeitmessung/modell';
+import { bereicheNachZeit, privatGegenBusiness, zeitText, type ZeitBild } from '@/lib/zeitmessung/modell';
 import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
 import type { Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { EinheitBalken, zeitEinheitenAdresse, type ZeitJeEinheitAntwort } from '../zeit/ZeitJeEinheit';
@@ -498,8 +498,51 @@ const TAGE_WAHL: EinstellungDef = { k: 'tage', label: 'Zeitraum', art: 'wahl', o
 // darunter die Bereiche nach Zeit. Quelle: Anwesenheit + Fokus-Zähler (/api/state/zeit).
 // 27.09. spät: Einstellung „nach Einheit“ — bewusste Business-Zeit dieser Woche je Selbstständigkeit · KD Ventures ·
 // MAKE Innovation GmbH · eigene · ohne Einheit (gleiche Rechnung wie die Karte auf der Seite Fokus).
+// 09.10. (Kevin: „Die Zeit wird jedes Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“): Modus „Privat und Business“
+// (`space: 'beide'`) — beide Bereiche nebeneinander, heute und 7 Tage, dazu der Anteil als Balken. Steht auf Heute in beiden Sichten.
 function ZeitWidget(p: WidgetProps) {
-  return str(p.e.nach, 'bereich') === 'einheit' ? <ZeitEinheitWidget {...p} /> : <ZeitBereichWidget {...p} />;
+  if (str(p.e.nach, 'bereich') === 'einheit') return <ZeitEinheitWidget {...p} />;
+  return str(p.e.space, 'privat') === 'beide' ? <ZeitBeideWidget {...p} /> : <ZeitBereichWidget {...p} />;
+}
+function ZeitBeideWidget({ titel, i }: WidgetProps) {
+  const d = useDaten<ZeitBild>('/api/state/zeit', x => ((x as { bild?: ZeitBild }).bild ?? null));
+  if (d === null) return null;
+  const heute = d ? privatGegenBusiness(d.tagHeute) : null;
+  const sieben = d ? privatGegenBusiness(d.sieben) : null;
+  const anteil = sieben?.anteilBusiness ?? null;
+  const spalte = (space: 'privat' | 'business') => {
+    const h = heute?.[space] ?? 0, w = sieben?.[space] ?? 0;
+    const bewusst = space === 'privat' ? sieben?.bewusstPrivat ?? 0 : sieben?.bewusstBusiness ?? 0;
+    return (
+      <div key={space} style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: SPACE_FARBE[space], textTransform: 'uppercase', letterSpacing: '.06em' }}>{SPACE_LABEL[space]}</span>
+        <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, color: h ? C.ink : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{zeitText(h)}<span style={{ fontFamily: SCHRIFT.text, fontWeight: 500, fontSize: TYP.bedien, color: C.inkLeise }}> heute</span></span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{zeitText(w)} in 7 Tagen{bewusst ? ` · ${zeitText(bewusst)} bewusst` : ''}</span>
+      </div>
+    );
+  };
+  return (
+    <Karte i={i} akzent={anteil !== null ? C.aktiv : undefined}>
+      <Ueberschrift rechts={<Link href="/os/fokus" style={link}>Fokus ›</Link>}>{titel ?? 'Zeit · Privat und Business'}</Ueberschrift>
+      {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : anteil === null ? (
+        <Leer>Noch nichts gemessen — die Zeit läuft im Hintergrund mit, sobald du in MAKE OS arbeitest: oben Privat oder Business wählen.</Leer>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12 }}>{spalte('privat')}{spalte('business')}</div>
+          {/* Anteil der letzten 7 Tage: links Privat, rechts Business — Farbe der Bereiche, Text daneben (nie nur Farbe). */}
+          <div role="img" aria-label={`7 Tage: ${Math.round((1 - anteil) * 100)} % Privat, ${Math.round(anteil * 100)} % Business`} style={{ display: 'flex', height: 8, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,.06)' }}>
+            <span style={{ flex: `${1 - anteil} 1 0`, background: SPACE_FARBE.privat }} />
+            <span style={{ flex: `${anteil} 1 0`, background: SPACE_FARBE.business }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6, fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>
+            <span>{Math.round((1 - anteil) * 100)} % Privat</span>
+            <span>{Math.round(anteil * 100)} % Business</span>
+          </div>
+          {sieben && sieben.ohne > 0 && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: C.inkLeise }}>dazu {zeitText(sieben.ohne)} ohne Bereich (ältere Messung)</div>}
+        </>
+      )}
+    </Karte>
+  );
 }
 function ZeitEinheitWidget({ e, titel, i }: WidgetProps) {
   const zeitraum: Zeitraum = str(e.zeitraum, 'woche') === 'monat' ? 'monat' : 'woche';
@@ -700,7 +743,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   familie: { art: 'familie', label: 'Familie & Partnerschaft', bereich: 'Familie', beschreibung: 'Paar-Gespräch, wichtige Tage, wer einen Anruf verdient, Frage der Woche', breite: 2, Komponente: FamilieWidget },
   zeit: { art: 'zeit', label: 'Zeit & Fokus', bereich: 'Tag', beschreibung: 'Wo deine Zeit hingeht: heute, 7 Tage, bewusster Fokus und die Bereiche', breite: 2, Komponente: ZeitWidget,
     einstellungen: [
-      { k: 'space', label: 'Modus', art: 'wahl', optionen: [{ w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'privat' },
+      { k: 'space', label: 'Modus', art: 'wahl', optionen: [{ w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }, { w: 'beide', label: 'Privat und Business' }], standard: 'privat' },
       { k: 'nach', label: 'Aufteilung', art: 'wahl', optionen: [{ w: 'bereich', label: 'nach Bereich' }, { w: 'einheit', label: 'nach Einheit (Business)' }], standard: 'bereich' },
       { k: 'zeitraum', label: 'Zeitraum (nach Einheit)', art: 'wahl', optionen: [{ w: 'woche', label: 'diese Woche' }, { w: 'monat', label: 'dieser Monat' }], standard: 'woche' },
       { k: 'wer', label: 'Wessen Zeit (nach Einheit)', art: 'wahl', optionen: [{ w: 'ich', label: 'meine' }, { w: 'gesamt', label: 'Haushalt gesamt' }], standard: 'ich' },
@@ -717,6 +760,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'fokus', label: 'Wochenfokus', beschreibung: 'Worauf es diese Woche ankommt', bereich: 'Tag', breite: 2, voreinstellung: { horizont: 'woche' } },
   { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
+  { art: 'zeit', label: 'Zeit · Privat und Business', beschreibung: 'Wo die Zeit hingeht — Privat gegen Business, heute und 7 Tage, mit Anteil', bereich: 'Tag', breite: 2, voreinstellung: { space: 'beide' } },
   { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${BUSINESS_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },

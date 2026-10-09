@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  LEER_ZEIT, verbuchen, fokusVerbuchen, aufraeumen, bild, bereicheNachZeit, bereichZeit, zeitText, teile, schluesselFuer, letzteTage,
+  LEER_ZEIT, verbuchen, fokusVerbuchen, aufraeumen, bild, bereicheNachZeit, bereichZeit, zeitText, teile, schluesselFuer, letzteTage, privatGegenBusiness,
   MAX_LUECKE_SEK, FOKUS_TAG_SEK, type ZeitDatei,
 } from '../lib/zeitmessung/modell';
 import { bereichVon, zeitSchluessel, bereichId } from '../lib/zeitmessung/bereich';
@@ -80,6 +80,19 @@ describe('Zeit & Fokus — Bild', () => {
     expect(bereicheNachZeit(b.sieben, 'privat').map(x => x.bereich)).toEqual(['gesundheit', 'familie']);
     expect(bereichZeit(b.sieben, 'business', 'markttraktion')).toBe(4500);
   });
+  // 09.10. (Kevin: „Die Zeit wird jedes Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“)
+  it('Privat gegen Business: je Bereich gesamt und bewusst, Anteil nur aus zugeordneter Zeit, ältere „gemeinsam“-Zeit getrennt', () => {
+    const s7 = privatGegenBusiness(b.sieben);
+    expect(s7.privat).toBe(1800 + FOKUS_TAG_SEK + 600);
+    expect(s7.business).toBe(4500);
+    expect(s7.bewusstPrivat).toBe(FOKUS_TAG_SEK);
+    expect(s7.bewusstBusiness).toBe(900);
+    expect(s7.ohne).toBe(120);
+    expect(s7.anteilBusiness).toBeCloseTo(4500 / (4500 + s7.privat), 10);
+    const h = privatGegenBusiness(b.tagHeute);
+    expect([h.privat, h.business, h.ohne]).toEqual([600, 900, 120]);
+    expect(privatGegenBusiness(bild(LEER_ZEIT, HEUTE).sieben).anteilBusiness).toBeNull();
+  });
 });
 
 describe('Zeit & Fokus — Helfer', () => {
@@ -110,5 +123,9 @@ describe('Zeit & Fokus — Helfer', () => {
     expect(zeitSchluessel('/os/heute', '', 'privat').schluessel).toBe('privat:heute');
     expect(zeitSchluessel('/os/heute', '', null).schluessel).toBe('gemeinsam:heute');
     expect(zeitSchluessel('/os/uebersicht', '?space=privat', 'business').space).toBe('privat');
+    // 09.10. (nur zwei Bereiche): ein alter Link ?space=alles zählt für den Bereich, in dem man ist — nie für „alles“.
+    expect(zeitSchluessel('/os', '?space=alles', 'business').schluessel).toBe('business:home');
+    expect(zeitSchluessel('/os/aufgaben', '?space=alles', 'privat').space).toBe('privat');
+    expect(teile('alles:home')).toEqual({ space: 'gemeinsam', bereich: 'home' });
   });
 });

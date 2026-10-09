@@ -468,7 +468,7 @@ describe('Fortschritt, Übersicht und die Karte auf Heute', () => {
   it('Heute: die Karte „Einrichtung“ steht vorne in jeder Sicht, das Widget gibt es im Katalog', () => {
     const v = lies('components/os/HeuteView.tsx');
     const std = v.slice(v.indexOf('export const HEUTE_STANDARD'));
-    for (const sicht of ['alle', 'privat', 'business']) {
+    for (const sicht of ['privat', 'business']) { // seit 09.10. nur noch zwei Sichten (kein „Alles“)
       const teil = std.slice(std.indexOf(`${sicht}: [`));
       expect(/\{ id: '([a-z-]+)'/.exec(teil)?.[1], sicht).toBe('einrichtung');
     }
