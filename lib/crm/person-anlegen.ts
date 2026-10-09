@@ -124,7 +124,7 @@ export function eingabeSaeubern(roh: unknown): { ok: true; e: PersonEingabe } | 
   };
   const z = o.firmaZusatz && typeof o.firmaZusatz === 'object' ? o.firmaZusatz as Record<string, unknown> : null;
   if (z) {
-    const zusatz = Object.fromEntries((['branche', 'stadt', 'mitarbeiter'] as const).map(k => [k, typeof z[k] === 'string' ? (z[k] as string).replace(/\u0000/g, '').replace(/\s+/g, ' ').trim() : '']).filter(([, v]) => v));
+    const zusatz: Record<string, string> = Object.fromEntries((['branche', 'stadt', 'mitarbeiter'] as const).map(k => [k, typeof z[k] === 'string' ? (z[k] as string).replace(/\u0000/g, '').replace(/\s+/g, ' ').trim() : '']).filter(([, v]) => v));
     if (Object.values(zusatz).some(v => v.length > G.firma)) zuLang.push('firmaZusatz');
     else if (Object.keys(zusatz).length) e.firmaZusatz = zusatz;
   }
