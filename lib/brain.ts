@@ -30,7 +30,7 @@ import { THEMA, STANDARD_ORDNUNG, themaVon } from '@/lib/make-one/ordnung-data';
 import { ORG, orgVon } from '@/lib/make-one/organisation-data';
 import { einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
 import { teamFuerPerson } from '@/lib/make-one/team-speicher';
-import { teamZeilenAus, platzhalterTeam } from '@/lib/make-one/team-typen';
+import { teamZeilenAus } from '@/lib/make-one/team-typen';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
 
 // ── Nordstern (08.10. abends): Daten des Haushalts statt Konstante — lib/planung/nordstern-server.ts ──
@@ -259,7 +259,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
       return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? tag(m.faellig) : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
     })(),
     nordstern,
-    team: teamZeilenAus(val(teamR) ?? platzhalterTeam()),
+    team: teamZeilenAus(val(teamR) ?? []),
     geld: (() => {
       const re = (val(fplanR)?.rechnungen ?? []).filter(r => r.firmaId !== 'privat');
       const sum = (l: typeof re) => l.reduce((s, r) => s + (r.betrag || 0), 0);
@@ -447,7 +447,9 @@ export function blockZiele(b?: Brain): string {
   const ms = b?.meilensteine ?? [];
   const nordstern = b?.nordstern ? daten('nordstern', b.nordstern) : 'kein Nordstern hinterlegt — er wird unter Planung › Jahr gepflegt. Erfinde keinen; frag nach, wenn er für die Antwort fehlt.';
   const meilensteine = ms.length ? daten('meilensteine', ms.map(m => `- ${m}`).join('\n')) : 'keine hinterlegt.';
-  return `NORDSTERN-ZIEL: ${nordstern}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${(b?.team ?? teamZeilenAus(platzhalterTeam())).map(t => `- ${t}`).join('\n')}`;
+  const team = b?.team ?? [];
+  const teamText = team.length ? team.map(t => `- ${t}`).join('\n') : 'kein Team hinterlegt — es wird unter Konto › Team gepflegt. Nenne keine Person, die hier nicht steht.';
+  return `NORDSTERN-ZIEL: ${nordstern}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamText}`;
 }
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */

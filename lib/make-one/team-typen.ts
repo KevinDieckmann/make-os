@@ -8,10 +8,10 @@
 //     Name kommt aus dem Konto, Rolle/Bereich/Kurzwort/Farbe dürfen im
 //     Speicher überschrieben werden.
 //   · Alle anderen Personen stehen nur im Speicher.
-//   · Ist der Speicher leer, gelten die Rollen-Platzhalter aus team-data.ts —
-//     nie eine Übernahme echter Namen aus alten Code-Ständen.
-
-import { TEAM as PLATZHALTER, type TeamMitglied } from './team-data';
+//   · Ist der Speicher leer, besteht das Team NUR aus den Konten des Haushalts mit
+//     neutraler Rolle („Inhaber“ bzw. „Mitglied“, aus der Konto-Rolle — 09.10., Paket
+//     „neutral-rest“). Keine Rollen-Platzhalter, keine Personen oder Firmen im Code,
+//     der Inhaber wird nie über den Namen erkannt (nur `haupt`/Rolle aus den Konten).
 
 /** Ein gespeicherter Eintrag in `team--<haushalt>`. */
 export interface TeamEintrag {
@@ -37,7 +37,7 @@ export interface TeamEintrag {
 
 /** Eine Person im Team, wie Leser sie bekommen. */
 export interface TeamPerson extends TeamEintrag {
-  /** konto = fester Eintrag aus den Konten · daten = aus dem Speicher · platzhalter = Rückfall aus team-data.ts */
+  /** konto = fester Eintrag aus den Konten · daten = aus dem Speicher · platzhalter = nur noch lesend verstanden (seit 09.10. erzeugt nichts mehr Platzhalter) */
   quelle: 'konto' | 'daten' | 'platzhalter';
   kreis: 'kern' | 'partner';
   /** Nur bei Konten: der Speichername (kevin, malin, …). */
@@ -54,7 +54,7 @@ export interface TeamPerson extends TeamEintrag {
 export interface TeamAntwort {
   ok: boolean;
   team: TeamPerson[];
-  /** false = der Speicher ist leer, es gelten Platzhalter → Hinweis „Team einmal eintragen“. */
+  /** false = der Speicher ist leer, es stehen nur die Konten da → Hinweis „Team einmal eintragen“. */
   ausDaten: boolean;
   fehler?: string;
   konflikte?: unknown[];
@@ -105,18 +105,11 @@ export function teamZeilenAus(team: readonly TeamPerson[]): string[] {
   });
 }
 
-/** Ein Platzhalter aus team-data.ts als Team-Person. */
-function ausPlatzhalter(t: TeamMitglied): TeamPerson {
-  return {
-    id: `platzhalter-${t.kurz.toLowerCase()}`,
-    name: t.name, kurz: t.kurz, rolle: t.bereiche[0] ?? '', bereich: t.bereiche.slice(1).join(', ') || undefined,
-    aktiv: true, kreis: t.kreis === 'partner' ? 'partner' : 'kern', quelle: 'platzhalter',
-    ...(t.kurz === 'Kevin' ? { inhaber: true } : {}),
-  };
-}
+/** Rückfall ohne Haushalt bzw. bei unlesbarem Bestand: kein Team (nie Personen oder Rollen aus dem Code). */
+export const ohneTeam = (): TeamPerson[] => [];
 
-/** Der Rückfall für leere Speicher und Tests: die Rollen-Platzhalter aus team-data.ts. */
-export const platzhalterTeam = (): TeamPerson[] => PLATZHALTER.map(ausPlatzhalter);
+/** Die neutrale Rolle eines Kontos, solange im Team-Speicher nichts gepflegt ist. */
+export const kontoRolle = (rolle: 'inhaber' | 'mitglied'): string => (rolle === 'inhaber' ? 'Inhaber' : 'Mitglied');
 
 /** Ein Konto, soweit das Team es braucht. */
 export interface TeamKonto { speicher: string; name: string; rolle: 'inhaber' | 'mitglied'; /** Haupt-Inhaber (09.10.) — fehlt die Angabe, zählt die Rolle. */ haupt?: boolean }
@@ -124,21 +117,18 @@ export interface TeamKonto { speicher: string; name: string; rolle: 'inhaber' | 
 /**
  * Konten + gespeicherte Einträge → das Team. Konten sind feste Einträge (Name aus dem Konto, immer aktiv);
  * ein gespeicherter Eintrag `konto-<speicher>` überschreibt nur Kurzwort, Rolle, Bereich, Farbe, Kreis.
- * Ohne eigene Einträge (nur Konten) kommen die Platzhalter dazu — außer denen, deren Kurzwort ein Konto trägt.
+ * Ohne eigenen Eintrag trägt ein Konto die neutrale Rolle aus der Konto-Rolle (`kontoRolle`) — nie eine Vorgabe je Name.
  */
 export function teamZusammen(konten: readonly TeamKonto[], eintraege: readonly TeamEintrag[], staende: ReadonlyMap<string, string> = new Map()): { team: TeamPerson[]; ausDaten: boolean } {
   const nachId = new Map(eintraege.map(e => [e.id, e]));
-  const platz = new Map(PLATZHALTER.map(t => [t.kurz.toLowerCase(), t]));
   const kontoPersonen: TeamPerson[] = konten.map(k => {
     const id = `${KONTO_PRAEFIX}${k.speicher}`;
     const e = nachId.get(id);
     const kurz = e?.kurz && KURZ_OK.test(e.kurz) ? e.kurz : kurzAus(k.name, k.speicher);
-    // Kevin und Malin stehen mit ihren Bereichen in team-data.ts (keine Dritten) — Vorgabe, bis gepflegt.
-    const vorgabe = platz.get(kurz.toLowerCase());
     return {
       id, name: k.name || kurz, kurz,
-      rolle: e?.rolle || vorgabe?.bereiche[0] || (k.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'),
-      ...(e?.bereich ? { bereich: e.bereich } : vorgabe && vorgabe.bereiche.length > 1 ? { bereich: vorgabe.bereiche.slice(1).join(', ') } : {}),
+      rolle: e?.rolle || kontoRolle(k.rolle),
+      ...(e?.bereich ? { bereich: e.bereich } : {}),
       ...(e?.farbe ? { farbe: e.farbe } : {}),
       aktiv: true, kreis: e?.kreis ?? 'kern', quelle: 'konto' as const, speicher: k.speicher,
       ...((k.haupt ?? k.rolle === 'inhaber') ? { inhaber: true } : {}),
@@ -148,8 +138,5 @@ export function teamZusammen(konten: readonly TeamKonto[], eintraege: readonly T
   const daten: TeamPerson[] = eintraege.filter(e => !e.id.startsWith(KONTO_PRAEFIX)).map(e => ({
     ...e, kreis: e.kreis ?? 'kern', quelle: 'daten' as const, ...(staende.get(e.id) ? { stand: staende.get(e.id) } : {}),
   }));
-  const ausDaten = daten.length > 0;
-  if (ausDaten) return { team: [...kontoPersonen, ...daten], ausDaten };
-  const vergeben = new Set(kontoPersonen.map(p => p.kurz.toLowerCase()));
-  return { team: [...kontoPersonen, ...platzhalterTeam().filter(p => !vergeben.has(p.kurz.toLowerCase()))], ausDaten: false };
+  return { team: [...kontoPersonen, ...daten], ausDaten: daten.length > 0 };
 }
