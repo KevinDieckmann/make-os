@@ -360,7 +360,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'datenschutz/gesundheit': r('GET,POST', 'person', 'Art.-9-Einwilligung — nur die Person selbst per Sitzung (Dienstweg und Inhaber → 403).'),
   'datenschutz/ki': r('GET,PUT', 'person', 'KI-Schalter: eigene Schalter nur selbst; Instanz-Schalter prüft die Route zusätzlich auf den Inhaber.'),
   'datenschutz/ki-protokoll': r('GET', 'person', 'Eigene Zeilen des KI-Protokolls (Art. 15); Systemläufe zusätzlich nur für den Inhaber.'),
-  'datenschutz/instanz-export': r('GET,POST', 'inhaber', 'Instanz-Export bei Vertragsende — nur Inhaber mit eigener Sitzung + Passwort/zweitem Faktor, Eintrag im Lese- und Anmeldeprotokoll.'),
+  'datenschutz/instanz-export': r('GET,POST', 'inhaber', 'Instanz-Export bei Vertragsende — nur der HAUPT-Inhaber mit eigener Sitzung + Passwort/zweitem Faktor (09.10.: ein weiterer Inhaber bekäme sonst die persönlichen Bestände der anderen Person — Verwaltung, nicht Einsicht), Eintrag im Lese- und Anmeldeprotokoll.'),
   'datenschutz/nachweise': r('GET,POST', 'inhaber', 'Lese-Protokoll und Kettenprüfung — nur der Inhaber selbst.'),
   'datenschutz/pannen': r('GET,POST', 'inhaber', 'Pannen-Register (Art. 33 Abs. 5) — nur der Inhaber, nur von Hand.'),
   'datenschutz/pruefung': r('GET', 'haushalt', 'Datenschutz-Selbstprüfung der Instanz.'),
@@ -389,7 +389,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'intern/absichten': r('GET,POST', 'inhaber', 'Interne Absichten — Inhaber bzw. Systemlauf.'),
   'intern/schreibpause': r('POST', 'dienst', 'Schreibpause (Sicherung) — nur Dienstweg.'),
   'intern/umschluesseln': r('POST', 'dienst', 'Datenschlüssel rotieren — nur Dienstweg.'),
-  'intern/wiederherstellen': r('GET,POST', 'inhaber', 'Einzel-Wiederherstellung — Inhaber bzw. Systemlauf; persönliche Bestände einer ANDEREN Person nie (09.10.: Inhaber heißt Verwaltung, nicht Einsicht).'),
+  'intern/wiederherstellen': r('GET,POST', 'inhaber', 'Einzel-Wiederherstellung — Inhaber bzw. Systemlauf; persönliche Bestände einer ANDEREN Person nie (09.10.: Inhaber heißt Verwaltung, nicht Einsicht); per Sitzung Inhalte und Übernahme nur eigener persönlicher Bestände — gemeinsame (mit „nur ich“, privaten Notizen, `konten`-Geheimnissen) nur das Skript (Systemlauf).'),
 };
 
 /** Entfernte Routen (05.10.): alte 410-Wege, auf die nichts mehr zeigt — dürfen nicht wiederkommen. */

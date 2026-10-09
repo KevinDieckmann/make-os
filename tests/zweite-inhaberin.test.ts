@@ -215,6 +215,9 @@ async function inhaberMethoden(): Promise<[string, Methode][]> {
 const NUR_HAUPT: Record<string, string> = {
   'apple-contacts': 'Mac-Adressbuch des Haupt-Inhabers (auch Privates)',
   zulieferer: 'Mac-Zulieferer: Erinnerungen und Adressbuch vom Gerät des Haupt-Inhabers, Übernahme als seine Aufgaben',
+  // Nahtstellen-Prüfung 09.10.: der Instanz-Export enthält JEDEN Bestand entschlüsselt (auch Gesundheit/„nur ich“ der anderen Person) —
+  // Verwaltung, nicht Einsicht. GET (Umfang) nur beim Haupt-Inhaber; POST prüft dasselbe vor dem Passwort (tests/nahtstellen-zugang.test.ts).
+  'datenschutz/instanz-export GET': 'Instanz-Export bei Vertragsende: genau einer (der Haupt-Inhaber) bekommt die ganze Instanz',
 };
 /** Schon vorher nicht nur für Inhaber (die Route prüft nur das Erzwingen) — Befund, nicht Teil dieses Pakets. */
 const LOSE: Record<string, string> = { 'loop/verbesserung POST': 'ohne ?jetzt=1 für jede Person im Haushalt offen' };
@@ -229,7 +232,7 @@ describe('(3) Routen-Register: der zweite Inhaber darf alles, was der erste darf
       const s1 = (await rufe(pfad, sitzung('erste'), m, body)).status;
       const s2 = (await rufe(pfad, sitzung('zweite'), m, body)).status;
       const s3 = (await rufe(pfad, sitzung('dritte'), m, body)).status;
-      if (NUR_HAUPT[pfad]) {
+      if (NUR_HAUPT[pfad] ?? NUR_HAUPT[`${pfad} ${m}`]) {
         if (!(s1 !== 401 && s1 !== 403 && s2 === 403 && s3 === 403)) abweichend.push(`${pfad} ${m}: nur Haupt erwartet — ${s1}/${s2}/${s3}`);
         continue;
       }

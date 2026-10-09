@@ -4,12 +4,16 @@
 //                            Medien als Metadaten (ohne Schlüssel je Medium) + Liste der Objekte im Medienspeicher (09.10., Nachzug).
 // Nur die Inhaber-SITZUNG (x-make-user, Rolle inhaber) — nie der Dienstweg, nie ZOE, nie ein Mitglied (403). Dazu Passwort und, wenn an,
 // der zweite Faktor (lib/zugang/erneut.ts). Jeder Export steht im Lese-Protokoll (Bereich „export“, Umfang) und im Anmeldeprotokoll.
+// Seit 09.10. (Nahtstelle Instanz-Export × mehrere Inhaber): NUR der Haupt-Inhaber. Der Export enthält JEDEN Bestand entschlüsselt — auch
+// Gesundheit, Journal, „nur ich“, persönliche Bestände der anderen Person. „Inhaber heißt Verwaltung, nicht Einsicht“ (CLAUDE.md › Mehrere
+// Inhaber): ein weiterer Inhaber bekommt darüber nie die persönlichen Bestände der anderen Person — wie vor R9 gibt es genau EINEN, der die
+// Instanz bei Vertragsende zurückbekommt (Wächter tests/nahtstellen-zugang.test.ts).
 // Löschen der Instanz danach: scripts/instanz-loeschen.mjs (Trockenlauf als Vorgabe, Bestätigungs-Code) — nie aus der App.
 
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { istDienst } from '@/lib/zugang/dienst';
-import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { istInhaber, istDerHauptInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { erneutPruefen } from '@/lib/zugang/erneut';
 import { notiere, adresseGekuerzt } from '@/lib/zugang/anmeldungen';
@@ -23,11 +27,11 @@ export const dynamic = 'force-dynamic';
 
 const nein = (fehler: string, status: number, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler, ...extra }, { status });
 
-/** Die Inhaber-Sitzung — oder null (Dienstweg, fremde Rolle, ohne Sitzung). */
+/** Die Sitzung des Haupt-Inhabers — oder null (Dienstweg, fremde Rolle, weiterer Inhaber, ohne Sitzung). */
 async function inhaber(req: Request) {
   if (istDienst(req)) return null;
   const p = req.headers.get('x-make-user');
-  if (!p || !/^[a-z0-9-]{1,40}$/.test(p) || !(await istInhaber(p))) return null;
+  if (!p || !/^[a-z0-9-]{1,40}$/.test(p) || !(await istInhaber(p)) || !(await istDerHauptInhaber(p))) return null;
   return (await ladeKonten()).konten.find(x => x.speicher === p) ?? null;
 }
 

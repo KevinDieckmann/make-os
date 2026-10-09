@@ -27,6 +27,7 @@ export const NICHT_IM_EXPORT = [
   { was: 'Medien-Dateien (Fotos, Videos, Lizenz-Nachweise, Unterschriften)', grund: 'zu groß für eine Datei; verschlüsselt im Medienspeicher — Liste der Objekte unter „medien“, einzeln herunterladen in der App (Fotos & Videos) vor dem Löschen der Instanz' },
   { was: 'Zugangsdaten verbundener Dienste (Postfach-Passwörter, Google-/WHOOP-Token, iCloud-App-Passwort, OAuth-Zustände)', grund: 'nie in einer Datei — die neue Instanz verbindet die Dienste neu; im Export steht nur ein Vermerk „entfernt“' },
   { was: 'Passwort-Hashes, Salz, zweiter Faktor (Geheimnis, Wiederherstellungs-Hashes) und offene Einladungscodes der Konten', grund: 'Zugangsgeheimnisse — die Konten stehen ohne sie im Export (`zweiterFaktorAn` zeigt nur, ob einer eingerichtet war)' },
+  { was: 'Offene Kopplungs- und Bestätigungscodes (Telegram, ZOE auf WhatsApp)', grund: 'Zugangsgeheimnisse für 15 Minuten — eine Kopplung entsteht in der neuen Instanz neu' },
 ];
 
 const MEDIEN_KATALOG = /^medien(-privat)?--[a-z0-9-]+$/;
@@ -57,6 +58,17 @@ export function kontenOhneGeheimnisse(inhalt: unknown): unknown {
     return rest;
   }) : o.einladungen;
   return { ...o, ...(o.konten !== undefined ? { konten } : {}), ...(o.einladungen !== undefined ? { einladungen } : {}) };
+}
+
+/**
+ * Offene Codes nie in die Datei (Nahtstellen-Prüfung 09.10.): `telegram.codes` (Kopplungscode im Klartext) und `zoe-kanal--*.code`
+ * (Fingerabdruck eines 6-Zeichen-Codes — ohne Pepper in Sekunden umkehrbar). Rein; andere Bestände kommen unverändert zurück.
+ */
+export function ohneOffeneCodes(name: string, inhalt: unknown): unknown {
+  if (!inhalt || typeof inhalt !== 'object' || Array.isArray(inhalt)) return inhalt;
+  if (name === 'telegram' && 'codes' in inhalt) return { ...(inhalt as Record<string, unknown>), codes: {} };
+  if (/^zoe-kanal--[a-z0-9-]+$/.test(name) && 'code' in inhalt) { const { code: _c, ...rest } = inhalt as Record<string, unknown>; return rest; }
+  return inhalt;
 }
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,120}$/i;
@@ -98,6 +110,7 @@ export async function* instanzExportTeile(kopf: Record<string, unknown>): AsyncG
     // Schlüssel je Medium nie in die Datei — nur die Kennung des Datenschlüssels bleibt (lib/medien/export.ts).
     if (istMedienBestand(n)) inhalt = ohneMedienSchluessel(inhalt);
     if (n === 'konten') inhalt = kontenOhneGeheimnisse(inhalt);
+    inhalt = ohneOffeneCodes(n, inhalt);
     yield `${erst ? '' : ','}${JSON.stringify(n)}:${JSON.stringify(inhalt)}`;
     erst = false;
   }
