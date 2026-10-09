@@ -28,7 +28,7 @@ import {
   ansprache, ansprechbarFuer, ausloeserText, euro, fadenStatusName, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
 } from './regeln';
 import { einSpaltig, KUGEL_GROESSE } from './masse';
-import { unterlagenHead } from '@/lib/agenten/unterlagen-werkzeug';
+import { unterlagenHead } from '@/lib/agenten/unterlagen-head';
 import { UnterlagenKarte } from '../gesundheit/Unterlagen';
 
 type ReiterId = 'chat' | 'aktivitaet' | 'info';

@@ -13,15 +13,14 @@ import { fremd } from '@/lib/anthropic';
 import type { Angebot, WerkzeugDef } from './werkzeuge';
 import type { WerkzeugAntwort } from './gespraech';
 import type { HeadDef, KiKategorie } from './typen';
+// Welcher Head die Unterlagen liest — Regel client-sicher in ./unterlagen-head.ts (die Oberfläche braucht sie auch, Generalprobe 09.10.).
+import { unterlagenHead } from './unterlagen-head';
+export { unterlagenHead };
 
 export const UNTERLAGEN_WERKZEUG = 'gesundheit_unterlagen' as const;
 export const istUnterlagenWerkzeug = (n: string): boolean => n === UNTERLAGEN_WERKZEUG;
 /** Quelle im `<fremde_daten>`-Rahmen (vertraulich — lib/zoe/gespraech-schutz.ts `VERTRAULICHE_QUELLEN`). */
 export const UNTERLAGEN_QUELLE = 'gesundheit-unterlagen';
-
-/** Darf dieser Head die Gesundheits-Unterlagen seiner Person lesen? Privat, Ebene Person, Kategorie Gesundheit fest (nicht nur „mit Einwilligung“). Rein. */
-export const unterlagenHead = (head: Pick<HeadDef, 'bereich' | 'ebene' | 'kategorien'>): boolean =>
-  head.bereich === 'privat' && head.ebene === 'person' && head.kategorien.includes('gesundheit');
 
 export const UNTERLAGEN_DEF: WerkzeugDef = {
   name: UNTERLAGEN_WERKZEUG,
