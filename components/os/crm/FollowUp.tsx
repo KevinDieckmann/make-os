@@ -21,8 +21,10 @@ import { Pillen, Feldzeile, ERGEBNIS_KNOEPFE } from './teile';
 import { Wahl } from './Wahl';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
-import { TEAM, BEIDE } from '@/lib/crm/team';
-import { FOLLOWUP_ARTEN, VERSCHIEBEN_TAGE, type Faellig, type Gruppe } from '@/lib/crm/followup';
+import { TEAM, BEIDE, haeltBeziehung, mitglied } from '@/lib/crm/team';
+import { FOLLOWUP_ARTEN, VERSCHIEBEN_TAGE, absagenText, kalenderWoche, type Faellig, type Gruppe } from '@/lib/crm/followup';
+import { suchPasst } from '@/lib/text/such-norm';
+import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 import type { FollowUpArt } from '@/lib/crm/typen';
 import type { FollowupAnsicht } from '@/lib/crm/adresse';
 import { KREIS_TAKT, type Kreis } from '@/lib/make-one/crm';
@@ -37,7 +39,8 @@ interface Antwort { ok: boolean; heute: string; liste: Faellig[]; zahlen: Record
 
 const GRUPPEN: { id: Gruppe; label: string; farbe: string }[] = [
   { id: 'ueberfaellig', label: 'Überfällig', farbe: LEUCHT.kritisch }, { id: 'heute', label: 'Heute', farbe: LEUCHT.achtung },
-  { id: 'woche', label: 'Diese Woche', farbe: LEUCHT.business }, { id: 'spaeter', label: 'Später', farbe: C.inkLeise },
+  // 4.16 (08.10.): die Gruppe ist ein rollierendes Fenster (bis 7 Tage) — so heißt sie jetzt auch; die Ansicht „Woche“ zeigt die Kalenderwoche.
+  { id: 'woche', label: 'Nächste 7 Tage', farbe: LEUCHT.business }, { id: 'spaeter', label: 'Später', farbe: C.inkLeise },
 ];
 const QUELLE_LABEL: Record<string, string> = {
   hand: 'von Hand', regel: 'Regel', kadenz: 'Kadenz', kampagne: 'Kampagne', event: 'Event', head: 'Head', zoe: 'ZOE', deal: 'Deal',
@@ -120,7 +123,8 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
         <Ueberschrift rechts={<Knopf haupt onClick={() => setNeu(!neu)}>{neu ? 'Schließen' : '+ Follow-up'}</Knopf>}>Was dran ist</Ueberschrift>
         <Raster min={130}>
           {GRUPPEN.map(g => { const n = liste.filter(f => f.gruppe === g.id).length + aufgaben.filter(a => aufgabeGruppe(a, d.heute) === g.id).length; return <Zahl key={g.id} wert={String(n)} label={g.label} farbe={n ? g.farbe : undefined} />; })}
-          <Zahl wert={d.puenktlich.quote !== null ? `${d.puenktlich.quote} %` : `${d.puenktlich.puenktlich} · ${d.puenktlich.erledigt}`} label={d.puenktlich.quote !== null ? 'pünktlich · 30 Tage' : 'pünktlich · erledigt (Quote ab 5)'} farbe={d.puenktlich.quote !== null ? (d.puenktlich.quote >= 80 ? LEUCHT.gut : d.puenktlich.quote >= 60 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
+          {/* 4.15 (08.10.): ohne erledigte/verpasste Follow-ups keine Kachel „0 · 0“. */}
+          {(d.puenktlich.erledigt > 0 || d.puenktlich.verpasst > 0) && <Zahl wert={d.puenktlich.quote !== null ? `${d.puenktlich.quote} %` : `${d.puenktlich.puenktlich} · ${d.puenktlich.erledigt}`} label={d.puenktlich.quote !== null ? 'pünktlich · 30 Tage' : 'pünktlich · erledigt (Quote ab 5)'} farbe={d.puenktlich.quote !== null ? (d.puenktlich.quote >= 80 ? LEUCHT.gut : d.puenktlich.quote >= 60 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />}
         </Raster>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
           <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
@@ -155,15 +159,15 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
         );
       })}
 
-      {ansicht === 'woche' && <Wochenansicht liste={liste} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eventHref={eventHref} />}
+      {ansicht === 'woche' && <Wochenansicht liste={liste} aufgaben={aufgaben} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eventHref={eventHref} eigene={eigene} abhaken={id => dispatch({ type: 'TOGGLE_TASK', payload: { id } })} />}
       {ansicht === 'kadenz' && <Kadenz api={api} liste={liste} heute={d.heute} zuKontakt={zuKontakt} aktion={nachAktion} />}
     </>
   );
 }
 
-function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [], eventHref }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort>; eigene?: { wert: string; label: string }[]; /** Wohin „Event öffnen“ führt (besuchtes Event → Event-Akte, Make.One → Make.One) — der Aufrufer kennt die Events. */ eventHref?: (id: string) => string }) {
+function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [], eventHref, startOffen = false }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort>; eigene?: { wert: string; label: string }[]; /** Wohin „Event öffnen“ führt (besuchtes Event → Event-Akte, Make.One → Make.One) — der Aufrufer kennt die Events. */ eventHref?: (id: string) => string; /** Woche (4.16): die angetippte Zeile kommt aufgeklappt. */ startOffen?: boolean }) {
   const router = useRouter();
-  const [offen, setOffen] = useState(false);
+  const [offen, setOffen] = useState(startOffen);
   const [erledigen, setErledigen] = useState(false);
   const { bestaetigen, dialog } = useRueckfrage();
   const farbe = GRUPPEN.find(g => g.id === f.gruppe)!.farbe;
@@ -183,7 +187,8 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Knopf farbe={LEUCHT.gut} onClick={() => setErledigen(!erledigen)}>✓ Erledigt</Knopf>
             {VERSCHIEBEN_TAGE.map(t => <Knopf key={t} leise onClick={() => void aktion({ aktion: 'verschieben', id: f.id, tage: t })}>+{t} {t === 1 ? 'Tag' : 'Tage'}</Knopf>)}
-            {f.quelle !== 'dealschritt' && f.quelle !== 'dealwiedervorlage' && <Knopf leise onClick={async () => { if (await bestaetigen(f.quelle === 'nachfassen' ? { titel: 'Nachfassen bewusst auslassen?', text: 'Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.', ja: 'Auslassen' } : { titel: 'Follow-up absagen?', text: 'Die Person bleibt, nur diese Zusage fällt weg.', ja: 'Absagen', gefahr: true })) void aktion({ aktion: 'absagen', id: f.id }); }}>{f.quelle === 'nachfassen' ? 'Auslassen' : 'Absagen'}</Knopf>}
+            {/* 4.14 (08.10.): Text der Rückfrage nach Quelle — bei der Kadenz fällt nichts weg, es kommt der nächste Anlauf (`absagenText`). */}
+            {f.quelle !== 'dealschritt' && f.quelle !== 'dealwiedervorlage' && <Knopf leise onClick={async () => { if (await bestaetigen(absagenText(f.quelle))) void aktion({ aktion: 'absagen', id: f.id }); }}>{absagenText(f.quelle).ja}</Knopf>}
             <span style={{ flex: 1 }} />
             {f.kontaktId && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Person</Knopf>}
             {f.bezug.art === 'event' && <Knopf leise onClick={() => router.push(eventHref ? eventHref(f.bezug.id) : eventLink({ id: f.bezug.id }))}>Event öffnen</Knopf>}
@@ -253,8 +258,11 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
   const [text, setText] = useState('');
   const [faellig, setFaellig] = useState(plusTage(heute, 1));
   const [uhrzeit, setUhrzeit] = useState('');
-  const [zustaendig, setZustaendig] = useState<string | undefined>(undefined);
-  const treffer = suche.trim().length >= 2 && !kontaktId ? (api.kontakte ?? []).filter(k => `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
+  // 4.12 (08.10.): Vorauswahl = wer die Beziehung hält (wie der Server), sonst ich — vorher stand „Kevin“, der Server nahm aber die Beziehung.
+  const [zustaendig, setZustaendig] = useState<string | undefined>(mitglied(api.ich) ? api.ich! : undefined);
+  const waehle = (id: string) => { setKontaktId(id); const p = (api.kontakte ?? []).find(x => x.id === id); const h = p ? haeltBeziehung(p) : undefined; setZustaendig(h && h !== BEIDE && p?.besitzer ? h : mitglied(api.ich) ? api.ich! : h); };
+  // Eine Suche für alles (`suchPasst`: Umlaute, Teilwörter); eingeschränkte und gesperrte Personen sind nicht wählbar (Server: 409).
+  const treffer = suche.trim().length >= 2 && !kontaktId ? (api.kontakte ?? []).filter(k => !ausgenommen(k) && suchPasst([anzeigename(k), k.firma, k.email], suche)).slice(0, 6) : [];
   const k = kontaktId ? (api.kontakte ?? []).find(x => x.id === kontaktId) : undefined;
   const bereit = !!kontaktId && text.trim() && faellig;
   return (
@@ -263,7 +271,7 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
         {k ? <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{anzeigename(k)}{k.firma ? <span style={{ color: C.inkLeise }}> · {k.firma}</span> : null}</span><button onClick={() => { setKontaktId(null); setSuche(''); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button></div>
           : <div style={{ display: 'grid', gap: 4 }}>
             <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Name oder Firma …" style={{ ...feld }} autoFocus />
-            {treffer.map(t => <button key={t.id} onClick={() => setKontaktId(t.id)} style={{ textAlign: 'left', background: 'rgba(255,255,255,.04)', border: 'none', borderRadius: 8, padding: '6px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(t)}{t.firma ? <span style={{ color: C.inkLeise }}> · {t.firma}</span> : null}</button>)}
+            {treffer.map(t => <button key={t.id} onClick={() => waehle(t.id)} style={{ textAlign: 'left', background: 'rgba(255,255,255,.04)', border: 'none', borderRadius: 8, padding: '6px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(t)}{t.firma ? <span style={{ color: C.inkLeise }}> · {t.firma}</span> : null}</button>)}
           </div>}
       </Feldzeile>
       <Feldzeile label="Art"><Wahl label="Art" liste={FOLLOWUP_ARTEN} wert={art} onWahl={setArt} /></Feldzeile>
@@ -286,38 +294,61 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
 }
 
 const WT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion, eventHref }: { liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort>; eventHref: (id: string) => string }) {
-  // Montag der Woche von heute
-  const d = new Date(`${heute}T12:00:00Z`);
-  const mo = plusTage(heute, -((d.getUTCDay() + 6) % 7));
-  const tage = Array.from({ length: 7 }, (_, i) => plusTage(mo, i));
-  const ueber = liste.filter(f => f.faellig < mo);
-  const danach = liste.filter(f => f.faellig > tage[6]);
+/**
+ * Woche (08.10., Woche 2 · 4.16): die KALENDERWOCHE (KW, Mo–So) statt eines rollierenden Fensters, mit den Aufgaben (sie zählen oben mit),
+ * und jede Karte ist antippbar — darunter dieselbe Zeile wie in „Fällig“ mit Erledigen, Verschieben, Absagen.
+ */
+function Wochenansicht({ liste, aufgaben, heute, zuKontakt, zuDeal, zuAkte, aktion, eventHref, eigene, abhaken }: { liste: Faellig[]; aufgaben: AufgabeFaellig[]; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<FollowupAntwort>; eventHref: (id: string) => string; eigene: { wert: string; label: string }[]; abhaken: (aufgabeId: string) => void }) {
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
+  const w = kalenderWoche(liste, heute);
+  const wa = kalenderWoche(aufgaben, heute);
+  const kw = kalenderwoche(heute);
+  const zeile = (f: Faellig) => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={async b => { const r = await aktion(b); if (r.ok) setGewaehlt(null); return r; }} eventHref={eventHref} eigene={eigene} startOffen={gewaehlt === f.id} />;
+  const gewaehltF = gewaehlt ? liste.find(f => f.id === gewaehlt) : undefined;
+  const aufgabeZeile = (a: AufgabeFaellig) => (
+    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44 }}>
+      <Haken an={false} label={a.titel} onChange={() => abhaken(a.aufgabeId)} />
+      <Chip farbe={LEUCHT.achtung}>Aufgabe</Chip>
+      <Link href={WEG.aufgabe(a.aufgabeId)} style={{ flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titel}</Link>
+      <span style={{ fontSize: TYP.bedien, color: a.tageUeber ? LEUCHT.kritisch : C.inkLeise }}>{datum(a.faellig, heute)}</span>
+    </div>
+  );
   return (
     <>
-      {ueber.length > 0 && <Karte i={1} akzent={LEUCHT.kritisch}><Ueberschrift farbe={LEUCHT.kritisch} rechts={`${ueber.length}`}>Aus den Vorwochen</Ueberschrift><Liste>{ueber.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} eventHref={eventHref} />)}</Liste></Karte>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-        {tage.map((t, i) => {
-          // (Einträge nach dem Sonntag stehen darunter unter „Nächste Woche“)
-          const l = liste.filter(f => f.faellig === t);
-          const istHeute = t === heute;
-          return (
-            <div key={t} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, border: istHeute ? `1px solid ${LEUCHT.achtung}66` : '1px solid transparent' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: istHeute ? LEUCHT.achtung : C.inkDim, letterSpacing: '.05em', textTransform: 'uppercase' }}>{WT[i]} {t.slice(8, 10)}.{t.slice(5, 7)}.</div>
-              <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                {l.map(f => (
-                  <button key={f.id} onClick={() => (f.bezug.art === 'chance' ? zuDeal(f.bezug.id) : f.kontaktId ? zuAkte(f.kontaktId) : undefined)} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: '1px solid rgba(255,255,255,.06)', background: 'rgba(255,255,255,.03)', borderRadius: 10, padding: '7px 9px', color: C.ink, display: 'grid', gap: 2 }}>
-                    <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.ink }}>{f.name}</span>
-                    <span style={{ fontSize: 12, color: C.inkLeise }}>{f.uhrzeit ? `${f.uhrzeit} · ` : ''}{ART_LABEL[f.art]} · {f.text}</span>
-                  </button>
-                ))}
-                {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</div>}
+      {(w.vorher.length > 0 || wa.vorher.length > 0) && <Karte i={1} akzent={LEUCHT.kritisch}><Ueberschrift farbe={LEUCHT.kritisch} rechts={`${w.vorher.length + wa.vorher.length}`}>Aus den Vorwochen</Ueberschrift><Liste>{w.vorher.map(zeile)}{wa.vorher.map(aufgabeZeile)}</Liste></Karte>}
+      <Karte i={2}>
+        <Ueberschrift rechts={`${datum(w.tage[0], heute)} – ${datum(w.tage[6], heute)}`}>KW {kw}</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+          {w.tage.map((t, i) => {
+            const l = w.jeTag.get(t) ?? [];
+            const la = wa.jeTag.get(t) ?? [];
+            const istHeute = t === heute;
+            return (
+              <div key={t} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, border: istHeute ? `1px solid ${LEUCHT.achtung}66` : '1px solid transparent' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: istHeute ? LEUCHT.achtung : C.inkDim, letterSpacing: '.05em', textTransform: 'uppercase' }}>{WT[i]} {t.slice(8, 10)}.{t.slice(5, 7)}.</div>
+                <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                  {l.map(f => (
+                    <button key={f.id} onClick={() => setGewaehlt(gewaehlt === f.id ? null : f.id)} aria-pressed={gewaehlt === f.id} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: `1px solid ${gewaehlt === f.id ? `${LEUCHT.business}88` : 'rgba(255,255,255,.06)'}`, background: 'rgba(255,255,255,.03)', borderRadius: 10, padding: '7px 9px', color: C.ink, display: 'grid', gap: 2, minHeight: 44 }}>
+                      <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.ink }}>{f.name}</span>
+                      <span style={{ fontSize: 12, color: C.inkLeise }}>{f.uhrzeit ? `${f.uhrzeit} · ` : ''}{ART_LABEL[f.art]} · {f.text}</span>
+                    </button>
+                  ))}
+                  {la.map(a => (
+                    <Link key={a.id} href={WEG.aufgabe(a.aufgabeId)} className="fassbar" style={{ textDecoration: 'none', border: '1px dashed rgba(255,255,255,.1)', borderRadius: 10, padding: '7px 9px', color: C.ink, display: 'grid', gap: 2, minHeight: 44 }}>
+                      <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{a.titel}</span>
+                      <span style={{ fontSize: 12, color: C.inkLeise }}>Aufgabe</span>
+                    </Link>
+                  ))}
+                  {!l.length && !la.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</div>}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-      {danach.length > 0 && <Karte i={2}><Ueberschrift rechts={`${danach.length}`}>Nächste Woche</Ueberschrift><Liste>{danach.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} eventHref={eventHref} />)}</Liste></Karte>}
+            );
+          })}
+        </div>
+        {gewaehltF && <div style={{ marginTop: 12 }}><Liste>{zeile(gewaehltF)}</Liste></div>}
+      </Karte>
+      {(w.naechste.length > 0 || wa.naechste.length > 0) && <Karte i={3}><Ueberschrift rechts={`${datum(w.naechsteVon, heute)} – ${datum(w.naechsteBis, heute)}`}>KW {kalenderwoche(w.naechsteVon)}</Ueberschrift><Liste>{w.naechste.map(zeile)}{wa.naechste.map(aufgabeZeile)}</Liste></Karte>}
+      {(w.spaeter.length > 0 || wa.spaeter.length > 0) && <Karte i={4}><Ueberschrift rechts={`${w.spaeter.length + wa.spaeter.length}`}>Später</Ueberschrift><Liste>{w.spaeter.map(zeile)}{wa.spaeter.map(aufgabeZeile)}</Liste></Karte>}
     </>
   );
 }
@@ -328,6 +359,7 @@ function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: 
   const kreise = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ k, takt: takte[k] ?? KREIS_TAKT[k], n: kontakte.filter(x => x.kreis === k && !ausgenommen(x)).length, faellig: liste.filter(f => f.quelle === 'kadenz' && kontakte.find(x => x.id === f.kontaktId)?.kreis === k).length }));
   const ohne = kontakte.filter(x => !x.kreis && !ausgenommen(x) && x.stufe !== 'ruht' && x.stufe !== 'verloren').length;
   const kadenz = liste.filter(f => f.quelle === 'kadenz');
+  const mitKreis = kreise.some(x => x.n > 0);
   return (
     <>
       <Karte i={1}>
@@ -335,11 +367,13 @@ function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: 
         <Raster min={150}>
           {kreise.map(x => <Zahl key={x.k} wert={String(x.faellig)} label={`Kreis ${x.k} · ${x.n} Personen · alle ${x.takt} Tage`} farbe={x.faellig ? LEUCHT.achtung : undefined} />)}
         </Raster>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{ohne} Personen haben noch keinen Kreis — sie haben keine Kadenz. Kreis setzen: „Kontakt öffnen“ › links unter Wichtigste Infos.</div>
+        {ohne > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{ohne} {ohne === 1 ? 'Person hat' : 'Personen haben'} noch keinen Kreis — ohne Kreis keine Kadenz. <Link href={WEG.kreisRunde()} style={{ color: C.aktiv, textDecoration: 'none' }}>Kreis-Runde ›</Link></div>}
       </Karte>
       <Karte i={2}>
         <Ueberschrift rechts={`${kadenz.length}`}>Zu lange nichts gehört</Ueberschrift>
-        {kadenz.length ? <Liste>{kadenz.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={() => {}} zuAkte={zuKontakt} aktion={aktion} />)}</Liste> : <Leer>Alle Kreise im Takt.</Leer>}
+        {kadenz.length ? <Liste>{kadenz.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={() => {}} zuAkte={zuKontakt} aktion={aktion} />)}</Liste>
+          // 4.14 (08.10.): „Alle Kreise im Takt“ nur, wenn es überhaupt Kreise gibt — sonst der Weg in die Kreis-Runde.
+          : mitKreis ? <Leer>Alle Kreise im Takt.</Leer> : <Leer>Noch niemand hat einen Kreis — ohne Kreis gibt es keine Kadenz. <Link href={WEG.kreisRunde()} style={{ color: C.aktiv, textDecoration: 'none' }}>In der Kreis-Runde zuordnen ›</Link></Leer>}
       </Karte>
     </>
   );

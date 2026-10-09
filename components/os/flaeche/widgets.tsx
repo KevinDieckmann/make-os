@@ -48,6 +48,7 @@ import { EINHEIT_OHNE, einheitErlaubt, passtEinheitFilter } from '@/lib/aufgaben
 import { BUSINESS_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN_NAMEN, bereichVon, gesellschaftAusEinheit } from '@/lib/einheiten';
 import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
+import { dranOhneZusagen } from '@/lib/heute/anstehend';
 import { Anstehend } from '../heute/Anstehend';
 import { fortschrittVon, schritteFuer, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 
@@ -196,14 +197,16 @@ function TermineWidget({ e, titel, i }: WidgetProps) {
 // ── Wer heute dran ist (Markttraktion) ──────────────────────────────────────
 function DranWidget({ titel, i }: WidgetProps) {
   const router = useRouter();
-  const d = useDaten<{ n: number; karten: { id: string; name: string; firma?: string; kategorie: string; gruende: string[] }[] }>('/api/crm/heute?n=12', x => { const r = x as { ok?: boolean; karten?: { id: string; name: string; firma?: string; kategorie: string; gruende: string[] }[] }; return r?.ok && r.karten?.length ? { n: r.karten.length, karten: r.karten.slice(0, 3) } : null; });
+  // 4.10 (08.10.): Zusagen/Follow-ups stehen in „Steht an“ — hier nur die übrigen Karten der Power Hour (kein Doppel), die Zusagen als Zahl.
+  const d = useDaten<{ n: number; zusagen: number; karten: { id: string; name: string; firma?: string; kategorie: string; gruende: string[] }[] }>('/api/crm/heute?n=12', x => { const r = x as { ok?: boolean; karten?: { id: string; name: string; firma?: string; kategorie: string; gruende: string[] }[] }; if (!r?.ok) return null; const o = dranOhneZusagen(r.karten ?? []); return o.karten.length ? { n: o.karten.length, zusagen: o.zusagen, karten: o.karten.slice(0, 3) } : null; });
   if (!d) return null;
   return (
     <Karte i={i}>
       <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={WEG.powerHour()} style={link}>Power Hour ›</Link>}>{titel ?? 'Wer heute dran ist'} · {d.n}</Ueberschrift>
       <Liste>
-        {d.karten.map(k => <Zeile key={k.id} onClick={() => router.push(markttraktion('kontakte', undefined, k.id))} links={<Punkt farbe={k.kategorie === 'versprechen' ? LEUCHT.kritisch : k.kategorie === 'signale' ? LEUCHT.achtung : LEUCHT.business} />} titel={<>{k.name}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.gruende[0]} />)}
+        {d.karten.map(k => <Zeile key={k.id} onClick={() => router.push(markttraktion('kontakte', undefined, k.id))} links={<Punkt farbe={k.kategorie === 'signale' ? LEUCHT.achtung : LEUCHT.business} />} titel={<>{k.name}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.gruende[0]} />)}
       </Liste>
+      {d.zusagen > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Dazu {d.zusagen} {d.zusagen === 1 ? 'Zusage' : 'Zusagen'} — stehen unter „Steht an“.</div>}
     </Karte>
   );
 }
@@ -642,7 +645,8 @@ function EinrichtungWidget({ titel, i }: WidgetProps) {
 }
 
 // Steht an (08.10., Heute): Nachbereiten, Fristen, Follow-ups, Buchungsanfragen, ZOE-Kalender-Vorschläge, Geburtstage — dieselbe Quelle wie die Glocke; leer → keine Karte.
-function AnstehendWidget({ i }: WidgetProps) { return <Anstehend i={i} />; }
+// 4.10 (08.10.): die Sicht der Fläche (Heute › Privat/Business) geht an den Server — Privat zeigt keine CRM-Follow-ups/Business-Fristen.
+function AnstehendWidget({ i, seite }: WidgetProps) { return <Anstehend i={i} space={spaceAusFlaeche(seite)} />; }
 
 export const WIDGETS: Record<string, WidgetDef> = {
   einrichtung: { art: 'einrichtung', label: 'Einrichtung', bereich: 'Tag', beschreibung: 'Wie weit deine Einrichtung ist und was als Nächstes kommt — verschwindet, wenn alles steht', breite: 6, Komponente: EinrichtungWidget },

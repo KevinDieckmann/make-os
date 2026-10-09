@@ -15,6 +15,7 @@ import { mandantSpaceId } from '@/lib/aufgaben/struktur';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { aufgabeAnlegen } from './hilfe';
+import { BUSINESS_VORGABE_SPACE } from '@/lib/einheiten';
 
 export interface AkteBezug { kontaktId?: string; firmaId?: string; mandatIds?: readonly string[]; dealIds?: readonly string[]; /** Firma mit aktivem Mandat → neue Aufgaben landen in ihrem Mandanten-Space. */ mandantFirmaId?: string }
 
@@ -30,7 +31,8 @@ export function AufgabenAkte(b: AkteBezug) {
   const offen = useAkteAufgaben(b);
   const [text, setText] = useState('');
   const heute = localDay();
-  const spaceId = b.mandantFirmaId ? mandantSpaceId(b.mandantFirmaId) : 'kdv';
+  // Ohne Mandat: der Business-Vorgabe-Space aus lib/einheiten.ts (08.10., Markttraktion Woche 2 · 4.11) — nie eine feste Kennung.
+  const spaceId = b.mandantFirmaId ? mandantSpaceId(b.mandantFirmaId) : BUSINESS_VORGABE_SPACE;
   const anlegen = () => {
     const v = text.trim();
     if (!v) return;

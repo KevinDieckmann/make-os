@@ -116,6 +116,8 @@ export const WEG = {
   deal: (id?: string) => (id ? dealAkte(id) : markttraktion('deals')),
   deals: () => markttraktion('deals'),
   followup: (a?: 'woche' | 'powerhour' | 'kadenz') => markttraktion('followup', a),
+  /** Kreis-Runde (Kontakte, 08.10.): Kreis A–D zuordnen — ohne Kreis keine Kadenz. */
+  kreisRunde: () => markttraktion('kontakte', 'runde-kreis'),
   markttraktion: () => markttraktion(),
   // Schnellknöpfe der Markttraktion (28.09. abends): Qualifizierung und Angebot (vorbelegt mit Kontakt/Firma/Deal).
   qualifizierung: () => markttraktion('qualifizierung'),

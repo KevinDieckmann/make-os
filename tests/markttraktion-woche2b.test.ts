@@ -218,3 +218,184 @@ describe('3.16 · 403 bei Rechnungen sauber anzeigen', () => {
     expect(quelle('components/os/rechnung/daten.ts')).toMatch(/r\.status === 403 \? KEIN_RECHNUNGS_ZUGANG/);
   });
 });
+
+// ══ Teil B · Follow-up ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe('4.10 · Heute: „Steht an“ je Sicht serverseitig gefiltert, kein Doppel mit „Wer heute dran ist“', () => {
+  const a = {
+    heute: T, termine: [], buchungen: [], vorschlaege: { kalender: 0, gesamt: 0 }, nachbereitZeiten: { x: { start: J } },
+    followups: [{ id: 'fu-1', text: 'Anrufen', name: 'A', faellig: T, tageUeber: 0, quelle: 'hand', href: '/' }],
+    nachbereiten: [{ kontaktId: 'c-1', name: 'A', titel: 'Termin', tag: T, href: '/' }],
+    fristen: [{ id: 'f-b', art: 'mandat' as const, tag: T, titel: 'Kündigungsfrist', href: '/', inTagen: 0, business: true as const }, { id: 'f-p', art: 'steuer' as const, tag: T, titel: 'Steuer privat', href: '/', inTagen: 0 }],
+    geburtstage: [{ id: 'g-1', name: 'A', tag: T, href: '/', herkunft: 'crm' as const, aufgabeTag: T }, { id: 'g-2', name: 'B', tag: T, href: '/', herkunft: 'familie' as const, aufgabeTag: T }],
+    danke: [{ id: 'danke-1', n: 2, eventTitel: 'Abend', href: '/' }],
+  };
+  it('Privat: keine Follow-ups, Nachbereitungen, Danke-Mails, keine Business-Fristen; Business: nur Business-Fristen', async () => {
+    const { anstehendFuerSpace, anstehendSpaceAus } = await import('@/lib/heute/anstehend');
+    const p = anstehendFuerSpace(a as never, 'privat');
+    expect(p.followups).toEqual([]); expect(p.nachbereiten).toEqual([]); expect(p.danke).toEqual([]); expect(p.nachbereitZeiten).toEqual({});
+    expect(p.fristen.map(f => f.id)).toEqual(['f-p']);
+    expect(p.geburtstage.map(g => g.id)).toEqual(['g-2']);
+    const b = anstehendFuerSpace(a as never, 'business');
+    expect(b.followups).toHaveLength(1);
+    expect(b.fristen.map(f => f.id)).toEqual(['f-b']);
+    expect(b.geburtstage.map(g => g.id)).toEqual(['g-1']);
+    expect(anstehendFuerSpace(a as never, null)).toBe(a);
+    expect(anstehendSpaceAus('privat')).toBe('privat'); expect(anstehendSpaceAus('alles')).toBeNull(); expect(anstehendSpaceAus(null)).toBeNull();
+  });
+  it('„Wer heute dran ist“ zeigt Zusagen nicht noch einmal — nur deren Zahl', async () => {
+    const { dranOhneZusagen } = await import('@/lib/heute/anstehend');
+    const r = dranOhneZusagen([{ kategorie: 'versprechen', id: 1 }, { kategorie: 'signale', id: 2 }, { kategorie: 'versprechen', id: 3 }, { kategorie: 'pflege', id: 4 }]);
+    expect(r.zusagen).toBe(2);
+    expect(r.karten.map(x => x.id)).toEqual([2, 4]);
+  });
+  it('Route liest `space`, das Widget gibt die Sicht der Fläche mit', () => {
+    expect(quelle('app/api/heute/anstehend/route.ts')).toContain("anstehendSpaceAus(new URL(req.url).searchParams.get('space'))");
+    expect(quelle('components/os/flaeche/widgets.tsx')).toContain('<Anstehend i={i} space={spaceAusFlaeche(seite)} />');
+    expect(quelle('components/os/heute/Anstehend.tsx')).toMatch(/api\/heute\/anstehend\$\{space === 'privat' \|\| space === 'business'/);
+  });
+});
+
+describe('4.11 · Follow-up-Karte in „Kontakt öffnen“: Knopf in der Aufgaben-Karte, Bereich aus lib/einheiten.ts', () => {
+  it('kein fester Space mehr; „+ Hinzufügen“ hängt an der Aufgaben-Karte, die Rückmeldung bleibt', async () => {
+    const { BUSINESS_VORGABE_SPACE, BUSINESS_GESELLSCHAFTEN } = await import('@/lib/einheiten');
+    expect(BUSINESS_GESELLSCHAFTEN).toContain(BUSINESS_VORGABE_SPACE);
+    for (const f of ['components/os/crm/KontaktSpalten.tsx', 'components/os/aufgaben/AufgabenAkte.tsx', 'components/os/heute/Anstehend.tsx']) expect(quelle(f), f).not.toMatch(/: 'kdv'/);
+    const s = quelle('components/os/crm/KontaktSpalten.tsx');
+    const followups = s.slice(s.indexOf('<Klappe id="r-followups"'), s.indexOf('<Klappe id="r-termine"'));
+    expect(followups).not.toContain("plus('Hinzufügen'");
+    const aufgaben = s.slice(s.indexOf('<Klappe id="r-aufgaben"'));
+    expect(aufgaben).toContain("plus('Hinzufügen'");
+    expect(aufgaben).toContain('setAufgabeHinweis(t)');
+  });
+});
+
+describe('4.12 · Neues Follow-up: Vorauswahl Beziehung bzw. ich, eine Suche, keine gesperrten Personen', () => {
+  it('suchPasst + ausgenommen; die Zuständigkeit folgt der gewählten Person', () => {
+    const s = quelle('components/os/crm/FollowUp.tsx');
+    const neu = s.slice(s.indexOf('function NeuesFollowUp('), s.indexOf('const WT = '));
+    expect(neu).toContain('!ausgenommen(k) && suchPasst(');
+    expect(neu).not.toContain('.toLowerCase().includes(');
+    expect(neu).toContain('haeltBeziehung(p)');
+    expect(neu).toContain('onClick={() => waehle(t.id)}');
+  });
+});
+
+describe('4.13 · Anlass nach Quelle, „Anruf“ nur mit Ergebnis', () => {
+  it('anlassNachQuelle und aktivitaetArtNachErledigen', async () => {
+    const { anlassNachQuelle, aktivitaetArtNachErledigen } = await import('@/lib/crm/followup');
+    expect(anlassNachQuelle('kadenz', 'Kreis A: seit 40 Tagen')).toBe('Beziehungspflege (Kadenz): Kreis A: seit 40 Tagen');
+    expect(anlassNachQuelle('hand', 'Rückruf zugesagt')).toBe('Vereinbartes Follow-up: Rückruf zugesagt');
+    expect(anlassNachQuelle('wiedervorlage', '')).toBe('Wiedervorlage aus der laufenden Beziehung');
+    expect(anlassNachQuelle('event', 'x')).toMatch(/^Nachfassen nach einer Begegnung/);
+    expect(aktivitaetArtNachErledigen('anruf')).toBe('notiz');
+    expect(aktivitaetArtNachErledigen('anruf', 'nicht_erreicht')).toBe('anruf');
+    expect(aktivitaetArtNachErledigen('anruf', 'gespraech')).toBe('anruf');
+    expect(aktivitaetArtNachErledigen('mail')).toBe('mail');
+    expect(aktivitaetArtNachErledigen('sonstig', 'gespraech')).toBe('gespraech');
+    expect(quelle('app/api/crm/followup/route.ts')).toContain("anlassNachQuelle(herkunft === 'echt' ? anlassQuelle ?? 'hand' : herkunft, text)");
+  });
+});
+
+describe('4.14 · Kadenz: Texte nach Quelle, Kreis-Runde, Kadenz ab Anlage', () => {
+  it('ohne letzten Kontakt zählt die Kadenz ab der Anlage — mit eigenem Text', async () => {
+    const { faellige, kadenzStart } = await import('@/lib/crm/followup');
+    expect(kadenzStart({ importiertAm: vor(40), aktivitaeten: [] }, T)).toEqual({ tag: vor(40), ohneKontakt: true });
+    expect(kadenzStart({ importiertAm: 'kaputt', aktivitaeten: [] }, T)).toBeUndefined();
+    const l = faellige([k('neu', { kreis: 'A', importiertAm: vor(40), stufe: 'neu' }), k('frisch', { kreis: 'A', importiertAm: vor(5) })], crmLeer(), T);
+    expect(l.find(f => f.id === 'v:kadenz:c-neu')?.text).toMatch(/seit der Anlage vor 40 Tagen noch kein Kontakt/);
+    expect(l.some(f => f.kontaktId === 'c-frisch')).toBe(false);
+  });
+  it('Absagen-Rückfrage nach Quelle: Kadenz überspringt (nichts fällt weg), Zusage fällt weg', async () => {
+    const { absagenText } = await import('@/lib/crm/followup');
+    expect(absagenText('kadenz')).toMatchObject({ ja: 'Überspringen' });
+    expect(absagenText('kadenz').text).toMatch(/nächste Anlauf/);
+    expect(absagenText('schritt').text).toMatch(/Zusage fällt weg/);
+    expect(absagenText('nachfassen').ja).toBe('Auslassen');
+  });
+  it('„Alle Kreise im Takt“ nur mit Kreisen, sonst der Weg in die Kreis-Runde', async () => {
+    const { WEG } = await import('@/lib/wege');
+    expect(WEG.kreisRunde()).toBe('/os/markttraktion?s=kontakte&a=runde-kreis');
+    const s = quelle('components/os/crm/FollowUp.tsx');
+    expect(s).toContain('mitKreis ? <Leer>Alle Kreise im Takt.</Leer>');
+    expect(s).toContain('WEG.kreisRunde()');
+    expect(s).toContain('absagenText(f.quelle)');
+  });
+});
+
+describe('4.15 · Pünktlichkeit nach Berliner Tag, ohne Daten keine Kachel', () => {
+  it('erledigt um 00:30 Berliner Zeit am Fälligkeitstag zählt als pünktlich', async () => {
+    const { puenktlichkeit } = await import('@/lib/crm/followup');
+    // 22:30 UTC am Vortag = 00:30 MESZ am Fälligkeitstag.
+    const f = { id: 'fu-p', bezug: { art: 'kontakt' as const, id: 'c-a' }, art: 'anruf' as const, text: 'x', faellig: '2026-10-05', zustaendig: 'kevin', status: 'erledigt' as const, quelle: 'hand' as const, angelegt: J, geaendert: J, erledigtAm: '2026-10-05T22:30:00.000Z' };
+    expect(puenktlichkeit([f], T).puenktlich).toBe(0); // 06.10. Berliner Zeit → nach dem Termin
+    expect(puenktlichkeit([{ ...f, erledigtAm: '2026-10-04T22:30:00.000Z' }], T).puenktlich).toBe(1); // 05.10. 00:30 Berlin → pünktlich (UTC wäre 04.10.)
+    expect(quelle('components/os/crm/FollowUp.tsx')).toContain('(d.puenktlich.erledigt > 0 || d.puenktlich.verpasst > 0) && <Zahl');
+  });
+});
+
+describe('4.16 · Woche: Kalenderwoche, Zeilen antippbar mit denselben Aktionen, Aufgaben dabei', () => {
+  it('kalenderWoche teilt in Vorwochen · Mo–So · nächste KW · später', async () => {
+    const { kalenderWoche } = await import('@/lib/crm/followup');
+    // 08.10.2026 ist ein Donnerstag → Woche 05.–11.10., nächste 12.–18.10.
+    const w = kalenderWoche([{ faellig: '2026-10-04' }, { faellig: '2026-10-05' }, { faellig: '2026-10-11' }, { faellig: '2026-10-12' }, { faellig: '2026-10-19' }], T);
+    expect(w.tage[0]).toBe('2026-10-05'); expect(w.tage[6]).toBe('2026-10-11');
+    expect(w.vorher.map(f => f.faellig)).toEqual(['2026-10-04']);
+    expect(w.jeTag.get('2026-10-05')).toHaveLength(1); expect(w.jeTag.get('2026-10-11')).toHaveLength(1);
+    expect(w.naechste.map(f => f.faellig)).toEqual(['2026-10-12']);
+    expect(w.spaeter.map(f => f.faellig)).toEqual(['2026-10-19']);
+  });
+  it('die Woche rendert die Zeile der angetippten Karte (Erledigen …) und die Aufgaben', () => {
+    const s = quelle('components/os/crm/FollowUp.tsx');
+    const w = s.slice(s.indexOf('function Wochenansicht('), s.indexOf('function Kadenz('));
+    expect(w).toContain('kalenderWoche(liste, heute)');
+    expect(w).toContain('kalenderWoche(aufgaben, heute)');
+    expect(w).toContain('startOffen={gewaehlt === f.id}');
+    expect(w).toContain('KW {kw}');
+  });
+});
+
+describe('4.17 / 4.18 · Verschieben einer Zusage = echtes Follow-up mit Zähler; altes Nachfassen verjährt', () => {
+  type M = { POST: H; GET: H };
+  let fu: M;
+  const kopf = () => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' });
+  const req = (body?: unknown, method = 'POST') => new Request('http://test/api/crm/followup', { method, headers: kopf(), ...(body ? { body: JSON.stringify(body) } : {}) });
+  beforeAll(async () => {
+    const { localDay } = await import('@/lib/zeit');
+    const heute = localDay();
+    await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: [...(cur?.kontakte ?? []), k('zusage', { naechsterSchritt: { text: 'Unterlagen schicken', datum: heute }, stufe: 'gespraech', geaendertAm: heute }), k('wv', { wiedervorlage: heute, stufe: 'gespraech', geaendertAm: heute })] }));
+    fu = (await import('@/app/api/crm/followup/route')) as unknown as M;
+  });
+  it('„+1 Tag“ auf eine Zusage: echtes Follow-up mit verschoben = 1, das Feld am Kontakt fällt weg; dreimal → Warnung', async () => {
+    const r1 = await (await fu.POST(req({ aktion: 'verschieben', id: 'v:schritt:c-zusage', tage: 1 }))).json();
+    expect(r1.ok, JSON.stringify(r1)).toBe(true);
+    expect(r1.followup).toMatchObject({ kontaktId: 'c-zusage', text: 'Unterlagen schicken', verschoben: 1, status: 'offen' });
+    const kontakt = (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.find(x => x.id === 'c-zusage')!;
+    expect(kontakt.naechsterSchritt).toBeUndefined();
+    await fu.POST(req({ aktion: 'verschieben', id: r1.followup.id, tage: 1 }));
+    const r3 = await (await fu.POST(req({ aktion: 'verschieben', id: r1.followup.id, tage: 1 }))).json();
+    expect(r3.followup.verschoben).toBe(3);
+    expect(r3.hinweis).toMatch(/dritten Mal/);
+    const liste = (await (await fu.GET(req(undefined, 'GET'))).json()).liste as { id: string; kontaktId?: string }[];
+    expect(liste.filter(f => f.kontaktId === 'c-zusage').map(f => f.id)).toEqual([r1.followup.id]); // kein virtueller Eintrag daneben
+  });
+  it('Wiedervorlage ebenso', async () => {
+    const r = await (await fu.POST(req({ aktion: 'verschieben', id: 'v:wiedervorlage:c-wv', tage: 3 }))).json();
+    expect(r.followup).toMatchObject({ kontaktId: 'c-wv', verschoben: 1 });
+    expect((await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.find(x => x.id === 'c-wv')!.wiedervorlage).toBeUndefined();
+  });
+  it('nächster Schritt zur Anzeige: Feld oder früheres echtes Follow-up', async () => {
+    const { naechsterSchrittVon } = await import('@/lib/crm/followup');
+    const f = (faellig: string) => ({ id: 'fu-x', kontaktId: 'c-a', status: 'offen', text: 'FU', faellig }) as never;
+    expect(naechsterSchrittVon({ id: 'c-a' }, [f('2026-10-09')])).toEqual({ text: 'FU', datum: '2026-10-09' });
+    expect(naechsterSchrittVon({ id: 'c-a', naechsterSchritt: { text: 'Feld', datum: '2026-10-08' } }, [f('2026-10-09')])).toEqual({ text: 'Feld', datum: '2026-10-08' });
+    expect(naechsterSchrittVon({ id: 'c-a' }, [])).toBeUndefined();
+  });
+  it('4.18: Teilnahme „da“ ohne followUpAm älter als 60 Tage → kein Nachfassen mehr', async () => {
+    const { faellige, NACHFASSEN_MAX_TAGE } = await import('@/lib/crm/followup');
+    const crm = crmLeer({ events: [{ id: 'ev-alt', titel: 'Alt', datum: vor(NACHFASSEN_MAX_TAGE + 5), status: 'durchgefuehrt' }, { id: 'ev-neu', titel: 'Neu', datum: vor(2), status: 'durchgefuehrt' }] as never, teilnahmen: [{ id: 't-alt', eventId: 'ev-alt', kontaktId: 'c-x', status: 'da' }, { id: 't-neu', eventId: 'ev-neu', kontaktId: 'c-x', status: 'da' }] as never });
+    const l = faellige([k('x')], crm, T, { horizont: 400 });
+    expect(l.some(f => f.id === 'v:nachfassen:t-alt')).toBe(false);
+    expect(l.some(f => f.id === 'v:nachfassen:t-neu')).toBe(true);
+  });
+});
