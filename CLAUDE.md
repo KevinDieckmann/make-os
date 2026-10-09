@@ -200,6 +200,18 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
 - **Namen je Instanz:** `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (lib/einheiten.ts, Anzeigenamen kdc/kdv/ug) und `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`
   (lib/crm/team.ts `TEAM`) — ohne Variable alles wie bisher. Im Docker-Bild als Build-Args.
 
+## Neustart-Umzug (09.10., Branch `neustart-umzug`, nur lokal; Anleitung UPDATES.md › 09.10.2026 — Neustart-Umzug)
+Kevin 09.10.: neu anfangen „wie ein komplett neuer Kunde“ — Kundendaten, Datensätze und Infos kommen mit. `scripts/neustart-umzug.mjs` liest NUR den
+alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--ausfuehren` schreibt, liest zurück, vergleicht); der alte bleibt als Archiv.
+- **EINE Entscheidungstabelle** `lib/neustart/umzug.mjs` (`MITNEHMEN` mit Grund, `NICHT_MITNEHMEN`, `NIE_MITNEHMEN` = Konten/Zugänge): Kartei, CRM, Pflicht-
+  Nachweise (Sperrliste, Löschprotokoll, Aliase, Übergabe-Journal, gelöschte Events, Pannen), CRM-Dateiablage, eigene Aufgaben (gefiltert: ohne Papierkorb,
+  Archiv, Modul-Aufgaben `SYSTEM_AUFGABEN`; Meilenstein-Listen → Projekt „Übernommen“). **Neuer Bestand mit Kartei-/CRM-Bezug → dort entscheiden** (Wächter in
+  tests/neustart-umzug.test.ts: jeder CRM-nahe Register-Eintrag ist ausdrücklich entschieden). Neue Modul-Aufgabe mit fester Kennung → `SYSTEM_AUFGABEN`.
+- Bewusst `.mjs` + `.d.mts` (läuft im Container ohne TS-Lader); Ablauf `lib/neustart/umzug-lauf.mjs`. Marke `<daten>/system/neustart.json` = Klartext-JSON
+  (`am`, `zaehler`, Fingerabdrücke — keine Namen/Inhalte, `markeBauen`) — die Einrichtung schaltet daran in den Neustart-Modus.
+- Personen/Haushalt: dieselben Speichernamen (erstes Konto: Vorname; zweite Person: Einladung mit Vorname) und derselbe Haushalt → keine Umschreibung;
+  sonst `--person`/`--haushalt alt=neu` (ganze Werte + Schlüssel, Bestandsnamen, Datei-AAD neu).
+
 ## Eiserne Regeln
 1. **Privates bleibt hier.** Gesundheits-, Journal- und Finanzdaten gehören
    Kevin & Malin. `.env.local` und `.data/` sind gitignored und bleiben es —

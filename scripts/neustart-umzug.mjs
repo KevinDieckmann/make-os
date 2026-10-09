@@ -65,7 +65,7 @@ try {
   console.log('');
   console.log('Mit (alt → neu, Kennungen-Fingerabdruck):');
   for (const s of b.bestaende) {
-    zeile(`${s.name}${s.neuName ? ` → ${s.neuName}` : ''}`, `${s.inhalt}${s.kennungenAlt === s.kennungenNeu ? '' : ` · ${s.kennungenAlt} → ${s.kennungenNeu}`}`);
+    zeile(`${s.name}${s.neuName ? ` → ${s.neuName}` : ''}`, `${s.inhalt} · Kennungen ${s.kennungenAlt === s.kennungenNeu ? `${s.kennungenAlt} (gleich)` : `${s.kennungenAlt} → ${s.kennungenNeu}`}`);
     const a = listen(s.alt), n = listen(s.neu);
     if (a || n) console.log(`      alt: ${a || '—'}${a === n ? '' : `\n      neu: ${n || '—'}`}`);
   }
@@ -89,12 +89,16 @@ try {
   if (b.verweise) {
     console.log('');
     console.log('Verweise (alt → neu; „tot“ = zeigt ins Leere):');
-    for (const k of Object.keys(b.verweise.neu)) {
+    // Erklärt, also kein Befund: CRM → Aufgaben, die bewusst nicht mitkamen; Einwilligungs-Belege, deren Aufgabe nicht mitkam (Nachweis bleibt).
+    const erklaert = { crmAufgabeNichtUebernommen: Infinity, aufgabenDateiBezugTot: b.aufgabenDateien.reduce((s, x) => s + x.beleg, 0) };
+    const zeilen = Object.keys(b.verweise.neu).filter(k => b.verweise.alt[k] || b.verweise.neu[k]);
+    for (const k of zeilen) {
       const a = b.verweise.alt[k], n = b.verweise.neu[k];
-      if (a || n) zeile(k, `${a} → ${n}${n > a && k !== 'crmAufgabeNichtUebernommen' ? '  ← NEU' : ''}`);
+      zeile(k, `${a} → ${n}${n > a + (erklaert[k] ?? 0) ? '  ← NEU' : ''}`);
     }
+    if (!zeilen.length) zeile('keine toten Verweise — vorher wie nachher');
   }
-  if (b.grabsteine) console.log(`\nGrabsteine: ${b.grabsteine.anzahl} · ${b.grabsteine.angewendetAufDemStand ? 'Kartei ist danach bereinigt (Marke kommt mit)' : 'nach dem Start anwenden'}`);
+  if (b.grabsteine) console.log(`\nGrabsteine: ${!b.grabsteine.gefunden ? `keine gefunden in ${b.grabsteine.ordner} — Ordner prüfen` : `${b.grabsteine.anzahl} · ${b.grabsteine.angewendetAufDemStand ? 'die Kartei ist danach bereinigt (Marke kommt mit); nach dem Start trotzdem einmal anwenden' : 'nach dem Start anwenden (Pflicht)'}`}`);
   console.log('');
   const gruppen = new Map();
   for (const x of b.nicht) { const g = gruppen.get(x.bereich) ?? []; g.push(x.name); gruppen.set(x.bereich, g); }

@@ -55,6 +55,24 @@ export interface Verweise {
 }
 export function verweisePruefen(d: { kartei: unknown; crm: unknown; tasks: unknown; crmDateien: unknown[]; aufgabenDateien: unknown[]; dateienDa?: ReadonlySet<string>; nichtUebernommen?: ReadonlySet<string> }): Verweise;
 
+export const MARKE_ZAEHLER: Readonly<Record<string, readonly [string, string]>>;
+/** Inhalt von `<daten>/system/neustart.json` (Klartext-JSON). */
+export interface NeustartMarke {
+  version: number;
+  /** Zeitpunkt des Umzugs (ISO). */
+  am: string;
+  /** Ordnername des alten Datenordners (z. B. „daten-archiv-2026-10-09“). */
+  quelle: string;
+  format: string;
+  verschluesselt: boolean;
+  /** Name → Zahl: kontakte, firmen, deals, mandate, followups, angebote, kampagnen, events, aufgaben, projekte, dateien. */
+  zaehler: Record<string, number>;
+  fingerabdruecke: { kontakte: string | null; crm: string | null };
+  grabsteine: { anzahl: number; markeUebernommen: boolean };
+  nichtUebernommen: number;
+}
+export function markeBauen(o: { am: string; quelle: string; format: string; verschluesselt: boolean; neu: Record<string, unknown>; dateien: number; grabsteine?: { anzahl: number; markeUebernommen: boolean }; nichtUebernommen: number }): NeustartMarke;
+
 export const ABSICHTEN_KERN: readonly string[];
 export function absichtenOffen(datei: unknown): { kern: Record<string, number>; sonst: Record<string, number> };
 export function grabsteinStandAus(roh: Buffer | Uint8Array | null | undefined): string;

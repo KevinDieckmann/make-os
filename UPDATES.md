@@ -4,6 +4,121 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Neustart-Umzug: neue leere Instanz, Kartei + Markttraktion + eigene Aufgaben kommen mit (nur lokal — Branch `neustart-umzug`, Basis 523fbbfc + `agenten-nacht`)
+
+Kevin 09.10.: „Wir können alles aus [neu] machen, aber die Kundendaten und Datensätze und Infos werden mit übernommen. Das ist der Kern unserer
+Arbeit … das muss unbedingt passieren: Datensätze, Kontakte etc. mit.“ Entschieden: **neuer Datenordner** auf dem Server, der alte wird als Archiv
+beiseitegelegt (**nie gelöscht**, Rückweg offen). Konten kommen nie mit (neue Konten, neuer zweiter Faktor) — Kevin und Malin führen sich als Paar
+durch die Einrichtung. Der Vault (`/vault`) und die Grabsteine (`/srv/make-os/grabsteine`) sind eigene Ordner und bleiben, wie sie sind.
+
+**Bauteile:** `scripts/neustart-umzug.mjs` (Kommandozeile) · `lib/neustart/umzug-lauf.mjs` (Ablauf mit Dateien) · `lib/neustart/umzug.mjs` (reiner
+Kern: Entscheidung je Bestand mit Grund, Aufgaben-Filter, Namen-Abbildung, Zähler, Fingerabdrücke, Verweis-Prüfung, Marke). Bewusst `.mjs` mit
+`.d.mts` (wie `lib/store/huelle.mjs`): das Skript läuft im Container, dort gibt es keinen TS-Lader (`jiti` ist nur Entwicklungs-Abhängigkeit —
+Befund unten). Tests `tests/neustart-umzug.test.ts` und `tests/neustart-umzug-demo.test.ts` (die Demo-Saat mit drei Konten als alter Ordner).
+
+**Wie es arbeitet:** liest NUR den alten Ordner, schreibt NUR in einen LEEREN neuen. Standard = **Probelauf** (alles lesen, entschlüsseln, prüfen,
+Bericht — nichts schreiben, nicht einmal den Ordner). `--ausfuehren` schreibt im Format des Modus (`MAKE_OS_FORMAT`; AAD = Bestandsname bzw.
+Haushalt/Kennung) mit dem aktiven Schlüssel, liest danach ALLES zurück und vergleicht (Text für Text, Datei für Datei per SHA-256). Erst dann entsteht
+die **Marke `system/neustart.json`** — Klartext-JSON wie `system/sicherung.json` mit `am` (Zeitpunkt), `zaehler` (kontakte, firmen, deals, mandate,
+followups, angebote, kampagnen, events, aufgaben, projekte, dateien), Format, Kennungen-Fingerabdrücken von Kartei und CRM; keine Namen, keine Inhalte.
+**Sie schaltet die Einrichtung in den Neustart-Modus** (`lib/onboarding-neustart.ts`, Branch `einrichtung-neu`). Fehlt sie, ist der Lauf nicht fertig
+geworden. Abbruch VOR dem ersten Schreiben (Ausgang 2, nichts geschrieben), wenn: ein Pfad `.data` enthält / gleich / ineinander, `--nach` nicht leer,
+ein mitzunehmender Bestand oder eine Datei nicht lesbar ist (falscher Schlüssel, Klartext bei gesetztem Schlüssel, kaputtes JSON), offene oder
+gescheiterte Absichten von Kartei/CRM/Aufgaben im alten Ordner liegen (Art. 17, Import, Dubletten, Kennungs-Umzug, Angebot stellen, Buchung, Firma
+umhängen, Erinnerungen-Übernahme), der Pepper nicht der der Sperrliste ist. Ausgang 3: eine lebende App hält einen der Ordner (`.schreiber`).
+
+**Was mitkommt — unverändert, Text für Text** (Grund je Bestand im Bericht, Tabelle `MITNEHMEN`):
+- **Kartei** `kontakte` (Einwilligungen samt Nachweis, Werbesperren, Art. 18, Stationen, Adressen, Aktivitäten, private Notizen je Person) und die
+  Kartei-Altbestände `netzwerk`, `kunden`, `stammdaten`.
+- **Markttraktion** `crm` komplett (Firmen, Leads, Deals, Mandate, Produkte, Angebote, Follow-ups, Kampagnen, Segmente, Beiträge, Newsletter, Events,
+  Teilnahmen, Power-Hour, Betroffenenanträge, Verzeichnis Art. 30, Wertelisten), `crm-scoring`, `crm-loeschfristen`, `crm-import-konflikte`,
+  `crm-import-laeufe--*`, `traktion-index`, `traktion-verlauf`, `prospects`.
+- **Pflicht (Recht):** `crm-sperrliste--*`, `crm-loeschprotokoll`, `kennung-alias--*`, `uebergabe-journal--*`, `events-geloescht`, `datenschutz-pannen`
+  (Art. 33 Abs. 5), `datenschutz-migration` (Marke v1 → v2 je Pepper). `datenschutz-grabsteine` nur, wenn die Kartei nach dem jetzigen Stand der
+  Grabsteine bereinigt ist — sonst wendet die neue Instanz sie an (Schritt 10, ohnehin Pflicht).
+- **Netzwerken:** `netzwerken-erfassungen--*` (sonst legten Erfassungen, die noch am Handy warten, Personen doppelt an), `visitenkarten--*`.
+- **CRM-Dateiablage** `crm-dateien--*` mit ALLEN Einträgen und ihren Dateien (Verträge, Angebote, Rechnungs-PDFs, Einwilligungs-Belege, Fotos,
+  Sprachnotizen) — neu verschlüsselt.
+- **Eigene Aufgaben** `tasks` (gefiltert): Projekte, Listen, Aufgaben samt Unteraufgaben, eigene Status, Vorlagen, Serien (die jüngste Instanz trägt
+  die Serie). Mit: alles, was eine Person angelegt, angenommen oder über die Markttraktion ausgelöst hat (Follow-up-Aufgaben, `ueb-`, `nw-`, `ev-`,
+  `kp-`, übernommene Erinnerungen; „nur ich“ bleibt „nur ich“). Nicht: Papierkorb, „Neu anfangen“-Archiv (samt Projekt/Liste/Unteraufgaben), Aufgaben
+  der Module, die leer beginnen bzw. sie selbst neu anlegen (`steuer-`, `beleg-`, `mahn-`, `hof-`, `vte-`, `loeschfrist-`, `md-`), Head-Aufgaben `hd-`
+  (Schalter `--mit-head-aufgaben`). Meilensteine kommen nicht mit → ihre Listen (`lm-…`) ziehen samt Aufgaben in ein neues Projekt **„Übernommen“** je
+  Space (Listentitel = Titel des Meilensteins, neue Kennung `l-…`); leere Meilenstein-Listen fallen weg. `zielId` an Aufgaben/Projekten fällt weg (Ziele
+  beginnen leer); ein ZOE-Auftrag „in Arbeit“/„wartet auf Freigabe“ steht wieder auf „offen“ (sein Vorschlag lag im Stapel); Abhängigkeiten auf nicht
+  übernommene Aufgaben fallen weg. Dazu `aufgaben-dateien--*` (Dateien übernommener Aufgaben/Listen/Projekte — und jede Datei, die eine Einwilligung als
+  Beleg nennt), `planung-einheiten--*`, `ordnung`.
+- Schalter: `--mit-bauplan` (Bauplan-Karten + Fotos), `--auch <bestand>[,…]` (weitere Bestände unverändert, Muster mit `*` — nie Konten/Zugänge).
+
+**Bleibt im Archiv** (beginnt leer, kommt über die Einrichtung): Konten und alle Zugänge (Google, iCloud, WHOOP, Postfächer), Finanzen/Steuern/
+Business-Index, Gesundheit/Sport/Ernährung/Journal, Ziele/Meilensteine/Routinen/Zeit/Kapazität, Kalender inkl. `kalender-bezug` und Buchungsseiten,
+ZOE/Agenten/Heads/KI/Medien, Inbox, Familie, Gesellschafts-Register, Team, Glocke, Absichtsprotokoll, Protokolle (Änderungs-/Lese-/Anmelde-/KI-
+Protokoll — die Nachweise bleiben im Archiv-Ordner, die neue Instanz beginnt eine eigene Hash-Kette), Tagessicherungen `backup/`, `archiv/`, `system/`.
+
+**Personen und Haushalt — Lösung: dieselben Namen, keine Umschreibung.** Speichernamen sind steuerbar: das erste Konto bekommt `speicherName(Vorname)`
+(erstes Wort, klein, ä → ae — „Kevin …“ → `kevin`), die zweite Person über die Einladung mit „Vorname (optional)“ (bindet den Speichernamen; ohne
+Bindung würde aus einem reservierten Namen „…2“). Den Haushalt trägt der Inhaber frei ein (Konto › Haushalt) — derselbe Name wie bisher. Der Bericht
+nennt die alten Speichernamen, den Haushalt und die Haushalte der Bestände (und warnt, wenn sie nicht zusammenpassen). Nur falls andere Namen gewollt
+sind: `--person alt=neu` / `--haushalt alt=neu` ersetzen in jedem mitgenommenen Bestand jeden Text, der GENAU der alte Name ist (Werte und Schlüssel,
+z. B. `besitzer`, `angelegtVon`, `netzwerk[<person>]`), benennen `…--<alt>` um und verschlüsseln Dateien mit der neuen AAD (Teilwörter wie `@name`
+bleiben).
+
+### Auf dem Server (heute Abend) — Reihenfolge einhalten
+0. **Voraussetzung:** dieser Stand ist online (das Skript muss im Bild liegen — nur auf Kevins Wort). Prüfen:
+   `cd /srv/make-os/app && docker compose exec -T app ls scripts/neustart-umzug.mjs`
+1. **Sicherung, solange die App läuft:** `cd /srv/make-os/app && bash deploy/sicherung.sh` — am Ende „ok“, das Archiv liegt in `/srv/make-os/sicherungen/`;
+   am Mac abholen (`deploy/sicherung-abholen.sh`). Der Archiv-Ordner der alten Daten ist danach NICHT mehr in der Nachtsicherung (nur noch auf der Platte
+   und in den Hetzner-Abbildern).
+2. **App und Arbeiter anhalten:** `cd /srv/make-os/app && docker compose stop arbeiter app`
+3. **Probelauf gegen den alten Ordner** (er heißt noch `daten`; schreibt nichts):
+   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten:/umzug/alt:ro app node scripts/neustart-umzug.mjs --von /umzug/alt --nach /umzug/neu`
+   Lesen: Zahlen je Liste (Kontakte, Firmen, Deals, Mandate, Follow-ups, Angebote, Kampagnen, Events, Dateien, Aufgaben, Projekte), „Bleibt im Archiv“,
+   „Verweise“ (kein „← NEU“), Hinweise (Speichernamen, Haushalt, Grabsteine, Register `g-…`, Head-Aufgaben). Bricht er mit „Vorgänge nicht fertig“ ab:
+   `cd /srv/make-os/app && docker compose up -d app`, zwei Minuten warten (die App nimmt offene Vorgänge beim Start auf), dann Schritt 2 und 3 wiederholen.
+4. **Alten Ordner beiseite (nicht löschen), neuen leeren mit denselben Rechten anlegen:**
+   `sudo mv /srv/make-os/daten /srv/make-os/daten-archiv-2026-10-09 && sudo install -d -o make -g make -m "$(stat -c %a /srv/make-os/daten-archiv-2026-10-09)" /srv/make-os/daten && ls -la /srv/make-os | grep daten`
+5. **Umzug ausführen** (dieselben Schalter wie nach dem Probelauf entschieden, z. B. `--auch gesellschaften--<haushalt>`):
+   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten-archiv-2026-10-09:/umzug/alt:ro -v /srv/make-os/daten:/umzug/neu app node scripts/neustart-umzug.mjs --von /umzug/alt --nach /umzug/neu --ausfuehren`
+   Ende: „Geschrieben: … — alles zurückgelesen und gleich. Marke system/neustart.json gesetzt.“ Bricht er ab: NUR den neuen Ordner leeren
+   (`sudo find /srv/make-os/daten -mindepth 1 -delete`) und Schritt 5 wiederholen — der alte ist unberührt (nur lesend eingebunden).
+6. **.env prüfen:** Steht `MAKE_OS_ALTBESTAND_PERSON` drin, übernimmt die neue Instanz beim Start noch einmal Körper-Profil und Nordstern aus dem
+   früheren Code-Altbestand — wer wirklich leer beginnen will, entfernt die Zeile (`nano /srv/make-os/app/.env`). Datenschlüssel, Pepper und
+   `MAKE_OS_FORMAT` NICHT ändern (Sperrliste und Grabsteine hängen am Pepper).
+7. **Nur die App starten** (Arbeiter bleibt aus): `cd /srv/make-os/app && docker compose up -d app && docker compose ps` (bis „healthy“). Die Marke
+   `system/neustart.json` schaltet die Einrichtung in den Neustart-Modus.
+8. **Erstes Konto:** `cd /srv/make-os/app && docker compose exec app node scripts/einrichtung-token.mjs` → auf `/anmelden` „Erstes Konto einrichten“:
+   dieselbe Adresse wie bisher, Vorname so, dass der Speichername aus dem Bericht entsteht; zweiter Faktor (in einer neuen Instanz Pflicht).
+9. **Sofort danach** Konto › Haushalt: den eigenen Haushalt GENAU wie im Bericht eintragen — vor allem anderen (bis dahin sucht die App die Bestände je
+   Haushalt unter „haupt“).
+10. **Grabsteine anwenden** (Pflicht, wie nach jedem Restore):
+    `cd /srv/make-os/app && docker compose exec -T app node -e "fetch('http://localhost:3000/api/crm/datenschutz',{method:'POST',headers:{'content-type':'application/json','x-make-key':process.env.MAKE_OS_KEY||''},body:JSON.stringify({aktion:'grabsteine'})}).then(async r=>{console.log(await r.text());process.exit(r.ok?0:1)}).catch(e=>{console.error(e.message);process.exit(1)})"`
+11. **Verbindungsprüfung** (nur lesen, nur Zahlen): `cd /srv/make-os/app && docker compose exec -T app node scripts/verbindungen-pruefen.mjs --url http://localhost:3000 --person <speichername>`
+12. **Arbeiter starten:** `cd /srv/make-os/app && docker compose up -d arbeiter`
+13. **Zweite Person:** Konto › Einladen mit „Vorname“ = ihr bisheriger Speichername (siehe Bericht) und ihrer Adresse; nach dem Beitreten zweiter Faktor,
+    dann Konto › Haushalt (derselbe Haushalt) und ggf. Inhaberin.
+14. **Kontrolle in der App:** Markttraktion (Zahlen wie im Bericht), Kontakt öffnen › Umsatz › eine Datei öffnen, Aufgaben (Projekt „Übernommen“),
+    Stammdaten › Datenqualität — danach die Einrichtung.
+
+**Rückweg** (jederzeit, nichts geht verloren): `cd /srv/make-os/app && docker compose stop arbeiter app && sudo mv /srv/make-os/daten /srv/make-os/daten-neustart-$(date +%Y%m%d-%H%M) && sudo mv /srv/make-os/daten-archiv-2026-10-09 /srv/make-os/daten && docker compose up -d`
+— der alte Stand läuft wie vorher (alte Konten, alte Sitzungen); Grabsteine aus der Zwischenzeit wendet der Löschfristen-Lauf von selbst an.
+
+**Offen / zu entscheiden (Kevin):**
+- Gesellschafts-Register (`--auch gesellschaften--<haushalt>`): Absender der Angebote, Steckbriefe, Verträge. Nennen CRM oder Aufgaben `g-…`-Gesellschaften,
+  meldet es der Bericht — neu angelegte bekämen andere Kennungen.
+- Buchungsseiten (`--auch buchung--<haushalt>`): geteilte Buchungslinks hören sonst auf. Kalender-Bezüge (`--auch kalender-bezug`): sonst zeigt die Karte
+  „Termine“ in der Kontaktakte nur neue Verknüpfungen (Meetings bleiben als Aktivität am Kontakt).
+- Datenschutz-Einrichtung (`--auch datenschutz-einrichtung`): Verantwortlicher und AVV-Nachweise der Empfänger — sonst neu eintragen.
+- Head-Aufgaben (`--mit-head-aufgaben`) und Bauplan (`--mit-bauplan`).
+- Rechnungen stehen in den Finanzen (beginnen leer): der Reiter „Umsatz“ zeigt dann keine Rechnungen — die Rechnungs-PDFs bleiben in der Ablage.
+- **Archiv-Ordner:** wie lange er liegen bleibt. Dort laufen keine Löschfristen mehr (Gesundheit, Mail-Spiegel, Protokolle …), und er ist nicht in der
+  Nachtsicherung. Vorschlag: nach der Prüfung (z. B. 30 Tage) als age-Archiv sichern und den Ordner löschen; bis dahin gilt er als Sicherung.
+- Die neue Instanz startet mit den Vorgaben einer neuen Instanz: KI „sparsam“ (Hintergrund-KI und Web-Suche aus — Einstellungen oder
+  `MAKE_OS_KI_VORGABE`), 2FA-Pflicht, Mac-Zulieferer aus.
+- Befund (nicht in diesem Paket): `scripts/ki-anbieter-pruefen.mjs` lädt TS über `jiti` — das fehlt im Server-Bild (`npm prune --omit=dev` im
+  Dockerfile), `docker compose exec app node scripts/ki-anbieter-pruefen.mjs` scheitert dort.
+
+**Rückweg (Code):** nur neue Dateien (Skript, `lib/neustart/*`, Tests), keine Bestandsform geändert. Der alte Stand ignoriert `system/neustart.json`.
+
 ## 09.10.2026 — E4-Rest: nur Business auch in Routinen, Zielen, Meilensteinen; Demo-Konto Partner (nur lokal — Branch `konto-sicht-rest`, Basis `agenten-nacht` 3e94a943)
 
 Kevin 09.10. (E4): „Ja, Privates bleibt privat.“ Offen aus E4 (Abschnitt darunter): `/api/state/routinen`, `/api/state/ziele` (samt Fokus-Sätzen
