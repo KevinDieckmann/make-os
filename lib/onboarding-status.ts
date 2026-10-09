@@ -83,6 +83,16 @@ async function lesen<T>(name: string): Promise<T | null> {
 }
 /** Einmal laden, von mehreren Prüfungen geteilt — ein Fehler trifft nur die Prüfungen, die den Bestand brauchen. */
 function einmal<T>(f: () => Promise<T>): () => Promise<T> { let p: Promise<T> | null = null; return () => (p ??= f()); }
+/**
+ * Wie `lesen`, aber für Lader anderer Module, die einen fehlenden Bestand als Startbestand liefern (`ladeCrm`, `geltendeLaden`): liegt der
+ * Bestand beschädigt beiseite, wirft es — „nicht prüfbar“. Nahtstellen 09.10.: ein kaputtes CRM ergab „kein laufendes Mandat“ (leer), und ein
+ * altes Häkchen machte „Laufende Mandate“ und „Kapazität“ fertig; ein kaputter 0-Punkt ebenso den Monatsabschluss.
+ */
+async function geschuetzt<T>(name: string, laden: () => Promise<T>): Promise<T> {
+  const d = await laden();
+  if (await beschaedigt(name)) throw new Error(`${name} beschädigt`);
+  return d;
+}
 const n = (z: number, eins: string, viele: string) => `${z} ${z === 1 ? eins : viele}`;
 /** Monat vor dem Monat von `tag` (JJJJ-MM). */
 const vormonat = (tag: string) => { const j = Number(tag.slice(0, 4)), m = Number(tag.slice(5, 7)); return m === 1 ? `${j - 1}-12` : `${j}-${String(m - 1).padStart(2, '0')}`; };
@@ -263,10 +273,10 @@ async function gemeinsam(u: Umfang): Promise<Record<string, Befund>> {
   const laufend = Number(heute.slice(0, 4));
   const konten = einmal(async () => (await import('@/lib/zugang/konten')).ladeKonten());
   const plan = einmal(() => lesen<{ firmen?: FirmaRoh[]; rechnungen?: RechnungRoh[]; zahlungen?: ZahlungRoh[] }>('finanzplan'));
-  const geltende = einmal(async () => (await import('@/lib/business/eroeffnung-server')).geltendeLaden());
+  const geltende = einmal(async () => geschuetzt('business-eroeffnung', async () => (await import('@/lib/business/eroeffnung-server')).geltendeLaden()));
   const abNull = einmal(async () => (await import('@/lib/business/eroeffnung-server')).mitEroeffnung({ firmen: [...((await plan())?.firmen ?? [])], rechnungen: (await plan())?.rechnungen ?? [], zahlungen: (await plan())?.zahlungen ?? [] }, await geltende()));
   const ziele = einmal(() => lesen<{ jahr?: { archiviertAm?: string; jahr?: unknown; termin?: unknown; zielwert?: number }[]; fokus?: Record<string, string> }>('ziele'));
-  const crm = einmal(async () => (await import('@/lib/crm/speicher')).ladeCrm());
+  const crm = einmal(async () => geschuetzt('crm', async () => (await import('@/lib/crm/speicher')).ladeCrm()));
   const familie = einmal(async () => (u.familie ? lesen<FamilieRoh>((await import('@/lib/familie/speicher')).familieName(u.familie)) : null));
   const business = (firmaId?: string) => bereichVonFirma(firmaId) === 'business';
   const nB = BUSINESS_GESELLSCHAFTEN.length;

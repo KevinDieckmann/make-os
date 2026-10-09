@@ -79,6 +79,12 @@ export interface AnfrageKontext {
    * (lib/crm/sperrliste.ts `neuanlageSperre`, nur Server). Nicht blockieren: die Anfrage wird festgehalten.
    */
   sperre?: (k: Kontakt) => { kontakt: Kontakt; hinweis?: string };
+  /**
+   * Die Firma, die die Route für eine NEUE Person schon gesichert hat (`firmaSichern`: vorhanden über Name, Kennung oder Domain, neu oder aus
+   * dem Papierkorb zurück). Nahtstellen 09.10.: vorher suchte der Bau die Firma noch einmal nur über den genauen Namen (`firmaNachName`) —
+   * „Beispiel Werke“ (Inbox, Name aus der Mail-Domain) fand „Beispiel Werke GmbH“ nicht, die Person blieb ohne Firma und der Lead an ihr.
+   */
+  firma?: { id: string; name: string };
 }
 export interface AnfrageBau {
   /** Die Person nach der Anfrage — neu oder mit Aktivität, Einwilligung, Stufe (und Lead, wenn sie keine Firma hat). */
@@ -163,7 +169,7 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     else if (gleicheNummer.length === 1) { basis = gleicheNummer[0]; hinweis = `${anzeigename(gleicheNummer[0])} steht schon in der Kartei (gleiche Nummer) — die Anfrage hängt jetzt dort.`; }
     else {
       // Die Firma legt die Route VOR dieser Sperre an, wenn es sie noch nicht gibt (Woche 2 · 1.8: EIN Weg — `firmaSichern`); hier wird verknüpft.
-      const f = firmaNachName(ctx.crm.firmen, firma);
+      const f = ctx.firma ?? firmaNachName(ctx.crm.firmen, firma);
       neuePerson = true;
       // Der Entwurf aus der EINEN Anlege-Regel (lib/crm/person-anlegen.ts, Weg „anfrage“): Herkunft „selbst“ (Art. 14 greift nicht), Grundlage
       // Anbahnung eines Vertrags (Art. 6 Abs. 1 lit. b), Lebensphase Interessent, Zuständig = wer die Anfrage aufnimmt. Die Anfrage selbst ist

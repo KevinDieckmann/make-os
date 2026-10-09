@@ -21,14 +21,14 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
-import { fuerPerson, type Kontakt } from '@/lib/make-one/crm';
+import { fuerPerson, saeubereKontakt, serverStempel, bezuegeSynchron, type Kontakt } from '@/lib/make-one/crm';
+import { datenschutzStempeln } from '@/lib/crm/datenschutz-stempel';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { anfrageBauen, anfragenListe, ANFRAGE_KANAELE, type AnfrageEingabe } from '@/lib/crm/anfragen';
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
 import { neueKennung } from '@/lib/kennung';
 import { nameVon } from '@/lib/crm/team';
 import { firmaSichern } from '@/lib/crm/person-anlegen-server';
-import { dublettePruefen } from '@/lib/crm/person-anlegen';
 import { kontaktAnlegenErlaubt, KONTAKT_NUR_BUSINESS } from '@/lib/inbox/aus-gespraech';
 import { istGespraechId } from '@/lib/inbox/strom';
 
@@ -65,16 +65,21 @@ export async function POST(req: Request) {
     if (!g) return NextResponse.json({ ok: false, fehler: 'Gespräch nicht gefunden.' }, { status: 404 });
     if (!kontaktAnlegenErlaubt(g.gespraech.bereich)) return NextResponse.json({ ok: false, fehler: KONTAKT_NUR_BUSINESS }, { status: 403 });
   }
-  // 1.8: die Firma einer NEUEN Person über den EINEN Weg sichern (nicht, wenn die Mail/Nummer schon eine Person der Kartei trifft — die behält ihre Firma).
-  const neuFirma = !b.kontaktId && typeof b.neu?.firma === 'string' ? b.neu.firma.trim() : '';
-  if (neuFirma) {
-    const kartei = await kontakteLaden();
-    const n = b.neu ?? {};
-    if (!dublettePruefen({ vorname: n.vorname, nachname: n.nachname, email: n.email, telefon: n.telefon }, kartei, '').gleich) await firmaSichern(neuFirma, { email: n.email }, werAus(req));
-  }
-  const crm = await ladeCrm();
   const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
   const ids = { kontakt: neueId('c'), followUp: neueId('fu') };
+  // Erst prüfen, dann wirken (Nahtstellen 09.10.): derselbe Bau als Probe auf dem jetzigen Stand — lehnt er ab (Art. 18, eingeschränkte Person,
+  // mehrdeutige Nummer, fehlender Text …), entsteht auch keine Firma. Vorher legte die Route die Firma VOR der Prüfung an.
+  const probe = anfrageBauen(eingabe, { kontakte: await kontakteLaden(), crm: await ladeCrm(), person, heute, jetzt, ids });
+  if (!probe.ok) return NextResponse.json({ ok: false, fehler: probe.fehler }, { status: 400 });
+  // 1.8: die Firma einer NEUEN Person über den EINEN Weg sichern (nicht, wenn die Mail/Nummer schon eine Person der Kartei trifft — die behält ihre Firma).
+  const neuFirma = !b.kontaktId && typeof b.neu?.firma === 'string' ? b.neu.firma.trim() : '';
+  let gesichert: { id: string; name: string } | undefined;
+  if (neuFirma && probe.bau.neuePerson) {
+    // Die gefundene bzw. angelegte Firma geht an den Bau (Nahtstellen 09.10.) — nie ein zweites Suchen nur über den genauen Namen.
+    const plan = await firmaSichern(neuFirma, { email: b.neu?.email }, werAus(req));
+    if (plan) gesichert = { id: plan.firma.id, name: plan.firma.name };
+  }
+  const crm = await ladeCrm();
   // Sperrliste (28.09., Ablaufprüfung): eine NEUE Person darauf bekommt die Werbesperre — nicht blockiert.
   const sperrEintraege = await sperrlisteLaden();
   const sperre = (k: Kontakt) => neuanlageSperre(k, sperrEintraege, heute);
@@ -84,11 +89,19 @@ export async function POST(req: Request) {
   let bau: Bau | null = null; let fehler = '';
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
-    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre });
+    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre, ...(gesichert && crm.firmen.some(x => x.id === gesichert!.id) ? { firma: gesichert } : {}) });
     if (!r.ok) { fehler = r.fehler; return f; }
     bau = r.bau;
     const i = f.kontakte.findIndex(x => x.id === r.bau.kontakt.id);
-    if (i < 0) return { ...f, kontakte: [...f.kontakte, r.bau.kontakt] };
+    if (i < 0) {
+      // Eine NEUE Person durch dieselbe Kette wie „Person anlegen“ und Netzwerken (Nahtstellen 09.10.): säubern, Datenschutz-Stempel, Bezüge,
+      // Server-Stempel (`vonHand` — was die Person selbst angab, überschreibt kein späterer Import still, „Online gewinnt“).
+      const namen = (fid: string) => crm.firmen.find(x => x.id === fid)?.name;
+      const sauber = saeubereKontakt(r.bau.kontakt) ?? r.bau.kontakt;
+      const neu = serverStempel(bezuegeSynchron(datenschutzStempeln(sauber, undefined, person || 'system', jetzt, heute), undefined, heute, namen), undefined, heute);
+      bau = { ...r.bau, kontakt: neu };
+      return { ...f, kontakte: [...f.kontakte, neu] };
+    }
     // Der Verlauf ist ein Anhänge-Log: was inzwischen dazukam, bleibt.
     const alt = f.kontakte[i];
     const neu = { ...r.bau.kontakt, aktivitaeten: [...alt.aktivitaeten.filter(a => !r.bau.kontakt.aktivitaeten.some(x => x.am === a.am && x.art === a.art && x.text === a.text)), ...r.bau.kontakt.aktivitaeten].sort((a, x) => a.am.localeCompare(x.am)) };

@@ -81,7 +81,8 @@ export function WerFilter({ wahl, onWahl, ich, zahlen }: { wahl: WerWahl; onWahl
 export function Uebergeben({ api, art, id, ids, jetzt, titel, klein }: { api: CrmApi; art: string; id?: string; ids?: string[]; jetzt?: string; titel?: string; klein?: boolean }) {
   const ich = api.ich;
   const [offen, setOffen] = useState(false);
-  const [an, setAn] = useState<string>(ich ? anderer(ich) : TEAM[1].id);
+  // Ein Team aus EINER Person (Instanz-Variable, 1–4 Einträge) hat kein TEAM[1] — vorher brach das Fenster ohne `ich` ab.
+  const [an, setAn] = useState<string>(ich ? anderer(ich) : (TEAM[1] ?? TEAM[0]).id);
   const [notiz, setNotiz] = useState('');
   const [frist, setFrist] = useState('');
   const [meldung, setMeldung] = useState('');

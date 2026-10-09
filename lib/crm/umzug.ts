@@ -8,6 +8,7 @@
 import { type Kontakt, type Lebensphase } from '@/lib/make-one/crm';
 import { neueKontaktKennung } from '@/lib/kennung';
 import type { CrmBestand, Mandat, Leistung, ChancenArt, Gesellschaft, LeistungTyp } from './typen';
+import { verantwortlich, BEIDE } from './team';
 
 export interface BrainDaten {
   kunden?: { name: string; kurz?: string; branche?: string; ansprechpartner?: { name: string; rolle?: string }[]; status?: string; ueber_firma?: string | null; quelle?: string }[];
@@ -67,7 +68,7 @@ export function ausBrain(d: BrainDaten, bestand: CrmBestand, kartei: Kontakt[], 
       }
       const k: Kontakt = {
         id: '', vorname, nachname, firma, position: sauberRolle(ap.rolle), typ: 'Kunde', kategorie: 'Kunde (Brain)', quelle: 'Brain-Auswertung 24.09.', eignung: '', prio: '',
-        kreis: phase === 'kunde' ? 'A' : 'B', besitzer: person === 'malin' ? 'beide' : 'kevin', lebensphase: phase, anrede: 'Sie', stufe: phase === 'kunde' ? 'gewonnen' : 'gespraech',
+        kreis: phase === 'kunde' ? 'A' : 'B', besitzer: person === verantwortlich('sales') ? person : BEIDE, lebensphase: phase, anrede: 'Sie', stufe: phase === 'kunde' ? 'gewonnen' : 'gespraech',
         aktivitaeten: [{ am: jetzt, art: 'system', text: `Aus dem Brain übernommen (${firma})`, von: person }], importiertAm: heute, geaendertAm: heute,
       };
       k.id = neueKontaktKennung(); // Paket D-C #35: zufällig, nie aus Name/E-Mail (wiedererkannt wird über den Namen, oben)

@@ -9,6 +9,8 @@ import { protokolliere, listenDiff, type Wer } from '@/lib/store/aenderungsproto
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from './speicher';
 import { firmenAbgleich } from './firmen';
+import { firmaZurueckholen } from './ablage';
+import { localDay } from '@/lib/zeit';
 
 /** `wer` (28.09.): wer den Abgleich auslöst — der Import übergibt `{ art: 'import' }` ans Änderungsprotokoll. */
 export async function firmenAbgleichen(wer?: Wer): Promise<{ neu: number; verknuepft: number; ergaenzt: number; firmen: number }> {
@@ -35,10 +37,22 @@ export async function firmenAbgleichen(wer?: Wer): Promise<{ neu: number; verknu
   });
   await protokolliere('kontakte', listenDiff(vorher, nachher), wer);
   const neueIds = new Map(r.firmen.map(x => [x.id, x]));
+  // Firmen, die der Abgleich NEU braucht (für Personen) — der Abgleich sieht den Papierkorb nicht (ladeCrm). Liegt eine mit derselben Kennung
+  // dort, wird sie zurückgeholt wie bei „Person anlegen“ (1.6, `firmaZurueckholen`): Nahtstellen 09.10. — vorher blieb die Papierkorb-Marke
+  // stehen, und die importierte Person hing an einer für alle unsichtbaren Firma.
+  const sichtbar = new Set(crm.firmen.map(x => x.id));
+  const heute = localDay();
   const fertig = await aendereCrm(cur => {
     const da = new Map(cur.firmen.map(x => [x.id, x]));
     // Bestehende: nur ergänzen (von-Hand-Stand gewinnt), neue: anhängen.
-    const liste = cur.firmen.map(x => { const n = neueIds.get(x.id); if (!n) return x; const out = { ...n, ...Object.fromEntries(Object.entries(x).filter(([, v]) => v !== undefined && v !== '')) }; if (!x.rolleVonHand) out.rolle = n.rolle; return out; });
+    const liste = cur.firmen.map(x0 => {
+      const n = neueIds.get(x0.id); if (!n) return x0;
+      const x = x0.geloeschtAm && !sichtbar.has(x0.id) ? firmaZurueckholen(x0, heute, jetzt) : x0;
+      const out = { ...n, ...Object.fromEntries(Object.entries(x).filter(([, v]) => v !== undefined && v !== '')) };
+      if (x0.geloeschtAm && !x.geloeschtAm) delete (out as { geloeschtAm?: string }).geloeschtAm;
+      if (!x.rolleVonHand) out.rolle = n.rolle;
+      return out;
+    });
     for (const x of r.firmen) if (!da.has(x.id)) liste.push(x);
     return { ...cur, firmen: liste };
   }, wer);

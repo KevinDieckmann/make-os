@@ -156,3 +156,64 @@ describe('Geschäftsmodell-Karte', () => {
     expect(m.ohneProdukt).toBe(1);
   });
 });
+
+// ── Nahtstellen 09.10.: „kein Link ins Leere“ auch für die Stellen der Nacht (Markttraktion W1/W2, Onboarding U2) ─────────────────────
+// Sprungziele der Markttraktion (`ziel: { s, a }` in Für dich, Zuletzt im Team, Übergaben, Trichter, Befunde) lösen über `aufloesen` auf
+// einen echten Bereich mit einer echten Ansicht auf; jede Adresse (Onboarding-Schritte, Datenkarte, Ebenen, `href` der Ziele) zeigt auf
+// eine Seite unter app/os.
+describe('Nahtstellen: Sprungziele der Markttraktion und des Onboardings zeigen auf echte Orte', async () => {
+  const { readFileSync, readdirSync, statSync } = await import('node:fs');
+  const path = await import('node:path');
+  const A = await import('../lib/crm/adresse');
+  /** Alle Seiten unter app/os als Muster (dynamische Segmente = ein Pfadstück). */
+  const seiten: RegExp[] = [];
+  const lauf = (dir: string) => { for (const n of readdirSync(dir)) { const p = path.join(dir, n); if (statSync(p).isDirectory()) lauf(p); else if (n === 'page.tsx') seiten.push(new RegExp(`^${p.replace(/^app/, '').replace(/[\\/]page\.tsx$/, '').replace(/\\/g, '/').replace(/\[[^\]]+\]/g, '[^/]+')}$`)); } };
+  lauf('app/os');
+  const seiteDa = (href: string) => { const pfad = href.split(/[?#]/)[0].replace(/\/$/, '') || '/os'; return seiten.some(r => r.test(pfad)); };
+  /** Gültige Ansichten je Bereich (die Listen aus lib/crm/adresse.ts; Kontakte/Firmen/Stammdaten: die Ansichten der Kartei bzw. Unterreiter). */
+  const KARTEI = ['akte', 'runde-kreis', 'runde-vernetzen', 'alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen', 'archiv'];
+  const ANSICHTEN: Record<string, readonly string[]> = {
+    deals: A.DEALS_ANSICHTEN, followup: A.FOLLOWUP_ANSICHTEN, qualifizierung: A.QUALI_ANSICHTEN, marketing: A.MARKETING_ANSICHTEN, besuche: A.BESUCHE_ANSICHTEN,
+    kontakte: KARTEI, firmen: KARTEI, stammdaten: ['uebersicht', 'qualitaet', 'wertelisten', 'gesellschaften', 'datenschutz', 'austausch'], event: [], ueberblick: [], angebot: [],
+  };
+  const zielOk = (s: string, a?: string): string | null => {
+    const z = A.aufloesen(s, a);
+    if (!(A.BEREICHE as string[]).includes(z.s)) return `${s}/${a ?? ''}: kein Bereich`;
+    if (z.a && !(ANSICHTEN[z.s] ?? []).includes(z.a)) return `${s}/${a ?? ''} → ${z.s}/${z.a}: keine Ansicht`;
+    return null;
+  };
+
+  it('jedes Sprungziel `{ s, a }` in Für dich, Zuletzt im Team, Übergaben, Trichter und Befunde löst auf eine echte Ansicht auf', () => {
+    const quellen = ['lib/crm/team.ts', 'lib/crm/traktion.ts', 'lib/crm/leads.ts'].map(f => readFileSync(f, 'utf8')).join('\n');
+    const ziele = Array.from(quellen.matchAll(/ziel: \{ s: '([a-z]+)'(?:, a: '([a-z-]+)')?/g)).map(m => ({ s: m[1], a: m[2] }));
+    const befunde = Array.from(readFileSync('lib/crm/befunde.ts', 'utf8').matchAll(/bereich: '([a-z]+)'(?:, ansicht: '([a-z-]+)')?/g)).map(m => ({ s: m[1], a: m[2] }));
+    expect(ziele.length).toBeGreaterThan(20);
+    expect(befunde.length).toBeGreaterThan(15);
+    expect([...ziele, ...befunde].map(z => zielOk(z.s, z.a)).filter(Boolean)).toEqual([]);
+  });
+
+  it('Onboarding: jede Adresse der Schritte, Etappen, Ebenen und der Datenkarte zeigt auf eine echte Seite', async () => {
+    const O = await import('../lib/make-one/onboarding-data');
+    const hrefs: string[] = [];
+    const sammeln = (x: unknown): void => {
+      if (typeof x === 'string') { if (x.startsWith('/os')) hrefs.push(x); return; }
+      if (Array.isArray(x)) { x.forEach(sammeln); return; }
+      if (x && typeof x === 'object') Object.values(x).forEach(sammeln);
+    };
+    sammeln([O.SCHRITTE, O.ETAPPEN, O.EBENEN, O.DATENKARTE]);
+    expect(hrefs.length).toBeGreaterThan(50);
+    expect(hrefs.filter(h => !seiteDa(h))).toEqual([]);
+    // Sprünge in die Markttraktion: echte Ansicht.
+    const mt = hrefs.filter(h => h.startsWith(A.PFAD)).map(h => new URLSearchParams(h.split('?')[1] ?? '')).map(q => zielOk(q.get('s') ?? 'ueberblick', q.get('a') ?? undefined));
+    expect(mt.filter(Boolean)).toEqual([]);
+  });
+
+  it('`href` der Ziele (Mandat, „Nicht zugeordnet“, Kreis-Runde) und WEG-Sprünge der Nacht zeigen auf echte Seiten', () => {
+    const neu = [WEG.mandat(), WEG.mandat('m-1'), WEG.nichtZugeordnet(), WEG.kreisRunde(), WEG.followup('woche'), WEG.qualifizierung(), WEG.akte('c-1'), WEG.deal('ch-1'), WEG.netzwerken({}), WEG.netzwerkenKarte()];
+    expect(neu.filter(h => !seiteDa(h))).toEqual([]);
+    for (const h of neu.filter(x => x.startsWith(A.PFAD))) {
+      const q = new URLSearchParams(h.split('?')[1] ?? '');
+      expect(zielOk(q.get('s') ?? 'ueberblick', q.get('a') ?? undefined), h).toBeNull();
+    }
+  });
+});
