@@ -37,6 +37,7 @@ import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, useBreit } from 
 import { anzeigename, STUFE_LABEL, type Kontakt, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import { naechsterSchrittVon } from '@/lib/crm/followup';
 import { phaseVon } from '@/lib/crm/phase';
 import { leadScore, scoringKontext, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
 import { leadZeileFuer } from '@/lib/crm/leads';
@@ -202,7 +203,9 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   // BEAN (28.09., H4): von Hand, sonst abgeleitet — mit den offenen Angeboten aus der Dateiablage.
   const beanErgebnis = beanVon(k, crm?.stand, { angebote });
   const dealWert = offeneDeals.reduce((s, d) => s + (d.wert.betrag || 0) * (d.wert.basis === 'monat' ? 12 : 1), 0);
-  const schrittUeberfaellig = !!k.naechsterSchritt && k.naechsterSchritt.datum < heute;
+  // Nächster Schritt (08.10., Woche 2 · 4.17): eine verschobene Zusage ist ein echtes Follow-up — es zählt hier mit (frühestes offenes).
+  const naechster = naechsterSchrittVon(k, crm?.stand.followups);
+  const schrittUeberfaellig = !!naechster && naechster.datum < heute;
   const vollFarbe = voll.anteil >= 0.7 ? LEUCHT.gut : voll.anteil >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch;
 
   /** Typ und Kategorie als Chips im Kopf (Malin 27.09.; mehrfach seit 28.09. — mit „ · “ verbunden) — ein Tipp springt in die Stammdaten. */
@@ -250,7 +253,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
       {termin && <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{termin.titel}</b> · {datum(termin.start.slice(0, 10), heute)}{termin.ganztags ? '' : ` ${termin.start.slice(11, 16)}`}</div>}
       <div style={{ display: 'flex', gap: '8px 22px', flexWrap: 'wrap', alignItems: 'baseline', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
         <Kurz label="Letzter Kontakt" wert={zuletzt ? datum(zuletzt, heute) : 'noch keiner'} farbe={zuletzt ? undefined : C.inkLeise} title={vz.eintraege ? `${vz.eintraege} Einträge im Verlauf` : 'Verlauf leer'} />
-        <Kurz label="Nächster" wert={k.naechsterSchritt ? datum(k.naechsterSchritt.datum, heute) : 'keiner'} zusatz={k.naechsterSchritt?.text} farbe={!k.naechsterSchritt ? LEUCHT.achtung : schrittUeberfaellig ? LEUCHT.kritisch : undefined} title={k.naechsterSchritt?.text ?? 'Ohne Schritt verliert sich die Person'} />
+        <Kurz label="Nächster" wert={naechster ? datum(naechster.datum, heute) : 'keiner'} zusatz={naechster?.text} farbe={!naechster ? LEUCHT.achtung : schrittUeberfaellig ? LEUCHT.kritisch : undefined} title={naechster?.text ?? 'Ohne Schritt verliert sich die Person'} />
         <Kurz label="Takt" wert={tk ? (tk.ueberfaellig ? 'jetzt melden' : `fällig ${datum(tk.faelligAm, heute)}`) : 'kein Kreis'} farbe={tk?.ueberfaellig ? LEUCHT.achtung : tk ? undefined : C.inkLeise} title={tk ? `alle ${tk.tage} Tage${tk.seit !== null ? ` · seit ${tk.seit} T still` : ''}` : 'Kreis A–D setzt den Takt'} />
         <Kurz label="Gespräche" wert={vz.gespraeche} title="echte Gespräche und Termine" />
         <Kurz label="Deals" wert={offeneDeals.length ? `${offeneDeals.length} offen` : aktivesMandat ? 'Mandat aktiv' : 'kein Deal'} zusatz={offeneDeals.length && dealWert ? `${euro(dealWert)} im Jahr` : undefined} farbe={offeneDeals.length || aktivesMandat ? LEUCHT.gut : C.inkLeise} title={`${v.mandate.length} Mandat${v.mandate.length === 1 ? '' : 'e'}`} />

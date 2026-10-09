@@ -4,7 +4,8 @@
 // POST { aktion: 'anlegen', bezug, kontaktId?, art?, text, faellig, uhrzeit?, zustaendig?, notiz?, id? (nur `fu-v-…` aus einem ZOE-Vorschlag, idempotent) }
 //      (+ terminUid? — Termin-Schlüssel `kalender|uid(::RID)`, z. B. „Nachbereiten“ aus der Akte, F2 M4: kein Titel im Text)
 //      { aktion: 'erledigen', id, ergebnis?, notiz?, naechster?: { text, faellig, art? } }
-//      { aktion: 'verschieben', id, tage | faellig }     (nie in die Vergangenheit)
+//      { aktion: 'verschieben', id, tage | faellig }     (nie in die Vergangenheit; Zusage/Wiedervorlage/Kadenz/Nachfassen → echtes
+//                                                          Follow-up mit Zähler „verschoben“, das alte Feld fällt weg — 08.10., 4.17)
 //      { aktion: 'absagen', id }                          (überfällig abgesagt = verpasst)
 // Regeln (Prüfbericht 27.09.):
 //   · Jede Änderung an echten Follow-ups liest den Eintrag IN der Schreibsperre — nie aus einem
@@ -38,7 +39,7 @@ import { folgeAus } from '@/lib/crm/heute';
 import { sperren } from '@/lib/crm/sperrliste';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, werbesperreHinweis, aktivitaetArtNachErledigen, dealSchrittErledigt, type Faellig } from '@/lib/crm/followup';
+import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, werbesperreHinweis, aktivitaetArtNachErledigen, dealSchrittErledigt, anlassNachQuelle, VERSCHIEBEN_ALS_FOLLOWUP, type Faellig } from '@/lib/crm/followup';
 import { leadHebenNachGespraech, type LeadMeldung } from '@/lib/crm/lead-heben';
 import { wer } from '@/lib/crm/team';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -79,7 +80,7 @@ type Herkunft = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'dealwiedervorlage
  * Werbesperre bei „Sperre“). Nächster Schritt und Wiedervorlage der Person bleiben, wie sie
  * sind; nur das Feld, aus dem das Follow-up stammt, wird geleert.
  */
-async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, von: string, ergebnis: Ergebnis | undefined, bezug: string | undefined, herkunft: Herkunft, wer?: Wer): Promise<void> {
+async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, von: string, ergebnis: Ergebnis | undefined, bezug: string | undefined, herkunft: Herkunft, wer?: Wer, anlassQuelle?: FollowUp['quelle']): Promise<void> {
   const heute = localDay();
   let gesperrt: Kontakt | null = null;
   await aendereKontakte<{ kontakte: Kontakt[] }>(current => {
@@ -90,8 +91,9 @@ async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, v
     // Art. 18 (U2): an einer eingeschränkten Person wird nichts festgehalten (das Follow-up selbst wird trotzdem erledigt).
     if (alt.eingeschraenkt) return f;
     const folge = ergebnis ? folgeAus(ergebnis, heute, alt.stufe) : null;
-    // Anlass (U2 #58): ein vereinbartes Follow-up IST der konkrete Anlass eines Anrufs aus der Beziehung.
-    const anlass = art === 'anruf' ? `Vereinbartes Follow-up${text ? `: ${text.slice(0, 200)}` : ''}` : undefined;
+    // Anlass (U2 #58): ein Follow-up IST der konkrete Anlass eines Anrufs aus der Beziehung — der Text nach Quelle (08.10., Woche 2 · 4.13:
+    // eine Kadenz-Erinnerung ist kein „vereinbartes“ Follow-up).
+    const anlass = art === 'anruf' ? anlassNachQuelle(herkunft === 'echt' ? anlassQuelle ?? 'hand' : herkunft, text) : undefined;
     let neu = wendeAktivitaetAn(alt, { art, text: text || undefined, von, ergebnis, bezug, stufe: folge?.stufe, ...(anlass ? { anlass } : {}) }, heute, new Date().toISOString(), tagePlus);
     // Die Follow-up-Ebene führt: keine zweite Wiedervorlage aus der Regel, keine fremde Zusage löschen.
     neu = { ...neu, wiedervorlage: herkunft === 'wiedervorlage' ? undefined : alt.wiedervorlage, naechsterSchritt: herkunft === 'schritt' ? undefined : alt.naechsterSchritt };
@@ -178,9 +180,11 @@ export async function POST(req: Request) {
   };
   // `geaendertAm` der Kartei ist ein Berliner TAG (28.09., W8) — vorher stand hier der ISO-Zeitstempel.
   // Art. 18: eine eingeschränkte Person bleibt unberührt (auch IN der Sperre geprüft).
-  const kontaktFeldVerschieben = async (neuesDatum: string) => {
+  // 4.17 (08.10.): eine verschobene Zusage bzw. Wiedervorlage wird ein ECHTES Follow-up (mit Zähler „verschoben“) — das alte Feld am
+  // Kontakt fällt dann weg (sonst stünde derselbe Eintrag zweimal da). Nur die Felder, aus denen das Follow-up gerade entstand.
+  const kontaktFeldLeeren = async () => {
     if (!v || (v.quelle !== 'schritt' && v.quelle !== 'wiedervorlage')) return;
-    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, ...(k.naechsterSchritt ? { naechsterSchritt: { ...k.naechsterSchritt, datum: neuesDatum } } : {}), geaendertAm: heute } : { ...k, wiedervorlage: neuesDatum, geaendertAm: heute })) }), werAus(req));
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, naechsterSchritt: undefined, geaendertAm: heute } : { ...k, wiedervorlage: undefined, geaendertAm: heute })) }), werAus(req));
   };
   // Art. 18 (28.09., W8): Schritt/Wiedervorlage einer eingeschränkten Person nicht verschieben oder absagen.
   if (v && (v.quelle === 'schritt' || v.quelle === 'wiedervorlage') && kontakt(v.ziel)?.eingeschraenkt && (b.aktion === 'verschieben' || b.aktion === 'absagen')) return EINGESCHRAENKT();
@@ -238,7 +242,8 @@ export async function POST(req: Request) {
     if (e.kontaktId) {
       const aktNotiz = (herkunft as Herkunft) === 'dealwiedervorlage' ? (e.notiz ?? '') : notiz; // N8: dort mit „Als Nächstes“
       // 4.6 (08.10.): „Sonstiges“ mit Ergebnis wird der Kontakt, der stattfand (Gespräch bzw. Anruf) — letzter Kontakt und Kadenz ziehen nach.
-      await aktivitaet(e.kontaktId, aktivitaetArtNachErledigen(e.art, ergebnis), `${e.text}${aktNotiz ? ` — ${aktNotiz.replace(/\n/g, ' · ')}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));
+      // 4.13: ein „Anruf“ ohne Ergebnis wird eine Notiz (`aktivitaetArtNachErledigen`) — kein Nachweis eines Anrufs, der vielleicht nie stattfand.
+      await aktivitaet(e.kontaktId, aktivitaetArtNachErledigen(e.art, ergebnis), `${e.text}${aktNotiz ? ` — ${aktNotiz.replace(/\n/g, ' · ')}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req), e.quelle);
       if (e.bezug.art === 'event' && (ergebnis === 'gespraech' || ergebnis === 'termin')) lead = await leadHebenNachGespraech(e.kontaktId, jetzt, person, heute, werAus(req));
     }
     const f2 = folge as FollowUp | null;
@@ -253,18 +258,18 @@ export async function POST(req: Request) {
     await aendereCrm(c => {
       const echt = (c.followups ?? []).find(f => f.id === id);
       if (echt) { neu = { ...echt, faellig: zielTag, verschoben: (echt.verschoben ?? 0) + 1, geaendert: jetzt, geaendertVon: person }; return { ...c, followups: (c.followups ?? []).map(x => (x.id === echt.id ? neu! : x)) }; }
-      if (v?.quelle === 'kadenz' || v?.quelle === 'nachfassen') {
-        // Kadenz und Event-Nachfassen: aus der Erinnerung wird ein echtes Follow-up mit neuem Datum — der virtuelle Eintrag tritt zurück
-        // (Nachfassen vorher: „+3 Tage“ meldete „verschoben“, änderte aber nichts — Prüfbericht 27.09., Punkt 4).
+      if (v && VERSCHIEBEN_ALS_FOLLOWUP.includes(v.quelle)) {
+        // Kadenz, Event-Nachfassen und (seit 08.10., 4.17) Zusagen und Wiedervorlagen: aus der Erinnerung wird ein echtes Follow-up mit neuem
+        // Datum und Zähler — der virtuelle Eintrag tritt zurück (Nachfassen vorher: „+3 Tage“ meldete „verschoben“, änderte aber nichts).
         const vorlage = virtuellerEintrag(c);
         if (!vorlage) return c;
-        neu = { ...echtAus({ ...vorlage, faellig: zielTag }, v.quelle === 'kadenz' ? 'kadenz' : 'event'), verschoben: 1, geaendertVon: person };
+        neu = { ...echtAus({ ...vorlage, faellig: zielTag }, quelleVon(v.quelle as Herkunft)), verschoben: 1, geaendertVon: person };
         return { ...c, followups: [...(c.followups ?? []), neu] };
       }
       return altesFeldImCrm(c, zielTag);
     });
-    await kontaktFeldVerschieben(zielTag);
     const n = neu as FollowUp | null;
+    if (n) await kontaktFeldLeeren();
     return NextResponse.json({ ok: true, ...(n ? { followup: n } : {}), text: `Verschoben auf ${zielTag}.`, hinweis: n && (n.verschoben ?? 0) >= 3 ? 'Zum dritten Mal verschoben — ehrlicherweise ist das keine Zusage mehr. Absagen oder ansprechen.' : undefined });
   }
 

@@ -108,13 +108,16 @@ describe('Anfrage — vorhandene Person und Bezüge', () => {
     expect(w.ok && w.bau.wirkung === undefined).toBe(true);
     if (w.ok) expect(w.bau.kontakt.einwilligungen).toHaveLength(1); // gültige Einwilligung bleibt, keine zweite
   });
-  it('Fehler: ohne Text, ohne Person, unbekannter Kanal, fremder Bezug, Werbesperre', () => {
+  it('Fehler: ohne Text, ohne Person, unbekannter Kanal, fremder Bezug — Werbesperre hält fest (5.9)', () => {
     expect(anfrageBauen({ kontaktId: 'c-p', kanal: 'mail', text: '   ' }, ctx([k('p')]))).toMatchObject({ ok: false });
     expect(anfrageBauen({ neu: {}, kanal: 'mail', text: 'x' }, ctx([]))).toMatchObject({ ok: false });
     expect(anfrageBauen({ kontaktId: 'c-p', kanal: 'fax' as never, text: 'x' }, ctx([k('p')]))).toMatchObject({ ok: false });
     expect(anfrageBauen({ kontaktId: 'c-fehlt', kanal: 'mail', text: 'x' }, ctx([]))).toMatchObject({ ok: false, fehler: 'Person nicht gefunden.' });
     expect(anfrageBauen({ kontaktId: 'c-p', kanal: 'mail', bezug: { art: 'beitrag', id: 'bt-9' }, text: 'x' }, ctx([k('p')]))).toMatchObject({ ok: false, fehler: 'Bezug nicht gefunden.' });
-    expect(anfrageBauen({ kontaktId: 'c-p', kanal: 'mail', text: 'x' }, ctx([k('p', { werbesperre: { seit: HEUTE, grund: 'Widerspruch' } })])).ok).toBe(false);
+    // Werbesperre (08.10., Woche 2 · 5.9): die Anfrage wird festgehalten — ohne Einwilligung, Follow-up „Sonstiges“, mit Hinweis.
+    const ws = anfrageBauen({ kontaktId: 'c-p', kanal: 'mail', text: 'x' }, ctx([k('p', { email: 'p@x.de', werbesperre: { seit: HEUTE, grund: 'Widerspruch' } })]));
+    expect(ws.ok).toBe(true);
+    if (ws.ok) { expect(ws.bau.kontakt.einwilligungen ?? []).toHaveLength(0); expect(ws.bau.followUp.art).toBe('sonstig'); expect(ws.bau.hinweis).toMatch(/Werbesperre/); }
   });
   it('Helfer: Stufe nach Anfrage, Lead nach Anfrage, Text, Kanäle', () => {
     expect(stufeNachAnfrage('neu')).toBe('angesprochen');

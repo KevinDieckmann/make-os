@@ -17,6 +17,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, LEUCHT } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeAnlegen } from '../aufgaben/hilfe';
+import { BUSINESS_VORGABE_SPACE } from '@/lib/einheiten';
 import { geschenkAufgabeTitel, geschenkStand, ANLASS_WORT, GEBURTSTAG_VORLAUF, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { neueKennung } from '../aufgaben/hilfe';
@@ -102,18 +103,19 @@ export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: Anstehend
   );
 }
 
-export function Anstehend({ i = 0 }: { i?: number }) {
+/** `space` (08.10., Woche 2 · 4.10): die Sicht der Fläche — der Server filtert (Privat ohne CRM-Follow-ups und Business-Fristen). */
+export function Anstehend({ i = 0, space }: { i?: number; space?: 'privat' | 'business' | 'alle' }) {
   const [d, setD] = useState<AnstehendDaten | null>(null);
   const [runde, setRunde] = useState(0);
   const neuLaden = () => setRunde(r => r + 1);
   const { state, dispatch } = useTasks();
   useEffect(() => {
     let lebt = true;
-    const laden = () => fetch('/api/heute/anstehend', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => { if (lebt && x?.ok) setD(x as AnstehendDaten); }).catch(() => {});
+    const laden = () => fetch(`/api/heute/anstehend${space === 'privat' || space === 'business' ? `?space=${space}` : ''}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => { if (lebt && x?.ok) setD(x as AnstehendDaten); }).catch(() => {});
     void laden();
     const t = setInterval(() => { if (document.visibilityState === 'visible') void laden(); }, 5 * 60_000);
     return () => { lebt = false; clearInterval(t); };
-  }, [runde]);
+  }, [runde, space]);
   if (!d || anstehendLeer(d)) return null;
   // CRM: verknüpft per Kennung (Kontakt + Jahr), nie per Titel — Papierkorb/Archiv/abgebrochen zählen nicht (`geschenkStand`).
   const geschenkStandVon = (g: AGeburtstag) => (g.herkunft === 'crm' ? geschenkStand(state.tasks, g) : null);
@@ -121,7 +123,7 @@ export function Anstehend({ i = 0 }: { i?: number }) {
     if (g.herkunft === 'crm') {
       if (!g.kontaktId || geschenkStandVon(g)) return;
       // Business mit Kontakt-Bezug; Titel nur „Geschenk für …“ (kein Datum), der Geburtstag bleibt am Kontakt.
-      aufgabeAnlegen(dispatch, state, { spaceId: 'kdv' }, {
+      aufgabeAnlegen(dispatch, state, { spaceId: BUSINESS_VORGABE_SPACE }, {
         title: geschenkAufgabeTitel(g.name), dueDate: g.aufgabeTag, description: `Vorschlag aus Heute (Geburtstag, ${GEBURTSTAG_VORLAUF} Tage Vorlauf).`,
         bezug: { kontaktId: g.kontaktId }, anlass: { art: 'geschenk', jahr: Number(g.tag.slice(0, 4)) },
       });

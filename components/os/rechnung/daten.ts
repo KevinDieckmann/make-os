@@ -81,11 +81,24 @@ export function pdfLaden(rechnungId: string, name?: string) {
 }
 
 /**
+ * Was ein Rechnungs-Anleger mitgibt — EIN Weg für alle Einstiege (08.10., Markttraktion Woche 2 · 3.13: Mandat „Rechnung schreiben“,
+ * Kontakt › Umsatz, Finanzen › Rechnungen & Zahlungen, Angebot). Die Vorbelegung rechnet der Server (`entwurfNeu`): brutto/netto über
+ * lib/finanzen/ust.ts, Gesellschaft aus Mandat/Angebot bzw. die Vorgabe, Status „geplant“ — gestellt wird nur im Editor.
+ */
+export interface EntwurfNeu {
+  quelle: 'frei' | 'angebot' | 'mandat'; firmaId?: string; kontaktId?: string; kundeFirmaId?: string; mandatId?: string; angebotId?: string; monat?: string;
+  /** Nur die Einmalposten eines gemischten Angebots (Woche 1 · 3.6). */ nur?: 'einmalig';
+  /** Nur `frei`: abgelegtes Angebot (Altbestand) → EINE Position. */ vorlage?: { titel?: string; bruttoCent?: number; angebot?: string; angebotAm?: string };
+}
+/** Ein Konto ohne Zugang zu den Rechnungen (Finanzen des Haushalts) bekommt 403 — diesen Satz statt „Nicht angelegt“ (3.16). */
+export const KEIN_RECHNUNGS_ZUGANG = 'Rechnungen gehören zu den Finanzen des Haushalts — für dieses Konto nicht freigegeben.';
+
+/**
  * Einen Entwurf anlegen (frei · aus Angebot · aus Mandat) — für die Einstiege außerhalb der Finanzen (Kontakt › Umsatz, Mandatsakte,
  * Angebot). Liefert die Kennung (danach `WEG.rechnungSchreiben(id)`) oder den Fehlertext.
  */
-export async function entwurfAnlegen(body: { quelle: 'frei' | 'angebot' | 'mandat'; firmaId?: string; kontaktId?: string; kundeFirmaId?: string; mandatId?: string; angebotId?: string; monat?: string; /** Nur die Einmalposten eines gemischten Angebots (Woche 1 · 3.6). */ nur?: 'einmalig' }): Promise<{ id?: string; fehler?: string; vorhanden?: boolean }> {
+export async function entwurfAnlegen(body: EntwurfNeu): Promise<{ id?: string; fehler?: string; vorhanden?: boolean; status?: number }> {
   const r = await rechnungPost({ aktion: 'neu', ...body, anfrageId: neueAnfrage() });
   if (r.ok && r.rechnung) return { id: r.rechnung.id, vorhanden: !!r.vorhanden };
-  return { fehler: r.fehler ?? 'Nicht angelegt.' };
+  return { fehler: r.status === 403 ? KEIN_RECHNUNGS_ZUGANG : r.fehler ?? 'Nicht angelegt.', status: r.status };
 }

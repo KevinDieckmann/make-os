@@ -9,6 +9,8 @@
 //   version    { id }                       → neue Fassung als Entwurf mit Bezug
 //   loeschen   { id, stand }                → nur Entwürfe, nur aus dem Papierkorb (endgültig, 04.10.)
 //   ablage     { id, art: archiv|papierkorb, zurueck? } → Archiv (jeder Status) bzw. Papierkorb (nur Entwürfe), hinein/zurück (04.10.)
+//   gesendet   { id }                       → „Mail ist raus“: Aktivität „Angebot <Nummer> gesendet“ am Kontakt (zählt als Kontakt) — nur per
+//                                            Klick einer Person, nie der Dienstweg (08.10., Woche 2 · 3.15; beim Stellen steht nur „gestellt“)
 // GET liefert seit 04.10. `papierkorb` getrennt (Entwürfe im Papierkorb) — `angebote` enthält sie nicht mehr.
 // Zugang: Haushalt des Inhabers (Default-Deny); Stellen braucht dazu eine benannte Person mit Haushalt
 // (Dateiablage und Gesellschaften liegen je Haushalt). Nichts wird versendet — das Mail-Programm öffnet der Browser.
@@ -22,7 +24,8 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeCrmMitPapierkorb } from '@/lib/crm/speicher';
 import { absenderFuerAnzeige } from '@/lib/crm/gesellschaften';
 import { absenderVorgabe } from '@/lib/gesellschaften/server';
-import { AngebotFehler, ablaufNachziehen, angebotAblage, angebotAblehnen, angebotAnnehmen, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
+import { AngebotFehler, ablaufNachziehen, angebotAblage, angebotAblehnen, angebotAnnehmen, angebotGesendet, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
+import { istDienst } from '@/lib/zugang/dienst';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -98,7 +101,12 @@ export async function POST(req: Request) {
         const a = await angebotAblage({ id, art, zurueck: (b as { zurueck?: unknown }).zurueck === true, wer });
         return NextResponse.json({ ok: true, angebot: mitStand(a) });
       }
-      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version, ablage oder loeschen.', 400);
+      case 'gesendet': {
+        if (istDienst(req)) return fehler('„Gesendet“ vermerkt nur ein Mensch per Klick — nicht der Dienstweg.', 403);
+        const r = await angebotGesendet({ id, person, wer });
+        return NextResponse.json({ ok: true, ...r, text: r.schonDa ? `Angebot ${r.nummer} war schon als gesendet vermerkt.` : `Angebot ${r.nummer} als gesendet vermerkt — steht im Verlauf der Person.` });
+      }
+      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version, ablage, gesendet oder loeschen.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

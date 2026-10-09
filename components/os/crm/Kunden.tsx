@@ -21,7 +21,6 @@
 
 import { TermineAkte } from '../kalender/TermineAkte';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { bruttoAusNetto } from '@/lib/finanzen/ust';
 import { useLinkAuswahl } from '../Verlauf';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,14 +42,14 @@ import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GesellschaftWahl } from './GesellschaftWahl';
 import { finanzFirmaFuer, NUR_GRUNDDATEN } from '@/lib/einheiten';
+import { mandatGesellschaftOffen } from '@/lib/crm/kunden';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { MandantLink } from './MandantLink';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
-import { neueKennung } from '@/lib/kennung';
-import { entwurfAnlegen } from '../rechnung/daten';
+import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName } from '@/lib/finanzen/rechnung/regeln';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
@@ -78,6 +77,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   useZuZiel(useZiel('k'), !!api.crm);
   const ablage = useCrmAblage(api, 'mandate');
   const [korbOffen, setKorbOffen] = useState(false);
+  const [neuWahl, setNeuWahl] = useState(false);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
   useEffect(() => { void ladeLiqui(); }, []);
   const crm = api.crm;
@@ -115,12 +115,17 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
     if (auswahl === m.id) setAuswahl(null);
     ablage.loeschen(m.id, `${m.kunde} · ${m.titel}`, m.status === 'beendet' ? undefined : { archivAnbieten: false, text: 'Das Mandat läuft noch. Im Papierkorb ist es überall ausgeblendet (Umsatz, Zahlen, Suche). Gibt es Rechnungen, Dateien oder offene Follow-ups dazu, bleibt es stehen — dann ist „Beenden“ der Weg. Ist es nur vorbei: Archivieren (beendet).' });
   };
+  // Neues Mandat ohne Deal (08.10., Woche 2 · 3.13): die Gesellschaft wird VOR dem Anlegen gewählt (bzw. aus dem Filter) — vorher entstand
+  // es mit „offen“, und die Rechnung landete still bei der Vorgabe.
+  const neuesMandat = (gesellschaft: Mandat['gesellschaft']) => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft, status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); };
   const produktName = (m: Mandat) => { const p = crm.stand.leistungen.find(x => x.id === m.leistungId); const ph = mandatPhase(m, p); return p ? `${p.name.slice(0, 40)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}` : ''; };
 
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={() => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft: ges !== 'alle' ? ges : 'offen', status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); }}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
+        <Ueberschrift rechts={neuWahl
+          ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Für welche Gesellschaft?</span><GesellschaftWahl wert="offen" onWahl={g => { if (g !== 'offen') { setNeuWahl(false); neuesMandat(g); } }} /><Knopf leise onClick={() => setNeuWahl(false)}>Abbrechen</Knopf></span>
+          : <Knopf onClick={() => (ges !== 'alle' ? neuesMandat(ges) : setNeuWahl(true))}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
@@ -341,17 +346,32 @@ export function KundenKurz({ api }: { api: CrmApi }) {
 
 interface RechnungKurz { id: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; bezahltAm?: string; mandatId?: string; firmaId?: string }
 
-/** Rechnungen zum Mandat (26.09.): was gestellt, offen, überfällig ist — je Zeile die Rechnung; „Rechnung anlegen“ legt sie vorbelegt an. */
+/**
+ * Rechnungen zum Mandat (26.09.): was gestellt, offen, überfällig ist — je Zeile die Rechnung. Neue Rechnung NUR über den einen Anleger
+ * (08.10., Woche 2 · 3.13: Monatsrechnung aus dem Honorar → Editor, gestellt mit Nummer + PDF); das frühere „nur planen“ schrieb daneben
+ * direkt in den Finanzplan. Gesellschaft „offen“ → erst wählen. Ohne Finanz-Zugang (403) sagt die Zeile das, statt „keine Rechnung“ (3.16).
+ */
 function MandatRechnungen({ m }: { m: Mandat }) {
   const router = useRouter();
-  const [liste, setListe] = useState<RechnungKurz[] | null>(null);
+  const [liste, setListe] = useState<RechnungKurz[] | 'kein' | 'fehler' | null>(null);
   const heute = localDay();
-  useEffect(() => { fetch('/api/state/finanzplan').then(r => r.json()).then(d => setListe((d.rechnungen ?? []) as RechnungKurz[])).catch(() => setListe([])); }, [m.id]);
-  const eigene = (liste ?? []).filter(r => r.mandatId === m.id || (!r.mandatId && rechnungPasst(m, r))).sort((a, b) => (b.faellig ?? '').localeCompare(a.faellig ?? ''));
+  useEffect(() => {
+    let lebt = true;
+    fetch('/api/state/finanzplan').then(async r => {
+      if (!lebt) return;
+      if (r.status === 403) { setListe('kein'); return; }
+      const d = await r.json().catch(() => null) as { rechnungen?: RechnungKurz[] } | null;
+      setListe(d ? d.rechnungen ?? [] : 'fehler');
+    }).catch(() => { if (lebt) setListe('fehler'); });
+    return () => { lebt = false; };
+  }, [m.id]);
+  const eigene = (Array.isArray(liste) ? liste : []).filter(r => r.mandatId === m.id || (!r.mandatId && rechnungPasst(m, r))).sort((a, b) => (b.faellig ?? '').localeCompare(a.faellig ?? ''));
   const offen = eigene.filter(r => r.status === 'gestellt');
   const ueber = offen.filter(r => r.faellig && r.faellig < heute);
   // Register-Gesellschaft (04.10.): der Finanzplan führt sie noch nicht — ehrlich sagen statt still bei der Selbstständigkeit ablegen.
-  const finanzFirma = finanzFirmaFuer(m.gesellschaft);
+  // „offen“ (Mandat ohne Deal angelegt, Woche 2 · 3.13): nicht still die Vorgabe — erst oben die Gesellschaft wählen.
+  const offenGes = mandatGesellschaftOffen(m.gesellschaft);
+  const finanzFirma = offenGes ? null : finanzFirmaFuer(m.gesellschaft);
   const [fehler, setFehler] = useState<string | null>(null);
   // Monatsrechnung mit PDF (08.10.): ein Entwurf je Leistungsmonat auf Klick — gestellt wird erst im Editor (nie automatisch).
   const monat = heute.slice(0, 7);
@@ -361,21 +381,13 @@ function MandatRechnungen({ m }: { m: Mandat }) {
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
     router.push(WEG.rechnungSchreiben(e.id));
   };
-  const anlegen = async () => {
-    if (!finanzFirma) return;
-    const id = neueKennung('r');
-    // Eine USt-Funktion, auf den Cent (28.09., K3); fällig ab dem Berliner Tag, nicht dem UTC-Tag.
-    const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
-    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: finanzFirma, mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
-    const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag }] }) }).then(x => x.json()).catch(() => null);
-    // 3.8 (08.10.): nur bei bestätigtem Speichern springen — vorher führte ein Netzfehler (r = null) auf eine Rechnung, die es nicht gibt.
-    if (r?.ok) router.push(WEG.rechnung(id)); else setFehler(r?.fehler ?? r?.error ?? 'Rechnung nicht gespeichert — keine Verbindung.');
-  };
   return (
     <Feldzeile label="Rechnungen">
       <div style={{ display: 'grid', gap: 6 }}>
         {liste === null && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
-        {liste && !eigene.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>noch keine Rechnung zu diesem Mandat</span>}
+        {liste === 'kein' && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{KEIN_RECHNUNGS_ZUGANG}</span>}
+        {liste === 'fehler' && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Rechnungen nicht erreichbar — gleich noch einmal öffnen.</span>}
+        {Array.isArray(liste) && !eigene.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>noch keine Rechnung zu diesem Mandat</span>}
         {eigene.slice(0, 5).map(r => (
           <Link key={r.id} href={WEG.rechnung(r.id)} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.ink, textDecoration: 'none' }}>
             <Punkt farbe={r.status === 'bezahlt' ? LEUCHT.gut : r.faellig && r.faellig < heute ? LEUCHT.kritisch : r.status === 'gestellt' ? LEUCHT.achtung : C.inkLeise} groesse={7} />
@@ -384,10 +396,10 @@ function MandatRechnungen({ m }: { m: Mandat }) {
           </Link>
         ))}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
-          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(monat)}>… für {monatsName(monat)}</Knopf>}
-          {m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => void anlegen()}>+ Rechnung nur planen (ohne PDF)</Knopf>}
-          {m.honorar.betrag > 0 && !finanzFirma && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(monat)}>… für {monatsName(monat)}</Knopf>}
+          {liste !== 'kein' && offenGes && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Gesellschaft noch „offen“ — oben wählen, dann lässt sich die Rechnung schreiben.</span>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && !finanzFirma && !offenGes && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
           {ueber.length > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{ueber.length} überfällig</span>}
           {fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{fehler}</span>}
           {eigene.length > 5 && <Link href={WEG.rechnungen()} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>alle ›</Link>}

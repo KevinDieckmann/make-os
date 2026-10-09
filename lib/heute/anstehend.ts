@@ -64,6 +64,29 @@ export interface Anstehend {
   nachbereitZeiten: Record<string, TerminZeit>;
 }
 
+/**
+ * „Steht an“ für EINE Sicht (08.10., Markttraktion Woche 2 · 4.10 — serverseitig, die Route filtert): Heute › Privat zeigte CRM-Follow-ups
+ * und Business-Fristen. Privat: keine Follow-ups und Nachbereitungen (CRM = Business), keine Danke-Mails (Netzwerken), nur Privat-Fristen,
+ * nur Geburtstage aus der Familie. Business: nur Business-Fristen, Geburtstage aus dem CRM. Termine, Buchungsanfragen und ZOE-Vorschläge
+ * bleiben in beiden (sie gehören der Person). Ohne Sicht („Alles“) unverändert.
+ */
+export function anstehendFuerSpace(a: Anstehend, space: 'privat' | 'business' | null | undefined): Anstehend {
+  if (space === 'privat') return { ...a, followups: [], nachbereiten: [], danke: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
+  if (space === 'business') return { ...a, fristen: a.fristen.filter(f => f.business), geburtstage: a.geburtstage.filter(g => g.herkunft === 'crm') };
+  return a;
+}
+/** Sicht aus `?space=` — nur `privat`/`business`, alles andere = alles. */
+export const anstehendSpaceAus = (v: string | null | undefined): 'privat' | 'business' | null => (v === 'privat' || v === 'business' ? v : null);
+
+/**
+ * „Wer heute dran ist“ (Heute-Widget) ohne Doppel (Woche 2 · 4.10): Zusagen/Follow-ups (Kategorie „Versprechen“) stehen schon in „Steht an“ —
+ * das Widget zeigt die übrigen Karten der Power Hour und nennt nur die Zahl der Zusagen.
+ */
+export function dranOhneZusagen<T extends { kategorie: string }>(karten: readonly T[]): { karten: T[]; zusagen: number } {
+  const zusagen = karten.filter(k => k.kategorie === 'versprechen').length;
+  return { karten: karten.filter(k => k.kategorie !== 'versprechen'), zusagen };
+}
+
 /** So viele Tage vor dem Geburtstag steht die Geschenk-Aufgabe (Zusatzthema #12). */
 export const GEBURTSTAG_VORLAUF = 10;
 /** So weit schaut Heute nach Geburtstagen voraus (für den Vorschlag). */

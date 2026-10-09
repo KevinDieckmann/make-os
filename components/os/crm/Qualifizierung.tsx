@@ -13,7 +13,7 @@
 // Logik: lib/crm/leads.ts (zuQualifizieren), lib/crm/scoring.ts; Schreibwege über /api/crm/lead.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { localDay } from '@/lib/zeit';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
@@ -61,7 +61,9 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
   const d = useMemo<Daten | null>(() => (roh ? { leads: roh.map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }) } : null), [roh, api.crm, api.kontakte, angebote]);
   const einstellungen = useScoringEinstellungen(api);
 
-  const [wer, setWer] = useState<RundenFilter['wer']>(ich);
+  // `?wer=ohne` (08.10., Woche 2 · 6.2): der Weg „Leads ohne Zuständigkeit“ aus dem Überblick öffnet die Runde auf „Nicht zugeordnet“.
+  const adresse = useSearchParams();
+  const [wer, setWer] = useState<RundenFilter['wer']>(adresse?.get('wer') === 'ohne' ? 'ohne' : ich);
   useEffect(() => { setWer(w => (w === TEAM[0].id && ich !== TEAM[0].id ? ich : w)); }, [ich]);
   const [auchKalt, setAuchKalt] = useState(false);
   const [kanal, setKanal] = useState<KanalId | ''>('');
@@ -379,10 +381,13 @@ export function TemperaturLeistung({ zeilen, i = 0 }: { zeilen: ReturnType<typeo
 /** Kanal-Leistung mit eigenem Laden — für Sales › Auswertung und Marketing; `mitTemperatur` zeigt dazu die Quoten je Temperatur. */
 export function KanalLeistungLaden({ i = 0, mitTemperatur = false }: { i?: number; mitTemperatur?: boolean }) {
   const [leads, setLeads] = useState<LeadZeile[]>([]);
+  // 7.6 (08.10.): ein Fehler wird gezeigt — vorher blieb die Karte leer, als gäbe es keine Leads.
+  const [fehler, setFehler] = useState<string | null>(null);
   const staende = useRef(new Map<string, string>());
-  useEffect(() => { void holeMitStand<Daten & { ok?: boolean }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) setLeads(x.leads); }).catch(() => undefined); }, []);
+  useEffect(() => { void holeMitStand<Daten & { ok?: boolean; fehler?: string }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) { setLeads(x.leads); setFehler(null); } else if (x) setFehler(x.fehler ?? 'Leads nicht geladen.'); }).catch(() => setFehler('Leads nicht erreichbar — die Kanal-Leistung fehlt gerade.')); }, []);
   const zeilen = useMemo(() => kanalLeistung(leads), [leads]);
   const temperatur = useMemo(() => temperaturLeistung(leads), [leads]);
   const gruende = useMemo(() => leadGruende(leads), [leads]);
+  if (fehler) return <Karte i={i}><Hinweis art="achtung" rolle="status">{fehler}</Hinweis></Karte>;
   return <>{<KanalLeistung zeilen={zeilen} i={i} />}{mitTemperatur && <TemperaturLeistung zeilen={temperatur} i={i + 1} />}{mitTemperatur && <GruendeKarte g={gruende} i={i + 2} />}</>;
 }

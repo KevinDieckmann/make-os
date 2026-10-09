@@ -118,9 +118,13 @@ export const WEG = {
   deal: (id?: string) => (id ? dealAkte(id) : markttraktion('deals')),
   deals: () => markttraktion('deals'),
   followup: (a?: 'woche' | 'powerhour' | 'kadenz') => markttraktion('followup', a),
+  /** Kreis-Runde (Kontakte, 08.10.): Kreis A–D zuordnen — ohne Kreis keine Kadenz. */
+  kreisRunde: () => markttraktion('kontakte', 'runde-kreis'),
   markttraktion: () => markttraktion(),
   // Schnellknöpfe der Markttraktion (28.09. abends): Qualifizierung und Angebot (vorbelegt mit Kontakt/Firma/Deal).
   qualifizierung: () => markttraktion('qualifizierung'),
+  /** Qualifizierungs-Runde mit dem Filter „Nicht zugeordnet“ (08.10., Woche 2 · 6.2): Leads ohne Zuständigkeit übernehmen. */
+  nichtZugeordnet: () => `${markttraktion('qualifizierung')}&wer=ohne`,
   angebot: (x?: AngebotAdresse) => angebotLink(x),
 
   /** Ein Termin im Kalender (K3): Tag anspringen und das Termin-Fenster öffnen (Schlüssel `uid` bzw. `uid::RID`). */

@@ -28,10 +28,10 @@ import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kanalLink } from '@/lib/crm/erfassen';
 import { istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
 import { kontextAus } from '@/lib/crm/segmente';
-import { gastTeilnahme, netzwerkenHerkunft, begegnungenNachgefasst } from '@/lib/crm/eventplanung';
+import { gastVormerkenMitNachfassen } from '../events/gemeinsam';
 import { WEG } from '@/lib/wege';
 import { handyKarteAusKontakt, handyTeilen, handyMeldung } from '@/lib/netzwerken/handy';
-import { type CrmApi, neueId, datum } from '../daten';
+import { type CrmApi, datum } from '../daten';
 import { NotizAktion, EmailAktion, AnrufAktion, AufgabeAktion, MeetingAktion, Hinweis } from '../KontaktSpalten';
 import { LeadBlock } from '../Leads';
 import { DealAnlegen } from '../DealAnlegen';
@@ -63,11 +63,10 @@ function EventEinladen({ k, api, heute, onFertig }: { k: Kontakt; api: CrmApi; h
   const vormerken = async (eventId: string, titel: string) => {
     setLaeuft(eventId);
     try {
-      // EINE Vormerkung (`gastTeilnahme`, lib/crm/eventplanung.ts) wie bei „Netzwerken“ — mit einladenDurch, Herkunft und dem Stempel „nachgefasst“ an den Begegnungen bei besuchten Events.
-      const jetzt = new Date().toISOString();
-      const ok = await api.setze('teilnahmen', gastTeilnahme({ id: neueId('t'), eventId, kontaktId: k.id, weg, jetztIso: jetzt, ...(api.ich ? { einladenDurch: api.ich } : {}), herkunft: netzwerkenHerkunft(crm.stand.teilnahmen, k.id) }) as unknown as { id: string } & Record<string, unknown>);
+      // EINE Vormerkung wie Gästeliste und „Netzwerken“ (`gastVormerkenMitNachfassen`, Woche 2 · 5.15) — mit einladenDurch, Herkunft und
+      // dem Stempel „nachgefasst“ an den Begegnungen bei besuchten Events.
+      const ok = await gastVormerkenMitNachfassen(api, { eventId, k, weg, ...(api.ich ? { einladenDurch: api.ich } : {}), heute });
       if (!ok) return;
-      for (const t of begegnungenNachgefasst(crm.stand, k.id, heute, api.ich ?? 'system', jetzt)) await api.teil('teilnahmen', t.id, { followUpAm: heute });
       onFertig(`Für „${titel}“ vorgemerkt — Einladung ${weg === 'mail' ? 'per Mail möglich (Ampel grün)' : 'bitte persönlich oder telefonisch (Ampel)'}.`);
     } finally { setLaeuft(null); }
   };

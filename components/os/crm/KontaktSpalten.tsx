@@ -51,6 +51,7 @@ import { BeanWahl } from './bean-teile';
 import { AufgabenAkte, useAkteAufgaben } from '../aufgaben/AufgabenAkte';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeAnlegen } from '../aufgaben/hilfe';
+import { BUSINESS_VORGABE_SPACE } from '@/lib/einheiten';
 import { mandantSpaceId } from '@/lib/aufgaben/struktur';
 import type { Owner } from '@/types/common';
 import { ZoeVorschlaege } from './ZoeFragen';
@@ -357,7 +358,8 @@ export function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Konta
     setFehler(null);
     const artLabel = FOLLOWUP_ARTEN.find(a => a.id === art)?.label;
     const firmaId = k.firmaId ?? mandat?.firmaId;
-    aufgabeAnlegen(dispatch, state, { spaceId: mandat?.firmaId ? mandantSpaceId(mandat.firmaId) : 'kdv' }, {
+    // Bereich ohne Mandat aus lib/einheiten.ts (08.10., Woche 2 · 4.11) — nie eine feste Kennung.
+    aufgabeAnlegen(dispatch, state, { spaceId: mandat?.firmaId ? mandantSpaceId(mandat.firmaId) : BUSINESS_VORGABE_SPACE }, {
       title: text.trim().slice(0, 300), dueDate: faellig, ...(api.ich ? { assignee: api.ich as Owner } : {}),
       bezug: { kontaktId: k.id, ...(firmaId ? { firmaId } : {}) }, ...(artLabel && art !== 'sonstig' ? { description: `Art: ${artLabel}` } : {}),
     });
@@ -395,7 +397,8 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
   const [firmaNeu, setFirmaNeu] = useState<string | null>(null);
   const [dealNeu, setDealNeu] = useState(false);
   const [aufgabeNeu, setAufgabeNeu] = useState(false);
-  useEffect(() => { setFirmaNeu(null); setDealNeu(false); setAufgabeNeu(false); }, [k.id]);
+  const [aufgabeHinweis, setAufgabeHinweis] = useState<string | null>(null);
+  useEffect(() => { setFirmaNeu(null); setDealNeu(false); setAufgabeNeu(false); setAufgabeHinweis(null); }, [k.id]);
   const deals = useMemo(() => {
     const l = (crm?.stand.chancen ?? []).filter(c => c.kontaktIds.includes(k.id));
     return [...l].sort((a, b) => Number(OFFENE_STUFEN.includes(b.stufe)) - Number(OFFENE_STUFEN.includes(a.stufe)) || (b.geaendert ?? '').localeCompare(a.geaendert ?? ''));
@@ -472,9 +475,9 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
         {!aktiveMandate.length && <div style={klein}>{mandate.length ? `Kein aktives Mandat (${mandate.length} beendet oder pausiert).` : 'Kein Mandat.'}</div>}
       </Klappe>
 
-      <Klappe id="r-followups" i={4} klein titel={`Follow-ups${followups.length ? ` · ${followups.length}` : ''}`} zu={klappen.istZu('r-followups')} umschalten={klappen.umschalten}
-        rechts={!aufgabeNeu ? plus('Hinzufügen', () => setAufgabeNeu(true)) : undefined}>
-        {aufgabeNeu && <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}><AufgabeAktion k={k} api={api} heute={heute} onFertig={() => setAufgabeNeu(false)} onAbbruch={() => setAufgabeNeu(false)} /></div>}
+      {/* 4.11 (08.10.): „+ Hinzufügen“ legt eine AUFGABE an — der Knopf steht deshalb in der Karte „Aufgaben“ (unten), nicht hier; die
+          Rückmeldung bleibt stehen. Follow-ups entstehen über Erledigen („Als Nächstes“) und Follow-up › „+ Follow-up“. */}
+      <Klappe id="r-followups" i={4} klein titel={`Follow-ups${followups.length ? ` · ${followups.length}` : ''}`} zu={klappen.istZu('r-followups')} umschalten={klappen.umschalten}>
         {followups.slice(0, 8).map(f => {
           const ueber = f.tageUeber > 0;
           return (
@@ -486,7 +489,7 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
           );
         })}
         {followups.length > 8 && <div style={{ ...klein, marginTop: 6 }}>… und {followups.length - 8} weitere unter Aktivitäten › Aufgaben.</div>}
-        {!followups.length && !aufgabeNeu && <div style={klein}>Nichts offen.</div>}
+        {!followups.length && <div style={klein}>Nichts offen.</div>}
       </Klappe>
 
       {/* Termine (30.09., K3): über den Bezug am Termin (Kontakt oder Gast), Klick öffnet den Kalender; vergangene → „Nachbereiten“. */}
@@ -495,7 +498,10 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
       </Klappe>
 
       {/* Aufgaben (28.09. abends): mit der Person verknüpfte Aufgaben der Aufgaben-Seite; bei aktivem Mandat im Mandanten-Space. */}
-      <Klappe id="r-aufgaben" i={5} klein titel={`Aufgaben${akteAufgaben.length ? ` · ${akteAufgaben.length}` : ''}`} zu={klappen.istZu('r-aufgaben')} umschalten={klappen.umschalten}>
+      <Klappe id="r-aufgaben" i={5} klein titel={`Aufgaben${akteAufgaben.length ? ` · ${akteAufgaben.length}` : ''}`} zu={klappen.istZu('r-aufgaben')} umschalten={klappen.umschalten}
+        rechts={!aufgabeNeu ? plus('Hinzufügen', () => { setAufgabeHinweis(null); setAufgabeNeu(true); }) : undefined}>
+        {aufgabeNeu && <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}><AufgabeAktion k={k} api={api} heute={heute} onFertig={t => { setAufgabeNeu(false); setAufgabeHinweis(t); }} onAbbruch={() => setAufgabeNeu(false)} /></div>}
+        {aufgabeHinweis && <div style={{ ...klein, marginBottom: 8, display: 'flex', gap: 8, alignItems: 'baseline' }}><span style={{ flex: 1 }}>{aufgabeHinweis}</span><button type="button" onClick={() => setAufgabeHinweis(null)} style={leiseKnopf}>ok</button></div>}
         <AufgabenAkte kontaktId={k.id} mandantFirmaId={aktiveMandate.find(m => m.firmaId)?.firmaId} />
       </Klappe>
 

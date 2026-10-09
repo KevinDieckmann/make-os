@@ -363,7 +363,7 @@ describe('B · Angebot: Folgeauftrag, Rückfrage, Mandat-Link, Einmalposten, Sum
     expect(src).toContain('WEG.mandat(mandatZiel)');
     expect(src).toContain("entwurfAnlegen({ quelle: 'mandat', mandatId: mandatZiel })");
     expect(src).toContain("entwurfAnlegen({ quelle: 'angebot', angebotId: a.id, nur: 'einmalig' })");
-    expect(src).toContain("if (typeof r.mandatId === 'string') setMandatId(r.mandatId);");
+    expect(src).toContain('if (r.mandatId) setMandatId(r.mandatId);'); // seit Woche 2 · 3.10 über `mandatAusDeal`
   });
 
   it('3.3 · Editor und Deal-Akte übernehmen einen geschlossenen Deal nicht', () => {

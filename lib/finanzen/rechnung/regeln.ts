@@ -384,6 +384,55 @@ export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz
   };
 }
 
+/**
+ * Vorbelegung eines FREIEN Entwurfs (08.10., Markttraktion Woche 2 · 3.13 — EIN Rechnungs-Anleger): ein abgelegtes Angebot aus dem
+ * Altbestand (Kontakt › Umsatz „→ als Rechnung planen“) bringt Titel, Bruttobetrag, Angebotsnummer und -datum mit. Daraus wird EINE
+ * Position; gestellt wird wie immer erst im Editor (Nummer + PDF). Alles optional, Unsinn fällt weg — nie still ein Betrag erfunden.
+ */
+export interface EntwurfVorlage { titel?: string; bruttoCent?: number; angebot?: string; angebotAm?: string }
+export function vorlageSaeubern(roh: unknown): EntwurfVorlage | undefined {
+  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return undefined;
+  const o = roh as Record<string, unknown>;
+  const titel = zeile(o.titel, RECHNUNG_GRENZEN.titel);
+  const brutto = Math.round(Number(o.bruttoCent));
+  const bruttoCent = Number.isFinite(brutto) && brutto > 0 && brutto <= RECHNUNG_POSITION_MAX.einzelpreisCent ? brutto : undefined;
+  const angebot = zeile(o.angebot, 40);
+  const v: EntwurfVorlage = { ...(titel ? { titel } : {}), ...(bruttoCent ? { bruttoCent } : {}), ...(angebot ? { angebot } : {}), ...(tagOk(o.angebotAm) ? { angebotAm: o.angebotAm } : {}) };
+  return Object.keys(v).length ? v : undefined;
+}
+/** EINE Position aus einem Bruttobetrag (Satz 19 %, Kleinunternehmer 0 %) — netto kaufmännisch über die eine USt-Rechnung (lib/finanzen/ust.ts). */
+export function positionAusBrutto(titel: string, bruttoCent: number, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number }): RechnungPosition {
+  const satz = opt.kleinunternehmer ? 0 : 19;
+  const netto = satz ? opt.nettoAusBrutto(bruttoCent / 100, satz) : bruttoCent / 100;
+  return { id: 'p1', titel: (titel || 'Leistung').slice(0, RECHNUNG_GRENZEN.titel), text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: Math.max(0, Math.round(netto * 100)), ustSatz: satz };
+}
+
+/**
+ * Statuswechsel einer Rechnung OHNE Positionen von Hand (Finanzen › Rechnungen & Zahlungen, 08.10., Woche 2 · 3.11): vorher wechselte
+ * ein Klick auf den Status sofort — ohne Nummer, ohne Datum. Jetzt fragt die Oberfläche nach und prüft hier:
+ *   geplant → gestellt   Nummer Pflicht und im Nummernkreis der Gesellschaft noch frei; Rechnungsdatum ein Tag, nicht in der Zukunft
+ *   gestellt → bezahlt   „bezahlt am“ ein Tag, nicht in der Zukunft und nicht vor dem Rechnungsdatum
+ * Rückgabe: die Fehler als Sätze (leer = in Ordnung). Rechnungen mit Positionen stellt nur der Editor (Nummer + PDF).
+ */
+export function statusWechselFehlt(r: { id: string; firmaId: string; status: string; datum?: string; positionen?: readonly unknown[] }, ziel: 'gestellt' | 'bezahlt', e: { nummer?: string; datum?: string; am?: string }, alle: readonly { id: string; firmaId: string; nummer?: string }[], heute: string): string[] {
+  const f: string[] = [];
+  if (ziel === 'gestellt') {
+    if (r.status !== 'geplant') f.push('Nur eine geplante Rechnung wird gestellt.');
+    if (r.positionen) f.push('Diese Rechnung hat Positionen — sie wird im Editor gestellt (Nummer und PDF).');
+    const nr = (e.nummer ?? '').trim();
+    if (!nr) f.push('Rechnungsnummer fehlt.');
+    else if (alle.some(x => x.id !== r.id && x.firmaId === r.firmaId && (x.nummer ?? '').trim().toLowerCase() === nr.toLowerCase())) f.push(`Die Nummer ${nr} ist bei dieser Gesellschaft schon vergeben.`);
+    if (!tagOk(e.datum)) f.push('Rechnungsdatum fehlt.');
+    else if (e.datum! > heute) f.push('Das Rechnungsdatum liegt in der Zukunft.');
+  } else {
+    if (r.status !== 'gestellt') f.push('Bezahlt wird nur eine gestellte Rechnung.');
+    if (!tagOk(e.am)) f.push('„Bezahlt am“ fehlt.');
+    else if (e.am! > heute) f.push('„Bezahlt am“ liegt in der Zukunft.');
+    else if (r.datum && e.am! < r.datum) f.push('„Bezahlt am“ liegt vor dem Rechnungsdatum.');
+  }
+  return f;
+}
+
 /** Vorlage-Texte (Sie-Form, neutral — anpassbar im Entwurf). */
 export const EINLEITUNG_VORLAGE = 'vielen Dank für Ihren Auftrag. Für die folgenden Leistungen stellen wir Ihnen in Rechnung:';
 export const SCHLUSS_VORLAGE = 'Mit freundlichen Grüßen';

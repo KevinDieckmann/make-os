@@ -4,7 +4,9 @@
 // POST { aktion: 'planen', playbook, segmentId? }        → Kampagne als Entwurf
 //        (zuständig: wer plant, sofern im Team)
 // POST { aktion: 'aufgaben', id }                       → offene Schritte als Aufgaben
-//        (für die/den Zuständige/n der Kampagne; bei „beide“ für wen fragt)
+//        (für die/den Zuständige/n der Kampagne; bei „beide“ für wen fragt) — seit 08.10. (Woche 2 · 5.8) über den EINEN
+//        Server-Schreibweg `systemAufgabenAendern` (Verlauf, Glocke, Protokoll), Welt der Kampagne aus dem Playbook (6.6)
+// `playbook: 'eigen'` ohne Segment (5.6): eine leere eigene Kampagne — Personen kommen über die Suche dazu.
 // POST { aktion: 'ergebnis', id, kontaktId, ergebnis, von? } → Ergebnis + Verlauf der Person
 //        (von = wer angesprochen hat, Team-Kürzel, sonst die angemeldete Person;
 //        „chance“ = Interesse: der Lead der Firma (ohne Firma: der Person) geht in die
@@ -17,7 +19,10 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { leereKriterien } from '@/lib/crm/leads';
-import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
+import { BUSINESS_VORGABE_SPACE } from '@/lib/einheiten';
+import { weltDerKampagne } from '@/lib/crm/kampagnen-welt';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { localDay, tagePlus } from '@/lib/zeit';
@@ -74,7 +79,9 @@ export async function POST(req: Request) {
     const seg = b.segmentId ? crm.segmente.find(s => s.id === b.segmentId) : undefined;
     const pb = PLAYBOOKS.find(p => p.id === b.playbook);
     const basis = pb ?? { id: 'eigen', name: seg ? `Kampagne: ${seg.name}` : 'Eigene Kampagne', kurz: '', warum: '', zielgruppe: seg?.kriterien ?? {}, kanal: 'persoenlich' as const, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }], kennzahl: 'Gespräche', recht: '', fuer: [] };
-    const plan = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, neueKennung('kp'), 'hand');
+    const plan0 = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, neueKennung('kp'), 'hand');
+    // 5.6 (08.10.): „Eigene Kampagne“ ohne Segment ist leer — nie die ganze Kartei (leere Kriterien träfen alle).
+    const plan = !pb && !seg ? { ...plan0, kontaktIds: [] } : plan0;
     // Wer plant, ist zuständig (Kevin oder Malin) — umstellen oder übergeben geht in der Kampagne.
     const zst = mitglied(person) ? { zustaendig: person } : {};
     const k0: Kampagne = { ...(seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan), ...zst, geaendertVon: person };
@@ -102,18 +109,18 @@ export async function POST(req: Request) {
     const start = k.start ?? heute;
     const neu = k.schritte.filter(s => !s.erledigt && !s.aufgabeId);
     const jetzt = new Date().toISOString();
-    // Die Aufgaben gehen an die Zuständigkeit der Kampagne, nicht an wen gerade klickt.
-    const an = bearbeiterFuer(k.zustaendig, 'sales', person);
-    await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
-      const f = cur ?? { tasks: [] };
-      const tasks = [...(f.tasks ?? [])];
-      for (const s of neu) {
-        const id = `kp-${k.id}-${s.id}`;
-        if (tasks.some(t => t.id === id)) continue;
-        tasks.push({ id, title: `${s.text} — ${k.name}`.slice(0, 200), description: `Schritt der Kampagne „${k.name}“ (${k.kontaktIds.length} Personen).${an !== person ? ` Angelegt von ${nameVon(person)}.` : ''} Versand und Ansprache bleiben bei dir.`, status: 'todo', priority: 'medium', assignee: an, tags: ['crm', 'kampagne'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: tagePlus(start, s.tag) });
-      }
-      return { ...f, tasks };
-    });
+    // Die Aufgaben gehen an die Zuständigkeit der Kampagne (Welt nach Playbook, 6.6), nicht an wen gerade klickt.
+    const an = bearbeiterFuer(k.zustaendig, weltDerKampagne(k), person);
+    // 5.8 (08.10.): über den EINEN Server-Schreibweg — Verlauf, Glocke an die Zuständige, Protokoll; vorher `updateJson('tasks')` direkt.
+    const r = await systemAufgabenAendern(stand => {
+      const da = new Set(stand.tasks.map(t => t.id));
+      return { neu: neu.filter(s => !da.has(`kp-${k.id}-${s.id}`)).map(s => ({
+        id: `kp-${k.id}-${s.id}`, title: `${s.text} — ${k.name}`.slice(0, 200), description: `Schritt der Kampagne „${k.name}“ (${k.kontaktIds.length} Personen).${an !== person ? ` Angelegt von ${nameVon(person)}.` : ''} Versand und Ansprache bleiben bei dir.`,
+        status: 'todo', priority: 'medium', assignee: an, tags: ['crm', 'kampagne'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: tagePlus(start, s.tag),
+        space: 'business', spaceId: BUSINESS_VORGABE_SPACE,
+      })) };
+    }, { person, jetzt });
+    if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler ?? 'Aufgaben nicht angelegt.' }, { status: r.status });
     await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, schritte: x.schritte.map(s => (neu.some(n => n.id === s.id) ? { ...s, aufgabeId: `kp-${k.id}-${s.id}` } : s)), geaendert: jetzt, geaendertVon: person } : x)) }));
     return NextResponse.json({ ok: true, angelegt: neu.length, an });
   }

@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TIEF } from '@/lib/make-one/design';
 import { Settings } from 'lucide-react';
 import { Seite, Knopf, SymbolKnopf, Reiter as ReiterLeiste, LEUCHT } from '../ui';
-import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, REITER_ZEILE, reiterVon, reiterStart, PFAD, type Bereich, type ReiterId, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, REITER_ZEILE, reiterVon, reiterStart, PFAD, type Bereich, type ReiterId, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -165,6 +165,8 @@ export function MarkttraktionSeite() {
     router[wie](ziel, { scroll: false });
     if (wie === 'push' && (s !== bereich || (a ?? '') !== (ansicht ?? ''))) nachOben();
   };
+  /** Schnellknopf (08.10., Woche 2 · 3.15): „Angebot“ nimmt den offenen Kontakt, die Firma bzw. den Deal mit — die anderen wie bisher. */
+  const schnell = (b: Bereich) => { if (b === 'angebot' && bereich !== 'angebot') { router.push(angebotVonHier(bereich, ansicht, kParam), { scroll: false }); nachOben(); } else gehe(b); };
   /** In der Kartei eine Person oder Firma wählen: die erste öffnet (Zurück schließt sie wieder), jede weitere tauscht nur. */
   const setAuswahl = (id: string | null) => gehe(bereich, ansicht, id ?? undefined, auswahl && id ? 'replace' : id ? 'push' : 'replace');
   // Ziel mit Objekt (Person, Deal, Event): der Team-Feed und die Index-Punkte geben `k` mit (26.09.).
@@ -210,11 +212,11 @@ export function MarkttraktionSeite() {
           Laptop mit Leiste oder am Handy): die Schnellknöpfe als eigene Zeile oben, darunter die Reiter zum Wischen — nie
           zwei Paare sichtbar zugleich (das andere ist display:none, also auch für Screenreader weg). */}
       <div className="mt-leistenrahmen">
-        <Schnellknoepfe aktiv={bereich} onWahl={b => gehe(b)} className="mt-schnellzeile mt-nur-schmal" />
+        <Schnellknoepfe aktiv={bereich} onWahl={schnell} className="mt-schnellzeile mt-nur-schmal" />
         <nav aria-label="Markttraktion" ref={leiste} className="ui-reiter-zeile mt-leiste">
           <Reiter liste={LINKS} aktiv={reiter} onWahl={r => gehe(reiterStart(r))} />
           <span aria-hidden style={{ flex: '1 0 8px' }} />
-          <Schnellknoepfe aktiv={bereich} onWahl={b => gehe(b)} className="mt-schnellmitte mt-nur-breit" />
+          <Schnellknoepfe aktiv={bereich} onWahl={schnell} className="mt-schnellmitte mt-nur-breit" />
           <span aria-hidden className="mt-nur-breit" style={{ flex: '1 0 8px' }} />
           <Reiter liste={RECHTS} aktiv={reiter} onWahl={r => gehe(reiterStart(r))} leise />
         </nav>

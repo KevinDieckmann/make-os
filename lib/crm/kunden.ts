@@ -9,7 +9,7 @@ import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { TEAM, BEIDE, zustaendig } from './team';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
-import { KERN_EINHEITEN, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, gesellschaftAusEinheit, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 function plusMonate(datum: string, n: number): string {
@@ -169,3 +169,9 @@ export const GESELLSCHAFT_FILTER: readonly { id: GesellschaftFilter; label: stri
 /** Passt ein Mandat (bzw. seine Gesellschaft) zum Filter? `alle` lässt alles durch. */
 export const passtGesellschaft = (filter: GesellschaftFilter, gesellschaft: string | null | undefined): boolean =>
   filter === 'alle' || gesellschaft === filter;
+
+/**
+ * Steht beim Mandat die Gesellschaft noch „offen“ (oder ein unbekannter Wert)? Dann wird keine Rechnung still bei der Vorgabe angelegt —
+ * erst wählen (08.10., Markttraktion Woche 2 · 3.13; der Server lehnt `quelle: 'mandat'` ebenso ab). Register-Gesellschaften sind gewählt.
+ */
+export const mandatGesellschaftOffen = (g: string | null | undefined): boolean => !gesellschaftAusEinheit(g) && !istRegisterKennung(g);

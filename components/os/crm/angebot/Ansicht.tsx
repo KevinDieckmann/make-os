@@ -10,7 +10,7 @@
 // (der vorhandene Weg „Rechnung aus dem Honorar“, 3.5); ein gemischtes Angebot plant die Einmalposten als eigene Rechnung (3.6, Rechnungs-
 // Tool, feste Kennung — idempotent; die laufende Leistung rechnet das Mandat ab).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
 import { entwurfAnlegen } from '../../rechnung/daten';
@@ -22,10 +22,10 @@ import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
 import { verlustgruende } from '@/lib/crm/pipeline';
 import { angebotDokument } from '@/lib/crm/angebot-dokument';
-import { ANGEBOT_STATUS_LABEL, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
+import { ANGEBOT_STATUS_LABEL, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { Blatt } from './Blatt';
-import { angebotPost, pdfLaden, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
+import { angebotPost, mandatAusDeal, pdfDateiHolen, pdfLaden, pdfTeilen, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 
 export const STATUS_FARBE: Record<Angebot['status'], string> = { entwurf: C.inkDim, gestellt: LEUCHT.business, angenommen: LEUCHT.gut, abgelehnt: LEUCHT.kritisch, abgelaufen: C.inkLeise, ersetzt: C.inkLeise };
 const datumDe = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
@@ -71,10 +71,11 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   }
   async function mandatAnlegen() {
     if (!deal) return;
-    const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: deal.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    // EIN Weg (Woche 2 · 3.10): derselbe Aufruf wie in Kontakt › Umsatz (`mandatAusDeal`).
+    const r = await mandatAusDeal(deal.id);
     if (!r.ok) { setMeldung(r.fehler ?? 'Mandat nicht angelegt.'); return; }
     setMandat(r.text ?? 'Mandat angelegt.');
-    if (typeof r.mandatId === 'string') setMandatId(r.mandatId);
+    if (r.mandatId) setMandatId(r.mandatId);
     void api.laden(true);
     if (gemischt) await einmalPlanen();
   }
@@ -90,6 +91,13 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
     if (!(await bestaetigen({ titel: 'Angebot als angenommen vermerken?', text: `${a.nummer ?? 'Das Angebot'} gilt dann als angenommen${deal ? ` und der Deal „${deal.titel}“ als gewonnen` : ''}. Das lässt sich nicht zurücknehmen.`, ja: 'Angenommen' }))) return;
     await aktion({ aktion: 'annehmen' }, deal ? 'Angenommen — Deal gewonnen.' : 'Angenommen.');
   }
+  /** „Mail ist raus“ (Woche 2 · 3.15): erst jetzt entsteht die Mail-Aktivität am Kontakt — beim Stellen steht nur „gestellt“. */
+  const gesendet = angebotGesendetVermerkt(k, a.nummer);
+  async function alsGesendet() {
+    const r = await angebotPost({ aktion: 'gesendet', id: a.id });
+    setMeldung(r.ok ? String(r.text ?? 'Als gesendet vermerkt.') : r.fehler ?? 'Nicht vermerkt.');
+    if (r.ok) void api.laden(true);
+  }
   function mailOeffnen() {
     const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: a.titel, nummer: a.nummer, gueltigBis: a.gueltigBis, absender: g ? mitVorgaben(g).name : undefined });
     window.location.href = mailtoLink(a.empfaenger?.email ?? k?.email, m.betreff, m.text);
@@ -103,11 +111,13 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         <Karte i={0} ton={LEUCHT.gut}>
           <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, lineHeight: 1.5 }}>
             <div style={{ fontWeight: 700, color: LEUCHT.gut }}>{meldungStart.text}</div>
-            <div style={{ color: C.inkDim }}>Das PDF wurde heruntergeladen und das Mail-Programm geöffnet — <b>PDF anhängen und abschicken</b>.</div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ color: C.inkDim }}>Das PDF wurde heruntergeladen und das Mail-Programm geöffnet — <b>PDF anhängen und abschicken</b>. Am Handy geht es schneller über „Teilen“ (das PDF hängt dann schon an).</div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {meldungStart.pdf && <PdfTeilenKnopf dateiId={meldungStart.pdf.id} name={meldungStart.pdf.name} titel={a.titel} onText={setMeldung} />}
               {meldungStart.pdf && <button onClick={() => pdfLaden(meldungStart.pdf!.id, meldungStart.pdf!.name)} style={link}>PDF noch einmal laden</button>}
               {meldungStart.mailto && <a href={meldungStart.mailto} style={link}>Mail noch einmal öffnen</a>}
             </div>
+            {k && !gesendet && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', color: C.inkDim }}>Ist die Mail raus? <Knopf farbe={LEUCHT.gut} onClick={alsGesendet}>Ja, gesendet</Knopf></div>}
           </div>
         </Karte>
       )}
@@ -134,6 +144,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           {a.pdfDateiId && <Knopf leise onClick={() => pdfLaden(a.pdfDateiId!, `Angebot ${a.nummer}.pdf`)}>PDF laden</Knopf>}
+          {a.pdfDateiId && !meldungStart && <PdfTeilenKnopf dateiId={a.pdfDateiId} name={`Angebot ${a.nummer}.pdf`} titel={a.titel} onText={setMeldung} knopf />}
+          {(a.status === 'gestellt' || a.status === 'abgelaufen' || a.status === 'angenommen') && k && !gesendet && !meldungStart && <Knopf leise onClick={alsGesendet}>Mail ist raus — als gesendet vermerken</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf leise onClick={mailOeffnen}>Mail öffnen</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf farbe={LEUCHT.gut} onClick={annehmen}>Angenommen</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && !ablehnen && <Knopf leise onClick={() => setAblehnen(true)}>Abgelehnt …</Knopf>}
@@ -174,6 +186,25 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
 
 // Verweise (Kontakt, Deal, Versionen) dürfen umbrechen — lange Deal-Titel schoben sonst die Kopfzeile über den Rand.
 const link = { background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, textDecoration: 'none', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%' } as const;
+
+/**
+ * „Teilen“ mit dem PDF als Datei (Woche 2 · 3.14) — die Datei wird beim Anzeigen geholt (nur, wo das Gerät teilen kann), damit das
+ * Teilen-Blatt direkt im Klick aufgeht; ohne Teilen-Funktion lädt der Knopf das PDF herunter.
+ */
+function PdfTeilenKnopf({ dateiId, name, titel, onText, knopf }: { dateiId: string; name: string; titel?: string; onText: (t: string | null) => void; knopf?: boolean }) {
+  const [datei, setDatei] = useState<File | null>(null);
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || typeof (navigator as Navigator & { canShare?: unknown }).canShare !== 'function') return;
+    let lebt = true;
+    void pdfDateiHolen(dateiId, name).then(f => { if (lebt) setDatei(f); });
+    return () => { lebt = false; };
+  }, [dateiId, name]);
+  const teilen = async () => {
+    const r = await pdfTeilen(datei, dateiId, name, titel);
+    onText(r === 'geladen' ? 'Teilen mit Datei geht auf diesem Gerät nicht — das PDF ist heruntergeladen.' : r === 'fehler' ? 'Teilen hat nicht geklappt — „PDF laden“ geht immer.' : null);
+  };
+  return knopf ? <Knopf leise onClick={teilen}>Teilen (mit PDF)</Knopf> : <button onClick={() => void teilen()} style={link}>Teilen (mit PDF)</button>;
+}
 
 /** „Rechnung schreiben“ aus einem angenommenen Angebot — legt den Entwurf an (oder öffnet den offenen) und führt in den Rechnungs-Editor. */
 function RechnungAusAngebot({ angebotId, onFehler }: { angebotId: string; onFehler: (t: string) => void }) {

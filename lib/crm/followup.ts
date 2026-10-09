@@ -21,6 +21,7 @@ import { followUpBis } from './events';
 import { nachfassText } from './marke';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { reviewZaehlt } from './review';
+import { tagVon } from '@/lib/zeit';
 
 export const FOLLOWUP_ARTEN: { id: FollowUpArt; label: string }[] = [
   { id: 'anruf', label: 'Anruf' }, { id: 'mail', label: 'Mail' }, { id: 'linkedin', label: 'LinkedIn' }, { id: 'termin', label: 'Termin' }, { id: 'nachricht', label: 'Nachricht' }, { id: 'sonstig', label: 'Sonstiges' },
@@ -64,9 +65,48 @@ export const AKT_ART: Record<FollowUpArt, AktivitaetArt> = { anruf: 'anruf', mai
  */
 export function aktivitaetArtNachErledigen(art: FollowUpArt, ergebnis?: Ergebnis): AktivitaetArt {
   const basis = AKT_ART[art] ?? 'notiz';
+  // 4.13 (08.10., Woche 2): ein „Anruf“ ohne Ergebnis wurde als Anruf verbucht, der vielleicht nie stattfand (Nachweis!) — ohne Ergebnis
+  // steht nur eine Notiz am Kontakt; erst ein Ergebnis macht daraus den Anruf (bzw. das Gespräch).
+  if (basis === 'anruf' && !ergebnis) return 'notiz';
   if (basis !== 'notiz' || !ergebnis) return basis;
   return ergebnis === 'nicht_erreicht' || ergebnis === 'mailbox' || ergebnis === 'rueckruf' ? 'anruf' : 'gespraech';
 }
+/**
+ * Der Anlass, der an einer Anruf-Aktivität aus dem Follow-up steht (U2 #58: bei gelber Telefon-Ampel Pflicht) — NACH QUELLE (08.10.,
+ * Woche 2 · 4.13): vorher hieß jede Erinnerung „Vereinbartes Follow-up: …“, auch die Kadenz, die niemand vereinbart hatte.
+ */
+export function anlassNachQuelle(quelle: FollowUp['quelle'] | VirtuelleQuelle | 'echt', text: string): string {
+  const t = text.trim().slice(0, 200);
+  const mit = (vorn: string) => `${vorn}${t ? `: ${t}` : ''}`;
+  switch (quelle) {
+    case 'kadenz': return mit('Beziehungspflege (Kadenz)');
+    case 'wiedervorlage': return mit('Wiedervorlage aus der laufenden Beziehung');
+    case 'nachfassen': case 'event': return mit('Nachfassen nach einer Begegnung');
+    case 'review': return mit('Review im laufenden Mandat');
+    case 'dealschritt': case 'dealwiedervorlage': case 'deal': return mit('Nächster Schritt im laufenden Deal');
+    case 'kampagne': return mit('Kampagne');
+    default: return mit('Vereinbartes Follow-up');
+  }
+}
+
+/**
+ * Was „Absagen“ mit einem Eintrag tut — der Text der Rückfrage NACH QUELLE (Woche 2 · 4.14): bei der Kadenz fällt nichts weg, es kommt der
+ * nächste Anlauf nach dem Takt; beim Nachfassen ein bewusstes Auslassen; sonst fällt diese Zusage (bzw. Wiedervorlage) weg.
+ */
+export function absagenText(quelle: Faellig['quelle']): { titel: string; text: string; ja: string; gefahr?: boolean } {
+  if (quelle === 'kadenz') return { titel: 'Diesen Anlauf überspringen?', text: 'Der nächste Anlauf kommt nach dem Takt des Kreises wieder — die Person bleibt in der Kadenz.', ja: 'Überspringen' };
+  if (quelle === 'nachfassen') return { titel: 'Nachfassen bewusst auslassen?', text: 'Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.', ja: 'Auslassen' };
+  if (quelle === 'wiedervorlage') return { titel: 'Wiedervorlage absagen?', text: 'Die Person bleibt, nur diese Wiedervorlage fällt weg.', ja: 'Absagen', gefahr: true };
+  if (quelle === 'review') return { titel: 'Review absagen?', text: 'Das nächste Review wird in 90 Tagen eingetragen.', ja: 'Absagen' };
+  return { titel: 'Follow-up absagen?', text: 'Die Person bleibt, nur diese Zusage fällt weg.', ja: 'Absagen', gefahr: true };
+}
+
+/**
+ * Verschieben legt aus diesen virtuellen Einträgen ein ECHTES Follow-up an (Woche 2 · 4.17): erst dann zählt „verschoben“ (und die Warnung
+ * „3× verschoben“ kommt auch bei Zusagen und Wiedervorlagen). Deal-Schritte, Deal-Wiedervorlagen und Reviews bleiben Felder am Deal/Mandat.
+ */
+export const VERSCHIEBEN_ALS_FOLLOWUP: readonly VirtuelleQuelle[] = ['kadenz', 'nachfassen', 'schritt', 'wiedervorlage'];
+
 /**
  * Ist der nächste Schritt am Deal genau das, was mit diesem Follow-up erledigt wurde (4.4)? Dann darf er nicht stehen bleiben — er wäre
  * sofort wieder fällig (`v:dealschritt`). Derselbe Schritt heißt: schon fällig (Tag ≤ heute), am selben Tag wie das Follow-up, oder
@@ -88,6 +128,18 @@ export function kadenzBasis(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten' |
   const seit = (k.importiertAm ?? '').slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(seit) && seit > letzter && seit <= heute ? seit : letzter;
 }
+/**
+ * Ab wann die Kadenz der Follow-up-Ebene zählt (08.10., Woche 2 · 4.14): wie `kadenzBasis` — und wer noch NIE Kontakt hatte, bekommt die Kadenz
+ * ab der Anlage (`importiertAm`), statt nie aufzutauchen. `ohneKontakt` sagt, dass es die Anlage ist (für den Text).
+ */
+export function kadenzStart(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten' | 'importiertAm'>, heute: string): { tag: string; ohneKontakt: boolean } | undefined {
+  const b = kadenzBasis(k, heute);
+  if (b) return { tag: b, ohneKontakt: false };
+  const an = (k.importiertAm ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(an) && an <= heute ? { tag: an, ohneKontakt: true } : undefined;
+}
+/** Wie lange eine Teilnahme „da“ ohne `followUpAm` höchstens als „Nachfassen“ zählt (Woche 2 · 4.18 — sonst stünden alte Importe ewig überfällig). */
+export const NACHFASSEN_MAX_TAGE = 60;
 
 const tage = (von: string, bis: string) => Math.round((Date.parse(`${bis.slice(0, 10)}T12:00:00Z`) - Date.parse(`${von.slice(0, 10)}T12:00:00Z`)) / 864e5);
 export const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -187,6 +239,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet)) {
     const ev = crm.events.find(e => e.id === t.eventId);
     if (!ev || ev.datum > heute || nachId.get(t.kontaktId)?.eingeschraenkt) continue;
+    // 4.18: älter als NACHFASSEN_MAX_TAGE — kein „Nachfassen“ mehr (die Begegnung bleibt in der Event-Akte; die Kadenz übernimmt).
+    if (tage(ev.datum, heute) > NACHFASSEN_MAX_TAGE) continue;
     const f = followUpBis(ev);
     if (!frei(t.kontaktId, f)) continue;
     // Ein echtes Event-Follow-up zu diesem Gast (etwa nach „+3 Tage“) ersetzt den virtuellen Eintrag.
@@ -202,16 +256,17 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   // 6 · Kadenz je Kreis: zu lange nichts gehört
   // Ein eingetragenes Meeting zählt ab seinem Tag (`wann`) — geplant setzt es „letzter Kontakt“ nicht (28.09., F1).
   for (const k of kontakte) {
-    // 7.1 (08.10.): ab dem letzten Kontakt, aber nie vor Import/Anlage (`kadenzBasis`).
-    const letzter = kadenzBasis(k, heute);
-    if (ausgenommen(k) || RUHT.has(k.stufe) || !letzter) continue;
+    // 7.1 (08.10.): ab dem letzten Kontakt, aber nie vor Import/Anlage (`kadenzBasis`); ohne Kontakt ab der Anlage (4.14, `kadenzStart`).
+    const start = kadenzStart(k, heute);
+    if (ausgenommen(k) || RUHT.has(k.stufe) || !start) continue;
+    const letzter = start.tag;
     const takt = taktVon(k, opts.wertelisten);
     if (!takt) continue;
     const f = tagPlus(letzter, takt);
     if (f > bis || tage(f, heute) > 365) continue;
     // Hat die Person schon irgendein offenes Follow-up, braucht es keinen Kadenz-Eintrag.
     if (raus.some(x => x.kontaktId === k.id)) continue;
-    raus.push(mach({ id: `v:kadenz:${k.id}`, virtuell: true, quelle: 'kadenz', art: 'anruf', text: `Kreis ${k.kreis ?? '—'}: seit ${tage(letzter, heute)} Tagen kein Kontakt (Takt ${takt} Tage)`, faellig: f, kontaktId: k.id, name: anzeigename(k), ...(firmaVon(k.id) ? { firma: firmaVon(k.id) } : {}), bezug: { art: 'kontakt', id: k.id }, zustaendig: haeltBeziehung(k) }));
+    raus.push(mach({ id: `v:kadenz:${k.id}`, virtuell: true, quelle: 'kadenz', art: 'anruf', text: start.ohneKontakt ? `Kreis ${k.kreis ?? '—'}: seit der Anlage vor ${tage(letzter, heute)} Tagen noch kein Kontakt (Takt ${takt} Tage)` : `Kreis ${k.kreis ?? '—'}: seit ${tage(letzter, heute)} Tagen kein Kontakt (Takt ${takt} Tage)`, faellig: f, kontaktId: k.id, name: anzeigename(k), ...(firmaVon(k.id) ? { firma: firmaVon(k.id) } : {}), bezug: { art: 'kontakt', id: k.id }, zustaendig: haeltBeziehung(k) }));
   }
   const rang: Record<Gruppe, number> = { ueberfaellig: 0, heute: 1, woche: 2, spaeter: 3 };
   return raus.sort((a, b) => rang[a.gruppe] - rang[b.gruppe] || a.faellig.localeCompare(b.faellig) || (a.uhrzeit ?? '99').localeCompare(b.uhrzeit ?? '99') || a.name.localeCompare(b.name));
@@ -237,8 +292,10 @@ export function zaehlen(liste: Faellig[]): Record<Gruppe, number> & { gesamt: nu
 /** Pünktlichkeit: erledigte echte Follow-ups der letzten `tage` — wie viele am oder vor dem Termin? Erst ab 5 eine Quote. */
 export function puenktlichkeit(followups: FollowUp[], heute: string, tageZurueck = 30): { erledigt: number; puenktlich: number; verpasst: number; quote: number | null } {
   const ab = tagPlus(heute, -tageZurueck);
-  const erl = followups.filter(f => f.status === 'erledigt' && (f.erledigtAm ?? '').slice(0, 10) >= ab);
-  const puenktlich = erl.filter(f => (f.erledigtAm ?? '').slice(0, 10) <= f.faellig).length;
+  // 4.15 (08.10.): der BERLINER Tag der Erledigung (`tagVon`) — vorher der UTC-Tag (nachts bis 2 Uhr galt ein pünktliches als verspätet).
+  const tagErl = (f: FollowUp) => (f.erledigtAm ? tagVon(f.erledigtAm) : '');
+  const erl = followups.filter(f => f.status === 'erledigt' && tagErl(f) >= ab);
+  const puenktlich = erl.filter(f => tagErl(f) <= f.faellig).length;
   const verpasst = followups.filter(f => f.status === 'verpasst' && f.faellig >= ab).length;
   const n = erl.length + verpasst;
   return { erledigt: erl.length, puenktlich, verpasst, quote: n >= 5 ? Math.round((puenktlich / n) * 100) : null };
@@ -257,4 +314,35 @@ export function neuesFollowUp(e: { id: string; bezug: { art: FollowUpBezugArt; i
 export function virtuell(id: string): { quelle: VirtuelleQuelle; ziel: string } | null {
   const m = /^v:(schritt|wiedervorlage|dealschritt|dealwiedervorlage|nachfassen|review|kadenz):(.+)$/.exec(id);
   return m ? { quelle: m[1] as VirtuelleQuelle, ziel: m[2] } : null;
+}
+
+/**
+ * Der nächste Schritt einer Person zur ANZEIGE (Kopf von „Kontakt öffnen“, 08.10., Woche 2 · 4.17): das Feld am Kontakt oder — früher
+ * fällig — das erste offene echte Follow-up. Eine verschobene Zusage ist seitdem ein echtes Follow-up; ohne das stünde dort „keiner“.
+ */
+export function naechsterSchrittVon(k: Pick<Kontakt, 'id' | 'naechsterSchritt'>, followups: readonly FollowUp[] | undefined): { text: string; datum: string } | undefined {
+  const fu = (followups ?? []).filter(f => f.status === 'offen' && f.kontaktId === k.id).sort((a, b) => a.faellig.localeCompare(b.faellig))[0];
+  const feld = k.naechsterSchritt;
+  if (fu && (!feld || fu.faellig < feld.datum)) return { text: fu.text, datum: fu.faellig };
+  return feld ? { text: feld.text, datum: feld.datum } : undefined;
+}
+
+/**
+ * Die Woche der Follow-ups als KALENDERWOCHE (08.10., Woche 2 · 4.16 — vorher ein rollierendes Fenster): Montag bis Sonntag der laufenden
+ * Woche (`kw`, `tage`), davor Liegengebliebenes, danach die nächste Kalenderwoche und der Rest. Rein; `montag` = Montag der Woche von `heute`.
+ */
+export function kalenderWoche<T extends { faellig: string }>(liste: readonly T[], heute: string): { tage: string[]; vorher: T[]; jeTag: Map<string, T[]>; naechste: T[]; spaeter: T[]; naechsteVon: string; naechsteBis: string } {
+  const d = new Date(`${heute}T12:00:00Z`);
+  const montag = tagPlus(heute, -((d.getUTCDay() + 6) % 7));
+  const tage = Array.from({ length: 7 }, (_, i) => tagPlus(montag, i));
+  const naechsteVon = tagPlus(montag, 7), naechsteBis = tagPlus(montag, 13);
+  const jeTag = new Map(tage.map(t => [t, [] as T[]]));
+  const vorher: T[] = [], naechste: T[] = [], spaeter: T[] = [];
+  for (const f of liste) {
+    if (f.faellig < montag) vorher.push(f);
+    else if (f.faellig <= tage[6]) jeTag.get(f.faellig)!.push(f);
+    else if (f.faellig <= naechsteBis) naechste.push(f);
+    else spaeter.push(f);
+  }
+  return { tage, vorher, jeTag, naechste, spaeter, naechsteVon, naechsteBis };
 }

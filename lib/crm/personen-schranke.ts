@@ -202,3 +202,31 @@ export function kampagnenHinweise(b: CrmBestand, ops: ListenOp[], personen: read
   }
   return raus;
 }
+
+/**
+ * Kanal einer Kampagne wird NACHTRÄGLICH werblich (Mail, LinkedIn, Newsletter — 08.10., Markttraktion Woche 2 · 5.4): vorher prüfte die
+ * Schranke nur NEUE Personen, wer schon drin war und für den neuen Kanal rot ist, blieb. Jetzt gilt beim Kanalwechsel einer bestehenden,
+ * noch ansprechenden Kampagne (Entwurf/aktiv) die Ampel für ALLE: rote Personen fallen aus `kontaktIds` heraus (Ergebnisse bleiben im
+ * Verlauf), dazu ein Hinweis ohne Namen. Neue Kampagnen prüft wie bisher `personenSchranke` (409 für neue rote Personen). Rein.
+ */
+export function kanalWechselBereinigen(b: CrmBestand, ops: ListenOp[], personen: readonly PersonSchranke[], heute: string): { ops: ListenOp[]; hinweise: string[] } {
+  const hinweise: string[] = [];
+  const neu = ops.map(o => {
+    if (o.liste !== 'kampagnen') return o;
+    const roh = rohVon(o);
+    if (!roh || !('kanal' in roh)) return o;
+    const alt = (b.kampagnen ?? []).find(k => k.id === idVon(o));
+    const kanal = String(roh.kanal ?? '');
+    if (!alt || alt.kanal === kanal || !WERBLICHE_KANAELE[kanal]) return o;
+    const status = String(roh.status ?? alt.status) as KampagnenStatus;
+    if (!KAMPAGNE_SPRICHT_AN.includes(status)) return o;
+    const ids = 'kontaktIds' in roh ? nurText(roh.kontaktIds) : alt.kontaktIds;
+    const a = kampagnenAmpel(kanal, ids, personen, b, heute);
+    if (!a.rot.length) return o;
+    const rot = new Set(a.rot.map(x => x.id));
+    const bleiben = ids.filter(x => !rot.has(x));
+    hinweise.push(`Kampagne „${String(roh.name ?? alt.name)}“ jetzt über ${KANAL_TEXT[kanal] ?? kanal}: ${personenWort(rot.size)} mit roter Ampel ${rot.size === 1 ? 'ist' : 'sind'} herausgenommen — ${gruende(a.rot)}. Persönlich ansprechen geht weiter.`);
+    return o.op === 'teil' ? { ...o, felder: { ...o.felder, kontaktIds: bleiben } } : { ...o, eintrag: { ...(o.eintrag as Record<string, unknown>), kontaktIds: bleiben } };
+  });
+  return { ops: neu, hinweise };
+}

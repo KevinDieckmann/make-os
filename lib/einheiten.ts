@@ -246,6 +246,11 @@ export function bereichVon(v: unknown): Bereich {
 }
 /** Die festen Gesellschaften im Business-Bereich (unsere Instanz: KD Ventures, MAKE Innovation GmbH) — Reihenfolge wie GESELLSCHAFTEN. */
 export const BUSINESS_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSCHAFTEN.filter(g => BEREICH_JE_EINHEIT[g] === 'business');
+/**
+ * Der Business-Space für Arbeit an Kontakten OHNE Mandat (Aufgaben aus „Kontakt öffnen“, Geschenk-Aufgabe aus Heute — 08.10., Markttraktion
+ * Woche 2 · 4.11): die erste Business-Gesellschaft der Instanz. Oberflächen nehmen diese Stelle, nie eine feste Kennung (Plattform-Regel).
+ */
+export const BUSINESS_VORGABE_SPACE: Gesellschaftskennung = BUSINESS_GESELLSCHAFTEN[0] ?? GESELLSCHAFTEN[GESELLSCHAFTEN.length - 1];
 /** Die festen Einheiten, die zu Privat gehören (unsere Instanz: die Selbstständigkeit). */
 export const PRIVAT_GESELLSCHAFTEN: readonly Gesellschaftskennung[] = GESELLSCHAFTEN.filter(g => BEREICH_JE_EINHEIT[g] === 'privat');
 /** Eine feste Gesellschaft im Business-Bereich? (Rechnen im Business-Index, Business-Sichten.) */

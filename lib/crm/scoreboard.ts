@@ -257,10 +257,17 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   return { heute, wochen: W, zeilen };
 }
 
-// ── Texte für Telegram ─────────────────────────────────────────────────────
+// ── Texte für den Boten (ZOE auf WhatsApp, sonst Telegram — `anPersonMelden`) ─────────────────────────
 
 export const MARKTTRAKTION_PFAD = '/os/markttraktion';
-export interface TextOptionen { /** Adresse, unter der MAKE OS geöffnet wird (MAKE_OS_ADRESSE) — damit der Link im Handy klickbar ist. */ adresse?: string | null }
+export interface TextOptionen {
+  /** Adresse, unter der MAKE OS geöffnet wird (MAKE_OS_ADRESSE) — damit der Link im Handy klickbar ist. */ adresse?: string | null;
+  /**
+   * Darf der Bote Inhalte tragen (08.10., Woche 2 · 7.3 — Regel Telegram/WhatsApp: neutrale Texte ohne Werte, Beträge, Namen)? Nur mit der
+   * Ausnahme der Person (`inhalteErlaubtFuer`, lib/zoe/an-person.ts) die Zahlen; ohne — die Vorgabe — ein neutraler Hinweis mit Link.
+   */
+  inhalte?: boolean;
+}
 
 const mz = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
 const link = (o: TextOptionen) => `→ ${(o.adresse ?? '').trim().replace(/\/+$/, '')}${MARKTTRAKTION_PFAD}`;
@@ -289,6 +296,11 @@ const SCHON_IN_DER_POWER_HOUR = new Set(['zusagen']);
 export function morgenText(person: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, o: TextOptionen = {}): string {
   const teile: string[] = [];
   const ph = werIstDran(kontakte, crm, heute, person).karten;
+  // 7.3: ohne Ausnahme der Person nur ein neutraler Hinweis — kein Name, keine Zahl; ob etwas ansteht, sagt EIN Satz.
+  if (!o.inhalte) {
+    const etwas = ph.length > 0 || fuerDich(person, kontakte, crm, heute).some(f => f.anzahl > 0);
+    return [`Markttraktion: ${etwas ? 'für heute liegt etwas bei dir' : 'heute nichts Fälliges bei dir'} — Details in MAKE OS.`, link(o)].join('\n');
+  }
   if (ph.length) {
     const zusagen = ph.filter(k => k.kategorie === 'versprechen').length;
     const warten = ph.filter(k => k.kategorie === 'signale').length;
@@ -324,6 +336,8 @@ export function morgenText(person: string, kontakte: Kontakt[], crm: CrmBestand,
 export function wochenText(person: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, o: TextOptionen = {}): string {
   const sb = wochenScoreboard(kontakte, crm, heute, 1);
   const w = sb.wochen[0];
+  // 7.3: ohne Ausnahme der Person nur der Hinweis — keine Zahlen, keine Namen aus dem Team.
+  if (!o.inhalte) return [`Das Wochen-Scoreboard ${w.label} ist da — Details in MAKE OS.`, link(o)].join('\n');
   const zeigen = (r: ScoreZeile) => `${r.werte[0]}${r.einheit ? ' %' : ''}`;
   const gegen = (r: ScoreZeile) => (r.ziel === null ? zeigen(r) : r.einheit ? `${zeigen(r)} (Ziel ${r.ziel} %)` : `${r.werte[0]} von ${r.ziel}`) + (r.ampeln[0] === 'gruen' ? ' ✓' : '');
   const z: string[] = [`Wochen-Scoreboard ${w.label} · ${zeitraum(w)}`];

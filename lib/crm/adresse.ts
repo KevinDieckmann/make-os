@@ -168,6 +168,20 @@ export function angebotLink({ kontaktId, firmaId, dealId, angebotId }: AngebotAd
   return `${PFAD}?${q}`;
 }
 
+/**
+ * Der Schnellknopf „Angebot“ nimmt mit, was gerade offen ist (08.10., Markttraktion Woche 2 · 3.15 — vorher ging der offene Kontakt
+ * verloren): eine Person in „Kontakte“ (auch „Kontakt öffnen“) → Kontakt, eine Firma → Firma, ein Deal in seiner Akte → Deal. Firmen tragen
+ * `f-…`; in „Kontakte“ ist eine Kennung mit `f-` die Firmenkarte.
+ */
+export function angebotVonHier(bereich: string, ansicht: string | null | undefined, k: string | null | undefined): string {
+  const id = kennung(k);
+  if (!id) return angebotLink();
+  if (bereich === 'deals' && ansicht === 'akte') return angebotLink({ dealId: id });
+  if (bereich === 'firmen' || ((bereich === 'kontakte') && id.startsWith('f-'))) return angebotLink({ firmaId: id });
+  if (bereich === 'kontakte') return angebotLink({ kontaktId: id });
+  return angebotLink();
+}
+
 /** Liest die Vorbelegung des Angebots aus der Adresse (Gegenstück zu `angebotLink`). */
 export function angebotAusAdresse(p: { get(name: string): string | null }): { angebotId: string | null; kontaktId: string | null; firmaId: string | null; dealId: string | null } {
   return { angebotId: kennung(p.get('k')), kontaktId: kennung(p.get('kontakt')), firmaId: kennung(p.get('firma')), dealId: kennung(p.get('deal')) };

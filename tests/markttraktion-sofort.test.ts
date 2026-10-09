@@ -9,7 +9,7 @@ import path from 'node:path';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Kontakt } from '@/lib/make-one/crm';
-import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
+import type { CrmBestand, FollowUp } from '@/lib/crm/typen';
 import type { CrmApi } from '@/components/os/crm/daten';
 import type { AngebotDaten } from '@/components/os/crm/angebot/angebot-daten';
 
@@ -277,28 +277,12 @@ describe('3.2 · Absender-Vorgabe = die operative Business-Gesellschaft — nie 
 });
 
 // ── 3.9 · „+ Rechnung“ im Kontakt › Umsatz ──────────────────────────────────────────────────────────────────────────────────
-describe('3.9 · „+ Rechnung“: Brutto aus dem Netto-Honorar, Gesellschaft über finanzFirmaFuer, Vorgabe „geplant“', () => {
-  const m = (x: Partial<Mandat> = {}) => ({ id: 'm-1', titel: 'Retainer', honorar: { betrag: 1000, basis: 'monat' as const, netto: true }, ustSatz: 19, gesellschaft: 'ug', ...x }) as Mandat;
-  it('Vorbelegung aus dem Mandat', async () => {
-    const { rechnungVorbelegung } = await import('@/lib/crm/umsatz');
-    expect(rechnungVorbelegung(m(), null)).toEqual({ titel: 'Retainer', betrag: '1190', mandatId: 'm-1', firmaId: 'ug', status: 'geplant', nurGrunddaten: false });
-    expect(rechnungVorbelegung(m({ honorar: { betrag: 1190, basis: 'monat', netto: false } }), null).betrag).toBe('1190');
-    expect(rechnungVorbelegung(m({ honorar: { betrag: 999.99, basis: 'monat', netto: true } }), null).betrag).toBe('1189.99');
-    expect(rechnungVorbelegung(m({ gesellschaft: 'kdv' }), null).firmaId).toBe('kdv');
-    // „offen“ → die operative Business-Gesellschaft (Vorgabe), ohne Vorgabe: wählen — nie still `kdc`.
-    expect(rechnungVorbelegung(m({ gesellschaft: 'offen' }), 'ug').firmaId).toBe('ug');
-    expect(rechnungVorbelegung(m({ gesellschaft: 'offen' }), null).firmaId).toBeNull();
-    expect(rechnungVorbelegung(undefined, null)).toMatchObject({ betrag: '', mandatId: null, firmaId: null, status: 'geplant' });
-    expect(rechnungVorbelegung(m({ gesellschaft: 'g-0f8fad5b-d9cb-469f-a165-70867728950e' as never }), 'ug')).toMatchObject({ firmaId: null, nurGrunddaten: true });
-  });
-  it('Eintrag: Netto + USt-Satz nur, solange der Betrag der gerechnete ist', async () => {
-    const { rechnungAusFormular } = await import('@/lib/crm/umsatz');
-    const f = { titel: 'Retainer', betrag: '1190', status: 'geplant' as const, mandatId: 'm-1', firmaId: 'ug' };
-    expect(rechnungAusFormular(f, m(), { id: 'r-1', kunde: 'Muster' })).toMatchObject({ betrag: 1190, netto: 1000, ustSatz: 19, status: 'geplant', firmaId: 'ug', mandatId: 'm-1' });
-    const vonHand = rechnungAusFormular({ ...f, betrag: '1500,5' }, m(), { id: 'r-2', kunde: 'Muster' });
-    expect(vonHand).toMatchObject({ betrag: 1500.5, ustSatz: 19 });
-    expect(vonHand).not.toHaveProperty('netto');
-    expect(rechnungAusFormular({ ...f, mandatId: null }, undefined, { id: 'r-3', kunde: 'Muster' })).not.toHaveProperty('ustSatz');
+// Seit Woche 2 · 3.13 (08.10.) gibt es EINEN Rechnungs-Anleger (`entwurfAnlegen` → /api/rechnung): Brutto/Netto rechnet der Server über
+// lib/finanzen/ust.ts, die Gesellschaft kommt aus dem Mandat bzw. der Vorgabe, Status „geplant“ — Wächter in tests/markttraktion-woche2b.test.ts.
+describe('3.9 · „+ Rechnung“ im Umsatz-Reiter geht über den einen Anleger', () => {
+  it('kein eigener Finanzplan-Upsert mehr im Umsatz-Reiter', () => {
+    expect(quelle('components/os/crm/kontakt/UmsatzReiter.tsx')).not.toMatch(/op: 'upsert'/);
+    expect(quelle('components/os/crm/kontakt/UmsatzReiter.tsx')).toContain('entwurfAnlegen');
   });
 });
 

@@ -28,7 +28,7 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
-import { personenSchranke, kampagnenHinweise, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
+import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
@@ -636,6 +636,9 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   // Nie abschneiden (28.09.): zu lange Listen → die ganze Änderung wird abgelehnt (413).
   const zuLang = crmGrenzen(roh);
   if (zuLang.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: zuLang };
+  // Kanal einer Kampagne wird werblich (08.10., Woche 2 · 5.4): rote Personen fallen heraus, mit Hinweis — VOR der Schranke.
+  const kanalWechsel = kanalWechselBereinigen(b, roh, personen ?? personenImLauf.getStore() ?? [], localDay());
+  roh = kanalWechsel.ops;
   // Gesperrte Personen (28.09. spät): neue Verweise auf Art.-18-Personen nie, Werbesperre nicht in Kampagne/Einladung.
   const abgelehnt = [...regelnAbgelehnt(b, roh), ...personenSchranke(b, roh, personen ?? personenImLauf.getStore() ?? [])];
   if (abgelehnt.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: [], abgelehnt };
@@ -667,7 +670,7 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   }
   // Folgen in derselben Sperre (28.09. spät, lib/crm/bestand-folgen.ts): gelöschter Deal → Firmen-Lead zurück auf
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
-  const hinweise = [...kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []), ...zurueck.map(n => `Die Firma „${n}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`)];
+  const hinweise = [...kanalWechsel.hinweise, ...kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []), ...zurueck.map(n => `Die Firma „${n}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`)];
   return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [], ...(hinweise.length ? { hinweise } : {}) };
 }
 
