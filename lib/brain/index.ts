@@ -23,7 +23,7 @@ import path from 'node:path';
 import { datenOrdner } from '@/lib/store/local-db';
 import { schluesselRing } from '@/lib/store/huelle.mjs';
 import { indexOrtWaehlen, ramDateisystem, type IndexOrt } from './index-ort';
-import { bestand, leseKopf, darfSehen, type Sicht, type Treffer } from '@/lib/zoe/vault';
+import { bestand, leseKopf, darfSehen, sichtAufloesen, type Sicht, type VaultSicht, type Treffer } from '@/lib/zoe/vault';
 import { abschnitte, verweise, ftsAnfrage } from './chunks';
 
 export interface IndexStand { notizen: number; chunks: number; vektoren: number; letzterLauf: string | null; dauerMs: number | null; datei: string }
@@ -245,7 +245,7 @@ interface Zeile { id: number; notiz_id: string; ueberschrift: string; kontext: s
  * (+) und Frisches (+) wie bisher; Notizen, auf die ein Treffer per Wikilink zeigt,
  * bekommen einen Nachbarschafts-Bonus (1 Hop).
  */
-export function indexSuche(frage: string, anzahl = 6, sicht: Sicht, bereich?: string): { treffer: IndexTreffer[]; durchsucht: number } {
+export function indexSuche(frage: string, anzahl = 6, sicht: VaultSicht, bereich?: string): { treffer: IndexTreffer[]; durchsucht: number } {
   const d = oeffneIndex();
   const durchsucht = Number((d.prepare('SELECT COUNT(*) n FROM notizen').get() as { n: number }).n);
   const anfrage = ftsAnfrage(frage);
@@ -297,7 +297,8 @@ export function indexSuche(frage: string, anzahl = 6, sicht: Sicht, bereich?: st
  * Abschnitten; Reciprocal Rank Fusion (k = 60) verbindet sie. Ohne Modell/Vektoren bleibt es
  * bei der Volltextsuche — dieselbe Form, derselbe Aufrufer (lib/zoe/vault.ts suche).
  */
-export async function hybridSuche(frage: string, anzahl = 6, sicht: Sicht, bereich?: string): Promise<{ treffer: IndexTreffer[]; durchsucht: number; hybrid: boolean }> {
+export async function hybridSuche(frage: string, anzahl = 6, sichtRoh: Sicht | VaultSicht, bereich?: string): Promise<{ treffer: IndexTreffer[]; durchsucht: number; hybrid: boolean }> {
+  const sicht = await sichtAufloesen(sichtRoh); // aus den Konten, vor dem Ranking (09.10.)
   const volltext = indexSuche(frage, Math.max(anzahl * 3, 20), sicht, bereich);
   let semantisch: { chunkId: number; notizId: string; aehnlichkeit: number }[] | null = null;
   try {

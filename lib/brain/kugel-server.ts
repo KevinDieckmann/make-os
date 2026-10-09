@@ -117,9 +117,10 @@ async function termine(person: string, heute: string): Promise<RohPunkt[]> {
 }
 
 async function notizen(person: string): Promise<RohPunkt[]> {
-  const { bestand, darfSehen } = await import('@/lib/zoe/vault');
+  const { bestand, darfSehen, sichtAufloesen } = await import('@/lib/zoe/vault');
   const b = await bestand();
-  const sichtbar = b.notizen.filter(n => darfSehen(n, { person }) && !GESUNDHEIT.test(`${n.id} ${n.titel} ${n.stichworte.join(' ')}`));
+  const sicht = await sichtAufloesen({ person }); // aus den Konten (09.10.)
+  const sichtbar = b.notizen.filter(n => darfSehen(n, sicht) && !GESUNDHEIT.test(`${n.id} ${n.titel} ${n.stichworte.join(' ')}`));
   const nachTitel = new Map(sichtbar.map(n => [n.titel.toLowerCase(), n.id]));
   return sichtbar.map(n => ({
     art: 'notiz' as const, kennung: n.id, titel: n.titel, datum: n.geaendert,

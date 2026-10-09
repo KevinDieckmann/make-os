@@ -150,10 +150,11 @@ describe('Willkommen: Malin setzt nur ihren eigenen Gruß zurück, der Inhaber j
 describe('Brain: Protokoll-Nachträge nie in eine fremde private Notiz (legeAn)', () => {
   it('gleicher Titel am selben Tag: Malins Nachtrag landet in einer eigenen Datei, Kevins private bleibt unberührt', async () => {
     const V = await import('@/lib/zoe/vault');
-    expect(V.anhaengenErlaubt({ scope: 'privat', owner: 'kevin' }, 'malin')).toBe(false);
-    expect(V.anhaengenErlaubt({ scope: 'intern', owner: 'kevin' }, 'malin')).toBe(true);
-    expect(V.anhaengenErlaubt({ scope: 'intern', owner: 'malin' }, 'malin', 'privat')).toBe(false); // Privates nie an Gemeinsames
-    expect(V.anhaengenErlaubt({ scope: 'privat', owner: 'malin' }, 'malin', 'privat')).toBe(true);
+    const malin = await V.sichtAufloesen({ person: 'malin' }); // Sicht aus den Konten (09.10.)
+    expect(V.anhaengenErlaubt({ scope: 'privat', owner: 'kevin' }, malin)).toBe(false);
+    expect(V.anhaengenErlaubt({ scope: 'intern', owner: 'kevin' }, malin)).toBe(true);
+    expect(V.anhaengenErlaubt({ scope: 'intern', owner: 'malin' }, malin, 'privat')).toBe(false); // Privates nie an Gemeinsames
+    expect(V.anhaengenErlaubt({ scope: 'privat', owner: 'malin' }, malin, 'privat')).toBe(true);
     await fs.mkdir(path.join(vault, '03. Protokolle', 'Protokolle'), { recursive: true });
     const k = await V.legeAn('Abendrunde', GEHEIM, { person: 'kevin', scope: 'privat' });
     expect(k.ok).toBe(true);

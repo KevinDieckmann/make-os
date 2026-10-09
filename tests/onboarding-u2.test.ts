@@ -248,8 +248,8 @@ describe('B3 Teil 2: Prüfungen — nur ja/nein und Zähler', () => {
     expect((await pruefeAlles('erste')).agenten).toEqual({ erfuellt: true, wert: '1 Head eingestellt' });
   });
 
-  // Die Sicht auf Regeln ist DIE Regel `darfSehen` (lib/zoe/vault.ts) — „intern“ sehen dort heute nur zwei feste Speichernamen
-  // (Plattform-Schuld, im Bericht genannt); die Test-Regel trägt darum „familie“.
+  // Die Sicht auf Regeln ist DIE Regel `darfSehen` (lib/zoe/vault.ts) — seit 09.10. aus den Konten (volle Mitglieder des Haushalts
+  // sehen „intern“); die Test-Regel trägt „familie“, damit sie auch für „nur Business“-Konten zählt.
   it('Brain: freigegebene Regel (von einem bekannten Konto) und die App-Brücke', async () => {
     expect((await pruefeAlles('erste')).brain).toEqual({ erfuellt: false, wert: '0 freigegebene Regeln · App-Brücke noch nicht gesetzt' });
     const ordner = path.join(VAULT, '00. Fundament', 'Regeln');

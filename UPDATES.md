@@ -4,6 +4,43 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Brain-/Vault-Sicht ohne feste Personen (PRIVATE_INHALTE_SUCHE.md Paket 5 „Vault- und Brain-Sicht“; nur lokal — Branch `brain-neutral`, Basis `agenten-nacht` c9c65695)
+
+Plattform-Regel „Nichts Persönliches fest einbauen“: Wer im Obsidian-Brain was sieht, wem eine Notiz ohne `owner` gehört, für wen eine Regel gilt
+und wer einen ZOE-Vorschlag sieht, kommt jetzt aus den KONTEN der Instanz — nicht mehr aus zwei festen Speichernamen. EINE Stelle in
+`lib/zoe/vault.ts`: `vaultPersonen()` (Eigentümer = Haupt-Inhaber, Haushalt = volle Mitglieder des Haushalts der Inhaber, also ohne „nur
+Business“) → `sichtAus`/`sichtAufloesen` → `darfSehen` (nimmt nur noch die aufgelöste Sicht, der Typ erzwingt es; Sicht vor dem Ranking wie bisher).
+
+**Was sich ändert (Klickweg zum Prüfen)**
+- **Für euch: nichts.** Gold-Vergleich gegen den alten Code (`tests/fixtures/vault-sicht-alt.ts`, wörtlich aus c9c65695) — mit euren Speichernamen
+  als Konten liefern Sicht, Ordner-Ausschluss, Regeln („gilt für“, Eigentümer ohne `owner`, Prompt-Block) und Brain-Inbox (Vertraulichkeit,
+  Eigentümer der angenommenen Notiz) genau dasselbe. Zusätzlich einmal lesend gegen den Mac-Vault gezählt (465 Notizen, 770 Namen): 0 Abweichungen.
+- **Wissen › Regeln:** „Gilt für“ zeigt Haushalt · <Personen des Haushalts aus den Konten> · ZOE (statt „beide“ heißt es „Haushalt“; gespeichert
+  wird weiter `beide` bzw. der Speichername). „Freigegeben von“, „von“ und „Speichern als“ zeigen den Vornamen aus dem Konto.
+- **Eine Kundeninstanz** (andere Speichernamen): die Inhaberin sieht ihre `intern`-Notizen (vorher: niemand außer zwei festen Namen), Notizen ohne
+  `owner` gehören ihr, die Ordner der zweiten Person bleiben zu, `privat` bleibt symmetrisch (D-B #92).
+- **Systemläufe ohne Person** (Takt, Konsolidierung, ZOE ohne Person) lesen mit der Sicht des Haushalts: `intern` ja, `privat` nie — auch nicht
+  das des Haupt-Inhabers. Die Grundnotizen `00_ZOE_AGENT`/`Vertraulichkeitsregeln` liest ZOE so für jede Person (vorher als feste Person).
+- **Ins Brain schreiben ohne Person** (`notiz_anlegen`/`notiz_ergaenzen` im Systemlauf): im Namen des Haupt-Inhabers, aber nie an ein privates
+  Protokoll angehängt (dann eigenes Protokoll mit Zusatz). Ohne Konto der Instanz wird nichts geschrieben.
+- **Brain-Routen** (`/api/brain/regeln`, `/api/brain/inbox`, `/api/zoe/wissen`): Person nur aus dem Tor, kein Rückfall von `personAus`.
+  Regeln: „gilt für“ nur Haushalt, ZOE oder eine Person des Haushalts (sonst 400); Regeln/Konstitution/Annehmen ohne Person → abgelehnt.
+- **Nächtliche Konsolidierung:** die Kennungen für `gilt_fuer`/`privat-<…>` stehen zur Laufzeit als `<daten quelle="personen">` im Prompt (vorher
+  fest im Text); Antworten des Modells werden gegen dieselbe Liste geprüft.
+- **Ordner-Regel** (`istPrivat(segment, ordnerRegel(…))`): ein Ordner, der eine ANDERE volle Person des Haushalts nennt (Speichername oder
+  Vorname), wird nicht geöffnet — außer „<andere> & <Eigentümer>“ / „<andere>_<Eigentümer>_Brain“ (dieselben Muster wie vorher). Namen ab vier
+  Zeichen als Wortteil (wie vorher), kürzere nur als ganzes Wort.
+
+**Rückweg:** Nichts an Daten geändert — kein Bestand, keine Notiz, kein Kopf wird umgeschrieben (`owner`, `gilt_fuer: beide`, `privat-<x>` bleiben
+Speichernamen). Der alte Stand liest alles wie bisher. Konten unlesbar → das Brain wirft (fail-closed), statt fremde Ordner zu öffnen.
+
+**Zu prüfen (Kevin)**
+- Gibt es in eurem Haushalt außer euch beiden ein weiteres VOLLES Konto (ohne „nur Business“)? Dann sieht es ab jetzt `intern`-Notizen, und Ordner
+  mit seinem Speichernamen/Vornamen werden nicht mehr geöffnet. Konten mit „nur Business“ und Konten anderer Haushalte: unverändert.
+
+Wächter: `tests/vault-sicht.test.ts` (Kundeninstanz, Gold-Vergleich Altbestand, Systemlauf, von Ende zu Ende), `tests/vault-grenze.test.ts`,
+`tests/privat-neutral.test.ts` (keine Namen in Vault/Brain-Dateien, Routen ohne `personAus`), `tests/neutral-rest.test.ts` (`OHNE_KENNUNG`).
+
 ## 09.10.2026 — Onboarding für Update 2: Prüfungen Teil 2, geführter Ablauf, Datenbasis, dauerhafte Ampel, Rechte-Filter (nur lokal — Branch `onboarding-u2`, Basis `agenten-nacht` a7d00b43)
 
 ONBOARDING_PLAN.md › A5 B3 Teil 2, B4, B8, B10, B11 — für das Update am 16.10. Nichts davon geht nach außen; nichts Persönliches im Code.

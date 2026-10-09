@@ -12,6 +12,8 @@ delete process.env.ANTHROPIC_API_KEY;
 const K = await import('../lib/brain/konsolidierung');
 const G = await import('../lib/zoe/gedaechtnis');
 const I = await import('../lib/brain/inbox');
+// Die Sicht der Inbox kommt seit 09.10. aus den Konten: die zwei Speichernamen als Inhaber + Mitglied eines Haushalts.
+await (await import('./fixtures/konten')).haushaltKonten(await import('@/lib/store/local-db'));
 afterAll(async () => { await fs.rm(wurzel, { recursive: true, force: true }); await fs.rm(daten, { recursive: true, force: true }); });
 
 describe('Konsolidierung', () => {

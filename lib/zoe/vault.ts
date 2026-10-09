@@ -1,18 +1,19 @@
-// ─── MAKE OS — Das Gehirn: Kevins Obsidian ──────────────────────────────────
-// 24.09., Kevin: „Obsidian soll Nummer eins Wissensbank sein."
+// ─── MAKE OS — Das Gehirn: der Obsidian-Vault der Instanz ───────────────────
+// 24.09.: „Obsidian soll Nummer eins Wissensbank sein."
 //
-// Nummer eins ist das kuratierte Brain im Obsidian-Vault „MAKE":
-// Desktop/MAKE/Make.Claude (auf dem Server: MAKE_VAULT_DIR). Dessen eigene
-// Regeln stehen in Make.Claude/AGENTS.md und 00. Fundament/Vertraulichkeits-
+// Nummer eins ist das kuratierte Brain im Obsidian-Vault der Instanz
+// (MAKE_VAULT_DIR; am Mac ohne Variable der gewohnte Ort). Dessen eigene
+// Regeln stehen in AGENTS.md und 00. Fundament/Vertraulichkeits-
 // regeln.md — diese Datei setzt sie um, wie sie die Cowork-Sitzung vom 06.09.
 // schon einmal gebaut hatte (lib/store/vault.ts in der alten Kopie):
 //   • LESEN nur das Brain, ohne _Archiv, _Vorlagen, Kopien und Exporte —
-//     und ohne das, was Kevin in Obsidian selbst ausgeblendet hat
-//     (.obsidian/app.json › userIgnoreFilters).
-//   • SEHEN nach `scope` (AGENTS.md §3): `privat` nur für die Eigentümerin/den
-//     Eigentümer (`owner`, ohne Angabe: kevin) — seit 29.09. SYMMETRISCH, auch
-//     Kevin sieht Malins private Notizen nicht mehr (Paket D-B #92) · sonst
-//     kevin/malin alles · andere nur familie/oeffentlich · Agenten ohne Person nie `privat`.
+//     und ohne das, was in Obsidian selbst ausgeblendet ist
+//     (.obsidian/app.json › userIgnoreFilters) — und ohne die eigenen Ordner der
+//     anderen Personen des Haushalts (`istPrivat`, Ordner-Regel aus den Konten).
+//   • SEHEN nach `scope` (AGENTS.md §3), EINE Stelle `darfSehen` (09.10.: Personen aus den Konten, nie feste Namen):
+//     `privat` nur für die Eigentümerin/den Eigentümer (`owner`, ohne Angabe: der Haupt-Inhaber) — seit 29.09.
+//     SYMMETRISCH, auch Inhaber sehen fremde private Notizen nie (Paket D-B #92) · sonst volle Mitglieder des Haushalts
+//     der Inhaber alles · andere nur familie/oeffentlich · Agenten/Systemläufe nie `privat` (ohne Person: Sicht des Haushalts).
 //   • SCHREIBEN (AGENTS.md §4.2): anhängen nur an Offene_Fragen_Brain,
 //     Taskmanagement_Brain, Zoe_Log; neu anlegen nur Protokolle.
 //     Überschreiben oder Löschen gibt es nicht.
@@ -28,6 +29,8 @@ import { homedir } from 'node:os';
 import { existsSync, readdirSync } from 'node:fs';
 import { KERN_EINHEITEN, BEREICH_JE_EINHEIT } from '@/lib/einheiten';
 import { createHash } from 'node:crypto';
+import { ladeKonten } from '@/lib/zugang/konten';
+import { hauptInhaber, kontenImHaushaltDerInhaber, type InhaberStand } from '@/lib/zugang/inhaber';
 
 const HEIM = homedir();
 const ausHeim = (p: string) => p.replace(/^~(?=$|\/)/, HEIM);
@@ -83,16 +86,79 @@ const TECHNIK = new Set(['node_modules', '.git', '.next', '_build', 'dist', '.ob
 const AUSGESCHLOSSEN = ['_Archiv', '_Vorlagen', '_to_delete', '_inbox', '_App', 'MakeOS-Blueprint', 'OneDrive_Export', 'KEMA_Brain Kopie'];
 export const istAusgeschlossen = (name: string) => TECHNIK.has(name) || AUSGESCHLOSSEN.some(a => name.startsWith(a));
 
+// ── Personen der Instanz (09.10., Plattform-Regel „nichts Persönliches fest einbauen“) ─────────────────────────────
+// Wer im Vault was sieht, hängt an den KONTEN der Instanz — nie an festen Namen. EINE Stelle für Sicht und Ordner-Regel:
+//   • Eigentümer des Vaults = der Haupt-Inhaber (lib/zugang/inhaber.ts `hauptInhaber`): Rückfall für Notizen ohne `owner`.
+//   • Haushalt = die vollen Mitglieder des Haushalts der Inhaber (Konten im Haushalt, ohne „nur Business“ — wie die privaten
+//     Finanzen und der Nordstern); der Haupt-Inhaber gehört immer dazu.
+// Altbestand bleibt gültig: `owner`, `gilt_fuer` und `privat-<x>` tragen Speichernamen (Kennungen) — nichts wird umgeschrieben.
+
+const SPEICHERNAME = /^[a-z0-9-]{1,40}$/;
+/** Ist das ein gültiger Speichername (Kennung eines Kontos)? */
+export const istSpeichername = (p: unknown): p is string => typeof p === 'string' && SPEICHERNAME.test(p);
+
+/** Was die Vault-Sicht aus den Konten braucht — rein, aus `vaultPersonenAus`. */
+export interface VaultPersonen {
+  /** Speichername des Haupt-Inhabers (Eigentümer des Vaults) — oder null ohne Konten. */
+  eigentuemer: string | null;
+  /** Speichernamen der vollen Haushaltsmitglieder (Haupt-Inhaber zuerst, dann Reihenfolge der Konten). */
+  haushalt: string[];
+  /** Anzeigename (Vorname aus dem Konto) je Speichername des Haushalts. */
+  namen: Record<string, string>;
+}
+
+const vorname = (roh: unknown): string => String(roh ?? '').replace(/[\u0000-\u001f<>{}`]/g, ' ').trim().split(/\s+/)[0]?.slice(0, 40) ?? '';
+
+/** Die Personen der Vault-Sicht aus einem Konten-Stand (rein). */
+export function vaultPersonenAus(st: InhaberStand): VaultPersonen {
+  const haupt = hauptInhaber(st);
+  const voll = kontenImHaushaltDerInhaber(st).filter(k => k.speicher === haupt?.speicher || k.finanzRecht !== 'business');
+  const reihe = haupt ? [haupt, ...voll.filter(k => k.speicher !== haupt.speicher)] : voll;
+  return {
+    eigentuemer: haupt?.speicher ?? null,
+    haushalt: reihe.map(k => k.speicher),
+    namen: Object.fromEntries(reihe.map(k => [k.speicher, vorname(k.name) || k.speicher])),
+  };
+}
+
+/** Die Personen der Vault-Sicht aus den Konten der Instanz. Unlesbare Konten werfen (fail-closed — nie „alle“). */
+export async function vaultPersonen(): Promise<VaultPersonen> {
+  return vaultPersonenAus(await ladeKonten());
+}
+
 /**
- * Privat im Sinne von Kevins Entscheidung vom 06.09.: Malins eigene Ordner
- * werden gar nicht erst geöffnet. Ausschluss, nicht Erlaubnis — nur das
- * gemeinsame Beziehungs-Brain kommt herein.
+ * Ordner, die gar nicht erst geöffnet werden (06.09.: die eigenen Ordner der zweiten Person bleiben draußen — Ausschluss, nicht
+ * Erlaubnis; nur das gemeinsame Brain kommt herein). Seit 09.10. aus den Konten: ein Ordner, der eine ANDERE Person des
+ * Haushalts nennt (Speichername oder Vorname), ist ihrer — außer er nennt sie zusammen mit dem Eigentümer des Vaults in der
+ * Form „<andere> & <Eigentümer>“ bzw. „<andere>_<Eigentümer>_Brain“ (dieselben zwei Muster wie bisher). Namen ab vier Zeichen
+ * gelten als Wortteil (wie bisher), kürzere nur als ganzes Wort (sonst fiele „Projekte“ unter „jo“).
  */
-const GEMEINSAM = [/malin[_\s]*(&|und)?[_\s]*kevin[_\s]*brain/i, /malin\s*(&|und)\s*kevin/i];
-export function istPrivat(segment: string): boolean {
-  const s = segment.toLowerCase();
-  if (!/malin/.test(s)) return false;
-  return !GEMEINSAM.some(r => r.test(segment));
+export interface OrdnerRegel { eigentuemer: string[]; andere: string[] }
+
+const marke = (t: string) => t.toLowerCase().normalize('NFC');
+const ALS_MARKE = /^[a-z0-9äöüß][a-z0-9äöüß-]+$/;
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Die Ordner-Regel aus den Personen (rein). Ohne Eigentümer: keine Regel. */
+export function ordnerRegel(p: VaultPersonen): OrdnerRegel {
+  const marken = (sp: string) => Array.from(new Set([marke(sp), marke(p.namen[sp] ?? '')].filter(m => ALS_MARKE.test(m))));
+  if (!p.eigentuemer) return { eigentuemer: [], andere: [] };
+  const eigen = marken(p.eigentuemer);
+  return { eigentuemer: eigen, andere: Array.from(new Set(p.haushalt.filter(sp => sp !== p.eigentuemer).flatMap(marken))).filter(m => !eigen.includes(m)) };
+}
+
+const nennt = (klein: string, m: string) => (m.length >= 4 ? klein.includes(m) : new RegExp(`(^|[^a-z0-9äöüß])${esc(m)}([^a-z0-9äöüß]|$)`).test(klein));
+
+/** Gehört der Ordner (bzw. die Datei) einer anderen Person des Haushalts? Dann wird er nicht geöffnet. Rein. */
+export function istPrivat(segment: string, regel: OrdnerRegel): boolean {
+  const klein = marke(segment);
+  return regel.andere.some(a => {
+    if (!nennt(klein, a)) return false;
+    const roh = segment.normalize('NFC');
+    const gemeinsam = regel.eigentuemer.some(e => new RegExp(`${esc(a)}[_\\s]*(&|und)?[_\\s]*${esc(e)}[_\\s]*brain`, 'i').test(roh)
+      || new RegExp(`${esc(a)}\\s*(&|und)\\s*${esc(e)}`, 'i').test(roh));
+    return !gemeinsam;
+  });
 }
 
 // ── Kopf einer Notiz ────────────────────────────────────────────────────────
@@ -149,17 +215,43 @@ export function obersterBlock(rumpf: string): string {
 }
 
 // ── Wer darf was sehen (AGENTS.md §3, Vertraulichkeitsregeln §1 und §4) ─────
+// EINE Stelle. Die Sicht kommt roh herein (`Sicht`: Person + ob ein Agent/Hintergrundlauf fragt) und wird VOR jeder Prüfung
+// aus den Konten aufgelöst (`sichtAus`/`sichtAufloesen` → `VaultSicht`); `darfSehen` selbst ist rein und nimmt nur die
+// aufgelöste Sicht — so kann kein Lesepfad die Konten „vergessen“. Gilt vor dem Ranking (Suche, Index, Kugel, Regeln, Inbox).
 
+/** Wer fragt: Speichername der Person; `agent` = Hintergrundlauf/Agent (sieht nie `privat`). */
 export interface Sicht { person: string; agent?: boolean }
-/** Ohne Person (Hintergrundlauf eines Agenten): nie Privates. */
-export const AGENT: Sicht = { person: 'kevin', agent: true };
+/** Aus den Konten aufgelöst: gehört die Person zum Haushalt (bzw. Systemlauf ohne Person), wem gehört der Vault. */
+export interface VaultSicht extends Sicht { haushalt: boolean; eigentuemer: string | null }
+/** Ohne Person (Hintergrundlauf eines Agenten): Sicht des Haushalts — `intern` ja, nie Privates. */
+export const AGENT: Sicht = { person: '', agent: true };
 
-export function darfSehen(n: { scope?: string; owner?: string }, s: Sicht): boolean {
+/** Schon aufgelöst? */
+export const istAufgeloest = (s: Sicht | VaultSicht): s is VaultSicht => typeof (s as VaultSicht).haushalt === 'boolean' && 'eigentuemer' in s;
+
+/**
+ * Die Sicht aus den Personen der Instanz auflösen (rein). Ein Speichername → Haushalt nach den Konten; ohne Person (`''`)
+ * mit `agent` = Systemlauf (`AGENT`) → Sicht des Haushalts; eine ungültige Angabe → keine Person, kein Haushalt (fail-closed).
+ */
+export function sichtAus(s: Sicht, p: VaultPersonen): VaultSicht {
+  const gueltig = istSpeichername(s.person);
+  const person = gueltig ? s.person : '';
+  const haushalt = gueltig ? p.haushalt.includes(person) : !!s.agent && s.person === '';
+  return { person, ...(s.agent ? { agent: true } : {}), haushalt, eigentuemer: p.eigentuemer };
+}
+
+/** Wie `sichtAus`, lädt die Konten selbst (eine schon aufgelöste Sicht bleibt, wie sie ist). */
+export async function sichtAufloesen(s: Sicht | VaultSicht): Promise<VaultSicht> {
+  return istAufgeloest(s) ? s : sichtAus(s, await vaultPersonen());
+}
+
+/** Darf diese (aufgelöste) Sicht die Notiz sehen? Rein. */
+export function darfSehen(n: { scope?: string; owner?: string }, s: VaultSicht): boolean {
   const scope = n.scope || 'intern';           // ohne Kennzeichnung mindestens intern
   if (s.agent && scope === 'privat') return false;
-  // Symmetrisch (29.09., #92): Privates sieht NUR, wem es gehört — auch Kevin nicht Malins. Ohne owner: Kevins Vault.
-  if (scope === 'privat') return (n.owner || 'kevin') === s.person;
-  if (s.person === 'kevin' || s.person === 'malin') return true;
+  // Symmetrisch (29.09., #92): Privates sieht NUR, wem es gehört — auch kein Inhaber fremdes. Ohne owner: der Vault-Eigentümer.
+  if (scope === 'privat') return !!s.person && (n.owner || s.eigentuemer) === s.person;
+  if (s.haushalt) return true;
   return scope === 'familie' || scope === 'oeffentlich';
 }
 
@@ -201,14 +293,14 @@ export interface Bestand { notizen: Notiz[]; gelesen: number; dubletten: number;
 /**
  * Die Dateiliste wird fünf Minuten gehalten, der Inhalt bei jeder Suche frisch
  * gelesen. Was ZOE selbst schreibt, leert den Speicher sofort; eine Notiz,
- * die Kevin gerade in Obsidian anlegt, ist bis zu fünf Minuten unsichtbar.
+ * die gerade in Obsidian entsteht, ist bis zu fünf Minuten unsichtbar.
  */
 let zwischenspeicher: { bestand: Bestand; zeit: number } | null = null;
 /** Nach eigenen Schreibungen (Regeln, Inbox): Bestand beim nächsten Lesen neu einlesen. */
 export function bestandVergessen(): void { zwischenspeicher = null; }
 const FRISCH_MS = 5 * 60_000;
 
-/** Was Kevin in Obsidian unter „Ausgeschlossene Dateien" eingetragen hat. */
+/** Was in Obsidian unter „Ausgeschlossene Dateien" eingetragen ist. */
 async function obsidianFilter(vault: string): Promise<string[]> {
   try {
     const app = JSON.parse(await readFile(join(vault, '.obsidian', 'app.json'), 'utf8')) as { userIgnoreFilters?: unknown };
@@ -216,7 +308,7 @@ async function obsidianFilter(vault: string): Promise<string[]> {
   } catch { return []; }
 }
 
-async function sammle(w: Wurzel, treffer: Omit<Notiz, 'bereich' | 'stichworte' | 'ueberschriften' | 'verweise'>[], zaehler: { privat: number }): Promise<void> {
+async function sammle(w: Wurzel, treffer: Omit<Notiz, 'bereich' | 'stichworte' | 'ueberschriften' | 'verweise'>[], zaehler: { privat: number }, regel: OrdnerRegel): Promise<void> {
   const filter = await obsidianFilter(w.vault);
   const blendetAus = (rel: string) => filter.some(f => rel === f || rel.startsWith(f) || `${rel}/`.startsWith(f));
   async function lauf(ordner: string, tiefe: number): Promise<void> {
@@ -226,7 +318,7 @@ async function sammle(w: Wurzel, treffer: Omit<Notiz, 'bereich' | 'stichworte' |
     for (const e of eintraege) {
       if (e.name.startsWith('.')) continue;
       if (istAusgeschlossen(e.name)) continue;
-      if (istPrivat(e.name)) { zaehler.privat++; continue; }
+      if (istPrivat(e.name, regel)) { zaehler.privat++; continue; }
       const voll = join(ordner, e.name);
       const rel = relative(w.vault, voll).split(sep).join('/');
       if (blendetAus(e.isDirectory() ? `${rel}/` : rel)) continue;
@@ -250,7 +342,9 @@ export async function bestand(frisch = false): Promise<Bestand> {
   const start = Date.now();
   const roh: Parameters<typeof sammle>[1] = [];
   const zaehler = { privat: 0 };
-  for (const w of WURZELN) await sammle(w, roh, zaehler);
+  // Ordner-Regel aus den Konten — unlesbare Konten werfen hier (fail-closed: lieber keine Notizen als fremde Ordner).
+  const regel = ordnerRegel(await vaultPersonen());
+  for (const w of WURZELN) await sammle(w, roh, zaehler, regel);
 
   const gesehen = new Set<string>();
   const notizen: Notiz[] = [];
@@ -283,7 +377,7 @@ export function obsidianLink(n: Pick<Notiz, 'id' | 'wurzel'>): string | null {
 }
 
 /** Eine Notiz per Kennung oder Wikilink-Namen finden — nur, was die Sicht erlaubt. */
-function finde(b: Bestand, id: string, sicht: Sicht): Notiz | undefined {
+function finde(b: Bestand, id: string, sicht: VaultSicht): Notiz | undefined {
   const sauberId = id.replace(/^\[\[|\]\]$/g, '').split('|')[0].trim();
   const klein = sauberId.toLowerCase();
   const passt = (n: Notiz) => n.id === sauberId || n.id.toLowerCase().endsWith(klein) || n.titel.toLowerCase() === klein.replace(/\.md$/, '');
@@ -303,20 +397,23 @@ export interface Treffer {
  * Titel wiegt am schwersten, dann Überschrift, dann Häufigkeit im Text.
  * Das Brain führt (+8), Frisches schlägt Altes sanft.
  */
-export async function suche(frage: string, anzahl = 6, sicht: Sicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+export async function suche(frage: string, anzahl = 6, sicht: Sicht | VaultSicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+  // Die Sicht wird EINMAL aus den Konten aufgelöst — vor dem Ranking (09.10.). Unlesbare Konten werfen (fail-closed).
+  const s = await sichtAufloesen(sicht);
   // Brain-Index (27.09.): steht der FTS5-Index bereit, sucht er — über Abschnitte, mit Sicht vor dem Ranking.
   // Sonst (erster Start, Index veraltet, Fehler) die bisherige Volltextsuche über alle Dateien.
   if (process.env.MAKE_OS_BRAIN_INDEX !== 'aus') {
     try {
       const ix = await import('@/lib/brain/index');
-      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, sicht, bereich); return { treffer: r.treffer, durchsucht: r.durchsucht }; }
+      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, s, bereich); return { treffer: r.treffer, durchsucht: r.durchsucht }; }
     } catch { /* Rückfall unten */ }
   }
-  return sucheOhneIndex(frage, anzahl, sicht, bereich);
+  return sucheOhneIndex(frage, anzahl, s, bereich);
 }
 
 /** Die Suche ohne Index — liest jede sichtbare Notiz (Rückfall und Vergleichsmaßstab). */
-export async function sucheOhneIndex(frage: string, anzahl = 6, sicht: Sicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+export async function sucheOhneIndex(frage: string, anzahl = 6, sichtRoh: Sicht | VaultSicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+  const sicht = await sichtAufloesen(sichtRoh);
   // Ohne Unicode-Flag (das Projekt übersetzt nach ES5): Trennzeichen sind alles
   // außer Buchstaben, Ziffern und deutschen Umlauten.
   const begriffe = frage.toLowerCase().split(/[^a-z0-9äöüß]+/).filter(w => w.length > 2).slice(0, 8);
@@ -341,7 +438,7 @@ export async function sucheOhneIndex(frage: string, anzahl = 6, sicht: Sicht = A
       if (n2) punkte += Math.min(6, n2);
     }
     if (!punkte) continue;
-    if (n.wurzel === 'make') punkte += 8;      // Obsidian ist Nummer eins (Kevin, 24.09.)
+    if (n.wurzel === 'make') punkte += 8;      // Obsidian ist Nummer eins (24.09.)
     const tage = (Date.now() - Date.parse(n.geaendert)) / 864e5;
     if (tage < 2) punkte += 6; else if (tage < 14) punkte += 3; else if (tage > 120) punkte -= 2;
     roh.push({ id: n.id, titel: n.titel, wurzel: n.wurzel, bereich: n.bereich, scope: n.scope, stand: n.stand, punkte, ueberschriften: n.ueberschriften.slice(0, 5), geaendert: n.geaendert, ausschnitt: '', text });
@@ -359,7 +456,8 @@ export async function sucheOhneIndex(frage: string, anzahl = 6, sicht: Sicht = A
 }
 
 /** Die zuletzt geänderten Notizen, die die Sicht erlaubt — für die Wissen-Seite ohne Suchbegriff. */
-export async function neueste(sicht: Sicht, anzahl = 30, bereich?: string): Promise<Omit<Notiz, 'pfad'>[]> {
+export async function neueste(sichtRoh: Sicht | VaultSicht, anzahl = 30, bereich?: string): Promise<Omit<Notiz, 'pfad'>[]> {
+  const sicht = await sichtAufloesen(sichtRoh);
   const b = await bestand();
   return b.notizen
     .filter(n => darfSehen(n, sicht) && (!bereich || n.bereich === bereich))
@@ -389,7 +487,8 @@ export function gekuerzt(rumpf: string, max: number, waechstNachUnten: boolean):
 
 /** Eine Notiz ganz lesen. Der Pfad wird gegen den Bestand geprüft — von außen
  *  gereichte Pfade führen so nie an Ausschlüssen oder der Sicht vorbei. */
-export async function notiz(id: string, maxZeichen = 12_000, sicht: Sicht = AGENT): Promise<NotizVoll> {
+export async function notiz(id: string, maxZeichen = 12_000, sichtRoh: Sicht | VaultSicht = AGENT): Promise<NotizVoll> {
+  const sicht = await sichtAufloesen(sichtRoh);
   const b = await bestand();
   const n = finde(b, id, sicht);
   if (!n) return { ok: false, fehler: `Keine Notiz „${id}" — oder nicht freigegeben.` };
@@ -413,14 +512,18 @@ export async function notiz(id: string, maxZeichen = 12_000, sicht: Sicht = AGEN
 // regeln, weil sie für jede Antwort gelten. Eine Minute zwischengespeichert.
 
 const anweisungSpeicher = new Map<string, { zeit: number; text: string }>();
-/** Identität, Vertraulichkeitsregeln — und seit 27.09. Konstitution + aktive Regeln für diese Person (lib/brain/regeln.ts). */
-export async function brainAnweisung(person = 'kevin'): Promise<string> {
-  const p = /^[a-z0-9-]{1,40}$/.test(person) ? person : 'kevin';
+/**
+ * Identität, Vertraulichkeitsregeln — und seit 27.09. Konstitution + aktive Regeln für diese Person (lib/brain/regeln.ts).
+ * Die zwei Grundnotizen gelten für jede Person der Instanz: gelesen mit der Sicht des Haushalts (`AGENT` — `intern` ja, nie
+ * `privat`; 09.10., vorher als feste Person). Ohne gültige Person nur die Regeln für alle.
+ */
+export async function brainAnweisung(person: string): Promise<string> {
+  const p = istSpeichername(person) ? person : '';
   const alt = anweisungSpeicher.get(p);
   if (alt && Date.now() - alt.zeit < 60_000) return alt.text;
   const teile: string[] = [];
   for (const [name, max] of [['00_ZOE_AGENT', 7000], ['Vertraulichkeitsregeln', 4500]] as const) {
-    const d = await notiz(name, max, { person: 'kevin' });
+    const d = await notiz(name, max, AGENT);
     if (d.ok && d.wurzel === 'make' && d.text) teile.push(`── ${name} (${d.pfad}${d.stand ? `, Stand ${d.stand}` : ''}) ──\n${d.text.trim()}`);
   }
   try { const { regelnFuerPrompt } = await import('@/lib/brain/regeln'); const r = await regelnFuerPrompt(p); if (r) teile.push(r); } catch { /* ohne Regeln weiter */ }
@@ -430,7 +533,7 @@ export async function brainAnweisung(person = 'kevin'): Promise<string> {
 }
 
 // ── Schreiben (AGENTS.md §4.2) ──────────────────────────────────────────────
-// Kevin am 06.09.: „er soll das Gehirn selber nutzen, bearbeiten und auch
+// 06.09.: „er soll das Gehirn selber nutzen, bearbeiten und auch
 // beschreiben." Nach den Regeln des Vaults: anhängen an drei Notizen, neue
 // Notizen nur als Protokoll. Ein Agent, der eine gewachsene Notiz ersetzen
 // kann, ist ein Agent, der sie verlieren kann.
@@ -442,15 +545,24 @@ const zwei = (n: number) => String(n).padStart(2, '0');
 const heuteISO = () => { const d = new Date(); return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`; };
 const heuteDE = () => { const d = new Date(); return `${zwei(d.getDate())}.${zwei(d.getMonth() + 1)}.${d.getFullYear()}`; };
 const sauber = (name: string) => name.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100);
-const wer = (p?: string) => (p && /^[a-z0-9-]+$/.test(p) ? p : 'kevin');
 
 /**
- * Darf an ein vorhandenes Protokoll (Kopf `k`) angehängt werden? Nur wenn die Person es sehen darf (`darfSehen`) und — bei
- * einem privaten Nachtrag — nur an ihr eigenes privates Protokoll (08.10., Sicht-Prüfung Malin). Rein.
+ * Für wen geschrieben wird: die Person — ohne Person (Systemlauf) der Vault-Eigentümer, dann aber mit Agenten-Sicht
+ * (nie an Privates anhängen). Ohne Konten (kein Eigentümer) und ohne Person: niemand → nicht schreiben.
  */
-export function anhaengenErlaubt(k: { scope?: string; owner?: string }, person: string, scope?: 'intern' | 'privat'): boolean {
-  if (!darfSehen(k, { person })) return false;
-  if (scope === 'privat') return (k.scope || 'intern') === 'privat' && (k.owner || 'kevin') === person;
+async function schreibSicht(person?: string): Promise<VaultSicht | null> {
+  const p = await vaultPersonen();
+  if (istSpeichername(person)) return sichtAus({ person }, p);
+  return p.eigentuemer ? sichtAus({ person: p.eigentuemer, agent: true }, p) : null;
+}
+
+/**
+ * Darf an ein vorhandenes Protokoll (Kopf `k`) angehängt werden? Nur wenn die Sicht es sehen darf (`darfSehen`) und — bei
+ * einem privaten Nachtrag — nur an das eigene private Protokoll (08.10., Sicht-Prüfung). Rein.
+ */
+export function anhaengenErlaubt(k: { scope?: string; owner?: string }, s: VaultSicht, scope?: 'intern' | 'privat'): boolean {
+  if (!darfSehen(k, s)) return false;
+  if (scope === 'privat') return (k.scope || 'intern') === 'privat' && !!s.person && (k.owner || s.eigentuemer) === s.person;
   return true;
 }
 
@@ -464,9 +576,11 @@ export async function legeAn(titel: string, text: string, opt: { person?: string
   const name = sauber(titel);
   if (!name) return { ok: false, fehler: 'Kein Titel.' };
   if (!text.trim()) return { ok: false, fehler: 'Kein Inhalt.' };
-  const person = wer(opt.person);
   let ziel = join(BRAIN, PROTOKOLL_ORDNER, `${heuteISO()} ${name}.md`);
   try {
+    const sicht = await schreibSicht(opt.person);
+    if (!sicht) return { ok: false, fehler: 'Keine Person — ohne Konto der Instanz wird nichts ins Brain geschrieben.' };
+    const person = sicht.person;
     await access(BRAIN);
     await mkdir(dirname(ziel), { recursive: true });
     // Sicht-Prüfung 08.10.: angehängt wird nur an ein Protokoll, das die Person sehen darf — und Privates nur an das eigene
@@ -478,7 +592,7 @@ export async function legeAn(titel: string, text: string, opt: { person?: string
       let alt: string | null = null;
       try { alt = await readFile(ziel, 'utf8'); } catch { /* gibt es nicht — hier wird neu angelegt */ }
       if (alt === null) { da = false; break; }
-      if (anhaengenErlaubt(leseKopf(alt).kopf, person, opt.scope)) { da = true; break; }
+      if (anhaengenErlaubt(leseKopf(alt).kopf, sicht, opt.scope)) { da = true; break; }
       if (n === 9) return { ok: false, fehler: 'Protokoll mit diesem Titel gibt es heute schon zu oft — bitte anderen Titel wählen.' };
     }
     if (da) await appendFile(ziel, `\n\n## Nachtrag ${heuteDE()}\n\n${text.trim()}\n`, 'utf8');
@@ -497,14 +611,16 @@ export async function legeAn(titel: string, text: string, opt: { person?: string
 export async function haengeAn(id: string, text: string, opt: { titel?: string; person?: string } = {}):
   Promise<{ ok: boolean; pfad?: string; fehler?: string }> {
   if (!text.trim()) return { ok: false, fehler: 'Kein Inhalt.' };
+  const sicht = await schreibSicht(opt.person);
+  if (!sicht) return { ok: false, fehler: 'Keine Person — ohne Konto der Instanz wird nichts ins Brain geschrieben.' };
   const b = await bestand();
-  const n = finde(b, id, { person: wer(opt.person) });
+  const n = finde(b, id, sicht);
   if (!n || n.wurzel !== 'make' || !(SCHREIBBAR as readonly string[]).includes(n.titel)) {
     return { ok: false, fehler: `Anhängen geht nur an ${SCHREIBBAR.join(', ')} (Regel aus AGENTS.md §4). Für Neues ein Protokoll anlegen.` };
   }
   const titel = sauber(opt.titel || text.trim().split('\n')[0].replace(/^[#>*\-\s]+/, '')).slice(0, 80) || 'Eintrag';
   try {
-    await appendFile(n.pfad, `\n\n## 🔴 UPDATE ${heuteDE()} · ZOE für ${wer(opt.person)} — ${titel}\n\n${text.trim()}\n`, 'utf8');
+    await appendFile(n.pfad, `\n\n## 🔴 UPDATE ${heuteDE()} · ZOE für ${sicht.person} — ${titel}\n\n${text.trim()}\n`, 'utf8');
     zwischenspeicher = null;
     return { ok: true, pfad: n.id };
   } catch (err) {

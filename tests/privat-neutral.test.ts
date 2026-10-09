@@ -78,6 +78,19 @@ describe('Quelltext: keine Abfrage einer festen Person', () => {
   it('ZOE-Morgen/-Abend und Empfang nehmen nie den Rückfall von `personAus`', () => {
     for (const d of ['app/api/zoe/morgen/route.ts', 'app/api/zoe/empfang/route.ts']) expect(lies(d), d).not.toMatch(/personAus\(/);
   });
+
+  // Vault- und Brain-Sicht (09.10., PRIVATE_INHALTE_SUCHE.md Paket 5): wer was sieht, wem eine Notiz ohne `owner` gehört, für wen
+  // eine Regel gilt und wer einen Vorschlag sieht, kommt aus den Konten — kein Name, auch nicht in Kommentaren, Prompts oder als
+  // Ordner-Muster. Verhalten (Kundeninstanz, Gold-Vergleich Altbestand, Systemlauf): tests/vault-sicht.test.ts.
+  it('Vault, Brain-Inbox, Regeln, Konsolidierung und ihre Routen/Oberflächen nennen keine Person', () => {
+    const DATEIEN = ['lib/zoe/vault.ts', 'lib/brain/inbox.ts', 'lib/brain/regeln.ts', 'lib/brain/konsolidierung.ts', 'lib/brain/kugel-server.ts',
+      'components/os/wissen/Regeln.tsx', 'components/os/wissen/Inbox.tsx', 'app/api/brain/regeln/route.ts', 'app/api/brain/inbox/route.ts', 'app/api/zoe/wissen/route.ts'];
+    for (const d of DATEIEN) expect(lies(d), d).not.toMatch(/kevin|malin/i);
+    // Die Brain-Routen nehmen die Person aus dem Tor, nie aus dem Rückfall von `personAus`.
+    for (const d of ['app/api/brain/regeln/route.ts', 'app/api/brain/inbox/route.ts', 'app/api/zoe/wissen/route.ts']) expect(lies(d), d).not.toMatch(/personAus\(/);
+    // `darfSehen` prüft nur eine aus den Konten aufgelöste Sicht (der Typ erzwingt es) — es gibt keine zweite Sicht-Regel daneben.
+    expect(lies('lib/zoe/vault.ts')).toMatch(/export function darfSehen\(n: \{ scope\?: string; owner\?: string \}, s: VaultSicht\)/);
+  });
 });
 
 describe('Oberfläche: ein Speichern sendet genau einmal', () => {
