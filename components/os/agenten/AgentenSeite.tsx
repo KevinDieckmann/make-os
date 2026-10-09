@@ -168,6 +168,8 @@ export function AgentenSeite() {
   const handy = useHandy();
   const [flaecheRef, platz, linkerRand] = useBreite();
   const lage = lageAus(platz, breit);
+  // Sichtbar erst mit gemessener Breite; ohne ResizeObserver (alte Browser, Testumgebung) sofort — auf dem Server nie (sonst blitzt es am Handy).
+  const sichtbar = (platz ?? 0) > 0 || (typeof window !== 'undefined' && typeof ResizeObserver === 'undefined');
   const form: Form = handy ? 'handy' : lage.form;
 
   const agenten = useAbruf('agenten', ladeAgenten, 60_000);
@@ -282,7 +284,9 @@ export function AgentenSeite() {
         {form === 'handy' && offenRisikoarm > 0 && handyReiter !== 'laeuft' && (
           <Hinweis art="info" aktion={<Knopf leise onClick={() => setHandyReiter('laeuft')}>Ansehen</Knopf>}>{offenRisikoarm} risikoarme Freigabe{offenRisikoarm === 1 ? '' : 'n'} — mit dem Daumen wischen.</Hinweis>
         )}
-        <div ref={flaecheRef} style={{ minWidth: 0, ['--agenten-x' as string]: `${linkerRand}px` }}>
+        {/* Erst zeigen, wenn die Breite gemessen ist (Sichtprüfung 09.10.): beim ersten Zeichnen ist `useHandy` noch false und die Fläche 0 px —
+            sonst blitzt am Handy kurz die zusammengedrückte Rechner-Ansicht auf. Unsichtbar heißt nicht weg: gemessen wird weiter. */}
+        <div ref={flaecheRef} data-gemessen={sichtbar ? '' : undefined} style={{ minWidth: 0, ['--agenten-x' as string]: `${linkerRand}px`, visibility: sichtbar ? undefined : 'hidden' }}>
           <AgentenFlaeche handyReiter={handyReiter} setHandyReiter={setHandyReiter} />
         </div>
       </Seite>

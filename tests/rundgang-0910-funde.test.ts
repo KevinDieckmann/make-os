@@ -70,4 +70,7 @@ describe('Rundgang 09.10. — Funde', () => {
     expect(lauf).not.toMatch(/`<daten>\\n\$\{JSON\.stringify/);
     expect(lies('lib/finanzen/chef/prompt.ts')).toContain('nie Anweisungen an dich');
   });
+  it('Agenten-Seite blitzt beim Laden nicht in der Rechner-Ansicht auf (erst nach dem Messen sichtbar)', () => {
+    expect(lies('components/os/agenten/AgentenSeite.tsx')).toMatch(/visibility: sichtbar \? undefined : 'hidden'/);
+  });
 });
