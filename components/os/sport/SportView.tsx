@@ -10,7 +10,7 @@ import { useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Segmente, Leer, Hinweis, ZielBezug } from '../ui';
+import { Seite, Karte, Segmente, Leer, Hinweis, ZielBezug, Knopf } from '../ui';
 import { useSport } from './daten';
 import { Einstieg } from './Einstieg';
 import { ZielePlan } from './ZielePlan';
@@ -21,19 +21,34 @@ import { ErholungTeil } from './ErholungTeil';
 import { TrainingTeil } from './TrainingTeil';
 import { WEG } from '@/lib/wege';
 import { stilLink } from './teile';
+import type { SportStand } from '@/lib/sport/modell';
 
 type Reiter = 'plan' | 'training' | 'hyrox' | 'lauf' | 'gym' | 'erholung';
 const REITER: { id: Reiter; label: string }[] = [
   { id: 'plan', label: 'Ziele & Plan' }, { id: 'training', label: 'Training' }, { id: 'hyrox', label: 'Hyrox' }, { id: 'lauf', label: 'Running' }, { id: 'gym', label: 'Gym' }, { id: 'erholung', label: 'Erholung' },
 ];
 
+/**
+ * Welcher Reiter (rein, getestet): der aus der Adresse; sonst ohne Plan, aber mit Einheiten das Training (09.10. — vorher verdeckte der
+ * Einstieg die WHOOP-Einheiten), sonst „Ziele & Plan“.
+ */
+export function reiterVon(param: string | null, stand?: Pick<SportStand, 'einstieg' | 'training' | 'laeufe' | 'gym' | 'hyrox'>): Reiter {
+  const r = REITER.find(x => x.id === param)?.id;
+  if (r) return r;
+  const einheiten = stand ? (stand.training?.length ?? 0) + stand.laeufe.length + stand.gym.einheiten.length + stand.hyrox.length : 0;
+  return stand && !stand.einstieg.fertig && einheiten > 0 ? 'training' : 'plan';
+}
+
 export function SportView() {
   const router = useRouter();
   const pfad = usePathname();
   const params = useSearchParams();
-  const reiter = (REITER.find(r => r.id === params.get('s'))?.id ?? 'plan') as Reiter;
   const { d, fehler, meldung, schicke } = useSport();
-  const geheZu = useCallback((r: Reiter) => { const p = new URLSearchParams(params.toString()); if (r === 'plan') p.delete('s'); else p.set('s', r); router.replace(`${pfad}${p.toString() ? `?${p}` : ''}`, { scroll: false }); }, [params, pfad, router]);
+  // 09.10. (Befund „Trainingsdaten fehlen“): ohne abgeschlossenen Einstieg zeigte die Seite NUR den Einstieg — WHOOP-Einheiten blieben unsichtbar.
+  // Jetzt gilt der Einstieg nur für „Ziele & Plan“; die übrigen Reiter gehen immer. Ohne Plan, aber mit Einheiten, öffnet die Seite das Training.
+  const fertig = !!d?.stand.einstieg.fertig;
+  const reiter = reiterVon(params.get('s'), d?.stand);
+  const geheZu = useCallback((r: Reiter) => { const p = new URLSearchParams(params.toString()); if (r === 'plan' && fertig) p.delete('s'); else p.set('s', r); router.replace(`${pfad}${p.toString() ? `?${p}` : ''}`, { scroll: false }); }, [params, pfad, router, fertig]);
 
   return (
     <Seite titel="Sport" unter={<span>Training · Hyrox · Running · Gym · Erholung — <Link href={WEG.gesundheit()} style={stilLink}>Gesundheit</Link></span>}
@@ -43,10 +58,11 @@ export function SportView() {
       {meldung && <div role="status" style={{ position: 'fixed', left: '50%', bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))', transform: 'translateX(-50%)', zIndex: 50, background: C.flaecheHoch, color: C.ink, borderRadius: 999, padding: '10px 18px', fontSize: TYP.bedien, fontWeight: 600, boxShadow: '0 12px 32px rgba(0,0,0,.45)' }}>{meldung}</div>}
       {fehler && <Hinweis art="kritisch" titel="Der Sport konnte nicht geladen werden">{fehler}</Hinweis>}
       {!d && !fehler && <Karte i={0}><Leer>…</Leer></Karte>}
-      {d && !d.stand.einstieg.fertig && <Einstieg heute={d.heute} onFertig={ops => schicke(ops, 'Dein Plan steht.')} />}
-      {d && d.stand.einstieg.fertig && (
+      {d && (
         <>
-          {reiter === 'plan' && <ZielePlan stand={d.stand} heute={d.heute} vitals={d.vitals} schicke={schicke} onReiter={geheZu} />}
+          {reiter === 'plan' && !fertig && <Einstieg heute={d.heute} onFertig={ops => schicke(ops, 'Dein Plan steht.')} />}
+          {reiter === 'plan' && fertig && <ZielePlan stand={d.stand} heute={d.heute} vitals={d.vitals} schicke={schicke} onReiter={geheZu} />}
+          {reiter !== 'plan' && !fertig && <Hinweis art="info" titel="Noch kein Plan" aktion={<Knopf leise onClick={() => geheZu('plan')}>Plan einrichten</Knopf>}>Deine Einheiten zählen schon — Ziel und Wochenplan richtest du unter „Ziele & Plan“ ein.</Hinweis>}
           {reiter === 'training' && <TrainingTeil stand={d.stand} heute={d.heute} vorlagen={d.bibliothek.vorlagen} schicke={schicke} onReiter={geheZu} />}
           {reiter === 'hyrox' && <HyroxTeil stand={d.stand} heute={d.heute} schicke={schicke} />}
           {reiter === 'lauf' && <RunningTeil stand={d.stand} heute={d.heute} schicke={schicke} />}

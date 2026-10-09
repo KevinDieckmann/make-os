@@ -115,6 +115,15 @@ describe('Ansicht „Training“ (statisch gerendert, erfundene Werte)', () => {
     expect(html).toContain('Sportarten zuordnen');
     expect(html).not.toMatch(/Noch keine Einheiten/);
   });
+  it('ohne abgeschlossenen Einstieg öffnet Sport das Training (vorher verdeckte der Einstieg die WHOOP-Einheiten)', async () => {
+    const { reiterVon } = await import('@/components/os/sport/SportView');
+    const ohnePlan = { ...STAND, einstieg: { fertig: false } };
+    expect(reiterVon(null, ohnePlan)).toBe('training');
+    expect(reiterVon(null, { ...ohnePlan, training: undefined })).toBe('plan');
+    expect(reiterVon(null, STAND)).toBe('plan');
+    expect(reiterVon('hyrox', ohnePlan)).toBe('hyrox');
+    expect(reiterVon('quatsch', ohnePlan)).toBe('training');
+  });
   it('die Sport-Kachel zählt die Trainings der Woche (vorher „0 von …“)', async () => {
     const { wocheIst } = await import('@/lib/sport/plan');
     expect(wocheIst(STAND, MONTAG)).toMatchObject({ einheiten: 2, hyrox: 1, gym: 1 });

@@ -195,6 +195,21 @@ describe('Training von Hand', () => {
   });
 });
 
+describe('Tempo: viele Einheiten', () => {
+  it('3.000 Importe + 1.000 von Hand in unter einer Sekunde, nichts doppelt am selben Tag', () => {
+    const tag = (i: number) => tagPlusTest('2024-01-01', i % 600);
+    const training = Array.from({ length: 3000 }, (_, i) => ({ id: `t${i}`, datum: tag(i), sport: i % 2 ? 'running' : 'functional-fitness', dauerMin: 45, quelle: 'whoop' as const, externeId: `whoop:${i}` }));
+    const gym = Array.from({ length: 1000 }, (_, i) => ({ id: `g${i}`, datum: tag(i * 3), uebungen: [{ uebung: 'kniebeuge', saetze: [{ kg: 50, wdh: 5 }] }] }));
+    const s: SportStand = { ...leererStand(), training, gym: { uebungen: [], einheiten: gym, vorlagen: [] } };
+    const t0 = Date.now();
+    const alle = alleEinheiten(s);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    expect(alle.length).toBe(4000);
+  });
+});
+
+const tagPlusTest = (t: string, n: number) => { const d = new Date(`${t}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
 describe('Liste je Woche', () => {
   it('neueste Woche zuerst, leere Wochen fallen weg, je Woche die Summe', () => {
     const s = sportAnwenden(leererStand(), [...WOCHE, W(9, '2026-09-22T06:00:00Z', 30, 'Yoga')], '2026-07-01').stand;

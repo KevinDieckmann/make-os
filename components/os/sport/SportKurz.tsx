@@ -31,12 +31,14 @@ export function SportKurz({ eigene = true, fuer }: { eigene?: boolean; fuer?: st
   if (!d) return <Karte i={2}><Leer>…</Leer></Karte>;
   if (!eigene) return <SportFremd d={d} />;
   if (!d.stand.einstieg.fertig) {
+    // Ohne Plan zählen die Einheiten trotzdem (09.10.: WHOOP-Trainings vorher unsichtbar).
+    const diese = wocheIst(d.stand, montagVon(d.heute)).einheiten;
     return (
       <Karte i={2} akzent={LEUCHT.business}>
-        <Link href={WEG.sport()} style={{ textDecoration: 'none', color: C.ink, display: 'block' }}>
-          <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body }}>Sport einrichten</div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, lineHeight: 1.5 }}>Hyrox, Laufen, Gym, Erholung — Ziel wählen, Datum setzen, Woche planen. Fünf Schritte.</div>
-          <div style={{ color: C.inkLeise, fontSize: TYP.bedien, marginTop: 8 }}>Los geht’s ›</div>
+        <Link href={WEG.sport(diese ? 'training' : undefined)} style={{ textDecoration: 'none', color: C.ink, display: 'block' }}>
+          <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body }}>{diese ? `Diese Woche ${diese} Einheit${diese === 1 ? '' : 'en'}` : 'Sport einrichten'}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, lineHeight: 1.5 }}>{diese ? 'Training ansehen — Ziel und Wochenplan richtest du unter „Ziele & Plan“ ein.' : 'Hyrox, Laufen, Gym, Erholung — Ziel wählen, Datum setzen, Woche planen. Fünf Schritte.'}</div>
+          <div style={{ color: C.inkLeise, fontSize: TYP.bedien, marginTop: 8 }}>{diese ? 'Training öffnen ›' : 'Los geht’s ›'}</div>
         </Link>
       </Karte>
     );

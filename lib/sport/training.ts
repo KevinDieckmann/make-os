@@ -204,14 +204,18 @@ export function alleEinheiten(stand: Pick<SportStand, 'laeufe' | 'gym' | 'hyrox'
   const hand = roh.filter(e => e.quelle === 'hand');
   const importe = roh.filter(e => e.quelle !== 'hand').sort((a, b) => QUELLE_RANG[a.quelle] - QUELLE_RANG[b.quelle] || (a.uhrzeit ?? '').localeCompare(b.uhrzeit ?? '') || a.id.localeCompare(b.id));
   const ergebnis: Einheit[] = [...hand];
+  // Je Tag die Stellen in `ergebnis` — nur Einträge desselben Tages kommen als „dieselbe Einheit“ in Frage (schnell auch bei Tausenden Einheiten).
+  const jeTag = new Map<string, number[]>();
+  const merke = (i: number) => { const d = ergebnis[i].datum; const l = jeTag.get(d); if (l) l.push(i); else jeTag.set(d, [i]); };
+  ergebnis.forEach((_, i) => merke(i));
   const belegt = new Set<string>();
   for (const imp of importe) {
     // Zuerst ein Eintrag von Hand (am nächsten an der Dauer), dann ein schon übernommener anderer Import.
-    const kandidaten = ergebnis.map((e, i) => ({ e, i })).filter(({ e }) => !belegt.has(e.id) && gleicheEinheit(e, imp))
+    const kandidaten = (jeTag.get(imp.datum) ?? []).map(i => ({ e: ergebnis[i], i })).filter(({ e }) => !belegt.has(e.id) && gleicheEinheit(e, imp))
       .sort((a, b) => (a.e.quelle === 'hand' ? 0 : 1) - (b.e.quelle === 'hand' ? 0 : 1) || Math.abs((a.e.dauerMin ?? 0) - (imp.dauerMin ?? 0)) - Math.abs((b.e.dauerMin ?? 0) - (imp.dauerMin ?? 0)));
     const k = kandidaten[0];
     if (k) { ergebnis[k.i] = verschmelzen(k.e, imp); belegt.add(k.e.id); continue; }
-    ergebnis.push(imp);
+    ergebnis.push(imp); merke(ergebnis.length - 1);
   }
   return ergebnis.sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (b.uhrzeit ?? '').localeCompare(a.uhrzeit ?? '') || a.id.localeCompare(b.id)));
 }

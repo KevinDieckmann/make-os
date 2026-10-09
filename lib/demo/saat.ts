@@ -425,6 +425,15 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     await rufe(R.vitals(), 'PUT', '/api/state/vitals', LENA, { date: tagPlus(heute, -i), vitals: { rec: 55 + ((i * 7) % 25), sleep: 7 + (i % 3) * 0.3, hrv: 48 + (i % 4) * 3, rhr: 56 + (i % 3) } });
   }
   await rufe(R.sport(), 'PUT', '/api/sport', LENA, { ops: [{ op: 'einstieg', fertig: true }, { op: 'woche', tage: { mo: { art: 'lauf', dauerMin: 40 }, di: { art: 'frei' }, mi: { art: 'gym', dauerMin: 60 }, do: { art: 'frei' }, fr: { art: 'lauf', dauerMin: 30 }, sa: { art: 'hyrox', dauerMin: 60 }, so: { art: 'ruhe' } } }] });
+  // Training & Wettkampf (09.10., Plan-Baukasten): erfundenes Laufziel mit Referenzzeit (Countdown, Prognose, Taper), ein paar Einheiten von Hand —
+  // Training-Reiter, Plan ↔ Ist und „Zuerst“ sind so vorführbar. Alles über die Sport-Route.
+  await rufe(R.sport(), 'PUT', '/api/sport', LENA, { ops: [
+    { op: 'ziel', eintrag: { id: 'demo-ziel-10k', art: 'lauf', titel: '10 km Stadtlauf (Beispiel)', datum: tagPlus(heute, 12), distanzKm: 10, zielzeitSek: 3300, referenz: { distanzKm: 5, sek: 1620 }, angelegt: jetzt.toISOString() } },
+    { op: 'lauf', eintrag: { id: 'demo-lauf-1', datum: tagPlus(heute, -3), distanzKm: 6, dauerSek: 2160, art: 'locker', gefuehl: 4 } },
+    { op: 'lauf', eintrag: { id: 'demo-lauf-2', datum: tagPlus(heute, -6), distanzKm: 8, dauerSek: 3000, art: 'longrun' } },
+    { op: 'training', eintrag: { id: 'demo-training-1', datum: tagPlus(heute, -2), sport: 'Rad (Beispiel)', art: 'rad', dauerMin: 60, gefuehl: 3 } },
+    { op: 'training', eintrag: { id: 'demo-training-2', datum: tagPlus(heute, -5), sport: 'Yoga (Beispiel)', art: 'mobility', dauerMin: 30 } },
+  ] });
   schritt('Familie & Gesundheit', 10);
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): erfunden und harmlos — nur die Person selbst sieht es (Körper-Reiter).
   const kp = await rufe(R.koerper(), 'GET', '/api/gesundheit/koerper', LENA);

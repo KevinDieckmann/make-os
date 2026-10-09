@@ -12,8 +12,10 @@ Person (Halbmarathon in 8 Tagen, plant selbst, Tage flexibel, Deload nach HRV-Tr
 
 **Befund (Diagnose, belegt in `tests/sport-training.test.ts`):** WHOOP-Workouts ohne Distanz (Functional Fitness, Krafttraining, Rad, HIIT …) landen
 richtig in `SportStand.training[]` — aber keine Ansicht las diese Liste: Plan/Ist, Sport-Kachel und „Für dich“ zählten nur Läufe, Gym und Hyrox
-(Beispielwoche: alte Zählung 1 von 5 Einheiten). Einen Reiter für Trainings gab es nicht. Der Gesundheits-Index („Bewegung geplant“) liest Blöcke im
-Kalender, nicht absolvierte Trainings — unverändert. Daten gingen also durch, wurden nur nicht gezeigt.
+(Beispielwoche: alte Zählung 1 von 5 Einheiten). Einen Reiter für Trainings gab es nicht — und ohne abgeschlossenen Sport-Einstieg zeigte die
+ganze Sport-Seite NUR den Einstieg (die Kachel „Sport einrichten“), also gar keine Einheit. Der Gesundheits-Index („Bewegung geplant“) liest Blöcke im
+Kalender, nicht absolvierte Trainings — unverändert. Daten gingen also durch, wurden nur nicht gezeigt. Jetzt: Einstieg nur noch unter „Ziele & Plan“;
+ohne Plan, aber mit Einheiten öffnet Sport das Training (`reiterVon`), die Kachel zeigt „Diese Woche n Einheiten“.
 
 **Gebaut — Teil 1 (Training sichtbar):**
 - EINE Stelle `lib/sport/training.ts` `alleEinheiten`: Läufe, Gym, Hyrox, Trainings aller Quellen. Sportart → Sparte über EINE Tabelle (`SPORT_ZUORDNUNG`,
