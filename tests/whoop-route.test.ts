@@ -173,6 +173,25 @@ describe('Abgleich', () => {
     expect(s?.training).toHaveLength(1);
     expect(w.aufrufe.some(a => a.query.get('nextToken') === '1')).toBe(true);
   });
+  it('09.10.: ein Spiegel ohne die neuen Felder (Stand vor dem Update) wird beim nächsten Lauf voll geholt — danach wieder nur die letzten Tage', async () => {
+    await verbunden('kevin', 4711);
+    await A.whoopAbgleichen('kevin');
+    const s = await A.ladeWhoopStand('kevin');
+    expect(s?.felder).toBe(A.SPIEGEL_FELDER);
+    // Wie der Stand vor dem Update aussah: ohne `felder`, letzter Erfolg und Voll gerade eben.
+    const { felder: _f, ...alt } = s!;
+    await db.saveJson('whoop-stand--kevin', { ...alt, letzterVersuch: '2026-10-08T06:00:00.000Z' });
+    const starts = () => w.aufrufe.filter(a => a.pfad === '/developer/v2/recovery').map(a => a.query.get('start'));
+    const vorher = starts().length;
+    await A.whoopAbgleichen('kevin');
+    expect(starts().slice(vorher)[0]).toBe('2026-07-10T00:00:00.000Z'); // heute − 90 Tage = voll
+    expect((await A.ladeWhoopStand('kevin'))?.felder).toBe(A.SPIEGEL_FELDER);
+    const v2 = starts().length;
+    await A.whoopAbgleichen('kevin');
+    expect(starts().slice(v2)[0]).toBe('2026-10-05T00:00:00.000Z'); // letzter Erfolg − 3 Tage
+    // Strain des Tages steht jetzt in den Vitalwerten (Zyklus ab 00:00 Ortszeit = derselbe Tag).
+    expect((await db.loadJson<Record<string, Record<string, unknown>>>('vitals'))?.['2026-10-07']).toMatchObject({ strain: 12.4, kcal: 2151, quellen: { strain: 'whoop' } });
+  });
   it('429 → Pause nach X-RateLimit-Reset; der Takt fragt in der Pause nicht', async () => {
     await verbunden('kevin', 4711);
     w.fehler.push({ teil: '/v2/recovery', status: 429, kopf: { 'x-ratelimit-reset': '120' }, einmal: true });

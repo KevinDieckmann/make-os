@@ -51,7 +51,12 @@ export interface WhoopStand extends WhoopSpiegelDaten {
   spuren?: string[];
   /** Fehlende Scopes (z. B. Workouts beim alten Token) — nur Namen. */
   hinweis?: string;
+  /** Welche Felder der Spiegel trägt (`SPIEGEL_FELDER`); fehlt/älter → der nächste Lauf ist voll (09.10.: neue Größen auch für die 90 Tage davor). */
+  felder?: number;
 }
+
+/** Stand der Spiegel-Felder: 2 = mit Schlafbedarf, Atem, Konsistenz, Schritten, Zonen … (09.10.). Erhöhen, wenn neue Größen dazukommen. */
+export const SPIEGEL_FELDER = 2;
 
 const leererStand = (abTag: string): WhoopStand => ({ v: 1, abTag, recovery: {}, schlaf: {}, zyklen: {}, workouts: {} });
 export async function ladeWhoopStand(person: string): Promise<WhoopStand | null> {
@@ -132,7 +137,7 @@ async function abgleichLauf(person: string, opt: { voll?: boolean; jetzt?: numbe
   const heute = localDay(new Date(jetzt));
   // Voll (90 Tage, Spiegel neu) beim ersten Mal und einmal je Woche — so kommen auch Löschungen ohne Webhook an. Dazwischen nur
   // ab dem letzten Erfolg − 3 Tage (Teil-Läufe entfernen nichts: welches Zeitfeld `start` je Sammlung filtert, ist nicht belegt).
-  const voll = opt.voll || !alt || !alt.letzterErfolg || !alt.letzterVoll || jetzt - Date.parse(alt.letzterVoll) > VOLL_ALLE_MS;
+  const voll = opt.voll || !alt || !alt.letzterErfolg || !alt.letzterVoll || jetzt - Date.parse(alt.letzterVoll) > VOLL_ALLE_MS || (alt.felder ?? 1) < SPIEGEL_FELDER;
   const abTagLauf = voll ? tagMinus(heute, ERST_TAGE) : tagMinus(alt!.letzterErfolg!.slice(0, 10), UEBERLAPP_TAGE);
   const start = `${abTagLauf}T00:00:00.000Z`;
   await updateJson<WhoopStand>(standName(person), cur => ({ ...(cur && cur.v === 1 ? cur : leererStand(abTagLauf)), letzterVersuch: new Date(jetzt).toISOString() }));
@@ -153,7 +158,7 @@ async function abgleichLauf(person: string, opt: { voll?: boolean; jetzt?: numbe
       for (const r of workouts.records) { const x = workoutAus(r); if (x) { s.workouts[x.id] = x; eintraege++; } }
       const geschnitten = spiegelSchneiden(s, tagMinus(heute, SPIEGEL_TAGE));
       const { fehler: _f, fehlversuche: _n, pauseBis: _p, hinweis: _h, ...rest } = geschnitten;
-      return { ...rest, ...(voll ? { abTag: abTagLauf < geschnitten.abTag ? geschnitten.abTag : abTagLauf } : {}), letzterVersuch: new Date(jetzt).toISOString(), letzterErfolg: new Date(jetzt).toISOString(), ...(voll ? { letzterVoll: new Date(jetzt).toISOString() } : {}), ...(fehlend ? { hinweis: fehlend } : {}) };
+      return { ...rest, ...(voll ? { abTag: abTagLauf < geschnitten.abTag ? geschnitten.abTag : abTagLauf } : {}), letzterVersuch: new Date(jetzt).toISOString(), letzterErfolg: new Date(jetzt).toISOString(), ...(voll ? { letzterVoll: new Date(jetzt).toISOString(), felder: SPIEGEL_FELDER } : {}), ...(fehlend ? { hinweis: fehlend } : {}) };
     });
     const a = await abbildenFuer(person, neu);
     return { ok: true, ...a, eintraege };
