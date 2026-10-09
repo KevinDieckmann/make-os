@@ -158,9 +158,9 @@ export async function POST(req: Request) {
   if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
   // `zoeFaden` (Paket 4a): Kennung eines EIGENEN ZOE-Threads oder 'neu' — dann liest der Prompt den Verlauf NUR aus dem Thread
   // (Server), und „fremd gelesen“/„vertraulich“ stehen am Thread. Ohne `zoeFaden` (Telegram, WhatsApp, Tagesplan) wie bisher.
-  // `bereich` (09.10. spät): der Bereich des Gesprächs aus dem Kopf-Schalter (privat · business · alles) — fehlt er (Telegram, WhatsApp, ältere
-  // Fenster), gilt `space` wie bisher. Nur geprüft (`bereichAus`), nie mehr: er ordnet Vorschläge im Stapel zu (Regel (c), lib/zoe/bereich.ts)
-  // und wählt die Merksätze des Gesprächs.
+  // Bereich des Gesprächs (09.10. spät): der konkrete `space` des Browsers (Kopf nur noch Privat · Business); `bereich` (privat · business ·
+  // alles) überstimmt ihn optional, z. B. für einen Aufrufer ohne Space. Nur geprüft (`bereichAus`), nie mehr: er ordnet Vorschläge im Stapel
+  // zu (Regel (c), lib/zoe/bereich.ts) und wählt die Merksätze des Gesprächs. Ohne beides (Telegram, WhatsApp): kein Bereich.
   let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bereich?: unknown; bezug?: unknown; zoeFaden?: unknown; anfrageId?: unknown };
   try { payload = await jsonBegrenzt(req, 2_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = String(payload.message ?? '').trim().slice(0, 8000);
