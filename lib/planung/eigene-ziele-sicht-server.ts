@@ -4,6 +4,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { eigeneZieleLesbar, lesbareEigentuemer, meilensteinVerborgen, verborgeneMeilensteinIds, verborgeneZielIds } from './eigene-ziele-sicht';
+import { meilensteineImUmfang } from './bereich-sicht-server';
 
 /** Darf `betrachter` die eigenen Ziele von `eigentuemer` lesen? */
 export async function eigeneZieleLesbarFuer(eigentuemer: string, betrachter: string | null | undefined): Promise<boolean> {
@@ -37,9 +38,14 @@ export async function verborgeneMeilensteineFuer(betrachter: string | null | und
   return verborgeneMeilensteinIds(ms, await verborgeneZieleFuer(betrachter));
 }
 
-/** Nur die Meilensteine, die `betrachter` sehen darf (ohne Person: keiner an einem eigenen Ziel). */
+/**
+ * Nur die Meilensteine, die `betrachter` sehen darf (ohne Person: keiner an einem eigenen Ziel). Seit 09.10. (E4-Rest, EINE Konto-Sicht)
+ * zuerst der Umfang der Person (./bereich-sicht-server.ts `planungsUmfangFuer`): Konto „nur Business“ ohne den Privat-Bereich (Privat,
+ * Gesundheit, die Selbstständigkeit), eine Person außerhalb des Haushalts gar keinen — damit gilt das in jedem Leser, der hier durchgeht
+ * (Detail-Route, Kalender-Fristen/Glocke/Heute, Schilde, Loop, Gesundheits-Index, ZOE-Kontext und -Werkzeuge, Aufgabe am Meilenstein anlegen).
+ */
 export async function meilensteineSichtbarFuer<M extends { zielId?: string; abgeleitetVon?: string }>(liste: readonly M[] | null | undefined, betrachter: string | null | undefined): Promise<M[]> {
-  const l = Array.isArray(liste) ? liste : [];
+  const l = await meilensteineImUmfang(Array.isArray(liste) ? liste : [], betrachter);
   if (!l.some(hatZiel)) return [...l];
   const verborgen = await verborgeneZieleFuer(betrachter);
   return verborgen.size ? l.filter(m => !meilensteinVerborgen(m, verborgen)) : [...l];

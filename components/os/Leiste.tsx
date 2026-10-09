@@ -24,6 +24,7 @@ import { problemMelden } from './bauplan/IdeeErfassen';
 import { WEG } from '@/lib/wege';
 import { useWartezahl, wartezahlText } from '@/lib/netzwerken/zaehler';
 import { EINSTELLUNGEN_PFADE } from '@/lib/make-one/einstellungen';
+import { useNurBusiness } from './useInhaber';
 
 /** Einstellungen (08.10., vorher „System“): Adresse bleibt /os/system; leuchtet auf allen Seiten, die dort gelistet sind. */
 export const EINSTELLUNGEN: SpaceEintrag = { href: '/os/system', label: 'Einstellungen', icon: Settings, passt: EINSTELLUNGEN_PFADE };
@@ -77,6 +78,9 @@ export function Leiste() {
   const [konto, setKonto] = useState<{ name: string } | null>(null);
   const [offen, setOffen] = useState(false); // Handy-Blatt „Menü“
   const [blattWahl, setBlattWahl] = useState<SpaceWahl>(wahl); // im Blatt umschaltbar, ohne gleich zu springen
+  // Konto „nur Business“ (09.10., E4-Rest): im Blatt wie im Kopf kein Knopf „Privat“ (der Server liefert dort nichts aus dem Haushalt).
+  const nurBusiness = useNurBusiness();
+  const blattWahlen = nurBusiness ? SPACE_WAHLEN.filter(id => id !== 'privat') : SPACE_WAHLEN;
   const wartezahl = useWartezahl(); // Netzwerken (03.10.): wie viele Erfassungen noch auf dem Gerät warten
   // Eingeklappt (Kevin 26.09.): nur Symbole, Stand gemerkt.
   const [zu, setZu] = useState(false);
@@ -161,8 +165,8 @@ export function Leiste() {
       {offen && (
         <div className="leiste-mobil-blatt" onClick={() => setOffen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,.45)' }}>
           <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: 8, right: 8, bottom: 'calc(64px + env(safe-area-inset-bottom))', maxHeight: 'calc(100vh - 96px - env(safe-area-inset-bottom))', overflowY: 'auto', background: C.flaecheHoch, border: `1px solid ${wahlInfo(blattWahl).farbe}55`, borderRadius: 16, padding: 10, boxShadow: '0 16px 40px -12px rgba(0,0,0,.8)' }}>
-            <div role="group" aria-label="Bereich im Menü" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4, padding: 3, marginBottom: 6, borderRadius: 999, background: 'rgba(255,255,255,.05)' }}>
-              {SPACE_WAHLEN.map(id => { const w = wahlInfo(id); const an = id === blattWahl; return (
+            <div role="group" aria-label="Bereich im Menü" style={{ display: 'grid', gridTemplateColumns: `repeat(${blattWahlen.length}, minmax(0, 1fr))`, gap: 4, padding: 3, marginBottom: 6, borderRadius: 999, background: 'rgba(255,255,255,.05)' }}>
+              {blattWahlen.map(id => { const w = wahlInfo(id); const an = id === blattWahl; return (
                 <button key={id} type="button" aria-pressed={an} onClick={() => setBlattWahl(id)} className="fassbar"
                   style={{ minHeight: 44, borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     border: `1px solid ${an ? `${w.farbe}66` : 'transparent'}`, background: an ? `${w.farbe}1F` : 'transparent', color: an ? w.farbe : C.inkDim }}>{w.label}</button>

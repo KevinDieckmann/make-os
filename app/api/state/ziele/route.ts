@@ -8,6 +8,10 @@
 // werden aus den Jahreszielen nachgezogen, Termin-Ziele werden Meilensteine.
 // Seit 28.09. („Mandat an Zielen und Zeit“): Business-Ziele tragen optional `mandatId`/`firmaId`;
 // Firma und Einheit werden im Schreibweg aus dem Mandat abgeleitet (lib/planung/mandat.ts).
+// Seit 09.10. (E4-Rest, Kevin: „Ja, Privates bleibt privat“): ein Konto „nur Business“ (Konto-Sicht) bekommt Ziele des Privat-Bereichs
+// (`wirksamerSpace` — die Selbstständigkeit ist Privat) und die Fokus-Sätze außer `business:…` nicht — in jeder Antwort samt 409, für
+// jeden Bestand (geteilte Ziele, eigene, die einer anderen Person). Schreiben auf Vorhandenes im Privat-Bereich → 404, Neues/Verschobenes
+// dorthin und Fokus-Sätze außerhalb von `business:` → 403 (lib/planung/bereich-sicht.ts).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
@@ -32,6 +36,8 @@ import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-serv
 import { eigeneZieleLesbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
 import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { NUR_BUSINESS_PRIVAT, fokusOhnePrivat, fokusSchluesselImPrivat, konflikteOhnePrivat, privatSchreibPruefen, privatStatus, zielImPrivat, zieleOhnePrivat } from '@/lib/planung/bereich-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -82,19 +88,25 @@ export async function GET(req: Request) {
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
   if ('geteilt' in sp) return nichtGeteilt();
   const f = datei(await loadJson<ZieleDatei>(sp.name));
-  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...await mitStaenden(f) });
+  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...await mitStaenden(f, await ohnePrivatFuer(req)) });
 }
+
+/** Konto „nur Business“ (09.10., EINE Konto-Sicht)? Systemlauf → nein; Konten unlesbar → ja (fail-closed, nie auf Verdacht zeigen). */
+const ohnePrivatFuer = (req: Request) => privatAusgeblendetFuer(personStreng(req)).catch(() => true);
 
 /**
  * Jede Zeile trägt ihren Stand (Fingerabdruck — der Browser schickt ihn mit jeder Änderung zurück) und ihre Farbe (Review
  * 03.10.: EINE Stelle, lib/planung/ziel-farben-server.ts, über alle Ziele des Haushalts — dieselbe wie in den Lichtfäden;
  * Clients rechnen nie selbst). `farbe` zählt nicht zum Stand und wird nie gespeichert (`sauberZiel` kennt sie nicht).
+ * `ohnePrivat` (Konto „nur Business“, 09.10.): Ziele des Privat-Bereichs und Fokus-Sätze außer `business:…` fallen weg — JEDE Antwort
+ * dieser Route geht hier durch. Der Fokus wird NACH der Jahres-Ableitung gefiltert (sie setzt auch Schlüssel ohne Präfix).
  */
-async function mitStaenden(f: ZieleDatei): Promise<ZieleDatei> {
+async function mitStaenden(f: ZieleDatei, ohnePrivat: boolean): Promise<ZieleDatei> {
   const farben = await zielFarbenDesHaushalts();
   // Fokus des laufenden Jahres unter dem Schlüssel ohne Jahr — der vorgeplante Satz gilt ab Januar (30.09.).
-  const aus: ZieleDatei = { ...f, fokus: fokusFuerLaufendesJahr(f.fokus, laufendesJahr()) };
-  for (const h of ZIEL_HORIZONTE) aus[h] = mitFarbe(mitStand(f[h] ?? []), farben);
+  const fokus = fokusFuerLaufendesJahr(f.fokus, laufendesJahr());
+  const aus: ZieleDatei = { ...f, fokus: ohnePrivat ? fokusOhnePrivat(fokus) : fokus };
+  for (const h of ZIEL_HORIZONTE) aus[h] = mitFarbe(mitStand(ohnePrivat ? zieleOhnePrivat(f[h] ?? []) : (f[h] ?? [])), farben);
   return aus;
 }
 
@@ -117,6 +129,9 @@ export async function PUT(req: Request) {
   if (typeof body.fokus !== 'string' || !h || !FOKUS_SCHLUESSEL.test(h) || (/(?:^|:)jahr:\d{4}$/.test(h) && !istJahrFokusSchluessel(h, laufendesJahr()))) {
     return NextResponse.json({ ok: false, error: 'horizont + fokus (tag|woche|monat|quartal|jahr|prio:<thema>) nötig.' }, { status: 400 });
   }
+  // Konto „nur Business“ (09.10.): nur Fokus-Sätze des Business (`business:…`) — der gemeinsame Satz und Privat sind für es nicht da.
+  const ohnePrivat = await ohnePrivatFuer(req);
+  if (ohnePrivat && fokusSchluesselImPrivat(h)) return NextResponse.json({ ok: false, error: NUR_BUSINESS_PRIVAT }, { status: 403 });
   let fokusVorher: Record<string, string> = {};
   const next = await updateJson<ZieleDatei>(sp.name, current => {
     const basis = datei(current);
@@ -128,7 +143,7 @@ export async function PUT(req: Request) {
   });
   // Änderungsprotokoll (09.10., „ZOE-Schreibwege“ — `setze_fokus` schreibt seither über diesen Weg): nur „fokus geändert“, nie der Satz.
   await protokolliereBestand(sp.name, { fokus: fokusVorher }, { fokus: datei(next).fokus }, werAus(req));
-  return NextResponse.json({ ok: true, fuer: sp.fuer, ...await mitStaenden(datei(next)) });
+  return NextResponse.json({ ok: true, fuer: sp.fuer, ...await mitStaenden(datei(next), ohnePrivat) });
 }
 
 /**
@@ -156,13 +171,17 @@ export async function PATCH(req: Request) {
   const ops = opsLesen<Ziel>(body.ops, e => { const z = sauberZiel(e); return z && mitMandatBezug(z, mandate, z.space === 'business'); }, JE_HORIZONT * 2);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, JE_HORIZONT * 2) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const jahr = laufendesJahr();
+  const ohnePrivat = await ohnePrivatFuer(req);
   // Oberziel (07.10., Seil): Ziele, deren „zahlt ein auf“ mit einem gelöschten Ziel wegfiel — für die Antwort und „Rückgängig“.
   let oberGeloest = new Map<string, string[]>();
   const alleIn = (f: ZieleDatei | Record<string, unknown>): Ziel[] => ZIEL_HORIZONTE.flatMap(x => (Array.isArray((f as ZieleDatei)[x]) ? (f as ZieleDatei)[x] : []));
 
   const r = await listePatchen<Ziel, ZieleDatei & Record<string, unknown>>(sp.name, h, ops, 6, undefined, {
-    // Grenze je Horizont: ablehnen, nie kürzen.
+    // Grenze je Horizont: ablehnen, nie kürzen. Konto „nur Business“ (09.10.) zuerst: Ziele des Privat-Bereichs gibt es nicht (404),
+    // neue/verschobene dorthin → 403 (`teil` wie der Schreibweg: Felder auf den gespeicherten Eintrag).
     pruefen: (liste, o) => {
+      const privat = ohnePrivat ? privatSchreibPruefen(liste, o, zielImPrivat) : null;
+      if (privat) return privat;
       const ids = new Set(liste.map(z => z.id));
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id));
       return liste.length + neu.size > JE_HORIZONT && neu.size > 0 ? `Abgelehnt: höchstens ${JE_HORIZONT} Ziele je Horizont.` : null;
@@ -191,8 +210,9 @@ export async function PATCH(req: Request) {
   if (!r.ok) {
     const aktuell = datei(await loadJson<ZieleDatei>(sp.name));
     // Bereich/Ziel fehlt (07.10.) = 400; Kreis und andere Ablehnungen 409; Grenzen 413.
-    const status = r.konflikte?.length ? 409 : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
-    return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], fuer: sp.fuer, horizont: h, ...await mitStaenden(aktuell) }, { status });
+    const status = privatStatus(r.fehler) ?? (r.konflikte?.length ? 409 : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.fehler?.startsWith('Abgelehnt') ? 409 : 400);
+    const konflikte = ohnePrivat ? konflikteOhnePrivat(r.konflikte ?? [], zielImPrivat) : (r.konflikte ?? []);
+    return NextResponse.json({ ok: false, error: r.fehler, konflikte, fuer: sp.fuer, horizont: h, ...await mitStaenden(aktuell, ohnePrivat) }, { status });
   }
   const next = datei(r.next);
 
@@ -242,7 +262,7 @@ export async function PATCH(req: Request) {
   // Ziel-Fortschritt aus Meilensteinen (30.09.): hat ein Ziel Meilensteine, gilt ihr Mittelwert (auch nach einer Änderung von Hand).
   if (sp.fuer === 'wir' && await zieleNachziehen()) {
     const f = datei(await loadJson<ZieleDatei>(sp.name));
-    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(f) });
+    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(f, ohnePrivat) });
   }
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(next) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(next, ohnePrivat) });
 }

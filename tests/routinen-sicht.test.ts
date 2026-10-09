@@ -42,7 +42,8 @@ describe('Routinen-Sicht', () => {
       expect(t, f).not.toMatch(/'\/api\/state\/routinen'\)/);
     }
     for (const f of ['lib/gesundheit/speicher.ts', 'lib/gesundheit/lauf.ts', 'lib/zoe/werkzeuge.ts', 'app/api/planung/vorschlag/route.ts', 'app/api/gesundheit/stand/route.ts']) {
-      expect(readFileSync(path.join(w, f), 'utf8'), f).toContain('sichtbarFuer');
+      // Seit 09.10. (E4-Rest) auch über `routinenSichtbarFuer` (lib/planung/bereich-sicht-server.ts: Umfang der Person + `sichtbarFuer`).
+      expect(readFileSync(path.join(w, f), 'utf8'), f).toMatch(/\bsichtbarFuer\b|\broutinenSichtbarFuer\b/);
     }
   });
 });
