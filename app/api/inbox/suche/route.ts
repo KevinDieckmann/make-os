@@ -10,13 +10,11 @@ import { eigenePerson, NUR_EIGENE_POST } from '@/lib/google/zugang';
 import { inboxSuchen } from '@/lib/inbox/suche-server';
 import { frageSauber, TeilenFehler } from '@/lib/inbox/teilen';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
-import { BEREICH_FORM } from '@/lib/postfach/bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Bereich-Form (09.10.: auch `m-<firmaId>` = Kundenpostfach) — EINE Regel in lib/postfach/bereich.ts.
-const BEREICH = BEREICH_FORM;
+const BEREICH = /^(privat|kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$/;
 
 export async function GET(req: Request) {
   const z = await eigenePerson(req, false, NUR_EIGENE_POST);

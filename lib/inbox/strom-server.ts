@@ -13,7 +13,6 @@
 // (Kopien, `uebergaben`) stehen getrennt neben den Gesprächen und laufen durch denselben Bereichsfilter.
 
 import { localDay } from '@/lib/zeit';
-import { adresseMaskiert } from '@/lib/zugang/konten';
 import { bereichVon } from '@/lib/einheiten';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { ladeCrm } from '@/lib/crm/speicher';
@@ -176,22 +175,16 @@ export async function stromRoh(person: string, heute = localDay(), zustand?: Inb
  * nur Absender-Entscheidungen, deren Adresse/Nummer in einem Gespräch dieser Postfächer vorkommt — ein Privat-Absender bleibt draußen.
  * Ohne Sicht (`null`): alles Eigene.
  */
-export function postfaecherSicht<P extends { id: string; bereich: string | null; quelle?: string; adresse?: string }, A extends { adresse: string }, B extends { id: string; name: string } = { id: string; name: string }>(
-  d: { postfaecher: P[]; gespraeche: readonly Pick<Gespraech, 'postfachId' | 'absender'>[]; bereiche: B[]; absender: A[] },
+export function postfaecherSicht<P extends { id: string; bereich: string | null }, A extends { adresse: string }>(
+  d: { postfaecher: P[]; gespraeche: readonly Pick<Gespraech, 'postfachId' | 'absender'>[]; bereiche: { id: string; name: string }[]; absender: A[] },
   space: 'business' | null,
-): { postfaecher: P[]; bereiche: B[]; absender: A[]; ohneBereich: OhneBereich[] } {
-  // „Noch keinem Bereich zugeordnet — jetzt zuordnen“ (09.10.): in JEDER Sicht nur Kennung, Quelle und die maskierte Adresse der eigenen
-  // Postfächer ohne Bereich — kein Inhalt, kein Zähler je Gespräch. So sieht man auch in der Business-Sicht, dass etwas fehlt.
-  const ohneBereich = d.postfaecher.filter(p => !p.bereich).map(p => ({ id: p.id, quelle: p.quelle ?? 'imap', adresse: p.adresse ? adresseMaskiert(p.adresse) : '' }));
-  if (space !== 'business') return { postfaecher: d.postfaecher, bereiche: d.bereiche, absender: d.absender, ohneBereich };
+): { postfaecher: P[]; bereiche: { id: string; name: string }[]; absender: A[] } {
+  if (space !== 'business') return { postfaecher: d.postfaecher, bereiche: d.bereiche, absender: d.absender };
   const postfaecher = d.postfaecher.filter(p => imBereich(p.bereich, { space }));
   const ids = new Set(postfaecher.map(p => p.id));
   const bekannt = new Set(d.gespraeche.filter(g => ids.has(g.postfachId)).map(g => absenderSchluessel(g.absender)).filter(Boolean));
-  return { postfaecher, bereiche: d.bereiche.filter(b => imBereich(b.id, { space })), absender: d.absender.filter(a => bekannt.has(absenderSchluessel(a.adresse))), ohneBereich };
+  return { postfaecher, bereiche: d.bereiche.filter(b => imBereich(b.id, { space })), absender: d.absender.filter(a => bekannt.has(absenderSchluessel(a.adresse))) };
 }
-
-/** Ein eigenes Postfach ohne Bereich — nur, was die Postfächer-Seite für „jetzt zuordnen“ braucht. */
-export interface OhneBereich { id: string; quelle: string; adresse: string }
 
 /** Der Strom für die Oberfläche — serverseitig nach Bereich gefiltert. */
 export async function stromFuer(person: string, f: StromFilter = {}): Promise<Strom> {

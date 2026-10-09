@@ -281,8 +281,7 @@ describe('Postfächer-Verwaltung: Business sieht nie Privat (serverseitig)', () 
   it('postfaecherSicht (rein): Postfach ohne Bereich zählt unter Business nicht', async () => {
     const { postfaecherSicht } = await import('@/lib/inbox/strom-server');
     const r = postfaecherSicht({ postfaecher: [{ id: 'a', bereich: 'ug' }, { id: 'b', bereich: 'privat' }, { id: 'c', bereich: null }], gespraeche: [{ postfachId: 'a', absender: 'X@Y.example' }, { postfachId: 'b', absender: 'p@q.example' }], bereiche: [{ id: 'privat', name: 'Privat' }, { id: 'ug', name: 'MAKE' }], absender: [{ adresse: 'x@y.example' }, { adresse: 'p@q.example' }] }, 'business');
-    // 09.10.: ein Postfach ohne Bereich steht auch in der Business-Sicht unter ohneBereich (nur Kennung, Quelle, maskierte Adresse — „jetzt zuordnen“).
-    expect(r).toEqual({ postfaecher: [{ id: 'a', bereich: 'ug' }], bereiche: [{ id: 'ug', name: 'MAKE' }], absender: [{ adresse: 'x@y.example' }], ohneBereich: [{ id: 'c', quelle: 'imap', adresse: '' }] });
+    expect(r).toEqual({ postfaecher: [{ id: 'a', bereich: 'ug' }], bereiche: [{ id: 'ug', name: 'MAKE' }], absender: [{ adresse: 'x@y.example' }] });
     expect(postfaecherSicht({ postfaecher: [{ id: 'b', bereich: 'privat' }], gespraeche: [], bereiche: [], absender: [{ adresse: 'p@q.example' }] }, null).postfaecher).toHaveLength(1);
   });
 });

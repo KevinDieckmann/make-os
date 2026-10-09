@@ -1,9 +1,10 @@
 // ─── Inbox 2 — eigene Postfächer verbinden, einstellen, erneuern, trennen (06.10.2026) ─────────────────────────
 // GET  ?space=business → { ok, postfaecher, bereiche (wählbar), anbieter (Voreinstellungen + Anleitung), demo, absender (Screener), google,
-//      ohneBereich, nichtMoeglich }
+//      unzugeordnet, waehlbar, nichtMoeglich }
 //      `bereiche` (09.10.): je Eintrag `art` privat · gesellschaft · kunde — Kunden = CRM-Firmen mit aktivem Mandat, Bereich `m-<firmaId>`
-//      (lib/postfach/bereich.ts). `ohneBereich`: eigene Postfächer ohne Bereich (nur Kennung, Quelle, maskierte Adresse) — in JEDER Sicht,
-//      damit „jetzt zuordnen“ auch in der Business-Sicht erscheint. `nichtMoeglich`: ehrliche Hinweise (Microsoft 365 nur mit OAuth).
+//      (lib/postfach/bereich.ts). `unzugeordnet`: eigene Postfächer ohne Bereich (nur Kennung, Quelle, Name, maskierte Adresse — dieselbe Form
+//      wie `unzugeordnet` in /api/inbox) — in JEDER Sicht, damit „jetzt zuordnen“ auch in der Business-Sicht erscheint; `waehlbar` = die
+//      Bereiche dieser Sicht dafür. `nichtMoeglich`: ehrliche Hinweise (Microsoft 365 nur mit OAuth).
 //      `space=business` (07.10. abends, Kevin-Regel „Business sieht nie Privat“): NUR Postfächer mit Business-Bereich, nur Business-Bereiche
 //      zur Wahl, nur Absender-Entscheidungen zu Gesprächen dieser Postfächer — serverseitig gefiltert (`postfaecherSicht`, dieselbe Stelle
 //      `imBereich` wie der Strom). Ohne Parameter bzw. `space=privat`: alle EIGENEN Postfächer (die Person verwaltet ihre Postfächer).
@@ -21,7 +22,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { eigenePerson, NUR_EIGENE_POST } from '@/lib/google/zugang';
 import { anbieterFuerFormular, NICHT_MOEGLICH, VOREINSTELLUNGEN } from '@/lib/postfach/anbieter';
-import { bereichWahlLaden, RegisterFehler } from '@/lib/postfach/register';
+import { bereichWahlLaden, postfaecherUnzugeordnet, RegisterFehler } from '@/lib/postfach/register';
 import { demoErlaubt, postfachEinstellen, postfachErneuern, postfachHinzufuegen, postfachTrennen } from '@/lib/postfach/verwalten';
 import { PostfachFehler } from '@/lib/postfach/transport';
 import { POSTFACH_ID } from '@/lib/postfach/typen';
@@ -51,7 +52,8 @@ export async function GET(req: Request) {
     bereiche: sicht.bereiche,
     ...(space === 'business' ? { nurBusiness: true } : {}),
     anbieter: anbieterFuerFormular(demo).map(a => { const v = VOREINSTELLUNGEN[a]; return { id: a, name: v.name, passwortWort: v.passwortWort, anleitung: v.anleitung, ...(v.link ? { link: v.link } : {}), ...(v.sendeHinweis ? { sendeHinweis: v.sendeHinweis } : {}), eigeneServer: a === 'eigen' }; }),
-    demo, absender: sicht.absender, google: roh.google, mitDirGeteilt, ohneBereich: sicht.ohneBereich, nichtMoeglich: NICHT_MOEGLICH,
+    demo, absender: sicht.absender, google: roh.google, mitDirGeteilt,
+    unzugeordnet: postfaecherUnzugeordnet(eigene.map(p => p.oeffentlich)), waehlbar: sicht.bereiche, nichtMoeglich: NICHT_MOEGLICH,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

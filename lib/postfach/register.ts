@@ -15,6 +15,7 @@ import { ladeRegister } from '@/lib/gesellschaften/server';
 import { alleGesellschaften, anzeigeName } from '@/lib/gesellschaften/modell';
 import { zeilenfrei, adresseGueltig, adresseKlein } from '@/lib/gmail/mime';
 import { postfachTeilbar } from '@/lib/inbox/teilen';
+import { adresseMaskiert } from '@/lib/zugang/konten';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { VOREINSTELLUNGEN, hostOk, passwortFuer, portOk } from './anbieter';
 import { bereichAuswahl, istKundenBereich, kundenBereiche, type BereichEintrag } from './bereich';
@@ -90,6 +91,22 @@ async function bereichPruefen(b: unknown, bisher?: string | null): Promise<strin
     throw new RegisterFehler('Diesen Kunden gibt es nicht (mehr) mit aktivem Mandat — bitte einen Kunden aus der Liste wählen.');
   }
   throw new RegisterFehler('Bitte einen Bereich wählen: Privat, eine Gesellschaft oder einen Kunden mit aktivem Mandat.');
+}
+
+/** Ein eigenes Postfach ohne Bereich — nur, was „jetzt zuordnen“ braucht (dieselbe Form wie `unzugeordnet` im Strom der Inbox). */
+export interface Unzugeordnet { id: string; quelle: string; anzeigename: string; adresse: string; nachrichten?: number }
+
+/**
+ * Eigene Postfächer ohne Bereich (rein, 09.10.): nie eine Nachricht, nur Kennung, Quelle, Name, die MASKIERTE Adresse und die Zahl der
+ * Nachrichten. Die Postfächer-Seite zeigt daraus „… noch keinem Bereich zugeordnet — jetzt zuordnen“ — in jeder Sicht, auch Business.
+ */
+export function postfaecherUnzugeordnet(liste: readonly { id: string; quelle: string; bereich: string | null; anzeigename: string; adresse: string; zustand?: { nachrichten?: number }; fremd?: unknown }[]): Unzugeordnet[] {
+  // Der Name eines IMAP-Postfachs ist ohne eigene Angabe die Adresse selbst — dann ebenfalls nur maskiert.
+  const name = (p: { anzeigename: string; adresse: string }) => (p.adresse ? p.anzeigename.replace(new RegExp(p.adresse.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), adresseMaskiert(p.adresse)) : p.anzeigename);
+  return liste.filter(p => p.bereich === null && !p.fremd).map(p => ({
+    id: p.id, quelle: p.quelle, anzeigename: name(p), adresse: p.adresse ? adresseMaskiert(p.adresse) : '',
+    ...(typeof p.zustand?.nachrichten === 'number' ? { nachrichten: p.zustand.nachrichten } : {}),
+  }));
 }
 
 // ── Eingaben säubern (rein) ─────────────────────────────────────────────────

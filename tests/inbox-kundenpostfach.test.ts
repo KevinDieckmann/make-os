@@ -121,11 +121,6 @@ describe('rein: Bereichs-Form und Anzeige (lib/postfach/bereich.ts)', () => {
     const w = B.bereichAuswahl([{ id: 'kdv', name: 'G1' }, { id: 'ug', name: 'G2' }], k);
     expect(w.map(x => x.id)).toEqual(['privat', 'kdv', 'ug', `m-${FIRMA}`]);
   });
-  it('BEREICH_FORM: m-<firmaId> als Filter erlaubt, Unsinn nicht', async () => {
-    const { BEREICH_FORM } = await import('@/lib/postfach/bereich');
-    for (const ok of ['privat', 'kdv', 'g-abcd-1234', `m-${FIRMA}`]) expect(BEREICH_FORM.test(ok), ok).toBe(true);
-    for (const nein of ['m-', 'm-X', 'm-a', 'kunde:x', '../m-a', 'm-a b']) expect(BEREICH_FORM.test(nein), nein).toBe(false);
-  });
   it('imBereich: Kundenpostfach ist Business, nie Privat; Filter je Kunde', async () => {
     const { imBereich } = await import('@/lib/inbox/strom-server');
     expect(imBereich(`m-${FIRMA}`, { space: 'privat' })).toBe(false);
@@ -146,14 +141,18 @@ describe('rein: Bereichs-Form und Anzeige (lib/postfach/bereich.ts)', () => {
     expect(g.link?.url).toBe('https://myaccount.google.com/apppasswords');
     expect(An.NICHT_MOEGLICH.some(n => /Microsoft/.test(n.name))).toBe(true);
   });
-  it('postfaecherSicht: Postfach ohne Bereich in JEDER Sicht nur mit maskierter Adresse („jetzt zuordnen“)', async () => {
-    const { postfaecherSicht } = await import('@/lib/inbox/strom-server');
-    const d = { postfaecher: [{ id: 'gmail', bereich: null, quelle: 'gmail', adresse: `kevin@firma.${D}` }, { id: 'a', bereich: `m-${FIRMA}`, quelle: 'imap', adresse: KUNDE_ADR }], gespraeche: [], bereiche: [], absender: [] };
-    const b = postfaecherSicht(d, 'business');
-    expect(b.postfaecher.map(p => p.id)).toEqual(['a']);
-    expect(b.ohneBereich).toEqual([{ id: 'gmail', quelle: 'gmail', adresse: `k***@firma.${D}` }]);
-    expect(JSON.stringify(b.ohneBereich)).not.toContain(`kevin@firma.${D}`);
-    expect(postfaecherSicht(d, null).ohneBereich).toHaveLength(1);
+  it('postfaecherUnzugeordnet: nur eigene Postfächer ohne Bereich, nur maskierte Adresse, nie Nachrichten', async () => {
+    const { postfaecherUnzugeordnet } = await import('@/lib/postfach/register');
+    const r = postfaecherUnzugeordnet([
+      { id: 'gmail', quelle: 'gmail', bereich: null, anzeigename: 'Google Workspace', adresse: `kevin@firma.${D}`, zustand: { nachrichten: 3 } },
+      { id: 'pf-a', quelle: 'imap', bereich: `m-${FIRMA}`, anzeigename: 'Kunde', adresse: KUNDE_ADR },
+      { id: 'pf-b', quelle: 'imap', bereich: null, anzeigename: 'Team', adresse: `team@${D}`, fremd: { besitzerName: 'Malin' } },
+      { id: 'pf-c', quelle: 'imap', bereich: null, anzeigename: `Postfach ${KUNDE_ADR.toUpperCase()}`, adresse: KUNDE_ADR },
+    ]);
+    expect(r).toEqual([
+      { id: 'gmail', quelle: 'gmail', anzeigename: 'Google Workspace', adresse: `k***@firma.${D}`, nachrichten: 3 },
+      { id: 'pf-c', quelle: 'imap', anzeigename: `Postfach k***@beispielkunde.${D}`, adresse: `k***@beispielkunde.${D}` },
+    ]);
   });
   it('Verzeichnis: „E-Mail (Postfächer bei Kunden)“ wird einmal nachgetragen (idempotent), ohne neuen Empfänger; Art. 15 kennt es', async () => {
     const { verzeichnisVervollstaendigen, VV_EMAIL_KUNDEN_ID } = await import('@/lib/crm/datenschutz');
@@ -216,22 +215,25 @@ describe('Kundenpostfach von Ende zu Ende', () => {
     const business = await GET(inbox, '/api/inbox?space=business');
     expect(business.text).toContain('KUNDE-Projektstand');
     expect(business.text).not.toContain('PRIVAT-Einladung');
-    const kunde = await GET(inbox, `/api/inbox?bereich=m-${FIRMA}`);
-    expect(kunde.status).toBe(200);
-    expect(kunde.d.gespraeche.map((g: { betreff: string }) => g.betreff)).toEqual(['KUNDE-Projektstand']);
-    expect(kunde.d.bereiche).toContainEqual({ id: `m-${FIRMA}`, name: KUNDE_NAME });
-    expect((await GET(inbox, '/api/inbox?bereich=m-X')).status).toBe(400);
+    // Filter je Kunde — serverseitig in stromFuer (den Parameter `?bereich=m-…` nimmt /api/inbox nach dem Merge mit „Ansicht“ generisch an).
+    const { stromFuer } = await import('@/lib/inbox/strom-server');
+    const kunde = await stromFuer('kevin', { bereich: `m-${FIRMA}` });
+    expect(kunde.gespraeche.map(g => g.betreff)).toEqual(['KUNDE-Projektstand']);
+    expect(kunde.bereiche).toContainEqual({ id: `m-${FIRMA}`, name: KUNDE_NAME });
+    expect(JSON.stringify(await stromFuer('kevin', { space: 'privat' }))).not.toContain('KUNDE-Projektstand');
     // Die Postfächer-Verwaltung der Privat-Sicht ist „alles Eigene“ (die Person verwaltet ihre Postfächer); Business zeigt das Kundenpostfach.
     const pfB = await GET(postfaecher, '/api/inbox/postfaecher?space=business');
     expect(pfB.d.postfaecher.map((p: { bereich: string }) => p.bereich)).toEqual([`m-${FIRMA}`]);
   });
   it('Person B sieht Kevins Kundenpostfach nicht (Strom, Postfächer, Suche über Bereich), Dienstweg 403', async () => {
     await beideVerbinden();
-    for (const url of ['/api/inbox', '/api/inbox?space=business', `/api/inbox?bereich=m-${FIRMA}`]) {
+    for (const url of ['/api/inbox', '/api/inbox?space=business']) {
       const m = await GET(inbox, url, sitzung('malin'));
       expect(m.text, url).not.toContain('KUNDE-Projektstand');
       expect(m.text, url).not.toContain(KUNDE_ADR);
     }
+    const { stromFuer } = await import('@/lib/inbox/strom-server');
+    expect(JSON.stringify(await stromFuer('malin', { bereich: `m-${FIRMA}` }))).not.toContain('KUNDE-Projektstand');
     const pf = await GET(postfaecher, '/api/inbox/postfaecher', sitzung('malin'));
     expect(pf.text).not.toContain(KUNDE_ADR);
     expect(pf.d.mitDirGeteilt ?? []).toEqual([]);
@@ -241,7 +243,7 @@ describe('Kundenpostfach von Ende zu Ende', () => {
   it('Antworten aus dem Kundenpostfach: Absender = Kundenadresse über smtp.gmail.com, keine zweite Kopie in „Gesendet“ (Gmail legt selbst ab)', async () => {
     await beideVerbinden();
     const s = server.get(KUNDE_ADR)!;
-    const g = ((await GET(inbox, `/api/inbox?bereich=m-${FIRMA}`)).d.gespraeche as { id: string }[])[0];
+    const g = ((await GET(inbox, '/api/inbox?space=business')).d.gespraeche as { id: string; betreff: string }[]).find(x => x.betreff === 'KUNDE-Projektstand')!;
     const r = await POST(senden, '/api/inbox/senden', { gespraech: g.id, text: 'Stand kommt morgen.', anfrageId: 'anf-21111111-2222-4333-8444-555555555555' });
     expect(r.status, r.text).toBe(200);
     expect(s.gesendet).toHaveLength(1);
@@ -259,6 +261,27 @@ describe('Kundenpostfach von Ende zu Ende', () => {
     // Nicht mehr wählbar — aber das Postfach behält Bereich und Namen aus dem CRM.
     expect(liste.d.bereiche.map((b: { id: string }) => b.id)).not.toContain(`m-${FIRMA}`);
     expect(liste.d.postfaecher.find((p: { id: string }) => p.id === kunde)).toMatchObject({ bereich: `m-${FIRMA}`, bereichName: KUNDE_NAME });
+  });
+  it('Postfach ohne Bereich: steht in JEDER Sicht unter unzugeordnet (maskiert), „jetzt zuordnen“ auf einen Kunden → danach Business', async () => {
+    const { kunde } = await beideVerbinden();
+    // Bereich fehlt (z. B. Altbestand) — direkt im Register, wie ein verbundenes Gmail ohne Eintrag.
+    const reg = (await db.loadJson<{ v: 1; postfaecher: { id: string; bereich: string | null }[] }>('postfaecher--kevin'))!;
+    await db.saveJson('postfaecher--kevin', { v: 1, postfaecher: reg.postfaecher.map(p => (p.id === kunde ? { ...p, bereich: null } : p)) });
+    db.leseCacheLeeren();
+    for (const url of ['/api/inbox/postfaecher', '/api/inbox/postfaecher?space=business', '/api/inbox/postfaecher?space=privat']) {
+      const r = await GET(postfaecher, url);
+      expect(r.d.unzugeordnet, url).toEqual([expect.objectContaining({ id: kunde, quelle: 'imap', adresse: `k***@beispielkunde.${D}` })]);
+      expect(JSON.stringify(r.d.unzugeordnet)).not.toContain(KUNDE_ADR);
+    }
+    const b = await GET(postfaecher, '/api/inbox/postfaecher?space=business');
+    expect(b.d.postfaecher.map((p: { id: string }) => p.id)).not.toContain(kunde);
+    expect(b.d.waehlbar.map((x: { id: string }) => x.id)).toContain(`m-${FIRMA}`);
+    expect(b.d.waehlbar.map((x: { id: string }) => x.id)).not.toContain('privat');
+    const z = await POST(postfaecher, '/api/inbox/postfaecher', { aktion: 'einstellen', id: kunde, bereich: `m-${FIRMA}` });
+    expect(z.status, z.text).toBe(200);
+    const nach = await GET(postfaecher, '/api/inbox/postfaecher?space=business');
+    expect(nach.d.unzugeordnet).toEqual([]);
+    expect(nach.d.postfaecher.map((p: { id: string }) => p.id)).toContain(kunde);
   });
   it('Trennen: Spiegel, App-Passwort und Register-Eintrag weg — das Privat-Postfach bleibt', async () => {
     const { kunde, privat } = await beideVerbinden();

@@ -31,7 +31,9 @@ import { holen, senden, vorText, type PostfaecherAntwort } from './daten';
 /** Antwort der Postfächer-Route mit den Angaben vom 09.10. (Bereichs-Art, Postfächer ohne Bereich, was nicht geht). */
 type Antwort = Omit<PostfaecherAntwort, 'bereiche'> & {
   bereiche: BereichEintrag[];
-  ohneBereich?: { id: string; quelle: string; adresse: string }[];
+  /** Eigene Postfächer ohne Bereich (maskiert) und die Bereiche dieser Sicht zum Zuordnen — dieselben Felder wie im Strom der Inbox. */
+  unzugeordnet?: { id: string; quelle: string; anzeigename: string; adresse: string; nachrichten?: number }[];
+  waehlbar?: BereichEintrag[];
   nichtMoeglich?: { name: string; text: string }[];
 };
 
@@ -151,7 +153,7 @@ function mitBisherigem(bereiche: BereichEintrag[], p: PostfachOeffentlich): Bere
 }
 
 /** Postfächer ohne Bereich — oben, mit „jetzt zuordnen“ (Bereiche der aktuellen Sicht). Nur maskierte Adresse, kein Inhalt. */
-function OhneBereich({ liste, bereiche, onGeaendert, meldung }: { liste: NonNullable<Antwort['ohneBereich']>; bereiche: BereichEintrag[]; onGeaendert: () => void; meldung: (t: string) => void }) {
+function OhneBereich({ liste, bereiche, onGeaendert, meldung }: { liste: NonNullable<Antwort['unzugeordnet']>; bereiche: BereichEintrag[]; onGeaendert: () => void; meldung: (t: string) => void }) {
   const [wahl, setWahl] = useState<Record<string, string>>({});
   const [fehler, setFehler] = useState('');
   const [laeuft, setLaeuft] = useState(false);
@@ -168,7 +170,7 @@ function OhneBereich({ liste, bereiche, onGeaendert, meldung }: { liste: NonNull
         {fehler && <span role="alert" style={{ color: LEUCHT.kritisch }}>{fehler}</span>}
         {liste.map(p => (
           <div key={p.id} style={{ display: 'grid', gap: 8 }} data-ohne-bereich={p.id}>
-            <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'}{p.adresse ? ` · ${p.adresse}` : ''}</span>
+            <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{p.anzeigename} · {p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'}{p.adresse ? ` · ${p.adresse}` : ''}{typeof p.nachrichten === 'number' ? ` · ${p.nachrichten} Nachrichten` : ''}</span>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}><BereichWahl wert={wahl[p.id] ?? ''} onWahl={b => setWahl({ ...wahl, [p.id]: b })} bereiche={bereiche} hoehe={44} /></div>
               <Knopf onClick={() => zuordnen(p.id)} aus={laeuft || !wahl[p.id]}>Zuordnen</Knopf>
@@ -266,7 +268,7 @@ export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () =
   return (
     <div style={{ display: 'grid', gap: 14 }} data-inbox="postfaecher">
       {d.nurBusiness && <Hinweis art="info">Business-Sicht: hier stehen nur Postfächer mit einem Business-Bereich (Gesellschaften und Kunden). Private Postfächer verwaltest du in der Sicht Privat.</Hinweis>}
-      {(d.ohneBereich ?? []).length > 0 && <OhneBereich liste={d.ohneBereich!} bereiche={d.bereiche} onGeaendert={geaendert} meldung={meldung} />}
+      {(d.unzugeordnet ?? []).length > 0 && <OhneBereich liste={d.unzugeordnet!} bereiche={d.waehlbar ?? d.bereiche} onGeaendert={geaendert} meldung={meldung} />}
       <Karte i={0}>
         <Ueberschrift rechts={!neu ? <Knopf leise onClick={() => setNeu(true)}>+ Postfach</Knopf> : <Knopf leise onClick={() => setNeu(false)}>Schließen</Knopf>}>Deine Postfächer</Ueberschrift>
         {!d.postfaecher.length && !neu && <Leer>Noch kein Postfach verbunden.</Leer>}

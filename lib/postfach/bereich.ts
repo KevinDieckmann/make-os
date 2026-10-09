@@ -19,8 +19,8 @@ import { istMandantSpace, mandantSpaceId, firmaVonSpace, mandantenSpaces, MANDAN
 
 export type BereichArt = 'privat' | 'gesellschaft' | 'kunde' | 'ohne';
 
-/** Form eines Bereichs als Filter-Parameter (`?bereich=`) — EINE Regel für /api/inbox, Suche und Übergaben. */
-export const BEREICH_FORM = /^(privat|kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62}|m-[a-z0-9][a-z0-9-]{1,63})$/;
+// Die Form als Filter-Parameter (`?bereich=`) prüft die Inbox generisch (`istBereichKennung`, lib/inbox/ansicht.ts, Paket „Ansicht“ 09.10.):
+// klein, ohne Sonderzeichen — `m-<firmaId>` passt hinein, deshalb keine zweite Regel hier.
 
 /** Ist das ein Kunden-Bereich (`m-<firmaId>`)? Dieselbe Regel wie der Mandanten-Space der Aufgaben. */
 export const istKundenBereich = (v: unknown): v is string => istMandantSpace(v);
