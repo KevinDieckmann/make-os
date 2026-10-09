@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         if (e instanceof PostfachFehler) return { status: e.code === 'anmeldung' ? 409 : e.status, body: { ok: false, code: e.code, fehler: e.message } };
         throw e;
       }
-    });
+    }, undefined, { wer: z.person }); // Nachschliff 09.10.: die gemerkte Antwort nur für die Person selbst (lib/store/anfragen.ts `wer`)
     return NextResponse.json(r.body, { status: r.status });
   } catch (e) { return gmailFehlerAntwort(e); }
 }

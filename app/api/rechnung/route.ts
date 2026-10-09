@@ -92,7 +92,7 @@ export async function POST(req: Request) {
         const r = await einmalig('rechnung-neu', b.anfrageId, async () => {
           const e = await entwurfNeu({ quelle: b.quelle, firmaId: b.firmaId, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, mandatId: b.mandatId, angebotId: b.angebotId, monat: b.monat, nur: b.nur, vorlage: b.vorlage, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer });
           return { status: 200, body: { ok: true, rechnung: e.rechnung, vorhanden: e.vorhanden } };
-        });
+        }, undefined, { wer: z.person });
         return NextResponse.json(r.body, { status: r.status });
       }
       case 'speichern': {
@@ -109,19 +109,19 @@ export async function POST(req: Request) {
       case 'stellen': {
         const nein = vonHand(); if (nein) return nein;
         if (!id) return fehler('id fehlt.', 400);
-        const r = await einmalig('rechnung-stellen', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await rechnungStellen({ id, stand: b.stand, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }));
+        const r = await einmalig('rechnung-stellen', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await rechnungStellen({ id, stand: b.stand, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }), undefined, { wer: z.person });
         return NextResponse.json(r.body, { status: r.status });
       }
       case 'storno': {
         const nein = vonHand(); if (nein) return nein;
         if (!id) return fehler('id fehlt.', 400);
-        const r = await einmalig('rechnung-storno', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await rechnungStornieren({ id, grund: b.grund, ...(b.stand !== undefined ? { stand: b.stand } : {}), person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }));
+        const r = await einmalig('rechnung-storno', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await rechnungStornieren({ id, grund: b.grund, ...(b.stand !== undefined ? { stand: b.stand } : {}), person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }), undefined, { wer: z.person });
         return NextResponse.json(r.body, { status: r.status });
       }
       case 'mahnung': {
         const nein = vonHand(); if (nein) return nein;
         if (!id) return fehler('id fehlt.', 400);
-        const r = await einmalig('rechnung-mahnung', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await mahnungVermerken({ id, stufe: b.stufe, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }));
+        const r = await einmalig('rechnung-mahnung', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await mahnungVermerken({ id, stufe: b.stufe, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }), undefined, { wer: z.person });
         return NextResponse.json(r.body, { status: r.status });
       }
       case 'mahntage': {
