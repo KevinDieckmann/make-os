@@ -75,7 +75,7 @@ export function zeitplanEintraege(posten: readonly ZeitplanPosten[], jetzt: Date
       const wann = ausWandzeit(w);
       const dringend = wann.getTime() - jetzt.getTime() <= DRINGEND_STUNDEN * 3_600_000;
       raus.push(eintrag({
-        id: `zp:${p.art}:${p.id}:${s.slot}`, art: p.art, titel: p.titel, wann: wann.toISOString(), ...(p.headId ? { headId: p.headId } : {}),
+        id: `zp:${p.art}:${p.id}:${s.slot}`, serie: `zp:${p.art}:${p.id}`, art: p.art, titel: p.titel, wann: wann.toISOString(), ...(p.headId ? { headId: p.headId } : {}),
         link: WEG.agenten(p.headId ? { h: p.headId } : {}), wichtig: p.wichtig, dringend,
       }));
     }
@@ -125,9 +125,50 @@ const REVIEW = new Set(['wochenreview', 'kundenreview', 'monatsreview', 'monatsa
 /** Treffer eines Heads → Einträge (rein); Power Hour einer anderen Person fällt weg. */
 export function headEintraege(headId: string, treffer: readonly ModusTreffer[], person: string, jetzt: Date): Naechstes[] {
   return treffer.filter(t => !t.person || t.person === person).map(t => eintrag({
-    id: `takt:${headId}:${t.modus}:${t.wann.toISOString()}`, art: 'zeitplan', titel: MODUS_TITEL[t.modus] ?? 'Lauf', wann: t.wann.toISOString(), headId,
+    id: `takt:${headId}:${t.modus}:${t.wann.toISOString()}`, serie: `takt:${headId}:${t.modus}`, art: 'zeitplan', titel: MODUS_TITEL[t.modus] ?? 'Lauf', wann: t.wann.toISOString(), headId,
     link: WEG.agenten({ h: headId }), wichtig: REVIEW.has(t.modus), dringend: t.wann.getTime() - jetzt.getTime() <= DRINGEND_STUNDEN * 3_600_000,
   }));
+}
+
+// ── Anzeige: je wiederkehrendem Lauf nur das nächste Vorkommen (Rundgang 09.10.) ───────────────────────────────────────────
+
+const tagDerZeit = (w: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(w) ? w : tagVon(wandzeit(new Date(w))));
+const wochentagVon = (tag: string): number => new Date(`${tag}T12:00:00Z`).getUTCDay();
+const istMoBisFr = (tag: string): boolean => { const w = wochentagVon(tag); return w >= 1 && w <= 5; };
+/** Der nächste Montag–Freitag nach `tag` (rein, ohne Feiertage — fällt einer dazwischen, ist der Takt nicht „werktags“). */
+const naechsterWerktag = (tag: string): string => { let t = tagPlus(tag, 1); while (!istMoBisFr(t)) t = tagPlus(t, 1); return t; };
+
+/** Je ein Vorkommen an jedem Tag bzw. an jedem Werktag (Mo–Fr) zwischen dem ersten und dem letzten? Sonst kein Takt. Rein. */
+export function wiederholtVon(zeiten: readonly string[]): Naechstes['wiederholt'] | undefined {
+  const tage = zeiten.map(tagDerZeit).sort();
+  if (tage.length < 2 || new Set(tage).size !== tage.length) return undefined;
+  const folgt = (f: (t: string) => string) => tage.every((t, i) => i === 0 || t === f(tage[i - 1]));
+  if (folgt(t => tagPlus(t, 1))) return 'taeglich';
+  if (tage.every(istMoBisFr) && folgt(naechsterWerktag)) return 'werktags';
+  return undefined;
+}
+
+/**
+ * „Als Nächstes“ für die Anzeige (rein): ein wiederkehrender Lauf (gleiche `serie` — Zeitplan, Skill, Hintergrundaufgabe, eingebauter
+ * Head-Lauf) steht nur EINMAL da, mit seinem nächsten Vorkommen; `weitere`/`bis`/`wiederholt` sagen, was danach noch kommt. Die Rechnung
+ * selbst bleibt die des Takts (`naechstesLesen` liefert jedes Vorkommen — die Gold-Fälle prüfen sie); Einträge ohne Serie (Freigaben,
+ * Fristen, ZOE-Aufgaben) bleiben unverändert. Eisenhower-Reihenfolge und „kritisch“ wie gehabt (`naechstesSortieren`).
+ */
+export function naechstesVerdichten(liste: readonly Naechstes[]): Naechstes[] {
+  const serien = new Map<string, Naechstes[]>();
+  for (const n of liste) if (n.serie) serien.set(n.serie, [...(serien.get(n.serie) ?? []), n]);
+  const raus: Naechstes[] = liste.filter(n => !n.serie);
+  for (const vorkommen of Array.from(serien.values())) {
+    const nach = [...vorkommen].sort((a, b) => zeitWert(a.wann) - zeitWert(b.wann) || a.id.localeCompare(b.id));
+    const erstes = nach[0];
+    if (nach.length === 1) { raus.push(erstes); continue; }
+    const wiederholt = wiederholtVon(nach.map(n => n.wann));
+    raus.push({
+      ...erstes, weitere: nach.length - 1, bis: nach[nach.length - 1].wann, ...(wiederholt ? { wiederholt } : {}),
+      ...(nach.some(n => n.kritisch) ? { kritisch: true } : {}),
+    });
+  }
+  return naechstesSortieren(raus);
 }
 
 // ── Freigaben, Fristen, ZOE-Aufgaben ─────────────────────────────────────────────────────────────────────────────────────

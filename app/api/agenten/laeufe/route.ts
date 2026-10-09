@@ -11,7 +11,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { einmalig } from '@/lib/store/anfragen';
 import { AGENTEN_NUR_SELBST } from '@/lib/agenten/typen';
 import { laeufeLesen, laufAbbrechen, laufNeuStarten } from '@/lib/agenten/laeufe';
-import { naechstesLesen } from '@/lib/agenten/naechstes';
+import { naechstesLesen, naechstesVerdichten } from '@/lib/agenten/naechstes';
 import { planAendern, planen, planLesen, planLoeschen } from '@/lib/agenten/plan-server';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,8 @@ export async function GET(req: Request) {
   if (z instanceof NextResponse) return z;
   const jetzt = new Date();
   const [laeufe, naechstes, plan] = await Promise.all([laeufeLesen(z.person, jetzt), naechstesLesen(z.person, jetzt), planLesen(z.person)]);
-  return NextResponse.json({ ok: true, laeufe, naechstes, plan: plan.aufgaben, planStaende: plan.staende }, { headers: { 'Cache-Control': 'no-store' } });
+  // Rundgang 09.10.: je wiederkehrendem Lauf nur das nächste Vorkommen (+ „n weitere“) — die Rechnung bleibt die des Takts.
+  return NextResponse.json({ ok: true, laeufe, naechstes: naechstesVerdichten(naechstes), plan: plan.aufgaben, planStaende: plan.staende }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 type Body = Record<string, unknown> & { aktion?: string };

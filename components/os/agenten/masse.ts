@@ -14,6 +14,15 @@ export const SPALTE = {
   mitteMin: 420,
 } as const;
 
+/**
+ * EINE Spalte, die nie breiter wird als ihr Platz (Rundgang 09.10., Handy 390 px: ein langer Knopftext im Überblick schob die Karte
+ * über den Rand). Ein Grid ohne Spaltenangabe wächst auf die Mindestbreite seines breitesten Inhalts — jedes Grid der ZOE-Mitte nimmt
+ * deshalb diese Spalte (`minmax(0, 1fr)`), Wächter in tests/rundgang-funde.test.ts.
+ */
+export const SPALTE_EINS = 'minmax(0, 1fr)';
+/** Ein Stapel untereinander, der die Breite seines Platzes nie überschreitet. */
+export const einSpaltig = (gap: number) => ({ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap, minWidth: 0 }) as const;
+
 /** Kürzel-Kugeln: in Listen, im Kopf eines Heads, ZOE im Kopf der Mitte. */
 export const KUGEL_GROESSE = { klein: 28, liste: 36, kopf: 52 } as const;
 

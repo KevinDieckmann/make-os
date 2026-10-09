@@ -577,6 +577,17 @@ export interface Naechstes {
   kritisch?: boolean;
   /** Freigaben als EINE Zeile mit Zahl (C2). */
   anzahl?: number;
+  /**
+   * Serie eines wiederkehrenden Laufs (Zeitplan, Skill, Hintergrundaufgabe; Rundgang 09.10.) — dieselbe Kennung an jedem Vorkommen.
+   * Die Antwort von GET /api/agenten/laeufe zeigt je Serie nur das NÄCHSTE Vorkommen (`naechstesVerdichten`, lib/agenten/naechstes.ts).
+   */
+  serie?: string;
+  /** Nur am verdichteten Eintrag: so viele Vorkommen folgen im Zeitraum noch … */
+  weitere?: number;
+  /** … das letzte davon (ISO-Zeit bzw. Berliner Tag) … */
+  bis?: string;
+  /** … und ihr Takt, wenn er sich erkennen lässt: an jedem Tag bzw. an jedem Werktag genau eins. */
+  wiederholt?: 'taeglich' | 'werktags';
 }
 
 // ── Stapel-Arten des Agenten-Bereichs (lib/zoe/stapel.ts `StapelArt`; Freigabe baut Paket 3 in stapel-arten.ts) ────────
@@ -677,7 +688,11 @@ export interface FadenKurz {
   elternId?: string;
   ungelesen?: boolean;
 }
-export interface KennzahlWert { id: string; label: string; wert: string | null; ampel?: 'gruen' | 'gelb' | 'rot' | 'grau' }
+/**
+ * Eine Kennzahl im Kopf eines Heads. `hinweis` (Rundgang 09.10.): warum der Index (noch) keinen Wert hat — der Satz der Lücke aus dem
+ * gemeinsamen Kern (z. B. „erst ab 10 Entscheidungen (2 gewonnen · 1 verloren)“), damit der Kopf nie ein stummes „—“ zeigt.
+ */
+export interface KennzahlWert { id: string; label: string; wert: string | null; ampel?: 'gruen' | 'gelb' | 'rot' | 'grau'; hinweis?: string }
 export type HeadGesperrt = 'aus' | 'not-aus' | 'budget' | 'business-frei' | 'einwilligung' | 'modul';
 export interface HeadKarte {
   id: string;

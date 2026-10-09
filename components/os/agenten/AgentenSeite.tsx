@@ -31,7 +31,7 @@ import { AgentenDialog } from './Dialoge';
 import { AgentenKontext, useAgenten, type AgentenWert, type DialogArt, type Form } from './kontext';
 import { ladeAgenten, ladeFaeden, ladeLaeufe, ladeStapel, useAbruf } from './daten';
 import { auswahlAus, risikoVon, wartendeFaeden } from './regeln';
-import { HANDY_LEISTE, HANDY_REITER, SPALTE } from './masse';
+import { HANDY_LEISTE, HANDY_REITER, SPALTE, SPALTE_EINS } from './masse';
 
 export type HandyReiter = 'gespraech' | 'team' | 'laeuft';
 
@@ -64,7 +64,7 @@ export function AgentenFlaeche({ handyReiter = 'gespraech', setHandyReiter }: { 
     const imChat = auswahl.art !== 'zoe' || !!entwurf;
     const reiter: { id: HandyReiter; label: string; zahl?: number }[] = [{ id: 'gespraech', label: 'Gespräch' }, { id: 'team', label: 'Team' }, { id: 'laeuft', label: 'Läuft', zahl }];
     return (
-      <div style={{ ['--agenten-feld-unten' as string]: `calc(${HANDY_LEISTE + HANDY_REITER}px + env(safe-area-inset-bottom, 0px))`, paddingBottom: HANDY_REITER + ABSTAND.l, display: 'grid', gap: ABSTAND.l }}>
+      <div style={{ ['--agenten-feld-unten' as string]: `calc(${HANDY_LEISTE + HANDY_REITER}px + env(safe-area-inset-bottom, 0px))`, paddingBottom: HANDY_REITER + ABSTAND.l, display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: ABSTAND.l, minWidth: 0 }}>
         {handyReiter === 'gespraech' && (
           <>
             {imChat && (
@@ -98,7 +98,7 @@ export function AgentenFlaeche({ handyReiter = 'gespraech', setHandyReiter }: { 
     return (
       <div style={{ display: 'grid', gridTemplateColumns: `${SPALTE.teamMittel}px minmax(0, 1fr)`, gap: ABSTAND.xl, alignItems: 'start' }}>
         <div style={spalteSeite}><Karte flach dicht><Team /></Karte></div>
-        <div style={{ display: 'grid', gap: ABSTAND.xxl, minWidth: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: ABSTAND.xxl, minWidth: 0 }}>
           <Mitte />
           <Karte flach dicht><Hintergrund /></Karte>
         </div>
