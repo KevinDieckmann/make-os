@@ -4,6 +4,53 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — ZOE-Schreibwege über die offiziellen Routen, Finanz-Trennung (nur lokal — Branch `zoe-schreibwege`, Basis `agenten-nacht` 297458af)
+
+Anlass: die Abdeckungs-Analyse (nur gelesen) fand Werkzeuge von ZOE/Agenten, die an den offiziellen Schreibwegen vorbei schrieben und die
+Finanz-Trennung verletzten. Jeder Fund wurde nachgeprüft; behoben ist, was sich bestätigt hat. Wächter `tests/zoe-schreibwege.test.ts`
+(28 Fälle; die 26 der Funde waren auf der Basis alle rot).
+
+**Eine Stelle für den internen Hop:** `lib/zoe/innen.ts` (`innen(pfad, methode, body, person)`) — ruft eine eigene Route im Prozess mit
+Dienstschlüssel + `x-make-person` der AUSLÖSENDEN Person (bei der Freigabe: wer im Stapel klickte), ohne Person nie (401). Dieselben Prüfungen
+wie ein Klick; `crm_vorschlag` und der Kalender-Vorschlag nutzen sie weiter (aus `crm-vorschlag.ts` nur noch weitergereicht).
+**Regel: neue schreibende ZOE-Werkzeuge nur über `innen()` — nie `updateJson`/`aendereKontakte` am Schreibweg vorbei** (Wächter-Scan im Test).
+
+| Fund | Vorher | Jetzt |
+|---|---|---|
+| #1 Finanz-Werkzeuge (kritisch) | `setze_kontostand`, `erfasse_rechnung`, `erfasse_zahlung`, `erfasse_planposten`, `setze_ziele` schrieben direkt in `finanzplan`/`liquiplan`/`finance`: ohne Fassung/409, ohne Protokoll, ohne `privatFinanzZugang` — ein Konto „nur Business“ schrieb über ZOE, was die Route verweigert; „bezahlt“ ohne Buchung und ohne `bezahltAm`; Kontostand/Zahlung auf ganze Euro | `lib/zoe/finanz-werkzeuge.ts` → `GET/PATCH /api/state/finanzplan` (Fassung je Eintrag, `aktion: 'bezahlt'` = Status + `bezahltAm` + Buchung `bu-re-<id>` in EINER Sperre), `PATCH /api/state/liquiplan`, `PATCH /api/state/finance`. Beträge auf den Cent (auch `sauberFile` hält den Kontostand jetzt auf den Cent). Finanzplan-Altweg/Liquiplan (`finanz-privat`): nur mit privatem Finanzzugang — kimmi bietet die vier Werkzeuge einem Konto „nur Business“ nicht an, die Agenten (`werkzeugAngebot({ privatFinanzen })`) ebenso, der Stapel zeigt ihm solche Vorschläge nicht und lässt ihn nicht freigeben (404), die Vorschau (`vsKontostand`, `vsRechnung`, `vsPlanposten`) liest für ihn nichts. `setze_ziele` bleibt für Business-Partner (Route-Klasse `haushalt`). Wiederholung derselben Freigabe legt nichts doppelt an (Kennung aus der Vorschlags-Kennung, `WerkzeugKontext.vorschlagId`, nur von `fuehreAus` bei der Freigabe gesetzt). |
+| #2 Head of Finance Business (kritisch) | `baueFinanzbild` gab ohne Haushalt die Grundlage (V1-Export der Selbstständigkeit: Entnahmen, größter Kunde, RV-Hinweis) und ESt-Termine heraus — an den Business-Head, auch für „nur Business“ | Ohne Haushalt = Business-Sicht: Grundlage nur, wenn ihre Einheit zum Business gehört (`grundlageImBusiness`, `GRUNDLAGE_EINHEIT` in lib/einheiten.ts — wie `ladeRoh`), keine ESt; Datenpaket und `GET /api/finanzchef` ohne Rechtsform/ESt einer Privat-Einheit (`einstellungFuerBusiness`), die Checkliste ohne Konten/Rechnungen/Planposten einer Privat-Einheit. Der Privat-Kontext trägt jetzt die Kategorie `finanzen-privat`. |
+| #3 Stiller Rückfall auf die Selbstständigkeit | `firmaAusAngabe` ohne Angabe → Selbstständigkeit; `erfasse_zahlung` ohne Feld `firma`; Agenten-Schema ohne Prüfung | `businessFirmaAus` (lib/einheiten.ts): ohne Angabe nur die EINZIGE Business-Gesellschaft, Privat-Einheit und Unbekanntes abgelehnt (serverseitig gegen `BUSINESS_GESELLSCHAFTEN`). `erfasse_zahlung` hat `firma`, `MIT_FIRMA` ergänzt, die Beschreibungen nennen nur Business-Gesellschaften. `erfasse_planposten` lehnt eine Privat-Einheit und Posten einer Privat-Einheit ab (ohne/unbekannte Angabe bleibt „ohne Firma“ = Business, wie bisher). `firmaAusAngabe` hat sonst keine Aufrufer mehr (Tests bleiben). |
+| #4 CRM-Altwerkzeuge | `notiere_kontakt` schrieb mit `aendereKontakte` direkt: ohne Anlass-Pflicht (§ 7 Abs. 2 UWG), ohne Sperrliste bei „sperre“, ohne CRM-Folgen und Idempotenz; `chance_anlegen` am Deal-Weg vorbei | `notiere_kontakt` → `POST /api/crm/aktivitaet` (neues Feld `anlass`; Vorschlags-Kennung = Idempotenz + „aus ZOE, freigegeben von …“), `chance_anlegen` → `POST /api/crm/deal` (feste Kennung `ch-<Vorschlag>`, auch mit „trotzdem“ nie doppelt). Name, Eingabe, Stufe (Freigabe) bleiben. |
+| #5 Meilenstein/Fokus | `setze_meilenstein`/`setze_fokus` mit `updateJson` — ohne `listePatchen`, Bezugsprüfung, Liste je Meilenstein, Protokoll | `PATCH /api/state/meilensteine` (upsert mit Stand → Kette, `meilensteinBezugPruefen`, `ohneToteVerweise`, `meilensteinStrukturSichern`, Ziele nachziehen, Protokoll) bzw. `PUT /api/state/ziele` (jetzt mit Protokoll, ohne den Satz). |
+| #6 `suche_arbeit` | las Brain und CRM auch bei ausgeschaltetem Bereich; KI-Protokoll nur „aufgaben“; Privat-Space für jedes Haushaltskonto | Teilquellen je Schalter (`arbeitQuellen`), kimmi nennt genau die gelesenen Kategorien (`arbeitKategorien`), Agenten nur die aktiven Kategorien des Heads; Privat-Space nur für volle Mitglieder (`haushaltFuer`). |
+| klein | `haushalt_*` Kategorie `finanzen`; `hake_routine` hinter der Gesundheits-Einwilligung „an die KI“; Brain-Block „PIPELINE“ aus `prospects` | `haushalt_*` = `finanzen-privat` (zählt am Schalter Finanzen, KI-Tor mit privatem Finanzzugang); `hake_routine` neutral — das Werkzeug prüft je Routine: (a) zum Schreiben, Business-Routinen mit Bereich „Aufgaben & Ziele“, Privat-Routinen nur mit (b); Block heißt „PROSPECTING (recherchierte Firmen, keine Deals)“. |
+
+**Nie still kürzen (Zusatz der Hauptsitzung):** `starte_auftraege` kürzte auf 20 Aufträge (`.slice(0, 20)`) — jetzt über der Grenze `AUFTRAEGE_MAX`
+NICHTS eingereiht und ein klarer Satz an das Modell („Nicht eingereiht: höchstens 20 … — nichts gestartet. Bitte aufteilen“). `fakt_merken` gibt den
+413-Satz `GedaechtnisVoll` (aus dem Merge `agenten-datenschicht`) an das Modell weiter statt abzustürzen. Texte „Nicht erfasst/notiert/eingereiht“ und
+„NICHT vermerkt“ zählen in `fuehreAus`, kimmi und den Agenten als Fehlschlag (vorher galt eine abgelehnte Wirkung im Stapel als „freigegeben“).
+
+**Brain-Block GELD (Zusatz der Hauptsitzung):** `gatherBrain` filterte die Forderungen mit `firmaId !== 'privat'` — die Selbstständigkeit zählte als
+Business. Jetzt EINE Regel `geldAus` (lib/brain.ts) über `bereichVonFirma`; mit `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` zählt sie
+wieder mit (Wächter `tests/zoe-schreibwege-geld.test.ts`).
+
+**Routen (nur additiv, verhalten sich für die Oberfläche gleich):** `state/finanzplan` PATCH (ops und `bezahlt`) schreibt jetzt das Änderungsprotokoll
+(Kennungen + Feldnamen), Kontostand über den Dienstweg steht im Konten-Register mit Herkunft „zoe“; `state/liquiplan` PATCH/PUT kürzen nicht mehr still
+bei 200 Posten bzw. 300 Änderungen (413 statt `.slice`), PATCH schreibt das Protokoll; `state/finance` PATCH und `state/ziele` PUT schreiben das Protokoll.
+
+**Bewusst nicht geändert / offen (für Kevin):**
+- Ein Konto „nur Business“ kann über ZOE keine Kontostände, Rechnungen, Zahlungen oder Planposten erfassen — wie in der Oberfläche über diese Bestände
+  (Klasse `finanz-privat`). Ein Business-Schreibweg dafür (z. B. Rechnungen über `/api/rechnung`, Konten-Register) wäre ein eigenes Paket.
+- Die Business-Finanzwerkzeuge erfassen nichts mehr für die Selbstständigkeit (sie gehört zu Privat). Ein ZOE-Werkzeug für Rechnungen/Konten der
+  Selbstständigkeit im Privat-Bereich gibt es noch nicht.
+- Head-of-Finance-Steuern: ob USt/GewSt-Termine der Chef-Einstellung zur Selbstständigkeit gehören, ist nicht eindeutig — in der Business-Sicht fällt nur
+  die Einkommensteuer weg. Die doppelte Steuerlogik (Fund #8, Finanzchef vs. Steuern-Modul) ist nicht Teil dieses Pakets.
+- Doppelte Lese-Werkzeuge (`suche_kontakt` ↔ `crm_suche`, `crm_lage` ↔ `kennzahlen`/`sales_lage`) laufen schon über dieselbe Sicht (`crmSicht`); sie
+  zusammenzulegen änderte Ausgabe und Aufrufform — nicht gemacht.
+
+**Rückweg:** keine neue Bestandsform; `sauberFile` rundet Kontostände auf den Cent statt auf ganze Euro (ganze Beträge bit-gleich). Der alte Stand liest
+Cent-Kontostände (Zahl) ohne Fehler.
+
 ## 09.10.2026 — Agenten-Datenschicht: zwei Welten angeglichen, Fristen, nie kürzen (nur lokal — Branch `agenten-datenschicht`, Basis 297458af)
 
 Funde der Datenschicht-Analyse unter dem Agenten-System (alter Heads-Takt ↔ neuer Agenten-Bereich), je nachgeprüft und mit Wächter

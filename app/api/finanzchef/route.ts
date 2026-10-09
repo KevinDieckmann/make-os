@@ -15,6 +15,7 @@ import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { istEchterHaushalt } from '@/lib/finanzen/haushalt/aufgaben';
 import { monatPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { chefLauf, ladeFinanzbild, ladeEinstellung } from '@/lib/finanzen/chef/lauf';
+import { einstellungFuerBusiness } from '@/lib/finanzen/chef/finanzbild';
 import { MODI, type Modus } from '@/lib/finanzen/chef/prompt';
 import { leererStand, standName, EINSTELLUNG_NAME, type ChefStand, type ChefVorschlag, type VorschlagStatus, type ChefEinstellung } from '@/lib/finanzen/chef/stand';
 import type { UstRhythmus } from '@/lib/finanzen/chef/steuertermine';
@@ -35,7 +36,10 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
   ]);
   // 0-Punkt (05.10.): Konten, offene Rechnungen und Planposten ab der Eröffnung (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
   const ab = await mitEroeffnung({ firmen: fp?.firmen ?? [], rechnungen: fp?.rechnungen ?? [], planposten: (lp?.posten ?? []) as { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string; ab: string; rhythmus: string; bis?: string }[] });
-  const business = ab.planposten.filter(p => p.firmaId !== 'privat');
+  // Business-Umfang (09.10., Funde Abdeckung #2): Konten, Rechnungen und Planposten einer Privat-Einheit (Selbstständigkeit) kommen in der
+  // Checkliste gar nicht erst an — wie im Business-Index (`ladeRoh`). Mit Haushaltszugang wie bisher alles.
+  const imBereich = (firmaId: string | undefined) => !!haushalt || bereichVonFirma(firmaId) === 'business';
+  const business = ab.planposten.filter(p => p.firmaId !== 'privat' && imBereich(p.firmaId));
   let hh = null as Parameters<typeof istStand>[0]['haushalt'];
   const kontenStand = await ladeKonten();
   if (haushalt && bild.haushalt) {
@@ -56,8 +60,8 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
   const haupt = hauptInhaber(kontenStand);
   return istStand({
     heute: bild.stichtag,
-    firmen: ab.firmen.map(f => ({ id: f.id, name: kontoName(f.id, f.name), kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
-    offeneRechnungen: ab.rechnungen.filter(r => r.status === 'gestellt' && r.firmaId !== 'privat').map(r => ({ kunde: r.kunde, faellig: r.faellig })),
+    firmen: ab.firmen.filter(f => imBereich(f.id)).map(f => ({ id: f.id, name: kontoName(f.id, f.name), kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
+    offeneRechnungen: ab.rechnungen.filter(r => r.status === 'gestellt' && r.firmaId !== 'privat' && imBereich(r.firmaId)).map(r => ({ kunde: r.kunde, faellig: r.faellig })),
     leereControllingMonate: bild.business.controlling ? bild.business.controlling.leere_monate : null,
     grundlageStand: bild.business.grundlage?.stand ?? null,
     planposten: business.length, zuKlaeren: business.filter(p => !p.sicher && (p.notiz ?? '').startsWith('Zu klären')).length,
@@ -84,12 +88,13 @@ export async function GET(req: Request) {
     ladeFinanzbild(u.haushalt),
   ]);
   const s = { ...leererStand(), ...(stand ?? {}) };
-  const istStandListe = await checkliste(u.haushalt, bild, einstellung);
+  const istStandListe = await checkliste(u.haushalt, bild, u.haushalt ? einstellung : einstellungFuerBusiness(einstellung));
   return NextResponse.json({
     istStand: istStandListe,
     ok: true, umfang: u.haushalt ? 'business+haushalt' : 'business', haushaltZugang: u.zugang,
     berichte: s.berichte.slice(-10).reverse(), vorschlaege: s.vorschlaege.slice().reverse(), letzte: s.letzte, ruhig: s.ruhig ?? null,
-    einstellung,
+    // Business-Umfang (09.10., Funde #2): ohne ESt-Vorauszahlung und ohne Rechtsform einer Privat-Einheit — serverseitig, nie nur ausgeblendet.
+    einstellung: u.haushalt ? einstellung : einstellungFuerBusiness(einstellung),
     lage: {
       hinweise: bild.hinweise, termine: bild.steuern.termine_60_tage,
       kasse: bild.business.kasse, runway: bild.business.controlling?.runway_monate ?? null,
@@ -101,7 +106,7 @@ export async function GET(req: Request) {
 }
 
 import { istDienst as dienst } from '@/lib/zugang/dienst';
-import { kontoName } from '@/lib/einheiten';
+import { kontoName, bereichVonFirma } from '@/lib/einheiten';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {

@@ -44,6 +44,7 @@ import { VITALS_GESPERRT, indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import type { KiBereich, KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
+import { bereichVonFirma } from '@/lib/einheiten';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 // ── Formen ──
@@ -134,7 +135,24 @@ export function aufgabenFuerBrain(state: { tasks: readonly (StoredTask & { paren
   };
 }
 
+/**
+ * GELD (Business-Forderungen) aus den Rechnungen des Finanzplans — nur Rechnungen einer BUSINESS-Firma (09.10., Zusatz der Hauptsitzung zu den
+ * ZOE-Schreibwegen): vorher `firmaId !== 'privat'`, damit zählte die Selbstständigkeit (Privat-Einheit) als Business. EINE Regel:
+ * `bereichVonFirma` (lib/einheiten.ts; ohne Firma bleibt eine Rechnung im Business wie bisher; je Instanz umstellbar). Rein, getestet.
+ */
+export function geldAus(rechnungen: readonly { status: string; betrag: number; faellig?: string; firmaId?: string }[], heute: string): Brain['geld'] {
+  const re = rechnungen.filter(r => bereichVonFirma(r.firmaId) === 'business');
+  const sum = (l: typeof re) => l.reduce((s, r) => s + (r.betrag || 0), 0);
+  const gestellt = re.filter(r => r.status === 'gestellt');
+  return {
+    forderungen: sum(gestellt),
+    vorbereitung: sum(re.filter(r => r.status === 'geplant')),
+    ueberfaelligeForderungen: sum(gestellt.filter(r => r.faellig && r.faellig < heute)),
+  };
+}
+
 /** Alles einsammeln — jede Quelle darf einzeln ausfallen. */
+
 /**
  * Der Live-Zustand. `person` entscheidet, WESSEN Körperwerte darin stehen —
  * seit 07.09., weil ZOE sonst einer Person die Körperwerte der anderen vorgelesen hätte.
@@ -261,16 +279,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     nordstern,
     jahresziele,
     team: teamZeilenAus(val(teamR) ?? []),
-    geld: (() => {
-      const re = (val(fplanR)?.rechnungen ?? []).filter(r => r.firmaId !== 'privat');
-      const sum = (l: typeof re) => l.reduce((s, r) => s + (r.betrag || 0), 0);
-      const gestellt = re.filter(r => r.status === 'gestellt');
-      return {
-        forderungen: sum(gestellt),
-        vorbereitung: sum(re.filter(r => r.status === 'geplant')),
-        ueberfaelligeForderungen: sum(gestellt.filter(r => r.faellig && r.faellig < heute)),
-      };
-    })(),
+    geld: geldAus(val(fplanR)?.rechnungen ?? [], heute),
     mandate: (() => {
       const k = val(kundenR)?.kunden ?? [];
       return {
@@ -360,9 +369,11 @@ export function blockZahlen(b: Brain): string {
   return extra ? `${kern} ${extra}.` : kern;
 }
 
+// Richtig beschriftet (09.10., Funde Abdeckung klein): `prospects` sind die Recherche-Ergebnisse des Prospecting-Agenten (Firmen), NICHT die
+// Deal-Pipeline der Markttraktion — die liest ZOE über `pipeline` (lib/zoe/crm-werkzeuge.ts). Vorher hieß der Block „PIPELINE“.
 function blockPipelineRoh(b: Brain): string {
-  if (!b.pipeline.gesamt) return 'PIPELINE: leer.';
-  return `PIPELINE: ${b.pipeline.gesamt} Firmen, ${b.pipeline.hot} starker Fit (80+), ${b.pipeline.kontaktiert} kontaktiert${b.pipeline.hot > 0 && b.pipeline.kontaktiert === 0 ? ' — der starke Fit liegt brach' : ''}.`;
+  if (!b.pipeline.gesamt) return 'PROSPECTING (recherchierte Firmen, keine Deals): leer. Die Deal-Pipeline steht in der Markttraktion (Werkzeug pipeline).';
+  return `PROSPECTING (recherchierte Firmen, keine Deals — die Deal-Pipeline über das Werkzeug pipeline): ${b.pipeline.gesamt} Firmen, ${b.pipeline.hot} starker Fit (80+), ${b.pipeline.kontaktiert} kontaktiert${b.pipeline.hot > 0 && b.pipeline.kontaktiert === 0 ? ' — der starke Fit liegt brach' : ''}.`;
 }
 
 function blockTermineRoh(b: Brain): string {

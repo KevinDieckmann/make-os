@@ -29,6 +29,8 @@ import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-in
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { risikoarm, vorschlagSauber, ZOE_AUFGABE_WERKZEUG } from '@/lib/aufgaben/zoe';
 import { neueKennung } from '@/lib/kennung';
+import { FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/finanz-werkzeuge';
+import { privatFinanzZugang } from '@/lib/finanzen/haushalt/zugriff';
 
 /** Darf in eine Sammelfreigabe? Nur ZOE-Aufgaben-Vorschläge, die nichts überschreiben (Notiz/Unteraufgaben). */
 const sammelTauglich = (v: Vorschlag) => v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.bezug?.art === 'aufgabe' && risikoarm(vorschlagSauber(v.eingabe, v.bezug.id));
@@ -68,8 +70,14 @@ function eingabeSauber(v: unknown, vorher: Record<string, unknown>): Sauber {
   }
   return { ok: true, wert: raus };
 }
-/** Sehen und entscheiden: eigene Vorschläge und die des Systems — nur im Haushalt des Inhabers (`vorschlagSichtbar`, eine Regel mit Heute). */
-const meiner = (v: { person?: string; gruppe: string }, person: string) => vorschlagSichtbar(v, person, true);
+/**
+ * Sehen und entscheiden: eigene Vorschläge und die des Systems — nur im Haushalt des Inhabers (`vorschlagSichtbar`, eine Regel mit Heute).
+ * 09.10. (Funde Abdeckung #1): Vorschläge der Werkzeuge auf den Finanzbeständen `finanzplan`/`liquiplan` (Routen-Klasse `finanz-privat`)
+ * nur für Personen mit privatem Finanzzugang — ein Konto „nur Business“ sieht sie nicht und kann sie nicht freigeben (die Route
+ * lehnte die Wirkung ohnehin ab; so verbraucht es auch keinen Vorschlag des Systems als „fehlgeschlagen“).
+ */
+const meiner = (v: { person?: string; gruppe: string; werkzeug?: string }, person: string, privatFinanzen: boolean) =>
+  vorschlagSichtbar(v, person, true) && (privatFinanzen || !FINANZPLAN_ALTWEG_WERKZEUGE.has(v.werkzeug ?? ''));
 const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
 
 export const runtime = 'nodejs';
@@ -80,7 +88,8 @@ export async function GET(req: Request) {
   if (!zugang) return GESPERRT();
   const alle = new URL(req.url).searchParams.get('alle') === '1';
   const person = zugang.person;
-  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person));
+  const privatFinanzen = !!(await privatFinanzZugang(req));
+  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, privatFinanzen));
   return NextResponse.json({ ok: true, vorschlaege: liste, offen: liste.filter(v => v.status === 'offen').length });
 }
 
@@ -104,7 +113,8 @@ export async function POST(req: Request) {
   const origin = innenAdresse(req);
   // Die ausdrücklich benannte Person (Sitzung oder Dienstweg mit Person) — sie entscheidet und in ihrem Namen läuft es.
   const wer = zugang.person;
-  const darf = (v: Vorschlag) => (meiner(v, wer) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
+  const privatFinanzen = !!(await privatFinanzZugang(req));
+  const darf = (v: Vorschlag) => (meiner(v, wer, privatFinanzen) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
 
   /** Ein gewöhnlicher Werkzeug-Vorschlag: beanspruchen (in der Sperre), ausführen, entscheiden. */
   const werkzeugFreigeben = async (id: string, eingabeNeu: Record<string, unknown> | null) => {
@@ -112,7 +122,7 @@ export async function POST(req: Request) {
     if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null };
     const eingabe = eingabeNeu ?? a.v.eingabe;
     let lauf: { ok: boolean; text: string };
-    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: wer, freigegebenVon: wer }); }
+    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: wer, freigegebenVon: wer, vorschlagId: a.v.id }); }
     catch (e) { await loslassen(id); throw e; }
     const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, ...(eingabeNeu ? { eingabe } : {}), von: wer, ausArbeit: true });
     return { ok: lauf.ok, status: 200 as const, text: lauf.text, vorschlag: raus };
@@ -120,7 +130,7 @@ export async function POST(req: Request) {
 
   // ── Sammel-Freigabe: „durcharbeiten" ──
   if (body.alle) {
-    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer));
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen));
     const offen = alleOffen.filter(sammelTauglich);
     const einzeln = alleOffen.length - offen.length;
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });
@@ -143,7 +153,7 @@ export async function POST(req: Request) {
   const id = String(body.id ?? '');
   const v = id ? await hole(id) : null;
   if (!v) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
-  if (!meiner(v, wer)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
+  if (!meiner(v, wer, privatFinanzen)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
   if (v.status === 'in_arbeit') return NextResponse.json({ ok: false, error: 'Wird gerade übernommen.' }, { status: 409 });
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
 
