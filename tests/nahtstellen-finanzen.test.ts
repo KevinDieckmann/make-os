@@ -355,6 +355,25 @@ describe('J · Mandate-Tabelle zurücknehmen, wenn inzwischen eine Rechnung am M
   });
 });
 
+describe('K · Altwerte nach dem Neutral-Durchgang: Liquiplan rechnet gespeicherte Zuordnungen wie vorher', () => {
+  it('Gold: was die alte Liste (kdv · kdc · kemaris · privat) behielt, bleibt bit-gleich; was sie verwarf, bleibt verworfen — nur ug und g-… sind neu erlaubt', async () => {
+    const lp = await import('@/app/api/state/liquiplan/route') as { PUT: (r: Request) => Promise<Response>; GET: (r: Request) => Promise<Response> };
+    const ALT = ['kdv', 'kdc', 'kemaris', 'privat'];
+    const werte = ['kdv', 'kdc', 'kemaris', 'privat', undefined, 'KD Ventures', 'x y', 'ug', 'g-0b1c2d3e-0000-4000-8000-000000000001'];
+    const posten = werte.map((f, i) => ({ id: `lp-gold-${i}`, titel: `Posten ${i}`, betrag: 100 + i, rhythmus: 'monatlich', ab: '2026-11-01', sicher: true, ...(f !== undefined ? { firmaId: f } : {}) }));
+    const r = await lp.PUT(anfrage('/api/state/liquiplan', 'pa', { posten }, 'PUT'));
+    expect(r.status).toBe(200);
+    const j = await (await lp.GET(anfrage('/api/state/liquiplan', 'pa'))).json() as { posten: { id: string; firmaId?: string; betrag: number }[] };
+    for (const [i, f] of werte.entries()) {
+      const p = j.posten.find(x => x.id === `lp-gold-${i}`)!;
+      expect(p.betrag).toBe(100 + i);
+      const alt = ALT.includes(String(f)) ? f : undefined;
+      const erwartet = f === 'ug' || String(f).startsWith('g-') ? f : alt;
+      expect(p.firmaId, String(f)).toBe(erwartet);
+    }
+  });
+});
+
 describe('Regel „dieselbe Zahlung“ (rein)', () => {
   it('Name ohne Rechtsform und Allerweltswörter, Nummer ohne Trennzeichen, Fenster 14 Tage, Betrag auf den Cent', async () => {
     const { gleicheZahlung, namenPassen, nummerImText, trefferStufe } = await import('@/lib/finanzen/zahlung-abgleich');
