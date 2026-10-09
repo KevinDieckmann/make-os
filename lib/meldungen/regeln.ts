@@ -29,6 +29,8 @@ import type { MeldungArt, MeldungBezug, MeldungEingabe } from './melden';
 import { geburtstagFuer } from '@/lib/kalender/geburtstag';
 // Restpunkte 29.09.: Datum mit Jahreszahl nur außerhalb des laufenden Jahres — dieselbe Regel wie Agenda/Heute.
 import { tagKurz } from '@/lib/zeit/kalender-kern';
+import { WEG } from '@/lib/wege';
+import { vorschlagOrt } from '@/lib/heute/anstehend';
 
 export const MELDUNGEN_MAX = 500;
 /** Längster Titel — länger wird abgelehnt, nicht gekürzt (Regel „nie abschneiden“). */
@@ -285,10 +287,19 @@ export interface AnstehendFuerGlocke {
   nachbereiten: readonly { kontaktId: string; name: string; titel: string; href: string }[];
   fristen: readonly { id: string; titel: string; tag: string; href: string; inTagen: number; kuendigung?: true; business?: true }[];
   followups: readonly { id: string; text: string; name: string; tageUeber: number; href: string }[];
-  /** Offene Kalender-Vorschläge von ZOE im Freigabe-Stapel (nur die Zahl). */
-  vorschlaege?: { kalender: number };
+  /** Offene Kalender-Vorschläge von ZOE im Freigabe-Stapel (nur die Zahl; je Bereich für den Link, 09.10. spät). */
+  vorschlaege?: { kalender: number; jeBereich?: { privat: { kalender: number }; business: { kalender: number } } };
   /** Danke-Mails, die bereitliegen (Netzwerken, 02.10.) — je Event eine Zeile mit der Zahl. */
   danke?: readonly { id: string; n: number; eventTitel: string; href: string }[];
+}
+
+/**
+ * Link in den Stapel für die Kalender-Vorschläge (09.10. spät): in den Bereich, in dem sie alle stehen (lib/zoe/bereich.ts), sonst ohne Sicht —
+ * damit ZOE › Freigaben zeigt, was die Glocke verspricht, auch wenn der Kopf gerade auf dem anderen Bereich steht.
+ */
+function stapelLink(v: NonNullable<AnstehendFuerGlocke['vorschlaege']>): string {
+  const z = (x?: { kalender: number }) => ({ kalender: x?.kalender ?? 0, gesamt: 0 });
+  return WEG.freigaben(undefined, vorschlagOrt({ kalender: v.kalender, gesamt: 0, ...(v.jeBereich ? { jeBereich: { privat: z(v.jeBereich.privat), business: z(v.jeBereich.business) } } : {}) }));
 }
 
 export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; jetztWand: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
@@ -308,7 +319,7 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   for (const n of a.nachbereiten) dazu('nachbereiten', n.kontaktId, `Wie lief „${n.titel}“ mit ${n.name}? — Ergebnis festhalten`, n.href);
   for (const f of a.fristen) dazu('frist', f.id, f.inTagen <= 0 ? `Heute: ${f.titel}` : f.inTagen === 1 ? `Morgen: ${f.titel}` : `In ${f.inTagen} Tagen (${tagKurz(f.tag, o.heute)}): ${f.titel}`, f.href, f.business === true);
   // Die Zahl steckt in der Kennung: kommt ein neuer Vorschlag dazu, meldet sich die Glocke wieder.
-  if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, '/os/stapel');
+  if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, stapelLink(a.vorschlaege));
   // Die Zahl steckt in der Kennung: wird eine Danke-Mail verschickt oder kommt eine dazu, meldet sich die Glocke neu.
   for (const d of a.danke ?? []) if (d.n > 0) dazu('danke', `${d.id}-${d.n}`, `${d.n} Danke-Mail${d.n === 1 ? '' : 's'} bereit — ${d.eventTitel}`, d.href);
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);

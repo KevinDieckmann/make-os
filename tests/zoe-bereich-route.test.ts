@@ -1,7 +1,8 @@
 // ─── ZOE: Bereich je Vorschlag und je Merksatz — Server, Route, Gespräch (09.10. spät) ─────────────────────────────────────
 // Befund live: unter „Privat“ stand „Fakt merken — … gibt es nicht mehr“ über eine Firma aus dem Business. Geprüft:
 //   • `lege` ordnet zu (Bezug → Inhalt → Gespräch → unklar), der Hinweis an ZOE nennt den Ort und den Weg in die Markttraktion;
-//   • GET /api/zoe/stapel?space=… trennt SERVERSEITIG (Wächter „Sicht Privat bekommt keinen Business-Vorschlag“), Altbestand = unklar nur unter Alles;
+//   • GET /api/zoe/stapel?space=… trennt SERVERSEITIG (Wächter „Sicht Privat bekommt keinen Business-Vorschlag“); „unklar“ (auch Altbestand)
+//     sehen beide Sichten — aber nur die Person, der der Vorschlag gehört (Kevin 09.10. spät: der Kopf kennt nur noch Privat · Business);
 //   • Bereich von Hand setzen mit Stand (409 bei veraltetem Stand), Freigeben mit Stand, „alle freigeben“ je Sicht;
 //   • der freigegebene Merksatz trägt den Bereich, das Gespräch bekommt nur Merksätze seines Bereichs und neutrale.
 // Eigener Datenordner, erfundene Konten, Firmen und Personen; das Modell ist gemockt.
@@ -131,18 +132,20 @@ describe('GET /api/zoe/stapel — Trennung serverseitig', () => {
     const s = (await db.loadJson<{ vorschlaege: Record<string, unknown>[] }>('zoe-stapel'))!;
     await db.saveJson('zoe-stapel', { vorschlaege: [...s.vorschlaege, { id: 'v-alt', zeit: T, tag: '2026-09-01', werkzeug: 'fakt_merken', gruppe: 'gedaechtnis', titel: 'Fakt merken', nachher: 'Alt: alt', eingabe: { thema: 'Alt', satz: 'alt' }, person: 'kevin', quelle: 'gespraech', status: 'offen' }] });
   });
-  it('Wächter: Sicht Privat bekommt keinen Business-Vorschlag (und keinen unklaren) — und umgekehrt', async () => {
+  it('Wächter: Sicht Privat bekommt keinen Business-Vorschlag — und umgekehrt; unklare (Altbestand) sehen beide', async () => {
     const p = await holen('kevin', '?space=privat&alle=1');
     expect(p.status).toBe(200);
-    expect(p.d.vorschlaege.length).toBe(1);
-    expect(p.d.vorschlaege.every(v => v.bereich === 'privat')).toBe(true);
-    expect(JSON.stringify(p.d)).not.toMatch(/pelikanwerk|v-alt/i);
+    expect(p.d.vorschlaege.map(v => v.bereich ?? 'unklar').sort()).toEqual(['privat', 'unklar']);
+    expect(p.d.vorschlaege.some(v => v.bereich === 'business')).toBe(false);
+    expect(JSON.stringify(p.d)).not.toMatch(/pelikanwerk/i);
+    expect(p.d.unklar).toBe(1);
     const b = await holen('kevin', '?space=business');
-    expect(b.d.vorschlaege.map(v => v.bereich)).toEqual(['business']);
-    expect(b.d.offen).toBe(1);
-    expect(JSON.stringify(b.d)).not.toMatch(/Termine|v-alt/);
+    expect(b.d.vorschlaege.map(v => v.bereich ?? 'unklar').sort()).toEqual(['business', 'unklar']);
+    expect(b.d.offen).toBe(2);
+    expect(JSON.stringify(b.d)).not.toMatch(/Termine/);
+    expect(b.d.vorschlaege.find(v => !v.bereich)?.id).toBe('v-alt');
   });
-  it('„Alles“ (ohne space oder space=alles) zeigt alles, auch den Altbestand als unklar — jeder mit Stand', async () => {
+  it('ohne Sicht (älterer Aufruf, space=alles) alles, auch den Altbestand als unklar — jeder mit Stand', async () => {
     for (const q of ['', '?space=alles']) {
       const a = await holen('kevin', q);
       expect(a.d.vorschlaege.length).toBe(3);
@@ -153,7 +156,14 @@ describe('GET /api/zoe/stapel — Trennung serverseitig', () => {
   it('ungültige Sicht → 400; die andere Person sieht die Vorschläge gar nicht', async () => {
     expect((await holen('kevin', '?space=irgendwas')).status).toBe(400);
     expect((await holen('malin', '?space=business')).d.vorschlaege).toEqual([]);
+    expect((await holen('malin', '?space=privat')).d.vorschlaege).toEqual([]); // auch der unklare gehört nur seiner Person
     expect((await holen('malin')).d.vorschlaege).toEqual([]);
+  });
+  it('ein unklarer Vorschlag des Systems (ohne Person) steht für jede Person im Haushalt in beiden Sichten', async () => {
+    await stapel.lege({ werkzeug: 'notiz_anlegen', gruppe: 'wissen', titel: 'Systemnotiz', nachher: 'Wochenlage', eingabe: { titel: 'Wochenlage' }, quelle: 'lauf' });
+    for (const p of ['kevin', 'malin']) for (const q of ['?space=privat', '?space=business']) {
+      expect((await holen(p, q)).d.vorschlaege.map(v => v.titel), `${p} ${q}`).toContain('Systemnotiz');
+    }
   });
 });
 
@@ -169,8 +179,9 @@ describe('Bereich wählen (POST aktion „bereich“) und Freigeben mit Stand', 
     expect(r.status).toBe(200);
     expect(r.d.vorschlag).toMatchObject({ bereich: 'business', bereichQuelle: 'hand', bereichVon: 'kevin' });
     expect(r.d.vorschlag!.stand).not.toBe(v.stand);
-    // Jetzt unter Business, nicht mehr unter „unklar“.
+    // Jetzt unter Business — und nicht mehr in der Sicht Privat.
     expect((await holen('kevin', '?space=business')).d.vorschlaege.map(x => x.id)).toEqual([v.id]);
+    expect((await holen('kevin', '?space=privat')).d.vorschlaege).toEqual([]);
     // Freigeben mit dem ALTEN Stand → 409, nichts gemerkt.
     const alt = await senden('kevin', { id: v.id, entscheidung: 'freigeben', stand: v.stand });
     expect(alt.status).toBe(409);

@@ -155,7 +155,7 @@ export async function fuehreAus(
  * unter „Privat“, obwohl er (zu Recht) unter „Business“ liegt. Rein.
  */
 export function stapelOrtSatz(bereich: Bereich | null, gespraech: Bereich | null): string {
-  if (!bereich) return gespraech ? ` — unter „Alles“, weil der Bereich unklar ist (dort „Bereich wählen“); sag das dazu` : '';
+  if (!bereich) return gespraech ? ` — oben mit „Bereich wählen“ (in Privat und Business), weil der Bereich unklar ist; sag das dazu` : '';
   if (gespraech && bereich !== gespraech) return ` — unter „${BEREICH_NAME[bereich]}“ (nicht unter „${BEREICH_NAME[gespraech]}“), weil es dorthin gehört; sag das dazu`;
   return '';
 }

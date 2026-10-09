@@ -18,7 +18,8 @@ import { Karte, Ueberschrift, Knopf, LEUCHT } from '../ui';
 import { useTasks } from '@/context/TasksContext';
 import { aufgabeAnlegen } from '../aufgaben/hilfe';
 import { BUSINESS_VORGABE_SPACE } from '@/lib/einheiten';
-import { geschenkAufgabeTitel, geschenkStand, ANLASS_WORT, GEBURTSTAG_VORLAUF, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
+import { geschenkAufgabeTitel, geschenkStand, vorschlagOrt, ANLASS_WORT, GEBURTSTAG_VORLAUF, type Anstehend as AnstehendDaten, type AGeburtstag } from '@/lib/heute/anstehend';
+import { WEG } from '@/lib/wege';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { neueKennung } from '../aufgaben/hilfe';
 import { tagKurz } from '@/lib/zeit/kalender-kern';
@@ -86,7 +87,7 @@ export function AnstehendListe({ d, geschenkStandVon, geschenk }: { d: Anstehend
         </Link>
       )}
       {d.vorschlaege.kalender > 0 && (
-        <Link href="/os/stapel" style={zeile}>
+        <Link href={WEG.freigaben(undefined, vorschlagOrt(d.vorschlaege))} style={zeile}>
           <span style={vorne(LEUCHT.achtung)}>{d.vorschlaege.kalender} ZOE</span>
           <span style={text}>Kalender-Vorschl{d.vorschlaege.kalender === 1 ? 'ag wartet' : 'äge warten'} im Stapel auf Freigabe</span>
         </Link>

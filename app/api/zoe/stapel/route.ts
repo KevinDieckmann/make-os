@@ -19,15 +19,16 @@
 // entscheidet nur der Haushalt des Inhabers; ausgeführt wird immer als die ausdrücklich benannte Person (`personStreng`),
 // nie mehr über den Rückfall `personAus` → „kevin“. Schreibaufrufe aus dem Browser prüfen die Bau-Kennung (`bauPruefen`).
 // 09.10. spät (Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): jeder Vorschlag trägt seinen
-// Bereich (lib/zoe/bereich.ts). GET `?space=privat|business` liefert NUR Vorschläge dieses Bereichs — serverseitig, nie nur versteckt;
-// „unklar“ (auch Altbestand) nur ohne `space` bzw. mit `space=alles`. Jeder Vorschlag trägt seinen `stand`; POST `{ aktion: 'bereich', id,
-// bereich, stand }` setzt den Bereich von Hand („Bereich wählen“), veraltet → 409. Freigeben mit `stand` prüft ihn ebenso (409 statt einer
-// Entscheidung über etwas, das man so nicht gesehen hat). „Alle freigeben“ mit `space` nimmt nur Vorschläge dieser Sicht.
+// Bereich (lib/zoe/bereich.ts). GET `?space=privat|business` liefert NUR Vorschläge dieses Bereichs und die „unklaren“ (auch Altbestand) —
+// serverseitig, nie nur versteckt: Privat bekommt nie einen Business-Vorschlag und umgekehrt (Kevin: der Kopf kennt nur Privat · Business;
+// ohne `space` bzw. `space=alles` wie bisher alles). Jeder Vorschlag trägt seinen `stand`; POST `{ aktion: 'bereich', id, bereich, stand }` setzt
+// den Bereich von Hand („Bereich wählen“), veraltet → 409. Freigeben mit `stand` prüft ihn ebenso (409 statt einer Entscheidung über etwas, das
+// man so nicht gesehen hat). „Alle freigeben“ mit `space` nimmt nur Vorschläge GENAU dieses Bereichs (unklare brauchen erst ihren Bereich).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, vorschlagStand, bereichSetzen, type Vorschlag } from '@/lib/zoe/stapel';
-import { bereichAus, passtZurSicht, type Bereich } from '@/lib/zoe/bereich';
+import { bereichAus, passtZurSicht, genauImBereich, type Bereich } from '@/lib/zoe/bereich';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
 import { innenAdresse } from '@/lib/innen';
@@ -107,7 +108,7 @@ export async function GET(req: Request) {
   const person = zugang.person;
   const privatFinanzen = !!(await privatFinanzZugang(req));
   const privat = !(await privatAusgeblendetFuer(person));
-  // Sicht Privat/Business serverseitig (09.10. spät): unter Privat kein Business-Vorschlag und umgekehrt; „unklar“ nur unter „Alles“.
+  // Sicht Privat/Business serverseitig (09.10. spät): unter Privat kein Business-Vorschlag und umgekehrt; „unklar“ in beiden.
   const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, privatFinanzen, privat) && passtZurSicht(v, space));
   const offen = liste.filter(v => v.status === 'offen');
   return NextResponse.json({ ok: true, space: space ?? 'alles', vorschlaege: liste.map(mitStand), offen: offen.length, unklar: offen.filter(v => !bereichAus(v.bereich)).length });
@@ -176,7 +177,7 @@ export async function POST(req: Request) {
   if (body.alle) {
     const space = sichtAus(body.space);
     if (space === undefined) return SICHT_FALSCH();
-    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat) && passtZurSicht(v, space));
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat) && genauImBereich(v, space));
     const offen = alleOffen.filter(sammelTauglich);
     const einzeln = alleOffen.length - offen.length;
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });

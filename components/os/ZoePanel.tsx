@@ -28,7 +28,7 @@ import Link from 'next/link';
 // der Agenten-Seite. Gesendet wird mit `zoeFaden`; der Server liest den Verlauf aus dem Thread (nie aus dem Browser) und legt Frage und
 // Antwort selbst ab. Der alte Bestand `zoe-verlauf` wird beim ersten Lesen einmal übernommen (lib/agenten/zoe-faden.ts).
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
 import { Chip, Knopf, feld, LEUCHT } from './ui';
@@ -140,7 +140,10 @@ const ladeZoeFaden = async (id: string): Promise<{ nachrichten: Nachricht[]; sta
 
 export function ZoePanel() {
   // Der aktive Space geht mit jeder Nachricht mit (26.09.): ZOE antwortet aus dieser Sicht und legt Neues dort ab.
-  const { space: aktiverSpace } = useSpace();
+  // Der Space ist auch der Bereich des Gesprächs (09.10. spät): er ordnet Vorschläge im Stapel zu (lib/zoe/bereich.ts, Regel (c)) und wählt
+  // die Merksätze. Der Zähler zeigt dieselbe Sicht wie ZOE › Freigaben (ein noch vorhandenes „Alles“ im Kopf = alle).
+  const { space: aktiverSpace, wahl } = useSpace();
+  const stapelSicht = (wahl as string) === 'alles' ? 'alles' : aktiverSpace;
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
   const [convo, setConvo] = useState<Msg[]>([]);
   const [ask, setAsk] = useState('');
@@ -345,7 +348,8 @@ export function ZoePanel() {
         return;
       }
       const d = (r.body ?? {}) as { reply?: string; stapelOffen?: unknown; fadenId?: unknown; handoffs?: unknown; ran?: unknown };
-      if (typeof d.stapelOffen === 'number') setStapelOffen(d.stapelOffen);
+      // Neu fragen statt die Zahl der Antwort zu nehmen (09.10. spät): sie zählt für den Bereich des Gesprächs, der Zähler hier für die Sicht.
+      if (typeof d.stapelOffen === 'number') stapelZaehlen();
       if (typeof d.fadenId === 'string' && d.fadenId) { setGespraechId(d.fadenId); merke(d.fadenId, q); }
       const antwort: Msg = {
         role: 'kimmi', text: d.reply ?? 'Ich habe gerade keine Antwort.', zeit: new Date().toISOString(),
@@ -366,18 +370,15 @@ export function ZoePanel() {
     }
   };
 
-  useEffect(() => {
-    fetch('/api/zoe/stapel').then(r => r.json()).then(d => setStapelOffen(Number(d.offen) || 0)).catch(() => {});
-  }, []);
-
-  // Der Stapel-Stand auch ohne Gespräch — sonst sieht man morgens nicht,
-  // dass etwas wartet.
-  useEffect(() => {
-    fetch('/api/zoe/stapel')
+  // Der Stapel-Stand auch ohne Gespräch — sonst sieht man morgens nicht, dass etwas wartet. Je Sicht (09.10. spät): der Server zählt nur
+  // die Vorschläge dieses Bereichs und die unklaren — dieselbe Zahl, die ZOE › Freigaben zeigt. Vorher fragten hier zwei gleiche Effekte.
+  const stapelZaehlen = useCallback(() => {
+    fetch(`/api/zoe/stapel?space=${stapelSicht}`)
       .then(r => r.json())
       .then(d => setStapelOffen(Number(d.offen) || 0))
       .catch(() => {});
-  }, []);
+  }, [stapelSicht]);
+  useEffect(() => { stapelZaehlen(); }, [stapelZaehlen]);
 
   const neuesGespraech = () => {
     stimme.schweig(); stimme.hoerAuf();

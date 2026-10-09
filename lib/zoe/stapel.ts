@@ -89,7 +89,7 @@ export interface Vorschlag {
   /**
    * Bereich (09.10. spät, Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): wohin der Vorschlag
    * gehört — gesetzt von `lege` über die EINE Regel (lib/zoe/bereich.ts `bereichFuerVorschlag`) bzw. von Hand (`bereichSetzen`). FEHLT das
-   * Feld, ist er „unklar“ (auch der Altbestand): er steht nur unter „Alles“, mit „Bereich wählen“.
+   * Feld, ist er „unklar“ (auch der Altbestand): er steht in Privat UND Business oben, mit „Bereich wählen“.
    */
   bereich?: Bereich;
   /** Woher der Bereich kommt: Bezug · Inhalt · Gespräch · von Hand. */
@@ -128,7 +128,7 @@ function kennung(werkzeug: string, eingabe: Record<string, unknown>): string {
 /**
  * Einen Vorschlag ablegen. Den Bereich (Privat/Business) setzt `lege` selbst über die EINE Regel (lib/zoe/bereich-server.ts
  * `bereichErmitteln`: Bezug → Inhalt → `opt.gespraech` → unklar) — der Aufrufer gibt nur den geprüften Bereich des Gesprächs mit, wenn es
- * einen gibt. Scheitert das Erkennen, liegt der Vorschlag „unklar“ (unter „Alles“) — das Ablegen scheitert daran nie.
+ * einen gibt. Scheitert das Erkennen, liegt der Vorschlag „unklar“ (in beiden Sichten) — das Ablegen scheitert daran nie.
  */
 export async function lege(v: Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>, opt: { gespraech?: Bereich | null } = {}): Promise<Vorschlag> {
   const roh: Record<string, unknown> = { ...v };
@@ -259,14 +259,14 @@ export async function offeneAnzahlFuer(person: string | null, space: Bereich | n
 /**
  * Die Vorschläge, die `person` sieht (`vorschlagSichtbar` mit der EINEN Konto-Sicht, 09.10., E4: im Haushalt, Privat-Bereich nur ohne
  * „nur Business“). Für jeden Leser an eine Person (Zähler, Heute, Agenten-Bereich). Konten unlesbar → nichts (nie auf Verdacht zeigen).
- * `space` (09.10. spät) = die Sicht Privat/Business; ohne = „Alles“.
+ * `space` (09.10. spät) = die Sicht Privat/Business (dieser Bereich + „unklar“); ohne = alle.
  */
 export async function vorschlaegeFuer(person: string | null, nur?: VorschlagStatus, space: Bereich | null = null): Promise<Vorschlag[]> {
   if (!person) return [];
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const k = await kontoSicht(person).catch(() => null);
   if (!k) return [];
-  // Sicht Privat/Business (09.10. spät): nur Vorschläge dieses Bereichs — „unklar“ nur ohne Sicht („Alles“), lib/zoe/bereich.ts `passtZurSicht`.
+  // Sicht Privat/Business (09.10. spät): nur Vorschläge dieses Bereichs und die unklaren (in beiden), lib/zoe/bereich.ts `passtZurSicht`.
   return (await lies(nur)).filter(v => vorschlagSichtbar(v, person, k.imHaushalt, k.privat) && passtZurSicht(v, space));
 }
 

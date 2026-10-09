@@ -4,12 +4,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   bereichFuerVorschlag, bereichVonVorschlag, passtZurSicht, faktPasstZuBereich, eingabeBereich, namensSchluessel, genannteNamen, textSchluessel,
-  vorschlagTexte, bereichAus, bereichGrund, type BekannterName,
+  vorschlagTexte, bereichAus, bereichGrund, genauImBereich, type BekannterName,
 } from '@/lib/zoe/bereich';
 import { zoeWerkzeugWahl, ZOE_KERN, ZOE_BEREICHE } from '@/lib/zoe/werkzeug-wahl';
 import { stapelOrtSatz, crmWegSatz } from '@/lib/zoe/ausfuehren';
 import { vorschlagPrivat } from '@/lib/zoe/stapel';
 import { MERKEN_WOHIN } from '@/lib/zoe/grundauftrag';
+import { anstehendFuerSpace, vorschlagOrt } from '@/lib/heute/anstehend';
+import { anstehendAbleiten } from '@/lib/meldungen/regeln';
 
 const firma = (id: string, name: string, bereich: 'privat' | 'business' = 'business'): BekannterName => ({ art: 'firma', id, schluessel: namensSchluessel(name, 'firma'), bereich });
 const kontakt = (id: string, name: string, bereich: 'privat' | 'business' = 'business'): BekannterName => ({ art: 'kontakt', id, schluessel: namensSchluessel(name, 'kontakt'), bereich });
@@ -101,11 +103,16 @@ describe('Regel (c) und (d)', () => {
 });
 
 describe('Sichten', () => {
-  it('passtZurSicht: unter Privat nur Privat, unter Business nur Business, „unklar“ nur unter Alles', () => {
+  it('passtZurSicht: unter Privat nie Business und umgekehrt — „unklar“ in BEIDEN Sichten (Kopf nur Privat · Business)', () => {
     const p = { bereich: 'privat' }, b = { bereich: 'business' }, u = {};
-    expect([p, b, u].filter(v => passtZurSicht(v, 'privat'))).toEqual([p]);
-    expect([p, b, u].filter(v => passtZurSicht(v, 'business'))).toEqual([b]);
+    expect([p, b, u].filter(v => passtZurSicht(v, 'privat'))).toEqual([p, u]);
+    expect([p, b, u].filter(v => passtZurSicht(v, 'business'))).toEqual([b, u]);
     expect([p, b, u].filter(v => passtZurSicht(v, null))).toEqual([p, b, u]);
+  });
+  it('genauImBereich (Sammelfreigabe): ohne die unklaren', () => {
+    const p = { bereich: 'privat' }, b = { bereich: 'business' }, u = {};
+    expect([p, b, u].filter(v => genauImBereich(v, 'privat'))).toEqual([p]);
+    expect([p, b, u].filter(v => genauImBereich(v, null))).toEqual([p, b, u]);
   });
   it('Merksätze: im Gespräch eines Bereichs nur dessen und die neutralen; ohne Bereich alle', () => {
     const p = { bereich: 'privat' }, b = { bereich: 'business' }, n = {};
@@ -142,7 +149,7 @@ describe('ZOE: Werkzeug-Wahl und Hinweise', () => {
   it('stapelOrtSatz: nur, wenn der Vorschlag nicht im Bereich des Gesprächs liegt', () => {
     expect(stapelOrtSatz('business', 'privat')).toMatch(/unter „Business“ \(nicht unter „Privat“\)/);
     expect(stapelOrtSatz('privat', 'privat')).toBe('');
-    expect(stapelOrtSatz(null, 'privat')).toMatch(/„Alles“/);
+    expect(stapelOrtSatz(null, 'privat')).toMatch(/Bereich wählen/);
     expect(stapelOrtSatz(null, null)).toBe('');
   });
   it('crmWegSatz: nur Kennungen, kein Name; schlägt crm_vorschlag vor, nie automatisch', () => {
@@ -155,5 +162,27 @@ describe('ZOE: Werkzeug-Wahl und Hinweise', () => {
   it('die Regel im Prompt ist neutral (keine Namen, keine Firmen)', () => {
     expect(MERKEN_WOHIN).toMatch(/crm_vorschlag/);
     expect(MERKEN_WOHIN).not.toMatch(/\b(Kevin|Malin)\b|GmbH|UG\b/);
+  });
+});
+
+describe('Zähler je Sicht: Heute („Steht an“) und Glocke', () => {
+  const basis = { heute: '2026-10-09', termine: [], nachbereiten: [], fristen: [], followups: [], buchungen: [], geburtstage: [], nachbereitZeiten: {} };
+  it('anstehendFuerSpace nimmt die Zahlen des Bereichs (unklare zählen in beiden), der Link führt in diesen Bereich', () => {
+    const a = { ...basis, vorschlaege: { kalender: 3, gesamt: 5, jeBereich: { privat: { kalender: 1, gesamt: 2 }, business: { kalender: 2, gesamt: 4 } } } };
+    const p = anstehendFuerSpace(a, 'privat');
+    expect([p.vorschlaege.kalender, p.vorschlaege.gesamt]).toEqual([1, 2]);
+    expect(vorschlagOrt(p.vorschlaege)).toBe('privat');
+    const b = anstehendFuerSpace(a, 'business');
+    expect([b.vorschlaege.kalender, b.vorschlaege.gesamt]).toEqual([2, 4]);
+    expect(vorschlagOrt(b.vorschlaege)).toBe('business');
+    expect(vorschlagOrt(a.vorschlaege)).toBeUndefined();
+    expect(vorschlagOrt({ kalender: 2, gesamt: 2, jeBereich: { privat: { kalender: 0, gesamt: 0 }, business: { kalender: 2, gesamt: 2 } } })).toBe('business');
+  });
+  it('Glocke: der Link der Kalender-Vorschläge führt in den Bereich, in dem sie stehen', () => {
+    const glocke = (v: { kalender: number; jeBereich?: { privat: { kalender: number }; business: { kalender: number } } }) =>
+      anstehendAbleiten({ termine: [], nachbereiten: [], fristen: [], followups: [], vorschlaege: v }, { heute: '2026-10-09', jetztWand: '2026-10-09T10:00:00', am: '2026-10-09T08:00:00.000Z' }).find(m => m.art === 'vorschlag')?.link;
+    expect(glocke({ kalender: 2, jeBereich: { privat: { kalender: 0 }, business: { kalender: 2 } } })).toBe('/os/stapel?space=business');
+    expect(glocke({ kalender: 2, jeBereich: { privat: { kalender: 1 }, business: { kalender: 1 } } })).toBe('/os/stapel');
+    expect(glocke({ kalender: 1 })).toBe('/os/stapel');
   });
 });

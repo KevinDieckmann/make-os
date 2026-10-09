@@ -11,7 +11,8 @@
 //   (b) der Inhalt nennt einen bekannten Namen aus dem BESTAND (CRM-Firma, CRM-Kontakt mit vollem Namen, eigene Gesellschaft) — nie feste
 //       Namen im Code; widersprechen sich die Treffer, entscheidet (c);
 //   (c) der Bereich, in dem das Gespräch stattfand (der Browser schickt ihn mit, der Server prüft nur die Form);
-//   (d) sonst „unklar“ — der Vorschlag steht unter „Alles“ mit „Bereich wählen“.
+//   (d) sonst „unklar“ — der Vorschlag steht in BEIDEN Sichten (Privat und Business) oben mit „Bereich wählen“ (Kevin 09.10. spät: der
+//       Kopf-Schalter kennt nur noch Privat · Business).
 // Gespeichert wird am Vorschlag nur `bereich: 'privat' | 'business'` (+ Quelle, ggf. Ort und genannte CRM-Kennungen); FEHLT das Feld, ist er
 // „unklar“ — so liest sich auch der Altbestand. Merksätze (lib/zoe/gedaechtnis.ts) tragen denselben Bereich; ohne Bereich sind sie neutral.
 // Die Sammellogik (Bestand lesen) steht in ./bereich-server.ts; hier wird nur gerechnet. Tests: tests/zoe-bereich.test.ts.
@@ -46,7 +47,7 @@ export interface BereichKontext {
   head?: Bereich | null;
   /** Bekannte Namen aus dem Bestand (CRM-Firmen, -Kontakte, eigene Gesellschaften). */
   namen?: readonly BekannterName[];
-  /** Bereich des Gesprächs (geprüft) — null = „Alles“ bzw. unbekannt. */
+  /** Bereich des Gesprächs (geprüft) — null = unbekannt (kein Space, z. B. Telegram). */
   gespraech?: Bereich | null;
 }
 
@@ -71,12 +72,18 @@ export const bereichAus = (v: unknown): Bereich | null => (v === 'privat' || v =
 export const bereichVonVorschlag = (v: { bereich?: unknown }): BereichSicht => bereichAus(v.bereich) ?? 'unklar';
 
 /**
- * Gehört der Vorschlag in diese Sicht? `space` = Bereich der Sicht (null = „Alles“: alles, auch „unklar“). Unter Privat bzw. Business nur
- * Vorschläge genau dieses Bereichs — „unklar“ nur unter „Alles“.
+ * Gehört der Vorschlag in diese Sicht? `space` = Bereich der Sicht (null = ohne Sicht, z. B. ein älterer Aufruf: alles). Unter Privat nie ein
+ * Business-Vorschlag und umgekehrt; „unklar“ steht in BEIDEN Sichten (oben, mit „Bereich wählen“), bis jemand den Bereich wählt.
  */
-export const passtZurSicht = (v: { bereich?: unknown }, space: Bereich | null): boolean => !space || bereichVonVorschlag(v) === space;
+export const passtZurSicht = (v: { bereich?: unknown }, space: Bereich | null): boolean => {
+  if (!space) return true;
+  const b = bereichVonVorschlag(v);
+  return b === space || b === 'unklar';
+};
+/** Nur Vorschläge GENAU dieses Bereichs (ohne „unklar“) — für die Sammelfreigabe: ein unklarer Vorschlag braucht erst seinen Bereich. */
+export const genauImBereich = (v: { bereich?: unknown }, space: Bereich | null): boolean => !space || bereichVonVorschlag(v) === space;
 
-/** Merksatz ↔ Bereich des Gesprächs: ohne Bereich (Gespräch unter „Alles“) alle; sonst die eigenen und die neutralen (ohne Bereich). */
+/** Merksatz ↔ Bereich des Gesprächs: ohne Bereich (Gespräch ohne Space) alle; sonst die eigenen und die neutralen (ohne Bereich). */
 export const faktPasstZuBereich = (f: { bereich?: unknown }, bereich: Bereich | null | undefined): boolean => {
   if (!bereich) return true;
   const b = bereichAus(f.bereich);
