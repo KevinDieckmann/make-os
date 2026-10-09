@@ -251,6 +251,35 @@ describe('E · Rückgängig eines Kontoauszugs stellt den Zustand vorher her (Ko
   });
 });
 
+describe('G · gemischtes Angebot: Einmalposten-Rechnung (Woche 1) und „Rechnung schreiben“ (EIN Rechnungs-Anleger) verrechnen nichts doppelt', () => {
+  it('steht die Einmalposten-Rechnung (gestellt), legt „Rechnung über alle Positionen“ keine zweite an (409); storniert → wieder möglich', async () => {
+    const speicher = await import('@/lib/crm/speicher');
+    const J = '2026-09-01T10:00:00.000Z';
+    const mandat = { id: 'm-gemischt1', kunde: 'Gemischt Beispiel GmbH', kontaktIds: [], titel: 'Begleitung', art: 'retainer', gesellschaft: 'kdv', status: 'aktiv', vertragUnterschrieben: true, verlaengerung: 'auto', honorar: { betrag: 500, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: J };
+    const angebot = { id: 'ang-gemischt1', gesellschaft: 'kdv', mandatId: 'm-gemischt1', titel: 'Einführung + Begleitung', nummer: 'KDV-A-2026-0099', status: 'angenommen', version: 1, gestelltAm: J, angelegt: J, geaendert: J, einleitung: '', schluss: '', gueltigBis: '2026-12-31', zahlungszielTage: 14,
+      positionen: [
+        { id: 'p1', titel: 'Einführung', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 100000, ustSatz: 19, basis: 'einmalig' },
+        { id: 'p2', titel: 'Begleitung', text: '', menge: 1, einheit: 'Monat', einzelpreisCent: 50000, ustSatz: 19, basis: 'monat', laufzeitMonate: 6 },
+      ] };
+    await db.saveJson('crm', { ...speicher.leererBestand(), mandate: [mandat], angebote: [angebot] });
+    const { entwurfNeu, einmalRechnungId } = await import('@/lib/finanzen/rechnung/server');
+    const z = { person: 'pa', haushalt: 'h-n', sicht: 'privat' as const };
+    const e1 = await entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', nur: 'einmalig', ...z });
+    expect(e1.rechnung.id).toBe(einmalRechnungId('ang-gemischt1'));
+    expect(e1.rechnung.betrag).toBe(1190);
+    // Die Einmalposten-Rechnung wird gestellt (hier direkt im Bestand — Nummer/PDF prüfen andere Tests).
+    await db.updateJson<{ rechnungen: { id: string; status: string; nummer?: string }[] }>('finanzplan', cur => ({ ...cur!, rechnungen: cur!.rechnungen.map(r => (r.id === e1.rechnung.id ? { ...r, status: 'gestellt', nummer: 'KDV-R-2026-0099' } : r)) }));
+    const zahl = async () => (await db.loadJson<{ rechnungen: { angebotId?: string }[] }>('finanzplan'))!.rechnungen.filter(r => r.angebotId === 'ang-gemischt1').length;
+    await expect(entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', ...z })).rejects.toMatchObject({ status: 409 });
+    expect(await zahl()).toBe(1);
+    // Storniert → die Einmalposten sind nicht mehr verrechnet: eine Rechnung über alle Positionen geht wieder.
+    await db.updateJson<{ rechnungen: { id: string; status: string }[] }>('finanzplan', cur => ({ ...cur!, rechnungen: cur!.rechnungen.map(r => (r.id === e1.rechnung.id ? { ...r, status: 'storniert' } : r)) }));
+    const voll = await entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', ...z });
+    expect(voll.vorhanden).toBe(false);
+    expect(await zahl()).toBe(2);
+  });
+});
+
 describe('Regel „dieselbe Zahlung“ (rein)', () => {
   it('Name ohne Rechtsform und Allerweltswörter, Nummer ohne Trennzeichen, Fenster 14 Tage, Betrag auf den Cent', async () => {
     const { gleicheZahlung, namenPassen, nummerImText, trefferStufe } = await import('@/lib/finanzen/zahlung-abgleich');
