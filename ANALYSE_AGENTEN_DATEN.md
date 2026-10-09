@@ -167,6 +167,13 @@ Bereich überführen (E2). Die heutigen Korrekturen schließen nur die gefährli
 
 ---
 
+### Entschieden (Kevin, 09.10. nachmittags, Klickrunde)
+- **E1 Ereignisstelle: ja, vor Update 2** — klein anfangen (Mail, Zahlungseingang, Deal-Stufe/Anfrage, „An ZOE geben“).
+- **E3 Gesprächs-Ablage teilen: ja, jetzt** — Index + je Thread, solange nichts davon online ist (dazu KI-Protokoll auf Tagesdateien).
+- **E4 „Nur Business“ gilt auch für Aufgaben und ZOE: ja** — EINE `kontoSicht(person)`.
+- **E2 Alte Heads überführen: ja, nach Update 2** — als eigenes Paket; die gefährlichen Lücken schließen die Korrekturen von heute.
+- Offen: E5–E9.
+
 ## 8. Messbar machen (damit das nicht wieder unbemerkt wächst)
 
 - **Head of IT:** Befund, wenn ein Agenten-Bestand größer als 5 MB wird oder Schreiben/Parsen länger als 200 ms dauert
