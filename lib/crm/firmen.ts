@@ -35,6 +35,21 @@ export function bestehendeFirma<F extends Pick<Firma, 'id' | 'name'>>(firmen: re
   return firmen.find(f => f.id === id) ?? (s ? firmen.find(f => firmenSchluessel(f.name) === s) : undefined);
 }
 
+/**
+ * Firma aus der Mail-Domain vorschlagen (1.9, Inbox): eine Firma der Kartei mit dieser Domain — sonst ein Name aus der Domain
+ * („beispiel-werke.de“ → „Beispiel Werke“). Sammeldomains (gmail, web.de, gmx, icloud, outlook, t-online …) nie (`domainVon`/FREEMAIL).
+ */
+export function firmaAusDomain(email: string | undefined, firmen: readonly Firma[]): { firma?: Firma; name?: string } {
+  const d = domainVon({ email });
+  if (!d) return {};
+  const da = firmen.find(f => (f.domain ?? '').toLowerCase() === d || (f.webseite ?? '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] === d);
+  if (da) return { firma: da, name: da.name };
+  const teile = d.split('.');
+  const kern = teile.length >= 2 ? teile[teile.length - 2] : teile[0];
+  const name = kern.split(/[-_]+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return name.length >= 2 ? { name } : {};
+}
+
 /** Rolle aus den Personen: Kunde schlägt alles, dann Ex-Kunde, Partner … */
 export function rolleAus(personen: Kontakt[]): FirmaRolle {
   const hat = (f: (k: Kontakt) => boolean) => personen.some(f);

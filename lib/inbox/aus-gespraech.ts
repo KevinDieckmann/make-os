@@ -11,6 +11,7 @@ import type { Vorgabe } from '@/lib/kalender/formular';
 import type { Adr, Zuordnung } from '@/lib/gmail/typen';
 import { bereichVon } from '@/lib/einheiten';
 import { gespraechPfad } from './strom';
+import { firmaAusDomain } from '@/lib/crm/firmen';
 
 /** Was die Bausteine von einem Gespräch brauchen. `whatsapp`: Nummer der Gegenseite (wa_id) — dann ist `gegenueber.email` die Nummer. */
 export interface GespraechKurz { id: string; betreff: string; gegenueber: Adr; zuordnung?: Zuordnung | null; bereich: string | null; whatsapp?: { nummer: string; profilname?: string } }
@@ -23,6 +24,12 @@ const kurz = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…`
 const herkunft = (g: GespraechKurz) => (g.whatsapp ? `Aus WhatsApp · ${g.gegenueber.name ? `${g.gegenueber.name} ` : ''}${g.gegenueber.email}` : `Aus der Inbox · ${absender(g.gegenueber)}`);
 /** Privat- oder Business-Bereich des Postfachs (ohne Bereich: Business, wie bisher bei Gmail). */
 export const spaceVon = (g: Pick<GespraechKurz, 'bereich'>): 'privat' | 'business' => (g.bereich ? bereichVon(g.bereich) : 'business');
+/**
+ * „Kontakt anlegen“ macht einen Business-Lead (Anfrage, Follow-up) — nur aus einem Postfach im Business-Bereich (Markttraktion 1.9, 09.10.).
+ * Ohne Bereich gilt wie überall Business (Google Workspace ohne Register-Eintrag). Server (/api/crm/anfrage) UND Oberfläche fragen hier.
+ */
+export const kontaktAnlegenErlaubt = (bereich: string | null): boolean => spaceVon({ bereich }) === 'business';
+export const KONTAKT_NUR_BUSINESS = 'Kontakt anlegen geht nur aus einem Business-Postfach — aus Privat-Postfächern entsteht kein Lead.';
 const bezugVon = (z: Zuordnung | null | undefined) => (z ? { kontaktId: z.kontaktId, ...(z.firmaId ? { firmaId: z.firmaId } : {}), ...(z.dealId ? { dealId: z.dealId } : {}) } : undefined);
 
 export interface AufgabeAusGespraech {
@@ -90,8 +97,14 @@ export function kontaktAusGespraech(g: GespraechKurz, text: string, heute: strin
       text: kurz(auszug || betreffOhneRe(g.betreff) || 'Nachricht über WhatsApp', 600), datum: heute,
     };
   }
+  // 1.9 (09.10.): die Firma aus der Mail-Domain vorschlagen (nie Sammeldomains wie gmail, web.de, gmx, icloud, outlook, t-online) — der Server
+  // verknüpft eine vorhandene Firma (Name/Domain) oder legt sie an (`firmaSichern`). `firmen`: bekannte Firmen (für die Anzeige), sonst nur der Name.
+  const firma = firmaVorschlag(g);
   return {
-    kanal: 'mail', neu: { ...nameTeilen(g.gegenueber.name), email: g.gegenueber.email },
+    kanal: 'mail', neu: { ...nameTeilen(g.gegenueber.name), email: g.gegenueber.email, ...(firma ? { firma } : {}) },
     text: kurz(`${betreffOhneRe(g.betreff) || '(kein Betreff)'}${auszug ? ` — ${auszug}` : ''}`, 600), datum: heute,
   };
 }
+/** Firmenname aus der Mail-Domain der Gegenseite (nur Mail, nie Sammeldomains) — für „Kontakt anlegen“ und die Anzeige daneben. */
+export const firmaVorschlag = (g: Pick<GespraechKurz, 'whatsapp' | 'gegenueber'>, firmen: Parameters<typeof firmaAusDomain>[1] = []): string | undefined =>
+  (g.whatsapp ? undefined : firmaAusDomain(g.gegenueber.email, firmen).name);

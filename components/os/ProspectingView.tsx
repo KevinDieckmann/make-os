@@ -1,22 +1,29 @@
 'use client';
 
 // ─── MAKE OS — Prospecting-Agent ────────────────────────────────────────────
-// Die Zielliste zum Nordstern: Firmen rein, KI qualifiziert gegen das ICP
-// (Score + Fit + Aufhänger), ihr priorisiert. Ansprache entwerfen — der
-// Versand bleibt bei ihm.
+// Die Zielliste: Firmen rein, KI qualifiziert gegen das ICP (Score + Fit + Aufhänger), man priorisiert. Ansprache entwerfen — der
+// Versand bleibt bei dir.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Zahl aus schlank).
+// Woche 2 · 1.14 (09.10.): das ICP kommt aus Markttraktion › Marketing › Positionierung (kein festes Produkt im Code); jede Änderung geht als
+// Einzeländerung mit Stand an PATCH /api/state/prospects (vorher: die ganze Liste per PUT, Fehler verschluckt); „In die Kartei übernehmen“
+// legt Firma (und Ansprechpartner) über den EINEN Weg an (POST /api/crm/person) — dort wird daraus ein Lead. Auch aus Markttraktion › Firmen erreichbar.
 
 import { neueMailVorbereiten } from '@/lib/inbox/neue-mail';
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  DEFAULT_ICP, ICP_VORLAGE, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL,
-  type Prospect, type ProspectStatus, type ProspectsState,
+  PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL, ICP_HINWEIS, prospectKennung,
+  type Prospect, type ProspectStatus,
 } from '@/lib/make-one/prospecting-data';
 import { Building2 } from 'lucide-react';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Chip, Zahl, feld, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Chip, Zahl, Hinweis, feld, LEUCHT } from './ui';
 import { KiMarke } from './KiMarke';
 import { ZoeReiter } from './ZoeReiter';
+import { WEG } from '@/lib/wege';
+
+type PZeile = Prospect & { stand?: string };
+type Antwort = { ok?: boolean; fehler?: string; zeilen?: { id: string; stand: string }[]; konflikte?: unknown[]; state?: { icp: string; prospects: PZeile[] } | null; icpQuelle?: 'marketing' | 'eigen' | 'leer'; eigenesIcp?: string };
 
 const scoreColor = (s?: number) => (s == null ? C.inkLeise : s >= 80 ? LEUCHT.gut : s >= 50 ? LEUCHT.achtung : LEUCHT.kritisch);
 const statusColor = (s: ProspectStatus) => (s === 'kontaktiert' ? LEUCHT.gut : s === 'qualifiziert' ? LEUCHT.business : s === 'verworfen' ? LEUCHT.kritisch : C.inkLeise);
@@ -33,81 +40,109 @@ function Wahl({ an, farbe, onClick, children, title, aus }: { an: boolean; farbe
 }
 
 export function ProspectingView() {
-  const [icp, setIcp] = useState(DEFAULT_ICP);
-  const [rows, setRows] = useState<Prospect[]>([]);
+  const [icp, setIcp] = useState('');
+  const [icpQuelle, setIcpQuelle] = useState<'marketing' | 'eigen' | 'leer'>('leer');
+  const [rows, setRows] = useState<PZeile[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [bulk, setBulk] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [newName, setNewName] = useState('');
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const icpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Stand je Eintrag aus der letzten Server-Antwort — er geht mit jeder Änderung hinaus (409 statt still überschreiben). */
+  const staende = useRef(new Map<string, string>());
+  /** Schreiben nacheinander — eine Änderung trägt den Stand, den die vorige Antwort gemeldet hat. */
+  const kette = useRef<Promise<unknown>>(Promise.resolve());
 
-  // Ohne geladenen Stand wird nicht gespeichert — sonst ersetzt der erste
-  // neue Eintrag die ganze Zielkundenliste.
+  // Ohne geladenen Stand wird nicht gespeichert — sonst ersetzt der erste neue Eintrag die ganze Zielkundenliste.
   const [ladeFehler, setLadeFehler] = useState(false);
-  useEffect(() => {
-    fetch('/api/state/prospects')
-      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-      .then((d: { state: ProspectsState | null }) => {
-        if (d.state) { setIcp(d.state.icp || DEFAULT_ICP); setRows(d.state.prospects || []); }
-        setLoaded(true);
-      })
-      .catch(err => {
-        console.error('[MAKE OS] Zielkunden konnten nicht geladen werden — Speichern gesperrt.', err);
-        setLadeFehler(true);
-        setLoaded(true);
-      });
+  const uebernehmen = useCallback((d: Antwort) => {
+    if (d.icpQuelle) setIcpQuelle(d.icpQuelle);
+    if (d.state) {
+      setIcp(d.icpQuelle === 'marketing' ? d.state.icp : d.state.icp || d.eigenesIcp || '');
+      setRows(d.state.prospects ?? []);
+      staende.current = new Map((d.state.prospects ?? []).filter(p => p.stand).map(p => [p.id, p.stand!]));
+    }
   }, []);
+  const laden = useCallback(() => fetch('/api/state/prospects')
+    .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json() as Promise<Antwort>; })
+    .then(d => { uebernehmen(d); setLoaded(true); setLadeFehler(false); })
+    .catch(err => {
+      console.error('[MAKE OS] Zielkunden konnten nicht geladen werden — Speichern gesperrt.', err);
+      setLadeFehler(true);
+      setLoaded(true);
+    }), [uebernehmen]);
+  useEffect(() => { void laden(); }, [laden]);
 
-  function persist(nextIcp: string, nextRows: Prospect[]) {
-    if (ladeFehler) return;
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      fetch('/api/state/prospects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ icp: nextIcp, prospects: nextRows }) }).catch(() => {});
-    }, 400);
-  }
-  const setRowsP = (next: Prospect[]) => { setRows(next); persist(icp, next); };
-  const setIcpP = (v: string) => { setIcp(v); persist(v, rows); };
+  /** Eine Änderung an den Server — nacheinander, mit Stand; Fehler bleiben sichtbar, 409 lädt den aktuellen Stand. */
+  const schreiben = useCallback((body: { ops?: Record<string, unknown>[]; icp?: string }): Promise<boolean> => {
+    if (ladeFehler) { setFehler('Die Zielliste ist nicht geladen — nichts gespeichert. Bitte die Seite neu laden.'); return Promise.resolve(false); }
+    const lauf = kette.current.then(async () => {
+      const ops = body.ops?.map(o => { const id = String(o.id ?? (o.eintrag as { id?: string } | undefined)?.id ?? ''); const st = staende.current.get(id); return st && o.op !== 'upsert' ? { ...o, stand: st } : o; });
+      const d: Antwort = await fetch('/api/state/prospects', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, ...(ops ? { ops } : {}) }) })
+        .then(r => r.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+      if (!d.ok) {
+        setFehler(`Nicht gespeichert — ${d.fehler ?? 'unbekannter Fehler'}${d.konflikte?.length ? ' Der aktuelle Stand ist geladen, bitte noch einmal.' : ''}`);
+        if (d.konflikte?.length) await laden();
+        return false;
+      }
+      for (const z of d.zeilen ?? []) staende.current.set(z.id, z.stand);
+      for (const o of body.ops ?? []) if (o.op === 'delete') staende.current.delete(String(o.id));
+      setFehler(null);
+      return true;
+    });
+    kette.current = lauf.catch(() => false);
+    return lauf;
+  }, [ladeFehler, laden]);
 
-  async function score(p: Prospect): Promise<Prospect> {
+  const aendern = (p: Prospect, felder: Partial<Prospect>) => { setRows(rs => rs.map(x => (x.id === p.id ? { ...x, ...felder } : x))); return schreiben({ ops: [{ op: 'teil', id: p.id, felder }] }); };
+  const setIcpP = (v: string) => { setIcp(v); clearTimeout(icpTimer.current); icpTimer.current = setTimeout(() => { void schreiben({ icp: v }); }, 600); };
+
+  /** KI-Bewertung gegen das wirksame Profil — nur die Felder, die sich ändern (Score, Fit, Aufhänger, Status). */
+  async function score(p: Prospect): Promise<Partial<Prospect> | null> {
     const r = await fetch('/api/prospecting/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prospect: p, icp }) });
-    const d = await r.json();
-    if (d.error && d.score == null) return p;
-    return { ...p, score: d.score, fit: d.fit, angle: d.angle, status: p.status === 'neu' ? 'qualifiziert' : p.status };
+    const d = await r.json().catch(() => ({ error: 'keine Antwort' }));
+    if (d.error && d.score == null) { setFehler(`Bewertung von „${p.company}“ fehlgeschlagen — ${String(d.error)}`); return null; }
+    return { score: d.score, fit: d.fit, angle: d.angle, status: p.status === 'neu' ? 'qualifiziert' : p.status };
   }
 
   async function scoreOne(p: Prospect) {
     setBusy(b => ({ ...b, [p.id]: true }));
-    const upd = await score(p);
-    const next = rows.map(x => x.id === p.id ? upd : x);
-    setRows(next);
-    persist(icp, next);
+    const felder = await score(p);
+    if (felder) await aendern(p, felder);
     setBusy(b => ({ ...b, [p.id]: false }));
   }
 
   async function scoreAll() {
     setBulk(true);
-    const todo = rows.filter(p => p.score == null);
-    // Über die Schleife hinweg mitzählen: `rows` aus dem Abschluss wäre nach
-    // dem ersten await veraltet, und der Speichervorgang gehört nicht in den
-    // State-Updater — React darf den mehrfach aufrufen.
-    let aktuell = rows;
-    for (const p of todo) {
-      const upd = await score(p);
-      aktuell = aktuell.map(x => x.id === p.id ? upd : x);
-      setRows(aktuell);
-      persist(icp, aktuell);
+    for (const p of rows.filter(x => x.score == null)) {
+      const felder = await score(p);
+      if (felder) await aendern(p, felder);
     }
     setBulk(false);
   }
 
   function cycleStatus(p: Prospect) {
     const i = PROSPECT_STATUS_ORDER.indexOf(p.status);
-    const next = PROSPECT_STATUS_ORDER[(i + 1) % PROSPECT_STATUS_ORDER.length];
-    setRowsP(rows.map(x => x.id === p.id ? { ...x, status: next } : x));
+    void aendern(p, { status: PROSPECT_STATUS_ORDER[(i + 1) % PROSPECT_STATUS_ORDER.length] });
   }
 
-  // ── Outreach-Agent: Erstansprache in eurer Stimme (Entwurf — Versand bei dir) ──
+  // ── In die Kartei übernehmen (1.14): Firma und — wenn genannt — Ansprechpartner über den EINEN Weg „Person anlegen“ ──
+  const [uebernahme, setUebernahme] = useState<{ id: string; vorname: string; nachname: string; email: string; position: string } | null>(null);
+  async function inKartei(p: Prospect) {
+    if (!uebernahme) return;
+    const mitPerson = !!(uebernahme.vorname.trim() || uebernahme.nachname.trim());
+    const body = mitPerson
+      ? { aktion: 'anlegen', weg: 'prospecting', person: { vorname: uebernahme.vorname, nachname: uebernahme.nachname, email: uebernahme.email, position: uebernahme.position, firma: p.company, ...(p.domain ? { webseite: p.domain } : {}) } }
+      : { aktion: 'firma', firma: { name: p.company, ...(p.domain ? { webseite: p.domain } : {}), ...(p.industry ? { branche: p.industry } : {}), ...(p.size ? { mitarbeiter: p.size } : {}) } };
+    const d = await fetch('/api/crm/person', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+    if (!d.ok || !d.firmaId) { setFehler(`Nicht übernommen — ${d.fehler ?? (mitPerson ? 'die Person hat keine Firma' : 'unbekannter Fehler')}`); return; }
+    setUebernahme(null);
+    await aendern(p, { kartei: { firmaId: d.firmaId, ...(d.kontaktId ? { kontaktId: d.kontaktId } : {}), am: new Date().toISOString() } });
+  }
+
+  // ── Outreach-Agent: Erstansprache in Kevins Stimme (Entwurf — Versand bei dir) ──
   const [entwurf, setEntwurf] = useState<{ fuer: string; betreff: string; email: string; linkedin: string; hinweis: string } | null>(null);
   const [entwurfBusy, setEntwurfBusy] = useState<string | null>(null);
   const [mailInfo, setMailInfo] = useState('');
@@ -131,9 +166,12 @@ export function ProspectingView() {
   function addManual() {
     const name = newName.trim();
     if (!name) return;
-    const p: Prospect = { id: `p-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${rows.length}`, company: name, status: 'neu', region: 'DACH', addedAt: '' , source: 'manuell' };
-    setRowsP([p, ...rows]); setNewName('');
+    const zufall = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    const p: Prospect = { id: prospectKennung(name, zufall), company: name, status: 'neu', addedAt: new Date().toISOString(), source: 'manuell' };
+    setRows(rs => [p, ...rs]); setNewName('');
+    void schreiben({ ops: [{ op: 'upsert', eintrag: p }] });
   }
+  const loeschen = (p: Prospect) => { setRows(rs => rs.filter(x => x.id !== p.id)); void schreiben({ ops: [{ op: 'delete', id: p.id }] }); };
 
   const sorted = [...rows].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
   const counts = PROSPECT_STATUS_ORDER.map(s => ({ s, n: rows.filter(r => r.status === s).length }));
@@ -158,19 +196,31 @@ export function ProspectingView() {
         </div>
       </Karte>
 
-      {/* ICP */}
+      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+      {ladeFehler && <Hinweis art="kritisch" rolle="alert">Die Zielliste ließ sich nicht laden — Speichern ist gesperrt, damit nichts überschrieben wird. Bitte die Seite neu laden.</Hinweis>}
+
+      {/* ICP — aus Markttraktion › Marketing › Positionierung (1.14); nur ohne Einstellung das eigene Profil der Zielliste. */}
       <Karte i={1}>
-        <details>
+        <details open={icpQuelle === 'leer'}>
           <summary style={{ cursor: 'pointer', ...mikro, color: LEUCHT.business }}>Ideales Kundenprofil (ICP)</summary>
-          <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} placeholder={ICP_VORLAGE} aria-label="Ideales Kundenprofil" style={{ ...feld, marginTop: 12, resize: 'vertical', lineHeight: 1.5, color: C.inkDim }} />
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
+          {icpQuelle === 'marketing' ? (
+            <>
+              <div style={{ marginTop: 12, whiteSpace: 'pre-wrap', fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>{icp}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Kommt aus <Link href={WEG.marketing('positionierung')} style={{ color: C.aktiv }}>Markttraktion › Marketing › Positionierung</Link> — dort ändern, dann gilt es für Scoring und Ansprache.</div>
+            </>
+          ) : (
+            <>
+              <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} aria-label="Ideales Kundenprofil" placeholder="Wen suchen wir? Branche, Größe, Schmerzpunkte, Entscheider, Auslöser …" style={{ ...feld, marginTop: 12, resize: 'vertical', lineHeight: 1.5, color: C.inkDim }} />
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{icp.trim() ? 'Das Profil steuert das Scoring. Änderungen werden gespeichert.' : ICP_HINWEIS} Besser: <Link href={WEG.marketing('positionierung')} style={{ color: C.aktiv }}>in der Positionierung pflegen</Link> — dann gilt es überall.</div>
+            </>
+          )}
         </details>
       </Karte>
 
       {/* Aktionen + Liste */}
       <Karte i={2}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-          <Knopf haupt onClick={scoreAll} aus={bulk || !unscored} farbe={LEUCHT.business}>
+          <Knopf haupt onClick={scoreAll} aus={bulk || !unscored || !icp.trim()} farbe={LEUCHT.business}>
             {bulk ? 'qualifiziere …' : unscored ? `Alle ${unscored} qualifizieren` : 'Alle qualifiziert ✓'}
           </Knopf>
           <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 220 }}>
@@ -207,7 +257,7 @@ export function ProspectingView() {
                       {p.angle && <div><div style={{ ...mikro, marginBottom: 4 }}>Aufhänger</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.angle}</div></div>}
                       {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Noch nicht qualifiziert — „Qualifizieren“ klicken.</div>}
 
-                      {/* Outreach: Ansprache entwerfen — Versand bleibt bei euch */}
+                      {/* Outreach: Ansprache entwerfen — Versand bleibt bei Kevin */}
                       {p.score != null && (
                         <div>
                           <Knopf leise onClick={() => ansprache(p)} aus={entwurfBusy === p.id}>
@@ -236,7 +286,7 @@ export function ProspectingView() {
                             <Knopf onClick={inMailOeffnen} farbe={LEUCHT.business}>In der Inbox schreiben</Knopf>
                             <Knopf leise onClick={() => { try { navigator.clipboard.writeText(`${entwurf.betreff}\n\n${entwurf.email}`); } catch { /* egal */ } }}>E-Mail kopieren</Knopf>
                             {entwurf.linkedin && <Knopf leise onClick={() => { try { navigator.clipboard.writeText(entwurf.linkedin); } catch { /* egal */ } }}>LinkedIn kopieren</Knopf>}
-                            <Knopf leise onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: 'kontaktiert' } : x))}>→ als kontaktiert markieren</Knopf>
+                            <Knopf leise onClick={() => aendern(p, { status: 'kontaktiert' })}>→ als kontaktiert markieren</Knopf>
                             {mailInfo && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>{mailInfo}</span>}
                           </div>
                           {entwurf.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{entwurf.hinweis}</div>}
@@ -244,11 +294,33 @@ export function ProspectingView() {
                       )}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                         {PROSPECT_STATUS_ORDER.map(s => (
-                          <Wahl key={s} an={p.status === s} farbe={statusColor(s)} onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: s } : x))}>{PROSPECT_STATUS_LABEL[s]}</Wahl>
+                          <Wahl key={s} an={p.status === s} farbe={statusColor(s)} onClick={() => void aendern(p, { status: s })}>{PROSPECT_STATUS_LABEL[s]}</Wahl>
                         ))}
-                        <span style={{ marginLeft: 'auto' }}><Knopf leise onClick={() => setRowsP(rows.filter(x => x.id !== p.id))}>Löschen</Knopf></span>
+                        <span style={{ marginLeft: 'auto' }}><Knopf leise onClick={() => loeschen(p)}>Löschen</Knopf></span>
                       </div>
                       {p.source && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Quelle: {p.source}</div>}
+                      {/* 1.14: in die Kartei — Firma (und Ansprechpartner) über den EINEN Weg; dort wird daraus ein Lead (Art. 14: Recherche). */}
+                      {p.kartei ? (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien }}>
+                          <Chip farbe={LEUCHT.gut}>In der Kartei</Chip>
+                          <Link href={WEG.firma(p.kartei.firmaId)} style={{ color: C.aktiv }}>Firma öffnen ›</Link>
+                          {p.kartei.kontaktId && <Link href={WEG.akte(p.kartei.kontaktId)} style={{ color: C.aktiv }}>Ansprechpartner ›</Link>}
+                        </div>
+                      ) : uebernahme?.id === p.id ? (
+                        <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+                          <div style={{ ...mikro, color: LEUCHT.business }}>In die Kartei übernehmen</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 180px), 1fr))', gap: 8 }}>
+                            {(['vorname', 'nachname', 'email', 'position'] as const).map(f => (
+                              <input key={f} value={uebernahme[f]} onChange={e => setUebernahme({ ...uebernahme, [f]: e.target.value })} aria-label={f}
+                                placeholder={{ vorname: 'Vorname (optional)', nachname: 'Nachname (optional)', email: 'E-Mail (optional)', position: 'Position (optional)' }[f]} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
+                            ))}
+                          </div>
+                          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Mit Ansprechpartner wird die Firma ein Lead; ohne steht nur die Firma in der Kartei (Person später in der Firmenkarte). Herkunft: Recherche — Art. 14 (Information binnen eines Monats) gilt.</div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf onClick={() => inKartei(p)}>Übernehmen</Knopf><Knopf leise onClick={() => setUebernahme(null)}>Abbrechen</Knopf></div>
+                        </div>
+                      ) : (
+                        <div><Knopf leise onClick={() => setUebernahme({ id: p.id, vorname: '', nachname: '', email: '', position: '' })}>In die Kartei übernehmen</Knopf></div>
+                      )}
                     </div>
                   )}
                 </div>

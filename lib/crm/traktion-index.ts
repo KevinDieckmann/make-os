@@ -14,7 +14,7 @@ import type { CrmBestand, Chance, Mandat } from './typen';
 import { kennzahlen, messlatte, type Kpi } from './kennzahlen';
 import { marketingKennzahlen, ausMarketing, abmeldequote, marketingTrichter } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
-import { OFFENE_STUFEN, gesundheit, gesamtwert, echtesGespraech, WIN_RATE } from './pipeline';
+import { OFFENE_STUFEN, gesundheit, gesamtwert, echtesGespraech, WIN_RATE, WIN_RATE_TEXT } from './pipeline';
 import { verweildauer } from './deal-auswertung';
 import { faellige } from './followup';
 import { eventZahlen, followUpBis } from './events';
@@ -45,7 +45,7 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'ohne_schritt', label: 'Deals ohne nächsten Schritt', saeule: 'sales', gruppe: 'Conversions', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 2, formel: 'Offene Deals ohne festgehaltenen nächsten Schritt', quelle: 'Deals', luecke: 'Kein offener Deal', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
   D({ id: 'mrr', label: 'Größter Kunde am MRR', saeule: 'sales', gruppe: 'Conversions', einheit: 'prozent', richtung: 'niedrig', gruen: 50, rot: 70, formel: 'Anteil des größten Kunden am wiederkehrenden Monatsumsatz', quelle: 'Aktive Mandate mit Monatshonorar', luecke: 'Keine aktiven Monatsmandate', pflegen: { text: 'Mandate pflegen', href: WEG.mandat() } }),
   // ── Deal- und Follow-up-Ebene (27.09.)
-  D({ id: 'win_rate', label: 'Win Rate · 180 Tage', saeule: 'sales', gruppe: 'Deals', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: WIN_RATE.gruen, rot: WIN_RATE.rot, formel: 'gewonnen ÷ (gewonnen + verloren), Entscheidungen der letzten 180 Tage, erst ab 10', quelle: 'Deals mit Stufe gewonnen/verloren', luecke: 'Noch keine 5 Entscheidungen', pflegen: { text: 'Deals öffnen', href: markttraktion('deals', 'auswertung') } }),
+  D({ id: 'win_rate', label: WIN_RATE_TEXT.label, saeule: 'sales', gruppe: 'Deals', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: WIN_RATE.gruen, rot: WIN_RATE.rot, formel: WIN_RATE_TEXT.formel, quelle: 'Deals mit Stufe gewonnen/verloren', luecke: WIN_RATE_TEXT.luecke, pflegen: { text: 'Deals öffnen', href: markttraktion('deals', 'auswertung') } }),
   D({ id: 'zyklus', label: 'Sales-Zyklus · Median', saeule: 'sales', gruppe: 'Deals', einheit: 'tage', richtung: 'niedrig', gruen: 60, rot: 120, formel: 'Median der Tage von Anlage bis gewonnen, erst ab 5 gewonnenen', quelle: 'Historie der gewonnenen Deals', luecke: 'Noch keine 5 gewonnenen Deals', pflegen: { text: 'Auswertung öffnen', href: markttraktion('deals', 'auswertung') } }),
   D({ id: 'haengt_wert', label: 'Hängt · nach Wert', saeule: 'sales', gruppe: 'Deals', einheit: 'prozent', richtung: 'niedrig', gruen: 15, rot: 40, formel: 'Wert der roten Deals ÷ Wert aller offenen Deals', quelle: 'Ampel je Deal (überfällig oder > 30 Tage still)', luecke: 'Keine offenen Deals mit Wert', pflegen: { text: 'Board öffnen', href: markttraktion('deals') } }),
   D({ id: 'followup_puenktlich', label: 'Follow-ups pünktlich · 30 Tage', saeule: 'sales', gruppe: 'Follow-up', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 60, formel: 'erledigt am oder vor dem Termin ÷ (erledigt + verpasst), erst ab 5', quelle: 'Follow-up-Ebene', luecke: 'Noch keine 5 erledigten Follow-ups', pflegen: { text: 'Follow-up öffnen', href: markttraktion('followup') } }),

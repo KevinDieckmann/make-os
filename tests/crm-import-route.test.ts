@@ -60,7 +60,8 @@ describe('Import-Route — Vorschau, Konflikte, Auflösung', () => {
     expect(d.beispiele.moeglicheDubletten.some((x: { grund: string }) => x.grund === 'Liste: Owner klären')).toBe(true);
     expect(await kontakte()).toEqual(vorher);
     expect(await db.loadJson('crm-import-konflikte')).toBeNull();
-    expect((await speicher.ladeCrm()).segmente).toEqual([]);
+    // Geschrieben wurde nichts — auch kein Segment (das System-Segment „Vernetzen“ zeigt `ladeCrm` seit 09.10. ab dem ersten Laden, 1.15).
+    expect((await db.loadJson<{ segmente?: unknown[] }>('crm'))?.segmente ?? []).toEqual([]);
   });
 
   it('Schreiben: füllt Lücken, wendet Konflikte NICHT an, legt sie ab und legt das Segment „Vernetzen“ an', async () => {

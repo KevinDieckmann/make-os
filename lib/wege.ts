@@ -58,6 +58,8 @@ export const WEG = {
   /** Netzwerken (02.10.): die Seite für unterwegs (Erfassen, Abendbericht — `bericht` = Event; `event` = „Heute bei“ mit diesem Event vorwählen, 03.10.) · `netzwerkenKarte` = „Meine Visitenkarte“ (QR, vCard). */
   netzwerken: (o: { bericht?: string; event?: string } = {}) => q('/os/netzwerken', { bericht: o.bericht, event: o.event }),
   netzwerkenKarte: () => '/os/netzwerken/karte',
+  /** Zielliste (Prospecting) — unter ZOE › Agenten, seit 09.10. auch aus Markttraktion › Firmen verlinkt (Woche 2 · 1.14). */
+  prospecting: () => '/os/prospecting',
   zahlen: (s?: ZahlenReiter) => q('/os/finanzen', { s }),
   /** Business-Cockpit: Sicht (gesamt weglassen), Kennzahl, Abschnitt. */
   business: (o: { f?: string; k?: string; abschnitt?: 'abschluss' | 'einstellungen' | 'modell' | 'verlauf' } = {}) =>

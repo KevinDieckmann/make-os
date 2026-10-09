@@ -21,8 +21,7 @@
 import { STUFEN, wendeAktivitaetAn, anzeigename, normTelefon, type Kontakt, type Einwilligung, type AktivitaetArt } from '@/lib/make-one/crm';
 import type { Beitrag, CrmBestand, FollowUp, FollowUpArt, Kampagne, Lead } from './typen';
 import { neuesFollowUp, tagPlus } from './followup';
-import { leadSaeubern } from './lead-form';
-import { leereKriterien } from './leads';
+import { personEntwurf, leadZiel } from './person-anlegen';
 import { firmaNachName } from './firmen-bezug';
 import { ANFRAGE_PRAEFIX, ANFRAGE_FOLLOWUP, istAnfrage, istAnfrageFollowUp } from './marketing';
 import { OFFENE_STUFEN } from './pipeline';
@@ -118,12 +117,16 @@ export function notizAnhaengen(alt: string | undefined, neu: string, max = LEAD_
   if (neu.length + GEKUERZT.length + 1 >= max) return { text: neu.slice(0, max), gekuerzt: true };
   return { text: `${GEKUERZT}${ganz.slice(ganz.length - (max - GEKUERZT.length))}`, gekuerzt: true };
 }
-/** Lead auf „kontaktiert“, wenn er noch neu oder leer ist — sonst unverändert (undefined). `gekuerzt`: ältere Notiz gekürzt. */
-export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: string, person: string): (Lead & { gekuerzt?: boolean }) | undefined {
-  if (alt && alt.status !== 'neu') return undefined;
+/**
+ * Lead auf „kontaktiert“, wenn er noch neu oder leer ist — sonst unverändert (undefined). `gekuerzt`: ältere Notiz gekürzt.
+ * Seit 09.10. (Woche 2 · 1.8) entscheidet die EINE Regel `leadZiel` (lib/crm/person-anlegen.ts) — dieselbe wie Netzwerken: Kein Fit, Ruht,
+ * SQL, Kunde und Firmen ohne Vertrieb bleiben stehen.
+ */
+export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: string, person: string, firmaRolle?: import('./typen').Firma['rolle']): (Lead & { gekuerzt?: boolean }) | undefined {
   const n = notizAnhaengen(alt?.notiz, notiz);
-  const l = leadSaeubern({ ...(alt ?? { kriterien: leereKriterien() }), status: 'kontaktiert', notiz: n.text, geaendert: jetzt, geaendertVon: person });
-  return l && n.gekuerzt ? Object.assign(l, { gekuerzt: true }) : l;
+  const z = leadZiel(alt, 'kontaktiert', { firmaRolle, jetzt, person, notiz: n.text });
+  if (z.art !== 'setzen') return undefined;
+  return n.gekuerzt ? Object.assign(z.lead, { gekuerzt: true }) : z.lead;
 }
 
 /** Aus einer Eingabe alles bauen, was zu einer Anfrage gehört — ohne zu schreiben. */
@@ -154,17 +157,16 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     if (doppelt) { basis = doppelt; hinweis = `${anzeigename(doppelt)} steht schon in der Kartei (gleiche Mail) — die Anfrage hängt jetzt dort.`; }
     else if (gleicheNummer.length === 1) { basis = gleicheNummer[0]; hinweis = `${anzeigename(gleicheNummer[0])} steht schon in der Kartei (gleiche Nummer) — die Anfrage hängt jetzt dort.`; }
     else {
+      // Die Firma legt die Route VOR dieser Sperre an, wenn es sie noch nicht gibt (Woche 2 · 1.8: EIN Weg — `firmaSichern`); hier wird verknüpft.
       const f = firmaNachName(ctx.crm.firmen, firma);
       neuePerson = true;
-      basis = {
-        id: ctx.ids.kontakt, vorname, nachname, ...(email ? { email } : {}), ...(txt(n.telefon, GRENZEN.telefon) ? { telefon: txt(n.telefon, GRENZEN.telefon) } : {}),
-        ...(txt(n.linkedin, 200) ? { linkedin: txt(n.linkedin, 200) } : {}),
-        ...(firma ? { firma: f?.name ?? firma, ...(f ? { firmaId: f.id } : {}) } : {}),
-        eignung: '', prio: '', stufe: 'neu', lebensphase: 'interessent', anrede: 'Sie', besitzer: ctx.person,
-        // Von der Person selbst (Art. 14 greift nicht), Grundlage: Anbahnung eines Vertrags (Art. 6 Abs. 1 lit. b).
-        herkunft: 'selbst', rechtsgrundlage: 'vertrag',
-        quelle: `Anfrage über ${info.label}`, aktivitaeten: [], importiertAm: datum, geaendertAm: ctx.heute,
-      };
+      // Der Entwurf aus der EINEN Anlege-Regel (lib/crm/person-anlegen.ts, Weg „anfrage“): Herkunft „selbst“ (Art. 14 greift nicht), Grundlage
+      // Anbahnung eines Vertrags (Art. 6 Abs. 1 lit. b), Lebensphase Interessent, Zuständig = wer die Anfrage aufnimmt. Die Anfrage selbst ist
+      // die erste Aktivität (kein System-Vermerk), angelegt am Tag der Anfrage.
+      const entwurf = personEntwurf({ vorname, nachname, ...(email ? { email } : {}), ...(txt(n.telefon, GRENZEN.telefon) ? { telefon: txt(n.telefon, GRENZEN.telefon) } : {}),
+        ...(txt(n.linkedin, 200) ? { linkedin: txt(n.linkedin, 200) } : {}), ...(firma ? { firma } : {}) }, 'anfrage',
+      { id: ctx.ids.kontakt, heute: datum, jetzt: jetztAm, person: ctx.person, ...(f ? { firma: { id: f.id, name: f.name } } : {}) });
+      basis = { ...entwurf, quelle: `Anfrage über ${info.label}`, aktivitaeten: [], geaendertAm: ctx.heute };
       // Sperrliste: nicht blockieren — Werbesperre setzen, Hinweis zeigen (die Anfrage selbst wird beantwortet).
       const s = ctx.sperre?.(basis);
       if (s) { basis = s.kontakt; if (s.hinweis) hinweis = s.hinweis; }
@@ -200,7 +202,7 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   let firmaLead: AnfrageBau['firmaLead'];
   if (kontakt.firmaId) {
     const f = ctx.crm.firmen.find(x => x.id === kontakt.firmaId);
-    const l = f ? leadNachAnfrage(f.lead, leadNotiz, ctx.jetzt, ctx.person) : undefined;
+    const l = f ? leadNachAnfrage(f.lead, leadNotiz, ctx.jetzt, ctx.person, f.rolle) : undefined;
     if (f && l) { const { gekuerzt, ...lead } = l; firmaLead = { firmaId: f.id, lead }; if (gekuerzt) hinweis = [hinweis, 'Die Lead-Notiz war zu lang — der älteste Teil wurde gekürzt, die neue Zeile steht.'].filter(Boolean).join(' '); }
   } else {
     const l = leadNachAnfrage(kontakt.lead, leadNotiz, ctx.jetzt, ctx.person);

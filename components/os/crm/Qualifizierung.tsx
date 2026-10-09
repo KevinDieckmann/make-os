@@ -19,7 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
-import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, leadsAnderer, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { DealAnlegen } from './DealAnlegen';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
@@ -109,6 +109,8 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
       {kalteZahl} {kalteZahl === 1 ? 'kalter Lead ist' : 'kalte Leads sind'} ausgeblendet (Score unter {einstellungen.temperaturAb.lau} von 100 — Grenze „lau“ der Scoring-Einstellungen) — sie warten im Segment „Vernetzen“, bis sie warm werden.
     </Hinweis>
   ) : null;
+  // 1.10 (09.10.): „Meine“ blendet Leads anderer aus — die Zahl steht dabei, ein Klick zeigt alle.
+  const andererZahl = d ? leadsAnderer(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
   const sqlOffen = karten.filter(sqlEntscheidungOffen).length;
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
@@ -145,6 +147,13 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
             {karten.length > 0 && <span className="quali-nav" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}><Knopf leise aus={pos === 0} onClick={() => setPos(p => Math.max(0, p - 1))}>← Zurück</Knopf><Knopf leise aus={pos >= karten.length} onClick={() => setPos(p => Math.min(karten.length, p + 1))}>Weiter →</Knopf></span>}
           </div>
           {kalteZeigen && karten.length > 0 && <div style={{ marginTop: 10 }}>{kalteZeigen}</div>}
+          {andererZahl > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <Hinweis art="info" rolle="status" aktion={<Knopf leise onClick={() => setWer('alle')}>Alle zeigen</Knopf>}>
+                {andererZahl} {andererZahl === 1 ? 'Lead gehört' : 'Leads gehören'} anderen im Team (Zuständig) — „Meine“ zeigt sie nicht.
+              </Hinweis>
+            </div>
+          )}
           {sqlOffen > 0 && <Hinweis art="gut" rolle="status">{sqlOffen} {sqlOffen === 1 ? 'Lead ist' : 'Leads sind'} SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.</Hinweis>}
           {start && d && !startZeile && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
         </Karte>

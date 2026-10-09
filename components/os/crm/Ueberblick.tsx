@@ -30,6 +30,8 @@ import type { CrmApi } from './daten';
 import { BeanVerteilungKarte, useOffeneAngebote } from './bean-teile';
 import { beanVerteilung } from '@/lib/crm/bean';
 import { datum } from './daten';
+import { neueOhneSchritt } from '@/lib/crm/person-anlegen';
+import { anzeigename } from '@/lib/make-one/crm';
 
 /** Farbe je Welt — dieselbe in der Leiste, im Überblick und an den Übergaben. */
 export const WELT_FARBE: Record<Welt, string> = { sales: LEUCHT.business, marketing: LEUCHT.puls, event: LEUCHT.beziehung };
@@ -58,6 +60,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   // BEAN-Verteilung (28.09., H4): über die ganze Kartei, mit den offenen Angeboten der Dateiablage.
   const angebote = useOffeneAngebote();
   const bean = useMemo(() => (api.kontakte ? beanVerteilung(api.kontakte, api.crm?.stand, { angebote }) : null), [api.kontakte, api.crm, angebote]);
+  // 1.12 (09.10.): neu angelegte Personen ohne nächsten Schritt — sonst fallen sie durch „Für dich“ (kein Follow-up, kein Schritt).
+  const ohneSchritt = useMemo(() => (api.kontakte && api.crm ? neueOhneSchritt(api.kontakte, api.crm.stand, api.crm.heute) : []), [api.kontakte, api.crm]);
   if (!d) return <Karte i={0}>{fehler || api.fehler ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>Überblick konnte nicht geladen werden: {fehler ?? api.fehler}</span><button onClick={() => void laden()} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 8, padding: '5px 10px', color: C.ink, cursor: 'pointer' }}>Noch einmal</button></div> : <Leer>Lädt …</Leer>}</Karte>;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
@@ -132,6 +136,20 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
           </Karte>
           </Kachel>
 
+      {ohneSchritt.length > 0 && (
+        <Kachel id="neu-ohne-schritt" titel="Neue Leads ohne Schritt" breite={6}>
+          <Karte i={1} akzent={LEUCHT.achtung}>
+            <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>{ohneSchritt.length}</span>}>Neue Leads ohne nächsten Schritt</Ueberschrift>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>In den letzten 14 Tagen angelegt, ohne Schritt, Follow-up oder Deal — einen Schritt setzen, sonst gehen sie unter.</div>
+            <Liste>
+              {ohneSchritt.slice(0, 8).map(k => (
+                <Zeile key={k.id} onClick={() => zuBereich('kontakte', 'akte', k.id)} links={<Person id={k.besitzer ?? verantwortlich('sales')} groesse={18} />}
+                  titel={anzeigename(k)} unter={[k.firma, k.importiertAm ? `angelegt ${datum(k.importiertAm, d.heute)}` : ''].filter(Boolean).join(' · ')} rechts={<Chip farbe={LEUCHT.achtung}>Schritt setzen</Chip>} />
+              ))}
+            </Liste>
+          </Karte>
+        </Kachel>
+      )}
       <Kachel id="bean" titel="Kundengruppen · BEAN" breite={6}>
         {bean ? <BeanVerteilungKarte je={bean.je} vonHand={bean.vonHand} i={1} /> : <Karte i={1}><Leer>Kartei lädt …</Leer></Karte>}
       </Kachel>

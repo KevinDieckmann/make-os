@@ -20,7 +20,7 @@ import { dealRolleVorschlag, besterEntscheider, offeneRollenVorschlaege, vorschl
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
-import { gesamtwert, VERSCHOBEN_GELB, OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import { gesamtwert, VERSCHOBEN_GELB, OFFENE_STUFEN, WIN_RATE_TEXT, winRateStufe } from '@/lib/crm/pipeline';
 import { verweildauer, verweildauerJeStufe, umwandlung, winLoss, zyklus, prognoseNachMonat, haengtNachWert, MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
 import { mitglied } from '@/lib/crm/team';
@@ -240,7 +240,7 @@ export function DealAuswertung({ api, zuAkte }: { api: CrmApi; zuAkte: (id: stri
       <Karte i={1}>
         <Ueberschrift>Gewonnen · Verloren · Zyklus</Ueberschrift>
         <Raster min={150}>
-          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? 'Win Rate · 180 Tage' : `gewonnen · verloren (Quote ab ${MINDESTMENGE})`} farbe={wl.quote !== null ? (wl.quote >= 40 ? LEUCHT.gut : wl.quote >= 20 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
+          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? WIN_RATE_TEXT.label : WIN_RATE_TEXT.ohneQuote} farbe={wl.quote !== null ? { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch }[winRateStufe(wl.quote)] : undefined} />
           <Zahl wert={kurzEuro(wl.wertGewonnen)} label="gewonnen · Wert" farbe={wl.wertGewonnen ? LEUCHT.gut : undefined} />
           <Zahl wert={kurzEuro(wl.wertVerloren)} label="verloren · Wert" farbe={wl.wertVerloren ? LEUCHT.kritisch : undefined} />
           <Zahl wert={zy.median !== null ? `${zy.median} T` : `${zy.n} gew.`} label={zy.median !== null ? 'Zyklus · Median' : `Zyklus ab ${MINDESTMENGE} gewonnenen`} />

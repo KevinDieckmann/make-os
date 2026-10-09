@@ -123,3 +123,16 @@ export function neuImPapierkorb(b: CrmBestand, ops: readonly ListenOp[], listen:
   }
   return raus;
 }
+
+/** Vermerk an einer aus dem Papierkorb zurückgeholten Firma (1.6, 09.10.). */
+export const ZURUECK_VERMERK = 'Aus dem Papierkorb zurückgeholt — unter gleichem Namen neu angelegt';
+/**
+ * Eine Firma, die im Papierkorb liegt, wird beim Anlegen unter gleichem Namen ZURÜCKGEHOLT (1.6, Woche 2): ohne Papierkorb- und
+ * Archiv-Marke, mit Vermerk in der Notiz — nie bleibt eine Firma mit Marke stehen, an der dann Personen hängen (sie wäre für alle Leser
+ * unsichtbar und die Person nie ein Lead). Genutzt vom Firmen-Upsert (lib/crm/speicher.ts) und von „Person anlegen“ (lib/crm/person-anlegen.ts).
+ */
+export function firmaZurueckholen<F extends { notiz?: string; geloeschtAm?: string; archiviertAm?: string; geaendert: string }>(f: F, heute: string, jetzt: string): F {
+  const { geloeschtAm: _weg, archiviertAm: _a, ...rest } = f;
+  const zeile = `${heute}: ${ZURUECK_VERMERK}.`;
+  return { ...rest, notiz: f.notiz ? `${f.notiz}\n${zeile}` : zeile, geaendert: jetzt } as F;
+}

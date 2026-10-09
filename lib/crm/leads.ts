@@ -22,7 +22,7 @@ import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual, Quel
 import type { MarketingQuelle } from './scoring';
 import { OFFENE_STUFEN, gesamtwert } from './pipeline';
 import { haeltBeziehung, verantwortlich } from './team';
-import { dealZuFirma } from './firmen-bezug';
+import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, scoringKontext, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
 import { personenJeFirma, firmenDerPerson, personenDerFirma } from './stationen';
@@ -100,9 +100,12 @@ export function istKalt(z: Pick<LeadZeile, 'score' | 'status' | 'deal' | 'gesetz
 export const inArbeit = (z: Pick<LeadZeile, 'score' | 'status' | 'deal' | 'gesetzt' | 'frisch'>): boolean =>
   !istKalt(z) && (z.status === 'neu' || !!LEAD_STATUS.find(s => s.id === z.status)?.aktiv);
 
-/** Abgeleiteter Status aus den Personen, solange niemand ihn gesetzt hat. */
-export function abgeleitet(personen: Kontakt[], offenerDeal: boolean): LeadStatus {
-  if (personen.some(k => k.lebensphase === 'kunde' || k.stufe === 'gewonnen')) return 'kunde';
+/**
+ * Abgeleiteter Status aus den Personen, solange niemand ihn gesetzt hat. `kundeAktiv` (1.11, 09.10.): ein aktives Mandat (Firma oder Person)
+ * bzw. die Firmenrolle „Kunde“ — dann ist der Lead „Kunde“ (vorher blieb er „neu“, während BEAN schon B zeigte).
+ */
+export function abgeleitet(personen: Kontakt[], offenerDeal: boolean, kundeAktiv = false): LeadStatus {
+  if (kundeAktiv || personen.some(k => k.lebensphase === 'kunde' || k.stufe === 'gewonnen')) return 'kunde';
   if (offenerDeal || personen.some(k => k.stufe === 'angebot')) return 'sql';
   if (personen.some(k => k.stufe === 'gespraech' || k.stufe === 'termin')) return 'im_gespraech';
   if (personen.some(k => k.stufe === 'angesprochen')) return 'kontaktiert';
@@ -174,12 +177,17 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     // Hauptansprechpartner: der am Lead gewählte (wenn er noch dort aktiv ist), sonst die zuletzt kontaktierte Person.
     const haupt = personen.find(k => !!lead?.hauptKontaktId && k.id === lead.hauptKontaktId) ?? [...personen].sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
     const kriterien: Kriterien = { ...leereKriterien(), ...(lead?.kriterien ?? {}), ...(!lead?.kriterien && d ? d.qualifizierung : {}) };
+    // 1.11: aktives Mandat (an der Firma oder einer der Personen) bzw. Firmenrolle „Kunde“ → „Kunde“ — gilt für den abgeleiteten Status
+    // und für ein gesetztes „Neu“ (daran hat niemand gearbeitet); ein bewusst gesetzter anderer Status (z. B. Qualifizierung für einen
+    // Folgeauftrag) bleibt.
+    const kundeAktiv = (!!firma && firma.rolle === 'kunde') || crm.mandate.some(m => m.status === 'aktiv' && ((!!firma && mandatZuFirma(m, firma)) || (m.kontaktIds ?? []).some(id => ids.includes(id))));
+    const gesetztNeu = lead?.status === 'neu';
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
       personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })), ...(haupt ? { hauptKontaktId: haupt.id } : {}),
       // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung. Ebenso ein
       // direkt angelegter Deal (2.3): der Lead blieb vor dem SQL stehen, sein Deal ist jetzt entschieden.
-      status: (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : lead?.status ?? abgeleitet(personen, offen), gesetzt: !!lead?.status,
+      status: (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : gesetztNeu && kundeAktiv ? 'kunde' : lead?.status ?? abgeleitet(personen, offen, kundeAktiv), gesetzt: !!lead?.status,
       kriterien,
       score: leadScore(personen, lead, heute, kriterien, skx), kanal: kanalVon(haupt ?? personen[0] ?? {}),
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
@@ -327,6 +335,14 @@ export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile
     .filter(z => !f.bean || z.bean === f.bean)
     .sort((a, b) => Number(sqlEntscheidungOffen(b)) - Number(sqlEntscheidungOffen(a)) || b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
 }
+/**
+ * Wie viele Leads in der Runde ANDEREN gehören (1.10, 09.10.): die Runde startet mit „Meine“ — Leads, die jemand anders angelegt hat bzw.
+ * hält, fehlten dort ohne Hinweis. Nur für einen Personen-Filter (nicht „alle“/„ohne“); dieselben übrigen Filter wie die Runde.
+ */
+export function leadsAnderer(zeilen: LeadZeile[], f: RundenFilter): number {
+  if (f.wer === 'alle' || f.wer === 'ohne') return 0;
+  return zuQualifizieren(zeilen, { ...f, wer: 'alle' }).filter(z => !z.ohneBesitzer && z.besitzer !== f.wer && z.besitzer !== 'beide').length;
+}
 /** Warum „Parken“ und „Raus — Kein Fit“ nicht gehen (M8): der Lead ist schon SQL/Kunde oder hat einen offenen Deal — dann wird der Deal in der Deal-Akte geparkt oder verloren. Eine Regel für Server UND Oberfläche. */
 export const AUSSCHEIDEN_GESPERRT = 'Dieser Lead ist schon SQL oder hat einen offenen Deal — der Deal wird in der Deal-Akte geparkt oder verloren.';
 export const ausscheidenGesperrt = (z: Pick<LeadZeile, 'deal' | 'status'>): string | null => (z.deal?.offen || z.status === 'sql' || z.status === 'kunde' ? AUSSCHEIDEN_GESPERRT : null);
@@ -347,6 +363,16 @@ export function kalteAusgeblendet(zeilen: LeadZeile[], f: RundenFilter): number 
 export const salesBereit = (z: Pick<LeadZeile, 'kriterien' | 'score'>): boolean => z.score.scoring?.sales.erreicht ?? sqlBereit(z.kriterien);
 /** Was bis zum SQL fehlt (Muss-Kriterien, dann Punkte) — wie `fehltBisSql`, aber nach den Einstellungen. */
 export const fehltBisSqlZeile = (z: Pick<LeadZeile, 'kriterien' | 'score'>): string[] => z.score.scoring?.sales.fehlt ?? fehltBisSql(z.kriterien);
+/**
+ * Fortschritt zur SQL-Schwelle (2.7, 09.10.): Sales-Punkte gegen die Schwelle der Einstellungen, in Prozent (≤ 100) — statt „13 von 100“ beim
+ * Score, der mit den Temperatur-Grenzen (lau/warm/heiß) nichts über den Weg zum SQL sagt. Ohne Scoring-Ergebnis null.
+ */
+export function sqlFortschritt(score: Pick<LeadScore, 'scoring'>): { prozent: number; punkte: number; schwelle: number; erreicht: boolean; fehlt: string[] } | null {
+  const s = score.scoring?.sales;
+  if (!s) return null;
+  const prozent = s.erreicht ? 100 : s.schwelle > 0 ? Math.max(0, Math.min(99, Math.floor((100 * s.punkte) / s.schwelle))) : 0;
+  return { prozent, punkte: s.punkte, schwelle: s.schwelle, erreicht: s.erreicht, fehlt: s.fehlt };
+}
 /** Marketing-Schwelle (MQL) erreicht — Signale und Interaktionen reichen. */
 export const mqlErreicht = (z: Pick<LeadZeile, 'score'>): boolean => z.score.scoring?.marketing.erreicht ?? false;
 /** Die Stufe, in der der Lead steht: Lead → MQL → SQL-bereit (nur Anzeige, nichts davon wird gespeichert). */

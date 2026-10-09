@@ -24,10 +24,7 @@ import { Pillen, Feld } from '../teile';
 import { Person } from '../team';
 import { Notizfeld, KarteiSuche, JePerson, gastSetzen, type ReiterProps } from './gemeinsam';
 import { VisitenkarteKnopf } from '../Visitenkarte';
-import { neueFirma } from '../Firmen';
-import { kartenDubletten, firmaZurKarte, kontaktAusKarte, emailNormal, type VisitenkartenDaten } from '@/lib/crm/visitenkarte';
-import { domainVon, bestehendeFirma } from '@/lib/crm/firmen';
-import { neueKontaktKennung } from '@/lib/kennung';
+import { kartenDubletten, emailNormal, type VisitenkartenDaten } from '@/lib/crm/visitenkarte';
 
 function GrossKnopf({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: string }) {
   return (
@@ -180,19 +177,17 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
     setLaeuft(true); setFehler(null);
     try {
       const d: VisitenkartenDaten = { ...karte, email: karte.email ? emailNormal(karte.email) : undefined };
-      // Bestehende Firma (Schlüssel, Domain oder gleiche Kennung) verknüpfen — nie überschreiben (F1).
-      let firma = firmaZurKarte(d, crm.stand.firmen) ?? (d.firma ? bestehendeFirma(crm.stand.firmen, d.firma) : undefined);
-      if (!firma && d.firma?.trim()) {
-        const domain = domainVon({ email: d.email, firmaWebseite: d.webseite });
-        firma = { ...neueFirma(d.firma), ...(d.webseite ? { webseite: d.webseite } : {}), ...(domain ? { domain } : {}) };
-        if (!(await api.setze('firmen', firma as unknown as { id: string } & Record<string, unknown>))) { setFehler('Die Firma ließ sich nicht anlegen — nichts eingetragen, die Karte bleibt stehen.'); return; }
-      }
-      const id = neueKontaktKennung(); // Paket D-C #35: `c-<uuid>`
-      const k = kontaktAusKarte(d, { id, heute: crm.heute, jetzt: new Date().toISOString(), von: api.ich, herkunft: 'veranstaltung', firma, anlass: `Per Visitenkarte am Einlass angelegt — ${e.titel}` });
+      const name = [d.vorname, d.nachname].filter(Boolean).join(' ') || d.firma || 'Die Person';
+      // EIN Weg „Person anlegen“ (Woche 2 · 1.8, POST /api/crm/person, Weg „makeone“): Herkunft Veranstaltung, Firma verknüpfen oder anlegen
+      // (aus dem Papierkorb zurück), Sperrliste, wer eincheckt hält die Beziehung — der Server entscheidet, nie eine zweite Regel hier.
+      const r = await api.personAnlegen('makeone', {
+        vorname: d.vorname, nachname: d.nachname, email: d.email, telefon: d.telefon, mobil: d.mobil, position: d.position, linkedin: d.linkedin, webseite: d.webseite,
+        ...(d.firma?.trim() ? { firma: d.firma.trim() } : {}), vonKarte: true, anlass: `Per Visitenkarte am Einlass angelegt — ${e.titel}`.slice(0, 300),
+      });
       // Erst wenn die Person gespeichert ist, wird sie als „da“ eingetragen — nie eine Teilnahme ohne Person in der Kartei.
-      if (!(await api.kontaktSetzen(k))) { setFehler(`${anzeigename(k)} ließ sich nicht anlegen — nichts eingetragen, die Karte bleibt stehen.`); return; }
-      if (!(await eintragen(id))) { setFehler(`${anzeigename(k)} ist angelegt, aber NICHT als da eingetragen — bitte oben über die Suche einchecken.`); return; }
-      fertig({ id, name: anzeigename(k), neu: true });
+      if (!r.ok || !r.kontaktId) { setFehler(`${name} ließ sich nicht anlegen — ${r.fehler ?? 'nichts eingetragen'}. Die Karte bleibt stehen.`); return; }
+      if (!(await eintragen(r.kontaktId))) { setFehler(`${name} ist angelegt, aber NICHT als da eingetragen — bitte oben über die Suche einchecken.`); return; }
+      fertig({ id: r.kontaktId, name, neu: true });
     } finally { setLaeuft(false); }
   };
 
