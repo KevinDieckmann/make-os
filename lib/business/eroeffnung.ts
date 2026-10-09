@@ -28,8 +28,12 @@ import { BUSINESS_GESELLSCHAFTEN, finanzOrtAus, finanzOrtName, istBusinessGesell
 
 export const EROEFFNUNG_BESTAND = 'business-eroeffnung';
 
-/** Ein offener Posten der Eröffnung: wer, wie viel, wann fällig. */
-export interface OffenerPosten { name: string; betrag: number; faellig?: string }
+/**
+ * Ein offener Posten der Eröffnung: wer, wie viel (brutto), wann fällig — seit 09.10. (B9 b, L34) optional Rechnungsnummer, Rechnungsdatum und
+ * „bezahlt am“: ein bezahlter Posten ist nicht mehr offen (zählt nirgends mehr; der Zahlungseingang steckt im nächsten Kontostand) und bleibt in der
+ * Historie der Eröffnung sichtbar. Bezahlt markieren = neue Fassung (wie jede Änderung am 0-Punkt), „Rückgängig“ nimmt sie zurück.
+ */
+export interface OffenerPosten { name: string; betrag: number; faellig?: string; rechnungsnr?: string; datum?: string; bezahltAm?: string }
 
 export interface Eroeffnung {
   /** `er-<uuid>` — jede Änderung bekommt einen neuen Eintrag. */
@@ -144,16 +148,23 @@ export const offenerPostenKennung = (e: Eroeffnung, art: 'f' | 'v', i: number) =
 /** Eine Kennung aus der Eröffnung (offene Forderung/Verbindlichkeit)? Links führen dann zur Eröffnung, nicht in die Rechnungsliste. */
 export const istEroeffnungsKennung = (id: string | undefined | null): boolean => typeof id === 'string' && id.startsWith('er-');
 
-/** Die offenen Posten einer Eröffnung als Rechnungen (Forderungen) und Zahlungen (Verbindlichkeiten). */
+/** Ist der Posten noch offen? Betrag größer 0 und nicht bezahlt (09.10., L34). */
+export const postenOffen = (p: OffenerPosten): boolean => p.betrag > 0 && !p.bezahltAm;
+
+/**
+ * Die offenen Posten einer Eröffnung als Rechnungen (Forderungen) und Zahlungen (Verbindlichkeiten). Bezahlte fallen heraus (09.10.); die Kennung
+ * zählt die Stelle in der ganzen Liste — ein bezahlter Posten verschiebt die Kennungen der übrigen nicht.
+ */
 export function offenePostenAls(e: Eroeffnung) {
   const name = finanzOrtName(e.firma);
+  const offen = (l: OffenerPosten[] | undefined) => (l ?? []).map((p, i) => ({ p, i })).filter(x => postenOffen(x.p));
   return {
-    rechnungen: (e.forderungen ?? []).filter(p => p.betrag > 0).map((p, i) => ({
+    rechnungen: offen(e.forderungen).map(({ p, i }) => ({
       id: offenerPostenKennung(e, 'f', i), firmaId: e.firma, kunde: p.name, titel: `Offene Forderung zum 0-Punkt (${name})`,
-      betrag: p.betrag, status: 'gestellt' as const, ...(p.faellig ? { faellig: p.faellig } : {}), eroeffnung: true as const,
+      betrag: p.betrag, status: 'gestellt' as const, ...(p.faellig ? { faellig: p.faellig } : {}), ...(p.rechnungsnr ? { nummer: p.rechnungsnr } : {}), eroeffnung: true as const,
     })),
-    zahlungen: (e.verbindlichkeiten ?? []).filter(p => p.betrag > 0).map((p, i) => ({
-      id: offenerPostenKennung(e, 'v', i), firmaId: e.firma, an: p.name, titel: `Offene Verbindlichkeit zum 0-Punkt (${name})`,
+    zahlungen: offen(e.verbindlichkeiten).map(({ p, i }) => ({
+      id: offenerPostenKennung(e, 'v', i), firmaId: e.firma, an: p.name, titel: `Offene Verbindlichkeit zum 0-Punkt (${name})${p.rechnungsnr ? ` · ${p.rechnungsnr}` : ''}`,
       betrag: p.betrag, status: 'offen' as const, ...(p.faellig ? { faellig: p.faellig } : {}), eroeffnung: true as const,
     })),
   };
@@ -242,16 +253,22 @@ function posten(roh: unknown, art: string): { ok: true; liste: OffenerPosten[] }
   if (!Array.isArray(roh)) return { ok: false, fehler: `${art}: Liste erwartet.` };
   if (roh.length > MAX_OFFENE_POSTEN) return { ok: false, fehler: `${art}: höchstens ${MAX_OFFENE_POSTEN} Zeilen.` };
   const liste: OffenerPosten[] = [];
+  const tagFeld = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
   for (const [i, x] of roh.entries()) {
     const o = (x ?? {}) as Record<string, unknown>;
     const name = String(o.name ?? '').trim().slice(0, 160);
     const betrag = zahlAus(o.betrag);
-    const faellig = typeof o.faellig === 'string' && o.faellig.trim() ? o.faellig.trim() : undefined;
-    if (!name && betrag == null && !faellig) continue; // leere Zeile
+    const faellig = tagFeld(o.faellig), datum = tagFeld(o.datum), bezahltAm = tagFeld(o.bezahltAm);
+    // Rechnungsnummer (09.10.): nie kürzen — zu lang ist ein Fehler.
+    const rechnungsnr = typeof o.rechnungsnr === 'string' ? o.rechnungsnr.replace(/\s+/g, ' ').trim() : '';
+    if (!name && betrag == null && !faellig && !rechnungsnr) continue; // leere Zeile
     if (!name) return { ok: false, fehler: `${art}, Zeile ${i + 1}: Name fehlt.` };
     if (betrag == null || betrag <= 0 || betrag > GRENZE_BETRAG) return { ok: false, fehler: `${art}, Zeile ${i + 1}: Betrag größer 0 eintragen.` };
     if (faellig && !TAG.test(faellig)) return { ok: false, fehler: `${art}, Zeile ${i + 1}: Fälligkeit als JJJJ-MM-TT.` };
-    liste.push({ name, betrag: cent(betrag), ...(faellig ? { faellig } : {}) });
+    if (datum && !TAG.test(datum)) return { ok: false, fehler: `${art}, Zeile ${i + 1}: Rechnungsdatum als JJJJ-MM-TT.` };
+    if (bezahltAm && !TAG.test(bezahltAm)) return { ok: false, fehler: `${art}, Zeile ${i + 1}: „bezahlt am“ als JJJJ-MM-TT.` };
+    if (rechnungsnr.length > 60) return { ok: false, fehler: `${art}, Zeile ${i + 1}: Rechnungsnummer länger als 60 Zeichen.` };
+    liste.push({ name, betrag: cent(betrag), ...(faellig ? { faellig } : {}), ...(rechnungsnr ? { rechnungsnr } : {}), ...(datum ? { datum } : {}), ...(bezahltAm ? { bezahltAm } : {}) });
   }
   return { ok: true, liste };
 }

@@ -121,6 +121,66 @@ sollen abgebrochene Züge MIT gelaufenem Werkzeug einen Hinweis im Thread bekomm
 Felder im Speicher (nur Einheiten in Rechnungen/Lesemodellen, optionales Eingabefeld `space`); der alte Stand rechnet wie vorher. Offen für den Merge mit
 dem Streaming-Paket: die Oberfläche zeigt `LaufZustand.kostenCent` (FadenMitte) und `Nachricht.kosten.cent` (Chat) noch roh als Euro — dort `inEuroCent`.
 
+## 09.10.2026 — Daten-Assistenten: Monatsabschluss, offene Posten, Mandate aus Excel/BWA einfügen (nur lokal — Branch `daten-assistenten`, Basis `agenten-nacht` ec67a2c7)
+
+ONBOARDING_PLAN.md › B9 a–c, L7 („Zahlen nur Formular für Formular, kein Einfügen aus Excel/BWA“), L28 (Mandate nur einzeln), L34 (Eröffnungs-Posten
+nicht als bezahlt markierbar). Immer **Vorschau → Bestätigen → Rückgängig**, nie gekürzt, idempotent, nur über die vorhandenen Schreibwege.
+
+- **EIN Leser** `lib/tabelle/einfuegen.ts` (rein, Server + Browser) auf dem Kontoauszug-Leser (Zeichensatz UTF-8/Windows-1252, Trenner, Anführungszeichen,
+  deutsche Zahlen/Daten): Excel-Zwischenablage (Tab) oder CSV-Datei → Zuordnung mit Vorschlag aus bekannten Namen (nur Begriffe) → Rohtexte je Feld an den
+  Server, der prüft und rechnet. Monate in allen üblichen Schreibweisen (`monatAus`), Grenzen → Fehler statt Kürzen. Baustein `EinfuegeTabelle`
+  (`components/os/ui`, im DESIGN_STANDARD): Einfügen/Datei → Zuordnung → Vorschau (neu · geändert · gleich · entfällt · Fehler, Zeilen abwählbar) →
+  „n übernehmen“ → „Rückgängig“ — am Handy alles untereinander, Auswahl 44 px/16 px.
+- **(a) Monatsabschluss** (`lib/business/abschluss-tabelle(-server).ts`): BWA-CSV (Positionen × Monate, Vorspann, „Summe“/„%“-Spalten übersprungen) oder
+  Excel (Monate in Zeilen oder Spalten, wird erkannt). Position → Feld mit BWA-Vorschlag (Umsatzerlöse, Gesamtkosten, Personalkosten, Werbe-/Reisekosten,
+  Abschreibungen, Eigenkapital, Bilanzsumme, Bankschulden …; Raumkosten u. a. bleiben „nicht übernehmen“), mehrere Positionen auf ein Feld = Summe, Kosten
+  mit Minus als Betrag. Leere Zellen ändern nichts. Geschrieben je Monat über `speichereAbschluss` — Business über `/api/business`, Selbstständigkeit über
+  `/api/privat/abschluss` (dieselbe Karte, Bereich serverseitig). Lauf-Protokoll `abschluss-laeufe` (nur Gesellschaft, Monate, alte/neue Zahlen; keine
+  Personen) für „Rückgängig“ — nur Monate, die seitdem niemand geändert hat; ein Bereich sieht und nimmt nie die Läufe des anderen.
+- **(b) Offene Posten** des 0-Punkts (`lib/business/eroeffnung-tabelle.ts`): Kunde/Lieferant, Rechnungsnr., Datum, Betrag brutto, fällig (+ „bezahlt am“),
+  Ergänzen (dieselbe Rechnung = Name + Nr. wird aktualisiert) oder Liste ersetzen. Übernahme = **neue Fassung** über `speichereEroeffnung` (Stand = geltende
+  Fassung, sonst 409), Rückgängig = das vorhandene Zurücknehmen. **L34:** `OffenerPosten` trägt optional `rechnungsnr`, `datum`, `bezahltAm`; bezahlte
+  Posten zählen nicht mehr als offen (`offenePostenAls`, Kennungen der übrigen bleiben); „Heute bezahlt“ je Zeile = eigener kleiner Schreibweg
+  (`aktion: 'bezahlt'`, Stand/409, neue Fassung) — und das Feld „bezahlt am“ im Formular.
+- **(c) Mandate** (`lib/crm/mandate-tabelle(-server).ts`, Route `/api/crm/mandate-tabelle`, Karte unter Produkte & Mandate): Kunde/Firma, Produkt, Honorar
+  netto/Monat, Start, Laufzeit, Gesellschaft (+ Titel, Ende, Status, USt). Gesellschaft Pflicht (Spalte oder Vorgabe, nie „offen“), Firma über
+  `firmaPlanen`/`firmaSichern` (vorhanden · neu · aus dem Papierkorb), Mandate über `aendereCrm` + `wendeCrmAn` (alles oder nichts), feste Kennung
+  `m-tab-<Fingerabdruck>` (Gesellschaft, Firma ohne Rechtsform, Produkt/Titel, Start) → zweimal eingefügt = gleich/geändert, ein von Hand angelegtes
+  gleiches Mandat → übersprungen. Neue Mandate: Status „aktiv“, „Vertrag unterschrieben“ nein, monatlich, 14 Tage Zahlungsziel, Quelle „Aus Tabelle
+  eingefügt am …“. Rückgängig: geänderte zurück auf die alten Werte, neue ganz weg (über den Papierkorb, wie vorgesehen), danach die vom Lauf angelegten
+  Firmen — nur Unverändertes ohne Verweise. Lauf-Protokoll `mandate-tabelle-laeufe` (nur Kennungen, Fingerabdrücke, alte Zahlenwerte).
+- Rechte: Business-Teile im Haushalt des Inhabers (auch `finanzRecht: 'business'`), Privat-Einheit nur mit `privatFinanzZugang`, alles Schreibende nur von
+  Hand (Dienstweg 403), Bau-Kennung. Routen-Register (`crm/mandate-tabelle`), Speicher-Register (`abschluss-laeufe`, `mandate-tabelle-laeufe`, beide ohne
+  Personenbezug). `ABSCHLUSS_FELDER` steht jetzt EINMAL in `lib/business/abschluss-tabelle.ts` (speicher.ts reicht weiter).
+- **Tests:** `tests/daten-assistenten-rein.test.ts` (Excel mit Tabs/Zeilenumbruch in der Zelle, BWA-CSV mit Vorspann in Windows-1252, Monate, Zuordnung,
+  Summen, Plan, Rückgängig-Plan, Posten ergänzen/ersetzen/bezahlt, Mandate, Oberfläche), `tests/daten-assistenten-routen.test.ts` (Vorschau → 409 →
+  Übernehmen → idempotent → Auswahl → Rückgängig mit Konflikt; Privat ↔ Business getrennt; Rechte fremder Haushalt/ohne Person/Dienstweg/Business-Recht).
+
+**So testet ihr (in Klicks):**
+1. Finanzen › Business › Überblick → Karte „Monatsabschluss“ → „▸ Mehrere Monate aus Excel oder BWA einfügen“ → Gesellschaft wählen → in Excel einen Block
+   markieren (z. B. Zeilen „Jan 2026 … Mär 2026“, Spalten Umsatz · Kosten · Personal) → kopieren → ins Feld einfügen (⌘V) → Zuordnung prüfen → „Vorschau“
+   → „3 Monate übernehmen“ → in der Liste darunter stehen die Monate. „Rückgängig“ im grünen Hinweis → weg.
+2. Dasselbe mit „CSV-Datei wählen“ und einer BWA-CSV vom Steuerberater (Monate als Spalten): Vorspann wird übersprungen, Raumkosten u. Ä. stehen auf „nicht
+   übernehmen“ — bei Bedarf auf „Kosten gesamt“ stellen (mehrere Positionen werden addiert).
+3. Dieselbe Einfügung noch einmal → Vorschau „gleich“ → „Nichts zu übernehmen“. Einen Wert in Excel ändern → „geändert alt → neu“; Monate abhaken, die nicht
+   übernommen werden sollen.
+4. Privat › Finanzen › Planung › Selbstständigkeit → Karte „Monatsabschluss“ → wie 1. (nur die Selbstständigkeit wählbar).
+5. Finanzen › Business › Überblick → „0-Punkt (Eröffnung)“ (vorher Stichtag + Kontostand gesetzt) → „▸ Offene Posten aus Excel oder OP-Liste einfügen“ →
+   „Offene Forderungen“ · „Ergänzen“ → OP-Liste einfügen → Vorschau → übernehmen → Verlauf zeigt eine neue Fassung; „Rückgängig“ nimmt sie zurück.
+   An einer Zeile „Heute bezahlt“ → der Posten ist ausgegraut („· 1 bezahlt“) und zählt in Liquidität/Index nicht mehr.
+6. Produkte & Mandate › Mandate → Karte „Mandate aus Excel einfügen“ → „Öffnen“ → Gesellschaft für alle Zeilen wählen → Liste einfügen → Vorschau zeigt je
+   Zeile „Firma … vorhanden / wird angelegt“ → übernehmen → Mandate stehen in der Übersicht (mit Firma verknüpft). „Rückgängig“ (Hinweis oder „Letzte
+   Einfügungen“) → weg; neu angelegte Firmen nur, wenn nichts mehr an ihnen hängt.
+
+**Rückweg:** nur neue Bestände (`abschluss-laeufe`, `mandate-tabelle-laeufe`), eine neue Route und optionale Felder (`OffenerPosten.rechnungsnr/datum/
+bezahltAm`). Der alte Stand liest Abschlüsse und Mandate normal (Mandate mit Kennung `m-tab-…` sind gewöhnliche Mandate). **Achtung Eröffnung:** der alte
+Stand kennt `bezahltAm` nicht — ein bezahlter Posten zählt dort wieder als offen, und speichert jemand im alten Stand den 0-Punkt neu, fallen
+Rechnungsnr./Datum/„bezahlt am“ der Posten weg (die Historie der Fassungen behält sie). Vor dem Rückweg also keine Posten nur über „bezahlt“ erledigen.
+
+**Offen / Fragen an Kevin:** (1) Soll ein über die Tabelle angelegtes Mandat „Vertrag unterschrieben: ja“ bekommen (heute nein — nichts wird behauptet)?
+(2) BWA: Raumkosten & Co. haben kein eigenes Feld — reicht „auf Kosten gesamt addieren“, oder sollen weitere Kostenarten in den Monatsabschluss?
+(3) „Bezahlt am“ legt heute KEINEN Zahlungseingang/keine Buchung an (der Eingang steckt im nächsten Kontostand bzw. Kontoauszug) — so gewollt?
+
 ## 09.10.2026 — Agenten-Bereich Paket 4a „ZOE steuert die Heads“: EINE Schleife, EINE Werkzeug-Quelle, ≤ 20 Werkzeuge, ZOE auf Threads (nur lokal — Branch `agenten-p4a`, Basis `agenten-nacht` 0ff3187a)
 
 Grundlage: AGENTEN_KONZEPT.md C3/C8/C11 (Paket 4), ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich (Antworten 10/11) und Teil 1 (Nr. 1, 11, 13:

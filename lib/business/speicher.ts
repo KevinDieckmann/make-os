@@ -24,6 +24,7 @@ import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
 import { abEroeffnung, abschlussVor, gesamtAbMonat, geltendeEroeffnungen, type Geltende } from './eroeffnung';
 import { ladeEroeffnungen } from './eroeffnung-server';
+import { ABSCHLUSS_FELDER } from './abschluss-tabelle';
 import { firmenMitRegister } from '@/lib/finanzen/konten/register';
 import { registerKasseLaden } from '@/lib/finanzen/konten/server';
 import { verborgeneMeilensteineFuer } from '@/lib/planung/eigene-ziele-sicht-server';
@@ -131,7 +132,8 @@ export async function ladeAbschluesse(bereich: Bereich = 'business'): Promise<Mo
   return ((await loadJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE))?.eintraege ?? []).filter(a => imBereich(a.firma, bereich));
 }
 
-export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertrieb', 'afa', 'fakturierteTage', 'eigenkapital', 'bilanzsumme', 'kurzfrVerbindlichkeiten', 'bankschulden'] as const;
+// Die Felder stehen EINMAL in lib/business/abschluss-tabelle.ts (rein — auch die Tabelle zum Einfügen, 09.10.).
+export { ABSCHLUSS_FELDER };
 
 /** Monatsabschluss eintragen oder ändern (je Firma und Monat) — nur für eine Firma des Bereichs (Vorgabe Business). Leeres Feld = entfernen. */
 export async function speichereAbschluss(roh: Record<string, unknown>, von: string, bereich: Bereich = 'business'): Promise<{ ok: true; eintrag: Monatsabschluss } | { ok: false; fehler: string }> {

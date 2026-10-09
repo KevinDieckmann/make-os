@@ -290,10 +290,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'haushalt/sicherung': r('GET', 'finanz-privat', 'Sicherung der Haushaltsfinanzen je Haushalt.'),
   'haushalt/umzug': r('GET,POST', 'finanz-privat', 'Umzug der Haushaltsfinanzen je Haushalt.'),
   'privat': r('GET,POST', 'finanz-privat', 'Privat-Finanzen je Haushalt.'),
-  'privat/abschluss': r('GET,POST', 'finanz-privat', 'Monatsabschluss der Privat-Einheiten (Selbstständigkeit) im gemeinsamen Bestand business-abschluesse — Privatzugang im Inhaber-Haushalt; nur Firmen des Privat-Bereichs (Business-Gesellschaft → 400), der Business-Index umgekehrt.'),
+  'privat/abschluss': r('GET,POST', 'finanz-privat', 'Monatsabschluss der Privat-Einheiten (Selbstständigkeit) im gemeinsamen Bestand business-abschluesse — Privatzugang im Inhaber-Haushalt; nur Firmen des Privat-Bereichs (Business-Gesellschaft → 400), der Business-Index umgekehrt; Einfügen aus Excel/BWA (tabelle_*) nur von Hand, Dienstweg 403.'),
   'steuern': r('GET,POST', 'haushalt', 'Steuerfristen der Firmen des Haushalts; seit 05.10. mit Bereichs-Sicht: ?space=business oder finanzRecht business → nur die Business-Gesellschaften (Selbstständigkeit und Privat serverseitig gefiltert, Schreiben darauf 403).'),
-  'business/eroeffnung': r('GET,POST', 'haushalt', '0-Punkt (Eröffnung) je Business-Gesellschaft (Bestand business-eroeffnung, Historie) — Haushalt des Inhabers wie der Business-Index; schreiben nur Personen mit Finanzrecht (Inhaber/Konto mit Haushalt), nie Dienstweg/ZOE; Privat-Einheit → 400.'),
-  'business': r('GET,POST', 'haushalt', 'Business-Index des Haushalts — Monatsabschlüsse/Einstellungen nur der Business-Gesellschaften (eine Privat-Einheit → 400; deren Abschluss: /api/privat/abschluss).'),
+  'business/eroeffnung': r('GET,POST', 'haushalt', '0-Punkt (Eröffnung) je Business-Gesellschaft (Bestand business-eroeffnung, Historie) — Haushalt des Inhabers wie der Business-Index; schreiben nur Personen mit Finanzrecht (Inhaber/Konto mit Haushalt), nie Dienstweg/ZOE; Privat-Einheit → 400; offene Posten einfügen und „bezahlt am“ = neue Fassung (Stand/409).'),
+  'business': r('GET,POST', 'haushalt', 'Business-Index des Haushalts — Monatsabschlüsse/Einstellungen nur der Business-Gesellschaften (eine Privat-Einheit → 400; deren Abschluss: /api/privat/abschluss); Einfügen aus Excel/BWA (tabelle_*) nur von Hand, Dienstweg 403.'),
   'controlling/analyse': r('POST', 'haushalt', 'Controlling-Agent über das Business des Haushalts.'),
   'gesellschaften': r('GET,POST,PATCH', 'haushalt', 'Gesellschafts-Register des Haushalts.'),
   'gesellschaften/unterlagen': r('GET,POST', 'haushalt', 'Unterlagen im Gesellschafts-Register.'),
@@ -336,6 +336,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/mandat-wahl': r('GET', MT, 'Mandatswahl.'),
   'crm/marketing': r('GET,POST', MT, 'Marketing.'),
   'crm/netzwerk': r('GET,POST', MT, 'Netzwerk im CRM.'),
+  // Daten-Assistent B9 c (09.10.): Vorschau schreibt nichts, Übernehmen nur mit der Vorschau-Kennung (409), Rückgängig nur Unverändertes;
+  // GET liefert nur Kennungen/Anzahlen der Einfügungen. Schreiben nur von Hand (Dienstweg 403).
+  'crm/mandate-tabelle': r('GET,POST', MT, 'Mandate aus Excel/CSV einfügen: Firmen über den EINEN Weg (firmaSichern), Mandate über den CRM-Schreibweg; Vorschau → Übernehmen (Vorschau-Kennung, 409) → Rückgängig (nur Unverändertes); nur von Hand.'),
   'crm/person': r('POST', MT, 'EIN Weg „Person anlegen“ (Kartei, Firmenkarte, + Aktivität, Prospecting, Make.One-Abend; Woche 2 · 1.8) — nur von Hand.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
   'crm/signale': r('GET,POST', MT, 'Signale.'),

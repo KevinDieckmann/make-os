@@ -11,9 +11,15 @@ import { finanzOrtName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { mitRegister, type GesellschaftsKasse } from '@/lib/finanzen/konten/register';
 import { registerKasseLaden, eroeffnungImRegister, eroeffnungZurueckgenommen } from '@/lib/finanzen/konten/server';
 import {
-  EROEFFNUNG_BESTAND, abEroeffnung, archivZahlen, eroeffnungPruefen, geltendeEroeffnungen, rechnungVor, zahlungVor, planpostenVor, abschlussVor, eroeffnungVon,
+  EROEFFNUNG_BESTAND, TAG, abEroeffnung, archivZahlen, eroeffnungPruefen, geltendeEroeffnungen, rechnungVor, zahlungVor, planpostenVor, abschlussVor, eroeffnungVon,
   type AbEroeffnung, type ArchivZahl, type Eroeffnung, type EroeffnungsBestand, type FinanzBundle, type Geltende,
 } from './eroeffnung';
+import {
+  POSTEN_ARTEN, POSTEN_FELDER, fassungMit, listeZuLang, mitBezahlt, neueListe, postenEingaben, postenPlan, postenVorschauZeilen,
+  type PostenArt, type PostenModus, type PostenPlanZeile,
+} from './eroeffnung-tabelle';
+import { auswahlAus, datensaetzePruefen, type VorschauAntwort } from '@/lib/tabelle/einfuegen';
+import { localDay } from '@/lib/zeit';
 
 /** Alle Einträge (Historie), so wie gespeichert. */
 export async function ladeEroeffnungen(): Promise<Eroeffnung[]> {
@@ -131,4 +137,65 @@ export async function archivAnsicht(g: Geltende): Promise<ArchivAnsicht> {
     };
   }
   return { zahlen: archivZahlen(g, q), posten };
+}
+
+// ── Offene Posten als Tabelle einfügen + „bezahlt am“ (09.10., B9 b / L34) ─────────────────────────────────────────────────────────────
+// Regeln: lib/business/eroeffnung-tabelle.ts (rein). Jede Übernahme ist eine NEUE FASSUNG über `speichereEroeffnung` (Historie bleibt, `basis` =
+// Kennung der geltenden Fassung → 409); „Rückgängig“ = das vorhandene Zurücknehmen dieser Fassung. Ohne geltende Eröffnung gibt es nichts zu
+// ergänzen (erst Stichtag und Kontostand setzen).
+
+export type PostenFehlerAntwort = { ok: false; status: 400 | 409 | 413; fehler: string; vorschau?: VorschauAntwort; geltend?: Geltende };
+
+interface PostenVorbereitet { ok: true; e: Eroeffnung; art: PostenArt; modus: PostenModus; plan: PostenPlanZeile[]; vorschau: VorschauAntwort }
+
+async function postenVorbereiten(roh: Record<string, unknown>, heute: string): Promise<PostenVorbereitet | PostenFehlerAntwort> {
+  const firma = roh.firma as Gesellschaftskennung;
+  const art = POSTEN_ARTEN.find(a => a.id === roh.art)?.id;
+  if (!art) return { ok: false, status: 400, fehler: 'Art fehlt (forderungen oder verbindlichkeiten).' };
+  const modus: PostenModus = roh.modus === 'ersetzen' ? 'ersetzen' : 'ergaenzen';
+  const g = await geltendeLaden();
+  const e = g[firma];
+  if (!e) return { ok: false, status: 409, fehler: `${finanzOrtName(firma)} hat noch keinen 0-Punkt — erst Stichtag und Kontostand setzen, dann die offenen Posten einfügen.`, geltend: g };
+  const d = datensaetzePruefen(roh.zeilen, POSTEN_FELDER.map(f => f.id));
+  if (!d.ok) return { ok: false, status: d.zuGross ? 413 : 400, fehler: d.fehler };
+  const { eingaben, fehler, hinweise } = postenEingaben(d.datensaetze, heute);
+  const { zeilen: plan, doppelt } = postenPlan(eingaben, e[art] ?? [], modus);
+  return { ok: true, e, art, modus, plan, vorschau: { ok: true, zeilen: postenVorschauZeilen(plan, [...fehler, ...doppelt]), basis: e.id, hinweise } };
+}
+
+/** Vorschau — schreibt nichts. */
+export async function postenVorschau(roh: Record<string, unknown>, heute = localDay()): Promise<VorschauAntwort | PostenFehlerAntwort> {
+  const v = await postenVorbereiten(roh, heute);
+  return v.ok ? v.vorschau : v;
+}
+
+export type PostenErgebnis = Schreiben | PostenFehlerAntwort | { ok: true; eintrag: null; geltend: Geltende; nichts: true };
+
+/** Übernehmen — nur mit der `basis` (Kennung der geltenden Fassung) der gesehenen Vorschau; Ergebnis: neue Fassung (Rückgängig = zurücknehmen). */
+export async function postenUebernehmen(roh: Record<string, unknown>, von: string, jetzt = new Date()): Promise<PostenErgebnis> {
+  const v = await postenVorbereiten(roh, localDay(jetzt));
+  if (!v.ok) return v;
+  if (roh.basis !== v.e.id) return { ok: false, status: 409, fehler: 'Inzwischen hat jemand den 0-Punkt geändert — die Vorschau ist neu geladen, bitte noch einmal prüfen.', vorschau: v.vorschau };
+  const liste = neueListe(v.plan, v.e[v.art] ?? [], v.modus, auswahlAus(roh.auswahl));
+  const zuLang = listeZuLang(liste, v.art);
+  if (zuLang) return { ok: false, status: 413, fehler: zuLang };
+  if (JSON.stringify(liste) === JSON.stringify(v.e[v.art] ?? [])) return { ok: true, eintrag: null, geltend: await geltendeLaden(), nichts: true };
+  return speichereEroeffnung({ ...fassungMit(v.e, v.art, liste), basis: v.e.id }, von, jetzt);
+}
+
+/** „Bezahlt am“ eines Postens setzen (`bezahltAm: null` = wieder offen) — neue Fassung mit Stand (`basis`, sonst 409). */
+export async function postenBezahlt(roh: Record<string, unknown>, von: string, jetzt = new Date()): Promise<Schreiben | PostenFehlerAntwort> {
+  const firma = roh.firma as Gesellschaftskennung;
+  const art = POSTEN_ARTEN.find(a => a.id === roh.art)?.id;
+  if (!art) return { ok: false, status: 400, fehler: 'Art fehlt (forderungen oder verbindlichkeiten).' };
+  const tag = roh.bezahltAm === null ? null : typeof roh.bezahltAm === 'string' && TAG.test(roh.bezahltAm) ? roh.bezahltAm : undefined;
+  if (tag === undefined) return { ok: false, status: 400, fehler: '„Bezahlt am“ als JJJJ-MM-TT (oder leer, um den Posten wieder zu öffnen).' };
+  if (tag && tag > localDay(jetzt)) return { ok: false, status: 400, fehler: '„Bezahlt am“ liegt in der Zukunft.' };
+  const g = await geltendeLaden();
+  const e = g[firma];
+  if (!e) return { ok: false, status: 409, fehler: `${finanzOrtName(firma)} hat keinen 0-Punkt.`, geltend: g };
+  if (roh.basis !== e.id) return { ok: false, status: 409, fehler: 'Inzwischen hat jemand den 0-Punkt geändert — der aktuelle Stand ist geladen.', geltend: g };
+  const liste = mitBezahlt(e[art] ?? [], Number(roh.index), tag);
+  if (!liste) return { ok: false, status: 400, fehler: 'Diesen Posten gibt es in der geltenden Fassung nicht.' };
+  return speichereEroeffnung({ ...fassungMit(e, art, liste), basis: e.id }, von, jetzt);
 }

@@ -327,6 +327,10 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   { muster: 'finance', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Controlling-Zahlen, Rechnungen — Aufbewahrungspflicht § 147 AO.' },
   { muster: 'grundlage', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanz-Export aus Malins Dashboard (Original, nur gelesen) — Buchführung, Aufbewahrungspflicht.' },
   K('business-abschluesse', 'Monatszahlen der Gesellschaften — keine Personen.'),
+  // Daten-Assistenten (09.10., B9 a/c): Lauf-Protokolle für „Rückgängig“ — nur Kennungen, Fingerabdrücke, Gesellschaft, Monate und Zahlen der
+  // Gesellschaften (alte/neue Werte der eingefügten Felder); keine Namen, keine Personen (wer eingefügt hat, steht im Abschluss bzw. Änderungsprotokoll).
+  K('abschluss-laeufe', 'Lauf-Protokoll der aus Excel/BWA eingefügten Monatsabschlüsse (Rückgängig): Gesellschaft, Monate, alte/neue Zahlen — keine Personen.'),
+  K('mandate-tabelle-laeufe', 'Lauf-Protokoll der aus einer Tabelle eingefügten Mandate (Rückgängig): Kennungen, Fingerabdrücke, alte Zahlenwerte — keine Namen, keine Personen.'),
   // 0-Punkt (05.10.): Eröffnung je Gesellschaft — offene Posten tragen Namen von Kunden/Gläubigern (wie Rechnungen im Finanzplan).
   mit({ muster: 'business-eroeffnung', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Eröffnung (0-Punkt) der Gesellschaften: Stichtag, Kontostand, offene Forderungen/Verbindlichkeiten mit Namen von Kunden/Gläubigern — Buchführung, Aufbewahrungspflicht § 147 AO / § 257 HGB; Historie bleibt (Rückgängig markiert nur).' }, {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO / § 257 HGB (Buchführung); Art. 6 Abs. 1 lit. b für Kunden/Lieferanten',
