@@ -18,6 +18,9 @@
 //     „vertraulich“ (Web-Agenten danach nur als Vorschlag). Wer den Zustand speichert (Thread), entscheidet der Aufrufer.
 //   • Jede Wirkung läuft im Handler über `fuehreAus` (lib/zoe/ausfuehren.ts) — die Schleife selbst wirkt nie.
 //   • Protokoll nur Metadaten (Runden, Aufrufe, Token, Cent, Dauer) — nie Inhalte.
+//   • Härtetest (09.10., tests/agenten-haertetest.test.ts): jeder Modellfehler wird EIN Satz (`modellFehlerText`); ein Werkzeug, das wirft,
+//     beendet nie das Gespräch; gleiche Aufrufe einer Runde laufen einmal; Ergebnisse über `ERGEBNIS_ZEICHEN_MAX` sichtbar gekürzt;
+//     abgeschnitten/abgelehnt steht sichtbar unter dem Text; Kostengrenze schon nach dem Modell-Aufruf; kein neues Werkzeug kurz vor der Zeitgrenze.
 //   • Streaming (09.10.): mit `ereignis` läuft jede Runde über `askStream` (dieselbe Schranke wie `askText`) — Text-Stücke und
 //     Werkzeug-Stände (nur Namen) gehen an den Aufrufer; Regeln, Grenzen, Kapselung und Ergebnis bleiben genau dieselben. `signal`
 //     (Browser weg) beendet den Lauf mit `abgebrochen` (`ABBRUCH_BROWSER`) — der Aufrufer speichert dann keine halbe Antwort.

@@ -51,7 +51,18 @@ Fehler-Einspeisung (`tests/fixtures/ki-fake.ts`, kein Netz). Wächter: `tests/ag
 Was ihr NICHT sehen dürft: einen Lauf, der länger als ~8 Min. „läuft“ (dann räumt der Takt ihn mit Glocke auf); eine Frage ohne Antwort im Thread; einen
 Fehlertext mit „Anthropic hat abgelehnt“. Bei 80 % / 95 % des Budgets kommt je eine Glocke, bei 100 % antwortet ZOE „Das KI-Budget ist erreicht“ — ohne Kosten.
 
-**Rückweg:** keine Datenänderung. Neu nur optionale Felder in Antworten (`ok`/`fehler` bei ZOE-Fehlern, `kurs` in GET /api/agenten) und eine optionale Option
+**Dazu drei Funde der Nahtstellen-Prüfung** (Wächter `tests/agenten-nahtstellen-fremd.test.ts`, erst rot, dann grün):
+- **(7) Kontoauszug × Agenten-Kontext:** das Finanzbild zitiert Verwendungszweck/Gegenseite (und Lieferanten aus Belegen) — der Kontext der Finanz-Heads
+  (privat UND Business) gilt jetzt als „fremd gelesen“. Folge: kein persönlicher Merksatz aus so einem Thread, „Skill aus Thread“ ohne Agenten-Text.
+- **(8) Agenten-Werkstatt:** ein Skill/Mitarbeiter, den ein Agent in einem fremd gelesenen Thread vorschlägt bzw. den ihr mit „Als Skill speichern“ aus so
+  einem Thread anlegt, trägt `ausFremdemText` (setzt nur der Server; der Vorschlag im Stapel heißt „… (aus fremdem Text — wird gekapselt)“, im Skill-Fenster ein
+  Chip). Seine Anleitung/Rolle/Beschreibung steht im Prompt gekapselt (`fremd()`), nie mehr als „von einem Menschen geschrieben“; ein Lauf damit gilt als fremd
+  gelesen. Die Oberfläche gibt beim „Als Skill speichern“ den Thread mit (`ausFaden`), der Server entscheidet.
+- **(9) Inhaber:** keine eigene Suche `rolle === 'inhaber'` mehr in lib/agenten/{faeden-server, einstellung, zeitplan, naechstes} und lib/heads/takt.ts — alles
+  über lib/zugang/inhaber.ts (`hauptInhaber`, `kontenImHaushaltDerInhaber`, `wirksameInhaber`); mit zwei Inhabern zählt die ausdrückliche Wahl.
+
+**Rückweg:** keine Datenänderung. Neu nur optionale Felder in Antworten (`ok`/`fehler` bei ZOE-Fehlern, `kurs` in GET /api/agenten), optional
+`ausFremdemText` an Skills/Mitarbeitern (der alte Stand ignoriert es — dann stünde so ein Skill wieder ungekapselt im Prompt) und eine optionale Option
 `merken` an `einmalig`. Der alte Stand liest alles.
 
 **Offen (bewusst nicht in diesem Paket):** Business-frei-Fälle sind nicht im Härtetest (eigene Wächter in tests/agenten-p4b); ein gescheiterter Head-Chat ohne
