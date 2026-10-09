@@ -65,6 +65,25 @@ describe('Demo-Saat: Agenten-Bereich', () => {
     const r = await (await route.GET(new Request('http://demo.invalid/api/agenten/laeufe', { headers: { 'x-make-user': 'lena' } }))).json();
     expect(r.ok).toBe(true);
     expect(r.naechstes.length).toBeGreaterThanOrEqual(2);
+    // Rundgang 09.10.: je wiederkehrendem Lauf nur das nächste Vorkommen (keine Serie doppelt).
+    const serien = (r.naechstes as { serie?: string }[]).map(n => n.serie).filter(Boolean);
+    expect(new Set(serien).size).toBe(serien.length);
+  });
+  it('Head-Kopf (Rundgang 09.10.): Head of Sales mit Werten aus dem Traktions-Index — eine Lücke trägt ihren Grund statt eines stummen „—“', async () => {
+    const route = (await import('@/app/api/agenten/route')) as unknown as { GET: (r: Request) => Promise<Response> };
+    for (const person of ['lena', 'jonas']) {
+      const a = await (await route.GET(new Request('http://demo.invalid/api/agenten', { headers: { 'x-make-user': person } }))).json() as { heads: { id: string; kennzahlen: { id: string; label: string; wert: string | null; hinweis?: string }[] }[] };
+      const sales = a.heads.find(h => h.id === 'sales')!;
+      const k = Object.fromEntries(sales.kennzahlen.map(x => [x.id, x]));
+      expect(Object.keys(k), person).toEqual(['traktion:gespraeche', 'traktion:win_rate', 'traktion:ueberfaellig']);
+      // Gespräche (7 Tage) und überfällige Follow-ups hat die Demo — dieselbe Zahl wie im Markttraktion-Überblick.
+      expect(k['traktion:gespraeche'].wert, person).not.toBeNull();
+      expect(k['traktion:ueberfaellig'].wert, person).not.toBeNull();
+      // Win Rate erst ab 10 Entscheidungen in 180 Tagen (WIN_RATE.mindestens) — die Demo hat nur offene Deals: Lücke mit Grund.
+      const wr = k['traktion:win_rate'];
+      if (wr.wert === null) expect(wr.hinweis, person).toMatch(/erst ab 10 Entscheidungen/);
+      for (const x of sales.kennzahlen) expect(x.wert !== null || !!x.hinweis, `${person}: ${x.label}`).toBe(true);
+    }
   });
 });
 

@@ -214,11 +214,14 @@ async function datenschutzPunkte(heute: string): Promise<string> {
 
 // ── Kennzahlen im Kopf des Heads ────────────────────────────────────────────────────────────────────────────────────────
 
-type Werte = Map<string, { anzeige: string | null; ampel: KennzahlWert['ampel'] }>;
-/** Kennzahl → Anzeige + Ampel aus einem Index des gemeinsamen Kerns (lib/kennzahlen/kern.ts) — nie eine eigene Rechnung. */
-const werteAus = (idx: { saeulen: readonly { kennzahlen: readonly { id: string; anzeige: string | null; ampel: KennzahlWert['ampel'] }[] }[] }): Werte => {
+type Werte = Map<string, { anzeige: string | null; ampel: KennzahlWert['ampel']; luecke?: string }>;
+/**
+ * Kennzahl → Anzeige + Ampel aus einem Index des gemeinsamen Kerns (lib/kennzahlen/kern.ts) — nie eine eigene Rechnung. Ohne Messung trägt
+ * der Kern in `quelle` den Satz der Lücke; er geht als `hinweis` mit (Rundgang 09.10.: der Kopf zeigte sonst nur „—“).
+ */
+const werteAus = (idx: { saeulen: readonly { kennzahlen: readonly { id: string; anzeige: string | null; ampel: KennzahlWert['ampel']; gemessen?: boolean; quelle?: string }[] }[] }): Werte => {
   const m: Werte = new Map();
-  for (const s of idx.saeulen) for (const k of s.kennzahlen) m.set(k.id, { anzeige: k.anzeige, ampel: k.ampel });
+  for (const s of idx.saeulen) for (const k of s.kennzahlen) m.set(k.id, { anzeige: k.anzeige, ampel: k.ampel, ...(k.gemessen === false && k.quelle ? { luecke: k.quelle } : {}) });
   return m;
 };
 
@@ -248,7 +251,7 @@ export async function kennzahlWerte(head: HeadDef, sicht: KontoSicht): Promise<K
   if (braucht('gesundheit') && sicht.imHaushalt && sicht.gesundheit.verarbeiten) quellen.gesundheit = await gesundheitWerte(sicht.person).catch(() => null);
   return head.kennzahlen.map(k => {
     const w = quellen[k.index]?.get(k.id);
-    return { id: `${k.index}:${k.id}`, label: label(k.index, k.id), wert: w?.anzeige ?? null, ampel: w?.ampel ?? 'grau' };
+    return { id: `${k.index}:${k.id}`, label: label(k.index, k.id), wert: w?.anzeige ?? null, ampel: w?.ampel ?? 'grau', ...(w && w.anzeige == null && w.luecke ? { hinweis: w.luecke } : {}) };
   });
 }
 
