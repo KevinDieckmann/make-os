@@ -10,11 +10,13 @@
 // Liste über die Grenze wachsen lassen will, bekommt eine Ablehnung mit Text.
 
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
-import { UG_NAME, EINHEITEN_UEBERSCHRIEBEN, firmaFuerGesellschaft, kontoName, type Gesellschaftskennung } from '@/lib/einheiten';
+import { UG_NAME, KERN_EINHEITEN, firmaFuerGesellschaft, kontoName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { zuordnungName } from './haushalt/entflechtung';
 import { neueKennung } from '@/lib/kennung';
 import type { RechnungZusatz } from './rechnung/typen';
 import { zusatzSaeubern, serverFelderUebernehmen, FEST_MIT_PDF } from './rechnung/regeln';
+
+const kernName = (id: Gesellschaftskennung): string => KERN_EINHEITEN.find(e => e.id === id)?.label ?? id;
 
 export interface Firma {
   id: string;
@@ -136,9 +138,10 @@ export function ugFirmaNachziehen(f: FinanzplanFile): FinanzplanFile {
 // (app/api/state/finanzplan: `firmen` leer) — ein bestehender Plan wird nie überschrieben.
 export const SEED: FinanzplanFile = {
   firmen: [
-    // Namen je Instanz (05.10., Demo): ohne NEXT_PUBLIC_MAKE_OS_EINHEITEN wie bisher.
-    { id: 'kdv', name: EINHEITEN_UEBERSCHRIEBEN.kdv?.label ?? 'KD Ventures', bank: '', kontostand: null, stand: null },
-    { id: 'kdc', name: EINHEITEN_UEBERSCHRIEBEN.kdc?.label ?? 'Kevin Dieckmann Consulting', bank: '', kontostand: null, stand: null },
+    // Namen NUR aus lib/einheiten.ts (`KERN_EINHEITEN`, je Instanz über NEXT_PUBLIC_MAKE_OS_EINHEITEN) — 09.10.: kein Personenname
+    // mehr als Rückfall im Code. Greift nur bei einem neuen, leeren Plan.
+    { id: 'kdv', name: kernName('kdv'), bank: '', kontostand: null, stand: null },
+    { id: 'kdc', name: kernName('kdc'), bank: '', kontostand: null, stand: null },
     { ...UG_FIRMA },
   ],
   rechnungen: [],

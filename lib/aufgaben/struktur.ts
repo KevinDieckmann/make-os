@@ -15,7 +15,7 @@
 import type { Task, TaskStatus, Project, TasksState, AufgabenListe, AufgabenStatus, AufgabenSpaceId } from '@/types/tasks';
 import { bereichVon, einheitAusGesellschaft, FINANZ_ORTE, istFinanzOrt, istGesellschaft, finanzOrtAus } from '@/lib/einheiten';
 import { EINHEIT_FARBE } from './einheit';
-import { orgVon } from '@/lib/make-one/organisation-data';
+import { ortVon } from '@/lib/make-one/orte';
 import { spaceBereich, type SpaceId } from '@/lib/make-one/space-regeln';
 import { abhaengigAngleichen } from './abhaengig';
 import { beideAufloesen, anlegerinVon } from './zustaendig';
@@ -174,7 +174,7 @@ export const SONSTIGE_LISTE = '';
 /** Space eines alten Projekts: persönlich/gemeinsam → Privat; Business → Selbstständigkeit (per Text) sonst KD Ventures. */
 export function spaceFuerAltProjekt(p: Pick<Project, 'id' | 'title' | 'description' | 'category'>): AufgabenSpaceId {
   if (p.category !== 'business') return 'privat';
-  const org = orgVon({ id: p.id, title: p.title, description: p.description, projectId: p.id });
+  const org = ortVon({ id: p.id, title: p.title, description: p.description, projectId: p.id });
   return org === 'kdc' ? 'kdc' : 'kdv';
 }
 
@@ -189,9 +189,9 @@ export function spaceFuerAltAufgabe(t: Pick<Task, 'id' | 'title' | 'description'
   if (g && istGesellschaft(g) && bereichVon(g) === 'privat') return g;
   // Nur „privat“ im engen Sinn führt in den Space Privat (Abweichung `space` bzw. Ort „privat“) — eine Selbstständigkeits-Aufgabe
   // bekommt weiter den Space `kdc` (der seit 05.10. selbst im Privat-Bereich steht), nie den Space Privat.
-  if ((t.space ?? (orgVon(t, orgs) === 'privat' ? 'privat' : 'business')) === 'privat') return 'privat';
+  if ((t.space ?? (ortVon(t, orgs) === 'privat' ? 'privat' : 'business')) === 'privat') return 'privat';
   if (g && istGesellschaft(g)) return g;
-  if (orgVon(t, orgs) === 'kdc') return 'kdc';
+  if (ortVon(t, orgs) === 'kdc') return 'kdc';
   if (projekt?.spaceId && projekt.spaceId !== 'privat') return projekt.spaceId;
   return 'kdv';
 }

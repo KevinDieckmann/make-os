@@ -13,6 +13,7 @@ import { wendeAn, type ListenOp } from '@/lib/sync';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 import { localDay } from '@/lib/zeit';
+import { istFinanzOrt, istRegisterKennung } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export interface Planposten {
   /** Wie sicher ist der Posten? Unsicheres wird in der Vorschau getrennt gezeigt. */
   sicher: boolean;
   notiz?: string;
-  /** Wessen Geld — kdv | kdc | privat. Damit lässt sich je Firma planen. */
+  /** Wessen Geld — privat oder eine Gesellschaft (lib/einheiten.ts, auch `g-…` aus dem Register). Damit lässt sich je Firma planen. */
   firmaId?: string;
   /** Wofür — Personal, Miete, Steuern … für die Aufschlüsselung. */
   kategorie?: string;
@@ -48,7 +49,14 @@ interface Datei { posten: Planposten[] }
 
 const RHYTHMEN: Rhythmus[] = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
-const FIRMEN = ['kdv', 'kdc', 'kemaris', 'privat'];
+/**
+ * Zulässige `firmaId`: privat, die festen Gesellschaften (09.10.: auch `ug` — vorher fiel sie hier still weg), eine
+ * Register-Gesellschaft `g-…` — und ein Altwert früherer fester Zuordnungen (kurze Kennung aus Buchstaben/Ziffern): der bleibt
+ * stehen und zählt wie jede unbekannte Firma als Business (`bereichVonFirma`). Keine Firma steht mehr als Text im Code.
+ */
+const ALTKENNUNG = /^[a-z][a-z0-9]{1,23}$/;
+const firmaIdSauber = (v: unknown): string | undefined =>
+  typeof v === 'string' && (istFinanzOrt(v) || istRegisterKennung(v) || ALTKENNUNG.test(v)) ? v : undefined;
 
 function sauber(p: Partial<Planposten>, _i: number): Planposten | null {
   const titel = String(p.titel ?? '').trim().slice(0, 160);
@@ -64,7 +72,7 @@ function sauber(p: Partial<Planposten>, _i: number): Planposten | null {
     bis: typeof p.bis === 'string' && DATUM.test(p.bis) ? p.bis : undefined,
     sicher: p.sicher !== false,
     notiz: p.notiz ? String(p.notiz).slice(0, 300) : undefined,
-    firmaId: FIRMEN.includes(String(p.firmaId)) ? String(p.firmaId) : undefined,
+    firmaId: firmaIdSauber(p.firmaId),
     kategorie: p.kategorie ? String(p.kategorie).trim().slice(0, 40) : undefined,
     wahrscheinlich: Number.isFinite(Number(p.wahrscheinlich))
       ? Math.max(0, Math.min(100, Math.round(Number(p.wahrscheinlich))))

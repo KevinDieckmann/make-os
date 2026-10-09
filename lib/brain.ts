@@ -27,7 +27,7 @@ import { computeShields, shieldZeilen, type Shield } from '@/lib/risk';
 import { schwellen, type Schwellen } from '@/lib/schwellen';
 import { MODUS, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { THEMA, STANDARD_ORDNUNG, themaVon } from '@/lib/make-one/ordnung-data';
-import { ORG, orgVon } from '@/lib/make-one/organisation-data';
+import { ORT, ortVon } from '@/lib/make-one/orte';
 import { einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
 import { teamFuerPerson } from '@/lib/make-one/team-speicher';
 import { teamZeilenAus } from '@/lib/make-one/team-typen';
@@ -332,7 +332,7 @@ function blockAufgabenRoh(b: Brain, max = 20): string {
   const zeilen = b.tasks.offen.slice(0, max).map(t => {
     const zuordnung = { ...t, projectId: t.projectId ?? '' };
     const thema = THEMA[themaVon(zuordnung)]?.label.split(' ')[0] ?? '—';
-    const ort = ORG[orgVon(zuordnung)]?.kurz ?? '—';
+    const ort = ORT[ortVon(zuordnung)]?.kurz ?? '—';
     const e = einschaetzen(t);
     const wer = e.wer === 'zoe' ? 'DU KANNST DAS' : e.wer === 'gemeinsam' ? 'du bereitest vor' : 'nur ein Mensch';
     return `• ${t.title} [${t.priority}${t.dueDate ? `, fällig ${t.dueDate}` : ''}, ${thema}, ${ort}${t.einheit ? ` · Einheit ${t.einheit}` : ''}, ${t.assignee ?? '—'} · ${wer}, ~${dauerText(e.dauer)}]`;

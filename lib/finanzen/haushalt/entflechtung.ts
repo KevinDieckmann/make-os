@@ -12,18 +12,16 @@ import { GESELLSCHAFTEN, finanzOrtName, istGesellschaft, type Gesellschaftskennu
 
 export type Quelle = 'firma' | 'zahlung' | 'merkposten' | 'rechnung' | 'buchung' | 'planposten';
 
-// Zuordnen: die drei Gesellschaften aus der EINEN Einheitenliste (lib/einheiten.ts,
-// kdc · kdv · ug — vorher fehlte die MAKE Innovation GmbH) plus KEMARIS. KEMARIS ist keine
-// Finanz-Einheit (nicht in FINANZ_ORTE), aber eine eigene Organisation (die
-// Beteiligung, lib/make-one/organisation-data.ts), und ZOE ordnet Planposten
-// ausdrücklich `kemaris` zu (lib/zoe/werkzeuge.ts) — darum bleibt sie hier wählbar.
-export type Zuordnung = Gesellschaftskennung | 'kemaris';
+// Zuordnen: NUR die Gesellschaften aus der EINEN Einheitenliste (lib/einheiten.ts, kdc · kdv · ug). Bis 09.10. stand hier
+// zusätzlich eine feste Beteiligung als Ziel — sie ist keine Finanz-Einheit (der Finanzplan führt nur die Gesellschaften),
+// und feste Firmen gehören nicht in den Code (Plattform-Regel). Ein gespeicherter Altwert wird beim Anzeigen roh genannt.
+export type Zuordnung = Gesellschaftskennung;
 export type Aktion = 'dublette' | 'uebernehmen' | 'entfernen' | 'behalten' | Zuordnung;
-/** Alle Zuordnungs-Aktionen in fester Reihenfolge (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH · KEMARIS). */
-export const ZUORDNUNGEN: readonly Zuordnung[] = [...GESELLSCHAFTEN, 'kemaris'];
+/** Alle Zuordnungs-Aktionen in fester Reihenfolge (die Gesellschaften aus lib/einheiten.ts). */
+export const ZUORDNUNGEN: readonly Zuordnung[] = [...GESELLSCHAFTEN];
 export const istZuordnung = (a: unknown): a is Zuordnung => ZUORDNUNGEN.includes(a as Zuordnung);
-/** Anzeigename des Ziels einer Zuordnung — Gesellschaften über finanzOrtName, sonst KEMARIS. */
-export const zuordnungName = (z: string): string => (istGesellschaft(z) ? finanzOrtName(z) : z === 'kemaris' ? 'KEMARIS' : z);
+/** Anzeigename des Ziels einer Zuordnung — Gesellschaften über finanzOrtName, ein Altwert so, wie er gespeichert ist. */
+export const zuordnungName = (z: string): string => (istGesellschaft(z) ? finanzOrtName(z) : z);
 
 export const AKTION_TEXT: Record<Aktion, string> = {
   dublette: 'ist schon im Haushalt — aus Business entfernen',

@@ -217,6 +217,18 @@ export const FINANZ_ORTE: readonly { id: FinanzOrt; label: string; kurz: string 
 ];
 /** Nur die Kennungen, gleiche Reihenfolge. */
 export const FINANZ_ORT_IDS: readonly FinanzOrt[] = FINANZ_ORTE.map(o => o.id);
+
+/**
+ * Wörter, an denen der Text einer Aufgabe ihren Ort verrät (lib/make-one/orte.ts `ortVon`) — ZUSÄTZLICH zu Name und Kurzname
+ * aus `FINANZ_ORTE`. Allgemeine Begriffe je Rechtsart bzw. Rolle; Altnamen der eigenen Instanz stehen nur hier (09.10., löst die
+ * zweite Firmenliste `organisation-data.ts` ab). Eine Instanz mit anderen Namen braucht hier nichts — der volle Name greift.
+ */
+export const ORT_STICHWORTE: Readonly<Record<FinanzOrt, readonly string[]>> = {
+  privat: ['privat', 'wohnung', 'gesundheit', 'urlaub', 'familie', 'haushalt'],
+  kdc: ['selbständig', 'selbstandig', 'consulting', 'einzelunternehm', 'freiberuf'],
+  kdv: ['kd ventures', 'kdv', 'kd management', 'beteiligungsgesellschaft', 'holding'],
+  ug: [],
+};
 /** Die drei Gesellschaften (ohne Privat) als Kennungen. */
 export const GESELLSCHAFTEN: readonly Gesellschaftskennung[] = KERN_EINHEITEN.map(e => e.id);
 

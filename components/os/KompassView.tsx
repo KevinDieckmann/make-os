@@ -19,7 +19,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { THEMEN, STANDARD_ORDNUNG, sortierteThemen, themenMit, themaVon } from '@/lib/make-one/ordnung-data';
-import { ORGS } from '@/lib/make-one/organisation-data';
+import { ORTE } from '@/lib/make-one/orte';
 import { STICHWORTE, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { FAECHER } from '@/lib/inbox/faecher';
 import { WER_LABEL, einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
@@ -536,7 +536,7 @@ export function KompassView() {
             const treffer = f.wo === 'aufgaben' ? trefferVon(f) : null;
             const teile = [
               ...(f.themen ?? []).map(x => THEMA_EIGEN[x]?.label),
-              ...(f.orgs ?? []).map(x => ORGS.find(o => o.id === x)?.kurz),
+              ...(f.orgs ?? []).map(x => ORTE.find(o => o.id === x)?.kurz),
               ...(f.prios ?? []).map(x => PRIOS.find(p => p[0] === x)?.[1]),
               ...(f.wege ?? []).map(x => WER_LABEL[x as keyof typeof WER_LABEL]),
               ...(f.stichworte ?? []).map(x => STICHWORTE.find(s => s.id === x)?.label ?? eigeneSw.find(s => s.id === x)?.label),
@@ -563,7 +563,7 @@ export function KompassView() {
                     {f.wo === 'aufgaben' ? (
                       <>
                         {reihe('Thema', THEMEN.map(b => chip((f.themen ?? []).includes(b.id), b.farbe, b.label, () => patch(f.id, { themen: kippen(f.themen, b.id) }), b.id)))}
-                        {reihe('Ort', ORGS.map(o => chip((f.orgs ?? []).includes(o.id), o.farbe, o.kurz, () => patch(f.id, { orgs: kippen(f.orgs, o.id) }), o.id)))}
+                        {reihe('Ort', ORTE.map(o => chip((f.orgs ?? []).includes(o.id), o.farbe, o.kurz, () => patch(f.id, { orgs: kippen(f.orgs, o.id) }), o.id)))}
                         {reihe('Stufe', PRIOS.map(([key, label]) => chip((f.prios ?? []).includes(key), C.aktiv, label, () => patch(f.id, { prios: kippen(f.prios, key) }), key)))}
                         {reihe('Weg', (['zoe', 'gemeinsam', 'mensch'] as const).map(w => chip((f.wege ?? []).includes(w), C.aktiv, WER_LABEL[w], () => patch(f.id, { wege: kippen(f.wege, w) }), w)))}
                         {reihe('Wer', (['kevin', 'malin', 'both'] as const).map(p => chip(f.besitzer === p, C.aktiv, p === 'both' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin', () => patch(f.id, { besitzer: f.besitzer === p ? undefined : p }), p)))}

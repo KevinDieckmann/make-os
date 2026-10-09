@@ -1,5 +1,5 @@
 // ─── MAKE OS — Die Ordnung (Store) ──────────────────────────────────────────
-// Was zählt zuerst: die Reihenfolge der Themen (Kevin & Malin legen sie fest),
+// Was zählt zuerst: die Reihenfolge der Themen (der Haushalt legt sie fest),
 // die Aufgaben, die von Hand einem anderen Thema zugeordnet wurden, und die
 // von Hand gesetzten Stichworte.
 
@@ -7,6 +7,7 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { FINANZ_ORT_IDS } from '@/lib/einheiten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,13 +16,13 @@ interface OrdnungFile {
   reihenfolge: string[];
   zuordnung: Record<string, string>;
   stichworte: Record<string, string[]>;
-  /** Aufgabe → Organisation (kdv|kdc|kemaris|privat), von Hand gesetzt. */
+  /** Aufgabe → Ort (privat oder eine Gesellschaft aus lib/einheiten.ts), von Hand gesetzt. Gespeicherte Altwerte bleiben stehen (lib/make-one/orte.ts liest sie als Business). */
   orgs: Record<string, string>;
 }
 
 const STANDARD = ['recht', 'umsatz', 'produkt', 'leben'];
 const ERLAUBT = new Set(STANDARD);
-const ORG_IDS = new Set(['kdv', 'kdc', 'kemaris', 'privat']);
+const ORG_IDS: ReadonlySet<string> = new Set(FINANZ_ORT_IDS);
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
