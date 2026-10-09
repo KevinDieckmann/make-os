@@ -58,7 +58,9 @@ async function laufSperreFuer(person: string, a: LaufAuftrag): Promise<{ status:
     const { fadenAendern } = await import('@/lib/agenten/faeden-server');
     const jetzt = new Date().toISOString();
     await fadenAendern(person, fadenId, f => (f.lauf && f.lauf.status !== 'wartet' && f.lauf.status !== 'laeuft' ? f : {
-      ...f, status, lauf: { ...(f.lauf ?? { schritte: [], start: jetzt, kostenCent: 0 }), status, fehler: s.grund === 'not-aus' ? ANGEHALTEN : s.text, ...(status === 'abgebrochen' ? { ende: jetzt, wartetAuf: 'not-aus' as const } : {}) },
+      ...f, status, lauf: { ...(f.lauf ?? { schritte: [], start: jetzt, kostenCent: 0 }), status, fehler: s.grund === 'not-aus' ? ANGEHALTEN : s.grund === 'aus' ? `${s.text} Der Lauf geht weiter, sobald er wieder an ist.` : s.text, ...(status === 'abgebrochen' ? { ende: jetzt, wartetAuf: 'not-aus' as const } : {}),
+        // Nachschliff 09.10.: „Head aus“ als Feld — beim Wiedereinschalten reiht `laeufeNachHeadAn` genau diese Läufe einmal neu ein (Budget nie).
+        ...(s.grund === 'aus' ? { wartetAuf: 'head-aus' as const } : {}) },
     })).catch(() => null);
   }
   return { status, text: s.grund === 'not-aus' ? ANGEHALTEN : s.text, ...(fadenId ? { fadenId } : {}) };

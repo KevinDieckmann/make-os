@@ -249,7 +249,7 @@ describe('(2) Jahresziele + Nordstern im Datenpaket der eingebauten Heads und de
     const { chefLauf } = await import('@/lib/finanzen/chef/lauf');
     const chefAntwort = () => text(JSON.stringify({ status: 'gruen', zusammenfassung: 'Ruhig.', antwort: 'Alles ruhig.', befunde: [], vorschlaege: [] }));
     ki.folge.push(chefAntwort(), chefAntwort());
-    await chefLauf({ modus: 'frage', haushalt: null, person: 'person-a', frage: 'Wie stehen wir?', ausgeloest: 'hand' });
+    await chefLauf({ modus: 'frage', haushalt: null, person: 'person-a', frage: 'Wie stehen wir?', ausgeloest: 'person' });
     const business = JSON.stringify(ki.anfragen[0] ?? {});
     expect(business).toContain('ZIEL-BUSINESS-MARKE');
     expect(business).not.toContain('ZIEL-PRIVAT-MARKE');
@@ -257,7 +257,7 @@ describe('(2) Jahresziele + Nordstern im Datenpaket der eingebauten Heads und de
     expect(business).not.toContain('</daten_x>');
     ki.anfragen.length = 0; ki.folge.length = 0;
     ki.folge.push(chefAntwort(), chefAntwort());
-    await chefLauf({ modus: 'frage', haushalt: 'haus-a', person: 'person-a', frage: 'Wie stehen wir?', ausgeloest: 'hand' });
+    await chefLauf({ modus: 'frage', haushalt: 'haus-a', person: 'person-a', frage: 'Wie stehen wir?', ausgeloest: 'person' });
     const haushalt = JSON.stringify(ki.anfragen[0] ?? {});
     expect(haushalt).toContain('ZIEL-BUSINESS-MARKE');
     expect(haushalt).toContain('ZIEL-PRIVAT-MARKE');
@@ -349,7 +349,7 @@ describe('(5) `einmalig` überall mit Person', () => {
     for (const datei of dateien) {
       if (datei.endsWith(path.join('lib', 'store', 'anfragen.ts'))) continue;
       const q = readFileSync(datei, 'utf8');
-      const re = /\beinmalig(?:<[^>]*>)?\(/g;
+      const re = /\beinmalig(?:<[^()]*?>)?\(/g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(q))) {
         let tiefe = 0, i = m.index + m[0].length - 1;
@@ -427,6 +427,10 @@ describe('(7) „Head an“: Läufe, die nur wegen „Head aus“ warteten, lauf
     const f = (await fadenVon('person-b', fadenId))!;
     expect(f.lauf?.status).toBe('fertig');
     expect(f.nachrichten.some(n => n.text.includes('GAESTE-MARKE'))).toBe(true);
+    const laeufeRoute = (await import('@/app/api/agenten/laeufe/route')) as unknown as { GET: H };
+    const l = ((await rufe(laeufeRoute.GET, '/api/agenten/laeufe', sitzung('person-b'))).d.laeufe as { fadenId?: string; status: string }[]).filter(x => x.fadenId === fadenId);
+    // Der Versuch, der nur wartete, steht nicht zusätzlich als „Fertig“ da — EIN Lauf je Thread.
+    expect(l.map(x => x.status)).toEqual(['fertig']);
   });
 
   it('Budget-wartende Läufe fasst „Head an“ nicht an', async () => {
