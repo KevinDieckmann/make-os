@@ -526,7 +526,7 @@ export function KompassView() {
         <Ueberschrift farbe={LEUCHT.puls} rechts="Einmal einstellen, dann mit einem Klick aufrufen.">Eigene Filter</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input value={neuName} onChange={e => setNeuName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') filterAnlegen(); }}
-            placeholder="Name, z. B. Was Malin heute macht — oder: Alles zum Steuerberater" aria-label="Neuer Filter"
+            placeholder="Name, z. B. Was heute ansteht — oder: Alles zum Steuerberater" aria-label="Neuer Filter"
             style={{ ...feld, width: 'auto', flex: '1 1 220px', minWidth: 0 }} />
           <Knopf onClick={filterAnlegen}>+ Anlegen</Knopf>
         </div>

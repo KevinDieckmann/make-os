@@ -43,7 +43,7 @@ export function EinstellungenBelegt({ kalender, einst, setzen }: { kalender: rea
             <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, cursor: 'pointer', minHeight: 24 }}>
               <input type="checkbox" checked={an} onChange={() => setzen({ belegt: { ...(einst.belegt ?? {}), [k.name]: !an } })} />
               <span style={{ flex: 1, color: an ? C.ink : C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>
-              {!zugeordnet && !eigen && <span title="Nicht Kevin, Malin oder Gemeinsam zugeordnet — blockiert niemanden, bis du es einschaltest" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>nicht zugeordnet</span>}
+              {!zugeordnet && !eigen && <span title="Keiner Person und nicht Gemeinsam zugeordnet — blockiert niemanden, bis du es einschaltest" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>nicht zugeordnet</span>}
             </label>
           );
         })}

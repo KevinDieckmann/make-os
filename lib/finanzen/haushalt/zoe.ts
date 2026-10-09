@@ -18,7 +18,7 @@ import { normal } from './regeln';
 /** Der Lageblock für ZOE' Anweisung. */
 export function blockHaushalt(h: Haushalt, heute: string = heuteBerlin()): string {
   const b = h.buchungen.filter(x => x.einheit === 'privat');
-  if (!b.length) return 'HAUSHALT (privat): noch keine Daten — der Umzug aus Malins Cockpit steht aus.';
+  if (!b.length) return 'HAUSHALT (privat): noch keine Daten — der Umzug aus dem früheren Finanz-Cockpit steht aus.';
   const katName = katNamen(h.stamm);
   const m = letzterMonatMitDaten(b, heute);
   const k1 = kennzahlen(b, [m], katName);
@@ -28,7 +28,7 @@ export function blockHaushalt(h: Haushalt, heute: string = heuteBerlin()): strin
   const punkte = wichtig({ buchungen: b, schulden: h.schulden.filter(s => s.einheit === 'privat'), belege: h.belege.filter(x => x.einheit === 'privat') }, katName, heute, c => eur(c));
   const rest = h.schulden.filter(s => s.einheit === 'privat').reduce((s, x) => s + x.restbetrag, 0);
   return [
-    'HAUSHALT (PRIVAT — Kevins und Malins eigene Finanzen). Nutze das im Gespräch mit Kevin oder Malin und in ihren Briefings, auch mit Beträgen. NIE in Texte an Dritte, nie in Business-Auswertungen, Mails oder Entwürfe an andere.',
+    'HAUSHALT (PRIVAT — die eigenen Finanzen des Haushalts). Nutze das im Gespräch mit den Personen des Haushalts und in ihren Briefings, auch mit Beträgen. NIE in Texte an Dritte, nie in Business-Auswertungen, Mails oder Entwürfe an andere.',
     `- ${monatName(m)}${m !== monatVon(heute) ? ' (jüngster Monat mit Buchungen)' : ''}: Einkommen ${eur(k1.ein)}, Ausgaben ${eur(k1.aus)}, Saldo ${eur(k1.saldo)}.`,
     `- Letzte 6 volle Monate: Sparquote ${k6.sparquote.toFixed(0)} %, Überschuss Ø ${eur(k6.saldoProMonat)}/Monat.`,
     `- Sockel (Fixkosten + Raten) ${eur(l.sockel.gesamt)}/Monat, Luft ${eur(l.luft)}/Monat.`,

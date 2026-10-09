@@ -38,7 +38,7 @@ export function Einrichtung({ zustand, onFertig }: { zustand: 'leer' | 'kein' | 
       <Seite titel="Finanzplanung jetzt">
         <Karte i={0}>
           <Ueberschrift farbe={LEUCHT.achtung}>Kein Zugang</Ueberschrift>
-          <div style={{ fontSize: TYP.body, lineHeight: 1.6, color: C.inkDim }}>Die Finanzplanung gehört zum Haushalt. Der Inhaber trägt unter System → Konto den Haushalt ein (Kevin und Malin: derselbe Name) — dann erscheint hier der Plan.</div>
+          <div style={{ fontSize: TYP.body, lineHeight: 1.6, color: C.inkDim }}>Die Finanzplanung gehört zum Haushalt. Der Inhaber trägt unter System → Konto den Haushalt ein (alle Personen des Haushalts: derselbe Name) — dann erscheint hier der Plan.</div>
         </Karte>
       </Seite>
     );

@@ -13,7 +13,7 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 // `MAKE_OS_OHNE_APPLE=1`, liest es NIE Kevins echte Apple-Daten (Mail, Kalender, Erinnerungen, Kontakte) — ein Prüflauf auf
 // dem Mac hatte sonst den echten Posteingang in der Sandbox gezeigt. Der normale Start nutzt `<repo>/.data` ohne Variable.
 export const AUF_DEM_MAC = process.platform === 'darwin' && !process.env.MAKE_OS_DATEN_DIR && !/^(1|ja|true)$/i.test(process.env.MAKE_OS_OHNE_APPLE ?? '');
-export const NUR_MAC = 'Das geht nur direkt auf Kevins Mac (Apple). Auf dem Server siehst du den zuletzt zugelieferten Stand.';
+export const NUR_MAC = 'Das geht nur direkt auf dem Mac des Inhabers (Apple). Auf dem Server siehst du den zuletzt zugelieferten Stand.';
 
 // Mail kommt seit 06.10. (Inbox 2) nicht mehr vom Mac: der Server holt die Postfächer selbst (IMAP/Gmail, lib/postfach/*). Der alte
 // Bestand `apple-mail-cache` bleibt liegen (Löschfrist „Postfach-Zwischenspeicher“), wird aber nicht mehr geschrieben.

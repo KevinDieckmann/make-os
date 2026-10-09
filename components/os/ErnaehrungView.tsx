@@ -540,7 +540,7 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, alignItems: 'start' }}>
         <div>
           <div style={{ ...mikro, marginBottom: 6 }}>Notiz</div>
-          <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== g.notiz) void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, notiz } }]); }} rows={2} placeholder="z. B. „Malin ohne Feta“, „Reste am nächsten Tag“" style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
+          <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== g.notiz) void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, notiz } }]); }} rows={2} placeholder="z. B. „eine Portion ohne Feta“, „Reste am nächsten Tag“" style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
         </div>
         <div>
           <div style={{ ...mikro, marginBottom: 6 }}>In den Plan</div>
