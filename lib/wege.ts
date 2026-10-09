@@ -121,6 +121,8 @@ export const WEG = {
   markttraktion: () => markttraktion(),
   // Schnellknöpfe der Markttraktion (28.09. abends): Qualifizierung und Angebot (vorbelegt mit Kontakt/Firma/Deal).
   qualifizierung: () => markttraktion('qualifizierung'),
+  /** Qualifizierungs-Runde mit dem Filter „Nicht zugeordnet“ (08.10., Woche 2 · 6.2): Leads ohne Zuständigkeit übernehmen. */
+  nichtZugeordnet: () => `${markttraktion('qualifizierung')}&wer=ohne`,
   angebot: (x?: AngebotAdresse) => angebotLink(x),
 
   /** Ein Termin im Kalender (K3): Tag anspringen und das Termin-Fenster öffnen (Schlüssel `uid` bzw. `uid::RID`). */

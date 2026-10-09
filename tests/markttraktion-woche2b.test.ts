@@ -399,3 +399,199 @@ describe('4.17 / 4.18 · Verschieben einer Zusage = echtes Follow-up mit Zähler
     expect(l.some(f => f.id === 'v:nachfassen:t-neu')).toBe(true);
   });
 });
+
+// ══ Teil B · Marketing, Kampagnen, Events ════════════════════════════════════════════════════════════════════════════════════
+
+describe('5.4 · Kanal einer Kampagne nachträglich werblich: alle Personen geprüft, rote fallen heraus (mit Hinweis)', () => {
+  const kp = (x: Record<string, unknown> = {}) => ({ id: 'kp-1', name: 'Herbst', playbook: 'reaktivierung', ziel: '', zielgruppe: {}, kanal: 'telefon', status: 'aktiv', schritte: [], kontaktIds: ['c-rot', 'c-gruen'], ergebnisse: [], von: 'hand', geaendert: J, ...x });
+  const personen = [k('rot', { email: 'rot@example.invalid' }), k('gruen', { email: 'gruen@example.invalid', einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'Formular', wortlaut: 'Ja, Newsletter', wortlautVersion: 'v1', zeitpunkt: '2026-01-01T10:00:00.000Z', erfasstVon: 'kevin', belegRef: 'beleg-1' }] as never })];
+  it('Wechsel auf Mail: rote Personen raus, Hinweis ohne Namen; gleicher Kanal oder abgeschlossene Kampagne bleiben unberührt', async () => {
+    const { kanalWechselBereinigen } = await import('@/lib/crm/personen-schranke');
+    const crm = crmLeer({ kampagnen: [kp()] as never });
+    const r = kanalWechselBereinigen(crm, [{ liste: 'kampagnen', op: 'teil', id: 'kp-1', felder: { kanal: 'mail' } }], personen, T);
+    const felder = (r.ops[0] as { felder: { kontaktIds?: string[] } }).felder;
+    expect(felder.kontaktIds).not.toContain('c-rot');
+    expect(r.hinweise).toHaveLength(1);
+    expect(r.hinweise[0]).toMatch(/herausgenommen/);
+    expect(r.hinweise[0]).not.toMatch(/rot@|Beispiel/);
+    expect(kanalWechselBereinigen(crm, [{ liste: 'kampagnen', op: 'teil', id: 'kp-1', felder: { kanal: 'telefon' } }], personen, T).hinweise).toEqual([]);
+    expect(kanalWechselBereinigen(crmLeer({ kampagnen: [kp({ status: 'abgeschlossen' })] as never }), [{ liste: 'kampagnen', op: 'teil', id: 'kp-1', felder: { kanal: 'mail' } }], personen, T).hinweise).toEqual([]);
+  });
+  it('wendeCrmAn wendet es an — und gibt den Hinweis mit', async () => {
+    const { wendeCrmAn } = await import('@/lib/crm/speicher');
+    const crm = crmLeer({ kampagnen: [kp()] as never });
+    const a = wendeCrmAn(crm, [{ liste: 'kampagnen', op: 'teil', id: 'kp-1', felder: { kanal: 'mail' } }], J, 'kevin', undefined, personen);
+    expect(a.bestand.kampagnen[0].kontaktIds).toEqual(['c-gruen']);
+    expect(a.bestand.kampagnen[0].kanal).toBe('mail');
+    expect(a.hinweise?.join(' ')).toMatch(/herausgenommen/);
+  });
+});
+
+describe('5.5 / 5.6 / 5.7 / 6.6 · Kampagnen: Meldung am Detail, eigene Kampagne, Link gewinnt, Welt nach Playbook', () => {
+  it('Welt nach Playbook — passt zu PLAYBOOKS[].fuer[0]; eigene: Head of Sales → Sales, sonst Marketing', async () => {
+    const { PLAYBOOK_WELT, weltDerKampagne } = await import('@/lib/crm/kampagnen-welt');
+    const { PLAYBOOKS } = await import('@/lib/crm/kampagnen');
+    for (const p of PLAYBOOKS) expect(PLAYBOOK_WELT[p.id], p.id).toBe(p.fuer[0] === 'head-sales' ? 'sales' : 'marketing');
+    expect(Object.keys(PLAYBOOK_WELT).sort()).toEqual(PLAYBOOKS.map(p => p.id).sort());
+    expect(weltDerKampagne({ playbook: 'fallstudie' })).toBe('marketing');
+    expect(weltDerKampagne({ playbook: 'upsell' })).toBe('sales');
+    expect(weltDerKampagne({ playbook: 'eigen', von: 'head-sales' })).toBe('sales');
+    expect(weltDerKampagne({ playbook: 'eigen', von: 'hand' })).toBe('marketing');
+  });
+  it('sichtbareKampagnen: die Kampagne aus dem Link steht da, auch archiviert oder bei fremdem Filter', async () => {
+    const { sichtbareKampagnen } = await import('@/lib/crm/kampagnen-welt');
+    const alle = [{ id: 'a' }, { id: 'b', archiviertAm: J }, { id: 'c' }];
+    const passt = (x: { id: string }) => x.id === 'a';
+    expect(sichtbareKampagnen(alle, { sicht: 'liste', offen: null, passt }).map(x => x.id)).toEqual(['a']);
+    expect(sichtbareKampagnen(alle, { sicht: 'liste', offen: 'b', passt }).map(x => x.id)).toEqual(['a', 'b']);
+    expect(sichtbareKampagnen(alle, { sicht: 'liste', offen: 'c', passt }).map(x => x.id)).toEqual(['a', 'c']);
+    expect(sichtbareKampagnen(alle, { sicht: 'archiv', offen: null, passt: () => true }).map(x => x.id)).toEqual(['b']);
+  });
+  it('Oberfläche: Meldungen am Detail, Ergebnis bestätigt, „Eigene Kampagne“, keine feste Welt „sales“ mehr', () => {
+    const s = quelle('components/os/crm/Kampagnen.tsx');
+    expect(s).toContain("onClick={() => planen('eigen')}>Eigene Kampagne</Knopf>");
+    expect(s).toContain('meldung={meldung} setMeldung={setMeldung}');
+    expect(s).toMatch(/festgehalten — steht im Verlauf der Person/);
+    expect(s).toContain('sichtbareKampagnen(alleRoh,');
+    expect(s).not.toMatch(/zustaendig\(k\.zustaendig, 'sales'\)/);
+    expect(s).not.toMatch(/welt="sales"/);
+    for (const f of ['lib/crm/heute.ts', 'lib/crm/team.ts', 'app/api/crm/kampagnen/route.ts']) expect(quelle(f), f).toContain('weltDerKampagne(');
+  });
+});
+
+describe('5.6 / 5.8 · Kampagnen-Route: eigene Kampagne leer, Aufgaben über den Server-Schreibweg', () => {
+  type M = { POST: H };
+  let route: M;
+  const sitzung = { 'content-type': 'application/json', 'x-make-user': 'kevin' };
+  const post = async (body: unknown) => { const r = await route.POST(new Request('http://test/api/crm/kampagnen', { method: 'POST', headers: sitzung, body: JSON.stringify(body) })); return r.json(); };
+  beforeAll(async () => { route = (await import('@/app/api/crm/kampagnen/route')) as unknown as M; });
+  it('„Eigene Kampagne“ ohne Segment ist leer — nie die ganze Kartei', async () => {
+    const r = await post({ aktion: 'planen', playbook: 'eigen' });
+    expect(r.ok, JSON.stringify(r)).toBe(true);
+    expect(r.kampagne.kontaktIds).toEqual([]);
+    expect(r.kampagne.name).toBe('Eigene Kampagne');
+  });
+  it('„Schritte als Aufgaben“ legt sie über systemAufgabenAendern an — mit Verlauf, idempotent', async () => {
+    const r1 = await post({ aktion: 'planen', playbook: 'eigen' });
+    const a = await post({ aktion: 'aufgaben', id: r1.kampagne.id });
+    expect(a.ok, JSON.stringify(a)).toBe(true);
+    const tasks = (await db.loadJson<{ tasks: { id: string; verlauf?: { durch?: string }[]; space?: string }[] }>('tasks'))!.tasks.filter(t => t.id.startsWith(`kp-${r1.kampagne.id}-`));
+    expect(tasks.length).toBe(3);
+    expect(tasks.every(t => t.space === 'business')).toBe(true);
+    expect(tasks.some(t => (t.verlauf ?? []).length > 0)).toBe(true);
+    await post({ aktion: 'aufgaben', id: r1.kampagne.id });
+    expect((await db.loadJson<{ tasks: { id: string }[] }>('tasks'))!.tasks.filter(t => t.id.startsWith(`kp-${r1.kampagne.id}-`))).toHaveLength(3);
+    expect(quelle('app/api/crm/kampagnen/route.ts')).not.toMatch(/updateJson<\{ tasks/);
+  });
+});
+
+describe('5.9 / 5.10 · Anfragen: Werbesperre hält fest (ohne Einwilligung), Redaktionsplan über den Anfrage-Weg', () => {
+  it('anfrageKanalAusBeitrag und Redaktionsplan', async () => {
+    const { anfrageKanalAusBeitrag } = await import('@/lib/crm/anfragen');
+    expect(anfrageKanalAusBeitrag('linkedin')).toBe('linkedin');
+    expect(anfrageKanalAusBeitrag('blog')).toBe('website');
+    expect(anfrageKanalAusBeitrag('podcast')).toBe('mail');
+    const s = quelle('components/os/crm/marketing/Redaktionsplan.tsx');
+    expect(s).toContain("fetch('/api/crm/anfrage'");
+    expect(s).toContain('anfrageKanalAusBeitrag(b.kanal)');
+  });
+  it('Werbesperre: Anfrage, Verlauf und Follow-up ja — Einwilligung und Kampagne nein', async () => {
+    const { anfrageBauen } = await import('@/lib/crm/anfragen');
+    const p = k('sperre', { email: 'sperre@example.invalid', werbesperre: { seit: T, grund: 'Widerspruch' } });
+    const crm = crmLeer({ kampagnen: [{ id: 'kp-x', name: 'Herbst', kontaktIds: [], ergebnisse: [], status: 'aktiv' }] as never });
+    const r = anfrageBauen({ kontaktId: p.id, kanal: 'mail', text: 'Bitte Unterlagen', bezug: { art: 'kampagne', id: 'kp-x' } }, { kontakte: [p], crm, person: 'kevin', heute: T, jetzt: J, ids: { kontakt: 'c-neu', followUp: 'fu-neu' } });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.bau.kontakt.einwilligungen ?? []).toHaveLength(0);
+    expect(r.bau.kampagne).toBeUndefined();
+    expect(r.bau.followUp.art).toBe('sonstig');
+    expect(r.bau.kontakt.aktivitaeten.some(a => a.text?.startsWith('Anfrage über Mail'))).toBe(true);
+    expect(r.bau.hinweis).toMatch(/Werbesperre/);
+  });
+});
+
+describe('5.12 / 5.15 / 5.16 · Make.One: ausführlich erfassen, ein Vormerk-Weg, Einladungstext je Ampel', () => {
+  it('Abend → Netzwerken mit dem Event', () => {
+    expect(quelle('components/os/crm/events/Abend.tsx')).toContain('WEG.netzwerken({ event: e.id })');
+  });
+  it('Gästeliste und Schnellleiste nutzen denselben Vormerk-Weg (mit „nachgefasst“)', () => {
+    expect(quelle('components/os/crm/events/gemeinsam.tsx')).toContain('begegnungenNachgefasst(stand, a.k.id');
+    expect(quelle('components/os/crm/events/Gaeste.tsx')).toContain('gastVormerkenMitNachfassen(api,');
+    expect(quelle('components/os/crm/kontakt/SchnellLeiste.tsx')).toContain('gastVormerkenMitNachfassen(api,');
+  });
+  it('einladungText: grün = Mail-Text, gelb = persönlich, rot = keiner; immer mit Werbe-Hinweis, Sie/Du aus der Akte', async () => {
+    const { einladungText } = await import('@/lib/crm/eventplanung');
+    const e = { titel: 'Herbstabend', datum: '2026-11-12', uhrzeit: '18:30', ort: 'Musterstadt' };
+    const g = einladungText(e, { vorname: 'Anna', nachname: 'Beispiel', anrede: 'Sie' }, 'gruen')!;
+    expect(g.weg).toBe('mail');
+    expect(g.text).toMatch(/Guten Tag Anna Beispiel/);
+    expect(g.text).toMatch(/12\.11\.2026 um 18:30 Uhr \(Musterstadt\)/);
+    expect(g.text).toMatch(/Herbstabend/);
+    expect(g.hinweis).toMatch(/§ 7 UWG/);
+    const y = einladungText(e, { vorname: 'Anna', anrede: 'Du' }, 'gelb')!;
+    expect(y.weg).toBe('persoenlich');
+    expect(y.text).toMatch(/^Hallo Anna,/);
+    expect(y.hinweis).toMatch(/nur persönlich/);
+    expect(einladungText(e, { vorname: 'Anna' }, 'rot')).toBeNull();
+    expect(quelle('components/os/crm/events/Gaeste.tsx')).toContain('<EinladungKopieren e={e} k={k} farbe={einl.farbe} />');
+  });
+});
+
+// ══ Teil B · Zu zweit und Kennzahlen ═════════════════════════════════════════════════════════════════════════════════════════
+
+describe('6.2 · Überblick: „Leads ohne Zuständigkeit“ mit dem Weg zum Zuweisen — bei jeder Person', () => {
+  it('fuerDich nennt die Zahl und führt in die Runde „Nicht zugeordnet“', async () => {
+    const { fuerDich } = await import('@/lib/crm/team');
+    const { WEG } = await import('@/lib/wege');
+    const kontakte = [k('ohne1', { besitzer: undefined, stufe: 'angesprochen', aktivitaeten: [{ am: J, art: 'mail', text: 'x', von: 'kevin' }] }), k('mit', { besitzer: 'malin', stufe: 'angesprochen' })];
+    for (const person of ['kevin', 'malin']) {
+      const l = fuerDich(person, kontakte, crmLeer(), T);
+      const e = l.find(x => x.id === 'ohne-zustaendigkeit');
+      expect(e, person).toMatchObject({ anzahl: 1, ziel: { href: WEG.nichtZugeordnet() } });
+    }
+    expect(WEG.nichtZugeordnet()).toBe('/os/markttraktion?s=qualifizierung&wer=ohne');
+    expect(quelle('components/os/crm/Qualifizierung.tsx')).toContain("adresse?.get('wer') === 'ohne' ? 'ohne' : ich");
+  });
+});
+
+describe('6.8 · Übergabe prüft Kennungen wie die Kartei', () => {
+  it('istKontaktKennung statt eigener Regex', () => {
+    const s = quelle('lib/crm/uebergabe.ts');
+    expect(s).toContain('.filter(istKontaktKennung)');
+    expect(s).not.toMatch(/\^c-\[a-z0-9-\]\{4,60\}\$/);
+  });
+});
+
+describe('7.3 · Morgen-Nachricht/Scoreboard: neutral ohne Werte und Namen — Inhalte nur mit Ausnahme der Person', () => {
+  it('Vorgabe ist der neutrale Hinweis mit Link; mit `inhalte` die Zahlen', async () => {
+    const { morgenText, wochenText } = await import('@/lib/crm/scoreboard');
+    const kontakte = [k('m', { besitzer: 'malin', kreis: 'B', naechsterSchritt: { text: 'Rückruf', datum: T } })];
+    const m = morgenText('malin', kontakte, crmLeer(), T, { adresse: 'https://make.example' });
+    expect(m).toBe('Markttraktion: für heute liegt etwas bei dir — Details in MAKE OS.\n→ https://make.example/os/markttraktion');
+    expect(m).not.toMatch(/\d+ in deiner|Malin|Guten Morgen/);
+    expect(morgenText('kevin', [], crmLeer(), T)).toMatch(/heute nichts Fälliges bei dir/);
+    const w = wochenText('malin', kontakte, crmLeer(), T);
+    expect(w).toMatch(/^Das Wochen-Scoreboard KW \d+ ist da — Details in MAKE OS\./);
+    expect(w).not.toMatch(/Kevin|Malin|von \d/);
+    expect(morgenText('malin', kontakte, crmLeer(), T, { inhalte: true })).toMatch(/^Guten Morgen, Malin\./);
+    expect(quelle('app/api/crm/traktion/route.ts')).toContain('botenKanalFuer(ich)');
+  });
+});
+
+describe('7.6 · Fehlertexte statt „Lädt …“', () => {
+  it('Scoreboard und Kanal-Leistung zeigen den Fehler', () => {
+    const s = quelle('components/os/crm/Scoreboard.tsx');
+    expect(s).toContain("setFehler(x?.fehler ?? 'Scoreboard nicht geladen.')");
+    expect(s).toContain("{fehler ?? 'Lädt …'}");
+    expect(quelle('components/os/crm/Qualifizierung.tsx')).toContain('if (fehler) return <Karte i={i}><Hinweis art="achtung" rolle="status">{fehler}</Hinweis></Karte>;');
+  });
+});
+
+describe('Heads: der SQL-Satz im Prompt kommt aus sqlRegelText', () => {
+  it('kein alter fester Satz mehr', async () => {
+    const { SYSTEM } = await import('@/lib/heads/prompt');
+    const { sqlRegelText, standardScoring } = await import('@/lib/crm/scoring');
+    expect(SYSTEM.sales).toContain(sqlRegelText(standardScoring()));
+    expect(SYSTEM.sales).not.toContain('(Schmerz + Entscheider + Budget oder Zeitpunkt)');
+  });
+});

@@ -38,6 +38,8 @@ interface Daten {
   verlauf: VerlaufTag[];
   scoreboard: ScoreboardDaten;
   telegram?: { konfiguriert: boolean; gekoppelt: boolean };
+  /** 7.3: der Kanal des Boten für diese Person (ZOE auf WhatsApp bzw. Telegram) und ob überhaupt einer eingerichtet ist. */
+  bote?: { kanal: 'whatsapp' | 'telegram' | null; eingerichtet: boolean };
 }
 
 const AMPEL: Record<ScoreAmpel, string | null> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: null, offen: null };
@@ -203,15 +205,17 @@ function Gruppe({ welt, zeilen, sb, erste }: { welt: Welt; zeilen: ScoreZeile[];
 
 export function Scoreboard(_: { api: CrmApi }) {
   const [d, setD] = useState<Daten | null>(null);
-  const [fehler, setFehler] = useState(false);
-  const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => r.json())
-    .then(x => { if (x?.ok && x.scoreboard) { setD(x); setFehler(false); } }).catch(() => setFehler(true)), []);
+  // 7.6 (08.10.): bei ok:false bzw. ohne Scoreboard der Fehlertext — vorher blieb die Karte für immer auf „Lädt …“.
+  const [fehler, setFehler] = useState<string | null>(null);
+  const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => r.json().catch(() => ({ ok: false, fehler: `Antwort ${r.status}` })))
+    .then(x => { if (x?.ok && x.scoreboard) { setD(x); setFehler(null); } else setFehler(x?.fehler ?? 'Scoreboard nicht geladen.'); }).catch(() => setFehler('Scoreboard nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
   // Das Scoreboard ändert sich langsam — seltener abgleichen als der Überblick.
   useAbgleich(laden, { alle: 120_000 });
 
-  if (!d) return <Karte i={3}><Ueberschrift>Wochen-Scoreboard</Ueberschrift><Leer>{fehler ? 'Scoreboard nicht erreichbar.' : 'Lädt …'}</Leer></Karte>;
+  if (!d) return <Karte i={3}><Ueberschrift>Wochen-Scoreboard</Ueberschrift><Leer>{fehler ?? 'Lädt …'}</Leer></Karte>;
   const tg = d.telegram;
+  const bote = d.bote;
   return (
     <Karte i={3}>
       <Ueberschrift rechts={<span>{d.scoreboard.wochen.length} Wochen · Ziel je Woche</span>}>Wochen-Scoreboard</Ueberschrift>
@@ -221,12 +225,13 @@ export function Scoreboard(_: { api: CrmApi }) {
         Rückwirkend aus Power Hours, Verlauf, Chancen, Redaktionsplan und Events. Grün = Ziel erreicht, gelb = mindestens die Hälfte, rot = darunter; die laufende Woche wird erst am Sonntag bewertet. Je Person gilt der Anteil am Teamziel. Grau = noch nicht gemessen.
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
-        <Punkt farbe={tg?.gekoppelt ? LEUCHT.gut : tg?.konfiguriert ? LEUCHT.achtung : C.inkLeise} groesse={7} />
-        {!tg?.konfiguriert
-          ? <span>Morgen-Nachricht aufs Handy: <Link href="/os/konto" style={{ color: C.ink }}>Telegram-Bot einrichten (Konto › Der Bote)</Link></span>
-          : !tg.gekoppelt
-            ? <span>Morgen-Nachricht aufs Handy: <Link href="/os/konto" style={{ color: C.ink }}>Telegram koppeln (Konto › Der Bote)</Link></span>
-            : <span>Per Telegram: werktags ab 7:30 deine Morgen-Nachricht, freitags ab 15 Uhr dieses Scoreboard.</span>}
+        {/* 7.3 (08.10.): EIN Sendeweg (ZOE auf WhatsApp, sonst Telegram) — ohne Ausnahme der Person nur ein neutraler Hinweis mit Link. */}
+        <Punkt farbe={bote?.kanal ? LEUCHT.gut : bote?.eingerichtet || tg?.konfiguriert ? LEUCHT.achtung : C.inkLeise} groesse={7} />
+        {bote?.kanal
+          ? <span>Per {bote.kanal === 'whatsapp' ? 'ZOE auf WhatsApp' : 'Telegram'}: werktags ab 7:30 der Hinweis auf deine Markttraktion, freitags ab 15 Uhr auf dieses Scoreboard — ohne Zahlen, Details hier.</span>
+          : bote?.eingerichtet || tg?.konfiguriert
+            ? <span>Hinweis aufs Handy: <Link href="/os/konto" style={{ color: C.ink }}>Boten verbinden (Konto)</Link></span>
+            : <span>Hinweis aufs Handy: <Link href="/os/konto" style={{ color: C.ink }}>Boten einrichten (Konto)</Link></span>}
       </div>
     </Karte>
   );

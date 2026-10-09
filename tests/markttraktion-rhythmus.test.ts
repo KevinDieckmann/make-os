@@ -214,7 +214,7 @@ describe('Morgen-Nachricht', () => {
   };
 
   it('sagt kurz, was bei der Person liegt, und wohin es geht', () => {
-    const t = morgenText('malin', kontakte, crm, HEUTE, { adresse: 'https://make.example/' });
+    const t = morgenText('malin', kontakte, crm, HEUTE, { adresse: 'https://make.example/', inhalte: true });
     const zeilen = t.split('\n');
     expect(zeilen[0]).toBe('Guten Morgen, Malin.');
     expect(zeilen[1]).toMatch(/^Markttraktion heute: 1 in deiner Power Hour \(1 Zusage\)/);
@@ -224,14 +224,14 @@ describe('Morgen-Nachricht', () => {
   });
 
   it('keine Beträge, keine Namen, und die Zusage nicht doppelt', () => {
-    const t = morgenText('malin', kontakte, crm, HEUTE);
+    const t = morgenText('malin', kontakte, crm, HEUTE, { inhalte: true });
     expect(t).not.toMatch(/€|Mara|Muster/);
     expect(t).not.toMatch(/Zugesagte nächste Schritte/);
   });
 
   it('montags das Wochenziel statt „bisher“, und ehrlich, wenn nichts anliegt', () => {
-    expect(morgenText('malin', kontakte, crm, '2026-09-21')).toMatch(/Neue Woche — dein Anteil: 2 Power Hours\./);
-    const leer = morgenText('kevin', [], leererBestand(), HEUTE);
+    expect(morgenText('malin', kontakte, crm, '2026-09-21', { inhalte: true })).toMatch(/Neue Woche — dein Anteil: 2 Power Hours\./);
+    const leer = morgenText('kevin', [], leererBestand(), HEUTE, { inhalte: true });
     expect(leer).toBe('Guten Morgen, Kevin.\nMarkttraktion heute: nichts Fälliges bei dir.\n→ /os/markttraktion');
   });
 });
@@ -240,7 +240,7 @@ describe('Wochen-Scoreboard als Nachricht (freitags)', () => {
   const { kontakte, crm } = bestand();
 
   it('jede gemessene Kennzahl der Woche gegen ihr Ziel, je Person, und die eigene Zeile', () => {
-    const t = wochenText('malin', kontakte, crm, HEUTE, { adresse: 'https://make.example' });
+    const t = wochenText('malin', kontakte, crm, HEUTE, { adresse: 'https://make.example', inhalte: true });
     expect(t.split('\n')[0]).toBe('Wochen-Scoreboard KW 39 · 21.–27.09.');
     expect(t).toMatch(/• Power Hours: 1 von 4 \(Kevin 0, Malin 1\)/);
     expect(t).toMatch(/• Echte Gespräche: 2 von 8 \(Kevin 1, Malin 1\)/);
@@ -256,7 +256,7 @@ describe('Wochen-Scoreboard als Nachricht (freitags)', () => {
   });
 
   it('ohne Messung ein ehrlicher Satz statt leerer Zeilen', () => {
-    expect(wochenText('kevin', [], leererBestand(), HEUTE)).toMatch(/Noch nichts gemessen/);
+    expect(wochenText('kevin', [], leererBestand(), HEUTE, { inhalte: true })).toMatch(/Noch nichts gemessen/);
   });
 });
 

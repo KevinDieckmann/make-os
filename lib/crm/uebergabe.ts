@@ -24,7 +24,7 @@ import { bezugSauber } from '@/lib/aufgaben/saeubern';
 import type { AufgabeBezug, AufgabenSpaceId } from '@/types/tasks';
 
 import { tagVon } from '@/lib/zeit';
-import { neueKennung } from '@/lib/kennung';
+import { neueKennung, istKontaktKennung } from '@/lib/kennung';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
 type Art = typeof UEBERGABE_ARTEN[number];
 const LISTE: Partial<Record<Art, CrmListe>> = { chance: 'chancen', mandat: 'mandate', event: 'events', kampagne: 'kampagnen', beitrag: 'beitraege', newsletter: 'newsletter' };
@@ -53,7 +53,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
   let mandantSpace: AufgabenSpaceId | undefined;
 
   if (art === 'kontakt' || art === 'kontakte') {
-    const ids = new Set((art === 'kontakt' ? [b.id] : (b.ids ?? [])).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 300));
+    const ids = new Set((art === 'kontakt' ? [b.id] : (b.ids ?? [])).map(String).filter(istKontaktKennung).slice(0, 300)); // 6.8 (08.10.): dieselbe Kennungsregel wie die Kartei
     if (!ids.size) return { ok: false, fehler: 'Keine gültigen Kontakte.', status: 400 };
     const namen: string[] = [];
     await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {

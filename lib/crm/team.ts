@@ -22,6 +22,7 @@ import { leads, salesBereit } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
+import { weltDerKampagne } from './kampagnen-welt';
 import { WEG } from '@/lib/wege';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
@@ -112,7 +113,8 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
     for (const x of liste) if (x.geaendert >= seit && mensch(x.geaendertVon)) r.push({ person: x.geaendertVon!, zeit: x.geaendert, text: text(x), welt, ziel: typeof ziel === 'function' ? ziel(x) : ziel });
   };
   geaendert(crm.events, e => `Event „${e.titel}“ bearbeitet`, 'event', { s: 'event' });
-  geaendert(crm.kampagnen ?? [], k => `Kampagne „${k.name}“ bearbeitet`, 'sales', { s: 'marketing', a: 'kampagnen' });
+  // 6.6 (08.10.): die Welt einer Kampagne aus ihrem Playbook — je Eintrag.
+  for (const k of crm.kampagnen ?? []) if (k.geaendert >= seit && mensch(k.geaendertVon)) r.push({ person: k.geaendertVon!, zeit: k.geaendert, text: `Kampagne „${k.name}“ bearbeitet`, welt: weltDerKampagne(k), ziel: { s: 'marketing', a: 'kampagnen', k: k.id } });
   geaendert(crm.beitraege ?? [], b => `Beitrag „${b.titel}“ · ${b.status}`, 'marketing', { s: 'marketing', a: 'redaktion' });
   geaendert(crm.newsletter ?? [], n => `Newsletter „${n.titel}“ · ${n.status}`, 'marketing', { s: 'marketing', a: 'newsletter' });
   // 6.7 (08.10.): „Mandat bearbeitet“ öffnet das Mandat — vorher Deals › Auswertung.
@@ -167,14 +169,19 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (nachfassen) l.push({ id: 'nachfassen', welt: 'event', titel: 'Gäste nachfassen', anzahl: nachfassen, text: 'die du eingeladen hast oder deren Beziehung du hältst', ziel: { s: 'event' } });
   if (begegnungen) l.push({ id: 'begegnungen', welt: 'event', titel: 'Begegnungen bei Events nachfassen', anzahl: begegnungen, text: 'kennengelernt auf besuchten Veranstaltungen, noch ohne nächsten Schritt', ziel: { s: 'besuche' } });
   // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
-  const meineLeads = leads(kontakte, crm, heute).filter(z => z.besitzer === person || z.besitzer === BEIDE);
+  const alleLeads = leads(kontakte, crm, heute);
+  const meineLeads = alleLeads.filter(z => z.besitzer === person || z.besitzer === BEIDE);
+  // 6.2 (08.10., Woche 2): ohne Zuständigkeit landet alles bei der Sales-Verantwortung — die andere Person sieht nichts davon. Der Hinweis
+  // steht bei JEDER Person im Team, mit dem Weg zum Zuweisen (Runde „Nicht zugeordnet“ → Übernehmen).
+  const ohne = alleLeads.filter(z => z.ohneBesitzer && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
+  if (ohne) l.push({ id: 'ohne-zustaendigkeit', welt: 'sales', titel: 'Leads ohne Zuständigkeit', anzahl: ohne, text: `gehören niemandem — sie liegen bei ${nameVon(verantwortlich('sales'))} (Sales-Verantwortung); in der Runde „Nicht zugeordnet“ übernehmen`, ziel: { s: 'qualifizierung', href: WEG.nichtZugeordnet() } });
   const sqlOffen = meineLeads.filter(z => salesBereit(z) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
   // Woche 1 · 2.6 (08.10.): der Text nennt die Regel der Scoring-Einstellungen, nicht die alte feste; der Sprung führt in die Runde (SQL-bereite oben).
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Muss-Kriterien und Sales-Schwelle erreicht — die Entscheidung steht oben in der Runde', ziel: { s: 'qualifizierung' } });
   const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !salesBereit(z)).length;
   if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)', ziel: { s: 'qualifizierung', a: 'leads' } });
-  const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, 'sales', person));
+  const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, weltDerKampagne(k), person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
-  if (kpOffen) l.push({ id: 'kampagnen', welt: 'sales', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });
+  if (kpOffen) l.push({ id: 'kampagnen', welt: 'marketing', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });
   return l;
 }
