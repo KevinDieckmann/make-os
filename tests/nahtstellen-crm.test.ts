@@ -115,7 +115,10 @@ describe('1 · Art. 18 auf jedem Weg — nichts angelegt, nichts angehängt', ()
       expect(r.status, weg).toBe(409);
     }
     const anf = await import('@/app/api/crm/anfrage/route') as unknown as Route;
-    expect((await anf.POST(anfrage('/api/crm/anfrage', sitzung('kevin'), 'POST', { aktion: 'anlegen', kanal: 'mail', text: 'x', neu: { nachname: 'Anders', email: 'art18@beispiel.example' } }))).status).toBe(400);
+    const firmenVorher = (await crm()).firmen.length;
+    expect((await anf.POST(anfrage('/api/crm/anfrage', sitzung('kevin'), 'POST', { aktion: 'anlegen', kanal: 'mail', text: 'x', neu: { nachname: 'Anders', email: 'art18@beispiel.example', firma: 'Art Achtzehn GmbH' } }))).status).toBe(400);
+    // Auch keine Firma nebenbei (vorher legte die Route sie vor der Art.-18-Prüfung an).
+    expect((await crm()).firmen.length).toBe(firmenVorher);
     const nw = await import('@/app/api/netzwerken/route') as unknown as Route;
     const e = { erfassungId: randomUUID(), erfasstAm: new Date().toISOString(), eventId: 'ev-naht-1', kontakt: { vorname: 'Neu', nachname: 'Schraenkt', telefon: '+49 30 5550001' }, bilder: [{ name: 'k.jpg', typ: 'image/jpeg', daten: JPEG }], schritt: 'nur-kontakt', zustaendig: 'kevin' };
     expect((await nw.POST(anfrage('/api/netzwerken', sitzung('kevin'), 'POST', e))).status).toBe(409);

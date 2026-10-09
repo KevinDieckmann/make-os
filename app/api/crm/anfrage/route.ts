@@ -29,7 +29,6 @@ import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste'
 import { neueKennung } from '@/lib/kennung';
 import { nameVon } from '@/lib/crm/team';
 import { firmaSichern } from '@/lib/crm/person-anlegen-server';
-import { dublettePruefen } from '@/lib/crm/person-anlegen';
 import { kontaktAnlegenErlaubt, KONTAKT_NUR_BUSINESS } from '@/lib/inbox/aus-gespraech';
 import { istGespraechId } from '@/lib/inbox/strom';
 
@@ -66,21 +65,21 @@ export async function POST(req: Request) {
     if (!g) return NextResponse.json({ ok: false, fehler: 'Gespräch nicht gefunden.' }, { status: 404 });
     if (!kontaktAnlegenErlaubt(g.gespraech.bereich)) return NextResponse.json({ ok: false, fehler: KONTAKT_NUR_BUSINESS }, { status: 403 });
   }
+  const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
+  const ids = { kontakt: neueId('c'), followUp: neueId('fu') };
+  // Erst prüfen, dann wirken (Nahtstellen 09.10.): derselbe Bau als Probe auf dem jetzigen Stand — lehnt er ab (Art. 18, eingeschränkte Person,
+  // mehrdeutige Nummer, fehlender Text …), entsteht auch keine Firma. Vorher legte die Route die Firma VOR der Prüfung an.
+  const probe = anfrageBauen(eingabe, { kontakte: await kontakteLaden(), crm: await ladeCrm(), person, heute, jetzt, ids });
+  if (!probe.ok) return NextResponse.json({ ok: false, fehler: probe.fehler }, { status: 400 });
   // 1.8: die Firma einer NEUEN Person über den EINEN Weg sichern (nicht, wenn die Mail/Nummer schon eine Person der Kartei trifft — die behält ihre Firma).
   const neuFirma = !b.kontaktId && typeof b.neu?.firma === 'string' ? b.neu.firma.trim() : '';
   let gesichert: { id: string; name: string } | undefined;
-  if (neuFirma) {
-    const kartei = await kontakteLaden();
-    const n = b.neu ?? {};
-    if (!dublettePruefen({ vorname: n.vorname, nachname: n.nachname, email: n.email, telefon: n.telefon }, kartei, '').gleich) {
-      // Die gefundene bzw. angelegte Firma geht an den Bau (Nahtstellen 09.10.) — nie ein zweites Suchen nur über den genauen Namen.
-      const plan = await firmaSichern(neuFirma, { email: n.email }, werAus(req));
-      if (plan) gesichert = { id: plan.firma.id, name: plan.firma.name };
-    }
+  if (neuFirma && probe.bau.neuePerson) {
+    // Die gefundene bzw. angelegte Firma geht an den Bau (Nahtstellen 09.10.) — nie ein zweites Suchen nur über den genauen Namen.
+    const plan = await firmaSichern(neuFirma, { email: b.neu?.email }, werAus(req));
+    if (plan) gesichert = { id: plan.firma.id, name: plan.firma.name };
   }
   const crm = await ladeCrm();
-  const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
-  const ids = { kontakt: neueId('c'), followUp: neueId('fu') };
   // Sperrliste (28.09., Ablaufprüfung): eine NEUE Person darauf bekommt die Werbesperre — nicht blockiert.
   const sperrEintraege = await sperrlisteLaden();
   const sperre = (k: Kontakt) => neuanlageSperre(k, sperrEintraege, heute);
