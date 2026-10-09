@@ -88,14 +88,19 @@ bleiben).
    `system/neustart.json` schaltet die Einrichtung in den Neustart-Modus.
 8. **Erstes Konto:** `cd /srv/make-os/app && docker compose exec app node scripts/einrichtung-token.mjs` → auf `/anmelden` „Erstes Konto einrichten“:
    dieselbe Adresse wie bisher, Vorname so, dass der Speichername aus dem Bericht entsteht; zweiter Faktor (in einer neuen Instanz Pflicht).
-9. **Sofort danach** Konto › Haushalt: den eigenen Haushalt GENAU wie im Bericht eintragen — vor allem anderen (bis dahin sucht die App die Bestände je
-   Haushalt unter „haupt“).
+9. **Sofort danach** (nach dem zweiten Faktor) Konto › Haushaltsfinanzen › Feld „Name des Haushalts“: GENAU der Name aus dem Bericht — das Feld ist
+   mit dem Namen vorbelegt, unter dem im neuen Ordner Bestände liegen (Generalprobe 09.10.: vorher setzte „Freischalten“ fest „haushalt“, und die
+   übernommenen CRM-/Aufgaben-Dateien und die Sperrliste waren nicht zu finden). Dann beim eigenen Konto „Haushalt „…““ klicken — vor allem anderen.
+   Bis dahin zeigen viele Karten nichts bzw. 403 in der Konsole; das ist so.
 10. **Grabsteine anwenden** (Pflicht, wie nach jedem Restore):
     `cd /srv/make-os/app && docker compose exec -T app node -e "fetch('http://localhost:3000/api/crm/datenschutz',{method:'POST',headers:{'content-type':'application/json','x-make-key':process.env.MAKE_OS_KEY||''},body:JSON.stringify({aktion:'grabsteine'})}).then(async r=>{console.log(await r.text());process.exit(r.ok?0:1)}).catch(e=>{console.error(e.message);process.exit(1)})"`
 11. **Verbindungsprüfung** (nur lesen, nur Zahlen): `cd /srv/make-os/app && docker compose exec -T app node scripts/verbindungen-pruefen.mjs --url http://localhost:3000 --person <speichername>`
-12. **Arbeiter starten:** `cd /srv/make-os/app && docker compose up -d arbeiter`
+12. **Arbeiter starten:** `cd /srv/make-os/app && docker compose up -d arbeiter` — danach **einmal sichern**, damit der neue Ordner sofort in
+    einer Sicherung liegt (das Archiv ist nicht mehr in der Nachtsicherung) und Einrichtung 0.3 grün wird: `cd /srv/make-os/app && bash deploy/sicherung.sh`.
+    Lage-Sammler (0.4/0.5/10.3) melden in den neuen Ordner erst mit ihrem nächsten Lauf.
 13. **Zweite Person:** Konto › Einladen mit „Vorname“ = ihr bisheriger Speichername (siehe Bericht) und ihrer Adresse; nach dem Beitreten zweiter Faktor,
-    dann Konto › Haushalt (derselbe Haushalt) und ggf. Inhaberin.
+    dann ordnet die Inhaberin sie unter Konto › Haushaltsfinanzen zu („Freischalten“ = derselbe Haushalt) und macht sie ggf. zur Inhaberin. Bis dahin
+    sieht die zweite Person auf Heute fast nichts (403 in der Konsole) — erwartet.
 14. **Kontrolle in der App:** Markttraktion (Zahlen wie im Bericht), Kontakt öffnen › Umsatz › eine Datei öffnen, Aufgaben (Projekt „Übernommen“),
     Stammdaten › Datenqualität — danach die Einrichtung.
 
@@ -118,6 +123,16 @@ bleiben).
   Dockerfile), `docker compose exec app node scripts/ki-anbieter-pruefen.mjs` scheitert dort.
 
 **Rückweg (Code):** nur neue Dateien (Skript, `lib/neustart/*`, Tests), keine Bestandsform geändert. Der alte Stand ignoriert `system/neustart.json`.
+
+**Generalprobe am Mac (09.10. abends, erfundene Daten — Demo-Ordner als „alt“, Wächter `tests/generalprobe-neustart.test.ts`, `tests/client-buendel.test.ts`):**
+Ablauf 1–14 genau so durchgespielt (Probelauf, `--ausfuehren`, App ohne Demo-Schalter, Einrichtungs-Code, erstes Konto mit zweitem Faktor über
+`/anmelden`, Haushalt, Grabsteine, Verbindungsprüfung, Arbeiter, Einladung + zweites Konto) und die Einrichtung als „neuer Kunde“ durchgeklickt.
+Behoben: (1) `next build` brach ab (Agenten-Oberfläche zog über `unterlagen-werkzeug.ts` Server-Module ins Browser-Bündel — tsc/vitest/lint merken
+das nicht, erst das Ausrollen wäre gescheitert; neuer Wächter). (2) Haushaltsname nicht eintippbar (siehe Schritt 9). (3) „Als Nächstes“ stand im
+Neustart auf „0.1 · Update einspielen“ → jetzt zuerst der Kern. (4) Ein persönlicher Auftrag an den Gesundheits-Head machte 9.1 grün. (5) Bank-CSV mit
+„Buchungstag“ im Haushalt-Import → „Keine Buchung erkannt“. (6) Privat-Finanzen leer: „Konto anlegen“ legte ein Konto in den alten Stammdaten an statt
+im Konten-Register. Hinweise: die Speichernamen MÜSSEN die alten sein (Bericht) — das CRM-Team (`NEXT_PUBLIC_MAKE_OS_CRM_TEAM`, ohne Variable
+die Vorgabe des Codes) und `besitzer`/`zustaendig` der Kartei hängen daran; der Bau braucht dieselben `NEXT_PUBLIC_*` wie bisher.
 
 ## 09.10.2026 — Auftrag an Agenten je Person, Gesundheits-Unterlagen (nur lokal — Branch `agent-auftrag`, Basis 523fbbfc + Merge `agenten-nacht`)
 
