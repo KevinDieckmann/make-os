@@ -15,6 +15,7 @@ import { datenOrdner, loadJson } from '@/lib/store/local-db';
 import { inhaltLaden } from '@/lib/dateien/ablage';
 import { BILD_ORDNER, bildOeffnen, type BildOrdner } from '@/lib/store/bild-ablage';
 import type { MedienKatalog } from '@/lib/medien/typen';
+import { PERSON_BESTAENDE } from './konto-daten';
 
 export const INSTANZ_EXPORT_HINWEIS = 'Vollständiger Export dieser MAKE-OS-Instanz (entschlüsselt). Enthält Personendaten — nur verschlüsselt aufbewahren bzw. übergeben und nach der Übergabe löschen.';
 export const NICHT_IM_EXPORT = [
@@ -24,9 +25,39 @@ export const NICHT_IM_EXPORT = [
   { was: 'Datenschlüssel, Pepper, Sitzungsgeheimnis', grund: 'nie in einer Datei — liegen beim Betreiber (Passwort-Manager)' },
   { was: 'Schlüssel je Medium (in medien--*, medien-privat--*, medien-uploads)', grund: 'nie in einer Datei — dort steht nur die Kennung des Datenschlüssels (`kid`)' },
   { was: 'Medien-Dateien (Fotos, Videos, Lizenz-Nachweise, Unterschriften)', grund: 'zu groß für eine Datei; verschlüsselt im Medienspeicher — Liste der Objekte unter „medien“, einzeln herunterladen in der App (Fotos & Videos) vor dem Löschen der Instanz' },
+  { was: 'Zugangsdaten verbundener Dienste (Postfach-Passwörter, Google-/WHOOP-Token, iCloud-App-Passwort, OAuth-Zustände)', grund: 'nie in einer Datei — die neue Instanz verbindet die Dienste neu; im Export steht nur ein Vermerk „entfernt“' },
+  { was: 'Passwort-Hashes, Salz, zweiter Faktor (Geheimnis, Wiederherstellungs-Hashes) und offene Einladungscodes der Konten', grund: 'Zugangsgeheimnisse — die Konten stehen ohne sie im Export (`zweiterFaktorAn` zeigt nur, ob einer eingerichtet war)' },
 ];
 
 const MEDIEN_KATALOG = /^medien(-privat)?--[a-z0-9-]+$/;
+
+/**
+ * Zugangsdaten nie in die Datei (09.10., Befund der Medien-Prüfung): Der Export schrieb jeden Bestand entschlüsselt — auch die Token und
+ * Passwörter verbundener Dienste und die Zugangsgeheimnisse der Konten. EINE Regel: die Bestände je Person mit `export: false`
+ * (lib/datenschutz/konto-daten.ts `PERSON_BESTAENDE` — dieselbe Liste, die den Konto-Export schützt) und die globalen OAuth-Bestände.
+ */
+const OHNE_EXPORT_GLOBAL = new Set(['oauth-tokens', 'oauth-states', 'google-oauth-zustand', 'whoop-oauth-zustand']);
+const OHNE_EXPORT_BASIS = PERSON_BESTAENDE.filter(b => b.export === false).map(b => b.basis);
+export function zugangsBestand(name: string): boolean {
+  if (OHNE_EXPORT_GLOBAL.has(name)) return true;
+  return OHNE_EXPORT_BASIS.some(b => name === b || name.startsWith(`${b}--`));
+}
+/** Konten ohne Zugangsgeheimnisse (rein): Hash, Salz, KDF, zweiter Faktor (+ Entwurf) weg, offene Einladungen ohne Code. */
+export function kontenOhneGeheimnisse(inhalt: unknown): unknown {
+  if (!inhalt || typeof inhalt !== 'object') return inhalt;
+  const o = inhalt as { konten?: unknown; einladungen?: unknown } & Record<string, unknown>;
+  const konten = Array.isArray(o.konten) ? o.konten.map(k => {
+    if (!k || typeof k !== 'object') return k;
+    const { hash: _h, salz: _s, kdf: _k, zweiterFaktor, zweiterFaktorEntwurf: _e, ...rest } = k as Record<string, unknown>;
+    return { ...rest, zweiterFaktorAn: !!zweiterFaktor };
+  }) : o.konten;
+  const einladungen = Array.isArray(o.einladungen) ? o.einladungen.map(e => {
+    if (!e || typeof e !== 'object') return e;
+    const { code: _c, ...rest } = e as Record<string, unknown>;
+    return rest;
+  }) : o.einladungen;
+  return { ...o, ...(o.konten !== undefined ? { konten } : {}), ...(o.einladungen !== undefined ? { einladungen } : {}) };
+}
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,120}$/i;
 
@@ -56,11 +87,17 @@ export async function* instanzExportTeile(kopf: Record<string, unknown>): AsyncG
   const medienKataloge: MedienKatalog[] = [];
   let erst = true;
   for (const n of await bestandsNamen()) {
+    if (zugangsBestand(n)) {
+      yield `${erst ? '' : ','}${JSON.stringify(n)}:${JSON.stringify({ entfernt: 'Zugangsdaten — nie im Export (Dienst in der neuen Instanz neu verbinden)' })}`;
+      erst = false;
+      continue;
+    }
     let inhalt: unknown;
     try { inhalt = await loadJson<unknown>(n); } catch (e) { fehler.push({ was: n, grund: e instanceof Error ? e.message.slice(0, 160) : 'nicht lesbar' }); continue; }
     if (MEDIEN_KATALOG.test(n) && inhalt && Array.isArray((inhalt as MedienKatalog).medien)) medienKataloge.push(inhalt as MedienKatalog);
     // Schlüssel je Medium nie in die Datei — nur die Kennung des Datenschlüssels bleibt (lib/medien/export.ts).
     if (istMedienBestand(n)) inhalt = ohneMedienSchluessel(inhalt);
+    if (n === 'konten') inhalt = kontenOhneGeheimnisse(inhalt);
     yield `${erst ? '' : ','}${JSON.stringify(n)}:${JSON.stringify(inhalt)}`;
     erst = false;
   }

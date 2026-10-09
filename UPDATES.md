@@ -1303,6 +1303,14 @@ Kevin 08.10.: „alles nur auf dem Server führen; wir brauchen nachher im Mac n
 (Sicherungs-Abholung auf den Mac — **offene Frage an Kevin**, ob sie bleibt), der Telegram-Bote (`bote.mjs`, läuft nur mit `start.sh` am Mac,
 kein launchd-Dienst), der Kalender vom Mac (war Teil des Zulieferers; der Server holt iCloud/Google selbst).
 
+## 09.10.2026 — Instanz-Export ohne Zugangsdaten (Sicherheits-Korrektur, Branch `instanz-export-schutz`)
+Befund der Medien-Prüfung: Der Instanz-Export (System › Datenschutz, nur Inhaber + Passwort/zweiter Faktor) schrieb JEDEN Bestand entschlüsselt in die Datei —
+auch Postfach-Passwörter, Google-/WHOOP-Token, das iCloud-App-Passwort, OAuth-Zustände sowie Passwort-Hashes, Salz und das 2FA-Geheimnis der Konten.
+Jetzt: Bestände mit `export: false` (dieselbe Liste wie im Konto-Export, `PERSON_BESTAENDE`) und die OAuth-Bestände stehen nur als Vermerk „entfernt“ im Export;
+Konten ohne Hash/Salz/KDF/zweiten Faktor (`zweiterFaktorAn` zeigt nur ja/nein), Einladungen ohne Code. „Nicht enthalten“ im Kopf nennt beides.
+Wächter `tests/instanz-export-schutz.test.ts`. **Rückweg:** reine Code-Änderung, keine Daten berührt. **Online betroffen:** der Export ist seit 05.10. online —
+wer seitdem einen Instanz-Export gezogen hat, sollte die Datei löschen (sie enthielt die Zugangsdaten).
+
 ## 08.10.2026 spät — Onboarding — Nachbesserung nach der Gegenprüfung (nur lokal — Branch `onboarding-fix`)
 
 Strenge Gegenprüfung von B0 (18 Befunde). Behoben:
