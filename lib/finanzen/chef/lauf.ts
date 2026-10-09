@@ -30,7 +30,7 @@ import { zahlenImText } from './pruefung';
 import { rechne } from './rechne';
 import { leererStand, standName, vorschlaegeMischen, vorschlaegeFuerDaten, EINSTELLUNG_NAME, STANDARD_CHEF_EINSTELLUNG, type Bericht, type ChefStand, type ChefEinstellung } from './stand';
 import { neueKennung } from '@/lib/kennung';
-import { nordsternLaden } from '@/lib/planung/nordstern-server';
+import { zieleFuerHead } from '@/lib/planung/jahresziele-sicht';
 
 export interface LaufAuftrag { modus: Modus; haushalt: string | null; person?: string; frage?: string; monat?: string; ausgeloest: Bericht['ausgeloest'] }
 export interface LaufErgebnis { ok: boolean; fehler?: string; bericht?: Bericht; ohneKi?: boolean; ruhigText?: string; neu?: number; aktualisiert?: number }
@@ -103,7 +103,7 @@ async function crmFuerFinanzen(heute: string) {
     const posten = (await loadJson<{ posten?: Planposten[] }>('liquiplan'))?.posten ?? [];
     const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
     return {
-      hinweis: 'Pipeline ist Szenario, nie Basisplan. Mandate ohne Liquiplan-Posten sind Kandidaten für die Planung (Kevin entscheidet unter Produkte & Mandate).',
+      hinweis: 'Pipeline ist Szenario, nie Basisplan. Mandate ohne Liquiplan-Posten sind Kandidaten für die Planung (ein Mensch entscheidet unter Produkte & Mandate).',
       mrr_netto: mrr(crm.mandate), konzentration: konzentration(crm.mandate),
       mandate_auslaufend_90_tage: crm.mandate.filter(m => m.status === 'aktiv').map(m => ({ kunde: m.kunde, titel: m.titel.slice(0, 80), ende_in_tagen: mandatLage(m, heute).endeIn })).filter(x => x.ende_in_tagen !== null && x.ende_in_tagen <= 90),
       mandate_ohne_liquiplan: crm.mandate.map(m => ({ m, v: planpostenAus(m, heute) })).filter(x => x.v && !posten.some(pp => pp.id === x.v!.id)).map(x => ({ kunde: x.m.kunde, status: x.m.status, betrag_brutto: x.v!.betrag, rhythmus: x.v!.rhythmus })),
@@ -203,9 +203,11 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
 
   // Nordstern (08.10. abends): aus den Daten des Haushalts statt fest im Prompt — im Business-Lauf (ohne Haushalt) der des Inhabers,
   // dem das Business gehört (wie Index und Cockpit). Fehlt er: null, der Prompt nennt dann keinen.
+  // Nachschliff 09.10.: dazu die Jahresziele über die EINE Lesestelle (`zieleFuerHead`) — der Business-Lauf nur Business-Ziele, der Haushalts-Lauf
+  // (nur der Haushalt des Inhabers, dem der Bestand `ziele` gehört) auch Privat. Texte ohne Rahmen-Marken: der `<daten>`-Block endet nie vorzeitig.
   const nsHaushalt = a.haushalt ?? await haushaltDesInhabers();
-  const nordstern = nsHaushalt ? ((await nordsternLaden(nsHaushalt).catch(() => null))?.text || null) : null;
-  const daten = { ...(await datenpaket(bild, einstellung, stand, a.modus, business)), nordstern };
+  const ziele = await zieleFuerHead({ person: a.person ?? null, privat: !!a.haushalt, haushalt: nsHaushalt });
+  const daten = { ...(await datenpaket(bild, einstellung, stand, a.modus, business)), nordstern: ziele.nordstern, jahresziele: ziele.jahresziele.map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt })) };
   const user = `<daten>\n${JSON.stringify(daten, null, 1)}\n</daten>\n\n${aufgabe(a.modus, { frage: a.frage, person: a.person, monat: a.monat, haushalt: !!a.haushalt })}`;
   const tools = a.modus === 'tagescheck' ? [] : a.haushalt && a.modus !== 'steuercheck' ? [RECHNE, SUCHE] : [RECHNE];
   const maxTokens = a.modus === 'tagescheck' || a.modus === 'frage' ? 6000 : 12000;

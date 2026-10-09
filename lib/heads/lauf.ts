@@ -91,7 +91,10 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   // K6a: Meetings mit Termin-Verweis tragen im Paket die Zeit ihres Termins (nie `am`) — nur fürs Paket, nie gespeichert.
   const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server');
   // Systemlauf (ohne Person): Termin-Zeiten aus der Sicht von niemandem — jeder private Termin bleibt maskiert.
-  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person ?? ''), crm, heute, a.person, alt) as Record<string, unknown>;
+  // Nachschliff 09.10.: Nordstern + Business-Jahresziele (EINE Lesestelle, Business-Heads nie Privat; Systemlauf = Haushalt des Inhabers).
+  const { zieleFuerHead } = await import('@/lib/planung/jahresziele-sicht');
+  const ziele = await zieleFuerHead({ person: a.person, privat: false, heute });
+  const daten = vollesPaket(a.head, a.modus, await kontakteMitTerminZeitenLesen(kontakte, a.person ?? ''), crm, heute, a.person, alt, ziele) as Record<string, unknown>;
 
   // Nichts zu tun → ohne Modell.
   const leer = a.head === 'sales' && a.modus === 'power_hour' ? !(daten.karten as unknown[]).length

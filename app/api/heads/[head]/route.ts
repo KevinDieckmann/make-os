@@ -117,7 +117,8 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
     const st = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
     const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server'); // K6a: Meeting-Zeit aus dem Termin
-    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), await kontakteMitTerminZeitenLesen(kontakte, person), await ladeCrm(), localDay(), person, st);
+    const { zieleFuerHead } = await import('@/lib/planung/jahresziele-sicht'); // Nachschliff 09.10.: dieselben Ziele wie im Lauf
+    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), await kontakteMitTerminZeitenLesen(kontakte, person), await ladeCrm(), localDay(), person, st, await zieleFuerHead({ person, privat: false }));
     return NextResponse.json({ ok: true, daten: d, zeichen: JSON.stringify(d).length });
   }
 
