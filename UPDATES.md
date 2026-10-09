@@ -4,6 +4,37 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Kalender: Wischen (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
+
+Kevin 09.10.: „Wenn ich mit 2 Fingern nach links wische, soll die nächste Woche angezeigt werden, nach rechts wieder zurück.“
+
+**Gebaut:** Wischen blättert in **Tag · 4 Tage · Woche · Monat** (nicht Jahr/Termine, nicht im Aufgaben-Modus) — dieselbe Funktion wie die Pfeile
+‹ ›, also immer der nächste/vorige Zeitraum der Ansicht.
+- **Trackpad (Mac, iPad mit Trackpad):** zwei Finger waagerecht. Richtung wie beim Rollen — mit „natürlichem Scrollen“ (Mac-Vorgabe) heißt das
+  Finger nach **links = weiter**, nach rechts = zurück. Aufsummiert ab 60 px, danach **Sperre 600 ms** (verlängert sich, solange der Schwung
+  nachläuft, höchstens 1,4 s) — ein Wischer springt nie zwei Wochen; ein Wischer in die Gegenrichtung nach 600 ms löst sofort. Senkrechtes Rollen
+  bleibt beim Raster; nur ein waagerechter Wischer wird abgefangen (sonst blättert der Browser mit seiner Zurück-Geste die Seite weg), dazu
+  `overscroll-behavior-x: none` am Inhalt. Pinch (ctrlKey) zählt nie.
+- **Touch (Handy, iPad ohne Trackpad):** **ein Finger waagerecht über die Kopfzeile der Tage** (Wochentag + Datum; im Monat die Wochentage).
+  Entscheidung: zwei Finger am Handy fängt iOS als Zoom ab (`maximum-scale` gilt dort nicht für Pinch) und ist einhändig unbequem; ein Finger im
+  Raster kollidiert mit Rollen, Aufziehen und Verschieben (350 ms Halten). Die Kopfzeile rollt nicht und trägt keine Knöpfe (`touch-action: pan-y`:
+  senkrecht rollt die Seite weiter).
+- **Nie** während Ziehen/Aufziehen im Raster (`data-kalender-zieht`, gedrückte Taste), nie über einem offenen Termin-Fenster/Dialog.
+- Hinweis in der Hilfezeile unter dem Raster: „wischen blättert (zwei Finger, am Handy über die Tageszeile)“.
+
+Regeln rein in `components/os/kalender/wischen.ts` (`radSchritt`, `kopfWischRichtung`, `wischenAktiv`, Hook `useKalenderWischen`), eingehängt in
+`Kalender.tsx`; Kopfzeilen in `Zeitraster.tsx`/`Monat.tsx` markiert. Tests: `tests/kalender-wischen.test.ts` (Schwelle, Richtung, Sperre mit
+Schwung, Deckel, Gegenrichtung, senkrecht/Pinch/blockiert nie abgefangen, Touch, Einhängen).
+
+**So testet ihr:**
+1. Mac: Kalender, Ansicht Woche → mit zwei Fingern auf dem Trackpad nach links wischen → nächste Woche (KW +1). Nach rechts → zurück.
+2. Einmal kräftig wischen → es springt genau EINE Woche, nicht mehrere.
+3. Mit zwei Fingern senkrecht rollen → das Raster rollt wie bisher, die Woche bleibt.
+4. Ansicht Monat → wischen blättert den Monat; Ansicht Tag → den Tag. Ansicht Jahr → nichts passiert.
+5. Einen Termin anklicken (Fenster offen) → wischen tut nichts.
+6. Handy: Ansicht Tag → mit einem Finger über die Zeile mit Wochentag und Datum nach links wischen → nächster Tag. Im Raster selbst rollt der Finger
+   wie bisher.
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.
