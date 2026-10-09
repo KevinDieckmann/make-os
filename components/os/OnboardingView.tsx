@@ -10,13 +10,16 @@
 //   · Ein roter Befund schlägt jedes Häkchen; Schritte mit `bestaetigen` brauchen Prüfung UND Häkchen; alte Häkchen zählen nie
 //     („früher abgehakt — bitte bestätigen“). Die Anleitung bleibt bei erledigten Schritten aufklappbar.
 // Daten aus /api/onboarding; Inhaber-Schritte und Privat-Schritte prüft der Server (403) — die Oberfläche zeigt es nur an.
+// Update 2 (16.10., B4/B10): oben „Nächster Schritt“ mit Anleitung und Fortschritt je Ebene; je Schritt Voraussetzungen („erst …“), worauf
+// er wartet und welche Zahl er einträgt (Datenkarte) — alles nur über `fortschrittVon`/`istFertig`/`offeneVoraussetzungen` (keine zweite
+// Fertig-Regel). Fällt ein schon einmal grüner Schritt zurück, steht oben „braucht dich“ (`zurueckgefallen`, dieselbe Regel wie auf Heute).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  ABLAUF, DATENKARTE, EBENEN, ETAPPEN, GRUPPEN, ebeneMitId, fortschrittVon, gruppeVon, istFertig, schrittFuer, schritteDerEbene, schritteFuer, sichtbarFuer, werText,
-  type Ebene, type Gruppe, type Kontext, type Schritt,
+  ABLAUF, DATENKARTE, EBENEN, ETAPPEN, GRUPPEN, datenkarteMitId, ebeneMitId, fortschrittVon, gruppeVon, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
+  schritteFuer, sichtbarFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
 } from '@/lib/make-one/onboarding-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Leerzustand, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
 
@@ -24,9 +27,8 @@ const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
 const absatz: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: 0 };
 const stark: CSSProperties = { color: C.ink, fontWeight: 600, textDecoration: 'none' };
 
-interface Befund { erfuellt: boolean; wert: string }
-export interface Zustand { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, Befund>; frueher: string[]; ich: Kontext | null }
-const LEER: Zustand = { erledigt: {}, befunde: {}, frueher: [], ich: null };
+export interface Zustand { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, PruefBefund>; frueher: string[]; gruen: Record<string, string>; ich: Kontext | null }
+const LEER: Zustand = { erledigt: {}, befunde: {}, frueher: [], gruen: {}, ich: null };
 /** Gestaffeltes Erscheinen (70 ms je Karte): weiter unten nicht länger warten. */
 const MAX_I = 6;
 
@@ -39,7 +41,7 @@ export function useOnboarding() {
       .then(async r => {
         const d = await r.json().catch(() => null);
         if (!r.ok || !d) { setMeldung(d?.error ?? d?.fehler ?? 'Der Stand der Einrichtung ließ sich nicht laden — bitte gleich noch einmal öffnen.'); setZ(LEER); return; }
-        setZ({ erledigt: d.erledigt ?? {}, befunde: d.befunde ?? {}, frueher: d.frueher ?? [], ich: d.ich ?? null });
+        setZ({ erledigt: d.erledigt ?? {}, befunde: d.befunde ?? {}, frueher: d.frueher ?? [], gruen: d.gruen ?? {}, ich: d.ich ?? null });
       })
       .catch(() => { setMeldung('Keine Verbindung — der Stand der Einrichtung ließ sich nicht laden.'); setZ(LEER); });
   }, []);
@@ -112,10 +114,31 @@ function Anleitung({ s }: { s: Schritt }) {
   );
 }
 
+/** Farbe eines Befunds: grün getan, gedämpft „nichts zu prüfen“, sonst Achtung. */
+const befundFarbe = (b: PruefBefund) => (b.erfuellt ? LEUCHT.gut : b.leer ? C.inkLeise : LEUCHT.achtung);
+
+/**
+ * Hinweise eines Schritts (B4): offene Voraussetzungen („erst 3.6 · 0-Punkt“, nur über `offeneVoraussetzungen` → `istFertig`), worauf er
+ * wartet, und welche Zahlen der Datenkarte er einträgt. Nichts davon sperrt — es sind Hinweise.
+ */
+function SchrittHinweise({ s, z }: { s: Schritt; z: Zustand | null }) {
+  const offen = offeneVoraussetzungen(s, z?.ich ?? null, z);
+  const orte = (s.datenOrt ?? []).map(datenkarteMitId).filter((d): d is NonNullable<typeof d> => !!d);
+  if (!offen.length && !s.wartetAuf && !orte.length) return null;
+  return (
+    <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
+      {offen.length > 0 && <p style={{ ...absatz, color: LEUCHT.achtung }}>Erst: {offen.map(v => `${v.nr} · ${v.titel}${!schrittFuer(v, z?.ich ?? null) ? ' (Inhaber)' : ''}`).join(' · ')}</p>}
+      {s.wartetAuf && <p style={absatz}><span style={stark}>Wartet auf: </span>{s.wartetAuf}</p>}
+      {orte.map(d => <p key={d.id} style={absatz}><span style={{ color: LEUCHT.gut }}>Hier tragt ihr ein: </span>{d.fakt}{d.nicht !== '–' && <><span style={{ color: LEUCHT.achtung }}> · nicht: </span>{d.nicht}</>}</p>)}
+    </div>
+  );
+}
+
 /** Eine Schritt-Zeile. Funktion statt Komponente — sonst baut React sie bei jedem Klick neu auf. */
 function schrittZeile(s: Schritt, z: Zustand | null, haken: (id: string, an: boolean) => void, mitWann: boolean) {
   const befund = s.pruefung ? z?.befunde[s.pruefung] : undefined;
-  const automatisch = !!befund && !s.bestaetigen;
+  // Ein „leerer“ Befund (nichts zu prüfen) lässt das Häkchen entscheiden — dann ist der Haken klickbar.
+  const automatisch = !!befund && !befund.leer && !s.bestaetigen;
   const hand = !!z?.erledigt[s.id];
   const fertig = istFertig(s, z);
   const darf = !s.nurInhaber || !!z?.ich?.inhaber;
@@ -132,7 +155,8 @@ function schrittZeile(s: Schritt, z: Zustand | null, haken: (id: string, an: boo
             {mitWann && <Chip farbe={C.inkLeise}>{GRUPPEN[gruppeVon(s)].titel}</Chip>}
             {s.optional && <Chip farbe={C.inkLeise}>optional</Chip>}
             {frueher && <Chip farbe={LEUCHT.achtung}>früher abgehakt — bitte bestätigen</Chip>}
-            {befund && <Chip umbrechen farbe={befund.erfuellt ? LEUCHT.gut : LEUCHT.achtung}>{befund.erfuellt ? '✓ ' : '◇ '}{befund.wert}</Chip>}
+            {befund && <Chip umbrechen farbe={befundFarbe(befund)}>{befund.erfuellt ? '✓ ' : befund.leer ? '○ ' : '◇ '}{befund.wert}</Chip>}
+            {!!z?.gruen[s.id] && befund && !befund.erfuellt && !befund.leer && <Chip farbe={LEUCHT.kritisch}>war schon grün — braucht dich</Chip>}
             {s.bestaetigen && befund?.erfuellt && !hand && <Chip farbe={LEUCHT.achtung}>noch bestätigen</Chip>}
             <Chip farbe={C.inkLeise}>{s.minuten} Min.</Chip>
           </div>
@@ -141,6 +165,7 @@ function schrittZeile(s: Schritt, z: Zustand | null, haken: (id: string, an: boo
         {fertig
           ? <details><summary style={{ ...absatz, cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center' }}>Anleitung</summary><Anleitung s={s} /></details>
           : <Anleitung s={s} />}
+        {!fertig && <SchrittHinweise s={s} z={z} />}
         {(s.wo || wann) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: fertig ? 0 : 8, fontSize: TYP.bedien, color: C.inkLeise }}>
             {s.wo && <Link href={s.wo.href} style={link}>{s.wo.label} ›</Link>}
@@ -258,6 +283,55 @@ function abschnitte(meine: readonly Schritt[], z: Zustand | null): Gruppe[] {
   return reihe.filter(g => meine.some(s => gruppeVon(s) === g));
 }
 
+/**
+ * B10: Schritte, die schon einmal grün waren und jetzt rot sind („braucht dich“) — dieselbe Regel `zurueckgefallen` wie die Karte auf Heute.
+ * Ohne solche Schritte keine Karte.
+ */
+function BrauchtDich({ schritte, z }: { schritte: readonly Schritt[]; z: Zustand | null }) {
+  const zurueck = zurueckgefallen(schritte, z);
+  if (!zurueck.length) return null;
+  return (
+    <Hinweis art="kritisch" rolle="status" titel={zurueck.length === 1 ? '1 Punkt braucht dich' : `${zurueck.length} Punkte brauchen dich`}>
+      War schon eingerichtet und ist zurückgefallen:{' '}
+      {zurueck.map((s, i) => <span key={s.id}>{i > 0 && ' · '}{s.wo ? <Link href={s.wo.href} style={stark}>{s.nr} · {s.titel}</Link> : <strong style={stark}>{s.nr} · {s.titel}</strong>}{s.pruefung && z?.befunde[s.pruefung] ? ` (${z.befunde[s.pruefung].wert})` : ''}</span>)}
+    </Hinweis>
+  );
+}
+
+/** B4: der nächste Schritt oben — mit Anleitung, Ort und den Hinweisen (über `fortschrittVon`, keine eigene Reihenfolge). */
+function NaechsterSchritt({ s, z }: { s: Schritt; z: Zustand | null }) {
+  const befund = s.pruefung ? z?.befunde[s.pruefung] : undefined;
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.linie}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+        <span style={{ ...absatz, textTransform: 'uppercase', letterSpacing: '.06em', fontSize: TYP.mikro }}>Nächster Schritt</span>
+        <Chip farbe={s.ebene === 'ich' ? LEUCHT.schlaf : s.nurInhaber ? LEUCHT.puls : LEUCHT.beziehung}>{werText(s)}</Chip>
+        <Chip farbe={C.inkLeise}>{s.minuten} Min.</Chip>
+        {befund && <Chip umbrechen farbe={befundFarbe(befund)}>{befund.wert}</Chip>}
+      </div>
+      <div style={{ fontSize: TYP.titel, fontWeight: 700, color: C.ink, marginBottom: 6 }}>{s.nr} · {s.titel}</div>
+      <Anleitung s={s} />
+      <SchrittHinweise s={s} z={z} />
+      {s.wo && <div style={{ marginTop: 12 }}><Knopf href={s.wo.href}>{s.wo.label} ›</Knopf></div>}
+    </div>
+  );
+}
+
+/** Fortschritt je Ebene (B4) — dieselbe Auswahl wie die Ebenen-Seiten (`schritteAufEbene`). */
+function EbenenStand({ z }: { z: Zustand | null }) {
+  const ebenen = EBENEN.filter(e => !e.nurInhaber || !!z?.ich?.inhaber);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 14, marginTop: 14 }}>
+      {ebenen.map(e => (
+        <Link key={e.id} href={e.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minHeight: 44 }}>
+          <div style={{ ...absatz, color: C.ink, fontWeight: 600, marginBottom: 6 }}>{e.titel} ›</div>
+          <Fortschritt schritte={schritteAufEbene(e.id, z?.ich ?? null)} z={z} />
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function OnboardingUebersicht() {
   const { z, haken, meldung } = useOnboarding();
   const meine = schritteFuer(z?.ich ?? null);
@@ -266,13 +340,16 @@ export function OnboardingUebersicht() {
   return (
     <Seite titel="Einrichtung" unter="Alles verbinden und eure echten Zahlen eintragen — Schritt für Schritt, mit Erklärung.">
       <Meldung text={meldung} />
+      <BrauchtDich schritte={meine} z={z} />
       <Karte i={0} ton={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${f.fertig} von ${f.gesamt} Schritten`}>Dein Stand</Ueberschrift>
         <Fortschritt schritte={meine} z={z} gross />
+        <EbenenStand z={z} />
+        {f.naechster && <NaechsterSchritt s={f.naechster} z={z} />}
         <p style={{ ...absatz, marginTop: 12 }}>
           Gezählt werden deine Schritte („Meine Einrichtung“), die gemeinsamen{z?.ich?.inhaber ? ' und — als Inhaber — die der Instanz' : ''}, für Freitag und Samstag.
           „Einzeln bis 16.10.“ und Optionales zählt erst, wenn es getan ist. Vieles prüft die Software selbst; ein roter Befund schlägt jedes Häkchen.
-          {f.naechster && <> Als Nächstes: <strong style={stark}>{f.naechster.nr} · {f.naechster.titel}</strong>.</>}
+          Wie weit die Daten insgesamt sind, zeigt die <Link href="/os/datenbasis" style={stark}>Datenbasis ›</Link>
         </p>
       </Karte>
 

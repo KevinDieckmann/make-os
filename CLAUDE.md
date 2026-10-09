@@ -530,6 +530,14 @@ sichtbar („vor dem 0-Punkt (archiviert)“), zählt aber nicht. Nichts wird ge
   jede Prüfung in `sicher()`, beschädigter Bestand = „nicht prüfbar“; GET schreibt nie (WHOOP roh lesen, nie `whoopStatus`). Neuer Prüf-Schlüssel →
   passende Liste + Schritt-`pruefung` (Wächter `tests/onboarding-stand.test.ts`).
 - **Heute:** Widget `einrichtung` vorne in `HEUTE_STANDARD` (Freitag + Samstag-Kern der Person; weg, wenn der Kern steht).
+- **Update 2 (09.10., Branch `onboarding-u2`; UPDATES.md):** Befund `PruefBefund` (onboarding-data) kann `leer` sein (nichts zu prüfen → das Häkchen
+  entscheidet in `istFertig`, nie „grün ohne Arbeit“) oder `veraltet` (nur fürs Bild). Rechte serverseitig (B11): `PRIVAT_PRUEFUNGEN` nur mit
+  `privatFinanzZugangFuer`, `HAUSHALT_PRUEFUNGEN` (Familie) nur mit `haushaltFuer` — sonst fehlt der Befund ganz; Prüfung → `null` = „gehört der Person
+  nicht“. Head-of-IT-Befunde nur über `hoiLage()` (das Lagebild, 5 Minuten, nie nachbauen). Schritte tragen `modul`, `nach[]`, `wartetAuf`, `datenOrt`
+  (Kennungen der `DATENKARTE`) — Hinweise nur über `offeneVoraussetzungen`, „Als Nächstes“ achtet auf `nach` (sperrt nie). B10: der Morgenlauf
+  (`einrichtungFesthalten`) merkt grüne Schritte (`gruen` in `onboarding--<speicher>`, nur Kennung + Tag); „braucht dich“ NUR `zurueckgefallen`
+  (Heute-Karte + Einrichtung, keine zweite Glocke). `/os/datenbasis` = dieselben Befunde je Modul (`datenStandVon`), keine eigenen Lesewege. Wächter
+  `tests/onboarding-u2.test.ts`.
 
 ## Bauplan — so arbeiten Kevin, Malin und Claude (seit 25.09.2026)
 - `/os/bauplan` ist ein Board: **Ideen → Bereit → In Arbeit → Zum Testen → Fertig**,

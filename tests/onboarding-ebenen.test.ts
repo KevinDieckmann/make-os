@@ -10,6 +10,9 @@ import path from 'node:path';
 
 const wurzel = await fs.mkdtemp(path.join(os.tmpdir(), 'make-os-onboarding-ebenen-'));
 process.env.MAKE_OS_DATEN_DIR = wurzel;
+process.env.MAKE_VAULT_DIR = path.join(wurzel, 'vault'); // die Brain-Prüfung liest Regeln — nie der echte Vault
+process.env.MAKE_OS_DOKU_WURZEL = 'aus';
+process.env.MAKE_OS_BRAIN_INDEX = 'aus';
 process.env.MAKE_OS_KEY = 'pruef-schluessel-onboarding-ebenen';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 delete process.env.MAKE_OS_DEMO;

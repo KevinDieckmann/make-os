@@ -200,6 +200,20 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Wochenplan festhalten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0i) Einrichtung festhalten (Onboarding B10, Update 2): je Konto im Haushalt die Schritte mit Prüfung merken, die gerade fertig sind —
+  //     fällt einer später auf Rot, zeigt die Karte auf Heute „braucht dich“ (lib/onboarding-status.ts `einrichtungFesthalten`). Nur
+  //     Kennungen und Tage, idempotent; Lesen (GET /api/onboarding) schreibt nie.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Einrichtung festhalten', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { einrichtungFesthalten } = await import('@/lib/onboarding-status');
+      const e = await einrichtungFesthalten(today);
+      schritte.push({ name: 'Einrichtung festhalten', ok: true, info: e.neu ? `${e.neu} Schritt${e.neu === 1 ? '' : 'e'} neu grün` : 'nichts Neues' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Einrichtung festhalten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read
   //    ist zäh (bis ~55s), das muss nicht jeden Morgen sein.
   if (st.kalenderAlterStd == null || st.kalenderAlterStd > 12) {

@@ -49,7 +49,7 @@ import { BUSINESS_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN_NAMEN
 import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
 import { Anstehend } from '../heute/Anstehend';
-import { fortschrittVon, schritteFuer, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
+import { fortschrittVon, schritteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -621,14 +621,34 @@ function EventWidget({ titel, i }: WidgetProps) {
 // Inhaber — die der Instanz (lib/make-one/onboarding-data.ts `schritteFuer`). Gezählt werden Freitag + Samstag-Kern; „einzeln bis
 // 16.10.“ zählt erst, wenn getan (Nachbesserung 08.10. spät). „Als Nächstes“ = erster offener Kern-Schritt in Etappen-Reihenfolge.
 // Daten aus /api/onboarding (persönliche Befunde nur der Person der Sitzung). Fertig oder ohne Zugang → keine Karte.
+// B10 (Update 2, „dauerhafte Ampel“): fällt ein Schritt zurück, der schon einmal grün war (`zurueckgefallen` — dieselbe Regel wie die
+// Einrichtung), steht hier „1 Punkt braucht dich“ — auch wenn die Einrichtung sonst fertig ist. Keine zweite Glocke.
 interface EinrichtungBild { z: HakenZustand; ich: OnboardingKontext }
 function EinrichtungWidget({ titel, i }: WidgetProps) {
   const d = useDaten<EinrichtungBild>('/api/onboarding', x => {
-    const r = x as { erledigt?: HakenZustand['erledigt']; befunde?: HakenZustand['befunde']; ich?: OnboardingKontext | null };
-    return r?.ich ? { z: { erledigt: r.erledigt ?? {}, befunde: r.befunde ?? {} }, ich: r.ich } : null;
+    const r = x as { erledigt?: HakenZustand['erledigt']; befunde?: HakenZustand['befunde']; gruen?: HakenZustand['gruen']; ich?: OnboardingKontext | null };
+    return r?.ich ? { z: { erledigt: r.erledigt ?? {}, befunde: r.befunde ?? {}, gruen: r.gruen ?? {} }, ich: r.ich } : null;
   });
   if (!d) return null;
-  const f = fortschrittVon(schritteFuer(d.ich), d.z);
+  const meine = schritteFuer(d.ich);
+  const zurueck = zurueckgefallen(meine, d.z);
+  if (zurueck.length) {
+    return (
+      <Karte i={i} akzent={LEUCHT.kritisch}>
+        <Ueberschrift farbe={LEUCHT.kritisch} rechts={<Link href="/os/onboarding" style={link}>Einrichtung ›</Link>}>{titel ?? (zurueck.length === 1 ? '1 Punkt braucht dich' : `${zurueck.length} Punkte brauchen dich`)}</Ueberschrift>
+        <div style={{ display: 'grid', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}>
+          {zurueck.slice(0, 3).map(s => (
+            <Link key={s.id} href={s.wo?.href ?? '/os/onboarding'} style={{ color: C.ink, textDecoration: 'none', minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600 }}>{s.nr} · {s.titel} ›</span>
+              {s.pruefung && d.z.befunde[s.pruefung] && <span style={{ color: LEUCHT.achtung }}>{d.z.befunde[s.pruefung].wert}</span>}
+            </Link>
+          ))}
+          {zurueck.length > 3 && <Link href="/os/onboarding" style={link}>und {zurueck.length - 3} weitere ›</Link>}
+        </div>
+      </Karte>
+    );
+  }
+  const f = fortschrittVon(meine, d.z);
   if (!f.gesamt || f.fertig >= f.gesamt) return null;
   return (
     <Karte i={i} akzent={LEUCHT.schlaf}>

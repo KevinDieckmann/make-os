@@ -4,6 +4,53 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Onboarding für Update 2: Prüfungen Teil 2, geführter Ablauf, Datenbasis, dauerhafte Ampel, Rechte-Filter (nur lokal — Branch `onboarding-u2`, Basis `agenten-nacht` a7d00b43)
+
+ONBOARDING_PLAN.md › A5 B3 Teil 2, B4, B8, B10, B11 — für das Update am 16.10. Nichts davon geht nach außen; nichts Persönliches im Code.
+
+- **B3 Teil 2 — neue Prüfungen** (`lib/onboarding-status.ts`, nur ja/nein + Zähler, jede in `sicher()`, GET schreibt nie, 60 s je Person gemerkt):
+  Datenschutz-Selbstprüfung (Verantwortlicher + Auftragsverarbeiter — DIE Selbstprüfung, ohne Kartei gerechnet), Finanzplan (Dokument da, Netto-Tabelle
+  kein Platzhalter), Haushalt (Buchungen, „Rhythmus unklar“, Schulden mit Rate, Rücklage), Konten-Register (eigene + gemeinsame Konten mit Stand
+  ≤ 31 Tage), Monatsabschluss (erst ab dem 0-Punkt: der Vormonat je Business-Gesellschaft, sobald er im Stichtag-Monat oder danach liegt),
+  Mandate (Firma, Honorar, Gesellschaft), Produkte (aktiv mit Leistungstext), Kapazität (jedes laufende Mandat mit Zuweisung), Arbeitsrahmen
+  (Grundwert oder Arbeits-Blöcke), eigene Routinen, Familie (Paar-Gespräch im gemeinsamen Kalender, Menschen mit Geburtstag — „nur ich“ der
+  anderen zählt nie), Brain (freigegebene Regel + App-Brücke), Agenten (neuer Agenten-Bereich: ein Head eingestellt bzw. ein eigener Thread mit
+  einem Head), Business-Einstellungen (Köpfe + Jahresziel je Business-Gesellschaft), Medienspeicher (Object Storage ja/nein — neuer Schritt
+  **0.13**). Aus dem Lagebild des Head of IT (nur lesen, 5 Minuten für alle): KI (Schlüssel, Guthaben, Schalter der Instanz), Vault-Abgleich,
+  Abholung am Mac (0.7 jetzt Prüfung + Häkchen für die Probe), „Head of IT ohne Rot“. Familie, KI-Einstellungen und WHOOP werden roh gelesen
+  (ihre Lader schreiben sonst).
+- **„Leer“ statt grün ohne Arbeit:** gibt es nichts zu prüfen (kein laufendes Mandat, noch kein Monatsabschluss fällig, keine Gesellschaft),
+  ist der Befund `leer` — dann zählt das Häkchen (`istFertig`, die EINE Fertig-Regel). `veraltet` markiert zu alte Stände (nur fürs Bild).
+- **B4 — geführter Ablauf:** Schritte tragen `modul` (Grundlage, Kalender, Postfächer, Unternehmen, Finanzen, Markttraktion, Planung,
+  Gesundheit, Familie, ZOE & Brain; `nurModule` für eine Instanz „nur Markttraktion“), `nach[]` (Voraussetzungen), `wartetAuf`, `datenOrt`
+  (Zeilen der Datenkarte, die jetzt Kennungen haben). Einrichtung oben: „Dein Stand“ mit Fortschritt je Ebene und **„Nächster Schritt“** samt
+  Anleitung; je Schritt „Erst: …“, „Wartet auf: …“, „Hier tragt ihr ein: …“. „Als Nächstes“ überspringt Schritte mit offener Voraussetzung
+  (aus derselben Liste), sperrt aber nichts.
+- **B8 — Datenbasis neu** (`/os/datenbasis`): je Bereich gepflegt · veraltet · offen · leer, jede Zeile mit Weg — aus denselben Befunden wie die
+  Einrichtung. Raus: Monatswerte aus `state/finance`, `state/kunden`, Produkte aus dem Finanzplan, feste Namen, die erfundene Agenten-Zahl.
+- **B10 — dauerhafte Ampel:** der Morgenlauf (`/api/tagesstart`, Schritt „Einrichtung festhalten“) merkt je Person, welche Schritte mit Prüfung
+  fertig sind (`gruen` im persönlichen Bestand `onboarding--<speicher>`, nur Kennung + erster Tag, nie entfernt). Fällt einer später auf Rot,
+  zeigt die Karte „Einrichtung“ auf Heute **„1 Punkt braucht dich“** (auch wenn die Einrichtung sonst fertig ist) und die Einrichtung oben
+  denselben Hinweis — EINE Regel `zurueckgefallen`, keine zweite Glocke. GET liest nur.
+- **B11 — Rechte-Filter:** Befunde über private Finanzen (Finanzplan, Haushalt, Konten-Register) nur mit `privatFinanzZugangFuer`, Familie nur mit
+  `haushaltFuer` — wer das Recht nicht hat, bekommt den Befund gar nicht (kein Zähler). Die Datenbasis zeigt nur Zeilen mit Befund.
+- Tests: `tests/onboarding-u2.test.ts` (23: Schema/Kreise/Datenorte, „Als Nächstes“, leer/veraltet, jede neue Prüfung, „Business-Partner bekommt
+  keine Privat-Befunde“, Morgenlauf-Marken, „braucht dich“, Datenbasis ohne alte Wege), angepasst `onboarding-stand` (Agenten hat jetzt eine
+  Prüfung → kein „bitte bestätigen“ mehr für das alte Häkchen), beide Onboarding-Tests lesen Regeln aus einem Temp-Vault.
+
+**So testet ihr (in Klicks):**
+1. Einstellungen › Onboarding: oben „Dein Stand“ — drei Balken (Meine Einrichtung, Gemeinsam, Instanz) und darunter „Nächster Schritt“ mit
+   Anleitung und Knopf zum Ort. Einen Schritt mit Voraussetzung ansehen (z. B. 3.6 0-Punkt): „Erst: 3.1 · …“.
+2. Schritt 4.4 „Laufende Mandate“ ohne Mandat: Chip „○ kein laufendes Mandat — abhaken, wenn das stimmt“, Haken klickbar. Ein Mandat ohne
+   Gesellschaft anlegen → Chip wird gelb „0 von 1 …“, Haken ist gesperrt.
+3. Einstellungen › Datenbasis: Bereiche mit Punkten (grün/gelb/rot/grau) und Zählern; jede Zeile führt zum Ort.
+4. Als Konto mit „nur Business“: Datenbasis und Einrichtung zeigen keine Zeile zu Finanzplan, Haushalt, Privatkonten oder Familie.
+5. „Braucht dich“: nach dem nächsten Morgenlauf z. B. Business › Einstellungen ein Jahresziel leeren → Heute zeigt „1 Punkt braucht dich“ mit
+   „3.9 · Grundlagen des Business-Index“; wieder eintragen → die Karte verschwindet.
+
+**Rückweg:** nur additive Felder (`gruen` im persönlichen Onboarding-Bestand, Schritt-Felder im Code). Der alte Stand übergeht `gruen` und kennt
+Schritt 0.13 nicht (Häkchen dafür bleiben liegen). Keine Einmal-Schritte.
+
 ## 09.10.2026 — Agenten-Bereich Paket 4a „ZOE steuert die Heads“: EINE Schleife, EINE Werkzeug-Quelle, ≤ 20 Werkzeuge, ZOE auf Threads (nur lokal — Branch `agenten-p4a`, Basis `agenten-nacht` 0ff3187a)
 
 Grundlage: AGENTEN_KONZEPT.md C3/C8/C11 (Paket 4), ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich (Antworten 10/11) und Teil 1 (Nr. 1, 11, 13:
