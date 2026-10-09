@@ -9,6 +9,7 @@ import type { PostfachOeffentlich } from '@/lib/postfach/typen';
 import type { GespraechAnsicht } from '@/lib/inbox/gespraech-server';
 import type { Uebergabe, UebergabeZeile } from '@/lib/inbox/teilen';
 import type { SuchTreffer } from '@/lib/inbox/suche-server';
+import type { LeisteEintrag } from '@/lib/inbox/ansicht';
 
 export type { UebergabeZeile, Uebergabe, SuchTreffer };
 
@@ -18,6 +19,12 @@ export interface StromAntwort {
   bereiche: { id: string; name: string }[]; google: { konfiguriert: boolean; verbunden: boolean; bereit: boolean; konto?: string; getrennt?: boolean }; heute: string; fehler?: string;
   /** Übergaben an bzw. von mir (08.10., ohne Texte). */
   uebergaben: UebergabeZeile[];
+  /** Bereichs-Leiste der Sicht (09.10.): je Bereich Ungelesen/offen + Postfächer. */
+  leiste?: LeisteEintrag[];
+  /** Eigene Postfächer ohne Bereich (09.10., maskierte Adresse, nie Nachrichten) — „jetzt zuordnen“. */
+  unzugeordnet?: { id: string; quelle: string; anzeigename: string; adresse: string; nachrichten?: number }[];
+  /** Zum Zuordnen wählbare Bereiche dieser Sicht. */
+  waehlbar?: { id: string; name: string }[];
 }
 /** Eine Übergabe geöffnet (GET /api/inbox/uebergaben?id=): Kopie, Zeile, neuere Nachrichten im Original, Postfächer zum Antworten. */
 export interface UebergabeDetail { ok: boolean; uebergabe: Uebergabe; zeile: UebergabeZeile; neuer: number; postfaecher: { id: string; name: string; adresse: string }[]; fehler?: string }

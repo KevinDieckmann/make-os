@@ -13,17 +13,30 @@
 // Teilen (08.10., Lücke 6 „Business Couple“): Fach „Übergeben“ (Kopien an bzw. von mir, `offen=ub-…` öffnet sie), „wer kümmert sich“ an
 // Gesprächen der Team-Postfächer und bei WhatsApp, Suchfeld oben (am Handy hinter der Lupe, Taste „/“) — Suche auf dem Server über das,
 // was die Person sieht (/api/inbox/suche), Ergebnisse mit Hervorhebung statt der Arbeitsliste.
+// Ansicht & Ordnung (09.10., Kevin: „ansehen können — sortiert … auf das Postfach klicken, z. B. MAKE Innovation oder KD Ventures“):
+//   · BEREICHS-LEISTE oben (wischbare Reiter): „Alle“ + je Bereich mit Postfächern der Person, mit Ungelesen-Zähler — Klick = nur dessen
+//     Gespräche (der Server filtert: `?bereich=`), die Adresse trägt Bereich + Postfach + offenes Gespräch (Zurück führt in denselben Bereich).
+//     Hat ein Bereich mehrere Postfächer, wählt eine zweite Pillenreihe das Postfach. Unter „Alle“ lassen sich Bereiche ausblenden (`?ohne=`,
+//     Merker je Browser und Sicht). Namen/Farben nur aus Server (Register/Einheiten) bzw. lib/inbox/ansicht.ts.
+//   · ZWEI ORDNUNGEN (Merker je Browser): „Wichtig zuerst“ = die Fächer wie bisher · „Neueste zuerst“ = Tag-Gruppen Heute · Gestern · Diese
+//     Woche · Älter, darin ungelesen zuerst; dazu Offen · Ungelesen · Auch Erledigtes.
+//   · LABELS: jede Zeile und der Kopf des Gesprächs tragen Bereich (Farbe) und Postfach, sobald mehr als eines in der Sicht ist.
+//   · Postfach OHNE Bereich (z. B. Gmail verbunden, nicht zugeordnet): in jeder Sicht die Karte „… ist noch keinem Bereich zugeordnet — jetzt
+//     zuordnen“ mit der Bereichswahl (Schreibweg /api/inbox/postfaecher `einstellen`); der Server liefert dafür nur Name + maskierte Adresse.
+//   · Erster Abgleich läuft: „Post wird geholt …“ statt leer (lädt dann alle 10 s nach).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, KUGEL, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { FACH_LABEL, type FachId } from '@/lib/inbox/faecher';
 import { gespraechPfad, sortieren, type LageZeile } from '@/lib/inbox/strom';
+import { bereichFarbe, fuerZeigen, istBereichKennung, istZeigen, nachTagen, ruheText, ZEIGEN, type Zeigen } from '@/lib/inbox/ansicht';
+import { POSTFACH_ID } from '@/lib/postfach/typen';
 import { aufgabeAusGespraech } from '@/lib/inbox/aus-gespraech';
 import { neueMailHolen, type NeueMail } from '@/lib/inbox/neue-mail';
 import type { Owner } from '@/types/common';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, SymbolKnopf, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, SymbolKnopf, Reiter, Pillen, MehrfachPillen, Chip, Wahl, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
 import { GespraechAnsicht } from './Gespraech';
 import { Postfaecher, STUFE_FARBE, STUFE_TEXT } from './Postfaecher';
@@ -35,6 +48,15 @@ import { SuchErgebnisse, SuchFeld } from './Suche';
 import { aktion, holen, istUebergabeId, nameVon, senden, tagIn, zeitKurz, type GespraechZeile, type StromAntwort } from './daten';
 
 type Filter = { fach: FachId | 'nachfassen' | 'wiedervorlage'; bereich: string | null } | null;
+type Ordnung = 'faecher' | 'neueste';
+/** Merker je Browser (09.10.): Ordnung, was „Neueste zuerst“ zeigt, und die unter „Alle“ ausgeblendeten Bereiche je Sicht. */
+interface Merker { ordnung: Ordnung; zeigen: Zeigen; ohne: string[] }
+const MERKER = { ordnung: 'make-inbox-ordnung', zeigen: 'make-inbox-zeigen', ohne: (sicht: string) => `make-inbox-ohne:${sicht}` };
+const merkerLesen = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
+const merkerSchreiben = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* ohne Merker */ } };
+/** Reiter-Kennung für „Alle“ — kein gültiger Bereich (Bereiche beginnen mit Buchstabe/Ziffer). */
+const ALLE = '~alle';
+const ORDNUNGEN: { id: Ordnung; label: string }[] = [{ id: 'faecher', label: 'Wichtig zuerst' }, { id: 'neueste', label: 'Neueste zuerst' }];
 /** WhatsApp-Zeile: Rest des 24-h-Fensters („noch 3 Std.“) bzw. „nur Vorlage“ (rein bis auf die Uhrzeit). */
 const fensterKurz = (f: Fenster) => { const x = fensterJetzt(f, Date.now()); return x.offen ? fensterText(x).replace('Fenster offen · ', '') : 'nur Vorlage'; };
 const LAGE_TEILE: { feld: keyof Omit<LageZeile, 'bereich'>; text: (n: number) => string; fach: NonNullable<Filter>['fach'] }[] = [
@@ -69,8 +91,43 @@ export function InboxZwei() {
   const space = params.get('space') === 'privat' || params.get('space') === 'business' ? params.get('space') as 'privat' | 'business' : null;
   const [offenId, setOffenId] = useLinkAuswahl('offen');
   const [ansicht, setAnsicht] = useState<'liste' | 'postfaecher'>(() => (params.get('postfaecher') === '1' ? 'postfaecher' : 'liste'));
-  const [bereich, setBereich] = useState<string>('alle');
+  const router = useRouter();
+  const pfad = usePathname() ?? '/os/inbox';
+  // Bereich und Postfach stehen in der Adresse (Ort wechseln = neuer Verlaufseintrag; Zurück führt in denselben Bereich).
+  const bereichRoh = params.get('bereich');
+  const bereich = bereichRoh && istBereichKennung(bereichRoh) ? bereichRoh : null;
+  const pfRoh = params.get('postfach');
+  const pfWahl = bereich && pfRoh && POSTFACH_ID.test(pfRoh) ? pfRoh : null;
   const [filter, setFilter] = useState<Filter>(null);
+  const [merker, setMerker] = useState<Merker | null>(null);
+  const [ohneAuf, setOhneAuf] = useState(false);
+  const sichtSchluessel = space ?? 'alles';
+  useEffect(() => {
+    const o = merkerLesen(MERKER.ordnung); const z = merkerLesen(MERKER.zeigen);
+    let ohne: string[] = [];
+    try { const roh = JSON.parse(merkerLesen(MERKER.ohne(sichtSchluessel)) ?? '[]'); if (Array.isArray(roh)) ohne = roh.filter(istBereichKennung).slice(0, 30); } catch { /* leer */ }
+    setMerker({ ordnung: o === 'neueste' ? 'neueste' : 'faecher', zeigen: istZeigen(z) ? z : 'offen', ohne });
+  }, [sichtSchluessel]);
+  const merkerSetzen = useCallback((m: Partial<Merker>) => {
+    setMerker(alt => {
+      const neu = { ...(alt ?? { ordnung: 'faecher' as Ordnung, zeigen: 'offen' as Zeigen, ohne: [] }), ...m };
+      if (m.ordnung) merkerSchreiben(MERKER.ordnung, m.ordnung);
+      if (m.zeigen) merkerSchreiben(MERKER.zeigen, m.zeigen);
+      if (m.ohne) merkerSchreiben(MERKER.ohne(sichtSchluessel), m.ohne.length ? JSON.stringify(m.ohne) : null);
+      return neu;
+    });
+  }, [sichtSchluessel]);
+  const ordnung: Ordnung = merker?.ordnung ?? 'faecher';
+  const zeigen: Zeigen = merker?.zeigen ?? 'offen';
+  /** Bereich (und ggf. Postfach) wählen — schließt ein offenes Gespräch, Lage-Filter fällt weg. */
+  const geheZu = useCallback((b: string | null, pf: string | null = null) => {
+    const q = new URLSearchParams(params.toString());
+    if (b) q.set('bereich', b); else q.delete('bereich');
+    if (b && pf) q.set('postfach', pf); else q.delete('postfach');
+    q.delete('offen');
+    setFilter(null);
+    router.push(`${pfad}${q.toString() ? `?${q}` : ''}`, { scroll: false });
+  }, [params, pfad, router]);
   const [s, setS] = useState<StromAntwort | null>(null);
   const [fehler, setFehler] = useState('');
   const [weg, setWeg] = useState<Set<string>>(new Set());
@@ -87,22 +144,30 @@ export function InboxZwei() {
   const { melden, hinweis } = useRueckgaengig();
   const { state, dispatch } = useTasks();
 
+  // Sicht (space) UND Bereich gehen beide an den Server — er filtert; die Oberfläche blendet nie bloß aus.
   const filterQuery = useMemo(() => {
     const q = new URLSearchParams();
-    if (bereich !== 'alle') q.set('bereich', bereich); else if (space) q.set('space', space);
+    if (space) q.set('space', space);
+    if (bereich) { q.set('bereich', bereich); if (pfWahl) q.set('postfach', pfWahl); }
+    else if (merker?.ohne.length) q.set('ohne', merker.ohne.join(','));
     return q.toString();
-  }, [bereich, space]);
+  }, [bereich, pfWahl, space, merker?.ohne]);
   const url = `/api/inbox${filterQuery ? `?${filterQuery}` : ''}`;
 
   const laden = useCallback(async () => {
     const r = await holen<StromAntwort>(url);
     if (r.d.ok) { setS(r.d as StromAntwort); setFehler(''); setWeg(new Set()); } else setFehler(String(r.d.fehler ?? 'Die Inbox ließ sich nicht laden.'));
   }, [url]);
+  // Erster Abgleich eines Postfachs läuft („neu“): alle 10 s nachsehen, sonst alle 60 s.
+  const holt = useMemo(() => (s?.postfaecher ?? []).filter(p => p.zustand.stufe === 'neu' && p.quelle !== 'whatsapp'), [s]);
+  const takt = holt.length ? 10_000 : 60_000;
+  const merkerDa = merker !== null;
   useEffect(() => {
+    if (!merkerDa) return; // erst die Merker lesen — sonst holt die Inbox zweimal
     void laden();
-    const t = setInterval(() => { if (document.visibilityState === 'visible') void laden(); }, 60_000);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') void laden(); }, takt);
     return () => clearInterval(t);
-  }, [laden]);
+  }, [laden, takt, merkerDa]);
   useEffect(() => { void holen<{ ich?: { speicher?: string } }>('/api/konto/ich').then(r => { if (typeof r.d.ich?.speicher === 'string') setIch(r.d.ich.speicher); }); }, []);
   // Link aus dem alten Verlauf: `?offen=gmail-<Nachricht>` → das Gespräch dazu.
   useEffect(() => {
@@ -129,7 +194,14 @@ export function InboxZwei() {
     ].filter(x => x.liste.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arbeit.map(g => g.id).join('|'), infoAuf, filter]);
-  const reihe = gruppen.flatMap(g => (g.eingeklappt ? [] : g.liste));
+  // „Neueste zuerst“: Tag-Gruppen (Heute · Gestern · Diese Woche · Älter), darin ungelesen zuerst — auch ein Lage-Filter wirkt hier.
+  const chrono = useMemo(() => (s ? nachTagen(fuerZeigen(sichtbar.filter(passt), zeigen), s.heute) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sichtbar, zeigen, filter, s?.heute]);
+  // Lange Tage-Gruppen zeigen erst 60 Zeilen — sichtbar mit „weitere n zeigen“, nie still gekürzt.
+  const [mehrJe, setMehrJe] = useState<Record<string, number>>({});
+  const chronoGezeigt = chrono.map(gr => ({ ...gr, gezeigt: gr.liste.slice(0, mehrJe[gr.id] ?? 60) }));
+  const reihe = ordnung === 'neueste' ? chronoGezeigt.flatMap(g => g.gezeigt) : gruppen.flatMap(g => (g.eingeklappt ? [] : g.liste));
   const offen = offenId ? sichtbar.find(g => g.id === offenId) ?? null : null;
   const offeneUebergabe = istUebergabeId(offenId) ? offenId : null;
 
@@ -180,34 +252,63 @@ export function InboxZwei() {
     return () => window.removeEventListener('keydown', onKey);
   }, [reihe, offenId, setOffenId, tun, aufgabeAus, ansicht]);
 
-  const namen = useMemo(() => Object.fromEntries((s?.bereiche ?? []).map(b => [b.id, b.name])), [s]);
+  const namen = useMemo<Record<string, string>>(() => Object.fromEntries([
+    ...(s?.bereiche ?? []).map(b => [b.id, b.name]),
+    ...(s?.leiste ?? []).flatMap(e => (e.id ? [[e.id, e.name]] : [])),
+  ]), [s]);
   const bereichWort = (b: string | null) => (b ? namen[b] ?? b : 'Ohne Bereich');
+  // Bereichs-Leiste und Etiketten (09.10.): Namen, Farben und Zähler kommen vom Server (`leiste`), die Farbe der Bereiche aus ansicht.ts.
+  const leiste = useMemo(() => (s?.leiste ?? []).filter(e => e.id !== null), [s]);
+  const eintrag = bereich ? leiste.find(e => e.id === bereich) ?? null : null;
+  const pfName = useMemo<Record<string, string>>(() => Object.fromEntries((s?.leiste ?? []).flatMap(e => e.postfaecher.map(p => [p.id, p.name]))), [s]);
+  const pfZahl = (s?.leiste ?? []).reduce((n, e) => n + e.postfaecher.length, 0);
+  const zeigeBereich = !bereich && (s?.leiste?.length ?? 0) > 1;
+  const zeigePf = !pfWahl && (bereich ? (eintrag?.postfaecher.length ?? 0) > 1 : pfZahl > 1);
+  /** Ruhiges Etikett vor dem Ausschnitt: Bereich (in seiner Farbe) · Postfach — nur, wenn die Sicht mehr als eines zeigt. */
+  const etikett = (g: GespraechZeile): ReactNode => {
+    const pf = zeigePf ? pfName[g.postfachId] : undefined;
+    if (!zeigeBereich && !pf) return null;
+    return (
+      <span data-inbox="etikett">
+        {zeigeBereich && <span style={{ color: bereichFarbe(g.bereich), fontWeight: 600 }}>{bereichWort(g.bereich)}</span>}
+        {zeigeBereich && pf ? <span style={{ color: C.inkLeise }}> · </span> : null}
+        {pf ? <span style={{ color: C.inkDim }}>{pf}</span> : null}
+        <span style={{ color: C.inkLeise }}> — </span>
+      </span>
+    );
+  };
 
-  const zeile = (g: GespraechZeile, gruppe: string) => {
+  const zeile = (g: GespraechZeile, gruppe: string, chronologisch = false) => {
     const wa = g.quelle === 'whatsapp' && g.whatsapp ? g.whatsapp : null;
-    const unter = g.fach === 'warten'
+    const ruhe = chronologisch ? ruheText(g) : null;
+    const text = g.fach === 'warten'
       ? `${g.vonUns ? 'Du hast geschrieben' : 'Automatische Antwort'} · seit ${g.wartetTage} ${g.wartetTage === 1 ? 'Tag' : 'Tagen'} keine Antwort`
       : `${g.team?.kuemmert ? `${g.team.kuemmert.person === ich ? 'du kümmerst dich' : `${g.team.kuemmert.name} kümmert sich`} · ` : ''}${g.frist ? `bis ${g.frist.datum.slice(8, 10)}.${g.frist.datum.slice(5, 7)}. · ` : ''}${wa ? `WhatsApp · ${fensterKurz(wa.fenster)} — ` : ''}${g.zuordnung?.firma ? `${g.zuordnung.firma} — ` : g.fach === 'neu' && !wa ? `${g.gegenueber.email} — ` : ''}${handy ? g.ausschnitt.slice(0, 80) + (g.ausschnitt.length > 80 ? ' …' : '') : g.ausschnitt}`;
+    // In „Neueste zuerst“ sagt die Zeile, in welchem Fach das Gespräch liegt (bzw. warum es ruht) — die Ordnung der Fächer bleibt sichtbar.
+    const fachWort = chronologisch ? (ruhe ?? (g.fach === 'geblockt' ? null : FACH_LABEL[g.fach])) : null;
+    const unter = <>{etikett(g)}{fachWort ? <span style={{ color: C.inkLeise }}>{fachWort} · </span> : null}{text}</>;
     // WhatsApp: der „Betreff“ ist der Anfang der Nachricht (steht schon unten) — oben stattdessen die Nummer.
+    const betreffFarbe = g.ungelesen ? C.inkDim : C.inkLeise;
     const titel = wa
       ? <><span style={{ color: KUGEL.smaragd, marginRight: 6 }}><WaSymbol groesse={14} /></span><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span>{nameVon(g) !== g.gegenueber.email ? <span style={{ color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}> · {nummerAnzeige(wa.nummer)}</span> : null}<span style={{ color: C.inkLeise }}>{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>
-      : <><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span><span style={{ color: C.inkLeise }}> · {g.betreff}{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>;
+      : <><span style={{ fontWeight: g.ungelesen ? 700 : 500 }}>{nameVon(g)}</span><span style={{ color: betreffFarbe, fontWeight: g.ungelesen ? 600 : 400 }}> · {g.betreff}{g.anzahl > 1 ? ` (${g.anzahl})` : ''}</span></>;
+    const screenerHier = gruppe === 'neu' || (chronologisch && g.fach === 'neu' && g.inArbeit);
     const inhalt = (
       <Zeile onClick={() => setOffenId(offenId === g.id ? null : g.id)} aktiv={offenId === g.id}
         links={<Punkt farbe={g.ungelesen ? KUGEL.granat : g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.linie} />}
-        titel={titel}
+        titel={<span aria-label={g.ungelesen ? 'ungelesen' : undefined}>{titel}</span>}
         unter={unter}
-        rechts={gruppe === 'neu' && !handy ? (
+        rechts={screenerHier && !handy ? (
           <span style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
             <Knopf leise onClick={() => screener(g, 'zulassen')}>Zulassen</Knopf>
             <Knopf leise onClick={() => screener(g, 'blocken')}>Blocken</Knopf>
           </span>
-        ) : <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>{zeitKurz(g.am)}{bereich === 'alle' && (s?.bereiche.length ?? 0) > 1 ? <span style={{ display: 'block' }}>{bereichWort(g.bereich)}</span> : null}</span>} />
+        ) : <span style={{ fontSize: TYP.bedien, color: g.ungelesen ? C.ink : C.inkLeise, fontWeight: g.ungelesen ? 600 : 400, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>{zeitKurz(g.am)}</span>} />
     );
     return (
-      <div key={g.id}>
-        <Wisch an={handy} rechts={() => void tun(g, 'erledigt')} links={() => void tun(g, 'spaeter', tagIn(1))}>{inhalt}</Wisch>
-        {gruppe === 'neu' && handy && (
+      <div key={g.id} style={ruhe ? { opacity: 0.62 } : undefined} data-inbox-zeile={g.ungelesen ? 'ungelesen' : 'gelesen'}>
+        <Wisch an={handy && g.inArbeit} rechts={() => void tun(g, 'erledigt')} links={() => void tun(g, 'spaeter', tagIn(1))}>{inhalt}</Wisch>
+        {screenerHier && handy && (
           <div style={{ display: 'flex', gap: 8, padding: '0 0 10px 22px' }}>
             <Knopf leise onClick={() => screener(g, 'zulassen')}>Zulassen</Knopf>
             <Knopf leise onClick={() => screener(g, 'blocken')}>Blocken</Knopf>
@@ -220,8 +321,43 @@ export function InboxZwei() {
   const anmeldung = (s?.postfaecher ?? []).filter(p => p.zustand.stufe === 'anmeldung');
   const lageZahl = (s?.lage ?? []).reduce((n, l) => n + l.antworten, 0);
   const uebergaben = s?.uebergaben ?? [];
-  const nichtsOffen = !!s && s.postfaecher.length > 0 && !arbeit.filter(g => g.fach !== 'info').length && !filter && !uebergaben.some(u => u.status !== 'erledigt');
+  const nichtsOffen = !!s && s.postfaecher.length > 0 && !arbeit.filter(g => g.fach !== 'info').length && !filter && !uebergaben.some(u => u.status !== 'erledigt') && !(holt.length && !sichtbar.length);
   const mitInhalt = !!s && (s.postfaecher.length > 0 || uebergaben.length > 0);
+  const unzugeordnet = s?.unzugeordnet ?? [];
+  /** Ein Bereich aus der Adresse, den diese Sicht nicht kennt (alter Link, anderer Space): klar sagen statt leer. */
+  const fremderBereich = !!s && !!bereich && !eintrag;
+  const alleUngelesen = (s?.leiste ?? []).reduce((n, e) => n + e.ungelesen, 0);
+  const zaehler = (n: number) => (n > 0 ? <span style={{ marginLeft: 6, color: KUGEL.granat, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} aria-label={`${n} ungelesen`}>{n}</span> : null);
+  const leisteIds = leiste.map(e => e.id as string);
+  const ohne = (merker?.ohne ?? []).filter(id => leisteIds.includes(id));
+
+  /** Postfach einem Bereich zuordnen — der vorhandene Schreibweg der Postfächer (`einstellen`), danach dorthin wechseln. */
+  const zuordnen = async (id: string, b: { id: string; name: string }, name: string) => {
+    const r = await senden<{ text?: string }>('/api/inbox/postfaecher', { aktion: 'einstellen', id, bereich: b.id });
+    if (!r.d.ok) { melden(String(r.d.fehler ?? 'Das ging nicht — nichts geändert.')); return; }
+    melden(`${name} gehört jetzt zu ${b.name}.`);
+    // Die wählbaren Bereiche gehören zur Sicht (Server: `waehlbar`) — also gleich dorthin, wo die Post jetzt steht.
+    geheZu(b.id);
+  };
+  const zuordnenKarten = unzugeordnet.length > 0 && (
+    <div style={{ display: 'grid', gap: 10 }} data-inbox="unzugeordnet">
+      {unzugeordnet.map(p => {
+        const wer = p.quelle === 'gmail' ? 'Dein Gmail' : `Dein Postfach „${p.anzeigename}“`;
+        const wahl = s?.waehlbar ?? [];
+        return (
+          <Hinweis key={p.id} art="achtung" titel={`${wer}${p.adresse ? ` (${p.adresse})` : ''} ist noch keinem Bereich zugeordnet — jetzt zuordnen`}
+            aktion={!wahl.length ? <Knopf leise onClick={() => setAnsicht('postfaecher')}>Postfächer</Knopf> : undefined}>
+            <div>{p.nachrichten ? `${p.nachrichten} ${p.nachrichten === 1 ? 'Nachricht wartet' : 'Nachrichten warten'}` : 'Die Post wartet'} — sobald das Postfach einen Bereich hat, steht sie dort und trägt sein Label.{!wahl.length ? ' In dieser Sicht gibt es keinen passenden Bereich — unter „Postfächer“ zuordnen.' : ''}</div>
+            {wahl.length > 0 && (
+              <div className="ui-pillen" style={{ marginTop: 10 }}>
+                {wahl.map(b => <Wahl key={b.id} klein an={false} farbe={bereichFarbe(b.id)} onClick={() => void zuordnen(p.id, b, p.quelle === 'gmail' ? 'Gmail' : p.anzeigename)}>{b.name}</Wahl>)}
+              </div>
+            )}
+          </Hinweis>
+        );
+      })}
+    </div>
+  );
   const naechsteWv = (s?.gespraeche ?? []).map(g => g.wiedervorlage).filter((x): x is string => !!x && x !== 'faellig').sort()[0];
 
   const kopfRechts = (
@@ -247,19 +383,55 @@ export function InboxZwei() {
     </div>
   ) : (
     <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+      {!!s && s.postfaecher.length > 0 && (
+        <div style={{ display: 'grid', gap: 10 }} data-inbox="ordnung">
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Segmente liste={ORDNUNGEN} aktiv={ordnung} onWahl={o => merkerSetzen({ ordnung: o })} />
+            {ordnung === 'neueste' && <Pillen einzeilig liste={ZEIGEN.map(z => ({ id: z.id, label: z.label }))} aktiv={zeigen} onWahl={z => merkerSetzen({ zeigen: z })} />}
+            {!bereich && leiste.length > 1 && (
+              <Knopf leise onClick={() => setOhneAuf(x => !x)}>{ohne.length ? `${leiste.length - ohne.length} von ${leiste.length} Bereichen` : 'Bereiche in „Alle“'}{ohneAuf ? ' ▴' : ' ▾'}</Knopf>
+            )}
+          </div>
+          {!bereich && leiste.length > 1 && ohneAuf && (
+            <div data-inbox="bereiche-auswahl">
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>In „Alle“ zeigen (gemerkt in diesem Browser):</div>
+              <MehrfachPillen liste={leiste.map(e => ({ id: e.id as string, label: e.name }))} aktiv={leisteIds.filter(id => !ohne.includes(id))}
+                onWahl={ids => { if (!ids.length) { melden('Mindestens ein Bereich bleibt sichtbar.'); return; } merkerSetzen({ ohne: leisteIds.filter(id => !ids.includes(id)) }); }} />
+            </div>
+          )}
+        </div>
+      )}
       <UebergabenKarte liste={uebergaben} offenId={offenId} onOeffnen={setOffenId} i={0} person={ich} />
       {filter && (
         <Hinweis art="info" aktion={<Knopf leise onClick={() => setFilter(null)}>Alle zeigen</Knopf>}>
           Gefiltert: {filter.fach === 'nachfassen' ? 'Nachfassen fällig' : filter.fach === 'wiedervorlage' ? 'Wiedervorlage' : FACH_LABEL[filter.fach]}{filter.bereich !== null ? ` · ${bereichWort(filter.bereich)}` : ''}
         </Hinweis>
       )}
-      {nichtsOffen && (
+      {holt.length > 0 && !sichtbar.length && (
+        <Karte i={0} dicht><div data-inbox="holt"><Leer symbol="⟳">Post wird geholt … — {holt.map(p => p.anzeigename).join(', ')}: die letzten 30 Tage kommen gleich. Die Inbox lädt von selbst nach.</Leer></div></Karte>
+      )}
+      {holt.length > 0 && sichtbar.length > 0 && <Hinweis art="info" rolle="status">Post wird noch geholt ({holt.map(p => p.anzeigename).join(', ')}) — es kommt gleich mehr dazu.</Hinweis>}
+      {ordnung === 'faecher' && nichtsOffen && (
         <Leerzustand symbol="✓" titel="Inbox leer" ton={KUGEL.smaragd}>
           Nichts wartet auf dich.{naechsteWv ? ` Nächste Wiedervorlage am ${naechsteWv.slice(8, 10)}.${naechsteWv.slice(5, 7)}.` : ''}{(s?.lage ?? []).some(l => l.warten) ? ' Einige Gespräche warten auf eine Antwort von anderen.' : ''}
         </Leerzustand>
       )}
-      {filter && !arbeit.length && <Karte i={0}><Leer>In diesem Fach ist gerade nichts.</Leer></Karte>}
-      {gruppen.map((gr, i) => (
+      {ordnung === 'faecher' && filter && !arbeit.length && <Karte i={0}><Leer>In diesem Fach ist gerade nichts.</Leer></Karte>}
+      {ordnung === 'neueste' && !!s && s.postfaecher.length > 0 && !chrono.length && !(holt.length && !sichtbar.length) && (
+        <Karte i={0}><Leer symbol="✓">{zeigen === 'ungelesen' ? 'Nichts Ungelesenes.' : zeigen === 'offen' ? 'Nichts offen.' : 'Hier ist noch keine Post.'}{zeigen !== 'alle' ? ' „Auch Erledigtes“ zeigt alles, was gekommen ist.' : ''}</Leer></Karte>
+      )}
+      {ordnung === 'neueste' && chronoGezeigt.map((gr, i) => {
+        const neu = gr.liste.filter(g => g.ungelesen).length;
+        const rest = gr.liste.length - gr.gezeigt.length;
+        return (
+          <Karte key={gr.id} i={i} dicht>
+            <Ueberschrift farbe={neu ? KUGEL.granat : C.inkLeise} rechts={`${gr.liste.length}${neu ? ` · ${neu} ungelesen` : ''}`}>{gr.titel}</Ueberschrift>
+            <Liste>{gr.gezeigt.map(g => zeile(g, gr.id, true))}</Liste>
+            {rest > 0 && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehrJe(m => ({ ...m, [gr.id]: (m[gr.id] ?? 60) + 100 }))}>weitere {Math.min(rest, 100)} von {rest} zeigen</Knopf></div>}
+          </Karte>
+        );
+      })}
+      {ordnung === 'faecher' && gruppen.map((gr, i) => (
         <Karte key={gr.id} i={i} dicht>
           <Ueberschrift farbe={gr.farbe} rechts={gr.id === 'info' ? (
             <span style={{ display: 'flex', gap: 6 }}>
@@ -273,8 +445,16 @@ export function InboxZwei() {
     </div>
   );
 
+  // Kopf des Gesprächs: Bereich (Farbe) und Postfach — wohin die Antwort geht, steht immer da.
+  const kopfEtikett = (g: GespraechZeile) => (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }} data-inbox="gespraech-etikett">
+      <Chip farbe={bereichFarbe(g.bereich)}>{bereichWort(g.bereich)}</Chip>
+      {pfName[g.postfachId] && pfZahl > 1 ? <Chip farbe={C.inkDim}>{pfName[g.postfachId]}</Chip> : null}
+    </div>
+  );
   const detail = offen ? (
     <Karte i={1} akzent={KUGEL.granat}>
+      {kopfEtikett(offen)}
       <GespraechAnsicht key={`${offen.id}-${antwortStart === offen.id ? 'r' : ''}`} id={offen.id} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} startAntwort={antwortStart === offen.id} />
     </Karte>
   ) : offeneUebergabe ? (
@@ -289,7 +469,25 @@ export function InboxZwei() {
     <Seite titel="Inbox" unter={lageZahl > 0 ? `${lageZahl} ${lageZahl === 1 ? 'Gespräch braucht' : 'Gespräche brauchen'} eine Antwort.` : undefined} rechts={kopfRechts}>
       {fehler && <div style={{ marginBottom: 12 }}><Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal</Knopf>}>{fehler}</Hinweis></div>}
       {!s && !fehler && <Karte i={0}><Leer>lädt …</Leer></Karte>}
-      {s && !s.postfaecher.length && !uebergaben.length && (
+      {zuordnenKarten && <div style={{ marginBottom: 14 }}>{zuordnenKarten}</div>}
+      {fremderBereich && (
+        <div style={{ marginBottom: 14 }}>
+          <Hinweis art="info" aktion={<Knopf leise onClick={() => geheZu(null)}>Alle zeigen</Knopf>}>Dieser Bereich hat in dieser Sicht keine Postfächer.</Hinweis>
+        </div>
+      )}
+      {/* Bereichs-Leiste (09.10.): „Alle“ + je Bereich mit Postfächern, Zähler = ungelesen. Am Handy wischbar; mit offenem Gespräch nur am Rechner. */}
+      {leiste.length > 0 && (breit || !istOffen) && (
+        <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+          <nav aria-label="Bereiche der Inbox" className="ui-reiter-zeile" data-inbox="bereiche">
+            <Reiter ariaLabel="Bereiche der Inbox" aktiv={bereich ?? ALLE} onWahl={id => geheZu(id === ALLE ? null : id)}
+              liste={[{ id: ALLE, label: <>Alle{zaehler(alleUngelesen)}</> }, ...leiste.map(e => ({ id: e.id as string, label: <>{e.name}{zaehler(e.ungelesen)}</>, farbe: e.farbe }))]} />
+          </nav>
+          {eintrag && eintrag.postfaecher.length > 1 && (
+            <Pillen einzeilig liste={[{ id: ALLE, label: 'Alle Postfächer' }, ...eintrag.postfaecher.map(p => ({ id: p.id, label: p.name }))]} aktiv={pfWahl ?? ALLE} onWahl={id => geheZu(bereich, id === ALLE ? null : id)} />
+          )}
+        </div>
+      )}
+      {s && !s.postfaecher.length && !uebergaben.length && !unzugeordnet.length && !fremderBereich && (
         <Leerzustand symbol="✉" titel="Verbinde dein erstes Postfach" ton={KUGEL.granat} aktion={<Knopf haupt onClick={() => setAnsicht('postfaecher')}>Postfach verbinden</Knopf>}>
           iCloud, IONOS, Google Workspace oder ein anderer Anbieter — MAKE OS holt die Post selbst, sortiert sie in Fächer und zeigt, was gerade passiert.
         </Leerzustand>
@@ -298,9 +496,6 @@ export function InboxZwei() {
       {mitInhalt && suchZeile}
       {s && s.postfaecher.length > 0 && !istOffen && !sucht && (
         <div style={{ display: 'grid', gap: 14, marginBottom: 14 }}>
-          {(s.bereiche.length > 1 || bereich !== 'alle') && (
-            <Segmente umbrechen liste={[{ id: 'alle', label: 'Alle' }, ...s.bereiche.map(b => ({ id: b.id, label: b.name }))]} aktiv={bereich} onWahl={b => { setBereich(b); setFilter(null); setOffenId(null); }} />
-          )}
           <Karte i={0} ton={lageZahl ? KUGEL.granat : KUGEL.smaragd} dicht>
             <Ueberschrift farbe={lageZahl ? KUGEL.granat : KUGEL.smaragd}>Lage</Ueberschrift>
             <div style={{ display: 'grid', gap: 10 }} data-inbox="lage">

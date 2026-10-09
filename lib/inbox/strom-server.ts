@@ -33,13 +33,24 @@ import { gespraecheBauen, lageBauen, zoeSatz, type Gespraech, type GespraechZust
 import { geteiltePostfaecherFuer, ladeGeteilt, personenMitBlick, teamPersonen, type TeamPerson } from './teilen-server';
 import { postfachTeilbar, standVon, type GespraechTeam, type TeamZustand, type UebergabeZeile } from './teilen';
 import { uebergabeZeilenFuer } from './uebergaben-speicher';
+import { leisteBauen, type LeisteEintrag } from './ansicht';
+import { adresseMaskiert } from '@/lib/zugang/konten';
 
-export interface StromFilter { bereich?: string; space?: 'privat' | 'business' }
+/**
+ * Filter einer Sicht. `space` = Privat/Business (die harte Grenze), `bereich` = genau ein Bereich, `ohne` = Bereiche, die unter „Alle“
+ * ausgeblendet sind (Mehrfach-Auswahl, Merker je Browser, 09.10. — als Ausschluss, damit ein NEUER Bereich sofort erscheint), `postfach` =
+ * genau ein Postfach (der Bereichsfilter gilt immer zuerst).
+ */
+export interface StromFilter { bereich?: string; space?: 'privat' | 'business'; ohne?: string[]; postfach?: string }
 
-/** Gehört ein Postfach-Bereich in diese Sicht? EINE Filterstelle (rein, getestet). */
-export function imBereich(bereich: string | null, f: StromFilter): boolean {
+/**
+ * Gehört ein Postfach-Bereich in diese Sicht? EINE Filterstelle (rein, getestet). Seit 09.10. gelten `space` UND `bereich` zugleich:
+ * `?space=business&bereich=privat` liefert nichts (vorher hätte `bereich` die Sicht überstimmt). Ohne Bereich (`null`) nur ohne `space`.
+ */
+export function imBereich(bereich: string | null, f: Pick<StromFilter, 'bereich' | 'space' | 'ohne'>): boolean {
+  if (f.space && (bereich === null || bereichVon(bereich) !== f.space)) return false;
   if (f.bereich) return bereich === f.bereich;
-  if (f.space) return bereich !== null && bereichVon(bereich) === f.space;
+  if (f.ohne && bereich !== null && f.ohne.includes(bereich)) return false;
   return true;
 }
 
@@ -53,6 +64,24 @@ export interface Strom {
   heute: string;
   /** Übergaben (Kopien) an bzw. von dieser Person — ohne Texte, im selben Bereichsfilter. */
   uebergaben: UebergabeZeile[];
+  /**
+   * Bereichs-Leiste (09.10., Kevin: „auf das Postfach klicken … MAKE Innovation oder KD Ventures“): je Bereich DER SICHT (nur `space`, nicht
+   * der gewählte Bereich — die Leiste zeigt alle Reiter) ein Eintrag mit Ungelesen/offen und den Postfächern. Nur Zahlen und Namen.
+   */
+  leiste: LeisteEintrag[];
+  /**
+   * EIGENE Postfächer ohne Bereich (z. B. Gmail verbunden, aber noch nicht zugeordnet) — in JEDER Sicht, nur Kennung, Name, Quelle und die
+   * maskierte Adresse, nie eine Nachricht. Daraus macht die Inbox die Karte „… ist noch keinem Bereich zugeordnet — jetzt zuordnen“.
+   */
+  unzugeordnet: { id: string; quelle: string; anzeigename: string; adresse: string; nachrichten?: number }[];
+  /** Bereiche, die diese Sicht zum Zuordnen anbietet (nur wenn etwas unzugeordnet ist). */
+  waehlbar: { id: string; name: string }[];
+}
+
+/** Zum Zuordnen wählbare Bereiche einer Sicht (rein): Privat + alle bekannten Gesellschaften/Register-Bereiche, gefiltert nach `space`. */
+export function waehlbareBereiche(namen: Readonly<Record<string, string>>, space?: 'privat' | 'business'): { id: string; name: string }[] {
+  const ids = ['privat', ...Object.keys(namen).filter(id => id !== 'privat')];
+  return ids.filter(id => imBereich(id, space ? { space } : {})).map(id => ({ id, name: bereichName(id, namen) }));
 }
 
 /** Zustand eines IMAP-Postfachs für die Leiste (rein). */
@@ -190,19 +219,31 @@ export function postfaecherSicht<P extends { id: string; bereich: string | null 
 export async function stromFuer(person: string, f: StromFilter = {}): Promise<Strom> {
   const heute = localDay();
   const r = await stromRoh(person, heute);
-  const sicht = r.postfaecher.filter(p => imBereich(p.bereich, f));
+  // Die Sicht (nur `space`): daraus Leiste und Bereichs-Umschalter. Erst danach der gewählte Bereich / die Auswahl / das Postfach.
+  const sichtSpace = f.space ? { space: f.space } : {};
+  const inSicht = r.postfaecher.filter(p => imBereich(p.bereich, sichtSpace));
+  const sicht = inSicht.filter(p => imBereich(p.bereich, f) && (!f.postfach || p.id === f.postfach));
   const ids = new Set(sicht.map(p => p.id));
   const gespraeche = r.gespraeche.filter(g => ids.has(g.postfachId));
+  const idsSicht = new Set(inSicht.map(p => p.id));
   const bereicheDa = Array.from(new Set(r.postfaecher.map(p => p.bereich).filter((b): b is string => !!b)));
+  // Unzugeordnet: nur EIGENE Postfächer (nie ein Team-Postfach einer anderen Person), nur Angaben zum Postfach — keine Nachricht.
+  const unzugeordnet = r.postfaecher.filter(p => p.bereich === null && !p.oeffentlich.fremd).map(p => ({
+    id: p.id, quelle: p.quelle, anzeigename: p.anzeigename, adresse: p.oeffentlich.adresse ? adresseMaskiert(p.oeffentlich.adresse) : '',
+    ...(typeof p.oeffentlich.zustand.nachrichten === 'number' ? { nachrichten: p.oeffentlich.zustand.nachrichten } : {}),
+  }));
   return {
     postfaecher: sicht.map(p => p.oeffentlich),
     gespraeche,
     lage: lageBauen(gespraeche),
     zoe: zoeSatz(gespraeche),
     // Für den Umschalter: nur die Bereiche der EIGENEN Postfächer (und alle wählbaren Namen für „Postfach hinzufügen“ liefert /api/inbox/postfaecher).
-    bereiche: bereicheDa.filter(b => imBereich(b, f.space ? { space: f.space } : {})).map(b => ({ id: b, name: bereichName(b, r.namen) })),
+    bereiche: bereicheDa.filter(b => imBereich(b, sichtSpace)).map(b => ({ id: b, name: bereichName(b, r.namen) })),
     google: r.google,
     heute,
     uebergaben: (await uebergabeZeilenFuer(person, r.team)).filter(u => imBereich(u.bereich, f)),
+    leiste: leisteBauen(inSicht.map(p => p.oeffentlich), r.gespraeche.filter(g => idsSicht.has(g.postfachId)), b => bereichName(b, r.namen)),
+    unzugeordnet,
+    waehlbar: unzugeordnet.length ? waehlbareBereiche(r.namen, f.space) : [],
   };
 }

@@ -1,5 +1,8 @@
 // ─── Inbox 2 — der eine Strom aller eigenen Postfächer (06.10.2026) ─────────────────────────────────────────────
-// GET  ?bereich=<id> | ?space=privat|business   → { ok, postfaecher, gespraeche, lage, zoe, bereiche, google, heute }
+// GET  ?bereich=<id> | ?space=privat|business   → { ok, postfaecher, gespraeche, lage, zoe, bereiche, google, heute, leiste, unzugeordnet, waehlbar }
+//      dazu (09.10.) `ohne=a,b` (unter „Alle“ ausgeblendete Bereiche) und `postfach=<id>` (ein Postfach im Bereich); `space` und `bereich` gelten
+//      zugleich (`?space=business&bereich=privat` → nichts). `leiste` = je Bereich der Sicht Ungelesen/offen + Postfächer (nur Zahlen/Namen),
+//      `unzugeordnet` = eigene Postfächer ohne Bereich (maskierte Adresse, nie Nachrichten) — in jeder Sicht, damit „jetzt zuordnen“ geht.
 //      Gespräche statt Einzelmails (Gmail + IMAP; WhatsApp vorbereitet), serverseitig nach Bereich gefiltert (lib/inbox/strom-server.ts
 //      `imBereich`) — ein Business-Bereich sieht nie Privates; ohne Filter alle EIGENEN Postfächer. ETag (304 beim 60-s-Abgleich).
 // POST { aktion, id, bis?, kontaktId? }          → erledigt · gelesen · ungelesen · spaeter · zurueck · zuordnen · loesen · zulassen · blocken · offen
@@ -21,7 +24,8 @@ import { TeamKonflikt } from '@/lib/inbox/teilen-server';
 import { TeilenFehler } from '@/lib/inbox/teilen';
 import { istGespraechId } from '@/lib/inbox/strom';
 import { zustandName } from '@/lib/inbox/zustand';
-import { registerName, imapStandName } from '@/lib/postfach/typen';
+import { registerName, imapStandName, POSTFACH_ID } from '@/lib/postfach/typen';
+import { bereicheAus, istBereichKennung } from '@/lib/inbox/ansicht';
 import { gmailStandName } from '@/lib/gmail/typen';
 import { WA_SPIEGEL, WA_ZUSTAND } from '@/lib/whatsapp/spiegel'; // WhatsApp (07.10.): neue Nachrichten ändern den ETag sofort
 import { ladePostfaecher } from '@/lib/postfach/register';
@@ -35,15 +39,19 @@ import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const BEREICH = /^(privat|kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$/;
-
+// Bereich generisch (09.10.): privat · Gesellschaft · `g-…` · weitere Formen der Postfächer (z. B. ein Kunden-Bereich) — nur die Form wird
+// geprüft; was ein Bereich sehen darf, entscheidet `imBereich` (space UND bereich gelten zugleich).
 function filterAus(req: Request): StromFilter | null {
   const q = new URL(req.url).searchParams;
   const bereich = q.get('bereich');
   const space = q.get('space');
-  if (bereich && !BEREICH.test(bereich)) return null;
+  const ohne = q.has('ohne') ? bereicheAus(q.get('ohne')) : undefined;
+  const postfach = q.get('postfach');
+  if (bereich && !istBereichKennung(bereich)) return null;
   if (space && space !== 'privat' && space !== 'business') return null;
-  return { ...(bereich ? { bereich } : {}), ...(space ? { space: space as 'privat' | 'business' } : {}) };
+  if (ohne === null) return null;
+  if (postfach && !POSTFACH_ID.test(postfach)) return null;
+  return { ...(bereich ? { bereich } : {}), ...(space ? { space: space as 'privat' | 'business' } : {}), ...(ohne && !bereich ? { ohne } : {}), ...(postfach ? { postfach } : {}) };
 }
 
 export async function GET(req: Request) {
@@ -52,7 +60,7 @@ export async function GET(req: Request) {
   const f = filterAus(req);
   if (!f) return NextResponse.json({ ok: false, fehler: 'bereich bzw. space ist ungültig.' }, { status: 400 });
   const p = z.person;
-  const etag = etagAus('inbox2', p, f.bereich ?? '', f.space ?? '', await speicherStand([registerName(p), imapStandName(p), gmailStandName(p), zustandName(p), 'kontakte', 'crm', `google-verbindung--${p}`, WA_SPIEGEL, WA_ZUSTAND, 'konten', ...(await teilenStandNamen(p))]), localDay(), String(Math.floor(Date.now() / 60_000)));
+  const etag = etagAus('inbox2', p, f.bereich ?? '', f.space ?? '', (f.ohne ?? []).join(','), f.postfach ?? '', await speicherStand([registerName(p), imapStandName(p), gmailStandName(p), zustandName(p), 'kontakte', 'crm', `google-verbindung--${p}`, WA_SPIEGEL, WA_ZUSTAND, 'konten', ...(await teilenStandNamen(p))]), localDay(), String(Math.floor(Date.now() / 60_000)));
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const s = await stromFuer(p, f);

@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { eigenePerson, NUR_EIGENE_POST } from '@/lib/google/zugang';
 import { istGespraechId } from '@/lib/inbox/strom';
 import { imBereich } from '@/lib/inbox/strom-server';
+import { istBereichKennung } from '@/lib/inbox/ansicht';
 import { TeilenFehler, uebergabeZeile } from '@/lib/inbox/teilen';
 import { teamPersonen } from '@/lib/inbox/teilen-server';
 import { uebergabeZeilenFuer } from '@/lib/inbox/uebergaben-speicher';
@@ -24,7 +25,6 @@ import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const BEREICH = /^(privat|kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$/;
 const UB_ID = /^ub-[0-9a-f-]{36}$/;
 const PERSON = /^[a-z0-9-]{1,40}$/;
 
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   }
   const bereich = q.get('bereich');
   const space = q.get('space');
-  if ((bereich && !BEREICH.test(bereich)) || (space && space !== 'privat' && space !== 'business')) return NextResponse.json({ ok: false, fehler: 'bereich bzw. space ist ungültig.' }, { status: 400 });
+  if ((bereich && !istBereichKennung(bereich)) || (space && space !== 'privat' && space !== 'business')) return NextResponse.json({ ok: false, fehler: 'bereich bzw. space ist ungültig.' }, { status: 400 });
   const f = { ...(bereich ? { bereich } : {}), ...(space ? { space: space as 'privat' | 'business' } : {}) };
   const zeilen = (await uebergabeZeilenFuer(z.person)).filter(u => imBereich(u.bereich, f));
   return NextResponse.json({ ok: true, uebergaben: zeilen }, { headers: { 'Cache-Control': 'no-store' } });
