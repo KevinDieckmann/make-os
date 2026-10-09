@@ -17,7 +17,7 @@ import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Knopf, Leer, Le
 import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { LaufZeile } from './Hintergrund';
-import { anfrageId, einstellungSenden, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf } from './daten';
+import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import {
   ansprache, ansprechbarFuer, ausloeserText, euro, FADEN_STATUS_NAME, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
@@ -106,6 +106,8 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
   const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `faden:${fadenId}` : null, () => ladeFaden(fadenId!));
   const faden: { stand: Abruf<FadenAntwort> } = vorgegeben ? { stand: { zustand: 'da', daten: vorgegeben } } : geladen;
   const [wartend, setWartend] = useState<Nachricht | null>(null);
+  // Streaming: der Text, während er entsteht, und das laufende Werkzeug.
+  const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
   const laeuft = !!wartend;
   const ansprechbar = ansprechbarFuer('head', heads, k.id);
   const fa = fadenId && faden.stand.zustand === 'da' ? faden.stand.daten : null;
@@ -122,8 +124,9 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
       return true;
     }
     setWartend({ id: 'nr-wartet', rolle: 'person', von: 'ich', text, zeit: new Date().toISOString() });
-    const r = await fadenSenden({ aktion: 'senden', agent: { art: 'head', headId: k.id }, text, ...(fa ? { fadenId: fa.faden.id, stand: fa.stand } : {}), anfrageId: anfrageId() });
-    setWartend(null);
+    setEntsteht(ENTSTEHEND_LEER);
+    const r = await fadenSenden({ aktion: 'senden', agent: { art: 'head', headId: k.id }, text, ...(fa ? { fadenId: fa.faden.id, stand: fa.stand } : {}), anfrageId: anfrageId() }, e => setEntsteht(s => entstehendNach(s, e)));
+    setWartend(null); setEntsteht(ENTSTEHEND_LEER);
     if (!r.ok) {
       melde(r.kommt ? `Der Chat mit ${k.kurz} kommt mit dem Agenten-Kern — die Nachricht ist noch nicht gesendet.` : r.status === 409 ? 'Der Thread hat sich inzwischen geändert — er ist neu geladen. Bitte noch einmal senden.' : r.text, r.kommt ? 'info' : 'kritisch');
       if (r.status === 409) meldeNeu();
@@ -150,7 +153,7 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
       )}
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel} leer={leer} fadenId={fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer ? fa.faden.id : undefined}
         onAlsSkill={(n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech' } })}
-        unten={laeuft ? <Schreibt name={k.kurz} /> : undefined} />
+        unten={laeuft ? <Schreibt name={k.kurz} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={`Nachricht an ${k.kurz} … (@Mitarbeiter beauftragt)`} ansprechbar={ansprechbar} onSenden={senden} laeuft={laeuft}
         aus={!!k.gesperrt && k.gesperrt.grund !== 'business-frei'} ausText={k.gesperrt?.text}
         unten={form === 'handy' ? 'var(--agenten-feld-unten, 0px)' : undefined} />

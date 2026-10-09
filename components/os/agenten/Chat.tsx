@@ -230,9 +230,19 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
   );
 }
 
-/** „ZOE schreibt …“ während einer Antwort. */
-export function Schreibt({ name }: { name: string }) {
-  return <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{name} schreibt …</div>;
+/**
+ * „ZOE schreibt …“ während einer Antwort — mit Streaming (09.10.) der Text, während er entsteht, und „ruft … auf“, solange ein Werkzeug
+ * läuft. Kein Tipp-Effekt (auch nicht bei reduzierter Bewegung nötig): der Text wird nur angehängt; vorgelesen wird nur die Statuszeile.
+ */
+export function Schreibt({ name, entsteht }: { name: string; entsteht?: { text: string; werkzeug: string | null } }) {
+  const status = entsteht?.werkzeug ? `${name} ruft ${entsteht.werkzeug} auf …` : `${name} schreibt …`;
+  if (!entsteht?.text) return <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</div>;
+  return (
+    <div style={{ display: 'grid', gap: ABSTAND.xs, maxWidth: NACHRICHT_MAX }}>
+      <div style={{ fontSize: TYP.body, lineHeight: 1.55, color: C.ink, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{entsteht.text}</div>
+      <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</div>
+    </div>
+  );
 }
 
 // ── Das Feld ────────────────────────────────────────────────────────────────────────────────────────────────────────────

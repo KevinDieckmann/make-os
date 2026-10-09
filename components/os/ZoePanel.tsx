@@ -42,6 +42,8 @@ import { KUGEL } from '@/lib/make-one/design';
 
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
+import { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
+import { postMitStrom } from '@/lib/http/strom-client';
 /** Was ZOE aus einem Foto/PDF gelesen hat — Vorschlag, noch nicht gebucht. */
 interface Beleg {
   richtung: 'eingang' | 'ausgang' | 'unklar';
@@ -143,6 +145,8 @@ export function ZoePanel() {
   const [convo, setConvo] = useState<Msg[]>([]);
   const [ask, setAsk] = useState('');
   const [thinking, setThinking] = useState(false);
+  // Streaming (09.10.): der Text, während er entsteht, und das laufende Werkzeug — bis die fertige Antwort da ist.
+  const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
   // Wie viel vorbereitet ist und auf Kevin wartet (kommt aus jeder Antwort).
   const [stapelOffen, setStapelOffen] = useState(0);
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): Art + Kennung geht mit jeder Nachricht mit, bis man ihn löst.
@@ -280,7 +284,7 @@ export function ZoePanel() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => { const el = convoRef.current; if (el) el.scrollTop = el.scrollHeight; }, [convo, thinking, fenster.offen]);
+  useEffect(() => { const el = convoRef.current; if (el) el.scrollTop = el.scrollHeight; }, [convo, thinking, fenster.offen, entsteht.text]);
 
   // ── Stufenlos ziehen: Größe (Ecke oben links) und Ort (Kopfzeile) ──
   useEffect(() => {
@@ -323,13 +327,20 @@ export function ZoePanel() {
     setAsk(''); setThinking(true); setZeigeVerlauf(false);
     const meins: Msg = { role: 'user', text: q, zeit: new Date().toISOString() };
     setConvo(c => [...c, meins]);
+    setEntsteht(ENTSTEHEND_LEER);
     try {
-      const r = await fetch('/api/kimmi', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        // Der Verlauf liegt im ZOE-Thread auf dem Server — hier geht nur die neue Nachricht mit (Paket 4a).
-        body: JSON.stringify({ message: q, zoeFaden: gespraechId || 'neu', space: aktiverSpace, ...(bezug ? { bezug } : {}) }),
-      });
-      const d = await r.json();
+      // Der Verlauf liegt im ZOE-Thread auf dem Server — hier geht nur die neue Nachricht mit (Paket 4a). Mit Strom (09.10.): der Text
+      // erscheint, während er entsteht; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON in lib/http/strom-client.ts).
+      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: gespraechId || 'neu', space: aktiverSpace, ...(bezug ? { bezug } : {}) },
+        e => setEntsteht(s => entstehendNach(s, e)));
+      if (r.netz) throw new Error('netz');
+      if (r.unterbrochen) {
+        // Abgerissen: der Server hat nichts Halbes gespeichert — den Thread neu laden, statt still noch einmal zu senden (Kosten).
+        const f = gespraechId ? await ladeZoeFaden(gespraechId) : null;
+        setConvo(c => [...(f ? ausFaden(f.nachrichten) : c), { role: 'kimmi', text: 'Die Verbindung ist abgerissen — fehlt meine Antwort, frag bitte noch einmal.', zeit: new Date().toISOString() }]);
+        return;
+      }
+      const d = (r.body ?? {}) as { reply?: string; stapelOffen?: unknown; fadenId?: unknown; handoffs?: unknown; ran?: unknown };
       if (typeof d.stapelOffen === 'number') setStapelOffen(d.stapelOffen);
       if (typeof d.fadenId === 'string' && d.fadenId) { setGespraechId(d.fadenId); merke(d.fadenId, q); }
       const antwort: Msg = {
@@ -346,6 +357,7 @@ export function ZoePanel() {
       setConvo(c => [...c, fehler]);
     } finally {
       setThinking(false);
+      setEntsteht(ENTSTEHEND_LEER);
     }
   };
 
@@ -544,7 +556,14 @@ export function ZoePanel() {
               )}
             </div>
         )}
-        {thinking && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}><span style={{ ...lbl, color: J }}>ZOE</span> denkt nach …</div>}
+        {/* Streaming (09.10.): der Text, während er entsteht, und „ruft … auf“ bei Werkzeugen — kein Tipp-Effekt, nur anhängen. */}
+        {thinking && entsteht.text && (
+          <div style={{ maxWidth: '96%' }}>
+            <div style={{ ...lbl, marginBottom: 5 }}><span style={{ color: J }}>ZOE</span></div>
+            <Rich text={entsteht.text} />
+          </div>
+        )}
+        {thinking && <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}><span style={{ ...lbl, color: J }}>ZOE</span> {entsteht.werkzeug ? `ruft ${entsteht.werkzeug} auf …` : entsteht.text ? 'schreibt …' : 'denkt nach …'}</div>}
       </div>
       )}
 

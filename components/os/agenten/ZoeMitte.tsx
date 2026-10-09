@@ -15,7 +15,7 @@ import { KiMarke } from '../KiMarke';
 import { Chip, Fortschritt, Karte, Knopf, Leer, Wahl } from '../ui';
 import { ZoeKopfKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
-import { anfrageId, fadenSenden, ladeFaden, stapelEntscheiden, useAbruf, zoeFragen } from './daten';
+import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, stapelEntscheiden, useAbruf, zoeFragen, type Entstehend } from './daten';
 import { sichtbareHeads, useAgenten } from './kontext';
 import {
   ansprache, ansprechbarFuer, nachEisenhower, risikoVon, vorschlaegeHeute, wartendeFaeden, zeitKurz, zoeFadenAktuell,
@@ -131,6 +131,8 @@ export function ZoeMitte() {
   // Was gerade unterwegs ist (eigene Nachricht, dann die Antwort) — nur bis der Thread vom Server sie zeigt (`basis` = Länge davor).
   const [ausstehend, setAusstehend] = useState<{ basis: number; n: Nachricht[] } | null>(null);
   const [laeuft, setLaeuft] = useState(false);
+  // Was gerade entsteht (Streaming): Text bisher und das laufende Werkzeug — bis der Thread vom Server die Antwort zeigt.
+  const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
   const [vorlesen, setVorlesen] = useState(false);
   const stimme = useStimme(() => { /* nur Vorlesen — Diktat sitzt im Feld */ });
   const gespeichert = thread && thread.faden.id === fadenId ? thread.faden.nachrichten : [];
@@ -160,9 +162,9 @@ export function ZoeMitte() {
     }
     const basis = gespeichert.length;
     setAusstehend({ basis, n: [meins] });
-    setLaeuft(true);
-    const r = await zoeFragen({ message: text, space, zoeFaden: fadenId ?? 'neu' });
-    setLaeuft(false);
+    setLaeuft(true); setEntsteht(ENTSTEHEND_LEER);
+    const r = await zoeFragen({ message: text, space, zoeFaden: fadenId ?? 'neu' }, e => setEntsteht(s => entstehendNach(s, e)));
+    setLaeuft(false); setEntsteht(ENTSTEHEND_LEER);
     if (!r.ok) { setAusstehend(null); melde(r.text || 'ZOE konnte gerade nicht antworten — versuch es noch einmal.', 'kritisch'); return false; }
     const neuerFaden = !!r.daten.fadenId && r.daten.fadenId !== fadenId;
     const antwort: Nachricht = { id: nr(), rolle: 'agent', von: 'zoe', text: r.daten.reply ?? '', zeit: zeit(), ...(r.daten.ki ? { ki: true as const } : {}) };
@@ -200,7 +202,7 @@ export function ZoeMitte() {
 
       <ChatVerlauf nachrichten={zuege} stapel={stapel} kinder={thread?.kinder ?? []}
         leer={<Leer>Frag ZOE etwas — oder sprich einen Head direkt an: <b>@{ansprechbar[0]?.name ?? 'Head'}</b> und dein Auftrag.</Leer>}
-        unten={laeuft ? <Schreibt name="ZOE" /> : undefined} />
+        unten={laeuft ? <Schreibt name="ZOE" entsteht={entsteht} /> : undefined} />
       {zuege.length > 0 && (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
           <Knopf leise onClick={() => { setGewaehlt({ id: null, neu: true }); setAusstehend(null); }}>Neues Gespräch</Knopf>

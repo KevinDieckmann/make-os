@@ -12,7 +12,7 @@ import type { FadenAntwort, HeadKarte, LaufSchritt, Nachricht } from '@/lib/agen
 import { Chip, Eigenschaft, Hinweis, Karte, Knopf, Leer, Leerzustand } from '../ui';
 import { KuerzelKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
-import { anfrageId, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf } from './daten';
+import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import { agentAusSchluessel, dauerText, delegationTeile, euro, FADEN_STATUS_NAME, zeitKurz } from './regeln';
 import { KUGEL_GROESSE } from './masse';
@@ -99,6 +99,8 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
   const stand: Abruf<FadenAntwort> = vorgegeben ? { zustand: 'da', daten: vorgegeben } : geladen.stand;
   const fa = stand.zustand === 'da' ? stand.daten : null;
   const [wartend, setWartend] = useState<Nachricht | null>(null);
+  // Streaming: der Text, während er entsteht, und das laufende Werkzeug.
+  const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
 
   const agent = fa ? fa.faden.agent : entwurf ? { art: 'mitarbeiter' as const, ...entwurf } : null;
   const k = agent && agent.art !== 'zoe' ? headKarte(w, agent.headId) : null;
@@ -120,8 +122,9 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
 
   const senden = async (text: string): Promise<boolean> => {
     setWartend({ id: 'nr-wartet', rolle: 'person', von: 'ich', text, zeit: new Date().toISOString() });
-    const r = await fadenSenden({ aktion: 'senden', agent, text, ...(fa ? { fadenId: fa.faden.id, stand: fa.stand } : {}), anfrageId: anfrageId() });
-    setWartend(null);
+    setEntsteht(ENTSTEHEND_LEER);
+    const r = await fadenSenden({ aktion: 'senden', agent, text, ...(fa ? { fadenId: fa.faden.id, stand: fa.stand } : {}), anfrageId: anfrageId() }, e => setEntsteht(s => entstehendNach(s, e)));
+    setWartend(null); setEntsteht(ENTSTEHEND_LEER);
     if (!r.ok) {
       melde(r.kommt ? `Der Thread mit ${name} kommt mit dem Agenten-Kern — die Nachricht ist noch nicht gesendet.` : r.status === 409 ? 'Der Thread hat sich geändert — neu geladen. Bitte noch einmal senden.' : r.text, r.kommt ? 'info' : 'kritisch');
       if (r.status === 409) meldeNeu();
@@ -158,7 +161,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
         fadenId={fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer) ? fa.faden.id : undefined}
         leer={fa ? <Leer>Noch keine Antwort in diesem Thread.</Leer> : <Leerzustand symbol="↳" titel={`Neuer Thread mit ${name}`}>Schreib den Auftrag: Ziel, Format, Grenzen und Quellen — dann arbeitet {name} los.</Leerzustand>}
         onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}) } }) : undefined}
-        unten={wartend ? <Schreibt name={name} /> : undefined} />
+        unten={wartend ? <Schreibt name={name} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={fa ? `Nachricht an ${name} …` : `Auftrag an ${name} — Ziel, Format, Grenzen, Quellen …`} onSenden={senden} laeuft={!!wartend}
         zusatz={fa && k ? <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf> : undefined}
         unten={form === 'handy' ? 'var(--agenten-feld-unten, 0px)' : undefined} />

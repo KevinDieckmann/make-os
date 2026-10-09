@@ -9,6 +9,8 @@
 //   GET/POST /api/zoe/stapel              → „Wartet auf dich“: die offenen Freigaben (vorhanden, unverändert)
 //   POST     /api/kimmi                   → der ZOE-Chat in der Mitte — auf dem ZOE-Thread der Person (`zoeFaden`, Paket 4a): der Server
 //                                          liest den Verlauf aus dem Thread; ZoePanel, Empfang und diese Seite zeigen denselben Thread
+// Chats (ZOE, Heads, Mitarbeiter) schicken seit 09.10. `Accept: text/event-stream` (lib/http/strom-client.ts): der Text erscheint, während
+// er entsteht, Werkzeuge als „ruft … auf“; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON, wenn der Strom nicht geht).
 // Typen: lib/agenten/typen.ts. Solange eine Route 501 antwortet (Stub), ist der Zustand `kommt` — die Seite zeigt dann einen
 // ruhigen Leerzustand, nie einen Fehler. 401/403 = `gesperrt` (die Route hat entschieden, die Seite blendet nichts selbst aus).
 // Schreiben geht immer mit `x-make-bau` (setzt die BauWache am Fenster) — 409 `neuLaden` kommt als Text an.
@@ -20,9 +22,12 @@ import type {
 } from '@/lib/agenten/typen';
 import type { KiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 import { zufallsUuid } from '@/lib/kennung';
+import type { StromEreignis } from '@/lib/http/sse';
+export { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
+import { postMitStrom } from '@/lib/http/strom-client';
 import type { VorschlagKurz } from './regeln';
 
-export type { KiKennzeichen };
+export type { KiKennzeichen, StromEreignis };
 
 /** Was ein Bereich der Seite gerade hat. */
 export type Abruf<T> =
@@ -74,6 +79,14 @@ export async function holen<T>(url: string): Promise<Abruf<T>> {
   return { zustand: 'da', daten: d as T };
 }
 
+/** Status + Körper einer schreibenden Antwort als Ergebnis — dieselbe Regel mit und ohne Strom. */
+function ergebnisAus<T>(status: number, d: unknown): Ergebnis<T> {
+  if (status === 501) return { ok: false, kommt: true, status: 501, text: textAus(d, KOMMT_TEXT) };
+  const okFeld = d && typeof d === 'object' ? (d as { ok?: unknown }).ok : undefined;
+  if (status < 200 || status >= 300 || okFeld === false) return { ok: false, kommt: false, status, text: textAus(d, `Nicht gespeichert (${status}).`), daten: d };
+  return { ok: true, daten: d as T };
+}
+
 /** Schreibt (POST, JSON). Der Satz des Servers kommt immer mit — nie ein stilles Scheitern. */
 export async function senden<T>(url: string, body: unknown): Promise<Ergebnis<T>> {
   let r: Response;
@@ -82,10 +95,21 @@ export async function senden<T>(url: string, body: unknown): Promise<Ergebnis<T>
   } catch { return { ok: false, kommt: false, status: 0, text: KEIN_NETZ }; }
   let d: unknown = null;
   try { d = await r.json(); } catch { /* leerer Körper */ }
-  if (r.status === 501) return { ok: false, kommt: true, status: 501, text: textAus(d, KOMMT_TEXT) };
-  const okFeld = d && typeof d === 'object' ? (d as { ok?: unknown }).ok : undefined;
-  if (!r.ok || okFeld === false) return { ok: false, kommt: false, status: r.status, text: textAus(d, `Nicht gespeichert (${r.status}).`), daten: d };
-  return { ok: true, daten: d as T };
+  return ergebnisAus<T>(r.status, d);
+}
+
+/** Abgerissener Strom: der Server hat nichts Halbes gespeichert — der Thread wird neu geladen. */
+export const STROM_ABGERISSEN = 'Die Verbindung ist abgerissen — der Thread wird neu geladen. Fehlt die Antwort, bitte noch einmal senden.';
+
+/**
+ * Schreibt mit Strom (09.10., „wie Claude“): Text-Stücke und Werkzeug-Stände gehen an `bei`, das Ergebnis ist dasselbe wie bei `senden`
+ * (Rückfall auf JSON in lib/http/strom-client.ts). Reißt der Strom ab, lädt die Seite neu (nie eine automatische Wiederholung).
+ */
+export async function sendenMitStrom<T>(url: string, body: unknown, bei: (e: StromEreignis) => void, signal?: AbortSignal): Promise<Ergebnis<T>> {
+  const r = await postMitStrom(url, body, bei, signal ? { signal } : {});
+  if (r.netz) return { ok: false, kommt: false, status: 0, text: KEIN_NETZ };
+  if (r.unterbrochen) { meldeNeu(); return { ok: false, kommt: false, status: 0, text: signal?.aborted ? '' : STROM_ABGERISSEN, daten: { unterbrochen: true } }; }
+  return ergebnisAus<T>(r.status, r.body);
 }
 
 /**
@@ -145,8 +169,9 @@ export const ladeStapel = () => holen<StapelAntwort>(WEGE.stapel);
 /** Eine Kennung je Absicht — wiederholt der Browser die Anfrage, legt der Server nichts doppelt an (`einmalig`). */
 export const anfrageId = (): string => zufallsUuid();
 
-export async function fadenSenden(a: FadenAnfrage): Promise<Ergebnis<FadenSendenAntwort>> {
-  const r = await senden<FadenSendenAntwort>(WEGE.faden, a);
+/** An einen Head bzw. Mitarbeiter senden — mit `bei` als Strom (der Text erscheint, während er entsteht), sonst JSON wie bisher. */
+export async function fadenSenden(a: FadenAnfrage, bei?: (e: StromEreignis) => void): Promise<Ergebnis<FadenSendenAntwort>> {
+  const r = bei ? await sendenMitStrom<FadenSendenAntwort>(WEGE.faden, a, bei) : await senden<FadenSendenAntwort>(WEGE.faden, a);
   if (r.ok) meldeNeu();
   return r;
 }
@@ -171,8 +196,8 @@ export async function stapelEntscheiden(b: { id: string; entscheidung: 'freigebe
  * liest den Verlauf aus dem Thread (nie vom Browser), „fremd gelesen“ steht am Thread. Kein `context` mehr: der wäre Text Dritter, und
  * ZOE dürfte ab dem zweiten Zug nur noch vorschlagen.
  */
-export async function zoeFragen(b: { message: string; space: 'privat' | 'business'; zoeFaden: string }): Promise<Ergebnis<ZoeAntwort>> {
-  const r = await senden<ZoeAntwort>(WEGE.zoe, b);
+export async function zoeFragen(b: { message: string; space: 'privat' | 'business'; zoeFaden: string }, bei?: (e: StromEreignis) => void): Promise<Ergebnis<ZoeAntwort>> {
+  const r = bei ? await sendenMitStrom<ZoeAntwort>(WEGE.zoe, b, bei) : await senden<ZoeAntwort>(WEGE.zoe, b);
   if (r.ok) meldeNeu();
   return r;
 }
