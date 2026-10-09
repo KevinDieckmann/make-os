@@ -98,6 +98,8 @@ Kunde: ‹Firma› · Instanz: ‹kennung› · Domain: ‹instanz-domain› · 
       mit dem Tag, an dem sie spätestens überschrieben sind, und einen **Bestätigungs-Code**, der nur heute und nur für diesen Stand gilt) →
       `… --ausfuehren --code <CODE> --bericht loeschbestaetigung.txt` löscht Datenordner (inkl. Tagessicherungen und Archiv-Kopien) und
       Grabstein-Ordner und schreibt den Entwurf der Löschbestätigung. Das Skript bricht ab, wenn eine App den Ordner hält, und fasst nie `.data` an.
+      Mit Object Storage (Fotos & Videos) zusätzlich `--env <.env der Instanz>`: der Trockenlauf zeigt die Medien (Anzahl, Größe), Ausführen löscht
+      die Objekte im Bucket zuerst; danach Bucket + S3-Zugangsdaten in der Hetzner-Konsole löschen (LOESCHKONZEPT.md › 6).
 - [ ] Danach von Hand: Container/Volumes, Vault, Nachtarchive Server und Sicherungsort MAKE (alle Generationen — oder Ablauf ≤ 12 Monate
       abwarten und das so in die Bestätigung schreiben), Schlüssel (Daten, Pepper, age) aus dem Passwort-Manager (= Restkopien unlesbar),
       Support-SSH-Schlüssel, DNS, Healthcheck, Hoster-Abbilder (oder Ablauf 7 Tage).

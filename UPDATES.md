@@ -4,6 +4,36 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Medien unterwegs: Nachzug Recht & Betrieb (Paket 5/4c offene Folgeschritte; nur lokal — Branch `medien-nachzug`, Basis `agenten-nacht` a2b8a5ee)
+
+Die offenen Folgeschritte aus Medien V1 (Paket 5) und den KI-Medien (4c). Hinweis, keine Rechtsberatung.
+
+- **Konto › Meine Daten** (`kontoExport` → neues Feld `medien`, lib/medien/export.ts): Privat der ganze eigene Katalog (Alben, Medien, auch
+  Papierkorb), Business die selbst aufgenommenen, die, auf denen die Person als Konto markiert ist, und die selbst bewerteten — Markierungen
+  anderer nur als Anzahl; eigene Einwilligungen (für andere festgehaltene nur gezählt). **Dateien nie im JSON**, sondern unter `dateien` mit
+  Download-Weg (`/api/medien/inhalt?…&download=1`, `/api/medien/beleg?…`) — dieselbe Sicht und dasselbe Lese-Protokoll wie in der App;
+  Papierkorb/„Ton nicht freigegeben“ mit Hinweis statt Weg. `medien-privat--<person>` steht nicht mehr roh im Export (er trug den gewickelten
+  Schlüssel je Medium). Die eigene Unterschrift lädt jetzt auch die Person selbst (Art. 15), fremde weiter nur, wer freigeben darf.
+- **Instanz-Export:** Medien-Kataloge und offene Uploads OHNE Schlüssel je Medium (nur `kid`); neu `medien` = Liste der Objekte im Medienspeicher
+  (Bucket bzw. Ordner) mit Abgleich gegen die Kataloge (`imKatalog`, `fehlen`); Umfang zählt Medien; „Nicht enthalten“ nennt die Medien-Dateien.
+- **Instanz löschen** (`scripts/instanz-loeschen.mjs` + `lib/medien/instanz.mjs` `medienPlan`): Trockenlauf zeigt Object Storage (Anzahl, Größe, offene
+  Uploads, nur unter dem Präfix) bzw. Medien-Ordner; der Code hängt am Medien-Stand; Ausführen leert den Bucket ZUERST (scheitert ein Objekt → Abbruch,
+  Datenordner bleibt), löscht einen Ordner außerhalb des Datenordners mit, Bericht nennt es. `--env <.env der Instanz>` liest NUR `MAKE_OS_MEDIEN*`;
+  Medien-Kataloge ohne angegebenen Speicher → Abbruch; `--ohne-medien` bewusst. Namen, die nicht wie Medien aussehen, werden nie gelöscht.
+  Dafür liegt der S3-Kern (Signatur, Konfiguration, Aufruf, ListObjectsV2/ListMultipartUploads) jetzt in `lib/medien/s3-kern.mjs` — EIN Weg für
+  App und Skript (das Skript läuft mit nacktem Node; im Server-Bild gibt es keinen TS-Lader). `s3-signatur.ts`/`speicher.ts`/`speicher-s3.ts` reichen weiter.
+- **Empfänger Hetzner:** Zweck/Daten/Notiz nennen den Object Storage (Medien); unveränderte alte Fassungen werden gehoben. **VVT `vv-medien`:**
+  `empfaengerIds` + Google Vertex (Bild-KI, Fotos als Vorlage nur mit Einwilligung „KI“; KI-Bilder/-Videos), Empfänger-/Drittland-Satz gehoben.
+  **Art. 15:** `vv-medien` in der Konto-Auskunft; Kontakt-Auskunft nennt sie, wenn es Medien bzw. Einwilligungen der Person gibt.
+- **Head of IT:** „Speicher fast voll“ im Ordner-Rückfall (≥ 80 % gelb, ≥ 95 % rot von MAKE_OS_MEDIEN_ORDNER_MB, Vorgabe 2 GB) gab es schon —
+  jetzt mit Wächtertest über `medienLage` und deutscher Zahl („1,7 GB von 2,0 GB“).
+- **Selbstprüfung** (System › Datenschutz): Punkt „Medien: Einwilligungen und Freigaben“ — nur Zähler, nur wenn es Business-Medien bzw.
+  Einwilligungen gibt: offen bei Freigaben, die heute nicht mehr tragen; teilweise bei „freigegeben, aber gesperrt“, abgelaufenen Freigaben und
+  Rohmaterial über der Prüffrist; Weg in Fotos & Videos.
+- Tests: `tests/medien-nachzug.test.ts` (19, S3-Fake mit Listen und Seiten, kein Netz); S3-Fake versteht jetzt ListObjectsV2/ListMultipartUploads.
+
+**Rückweg:** keine neuen Bestände; Export-Felder nur zusätzlich. Der alte Stand liest `s3-kern.mjs` nicht — er bringt seine `s3-signatur.ts` mit.
+
 ## 09.10.2026 — Brain-/Vault-Sicht ohne feste Personen (PRIVATE_INHALTE_SUCHE.md Paket 5 „Vault- und Brain-Sicht“; nur lokal — Branch `brain-neutral`, Basis `agenten-nacht` c9c65695)
 
 Plattform-Regel „Nichts Persönliches fest einbauen“: Wer im Obsidian-Brain was sieht, wem eine Notiz ohne `owner` gehört, für wen eine Regel gilt

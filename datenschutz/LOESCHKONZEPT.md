@@ -157,11 +157,18 @@ Schriftliche **Löschbestätigung** an den Kunden mit Datum, Umfang, Restbestän
 **Seit 05.10. (Betroffenenrechte v2) mit Werkzeug — nie automatisch:**
 1. **Rückgabe:** System › Datenschutz › Vertragsende → „Alles exportieren“ (nur Inhaber-Sitzung + Passwort + zweiter Faktor; alle Bestände,
    Dateien, Bilder entschlüsselt in EINER JSON-Datei; Eintrag im Lese- und Anmeldeprotokoll). Nicht enthalten: `backup/`, `archiv/`,
-   Grabsteine, Schlüssel (steht im Kopf der Datei).
+   Grabsteine, Schlüssel (steht im Kopf der Datei). Medien (seit 09.10.): die Kataloge ohne Schlüssel je Medium und unter `medien` die
+   Liste der Objekte im Medienspeicher (Bucket bzw. Ordner, abgeglichen mit den Katalogen) — die Dateien selbst (Videos bis 2 GB) nicht;
+   wer sie braucht, lädt sie vorher in der App (Fotos & Videos) herunter.
 2. **Löschen:** `node scripts/instanz-loeschen.mjs --ordner <Datenordner>` — Trockenlauf (Vorgabe) zeigt Umfang, Grabstein-Ordner und die
    Nachtarchive mit „spätestens überschrieben am“ (jüngstes Archiv + 12 Monate), dazu einen Bestätigungs-Code (gilt nur heute, nur für
    diesen Stand). `--ausfuehren --code <CODE> [--bericht <datei>]` löscht Datenordner + Grabstein-Ordner und schreibt den Entwurf der
    Löschbestätigung. Bricht ab, wenn eine App den Ordner hält; fasst nie `.data` an; löscht Sicherungen nie einzeln (sie werden genannt).
+   **Medien (seit 09.10.):** Fotos und Videos liegen im Medienspeicher, nicht im Datenordner. Mit Object Storage die Variablen der Instanz
+   mitgeben (`--env <.env der Instanz>` — gelesen werden nur `MAKE_OS_MEDIEN*`): der Trockenlauf zeigt Anzahl und Größe unter dem Präfix der
+   Instanz, Ausführen löscht die Objekte im Bucket ZUERST (scheitert eins: Abbruch, Datenordner bleibt) und nennt sie in der Bestätigung;
+   danach Bucket und S3-Zugangsdaten in der Hetzner-Konsole löschen. Ein Medien-Ordner außerhalb des Datenordners wird mit gelöscht.
+   Medien-Kataloge ohne angegebenen Speicher → Abbruch; `--ohne-medien` nur, wenn der Bucket von Hand geleert wird (steht so im Bericht).
 3. Schlüssel, Archive, Abbilder, DNS usw. wie oben von Hand.
 
 ---
