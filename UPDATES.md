@@ -4,6 +4,45 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Streaming für ZOE und den Agenten-Chat „wie Claude“ (nur lokal — Branch `agenten-streaming`, Basis `agenten-nacht` 337fe0ac)
+
+AGENTEN_KONZEPT.md C8 Risiko 8 („Ohne Streaming wirkt der Chat langsamer“). Der Text erscheint, während er entsteht; laufende Werkzeuge stehen
+als „ruft … auf“ da. Gespeichert wird weiter NUR das Endergebnis über die vorhandenen Schreibwege (Thread, Stand/409).
+
+- **`askStream`** (lib/anthropic.ts): dieselbe Anfrage mit `stream: true`, durch DIESELBE Schranke wie `askText` (neu `kiAufruf`: Schlüssel,
+  Guthaben-Schalter, KI-Tor, Instanz-Budget, Anbieter-Tor, Web-Suche, Pseudonymisierung, KI-Protokoll nur Metadaten). Gesperrt/Budget/Guthaben →
+  dasselbe Ergebnis wie `askText`, kein Netz, kein Stück. Verbrauch wie bei `askText` (`notiere`, `zweck` → Head-Budget), bei Abbruch die schon
+  bezahlte Eingabe. Wiederholt wird nur, solange noch kein Stück gezeigt wurde. Ohne Strom (Text am Ende als ein Stück): Claude über Vertex EU
+  (`streamRawPredict` nicht geprobt) und pseudonymisierte Läufe (Stücke trügen Platzhalter).
+- **Zusammenbau** `lib/ki/nachricht-strom.ts` (rein): message_start · content_block_* (Text, Werkzeug-Eingabe als JSON-Stücke, Denken samt Signatur,
+  Zitate) · message_delta · error → dieselbe Form wie ohne Strom; nach außen nur Antworttext.
+- **Schleife** (lib/agenten/schleife.ts): `ereignis` (Text-Stücke, Werkzeug-Stände nur mit Namen) und `signal` (Browser weg → `abgebrochen`, kein
+  neues Werkzeug). Runden, Werkzeug-Budget, Zeit, Kosten, Kapselung, „fremd gelesen“, Stapel, `laufSperre`, ≤ 3 `head_fragen` — unverändert.
+- **Routen** `/api/kimmi` und `POST /api/agenten/faden` (senden): Strom nur bei `Accept: text/event-stream` (lib/http/sse-antwort.ts `sseAntwort`;
+  Format lib/http/sse.ts: `text`, `werkzeug`, `ende` = genau die JSON-Antwort). Tor-Zeile, `bauPruefen`, `jsonBegrenzt`, `modellSchranke`, Sperre
+  davor — Fehler dort wie bisher als JSON mit Status. Hintergrundaufgaben (`hintergrund: true`) antworten weiter JSON. Browser weg → der Lauf bricht
+  ab; keine halbe Antwort; lief noch kein Werkzeug, geht auch die Frage wieder heraus (`zugZuruecknehmen`), 499 → `einmalig` gibt die Anfrage frei.
+- **Oberfläche:** ZoePanel, Empfang, ZOE-Mitte, Head- und Mitarbeiter-Chat zeigen den Text beim Entstehen (`Schreibt entsteht=…`, `entstehendNach`)
+  — kein Tipp-Effekt, nur anhängen. Browser NUR über `postMitStrom` (lib/http/strom-client.ts): Rückfall auf JSON (alter Browser, Netzfehler vor
+  der Antwort, Server antwortet JSON, Proxy puffert); reißt der Strom ab → Hinweis + Thread neu laden, NIE automatisch noch einmal senden (Kosten).
+  Im Agenten-Bereich spricht weiter nur `daten.ts` mit dem Server.
+- **Caddy** (deploy/caddy/Caddyfile): Anfragen mit `Accept: text/event-stream` werden nicht gepackt (`@packen not header Accept *text/event-stream*`
+  vor `encode`) — zstd/gzip würde Stücke sammeln. `reverse_proxy` schreibt Ströme ohnehin sofort durch; die App setzt `Cache-Control: no-transform`
+  und `X-Accel-Buffering: no`. **Am Server erst beim nächsten Upload, auf Kevins Wort** (wie DEPLOY.md › Caddyfile: `cd /srv/make-os/app &&
+  docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile`, dann `… caddy reload …`). Prüfen: im Browser Netzwerk-Reiter → Antwort
+  von `/api/kimmi` hat `text/event-stream` und kommt in Stücken; ohne die Caddy-Zeile käme sie gepackt erst am Ende (funktioniert, wirkt nur langsamer).
+
+**Tests:** `tests/agenten-streaming.test.ts` (Format, Zusammenbau, askStream gegen nachgebaute Messages-API mit krummen Stücken, gesperrt/Budget/
+Guthaben ohne Netz, Wiederholung nur vor dem ersten Stück, Abbruch; Schleife: Reihenfolge, Ergebnis = ohne Strom; beide Routen: `ende` = gespeichert
+= JSON, Fehler davor als JSON, Abbruch speichert nichts; Browser-Rückfall; Anzeige). Erweitert: Wächter-Scan „jeder Modell-Aufruf mit `ki`“ kennt
+`askStream` (tests/ki-datenschutz.test.ts).
+
+**Rückweg:** nur neue Dateien und optionale Felder (`ZoeZug.nachrichtId`); ohne `Accept: text/event-stream` antworten die Routen wie vorher. Der alte
+Stand kennt die Caddy-Zeile — sie schadet ihm nicht (nur weniger Packen für Strom-Anfragen, die er nie bekommt).
+
+**Offen / Fragen an Kevin:** Stopp-Knopf im Chat (heute bricht nur Tab-Schließen/Neu-Laden ab); Vertex-EU-Strom (`streamRawPredict`) erst nach Probe;
+sollen abgebrochene Züge MIT gelaufenem Werkzeug einen Hinweis im Thread bekommen (heute: Frage bleibt, keine Antwort)?
+
 ## 09.10.2026 — Agenten-Bereich Paket 4a „ZOE steuert die Heads“: EINE Schleife, EINE Werkzeug-Quelle, ≤ 20 Werkzeuge, ZOE auf Threads (nur lokal — Branch `agenten-p4a`, Basis `agenten-nacht` 0ff3187a)
 
 Grundlage: AGENTEN_KONZEPT.md C3/C8/C11 (Paket 4), ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich (Antworten 10/11) und Teil 1 (Nr. 1, 11, 13:

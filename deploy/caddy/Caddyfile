@@ -13,7 +13,11 @@
 # Liste sein, z. B. MAKE_OS_DOMAIN="app.makeinnovation.de, 2-28-108-162.sslip.io" (sslip bleibt Rückfall). Eine Adresse
 # zusätzlich hier einzutragen, die schon in MAKE_OS_DOMAIN steht, ließe Caddy nicht starten (doppelte Site-Adresse).
 {$MAKE_OS_DOMAIN} {
-	encode zstd gzip
+	# Streaming (09.10., ZOE- und Agenten-Chat „wie Claude“): Anfragen, die einen Strom wollen (Accept: text/event-stream), werden
+	# nicht gepackt — zstd/gzip sammelt sonst Stücke, bevor sie hinausgehen. reverse_proxy reicht text/event-stream ohnehin sofort durch
+	# (Caddy erkennt Ströme und schreibt ohne Puffer); die App setzt zusätzlich `Cache-Control: no-transform` und `X-Accel-Buffering: no`.
+	@packen not header Accept *text/event-stream*
+	encode @packen zstd gzip
 	# Zugang & Schlüssel härten (05.10.): den internen Next-Kopf, mit dem sich die Middleware überspringen ließe
 	# (CVE-2025-29927, in Next 15.5 behoben — hier zusätzlich), nie von außen annehmen.
 	request_header -x-middleware-subrequest

@@ -1870,6 +1870,16 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   wird einmal übernommen (Marke `zoeUebernahme`) und nicht mehr geschrieben — neue ZOE-Wege nie wieder in `zoe-verlauf`.
 - **Paket-3-Haken:** Werkstatt-Sicht = `headSichtbarKern` (die EINE Filterstelle), Probelauf = Schleife im Trockenlauf (`lib/agenten/probelauf.ts`),
   Agenten-Vorschläge nur über `vorschlag*Legen` (skills-server.ts), Skill-Läufe `skillErfolgZaehlen`, Plan-Läufe `planLaufVermerken`.
+- **Streaming „wie Claude“ (09.10., Branch `agenten-streaming`, nur lokal; UPDATES.md):** `askStream` (lib/anthropic.ts) geht durch DIESELBE Schranke
+  wie `askText` (`kiAufruf`: Schlüssel, Guthaben, KI-Tor, Budget, Anbieter-Tor, Pseudonymisierung, KI-Protokoll) — nie ein zweiter Weg daran vorbei; neue
+  Aufrufer geben `ki` mit (Wächter-Scan in tests/ki-datenschutz.test.ts kennt `askStream`). Zusammenbau der Ereignisse NUR `lib/ki/nachricht-strom.ts`
+  (gleiche Form wie ohne Strom, Denken + Signatur bleiben), Vertex EU und pseudonymisierte Läufe ohne Strom (Text am Ende als EIN Stück). Die Schleife
+  streamt mit `ereignis` (Text-Stücke, Werkzeug-Stände nur mit Namen) und bricht mit `signal` ab (`ABBRUCH_BROWSER`). Routen: `/api/kimmi` und
+  `POST /api/agenten/faden` (senden) streamen NUR bei `Accept: text/event-stream` über `sseAntwort` (lib/http/sse-antwort.ts) — alle Prüfungen davor
+  antworten JSON mit Status; `ende` = genau die JSON-Antwort. Gespeichert wird allein das Endergebnis; Browser weg → keine halbe Antwort, ohne gelaufenes
+  Werkzeug geht auch die Frage wieder heraus (`zugZuruecknehmen`, faeden.ts), 499 = `einmalig` gibt frei. Format NUR `lib/http/sse.ts`; Browser NUR
+  `postMitStrom` (lib/http/strom-client.ts: Rückfall JSON, abgerissen → nie automatisch neu senden). Neuer Chat: dieselben Bausteine (`entstehendNach`,
+  `Schreibt entsteht=`), nie ein zweiter Parser. Caddy packt Anfragen mit `Accept: text/event-stream` nicht (`@packen`). Wächter `tests/agenten-streaming.test.ts`.
 
 ## Agenten-Bereich Paket 4b — Einstellungen, Not-Aus, Budget (09.10., Branch `agenten-p4b`, nur lokal; UPDATES.md)
 - **Einstellungen je Head** nur über `lib/agenten/einstellung.ts` (`POST /api/agenten { aktion: 'einstellung' | 'not-aus' }`, Stand je Head → 409): EIN
