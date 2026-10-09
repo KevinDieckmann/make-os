@@ -22,7 +22,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
   EBENEN, ablaufFuer, datenkarteFuer, ebeneMitId, etappenFuer, fortschrittVon, gruppeVon, gruppenFuer, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
-  schritteFuer, sichtbarFuer, texteFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
+  restzeitText, schritteFuer, sichtbarFuer, texteFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
 } from '@/lib/make-one/onboarding-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Leerzustand, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
 
@@ -68,7 +68,6 @@ export function useOnboarding() {
   return { z, haken, laden, meldung };
 }
 
-const stundenText = (min: number) => (min < 60 ? `${min} Min.` : `rund ${Math.round(min / 60 * 10) / 10} Std.`);
 
 /** Fortschritt einer Schrittliste: „12/20 · noch 45 Min.“ mit Balken (Späteres und Optionales zählt erst, wenn getan). */
 export function Fortschritt({ schritte, z, gross }: { schritte: readonly Schritt[]; z: Zustand | null; gross?: boolean }) {
@@ -81,7 +80,7 @@ export function Fortschritt({ schritte, z, gross }: { schritte: readonly Schritt
         <span style={{ fontFamily: SCHRIFT.display, fontSize: gross ? 'clamp(28px,4vw,36px)' : TYP.zahl, fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1, color: fertig ? LEUCHT.gut : C.ink, fontVariantNumeric: 'tabular-nums' }}>
           {f.fertig}<span style={{ color: C.inkLeise, fontWeight: 400 }}>/{f.gesamt}</span>
         </span>
-        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fertig ? 'fertig' : `noch ${stundenText(f.offeneMinuten)}`}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fertig ? 'fertig' : `noch ${restzeitText(f.offeneMinuten)}`}</span>
       </div>
       <FortschrittBalken anteil={anteil} farbe={fertig ? LEUCHT.gut : LEUCHT.schlaf} />
     </div>

@@ -115,7 +115,7 @@ export function Einstieg({ heute, onFertig }: { heute: string; onFertig: (ops: O
             <span style={{ alignSelf: 'center', color: C.inkLeise, fontSize: TYP.bedien, marginLeft: 6 }}>Tage pro Woche</span>
           </div>
           <WochenRaster woche={w} onWoche={setWoche} />
-          <Hinweis>{umfang.einheiten} Einheiten · rund {Math.round(umfang.minuten / 60 * 10) / 10} h · {umfang.ruhetage} Ruhetag{umfang.ruhetage === 1 ? '' : 'e'}. Vorschlag, keine Trainingsberatung — bei Beschwerden führen Ärztin oder Physio.</Hinweis>
+          <Hinweis>{umfang.einheiten} Einheiten · rund {(Math.round(umfang.minuten / 6) / 10).toLocaleString('de-DE')} h · {umfang.ruhetage} Ruhetag{umfang.ruhetage === 1 ? '' : 'e'}. Vorschlag, keine Trainingsberatung — bei Beschwerden führen Ärztin oder Physio.</Hinweis>
         </>
       )}
 
@@ -125,7 +125,7 @@ export function Einstieg({ heute, onFertig }: { heute: string; onFertig: (ops: O
           <div style={{ display: 'grid', gap: 8, fontSize: TYP.body }}>
             <div><span style={{ color: C.inkLeise }}>Ziel · </span><b>{titel.trim() || standardTitel()}</b>{datum ? <span style={{ color: C.inkDim }}> · {wochenBis(heute, datum)} Wochen</span> : null}</div>
             <div><span style={{ color: C.inkLeise }}>Woche · </span>{WOCHENTAGE.filter(t => w[t].art !== 'frei').map(t => `${WOCHENTAG_LABEL[t]} ${PLAN_LABEL[w[t].art]}`).join(' · ')}</div>
-            <div><span style={{ color: C.inkLeise }}>Umfang · </span>{umfang.einheiten} Einheiten, rund {Math.round(umfang.minuten / 60 * 10) / 10} h, {umfang.ruhetage} Ruhetag{umfang.ruhetage === 1 ? '' : 'e'}</div>
+            <div><span style={{ color: C.inkLeise }}>Umfang · </span>{umfang.einheiten} Einheiten, rund {(Math.round(umfang.minuten / 6) / 10).toLocaleString('de-DE')} h, {umfang.ruhetage} Ruhetag{umfang.ruhetage === 1 ? '' : 'e'}</div>
           </div>
         </>
       )}

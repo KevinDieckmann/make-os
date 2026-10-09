@@ -388,6 +388,10 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) {
   .zoe-fab { bottom: 86px !important; }
 }
+/* Agenten-Seite am Handy: ZOE ist dort die Mitte (Reiter „Gespräch“) — die Kugel verdeckte sonst den Reiter „Läuft“ (Rundgang 09.10.). */
+@media (max-width: 720px) {
+  body:has(.agenten-reiter-handy) .zoe-fab { display: none; }
+}
 
 /* ZOE-Fenster am Handy (Design-Standard 03.10.): Knöpfe ≥ 44 px, Eingabe 16 px (iOS zoomt sonst). Nur innerhalb des Fensters — Position und Größe bleiben unberührt. */
 @media (max-width: 720px) {

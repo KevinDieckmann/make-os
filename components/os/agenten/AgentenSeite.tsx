@@ -77,7 +77,7 @@ export function AgentenFlaeche({ handyReiter = 'gespraech', setHandyReiter }: { 
         )}
         {handyReiter === 'team' && <Team />}
         {handyReiter === 'laeuft' && <Hintergrund />}
-        <nav aria-label="Agenten-Bereiche" role="tablist" style={{ position: 'fixed', left: 0, right: 0, bottom: `calc(${HANDY_LEISTE}px + env(safe-area-inset-bottom, 0px))`, zIndex: 35,
+        <nav aria-label="Agenten-Bereiche" role="tablist" className="agenten-reiter-handy" style={{ position: 'fixed', left: 0, right: 0, bottom: `calc(${HANDY_LEISTE}px + env(safe-area-inset-bottom, 0px))`, zIndex: 35,
           display: 'flex', gap: ABSTAND.xs, padding: `${ABSTAND.xs}px ${ABSTAND.s}px`, background: C.grund, borderTop: `1px solid ${RAND.haar}`, boxSizing: 'border-box', height: HANDY_REITER }}>
           {reiter.map(r => {
             const an = r.id === handyReiter;

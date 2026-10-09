@@ -127,7 +127,7 @@ export function TageslaufView() {
                   onClick={hatDetail ? () => setOffen(auf ? null : s.id) : undefined}
                   aktiv={auf}
                   links={erg ? <Punkt farbe={standFarbe(erg.stand)} /> : <Punkt farbe={laeuft ? LEUCHT.agenten : C.inkLeise} groesse={7} />}
-                  titel={<span style={{ color: erg ? C.ink : C.inkLeise }}>{s.name}{erg?.ms != null && erg.ms > 1500 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>{(erg.ms / 1000).toFixed(1)}s</span>}</span>}
+                  titel={<span style={{ color: erg ? C.ink : C.inkLeise }}>{s.name}{erg?.ms != null && erg.ms > 1500 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>{(erg.ms / 1000).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s</span>}</span>}
                   unter={<Weich farbe={erg ? (erg.stand === 'fehler' ? LEUCHT.kritisch : erg.stand === 'uebersprungen' ? LEUCHT.achtung : C.inkDim) : C.inkLeise}>{erg ? erg.kurz : s.tut}</Weich>}
                   rechts={hatDetail ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{auf ? '▾' : '▸'}</span> : undefined} />
                 {auf && erg?.detail != null && (

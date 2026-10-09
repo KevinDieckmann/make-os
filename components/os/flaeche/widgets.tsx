@@ -50,7 +50,7 @@ import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
 import { dranOhneZusagen } from '@/lib/heute/anstehend';
 import { Anstehend } from '../heute/Anstehend';
-import { fortschrittVon, schritteFuer, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
+import { fortschrittVon, restzeitText, schritteFuer, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -663,7 +663,7 @@ function EinrichtungWidget({ titel, i }: WidgetProps) {
       <Fortschritt anteil={f.fertig / f.gesamt} farbe={LEUCHT.schlaf} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>
         {f.naechster && <span style={{ flex: '1 1 220px', minWidth: 0 }}>Als Nächstes: <Link href="/os/onboarding" style={{ color: C.ink, fontWeight: 600, textDecoration: 'none' }}>{f.naechster.nr} · {texteFuer(f.naechster, d.ich).titel} ›</Link></span>}
-        <span style={{ color: C.inkLeise }}>noch {f.offeneMinuten < 60 ? `${f.offeneMinuten} Min.` : `rund ${Math.round(f.offeneMinuten / 60 * 10) / 10} Std.`}</span>
+        <span style={{ color: C.inkLeise }}>noch {restzeitText(f.offeneMinuten)}</span>
       </div>
     </Karte>
   );

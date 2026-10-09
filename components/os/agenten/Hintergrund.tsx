@@ -261,8 +261,11 @@ function NaechstesZeile({ n }: { n: Naechstes }) {
       <Knopf leise voll href={n.link} style={{ justifyContent: 'flex-start', textAlign: 'left', fontWeight: 600 }}>
         <span aria-hidden className={n.kritisch ? 'krit-puls' : undefined} style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, flex: '0 0 auto', background: n.kritisch ? LEUCHT.kritisch : h ? headFarbe(h.farbe) : C.inkLeise }} />
         <span style={{ fontSize: TYP.bedien, color: C.inkDim, minWidth: 64, fontVariantNumeric: 'tabular-nums' }}>{zeitKurz(n.wann, jetzt)}</span>
-        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titel}{n.anzahl ? ` (${n.anzahl})` : ''}</span>
-        {!!n.weitere && <span style={{ flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}>{wiederholText(n, jetzt)}</span>}
+        {/* Titel führt; „werktags bis …“ steht darunter — nebeneinander verdrängte es den Titel bis auf „P…“ (Rundgang 09.10.). */}
+        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titel}{n.anzahl ? ` (${n.anzahl})` : ''}</span>
+          {!!n.weitere && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}>{wiederholText(n, jetzt)}</span>}
+        </span>
         {h && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{h.kurz}</span>}
       </Knopf>
     </li>

@@ -1272,6 +1272,12 @@ export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | n
   return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster: bereit ?? offen[0] ?? null };
 }
 
+/** Restzeit als Text — EINE Stelle für Übersicht und Heute-Widget, deutsche Zahlform („rund 8,8 Std.“, nie „8.8“). */
+export function restzeitText(minuten: number): string {
+  if (minuten < 60) return `${minuten} Min.`;
+  return `rund ${(Math.round(minuten / 6) / 10).toLocaleString('de-DE')} Std.`;
+}
+
 /**
  * Offene Voraussetzungen eines Schritts für diese Person (Hinweis „erst …“): nur Schritte, die die Person überhaupt sieht (Privat-Finanzen,
  * Altbestand) und die bei ihr nicht entfallen (eine Person) — Instanz-Schritte der Inhaber zählen mit (alle sehen ihren Stand). Fertig nur

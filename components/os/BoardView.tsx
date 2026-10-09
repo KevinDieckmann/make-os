@@ -124,7 +124,7 @@ export function BoardView() {
               {s.finance?.aktiv && <div style={{ marginTop: 8 }}><Fortschritt anteil={s.finance.fortschritt / 100} farbe={LEUCHT.geld} /></div>}
             </div>
             <Zahl wert={s.finance ? eur(s.finance.runRateNoetig) : undefined} label="Run-Rate nötig /Monat" />
-            <Zahl wert={s.finance?.runway != null ? `${s.finance.runway.toFixed(1)} Mon.` : undefined} label="Runway" farbe={runwayKritisch ? LEUCHT.kritisch : C.ink} />
+            <Zahl wert={s.finance?.runway != null ? `${s.finance.runway.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mon.` : undefined} label="Runway" farbe={runwayKritisch ? LEUCHT.kritisch : C.ink} />
             <Zahl wert={z(s.pipeline.total)} label={`Pipeline · ${s.pipeline.hot} starker Fit · Ø ${s.pipeline.avgScore}`} farbe={LEUCHT.business} />
             <Zahl wert={z(s.tasks.open)} label={`Aufgaben offen · ${s.tasks.critical} kritisch · ${s.tasks.inProgress} in Arbeit`} />
             <Zahl wert={z(achtung)} label={`Achtung · ${s.tasks.overdue} überfällig · ${s.tasks.blocked} blockiert`} farbe={achtung > 0 ? LEUCHT.achtung : C.ink} />
