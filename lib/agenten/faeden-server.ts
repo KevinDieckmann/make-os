@@ -14,7 +14,7 @@ import { headDef, KATALOG } from './katalog';
 import { einstellungFuer, mitarbeiterFuerHead, skillsFuerHead } from './skills-lesen';
 import { kennzahlWerte } from './kontext';
 import { WEG } from '@/lib/wege';
-import { fadenStand, fehler, kurz, ohneAbgelaufene, zugZuruecknehmen, type Fehler, type FadenBestandKern, type FadenKern, type NachrichtKern } from './faeden';
+import { fadenStand, fehler, kurz, ohneAbgelaufene, zugZuruecknehmen, FRISTEN, type Fehler, type FadenBestandKern, type FadenKern, type NachrichtKern } from './faeden';
 import { fadenSichtbar, headSichtbar, headsFuer, type KontoSicht } from './sicht';
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
@@ -33,11 +33,53 @@ export async function sichtLaden(person: string): Promise<KontoSicht> {
   };
 }
 
+/**
+ * Wirksame Löschfrist der Threads in Monaten (09.10., Agenten-Datenschicht D8): aus der EINEN Fristen-Tabelle (lib/crm/loeschfristen.ts,
+ * Frist „zoe-verlauf“ — Gespräche mit ZOE und den Agenten), unter Stammdaten › Datenschutz einstellbar. Vorher fest 12 Monate im Code.
+ * Unlesbar → die Vorgabe (`FRISTEN.fadenMonate`).
+ */
+export async function fadenFristMonate(): Promise<number> {
+  try {
+    const { LOESCHFRISTEN_SPEICHER, fristenWirksam } = await import('@/lib/crm/loeschfristen');
+    const b = await loadJson<{ fristen?: Parameters<typeof fristenWirksam>[0] }>(LOESCHFRISTEN_SPEICHER);
+    return fristenWirksam(b?.fristen)['zoe-verlauf'];
+  } catch { return FRISTEN.fadenMonate; }
+}
+
 /** Der Bestand der Person (nur lesen — abgelaufene Threads fallen aus der Antwort, nicht aus der Datei). */
 export async function bestandLesen(person: string, jetzt = new Date().toISOString()): Promise<FadenBestandKern> {
   if (!PERSON.test(person)) return leer();
-  const b = await loadJson<FadenBestandKern>(fadenBestand(person));
-  return ohneAbgelaufene({ ...leer(), ...(b ?? {}), faeden: Array.isArray(b?.faeden) ? b!.faeden : [] }, jetzt);
+  const [b, monate] = await Promise.all([loadJson<FadenBestandKern>(fadenBestand(person)), fadenFristMonate()]);
+  return ohneAbgelaufene({ ...leer(), ...(b ?? {}), faeden: Array.isArray(b?.faeden) ? b!.faeden : [] }, jetzt, monate);
+}
+
+const zaehlen = (b: FadenBestandKern) => ({ faeden: b.faeden.length, merksaetze: Object.values(b.gedaechtnis ?? {}).reduce((a, l) => a + (l?.length ?? 0), 0) });
+
+/**
+ * Löschfrist im Morgenlauf (09.10., Agenten-Datenschicht D8; lib/crm/loeschfristen-lauf.ts): abgelaufene Threads und persönliche Merksätze
+ * der Person entfernen — vorher fielen sie nur beim nächsten Schreiben heraus, ein ruhender Bestand behielt sie unbegrenzt (Art. 5 Abs. 1
+ * lit. e DSGVO). Laufende Threads (Lauf wartet/läuft) bleiben. Nur der Bestand DIESER Person; geschrieben wird nur, wenn etwas wegfällt
+ * (idempotent). Liefert nur Zahlen — nie Inhalte.
+ */
+export async function fadenFristAnwenden(person: string, jetzt = new Date().toISOString(), monate?: number): Promise<{ faeden: number; merksaetze: number }> {
+  const nichts = { faeden: 0, merksaetze: 0 };
+  if (!PERSON.test(person)) return nichts;
+  const name = fadenBestand(person);
+  const roh = await loadJson<FadenBestandKern>(name);
+  if (!roh) return nichts;
+  const m = monate ?? await fadenFristMonate();
+  const basis = (x: FadenBestandKern | null) => ({ ...leer(), ...(x ?? {}), faeden: Array.isArray(x?.faeden) ? x!.faeden : [] });
+  const v0 = zaehlen(basis(roh)), w0 = zaehlen(ohneAbgelaufene(basis(roh), jetzt, m));
+  if (v0.faeden === w0.faeden && v0.merksaetze === w0.merksaetze) return nichts; // nichts abgelaufen: nicht sperren, nichts schreiben
+  let n = nichts;
+  await updateJson<FadenBestandKern>(name, cur => {
+    const b = basis(cur);
+    const x = ohneAbgelaufene(b, jetzt, m);
+    const v = zaehlen(b), w = zaehlen(x);
+    n = { faeden: v.faeden - w.faeden, merksaetze: v.merksaetze - w.merksaetze };
+    return n.faeden || n.merksaetze ? x : (cur as FadenBestandKern);
+  });
+  return n;
 }
 
 class Abbruch extends Error { constructor(readonly f: Fehler) { super(f.fehler); } }
@@ -49,9 +91,10 @@ class Abbruch extends Error { constructor(readonly f: Fehler) { super(f.fehler);
 export async function bestandAendern<E>(person: string, fn: (b: FadenBestandKern) => { bestand: FadenBestandKern; e: E } | Fehler, jetzt = new Date().toISOString()): Promise<{ ok: true; e: E; bestand: FadenBestandKern } | Fehler> {
   if (!PERSON.test(person)) return fehler(400, 'Person ungültig.');
   let e: E | undefined;
+  const monate = await fadenFristMonate();
   try {
     const neu = await updateJson<FadenBestandKern>(fadenBestand(person), cur => {
-      const basis = ohneAbgelaufene({ ...leer(), ...(cur ?? {}), faeden: Array.isArray(cur?.faeden) ? cur!.faeden : [] }, jetzt);
+      const basis = ohneAbgelaufene({ ...leer(), ...(cur ?? {}), faeden: Array.isArray(cur?.faeden) ? cur!.faeden : [] }, jetzt, monate);
       const r = fn(basis);
       if ('ok' in r && r.ok === false) throw new Abbruch(r);
       const ok = r as { bestand: FadenBestandKern; e: E };

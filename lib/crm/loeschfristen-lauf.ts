@@ -16,7 +16,7 @@
 // Fingerabdrücke v1 → v2 umrechnen (einmal je Pepper: Sperrliste, Änderungsprotokoll, ZOE-Entscheidungen — nur für
 // Kontakte, die es noch gibt), Löschprotokoll ohne Klartext-Kennung, und die neuen Löschklassen (ZOE-Arbeitslisten,
 // ZOE-Entscheidungen, ZOE-Verlauf, ZOE-Gedächtnis, Postfach-/Kalender-Zwischenspeicher, Umzugs-Kopien im Archiv,
-// Grabsteine); der Altbestand Netzwerk zählt in die Löschfrist-Aufgabe (nie automatisch).
+// Grabsteine); seit 09.10. auch die Agenten-Threads je Person (Frist „zoe-verlauf“); der Altbestand Netzwerk zählt in die Löschfrist-Aufgabe (nie automatisch).
 
 import { promises as fs } from 'fs';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
@@ -253,6 +253,20 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     });
   };
   await kuerzen<{ zuletzt?: string }>('zoe-verlauf', 'gespraeche', 'zoe-verlauf', g => g.zuletzt);
+  // 11a · Threads mit ZOE und den Agenten (09.10., Agenten-Datenschicht D8): dieselbe Frist „zoe-verlauf“, je Person ihr eigener Bestand
+  //       (agenten-faeden--<person>) — vorher nur beim nächsten Schreiben des Bestands. Laufende Threads bleiben; Protokoll ohne Inhalte.
+  await schritt('agenten-faeden', async () => {
+    const { fadenFristAnwenden } = await import('@/lib/agenten/faeden-server');
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = /^agenten-faeden--([a-z0-9-]{1,40})\.json$/.exec(d);
+      if (!m) continue;
+      const r = await fadenFristAnwenden(m[1], jetztIso, f['zoe-verlauf']);
+      if (!r.faeden && !r.merksaetze) continue;
+      zaehle('agenten-faeden', r.faeden);
+      zaehle('agenten-faeden (Merksätze)', r.merksaetze);
+      await protokolliere(d.slice(0, -5), [{ op: 'geloescht', id: 'loeschfrist', felder: [...(r.faeden ? ['faeden'] : []), ...(r.merksaetze ? ['gedaechtnis'] : [])] }], SYSTEM);
+    }
+  });
   await kuerzen<{ tag?: string; zeit?: string }>('zoe-gedaechtnis', 'fakten', 'zoe-gedaechtnis', x => x.tag ?? x.zeit);
   await kuerzen<{ receivedAt?: string }>('m365-postfach', 'mails', 'postfach-caches', x => x.receivedAt);
   await kuerzen<{ receivedAt?: string }>('microsoft-inbox', 'emails', 'postfach-caches', x => x.receivedAt);

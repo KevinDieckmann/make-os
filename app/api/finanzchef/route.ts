@@ -115,6 +115,10 @@ export async function POST(req: Request) {
     if (modus === 'frage' && !frage) return NextResponse.json({ ok: false, fehler: 'Frage fehlt.' }, { status: 400 });
     const ausgeloest = dienst(req) && ['takt', 'zoe'].includes(String(b.ausgeloest)) ? b.ausgeloest as 'takt' | 'zoe' : 'person';
     const monat = modus === 'monatsabschluss' ? (/^\d{4}-\d{2}$/.test(String(b.monat ?? '')) ? String(b.monat) : monatPlus(heuteBerlin().slice(0, 7), -1)) : undefined;
+    // Agenten-Datenschicht (09.10., D1): Not-Aus, „Head aus“ und Budget des Agenten-Bereichs gelten auch für den Lauf von Hand — vorher
+    // prüfte die Route nur den alten Schalter (`agents-config`). Dieselbe Sperre wie Threads, Arbeiter und Takt (lib/agenten/einstellung.ts).
+    const sperre = await (await import('@/lib/agenten/einstellung')).laufSperre(u.person ?? null, 'finanzen');
+    if (sperre) return NextResponse.json({ ok: false, fehler: sperre.text, gesperrt: sperre.grund }, { status: 409 });
     const r = await chefLauf({ modus, haushalt: u.haushalt, person: u.person ?? undefined, frage, monat, ausgeloest });
     return NextResponse.json(r, { status: r.ok ? 200 : 502 });
   }

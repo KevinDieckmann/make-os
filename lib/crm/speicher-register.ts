@@ -229,10 +229,10 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // ── Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“; Namen: lib/agenten/typen.ts, AGENTEN_KONZEPT.md C4/C11) ──
   // Threads, Skills, Hintergrundaufgaben können Text Dritter tragen (Kontaktnamen, Mails, Web) → Art. 17 tilgt Nennungen (person-weitere.ts),
   // der Eintrag bleibt. Bestände je Person gehören zu Konto-Export/-Löschen (lib/datenschutz/konto-daten.ts PERSON_BESTAENDE).
-  mit(T('agenten-faeden--*', 'Threads je Person mit ZOE, Heads und Mitarbeitern (Nachrichten, Berichte, Lauf-Fortschritt, Kosten) — auch Business-Threads gehören der Person (Antwort 13); Nennungen Dritter getilgt, der Thread bleibt.'), {
+  mit(T('agenten-faeden--*', 'Threads je Person mit ZOE, Heads und Mitarbeitern (Nachrichten, Berichte, Lauf-Fortschritt, Kosten) — auch Business-Threads gehören der Person (Antwort 13); Nennungen Dritter getilgt, der Thread bleibt.', 'zoe-verlauf'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson); Daten Dritter darin Art. 6 Abs. 1 lit. f (eigene Arbeit organisieren); Gesundheitswerte nur über die Art.-9-Wege mit Einwilligung (b)',
     art15: 'die Person sieht ihre Threads im Agenten-Bereich; Konto › Meine Daten exportiert den Bestand; Kontakte: die Auskunft nennt Threads, die sie nennen',
-    loeschfrist: 'bis die Person den Thread bzw. ihr Konto löscht; eine automatische Frist (Vorschlag 12 Monate nach der letzten Nachricht) ist offen (AGENTEN_KONZEPT.md C10 Frage 11)',
+    loeschfrist: 'Frist „zoe-verlauf“ (Vorgabe 12 Monate nach der letzten Nachricht, Stammdaten › Datenschutz): der tägliche Löschfristen-Lauf entfernt abgelaufene Threads und persönliche Merksätze je Person (laufende Threads bleiben bis zum Ende des Laufs; 09.10., Agenten-Datenschicht); vorher löscht die Person den Thread bzw. ihr Konto',
   }),
   mit(T('agenten-skills--*', 'Werkstatt der Heads je Haushalt (Business-Heads, Familie): Skills (Anleitung, Beispiele, Tests, Erfolgsquote), eigene Mitarbeiter, Gedächtnis (Merksätze) — wer angelegt/freigegeben hat (Speichername); Anleitungen können Dritte nennen → getilgt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die Arbeitsweise der Agenten des Haushalts festhalten',
