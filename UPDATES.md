@@ -71,14 +71,16 @@ bleiben).
    und in den Hetzner-Abbildern).
 2. **App und Arbeiter anhalten:** `cd /srv/make-os/app && docker compose stop arbeiter app`
 3. **Probelauf gegen den alten Ordner** (er heißt noch `daten`; schreibt nichts):
-   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten:/umzug/alt:ro app node scripts/neustart-umzug.mjs --von /umzug/alt --nach /umzug/neu`
+   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten:/umzug/alt:ro app node scripts/neustart-umzug.mjs --von /umzug/alt --nach /umzug/neu --mit-bauplan --auch 'gesellschaften--*,datenschutz-einrichtung'`
+   (Schalter = Kevins Entscheidung 09.10., unten; die einfachen Anführungszeichen um das `*`-Muster sind Pflicht.)
    Lesen: Zahlen je Liste (Kontakte, Firmen, Deals, Mandate, Follow-ups, Angebote, Kampagnen, Events, Dateien, Aufgaben, Projekte), „Bleibt im Archiv“,
    „Verweise“ (kein „← NEU“), Hinweise (Speichernamen, Haushalt, Grabsteine, Register `g-…`, Head-Aufgaben). Bricht er mit „Vorgänge nicht fertig“ ab:
    `cd /srv/make-os/app && docker compose up -d app`, zwei Minuten warten (die App nimmt offene Vorgänge beim Start auf), dann Schritt 2 und 3 wiederholen.
 4. **Alten Ordner beiseite (nicht löschen), neuen leeren mit denselben Rechten anlegen:**
    `sudo mv /srv/make-os/daten /srv/make-os/daten-archiv-2026-10-09 && sudo install -d -o make -g make -m "$(stat -c %a /srv/make-os/daten-archiv-2026-10-09)" /srv/make-os/daten && ls -la /srv/make-os | grep daten`
-5. **Umzug ausführen** (dieselben Schalter wie nach dem Probelauf entschieden, z. B. `--auch gesellschaften--<haushalt>`):
-   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten-archiv-2026-10-09:/umzug/alt:ro -v /srv/make-os/daten:/umzug/neu app node scripts/neustart-umzug.mjs --von /umzug/alt --nach /umzug/neu --ausfuehren`
+5. **Umzug ausführen** (dieselben Schalter wie im Probelauf):
+   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten-archiv-2026-10-09:/umzug/alt:ro -v /srv/make-os/daten:/umzug/neu app node scripts/neustart-umzug.mjs --von /umzug/alt --nach /umzug/neu --mit-bauplan --auch 'gesellschaften--*,datenschutz-einrichtung' --ausfuehren`
+   Danach kurz `sudo ls -ln /srv/make-os/daten /srv/make-os/daten-archiv-2026-10-09 | head` — die neuen Dateien gehören derselben Nummer wie die alten.
    Ende: „Geschrieben: … — alles zurückgelesen und gleich. Marke system/neustart.json gesetzt.“ Bricht er ab: NUR den neuen Ordner leeren
    (`sudo find /srv/make-os/daten -mindepth 1 -delete`) und Schritt 5 wiederholen — der alte ist unberührt (nur lesend eingebunden).
 6. **.env prüfen:** Steht `MAKE_OS_ALTBESTAND_PERSON` drin, übernimmt die neue Instanz beim Start noch einmal Körper-Profil und Nordstern aus dem
@@ -107,18 +109,17 @@ bleiben).
 **Rückweg** (jederzeit, nichts geht verloren): `cd /srv/make-os/app && docker compose stop arbeiter app && sudo mv /srv/make-os/daten /srv/make-os/daten-neustart-$(date +%Y%m%d-%H%M) && sudo mv /srv/make-os/daten-archiv-2026-10-09 /srv/make-os/daten && docker compose up -d`
 — der alte Stand läuft wie vorher (alte Konten, alte Sitzungen); Grabsteine aus der Zwischenzeit wendet der Löschfristen-Lauf von selbst an.
 
-**Offen / zu entscheiden (Kevin):**
-- Gesellschafts-Register (`--auch gesellschaften--<haushalt>`): Absender der Angebote, Steckbriefe, Verträge. Nennen CRM oder Aufgaben `g-…`-Gesellschaften,
-  meldet es der Bericht — neu angelegte bekämen andere Kennungen.
-- Buchungsseiten (`--auch buchung--<haushalt>`): geteilte Buchungslinks hören sonst auf. Kalender-Bezüge (`--auch kalender-bezug`): sonst zeigt die Karte
-  „Termine“ in der Kontaktakte nur neue Verknüpfungen (Meetings bleiben als Aktivität am Kontakt).
-- Datenschutz-Einrichtung (`--auch datenschutz-einrichtung`): Verantwortlicher und AVV-Nachweise der Empfänger — sonst neu eintragen.
-- Head-Aufgaben (`--mit-head-aufgaben`) und Bauplan (`--mit-bauplan`).
-- Rechnungen stehen in den Finanzen (beginnen leer): der Reiter „Umsatz“ zeigt dann keine Rechnungen — die Rechnungs-PDFs bleiben in der Ablage.
-- **Archiv-Ordner:** wie lange er liegen bleibt. Dort laufen keine Löschfristen mehr (Gesundheit, Mail-Spiegel, Protokolle …), und er ist nicht in der
-  Nachtsicherung. Vorschlag: nach der Prüfung (z. B. 30 Tage) als age-Archiv sichern und den Ordner löschen; bis dahin gilt er als Sicherung.
-- Die neue Instanz startet mit den Vorgaben einer neuen Instanz: KI „sparsam“ (Hintergrund-KI und Web-Suche aus — Einstellungen oder
-  `MAKE_OS_KI_VORGABE`), 2FA-Pflicht, Mac-Zulieferer aus.
+**Entschieden (Kevin 09.10. abends):**
+- Mit: `--mit-bauplan` (Bauplan-Board samt Fotos) und `--auch 'gesellschaften--*,datenschutz-einrichtung'` (Gesellschafts-Register mit Steckbriefen,
+  Absendern der Angebote, Gesellschaftern/Verträgen und `g-…`-Kennungen; Verantwortlicher und AVV-Nachweise der Datenschutz-Einrichtung).
+- NICHT mit: Head-Aufgaben (`hd-…`), Buchungsseiten (`buchung--*`), Kalender-Bezüge (`kalender-bezug`) — geteilte Buchungslinks hören auf; die Karte
+  „Termine“ in der Kontaktakte zeigt nur neue Verknüpfungen (Meetings bleiben als Aktivität am Kontakt).
+- KI der neuen Instanz bleibt „sparsam“ (Hintergrund-KI und Web-Suche aus, nichts setzen) — Chat mit ZOE und den Heads läuft trotzdem (Generalprobe).
+- **Archiv-Ordner** `/srv/make-os/daten-archiv-2026-10-09`: bleibt 30 Tage liegen (gilt so lange als Sicherung; dort laufen keine Löschfristen, er ist nicht
+  in der Nachtsicherung). Danach mit age sichern und löschen:
+  `cd /srv/make-os && sudo tar -C /srv/make-os -czf - daten-archiv-2026-10-09 | age -R /srv/make-os/sicherung.pub -o /srv/make-os/sicherungen/daten-archiv-2026-10-09.tar.gz.age`
+  (derselbe öffentliche Schlüssel wie `deploy/sicherung.sh`), das Archiv am Mac abholen und einmal öffnen (`age -d`), erst dann `sudo rm -rf /srv/make-os/daten-archiv-2026-10-09`.
+- Bleibt offen: Rechnungen stehen in den Finanzen (beginnen leer) — der Reiter „Umsatz“ zeigt keine alten Rechnungen, die Rechnungs-PDFs bleiben in der Ablage.
 - Befund (nicht in diesem Paket): `scripts/ki-anbieter-pruefen.mjs` lädt TS über `jiti` — das fehlt im Server-Bild (`npm prune --omit=dev` im
   Dockerfile), `docker compose exec app node scripts/ki-anbieter-pruefen.mjs` scheitert dort.
 
@@ -133,6 +134,10 @@ Neustart auf „0.1 · Update einspielen“ → jetzt zuerst der Kern. (4) Ein p
 „Buchungstag“ im Haushalt-Import → „Keine Buchung erkannt“. (6) Privat-Finanzen leer: „Konto anlegen“ legte ein Konto in den alten Stammdaten an statt
 im Konten-Register. Hinweise: die Speichernamen MÜSSEN die alten sein (Bericht) — das CRM-Team (`NEXT_PUBLIC_MAKE_OS_CRM_TEAM`, ohne Variable
 die Vorgabe des Codes) und `besitzer`/`zustaendig` der Kartei hängen daran; der Bau braucht dieselben `NEXT_PUBLIC_*` wie bisher.
+Mit Kevins Schaltern (`--mit-bauplan --auch 'gesellschaften--*,datenschutz-einrichtung'`) in einen frischen Ordner: das `*`-Muster greift, Register (vier
+Gesellschaften samt `g-…`, Steckbriefe, Absender), Datenschutz-Verantwortlicher (Selbstprüfung zählt ihn, Einrichtung 1.7 nennt nur noch die AVV) und die
+Bauplan-Karte samt Foto (neu verschlüsselt, lesbar) sind in der neuen Instanz; KI bleibt „sparsam“, Chat mit ZOE und einem Head (Werkzeug über die
+übernommene Pipeline) läuft. Crawl über 86 Seiten je Person: kein 500, keine Konsolen-Fehler.
 
 ## 09.10.2026 — Auftrag an Agenten je Person, Gesundheits-Unterlagen (nur lokal — Branch `agent-auftrag`, Basis 523fbbfc + Merge `agenten-nacht`)
 
