@@ -36,6 +36,11 @@
   44 Agenten-/Medien-/ZOE-Testdateien (635 Tests) grün. Laufen (4): `markttraktion-w1`, `kontoauszug`, `zweite-inhaberin` (alle Basis nach-upload), `agenten-p4a`
   (ZOE steuert Heads, Basis 0ff3187a). Wartet: 4b (Einstellungen/Not-Aus/Budget 50 €, Paket-3-Haken), 4c (Medien ↔ Heads, Nano Banana, Demo-Saat).
   Offene Fragen der Pakete 1/2/3/5 → Morgen-Bericht (Familie-Leser „nur ich“, Pläne im gemeinsamen Raum, iOS-Kurzbefehl, Bucket-Adress-Stil, MOV-Prüfung am iPhone).
+- **Stand 09.10. ~03:00:** In `agenten-nacht` zusätzlich: `kontoauszug` (CAMT/CSV), `markttraktion-w1` (alle Woche-1-Befunde + Kleinkram), `zweite-inhaberin`
+  (R9 + Onboarding B1/B5), eigene Korrekturen (Buchungen nie kürzen 2cb556be; Zugang loop/verbesserung + Apple-Erinnerungen d9c0530c) — tsc 0, 822 Tests der Bereiche
+  grün. Laufen (4): 4a ZOE ↔ Heads, 4b Einstellungen/Budget, 4c Medien ↔ Heads + Demo-Saat, `neutral-rest`. Bereit: Gegenprüfung Agenten (nach 4a–c),
+  Markttraktion Woche 2 Teil A (Ein Weg „Person anlegen“, Prospecting → Kartei …) und Teil B (ein Rechnungs-Anleger, Follow-up/Kampagnen-Rest, 7.3 über `anPersonMelden`).
+  Für Kevin notiert: alter Haushalts-Import teilte Semikolon-CSV falsch („-12,34“ → „-12,00“) — bisher importierte Semikolon-CSVs prüfen (N26 nicht betroffen).
 - **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
   wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
   Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
