@@ -1824,6 +1824,25 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
 - Ohne KI liefern Läufe Regelwerk (`lib/zoe/regelwerk.ts` für Morgen/Abend, `ohneKi` bei Heads/Finance) — kein Fehlschlag, der den Takt in die Pause zwingt.
 - Der Agenten-Schalter unter /os/agenten gilt für ZOE, Takt UND direkten Aufruf (`resolveAgent` + `disabledResponse`, 409).
 
+
+## Agenten-Bereich — Verdrahtung (09.10., Paket 4a, Branch `agenten-p4a`; AGENTEN_KONZEPT.md › „Paket 4 — so verdrahtet“, UPDATES.md)
+- **EINE Gesprächsschleife** `lib/agenten/schleife.ts` für ZOE (`app/api/kimmi`) UND Heads/Mitarbeiter (`lib/agenten/gespraech.ts`): Modell nur dort
+  (`askText` + `ki`), Kapselung von Text Dritter, „fremd gelesen“/„vertraulich“ fürs ganze Gespräch, Kategorien, Metadaten. Unterschiede NUR als
+  Parameter (Runden, parallel, Budget, letzte Runde ohne Werkzeuge, Trockenlauf). Nie wieder eine zweite Werkzeug-Schleife bauen (Wächter
+  `tests/agenten-p4a-schleife.test.ts`).
+- **Werkzeug-Beschreibungen EINE Quelle** `lib/zoe/werkzeug-defs.ts` (+ CRM/Aufgaben/Arbeit-Teilquellen); Agenten leiten ab (`agentenDef` in
+  lib/agenten/werkzeuge.ts). Keine Personen-Kürzel in Beschreibungen/Schemas — Personen zur Laufzeit, CRM-Zuständige aus `TEAM` der Instanz.
+  Neues Register-Werkzeug = Beschreibung dort + Register + Zuordnung in `lib/zoe/werkzeug-wahl.ts` (Kern, Bereich oder nur über einen Head).
+- **ZOE ≤ 20 Werkzeuge je Zug** (`zoeWerkzeugWahl`: Kern + Bereich per Regelwerk, nie per Modell); nicht angebotene lehnt kimmi ab. Fach-Arbeit über
+  die Heads: `an_head` (frei, reiht nur ein — Thread beim Head, Bericht in den ZOE-Thread + Glocke) und `head_fragen` (nur Kontext + lesende
+  Werkzeuge des Heads, Antwort `fremd('agent')`), Heads immer für die AUSLÖSENDE Person (`lib/agenten/sicht.ts`). Der Prompt nennt Heads, nicht
+  `agentRoster()`. Den ZOE-Thread kennt ein Werkzeug nur über `WerkzeugKontext.zoe` (Server, nie aus der Eingabe des Modells).
+- **ZOE auf Threads** (`lib/agenten/zoe-faden.ts`): ZoePanel, Empfang, Agenten-Seite, Telegram, WhatsApp schreiben in ZOE-Threads der Person;
+  `/api/kimmi` mit `zoeFaden` liest den Verlauf NUR aus dem Thread. Gesprächsrolle neu `nutzer` (Altbestand lesbar, `istNutzer`). `zoe-verlauf`
+  wird einmal übernommen (Marke `zoeUebernahme`) und nicht mehr geschrieben — neue ZOE-Wege nie wieder in `zoe-verlauf`.
+- **Paket-3-Haken:** Werkstatt-Sicht = `headSichtbarKern` (die EINE Filterstelle), Probelauf = Schleife im Trockenlauf (`lib/agenten/probelauf.ts`),
+  Agenten-Vorschläge nur über `vorschlag*Legen` (skills-server.ts), Skill-Läufe `skillErfolgZaehlen`, Plan-Läufe `planLaufVermerken`.
+
 ## Head of IT (HOI)
 - Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
 - Drei Quellen: innen (App), Host (`deploy/lage-sammeln.sh` → `<daten>/system/lage.json`, Klartext, nur Zähler), außen (`.github/workflows/hoi-aussenblick.yml`).
