@@ -10,7 +10,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHintergrund, kiLaufAus } from '@/lib/datenschutz/ki-lauf';
 import { innenAdresse } from '@/lib/innen';
 import { HEAD_IDS } from '@/lib/agenten/katalog';
-import type { Faden, Hintergrundaufgabe, LaufAuftrag } from '@/lib/agenten/typen';
+import type { Hintergrundaufgabe, LaufAuftrag } from '@/lib/agenten/typen';
 import { istFadenId } from '@/lib/agenten/faeden';
 
 export const runtime = 'nodejs';
@@ -37,9 +37,9 @@ function laufAus(roh: unknown): LaufAuftrag | null {
 /** Head eines Lauf-Auftrags: Thread → sein Agent, Skill → `headId`, Hintergrundaufgabe → ihr Agent. */
 async function headVon(person: string, a: LaufAuftrag): Promise<{ headId: string | null; fadenId?: string }> {
   if (a.art === 'skill') return { headId: a.headId };
-  const [{ loadJson }, { fadenBestand, planBestand }] = await Promise.all([import('@/lib/store/local-db'), import('@/lib/agenten/typen')]);
+  const [{ loadJson }, { planBestand }, { indexLesen }] = await Promise.all([import('@/lib/store/local-db'), import('@/lib/agenten/typen'), import('@/lib/agenten/faeden-ablage')]);
   if (a.art === 'faden') {
-    const f = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden?.find(x => x.id === a.fadenId && x.besitzer === person);
+    const f = (await indexLesen(person).catch(() => null))?.faeden?.find(x => x.id === a.fadenId && x.besitzer === person); // nur der Kopf (E3)
     return { headId: f && f.agent.art !== 'zoe' ? f.agent.headId : null, fadenId: f?.id };
   }
   const p = (await loadJson<{ aufgaben?: Hintergrundaufgabe[] }>(planBestand(person)).catch(() => null))?.aufgaben?.find(x => x.id === a.planId && x.besitzer === person);

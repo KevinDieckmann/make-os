@@ -303,8 +303,31 @@ export interface Faden {
   loeschfristMonate?: number;
 }
 
-/** Bestand `agenten-faeden--<person>`. */
+/**
+ * Bestand `agenten-faeden--<person>` BIS zur Teilung (E3, 09.10.): EINE Datei mit allen Threads samt Nachrichten — nur noch Altbestand
+ * (Demo, lokal, Tests); beim ersten Schreiben zieht er in Index + je Thread um (lib/agenten/faeden-ablage.ts). Neu gelesen wird nur `FadenIndex`.
+ */
 export interface FadenBestand { v: 1; faeden: Faden[] }
+
+/**
+ * Kopf eines Threads im Index (E3, 09.10.: „Gesprächs-Ablage teilen“) — der Thread OHNE Nachrichten, Bretter, Pläne und Kurzfassung; dazu
+ * abgeleitete Zähler (gerechnet NUR in lib/agenten/faeden.ts `kopfVon`, nie von Hand). Takt, Läufe, „Als Nächstes“ und die Liste links lesen nur
+ * Köpfe. Die Zusatzfelder sind im Typ optional (ein ganzer Thread ist auch ein Kopf); im Index stehen sie immer.
+ */
+export type FadenKopf = Omit<Faden, 'nachrichten' | 'kurzfassung' | 'bretter' | 'plaene'> & {
+  /** Zähler: Nachrichten, Bretter, offene Plan-Freigaben, offene Fragen auf den Brettern. */
+  zaehler?: { nachrichten: number; bretter: number; plaeneOffen: number; fragenOffen: number };
+  /** Die letzte Nachricht (nur Kennung, Rolle, Zeit) — „läuft gerade ein Zug?“, Löschfrist. */
+  letzte?: { id: string; rolle: Nachricht['rolle']; zeit: string };
+  /** Zeit der letzten Nachricht eines Agenten bzw. der Software — „ungelesen“. */
+  letzteAntwort?: string;
+  /** Wann der Thread zuletzt geschrieben wurde (Server-Zeit) — wer Nachrichten eines Zeitraums braucht, lädt nur Threads ab dann. */
+  geschrieben?: string;
+};
+/** Index `agenten-faeden--<person>` seit E3 (09.10.): je Thread nur der Kopf; der Thread liegt in `fadenDateiBestand(person, id)`. */
+export interface FadenIndex { v: 2; faeden: FadenKopf[] }
+/** Ein Thread `agenten-faden--<person>--<id>` (E3, 09.10.): der ganze Thread mit Nachrichten, Brettern und Plänen. */
+export interface FadenDatei { v: 1; faden: Faden }
 
 // ── Werkstatt: Skills, eigene Mitarbeiter, Gedächtnis (Bestände `agenten-skills--<haushalt>` / `agenten-skills-privat--<person>`, Paket 3) ─
 
@@ -650,7 +673,10 @@ export interface MedienBestand { v: 1; medien: Medium[] }
 
 // ── Bestandsnamen (EINE Stelle — der Datenschutz-Wächter löst diese Funktionen auf) ────────────────────────────────────
 
+/** Index der Threads einer Person (seit E3, 09.10.: nur Köpfe, Gedächtnis „Persönlich“; Altbestand: alle Threads ganz). */
 export const fadenBestand = (person: string) => `agenten-faeden--${person}`;
+/** EIN Thread einer Person (E3, 09.10.) — Nachrichten, Bretter, Pläne. Geschrieben nur in der Sperre des Index (lib/agenten/faeden-ablage.ts). */
+export const fadenDateiBestand = (person: string, fadenId: string) => `agenten-faden--${person}--${fadenId}`;
 export const skillsHaushaltBestand = (haushalt: string) => `agenten-skills--${haushalt}`;
 export const skillsPersonBestand = (person: string) => `agenten-skills-privat--${person}`;
 export const planBestand = (person: string) => `agenten-plan--${person}`;

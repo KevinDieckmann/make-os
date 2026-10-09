@@ -5,8 +5,8 @@
 // Über die ROUTEN in-process (wie die übrige Saat): Skills (POST /api/agenten/skills: anlegen, aktivieren), geplante Hintergrundaufgaben
 // (POST /api/agenten/laeufe: planen), Medien (POST /api/medien: Album, Freigabe, an Head; Upload in Stücken über /api/medien/upload).
 // Direkt über die Schreibstellen der Pakete — begründete Ausnahmen, weil es dafür keinen Weg OHNE Modellaufruf gibt:
-//   · Threads mit Antworten und Berichten: `bestandAendern` (lib/agenten/faeden-server.ts — dieselbe Schreibstelle wie der Lauf; im Browser
-//     entsteht eine Antwort nur über das Modell)
+//   · Threads mit Antworten und Berichten: `ablageAendernFuer` (lib/agenten/faeden-server.ts — dieselbe Schreibstelle wie der Lauf, seit E3
+//     Index + je Thread; im Browser entsteht eine Antwort nur über das Modell)
 //   · der Testlauf des aktiven Skills: im Werkstatt-Bestand vermerkt (ein echter Testlauf ruft das Modell) — EINGESCHALTET wird er danach über
 //     die Route, die `aktivierenFehlt` wie immer prüft
 //   · der Vorschlag des Heads zu einem gegebenen Medium: `medienVorschlagAblegen` (lib/medien/heads.ts — so legt ihn ein Agent ab)
@@ -125,8 +125,8 @@ const AUFTRAEGE: { head: string; mitarbeiter: string; frageIndex: number; auftra
 ];
 
 async function faedenSaen(personen: { lena: string; jonas: string }, jetzt: Date, medium?: string): Promise<number> {
-  const { bestandAendern } = await import('@/lib/agenten/faeden-server');
-  const { neuerFaden, anhaengen, fadenHinzu, auftragText } = await import('@/lib/agenten/faeden');
+  const { ablageAendernFuer } = await import('@/lib/agenten/faeden-server');
+  const { neuerFaden, anhaengen, auftragText } = await import('@/lib/agenten/faeden');
   type Kern = import('@/lib/agenten/faeden').FadenKern;
   type NKern = import('@/lib/agenten/faeden').NachrichtKern;
   let n = 0;
@@ -163,12 +163,13 @@ async function faedenSaen(personen: { lena: string; jonas: string }, jetzt: Date
       const h = anhaengen(f, msgs, msgs[msgs.length - 1].zeit);
       if (!h.ok) throw new Error(h.fehler);
       f = { ...h.faden, gelesenAm: jetzt.toISOString(), ...(head.id === 'marketing' ? { geteilt: { am: jetzt.toISOString(), von: person } } : {}) };
-      const r = await bestandAendern<null>(person, b => {
-        if (b.faeden.some(x => x.id === id)) return { bestand: b, e: null };
-        const x = fadenHinzu(b, f);
-        if (!x.ok) return x;
-        const y = kind ? fadenHinzu(x.bestand, kind) : x;
-        return y.ok ? { bestand: y.bestand, e: null } : y;
+      const fertig = f, kindFertig = kind;
+      const r = await ablageAendernFuer<null>(person, t => {
+        if (t.kopf(id)) return { e: null };
+        const x = t.hinzu(fertig);
+        if (x) return x;
+        const y = kindFertig ? t.hinzu(kindFertig) : null;
+        return y ?? { e: null };
       });
       if (!r.ok) throw new Error(r.fehler);
       n += kind ? 2 : 1;

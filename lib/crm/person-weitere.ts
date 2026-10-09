@@ -17,7 +17,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
+import { datenOrdner, loadJson, mitBestandSperre, updateJson } from '@/lib/store/local-db';
 import { protokollKennungen, KENNUNG_GELOESCHT } from '@/lib/store/aenderungsprotokoll';
 import { emailsVon } from './emails';
 import { telefonSchluessel } from '@/lib/whatsapp/zuordnung';
@@ -235,6 +235,11 @@ export interface WeitererSpeicher {
   original?: true;
   /** Art. 15: eigene Zählung statt der Freitext-Suche (`tilgeTief`) — z. B. WhatsApp, wo die Telefonnummer die Person nennt (07.10.). */
   zaehlen?: (cur: Obj, m: PersonMerkmale) => number;
+  /**
+   * Bestand, dessen Sperre um das Tilgen gehalten wird (E3, 09.10.): ein Thread `agenten-faden--<person>--<id>` wird nur in der Sperre seines
+   * Index geschrieben (lib/agenten/faeden-ablage.ts) — sonst überschriebe eine gleichzeitige Änderung des Threads das Getilgte.
+   */
+  aussen?: (bestand: string) => string | null;
 }
 
 /** Einträge eines Apple-Spiegels, die die Person nennen — gezählt, nie geändert. `{events}`, `{daten}`, `{objekte: {kal: [...]}}`. */
@@ -342,6 +347,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Agenten-Bereich und Medien unterwegs (08.10. spät, Paket 0 „Vertrag“): Threads, Werkstatt, Hintergrundaufgaben, Medien-Metadaten können
   // Dritte nennen — getilgt, der Eintrag bleibt (lib/agenten/typen.ts). Die Pakete 1/3/5 brauchen hier nichts mehr.
   { name: 'agenten-faeden--*', muster: /^agenten-faeden--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // E3 (09.10.): je Thread eine Datei (der Index oben trägt nur Köpfe) — getilgt in der Sperre des Index der Person.
+  { name: 'agenten-faden--*', muster: /^agenten-faden--[a-z0-9-]+--fd-[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen, aussen: b => { const m = /^agenten-faden--([a-z0-9-]+?)--fd-/.exec(b); return m ? `agenten-faeden--${m[1]}` : null; } },
   { name: 'agenten-skills--*', muster: /^agenten-skills--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'agenten-skills-privat--*', muster: /^agenten-skills-privat--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'agenten-plan--*', muster: /^agenten-plan--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
@@ -414,12 +421,14 @@ export async function weitereEntfernen(m: PersonMerkmale): Promise<{ speicher: R
     }
     try {
       let n = 0;
-      await updateJson<Obj>(name, cur => {
+      const tilgeHier = () => updateJson<Obj>(name, cur => {
         if (!cur || typeof cur !== 'object') return cur as unknown as Obj;
         const r = s.wirkung(cur, m);
         n = r.n;
         return r.n ? r.neu : cur;
       });
+      const aussen = s.aussen?.(name) ?? null;
+      if (aussen) await mitBestandSperre(aussen, async () => { await tilgeHier(); }); else await tilgeHier();
       if (n) speicher[name] = n;
       if (n && s.original) nurInApple[name] = n;
     } catch (e) {

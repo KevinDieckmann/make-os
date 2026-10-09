@@ -255,16 +255,19 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
   await kuerzen<{ zuletzt?: string }>('zoe-verlauf', 'gespraeche', 'zoe-verlauf', g => g.zuletzt);
   // 11a · Threads mit ZOE und den Agenten (09.10., Agenten-Datenschicht D8): dieselbe Frist „zoe-verlauf“, je Person ihr eigener Bestand
   //       (agenten-faeden--<person>) — vorher nur beim nächsten Schreiben des Bestands. Laufende Threads bleiben; Protokoll ohne Inhalte.
+  //       Seit E3 (09.10.) über den INDEX: abgelaufene Köpfe raus, ihre Thread-Dateien (agenten-faden--<person>--<id>) samt Tagessicherungen
+  //       weg; dazu Waisen (Datei ohne Kopf nach einem Absturz) und Köpfe ohne Datei.
   await schritt('agenten-faeden', async () => {
     const { fadenFristAnwenden } = await import('@/lib/agenten/faeden-server');
     for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
       const m = /^agenten-faeden--([a-z0-9-]{1,40})\.json$/.exec(d);
       if (!m) continue;
       const r = await fadenFristAnwenden(m[1], jetztIso, f['zoe-verlauf']);
-      if (!r.faeden && !r.merksaetze) continue;
+      if (!r.faeden && !r.merksaetze && !r.waisen) continue;
       zaehle('agenten-faeden', r.faeden);
       zaehle('agenten-faeden (Merksätze)', r.merksaetze);
-      await protokolliere(d.slice(0, -5), [{ op: 'geloescht', id: 'loeschfrist', felder: [...(r.faeden ? ['faeden'] : []), ...(r.merksaetze ? ['gedaechtnis'] : [])] }], SYSTEM);
+      zaehle('agenten-faeden (Waisen)', r.waisen);
+      if (r.faeden || r.merksaetze) await protokolliere(d.slice(0, -5), [{ op: 'geloescht', id: 'loeschfrist', felder: [...(r.faeden ? ['faeden'] : []), ...(r.merksaetze ? ['gedaechtnis'] : [])] }], SYSTEM);
     }
   });
   await kuerzen<{ tag?: string; zeit?: string }>('zoe-gedaechtnis', 'fakten', 'zoe-gedaechtnis', x => x.tag ?? x.zeit);

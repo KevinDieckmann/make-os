@@ -48,7 +48,7 @@ let stapel: { POST: H };
 let db: typeof import('@/lib/store/local-db');
 let ki: KiFake;
 
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 const senden = (person: string, b: Record<string, unknown>) => rufe(faden.POST, '/api/agenten/faden', sitzung(person), { aktion: 'senden', ...b });
 const letzteErgebnisse = (b: Record<string, unknown>): string[] => {
   const letzte = ((b.messages as { content?: unknown }[] | undefined) ?? []).at(-1);

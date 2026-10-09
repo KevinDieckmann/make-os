@@ -149,9 +149,10 @@ describe('Aktionen: abbrechen, neu starten — nur eigene', () => {
     expect(frei.status).toBe(409);
     expect(frei.j.businessFrei).toBe(true);
     // Drei gemessene teure Läufe des Heads → Schätzung über der Schwelle → Bestätigung nötig.
-    const f = (await db.loadJson<{ faeden: Faden[] }>(fadenBestand('person-b')))!;
     const teuer = [1, 2, 3].map(i => faden(`fd-teuer-${i}`, 'person-b', { status: 'fertig', lauf: { status: 'fertig', schritte: [], start: VOR(500 + i), ende: VOR(490 + i), kostenCent: 90 } }));
-    await db.saveJson(fadenBestand('person-b'), { v: 1, faeden: [...f.faeden, ...teuer] });
+    // E3 (09.10.): Threads dazu über die Ablage (Index + je Thread) — nie den Index als Altbestand zurückschreiben.
+    const { ablageAendernFuer } = await import('@/lib/agenten/faeden-server');
+    await ablageAendernFuer('person-b', t => { for (const x of teuer) { const y = t.hinzu(x as never); if (y) return y; } return { e: true }; });
     const k = await post('person-b', { aktion: 'neu-starten', laufId, trotzdem: true });
     expect(k.status).toBe(409);
     expect(k.j).toMatchObject({ kostenBestaetigen: true, schaetzung: { quelle: 'messung' } });

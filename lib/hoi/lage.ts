@@ -109,12 +109,13 @@ export interface InnenLage {
 }
 
 /**
- * Agenten-Bestände (09.10., Agenten-Datenschicht): jede Nachricht/jeder Modellaufruf schreibt den GANZEN Bestand (Threads je Person,
- * KI-Protokoll je Monat) — wird er groß, wird jedes Schreiben teuer. Der HOI meldet das, bevor es hängt: Befund ab 5 MB oder 200 ms.
+ * Agenten-Bestände (09.10., Agenten-Datenschicht): jede Nachricht/jeder Modellaufruf schreibt einen GANZEN Bestand — seit E3 (09.10.) nur noch den
+ * Index der Person (Köpfe) und den einen Thread (`agenten-faden--<person>--<id>`), das KI-Protokoll je Tag. Wird einer trotzdem groß (Index
+ * mit sehr vielen Threads, ein voller Thread), wird jedes Schreiben teuer. Der HOI meldet das, bevor es hängt: Befund ab 5 MB oder 200 ms.
  * Nur Zahlen, nie Bestandsnamen (sie tragen den Speichernamen einer Person). Muster an EINER Stelle (innen.ts zählt, hier wird bewertet).
  */
 export interface AgentenBestandLage { anzahl: number; groesstesMb: number; ueberGrenze: number; schreibenMaxMs: number | null }
-export const AGENTEN_BESTAND = /^(agenten-(faeden|skills|skills-privat|plan|einstellung)--[a-z0-9-]+|ki-protokoll--\d{4}-\d{2}|ki-verbrauch|head-(sales|marketing|event)|heads-replay-[a-z]+|finanzchef|haushalt-chef--[a-z0-9-]+|zoe-auftraege|zoe-stapel|zoe-gedaechtnis|agent-log)$/;
+export const AGENTEN_BESTAND = /^(agenten-(faeden|faden|skills|skills-privat|plan|einstellung)--[a-z0-9-]+|ki-protokoll--\d{4}-\d{2}(-\d{2})?|ki-verbrauch|head-(sales|marketing|event)|heads-replay-[a-z]+|finanzchef|haushalt-chef--[a-z0-9-]+|zoe-auftraege|zoe-stapel|zoe-gedaechtnis|agent-log)$/;
 export const AGENTEN_BESTAND_MB = 5;
 export const AGENTEN_SCHREIBEN_MS = 200;
 export function agentenBestandBefunde(a: AgentenBestandLage | null | undefined): Befund[] {
@@ -125,7 +126,7 @@ export function agentenBestandBefunde(a: AgentenBestandLage | null | undefined):
   return [{
     id: 'agenten-bestaende', bereich: 'app', label: 'Agenten-Bestände', ampel: gross || langsam ? 'gelb' : 'gruen',
     wert: `${a.anzahl} Dateien · größte ${a.groesstesMb.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB${a.schreibenMaxMs != null ? ` · Schreiben max ${ms0(a.schreibenMaxMs)}` : ''}`,
-    satz: gross || langsam ? `${was} — jede Nachricht schreibt den ganzen Bestand: Threads je Thread teilen, KI-Protokoll in Tagesdateien (Entscheidung offen, UPDATES.md 09.10.)` : 'klein genug — jede Nachricht schreibt den ganzen Bestand, das trägt noch',
+    satz: gross || langsam ? `${was} — jede Nachricht schreibt Index und Thread ganz (seit E3 geteilt): alte Threads löschen bzw. die Frist „zoe-verlauf“ prüfen; trägt das nicht, SQLite für reine Protokolle (UPDATES.md 09.10.)` : 'klein genug — jede Nachricht schreibt nur Index und ihren Thread',
   }];
 }
 

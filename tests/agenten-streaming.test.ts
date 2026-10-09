@@ -108,7 +108,7 @@ const ergebnisInhalt = (b: Record<string, unknown>): string => {
   return Array.isArray(letzte?.content) ? String((letzte!.content as { content?: unknown }[])[0]?.content ?? '') : '';
 };
 const textAus = (es: StromEreignis[]) => es.filter(e => e.art === 'text').map(e => (e as { text: string }).text).join('');
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 async function bis(f: () => Promise<boolean>): Promise<boolean> { for (let i = 0; i < 80; i++) { if (await f()) return true; await new Promise(r => setTimeout(r, 25)); } return false; }
 const verbrauchVon = async (zweck: string) => ((await db.loadJson<{ tage: { posten: { zweck: string; ein: number; aus: number }[] }[] }>('ki-verbrauch'))?.tage ?? []).flatMap(t => t.posten).filter(p => p.zweck === zweck);
 
