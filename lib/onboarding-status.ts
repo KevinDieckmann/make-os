@@ -50,7 +50,7 @@ export const PRIVATKONTO_FRISCH_TAGE = 31;
 export const ALTBESTAND_BIS = '2026-10-09';
 
 /** Persönliche Prüfungen — IMMER nur für `person` (die Person der Sitzung), nie für eine andere. */
-export const PERSOENLICHE_PRUEFUNGEN = ['zwei-faktor', 'gesundheit-einwilligung', 'icloud', 'google', 'gmail', 'postfach', 'whoop', 'aufgaben-ich', 'zoe', 'konten-register', 'arbeitsrahmen', 'routinen'] as const;
+export const PERSOENLICHE_PRUEFUNGEN = ['zwei-faktor', 'gesundheit-einwilligung', 'icloud', 'google', 'gmail', 'postfach', 'whoop', 'aufgaben-ich', 'zoe', 'konten-register', 'arbeitsrahmen', 'routinen', 'gesundheit-agent'] as const;
 /** Inhaber-Prüfungen — nur die Sitzung des Haupt-Inhabers bekommt sie (sein Altbestand), nie eine andere Person. */
 export const INHABER_PRUEFUNGEN = ['altbestand'] as const;
 /** Aus dem Lagebild des Head of IT (lib/hoi, nur lesen) — Instanz-Befunde. */
@@ -241,6 +241,23 @@ async function persoenlich(person: string, u: Umfang): Promise<Record<string, Be
     routinen: async () => {
       const eigene = ((await routinen())?.routinen ?? []).filter(r => r?.aktiv && r.owner === person).length;
       return eigene ? ja(`${n(eigene, 'aktive Routine', 'aktive Routinen')} von dir`) : nein('noch keine eigene aktive Routine');
+    },
+    // 6.2a (09.10.): Gesundheits-Agent — eigener Auftrag gesetzt ODER mindestens eine eigene Unterlage. Nur ja/nein und Zähler, nie Inhalt.
+    // Der Auftrag steht im EIGENEN Abschnitt der Agenten-Einstellung (Heads der Ebene Person, Kategorie Gesundheit — Daten des Katalogs).
+    'gesundheit-agent': async () => {
+      const [{ KATALOG }, { unterlagenHead }, { einstellungFuer }, { unterlagenAnzahl }] = await Promise.all([
+        import('@/lib/agenten/katalog'), import('@/lib/agenten/unterlagen-werkzeug'), import('@/lib/agenten/skills-lesen'), import('@/lib/gesundheit/unterlagen-server'),
+      ]);
+      const heads = KATALOG.filter(unterlagenHead);
+      if (!heads.length) return null;
+      const haushalt = u.haushalt ?? null;
+      const e = haushalt ? await einstellungFuer(haushalt, person) : null;
+      const auftrag = !!e && heads.some(h => !!e.heads[h.id]?.auftrag);
+      const zahl = await unterlagenAnzahl(person);
+      if (auftrag && zahl) return ja(`Auftrag geschrieben, ${n(zahl, 'Unterlage', 'Unterlagen')}`);
+      if (auftrag) return ja('Auftrag an den Gesundheits-Agenten geschrieben');
+      if (zahl) return ja(`${n(zahl, 'Unterlage', 'Unterlagen')} hochgeladen`);
+      return nein('noch kein Auftrag und keine Unterlage');
     },
   };
   return ausfuehren(pruefungen);

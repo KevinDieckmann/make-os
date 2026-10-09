@@ -8,9 +8,11 @@
 // Finanzzugang, Gesundheit nur eigene mit Einwilligung (a), Business) — Lese-Protokoll für Gesundheit und Haushalt.
 // POST (Paket 4b, `EinstellungAnfrage`):
 //   einstellung  { headId, teil, stand } — Modell, Aufwand, Budget je Head, Autonomie (nur verschärfen), zuständige Person, an/aus, Foto,
-//                Mitarbeiter aus; Haushalts-Heads nur volle Mitglieder, Privat-Heads nur die Person selbst (403), Stand → 409, Prüfung → 400
+//                Mitarbeiter aus, eigener Auftrag (09.10., ≤ 4.000 Zeichen, sonst 413; beim Gesundheits-Auftrag nur mit Einwilligung (a), sonst 403);
+//                Haushalts-Heads nur volle Mitglieder, Privat-Heads nur die Person selbst (403), Stand → 409, Prüfung → 400
 //   not-aus      { an, headId? } — für alle (nur volle Mitglieder) bzw. je Head (wer ihn sieht); Setzen hält laufende Läufe sofort an
-// Nur die Person selbst (`eigenePerson`, Dienstweg 403), keine Personen-Parameter, Body ≤ 16 KB (`jsonBegrenzt`), Bau-Kennung beim Schreiben.
+// Nur die Person selbst (`eigenePerson`, Dienstweg 403), keine Personen-Parameter, Body ≤ 32 KB (`jsonBegrenzt`; der Auftrag mit 4.000 Zeichen
+// passt auch mit Sonderzeichen hinein), Bau-Kennung beim Schreiben.
 import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/zugang/tor';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -47,12 +49,12 @@ export async function POST(req: Request) {
   const z = await eigenePerson(req, true, AGENTEN_NUR_SELBST);
   if (z instanceof NextResponse) return z;
   let b: Record<string, unknown>;
-  try { b = await jsonBegrenzt(req, 16_000); } catch (e) { return jsonZuGross(e) ?? nein(400, 'Kein gültiges JSON.'); }
+  try { b = await jsonBegrenzt(req, 32_000); } catch (e) { return jsonZuGross(e) ?? nein(400, 'Kein gültiges JSON.'); }
   if (!b || typeof b !== 'object') return nein(400, 'Anfrage fehlt.');
   const { einstellungAendern, notAusSetzen } = await import('@/lib/agenten/einstellung');
   if (b.aktion === 'einstellung') {
     const r = await einstellungAendern(z.person, b.headId, b.teil, b.stand);
-    return r.ok ? NextResponse.json({ ok: true, headId: r.headId, stand: r.stand, felder: r.felder }) : nein(r.status, r.fehler, r.stand ? { stand: r.stand } : {});
+    return r.ok ? NextResponse.json({ ok: true, headId: r.headId, stand: r.stand, felder: r.felder }) : nein(r.status, r.fehler, { ...(r.stand ? { stand: r.stand } : {}), ...(r.einwilligung ? { einwilligung: r.einwilligung } : {}) });
   }
   if (b.aktion === 'not-aus') {
     const r = await notAusSetzen(z.person, b.an, b.headId);

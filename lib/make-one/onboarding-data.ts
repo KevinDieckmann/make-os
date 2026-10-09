@@ -1061,6 +1061,21 @@ export const SCHRITTE: Schritt[] = [
     danach: 'An erschöpften Tagen plant die Kapazität weniger ein.',
     wo: { href: WEG.kapazitaet(), label: 'Planung › Kapazität' },
   },
+  // 09.10. (Kevin: „beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten schreiben … Oder eine Datei hochgeladen
+  // werden kann.“) — je Person, nur eigene; geprüft wird nur ja/nein (Auftrag gesetzt ODER mindestens eine Unterlage), nie ein Inhalt.
+  {
+    id: 'ich-gesundheit-agent', samstag: true, etappe: 6, nr: '6.2a', ebene: 'ich', minuten: 10, pruefung: 'gesundheit-agent',
+    modul: 'gesundheit', nach: ['ich-gesundheit'],
+    titel: 'Gesundheits-Agent: Auftrag schreiben oder Unterlage hochladen',
+    warum: 'Der Gesundheits-Agent arbeitet besser, wenn er weiß, worauf es dir ankommt — dein Ziel, worauf er achten soll, was er lassen soll. Oder du lädst eine Unterlage hoch (Trainingsplan, Arztbrief, Laborwerte). Beides gehört nur dir.',
+    wie: [
+      'Agenten › Gesundheit › Info › „Dein Auftrag“: in eigenen Worten schreiben (höchstens 4.000 Zeichen) und speichern.',
+      'Oder unter Gesundheit › Karte „Unterlagen“ eine Datei hochladen (PDF, Bild, Text; höchstens 15 MB).',
+      'Speichern geht mit deiner Einwilligung (a) zur Gesundheit (Schritt 1.8). An die KI gehen Auftrag und Unterlagen nur mit (b) „An die KI geben“ — ohne (b) bleiben sie gespeichert, aber draußen.',
+    ],
+    danach: 'Geprüft wird nur, ob ein Auftrag oder eine Unterlage da ist — nie, was darin steht. Niemand sonst sieht sie, auch nicht bei geteilter Gesundheit.',
+    wo: { href: WEG.agenten({ h: 'gesundheit', r: 'auftrag' }), label: 'Agenten › Gesundheit › Dein Auftrag' },
+  },
   {
     id: 'familie-rahmen', samstag: true, etappe: 6, nr: '6.3', ebene: 'gemeinsam', minuten: 15, pruefung: 'familie-rahmen', bestaetigen: true,
     modul: 'familie', nach: ['kalender-zuordnen'],

@@ -242,6 +242,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Gesundheit, Familie, Persönliches ──────────────────────────────────────────────────────────────────────
   'gesundheit/index': r('GET,POST', 'person', 'Gesundheits-Index je Person; fremde nur mit Freigabe (darfGesundheitSehen).'),
   'gesundheit/stand': r('GET', 'person', 'Gesundheits-Stand je Person; fremde nur mit Freigabe.'),
+  'gesundheit/unterlagen': r('GET,POST,DELETE', 'person', 'Gesundheits-Unterlagen (Art. 9) NUR der Person selbst (personStreng, kein ?fuer, Dienstweg 403) — auch bei geteilter Gesundheit nie für andere, nie der Inhaber; Ablegen nur mit Einwilligung (a), Typ am Inhalt, ≤ 15 MB; Entfernen immer (09.10.).'),
   'gesundheit/koerper': r('GET,PATCH', 'person', 'Körper-Profil (Art. 9) NUR der Person selbst (personStreng, kein ?fuer, Dienstweg 403) — auch bei geteilter Gesundheit nie für andere; Schreiben nur mit Einwilligung (a), Stand/409 (08.10., Fragebogen Teil 3).'),
   'state/haut': r('GET,PUT', 'person', 'Haut-Log je Person (Art. 9); fremde nur mit Freigabe.'),
   'state/health': r('GET,PUT', 'person', 'Gesundheits-Log je Person (Art. 9); fremde nur mit Freigabe.'),
