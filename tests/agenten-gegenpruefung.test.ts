@@ -271,6 +271,18 @@ describe('8 · Konto „nur Business“ (team-c) bekommt nichts aus Privat', () 
   });
 });
 
+describe('10 · ZOE: höchstens 3 Fragen an Heads je Zug (Kosten, auch nach fremdem Text)', () => {
+  it('fünf head_fragen in einem Zug → nur drei Head-Läufe, die übrigen mit Grund abgelehnt', async () => {
+    m.anfragen.length = 0;
+    m.antworten.push(werkzeug(...(['research', 'produkt', 'it', 'recht', 'strategie'].map(h => ['head_fragen', { head: h, frage: `Was gibt es Neues bei ${h}?` }] as [string, Record<string, unknown>]))));
+    const r = await rufe(kimmi.POST, '/api/kimmi', sitzung('person-b'), { message: 'Frag alle Heads, was es Neues gibt.', zoeFaden: 'neu' });
+    expect(r.status).toBe(200);
+    expect(m.anfragen.filter(b => /Du bist (Head of|Recht & Datenschutz|CEO-Office)/.test(systemText(b))).length).toBe(3);
+    const letzte = m.anfragen.filter(b => !/Du bist (Head of|Recht & Datenschutz|CEO-Office)/.test(systemText(b))).at(-1)!;
+    expect(ergebnisse(letzte).filter(t => /höchstens 3 Fragen an Heads je Zug/.test(t))).toHaveLength(2);
+  });
+});
+
 describe('9 · Oberfläche gegen den Server: teure Läufe lassen sich bestätigen', () => {
   it('mitRueckfrage: 409 „kostenBestaetigen“ → fragen → mit kostenBestaetigt erneut; Business-frei → „trotzdem“; Nein → nichts melden', async () => {
     const { mitRueckfrage } = await import('@/components/os/agenten/daten');
