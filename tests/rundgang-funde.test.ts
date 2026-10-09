@@ -64,10 +64,11 @@ describe('1. Handy: die Überblick-Karte bleibt in ihrer Breite', () => {
     expect(html).toContain('role="progressbar"');
   });
 
-  it('Zeiten bei „Die nächsten Tage“ stehen fest, der Text bricht um', async () => {
+  it('Zeiten bei „Seit deinem letzten Besuch“ stehen fest, der Text bricht um (die nächsten Tage stehen seit dem Aufräumen 09.10. rechts)', async () => {
     const { Ueberblick } = await import('@/components/os/agenten/ZoeMitte');
     const html = await rendere(h(Ueberblick, {}));
-    expect(html).toContain('Die nächsten Tage');
+    expect(html).toContain('Seit deinem letzten Besuch');
+    expect(html).not.toContain('Die nächsten Tage');
     const zeiten = stile(html).filter(s => s.includes('white-space:nowrap') && s.includes('line-height:1.7'));
     expect(zeiten.length).toBeGreaterThan(0);
     for (const s of zeiten) expect(s).toContain('flex:0 0 auto');
@@ -78,7 +79,10 @@ describe('1. Handy: die Überblick-Karte bleibt in ihrer Breite', () => {
     const { ZoeMitte } = await import('@/components/os/agenten/ZoeMitte');
     const mitte = await rendere(h(ZoeMitte, {}), { agenten });
     expect(stile(mitte)[0]).toContain(EINS);
-    for (const s of stile(mitte.slice(0, mitte.indexOf('aria-label="Überblick"'))).filter(x => /(^|;)display:grid/.test(x))) expect(s).toContain(EINS);
+    // Seit dem Aufräumen 09.10. steht über dem leeren Gespräch die Begrüßung (im Verlauf) — JEDES Grid der Mitte hat eine Spalte, auch Verlauf und Feld.
+    const grids = stile(mitte).filter(x => /(^|;)display:grid/.test(x));
+    expect(grids.length).toBeGreaterThanOrEqual(3);
+    for (const s of grids) expect(s).toContain(EINS);
     const { AgentenFlaeche } = await import('@/components/os/agenten/AgentenSeite');
     const flaeche = await rendere(h(AgentenFlaeche, { handyReiter: 'gespraech' }), { agenten });
     expect(stile(flaeche)[0]).toContain('--agenten-feld-unten');
@@ -137,14 +141,14 @@ describe('3. „Als Nächstes“: je wiederkehrendem Lauf nur das nächste Vorko
     expect(lies('lib/agenten/naechstes.ts')).toMatch(/return naechstesSortieren\(raus\.filter\(x => zeitWert\(x\.wann\) < bis\.getTime\(\)\)\);/);
   });
 
-  it('die Oberfläche zeigt den Takt hinter dem Titel (rechts und im Überblick)', async () => {
+  it('die Oberfläche zeigt den Takt hinter dem Titel (rechts in „Geplant“; der Überblick zeigt die nächsten Tage seit dem Aufräumen 09.10. nicht mehr)', async () => {
     const { AlsNaechstes } = await import('@/components/os/agenten/Hintergrund');
     const verdichtet = { ...FIX.LAEUFE, naechstes: [lauf('2026-10-09T06:00:00.000Z', { weitere: 3, bis: '2026-10-14T06:00:00.000Z', wiederholt: 'werktags' })] };
     const html = await rendere(h(AlsNaechstes, {}), { laeufe: { zustand: 'da', daten: verdichtet } });
     expect(html).toContain('Power Hour vorbereiten');
     expect(html).toContain('werktags bis Mi');
     const { Ueberblick } = await import('@/components/os/agenten/ZoeMitte');
-    expect(await rendere(h(Ueberblick, {}), { laeufe: { zustand: 'da', daten: verdichtet } })).toContain('Power Hour vorbereiten · werktags bis Mi');
+    expect(await rendere(h(Ueberblick, {}), { laeufe: { zustand: 'da', daten: verdichtet } })).not.toContain('Power Hour vorbereiten');
   });
 });
 
@@ -152,7 +156,8 @@ describe('5. Head-Kopf: eine Kennzahl ohne Wert sagt, warum', () => {
   it('Lücke des Index → Satz unter der Kennzahl statt eines stummen „—“', async () => {
     const { HeadMitte } = await import('@/components/os/agenten/HeadMitte');
     const heads = FIX.AGENTEN.heads.map(x => (x.id === 'sales' ? { ...x, kennzahlen: x.kennzahlen.map(k => (k.id === 'win_rate' ? { ...k, wert: null, ampel: 'grau' as const, hinweis: 'erst ab 10 Entscheidungen (0 gewonnen · 0 verloren)' } : k)) } : x));
-    const html = await rendere(h(HeadMitte, { headId: 'sales', fadenId: FIX.FADEN_HEAD_ID }), { form: 'breit', agenten: { zustand: 'da', daten: { ...FIX.AGENTEN, heads } }, auswahl: { art: 'head', headId: 'sales', fadenId: FIX.FADEN_HEAD_ID } });
+    // Seit dem Aufräumen 09.10. stehen die Kennzahlen unter „Info“ (über dem Chat nur die Kopfzeile).
+    const html = await rendere(h(HeadMitte, { headId: 'sales', fadenId: FIX.FADEN_HEAD_ID, startReiter: 'info' }), { form: 'breit', agenten: { zustand: 'da', daten: { ...FIX.AGENTEN, heads } }, auswahl: { art: 'head', headId: 'sales', fadenId: FIX.FADEN_HEAD_ID } });
     expect(html).toContain('erst ab 10 Entscheidungen (0 gewonnen · 0 verloren)');
     expect(html).toContain('Echte Gespräche · 7 Tage');
   });

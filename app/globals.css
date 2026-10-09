@@ -392,6 +392,16 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) {
   body:has(.agenten-reiter-handy) .zoe-fab { display: none !important; }
 }
+/* Agenten-Seite (Aufräumen 09.10., Claude-Muster): Liste links und Hintergrund rechts klappen weich ein (Breite → 0) bzw. gleiten als
+   Schublade über das Gespräch; zu = unsichtbar und nicht mehr per Tab erreichbar (visibility erst nach dem Gleiten). Reduzierte Bewegung: sofort. */
+.agenten-seitenfeld { transition: width .22s ease, visibility 0s linear 0s; }
+.agenten-seitenfeld[data-zu] { visibility: hidden; transition: width .22s ease, visibility 0s linear .22s; }
+.agenten-schublade { transition: transform .22s ease, visibility 0s linear 0s; }
+.agenten-schublade[data-zu] { visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s; }
+.agenten-schleier { position: fixed; inset: 0; z-index: 59; background: rgba(5, 7, 8, .55); }
+@media (prefers-reduced-motion: reduce) {
+  .agenten-seitenfeld, .agenten-seitenfeld[data-zu], .agenten-schublade, .agenten-schublade[data-zu] { transition: none; }
+}
 
 /* ZOE-Fenster am Handy (Design-Standard 03.10.): Knöpfe ≥ 44 px, Eingabe 16 px (iOS zoomt sonst). Nur innerhalb des Fensters — Position und Größe bleiben unberührt. */
 @media (max-width: 720px) {

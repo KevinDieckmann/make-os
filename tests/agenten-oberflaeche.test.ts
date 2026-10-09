@@ -1,10 +1,12 @@
 // ─── Agenten-Bereich · Paket 2 „Oberfläche“ (09.10., AGENTEN_KONZEPT.md C2 + C11) ─────────────────────────────────────
 // Was die Seite /os/agenten verspricht — gerendert serverseitig gegen das Fixture des Vertrags (tests/fixtures/agenten-api.ts):
-//   • drei Spalten (Team · Mitte · Hintergrund), Handy-Reiter Gespräch · Team · Läuft;
-//   • ZOE-Mitte: Briefing, Überblick (passiert, in Arbeit, nächste Tage, wartet auf dich, Jahresziele), Vorschläge, Chat mit @Head;
-//   • Head-Mitte: Kopf (Auftrag, 3 Kennzahlen, Skills als Chips) und die sieben Reiter; Delegation und Bericht als Karten;
+//   • drei Spalten (Liste · Gespräch · Hintergrund), Handy-Reiter Gespräch · Team · Läuft;
+//   • ZOE-Mitte (seit dem Aufräumen 09.10. nur Gespräch): über dem leeren Gespräch Briefing, „Seit deinem letzten Besuch“, Vorschläge; Chat
+//     mit @Head; der Überblick (passiert, in Arbeit, Jahresziele) unter „Info“;
+//   • Head-Mitte: Kopfzeile mit drei Reitern Chat · Aktivität · Info (Info bündelt Auftrag, Kennzahlen, Sieht/Sieht nicht und die Abschnitte
+//     Mitarbeiter · Skills · Gedächtnis · Leistung · Einstellungen); Delegation und Bericht als Karten;
 //   • Mitarbeiter-Thread: Brotkrumen, Auftrag (Ziel · Format · Grenzen · Quellen), Schritte, „Zweite Meinung“;
-//   • rechts: Wartet auf dich (Risiko-Ampel), Läuft, Als Nächstes nach Eisenhower, Fertig/Fehler eingeklappt;
+//   • rechts: Wartet auf dich (Risiko-Ampel), Läuft, Geplant nach Eisenhower, Fertig/Fehler eingeklappt, Budget · Not-Aus · ⋯;
 //   • 501 (Stub) = ruhiger Leerzustand je Bereich, nie ein Fehler;
 //   • Design-Standard: keine Farb-, Schrift- oder Ecken-Literale, Tippziele über ZIEL, Eingaben 16 px (`eingabe`/`feld`).
 // Reine Regeln (Auswahl, @, Eisenhower, Risiko, Delegation, Zeitplan, Skill-Prüfung, Geld) stehen unten.
@@ -60,38 +62,49 @@ async function rendere(kind: unknown, teil: Partial<AgentenWert> = {}): Promise<
 const kommt = { zustand: 'kommt' as const, text: 'Kommt mit Paket 1.' };
 
 describe('Drei Spalten gegen das Fixture', () => {
-  it('breit: Team (ZOE + Heads nach Bereich), ZOE-Mitte, Hintergrund', async () => {
+  it('breit: Liste (ZOE + Heads nach Bereich, nur Namen), ZOE-Mitte (nur Gespräch), Hintergrund (Aufräumen 09.10.)', async () => {
     const { AgentenFlaeche } = await import('@/components/os/agenten/AgentenSeite');
     const html = await rendere(h(AgentenFlaeche, {}));
-    // Team: ZOE oben, Heads nach Bereich mit Zählern
+    // Liste: Neu ▾ und Suche oben, ZOE, Heads nach Bereich — nur Namen, Zustand als Punkt (Freigaben pulsieren), Details in der Ansage
     expect(html).toContain('aria-label="Team"');
+    expect(html).toContain('aria-label="Neu anlegen"');
+    expect(html).toContain('aria-label="Heads und Threads suchen"');
     expect(html.indexOf('ZOE öffnen')).toBeLessThan(html.indexOf('Head of Sales öffnen'));
     expect(html).toContain('aria-label="Business"');
     expect(html).toContain('aria-label="Privat"');
-    expect(html).toContain('⚑ 2');
-    expect(html).toContain('2 Threads');
-    // Mitte: Briefing, Überblick, Vorschläge, Chat
+    expect(html).toContain('Head of Sales öffnen — 2 Freigaben offen');
+    expect(html).not.toContain('2 Threads'); // keine Untertitel unter Namen
+    expect(html).not.toContain('steuert die Heads');
+    // Mitte: Kopfzeile, über dem LEEREN Gespräch Briefing, „Seit deinem letzten Besuch“, Vorschläge — keine Überblick-Karte mehr darüber
     expect(html).toContain(FIX.AGENTEN.ueberblick.briefing!);
-    expect(html).toContain('aria-label="Überblick"');
+    expect(html).not.toContain('aria-label="Überblick"');
+    expect(html).toContain('Seit deinem letzten Besuch');
     expect(html).toContain('Head of Sales hat zwei Entwürfe zur Freigabe vorgelegt.');
-    expect(html).toContain('Kampagnen: Herbst-Kampagne wird geplant.');
-    expect(html).toContain('Jahresziel Umsatz');
+    expect(html).not.toContain('Kampagnen: Herbst-Kampagne wird geplant.'); // „Woran gearbeitet wird“ → Info
+    expect(html).not.toContain('Jahresziel Umsatz'); // Jahresziele → Info
+    expect(html).not.toContain('Die nächsten Tage'); // → rechts „Geplant“
     expect(html).toContain('Vorschläge für heute');
     expect(html).toContain('2 Freigaben durchgehen');
     expect(html).toContain('Nachricht an ZOE');
     expect(html).toContain('@Sales');
-    // Rechts: Wartet auf dich · Läuft · Als Nächstes · Fertig/Fehler eingeklappt
-    for (const t of ['Wartet auf dich', 'Läuft', 'Als Nächstes']) expect(html).toContain(`aria-label="${t}"`);
+    expect(html).toContain('Liste zuklappen');
+    expect(html).toContain('Hintergrund zuklappen');
+    // Rechts: Wartet auf dich · Läuft · Geplant · Fertig/Fehler eingeklappt; unten Budget, Not-Aus, ⋯
+    for (const t of ['Wartet auf dich', 'Läuft', 'Geplant']) expect(html).toContain(`aria-label="${t}"`);
     expect(html.indexOf('aria-label="Wartet auf dich"')).toBeLessThan(html.indexOf('aria-label="Läuft"'));
-    expect(html.indexOf('aria-label="Läuft"')).toBeLessThan(html.indexOf('aria-label="Als Nächstes"'));
+    expect(html.indexOf('aria-label="Läuft"')).toBeLessThan(html.indexOf('aria-label="Geplant"'));
     expect(html).toContain('Kampagnen: Herbst-Kampagne');
     expect(html).toContain('Schritt 2/4 · Segment prüfen');
-    expect(html).toContain('Fertig (2)');
-    expect(html).toContain('Fehler (1)');
+    expect(html).toContain('Marketing › Kampagnen');
+    expect(html).toContain('Stopp');
+    expect(html).toMatch(/aria-expanded="false"[^>]*>[\s\S]{0,400}Fertig \/ Fehler \(3\)/);
     expect(html).not.toContain('Nachfassen Kunde A</span><button'); // Fertig bleibt eingeklappt
+    expect(html).toContain('Kosten diesen Monat');
+    expect(html).toContain('aria-label="Not-Aus"');
+    expect(html).toContain('Mehr: Leitplanken, Budget, Zeitpläne, bisherige Übersicht');
   });
 
-  it('Als Nächstes nach Eisenhower: wichtig & dringend → wichtig → dringend → später; kritisch pulsiert', async () => {
+  it('Geplant (bis 09.10. „Als Nächstes“) nach Eisenhower: wichtig & dringend → wichtig → dringend → später; kritisch pulsiert; Zeitpläne', async () => {
     const { AlsNaechstes } = await import('@/components/os/agenten/Hintergrund');
     const html = await rendere(h(AlsNaechstes, {}));
     const reihe = ['Freigaben offen', 'Monatsabschluss eintragen', 'Power Hour vorbereiten', 'angebot-nachfassen'].map(t => html.indexOf(t));
@@ -99,6 +112,7 @@ describe('Drei Spalten gegen das Fixture', () => {
     expect([...reihe].sort((a, b) => a - b)).toEqual(reihe);
     expect(html).toContain('Wichtig &amp; dringend');
     expect(html).toContain('krit-puls');
+    expect(html).toContain('Zeitpläne');
   });
 
   it('Wartet auf dich: Freigaben mit Risiko-Ampel, Rückfrage eines Threads mit Antwort in der Zeile', async () => {
@@ -134,19 +148,30 @@ describe('Drei Spalten gegen das Fixture', () => {
 });
 
 describe('Head-Mitte', () => {
-  it('Kopf: Auftrag, drei Kennzahlen, Sieht/Sieht nicht, Skills und Mitarbeiter als Chips; sieben Reiter', async () => {
+  it('Kopfzeile: nur Kugel, Name, Bereich und drei Reiter; „Info“ bündelt Auftrag, Kennzahlen, Sieht/Sieht nicht und die Abschnitte (Aufräumen 09.10.)', async () => {
     const { HeadMitte } = await import('@/components/os/agenten/HeadMitte');
-    const html = await rendere(h(HeadMitte, { headId: 'sales', fadenId: FIX.FADEN_HEAD_ID }), { auswahl: { art: 'head', headId: 'sales', fadenId: FIX.FADEN_HEAD_ID } });
-    expect(html).toContain('Head of Sales');
-    expect(html).toContain(FIX.HEADS[0].auftrag);
-    for (const k of FIX.HEADS[0].kennzahlen) expect(html).toContain(k.label);
-    expect(html).toContain('Sieht:');
-    expect(html).toContain('Sieht nicht:');
-    expect(html).toMatch(/Gesundheit/);
-    expect(html).toContain('/power-hour');
-    expect(html).toContain('/angebot-nachfassen');
-    expect(html).toContain('Nachfassen &amp; Power Hour');
-    for (const r of ['Chat · ⚑ 2', 'Aktivität', 'Mitarbeiter', 'Skills', 'Gedächtnis', 'Leistung', 'Einstellungen']) expect(html).toMatch(new RegExp(`role="tab"[^>]*>${r.replace(/[·⚑]/g, '.')}`));
+    const auswahl = { art: 'head' as const, headId: 'sales', fadenId: FIX.FADEN_HEAD_ID };
+    const chat = await rendere(h(HeadMitte, { headId: 'sales', fadenId: FIX.FADEN_HEAD_ID }), { auswahl });
+    expect(chat).toContain('Head of Sales');
+    for (const r of ['Chat · ⚑ 2', 'Aktivität', 'Info']) expect(chat).toMatch(new RegExp(`role="tab"[^>]*>${r.replace(/[·⚑]/g, '.')}`));
+    expect(chat).not.toMatch(/role="tab"[^>]*>(Mitarbeiter|Skills|Gedächtnis|Leistung|Einstellungen)</);
+    // über dem Chat NUR die Kopfzeile: kein Auftrag, keine Kennzahlen, kein „Sieht“, keine Skill- oder Mitarbeiter-Chips, keine Thread-Chips
+    expect(chat).not.toContain(FIX.HEADS[0].auftrag);
+    expect(chat).not.toContain('Sieht:');
+    expect(chat).not.toContain('/power-hour');
+    expect(chat).not.toContain('aria-label="Threads"');
+    const info = await rendere(h(HeadMitte, { headId: 'sales', startReiter: 'info' }), { auswahl: { art: 'head', headId: 'sales' } });
+    expect(info).toContain(FIX.HEADS[0].auftrag);
+    for (const k of FIX.HEADS[0].kennzahlen) expect(info).toContain(k.label);
+    expect(info).toContain('Sieht:');
+    expect(info).toContain('Sieht nicht:');
+    expect(info).toMatch(/Gesundheit/);
+    for (const a of ['Mitarbeiter', 'Skills', 'Gedächtnis', 'Leistung', 'Einstellungen']) expect(info).toMatch(new RegExp(`aria-expanded="false"[^>]*>[\\s\\S]{0,700}<span>${a}</span>`));
+    const sk = await rendere(h(HeadMitte, { headId: 'sales', startReiter: 'skills' }), { auswahl: { art: 'head', headId: 'sales' } });
+    expect(sk).toContain('/power-hour');
+    expect(sk).toContain('/angebot-nachfassen');
+    const ma = await rendere(h(HeadMitte, { headId: 'sales', startReiter: 'mitarbeiter' }), { auswahl: { art: 'head', headId: 'sales' } });
+    expect(ma).toContain('Nachfassen &amp; Power Hour');
   });
 
   it('Chat: Verlauf mit KI-Marke, Delegation als aufklappbare Karte, Bericht als Verweis, Daumen, „Als Skill speichern“', async () => {
@@ -160,7 +185,9 @@ describe('Head-Mitte', () => {
     expect(html).toContain('zwei Entwürfe liegen zur Freigabe bereit.');
     expect(html).toContain('Daumen hoch');
     expect(html).toContain('Als Skill speichern');
-    expect(html).toContain('+ Neuer Thread');
+    expect(html).toContain('aria-label="Neuer Thread"'); // Kopfzeile (dazu „Neu ▾ › Thread“ und ⋯)
+    expect(html).toContain('Pipeline diese Woche'); // Titel des offenen Threads in der Kopfzeile
+    expect(html).toContain('aria-label="Mehr zu diesem Gespräch"');
     expect(html).toContain('Nachricht an Sales');
   });
 

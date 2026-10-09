@@ -24,7 +24,7 @@ import {
   absenderVon, agentAusSchluessel, delegationTeile, euroAusUsd, FADEN_STATUS_NAME, risikoVon, RISIKO_NAME, zeitKurz,
   type Ansprechbar, type Risiko,
 } from './regeln';
-import { FELD_ZEILEN, KUGEL_GROESSE, NACHRICHT_MAX } from './masse';
+import { FELD_ZEILEN, KUGEL_GROESSE, NACHRICHT_MAX, SPALTE_EINS } from './masse';
 import { useAgenten } from './kontext';
 import { WEG } from '@/lib/wege';
 import type { Abruf } from './daten';
@@ -183,9 +183,9 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
   const kurs = agenten.zustand === 'da' ? agenten.daten.kurs : undefined;
   const heads: HeadKarte[] = agenten.zustand === 'da' ? agenten.daten.heads : [];
   const stimme = useStimme(() => { /* hier wird nur vorgelesen */ });
-  if (!nachrichten.length) return <div style={{ display: 'grid', gap: ABSTAND.m }}>{leer}{unten}</div>;
+  if (!nachrichten.length) return <div style={{ display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: ABSTAND.m, minWidth: 0 }}>{leer}{unten}</div>;
   return (
-    <ol aria-label="Verlauf" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: ABSTAND.l }}>
+    <ol aria-label="Verlauf" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: ABSTAND.l, minWidth: 0 }}>
       {nachrichten.map(n => {
         if (n.rolle === 'system') {
           if (n.verweis) return <li key={n.id} style={{ display: 'grid', gap: ABSTAND.xs }}><VerweisKarte n={n} kind={kinder.find(k => k.id === n.verweis!.fadenId)} />{n.verweis.art === 'bericht' && fadenId && <Daumen id={n.id} fadenId={fadenId} start={n.daumen?.wert} />}</li>;
@@ -281,11 +281,12 @@ export function ChatFeld({ platzhalter, ansprechbar = [], onSenden, laeuft, aus,
   };
   return (
     <form onSubmit={e => { e.preventDefault(); void los(); }} aria-label="Nachricht"
-      style={{ position: 'sticky', bottom: unten ?? 0, zIndex: 5, display: 'grid', gap: ABSTAND.s, padding: `${ABSTAND.m}px 0 ${ABSTAND.s}px`, background: `linear-gradient(to top, ${C.grund} 78%, ${TIEF.flaeche(C.grund)})` }}>
-      {(vorschlag.length ? vorschlag : ansprechbar).length > 0 && (
+      style={{ position: 'sticky', bottom: unten ?? 0, zIndex: 5, display: 'grid', gridTemplateColumns: SPALTE_EINS, gap: ABSTAND.s, padding: `${ABSTAND.m}px 0 ${ABSTAND.s}px`, background: `linear-gradient(to top, ${C.grund} 78%, ${TIEF.flaeche(C.grund)})` }}>
+      {/* Aufräumen 09.10.: die @-Namen erscheinen erst beim Tippen von „@“ (vorher stand immer eine Reihe Chips über dem Feld). */}
+      {vorschlag.length > 0 && (
         <div className="ui-pillen ui-pillen-einzeilig" aria-label="Ansprechen">
-          {(vorschlag.length ? vorschlag : ansprechbar).map(a => (
-            <Wahl key={`${a.art}-${a.id}`} klein an={text.toLowerCase().startsWith(`@${a.name.toLowerCase()}`)} onClick={() => ansprechen(a)}>@{a.name}</Wahl>
+          {vorschlag.map(a => (
+            <Wahl key={`${a.art}-${a.id}`} klein an={false} onClick={() => ansprechen(a)}>@{a.name}</Wahl>
           ))}
         </div>
       )}

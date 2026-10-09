@@ -69,8 +69,8 @@ export function ZoeStandbild({ groesse = KUGEL_GROESSE.liste, punkt }: { groesse
 }
 
 /** ZOE im Kopf der Mitte: die echte Lichtkugel (klein, 24 Bilder/s, pausiert außer Sicht), ohne WebGL das Standbild. */
-export function ZoeKopfKugel({ denkt }: { denkt: boolean }) {
-  const g = KUGEL_GROESSE.kopf;
+export function ZoeKopfKugel({ denkt, groesse = KUGEL_GROESSE.kopf }: { denkt: boolean; /** In der schlanken Kopfzeile des Gesprächs kleiner (09.10.). */ groesse?: number }) {
+  const g = groesse;
   return (
     <span aria-hidden style={{ position: 'relative', width: g, height: g, flex: '0 0 auto', display: 'inline-block' }}>
       <ZoeKugel groesse="symbol" zustand={denkt ? 'denkt' : 'ruht'} rueckfall={<ZoeStandbild groesse={g} />} />

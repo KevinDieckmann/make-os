@@ -1,22 +1,27 @@
 'use client';
 
-// ─── Agenten-Seite: rechts — Wartet auf dich · Läuft · Als Nächstes · Fertig/Fehler (09.10., Paket 2) ──────────────────
+// ─── Agenten-Seite: rechts der Hintergrund — Wartet auf dich · Läuft · Geplant · Fertig/Fehler (09.10., Paket 2; Aufräumen 09.10. abends) ─
 // Fragerunde 4: „Wartet auf dich · Läuft · Als Nächstes (Eisenhower) · Fertig/Fehler eingeklappt.“
-//   • Wartet auf dich steht oben — Rückfragen eines Threads mit Antwort direkt in der Zeile, Freigaben aus dem Stapel mit
-//     Risiko-Ampel; am Handy Daumen-Wischen NUR für risikoarme (→ freigeben, ← ablehnen, je mit Rückfrage), dazu „alle
-//     risikoarmen“. Entschieden wird über /api/zoe/stapel — derselbe Weg wie auf der Freigaben-Seite.
-//   • Läuft: Fortschritt in Schritten, Dauer, Kosten in Euro, Abbrechen (mit Rückfrage).
-//   • Als Nächstes: nach Eisenhower (wichtig & dringend zuerst), kritisch pulsiert.
-//   • Fertig und Fehler eingeklappt; Fehler mit „Neu starten“.
+// Aufräumen 09.10. (Claude-Muster „Hintergrundaufgaben“): das Feld lässt sich mit ✕ schließen (⌘. bzw. Strg+.), es trägt alles, was
+// vorher in der Kopfleiste über der Seite stand — unten Budget-Balken, Not-Aus und „⋯“ (Leitplanken, Budget je Head, Zeitpläne,
+// bisherige Übersicht), und die Abschnitte:
+//   • Wartet auf dich (n) — Rückfragen eines Threads mit Antwort direkt in der Zeile, Freigaben aus dem Stapel mit Risiko-Ampel, die
+//     Freigaben bei den Heads als eine Zeile; „Alle ›“ führt immer zur Freigaben-Seite. Am Handy Daumen-Wischen NUR für risikoarme
+//     (→ freigeben, ← ablehnen, je mit Rückfrage). Entschieden wird über /api/zoe/stapel — derselbe Weg wie auf der Freigaben-Seite.
+//   • Läuft (n) — Karten wie in der Claude-App: Titel, Head › Mitarbeiter, Schritt, Dauer, Kosten in Euro, „Ansehen“, „Stopp“.
+//   • Geplant (n) — das bisherige „Als Nächstes“ nach Eisenhower (kritisch pulsiert) und „Zeitpläne“ (Fenster zum Pausieren/Löschen).
+//   • Fertig / Fehler (n) — eingeklappt; Fehler zuerst, mit „Neu starten“.
 
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, SCHRIFT, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
+import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, RAND, SCHRIFT, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
 import type { FadenKurz, Lauf, Naechstes } from '@/lib/agenten/typen';
-import { Chip, Fortschritt, Hinweis, Knopf, Leer, eingabe } from '../ui';
+import { Chip, Fortschritt, Hinweis, Knopf, Leer, SymbolKnopf, eingabe } from '../ui';
 import { headFarbe } from './Avatar';
 import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelEntscheiden } from './daten';
 import { useAgenten } from './kontext';
+import { BudgetBalken, MehrMenue, NotAusKnopf } from './Kopfleiste';
+import { TASTE_TEXT } from './klappen';
 import {
   dauerText, euro, freigabenBeiHeads, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, wiederholText, zeitKurz,
   type Risiko, type VorschlagKurz,
@@ -27,12 +32,15 @@ const RISIKO_FARBE: Readonly<Record<Risiko, string>> = { risikoarm: LEUCHT.gut, 
 const LAUF_FARBE: Readonly<Record<Lauf['status'], string>> = { wartet: LEUCHT.achtung, laeuft: C.aktiv, fertig: LEUCHT.gut, fehler: LEUCHT.kritisch, abgebrochen: C.inkLeise };
 const LAUF_NAME: Readonly<Record<Lauf['status'], string>> = { wartet: 'wartet', laeuft: 'läuft', fertig: 'fertig', fehler: 'Fehler', abgebrochen: 'abgebrochen' };
 
-function Block({ titel, zahl, children, puls }: { titel: string; zahl?: number; children: ReactNode; puls?: boolean }) {
+function Block({ titel, zahl, children, puls, rechts }: { titel: string; zahl?: number; children: ReactNode; puls?: boolean; /** Leiser Weg rechts in der Kopfzeile. */ rechts?: ReactNode }) {
   return (
     <section aria-label={titel} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: ABSTAND.s, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, ...MIKRO }}>
-        {puls && <span aria-hidden className="krit-puls" style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, background: LEUCHT.achtung }} />}
-        {titel}{zahl != null && zahl > 0 ? ` (${zahl})` : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, minHeight: ZIEL.rechner }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, ...MIKRO, flex: 1, minWidth: 0 }}>
+          {puls && <span aria-hidden className="krit-puls" style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, background: LEUCHT.achtung }} />}
+          {titel}{zahl != null && zahl > 0 ? ` (${zahl})` : ''}
+        </span>
+        {rechts}
       </div>
       {children}
     </section>
@@ -150,11 +158,11 @@ export function WartetAufDich() {
     if (r.ok) melde(`${r.daten.erledigt ?? 0} risikoarme Freigaben erledigt.`, 'gut'); else melde(r.text, 'kritisch');
   };
   return (
-    <Block titel="Wartet auf dich" zahl={zahl} puls={zahl > 0}>
+    <Block titel="Wartet auf dich" zahl={zahl} puls={zahl > 0} rechts={<Knopf leise href={WEG.freigaben()} ariaLabel="Alle Freigaben ansehen">Alle ›</Knopf>}>
       {stapel.zustand === 'laedt' && <Leer>Wird geladen …</Leer>}
       {stapel.zustand === 'gesperrt' && <Leer>Freigaben sieht hier nur der Haushalt.</Leer>}
       {stapel.zustand === 'fehler' && <Hinweis art="kritisch" aktion={<Knopf leise onClick={meldeNeu}>Noch einmal versuchen</Knopf>}>{stapel.text}</Hinweis>}
-      {stapel.zustand !== 'laedt' && zahl === 0 && stapel.zustand !== 'fehler' && <Leer>Nichts wartet auf dich.</Leer>}
+      {stapel.zustand !== 'laedt' && zahl === 0 && stapel.zustand !== 'fehler' && <Leer symbol="✓">Nichts wartet auf dich.</Leer>}
       {zahl > 0 && (
         <ul style={LISTE}>
           {rueckfragen.map(f => <RueckfrageZeile key={f.id} f={f} />)}
@@ -184,6 +192,7 @@ export function LaufZeile({ l }: { l: Lauf }) {
   const { agenten, oeffne, melde, bestaetigen, jetzt } = useAgenten();
   const heads = agenten.zustand === 'da' ? agenten.daten.heads : [];
   const h = heads.find(x => x.id === l.headId);
+  const ma = l.mitarbeiterId ? h?.mitarbeiter.find(m => m.id === l.mitarbeiterId)?.name : undefined;
   const anteil = schrittAnteil(l);
   const dauer = l.dauerMs ?? (l.status === 'laeuft' ? jetzt.getTime() - Date.parse(l.start) : undefined);
   const tu = async (aktion: 'abbrechen' | 'neu-starten') => {
@@ -194,17 +203,20 @@ export function LaufZeile({ l }: { l: Lauf }) {
     if (r.ok) melde(aktion === 'abbrechen' ? `„${l.titel}“ abgebrochen.` : `„${l.titel}“ startet neu.`, 'gut');
     else if (r.text) melde(r.kommt ? 'Abbrechen und Neu starten kommen mit dem nächsten Paket.' : r.text, r.kommt ? 'info' : 'kritisch');
   };
+  const ansehen = l.fadenId ? () => oeffne({ f: l.fadenId }) : l.headId ? () => oeffne({ h: l.headId }) : null;
+  const wer = h ? `${h.kurz}${ma ? ` › ${ma}` : ''}` : l.quelle === 'takt' ? 'Takt' : 'ZOE';
   return (
     <li style={zeile}>
-      <button type="button" onClick={() => (l.fadenId ? oeffne({ f: l.fadenId }) : l.headId ? oeffne({ h: l.headId }) : undefined)} className="fassbar"
-        style={{ display: 'grid', gap: 2, background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, minHeight: ZIEL.rechner }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, fontSize: TYP.bedien, color: C.inkDim }}>
-          <span aria-hidden style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, background: h ? headFarbe(h.farbe) : C.inkLeise }} />
-          {h?.kurz ?? (l.quelle === 'takt' ? 'Takt' : 'ZOE')}
-          <Chip farbe={LAUF_FARBE[l.status]}>{LAUF_NAME[l.status]}</Chip>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: ABSTAND.s, minWidth: 0 }}>
+        <span aria-hidden className={l.status === 'laeuft' ? 'krit-puls' : undefined} style={{ width: 8, height: 8, marginTop: ABSTAND.s - 1, borderRadius: ECKE.eingabe, flex: '0 0 auto', background: LAUF_FARBE[l.status] }} />
+        <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+          <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, overflowWrap: 'anywhere' }}>{l.titel}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.xs, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+            {h && <span aria-hidden style={{ width: 6, height: 6, borderRadius: ECKE.eingabe, background: headFarbe(h.farbe) }} />}
+            {wer}{l.status !== 'laeuft' && <Chip farbe={LAUF_FARBE[l.status]}>{LAUF_NAME[l.status]}</Chip>}
+          </span>
         </span>
-        <span style={{ fontSize: TYP.body, fontWeight: 600 }}>{l.titel}</span>
-      </button>
+      </div>
       {anteil != null && l.status === 'laeuft' && <Fortschritt anteil={anteil} farbe={C.aktiv} />}
       {l.hinweis && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{l.hinweis}</span>}
       <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>
@@ -212,27 +224,14 @@ export function LaufZeile({ l }: { l: Lauf }) {
           l.status === 'laeuft' ? null : zeitKurz(l.ende ?? l.start, jetzt), dauerText(dauer) || null,
           l.kosten ? `${euro(l.kosten.cent)}${l.kosten.grenzeCent ? ` / ${euro(l.kosten.grenzeCent)}` : ''}` : null].filter(Boolean).join(' · ')}
       </span>
-      {l.aktionen.length > 0 && (
-        <div style={{ display: 'flex', gap: ABSTAND.s }}>
-          {l.aktionen.includes('abbrechen') && <Knopf leise onClick={() => tu('abbrechen')}>Abbrechen</Knopf>}
+      {(ansehen || l.aktionen.length > 0) && (
+        <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
+          {ansehen && <Knopf leise onClick={ansehen} ariaLabel={`„${l.titel}“ ansehen`}>Ansehen ›</Knopf>}
+          {l.aktionen.includes('abbrechen') && <Knopf leise farbe={LEUCHT.kritisch} onClick={() => tu('abbrechen')} ariaLabel={`„${l.titel}“ stoppen`}>Stopp</Knopf>}
           {l.aktionen.includes('neu-starten') && <Knopf leise onClick={() => tu('neu-starten')}>Neu starten</Knopf>}
         </div>
       )}
     </li>
-  );
-}
-
-function Eingeklappt({ titel, laeufe }: { titel: string; laeufe: Lauf[] }) {
-  const [offen, setOffen] = useState(false);
-  if (!laeufe.length) return null;
-  return (
-    <div style={{ display: 'grid', gap: ABSTAND.s }}>
-      <button type="button" onClick={() => setOffen(o => !o)} aria-expanded={offen} className="fassbar"
-        style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, minHeight: ZIEL.handy, background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...MIKRO }}>
-        {offen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}{titel} ({laeufe.length})
-      </button>
-      {offen && <ul style={LISTE}>{laeufe.map(l => <LaufZeile key={l.id} l={l} />)}</ul>}
-    </div>
   );
 }
 
@@ -245,21 +244,28 @@ export function Laeuft() {
       {laeufe.zustand === 'kommt' && <Leer>Hintergrundaufgaben erscheinen hier, sobald der Takt sie meldet.</Leer>}
       {laeufe.zustand === 'gesperrt' && <Leer>{laeufe.text}</Leer>}
       {laeufe.zustand === 'fehler' && <Hinweis art="kritisch" aktion={<Knopf leise onClick={meldeNeu}>Noch einmal versuchen</Knopf>}>{laeufe.text}</Hinweis>}
-      {laeufe.zustand === 'da' && !g.laeuft.length && <Leer>Gerade läuft nichts im Hintergrund.</Leer>}
+      {laeufe.zustand === 'da' && !g.laeuft.length && <Leer symbol="◌">Gerade läuft nichts im Hintergrund.</Leer>}
       {g.laeuft.length > 0 && <ul style={LISTE}>{g.laeuft.map(l => <LaufZeile key={l.id} l={l} />)}</ul>}
     </Block>
   );
 }
 
+/** Fertig und Fehler in EINEM eingeklappten Abschnitt (wie „Fertig (n)“ in der Claude-App); Fehler stehen zuerst. */
 export function FertigFehler() {
   const { laeufe } = useAgenten();
+  const [offen, setOffen] = useState(false);
   const g = laufGruppen(laeufe.zustand === 'da' ? laeufe.daten.laeufe : []);
-  if (!g.fertig.length && !g.fehler.length) return null;
+  const zahl = g.fertig.length + g.fehler.length;
+  if (!zahl) return null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: ABSTAND.xs }}>
-      <Eingeklappt titel="Fertig" laeufe={g.fertig} />
-      <Eingeklappt titel="Fehler" laeufe={g.fehler} />
-    </div>
+    <section aria-label="Fertig und Fehler" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: ABSTAND.s }}>
+      <button type="button" onClick={() => setOffen(o => !o)} aria-expanded={offen} className="fassbar"
+        style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, minHeight: ZIEL.handy, background: 'none', border: 'none', padding: 0, cursor: 'pointer', ...MIKRO }}>
+        {offen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}Fertig / Fehler ({zahl})
+        {g.fehler.length > 0 && <Chip farbe={LEUCHT.kritisch}>{g.fehler.length} mit Fehler</Chip>}
+      </button>
+      {offen && <ul style={LISTE}>{[...g.fehler, ...g.fertig].map(l => <LaufZeile key={l.id} l={l} />)}</ul>}
+    </section>
   );
 }
 
@@ -282,15 +288,21 @@ function NaechstesZeile({ n }: { n: Naechstes }) {
   );
 }
 
+/**
+ * „Geplant“ (bis 09.10. „Als Nächstes“): geplante Läufe, Fristen und Freigaben der nächsten Tage nach Eisenhower — rechts der Weg zu den
+ * Zeitplänen (pausieren, fortsetzen, löschen; vorher der Knopf „Geplant“ in der Kopfleiste).
+ */
 export function AlsNaechstes() {
-  const { laeufe } = useAgenten();
+  const { laeufe, dialog } = useAgenten();
   const liste = laeufe.zustand === 'da' ? nachEisenhower(laeufe.daten.naechstes) : [];
+  const plaene = laeufe.zustand === 'da' ? laeufe.daten.plan.length : 0;
   const gruppen = (['q1', 'q2', 'q3', 'q4'] as const).map(q => ({ q, eintraege: liste.filter(n => n.quadrant === q) })).filter(g => g.eintraege.length);
   return (
-    <Block titel="Als Nächstes" zahl={liste.length}>
+    <Block titel="Geplant" zahl={liste.length}
+      rechts={<Knopf leise onClick={() => dialog({ art: 'geplant' })} ariaLabel={`Zeitpläne verwalten${plaene ? ` (${plaene})` : ''}`}>Zeitpläne{plaene ? ` (${plaene})` : ''} ›</Knopf>}>
       {laeufe.zustand === 'laedt' && <Leer>Wird geladen …</Leer>}
       {laeufe.zustand === 'kommt' && <Leer>Geplante Läufe, Fristen und Freigaben der nächsten Tage stehen hier, sobald die Vorschau läuft.</Leer>}
-      {laeufe.zustand === 'da' && !liste.length && <Leer>Die nächsten Tage ist nichts geplant.</Leer>}
+      {laeufe.zustand === 'da' && !liste.length && <Leer symbol="◷">Die nächsten Tage ist nichts geplant.</Leer>}
       {gruppen.map(g => (
         <div key={g.q} style={{ display: 'grid', gap: ABSTAND.xs }}>
           <span style={{ fontSize: TYP.bedien, color: g.q === 'q1' ? LEUCHT.achtung : C.inkDim, fontWeight: 600 }}>{QUADRANT_NAME[g.q]}</span>
@@ -300,15 +312,38 @@ export function AlsNaechstes() {
     </Block>
   );
 }
+/** Derselbe Abschnitt unter seinem neuen Namen. */
+export const Geplant = AlsNaechstes;
 
-/** Die ganze rechte Spalte (am Handy der Reiter „Läuft“). */
-export function Hintergrund() {
+/** Unten im Feld: Budget-Balken, Not-Aus und „⋯“ (vorher in der Kopfleiste über der Seite). */
+function Fuss() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: ABSTAND.s, paddingTop: ABSTAND.m, borderTop: `1px solid ${RAND.haar}` }}>
+      <BudgetBalken />
+      <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s }}>
+        <NotAusKnopf />
+        <span style={{ flex: 1 }} />
+        <MehrMenue />
+      </div>
+    </div>
+  );
+}
+
+/** Das ganze rechte Feld (am Handy der Reiter „Läuft“). `onZu` = das ✕ oben (nur, wenn das Feld schließbar ist — breit und als Schublade). */
+export function Hintergrund({ onZu }: { onZu?: () => void }) {
   return (
     <aside aria-label="Hintergrund" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: ABSTAND.xl, alignContent: 'start', minWidth: 0 }}>
+      {onZu && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, marginBottom: -ABSTAND.m }}>
+          <span style={{ flex: 1, fontFamily: SCHRIFT.display, fontSize: TYP.body, fontWeight: 700, color: C.ink }}>Hintergrund</span>
+          <SymbolKnopf ariaLabel={`Hintergrund schließen (${TASTE_TEXT.rechts})`} onClick={onZu}><X size={18} /></SymbolKnopf>
+        </div>
+      )}
       <WartetAufDich />
       <Laeuft />
       <AlsNaechstes />
       <FertigFehler />
+      <Fuss />
     </aside>
   );
 }
