@@ -645,13 +645,16 @@ export async function kontextFuer(person: string | null): Promise<(Kontext & { h
   const inhaber = hauptInhaber(st);
   // Neustart (09.10.): die Marke des Umzugs bzw. die Einstellung — dann gilt der Neustart-Ablauf und es gibt keinen Altbestand.
   const neustart = !!(await neustartMarke());
+  const sicht = (await import('@/lib/zugang/konto-sicht')).kontoSichtAus(st, person);
   return {
     inhaber: istWirksamerInhaber(st, person),
     haupt: inhaber?.speicher === person,
     eingeladen: !!inhaber && inhaber.speicher !== person,
     personen: konten.length,
     // Wie `privatFinanzZugang`: Haushaltsmitglied ohne „nur Business“ UND Haushalt des Inhabers — die EINE Konto-Sicht (09.10., E4).
-    privatFinanzen: (await import('@/lib/zugang/konto-sicht')).kontoSichtAus(st, person).privatFinanzen,
+    privatFinanzen: sicht.privatFinanzen,
+    // „nur Business“ (E4-Rest): kein Privat-Bereich — keine Schritte zu Gesundheit, Familie, eigenen Zielen, Privat-Finanzen (`istPrivatSchritt`).
+    ...(sicht.nurBusiness ? { nurBusiness: true } : {}),
     // Die einfachste korrekte Regel für Schritt 0.5: Altbestand gab es nur auf einer Instanz, deren Inhaber-Konto vor dem Tag angelegt
     // wurde, an dem die Inhalte den Code verließen — neue Kunden- und Demo-Instanzen haben keinen (dort fehlt der Schritt ganz).
     altbestand: !neustart && process.env.MAKE_OS_DEMO !== '1' && !!inhaber && String(inhaber.angelegt ?? '').slice(0, 10) < ALTBESTAND_BIS,

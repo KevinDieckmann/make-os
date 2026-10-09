@@ -4,6 +4,67 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Einrichtung für einen neuen Kunden: Neustart, je Person, Gesundheit komplett, Business online (nur lokal — Branch `einrichtung-neu`, Basis 523fbbfc, `agenten-nacht` eingemischt)
+
+Kevin 09.10.: „Wir fangen bei 0 an … Wir sind ein komplett ‚neuer‘ Kunde und wollen als Paar geonboardet werden. Jeder für sich. Mit seinen privaten
+Zielen, Gesundheit komplett, Ziele etc. … dann auch eine Strecke, wie man Business online bringt … Dieser Onboarding-Reiter ist auch immer auf dem
+Heute-Bildschirm zu sehen, bis wir alles abgeschlossen haben.“ Nachtrag: „dass wir alles einmal eingeben müssen, was wir wollen. Dann können wir alle
+Schnittstellen extrem sauber ziehen.“ Business-Strecke: Gesellschaft & Konten + Angebot & Vertrieb, Agenten als zweiter Schritt.
+
+- **Modus „Neustart“** (`Kontext.neustart`): die Instanz trägt die Marke `<daten>/system/neustart.json` (legt der Neustart-Umzug an; gelesen NUR in
+  `lib/onboarding-neustart.ts`, tolerant: Datei da = Neustart, auch unlesbar; nur Tag + Zähler, nie andere Felder) oder die Einstellung
+  `MAKE_OS_EINRICHTUNG=neustart`. Dann: kein Altbestand (0.5 entfällt, Inhaber-Prüfung „altbestand“ wird gar nicht gerechnet), eigener Ablauf. Ohne Marke
+  bleibt alles wie bisher (dieselben Schritt-Objekte — Wächter).
+- **Ablauf als Daten** (`lib/make-one/onboarding-data.ts`: `NEUSTART_ETAPPEN`, `NEUSTART` (Reihenfolge = Tabelle), `NEUSTART_ENTFAELLT`, `ABLAUF_NEUSTART`,
+  `GRUPPEN_NEUSTART`; Fassung je Schritt NUR über `fassungFuer`, eingebaut in `schritteFuer`/`schritteDerEbene`/`offeneVoraussetzungen`): 0 Server und Instanz ·
+  1 Zugang, Sicherheit, Datenschutz (inkl. Einwilligungen, Rundgang) · 2 Meine Ziele und mein Alltag · 3 Meine Gesundheit · 4 Gemeinsam: Ziele, Planung,
+  Familie · 5 Finanzen: eintragen oder hochladen · 6 Business online: Gesellschaft & Konten · 7 Business online: Angebot & Vertrieb · 8 Schnittstellen ·
+  9 Agenten und ZOE · 10 Abschluss. **Kern = Etappen 1–7** (Zugang + alles eingeben); Kosten, Kontostände, Kontoauszüge, offene Posten sind Kern.
+  Nummern („6.3“) entstehen aus der Reihenfolge; Verweise in alten Texten („Schritt 3.6“) werden umgeschrieben (`nummernUmschreiben`, nie Daten/Mengen).
+  Ein Schritt, der NICHT in der Tabelle steht (z. B. ein neuer eines anderen Pakets), landet über `neustartEtappeVon` in der passenden Etappe — Gesundheit
+  „ich“ in „Meine Gesundheit“, am Ende — und behält seine Gruppe.
+- **Neue Schritte (nur im Neustart):** Neustart (was mitkam), Meine eigenen Ziele (Kompass „ich“, `ziele-eigen`), Körper-Profil, Ernährungsprofil, Sport:
+  Einstieg und Ziele, Gesundheits-Routinen, Plan „Business online“, Bankkonten der Gesellschaften (Konten-Register), Angebotsvorlage (ein Angebot als
+  Entwurf), Follow-up-Kadenz und erste Kampagne, Power Hour einrichten. Geänderte Fassungen u. a.: „Stichtag wählen“, „Übernommene Kartei sichten“,
+  „Privatkonten: Stand eintragen oder Kontoauszug hochladen“, „Kosten und Finanzplan der Gesellschaften“, „Laufende Mandate prüfen“ (+ Häkchen).
+  Entfällt: Altbestand, „Einladung annehmen“ (die Konten kamen mit), „Gesundheit für dich einrichten“ (aufgeteilt).
+- **Neue Prüfungen** (`lib/onboarding-status.ts`, nur ja/nein + Zähler): persönlich `ziele-ich`, `koerper` (erst mit Einwilligung (a)), `ernaehrung`, `sport`,
+  `routinen-gesundheit` — nur für die Person selbst und nur mit Privat-Zugang; gemeinsam `konten-business`, `angebote`, `business-vorlage`, `neustart`
+  (Info „Neustart vom … · n Kontakte übernommen“, leer → das Häkchen entscheidet). `posten` ist jetzt „leer“, wenn es gar keinen offenen Posten gibt
+  (vorher grün ohne Arbeit).
+- **„Nur Business“ (E4-Rest):** `Kontext.nurBusiness` aus der Konto-Sicht; `istPrivatSchritt` (Privat-Finanzen, Gesundheit, Familie, eigene Ziele) — ein
+  solches Konto hat diese Schritte nicht (weder gezählt noch abhakbar, POST 403) und bekommt die neuen Privat-Befunde nicht.
+- **Plan „Business online“**: Vorlage rein in `lib/planung/vorlage-business-online.ts` (Ziel + 9 Meilensteine mit Kette + Aufgaben, feste Kennungen
+  `z-business-online-<g>`/`ms-business-online-<key>-<g>`), angelegt nur über die bestehenden Wege (`lib/planung/vorlage-anlegen.ts`: Ziele-PATCH,
+  Meilensteine-PATCH, `/api/tasks/create`), Knopf `components/os/BusinessOnlineVorlage.tsx` direkt am Schritt — ein zweiter Klick legt nichts doppelt an.
+- **Heute:** die Karte „Einrichtung“ zählt jeden nicht-optionalen Schritt (`fortschrittVon(…, { alle: true })`) und verschwindet erst, wenn alles steht;
+  „Als Nächstes“ zuerst aus dem Kern. Die Einrichtung zählt im Neustart ebenso alles und zeigt den Kern eigens darunter.
+- **Ehrlich in den Texten:** Google Drive ist nicht angebunden (Hinweis, kein Schritt); eine Bank-Anbindung gibt es nicht — Kontoauszug-Dateien (CAMT/CSV),
+  das Konten-Register ist die Andockstelle (Hinweis, kein Schritt).
+- Datenkarte: neue Zeile „Laufende Kosten der Gesellschaften“ (Finanzplanung › Business). Etappen tragen `datenkarte` statt fester Nummern in der Ansicht.
+- Tests: `tests/einrichtung-neustart.test.ts` (18: Modus, Reihenfolge, Kern, Entfallenes, Nummern/Verweise, ehrlich, je Person, „nur Business“, Kern wartet nie
+  auf „danach“, Heute bis fertig, Dauer, Marke, leere Instanz ohne Fehler, je Person getrennt inkl. Widerruf, Route, Vorlage über die echten Routen genau
+  einmal); angepasst `onboarding-stand` (Nummern ohne Neustart-Schritte, Namens-Scan auch über die Neustart-Texte).
+
+**So testet ihr (in Klicks), lokal mit einem Prüf-Datenordner:**
+1. Ohne Marke: Einstellungen › Onboarding sieht aus wie bisher; Heute zeigt „Einrichtung · x von y“ mit allen nicht-optionalen Schritten.
+2. Marke setzen (im Prüf-Datenordner `system/neustart.json` mit `{"am":"2026-10-09","zaehler":{"kontakte":3}}`) oder `MAKE_OS_EINRICHTUNG=neustart` →
+   Einrichtung neu laden: „So läuft die Einrichtung“ zeigt Zugang → alles eingeben → Schnittstellen → Agenten; oben „Der Kern“ eigens; Schritt 1.1 zeigt
+   „○ Neustart vom 09.10.2026 · 3 Kontakte übernommen“.
+3. Etappe 3 „Meine Gesundheit“: ohne Einwilligung zeigt „Körper-Profil“ „erst die Einwilligung (a) …“; nach Einwilligung + Leitsatz wird er grün — die
+   zweite Person sieht ihn bei sich weiter offen.
+4. Etappe 6 → „Plan ‚Business online‘ anlegen“ → Gesellschaft wählen → „Plan anlegen“ → Planung › Jahr zeigt das Ziel mit 9 Meilensteinen; noch einmal
+   klicken → „nichts doppelt angelegt“.
+5. Als Konto „nur Business“: keine Schritte zu Gesundheit, Familie, eigenen Zielen oder Privat-Finanzen.
+
+**Rückweg:** nur neue Felder im Code, keine neuen Bestände (Häkchen der Neustart-Schritte liegen in den vorhandenen `onboarding`/`onboarding--<p>`; der alte
+Stand übergeht sie). Die Marke ist eine Datei des Umzugs.
+
+**Offen / Fragen an Kevin:** (1) Eigene Jahresziele „nur ich“ gibt es in der Oberfläche heute nur als Fokus-Sätze im Kompass („ich“) — eine Liste
+„Meine Ziele“ in Planung › Jahr fehlt (API kann es, `?fuer=ich`). Bauen? (2) Soll eine neue Kunden-Instanz ohne Altbestand den Neustart-Ablauf von
+selbst bekommen (heute nur mit Marke/Einstellung)? (3) Der gemeinsame Kern ist lang (≈ 11 h einmal für den Haushalt) — auf zwei Tage teilen, oder einzelne
+Schritte (Steuerprofil, Business-Index-Grundlagen, Positionierung) nach „danach“?
+
 ## 09.10.2026 — E4-Rest: nur Business auch in Routinen, Zielen, Meilensteinen; Demo-Konto Partner (nur lokal — Branch `konto-sicht-rest`, Basis `agenten-nacht` 3e94a943)
 
 Kevin 09.10. (E4): „Ja, Privates bleibt privat.“ Offen aus E4 (Abschnitt darunter): `/api/state/routinen`, `/api/state/ziele` (samt Fokus-Sätzen

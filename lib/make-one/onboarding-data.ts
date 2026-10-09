@@ -1245,7 +1245,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Neustart: was mitkam, was neu ist',
     warum: 'Ihr fangt bei null an — wie eine neue Instanz. Mitgekommen sind nur eure Konten, die Kartei mit der Markttraktion und die Aufgaben, die ihr selbst angelegt habt. Alles andere tragt ihr einmal sauber neu ein; danach zieht ihr die Schnittstellen.',
     wie: [
-      'Mitgekommen: eure Konten (Anmeldung, zweiter Faktor), die Kartei samt Firmen und Markttraktion, eure eigenen Aufgaben und Projekte. Die Prüfung rechts zeigt, was übernommen wurde — nur Zähler.',
+      'Mitgekommen: eure Konten (Anmeldung und, wo eingerichtet, der zweite Faktor), die Kartei samt Firmen und Markttraktion, eure eigenen Aufgaben und Projekte. Die Prüfung rechts zeigt, was übernommen wurde — nur Zähler.',
       'Neu einzutragen: eigene und gemeinsame Ziele, Routinen, Gesundheit, Familie, Finanzen (Konten, Kosten, Kontostände, offene Posten), Gesellschaften und Absender, Planung.',
       'Neu zu verbinden (Etappe „Schnittstellen“): Kalender, Postfächer, WHOOP, WhatsApp — im neuen Datenordner ist jede Verbindung neu, auch wenn sie vorher stand.',
       'Die Reihenfolge: erst Zugang, dann alles eingeben, dann die Schnittstellen, dann die Agenten.',
@@ -1437,12 +1437,15 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   { id: 'update', etappe: 0 }, { id: 'pepper', etappe: 0 }, { id: 'sicherung', etappe: 0 }, { id: 'sicherung-mac', etappe: 0, gruppe: DANACH },
   { id: 'vault', etappe: 0 }, { id: 'adresse', etappe: 0 }, { id: 'medienspeicher', etappe: 0, gruppe: DANACH },
   // 1 · Zugang, Sicherheit, Datenschutz
-  { id: 'neustart', etappe: 1, gruppe: KERN }, { id: 'zweite-einladung', etappe: 1, gruppe: KERN }, { id: 'ich-zwei-faktor', etappe: 1, gruppe: KERN },
+  { id: 'neustart', etappe: 1, gruppe: KERN }, { id: 'ich-zwei-faktor', etappe: 1, gruppe: KERN },
   { id: 'einladen', etappe: 1, gruppe: KERN }, { id: 'haushalt', etappe: 1, gruppe: KERN }, { id: 'zwei-faktor-pflicht', etappe: 1, gruppe: KERN },
   { id: 'notfallmappe', etappe: 1, gruppe: KERN }, { id: 'datenschutz', etappe: 1, gruppe: KERN }, { id: 'ki-instanz', etappe: 1, gruppe: KERN },
   { id: 'ich-sicht', etappe: 1, gruppe: KERN }, { id: 'ich-gesundheit', etappe: 1, gruppe: KERN }, { id: 'ich-ki', etappe: 1, gruppe: KERN },
   { id: 'ich-handy', etappe: 1, gruppe: KERN }, { id: 'ich-rundgang', etappe: 1, gruppe: KERN },
-  { id: 'weitere-inhaber', etappe: 1, gruppe: DANACH }, { id: 'ssh-zweiter-schluessel', etappe: 1, gruppe: DANACH },
+  { id: 'weitere-inhaber', etappe: 1, gruppe: DANACH, texte: {
+    danach: 'Beide Inhaber dürfen dasselbe. Der Haupt-Inhaber (das erste Konto) behält die Systemläufe und den Haushalts-Kalender und gibt die Rolle nicht ab.',
+  } },
+  { id: 'ssh-zweiter-schluessel', etappe: 1, gruppe: DANACH },
   // 2 · Meine Ziele und mein Alltag (je Person)
   { id: 'ich-ziele', etappe: 2, gruppe: KERN }, { id: 'ich-routinen', etappe: 2, gruppe: KERN },
   { id: 'ich-arbeitsrahmen', etappe: 2, gruppe: KERN, nach: [], texte: { wie: [
@@ -1573,8 +1576,8 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   // 10 · Abschluss
   { id: 'ich-bauplan', etappe: 10, gruppe: DANACH }, { id: 'datenstand', etappe: 10, gruppe: DANACH }, { id: 'hoi-gruen', etappe: 10, gruppe: DANACH }, { id: 'regeln', etappe: 10, gruppe: DANACH },
 ];
-/** Entfällt im Neustart: der Altbestand (es gibt keinen) und „Gesundheit für dich einrichten“ (aufgeteilt in eigene Schritte der Etappe Gesundheit). */
-export const NEUSTART_ENTFAELLT: readonly string[] = ['altbestand', 'ich-gesundheit-profil'];
+/** Entfällt im Neustart: der Altbestand (es gibt keinen), „Einladung annehmen“ (die Konten kamen mit) und „Gesundheit für dich einrichten“ (aufgeteilt in eigene Schritte der Etappe Gesundheit). */
+export const NEUSTART_ENTFAELLT: readonly string[] = ['altbestand', 'zweite-einladung', 'ich-gesundheit-profil'];
 
 /**
  * Wohin ein Schritt im Neustart gehört, der NICHT in der Tabelle steht (z. B. ein neuer Schritt eines anderen Pakets) — aus Etappe, Ebene und
@@ -1662,6 +1665,8 @@ export interface Kontext {
   inhaber: boolean; haupt?: boolean; eingeladen?: boolean; personen: number; privatFinanzen?: boolean; altbestand?: boolean;
   /** Die Instanz trägt die Marke des Neustarts (lib/onboarding-neustart.ts) — dann gilt der Neustart-Ablauf (`fassungFuer`), nie ein Altbestand. */
   neustart?: boolean;
+  /** Konto „nur Business“ (Konto-Sicht `nurBusiness`): kein Privat-Bereich — keine Privat-Schritte (`istPrivatSchritt`). */
+  nurBusiness?: boolean;
 }
 
 /** Etappen-Reihenfolge (Etappe, dann die Reihenfolge der Fassung bzw. in SCHRITTE). */
@@ -1686,7 +1691,8 @@ export function istPrivatSchritt(s: Pick<Schritt, 'privatFinanzen' | 'privat' | 
 
 /** Sieht diese Person den Schritt überhaupt (Privat-Bereich, Altbestand, Neustart)? Gilt auch auf den Ebenen-Seiten. */
 export function sichtbarFuer(s: Schritt, k: Kontext | null): boolean {
-  if (k && k.privatFinanzen === false && istPrivatSchritt(s)) return false;
+  if (s.privatFinanzen && k && k.privatFinanzen === false) return false;
+  if (k && (k.nurBusiness || k.privatFinanzen === false) && istPrivatSchritt(s)) return false;
   if (s.nurNeustart && !k?.neustart) return false;
   if (k?.neustart && !neustartFassungen().has(s.id)) return false; // entfällt im Neustart (Altbestand, ersetzte Schritte)
   return !s.nurAltbestand || !!k?.altbestand;

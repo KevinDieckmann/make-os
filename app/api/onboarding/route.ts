@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     kontextFuer(person),
   ]);
   // `neustart` nur, wenn die Instanz die Marke trägt (09.10.) — dann gilt in der Oberfläche der Neustart-Ablauf.
-  const ich = kontext ? { inhaber: kontext.inhaber, haupt: kontext.haupt, eingeladen: kontext.eingeladen, personen: kontext.personen, privatFinanzen: kontext.privatFinanzen, altbestand: kontext.altbestand, ...(kontext.neustart ? { neustart: true } : {}) } : null;
+  const ich = kontext ? { inhaber: kontext.inhaber, haupt: kontext.haupt, eingeladen: kontext.eingeladen, personen: kontext.personen, privatFinanzen: kontext.privatFinanzen, altbestand: kontext.altbestand, ...(kontext.neustart ? { neustart: true } : {}), ...(kontext.nurBusiness ? { nurBusiness: true } : {}) } : null;
   return NextResponse.json({ ...(await mitAnzeige(haken, z.person)), befunde, ich });
 }
 
