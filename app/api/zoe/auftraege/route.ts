@@ -4,8 +4,8 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { reihe, lies, stand, type NeuerAuftrag } from '@/lib/zoe/auftraege';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { reihe, lies, stand, auftraegeFuerBetrachter, type NeuerAuftrag } from '@/lib/zoe/auftraege';
+import { haushaltFuer, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
@@ -15,9 +15,14 @@ export async function GET(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
   // Sichtbar sind die eigenen Aufträge und die des Systems (ohne Person) — nie
   // Eingabe und Ergebnis, die für die andere Person liefen (26.09.).
+  // Sicherheitsprüfung 09.10.: Systemläufe nur neutral — der Morgen-/Abendlauf, Tageslauf … rechnet für die Inhaberin, ihr Ergebnis ist deren
+  // Bericht (stand vorher voll bei jedem Konto im Haushalt); private Systemläufe für „nur Business“ gar nicht (lib/zoe/auftraege.ts).
   const person = personStreng(req);
   const [liste, s] = await Promise.all([lies(), stand()]);
-  return NextResponse.json({ ok: true, stand: s, auftraege: liste.filter(a => !a.person || a.person === person).slice(0, 120) });
+  const privat = person ? !!(await haushaltFuer(person).catch(() => null)) : true;
+  const { PRIVAT_SYSTEMLAEUFE, neutralerTitel } = await import('@/lib/agenten/laeufe');
+  const sicht = auftraegeFuerBetrachter(liste, person, { privat, privatSystem: PRIVAT_SYSTEMLAEUFE, titel: neutralerTitel });
+  return NextResponse.json({ ok: true, stand: s, auftraege: sicht.slice(0, 120) });
 }
 
 export async function POST(req: Request) {
