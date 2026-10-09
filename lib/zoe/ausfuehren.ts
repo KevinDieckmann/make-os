@@ -19,6 +19,11 @@ export interface Lauf {
   ok: boolean;
   /** true, wenn statt der Wirkung ein Vorschlag entstanden ist. */
   gestapelt: boolean;
+  /**
+   * Kennung des Vorschlags im Stapel (nur mit `gestapelt`, 09.10. „Agenten live“): damit die Vorschlags-Karte im Chat (ZOE, Heads,
+   * Mitarbeiter) ihren Eintrag findet und Freigeben/Ablehnen anbietet — vorher stand dort nur „Ein Vorschlag (create_task) …“ ohne Knöpfe.
+   */
+  vorschlagId?: string;
 }
 
 /**
@@ -99,7 +104,7 @@ export async function fuehreAus(
     return {
       text: `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}. `
         + 'Das liegt jetzt im Freigabe-Stapel der Person, die dich beauftragt hat. Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt.',
-      ok: true, gestapelt: true,
+      ok: true, gestapelt: true, vorschlagId: v.id,
     };
   }
 

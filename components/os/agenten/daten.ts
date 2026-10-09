@@ -177,6 +177,15 @@ export async function fadenSenden(a: FadenAnfrage, bei?: (e: StromEreignis) => v
   if (r.ok) meldeNeu();
   return r;
 }
+/**
+ * Einen eigenen Thread löschen (samt der Threads seiner Mitarbeiter) — mit dem Stand aus der letzten Antwort (409 = inzwischen geändert). Die Route
+ * gab es seit Paket 1; die Oberfläche bot es bis zum Rundgang 09.10. („Agenten live“) nirgends an, obwohl die Grenze „bitte alte löschen“ sagt.
+ */
+export async function fadenLoeschen(fadenId: string, stand: string): Promise<Ergebnis<{ ok: true; geloescht: string }>> {
+  const r = await senden<{ ok: true; geloescht: string }>(WEGE.faden, { aktion: 'loeschen', fadenId, stand } satisfies FadenAnfrage);
+  if (r.ok) meldeNeu();
+  return r;
+}
 export async function skillSenden(a: SkillAnfrage): Promise<Ergebnis<Partial<SkillAntwort> & { ok: true }>> {
   const r = await senden<Partial<SkillAntwort> & { ok: true }>(WEGE.skills, a);
   if (r.ok) meldeNeu();

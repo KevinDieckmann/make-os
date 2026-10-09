@@ -13,7 +13,7 @@
 // Daten: components/os/agenten/daten.ts (ein Client). Welche Heads, Threads und Läufe die Person sieht, entscheidet der Server —
 // die Seite blendet nichts aus, sie gruppiert nur nach dem Kopf-Schalter (Alles · Privat · Business).
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, ABSTAND, ECKE, LEUCHT, RAND, SCHRIFT, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
@@ -29,8 +29,8 @@ import { FadenMitte } from './FadenMitte';
 import { Hintergrund } from './Hintergrund';
 import { AgentenDialog } from './Dialoge';
 import { AgentenKontext, useAgenten, type AgentenWert, type DialogArt, type Form } from './kontext';
-import { ladeAgenten, ladeFaeden, ladeLaeufe, ladeStapel, useAbruf } from './daten';
-import { auswahlAus, risikoVon, wartendeFaeden } from './regeln';
+import { ladeAgenten, ladeFaeden, ladeLaeufe, ladeStapel, meldeNeu, useAbruf } from './daten';
+import { auswahlAus, laufBeendet, risikoVon, wartendeFaeden } from './regeln';
 import { HANDY_LEISTE, HANDY_REITER, SPALTE, SPALTE_EINS } from './masse';
 
 export type HandyReiter = 'gespraech' | 'team' | 'laeuft';
@@ -137,6 +137,16 @@ export function AgentenSeite() {
     const t = setTimeout(() => setMeldung(m => (m?.nr === meldung.nr ? null : m)), 6_000);
     return () => clearTimeout(t);
   }, [meldung]);
+
+  // Ein Lauf ist fertig geworden → alles neu laden (Thread mit Bericht, Freigaben, Team) — eine Stelle statt eines Abrufs je Bereich.
+  const laufend = laeufe.stand.zustand === 'da' ? laeufe.stand.daten.laeufe.filter(l => l.status === 'wartet' || l.status === 'laeuft').map(l => l.id).sort().join(',') : null;
+  const laufendVorher = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (laufend === null) return;
+    const jetzt = laufend ? laufend.split(',') : [];
+    if (laufBeendet(laufendVorher.current, jetzt)) meldeNeu();
+    laufendVorher.current = jetzt;
+  }, [laufend]);
 
   const h = params.get('h');
   const f = params.get('f');

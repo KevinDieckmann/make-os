@@ -16,6 +16,7 @@
 //   MISTRAL_TRANSKRIPTION_MODELL  optional, Vorgabe voxtral-mini-latest
 
 import { KI_ANBIETER, wirksameStufe, type AnbieterId, type DatenschutzStufe } from './anbieter';
+import { pruefUrl } from './pruefendpunkt';
 
 export type TorModus = 'aus' | 'an' | 'streng';
 type Env = Record<string, string | undefined>;
@@ -61,7 +62,8 @@ const bestaetigt = (v: string | undefined) => (v ?? '').trim().toLowerCase() ===
 
 export function anbieterEingerichtet(id: AnbieterId, env: Env = process.env): boolean {
   switch (id) {
-    case 'anthropic': return !!(env.ANTHROPIC_API_KEY ?? '').trim();
+    // Prüfendpunkt (lib/ki/pruefendpunkt.ts, nur loopback + Demo/Entwicklung): das nachgebaute Modell steht für Anthropic direkt.
+    case 'anthropic': return !!(env.ANTHROPIC_API_KEY ?? '').trim() || pruefUrl(env) !== null;
     case 'anthropic-vertex-eu': { const v = vertexKonfig(env); return !!v && an(env.GOOGLE_VERTEX_CLAUDE) && istEuRegion(v.claudeRegion); }
     case 'google-vertex': return !!vertexKonfig(env) && an(env.GOOGLE_VERTEX_MEDIEN);
     case 'mistral': return /^[A-Za-z0-9]{16,128}$/.test((env.MISTRAL_API_KEY ?? '').trim());

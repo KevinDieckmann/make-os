@@ -15,9 +15,20 @@ import type { TextZiel } from './ki/adapter/anthropic-vertex';
 import { torModus } from './ki/konfig';
 import { NachrichtZusammenbau } from './ki/nachricht-strom';
 import { sseZerlegen } from './http/sse';
+import { pruefUrl, PRUEF_SCHLUESSEL } from './ki/pruefendpunkt';
 export type { KiKontext } from './datenschutz/ki-tor';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
+
+/**
+ * Ziel und Schlüssel des Versands (09.10., „Agenten live durchgeklickt“): ohne Prüfendpunkt api.anthropic.com mit ANTHROPIC_API_KEY; mit
+ * wirksamer Umlenkung (lib/ki/pruefendpunkt.ts — nur loopback und nur Demo/Entwicklung) das nachgebaute Modell mit dem festen Platzhalter —
+ * NIE der echte Schlüssel. Je Aufruf gelesen (Tests setzen die Umgebung).
+ */
+function versandZiel(): { url: string; schluessel: string; pruef: boolean } {
+  const pruef = pruefUrl();
+  return pruef ? { url: pruef, schluessel: PRUEF_SCHLUESSEL, pruef: true } : { url: ENDPOINT, schluessel: process.env.ANTHROPIC_API_KEY ?? '', pruef: false };
+}
 export const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
 
 /** Server-seitiges Web-Suche-Tool (für den Research-Agent). */
@@ -71,7 +82,8 @@ function merkeErfolg(): void {
 export function _guthabenSetzen(leerSeitMs: number): void { guthabenLeerSeit = leerSeitMs; }
 
 export function hasAnthropicKey(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  // Mit wirksamem Prüfendpunkt antwortet das nachgebaute Modell — die App verhält sich dann wie mit Schlüssel (ohne einen zu kennen).
+  return !!process.env.ANTHROPIC_API_KEY || pruefUrl() !== null;
 }
 
 export interface AskOptions {
@@ -260,8 +272,7 @@ async function kiAufruf(opts: AskOptions, sender: Sender): Promise<AskResult> {
   // Anbieter-Tor (09.10., Paket 6a): nur mit MAKE_OS_KI_ANBIETER_TOR=an|streng — ohne die Variable läuft der Weg unten unverändert
   // (Anthropic direkt; Wächter tests/ki-anbieter-tor.test.ts „ohne Konfiguration wie heute“).
   if (torModus() !== 'aus') return askTextUeberTor(opts, sender);
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return { ok: false, status: 0, text: '', error: 'no-key' };
+  if (!hasAnthropicKey()) return { ok: false, status: 0, text: '', error: 'no-key' };
   if (guthabenLeer()) return { ok: false, status: 402, text: '', error: 'guthaben-leer' };
 
   const [{ kiTor, pseudonymFuerLauf }, { kiProtokollieren }] = await Promise.all([import('./datenschutz/ki-tor'), import('./datenschutz/ki-protokoll')]);
@@ -300,7 +311,7 @@ async function kiAufruf(opts: AskOptions, sender: Sender): Promise<AskResult> {
  */
 async function askTextUeberTor(opts: AskOptions, sender: Sender): Promise<AskResult> {
   const [{ anbieterTor }, { pseudonymFuerLauf }, { kiProtokollieren }, { anbieterEingerichtet }] = await Promise.all([import('./ki/tor'), import('./datenschutz/ki-tor'), import('./datenschutz/ki-protokoll'), import('./ki/konfig')]);
-  if (!process.env.ANTHROPIC_API_KEY && !anbieterEingerichtet('anthropic-vertex-eu')) return { ok: false, status: 0, text: '', error: 'no-key' };
+  if (!hasAnthropicKey() && !anbieterEingerichtet('anthropic-vertex-eu')) return { ok: false, status: 0, text: '', error: 'no-key' };
   const webGewuenscht = (opts.tools ?? []).some(istWebSuche);
   const leer = guthabenLeer();
   const tor = await anbieterTor({ faehigkeit: 'text', ki: opts.ki, webGewuenscht, ausgefallen: leer ? ['anthropic'] : [] });
@@ -369,7 +380,7 @@ async function stromLesen(res: Response, zb: NachrichtZusammenbau, stueck: (t: s
  * gezeigt wurde. `strom.signal` bricht ab (Browser weg) — ohne Wiederholung; der bis dahin bekannte Verbrauch wird trotzdem verbucht.
  */
 async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOptionen): Promise<AskResult> {
-  const key = process.env.ANTHROPIC_API_KEY ?? '';
+  const ziel0 = versandZiel();
   const imStrom = !ziel && typeof strom?.onText === 'function';
 
   const body: Record<string, unknown> = {
@@ -408,9 +419,9 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
     strom?.signal?.addEventListener('abort', aussen, { once: true });
     const zb = imStrom ? new NachrichtZusammenbau() : null;
     try {
-      const res = ziel ? await ziel.senden(body, ctrl.signal) : await fetch(ENDPOINT, {
+      const res = ziel ? await ziel.senden(body, ctrl.signal) : await fetch(ziel0.url, {
         method: 'POST',
-        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(imStrom ? { accept: 'text/event-stream' } : {}) },
+        headers: { 'x-api-key': ziel0.schluessel, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(imStrom ? { accept: 'text/event-stream' } : {}) },
         body: JSON.stringify(body),
         signal: ctrl.signal,
       });

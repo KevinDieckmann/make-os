@@ -169,6 +169,73 @@ CRM-Vorschlägen; keine neuen Bestände, keine neuen Routen. Der alte Stand lies
 - ZOE kennt die Skills der Heads nicht beim Namen (sie gibt den Auftrag an den Head, der den Skill lädt). Sollen die Skill-Namen in ZOEs Prompt?
 - Ein Head-Lauf, der nur delegiert hat, schickt schon eine Glocke „Ergebnis liegt bereit“ (die zweite kommt mit dem Bericht des Mitarbeiters). Eine reicht?
 
+## 09.10.2026 — Agenten live durchgeklickt (Prüfmodell) (nur lokal — Branch `agenten-live`, Basis 10b72dbc)
+
+Kevin 09.10.: „Das muss perfekt laufen. Schau, dass alles verbunden ist und die Agents sauber laufen.“ Bis hierher war der Agenten-Bereich nur in Vitest
+(Fake-`fetch`) und im Browser ohne Schlüssel geprüft — niemand hatte die Oberfläche mit **antwortenden** Agenten bedient. Jetzt: eine Demo-Instanz
+(erfundene Daten) mit einem **nachgebauten Modell**, bedient im headless Chrome wie ein Mensch (Element suchen, klicken, tippen, Enter), je Schritt ein
+Bildschirmfoto, Konsole und Netz mitgeschrieben. Kein echter KI-Aufruf, kein Netz außer localhost.
+
+**Neu: KI-Prüfendpunkt + Prüfmodell**
+- `MAKE_OS_KI_PRUEFENDPUNKT=http://127.0.0.1:4599` lenkt die Messages-API (askText, askStream, askJson, askWithSearch — lib/anthropic.ts) auf ein Prüfmodell
+  um. **Nur** wenn das Ziel loopback ist (genau 127.0.0.1, localhost, [::1]; ohne Benutzer/Abfrage) **und** `MAKE_OS_DEMO=1` oder `NODE_ENV ≠ production` —
+  sonst ignoriert (Log beim Start). Mit Umlenkung reist **nie** der echte Schlüssel: fester Platzhalter. Start-Riegel „scharf“/„streng“ startet mit gesetzter
+  Variable nicht; HOI: in Produktion ohne Demo **rot**, wirksam gelb („Prüfmodell aktiv — Antworten erfunden“). Regeln rein in `lib/ki/pruefendpunkt.ts`.
+  Nicht umgelenkt (bewusst): Claude über Vertex EU, Bilder/Video/Tiefenbericht (Google Vertex), Transkription (Mistral) — eigene Adapter mit fester Host-Liste.
+- `scripts/ki-pruefmodell.mjs` (ohne Pakete, nur 127.0.0.1): beantwortet `POST /v1/messages` als JSON oder Strom (`message_start` · `content_block_*` ·
+  `message_delta` · `message_stop`, mit `usage`) — regelbasiert nach System-Text und Frage: ZOE ruft `head_fragen`/`an_head`, ein Head delegiert
+  (`an_mitarbeiter`, passender Mitarbeiter) und legt Vorschläge an (`create_task` → Stapel), Mitarbeiter lesen (`crm_suche`/`sales_lage`/`pipeline` …) und
+  legen einen Nachfass-Vorschlag mit echtem Bezug an, JSON aus Schema bzw. aus der Vorlage im Prompt („Antworte NUR als JSON: {…}“), Testlauf-Prüfer (je
+  Erwartung `true`). Fehler-Modus: `POST /_modus {"fehler":"529"|"abbruch"|"401"|"429","anzahl":n}` oder „[pruef:529]“ in der Nachricht; `GET /_lage` zeigt
+  die letzten Anfragen (nur Rolle/Art/Werkzeug, keine Inhalte).
+
+**So startet ihr das Prüfmodell lokal (Demo-Instanz, Anleitung DEMO.md)**
+1. `node scripts/ki-pruefmodell.mjs --port 4599` (Terminal offen lassen; `--tempo 15` = ms je Strom-Stück).
+2. Umgebung der Demo wie in DEMO.md, dazu `export MAKE_OS_KI_PRUEFENDPUNKT=http://127.0.0.1:4599 ANTHROPIC_API_KEY=""` (kein Schlüssel nötig) und
+   `MAKE_OS_DEMO=1`; eigener Bau-Ordner, z. B. `MAKE_OS_DIST=.next-live`, eigener Port (`next start -H 127.0.0.1 -p 3210`).
+3. Arbeiter wie im Betrieb: `MAKE_OS_URL=http://localhost:3210 node worker.mjs` (mit dem `MAKE_OS_KEY` der Demo) — sonst bleiben Läufe „eingereiht“.
+4. Im Log steht beim Start „MAKE_OS_KI_PRUEFENDPUNKT ist aktiv …“. Geplante Aufgaben brauchen die Hintergrund-KI (Einstellungen › Datenschutz › KI).
+
+**Rundgang (8 Schritte, Bilder im Scratchpad `agenten-live/bilder/`) — Funde und was behoben ist**
+1. ZOE „Was steht heute an?“ — Text entsteht im Strom, „KI-Antwort — bitte prüfen“ ✓. **Fund:** keine Kosten an ZOEs Antworten → jetzt „ZOE · 12:42 · 0,02 €“
+   (Kosten des Zugs im Thread, `zoeAntwortAnhaengen(…, kostenCent)`). **Fund:** die Antwort stand unter dem klebenden Eingabefeld, und das Feld war oben
+   durchsichtig (Text schien durch die @-Chips) → das Ende des Verlaufs rückt beim Beginn und Ende eines Zugs über das Feld (gemessen am echten Feld, auch am
+   Handy; nie beim Laden eines Threads), Feld deckend.
+2. „Frag Sales, wie die Pipeline steht“ → „ZOE ruft head_fragen auf …“, Antwort nennt Sales ✓; @Sales-Chip → eigener Sales-Thread ✓. **Fund:** die Meldung
+   „der Thread steht links unter Sales“ stimmte nicht (links stehen nur Mitarbeiter-Threads) → „„…“ steht im Chat von Sales“. **Fund:** `pipeline` meldete
+   „Offen 64560“ ohne Euro → „Offen 64.560 €“.
+3. Head Sales → „Lass die offenen Angebote von einem Mitarbeiter prüfen“ → „An „Angebote“ gesendet“ (Ziel · Format · Grenzen · Quellen), Arbeiter nimmt den Lauf
+   in Sekunden, „fertig“, Bericht, Glocke ✓. **Fund:** jeder frisch eingereihte Lauf stand als „⚑ Angebote fragt“ mit Antwortfeld unter „Wartet auf dich“
+   (Status `wartet` hieß „wartet auf dich“) → `eingereiht` (lib/agenten/typen.ts `laufEingereiht`, `FadenKurz.eingereiht`), Status „eingereiht“. **Fund:** der
+   Bericht erschien im offenen Thread erst nach Neuladen → wird ein Lauf fertig, lädt die Seite alles neu (`laufBeendet`, ≤ 30 s).
+4. Freigaben. **Fund (schwer):** die Vorschlags-Karte im Chat zeigte nur „Ein Vorschlag (create_task) liegt zur Freigabe bereit.“ ohne Freigeben/Ablehnen —
+   `fuehreAus` gab die Stapel-Kennung nicht zurück → `Lauf.vorschlagId` bis in den Thread (Heads, Mitarbeiter, ZOE). **Fund (schwer):** zwei Vorschläge hießen
+   rechts beide nur „Aufgabe anlegen“, die Rückfrage auch — im Rundgang wurde der falsche freigegeben → Zeile und Rückfrage nennen den Inhalt
+   (`vorschlagDetail`). **Fund:** Vorschau/Ergebnis „„X" (high)“, „fällig 2026-10-10“ → „„X“ (hoch)“, „fällig 10.10.2026“ (`lib/zoe/vorschau-text.ts`, alle
+   Vorlagen in register.ts/werkzeuge.ts). Freigeben → Aufgabe im Board ✓; Ablehnen mit Grund auf der Freigaben-Seite ✓ (Grund gespeichert).
+5. „+ Neu › Skill“ (anlegen, drei Tests, Testlauf bestanden, einschalten) ✓; Hintergrundaufgabe „jetzt“ ✓. **Fund:** eine geplante Aufgabe lief nie — die
+   Hintergrund-KI ist in einer neuen Instanz aus, „Geplant“ zeigte trotzdem „an“ ohne Hinweis → GET /api/agenten/laeufe liefert `hintergrundKi`, „Geplant“ und
+   das Planen-Formular warnen mit Weg zu Datenschutz › KI; eingeschaltet lief die Aufgabe zur Uhrzeit ✓. „zuletzt 2026-10-09“ → deutsch.
+6. Not-Aus setzen/lösen ✓ (Head-Chat sagt „Not-Aus ist gesetzt“), Budget 50 € gesamt (Balken „0,00 € / 50,00 € gesamt“) ✓, Daumen (bleibt nach Neuladen) ✓,
+   Vorlesen ✓, „Neuer Thread“ ✓, Gedächtnis (Merksatz anlegen/löschen) ✓, Mitarbeiter-Reiter ✓. **Fund:** „Thread löschen“ gab es nur in der Route —
+   jetzt im Head-Chat, im Mitarbeiter-Thread und als „Gespräch löschen“ bei ZOE (mit Rückfrage; erst weg vom Thread, dann löschen). **Fund:** „2 Freigaben
+   offen (2)“ → ohne doppelte Zahl. Balken-Beschriftung „gesamt“ statt „diesen Monat“, wenn die Gesamt-Grenze gilt.
+7. Zweite Person (Jonas) sieht nichts von Lenas ZOE-Gespräch, Threads, Vorschlägen, Merksatz, Hintergrundaufgabe ✓. Handy 390 px: Reiter Gespräch/Team/Läuft,
+   Head öffnen + „‹ Team“, Eingabe 16 px, kein Querscrollen ✓. **Fund:** die Plakette „Lena ist auch hier“ lag auf dem Reiter „Gespräch“ → auf dieser Seite
+   am Handy ausgeblendet.
+8. Fehler-Modus: überlastet (529) und abgerissener Strom → ein verständlicher Satz („Der KI-Anbieter ist gerade überlastet …“ / „Keine Verbindung …“), die
+   Nachricht bleibt im Feld (ZOE und Head) ✓.
+- **Nebenbei:** der Takt-Auftrag „selbstbild“ scheiterte ohne Doku-Wurzel (Server, Demo) jeden Tag dreifach und füllte Agenten › Fehler → jetzt „übersprungen“.
+
+**Tests:** `tests/ki-pruefendpunkt.test.ts` (Umlenkung nie in Produktion/zu fremden Hosts, nie echter Schlüssel, Riegel, HOI, Prüfmodell von Ende zu Ende),
+`tests/agenten-live.test.ts` (alle Funde oben). **Rückweg:** keine Datenänderung; nur optionale Felder (`vorschlagId` an Werkzeug-Einträgen, `kosten` an
+ZOE-Antworten, `eingereiht` in Thread-Listen, `hintergrundKi` in GET /api/agenten/laeufe) — der alte Stand ignoriert sie.
+
+**Offen / für Kevin:** (a) Wer die Seite während einer Antwort verlässt, bricht den Zug ab („Abgebrochen, bevor die Antwort fertig war“) — so gewollt
+(Härtetest), oder soll die Antwort im Hintergrund fertig werden? (b) „Wartet auf dich“ zeigt nur den ZOE-Stapel; die Freigabe-Listen der Heads stehen nur
+unter „Als Nächstes“ und auf der Freigaben-Seite — zusammenführen? (c) Die Kosten an ZOEs Antwort enthalten nicht die eines `head_fragen`-Laufs (der
+zählt beim Head). (d) Klickbare Zeilen (`Zeile` mit onClick, z. B. Freigaben-Seite) sind ein `div` ohne Tastatur-Bedienung — eigener Durchgang.
+
 ## 09.10.2026 — Endprüfung des Nacht-Stands `agenten-nacht` (für Update 2 am 16.10.; nur lokal)
 
 Kevin 09.10. morgens: „Wenn du das Ganze fertig hast, nochmal überprüfen — das muss perfekt laufen.“ Alle Pakete der Nacht sind in `agenten-nacht`

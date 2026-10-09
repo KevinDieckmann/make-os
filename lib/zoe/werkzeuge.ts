@@ -9,6 +9,7 @@
 // die Route.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { PRIO_NAME, tagDe } from './vorschau-text';
 import { aufgabenVonMeilenstein, fortschrittAusAufgaben } from '@/lib/planung/meilenstein-aufgaben';
 import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { kettePruefen } from '@/lib/planung/meilenstein-kette';
@@ -62,7 +63,7 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
   // der anderen nur „Belegt“, abgesagte fehlen). Ab dem Vortag gelesen: ein Termin über Mitternacht zählt mit (F2 M5).
   const kal = await termineFuerZoe(person, tagePlus(date, -1), tagePlus(date, 1));
   const kollision = blockKollision(kal.termine, person, date, startMin, ende);
-  if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
+  if (kollision) return `Kollision mit festem Termin „${kollision.titel}“ (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
 
   // Business-frei (08.10., Lücke 7, lib/arbeitsrahmen/regel.ts): Arbeit (Fokus, Aufgabe, eigener Block) kommt nie in eine
   // Business-freie Zeit der Person — Reha, Routine und Pause schon. Der Satz nennt keine Zeiten und keinen Grund aus der Familie.
@@ -82,7 +83,7 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
   } catch (e) {
     return `Fehlgeschlagen: ${e instanceof Error ? e.message.slice(0, 200) : 'Kalender nicht erreichbar.'}`;
   }
-  return `Eingeplant: „${titel}" am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}) — als Block im Kalender (iCloud), frei verschiebbar.`;
+  return `Eingeplant: „${titel}“ am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}) — als Block im Kalender (iCloud), frei verschiebbar.`;
 }
 
 // ── ZOE sucht freie Zeit (K6a, 29.09.; Verbindung aus K4): NUR lesen, über die EINE Lesefunktion `freieZeitFuer`
@@ -240,7 +241,7 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
     const sichtbar = liste.filter(x => !verborgen.has(x.id));
     const m = sichtbar.find(x => x.titel.toLowerCase().includes(suche));
     if (!m) {
-      ergebnis = `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}". Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
+      ergebnis = `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}“. Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
       return f;
     }
     // Kette zuerst prüfen — nichts wird halb geändert.
@@ -278,7 +279,7 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
     if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
     else if (fortschritt != null && errechnet !== null) teile.push(`nicht von Hand gesetzt — der Fortschritt rechnet sich aus seinen Aufgaben (${errechnet} %); Aufgaben abhaken oder den Meilenstein als erledigt setzen`);
     else if (fortschritt != null) { m.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
-    ergebnis = teile.length ? `Meilenstein „${m.titel}" ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.`;
+    ergebnis = teile.length ? `Meilenstein „${m.titel}“ ${teile.join(' und ')}.` : `Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.`;
     return f;
   });
   // Ziele mit Meilensteinen ziehen nach (Mittelwert, lib/planung/meilenstein-aufgaben-server.ts).
@@ -302,7 +303,7 @@ async function setzeFokus(input: Record<string, unknown>): Promise<string> {
     const f = current ?? {};
     return { ...f, fokus: { ...(f.fokus ?? {}), ...Object.fromEntries(schluessel.map(k => [k, text])) } };
   });
-  return `Erfasst: Fokus (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}${space ? `, ${space}` : ''}) = „${text}". ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Home, in der Übersicht und lenkt die Planung.'}`;
+  return `Erfasst: Fokus (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}${space ? `, ${space}` : ''}) = „${text}“. ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Home, in der Übersicht und lenkt die Planung.'}`;
 }
 
 // ── Gesundheit (23.09.): die Griffe, die ein Satz auslöst ───────────────────
@@ -325,7 +326,7 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   const alle = sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer);
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
   const ids = zurufe.map(z => routineAusZuruf(z, alle)).filter((x): x is string => !!x);
-  if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}". Es gibt: ${alle.map(r => r.label).join(' · ')}`;
+  if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ')}`;
   const erledigt = input.erledigt !== false;
   const datum = HEUTE_ODER(input.datum);
   await updateJson<Record<string, string[]>>(speicherFuer('health-log', wer), current => {
@@ -678,8 +679,9 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     });
     const d = await r.json();
     if (!d.ok) return `Aufgabe nicht angelegt: ${String(d.error ?? '').slice(0, 160)}`;
-    if (d.duplikat) return `Gab es schon: „${title}" steht bereits offen im Board — keine zweite angelegt.`;
-    return `Angelegt: „${title}"${parentId ? ' als Unteraufgabe' : ''}${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}${body.meilensteinId ? ' · am Meilenstein' : ''}. Steht im Board.`;
+    if (d.duplikat) return `Gab es schon: „${title}“ steht bereits offen im Board — keine zweite angelegt.`;
+    // Rundgang 09.10. („Agenten live“): deutsch angeführt, Priorität und Datum in Worten — der Satz steht als Ergebnis unter Freigaben.
+    return `Angelegt: „${title}“${parentId ? ' als Unteraufgabe' : ''}${body.priority !== 'medium' ? ` (${PRIO_NAME[String(body.priority)] ?? body.priority})` : ''}${body.dueDate ? `, fällig ${tagDe(body.dueDate)}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}${body.meilensteinId ? ' · am Meilenstein' : ''}. Steht im Board.`;
   } catch (err) {
     return `Aufgabe nicht angelegt: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
   }
@@ -863,7 +865,7 @@ async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, 
   // Nur der eigene und der gemeinsame Raum — aus dem der anderen Person nichts.
   if (!person) return KEINE_PERSON;
   const treffer = await lies({ thema, anzahl: 30, raum: person });
-  if (!treffer.length) return thema ? `Nichts gemerkt zu „${thema}".` : 'Das Gedächtnis ist noch leer.';
+  if (!treffer.length) return thema ? `Nichts gemerkt zu „${thema}“.` : 'Das Gedächtnis ist noch leer.';
   return `GEDÄCHTNIS (${treffer.length}):\n` + treffer.map(f => `• [${f.art}] ${f.thema}: ${f.satz}${f.woher ? ` (${f.woher})` : ''}`).join('\n');
 }
 
@@ -879,7 +881,7 @@ async function sucheWissen(input: Record<string, unknown>, _o: string, person?: 
   if (!frage) return 'Fehlgeschlagen: frage fehlt.';
   const { suche } = await import('./vault');
   const { treffer, durchsucht } = await suche(frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)), await sichtFuer(person));
-  if (!treffer.length) return `Nichts gefunden zu „${frage}" (${durchsucht} Notizen durchsucht).`;
+  if (!treffer.length) return `Nichts gefunden zu „${frage}“ (${durchsucht} Notizen durchsucht).`;
   return `WISSEN — ${treffer.length} von ${durchsucht} Notizen:\n\n` + treffer.map(t =>
     `QUELLE ${t.id}\nTITEL ${t.titel} · ${t.bereich}${t.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${t.stand ? ` · Stand ${t.stand}` : ''}${t.ueberschriften.length ? `\nABSCHNITTE ${t.ueberschriften.slice(0, 4).join(' · ')}` : ''}\n${t.ausschnitt}`,
   ).join('\n\n───\n\n')
@@ -947,7 +949,7 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
   const e = zoeNotiz(input, heute);
   if (typeof e === 'string') return e;
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}" gefunden — erst mit suche_kontakt nachsehen.`;
+  if (!treffer) return `Kein Kontakt zu „${hinweis}“ gefunden — erst mit suche_kontakt nachsehen.`;
   if (mehrere) {
     const { anzeigename } = await import('@/lib/make-one/crm');
     return `Mehrdeutig — meinst du ${mehrere.map(k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]`).join(' oder ')}? Bitte mit der ID erneut.`;
@@ -992,7 +994,7 @@ async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, per
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}" gefunden.`;
+  if (!treffer) return `Kein Kontakt zu „${hinweis}“ gefunden.`;
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { entwurfFuer } = await import('@/lib/ansprache');
@@ -1011,7 +1013,7 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}" — erst mit suche_kontakt nachsehen.`;
+  if (!treffer) return `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen.`;
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { uebergeben } = await import('@/lib/crm/uebergabe');
@@ -1026,7 +1028,7 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}" — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`;
+  if (!treffer) return `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`;
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { dealAnlegen } = await import('@/lib/crm/deal-anlegen');

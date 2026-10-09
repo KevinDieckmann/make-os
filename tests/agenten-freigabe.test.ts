@@ -43,7 +43,8 @@ describe('Schreiben → Stapel', () => {
     const r = await senden('person-a', { art: 'head', headId: 'sales' }, 'Leg eine Aufgabe an: Angebot nachfassen.');
     expect(r.status).toBe(200);
     const antwort = (r.d.faden as Faden).nachrichten.at(-1)!;
-    expect(antwort.werkzeuge).toEqual([{ name: 'create_task', ok: true, gestapelt: true }]);
+    // Seit 09.10. („Agenten live“) mit der Kennung des Stapel-Eintrags — die Karte im Chat bietet damit Freigeben/Ablehnen an.
+    expect(antwort.werkzeuge).toEqual([{ name: 'create_task', ok: true, gestapelt: true, vorschlagId: expect.stringMatching(/^v-/) }]);
     expect(await db.loadJson('tasks')).toBeNull(); // nichts geschrieben
     const v = (await stapel.lies('offen')).find(x => x.werkzeug === 'create_task')!;
     expect(v.person).toBe('person-a');

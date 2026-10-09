@@ -16,7 +16,7 @@ import { Chip, Hinweis, Knopf, Leer, SymbolKnopf } from '../ui';
 import { KuerzelKugel, ZoeStandbild, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { sichtbareHeads, useAgenten } from './kontext';
 import { meldeNeu } from './daten';
-import { FADEN_STATUS_NAME } from './regeln';
+import { fadenStatusFarbe, fadenStatusName } from './regeln';
 import { EINZUG, KUGEL_GROESSE } from './masse';
 
 function TeamZeile({ aktiv, onClick, links, titel, unter, rechts, einzug = 0, ariaLabel }: {
@@ -69,7 +69,7 @@ function HeadEintrag({ h, offen, umschalten, faeden }: { h: HeadKarte; offen: bo
                 <TeamZeile einzug={EINZUG + ZIEL.rechner} aktiv={auswahl.art === 'faden' && auswahl.fadenId === f.id} onClick={() => oeffne({ f: f.id })}
                   links={<span aria-hidden style={{ color: C.inkLeise, fontSize: TYP.bedien }}>↳</span>}
                   titel={m?.name ?? 'Mitarbeiter'} unter={`„${f.titel}“`}
-                  rechts={<span title={FADEN_STATUS_NAME[f.status]} style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, background: statusFarbe(f.status), flex: '0 0 auto' }} />} />
+                  rechts={<span title={fadenStatusName(f)} style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, background: statusFarbe(fadenStatusFarbe(f)), flex: '0 0 auto' }} />} />
               </li>
             );
           })}

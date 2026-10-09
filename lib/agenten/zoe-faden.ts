@@ -25,8 +25,13 @@ const quelleVon = (n: string) => FREMD_WERKZEUGE[n] ?? FREMD_AGENTEN[n] ?? null;
 
 /** Eine Nachricht der Person bzw. von ZOE (Thread-Form). */
 const personNachricht = (person: string, text: string, zeit: string): NachrichtKern => ({ id: neueKennung('nr'), rolle: 'person', von: person, text, zeit });
-const zoeNachricht = (text: string, zeit: string, o: { ki?: boolean; werkzeuge?: NachrichtKern['werkzeuge'] } = {}): NachrichtKern => ({
+/**
+ * Eine Antwort von ZOE im Thread. `kostenCent` (09.10. „Agenten live“): gemessene Kosten des Zugs in US-Cent (wie `ki-verbrauch`) — die Oberfläche
+ * zeigt sie in Euro an der Antwort, wie bei Heads und Mitarbeitern (vorher stand an ZOEs Antworten keine Zahl).
+ */
+const zoeNachricht = (text: string, zeit: string, o: { ki?: boolean; werkzeuge?: NachrichtKern['werkzeuge']; kostenCent?: number } = {}): NachrichtKern => ({
   id: neueKennung('nr'), rolle: 'agent', von: 'zoe', text, zeit, ...(o.ki ? { ki: true as const } : {}), ...(o.werkzeuge?.length ? { werkzeuge: o.werkzeuge } : {}),
+  ...(o.kostenCent && o.kostenCent > 0 ? { kosten: { cent: Math.round(o.kostenCent * 100) / 100 } } : {}),
 });
 
 /** Text auf die Thread-Grenze — darüber 413 im Schreibweg (nie gekürzt); hier nur für Altbestand/Kanal, der schon begrenzt war. */
@@ -78,7 +83,7 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
 }
 
 /** Die Antwort von ZOE anhängen und die Marken des Zugs („fremd gelesen“, „vertraulich“) am Thread festhalten — nur ODER, nie zurück. */
-export async function zoeAntwortAnhaengen(person: string, fadenId: string, text: string, o: { ki: boolean; werkzeuge?: NachrichtKern['werkzeuge']; fremdGelesen: boolean; vertraulich: boolean }): Promise<FadenKern | null> {
+export async function zoeAntwortAnhaengen(person: string, fadenId: string, text: string, o: { ki: boolean; werkzeuge?: NachrichtKern['werkzeuge']; fremdGelesen: boolean; vertraulich: boolean; kostenCent?: number }): Promise<FadenKern | null> {
   const jetzt = iso();
   const r = await fadenAendern(person, fadenId, f => {
     const x = anhaengen(f, [zoeNachricht(grenze(text), jetzt, o)], jetzt);

@@ -59,6 +59,8 @@ function dokuWurzel(): string | null {
   return null;
 }
 const DOKU = dokuWurzel();
+/** Gibt es eine Doku-Wurzel (iCloud „MAKE OS“ bzw. MAKE_OS_DOKU_WURZEL)? Ohne sie hat das Selbstbild keinen Ort (Server, Demo). */
+export const dokuWurzelEingerichtet = (): boolean => DOKU !== null;
 
 export interface Wurzel {
   id: string; name: string;

@@ -21,6 +21,7 @@ import { googleLage } from '@/lib/kalender/google/lage';
 import { gmailLage } from '@/lib/gmail/lage';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';
 import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
+import { pruefEndpunkt } from '@/lib/ki/pruefendpunkt';
 import { pepperGesetzt } from '@/lib/datenschutz/pepper';
 import { grabsteinOrdnerKonfiguriert } from '@/lib/datenschutz/grabsteine';
 import { zuliefererSchluessel } from '@/lib/zugang/intern';
@@ -160,7 +161,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     anmeldungen: { fehl24h: fehlanmeldungen24h(anmeldungen, jetzt), neueNetze7d: neueNetze7d(anmeldungen, jetzt) },
     csp: cspBild(csp?.meldungen ?? [], jetzt),
     verschluesselt: datenSchluessel() !== null,
-    ki: { schluessel: hasAnthropicKey(), guthabenLeerSeit: guthabenStand().leerSeit },
+    ki: { schluessel: hasAnthropicKey(), guthabenLeerSeit: guthabenStand().leerSeit, pruef: (p => ({ gesetzt: p.gesetzt, aktiv: p.gesetzt && p.aktiv, produktion: process.env.NODE_ENV === 'production' && (process.env.MAKE_OS_DEMO ?? '').trim() !== '1' }))(pruefEndpunkt()) },
     datenschicht: ds, sicherungLauf: sl, durchsicht: dk,
     datenschutz: { pepper: pepperGesetzt(), grabsteinOrdner: grabsteinOrdnerKonfiguriert(), produktion: process.env.NODE_ENV === 'production' },
     absichten: await absichtenLage(new Date(jetzt), MINDEST_ALTER_MS),
