@@ -25,6 +25,9 @@ import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, auswahl, LEUCHT, Hinweis } from './ui';
 import { MandantLink } from './crm/MandantLink';
+import { useRouter } from 'next/navigation';
+import { entwurfAnlegen } from './rechnung/daten';
+import { statusWechselFehlt } from '@/lib/finanzen/rechnung/regeln';
 import { neueKennung } from '@/lib/kennung';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
@@ -86,10 +89,13 @@ export function FinanzplanungView() {
   // 0-Punkt (05.10.): Summen ab der Eröffnung je Gesellschaft; ältere Posten bleiben in den Listen (Kennzeichen „vor dem 0-Punkt“).
   const eroeffnung = useGeltendeEroeffnung();
   const kasse = useKontenKasse('business');
-  const [neu, setNeu] = useState({ kunde: '', titel: '', betrag: '', firmaId: 'kdc' });
   const [neuZ, setNeuZ] = useState({ an: '', titel: '', betrag: '', faellig: '', firmaId: 'kdc' });
-  /** Rückfrage an einer Rechnung: löschen (nur geplant) oder stornieren (ab gestellt, mit Grund). */
-  const [frage, setFrage] = useState<{ id: string; art: 'loeschen' | 'storno'; grund: string } | null>(null);
+  /**
+   * Rückfrage an einer Rechnung: löschen (nur geplant), stornieren (ab gestellt, mit Grund) — und seit 08.10. (Woche 2 · 3.11) auch der
+   * Statuswechsel: „gestellt“ fragt Nummer und Rechnungsdatum (Nummer im Kreis der Gesellschaft frei), „bezahlt“ das Datum des Eingangs.
+   */
+  const [frage, setFrage] = useState<{ id: string; art: 'loeschen' | 'storno' | 'gestellt' | 'bezahlt'; grund: string; nummer?: string; datum?: string; am?: string } | null>(null);
+  const router = useRouter();
   /** Hinweis nach einer Ablehnung (409: inzwischen geändert / nicht erlaubt) — der Stand ist dann schon neu geladen. */
   const [hinweis, setHinweis] = useState<string | null>(null);
   const heute = localDay();
@@ -142,13 +148,14 @@ export function FinanzplanungView() {
    * Rechnung → bezahlt + Buchung `bu-re-<id>` (28.09.): EIN Server-Schritt in einer Sperre (PATCH `aktion: 'bezahlt'`),
    * wie im Kontakt-Reiter Umsatz. Vorher ging die Buchung als zweiter Aufruf mit `.catch(() => {})` hinterher.
    */
-  async function alsBezahlt(r: Rechnung) {
-    const am = r.bezahltAm ?? heute;
+  async function alsBezahlt(r: Rechnung, amGewaehlt?: string) {
+    const am = amGewaehlt ?? r.bezahltAm ?? heute;
     setPlan(p => (p ? { ...p, rechnungen: p.rechnungen.map(x => (x.id === r.id ? { ...x, status: 'bezahlt', bezahltAm: am } : x)) } : p));
     await planSpeichern.jetzt(); // offene Eingaben zuerst — sie bleiben eigene Einzeländerungen
     const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bezahlt', rechnungId: r.id, am }) })
       .then(x => x.json()).catch(() => null) as { ok?: boolean; stand?: Plan; error?: string } | null;
-    if (!d?.ok || !d.stand) { console.error('[MAKE OS] Rechnung nicht als bezahlt gespeichert.', d?.error); void ladePlan(); return; }
+    // 3.11 (08.10.): der Fehler steht sichtbar da — vorher landete er nur in der Konsole.
+    if (!d?.ok || !d.stand) { setHinweis(`Nicht als bezahlt gespeichert: ${d?.error ?? 'keine Verbindung'}. Der aktuelle Stand ist geladen.`); void ladePlan(); return; }
     planSpeichern.kenne(d.stand);
     if (!planSpeichern.hatOffenes()) setPlan(d.stand);
   }
@@ -273,7 +280,7 @@ export function FinanzplanungView() {
             return (
               <div key={r.id} id={`ziel-${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', opacity: storniert ? 0.55 : 1, ...zielRahmen(zielR === r.id, spaet ? LEUCHT.kritisch : LEUCHT.gut) }}>
                 {weiter
-                  ? <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => rechnungAendern(r.id, { status: weiter })} title={`Status wechseln → ${weiter}`}>{r.status}</ChipKnopf>
+                  ? <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => setFrage(weiter === 'gestellt' ? { id: r.id, art: 'gestellt', grund: '', nummer: r.nummer ?? '', datum: r.datum ?? heute } : { id: r.id, art: 'bezahlt', grund: '', am: r.bezahltAm ?? heute })} title={`Status wechseln → ${weiter} (mit Rückfrage)`}>{r.status}</ChipKnopf>
                   : <span style={{ display: 'inline-flex', minWidth: 76, justifyContent: 'center' }}><Chip farbe={STATUS_FARBE[r.status]}>{r.status}</Chip></span>}
                 {/* Mandanten klickbar (28.09.): mit Mandat in die Mandatsakte, sonst per eindeutigem Namen, sonst Text. */}
                 <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, minWidth: 0 }}><MandantLink mandatId={r.mandatId} name={r.kunde} nachName zeichen={false} /></span>
@@ -296,6 +303,22 @@ export function FinanzplanungView() {
                   <Knopf farbe={LEUCHT.kritisch} onClick={() => { setFrage(null); speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) }); }}>Löschen</Knopf>
                   <Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf>
                 </span>}
+                {(f?.art === 'gestellt' || f?.art === 'bezahlt') && (() => {
+                  const fehlt = statusWechselFehlt(r, f.art, { nummer: f.nummer, datum: f.datum, am: f.am }, plan.rechnungen, heute);
+                  return (
+                    <span style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+                      {f.art === 'gestellt' ? <>Als gestellt markieren — danach stehen Nummer, Datum und Betrag fest.
+                        <input value={f.nummer ?? ''} onChange={e => setFrage({ ...f, nummer: e.target.value })} placeholder="Rechnungs-Nr." aria-label="Rechnungsnummer" style={{ ...eingabe, width: 140 }} />
+                        <input type="date" value={f.datum ?? ''} max={heute} onChange={e => setFrage({ ...f, datum: e.target.value })} aria-label="Rechnungsdatum" style={{ ...eingabe, width: 150, colorScheme: 'dark' }} />
+                      </> : <>Zahlungseingang vermerken — legt die Buchung an.
+                        <input type="date" value={f.am ?? ''} max={heute} onChange={e => setFrage({ ...f, am: e.target.value })} aria-label="bezahlt am" style={{ ...eingabe, width: 150, colorScheme: 'dark' }} />
+                      </>}
+                      <Knopf farbe={LEUCHT.gut} aus={fehlt.length > 0} onClick={() => { setFrage(null); if (f.art === 'gestellt') rechnungAendern(r.id, { status: 'gestellt', nummer: f.nummer!.trim(), datum: f.datum }); else void alsBezahlt(r, f.am); }}>{f.art === 'gestellt' ? 'Gestellt' : 'Bezahlt'}</Knopf>
+                      <Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf>
+                      {fehlt.length > 0 && <span style={{ flexBasis: '100%', color: LEUCHT.achtung }}>{fehlt.join(' ')}</span>}
+                    </span>
+                  );
+                })()}
                 {f?.art === 'storno' && <span style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
                   Stornieren — die Rechnung bleibt als Beleg, zählt aber nicht mehr.
                   <input value={f.grund} onChange={e => setFrage({ ...f, grund: e.target.value })} placeholder="Grund" aria-label="Grund des Stornos" style={{ ...eingabe, width: 200 }} />
@@ -330,19 +353,11 @@ export function FinanzplanungView() {
           })}
           {!plan.rechnungen.length && <Leer>Keine Rechnungen — unten anlegen.</Leer>}
         </div>
-        {/* Neu anlegen */}
+        {/* Neu anlegen (08.10., Woche 2 · 3.13): EIN Rechnungs-Anleger — derselbe Entwurf wie „+ Rechnung schreiben“ oben, aus dem Mandat,
+            dem Kontakt und dem Angebot (Status „geplant“, Gesellschaft = Vorgabe bzw. im Editor wählen; Nummer und PDF beim Stellen). */}
         <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={neu.kunde} onChange={e => setNeu({ ...neu, kunde: e.target.value })} placeholder="Kunde" aria-label="Kunde" style={{ ...eingabe, width: 140 }} />
-          <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} placeholder="Leistung/Titel" aria-label="Leistung" style={{ ...eingabe, flex: 1, minWidth: 160 }} />
-          <input value={neu.betrag} onChange={e => setNeu({ ...neu, betrag: e.target.value })} placeholder="€" type="number" aria-label="Betrag" style={{ ...eingabe, width: 96, textAlign: 'right' }} />
-          <select value={neu.firmaId} onChange={e => setNeu({ ...neu, firmaId: e.target.value })} aria-label="Firma" style={auswahl}>
-            {plan.firmen.map(f => <option key={f.id} value={f.id} style={option}>{f.name}</option>)}
-          </select>
-          <Knopf onClick={() => {
-            if (!neu.kunde.trim()) return;
-            speichern({ ...plan, rechnungen: [...plan.rechnungen, { id: neueKennung('r'), firmaId: neu.firmaId, kunde: neu.kunde.trim(), titel: neu.titel.trim(), betrag: Number(neu.betrag) || 0, status: 'geplant' }] });
-            setNeu({ kunde: '', titel: '', betrag: '', firmaId: neu.firmaId });
-          }}>+ Rechnung</Knopf>
+          <Knopf onClick={async () => { const e = await entwurfAnlegen({ quelle: 'frei' }); if (!e.id) { setHinweis(e.fehler ?? 'Rechnung nicht angelegt.'); return; } router.push(WEG.rechnungSchreiben(e.id), { scroll: false }); }}>+ Rechnung</Knopf>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>öffnet den Entwurf — Kunde, Positionen und Gesellschaft dort, gestellt wird mit Nummer und PDF.</span>
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
           Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Finanzen › Business) — dort zählt er aufs Jahresziel.

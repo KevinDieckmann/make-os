@@ -21,7 +21,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import Link from 'next/link';
-import { Karte, Knopf, Chip, Hinweis, feld } from '../../ui';
+import { Karte, Knopf, Chip, Hinweis, Aktionsleiste, feld } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { Wahl, type WahlEintrag } from '../Wahl';
 import { type CrmApi } from '../daten';
@@ -348,16 +348,20 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           onVorlage={() => { setVonHand(h => ({ ...h, schluss: false })); aendern({ schluss: angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, gueltigBis: form.gueltigBis }).schluss }); }} />
       </Karte>
 
-      {/* Feste Summenleiste */}
-      <div style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'rgba(11,14,16,.94)', backdropFilter: 'blur(8px)', borderTop: '1px solid rgba(255,255,255,.08)', padding: '12px 4px', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Summe label="einmalig" netto={s.einmalig.netto} brutto={s.einmalig.brutto} ku={ku} />
-        <Summe label="monatlich" netto={s.monat.netto} brutto={s.monat.brutto} ku={ku} />
-        <Summe label="jährlich" netto={s.jahr.netto} brutto={s.jahr.brutto} ku={ku} />
-        <Summe label="Gesamtwert" netto={s.gesamt.netto} brutto={s.gesamt.brutto} ku={ku} stark />
-        <span style={{ flex: 1 }} />
-        {fehlt.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>fehlt: {fehlt.join(', ')}</span>}
-        <Knopf farbe={LEUCHT.gut} aus={fehlt.length > 0} onClick={zurVorschau}>Mail versenden ›</Knopf>
-      </div>
+      {/* Summenleiste (08.10., Woche 2 · 3.14): über den Baustein der Hauptaktion (.ui-aktion) — am Handy unten mitlaufend und über der
+          Tastatur, ohne Umbruch-Chaos bei 375 px: oben die Summen (wischbar), darunter „fehlt“ und die Hauptaktion. */}
+      <Aktionsleiste>
+        <div className="angebot-summen" style={{ display: 'flex', gap: 16, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', minWidth: 0 }}>
+          <Summe label="einmalig" netto={s.einmalig.netto} brutto={s.einmalig.brutto} ku={ku} />
+          <Summe label="monatlich" netto={s.monat.netto} brutto={s.monat.brutto} ku={ku} />
+          <Summe label="jährlich" netto={s.jahr.netto} brutto={s.jahr.brutto} ku={ku} />
+          <Summe label="Gesamtwert" netto={s.gesamt.netto} brutto={s.gesamt.brutto} ku={ku} stark />
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {fehlt.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 180px', minWidth: 0 }}>fehlt: {fehlt.join(', ')}</span>}
+          <Knopf farbe={LEUCHT.gut} aus={fehlt.length > 0} onClick={zurVorschau}>Mail versenden ›</Knopf>
+        </div>
+      </Aktionsleiste>
     </div>
   );
 }
@@ -365,7 +369,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 function Summe({ label, netto, brutto, ku, stark }: { label: string; netto: number; brutto: number; ku: boolean; stark?: boolean }) {
   if (!netto && !stark) return null;
   return (
-    <span style={{ display: 'grid', gap: 1 }}>
+    <span style={{ display: 'grid', gap: 1, flex: '0 0 auto' }}>
       <span style={{ fontSize: 11, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase' }}>{label}</span>
       <span style={{ fontSize: stark ? 17 : 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: stark ? LEUCHT.gut : C.ink }}>{euroCent(netto)}{ku ? '' : <span style={{ fontSize: 12, color: C.inkLeise, fontWeight: 500 }}> netto · {euroCent(brutto)} brutto</span>}</span>
     </span>

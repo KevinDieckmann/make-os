@@ -33,7 +33,7 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt, positionAusMandat,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  type MahnVorschlag, type Pflicht,
+  vorlageSaeubern, positionAusBrutto, type MahnVorschlag, type Pflicht,
 } from './regeln';
 import { rechnungDokument, bankZeile } from './dokument';
 import type { Mahnstufe } from './typen';
@@ -100,7 +100,8 @@ export async function rechnungPdf(id: string, z: { haushalt: string; sicht: Sich
 
 // ── Entwurf anlegen (frei, aus Angebot, aus Mandat) ─────────────────────────
 
-export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; mandatId?: unknown; angebotId?: unknown; monat?: unknown; /** Nur bei `angebot`: `einmalig` = nur die Einmalposten (Woche 1 · 3.6). */ nur?: unknown }
+export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; mandatId?: unknown; angebotId?: unknown; monat?: unknown; /** Nur bei `angebot`: `einmalig` = nur die Einmalposten (Woche 1 · 3.6). */ nur?: unknown;
+  /** Nur bei `frei`: Vorbelegung aus einem abgelegten Angebot (Titel, Bruttobetrag, Angebotsnummer/-datum — Woche 2 · 3.13, `vorlageSaeubern`). */ vorlage?: unknown }
 
 /**
  * Feste Kennung der Rechnung für die Einmalposten eines gemischten Angebots (08.10., Woche 1 · 3.6) — aus der Angebots-Kennung abgeleitet,
@@ -187,6 +188,8 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
       if (!inSicht(da, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
       return { rechnung: mitFassung(da), vorhanden: true };
     }
+    // 08.10. (Woche 2 · 3.13): ein Mandat mit Gesellschaft „offen“ (angelegt ohne Deal) nimmt NICHT still die Vorgabe — erst wählen.
+    if (!gesellschaftAusEinheit(m.gesellschaft) && !istRegisterKennung(m.gesellschaft) && !istGesellschaft(p.firmaId)) throw new RechnungFehler('Am Mandat ist die Gesellschaft noch „offen“ — bitte erst am Mandat wählen, für welche Gesellschaft es läuft; dann die Rechnung schreiben.', 409, { grund: 'gesellschaft' });
     const g = gesellschaftFuer(m.gesellschaft);
     if (!g) throw new RechnungFehler('Für dieses Mandat steht keine Gesellschaft fest — am Mandat wählen oder die Rechnung frei schreiben.', 409, { grund: 'gesellschaft' });
     const k = m.kontaktIds.map(kontakt).find(Boolean);
@@ -206,11 +209,17 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const g = istGesellschaft(p.firmaId) ? p.firmaId : gesellschaftFuer(m?.gesellschaft);
     const empf = k || f ? empfaengerAusCrm(k, f) : undefined;
     const zielFirma = f?.zahlung?.zielTage ?? k?.zahlung?.zielTage ?? m?.zahlungszielTage;
+    // Vorbelegung aus einem abgelegten Angebot (3.13): EINE Position aus dem Bruttobetrag, dazu Angebotsnummer und -datum.
+    const vl = vorlageSaeubern(p.vorlage);
+    const kuG = g ? ku(g) : false;
+    const titel = vl?.titel || m?.titel || 'Rechnung';
     entwurf = neuerEntwurf({
-      id, firmaId: g as Gesellschaftskennung, kunde: kundeAus(empf, m?.kunde ?? 'Kunde'), titel: m?.titel || 'Rechnung', ...(empf ? { empfaenger: empf } : {}),
+      id, firmaId: g as Gesellschaftskennung, kunde: kundeAus(empf, m?.kunde ?? 'Kunde'), titel, ...(empf ? { empfaenger: empf } : {}),
       zahlungszielTage: g ? ziel(g, zielFirma || undefined) : zielFirma, heute, ...(m ? { mandatId: m.id } : {}),
+      ...(vl?.bruttoCent ? { positionen: [positionAusBrutto(titel, vl.bruttoCent, { kleinunternehmer: kuG, nettoAusBrutto })] } : {}),
+      ...(vl?.angebot ? { angebot: vl.angebot } : {}), ...(vl?.angebotAm ? { angebotAm: vl.angebotAm } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
-    });
+    }, { kleinunternehmer: kuG });
   }
   if (!inSicht(entwurf, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft — dieses Konto sieht nur die Business-Gesellschaften.', 403);
 

@@ -3,7 +3,8 @@
 //                                  mahnTage, mahnvorschlaege, sicht } — serverseitig nach Sicht gefiltert
 // GET ?pdf=<Rechnung>          → das PDF (attachment, nosniff, Sandbox)
 // POST { aktion, … }:
-//   neu       { quelle: frei|angebot|mandat, firmaId?, kontaktId?, kundeFirmaId?, mandatId?, angebotId?, monat?, nur?: 'einmalig', anfrageId? }
+//   neu       { quelle: frei|angebot|mandat, firmaId?, kontaktId?, kundeFirmaId?, mandatId?, angebotId?, monat?, nur?: 'einmalig', vorlage?, anfrageId? }
+//             (`vorlage` bei quelle frei: { titel?, bruttoCent?, angebot?, angebotAm? } — abgelegtes Angebot → EINE Position, Woche 2 · 3.13)
 //             (`nur: 'einmalig'` bei quelle angebot: nur die Einmalposten eines gemischten Angebots, feste Kennung — Woche 1 · 3.6)
 //   speichern { id, felder, stand }          → Entwurf ändern (Stand/409, Grenzen 413)
 //   loeschen  { id, stand }                  → nur Entwürfe ohne Nummer
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
     switch (b.aktion) {
       case 'neu': {
         const r = await einmalig('rechnung-neu', b.anfrageId, async () => {
-          const e = await entwurfNeu({ quelle: b.quelle, firmaId: b.firmaId, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, mandatId: b.mandatId, angebotId: b.angebotId, monat: b.monat, nur: b.nur, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer });
+          const e = await entwurfNeu({ quelle: b.quelle, firmaId: b.firmaId, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, mandatId: b.mandatId, angebotId: b.angebotId, monat: b.monat, nur: b.nur, vorlage: b.vorlage, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer });
           return { status: 200, body: { ok: true, rechnung: e.rechnung, vorhanden: e.vorhanden } };
         });
         return NextResponse.json(r.body, { status: r.status });

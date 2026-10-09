@@ -71,3 +71,39 @@ export function pdfLaden(dateiId: string, name?: string) {
   a.click();
   a.remove();
 }
+
+/**
+ * Mandat aus dem gewonnenen Deal eines angenommenen Angebots anlegen — DER Weg (`/api/crm/lead` aktion „mandat“, vorbelegt aus dem
+ * Angebot). Genutzt von der Angebots-Ansicht und von Kontakt › Umsatz (08.10., Woche 2 · 3.10).
+ */
+export async function mandatAusDeal(chanceId: string): Promise<{ ok: boolean; mandatId?: string; text?: string; fehler?: string }> {
+  try {
+    const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId }) });
+    const d = await r.json().catch(() => ({ ok: false, fehler: `Antwort ${r.status}` })) as { ok?: boolean; mandatId?: unknown; text?: string; fehler?: string };
+    return d.ok ? { ok: true, ...(typeof d.mandatId === 'string' ? { mandatId: d.mandatId } : {}), ...(d.text ? { text: d.text } : {}) } : { ok: false, fehler: d.fehler ?? 'Mandat nicht angelegt.' };
+  } catch { return { ok: false, fehler: 'Keine Verbindung — nichts angelegt.' }; }
+}
+
+/** Kann dieses Gerät eine DATEI teilen (Web Share API Level 2)? Rein, damit der Rückfall (Download) prüfbar ist. */
+export function kannDateiTeilen(nav: { canShare?: (d: { files?: File[] }) => boolean; share?: unknown } | undefined, datei: File): boolean {
+  try { return !!nav && typeof nav.share === 'function' && typeof nav.canShare === 'function' && nav.canShare({ files: [datei] }); } catch { return false; }
+}
+
+/** Das PDF aus der Ablage als Datei holen (zum Teilen) — null, wenn es nicht geht. Vorab geholt, damit das Teilen im Klick selbst startet. */
+export async function pdfDateiHolen(dateiId: string, name: string): Promise<File | null> {
+  try {
+    const r = await fetch(`/api/crm/dateien?id=${encodeURIComponent(dateiId)}`, { cache: 'no-store' });
+    return r.ok ? new File([await r.blob()], name, { type: 'application/pdf' }) : null;
+  } catch { return null; }
+}
+
+/**
+ * Das PDF TEILEN (08.10., Woche 2 · 3.14): am Handy öffnet das Teilen-Blatt mit der Datei (Mail, Messenger …) — das PDF hängt dann
+ * schon an. Kann das Gerät keine Dateien teilen (oder ist die Datei noch nicht da), wird es wie bisher heruntergeladen. MAKE OS
+ * verschickt nichts. `datei` vorab über `pdfDateiHolen` — Browser erlauben das Teilen nur direkt im Klick.
+ */
+export async function pdfTeilen(datei: File | null, dateiId: string, name: string, titel?: string): Promise<'geteilt' | 'abgebrochen' | 'geladen' | 'fehler'> {
+  const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean }) : undefined;
+  if (!datei || !nav || !kannDateiTeilen(nav, datei)) { pdfLaden(dateiId, name); return 'geladen'; }
+  try { await nav.share({ files: [datei], ...(titel ? { title: titel } : {}) }); return 'geteilt'; } catch (e) { return (e as { name?: string })?.name === 'AbortError' ? 'abgebrochen' : 'fehler'; }
+}

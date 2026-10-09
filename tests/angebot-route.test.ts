@@ -128,7 +128,9 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2635, basis: 'monat', laufzeitMonate: 6 } /* 2.500 + (900 − 10 %) / 6 */, naechsterSchritt: { datum: '2026-12-01' }, gesellschaft: 'kdv', firmaId: 'f-muster' });
     expect(b.followups.find(f => f.id === 'fu-ang-entwurf1')).toMatchObject({ faellig: '2026-12-01', status: 'offen', bezug: { art: 'chance', id: deal.id }, kontaktId: 'c-anna1' });
     const anna = (await kontakte()).find(x => x.id === 'c-anna1')!;
-    expect(anna.aktivitaeten.some(x => x.art === 'mail' && x.text?.startsWith(`Angebot KDV-A-${jahr}-0001 gesendet`) && x.bezug === deal.id)).toBe(true);
+    // Woche 2 · 3.15 (08.10.): beim Stellen steht nur „gestellt“ (Notiz, kein Kontakt) — „gesendet“ erst nach Bestätigung (eigener Test).
+    expect(anna.aktivitaeten.some(x => x.art === 'notiz' && x.text?.startsWith(`Angebot KDV-A-${jahr}-0001 gestellt`) && x.bezug === deal.id)).toBe(true);
+    expect(anna.aktivitaeten.some(x => x.text?.startsWith(`Angebot KDV-A-${jahr}-0001 gesendet`))).toBe(false);
     expect(anna.stufe).toBe('angebot');
     const { beanVon } = await import('@/lib/crm/bean');
     expect(beanVon(anna, b).bean).toBe('A');
@@ -280,7 +282,7 @@ describe('Absichtsprotokoll beim Stellen (Paket D-C #17)', () => {
     const { standVon } = await import('@/lib/crm/crm-stand');
     return post({ aktion: 'stellen', id, stand: standVon(a) });
   };
-  const vermerke = async (nummer: string) => (await kontakte()).find(x => x.id === 'c-dora1')!.aktivitaeten.filter(x => (x.text ?? '').startsWith(`Angebot ${nummer} gesendet`)).length;
+  const vermerke = async (nummer: string) => (await kontakte()).find(x => x.id === 'c-dora1')!.aktivitaeten.filter(x => (x.text ?? '').startsWith(`Angebot ${nummer} gestellt`)).length;
   it('Abbruch nach dem Festschreiben → Wiederaufnahme holt den Kontakt-Vermerk nach, genau einmal', async () => {
     const ab = await import('@/lib/store/absichten');
     const fort = await import('@/lib/store/absichten-fortsetzen');

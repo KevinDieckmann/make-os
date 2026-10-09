@@ -31,7 +31,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
-  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
+  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
@@ -377,8 +377,9 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
         e = ergebnis as { a: Angebot; pdf: { id: string; name: string } } | null;
         if (!e) throw new AngebotFehler('Nicht gestellt.', 500);
       });
-      // 4. Kontakt: Aktivität „Angebot gesendet (Nummer)“, Stufe vorwärts, Wiedervorlage = Nachfassen, Lifecycle gehoben.
-      await v.schritt('kontakt', () => angebotKontaktVermerk({ kontaktId: k.id, nummer, titel: r0.a.titel, dealId, nachfassen, heute, jetzt: jetztIso, person: p.person, wer: p.wer }));
+      // 4. Kontakt: Vermerk „Angebot <Nummer> gestellt“, Stufe vorwärts, Wiedervorlage = Nachfassen, Lifecycle gehoben. „Gesendet“
+      //    (die Mail, die als Kontakt zählt) erst, wenn der Mensch bestätigt, dass sie raus ist (Woche 2 · 3.15, `angebotGesendet`).
+      await v.schritt('kontakt', async () => { await angebotKontaktVermerk({ art: 'gestellt', kontaktId: k.id, nummer, titel: r0.a.titel, dealId, nachfassen, heute, jetzt: jetztIso, person: p.person, wer: p.wer }); });
     });
   } catch (err) {
     if (err instanceof AngebotFehler) {
@@ -398,26 +399,46 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
 export const ANGEBOT_SCHRITTE = ['festschreiben', 'kontakt'] as const;
 
 /**
- * Aktivität „Angebot <Nummer> gesendet“ am Kontakt — idempotent: steht sie schon (gleiche Nummer), bleibt alles, wie es
- * ist (die Wiederaufnahme darf sie nicht doppelt anlegen). Stufe nur vorwärts, Wiedervorlage = Nachfassen, Lifecycle gehoben.
+ * Vermerk am Kontakt — idempotent je Nummer und Art (die Wiederaufnahme darf ihn nicht doppelt anlegen):
+ *   gestellt  beim Stellen: Notiz „Angebot <Nummer> gestellt“ (zählt NICHT als Kontakt), Stufe nur vorwärts, Wiedervorlage = Nachfassen,
+ *             Lifecycle gehoben.
+ *   gesendet  erst auf Bestätigung „Mail ist raus“ (08.10., Woche 2 · 3.15 — vorher entstand die Mail-Aktivität beim Stellen, auch wenn
+ *             die Mail nie hinausging): Aktivität „Mail“ — die zählt als Kontakt (letzter Kontakt, Kadenz).
  */
-export async function angebotKontaktVermerk(p: { kontaktId: string; nummer: string; titel: string; dealId?: string; nachfassen: string; heute: string; jetzt: string; person: string; wer?: Wer }): Promise<void> {
+export async function angebotKontaktVermerk(p: { art: 'gestellt' | 'gesendet'; kontaktId: string; nummer: string; titel: string; dealId?: string; nachfassen?: string; heute: string; jetzt: string; person: string; wer?: Wer }): Promise<{ schonDa: boolean }> {
   const rang = (s: Kontakt['stufe']) => KONTAKT_STUFEN.indexOf(s);
-  const kopf = `Angebot ${p.nummer} gesendet`;
+  const kopf = angebotVermerkKopf(p.nummer, p.art);
+  let schonDa = false;
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     const x0 = f.kontakte.find(x => x.id === p.kontaktId);
-    if (!x0 || x0.eingeschraenkt || (x0.aktivitaeten ?? []).some(a => (a.text ?? '').startsWith(kopf))) return f;
+    if (!x0 || x0.eingeschraenkt) return f;
+    if ((x0.aktivitaeten ?? []).some(a => (a.text ?? '').startsWith(kopf))) { schonDa = true; return f; }
     return {
       ...f, kontakte: f.kontakte.map(x => {
         if (x.id !== p.kontaktId) return x;
         const stufe = rang(x.stufe) < rang('angebot') && x.stufe !== 'verloren' && x.stufe !== 'ruht' ? 'angebot' as const : undefined;
-        const neu = wendeAktivitaetAn(x, { art: 'mail', text: `${kopf} — ${p.titel}`, von: p.person, ...(p.dealId ? { bezug: p.dealId } : {}), ...(stufe ? { stufe } : {}), wiedervorlage: p.nachfassen }, p.heute, p.jetzt, tagePlus);
+        const neu = wendeAktivitaetAn(x, { art: p.art === 'gesendet' ? 'mail' : 'notiz', text: `${kopf} — ${p.titel}`, von: p.person, ...(p.dealId ? { bezug: p.dealId } : {}), ...(stufe ? { stufe } : {}), wiedervorlage: p.nachfassen ?? x.wiedervorlage }, p.heute, p.jetzt, tagePlus);
         const phase = phaseHeben(x.phase, 'angebot');
         return phase && phase !== x.phase ? { ...neu, phase } : neu;
       }),
     };
   }, p.wer);
+  return { schonDa };
+}
+
+/**
+ * „Mail ist raus“ (Woche 2 · 3.15): ein gestelltes Angebot als gesendet vermerken — nur eine Person per Klick, nie der Dienstweg
+ * (die Route prüft). Nur gestellte/angenommene/abgelaufene Angebote mit Nummer und Kontakt; Art. 18 → nichts.
+ */
+export async function angebotGesendet(p: { id: string; person: string; wer?: Wer; jetzt?: Date }): Promise<{ schonDa: boolean; nummer: string }> {
+  const a = ((await ladeCrm()).angebote ?? []).find(x => x.id === p.id);
+  if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
+  if (!a.nummer || istEntwurf(a) || a.status === 'ersetzt') throw new AngebotFehler('Nur ein gestelltes Angebot lässt sich als gesendet vermerken.', 409);
+  if (!a.kontaktId) throw new AngebotFehler('Das Angebot hat keinen Kontakt mehr (Personenbezug gelöst) — nichts zu vermerken.', 409);
+  const jetzt = p.jetzt ?? new Date();
+  const r = await angebotKontaktVermerk({ art: 'gesendet', kontaktId: a.kontaktId, nummer: a.nummer, titel: a.titel, ...(a.dealId ? { dealId: a.dealId } : {}), heute: localDay(jetzt), jetzt: jetzt.toISOString(), person: p.person, wer: p.wer });
+  return { schonDa: r.schonDa, nummer: a.nummer };
 }
 
 /**
@@ -440,7 +461,7 @@ export async function angebotFortsetzen(haushalt: string, a: import('@/lib/store
     a = { ...a, schritte: a.schritte.map(s => (s.name === 'festschreiben' ? { ...s, erledigt: new Date().toISOString() } : s)) };
   }
   await mitVorgang(haushalt, a, async v => {
-    await v.schritt('kontakt', () => angebotKontaktVermerk({ kontaktId: d.kontaktId, nummer: d.nummer, titel: ang?.titel ?? '', dealId: d.dealId, nachfassen: d.nachfassen, heute: d.heute, jetzt: d.jetzt, person: d.person, wer: { art: 'system' } }));
+    await v.schritt('kontakt', async () => { await angebotKontaktVermerk({ art: 'gestellt', kontaktId: d.kontaktId, nummer: d.nummer, titel: ang?.titel ?? '', dealId: d.dealId, nachfassen: d.nachfassen, heute: d.heute, jetzt: d.jetzt, person: d.person, wer: { art: 'system' } }); });
   });
   await absichtAbschliessen(haushalt, a.id, 'fertig');
 }

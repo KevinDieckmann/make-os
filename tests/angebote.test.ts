@@ -221,7 +221,7 @@ describe('Gesellschaften und Dokument', () => {
     expect(gesellschaftAnwenden(r.g, { bank: { iban: 'DE00 1234' } }, J, 'kevin').fehler[0].feld).toBe('iban');
     expect(gesellschaftAnwenden(r.g, { bank: { ibanEntfernen: true } }, J, 'kevin').g.bank).toBeUndefined();
     expect(gesellschaftLuecken({ id: 'ug' })).toEqual(['Firmierung', 'Anschrift', 'Steuernummer oder USt-IdNr.', 'E-Mail', 'Geschäftsführung', 'Registergericht/HRB']);
-    expect(mitVorgaben({ id: 'ug' })).toMatchObject({ kurz: 'MOS', nummernformat: NUMMER_VORGABE, zahlungszielTage: 14, gueltigkeitTage: 30 });
+    expect(mitVorgaben({ id: 'ug' })).toMatchObject({ kurz: 'MAKE', nummernformat: NUMMER_VORGABE, zahlungszielTage: 14, gueltigkeitTage: 30 });
   });
   it('Dokument: Absender (IBAN voll nur fürs PDF), Empfänger, Summenzeilen, Kleinunternehmer-Hinweis', () => {
     const g = { id: 'kdv' as const, firmierung: 'Beispiel UG', strasse: 'Weg 1', plz: '12345', ort: 'Musterstadt', bank: { iban: BEISPIEL_IBAN }, kleinunternehmer: true };

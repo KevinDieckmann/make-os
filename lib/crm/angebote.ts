@@ -17,7 +17,7 @@
 
 import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, CrmBestand, FollowUp, Leistung, Mandat } from './typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import { KERN_EINHEITEN } from '@/lib/einheiten';
+import { KERN_EINHEITEN, UG_KURZ } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
 import { preisBasisVon } from '@/lib/finanzen/produkte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
@@ -131,8 +131,16 @@ export const mengeText = (m: number) => m.toLocaleString('de-DE', { maximumFract
 
 // ── Nummern ──────────────────────────────────────────────────────────────────
 
-/** Kürzel für die Nummer, solange die Gesellschaft keines trägt. */
-export const KURZ_VORGABE: Record<Gesellschaftskennung, string> = { kdc: 'KDC', kdv: 'KDV', ug: 'MOS' };
+/** Ein Kurzname als Nummern-Kürzel: nur Großbuchstaben und Ziffern, höchstens 8 Zeichen (Umlaute ausgeschrieben). */
+export function kuerzelAus(name: string, rueckfall: string): string {
+  const k = String(name ?? '').toUpperCase().replace(/Ä/g, 'AE').replace(/Ö/g, 'OE').replace(/Ü/g, 'UE').replace(/ß/g, 'SS').replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  return k || rueckfall;
+}
+/**
+ * Kürzel für die Nummer, solange die Gesellschaft keines trägt. `ug` kommt aus dem Kurznamen der Instanz (`UG_KURZ`, lib/einheiten.ts —
+ * 08.10., Markttraktion Woche 2 · 3.15: vorher stand hier noch das Kürzel des Altnamens). Vergebene Nummern bleiben, wie sie sind.
+ */
+export const KURZ_VORGABE: Record<Gesellschaftskennung, string> = { kdc: 'KDC', kdv: 'KDV', ug: kuerzelAus(UG_KURZ, 'UG') };
 
 /** Ein Format ist gültig, wenn es genau eine laufende Nummer trägt und nur erlaubte Zeichen. */
 export function nummernformatOk(f: string): boolean {
@@ -450,6 +458,30 @@ export function angeboteZu(liste: readonly Angebot[] | undefined, p: { kontaktId
   return (liste ?? []).filter(a => (p.kontaktId && a.kontaktId === p.kontaktId) || (p.firmaId && a.firmaId === p.firmaId) || (p.dealId && a.dealId === p.dealId))
     .sort((x, y) => (y.gestelltAm ?? y.geaendert).localeCompare(x.gestelltAm ?? x.geaendert));
 }
+
+/**
+ * Wohin ein ANGENOMMENES Angebot weiterführt (08.10., Markttraktion Woche 2 · 3.10 — vorher hatte es im Umsatz-Reiter keinen Weg):
+ *   mandat   es gibt schon ein Mandat (am Angebot vermerkt oder aus dem Deal des Angebots) → „Mandat ›“
+ *   anlegen  ein gewonnener Deal ohne Mandat → „Mandat anlegen ›“ (derselbe Weg wie in der Angebots-Ansicht, `/api/crm/lead` aktion „mandat“)
+ *   null     nicht angenommen bzw. ohne Deal (dann bleibt „→ Rechnung schreiben“).
+ * Gelöschte Mandate (Papierkorb) zählen nicht.
+ */
+export function angebotMandatWeg(a: Pick<Angebot, 'status' | 'dealId' | 'mandatId'>, crm: { chancen: readonly Pick<Chance, 'id' | 'stufe'>[]; mandate: readonly Pick<Mandat, 'id' | 'chanceId' | 'geloeschtAm'>[] }): { art: 'mandat'; mandatId: string } | { art: 'anlegen'; dealId: string } | null {
+  if (a.status !== 'angenommen') return null;
+  const lebt = crm.mandate.filter(m => !m.geloeschtAm);
+  const amAngebot = a.mandatId ? lebt.find(m => m.id === a.mandatId) : undefined;
+  if (amAngebot) return { art: 'mandat', mandatId: amAngebot.id };
+  if (!a.dealId) return null;
+  const ausDeal = lebt.find(m => m.chanceId === a.dealId);
+  if (ausDeal) return { art: 'mandat', mandatId: ausDeal.id };
+  return crm.chancen.some(c => c.id === a.dealId && c.stufe === 'gewonnen') ? { art: 'anlegen', dealId: a.dealId } : null;
+}
+
+/** Der Kopf des Vermerks am Kontakt — „Angebot <Nummer> gestellt“ bzw. „… gesendet“ (an ihm erkennt der Vermerk sich selbst wieder). */
+export const angebotVermerkKopf = (nummer: string, art: 'gestellt' | 'gesendet') => `Angebot ${nummer} ${art}`;
+/** Steht am Kontakt schon „Angebot <Nummer> gesendet“ (Woche 2 · 3.15)? Die Oberfläche zeigt „Mail ist raus“ nur, solange nicht. */
+export const angebotGesendetVermerkt = (k: { aktivitaeten?: readonly { text?: string }[] } | undefined, nummer: string | undefined): boolean =>
+  !!k && !!nummer && (k.aktivitaeten ?? []).some(a => (a.text ?? '').startsWith(angebotVermerkKopf(nummer, 'gesendet')));
 
 /** Filter der Liste „Angebote“. */
 export function angeboteFiltern(liste: readonly Angebot[], f: { status?: AngebotsStatus | 'offen' | null; gesellschaft?: Gesellschaftskennung | null; suche?: string }, name: (a: Angebot) => string, passt: (felder: string[], frage: string) => boolean): Angebot[] {
