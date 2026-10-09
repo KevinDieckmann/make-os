@@ -246,6 +246,8 @@ async function ladeRohFrisch(heute: string) {
     leistungen: crm.leistungen,
     traktion: { score: tr.score, text: tr.score != null ? `${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : tr.hinweis, welten: tr.welten.map(w => ({ id: w.id, label: w.label, score: w.score })) },
     termine: (cal?.events ?? []).filter(e => !e.allDay && e.startDate && e.endDate).map(e => ({ start: e.startDate!, ende: e.endDate!, owner: e.owner })),
+    // Meeting-Last des Inhabers (09.10., Plattform-Regel): Speichername aus den Konten statt eines festen Namens im Rechenweg.
+    meetingVon: await inhaberSpeicher().catch(() => null),
     termineVollstaendig: cal?.quelle === 'icloud',
     bloecke: plan.filter(x => x.date >= abTag).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art })),
     // Nur die Felder, die der Index braucht (Auftragstexte können lang sein).

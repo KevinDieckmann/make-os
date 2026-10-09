@@ -15,6 +15,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { WEG } from '@/lib/wege';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { bereichVonFirma } from '@/lib/einheiten';
 
 // Reha-Regel rein und browser-tauglich in lib/planung/reha-regel.ts (auch für die Tagesplanung) — hier nur weitergereicht.
 import { REHA_GEWOHNHEIT_TAGE, rehaFehltHeute } from '@/lib/planung/reha-regel';
@@ -53,7 +54,9 @@ export async function computeShields(today = localDay(), person?: string | null)
   const shields: Shield[] = [];
 
   // ── Geld: überfällige Forderungen (rein) und überfällige Zahlungen (raus) ──
-  const forderungenUeberfaellig = (fplan?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.faellig && r.faellig < today && r.firmaId !== 'privat');
+  // Bereich je Einheit (09.10., K3): nur Business-Posten (`bereichVonFirma`) — die Schilde gehen ins Brain jeder Person im Haushalt, auch
+  // „nur Business“; Posten einer Privat-Einheit (Selbstständigkeit unter Privat) stehen unter Privat › Finanzen, nicht hier.
+  const forderungenUeberfaellig = (fplan?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.faellig && r.faellig < today && bereichVonFirma(r.firmaId) === 'business');
   if (forderungenUeberfaellig.length) {
     shields.push({
       id: 'forderungen', stufe: 'rot',
@@ -61,8 +64,8 @@ export async function computeShields(today = localDay(), person?: string | null)
       href: '/os/finanzen', label: 'Finanzplanung',
     });
   }
-  // Nur Firmen-Zahlungen. Private Fälligkeiten meldet haushaltShields() — nur an den Haushalt.
-  const zahlungenUeberfaellig = (fplan?.zahlungen ?? []).filter(z => z.status === 'offen' && z.faellig && z.faellig < today && (z as { firmaId?: string }).firmaId !== 'privat');
+  // Nur Business-Zahlungen (Bereich je Einheit) — private und die einer Privat-Einheit nie.
+  const zahlungenUeberfaellig = (fplan?.zahlungen ?? []).filter(z => z.status === 'offen' && z.faellig && z.faellig < today && bereichVonFirma((z as { firmaId?: string }).firmaId) === 'business');
   if (zahlungenUeberfaellig.length) {
     shields.push({
       id: 'zahlungen', stufe: 'rot',

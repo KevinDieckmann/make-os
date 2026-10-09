@@ -9,10 +9,11 @@ const fin = (over: Partial<FinanceState> = {}): FinanceState => ({
 });
 
 describe('Business-Kasse', () => {
-  it('Firmenkonten schlagen das alte Cash-Feld, privat zählt nie', () => {
+  it('Firmenkonten schlagen das alte Cash-Feld, privat zählt nie — die Selbstständigkeit (Privat-Einheit) seit 09.10. auch nicht', () => {
     const k = geschaeftsKasse([
       { id: 'kdv', kontostand: 5000, stand: '2026-09-20' },
-      { id: 'kdc', kontostand: 3000, stand: '2026-09-10' },
+      { id: 'ug', kontostand: 3000, stand: '2026-09-10' },
+      { id: 'kdc', kontostand: 4000, stand: '2026-09-01' },
       { id: 'privat', kontostand: 99999, stand: '2026-09-24' },
     ], 1000);
     expect(k).toEqual({ betrag: 8000, quelle: 'konten', konten: 2, stand: '2026-09-10' });

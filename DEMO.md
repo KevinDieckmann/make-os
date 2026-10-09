@@ -126,9 +126,14 @@ aufruft (noch nicht gebaut — der Knopf unter System genügt für Vorführungen
 
 ## Bekannte Grenzen (Plattform-Schulden, PLATTFORM_PLAN › Paket 1)
 
-- Einige Altstellen kennen nur `kevin`/`malin` (z. B. Projekt-Besitzer `Owner`, Kalender-Zuordnung `Wer`, Blöcke im Kalender
-  anlegen, Prompts von ZOE und den Agenten mit unserem Kontext) — in der Demo fallen sie auf „beide“ bzw. leer zurück. ZOE
-  daher in der Demo nur mit eigenem Schlüssel und Bewusstsein, dass Prompts noch unseren Kontext tragen.
+- Einige Altstellen kennen nur zwei feste Personen-Schlüssel: Projekt-Besitzer `Owner` (types/common.ts), die Kalender-Zuordnung
+  `Wer` (`kalender.kevin/malin/beide`, lib/kalender/belegt.ts, lib/kalender/einstellungen.ts) und damit „Blöcke im Haushalts-Kalender
+  anlegen“; dazu der Name des Erstkontos für Bestände ohne Suffix (`ERSTKONTO`, lib/zoe/raum.ts) und das CRM-Team ohne Build-Variable
+  (`NEXT_PUBLIC_MAKE_OS_CRM_TEAM`). In der Demo fallen sie auf „beide“ bzw. leer zurück.
+- Seit 09.10. (KI-Etiketten) neutral: die Prompts von ZOE und den Agenten (Name aus dem Konto, Gesellschaften aus lib/einheiten.ts),
+  Head of Finance (Verantwortliche = Personen des Haushalts aus den Konten), Ist-Stand-Checkliste, Kalender-Agent (ohne eigene
+  Zuordnung nur der gemeinsame Kalender, mit Hinweis — nie ein fremder), Aufgaben-Serien und Meeting-Last (Inhaber aus den Konten).
+  ZOE in der Demo trotzdem nur mit eigenem Schlüssel.
 - Die alte Liquiditäts-Seite (Finanzen › Finanzmeeting) nennt Rollen im Text fest; die Finanzplanung (v3) ist neutral.
 - Der Rechenkern trägt Feldnamen wie `kevinBrutto` (nur Schema, keine Daten).
 - Termine der Demo sind nur lesbar (kein iCloud/Google).

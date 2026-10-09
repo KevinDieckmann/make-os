@@ -17,6 +17,7 @@ import { hasAnthropicKey, fremd, FREMD_REGEL, modellFehlerText } from '@/lib/ant
 import { fuerPrompt, istNutzer, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, SYSTEM_LAEUFE, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
+import { agentKategorien, agentSperre } from '@/lib/zoe/agent-kategorien';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN, LESEND } from '@/lib/zoe/gespraech-schutz';
@@ -202,7 +203,9 @@ export async function POST(req: Request) {
   const crmErlaubt = await crmWerkzeugErlaubt(personStreng(req));
   // Nur Fach-Agenten (Härtetest 09.10.): Systemläufe des Takts (Morgenlauf, Löschfristen, Agenten-Lauf `faden` …) standen bisher mit im
   // Angebot von run_agent/starte_auftraege — ein Zuruf (oder ein eingeschleuster Satz) hätte sie mit Modellkosten außer der Reihe gestartet.
-  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)));
+  // KI-Etiketten (09.10.): nur Fach-Agenten, deren feste Kategorien für die Person frei sind (KI-Schalter je Bereich) — ein für ZOE
+  // ausgeschalteter Bereich kommt so auch nicht über das Ergebnis eines Fach-Agenten zurück ins Gespräch (lib/zoe/agent-kategorien.ts).
+  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)) && !agentSperre(a, kiS, gesundheitKi));
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
   const crmBezug = crmErlaubt && kiS.bereiche.crm ? crmBezugAus(payload.bezug) : null;
 
@@ -351,7 +354,9 @@ export async function POST(req: Request) {
             return { inhalt: l.text, ok: l.gestapelt || !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
           }
           const l = await runAgent(agentId as Ausfuehrbar, String(a.input?.auftrag ?? ''), origin, person);
-          return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}) };
+          // KI-Etiketten (09.10.): das Ergebnis trägt seine Kategorien (Gesundheit nur, wenn der Lauf sie mit (b) hatte) — die Schleife nimmt
+          // sie in den Zustand, der NÄCHSTE Modellaufruf trägt sie, das KI-Tor greift (vorher ging z. B. die Tagesform ohne Etikett weiter).
+          return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), kategorien: l.kategorien ?? agentKategorien(agentId, false) };
         },
       });
 

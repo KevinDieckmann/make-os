@@ -445,3 +445,20 @@ describe('(7) „Head an“: Läufe, die nur wegen „Head aus“ warteten, lauf
     expect((await fadenVon('person-a', fadenId))!.lauf?.fehler ?? '').toMatch(/Monatsbudget/);
   });
 });
+
+// ── Analyse 09.10. (Trennung/Plattform, klein): alte Heads hängen nicht mehr am Kalender-Schalter ─────────────────────────────
+
+describe('Alte Heads: Kalender-Bereich für die KI aus → der Lauf nutzt trotzdem das Modell (ohne Termin-Zeiten, ohne Etikett „kalender“)', () => {
+  afterAll(async () => {
+    const { aendereKiEinstellungen } = await import('@/lib/datenschutz/ki-einstellungen');
+    await aendereKiEinstellungen(d => ({ ...d, instanz: { ...(d.instanz ?? {}), bereiche: { ...(d.instanz?.bereiche ?? {}), kalender: true } } }));
+  });
+  it('Sales-Wochenreview von Hand mit Kalender aus: Modellaufruf findet statt (vorher: KI-Tor gesperrt → nur Regelwerk)', async () => {
+    const { aendereKiEinstellungen } = await import('@/lib/datenschutz/ki-einstellungen');
+    await aendereKiEinstellungen(d => ({ ...d, instanz: { ...(d.instanz ?? {}), bereiche: { ...(d.instanz?.bereiche ?? {}), kalender: false } } }));
+    ki.folge.push(text(JSON.stringify({ status: 'gruen', zusammenfassung: 'Ruhige Woche.', vorschlaege: [] })), text(JSON.stringify({ status: 'gruen', zusammenfassung: 'Ruhige Woche.', vorschlaege: [] })));
+    const { headLauf } = await import('@/lib/heads/lauf');
+    await headLauf({ head: 'sales', modus: 'wochenreview', person: 'person-a', ausgeloest: 'hand' });
+    expect(ki.anfragen.length).toBeGreaterThan(0);
+  });
+});

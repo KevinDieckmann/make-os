@@ -125,5 +125,7 @@ export async function POST(req: Request) {
   const antwort = { begruendung: begruendungNeutral(String(r.data.begruendung ?? '').slice(0, 400), verboten), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE };
   // Hintergrundlauf (ZOE, Takt): der Vorschlag wartet auf der Ernährungs-Seite, bis ihn jemand übernimmt oder ein neuer kommt (27.09.).
   if (ablegen) await updateJson<{ zeit: string; vorschlag: typeof antwort }>(VORSCHLAG, () => ({ zeit: jetzt, vorschlag: antwort })).catch(() => { /* nur im Lauf-Text */ });
-  return NextResponse.json({ ...antwort, abgelegt: ablegen });
+  // `gesundheit` (09.10., KI-Etiketten): standen Gesundheitsangaben der Profile im Prompt? Wer den Text weitergibt (ZOE `run_agent`), trägt
+  // dann das Etikett — nur in der Antwort, nie im abgelegten Vorschlag.
+  return NextResponse.json({ ...antwort, abgelegt: ablegen, gesundheit: mitGesundheit });
 }
