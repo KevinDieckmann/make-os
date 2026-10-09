@@ -8,13 +8,13 @@
 
 import { useState } from 'react';
 import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, SCHRIFT, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
-import type { FadenAntwort, HeadKarte, LaufSchritt, Nachricht } from '@/lib/agenten/typen';
+import { laufEingereiht, type FadenAntwort, type HeadKarte, type LaufSchritt, type Nachricht } from '@/lib/agenten/typen';
 import { Chip, Eigenschaft, Hinweis, Karte, Knopf, Leer, Leerzustand } from '../ui';
 import { KuerzelKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
-import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
+import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
-import { agentAusSchluessel, dauerText, delegationTeile, euro, euroAusUsd, FADEN_STATUS_NAME, zeitKurz } from './regeln';
+import { agentAusSchluessel, dauerText, delegationTeile, euro, euroAusUsd, fadenStatusName, zeitKurz } from './regeln';
 import { KUGEL_GROESSE } from './masse';
 
 const SCHRITT_ZEICHEN: Readonly<Record<LaufSchritt['status'], string>> = { offen: '○', laeuft: '◐', fertig: '✓', fehler: '✕', uebersprungen: '–' };
@@ -135,6 +135,16 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
     return true;
   };
 
+  const eigen = !!fa && !(w.faeden.zustand === 'da' && (w.faeden.daten.faeden.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer);
+  const loeschen = async () => {
+    if (!fa) return;
+    if (!(await w.bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ (${name}) wird gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    const r = await fadenLoeschen(fa.faden.id, fa.stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    melde(`Thread „${fa.faden.titel}“ gelöscht.`, 'gut');
+    oeffne(k ? { h: k.id } : {}, true);
+  };
+
   const zweiteMeinung = async () => {
     if (!fa || !k) return;
     const text = `Zweite Meinung bitte: Prüf das Ergebnis aus Thread „${fa.faden.titel}“ (${name}) kritisch — was fehlt, was stimmt nicht, was würdest du anders machen?`;
@@ -151,9 +161,9 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
         <KuerzelKugel name={name} farbe={farbe} bereich={k?.bereich} groesse={KUGEL_GROESSE.kopf} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2 style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink }}>{name}</h2>
-          <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{m?.rolle ?? (fa ? FADEN_STATUS_NAME[fa.faden.status] : '')}</div>
+          <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{m?.rolle ?? (fa ? fadenStatusName({ status: fa.faden.status, eingereiht: laufEingereiht(fa.faden) }) : '')}</div>
         </div>
-        {fa && <Chip farbe={fa.faden.status === 'wartet' ? LEUCHT.achtung : fa.faden.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{FADEN_STATUS_NAME[fa.faden.status]}</Chip>}
+        {fa && <Chip farbe={fa.faden.status === 'wartet' && !laufEingereiht(fa.faden) ? LEUCHT.achtung : fa.faden.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{fadenStatusName({ status: fa.faden.status, eingereiht: laufEingereiht(fa.faden) })}</Chip>}
       </header>
       {fa?.faden.fremdGelesen && <Hinweis art="info">Dieser Thread hat fremden Text gelesen (Web, Mails, Notizen) — alles Schreibende geht ab jetzt nur als Vorschlag.</Hinweis>}
       {fa && <LaufKopf fa={fa} />}
@@ -164,7 +174,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
         onAlsSkill={k ? (n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(m ? { mitarbeiterId: m.id } : {}), ...(fa ? { ausFaden: fa.faden.id } : {}) } }) : undefined}
         unten={wartend ? <Schreibt name={name} entsteht={entsteht} /> : undefined} />
       <ChatFeld platzhalter={fa ? `Nachricht an ${name} …` : `Auftrag an ${name} — Ziel, Format, Grenzen, Quellen …`} onSenden={senden} laeuft={!!wartend}
-        zusatz={fa && k ? <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf> : undefined}
+        zusatz={fa ? <>{eigen && <Knopf leise farbe={LEUCHT.kritisch} onClick={loeschen}>Thread löschen</Knopf>}{k && <Knopf leise onClick={zweiteMeinung}>Zweite Meinung</Knopf>}</> : undefined}
         unten={form === 'handy' ? 'var(--agenten-feld-unten, 0px)' : undefined} />
     </div>
   );

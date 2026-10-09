@@ -393,7 +393,7 @@ async function pipeline(i: Eingabe, s: CrmSicht): Promise<string> {
   const rot = offen.filter(c => p.gesundheit(c, heute).ampel === 'rot');
   const naechste = offen.filter(c => c.naechsterSchritt).sort((a, b) => a.naechsterSchritt!.datum.localeCompare(b.naechsterSchritt!.datum));
   const koerper = [
-    `Offen ${pr.offen} · gewichtet ${eur(pr.gewichtet)} (ohne hängende ${eur(pr.gewichtetOhneHaengende)}) · Commit ${eur(pr.commit)} · Best Case ${eur(pr.bestCase)} · ohne nächsten Schritt ${pr.ohneSchritt}`,
+    `Offen ${eur(pr.offen)} · gewichtet ${eur(pr.gewichtet)} (ohne hängende ${eur(pr.gewichtetOhneHaengende)}) · Commit ${eur(pr.commit)} · Best Case ${eur(pr.bestCase)} · ohne nächsten Schritt ${pr.ohneSchritt}`,
     `Win Rate (${wr.fenster} Tage): ${wr.quote === null ? 'noch zu wenige Abschlüsse' : `${Math.round(wr.quote * 100)} %`} (${wr.gewonnen} gewonnen / ${wr.verloren} verloren)`,
     block('Je Stufe', pr.jeStufe.map(x => `- ${x.label}: ${x.anzahl} Deals · ${eur(x.wert)} · gewichtet ${eur(x.gewichtet)}${x.haengt ? ` · ${x.haengt} hängen` : ''}`)),
     block('Je Person', p.prognoseJePerson(offen, heute, crm.wahrscheinlichkeiten).map(x => `- ${x.person}: ${x.anzahl} Deals · gewichtet ${eur(x.gewichtet)} · Commit ${eur(x.commit)} · ${x.haengt} hängen · ${x.ohneSchritt} ohne Schritt`)),

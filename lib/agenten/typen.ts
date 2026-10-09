@@ -219,6 +219,14 @@ export interface LaufZustand {
   wartetAuf?: 'business-frei' | 'not-aus' | 'plan';
 }
 
+/**
+ * Nur eingereiht (Rundgang 09.10. „Agenten live“): der Lauf steht in der Warteschlange und hat noch nicht begonnen — kein Grund, keine Schritte,
+ * kein „wartet auf …“. Der Thread trägt dann den Status `wartet`, braucht aber NIEMANDEN: vorher stand jeder frisch beauftragte Mitarbeiter als
+ * „⚑ … fragt“ mit Antwortfeld unter „Wartet auf dich“, bis der Arbeiter ihn nahm. Rein.
+ */
+export const laufEingereiht = (f: { status: FadenStatus; lauf?: Pick<LaufZustand, 'status' | 'fehler' | 'wartetAuf' | 'schritte'> }): boolean =>
+  f.status === 'wartet' && !!f.lauf && f.lauf.status === 'wartet' && !f.lauf.fehler && !f.lauf.wartetAuf && !(f.lauf.schritte?.length);
+
 // ── Arbeitsstand, Aufträge an Mitarbeiter, Plan-Freigabe (Paket 1 in faeden.ts erweitert; seit Paket 4b im Vertrag) ────────
 
 /** Auftrag an einen Mitarbeiter (R10): Ziel, Format, Grenzen, Quellen — Pflicht, vom Werkzeug-Schema erzwungen. */
@@ -701,6 +709,8 @@ export interface FadenKurz {
   aktualisiert: string;
   elternId?: string;
   ungelesen?: boolean;
+  /** `status: 'wartet'`, aber nur eingereiht (`laufEingereiht`) — wartet auf den Arbeiter, nicht auf die Person. */
+  eingereiht?: boolean;
 }
 /**
  * Eine Kennzahl im Kopf eines Heads. `hinweis` (Rundgang 09.10.): warum der Index (noch) keinen Wert hat — der Satz der Lücke aus dem

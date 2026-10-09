@@ -327,7 +327,7 @@ export async function POST(req: Request) {
             if (name === 'head_fragen' && lauf.ok) kats.push(...(await headFrageKategorien(person, String(a.input?.head ?? '')).catch(() => [] as KiKategorie[])));
             const quelle = FREMD_WERKZEUGE[name] ?? null;
             // Ein Vorschlag im Stapel ist kein Fehlschlag (vorher zählte „NICHT AUSGEFÜHRT“ als Fehler).
-            return { inhalt: lauf.text, ok: lauf.gestapelt || !FEHLER_TEXT.test(lauf.text), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(quelle ? { quelle } : {}), kategorien: kats };
+            return { inhalt: lauf.text, ok: lauf.gestapelt || !FEHLER_TEXT.test(lauf.text), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(quelle ? { quelle } : {}), kategorien: kats };
           }
           // run_agent
           const agentId = String(a.input?.agent ?? '');
@@ -345,7 +345,8 @@ export async function POST(req: Request) {
         },
       });
 
-      const werkzeuge = aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}) }));
+      // Mit der Kennung des Vorschlags (09.10. „Agenten live“): die Karte im ZOE-Chat bietet dann Freigeben/Ablehnen an.
+      const werkzeuge = aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}), ...(x.vorschlagId ? { vorschlagId: x.vorschlagId } : {}) }));
       const marken = { fremdGelesen: aus.zustand.fremdGelesen, vertraulich: aus.zustand.vertraulich };
       const schonGelaufen = () => werkzeuge.map(w => `${w.name}${w.gestapelt ? ' (Vorschlag im Stapel)' : w.ok ? '' : ' (fehlgeschlagen)'}`).join(', ');
       // Streaming: der Browser hat die Verbindung geschlossen — keine halbe Antwort im Thread. Lief noch kein Werkzeug, geht auch die Frage
@@ -367,7 +368,7 @@ export async function POST(req: Request) {
         }
         // Es hat schon etwas gewirkt (Werkzeuge) bzw. ZOE hatte angefangen: die Antwort hält fest, was passiert ist — nie still.
         const reply = [aus.text, `⚠️ ${satz}${werkzeuge.length ? ` Schon ausgeführt: ${schonGelaufen()}.` : ''}`].filter(Boolean).join('\n\n');
-        if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken });
+        if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken, kostenCent: aus.cent });
         return { status: 200, body: { reply, fehler: satz, error: roh, ran: aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok })), stapelOffen: await offeneAnzahl().catch(() => 0), ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
       }
       const ran = aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok }));
@@ -385,7 +386,7 @@ export async function POST(req: Request) {
         : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
       const reply = aus.text || fallback;
       // ZOE-Thread: Antwort anhängen, Marken des Zugs festhalten (nur ODER — einmal fremd gelesen, bleibt das Gespräch es).
-      if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken });
+      if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken, kostenCent: aus.cent });
       const stapelOffen = await offeneAnzahl().catch(() => 0);
       // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
       return { status: 200, body: { reply, handoffs, ran, stapelOffen, ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };

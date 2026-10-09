@@ -300,7 +300,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
       const leseSicht = head.bereich === 'business' && (wname === 'suche_wissen' || wname === 'lies_notiz');
       const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht });
       const quelle = FREMD_WERKZEUGE[wname] ?? null;
-      return { inhalt: lauf.text, ok: lauf.ok, ...(quelle && lauf.ok ? { quelle } : {}), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(kat ? { kategorien: [kat] } : {}) };
+      return { inhalt: lauf.text, ok: lauf.ok, ...(quelle && lauf.ok ? { quelle } : {}), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(kat ? { kategorien: [kat] } : {}) };
     },
   });
 

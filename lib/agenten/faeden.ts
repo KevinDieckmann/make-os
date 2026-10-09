@@ -11,7 +11,7 @@
 //     `merksatz`); nie Daten Dritter, nie aus einem Thread mit fremdem Text (R12).
 // Typen von Paket 0 werden nur ERWEITERT (lokale Felder, alle optional) — `Faden`/`Nachricht` aus typen.ts bleiben gültig.
 
-import { GRENZEN, agentSchluessel, type AgentRef, type AuftragKarte, type Bereich, type Brett, type BrettEintrag, type Faden, type FadenBestand, type FadenKurz, type FadenStatus, type LaufZustand, type Merksatz, type Nachricht, type PlanFreigabe } from './typen';
+import { GRENZEN, agentSchluessel, laufEingereiht, type AgentRef, type AuftragKarte, type Bereich, type Brett, type BrettEintrag, type Faden, type FadenBestand, type FadenKurz, type FadenStatus, type LaufZustand, type Merksatz, type Nachricht, type PlanFreigabe } from './typen';
 
 // ── Erweiterte Formen (alle Zusatzfelder optional) ──────────────────────────────────────────────────────────────────────
 
@@ -286,6 +286,7 @@ export function kurz(f: FadenKern, betrachter: string): FadenKurz & { geteilt?: 
   return {
     id: f.id, titel: f.titel, agent: f.agent, status: f.status, aktualisiert: f.aktualisiert,
     ...(f.elternId ? { elternId: f.elternId } : {}),
+    ...(laufEingereiht(f) ? { eingereiht: true } : {}),
     ...(f.besitzer === betrachter && ungelesen(f) ? { ungelesen: true } : {}),
     ...(f.geteilt ? { geteilt: true as const } : {}),
     ...(f.besitzer !== betrachter ? { besitzer: f.besitzer } : {}),

@@ -17,10 +17,10 @@ import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Knopf, Leer, Le
 import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { LaufZeile } from './Hintergrund';
-import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
+import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import {
-  ansprache, ansprechbarFuer, ausloeserText, euro, FADEN_STATUS_NAME, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
+  ansprache, ansprechbarFuer, ausloeserText, euro, fadenStatusName, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
 } from './regeln';
 import { KUGEL_GROESSE } from './masse';
 
@@ -93,7 +93,7 @@ export function HeadKopf({ k, def }: { k: HeadKarte | null; def: HeadDef | null 
 
 function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }) {
   const w = useAgenten();
-  const { stapel, oeffne, melde, dialog, form, faeden } = w;
+  const { stapel, oeffne, melde, dialog, form, faeden, bestaetigen } = w;
   const heads = w.agenten.zustand === 'da' ? w.agenten.daten.heads : [];
   // Threads dieses Heads, jüngster zuerst. Ohne Thread in der Adresse öffnet der jüngste (der Verlauf geht weiter);
   // „+ Neuer Thread“ beginnt bewusst leer.
@@ -112,6 +112,17 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
   const ansprechbar = ansprechbarFuer('head', heads, k.id);
   const fa = fadenId && faden.stand.zustand === 'da' ? faden.stand.daten : null;
   const neuerThread = () => { setNeu(true); if (ausAdresse) oeffne({ h: k.id }); };
+  // Nur eigene Threads (ein geteilter gehört der anderen Person — die Route lehnt ihn ohnehin ab).
+  const eigenerThread = !!fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer;
+  const loeschen = async () => {
+    if (!fa) return;
+    if (!(await bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ und die Threads seiner Mitarbeiter werden gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    const r = await fadenLoeschen(fa.faden.id, fa.stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    melde(`Thread „${fa.faden.titel}“ gelöscht.`, 'gut');
+    setNeu(true);
+    oeffne({ h: k.id }, true);
+  };
 
   const senden = async (text: string): Promise<boolean> => {
     const an = ansprache(text, ansprechbar);
@@ -148,9 +159,10 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
       {threads.length > 0 && (
         <div className="ui-pillen ui-pillen-einzeilig" aria-label="Threads">
           <Wahl klein an={!fadenId} onClick={neuerThread}>+ Neuer Thread</Wahl>
-          {threads.slice(0, 8).map(t => <Wahl key={t.id} klein an={t.id === fadenId} onClick={() => { setNeu(false); oeffne({ h: k.id, f: t.id }); }}>{t.titel}{t.status === 'wartet' ? ' ⚑' : ''}</Wahl>)}
+          {threads.slice(0, 8).map(t => <Wahl key={t.id} klein an={t.id === fadenId} onClick={() => { setNeu(false); oeffne({ h: k.id, f: t.id }); }}>{t.titel}{t.status === 'wartet' && !t.eingereiht ? ' ⚑' : ''}</Wahl>)}
         </div>
       )}
+      {eigenerThread && <div><Knopf leise farbe={LEUCHT.kritisch} onClick={loeschen}>Thread löschen</Knopf></div>}
       <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel} leer={leer} fadenId={fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer ? fa.faden.id : undefined}
         onAlsSkill={(n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech', ...(fa ? { ausFaden: fa.faden.id } : {}) } })}
         unten={laeuft ? <Schreibt name={k.kurz} entsteht={entsteht} /> : undefined} />
@@ -181,7 +193,7 @@ function Aktivitaet({ k }: { k: HeadKarte }) {
           <Liste>
             {threads.map(t => <Zeile key={t.id} onClick={() => oeffne(t.agent.art === 'head' ? { h: k.id, f: t.id } : { f: t.id })} titel={t.titel}
               unter={`${t.agent.art === 'mitarbeiter' ? k.mitarbeiter.find(m => m.id === (t.agent as { mitarbeiterId: string }).mitarbeiterId)?.name ?? 'Mitarbeiter' : k.kurz} · ${zeitKurz(t.aktualisiert, jetzt)}`}
-              rechts={<Chip farbe={t.status === 'wartet' ? LEUCHT.achtung : t.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{FADEN_STATUS_NAME[t.status]}</Chip>} />)}
+              rechts={<Chip farbe={t.status === 'wartet' && !t.eingereiht ? LEUCHT.achtung : t.status === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{fadenStatusName(t)}</Chip>} />)}
           </Liste>
         ) : <Leer>Noch keine Threads.</Leer>}
       </div>

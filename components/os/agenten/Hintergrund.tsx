@@ -18,7 +18,7 @@ import { headFarbe } from './Avatar';
 import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelEntscheiden } from './daten';
 import { useAgenten } from './kontext';
 import {
-  dauerText, euro, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, wiederholText, zeitKurz,
+  dauerText, euro, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, naechstesTitel, schrittAnteil, vorschlagDetail, wartendeFaeden, wiederholText, zeitKurz,
   type Risiko, type VorschlagKurz,
 } from './regeln';
 import { WEG } from '@/lib/wege';
@@ -107,8 +107,9 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
   const { form, melde, bestaetigen, jetzt } = useAgenten();
   const [erledigt, setErledigt] = useState<string | null>(null);
   const risiko = risikoVon(v);
+  const detail = vorschlagDetail(v);
   const entscheide = async (entscheidung: 'freigeben' | 'ablehnen', fragen: boolean) => {
-    if (fragen && !(await bestaetigen({ titel: entscheidung === 'freigeben' ? 'Freigeben?' : 'Ablehnen?', text: `„${v.titel}“`, ja: entscheidung === 'freigeben' ? 'Freigeben' : 'Ablehnen', gefahr: entscheidung === 'ablehnen' }))) return;
+    if (fragen && !(await bestaetigen({ titel: entscheidung === 'freigeben' ? 'Freigeben?' : 'Ablehnen?', text: `„${v.titel}“${detail ? ` — ${detail}` : ''}`, ja: entscheidung === 'freigeben' ? 'Freigeben' : 'Ablehnen', gefahr: entscheidung === 'ablehnen' }))) return;
     const r = await stapelEntscheiden({ id: v.id, entscheidung });
     if (r.ok) { setErledigt(entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'); melde(`„${v.titel}“ ${entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'}.`, 'gut'); }
     else melde(r.text, 'kritisch');
@@ -120,6 +121,7 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
         {v.zeit && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{zeitKurz(v.zeit, jetzt)}</span>}
       </div>
       <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.4 }}>{v.titel}</div>
+      {detail && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{detail}</div>}
       {erledigt ? <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Erledigt: {erledigt}.</div> : (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
           {risiko !== 'aussen' && <Knopf onClick={() => entscheide('freigeben', risiko !== 'risikoarm')}>Freigeben</Knopf>}
@@ -263,7 +265,7 @@ function NaechstesZeile({ n }: { n: Naechstes }) {
         <span style={{ fontSize: TYP.bedien, color: C.inkDim, minWidth: 64, fontVariantNumeric: 'tabular-nums' }}>{zeitKurz(n.wann, jetzt)}</span>
         {/* Titel führt; „werktags bis …“ steht darunter — nebeneinander verdrängte es den Titel bis auf „P…“ (Rundgang 09.10.). */}
         <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titel}{n.anzahl ? ` (${n.anzahl})` : ''}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{naechstesTitel(n)}</span>
           {!!n.weitere && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}>{wiederholText(n, jetzt)}</span>}
         </span>
         {h && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{h.kurz}</span>}

@@ -11,7 +11,7 @@
 //     „Als Skill speichern“;
 //   • das Feld: 16 px (kein Zoom am iPhone), Enter sendet, @Name spricht an (Chips), Mikro zum Diktieren (useStimme).
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Mic, MicOff, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react';
 import { FARBE as C, ECKE, FLAECHE_STIL, LEUCHT, RAND, SCHRIFT, TIEF, TYP, ABSTAND, MIKRO, ZIEL } from '@/lib/make-one/design';
 import type { FadenKurz, HeadKarte, Nachricht } from '@/lib/agenten/typen';
@@ -21,7 +21,7 @@ import { Chip, Knopf, Leer, SymbolKnopf, Wahl, eingabe, Eigenschaft, Schalter } 
 import { KuerzelKugel, ZoeStandbild, headFarbe } from './Avatar';
 import { bewerten, ladeFaden, stapelEntscheiden, type StapelAntwort } from './daten';
 import {
-  absenderVon, agentAusSchluessel, delegationTeile, euroAusUsd, FADEN_STATUS_NAME, risikoVon, RISIKO_NAME, zeitKurz,
+  absenderVon, agentAusSchluessel, delegationTeile, euroAusUsd, fadenStatusFarbe, fadenStatusName, risikoVon, RISIKO_NAME, zeitKurz,
   type Ansprechbar, type Risiko,
 } from './regeln';
 import { FELD_ZEILEN, KUGEL_GROESSE, NACHRICHT_MAX } from './masse';
@@ -66,14 +66,14 @@ function Daumen({ id, fadenId, start }: { id: string; fadenId?: string; start?: 
 
 // ── Vorschlag aus dem Stapel als Karte im Chat ───────────────────────────────────────────────────────────────────────────
 
-export function VorschlagKarte({ vorschlagId, werkzeug, stapel }: { vorschlagId?: string; werkzeug: string; stapel: Abruf<StapelAntwort> }) {
+export function VorschlagKarte({ vorschlagId, stapel }: { vorschlagId?: string; /** Name des Werkzeugs (nur für Schlüssel/Tests, nie als Text). */ werkzeug: string; stapel: Abruf<StapelAntwort> }) {
   const { melde, bestaetigen } = useAgenten();
   const v = stapel.zustand === 'da' ? stapel.daten.vorschlaege.find(x => x.id === vorschlagId) : undefined;
   const [weg, setWeg] = useState<string | null>(null);
   const risiko: Risiko = v ? risikoVon(v) : 'intern';
   const entscheide = async (entscheidung: 'freigeben' | 'ablehnen') => {
     if (!v) return;
-    if (entscheidung === 'ablehnen' && !(await bestaetigen({ titel: 'Vorschlag ablehnen?', text: `„${v.titel}“ wird nicht ausgeführt.`, ja: 'Ablehnen', gefahr: true }))) return;
+    if (entscheidung === 'ablehnen' && !(await bestaetigen({ titel: 'Vorschlag ablehnen?', text: `„${v.titel}“${v.nachher ? ` (${v.nachher.slice(0, 120)})` : ''} wird nicht ausgeführt.`, ja: 'Ablehnen', gefahr: true }))) return;
     const r = await stapelEntscheiden({ id: v.id, entscheidung });
     if (r.ok) { setWeg(entscheidung === 'freigeben' ? 'Freigegeben.' : 'Abgelehnt.'); melde(entscheidung === 'freigeben' ? `„${v.titel}“ freigegeben.` : `„${v.titel}“ abgelehnt.`, 'gut'); }
     else melde(r.text, 'kritisch');
@@ -84,7 +84,8 @@ export function VorschlagKarte({ vorschlagId, werkzeug, stapel }: { vorschlagId?
         <span style={{ ...MIKRO }}>Vorschlag</span>
         <Chip farbe={RISIKO_FARBE[risiko]}>{RISIKO_NAME[risiko]}</Chip>
       </div>
-      <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.45 }}>{v ? v.titel : `Ein Vorschlag (${werkzeug}) liegt zur Freigabe bereit.`}</div>
+      {/* Ohne Eintrag im offenen Stapel: schon entschieden (bzw. ein älterer Verweis ohne Kennung) — nie der Werkzeug-Name als Text (Rundgang 09.10.). */}
+      <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.45 }}>{v ? v.titel : vorschlagId && stapel.zustand === 'da' ? 'Dieser Vorschlag ist schon entschieden — der Stand steht unter Freigaben.' : 'Ein Vorschlag liegt im Freigabe-Stapel.'}</div>
       {v?.nachher && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{v.nachher}</div>}
       {weg ? <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>{weg}</div> : (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
@@ -138,7 +139,7 @@ export function VerweisKarte({ n, kind, startOffen }: { n: Nachricht; kind?: Fad
     const inhalt = n.text.includes(':') ? n.text.slice(n.text.indexOf(':') + 1).trim() : n.text;
     return (
       <div style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: `${ABSTAND.m}px ${ABSTAND.l}px`, display: 'grid', gap: ABSTAND.s, borderLeft: `3px solid ${TIEF.rand(LEUCHT.gut)}` }}>
-        <div style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.ink }}>◂ Bericht aus Thread „{titel}“ {kind && <Chip farbe={kind.status === 'fehler' ? LEUCHT.kritisch : LEUCHT.gut}>{FADEN_STATUS_NAME[kind.status]}</Chip>}</div>
+        <div style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.ink }}>◂ Bericht aus Thread „{titel}“ {kind && <Chip farbe={kind.status === 'fehler' ? LEUCHT.kritisch : LEUCHT.gut}>{fadenStatusName(kind)}</Chip>}</div>
         <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{inhalt}</div>
         <div><Knopf leise onClick={() => oeffne({ f: v.fadenId })}>Thread öffnen ›</Knopf></div>
       </div>
@@ -150,7 +151,7 @@ export function VerweisKarte({ n, kind, startOffen }: { n: Nachricht; kind?: Fad
         style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, width: '100%', minHeight: ZIEL.handy, padding: `${ABSTAND.s}px ${ABSTAND.l}px`, border: 'none', background: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, textAlign: 'left', cursor: 'pointer' }}>
         {offen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
         <span style={{ flex: 1, minWidth: 0 }}>An {wer ? `„${wer}“` : 'Thread'} gesendet · „{titel}“</span>
-        {kind && <Chip farbe={kind.status === 'laeuft' ? C.aktiv : kind.status === 'fehler' ? LEUCHT.kritisch : kind.status === 'wartet' ? LEUCHT.achtung : LEUCHT.gut}>{FADEN_STATUS_NAME[kind.status]}</Chip>}
+        {kind && <Chip farbe={fadenStatusFarbe(kind) === 'laeuft' ? C.aktiv : kind.status === 'fehler' ? LEUCHT.kritisch : kind.status === 'wartet' ? LEUCHT.achtung : LEUCHT.gut}>{fadenStatusName(kind)}</Chip>}
       </button>
       {offen && (
         <div style={{ padding: `0 ${ABSTAND.l}px ${ABSTAND.m}px`, display: 'grid', gap: ABSTAND.s }}>
@@ -183,7 +184,8 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
   const kurs = agenten.zustand === 'da' ? agenten.daten.kurs : undefined;
   const heads: HeadKarte[] = agenten.zustand === 'da' ? agenten.daten.heads : [];
   const stimme = useStimme(() => { /* hier wird nur vorgelesen */ });
-  if (!nachrichten.length) return <div style={{ display: 'grid', gap: ABSTAND.m }}>{leer}{unten}</div>;
+  const ende = useZurNeuesten(nachrichten.length + (unten ? 1 : 0));
+  if (!nachrichten.length) return <div style={{ display: 'grid', gap: ABSTAND.m }}>{leer}{unten}<span ref={ende} aria-hidden style={ENDE_ANKER} /></div>;
   return (
     <ol aria-label="Verlauf" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: ABSTAND.l }}>
       {nachrichten.map(n => {
@@ -227,9 +229,32 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
         );
       })}
       {unten && <li>{unten}</li>}
+      <li aria-hidden ref={ende} style={ENDE_ANKER} />
     </ol>
   );
 }
+
+/**
+ * Rundgang 09.10. („Agenten live“): neue Nachrichten und der entstehende Text standen UNTER dem klebenden Eingabefeld — man sah die Antwort nicht,
+ * ohne selbst zu scrollen. Ändert sich die Zahl der Einträge (eigene Nachricht, „schreibt …“, Antwort), rückt das Ende des Verlaufs in Sicht —
+ * nie beim ersten Anzeigen (dann bleibt der Überblick oben), und ohne Animation bei reduzierter Bewegung. Der Rand unten hält Platz fürs Feld frei.
+ */
+/** Wie viel Platz das klebende Feld unten braucht (Ansprech-Chips + Feld + Knöpfe) — Abstand für „in Sicht scrollen“. */
+const FELD_PLATZ = 240;
+const ENDE_ANKER: CSSProperties = { display: 'block', height: 1, scrollMarginBottom: FELD_PLATZ };
+function useZurNeuesten(zahl: number) {
+  const ref = useRef<HTMLElement | null>(null);
+  const vorher = useRef<number | null>(null);
+  useEffect(() => {
+    const alt = vorher.current;
+    vorher.current = zahl;
+    if (alt === null || zahl <= alt) return;
+    const ruhig = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    ref.current?.scrollIntoView({ block: 'end', behavior: ruhig ? 'auto' : 'smooth' });
+  }, [zahl]);
+  return (el: HTMLElement | null) => { ref.current = el; };
+}
+
 
 /**
  * „ZOE schreibt …“ während einer Antwort — mit Streaming (09.10.) der Text, während er entsteht, und „ruft … auf“, solange ein Werkzeug
@@ -237,11 +262,19 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
  */
 export function Schreibt({ name, entsteht }: { name: string; entsteht?: { text: string; werkzeug: string | null } }) {
   const status = entsteht?.werkzeug ? `${name} ruft ${entsteht.werkzeug} auf …` : `${name} schreibt …`;
-  if (!entsteht?.text) return <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</div>;
+  const unten = useRef<HTMLDivElement>(null);
+  const laenge = entsteht?.text.length ?? 0;
+  // Der entstehende Text wächst nach unten — die Statuszeile bleibt über dem Feld in Sicht (nur, wenn sie darunter verschwände).
+  useEffect(() => {
+    const el = unten.current;
+    if (!el || typeof window === 'undefined') return;
+    if (el.getBoundingClientRect().bottom > window.innerHeight - FELD_PLATZ) el.scrollIntoView({ block: 'end' });
+  }, [laenge]);
+  if (!entsteht?.text) return <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_PLATZ }}>{status}</div>;
   return (
     <div style={{ display: 'grid', gap: ABSTAND.xs, maxWidth: NACHRICHT_MAX }}>
       <div style={{ fontSize: TYP.body, lineHeight: 1.55, color: C.ink, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{entsteht.text}</div>
-      <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{status}</div>
+      <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_PLATZ }}>{status}</div>
     </div>
   );
 }
@@ -281,7 +314,9 @@ export function ChatFeld({ platzhalter, ansprechbar = [], onSenden, laeuft, aus,
   };
   return (
     <form onSubmit={e => { e.preventDefault(); void los(); }} aria-label="Nachricht"
-      style={{ position: 'sticky', bottom: unten ?? 0, zIndex: 5, display: 'grid', gap: ABSTAND.s, padding: `${ABSTAND.m}px 0 ${ABSTAND.s}px`, background: `linear-gradient(to top, ${C.grund} 78%, ${TIEF.flaeche(C.grund)})` }}>
+      style={{ position: 'sticky', bottom: unten ?? 0, zIndex: 5, display: 'grid', gap: ABSTAND.s, padding: `${ABSTAND.m}px 0 ${ABSTAND.s}px`,
+        // Deckend bis auf den oberen Rand (Rundgang 09.10.: vorher war das obere Fünftel durchsichtig — der Verlauf schien durch die Ansprech-Chips).
+        background: `linear-gradient(to top, ${C.grund} calc(100% - ${ABSTAND.m}px), transparent)` }}>
       {(vorschlag.length ? vorschlag : ansprechbar).length > 0 && (
         <div className="ui-pillen ui-pillen-einzeilig" aria-label="Ansprechen">
           {(vorschlag.length ? vorschlag : ansprechbar).map(a => (

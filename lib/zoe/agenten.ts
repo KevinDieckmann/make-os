@@ -418,6 +418,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       case 'selbstbild': {
         const d = await post('/api/zoe/selbstbild', {}, 120_000);
         if (!d.ok) return fehl(`Selbstbild fehlgeschlagen: ${kuerze(d.ergebnisse?.[0]?.fehler ?? d.error, 200)}`);
+        if (d.uebersprungen) return gut(`SELBSTBILD: übersprungen — ${kuerze(d.uebersprungen, 120)}.`);
         return gut(`SELBSTBILD: ${d.geschrieben} von ${d.von} Blättern im Vault aktualisiert.`);
       }
       case 'finanzchef': {

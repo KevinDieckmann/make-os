@@ -67,6 +67,8 @@ const eur = (n: unknown) => {
 // Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch `ug`).
 const firma = (rein: unknown) => firmaAusAngabe(rein);
 const text = (v: unknown, n = 120) => String(v ?? '').trim().slice(0, n);
+/** Ein Tag „JJJJ-MM-TT“ in der Vorschau als „TT.MM.JJJJ“ (09.10. „Agenten live“: im Stapel stand das ISO-Datum) — sonst unverändert. */
+export const tagDe = (v: unknown): string => { const t = text(v, 10); const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t); return m ? `${m[3]}.${m[2]}.${m[1]}` : t; };
 
 // ── Trockenläufe ───────────────────────────────────────────────────────────
 // Jeder liest genau den Bestand, den die Ausführung anfassen würde. Dadurch
@@ -93,7 +95,7 @@ async function vsRechnung(i: Record<string, unknown>): Promise<Vorschau> {
   const neu = [
     i.betrag != null ? eur(i.betrag) : r ? eur(r.betrag) : '—',
     i.status ? String(i.status) : r?.status,
-    i.faellig ? `fällig ${i.faellig}` : undefined,
+    i.faellig ? `fällig ${tagDe(i.faellig)}` : undefined,
   ].filter(Boolean).join(' · ');
   return {
     titel: r ? `Rechnung ${kunde} ändern` : `Rechnung ${kunde} anlegen`,
@@ -105,7 +107,7 @@ async function vsRechnung(i: Record<string, unknown>): Promise<Vorschau> {
 async function vsZahlung(i: Record<string, unknown>): Promise<Vorschau> {
   return {
     titel: `Zahlung an ${text(i.an)} eintragen`,
-    nachher: `${eur(i.betrag)}${i.faellig ? ` · fällig ${i.faellig}` : ''} — geht in die Prioritätenliste`,
+    nachher: `${eur(i.betrag)}${i.faellig ? ` · fällig ${tagDe(i.faellig)}` : ''} — geht in die Prioritätenliste`,
   };
 }
 
@@ -116,7 +118,7 @@ async function vsPlanposten(i: Record<string, unknown>): Promise<Vorschau> {
   const rhythmus = String(i.rhythmus ?? 'monatlich');
   const betrag = Number(i.betrag);
   return {
-    titel: p ? `Planposten „${titel}" ändern` : `Planposten „${titel}" anlegen`,
+    titel: p ? `Planposten „${titel}“ ändern` : `Planposten „${titel}“ anlegen`,
     vorher: p ? `${betrag < 0 ? '−' : '+'}${eur(Math.abs(p.betrag))} ${p.rhythmus}` : undefined,
     nachher: `${betrag < 0 ? '−' : '+'}${eur(Math.abs(betrag))} ${rhythmus} — rechnet in der Liquiditäts-Vorschau mit`,
   };
@@ -156,7 +158,7 @@ async function vsMeilenstein(i: Record<string, unknown>, person?: string): Promi
   const wartet = Array.isArray(i.wartet_auf) ? (i.wartet_auf.length ? `wartet auf ${i.wartet_auf.slice(0, 10).map(x => `„${text(x, 80)}“`).join(', ')}` : 'wartet auf niemanden') : '';
   const nachher = [faellig ? `fällig ${tag(faellig)}` : '', i.erledigt === true ? 'abgehakt' : i.fortschritt != null ? `${Number(i.fortschritt)} %` : '', ziel, wartet].filter(Boolean).join(' · ');
   return {
-    titel: treffer ? `Meilenstein „${treffer.titel}"` : `Meilenstein „${text(i.titel)}" — kein Treffer`,
+    titel: treffer ? `Meilenstein „${treffer.titel}“` : `Meilenstein „${text(i.titel)}“ — kein Treffer`,
     vorher: treffer ? [faellig ? `fällig ${tag(treffer.faellig)}` : '', treffer.erledigt ? 'erledigt' : `${treffer.fortschritt} %`].filter(Boolean).join(' · ') : undefined,
     nachher: nachher || 'unverändert',
   };
@@ -173,14 +175,16 @@ async function vsFokus(i: Record<string, unknown>): Promise<Vorschau> {
   const alt = h === 'jahr' ? fokusImJahr(z?.fokus, key, jahr ?? laufend, laufend) : (z?.fokus?.[key] ?? '');
   return {
     titel: `Fokus (${h}${jahr && jahr !== laufend ? ` ${jahr}` : ''}${sp ? `, ${sp}` : ''}) setzen`,
-    vorher: alt ? `„${alt}"` : 'nicht gesetzt',
-    nachher: `„${text(i.text, 300)}"`,
+    vorher: alt ? `„${alt}“` : 'nicht gesetzt',
+    nachher: `„${text(i.text, 300)}“`,
     zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, ...(sp ? { space: sp } : {}), ...(jahr ? { jahr } : {}), text: alt } },
   };
 }
 
 /** Für die freien Werkzeuge: eine ehrliche Zeile, kein Bestandsvergleich —
  *  sie laufen ohnehin durch, die Vorschau dient nur dem Protokoll. */
+/** Priorität in Worten für die Vorschau im Stapel (09.10. „Agenten live“: vorher stand dort „(high)“). */
+export const PRIO_NAME: Readonly<Record<string, string>> = { low: 'niedrig', medium: 'mittel', high: 'hoch', critical: 'kritisch' };
 const schlicht = (titel: string, nachher: (i: Record<string, unknown>) => string) =>
   async (i: Record<string, unknown>): Promise<Vorschau> => ({ titel, nachher: nachher(i) });
 
@@ -216,7 +220,7 @@ export const REGISTER: Record<string, Eintrag> = {
   // Werkzeug zum Überschreiben oder Löschen gibt es bewusst nicht.
   suche_wissen: {
     gruppe: 'wissen', risiko: 'frei',
-    vorschau: schlicht('Im Gehirn suchen', i => `„${text(i.frage, 120)}"`),
+    vorschau: schlicht('Im Gehirn suchen', i => `„${text(i.frage, 120)}“`),
   },
   lies_notiz: {
     gruppe: 'wissen', risiko: 'frei',
@@ -224,7 +228,7 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   notiz_anlegen: {
     gruppe: 'wissen', risiko: 'frei',
-    vorschau: schlicht('Protokoll im Obsidian-Brain anlegen', i => `„${text(i.titel)}" in 03. Protokolle`),
+    vorschau: schlicht('Protokoll im Obsidian-Brain anlegen', i => `„${text(i.titel)}“ in 03. Protokolle`),
   },
   notiz_ergaenzen: {
     gruppe: 'wissen', risiko: 'frei',
@@ -236,7 +240,7 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   frag_gedaechtnis: {
     gruppe: 'gedaechtnis', risiko: 'frei',
-    vorschau: schlicht('Im Gedächtnis nachsehen', i => i.thema ? `zu „${text(i.thema)}"` : 'alles'),
+    vorschau: schlicht('Im Gedächtnis nachsehen', i => i.thema ? `zu „${text(i.thema)}“` : 'alles'),
   },
   // Business-Index (25.09.): Lesen ist frei; einen Monatsabschluss schreiben sind Finanzzahlen → Freigabe.
   // Gesundheits-Index (26.09.): Lesen ist frei — nur die eigene Person oder wer teilt.
@@ -266,7 +270,7 @@ export const REGISTER: Record<string, Eintrag> = {
       const wer = typeof i.wer === 'string' ? i.wer : '';
       return !wer || (person && wer === person) ? 'frei' : 'freigabe';
     },
-    vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}${typeof i.unter === 'string' && i.unter.trim() ? ` · Unteraufgabe von „${text(i.unter, 80)}"` : ''}`),
+    vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}“${i.priority && i.priority !== 'medium' ? ` (${PRIO_NAME[String(i.priority)] ?? String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}${typeof i.unter === 'string' && i.unter.trim() ? ` · Unteraufgabe von „${text(i.unter, 80)}“` : ''}`),
   },
   // K6a (29.09.): freie Zeit nur LESEN (freieZeitFuer — Zeiten, nie Titel).
   freie_zeit: {
@@ -277,11 +281,11 @@ export const REGISTER: Record<string, Eintrag> = {
   // Stapel legt ihn an (Blöcke-Weg, lib/planung/bloecke-server.ts). Gruppe „kalender“: Heute/Glocke zählen ihn als Kalender-Vorschlag.
   plan_block: {
     gruppe: 'kalender', risiko: 'freigabe',
-    vorschau: schlicht('Block in deinen Kalender legen', i => `„${text(i.titel)}" am ${text(i.date, 10)}`),
+    vorschau: schlicht('Block in deinen Kalender legen', i => `„${text(i.titel)}“ am ${tagDe(i.date)}`),
   },
   lies_postfach: {
     gruppe: 'inbox', risiko: 'frei',
-    vorschau: schlicht('Postfach lesen', i => i.suche ? `Suche nach „${text(i.suche, 60)}"` : 'Übersicht der neuesten Nachrichten'),
+    vorschau: schlicht('Postfach lesen', i => i.suche ? `Suche nach „${text(i.suche, 60)}“` : 'Übersicht der neuesten Nachrichten'),
   },
   setze_vitalwerte: {
     gruppe: 'gesundheit', risiko: 'frei',
@@ -395,7 +399,7 @@ export const REGISTER: Record<string, Eintrag> = {
   haushalt_buchungen: { gruppe: 'haushalt', risiko: 'frei', vorschau: schlicht('Private Buchungen suchen', i => text(i.suche) || text(i.monat) || text(i.kategorie) || 'alle') },
   haushalt_zuordnen: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private Buchungen zuordnen und Regel merken', i => `„${text(i.muster)}“ → ${text(i.kategorie)}${i.rueckwirkend === false ? '' : ' · auch rückwirkend'}`) },
   haushalt_rechnung_bezahlt: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private Rechnung als bezahlt vermerken', i => text(i.rechnung)) },
-  haushalt_rechnung_erfassen: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private offene Rechnung erfassen', i => `${text(i.an)}${i.betrag ? ` · ${eur(i.betrag)}` : ''}${i.faellig ? ` · fällig ${text(i.faellig, 10)}` : ''}`) },
+  haushalt_rechnung_erfassen: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private offene Rechnung erfassen', i => `${text(i.an)}${i.betrag ? ` · ${eur(i.betrag)}` : ''}${i.faellig ? ` · fällig ${tagDe(i.faellig)}` : ''}`) },
   setze_kontostand: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsKontostand },
   erfasse_rechnung: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsRechnung },
   erfasse_zahlung: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsZahlung },

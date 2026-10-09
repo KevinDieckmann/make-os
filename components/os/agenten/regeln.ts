@@ -232,6 +232,15 @@ export interface VorschlagKurz {
   id: string; titel: string; nachher?: string; werkzeug: string; gruppe?: string; zeit?: string; anlass?: string;
   bezug?: { art: string; id: string }; status?: string;
 }
+/**
+ * Was eine Freigabe genau bewirkt — für die Zeile „Wartet auf dich“ und die Rückfrage (Rundgang 09.10. „Agenten live“: viele Vorschläge heißen nur
+ * „Aufgabe anlegen“; zwei davon nebeneinander waren nicht zu unterscheiden, freigegeben wurde der falsche). `null`, wenn es nichts zu ergänzen gibt.
+ */
+export function vorschlagDetail(v: Pick<VorschlagKurz, 'titel' | 'nachher'>): string | null {
+  const n = (v.nachher ?? '').replace(/\s+/g, ' ').trim();
+  if (!n || n === v.titel.trim()) return null;
+  return n.length > 160 ? `${n.slice(0, 159)}…` : n;
+}
 export type Risiko = 'risikoarm' | 'intern' | 'aussen';
 export const RISIKO_NAME: Readonly<Record<Risiko, string>> = { risikoarm: 'Risikoarm', intern: 'Ändert Daten', aussen: 'Nach außen' };
 const NACH_AUSSEN = /send|mail|versand|nachricht|einlad|whatsapp|telegram|stell|post|veroeffentl|ansprache|danke|newsletter/i;
@@ -472,8 +481,27 @@ export function auftragText(d: Delegation): string {
     .join(' ');
 }
 
-/** Wartende Threads (Status „wartet“ = der Agent braucht eine Antwort der Person). */
-export const wartendeFaeden = (faeden: readonly FadenKurz[]): FadenKurz[] => faeden.filter(f => f.status === 'wartet');
+/** Titel einer Zeile „Als Nächstes“ — die Anzahl nur, wenn sie nicht schon vorne im Titel steht (Rundgang 09.10.: „2 Freigaben offen (2)“). Rein. */
+export const naechstesTitel = (n: Pick<Naechstes, 'titel' | 'anzahl'>): string => (n.anzahl && !n.titel.startsWith(`${n.anzahl} `) ? `${n.titel} (${n.anzahl})` : n.titel);
+
+/**
+ * Ist seit dem letzten Abruf ein Lauf fertig geworden (Rundgang 09.10. „Agenten live“)? Dann lädt die Seite alles neu — sonst stand der Bericht eines
+ * Mitarbeiters erst nach einem Neuladen im offenen Thread (nur die Liste „Läuft“ fragt alle 30 s nach). `vorher` = laufende Kennungen beim letzten
+ * Abruf (null = erster Abruf). Rein.
+ */
+export function laufBeendet(vorher: readonly string[] | null, jetzt: readonly string[]): boolean {
+  if (!vorher) return false;
+  const da = new Set(jetzt);
+  return vorher.some(id => !da.has(id));
+}
+
+/** Wartende Threads (Status „wartet“ = der Agent braucht eine Antwort der Person) — ohne bloß eingereihte Läufe (die warten auf den Arbeiter). */
+export const wartendeFaeden = (faeden: readonly FadenKurz[]): FadenKurz[] => faeden.filter(f => f.status === 'wartet' && !f.eingereiht);
+
+/** Status eines Threads in Worten — „eingereiht“ statt „wartet auf dich“, solange der Lauf nur in der Warteschlange steht. */
+export const fadenStatusName = (f: Pick<FadenKurz, 'status' | 'eingereiht'>): string => (f.eingereiht ? 'eingereiht' : FADEN_STATUS_NAME[f.status]);
+/** Für Farben: ein eingereihter Lauf zählt wie „läuft“ (nicht wie „wartet auf dich“). */
+export const fadenStatusFarbe = (f: Pick<FadenKurz, 'status' | 'eingereiht'>): FadenKurz['status'] => (f.eingereiht ? 'laeuft' : f.status);
 
 /** Status eines Threads in Worten. */
 export const FADEN_STATUS_NAME: Readonly<Record<FadenKurz['status'], string>> = {

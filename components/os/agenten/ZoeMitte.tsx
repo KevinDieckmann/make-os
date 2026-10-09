@@ -15,7 +15,7 @@ import { KiMarke } from '../KiMarke';
 import { Chip, Fortschritt, Karte, Knopf, Leer, Wahl } from '../ui';
 import { ZoeKopfKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
-import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, stapelEntscheiden, useAbruf, zoeFragen, type Entstehend } from './daten';
+import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, meldeNeu, stapelEntscheiden, useAbruf, zoeFragen, type Entstehend } from './daten';
 import { sichtbareHeads, useAgenten } from './kontext';
 import {
   ansprache, ansprechbarFuer, nachEisenhower, risikoVon, vorschlaegeHeute, wartendeFaeden, wiederholText, zeitKurz, zoeFadenAktuell,
@@ -122,7 +122,7 @@ export function Ueberblick() {
 
 export function ZoeMitte() {
   const w = useAgenten();
-  const { agenten, laeufe, stapel, faeden, space, melde, oeffne, form, auswahl } = w;
+  const { agenten, laeufe, stapel, faeden, space, melde, oeffne, form, auswahl, bestaetigen } = w;
   // Welcher ZOE-Thread: aus der Adresse (`f`), sonst der jüngste der Person — derselbe wie im ZoePanel und im Empfang. „Neues Gespräch“
   // setzt `neu`: dann entsteht beim ersten Senden ein neuer Thread.
   const [gewaehlt, setGewaehlt] = useState<{ id: string | null; neu: boolean }>({ id: null, neu: false });
@@ -159,7 +159,8 @@ export function ZoeMitte() {
       const r = await fadenSenden({ aktion: 'senden', agent: { art: 'head', headId: an.ziel.id }, text: an.rest, anfrageId: anfrageId() });
       setLaeuft(false);
       if (!r.ok) { melde(r.kommt ? 'Head-Chats kommen mit dem Agenten-Kern — die Nachricht ist noch nicht gesendet.' : r.text, r.kommt ? 'info' : 'kritisch'); return false; }
-      melde(`An ${an.ziel.name} gesendet — der Thread steht links unter ${an.ziel.name}.`, 'gut');
+      // Rundgang 09.10.: „steht links unter …“ stimmte nicht — links stehen nur die Mitarbeiter-Threads; die Threads des Heads stehen in seinem Chat.
+      melde(`An ${an.ziel.name} gesendet — „${r.daten.faden.titel}“ steht im Chat von ${an.ziel.name} (links „${an.ziel.name}“ öffnen).`, 'gut');
       return true;
     }
     const basis = gespeichert.length;
@@ -174,6 +175,16 @@ export function ZoeMitte() {
     if (neuerFaden) setGewaehlt({ id: r.daten.fadenId!, neu: true });
     if (vorlesen && r.daten.reply) stimme.lies(fuerStimme(r.daten.reply));
     return true;
+  };
+
+  // Gespräch löschen (Rundgang 09.10. „Agenten live“): die Route gab es, die Oberfläche nicht. Danach beginnt ein neues Gespräch.
+  const gespraechLoeschen = async () => {
+    if (!thread || thread.faden.id !== fadenId) return;
+    if (!(await bestaetigen({ titel: 'Gespräch löschen?', text: `„${thread.faden.titel}“ wird mit allen Nachrichten gelöscht — auch die Threads, die ZOE daraus an Heads gegeben hat. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
+    const r = await fadenLoeschen(thread.faden.id, thread.stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    setGewaehlt({ id: null, neu: true }); setAusstehend(null);
+    melde('Gespräch gelöscht.', 'gut');
   };
 
   return (
@@ -208,6 +219,7 @@ export function ZoeMitte() {
       {zuege.length > 0 && (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
           <Knopf leise onClick={() => { setGewaehlt({ id: null, neu: true }); setAusstehend(null); }}>Neues Gespräch</Knopf>
+          {thread && thread.faden.id === fadenId && !laeuft && <Knopf leise farbe={LEUCHT.kritisch} onClick={gespraechLoeschen}>Gespräch löschen</Knopf>}
           {heads.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>Heads direkt: {heads.slice(0, 3).map(h => (
             <button key={h.id} type="button" onClick={() => oeffne({ h: h.id })} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkDim, font: 'inherit', cursor: 'pointer', padding: `0 ${ABSTAND.xs}px` }}><Chip farbe={headFarbe(h.farbe)}>{h.kurz}</Chip></button>
           ))}</span>}

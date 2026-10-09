@@ -92,16 +92,19 @@ function zeilenAus(system, muster, n) {
     for (let j = i + 1; j < zeilen.length && r.length < n; j++) {
       const z = zeilen[j].trim();
       if (!z) { if (r.length) break; continue; }
-      if (/^[-•·*]|^\d+[.)]/.test(z)) r.push(kurz(z.replace(/^[-•·*]\s*|^\d+[.)]\s*/, ''), 110));
+      // Nur Zeilen, die nach Daten aussehen (Frist, Datum, Uhrzeit, Klammer) — keine Regeln des System-Texts.
+      if (/^[-•·*]|^\d+[.)]/.test(z) && /fällig|\d{4}-\d{2}-\d{2}|\b\d{1,2}:\d{2}\b|\[/.test(z)) r.push(kurz(z.replace(/^[-•·*]\s*|^\d+[.)]\s*/, '').replace(/\s*\[[^\]]*\]/g, ''), 110));
       else if (r.length) break;
     }
   }
   return r;
 }
 
+/** Hüllen (`<fremde_daten …>`, `<daten …>`) aus einem Werkzeug-Ergebnis nehmen — ein Modell gibt die Kapselung nicht wörtlich zurück. */
+const ohneHuelle = t => t.replace(/<\/?(fremde_daten|daten)[^>]*>/g, '');
 /** Erste Zeilen eines Werkzeug-Ergebnisses ohne Kopf- und Hülle-Zeilen. */
 function kern(ergebnis, n) {
-  return ergebnis.split('\n').map(z => z.trim()).filter(z => z && !/^<\/?(fremde_daten|daten)/.test(z) && !/^(ANTWORT von|KOPF|TEIL )/.test(z)).slice(0, n);
+  return ohneHuelle(ergebnis).split('\n').map(z => z.trim()).filter(z => z && !/^(ANTWORT von|KOPF|TEIL )/.test(z) && !/^(Ich sehe in den Daten nach|Ich lese zuerst|Hier ist, was ich gefunden habe)/.test(z)).slice(0, n);
 }
 
 /** Antwort nach einem Werkzeug-Ergebnis: zusammenfassen, was das Werkzeug gemeldet hat. */
@@ -110,18 +113,22 @@ function nachWerkzeug(l, rolle) {
   // Mitarbeiter: nach dem Lesen EINEN Vorschlag anlegen (wenn er darf und noch keinen gemacht hat), danach berichten.
   if (rolle.art === 'mitarbeiter' && l.tools.has('crm_vorschlag') && !l.gerufen.includes('crm_vorschlag') && !/PROBELAUF/.test(l.system)) {
     const kontakt = /\b(c-[0-9a-f]{8}-[0-9a-f-]{27})\b/.exec(alle)?.[1];
-    if (kontakt) {
+    const deal = /\b(ch-[a-z0-9-]{4,60})\b/.exec(alle)?.[1];
+    if (kontakt || deal) {
       const tag = new Date(Date.now() + 2 * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
-      return werkzeug('crm_vorschlag', { art: 'followup', kontakt, text: 'Zum offenen Angebot nachfassen (Prüfmodell)', faellig: tag, followup_art: 'anruf' }, 'Ich lege dazu einen Nachfass-Vorschlag an.');
+      return werkzeug('crm_vorschlag', { art: 'followup', ...(kontakt ? { kontakt } : { deal }), text: 'Zum offenen Angebot nachfassen', faellig: tag, followup_art: 'anruf' }, 'Ich lege dazu einen Nachfass-Vorschlag an.');
     }
   }
   const antwort = /ANTWORT von ([^(\n]+?)\s*\(/.exec(alle);
   if (antwort) {
-    const rest = alle.split('\n').slice(1).join(' ');
-    return text(`Ich habe bei ${antwort[1].trim()} nachgefragt. ${kurz(rest, 420)}\n\nSoll ich daraus etwas anstoßen — zum Beispiel ${antwort[1].includes('Sales') ? 'die überfälligen Deals nachfassen lassen' : 'einen Auftrag an den Head geben'}?`);
+    const punkte = kern(alle, 4).map(z => `• ${kurz(z.replace(/^[•·-]\s*/, ''), 150)}`);
+    return text(`Ich habe bei ${antwort[1].trim()} nachgefragt:\n${punkte.join('\n') || '• Keine Auffälligkeiten.'}\n\nSoll ich daraus etwas anstoßen — zum Beispiel ${antwort[1].includes('Sales') ? 'die überfälligen Deals nachfassen lassen' : 'einen Auftrag an den Head geben'}?`);
   }
-  if (/gesendet/i.test(alle)) return text(`Erledigt: ${kurz(alle, 260)}\n\nDer Bericht kommt hierher zurück, sobald er fertig ist.`);
-  if (/VORGESCHLAGEN|Freigabe-Stapel|Stapel/i.test(alle)) return text(`Ich habe das als Vorschlag in den Freigabe-Stapel gelegt — übernommen wird es erst per Klick. (${kurz(alle, 160)})`);
+  if (/gesendet/i.test(alle)) return text(`Erledigt: ${kurz(ohneHuelle(alle), 260)}\n\nDer Bericht kommt hierher zurück, sobald er fertig ist.`);
+  if (/VORGESCHLAGEN|Freigabe-Stapel|Stapel/i.test(alle)) {
+    const was = /— ([^:]+: [^.]*?)\. Das liegt/.exec(alle)?.[1];
+    return text(`Ich habe das als Vorschlag in den Freigabe-Stapel gelegt${was ? ` (${kurz(was, 140)})` : ''} — übernommen wird es erst per Klick.`);
+  }
   if (/TROCKENLAUF/.test(alle)) return text(`Probelauf: ${kurz(alle, 200)} Ergebnis: Anleitung befolgt, nichts gespeichert.`);
   const zeilen = kern(alle, 5);
   if (rolle.art === 'mitarbeiter') {
@@ -175,7 +182,8 @@ function frischeAntwort(l, rolle) {
   }
   if (rolle.art === 'mitarbeiter') {
     if (/PROBELAUF/.test(l.system)) return text(`Probelauf nach Anleitung: ich würde ${[...l.tools.keys()].filter(w => LESER.includes(w)).slice(0, 2).join(' und ') || 'die Daten'} lesen und das Ergebnis knapp zusammenfassen. Nichts gespeichert.`);
-    const leser = LESER.find(w => l.tools.has(w));
+    // Mitarbeiter lesen bevorzugt, was Kennungen trägt (Personen, Deals) — damit sie danach einen Vorschlag mit echtem Bezug machen können.
+    const leser = ['crm_suche', 'sales_lage', 'angebote_lage', ...LESER].find(w => l.tools.has(w));
     if (leser && !l.gerufen.length) return werkzeug(leser, {}, 'Ich lese zuerst die Daten.');
     return text(`Bericht: Auftrag erledigt.\n• Durchgesehen: Pipeline und offene Angebote.\n• Auffällig: ein Angebot wartet seit über einer Woche.\nOffen: nichts. Im Stapel: nichts.`);
   }
