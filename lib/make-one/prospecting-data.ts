@@ -1,5 +1,5 @@
 // ─── MAKE OS — Prospecting-Agent: Datenmodell & CAPOS-ICP ───────────────────
-// Die Zielliste + das ideale Kundenprofil (ICP) für CapOS.
+// Die Zielliste + das ideale Kundenprofil (ICP) der Instanz.
 
 export type ProspectStatus = 'neu' | 'qualifiziert' | 'kontaktiert' | 'verworfen';
 
@@ -25,14 +25,16 @@ export interface Prospect {
 
 export interface ProspectsState { icp: string; prospects: Prospect[]; }
 
-// Das ideale Kundenprofil für CapOS — editierbar in der App, hier als Startwert.
-export const DEFAULT_ICP = [
-  'Produkt: CapOS — Controlling-/Liquiditäts-Cockpit für den Mittelstand.',
-  'Zielkunde: inhaber-/familiengeführter Mittelstand in DACH, ~50–500 Mitarbeiter, spürbare Controlling-Komplexität.',
-  'Branchen-Schwerpunkt: Maschinenbau, Großhandel, produzierendes Gewerbe, projektlastige Dienstleister.',
-  'Schmerzpunkte: Liquidität in Excel, kein rollierender Forecast, DATEV-Daten nicht handlungsfähig, Bank/Reporting-Druck.',
-  'Entscheider: Geschäftsführung, kaufmännische Leitung / CFO, Leiter Controlling/Finanzen.',
-  'Auslöser (Signale): Wachstum/Neueinstellungen Finance, Finanzierungsrunde/Kredit, ERP-/DATEV-Wechsel, neue kfm. Leitung.',
+// Das ideale Kundenprofil (ICP) pflegt jede Instanz selbst (in der App, Bestand `prospects`). Startwert LEER (09.10., Plattform-
+// Regel: kein Produkt, keine Zielgruppe einer bestimmten Firma im Code) — die Vorlage zeigt nur die Gliederung.
+export const DEFAULT_ICP = '';
+export const ICP_VORLAGE = [
+  'Produkt: … (was ihr anbietet, ein Satz)',
+  'Zielkunde: … (Art, Größe, Region)',
+  'Branchen-Schwerpunkt: …',
+  'Schmerzpunkte: …',
+  'Entscheider: …',
+  'Auslöser (Signale): …',
 ].join('\n');
 
 export const PIPELINE_HINT =

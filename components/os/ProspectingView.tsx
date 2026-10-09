@@ -2,7 +2,7 @@
 
 // ─── MAKE OS — Prospecting-Agent ────────────────────────────────────────────
 // Die Zielliste zum Nordstern: Firmen rein, KI qualifiziert gegen das ICP
-// (Score + Fit + Aufhänger), Kevin priorisiert. Ansprache entwerfen — der
+// (Score + Fit + Aufhänger), ihr priorisiert. Ansprache entwerfen — der
 // Versand bleibt bei ihm.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Zahl aus schlank).
 
@@ -10,7 +10,7 @@ import { neueMailVorbereiten } from '@/lib/inbox/neue-mail';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  DEFAULT_ICP, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL,
+  DEFAULT_ICP, ICP_VORLAGE, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL,
   type Prospect, type ProspectStatus, type ProspectsState,
 } from '@/lib/make-one/prospecting-data';
 import { Building2 } from 'lucide-react';
@@ -107,7 +107,7 @@ export function ProspectingView() {
     setRowsP(rows.map(x => x.id === p.id ? { ...x, status: next } : x));
   }
 
-  // ── Outreach-Agent: Erstansprache in Kevins Stimme (Entwurf — Versand bei dir) ──
+  // ── Outreach-Agent: Erstansprache in eurer Stimme (Entwurf — Versand bei dir) ──
   const [entwurf, setEntwurf] = useState<{ fuer: string; betreff: string; email: string; linkedin: string; hinweis: string } | null>(null);
   const [entwurfBusy, setEntwurfBusy] = useState<string | null>(null);
   const [mailInfo, setMailInfo] = useState('');
@@ -162,7 +162,7 @@ export function ProspectingView() {
       <Karte i={1}>
         <details>
           <summary style={{ cursor: 'pointer', ...mikro, color: LEUCHT.business }}>Ideales Kundenprofil (ICP)</summary>
-          <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} style={{ ...feld, marginTop: 12, resize: 'vertical', lineHeight: 1.5, color: C.inkDim }} />
+          <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} placeholder={ICP_VORLAGE} aria-label="Ideales Kundenprofil" style={{ ...feld, marginTop: 12, resize: 'vertical', lineHeight: 1.5, color: C.inkDim }} />
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
         </details>
       </Karte>
@@ -207,7 +207,7 @@ export function ProspectingView() {
                       {p.angle && <div><div style={{ ...mikro, marginBottom: 4 }}>Aufhänger</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.angle}</div></div>}
                       {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Noch nicht qualifiziert — „Qualifizieren“ klicken.</div>}
 
-                      {/* Outreach: Ansprache entwerfen — Versand bleibt bei Kevin */}
+                      {/* Outreach: Ansprache entwerfen — Versand bleibt bei euch */}
                       {p.score != null && (
                         <div>
                           <Knopf leise onClick={() => ansprache(p)} aus={entwurfBusy === p.id}>

@@ -1,8 +1,8 @@
 'use client';
 
 // ─── MAKE OS — Content-/Brand-Agent ─────────────────────────────────────────
-// Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache.
-// Veröffentlichen bleibt Kevins Klick.
+// Format wählen, Thema rein — der Agent entwirft in der Stimme der Person (Sprachregeln aus den Brain-Regeln).
+// Veröffentlichen bleibt ein Klick der Person.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Knopf aus schlank).
 
 import { useEffect, useState } from 'react';
