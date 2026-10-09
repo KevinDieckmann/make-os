@@ -15,18 +15,21 @@ import { localDay } from '@/lib/zeit';
 import { anPersonMelden, botenEingerichtet, botenKanalFuer, inhalteErlaubtFuer } from '@/lib/zoe/an-person';
 import { faelligeSlots, markiere, morgenText, mittagText, abendText, wochenText, type Slot, type TaktStand } from './takt';
 import { hautTrend, streakStand, routineQuote, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
-import { sichtbarFuer } from '@/lib/planung/routinen';
+import { routinenSichtbarFuer } from '@/lib/planung/bereich-sicht-server';
 import { appLink, hinweisCheckIn } from '@/lib/datenschutz/telegram-text';
 import { aussenAdresse } from '@/lib/innen';
 import { MODULE_AUS, symptomAnzeige, type ModulStand } from './module';
 
-interface Routine { id: string; label: string; wann: string; aktiv: boolean; owner?: string }
+interface Routine { id: string; label: string; wann: string; aktiv: boolean; owner?: string; space?: string; einheit?: string }
 
 
-/** Aktive Routinen, die `person` sieht — eigene und gemeinsame (`sichtbarFuer`, Praxis-Fund 04.10.). */
+/**
+ * Aktive Routinen, die `person` sieht — eigene und gemeinsame (`sichtbarFuer`, Praxis-Fund 04.10.); seit 09.10. (E4-Rest) im Umfang der
+ * Person (`routinenSichtbarFuer`: ein Konto „nur Business“ bekommt keine Routine des Privat-Bereichs, außerhalb des Haushalts keine).
+ */
 async function routinen(person: Person): Promise<Routine[]> {
   const f = await loadJson<{ routinen?: Routine[] }>('routinen');
-  return sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), person);
+  return routinenSichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), person);
 }
 
 /** Die Module der Person (Symptom-Tagebuch, Zähler „Sauber geblieben“) — NUR aus ihrer eigenen Einstellung bzw. ihrem eigenen

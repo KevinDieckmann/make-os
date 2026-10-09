@@ -149,7 +149,11 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
   let zielWahl: { id: string; titel: string } | null = null;
   if (zielText) {
     const zd = await loadJson<ZieleDatei>('ziele');
-    const alle = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(zd?.[h]) ? zd![h] : []).filter(z => !z.abgeleitetVon));
+    // EINE Konto-Sicht (09.10., E4-Rest): ein Konto „nur Business“ wählt (und sieht in der Rückfrage) nur Ziele des Business.
+    const [{ privatAusgeblendetFuer }, { zieleOhnePrivat }] = await Promise.all([import('@/lib/zugang/konto-sicht-server'), import('@/lib/planung/bereich-sicht')]);
+    const ohnePrivat = await privatAusgeblendetFuer(person).catch(() => true);
+    const roh = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(zd?.[h]) ? zd![h] : []).filter(z => !z.abgeleitetVon));
+    const alle = ohnePrivat ? zieleOhnePrivat(roh) : roh;
     const t = treffer(alle, zielText, 'Ziel');
     if (typeof t === 'string') return `Fehlgeschlagen: ${t}`;
     zielWahl = t;
@@ -242,12 +246,16 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   if (!g.verarbeitungErlaubt) return 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (System › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.';
   const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string; space?: string; einheit?: string }[] }>('routinen');
   // Nur Routinen, die diese Person sieht (eigene + gemeinsame) — nie die der anderen abhaken oder aufzählen.
-  const { sichtbarFuer, spaceVonRoutine } = await import('@/lib/planung/routinen');
+  const { spaceVonRoutine } = await import('@/lib/planung/routinen');
   const privatAn = g.ki.an;
   // Business-Routinen sind Planung: nur mit eingeschaltetem Bereich „Aufgaben & Ziele“ (System › Datenschutz).
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
   const planungAn = (await kiSchalterFuer(wer)).bereiche.aufgaben;
-  const alle = sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer).filter(r => (spaceVonRoutine(r as Parameters<typeof spaceVonRoutine>[0]) === 'privat' ? privatAn : planungAn));
+  // EINE Konto-Sicht (09.10., E4-Rest): `routinenSichtbarFuer` — ein Konto „nur Business“ hakt (und nennt) keine Routine des Privat-Bereichs,
+  // auch nicht mit (b); außerhalb des Haushalts keine.
+  const { routinenSichtbarFuer } = await import('@/lib/planung/bereich-sicht-server');
+  const alle = (await routinenSichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer))
+    .filter(r => (spaceVonRoutine(r as Parameters<typeof spaceVonRoutine>[0]) === 'privat' ? privatAn : planungAn));
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
   const ids = zurufe.map(z => routineAusZuruf(z, alle)).filter((x): x is string => !!x);
   if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${privatAn ? '' : ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)'}${planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`;

@@ -4,6 +4,65 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — E4-Rest: nur Business auch in Routinen, Zielen, Meilensteinen; Demo-Konto Partner (nur lokal — Branch `konto-sicht-rest`, Basis `agenten-nacht` 3e94a943)
+
+Kevin 09.10. (E4): „Ja, Privates bleibt privat.“ Offen aus E4 (Abschnitt darunter): `/api/state/routinen`, `/api/state/ziele` (samt Fokus-Sätzen
+und eigenen Zielen) und `/api/state/meilensteine` lieferten einem Konto `finanzRecht: 'business'` (Partner) die gemeinsamen Privat-Routinen,
+-Ziele und -Meilensteine. Jetzt nicht mehr — serverseitig, in jeder Antwort samt 409. Wächter `tests/konto-sicht-planung.test.ts` (15 Fälle; auf
+der Basis alle rot außer den 2 reinen), Messlatte mit vier neuen Haushalts-Marken (Routine, Ziel, Meilenstein, Fokus des Privat-Bereichs).
+
+**Was privat ist — EINE reine Stelle** `lib/planung/bereich-sicht.ts` (Gegenstück zu lib/aufgaben/bereich-sicht.ts; Bereich IMMER über die
+vorhandenen Regeln, nie `space` direkt): Routine `spaceVonRoutine` (ohne Space = Privat), Block `wirksamerSpace(art, einheit)`, Ziel
+`wirksamerSpace` (ohne Space = Business, wie Lichtfäden/Jahresziele/Wochenvorschlag), Meilenstein `meilensteinSpace` (Altfeld `gesundheit` = Privat);
+die Selbstständigkeit (Privat-Einheit) ist überall Privat. **Fokus-Sätze:** nur `business:…` ist Business — der gemeinsame Satz ohne Präfix
+(`jahr`, `prio:…`) gilt für beide Bereiche und ist darum im Zweifel privat (wie der Stapel). Ob ausgeblendet wird, entscheidet weiter NUR die
+Konto-Sicht (`privatAusgeblendetFuer`); der 403-Satz `NUR_BUSINESS_PRIVAT` steht jetzt in lib/zugang/konto-sicht.ts (Aufgaben reichen ihn weiter).
+
+**Routen:**
+- Lesen: Routinen und Blöcke des Privat-Bereichs fallen VOR dem „Belegt“-Verdecken weg (der Partner bekommt sie auch nicht als „Belegt“), Ziele
+  aller Horizonte und Fokus nur Business (für jeden Bestand: geteilt, eigene, die einer anderen Person), Meilensteine nur Business.
+- Schreiben: Vorhandenes im Privat-Bereich ändern/löschen → **404** („gibt es nicht“), neu/verschoben dorthin (auch `teil` mit Space/Einheit, Fokus
+  außerhalb von `business:`) → **403** — die Prüfung läuft in der Sperre VOR der Stand-Prüfung, ein 409 trägt also nie einen Privat-Eintrag (zur
+  Sicherheit filtert die 409-Antwort trotzdem). Die Altwege PUT (Routinen, Meilensteine) behalten die ausgeblendeten Einträge in ihrer gespeicherten
+  Fassung (`privatBehalten`); nennt der Körper einen davon → 404.
+- Volle Mitglieder, Haupt-Inhaber ohne Haushalt-Eintrag und Systemläufe: unverändert (Gegenprobe im Wächter).
+
+**Umfang je Person für Leser außerhalb der Routen** — `lib/planung/bereich-sicht-server.ts` `planungsUmfangFuer(person)`: `alles` (Haushalt,
+Systemlauf), `business` (nur Business), `nichts` (außerhalb des Haushalts, Konten unlesbar). Darüber laufen jetzt `meilensteineSichtbarFuer`
+(Kalender-Fristen/Glocke/Heute, Schilde, Loop, Gesundheits-Index, ZOE-Kontext und -Werkzeuge, Aufgabe am Meilenstein, Meilenstein-Seite) und
+`routinenSichtbarFuer` (Gesundheits-Stand, -Index, -Takt, Überblick Gesundheit, ZOE `hake_routine`). **Mitgefunden (Messlatte):** Gesundheits-Stand
+und -Index gaben die Routinen „für beide“ bzw. die Meilensteine des Haushalts JEDER angemeldeten Person — auch Testkunde und fremdem Haushalt.
+Jetzt `nichts` außerhalb des Haushalts.
+
+**Weitere Lesestellen:** Überblick „Für dich“ (`lib/fluss/server.ts`): für „nur Business“ Familie und private Finanzen gar nicht (vorher lieferte
+`/api/fluss?bereich=finanzen-privat|familie` dem Partner Haushaltsbuchungen und Paar-Termine — die Messlatte rief die Route ohne `bereich` auf und sah
+es nicht), Planung nur Business. ZOE `setze_meilenstein` sucht (und nennt in der Rückfrage) nur Business-Ziele.
+
+**Oberfläche:** `/api/konto/ich` liefert `nurBusiness` (aus der Konto-Sicht); `useNurBusiness` (components/os/useInhaber.ts, dieselbe Anfrage wie
+`useInhaber`). Kopf und Handy-Menü zeigen dem Partner keinen Knopf „Privat“ (ein nur gemerktes „Privat“ springt auf Business; eine Adresse mit
+`?space=privat` bleibt — die Seiten liefern dann leer). Planung › Horizont: in „Alles“ schreibt er den Business-Fokus. **Neu für den Partner:**
+die Meilenstein-Seite (`/api/planung/meilenstein`) öffnet Business-Meilensteine samt Austausch — vorher 403 („kein Haushalt“, `haushaltFuer` ist
+der Finanz-Kern); Privat-Meilensteine 404. Geprüft (über die gefilterten Routen, nichts weiter nötig): Planung Horizonte, Ziel-Detail, Routinen-Planer,
+Wochenplan/Planen, Heute-Widget „Routinen heute“, Kapazität (E4).
+
+**Demo:** drittes erfundenes Konto **Ben Kramer** (`ben@example.invalid`, Mitglied, `finanzRecht: 'business'`, Team-Kreis „Partner“, 10 h/Woche),
+dazu eine gemeinsame Privat-Routine und Bens eigene Business-Routine (über den Routinen-Weg als Ben). DEMO.md › „Rolle nur Business vorführen“.
+Wächter `tests/demo.test.ts` (Konten 3, Team 4, Ben sieht nichts Privates, Lena alles).
+
+**Bewusst so / offen (für Kevin):**
+- Der Partner hat KEINEN Privat-Bereich — auch eigene Privat-Routinen/-Blöcke/-Ziele legt er nicht an (403), ältere bleiben gespeichert, er sieht sie
+  nicht (wie seine Privat-Aufgaben in E4). Falls er eigene private Zeitfenster in der Wochenvorlage braucht: Ausnahme „eigene Blöcke“ wäre klein.
+- Der gemeinsame Fokus-Satz (ohne Präfix) gilt als privat. Soll der Partner ihn lesen, wäre das eine Zeile in `fokusSchluesselImPrivat`.
+- Gesundheits-Index einer Person, die ihre Gesundheit mit dem Partner teilt: rechnet weiter mit IHREM Umfang (gemerkt je Person) — die geteilten
+  Gesundheits-Etappen sieht der Partner dann (bewusste Freigabe der Person). Der Gesundheits-Stand filtert zusätzlich nach dem Betrachter.
+- Die Leiste unter „Alles“ zeigt dem Partner weiter die Gruppe Privat (Gesundheit = seine eigene, Familie = leer).
+- `/api/planung/bezuege` (Rückgängig nach Ziel-Löschen) nimmt Kennungen aus dem Körper: für den Partner jetzt ohne Privat (Privat-Ziel 404,
+  Privat-Ziele/-Meilensteine fallen aus der Liste). **Befund für alle Konten (nicht geändert):** dort setzt der Weg `zielId` an Meilensteinen nur
+  nach „Feld leer“ — ohne die Bereichsprüfung des PATCH-Wegs (`meilensteinBezugPruefen`); ein manipulierter Körper könnte einen Privat-Meilenstein
+  an ein Business-Ziel hängen. Eigenes kleines Paket.
+
+**Rückweg:** keine neue Bestandsform, kein neues Feld im Bestand (die Demo-Konten sind ein eigener Ordner). Der alte Stand liest alles.
+
 ## 09.10.2026 — E4 EINE Konto-Sicht: nur Business auch für Aufgaben und ZOE (nur lokal — Branch `konto-sicht`, Basis 8e2d3a41)
 
 Kevin 09.10. (Klickrunde E4): „Ja, Privates bleibt privat.“ Ein Konto mit `finanzRecht: 'business'` (Partner) sah bisher die Privat-Aufgaben des
