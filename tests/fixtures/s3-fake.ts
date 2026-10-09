@@ -1,14 +1,17 @@
 // ─── S3-Fake für die Medien-Tests (09.10., Paket 5) — kein Netz ──────────────────────────────────────────────────────────
-// Versteht genau die sieben Aufrufe des Speicher-Adapters (lib/medien/speicher-s3.ts): CreateMultipartUpload, UploadPart, Complete,
-// Abort, PutObject, GetObject (mit Range), DeleteObject. Prüft die Form der Signatur (Credential, SignedHeaders), dass
+// Versteht genau die Aufrufe des Speicher-Adapters (lib/medien/speicher-s3.ts): CreateMultipartUpload, UploadPart, Complete,
+// Abort, PutObject, GetObject (mit Range), DeleteObject — und auf Bucket-Ebene ListObjectsV2 und ListMultipartUploads (09.10., Nachzug;
+// seitenweise, `seite` legt die Seitengröße fest, damit das Weiterblättern getestet wird). Prüft die Form der Signatur (Credential, SignedHeaders), dass
 // `x-amz-content-sha256` zum Körper passt und dass nie ein Klartext-Kopf (Content-MD5, SSE-C, Metadaten) mitgeht. Fehler lassen
 // sich einspielen (`fehlerBei`), damit Wiederholung und Abbruch getestet werden.
 import { createHash } from 'node:crypto';
 
 export interface S3Aufruf { methode: string; pfad: string; abfrage: Record<string, string>; bytes: number }
 
-export function s3Fake(o: { bucket?: string } = {}) {
+export function s3Fake(o: { bucket?: string; seite?: number } = {}) {
   const bucket = o.bucket ?? 'medien-test';
+  const seite = o.seite ?? 1000;
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const objekte = new Map<string, Buffer>();
   const uploads = new Map<string, { objekt: string; teile: Map<number, { bytes: Buffer; etag: string }> }>();
   const aufrufe: S3Aufruf[] = [];
@@ -34,6 +37,26 @@ export function s3Fake(o: { bucket?: string } = {}) {
     const f = fehler.findIndex(x => x.wann(a));
     if (f >= 0) { const s = fehler[f].status; if (fehler[f].einmal) fehler.splice(f, 1); return xml(s, `<Error><Code>Eingespielt${s}</Code></Error>`); }
 
+    // Bucket-Ebene: ListObjectsV2 (Token = Index der nächsten Seite) und ListMultipartUploads (Marker = letzter Schlüssel + Kennung).
+    if (methode === 'GET' && !objekt && abfrage['list-type'] === '2') {
+      const p = abfrage.prefix ?? '';
+      const alle = [...objekte.keys()].filter(x => x.startsWith(p)).sort();
+      const ab = abfrage['continuation-token'] ? Number(abfrage['continuation-token'].replace('t-', '')) : 0;
+      const max = Math.min(seite, Number(abfrage['max-keys'] ?? 1000));
+      const stueck = alle.slice(ab, ab + max);
+      const weiter = ab + max < alle.length;
+      return xml(200, `<ListBucketResult><Name>${bucket}</Name><Prefix>${esc(p)}</Prefix><KeyCount>${stueck.length}</KeyCount>${stueck.map(x => `<Contents><Key>${esc(x)}</Key><Size>${objekte.get(x)!.length}</Size><StorageClass>STANDARD</StorageClass></Contents>`).join('')}<IsTruncated>${weiter}</IsTruncated>${weiter ? `<NextContinuationToken>t-${ab + max}</NextContinuationToken>` : ''}</ListBucketResult>`);
+    }
+    if (methode === 'GET' && !objekt && 'uploads' in abfrage) {
+      const p = abfrage.prefix ?? '';
+      const alle = [...uploads.entries()].filter(([, u]) => u.objekt.startsWith(p)).map(([id, u]) => ({ id, key: u.objekt })).sort((a, b) => (a.key + a.id).localeCompare(b.key + b.id));
+      const marke = abfrage['key-marker'] ? `${abfrage['key-marker']}${abfrage['upload-id-marker'] ?? ''}` : '';
+      const rest = marke ? alle.filter(x => x.key + x.id > marke) : alle;
+      const stueck = rest.slice(0, seite);
+      const weiter = rest.length > seite;
+      const letzte = stueck[stueck.length - 1];
+      return xml(200, `<ListMultipartUploadsResult><Bucket>${bucket}</Bucket>${stueck.map(x => `<Upload><Key>${esc(x.key)}</Key><UploadId>${x.id}</UploadId></Upload>`).join('')}<IsTruncated>${weiter}</IsTruncated>${weiter && letzte ? `<NextKeyMarker>${esc(letzte.key)}</NextKeyMarker><NextUploadIdMarker>${letzte.id}</NextUploadIdMarker>` : ''}</ListMultipartUploadsResult>`);
+    }
     if (methode === 'POST' && 'uploads' in abfrage) {
       const id = `fake-upload-${++nr}`;
       uploads.set(id, { objekt, teile: new Map() });

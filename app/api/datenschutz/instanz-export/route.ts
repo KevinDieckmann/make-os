@@ -1,6 +1,7 @@
 // ─── Instanz-Export bei Vertragsende — nur Inhaber (05.10., Betroffenenrechte v2; AVV § 11) ──────────────────────────────────
 // GET  → Umfang (Zahlen: Bestände, Dateien, Bilder) für die Oberfläche — nur Inhaber.
-// POST { passwort, code? } → ALLE Bestände, Dateien und Bilder entschlüsselt als EINE JSON-Datei (Strom, lib/datenschutz/instanz-export.ts).
+// POST { passwort, code? } → ALLE Bestände, Dateien und Bilder entschlüsselt als EINE JSON-Datei (Strom, lib/datenschutz/instanz-export.ts);
+//                            Medien als Metadaten (ohne Schlüssel je Medium) + Liste der Objekte im Medienspeicher (09.10., Nachzug).
 // Nur die Inhaber-SITZUNG (x-make-user, Rolle inhaber) — nie der Dienstweg, nie ZOE, nie ein Mitglied (403). Dazu Passwort und, wenn an,
 // der zweite Faktor (lib/zugang/erneut.ts). Jeder Export steht im Lese-Protokoll (Bereich „export“, Umfang) und im Anmeldeprotokoll.
 // Löschen der Instanz danach: scripts/instanz-loeschen.mjs (Trockenlauf als Vorgabe, Bestätigungs-Code) — nie aus der App.
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     return res;
   }
   const umfang = await instanzUmfang();
-  await protokolliereLesen(req, 'export', { anzahl: umfang.bestaende + umfang.dateien + umfang.bilder });
+  await protokolliereLesen(req, 'export', { anzahl: umfang.bestaende + umfang.dateien + umfang.bilder + umfang.medien });
   await notiere({ speicher: k.speicher, art: 'instanz-export', ok: true, adresse: adresseGekuerzt(adresse(req)) });
   const kopf = { erstellt: new Date().toISOString(), von: k.speicher, umfang, adresse: process.env.MAKE_OS_ADRESSE?.trim() || null };
   return new Response(instanzExportStrom(kopf), {

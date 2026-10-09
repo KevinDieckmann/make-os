@@ -65,7 +65,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
 
   // Agenten-Bereich und Medien unterwegs (08.10. spät, Paket 0 „Vertrag“; lib/agenten/typen.ts): Threads, Werkstatt der Privat-Heads,
   // Hintergrundaufgaben und private Medien gehören der Person — IMMER mit Suffix (die Haushalts-Bestände heißen anders:
-  // `agenten-skills--<haushalt>`, `medien--<haushalt>`). Die Dateien der privaten Medien entfernt Paket 5 beim Konto-Löschen vorher.
+  // `agenten-skills--<haushalt>`, `medien--<haushalt>`). Die Dateien der privaten Medien entfernt Paket 5 beim Konto-Löschen vorher;
+  // im Export steht `medien-privat--<person>` nicht roh, sondern in eigener Form unter `medien` (ohne Schlüssel — `EIGENE_FORM`).
   { basis: 'agenten-faeden', nurMitSuffix: true },
   { basis: 'agenten-skills-privat', nurMitSuffix: true },
   { basis: 'agenten-plan', nurMitSuffix: true },
@@ -112,7 +113,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): Bestände je HAUSHALT — Export/Löschen der eigenen Einträge baut das jeweilige Paket.
   'agenten-skills--*': 'Werkstatt der Heads je Haushalt (Skills, eigene Mitarbeiter, Gedächtnis) — im Export die selbst angelegten/freigegebenen, beim Löschen Speichername „[gelöscht]“ (Paket 3)',
   'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt (keine Inhalte) — im Export der eigene Abschnitt der Privat-Heads und die eigenen Vermerke; beim Löschen fällt der Abschnitt weg, der Speichername wird „[gelöscht]“ (Paket 4b)',
-  'medien--*': 'Business-Medien je Haushalt — im Export die selbst aufgenommenen, beim Löschen bleibt das Medium mit `von` „[gelöscht]“ (Paket 5)',
+  'medien--*': 'Business-Medien je Haushalt — im Export (`medien`, lib/medien/export.ts) die selbst aufgenommenen, abgebildeten und bewerteten als Metadaten samt eigener Einwilligungen, Dateien nur als Download-Weg; beim Löschen bleibt das Medium mit `von` „[gelöscht]“ (Paket 5)',
 };
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
@@ -161,7 +162,15 @@ export interface KontoExport {
   protokolle: Record<string, unknown[]>;
   /** Nicht in der Datei — mit Grund. */
   nichtEnthalten: { bestand: string; grund: string }[];
+  /**
+   * Medien unterwegs (09.10., Nachzug): eigene Fotos & Videos als Metadaten — Privat ganz, Business die eigenen bzw. abgebildeten, eigene
+   * Einwilligungen; die Dateien nur als Liste mit Download-Weg (lib/medien/export.ts). Fehlt, wenn es keine gibt.
+   */
+  medien?: import('@/lib/medien/export').MedienKontoExport;
 }
+
+/** Bestände, die der Export in EIGENER Form liefert (ohne Schlüssel je Medium, Objekt-Namen, Salze) — nie roh in `bestaende`. */
+const EIGENE_FORM = ['medien-privat--'] as const;
 
 /** Alles mit Bezug zur Person (Konto, eigene Bestände, eigene Einträge, Protokolle). Nie Hash, Salz, zweiter Faktor, Token. */
 export async function kontoExport(speicher: string, jetzt = new Date()): Promise<KontoExport | null> {
@@ -173,7 +182,15 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
   const nichtEnthalten: KontoExport['nichtEnthalten'] = [];
   for (const b of personBestandNamen(speicher, namen)) {
     if (!b.export) { nichtEnthalten.push({ bestand: b.name, grund: PERSON_BESTAENDE.find(x => b.name.startsWith(x.basis))?.grund ?? 'Zugangsschlüssel' }); continue; }
+    if (EIGENE_FORM.some(p => b.name.startsWith(p))) continue;
     bestaende[b.name] = await loadJson<unknown>(b.name);
+  }
+  // Medien (09.10., Nachzug Paket 5): Metadaten der eigenen Medien und Einwilligungen; die Dateien als Liste mit Download-Weg — nie im JSON.
+  let medien: KontoExport['medien'];
+  try { medien = (await (await import('@/lib/medien/export')).medienKontoExport(speicher)) ?? undefined; }
+  catch (e) {
+    console.error('[konto-export] Medien:', e instanceof Error ? e.message : e);
+    nichtEnthalten.push({ bestand: 'medien', grund: 'Fotos & Videos ließen sich gerade nicht lesen — bitte den Export später erneut holen.' });
   }
   const eintraege: Record<string, unknown[]> = {};
   const merke = (name: string, l: unknown[]) => { if (l.length) eintraege[name] = l; };
@@ -234,7 +251,7 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     const l = liste(d, 'eintraege').filter(e => eintragDerPerson(e, speicher)).map(e => { const { h: _h, ...r } = e as Obj; return r; });
     if (l.length) protokolle[n] = l;
   }
-  return { erstellt: jetzt.toISOString(), konto: { ...oeffentlich(k), ...(k.haushalt ? { haushalt: k.haushalt } : {}) }, bestaende, eintraege, protokolle, nichtEnthalten };
+  return { erstellt: jetzt.toISOString(), konto: { ...oeffentlich(k), ...(k.haushalt ? { haushalt: k.haushalt } : {}) }, bestaende, eintraege, protokolle, nichtEnthalten, ...(medien ? { medien } : {}) };
 }
 
 // ── Löschen (Art. 17) ──────────────────────────────────────────────────────────

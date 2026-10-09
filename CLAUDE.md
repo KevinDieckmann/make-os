@@ -1509,6 +1509,11 @@ freigegeben … an die Head ofs, wenn gewollt.“ Antworten: ENTSCHEIDUNGEN_FRAG
   `ki_bild`), Video und alles nach Fremdtext nur als Auftrag (`ki_auftrag`, lib/medien/ki-stapel.ts, nie Sammelfreigabe). „An Head geben“ nur an `MEDIEN_HEADS`
   (Thread über POST /api/agenten/faden); Glocke Art `medien` (neutral). Einhängen in die Schleife: `medienAngebotErgaenzen` + `mitMedien` (Kopf der Datei).
   Tests `tests/agenten-p4c*.test.ts`.
+- **Nachzug Recht & Betrieb (09.10., Branch `medien-nachzug`; UPDATES.md):** S3-Kern (Signatur, Konfiguration, Aufruf, Listen) NUR in
+  `lib/medien/s3-kern.mjs` (App UND Löschskript — nacktes Node); Instanz-Ebene `lib/medien/instanz.mjs` (`medienPlan`, Inventur, Leeren nur unter dem
+  Präfix, fremde Namen nie). Exporte nur über `lib/medien/export.ts`: Konto-Export `medien` (Metadaten, Dateien NUR als Download-Weg, nie Schlüssel/
+  Objekt-Namen/Salze; `medien-privat--*` nie roh), Instanz-Export Kataloge `ohneMedienSchluessel` + Objektliste. Neuer Bestand mit Schlüsseln je Medium →
+  `istMedienBestand`. Selbstprüfung „medien“ nur Zähler (`medienPruefZahlen`). Tests `tests/medien-nachzug.test.ts`.
 
 ## Kalender — Termine finden (29.09., Paket K4, nur lokal)
 - **Freie Zeit = EINE Lesefunktion, auf K1 aufgesetzt:** WANN jemand da ist, sagt nur K1 `verfuegbarkeitFuer` (beschäftigt/TRANSP, Abwesend, Arbeitsort, Arbeitszeit aus der Wochenvorlage `routinen.bloecke`, Feiertage NRW). `lib/kalender/freie-zeit.ts` übersetzt (`belegungenAus`, `arbeitszeitAus` — ohne Vorlage Mo–Fr 9–18, nicht an Feiertagen/ganz abwesenden Tagen —, `feiertageAus`) und ruft die reine Lückensuche `freieZeiten` (`lib/kalender/verfuegbar.ts`: Arbeitszeit je Tag oder Wochen-Fenster, Belegungen, Puffer, Vorlauf, Raster, max. je Tag; Zeitumstellung über Rundweg `wandzeit(ausWandzeit(x)) === x` + echte Dauer, doppelte Stunde = die spätere). `freieZeitFuer({ personen, dauerMin, … })` nutzen „Mit … planen“ (`GET /api/kalender/frei`), künftig ZOE (`freie_zeit`, nur lesen) und das Angebot. Gehaltene Buchungen zählen als belegt. Nie eine zweite Verfügbarkeits-Rechnung bauen; Feiertage/KW später aus K2 `lib/zeit/kalender-kern.ts` (über K1).

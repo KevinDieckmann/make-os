@@ -9,7 +9,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { atomarSchreiben } from '@/lib/store/atomar.mjs';
-import { objektOk, SpeicherFehler, type MedienSpeicher, type OrdnerKonfig } from './speicher';
+import { objektOk, praefixOk, SpeicherFehler, type MedienSpeicher, type OrdnerKonfig } from './speicher';
 
 const UPLOAD_OK = /^u-[a-f0-9]{24}$/;
 
@@ -104,6 +104,28 @@ export function ordnerSpeicher(k: OrdnerKonfig): MedienSpeicher {
     async loeschen(objekt) {
       await fs.unlink(objPfad(objekt)).catch(() => {});
       belegtCache = null;
+    },
+    // Listen (09.10., Nachzug Instanz-Export/-Löschen): fertige Objekte unter `obj/<präfix>/` bzw. die Stück-Ordner unter `teile/`.
+    async *auflisten(praefix) {
+      if (!praefixOk(praefix)) throw new SpeicherFehler('Unzulässiges Präfix.', 400);
+      const obj = path.join(basis, 'obj');
+      async function* lauf(d: string): AsyncGenerator<{ objekt: string; bytes: number; fremd?: true }> {
+        const eintraege = (await fs.readdir(d, { withFileTypes: true }).catch(() => [])).sort((a, b) => a.name.localeCompare(b.name));
+        for (const e of eintraege) {
+          const p = path.join(d, e.name);
+          if (e.isDirectory()) { yield* lauf(p); continue; }
+          if (!e.isFile() || !e.name.endsWith('.mkm')) continue;
+          const objekt = path.relative(obj, p).slice(0, -4).split(path.sep).join('/');
+          const bytes = (await fs.stat(p).catch(() => ({ size: 0 }))).size;
+          yield objektOk(objekt) ? { objekt, bytes } : { objekt, bytes, fremd: true };
+        }
+      }
+      yield* lauf(path.join(obj, praefix));
+    },
+    async *offeneUploads() {
+      for (const e of await fs.readdir(path.join(basis, 'teile'), { withFileTypes: true }).catch(() => [])) {
+        if (e.isDirectory() && UPLOAD_OK.test(e.name)) yield { objekt: '', upload: e.name };
+      }
     },
   };
 }

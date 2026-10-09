@@ -1,7 +1,7 @@
 // ─── Datenschutz-Umfeld für die Selbstprüfung (Server, 05.10.) ──────────────
 // Sammelt, was `selbstpruefung` (lib/crm/datenschutz.ts) außerhalb des CRM braucht: Verantwortlicher und Empfänger aus der
 // Einrichtung, zweiter Faktor der Konten im Haushalt des Inhabers, Verfahren der letzten Nachtsicherung (Statusdatei
-// `system/sicherung.json`, geschrieben von deploy/sicherung.sh — fehlt sie, „unbekannt“), Agenten-Schalter. Nur Zahlen und
+// `system/sicherung.json`, geschrieben von deploy/sicherung.sh — fehlt sie, „unbekannt“), Agenten-Schalter, Medien (Zähler über Freigaben und Einwilligungen). Nur Zahlen und
 // Namen von Diensten — nie Personendaten. Wirft nie (im Zweifel der vorsichtige Wert).
 
 import { promises as fs } from 'node:fs';
@@ -55,6 +55,8 @@ export async function datenschutzUmfeld(): Promise<DatenschutzUmfeld> {
     sicherung: await sicherungsStatus(),
     agenten: { aktiv: ALL_AGENTS.filter(a => cfg[a.id]?.enabled !== false).length, gesamt: ALL_AGENTS.length },
     pannen: await pannenLage(),
+    // Medien (09.10., Nachzug): nur Zähler; null ohne Business-Medien. Fehler → kein Prüfpunkt (nie „erfüllt“ geraten).
+    medien: await import('@/lib/medien/datenschutz').then(m => m.medienPruefZahlen()).catch(e => { console.error('[datenschutz-umfeld] Medien:', e instanceof Error ? e.message : e); return null; }),
   };
 }
 

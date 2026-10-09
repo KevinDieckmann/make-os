@@ -190,12 +190,20 @@ export const ANTHROPIC_DRITTLAND = 'USA (Anthropic PBC); Vertragspartner in der 
 export const ANTHROPIC_NOTIZ = 'Data Processing Addendum der kommerziellen Bedingungen (API) mit Standardvertragsklauseln (Modul 2/3) — gilt automatisch; Anthropic ist nicht im EU-US Data Privacy Framework (Liste abgefragt 08.10.2026). Annahme mit Tag und Unterlage hier bestätigen. Für Gesundheit, Privat-Finanzen und Familie: Claude über Google Vertex in der EU (Eintrag „Google Cloud Vertex AI“).';
 
 /**
+ * Hetzner (09.10., Nachzug Medien): der Object Storage für Fotos und Videos (lib/medien/speicher-s3.ts) ist ein eigenes Produkt beim selben
+ * Auftragsverarbeiter — Zweck, Daten und Notiz nennen ihn; die alten Fassungen stehen in `ALTE_EMPFAENGER_FASSUNGEN`.
+ */
+export const HETZNER_ZWECK = 'Betrieb des Servers in Deutschland, nächtliche Sicherungen, Server-Abbilder; Object Storage für Fotos und Videos (Medien), sobald eingerichtet';
+export const HETZNER_DATEN = 'alle Bestände der Instanz (auf der Platte verschlüsselt), Sicherungen (verschlüsselt), Server-Protokolle (IP-Adressen); Object Storage (Medien): Fotos, Videos, Lizenz-Nachweise und Unterschriften nur als Chiffrat unter zufälligen Namen — ohne Dateinamen, ohne Metadaten, Schlüssel bleiben auf dem Server';
+export const HETZNER_NOTIZ = 'AVV in der Hetzner-Konsole abschließen und als PDF ablegen — prüfen, dass er auch den Object Storage (Medien; Standort Nürnberg bzw. Falkenstein) abdeckt.';
+
+/**
  * Vorgabe-Liste (Startwerte) — so, wie MAKE OS heute Dienste anbindet. Jede Instanz pflegt danach ihre eigene Liste
  * (bearbeiten, archivieren = nicht in Gebrauch, löschen). AVV-Status startet immer „offen“: bestätigt wird von Hand mit Tag
  * und Unterlage. Hinweis, keine Rechtsberatung — Rollen und Garantien einmal anwaltlich gegenlesen.
  */
 export const EMPFAENGER_START: readonly Empfaenger[] = [
-  start({ id: 'hetzner', name: 'Hetzner (Hosting)', rolle: 'auftragsverarbeiter', zweck: 'Betrieb des Servers in Deutschland, nächtliche Sicherungen, Server-Abbilder', daten: 'alle Bestände der Instanz (auf der Platte verschlüsselt), Sicherungen (verschlüsselt), Server-Protokolle (IP-Adressen)', drittland: '', garantie: 'eu', dritte: true, notiz: 'AVV in der Hetzner-Konsole abschließen und als PDF ablegen.' }),
+  start({ id: 'hetzner', name: 'Hetzner (Hosting)', rolle: 'auftragsverarbeiter', zweck: HETZNER_ZWECK, daten: HETZNER_DATEN, drittland: '', garantie: 'eu', dritte: true, notiz: HETZNER_NOTIZ }),
   start({ id: 'google-workspace', name: 'Google Workspace (Kalender, Gmail)', rolle: 'auftragsverarbeiter', zweck: 'Business-Kalender und E-Mail-Postfach, Abgleich mit MAKE OS', daten: 'Termine samt Teilnehmer-Adressen, E-Mails (Absender, Empfänger, Text), Zugriffstoken', drittland: 'USA (Konzern, Unterauftragsverarbeiter)', garantie: 'dpf-scc', dritte: true, notiz: 'Datenverarbeitungszusatz (Cloud Data Processing Addendum) in der Admin-Konsole bestätigen.' }),
   start({ id: 'microsoft-365', name: 'Microsoft 365 (Postfach, Kalender)', rolle: 'auftragsverarbeiter', zweck: 'Postfach und Firmenkalender (Zulieferung über den Rechner des Inhabers bzw. Graph)', daten: 'E-Mails (Absender, Betreff, Vorschau), Termine samt Teilnehmern', drittland: 'USA (Konzern, Unterauftragsverarbeiter)', garantie: 'dpf-scc', dritte: true, archiviert: true, notiz: 'Nicht in Gebrauch, solange kein Microsoft-Konto angebunden ist (seit Inbox 2 kein Outlook-Weg). Wird es angebunden: „Zurückholen“ und den Data Protection Addendum (DPA) des Microsoft-Kundenvertrags ablegen.' }),
   start({ id: 'apple-icloud', name: 'Apple iCloud (Kalender, Erinnerungen, Kontakte)', rolle: 'auftragsverarbeiter', zweck: 'Privat- und Altkalender, Erinnerungen, Adressbuch (Abgleich alle 5 Minuten)', daten: 'Termine samt Teilnehmern, Erinnerungen, Kontakte des Adressbuchs', drittland: 'USA (Konzern)', garantie: 'dpf', dritte: true, notiz: 'Für private iCloud-Konten bietet Apple keinen AVV an — Geschäftsdaten möglichst über Google Workspace bzw. Microsoft 365 führen; Entscheidung hier vermerken.' }),
@@ -225,13 +233,19 @@ export const EMPFAENGER_START: readonly Empfaenger[] = [
  * Fassungen der Vorgabe-Liste, die eine neuere ersetzt — nur, solange das Feld in der gespeicherten Liste noch GENAU die alte Fassung trägt
  * (Muster wie `ALTE_FASSUNGEN` des Verzeichnisses, lib/crm/datenschutz.ts). Was die Instanz selbst geändert hat, bleibt.
  */
-type EmpfaengerTextFeld = 'garantie' | 'drittland' | 'notiz';
+type EmpfaengerTextFeld = 'garantie' | 'drittland' | 'notiz' | 'zweck' | 'daten';
 export const ALTE_EMPFAENGER_FASSUNGEN: Record<string, Partial<Record<EmpfaengerTextFeld, { alt: string[]; neu: string }>>> = {
   // 09.10.: Anthropic SCC statt DPF (Kevin 08.10.).
   anthropic: {
     garantie: { alt: ['dpf-scc'], neu: 'scc' },
     drittland: { alt: ['USA'], neu: ANTHROPIC_DRITTLAND },
     notiz: { alt: ['Data Processing Addendum der kommerziellen Bedingungen (API) — Annahme mit Tag und Unterlage hier bestätigen.'], neu: ANTHROPIC_NOTIZ },
+  },
+  // 09.10. (Nachzug Medien): Object Storage für Fotos und Videos beim selben Auftragsverarbeiter.
+  hetzner: {
+    zweck: { alt: ['Betrieb des Servers in Deutschland, nächtliche Sicherungen, Server-Abbilder'], neu: HETZNER_ZWECK },
+    daten: { alt: ['alle Bestände der Instanz (auf der Platte verschlüsselt), Sicherungen (verschlüsselt), Server-Protokolle (IP-Adressen)'], neu: HETZNER_DATEN },
+    notiz: { alt: ['AVV in der Hetzner-Konsole abschließen und als PDF ablegen.'], neu: HETZNER_NOTIZ },
   },
 };
 /** Neue Startwerte, die eine gespeicherte Liste beim Lesen bekommt (nach `id`, archiviert wie in der Vorgabe). */
