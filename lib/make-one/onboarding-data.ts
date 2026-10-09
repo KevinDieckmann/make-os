@@ -739,7 +739,7 @@ export const SCHRITTE: Schritt[] = [
       'Mandate & Unternehmen › Produkte: Preis, Basis, Laufzeit, Gesellschaft und Leistungstext (ohne Leistungstext kein „aktiv“).',
       'Die alte Karte „Produkte“ unter Rechnungen nicht mehr pflegen.',
     ],
-    danach: 'Geprüft wird: mindestens ein aktives Produkt mit Preis und Leistungstext. Angebote und Finanzplan greifen auf denselben Katalog zu.',
+    danach: 'Geprüft wird: mindestens ein aktives Produkt mit Leistungstext. Angebote und Finanzplan greifen auf denselben Katalog zu.',
     wo: { href: WEG.produkt(), label: 'Mandate & Unternehmen › Produkte' },
   },
   {

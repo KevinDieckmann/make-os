@@ -11,10 +11,14 @@
 //   (4) B10: der Morgenlauf merkt grüne Schritte (nie das GET), ein zurückgefallener Schritt erscheint als „braucht dich“ — nur für die Person.
 //   (5) B8: die Datenbasis liest nur die Einrichtung (keine alten Wege, keine Namen) und zeigt nur Befunde, die der Server gab.
 // Datenordner und Vault im Temp-Ordner, erfundene Konten und Zahlen — nie .data/, nie der echte Vault.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { promises as fs, readFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/onboarding' }));
 
 const wurzel = await fs.mkdtemp(path.join(os.tmpdir(), 'make-os-onboarding-u2-'));
 const DATEN = path.join(wurzel, 'daten');
@@ -381,5 +385,15 @@ describe('B8: Datenbasis aus denselben Prüfungen', () => {
     expect(code).not.toMatch(/\b(Kevin|Malin)\b/);
     expect(code).toContain('useOnboarding()');
     expect(code).toContain('datenStandVon');
+  });
+});
+
+describe('Oberfläche: Einrichtung, Ebenen und Datenbasis rendern (ohne Daten, Server-Render)', () => {
+  it('die Seiten bauen sich ohne Fehler auf', async () => {
+    const { OnboardingUebersicht, EbeneView } = await import('@/components/os/OnboardingView');
+    const { DatenbasisView } = await import('@/components/os/DatenbasisView');
+    expect(renderToStaticMarkup(createElement(OnboardingUebersicht))).toContain('Einrichtung');
+    for (const e of ['ich', 'gemeinsam', 'instanz'] as const) expect(renderToStaticMarkup(createElement(EbeneView, { ebene: e }))).toContain('Stand');
+    expect(renderToStaticMarkup(createElement(DatenbasisView))).toContain('Datenstand');
   });
 });

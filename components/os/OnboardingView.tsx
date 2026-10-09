@@ -253,6 +253,7 @@ export function EbeneView({ ebene }: { ebene: Ebene }) {
           <Karte i={0} ton={LEUCHT.schlaf}>
             <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${f.fertig} von ${f.gesamt}`}>Stand</Ueberschrift>
             <Fortschritt schritte={schritte} z={z} gross />
+            {f.naechster && <NaechsterSchritt s={f.naechster} z={z} />}
             <p style={{ ...absatz, marginTop: 12 }}>
               Ein Filter auf die Einrichtung. {ebene === 'ich' ? 'Prüfung und Häkchen gelten immer der Person, die gerade angemeldet ist. ' : ebene === 'gemeinsam' ? 'Eine Person trägt ein, alle sehen den Stand; Schritte mit „Inhaber“ hakt ein Inhaber ab. ' : ''}
               Den ganzen Ablauf in der richtigen Reihenfolge zeigt die <Link href="/os/onboarding" style={stark}>Einrichtung ›</Link>

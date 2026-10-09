@@ -34,8 +34,8 @@ ONBOARDING_PLAN.md › A5 B3 Teil 2, B4, B8, B10, B11 — für das Update am 16.
   denselben Hinweis — EINE Regel `zurueckgefallen`, keine zweite Glocke. GET liest nur.
 - **B11 — Rechte-Filter:** Befunde über private Finanzen (Finanzplan, Haushalt, Konten-Register) nur mit `privatFinanzZugangFuer`, Familie nur mit
   `haushaltFuer` — wer das Recht nicht hat, bekommt den Befund gar nicht (kein Zähler). Die Datenbasis zeigt nur Zeilen mit Befund.
-- Tests: `tests/onboarding-u2.test.ts` (23: Schema/Kreise/Datenorte, „Als Nächstes“, leer/veraltet, jede neue Prüfung, „Business-Partner bekommt
-  keine Privat-Befunde“, Morgenlauf-Marken, „braucht dich“, Datenbasis ohne alte Wege), angepasst `onboarding-stand` (Agenten hat jetzt eine
+- Tests: `tests/onboarding-u2.test.ts` (24: Schema/Kreise/Datenorte, „Als Nächstes“, leer/veraltet, jede neue Prüfung, „Business-Partner bekommt
+  keine Privat-Befunde“, Morgenlauf-Marken, „braucht dich“, Datenbasis ohne alte Wege, Seiten rendern), angepasst `onboarding-stand` (Agenten hat jetzt eine
   Prüfung → kein „bitte bestätigen“ mehr für das alte Häkchen), beide Onboarding-Tests lesen Regeln aus einem Temp-Vault.
 
 **So testet ihr (in Klicks):**
