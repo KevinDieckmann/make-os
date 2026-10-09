@@ -4,6 +4,37 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 nachts — Agenten-Bereich: Feinschliff nach der Gegenprüfung (nur lokal — Branch `agenten-fein`, Basis `agenten-nacht` ec67a2c7)
+
+- **Kontext Familie & Ernährung** (`lib/agenten/kontext.ts`): der Head „Familie & Partnerschaft“ liest `familie--<haushalt>` NUR über
+  `familieAuszug` → `familieFuerPerson` (lib/familie/logik.ts — die EINE Filterstelle, die jetzt auch app/api/familie nutzt): „nur ich“ und
+  ungeteilte Reflexionen der anderen Person nie, nur Titel/Datum/Art/Status (Dates, wichtige Tage, Themen, Vereinbarungen, Ideen, fällige
+  Kontakte, nächstes Paar-Gespräch) — nie Gefühle, Reflexionen, Wertschätzungen, Wünsche, Love-Map, Profile, Notizen. An die KI nur mit Bereich
+  „Familie“ an UND offenem EU-Weg (`kategorienMoeglich(['familie'])`), sonst bleibt der Auszug draußen und der Head sagt es. „Ernährung & Einkauf“
+  liest Plan, offene Einkaufsliste, Gerichte; Profile nur über `profileFuerBetrachter` + `profilFuerKi` (vollständig nur mit Kategorie Gesundheit
+  und Einwilligung der Profil-Inhaberin, `gesundheitFuerZoe`; sonst Küchenregel „nie“), ohne Namen.
+- **Kennzahlen im Head-Kopf** (`kennzahlWerte(head, sicht)`, GET /api/agenten): Traktions-Index (Sales/Marketing/Event), Privat-Index (nur mit
+  privatem Finanzzugang), Gesundheits-Index (nur eigene Werte, nur mit Einwilligung (a)), Business wie bisher — je über den vorhandenen Leseweg
+  (`traktionsIndex`, `privatIndexFuer`, `gesundheitsIndexFuer`, gemerkt 60 s). Fehler → Wert fehlt. Gelieferte Gesundheits-/Privat-Werte stehen im
+  Lese-Protokoll (`gesundheit` bzw. `haushalt`).
+- **Thread voll** (`lib/agenten/delegation.ts`): ein Lauf auf einem Thread mit 400 Nachrichten startet nicht mehr (kostet nur), und `ergebnisSchreiben`
+  beendet den Lauf sichtbar mit „Thread voll … neuen Thread anlegen“ (Status `fehler`, Kosten gezählt, Glocke) statt „läuft“. Nie gekürzt.
+- **Kosten-Einheiten:** Threads messen US-Cent (`LaufZustand.kostenCent`, `Nachricht.kosten.cent`), Budgets/Grenzen sind Euro-Cent — umgerechnet NUR
+  über lib/ki/kosten.ts (`inEuroCent`, neu `inUsdCent`). `fadenZahlen` liefert `kostenEuroCent`/`gemessenEuroCent`; Budget je Privat-Head, Schätzungen
+  (`gemesseneKosten`, `schaetzungCent`), Lesemodell der Läufe und die Kostengrenze je Lauf (an die Schleife in US-Cent) rechnen jetzt richtig.
+- **Hintergrundaufgabe bei ZOE** → 400 mit Grund beim Planen (`ZOE_NICHT_GEPLANT`); alte ZOE-Aufgaben reiht der Takt nicht mehr ein und „Als Nächstes“
+  zeigt sie nicht (Löschen geht).
+- **Bereich der Aufgaben-Leser:** `meine_aufgaben`, `projekt_unterlagen`, `datei_lesen` nehmen optional `space`; im Agenten-Bereich setzt der Kern ihn
+  fest auf den Bereich des Heads (`eingabeImBereich`, `BEREICH_IN_EINGABE`) — Operations sieht nichts aus Privat.
+- **Markttraktion-Takt:** Zahlen nur mit der Inhalte-Ausnahme der Person (`inhalteErlaubtFuer`), sonst neutral; ohne Boten-Kanal die Glocke über den
+  EINEN Sendeweg `anPersonMelden` (der Takt reiht dafür auch ohne Boten ein; der Riegel verhindert Wiederholungen). **Prospect-Agent** schreibt die
+  Bewertungen per PATCH mit Stand (409 → nichts überschrieben) statt die ganze Liste per PUT.
+- **Delegation:** der feste Sonderfall war schon mit „neutral-rest“ weg (Rollen aus Team/Konten, Wächter `tests/neutral-rest.test.ts`).
+
+**Tests:** `tests/agenten-fein.test.ts` (15); angepasst `agenten-leistung` (Euro-Cent, Felder umbenannt). **Rückweg:** keine neuen Bestände, keine neuen
+Felder im Speicher (nur Einheiten in Rechnungen/Lesemodellen, optionales Eingabefeld `space`); der alte Stand rechnet wie vorher. Offen für den Merge mit
+dem Streaming-Paket: die Oberfläche zeigt `LaufZustand.kostenCent` (FadenMitte) und `Nachricht.kosten.cent` (Chat) noch roh als Euro — dort `inEuroCent`.
+
 ## 09.10.2026 — Agenten-Bereich Paket 4a „ZOE steuert die Heads“: EINE Schleife, EINE Werkzeug-Quelle, ≤ 20 Werkzeuge, ZOE auf Threads (nur lokal — Branch `agenten-p4a`, Basis `agenten-nacht` 0ff3187a)
 
 Grundlage: AGENTEN_KONZEPT.md C3/C8/C11 (Paket 4), ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich (Antworten 10/11) und Teil 1 (Nr. 1, 11, 13:
