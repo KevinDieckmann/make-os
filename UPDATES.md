@@ -4,6 +4,23 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Endprüfung des Nacht-Stands `agenten-nacht` (für Update 2 am 16.10.; nur lokal)
+
+Kevin 09.10. morgens: „Wenn du das Ganze fertig hast, nochmal überprüfen — das muss perfekt laufen.“ Alle Pakete der Nacht sind in `agenten-nacht`
+zusammengeführt (Basis `nach-upload` 9fa876e9; 27 Pakete). Geprüft auf dem Endstand:
+
+- **tsc** 0 Fehler · **ESLint** 0 Fehler (5 alte Warnungen) · **volle Testreihe** 540 Dateien, 7.222 Tests grün (vor den Rundgang-Funden).
+- **Produktionsbau** der Demo-Instanz (frisch gesät: 15 Threads, 3 Skills, 2 Hintergrundaufgaben) ohne Fehler.
+- **Seiten-Durchlauf** (headless Chrome, `scratchpad/rundgang-0910/crawl.mjs`): jede Seite aus der Schnellsuche als Inhaberin UND als zweite Person
+  (1440 px) plus 13 Kernseiten am Handy (390 px) — **185 Aufrufe: 0 Anfragen ≥ 400, 0 Konsolenfehler, 0 Ausnahmen, keine Fehlerseite, keine zu breite
+  Seite, keine falsche Weiterleitung.** Ohne KI-Schlüssel antworten ZOE und Heads klar „kein KI-Schlüssel hinterlegt“ (kein Absturz).
+- **Nahtstellen** Zugang, CRM, Finanzen und der **Agenten-Härtetest** (41 typische Fehlerbilder) — eigene Abschnitte darunter.
+- **Rundgang-Funde (behoben, `tests/rundgang-0910-funde.test.ts`):** englische Dezimalzahlen („noch rund 8.8 Std.“ in Einrichtung und Heute, Runway im
+  Board, Tageslauf-Dauer, Brain-Index-MB, Sport-Umfang) → deutsche Form über `restzeitText` bzw. `toLocaleString('de-DE')`; „Als Nächstes“ der
+  Agenten-Seite: „werktags bis 16.10.“ verdrängte den Titel bis auf „P…“ → Wiederholung steht jetzt unter dem Titel; ZOE-Kugel verdeckte am Handy den
+  Reiter „Läuft“ der Agenten-Seite → dort am Handy ausgeblendet (ZOE ist die Mitte der Seite).
+- Online geht nichts ohne Kevins Wort; der Upload-Stand `entwicklung` ist unverändert.
+
 ## 09.10.2026 — Endprüfung „Nahtstellen Finanzen & Daten“ (nur lokal — Branch `nahtstellen-finanzen`, Basis `agenten-nacht` 92f33978)
 
 Kevin: „Das muss perfekt laufen.“ Gesucht wurde, was ZWISCHEN den Paketen der Nacht bricht (Kontoauszug, Konten-Register, Rechnungen, Daten-Assistenten,
