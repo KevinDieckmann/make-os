@@ -396,6 +396,8 @@ nav a:hover { transform: translateX(2px); }
 }
 /* Agenten-Seite (Aufräumen 09.10., Claude-Muster): Liste links und Hintergrund rechts klappen weich ein (Breite → 0) bzw. gleiten als
    Schublade über das Gespräch; zu = unsichtbar und nicht mehr per Tab erreichbar (visibility erst nach dem Gleiten). Reduzierte Bewegung: sofort. */
+/* Agenten-Seite ab Tablet: ZOE ist die Mitte der Seite — die schwebende Kugel lag sonst über dem Hintergrund-Feld (Sichtprüfung 09.10.). */
+body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .agenten-seitenfeld { transition: width .22s ease, visibility 0s linear 0s; }
 .agenten-seitenfeld[data-zu] { visibility: hidden; transition: width .22s ease, visibility 0s linear .22s; }
 .agenten-schublade { transition: transform .22s ease, visibility 0s linear 0s; }

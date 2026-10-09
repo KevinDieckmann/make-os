@@ -39,6 +39,8 @@ describe('Rundgang 09.10. — Funde', () => {
   it('ZOE-Kugel am Handy auf der Agenten-Seite ausgeblendet (Reiter bleiben frei)', () => {
     expect(lies('components/os/agenten/AgentenSeite.tsx')).toContain('className="agenten-reiter-handy"');
     expect(lies('app/globals.css')).toMatch(/body:has\(\.agenten-reiter-handy\) \.zoe-fab \{ display: none !important; \}/);
+    expect(lies('app/globals.css')).toMatch(/body:has\(\.agenten-flaeche\) \.zoe-fab \{ display: none !important; \}/);
+    expect(lies('components/os/agenten/AgentenSeite.tsx')).toContain('className="agenten-flaeche"');
   });
   it('„Wer heute dran ist“: Daten deutsch kurz statt ISO („Entscheidung bis 23.10.“, „fällig 08.10.“)', () => {
     const k: Kontakt = { id: 'c-a', vorname: 'Erika', nachname: 'Beispiel', eignung: '', prio: '', stufe: 'gespraech', telefon: '030', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01' };
