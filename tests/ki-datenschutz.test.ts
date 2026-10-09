@@ -287,7 +287,7 @@ describe('Telegram-Text enthält keine Gesundheits-/CRM-Inhalte', () => {
 });
 
 describe('Jeder Modell-Aufruf sagt, was er schickt', () => {
-  it('askText/askJson/askWithSearch tragen überall ein `ki` (Lauf, Person, Kategorien)', () => {
+  it('askText/askJson/askWithSearch/askStream tragen überall ein `ki` (Lauf, Person, Kategorien)', () => {
     const fehlt: string[] = [];
     const lauf = (d: string) => {
       for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -295,7 +295,7 @@ describe('Jeder Modell-Aufruf sagt, was er schickt', () => {
         if (e.isDirectory()) { if (e.name !== 'node_modules') lauf(p); continue; }
         if (!/\.(ts|tsx)$/.test(e.name) || p.endsWith(path.join('lib', 'anthropic.ts'))) continue;
         const s = readFileSync(p, 'utf8');
-        for (const m of s.matchAll(/\b(askText|askJson|askWithSearch)\s*(<[^()]*?>)?\s*\(/g)) {
+        for (const m of s.matchAll(/\b(askText|askJson|askWithSearch|askStream)\s*(<[^()]*?>)?\s*\(/g)) {
           let i = (m.index ?? 0) + m[0].length, tiefe = 1;
           while (tiefe && i < s.length) { if (s[i] === '(') tiefe++; else if (s[i] === ')') tiefe--; i++; }
           const rumpf = s.slice((m.index ?? 0) + m[0].length, i);

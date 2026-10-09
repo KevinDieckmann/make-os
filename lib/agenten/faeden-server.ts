@@ -14,7 +14,7 @@ import { headDef, KATALOG } from './katalog';
 import { einstellungFuer, mitarbeiterFuerHead, skillsFuerHead } from './skills-lesen';
 import { kennzahlWerte } from './kontext';
 import { WEG } from '@/lib/wege';
-import { fadenStand, fehler, kurz, ohneAbgelaufene, type Fehler, type FadenBestandKern, type FadenKern, type NachrichtKern } from './faeden';
+import { fadenStand, fehler, kurz, ohneAbgelaufene, zugZuruecknehmen, type Fehler, type FadenBestandKern, type FadenKern, type NachrichtKern } from './faeden';
 import { fadenSichtbar, headSichtbar, headsFuer, type KontoSicht } from './sicht';
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
@@ -82,6 +82,12 @@ export async function fadenAendern(person: string, id: string, fn: (f: FadenKern
   }, o.jetzt);
   if (!r.ok) return aktuell ? { ...r, aktuell } : r;
   return { ok: true, faden: r.e, stand: fadenStand(r.e) };
+}
+
+/** Streaming abgebrochen (09.10.): die unbeantwortete Nachricht der Person wieder heraus (Regel rein in faeden.ts `zugZuruecknehmen`). */
+export async function zugZuruecknehmenFuer(person: string, fadenId: string, nachrichtId: string): Promise<boolean> {
+  const r = await bestandAendern<boolean>(person, b => { const neu = zugZuruecknehmen(b, fadenId, nachrichtId); return { bestand: neu ?? b, e: !!neu }; });
+  return r.ok && r.e;
 }
 
 /** Ein eigener Thread (oder null). */

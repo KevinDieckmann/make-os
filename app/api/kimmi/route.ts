@@ -43,6 +43,9 @@ import { schleife, type AufrufErgebnis } from '@/lib/agenten/schleife';
 import { headFrageKategorien, headsImPrompt, zoeHeadsFuer } from '@/lib/agenten/zoe-heads';
 import { zoeAntwortAnhaengen, zoeFadenFuer, zoeVerlaufUebernehmen, type ZoeZug } from '@/lib/agenten/zoe-faden';
 import { haushaltsSpeicher } from '@/lib/aufgaben/sicht';
+import { zugZuruecknehmenFuer } from '@/lib/agenten/faeden-server';
+import { willStrom } from '@/lib/http/sse';
+import { sseAntwort, type StromArbeit } from '@/lib/http/sse-antwort';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -234,116 +237,132 @@ export async function POST(req: Request) {
   const angeboten = wahl.namen.map(n => alleDefs.find(d => d.name === n)).filter((d): d is WerkzeugDef => !!d);
   const angebotenSet = new Set(wahl.namen);
 
-  try {
-    const origin = innenAdresse(req);
-    // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web) — oder der
-    // Browser Kontext mitschickt (28.09., K1 #98) —, wirken schreibende Werkzeuge in diesem Gespräch nur
-    // noch als Vorschlag (Freigabe). Regeln rein und getestet in lib/zoe/gespraech-schutz.ts.
-    // Seit 29.09. (#K1) auch, sobald Termintitel/Einladungen im Prompt stehen (`lage.kalenderFremd`, lib/brain.ts
-    // `kalenderImPrompt`) — der Kalender ist eine Fremdquelle wie das Postfach.
-    // S1 #4 (29.09.): „fremd gelesen“ gilt fürs GANZE Gespräch. Seit Paket 4a steht die Marke am ZOE-Thread (Server); ohne Thread
-    // wie bisher aus dem Verlauf (`ran`).
-    const quelleVon = (n: string) => FREMD_WERKZEUGE[n] ?? FREMD_AGENTEN[n] ?? null;
-    const fremdGelesen = kontextFremd || lage.kalenderFremd || (zug ? zug.faden.fremdGelesen : verlaufFremd(payload.verlauf, quelleVon));
-    // Web-Schutz (29.09., #91): hat dieses Gespräch schon CRM/Kartei/Postfach/Notizen gelesen (jetzt oder in einem früheren
-    // Zug) oder bringt es Kontext/Bezug mit, starten Web-Agenten (Recherche …) nur als Vorschlag. Termine sind vertraulich.
-    const vertraulich = kontextFremd || lage.kalenderFremd || !!crmBezug || (zug ? zug.faden.vertraulich : verlaufVertraulich(payload.verlauf, quelleVon));
+  // Der Zug — derselbe Weg mit und ohne Streaming (09.10.): `strom` reicht nur Text-Stücke, Werkzeug-Stände und den Abbruch des Browsers
+  // durch; gespeichert wird allein das Endergebnis (Thread wie bisher). Alles oben (Schranke, Person, Haushalt, Thread) antwortet weiter JSON.
+  const zugAusfuehren = async (strom?: StromArbeit): Promise<{ status: number; body: Record<string, unknown> }> => {
+    try {
+      const origin = innenAdresse(req);
+      // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web) — oder der
+      // Browser Kontext mitschickt (28.09., K1 #98) —, wirken schreibende Werkzeuge in diesem Gespräch nur
+      // noch als Vorschlag (Freigabe). Regeln rein und getestet in lib/zoe/gespraech-schutz.ts.
+      // Seit 29.09. (#K1) auch, sobald Termintitel/Einladungen im Prompt stehen (`lage.kalenderFremd`, lib/brain.ts
+      // `kalenderImPrompt`) — der Kalender ist eine Fremdquelle wie das Postfach.
+      // S1 #4 (29.09.): „fremd gelesen“ gilt fürs GANZE Gespräch. Seit Paket 4a steht die Marke am ZOE-Thread (Server); ohne Thread
+      // wie bisher aus dem Verlauf (`ran`).
+      const quelleVon = (n: string) => FREMD_WERKZEUGE[n] ?? FREMD_AGENTEN[n] ?? null;
+      const fremdGelesen = kontextFremd || lage.kalenderFremd || (zug ? zug.faden.fremdGelesen : verlaufFremd(payload.verlauf, quelleVon));
+      // Web-Schutz (29.09., #91): hat dieses Gespräch schon CRM/Kartei/Postfach/Notizen gelesen (jetzt oder in einem früheren
+      // Zug) oder bringt es Kontext/Bezug mit, starten Web-Agenten (Recherche …) nur als Vorschlag. Termine sind vertraulich.
+      const vertraulich = kontextFremd || lage.kalenderFremd || !!crmBezug || (zug ? zug.faden.vertraulich : verlaufVertraulich(payload.verlauf, quelleVon));
 
-    // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
-    // Brain/Vault nur, wenn der Bereich für ZOE an ist (05.10.).
-    const brain = kiS.bereiche.brain ? await brainAnweisung(person).catch(() => '') : '';
-    // Name aus dem Konto der auslösenden Person, Gesellschaften aus Einheiten + Register (08.10. spät, lib/zoe/grundauftrag.ts).
-    const bf = await businessFreiJetzt(person).catch(() => ({ frei: false, bisWand: undefined }));
-    const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}), werkzeuge: angebotenSet as ReadonlySet<string>, heads: headsImPrompt(heads) };
-    if (brain) kategorien.add('brain');
-    if (crmBezug) kategorien.add('crm');
+      // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
+      // Brain/Vault nur, wenn der Bereich für ZOE an ist (05.10.).
+      const brain = kiS.bereiche.brain ? await brainAnweisung(person).catch(() => '') : '';
+      // Name aus dem Konto der auslösenden Person, Gesellschaften aus Einheiten + Register (08.10. spät, lib/zoe/grundauftrag.ts).
+      const bf = await businessFreiJetzt(person).catch(() => ({ frei: false, bisWand: undefined }));
+      const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}), werkzeuge: angebotenSet as ReadonlySet<string>, heads: headsImPrompt(heads) };
+      if (brain) kategorien.add('brain');
+      if (crmBezug) kategorien.add('crm');
 
-    // Budgets je Zug (wie bisher): höchstens 8 Agentenläufe und 14 Werkzeuge.
-    let laufBudget = 8;
-    let werkBudget = 14;
-    // Gegenprüfung 09.10.: `head_fragen` ist ein ganzer Head-Lauf (bis zu 3 Modellaufrufe) und läuft auch nach fremdem Text (nur lesend) —
-    // höchstens HEAD_FRAGEN_JE_ZUG je Zug, damit ein eingeschleuster Satz („frag jeden Head …“) keine Kosten-Lawine auslöst.
-    let headFragenBudget = HEAD_FRAGEN_JE_ZUG;
-    const anlass = message.slice(0, 200);
-    const zoeKontext = (z: { fremdGelesen: boolean; vertraulich: boolean }) => ({ ...(zug ? { fadenId: zug.faden.id } : {}), fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich });
-    const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet/i;
+      // Budgets je Zug (wie bisher): höchstens 8 Agentenläufe und 14 Werkzeuge.
+      let laufBudget = 8;
+      let werkBudget = 14;
+      // Gegenprüfung 09.10.: `head_fragen` ist ein ganzer Head-Lauf (bis zu 3 Modellaufrufe) und läuft auch nach fremdem Text (nur lesend) —
+      // höchstens HEAD_FRAGEN_JE_ZUG je Zug, damit ein eingeschleuster Satz („frag jeden Head …“) keine Kosten-Lawine auslöst.
+      let headFragenBudget = HEAD_FRAGEN_JE_ZUG;
+      const anlass = message.slice(0, 200);
+      const zoeKontext = (z: { fremdGelesen: boolean; vertraulich: boolean }) => ({ ...(zug ? { fadenId: zug.faden.id } : {}), fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich });
+      const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet/i;
 
-    // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des ZOE-Gesprächs: 3 Runden, parallel, Register-Stufe.
-    const aus = await schleife({
-      system: [systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null, grund), crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n'),
-      user: message,
-      messages: [...vorgeschichte, ...(zug ? [] : [{ role: 'user', content: message }])],
-      tools: angeboten, runden: 3, parallel: true,
-      weiterBei: name => name === 'run_agent' || !!WERKZEUGE[name],
-      zustand: { fremdGelesen, vertraulich, kategorien },
-      ask: { maxTokens: 4000, timeoutMs: 180_000, zweck: 'zoe-gespraech', ki: { lauf: 'gespraech', person } },
-      ausfuehren: async (a, z): Promise<AufrufErgebnis> => {
-        const name = a.name;
-        // open_agent ist nur ein Verweis (Antwort `handoffs`) — kein Lauf.
-        if (name === 'open_agent') return { inhalt: 'Notiert — erscheint als Vorschlag.', ok: true, zaehlt: false };
-        // Nur, was in DIESEM Zug angeboten war (≤ 20) — alles andere über den zuständigen Head.
-        if (!angebotenSet.has(name)) return { inhalt: 'Nicht angeboten in diesem Zug — frag den zuständigen Head (head_fragen) oder gib ihm den Auftrag (an_head).', ok: false, name: name === 'run_agent' ? String(a.input?.agent ?? '') : name };
-        if (name === 'head_fragen' && headFragenBudget-- <= 0) return { inhalt: `Nicht ausgeführt: höchstens ${HEAD_FRAGEN_JE_ZUG} Fragen an Heads je Zug — frag gezielt oder gib den Auftrag mit an_head.`, ok: false };
-        if (WERKZEUGE[name]) {
-          // CRM-Werkzeuge nur mit Zugang (28.09., K1) — auch wenn das Modell ein nicht angebotenes Werkzeug nennt.
-          const gueltig = (crmErlaubt || !([...CRM_WERKZEUGE, ...AUFGABEN_DATEI_WERKZEUGE] as readonly string[]).includes(name)) && werkBudget-- > 0;
-          if (!gueltig) return { inhalt: 'Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).', ok: false };
-          // Über fuehreAus — dort sitzen Risiko-Stufe, Trockenlauf, Stapel und Protokoll. Es gibt bewusst keinen zweiten Weg zur Wirkung.
-          // Werbesperre, fakt_merken und notiz_anlegen immer über den Stapel; nach Fremdtext alles Schreibende.
-          // starte_auftraege mit einem Web-Agenten nach vertraulichem Lesen: nur als Vorschlag (#91).
-          const webAuftrag = name === 'starte_auftraege' && z.vertraulich && Array.isArray(a.input?.auftraege) && (a.input.auftraege as unknown[]).some(x => WEB_AGENTEN.has(String((x as { agent?: unknown })?.agent ?? '')));
-          const vorschlagen = nurVorschlag(name, a.input, z.fremdGelesen) || webAuftrag;
-          const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z) });
-          const k = kategorieVonWerkzeug(name, gruppeVon(name));
-          const kats: KiKategorie[] = k ? [k] : [];
-          // head_fragen: die Antwort trägt die Kategorien, mit denen der Head lief (Schalter, Einwilligung — nie mehr).
-          if (name === 'head_fragen' && lauf.ok) kats.push(...(await headFrageKategorien(person, String(a.input?.head ?? '')).catch(() => [] as KiKategorie[])));
-          const quelle = FREMD_WERKZEUGE[name] ?? null;
-          // Ein Vorschlag im Stapel ist kein Fehlschlag (vorher zählte „NICHT AUSGEFÜHRT“ als Fehler).
-          return { inhalt: lauf.text, ok: lauf.gestapelt || !FEHLER_TEXT.test(lauf.text), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(quelle ? { quelle } : {}), kategorien: kats };
-        }
-        // run_agent
-        const agentId = String(a.input?.agent ?? '');
-        const gueltig = agentenAngebot.includes(agentId) && laufBudget-- > 0;
-        if (!gueltig) return { inhalt: 'Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).', ok: false, name: agentId };
-        const quelle = FREMD_AGENTEN[agentId] ?? null;
-        // run_agent darf nurVorschlag nicht umgehen (29.09., #90/#91): nach Fremdtext (außer reinen Lese-Agenten) und
-        // Web-Agenten nach vertraulichem Lesen → als Auftrag in den Stapel (starte_auftraege, Freigabe per Klick).
-        if (agentNurVorschlag(agentId, z.fremdGelesen, z.vertraulich)) {
-          const l = await fuehreAus('starte_auftraege', { auftraege: [{ agent: agentId, ...(a.input?.auftrag ? { auftrag: String(a.input.auftrag).slice(0, 4000) } : {}) }] }, origin, { anlass, person, vorschlagen: true });
-          return { inhalt: l.text, ok: l.gestapelt || !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
-        }
-        const l = await runAgent(agentId as Ausfuehrbar, String(a.input?.auftrag ?? ''), origin, person);
-        return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}) };
-      },
-    });
+      // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des ZOE-Gesprächs: 3 Runden, parallel, Register-Stufe.
+      const aus = await schleife({
+        system: [systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null, grund), crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n'),
+        user: message,
+        messages: [...vorgeschichte, ...(zug ? [] : [{ role: 'user', content: message }])],
+        tools: angeboten, runden: 3, parallel: true,
+        weiterBei: name => name === 'run_agent' || !!WERKZEUGE[name],
+        zustand: { fremdGelesen, vertraulich, kategorien },
+        ask: { maxTokens: 4000, timeoutMs: 180_000, zweck: 'zoe-gespraech', ki: { lauf: 'gespraech', person } },
+        ...(strom ? { ereignis: strom.sende, signal: strom.signal } : {}),
+        ausfuehren: async (a, z): Promise<AufrufErgebnis> => {
+          const name = a.name;
+          // open_agent ist nur ein Verweis (Antwort `handoffs`) — kein Lauf.
+          if (name === 'open_agent') return { inhalt: 'Notiert — erscheint als Vorschlag.', ok: true, zaehlt: false };
+          // Nur, was in DIESEM Zug angeboten war (≤ 20) — alles andere über den zuständigen Head.
+          if (!angebotenSet.has(name)) return { inhalt: 'Nicht angeboten in diesem Zug — frag den zuständigen Head (head_fragen) oder gib ihm den Auftrag (an_head).', ok: false, name: name === 'run_agent' ? String(a.input?.agent ?? '') : name };
+          if (name === 'head_fragen' && headFragenBudget-- <= 0) return { inhalt: `Nicht ausgeführt: höchstens ${HEAD_FRAGEN_JE_ZUG} Fragen an Heads je Zug — frag gezielt oder gib den Auftrag mit an_head.`, ok: false };
+          if (WERKZEUGE[name]) {
+            // CRM-Werkzeuge nur mit Zugang (28.09., K1) — auch wenn das Modell ein nicht angebotenes Werkzeug nennt.
+            const gueltig = (crmErlaubt || !([...CRM_WERKZEUGE, ...AUFGABEN_DATEI_WERKZEUGE] as readonly string[]).includes(name)) && werkBudget-- > 0;
+            if (!gueltig) return { inhalt: 'Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).', ok: false };
+            // Über fuehreAus — dort sitzen Risiko-Stufe, Trockenlauf, Stapel und Protokoll. Es gibt bewusst keinen zweiten Weg zur Wirkung.
+            // Werbesperre, fakt_merken und notiz_anlegen immer über den Stapel; nach Fremdtext alles Schreibende.
+            // starte_auftraege mit einem Web-Agenten nach vertraulichem Lesen: nur als Vorschlag (#91).
+            const webAuftrag = name === 'starte_auftraege' && z.vertraulich && Array.isArray(a.input?.auftraege) && (a.input.auftraege as unknown[]).some(x => WEB_AGENTEN.has(String((x as { agent?: unknown })?.agent ?? '')));
+            const vorschlagen = nurVorschlag(name, a.input, z.fremdGelesen) || webAuftrag;
+            const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z) });
+            const k = kategorieVonWerkzeug(name, gruppeVon(name));
+            const kats: KiKategorie[] = k ? [k] : [];
+            // head_fragen: die Antwort trägt die Kategorien, mit denen der Head lief (Schalter, Einwilligung — nie mehr).
+            if (name === 'head_fragen' && lauf.ok) kats.push(...(await headFrageKategorien(person, String(a.input?.head ?? '')).catch(() => [] as KiKategorie[])));
+            const quelle = FREMD_WERKZEUGE[name] ?? null;
+            // Ein Vorschlag im Stapel ist kein Fehlschlag (vorher zählte „NICHT AUSGEFÜHRT“ als Fehler).
+            return { inhalt: lauf.text, ok: lauf.gestapelt || !FEHLER_TEXT.test(lauf.text), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(quelle ? { quelle } : {}), kategorien: kats };
+          }
+          // run_agent
+          const agentId = String(a.input?.agent ?? '');
+          const gueltig = agentenAngebot.includes(agentId) && laufBudget-- > 0;
+          if (!gueltig) return { inhalt: 'Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).', ok: false, name: agentId };
+          const quelle = FREMD_AGENTEN[agentId] ?? null;
+          // run_agent darf nurVorschlag nicht umgehen (29.09., #90/#91): nach Fremdtext (außer reinen Lese-Agenten) und
+          // Web-Agenten nach vertraulichem Lesen → als Auftrag in den Stapel (starte_auftraege, Freigabe per Klick).
+          if (agentNurVorschlag(agentId, z.fremdGelesen, z.vertraulich)) {
+            const l = await fuehreAus('starte_auftraege', { auftraege: [{ agent: agentId, ...(a.input?.auftrag ? { auftrag: String(a.input.auftrag).slice(0, 4000) } : {}) }] }, origin, { anlass, person, vorschlagen: true });
+            return { inhalt: l.text, ok: l.gestapelt || !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
+          }
+          const l = await runAgent(agentId as Ausfuehrbar, String(a.input?.auftrag ?? ''), origin, person);
+          return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}) };
+        },
+      });
 
-    if (aus.status === 'fehler' && aus.modellFehler) {
-      const r = aus.modellFehler;
-      return NextResponse.json(
-        { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300), ...(zug ? { fadenId: zug.faden.id } : {}) },
-        { status: 200 },
-      );
+      // Streaming: der Browser hat die Verbindung geschlossen — keine halbe Antwort im Thread. Lief noch kein Werkzeug, geht auch die Frage
+      // wieder heraus (der Zug hat nicht stattgefunden; das Feld im Browser behält den Text).
+      if (strom?.signal.aborted) {
+        if (zug && aus.werkzeugAufrufe === 0) await zugZuruecknehmenFuer(person, zug.faden.id, zug.nachrichtId).catch(() => false);
+        return { status: 499, body: { reply: '', abgebrochen: true } };
+      }
+      if (aus.status === 'fehler' && aus.modellFehler) {
+        const r = aus.modellFehler;
+        return {
+          status: 200,
+          body: { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300), ...(zug ? { fadenId: zug.faden.id } : {}) },
+        };
+      }
+      const ran = aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok }));
+      // create_task legt seit 07.09. direkt an (freie Hand laut Kompass) — es gibt deshalb keinen Bestätigungsknopf mehr.
+      const handoffs = aus.blocks
+        .filter(b => b.type === 'tool_use' && b.name === 'open_agent')
+        .map(b => {
+          const ag = LIVE_AGENTS.find(x => x.id === String(b.input?.agent ?? ''));
+          return ag ? { agent: ag.id, name: ag.name, href: ag.href, why: String(b.input?.why ?? '') } : null;
+        })
+        .filter(Boolean);
+
+      const fallback = handoffs.length ? 'Ich habe etwas für dich vorbereitet:' : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
+      const reply = aus.text || fallback;
+      // ZOE-Thread: Antwort anhängen, Marken des Zugs festhalten (nur ODER — einmal fremd gelesen, bleibt das Gespräch es).
+      if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge: aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}) })), fremdGelesen: aus.zustand.fremdGelesen, vertraulich: aus.zustand.vertraulich });
+      const stapelOffen = await offeneAnzahl().catch(() => 0);
+      // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
+      return { status: 200, body: { reply, handoffs, ran, stapelOffen, ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { status: 200, body: { reply: 'Ich konnte Anthropic nicht erreichen (offline?). Versuch es gleich nochmal.', error: msg, ...(zug ? { fadenId: zug.faden.id } : {}) } };
     }
-    const ran = aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok }));
-    // create_task legt seit 07.09. direkt an (freie Hand laut Kompass) — es gibt deshalb keinen Bestätigungsknopf mehr.
-    const handoffs = aus.blocks
-      .filter(b => b.type === 'tool_use' && b.name === 'open_agent')
-      .map(b => {
-        const ag = LIVE_AGENTS.find(x => x.id === String(b.input?.agent ?? ''));
-        return ag ? { agent: ag.id, name: ag.name, href: ag.href, why: String(b.input?.why ?? '') } : null;
-      })
-      .filter(Boolean);
+  };
 
-    const fallback = handoffs.length ? 'Ich habe etwas für dich vorbereitet:' : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
-    const reply = aus.text || fallback;
-    // ZOE-Thread: Antwort anhängen, Marken des Zugs festhalten (nur ODER — einmal fremd gelesen, bleibt das Gespräch es).
-    if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge: aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}) })), fremdGelesen: aus.zustand.fremdGelesen, vertraulich: aus.zustand.vertraulich });
-    const stapelOffen = await offeneAnzahl().catch(() => 0);
-    // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
-    return NextResponse.json({ reply, handoffs, ran, stapelOffen, ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ reply: 'Ich konnte Anthropic nicht erreichen (offline?). Versuch es gleich nochmal.', error: msg, ...(zug ? { fadenId: zug.faden.id } : {}) }, { status: 200 });
-  }
+  // Streaming (09.10., „wie Claude“): nur, wenn der Browser `Accept: text/event-stream` schickt — sonst JSON wie bisher.
+  if (willStrom(req)) return sseAntwort(req, zugAusfuehren);
+  const ergebnis = await zugAusfuehren();
+  return NextResponse.json(ergebnis.body, { status: ergebnis.status });
 }

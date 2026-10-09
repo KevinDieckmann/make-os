@@ -19,6 +19,7 @@ import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { LESEND, nurVorschlag, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
 import { FREMD_WERKZEUGE } from '@/lib/zoe/fremd';
 import { schleife, type AufrufErgebnis } from './schleife';
+import type { StromEreignis } from '@/lib/http/sse';
 import { kiSchalterFuer, type KiSchalter } from '@/lib/datenschutz/ki-einstellungen';
 import { kategorieVonWerkzeug } from '@/lib/datenschutz/ki-werkzeuge';
 import { gruppeVon } from '@/lib/zoe/register';
@@ -33,7 +34,7 @@ import { kontextFuer } from './kontext';
 import { istMedienWerkzeug, medienAngebotErgaenzen, medienWerkzeugAusfuehren } from './medien-werkzeuge';
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
 import { anhaengen, brettText, fadenHinzu, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
-import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern } from './faeden-server';
+import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern, zugZuruecknehmenFuer } from './faeden-server';
 
 /** Ein Satz für den Gesundheits-Head (Entscheidung 09.10., Fragerunde Teil 2 Nr. 18): Wellness, nie Diagnose oder Therapie. */
 export const WELLNESS_SATZ = 'Du bist ein Wellness-Coach: keine Diagnose, keine Therapie, keine medizinische Beratung. Du arbeitest nur mit den EIGENEN Werten dieser Person; bei Beschwerden verweist du ruhig auf Ärztin oder Arzt.';
@@ -110,6 +111,10 @@ export interface LaufEingabe {
   /** Vor jeder Runde (Lauf): abgebrochen / Not-Aus? */
   abbrechen?: () => Promise<string | null>;
   jetzt?: () => number;
+  /** Streaming im Chat (09.10.): Text-Stücke und Werkzeug-Stände an die Route — nur Anzeige, gespeichert wird das Endergebnis. */
+  ereignis?: (e: StromEreignis) => void;
+  /** Browser weg: der Lauf endet sauber mit `abgebrochen` (lib/agenten/schleife.ts `ABBRUCH_BROWSER`). */
+  signal?: AbortSignal;
 }
 
 export interface LaufErgebnis {
@@ -244,6 +249,8 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
     ...(e.kostenGrenzeCent ? { kostenGrenzeCent: e.kostenGrenzeCent } : {}),
     ...(e.modus === 'lauf' ? { stillstand: KERN_GRENZEN.stillstandRunden } : {}),
     ...(e.abbrechen ? { abbrechen: e.abbrechen } : {}),
+    ...(e.ereignis ? { ereignis: e.ereignis } : {}),
+    ...(e.signal ? { signal: e.signal } : {}),
     jetzt,
     zustand: { fremdGelesen: s.fremdGelesen, vertraulich: s.vertraulich, kategorien },
     ask: { model: modell, effort: aufwand, maxTokens: 6000, cacheSystem: true, timeoutMs: 180_000, zweck: `agent-${head.id}`, ki: { lauf: kiLauf, person } },
@@ -329,7 +336,7 @@ export function anhaengePruefen(roh: unknown): { ok: true; anhaenge: Anhang[] } 
  * Eine Nachricht der Person an einen Head oder Mitarbeiter: Thread anlegen bzw. fortsetzen (Stand → 409), Nachricht speichern, dann
  * synchron antworten — oder mit `hintergrund` als Lauf in die Warteschlange („+ Hintergrundaufgabe jetzt“).
  */
-export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; origin: string }): Promise<Antwort> {
+export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; origin: string; strom?: { ereignis: (e: StromEreignis) => void; signal: AbortSignal } }): Promise<Antwort> {
   const { sicht, anfrage: a } = o;
   const person = sicht.person;
   if (!a.agent || typeof a.agent !== 'object') return nein(400, 'Agent fehlt.');
@@ -392,9 +399,17 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
     sicht, umfang: u, faden, modus: 'chat', origin: o.origin, hintergrund: false, handler: handlerFuer(ctx), gedaechtnis: gedaechtnisFuer(bestand, agent), laufId,
     offeneFragen: offeneBretter.length > 0,
     zusatz: offeneBretter.length ? `OFFENE FRAGEN DEINER MITARBEITER (Arbeitsstand):\n${offeneBretter.map(b => brettText(b, fremd)).join('\n\n')}` : undefined,
+    ...(o.strom ? { ereignis: o.strom.ereignis, signal: o.strom.signal } : {}),
   });
   const { logRun } = await import('@/lib/agent-log');
   await logRun(`faden:${head.id}`, 'Agenten-Chat', e.span, { person });
+  // Streaming (09.10.): der Browser hat die Verbindung geschlossen — keine halbe Antwort im Thread. Lief noch kein Werkzeug, geht auch
+  // die Nachricht der Person wieder heraus (der Zug hat nicht stattgefunden; das Feld im Browser behält den Text). 499 = nichts gemerkt
+  // (`einmalig` gibt die Anfrage frei).
+  if (o.strom?.signal.aborted) {
+    if (e.span.werkzeug_aufrufe === 0) await zugZuruecknehmenFuer(person, faden.id, n.id).catch(() => false);
+    return nein(499, 'Abgebrochen — nichts gespeichert.', { abgebrochen: true });
+  }
   if (!e.ki) {
     const aktuell = (await eigenerFaden(person, faden.id)) ?? faden;
     return { status: 200, body: { ok: true, faden: aktuell, stand: fadenStand(aktuell), stapelOffen: await stapelOffenFuer(person), hinweis: [e.hinweis, e.grund].filter(Boolean).join(' ') } };

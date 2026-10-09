@@ -189,9 +189,25 @@ export function anhaengen(f: FadenKern, neu: NachrichtKern[], jetzt: string): { 
   return { ok: true, faden: { ...rest, nachrichten, aktualisiert: jetzt, ...(kf ? { kurzfassung: kf } : {}) } };
 }
 
+/**
+ * Ein abgebrochener Zug (Streaming, 09.10.: der Browser hat die Verbindung geschlossen, bevor die Antwort fertig war) — nichts Halbes
+ * bleibt stehen: die Nachricht der Person geht wieder heraus, aber NUR, wenn sie noch die letzte des Threads ist (danach kam nichts, z. B.
+ * kein Plan-Hinweis). War sie die einzige, verschwindet der eben angelegte Thread ganz. Sonst bleibt alles, wie es ist (`null`).
+ */
+export function zugZuruecknehmen(b: FadenBestandKern, fadenId: string, nachrichtId: string): FadenBestandKern | null {
+  const f = b.faeden.find(x => x.id === fadenId);
+  const letzte = f?.nachrichten[f.nachrichten.length - 1];
+  if (!f || !letzte || letzte.id !== nachrichtId || letzte.rolle !== 'person') return null;
+  const nachrichten = f.nachrichten.slice(0, -1);
+  if (!nachrichten.length) return { ...b, faeden: b.faeden.filter(x => x.id !== fadenId && x.elternId !== fadenId) };
+  const kf = kurzfassung(nachrichten);
+  const { kurzfassung: _alt, ...rest } = f;
+  return { ...b, faeden: b.faeden.map(x => (x.id === fadenId ? { ...rest, nachrichten, ...(kf ? { kurzfassung: kf } : {}) } : x)) };
+}
+
 // ── Prompt: die letzten 16 Nachrichten + Kurzfassung ────────────────────────────────────────────────────────────────────
 
-const kuerzen = (t: string, n: number) => { const e = t.replace(/\s+/g, ' ').trim(); return e.length > n ? `${e.slice(0, n - 1)}…` : e; };
+const kuerzen =(t: string, n: number) => { const e = t.replace(/\s+/g, ' ').trim(); return e.length > n ? `${e.slice(0, n - 1)}…` : e; };
 
 /**
  * Die Kurzfassung der Nachrichten VOR den letzten `promptNachrichten` — auf dem Server gerechnet (ohne Modell, deterministisch):
