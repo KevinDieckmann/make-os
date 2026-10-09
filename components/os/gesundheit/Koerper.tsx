@@ -15,11 +15,14 @@ import {
   KOERPER_GRENZEN as G, KOERPER_TOENE, STUFEN_ZUSTAENDE, TON_NAME, ZUSTAND_NAME, kennzahlLink,
   type KoerperListe, type KoerperOp, type KoerperStand, type KoerperTon,
 } from '@/lib/gesundheit/koerper';
+import { GESUNDHEIT_MODULE, MODUL_INFO, type ModulStand } from '@/lib/gesundheit/module';
 
 // ── Daten ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface KoerperZugriff {
   koerper: KoerperStand | null;
+  /** Wirksamer Stand der eigenen Module (Server, lib/gesundheit/module.ts) — auch ohne Profil; null bis zur ersten Antwort. */
+  module: ModulStand | null;
   /** Erst nach der ersten Antwort true — vorher weder Leerzustand noch Karten. */
   geladen: boolean;
   fehler: string | null;
@@ -29,10 +32,13 @@ export interface KoerperZugriff {
 /** Das eigene Profil (nur wenn `aktiv` = eigene Ansicht). Stand aus der letzten Server-Antwort, nie selbst gesetzt. */
 export function useKoerper(aktiv: boolean): KoerperZugriff {
   const [koerper, setKoerper] = useState<KoerperStand | null>(null);
+  const [modulStand, setModulStand] = useState<ModulStand | null>(null);
   const [geladen, setGeladen] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const stand = useRef<string | null>(null);
-  const uebernehmen = (d: { koerper?: KoerperStand | null; stand?: string }) => { setKoerper(d.koerper ?? null); stand.current = d.stand ?? null; setGeladen(true); };
+  const uebernehmen = (d: { koerper?: KoerperStand | null; stand?: string; module?: ModulStand }) => {
+    setKoerper(d.koerper ?? null); stand.current = d.stand ?? null; if (d.module) setModulStand(d.module); setGeladen(true);
+  };
 
   useEffect(() => {
     if (!aktiv) return;
@@ -56,7 +62,7 @@ export function useKoerper(aktiv: boolean): KoerperZugriff {
     }
   }, []);
 
-  return { koerper, geladen, fehler, aendern };
+  return { koerper, module: modulStand, geladen, fehler, aendern };
 }
 
 // ── Leerzustand ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -254,20 +260,41 @@ export function ZusammenhaengeKarte({ k, aendern }: { k: KoerperStand; aendern: 
   );
 }
 
-/** Was auf „Heute“ erscheint: Symptom-Regler (mit Namen), Zähler „Sauber geblieben“, Sätze unter Routinen. */
+/**
+ * Module (09.10., lib/gesundheit/module.ts): die Person schaltet ihre eigenen Tagebücher ein oder aus — nur für sich. Aus =
+ * keine Zeile auf „Heute“, keine Abendfrage, keine Index-Kennzahl, andere sehen nichts; vorhandene Einträge bleiben gespeichert.
+ * Steht auch ohne Profil (der erste Schalter legt es an). `nachher` lädt die Seite neu (Heute, Index).
+ */
+export function ModuleKarte({ k, modulStand: ms, aendern, nachher }: { k: KoerperStand | null; modulStand: ModulStand | null; aendern: KoerperZugriff['aendern']; nachher?: () => void }) {
+  const schalten = async (m: typeof GESUNDHEIT_MODULE[number], an: boolean) => { if (await aendern([{ op: 'modul', modul: m, an }])) nachher?.(); };
+  return (
+    <Karte i={6}>
+      <Ueberschrift>Module</Ueberschrift>
+      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '0 0 10px', lineHeight: 1.5 }}>Eigene Tagebücher — nur für dich. Aus: nichts wird angezeigt oder abgefragt, Einträge bleiben gespeichert.</p>
+      {!ms && <Leer>Lädt …</Leer>}
+      {ms && GESUNDHEIT_MODULE.map(m => (
+        <div key={m} style={{ margin: '0 0 12px' }}>
+          <Schalter karte an={ms[m]} onChange={an => { void schalten(m, an); }} ariaLabel={`${MODUL_INFO[m].name} ${ms[m] ? 'ausschalten' : 'einschalten'}`}
+            beschreibung={MODUL_INFO[m].satz}>{MODUL_INFO[m].name}</Schalter>
+          {m === 'haut' && ms.haut && (
+            <div style={{ margin: '8px 2px 0' }}>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '2px 0 2px' }}>Name des Reglers (ohne Namen: „{MODUL_INFO.haut.name}“)</div>
+              <TextFeld label="Name des Reglers" wert={k?.symptom?.name ?? ''} max={G.name} leer="Kein eigener Name."
+                onSpeichern={async t => { const ok = await aendern([{ op: 'felder', felder: { symptom: t.trim() ? { name: t } : null } }]); if (ok) nachher?.(); return ok; }} />
+            </div>
+          )}
+        </div>
+      ))}
+    </Karte>
+  );
+}
+
+/** Eigene Sätze unter den Routinen der Tagesliste auf „Heute“. */
 export function AnzeigeKarte({ k, aendern, routinen }: { k: KoerperStand; aendern: KoerperZugriff['aendern']; routinen: { id: string; label: string }[] }) {
   const routineName = (id: string) => routinen.find(r => r.id === id)?.label ?? id;
   return (
-    <Karte i={6}>
-      <Ueberschrift>Anzeige auf „Heute“</Ueberschrift>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '2px 0 2px' }}>Symptom-Regler (0–10, abends) — ohne Namen kein Regler</div>
-      <TextFeld label="Name des Symptoms" wert={k.symptom?.name ?? ''} max={G.name} leer="Kein Symptom-Regler."
-        onSpeichern={t => aendern([{ op: 'felder', felder: { symptom: t.trim() ? { name: t } : null } }])} />
-      <div style={{ margin: '14px 0' }}>
-        <Schalter karte an={k.sauberZaehler} onChange={an => { void aendern([{ op: 'felder', felder: { sauberZaehler: an } }]); }}
-          ariaLabel="Zähler „Sauber geblieben“ anzeigen" beschreibung="Tage seit dem letzten Rückfall, abends abhaken.">Zähler „Sauber geblieben“</Schalter>
-      </div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '2px 0 2px' }}>Sätze unter Routinen</div>
+    <Karte i={7}>
+      <Ueberschrift>Sätze unter Routinen</Ueberschrift>
       <EintragsListe liste="routinenHinweise" eintraege={k.routinenHinweise} aendern={aendern} leer="Keine Sätze unter Routinen." neuLabel="+ Satz"
         felder={[
           { key: 'routine', label: 'Routine', art: 'wahl', pflicht: true, optionen: routinen.map(r => ({ wert: r.id, name: r.label })) },

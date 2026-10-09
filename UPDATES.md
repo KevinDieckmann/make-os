@@ -31,6 +31,49 @@ Kalendermodell (Kalender-Einstellungen mit festen Plätzen je Person, `vorschlag
 Wächter: `tests/neutral-rest.test.ts` › 4 (ganzer Quelltext der ZOE-Dateien ohne Vornamen/Firmen/Diagnosen/„Sir“, Kennungen nur mit Grund, Verhalten mit
 erfundenen Konten: create_task, Planposten-Altwert, crm_vorschlag, ZOE-Verlauf-Altbestand, Räume/Gedächtnis).
 
+## 09.10.2026 — Gesundheits-Module je Person: Symptom-Tagebuch und Zähler optional (PRIVATE_INHALTE_SUCHE.md Paket 2 › C; nur lokal — Branch `gesundheit-module`, Basis `agenten-nacht` a2b8a5ee)
+
+Plattform-Regel „Nichts Persönliches fest einbauen“, Kevin 08.10. (Fragebogen Teil 3): „Alles als eigene Daten je Person/Instanz.“ Die zwei
+Tagebücher, die bisher in JEDER Instanz für JEDE Person steckten — das Symptom-Tagebuch (Bestand `haut`) und der Zähler „Sauber geblieben“
+(Bestand `streak`) —, sind jetzt **Module je Person**. EINE Regel `moduleWirksam` (lib/gesundheit/module.ts): ausdrücklich geschaltet gewinnt;
+sonst Altbestand an (frühere Anzeige-Einstellung im Körper-Profil ODER schon Einträge — einmal beim Lesen abgeleitet, nie gespeichert, nie
+automatisch aus); sonst aus (Vorgabe für neue Personen). Und EINE Regel `modulZaehlt` für Index und Wochenrückblick: an UND in 60 Tagen geführt.
+
+**Was sich ändert (Klickweg zum Prüfen)**
+- **Für euch: nichts.** Wer schon Einträge hat, hat das Modul an — der Gesundheits-Index ist bit-gleich (Test: Index mit Modul-Stand = Index ohne
+  Modul-Regel), Schreiben, Abendfragen und Wochenrückblick wie bisher.
+- **Gesundheit › Körper › Module** (neue Karte, nur die eigene Ansicht, auch ohne Körper-Profil): zwei Schalter „Symptom-Tagebuch“ (mit dem eigenen
+  Namen des Reglers, ohne Namen „Symptom-Tagebuch“) und „Zähler „Sauber geblieben““. Die Karte „Anzeige auf Heute“ heißt jetzt „Sätze unter Routinen“.
+- **Modul aus** → keine Zeile auf „Heute“, kein Verlauf, keine Index-Kennzahl (Symptom-Tagebuch, Schub-Tage, Streak), keine Abendfrage, keine
+  Wochenzeile, kein Journal-Merkmal „Sauber geblieben“, kein Streak im Widget „Routinen & Streak“; Schreiben (`PUT /api/state/haut|streak`) → 409
+  „einschalten unter Gesundheit › Körper › Module“. Vorhandene Einträge bleiben gespeichert und kommen beim Einschalten zurück.
+- **Andere Konten** (geteilte Gesundheit): bekommen ein ausgeschaltetes Modul **serverseitig leer** (`/api/gesundheit/stand`, `/api/state/haut`,
+  `/api/state/streak` — `modul: false`, leeres Log); schalten können sie nie (Körper-Route nur die Person selbst, Dienstweg 403).
+- **Ohne Einwilligung (a)** darf eine Person ein Modul AUSschalten (verarbeitet nichts), einschalten nicht (403).
+- **Neutral:** Index-Kennzahlen „Gesund gegessen“ (Kennung `antiinflamm` bleibt), „Symptom-Tagebuch“ (Kennung `haut` bleibt); Termin-Muster des Index
+  und der Energie-Ansicht an EINER Stelle `lib/gesundheit/muster.ts`, nur allgemeine Begriffe (Fachärzte über „-loge/-login“, „Praxis“, „Dr.“, „Arzt“);
+  Bausteine „Training / Sport“ statt „Reha / Training“ (Reha nur aus den eigenen Routinen); `planArtAusTitel` ohne Körperstelle; ältere Journal-
+  Merkmale des früheren Tages-Checks werden allgemein angezeigt (ohne die Schlüssel im Code); Platzhalter/Hinweise in Ernährung und Konto neutral.
+- **Register:** `streak`/`streak--*` jetzt wie `haut` als Gesundheitsdaten (Art. 9, mit Angaben); Beschreibungen ohne Namen.
+- **Lese-Protokoll:** `GET /api/state/streak` notiert jetzt `leseZugriff(…, 'gesundheit')` wie das Symptom-Tagebuch.
+
+**Rückweg:** Nur ein optionales Feld `module` im Körper-Profil (`gesundheit-koerper[--<person>]`) und neue Dateien. Der alte Stand verwirft `module`
+beim nächsten Speichern des Körper-Profils; der Zähler bleibt über `sauberZaehler` gespiegelt (der Schalter setzt beide). Ein ausdrücklich
+AUSgeschaltetes Symptom-Tagebuch mit Einträgen gilt im alten Stand wieder als „geführt“ (der alte Stand kennt keine Module) — beim erneuten Upload
+gilt die Einstellung wieder, sofern das Profil zwischendurch nicht gespeichert wurde. Keine Einträge werden angefasst.
+
+**Offen / nicht in diesem Paket (andere Bereiche)**
+- **ZOE-Werkzeuge** `haut`/`streak` in `lib/zoe/werkzeuge.ts` schreiben direkt in die Bestände — sie prüfen das Modul noch nicht (`modulSchreibSperre`
+  bzw. `moduleFuer(person)` aus `lib/gesundheit/module-server.ts`), und `app/api/kimmi` bietet sie jeder Person an. Gehört zum Paket „Neutral Rest 2“.
+  Bis dahin: ein Eintrag über ZOE bei einer Person OHNE ausdrückliche Einstellung schaltet das Modul über die Altbestand-Regel an.
+- **Texte mit Fassung:** der Einwilligungstext (a) nennt „Haut- und Journal-Einträge“, das Verzeichnis (`vv-gesundheit`) „Haut-Tagebuch“ — neutral
+  formulieren braucht eine neue Fassung bzw. einen Eintrag in `ALTE_FASSUNGEN` (Kevins Wort).
+- Bestands- und Feldnamen (`haut`, `streak`, `juckreiz`, Journal-Altfelder) bleiben — sie sind Daten; eine Umbenennung bräuchte eine Migration.
+
+Wächter: `tests/gesundheit-module.test.ts` (Regel rein; Altbestand-Instanz Index bit-gleich; neue Person ohne Abendfragen/Kennzahlen, 409; aus
+schlägt Altbestand; Sicht B bekommt nichts aus A; Dienstweg 403; ohne Einwilligung nur ausschalten; PERSON_BESTAENDE), `tests/privat-neutral.test.ts`
+(allgemeine Wortliste über Gesundheits-Module, Bausteine, Muster; Muster an EINER Stelle; Takt und Index über dieselbe Regel).
+
 ## 09.10.2026 — Brain-/Vault-Sicht ohne feste Personen (PRIVATE_INHALTE_SUCHE.md Paket 5 „Vault- und Brain-Sicht“; nur lokal — Branch `brain-neutral`, Basis `agenten-nacht` c9c65695)
 
 Plattform-Regel „Nichts Persönliches fest einbauen“: Wer im Obsidian-Brain was sieht, wem eine Notiz ohne `owner` gehört, für wen eine Regel gilt

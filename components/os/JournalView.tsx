@@ -11,13 +11,15 @@ import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, Wahl, ZielBezug, feld, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
+import { WEG } from '@/lib/wege';
 
-interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; gut?: string; dankbar?: string; hart?: string; tagesnote?: string }
+interface Entry { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; gut?: string; dankbar?: string; hart?: string; tagesnote?: string }
 type Journal = Record<string, Entry>;
 const ymd = (d: Date) => localDay(d);
 
 // Allgemeine Merkmale (09.10., Paket „neutral-rest“: keine Beschwerde oder Substanz einer bestimmten Person im Code). Der Schalter
-// „Sauber geblieben“ erscheint nur, wenn die Person den Zähler in ihrem Körper-Profil eingeschaltet hat (eigene Einstellung).
+// „Sauber geblieben“ erscheint nur, wenn die Person das Modul „Zähler“ führt (lib/gesundheit/module.ts — eigene Einstellung bzw.
+// eigener Altbestand, vom Server gerechnet).
 const SAUBER = 'sauber';
 const FLAGS: { id: string; label: string; nurMitZaehler?: true }[] = [
   { id: 'antiinflamm', label: 'Gesund gegessen' },
@@ -26,6 +28,11 @@ const FLAGS: { id: string; label: string; nurMitZaehler?: true }[] = [
   { id: SAUBER, label: 'Sauber geblieben', nurMitZaehler: true },
   { id: 'keinalkohol', label: 'Kein Alkohol' },
 ];
+/** Ältere Einträge (früherer Tages-Check): feste Merkmale mit dem Wert „schub“ bzw. „schmerz“ — allgemein angezeigt, ohne die
+ *  Schlüssel im Code zu nennen (09.10.: keine Körperstelle einer bestimmten Person). */
+const ALT_WERTE: Record<string, string> = { schub: 'Schub', schmerz: 'Schmerz' };
+const BEKANNT = new Set(['text', 'mood', 'energy', 'stress', 'flags', 'at', 'gut', 'dankbar', 'hart', 'tagesnote']);
+const altMerkmale = (e: Entry): string[] => Object.entries(e).filter(([k, v]) => !BEKANNT.has(k) && typeof v === 'string' && ALT_WERTE[v]).map(([, v]) => ALT_WERTE[v as string]);
 /** Beschriftung eines gespeicherten Merkmals — ältere „kein…“-Merkmale (Verzicht) ohne eigenen Eintrag als „Verzicht gehalten“. */
 const flagLabel = (f: string) => FLAGS.find(x => x.id === f)?.label ?? (/^kein[a-z]+$/.test(f) ? 'Verzicht gehalten' : f);
 
@@ -33,10 +40,12 @@ export function JournalView() {
   const today = ymd(new Date());
   const [journal, setJournal] = useState<Journal>({});
   const [saved, setSaved] = useState(true);
-  // Zähler „Sauber geblieben“ nur mit eigener Einstellung im Körper-Profil (nie für andere sichtbar, /api/gesundheit/koerper kennt nur die eigene Person).
-  const [mitZaehler, setMitZaehler] = useState(false);
+  // Module der eigenen Person (nie für andere sichtbar, /api/gesundheit/koerper kennt nur die eigene Person): Zähler-Merkmal
+  // nur mit Modul `serie`, Link zu den Tagebüchern nur, wenn überhaupt ein Modul an ist.
+  const [modulStand, setModulStand] = useState<{ haut?: boolean; serie?: boolean }>({});
+  const mitZaehler = modulStand.serie === true;
   useEffect(() => {
-    fetch('/api/gesundheit/koerper', { cache: 'no-store' }).then(r => r.json()).then(d => setMitZaehler(d?.ok === true && d.koerper?.sauberZaehler === true)).catch(() => {});
+    fetch('/api/gesundheit/koerper', { cache: 'no-store' }).then(r => r.json()).then(d => { if (d?.ok === true && d.module) setModulStand(d.module); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -116,7 +125,7 @@ export function JournalView() {
       <Flaeche seite="journal">
       <Kachel id="journal" titel="Journal" breite={6}>
       <Karte i={0} ton={LEUCHT.gut}>
-        <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit#haut" style={{ color: C.inkLeise, textDecoration: 'none' }}>Haut & Streak auf Gesundheit ›</Link>}>Journal</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.gut} rechts={modulStand.haut || modulStand.serie ? <Link href={WEG.gesundheit(modulStand.haut ? 'haut' : 'streak')} style={{ color: C.inkLeise, textDecoration: 'none' }}>Tagebücher auf Gesundheit ›</Link> : undefined}>Journal</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
             {dots('Stimmung', entry.mood, n => patch({ mood: n }))}
@@ -166,8 +175,7 @@ export function JournalView() {
                 {typeof e.energy === 'number' && <Chip farbe={LEUCHT.gut}>Energie {e.energy}</Chip>}
                 {typeof e.stress === 'number' && <Chip farbe={LEUCHT.kritisch}>Stress {e.stress}</Chip>}
                 {(e.flags ?? []).map(f => <Chip key={f} farbe={C.inkDim}>{flagLabel(f)}</Chip>)}
-                {e.haut === 'schub' && <Chip farbe={LEUCHT.kritisch}>Schub</Chip>}
-                {e.ruecken === 'schmerz' && <Chip farbe={LEUCHT.kritisch}>Schmerz</Chip>}
+                {altMerkmale(e).map((m, i) => <Chip key={`alt-${i}`} farbe={LEUCHT.kritisch}>{m}</Chip>)}
               </div>
               {e.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
               {(e.gut || e.dankbar || e.hart || e.tagesnote) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5, display: 'grid', gap: 2 }}>{e.gut && <span>Gut: {e.gut}</span>}{e.dankbar && <span>Dankbar: {e.dankbar}</span>}{e.hart && <span>Hart zu mir: {e.hart}</span>}{e.tagesnote && <span>Tagesnotiz: {e.tagesnote}</span>}</div>}

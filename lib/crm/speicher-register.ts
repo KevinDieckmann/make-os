@@ -366,14 +366,15 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // Kapazität (04.10.) liest daraus NUR den Ø-Recovery-Wert, NUR mit eigener Einwilligung der Person und wenn sie mit allen Konten teilt, und nur als
   // Team-Faktor (lib/kapazitaet/server.ts); nie in Business-Index, ZOE oder Protokolle (`ohneGesundheit`, Test kapazitaet-route).
   mit(H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
-  mit(H('haut', 'Haut-Tagebuch (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
-  mit(H('haut--*', 'Haut-Tagebuch je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('haut', 'Symptom-Tagebuch (Erstkonto; Modul je Person, 09.10.) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('haut--*', 'Symptom-Tagebuch je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): Leitsatz, Beschwerden, Hebel, Stufenplan, Zusammenhänge, Anzeige-Einstellungen —
   // NUR die Person selbst (auch bei „Teilen“ nicht), an die KI nur über eigenerGesundheitsKontext mit Einwilligung (b).
   mit(H('gesundheit-koerper', 'Körper-Profil (Erstkonto) — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
   mit(H('gesundheit-koerper--*', 'Körper-Profil je Person — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
-  H('streak', 'Serien (Kevin) — eigene Daten.'),
-  H('streak--*', 'Serien je Person — eigene Daten.'),
+  // Zähler „Sauber geblieben“ (Modul `serie`, 09.10.): Gesundheitsdaten wie das Symptom-Tagebuch (Schreiben nur mit Einwilligung (a)).
+  mit(H('streak', 'Zähler „Sauber geblieben“ (Erstkonto; Modul je Person) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('streak--*', 'Zähler „Sauber geblieben“ je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
   H('journal--*', 'Journal je Person — eigene Daten.'),
   H('steuern', 'Eigene Steuern des Haushalts (Einstellungen, Vorauszahlungen).'),

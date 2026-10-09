@@ -14,12 +14,12 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT, Spalten, Spalte } from './ui';
+// Erkennungsmuster an EINER Stelle (auch der Gesundheits-Index), nur allgemeine Begriffe (09.10.).
+import { GES_TERMIN, GES_BLOCK } from '@/lib/gesundheit/muster';
 
 interface Termin { titel: string; date: string; zeit: string }
 interface Meilenstein { id?: string; titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
 
-const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|untersuchung|klinik|krankenhaus|facharzt|neurolog|orthop|training|sport|gym|fitness|schwimm|massage|therapie/i;
-const GES_BLOCK = /sport|train|gym|lauf|schwimm|spazier|bewegung|yoga|dehn/i;
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
 
@@ -137,7 +137,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
           })}
         </Liste>
         <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
-          Geplant wird im <Link href="/os/kalender?modus=planen" style={link}>Wochenplaner</Link> (Reha-Baustein reinziehen) — hier siehst du, ob die 4 Wochen tragen.
+          Geplant wird im <Link href="/os/kalender?modus=planen" style={link}>Wochenplaner</Link> (Bewegungs-Baustein oder eigene Routine einplanen) — hier siehst du, ob die 4 Wochen tragen.
         </p>
       </Abschnitt>
 

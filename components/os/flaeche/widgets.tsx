@@ -231,7 +231,7 @@ function FokusWidget({ e, titel, i }: WidgetProps) {
 }
 
 // ── Körper (Recovery + Routinen) ────────────────────────────────────────────
-interface Stand { vitals?: { rec?: number; heute?: boolean; alterTage?: number; fallback?: boolean }; routinen?: { liste?: { id: string; label: string; heute: boolean }[]; quote7?: number }; streak?: { sauberTage: number; aktuell: boolean } }
+interface Stand { vitals?: { rec?: number; heute?: boolean; alterTage?: number; fallback?: boolean }; routinen?: { liste?: { id: string; label: string; heute: boolean }[]; quote7?: number }; streak?: { sauberTage: number; aktuell: boolean }; module?: { serie?: boolean } }
 function KoerperWidget({ titel, i }: WidgetProps) {
   const d = useDaten<Stand>('/api/gesundheit/stand', x => ((x as { vitals?: unknown }).vitals ? (x as Stand) : null));
   const v = d?.vitals;
@@ -260,7 +260,8 @@ function RoutinenWidget({ titel, i }: WidgetProps) {
   const d = useDaten<Stand>('/api/gesundheit/stand', x => ((x as { routinen?: unknown }).routinen ? (x as Stand) : null));
   const liste = d?.routinen?.liste ?? [];
   const heuteN = liste.filter(r => r.heute).length;
-  const streak = d?.streak;
+  // Der Zähler nur, wenn die Person das Modul führt (lib/gesundheit/module.ts, 09.10.) — sonst nur die Routinen.
+  const streak = d?.module?.serie ? d.streak : undefined;
   return (
     <Karte i={i} akzent={liste.length && heuteN === liste.length ? LEUCHT.gut : undefined}>
       <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href={WEG.gesundheit('routinen')} style={link}>{liste.length ? `${heuteN}/${liste.length} heute ›` : 'Routinen ›'}</Link>}>{titel ?? 'Routinen & Streak'}</Ueberschrift>
@@ -269,11 +270,14 @@ function RoutinenWidget({ titel, i }: WidgetProps) {
       <Liste>
         {liste.slice(0, 8).map(r => <Zeile key={r.id} links={<Punkt farbe={r.heute ? LEUCHT.gut : C.inkLeise} />} titel={<span style={{ color: r.heute ? C.ink : C.inkDim }}>{r.label}</span>} />)}
       </Liste>
-      {d && (
+      {d && streak && (
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', marginTop: 10 }}>
-          <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 26, letterSpacing: '-.03em', color: streak?.aktuell ? LEUCHT.gut : C.inkLeise }}>{streak?.sauberTage ?? 0}</span>
+          <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 26, letterSpacing: '-.03em', color: streak.aktuell ? LEUCHT.gut : C.inkLeise }}>{streak.sauberTage}</span>
           <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Tage Streak{d.routinen?.quote7 != null ? ` · 7-Tage-Quote ${Math.round(d.routinen.quote7 * 100)} %` : ''}</span>
         </div>
+      )}
+      {d && !streak && d.routinen?.quote7 != null && liste.length > 0 && (
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 10 }}>7-Tage-Quote {Math.round(d.routinen.quote7 * 100)} %</div>
       )}
     </Karte>
   );

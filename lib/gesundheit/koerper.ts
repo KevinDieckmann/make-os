@@ -6,13 +6,16 @@
 // gelesen und geschrieben NUR über /api/gesundheit/koerper und NUR von der Person selbst — auch wer seine Gesundheit
 // teilt, teilt den Körper-Reiter nicht. An die KI nur über `eigenerGesundheitsKontext` mit Einwilligung (b).
 //
-// Dazu zwei Anzeige-Einstellungen, die vorher fest für eine Person im Code standen: ein Symptom-Regler (Name; ohne Namen
-// kein Regler — die Werte liegen wie bisher im Haut-Tagebuch) und der Zähler „Sauber geblieben“ (aus = nicht anzeigen).
+// Dazu zwei Anzeige-Einstellungen, die vorher fest für eine Person im Code standen: der Name des Symptom-Reglers (die Werte
+// liegen wie bisher im Bestand `haut`) und der Zähler „Sauber geblieben“. Seit 09.10. schaltet die Person die beiden
+// Tagebücher als MODULE ein oder aus (`module`, lib/gesundheit/module.ts — EINE Regel `moduleWirksam`); `symptom` bleibt
+// der eigene Name des Reglers, `sauberZaehler` folgt dem Modul `serie` (der ältere Stand liest nur dieses Feld).
 //
 // Rein (Server UND Browser): Form, Säuberung beim Lesen (nie kürzen), Grenzen, Änderungs-Schritte. Über einer Grenze
 // wird abgelehnt (413), nie gekürzt; ein ungültiger Schritt lässt den ganzen Stapel liegen (400).
 
 import { neueKennung } from '@/lib/kennung';
+import { GESUNDHEIT_MODULE, modulEinstellungSaeubern, type GesundheitModul, type ModulEinstellung } from './module';
 
 /** Basisname des Bestands (je Person über `speicherFuer`). */
 export const KOERPER_BASIS = 'gesundheit-koerper';
@@ -42,10 +45,12 @@ export interface KoerperStand {
   zusammenhaenge: KoerperZusammenhang[];
   /** Eigener Hinweistext unter den Zusammenhängen. */
   hinweis: string;
-  /** Symptom-Regler auf „Heute“ (Werte im Haut-Tagebuch) — null = kein Regler. */
+  /** Eigener Name des Symptom-Reglers auf „Heute“ (Werte im Bestand `haut`, Modul `haut`) — null = allgemeiner Name. */
   symptom: KoerperSymptom | null;
-  /** Zähler „Sauber geblieben“ auf „Heute“ — aus = nicht anzeigen. */
+  /** Zähler „Sauber geblieben“ auf „Heute“ — aus = nicht anzeigen. Seit 09.10. Spiegel des Moduls `serie` (Rückweg). */
   sauberZaehler: boolean;
+  /** Module, die die Person ausdrücklich ein- oder ausgeschaltet hat (fehlt = Altbestand-Regel, lib/gesundheit/module.ts). */
+  module?: ModulEinstellung;
   routinenHinweise: RoutinenHinweis[];
   /** Tag der einmaligen Übernahme des Altbestands (lib/altbestand/uebernahme.ts) — Marke, damit sie nie zweimal läuft. */
   altbestand?: string;
@@ -97,12 +102,14 @@ export function koerperSaeubern(roh: unknown): KoerperStand | null {
     sauberZaehler: o.sauberZaehler === true,
     routinenHinweise: liste(o.routinenHinweise, e => (typeof e.routine === 'string' && ROUTINE_OK.test(e.routine) ? { id: e.id as string, routine: e.routine, text: str(e.text) } : null)),
   };
+  const modulEinstellung = modulEinstellungSaeubern(o.module);
+  if (modulEinstellung) k.module = modulEinstellung;
   if (typeof o.altbestand === 'string') k.altbestand = o.altbestand;
   if (typeof o.geaendert === 'string') k.geaendert = o.geaendert;
   return k;
 }
 
-/** Steht etwas im Profil (KI-Kontext)? Die Anzeige-Einstellungen (Symptom-Regler, Zähler) zählen nicht. */
+/** Steht etwas im Profil (KI-Kontext)? Die Anzeige-Einstellungen (Symptom-Regler, Zähler, Module) zählen nicht. */
 export function koerperHatInhalt(k: KoerperStand | null): boolean {
   if (!k) return false;
   return !!(k.leitsatz.trim() || k.hinweis.trim() || k.beschwerden.length || k.hebel.length || k.stufen.length || k.zusammenhaenge.length);
@@ -119,7 +126,14 @@ export type KoerperOp =
   | { op: 'anlegen' }
   | { op: 'felder'; felder: { leitsatz?: string; hinweis?: string; symptom?: KoerperSymptom | null; sauberZaehler?: boolean } }
   | { op: 'eintrag'; liste: KoerperListe; eintrag: Record<string, unknown> }
-  | { op: 'weg'; liste: KoerperListe; id: string };
+  | { op: 'weg'; liste: KoerperListe; id: string }
+  /** Ein Modul ein- oder ausschalten (09.10.) — `serie` stellt `sauberZaehler` mit (der ältere Stand liest nur dieses Feld). */
+  | { op: 'modul'; modul: GesundheitModul; an: boolean };
+
+/** Nur Module ausschalten? Das darf die Person auch ohne Einwilligung (a) — es verarbeitet nichts, es hört auf (Route). */
+export function nurModuleAus(ops: unknown): boolean {
+  return Array.isArray(ops) && ops.length > 0 && ops.every(o => !!o && typeof o === 'object' && (o as { op?: unknown }).op === 'modul' && (o as { an?: unknown }).an === false);
+}
 
 function text(x: unknown, feld: string, max: number, pflicht = false): string {
   if (x === undefined || x === null) { if (pflicht) throw new KoerperFehler(400, `${feld} fehlt.`); return ''; }
@@ -167,6 +181,14 @@ export function koerperAnwenden(alt: KoerperStand | null, ops: unknown, neueId: 
     const o = obj(roh);
     if (!o) throw new KoerperFehler(400, 'Ungültiger Schritt.');
     if (o.op === 'anlegen') continue;
+    if (o.op === 'modul') {
+      if (typeof o.modul !== 'string' || !(GESUNDHEIT_MODULE as readonly string[]).includes(o.modul)) throw new KoerperFehler(400, 'Unbekanntes Modul.');
+      if (typeof o.an !== 'boolean') throw new KoerperFehler(400, 'Modul: an oder aus.');
+      const m = o.modul as GesundheitModul;
+      k.module = { ...(k.module ?? {}), [m]: o.an };
+      if (m === 'serie') k.sauberZaehler = o.an;
+      continue;
+    }
     if (o.op === 'felder') {
       const f = obj(o.felder);
       if (!f) throw new KoerperFehler(400, 'Felder fehlen.');
@@ -182,6 +204,7 @@ export function koerperAnwenden(alt: KoerperStand | null, ops: unknown, neueId: 
       if ('sauberZaehler' in f) {
         if (typeof f.sauberZaehler !== 'boolean') throw new KoerperFehler(400, 'Zähler: an oder aus.');
         k.sauberZaehler = f.sauberZaehler;
+        k.module = { ...(k.module ?? {}), serie: f.sauberZaehler }; // der Zähler IST das Modul `serie` (ausdrücklich gesetzt)
       }
       continue;
     }

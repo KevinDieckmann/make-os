@@ -1,12 +1,11 @@
-// ─── MAKE OS — Das Haut-Tagebuch (Symptom-Tagebuch) ─────────────────────────
+// ─── MAKE OS — Das Symptom-Tagebuch (Modul `haut`, Bestand `haut`) ──────────
 // Ein allgemeiner Tracker je Person: Wert 0–10, Schub, Stellen, Auslöser — ein Eintrag je Tag. Wie der Regler
-// heißt, legt die Person in ihrem Körper-Profil fest (08.10. abends: keine Inhalte einer Person im Code). Sichtbar
-// wird der Verlauf über Wochen — Zahlen statt Erinnerung.
+// heißt, legt die Person in ihrem Körper-Profil fest (08.10. abends: keine Inhalte einer Person im Code). Seit 09.10.
+// ein MODUL je Person (lib/gesundheit/module.ts): aus → nichts wird angenommen (409), andere sehen nichts.
 //
-// GET  ?fuer=kevin|malin  → Log + Trend (Kevins Entscheidung 23.09.: Malin
-//                            sieht alles — beide dürfen die Seite der anderen
-//                            Person LESEN; geschrieben wird nur die eigene)
-// PUT  { datum?, eintrag } → einen Tag setzen
+// GET  ?fuer=<person>  → Log + Trend + `modul` (an/aus). Wer die Gesundheit der Person sehen darf, liest mit — aber nur,
+//                        solange ihr Modul an ist (sonst leer). Die eigene Person bekommt ihre Einträge immer.
+// PUT  { datum?, eintrag } → einen Tag setzen (nur die eigene Person; Einwilligung (a), dann Modul an)
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
@@ -17,6 +16,7 @@ import { saeubereHaut, hautTrend, type HautLog } from '@/lib/gesundheit/eintraeg
 import { localDay } from '@/lib/zeit';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { moduleFuer, modulSchreibSperre } from '@/lib/gesundheit/module-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,8 +25,10 @@ export async function GET(req: Request) {
   const person = ansichtPerson(req);
   if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
-  const log = (await loadJson<HautLog>(speicherFuer('haut', person))) ?? {};
-  return NextResponse.json({ person, log, trend: hautTrend(log, localDay()) });
+  const modul = (await moduleFuer(person)).haut;
+  // Modul aus: eine andere Person bekommt nichts (serverseitig, nicht nur ausgeblendet); die eigenen Einträge bleiben lesbar.
+  const log = modul || person === personAus(req) ? ((await loadJson<HautLog>(speicherFuer('haut', person))) ?? {}) : {};
+  return NextResponse.json({ person, modul, log, trend: hautTrend(log, localDay()) });
 }
 
 export async function PUT(req: Request) {
@@ -39,6 +41,8 @@ export async function PUT(req: Request) {
   const e = saeubereHaut(b.eintrag, new Date().toISOString());
   if (!e) return NextResponse.json({ error: 'eintrag.juckreiz (0–10) fehlt.' }, { status: 400 });
   const person = personAus(req);
+  // Modul je Person (09.10.): ausgeschaltet (oder nie eingeschaltet) → 409, nichts gespeichert.
+  { const aus = await modulSchreibSperre(person, 'haut'); if (aus) return aus; }
   const log = await updateJson<HautLog>(speicherFuer('haut', person), current => ({ ...(current ?? {}), [datum]: e }));
   return NextResponse.json({ ok: true, datum, eintrag: e, trend: hautTrend(log, localDay()) });
 }

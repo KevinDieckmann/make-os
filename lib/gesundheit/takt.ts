@@ -6,17 +6,18 @@
 //   morgens   Lage (Recovery, Schlaf) + die Morgenroutinen + „Wie geht's?"
 //   mittags   „Schon gegessen?" — regelmäßig essen
 //   abends    Journal, Routinen, dazu der eigene Symptom-Regler und der Zähler
-//             „Sauber geblieben“ — beides NUR, wenn die Person es in ihrem
-//             Körper-Profil eingestellt hat (08.10.) — EINE Nachricht
+//             „Sauber geblieben“ — beides NUR, wenn die Person das Modul führt
+//             (lib/gesundheit/module.ts, 09.10.) — EINE Nachricht
 //   sonntags  Wochenrückblick mit Trend
 //
 // Die Nachrichten sind BEWUSST ohne Modell gebaut: deterministisch, kurz,
-// jeden Tag verlässlich gleich aufgebaut. Das Modell kommt, wenn Kevin
+// jeden Tag verlässlich gleich aufgebaut. Das Modell kommt, wenn die Person
 // antwortet — dann liest ZOE den Satz und schreibt die Werte weg.
 //
 // Alles hier ist reine Logik; Uhrzeit und Bestände kommen von außen.
 
 import type { HautTrend, StreakStand } from './eintraege';
+import type { ModulStand } from './module';
 
 export type Slot = 'morgen' | 'mittag' | 'abend' | 'woche';
 export const SLOTS: readonly Slot[] = ['morgen', 'mittag', 'abend', 'woche'];
@@ -79,9 +80,9 @@ export function mittagText(name: string): string {
 export interface AbendEingabe {
   name: string;
   routinen: string[];
-  /** Zähler „Sauber geblieben“ — nur nach der eigenen Einstellung der Person (Körper-Profil `sauberZaehler`). */
+  /** Zähler „Sauber geblieben“ — nur, wenn die Person das Modul `serie` führt (lib/gesundheit/module.ts). */
   streakAktiv: boolean;
-  /** Name des eigenen Symptom-Reglers (Körper-Profil `symptom`) — ohne Namen keine Frage danach. */
+  /** Name des Symptom-Reglers — nur, wenn die Person das Modul `haut` führt (`symptomAnzeige`); ohne Namen keine Frage. */
   symptom?: string | null;
 }
 
@@ -107,6 +108,8 @@ export interface WochenEingabe {
   streak: StreakStand;
   /** Name des eigenen Symptom-Reglers (Körper-Profil) — sonst neutral „Symptom-Tagebuch“. */
   symptom?: string | null;
+  /** Module der Person: eine Zeile nur für ein eingeschaltetes Modul. Fehlt = wie bisher allein nach den Einträgen. */
+  module?: ModulStand;
 }
 
 export function wochenText(e: WochenEingabe): string {
@@ -114,11 +117,11 @@ export function wochenText(e: WochenEingabe): string {
   z.push(typeof e.recovery7 === 'number' ? `· Recovery Ø ${e.recovery7} %` : '· Recovery: keine Werte — Whoop verbinden oder morgens sagen');
   z.push(`· Routinen: an ${e.routinenTage} von 7 Tagen etwas abgehakt, ${Math.round(e.routinenQuote * 100)} % vollständig`);
   z.push(`· Journal: ${e.journalTage} von 7 Abenden`);
-  if (e.haut.tage) {
+  if (e.haut.tage && e.module?.haut !== false) {
     const r = e.haut.richtung === 'besser' ? 'besser als die Woche davor' : e.haut.richtung === 'schlechter' ? 'schlechter als die Woche davor' : e.haut.richtung === 'gleich' ? 'wie die Woche davor' : '';
     z.push(`· ${e.symptom?.trim() || 'Symptom-Tagebuch'}: Ø ${e.haut.juckreiz7 ?? '–'}${r ? `, ${r}` : ''}${e.haut.schuebe30 ? `, ${e.haut.schuebe30} Schub-Tage im Monat` : ''}${e.haut.ausloeser[0] ? ` — häufigster Auslöser: ${e.haut.ausloeser[0].was}` : ''}`);
   }
-  if (e.streak.aktuell) z.push(`· Sauber seit ${e.streak.sauberTage} Tag${e.streak.sauberTage === 1 ? '' : 'en'}${typeof e.streak.craving7 === 'number' ? `, Verlangen Ø ${e.streak.craving7}` : ''}`);
+  if (e.streak.aktuell && e.module?.serie !== false) z.push(`· Sauber seit ${e.streak.sauberTage} Tag${e.streak.sauberTage === 1 ? '' : 'en'}${typeof e.streak.craving7 === 'number' ? `, Verlangen Ø ${e.streak.craving7}` : ''}`);
   z.push('Was nimmst du dir für nächste Woche vor? Ein Satz.');
   return z.join('\n');
 }

@@ -772,6 +772,14 @@ Gesundheitsinhalte nur mit Einwilligung ‚an die KI‘“.
 - **Vitalwerte:** `resolveVitals(tag, person)` und `gatherBrain(tag, person)` — Person Pflicht, keine festen Rückfallwerte; Prompts zeigen
   Vitalwerte nur über `vitalsKurz` (fehlend = „—“, nie eine erfundene Zahl).
 - **KI:** das Körper-Profil geht nur über `eigenerGesundheitsKontext` (Einwilligung (b) der Person selbst, nie die andere Person).
+- **Gesundheits-Module je Person (09.10., Branch `gesundheit-module`; UPDATES.md):** Symptom-Tagebuch (`haut`) und Zähler „Sauber geblieben“
+  (`serie`, Bestand `streak`) sind Module, die NUR die Person selbst schaltet (Körper-Profil `module`, Schritt `modul`, Gesundheit › Körper › Module;
+  ausschalten auch ohne Einwilligung (a)). EINE Regel `moduleWirksam` (lib/gesundheit/module.ts): ausdrücklich gewinnt, sonst Altbestand an (frühere
+  Anzeige-Einstellung oder Einträge), sonst aus; „zählt“ nur über `modulZaehlt` (an + 60 Tage geführt). Server lesen den Stand über
+  `moduleFuer`/`moduleUndKoerper`, Schreibwege rufen `modulSchreibSperre` NACH der Einwilligungs-Sperre (409); ein ausgeschaltetes Modul liefert für
+  andere Konten serverseitig nichts (stand, haut, streak). Neues Modul = `GESUNDHEIT_MODULE` + `MODUL_INFO` + Prüfung in `kennzahlenFuer`. Termin-/Block-
+  Muster nur `lib/gesundheit/muster.ts` (allgemeine Begriffe; Wächter-Wortliste in tests/privat-neutral.test.ts). Offen: ZOE-Werkzeuge (lib/zoe) prüfen
+  das Modul noch nicht.
 - **Übernahme des Altbestands** `lib/altbestand/uebernahme.ts`: hält den bisherigen Inhalt nur bis zur einmaligen Übernahme (nur mit
   `MAKE_OS_ALTBESTAND_PERSON` = Konto mit Rolle Inhaber, nur ohne eigenen INHALT im Ziel — vorher gesetzte Anzeige-Einstellungen werden
   zusammengeführt, ihre gewinnen —, Marke, Gesundheit nur mit (a); Demo-Riegel lehnt die Variable ab) — wird mit dem übernächsten

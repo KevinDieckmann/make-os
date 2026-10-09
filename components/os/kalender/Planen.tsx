@@ -4,7 +4,7 @@
 // Kevin 29.09.: „Ein Kalender, Planen als Modus.“ Der frühere Wochenplaner (/os/planung/woche) ist jetzt ein Modus im
 // Kalender (`/os/kalender?modus=planen`) — dasselbe Zeitraster, dieselben Termine. Was dazukommt:
 //   · Stunden der Woche (h belegt · h Termine · h Blöcke · Aufgaben offen · fällig diese Woche) und je Tag;
-//   · Bausteine (Fokus, Reha, Pause, Blockzeit), Routinen, „Aufgaben einplanen“ und „Eigener Block“: antippen →
+//   · Bausteine (Fokus, Training, Pause, Blockzeit), Routinen, „Aufgaben einplanen“ und „Eigener Block“: antippen →
 //     in den Kalender klicken oder aufziehen → der Block entsteht als iCloud-Termin (Art Fokus/Block, lib/planung/
 //     bloecke.ts) — ein Block IST ein Termin: verschieben, Dauer, löschen wie jeder Termin (mit ETag);
 //   · ZOE belegt die Woche (Vorschlag; „Übernehmen“ legt die Blöcke an — nichts ohne Klick);
@@ -34,7 +34,7 @@ export interface Baustein { art: PlanArt; titel: string; dauerMin: number; taskI
 
 const BAUSTEINE: Baustein[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
-  { art: 'reha', titel: 'Reha / Training', dauerMin: 30 },
+  { art: 'reha', titel: 'Training / Sport', dauerMin: 30 }, // Reha o. Ä. nur aus den eigenen Routinen (09.10.)
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
 ];

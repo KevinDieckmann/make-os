@@ -1,5 +1,5 @@
 // ─── MAKE OS — Journal (lokal, dein Datenweg) ───────────────────────────────
-// Ein Eintrag pro Tag: Text + Tages-Check (Stimmung/Energie/Stress/Symptome).
+// Ein Eintrag pro Tag: Text + Tages-Check (Stimmung/Energie/Stress) und allgemeine Merkmale.
 // So entstehen über Zeit echte Daten, um den Weg immer wieder anzupassen.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
@@ -22,8 +22,8 @@ export interface JournalEntry {
   mood?: number;   // 1–5
   energy?: number; // 1–5
   stress?: number; // 1–5
-  haut?: string;   // 'ruhig' | 'schub'
-  ruecken?: string;// 'ok' | 'schmerz'
+  // Ältere Einträge tragen noch zwei feste Merkmale des früheren Tages-Checks (Werte „schub“/„schmerz“). Nichts schreibt sie
+  // mehr; sie bleiben in den Daten (PUT schreibt den Bestand unverändert zurück) und die Oberfläche zeigt sie allgemein an.
   flags?: string[];// allgemeine Merkmale, z.B. bewegt, gutgeschlafen, sauber (Zähler laut Körper-Profil)
   at?: string;
 }

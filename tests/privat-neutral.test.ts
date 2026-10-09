@@ -69,10 +69,13 @@ describe('Reha-Schild nur für die eigene Routine (vorher: Ziel einer Person fü
 });
 
 describe('Quelltext: keine Abfrage einer festen Person', () => {
-  it('Gesundheits-Takt (Telegram) fragt Symptom und Zähler nur nach der eigenen Einstellung', () => {
+  it('Gesundheits-Takt (Telegram) fragt Symptom und Zähler nur nach den eigenen Modulen (EINE Regel, 09.10.)', () => {
     const lauf = lies('lib/gesundheit/lauf.ts');
     expect(lauf).not.toMatch(/===\s*'(kevin|malin)'/);
-    expect(lauf).toContain('koerperLaden');
+    expect(lauf).toContain('moduleUndKoerper');
+    // Index und Takt fragen dieselbe Regel — keine eigene „geführt“-Rechnung daneben.
+    expect(lies('lib/gesundheit/index.ts')).toMatch(/modulZaehlt\(b\.module\?\.haut/);
+    expect(lies('lib/gesundheit/index.ts')).not.toMatch(/t60\.some/);
   });
 
   it('ZOE-Morgen/-Abend und Empfang nehmen nie den Rückfall von `personAus`', () => {
@@ -90,6 +93,35 @@ describe('Quelltext: keine Abfrage einer festen Person', () => {
     for (const d of ['app/api/brain/regeln/route.ts', 'app/api/brain/inbox/route.ts', 'app/api/zoe/wissen/route.ts']) expect(lies(d), d).not.toMatch(/personAus\(/);
     // `darfSehen` prüft nur eine aus den Konten aufgelöste Sicht (der Typ erzwingt es) — es gibt keine zweite Sicht-Regel daneben.
     expect(lies('lib/zoe/vault.ts')).toMatch(/export function darfSehen\(n: \{ scope\?: string; owner\?: string \}, s: VaultSicht\)/);
+  });
+});
+
+// ─── Gesundheits-Module und ihre Umgebung: nur allgemeine Begriffe (09.10., PRIVATE_INHALTE_SUCHE.md Paket 2 › C) ────────
+// Keine konkrete Diagnose, Behandlungsart, Fachrichtung zu einer Körperstelle, Körperstelle oder Substanz — weder in Code noch in
+// Kommentaren, Bausteinen, Mustern oder Standards. Die Liste ist bewusst ALLGEMEIN (keine echte Angabe einer Person — die stehen
+// nie in einem Test). Wer eine neue Datei zu Gesundheits-Modulen, Bausteinen oder Standards anlegt: hier aufnehmen.
+describe('Gesundheits-Module, Bausteine, Muster: keine konkreten Diagnosen, Behandlungen, Körperstellen, Substanzen', () => {
+  const KONKRET = /chronisch|entzündlich|entzuendlich|kortison|cortison|salbe|tablette|medikament|infusion|spritze|dermatolog|neurolog|orthopäd|orthopaed|hautarzt|nikotin|tabak|rücken|ruecken|nacken|hüfte|gelenk/i;
+  const DATEIEN = [
+    ...readdirSync(path.join(wurzel, 'lib/gesundheit')).filter(n => n.endsWith('.ts')).map(n => `lib/gesundheit/${n}`),
+    ...readdirSync(path.join(wurzel, 'components/os/gesundheit')).filter(n => n.endsWith('.tsx')).map(n => `components/os/gesundheit/${n}`),
+    'app/api/state/haut/route.ts', 'app/api/state/streak/route.ts', 'app/api/state/journal/route.ts',
+    'app/api/gesundheit/koerper/route.ts', 'app/api/gesundheit/stand/route.ts', 'app/api/gesundheit/index/route.ts',
+    'components/os/GesundheitView.tsx', 'components/os/JournalView.tsx', 'components/os/EnergieView.tsx', 'components/os/TagesplanView.tsx',
+    'components/os/kalender/Planen.tsx', 'lib/planung/bloecke.ts', 'lib/planung/reha-regel.ts', 'lib/risk.ts',
+  ];
+  it('keine Zeile der Dateien trifft die allgemeine Wortliste', () => {
+    const funde = DATEIEN.flatMap(d => lies(d).split('\n').map((z, i) => ({ d, i: i + 1, z })).filter(x => KONKRET.test(x.z)).map(x => `${x.d}:${x.i}`));
+    expect(funde).toEqual([]);
+  });
+  it('die Muster für Gesundheitstermine liegen an EINER Stelle (Index und Energie-Ansicht)', () => {
+    expect(lies('components/os/EnergieView.tsx')).toContain("from '@/lib/gesundheit/muster'");
+    expect(lies('components/os/EnergieView.tsx')).not.toMatch(/const GES_(TERMIN|BLOCK)\s*=/);
+    expect(lies('lib/gesundheit/index.ts')).not.toMatch(/const GES_(TERMIN|BLOCK)\s*=/);
+  });
+  it('der Wächter greift (Gegenprobe mit erfundenem Text)', () => {
+    expect(KONKRET.test('Baustein „Reha / Nacken“')).toBe(true);
+    expect(KONKRET.test('Baustein „Training / Sport“')).toBe(false);
   });
 });
 

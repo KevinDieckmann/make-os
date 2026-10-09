@@ -1,8 +1,8 @@
 // ─── MAKE OS — Der Gesundheitslauf ──────────────────────────────────────────
 // Was der Agent „gesundheit" tut, wenn der Takt ihn ruft: für jede gekoppelte
 // Person nachsehen, welcher Slot dran ist, die Nachricht bauen, senden,
-// merken. Deterministisch — kein Modell. Das Modell kommt erst, wenn Kevin
-// oder Malin antworten.
+// merken. Deterministisch — kein Modell. Das Modell kommt erst, wenn die Person
+// antwortet.
 //
 // Nicht gekoppelt = übersprungen und trotzdem markiert. Sonst würde der Takt
 // jede Minute denselben Auftrag einreihen, solange niemand gekoppelt ist.
@@ -18,6 +18,7 @@ import { hautTrend, streakStand, routineQuote, type HautLog, type StreakLog, typ
 import { sichtbarFuer } from '@/lib/planung/routinen';
 import { appLink, hinweisCheckIn } from '@/lib/datenschutz/telegram-text';
 import { aussenAdresse } from '@/lib/innen';
+import { MODULE_AUS, symptomAnzeige, type ModulStand } from './module';
 
 interface Routine { id: string; label: string; wann: string; aktiv: boolean; owner?: string }
 
@@ -28,14 +29,15 @@ async function routinen(person: Person): Promise<Routine[]> {
   return sichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), person);
 }
 
-/** Symptom-Regler und Zähler „Sauber geblieben“ der Person — NUR aus ihrer eigenen Einstellung im Körper-Profil (08.10. abends,
- *  Fragebogen Teil 3): keine Abfrage einer festen Person mehr. Ohne Profil (oder nicht lesbar) beides aus. */
-async function anzeigeEinstellung(person: Person): Promise<{ symptom: string | null; sauberZaehler: boolean }> {
+/** Die Module der Person (Symptom-Tagebuch, Zähler „Sauber geblieben“) — NUR aus ihrer eigenen Einstellung bzw. ihrem eigenen
+ *  Altbestand (EINE Regel `moduleWirksam`, lib/gesundheit/module.ts; 09.10.): Abendfragen und Wochenrückblick nennen nur Module,
+ *  die die Person führt. Nicht lesbar → beide aus (lieber eine Frage zu wenig als eine zu einem Modul, das sie nicht führt). */
+async function moduleEinstellung(person: Person): Promise<{ module: ModulStand; symptom: string | null }> {
   try {
-    const { koerperLaden } = await import('./koerper-server');
-    const { koerper } = await koerperLaden(person);
-    return { symptom: koerper?.symptom?.name ?? null, sauberZaehler: koerper?.sauberZaehler === true };
-  } catch { return { symptom: null, sauberZaehler: false }; }
+    const { moduleUndKoerper } = await import('./module-server');
+    const { module: m, koerper } = await moduleUndKoerper(person);
+    return { module: m, symptom: symptomAnzeige(koerper, m.haut) };
+  } catch { return { module: { ...MODULE_AUS }, symptom: null }; }
 }
 
 /** WHOOP frisch holen (08.10.): für JEDE Person mit eigener Verbindung (vorher fest nur das Erstkonto) — wartet höchstens 30 s.
@@ -85,19 +87,20 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
     return text + await haushaltZeilen(person);
   }
   if (slot === 'mittag') return mittagText(name);
-  const streak = (await loadJson<StreakLog>(speicherFuer('streak', person))) ?? {};
-  const anzeige = await anzeigeEinstellung(person);
+  const anzeige = await moduleEinstellung(person);
   if (slot === 'abend') {
     return abendText({
       name,
       routinen: alle.filter(r => r.wann === 'abend').map(r => r.label),
-      streakAktiv: anzeige.sauberZaehler,
+      streakAktiv: anzeige.module.serie,
       symptom: anzeige.symptom,
     });
   }
   // woche
-  const [haut, hl, journal, vitalsLog] = await Promise.all([
-    loadJson<HautLog>(speicherFuer('haut', person)),
+  // Tagebücher nur der eingeschalteten Module — ein ausgeschaltetes wird gar nicht gelesen.
+  const [haut, streak, hl, journal, vitalsLog] = await Promise.all([
+    anzeige.module.haut ? loadJson<HautLog>(speicherFuer('haut', person)) : Promise.resolve(null),
+    anzeige.module.serie ? loadJson<StreakLog>(speicherFuer('streak', person)) : Promise.resolve(null),
     loadJson<RoutinenLog>(speicherFuer('health-log', person)),
     loadJson<Record<string, unknown>>(speicherFuer('journal', person)),
     loadJson<Record<string, { rec?: number }>>(speicherFuer('vitals', person)),
@@ -111,8 +114,9 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
     routinenQuote: q.quote, routinenTage: q.tage,
     journalTage: t7.filter(d => journal?.[d]).length,
     haut: hautTrend(haut ?? {}, heute),
-    streak: streakStand(streak, heute),
+    streak: streakStand(streak ?? {}, heute),
     symptom: anzeige.symptom,
+    module: anzeige.module,
   });
 }
 

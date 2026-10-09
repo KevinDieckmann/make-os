@@ -49,7 +49,7 @@ const H = (ENDE - START) * PX;
 const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
   { art: 'fokus', titel: 'Kurzer Fokus', dauerMin: 45 },
-  { art: 'reha', titel: 'Reha / Training', dauerMin: 30 },
+  { art: 'reha', titel: 'Training / Sport', dauerMin: 30 }, // Reha o. Ä. nur aus den eigenen Routinen (09.10.)
   { art: 'reha', titel: 'Bewegung / Spaziergang', dauerMin: 30 },
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'pause', titel: 'Mittag', dauerMin: 45 },
