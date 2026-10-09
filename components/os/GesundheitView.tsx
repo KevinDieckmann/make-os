@@ -5,8 +5,10 @@
 // freigegeben hat. Vorher: elf Seiten, jede Karte ein Kasten, Nullen als große
 // Zahlen. Jetzt EINE Seite, vier Segmente:
 //
-//   Heute      drei Ringe, ein Satz, EINE Tagesliste (Routinen, die eingeschalteten Module — Symptom-Tagebuch,
-//              Zähler —, drei Fragen — so macht es Whoops Journal)
+//   Heute      drei Ringe (Recovery · Schlaf · Strain, seit 09.10.; die Anspannung 1–5 darunter ist die EIGENE Einschätzung),
+//              ein Satz, die WHOOP-Werte als zwei kleine Karten (Schlaf, Körperwerte — 09.10.), EINE Tagesliste (Routinen, die
+//              eingeschalteten Module — Symptom-Tagebuch, Zähler —, drei Fragen — so macht es Whoops Journal). Die große
+//              Neugestaltung wartet auf die trainierende Person: research/gesundheit/COCKPIT_VORSCHLAG.md.
 //   Verlauf    30 Tage, ein Diagramm je Kennzahl
 //   Ernährung  die Woche (bestehende Ansicht, eingebettet)
 //   Körper     Energie, Gesundheits-Meilensteine, die eigenen Module (09.10.) und das EIGENE Körper-Profil (Daten je
@@ -28,6 +30,9 @@ import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { useKoerper, KoerperLeer, ProfilKarte, BeschwerdenKarte, HebelKarte, ZusammenhaengeKarte, AnzeigeKarte, ModuleKarte } from './gesundheit/Koerper';
 import { routinenHinweis } from '@/lib/gesundheit/koerper';
 import { symptomAnzeige, MODUL_INFO, type ModulStand } from '@/lib/gesundheit/module';
+import { belastungLage, STRAIN_MAX, type BelastungAmpel } from '@/lib/gesundheit/belastung';
+import type { Koerperwerte } from '@/lib/gesundheit/koerperwerte';
+import { SchlafDetailKarte, KoerperwerteKarte } from './gesundheit/WhoopWerte';
 
 import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
@@ -46,6 +51,8 @@ const SEGMENTE: { id: Segment; label: string }[] = [
 interface Vitals { rec: number; sleep: number; hrv: number; rhr: number; stand: string; heute: boolean; alterTage: number; fallback: boolean }
 interface Stand {
   person: string; ich: string; heute: string; vitals: Vitals;
+  /** Weitere WHOOP-Werte des Morgen-Check-Tages (09.10., lib/gesundheit/koerperwerte.ts) — fehlt ohne Vitalwerte. */
+  koerperwerte?: Koerperwerte;
   /** Wirksame Module der angezeigten Person (Server) — ein ausgeschaltetes kommt leer an. */
   module?: ModulStand;
   haut: { trend: { tage: number; heute?: number; juckreiz7?: number; schuebe30: number; richtung: 'besser' | 'schlechter' | 'gleich' | 'unbekannt'; ausloeser: { was: string; mal: number }[] }; tage: { d: string; e: { juckreiz: number; schub: boolean } | null }[] };
@@ -58,6 +65,8 @@ interface Stand {
 // ── Bausteine ────────────────────────────────────────────────────────────────
 
 const zone = (r?: number) => (r == null ? C.inkLeise : r >= 66 ? LEUCHT.gut : r >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
+/** Farbe des Strain-Rings: Ampel nach der Tagesform (lib/gesundheit/belastung.ts); ohne Recovery die Farbe der Belastung. */
+const STRAIN_FARBE: Record<BelastungAmpel, string> = { gut: LEUCHT.gut, achtung: LEUCHT.achtung, kritisch: LEUCHT.kritisch, offen: LEUCHT.puls };
 
 function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: React.ReactNode; unter?: React.ReactNode; kinder: React.ReactNode }) {
   return (
@@ -75,7 +84,7 @@ function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: React.Rea
 // Deutsche Zahl: 8,5 statt 8.5
 const de = (n: number) => String(n).replace('.', ',');
 
-function Balken({ titel, werte, max, farbe, farbeJe, einheit, besserIst, tage }: { titel: string; werte: (number | null)[]; max: number; farbe: string; farbeJe?: (w: number) => string; einheit?: string; besserIst?: 'hoch' | 'tief'; tage?: string[] }) {
+function Balken({ titel, werte, max, farbe, farbeJe, einheit, besserIst, tage }: { titel: string; werte: (number | null)[]; max: number; farbe: string; farbeJe?: (w: number, i: number) => string; einheit?: string; besserIst?: 'hoch' | 'tief'; tage?: string[] }) {
   const echte = werte.filter((x): x is number => x != null);
   const mittel = echte.length ? Math.round((echte.reduce((a, b) => a + b, 0) / echte.length) * 10) / 10 : null;
   const letzter = [...werte].reverse().find(x => x != null) ?? null;
@@ -89,7 +98,7 @@ function Balken({ titel, werte, max, farbe, farbeJe, einheit, besserIst, tage }:
       <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56 }}>
         {werte.map((w, i) => (
           <span key={i} title={tage?.[i] ? `${tage[i].slice(8, 10)}.${tage[i].slice(5, 7)}. · ${w == null ? 'kein Wert' : `${de(w)}${einheit ?? ''}`}` : undefined}
-            style={{ flex: 1, height: w == null ? 3 : Math.max(3, (Math.min(w, max) / max) * 56), borderRadius: 2, background: w == null ? C.linie : farbeJe ? farbeJe(w) : farbe, opacity: w == null ? 1 : 0.55 + 0.45 * (i / 29) }} />
+            style={{ flex: 1, height: w == null ? 3 : Math.max(3, (Math.min(w, max) / max) * 56), borderRadius: 2, background: w == null ? C.linie : farbeJe ? farbeJe(w, i) : farbe, opacity: w == null ? 1 : 0.55 + 0.45 * (i / 29) }} />
         ))}
       </div>
       {besserIst && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>{besserIst === 'tief' ? 'niedriger ist besser' : 'höher ist besser'}</div>}
@@ -113,7 +122,7 @@ export function GesundheitView() {
   const [hl, setHl] = useState<Record<string, string[]>>({});
   const [juckreiz, setJuckreiz] = useState<number | null>(null);
   const [fragen, setFragen] = useState({ gut: '', dankbar: '', hart: '' });
-  const [verlauf, setVerlauf] = useState<{ vitals: Record<string, { rec?: number; sleep?: number; hrv?: number; rhr?: number }>; haut: Record<string, { juckreiz: number }> } | null>(null);
+  const [verlauf, setVerlauf] = useState<{ vitals: Record<string, { rec?: number; sleep?: number; hrv?: number; rhr?: number; strain?: number }>; haut: Record<string, { juckreiz: number }> } | null>(null);
   // Körper-Reiter (26.09.): die Hebel kommen live aus dem Gesundheits-Index, nicht mehr aus Konstanten vom 29.07.
   const [hebel, setHebel] = useState<{ id: string; label: string; anzeige: string | null; ampel: string; gemessen: boolean }[] | null>(null);
   const [etappen, setEtappen] = useState<{ id: string; titel: string; faellig?: string; fortschritt: number; erledigt: boolean; bereich: string }[]>([]);
@@ -211,6 +220,10 @@ export function GesundheitView() {
   const rec = frisch ? v!.rec : undefined;
   const schlaf = frisch && v!.sleep > 0 ? v!.sleep : undefined;
   const anspannung = stand?.journal.heute?.stress;
+  // Strain (09.10.): vom selben Tag wie der Morgen-Check (sonst stünde der Strain von gestern neben der Recovery von heute).
+  const kw = stand?.koerperwerte;
+  const strain = frisch && kw && kw.tag === v?.stand && kw.strain != null ? kw.strain : undefined;
+  const belastung = belastungLage(strain, rec);
   const satz = useMemo(() => {
     if (!stand) return '';
     if (rec == null) return 'Noch keine Werte von heute.';
@@ -248,22 +261,31 @@ export function GesundheitView() {
               <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
                 unter={rec != null ? <Chip farbe={zone(rec)}>{rec >= 66 ? 'Grün' : rec >= 40 ? 'Gelb' : 'Rot'}</Chip> : undefined} /></button>
               <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Schlaf" wert={schlaf != null ? String(schlaf).replace('.', ',') : undefined} einheit="h" farbe={LEUCHT.schlaf} anteil={schlaf != null ? schlaf / 8 : undefined} /></button>
-              <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? LEUCHT.kritisch : anspannung != null && anspannung >= 3 ? LEUCHT.achtung : LEUCHT.puls} anteil={anspannung != null ? anspannung / 5 : undefined} />
+              {/* Strain (09.10.): WHOOPs Tagesbelastung 0–21, Ampel nach der Tagesform — vorher stand hier die Anspannung als Ring. */}
+              <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Strain" wert={strain != null ? String(strain).replace('.', ',') : undefined} einheit={`/${STRAIN_MAX}`} farbe={belastung ? STRAIN_FARBE[belastung.ampel] : LEUCHT.puls} anteil={strain != null ? strain / STRAIN_MAX : undefined}
+                unter={belastung && belastung.ampel !== 'offen' ? <Chip farbe={STRAIN_FARBE[belastung.ampel]}>{belastung.kurz}</Chip> : undefined} /></button>
             </div>
+            {!eigene && anspannung != null && (
+              <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.bedien, margin: '8px 0 0' }}>Anspannung · eigene Einschätzung: <b style={{ color: C.ink }}>{anspannung} / 5</b></p>
+            )}
             {eigene && (
-              <div role="group" aria-label="Anspannung heute von 1 bis 5" style={{ display: 'grid', gridTemplateColumns: 'auto repeat(5, minmax(44px, 56px))', gap: 6, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
-                <span style={{ fontSize: TYP.bedien, color: C.inkDim, paddingRight: 6 }}>Anspannung</span>
+              <div role="group" aria-label="Anspannung heute von 1 bis 5 — deine Einschätzung" style={{ display: 'grid', gridTemplateColumns: 'auto repeat(5, minmax(44px, 56px))', gap: 6, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, paddingRight: 6, lineHeight: 1.25 }}>Anspannung<br /><span style={{ color: C.inkLeise }}>deine Einschätzung</span></span>
                 {[1, 2, 3, 4, 5].map(n => <button key={n} type="button" onClick={() => anspannungSetzen(n)} aria-label={`Anspannung ${n}`} aria-pressed={anspannung === n} className="fassbar" style={{ height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.display, fontSize: TYP.body, fontWeight: 700, background: (anspannung ?? 0) >= n ? (n >= 4 ? LEUCHT.kritisch : n >= 3 ? LEUCHT.achtung : LEUCHT.puls) : 'rgba(255,255,255,.07)', color: (anspannung ?? 0) >= n ? C.grund : C.inkLeise }}>{n}</button>)}
               </div>
             )}
             <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '14px 0 0', lineHeight: 1.5 }}>
               {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
+              {belastung && rec != null && <> {belastung.text}</>}
               {stand && rec == null && eigene && <> WHOOP verbinden (Kachel „WHOOP“) oder den Morgen-Check ausfüllen.</>}
               {stand && anspannung == null && rec != null && eigene && <> Anspannung: oben 1–5 tippen.</>}
             </p>
             {stand && rec == null && eigene && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}><WhoopImport kurz onFertig={() => { void laden(); setVerlauf(null); }} /></div>}
           </Karte>
           </Kachel>
+          {/* 09.10.: die weiteren WHOOP-Werte als zwei kleine Karten — nur, wenn es sie gibt (Server-Tor wie die Vitalwerte). */}
+          {kw && !kw.leer && <Kachel id="schlaf-detail" titel="Schlaf" breite={3}><SchlafDetailKarte k={kw} heute={heute} i={1} /></Kachel>}
+          {kw && !kw.leer && <Kachel id="koerperwerte" titel="Körperwerte" breite={3}><KoerperwerteKarte k={kw} heute={heute} i={2} /></Kachel>}
           <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} /></Kachel>
           {/* WHOOP je Person (08.10.): nur die EIGENE Verbindung — in der Ansicht einer anderen Person keine Karte. */}
           {eigene && <Kachel id="whoop" titel="WHOOP" breite={3}><WhoopKarte i={2} /></Kachel>}
@@ -354,6 +376,9 @@ export function GesundheitView() {
               {/* Recovery je Tag in seiner Zone — wie Whoop: grün ab 66, gelb ab 40, darunter rot */}
               <Balken titel="Recovery" einheit="%" max={100} farbe={LEUCHT.gut} farbeJe={zone} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.rec ?? null)} />
               <Balken titel="Schlaf" einheit=" h" max={9} farbe={LEUCHT.schlaf} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.sleep ?? null)} />
+              {/* Strain je Tag (09.10.) in der Farbe seiner Lage zur Recovery desselben Tages. */}
+              <Balken titel="Strain" max={STRAIN_MAX} farbe={LEUCHT.puls} tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.strain ?? null)}
+                farbeJe={(w, i) => { const l = belastungLage(w, verlauf.vitals[tage30[i]]?.rec); return l ? STRAIN_FARBE[l.ampel] : LEUCHT.puls; }} />
               <Balken titel="HRV" einheit=" ms" max={140} farbe={LEUCHT.puls} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.hrv ?? null)} />
               <Balken titel="Ruhepuls" einheit="" max={90} farbe={LEUCHT.beziehung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.rhr ?? null)} />
               {verlaufSymptom && <Balken titel={verlaufSymptom} max={10} farbe={LEUCHT.achtung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />}
