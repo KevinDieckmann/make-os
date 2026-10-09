@@ -25,7 +25,7 @@ export function Person({ id, name, groesse = 22 }: { id?: string | null; name?: 
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>{plakette}{nameVon(id)}</span>;
 }
 
-/** Zuständigkeit wählen: Kevin · Malin · Beide — ohne Eintrag gilt die Verantwortung der Welt. */
+/** Zuständigkeit wählen: jede Person des Teams · Beide — ohne Eintrag gilt die Verantwortung der Welt. */
 export function ZustaendigWahl({ wert, welt, onWahl, beide = true }: { wert?: string; welt: Welt; onWahl: (z: string) => void; beide?: boolean }) {
   const e = effektiv(wert, welt);
   const liste = [...TEAM.map(t => t.id), ...(beide ? [BEIDE] : [])];

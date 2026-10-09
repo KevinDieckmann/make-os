@@ -370,8 +370,11 @@ export const ZEITRAEUME: readonly { id: Zeitraum; label: string }[] = [
   { id: 'beginn', label: 'Seit Beginn' }, { id: '7', label: 'Letzte 7 Tage' }, { id: '30', label: 'Letzte 30 Tage' },
   { id: '90', label: 'Letzte 90 Tage' }, { id: 'jahr', label: 'Dieses Jahr' },
 ];
-export type PersonFilter = 'kevin' | 'malin' | 'beide';
-export const PERSONEN_FILTER: readonly { id: PersonFilter; label: string }[] = [{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }];
+/** Kürzel einer Team-Person (Speichername) oder „beide“ — die Liste kommt aus dem Team (09.10.: keine festen Namen). */
+export type PersonFilter = string;
+/** Die Auswahl „Aktivität zugewiesen“: jede Person des Teams, dazu „Beide“ (gemeinsame). */
+export const personenFilter = (team: readonly { id: string; name: string }[]): { id: PersonFilter; label: string }[] =>
+  [...team.map(t => ({ id: t.id, label: t.name })), { id: 'beide', label: 'Beide' }];
 
 export interface AktFilter {
   suche: string;
@@ -396,7 +399,7 @@ export function passtZeitraum(e: Pick<Eintrag, 'tag' | 'kommend'>, z: Zeitraum, 
 }
 
 /**
- * Person: Kevin bzw. Malin findet, was sie/er tat oder wofür sie/er zuständig ist —
+ * Person: jede Person des Teams findet, was sie tat oder wofür sie zuständig ist —
  * gemeinsame Follow-ups („beide“) zählen bei jedem. „Beide“ zeigt nur die gemeinsamen.
  */
 export function passtPerson(e: Pick<Eintrag, 'person'>, p: PersonFilter | null): boolean {

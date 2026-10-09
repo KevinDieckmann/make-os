@@ -261,7 +261,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffne
               { id: 'zusammen', label: 'Zusammenführen …', hinweis: 'Dublette bei Personen oder Firmen, mit Vorschau', onClick: () => setWerkzeug('zusammen') },
               { id: 'person', label: 'Weitere Person dazu …', hinweis: 'neuer Ansprechpartner, z. B. der Entscheider', onClick: () => setWerkzeug('person') },
               ...(z.ohneBesitzer ? [{ id: 'uebernehmen', label: `Übernehmen (${nameVon(ich)})`, hinweis: 'der Lead gehört noch niemandem', onClick: () => void uebernehmen() }] : []),
-              { id: 'abgeben', label: 'Abgeben …', hinweis: 'an Kevin oder Malin, mit Aufgabe', onClick: () => setWerkzeug('abgeben') },
+              { id: 'abgeben', label: 'Abgeben …', hinweis: `an ${TEAM.map(m => m.name).join(' oder ')}, mit Aufgabe`, onClick: () => setWerkzeug('abgeben') },
               { id: 'parken', label: 'Parken …', hinweis: 'ruht bis zur Wiedervorlage, dann zurück in die Runde', onClick: () => setWerkzeug('parken') },
               { id: 'raus', label: 'Raus — Kein Fit …', hinweis: 'mit Grund, der in die Auswertung fließt', gefahr: true, onClick: () => setWerkzeug('raus') },
               { id: 'akte', label: 'Akte ganz öffnen ›', hinweis: z.firmaId ? 'die Firmenakte' : 'die Kontaktakte', onClick: () => router.push(z.firmaId ? markttraktion('firmen', undefined, z.firmaId) : haupt ? kontaktAkte(haupt.id) : markttraktion('kontakte')) },

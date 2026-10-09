@@ -44,7 +44,7 @@ export function Verweise({ api, zuBereich, ab = 3 }: { api: CrmApi; zuBereich: (
       </Karte>
       <Karte i={ab + 2}>
         <Ueberschrift>Team</Ueberschrift>
-        <div style={text}>Verantwortung je Welt steht fest im Code (lib/crm/team.ts); zuständig je Eintrag ist, wer eingetragen ist — Kevin, Malin oder beide.</div>
+        <div style={text}>Verantwortung je Welt kommt aus der Team-Liste der Instanz (lib/crm/team-liste.ts); zuständig je Eintrag ist, wer eingetragen ist — {[...TEAM.map(m => m.name), 'beide'].join(', ')}.</div>
         <Liste>
           {TEAM.map(t => {
             const welten = t.verantwortet.map(w => WELTEN.find(x => x.id === w)?.label ?? w).join(' und ');

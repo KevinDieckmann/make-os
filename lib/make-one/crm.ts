@@ -27,6 +27,7 @@ import { einwilligungSaeubern } from '@/lib/crm/einwilligung';
 import { neueKontaktKennung } from '@/lib/kennung';
 import { einschraenkungSaeubern } from '@/lib/crm/einschraenkung';
 import { geburtstagSaeubern } from '@/lib/kalender/geburtstag';
+import { TEAM as CRM_TEAM, BEIDE as CRM_BEIDE } from '@/lib/crm/team-liste';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -470,19 +471,17 @@ export function identitaetsMerkmale(k: { email?: string; emails?: EmailAdresse[]
 }
 
 /**
- * OWNER der Masterliste → Besitzer in der Kartei (Kevins Entscheidung 27.09.):
- * „Malin …“ → malin · „Kevin …“ → kevin · „… & …“ → beide · „(kein Owner)“, leer
- * oder ein fremder Name → kein Besitzer (bleibt für die Qualifizierungsrunde offen).
- * Die Kürzel sind die aus lib/crm/team.ts (kevin, malin, BEIDE) — hier ohne
- * Import, weil team.ts diese Datei einbindet.
+ * OWNER der Masterliste → Besitzer in der Kartei (Entscheidung 27.09.): nennt der Eintrag genau eine Person des Teams (Vorname
+ * bzw. Kürzel aus lib/crm/team-liste.ts, an Wortgrenzen) → diese · mehrere → „beide“ · „(kein Owner)“, leer oder ein fremder Name
+ * → kein Besitzer (bleibt für die Qualifizierungsrunde offen). 09.10.: keine festen Namen mehr — die Team-Liste entscheidet.
  */
-export function besitzerAusOwner(owner?: string): 'kevin' | 'malin' | 'beide' | undefined {
-  const o = (owner ?? '').toLowerCase();
-  const kevin = /\bkevin\b/.test(o), malin = /\bmalin\b/.test(o);
-  if (kevin && malin) return 'beide';
-  if (kevin) return 'kevin';
-  if (malin) return 'malin';
-  return undefined;
+export function besitzerAusOwner(owner?: string, team: readonly { id: string; name: string }[] = CRM_TEAM): string | undefined {
+  const o = (owner ?? '').toLocaleLowerCase('de-DE');
+  if (!o.trim()) return undefined;
+  const wort = (w: string) => new RegExp(`(?<![\\p{L}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'u');
+  const treffer = team.filter(m => [m.id, (m.name.split(/\s+/)[0] ?? '')].filter(x => x.length >= 2).some(x => wort(x.toLocaleLowerCase('de-DE')).test(o)));
+  if (treffer.length > 1) return CRM_BEIDE;
+  return treffer[0]?.id;
 }
 
 function prioAus(v: string): Prio {

@@ -45,7 +45,7 @@ import { VisitenkarteKnopf } from './Visitenkarte';
 import { LeadBlock } from './Leads';
 import { PHASEN, phaseFarbe, phaseLabel, lifecycleFarbe, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix, LinkedInTeil } from './kontakt-teile';
 import { gleicherName } from '@/lib/crm/visitenkarte';
-import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
+import { haeltBeziehung, anderer, nameVon, verantwortlich } from '@/lib/crm/team';
 import { lifecycleVon } from '@/lib/crm/vorschlaege';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ, LIFECYCLE_LABEL, type LifecyclePhase } from '@/lib/crm/lifecycle';
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanVon, istBean, type BeanErgebnis, type BeanId } from '@/lib/crm/bean';
@@ -247,7 +247,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nach „Zuständig“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nach „Zuständig“ · ohne Eintrag bei {nameVon(verantwortlich('sales'))} (Sales-Verantwortung)</span>
               <span style={{ marginLeft: 'auto' }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu — von Hand oder abgeleitet">
                 <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl.get(b) ?? 0}`, hinweis: BEAN_HINWEIS[b] }))}
                   wert={bn} leer="BEAN: alle ▾" farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setMehr(80); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
