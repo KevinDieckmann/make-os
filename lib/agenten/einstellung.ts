@@ -381,13 +381,13 @@ export async function kostenHeadMonat(head: Pick<HeadDef, 'id' | 'ebene'>, perso
   const monat = monatBerlin(jetzt);
   if (head.ebene === 'person') {
     if (!person) return 0;
-    const { loadJson } = await import('@/lib/store/local-db');
-    const { fadenBestand } = await import('./typen');
+    const { faedenSeit } = await import('./faeden-server');
     const { fadenZahlen } = await import('./leistung');
-    // Nicht lesbar → wirft (fail-closed, 09.10.): `laufSperre` wertet das als „Budget erreicht“.
-    const faeden = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)))?.faeden ?? [];
     const [j, m] = monat.split('-').map(Number);
     const von = new Date(Date.UTC(j, m - 1, 1)).toISOString(), bis = new Date(Date.UTC(m === 12 ? j + 1 : j, m === 12 ? 0 : m, 1)).toISOString();
+    // E3 (09.10.): ganz geladen werden nur die Threads dieses Heads, die in diesem Monat geschrieben wurden.
+    // Nicht lesbar → wirft (fail-closed, 09.10., Takt robust): `laufSperre` wertet das als „Budget erreicht“ — hier nie abfangen.
+    const faeden = await faedenSeit(person, f => fadenVonHead(f, head.id), von);
     return fadenZahlen(faeden, head.id, von, bis).kostenEuroCent;
   }
   return (await kostenJeHeadMonat(jetzt))[head.id] ?? 0;
@@ -583,23 +583,20 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
  * (Not-Aus, Budget), bleibt die Marke stehen. Liefert die Zahl (nie Inhalte).
  */
 export async function laeufeNachHeadAn(von: string, head: HeadDef): Promise<number> {
-  const [{ bestandAendern }, { einreihen }] = await Promise.all([import('./faeden-server'), import('./delegation')]);
+  const [{ faedenAendernWo }, { einreihen }] = await Promise.all([import('./faeden-server'), import('./delegation')]);
   const personen = head.ebene === 'person' ? [von] : (await haushaltsPersonen()).alle.map(p => p.id);
   let n = 0;
   for (const p of personen) {
     if (await laufSperre(p, head.id).catch(() => null)) continue;
-    const r = await bestandAendern<{ id: string; hintergrund: boolean }[]>(p, b => {
-      const weiter: { id: string; hintergrund: boolean }[] = [];
-      const faeden = b.faeden.map(f => {
-        if (!fadenVonHead(f, head.id) || f.besitzer !== p || f.lauf?.status !== 'wartet' || f.lauf.wartetAuf !== 'head-aus') return f;
-        weiter.push({ id: f.id, hintergrund: !!f.hintergrund });
-        const { wartetAuf: _w, ...lauf } = f.lauf;
-        return { ...f, lauf };
-      });
-      return { bestand: weiter.length ? { ...b, faeden } : b, e: weiter };
+    // E3 (09.10.): gewählt wird am Kopf (Index), geladen und geschrieben nur die betroffenen Threads — in EINER Sperre.
+    const wartetHeadAus = (f: Pick<Faden, 'agent' | 'besitzer' | 'lauf'>) => fadenVonHead(f, head.id) && f.besitzer === p && f.lauf?.status === 'wartet' && f.lauf.wartetAuf === 'head-aus';
+    const r = await faedenAendernWo(p, wartetHeadAus, f => {
+      if (!wartetHeadAus(f) || !f.lauf) return null;
+      const { wartetAuf: _w, ...lauf } = f.lauf;
+      return { ...f, lauf };
     }).catch(() => null);
     if (!r?.ok) continue;
-    for (const x of r.e) {
+    for (const x of r.faeden.map(f => ({ id: f.id, hintergrund: !!f.hintergrund }))) {
       await einreihen(p, x.id, { hintergrund: x.hintergrund }).then(() => { n++; }).catch(e => console.error('[agenten-einstellung] Einreihen nach „an“:', e instanceof Error ? e.message.slice(0, 120) : e));
     }
   }
@@ -658,22 +655,19 @@ export const fadenVonHead = (f: Pick<Faden, 'agent'>, headId: string): boolean =
  * angehaltenen Threads (nie Inhalte).
  */
 export async function laeufeAnhalten(von: string, head: HeadDef | null, jetzt = iso()): Promise<number> {
-  const [{ bestandAendern }, { abbrechenWo }] = await Promise.all([import('./faeden-server'), import('@/lib/zoe/auftraege')]);
+  const [{ faedenAendernWo }, { abbrechenWo }] = await Promise.all([import('./faeden-server'), import('@/lib/zoe/auftraege')]);
   const personen = head?.ebene === 'person' ? [von] : (await haushaltsPersonen()).alle.map(p => p.id);
-  const passt = (f: Faden) => (head ? fadenVonHead(f, head.id) : true);
+  const offen = (f: Pick<Faden, 'agent' | 'lauf'>) => (head ? fadenVonHead(f, head.id) : true) && !!f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft');
   const fadenIds = new Set<string>();
   let n = 0;
   for (const p of personen) {
-    const r = await bestandAendern<number>(p, b => {
-      let k = 0;
-      const faeden = b.faeden.map(f => {
-        if (!passt(f) || !f.lauf || (f.lauf.status !== 'wartet' && f.lauf.status !== 'laeuft')) return f;
-        k++; fadenIds.add(f.id);
-        return { ...f, status: 'abgebrochen' as const, lauf: { ...f.lauf, status: 'abgebrochen' as const, ende: jetzt, fehler: ANGEHALTEN, abgebrochenVon: von, wartetAuf: 'not-aus' as const } };
-      });
-      return { bestand: k ? { ...b, faeden } : b, e: k };
+    // E3 (09.10.): gewählt wird am Kopf (Index), geladen und geschrieben nur die laufenden/wartenden Threads — in EINER Sperre.
+    const r = await faedenAendernWo(p, offen, f => {
+      if (!offen(f) || !f.lauf) return null;
+      fadenIds.add(f.id);
+      return { ...f, status: 'abgebrochen' as const, lauf: { ...f.lauf, status: 'abgebrochen' as const, ende: jetzt, fehler: ANGEHALTEN, abgebrochenVon: von, wartetAuf: 'not-aus' as const } };
     }).catch(() => null);
-    if (r?.ok) n += r.e;
+    if (r?.ok) n += r.faeden.length;
   }
   await abbrechenWo(a => {
     if (a.status !== 'offen') return false;

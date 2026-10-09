@@ -62,7 +62,7 @@ const head = (person: string, body: Record<string, unknown>, mitStrom = false) =
   const b = { aktion: 'senden', agent: { art: 'head', headId: 'sales' }, ...body };
   return mitStrom ? strom(faden.POST, '/api/agenten/faden', SSE(person), b) : rufe(faden.POST, '/api/agenten/faden', sitzung(person), b);
 };
-const bestand = async (p: string) => (await db.loadJson<{ faeden: FadenKern[] }>(`agenten-faeden--${p}`))?.faeden ?? [];
+const bestand = async (p: string) => (await (await import('@/lib/agenten/faeden-ablage')).alleFaedenLesen(p)); // E3: Index + je Thread
 const fadenVon = async (p: string, id: unknown) => (await bestand(p)).find(f => f.id === id);
 const textAus = (es: StromEreignis[]) => es.filter(e => e.art === 'text').map(e => (e as { text: string }).text).join('');
 const letzteErgebnisse = (b: Record<string, unknown>): string[] => {
@@ -617,16 +617,16 @@ describe('(4) Gleichzeitigkeit & Zustände: zwei Tabs, Doppelklick, Abbruch, Neu
   });
 
   it('Neustart mitten im Lauf: „läuft“ ohne Prozess und „wartet“ auf einen aufgegebenen Auftrag enden im Takt mit „fehler“ + Glocke', async () => {
-    const { bestandAendern } = await import('@/lib/agenten/faeden-server');
+    const { ablageAendernFuer } = await import('@/lib/agenten/faeden-server');
     const { verwaisteLaeufeAufraeumen } = await import('@/lib/agenten/delegation');
     const alt = new Date(Date.now() - 20 * 60_000).toISOString();
     const jung = new Date().toISOString();
     const roh = (id: string, lauf: Record<string, unknown>): FadenKern => ({ id, besitzer: 'person-b', agent: { art: 'mitarbeiter', headId: 'sales', mitarbeiterId: 'sales-angebote' }, bereich: 'business', titel: id, status: 'laeuft', fremdGelesen: false, vertraulich: false, nachrichten: [{ id: `nr-${id}`, rolle: 'person', von: 'person-b', text: 'x', zeit: alt }], erstellt: alt, aktualisiert: alt, lauf: lauf as never });
-    await bestandAendern('person-b', b => ({ bestand: { ...b, faeden: [...b.faeden,
+    await ablageAendernFuer('person-b', t => { for (const f of [
       roh('fd-verwaist-laeuft-01', { status: 'laeuft', start: alt, schritte: [], kostenCent: 0 }),
       roh('fd-verwaist-jung-0001', { status: 'laeuft', start: jung, schritte: [], kostenCent: 0 }),
       roh('fd-verwaist-auftrag1', { status: 'wartet', start: alt, schritte: [], kostenCent: 0, auftragId: 'a-aufgegeben-0001' }),
-    ] }, e: true }));
+    ]) { const x = t.hinzu(f); if (x) return x; } return { e: true }; });
     const { updateJson } = db;
     await updateJson<{ auftraege: unknown[] }>('zoe-auftraege', cur => ({ auftraege: [{ id: 'a-aufgegeben-0001', zeit: alt, tag: '2026-10-09', art: 'agent', name: 'faden', eingabe: {}, schluessel: 's-aufgegeben', status: 'fehler', versuche: 3, fehler: 'Nach 3 Versuchen aufgegeben.' }, ...(cur?.auftraege ?? [])] }));
     expect(await verwaisteLaeufeAufraeumen()).toBe(2);
@@ -641,7 +641,7 @@ describe('(4) Gleichzeitigkeit & Zustände: zwei Tabs, Doppelklick, Abbruch, Neu
     expect(readFileSync('app/api/zoe/takt/route.ts', 'utf8')).toMatch(/verwaisteLaeufeAufraeumen\(\)/);
     // Ein zweiter Durchgang ändert nichts.
     expect(await verwaisteLaeufeAufraeumen()).toBe(0);
-    await bestandAendern('person-b', x => ({ bestand: { ...x, faeden: x.faeden.filter(f => !f.id.startsWith('fd-verwaist-')) }, e: true }));
+    await ablageAendernFuer('person-b', t => { t.entferne(t.index().faeden.filter(f => f.id.startsWith('fd-verwaist-')).map(f => f.id)); return { e: true }; });
   });
 
   it('Arbeiter holt denselben Lauf zweimal gleichzeitig: das Modell läuft EINMAL, der zweite Aufruf „läuft schon“', async () => {
@@ -659,11 +659,11 @@ describe('(4) Gleichzeitigkeit & Zustände: zwei Tabs, Doppelklick, Abbruch, Neu
   });
 
   it('Thread voll (400 Nachrichten): ZOE legt eine Fortsetzung an, der Head-Chat sagt 413, ein Lauf endet „fehler“ ohne Modell-Aufruf', async () => {
-    const { bestandAendern } = await import('@/lib/agenten/faeden-server');
+    const { ablageAendernFuer } = await import('@/lib/agenten/faeden-server');
     const z = new Date().toISOString();
     const voll = (id: string, agent: FadenKern['agent'], lauf?: Record<string, unknown>): FadenKern => ({ id, besitzer: 'person-a', agent, bereich: 'business', titel: id, status: 'offen', fremdGelesen: false, vertraulich: false,
       nachrichten: Array.from({ length: 400 }, (_, i) => ({ id: `nr-${id}-${i}`, rolle: i % 2 ? 'agent' as const : 'person' as const, von: i % 2 ? (agent.art === 'zoe' ? 'zoe' : 'head:sales') : 'person-a', text: `n${i}`, zeit: z })), erstellt: z, aktualisiert: z, ...(lauf ? { lauf: lauf as never } : {}) });
-    await bestandAendern('person-a', b => ({ bestand: { ...b, faeden: [...b.faeden, voll('fd-voll-zoe-00001', { art: 'zoe' }), voll('fd-voll-head-0001', { art: 'head', headId: 'sales' }), voll('fd-voll-lauf-0001', { art: 'mitarbeiter', headId: 'sales', mitarbeiterId: 'sales-angebote' }, { status: 'wartet', start: z, schritte: [], kostenCent: 0 })] }, e: true }));
+    await ablageAendernFuer('person-a', t => { for (const f of [voll('fd-voll-zoe-00001', { art: 'zoe' }), voll('fd-voll-head-0001', { art: 'head', headId: 'sales' }), voll('fd-voll-lauf-0001', { art: 'mitarbeiter', headId: 'sales', mitarbeiterId: 'sales-angebote' }, { status: 'wartet', start: z, schritte: [], kostenCent: 0 })]) { const x = t.hinzu(f); if (x) return x; } return { e: true }; });
     ki.folge.push(text('Neuer Thread, gleiche ZOE.'));
     const r = await zoe('person-a', { message: 'Weiter im vollen Thread', zoeFaden: 'fd-voll-zoe-00001' });
     expect(r.d.reply).toBe('Neuer Thread, gleiche ZOE.');
@@ -675,7 +675,7 @@ describe('(4) Gleichzeitigkeit & Zustände: zwei Tabs, Doppelklick, Abbruch, Neu
     const l = await laufen('fd-voll-lauf-0001', 'person-a');
     expect(l.d.laufStatus).toBe('fehler');
     expect(ki.anfragen.length).toBe(0);
-    await bestandAendern('person-a', b => ({ bestand: { ...b, faeden: b.faeden.filter(f => !f.id.startsWith('fd-voll-')) }, e: true }));
+    await ablageAendernFuer('person-a', t => { t.entferne(t.index().faeden.filter(f => f.id.startsWith('fd-voll-')).map(f => f.id)); return { e: true }; });
   });
 });
 

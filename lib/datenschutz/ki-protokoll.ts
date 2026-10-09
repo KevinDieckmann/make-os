@@ -10,19 +10,25 @@
 // gen_ai.request.model, gen_ai.usage.input_tokens/output_tokens), weiterhin NIE Inhalte. Einsehbar unter System › Datenschutz (je Person die eigenen
 // Zeilen; der Inhaber zusätzlich die Systemläufe ohne Person).
 //
-// Ablage: Monatsdateien `ki-protokoll--JJJJ-MM` (verschlüsselt wie alle Bestände). Aufbewahrung 12 Monate: beim ersten
-// Schreiben eines Tages werden ältere Monate geleert (Marke `bereinigt`, wie das Änderungsprotokoll).
+// Ablage seit E3 (09.10., „Gesprächs-Ablage teilen“): TAGESdateien `ki-protokoll--JJJJ-MM-TT` (Berliner Tag, verschlüsselt wie alle Bestände)
+// — vorher schrieb jeder Aufruf die ganze Monatsdatei (bis 60.000 Zeilen, quadratisch). Gelesen wird ein Monat aus seinen Tagesdateien UND der
+// alten Monatsdatei `ki-protokoll--JJJJ-MM` (Altbestand, nur noch gelesen). Aufbewahrung 12 Monate: einmal am Tag werden Tagesdateien älter als
+// die Aufbewahrung entfernt (samt Tagessicherungen; sie tragen nur Metadaten) und alte Monatsdateien geleert (Marke `bereinigt`, wie bisher).
+// Keine Hash-Kette (nicht in MONATS_FAMILIEN/ROLLENDE_FAMILIEN von lib/store/protokoll-kette.ts) — das Protokoll ist Rechenschaft, kein Beweis.
 // Geschrieben wird an EINER Stelle: `askText` in lib/anthropic.ts. Ein Fehler beim Protokollieren verhindert nie eine Antwort.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { promises as fs } from 'fs';
+import { bestandEntfernen, datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import { KI_KATEGORIEN, type KiKategorie } from './ki-einstellungen';
 import type { KiLauf } from './ki-lauf';
 import { istAnbieterId, STUFEN_REIHE, FAEHIGKEITEN, type AnbieterId, type DatenschutzStufe, type Faehigkeit } from '@/lib/ki/anbieter';
 
 export const KI_PROTOKOLL_PRAEFIX = 'ki-protokoll';
 export const KI_PROTOKOLL_MONATE = 12;
-/** Höchstens so viele Zeilen je Monat — darüber zählt nur noch `ueberlauf` (nie still). */
+/** Höchstens so viele Zeilen je Monat (Altbestand Monatsdatei) — darüber zählt nur noch `ueberlauf` (nie still). */
 export const KI_PROTOKOLL_MAX = 60_000;
+/** Höchstens so viele Zeilen je Tag (E3) — darüber zählt nur noch `ueberlauf` (nie still). */
+export const KI_PROTOKOLL_TAG_MAX = 20_000;
 /**
  * Empfänger der Modell-Aufrufe über Anthropic direkt (Art. 15 Abs. 1 lit. c, Art. 13 Abs. 1 lit. e/f). Korrigiert 09.10. (Kevin 08.10.:
  * „Register korrigieren (SCC statt DPF)“): Anthropic steht nicht auf der DPF-Liste; das Data Processing Addendum mit Standardvertragsklauseln
@@ -76,9 +82,46 @@ export function monatVon(d = new Date()): string {
   const t = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit' }).formatToParts(d);
   return `${t.find(x => x.type === 'year')!.value}-${t.find(x => x.type === 'month')!.value}`;
 }
+/** Tag (Berlin) als JJJJ-MM-TT. */
+export function tagVon(d = new Date()): string {
+  const t = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+  return `${t.find(x => x.type === 'year')!.value}-${t.find(x => x.type === 'month')!.value}-${t.find(x => x.type === 'day')!.value}`;
+}
+/** Alte Monatsdatei (Altbestand bis E3, nur noch gelesen und bereinigt). */
 export function protokollMonatName(monat: string): string {
   if (!/^\d{4}-\d{2}$/.test(monat)) throw new Error(`[ki-protokoll] Monat ungültig: ${monat}`);
   return `ki-protokoll--${monat}`;
+}
+/** Tagesdatei (seit E3, 09.10.) — hierhin schreibt jeder Aufruf. */
+export function protokollTagName(tag: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tag)) throw new Error(`[ki-protokoll] Tag ungültig: ${tag}`);
+  return `ki-protokoll--${tag}`;
+}
+const TAG_DATEI = /^ki-protokoll--(\d{4}-\d{2})-(\d{2})\.json$/;
+/** Die vorhandenen Tagesdateien (Name ohne `.json`) je Monat — EIN Blick in den Datenordner je Lesen. */
+async function tagesDateien(): Promise<Map<string, string[]>> {
+  const je = new Map<string, string[]>();
+  for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+    const m = TAG_DATEI.exec(d);
+    if (!m) continue;
+    const l = je.get(m[1]) ?? [];
+    l.push(d.slice(0, -5));
+    je.set(m[1], l);
+  }
+  for (const l of je.values()) l.sort();
+  return je;
+}
+/** Alle Zeilen der angegebenen Monate: Tagesdateien + alte Monatsdatei. */
+async function zeilenDerMonate(monate: readonly string[]): Promise<KiProtokollEintrag[]> {
+  const tage = await tagesDateien();
+  const raus: KiProtokollEintrag[] = [];
+  for (const m of monate) {
+    for (const name of [protokollMonatName(m), ...(tage.get(m) ?? [])]) {
+      const d = await loadJson<KiProtokollDatei>(name).catch(() => null);
+      raus.push(...(d?.eintraege ?? []));
+    }
+  }
+  return raus;
 }
 /** Die letzten n Monate (neuester zuerst). */
 export function letzteMonate(n: number, d = new Date()): string[] {
@@ -141,13 +184,25 @@ export function otelAttribute(z: KiProtokollEintrag): Record<string, string | nu
 
 let bereinigtAm = '';
 
-/** Ältere Monate als die Aufbewahrung leeren (einmal je Tag und Prozess). Prüft die 24 Monate davor. */
+/**
+ * Aufbewahrung (einmal je Tag und Prozess): Tagesdateien aus Monaten vor der Aufbewahrung entfernen (samt Tagessicherungen — nur Metadaten,
+ * nichts zu belegen außer der Zahl), alte Monatsdateien leeren (Marke `bereinigt`; prüft die 24 Monate davor). Liefert die Zahl der Zeilen.
+ */
 export async function kiProtokollBereinigen(jetzt = new Date()): Promise<number> {
-  const tag = jetzt.toISOString().slice(0, 10);
+  const tag = tagVon(jetzt);
   if (bereinigtAm === tag) return 0;
   bereinigtAm = tag;
-  const alt = letzteMonate(KI_PROTOKOLL_MONATE + 24, jetzt).slice(KI_PROTOKOLL_MONATE);
+  const behalten = new Set(letzteMonate(KI_PROTOKOLL_MONATE, jetzt));
+  const aeltester = [...behalten].sort()[0];
   let n = 0;
+  for (const [monat, namen] of await tagesDateien()) {
+    if (behalten.has(monat) || monat > aeltester) continue;
+    for (const name of namen) {
+      n += (await loadJson<KiProtokollDatei>(name).catch(() => null))?.eintraege?.length ?? 0;
+      await bestandEntfernen(name, { tageskopien: true }).catch(() => false);
+    }
+  }
+  const alt = letzteMonate(KI_PROTOKOLL_MONATE + 24, jetzt).slice(KI_PROTOKOLL_MONATE);
   for (const m of alt) {
     const d = await loadJson<KiProtokollDatei>(protokollMonatName(m)).catch(() => null);
     if (!d?.eintraege?.length) continue;
@@ -157,27 +212,23 @@ export async function kiProtokollBereinigen(jetzt = new Date()): Promise<number>
   return n;
 }
 
-/** Eine Zeile schreiben. Wirft nie. */
+/** Eine Zeile schreiben — in die Tagesdatei (E3: nur der Tag wird geschrieben, nie der ganze Monat). Wirft nie. */
 export async function kiProtokollieren(e: Omit<KiProtokollEintrag, 'at'> & { at?: string }): Promise<void> {
   try {
     const z = eintragSaeubern(e);
-    await updateJson<KiProtokollDatei>(protokollMonatName(monatVon(new Date(z.at))), cur => {
+    await updateJson<KiProtokollDatei>(protokollTagName(tagVon(new Date(z.at))), cur => {
       const liste = Array.isArray(cur?.eintraege) ? cur.eintraege : [];
-      if (liste.length >= KI_PROTOKOLL_MAX) return { ...(cur ?? { eintraege: liste }), eintraege: liste, ueberlauf: (cur?.ueberlauf ?? 0) + 1 };
+      if (liste.length >= KI_PROTOKOLL_TAG_MAX) return { ...(cur ?? { eintraege: liste }), eintraege: liste, ueberlauf: (cur?.ueberlauf ?? 0) + 1 };
       return { ...(cur ?? {}), eintraege: [...liste, z] };
     });
     void kiProtokollBereinigen().catch(() => undefined);
   } catch { /* das Protokoll darf nie eine Antwort verhindern */ }
 }
 
-/** Lesen: je Person nur die eigenen Zeilen; `mitSystem` (Inhaber) zusätzlich die Systemläufe ohne Person. */
+/** Lesen: je Person nur die eigenen Zeilen; `mitSystem` (Inhaber) zusätzlich die Systemläufe ohne Person. Tagesdateien + alte Monatsdateien. */
 export async function kiProtokollLesen(opt: { person: string; mitSystem?: boolean; monate?: number; jetzt?: Date }): Promise<KiProtokollEintrag[]> {
   const monate = letzteMonate(Math.min(Math.max(opt.monate ?? 3, 1), KI_PROTOKOLL_MONATE), opt.jetzt);
-  const raus: KiProtokollEintrag[] = [];
-  for (const m of monate) {
-    const d = await loadJson<KiProtokollDatei>(protokollMonatName(m)).catch(() => null);
-    for (const e of d?.eintraege ?? []) if (e.person === opt.person || (opt.mitSystem && e.person === null)) raus.push(e);
-  }
+  const raus = (await zeilenDerMonate(monate)).filter(e => e.person === opt.person || (opt.mitSystem && e.person === null));
   return raus.sort((a, b) => b.at.localeCompare(a.at));
 }
 
@@ -225,10 +276,5 @@ export function empfaengerAuskunft(zeilen: readonly KiProtokollEintrag[], nurKat
 
 /** Für die Kontakt-Auskunft (Art. 15, CRM): Aufrufe mit Kategorie „crm“ in der Aufbewahrung — ohne Personenbezug je Zeile. */
 export async function kiEmpfaengerFuerKontakte(jetzt = new Date()): Promise<KiEmpfaengerAuskunft> {
-  const zeilen: KiProtokollEintrag[] = [];
-  for (const m of letzteMonate(KI_PROTOKOLL_MONATE, jetzt)) {
-    const d = await loadJson<KiProtokollDatei>(protokollMonatName(m)).catch(() => null);
-    zeilen.push(...(d?.eintraege ?? []));
-  }
-  return empfaengerAuskunft(zeilen, 'crm');
+  return empfaengerAuskunft(await zeilenDerMonate(letzteMonate(KI_PROTOKOLL_MONATE, jetzt)), 'crm');
 }

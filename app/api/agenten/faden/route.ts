@@ -10,8 +10,9 @@
 //   bewerten (Paket 4b: Daumen an einer Agenten-Antwort bzw. einem Bericht — nur die Besitzerin, nur Metadaten)
 // Paket 4b: Not-Aus (für alle bzw. je Head), ausgeschalteter Head und erreichtes Head-Budget sperren Senden an Heads/Mitarbeiter und die
 // zweite Meinung (409, ruhiger Satz; lib/agenten/einstellung.ts `laufSperre`). Offene Plan-Freigaben stehen zusätzlich im Stapel (Art `plan`).
-// Verlauf NUR aus dem Bestand `agenten-faeden--<person>` (nie vom Browser), Stand → 409, Grenzen → 413, `jsonBegrenzt`, `bauPruefen`
-// (über `eigenePerson(req, true)`). Nur die Person selbst (Dienstweg 403), keine Personen-Parameter.
+// Verlauf NUR aus der Ablage der Person (nie vom Browser; seit E3, 09.10.: Index `agenten-faeden--<person>` für Liste und Köpfe, der ganze
+// Thread aus `agenten-faden--<person>--<id>`), Stand → 409, Grenzen → 413, `jsonBegrenzt`, `bauPruefen` (über `eigenePerson(req, true)`).
+// Nur die Person selbst (Dienstweg 403), keine Personen-Parameter.
 import { NextResponse } from 'next/server';
 import { eigenePerson } from '@/lib/zugang/tor';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -21,8 +22,9 @@ import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { innenAdresse } from '@/lib/innen';
 import { AGENTEN_NUR_SELBST, type FadenAntwort, type FadenListeAntwort } from '@/lib/agenten/typen';
 import { headDef } from '@/lib/agenten/katalog';
-import { bestandAendern, bestandLesen, fadenAendern, sichtbareFaeden, sichtLaden } from '@/lib/agenten/faeden-server';
-import { fadenStand, istFadenId, kurz, merksatzWeg, passtAgent, textPruefen, titelAus, type FadenKern } from '@/lib/agenten/faeden';
+import { ablageAendernFuer, bestandLesen, fadenAendern, indexAendern, sichtbareFaeden, sichtLaden } from '@/lib/agenten/faeden-server';
+import { fadenLesen } from '@/lib/agenten/faeden-ablage';
+import { fadenStand, istFadenId, kurz, merksatzWeg, passtAgent, textPruefen, titelAus, type FadenKern, type FadenKopfKern } from '@/lib/agenten/faeden';
 import { headSichtbar, teilenErlaubt, type KontoSicht } from '@/lib/agenten/sicht';
 import { senden, type SendenAnfrage } from '@/lib/agenten/gespraech';
 import { zoeVerlaufUebernehmen } from '@/lib/agenten/zoe-faden';
@@ -37,7 +39,7 @@ const nein = (status: number, fehler: string, extra: Record<string, unknown> = {
 const AGENT_SCHLUESSEL = /^(zoe|head:[a-z0-9-]{1,40}|mitarbeiter:[a-z0-9-]{1,40}:[a-z0-9-]{1,80})$/;
 
 /** Lese-Protokoll für Threads mit Daten aus Gesundheit, Finanzen oder der Kartei (nie Inhalte). */
-function protokoll(req: Request, f: FadenKern) {
+function protokoll(req: Request, f: Pick<FadenKopfKern, 'agent' | 'besitzer'>) {
   if (f.agent.art === 'zoe') return;
   const h = headDef(f.agent.headId);
   if (!h) return;
@@ -76,7 +78,9 @@ export async function GET(req: Request) {
   if (id) {
     if (!istFadenId(id)) return nein(400, 'Thread-Kennung ungültig.');
     const alle = await sichtbareFaeden(sicht);
-    const f = alle.find(x => x.id === id);
+    const k = alle.find(x => x.id === id);
+    // Der ganze Thread (E3): aus der Ablage der Besitzerin — nur, wenn die Sicht seinen Kopf sieht.
+    const f = k ? await fadenLesen(k.besitzer, k.id) : null;
     if (!f) return nein(404, 'Diesen Thread gibt es nicht.');
     protokoll(req, f);
     const kinder = alle.filter(x => x.elternId === f.id).map(x => kurz(x, z.person));
@@ -142,8 +146,8 @@ export async function POST(req: Request) {
   if (aktion === 'gedaechtnis-weg') {
     const agent = String(body.agent ?? ''), id = String(body.id ?? '');
     if (!AGENT_SCHLUESSEL.test(agent) || !/^ms-[a-z0-9-]{8,60}$/.test(id)) return nein(400, 'Merksatz ungültig.');
-    const r = await bestandAendern(person, b => { const x = merksatzWeg(b, agent, id); return x.ok ? { bestand: x.bestand, e: true } : x; });
-    return r.ok ? NextResponse.json({ ok: true, gedaechtnis: r.bestand.gedaechtnis?.[agent] ?? [] }) : nein(r.status, r.fehler);
+    const r = await indexAendern(person, b => { const x = merksatzWeg(b, agent, id); return x.ok ? { e: true, neu: { gedaechtnis: x.bestand.gedaechtnis ?? {} } } : x; });
+    return r.ok ? NextResponse.json({ ok: true, gedaechtnis: r.index.gedaechtnis?.[agent] ?? [] }) : nein(r.status, r.fehler);
   }
 
   if (!istFadenId(fadenId)) return nein(400, 'Thread-Kennung ungültig.');
@@ -162,12 +166,17 @@ export async function POST(req: Request) {
       if (!teilenErlaubt(eigen, person)) return nein(403, 'Teilen gibt es nur für eigene Business-Threads.');
       // Geteilt (bzw. zurückgenommen) wird der Thread samt seiner Mitarbeiter-Threads — ein Gespräch, eine Sichtbarkeit.
       const geteilt = body.geteilt === true ? { am: jetzt, von: person } : null;
-      const r = await bestandAendern<FadenKern>(person, b => {
-        const f = b.faeden.find(x => x.id === fadenId);
+      const r = await ablageAendernFuer<FadenKern>(person, async t => {
+        const f = await t.faden(fadenId);
         if (!f) return { ok: false, status: 404, fehler: 'Diesen Thread gibt es nicht (mehr).' };
         if (stand !== undefined && fadenStand(f) !== stand) return { ok: false, status: 409, fehler: 'Der Thread hat sich inzwischen geändert — bitte neu laden.' };
-        const faeden = b.faeden.map(x => (x.id === fadenId || x.elternId === fadenId ? { ...x, geteilt } : x));
-        return { bestand: { ...b, faeden }, e: faeden.find(x => x.id === fadenId)! };
+        const neu = { ...f, geteilt };
+        t.setze(neu);
+        for (const k of t.index().faeden.filter(x => x.elternId === fadenId)) {
+          const kind = await t.faden(k.id);
+          if (kind) t.setze({ ...kind, geteilt });
+        }
+        return { e: neu };
       });
       return r.ok ? NextResponse.json({ ok: true, faden: r.e, stand: fadenStand(r.e) }) : nein(r.status, r.fehler);
     }
@@ -186,18 +195,20 @@ export async function POST(req: Request) {
     case 'loeschen': {
       if (stand === undefined) return nein(400, 'Stand fehlt.');
       let geloescht = new Set<string>();
-      const r = await bestandAendern<boolean>(person, b => {
-        const f = b.faeden.find(x => x.id === fadenId);
+      const r = await ablageAendernFuer<boolean>(person, async t => {
+        const f = await t.faden(fadenId);
         if (!f) return { ok: false, status: 404, fehler: 'Diesen Thread gibt es nicht (mehr).' };
         if (fadenStand(f) !== stand) return { ok: false, status: 409, fehler: 'Der Thread hat sich inzwischen geändert — bitte neu laden.' };
         // Der Thread samt ALLEN Threads darunter (ein Gespräch: ZOE → Head → Mitarbeiter); laufende Läufe zuerst abbrechen.
         // Durchstich 09.10.: vorher gingen nur die direkten Kinder — beim Löschen eines ZOE-Gesprächs blieben die Mitarbeiter-Threads der Heads
-        // verwaist stehen, und ihre wartenden Läufe liefen (und kosteten) trotzdem.
+        // verwaist stehen, und ihre wartenden Läufe liefen (und kosteten) trotzdem. Die Kette steht in den Köpfen (E3: nichts weiter laden).
+        const koepfe = t.index().faeden;
         const weg = new Set([f.id]);
-        for (let neu = true; neu;) { neu = false; for (const x of b.faeden) if (x.elternId && weg.has(x.elternId) && !weg.has(x.id)) { weg.add(x.id); neu = true; } }
-        if (b.faeden.some(x => weg.has(x.id) && x.lauf?.status === 'laeuft')) return { ok: false, status: 409, fehler: 'Ein Lauf in diesem Thread läuft noch — erst abbrechen.' };
+        for (let neu = true; neu;) { neu = false; for (const x of koepfe) if (x.elternId && weg.has(x.elternId) && !weg.has(x.id)) { weg.add(x.id); neu = true; } }
+        if (koepfe.some(x => weg.has(x.id) && x.lauf?.status === 'laeuft')) return { ok: false, status: 409, fehler: 'Ein Lauf in diesem Thread läuft noch — erst abbrechen.' };
         geloescht = weg;
-        return { bestand: { ...b, faeden: b.faeden.filter(x => !weg.has(x.id)) }, e: true };
+        t.entferne(weg);
+        return { e: true };
       });
       // Wartende Läufe dieser Threads verlassen die Warteschlange (sie fänden ihren Thread nicht mehr).
       if (r.ok && geloescht.size) {
