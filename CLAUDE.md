@@ -73,6 +73,13 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   mit Malins Sitzung und `fuer/person/…=kevin`) — neuer privater Bestand → Marke in die Saat. Ketten (Papierkorb) nehmen fremde „nur
   ich“-Aufgaben nie mit (`fremdeNurIchLoesen`), Bestände mit `aufgabeId` filtern über `verborgeneAufgabenFuer`; Agenten-/ZOE-Läufe
   rechnen mit der AUSLÖSENDEN Person (`gatherBrain(…, person)`, nie Rückfall auf den Inhaber).
+- **Firma und Privat liegen getrennt — auch in der Datenhaltung (Kevin 09.10. spät: „Höchster Datenschutz, Firma und Privat müssen
+  immer getrennt liegen, auch von den Daten, sonst kriegen wir es nachher nicht in Firmen implementiert“):** Serverseitiges Filtern
+  reicht für NEUES nicht mehr — Daten eines Bereichs gehören in eigene Bestände des Bereichs (z. B. `<bestand>--business` /
+  `<bestand>--privat` bzw. je Gesellschaft), damit eine Firmen-Instanz nur die Business-Bestände bekommt und eine Privat-Instanz nie
+  Firmendaten trägt. Kein neuer Bestand mischt Privat und Business; ein Feld `space`/`bereich` in einem gemeinsamen Bestand ist nur noch
+  Übergang für Altbestände. Plan und Inventur der heute gemischten Bestände: `TRENNUNG_PRIVAT_BUSINESS.md` (Stufenplan, Umzug ohne Verlust,
+  Rückweg). Wächter: neuer Bestand → im Speicher-Register mit `bereich: 'privat' | 'business' | 'person' | 'instanz'`.
 - **Testkunden nie auf unserer Instanz** (Kevin: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
