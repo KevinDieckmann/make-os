@@ -25,6 +25,9 @@ import { ARBEIT_REGISTER } from './arbeit-werkzeug';
 import { fokusImJahr } from '@/lib/planung/jahr-fokus';
 import { localDay } from '@/lib/zeit';
 import { CRM_VORSCHLAG_REGISTER } from './crm-vorschlag';
+// Priorität und Tag deutsch in Vorschau und Stapel (09.10. „Agenten live“: dort stand „(high)“ und „2026-10-10“).
+import { PRIO_NAME, tagDe } from './vorschau-text';
+export { PRIO_NAME, tagDe };
 
 export type Risiko = 'frei' | 'freigabe' | 'nie';
 
@@ -67,8 +70,7 @@ const eur = (n: unknown) => {
 // Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch `ug`).
 const firma = (rein: unknown) => firmaAusAngabe(rein);
 const text = (v: unknown, n = 120) => String(v ?? '').trim().slice(0, n);
-/** Ein Tag „JJJJ-MM-TT“ in der Vorschau als „TT.MM.JJJJ“ (09.10. „Agenten live“: im Stapel stand das ISO-Datum) — sonst unverändert. */
-export const tagDe = (v: unknown): string => { const t = text(v, 10); const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t); return m ? `${m[3]}.${m[2]}.${m[1]}` : t; };
+
 
 // ── Trockenläufe ───────────────────────────────────────────────────────────
 // Jeder liest genau den Bestand, den die Ausführung anfassen würde. Dadurch
@@ -183,8 +185,6 @@ async function vsFokus(i: Record<string, unknown>): Promise<Vorschau> {
 
 /** Für die freien Werkzeuge: eine ehrliche Zeile, kein Bestandsvergleich —
  *  sie laufen ohnehin durch, die Vorschau dient nur dem Protokoll. */
-/** Priorität in Worten für die Vorschau im Stapel (09.10. „Agenten live“: vorher stand dort „(high)“). */
-export const PRIO_NAME: Readonly<Record<string, string>> = { low: 'niedrig', medium: 'mittel', high: 'hoch', critical: 'kritisch' };
 const schlicht = (titel: string, nachher: (i: Record<string, unknown>) => string) =>
   async (i: Record<string, unknown>): Promise<Vorschau> => ({ titel, nachher: nachher(i) });
 

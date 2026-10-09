@@ -139,10 +139,12 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
   const loeschen = async () => {
     if (!fa) return;
     if (!(await w.bestaetigen({ titel: 'Thread löschen?', text: `„${fa.faden.titel}“ (${name}) wird gelöscht. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
-    const r = await fadenLoeschen(fa.faden.id, fa.stand);
-    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
-    melde(`Thread „${fa.faden.titel}“ gelöscht.`, 'gut');
+    // Erst weg vom Thread, dann löschen (sonst lädt die Ansicht den gelöschten Thread noch einmal).
+    const { id, stand, titel } = { id: fa.faden.id, stand: fa.stand, titel: fa.faden.titel };
     oeffne(k ? { h: k.id } : {}, true);
+    const r = await fadenLoeschen(id, stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    melde(`Thread „${titel}“ gelöscht.`, 'gut');
   };
 
   const zweiteMeinung = async () => {

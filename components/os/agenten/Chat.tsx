@@ -184,7 +184,7 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
   const kurs = agenten.zustand === 'da' ? agenten.daten.kurs : undefined;
   const heads: HeadKarte[] = agenten.zustand === 'da' ? agenten.daten.heads : [];
   const stimme = useStimme(() => { /* hier wird nur vorgelesen */ });
-  const ende = useZurNeuesten(nachrichten.length + (unten ? 1 : 0));
+  const ende = useZurNeuesten(!!unten);
   if (!nachrichten.length) return <div style={{ display: 'grid', gap: ABSTAND.m }}>{leer}{unten}<span ref={ende} aria-hidden style={ENDE_ANKER} /></div>;
   return (
     <ol aria-label="Verlauf" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: ABSTAND.l }}>
@@ -236,22 +236,26 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
 
 /**
  * Rundgang 09.10. („Agenten live“): neue Nachrichten und der entstehende Text standen UNTER dem klebenden Eingabefeld — man sah die Antwort nicht,
- * ohne selbst zu scrollen. Ändert sich die Zahl der Einträge (eigene Nachricht, „schreibt …“, Antwort), rückt das Ende des Verlaufs in Sicht —
- * nie beim ersten Anzeigen (dann bleibt der Überblick oben), und ohne Animation bei reduzierter Bewegung. Der Rand unten hält Platz fürs Feld frei.
+ * ohne selbst zu scrollen. Jetzt rückt das Ende des Verlaufs in Sicht, wenn ein Zug beginnt („schreibt …“ erscheint) und wenn er endet (die Antwort
+ * steht da) — nie beim Laden oder Wechseln eines Threads (dann bleibt der Überblick oben), ohne Animation bei reduzierter Bewegung. Der Rand unten
+ * hält Platz fürs Feld frei (am Handy zusätzlich über den Reitern: `--agenten-feld-unten`).
  */
 /** Wie viel Platz das klebende Feld unten braucht (Ansprech-Chips + Feld + Knöpfe) — Abstand für „in Sicht scrollen“. */
 const FELD_PLATZ = 240;
-const ENDE_ANKER: CSSProperties = { display: 'block', height: 1, scrollMarginBottom: FELD_PLATZ };
-function useZurNeuesten(zahl: number) {
+const FELD_RAND = `calc(var(--agenten-feld-unten, 0px) + ${FELD_PLATZ}px)`;
+const ENDE_ANKER: CSSProperties = { display: 'block', height: 1, scrollMarginBottom: FELD_RAND };
+function useZurNeuesten(zugLaeuft: boolean) {
   const ref = useRef<HTMLElement | null>(null);
-  const vorher = useRef<number | null>(null);
+  const vorher = useRef<boolean | null>(null);
   useEffect(() => {
     const alt = vorher.current;
-    vorher.current = zahl;
-    if (alt === null || zahl <= alt) return;
+    vorher.current = zugLaeuft;
+    if (alt === null || alt === zugLaeuft) return;
     const ruhig = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    ref.current?.scrollIntoView({ block: 'end', behavior: ruhig ? 'auto' : 'smooth' });
-  }, [zahl]);
+    // Ein Bild später: dann steht die Antwort (statt „schreibt …“) schon im Verlauf.
+    const t = window.setTimeout(() => ref.current?.scrollIntoView({ block: 'end', behavior: ruhig ? 'auto' : 'smooth' }), 30);
+    return () => window.clearTimeout(t);
+  }, [zugLaeuft]);
   return (el: HTMLElement | null) => { ref.current = el; };
 }
 
@@ -270,11 +274,11 @@ export function Schreibt({ name, entsteht }: { name: string; entsteht?: { text: 
     if (!el || typeof window === 'undefined') return;
     if (el.getBoundingClientRect().bottom > window.innerHeight - FELD_PLATZ) el.scrollIntoView({ block: 'end' });
   }, [laenge]);
-  if (!entsteht?.text) return <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_PLATZ }}>{status}</div>;
+  if (!entsteht?.text) return <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_RAND }}>{status}</div>;
   return (
     <div style={{ display: 'grid', gap: ABSTAND.xs, maxWidth: NACHRICHT_MAX }}>
       <div style={{ fontSize: TYP.body, lineHeight: 1.55, color: C.ink, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{entsteht.text}</div>
-      <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_PLATZ }}>{status}</div>
+      <div ref={unten} role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise, scrollMarginBottom: FELD_RAND }}>{status}</div>
     </div>
   );
 }

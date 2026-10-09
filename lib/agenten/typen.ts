@@ -802,7 +802,12 @@ export type SkillAnfrage =
    */
   | { aktion: 'mitarbeiter-probelauf'; headId: string; id?: string; entwurf?: Pick<Mitarbeiter, 'name' | 'rolle' | 'anleitung' | 'werkzeuge' | 'stufe'>; eingabe: string; kostenBestaetigt?: boolean };
 /** GET /api/agenten/laeufe (Paket 3). */
-export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[]; /** Stand je geplanter Aufgabe (Pausieren/Löschen mit Stand, Paket 4b im Vertrag). */ planStaende?: Record<string, string> }
+export interface LaeufeAntwort { ok: true; laeufe: Lauf[]; naechstes: Naechstes[]; plan: Hintergrundaufgabe[]; /** Stand je geplanter Aufgabe (Pausieren/Löschen mit Stand, Paket 4b im Vertrag). */ planStaende?: Record<string, string>;
+  /**
+   * Ist die Hintergrund-KI für diese Person an (Instanz UND Person, lib/datenschutz/ki-einstellungen.ts)? Ohne sie reiht der Takt KEINE geplante Aufgabe
+   * ein (lib/agenten/zeitplan.ts) — Rundgang 09.10. „Agenten live“: eine geplante Aufgabe blieb still liegen, das Fenster „Geplant“ sagte „an“.
+   */
+  hintergrundKi?: boolean }
 /** POST /api/agenten/laeufe (Paket 3). */
 export type LaeufeAnfrage =
   // `kostenBestaetigt` nach der Rückfrage (409 `kostenBestaetigen`), `trotzdem` in einer Business-freien Zeit (409 `businessFrei`) — die Route

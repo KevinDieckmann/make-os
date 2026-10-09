@@ -181,9 +181,10 @@ export function ZoeMitte() {
   const gespraechLoeschen = async () => {
     if (!thread || thread.faden.id !== fadenId) return;
     if (!(await bestaetigen({ titel: 'Gespräch löschen?', text: `„${thread.faden.titel}“ wird mit allen Nachrichten gelöscht — auch die Threads, die ZOE daraus an Heads gegeben hat. Das lässt sich nicht rückgängig machen.`, ja: 'Löschen', gefahr: true }))) return;
-    const r = await fadenLoeschen(thread.faden.id, thread.stand);
-    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
+    const { id, stand } = { id: thread.faden.id, stand: thread.stand };
     setGewaehlt({ id: null, neu: true }); setAusstehend(null);
+    const r = await fadenLoeschen(id, stand);
+    if (!r.ok) { melde(r.text, 'kritisch'); if (r.status === 409) meldeNeu(); return; }
     melde('Gespräch gelöscht.', 'gut');
   };
 

@@ -24,11 +24,25 @@ import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Fenster } from '../Fenster';
 import { Chip, Eigenschaft, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPillen, Pillen, Schalter, Schritte, Segmente, SymbolKnopf, Zeile, auswahl, eingabe, feld } from '../ui';
 import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, mitRueckfrage, skillSenden } from './daten';
+import { WEG } from '@/lib/wege';
 import { sichtbareHeads, useAgenten, type DialogArt } from './kontext';
 import {
   agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, euro, kostenImMonat, leererSkill, naechsterLaufText,
-  RHYTHMUS_NAME, skillName, skillPruefen, type Delegation, type SkillEntwurf,
+  RHYTHMUS_NAME, skillName, skillPruefen, zeitKurz, type Delegation, type SkillEntwurf,
 } from './regeln';
+
+/**
+ * Hintergrund-KI aus → geplante Aufgaben laufen nicht (der Takt reiht sie nicht ein). Rundgang 09.10. („Agenten live“): vorher sagte nichts, warum eine
+ * geplante Aufgabe still liegen blieb. Nur, wenn der Server es ausdrücklich sagt (`hintergrundKi === false`).
+ */
+function HintergrundKiAus({ an }: { an: boolean | undefined }) {
+  if (an !== false) return null;
+  return (
+    <Hinweis art="achtung" titel="Hintergrund-KI ist aus" aktion={<Knopf leise href={WEG.datenschutz('ki')}>Einstellungen ›</Knopf>}>
+      Geplante Aufgaben laufen erst, wenn die Hintergrund-KI an ist (Einstellungen › Datenschutz › KI). „Jetzt“ geht immer.
+    </Hinweis>
+  );
+}
 
 /** Cent als Eingabetext („0,20“). */
 const euroFeld = (cent: number) => (cent / 100).toFixed(2).replace('.', ',');
@@ -160,6 +174,7 @@ export function AuftragDialog({ art, start, onZu }: { art: 'auftrag' | 'mehrere'
       {art === 'hintergrund' && (
         <>
           <Feldzeile label="Wann"><Segmente liste={[{ id: 'jetzt', label: 'Jetzt' }, { id: 'einmalig', label: 'Einmal geplant' }, { id: 'wiederkehrend', label: 'Wiederkehrend' }]} aktiv={wann} onWahl={setWann} /></Feldzeile>
+          {wann !== 'jetzt' && <HintergrundKiAus an={w.laeufe.zustand === 'da' ? w.laeufe.daten.hintergrundKi : undefined} />}
           {wann !== 'jetzt' && <Feldzeile label="Titel"><input value={titel} onChange={e => setTitel(e.target.value)} placeholder="z. B. Wochenbericht" style={eingabe} /></Feldzeile>}
           {wann === 'einmalig' && <Feldzeile label="Tag und Uhrzeit"><input type="datetime-local" value={einmalig} onChange={e => setEinmalig(e.target.value)} style={eingabe} /></Feldzeile>}
           {wann === 'wiederkehrend' && (
@@ -608,9 +623,10 @@ export function GeplantFenster({ onZu }: { onZu: () => void }) {
   return (
     <Fenster titel="Geplant" onZu={onZu} breit={640}>
       {laeufe.zustand === 'kommt' && <Leer>Geplante und wiederkehrende Aufgaben erscheinen hier, sobald die Vorschau läuft.</Leer>}
+      {plan.length > 0 && <HintergrundKiAus an={laeufe.zustand === 'da' ? laeufe.daten.hintergrundKi : undefined} />}
       {plan.length > 0 && (
         <Liste>
-          {plan.map(p => <Zeile key={p.id} titel={p.titel} umbrechen unter={`${wer(p.agent)} · ${zeitText(p.zeitplan)}${p.kostenGrenzeCent ? ` · höchstens ${euro(p.kostenGrenzeCent)}` : ''}${p.letzterLauf ? ` · zuletzt ${p.letzterLauf.slice(0, 10)}` : ''}`}
+          {plan.map(p => <Zeile key={p.id} titel={p.titel} umbrechen unter={`${wer(p.agent)} · ${zeitText(p.zeitplan)}${p.kostenGrenzeCent ? ` · höchstens ${euro(p.kostenGrenzeCent)}` : ''}${p.letzterLauf ? ` · zuletzt ${zeitKurz(p.letzterLauf, jetzt)}` : ''}`}
             rechts={<span style={{ display: 'flex', gap: ABSTAND.xs, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <Chip farbe={p.aktiv ? LEUCHT.gut : C.inkLeise}>{p.aktiv ? 'an' : 'pausiert'}</Chip>
               <Knopf leise onClick={() => schalten(p.id, !p.aktiv)} ariaLabel={`„${p.titel}“ ${p.aktiv ? 'pausieren' : 'fortsetzen'}`}>{p.aktiv ? 'Pausieren' : 'Fortsetzen'}</Knopf>

@@ -135,7 +135,7 @@ describe('(4)(5)(6) reine Regeln der Seite', () => {
     const v = await vorschauVon('create_task', { title: 'X', priority: 'critical' });
     expect(v.nachher).toBe('„X“ (kritisch)');
     // Keine Vorlage „„${…}"“ mit ASCII-Zeichen am Ende mehr im Register (Rundgang: halb deutsch, halb englisch angeführt).
-    expect(quelle('lib/zoe/register.ts')).not.toMatch(/„\$\{[^`"\n]*?\}"/);
+    for (const d of ['lib/zoe/register.ts', 'lib/zoe/werkzeuge.ts']) expect(quelle(d), d).not.toMatch(/„\$\{[^`"\n]*?\}"/);
   });
 });
 
@@ -153,12 +153,27 @@ describe('(4)(7)(9) Oberfläche verdrahtet', () => {
   });
   it('Chat: rückt die neue Nachricht in Sicht; das Feld ist unten deckend; Karte ohne Werkzeug-Namen als Text', () => {
     const chat = quelle('components/os/agenten/Chat.tsx');
-    expect(chat).toMatch(/useZurNeuesten\(nachrichten\.length/);
+    expect(chat).toMatch(/useZurNeuesten\(!!unten\)/);
     expect(chat).toMatch(/linear-gradient\(to top, \$\{C\.grund\} calc\(100% - /);
     expect(chat).not.toMatch(/Ein Vorschlag \(\$\{werkzeug\}\)/);
   });
   it('Handy: „… ist auch hier“ verdeckt den Reiter „Gespräch“ nicht', () => {
     expect(quelle('app/globals.css')).toMatch(/body:has\(\.agenten-reiter-handy\) \.os-mitarbeit \{ display: none !important; \}/);
+  });
+});
+
+describe('(10) Geplant ohne Hintergrund-KI', () => {
+  it('GET /api/agenten/laeufe sagt, ob die Hintergrund-KI an ist; die Oberfläche warnt bei „aus“', async () => {
+    const laeufe = (await import('@/app/api/agenten/laeufe/route')) as unknown as { GET: H };
+    const ke = await import('@/lib/datenschutz/ki-einstellungen');
+    await ke.aendereKiEinstellungen(d => ({ ...d, instanz: { ...(d.instanz ?? {}), hintergrund: true } }));
+    expect((await rufe(laeufe.GET, '/api/agenten/laeufe', sitzung('person-a'))).d.hintergrundKi).toBe(true);
+    await ke.aendereKiEinstellungen(d => ({ ...d, instanz: { ...(d.instanz ?? {}), hintergrund: false } }));
+    expect((await rufe(laeufe.GET, '/api/agenten/laeufe', sitzung('person-a'))).d.hintergrundKi).toBe(false);
+    const dlg = quelle('components/os/agenten/Dialoge.tsx');
+    expect(dlg).toMatch(/function HintergrundKiAus/);
+    expect((dlg.match(/<HintergrundKiAus an=/g) ?? []).length).toBe(2); // Fenster „Geplant“ und „Neue Hintergrundaufgabe“ (geplant)
+    expect(dlg).not.toMatch(/zuletzt \$\{p\.letzterLauf\.slice\(0, 10\)\}/); // kein ISO-Datum mehr
   });
 });
 

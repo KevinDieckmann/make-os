@@ -27,9 +27,11 @@ export async function GET(req: Request) {
   const z = await eigenePerson(req, false, AGENTEN_NUR_SELBST);
   if (z instanceof NextResponse) return z;
   const jetzt = new Date();
-  const [laeufe, naechstes, plan] = await Promise.all([laeufeLesen(z.person, jetzt), naechstesLesen(z.person, jetzt), planLesen(z.person)]);
+  const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
+  const [laeufe, naechstes, plan, ki] = await Promise.all([laeufeLesen(z.person, jetzt), naechstesLesen(z.person, jetzt), planLesen(z.person), kiSchalterFuer(z.person).catch(() => null)]);
   // Rundgang 09.10.: je wiederkehrendem Lauf nur das nächste Vorkommen (+ „n weitere“) — die Rechnung bleibt die des Takts.
-  return NextResponse.json({ ok: true, laeufe, naechstes: naechstesVerdichten(naechstes), plan: plan.aufgaben, planStaende: plan.staende }, { headers: { 'Cache-Control': 'no-store' } });
+  // `hintergrundKi` (Rundgang „Agenten live“): ohne Hintergrund-KI laufen geplante Aufgaben nicht — die Oberfläche sagt es dann.
+  return NextResponse.json({ ok: true, laeufe, naechstes: naechstesVerdichten(naechstes), plan: plan.aufgaben, planStaende: plan.staende, ...(ki ? { hintergrundKi: !!ki.hintergrund } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 type Body = Record<string, unknown> & { aktion?: string };
