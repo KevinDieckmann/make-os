@@ -198,7 +198,7 @@ export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
       </Spalten>
       {form && <SchuldForm s={form} patch={patch} melde={melde} onZu={() => setForm(null)} />}
       {sonder && <SonderDialog s={sonder} patch={patch} melde={melde} onZu={() => setSonder(null)} />}
-      {belegForm && <BelegForm b={belegForm} patch={patch} melde={melde} onZu={() => setBelegForm(null)} />}
+      {belegForm && <BelegForm b={belegForm} personen={h.personen ?? []} patch={patch} melde={melde} onZu={() => setBelegForm(null)} />}
       {loesch && (
         <Dialog titel="Wirklich löschen?" onZu={() => setLoesch(null)} aktionen={<Knopf farbe={LEUCHT.kritisch} onClick={async () => { const ok = await patch(loesch.teil, [{ op: 'delete', id: loesch.id, stand: loesch.stand }]); if (ok) melde('ok', 'Gelöscht'); setLoesch(null); }}>Ja, löschen</Knopf>}>
           <div>{loesch.text} wirklich löschen? Das lässt sich nicht rückgängig machen.</div>
@@ -259,7 +259,7 @@ function SonderDialog({ s, patch, melde, onZu }: { s: Schuld; patch: Props['patc
   );
 }
 
-function BelegForm({ b, patch, melde, onZu }: { b: Partial<Beleg>; patch: Props['patch']; melde: Props['melde']; onZu: () => void }) {
+function BelegForm({ b, personen, patch, melde, onZu }: { b: Partial<Beleg>; personen: readonly string[]; patch: Props['patch']; melde: Props['melde']; onZu: () => void }) {
   const rechnung = b.art === 'rechnung';
   const [e, setE] = useState({ empfaenger: b.empfaenger ?? '', bezeichnung: b.bezeichnung ?? '', betrag: euroText(b.betrag), faellig: b.faellig_am ?? '', verursacher: b.verursacher ?? '', einheit: b.einheit ?? 'privat', notiz: b.notiz ?? '' });
   return (
@@ -277,7 +277,7 @@ function BelegForm({ b, patch, melde, onZu }: { b: Partial<Beleg>; patch: Props[
         <Feld label="Fällig am"><input type="date" value={e.faellig} onChange={x => setE({ ...e, faellig: x.target.value })} style={feld} /></Feld>
       </div>
       <Feld label="Welche Einheit?"><select value={e.einheit} onChange={x => setE({ ...e, einheit: x.target.value as Beleg['einheit'] })} style={auswahl}>{EINHEITEN.map(id => <option key={id} value={id}>{EINHEIT_NAME[id]}</option>)}</select></Feld>
-      <Feld label="Wer kümmert sich?"><input value={e.verursacher} onChange={x => setE({ ...e, verursacher: x.target.value })} placeholder="Kevin / Malin" style={feld} /></Feld>
+      <Feld label="Wer kümmert sich?"><input value={e.verursacher} onChange={x => setE({ ...e, verursacher: x.target.value })} placeholder={personen.length ? personen.join(' / ') : 'Name'} style={feld} /></Feld>
       {rechnung && <Feld label="Notiz"><input value={e.notiz} onChange={x => setE({ ...e, notiz: x.target.value })} style={feld} /></Feld>}
     </Dialog>
   );

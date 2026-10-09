@@ -15,8 +15,11 @@ import { eur } from '@/lib/finanzen/haushalt/typen';
 import type { Meta } from '@/lib/finanzen/haushalt/speicher';
 import { LEUCHT, Knopf, auswahl } from '../ui';
 
-/** `personen`: Vornamen der Konten im Haushalt (seit 09.10. — Inhaber-Auswahl ohne feste Namen). */
-export type HaushaltDaten = Haushalt & { meta: Meta; haushalt: string; person: string; personen?: string[] };
+/**
+ * `personen`: Vornamen der Konten im Haushalt (seit 09.10. — Inhaber-Auswahl ohne feste Namen). `altsystem`: ob der Server für diese Instanz
+ * ein Altsystem kennt (Rundgang 09.10., lib/finanzen/haushalt/altsystem.ts) — nur dann bietet die Seite die Übernahme an.
+ */
+export type HaushaltDaten = Haushalt & { meta: Meta; haushalt: string; person: string; personen?: string[]; altsystem?: boolean };
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string }
 export type Op = { op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string; stand?: number };
 export type PatchErgebnis = { ok: true } | { ok: false; status: number; fehler: string };

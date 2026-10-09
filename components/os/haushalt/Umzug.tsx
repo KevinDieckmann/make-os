@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Umzug aus Malins Cockpit ───────────────────────────────────────────────
+// ─── Übernahme aus dem Altsystem (früheres Finanz-Cockpit) ───────────────────────────────────────────────
 // Zwei Schritte. PROBELAUF: alles aus Supabase lesen, exakt zählen, in einen
 // Probe-Bestand legen — der echte Haushalt bleibt unberührt. Der Bericht zeigt,
 // ob Zeilenzahlen und Summen stimmen. ÜBERNEHMEN: genau das Geprüfte in den
@@ -67,7 +67,7 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
   const stimmt = bericht ? Object.values(bericht.zaehlung).every(z => z.supabase === z.gelesen) : false;
   const abgewiesen = bericht?.abgewiesen.length ?? 0;
   return (
-    <Dialog titel="Umzug aus Malins Cockpit" onZu={onZu} aktionen={bericht
+    <Dialog titel="Übernahme aus dem Altsystem" onZu={onZu} aktionen={bericht
       ? <Knopf farbe={LEUCHT.geld} aus={laeuft || !stimmt || !bestaetigt} onClick={() => void uebernehmen()}>In den Haushalt übernehmen</Knopf>
       : weg === 'dateien'
         ? <Knopf farbe={LEUCHT.geld} aus={laeuft || !sicherung} onClick={() => void ausDateien()}>{laeuft ? 'Setzt zusammen …' : 'Probelauf aus Dateien'}</Knopf>
@@ -79,15 +79,15 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
       )}
       {!bericht && weg === 'dateien' && (
         <>
-          <div style={{ color: C.inkDim }}>Malins Sicherung (MAKE-ORGA-Sicherung-….json) bringt Kategorien, Regeln, Schulden und Budgets — ihre Buchungen enden aber bei 1.000 Zeilen. Der V1-Export (KD-Finanzen-….json aus dem Finanz-Cockpit-Ordner) ergänzt alle drei Konten danach. MAKE OS setzt beides an der Naht zusammen und zeigt den Abgleich. Euer Haushalt bleibt bis zum Übernehmen unberührt.</div>
-          <Feld label={`Malins Sicherung${sicherung ? ` — ${sicherung.name}` : ''}`}><input type="file" accept=".json,application/json" onChange={e => void lies(e.target.files?.[0], setSicherung)} style={feld} /></Feld>
+          <div style={{ color: C.inkDim }}>Die Sicherung des Altsystems (MAKE-ORGA-Sicherung-….json) bringt Kategorien, Regeln, Schulden und Budgets — ihre Buchungen enden aber bei 1.000 Zeilen. Der V1-Export (KD-Finanzen-….json aus dem Finanz-Cockpit-Ordner) ergänzt alle drei Konten danach. MAKE OS setzt beides an der Naht zusammen und zeigt den Abgleich. Euer Haushalt bleibt bis zum Übernehmen unberührt.</div>
+          <Feld label={`Sicherung des Altsystems${sicherung ? ` — ${sicherung.name}` : ''}`}><input type="file" accept=".json,application/json" onChange={e => void lies(e.target.files?.[0], setSicherung)} style={feld} /></Feld>
           <Feld label={`V1-Export (empfohlen)${v1 ? ` — ${v1.name}` : ''}`}><input type="file" accept=".json,application/json" onChange={e => void lies(e.target.files?.[0], setV1)} style={feld} /></Feld>
         </>
       )}
       {!bericht && weg === 'supabase' && (
         <>
-          <div style={{ color: C.inkDim }}>Melde dich mit deinem Zugang zu Malins Cockpit an. MAKE OS liest dann alles — Buchungen, Zuordnungen, Schulden, Rechnungen, Budgets — und prüft es gegen die Zeilenzahlen, die Supabase selbst meldet. Das ist nur ein Probelauf: euer Haushalt in MAKE OS bleibt unberührt.</div>
-          <Feld label="E-Mail (Zugang zu Malins Cockpit)"><input type="email" autoComplete="off" value={email} onChange={e => setEmail(e.target.value)} style={feld} /></Feld>
+          <div style={{ color: C.inkDim }}>Melde dich mit deinem Zugang zum Altsystem an. MAKE OS liest dann alles — Buchungen, Zuordnungen, Schulden, Rechnungen, Budgets — und prüft es gegen die Zeilenzahlen, die Supabase selbst meldet. Das ist nur ein Probelauf: euer Haushalt in MAKE OS bleibt unberührt.</div>
+          <Feld label="E-Mail (Zugang zum Altsystem)"><input type="email" autoComplete="off" value={email} onChange={e => setEmail(e.target.value)} style={feld} /></Feld>
           <Feld label="Passwort"><input type="password" autoComplete="off" value={passwort} onChange={e => setPasswort(e.target.value)} style={feld} /></Feld>
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Passwort geht nur an Supabase und wird nicht gespeichert.</div>
         </>
@@ -97,8 +97,8 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
           <div style={{ color: C.inkDim }}>Probelauf vom {zeit ? `${datumDe(zeit.slice(0, 10))} ${zeit.slice(11, 16)} Uhr (UTC)` : '–'}{bericht.zeitraum ? ` · Buchungen ${datumDe(bericht.zeitraum.von)} bis ${datumDe(bericht.zeitraum.bis)}` : ''}</div>
           {datei && (
             <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,.04)', color: C.inkDim, lineHeight: 1.55 }}>
-              Aus Dateien: <b style={{ color: C.ink }}>{datei.ausSicherung}</b> Buchungen aus Malins Sicherung{datei.naht ? ` (bis vor ${datumDe(datei.naht)})` : ''}, <b style={{ color: C.ink }}>{datei.ausV1}</b> aus dem V1-Export
-              {datei.belegeAusV1 ? `, ${datei.belegeAusV1} offene Belege aus V1` : ''}. Malins Regeln haben {datei.regelTreffer} V1-Buchungen eingeordnet; {datei.sonstiges} bleiben „Sonstiges“, {datei.offenEin} Eingänge „Noch einzuordnen“.
+              Aus Dateien: <b style={{ color: C.ink }}>{datei.ausSicherung}</b> Buchungen aus der Sicherung des Altsystems{datei.naht ? ` (bis vor ${datumDe(datei.naht)})` : ''}, <b style={{ color: C.ink }}>{datei.ausV1}</b> aus dem V1-Export
+              {datei.belegeAusV1 ? `, ${datei.belegeAusV1} offene Belege aus V1` : ''}. Die Regeln des Altsystems haben {datei.regelTreffer} V1-Buchungen eingeordnet; {datei.sonstiges} bleiben „Sonstiges“, {datei.offenEin} Eingänge „Noch einzuordnen“.
               {datei.v1Ohne.length > 0 && <> Nicht übernommen: {datei.v1Ohne.map(o => `${o.anzahl} × ${o.grund}`).join(', ')}.</>}
             </div>
           )}
@@ -124,7 +124,7 @@ export function UmzugDialog({ onZu, laden, melde }: { onZu: () => void; laden: (
           )}
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', color: C.ink, marginTop: 4 }}>
             <input type="checkbox" checked={bestaetigt} onChange={e => setBestaetigt(e.target.checked)} style={{ marginTop: 3 }} />
-            <span>Malins Cockpit ist eingefroren (docs/make-orga/einfrieren.sql) — ab jetzt pflegen wir nur noch in MAKE OS.</span>
+            <span>Das Altsystem ist eingefroren (docs/make-orga/einfrieren.sql) — ab jetzt pflegen wir nur noch in MAKE OS.</span>
           </label>
           <button onClick={() => { setBericht(null); setBestaetigt(false); }} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', textAlign: 'left', padding: 0, font: 'inherit', fontSize: TYP.bedien }}>Neuen Probelauf machen</button>
         </div>

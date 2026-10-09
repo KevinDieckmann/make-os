@@ -25,7 +25,7 @@ export function KategorienDialog({ aktion, laden, melde, onZu }: {
       const d = await aktion<{ zusammengelegt: number; geaendert: number; geloescht: number }>({ aktion: 'kategorien', paare, loeschen });
       if (d?.ok) { melde('ok', 'Aufgeräumt', `${d.zusammengelegt} zusammengelegt, ${d.geaendert} Buchungen umgehängt, ${d.geloescht} leere entfernt. Der alte Stand liegt im Archiv.`); await laden(); onZu(); }
     }}>{v ? `Anwenden — danach ${nachher} Kategorien` : 'Anwenden'}</Knopf>}>
-      <div style={{ color: C.inkDim }}>Malin wollte von {v?.anzahl ?? '…'} auf etwa 15 Kategorien. Hier stehen Doppelungen und leere Kategorien. Buchungen und gelernte Regeln wandern mit, nichts geht verloren.</div>
+      <div style={{ color: C.inkDim }}>Weniger ist übersichtlicher: von {v?.anzahl ?? '…'} auf etwa 15 Kategorien. Hier stehen Doppelungen und leere Kategorien. Buchungen und gelernte Regeln wandern mit, nichts geht verloren.</div>
       {!v && <div style={{ color: C.inkLeise }}>Lese …</div>}
       {v && !v.vorschlaege.length && !v.ungenutzt.length && <div style={{ color: LEUCHT.gut }}>Keine Doppelungen gefunden.</div>}
       {!!v?.vorschlaege.length && <div style={{ fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase' }}>Zusammenlegen</div>}

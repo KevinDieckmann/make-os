@@ -16,6 +16,7 @@ import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
 import { faelligeZeilen } from '@/lib/finanzen/haushalt/zoe';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { altsystemFuer } from '@/lib/finanzen/haushalt/altsystem';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,10 @@ export async function GET(req: Request) {
   const h = await ladeHaushalt(z.haushalt);
   // Wer im Haushalt ist (Vornamen) — für „Inhaber“ an den Haushalts-Konten statt fester Namen im Code (ONBOARDING_PLAN.md › L8, 09.10.).
   const personen = Array.from(new Set((await ladeKonten()).konten.filter(k => k.haushalt === z.haushalt).map(k => k.name.trim().split(/\s+/)[0]).filter(Boolean)));
-  return jsonAntwort(req, { ok: true, haushalt: z.haushalt, person: z.person, personen, ...h }, etag);
+  // Rundgang 09.10. (Plattform-Regel): die Übernahme aus einem Altsystem bietet die Seite NUR an, wenn der Server eines kennt — sonst
+  // der normale Leerzustand (Konto anlegen, Kontoauszug einlesen). Entschieden hier, nicht in der Oberfläche.
+  const altsystem = await altsystemFuer(z.haushalt, h.meta);
+  return jsonAntwort(req, { ok: true, haushalt: z.haushalt, person: z.person, personen, altsystem, ...h }, etag);
 }
 
 export async function PATCH(req: Request) {

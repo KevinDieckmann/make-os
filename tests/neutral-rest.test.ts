@@ -102,6 +102,19 @@ describe('1. Quelltext: Prompts, Vorgaben und public/ ohne feste Personen, Firme
     expect(texte.flatMap(d => lies(d).split('\n').filter(z => ALLES.test(z)).map(z => `${d}: ${z.trim().slice(0, 100)}`))).toEqual([]);
   });
 
+  // Rundgang 09.10. (PRIVATE_INHALTE_SUCHE.md › G „Umzug aus … Cockpit → Altsystem“): Finanzen › Privat, die Übernahme und ihre Fehlertexte
+  // zeigen jeder Instanz — keine Person, kein „Cockpit von …“.
+  const FINANZ_PRIVAT = [
+    ...readdirSync(path.join(WURZEL, 'components/os/haushalt')).filter(n => /\.tsx?$/.test(n)).map(n => `components/os/haushalt/${n}`),
+    'components/os/ZahlenView.tsx', 'components/os/FinanzenView.tsx', 'components/os/GrundlageView.tsx',
+    'app/api/haushalt/route.ts', 'app/api/haushalt/umzug/route.ts', 'app/api/haushalt/sicherung/route.ts', 'app/api/haushalt/aktion/route.ts', 'app/api/haushalt/pruefliste/route.ts',
+    'lib/finanzen/haushalt/supabase-umzug.ts', 'lib/finanzen/haushalt/datei-umzug.ts', 'lib/finanzen/haushalt/altsystem.ts',
+  ];
+  it('Finanzen › Privat und die Übernahme aus dem Altsystem: keine Personennamen in sichtbaren Texten', () => {
+    expect(FINANZ_PRIVAT.flatMap(d => funde(d, PERSONEN))).toEqual([]);
+    expect(FINANZ_PRIVAT.flatMap(d => funde(d, /Cockpit von|Malins? Cockpit/))).toEqual([]);
+  });
+
   it('die zweite Firmenliste, die Team-Platzhalter und die feste Kalenderquelle einer Beteiligung sind weg', () => {
     expect(existsSync(path.join(WURZEL, 'lib/make-one/organisation-data.ts'))).toBe(false);
     expect(existsSync(path.join(WURZEL, 'lib/make-one/team-data.ts'))).toBe(false);
@@ -145,6 +158,34 @@ describe('2. Verhalten mit erfundenen Werten', () => {
     const { team, ausDaten } = teamZusammen([{ speicher: 'kevin', name: 'Kevin', rolle: 'mitglied' }, { speicher: 'pia', name: 'Pia Probe', rolle: 'inhaber' }], []);
     expect(ausDaten).toBe(false);
     expect(team.map(p => [p.speicher, p.rolle, p.bereich, !!p.inhaber])).toEqual([['kevin', 'Mitglied', undefined, false], ['pia', 'Inhaber', undefined, true]]);
+  });
+
+  it('Rundgang 09.10. — Finanzen › Privat: ohne Altsystem keine Übernahme, der Server entscheidet (Feld `altsystem`, Umzug 404)', async () => {
+    delete process.env.MAKE_ORGA_URL; delete process.env.MAKE_ORGA_KEY;
+    const route = await import('@/app/api/haushalt/route');
+    const umzug = await import('@/app/api/haushalt/umzug/route');
+    const kopf = { 'content-type': 'application/json', 'x-make-user': 'pia' };
+    const lesen = async () => (await (await route.GET(new Request('http://test/api/haushalt', { headers: kopf }))).json()) as { ok: boolean; altsystem?: boolean };
+    const neu = await lesen();
+    expect(neu.ok).toBe(true);
+    expect(neu.altsystem).toBe(false);
+    const probe = await umzug.POST(new Request('http://test/api/haushalt/umzug', { method: 'POST', headers: kopf, body: JSON.stringify({ schritt: 'dateien', sicherung: { buchungen: [] } }) }));
+    expect(probe.status).toBe(404);
+    expect(await db.loadJson('haushalt-umzug--haus-nr')).toBeNull();
+    // Eingerichtet über die Umgebung der Instanz …
+    process.env.MAKE_ORGA_URL = 'https://beispiel.supabase.co'; process.env.MAKE_ORGA_KEY = 'pruef-schluessel';
+    try { expect((await lesen()).altsystem).toBe(true); } finally { delete process.env.MAKE_ORGA_URL; delete process.env.MAKE_ORGA_KEY; }
+    // … oder weil der Haushalt schon einmal übernommen hat (gewachsene Instanz).
+    const { aendereMeta } = await import('@/lib/finanzen/haushalt/speicher');
+    await aendereMeta('haus-nr', m => ({ ...m, umzug: { zeit: '2026-09-24T10:00:00.000Z', wer: 'pia', ziel: 'haus-nr', zaehlung: {}, supabase: {} } }));
+    expect((await lesen()).altsystem).toBe(true);
+    // Oberfläche: jeder Weg in die Übernahme hängt an `h.altsystem`; sonst der Leerzustand mit „Konto anlegen“ und dem Weg zum Kontoauszug.
+    const view = ohneKommentare(lies('components/os/haushalt/HaushaltView.tsx'));
+    const wege = Array.from(view.matchAll(/setUmzugAuf\(true\)/g), m => view.slice(Math.max(0, m.index! - 400), m.index));
+    expect(wege).toHaveLength(2);
+    for (const w of wege) expect(w).toMatch(/h\.altsystem/);
+    expect(view).toMatch(/<Leerzustand[^>]*titel="Noch keine Konten und Buchungen"/);
+    expect(view).toMatch(/Konten &amp; Buchungen › Kontoauszug einlesen/);
   });
 
   it('Paket 6 — Orte nur aus lib/einheiten.ts; Hand-Zuordnung eines Altwerts liest sich als Business', async () => {

@@ -40,7 +40,7 @@ export function PrueflisteDialog({ onZu, laden, melde }: { onZu: () => void; lad
   return (
     <Dialog titel="Privates aus den Business-Zahlen aufräumen" onZu={onZu} aktionen={<Knopf farbe={LEUCHT.geld} aus={laeuft || !aenderungen} onClick={() => void anwenden()}>{aenderungen ? `${aenderungen} Entscheidungen anwenden` : 'Nichts zu tun'}</Knopf>}>
       <div style={{ color: C.inkDim }}>Diese Einträge stehen noch in den Speichern der Firmen, sind aber privat. Die Business-Zahlen rechnen sie schon nicht mehr mit — hier räumt ihr sie weg. Vorgeschlagen ist, was der Abgleich mit euren Haushaltsdaten ergibt. Vor dem Anwenden wird der alte Stand archiviert.</div>
-      {leer && <div style={{ color: LEUCHT.achtung }}>Euer Haushalt ist noch leer. Erst den Umzug aus Malins Cockpit machen — dann erkennt die Liste Doppelte.</div>}
+      {leer && <div style={{ color: LEUCHT.achtung }}>Euer Haushalt ist noch leer. Erst Buchungen einlesen — dann erkennt die Liste Doppelte.</div>}
       {posten === null && <div style={{ color: C.inkLeise }}>Lese …</div>}
       {posten?.length === 0 && <div style={{ color: LEUCHT.gut }}>Nichts Privates mehr in den Business-Speichern.</div>}
       {gruppen.map(q => (

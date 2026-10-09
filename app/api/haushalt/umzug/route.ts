@@ -1,4 +1,6 @@
-// ─── Umzug aus Malins Cockpit: Probelauf und Übernahme ──────────────────────
+// ─── Übernahme aus dem Altsystem (früheres Finanz-Cockpit): Probelauf und Übernahme ──────────────────────
+// Seit dem Rundgang 09.10. nur, wenn für die Instanz ein Altsystem eingerichtet ist (`altsystemFuer`, lib/finanzen/haushalt/altsystem.ts) —
+// eine neue Instanz bekommt 404 statt eines Probelaufs (die Seite zeigt die Übernahme dann gar nicht).
 // POST { schritt: 'probe', email, passwort }
 //   liest ALLES aus Supabase (blätternd, exakt gezählt), legt die Rohdaten
 //   als Archiv ab (.data/archiv, 0600, mit Datenschlüssel verschlüsselt) und schreibt
@@ -20,19 +22,20 @@ import { verbindungAusUmgebung, ausSupabaseLesen, zusammenfuehren, type Umzugsbe
 import { umwandeln } from '@/lib/finanzen/haushalt/supabase-umzug';
 import { ausDateien, v1Nacharbeiten, type Sicherung, type V1Export, type DateiBericht } from '@/lib/finanzen/haushalt/datei-umzug';
 import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
+import { altsystemFuer, umzugStandName } from '@/lib/finanzen/haushalt/altsystem';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface Stand { bericht: Umzugsbericht; datei?: DateiBericht & { regelTreffer: number; sonstiges: number; offenEin: number }; quelle?: 'supabase' | 'dateien'; zeit: string; wer: string; archiv: string; uebernommen?: { zeit: string; wer: string; ergebnis: Record<string, Record<string, number>> } }
-const standName = (h: string) => `haushalt-umzug--${h}`;
+const KEIN_ALTSYSTEM = { ok: false, fehler: 'Für diese Instanz ist kein Altsystem eingerichtet.' };
 const probe = (h: string) => `${h}-probe`;
 
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
-  const s = await loadJson<Stand>(standName(z.haushalt));
-  return NextResponse.json({ ok: true, verbunden: !!verbindungAusUmgebung(), stand: s });
+  const s = await loadJson<Stand>(umzugStandName(z.haushalt));
+  return NextResponse.json({ ok: true, verbunden: !!verbindungAusUmgebung(), altsystem: await altsystemFuer(z.haushalt, (await ladeHaushalt(z.haushalt)).meta), stand: s });
 }
 
 export async function POST(req: Request) {
@@ -40,30 +43,31 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   let b: { schritt?: unknown; email?: unknown; passwort?: unknown; sicherung?: Sicherung; v1?: V1Export | null };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if ((b.schritt === 'probe' || b.schritt === 'dateien') && !(await altsystemFuer(z.haushalt, (await ladeHaushalt(z.haushalt)).meta))) return NextResponse.json(KEIN_ALTSYSTEM, { status: 404 });
 
   if (b.schritt === 'probe') {
     const v = verbindungAusUmgebung();
-    if (!v) return NextResponse.json({ ok: false, fehler: 'Die Adresse von Malins Cockpit fehlt in .env.local (MAKE_ORGA_URL, MAKE_ORGA_KEY).' }, { status: 400 });
+    if (!v) return NextResponse.json({ ok: false, fehler: 'Die Adresse des Altsystems fehlt in der Umgebung (MAKE_ORGA_URL, MAKE_ORGA_KEY).' }, { status: 400 });
     const email = String(b.email ?? '').trim(), passwort = String(b.passwort ?? '');
-    if (!email || !passwort) return NextResponse.json({ ok: false, fehler: 'E-Mail und Passwort für Malins Cockpit fehlen.' }, { status: 400 });
+    if (!email || !passwort) return NextResponse.json({ ok: false, fehler: 'E-Mail und Passwort für das Altsystem fehlen.' }, { status: 400 });
     try {
       const { roh, haushalt, bericht } = await ausSupabaseLesen(v, email, passwort);
       const zeit = new Date().toISOString();
       // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
       const archiv = await archivSchreiben(`make-orga-supabase-${archivZeit(zeit)}.json`, { _quelle: 'Supabase MAKE.ORGA', _gelesen: zeit, _von: z.person, ...roh }, 1);
       await setzeHaushalt(probe(z.haushalt), haushalt);
-      await saveJson<Stand>(standName(z.haushalt), { bericht, zeit, wer: z.person, archiv });
+      await saveJson<Stand>(umzugStandName(z.haushalt), { bericht, zeit, wer: z.person, archiv });
       return NextResponse.json({ ok: true, bericht });
     } catch (err) {
       return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message : 'Lesen aus Supabase fehlgeschlagen.' }, { status: 400 });
     }
   }
 
-  // Aus Dateien (24.09., Kevin: „nicht mit Malins Board verbinden — die Daten aus
-  // der Datei holen“): Malins Sicherung + V1-Export, zusammengesetzt an der Naht.
+  // Aus Dateien (24.09.: „nicht mit dem alten Board verbinden — die Daten aus
+  // der Datei holen“): Sicherung des Altsystems + V1-Export, zusammengesetzt an der Naht.
   // Danach derselbe Weg: Probe-Haushalt, Bericht, Übernahme.
   if (b.schritt === 'dateien') {
-    if (!b.sicherung || !Array.isArray(b.sicherung.buchungen)) return NextResponse.json({ ok: false, fehler: 'Malins Sicherung (MAKE-ORGA-Sicherung-….json) fehlt.' }, { status: 400 });
+    if (!b.sicherung || !Array.isArray(b.sicherung.buchungen)) return NextResponse.json({ ok: false, fehler: 'Die Sicherung des Altsystems (MAKE-ORGA-Sicherung-….json) fehlt.' }, { status: 400 });
     try {
       const { roh, bericht: datei } = ausDateien(b.sicherung, b.v1 ?? null);
       const zeit = new Date().toISOString();
@@ -74,7 +78,7 @@ export async function POST(req: Request) {
       const archiv = await archivSchreiben(`make-orga-dateien-${archivZeit(zeit)}.json`, { _quelle: 'Dateien (Sicherung + V1)', _gelesen: zeit, _von: z.person, sicherung: b.sicherung, v1: b.v1 ?? null }, 1);
       await setzeHaushalt(probe(z.haushalt), n.haushalt);
       const detail = { ...datei, regelTreffer: n.regelTreffer, sonstiges: n.sonstiges, offenEin: n.offenEin };
-      await saveJson<Stand>(standName(z.haushalt), { bericht, datei: detail, quelle: 'dateien', zeit, wer: z.person, archiv });
+      await saveJson<Stand>(umzugStandName(z.haushalt), { bericht, datei: detail, quelle: 'dateien', zeit, wer: z.person, archiv });
       return NextResponse.json({ ok: true, bericht, datei: detail });
     } catch (err) {
       return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message : 'Dateien nicht lesbar.' }, { status: 400 });
@@ -82,7 +86,7 @@ export async function POST(req: Request) {
   }
 
   if (b.schritt === 'uebernehmen') {
-    const s = await loadJson<Stand>(standName(z.haushalt));
+    const s = await loadJson<Stand>(umzugStandName(z.haushalt));
     if (!s) return NextResponse.json({ ok: false, fehler: 'Erst einen Probelauf machen.' }, { status: 400 });
     const p = await ladeHaushalt(probe(z.haushalt));
     const e = await ladeHaushalt(z.haushalt);
@@ -95,7 +99,7 @@ export async function POST(req: Request) {
     });
     const zeit = new Date().toISOString();
     await aendereMeta(z.haushalt, m => ({ ...m, umzug: { zeit, wer: z.person, ziel: z.haushalt, zaehlung: Object.fromEntries(Object.entries(ergebnis).map(([k, v]) => [k, v.neu + v.ersetzt + v.behalten + v.nurMakeOs])), supabase: Object.fromEntries(Object.entries(s.bericht.zaehlung).map(([k, v]) => [k, v.supabase])) } }));
-    await saveJson<Stand>(standName(z.haushalt), { ...s, uebernommen: { zeit, wer: z.person, ergebnis } });
+    await saveJson<Stand>(umzugStandName(z.haushalt), { ...s, uebernommen: { zeit, wer: z.person, ergebnis } });
     await belegAufgabenAbgleichen(z.haushalt).catch(() => null);
     return NextResponse.json({ ok: true, ergebnis });
   }

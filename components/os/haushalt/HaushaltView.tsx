@@ -1,9 +1,11 @@
 'use client';
 
 // ─── MAKE OS — Finanzen · Privat (Haushaltsfinanzen) ────────────────────────
-// Malins Finanz-Cockpit „MAKE.ORGA“, aufgegangen in MAKE OS (24.09.): ihr
-// Datenmodell, ihre Fachlogik, ihre Kennzahlen — im Design von MAKE OS.
-// Reihenfolge der Reiter nach Nutzen, wie sie es vorgeschlagen hat.
+// Das frühere Finanz-Cockpit des Haushalts, aufgegangen in MAKE OS (24.09.): sein
+// Datenmodell, seine Fachlogik, seine Kennzahlen — im Design von MAKE OS.
+// Reihenfolge der Reiter nach Nutzen.
+// Rundgang 09.10. (Plattform-Regel): die Übernahme aus dem Altsystem nur, wenn der Server eines kennt (`h.altsystem`); sonst der normale
+// Leerzustand — Konto anlegen, dann unter Konten & Buchungen den ersten Kontoauszug einlesen.
 // Nur für Personen, denen der Inhaber einen Haushalt zugeordnet hat.
 // 08.10. (Aufräumen Etappe 2): keine eigene Reiterleiste mehr — die Übersicht ist Finanzen › Privat › Überblick, die übrigen
 // Reiter sind Ebene 2 unter „Konten & Buchungen“ (lib/finanzen/navigation.ts, Pillen in FinanzenView).
@@ -12,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP, RAND } from '@/lib/make-one/design';
 import { katNamen } from '@/lib/finanzen/haushalt/einordnung';
 import { heuteBerlin, tageZwischen, datumDe } from '@/lib/finanzen/haushalt/monat';
-import { Karte, Leer, Knopf, LEUCHT, FlussKarte } from '../ui';
+import { Karte, Leer, Leerzustand, Knopf, LEUCHT, FlussKarte } from '../ui';
 import { HAUSHALT_UNTER } from '@/lib/finanzen/navigation';
 import { useHaushalt, Meldungen } from './gemeinsam';
 import { Uebersicht } from './Uebersicht';
@@ -60,8 +62,8 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0, marginLeft: 'auto' }}>
           {pruefAnzahl > 0 && <Knopf leise farbe={LEUCHT.achtung} onClick={() => setPruefAuf(true)} titel="Private Einträge, die noch in den Business-Speichern stehen">Aufräumen ({pruefAnzahl})</Knopf>}
           <Knopf leise onClick={() => setStammAuf(true)} titel="Konten, Kategorien und Regeln anlegen, ändern, löschen">Konten &amp; Kategorien</Knopf>
-          <Knopf leise onClick={() => setUmzugAuf(true)} titel="Probelauf und Übernahme aus Malins Supabase">{h.meta.umzug ? `Aus Malins Cockpit (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus Malins Cockpit'}</Knopf>
-          <a href="/api/haushalt/sicherung" className="ui-knopf fassbar" style={{ border: `1px solid ${RAND.stark}`, background: 'rgba(255,255,255,.05)', color: C.ink }} title="Alle Haushaltsdaten als JSON — im Format von Malins Sicherung">Sicherung ↓</a>
+          {h.altsystem && <Knopf leise onClick={() => setUmzugAuf(true)} titel="Probelauf und Übernahme aus dem Altsystem">{h.meta.umzug ? `Aus dem Altsystem (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus dem Altsystem'}</Knopf>}
+          <a href="/api/haushalt/sicherung" className="ui-knopf fassbar" style={{ border: `1px solid ${RAND.stark}`, background: 'rgba(255,255,255,.05)', color: C.ink }} title="Alle Haushaltsdaten als JSON-Datei">Sicherung ↓</a>
           {!leer && <Knopf farbe={LEUCHT.geld} onClick={() => setImportAuf(true)}>Kontoauszug einlesen</Knopf>}
         </div>
       </div>}
@@ -69,8 +71,17 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
       {ansicht === 'konten' && aktiv === 'buchungen' && <KontenKarte bereich="privat" i={1} />}
       {leer ? (
         <Karte i={1} akzent={LEUCHT.geld}>
-          <Leer>Noch keine Daten in diesem Haushalt. Der Umzug aus Malins Cockpit füllt ihn: erst ein Probelauf mit Abgleich, dann die Übernahme.</Leer>
-          <Knopf farbe={LEUCHT.geld} onClick={() => setUmzugAuf(true)}>Umzug aus Malins Cockpit</Knopf>
+          {h.altsystem ? (
+            <>
+              <Leer>Noch keine Daten in diesem Haushalt. Die Übernahme aus dem Altsystem füllt ihn: erst ein Probelauf mit Abgleich, dann die Übernahme.</Leer>
+              <Knopf farbe={LEUCHT.geld} onClick={() => setUmzugAuf(true)}>Übernahme aus dem Altsystem</Knopf>
+            </>
+          ) : (
+            <Leerzustand symbol="€" ton={LEUCHT.geld} titel="Noch keine Konten und Buchungen"
+              aktion={<Knopf haupt voll farbe={LEUCHT.geld} onClick={() => setStammAuf(true)}>Konto anlegen</Knopf>}>
+              Legt zuerst euer Konto an. Danach lest ihr unter Konten &amp; Buchungen › Kontoauszug einlesen die Buchungen ein — Kategorien und Regeln wachsen mit.
+            </Leerzustand>
+          )}
         </Karte>
       ) : (
         <>

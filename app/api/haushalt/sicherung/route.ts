@@ -1,7 +1,8 @@
 // ─── Haushaltsfinanzen: Sicherung herunterladen ─────────────────────────────
-// Alle Daten des Haushalts als JSON — im Format von Malins Cockpit
-// („make-orga-sicherung“, Beträge in Euro, ihre Feldnamen). So bleibt der Weg
-// zurück in ihr Format offen, und ihr habt eine Kopie in eurer Hand.
+// Alle Daten des Haushalts als JSON — im Format des früheren Finanz-Cockpits
+// („make-orga-sicherung“, Beträge in Euro, seine Feldnamen). So bleibt der Weg
+// zurück in dieses Format offen, und ihr habt eine Kopie in eurer Hand.
+// Dateiname seit dem Rundgang 09.10. neutral (jede Instanz lädt hier herunter).
 
 import { NextResponse } from 'next/server';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
   const text = JSON.stringify(alsMalinFormat(h), null, 2);
   return new NextResponse(text, { headers: {
     'Content-Type': 'application/json; charset=utf-8',
-    'Content-Disposition': `attachment; filename="MAKE-ORGA-Sicherung-${heuteBerlin()}.json"`,
+    'Content-Disposition': `attachment; filename="Haushalt-Sicherung-${heuteBerlin()}.json"`,
     'Cache-Control': 'no-store',
   } });
 }
