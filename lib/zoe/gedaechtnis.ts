@@ -46,6 +46,18 @@ interface Stand { fakten: Fakt[] }
 
 const GRENZE = 1200;
 
+/**
+ * Ein vergessener Fakt (Nachschliff 09.10.: „vergessen heißt vergessen“): nur Kennung, Raum, Art und die Zeitpunkte bleiben als Nachweis —
+ * Thema, Satz, Herkunft und Frist sind weg. Vorher blieb der Satz mit `geloeschtAm` im Bestand (nur ausgeblendet). Rein.
+ */
+export function vergessenerFakt(f: Fakt): Fakt {
+  return { id: f.id, zeit: f.zeit, tag: f.tag, art: f.art, thema: '', satz: '', raum: f.raum, geloeschtAm: f.geloeschtAm ?? new Date().toISOString() };
+}
+/** Altbestand säubern (beim nächsten Schreiben): vergessene Fakten, die noch Text tragen, auf den Nachweis kürzen. Rein, idempotent. */
+export function ohneVergessenenText(liste: readonly Fakt[]): Fakt[] {
+  return liste.map(f => (f.geloeschtAm && (f.thema || f.satz || f.woher || f.bis) ? vergessenerFakt(f) : f));
+}
+
 /** Zwei Fakten sind dasselbe, wenn Thema und Satz übereinstimmen. Verhindert,
  *  dass derselbe Hinweis bei jedem Gespräch erneut abgelegt wird. */
 const kennung = (thema: string, satz: string) =>
@@ -61,10 +73,11 @@ export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag'>): Promise<{ f
   };
   let warNeu = true;
   await updateJson<Stand>('zoe-gedaechtnis', current => {
-    const liste = (current?.fakten ?? []).filter(f => !f.geloeschtAm);
+    const alle = ohneVergessenenText(current?.fakten ?? []);
+    const liste = alle.filter(f => !f.geloeschtAm);
     const da = liste.find(f => kennung(f.thema, f.satz) === kennung(fakt.thema, fakt.satz));
-    if (da) { warNeu = false; return { fakten: current?.fakten ?? [] }; }
-    return { fakten: [fakt, ...(current?.fakten ?? [])].slice(0, GRENZE) };
+    if (da) { warNeu = false; return { fakten: alle }; }
+    return { fakten: [fakt, ...alle].slice(0, GRENZE) };
   });
   return { fakt, neu: warNeu };
 }
@@ -82,17 +95,19 @@ export async function lies(opt: { thema?: string; art?: FaktArt; raum?: Fakt['ra
   return liste.slice(0, opt.anzahl ?? 200);
 }
 
-/** Löschen heißt hier: als gelöscht stempeln. Ein Fakt, den die Person rauswirft,
- *  soll nicht durch einen späteren Import wieder auftauchen. */
+/**
+ * Vergessen: der Text ist sofort weg (Nachschliff 09.10.) — es bleibt nur der Nachweis „Fakt X am … vergessen“ (`vergessenerFakt`: Kennung,
+ * Raum, Art, Zeitpunkte). Altbestand mit `geloeschtAm` und Satz wird dabei mit gesäubert. Art. 15 und Konto-Export zeigen Vergessenes nie.
+ */
 export async function vergiss(id: string): Promise<boolean> {
   let gefunden = false;
   await updateJson<Stand>('zoe-gedaechtnis', current => {
-    const liste = current?.fakten ?? [];
+    const liste = ohneVergessenenText(current?.fakten ?? []);
     return {
       fakten: liste.map(f => {
         if (f.id !== id || f.geloeschtAm) return f;
         gefunden = true;
-        return { ...f, geloeschtAm: new Date().toISOString() };
+        return vergessenerFakt({ ...f, geloeschtAm: new Date().toISOString() });
       }),
     };
   });
