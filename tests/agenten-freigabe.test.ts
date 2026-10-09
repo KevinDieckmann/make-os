@@ -89,7 +89,9 @@ describe('Agenten-Nachrichten sind nie eine Freigabe', () => {
     expect(w[0]).toMatchObject({ name: 'merksatz_vorschlagen', ok: true, gestapelt: true });
     expect(w[1]).toMatchObject({ name: 'merksatz_vorschlagen', ok: false });
     const v = (await stapel.lies('offen')).find(x => x.bezug?.art === 'merksatz')!;
-    expect(v.eingabe).toMatchObject({ ebene: 'haushalt', text: 'Angebote immer mit drei Optionen' });
+    // Seit Paket 4a über die EINE Vorschlags-Stelle der Werkstatt (lib/agenten/skills-server.ts `vorschlagMerksatzLegen`) — die Form, die
+    // deren Freigabe (Stapel-Art `merksatz`) übernimmt: Ziel-Agent + Satz.
+    expect(v.eingabe).toMatchObject({ agent: { art: 'head', headId: 'sales' }, text: 'Angebote immer mit drei Optionen' });
     const b = await db.loadJson<{ gedaechtnis?: Record<string, unknown[]> }>('agenten-faeden--person-a');
     expect(b?.gedaechtnis?.['head:sales'] ?? []).toEqual([]);
   });

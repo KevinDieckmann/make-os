@@ -23,6 +23,10 @@ import Link from 'next/link';
 // 24.09.: auf das lebendige Muster umgezogen — Flächen wie die Karten, Chips,
 // Knöpfe und Eingabe aus dem Standard (components/os/ui), ZOE-Lila für ihn, Teal für die
 // Bedienung, Grün/Gelb/Rot für Zustand. Die Logik ist unverändert.
+//
+// 09.10. (Paket 4a): das Gedächtnis ist der ZOE-Thread der Person (`agenten-faeden--<person>`) — derselbe Thread wie im Empfang und auf
+// der Agenten-Seite. Gesendet wird mit `zoeFaden`; der Server liest den Verlauf aus dem Thread (nie aus dem Browser) und legt Frage und
+// Antwort selbst ab. Der alte Bestand `zoe-verlauf` wird beim ersten Lesen einmal übernommen (lib/agenten/zoe-faden.ts).
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -30,7 +34,8 @@ import { Rich } from './Rich';
 import { Chip, Knopf, feld, LEUCHT } from './ui';
 import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
-import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
+import { fuerStimme, titelAus, wannText } from '@/lib/make-one/zoe-verlauf';
+import type { FadenKurz, Nachricht } from '@/lib/agenten/typen';
 import { ZOE_FRAGEN_EREIGNIS, CRM_BEZUG_LABEL, crmBezugAus, type CrmBezug } from '@/lib/zoe/crm-bezug';
 import { ZoeKugel, type ZoeZustand } from './kugel';
 import { KUGEL } from '@/lib/make-one/design';
@@ -114,20 +119,22 @@ function ZoeSymbol({ size, zustand, puls }: { size: number; zustand: ZoeZustand;
   );
 }
 
-/** Was auf die Platte geht — die Klick-Vorschläge bleiben flüchtig. */
-const zuNachrichten = (msgs: Msg[]): VerlaufNachricht[] => msgs.map(m => ({
-  rolle: m.role === 'user' ? 'kevin' as const : 'zoe' as const,
-  text: m.text,
-  zeit: m.zeit ?? new Date().toISOString(),
-  ...(m.ran?.length ? { ran: m.ran } : {}),
-}));
-
-const ausNachrichten = (ns: VerlaufNachricht[]): Msg[] => ns.map(n => ({
-  role: n.rolle === 'kevin' ? 'user' as const : 'kimmi' as const,
+/** Ein ZOE-Thread (Server) als Anzeige: die Person rechts, ZOE und die Hinweise („An … gesendet“, „Bericht von …“) links. */
+const ausFaden = (ns: readonly Nachricht[]): Msg[] => ns.map(n => ({
+  role: n.rolle === 'person' ? 'user' as const : 'kimmi' as const,
   text: n.text,
   zeit: n.zeit,
-  ...(n.ran?.length ? { ran: n.ran } : {}),
+  ...(n.werkzeuge?.length ? { ran: n.werkzeuge.map(w => ({ agent: w.name, ok: w.ok })) } : {}),
 }));
+const ZOE_FAEDEN = '/api/agenten/faden?agent=zoe';
+const ladeZoeFaden = async (id: string): Promise<{ nachrichten: Nachricht[]; stand: string } | null> => {
+  try {
+    const r = await fetch(`/api/agenten/faden?id=${encodeURIComponent(id)}`);
+    if (!r.ok) return null;
+    const d = await r.json() as { faden?: { nachrichten?: Nachricht[] }; stand?: string };
+    return d.faden?.nachrichten ? { nachrichten: d.faden.nachrichten, stand: String(d.stand ?? '') } : null;
+  } catch { return null; }
+};
 
 export function ZoePanel() {
   // Der aktive Space geht mit jeder Nachricht mit (26.09.): ZOE antwortet aus dieser Sicht und legt Neues dort ab.
@@ -149,8 +156,9 @@ export function ZoePanel() {
   const [ueberDatei, setUeberDatei] = useState(false);
   const [briefing, setBriefing] = useState('**Sir.** Ich bin da — frag mich, lass mich planen, oder schick mich los.');
   // Gedächtnis
+  // Der ZOE-Thread dieses Gesprächs ('' = beim nächsten Senden ein neuer) und alle ZOE-Threads der Person.
   const [gespraechId, setGespraechId] = useState('');
-  const [alle, setAlle] = useState<Gespraech[]>([]);
+  const [alle, setAlle] = useState<FadenKurz[]>([]);
   const [zeigeVerlauf, setZeigeVerlauf] = useState(false);
   const [heute, setHeute] = useState('');
   // Stimme
@@ -191,17 +199,16 @@ export function ZoePanel() {
   }, []);
   useEffect(() => { try { localStorage.setItem(MERKER_STIMME, JSON.stringify({ vorlesen, freihand })); } catch { /* egal */ } }, [vorlesen, freihand]);
 
-  // ── Gedächtnis laden: das letzte Gespräch kommt zurück, alle anderen in die Liste ──
+  // ── Gedächtnis laden: der jüngste ZOE-Thread kommt zurück (derselbe wie im Empfang und auf der Agenten-Seite), alle in die Liste ──
   useEffect(() => {
-    fetch('/api/state/zoe-verlauf').then(r => r.json()).then((d: { gespraeche?: Gespraech[] }) => {
-      const gs = Array.isArray(d.gespraeche) ? d.gespraeche : [];
-      setAlle(gs);
-      if (beruehrt.current) return;
-      const letztes = gs[0];
-      if (letztes?.nachrichten?.length) {
-        setConvo(ausNachrichten(letztes.nachrichten));
-        setGespraechId(letztes.id);
-      }
+    fetch(ZOE_FAEDEN).then(r => r.json()).then(async (d: { faeden?: FadenKurz[] }) => {
+      const fs = Array.isArray(d.faeden) ? d.faeden : [];
+      setAlle(fs);
+      if (beruehrt.current || !fs[0]) return;
+      const f = await ladeZoeFaden(fs[0].id);
+      if (beruehrt.current || !f?.nachrichten.length) return;
+      setConvo(ausFaden(f.nachrichten));
+      setGespraechId(fs[0].id);
     }).catch(() => {});
   }, []);
 
@@ -252,21 +259,14 @@ export function ZoePanel() {
     setBelegLaeuft(null);
   }
 
-  const speichere = (msgs: Msg[], id: string) => {
-    if (!id || !msgs.length) return;
-    const nachrichten = zuNachrichten(msgs);
-    const g: Gespraech = {
-      id,
-      begonnen: nachrichten[0]?.zeit ?? new Date().toISOString(),
-      zuletzt: nachrichten[nachrichten.length - 1]?.zeit ?? new Date().toISOString(),
-      titel: titelAus(msgs.find(m => m.role === 'user')?.text ?? ''),
-      nachrichten,
-    };
-    setAlle(a => [g, ...a.filter(x => x.id !== id)]);
-    fetch('/api/state/zoe-verlauf', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gespraech: g }), keepalive: true,
-    }).catch(() => {});
+  /** Die Liste nachziehen — gespeichert hat der Server (Frage und Antwort stehen im Thread). */
+  const merke = (id: string, frage: string) => {
+    if (!id) return;
+    const jetzt = new Date().toISOString();
+    setAlle(a => {
+      const alt = a.find(x => x.id === id);
+      return [{ ...(alt ?? { id, titel: titelAus(frage), agent: { art: 'zoe' as const }, status: 'offen' as const }), aktualisiert: jetzt }, ...a.filter(x => x.id !== id)];
+    });
   };
 
   // Lagebericht als Eröffnung — aus dem letzten vollen Tageslauf.
@@ -321,33 +321,29 @@ export function ZoePanel() {
   const send = async (q: string) => {
     beruehrt.current = true;
     setAsk(''); setThinking(true); setZeigeVerlauf(false);
-    const id = gespraechId || neueKennung('g');
-    if (!gespraechId) setGespraechId(id);
-    const vorher = convo;
     const meins: Msg = { role: 'user', text: q, zeit: new Date().toISOString() };
     setConvo(c => [...c, meins]);
     try {
       const r = await fetch('/api/kimmi', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        // Der bisherige Zug geht mit — das ist ZOE' Gedächtnis.
-        body: JSON.stringify({ message: q, verlauf: zuNachrichten(vorher), space: aktiverSpace, ...(bezug ? { bezug } : {}) }),
+        // Der Verlauf liegt im ZOE-Thread auf dem Server — hier geht nur die neue Nachricht mit (Paket 4a).
+        body: JSON.stringify({ message: q, zoeFaden: gespraechId || 'neu', space: aktiverSpace, ...(bezug ? { bezug } : {}) }),
       });
       const d = await r.json();
       if (typeof d.stapelOffen === 'number') setStapelOffen(d.stapelOffen);
+      if (typeof d.fadenId === 'string' && d.fadenId) { setGespraechId(d.fadenId); merke(d.fadenId, q); }
       const antwort: Msg = {
         role: 'kimmi', text: d.reply ?? 'Ich habe gerade keine Antwort.', zeit: new Date().toISOString(),
         handoffs: Array.isArray(d.handoffs) ? d.handoffs : undefined,
         ran: Array.isArray(d.ran) && d.ran.length ? d.ran : undefined,
       };
       setConvo(c => [...c, antwort]);
-      speichere([...vorher, meins, antwort], id);
       if (vorlesenRef.current) {
         stimme.lies(fuerStimme(antwort.text), () => { if (freihandRef.current) stimme.hoerZu(); });
       }
     } catch {
       const fehler: Msg = { role: 'kimmi', text: 'Ich konnte gerade nicht antworten — versuch es nochmal.', zeit: new Date().toISOString() };
       setConvo(c => [...c, fehler]);
-      speichere([...vorher, meins, fehler], id);
     } finally {
       setThinking(false);
     }
@@ -372,17 +368,22 @@ export function ZoePanel() {
     beruehrt.current = true;
   };
 
-  const oeffne = (g: Gespraech) => {
+  const oeffne = async (g: FadenKurz) => {
     stimme.schweig(); stimme.hoerAuf();
-    setConvo(ausNachrichten(g.nachrichten)); setGespraechId(g.id);
-    setZeigeVerlauf(false);
     beruehrt.current = true;
+    setZeigeVerlauf(false);
+    const f = await ladeZoeFaden(g.id);
+    setConvo(f ? ausFaden(f.nachrichten) : []); setGespraechId(g.id);
   };
 
-  const loesche = (id: string) => {
+  /** Löschen braucht den Stand des Threads (409 statt still überschreiben) — erst lesen, dann löschen. */
+  const loesche = async (id: string) => {
+    const f = await ladeZoeFaden(id);
+    if (!f) return;
+    const r = await fetch('/api/agenten/faden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'loeschen', fadenId: id, stand: f.stand }) }).catch(() => null);
+    if (!r?.ok) return;
     setAlle(a => a.filter(g => g.id !== id));
     if (id === gespraechId) { setConvo([]); setGespraechId(''); }
-    fetch(`/api/state/zoe-verlauf?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
 
   const kugelZustand: ZoeZustand = stimme.hoert ? 'hoert' : stimme.spricht ? 'spricht' : thinking ? 'denkt' : 'ruht';
@@ -488,13 +489,13 @@ export function ZoePanel() {
           {!alle.length && <div style={{ padding: '18px 16px', fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55 }}>Noch nichts gespeichert. Ab jetzt bleibt jedes Gespräch hier liegen.</div>}
           {alle.map(g => (
             <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderTop: `1px solid rgba(255,255,255,.05)`, background: g.id === gespraechId ? `${J}14` : 'transparent' }}>
-              <button onClick={() => oeffne(g)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', padding: 0, fontFamily: SCHRIFT.text }}>
+              <button onClick={() => { void oeffne(g); }} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', padding: 0, fontFamily: SCHRIFT.text }}>
                 <div style={{ fontSize: TYP.bedien, fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.titel}</div>
                 <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>
-                  {heute ? wannText(g.zuletzt, heute) : g.zuletzt.slice(0, 10)} · {g.nachrichten.length} Nachrichten
+                  {heute ? wannText(g.aktualisiert, heute) : g.aktualisiert.slice(0, 10)}
                 </div>
               </button>
-              <button onClick={() => loesche(g.id)} title="Gespräch löschen" aria-label={`Gespräch „${g.titel}" löschen`}
+              <button onClick={() => { void loesche(g.id); }} title="Gespräch löschen" aria-label={`Gespräch „${g.titel}" löschen`}
                 style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: 13, padding: '2px 4px', flex: '0 0 auto' }}>✕</button>
             </div>
           ))}

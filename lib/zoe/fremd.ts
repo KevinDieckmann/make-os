@@ -24,6 +24,8 @@ export const FREMD_WERKZEUGE: Record<string, string> = {
   sales_lage: 'markttraktion', qualifizierung_lage: 'markttraktion', stammdaten_lage: 'markttraktion', datenqualitaet: 'markttraktion', crm_datei_lesen: 'crm-ablage', heads_lage: 'markttraktion',
   // 29.09. (#K1): plan_block nennt bei einer Kollision den Titel des festen Termins — Titel können aus Einladungen Dritter stammen.
   plan_block: 'kalender',
+  // 09.10. (Paket 4a): die Antwort eines Heads ist Text eines anderen Agenten (er liest Kartei, Postfach, Notizen seines Bereichs).
+  head_fragen: 'agent',
 };
 
 /**

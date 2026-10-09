@@ -1,6 +1,7 @@
 // ─── Agenten-Bereich: Threads der Person (09.10., Paket 1 „Kern“) ──────────────────────────────────────────────────────────────
 // GET `?id=` → `FadenAntwort` (eigener oder geteilter Business-Thread, den die Person sieht), `?gedaechtnis=<agent>` → eigene
 // persönliche Merksätze dieses Agenten, sonst `FadenListeAntwort` (`?agent=head:<id>` filtert). POST `FadenAnfrage` (+ Kern-Aktionen):
+// ZOE-Threads (Agent `zoe`, Paket 4a) stehen hier mit in der Liste (`?agent=zoe`); geschrieben werden sie über /api/kimmi (`zoeFaden`).
 //   senden          Head-/Mitarbeiter-Chat synchron (Modell; `modellSchranke`) bzw. mit `hintergrund: true` als Lauf
 //   umbenennen · gelesen · loeschen · teilen (nur Business, nur Besitzer) · plan (Plan-Freigabe per Klick) · abbrechen ·
 //   zweite-meinung (zwei Entwürfe, der Prüfer wählt) · gedaechtnis-weg (persönlichen Merksatz löschen)
@@ -19,6 +20,7 @@ import { bestandAendern, bestandLesen, fadenAendern, sichtbareFaeden, sichtLaden
 import { fadenStand, istFadenId, kurz, merksatzWeg, passtAgent, textPruefen, titelAus, type FadenKern } from '@/lib/agenten/faeden';
 import { headSichtbar, teilenErlaubt, type KontoSicht } from '@/lib/agenten/sicht';
 import { senden, type SendenAnfrage } from '@/lib/agenten/gespraech';
+import { zoeVerlaufUebernehmen } from '@/lib/agenten/zoe-faden';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,6 +44,9 @@ export async function GET(req: Request) {
   if (z instanceof NextResponse) return z;
   const q = new URL(req.url).searchParams;
   const sicht = await sichtLaden(z.person);
+  // Erststart (Paket 4a): der alte ZOE-Verlauf wird beim ersten Lesen EINMAL zu ZOE-Threads der Person (lib/agenten/zoe-faden.ts,
+  // idempotent, Marke im Bestand; der alte Bestand bleibt liegen) — begründete Ausnahme von „Lesen schreibt nicht“.
+  if (sicht.imHaushalt) await zoeVerlaufUebernehmen(z.person).catch(() => 0);
   const id = q.get('id');
   if (id) {
     if (!istFadenId(id)) return nein(400, 'Thread-Kennung ungültig.');

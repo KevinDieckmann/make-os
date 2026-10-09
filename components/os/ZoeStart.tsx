@@ -32,7 +32,8 @@ import { useAtem } from '@/hooks/useAtem';
 import { fuerStimme, ohneMarkdown } from '@/lib/make-one/zoe-verlauf';
 import { zustandVon, inWorte, wortVerzug, vorschlaege, tagesWort } from '@/lib/make-one/empfang';
 
-interface Zug { wer: 'kevin' | 'zoe'; text: string }
+/** Ein Zug im Empfang — `ich` = die Person, mit der ZOE spricht (neutral, Paket 4a). */
+interface Zug { wer: 'ich' | 'zoe'; text: string }
 
 /** Text, der Wort für Wort ankommt. Der Schlüssel hängt am Text: ein neuer
  *  Satz läuft neu an, ein erneutes Rendern desselben Satzes nicht. */
@@ -81,6 +82,9 @@ export function ZoeStart() {
   const [aktiv, setAktiv] = useState(0);
   const [empfang, setEmpfang] = useState('');
   const [zuege, setZuege] = useState<Zug[]>([]);
+  // Der ZOE-Thread der Person (Paket 4a): der Empfang spricht im jüngsten ZOE-Thread weiter — demselben wie ZoePanel und Agenten-Seite.
+  // Gezeigt werden hier nur die Züge dieses Besuchs; der ganze Verlauf liegt im Thread auf dem Server.
+  const fadenRef = useRef('');
   const [eingabe, setEingabe] = useState('');
   const [denkt, setDenkt] = useState(false);
   const [stunde, setStunde] = useState(12);
@@ -119,6 +123,12 @@ export function ZoeStart() {
     return () => clearInterval(iv);
   }, []);
 
+  useEffect(() => {
+    fetch('/api/agenten/faden?agent=zoe').then(r => r.json()).then((d: { faeden?: { id: string }[] }) => {
+      if (!fadenRef.current && Array.isArray(d.faeden) && d.faeden[0]?.id) fadenRef.current = d.faeden[0].id;
+    }).catch(() => {});
+  }, []);
+
   // Stunde erst im Browser setzen: auf dem Server wäre es die Zeit des
   // Rechners, und React würde die Abweichung melden.
   useEffect(() => { setStunde(new Date().getHours()); }, []);
@@ -153,14 +163,15 @@ export function ZoeStart() {
     const q = text.trim();
     if (!q || denkt) return;
     setEingabe('');
-    setZuege(z => [...z, { wer: 'kevin', text: q }]);
+    setZuege(z => [...z, { wer: 'ich', text: q }]);
     setDenkt(true);
     try {
       const r = await fetch('/api/kimmi', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q }),
+        body: JSON.stringify({ message: q, zoeFaden: fadenRef.current || 'neu' }),
       });
       const d = await r.json();
+      if (typeof d.fadenId === 'string' && d.fadenId) fadenRef.current = d.fadenId;
       const antwort = d.reply ?? 'Dazu habe ich gerade keine Antwort.';
       setZuege(z => [...z, { wer: 'zoe', text: antwort }]);
       stimme.lies(fuerStimme(antwort));
@@ -374,13 +385,13 @@ export function ZoeStart() {
           {/* Das Gespräch */}
           {zuege.map((z, i) => (
             <div key={i} className="zeile-auf" style={{
-              alignSelf: z.wer === 'kevin' ? 'flex-end' : 'flex-start',
+              alignSelf: z.wer === 'ich' ? 'flex-end' : 'flex-start',
               flex: '0 0 auto',
               maxWidth: '88%', fontSize: TYP.body, lineHeight: 1.6,
-              color: z.wer === 'kevin' ? C.inkDim : C.ink,
-              background: z.wer === 'kevin' ? C.flaeche : 'transparent',
-              border: z.wer === 'kevin' ? `1px solid ${C.linie}` : 'none',
-              borderRadius: RADIUS.behaelter, padding: z.wer === 'kevin' ? `${A.s}px ${A.l}px` : 0,
+              color: z.wer === 'ich' ? C.inkDim : C.ink,
+              background: z.wer === 'ich' ? C.flaeche : 'transparent',
+              border: z.wer === 'ich' ? `1px solid ${C.linie}` : 'none',
+              borderRadius: RADIUS.behaelter, padding: z.wer === 'ich' ? `${A.s}px ${A.l}px` : 0,
               whiteSpace: 'pre-wrap',
             }}>
               {z.wer === 'zoe'

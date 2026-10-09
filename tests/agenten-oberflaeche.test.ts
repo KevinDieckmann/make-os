@@ -455,8 +455,8 @@ describe('Regeln der Oberfläche (rein)', () => {
     expect(aktivierenFehlt(3, true)).toBeNull();
   });
 
-  it('Euro-Eingabe, Leistung je Head, ZOE-Gespräch als Kontext (das Jüngste zählt)', async () => {
-    const { centAus, leistungVon, gespraechAlsKontext, vorschlaegeHeute } = await import('@/components/os/agenten/regeln');
+  it('Euro-Eingabe, Leistung je Head, der aktuelle ZOE-Thread (der jüngste — Paket 4a statt Gespräch als Kontext)', async () => {
+    const { centAus, leistungVon, zoeFadenAktuell, vorschlaegeHeute } = await import('@/components/os/agenten/regeln');
     expect(centAus('0,50')).toBe(50);
     expect(centAus('2')).toBe(200);
     expect(centAus('1.250,00 €')).toBe(125_000);
@@ -466,10 +466,9 @@ describe('Regeln der Oberfläche (rein)', () => {
     expect(l.annahme.text).toBe('82 %');
     expect(l.laeufe).toBe(2);
     expect(l.kostenJeErgebnis).toMatch(/^0,04\s€$/);
-    const k = gespraechAlsKontext([{ wer: 'ich', text: 'a'.repeat(50) }, { wer: 'zoe', text: 'Antwort' }], 60);
-    expect(k).toContain('ZOE: Antwort');
-    expect(k).not.toContain('Ich: aaa');
-    expect(gespraechAlsKontext([])).toBe('');
+    const zoe = (id: string, aktualisiert: string) => ({ id, titel: id, agent: { art: 'zoe' as const }, status: 'offen' as const, aktualisiert });
+    expect(zoeFadenAktuell([zoe('fd-alt-00000000', '2026-10-01T08:00:00Z'), zoe('fd-neu-00000000', '2026-10-09T08:00:00Z'), { ...zoe('fd-head-0000000', '2026-10-10T08:00:00Z'), agent: { art: 'head' as const, headId: 'sales' } }])).toBe('fd-neu-00000000');
+    expect(zoeFadenAktuell([])).toBeUndefined();
     const v = vorschlaegeHeute({ freigaben: 2, naechstes: FIX.LAEUFE.naechstes, wartend: 0 });
     expect(v[0].text).toBe('2 Freigaben durchgehen');
     expect(v.length).toBeLessThanOrEqual(4);

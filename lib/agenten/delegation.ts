@@ -15,7 +15,6 @@
 import { askText, extractJson, fremd } from '@/lib/anthropic';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
-import { lege } from '@/lib/zoe/stapel';
 import { agentNurVorschlag } from '@/lib/zoe/gespraech-schutz';
 import { FREMD_AGENTEN } from '@/lib/zoe/fremd';
 import { neueKennung } from '@/lib/kennung';
@@ -30,7 +29,6 @@ import {
 import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern, sichtLaden } from './faeden-server';
 import { headSichtbar, type KontoSicht } from './sicht';
 import { agentAufloesen, agentLauf, aktiveMitarbeiter, anlassVon, type AgentenHandler, type Aufgeloest, type LaufErgebnis, type SchleifenStand, type WerkzeugAntwort } from './gespraech';
-import { mitarbeiterListe } from './werkzeuge';
 
 const neuId = () => neueKennung('nr');
 const iso = (n = Date.now()) => new Date(n).toISOString();
@@ -233,8 +231,11 @@ async function merksatz(ctx: HandlerKontext, input: Record<string, unknown>, s: 
     const r = await bestandAendern(ctx.sicht.person, b => { const x = merksatzHinzu(b, agentSchluessel(agent), m); return x.ok ? { bestand: x.bestand, e: true } : x; });
     return r.ok ? { text: 'Merksatz für diese Person abgelegt (sichtbar und löschbar im Agenten-Bereich).', ok: true } : { text: r.fehler, ok: false };
   }
-  const v = await lege({ werkzeug: 'merksatz_vorschlagen', gruppe: 'agenten', titel: `Merksatz für ${ctx.mitarbeiter?.name ?? ctx.head.name}`, nachher: t.text, eingabe: { agent, text: t.text, ebene: 'haushalt' }, person: ctx.sicht.person, quelle: ctx.modus === 'chat' ? 'gespraech' : 'lauf', anlass: anlassVon(ctx.head, ctx.mitarbeiter, 'Merksatz'), bezug: { art: 'merksatz', id: neueKennung('mv') } });
-  return { text: 'VORGESCHLAGEN, NICHT ÜBERNOMMEN — der Merksatz liegt im Freigabe-Stapel und gilt erst nach einem Klick.', ok: true, gestapelt: true, vorschlagId: v.id };
+  // Haushalt-Merksatz nur per Klick: über die EINE Vorschlags-Stelle der Werkstatt (lib/agenten/skills-server.ts, Stapel-Art `merksatz`, Paket 4a).
+  const { vorschlagMerksatzLegen } = await import('./skills-server');
+  const v = await vorschlagMerksatzLegen({ person: ctx.sicht.person, agent, anlass: anlassVon(ctx.head, ctx.mitarbeiter, 'Merksatz'), quelle: ctx.modus === 'chat' ? 'gespraech' : 'lauf' }, agent, t.text);
+  if (!v.ok) return { text: `Merksatz nicht vorgeschlagen: ${v.fehler}`, ok: false };
+  return { text: 'VORGESCHLAGEN, NICHT ÜBERNOMMEN — der Merksatz liegt im Freigabe-Stapel und gilt erst nach einem Klick.', ok: true, gestapelt: true, vorschlagId: v.vorschlag.id };
 }
 
 // ── Der Handler ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -293,30 +294,20 @@ export function handlerFuer(ctx: HandlerKontext): AgentenHandler {
         }
         case 'merksatz_vorschlagen': return merksatz(ctx, input, s);
         case 'skill_vorschlagen': {
-          const nameS = String(input.name ?? '').trim();
-          if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(nameS) || nameS.length > GRENZEN.skillName) return { text: 'Nicht vorgeschlagen: name in kebab-case, höchstens 64 Zeichen.', ok: false };
-          const be = textPruefen(input.beschreibung, GRENZEN.skillBeschreibung, 'Beschreibung'); if (!be.ok) return { text: `Nicht vorgeschlagen: ${be.fehler}`, ok: false };
-          const an = textPruefen(input.anleitung, GRENZEN.skillAnleitung, 'Anleitung'); if (!an.ok) return { text: `Nicht vorgeschlagen: ${an.fehler}`, ok: false };
-          const w = Array.isArray(input.werkzeuge) ? input.werkzeuge.map(String) : [];
-          const erlaubt = ctx.mitarbeiter ? mitarbeiterListe(ctx.mitarbeiter, ctx.head) : ctx.head.werkzeuge;
-          const fremdW = w.filter(x => !erlaubt.includes(x));
-          if (fremdW.length) return { text: `Nicht vorgeschlagen: Werkzeuge außerhalb des Bereichs (${fremdW.join(', ')}) — ein Skill lockert nie.`, ok: false };
-          const tests = Array.isArray(input.tests) ? input.tests.slice(0, GRENZEN.skillTestsMax + 1) : [];
-          if (tests.length > GRENZEN.skillTestsMax) return { text: `Nicht vorgeschlagen: höchstens ${GRENZEN.skillTestsMax} Tests.`, ok: false };
-          const v = await lege({ werkzeug: 'skill_vorschlagen', gruppe: 'agenten', titel: `Neuer Skill „${nameS}“ für ${ctx.head.name}`, nachher: be.text, eingabe: { headId: ctx.head.id, ...(ctx.mitarbeiter ? { mitarbeiterId: ctx.mitarbeiter.id } : {}), name: nameS, beschreibung: be.text, anleitung: an.text, werkzeuge: w, tests }, person, quelle: ctx.modus === 'chat' ? 'gespraech' : 'lauf', anlass: anlassVon(ctx.head, ctx.mitarbeiter, 'Skill-Vorschlag'), bezug: { art: 'skill', id: neueKennung('sv') } });
-          return { text: 'VORGESCHLAGEN — der Skill liegt im Freigabe-Stapel und wird erst nach Klick und Testlauf aktiv.', ok: true, gestapelt: true, vorschlagId: v.id };
+          // Über die EINE Vorschlags-Stelle der Werkstatt (Paket 4a): sie prüft den Entwurf wie jede Eingabe (Grenzen, Werkzeuge ⊆ Head
+          // bzw. Mitarbeiter — ein Skill lockert nie) und legt ihn als Stapel-Art `skill` ab; aktiv erst nach Klick und Testlauf.
+          const { vorschlagSkillLegen } = await import('./skills-server');
+          const entwurf = { ...input, ...(ctx.mitarbeiter ? { mitarbeiterId: ctx.mitarbeiter.id } : {}) };
+          const v = await vorschlagSkillLegen({ person, agent: ctx.faden.agent, anlass: anlassVon(ctx.head, ctx.mitarbeiter, 'Skill-Vorschlag'), quelle: ctx.modus === 'chat' ? 'gespraech' : 'lauf' }, ctx.head.id, entwurf);
+          if (!v.ok) return { text: `Nicht vorgeschlagen: ${v.fehler}`, ok: false };
+          return { text: 'VORGESCHLAGEN — der Skill liegt im Freigabe-Stapel und wird erst nach Klick und Testlauf aktiv.', ok: true, gestapelt: true, vorschlagId: v.vorschlag.id };
         }
         case 'mitarbeiter_vorschlagen': {
           if (ctx.faden.agent.art !== 'head') return { text: 'Nicht vorgeschlagen: neue Mitarbeiter schlägt nur der Head vor.', ok: false };
-          const n = textPruefen(input.name, 80, 'Name'); if (!n.ok) return { text: `Nicht vorgeschlagen: ${n.fehler}`, ok: false };
-          const ro = textPruefen(input.rolle, 300, 'Rolle'); if (!ro.ok) return { text: `Nicht vorgeschlagen: ${ro.fehler}`, ok: false };
-          const anl = input.anleitung === undefined ? null : textPruefen(input.anleitung, GRENZEN.mitarbeiterAnleitung, 'Anleitung');
-          if (anl && !anl.ok) return { text: `Nicht vorgeschlagen: ${anl.fehler}`, ok: false };
-          const w = Array.isArray(input.werkzeuge) ? input.werkzeuge.map(String) : [];
-          const fremdW = w.filter(x => !ctx.head.werkzeuge.includes(x));
-          if (fremdW.length) return { text: `Nicht vorgeschlagen: Werkzeuge außerhalb des Bereichs (${fremdW.join(', ')}).`, ok: false };
-          const v = await lege({ werkzeug: 'mitarbeiter_vorschlagen', gruppe: 'agenten', titel: `Neuer Mitarbeiter „${n.text}“ für ${ctx.head.name}`, nachher: ro.text, eingabe: { headId: ctx.head.id, name: n.text, rolle: ro.text, ...(anl?.ok ? { anleitung: anl.text } : {}), werkzeuge: w }, person, quelle: ctx.modus === 'chat' ? 'gespraech' : 'lauf', anlass: anlassVon(ctx.head, ctx.mitarbeiter, 'Mitarbeiter-Vorschlag'), bezug: { art: 'mitarbeiter', id: neueKennung('mv') } });
-          return { text: 'VORGESCHLAGEN — der Mitarbeiter liegt im Freigabe-Stapel und ist erst nach einem Klick da.', ok: true, gestapelt: true, vorschlagId: v.id };
+          const { vorschlagMitarbeiterLegen } = await import('./skills-server');
+          const v = await vorschlagMitarbeiterLegen({ person, agent: ctx.faden.agent, anlass: anlassVon(ctx.head, ctx.mitarbeiter, 'Mitarbeiter-Vorschlag'), quelle: ctx.modus === 'chat' ? 'gespraech' : 'lauf' }, ctx.head.id, input);
+          if (!v.ok) return { text: `Nicht vorgeschlagen: ${v.fehler}`, ok: false };
+          return { text: 'VORGESCHLAGEN — der Mitarbeiter liegt im Freigabe-Stapel und ist erst nach einem Klick da.', ok: true, gestapelt: true, vorschlagId: v.vorschlag.id };
         }
         case 'brett_antworten': return brettAntworten(ctx, input, s);
         case 'brett_eintragen': return brettEintrag(ctx, input, s);
@@ -448,19 +439,28 @@ export async function fadenLauf(person: string, auftrag: LaufAuftrag, o: { origi
     const eingaben = Object.entries(auftrag.eingaben ?? {}).map(([k, v]) => `${k}: ${String(v).slice(0, 500)}`).join('\n');
     const f = await startFaden(person, agent, `Skill „${sk.name}“`, `Skill „${sk.name}“ gestartet (${auftrag.ausloeser})${eingaben ? `\nEingaben (Daten):\n${eingaben}` : ''}`, 'system', { skillId: sk.id, hintergrund: o.hintergrund });
     if (!f.ok) return { status: f.status, ok: false, ergebnis: f.fehler };
-    return threadAusfuehren(person, f.faden.id, sicht, u, o, sk);
+    const erg = await threadAusfuehren(person, f.faden.id, sicht, u, o, sk);
+    // Erfolgsquote je Skill (Antwort 7, Paket 3 `skillErfolgZaehlen`): jeder Lauf zählt, ein gescheiterter zusätzlich als Fehler.
+    const { skillErfolgZaehlen } = await import('./skills-server');
+    await skillErfolgZaehlen(u, sk.id, 'lauf').catch(() => false);
+    if (erg.laufStatus === 'fehler' || erg.laufStatus === 'abgebrochen') await skillErfolgZaehlen(u, sk.id, 'fehler').catch(() => false);
+    return erg;
   }
   const plan = (await (await import('@/lib/store/local-db')).loadJson<PlanBestand>(planBestand(person)))?.aufgaben?.find(x => x.id === auftrag.planId);
   if (!plan || plan.besitzer !== person || !plan.aktiv) return { status: 404, ok: false, ergebnis: 'Diese Hintergrundaufgabe gibt es nicht (oder sie ist aus).' };
-  if (plan.agent.art === 'zoe') return { status: 409, ok: false, ergebnis: 'Aufgaben an ZOE laufen erst mit der Verdrahtung (Paket 4).' };
+  if (plan.agent.art === 'zoe') return { status: 409, ok: false, ergebnis: 'Hintergrundaufgaben gehen an einen Head — ZOE gibt Aufträge mit an_head weiter, sie selbst läuft nicht im Hintergrund.' };
   if (!headSichtbar(sicht, plan.agent.headId)) return { status: 403, ok: false, ergebnis: 'Diesen Head siehst du nicht.' };
   const f = await startFaden(person, plan.agent, plan.titel, plan.auftrag, 'person', { planId: plan.id, hintergrund: o.hintergrund });
   if (!f.ok) return { status: f.status, ok: false, ergebnis: f.fehler };
+  // Start vermerken (Paket 3 `planLaufVermerken`: `letzterLauf`, eine einmalige Aufgabe ist danach aus) — vor dem Lauf, damit der Takt sie
+  // nicht ein zweites Mal einreiht, solange sie läuft.
+  const { planLaufVermerken } = await import('./plan-server');
+  await planLaufVermerken(person, plan.id).catch(() => false);
   return threadAusfuehren(person, f.faden.id, sicht, u, o);
 }
 
 async function startFaden(person: string, agent: AgentRef, titel: string, text: string, rolle: 'person' | 'system', o: { skillId?: string; planId?: string; hintergrund: boolean }): Promise<{ ok: true; faden: FadenKern } | Fehler> {
-  if (agent.art === 'zoe') return fehler(409, 'ZOE-Threads kommen mit Paket 4.');
+  if (agent.art === 'zoe') return fehler(409, 'Ein ZOE-Thread läuft nicht im Hintergrund — ZOE antwortet im Gespräch.');
   const head = headDef(agent.headId);
   if (!head) return fehler(404, 'Diesen Head gibt es nicht.');
   const t = textPruefen(text, GRENZEN.nachrichtZeichen, 'Auftrag'); if (!t.ok) return t;
@@ -476,7 +476,7 @@ async function startFaden(person: string, agent: AgentRef, titel: string, text: 
 async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSicht, u: Umfang, o: { origin: string; hintergrund: boolean }, skill?: Skill | null): Promise<FadenLaufErgebnis> {
   const f = await eigenerFaden(person, fadenId);
   if (!f) return { status: 404, ok: false, ergebnis: 'Diesen Thread gibt es nicht (oder er gehört nicht dieser Person).' };
-  if (f.agent.art === 'zoe') return { status: 409, ok: false, fadenId, ergebnis: 'ZOE-Threads kommen mit Paket 4.' };
+  if (f.agent.art === 'zoe') return { status: 409, ok: false, fadenId, ergebnis: 'Ein ZOE-Thread läuft nicht im Hintergrund — ZOE antwortet im Gespräch.' };
   if (f.lauf?.status === 'abgebrochen') return { status: 200, ok: true, fadenId, ergebnis: 'abgebrochen — nicht gelaufen', laufStatus: 'abgebrochen' };
   // Ein Lauf je Thread: läuft er noch (Pacht des Arbeiters abgelaufen, Auftrag neu vergeben), läuft er nicht ein zweites Mal.
   if (f.lauf?.status === 'laeuft' && Date.now() - Date.parse(f.lauf.start) < KERN_GRENZEN.laufMs + 60_000) return { status: 200, ok: true, fadenId, ergebnis: 'läuft schon — nicht doppelt gestartet', laufStatus: 'laeuft' };
@@ -551,6 +551,18 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
       return neu;
     });
     if (f.helfer && e.status === 'fertig') await fortsetzenNachAntwort(person, f.helfer.fuerFadenId, `Fund aus Thread „${titel}“: ${bericht.slice(0, 2_000)}`, hintergrund);
+  }
+  // ZOE hat den Head beauftragt (`an_head`, Paket 4a): der Bericht geht als Verweis in den ZOE-Thread — gekapselt (Text eines anderen
+  // Agenten, nie Zustimmung), die Marken des Head-Threads wandern mit (R9).
+  if (f.agent.art === 'head' && f.elternId && e.status !== 'wartet') {
+    const bericht = e.text.length > KERN_GRENZEN.berichtZeichen ? `${e.text.slice(0, KERN_GRENZEN.berichtZeichen)} … (ganzer Bericht im Thread)` : e.text;
+    const titel = kind.titel;
+    const name = headDef(f.agent.headId)?.name ?? f.agent.headId;
+    await fadenAendern(person, f.elternId, x => {
+      if (x.agent.art !== 'zoe') return x;
+      const y = anhaengen(x, [{ id: neuId(), rolle: 'system', von: 'system', text: `Bericht von ${name} aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, zeit: jetzt, verweis: { art: 'bericht', fadenId: f.id, titel }, fremd: 'agent' }], jetzt);
+      return y.ok ? { ...y.faden, fremdGelesen: x.fremdGelesen || kind.fremdGelesen, vertraulich: x.vertraulich || kind.vertraulich } : y;
+    });
   }
   const headId = f.agent.art === 'zoe' ? 'zoe' : f.agent.headId;
   if (e.status !== 'wartet' || f.agent.art === 'head') {

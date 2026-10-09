@@ -4,34 +4,30 @@
 // Antworten (Agenten-Bereich 1 + Fragerunde 3): oben ein Kurz-Briefing als Text von ZOE, darunter die Überblick-Karte —
 // was seit dem letzten Besuch passiert ist, woran je Head gearbeitet wird, was die nächsten Tage ansteht, „Wartet auf dich“ mit
 // einem Klick, Bezug zu den Jahreszielen —, eine Zeile „Vorschläge“ (Arbeit für heute) und darunter der ZOE-Chat.
-// Der Chat läuft VORERST über /api/kimmi (wie das ZoePanel); Paket 4 stellt ZOE auf Threads um. Ansprechen per @Head (Feld oder
-// Chips) schickt die Nachricht direkt in einen Thread dieses Heads („An Head … gesendet ›“).
+// Der Chat läuft auf dem ZOE-Thread der Person (Paket 4a): derselbe Thread wie im ZoePanel und im Empfang (der jüngste ZOE-Thread, oder
+// der aus der Adresse `f`), der Verlauf liegt auf dem Server. „An Head … gesendet“ und „Bericht aus …“ stehen darin, wenn ZOE einen Head
+// beauftragt. Ansprechen per @Head (Feld oder Chips) schickt die Nachricht direkt in einen Thread dieses Heads.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
-import type { Nachricht } from '@/lib/agenten/typen';
+import type { FadenAntwort, Nachricht } from '@/lib/agenten/typen';
 import { KiMarke } from '../KiMarke';
 import { Chip, Fortschritt, Karte, Knopf, Leer, Wahl } from '../ui';
 import { ZoeKopfKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
-import { anfrageId, fadenSenden, stapelEntscheiden, zoeFragen } from './daten';
+import { anfrageId, fadenSenden, ladeFaden, stapelEntscheiden, useAbruf, zoeFragen } from './daten';
 import { sichtbareHeads, useAgenten } from './kontext';
 import {
-  ansprache, ansprechbarFuer, gespraechAlsKontext, nachEisenhower, risikoVon, vorschlaegeHeute, wartendeFaeden, zeitKurz,
+  ansprache, ansprechbarFuer, nachEisenhower, risikoVon, vorschlaegeHeute, wartendeFaeden, zeitKurz, zoeFadenAktuell,
   type UeberblickZeileMitHead,
 } from './regeln';
 import { WEG } from '@/lib/wege';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme } from '@/lib/make-one/zoe-verlauf';
 
-const MERKER = 'make-agenten-zoe-gespraech';
 const zeit = () => new Date().toISOString();
 let zaehler = 0;
 const nr = () => `nr-lokal-${++zaehler}`;
-
-function gemerkt(): Nachricht[] {
-  try { const r = sessionStorage.getItem(MERKER); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch { return []; }
-}
 
 function Abschnitt({ titel, rechts, children }: { titel: string; rechts?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -124,13 +120,21 @@ export function Ueberblick() {
 
 export function ZoeMitte() {
   const w = useAgenten();
-  const { agenten, laeufe, stapel, faeden, space, melde, oeffne, form } = w;
-  const [zuege, setZuege] = useState<Nachricht[]>([]);
+  const { agenten, laeufe, stapel, faeden, space, melde, oeffne, form, auswahl } = w;
+  // Welcher ZOE-Thread: aus der Adresse (`f`), sonst der jüngste der Person — derselbe wie im ZoePanel und im Empfang. „Neues Gespräch“
+  // setzt `neu`: dann entsteht beim ersten Senden ein neuer Thread.
+  const [gewaehlt, setGewaehlt] = useState<{ id: string | null; neu: boolean }>({ id: null, neu: false });
+  const fadenId = gewaehlt.neu ? gewaehlt.id : (gewaehlt.id ?? (auswahl.art === 'zoe' ? auswahl.fadenId : undefined) ?? zoeFadenAktuell(faeden.zustand === 'da' ? faeden.daten.faeden : []));
+  const vorgegeben = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
+  const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `zoe-faden:${fadenId}` : null, () => ladeFaden(fadenId!));
+  const thread = vorgegeben ?? (geladen.stand.zustand === 'da' ? geladen.stand.daten : null);
+  // Was gerade unterwegs ist (eigene Nachricht, dann die Antwort) — nur bis der Thread vom Server sie zeigt (`basis` = Länge davor).
+  const [ausstehend, setAusstehend] = useState<{ basis: number; n: Nachricht[] } | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const [vorlesen, setVorlesen] = useState(false);
   const stimme = useStimme(() => { /* nur Vorlesen — Diktat sitzt im Feld */ });
-  useEffect(() => { setZuege(gemerkt()); }, []);
-  useEffect(() => { try { sessionStorage.setItem(MERKER, JSON.stringify(zuege.slice(-60))); } catch { /* egal */ } }, [zuege]);
+  const gespeichert = thread && thread.faden.id === fadenId ? thread.faden.nachrichten : [];
+  const zuege: Nachricht[] = [...gespeichert, ...(ausstehend && gespeichert.length <= ausstehend.basis ? ausstehend.n : [])];
 
   const heads = sichtbareHeads(w);
   const ansprechbar = ansprechbarFuer('zoe', heads);
@@ -151,23 +155,20 @@ export function ZoeMitte() {
       const r = await fadenSenden({ aktion: 'senden', agent: { art: 'head', headId: an.ziel.id }, text: an.rest, anfrageId: anfrageId() });
       setLaeuft(false);
       if (!r.ok) { melde(r.kommt ? 'Head-Chats kommen mit dem Agenten-Kern — die Nachricht ist noch nicht gesendet.' : r.text, r.kommt ? 'info' : 'kritisch'); return false; }
-      const f = r.daten.faden;
-      setZuege(z => [...z, meins, { id: nr(), rolle: 'system', von: 'system', text: `An ${an.ziel.name} gesendet`, zeit: zeit(), verweis: { art: 'gesendet', fadenId: f.id, titel: f.titel } }]);
-      melde(`An ${an.ziel.name} gesendet.`, 'gut');
+      melde(`An ${an.ziel.name} gesendet — der Thread steht links unter ${an.ziel.name}.`, 'gut');
       return true;
     }
-    const vorher = zuege.filter(z => z.rolle !== 'system').map(z => ({ wer: z.rolle === 'person' ? 'ich' as const : 'zoe' as const, text: z.text }));
-    setZuege(z => [...z, meins]);
+    const basis = gespeichert.length;
+    setAusstehend({ basis, n: [meins] });
     setLaeuft(true);
-    const kontext = gespraechAlsKontext(vorher);
-    const r = await zoeFragen({ message: text, space, ...(kontext ? { context: kontext } : {}) });
+    const r = await zoeFragen({ message: text, space, zoeFaden: fadenId ?? 'neu' });
     setLaeuft(false);
-    const antwort: Nachricht = r.ok
-      ? { id: nr(), rolle: 'agent', von: 'zoe', text: r.daten.reply ?? 'Ich habe gerade keine Antwort.', zeit: zeit(), ...(r.daten.ki ? { ki: true as const } : {}),
-        ...(r.daten.ran?.length ? { werkzeuge: r.daten.ran.map(x => ({ name: x.agent, ok: x.ok })) } : {}) }
-      : { id: nr(), rolle: 'agent', von: 'zoe', text: r.text || 'Ich konnte gerade nicht antworten — versuch es noch einmal.', zeit: zeit() };
-    setZuege(z => [...z, antwort]);
-    if (vorlesen && r.ok) stimme.lies(fuerStimme(antwort.text));
+    if (!r.ok) { setAusstehend(null); melde(r.text || 'ZOE konnte gerade nicht antworten — versuch es noch einmal.', 'kritisch'); return false; }
+    const neuerFaden = !!r.daten.fadenId && r.daten.fadenId !== fadenId;
+    const antwort: Nachricht = { id: nr(), rolle: 'agent', von: 'zoe', text: r.daten.reply ?? '', zeit: zeit(), ...(r.daten.ki ? { ki: true as const } : {}) };
+    setAusstehend({ basis: neuerFaden ? 0 : basis, n: [meins, antwort] });
+    if (neuerFaden) setGewaehlt({ id: r.daten.fadenId!, neu: true });
+    if (vorlesen && r.daten.reply) stimme.lies(fuerStimme(r.daten.reply));
     return true;
   };
 
@@ -197,12 +198,12 @@ export function ZoeMitte() {
         </div>
       </div>
 
-      <ChatVerlauf nachrichten={zuege} stapel={stapel}
+      <ChatVerlauf nachrichten={zuege} stapel={stapel} kinder={thread?.kinder ?? []}
         leer={<Leer>Frag ZOE etwas — oder sprich einen Head direkt an: <b>@{ansprechbar[0]?.name ?? 'Head'}</b> und dein Auftrag.</Leer>}
         unten={laeuft ? <Schreibt name="ZOE" /> : undefined} />
       {zuege.length > 0 && (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
-          <Knopf leise onClick={() => setZuege([])}>Neues Gespräch</Knopf>
+          <Knopf leise onClick={() => { setGewaehlt({ id: null, neu: true }); setAusstehend(null); }}>Neues Gespräch</Knopf>
           {heads.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>Heads direkt: {heads.slice(0, 3).map(h => (
             <button key={h.id} type="button" onClick={() => oeffne({ h: h.id })} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkDim, font: 'inherit', cursor: 'pointer', padding: `0 ${ABSTAND.xs}px` }}><Chip farbe={headFarbe(h.farbe)}>{h.kurz}</Chip></button>
           ))}</span>}

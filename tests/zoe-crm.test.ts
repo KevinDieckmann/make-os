@@ -113,7 +113,13 @@ describe('Nur im Haushalt des Inhabers', () => {
     expect(fremd.status).toBe(403);
     expect(mitschnitt).toHaveLength(0);
     const malin = await zug('malin');
-    for (const n of NEU) expect(malin.namen, n).toContain(n);
+    // Begründete Änderung (09.10., Paket 4a): höchstens 20 Werkzeuge je Zug — mit dem Bezug kommt der Vertrieb zuerst (das passende
+    // Lese-Werkzeug vorneweg); jedes CRM-Werkzeug bleibt erreichbar: direkt, als Bereich oder über einen Head.
+    expect(malin.namen.length).toBeLessThanOrEqual(20);
+    expect(malin.namen).toContain('kontakt_akte');
+    const { KATALOG } = await import('@/lib/agenten/katalog');
+    const { ZOE_DIREKT } = await import('@/lib/zoe/werkzeug-wahl');
+    for (const n of NEU) expect(malin.namen.includes(n) || ZOE_DIREKT.has(n) || KATALOG.some(h => h.werkzeuge.includes(n)), n).toBe(true);
     expect(malin.system).toContain('CRM-BEZUG');
     expect(malin.system).toContain('c-anna-1');
   });

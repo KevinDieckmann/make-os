@@ -123,8 +123,11 @@ async function persoenlich(person: string): Promise<Record<string, Befund>> {
       return ueber ? nein(`${ueber} von ${meine.length} auf dich überfällig`) : ja(`${meine.length} offen auf dich, nichts überfällig`);
     }),
     sicher(async () => {
-      const v = await loadJson<{ gespraeche?: { person?: string }[] }>('zoe-verlauf');
-      const z = (v?.gespraeche ?? []).filter(g => g?.person === person).length;
+      // Seit Paket 4a (09.10.) sind ZOE-Gespräche Threads der Person; der alte Bestand zählt, solange er noch nicht übernommen ist.
+      const { fadenBestand } = await import('@/lib/agenten/typen');
+      const b = await loadJson<{ faeden?: { agent?: { art?: string } }[]; zoeUebernahme?: unknown }>(fadenBestand(person));
+      const v = b?.zoeUebernahme ? null : await loadJson<{ gespraeche?: { person?: string }[] }>('zoe-verlauf');
+      const z = (b?.faeden ?? []).filter(f => f?.agent?.art === 'zoe').length + (v?.gespraeche ?? []).filter(g => g?.person === person).length;
       return z ? ja(`${n(z, 'Gespräch', 'Gespräche')} von dir`) : nein('noch kein Gespräch von dir');
     }),
   ]);

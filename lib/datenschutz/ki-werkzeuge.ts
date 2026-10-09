@@ -18,8 +18,13 @@ export const GRUPPE_KATEGORIE: Record<string, KiKategorie> = {
   inbox: 'postfach',
 };
 
-/** Ausnahmen je Werkzeug: die Einkaufsliste steht in der Gruppe „gesundheit“, ist aber keine Gesundheitsangabe. */
-export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = { einkauf_setzen: null };
+/**
+ * Ausnahmen je Werkzeug: die Einkaufsliste steht in der Gruppe „gesundheit“, ist aber keine Gesundheitsangabe.
+ * `an_head`/`head_fragen` (Gruppe „agenten“, Paket 4a): keine feste Kategorie — der Head läuft mit SEINEN aktiven Kategorien durch das
+ * KI-Tor (Schalter, Einwilligung), und was `head_fragen` zurückbringt, trägt ZOE mit genau diesen Kategorien weiter
+ * (lib/agenten/zoe-heads.ts `headFrageKategorien`). Ein ausgeschalteter Bereich bleibt damit auch über einen Head zu.
+ */
+export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = { einkauf_setzen: null, an_head: null, head_fragen: null };
 
 export const kategorieVonGruppe = (gruppe: string): KiKategorie | null => GRUPPE_KATEGORIE[gruppe] ?? null;
 /** Kategorie eines Werkzeugs (Ausnahme vor Gruppe). */

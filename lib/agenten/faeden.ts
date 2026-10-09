@@ -107,6 +107,11 @@ export interface FadenBestandKern extends FadenBestand {
   faeden: FadenKern[];
   /** Gedächtnis „Persönlich“ je Agent (`agentSchluessel`) — nur die Person selbst sieht es. */
   gedaechtnis?: Partial<Record<string, Merksatz[]>>;
+  /**
+   * Einmalige Übernahme des alten ZOE-Verlaufs (Bestand `zoe-verlauf`) in ZOE-Threads (Paket 4a, lib/agenten/zoe-faden.ts) — gesetzt
+   * beim ersten Lesen; danach nie wieder (der alte Bestand bleibt liegen).
+   */
+  zoeUebernahme?: { am: string; anzahl: number };
 }
 
 /** Zusätzliche Grenzen des Kerns (die gemeinsamen stehen in `GRENZEN`, typen.ts). */

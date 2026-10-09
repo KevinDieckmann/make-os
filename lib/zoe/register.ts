@@ -335,7 +335,7 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   uebergeben: {
     gruppe: 'kontakte', risiko: 'freigabe',
-    vorschau: schlicht('Kontakt übergeben (Kevin/Malin)', i => `${text(i.kontakt)} → ${text(i.an)}`),
+    vorschau: schlicht('Kontakt im Team übergeben', i => `${text(i.kontakt)} → ${text(i.an)}`),
   },
   crm_lage: {
     gruppe: 'kontakte', risiko: 'frei',
@@ -378,6 +378,16 @@ export const REGISTER: Record<string, Eintrag> = {
   ...AUFGABEN_REGISTER,
   // Eine Suche über Brain und App (29.09., B3, lib/zoe/arbeit-werkzeug.ts) — nur lesen.
   ...ARBEIT_REGISTER,
+  // ZOE steuert die Heads (09.10., Paket 4a, lib/agenten/zoe-heads.ts). an_head ist frei, weil es NUR einreiht (Thread + Warteschlange):
+  // jede Wirkung des Heads bleibt ein Vorschlag im Stapel. head_fragen liest nur (der Head bekommt nur lesende Werkzeuge).
+  an_head: {
+    gruppe: 'agenten', risiko: 'frei',
+    vorschau: schlicht('Auftrag an einen Head', i => `${text(i.head, 40)}: ${text(i.auftrag, 140)}`),
+  },
+  head_fragen: {
+    gruppe: 'agenten', risiko: 'frei',
+    vorschau: schlicht('Einen Head fragen', i => `${text(i.head, 40)}: ${text(i.frage, 140)}`),
+  },
 
   // Freigabe — Geld, Ziele, Kompass. Wird zum Vorschlag im Stapel.
   // Haushaltsfinanzen (24.09.): lesen läuft durch, Ändern braucht die Freigabe.

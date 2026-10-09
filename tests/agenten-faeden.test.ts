@@ -155,7 +155,7 @@ describe('Route: Stand/409, Grenzen, Verlauf nur vom Server', () => {
     const g = await rufe(faden.GET, `/api/agenten/faden?id=${nachher[0].id}`, sitzung('person-a'));
     expect((await rufe(faden.POST, '/api/agenten/faden', sitzung('person-a'), { aktion: 'loeschen', fadenId: nachher[0].id, stand: g.d.stand })).status).toBe(200);
   });
-  it('ZOE-Threads laufen bis Paket 4 über das bestehende Gespräch', async () => {
+  it('ZOE spricht nur über ihr Gespräch (kimmi mit ZOE-Thread), nie über den Head-Chat (Paket 4a)', async () => {
     expect((await rufe(faden.POST, '/api/agenten/faden', sitzung('person-a'), { aktion: 'senden', agent: { art: 'zoe' }, text: 'Hallo' })).status).toBe(400);
   });
 });

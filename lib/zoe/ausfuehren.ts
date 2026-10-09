@@ -29,7 +29,9 @@ export async function fuehreAus(
   name: string,
   input: Record<string, unknown>,
   origin: string,
-  opt: { erzwingen?: boolean; anlass?: string; person?: Person; vorschlagen?: boolean; quelle?: 'gespraech' | 'lauf'; hintergrund?: boolean; freigegebenVon?: string } = {},
+  opt: { erzwingen?: boolean; anlass?: string; person?: Person; vorschlagen?: boolean; quelle?: 'gespraech' | 'lauf'; hintergrund?: boolean; freigegebenVon?: string;
+    /** Das ZOE-Gespräch des Aufrufs (Thread + Marken, Paket 4a) — nur vom Server gesetzt, geht als Kontext an das Werkzeug (nie in den Stapel). */
+    zoe?: { fadenId?: string; fremdGelesen?: boolean; vertraulich?: boolean } } = {},
 ): Promise<Lauf> {
   const werk = WERKZEUGE[name];
   if (!werk) return { text: `Unbekanntes Werkzeug: ${name}.`, ok: false, gestapelt: false };
@@ -94,7 +96,7 @@ export async function fuehreAus(
     });
     return {
       text: `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}. `
-        + 'Das liegt jetzt in Kevins Freigabe-Stapel. Sag ihm knapp, was du vorbereitet hast, und dass es auf seine Freigabe wartet — behaupte NICHT, es sei erledigt.',
+        + 'Das liegt jetzt im Freigabe-Stapel der Person. Sag ihr knapp, was du vorbereitet hast, und dass es auf ihre Freigabe wartet — behaupte NICHT, es sei erledigt.',
       ok: true, gestapelt: true,
     };
   }
@@ -105,7 +107,8 @@ export async function fuehreAus(
   // Projekt-/Aufgaben-Dateien (28.09., C2) liest ZOE im Hintergrund gar nicht: ohne Person lehnt das Werkzeug ab.
   const leseSicht = (opt.hintergrund || opt.quelle === 'lauf') && ((gruppe === 'wissen' && (name === 'suche_wissen' || name === 'lies_notiz')) || gruppe === 'aufgaben-dateien');
   // Bei der Freigabe (erzwingen) erfährt das Werkzeug, WER freigegeben hat (#94) — nie aus der Eingabe des Modells.
-  const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person, opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person } : undefined);
+  const kontext = opt.erzwingen || opt.zoe ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}) } : undefined;
+  const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person, kontext);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
   const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|Kollision|Kein Meilenstein|Nicht ausgeführt/i.test(text.slice(0, 200));

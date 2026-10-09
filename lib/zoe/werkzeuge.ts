@@ -97,7 +97,7 @@ async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: 
   if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: freie Zeit nur für Personen des Haushalts.';
   const roh = Array.isArray(input.personen) ? input.personen.map(String) : typeof input.personen === 'string' ? String(input.personen).split(',') : [];
   const personen = Array.from(new Set([person, ...roh.map(x => x.trim().toLowerCase()).filter(x => /^[a-z0-9-]{1,40}$/.test(x))])).slice(0, 4);
-  for (const p of personen) if (!(await personImHaushaltDesInhabers(p))) return `Fehlgeschlagen: ${p} gehört nicht zum Haushalt — freie Zeit nur für Kevin und Malin.`;
+  for (const p of personen) if (!(await personImHaushaltDesInhabers(p))) return `Fehlgeschlagen: ${p} gehört nicht zum Haushalt — freie Zeit nur für Personen des Haushalts.`;
   const dauerMin = Math.max(10, Math.min(480, Math.round(Number(input.dauerMin) || 60)));
   const tage = Math.max(1, Math.min(30, Math.round(Number(input.tage) || 7)));
   const von = /^\d{4}-\d{2}-\d{2}$/.test(String(input.von ?? '')) && String(input.von) >= localDay() ? String(input.von) : undefined;
@@ -119,7 +119,7 @@ const firmaId = (rein: unknown): Gesellschaftskennung => firmaAusAngabe(rein);
 /** Schreibt ZOE etwas auf die MAKE Innovation GmbH (ug), bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
 const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string): F => (fid === UG_FIRMA.id && Array.isArray(f.firmen) && f.firmen.length && !f.firmen.some(x => x.id === UG_FIRMA.id) ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f);
 /** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
-const istPrivatAngabe = (rein: unknown) => /privat|haushalt|malin|n26/i.test(String(rein ?? ''));
+const istPrivatAngabe = (rein: unknown) => /privat|haushalt|n26/i.test(String(rein ?? ''));
 const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.';
 
 async function setzeKontostand(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
@@ -1092,7 +1092,14 @@ export async function crmWerkzeugErlaubt(person: string | null | undefined): Pro
  * Was die Ausführung über ihren Anlass weiß (29.09., Paket D-B #94): `freigegebenVon` = die Person, die den Vorschlag im
  * Stapel freigegeben hat (nur bei der Freigabe gesetzt, von `fuehreAus` — nie aus der Eingabe des Modells).
  */
-export interface WerkzeugKontext { freigegebenVon?: string }
+export interface WerkzeugKontext {
+  freigegebenVon?: string;
+  /**
+   * Das ZOE-Gespräch, aus dem der Aufruf kommt (Paket 4a, 09.10.): Thread und Marken des Zugs — gesetzt NUR vom Server (kimmi über
+   * `fuehreAus`), nie aus der Eingabe des Modells. `an_head` hängt den Head-Thread daran und vererbt die Marken.
+   */
+  zoe?: { fadenId?: string; fremdGelesen?: boolean; vertraulich?: boolean };
+}
 type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<string>;
 const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person, kontext) => {
   if (!person) return KEINE_PERSON;
@@ -1153,4 +1160,8 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   ...AUFGABEN_WERKZEUGE,
   // Eine Suche über Brain und App (29.09., B3): suche_arbeit — prüft den Haushalt selbst (lib/zoe/arbeit-werkzeug.ts).
   ...ARBEIT_WERKZEUGE,
+  // ZOE steuert die Heads (09.10., Paket 4a, lib/agenten/zoe-heads.ts): Auftrag in einen Thread des Heads bzw. eine kurze Frage —
+  // nur Heads, die die AUSLÖSENDE Person sieht (lib/agenten/sicht.ts). Dynamisch geladen (der Agenten-Kern liest dieses Register).
+  an_head: { gruppe: 'agenten', lauf: async (i, o, p, k) => (await import('@/lib/agenten/zoe-heads')).anHead(i, o, p, k) },
+  head_fragen: { gruppe: 'agenten', lauf: async (i, o, p, k) => (await import('@/lib/agenten/zoe-heads')).headFragen(i, o, p, k) },
 };

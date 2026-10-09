@@ -100,10 +100,10 @@ describe('ZOE-Werkzeuge der Markttraktion prüfen selbst (K1)', () => {
 });
 
 describe('kimmi bietet CRM-Werkzeuge und -Agenten nur im Haushalt des Inhabers an (K1)', () => {
-  const zug = async (kopf: Record<string, string>) => {
+  const zug = async (kopf: Record<string, string>, message = 'Wen soll ich heute anrufen?') => {
     const { POST } = await import('@/app/api/kimmi/route');
     mitschnitt.length = 0;
-    const r = await POST(anfrage('/api/kimmi', kopf, 'POST', { message: 'Wen soll ich heute anrufen?' }));
+    const r = await POST(anfrage('/api/kimmi', kopf, 'POST', { message }));
     expect(r.status).toBe(200);
     const tools = mitschnitt[0]?.tools ?? [];
     const namen = tools.map(t => t.name);
@@ -127,10 +127,19 @@ describe('kimmi bietet CRM-Werkzeuge und -Agenten nur im Haushalt des Inhabers a
     expect(r.status).toBe(400);
     expect(mitschnitt.length).toBe(0);
   });
-  it('Kevin/Malin: CRM-Werkzeuge und -Agenten sind da', async () => {
+  // Begründete Änderung (09.10., Paket 4a — Kevin: „ZOE ≤ 20 Werkzeuge, Rest zu den Heads“): ZOE bekommt je Zug höchstens 20 Werkzeuge —
+  // die des Vertriebs direkt, alle übrigen CRM-Werkzeuge über die Heads (Sales, Marketing, Event, Kundenerfolg). Geprüft wird jetzt:
+  // im Haushalt ist jedes CRM-Werkzeug ERREICHBAR (direkt im Zug, als Bereich oder über einen Head), und die CRM-Agenten stehen bei run_agent.
+  it('Kevin/Malin: CRM-Werkzeuge sind erreichbar (Vertrieb direkt, ≤ 20 je Zug, Rest über die Heads), CRM-Agenten bei run_agent', async () => {
     const z = await zug(sitzung('malin'));
-    for (const n of W.CRM_WERKZEUGE) expect(z.namen, n).toContain(n);
-    expect(z.agenten).toContain('crm');
+    expect(z.namen.length).toBeLessThanOrEqual(20);
+    for (const n of ['crm_lage', 'crm_suche', 'kontakt_akte', 'pipeline', 'notiere_kontakt', 'an_head', 'head_fragen']) expect(z.namen, n).toContain(n);
+    const { KATALOG } = await import('@/lib/agenten/katalog');
+    const { ZOE_DIREKT } = await import('@/lib/zoe/werkzeug-wahl');
+    for (const n of W.CRM_WERKZEUGE) expect(z.namen.includes(n) || ZOE_DIREKT.has(n) || KATALOG.some(h => h.werkzeuge.includes(n)), n).toBe(true);
+    const a = await zug(sitzung('malin'), 'Starte den Agenten für die Markttraktion: wen soll ich heute anrufen?');
+    expect(a.namen.length).toBeLessThanOrEqual(20);
+    expect(a.agenten).toContain('crm');
   });
 });
 
