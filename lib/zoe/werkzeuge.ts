@@ -338,10 +338,25 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   return `${erledigt ? 'Abgehakt' : 'Zurückgenommen'}: ${namen.join(', ')} (${datum === localDay() ? 'heute' : datum}).`;
 }
 
+/**
+ * Gesundheits-Werkzeuge schreiben nur wie die Oberfläche (09.10., Merge gesundheit-module): Einwilligung (a) der Person zuerst
+ * (`gesundheitVerarbeitungErlaubt`, Art. 9), dann das Modul der Person (`moduleFuer`, lib/gesundheit/module-server.ts — ein
+ * ausgeschaltetes Modul nimmt nichts an; nie schaltet ein ZOE-Eintrag ein Modul über den Altbestand „von selbst“ ein).
+ */
+async function gesundheitsModulSperre(person: string, modul: 'haut' | 'serie'): Promise<string | null> {
+  const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+  if (!(await gesundheitVerarbeitungErlaubt(person))) return 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.';
+  const [{ moduleFuer }, { modulAusText }] = await Promise.all([import('@/lib/gesundheit/module-server'), import('@/lib/gesundheit/module')]);
+  if (!(await moduleFuer(person))[modul]) return `Abgelehnt: ${modulAusText(modul)} Nichts gespeichert.`;
+  return null;
+}
+
 async function hautEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { saeubereHaut, hautTrend } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
   if (!person) return KEINE_PERSON;
+  const sperreHaut = await gesundheitsModulSperre(person, 'haut');
+  if (sperreHaut) return sperreHaut;
   const e = saeubereHaut(input, new Date().toISOString());
   if (!e) return 'Fehlgeschlagen: juckreiz (0–10) fehlt.';
   const datum = HEUTE_ODER(input.datum);
@@ -402,6 +417,8 @@ async function streakEintrag(input: Record<string, unknown>, _o: string, person?
   const { saeubereStreak, streakStand } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
   if (!person) return KEINE_PERSON;
+  const sperreSerie = await gesundheitsModulSperre(person, 'serie');
+  if (sperreSerie) return sperreSerie;
   const e = saeubereStreak({ ...input, craving: input.verlangen ?? input.craving }, new Date().toISOString());
   if (!e) return 'Fehlgeschlagen: sauber (true/false) fehlt.';
   const datum = HEUTE_ODER(input.datum);
