@@ -41,6 +41,9 @@
   grün. Laufen (4): 4a ZOE ↔ Heads, 4b Einstellungen/Budget, 4c Medien ↔ Heads + Demo-Saat, `neutral-rest`. Bereit: Gegenprüfung Agenten (nach 4a–c),
   Markttraktion Woche 2 Teil A (Ein Weg „Person anlegen“, Prospecting → Kartei …) und Teil B (ein Rechnungs-Anleger, Follow-up/Kampagnen-Rest, 7.3 über `anPersonMelden`).
   Für Kevin notiert: alter Haushalts-Import teilte Semikolon-CSV falsch („-12,34“ → „-12,00“) — bisher importierte Semikolon-CSVs prüfen (N26 nicht betroffen).
+- **Stand 09.10. ~03:00 (Uhr des Macs):** `agenten-nacht` → **97d8b7cd**: zusätzlich 4a (ZOE ↔ Heads), 4b (Einstellungen/Not-Aus/Budget), 4c (Medien ↔ Heads,
+  KI-Medien, Demo-Saat), `neutral-rest`, eigene Verdrahtung (Privat-Head-Einstellungen mit Person, `laufSperre` im Lauf, `wartetAuf`, Medien-Werkzeuge in `agentLauf`),
+  Test-Anpassung MQL. tsc 0. Volle Suite läuft. Agenten (4): Gegenprüfung Agenten, Markttraktion W2a, W2b, Onboarding Update 2. Bereit: Streaming.
 - **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
   wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
   Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
