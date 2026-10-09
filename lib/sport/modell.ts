@@ -84,6 +84,16 @@ export interface Lauf {
   quelle: Quelle;
   /** Kennung beim Import, damit ein zweiter Import nichts doppelt anlegt. */
   externeId?: string;
+  // Messwerte aus einem Import (09.10., WHOOP — lib/whoop/abbilden.ts `sportAnwenden`); von Hand gibt es sie nicht.
+  /** WHOOP-Strain 0–21. */
+  strain?: number;
+  kcal?: number;
+  pulsSchnitt?: number;
+  pulsMax?: number;
+  /** Minuten je Herzfrequenz-Zone 0–5 (immer sechs Werte). */
+  zonenMin?: number[];
+  /** Höhenmeter bergauf. */
+  hoeheM?: number;
 }
 
 export interface Satz { kg: number; wdh: number }
@@ -118,6 +128,10 @@ export interface TrainingEinheit {
   pulsSchnitt?: number;
   pulsMax?: number;
   distanzKm?: number;
+  /** Minuten je Herzfrequenz-Zone 0–5 (immer sechs Werte, 09.10.). */
+  zonenMin?: number[];
+  /** Höhenmeter bergauf (09.10.). */
+  hoeheM?: number;
   quelle: Quelle;
   externeId?: string;
 }
@@ -244,7 +258,21 @@ export function saeubereLauf(e: unknown): Lauf | null {
   const g = ganz(e.gefuehl, 1, 5); if (g) l.gefuehl = g;
   const n = text(e.notiz, 600); if (n) l.notiz = n;
   const x = text(e.externeId, 120); if (x) l.externeId = x;
+  const st = zahl(e.strain, 0, 21); if (st !== undefined) l.strain = Math.round(st * 10) / 10;
+  const kc = ganz(e.kcal, 1, 20000); if (kc) l.kcal = kc;
+  const ps = ganz(e.pulsSchnitt, 25, 250); if (ps) l.pulsSchnitt = ps;
+  const pm = ganz(e.pulsMax, 25, 250); if (pm) l.pulsMax = pm;
+  const zo = zonenMin(e.zonenMin); if (zo) l.zonenMin = zo;
+  const hm = ganz(e.hoeheM, 1, 20000); if (hm) l.hoeheM = hm;
   return l;
+}
+
+/** Minuten je Herzfrequenz-Zone 0–5: genau sechs Zahlen 0 … 48 h, eine Nachkommastelle — sonst keine Angabe (09.10.). */
+export function zonenMin(v: unknown): number[] | undefined {
+  if (!Array.isArray(v) || v.length !== 6) return undefined;
+  const w = v.map(x => zahl(x, 0, 48 * 60));
+  if (w.some(x => x === undefined) || w.every(x => x === 0)) return undefined;
+  return w.map(x => Math.round(x! * 10) / 10);
 }
 
 export function saeubereGym(e: unknown): GymEinheit | null {
@@ -299,6 +327,8 @@ export function saeubereTraining(e: unknown): TrainingEinheit | null {
   const ps = ganz(e.pulsSchnitt, 25, 250); if (ps) t.pulsSchnitt = ps;
   const pm = ganz(e.pulsMax, 25, 250); if (pm) t.pulsMax = pm;
   const km = zahl(e.distanzKm, 0.01, 1000); if (km) t.distanzKm = Math.round(km * 100) / 100;
+  const zo = zonenMin(e.zonenMin); if (zo) t.zonenMin = zo;
+  const hm = ganz(e.hoeheM, 1, 20000); if (hm) t.hoeheM = hm;
   const x = text(e.externeId, 120); if (x) t.externeId = x;
   return t;
 }

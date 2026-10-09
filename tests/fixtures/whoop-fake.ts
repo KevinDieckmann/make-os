@@ -99,17 +99,22 @@ export class WhoopFake {
 
 // ── Erfundene Datensätze nach der v2-Form ───────────────────────────────────
 
-export const schlaf = (n: number, ende: string, opt: { nap?: boolean; stunden?: number; state?: string } = {}) => {
+export const schlaf = (n: number, ende: string, opt: { nap?: boolean; stunden?: number; state?: string; bedarf?: { basis: number; schuld?: number; last?: number; nap?: number } } = {}) => {
   const ms = (opt.stunden ?? 7.5) * 3_600_000;
+  const h = 3_600_000;
+  // `sleep_needed` (09.10.) nur auf Wunsch — die älteren Tests rechnen ohne.
+  const bedarf = opt.bedarf ? { sleep_needed: { baseline_milli: opt.bedarf.basis * h, need_from_sleep_debt_milli: (opt.bedarf.schuld ?? 0) * h, need_from_recent_strain_milli: (opt.bedarf.last ?? 0) * h, need_from_recent_nap_milli: (opt.bedarf.nap ?? 0) * h } } : {};
   return { id: uuid(n), cycle_id: n, v1_id: n, user_id: 1, start: new Date(Date.parse(ende) - ms - 1_800_000).toISOString(), end: ende, timezone_offset: '+02:00', nap: !!opt.nap, score_state: opt.state ?? 'SCORED',
-    score: { stage_summary: { total_in_bed_time_milli: ms + 1_800_000, total_awake_time_milli: 1_800_000, total_light_sleep_time_milli: ms * 0.5, total_slow_wave_sleep_time_milli: ms * 0.25, total_rem_sleep_time_milli: ms * 0.25, sleep_cycle_count: 4, disturbance_count: 3 }, respiratory_rate: 15, sleep_performance_percentage: 91, sleep_consistency_percentage: 80, sleep_efficiency_percentage: 93 } };
+    score: { stage_summary: { total_in_bed_time_milli: ms + 1_800_000, total_awake_time_milli: 1_800_000, total_light_sleep_time_milli: ms * 0.5, total_slow_wave_sleep_time_milli: ms * 0.25, total_rem_sleep_time_milli: ms * 0.25, sleep_cycle_count: 4, disturbance_count: 3 }, ...bedarf, respiratory_rate: 15, sleep_performance_percentage: 91, sleep_consistency_percentage: 80, sleep_efficiency_percentage: 93 } };
 };
 export const erholung = (schlafNr: number, am: string, rec: number, opt: { hrv?: number; rhr?: number; state?: string } = {}) => ({
   cycle_id: schlafNr, sleep_id: uuid(schlafNr), user_id: 1, created_at: am, updated_at: am, score_state: opt.state ?? 'SCORED',
   score: { user_calibrating: false, recovery_score: rec, resting_heart_rate: opt.rhr ?? 52, hrv_rmssd_milli: opt.hrv ?? 61.4, spo2_percentage: 96.2, skin_temp_celsius: 33.71 },
 });
-export const zyklus = (n: number, start: string, strain: number) => ({ id: n, user_id: 1, start, end: null, timezone_offset: '+02:00', score_state: 'SCORED', score: { strain, kilojoule: 9000, average_heart_rate: 70, max_heart_rate: 160 } });
-export const training = (n: number, start: string, minuten: number, sport: string, opt: { meter?: number; strain?: number } = {}) => ({
+export const zyklus = (n: number, start: string, strain: number, opt: { schritte?: number; state?: string; tz?: string } = {}) => ({ id: n, user_id: 1, start, end: null, timezone_offset: opt.tz ?? '+02:00', score_state: opt.state ?? 'SCORED', score: { strain, kilojoule: 9000, average_heart_rate: 70, max_heart_rate: 160 }, ...(opt.schritte !== undefined ? { step_count: opt.schritte } : {}) });
+/** `zonen` = Minuten je Zone 0–5 (09.10.); ohne Angabe ein leeres `zone_durations` wie bisher. */
+export const training = (n: number, start: string, minuten: number, sport: string, opt: { meter?: number; strain?: number; zonen?: number[] } = {}) => ({
   id: uuid(n), v1_id: n, user_id: 1, start, end: new Date(Date.parse(start) + minuten * 60_000).toISOString(), timezone_offset: '+02:00', sport_name: sport, sport_id: sport === 'running' ? 0 : 45, score_state: 'SCORED',
-  score: { strain: opt.strain ?? 11.2, average_heart_rate: 140, max_heart_rate: 172, kilojoule: 2092, percent_recorded: 100, ...(opt.meter !== undefined ? { distance_meter: opt.meter } : {}), altitude_gain_meter: 10, altitude_change_meter: 0, zone_durations: {} },
+  score: { strain: opt.strain ?? 11.2, average_heart_rate: 140, max_heart_rate: 172, kilojoule: 2092, percent_recorded: 100, ...(opt.meter !== undefined ? { distance_meter: opt.meter } : {}), altitude_gain_meter: 10, altitude_change_meter: 0,
+    zone_durations: opt.zonen ? Object.fromEntries(['zone_zero_milli', 'zone_one_milli', 'zone_two_milli', 'zone_three_milli', 'zone_four_milli', 'zone_five_milli'].map((k, i) => [k, (opt.zonen![i] ?? 0) * 60_000])) : {} },
 });

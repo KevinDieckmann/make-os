@@ -160,7 +160,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     loeschfrist: 'bis die Person trennt bzw. ihr Konto entfernt wird (dann Widerruf bei WHOOP)',
     kategorie: ['art9'],
   }),
-  mit(H('whoop-stand--*', 'WHOOP-Spiegel je Person: Recovery, Schlaf (Phasen), Zyklen (Strain), Workouts — Zahlen und Zeiten, keine Namen; dazu Abgleich-Zustand und die trace_id der letzten Webhooks. Abgebildet in vitals--*/sport--* (Handwert gewinnt).'), {
+  mit(H('whoop-stand--*', 'WHOOP-Spiegel je Person: Recovery (inkl. SpO2, Hauttemperatur), Schlaf (Phasen, Bedarf, Atemfrequenz, Konsistenz, Störungen), Zyklen (Strain, Energie, Puls, Schritte), Workouts (inkl. Herzfrequenz-Zonen, Höhenmeter) — Zahlen und Zeiten, keine Namen; dazu Abgleich-Zustand und die trace_id der letzten Webhooks. Abgebildet in vitals--*/sport--* (Handwert gewinnt).'), {
     ...GESUNDHEIT,
     loeschfrist: 'Einträge älter als 400 Tage fallen beim nächsten Abgleich heraus; „Trennen“ oder Konto löschen entfernt den Spiegel sofort (samt Tageskopien). Übernommene Werte in vitals/sport bleiben bei der Person',
   }),

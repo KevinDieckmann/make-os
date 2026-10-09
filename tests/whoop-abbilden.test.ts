@@ -1,7 +1,7 @@
 // WHOOP je Person — reine Teile (lib/whoop/abbilden.ts, webhook.ts, konfig.ts, verbindung.ts): Tageszuordnung, Handwert gewinnt,
 // Sport idempotent ohne Dubletten, Signatur nach der Doku, Körper der Webhooks, state-Form, Konfiguration ohne festen localhost.
 import { describe, it, expect } from 'vitest';
-import { recoveryAus, schlafAus, zyklusAus, workoutAus, tageswerte, vitalsAnwenden, sportAnwenden, ortsTag, externeIdVon, type WhoopSpiegelDaten } from '@/lib/whoop/abbilden';
+import { recoveryAus, schlafAus, zyklusAus, workoutAus, tageswerte, vitalsAnwenden, sportAnwenden, ortsTag, externeIdVon, zyklusTag, zonenAus, type WhoopSpiegelDaten } from '@/lib/whoop/abbilden';
 import { signaturGueltig, signieren, meldungAus } from '@/lib/whoop/webhook';
 import { whoopKonfig, whoopFehlt, WHOOP_SCOPES, whoopHost } from '@/lib/whoop/konfig';
 import { neuerState, STATE_FORM, autorisierungsUrl } from '@/lib/whoop/verbindung';
@@ -41,7 +41,77 @@ describe('Tageswerte', () => {
       r: [erholung(1, '2026-10-07T05:05:00Z', 81), erholung(2, '2026-10-07T13:05:00Z', 40)],
       z: [zyklus(9, '2026-10-06T22:00:00Z', 12.4)],
     });
-    expect(tageswerte(d)['2026-10-07']).toEqual({ sleep: 7.5, rec: 81, hrv: 61, rhr: 52, strain: 12.4 });
+    // 09.10.: dazu alle weiteren Größen des Hauptschlafs, seiner Recovery und des Zyklus (Nickerchen und seine Recovery zählen nicht).
+    expect(tageswerte(d)['2026-10-07']).toEqual({
+      sleep: 7.5, rec: 81, hrv: 61, rhr: 52, strain: 12.4,
+      phaseLeicht: 3.75, phaseTief: 1.88, phaseRem: 1.88, phaseWach: 0.5, schlafLeistung: 91, schlafKonsistenz: 80, schlafEffizienz: 93, atem: 15, stoerungen: 3,
+      spo2: 96.2, hautTemp: 33.71, kcal: 2151,
+    });
+  });
+});
+
+// ─── 09.10.: alle sinnvollen v2-Größen (Kevin: „Strain wird nicht angezeigt“ → „mit allen Daten, die du bekommen kannst“) ─────────
+describe('Weitere WHOOP-Größen (09.10.)', () => {
+  it('Schlafbedarf = Basis + Schuld + Belastung + Nickerchen (Nickerchen senkt, nie unter 0); Spiegel trägt Atem, Konsistenz, Störungen, Zyklen', () => {
+    const s = schlafAus(schlaf(1, '2026-10-07T05:00:00Z', { bedarf: { basis: 7.5, schuld: 0.5, last: 0.25, nap: -0.25 } }))!;
+    expect(s).toMatchObject({ bedarfMs: 8 * 3_600_000, schuldMs: 0.5 * 3_600_000, atem: 15, konsistenz: 80, stoerungen: 3, zyklen: 4 });
+    expect(schlafAus(schlaf(2, '2026-10-07T05:00:00Z', { bedarf: { basis: 0.5, nap: -2 } }))!.bedarfMs).toBe(0);
+    expect(schlafAus(schlaf(3, '2026-10-07T05:00:00Z'))!.bedarfMs).toBeUndefined(); // ohne `sleep_needed` keine Angabe
+    expect(tageswerte(spiegel({ s: [schlaf(1, '2026-10-07T05:00:00Z', { bedarf: { basis: 7.5, schuld: 0.5, last: 0.25, nap: -0.25 } })] }))['2026-10-07'].schlafBedarf).toBe(8);
+  });
+  it('Recovery: Kalibrierung wird gemerkt; nicht bewertete Recovery trägt keine Werte', () => {
+    expect(recoveryAus({ ...erholung(1, '2026-10-07T05:30:00Z', 70), score: { ...erholung(1, '2026-10-07T05:30:00Z', 70).score, user_calibrating: true } })?.kal).toBe(true);
+    expect(recoveryAus(erholung(1, '2026-10-07T05:30:00Z', 70))?.kal).toBeUndefined();
+    expect(recoveryAus(erholung(2, '2026-10-07T05:30:00Z', 70, { state: 'PENDING_SCORE' }))).not.toHaveProperty('spo2');
+  });
+  it('Schritte stehen oben am Zyklus — auch im laufenden (noch nicht bewerteten) Zyklus; nie bei UNSCORABLE; Strain/kcal nur bewertet', () => {
+    expect(zyklusAus(zyklus(5, '2026-10-07T05:00:00Z', 8.1, { schritte: 8234 }))?.schritte).toBe(8234);
+    const offen = zyklusAus(zyklus(6, '2026-10-08T05:00:00Z', 3, { schritte: 1200, state: 'PENDING_SCORE' }))!;
+    expect(offen).toMatchObject({ schritte: 1200, state: 'PENDING_SCORE' });
+    expect(offen.strain).toBeUndefined();
+    expect(zyklusAus(zyklus(7, '2026-10-09T05:00:00Z', 3, { schritte: 500, state: 'UNSCORABLE' }))?.schritte).toBeUndefined();
+    expect(tageswerte(spiegel({ z: [zyklus(6, '2026-10-08T05:00:00Z', 3, { schritte: 1200, state: 'PENDING_SCORE' })] }))['2026-10-08']).toEqual({ schritte: 1200 });
+  });
+  it('Zyklus-Tag: Start ab 18 Uhr Ortszeit zählt zum Folgetag, sonst der Starttag (Strain von heute steht bei heute)', () => {
+    expect(zyklusTag({ start: '2026-10-08T21:30:00Z', tz: '+02:00' })).toBe('2026-10-09'); // 23:30 Ortszeit → nächster Tag
+    expect(zyklusTag({ start: '2026-10-08T16:00:00Z', tz: '+02:00' })).toBe('2026-10-09'); // 18:00 Ortszeit → nächster Tag
+    expect(zyklusTag({ start: '2026-10-08T15:59:00Z', tz: '+02:00' })).toBe('2026-10-08'); // 17:59 → derselbe Tag
+    expect(zyklusTag({ start: '2026-10-09T05:10:00Z', tz: '+02:00' })).toBe('2026-10-09'); // Start am Morgen → derselbe Tag
+    expect(zyklusTag({ start: '2026-10-08T22:30:00Z', tz: '+02:00' })).toBe('2026-10-09'); // kurz nach Mitternacht → derselbe (Orts-)Tag
+    expect(zyklusTag({ start: '2026-10-09T03:00:00Z', tz: '-05:00' })).toBe('2026-10-09'); // 22:00 Ortszeit am 08.10. → 09.10.
+    expect(zyklusTag({ start: '2026-10-08T17:00:00Z' })).toBe('2026-10-09'); // ohne Angabe: Berliner Zeit (19:00) → nächster Tag
+  });
+  it('Workout: Höhenmeter, Anteil aufgezeichnet, Minuten je Zone (sechs Werte); leeres zone_durations = keine Angabe', () => {
+    const w = workoutAus(training(20, '2026-10-07T16:00:00Z', 60, 'Functional Fitness', { zonen: [5, 10, 20, 15, 8, 2] }))!;
+    expect(w).toMatchObject({ hoeheM: 10, erfasst: 100, zonenMs: [5, 10, 20, 15, 8, 2].map(m => m * 60_000) });
+    expect(zonenAus({})).toBeUndefined();
+    expect(workoutAus(training(21, '2026-10-07T16:00:00Z', 60, 'yoga'))!.zonenMs).toBeUndefined();
+  });
+  it('Lauf und Training tragen die Messwerte (Strain, kcal, Puls, Zonen, Höhe) — übersteht die Säuberung, zweiter Lauf ändert nichts', () => {
+    const ws = Object.values(spiegel({ w: [training(30, '2026-10-06T16:00:00Z', 50, 'running', { meter: 10_020, zonen: [1, 4, 25, 15, 5, 0] }), training(31, '2026-10-07T07:00:00Z', 60, 'Functional Fitness', { zonen: [0, 5, 20, 20, 10, 5] })] }).workouts);
+    const r = sportAnwenden(leererStand(), ws, '2026-07-01');
+    expect(r.stand.laeufe[0]).toMatchObject({ strain: 11.2, kcal: 500, pulsSchnitt: 140, pulsMax: 172, zonenMin: [1, 4, 25, 15, 5, 0], hoeheM: 10 });
+    expect(r.stand.training?.[0]).toMatchObject({ zonenMin: [0, 5, 20, 20, 10, 5], hoeheM: 10 });
+    const gesaeubert = saeubere(JSON.parse(JSON.stringify(r.stand)));
+    expect(gesaeubert).toEqual(r.stand);
+    // Nach der Säuberung (andere Reihenfolge der Schlüssel) zählt nichts als geändert (vorher: jedes Training jedes Mal).
+    const b = sportAnwenden(gesaeubert, ws, '2026-07-01');
+    expect(b.neu + b.geaendert + b.entfernt).toBe(0);
+  });
+  it('Lauf von WHOOP nachbewertet: Messwerte ziehen nach, Gefühl und Notiz der Person bleiben', () => {
+    const roh = (strain: number) => Object.values(spiegel({ w: [training(30, '2026-10-06T16:00:00Z', 50, 'running', { meter: 10_020, strain })] }).workouts);
+    const a = sportAnwenden(leererStand(), roh(11.2), '2026-07-01').stand;
+    a.laeufe[0] = { ...a.laeufe[0], gefuehl: 5, notiz: 'flog' };
+    const b = sportAnwenden(a, roh(12.9), '2026-07-01');
+    expect(b.geaendert).toBe(1);
+    expect(b.stand.laeufe[0]).toMatchObject({ strain: 12.9, gefuehl: 5, notiz: 'flog' });
+  });
+  it('neue Felder in den Vitalwerten: WHOOP füllt sie (Herkunft whoop); ein Wert ohne Herkunft bleibt — Handwert gewinnt je Feld', () => {
+    const werte = { '2026-10-07': { strain: 12.4, kcal: 2151, spo2: 96.2, schlafBedarf: 8 } };
+    const a = vitalsAnwenden({ '2026-10-07': { strain: 9, rec: 70, quellen: { rec: 'hand' } } }, werte, '2026-07-01');
+    expect(a.log['2026-10-07']).toEqual({ strain: 9, rec: 70, kcal: 2151, spo2: 96.2, schlafBedarf: 8, quellen: { rec: 'hand', kcal: 'whoop', spo2: 'whoop', schlafBedarf: 'whoop' } });
+    // Bei WHOOP gelöscht → nur die WHOOP-Felder fallen weg.
+    expect(vitalsAnwenden(a.log, {}, '2026-07-01').log['2026-10-07']).toEqual({ strain: 9, rec: 70, quellen: { rec: 'hand' } });
   });
 });
 
