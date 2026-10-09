@@ -247,7 +247,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
     const sperre = zusatz?.sperre(d) ?? (einstellung.notAus ? { grund: 'not-aus' as const, text: 'Not-Aus ist gesetzt — die Agenten halten an.' } : eh.aktiv === false ? { grund: 'aus' as const, text: `${d.name} ist ausgeschaltet.` } : null);
     const gesperrt: HeadKarte['gesperrt'] = sperre ?? (businessFrei && d.bereich === 'business' ? { grund: 'business-frei', text: 'Gerade Business-frei — im Hintergrund ruht der Bereich.' } : undefined);
     const foto = zusatz ? await zusatz.foto(d, eh.foto) : null;
-    const einstellungSicht = zusatz?.sicht(d, eh);
+    const einstellungSicht = zusatz ? await zusatz.sicht(d, eh) : undefined;
     heads.push({
       id: d.id, name: d.name, kurz: d.kurz, auftrag: d.auftrag, bereich: d.bereich, ebene: d.ebene, farbe: d.farbe, ...(d.hinweis ? { hinweis: d.hinweis } : {}),
       aktiv: eh.aktiv !== false, ...(gesperrt ? { gesperrt } : {}), kennzahlen,
@@ -334,13 +334,16 @@ async function einstellungZusatz(person: string, sicht: KontoSicht, haushalt: st
   for (const h of privatHeads) kostenPrivat.set(h.id, leistung.fadenZahlen(imMonat, h.id, von, bis).kostenEuroCent);
   const kostenVon = (d: HeadDef) => (d.ebene === 'person' ? kostenPrivat.get(d.id) ?? 0 : kostenHaus[d.id] ?? 0);
   let betrachter: Awaited<ReturnType<typeof import('@/lib/medien/server').betrachterFuer>> | undefined;
+  // 09.10.: geht der eigene Auftrag an den Head gerade an das Modell? Dieselbe Stelle wie der Lauf (lib/agenten/auftrag-server.ts).
+  const [{ auftragLageFuer }, schalter] = await Promise.all([import('./auftrag-server'), kiE.kiSchalterFuer(person)]);
   return {
     sperre: (d: HeadDef) => ein.headSperre(einstellung, d, person, kostenVon(d)),
-    sicht: (d: HeadDef, eh: HeadEinstellung) => {
+    sicht: async (d: HeadDef, eh: HeadEinstellung) => {
       const lage = leistung.autonomieLage(d, eh as Parameters<typeof leistung.autonomieLage>[1], leistung.annahmeAus(0, 0));
+      const auftrag = await auftragLageFuer(d, sicht, { schalter }).catch(() => ({ an: false, kategorie: 'allgemein' as const, grund: 'Gerade nicht prüfbar — der Auftrag bleibt solange draußen.' }));
       return ein.einstellungSicht(d, eh, {
         boden: lage.boden, wirksameAutonomie: lage.stufe, modelle, kostenCent: kostenVon(d),
-        aendern: ein.einstellungDarf(sicht, d, true), foto: null,
+        aendern: ein.einstellungDarf(sicht, d, true), foto: null, auftrag,
       });
     },
     foto: async (d: HeadDef, id: string | undefined): Promise<string | null> => {

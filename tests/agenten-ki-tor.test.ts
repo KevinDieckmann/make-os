@@ -32,7 +32,8 @@ import { kontenSaeen, modellFake, rufe, sitzung, text, type ModellFake } from '.
 type H = (r: Request) => Promise<Response>;
 let faden: { POST: H };
 let m: ModellFake;
-const AGENT_W = new Set<string>([...HEAD_WERKZEUGE, ...MITARBEITER_WERKZEUGE, ...MITARBEITER_ZUSATZ, ...HEAD_ZUSATZ]);
+// 09.10.: `gesundheit_unterlagen` — Agenten-Werkzeug nur des Gesundheits-Heads (eigene Unterlagen der Person, nur mit (a)+(b)).
+const AGENT_W = new Set<string>([...HEAD_WERKZEUGE, ...MITARBEITER_WERKZEUGE, ...MITARBEITER_ZUSATZ, ...HEAD_ZUSATZ, 'gesundheit_unterlagen']);
 
 beforeAll(async () => {
   await kontenSaeen();

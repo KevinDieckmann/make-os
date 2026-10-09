@@ -22,6 +22,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
 import { WhoopKarte } from './gesundheit/WhoopKarte';
+import { UnterlagenKarte } from './gesundheit/Unterlagen';
 import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Hinweis, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { useKoerper, KoerperLeer, ProfilKarte, BeschwerdenKarte, HebelKarte, ZusammenhaengeKarte, AnzeigeKarte, ModuleKarte } from './gesundheit/Koerper';
@@ -266,6 +267,17 @@ export function GesundheitView() {
           <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} /></Kachel>
           {/* WHOOP je Person (08.10.): nur die EIGENE Verbindung — in der Ansicht einer anderen Person keine Karte. */}
           {eigene && <Kachel id="whoop" titel="WHOOP" breite={3}><WhoopKarte i={2} /></Kachel>}
+          {/* 09.10.: eigene Unterlagen + Weg zum Auftrag an den Gesundheits-Agenten — nur in der EIGENEN Ansicht (Art. 9, nie für andere). */}
+          {eigene && (
+            <Kachel id="unterlagen" titel="Unterlagen & Gesundheits-Agent" breite={3}>
+              <Karte>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <UnterlagenKarte />
+                  <Link href={WEG.agenten({ h: 'gesundheit', r: 'auftrag' })} style={{ fontSize: TYP.bedien, color: C.inkDim }}>Deinen Auftrag an den Gesundheits-Agenten schreiben ›</Link>
+                </div>
+              </Karte>
+            </Kachel>
+          )}
           <Kachel id="sieben-tage" titel="Sieben Tage Routinen" breite={3}>
           <Karte i={3}>
             <Ueberschrift rechts={stand?.routinen.quote7 != null ? `Ø ${Math.round(stand.routinen.quote7 * 100)} %` : 'Ø — %'}>Sieben Tage Routinen</Ueberschrift>
