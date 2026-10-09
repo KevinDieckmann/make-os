@@ -100,7 +100,7 @@ export function Privat() {
         <Kachel label={`Verfügbar ${m0Label}`} wert={<><Geld v={p1?.verfuegbar} /> €</>} unter={<>Luft <Geld v={p1?.luft} /> € · Ø IST Einnahmen <Geld v={istSchnitt(h.einnahmen, 3, L)} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <Karte i={1}>
-        <Blatt zeilen={zeilen} titel={`Privat · ${sz.name}`} hist extra={extra} werkzeuge={<Etikett einheit="privat" text="Kevin & Malin" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} onDrill={(i, z) => geh('buchungen', { monat: i, zeile: z })} />
+        <Blatt zeilen={zeilen} titel={`Privat · ${sz.name}`} hist extra={extra} werkzeuge={<Etikett einheit="privat" text="Haushalt" />} onZeile={zd.oeffne} onNeueZeile={zd.neu} onDrill={(i, z) => geh('buchungen', { monat: i, zeile: z })} />
         <Hinweis>Lila Spalten = IST aus den Buchungen (Klick öffnet die Buchungen dahinter). Der laufende Monat bleibt bei Durchschnitten draußen. Brutto kommt aus der {UG_NAME}; Netto ist eine Näherung aus der Tabelle in den Annahmen.</Hinweis>
       </Karte>
       {zd.dialog}
@@ -382,12 +382,12 @@ export function Szenarien() {
                   <tr key={i}><td style={TD}>Retainer {i + 1}</td><td style={TD}>{num(`retainer/${i}/betrag`, r.betrag, `Retainer ${i + 1} Betrag`)}</td><td style={TD}>{mon(`retainer/${i}/start`, r.start, `Retainer ${i + 1} ab`)}</td><td style={TD}>{num(`retainer/${i}/laufzeit`, r.laufzeit, `Retainer ${i + 1} Monate`, 64)}</td><td style={TD}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: p(`retainer/${i}`), alt: r }], `Szenario ${sz.name} · Retainer ${i + 1} entfernt`)} titel="Retainer entfernen">−</KnopfKlein></td></tr>
                 ))}
                 <tr><td colSpan={5} style={TD}><KnopfKlein onClick={() => void aendere([{ pfad: p('retainer/-'), neu: { betrag: 0, start: 2, laufzeit: 12 } }], `Szenario ${sz.name} · Retainer hinzugefügt`)}>+ Retainer</KnopfKlein></td></tr>
-                <tr><td style={TD}>ASTARNA Kunden/Monat</td><td style={TD}>{num('astarna/betrag', sz.astarna.betrag, 'ASTARNA Kunden')}</td><td style={TD}>{mon('astarna/ab', sz.astarna.ab, 'ASTARNA ab')}</td><td colSpan={2} style={TDleise}>× <Geld v={a.astarnaProvision} farbe={C.inkLeise} /> €</td></tr>
+                <tr><td style={TD}>Provisionskunden/Monat</td><td style={TD}>{num('astarna/betrag', sz.astarna.betrag, 'Provisionskunden')}</td><td style={TD}>{mon('astarna/ab', sz.astarna.ab, 'Provisionskunden ab')}</td><td colSpan={2} style={TDleise}>× <Geld v={a.astarnaProvision} farbe={C.inkLeise} /> €</td></tr>
                 <tr><td style={TD}>Events/Monat</td><td style={TD}>{num('events/betrag', sz.events.betrag, 'Events')}</td><td style={TD}>{mon('events/ab', sz.events.ab, 'Events ab')}</td><td colSpan={2} style={TD}></td></tr>
                 <tr><td style={TD}>Gehaltserhöhung je Person</td><td style={TD}>{num('erhoehung/betrag', sz.erhoehung.betrag, 'Gehaltserhöhung')}</td><td style={TD}>{mon('erhoehung/ab', sz.erhoehung.ab, 'Gehaltserhöhung ab')}</td><td colSpan={2} style={TD}></td></tr>
                 <tr><td style={TD}>Unterstützung brutto</td><td style={TD}>{num('unterstuetzung/betrag', sz.unterstuetzung.betrag, 'Unterstützung')}</td><td style={TD}>{mon('unterstuetzung/ab', sz.unterstuetzung.ab, 'Unterstützung ab')}</td><td colSpan={2} style={TD}></td></tr>
-                <tr><td style={TD}>KEMARIS Tranche 1</td><td style={TD}>{num('exit1/betrag', sz.exit1.betrag, 'Tranche 1')}</td><td style={TD}>{mon('exit1/monat', sz.exit1.monat, 'Tranche 1 Monat')}</td><td colSpan={2} style={TD}><Schalter an={sz.bjoernAbloesen} onChange={v => setze('bjoernAbloesen', sz.bjoernAbloesen, v, 'Partnerdarlehen ablösen')}>Partnerdarlehen ablösen</Schalter></td></tr>
-                <tr><td style={TD}>KEMARIS Tranche 2</td><td style={TD}>{num('exit2/betrag', sz.exit2.betrag, 'Tranche 2')}</td><td style={TD}>{mon('exit2/monat', sz.exit2.monat, 'Tranche 2 Monat')}</td><td colSpan={2} style={TD}></td></tr>
+                <tr><td style={TD}>Ausstieg Tranche 1</td><td style={TD}>{num('exit1/betrag', sz.exit1.betrag, 'Tranche 1')}</td><td style={TD}>{mon('exit1/monat', sz.exit1.monat, 'Tranche 1 Monat')}</td><td colSpan={2} style={TD}><Schalter an={sz.bjoernAbloesen} onChange={v => setze('bjoernAbloesen', sz.bjoernAbloesen, v, 'Partnerdarlehen ablösen')}>Partnerdarlehen ablösen</Schalter></td></tr>
+                <tr><td style={TD}>Ausstieg Tranche 2</td><td style={TD}>{num('exit2/betrag', sz.exit2.betrag, 'Tranche 2')}</td><td style={TD}>{mon('exit2/monat', sz.exit2.monat, 'Tranche 2 Monat')}</td><td colSpan={2} style={TD}></td></tr>
               </tbody>
             </Tabelle>
           </Karte>

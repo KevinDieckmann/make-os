@@ -177,7 +177,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
 
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>
         Übernommen aus dem KSI: die Struktur (50/30/20) und Standard-Kennzahlen mit ihren Schwellen — gerechnet nur mit euren eigenen Daten,
-        ohne Code oder Daten aus KEMARIS/POINCAP. Punkte: an der roten Schwelle 20, an der grünen 100, dazwischen linear; eine Säule zählt ab 40 % gemessener Kennzahlen.
+        ohne Code oder Daten aus fremden Systemen. Punkte: an der roten Schwelle 20, an der grünen 100, dazwischen linear; eine Säule zählt ab 40 % gemessener Kennzahlen.
         Der Wachstums-Score nimmt diesen Index als Business-Säule, die Finanzielle Gesundheit als Business-Hälfte der Finanzen.
       </div>
 

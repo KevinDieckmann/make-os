@@ -191,7 +191,7 @@ describe('Selbstprüfung: Information bei Veranstaltungs-Kontakten und VVT', () 
     for (const v of neu.filter(x => VV_NETZWERKEN_IDS.includes(x.id))) {
       for (const f of ['zweck', 'personen', 'daten', 'rechtsgrundlage', 'empfaenger', 'drittland', 'loeschfrist', 'toms', 'verantwortlich'] as const) expect(v[f], `${v.id}.${f}`).toBeTruthy();
     }
-    expect(neu.find(v => v.id === 'vv-netzwerken')!.empfaenger).toMatch(/Kevin, Malin.*Hetzner.*Microsoft 365.*Apple iCloud.*Anthropic/);
+    expect(neu.find(v => v.id === 'vv-netzwerken')!.empfaenger).toMatch(/Konten des Haushalts.*Hetzner.*Microsoft 365.*Apple iCloud.*Anthropic/);
     expect(neu.find(v => v.id === 'vv-besuche-kunde')!.rechtsgrundlage).toMatch(/lit\. f/);
   });
   it('fehlt eines davon im Verzeichnis, steht die Selbstprüfung auf „teilweise“ und nennt es', () => {

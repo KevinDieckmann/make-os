@@ -16,18 +16,28 @@ interface Entry { text?: string; mood?: number; energy?: number; stress?: number
 type Journal = Record<string, Entry>;
 const ymd = (d: Date) => localDay(d);
 
-const FLAGS: { id: string; label: string }[] = [
-  { id: 'antiinflamm', label: 'Anti-entzündlich gegessen' },
-  { id: 'bewegt', label: 'Bewegt / Reha gemacht' },
+// Allgemeine Merkmale (09.10., Paket „neutral-rest“: keine Beschwerde oder Substanz einer bestimmten Person im Code). Der Schalter
+// „Sauber geblieben“ erscheint nur, wenn die Person den Zähler in ihrem Körper-Profil eingeschaltet hat (eigene Einstellung).
+const SAUBER = 'sauber';
+const FLAGS: { id: string; label: string; nurMitZaehler?: true }[] = [
+  { id: 'antiinflamm', label: 'Gesund gegessen' },
+  { id: 'bewegt', label: 'Bewegt' },
   { id: 'gutgeschlafen', label: 'Gut geschlafen' },
-  { id: 'keincannabis', label: 'Kein Cannabis' },
+  { id: SAUBER, label: 'Sauber geblieben', nurMitZaehler: true },
   { id: 'keinalkohol', label: 'Kein Alkohol' },
 ];
+/** Beschriftung eines gespeicherten Merkmals — ältere „kein…“-Merkmale (Verzicht) ohne eigenen Eintrag als „Verzicht gehalten“. */
+const flagLabel = (f: string) => FLAGS.find(x => x.id === f)?.label ?? (/^kein[a-z]+$/.test(f) ? 'Verzicht gehalten' : f);
 
 export function JournalView() {
   const today = ymd(new Date());
   const [journal, setJournal] = useState<Journal>({});
   const [saved, setSaved] = useState(true);
+  // Zähler „Sauber geblieben“ nur mit eigener Einstellung im Körper-Profil (nie für andere sichtbar, /api/gesundheit/koerper kennt nur die eigene Person).
+  const [mitZaehler, setMitZaehler] = useState(false);
+  useEffect(() => {
+    fetch('/api/gesundheit/koerper', { cache: 'no-store' }).then(r => r.json()).then(d => setMitZaehler(d?.ok === true && d.koerper?.sauberZaehler === true)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/state/journal').then(r => r.json()).then((d: { journal: Journal }) => setJournal(d.journal ?? {})).catch(() => {});
@@ -51,9 +61,9 @@ export function JournalView() {
     offen.current = { ...offen.current, ...p };
     spaeter(offen.current);
   }
-  // „Kein Cannabis“ ist der Streak, „Bewegt / Reha“ die Reha-Routine — beides landet dort, wo es zählt.
+  // „Sauber geblieben“ ist der Zähler (Streak), „Bewegt“ die Bewegungs-Routine — beides landet dort, wo es zählt.
   const nebenwirkung = (id: string, an: boolean) => {
-    if (id === 'keincannabis' && an) fetch('/api/state/streak', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eintrag: { sauber: true } }) }).catch(() => {});
+    if (id === SAUBER && an) fetch('/api/state/streak', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eintrag: { sauber: true } }) }).catch(() => {});
     if (id === 'bewegt' && an) fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => {
       const reha = (d.routinen ?? []).find((r: { id: string; label: string; aktiv: boolean }) => r.aktiv && /reha|mobil|beweg/i.test(`${r.id} ${r.label}`));
       if (!reha) return;
@@ -116,7 +126,7 @@ export function JournalView() {
           <div>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>Heute gelungen</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {FLAGS.map(f => { const on = (entry.flags ?? []).includes(f.id); return <Wahl key={f.id} klein an={on} onClick={() => toggleFlag(f.id)}>{on ? '✓ ' : ''}{f.label}</Wahl>; })}
+              {FLAGS.filter(f => !f.nurMitZaehler || mitZaehler).map(f => { const on = (entry.flags ?? []).includes(f.id); return <Wahl key={f.id} klein an={on} onClick={() => toggleFlag(f.id)}>{on ? '✓ ' : ''}{f.label}</Wahl>; })}
             </div>
           </div>
           <div>
@@ -155,9 +165,9 @@ export function JournalView() {
                 {typeof e.mood === 'number' && <Chip farbe={LEUCHT.gut}>Stimmung {e.mood}</Chip>}
                 {typeof e.energy === 'number' && <Chip farbe={LEUCHT.gut}>Energie {e.energy}</Chip>}
                 {typeof e.stress === 'number' && <Chip farbe={LEUCHT.kritisch}>Stress {e.stress}</Chip>}
-                {(e.flags ?? []).map(f => <Chip key={f} farbe={C.inkDim}>{FLAGS.find(x => x.id === f)?.label ?? f}</Chip>)}
-                {e.haut === 'schub' && <Chip farbe={LEUCHT.kritisch}>Haut-Schub</Chip>}
-                {e.ruecken === 'schmerz' && <Chip farbe={LEUCHT.kritisch}>Rücken-Schmerz</Chip>}
+                {(e.flags ?? []).map(f => <Chip key={f} farbe={C.inkDim}>{flagLabel(f)}</Chip>)}
+                {e.haut === 'schub' && <Chip farbe={LEUCHT.kritisch}>Schub</Chip>}
+                {e.ruecken === 'schmerz' && <Chip farbe={LEUCHT.kritisch}>Schmerz</Chip>}
               </div>
               {e.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
               {(e.gut || e.dankbar || e.hart || e.tagesnote) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5, display: 'grid', gap: 2 }}>{e.gut && <span>Gut: {e.gut}</span>}{e.dankbar && <span>Dankbar: {e.dankbar}</span>}{e.hart && <span>Hart zu mir: {e.hart}</span>}{e.tagesnote && <span>Tagesnotiz: {e.tagesnote}</span>}</div>}

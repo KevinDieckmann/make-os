@@ -15,6 +15,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Grundlage, Kennzahlen, MonatsZeile, Position } from '@/lib/make-one/grundlage';
 import { MONAT_KURZ } from '@/lib/make-one/grundlage';
+import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, LEUCHT } from './ui';
 
 /** Cent-genau — hier wird ein Kassenbuch gelesen, nicht überschlagen. */
@@ -92,8 +93,8 @@ export function GrundlageView() {
   const stand = d.stand ? `${d.stand.slice(8)}.${d.stand.slice(5, 7)}.${d.stand.slice(0, 4)}` : '—';
 
   const luecken = [
-    g.konfiguration.kvPvKevinMonat === 0 ? 'Kevins KV + PV als Selbstständiger steht auf 0 €/Monat — jede Liquiditätsrechnung ist damit zu optimistisch.' : '',
-    g.konfiguration.malinBruttoMonat === 0 ? 'Malins Bruttogehalt steht auf 0 €/Monat — die Anstellung ist im Dashboard noch nicht hinterlegt.' : '',
+    g.konfiguration.kvPvKevinMonat === 0 ? 'KV + PV der Selbstständigkeit steht auf 0 €/Monat — jede Liquiditätsrechnung ist damit zu optimistisch.' : '',
+    g.konfiguration.malinBruttoMonat === 0 ? 'Das Bruttogehalt der Anstellung steht auf 0 €/Monat — die Anstellung ist im Altsystem noch nicht hinterlegt.' : '',
     g.konfiguration.fixkostenBetriebMonat === 0 && g.fixkosten.length <= 1 ? 'Sonstige Betriebs-Fixkosten stehen auf 0 € — außer dem Office Club ist nichts erfasst.' : '',
     g.offen.length ? `${g.offen.length} Position${g.offen.length === 1 ? '' : 'en'} ohne Typ — unten aufgeführt, muss zugeordnet werden.` : '',
   ].filter(Boolean);
@@ -110,7 +111,7 @@ export function GrundlageView() {
           <Zahl wert={eurC(k.entnahmen)} farbe={C.inkDim} label="Entnahmen · privat ausgezahlt" />
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginTop: 16 }}>
-          Alle Zahlen auf dieser Seite stammen aus <strong style={{ color: C.ink }}>Malins Finanz-Dashboard</strong> — Stand <strong style={{ color: C.ink }}>{stand}</strong>.
+          Alle Zahlen auf dieser Seite stammen aus <strong style={{ color: C.ink }}>dem früheren Finanz-Cockpit (Altsystem)</strong> — Stand <strong style={{ color: C.ink }}>{stand}</strong>.
           Gepflegt wird dort, gerechnet wird hier. MAKE OS erfindet nichts dazu.
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 5 }}>
@@ -179,7 +180,7 @@ export function GrundlageView() {
 
       {!!g.ugRechnungen.length && (
         <Karte i={8}>
-          <Ueberschrift rechts={`${g.ugRechnungen.length} Belege`}>KD Ventures (Gründungsname KD Management UG) — Eingangsrechnungen</Ueberschrift>
+          <Ueberschrift rechts={`${g.ugRechnungen.length} Belege`}>{KERN_EINHEITEN.find(e => e.id === 'kdv')?.label ?? 'kdv'} — Eingangsrechnungen</Ueberschrift>
           <Liste>
             {g.ugRechnungen.map(r => (
               <Zeile key={r.id} links={<span style={tag}>{datum(r.datum)}</span>} titel={r.lieferant} unter={r.zweck}
@@ -203,10 +204,10 @@ export function GrundlageView() {
         <Ueberschrift>Konfiguration aus dem Dashboard</Ueberschrift>
         <Liste>
           {[
-            ['Malins Bruttogehalt', `${eurC(g.konfiguration.malinBruttoMonat)} / Monat`],
+            ['Bruttogehalt (Anstellung)', `${eurC(g.konfiguration.malinBruttoMonat)} / Monat`],
             ['AG-Sozialabgaben darauf', `${g.konfiguration.agSatzProzent} %`],
             ['Sonstige Fixkosten Betrieb', `${eurC(g.konfiguration.fixkostenBetriebMonat)} / Monat`],
-            ['Kevins KV + PV (selbstständig)', `${eurC(g.konfiguration.kvPvKevinMonat)} / Monat`],
+            ['KV + PV (Selbstständigkeit)', `${eurC(g.konfiguration.kvPvKevinMonat)} / Monat`],
             ['Gewerbesteuer-Hebesatz Berlin', `${g.konfiguration.gewerbesteuerHebesatz} %`],
           ].map(([a, b]) => (
             <Zeile key={a} titel={a} rechts={<span style={{ ...geld, fontWeight: 600, fontSize: 14, color: b.startsWith('0,00') ? LEUCHT.achtung : C.ink }}>{b}</span>} />
