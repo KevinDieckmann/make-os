@@ -6,10 +6,11 @@
 
 import type {
   AgentRef, Eisenhower, FadenKurz, HeadKarte, KiKategorie, Lauf, LaufStatus, Naechstes, Rhythmus, SkillAusloeser,
-  SkillEingabeFeld, SkillEreignis, SkillErfolg, SkillKurz, SkillTest, SkillBeispiel, ModelTier, UeberblickZeile,
+  SkillEingabeFeld, SkillErfolg, SkillKurz, SkillTest, SkillBeispiel, ModelTier, UeberblickZeile,
 } from '@/lib/agenten/typen';
 import { EISENHOWER_REIHE, GRENZEN, type HeadDef } from '@/lib/agenten/typen';
 import { inEuroCent, USD_EUR_VORGABE } from '@/lib/ki/kosten';
+import { EREIGNIS_NAME } from '@/lib/ereignisse/arten';
 
 /** Zeitzone aller Anzeigen — wie überall in der App (Berliner Wandzeit). */
 const ZONE = 'Europe/Berlin';
@@ -278,10 +279,8 @@ export function delegationTeile(text: string): Delegation | null {
 // ── Skills: Auslöser in Klartext, nächster Lauf, Prüfung ────────────────────────────────────────────────────────────────
 
 export const RHYTHMUS_NAME: Readonly<Record<Rhythmus, string>> = { taeglich: 'täglich', werktags: 'werktags', woechentlich: 'wöchentlich', monatlich: 'monatlich' };
-export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
-  'neue-mail': 'neue Mail', 'neuer-lead': 'neuer Lead', zahlungseingang: 'Zahlungseingang', 'neue-aufgabe': 'neue Aufgabe',
-  'termin-vorbei': 'Termin vorbei', 'frist-naht': 'Frist naht', 'neues-medium': 'neues Bild oder Video',
-};
+/** Namen der Ereignis-Auslöser — EINE Liste (lib/ereignisse/arten.ts, 09.10. E1). */
+export { EREIGNIS_NAME, EREIGNISSE_ANZEIGE, istAngebunden, nochNichtAngebunden } from '@/lib/ereignisse/arten';
 const TAG_LANG = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 
 /** Der Auslöser in einem Satz („werktags 08:00“, „wöchentlich Fr 15:00“, „bei neuer Mail · nur Kunden“). */
@@ -515,5 +514,7 @@ export const FADEN_STATUS_NAME: Readonly<Record<FadenKurz['status'], string>> = 
 export const freigabenBeiHeads = (gesamt: number | undefined, stapelOffen: number | undefined): number =>
   gesamt === undefined || stapelOffen === undefined ? 0 : Math.max(0, gesamt - stapelOffen);
 
-/** Ereignis-Auslöser (neue Mail, neuer Lead, Zahlungseingang) sind noch an keine Quelle angebunden (Durchstich 09.10.) — der Satz im Skill-Editor. */
-export const EREIGNIS_NOCH_NICHT = 'Ereignisse sind noch nicht angebunden — so ein Skill startet bis dahin nicht von selbst. Er läuft, wenn ein Head ihn im Chat lädt, oder mit einem Zeitplan.';
+/**
+ * Seit 09.10. (E1 Ereignisstelle) sind die Ereignis-Auslöser angebunden (lib/ereignisse) — der Skill-Editor sagt nur noch für eine NICHT
+ * angebundene Art, dass sie nicht von selbst startet (`nochNichtAngebunden`). Der frühere Satz „Ereignisse sind noch nicht angebunden“ entfällt.
+ */

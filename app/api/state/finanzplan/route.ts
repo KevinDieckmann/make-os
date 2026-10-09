@@ -210,6 +210,8 @@ async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unkno
   if (!e) return NextResponse.json({ ok: false, error: 'Nicht gespeichert.' }, { status: 500 });
   const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
   if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}), ...stand2, stand: stand2 }, { status: e.status });
+  // Ereignis (09.10., E1): Zahlungseingang → Agenten (nur Kennungen, nie Beträge) — nach dem Speichern, wirft nie.
+  if (!e.schonBezahlt) await import('@/lib/ereignisse/quellen').then(q => q.rechnungBezahltEreignis(e.rechnung)).catch(() => 0);
   return NextResponse.json({ ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null, ...stand2, stand: stand2 });
 }
 

@@ -56,7 +56,7 @@ interface HeuteAntwort {
   /** Wessen Liste es ist — und wer fragt. Bei nurLesen ist es die Liste der anderen Person. */
   person: string; ich: string; nurLesen: boolean; verantwortlich: string;
   kategorien: { id: string; label: string; warum: string }[]; karten: HeuteKarte[];
-  ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number };
+  ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number; geschrieben?: number };
   sitzungen: { id: string; datum: string; karten: { ergebnis?: string }[]; gelernt?: string }[];
   team: TeamTag[];
 }
@@ -194,6 +194,8 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
             </div>
           )}
           {verantwortet && d.team.length > 1 && <TeamZeile team={d.team} />}
+          {/* 09.10. (E1 Ereignisse): wer gerade geschrieben hat, steht nicht zum Nachfassen da — die Antwort gehört in die Inbox. */}
+          {!lesen && !!d.ausgefiltert.geschrieben && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.ausgefiltert.geschrieben} {d.ausgefiltert.geschrieben === 1 ? 'Person hat' : 'Personen haben'} dir gerade geschrieben — erst in der Inbox antworten, nicht nachfassen.</div>}
           {!!d.ausgefiltert.ohnePerson && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.ausgefiltert.ohnePerson} {d.ausgefiltert.ohnePerson === 1 ? 'fälliger Deal bzw. fälliges Mandat hat' : 'fällige Deals bzw. Mandate haben'} keine Person — auch nicht über die Firma. Unter Deals eine Person zuordnen.</div>}
           {(d.ausgefiltert.ohneKanal > 0 || d.ausgefiltert.sperre > 0) && (
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nicht auf der Liste: {d.ausgefiltert.ohneKanal} ohne zulässigen Kanal{d.ausgefiltert.sperre ? ` · ${d.ausgefiltert.sperre} mit Werbesperre` : ''}{d.ausgefiltert.kuerzlich ? ` · ${d.ausgefiltert.kuerzlich} kürzlich gesprochen` : ''}. Grundlage klären in der Kartei.</div>

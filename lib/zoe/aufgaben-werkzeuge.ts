@@ -85,12 +85,15 @@ export async function anZoeGeben(id: string, person: string, opt: { hinweis?: st
   const hinweis = (opt.hinweis ?? '').replace(/\u0000/g, '').trim();
   if (hinweis.length > ZOE_VORSCHLAG_GRENZEN.hinweis) return nein(413, `Abgelehnt: der Hinweis an ZOE ist länger als ${ZOE_VORSCHLAG_GRENZEN.hinweis} Zeichen.`);
   const jetzt = new Date().toISOString();
-  return aufgabeZoeAendern(id, t => {
+  const r = await aufgabeZoeAendern(id, t => {
     if (!darfAnZoe(t)) return { status: 409, fehler: t.status === 'done' ? 'Die Aufgabe ist erledigt.' : `ZOE hat die Aufgabe schon (${ZOE_STATUS_LABEL[t.zoe!.status]}).` };
     // Nach einer Ablehnung bleibt der alte Vorschlag verknüpft — ZOE liest daraus den Grund.
     const zoe: ZoeAuftrag = { status: 'offen', von: person, ...(hinweis ? { hinweis } : {}), ...(t.zoe?.status === 'abgelehnt' && t.zoe.stapelId ? { stapelId: t.zoe.stapelId } : {}) };
     return { task: { ...t, zoe, updatedAt: jetzt } };
   }, { person, stand: opt.stand, jetzt, zoe: opt.durchZoe });
+  // Ereignis (09.10., E1): „An ZOE gegeben“ stößt den ZOE-Aufgaben-Lauf SOFORT an (statt am nächsten Morgen) — dieselben Sperren wie der Takt.
+  if (r.ok) await import('@/lib/ereignisse/quellen').then(q => q.zoeGegebenEreignis(id, person, new Date(jetzt))).catch(() => 0);
+  return r;
 }
 
 /** Von ZOE zurückholen (nur die Auftraggeberin): ZOE-Feld weg; ein wartender Vorschlag gilt als abgelehnt. */

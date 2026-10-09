@@ -316,6 +316,17 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('medien-papierkorb', r.papierkorb);
   });
 
+  // 11e · Ereignisse (09.10., E1): Einträge vor der Frist „ereignisse“ (Vorgabe 30 Tage) — je Haushalt-Bestand, nur Kennungen, idempotent.
+  await schritt('ereignisse', async () => {
+    const { ereignisseFristAnwenden } = await import('@/lib/ereignisse/server');
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = /^(ereignisse--[a-z0-9-]{1,40})\.json$/.exec(d);
+      if (!m) continue;
+      const n = await ereignisseFristAnwenden(m[1], jetzt);
+      if (n) { zaehle('ereignisse', n); await protokolliere(m[1], [{ op: 'geloescht', id: 'loeschfrist', felder: ['eintraege'] }], SYSTEM); }
+    }
+  });
+
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
   await schritt('archiv-umzug', async () => {
     const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);

@@ -803,6 +803,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   let karteiAenderungen: Aenderung[] = [];
   let folgenAbsicht = null as FolgenAbsicht | null;
   let geloeschteEvents: string[] = [];
+  let fuerEreignisse: { vorher: CrmBestand; nachher: CrmBestand } | null = null;
   const person = personVon(protokollWer);
   const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => {
     // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
@@ -841,6 +842,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
     aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>);
     // Gelöschte Events (egal auf welchem Weg) merken — eine wartende Erfassung darf sie nicht wiederauferstehen lassen (M2).
     if (neu !== basis) { const da = new Set(neu.events.map(x => x.id)); geloeschteEvents = basis.events.filter(x => !da.has(x.id)).map(x => x.id); }
+    fuerEreignisse = neu !== basis ? { vorher: basis, nachher: neu } : null;
     return neu;
   }).catch(async (e: unknown) => {
     // CRM nicht geschrieben, Kartei womöglich schon: sofort ausgleichen (sonst holt es die Wiederaufnahme nach).
@@ -851,6 +853,9 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   if (geloeschteEvents.length) await eventsAlsGeloeschtMerken(geloeschteEvents);
   await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
   if (karteiAenderungen.length) await protokolliere('kontakte', karteiAenderungen, protokollWer);
+  // Ereignisse (09.10., E1): Deal neu/andere Stufe, Firmen-Lead wird SQL → Agenten (nur Kennungen) — nach dem Speichern, wirft nie.
+  const fe = fuerEreignisse as { vorher: CrmBestand; nachher: CrmBestand } | null;
+  if (fe) await import('@/lib/ereignisse/quellen').then(q => q.crmEreignisse(fe.vorher, fe.nachher)).catch(() => 0);
   return fertig;
 }
 

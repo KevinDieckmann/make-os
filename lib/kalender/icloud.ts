@@ -460,6 +460,8 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
       // Sicherung von Art/„privat“ im Neben-Bestand nachtragen (Apple kann X-MAKE-ART/CLASS verlieren) — ein Fehler hier kostet den Abgleich nicht.
       let bezuege: BezugBestand | null = null;
       try { await bezuegeAbgleichen(objekteKurz(neu), neu.at); bezuege = await ladeBezuege(); } catch { /* nächster Lauf */ }
+      // Ereignisse (09.10., E1): Termin mit CRM-Bezug vom Gegenüber abgesagt (Status alt → neu je UID) → Agenten — wirft nie.
+      await import('@/lib/ereignisse/quellen').then(q => q.terminAbsagenEreignisse(alt, neu)).catch(() => 0);
       const heute = localDay();
       const gesamt = await mitUeberlagerung(neu);
       await saveJson(CACHE, { events: termineImZeitraum(gesamt, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege)), at: neu.at, quelle: 'icloud' });

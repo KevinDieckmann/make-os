@@ -451,6 +451,25 @@ export function objektKurz(ics: string): { uid?: string; tag?: string; zusatz: I
   };
 }
 
+/**
+ * Hat das GEGENÜBER diesen Termin abgesagt? (09.10., E1 Ereignisse — lib/ereignisse/quellen.ts) Nur das Haupt-VEVENT, rein:
+ *  · STATUS:CANCELLED eines Termins, zu dem uns jemand ANDERES eingeladen hat (Organisator ≠ eigenes Konto) — sagen wir selbst ab, nein;
+ *  · oder wir laden ein und JEDER Gast hat abgesagt (PARTSTAT=DECLINED).
+ * Die eigene Antwort „abgesagt“ zählt nie (das waren wir).
+ */
+export function vomGegenueberAbgesagt(ics: string, ich: readonly string[]): { uid?: string; abgesagt: boolean } {
+  const comp = parse(ics);
+  const vs = comp?.getAllSubcomponents('vevent') ?? [];
+  const v = vs.find(x => !x.hasProperty('recurrence-id')) ?? vs[0];
+  if (!v) return { abgesagt: false };
+  const uid = v.getFirstPropertyValue('uid');
+  const g = gaesteVon(v, ich);
+  const st = String(v.getFirstPropertyValue('status') ?? '').toUpperCase();
+  const abgesagt = (st === 'CANCELLED' && !!g.organisator && !g.ichOrganisator)
+    || (!!g.ichOrganisator && !!g.teilnehmer?.length && g.teilnehmer.every(t => t.status === 'abgesagt'));
+  return { ...(typeof uid === 'string' ? { uid } : {}), abgesagt };
+}
+
 /** UID eines Objekts — ohne Auffalten (auch bei langen Serien billig). */
 export function uidVon(ics: string): string | undefined {
   return /^UID(?:;[^:\r\n]*)?:(.+)$/m.exec(ics.replace(/\r?\n[ \t]/g, ''))?.[1]?.trim();

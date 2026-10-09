@@ -200,6 +200,8 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     protokollKette: await kettenLage().catch(() => null),
     agentenBestaende: await agentenBestaende(),
     taktRobust: await taktRobustLage(new Date(jetzt)).catch(() => null),
+    // Ereignisse (09.10., E1): nur Zahlen aus dem Bestand des Haushalts (lib/ereignisse/server.ts).
+    ereignisse: await import('@/lib/ereignisse/server').then(m => m.ereignisLage(new Date(jetzt))).catch(() => null),
   };
 }
 

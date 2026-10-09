@@ -4,6 +4,95 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — E1 Ereignisstelle: Agenten reagieren auf Mail, Zahlung, Deal, Anfrage, Absage (nur lokal — Branch `ereignisse`, Basis 86d1ff45)
+
+Kevin 09.10.: „Ja, vor Update 2“ (ANALYSE_AGENTEN_DATEN.md › E1). Bis hierher lief MAKE OS nur nach der Uhr — kein Agent erfuhr von einer neuen
+Mail, einem Zahlungseingang, einer Deal-Stufe oder „An ZOE geben“; Skills mit Auslöser „Ereignis“ ließen sich einstellen, liefen aber nie.
+Jetzt gibt es EINE Ereignisstelle (`lib/ereignisse/`), gelesen vom Takt mit einem Cursor je Konsument — kein zweiter Hintergrund-Mechanismus.
+
+**Bestand `ereignisse--<haushalt>`** (Haushalt des Inhabers, nur anhängend, rollend): ein Eintrag trägt NUR Kennungen — `id` deterministisch
+(`gmail:<msgId>`, `imap:<Kennung>`, `wa:<WAMID>`, `bank:<Buchung>`, `rechnung:<id>:bezahlt`, `crm:deal:<id>:<stufe>`, `crm:lead:<firma|kontakt>:sql`,
+`crm:anfrage:<Follow-up>`, `aufgabe:<id>:zoe:<Zeit>`, `kalender:<uid>:abgesagt`; über 80 Zeichen als Fingerabdruck), `art` (= `SkillEreignis`,
+erweitert statt neuer Liste), `quelle`, `bezug` (Kontakt/Firma/Deal/Mandat/Rechnung/Buchung/Konto/Gespräch/Aufgabe/Termin/Follow-up), `bereich`,
+`person` bzw. `personen` (für wen sichtbar), `am`. Nie Betreff, Text, Beträge, Namen, Adressen oder Telefonnummern (das WhatsApp-Gespräch trägt die
+Nummer im Schlüssel → steht nicht drin). Gespeist NUR über `ereignis(e)` (lib/ereignisse/server.ts): wirft nie (wie `melde()`), säubert, Dedup über
+die Kennung IN der Sperre, rollend (Frist „ereignisse“, Vorgabe 30 Tage), über 300 je Aufruf bzw. 20.000 im Bestand werden NEUE abgelehnt und gezählt
+(Head of IT rot) — nie gekürzt. Aufgerufen NACH dem Speichern der Quelle; die Sperre ist ein Blatt.
+
+| Quelle (ein Aufruf) | Art | Für wen | Hinweis |
+|---|---|---|---|
+| Gmail-Abgleich (`lib/gmail/abgleich.ts`, Ende von `einmal`) | neue-mail | NUR die Person des Postfachs | nur im laufenden Abgleich (nie beim vollen Neu-Lesen), nur eingehend, keine Rundschreiben, nie von eigenen Adressen |
+| IMAP-Postfächer (`lib/postfach/abgleich.ts`) | neue-mail | NUR die Person | nur Posteingang, nicht beim ersten Lesen des Ordners/neuem UIDVALIDITY, keine automatischen |
+| WhatsApp-Webhook (`lib/whatsapp/webhook.ts` nach dem Speichern; `webhookAnwenden` liefert `eingang`) | neue-whatsapp | alle mit Zugang (`WHATSAPP_PERSONEN` → `personen`) | Bereich der Nummer, Kontakt über die Telefonnummer; Meta liefert erneut → kein zweites |
+| Kontoauszug übernommen (`lib/finanzen/kontoauszug/server.ts`) | zahlungseingang | Business: Gesellschaft · Haushalt: privat (nur privater Finanzzugang) | nur neu angelegte Eingänge (> 0) der letzten 14 Tage — ein nachgeholter Monat löst keine Flut aus |
+| Rechnung „bezahlt“ (`/api/state/finanzplan` `aktion: 'bezahlt'`) | zahlungseingang | Bereich der Gesellschaft | einmal (schon bezahlt → nichts) |
+| CRM-Schreibweg (`crmSchreiben`, Diff vorher → nachher) | deal-stufe · lead-sql (Firma) | Bereich der Gesellschaft des Deals | nur neue Deals bzw. neue Stufe |
+| Kartei-Schreibweg (`aendereKontakte[Async]`) | lead-sql (Person) | Business | nur wenn sich ein Lead änderte; eingeschränkte nie |
+| `/api/crm/anfrage` | neuer-lead | Business | Kennung = Follow-up der Anfrage |
+| „An ZOE geben“ (`anZoeGeben`, auch ZOE-Werkzeug) | aufgabe-zoe (intern) | die Auftraggeberin | stößt den ZOE-Aufgaben-Lauf SOFORT an (`ereignisseAnstossen`, dieselben Filter wie der Takt) |
+| iCloud-Abgleich (`lib/kalender/icloud.ts` nach `bezuegeAbgleichen`) | termin-abgesagt | Person des Bezugs (`von`) | nur Termine mit CRM-Bezug; STATUS:CANCELLED eines fremden Organisators oder alle Gäste abgesagt (`vomGegenueberAbgesagt`, lib/kalender/ics.ts) — die eigene Absage nie |
+
+Personen mit Art.-18-Einschränkung lösen nie etwas aus (kein Ereignis).
+
+**Lesen im Takt** (`lib/ereignisse/takt.ts`, EINE Zeile 0g in `lib/zoe/takt.ts` `faelligOhnePause`): Konsumenten = jeder Skill mit Auslöser „Ereignis“
+(auch ausgeschaltete — sie „ruhen“) und der ZOE-Aufgaben-Lauf. Die reine Auswertung `auswerten` (lib/ereignisse/typen.ts) urteilt je Ereignis:
+erledigt (andere Art, vor `seit` = Skill geändert, nicht sichtbar, schon eingereiht = Riegel in der Warteschlange, von einem neueren mit demselben
+Bezug überholt, ZOE-Aufgabe nicht mehr offen) · verfallen (älter als 72 h, Skill/Head aus, Not-Aus des Heads, Not-Aus für alle, Instanz-Budget,
+Hintergrund-KI der Instanz oder Person aus — wie ein verpasster Zeitplan) · wartet (Nachtruhe 7–22, Business-frei, Entprellen: ein Lauf je
+Konsument und Bezug und Stunde, Tageshöchstzahl je Head, ZOE arbeitet schon für die Person, Sperre nicht lesbar = fail-closed) · fällig.
+Fällige werden Aufträge `faden` mit `{ art: 'skill', ausloeser: 'ereignis', ereignisId, eingaben }` (Eingaben = Name der Art + Kennungen + die
+Bedingung des Skills als Daten; der Agent holt Inhalte über seine Werkzeuge) bzw. `zoe-aufgaben` mit der Auftraggeberin — danach filtert der Takt wie
+jeden Lauf (`sperrenFiltern`, neu ausgelagert aus `faellig`: KI-Läufe, Head-Budget, Fehlerpause). Der Cursor (`ereignisCursorNachziehen`, POST des
+Takts VOR dem Einreihen) rückt bis vor das erste wartende/fällige Ereignis — erledigt ist ein Ereignis erst, wenn sein Auftrag in der Warteschlange
+steht; GET (Vorschau) schreibt nie. Die Tages-Runde der ZOE-Aufgaben zählt einen Ereignis-Lauf nicht als „heute gelaufen“.
+
+**Weitere Leser:** Heads-Paket (`lib/heads/lauf.ts`) bekommt `seit_letztem_lauf` (lib/ereignisse/leser.ts: nur Business, nur für die Person des Laufs
+sichtbar, Systemlauf ohne personengebundene; Kennungen über die Kartei/das CRM des Pakets aufgelöst, Werbesperre/Art. 18 fallen samt Ereignis heraus).
+Power Hour / „Wer heute dran ist“ (`werIstDran` neue Option `geradeGeschrieben`; `/api/crm/heute` und der Heads-Lauf): wer der ANFRAGENDEN Person in
+72 h geschrieben hat (eigene Postfächer, geteilte WhatsApp-Nummer — nie fremde Postfächer), bekommt kein Nachfassen (nur „Signale“ bleiben;
+`ausgefiltert.geschrieben`).
+
+**Oberfläche:** Skill-Editor — die Arten aus EINER Liste (`lib/ereignisse/arten.ts`, `EREIGNISSE_ANZEIGE`); „noch nicht angebunden“ nur noch für
+neue Aufgabe, Termin vorbei, Frist naht, neues Bild/Video (die lassen sich weiter nicht speichern). Wählbar: neue Mail, neue WhatsApp-Nachricht,
+neuer Lead, Lead wird SQL, Deal in neuer Stufe, Zahlungseingang, Termin abgesagt. Head of IT: Befund „Ereignisse für die Agenten“ (letzte 24 h,
+wartend; länger als 1 h ohne zeitlichen Grund → gelb; heute abgelehnt → rot; nur Zahlen).
+
+**Recht:** Speicher-Register `ereignisse--*` (Angaben, Frist), Löschfrist „ereignisse“ (30 Tage, 7–365, Stammdaten › Datenschutz) + Löschfristen-Lauf
+Schritt 11e, Art. 15/17 über `WEITERE_SPEICHER` (Einträge mit der Kennung der Person fallen weg), Konto löschen: Ereignisse NUR dieser Person fallen
+weg, aus `personen` wird sie gestrichen (`NICHT_PERSOENLICH` mit Grund). Keine neue Route (Routen-Register, Messlatte unverändert).
+
+**So testet ihr (in Klicks):** 1. Agenten › Sales › Info › Skills › „+ Skill“: Auslöser „Ereignis“ → „neue Mail“ (kein Hinweis mehr), Testlauf,
+einschalten. 2. Eine Mail von einer Person der Kartei an das eigene Gmail/IMAP-Postfach schicken → nach dem Abgleich (~2 Min.) und dem nächsten Takt
+(~1 Min.) steht rechts unter „Läuft“ der Skill-Lauf; der Thread nennt „Eingaben: ereignis: neue Mail, kontakt: c-…“. Dieselbe Mail an Malins Postfach →
+bei Kevins Skill nichts. 3. Eine Aufgabe „An ZOE geben“ → in Agenten › Läuft steht sofort „ZOE-Aufgaben“ (vorher erst am nächsten Morgen); nach
+22 Uhr erst um 7 Uhr. 4. Deal in eine andere Stufe ziehen → ein Skill „Deal in neuer Stufe“ läuft einmal. 5. System › Head of IT → „Ereignisse für
+die Agenten“.
+
+**Tests:** neu `tests/ereignisse.test.ts` (37: rein — Kennung, nur Kennungen, Sichtregel, Auswertung mit allen Sperren, Entprellen, Riegel, Cursor;
+je Quelle mit Fakes — Gmail-Fake, IMAP, signierter WhatsApp-Webhook, Finanzplan-Route, Kontoauszug, CRM/Kartei-Schreibweg, Anfrage-Route,
+iCloud-Absage; Takt: Skill genau einmal, Mail der anderen Person löst nichts aus, Not-Aus/Skill aus, „An ZOE geben“ sofort bzw. nach der Nachtruhe;
+Power Hour, Heads-Paket; Register, Frist, Art. 17, Konto löschen; Skill-Editor; Head of IT). Angepasst `tests/agenten-durchstich.test.ts` (Hinweis
+nur für nicht angebundene Arten).
+
+**Gemeinsame Dateien (beim Zusammenführen beachten — je nur ein Aufruf bzw. eine Lesestelle):** `lib/zoe/takt.ts` (`sperrenFiltern` ausgelagert,
+Zeile 0g, Tages-Riegel der ZOE-Aufgaben), `app/api/zoe/takt/route.ts`, `lib/zoe/aufgaben-werkzeuge.ts` (`anZoeGeben`), `lib/heads/{lauf,paket,daten}.ts`
+(optionaler Parameter), `lib/crm/{heute,speicher,kartei-schreiben,speicher-register,person-weitere,loeschfristen,loeschfristen-lauf}.ts`,
+`lib/gmail/abgleich.ts`, `lib/postfach/abgleich.ts`, `lib/whatsapp/{spiegel,webhook}.ts`, `lib/finanzen/kontoauszug/server.ts`,
+`app/api/state/finanzplan/route.ts`, `app/api/crm/{anfrage,heute}/route.ts`, `lib/kalender/{icloud,ics}.ts`, `lib/agenten/{typen,skills}.ts`,
+`components/os/agenten/{regeln.ts,Dialoge.tsx}`, `lib/hoi/{lage,innen}.ts`, `lib/datenschutz/konto-daten.ts`. NICHT angefasst: `lib/zoe/werkzeuge.ts`,
+`app/api/kimmi`, `lib/zoe/agenten.ts`, `lib/agenten/faeden*.ts` (nur `sichtLaden` gelesen).
+
+**Offen / Fragen an Kevin:** (1) Google-Kalender und iCloud je Person melden Absagen noch nicht (nur der Haushalts-Kalender) — gleiche Regel, eigener
+Aufruf im jeweiligen Abgleich. (2) Weitere Arten (neue Aufgabe, Termin vorbei, Frist naht, neues Medium, Storno, Kapazität „nicht machbar“, Index rot,
+überfällige Rechnung) — welche zuerst? (3) Ein Skill reagiert nur für SEINE Lauf-Person (wer ihn angelegt hat): ein Business-Skill „neue Mail“ läuft
+nicht für Malins Postfach — soll ein Skill „für jede Person mit eigener Mail“ laufen können (KI-Kosten ×n)? (4) Ereignisse während Not-Aus, KI aus
+oder Head aus verfallen (wie verpasste Zeitpläne); nach der Nachtruhe bzw. Business-frei kommen sie dagegen (bis 72 h). Passt das? (5) „Termin
+abgesagt“ → das Follow-up „Termin vorbereiten“ automatisch lösen? Heute nur das Ereignis (die Heads sehen es). (6) Ein vom Takt herausgefilterter
+fälliger Lauf (Head-Budget erreicht) wartet bis 72 h und zählt nicht als „gestaut“ — das Budget hat seinen eigenen Befund.
+**Rückweg:** nur ein neuer Bestand und optionale Felder (`WebhookErgebnis.eingang`, `ausgefiltert.geschrieben`, Skill-Arten) — der alte Stand
+ignoriert den Bestand; ein Skill mit einer neuen Art (z. B. „Deal in neuer Stufe“) gilt dort als ungültiger Auslöser und lässt sich erst nach Ändern
+speichern (er läuft dort ohnehin nicht).
+
 ## 09.10.2026 — Agenten-Datenschicht: zwei Welten angeglichen, Fristen, nie kürzen (nur lokal — Branch `agenten-datenschicht`, Basis 297458af)
 
 Funde der Datenschicht-Analyse unter dem Agenten-System (alter Heads-Takt ↔ neuer Agenten-Bereich), je nachgeprüft und mit Wächter

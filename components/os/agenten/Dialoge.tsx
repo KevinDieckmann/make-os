@@ -18,7 +18,7 @@ import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP, ZIEL } from '@/lib/ma
 import { headDef, vorlagenFuer } from '@/lib/agenten/katalog';
 import {
   agentSchluessel, GRENZEN, type AgentRef, type HeadKarte, type Mitarbeiter, type ModelTier, type Rhythmus, type SkillAusloeser, type SkillEingabeFeld,
-  type SkillEreignis, type Skill, type SkillKurz, type Zeitplan,
+  type Skill, type SkillKurz, type Zeitplan,
 } from '@/lib/agenten/typen';
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Fenster } from '../Fenster';
@@ -27,7 +27,7 @@ import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, mitRueck
 import { WEG } from '@/lib/wege';
 import { sichtbareHeads, useAgenten, type DialogArt } from './kontext';
 import {
-  agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, EREIGNIS_NOCH_NICHT, euro, kostenImMonat, leererSkill, naechsterLaufText,
+  agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, EREIGNISSE_ANZEIGE, istAngebunden, nochNichtAngebunden, euro, kostenImMonat, leererSkill, naechsterLaufText,
   RHYTHMUS_NAME, skillName, skillPruefen, zeitKurz, type Delegation, type SkillEntwurf,
 } from './regeln';
 
@@ -344,7 +344,8 @@ export function MitarbeiterDialog({ headId, vorlage, onZu }: { headId?: string; 
 
 // ── Skill-Editor ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-const EREIGNISSE = (Object.keys(EREIGNIS_NAME) as SkillEreignis[]).map(x => ({ id: x, label: EREIGNIS_NAME[x] }));
+// Die Arten aus EINER Liste (lib/ereignisse/arten.ts): angebundene zuerst, interne (z. B. „an ZOE gegeben“) nie.
+const EREIGNISSE = EREIGNISSE_ANZEIGE.map(x => ({ id: x, label: EREIGNIS_NAME[x] }));
 const FELD_ARTEN: { id: SkillEingabeFeld['art']; label: string }[] = [
   { id: 'text', label: 'Text' }, { id: 'zahl', label: 'Zahl' }, { id: 'datum', label: 'Datum' }, { id: 'auswahl', label: 'Auswahl' }, { id: 'kontakt', label: 'Kontakt' }, { id: 'firma', label: 'Firma' },
 ];
@@ -503,8 +504,8 @@ export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string;
               return (
                 <div style={{ display: 'grid', gap: ABSTAND.s }}>
                   <Pillen liste={EREIGNISSE} aktiv={a.ereignis} onWahl={x => setzeAusloeser({ ...a, ereignis: x })} />
-                  {/* Durchstich 09.10.: kein Takt und keine Quelle stößt Ereignis-Skills bisher an — ehrlich sagen statt still nie laufen. */}
-                  <Hinweis art="info">{EREIGNIS_NOCH_NICHT}</Hinweis>
+                  {/* 09.10. (E1): angebundene Arten laufen über die Ereignisstelle — „noch nicht angebunden“ nur für die übrigen (ehrlich statt still nie). */}
+                  {!istAngebunden(a.ereignis) && <Hinweis art="info">{nochNichtAngebunden(a.ereignis)}</Hinweis>}
                   <Feldzeile label="Nur wenn … (optional, als Satz)"><input value={a.filter ?? ''} onChange={x => setzeAusloeser({ ...a, filter: x.target.value || undefined })} placeholder="z. B. nur Leads aus Events" style={eingabe} /></Feldzeile>
                 </div>
               );

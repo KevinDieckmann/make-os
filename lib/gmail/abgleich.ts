@@ -207,6 +207,8 @@ async function einmal(person: string, voll: boolean): Promise<GmailAbgleichErgeb
     return { v: 1, texte };
   });
 
+  // Ereignisse (09.10., E1): neue EINGEHENDE Nachrichten → Agenten (nur Kennungen, nur für diese Person) — nie beim vollen Neu-Lesen.
+  if (!wirklichVoll && neuKoepfe.length) await import('@/lib/ereignisse/quellen').then(q => q.gmailEreignisse(person, neuKoepfe.map(n => n.kopf), neuerStand)).catch(() => 0);
   // Verlauf der Kontaktakten (Betreff + Link, nie der Text) — Fehler hier stören den Abgleich nie.
   // „Senden als“-Aliase (Cache 6 Std.) — gehören zu den eigenen Adressen (Zuordnung, Antwort an alle) und zur Absenderwahl.
   await aliaseSicherstellen(person).catch(() => { /* später */ });

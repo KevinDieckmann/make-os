@@ -309,8 +309,13 @@ export interface FadenBestand { v: 1; faeden: Faden[] }
 // ── Werkstatt: Skills, eigene Mitarbeiter, Gedächtnis (Bestände `agenten-skills--<haushalt>` / `agenten-skills-privat--<person>`, Paket 3) ─
 
 export type Rhythmus = 'taeglich' | 'werktags' | 'woechentlich' | 'monatlich';
-/** Ereignisse, die einen Skill auslösen (Antwort 7). Neue Ereignisse additiv; ausgelöst wird nur, was Paket 3 anbindet. */
-export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'neue-aufgabe' | 'termin-vorbei' | 'frist-naht' | 'neues-medium';
+/**
+ * Ereignisse, die einen Skill auslösen (Antwort 7). Neue Ereignisse additiv; ausgelöst wird nur, was eine Quelle speist — welche das sind,
+ * steht an EINER Stelle (lib/ereignisse/arten.ts `EREIGNISSE_ANGEBUNDEN`, seit 09.10. E1 „Ereignisstelle“). Dieselbe Liste ist die `art` der
+ * Einträge im Bestand `ereignisse--<haushalt>` (lib/ereignisse) — keine zweite Liste. `aufgabe-zoe` ist intern (nur der ZOE-Aufgaben-Lauf).
+ */
+export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'neue-aufgabe' | 'termin-vorbei' | 'frist-naht' | 'neues-medium'
+  | 'neue-whatsapp' | 'deal-stufe' | 'lead-sql' | 'termin-abgesagt' | 'aufgabe-zoe';
 export type SkillAusloeser =
   | { art: 'hand' }
   | { art: 'zeitplan'; rhythmus: Rhythmus; /** „HH:MM“ Berliner Zeit */ uhrzeit: string; /** 1 = Montag … 7 = Sonntag (woechentlich) bzw. Monatstag (monatlich) */ tage?: number[] }

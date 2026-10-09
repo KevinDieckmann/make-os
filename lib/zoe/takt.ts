@@ -122,7 +122,14 @@ interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des 
 export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef', 'faden']);
 
 export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
-  const roh0 = await faelligOhnePause(jetzt);
+  return sperrenFiltern(await faelligOhnePause(jetzt), jetzt);
+}
+
+/**
+ * Die Filter, durch die JEDER Takt-Lauf geht (Hintergrund-KI, Not-Aus/Head aus/Head-Budget fail-closed, Pause nach Fehlschlägen) — eine
+ * Stelle, damit auch der Sofort-Weg der Ereignisse (lib/ereignisse/takt.ts `ereignisseAnstossen`, 09.10. E1) dieselben Sperren hat.
+ */
+export async function sperrenFiltern(roh0: Faellig[], jetzt = new Date()): Promise<Faellig[]> {
   if (!roh0.length) return roh0;
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
   const kiAn = (await kiSchalterFuer(null)).hintergrund;
@@ -243,6 +250,8 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
 
   // 0f) Agenten (09.10., Paket 3): Skill- und Plan-Zeitpläne als Aufträge `faden` (lib/agenten/zeitplan.ts — Business-frei, Tageshöchstzahl, Riegel).
   raus.push(...await import('@/lib/agenten/zeitplan').then(m => m.zeitplaeneFaellig(jetzt)).catch(err => { console.error('[MAKE OS] Agenten-Takt übersprungen:', err); return []; }));
+  // 0g) Ereignisse (09.10., E1): Skills mit Auslöser „Ereignis“ und „An ZOE gegeben“ — Cursor je Konsument, dieselben Sperren (lib/ereignisse/takt.ts).
+  raus.push(...await import('@/lib/ereignisse/takt').then(m => m.ereignisseFaellig(jetzt)).catch(err => { console.error('[MAKE OS] Ereignis-Takt übersprungen:', err); return []; }));
 
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.
   const start = await loadJson<TagesstartStand>('tagesstart');
@@ -281,7 +290,8 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
 
   // 2b) ZOE-Aufgaben (28.09., Paket C4) — einmal am Tag nach dem Morgenlauf, nur wenn etwas bei ZOE offen liegt.
   //     Riegel = die Warteschlange selbst (wie beim Morgenlauf); der Lauf legt nur Vorschläge in den Stapel.
-  const zoeAufgabenHeute = (auftraege?.auftraege ?? []).some(a => a.name === 'zoe-aufgaben' && a.tag === heute && a.status !== 'fehler');
+  // Ein Lauf nach „An ZOE geben“ (Ereignis, E1 09.10.) zählt nicht — er arbeitet nur die Aufträge seiner Person ab.
+  const zoeAufgabenHeute = (auftraege?.auftraege ?? []).some(a => a.name === 'zoe-aufgaben' && a.tag === heute && a.status !== 'fehler' && !a.eingabe?.ereignisId);
   if (morgenHeute && !zoeAufgabenHeute) {
     try {
       const { zoeAufgabenFaellig } = await import('./aufgaben-lauf');

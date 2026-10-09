@@ -354,6 +354,12 @@ export async function auszugUebernehmen(ctx: Kontext, kontoId: unknown, bytes: U
   if (vorher) daten.firmaVorher = vorher;
   const b = await absichtBeginnen(ctx.haushalt, { art: 'kontoauszug', schluessel: laufId, schritte: SCHRITTE_EIN, daten: daten as unknown as Record<string, unknown>, person: ctx.person });
   const r = await laufEin(ctx.haushalt, b.absicht);
+  // Ereignisse (09.10., E1): frische Zahlungseingänge (neu angelegt, Betrag > 0, letzte 14 Tage) → Agenten — nur Kennungen, nie Beträge.
+  if (r.lauf?.buchungen.length) {
+    const { auszugEingaenge, auszugEreignisse } = await import('@/lib/ereignisse/quellen');
+    const ids = auszugEingaenge(zeilen as { id: string; datum: string; betrag: number }[], new Set(r.lauf.buchungen.map(x => x.id)), localDay(ctx.jetzt ?? new Date()));
+    if (ids.length) await auszugEreignisse(p.ziel, v.konto.id, ids).catch(() => 0);
+  }
   return { ok: true, lauf: r.lauf, angelegt: r.angelegt, doppelt: r.doppelt, saldo: p.saldo ? (p.saldo.status === 'neu' && !r.standId ? 'vorhanden' : p.saldo.status) : null, ...(p.abgleiche.length ? { zugeordnet: p.abgleiche.length } : {}) };
 }
 

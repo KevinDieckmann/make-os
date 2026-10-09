@@ -25,6 +25,7 @@ import type { HeadStand } from './stand';
 import type { Vorschlag } from './pruefer';
 import { nordsternSatz } from '@/lib/planung/nordstern';
 import type { HeadZiele } from '@/lib/planung/jahresziele-sicht';
+import type { WerIstDranOptionen } from '@/lib/crm/heute';
 
 /** Die Ziele im Paket (rein): Nordstern als Satz im `<daten quelle="nordstern">`-Rahmen, Jahresziele nur Titel + Fortschritt — Daten, nie Anweisung. */
 export function zieleImPaket(z: HeadZiele) {
@@ -38,9 +39,9 @@ export function zieleImPaket(z: HeadZiele) {
 }
 
 /** `person` null = Systemlauf des Takts (lib/heads/lauf.ts): Karten aller, „fuer“ ohne Rückfall. */
-export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, stand: HeadStand, ziele?: HeadZiele) {
+export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, stand: HeadStand, ziele?: HeadZiele, opt: WerIstDranOptionen = {}) {
   const frueher = stand.vorschlaege.filter(v => v.status !== 'erledigt').map(v => ({ titel: v.titel, status: v.status }));
-  const basis = datenpaket(head, modus, kontakte, crm, heute, person, frueher) as Record<string, unknown>;
+  const basis = datenpaket(head, modus, kontakte, crm, heute, person, frueher, opt) as Record<string, unknown>;
   const g = modus === 'frage' ? null : grundlauf(head, modus, basis);
   const ue = uebergaben(kontakte, crm, heute).filter(u => u.an === head || u.von === head).map(u => ({ titel: u.titel, anzahl: u.anzahl, von: u.von, an: u.an, text: u.text }));
   return {

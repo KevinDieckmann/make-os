@@ -87,7 +87,14 @@ export function unbeantwortet(k: Kontakt, heute?: string): boolean {
  * `ohnePerson` (28.09., Ablaufprüfung): Deals/Mandate ohne Person, deren Firma auch niemanden hat, der angerufen
  * werden kann — sie fehlen hier und werden gezählt (Deals › Liste zeigt sie).
  */
-export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number } }
+export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number; /** hat gerade geschrieben (Ereignis, 09.10. E1) — erst antworten, nicht nachfassen */ geschrieben?: number } }
+
+/**
+ * Optionen der Auswahl (09.10., E1 Ereignisse): `geradeGeschrieben` = Kontakte, die der Person in den letzten 72 h geschrieben haben (Mail aus
+ * EIGENEN Postfächern, geteilte WhatsApp-Nummer — nie fremde Postfächer; lib/ereignisse/server.ts `geradeGeschrieben`). Für sie schlägt die
+ * Power Hour kein Nachfassen vor (die Antwort steht in der Inbox) — nur „Signale“ bleiben.
+ */
+export interface WerIstDranOptionen { geradeGeschrieben?: ReadonlySet<string> }
 
 /**
  * Wem eine Karte gehört: Follow-up → Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält.
@@ -115,7 +122,7 @@ export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug' | 'fo
  * `aufgaben` (08.10., Woche 1 · 4.7): fällige Aufgaben mit Kontakt-Bezug (aus der Aufgaben-Sicht der Person) — sie stehen unter
  * „Versprechen“ wie ein Follow-up. Ohne Angabe wie bisher.
  */
-export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, n = 12, aufgaben: readonly PowerHourAufgabe[] = []): Auswahl {
+export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, n = 12, aufgaben: readonly PowerHourAufgabe[] = [], opt: WerIstDranOptionen = {}): Auswahl {
   // Daten in Texten deutsch kurz („23.10.“, mit Jahr nur außerhalb des laufenden) — Rundgang 09.10.: „Entscheidung bis 2026-10-23“ stand so auf Heute.
   const tagDe = (t: string) => tagKurz(t.slice(0, 10), heute) || t;
   const nachId = new Map(kontakte.map(k => [k.id, k]));
@@ -123,7 +130,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) for (const id of c.kontaktIds) chancenJe.set(id, [...(chancenJe.get(id) ?? []), c]);
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv' || m.status === 'verhandlung').flatMap(m => m.kontaktIds));
   const kandidaten = new Map<string, Karte>();
-  const aus = { sperre: 0, ohneKanal: 0, kuerzlich: 0, beiAnderen: 0, ohnePerson: 0 };
+  const aus: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson: number; geschrieben?: number } = { sperre: 0, ohneKanal: 0, kuerzlich: 0, beiAnderen: 0, ohnePerson: 0 };
   /**
    * Die Person, über die ein Deal/Mandat angesprochen wird (28.09., Ablaufprüfung): die erste eigene — hat er keine
    * (mehr), eine laufende Person der Firma (nicht gesperrt/eingeschränkt). `ueberFirma` = der Firmenname für den Grund.
@@ -247,6 +254,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     if (ausgenommen(k)) { aus.sperre++; continue; }
     const wem = karteGehoert(c, crm);
     if (person !== null && wem !== person && wem !== BEIDE) { aus.beiAnderen++; continue; }
+    if (opt.geradeGeschrieben?.has(k.id) && c.kategorie !== 'signale') { aus.geschrieben = (aus.geschrieben ?? 0) + 1; continue; }
     if (!c.kanal) { aus.ohneKanal++; continue; }
     const kuerzlich = k.letzterKontakt && werktageSeit(k.letzterKontakt, heute) < 3;
     if (kuerzlich && c.kategorie !== 'signale' && c.kategorie !== 'versprechen') { aus.kuerzlich++; continue; }

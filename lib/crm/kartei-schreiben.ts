@@ -51,27 +51,37 @@ const schnappschuss = (cur: unknown): Roh => (cur && typeof cur === 'object' ? s
  */
 export async function aendereKontakte<T extends KarteiBestand = KarteiBestand>(mut: (cur: T | null) => T, wer?: Wer): Promise<T> {
   let aenderungen: Aenderung[] = [];
+  let vorher: Roh = null;
   const next = await updateJson<T>(KARTEI_SPEICHER, cur => {
     aenderungen = [];
-    const vorher = schnappschuss(cur);
+    vorher = schnappschuss(cur);
     const neu = mut(cur);
     aenderungen = karteiDiff(vorher, neu as unknown as Roh);
     return neu;
   });
   await protokolliere(KARTEI_SPEICHER, aenderungen, wer);
+  await ereignisseNachher(aenderungen, vorher, next);
   return next;
+}
+
+/** Ereignisse (09.10., E1): Personen-Lead wird SQL → Agenten (nur Kennungen) — nach dem Speichern, nur wenn sich ein Lead änderte, wirft nie. */
+async function ereignisseNachher(aenderungen: readonly Aenderung[], vorher: Roh, nachher: unknown): Promise<void> {
+  if (!aenderungen.some(a => a.op === 'neu' || a.felder?.includes('lead'))) return;
+  await import('@/lib/ereignisse/quellen').then(q => q.karteiEreignisse(vorher, nachher)).catch(() => 0);
 }
 
 /** Wie `aendereKontakte`, aber die Änderung darf warten (Import, Dubletten: Sperrliste/Konflikte IN der Kartei-Sperre). */
 export async function aendereKontakteAsync<T extends KarteiBestand = KarteiBestand>(mut: (cur: T | null) => Promise<T>, wer?: Wer): Promise<T> {
   let aenderungen: Aenderung[] = [];
+  let vorher: Roh = null;
   const next = await updateJsonAsync<T>(KARTEI_SPEICHER, async cur => {
     aenderungen = [];
-    const vorher = schnappschuss(cur);
+    vorher = schnappschuss(cur);
     const neu = await mut(cur);
     aenderungen = karteiDiff(vorher, neu as unknown as Roh);
     return neu;
   });
   await protokolliere(KARTEI_SPEICHER, aenderungen, wer);
+  await ereignisseNachher(aenderungen, vorher, next);
   return next;
 }
