@@ -257,7 +257,7 @@ async function persoenlich(person: string, u: Umfang): Promise<Record<string, Be
     // 6.2a (09.10.): Gesundheits-Agent — eigener Auftrag gesetzt ODER mindestens eine eigene Unterlage. Nur ja/nein und Zähler, nie Inhalt.
     // Der Auftrag steht im EIGENEN Abschnitt der Agenten-Einstellung (Heads der Ebene Person, Kategorie Gesundheit — Daten des Katalogs).
     'gesundheit-agent': async () => {
-      if (!u.privat) return null; // Privat-Bereich (EINE Konto-Sicht)
+      // Kein `u.privat`-Riegel: ein Konto „nur Business“ sieht den Schritt ohnehin nicht (Modul Gesundheit → `istPrivatSchritt`).
       const [{ KATALOG }, { unterlagenHead }, { einstellungFuer }, { unterlagenAnzahl }] = await Promise.all([
         import('@/lib/agenten/katalog'), import('@/lib/agenten/unterlagen-werkzeug'), import('@/lib/agenten/skills-lesen'), import('@/lib/gesundheit/unterlagen-server'),
       ]);
