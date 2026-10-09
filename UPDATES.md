@@ -77,7 +77,8 @@ Schnittstellen extrem sauber ziehen.“ Business-Strecke: Gesellschaft & Konten 
   9 Agenten und ZOE · 10 Abschluss. **Kern = Etappen 1–7** (Zugang + alles eingeben); Kosten, Kontostände, Kontoauszüge, offene Posten sind Kern.
   Nummern („6.3“) entstehen aus der Reihenfolge; Verweise in alten Texten („Schritt 3.6“) werden umgeschrieben (`nummernUmschreiben`, nie Daten/Mengen).
   Ein Schritt, der NICHT in der Tabelle steht (z. B. ein neuer eines anderen Pakets), landet über `neustartEtappeVon` in der passenden Etappe — Gesundheit
-  „ich“ in „Meine Gesundheit“, am Ende — und behält seine Gruppe.
+  „ich“ in „Meine Gesundheit“, am Ende — und behält seine Gruppe. Der Schritt „Gesundheits-Agent: Auftrag schreiben oder Unterlage hochladen“ (Paket
+  `agent-auftrag`, Prüfung `gesundheit-agent` unverändert) steht ausdrücklich am Ende der Gesundheits-Schritte im Kern (vor dem optionalen „Kopf & Energie“).
 - **Neue Schritte (nur im Neustart):** Neustart (was mitkam), Meine eigenen Ziele (Kompass „ich“, `ziele-eigen`), Körper-Profil, Ernährungsprofil, Sport:
   Einstieg und Ziele, Gesundheits-Routinen, Plan „Business online“, Bankkonten der Gesellschaften (Konten-Register), Angebotsvorlage (ein Angebot als
   Entwurf), Follow-up-Kadenz und erste Kampagne, Power Hour einrichten. Geänderte Fassungen u. a.: „Stichtag wählen“, „Übernommene Kartei sichten“,
@@ -119,6 +120,63 @@ Stand übergeht sie). Die Marke ist eine Datei des Umzugs.
 „Meine Ziele“ in Planung › Jahr fehlt (API kann es, `?fuer=ich`). Bauen? (2) Soll eine neue Kunden-Instanz ohne Altbestand den Neustart-Ablauf von
 selbst bekommen (heute nur mit Marke/Einstellung)? (3) Der gemeinsame Kern ist lang (≈ 11 h einmal für den Haushalt) — auf zwei Tage teilen, oder einzelne
 Schritte (Steuerprofil, Business-Index-Grundlagen, Positionierung) nach „danach“?
+
+
+
+## 09.10.2026 — Auftrag an Agenten je Person, Gesundheits-Unterlagen (nur lokal — Branch `agent-auftrag`, Basis 523fbbfc + Merge `agenten-nacht`)
+
+Kevin 09.10.: „Ich möchte, dass wir z. B. beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten schreiben müssen.
+Oder eine Datei hochgeladen werden kann.“ Wächter `tests/agent-auftrag.test.ts` (20 Fälle), Messlatte mit zwei neuen Marken (Auftrag an Kevins
+Privat-Head, Name seiner Unterlage).
+
+**1. Eigener Auftrag je Head** — neues Einstellungsfeld `auftrag` (`HeadEinstellung`, `EINSTELLUNG_FELDER`; Freitext ≤ 4.000 Zeichen = `GRENZEN.headAuftragZeichen`,
+darüber 413, nie gekürzt; leer entfernt). Geschrieben NUR über die vorhandene Schreibstelle `einstellungAendern` (Stand/409, Protokoll nur Feldname
+`auftrag`, nie Text; `auftragAm`/`auftragVon` stempelt der Server). Rechte wie alle Einstellungen: Privat-Heads der Ebene Person nur die Person selbst
+(eigener Abschnitt — lesen und schreiben), Heads des Haushalts schreiben volle Mitglieder, lesen alle, die den Head sehen; „nur Business“ hat keine
+Privat-Heads (Konto-Sicht); Dienstweg 403. Regeln rein in `lib/agenten/auftrag.ts`:
+- **Kategorie** aus dem Katalog (`auftragKategorie`): Head mit Gesundheit (auch „nur mit Einwilligung“, d. h. Gesundheit & Sport UND Ernährung) →
+  `gesundheit`, Familie → `familie`, Finanzen privat → `finanzen-privat`, sonst `allgemein`.
+- **Speichern** eines Auftrags mit Kategorie `gesundheit` nur mit Einwilligung (a) (403 `einwilligung: 'gesundheit'`); Entfernen geht immer.
+- **Prompt:** `agentLauf` (lib/agenten/gespraech.ts) setzt den Auftrag als eigenen Abschnitt in den System-Text von Head UND Mitarbeitern
+  („AUFTRAG DER PERSON FÜR DIESEN AGENTEN“ bzw. „… DES HAUSHALTS …“ — von einem Menschen, aber unter den festen Regeln, die er nicht lockern kann) —
+  nur, wenn seine Kategorie für die Person gerade aktiv ist (Schalter, (a)+(b)) UND ein KI-Weg offen ist (`lib/agenten/auftrag-server.ts`
+  `auftragLageFuer`, dieselbe Stelle für Anzeige und Lauf); dann geht die Kategorie mit ins KI-Tor. Sonst bleibt er draußen — Hinweis im Chat
+  („Der Auftrag an … ging nicht mit: …“) und in der Oberfläche. Recherche-Mitarbeiter mit Web-Agent bekommen ihn nie (R9).
+- GET /api/agenten liefert je Head `einstellung.auftrag` (Text, max, anKi, grund, kategorie, ebene, am). Body-Grenze POST 32 KB.
+- **Oberfläche:** Agenten › Head › Info › „Dein Auftrag“ bzw. „Auftrag des Haushalts“ (Textarea, Zähler, Speichern über `onSubmit`, Hinweis wohin er
+  geht und warum er ggf. nicht an die KI geht), auch über ⋯ › „Dein Auftrag“. Adresse `WEG.agenten({ h, r })` — `r` öffnet einen Reiter bzw. Info-Abschnitt.
+- Konto-Export: der eigene Abschnitt (mit Aufträgen an Privat-Heads) und selbst geschriebene Aufträge an Heads des Haushalts; Konto löschen: Abschnitt
+  weg, `auftragVon` → „[gelöscht]“ (der Auftrag des Haushalts bleibt). Register `agenten-einstellung--*` jetzt mit `kategorie: ['art9']`.
+- Demo: Lena schreibt je einen Auftrag an Marketing (Haushalt) und Persönliche Assistenz (privat) — über die Route.
+
+**2. Gesundheits-Unterlagen je Person** (Art. 9) — Bestand `gesundheit-unterlagen--<person>` (immer mit Suffix; Metadaten: Name, Art, Größe,
+Zeitpunkt, Prüfsumme, Notiz), Dateien verschlüsselt in der Bild-Ablage, neuer Ordner `gesundheit-unterlagen` in `BILD_ORDNER` (Hülle mit AAD,
+atomar; Rotation, Verschlüsselungs-Skript, Sicherungsprüfung und Instanz-Export nehmen ihn mit). Regeln `lib/gesundheit/unterlagen.ts`, Server
+`lib/gesundheit/unterlagen-server.ts`, Route `/api/gesundheit/unterlagen` (Klasse `person`):
+- NUR die Person der Sitzung (kein `?fuer`, Dienstweg 403, ohne Person 401, andere 404) — auch bei „Gesundheit teilen“ nie andere, nie der Inhaber.
+- Ablegen nur mit Einwilligung (a) (`gesundheitSchreibSperre`); Typ am INHALT (PDF, PNG, JPG, HEIC, TXT, MD; Endung muss passen → sonst 415),
+  ≤ 15 MB, ≤ 200 je Person (413), gleiche Datei 409. Herunterladen attachment + nosniff + CSP-Sandbox; Lese-Protokoll `gesundheit`. Löschen immer.
+- **An die KI:** NUR der Gesundheits-Head der Person (Daten des Katalogs: Privat, Ebene Person, Kategorie Gesundheit) über das Agenten-Werkzeug
+  `gesundheit_unterlagen` (lib/agenten/unterlagen-werkzeug.ts, nicht im ZOE-Register; nie bei „nur lesen“ = ZOE fragt einen Head) und NUR mit (b)
+  (`gesundheitAnKi`, beim Ausführen erneut geprüft). Liste bzw. Text je Aufruf ≤ 30.000 Zeichen, „Teil x von y“, gekapselt (`fremd()`, Quelle
+  `gesundheit-unterlagen` — selbst gekapselt, vertraulich), Kategorie `gesundheit`. Im Kontext des Heads steht nur die ZAHL der Unterlagen.
+- Register `gesundheit-unterlagen--*` (Art. 9, wie Körper-Profil) + Ordner `gesundheit-unterlagen`; `PERSON_BESTAENDE` (Export: Liste, Dateien einzeln
+  per Download — `nichtEnthalten`; Konto löschen: Dateien weg, Schritt 2e, dann Bestand). VVT `vv-gesundheit` (Zweck/Daten) — alte Fassung wird gehoben.
+- **Oberfläche:** `components/os/gesundheit/Unterlagen.tsx` (`UnterlagenKarte`) — Gesundheit (eigene Ansicht, Kachel „Unterlagen & Gesundheits-Agent“
+  mit Weg zum Auftrag) und Agenten › Gesundheit › Info › „Unterlagen“.
+
+**3. Einrichtung:** Schritt `ich-gesundheit-agent` (6.2a, Ebene ich, Samstag-Kern) „Gesundheits-Agent: Auftrag schreiben oder Unterlage hochladen“,
+Prüfung `gesundheit-agent` (persönlich, nur ja/nein + Zähler: eigener Auftrag an den Gesundheits-Head ODER mindestens eine Unterlage).
+
+**Warum der Gesundheits-Head in der Demo fehlt:** er hat die Voraussetzung `gesundheit-ki` = Einwilligung (a) UND (b); die Demo-Saat erklärt für Lena
+nur (a) — (b) bleibt bewusst aus (vorführbar im Dialog). Die Seite sagt jetzt, warum er fehlt („braucht deine Einwilligung“), statt „gibt es nicht“.
+
+**Offen:** (1) Die Takt-Läufe der eingebauten Heads (lib/heads Sales/Marketing/Event, Head of Finance) haben eigene Prompts — der Auftrag wirkt dort noch
+nicht, nur im Agenten-Bereich (Chat, Läufe, Skills, Zweite Meinung, `head_fragen`). (2) Keine Texterkennung für Bilder/Scans. (3) Löschfrist der
+Unterlagen: bis die Person löscht (keine automatische Frist) — entscheiden. (4) Beim Zusammenführen mit der neuen Einrichtung (`onboarding-data`,
+`onboarding-status`): nur den einen Schritt + die Prüfung übernehmen.
+
+**Rückweg:** nur neue Bestände/Felder/Ordner (`auftrag` am Head ignoriert der alte Stand; `gesundheit-unterlagen--*` und der Ordner bleiben liegen).
 
 ## 09.10.2026 — E4-Rest: nur Business auch in Routinen, Zielen, Meilensteinen; Demo-Konto Partner (nur lokal — Branch `konto-sicht-rest`, Basis `agenten-nacht` 3e94a943)
 

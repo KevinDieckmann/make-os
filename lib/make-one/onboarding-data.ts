@@ -1477,7 +1477,10 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   } },
   // 3 · Meine Gesundheit (je Person) — weitere Gesundheits-Schritte „ich“ anderer Pakete landen über `neustartEtappeVon` hier (am Ende)
   { id: 'ich-koerper', etappe: 3, gruppe: KERN }, { id: 'ich-ernaehrung', etappe: 3, gruppe: KERN }, { id: 'ich-sport', etappe: 3, gruppe: KERN },
-  { id: 'ich-gesundheit-routinen', etappe: 3, gruppe: KERN }, { id: 'ich-kopf-energie', etappe: 3, gruppe: KERN, optional: true },
+  { id: 'ich-gesundheit-routinen', etappe: 3, gruppe: KERN },
+  // Paket „Auftrag an Agenten“ (09.10.): Auftrag an den Gesundheits-Head oder eine Unterlage — am Ende der Gesundheits-Schritte, Kern.
+  { id: 'ich-gesundheit-agent', etappe: 3, gruppe: KERN },
+  { id: 'ich-kopf-energie', etappe: 3, gruppe: KERN, optional: true },
   // 4 · Gemeinsam: Ziele, Planung, Familie
   { id: 'jahresziele', etappe: 4, gruppe: KERN, nach: [], texte: { titel: 'Gemeinsame Jahresziele und Nordstern' } },
   { id: 'meilensteine-fokus', etappe: 4, gruppe: KERN },

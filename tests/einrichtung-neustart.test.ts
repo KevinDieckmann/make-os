@@ -134,8 +134,13 @@ describe('Neustart-Ablauf (Daten, rein)', () => {
   it('je Person: Ziele, Alltag und Gesundheit sind „ich“; Gesundheit ist eine eigene Etappe; jede Person hat ihre eigenen Schritte', () => {
     const l = schritteFuer(ZWEITE_N);
     const gesundheit = l.filter(s => s.etappe === 3);
-    expect(ids(gesundheit)).toEqual(expect.arrayContaining(['ich-koerper', 'ich-ernaehrung', 'ich-sport', 'ich-gesundheit-routinen']));
+    expect(ids(gesundheit)).toEqual(expect.arrayContaining(['ich-koerper', 'ich-ernaehrung', 'ich-sport', 'ich-gesundheit-routinen', 'ich-gesundheit-agent']));
     for (const s of gesundheit) expect(s.ebene, s.id).toBe('ich');
+    // Der Schritt des Pakets „Auftrag an Agenten“: am Ende der Gesundheits-Schritte, im Kern, Prüfung unverändert.
+    const agent = finde(l, 'ich-gesundheit-agent');
+    expect(agent).toMatchObject({ samstag: true, pruefung: 'gesundheit-agent' });
+    expect(gesundheit.filter(s => !s.optional).at(-1)?.id).toBe('ich-gesundheit-agent');
+    expect(texte(agent)).toContain(`Schritt ${finde(l, 'ich-gesundheit').nr}`);
     for (const id of ['ich-ziele', 'ich-routinen', 'ich-arbeitsrahmen', 'ich-aufgaben']) expect(finde(l, id).etappe, id).toBe(2);
     // Einwilligung zuerst (Zugang), die Gesundheits-Schritte warten auf sie.
     expect(finde(l, 'ich-gesundheit').etappe).toBe(1);
