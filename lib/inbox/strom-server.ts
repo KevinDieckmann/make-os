@@ -21,7 +21,7 @@ import { gmailAlter, gmailBereit } from '@/lib/gmail/abgleich';
 import { ladeGmailStand } from '@/lib/gmail/stand';
 import { adressIndex, eigeneAdressen, zuordnen } from '@/lib/gmail/zuordnung';
 import type { Zuordnung } from '@/lib/gmail/typen';
-import { bereichNamen, ladePostfaecher } from '@/lib/postfach/register';
+import { bereichNamen, bereichWahlLaden, ladePostfaecher, postfaecherUnzugeordnet } from '@/lib/postfach/register';
 import { ladeImapStand, type ImapStand } from '@/lib/postfach/spiegel';
 import { kurzHash } from '@/lib/postfach/rfc822';
 import { abgleichAlter } from '@/lib/kalender/icloud';
@@ -228,10 +228,12 @@ export async function stromFuer(person: string, f: StromFilter = {}): Promise<St
   const idsSicht = new Set(inSicht.map(p => p.id));
   const bereicheDa = Array.from(new Set(r.postfaecher.map(p => p.bereich).filter((b): b is string => !!b)));
   // Unzugeordnet: nur EIGENE Postfächer (nie ein Team-Postfach einer anderen Person), nur Angaben zum Postfach — keine Nachricht.
-  const unzugeordnet = r.postfaecher.filter(p => p.bereich === null && !p.oeffentlich.fremd).map(p => ({
-    id: p.id, quelle: p.quelle, anzeigename: p.anzeigename, adresse: p.oeffentlich.adresse ? adresseMaskiert(p.oeffentlich.adresse) : '',
-    ...(typeof p.oeffentlich.zustand.nachrichten === 'number' ? { nachrichten: p.oeffentlich.zustand.nachrichten } : {}),
-  }));
+  // EINE Regel mit der Postfächer-Seite (postfaecherUnzugeordnet): auch ein Name, der die Adresse ist, nur maskiert.
+  const unzugeordnet = postfaecherUnzugeordnet(r.postfaecher.map(p => ({
+    id: p.id, quelle: p.quelle, bereich: p.bereich, anzeigename: p.anzeigename, adresse: p.oeffentlich.adresse ?? '', zustand: p.oeffentlich.zustand, fremd: p.oeffentlich.fremd,
+  })));
+  // Wählbar wie auf der Postfächer-Seite (bereichWahlLaden: nur Kunden mit AKTIVEM Mandat — sonst lehnte der Server das Zuordnen ab), nach Sicht gefiltert.
+  const waehlbar = unzugeordnet.length ? (await bereichWahlLaden()).filter(e => imBereich(e.id, sichtSpace)).map(e => ({ id: e.id, name: e.name })) : [];
   return {
     postfaecher: sicht.map(p => p.oeffentlich),
     gespraeche,
@@ -244,6 +246,6 @@ export async function stromFuer(person: string, f: StromFilter = {}): Promise<St
     uebergaben: (await uebergabeZeilenFuer(person, r.team)).filter(u => imBereich(u.bereich, f)),
     leiste: leisteBauen(inSicht.map(p => p.oeffentlich), r.gespraeche.filter(g => idsSicht.has(g.postfachId)), b => bereichName(b, r.namen)),
     unzugeordnet,
-    waehlbar: unzugeordnet.length ? waehlbareBereiche(r.namen, f.space) : [],
+    waehlbar,
   };
 }
