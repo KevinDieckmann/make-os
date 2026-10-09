@@ -10,7 +10,7 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import type { VitalsLog } from '@/lib/vitals';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
-import { sichtbarFuer } from '@/lib/planung/routinen';
+import { routinenSichtbarFuer } from '@/lib/planung/bereich-sicht-server';
 import type { ErnaehrungFile } from '@/lib/make-one/ernaehrung-data';
 import { ladeIndexDatei, fortschreiben, speichereSchwelle, type IndexVerlauf } from '@/lib/kennzahlen/speicher';
 import { berechneGesundheit, GESUNDHEIT_KENNZAHLEN, type GesundheitBestand, type GesundheitsIndex } from './index';
@@ -29,7 +29,7 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     loadJson<GesundheitBestand['journal']>(speicherFuer('journal', person)),
     loadJson<HautLog>(speicherFuer('haut', person)),
     loadJson<StreakLog>(speicherFuer('streak', person)),
-    loadJson<{ routinen?: { id: string; label: string; wann?: string; aktiv: boolean; kategorie?: string; owner?: string }[] }>('routinen'),
+    loadJson<{ routinen?: { id: string; label: string; wann?: string; aktiv: boolean; kategorie?: string; owner?: string; space?: string; einheit?: string }[] }>('routinen'),
     // Blöcke = Kalender-Termine der Art Fokus/Block (+ Archiv des alten Wochenplans) — K5, 29.09.
     planBloeckeLesen({ person, von: tagPlus(heute, -35), bis: tagPlus(heute, 1) }).catch(() => []),
     loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; at?: string; quelle?: string }>('calendar-cache'),
@@ -46,7 +46,8 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     // Gesundheits-Routinen der Person: aktiv, (ohne Kategorie = alt) oder Kategorie „gesundheit“ — und NUR ihre eigenen oder
     // gemeinsame (`sichtbarFuer`, dieselbe Regel wie Routinen-Planer und Heute; Praxis-Fund 04.10.: vorher standen die
     // Routinen der Partnerin mit Titel im Index und verfälschten die eigene Quote).
-    routinen: sichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv && (!r.kategorie || r.kategorie === 'gesundheit')), person).map(r => ({ id: r.id, label: r.label, wann: r.wann, kategorie: r.kategorie })),
+    // Seit 09.10. (E4-Rest) im Umfang der Person (lib/planung/bereich-sicht-server.ts): „nur Business“ ohne Privat, außerhalb des Haushalts keine.
+    routinen: (await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv && (!r.kategorie || r.kategorie === 'gesundheit')), person)).map(r => ({ id: r.id, label: r.label, wann: r.wann, kategorie: r.kategorie })),
     log: log ?? {},
     journal: journal ?? {},
     haut: haut ?? {},
