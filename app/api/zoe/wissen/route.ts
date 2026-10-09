@@ -1,5 +1,5 @@
 // ─── MAKE OS — Wissen (Route) ───────────────────────────────────────────────
-// Kevin, 24.09.: „Obsidian soll Nr. 1 Wissensbank sein." Diese Route ist die
+// 24.09.: „Obsidian soll Nr. 1 Wissensbank sein." Diese Route ist die
 // Leseseite dafür — dieselben Funktionen, die ZOE benutzt, mit derselben
 // Sicht: gezeigt wird nur, was die angemeldete Person sehen darf
 // (Vertraulichkeitsregeln im Vault, umgesetzt in lib/zoe/vault.ts).
@@ -10,13 +10,13 @@
 //   GET (ohne)                       Stand: Zahlen je Quelle und Bereich
 //   POST { frage, verlauf }          mit dem Brain chatten (lib/zoe/brain-chat.ts)
 //
-// Geschrieben wird hier nichts. Kevin pflegt sein Brain in Obsidian.
+// Geschrieben wird hier nichts. Das Brain wird in Obsidian gepflegt.
+// 09.10.: die Person kommt aus dem Tor (kein Rückfall auf eine feste Person), die Sicht aus den Konten (`sichtAufloesen`).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { bestand, darfSehen, neueste, notiz, suche, WURZELN } from '@/lib/zoe/vault';
-import { personAus } from '@/lib/zoe/raum';
+import { bestand, darfSehen, neueste, notiz, suche, sichtAufloesen, WURZELN } from '@/lib/zoe/vault';
 import { frageBrain, type Zug } from '@/lib/zoe/brain-chat';
 import { hasAnthropicKey } from '@/lib/anthropic';
 import { modellSchranke } from '@/lib/zugang/umfang';
@@ -27,9 +27,10 @@ export const dynamic = 'force-dynamic';
 const zahl = (v: string | null, std: number, max: number) => Math.max(1, Math.min(max, Number(v) || std));
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return nurHaushalt();
   const p = new URL(req.url).searchParams;
-  const sicht = { person: personAus(req) };
+  const sicht = await sichtAufloesen({ person: zugang.person });
   const bereich = p.get('bereich')?.trim() || undefined;
 
   const frage = p.get('frage')?.trim();
@@ -73,7 +74,8 @@ export async function GET(req: Request) {
 
 /** Mit dem Brain chatten: eine Frage, dazu der bisherige Verlauf (nur Text). */
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { frage?: unknown; verlauf?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
         .map(z => ({ rolle: z.rolle as Zug['rolle'], text: String(z.text).slice(0, 4000) }))
     : [];
   try {
-    const d = await frageBrain(frage, verlauf, { person: personAus(req) });
+    const d = await frageBrain(frage, verlauf, { person: zugang.person });
     return NextResponse.json(d);
   } catch (err) {
     return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message.slice(0, 200) : 'Unbekannter Fehler.' });

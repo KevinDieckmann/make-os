@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Wissen › Inbox: Vorschläge von ZOE mit Freigabe (27.09.) ────────────
-// Kevins Entscheidung: ZOE schreibt frei nur sein Log; alles andere wartet
+// Entscheidung 27.09.: ZOE schreibt frei nur sein Log; alles andere wartet
 // hier. Annehmen macht daraus Wissen (Notiz, Update-Block oder Regel) mit
 // Provenienz; Ablehnen bewahrt den Grund. Darunter der Stand des Brain-Index
 // (Volltext + Embeddings) und der Knopf für die Konsolidierung auf Zuruf.

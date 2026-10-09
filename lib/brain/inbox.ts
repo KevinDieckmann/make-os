@@ -1,20 +1,28 @@
 // ─── Brain-Inbox: Vorschläge von ZOE mit Freigabe (Server, 27.09.) ───────
-// Kevins Entscheidung 27.09.: ZOE schreibt frei nur sein Episoden-Log
+// Entscheidung 27.09.: ZOE schreibt frei nur sein Episoden-Log
 // (Zoe_Log); alles andere — neue Notizen, Ergänzungen, Regeln — legt er als
 // VORSCHLAG ab: <Brain>/_inbox/zoe/<datum>-<kennung>.md mit Begründung und
-// Quelle. Kevin oder Malin nehmen an (dann entsteht die Notiz / der Update-Block
-// / die Regel — mit Provenienz) oder lehnen ab (Vorschlag wandert nach
+// Quelle. Eine Person des Haushalts nimmt an (dann entsteht die Notiz / der Update-Block
+// / die Regel — mit Provenienz) oder lehnt ab (Vorschlag wandert nach
 // _inbox/abgelehnt, der Grund bleibt dran). _inbox ist aus der Suche
 // ausgeschlossen: ein Vorschlag ist kein Wissen, bis ihn ein Mensch freigibt.
+//
+// Vertraulichkeit (09.10., Plattform-Regel): `gemeinsam` (alle vollen Mitglieder des Haushalts) oder `privat-<speicher>`
+// (nur diese Person) — Speichernamen aus den Konten, nie feste Namen; der Altbestand (`privat-<x>` mit den gewachsenen
+// Speichernamen) gilt unverändert. Sicht aus den Konten über lib/zoe/vault.ts (`sichtAus`).
 
 import { readFile, writeFile, mkdir, readdir, rename, appendFile, access } from 'node:fs/promises';
 import { join, basename, dirname, relative, sep } from 'node:path';
-import { BRAIN, leseKopf, darfSehen, bestand, bestandVergessen, type Sicht } from '@/lib/zoe/vault';
-import { regelAnlegen, type Prioritaet, type GiltFuer } from './regeln';
+import { BRAIN, leseKopf, darfSehen, bestand, bestandVergessen, istSpeichername, sichtAus, vaultPersonen, type Sicht, type VaultSicht } from '@/lib/zoe/vault';
+import { regelAnlegen, giltGueltig, type Prioritaet, type GiltFuer } from './regeln';
 import { localDay } from '@/lib/zeit';
 
 export type Ziel = 'neu' | 'ergaenzung' | 'regel';
-export type Vertraulichkeit = 'gemeinsam' | 'privat-kevin' | 'privat-malin';
+/** `gemeinsam` = der Haushalt, `privat-<speicher>` = nur diese Person. */
+export type Vertraulichkeit = 'gemeinsam' | `privat-${string}`;
+const PRIVAT_VON = /^privat-([a-z0-9-]{1,40})$/;
+/** Die Person eines privaten Vorschlags (Speichername) — oder null bei `gemeinsam`. Rein. */
+export const privatVon = (v: Vertraulichkeit): string | null => PRIVAT_VON.exec(v)?.[1] ?? null;
 export interface Vorschlag {
   id: string; titel: string; text: string; ziel: Ziel;
   /** Bei „ergaenzung“: Titel oder Kennung der Zielnotiz; bei „neu“: Zielordner (relativ zum Brain). */
@@ -36,7 +44,8 @@ const s = (f: Record<string, string | string[]>, k: string) => (typeof f[k] === 
 const yaml = (v: string) => (/[:#\[\]{}"']|^\s|\s$/.test(v) ? JSON.stringify(v) : v);
 const kennung = (t: string) => t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'vorschlag';
 const ziel = (v: unknown): Ziel => ((['neu', 'ergaenzung', 'regel'] as const).includes(String(v) as Ziel) ? (String(v) as Ziel) : 'neu');
-const vertr = (v: unknown): Vertraulichkeit => ((['gemeinsam', 'privat-kevin', 'privat-malin'] as const).includes(String(v) as Vertraulichkeit) ? (String(v) as Vertraulichkeit) : 'gemeinsam');
+/** Vertraulichkeit lesen: `privat-<Speichername>` bleibt (nur diese Person), alles andere ist `gemeinsam` (wie bisher). Rein. */
+export const vertr = (v: unknown): Vertraulichkeit => (PRIVAT_VON.test(String(v ?? '')) ? (String(v) as Vertraulichkeit) : 'gemeinsam');
 const sicherRel = (p?: string) => { const r = String(p ?? '').replace(/\\/g, '/').replace(/^\/+/, ''); return r && !r.split('/').some(t => t === '..' || t.startsWith('.')) ? r : ''; };
 
 function vorschlagText(v: Vorschlag): string {
@@ -51,7 +60,8 @@ function vorschlagText(v: Vorschlag): string {
   return `---\n${kopf.join('\n')}\n---\n\n# ${v.titel}\n\n${v.text.trim()}\n`;
 }
 
-function vorschlagAus(id: string, text: string): Vorschlag | null {
+/** Einen Vorschlag lesen (rein). `haushalt` = Speichernamen des Haushalts (für „gilt für“). */
+function vorschlagAus(id: string, text: string, haushalt: readonly string[]): Vorschlag | null {
   const { kopf, rumpf } = leseKopf(text);
   if (kopf.typ !== 'vorschlag') return null;
   const f = kopf.felder;
@@ -59,17 +69,17 @@ function vorschlagAus(id: string, text: string): Vorschlag | null {
     id, titel: s(f, 'titel') ?? basename(id, '.md'), text: rumpf.replace(/^\s*#\s+.+\n/, '').trim(), ziel: ziel(f.ziel), zielNotiz: s(f, 'ziel_notiz'), zielOrdner: s(f, 'ziel_ordner'),
     begruendung: s(f, 'begruendung') ?? '', quelle: s(f, 'quelle') ?? '', vertraulichkeit: vertr(f.vertraulichkeit),
     prioritaet: f.prioritaet !== undefined && [0, 1, 2, 3].includes(Number(f.prioritaet)) ? (Number(f.prioritaet) as Prioritaet) : undefined,
-    giltFuer: (['kevin', 'malin', 'beide', 'zoe'] as const).includes(String(f.gilt_fuer) as GiltFuer) ? (String(f.gilt_fuer) as GiltFuer) : undefined,
+    giltFuer: giltGueltig(f.gilt_fuer, haushalt),
     erstelltVon: s(f, 'erstellt_von') ?? 'zoe', erstelltAm: s(f, 'erstellt_am') ?? '', status: (['offen', 'angenommen', 'abgelehnt'] as const).find(x => x === s(f, 'status')) ?? 'offen',
     entschiedenVon: s(f, 'entschieden_von'), entschiedenAm: s(f, 'entschieden_am'), grund: s(f, 'grund'),
   };
 }
 
-/** Sieht diese Person den Vorschlag? privat-kevin nur Kevin, privat-malin nur Malin, gemeinsam beide. */
-export function darfVorschlagSehen(v: Pick<Vorschlag, 'vertraulichkeit'>, sicht: Sicht): boolean {
+/** Sieht diese (aufgelöste) Sicht den Vorschlag? `privat-<x>` nur Person x, `gemeinsam` der Haushalt, Agenten nur Gemeinsames. Rein. */
+export function darfVorschlagSehen(v: Pick<Vorschlag, 'vertraulichkeit'>, sicht: VaultSicht): boolean {
   if (sicht.agent) return v.vertraulichkeit === 'gemeinsam';
-  if (v.vertraulichkeit === 'gemeinsam') return sicht.person === 'kevin' || sicht.person === 'malin';
-  return v.vertraulichkeit === `privat-${sicht.person}`;
+  if (v.vertraulichkeit === 'gemeinsam') return sicht.haushalt;
+  return !!sicht.person && privatVon(v.vertraulichkeit) === sicht.person;
 }
 
 /**
@@ -96,13 +106,15 @@ export async function vorschlagAblegen(neu: NeuerVorschlag, opt: { tag?: string;
   } catch (err) { return { ok: false, fehler: err instanceof Error ? err.message.slice(0, 160) : 'nicht schreibbar' }; }
 }
 
-/** Offene Vorschläge, die die Sicht sehen darf — neueste zuerst. */
-export async function vorschlaegeLesen(sicht: Sicht, welche: 'offen' | 'erledigt' | 'abgelehnt' = 'offen'): Promise<Vorschlag[]> {
+/** Offene Vorschläge, die die Sicht sehen darf — neueste zuerst. Die Sicht wird aus den Konten aufgelöst. */
+export async function vorschlaegeLesen(sichtRoh: Sicht | VaultSicht, welche: 'offen' | 'erledigt' | 'abgelehnt' = 'offen'): Promise<Vorschlag[]> {
   const ordner = welche === 'offen' ? INBOX() : welche === 'erledigt' ? ERLEDIGT() : ABGELEHNT();
   let dateien: string[] = [];
   try { dateien = (await readdir(ordner)).filter(f => f.endsWith('.md')); } catch { return []; }
+  const personen = await vaultPersonen();
+  const sicht = sichtAus(sichtRoh, personen);
   const raus: Vorschlag[] = [];
-  for (const f of dateien) { try { const v = vorschlagAus(f, await readFile(join(ordner, f), 'utf8')); if (v && darfVorschlagSehen(v, sicht)) raus.push(v); } catch { /* überspringen */ } }
+  for (const f of dateien) { try { const v = vorschlagAus(f, await readFile(join(ordner, f), 'utf8'), personen.haushalt); if (v && darfVorschlagSehen(v, sicht)) raus.push(v); } catch { /* überspringen */ } }
   return raus.sort((a, b) => b.id.localeCompare(a.id));
 }
 
@@ -121,15 +133,19 @@ const heuteDE = () => { const d = new Date(); return `${zwei(d.getDate())}.${zwe
  *  ergaenzung → datierter „## 🔴 UPDATE“-Block an der Zielnotiz (nur, wenn die Person sie sehen darf)
  *  regel      → Regel (aktiv, freigegeben von der Person) im Regelregister
  */
-export async function vorschlagAnnehmen(id: string, person: string, sicht: Sicht, opt: { zielNotiz?: string; zielOrdner?: string } = {}): Promise<{ ok: boolean; fehler?: string; ergebnis?: string }> {
+export async function vorschlagAnnehmen(id: string, person: string, sichtRoh: Sicht | VaultSicht, opt: { zielNotiz?: string; zielOrdner?: string } = {}): Promise<{ ok: boolean; fehler?: string; ergebnis?: string }> {
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$/.test(id)) return { ok: false, fehler: 'Ungültige Kennung.' };
+  if (!istSpeichername(person)) return { ok: false, fehler: 'Keine Person — annehmen nur Personen mit Konto.' };
+  const p = person;
+  const personen = await vaultPersonen();
+  const sicht = sichtAus(sichtRoh, personen);
   let v: Vorschlag | null = null;
-  try { v = vorschlagAus(id, await readFile(join(INBOX(), id), 'utf8')); } catch { return { ok: false, fehler: 'Vorschlag nicht (mehr) offen.' }; }
+  try { v = vorschlagAus(id, await readFile(join(INBOX(), id), 'utf8'), personen.haushalt); } catch { return { ok: false, fehler: 'Vorschlag nicht (mehr) offen.' }; }
   if (!v || !darfVorschlagSehen(v, sicht)) return { ok: false, fehler: 'Vorschlag nicht gefunden.' };
-  const p = /^[a-z0-9-]{1,40}$/.test(person) ? person : 'kevin';
   const heute = localDay();
   const scope = v.vertraulichkeit === 'gemeinsam' ? 'intern' : 'privat';
-  const owner = v.vertraulichkeit === 'privat-malin' ? 'malin' : 'kevin';
+  // Eigentümer der neuen Notiz: bei privat die Person des Vorschlags, sonst der Eigentümer des Vaults (Haupt-Inhaber).
+  const owner = privatVon(v.vertraulichkeit) ?? personen.eigentuemer ?? p;
   let ergebnis = '';
   try {
     if (v.ziel === 'regel') {
@@ -161,12 +177,15 @@ export async function vorschlagAnnehmen(id: string, person: string, sicht: Sicht
   } catch (err) { return { ok: false, fehler: err instanceof Error ? err.message.slice(0, 160) : 'nicht schreibbar' }; }
 }
 
-export async function vorschlagAblehnen(id: string, person: string, sicht: Sicht, grund?: string): Promise<{ ok: boolean; fehler?: string }> {
+export async function vorschlagAblehnen(id: string, person: string, sichtRoh: Sicht | VaultSicht, grund?: string): Promise<{ ok: boolean; fehler?: string }> {
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$/.test(id)) return { ok: false, fehler: 'Ungültige Kennung.' };
+  if (!istSpeichername(person)) return { ok: false, fehler: 'Keine Person — ablehnen nur Personen mit Konto.' };
+  const p = person;
+  const personen = await vaultPersonen();
+  const sicht = sichtAus(sichtRoh, personen);
   let v: Vorschlag | null = null;
-  try { v = vorschlagAus(id, await readFile(join(INBOX(), id), 'utf8')); } catch { return { ok: false, fehler: 'Vorschlag nicht (mehr) offen.' }; }
+  try { v = vorschlagAus(id, await readFile(join(INBOX(), id), 'utf8'), personen.haushalt); } catch { return { ok: false, fehler: 'Vorschlag nicht (mehr) offen.' }; }
   if (!v || !darfVorschlagSehen(v, sicht)) return { ok: false, fehler: 'Vorschlag nicht gefunden.' };
-  const p = /^[a-z0-9-]{1,40}$/.test(person) ? person : 'kevin';
   try { await verschiebe({ ...v, status: 'abgelehnt', entschiedenVon: p, entschiedenAm: localDay(), grund: grund?.trim().slice(0, 300) || undefined }, ABGELEHNT()); return { ok: true }; }
   catch (err) { return { ok: false, fehler: err instanceof Error ? err.message.slice(0, 160) : 'nicht verschiebbar' }; }
 }
