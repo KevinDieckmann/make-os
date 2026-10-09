@@ -313,15 +313,15 @@ describe('Budget 80/95/100 % und die 50-€-Grenze', () => {
     expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80]);
     await verbrauch({ summeUsdCent: usd(4_810) });
     expect(budgetLageGesamt((await budgetStand()).gesamt!).stufe).toBe(95);
-    await budgetSperre(); await new Promise(r => setTimeout(r, 50));
-    expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80, 95]);
+    await budgetSperre();
+    // Glocke + Stufen schreibt die Sperre im Hintergrund — unter Last (volle Suite, mehrere Arbeiter) dauert das länger als 50 ms: warten bis da.
+    await vi.waitFor(async () => expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80, 95]), { timeout: 5_000, interval: 25 });
     await verbrauch({ summeUsdCent: usd(5_010) });
     expect(await budgetSperre()).toBe('budget');
     expect(kostenPruefen({ budget: await budgetStand(), faehigkeit: 'text' })).toBe('budget');
-    await new Promise(r => setTimeout(r, 50));
-    expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80, 95, 100]);
+    await vi.waitFor(async () => expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80, 95, 100]), { timeout: 5_000, interval: 25 });
+    await vi.waitFor(async () => expect(JSON.stringify(await db.loadJson('meldungen--person-a'))).toMatch(/Gesamtbudget ist erreicht/), { timeout: 5_000, interval: 25 });
     const meldungen = await db.loadJson<{ meldungen?: { titel: string }[] }>('meldungen--person-a');
-    expect(JSON.stringify(meldungen)).toMatch(/Gesamtbudget ist erreicht/);
     expect(JSON.stringify(meldungen)).not.toMatch(/€|\d+,\d\d/);
     // Höhe ändern: Beginn und Basis bleiben (es zählt weiter, was seit dem Beginn verbraucht ist); aus → gelöscht.
     const { budgetAnwenden } = await import('@/lib/datenschutz/ki-einstellungen');
