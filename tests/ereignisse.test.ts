@@ -361,6 +361,17 @@ describe('Takt: Ereignis-Skill läuft genau einmal, Sichtregel, „An ZOE geben�
     const { faellig } = await import('@/lib/zoe/takt');
     expect((await faellig(plus(TAG, 4))).filter(x => x.id.startsWith('ereignis-'))).toHaveLength(1);
   });
+  it('fail-closed: ist die Warteschlange (der Riegel) nicht lesbar, wird nichts eingereiht und der Cursor bleibt — danach läuft es einmal', async () => {
+    await werkstatt([skill('sk-ereignis-00000004')]);
+    await S.ereignis(mail('m-fc', 'person-a', 'c-anna'), { jetzt: TAG });
+    const spy = vi.spyOn(A, 'lies').mockRejectedValue(new Error('Bestand nicht lesbar'));
+    try {
+      expect(await TK.ereignisseFaellig(plus(TAG, 1))).toHaveLength(0);
+      await TK.ereignisCursorNachziehen(plus(TAG, 1));
+      expect((await bestand()).cursor['skill:sk-ereignis-00000004']).toBeUndefined();
+    } finally { spy.mockRestore(); }
+    expect(await TK.ereignisseFaellig(plus(TAG, 2))).toHaveLength(1);
+  });
   it('Head aus bzw. Skill aus → Ereignisse verfallen (wie ein verpasster Zeitplan); Not-Aus für alle → nichts', async () => {
     await werkstatt([skill('sk-ereignis-00000002', { aktiv: false })]);
     await S.ereignis(mail('m-c', 'person-a', 'c-anna'), { jetzt: TAG });
@@ -420,10 +431,14 @@ describe('Leser: Power Hour und Heads-Paket', () => {
     expect((await S.ereignisseSeit('person-a', '')).map(e => e.id)).toEqual(['gmail:h1', 'crm:deal:ch-9:angebot']);
     expect((await S.ereignisseSeit('person-b', '')).map(e => e.id)).toEqual(['crm:deal:ch-9:angebot']);
     expect((await S.ereignisseSeit(null, '')).map(e => e.id)).toEqual(['crm:deal:ch-9:angebot']);
-    const { seitZeilen } = await import('@/lib/ereignisse/leser');
+    const { seitZeilen, seitLetztemLauf, kiKategorieVon } = await import('@/lib/ereignisse/leser');
     const z = seitZeilen(await S.ereignisseSeit('person-a', ''), KARTEI as never, { chancen: [], firmen: [] });
     expect(z).toHaveLength(1);
     expect(z[0]).toMatchObject({ art: 'neue Mail', kontakt_id: 'c-anna' });
+    // KI-Etikett: was im Paket steht, nennt seine Kategorie; eine gesperrte Kategorie bleibt draußen.
+    expect([kiKategorieVon('neue-mail'), kiKategorieVon('zahlungseingang'), kiKategorieVon('termin-abgesagt'), kiKategorieVon('deal-stufe')]).toEqual(['postfach', 'finanzen', 'kalender', 'crm']);
+    expect((await seitLetztemLauf('person-a', '', KARTEI as never, { chancen: [], firmen: [] }))?.kategorien).toEqual(['postfach']);
+    expect(await seitLetztemLauf('person-a', '', KARTEI as never, { chancen: [], firmen: [] }, k => k !== 'postfach')).toBeNull();
   });
 });
 

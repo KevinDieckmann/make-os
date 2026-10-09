@@ -85,11 +85,12 @@ async function skillKonsument(s: Skill, person: string | null, einst: AgentenEin
   if (!s.aktiv || !person) return { ...basis, betrachter: null, ruht: true };
   const { headEinstellungVon } = await import('@/lib/agenten/einstellung');
   const e = einst ? headEinstellungVon(einst, h, person) : null;
+  // Fail-closed: ist die Sicht nicht prüfbar, wirft es — die ganze Auswertung entfällt (nichts eingereiht, kein Cursor), nichts verfällt.
   const { headSichtbar } = await import('@/lib/agenten/skills-server');
-  const sichtbar = await headSichtbar(person, h.id).catch(() => false);
+  const sichtbar = await headSichtbar(person, h.id);
   const ruht = !sichtbar || e?.aktiv === false || !!e?.notAus;
   return {
-    ...basis, betrachter: await betrachterFuer(person),
+    ...basis, betrachter: await betrachterFuer(person, { streng: true }),
     ...(ruht ? { ruht: true } : {}), ...(s.ausloeser.filter ? { filter: s.ausloeser.filter } : {}),
   };
 }
@@ -117,17 +118,17 @@ async function laden(): Promise<Geladen | null> {
     catch { instanz = 'unlesbar'; }
   }
   if (instanz === 'frei' && einst?.notAus) instanz = 'aus';
-  if (instanz === 'frei' && await import('@/lib/ki/tor').then(m => m.budgetSperre()).catch(() => null)) instanz = 'aus';
-  if (instanz === 'frei' && !(await import('@/lib/datenschutz/ki-einstellungen').then(m => m.kiSchalterFuer(null)).catch(() => ({ hintergrund: false }))).hintergrund) instanz = 'aus';
+  if (instanz === 'frei' && await import('@/lib/ki/tor').then(m => m.budgetSperre())) instanz = 'aus';
+  if (instanz === 'frei' && !(await import('@/lib/datenschutz/ki-einstellungen').then(m => m.kiSchalterFuer(null))).hintergrund) instanz = 'aus';
 
+  // Fail-closed (wie der Takt): ein nicht lesbarer Bestand wirft — die Auswertung entfällt, der Cursor bleibt, kein Ereignis verfällt deshalb.
   const konsumenten: Konsument[] = [];
-  const sicher = async <T,>(p: Promise<T>): Promise<T | null> => p.catch(e => { console.error('[ereignisse] Bestand nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return null; });
   if (inhaberHaushalt) {
-    const w = await sicher(loadJson<WerkstattBestand>(skillsHaushaltBestand(inhaberHaushalt)));
+    const w = await loadJson<WerkstattBestand>(skillsHaushaltBestand(inhaberHaushalt));
     for (const s of w?.skills ?? []) { const k = await skillKonsument(s, laufPersonFuerSkill(s, personSet), einst, 'haushalt'); if (k) konsumenten.push(k); }
   }
   for (const p of personen) {
-    const w = await sicher(loadJson<WerkstattBestand>(skillsPersonBestand(p)));
+    const w = await loadJson<WerkstattBestand>(skillsPersonBestand(p));
     for (const s of w?.skills ?? []) { const k = await skillKonsument(s, p, einst, 'person'); if (k) konsumenten.push(k); }
   }
   konsumenten.push({ schluessel: ZOE_KONSUMENT, art: 'zoe-aufgaben', arten: ['aufgabe-zoe'], headId: ZOE_SCHLUESSEL, headBereich: null, person: null, betrachter: null });
@@ -140,20 +141,21 @@ async function lageLaden(g: Geladen, jetzt: Date): Promise<AuswertungsLage> {
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
   const { businessFreiFensterFuer } = await import('@/lib/arbeitsrahmen/server');
   const jetztWand = wandzeit(jetzt), heute = tagVon(jetztWand);
-  const auftraege = await lies().catch(() => []);
+  // Fail-closed: Warteschlange (der Riegel), Business-frei und KI-Schalter je Person nicht lesbar → wirft (nichts eingereiht, kein Cursor).
+  const auftraege = await lies();
   const frei = new Map<string, readonly Spanne[]>();
   const kiJe = new Map<string, boolean>();
   for (const p of g.personen) {
-    frei.set(p, await businessFreiFensterFuer(p, tagPlus(heute, -1), tagPlus(heute, 1)).catch(() => []));
-    kiJe.set(p, !!(await kiSchalterFuer(p).catch(() => ({ hintergrund: false }))).hintergrund);
+    frei.set(p, await businessFreiFensterFuer(p, tagPlus(heute, -1), tagPlus(heute, 1)));
+    kiJe.set(p, !!(await kiSchalterFuer(p)).hintergrund);
   }
   // Offene ZOE-Aufgaben nur laden, wenn ein „An ZOE gegeben“ nach dem Cursor liegt.
   const ab = g.bestand.cursor[ZOE_KONSUMENT]?.nr ?? 0;
   let zoeOffen = new Map<string, { business: boolean }>();
   if (g.bestand.eintraege.some(e => e.art === 'aufgabe-zoe' && e.nr > ab)) {
     const [{ ladeAufgabenUngefiltert }, { zoeZuBearbeiten }, { spaceVonAufgabe }] = await Promise.all([import('@/lib/aufgaben/speicher'), import('@/lib/aufgaben/zoe'), import('@/lib/make-one/space-regeln')]);
-    const st = await ladeAufgabenUngefiltert().catch(() => null);
-    if (st) zoeOffen = new Map(zoeZuBearbeiten(st.tasks, { person: null, jetzt: jetzt.toISOString() }).map(t => [t.id, { business: spaceVonAufgabe(t) === 'business' }]));
+    const st = await ladeAufgabenUngefiltert();
+    zoeOffen = new Map(zoeZuBearbeiten(st.tasks, { person: null, jetzt: jetzt.toISOString() }).map(t => [t.id, { business: spaceVonAufgabe(t) === 'business' }]));
   }
   return {
     jetzt, jetztWand, heute, auftraege, instanz: g.instanz,

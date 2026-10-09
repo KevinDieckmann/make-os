@@ -96,11 +96,14 @@ export async function cursorSchreiben(haushalt: string, cursor: Record<string, K
   });
 }
 
-/** Der Betrachter einer Person (Sichtregel) — aus der EINEN Konto-Sicht des Agenten-Bereichs. null = nicht im Haushalt. */
-export async function betrachterFuer(person: string | null | undefined): Promise<Betrachter | null> {
+/**
+ * Der Betrachter einer Person (Sichtregel) — aus der EINEN Konto-Sicht des Agenten-Bereichs. null = nicht im Haushalt. `streng` (Takt): ein
+ * Lesefehler wirft (fail-closed — die Auswertung entfällt, statt Ereignisse als „nicht sichtbar“ zu erledigen).
+ */
+export async function betrachterFuer(person: string | null | undefined, opt: { streng?: boolean } = {}): Promise<Betrachter | null> {
   if (!person) return null;
   const { sichtLaden } = await import('@/lib/agenten/faeden-server');
-  const s = await sichtLaden(person).catch(() => null);
+  const s = opt.streng ? await sichtLaden(person) : await sichtLaden(person).catch(() => null);
   return s?.imHaushalt ? { person, vollesMitglied: s.vollesMitglied, privatFinanzen: s.privatFinanzen } : null;
 }
 
