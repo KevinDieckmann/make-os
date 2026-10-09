@@ -268,7 +268,8 @@ function NaechstesZeile({ n }: { n: Naechstes }) {
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{naechstesTitel(n)}</span>
           {!!n.weitere && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}>{wiederholText(n, jetzt)}</span>}
         </span>
-        {h && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{h.kurz}</span>}
+        {/* Freigaben ohne Head sind der ZOE-Stapel — sonst stünden zwei gleiche Zeilen „2 Freigaben offen“ untereinander (Rundgang 09.10.). */}
+        {(h || n.art === 'freigabe') && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{h ? h.kurz : 'ZOE'}</span>}
       </Knopf>
     </li>
   );

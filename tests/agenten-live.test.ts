@@ -146,6 +146,7 @@ describe('(4)(7)(9) Oberfläche verdrahtet', () => {
     const hg = quelle('components/os/agenten/Hintergrund.tsx');
     expect(hg).toContain('{naechstesTitel(n)}');
     expect(hg).toMatch(/const detail = vorschlagDetail\(v\)/);
+    expect(hg).toMatch(/\{h \? h\.kurz : 'ZOE'\}/); // Freigaben ohne Head = ZOE-Stapel, beschriftet
   });
   it('Thread löschen: Head-Chat, Mitarbeiter-Thread und ZOE-Gespräch bieten es an — über EINEN Weg (daten.ts fadenLoeschen)', () => {
     expect(quelle('components/os/agenten/daten.ts')).toMatch(/aktion: 'loeschen', fadenId, stand/);
