@@ -8,6 +8,7 @@
 import { termineLesen } from '@/lib/kalender/termine-lesen';
 import { ladeEinstellungen, type Wer } from '@/lib/kalender/einstellungen';
 import { terminAnlegenServer } from '@/lib/kalender/termin-server';
+import { eigenesBlockZiel } from '@/lib/kalender/icloud-person';
 import { KalenderFehler } from '@/lib/kalender/icloud';
 import { maskieren } from '@/lib/kalender/bezug';
 import { bloeckeAus, blockAnfrage, gehoertZu, icsVonPlanArt, type BlockNeu, type PlanBlockSicht } from './bloecke';
@@ -40,9 +41,13 @@ export async function planBloeckeLesen(o: BloeckeLesen): Promise<PlanBlockSicht[
 
 /** Einen Block anlegen (ZOE `plan_block`, Kalender-Agent) — im Kalender der Person. */
 export async function blockAnlegen(person: string, b: BlockNeu, wer: ProtokollWer): Promise<{ uid: string }> {
-  // Regel 5: kein Rückfall auf „kevin“ — nur, wer einen eigenen Kalender in den Einstellungen hat.
-  if (person !== 'kevin' && person !== 'malin') throw new KalenderFehler('Für diese Person gibt es keinen eigenen Kalender.', 400);
-  const kalenderWer: Wer = person;
+  // Regel 5: kein Rückfall auf eine feste Person — nur, wer einen eigenen Kalender hat: einen Platz in den Kalender-Einstellungen ODER (iCloud je
+  // Person, 06.10.; Nachschliff 09.10.) eine eigene Verbindung mit schreibbarem Kalender. Vorher standen hier zwei feste Speichernamen — eine weitere
+  // Person mit eigener iCloud bekam ihren Block nie ins eigene Konto. Wohin genau, entscheidet weiter `terminAnlegenServer` (eigenes Konto zuerst).
+  const einst = await ladeEinstellungen();
+  const platz = person !== 'beide' && Object.prototype.hasOwnProperty.call(einst.kalender, person) && !!einst.kalender[person as Wer];
+  if (!platz && !(await eigenesBlockZiel(person).catch(() => undefined))) throw new KalenderFehler('Für diese Person gibt es keinen eigenen Kalender.', 400);
+  const kalenderWer = person as Wer;
   const a = blockAnfrage(b, kalenderWer);
   const { art, blockArt } = icsVonPlanArt(b.art);
   const r = await terminAnlegenServer({
