@@ -28,11 +28,17 @@ import {
   ansprache, ansprechbarFuer, ausloeserText, euro, fadenStatusName, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
 } from './regeln';
 import { einSpaltig, KUGEL_GROESSE } from './masse';
+import { unterlagenHead } from '@/lib/agenten/unterlagen-werkzeug';
+import { UnterlagenKarte } from '../gesundheit/Unterlagen';
 
 type ReiterId = 'chat' | 'aktivitaet' | 'info';
-/** Die Abschnitte unter „Info“ — früher je ein Reiter (Adresse, Tests und „⋯ › Einstellungen“ springen weiter direkt hinein). */
-export type InfoAbschnitt = 'mitarbeiter' | 'skills' | 'gedaechtnis' | 'leistung' | 'einstellungen';
-const INFO_ABSCHNITTE: readonly { id: InfoAbschnitt; label: string }[] = [
+/**
+ * Die Abschnitte unter „Info“ — früher je ein Reiter (Adresse, Tests und „⋯ › Einstellungen“ springen weiter direkt hinein). Seit 09.10. vorn
+ * „Dein Auftrag“ (bzw. „Auftrag des Haushalts“) und beim Gesundheits-Head „Unterlagen“ (`nurUnterlagen`).
+ */
+export type InfoAbschnitt = 'auftrag' | 'unterlagen' | 'mitarbeiter' | 'skills' | 'gedaechtnis' | 'leistung' | 'einstellungen';
+const INFO_ABSCHNITTE: readonly { id: InfoAbschnitt; label: string; nurUnterlagen?: true }[] = [
+  { id: 'auftrag', label: 'Dein Auftrag' }, { id: 'unterlagen', label: 'Unterlagen', nurUnterlagen: true },
   { id: 'mitarbeiter', label: 'Mitarbeiter' }, { id: 'skills', label: 'Skills' }, { id: 'gedaechtnis', label: 'Gedächtnis' },
   { id: 'leistung', label: 'Leistung' }, { id: 'einstellungen', label: 'Einstellungen' },
 ];
@@ -395,6 +401,64 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
   );
 }
 
+// ── Info › Dein Auftrag (09.10.) ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Der eigene Auftrag an den Head (Auftrag 09.10.: „… einen Prompt jeweils für den Agenten schreiben“). Privat-Heads der Ebene Person: nur die Person
+ * selbst; Heads des Haushalts: schreiben volle Mitglieder, lesen alle, die den Head sehen. Entschieden hat der Server (`einstellung.aendern`,
+ * `einstellung.auftrag`); die Seite zeigt nur an. Speichern mit Stand (409 → neu laden), über der Grenze sagt der Server 413 — nie gekürzt.
+ */
+function AuftragAbschnitt({ k }: { k: HeadKarte }) {
+  const { melde } = useAgenten();
+  const e = k.einstellung;
+  const a = e?.auftrag;
+  const [text, setText] = useState(a?.text ?? '');
+  const [fehler, setFehler] = useState<string | undefined>();
+  useEffect(() => { setText(a?.text ?? ''); }, [a?.text]);
+  if (!e || !a) return <Leer>Der eigene Auftrag kommt mit dem Agenten-Kern.</Leer>;
+  const max = a.max;
+  const zuLang = text.length > max;
+  const geaendert = text.trim() !== (a.text ?? '');
+  const person = a.ebene === 'person';
+  const speichern = async () => {
+    setFehler(undefined);
+    if (zuLang) { setFehler(`Höchstens ${max.toLocaleString('de-DE')} Zeichen — bitte kürzen.`); return; }
+    const r = await einstellungSenden({ aktion: 'einstellung', headId: k.id, teil: { auftrag: text.trim() || null }, stand: e.stand });
+    if (r.ok) melde(text.trim() ? `Auftrag an ${k.kurz} gespeichert.` : `Auftrag an ${k.kurz} entfernt.`, 'gut');
+    else {
+      const einwilligung = (r.daten as { einwilligung?: string } | undefined)?.einwilligung === 'gesundheit';
+      setFehler(r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : einwilligung ? 'Erst die Einwilligung (a) zur Gesundheit erklären (System › Datenschutz) — nichts gespeichert.' : r.text);
+    }
+  };
+  return (
+    <div style={{ display: 'grid', gap: ABSTAND.m }}>
+      <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.55 }}>
+        {person ? `Was ${k.kurz} über dich wissen soll — dein Ziel, worauf er achten soll, was er lassen soll. Gilt nur für dich; ${k.kurz} und seine Mitarbeiter lesen ihn bei jeder Antwort mit.`
+          : `Wie ${k.kurz} für euch arbeiten soll — gilt für alle im Haushalt; ${k.kurz} und seine Mitarbeiter lesen ihn bei jeder Antwort mit.`}
+        {' '}Die festen Regeln (nur Vorschläge, nichts nach außen ohne Klick) bleiben immer.
+      </div>
+      {a.text && !a.anKi && a.grund && <Hinweis art="achtung" titel="Geht gerade nicht an die KI">{a.grund}</Hinweis>}
+      {!a.text && a.kategorie === 'gesundheit' && <Hinweis art="info">Kann Gesundheitsangaben enthalten: gespeichert nur mit deiner Einwilligung (a), an die KI nur mit (b) „An die KI geben“.</Hinweis>}
+      {e.aendern ? (
+        <form onSubmit={x => { x.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: ABSTAND.s }}>
+          <Feldzeile label={person ? `Dein Auftrag an ${k.kurz}` : `Auftrag des Haushalts an ${k.kurz}`} fehler={fehler}>
+            <textarea value={text} onChange={x => setText(x.target.value)} rows={6} aria-label={`Dein Auftrag an ${k.kurz}`}
+              placeholder={person ? 'z. B. „Mein Ziel bis Juni: Halbmarathon unter 2 Stunden. Achte auf meinen Schlaf, schlag lieber weniger, aber verlässliche Einheiten vor.“' : 'z. B. „Wir duzen unsere Kunden. Vorschläge immer mit nächstem Schritt und Datum.“'}
+              style={{ ...eingabe, minHeight: ZIEL.haupt * 3, resize: 'vertical', lineHeight: 1.5 }} />
+          </Feldzeile>
+          <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.m, flexWrap: 'wrap' }}>
+            <Knopf typ="submit" haupt aus={!geaendert}>{text.trim() || !a.text ? 'Speichern' : 'Auftrag entfernen'}</Knopf>
+            <span aria-live="polite" style={{ fontSize: TYP.bedien, color: zuLang ? LEUCHT.kritisch : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{text.length.toLocaleString('de-DE')} / {max.toLocaleString('de-DE')} Zeichen</span>
+            {a.am && !geaendert && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>gespeichert {new Date(a.am).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>}
+          </div>
+        </form>
+      ) : (
+        a.text ? <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{a.text}</div> : <Leer>Noch kein Auftrag. Den schreiben volle Mitglieder des Haushalts.</Leer>
+      )}
+    </div>
+  );
+}
+
 // ── Reiter Info ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: HeadDef | null; skills: Abruf<SkillsAntwort>; offen: readonly InfoAbschnitt[]; umschalten: (a: InfoAbschnitt) => void }) {
@@ -402,12 +466,17 @@ function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: He
     mitarbeiter: k.mitarbeiter.length,
     skills: skills.zustand === 'da' ? skills.daten.skills.filter(s => s.headId === k.id).length : k.skills.length,
   };
+  const mitUnterlagen = !!def && unterlagenHead(def);
+  const auftragGesetzt = !!k.einstellung?.auftrag?.text;
   return (
     <div style={einSpaltig(ABSTAND.l)}>
       <HeadUeber k={k} def={def} />
-      {INFO_ABSCHNITTE.map(a => (
-        <Klappbar key={a.id} id={`agenten-${k.id}-${a.id}`} titel={a.label} offen={offen.includes(a.id)} umschalten={() => umschalten(a.id)}
-          rechts={anzahl[a.id] ? <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{anzahl[a.id]}</span> : undefined}>
+      {INFO_ABSCHNITTE.filter(a => !a.nurUnterlagen || mitUnterlagen).map(a => (
+        <Klappbar key={a.id} id={`agenten-${k.id}-${a.id}`} titel={a.id === 'auftrag' && k.ebene !== 'person' ? 'Auftrag des Haushalts' : a.label} offen={offen.includes(a.id)} umschalten={() => umschalten(a.id)}
+          rechts={a.id === 'auftrag' ? <span style={{ fontSize: TYP.bedien, color: auftragGesetzt ? C.ink : C.inkLeise }}>{auftragGesetzt ? 'gesetzt' : 'leer'}</span>
+            : anzahl[a.id] ? <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{anzahl[a.id]}</span> : undefined}>
+          {a.id === 'auftrag' && <AuftragAbschnitt k={k} />}
+          {a.id === 'unterlagen' && <UnterlagenKarte />}
           {a.id === 'mitarbeiter' && <MitarbeiterReiter k={k} skills={skills} />}
           {a.id === 'skills' && <SkillsReiter k={k} skills={skills} />}
           {a.id === 'gedaechtnis' && <Gedaechtnis k={k} def={def} skills={skills} />}
@@ -423,6 +492,8 @@ function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: He
 
 /** Womit die Mitte startet: ein Reiter oder (wie früher die eigenen Reiter) direkt ein Abschnitt unter „Info“. */
 export type HeadReiterId = ReiterId | InfoAbschnitt;
+/** Ist das ein Reiter bzw. Info-Abschnitt (Adresse `?r=`, 09.10.)? */
+export const istHeadReiter = (x: string | null | undefined): x is HeadReiterId => !!x && (x === 'chat' || x === 'aktivitaet' || x === 'info' || istInfoAbschnitt(x));
 
 export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }: { headId: string; fadenId?: string; startReiter?: HeadReiterId }) {
   const w = useAgenten();
@@ -456,7 +527,10 @@ export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }:
       <div style={einSpaltig(ABSTAND.l)}>
         <GespraechKopf avatar={<KuerzelKugel name={def?.kurz ?? 'Head'} farbe={headFarbe(def?.farbe)} bereich={def?.bereich} groesse={KUGEL_GROESSE.liste} />} titel={def?.name ?? 'Head'} />
         {w.agenten.zustand === 'da'
-          ? <Hinweis art="info">Diesen Head gibt es für dich nicht — welche Heads du siehst, entscheidet der Server.</Hinweis>
+          ? def?.voraussetzung === 'gesundheit-ki'
+            // 09.10.: der Gesundheits-Head erscheint erst mit (a) „verarbeiten“ UND (b) „An die KI geben“ (lib/agenten/sicht.ts) — sagen, wie.
+            ? <Hinweis art="info" titel={`${def.name} braucht deine Einwilligung`}>Dieser Agent arbeitet mit deinen Gesundheitsdaten — er erscheint, sobald du unter System › Datenschutz › Gesundheit (a) „Verarbeiten“ und (b) „An die KI geben“ erklärt hast. Unterlagen kannst du schon mit (a) unter Gesundheit hochladen.</Hinweis>
+            : <Hinweis art="info">Diesen Head gibt es für dich nicht — welche Heads du siehst, entscheidet der Server.</Hinweis>
           : <Leerzustand symbol="✦" titel={def ? `${def.kurz} kommt` : 'Head'}>{w.agenten.zustand === 'laedt' ? 'Wird geladen …' : 'Der Chat mit den Heads kommt mit dem Agenten-Kern. ZOE ist schon da.'}</Leerzustand>}
       </div>
     );
@@ -496,6 +570,7 @@ export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }:
           { label: 'Hintergrundaufgabe …', satz: 'Jetzt, einmal geplant oder wiederkehrend', tun: () => dialog({ art: 'hintergrund', agent: { art: 'head', headId: k.id } }) },
           { label: 'Mitarbeiter anlegen', satz: 'Aus Vorlage oder beschreiben', tun: () => dialog({ art: 'mitarbeiter', headId: k.id }) },
           { label: 'Skill anlegen', satz: 'Anleitung mit Beispielen, Werkzeugen und Tests', tun: () => dialog({ art: 'skill', headId: k.id }) },
+          { label: k.ebene === 'person' ? 'Dein Auftrag' : 'Auftrag des Haushalts', satz: `Was ${k.kurz} dauerhaft wissen soll — steht bei jeder Antwort im Hintergrund`, tun: () => zuAbschnitt('auftrag') },
           { label: 'Einstellungen', satz: 'Modell, Aufwand, Autonomie, Budget, Not-Aus dieses Heads', tun: () => zuAbschnitt('einstellungen') },
           ...(fa && !geteilt ? [{ label: 'Thread löschen', satz: 'Mit allen Aufträgen darin an Mitarbeiter', gefahr: true, tun: () => { void loeschen(); } }] : []),
         ]} />

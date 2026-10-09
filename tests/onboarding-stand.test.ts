@@ -75,6 +75,9 @@ const alleTexte = () => [
   ...SCHRITTE.map(texte), ...ETAPPEN.flatMap(e => [e.titel, e.satz, ...(e.hinweise ?? []).flatMap(h => [h.titel, h.satz, h.wann])]),
   ...DATENKARTE.map(d => `${d.fakt} ${d.hier} ${d.nicht}`), ...ABLAUF.map(a => `${a.wann} ${a.was}`), ...EBENEN.map(s => `${s.titel} ${s.satz}`),
   ...ZONEN.map(z => JSON.stringify(z)), ...Object.values(D.GRUPPEN).map(g => `${g.titel} ${g.satz}`),
+  // Neustart (09.10.): dieselben Regeln für dessen Etappen, Ablauf, Gruppen und Fassungen.
+  ...D.NEUSTART_ETAPPEN.flatMap(e => [e.titel, e.satz, ...(e.hinweise ?? []).flatMap(h => [h.titel, h.satz, h.wann])]), ...D.ABLAUF_NEUSTART.map(a => `${a.wann} ${a.was}`),
+  ...Object.values(D.GRUPPEN_NEUSTART).map(g => `${g.titel} ${g.satz}`), ...D.neustartSchritte().map(texte),
 ];
 
 /** Gibt es zu dieser Adresse eine Seite (auch über ein dynamisches Segment wie /os/planung/[horizont])? */
@@ -112,7 +115,8 @@ describe('Onboarding-Daten', () => {
   });
 
   it('Kennungen und Nummern eindeutig, jeder Link (Schritte, Datenkarte) zeigt auf eine Seite; die neuen Anker gibt es', () => {
-    for (const k of ['id', 'nr'] as const) { const l = SCHRITTE.map(s => s[k]); expect(new Set(l).size, k).toBe(l.length); }
+    // Neustart-Schritte (09.10.) tragen ihre Nummer nur in der Fassung des Neustarts (tests/einrichtung-neustart.test.ts prüft deren Eindeutigkeit).
+    for (const k of ['id', 'nr'] as const) { const l = SCHRITTE.filter(s => k === 'id' || !s.nurNeustart).map(s => s[k]); expect(new Set(l).size, k).toBe(l.length); }
     for (const s of SCHRITTE) if (s.wo) expect(seiteDa(s.wo.href), `${s.id}: ${s.wo.href}`).toBe(true);
     for (const d of DATENKARTE) if (d.href) expect(seiteDa(d.href), `${d.fakt}: ${d.href}`).toBe(true);
     expect(schritt('kalender-zuordnen').wo!.href).toBe('/os/kalender?einstellungen=1');

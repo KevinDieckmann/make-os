@@ -26,7 +26,7 @@ import { ZoeReiter } from '../ZoeReiter';
 import { Chip, Hinweis, Karte, Knopf, Seite, useBreit, useHandy, useRueckfrage } from '../ui';
 import { Team } from './Team';
 import { ZoeMitte } from './ZoeMitte';
-import { HeadMitte } from './HeadMitte';
+import { HeadMitte, istHeadReiter } from './HeadMitte';
 import { FadenMitte } from './FadenMitte';
 import { Hintergrund } from './Hintergrund';
 import { AgentenDialog } from './Dialoge';
@@ -42,8 +42,10 @@ export type HandyReiter = 'gespraech' | 'team' | 'laeuft';
 /** Die Mitte: ZOE, ein Head, ein Mitarbeiter-Thread oder ein neuer Thread (Entwurf). */
 export function Mitte() {
   const { auswahl, entwurf, neu } = useAgenten();
+  // `?r=` (09.10.): beim Head gleich ein Reiter bzw. Info-Abschnitt — z. B. „Dein Auftrag“ aus der Einrichtung (WEG.agenten({ h, r: 'auftrag' })).
+  const r = useSearchParams().get('r');
   if (entwurf) return <FadenMitte />;
-  if (auswahl.art === 'head') return <HeadMitte key={auswahl.headId} headId={auswahl.headId} fadenId={auswahl.fadenId} />;
+  if (auswahl.art === 'head') return <HeadMitte key={`${auswahl.headId}|${r ?? ''}`} headId={auswahl.headId} fadenId={auswahl.fadenId} {...(istHeadReiter(r) ? { startReiter: r } : {})} />;
   if (auswahl.art === 'faden') return <FadenMitte key={auswahl.fadenId} fadenId={auswahl.fadenId} />;
   // Ein anderer ZOE-Thread oder „Neues Gespräch“ fängt die Mitte frisch an (kein alter Verlauf unter neuer Auswahl).
   const zoeNeu = neu?.ziel === 'zoe' ? neu : null;

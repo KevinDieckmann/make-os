@@ -44,7 +44,9 @@ export const SELBST_GEKAPSELT: ReadonlySet<string> = new Set(['projekt_unterlage
   'suche_kontakt', 'crm_lage', 'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage',
   'marketing_lage', 'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage',
   // Nachschliff 09.10.: das Agenten-Werkzeug `medien_suchen` (lib/agenten/medien-werkzeuge.ts) — Dateinamen, Album-Titel, Notizen im eigenen Rahmen.
-  'medien_suchen']);
+  'medien_suchen',
+  // 09.10.: Gesundheits-Unterlagen der Person (nur der Gesundheits-Head, lib/agenten/unterlagen-werkzeug.ts) — Kopfzeile + eigener Rahmen.
+  'gesundheit_unterlagen']);
 
 /** Agent (run_agent) → Quellenname; Agenten mit reinen Zahlen fehlen bewusst. */
 export const FREMD_AGENTEN: Record<string, string> = {

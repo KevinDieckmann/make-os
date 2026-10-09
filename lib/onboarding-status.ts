@@ -31,6 +31,8 @@ import { fortschrittVon, istFertig, schritteFuer, type Kontext, type PruefBefund
 import { gruenFesthalten, hakenLesen } from '@/lib/onboarding-haken';
 import { hauptInhaber, istWirksamerInhaber, kontenImHaushaltDerInhaber, wirksameInhaber } from '@/lib/zugang/inhaber';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
+import { speicherFuer } from '@/lib/zoe/raum';
+import { neustartMarke, neustartSatz } from '@/lib/onboarding-neustart';
 
 export type Befund = PruefBefund;
 
@@ -50,7 +52,11 @@ export const PRIVATKONTO_FRISCH_TAGE = 31;
 export const ALTBESTAND_BIS = '2026-10-09';
 
 /** Persönliche Prüfungen — IMMER nur für `person` (die Person der Sitzung), nie für eine andere. */
-export const PERSOENLICHE_PRUEFUNGEN = ['zwei-faktor', 'gesundheit-einwilligung', 'icloud', 'google', 'gmail', 'postfach', 'whoop', 'aufgaben-ich', 'zoe', 'konten-register', 'arbeitsrahmen', 'routinen'] as const;
+export const PERSOENLICHE_PRUEFUNGEN = [
+  'zwei-faktor', 'gesundheit-einwilligung', 'icloud', 'google', 'gmail', 'postfach', 'whoop', 'aufgaben-ich', 'zoe', 'konten-register', 'arbeitsrahmen', 'routinen', 'gesundheit-agent',
+  // Neustart (09.10.): eigene Ziele und „Gesundheit komplett“ — nur ja/nein für die Person selbst, nie Inhalte (Art. 9).
+  'ziele-ich', 'koerper', 'ernaehrung', 'sport', 'routinen-gesundheit',
+] as const;
 /** Inhaber-Prüfungen — nur die Sitzung des Haupt-Inhabers bekommt sie (sein Altbestand), nie eine andere Person. */
 export const INHABER_PRUEFUNGEN = ['altbestand'] as const;
 /** Aus dem Lagebild des Head of IT (lib/hoi, nur lesen) — Instanz-Befunde. */
@@ -65,6 +71,8 @@ export const HAUSHALT_PRUEFUNGEN = ['familie-rahmen', 'familie-menschen'] as con
 export const GEMEINSAME_PRUEFUNGEN = [
   ...INSTANZ_PRUEFUNGEN, 'zwei-faktor-pflicht', 'personen', 'haushalt', 'inhaber', 'eroeffnung', 'konten', 'posten', 'kontakte', 'ziele', 'fokus', 'kompass',
   'monatsabschluss', 'mandate', 'produkte', 'kapazitaet', 'business-einstellungen', 'agenten', 'brain', 'finanzplan', 'haushalt-fixkosten', ...HAUSHALT_PRUEFUNGEN,
+  // Neustart (09.10.): Business online (Konten im Register, ein Angebot, der Plan) und die Marke selbst (nur Tag und Zähler).
+  'konten-business', 'angebote', 'business-vorlage', 'neustart',
 ] as const;
 export const ALLE_PRUEFUNGEN: readonly string[] = [...PERSOENLICHE_PRUEFUNGEN, ...INHABER_PRUEFUNGEN, ...GEMEINSAME_PRUEFUNGEN];
 
@@ -152,7 +160,9 @@ async function ausfuehren(p: Pruefungen): Promise<Record<string, Befund>> {
 async function persoenlich(person: string, u: Umfang): Promise<Record<string, Befund>> {
   const heute = localDay();
   const google = einmal(async () => (await import('@/lib/google/verbindung')).googleStatus(person));
-  const routinen = einmal(() => lesen<{ routinen?: { aktiv?: boolean; owner?: string }[]; bloecke?: { owner?: string; art?: string; einheit?: string }[] }>('routinen'));
+  const laufend = Number(heute.slice(0, 4));
+  const routinen = einmal(() => lesen<{ routinen?: { aktiv?: boolean; owner?: string; kategorie?: string }[]; bloecke?: { owner?: string; art?: string; einheit?: string }[] }>('routinen'));
+  const einwilligung = einmal(async () => (await (await import('@/lib/datenschutz/gesundheit-einwilligung')).gesundheitStandFuer(person)).verarbeiten.an);
   const pruefungen: Record<(typeof PERSOENLICHE_PRUEFUNGEN)[number], () => Promise<Befund | null>> = {
     'zwei-faktor': async () => ((await (await import('@/lib/zugang/konten')).kontoFuerSpeicher(person))?.zweiterFaktor ? ja('bei dir an') : nein('bei dir noch aus')),
     // Nur „erklärt ja/nein“ zu (a) — der STAND (ein Widerruf zählt), nie was erklärt wurde, nie ein Gesundheitswert.
@@ -242,6 +252,66 @@ async function persoenlich(person: string, u: Umfang): Promise<Record<string, Be
       const eigene = ((await routinen())?.routinen ?? []).filter(r => r?.aktiv && r.owner === person).length;
       return eigene ? ja(`${n(eigene, 'aktive Routine', 'aktive Routinen')} von dir`) : nein('noch keine eigene aktive Routine');
     },
+    // ── Neustart (09.10.): eigene Ziele und „Gesundheit komplett“ — nur ja/nein und Zähler, nur für die Person selbst, nie ein Inhalt ──
+    // Eigene Ziele (`ziele-eigen` der Person): ein Jahresziel des laufenden Jahres oder ein eigener Satz je Horizont (Kompass, „ich“).
+    'ziele-ich': async () => {
+      if (!u.privat) return null; // Privat-Bereich: ein Konto „nur Business“ hat den Schritt nicht (EINE Konto-Sicht)
+      const [{ zielJahr }, { fokusFuerLaufendesJahr }] = await Promise.all([import('@/lib/planung/zeitstrahl'), import('@/lib/planung/jahr-fokus')]);
+      const d = await lesen<{ jahr?: { archiviertAm?: string; jahr?: unknown; termin?: unknown }[]; fokus?: Record<string, string> }>(speicherFuer('ziele-eigen', person));
+      const ziele = (d?.jahr ?? []).filter(z => !!z && !z.archiviertAm && zielJahr(z as Parameters<typeof zielJahr>[0], laufend) === laufend).length;
+      const alle = fokusFuerLaufendesJahr(d?.fokus ?? {}, laufend);
+      const saetze = (['jahr', 'quartal', 'monat', 'woche'] as const).filter(h => ['', 'privat:', 'business:'].some(p => (alle[`${p}${h}`] ?? '').trim())).length;
+      if (ziele) return ja(`${n(ziele, 'eigenes Jahresziel', 'eigene Jahresziele')}${saetze ? ` · ${saetze} von 4 eigenen Sätzen` : ''}`);
+      return saetze ? ja(`${saetze} von 4 eigenen Sätzen gesetzt`) : nein(`noch kein eigenes Ziel für ${laufend}`);
+    },
+    // Körper-Profil (Art. 9): nur „hat Inhalt ja/nein“ — ohne Einwilligung (a) steht dort nichts, darum zuerst sie.
+    koerper: async () => {
+      if (!u.privat) return null;
+      if (!(await einwilligung())) return nein('erst die Einwilligung (a) zur Gesundheit erklären');
+      const [{ koerperLaden }, { koerperHatInhalt }] = await Promise.all([import('@/lib/gesundheit/koerper-server'), import('@/lib/gesundheit/koerper')]);
+      return koerperHatInhalt((await koerperLaden(person)).koerper) ? ja('dein Körper-Profil hat Inhalt') : nein('dein Körper-Profil ist noch leer');
+    },
+    // Ernährungsprofil: das EIGENE Konto-Profil mit Bedarf, Ziel oder Unverträglichem — roh gelesen, nie ein Wert.
+    ernaehrung: async () => {
+      if (!u.privat) return null;
+      const f = await lesen<{ profile?: { person?: string; bedarf?: unknown; ziel?: unknown; unvertraeglich?: unknown }[] }>('ernaehrung');
+      const p = (Array.isArray(f?.profile) ? f!.profile! : []).find(x => !!x && x.person === person);
+      if (!p) return nein('noch kein Profil von dir');
+      const voll = (typeof p.bedarf === 'string' && !!p.bedarf.trim()) || (typeof p.ziel === 'string' && !!p.ziel.trim()) || (Array.isArray(p.unvertraeglich) && p.unvertraeglich.length > 0);
+      return voll ? ja('dein Profil steht') : nein('dein Profil ist noch leer');
+    },
+    // Sport: Einstieg fertig und mindestens ein Ziel (nur Zähler).
+    sport: async () => {
+      if (!u.privat) return null;
+      const st = await lesen<{ einstieg?: { fertig?: unknown }; ziele?: unknown }>(speicherFuer('sport', person));
+      const ein = st?.einstieg?.fertig === true;
+      const ziele = Array.isArray(st?.ziele) ? (st!.ziele as unknown[]).length : 0;
+      if (ein && ziele) return ja(`Einstieg fertig, ${n(ziele, 'Ziel', 'Ziele')}`);
+      return nein(!ein ? 'Einstieg noch offen' : 'Einstieg fertig — noch kein Ziel');
+    },
+    // Gesundheits-Routinen: mindestens eine aktive eigene Routine der Kategorie Gesundheit.
+    'routinen-gesundheit': async () => {
+      if (!u.privat) return null;
+      const z = ((await routinen())?.routinen ?? []).filter(r => r?.aktiv && r.owner === person && r.kategorie === 'gesundheit').length;
+      return z ? ja(`${n(z, 'aktive Gesundheits-Routine', 'aktive Gesundheits-Routinen')} von dir`) : nein('noch keine eigene Gesundheits-Routine');
+    },
+    // 6.2a (09.10.): Gesundheits-Agent — eigener Auftrag gesetzt ODER mindestens eine eigene Unterlage. Nur ja/nein und Zähler, nie Inhalt.
+    // Der Auftrag steht im EIGENEN Abschnitt der Agenten-Einstellung (Heads der Ebene Person, Kategorie Gesundheit — Daten des Katalogs).
+    'gesundheit-agent': async () => {
+      const [{ KATALOG }, { unterlagenHead }, { einstellungFuer }, { unterlagenAnzahl }] = await Promise.all([
+        import('@/lib/agenten/katalog'), import('@/lib/agenten/unterlagen-werkzeug'), import('@/lib/agenten/skills-lesen'), import('@/lib/gesundheit/unterlagen-server'),
+      ]);
+      const heads = KATALOG.filter(unterlagenHead);
+      if (!heads.length) return null;
+      const haushalt = u.haushalt ?? null;
+      const e = haushalt ? await einstellungFuer(haushalt, person) : null;
+      const auftrag = !!e && heads.some(h => !!e.heads[h.id]?.auftrag);
+      const zahl = await unterlagenAnzahl(person);
+      if (auftrag && zahl) return ja(`Auftrag geschrieben, ${n(zahl, 'Unterlage', 'Unterlagen')}`);
+      if (auftrag) return ja('Auftrag an den Gesundheits-Agenten geschrieben');
+      if (zahl) return ja(`${n(zahl, 'Unterlage', 'Unterlagen')} hochgeladen`);
+      return nein('noch kein Auftrag und keine Unterlage');
+    },
   };
   return ausfuehren(pruefungen);
 }
@@ -275,7 +345,7 @@ async function gemeinsam(u: Umfang): Promise<Record<string, Befund>> {
   const plan = einmal(() => lesen<{ firmen?: FirmaRoh[]; rechnungen?: RechnungRoh[]; zahlungen?: ZahlungRoh[] }>('finanzplan'));
   const geltende = einmal(async () => geschuetzt('business-eroeffnung', async () => (await import('@/lib/business/eroeffnung-server')).geltendeLaden()));
   const abNull = einmal(async () => (await import('@/lib/business/eroeffnung-server')).mitEroeffnung({ firmen: [...((await plan())?.firmen ?? [])], rechnungen: (await plan())?.rechnungen ?? [], zahlungen: (await plan())?.zahlungen ?? [] }, await geltende()));
-  const ziele = einmal(() => lesen<{ jahr?: { archiviertAm?: string; jahr?: unknown; termin?: unknown; zielwert?: number }[]; fokus?: Record<string, string> }>('ziele'));
+  const ziele = einmal(() => lesen<{ jahr?: { id?: unknown; archiviertAm?: string; jahr?: unknown; termin?: unknown; zielwert?: number }[]; fokus?: Record<string, string> }>('ziele'));
   const crm = einmal(async () => geschuetzt('crm', async () => (await import('@/lib/crm/speicher')).ladeCrm()));
   const familie = einmal(async () => (u.familie ? lesen<FamilieRoh>((await import('@/lib/familie/speicher')).familieName(u.familie)) : null));
   const business = (firmaId?: string) => bereichVonFirma(firmaId) === 'business';
@@ -402,7 +472,9 @@ async function gemeinsam(u: Umfang): Promise<Record<string, Befund>> {
       const ueber = rechn.filter(r => !!r.faellig && r.faellig < heute);
       const ohneFrist = [...zahl.filter(z => !z.faellig), ...rechn.filter(r => istEroeffnungsKennung(r.id) && !r.faellig)];
       const ausNull = [...ueber, ...ohneFrist].filter(x => istEroeffnungsKennung(x.id)).length;
-      if (!ueber.length && !ohneFrist.length) return ja(zahl.length + rechn.length ? `${zahl.length + rechn.length} offen, alle mit Frist, nichts überfällig` : 'nichts überfällig, nichts ohne Frist');
+      // Gar kein offener Posten: nichts zu prüfen — das Häkchen entscheidet (09.10., Neustart: ein leerer Datenordner ist nicht „alles erledigt“).
+      if (!zahl.length && !rechn.length) return leer('kein offener Posten — abhaken, wenn das stimmt');
+      if (!ueber.length && !ohneFrist.length) return ja(`${zahl.length + rechn.length} offen, alle mit Frist, nichts überfällig`);
       const teile = [ueber.length ? `${n(ueber.length, 'Rechnung', 'Rechnungen')} überfällig` : '', ohneFrist.length ? `${n(ohneFrist.length, 'Posten', 'Posten')} ohne Fälligkeit` : ''].filter(Boolean).join(' · ');
       return nein(ausNull ? `${teile} — davon ${ausNull} aus dem 0-Punkt (dort Fälligkeit bzw. neue Fassung)` : teile);
     },
@@ -547,6 +619,33 @@ async function gemeinsam(u: Umfang): Promise<Record<string, Befund>> {
       const m = sichtFuer((f?.menschen ?? []).filter(x => !!x && !x.archiviertAm), u.person).filter(x => !!x.geburtstag).length;
       return m ? ja(`${n(m, 'Mensch', 'Menschen')} mit Geburtstag`) : nein('noch kein Mensch mit Geburtstag');
     },
+    // ── Neustart (09.10.): Business online und die Marke ──
+    // Bankkonten der Business-Gesellschaften im Konten-Register (je Gesellschaft mindestens ein nicht archiviertes Konto) — nur Zähler.
+    'konten-business': async () => {
+      if (!nB) return leer('keine Business-Gesellschaft');
+      if (!u.haushalt) return nein('noch kein Haushalt');
+      const r = await (await import('@/lib/finanzen/konten/server')).ladeRegister(u.haushalt);
+      const mit = BUSINESS_GESELLSCHAFTEN.filter(g => r.konten.some(k => !k.archiviertAm && k.ort === g)).length;
+      const satz = `${mit} von ${nB} Business-Gesellschaften mit Konto im Register`;
+      return mit === nB ? ja(satz) : nein(satz);
+    },
+    // Angebote (Vorlage): mindestens eins — der Schritt verlangt zusätzlich das Häkchen.
+    angebote: async () => {
+      const a = ((await crm()).angebote ?? []).length;
+      return a ? ja(n(a, 'Angebot', 'Angebote')) : nein('noch kein Angebot');
+    },
+    // Plan „Business online“ (lib/planung/vorlage-business-online.ts): das Jahresziel mit der festen Kennung steht in der Planung.
+    'business-vorlage': async () => {
+      if (!nB) return leer('keine Business-Gesellschaft');
+      const { BUSINESS_ONLINE_PRAEFIX } = await import('@/lib/planung/vorlage-business-online');
+      const da = ((await ziele())?.jahr ?? []).filter(z => !!z && !z.archiviertAm && typeof z.id === 'string' && z.id.startsWith(BUSINESS_ONLINE_PRAEFIX)).length;
+      return da ? ja(`Plan steht (${n(da, 'Gesellschaft', 'Gesellschaften')})`) : nein('noch kein Plan „Business online“');
+    },
+    // Die Marke des Neustarts — nur Tag und Zähler, „leer“: es gibt nichts zu prüfen, das Häkchen entscheidet. Ohne Marke kein Befund.
+    neustart: async () => {
+      const m = await neustartMarke();
+      return m ? leer(neustartSatz(m)) : null;
+    },
   };
   return ausfuehren(pruefungen);
 }
@@ -561,16 +660,22 @@ export async function kontextFuer(person: string | null): Promise<(Kontext & { h
   // Der Haupt-Inhaber (lib/zugang/inhaber.ts) — sein Haushalt ist der der Inhaber, an ihm hängt der Altbestand. Inhaber-Rechte hat JEDER
   // Inhaber (09.10., R9); „eingeladen“ = jedes Konto außer dem Haupt-Inhaber (das Erstkonto richtete die Instanz ein).
   const inhaber = hauptInhaber(st);
+  // Neustart (09.10.): die Marke des Umzugs bzw. die Einstellung — dann gilt der Neustart-Ablauf und es gibt keinen Altbestand.
+  const neustart = !!(await neustartMarke());
+  const sicht = (await import('@/lib/zugang/konto-sicht')).kontoSichtAus(st, person);
   return {
     inhaber: istWirksamerInhaber(st, person),
     haupt: inhaber?.speicher === person,
     eingeladen: !!inhaber && inhaber.speicher !== person,
     personen: konten.length,
     // Wie `privatFinanzZugang`: Haushaltsmitglied ohne „nur Business“ UND Haushalt des Inhabers — die EINE Konto-Sicht (09.10., E4).
-    privatFinanzen: (await import('@/lib/zugang/konto-sicht')).kontoSichtAus(st, person).privatFinanzen,
+    privatFinanzen: sicht.privatFinanzen,
+    // „nur Business“ (E4-Rest): kein Privat-Bereich — keine Schritte zu Gesundheit, Familie, eigenen Zielen, Privat-Finanzen (`istPrivatSchritt`).
+    ...(sicht.nurBusiness ? { nurBusiness: true } : {}),
     // Die einfachste korrekte Regel für Schritt 0.5: Altbestand gab es nur auf einer Instanz, deren Inhaber-Konto vor dem Tag angelegt
     // wurde, an dem die Inhalte den Code verließen — neue Kunden- und Demo-Instanzen haben keinen (dort fehlt der Schritt ganz).
-    altbestand: process.env.MAKE_OS_DEMO !== '1' && !!inhaber && String(inhaber.angelegt ?? '').slice(0, 10) < ALTBESTAND_BIS,
+    altbestand: !neustart && process.env.MAKE_OS_DEMO !== '1' && !!inhaber && String(inhaber.angelegt ?? '').slice(0, 10) < ALTBESTAND_BIS,
+    ...(neustart ? { neustart: true } : {}),
     ...(k.haushalt ? { haushalt: k.haushalt } : {}),
   };
 }
@@ -588,7 +693,8 @@ export async function pruefeAlles(person: string | null): Promise<Record<string,
     const [g, ich, inh] = await Promise.all([
       gemeinsam(u),
       p ? persoenlich(p, u) : Promise.resolve({}),
-      p && k?.inhaber && k.haupt ? inhaberBefunde(p, k.haushalt) : Promise.resolve({}),
+      // Den Altbestand prüft nur die Sitzung des Haupt-Inhabers — und nur, wo es einen gibt (nie im Neustart, nie in einer neuen Instanz).
+      p && k?.inhaber && k.haupt && k.altbestand ? inhaberBefunde(p, k.haushalt) : Promise.resolve({}),
     ]);
     if (!k?.inhaber) for (const id of INSTANZ_PRUEFUNGEN) {
       const b = g[id];

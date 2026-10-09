@@ -54,7 +54,9 @@ export const VERTRAULICHE_QUELLEN = new Set(['postfach', 'kontakte', 'crm', 'ban
   // 29.09. (#K1/#K4): Termine (Arzt, Reha, Mandanten) sind vertraulich.
   'kalender',
   // 09.10. (Paket 4a): die Antwort eines Heads (head_fragen) trägt Daten seines Bereichs — Kartei, Finanzen, Termine.
-  'agent']);
+  'agent',
+  // 09.10.: Gesundheits-Unterlagen der Person (Arztbriefe, Laborwerte — Art. 9), nur der Gesundheits-Head liest sie.
+  'gesundheit-unterlagen']);
 
 /** Soll dieser Agent nur als Vorschlag (Stapel) gestartet werden statt zu laufen? */
 export function agentNurVorschlag(agent: string, fremdGelesen: boolean, vertraulich: boolean): boolean {

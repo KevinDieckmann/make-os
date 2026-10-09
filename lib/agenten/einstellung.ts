@@ -15,11 +15,14 @@
 // (`auftragGesperrt` in app/api/zoe/auftraege/lauf), die Thread-Routen lehnen Senden/Lauf ab (`laufSperre`), laufende Threads werden
 // angehalten (`laeufeAnhalten`: Status „abgebrochen“, offene Aufträge raus). Budget je Head: ab 80 % eine Glocke, ab 100 % pausiert der
 // Head (Chat, Lauf, Takt) bis zum Monatsende — eine Glocke je Stufe und Monat. Oben rein (Server UND Browser), unten der Server-Teil.
+// Seit 09.10.: der eigene Auftrag an den Head (`auftrag`, Regeln lib/agenten/auftrag.ts) — dieselben Rechte; mit Gesundheitsbezug nur mit
+// Einwilligung (a) gespeichert; `auftragAm`/`auftragVon` stempelt nur der Server; das Protokoll nennt nur den Feldnamen.
 
 import { headDef, KATALOG } from './katalog';
+import { auftragBrauchtEinwilligung, auftragSaeubern, type AuftragKiLage } from './auftrag';
 import {
   EINSTELLUNG_FELDER, einstellungBestand, type AgentenEinstellung, type Aufwand, type AutonomieStufe, type EinstellungFeld, type Faden,
-  type HeadDef, type HeadEinstellung, type HeadEinstellungSicht, type HeadGesperrt, type ModelTier,
+  type HeadDef, type HeadEinstellung, type HeadEinstellungSicht, type HeadGesperrt, type ModelTier, GRENZEN,
 } from './typen';
 import type { KontoSicht } from './sicht';
 
@@ -192,6 +195,15 @@ export function teilAnwenden(alt: HeadEinstellung, teil: unknown, head: Pick<Hea
         setze(k, liste.length ? liste.sort() : null);
         break;
       }
+      case 'auftrag': {
+        // 09.10.: eigener Auftrag an den Head — leer/null entfernt ihn, über der Grenze 413 (nie gekürzt). Unverändert = keine Änderung.
+        const a = auftragSaeubern(v);
+        if (!a.ok) return fehler(a.status, a.fehler);
+        if ((a.text ?? null) === (alt.auftrag ?? null)) break;
+        setze(k, a.text);
+        if (a.text === null) { delete neu.auftragAm; delete neu.auftragVon; }
+        break;
+      }
     }
   }
   return { ok: true, neu, felder };
@@ -200,8 +212,12 @@ export function teilAnwenden(alt: HeadEinstellung, teil: unknown, head: Pick<Hea
 // ── Anzeige (rein) ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Was die Seite je Head erfährt — wirksame Werte, Vorgaben, Kosten, Rechte, Stand. */
-export function einstellungSicht(head: Pick<HeadDef, 'stufe' | 'aufwand'>, e: HeadEinstellung, o: { boden: AutonomieStufe; wirksameAutonomie: AutonomieStufe; modelle: Record<ModelTier, string>; kostenCent: number; aendern: boolean; foto: string | null }): HeadEinstellungSicht {
+export function einstellungSicht(head: Pick<HeadDef, 'stufe' | 'aufwand'> & Partial<Pick<HeadDef, 'ebene'>>, e: HeadEinstellung, o: { boden: AutonomieStufe; wirksameAutonomie: AutonomieStufe; modelle: Record<ModelTier, string>; kostenCent: number; aendern: boolean; foto: string | null; auftrag?: AuftragKiLage }): HeadEinstellungSicht {
   return {
+    ...(o.auftrag ? { auftrag: {
+      text: e.auftrag ?? null, max: GRENZEN.headAuftragZeichen, anKi: !!e.auftrag && o.auftrag.an, ...(o.auftrag.grund ? { grund: o.auftrag.grund } : {}),
+      kategorie: o.auftrag.kategorie, ebene: head.ebene ?? 'haushalt', ...(e.auftrag && e.auftragAm ? { am: e.auftragAm } : {}),
+    } } : {}),
     stufe: e.stufe ?? head.stufe, aufwand: e.aufwand ?? head.aufwand, autonomie: o.wirksameAutonomie,
     vorgabe: { stufe: head.stufe, aufwand: head.aufwand, autonomie: o.boden },
     modelle: o.modelle,
@@ -288,8 +304,9 @@ export function einstellungEintraegeVon(e: AgentenEinstellung, speicher: string)
   if (e.notAus?.von === speicher) raus.push({ art: 'not-aus', seit: e.notAus.seit });
   for (const [id, h] of Object.entries(e.heads ?? {})) {
     if (!h) continue;
-    const mein = h.zustaendig === speicher || h.notAus?.von === speicher || h.geaendertVon === speicher || (h as { autonomieVon?: string }).autonomieVon === speicher;
-    if (mein) raus.push({ art: 'head', head: id, ...(h.zustaendig === speicher ? { zustaendig: true } : {}), ...(h.notAus?.von === speicher ? { notAus: h.notAus.seit } : {}), ...(h.geaendertVon === speicher ? { geaendertAm: h.geaendertAm } : {}) });
+    const mein = h.zustaendig === speicher || h.notAus?.von === speicher || h.geaendertVon === speicher || (h as { autonomieVon?: string }).autonomieVon === speicher || h.auftragVon === speicher;
+    // 09.10.: den eigenen Auftrag an einen Head des Haushalts (selbst geschrieben) mit Text — Art. 15/20.
+    if (mein) raus.push({ art: 'head', head: id, ...(h.zustaendig === speicher ? { zustaendig: true } : {}), ...(h.notAus?.von === speicher ? { notAus: h.notAus.seit } : {}), ...(h.geaendertVon === speicher ? { geaendertAm: h.geaendertAm } : {}), ...(h.auftragVon === speicher && h.auftrag ? { auftrag: h.auftrag, auftragAm: h.auftragAm } : {}) });
   }
   const eigen = e.personen?.[speicher];
   if (eigen) raus.push({ art: 'privat-heads', heads: eigen.heads });
@@ -305,6 +322,8 @@ export function einstellungOhnePerson(e: AgentenEinstellung, speicher: string): 
     if (x.notAus?.von === speicher) { x.notAus = { ...x.notAus, von: GELOESCHT }; n++; }
     if (x.geaendertVon === speicher) { x.geaendertVon = GELOESCHT; n++; }
     if (x.autonomieVon === speicher) { x.autonomieVon = GELOESCHT; n++; }
+    // 09.10.: der Auftrag an einen Head des Haushalts bleibt (Arbeitsweise des Haushalts), „wer“ wird „[gelöscht]“.
+    if (x.auftragVon === speicher) { x.auftragVon = GELOESCHT; n++; }
     return x;
   };
   const heads: AgentenEinstellung['heads'] = {};
@@ -540,6 +559,14 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
     import('@/lib/store/local-db'), import('@/lib/store/aenderungsprotokoll'), import('./leistung'), import('./skills-lesen'), haushaltsPersonen(),
   ]);
   const t = teil && typeof teil === 'object' ? teil as Record<string, unknown> : {};
+  // 09.10. (Art. 9): ein Auftrag an einen Head, der Gesundheitsangaben tragen kann, wird nur mit Einwilligung (a) gespeichert — Entfernen geht immer.
+  if ('auftrag' in t && auftragBrauchtEinwilligung(head)) {
+    const a = auftragSaeubern(t.auftrag);
+    if (a.ok && a.text !== null) {
+      const { gesundheitVerarbeitungErlaubt, GESUNDHEIT_OHNE_EINWILLIGUNG } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+      if (!(await gesundheitVerarbeitungErlaubt(person))) return fehler(403, GESUNDHEIT_OHNE_EINWILLIGUNG.error, { einwilligung: 'gesundheit' });
+    }
+  }
   const annahme = 'autonomie' in t ? await leistung.annahmeFuerHead(head, haushalt) : leistung.annahmeAus(0, 0);
   const ms = 'mitarbeiterAus' in t ? await mitarbeiterFuerHead(head.id, { person, haushalt }).catch(() => []) : [];
   const fotoOk = typeof t.foto === 'string' ? await fotoErlaubt(person, head, t.foto) : true;
@@ -563,6 +590,8 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
     if (!p.felder.length) { raus = { ok: true, headId: head.id, einstellung: alt, stand: einstellungStand(alt), felder: [] }; return e; }
     const neu: HeadEinstellung & { autonomieAm?: string; autonomieVon?: string; autonomieGrund?: string } = { ...p.neu, geaendertAm: jetzt, geaendertVon: person };
     if (p.felder.includes('autonomie')) Object.assign(neu, { autonomieAm: jetzt, autonomieVon: person, autonomieGrund: 'hand' });
+    // Wer den Auftrag zuletzt schrieb und wann — nur der Server stempelt (nie aus dem Browser; `teilAnwenden` kennt die Felder nicht).
+    if (p.felder.includes('auftrag') && neu.auftrag) Object.assign(neu, { auftragAm: jetzt, auftragVon: person });
     raus = { ok: true, headId: head.id, einstellung: neu, stand: einstellungStand(neu), felder: p.felder };
     if (head.ebene === 'person') return { ...e, personen: { ...(e.personen ?? {}), [person]: { heads: { ...(e.personen?.[person]?.heads ?? {}), [head.id]: neu } } } };
     return { ...e, heads: { ...e.heads, [head.id]: neu }, geaendertAm: jetzt, geaendertVon: person };

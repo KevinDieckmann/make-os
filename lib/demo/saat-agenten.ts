@@ -3,7 +3,8 @@
 // Ohne KI-Schlüssel sieht die Demo vollständig aus: es wird NIE ein Modell aufgerufen — Antworten und Berichte der Agenten sind gespeichert.
 //
 // Über die ROUTEN in-process (wie die übrige Saat): Skills (POST /api/agenten/skills: anlegen, aktivieren), geplante Hintergrundaufgaben
-// (POST /api/agenten/laeufe: planen), Medien (POST /api/medien: Album, Freigabe, an Head; Upload in Stücken über /api/medien/upload).
+// (POST /api/agenten/laeufe: planen), Medien (POST /api/medien: Album, Freigabe, an Head; Upload in Stücken über /api/medien/upload), eigene
+// Aufträge an Heads (09.10., POST /api/agenten `einstellung` — den Stand liest die Saat nur aus dem Bestand).
 // Direkt über die Schreibstellen der Pakete — begründete Ausnahmen, weil es dafür keinen Weg OHNE Modellaufruf gibt:
 //   · Threads mit Antworten und Berichten: `ablageAendernFuer` (lib/agenten/faeden-server.ts — dieselbe Schreibstelle wie der Lauf, seit E3
 //     Index + je Thread; im Browser entsteht eine Antwort nur über das Modell)
@@ -48,6 +49,7 @@ const R = {
   laeufe: () => import('@/app/api/agenten/laeufe/route') as Promise<Modul>,
   medien: () => import('@/app/api/medien/route') as Promise<Modul>,
   upload: () => import('@/app/api/medien/upload/route') as Promise<Modul>,
+  agenten: () => import('@/app/api/agenten/route') as Promise<Modul>,
   uploadTeil: () => import('@/app/api/medien/upload/[id]/route') as Promise<Modul>,
 };
 
@@ -250,10 +252,35 @@ export async function agentenUndMedienSaen(o: { lena: string; jonas: string; hau
   const faeden = await faedenSaen(personen, o.jetzt, medien.anHead);
   const skills = await skillsSaen(o.lena, o.haushalt, o.jetzt);
   const plan = await planSaen(o.lena, o.heute);
+  const auftraege = await auftraegeSaen(o.lena, o.haushalt);
   return [
     { name: 'Fotos & Videos', anzahl: medien.anzahl },
     { name: 'Agenten: Threads', anzahl: faeden },
     { name: 'Agenten: Skills', anzahl: skills },
     { name: 'Agenten: Hintergrundaufgaben', anzahl: plan },
+    { name: 'Agenten: eigene Aufträge', anzahl: auftraege },
   ];
+}
+
+/**
+ * Eigene Aufträge an Heads (09.10.): einer an einen Business-Head (gilt für den Haushalt) und einer an einen Privat-Head (nur die Person) — erfunden,
+ * über die Route. Der Gesundheits-Head bekommt keinen: er erscheint in der Demo erst mit Einwilligung (b), die bleibt hier bewusst aus.
+ */
+async function auftraegeSaen(person: string, haushalt: string): Promise<number> {
+  const [{ loadJson }, { einstellungStand, headEinstellungVon }, { headDef }, { einstellungBestand, EINSTELLUNG_VORGABE }] = await Promise.all([
+    import('@/lib/store/local-db'), import('@/lib/agenten/einstellung'), import('@/lib/agenten/katalog'), import('@/lib/agenten/typen'),
+  ]);
+  const auftraege: [string, string][] = [
+    ['marketing', 'Wir duzen unsere Zielgruppe. Jeder Vorschlag mit einem nächsten Schritt und Datum; Beiträge kurz, ohne Fachjargon (Beispiel).'],
+    ['assistenz', 'Halte mir die Vormittage für Fokusarbeit frei und schlag Termine lieber am Nachmittag vor (Beispiel).'],
+  ];
+  let n = 0;
+  for (const [headId, text] of auftraege) {
+    const head = headDef(headId);
+    if (!head) continue;
+    const e = (await loadJson<import('@/lib/agenten/typen').AgentenEinstellung>(einstellungBestand(haushalt))) ?? EINSTELLUNG_VORGABE;
+    await rufe(R.agenten(), 'POST', '/api/agenten', person, { json: { aktion: 'einstellung', headId, teil: { auftrag: text }, stand: einstellungStand(headEinstellungVon({ ...EINSTELLUNG_VORGABE, ...e, heads: e.heads ?? {} }, head, person)) } });
+    n++;
+  }
+  return n;
 }

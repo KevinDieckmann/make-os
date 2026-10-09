@@ -381,6 +381,10 @@ describe('Ausführen (Format v2) — der Hauptfall', () => {
     expect(Number.isFinite(Date.parse(marke.am))).toBe(true);
     expect(marke).toMatchObject({ version: 1, quelle: 'alt-haupt', format: 'v2', verschluesselt: true, grabsteine: { anzahl: 1, markeUebernommen: false } });
     expect(marke.zaehler).toEqual({ kontakte: 254, firmen: 26, deals: 1, mandate: 2, followups: 2, angebote: 1, kampagnen: 1, events: 1, aufgaben: 14, projekte: 3, dateien: 6 });
+    // Die Einrichtung zeigt die ersten sechs Zähler — das Wichtigste vorn — und liest die Marke wie hier geschrieben.
+    expect(Object.keys(marke.zaehler).slice(0, 6)).toEqual(['kontakte', 'firmen', 'deals', 'mandate', 'aufgaben', 'dateien']);
+    const { neustartAusText } = await import('@/lib/onboarding-neustart');
+    expect(neustartAusText(roh)).toEqual({ am: marke.am.slice(0, 10), zaehler: { kontakte: 254, firmen: 26, deals: 1, mandate: 2, aufgaben: 14, dateien: 6 } });
     expect(marke.fingerabdruecke.kontakte).toBe(bericht.bestaende.find(x => x.name === 'kontakte')!.kennungenAlt);
     for (const x of ['@', 'Beispiel GmbH', 'Anna', 'nur für Lena', 'lena', 'jonas', H]) expect(roh).not.toContain(x);
   });

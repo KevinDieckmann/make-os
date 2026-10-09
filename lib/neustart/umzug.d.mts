@@ -55,7 +55,7 @@ export interface Verweise {
 }
 export function verweisePruefen(d: { kartei: unknown; crm: unknown; tasks: unknown; crmDateien: unknown[]; aufgabenDateien: unknown[]; dateienDa?: ReadonlySet<string>; nichtUebernommen?: ReadonlySet<string> }): Verweise;
 
-export const MARKE_ZAEHLER: Readonly<Record<string, readonly [string, string]>>;
+export const MARKE_ZAEHLER: Readonly<Record<string, readonly [string, string] | null>>;
 /** Inhalt von `<daten>/system/neustart.json` (Klartext-JSON). */
 export interface NeustartMarke {
   version: number;
@@ -65,7 +65,7 @@ export interface NeustartMarke {
   quelle: string;
   format: string;
   verschluesselt: boolean;
-  /** Name → Zahl: kontakte, firmen, deals, mandate, followups, angebote, kampagnen, events, aufgaben, projekte, dateien. */
+  /** Name → Zahl, das Wichtigste vorn: kontakte, firmen, deals, mandate, aufgaben, dateien, angebote, events, projekte, followups, kampagnen. */
   zaehler: Record<string, number>;
   fingerabdruecke: { kontakte: string | null; crm: string | null };
   grabsteine: { anzahl: number; markeUebernommen: boolean };
