@@ -486,6 +486,17 @@ export interface HeadEinstellung {
   notAus?: { seit: string; von: string };
   /** Foto-Avatar (Paket 4b): Kennung eines Bilds aus „Medien unterwegs“ (`md-…`) — gezeigt nur, wer das Medium sieht. Kein Upload-Zwang. */
   foto?: string;
+  /**
+   * Eigener Auftrag an diesen Head (09.10., Auftrag: „beim Onboarding im Thema Gesundheit wirklich auch einen Prompt jeweils für den Agenten
+   * schreiben“): Freitext ≤ `GRENZEN.headAuftragZeichen` (darüber 413, nie gekürzt). Privat-Heads der Ebene Person: im Abschnitt der Person —
+   * nur sie liest und schreibt ihn; Heads der Ebene Haushalt: schreiben volle Mitglieder, lesen alle, die den Head sehen. Steht im System-Text
+   * des Heads und seiner Mitarbeiter („Auftrag der Person für diesen Agenten“) — nur, wenn seine KI-Kategorie (lib/agenten/auftrag.ts
+   * `auftragKategorie`) gerade an das Modell darf (Gesundheit: Einwilligung (b)).
+   */
+  auftrag?: string;
+  /** Wann und von wem der Auftrag zuletzt geschrieben wurde (vom Server gestempelt — nie aus dem Browser). */
+  auftragAm?: string;
+  auftragVon?: string;
   /** Letzte Änderung (vom Server gestempelt). */
   geaendertAm?: string;
   geaendertVon?: string;
@@ -505,7 +516,7 @@ export interface AgentenEinstellung {
 }
 
 /** Welche Felder `POST /api/agenten { aktion: 'einstellung' }` je Head setzt (`null` = zurück auf die Vorgabe). Paket 4b. */
-export const EINSTELLUNG_FELDER = ['aktiv', 'stufe', 'aufwand', 'budgetCentMonat', 'autonomie', 'zustaendig', 'foto', 'mitarbeiterAus'] as const;
+export const EINSTELLUNG_FELDER = ['aktiv', 'stufe', 'aufwand', 'budgetCentMonat', 'autonomie', 'zustaendig', 'foto', 'mitarbeiterAus', 'auftrag'] as const;
 export type EinstellungFeld = typeof EINSTELLUNG_FELDER[number];
 
 /** Was die Seite je Head über seine Einstellungen erfährt (GET /api/agenten, Paket 4b) — nur für Heads, die die Person sieht. */
@@ -528,6 +539,25 @@ export interface HeadEinstellungSicht {
   aendern: boolean;
   /** Stand dieses Heads (409 bei veraltetem Stand). */
   stand: string;
+  /** Eigener Auftrag an den Head (09.10.) — Text, ob er gerade an das Modell geht, und warum nicht. */
+  auftrag?: AuftragSicht;
+}
+
+/** Der eigene Auftrag an einen Head, wie ihn die Seite sieht (09.10.) — `anKi`/`grund` rechnet der Server (lib/agenten/auftrag.ts). */
+export interface AuftragSicht {
+  text: string | null;
+  /** Höchstens so viele Zeichen (`GRENZEN.headAuftragZeichen`). */
+  max: number;
+  /** Geht der Auftrag gerade mit in den System-Text (Kategorie aktiv, Einwilligung, KI-Weg)? */
+  anKi: boolean;
+  /** Warum nicht — ein Satz für die Oberfläche. */
+  grund?: string;
+  /** KI-Kategorie des Auftrags (`gesundheit` beim Gesundheits-Head; sonst die des Bereichs bzw. `allgemein`). */
+  kategorie: KiKategorie;
+  /** Wem er gehört: der Person (Privat-Heads der Ebene Person) oder dem Haushalt. */
+  ebene: Ebene;
+  /** Zuletzt geschrieben (Zeit). Wer, nur bei Heads des Haushalts als Anzeigename der Seite — hier nie. */
+  am?: string;
 }
 
 /** Instanz-Budget für den Kopf-Balken (Paket 4b, aus lib/ki/tor.ts). */
@@ -724,6 +754,8 @@ export const GRENZEN = {
   merksatzZeichen: 300,
   planAufgabenJePerson: 100,
   auftragZeichen: 4_000,
+  /** Eigener Auftrag je Head (09.10., `HeadEinstellung.auftrag`) — darüber 413, nie gekürzt. */
+  headAuftragZeichen: 4_000,
   /** „Als Nächstes“ zeigt die nächsten n Tage (C2). */
   naechsteTage: 7,
 } as const;

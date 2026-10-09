@@ -52,6 +52,9 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'whoop-verbindung', export: false, grund: 'Zugang zu WHOOP (verschlüsselte Token) — nie in einer Datei; beim Löschen bei WHOOP widerrufen und entfernt' },
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): gehört allein der Person — Export und Löschen mit dem Konto.
   { basis: 'gesundheit-koerper' },
+  // Gesundheits-Unterlagen (09.10.): die Liste gehört allein der Person — IMMER mit Suffix; die Dateien entfernt `kontoLoeschen` vorher (Schritt 2e),
+  // im Export steht die Liste, die Dateien einzeln über den Download (`nichtEnthalten`).
+  { basis: 'gesundheit-unterlagen', nurMitSuffix: true },
   // Onboarding (08.10. spät): persönliche Häkchen der Einrichtung — `onboarding` ohne Suffix sind die GEMEINSAMEN (geteilter Bestand).
   { basis: 'onboarding', nurMitSuffix: true },
   // Seit 08.10. spät je Person (Datenschutz vor dem Upload): Tagesläufe mit Ausrichtung, Arbeits- und Gesundheits-Schalter.
@@ -116,7 +119,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'ereignisse--*': 'Ereignisse für die Agenten je Haushalt (09.10., E1) — nur Kennungen, rollend 30 Tage; nicht im Export (keine Inhalte der Person), beim Konto-Löschen fallen die Ereignisse NUR dieser Person weg (Mail, „An ZOE gegeben“), aus Personen-Listen wird sie gestrichen',
   // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): Bestände je HAUSHALT — Export/Löschen der eigenen Einträge baut das jeweilige Paket.
   'agenten-skills--*': 'Werkstatt der Heads je Haushalt (Skills, eigene Mitarbeiter, Gedächtnis) — im Export die selbst angelegten/freigegebenen, beim Löschen Speichername „[gelöscht]“ (Paket 3)',
-  'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt (keine Inhalte) — im Export der eigene Abschnitt der Privat-Heads und die eigenen Vermerke; beim Löschen fällt der Abschnitt weg, der Speichername wird „[gelöscht]“ (Paket 4b)',
+  'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt — im Export der eigene Abschnitt der Privat-Heads (mit eigenen Aufträgen, 09.10.), selbst geschriebene Aufträge an Heads des Haushalts und die eigenen Vermerke; beim Löschen fällt der Abschnitt weg, der Speichername wird „[gelöscht]“ (Paket 4b)',
   'medien--*': 'Business-Medien je Haushalt — im Export (`medien`, lib/medien/export.ts) die selbst aufgenommenen, abgebildeten und bewerteten als Metadaten samt eigener Einwilligungen, Dateien nur als Download-Weg; beim Löschen bleibt das Medium mit `von` „[gelöscht]“ (Paket 5)',
 };
 
@@ -202,6 +205,8 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     console.error('[konto-export] Medien:', e instanceof Error ? e.message : e);
     nichtEnthalten.push({ bestand: 'medien', grund: 'Fotos & Videos ließen sich gerade nicht lesen — bitte den Export später erneut holen.' });
   }
+  // Gesundheits-Unterlagen (09.10.): die Liste steht oben in `bestaende`; die Dateien selbst nicht in der Datei — einzeln herunterladen.
+  if (bestaende[`gesundheit-unterlagen--${speicher}`]) nichtEnthalten.push({ bestand: 'gesundheit-unterlagen (Dateien)', grund: 'Die Dateien selbst stehen nicht in dieser Datei — einzeln herunterladen unter Gesundheit › Unterlagen (die Liste steht oben).' });
   const eintraege: Record<string, unknown[]> = {};
   const merke = (name: string, l: unknown[]) => { if (l.length) eintraege[name] = l; };
   const zv = await loadJson<Obj>('zoe-verlauf');
@@ -345,6 +350,12 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     if (r.sitzungen) zaehl(bericht.eintraege, 'medien-uploads', r.sitzungen);
     if (r.business) zaehl(bericht.eintraege, 'medien--*', r.business);
   } catch (e) { console.error('[konto-loeschen] Medien:', e instanceof Error ? e.message : e); }
+
+  // 2e. Gesundheits-Unterlagen (09.10.): die Dateien weg, bevor der Bestand `gesundheit-unterlagen--<person>` (Schritt 4) entfernt wird.
+  try {
+    const n = await (await import('@/lib/gesundheit/unterlagen-server')).unterlagenKontoEntfernen(speicher);
+    if (n) zaehl(bericht.eintraege, 'gesundheit-unterlagen-dateien', n);
+  } catch (e) { console.error('[konto-loeschen] Gesundheits-Unterlagen:', e instanceof Error ? e.message : e); }
 
   // 3. Das Konto selbst: raus aus den Konten, eigene Einladungen weg, aus „teilt Gesundheit / eigene Ziele mit“ der anderen (08.10.).
   await aendereKonten(s => ({

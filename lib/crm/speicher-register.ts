@@ -256,10 +256,11 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'die Person sieht ihre Aufgaben unter „Hintergrund“ im Agenten-Bereich; Konto › Meine Daten exportiert den Bestand',
     loeschfrist: 'bis die Person die Aufgabe bzw. ihr Konto löscht',
   }),
-  mit(H('agenten-einstellung--*', 'Einstellungen der Heads je Haushalt: an/aus, Modell, Aufwand, Budget, Autonomie-Stufe, Not-Aus, zuständige Person (Speichername), Foto (Kennung eines Mediums) — dazu je Person der Abschnitt ihrer Privat-Heads (nur sie selbst liest ihn). Keine Inhalte, keine Dritten.'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Betrieb der Software im Haushalt',
-    art15: 'jedes Mitglied sieht die Einstellungen der Heads, die es sehen darf (Privat-Heads nur die eigenen); der eigene Abschnitt und der eigene Speichername (zuständig, Not-Aus) stehen im Konto-Export',
-    loeschfrist: 'solange die Instanz läuft; beim Konto-Löschen fällt der eigene Abschnitt weg und der Speichername wird „[gelöscht]“ (Paket 4b)',
+  mit(H('agenten-einstellung--*', 'Einstellungen der Heads je Haushalt: an/aus, Modell, Aufwand, Budget, Autonomie-Stufe, Not-Aus, zuständige Person (Speichername), Foto (Kennung eines Mediums), eigener Auftrag an den Head (Freitext, 09.10.) — dazu je Person der Abschnitt ihrer Privat-Heads (nur sie selbst liest ihn; der Auftrag an den Gesundheits-Head kann Gesundheitsangaben tragen: gespeichert nur mit Einwilligung (a), an die KI nur mit (b)).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Betrieb der Software im Haushalt; der Auftrag an einen Head mit Gesundheitsbezug Art. 9 Abs. 2 lit. a (Einwilligung (a) zum Speichern, (b) an die KI)',
+    art15: 'jedes Mitglied sieht die Einstellungen der Heads, die es sehen darf (Privat-Heads nur die eigenen); der eigene Abschnitt (mit Aufträgen), selbst geschriebene Aufträge an Heads des Haushalts und der eigene Speichername (zuständig, Not-Aus) stehen im Konto-Export',
+    loeschfrist: 'solange die Instanz läuft bzw. bis der Auftrag geleert wird; beim Konto-Löschen fällt der eigene Abschnitt weg (samt Aufträgen an Privat-Heads) und der Speichername wird „[gelöscht]“ (Paket 4b)',
+    kategorie: ['art9'],
   }),
   // Medien unterwegs (09.10., Paket 5 V1; Kevins Antworten Fragerunde Teil 2): Kataloge (Metadaten, Personen im Bild, Freigaben, Einwilligungen) —
   // die Dateien liegen NIE im Datenordner-Bestand, sondern verschlüsselt je Segment im Medienspeicher (Hetzner Object Storage, ohne Einrichtung
@@ -379,6 +380,17 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   // NUR die Person selbst (auch bei „Teilen“ nicht), an die KI nur über eigenerGesundheitsKontext mit Einwilligung (b).
   mit(H('gesundheit-koerper', 'Körper-Profil (Erstkonto) — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
   mit(H('gesundheit-koerper--*', 'Körper-Profil je Person — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
+  // Gesundheits-Unterlagen (09.10., lib/gesundheit/unterlagen*.ts): Metadaten je Person, Dateien verschlüsselt im Ordner `gesundheit-unterlagen`.
+  mit(H('gesundheit-unterlagen--*', 'Gesundheits-Unterlagen je Person (Metadaten: Name, Art, Größe, Zeitpunkt, Prüfsumme, eigene Notiz) — die Dateien (Arztbrief, Laborwerte, Trainingsplan; können Ärztinnen/Ärzte nennen) liegen verschlüsselt in <daten>/gesundheit-unterlagen. Nur die Person selbst, auch bei „Teilen“ nie andere Konten; der Text geht nur an IHREN Gesundheits-Head und nur mit Einwilligung (b).'), {
+    ...KOERPER,
+    art15: 'nur die Person selbst sieht, lädt herunter und löscht ihre Unterlagen (Gesundheit › Unterlagen, Agenten › Gesundheit › Info); Konto › Meine Daten exportiert die Liste, die Dateien einzeln über den Download',
+    loeschfrist: 'bis die Person sie löscht bzw. ihr Konto entfernt wird (dann samt Dateien); nach Widerruf von (a) kommt nichts Neues hinzu, nach Widerruf von (b) liest kein Agent sie mehr',
+  }),
+  mit({ muster: 'gesundheit-unterlagen', bezug: 'haushalt', behandlung: 'ausgenommen', grund: 'Dateien der Gesundheits-Unterlagen (<daten>/gesundheit-unterlagen, verschlüsselt wie die Dateiablage, Name gu-<uuid>.bin) — kein Bestand; Verweis und Art. 15/17 über gesundheit-unterlagen--<person>.' }, {
+    ...KOERPER,
+    art15: 'über die Metadaten (gesundheit-unterlagen--<person>) — Download nur durch die Person selbst',
+    loeschfrist: 'mit dem Eintrag (Löschen der Unterlage bzw. Konto löschen entfernt die Datei)',
+  }),
   // Zähler „Sauber geblieben“ (Modul `serie`, 09.10.): Gesundheitsdaten wie das Symptom-Tagebuch (Schreiben nur mit Einwilligung (a)).
   mit(H('streak', 'Zähler „Sauber geblieben“ (Erstkonto; Modul je Person) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('streak--*', 'Zähler „Sauber geblieben“ je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),

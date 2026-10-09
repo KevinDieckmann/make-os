@@ -331,6 +331,11 @@ const SYS = {
   // ohne Suffix = Erstkonto) und das Gedächtnis des Privat-Heads (Werkstatt je Person).
   streak: 'MESSLATTE-SYS-STREAK-NOTIZ',
   agentenGedaechtnis: 'MESSLATTE-SYS-AGENTEN-GEDAECHTNIS',
+
+  // 09.10. „Auftrag an Agenten je Person, Gesundheits-Unterlagen“: Kevins eigener Auftrag an seinen Privat-Head (Abschnitt der Person) und der Name
+  // seiner Gesundheits-Unterlage (`gesundheit-unterlagen--kevin`) — nur er selbst.
+  agentenAuftrag: 'MESSLATTE-SYS-AGENTEN-AUFTRAG',
+  unterlage: 'MESSLATTE-SYS-GESUNDHEIT-UNTERLAGE',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -560,7 +565,9 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
       eingabeFelder: [], freigabePflicht: false, ergebnis: 'faden', stufe: 'schnell', tests: [], erfolg: { laeufe: 0, angenommen: 0, abgelehnt: 0, fehler: 0 }, aktiv: false, version: 1, quelle: 'hand', angelegtVon: 'kevin',
     }] });
     // Agenten-Bereich (Paket 4b): Kevins Einstellungen seines Privat-Heads (eigener Abschnitt im Bestand des Haushalts).
-    await db.saveJson('agenten-einstellung--haus-messlatte', { v: 1, heads: {}, personen: { kevin: { heads: { assistenz: { zustaendig: SYS.agentenEinstellung, budgetCentMonat: 1234, geaendertVon: 'kevin', geaendertAm: J } } } } });
+    await db.saveJson('agenten-einstellung--haus-messlatte', { v: 1, heads: {}, personen: { kevin: { heads: { assistenz: { zustaendig: SYS.agentenEinstellung, budgetCentMonat: 1234, geaendertVon: 'kevin', geaendertAm: J, auftrag: SYS.agentenAuftrag, auftragVon: 'kevin', auftragAm: J } } } } });
+    // 09.10.: eine Gesundheits-Unterlage von Kevin (nur der Eintrag — die Liste liefert nur Metadaten).
+    await db.saveJson('gesundheit-unterlagen--kevin', { v: 1, unterlagen: [{ id: 'gu-00000000-0000-4000-8000-0000000000a1', name: `${SYS.unterlage}.pdf`, typ: 'application/pdf', groesse: 1234, hochgeladen: J, pruefsumme: 'x' }] });
     await db.saveJson('agenten-plan--kevin', { v: 1, aufgaben: [{ id: 'hg-messlatte', besitzer: 'kevin', agent: { art: 'head', headId: 'assistenz' }, titel: SYS.agentenPlan, auftrag: SYS.agentenPlan, zeitplan: { art: 'wiederkehrend', rhythmus: 'taeglich', uhrzeit: '08:00' }, aktiv: true, erstellt: J }] });
 
     // Nahtstellen 09.10.: Zähler „Sauber geblieben“ (Modul `serie` — im Körper-Profil oben an) des Erstkontos, Altbestand ohne Suffix.
