@@ -404,6 +404,7 @@ describe('(3) Schleifen & Kosten: Stillstand, Delegations-Kreise, Grenzen, Budge
     let pipelineLaeufe = 0;
     WERKZEUGE.pipeline.lauf = async () => { pipelineLaeufe++; return `Pipeline: ${pipelineLaeufe} offene Deals.`; };
     try {
+      const verbrauchVorher = await verbrauchSumme();
       const a = await mitarbeiterAuftrag('MARKE-GRENZE: Angebote prüfen.', { kostenGrenzeCent: 40 });
       expect((await fadenVon('person-b', fadenId(a)))!.lauf!.kostenGrenzeCent).toBe(40);
       ki.folge.push({ ...werkzeug(['pipeline', { runde: 1 }]), usage: teuer }, { ...werkzeug(['pipeline', { runde: 2 }]), usage: teuer }, { ...text('nie erreicht'), usage: teuer });
@@ -414,6 +415,9 @@ describe('(3) Schleifen & Kosten: Stillstand, Delegations-Kreise, Grenzen, Budge
       const f = (await fadenVon('person-b', fadenId(a)))!;
       expect(f.lauf!.fehler).toMatch(/Kostengrenze/);
       expect(f.lauf!.kostenCent).toBeCloseTo(90, 5);
+      // Dieselben 90 US-Cent stehen in der Kostenmessung der Instanz (`ki-verbrauch`, Grundlage des Budgets) — nicht mehr, nicht weniger.
+      // (Toleranz < 1 Cent: ein später Schreibvorgang eines vorherigen Falls kostet höchstens Bruchteile eines Cents.)
+      expect(await bis(async () => { const d = (await verbrauchSumme()) - verbrauchVorher; return d > 89.999 && d < 91; })).toBe(true);
       // Lesemodell der Läufe in Euro-Cent (90 US-Cent × 0,86 = 77,4), die Grenze unverändert in Euro-Cent.
       const l = await rufe(laeufeRoute.GET, '/api/agenten/laeufe', sitzung('person-b'));
       const zeile = (l.d.laeufe as { fadenId?: string; kosten?: { cent: number; grenzeCent?: number } }[]).find(x => x.fadenId === f.id)!;
