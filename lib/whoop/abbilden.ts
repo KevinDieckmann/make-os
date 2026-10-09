@@ -287,6 +287,21 @@ export const istLauf = (w: WWorkout): boolean => LAUF.test(w.sport) && (w.distan
 
 const dauerSek = (w: WWorkout) => Math.max(10, Math.round((Date.parse(w.ende) - Date.parse(w.start)) / 1000));
 
+/** Uhrzeit eines Zeitpunkts in der Ortszeit der Messung („HH:MM“); ohne Angabe Berliner Zeit (09.10.). */
+export function ortsUhrzeit(iso: string, offset?: string): string | undefined {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return undefined;
+  if (offset && TZ.test(offset)) {
+    const vz = offset.startsWith('-') ? -1 : 1;
+    const [h, m] = offset.slice(1).split(':').map(Number);
+    return new Date(t + vz * (h * 60 + m) * 60_000).toISOString().slice(11, 16);
+  }
+  return new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t));
+}
+
+/** Was die Person an einer importierten Einheit setzt — ein erneuter Import lässt es stehen (09.10.). */
+const PERSON_FELDER = ['art', 'gefuehl', 'notiz'] as const;
+
 /** Die Messwerte eines Workouts für Lauf/Training (09.10.): Strain, kcal, Puls, Minuten je Zone, Höhenmeter — nur gesetzte. */
 function messwerte(w: WWorkout): Pick<Lauf, 'strain' | 'kcal' | 'pulsSchnitt' | 'pulsMax' | 'zonenMin' | 'hoeheM'> {
   return Object.fromEntries(Object.entries({
@@ -322,29 +337,34 @@ export function sportAnwenden(stand: SportStand, workouts: readonly WWorkout[], 
       const ti = training.findIndex(t => t.externeId === ext);
       if (ti >= 0) { training.splice(ti, 1); entfernt++; }
       const mw = messwerte(w);
+      const uz = ortsUhrzeit(w.start, w.tz);
       const i = laeufe.findIndex(l => l.externeId === ext);
       if (i >= 0) {
         const a = laeufe[i];
-        if (a.datum !== datum || a.distanzKm !== km || a.dauerSek !== sek || !messGleich(a, mw)) {
+        if (a.datum !== datum || a.distanzKm !== km || a.dauerSek !== sek || a.uhrzeit !== uz || !messGleich(a, mw)) {
           // Art, Gefühl, Notiz der Person bleiben; die Messwerte gehören WHOOP (fehlt einer jetzt, fällt er weg).
           const neu: Lauf = { ...a, datum, distanzKm: km, dauerSek: sek };
           for (const k of MESS_SCHLUESSEL) delete neu[k];
-          laeufe[i] = { ...neu, ...mw }; geaendert++;
+          delete neu.uhrzeit;
+          laeufe[i] = { ...neu, ...(uz ? { uhrzeit: uz } : {}), ...mw }; geaendert++;
         }
         continue;
       }
       if (laeufe.some(l => !l.externeId && l.datum === datum && Math.abs(l.distanzKm - km) <= km * 0.1)) continue; // schon von Hand erfasst
-      const l: Lauf = { id: `wh-${w.id}`, datum, distanzKm: km, dauerSek: sek, art: 'locker', quelle: 'whoop', externeId: ext, ...mw };
+      const l: Lauf = { id: `wh-${w.id}`, datum, distanzKm: km, dauerSek: sek, art: 'locker', quelle: 'whoop', externeId: ext, ...(uz ? { uhrzeit: uz } : {}), ...mw };
       laeufe.push(l); neu++;
       continue;
     }
     const li = laeufe.findIndex(l => l.externeId === ext && l.quelle === 'whoop');
     if (li >= 0) { laeufe.splice(li, 1); entfernt++; }
+    const i = training.findIndex(x => x.externeId === ext);
+    // „Zählt als“, Gefühl und Notiz gehören der Person — sie bleiben bei jedem Abgleich stehen (09.10.).
+    const person = i >= 0 ? Object.fromEntries(PERSON_FELDER.filter(k => training[i][k] !== undefined).map(k => [k, training[i][k]])) : {};
     const t: TrainingEinheit = Object.fromEntries(Object.entries({
       id: `wh-${w.id}`, datum, sport: w.sport, dauerMin: Math.max(1, Math.round(dauerSek(w) / 60)), ...messwerte(w),
       distanzKm: w.distanzM ? Math.round((w.distanzM / 1000) * 100) / 100 : undefined, quelle: 'whoop', externeId: ext,
+      uhrzeit: ortsUhrzeit(w.start, w.tz), ...person,
     }).filter(([, v]) => v !== undefined)) as unknown as TrainingEinheit;
-    const i = training.findIndex(x => x.externeId === ext);
     // Vergleich unabhängig von der Reihenfolge der Schlüssel (der Säuberer ordnet anders als diese Abbildung — sonst zählte jeder Lauf
     // jedes Training als „geändert“, 09.10.).
     if (i >= 0) { if (sortiert(training[i]) !== sortiert(t)) { training[i] = t; geaendert++; } }

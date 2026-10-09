@@ -4,7 +4,9 @@
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Zahl, Leer, LEUCHT, useRueckfrage } from '../ui';
-import { Feld, Raster, Zeitfeld, Pillen, Hinweis, Weg, klein, datumLang, SPORT_FARBE } from './teile';
+import { Feld, Raster, Zeitfeld, Pillen, Hinweis, Weg, klein, datumLang, datumKurz, de, SPORT_FARBE, quelleText } from './teile';
+import { alleEinheiten } from '@/lib/sport/training';
+import { tagPlus } from '@/lib/sport/pace';
 import { STATIONEN, LAEUFE, splitsAusZielzeit, gesamtAus, vollstaendig, schwaechen, bestesJeStation, bestzeitPrognose } from '@/lib/sport/hyrox';
 import { formatZeit, formatPace } from '@/lib/sport/pace';
 import { hauptziel } from '@/lib/sport/plan';
@@ -24,6 +26,10 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
   const schw = letzteVolle && splits ? schwaechen(letzteVolle, splits) : [];
   const [offen, setOffen] = useState(false);
   const [bearbeite, setBearbeite] = useState<HyroxEinheit | null>(null);
+  const [vorTag, setVorTag] = useState<string | undefined>();
+  // Hyrox & Functional aus dem Training (09.10.): importierte Einheiten dieser Sparte der letzten 8 Wochen — schon mit einer Hyrox-
+  // Einheit zusammengelegte (gleicher Tag) stehen oben im Log und fehlen hier.
+  const ausTraining = useMemo(() => alleEinheiten(stand).filter(e => e.klasse === 'hyrox' && e.herkunft === 'training' && e.datum >= tagPlus(heute, -56)), [stand, heute]);
 
   return (
     <>
@@ -71,9 +77,25 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
         )}
       </Karte>
 
-      <Karte i={2}>
-        <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Stationszeiten erfassen</Ueberschrift>
-        {(offen || bearbeite) && <EinheitFormular heute={heute} start={bearbeite ?? undefined} onSpeichern={async e => { const ok = await schicke([{ op: 'hyrox', eintrag: e }], 'Einheit gespeichert.'); if (ok) { setOffen(false); setBearbeite(null); } }} onAbbruch={() => { setOffen(false); setBearbeite(null); }} />}
+      {ausTraining.length > 0 && (
+        <Karte i={2}>
+          <Ueberschrift rechts={`${ausTraining.length} in 8 Wochen`}>Hyrox & Functional aus deinem Training</Ueberschrift>
+          {ausTraining.slice(0, 12).map(e => (
+            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+              <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                <div style={{ fontSize: TYP.body, fontWeight: 500 }}>{datumKurz(e.datum)} · {e.titel}</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{[e.dauerMin ? `${e.dauerMin} min` : null, e.strain !== undefined ? `Strain ${de(e.strain)}` : null, quelleText(e.quelle, e.auch)].filter(Boolean).join(' · ')}</div>
+              </div>
+              <Knopf leise onClick={() => { setBearbeite(null); setVorTag(e.datum); setOffen(true); }}>Stationszeiten erfassen</Knopf>
+            </div>
+          ))}
+          <Hinweis>Trägst du zu einer dieser Einheiten Stationszeiten ein, zählt sie nur einmal (gleicher Tag).</Hinweis>
+        </Karte>
+      )}
+
+      <Karte i={3}>
+        <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setVorTag(undefined); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Stationszeiten erfassen</Ueberschrift>
+        {(offen || bearbeite) && <EinheitFormular key={bearbeite?.id ?? vorTag ?? 'neu'} heute={heute} tag={vorTag} start={bearbeite ?? undefined} onSpeichern={async e => { const ok = await schicke([{ op: 'hyrox', eintrag: e }], 'Einheit gespeichert.'); if (ok) { setOffen(false); setBearbeite(null); } }} onAbbruch={() => { setOffen(false); setBearbeite(null); setVorTag(undefined); }} />}
         {!stand.hyrox.length && !offen && <Leer>Training, Simulation oder Wettkampf — Stationen einzeln oder nur die Gesamtzeit.</Leer>}
         {stand.hyrox.slice(0, 30).map(e => {
           const g = gesamtAus(e);
@@ -96,8 +118,8 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
   );
 }
 
-function EinheitFormular({ heute, start, onSpeichern, onAbbruch }: { heute: string; start?: HyroxEinheit; onSpeichern: (e: HyroxEinheit) => Promise<void>; onAbbruch: () => void }) {
-  const [e, setE] = useState<HyroxEinheit>(start ?? { id: neueId('hx'), datum: heute, art: 'simulation', stationen: {}, laeufe: [] });
+function EinheitFormular({ heute, tag, start, onSpeichern, onAbbruch }: { heute: string; tag?: string; start?: HyroxEinheit; onSpeichern: (e: HyroxEinheit) => Promise<void>; onAbbruch: () => void }) {
+  const [e, setE] = useState<HyroxEinheit>(start ?? { id: neueId('hx'), datum: tag ?? heute, art: tag ? 'training' : 'simulation', stationen: {}, laeufe: [] });
   const setStation = (id: StationId, sek: number | undefined) => setE(x => { const st = { ...x.stationen }; if (sek) st[id] = sek; else delete st[id]; return { ...x, stationen: st }; });
   const setLauf = (i: number, sek: number | undefined) => setE(x => { const l = [...x.laeufe]; while (l.length < LAEUFE) l.push(0); l[i] = sek ?? 0; let n = l.length; while (n > 0 && !l[n - 1]) n--; return { ...x, laeufe: l.slice(0, n) }; });
   const summe = gesamtAus({ ...e, gesamtSek: undefined });

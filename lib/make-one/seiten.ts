@@ -53,7 +53,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   // Privat
   s('gesundheit', 'Gesundheit', '/os/gesundheit', 'privat'),
   s('ernaehrung', 'Gesundheit · Ernährung & Einkauf', WEG.ernaehrung(), 'privat'),
-  s('sport', 'Gesundheit · Sport — Hyrox, Running, Gym, Erholung', WEG.sport(), 'privat'),
+  s('sport', 'Gesundheit · Sport — Training, Hyrox, Running, Gym, Erholung', WEG.sport(), 'privat'),
   s('journal', 'Gesundheit · Journal', WEG.journal(), 'privat'),
   s('familie', 'Familie & Partnerschaft', WEG.familie(), 'privat'),
   s('menschen', 'Kontakte · Privat (unsere Menschen)', WEG.menschen(), 'privat'),

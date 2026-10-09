@@ -18,12 +18,13 @@ import { HyroxTeil } from './HyroxTeil';
 import { RunningTeil } from './RunningTeil';
 import { GymTeil } from './GymTeil';
 import { ErholungTeil } from './ErholungTeil';
+import { TrainingTeil } from './TrainingTeil';
 import { WEG } from '@/lib/wege';
 import { stilLink } from './teile';
 
-type Reiter = 'plan' | 'hyrox' | 'lauf' | 'gym' | 'erholung';
+type Reiter = 'plan' | 'training' | 'hyrox' | 'lauf' | 'gym' | 'erholung';
 const REITER: { id: Reiter; label: string }[] = [
-  { id: 'plan', label: 'Ziele & Plan' }, { id: 'hyrox', label: 'Hyrox' }, { id: 'lauf', label: 'Running' }, { id: 'gym', label: 'Gym' }, { id: 'erholung', label: 'Erholung' },
+  { id: 'plan', label: 'Ziele & Plan' }, { id: 'training', label: 'Training' }, { id: 'hyrox', label: 'Hyrox' }, { id: 'lauf', label: 'Running' }, { id: 'gym', label: 'Gym' }, { id: 'erholung', label: 'Erholung' },
 ];
 
 export function SportView() {
@@ -35,7 +36,7 @@ export function SportView() {
   const geheZu = useCallback((r: Reiter) => { const p = new URLSearchParams(params.toString()); if (r === 'plan') p.delete('s'); else p.set('s', r); router.replace(`${pfad}${p.toString() ? `?${p}` : ''}`, { scroll: false }); }, [params, pfad, router]);
 
   return (
-    <Seite titel="Sport" unter={<span>Hyrox · Running · Gym · Erholung — <Link href={WEG.gesundheit()} style={stilLink}>Gesundheit</Link></span>}
+    <Seite titel="Sport" unter={<span>Training · Hyrox · Running · Gym · Erholung — <Link href={WEG.gesundheit()} style={stilLink}>Gesundheit</Link></span>}
       >
       <Segmente liste={REITER} aktiv={reiter} onWahl={geheZu} />
       <ZielBezug bereich="training" />
@@ -46,6 +47,7 @@ export function SportView() {
       {d && d.stand.einstieg.fertig && (
         <>
           {reiter === 'plan' && <ZielePlan stand={d.stand} heute={d.heute} schicke={schicke} onReiter={geheZu} />}
+          {reiter === 'training' && <TrainingTeil stand={d.stand} heute={d.heute} vorlagen={d.bibliothek.vorlagen} schicke={schicke} onReiter={geheZu} />}
           {reiter === 'hyrox' && <HyroxTeil stand={d.stand} heute={d.heute} schicke={schicke} />}
           {reiter === 'lauf' && <RunningTeil stand={d.stand} heute={d.heute} schicke={schicke} />}
           {reiter === 'gym' && <GymTeil stand={d.stand} heute={d.heute} schicke={schicke} />}

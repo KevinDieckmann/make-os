@@ -25,6 +25,23 @@ export const LAUF_ARTEN: { id: LaufArt; label: string }[] = [
 ];
 export type Quelle = 'hand' | 'apple-health' | 'strava' | 'whoop';
 
+/**
+ * Sparte einer Einheit (09.10., Training sichtbar): die Disziplinen, nach denen gezählt und geplant wird. Importe ordnet EINE Tabelle zu
+ * (lib/sport/training.ts `SPORT_ZUORDNUNG`), die Person kann je Sportart (`SportStand.sportArten`) und je Einheit (`TrainingEinheit.art`)
+ * umstellen. `erholung` (Sauna, Eisbad, Massage …) und `alltag` (Gehen, Pendeln, Hausarbeit …) erscheinen in der Liste, zählen aber nicht
+ * als Training.
+ */
+export type Sparte = 'lauf' | 'gym' | 'hyrox' | 'rad' | 'ausdauer' | 'mobility' | 'sonstiges';
+export type Klasse = Sparte | 'erholung' | 'alltag';
+export const SPARTEN: Sparte[] = ['lauf', 'gym', 'hyrox', 'rad', 'ausdauer', 'mobility', 'sonstiges'];
+export const KLASSEN: Klasse[] = [...SPARTEN, 'erholung', 'alltag'];
+export const KLASSE_LABEL: Record<Klasse, string> = {
+  lauf: 'Laufen', gym: 'Gym & Kraft', hyrox: 'Hyrox & Functional', rad: 'Rad', ausdauer: 'Ausdauer', mobility: 'Mobility & Yoga', sonstiges: 'Sonstiges',
+  erholung: 'Erholung', alltag: 'Alltag',
+};
+/** Zählt eine Klasse als Trainingseinheit? (Erholung und Alltag stehen in der Liste, zählen aber nicht.) */
+export const zaehltAlsTraining = (k: Klasse): k is Sparte => k !== 'erholung' && k !== 'alltag';
+
 export interface Ziel {
   id: string;
   art: Disziplin;
@@ -84,6 +101,8 @@ export interface Lauf {
   quelle: Quelle;
   /** Kennung beim Import, damit ein zweiter Import nichts doppelt anlegt. */
   externeId?: string;
+  /** Startzeit in Ortszeit „HH:MM“ (nur Importe, 09.10.) — für die Anzeige und um zwei Quellen derselben Einheit zu erkennen. */
+  uhrzeit?: string;
   // Messwerte aus einem Import (09.10., WHOOP — lib/whoop/abbilden.ts `sportAnwenden`); von Hand gibt es sie nicht.
   /** WHOOP-Strain 0–21. */
   strain?: number;
@@ -113,8 +132,10 @@ export interface VorlageUebung { uebung: string; saetze: number; wdh: string }
 export interface Vorlage { id: string; name: string; uebungen: VorlageUebung[]; eigen?: boolean }
 
 /**
- * Training aus einem Import (08.10., WHOOP): jedes Workout, das kein Lauf mit Distanz ist (Krafttraining, Rad, Hyrox-Training …).
- * Nur Importe legen es an (`quelle` + `externeId`, idempotent) — von Hand bleiben Läufe, Gym und Hyrox die Wege.
+ * Training (08.10., WHOOP; 09.10. auch von Hand): jedes Workout, das kein Lauf mit Distanz ist (Krafttraining, Rad, Hyrox-Training …).
+ * Importe legen es mit `quelle` + `externeId` an (idempotent). Von Hand (`quelle: 'hand'`) kommen nur Einheiten, die weder Lauf, Gym noch
+ * Hyrox sind (Rad, Yoga …) — dafür bleiben deren eigene Wege. `art`, `gefuehl` und `notiz` setzt die Person; ein erneuter Import lässt
+ * sie stehen.
  */
 export interface TrainingEinheit {
   id: string;
@@ -134,6 +155,13 @@ export interface TrainingEinheit {
   hoeheM?: number;
   quelle: Quelle;
   externeId?: string;
+  /** Startzeit in Ortszeit „HH:MM“ (Importe). */
+  uhrzeit?: string;
+  /** „Zählt als“ — von der Person gesetzt; ohne Angabe gilt die Sportart (Tabelle bzw. `SportStand.sportArten`). */
+  art?: Klasse;
+  /** Gefühl 1 (zäh) … 5 (stark) — von der Person. */
+  gefuehl?: number;
+  notiz?: string;
 }
 
 export interface ErholungTag {
@@ -161,8 +189,10 @@ export interface SportStand {
   gym: { uebungen: Uebung[]; einheiten: GymEinheit[]; vorlagen: Vorlage[] };
   /** Je Tag (YYYY-MM-DD) die Erholung. */
   erholung: Record<string, ErholungTag>;
-  /** Trainings aus Importen (WHOOP, 08.10.) — fehlt, solange es keine gibt (alte Stände bleiben bit-gleich). */
+  /** Trainings aus Importen (WHOOP, 08.10.) und von Hand (09.10.) — fehlt, solange es keine gibt (alte Stände bleiben bit-gleich). */
   training?: TrainingEinheit[];
+  /** Eigene Zuordnung je Sportart (Schlüssel wie `sportSchluessel`, lib/sport/training.ts) — fehlt, solange die Person nichts umstellt. */
+  sportArten?: Record<string, Klasse>;
 }
 
 // ── Grundzustand und Prüfung ─────────────────────────────────────────────────
@@ -175,6 +205,10 @@ const PLAN_ARTEN: PlanArt[] = ['hyrox', 'lauf', 'gym', 'ruhe', 'frei'];
 const LAUF_ART_IDS: LaufArt[] = ['locker', 'intervall', 'tempo', 'longrun', 'wettkampf'];
 const QUELLEN: Quelle[] = ['hand', 'apple-health', 'strava', 'whoop'];
 const GRUPPEN: Muskelgruppe[] = ['beine', 'ruecken', 'brust', 'schulter', 'rumpf', 'ganzkoerper', 'hyrox'];
+const UHRZEIT = /^([01]\d|2[0-3]):[0-5]\d$/;
+const uhrzeit = (v: unknown): string | undefined => (typeof v === 'string' && UHRZEIT.test(v) ? v : undefined);
+/** Schlüssel einer Sportart für die eigene Zuordnung: klein, nur a–z, 0–9 und Bindestrich (wie `sportSchluessel`). */
+const SPORT_SCHLUESSEL = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
 
 export function leereWoche(): Woche {
   return { mo: { art: 'frei' }, di: { art: 'frei' }, mi: { art: 'frei' }, do: { art: 'frei' }, fr: { art: 'frei' }, sa: { art: 'frei' }, so: { art: 'frei' } };
@@ -264,6 +298,7 @@ export function saeubereLauf(e: unknown): Lauf | null {
   const pm = ganz(e.pulsMax, 25, 250); if (pm) l.pulsMax = pm;
   const zo = zonenMin(e.zonenMin); if (zo) l.zonenMin = zo;
   const hm = ganz(e.hoeheM, 1, 20000); if (hm) l.hoeheM = hm;
+  const uz = uhrzeit(e.uhrzeit); if (uz) l.uhrzeit = uz;
   return l;
 }
 
@@ -330,7 +365,19 @@ export function saeubereTraining(e: unknown): TrainingEinheit | null {
   const zo = zonenMin(e.zonenMin); if (zo) t.zonenMin = zo;
   const hm = ganz(e.hoeheM, 1, 20000); if (hm) t.hoeheM = hm;
   const x = text(e.externeId, 120); if (x) t.externeId = x;
+  const uz = uhrzeit(e.uhrzeit); if (uz) t.uhrzeit = uz;
+  const art = aus(e.art, KLASSEN); if (art) t.art = art;
+  const g = ganz(e.gefuehl, 1, 5); if (g) t.gefuehl = g;
+  const n = text(e.notiz, 600); if (n) t.notiz = n;
   return t;
+}
+
+/** Die eigene Zuordnung je Sportart: nur gültige Schlüssel und Klassen (höchstens 200 Sportarten). */
+export function saeubereSportArten(v: unknown): Record<string, Klasse> | undefined {
+  if (!istObj(v)) return undefined;
+  const r: Record<string, Klasse> = {};
+  for (const [k, w] of Object.entries(v).slice(0, 200)) { const kl = aus(w, KLASSEN); if (SPORT_SCHLUESSEL.test(k) && kl) r[k] = kl; }
+  return Object.keys(r).length ? r : undefined;
 }
 
 export function saeubereErholung(e: unknown): ErholungTag | null {
@@ -367,6 +414,7 @@ export function saeubere(raw: unknown): SportStand {
   }
   if (istObj(raw.erholung)) for (const [d, e] of Object.entries(raw.erholung)) { if (!TAG.test(d)) continue; const t = saeubereErholung(e); if (t) s.erholung[d] = t; }
   if (Array.isArray(raw.training)) { const t = nachDatum(eindeutig(raw.training.map(saeubereTraining).filter((x): x is TrainingEinheit => !!x))).slice(0, 5000); if (t.length) s.training = t; }
+  const sa = saeubereSportArten(raw.sportArten); if (sa) s.sportArten = sa;
   return s;
 }
 
@@ -389,7 +437,15 @@ export type Op =
   | { op: 'vorlage'; eintrag: unknown }
   | { op: 'vorlage-weg'; id: string }
   | { op: 'erholung'; tag: string; werte: unknown }
-  | { op: 'erholung-weg'; tag: string };
+  | { op: 'erholung-weg'; tag: string }
+  /** Training von Hand anlegen/ändern (09.10.) — nur Einträge mit `quelle: 'hand'`; Importe ändert `training-anmerken`. */
+  | { op: 'training'; eintrag: unknown }
+  /** Nur Einträge von Hand; ein importierter Eintrag käme beim nächsten Abgleich wieder — ihn stellt man auf „Alltag“ (zählt nicht). */
+  | { op: 'training-weg'; id: string }
+  /** Was die Person an einer (auch importierten) Einheit setzt: „zählt als“, Gefühl, Notiz — `null` leert. */
+  | { op: 'training-anmerken'; id: string; art?: Klasse | null; gefuehl?: number | null; notiz?: string | null }
+  /** Eigene Zuordnung einer Sportart (`null` = zurück auf die Vorgabe). */
+  | { op: 'sportart'; sport: string; klasse: Klasse | null };
 
 const setze = <T extends { id: string }>(liste: T[], e: T) => [e, ...liste.filter(x => x.id !== e.id)];
 
@@ -419,6 +475,45 @@ export function wendeAn(stand: SportStand, op: Op): SportStand {
       return s;
     }
     case 'erholung-weg': delete s.erholung[op.tag]; return s;
+    case 'training': {
+      const roh = istObj(op.eintrag) ? op.eintrag : {};
+      const alt = (s.training ?? []).find(t => t.id === roh.id);
+      if (alt && alt.quelle !== 'hand') throw new Error('Importierte Einheiten ändern sich nur über „Zählt als“, Gefühl und Notiz.');
+      const t = saeubereTraining({ ...roh, quelle: 'hand', externeId: undefined });
+      if (!t) throw new Error('Training braucht Datum, Sportart und Dauer.');
+      if (!t.art) throw new Error('Wähle, als was die Einheit zählt.');
+      s.training = nachDatum(setze(s.training ?? [], t));
+      return s;
+    }
+    case 'training-weg': {
+      const alt = (s.training ?? []).find(t => t.id === op.id);
+      if (alt && alt.quelle !== 'hand') throw new Error('Importierte Einheiten kommen beim nächsten Abgleich wieder — stell sie auf „Alltag“, dann zählen sie nicht.');
+      const rest = (s.training ?? []).filter(t => t.id !== op.id);
+      if (rest.length) s.training = rest; else delete s.training;
+      return s;
+    }
+    case 'training-anmerken': {
+      const liste = s.training ?? [];
+      const i = liste.findIndex(t => t.id === op.id);
+      if (i < 0) throw new Error('Diese Einheit gibt es nicht mehr.');
+      const t: TrainingEinheit = { ...liste[i] };
+      if (op.art !== undefined) { if (op.art === null) delete t.art; else { const k = aus(op.art, KLASSEN); if (!k) throw new Error('Unbekannte Sparte.'); t.art = k; } }
+      if (op.gefuehl !== undefined) { if (op.gefuehl === null) delete t.gefuehl; else { const g = ganz(op.gefuehl, 1, 5); if (!g) throw new Error('Gefühl 1 bis 5.'); t.gefuehl = g; } }
+      if (op.notiz !== undefined) { const n = op.notiz === null ? undefined : text(op.notiz, 600); if (n) t.notiz = n; else delete t.notiz; }
+      if (t.quelle === 'hand' && !t.art) throw new Error('Eine Einheit von Hand braucht eine Sparte.');
+      s.training = [...liste.slice(0, i), t, ...liste.slice(i + 1)];
+      return s;
+    }
+    case 'sportart': {
+      const k = typeof op.sport === 'string' ? op.sport : '';
+      if (!SPORT_SCHLUESSEL.test(k)) throw new Error('Unbekannte Sportart.');
+      const neu: Record<string, Klasse> = { ...(s.sportArten ?? {}) };
+      if (op.klasse === null) delete neu[k];
+      else { const kl = aus(op.klasse, KLASSEN); if (!kl) throw new Error('Unbekannte Sparte.'); neu[k] = kl; }
+      if (Object.keys(neu).length > 200) throw new Error('Höchstens 200 eigene Zuordnungen.');
+      if (Object.keys(neu).length) s.sportArten = neu; else delete s.sportArten;
+      return s;
+    }
     default: throw new Error('Unbekannter Schritt.');
   }
 }

@@ -5,6 +5,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP, SCHRIFT, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { feld, Pillen as UiPillen } from '../ui';
 import { parseZeit, formatZeit } from '@/lib/sport/pace';
+import type { Klasse, Quelle } from '@/lib/sport/modell';
 
 export const de = (n: number | null | undefined, stellen = 1) => (n == null || !Number.isFinite(n) ? '—' : n.toLocaleString('de-DE', { maximumFractionDigits: stellen }));
 export const datumKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
@@ -78,4 +79,29 @@ export function Weg({ onClick, label = 'Entfernen' }: { onClick: () => void; lab
 }
 
 export const stilLink: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
-export const SPORT_FARBE = { hyrox: LEUCHT.business, lauf: LEUCHT.puls, gym: LEUCHT.agenten, erholung: LEUCHT.schlaf, ruhe: LEUCHT.schlaf, frei: C.inkLeise } as const;
+export const SPORT_FARBE = {
+  hyrox: LEUCHT.business, lauf: LEUCHT.puls, gym: LEUCHT.agenten, erholung: LEUCHT.schlaf, ruhe: LEUCHT.schlaf, frei: C.inkLeise,
+  // 09.10. (Training sichtbar): die übrigen Sparten — Rosa, Petrol, Lavendel; was nicht zählt, bleibt leise.
+  rad: LEUCHT.beziehung, ausdauer: C.aktiv, mobility: C.lavendel, sonstiges: C.inkDim, alltag: C.inkLeise,
+} as const;
+/** Farbe je Sparte (Training, Plan). */
+export const KLASSE_FARBE: Record<Klasse, string> = SPORT_FARBE;
+
+/** Herzfrequenz-Zonen 0–5: von leise über blau, grün, gelb, orange bis rot (nur Token). */
+export const ZONE_FARBE = [C.inkLeise, LEUCHT.puls, LEUCHT.gut, LEUCHT.achtung, LEUCHT.business, LEUCHT.kritisch] as const;
+
+/** Minuten je Zone als ein Balken (Anteile) — mit Text für Vorleser. */
+export function ZonenBalken({ zonen, hoehe = 8 }: { zonen: readonly number[]; hoehe?: number }) {
+  const summe = zonen.reduce((a, b) => a + b, 0);
+  if (!summe) return null;
+  const text = zonen.map((m, i) => `Zone ${i} ${de(m, 0)} min`).join(', ');
+  return (
+    <div role="img" aria-label={`Herzfrequenz-Zonen: ${text}`} style={{ display: 'flex', height: hoehe, borderRadius: hoehe / 2, overflow: 'hidden', background: 'rgba(255,255,255,.05)' }}>
+      {zonen.map((m, i) => (m > 0 ? <span key={i} style={{ flex: `${m} 1 0`, background: ZONE_FARBE[i], opacity: i === 0 ? 0.5 : 0.85 }} /> : null))}
+    </div>
+  );
+}
+
+const QUELLE_NAME: Record<Quelle, string> = { hand: 'von Hand', whoop: 'WHOOP', strava: 'Strava', 'apple-health': 'Apple Health' };
+/** Woher eine Einheit kommt (führende Quelle + weitere). */
+export const quelleText = (q: Quelle, auch?: readonly Quelle[]) => [q, ...(auch ?? [])].map(x => QUELLE_NAME[x]).join(' + ');
