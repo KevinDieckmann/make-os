@@ -1,10 +1,12 @@
 // ─── MAKE OS — Beleg lesen ──────────────────────────────────────────────────
-// Kevins Ansage: „Dateien an ZOE geben — Rechnung fotografieren, Zahlen
+// Ansage: „Dateien an ZOE geben — Rechnung fotografieren, Zahlen
 // landen im System."
 //
 // Diese Route LIEST nur. Sie schreibt bewusst nichts: aus einem Foto gezogene
-// Zahlen sind ein Vorschlag, kein Beleg. Kevin bestätigt, dann wird gebucht —
+// Zahlen sind ein Vorschlag, kein Beleg. Ein Mensch bestätigt, dann wird gebucht —
 // sonst schleichen sich Erkennungsfehler unbemerkt in die Buchhaltung.
+// Prompt ohne Persönliches (09.10., Nahtstellen — Plattform-Regel/„Datenschutz vor dem Upload“): keine Namen, keine festen Firmen;
+// die eigenen Gesellschaften kommen zur Laufzeit aus lib/einheiten.ts und dem Gesellschafts-Register (`gesellschaftenSatz`).
 //
 // Kann Fotos (JPEG/PNG/WebP) und PDFs.
 
@@ -15,7 +17,7 @@ import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { UG_NAME } from '@/lib/einheiten';
+import { gesellschaftenSatz } from '@/lib/zoe/grundauftrag';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
@@ -40,11 +42,13 @@ export interface BelegDaten {
   unsicher?: string[];
 }
 
-const SYSTEM = [
-  'Du liest einen Beleg (Rechnung, Quittung, Kontoauszug-Ausschnitt) für Kevins privates Betriebssystem und gibst die Zahlen strukturiert zurück.',
+/** Der feste Teil des Auftrags — ohne Namen und ohne feste Firmen; die eigenen Gesellschaften setzt `systemText` zur Laufzeit ein. */
+const systemText = (gesellschaften: string) => [
+  'Du liest einen Beleg (Rechnung, Quittung, Kontoauszug-Ausschnitt) für das Betriebssystem dieses Haushalts und gibst die Zahlen strukturiert zurück.',
   'WICHTIG: Nichts erfinden. Was du nicht sicher lesen kannst, lässt du weg und schreibst das Feld in "unsicher". Ein fehlendes Feld ist besser als eine geratene Zahl in einer Buchhaltung.',
-  'RICHTUNG: "eingang" = Kevin/seine Firma muss zahlen (Lieferantenrechnung, Quittung, Einkauf). "ausgang" = Kevin hat die Rechnung gestellt, jemand schuldet ihm Geld. Im Zweifel "unklar".',
-  `Kevins Firmen: KD Ventures UG, Kevin Dieckmann Consulting, ${UG_NAME}, KEMARIS. Steht eine davon als Absender/Rechnungssteller → "ausgang". Steht eine davon als Empfänger → "eingang".`,
+  'RICHTUNG: "eingang" = eine eigene Gesellschaft bzw. der Haushalt muss zahlen (Lieferantenrechnung, Quittung, Einkauf). "ausgang" = eine eigene Gesellschaft hat die Rechnung gestellt, jemand schuldet ihr Geld. Im Zweifel "unklar".',
+  gesellschaften,
+  'Steht eine eigene Gesellschaft als Absender/Rechnungssteller → "ausgang". Steht sie als Empfänger → "eingang".',
   'BETRÄGE als Zahl ohne Währungszeichen, Punkt als Dezimaltrennung (1234.56). Deutsche Schreibweise 1.234,56 also korrekt umrechnen.',
   'DATUM immer als YYYY-MM-DD.',
   'KATEGORIE: ein kurzes deutsches Wort, das zur Buchhaltung passt (z. B. Software, Büro, Reise, Beratung, Miete, Versicherung, Telefon, Fortbildung, Bewirtung).',
@@ -85,13 +89,13 @@ export async function POST(req: Request) {
     { type: 'text', text: `Lies diesen Beleg${body.name ? ` (Dateiname: ${String(body.name).slice(0, 120)})` : ''} und gib die Zahlen als JSON zurück.` },
   ];
 
-  // Die Kategorien, die Kevin wirklich benutzt — sonst erfindet das Modell
+  // Die Kategorien, die der Haushalt wirklich benutzt — sonst erfindet das Modell
   // jedes Mal neue und die Buchhaltung franst aus.
   const bestand = await loadJson<{ buchungen?: { kategorie?: string }[] }>('buchungen');
   const kategorien = Array.from(new Set((bestand?.buchungen ?? []).map(x => x.kategorie).filter(Boolean))).slice(0, 40);
 
   const r = await askText({
-    system: SYSTEM + (kategorien.length
+    system: systemText(await gesellschaftenSatz()) + (kategorien.length
       ? `\nKATEGORIE bitte aus dieser Liste wählen, wenn eine passt — nur wenn wirklich keine passt, eine neue vorschlagen:\n${kategorien.join(' · ')}`
       : ''),
     user: 'Beleg lesen.',
