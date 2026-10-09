@@ -18,12 +18,13 @@ import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { anfrageId, ENTSTEHEND_LEER, entstehendNach, fadenSenden, ladeFaden, stapelEntscheiden, useAbruf, zoeFragen, type Entstehend } from './daten';
 import { sichtbareHeads, useAgenten } from './kontext';
 import {
-  ansprache, ansprechbarFuer, nachEisenhower, risikoVon, vorschlaegeHeute, wartendeFaeden, zeitKurz, zoeFadenAktuell,
+  ansprache, ansprechbarFuer, nachEisenhower, risikoVon, vorschlaegeHeute, wartendeFaeden, wiederholText, zeitKurz, zoeFadenAktuell,
   type UeberblickZeileMitHead,
 } from './regeln';
 import { WEG } from '@/lib/wege';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme } from '@/lib/make-one/zoe-verlauf';
+import { einSpaltig } from './masse';
 
 const zeit = () => new Date().toISOString();
 let zaehler = 0;
@@ -31,8 +32,8 @@ const nr = () => `nr-lokal-${++zaehler}`;
 
 function Abschnitt({ titel, rechts, children }: { titel: string; rechts?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'grid', gap: ABSTAND.xs }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: ABSTAND.s }}><span style={{ ...MIKRO }}>{titel}</span>{rechts}</div>
+    <div style={einSpaltig(ABSTAND.xs)}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: ABSTAND.s, minWidth: 0 }}><span style={{ ...MIKRO, minWidth: 0 }}>{titel}</span>{rechts}</div>
       {children}
     </div>
   );
@@ -41,14 +42,14 @@ function Abschnitt({ titel, rechts, children }: { titel: string; rechts?: React.
 function Zeilen({ zeilen }: { zeilen: readonly UeberblickZeileMitHead[] }) {
   const { oeffne, jetzt } = useAgenten();
   return (
-    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0, ...einSpaltig(2) }}>
       {zeilen.map(z => (
-        <li key={z.id} style={{ display: 'flex', alignItems: 'flex-start', gap: ABSTAND.s, fontSize: TYP.body, lineHeight: 1.45, color: C.ink }}>
-          <span aria-hidden style={{ color: z.farbe ?? C.inkLeise }}>●</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            {z.headId ? <button type="button" onClick={() => oeffne({ h: z.headId })} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>{z.text}</button> : z.text}
+        <li key={z.id} style={{ display: 'flex', alignItems: 'flex-start', gap: ABSTAND.s, minWidth: 0, fontSize: TYP.body, lineHeight: 1.45, color: C.ink }}>
+          <span aria-hidden style={{ color: z.farbe ?? C.inkLeise, flex: '0 0 auto' }}>●</span>
+          <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+            {z.headId ? <button type="button" onClick={() => oeffne({ h: z.headId })} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', maxWidth: '100%', overflowWrap: 'anywhere' }}>{z.text}</button> : z.text}
           </span>
-          {z.zeit && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap', lineHeight: 1.7 }}>{zeitKurz(z.zeit, jetzt)}</span>}
+          {z.zeit && <span style={{ flex: '0 0 auto', fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap', lineHeight: 1.7 }}>{zeitKurz(z.zeit, jetzt)}</span>}
         </li>
       ))}
     </ul>
@@ -74,7 +75,7 @@ export function Ueberblick() {
   };
   return (
     <Karte ton="fokus" netz ariaLabel="Überblick">
-      <div style={{ display: 'grid', gap: ABSTAND.l }}>
+      <div style={einSpaltig(ABSTAND.l)}>
         <Abschnitt titel={ue?.seit ? `Seit deinem letzten Besuch (${zeitKurz(ue.seit, jetzt)})` : 'Was passiert ist'}>
           {ue ? (ue.passiert.length ? <Zeilen zeilen={ue.passiert.map(z => ({ ...z, farbe: farbeVon(z.headId) }))} /> : <span style={{ fontSize: TYP.body, color: C.inkDim }}>Seitdem ist nichts passiert.</span>)
             : <Leer>{agenten.zustand === 'laedt' ? 'Der Überblick wird geladen …' : 'Was passiert ist und woran gearbeitet wird, steht hier, sobald der Agenten-Kern läuft.'}</Leer>}
@@ -86,12 +87,12 @@ export function Ueberblick() {
         )}
         {naechste.length > 0 && (
           <Abschnitt titel="Die nächsten Tage">
-            <Zeilen zeilen={naechste.map(n => ({ id: n.id, text: n.titel, zeit: n.wann, headId: n.headId, farbe: n.kritisch ? LEUCHT.kritisch : farbeVon(n.headId) }))} />
+            <Zeilen zeilen={naechste.map(n => ({ id: n.id, text: n.weitere ? `${n.titel} · ${wiederholText(n, jetzt)}` : n.titel, zeit: n.wann, headId: n.headId, farbe: n.kritisch ? LEUCHT.kritisch : farbeVon(n.headId) }))} />
           </Abschnitt>
         )}
         <Abschnitt titel="Wartet auf dich">
-          <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: TYP.body, color: offen || wartend ? C.ink : C.inkDim }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, flexWrap: 'wrap', minWidth: 0 }}>
+            <span style={{ fontSize: TYP.body, color: offen || wartend ? C.ink : C.inkDim, minWidth: 0 }}>
               {offen ? `${offen} Freigabe${offen === 1 ? '' : 'n'}` : 'Keine Freigabe offen'}{wartend ? ` · ${wartend} Thread${wartend === 1 ? '' : 's'} mit Rückfrage` : ''}
             </span>
             {risikoarm > 0 && <Knopf onClick={alleRisikoarmen}>{risikoarm} risikoarme freigeben</Knopf>}
@@ -100,12 +101,13 @@ export function Ueberblick() {
         </Abschnitt>
         {ue && ue.ziele.length > 0 && (
           <Abschnitt titel="Jahresziele">
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: ABSTAND.s }}>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, ...einSpaltig(ABSTAND.s) }}>
               {ue.ziele.map(z => (
-                <li key={z.id} style={{ display: 'grid', gap: ABSTAND.xs }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: ABSTAND.s, fontSize: TYP.body }}>
-                    <Knopf leise href={z.link}>{z.titel} ›</Knopf>
-                    <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums', alignSelf: 'center' }}>{z.fortschritt == null ? '—' : `${z.fortschritt} %`}</span>
+                <li key={z.id} style={einSpaltig(ABSTAND.xs)}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: ABSTAND.s, minWidth: 0, fontSize: TYP.body }}>
+                    {/* Ein langer Zieltitel bricht um (der Knopf bliebe sonst einzeilig und schöbe Prozent und Balken über den Rand). */}
+                    <Knopf leise href={z.link} style={{ flex: '1 1 auto', minWidth: 0, justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{z.titel} ›</Knopf>
+                    <span style={{ flex: '0 0 auto', whiteSpace: 'nowrap', fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{z.fortschritt == null ? '—' : `${z.fortschritt} %`}</span>
                   </div>
                   {z.fortschritt != null && <Fortschritt anteil={z.fortschritt / 100} farbe={C.aktiv} />}
                 </li>
@@ -175,8 +177,8 @@ export function ZoeMitte() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: ABSTAND.l, alignContent: 'start' }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.m }}>
+    <div style={{ ...einSpaltig(ABSTAND.l), alignContent: 'start' }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.m, minWidth: 0 }}>
         <ZoeKopfKugel denkt={laeuft} />
         <div style={{ minWidth: 0 }}>
           <h2 style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink }}>ZOE</h2>
@@ -185,15 +187,15 @@ export function ZoeMitte() {
       </header>
 
       {ue?.briefing && (
-        <div style={{ display: 'grid', gap: ABSTAND.xs }}>
-          <p style={{ margin: 0, fontSize: TYP.body, lineHeight: 1.6, color: C.ink }}>{ue.briefing}</p>
+        <div style={einSpaltig(ABSTAND.xs)}>
+          <p style={{ margin: 0, fontSize: TYP.body, lineHeight: 1.6, color: C.ink, overflowWrap: 'anywhere' }}>{ue.briefing}</p>
           {agenten.zustand === 'da' && agenten.daten.ki && <KiMarke text="Briefing von ZOE — bitte prüfen" />}
         </div>
       )}
 
       <Ueberblick />
 
-      <div style={{ display: 'grid', gap: ABSTAND.xs }}>
+      <div style={einSpaltig(ABSTAND.xs)}>
         <span style={{ ...MIKRO }}>Vorschläge für heute</span>
         <div className="ui-pillen ui-pillen-einzeilig">
           {vorschlaege.map(v => <Wahl key={v.id} klein an={false} onClick={() => { if (!laeuft) void senden(v.frage); }}>{v.text}</Wahl>)}

@@ -33,7 +33,7 @@ export const V1_IMPORT = 'v1-export';
 const schl = (n: string) => normal(n).replace(/[^a-z0-9]/g, '');
 
 export function ausDateien(sich: Sicherung, v1: V1Export | null): { roh: Record<Tabelle, { zeilen: Roh[]; gesamt: number }>; bericht: DateiBericht } {
-  if (sich._typ && sich._typ !== 'make-orga-sicherung') throw new Error('Das ist keine Sicherung aus Malins Cockpit (make-orga-sicherung).');
+  if (sich._typ && sich._typ !== 'make-orga-sicherung') throw new Error('Das ist keine Sicherung aus dem Altsystem (make-orga-sicherung).');
   const tab = (t: Tabelle) => (Array.isArray(sich[t]) ? (sich[t] as Roh[]) : []);
   const buchungen = tab('buchungen');
   const daten = buchungen.map(b => String(b.datum ?? '')).filter(Boolean).sort();

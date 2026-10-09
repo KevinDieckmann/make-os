@@ -125,9 +125,9 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
         </Kachel>
       )}
       {k && (
-        <Kachel id="grundlage" titel="Grundlage · Malins Kassenbuch" breite={2}>
+        <Kachel id="grundlage" titel="Grundlage · Kassenbuch (Altsystem)" breite={2}>
         <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.grundlage()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.grundlage()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Kassenbuch (Altsystem)</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '4px 0' }}>
             <Zahl wert={eur(k.umsatzNetto)} label="Umsatz netto" farbe={LEUCHT.gut} />
             <Zahl wert={eur(k.kostenNetto)} label="Kosten netto" farbe={LEUCHT.achtung} />

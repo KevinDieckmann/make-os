@@ -64,7 +64,7 @@ export function HeadKopf({ k, def }: { k: HeadKarte | null; def: HeadDef | null 
       )}
       {k && k.kennzahlen.length > 0 && (
         <Raster min={handy ? 120 : 200}>
-          {k.kennzahlen.slice(0, 3).map(z => <Kennzahl key={z.id} klein wert={z.wert ?? undefined} label={z.label} ton={z.ampel ? AMPEL[z.ampel] : undefined} />)}
+          {k.kennzahlen.slice(0, 3).map(z => <Kennzahl key={z.id} klein wert={z.wert ?? undefined} label={z.label} ton={z.ampel ? AMPEL[z.ampel] : undefined} unter={z.wert == null ? z.hinweis : undefined} />)}
         </Raster>
       )}
       {(skills.length > 0 || k) && (

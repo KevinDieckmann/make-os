@@ -45,7 +45,7 @@ export async function tabelleLesen(v: Verbindung, token: string, tabelle: Tabell
       headers: { apikey: v.schluessel, Authorization: `Bearer ${token}`, 'Range-Unit': 'items', Range: `${von}-${von + 999}`, Prefer: 'count=exact' },
       signal: AbortSignal.timeout(30_000),
     });
-    if (r.status === 401 || r.status === 403) throw new Error(`Supabase verweigert „${tabelle}“ — steht dieser Zugang in Malins Mitgliederliste?`);
+    if (r.status === 401 || r.status === 403) throw new Error(`Supabase verweigert „${tabelle}“ — steht dieser Zugang in der Mitgliederliste des Altsystems?`);
     if (!r.ok && r.status !== 206) throw new Error(`Supabase: „${tabelle}“ nicht lesbar (${r.status}).`);
     const teil = await r.json() as Roh[];
     const bereich = r.headers.get('content-range') ?? '';

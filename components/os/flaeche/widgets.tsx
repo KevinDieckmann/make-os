@@ -50,7 +50,7 @@ import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
 import { dranOhneZusagen } from '@/lib/heute/anstehend';
 import { Anstehend } from '../heute/Anstehend';
-import { fortschrittVon, schritteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
+import { fortschrittVon, schritteFuer, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -642,7 +642,7 @@ function EinrichtungWidget({ titel, i }: WidgetProps) {
         <div style={{ display: 'grid', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}>
           {zurueck.slice(0, 3).map(s => (
             <Link key={s.id} href={s.wo?.href ?? '/os/onboarding'} style={{ color: C.ink, textDecoration: 'none', minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600 }}>{s.nr} · {s.titel} ›</span>
+              <span style={{ fontWeight: 600 }}>{s.nr} · {texteFuer(s, d.ich).titel} ›</span>
               {s.pruefung && d.z.befunde[s.pruefung] && <span style={{ color: LEUCHT.achtung }}>{d.z.befunde[s.pruefung].wert}</span>}
             </Link>
           ))}
@@ -658,7 +658,7 @@ function EinrichtungWidget({ titel, i }: WidgetProps) {
       <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/onboarding" style={link}>alle Schritte ›</Link>}>{titel ?? `Einrichtung · ${f.fertig} von ${f.gesamt}`}</Ueberschrift>
       <Fortschritt anteil={f.fertig / f.gesamt} farbe={LEUCHT.schlaf} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>
-        {f.naechster && <span style={{ flex: '1 1 220px', minWidth: 0 }}>Als Nächstes: <Link href="/os/onboarding" style={{ color: C.ink, fontWeight: 600, textDecoration: 'none' }}>{f.naechster.nr} · {f.naechster.titel} ›</Link></span>}
+        {f.naechster && <span style={{ flex: '1 1 220px', minWidth: 0 }}>Als Nächstes: <Link href="/os/onboarding" style={{ color: C.ink, fontWeight: 600, textDecoration: 'none' }}>{f.naechster.nr} · {texteFuer(f.naechster, d.ich).titel} ›</Link></span>}
         <span style={{ color: C.inkLeise }}>noch {f.offeneMinuten < 60 ? `${f.offeneMinuten} Min.` : `rund ${Math.round(f.offeneMinuten / 60 * 10) / 10} Std.`}</span>
       </div>
     </Karte>

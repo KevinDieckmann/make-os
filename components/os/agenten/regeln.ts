@@ -190,6 +190,20 @@ export function nachEisenhower(liste: readonly Naechstes[]): Naechstes[] {
   const rang = (q: Eisenhower) => EISENHOWER_REIHE.indexOf(q);
   return [...liste].sort((a, b) => rang(a.quadrant) - rang(b.quadrant) || zeitwert(a.wann) - zeitwert(b.wann));
 }
+/**
+ * Was nach dem nächsten Vorkommen eines wiederkehrenden Laufs noch kommt (Rundgang 09.10., `naechstesVerdichten` auf dem Server):
+ * „täglich bis Do“, „werktags bis Do“, sonst „+3 weitere bis 16.10.“ — ohne weitere Vorkommen leer.
+ */
+export function wiederholText(n: Pick<Naechstes, 'weitere' | 'bis' | 'wiederholt'>, jetzt: Date = new Date()): string {
+  if (!n.weitere) return '';
+  const tag = n.bis ? (/^\d{4}-\d{2}-\d{2}$/.test(n.bis) ? n.bis : berlinTag(new Date(n.bis))) : '';
+  const heute = berlinTag(jetzt);
+  const abstand = tag ? Math.round((Date.parse(`${tag}T12:00:00Z`) - Date.parse(`${heute}T12:00:00Z`)) / 86_400_000) : -1;
+  const bis = !tag ? '' : abstand === 0 ? ' bis heute' : abstand === 1 ? ' bis morgen' : abstand > 1 && abstand < 7 ? ` bis ${WOCHENTAG[wochentagVon(tag)]}` : ` bis ${tagKurz(tag)}`;
+  if (n.wiederholt === 'taeglich') return `täglich${bis}`;
+  if (n.wiederholt === 'werktags') return `werktags${bis}`;
+  return `+${n.weitere} weitere${bis}`;
+}
 export const QUADRANT_NAME: Readonly<Record<Eisenhower, string>> = {
   q1: 'Wichtig & dringend', q2: 'Wichtig', q3: 'Dringend', q4: 'Später',
 };

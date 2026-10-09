@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { MODULE, datenStandVon, modulVon, schrittFuer, sichtbarFuer, SCHRITTE, type DatenStand, type Modul, type Schritt } from '@/lib/make-one/onboarding-data';
+import { MODULE, datenStandVon, modulVon, schrittFuer, sichtbarFuer, SCHRITTE, texteFuer, type DatenStand, type Modul, type Schritt } from '@/lib/make-one/onboarding-data';
 import { useOnboarding, DatenkarteKarte, type Zustand } from './OnboardingView';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, Fortschritt, Hinweis, LEUCHT } from './ui';
 
@@ -76,7 +76,7 @@ export function DatenbasisView() {
               <Link key={s.id} href={s.wo?.href ?? '/os/onboarding'} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <Zeile onClick={() => {}} umbrechen
                   links={<Punkt farbe={STAND[stand].farbe} />}
-                  titel={s.titel}
+                  titel={texteFuer(s, z?.ich).titel}
                   unter={<span style={{ color: stand === 'gepflegt' || stand === 'leer' ? C.inkLeise : STAND[stand].farbe }}>{z!.befunde[s.pruefung!].wert}</span>}
                   rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Chip farbe={STAND[stand].farbe}>{STAND[stand].label}</Chip><span style={{ color: C.inkLeise }}>›</span></span>} />
               </Link>
@@ -85,7 +85,7 @@ export function DatenbasisView() {
         </Karte>
       ))}
 
-      <DatenkarteKarte i={6} />
+      <DatenkarteKarte i={6} altbestand={!!z?.ich?.altbestand} />
     </Seite>
   );
 }

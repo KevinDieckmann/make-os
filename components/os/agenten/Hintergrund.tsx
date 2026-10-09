@@ -18,7 +18,7 @@ import { headFarbe } from './Avatar';
 import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelEntscheiden } from './daten';
 import { useAgenten } from './kontext';
 import {
-  dauerText, euro, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, zeitKurz,
+  dauerText, euro, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, wiederholText, zeitKurz,
   type Risiko, type VorschlagKurz,
 } from './regeln';
 import { WEG } from '@/lib/wege';
@@ -262,6 +262,7 @@ function NaechstesZeile({ n }: { n: Naechstes }) {
         <span aria-hidden className={n.kritisch ? 'krit-puls' : undefined} style={{ width: 8, height: 8, borderRadius: ECKE.eingabe, flex: '0 0 auto', background: n.kritisch ? LEUCHT.kritisch : h ? headFarbe(h.farbe) : C.inkLeise }} />
         <span style={{ fontSize: TYP.bedien, color: C.inkDim, minWidth: 64, fontVariantNumeric: 'tabular-nums' }}>{zeitKurz(n.wann, jetzt)}</span>
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titel}{n.anzahl ? ` (${n.anzahl})` : ''}</span>
+        {!!n.weitere && <span style={{ flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 500 }}>{wiederholText(n, jetzt)}</span>}
         {h && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{h.kurz}</span>}
       </Knopf>
     </li>
