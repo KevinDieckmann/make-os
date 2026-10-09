@@ -397,6 +397,31 @@ export function verarbeitungEmailImapNachtragen(vorhanden: readonly Verarbeitung
   return vorhanden.some(v => v.id === VV_EMAIL_IMAP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailImap(jetzt)];
 }
 
+// ── Verarbeitung „E-Mail (Postfächer bei Kunden)“ — Inbox, 09.10.2026 ─────────────────────────────────────────────────
+// Kevin 09.10.: „Wir haben da auch von den Kunden Postfächer.“ Eine Adresse von uns in der Domain eines Kunden (meist Google Workspace des
+// Kunden), per IMAP/SMTP mit App-Passwort verbunden, Bereich = der Kunde (`m-<firmaId>`, lib/postfach/bereich.ts). Kein neuer Empfänger bei
+// uns: der Mail-Anbieter ist der des KUNDEN (sein Vertrag). Ob wir dafür Auftragsverarbeiter des Kunden sind (Art. 28 — Spiegel seiner
+// Korrespondenz auf unserem Server), klärt man mit dem Kunden — Hinweis, keine Rechtsberatung. Idempotent nachgetragen wie `vv-email-imap`.
+export const VV_EMAIL_KUNDEN_ID = 'vv-email-kunden';
+export function verarbeitungEmailKunden(jetzt: string): Verarbeitung {
+  return {
+    id: VV_EMAIL_KUNDEN_ID, name: 'E-Mail (Postfächer bei Kunden)',
+    zweck: 'Postfächer, die Personen des Haushalts in der Domain eines Kunden haben (z. B. Google Workspace des Kunden), in der Inbox lesen, dem Kunden/Mandat zuordnen (eigener Bereich je Kunde), beantworten (nur auf Klick) und daraus — nur auf Klick — Aufgaben, Termine und Einträge im Verlauf machen',
+    personen: 'Absender und Empfänger der Mails im Kundenpostfach (Beschäftigte, Kunden, Partner und Dienstleister des Kunden); die Konto-Person selbst',
+    daten: 'Absender, Empfänger, Betreff, Datum, Ausschnitt, Textkörper (reiner Text), Anhang-Metadaten (Name, Typ, Größe), Ordner/UID, Message-ID-Bezüge; je Person und Postfach ein Spiegel der letzten 30 Tage beim Verbinden, danach laufend; Anhänge nur auf Klick frisch vom Mail-Server des Kunden (nie im Spiegel); App-Passwort nur verschlüsselt auf dem Server',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Mandats) bzw. lit. f (Korrespondenz im Mandat ordnen und beantworten); soweit der Kunde Verantwortlicher seiner Postfächer ist: nur mit seiner Freigabe und ggf. Vertrag zur Auftragsverarbeitung (Art. 28) — mit dem Kunden klären; Antworten nur 1:1 auf Klick (§ 7 UWG); Art. 18 und Werbesperre greifen',
+    empfaenger: 'der Mail-Anbieter des Kunden (z. B. Google Workspace des Kunden — Vertrag des Kunden, kein Empfänger von uns); Hetzner (Hosting, Spiegel); Anthropic nur für den ZOE-Entwurf auf Klick (gekapselt, nie bei eingeschränkten Personen); jede Person sieht nur ihre eigenen Postfächer, Business-Sicht je Kunde getrennt',
+    empfaengerIds: ['hetzner', 'anthropic'],
+    drittland: 'beim Mail-Anbieter des Kunden nach dessen Vertrag; Anthropic: Standardvertragsklauseln/Data Privacy Framework — prüfen',
+    loeschfrist: 'Wahrheit ist das Postfach beim Kunden (Löschung dort, Art. 17); Spiegel in MAKE OS 180 Tage (Löschfrist „Mail-Spiegel“, einstellbar) und höchstens 1.500 Nachrichten je Postfach; „Trennen“ löscht Spiegel, App-Passwort und Inbox-Zustand sofort — spätestens bei Ende des Mandats trennen',
+    toms: 'nur TLS (IMAP 993, SMTP 465/587), Zertifikat geprüft; App-Passwort (nie das Google-Passwort) verschlüsselt je Person, nie im Browser/Export/Protokoll; Bereichstrennung auf dem Server (Privat-Sicht sieht nie ein Kundenpostfach, andere Konten sehen es nie, außer ausdrücklich mit dem Team geteilt); HTML nie gerendert, Bilder nie geladen, Anhänge nur als Download; Senden nie über den Dienstweg; nach abgelehnter Anmeldung keine weiteren Versuche bis zum Erneuern; keine Mail-Inhalte in Logs',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+export function verarbeitungEmailKundenNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_EMAIL_KUNDEN_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailKunden(jetzt)];
+}
+
 // ── Verarbeitung „WhatsApp Business (Meta, Auftragsverarbeiter)“ (07.10., Inbox 2 Paket 5) — idempotent nachgetragen ──
 // Kevin 06.10.: eigene Business-Nummer direkt bei Meta (Cloud API). Fakten: research/inbox/FAKTEN_WHATSAPP_IMAP.md (A4). Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung ist ein To-do.
@@ -591,6 +616,7 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.zoeWhatsapp) l = verarbeitungZoeWhatsappNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
+  l = verarbeitungEmailKundenNachtragen(l, jetzt);
   l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);
   // Mac-Zulieferer aus (08.10., Lücke 10): die Verarbeitung „Zulieferung vom Rechner …“ findet nicht mehr statt → archiviert (nie gelöscht).

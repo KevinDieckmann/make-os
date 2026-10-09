@@ -11,16 +11,55 @@
 // Postfächer mit Business-Bereich, nur Business-Bereiche zur Wahl und nur Absender aus diesen Postfächern („Business sieht nie Privat“).
 // Teilen (08.10., Lücke 6): „Mit dem Team teilen“ je eigenem IMAP-Postfach mit Business-Bereich (Schalter; der Server prüft Bereich und
 // Besitz) — Passwort, Abgleich und Senden bleiben bei dir. „Mit dir geteilt“ zeigt Team-Postfächer anderer (nur ansehen).
+// Weitere Postfächer und Kundenpostfächer (09.10., Kevin: „ein zweites Google-Konto … von den Kunden Postfächer“): „+ Postfach“ fragt zuerst
+// den Weg — Google Workspace (eigene Firma, OAuth) · Google Workspace eines Kunden (App-Passwort, IMAP) · iCloud · IONOS · anderes IMAP;
+// Microsoft 365 steht ehrlich als „geht heute nicht“ da. Bereich = Privat · Gesellschaft · Kunde (aktive Mandate aus dem CRM, `m-<firmaId>`,
+// lib/postfach/bereich.ts) — als Label mit Farbe je Postfach. Postfächer ohne Bereich stehen oben mit „jetzt zuordnen“ (auch in der
+// Business-Sicht; der Server liefert dafür nur Kennung, Quelle und die maskierte Adresse).
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Pillen, Feldzeile, eingabe, auswahl, Leer, Punkt, Schalter, LEUCHT, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Pillen, Feldzeile, eingabe, auswahl, Leer, Punkt, Schalter, Chip, LEUCHT, useRueckfrage } from '../ui';
 import { raumVon } from '@/lib/inbox/teilen';
 import { KUGEL } from '@/lib/make-one/design';
 import { GmailVerbinden, type GmailMeta } from './GmailVerbinden';
 import type { PostfachOeffentlich } from '@/lib/postfach/typen';
+import { bereichAnzeige, BEREICH_GRUPPE, type BereichEintrag } from '@/lib/postfach/bereich';
 import { holen, senden, vorText, type PostfaecherAntwort } from './daten';
+
+/** Antwort der Postfächer-Route mit den Angaben vom 09.10. (Bereichs-Art, Postfächer ohne Bereich, was nicht geht). */
+type Antwort = Omit<PostfaecherAntwort, 'bereiche'> & {
+  bereiche: BereichEintrag[];
+  /** Eigene Postfächer ohne Bereich (maskiert) und die Bereiche dieser Sicht zum Zuordnen — dieselben Felder wie im Strom der Inbox. */
+  unzugeordnet?: { id: string; quelle: string; anzeigename: string; adresse: string; nachrichten?: number }[];
+  waehlbar?: BereichEintrag[];
+  nichtMoeglich?: { name: string; text: string }[];
+};
+
+/** Die Wege unter „+ Postfach“ — `google-eigen` ist die Google-Verbindung der Person (OAuth), alles andere IMAP mit Voreinstellung. */
+type Weg = 'google-eigen' | 'google' | 'icloud' | 'ionos' | 'eigen' | 'demo';
+const WEG_NAME: Partial<Record<Weg, string>> = { 'google-eigen': 'Google Workspace (eigene Firma)', google: 'Google Workspace eines Kunden (App-Passwort)', eigen: 'Anderes IMAP' };
+
+/** Bereich wählen: Privat · Gesellschaften · Kunden (aktive Mandate) als Gruppen. Nur, was der Server zur Wahl stellt. */
+function BereichWahl({ wert, onWahl, bereiche, hoehe = 48 }: { wert: string; onWahl: (b: string) => void; bereiche: BereichEintrag[]; hoehe?: number }) {
+  const gruppen = (['privat', 'gesellschaft', 'kunde'] as const).map(art => ({ art, liste: bereiche.filter(b => (b.art ?? 'gesellschaft') === art) })).filter(g => g.liste.length);
+  return (
+    <select value={wert} onChange={e => onWahl(e.target.value)} required style={{ ...auswahl, minHeight: hoehe, fontSize: 16, width: '100%' }} aria-label="Bereich">
+      <option value="">— bitte wählen —</option>
+      {gruppen.map(g => (
+        <optgroup key={g.art} label={BEREICH_GRUPPE[g.art]}>
+          {g.liste.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+
+/** Label des Bereichs (Farbe aus `bereichAnzeige`, Name vom Server). */
+export function BereichLabel({ bereich, name }: { bereich: string | null; name: string }) {
+  return <Chip farbe={bereichAnzeige(bereich).farbe}>{name}</Chip>;
+}
 
 export const STUFE_FARBE: Record<PostfachOeffentlich['zustand']['stufe'], string> = {
   aktuell: KUGEL.smaragd, verzoegert: LEUCHT.achtung, anmeldung: KUGEL.granat, fehler: LEUCHT.achtung, neu: C.inkLeise, aus: C.inkLeise, vorbereitet: C.inkLeise,
@@ -29,8 +68,14 @@ export const STUFE_TEXT: Record<PostfachOeffentlich['zustand']['stufe'], string>
   aktuell: 'aktuell', verzoegert: 'verzögert', anmeldung: 'Anmeldung abgelehnt', fehler: 'gerade nicht erreichbar', neu: 'wird eingerichtet', aus: 'aus', vorbereitet: 'vorbereitet',
 };
 
-function Hinzufuegen({ d, onFertig }: { d: PostfaecherAntwort; onFertig: (t: string) => void }) {
-  const [anbieter, setAnbieter] = useState(d.anbieter[0]?.id ?? 'icloud');
+function Hinzufuegen({ d, onFertig, gmail, onGeaendert, meldung }: { d: Antwort; onFertig: (t: string) => void; gmail: GmailMeta; onGeaendert: () => void; meldung: (t: string) => void }) {
+  const googleEigen = d.google.konfiguriert || d.google.verbunden;
+  const wege: { id: Weg; label: string }[] = [
+    ...(googleEigen ? [{ id: 'google-eigen' as Weg, label: WEG_NAME['google-eigen'] ?? 'Google Workspace (eigene Firma)' }] : []),
+    ...d.anbieter.map(x => ({ id: x.id as Weg, label: WEG_NAME[x.id as Weg] ?? x.name })),
+  ];
+  const [weg, setWeg] = useState<Weg>(wege[0]?.id ?? 'icloud');
+  const anbieter = weg === 'google-eigen' ? 'google' : weg;
   const [adresse, setAdresse] = useState('');
   const [passwort, setPasswort] = useState('');
   const [bereich, setBereich] = useState('');
@@ -41,6 +86,7 @@ function Hinzufuegen({ d, onFertig }: { d: PostfaecherAntwort; onFertig: (t: str
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState('');
   const a = d.anbieter.find(x => x.id === anbieter);
+  const kunden = d.bereiche.filter(b => b.art === 'kunde');
   const los = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setLaeuft(true); setFehler('');
@@ -53,44 +99,90 @@ function Hinzufuegen({ d, onFertig }: { d: PostfaecherAntwort; onFertig: (t: str
     setFehler(String(r.d.fehler ?? 'Das Postfach ließ sich nicht verbinden.'));
   };
   return (
-    <form onSubmit={los} style={{ display: 'grid', gap: 12 }} data-inbox="postfach-neu">
+    <div style={{ display: 'grid', gap: 12 }} data-inbox="postfach-neu">
       <Ueberschrift>Postfach hinzufügen</Ueberschrift>
-      <Pillen liste={d.anbieter.map(x => ({ id: x.id, label: x.name }))} aktiv={anbieter} onWahl={setAnbieter} />
-      {a && (
-        <div style={{ display: 'grid', gap: 6, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
-          <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>{a.anleitung.map(t => <li key={t}>{t}</li>)}</ol>
-          {a.link && <a href={a.link.url} target="_blank" rel="noopener noreferrer" style={{ color: C.aktiv, minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>{a.link.text} ↗</a>}
+      <Pillen liste={wege} aktiv={weg} onWahl={w => { setWeg(w as Weg); setFehler(''); }} />
+      {(d.nichtMoeglich ?? []).map(n => <Hinweis key={n.name} art="info" titel={`${n.name}: heute nicht möglich`}>{n.text}</Hinweis>)}
+      {weg === 'google-eigen' ? (
+        <div style={{ display: 'grid', gap: 10 }} data-inbox="weg-google-eigen">
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
+            Die Adresse deiner eigenen Firma verbindest du über deine Google-Anmeldung (eine Verbindung je Person, kein Passwort in MAKE OS). Danach unter „Deine Postfächer“ den Bereich wählen.
+            {d.google.bereit ? ' Deine Google-Verbindung steht schon — eine WEITERE Adresse verbindest du mit „Google Workspace eines Kunden (App-Passwort)“ und wählst als Bereich die Gesellschaft.' : ''}
+          </div>
+          <GmailVerbinden meta={gmail} onGeaendert={onGeaendert} meldung={meldung} />
         </div>
+      ) : (
+        <form onSubmit={los} style={{ display: 'grid', gap: 12 }}>
+          {a && (
+            <div style={{ display: 'grid', gap: 6, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
+              <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>{a.anleitung.map(t => <li key={t}>{t}</li>)}</ol>
+              {a.link && <a href={a.link.url} target="_blank" rel="noopener noreferrer" style={{ color: C.aktiv, minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>{a.link.text} ↗</a>}
+            </div>
+          )}
+          {weg === 'google' && !kunden.length && <Hinweis art="info">Noch kein Kunde mit aktivem Mandat im CRM — ein Kundenpostfach bekommt den Bereich des Kunden. Mandate legst du unter Mandate & Unternehmen an; bis dahin geht auch eine Gesellschaft.</Hinweis>}
+          {fehler && <Hinweis art="kritisch" rolle="alert" titel="Nicht verbunden — nichts gespeichert">{fehler}</Hinweis>}
+          <Feldzeile label="E-Mail-Adresse"><input value={adresse} onChange={e => setAdresse(e.target.value)} type="email" inputMode="email" autoComplete="off" required style={eingabe} /></Feldzeile>
+          <Feldzeile label={a?.passwortWort ?? 'Passwort'}><input value={passwort} onChange={e => setPasswort(e.target.value)} type="password" autoComplete="new-password" required style={eingabe} /></Feldzeile>
+          <Feldzeile label={weg === 'google' ? 'Bereich (beim Kundenpostfach: der Kunde)' : 'Bereich'}><BereichWahl wert={bereich} onWahl={setBereich} bereiche={d.bereiche} /></Feldzeile>
+          <Feldzeile label="Name in der Inbox (optional)"><input value={name} onChange={e => setName(e.target.value)} placeholder={weg === 'google' ? 'z. B. Name des Kunden' : 'z. B. Privat · iCloud'} style={eingabe} /></Feldzeile>
+          <Feldzeile label="Absendername (optional)"><input value={absenderName} onChange={e => setAbsenderName(e.target.value)} placeholder="So steht dein Name beim Empfänger" style={eingabe} /></Feldzeile>
+          {a?.eigeneServer && (
+            <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}>
+              <Feldzeile label="IMAP-Server"><input value={imap.host} onChange={e => setImap({ ...imap, host: e.target.value })} placeholder="imap.anbieter.de" style={eingabe} /></Feldzeile>
+              <Feldzeile label="Port"><input value={imap.port} onChange={e => setImap({ ...imap, port: e.target.value })} inputMode="numeric" style={eingabe} /></Feldzeile>
+              <Feldzeile label="SMTP-Server"><input value={smtp.host} onChange={e => setSmtp({ ...smtp, host: e.target.value })} placeholder="smtp.anbieter.de" style={eingabe} /></Feldzeile>
+              <Feldzeile label="Port"><input value={smtp.port} onChange={e => setSmtp({ ...smtp, port: e.target.value, sicherheit: e.target.value === '587' ? 'starttls' : 'ssl' })} inputMode="numeric" style={eingabe} /></Feldzeile>
+            </div>
+          )}
+          {a?.sendeHinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{a.sendeHinweis}</div>}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Knopf haupt typ="submit" aus={laeuft || !adresse || !passwort || !bereich}>{laeuft ? 'prüft die Anmeldung …' : 'Verbinden'}</Knopf>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gespeichert wird erst, wenn die Anmeldung klappt. Das Passwort liegt verschlüsselt auf dem Server und wird nie angezeigt.</span>
+          </div>
+        </form>
       )}
-      {fehler && <Hinweis art="kritisch" rolle="alert" titel="Nicht verbunden — nichts gespeichert">{fehler}</Hinweis>}
-      <Feldzeile label="E-Mail-Adresse"><input value={adresse} onChange={e => setAdresse(e.target.value)} type="email" inputMode="email" autoComplete="off" required style={eingabe} /></Feldzeile>
-      <Feldzeile label={a?.passwortWort ?? 'Passwort'}><input value={passwort} onChange={e => setPasswort(e.target.value)} type="password" autoComplete="new-password" required style={eingabe} /></Feldzeile>
-      <Feldzeile label="Bereich">
-        <select value={bereich} onChange={e => setBereich(e.target.value)} required style={{ ...auswahl, minHeight: 48, fontSize: 16, width: '100%' }} aria-label="Bereich">
-          <option value="">— bitte wählen —</option>
-          {d.bereiche.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-        </select>
-      </Feldzeile>
-      <Feldzeile label="Name in der Inbox (optional)"><input value={name} onChange={e => setName(e.target.value)} placeholder="z. B. Privat · iCloud" style={eingabe} /></Feldzeile>
-      <Feldzeile label="Absendername (optional)"><input value={absenderName} onChange={e => setAbsenderName(e.target.value)} placeholder="So steht dein Name beim Empfänger" style={eingabe} /></Feldzeile>
-      {a?.eigeneServer && (
-        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}>
-          <Feldzeile label="IMAP-Server"><input value={imap.host} onChange={e => setImap({ ...imap, host: e.target.value })} placeholder="imap.anbieter.de" style={eingabe} /></Feldzeile>
-          <Feldzeile label="Port"><input value={imap.port} onChange={e => setImap({ ...imap, port: e.target.value })} inputMode="numeric" style={eingabe} /></Feldzeile>
-          <Feldzeile label="SMTP-Server"><input value={smtp.host} onChange={e => setSmtp({ ...smtp, host: e.target.value })} placeholder="smtp.anbieter.de" style={eingabe} /></Feldzeile>
-          <Feldzeile label="Port"><input value={smtp.port} onChange={e => setSmtp({ ...smtp, port: e.target.value, sicherheit: e.target.value === '587' ? 'starttls' : 'ssl' })} inputMode="numeric" style={eingabe} /></Feldzeile>
-        </div>
-      )}
-      {a?.sendeHinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{a.sendeHinweis}</div>}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Knopf haupt typ="submit" aus={laeuft || !adresse || !passwort || !bereich}>{laeuft ? 'prüft die Anmeldung …' : 'Verbinden'}</Knopf>
-        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gespeichert wird erst, wenn die Anmeldung klappt. Das Passwort liegt verschlüsselt auf dem Server und wird nie angezeigt.</span>
-      </div>
-    </form>
+    </div>
   );
 }
 
-function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffentlich; bereiche: { id: string; name: string }[]; onGeaendert: () => void; meldung: (t: string) => void }) {
+/** Die Bereiche zur Wahl plus der gespeicherte des Postfachs, falls er nicht mehr wählbar ist (z. B. Mandat beendet). */
+function mitBisherigem(bereiche: BereichEintrag[], p: PostfachOeffentlich): BereichEintrag[] {
+  if (!p.bereich || bereiche.some(b => b.id === p.bereich)) return bereiche;
+  const art = bereichAnzeige(p.bereich).art;
+  return [...bereiche, { id: p.bereich, name: p.bereichName, art: art === 'ohne' ? 'gesellschaft' : art }];
+}
+
+/** Postfächer ohne Bereich — oben, mit „jetzt zuordnen“ (Bereiche der aktuellen Sicht). Nur maskierte Adresse, kein Inhalt. */
+function OhneBereich({ liste, bereiche, onGeaendert, meldung }: { liste: NonNullable<Antwort['unzugeordnet']>; bereiche: BereichEintrag[]; onGeaendert: () => void; meldung: (t: string) => void }) {
+  const [wahl, setWahl] = useState<Record<string, string>>({});
+  const [fehler, setFehler] = useState('');
+  const [laeuft, setLaeuft] = useState(false);
+  const zuordnen = async (id: string) => {
+    setLaeuft(true); setFehler('');
+    const r = await senden('/api/inbox/postfaecher', { aktion: 'einstellen', id, bereich: wahl[id] });
+    setLaeuft(false);
+    if (r.d.ok) { meldung('Zugeordnet.'); onGeaendert(); } else setFehler(String(r.d.fehler ?? 'Das ging nicht.'));
+  };
+  return (
+    <Hinweis art="achtung" titel={liste.length === 1 ? '1 Postfach ist noch keinem Bereich zugeordnet — jetzt zuordnen' : `${liste.length} Postfächer sind noch keinem Bereich zugeordnet — jetzt zuordnen`}>
+      <div style={{ display: 'grid', gap: 10 }} data-inbox="ohne-bereich">
+        <span>Ohne Bereich erscheint es nur unter „Alle“ — nie in Privat, einer Gesellschaft oder bei einem Kunden.</span>
+        {fehler && <span role="alert" style={{ color: LEUCHT.kritisch }}>{fehler}</span>}
+        {liste.map(p => (
+          <div key={p.id} style={{ display: 'grid', gap: 8 }} data-ohne-bereich={p.id}>
+            <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{p.anzeigename} · {p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'}{p.adresse ? ` · ${p.adresse}` : ''}{typeof p.nachrichten === 'number' ? ` · ${p.nachrichten} Nachrichten` : ''}</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ flex: '1 1 220px', minWidth: 0 }}><BereichWahl wert={wahl[p.id] ?? ''} onWahl={b => setWahl({ ...wahl, [p.id]: b })} bereiche={bereiche} hoehe={44} /></div>
+              <Knopf onClick={() => zuordnen(p.id)} aus={laeuft || !wahl[p.id]}>Zuordnen</Knopf>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Hinweis>
+  );
+}
+
+function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffentlich; bereiche: BereichEintrag[]; onGeaendert: () => void; meldung: (t: string) => void }) {
   const [auf, setAuf] = useState(p.zustand.stufe === 'anmeldung');
   const [neu, setNeu] = useState('');
   const [laeuft, setLaeuft] = useState(false);
@@ -111,7 +203,7 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
         <Punkt farbe={STUFE_FARBE[z.stufe]} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontWeight: 600, fontSize: TYP.body, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.anzeigename}</span>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{p.bereichName} · {p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'}{p.geteilt ? ' · mit dem Team geteilt' : ''} · {STUFE_TEXT[z.stufe]}{z.vorMin != null && z.stufe !== 'anmeldung' ? ` · ${vorText(z.vorMin)}` : ''}{z.idle ? ' · sofort (IDLE)' : ''}</span>
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise }}><BereichLabel bereich={p.bereich} name={p.bereichName} />{p.quelle === 'gmail' ? 'Gmail' : p.quelle === 'whatsapp' ? 'WhatsApp' : 'IMAP'}{p.geteilt ? ' · mit dem Team geteilt' : ''} · {STUFE_TEXT[z.stufe]}{z.vorMin != null && z.stufe !== 'anmeldung' ? ` · ${vorText(z.vorMin)}` : ''}{z.idle ? ' · sofort (IDLE)' : ''}</span>
         </span>
         <span style={{ color: C.inkLeise }}>{auf ? '▴' : '▾'}</span>
       </button>
@@ -134,10 +226,8 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
           ) : (
             <>
               <Feldzeile label="Bereich">
-                <select value={f.bereich} onChange={e => setF({ ...f, bereich: e.target.value })} style={{ ...auswahl, minHeight: 44, width: '100%' }} aria-label="Bereich">
-                  <option value="">— bitte wählen —</option>
-                  {bereiche.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                {/* Ein Kunde ohne aktives Mandat steht nicht mehr zur Wahl — der gespeicherte Bereich bleibt trotzdem sichtbar und speicherbar. */}
+                <BereichWahl wert={f.bereich} onWahl={b => setF({ ...f, bereich: b })} bereiche={mitBisherigem(bereiche, p)} hoehe={44} />
               </Feldzeile>
               <Feldzeile label="Name in der Inbox"><input value={f.anzeigename} onChange={e => setF({ ...f, anzeigename: e.target.value })} style={eingabe} /></Feldzeile>
               {p.quelle === 'imap' && <Feldzeile label="Absendername"><input value={f.absenderName} onChange={e => setF({ ...f, absenderName: e.target.value })} style={eingabe} /></Feldzeile>}
@@ -162,12 +252,12 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
 }
 
 export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () => void; meldung: (t: string) => void; space?: 'privat' | 'business' | null }) {
-  const [d, setD] = useState<PostfaecherAntwort | null>(null);
+  const [d, setD] = useState<Antwort | null>(null);
   const [fehler, setFehler] = useState('');
   const [neu, setNeu] = useState(false);
   const laden = useCallback(async () => {
-    const r = await holen<PostfaecherAntwort>(`/api/inbox/postfaecher${space === 'business' ? '?space=business' : ''}`);
-    if (r.d.ok) { setD(r.d as PostfaecherAntwort); setFehler(''); } else setFehler(String(r.d.fehler ?? 'Die Postfächer ließen sich nicht laden.'));
+    const r = await holen<Antwort>(`/api/inbox/postfaecher${space === 'business' ? '?space=business' : ''}`);
+    if (r.d.ok) { setD(r.d as Antwort); setFehler(''); } else setFehler(String(r.d.fehler ?? 'Die Postfächer ließen sich nicht laden.'));
   }, [space]);
   useEffect(() => { void laden(); }, [laden]);
   const geaendert = () => { void laden(); onGeaendert(); };
@@ -177,12 +267,13 @@ export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () =
   const gmailMeta: GmailMeta = { konfiguriert: d.google.konfiguriert, verbunden: d.google.verbunden, bereit: d.google.bereit, ...(d.google.konto ? { konto: d.google.konto } : {}), ...(d.google.getrennt ? { getrennt: { grund: 'getrennt' } } : {}) };
   return (
     <div style={{ display: 'grid', gap: 14 }} data-inbox="postfaecher">
-      {d.nurBusiness && <Hinweis art="info">Business-Sicht: hier stehen nur Postfächer mit einem Business-Bereich. Private Postfächer verwaltest du in der Sicht Privat.</Hinweis>}
+      {d.nurBusiness && <Hinweis art="info">Business-Sicht: hier stehen nur Postfächer mit einem Business-Bereich (Gesellschaften und Kunden). Private Postfächer verwaltest du in der Sicht Privat.</Hinweis>}
+      {(d.unzugeordnet ?? []).length > 0 && <OhneBereich liste={d.unzugeordnet!} bereiche={d.waehlbar ?? d.bereiche} onGeaendert={geaendert} meldung={meldung} />}
       <Karte i={0}>
         <Ueberschrift rechts={!neu ? <Knopf leise onClick={() => setNeu(true)}>+ Postfach</Knopf> : <Knopf leise onClick={() => setNeu(false)}>Schließen</Knopf>}>Deine Postfächer</Ueberschrift>
         {!d.postfaecher.length && !neu && <Leer>Noch kein Postfach verbunden.</Leer>}
         {d.postfaecher.map(p => <PostfachZeile key={p.id} p={p} bereiche={d.bereiche} onGeaendert={geaendert} meldung={meldung} />)}
-        {neu && <div style={{ marginTop: 14 }}><Hinzufuegen d={d} onFertig={t => { setNeu(false); meldung(t); geaendert(); }} /></div>}
+        {neu && <div style={{ marginTop: 14 }}><Hinzufuegen d={d} gmail={gmailMeta} onGeaendert={geaendert} meldung={meldung} onFertig={t => { setNeu(false); meldung(t); geaendert(); }} /></div>}
       </Karte>
       {(d.mitDirGeteilt ?? []).length > 0 && (
         <Karte i={1} flach>
@@ -198,7 +289,7 @@ export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () =
           </div>
         </Karte>
       )}
-      {(d.google.konfiguriert || d.google.verbunden) && <GmailVerbinden meta={gmailMeta} onGeaendert={geaendert} meldung={meldung} />}
+      {(d.google.konfiguriert || d.google.verbunden) && !neu && <GmailVerbinden meta={gmailMeta} onGeaendert={geaendert} meldung={meldung} />}
       {!waPostfach && (
         <Karte i={1} flach>
           <Ueberschrift>WhatsApp Business</Ueberschrift>

@@ -84,6 +84,77 @@ steht **„Aus diesem Gespräch“**: angelegte Aufgaben (bleiben, aus dem Aufga
 6. Ein privates Postfach: **Ablegen** → „Firma / Kontakt“ zeigt den gelben Hinweis „Bereich wechselt“, der Knopf heißt „Bewusst ablegen“.
 7. „danach erledigen“ anhaken → eine Aufgabe anlegen → das Gespräch verschwindet aus der Liste, „Rückgängig“ holt es zurück.
 
+## 09.10.2026 — Inbox: weitere Postfächer und Kundenpostfächer (nur lokal — Branch `inbox-postfaecher`, Basis a063e73a)
+
+Kevin 09.10.: „Es wäre geil, wenn wir ein zweites Google-Konto auch verbinden könnten … Wir haben da auch von den Kunden Postfächer.“ Und:
+„Man muss da auf das Postfach klicken, z. B. MAKE Innovation oder KD Ventures oder [ein Kunde].“
+
+**Die Google-Frage** (Recherche mit Quellen: `research/inbox/KUNDENPOSTFAECHER.md`): Unsere Google-App ist „Intern“. Ein Konto einer fremden
+Domain bekommt deshalb `org_internal`. Mit „Extern“ laufen Gmail-Freigaben im Testmodus nach 7 Tagen ab. Im Betrieb verlangt `gmail.modify`
+Googles Prüfung plus Sicherheitsbewertung. Der Admin eines Kunden kann unsere App zwar als „vertrauenswürdig“ markieren (das gilt auch für
+Gmail, „whether or not the app is verified“). Dass das Googles Prüfpflicht ersetzt, steht aber nirgends. **Darum heute: IMAP + App-Passwort.**
+Lehnt ein Kunde das ab, ist der nächste Weg eine interne App im Google-Konto des Kunden (Option C im Dokument, nicht gebaut). Microsoft 365
+geht nur mit OAuth und heute gar nicht.
+
+**Gebaut:**
+- **Anbieter „Google Workspace / Gmail (App-Passwort)“**: `imap.gmail.com:993`, `smtp.gmail.com:465`, volle Adresse als Benutzer. Das App-Passwort
+  darf mit Leerzeichen eingefügt werden. Die Anleitung führt in Klicks durch Google und den Admin des Kunden; der Link geht auf
+  myaccount.google.com/apppasswords. Gmail legt Gesendetes selbst ab, deshalb hängt MAKE OS keine zweite Kopie an. Prüfen vor Speichern wie
+  bei jedem Postfach.
+- **Bereich „Kunde“:** Ein Postfach kann einem Kunden mit **aktivem Mandat** gehören. Der Bereich ist `m-<firmaId>`, dieselbe Kennung wie der
+  Mandanten-Space der Aufgaben. Der Name kommt aus dem CRM, nie aus dem Code. Kundenpostfächer sind Business: Die Sicht Privat sieht sie nie,
+  Business sieht sie, und `?bereich=m-<firmaId>` filtert auf genau einen Kunden (`imBereich`/`stromFuer`; den Parameter nimmt `/api/inbox`
+  generisch an, sobald „Ansicht“ eingemischt ist — `istBereichKennung`). Alles wird serverseitig gefiltert. Endet das Mandat, bleibt der
+  gespeicherte Bereich lesbar und speicherbar, ist aber nicht mehr neu wählbar.
+- **EINE Stelle für die Form:** `lib/postfach/bereich.ts`
+  - `bereichAnzeige` (Name, Farbe, Art, Raum)
+  - `kundenBereiche`, `bereichAuswahl`, `BEREICH_GRUPPE`
+  - Server: `bereichNamen()` (auch Kunden), `bereichWahlLaden()`, `kundenBereicheLaden()`, `bereichPruefen` (lib/postfach/register.ts)
+- **Postfächer-Seite:**
+  - „+ Postfach“ fragt zuerst den Weg: Google Workspace (eigene Firma, Google-Anmeldung) · Google Workspace eines Kunden (App-Passwort) ·
+    iCloud · IONOS · Anderes IMAP. Microsoft 365 steht als „heute nicht möglich“ da.
+  - Die Bereichswahl ist in Gruppen geteilt: Privat · Gesellschaften · Kunden (aktive Mandate). Jedes Postfach trägt sein Bereich-Label mit Farbe.
+  - Postfächer ohne Bereich stehen oben mit „… noch keinem Bereich zugeordnet — jetzt zuordnen“, auch in der Business-Sicht. Der Server liefert
+    dafür `unzugeordnet` (Kennung, Quelle, Name, maskierte Adresse — dieselbe Form wie im Strom der Inbox) und `waehlbar` (Bereiche der Sicht).
+- **Recht:**
+  - Neuer Eintrag im Verzeichnis `vv-email-kunden` „E-Mail (Postfächer bei Kunden)“, wird einmal nachgetragen. Kein neuer Empfänger bei uns:
+    Der Mail-Anbieter ist der des Kunden.
+  - Art. 15 kennt den Eintrag. Neue Bestände gibt es keine (dieselben `imap-stand/-text--<person>`), Art. 17 läuft also wie bei jedem IMAP-Postfach.
+- **Zweites Google-Konto per Google-Anmeldung:** nicht gebaut. Heute gibt es EINE Google-Verbindung je Person, der Umbau wäre größer. Der Bauplan
+  steht im Research-Dokument. Bis dahin geht eine zweite eigene Adresse über App-Passwort.
+
+**Tests:**
+- `tests/inbox-kundenpostfach.test.ts` (neu): rein + von Ende zu Ende mit nachgebautem Anbieter. Geprüft werden Prüfen vor Speichern,
+  ein beendetes Mandat (400), ein falsches App-Passwort (409, nichts gespeichert) und Leerzeichen im App-Passwort. Dazu die Wächter „Sicht
+  Privat bekommt nichts aus Kundenpostfach“, „Person B sieht Kevins Kundenpostfach nicht“ und Dienstweg 403, außerdem Senden ohne zweite
+  Kopie, Mandatsende und Trennen.
+- Alle `tests/inbox*`/`gmail*`, das Routen-Register, Speicher-Register, Verzeichnis und `repo-sauber` sind grün.
+
+**So testet ihr** (lokal, Inbox › Postfächer):
+1. Unter Mandate & Unternehmen muss ein Kunde mit **aktivem** Mandat stehen.
+2. Inbox › Postfächer › „+ Postfach“ → oben die Wege. „Google Workspace eines Kunden (App-Passwort)“ zeigt die Anleitung und den Link zu den
+   App-Passwörtern. Unter Bereich steht die Gruppe „Kunden (aktive Mandate)“ mit dem Namen aus dem CRM.
+3. Mit einem echten Kundenpostfach (falls vorhanden): Adresse + App-Passwort eintragen, Bereich = der Kunde → „Verbinden“. Bei einem falschen
+   Passwort kommt die rote Karte „Nicht verbunden — nichts gespeichert“.
+4. Danach trägt das Postfach das Label mit dem Kundennamen. In der Inbox unter Business erscheinen die Mails, unter Privat nicht.
+5. Ohne Kundenpostfach: der Microsoft-Hinweis steht unter den Wegen; „Google Workspace (eigene Firma)“ zeigt die Google-Anmeldung.
+
+**Schritte für Kevin (einmal je Kunde, beim Kunden):**
+1. Den Admin des Kunden bitten: Admin-Konsole › Apps › Google Workspace › Gmail › Endnutzerzugriff › „POP- und IMAP-Zugriff“ → IMAP für
+   alle Nutzer (oder deine Organisationseinheit) an, „Beliebiger E-Mail-Client“. Außerdem die Bestätigung in zwei Schritten erlauben und
+   App-Passwörter nicht sperren (also nicht „nur Sicherheitsschlüssel“).
+2. Mit der Kundenadresse anmelden → Bestätigung in zwei Schritten einschalten → myaccount.google.com/apppasswords → „MAKE OS Inbox“ → die
+   16 Buchstaben in MAKE OS eintragen.
+3. Mit dem Kunden klären, dass seine Post in MAKE OS gespiegelt wird (Freigabe, ggf. Vertrag zur Auftragsverarbeitung) — Hinweis, keine
+   Rechtsberatung.
+
+**Nahtstellen für die anderen Pakete:** Die Ansicht liest Bereichsnamen und -farben über `bereichAnzeige(bereich, namen)` (namen = `bereiche`
+aus `/api/inbox`). Die Flows können für „Aufgabe aus Mail“ bei `m-<firmaId>` direkt den Mandanten-Space nehmen (`spaceId = bereich`).
+**Geänderte gemeinsame Dateien:** keine Inbox-Dateien der anderen Pakete (`InboxZwei.tsx`, `Gespraech.tsx`, `strom-server.ts`, `/api/inbox`
+bleiben unberührt — Probe-Merge mit `inbox-ansicht` und `inbox-flows`: im Code kein Konflikt, nur UPDATES.md — beide Abschnitte behalten). Außerhalb der Inbox: `lib/crm/datenschutz.ts`,
+`lib/datenschutz/art15.ts`. **Nach dem Merge mit „Ansicht“ eine Zeile:** `waehlbar` in `stromFuer` aus `bereichWahlLaden()` (nach `space`
+gefiltert) statt aus allen Namen nehmen — sonst stehen dort auch Kunden mit beendetem Mandat (die der Server beim Zuordnen mit 400 ablehnt).
+
 ## 09.10.2026 — Kalender: linke Spalte einklappbar (nur lokal — Branch `kalender-klappen`, Basis `agenten-nacht` 43bb4c14)
 
 Kevin 09.10.: „Guck mal, ob du den Kalender links einklappbar machen kannst, das sieht noch so verloren aus. Die Monatsansicht etc. einfach

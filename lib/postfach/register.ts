@@ -15,7 +15,10 @@ import { ladeRegister } from '@/lib/gesellschaften/server';
 import { alleGesellschaften, anzeigeName } from '@/lib/gesellschaften/modell';
 import { zeilenfrei, adresseGueltig, adresseKlein } from '@/lib/gmail/mime';
 import { postfachTeilbar } from '@/lib/inbox/teilen';
-import { VOREINSTELLUNGEN, hostOk, portOk } from './anbieter';
+import { adresseMaskiert } from '@/lib/zugang/konten';
+import { ladeCrm } from '@/lib/crm/speicher';
+import { VOREINSTELLUNGEN, hostOk, passwortFuer, portOk } from './anbieter';
+import { bereichAuswahl, istKundenBereich, kundenBereiche, type BereichEintrag } from './bereich';
 import { GMAIL_POSTFACH, PERSON_OK, POSTFACH_GRENZEN, istAnbieter, registerName, zugangName, type Anbieter, type Ordner, type Postfach, type ServerAdresse } from './typen';
 
 export class RegisterFehler extends Error { constructor(message: string, public status = 400) { super(message); } }
@@ -50,18 +53,60 @@ async function zugangSetzen(person: string, id: string, passwort: string | null)
 
 // ── Bereiche ────────────────────────────────────────────────────────────────
 
-/** Namen der Bereiche dieser Instanz: feste Gesellschaften + Register des Haushalts (`g-…`). */
+/**
+ * Kunden-Bereiche dieser Instanz (09.10., Kundenpostfächer): `m-<firmaId>` je CRM-Firma mit aktivem Mandat — dieselbe Rechnung wie die
+ * Mandanten-Spaces der Aufgaben; Firmen mit nur noch beendetem/pausiertem Mandat als `archiv` (Name für vorhandene Postfächer, nicht wählbar).
+ * Namen aus dem CRM, nie aus dem Code. Fehlt das CRM, gibt es keine Kunden-Bereiche (nie ein Fehler).
+ */
+export async function kundenBereicheLaden(genutzt: readonly (string | null | undefined)[] = []): Promise<BereichEintrag[]> {
+  return kundenBereiche(await ladeCrm().catch(() => null), genutzt);
+}
+
+/** Namen der Bereiche dieser Instanz: feste Gesellschaften + Register des Haushalts (`g-…`) + Kunden (`m-…`, auch ohne aktives Mandat). */
 export async function bereichNamen(): Promise<Record<string, string>> {
   const namen: Record<string, string> = Object.fromEntries(KERN_EINHEITEN.map(e => [e.id, e.label]));
   const h = await haushaltDesInhabers().catch(() => null);
   if (h) for (const g of alleGesellschaften(await ladeRegister(h).catch(() => null))) namen[g.id] = anzeigeName(g);
+  for (const k of await kundenBereicheLaden()) namen[k.id] = k.name;
   return namen;
 }
 
-async function bereichPruefen(b: unknown): Promise<string> {
+/** Was „Postfach hinzufügen“/„Bereich“ zur Wahl stellt: Privat · feste Gesellschaften · Register (`g-…`) · Kunden mit aktivem Mandat. */
+export async function bereichWahlLaden(): Promise<BereichEintrag[]> {
+  const namen = await bereichNamen();
+  const gesellschaften = [...KERN_EINHEITEN.map(e => ({ id: e.id as string, name: e.label })), ...Object.entries(namen).filter(([id]) => istRegisterKennung(id)).map(([id, name]) => ({ id, name }))];
+  return bereichAuswahl(gesellschaften, await kundenBereicheLaden());
+}
+
+/**
+ * Bereich prüfen: Privat, feste Gesellschaft, `g-…` aus dem Register oder `m-<firmaId>` eines Kunden mit AKTIVEM Mandat. `bisher` = der
+ * gespeicherte Bereich des Postfachs — der darf bleiben, auch wenn das Mandat inzwischen beendet ist (Speichern ohne Bereichswechsel).
+ */
+async function bereichPruefen(b: unknown, bisher?: string | null): Promise<string> {
   if (b === 'privat' || istGesellschaft(b)) return b as string;
+  if (typeof b === 'string' && b && b === bisher) return b;
   if (istRegisterKennung(b) && (await bereichNamen())[b]) return b;
-  throw new RegisterFehler('Bitte einen Bereich wählen: Privat oder eine Gesellschaft aus dem Register.');
+  if (istKundenBereich(b)) {
+    if ((await kundenBereicheLaden()).some(k => k.id === b && !k.archiv)) return b;
+    throw new RegisterFehler('Diesen Kunden gibt es nicht (mehr) mit aktivem Mandat — bitte einen Kunden aus der Liste wählen.');
+  }
+  throw new RegisterFehler('Bitte einen Bereich wählen: Privat, eine Gesellschaft oder einen Kunden mit aktivem Mandat.');
+}
+
+/** Ein eigenes Postfach ohne Bereich — nur, was „jetzt zuordnen“ braucht (dieselbe Form wie `unzugeordnet` im Strom der Inbox). */
+export interface Unzugeordnet { id: string; quelle: string; anzeigename: string; adresse: string; nachrichten?: number }
+
+/**
+ * Eigene Postfächer ohne Bereich (rein, 09.10.): nie eine Nachricht, nur Kennung, Quelle, Name, die MASKIERTE Adresse und die Zahl der
+ * Nachrichten. Die Postfächer-Seite zeigt daraus „… noch keinem Bereich zugeordnet — jetzt zuordnen“ — in jeder Sicht, auch Business.
+ */
+export function postfaecherUnzugeordnet(liste: readonly { id: string; quelle: string; bereich: string | null; anzeigename: string; adresse: string; zustand?: { nachrichten?: number }; fremd?: unknown }[]): Unzugeordnet[] {
+  // Der Name eines IMAP-Postfachs ist ohne eigene Angabe die Adresse selbst — dann ebenfalls nur maskiert.
+  const name = (p: { anzeigename: string; adresse: string }) => (p.adresse ? p.anzeigename.replace(new RegExp(p.adresse.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), adresseMaskiert(p.adresse)) : p.anzeigename);
+  return liste.filter(p => p.bereich === null && !p.fremd).map(p => ({
+    id: p.id, quelle: p.quelle, anzeigename: name(p), adresse: p.adresse ? adresseMaskiert(p.adresse) : '',
+    ...(typeof p.zustand?.nachrichten === 'number' ? { nachrichten: p.zustand.nachrichten } : {}),
+  }));
 }
 
 // ── Eingaben säubern (rein) ─────────────────────────────────────────────────
@@ -115,7 +160,7 @@ export async function neuesPostfachPruefen(b: Record<string, unknown>, demoErlau
   if (!istAnbieter(b.anbieter) || (b.anbieter === 'demo' && !demoErlaubt)) throw new RegisterFehler('Bitte einen Anbieter wählen.');
   const adresse = adresseKlein(String(b.adresse ?? ''));
   if (!adresseGueltig(adresse)) throw new RegisterFehler('Bitte eine gültige E-Mail-Adresse eintragen.');
-  const passwort = String(b.passwort ?? '');
+  const passwort = passwortFuer(b.anbieter, String(b.passwort ?? ''));
   if (!passwort || passwort.length > POSTFACH_GRENZEN.passwort || /[\r\n\u0000]/.test(passwort)) throw new RegisterFehler('Bitte das Passwort eintragen.');
   const bereich = await bereichPruefen(b.bereich);
   serverAus(b.anbieter, { imap: b.imap, smtp: b.smtp });
@@ -159,7 +204,7 @@ export async function postfachAnlegen(person: string, n: NeuesPostfach): Promise
 export async function postfachAendern(person: string, id: string, b: Record<string, unknown>, gmailAdresse?: string | null): Promise<Postfach> {
   const felder: Partial<Postfach> = {};
   if ('geteilt' in b) felder.geteilt = b.geteilt === true ? true : undefined;
-  if ('bereich' in b) felder.bereich = await bereichPruefen(b.bereich);
+  if ('bereich' in b) felder.bereich = await bereichPruefen(b.bereich, (await ladePostfach(person, id))?.bereich ?? null);
   if ('anzeigename' in b) felder.anzeigename = text(b.anzeigename, POSTFACH_GRENZEN.anzeigename, 'Der Name');
   if ('absenderName' in b) felder.absenderName = text(b.absenderName, POSTFACH_GRENZEN.absenderName, 'Der Absendername') || undefined;
   if ('signatur' in b) felder.signatur = signaturSauber(b.signatur);
