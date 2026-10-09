@@ -155,3 +155,21 @@ describe('1 · POST /api/crm/person mit vorhandener Kennung (Wiederholung) — k
     expect(roh).not.toContain(IBAN);
   });
 });
+
+// ── 1 · „Online gewinnt“ auch für Personen aus einer Anfrage: was die Person selbst angab, überschreibt kein späterer Import ────────
+describe('1 · Anfrage → Import: Angaben der Person bleiben (vonHand wie bei „Person anlegen“ und Netzwerken)', () => {
+  it('Telefon aus der Anfrage wird vom Import nicht still überschrieben, sondern als Konflikt vorgelegt', async () => {
+    const anf = await import('@/app/api/crm/anfrage/route') as unknown as Route;
+    const r = await anf.POST(anfrage('/api/crm/anfrage', sitzung('kevin'), 'POST', { aktion: 'anlegen', kanal: 'telefon', text: 'Rückruf bitte', neu: { vorname: 'Tele', nachname: 'Fonrufer', email: 'tele.fonrufer@ruf-firma.example', telefon: '+49 30 7770001' } }));
+    const d = await r.json() as { kontaktId: string };
+    expect(r.status).toBe(200);
+    const vorher = (await kartei()).find(k => k.id === d.kontaktId)!;
+    expect(vorher.vonHand).toEqual(expect.arrayContaining(['telefon']));
+    const imp = await import('@/app/api/crm/import/route') as unknown as Route;
+    await imp.POST(anfrage('/api/crm/import', sitzung('kevin'), 'POST', { csv: 'VORNAME;NACHNAME;EMAIL;TELEFON\nTele;Fonrufer;tele.fonrufer@ruf-firma.example;+49 30 9999999\n', name: 'l2.csv' }));
+    const nachher = (await kartei()).find(k => k.id === d.kontaktId)!;
+    expect(nachher.telefon).toBe('+49 30 7770001');
+    const konf = (await db.loadJson<{ konflikte: { kontaktId: string; feld: string }[] }>('crm-import-konflikte'))?.konflikte ?? [];
+    expect(konf.some(x => x.kontaktId === d.kontaktId && x.feld === 'telefon')).toBe(true);
+  });
+});

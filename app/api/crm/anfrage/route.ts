@@ -21,7 +21,8 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
-import { fuerPerson, type Kontakt } from '@/lib/make-one/crm';
+import { fuerPerson, saeubereKontakt, serverStempel, bezuegeSynchron, type Kontakt } from '@/lib/make-one/crm';
+import { datenschutzStempeln } from '@/lib/crm/datenschutz-stempel';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { anfrageBauen, anfragenListe, ANFRAGE_KANAELE, type AnfrageEingabe } from '@/lib/crm/anfragen';
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
@@ -93,7 +94,15 @@ export async function POST(req: Request) {
     if (!r.ok) { fehler = r.fehler; return f; }
     bau = r.bau;
     const i = f.kontakte.findIndex(x => x.id === r.bau.kontakt.id);
-    if (i < 0) return { ...f, kontakte: [...f.kontakte, r.bau.kontakt] };
+    if (i < 0) {
+      // Eine NEUE Person durch dieselbe Kette wie „Person anlegen“ und Netzwerken (Nahtstellen 09.10.): säubern, Datenschutz-Stempel, Bezüge,
+      // Server-Stempel (`vonHand` — was die Person selbst angab, überschreibt kein späterer Import still, „Online gewinnt“).
+      const namen = (fid: string) => crm.firmen.find(x => x.id === fid)?.name;
+      const sauber = saeubereKontakt(r.bau.kontakt) ?? r.bau.kontakt;
+      const neu = serverStempel(bezuegeSynchron(datenschutzStempeln(sauber, undefined, person || 'system', jetzt, heute), undefined, heute, namen), undefined, heute);
+      bau = { ...r.bau, kontakt: neu };
+      return { ...f, kontakte: [...f.kontakte, neu] };
+    }
     // Der Verlauf ist ein Anhänge-Log: was inzwischen dazukam, bleibt.
     const alt = f.kontakte[i];
     const neu = { ...r.bau.kontakt, aktivitaeten: [...alt.aktivitaeten.filter(a => !r.bau.kontakt.aktivitaeten.some(x => x.am === a.am && x.art === a.art && x.text === a.text)), ...r.bau.kontakt.aktivitaeten].sort((a, x) => a.am.localeCompare(x.am)) };
