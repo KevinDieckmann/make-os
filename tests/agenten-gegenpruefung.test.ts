@@ -270,3 +270,27 @@ describe('8 · Konto „nur Business“ (team-c) bekommt nichts aus Privat', () 
     for (const marke of [MARKE.familie, MARKE.medium, MARKE.ziel, 'Gesundheits-Takt']) expect(t, marke).toContain(marke);
   });
 });
+
+describe('9 · Oberfläche gegen den Server: teure Läufe lassen sich bestätigen', () => {
+  it('mitRueckfrage: 409 „kostenBestaetigen“ → fragen → mit kostenBestaetigt erneut; Business-frei → „trotzdem“; Nein → nichts melden', async () => {
+    const { mitRueckfrage } = await import('@/components/os/agenten/daten');
+    const gesendet: Record<string, unknown>[] = [];
+    const antworten = [
+      { ok: false as const, kommt: false, status: 409, text: 'Der Lauf kostet 0,80 € — bitte bestätigen.', daten: { kostenBestaetigen: true } },
+      { ok: false as const, kommt: false, status: 409, text: 'Business-frei — trotzdem?', daten: { businessFrei: true } },
+      { ok: true as const, daten: { ok: true } },
+    ];
+    const r = await mitRueckfrage(async z => { gesendet.push(z); return antworten.shift()!; }, async () => true, 'Neu starten?');
+    expect(r.ok).toBe(true);
+    expect(gesendet).toEqual([{}, { kostenBestaetigt: true }, { kostenBestaetigt: true, trotzdem: true }]);
+    const nein = await mitRueckfrage(async () => ({ ok: false as const, kommt: false, status: 409, text: 'kostet viel', daten: { kostenBestaetigen: true } }), async () => false, 'x');
+    expect(nein).toMatchObject({ ok: false, text: '' });
+  });
+  it('Testlauf, Planen und Neu starten gehen in der Oberfläche durch die Rückfrage', async () => {
+    const { readFileSync } = await import('node:fs');
+    const datei = (p: string) => readFileSync(p, 'utf8');
+    expect(datei('components/os/agenten/Dialoge.tsx')).toMatch(/mitRueckfrage\(z => skillSenden\(\{ aktion: 'testlauf'/);
+    expect(datei('components/os/agenten/Dialoge.tsx')).toMatch(/mitRueckfrage\(z => laeufeSenden\(\{ aktion: 'planen'/);
+    for (const p of ['components/os/agenten/Hintergrund.tsx', 'components/os/agenten/FadenMitte.tsx']) expect(datei(p), p).toMatch(/mitRueckfrage\(z => laeufeSenden\(\{ aktion: 'neu-starten'/);
+  });
+});

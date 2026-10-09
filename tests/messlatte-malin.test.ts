@@ -313,6 +313,8 @@ const SYS = {
   // Agenten-Bereich Paket 1 (09.10.): Threads je Person (`agenten-faeden--<person>`) — ein Business- und ein Privat-Thread von Kevin
   // (nicht geteilt); die zweite Person sieht keinen davon.
   agentenFaden: 'MESSLATTE-SYS-AGENTEN-FADEN',
+  // Gegenprüfung 09.10.: auch Kevins ZOE-Thread (Agent `zoe`, Paket 4a — ZoePanel, Empfang und Agenten-Seite schreiben dorthin).
+  zoeFaden: 'MESSLATTE-SYS-ZOE-FADEN',
 
   // Medien unterwegs (09.10., Paket 5): ein privates Medium „nur ich“ von Kevin samt Album „nur ich“ — Malin sieht nicht einmal das Album.
   medium: 'MESSLATTE-SYS-MEDIUM-NURICH',
@@ -492,6 +494,7 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
       await db.saveJson('agenten-faeden--kevin', { v: 1, faeden: [
         fd('fd-00000000-0000-4000-8000-00000000ab01', 'sales', 'business', `${SYS.agentenFaden} Business`),
         fd('fd-00000000-0000-4000-8000-00000000ab02', 'assistenz', 'privat', `${SYS.agentenFaden} Privat`),
+        { ...fd('fd-00000000-0000-4000-8000-00000000ab03', 'x', 'privat', SYS.zoeFaden), agent: { art: 'zoe' }, kette: ['zoe'] },
       ] });
     }
 

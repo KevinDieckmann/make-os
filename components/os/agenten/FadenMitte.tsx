@@ -12,7 +12,7 @@ import type { FadenAntwort, HeadKarte, LaufSchritt, Nachricht } from '@/lib/agen
 import { Chip, Eigenschaft, Hinweis, Karte, Knopf, Leer, Leerzustand } from '../ui';
 import { KuerzelKugel, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
-import { anfrageId, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, useAbruf, type Abruf } from './daten';
+import { anfrageId, fadenSenden, ladeFaden, laeufeSenden, meldeNeu, mitRueckfrage, useAbruf, type Abruf } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import { agentAusSchluessel, dauerText, delegationTeile, euro, FADEN_STATUS_NAME, zeitKurz } from './regeln';
 import { KUGEL_GROESSE } from './masse';
@@ -62,9 +62,10 @@ function LaufKopf({ fa }: { fa: FadenAntwort }) {
   const tu = async (aktion: 'abbrechen' | 'neu-starten') => {
     if (!lauf) { melde('Diesen Lauf kennt die Liste der Hintergrundaufgaben noch nicht.', 'info'); return; }
     if (aktion === 'abbrechen' && !(await bestaetigen({ titel: 'Lauf abbrechen?', text: 'Was schon fertig ist, bleibt im Thread.', ja: 'Abbrechen', gefahr: true }))) return;
-    const r = await laeufeSenden({ aktion, laufId: lauf.id });
+    const r = aktion === 'abbrechen' ? await laeufeSenden({ aktion, laufId: lauf.id })
+      : await mitRueckfrage(z => laeufeSenden({ aktion: 'neu-starten', laufId: lauf.id, ...z }), bestaetigen, 'Lauf neu starten?');
     if (r.ok) melde(aktion === 'abbrechen' ? 'Lauf abgebrochen.' : 'Lauf startet neu.', 'gut');
-    else melde(r.kommt ? 'Abbrechen und Neu starten kommen mit dem nächsten Paket.' : r.text, r.kommt ? 'info' : 'kritisch');
+    else if (r.text) melde(r.kommt ? 'Abbrechen und Neu starten kommen mit dem nächsten Paket.' : r.text, r.kommt ? 'info' : 'kritisch');
   };
   const farbe = l.status === 'laeuft' ? C.aktiv : l.status === 'fehler' ? LEUCHT.kritisch : l.status === 'fertig' ? LEUCHT.gut : C.inkDim;
   return (
