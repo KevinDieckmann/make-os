@@ -31,3 +31,35 @@ export async function jahreszieleFuer(o: { privat: boolean; heute?: string }): P
     return [];
   }
 }
+
+/** Was ein eingebauter Head (Sales/Marketing/Event, Head of Finance) zu den Zielen sieht: Nordstern (Text ohne Rahmen-Marken) + Jahresziele. */
+export interface HeadZiele { nordstern: string | null; jahresziele: JahreszielKurz[] }
+
+/**
+ * Ziele für das Datenpaket der eingebauten Heads (Nachschliff 09.10.: Sales/Marketing/Event in lib/heads/lauf.ts, Head of Finance in
+ * lib/finanzen/chef/lauf.ts) — dieselbe Lesestelle wie Überblick, ZOE und Agenten-Heads. Regeln:
+ *   • Jahresziele (Bestand `ziele`) gehören dem Haushalt des Inhabers — nur für eine Person dieses Haushalts, einen Systemlauf ohne Person bzw.
+ *     den Haushalt des Inhabers (`haushalt`); jede andere Sicht bekommt keine. `privat: false` = nur Business (Business-Heads immer).
+ *   • Nordstern NUR über die vorhandenen Wege (`nordsternFuerPerson` bzw. `nordsternLaden` des Haushalts; Systemlauf: der des Inhabers).
+ *   • Texte ohne Rahmen-Marken (`ohneRahmenMarken`) — sie stehen im Datenblock des Heads und beenden ihn nie.
+ * Lesen schreibt nie; Fehler → leer (das Paket sagt dann „keine hinterlegt“).
+ */
+export async function zieleFuerHead(o: { person: string | null; privat: boolean; haushalt?: string | null; heute?: string }): Promise<HeadZiele> {
+  try {
+    const [{ haushaltDesInhabers, personImHaushaltDesInhabers }, { nordsternFuerPerson, nordsternLaden }, { ohneRahmenMarken }] = await Promise.all([
+      import('@/lib/zugang/haushalt-inhaber'), import('./nordstern-server'), import('./nordstern'),
+    ]);
+    const inhaberHaushalt = await haushaltDesInhabers().catch(() => null);
+    const imHaushalt = o.haushalt !== undefined && o.haushalt !== null
+      ? !!inhaberHaushalt && o.haushalt === inhaberHaushalt
+      : o.person ? await personImHaushaltDesInhabers(o.person).catch(() => false) : !!inhaberHaushalt;
+    const roh = o.haushalt
+      ? ((await nordsternLaden(o.haushalt).catch(() => null))?.text || null)
+      : o.person ? await nordsternFuerPerson(o.person) : inhaberHaushalt ? ((await nordsternLaden(inhaberHaushalt).catch(() => null))?.text || null) : null;
+    const nordstern = roh ? ohneRahmenMarken(roh).replace(/\s+/g, ' ').trim() || null : null;
+    const jahresziele = imHaushalt ? (await jahreszieleFuer({ privat: o.privat, ...(o.heute ? { heute: o.heute } : {}) })).map(z => ({ ...z, titel: ohneRahmenMarken(z.titel) })) : [];
+    return { nordstern, jahresziele };
+  } catch {
+    return { nordstern: null, jahresziele: [] };
+  }
+}

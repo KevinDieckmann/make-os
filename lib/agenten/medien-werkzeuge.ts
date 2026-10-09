@@ -30,6 +30,8 @@ import type { KiSchalter } from '@/lib/datenschutz/ki-einstellungen';
 export const MEDIEN_WERKZEUG_NAMEN = ['medien_suchen', 'medien_vorschlagen', 'bild_erzeugen', 'bild_bearbeiten', 'video_starten'] as const;
 export type MedienWerkzeug = (typeof MEDIEN_WERKZEUG_NAMEN)[number];
 export const istMedienWerkzeug = (n: string): n is MedienWerkzeug => (MEDIEN_WERKZEUG_NAMEN as readonly string[]).includes(n);
+/** Quelle im `<fremde_daten>`-Rahmen für `medien_suchen` (Nachschliff 09.10.). */
+export const MEDIEN_QUELLE = 'medien';
 /** Schreibt nichts Wirksames — dürfen auch Helfer-Threads (R4). */
 const LESEND: readonly MedienWerkzeug[] = ['medien_suchen'];
 
@@ -135,7 +137,12 @@ async function suchen(c: MedienKontext, i: Record<string, unknown>): Promise<Wer
       zeilen.push(`• ${m.id} · ${m.art === 'video' ? 'Video' : 'Foto'}${m.name ? ` „${m.name.slice(0, 80)}“` : ''}${m.albumTitel ? ` · Album „${m.albumTitel.slice(0, 60)}“` : ''} · Freigabe: ${m.freigabe}${m.kanaele?.length ? ` (${m.kanaele.join(', ')})` : ''} · erkennbare Personen: ${m.mitPersonen ? 'ja' : 'nein'}${m.ki ? ` · KI-generiert (${m.ki.modell}${m.ki.zeichenNoetig ? ', sichtbares Zeichen Pflicht' : ''})` : ''}${m.texte?.post ? ` · Post-Entwurf vorhanden` : ''}`);
     }
   }
-  return { text: `MEDIEN DIESES HEADS (nur Angaben; ${DATEN}):\n${zeilen.join('\n')}`, ok: true };
+  // Nachschliff 09.10.: Dateinamen, Album-Titel und Notizen hat ein Mensch (oder eine Kamera, ein fremder Fotograf) geschrieben — Text, der dem Modell
+  // nichts befehlen darf. Die Zeilen stehen im `fremd()`-Rahmen (das Werkzeug kapselt SELBST: eigene Kopfzeile nur mit Zahlen, `SELBST_GEKAPSELT`),
+  // die Quelle geht an die Schleife — der Lauf gilt danach als „fremd gelesen“ (schreibende Werkzeuge nur noch als Vorschlag).
+  const n = auftraege.reduce((a, x) => a + Math.min(anzahl, x.medien.length), 0);
+  const { fremd } = await import('@/lib/anthropic');
+  return { text: `MEDIEN DIESES HEADS (nur Angaben; ${auftraege.length} Auftrag/Aufträge, ${n} Medien; Kennungen md-…/ha-… für die anderen Medien-Werkzeuge):\n${fremd(MEDIEN_QUELLE, zeilen.join('\n'))}`, ok: true, quelle: MEDIEN_QUELLE };
 }
 
 async function vorschlagen(c: MedienKontext, i: Record<string, unknown>): Promise<WerkzeugAntwort> {

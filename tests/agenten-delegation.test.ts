@@ -120,7 +120,8 @@ describe('Lauf im Hintergrund', () => {
     const glocke = (await db.loadJson<{ eintraege: { art: string; titel: string; link: string }[] }>('meldungen--person-a'))!.eintraege;
     const g = glocke.find(x => x.art === 'agenten')!;
     expect(g.titel).toBe('Ein Agenten-Ergebnis liegt bereit');
-    expect(g.link).toContain(kindId);
+    // Nachschliff 09.10.: das fertige Ergebnis verlinkt dorthin, wo der Auftrag gegeben wurde (hier der Head-Thread mit dem Bericht).
+    expect(g.link).toContain(headId);
     const log = (await db.loadJson<{ entries: { agent: string; person?: string; payload: unknown }[] }>('agent-log'))!.entries.filter(e => e.agent === 'faden:sales');
     expect(log.length).toBeGreaterThan(0);
     expect(JSON.stringify(log)).not.toMatch(/Zwei Entwürfe/);

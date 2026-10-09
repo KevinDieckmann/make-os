@@ -44,6 +44,8 @@ export const PRIVAT_SYSTEMLAEUFE: ReadonlySet<string> = new Set(['gesundheit', '
 export interface AuftragRoh {
   id: string; zeit: string; art: string; name: string; status: string; eingabe?: Record<string, unknown>;
   begonnen?: string; beendet?: string; fehler?: string; anlass?: string; person?: string;
+  /** Rückmeldung des Arbeiters (nur gelesen, um „hat nur gewartet“ zu erkennen — nie ausgegeben). */
+  ergebnis?: string;
 }
 /** Bericht eines Heads bzw. des Finanzchefs (nur Zeit, Modus, Auslöser, Person, Dauer). */
 export interface BerichtRoh { id: string; zeit: string; modus: string; ausgeloest: string; person?: string; dauer_ms?: number }
@@ -160,6 +162,9 @@ export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Da
     if (a.art === 'agent' && a.name === LAUF_AGENT) {
       const l: Lauf = { ...basis, ...agentenLauf(a, q) };
       const f = fadenZu(a, q);
+      // Nachschliff 09.10.: ein Versuch, der nur wartete (z. B. Head aus) und danach als NEUER Auftrag weiterlief („Head an“), ist kein eigener Lauf —
+      // der neue Auftrag am Thread steht für ihn. Vorher stand der alte Versuch zusätzlich als „Fertig“ da, obwohl er nie lief.
+      if (status === 'fertig' && /^AGENTEN-LAUF: wartet/.test(a.ergebnis ?? '') && f?.lauf?.auftragId && f.lauf.auftragId !== a.id) { gesehen.add(a.id); continue; }
       const voll = f?.lauf && (f.lauf.auftragId === a.id || !f.lauf.auftragId) ? { ...l, ...ausFaden(f, l) } as Lauf : l;
       // Die Warteschlange ist beendet (fertig, Fehler, abgebrochen), der Thread sagt noch „wartet/läuft“: die Warteschlange gilt — außer der Thread
       // wartet MIT Grund (Not-Aus, Business-frei, Budget, Head aus, Hilfe-Frage): dann wartet er wirklich (Durchstich 09.10.; vorher stand so ein

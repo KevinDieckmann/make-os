@@ -213,10 +213,11 @@ export interface LaufZustand {
   abgebrochenVon?: string;
   /**
    * Worauf ein Lauf mit Status `wartet` wartet (Paket 4b, additiv): `business-frei` = der Takt holt ihn nach dem Ende des Rahmens
-   * EINMAL nach (lib/agenten/zeitplan.ts `businessFreiNachholen`); `not-aus` = erst nach dem Lösen und von Hand. Fehlt das Feld,
+   * EINMAL nach (lib/agenten/zeitplan.ts `businessFreiNachholen`); `not-aus` = erst nach dem Lösen und von Hand; `head-aus` (Nachschliff 09.10.) =
+   * der Head war ausgeschaltet — beim Wiedereinschalten EINMAL neu eingereiht (lib/agenten/einstellung.ts `laeufeNachHeadAn`). Fehlt das Feld,
    * erkennt der Takt „Business-frei“ zusätzlich am Grund (`fehler`), den der Kern schreibt.
    */
-  wartetAuf?: 'business-frei' | 'not-aus' | 'plan';
+  wartetAuf?: 'business-frei' | 'not-aus' | 'plan' | 'head-aus';
 }
 
 // ── Arbeitsstand, Aufträge an Mitarbeiter, Plan-Freigabe (Paket 1 in faeden.ts erweitert; seit Paket 4b im Vertrag) ────────

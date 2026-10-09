@@ -113,7 +113,9 @@ export async function fuehreAus(
   const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person, kontext);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
-  const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|Kollision|Kein Meilenstein|Nicht ausgeführt/i.test(text.slice(0, 200));
+  // Nachschliff 09.10.: „Nicht eingeplant“ (plan_block in einer Business-freien Zeit) ist ein Fehlschlag — vorher galt der Vorschlag im Stapel als
+  // „freigegeben“, obwohl kein Block angelegt war.
+  const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|nicht eingeplant|Kollision|Kein Meilenstein|Nicht ausgeführt/i.test(text.slice(0, 200));
   await notiere({
     // Selbst gekapselte Leser (Dateien, Notizen): nur die Kopfzeile — nie Inhalte ins Protokoll.
     werkzeug: name, gruppe, risiko, eingabe: input, ergebnis: (SELBST_GEKAPSELT.has(name) ? text.split('\n')[0] : text).slice(0, 600), ok,

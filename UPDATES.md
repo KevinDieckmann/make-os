@@ -4,6 +4,64 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten: Nachschliff (nur lokal — Branch `agenten-nachschliff`, Basis `agenten-nacht` a94d4052)
+
+Kevin 09.10.: „Das muss perfekt laufen. Denke immer einen Schritt weiter.“ Die Punkte, die „Agenten-Durchstich“ und „Sicherheit an den Nahtstellen“ als
+„nice“ liegen ließen — je mit Wächter (erst rot, eigener Commit „Wächter zuerst“): `tests/agenten-nachschliff.test.ts` (18 Fälle über die echten Routen und
+die echte Warteschlange, Modell = `tests/fixtures/ki-fake.ts`), `tests/agenten-nachschliff-kalender.test.ts` (5 Fälle, nachgebautes iCloud + Google),
+ein Fall in `tests/kalender-icloud-person.test.ts`.
+
+**Was sich sichtbar ändert**
+- **Eine Glocke je Auftrag — erst mit dem Ergebnis.** Gibt ZOE einen Auftrag an einen Head und der Head an Mitarbeiter, kam bisher schon eine Glocke
+  „Ergebnis liegt bereit“, als der Head nur delegiert hatte. Jetzt meldet der LETZTE Lauf des Auftrags (zwei Mitarbeiter → eine Glocke, wenn beide fertig
+  sind; Hilfe-Kette → eine am Ende), an die auslösende Person, und der Link führt dorthin, wo der Auftrag gegeben wurde (ZOE- bzw. Head-Thread mit dem
+  Bericht). Fehler, Abbruch und „Thread voll“ melden wie bisher sofort (Link auf den betroffenen Thread). Regel rein: `glockeNachLauf`/`laufInArbeit`/
+  `wurzelFaden` (lib/agenten/faeden.ts).
+- **Jahresziele bei Sales, Marketing, Event und dem Head of Finance.** Das Datenpaket der eingebauten Heads trägt jetzt `ziele` (Nordstern als
+  `<daten quelle="nordstern">`-Satz + Business-Jahresziele mit Fortschritt; „Was der Head sieht (Datenpaket)“ am Head zeigt es). Der Head of Finance bekommt `jahresziele`
+  (Business-Lauf nur Business, Haushalts-Lauf auch Privat) neben dem Nordstern. EINE Lesestelle `zieleFuerHead` (lib/planung/jahresziele-sicht.ts):
+  Business-Heads nie Privat, Konto „nur Business“ nie Privat, fremder Haushalt keine Ziele, ohne Ziele „keine hinterlegt“. Texte ohne Rahmen-Marken
+  (`ohneRahmenMarken`, lib/planung/nordstern.ts) — ein Nordstern mit `</daten…>` beendet den Datenblock nie mehr (vorher stand er im Head of Finance roh im
+  `<daten>`-Block).
+- **Kalender-Block von ZOE: geprüft von Ende zu Ende.** ZOE `plan_block` → Stapel (kein Schreiben in iCloud, die andere Person sieht den Vorschlag nicht)
+  → Klick → genau EIN Termin (Art fokus, beschäftigt) im Kalender der Person + `kalender-bezug` mit `von`; Doppelklick → ein Termin; Kollision → „Kollision mit
+  festem Termin …“, nichts angelegt; Google für Business verbunden → der Block bleibt trotzdem iCloud (Regel). **Gefunden und behoben:** (a) in einer
+  Business-freien Zeit sagte das Werkzeug „Nicht eingeplant …“, der Vorschlag stand aber als „freigegeben“ im Stapel (lib/zoe/ausfuehren.ts zählt das jetzt als
+  Fehlschlag); (b) `blockAnlegen` kannte nur zwei feste Speichernamen — eine weitere Person mit EIGENER iCloud-Verbindung bekam ihren Block nie ins eigene Konto.
+  Jetzt: Platz in den Kalender-Einstellungen ODER eigene Verbindung (lib/planung/bloecke-server.ts).
+- **`medien_suchen` gekapselt.** Dateinamen, Album-Titel und Notizen der gegebenen Medien stehen im `<fremde_daten quelle="medien">`-Rahmen (eigene Kopfzeile
+  nur mit Zahlen, `SELBST_GEKAPSELT`); der Lauf gilt danach als „fremd gelesen“ (`WerkzeugAntwort.quelle`).
+- **`einmalig` überall mit Person.** Rechnung (neu, stellen, storno, mahnung), Beleg übernehmen, Kontoauszug, Gesellschaft anlegen — dazu Inbox senden und
+  WhatsApp senden — geben die Person der Sitzung mit: dieselbe `anfrageId` aus einer anderen Sitzung → 409 ohne Inhalt. Wächter scannt jeden Aufruf in app/ und lib/.
+- **ZOE vergisst wirklich.** „Vergessen“ eines Fakts entfernt Thema, Satz, Herkunft und Frist — es bleiben nur Kennung, Raum, Art und Zeitpunkte als Nachweis.
+  Altbestand (vergessen, Satz noch da) wird beim nächsten Schreiben gesäubert; Art. 15 (Kontakt-Auskunft) zählt Vergessenes nie; derselbe Satz darf neu gemerkt werden.
+- **„Head an“ setzt fort.** Wartete ein Lauf NUR, weil der Head aus war (neu: Feld `wartetAuf: 'head-aus'`, Hinweis „Der Lauf geht weiter, sobald er wieder an
+  ist“), reiht das Wiedereinschalten ihn genau einmal neu ein — als seine Besitzerin (auch die Läufe der anderen Person bei Haushalts-Heads). Budget-, Not-Aus- und
+  Hilfe-Wartende bleiben unberührt; ist der Head für die Besitzerin gerade anders gesperrt, bleibt die Marke stehen. „Läuft“ zeigt den Versuch, der nur wartete,
+  nicht zusätzlich als „Fertig“.
+
+**So testet ihr (in Klicks):**
+1. ZOE: „Gib das Nachfassen der Angebote an Sales.“ → Sales gibt an „Nachfassen“ → erst wenn der Bericht da ist, leuchtet die Glocke (einmal); Klick führt in den
+   ZOE-Thread mit dem Bericht.
+2. Planung › Jahr: ein Business-Jahresziel anlegen → Markttraktion, Head of Sales öffnen → „Was der Head sieht (Datenpaket)“ → `ziele.jahresziele` nennt es; ein
+   Privat-Ziel steht dort nie.
+3. ZOE: „Plane mir morgen 10 Uhr einen Fokus-Block im Kalender ein.“ → Freigaben → Freigeben → der Block steht im Kalender; noch einmal klicken → nichts doppelt.
+4. Agenten › Event ausschalten → Hintergrundaufgabe an Event → „Läuft“: wartet, „… ausgeschaltet. Der Lauf geht weiter, sobald er wieder an ist.“ → Event wieder an
+   → der Lauf startet von selbst (≤ 1 Min.) und steht danach EINMAL unter „Fertig“.
+5. ZOE etwas merken lassen → Agenten › ZOE › Gedächtnis → vergessen → der Satz ist auch in der Datei weg (nur Kennung + Zeitpunkt).
+
+**Rückweg:** keine neuen Bestände, keine neuen Routen. Neu nur optionale Felder bzw. Werte: `wartetAuf: 'head-aus'` am Lauf (der alte Stand liest ihn als
+„wartet mit Grund“, setzt nicht fort), `ziele` im Datenpaket der Heads / `jahresziele` beim Head of Finance (nur im Prompt, nie gespeichert außer in
+`heads-replay-*`), `quelle` an Agenten-Werkzeugantworten. Vergessene Fakten verlieren ihren Text endgültig (gewollt) — der alte Stand zeigt sie ohnehin nicht.
+
+**Bewusst nicht geändert / offen**
+- Budget-wartende Läufe laufen im neuen Monat weiter nicht von selbst (Kevins Entscheidung offen, UPDATES Durchstich).
+- Kalendermodell mit festen Plätzen je Person (Plattform-Schuld): eine Person ohne Platz bekommt Blöcke nur mit EIGENER iCloud-Verbindung; der Haushalts-Kalender
+  kennt weiter nur die festen Plätze. `planBlock` verlangt weiter die Haushalts-iCloud (`icloudVerbunden`), auch wenn die Person eine eigene Verbindung hat.
+- Head of Finance: der Datenblock heißt weiter schlicht `<daten>` (ohne wechselnde Kennung wie bei Sales/Marketing/Event) — Verwendungszwecke aus Kontoauszügen
+  stehen darin roh; Vorschläge gehen ohnehin nur in die Freigabe-Liste. Kandidat für den nächsten Durchgang.
+- Kommentare mit festen Vornamen in lib/heads/lauf.ts und app/api/heads/[head]/route.ts (nur Kommentare, keine Wirkung).
+
 ## 09.10.2026 — Agenten: Sicherheit an den Nahtstellen der letzten Merges (nur lokal — Branch `agenten-sicher-naht`, Basis `agenten-nacht` 10b72dbc)
 
 Kevin 09.10.: „Das muss perfekt laufen. Denke immer einen Schritt weiter.“ Die Gegenprüfung lief auf einem früheren Stand — geprüft wurde jetzt, wo

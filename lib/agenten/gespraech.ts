@@ -67,7 +67,7 @@ export async function aktiveMitarbeiter(head: HeadDef, u: Umfang, e: AgentenEins
 
 // ── Werkzeug-Handler (aus delegation.ts) ────────────────────────────────────────────────────────────────────────────────
 
-export interface WerkzeugAntwort { text: string; ok: boolean; fortschritt?: boolean; gestapelt?: boolean; vorschlagId?: string; /** Lauf endet danach mit „wartet“. */ wartet?: string }
+export interface WerkzeugAntwort { text: string; ok: boolean; fortschritt?: boolean; gestapelt?: boolean; vorschlagId?: string; /** Lauf endet danach mit „wartet“. */ wartet?: string; /** Fremd-Quelle (lib/zoe/fremd.ts), wenn das Ergebnis Text Dritter trägt — die Schleife setzt dann „fremd gelesen“ (Nachschliff 09.10., `medien_suchen`). */ quelle?: string }
 export interface SchleifenStand { fremdGelesen: boolean; vertraulich: boolean; ratGenutzt: number; hilfeGenutzt: number; kategorien: KiKategorie[]; verlaufText: () => string; delegiert: number }
 export interface AgentenHandler {
   /** Vor einer Runde: welche `an_mitarbeiter`-Aufrufe in eine Plan-Freigabe gehen (R14) — Kennungen der Aufrufe. */
@@ -279,7 +279,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
         // Agenten-Werkzeuge kapseln selbst (Rat, Fach-Agent) — ihre Marke übernimmt die Schleife aus dem Stand des Handlers.
         if (s.fremdGelesen) z.fremdGelesen = true;
         if (s.vertraulich) z.vertraulich = true;
-        return { inhalt: w.text, ok: w.ok, ...(w.fortschritt !== undefined ? { fortschritt: w.fortschritt } : {}), ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}), ...(w.wartet ? { wartet: w.wartet } : {}) };
+        return { inhalt: w.text, ok: w.ok, ...(w.quelle && w.ok ? { quelle: w.quelle } : {}), ...(w.fortschritt !== undefined ? { fortschritt: w.fortschritt } : {}), ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}), ...(w.wartet ? { wartet: w.wartet } : {}) };
       }
       if (!angebot.register.has(wname)) return { inhalt: 'Nicht angeboten — dieses Werkzeug gehört nicht zu deinem Bereich.', ok: false };
       const ein = eingabeImBereich(wname, input, head);

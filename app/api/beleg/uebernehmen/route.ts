@@ -27,7 +27,8 @@ interface Buchung { id: string; datum: string; wer: string; betrag: number; kate
 interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; netto?: number; ustSatz?: number }
 
 export async function POST(req: Request) {
-  if (!(await privatFinanzZugang(req))) return keinFinanzZugang();
+  const zugang = await privatFinanzZugang(req);
+  if (!zugang) return keinFinanzZugang();
   let b: {
     ziel?: 'buchung' | 'rechnung';
     partner?: string; datum?: string; betrag?: number; betragBrutto?: number; betragNetto?: number; ustSatz?: number; kategorie?: string;
@@ -37,8 +38,9 @@ export async function POST(req: Request) {
   };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
 
-  // Ein Netz-Retry mit derselben anfrageId legt nichts doppelt an — die erste Antwort kommt zurück.
-  const r = await einmalig(`beleg:${b.ziel === 'rechnung' ? 'rechnung' : 'buchung'}`, b.anfrageId, () => uebernehmen(b));
+  // Ein Netz-Retry mit derselben anfrageId legt nichts doppelt an — die erste Antwort kommt zurück. Nur der Person selbst (Nachschliff 09.10.):
+  // eine andere Sitzung mit derselben Kennung bekommt 409 ohne Inhalt (`wer`, lib/store/anfragen.ts).
+  const r = await einmalig(`beleg:${b.ziel === 'rechnung' ? 'rechnung' : 'buchung'}`, b.anfrageId, () => uebernehmen(b), undefined, { wer: zugang.person });
   return NextResponse.json(r.wiederholt ? { ...(r.body as object), wiederholt: true } : r.body, { status: r.status });
 }
 

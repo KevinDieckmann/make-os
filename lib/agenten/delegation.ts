@@ -24,8 +24,8 @@ import { headDef } from './katalog';
 import { skillLesen, einstellungFuer } from './skills-lesen';
 import { GRENZEN, LAUF_AGENT, agentSchluessel, planBestand, type AgentRef, type AgentenEinstellung, type HeadDef, type LaufAuftrag, type Merksatz, type Mitarbeiter, type PlanBestand, type Skill, type Umfang } from './typen';
 import {
-  KERN_GRENZEN, anhaengen, auftragText, brettEintragen, brettText, brettVon, fadenHinzu, fehler, gedaechtnisFuer, laufWartet, merksatzHinzu, merksatzPruefen,
-  neuerFaden, offeneFragen, offeneLaeufe, statusAusLauf, textAbdruck, textPruefen, type AuftragKarte, type Brett, type FadenKern, type Fehler, type NachrichtKern, type PlanFreigabe,
+  KERN_GRENZEN, anhaengen, auftragText, brettEintragen, brettText, brettVon, fadenHinzu, fehler, gedaechtnisFuer, glockeNachLauf, laufWartet, merksatzHinzu, merksatzPruefen,
+  neuerFaden, offeneFragen, offeneLaeufe, statusAusLauf, textAbdruck, textPruefen, wurzelFaden, type AuftragKarte, type Brett, type FadenKern, type Fehler, type NachrichtKern, type PlanFreigabe,
 } from './faeden';
 import { bestandAendern, bestandLesen, eigenerFaden, fadenAendern, sichtLaden } from './faeden-server';
 import { headSichtbar, type KontoSicht } from './sicht';
@@ -680,9 +680,16 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
     await zoeBerichtAnhaengen(person, f.elternId, `Bericht von ${name} aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, { fadenId: f.id, titel }, kind, jetzt);
   }
   const headId = f.agent.art === 'zoe' ? 'zoe' : f.agent.headId;
-  if (voll || e.status !== 'wartet' || f.agent.art === 'head') {
+  // Nachschliff 09.10. („Eine Glocke je Auftrag, erst mit dem Ergebnis“): ein Head, der nur an Mitarbeiter gegeben hat, meldet noch nichts —
+  // es meldet der LETZTE Lauf des Auftrags (Regel rein in faeden.ts `glockeNachLauf`), an die auslösende Person (Besitzerin der Threads). Das fertige
+  // Ergebnis verlinkt dorthin, wo sie den Auftrag gab (ZOE- bzw. Head-Thread); Fehler, Abbruch und „voll“ melden wie bisher den Thread selbst.
+  const nachher = (await bestandLesen(person).catch(() => null))?.faeden ?? [];
+  const ich = nachher.find(x => x.id === f.id) ?? kind;
+  if (glockeNachLauf(ich, voll ? 'fehler' : e.status, nachher, voll)) {
+    const ziel = !voll && e.status === 'fertig' ? wurzelFaden(ich, nachher) : ich;
+    const zielHead = ziel.agent.art === 'zoe' ? null : ziel.agent.headId;
     const { melde } = await import('@/lib/meldungen/melden');
-    await melde({ an: person, art: 'agenten', titel: voll ? 'Ein Agenten-Thread ist voll — bitte einen neuen anlegen' : 'Ein Agenten-Ergebnis liegt bereit', link: WEG.agenten({ ...(headId !== 'zoe' ? { h: headId } : {}), f: f.id }) });
+    await melde({ an: person, art: 'agenten', titel: voll ? 'Ein Agenten-Thread ist voll — bitte einen neuen anlegen' : 'Ein Agenten-Ergebnis liegt bereit', link: WEG.agenten({ ...(zielHead ? { h: zielHead } : {}), f: ziel.id }) });
   }
   const { logRun } = await import('@/lib/agent-log');
   await logRun(`faden:${headId}`, 'Agenten-Lauf', e.span, { person });

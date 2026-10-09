@@ -332,6 +332,53 @@ export function verwaistGrund(f: Pick<FadenKern, 'lauf' | 'agent'>, auftraege: r
   return null;
 }
 
+/**
+ * Arbeitet in diesem Thread noch etwas, das VON SELBST ein Ergebnis bringt (Nachschliff 09.10.)? Rein. Ja: „läuft“; „wartet“ als frisch eingereihter
+ * Lauf (noch nie gelaufen, ohne Grund) bzw. auf das Ende der Business-freien Zeit (der Takt holt ihn nach). Nein: fertig/Fehler/abgebrochen und
+ * jedes Warten auf einen Menschen (Hilfe-Frage offen, Plan-Freigabe, Not-Aus, Head aus, Budget) — dort muss die Person handeln.
+ */
+export function laufInArbeit(f: Pick<FadenKern, 'lauf'>): boolean {
+  const l = f.lauf;
+  if (!l) return false;
+  if (l.status === 'laeuft') return true;
+  if (l.status !== 'wartet') return false;
+  if (l.wartetAuf === 'business-frei') return true;
+  return !l.wartetAuf && !l.fehler && !l.schritte?.length;
+}
+
+/**
+ * Glocke nach einem Lauf? (Nachschliff 09.10.: „Eine Glocke je Auftrag, erst mit dem Ergebnis.“) Rein. `faeden` = der Bestand NACH dem
+ * Schreiben des Ergebnisses (auch nach einem Fortsetzen über den Arbeitsstand).
+ *   • voll, Fehler, Abbruch → immer (Probleme melden weiter);
+ *   • „wartet“ → nur ein Head (Plan-Freigabe, Frage für den Menschen) — wie bisher; ein wartender Mitarbeiter meldet über seinen Head;
+ *   • „fertig“ → nur, wenn im Auftrag nichts mehr von selbst arbeitet: ein Head ohne Mitarbeiter in Arbeit; ein Mitarbeiter, dessen Head nicht mehr
+ *     läuft und dessen Geschwister (gleicher Head-Thread) nicht mehr arbeiten — der LETZTE meldet. Schreiben zwei Läufe gleichzeitig, sieht
+ *     mindestens einer den anderen fertig (jeder schreibt sein Ergebnis vor der Prüfung) — nie null Glocken.
+ */
+export function glockeNachLauf(f: Pick<FadenKern, 'id' | 'agent' | 'elternId'>, status: LaufZustand['status'], faeden: readonly Pick<FadenKern, 'id' | 'agent' | 'elternId' | 'lauf'>[], voll = false): boolean {
+  if (voll || status === 'fehler' || status === 'abgebrochen') return true;
+  if (status === 'wartet') return f.agent.art === 'head';
+  if (status !== 'fertig') return false;
+  if (f.agent.art === 'head') return !faeden.some(x => x.elternId === f.id && x.agent.art === 'mitarbeiter' && laufInArbeit(x));
+  if (f.agent.art === 'mitarbeiter' && f.elternId) {
+    const kopf = faeden.find(x => x.id === f.elternId);
+    if (kopf && laufInArbeit(kopf)) return false;
+    return !faeden.some(x => x.id !== f.id && x.elternId === f.elternId && x.agent.art === 'mitarbeiter' && laufInArbeit(x));
+  }
+  return true;
+}
+
+/** Der oberste Thread einer Kette (ZOE → Head → Mitarbeiter) — dort hat die Person den Auftrag gegeben. Rein; höchstens Tiefe 3. */
+export function wurzelFaden<F extends Pick<FadenKern, 'id' | 'elternId'>>(f: F, faeden: readonly F[]): F {
+  let x = f;
+  for (let i = 0; i < 4 && x.elternId; i++) {
+    const p = faeden.find(y => y.id === x.elternId);
+    if (!p) break;
+    x = p;
+  }
+  return x;
+}
+
 /** FadenStatus aus dem Lauf-Status. */
 export function statusAusLauf(l: LaufZustand['status']): FadenStatus {
   return l === 'laeuft' ? 'laeuft' : l === 'fertig' ? 'fertig' : l === 'fehler' ? 'fehler' : l === 'abgebrochen' ? 'abgebrochen' : 'wartet';
