@@ -2,9 +2,11 @@
 // Kevin: „Körper-Reiter sieht nur die Person selbst.“ — deshalb NUR die Person der Sitzung (bzw. ausdrücklich benannt),
 // kein `?fuer=`, kein Dienstweg (403) — auch wer seine Gesundheit teilt (Konto › teilt.gesundheit), teilt das Körper-Profil
 // nicht. Bestand je Person über lib/gesundheit/koerper-server.ts.
-// GET   → { ok, koerper | null, stand } (Lese-Protokoll Art. 9)
-// PATCH { stand, ops } → Schritte (lib/gesundheit/koerper.ts) in EINER Sperre; Einwilligung (a) zuerst, veralteter Stand
-//        → 409 mit dem aktuellen Profil, über einer Grenze → 413 (nie gekürzt), ungültig → 400 (nichts gespeichert).
+// GET   → { ok, koerper | null, stand, module } (Lese-Protokoll Art. 9) — `module` = wirksamer Stand der eigenen Module
+//        (lib/gesundheit/module.ts, auch ohne Profil: Altbestand mit Einträgen = an)
+// PATCH { stand, ops } → Schritte (lib/gesundheit/koerper.ts) in EINER Sperre; Einwilligung (a) zuerst — ausgenommen NUR
+//        „Module ausschalten“ (verarbeitet nichts, hört auf) —, veralteter Stand → 409 mit dem aktuellen Profil, über einer
+//        Grenze → 413 (nie gekürzt), ungültig → 400 (nichts gespeichert).
 
 import { NextResponse } from 'next/server';
 import { istDienst, personStreng, ohnePerson } from '@/lib/zugang/tor';
@@ -14,7 +16,9 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { koerperLaden, koerperAendern } from '@/lib/gesundheit/koerper-server';
-import { KOERPER_GRENZEN } from '@/lib/gesundheit/koerper';
+import { KOERPER_GRENZEN, nurModuleAus } from '@/lib/gesundheit/koerper';
+import { moduleBelegt } from '@/lib/gesundheit/module-server';
+import { moduleWirksam } from '@/lib/gesundheit/module';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,23 +32,24 @@ export async function GET(req: Request) {
   const person = personStreng(req);
   if (!person) return ohnePerson();
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9)
-  const { koerper, stand } = await koerperLaden(person);
-  return NextResponse.json({ ok: true, ich: person, koerper, stand, grenzen: KOERPER_GRENZEN }, { headers: { 'Cache-Control': 'no-store' } });
+  const [{ koerper, stand }, belegt] = await Promise.all([koerperLaden(person), moduleBelegt(person)]);
+  return NextResponse.json({ ok: true, ich: person, koerper, stand, module: moduleWirksam(koerper, belegt), grenzen: KOERPER_GRENZEN }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: Request) {
   if (istDienst(req)) return NUR_SELBST();
   const person = personStreng(req);
   if (!person) return ohnePerson();
-  // Art. 9: erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
-  { const sperre = await gesundheitSchreibSperre(person); if (sperre) return sperre; }
   { const alt = bauPruefen(req); if (alt) return alt; }
   if (zuGross(req, MAX_BYTES)) return ZU_GROSS(MAX_BYTES);
   let body: { stand?: unknown; ops?: unknown };
   try { body = await jsonBegrenzt(req, MAX_BYTES); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  // Art. 9: erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt). Ein Modul AUSSCHALTEN
+  // geht immer (09.10.) — es verarbeitet nichts, es beendet nur Abfragen und Anzeige.
+  if (!nurModuleAus(body?.ops)) { const sperre = await gesundheitSchreibSperre(person); if (sperre) return sperre; }
   const r = await koerperAendern(person, body?.stand, body?.ops);
   if (!r.ok) {
     return NextResponse.json({ ok: false, error: r.fehler, ...(r.status === 409 ? { konflikt: true, koerper: r.koerper ?? null, stand: r.stand } : {}) }, { status: r.status });
   }
-  return NextResponse.json({ ok: true, koerper: r.koerper, stand: r.stand });
+  return NextResponse.json({ ok: true, koerper: r.koerper, stand: r.stand, module: moduleWirksam(r.koerper, await moduleBelegt(person)) });
 }

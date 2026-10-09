@@ -5,12 +5,12 @@
 // freigegeben hat. Vorher: elf Seiten, jede Karte ein Kasten, Nullen als große
 // Zahlen. Jetzt EINE Seite, vier Segmente:
 //
-//   Heute      drei Ringe, ein Satz, EINE Tagesliste (Routinen, Haut, Streak,
-//              drei Fragen — so macht es Whoops Journal)
+//   Heute      drei Ringe, ein Satz, EINE Tagesliste (Routinen, die eingeschalteten Module — Symptom-Tagebuch,
+//              Zähler —, drei Fragen — so macht es Whoops Journal)
 //   Verlauf    30 Tage, ein Diagramm je Kennzahl
 //   Ernährung  die Woche (bestehende Ansicht, eingebettet)
-//   Körper     Energie, Gesundheits-Meilensteine und das EIGENE Körper-Profil (Daten je Person, seit 08.10. abends —
-//              nur die Person selbst; in der Ansicht einer anderen Person gibt es den Reiter nicht)
+//   Körper     Energie, Gesundheits-Meilensteine, die eigenen Module (09.10.) und das EIGENE Körper-Profil (Daten je
+//              Person, seit 08.10. abends — nur die Person selbst; in der Ansicht einer anderen Person gibt es den Reiter nicht)
 //
 // Whoops Regeln, hier eingehalten: keine Rahmen — Weißraum und Haarlinien;
 // eine Schrift; große Zahlen, kleine Labels in normaler Schrift; eine Farbe
@@ -24,8 +24,9 @@ import { WhoopImport } from './WhoopImport';
 import { WhoopKarte } from './gesundheit/WhoopKarte';
 import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Hinweis, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
-import { useKoerper, KoerperLeer, ProfilKarte, BeschwerdenKarte, HebelKarte, ZusammenhaengeKarte, AnzeigeKarte } from './gesundheit/Koerper';
+import { useKoerper, KoerperLeer, ProfilKarte, BeschwerdenKarte, HebelKarte, ZusammenhaengeKarte, AnzeigeKarte, ModuleKarte } from './gesundheit/Koerper';
 import { routinenHinweis } from '@/lib/gesundheit/koerper';
+import { symptomAnzeige, MODUL_INFO, type ModulStand } from '@/lib/gesundheit/module';
 
 import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
@@ -44,6 +45,8 @@ const SEGMENTE: { id: Segment; label: string }[] = [
 interface Vitals { rec: number; sleep: number; hrv: number; rhr: number; stand: string; heute: boolean; alterTage: number; fallback: boolean }
 interface Stand {
   person: string; ich: string; heute: string; vitals: Vitals;
+  /** Wirksame Module der angezeigten Person (Server) — ein ausgeschaltetes kommt leer an. */
+  module?: ModulStand;
   haut: { trend: { tage: number; heute?: number; juckreiz7?: number; schuebe30: number; richtung: 'besser' | 'schlechter' | 'gleich' | 'unbekannt'; ausloeser: { was: string; mal: number }[] }; tage: { d: string; e: { juckreiz: number; schub: boolean } | null }[] };
   streak: { sauberTage: number; letzterRueckfall?: string; aktuell: boolean; craving7?: number; eintraege30: number };
   routinen: { liste: { id: string; label: string; wann: string; heute: boolean }[]; quote7?: number; tage: { d: string; n: number }[] };
@@ -119,15 +122,16 @@ export function GesundheitView() {
   const eigeneSicher = !!stand && stand.ich === ansicht;
   const koerper = useKoerper(eigeneSicher);
   const segmente = !stand || eigeneSicher ? SEGMENTE : SEGMENTE.filter(s => s.id !== 'koerper');
-  // Symptom-Regler und Zähler „Sauber geblieben“: eigene Ansicht nach der eigenen Einstellung (Körper › Anzeige); in einer
-  // geteilten Ansicht nur, wenn es Einträge gibt — neutral benannt (die Einstellungen der anderen Person bleiben bei ihr).
-  const symptomName = eigeneSicher ? koerper.koerper?.symptom?.name ?? null : stand?.haut.tage.some(t => t.e) ? 'Symptom-Tagebuch' : null;
-  // Verlauf (nur lesen, 30 Tage): in BEIDEN Ansichten, sobald es Einträge gibt — vorhandene Daten verschwinden nie, nur weil
-  // (noch) kein Regler eingestellt ist; in der eigenen Ansicht mit dem eigenen Namen, sonst neutral. Der Regler auf „Heute“
-  // (Eingabe) folgt in der eigenen Ansicht der Einstellung.
+  // Module (09.10., lib/gesundheit/module.ts): Symptom-Regler und Zähler „Sauber geblieben“ nur, wenn die angezeigte Person das
+  // Modul führt (`stand.module` — der Server liefert ein ausgeschaltetes leer). Eigene Ansicht mit dem eigenen Namen des
+  // Reglers; geteilte Ansicht nur mit Einträgen und neutral benannt (die Einstellungen der anderen Person bleiben bei ihr).
+  const modulAn = stand?.module;
+  const symptomName = !modulAn?.haut ? null : eigeneSicher ? symptomAnzeige(koerper.koerper, true) : stand?.haut.tage.some(t => t.e) ? MODUL_INFO.haut.name : null;
+  // Verlauf (nur lesen, 30 Tage): mit eingeschaltetem Modul, sobald es Einträge gibt — vorhandene Daten verschwinden nie,
+  // nur weil (noch) kein eigener Name eingestellt ist; in der eigenen Ansicht mit dem eigenen Namen, sonst neutral.
   const verlaufEintraege = !!verlauf && Object.values(verlauf.haut).some(e => e?.juckreiz != null);
-  const verlaufSymptom = (eigeneSicher ? symptomName : null) ?? (verlaufEintraege ? 'Symptom-Tagebuch' : null);
-  const sauberZeigen = eigeneSicher ? !!koerper.koerper?.sauberZaehler : (stand?.streak.eintraege30 ?? 0) > 0;
+  const verlaufSymptom = !modulAn?.haut ? null : (eigeneSicher ? symptomName : null) ?? (verlaufEintraege ? MODUL_INFO.haut.name : null);
+  const sauberZeigen = !!modulAn?.serie && (eigeneSicher || (stand?.streak.eintraege30 ?? 0) > 0);
   const q = ansicht ? `?fuer=${ansicht}` : '';
   // #morgen · #routinen · #haut · #streak aus einem Link: hinspringen, sobald der Stand da ist.
   useZuZiel(null, !!stand);
@@ -361,6 +365,7 @@ export function GesundheitView() {
           {koerper.geladen && !koerper.koerper && <KoerperLeer aendern={koerper.aendern} />}
           <Flaeche seite="gesundheit-koerper">
           <Kachel id="energie" titel="Energie" breite={3}><EnergieView eingebettet /></Kachel>
+          <Kachel id="module" titel="Module" breite={3}><ModuleKarte k={koerper.koerper} modulStand={koerper.module} aendern={koerper.aendern} nachher={() => { void laden(); setVerlauf(null); }} /></Kachel>
           <Kachel id="meilensteine" titel="Gesundheits-Meilensteine" breite={3}>
           <Karte i={4}>
             <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Gesundheits-Meilensteine</Ueberschrift>
@@ -372,7 +377,7 @@ export function GesundheitView() {
           {koerper.koerper && <Kachel id="aufmerksamkeit" titel="Was Aufmerksamkeit braucht" breite={3}><BeschwerdenKarte k={koerper.koerper} aendern={koerper.aendern} /></Kachel>}
           {koerper.koerper && <Kachel id="hebel" titel="Hebel · live" breite={3}><HebelKarte k={koerper.koerper} aendern={koerper.aendern} kennzahlen={hebel} zumIndex={() => geheZu('index')} /></Kachel>}
           {koerper.koerper && <Kachel id="zusammenhaenge" titel="Zusammenhänge" breite={3}><ZusammenhaengeKarte k={koerper.koerper} aendern={koerper.aendern} /></Kachel>}
-          {koerper.koerper && <Kachel id="anzeige" titel="Anzeige auf Heute" breite={3}><AnzeigeKarte k={koerper.koerper} aendern={koerper.aendern} routinen={(stand?.routinen.liste ?? []).map(r => ({ id: r.id, label: r.label }))} /></Kachel>}
+          {koerper.koerper && <Kachel id="anzeige" titel="Sätze unter Routinen" breite={3}><AnzeigeKarte k={koerper.koerper} aendern={koerper.aendern} routinen={(stand?.routinen.liste ?? []).map(r => ({ id: r.id, label: r.label }))} /></Kachel>}
           </Flaeche>
         </>
       )}

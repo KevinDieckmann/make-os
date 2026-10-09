@@ -1,7 +1,7 @@
 // ─── Gesundheits-Index — Laden (Server) ─────────────────────────────────────
-// Die persönlichen Bestände einer Person (vitals, health-log, journal, haut,
-// streak) plus die geteilten (Routinen, Wochenplan, Kalender, Meilensteine,
-// Ernährung) zu einem Bestand; eigene Schwellen und Schnappschuss je Tag in
+// Die persönlichen Bestände einer Person (vitals, health-log, journal und die Tagebücher ihrer Module — haut, streak —
+// samt wirksamem Modul-Stand aus dem eigenen Körper-Profil, lib/gesundheit/module.ts) plus die geteilten (Routinen,
+// Wochenplan, Kalender, Meilensteine, Ernährung) zu einem Bestand; eigene Schwellen und Schnappschuss je Tag in
 // `gesundheit-index[--person]` (lib/kennzahlen/speicher).
 
 import { loadJson } from '@/lib/store/local-db';
@@ -16,12 +16,14 @@ import { ladeIndexDatei, fortschreiben, speichereSchwelle, type IndexVerlauf } f
 import { berechneGesundheit, GESUNDHEIT_KENNZAHLEN, type GesundheitBestand, type GesundheitsIndex } from './index';
 import type { HautLog, StreakLog, RoutinenLog } from './eintraege';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { koerperLaden } from './koerper-server';
+import { moduleWirksam, hatEintraege } from './module';
 
 const name = (person: string) => speicherFuer('gesundheit-index', person);
 const tagPlus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00`); d.setDate(d.getDate() + n); return localDay(d); };
 
 export async function ladeGesundheitBestand(person: string, heute = localDay()): Promise<GesundheitBestand> {
-  const [vitals, log, journal, haut, streak, routinenF, plan, cal, ms, ern, datei] = await Promise.all([
+  const [vitals, log, journal, haut, streak, routinenF, plan, cal, ms, ern, datei, koerper] = await Promise.all([
     loadJson<VitalsLog>(speicherFuer('vitals', person)),
     loadJson<RoutinenLog>(speicherFuer('health-log', person)),
     loadJson<GesundheitBestand['journal']>(speicherFuer('journal', person)),
@@ -34,6 +36,8 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     loadJson<{ meilensteine?: (GesundheitBestand['meilensteine'][number] & { zielId?: string; abgeleitetVon?: string })[] }>('meilensteine'),
     loadJson<ErnaehrungFile>('ernaehrung'),
     ladeIndexDatei(name(person)),
+    // Nur die Modul-Einstellung zählt hier (an/aus) — vom Profil geht nichts in den Index.
+    koerperLaden(person).then(r => r.koerper),
   ]);
   const ab = tagPlus(heute, -35);
   return {
@@ -47,6 +51,7 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     journal: journal ?? {},
     haut: haut ?? {},
     streak: streak ?? {},
+    module: moduleWirksam(koerper, { haut: hatEintraege(haut), serie: hatEintraege(streak) }),
     bloecke: plan.filter(x => x.date >= ab).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art, titel: x.titel })),
     termine: (cal?.events ?? []).filter(e => e.startDate && !e.allDay).map(e => ({ start: e.startDate!, ende: e.endDate, title: e.title, owner: e.owner })),
     kalenderFrisch: !!cal?.at && (Date.now() - new Date(cal.at).getTime()) / 3_600_000 < 48,

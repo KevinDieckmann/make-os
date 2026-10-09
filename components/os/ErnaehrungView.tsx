@@ -640,7 +640,7 @@ function ProfilKarte({ person, name, profil, darf, konto, patch, weg }: { person
       <input value={f.unvertraeglich} readOnly={ro} onChange={e => aendern('unvertraeglich', e.target.value)} placeholder="Verträgt nicht (Komma-getrennt)" style={stil} />
       <input value={f.nie} readOnly={ro} onChange={e => aendern('nie', e.target.value)} placeholder="Nie (Komma-getrennt)" style={stil} />
       <input value={f.gern} readOnly={ro} onChange={e => aendern('gern', e.target.value)} placeholder="Gern (Komma-getrennt)" style={stil} />
-      <input value={f.ziel} readOnly={ro} onChange={e => aendern('ziel', e.target.value)} placeholder="Ziel (z. B. Haut ruhig, mehr Energie, 3 kg)" style={stil} />
+      <input value={f.ziel} readOnly={ro} onChange={e => aendern('ziel', e.target.value)} placeholder="Ziel (z. B. mehr Energie, regelmäßig essen, 3 kg)" style={stil} />
       </>)}
     </div>
   );

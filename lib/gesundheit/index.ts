@@ -6,10 +6,11 @@
 //
 //   Erholung & Schlaf   40 % — was Whoop und das Journal über die Nacht sagen
 //   Bewegung & Aufbau   30 % — Routinen, Reha, Sport-Blöcke, Termine, Etappen
-//   Ernährung & Körper  30 % — Essen, Plan, Haut, Streak
+//   Ernährung & Körper  30 % — Essen, Plan und die eigenen Tagebücher (Module)
 //
-// Persönlich: je Person ihre Bestände (vitals, health-log, journal, haut,
-// streak). Struktur und Tracking, keine ärztliche Beratung — die Ärzte führen.
+// Persönlich: je Person ihre Bestände (vitals, health-log, journal und die Tagebücher ihrer eingeschalteten Module —
+// Symptom-Tagebuch `haut`, Zähler „Sauber geblieben“ `streak`, lib/gesundheit/module.ts). Struktur und Tracking, keine
+// ärztliche Beratung.
 
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import type { VitalsLog } from '@/lib/vitals';
@@ -18,18 +19,23 @@ import type { ErnaehrungFile } from '@/lib/make-one/ernaehrung-data';
 import { TAGE } from '@/lib/make-one/ernaehrung-data';
 import { WEG } from '@/lib/wege';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
+import { modulZaehlt, MODUL_INFO, type ModulStand } from './module';
+import { GES_TERMIN, GES_BLOCK } from './muster';
+
+export { GES_TERMIN, GES_BLOCK };
 
 export type GesundheitsIndex = IndexErgebnis;
 
 export const GESUNDHEIT_SAEULEN: SaeuleDef[] = [
   { id: 'er', label: 'Erholung & Schlaf', gewicht: 0.4, satz: 'Was Whoop und das Journal über Nacht und Stress sagen' },
   { id: 'ba', label: 'Bewegung & Aufbau', gewicht: 0.3, satz: 'Routinen, Reha, Sport-Blöcke, Termine und Etappen' },
-  { id: 'ek', label: 'Ernährung & Körper', gewicht: 0.3, satz: 'Regelmäßig essen, Plan, Haut und Streak' },
+  { id: 'ek', label: 'Ernährung & Körper', gewicht: 0.3, satz: 'Regelmäßig essen, Plan und die eigenen Tagebücher' },
 ];
 
 const MORGEN = { text: 'Morgen-Check', href: WEG.gesundheit('morgen') };
 const JOURNAL = { text: 'Journal schreiben', href: WEG.journal() };
 const ROUTINEN = { text: 'Routinen abhaken', href: WEG.gesundheit('routinen') };
+const SYMPTOM = MODUL_INFO.haut.name;
 
 export const GESUNDHEIT_KENNZAHLEN: KennzahlDefBasis[] = [
   // ── Erholung & Schlaf
@@ -63,12 +69,14 @@ export const GESUNDHEIT_KENNZAHLEN: KennzahlDefBasis[] = [
     formel: 'Tage mit Essens-Routine ÷ 7', quelle: 'Routinen-Häkchen', luecke: 'Keine Essens-Routine angelegt oder abgehakt', pflegen: ROUTINEN },
   { id: 'plan', label: 'Essensplan gefüllt', saeule: 'ek', gruppe: 'Ernährung', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 40,
     formel: 'Mahlzeiten mit Eintrag ÷ 21', quelle: 'Ernährung', luecke: 'Noch kein Essensplan', pflegen: { text: 'Woche planen', href: WEG.ernaehrung() } },
-  { id: 'antiinflamm', label: 'Anti-entzündlich', saeule: 'ek', gruppe: 'Ernährung', einheit: 'anzahl', richtung: 'hoch', gruen: 5, rot: 2,
-    formel: 'Journal-Tage mit „Anti-entzündlich gegessen“ in 7 Tagen', quelle: 'Journal', luecke: 'Kein Journal-Eintrag in 7 Tagen', pflegen: JOURNAL },
-  { id: 'haut', label: 'Haut (Juckreiz)', saeule: 'ek', gruppe: 'Körper', gewicht: 1.25, einheit: 'punkte', richtung: 'niedrig', gruen: 3, rot: 6,
-    formel: 'Ø Juckreiz 0–10 der letzten 7 Tage', quelle: 'Haut-Tagebuch', luecke: 'Kein Haut-Eintrag in 7 Tagen', pflegen: { text: 'Haut eintragen', href: WEG.gesundheit('haut') } },
+  // Kennung `antiinflamm` bleibt (gespeichertes Journal-Merkmal); der Name ist allgemein (09.10.).
+  { id: 'antiinflamm', label: 'Gesund gegessen', saeule: 'ek', gruppe: 'Ernährung', einheit: 'anzahl', richtung: 'hoch', gruen: 5, rot: 2,
+    formel: 'Journal-Tage mit „Gesund gegessen“ in 7 Tagen', quelle: 'Journal', luecke: 'Kein Journal-Eintrag in 7 Tagen', pflegen: JOURNAL },
+  // Modul `haut` (Symptom-Tagebuch) und `serie` (Zähler) — zählen nur, wenn die Person das Modul führt (`kennzahlenFuer`).
+  { id: 'haut', label: SYMPTOM, saeule: 'ek', gruppe: 'Körper', gewicht: 1.25, einheit: 'punkte', richtung: 'niedrig', gruen: 3, rot: 6,
+    formel: 'Ø Wert 0–10 der letzten 7 Tage', quelle: SYMPTOM, luecke: `Kein Eintrag im ${SYMPTOM} in 7 Tagen`, pflegen: { text: 'Eintragen', href: WEG.gesundheit('haut') } },
   { id: 'schuebe', label: 'Schub-Tage · 30 Tage', saeule: 'ek', gruppe: 'Körper', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 4,
-    formel: 'Tage mit Schub in 30 Tagen', quelle: 'Haut-Tagebuch', luecke: 'Kein Haut-Eintrag in 30 Tagen', pflegen: { text: 'Haut eintragen', href: WEG.gesundheit('haut') } },
+    formel: 'Tage mit Schub in 30 Tagen', quelle: SYMPTOM, luecke: `Kein Eintrag im ${SYMPTOM} in 30 Tagen`, pflegen: { text: 'Eintragen', href: WEG.gesundheit('haut') } },
   { id: 'streak', label: 'Sauber (Streak)', saeule: 'ek', gruppe: 'Körper', einheit: 'tage', richtung: 'hoch', gruen: 30, rot: 7,
     formel: 'Tage seit dem letzten Rückfall (Eintrag in den letzten 3 Tagen nötig)', quelle: 'Streak', luecke: 'Seit über 3 Tagen kein Streak-Eintrag', pflegen: { text: 'Streak eintragen', href: WEG.gesundheit('streak') } },
 ];
@@ -83,6 +91,8 @@ export interface GesundheitBestand {
   journal: Record<string, { energy?: number; stress?: number; mood?: number; flags?: string[] }>;
   haut: HautLog;
   streak: StreakLog;
+  /** Wirksamer Modul-Stand der Person (lib/gesundheit/module.ts). Fehlt = wie bisher allein „geführt“ (alte Aufrufer, Tests). */
+  module?: ModulStand;
   /** Planer-Blöcke der letzten 4 Wochen (und der nächsten). */
   bloecke: { date: string; dauerMin: number; art: string; titel?: string }[];
   /** Termine mit Uhrzeit (Wandzeit), owner kevin|malin|beide. */
@@ -105,8 +115,6 @@ function ampelVon(w: number, g: Schwelle): Ampel {
   return hoch ? (w >= g.gruen ? 'gruen' : w < g.rot ? 'rot' : 'gelb') : (w <= g.gruen ? 'gruen' : w > g.rot ? 'rot' : 'gelb');
 }
 const tagPlus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-export const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|untersuchung|klinik|krankenhaus|facharzt|neurolog|orthop|dermat|hautarzt|training|sport|gym|fitness|schwimm|massage|therapie/i;
-export const GES_BLOCK = /sport|train|gym|lauf|schwimm|spazier|bewegung|yoga|dehn|reha|physio/i;
 
 /** Whoop-Werte eines Feldes über n Tage (heute zuerst), nur echte Zahlen. */
 function werte(b: GesundheitBestand, feld: 'rec' | 'sleep' | 'hrv' | 'rhr', n: number): { tag: string; wert: number }[] {
@@ -247,18 +255,18 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
     const t7 = tageZurueck(b.heute, 7);
     if (!t7.some(t => b.journal[t])) return { luecke: 'Kein Journal-Eintrag in 7 Tagen', details: [{ titel: 'Journal schreiben', href: WEG.journal() }] };
     const tage = t7.filter(t => (b.journal[t]?.flags ?? []).includes('antiinflamm'));
-    return { wert: tage.length, anzeige: `${tage.length} / 7`, quelle: `${tage.length} Tage mit „Anti-entzündlich gegessen“`, details: t7.slice(0, 3).map(t => ({ titel: tagKurz(t), wert: (b.journal[t]?.flags ?? []).includes('antiinflamm') ? 'ja' : b.journal[t] ? 'nein' : 'kein Eintrag', href: WEG.journal(), ampel: (b.journal[t]?.flags ?? []).includes('antiinflamm') ? 'gruen' as Ampel : b.journal[t] ? 'rot' as Ampel : 'grau' as Ampel })) };
+    return { wert: tage.length, anzeige: `${tage.length} / 7`, quelle: `${tage.length} Tage mit „Gesund gegessen“`, details: t7.slice(0, 3).map(t => ({ titel: tagKurz(t), wert: (b.journal[t]?.flags ?? []).includes('antiinflamm') ? 'ja' : b.journal[t] ? 'nein' : 'kein Eintrag', href: WEG.journal(), ampel: (b.journal[t]?.flags ?? []).includes('antiinflamm') ? 'gruen' as Ampel : b.journal[t] ? 'rot' as Ampel : 'grau' as Ampel })) };
   },
   haut(b) {
     const ht = hautTrend(b.haut, b.heute);
-    if (typeof ht.juckreiz7 !== 'number') return { luecke: 'Kein Haut-Eintrag in 7 Tagen', details: [{ titel: 'Haut eintragen', href: WEG.gesundheit('haut', b.person) }] };
+    if (typeof ht.juckreiz7 !== 'number') return { luecke: `Kein Eintrag im ${SYMPTOM} in 7 Tagen`, details: [{ titel: 'Heute eintragen', href: WEG.gesundheit('haut', b.person) }] };
     const t7 = tageZurueck(b.heute, 7).filter(t => b.haut[t]);
     return { wert: ht.juckreiz7, anzeige: `${zahl(ht.juckreiz7)} / 10`, quelle: `Ø über ${t7.length} Tage${ht.richtung !== 'unbekannt' ? `, ${ht.richtung} als die Woche davor` : ''}${ht.ausloeser[0] ? ` · häufigster Auslöser: ${ht.ausloeser[0].was}` : ''}`,
       details: t7.slice(0, 3).map(t => ({ titel: tagKurz(t), wert: `${b.haut[t].juckreiz} / 10`, unter: [b.haut[t].schub ? 'Schub' : '', b.haut[t].ausloeser].filter(Boolean).join(' · ') || undefined, href: WEG.gesundheit('haut', b.person), ampel: ampelVon(b.haut[t].juckreiz, grenzen(b, 'haut')) })) };
   },
   schuebe(b) {
     const ht = hautTrend(b.haut, b.heute);
-    if (!ht.tage) return { luecke: 'Kein Haut-Eintrag in 30 Tagen', details: [{ titel: 'Haut eintragen', href: WEG.gesundheit('haut', b.person) }] };
+    if (!ht.tage) return { luecke: `Kein Eintrag im ${SYMPTOM} in 30 Tagen`, details: [{ titel: 'Heute eintragen', href: WEG.gesundheit('haut', b.person) }] };
     const schub = tageZurueck(b.heute, 30).filter(t => b.haut[t]?.schub);
     return { wert: ht.schuebe30, anzeige: String(ht.schuebe30), quelle: `${ht.tage} Einträge in 30 Tagen`, details: [...schub.slice(0, 3).map((t): Detail => ({ titel: tagKurz(t), wert: `${b.haut[t].juckreiz} / 10`, unter: b.haut[t].ausloeser ?? 'ohne Auslöser', href: WEG.gesundheit('haut', b.person), ampel: 'rot' })), ...ht.ausloeser.slice(0, 1).map((a): Detail => ({ titel: `Auslöser: ${a.was}`, wert: `${a.mal}×`, href: WEG.gesundheit('haut', b.person) }))] };
   },
@@ -270,11 +278,13 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
   },
 };
 
-/** Tagebücher (Haut, Streak) zählen nur, wenn die Person sie führt — sonst sind sie keine Messlücke. */
-export function kennzahlenFuer(b: Pick<GesundheitBestand, 'haut' | 'streak' | 'heute'>): KennzahlDefBasis[] {
-  const t60 = tageZurueck(b.heute, 60);
-  const fuehrtHaut = t60.some(t => b.haut[t]);
-  const fuehrtStreak = t60.some(t => b.streak[t]);
+/**
+ * Die Tagebücher der Module (Symptom-Tagebuch, Zähler) zählen nur, wenn die Person das Modul führt — an UND in 60 Tagen
+ * geführt (EINE Regel `modulZaehlt`, lib/gesundheit/module.ts). Sonst sind sie keine Messlücke, sondern gar nicht da.
+ */
+export function kennzahlenFuer(b: Pick<GesundheitBestand, 'haut' | 'streak' | 'heute' | 'module'>): KennzahlDefBasis[] {
+  const fuehrtHaut = modulZaehlt(b.module?.haut, b.haut, b.heute);
+  const fuehrtStreak = modulZaehlt(b.module?.serie, b.streak, b.heute);
   return GESUNDHEIT_KENNZAHLEN.filter(k => (k.id !== 'haut' && k.id !== 'schuebe' || fuehrtHaut) && (k.id !== 'streak' || fuehrtStreak));
 }
 

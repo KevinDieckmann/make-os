@@ -19,7 +19,7 @@ const BUCHUNG_MARKE = terminMarke('').trim();
 /** Anfang der festen UID eines Buchungstermins (lib/kalender/buchung.ts `buchungTerminUid`) — „makeos-buchung-“. */
 const BUCHUNG_UID = buchungTerminUid('');
 
-/** Die Stichwort-Regeln für Gesundheitstermine (Reha/Physio/Rücken, Arzt/Behandlung/Praxis). */
+/** Die Stichwort-Regeln für Gesundheitstermine (Rehabilitation/Physio, Arzt/Behandlung/Praxis — allgemeine Begriffe). */
 const GESUNDHEIT: readonly RegExp[] = [STICHWORT.rehabilitation, STICHWORT.behandlung].filter(Boolean).map(s => s.muster);
 
 /** Ist das ein Gesundheitstermin (Titel, Ort oder Notiz)? */

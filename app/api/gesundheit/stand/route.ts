@@ -1,7 +1,8 @@
 // ─── MAKE OS — Gesundheit: der Stand auf einen Blick ────────────────────────
-// Ein Aufruf für die Seite: Vitalwerte, Haut, Streak, Routinen, Journal,
-// Telegram — für die angemeldete Person oder (Kevins Entscheidung 23.09.:
-// „Malin sieht alles") per ?fuer= für die andere.
+// Ein Aufruf für die Seite: Vitalwerte, Routinen, Journal, Telegram und die Tagebücher der eingeschalteten Module
+// (Symptom-Tagebuch, Zähler „Sauber geblieben“ — lib/gesundheit/module.ts) — für die angemeldete Person oder per ?fuer=
+// für eine Person, die ihre Gesundheit mit ihr teilt. `module` = wirksamer Stand (an/aus); ein ausgeschaltetes Modul
+// liefert für JEDEN leere Werte (serverseitig, nicht nur ausgeblendet).
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
@@ -13,6 +14,8 @@ import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram
 import type { TaktStand } from '@/lib/gesundheit/takt';
 import { sichtbarFuer } from '@/lib/planung/routinen';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { moduleWirksam, hatEintraege } from '@/lib/gesundheit/module';
+import { koerperLaden } from '@/lib/gesundheit/koerper-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,7 +28,7 @@ export async function GET(req: Request) {
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const ich = personAus(req);
   const heute = localDay();
-  const [vitals, haut, streak, hl, journal, routinenF, tg, takt] = await Promise.all([
+  const [vitals, hautRoh, streakRoh, hl, journal, routinenF, tg, takt, koerper] = await Promise.all([
     resolveVitals(heute, person),
     loadJson<HautLog>(speicherFuer('haut', person)),
     loadJson<StreakLog>(speicherFuer('streak', person)),
@@ -34,7 +37,12 @@ export async function GET(req: Request) {
     loadJson<{ routinen?: Routine[] }>('routinen'),
     ladeStand(),
     loadJson<TaktStand>('gesundheit-takt'),
+    koerperLaden(person).then(r => r.koerper),
   ]);
+  // Module der Person (09.10.): nur die wirksamen an/aus gehen raus — nie das Körper-Profil selbst (das sieht nur sie).
+  const modulStand = moduleWirksam(koerper, { haut: hatEintraege(hautRoh), serie: hatEintraege(streakRoh) });
+  const haut = modulStand.haut ? hautRoh : null;
+  const streak = modulStand.serie ? streakRoh : null;
   // Nur, was diese Person sieht: eigene und gemeinsame Routinen (27.09.).
   const routinen = sichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person);
   const t14 = tageZurueck(heute, 14);
@@ -44,6 +52,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     person, ich, heute,
     vitals,
+    module: modulStand,
     haut: { trend: hautTrend(haut ?? {}, heute), tage: t14.map(d => ({ d, e: haut?.[d] ?? null })) },
     streak: streakStand(streak ?? {}, heute),
     routinen: {

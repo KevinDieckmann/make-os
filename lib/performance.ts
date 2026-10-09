@@ -93,7 +93,7 @@ export function indexLabel(v: number | null): string {
 
 import { localDay } from '@/lib/zeit';
 
-interface JournalTag { mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string }
+interface JournalTag { mood?: number; energy?: number; stress?: number }
 interface CalCache { events: { title?: string; startDate?: string; endDate?: string; allDay?: boolean }[]; at?: string }
 
 /**
@@ -114,8 +114,8 @@ const PERSOENLICH = ['health-log', 'journal', 'rituale', 'vitals', 'haut', 'stre
 
 export async function computeIndex(today = localDay(), person: Person = 'kevin'): Promise<PerfIndex> {
   const p = (name: string) => (PERSOENLICH.includes(name) ? personDatei(name, person) : name);
-  // Haut-Tagebuch und Streak (23.09.) — die zwei Hebel, die Kevin am 29.07.
-  // genannt hat und die bis dahin nirgends gemessen wurden.
+  // Die Tagebücher der Gesundheits-Module (Symptom-Tagebuch, Zähler) zählen über den Gesundheits-Index — nur, wenn die
+  // Person das Modul führt (lib/gesundheit/module.ts, 09.10.).
   const [tasksState, journal, cal, ritualLog] = await Promise.all([
     ladeAufgabenSicht(person), // Sichtfilter „nur ich“ je Person (29.09.)
     loadJson<Record<string, JournalTag>>(p('journal')),
@@ -137,7 +137,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // ── Gesundheit & Energie = Gesundheits-Index (26.09., „eine Wahrheit“) ──
   // Erholung & Schlaf 40 · Bewegung & Aufbau 30 · Ernährung & Körper 30
   // (lib/gesundheit). Die Säule IST dieser Index; die Faktoren zeigen seine
-  // drei Säulen. Recovery, Schlaf, Routinen, Haut, Streak und Journal stecken
+  // drei Säulen. Recovery, Schlaf, Routinen, die Tagebücher der Module und Journal stecken
   // jetzt dort als Kennzahlen — mit Schwellen, Verlauf und den Punkten dahinter.
   const gi = await gesundheitsIndexFuer(person, today).catch(() => null);
   const gesundheit: Faktor[] = (gi?.saeulen ?? []).map(s => ({

@@ -53,7 +53,8 @@ export async function koerperAendern(person: string, basisStand: unknown, ops: u
  * keinen INHALT im Profil hat (`koerperHatInhalt`) und noch keine Übernahme-Marke trägt. Nie über Inhalte der Person.
  * Hat die Person vorher nur Anzeige-Einstellungen gesetzt (Symptom-Regler, Zähler, Sätze unter Routinen — z. B. weil sie
  * die Regler auf „Heute“ vermisst hat, bevor die Übernahme lief), zählt das NICHT als belegt: die Einstellungen werden
- * zusammengeführt (ihre gewinnen — Symptom-Name, je Routine ihr Satz; der Zähler bleibt an, wenn eine Seite ihn an hat).
+ * zusammengeführt (ihre gewinnen — Symptom-Name, je Routine ihr Satz, ausdrücklich geschaltete Module; der Zähler bleibt an,
+ * wenn eine Seite ihn an hat).
  */
 export async function koerperAltbestandSetzen(person: string, inhalt: KoerperStand, tag: string): Promise<'uebernommen' | 'schon-uebernommen' | 'ziel-belegt'> {
   let ergebnis: 'uebernommen' | 'schon-uebernommen' | 'ziel-belegt' = 'uebernommen';
@@ -75,7 +76,9 @@ export function koerperEinstellungenZusammen(neu: KoerperStand, alt: KoerperStan
   return {
     ...neu,
     symptom: alt.symptom ?? neu.symptom,
-    sauberZaehler: alt.sauberZaehler || neu.sauberZaehler,
+    sauberZaehler: typeof alt.module?.serie === 'boolean' ? alt.module.serie : alt.sauberZaehler || neu.sauberZaehler,
+    // Module (09.10.): was die Person ausdrücklich geschaltet hat, gewinnt — auch „aus“.
+    ...(alt.module || neu.module ? { module: { ...(neu.module ?? {}), ...(alt.module ?? {}) } } : {}),
     routinenHinweise: [...alt.routinenHinweise, ...neu.routinenHinweise.filter(h => !eigeneRoutinen.has(h.routine) && !vergeben.has(h.id))],
   };
 }

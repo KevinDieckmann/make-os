@@ -192,7 +192,7 @@ export function KontoView() {
       <Karte i={2}>
       <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
       <Liste>
-        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, Journal, Haut und Streak sehen darf, entscheidest du je Person.</Leer>}
+        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, dein Journal und deine Tagebücher sehen darf, entscheidest du je Person.</Leer>}
         {andere.map(a => {
           const an = ich.teilt.gesundheit.includes(a.speicher);
           return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an)} />} titel={a.name}
