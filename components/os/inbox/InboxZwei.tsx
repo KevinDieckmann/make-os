@@ -296,7 +296,7 @@ export function InboxZwei() {
     const inhalt = (
       <Zeile onClick={() => setOffenId(offenId === g.id ? null : g.id)} aktiv={offenId === g.id}
         links={<Punkt farbe={g.ungelesen ? KUGEL.granat : g.fach === 'warten' && g.nachfassen ? LEUCHT.achtung : C.linie} />}
-        titel={<span aria-label={g.ungelesen ? 'ungelesen' : undefined}>{titel}</span>}
+        titel={titel}
         unter={unter}
         rechts={screenerHier && !handy ? (
           <span style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
@@ -327,7 +327,7 @@ export function InboxZwei() {
   /** Ein Bereich aus der Adresse, den diese Sicht nicht kennt (alter Link, anderer Space): klar sagen statt leer. */
   const fremderBereich = !!s && !!bereich && !eintrag;
   const alleUngelesen = (s?.leiste ?? []).reduce((n, e) => n + e.ungelesen, 0);
-  const zaehler = (n: number) => (n > 0 ? <span style={{ marginLeft: 6, color: KUGEL.granat, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} aria-label={`${n} ungelesen`}>{n}</span> : null);
+  const zaehler = (n: number) => (n > 0 ? <span style={{ marginLeft: 6, color: KUGEL.granat, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} title={`${n} ungelesen`}>{n}</span> : null);
   const leisteIds = leiste.map(e => e.id as string);
   const ohne = (merker?.ohne ?? []).filter(id => leisteIds.includes(id));
 

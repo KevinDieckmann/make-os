@@ -4,6 +4,46 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
+
+Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.
+… die Labels zu den einzelnen Bereichen — das soll sauberst weg-organisiert werden.“ — „Man muss da auf das Postfach klicken, z. B. MAKE Innovation
+oder KD Ventures … und wenn ich dann darauf klicke, kann ich die Mails einsortieren.“ Befund live: Gmail verbunden, aber ohne Eintrag im
+Postfach-Register (`bereich: null`) → unter Business „Verbinde dein erstes Postfach“, obwohl Post da ist.
+
+**Gebaut:**
+- **Postfach ohne Bereich:** in JEDER Sicht (Alles · Privat · Business) oben die Karte „Dein Gmail (k***@…) ist noch keinem Bereich zugeordnet —
+  jetzt zuordnen“ mit den Bereichen der Sicht als Knöpfe (Business bietet nie Privat an). Ein Klick schreibt über den vorhandenen Weg
+  (`POST /api/inbox/postfaecher` `einstellen`) und springt in den Bereich. Der Server liefert dafür nur `unzugeordnet` (Kennung, Name, Quelle,
+  maskierte Adresse, Anzahl) und `waehlbar` — nie eine Nachricht. „Verbinde dein erstes Postfach“ kommt nur noch, wenn wirklich keines da ist.
+- **Bereichs-Leiste** oben (wischbare Reiter, am Rechner auch mit offenem Gespräch): „Alle“ + je Bereich mit Postfächern der Person, jeweils mit
+  Ungelesen-Zähler (`leiste` vom Server: Name, Farbe, Ungelesen, offen, Postfächer — nur Zahlen). Klick = nur dessen Gespräche (der Server filtert),
+  die Adresse trägt `bereich`, `postfach` und `offen` → Zurück führt in denselben Bereich. Hat ein Bereich mehrere Postfächer (z. B. Gmail + WhatsApp),
+  wählt eine Pillenreihe das Postfach. Unter „Alle“ lassen sich Bereiche ausblenden („Bereiche in „Alle“ ▾“, Mehrfach, gemerkt je Browser und
+  Sicht, serverseitig `?ohne=`). Namen nur aus Register/Einheiten, Farben wie die Aufgaben-Spaces (`lib/inbox/ansicht.ts` `bereichFarbe`).
+- **Labels:** jede Zeile trägt vor dem Ausschnitt „Bereich · Postfach“ (Bereich in seiner Farbe), sobald die Sicht mehr als einen Bereich bzw.
+  mehr als ein Postfach zeigt; der Kopf des geöffneten Gesprächs zeigt beide als Chips.
+- **Zwei Ordnungen** (gemerkt je Browser): „Wichtig zuerst“ = die Fächer wie bisher · „Neueste zuerst“ = Tag-Gruppen **Heute · Gestern · Diese
+  Woche · Älter** (Berliner Tag), darin ungelesen zuerst, dann neueste; dazu **Offen · Ungelesen · Auch Erledigtes** (Erledigtes/Ruhendes gedimmt
+  mit „erledigt“ bzw. „ruht bis …“), jede Zeile nennt ihr Fach. Lange Tage zeigen 60 Zeilen + „weitere n von m zeigen“ (nie still gekürzt).
+  Ungelesen: Punkt, fetter Name und Betreff, Uhrzeit hell. Die Suche (Taste „/“) sucht im gewählten Bereich.
+- **Erster Abgleich:** „Post wird geholt …“ statt leer, die Inbox fragt dann alle 10 s nach (sonst 60 s).
+- **Server:** `imBereich` (lib/inbox/strom-server.ts) prüft `space` UND `bereich` zugleich — `?space=business&bereich=privat` liefert nichts (vorher
+  hätte der Bereich die Sicht überstimmt); `postfach=` filtert innerhalb des Bereichs; Bereichs-Kennungen generisch geprüft (`istBereichKennung`:
+  privat · Gesellschaft · `g-…` · weitere Formen wie ein Kunden-Bereich, nie Pfadzeichen) in `/api/inbox`, `/api/inbox/suche`, `/api/inbox/uebergaben`.
+- Tests: `tests/inbox-ansicht.test.ts` (neu: rein + Route-Wächter „Sicht Business bekommt keine Nachricht aus Privat/ohne Bereich“, andere Person
+  sieht nichts, Zuordnen über den vorhandenen Weg), alle `tests/inbox*.test.ts`, Design-/Register-Wächter grün.
+
+**So testet ihr** (Gmail verbunden, noch ohne Bereich):
+1. Oben „Business“ wählen → Inbox: oben die Karte „Dein Gmail (k***@…) ist noch keinem Bereich zugeordnet — jetzt zuordnen“ (statt „Verbinde dein
+   erstes Postfach“). Auf „MAKE Innovation …“ klicken → Meldung „Gmail gehört jetzt zu …“, die Leiste zeigt den Bereich, die Post steht darunter.
+2. Oben „Alles“ → Leiste „Alle · KD Ventures · MAKE … · Privat“ mit roten Zählern. Auf einen Bereich klicken → nur dessen Post; ein Gespräch öffnen →
+   Kopf zeigt Bereich + Postfach; Browser-Zurück → wieder die Liste desselben Bereichs.
+3. „Neueste zuerst“ wählen → Heute / Gestern / Diese Woche / Älter, Ungelesenes oben in jeder Gruppe. „Auch Erledigtes“ → erledigte Gespräche gedimmt
+   dazu. Seite neu laden → die Ordnung bleibt.
+4. Unter „Alle“: „Bereiche in „Alle“ ▾“ → „Privat“ abwählen → Privates verschwindet aus „Alle“ (bleibt unter „Privat“ erreichbar); neu laden → bleibt so.
+5. Handy (375 px): Leiste seitwärts wischen, Zeilen tragen „Bereich · Postfach —“ vor dem Text, j/k/e/s/a/r/Esc am Rechner wie bisher.
+
 ## 09.10.2026 — Kalender: linke Spalte einklappbar (nur lokal — Branch `kalender-klappen`, Basis `agenten-nacht` 43bb4c14)
 
 Kevin 09.10.: „Guck mal, ob du den Kalender links einklappbar machen kannst, das sieht noch so verloren aus. Die Monatsansicht etc. einfach
