@@ -44,6 +44,11 @@
 - **Stand 09.10. ~03:00 (Uhr des Macs):** `agenten-nacht` → **97d8b7cd**: zusätzlich 4a (ZOE ↔ Heads), 4b (Einstellungen/Not-Aus/Budget), 4c (Medien ↔ Heads,
   KI-Medien, Demo-Saat), `neutral-rest`, eigene Verdrahtung (Privat-Head-Einstellungen mit Person, `laufSperre` im Lauf, `wartetAuf`, Medien-Werkzeuge in `agentLauf`),
   Test-Anpassung MQL. tsc 0. Volle Suite läuft. Agenten (4): Gegenprüfung Agenten, Markttraktion W2a, W2b, Onboarding Update 2. Bereit: Streaming.
+- **Stand 09.10. ~09:30 (Morgen):** `agenten-nacht` → **16fb4c82** = nach-upload + Agenten-Bereich komplett (0–5, 6a, 4a ZOE ↔ Heads, 4b Einstellungen/Not-Aus/
+  Budget, 4c KI-Medien/Demo-Saat, Gegenprüfung 11 Funde, Streaming, Feinschliff) + Kontoauszug + Markttraktion W1/W2a/W2b + zweite Inhaberin/Onboarding B1 + Onboarding U2
+  + neutral-rest + eigene Korrekturen. Volle Suite (Stand 97d8b7cd): 521 Dateien / 6.829 Tests grün; danach je Merge tsc 0 + Bereichs-Tests grün. Demo-Rundgang
+  (`scratchpad/rundgang-0910/bilder`, 13 Bilder) — Funde gehen an `rundgang-funde`. Laufen: `daten-assistenten` (B9 a–c), `brain-neutral`, `rundgang-funde`.
+  Offene Fragen gesammelt (`scratchpad/bericht/fragen.md`) → Klickrunde mit Kevin. **Upload Fr:** weiter `entwicklung` (unverändert seit 08.10. + Doku); agenten-nacht = Update 2.
 - **Live-Test der Agenten (Kevin 09.10. ~01 Uhr):** „Wir können morgen mal 50 € Budget drauf geben und das alles testen — aber erst, wenn es Sinn macht und
   wir alle Ziele, To-dos, Meilensteine drin haben.“ → nach dem Onboarding (Ziele/Aufgaben/Meilensteine eingetragen), mit Test-Budget 50 € (Grenze für die ganze
   Instanz, Warnung 80/95 %, bei 100 % Regelwerk + Glocke). Dafür muss die Instanz-Grenze im Anbieter-Tor/Paket 4 einstellbar sein.
