@@ -71,7 +71,9 @@ export async function POST(req: Request) {
   const orgs = await orgZuordnung();
   const now = new Date().toISOString();
   const priority: Priority = (['low', 'medium', 'high', 'critical'] as Priority[]).includes(body.priority as Priority) ? body.priority as Priority : 'medium';
-  const owner = (['kevin', 'malin', 'both'] as Owner[]).includes(body.owner as Owner) ? body.owner as Owner : null;
+  // Jede Person des Haushalts (Speichername) oder „both“ — ob sie zum Haushalt gehört, prüft der Schreibweg (pruefen.ts → 400).
+  // 09.10.: vorher nur zwei feste Namen; jede weitere Person fiel still auf die anlegende zurück.
+  const owner = typeof body.owner === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(body.owner) ? body.owner as Owner : null;
   // Ohne `owner`: die anlegende Person selbst (Sitzung bzw. Dienstweg mit Person) — ein Systemlauf muss sie nennen.
   if (!owner && !zugang.person) return NextResponse.json({ ok: false, error: 'owner fehlt (Systemlauf ohne Person).' }, { status: 400 });
   const assignee: Owner = owner ?? (zugang.person as Owner);

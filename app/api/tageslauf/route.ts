@@ -290,7 +290,7 @@ export async function POST(req: Request) {
             body: JSON.stringify({
               title: p.titel,
               description: [p.warum, p.wann ? `Wann: ${p.wann}` : '', 'Automatisch aus der Tages-Ausrichtung (Task-Agent: autonom).'].filter(Boolean).join(' · '),
-              priority: 'high', projectId: 'proj-kdm',
+              priority: 'high', space: 'business', // ohne festes Projekt → „Sonstige“ im Business (09.10.: keine Altprojekt-Kennung)
             }),
             signal: AbortSignal.timeout(15_000),
           });
