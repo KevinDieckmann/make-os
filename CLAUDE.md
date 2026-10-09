@@ -1879,6 +1879,18 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
     `lib/store/datei-huelle.mjs` `binImModus`), liest v1 + v2 über den Schlüsselring; Kennungen `d-<uuid>`.
 
 ## Agenten — Querliegendes
+- **Ereignisstelle (09.10., E1; ANALYSE_AGENTEN_DATEN.md):** Agenten erfahren von Änderungen nur über `ereignis(e)` (`lib/ereignisse/server.ts`, wirft nie,
+  Dedup über deterministische Kennung, nach dem Speichern der Quelle) → Bestand `ereignisse--<haushalt>` (nur Kennungen, nie Betreff/Text/Beträge; Frist
+  „ereignisse“). Gelesen im Takt (`ereignisseFaellig`, Cursor je Konsument, dieselben Sperren wie Zeitpläne — `sperrenFiltern`), Arten EINE Liste
+  `lib/ereignisse/arten.ts`. Neue fachliche Änderung, auf die ein Agent reagieren soll → EIN Aufruf `ereignis(...)` im Schreibweg, nie ein eigener Agenten-Anstoß.
+  Art. 18 löst nie aus; Mail nur für die Person des Postfachs.
+- **Gesprächs-Ablage (09.10., E3):** `agenten-faeden--<p>` ist nur der Index (Köpfe aus `kopfVon`), jeder Thread `agenten-faden--<p>--<id>`. Schreiben NUR über
+  `ablageAendern` (lib/agenten/faeden-ablage.ts) bzw. die Helfer in `faeden-server.ts`; Takt/Läufe/Listen lesen nur den Index (`indexLesen`), Nachrichten gezielt
+  laden (`faedenSeit` …). Nie wieder alle Threads einer Person in eine Datei. KI-Protokoll je Tag (`ki-protokoll--JJJJ-MM-TT`).
+- **Fail-closed:** Sperren (Not-Aus, Budget, Head aus) lesen ihre Bestände so, dass ein Lesefehler SPERRT — nie `.catch(() => [])`/„leer = frei“ an diesen Stellen.
+- **ZOE schreibt über die Routen:** Werkzeuge mit Wirkung auf Fach-Bestände gehen über `lib/zoe/innen.ts` auf die offizielle Route (Rechte, Stand/409, Protokoll,
+  Folgebuchungen) — nie `updateJson` auf `finanzplan`/`liquiplan`/`meilensteine`/`kontakte` … aus `lib/zoe`/`lib/agenten`/`lib/heads`.
+- **KI-Etikett je Quelle:** jedes Ergebnis, das in einen nächsten Modellaufruf geht (auch `run_agent`/`fach_agent`), trägt seine Kategorien (`lib/zoe/agent-kategorien.ts`).
 - Jeder Modellaufruf geht durch `lib/anthropic.ts askText`: dort sitzt der Guthaben-Schalter (`guthabenLeer()`, 30 min Pause nach „credit balance too low“). Nie eigene Aufrufe an die API daneben bauen.
 - `runAgent` (lib/zoe/agenten.ts): `post`/`get` werfen bei Fehlerstatus, `ok:false` oder `error` — ein Lauf ist nur `ok`, wenn die Route es ist. Neue Fälle: Ergebnis prüfen, nicht Text.
 - Ohne KI liefern Läufe Regelwerk (`lib/zoe/regelwerk.ts` für Morgen/Abend, `ohneKi` bei Heads/Finance) — kein Fehlschlag, der den Takt in die Pause zwingt.
