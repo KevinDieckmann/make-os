@@ -18,7 +18,7 @@ import { fuerPrompt, istNutzer, type VerlaufNachricht } from '@/lib/make-one/zoe
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, SYSTEM_LAEUFE, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
-import { offeneAnzahl } from '@/lib/zoe/stapel';
+import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { kontextIstFremd, nurVorschlag, agentNurVorschlag, verlaufVertraulich, verlaufFremd, WEB_AGENTEN, LESEND } from '@/lib/zoe/gespraech-schutz';
 import { brainAnweisung } from '@/lib/zoe/vault';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -368,7 +368,7 @@ export async function POST(req: Request) {
         // Es hat schon etwas gewirkt (Werkzeuge) bzw. ZOE hatte angefangen: die Antwort hält fest, was passiert ist — nie still.
         const reply = [aus.text, `⚠️ ${satz}${werkzeuge.length ? ` Schon ausgeführt: ${schonGelaufen()}.` : ''}`].filter(Boolean).join('\n\n');
         if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken });
-        return { status: 200, body: { reply, fehler: satz, error: roh, ran: aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok })), stapelOffen: await offeneAnzahl().catch(() => 0), ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
+        return { status: 200, body: { reply, fehler: satz, error: roh, ran: aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok })), stapelOffen: await offeneAnzahlFuer(person).catch(() => 0), ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
       }
       const ran = aus.aufrufe.map(x => ({ agent: x.name, ok: x.ok }));
       // create_task legt seit 07.09. direkt an (freie Hand laut Kompass) — es gibt deshalb keinen Bestätigungsknopf mehr.
@@ -386,7 +386,7 @@ export async function POST(req: Request) {
       const reply = aus.text || fallback;
       // ZOE-Thread: Antwort anhängen, Marken des Zugs festhalten (nur ODER — einmal fremd gelesen, bleibt das Gespräch es).
       if (zug) await zoeAntwortAnhaengen(person, zug.faden.id, reply, { ki: !!aus.text, werkzeuge, ...marken });
-      const stapelOffen = await offeneAnzahl().catch(() => 0);
+      const stapelOffen = await offeneAnzahlFuer(person).catch(() => 0);
       // KI-VO Art. 50 (05.10.): ZOE-Antworten tragen das Kennzeichen — die Oberfläche markiert sie, wo sie weitergehen können.
       return { status: 200, body: { reply, handoffs, ran, stapelOffen, ...(aus.text ? { ki: kiKennzeichen() } : {}), ...(zug ? { fadenId: zug.faden.id, titel: zug.faden.titel } : {}) } };
     } catch (err) {
@@ -399,7 +399,8 @@ export async function POST(req: Request) {
   };
 
   // Einmal je `anfrageId` (Härtetest 09.10.): gemerkt wird nur ein gelungener Zug — ein gescheiterter (`ok: false`) darf neu laufen.
-  const arbeit = (strom?: StromArbeit) => einmalig('zoe-zug', payload.anfrageId, () => zugAusfuehren(strom), undefined, { merken: r => r.status === 200 && r.body.ok !== false });
+  // `wer` (Sicherheitsprüfung 09.10.): die gemerkte Antwort bekommt nur die Person selbst zurück — nie eine andere mit derselben Kennung.
+  const arbeit = (strom?: StromArbeit) => einmalig('zoe-zug', payload.anfrageId, () => zugAusfuehren(strom), undefined, { merken: r => r.status === 200 && r.body.ok !== false, wer: person });
 
   // Streaming (09.10., „wie Claude“): nur, wenn der Browser `Accept: text/event-stream` schickt — sonst JSON wie bisher.
   if (willStrom(req)) return sseAntwort(req, arbeit);

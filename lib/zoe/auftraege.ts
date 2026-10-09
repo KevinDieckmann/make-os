@@ -230,6 +230,34 @@ export async function lies(): Promise<Auftrag[]> {
   return s?.auftraege ?? [];
 }
 
+/** Systemläufe, deren Ergebnis nur Zahlen trägt — bleiben für alle lesbar (der Taktgeber liest „n Vorschläge“ des Verbesserungs-Loops). */
+const SYSTEM_ERGEBNIS_LESBAR: ReadonlySet<string> = new Set(['verbesserung']);
+
+/**
+ * Die Warteschlange, wie eine Person sie sieht (rein — Sicherheitsprüfung 09.10.). Systemläufe des Takts (ohne Person) laufen oft FÜR die
+ * Inhaberin (Morgen-/Abendlauf, Tageslauf, Leistung über `laufPerson`) — ihr Ergebnis ist deren Bericht. Deshalb: eigene Aufträge voll, die des
+ * Systems nur neutral (Kennung, Name, Status, Zeiten — ohne Eingabe, Auftragstext, Ergebnis, Fehler; dieselbe Regel wie das Lesemodell der
+ * Läufe, lib/agenten/laeufe.ts), private Systemläufe für Konten ohne Privat-Bereich gar nicht, die anderer Personen nie, nie ein Pacht-Token.
+ * `person` null = Systemlauf (Takt, Dienstweg ohne Person) — sieht alles.
+ */
+export function auftraegeFuerBetrachter(liste: readonly Auftrag[], person: string | null, o: { privat: boolean; privatSystem: ReadonlySet<string>; titel?: (name: string) => string }): Auftrag[] {
+  if (!person) return [...liste];
+  const raus: Auftrag[] = [];
+  for (const a of liste) {
+    const { pachtToken: _t, pachtBis: _b, ...ohne } = a;
+    if (a.person) { if (a.person === person) raus.push(ohne); continue; }
+    if (!o.privat && o.privatSystem.has(a.name)) continue;
+    const { eingabe: _e, auftrag: _a, ergebnis, fehler: _f, anlass, ...neutral } = ohne;
+    raus.push({
+      ...neutral, eingabe: {},
+      ...(o.titel ? { auftrag: o.titel(a.name) } : {}),
+      ...(anlass && /^Takt:/.test(anlass) ? { anlass } : {}),
+      ...(SYSTEM_ERGEBNIS_LESBAR.has(a.name) && ergebnis ? { ergebnis } : {}),
+    });
+  }
+  return raus;
+}
+
 export async function stand(): Promise<{ offen: number; laeuft: number; fertig: number; fehler: number }> {
   const liste = await lies();
   return {

@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   const kostenBestaetigt = b.kostenBestaetigt === true;
   switch (b.aktion) {
     case 'planen': {
-      const e = await einmalig('agenten-plan', b.anfrageId, async () => { const r = await planen(p, b.aufgabe, { kostenBestaetigt }); return { status: r.ok ? 200 : r.status, body: r }; });
+      const e = await einmalig('agenten-plan', b.anfrageId, async () => { const r = await planen(p, b.aufgabe, { kostenBestaetigt }); return { status: r.ok ? 200 : r.status, body: r }; }, undefined, { wer: p });
       const body = e.body as Antwort;
       return NextResponse.json({ ...body, ...(body.ok === false ? { error: body.fehler ?? body.error } : {}) }, { status: e.status });
     }

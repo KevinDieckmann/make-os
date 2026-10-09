@@ -15,7 +15,7 @@ import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { loadJson, saveJson } from '@/lib/store/local-db';
-import { offeneAnzahl } from '@/lib/zoe/stapel';
+import { offeneAnzahlFuer } from '@/lib/zoe/stapel';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
@@ -77,7 +77,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ text: 'Ich bin da. Mir fehlt nur der Schlüssel zum Denken — trag ihn in die Datei .env.local ein.' });
   }
 
-  const offen = await offeneAnzahl().catch(() => 0);
+  // Nur die Vorschläge, die diese Person sieht (Sicherheitsprüfung 09.10.: vorher zählte die Zahl die der anderen Person mit).
+  const offen = await offeneAnzahlFuer(person).catch(() => 0);
   const name = await vornameVon(person);
   let lage = '';
   // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b) — `kategorien` = was drinsteht.

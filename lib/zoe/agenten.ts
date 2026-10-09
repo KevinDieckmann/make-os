@@ -118,6 +118,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
     const cfg = await resolveAgent(id);
     if (!cfg.enabled) return fehl(`${cfg.name} ist ausgeschaltet (unter /os/agenten aktivierbar).`);
   }
+  // Not-Aus (Sicherheitsprüfung 09.10.): der Arbeiter hielt Fach-Agenten aus der Warteschlange an, ein DIREKTER Start (ZOE `run_agent`,
+  // `fach_agent` eines Mitarbeiters) lief aber weiter — dieselbe Regel wie im Arbeiter (`auftragGesperrt`, Wartung bleibt ausgenommen).
+  const gesperrt = await import('@/lib/agenten/einstellung').then(m => m.auftragGesperrt({ name: id, person: person ?? null })).catch(() => null);
+  if (gesperrt) return fehl(`${gesperrt} — der Agent läuft erst wieder, wenn der Not-Aus gelöst ist.`);
 
   // Datenschutz (05.10.): ein Lauf des Takts trägt `x-make-lauf: hintergrund` mit — die Routen geben das dem KI-Tor weiter
   // (Schalter „Hintergrund-KI“, Pseudonymisierung). Vom Gespräch/Knopf ausgelöst bleibt es ein Aufruf.

@@ -4,6 +4,52 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten: Sicherheit an den Nahtstellen der letzten Merges (nur lokal — Branch `agenten-sicher-naht`, Basis `agenten-nacht` 10b72dbc)
+
+Kevin 09.10.: „Das muss perfekt laufen. Denke immer einen Schritt weiter.“ Die Gegenprüfung lief auf einem früheren Stand — geprüft wurde jetzt, wo
+Streaming, Feinschliff, Härtetest, zweite Inhaberin, neutral-rest/-2, brain-neutral, gesundheit-module, medien-nachzug und die Nahtstellen
+Zugang/CRM/Finanzen sich treffen. Wächter: `tests/agenten-sicher-naht.test.ts` (Funde je erst rot, dann grün — eigene Commits „Wächter zuerst“).
+
+**Rundlauf „was an das Modell geht“ (neu, ohne Änderung grün):** ZOE (JSON und Strom, 16 Bereiche) und JEDER sichtbare Head rufen über die
+nachgebaute Messages-API jedes angebotene Werkzeug auf (generische Eingaben, Personen-Felder auf die andere Person, Suchwort auf die Marken). Keine
+Anfrage an das Modell, keine Antwort, kein Strom-Stück trägt eine Marke aus den privaten Beständen der anderen Person (Vault privat, „nur ich“-Aufgabe,
+ZOE-Gedächtnis, Threads, Merksatz/Skill des Privat-Heads, private Kartei-Notiz, Vitalwerte, Journal, Familie „nur ich“, eigenes Ziel, Stapel,
+Einstellungen, privater Termin, Routine) — geprüft für die zweite Person, die zweite Inhaberin und den Partner „nur Business“ (dazu Privates des
+Haushalts). Gegenprobe: die eigenen Marken kommen bei der Inhaberin an. Neue Werkzeuge/Heads laufen automatisch mit.
+
+**Funde (behoben)**
+
+| Fund | Wo | Schwere |
+|---|---|---|
+| Systemläufe des Takts (Morgen-/Abendlauf, Tageslauf, Leistung …) laufen ohne Person, rechnen aber für die Inhaberin (`laufPerson`) — ihr Ergebnis (z. B. der Morgenbericht) stand in der Warteschlange, und `GET /api/zoe/auftraege` zeigte es jedem Konto im Haushalt (zweite Person, Partner „nur Business“; die Freigaben-Seite listet es). Jetzt: Systemläufe nur neutral (Name, Status, Zeiten), private Systemläufe für „nur Business“ gar nicht, nie ein Pacht-Token. | app/api/zoe/auftraege, lib/zoe/auftraege.ts `auftraegeFuerBetrachter` | blockiert |
+| Konto löschen und Konto-Export kannten das ZOE-Gedächtnis im Raum der Person, ihre Vorschläge im Freigabe-Stapel (auch die der Agenten: Merksatz, Skill, Plan, KI-Bild), ihre Läufe in der Warteschlange und gemerkte Antworten nicht — sie blieben stehen, und ein neues Konto mit demselben Speichernamen (frei gewordene Namen werden neu vergeben) hätte sie im ZOE-Prompt bzw. im Stapel gesehen. | lib/datenschutz/konto-daten.ts | blockiert |
+| `anfrageId` ohne Person: dieselbe Kennung lieferte JEDEM Konto die gemerkte Antwort (ZOE-Zug bzw. ganzer Thread, 24 h). Jetzt nur der Person selbst, sonst 409 ohne Inhalt. | lib/store/anfragen.ts (`wer`), kimmi, agenten/faden, laeufe, skills | stört |
+| ZOE `run_agent` startete Fach-Agenten trotz Not-Aus — der Arbeiter hielt sie nur in der Warteschlange an. Jetzt dieselbe Regel (`auftragGesperrt`) auch beim direkten Start (Wartung bleibt ausgenommen). | lib/zoe/agenten.ts `runAgent` | stört |
+| Die Zahl „offene Freigaben“ an eine Person (ZOE-Antwort, Empfangs-Prompt, Morgenlauf) zählte die Vorschläge der anderen Person mit. | lib/zoe/stapel.ts `offeneAnzahlFuer` | stört |
+| Kosten je Zweck (`/api/zoe/verbrauch`) zeigten einem Konto „nur Business“ die Privat-Heads (`agent-gesundheit`, `agent-familie` …) — schon der Zweck verrät z. B. einen Gesundheits-Coach. Jetzt serverseitig ohne Privat-Zwecke (Summen der Instanz bleiben). | app/api/zoe/verbrauch, lib/zoe/verbrauch.ts `zweckPrivat` | stört |
+
+**So testet ihr (in Klicks):**
+1. Als Inhaberin ZOE etwas fragen, dann als zweite Person (anderes Gerät) Freigaben öffnen → „Aufträge“: der Morgenlauf steht als „Vorschläge für heute“
+   ohne Text darunter; die eigenen Aufträge mit Ergebnis.
+2. Agenten › Not-Aus → ZOE: „Starte den Agent board“ → ZOE sagt „Angehalten (Not-Aus)“ statt eines Board-Ergebnisses. Not-Aus lösen.
+3. Als Konto „nur Business“: ZOE › Freigaben → Karte „Verbrauch der KI“ → keine Zeilen `agent-gesundheit`/`agent-familie` (als volles Mitglied: da).
+4. Ein Test-Konto mit einem gemerkten ZOE-Fakt und einem offenen Vorschlag anlegen → Konto › Meine Daten (Export) zeigt beides → Konto löschen → beides weg.
+
+**Rückweg:** keine Formänderung an Beständen; neu nur das optionale Feld `wer` an Einträgen von `anfragen-ergebnis` (24 h). Der alte Stand zeigt
+wieder alles wie vorher (Warteschlange voll, globale Zahl).
+
+**Bewusst nicht geändert (nice — Liste für später):** Telegram gibt die Nachricht nicht in `fremd()` an ZOE (der Kontext „telegram“ macht das Gespräch
+trotzdem „fremd gelesen“; WhatsApp kapselt zusätzlich) · `medien_suchen` liefert Dateinamen/Album-Titel/Notiz ungekapselt (Namen fremder Fotografen) ·
+der Auftrag von ZOE an einen Head (`AUFTRAG von zoe`) steht ungekapselt im Head-Prompt, auch nach fremdem Lesen (Schreibendes bleibt Vorschlag) ·
+ZOE-Fakten stehen ungekapselt im System-Text (nur per Freigabe angelegt; die Merksätze der Heads sind gekapselt) · „Vergessen“ eines ZOE-Fakts markiert
+nur (`geloeschtAm`), der Satz bleibt im Bestand · `einmalig` in Rechnungen/Beleg/Kontoauszug/Gesellschaften ohne `wer` (dieselbe Klasse wie oben, nur
+Haushaltsdaten) · `zoe-empfang` behält nur den Schlüssel der zuletzt begrüßten Person (spart weniger als gedacht).
+
+**Fragen an Kevin:** (1) SKILL.md-Import: AGENTEN_KONZEPT.md sagt „kein Skill-Import aus fremden Quellen in Version 1“, der Import ist aber gebaut —
+importierte Anleitungen gelten als „von einem Menschen freigegeben“ (ungekapselt). Sollen sie wie Skills aus fremd gelesenen Threads gekapselt werden
+(`ausFremdemText`) — dann wirken sie nur noch als Daten? (2) Konto „nur Business“ (`finanzRecht: 'business'`) sieht die Privat-Aufgaben des Haushalts
+(die Aufgaben-Sicht kennt das Finanzrecht nicht) — auch in ZOEs Lage. So gewollt, oder soll „nur Business“ auch bei Aufgaben gelten?
+
 ## 09.10.2026 — Endprüfung des Nacht-Stands `agenten-nacht` (für Update 2 am 16.10.; nur lokal)
 
 Kevin 09.10. morgens: „Wenn du das Ganze fertig hast, nochmal überprüfen — das muss perfekt laufen.“ Alle Pakete der Nacht sind in `agenten-nacht`

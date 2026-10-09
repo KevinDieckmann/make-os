@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       const a = await einmalig('agenten-faden', body.anfrageId, async () => {
         const r = await senden({ sicht, anfrage: body as unknown as SendenAnfrage, origin: innenAdresse(req), ...(strom ? { strom: { ereignis: strom.sende, signal: strom.signal } } : {}) });
         return { status: r.status, body: r.body };
-      });
+      }, undefined, { wer: person }); // die gemerkte Antwort (der ganze Thread) nur für die Person selbst (Sicherheitsprüfung 09.10.)
       // Offene Plan-Freigaben des Threads auch in den Stapel (Art `plan`, idempotent) — ein Fehler hält die Antwort nie auf.
       const fid = (a.body as { faden?: { id?: unknown } } | null)?.faden?.id;
       if (a.status === 200 && istFadenId(fid)) await import('@/lib/agenten/plan-stapel').then(m => m.planStapeln(person, fid)).catch(() => 0);

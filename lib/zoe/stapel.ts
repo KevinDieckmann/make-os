@@ -179,6 +179,17 @@ export async function offeneAnzahl(): Promise<number> {
   return (await lies('offen')).length;
 }
 
+/**
+ * Offene Vorschläge, die DIESE Person sieht (eigene + die des Systems, `vorschlagSichtbar`) — die Zahl, die an eine Person geht (ZOE-Antwort,
+ * Empfang, Morgenlauf). Sicherheitsprüfung 09.10.: dort stand `offeneAnzahl()` — die Zahl zählte die Vorschläge der anderen Person mit.
+ */
+export async function offeneAnzahlFuer(person: string | null): Promise<number> {
+  if (!person) return 0;
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  const imHaushalt = await personImHaushaltDesInhabers(person).catch(() => false);
+  return (await lies('offen')).filter(v => vorschlagSichtbar(v, person, imHaushalt)).length;
+}
+
 export async function hole(id: string): Promise<Vorschlag | null> {
   const s = await loadJson<Stand>('zoe-stapel');
   const v = (s?.vorschlaege ?? []).find(x => x.id === id);
