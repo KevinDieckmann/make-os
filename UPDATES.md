@@ -4,6 +4,67 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten-Durchstich: jede Verbindung Ende zu Ende (nur lokal — Branch `agenten-durchstich`, Basis `agenten-nacht` 10b72dbc)
+
+Kevin 09.10.: „Überprüfe und überarbeite das ganze Agenten-System … dass alles verbunden ist, die Agents sauber laufen und alles, was damit zu tun
+hat.“ Anders als Härtetest und Gegenprüfung läuft hier jede Kette über die ECHTE Warteschlange: ZOE-Chat → `an_head` → `zoe-auftraege` → Arbeiter
+(`/api/zoe/auftraege/nimm` + `/lauf`, wie worker.mjs) → `runAgent('faden')` → interner Aufruf `/api/agenten/faden/lauf` → Head-Lauf → `an_mitarbeiter`
+→ Warteschlange → Arbeiter → Mitarbeiter-Lauf → Bericht zurück; dazu Stapel → Freigabe → Wirkung, Skill → Testlauf → Takt, Löschen/Abbrechen/Neu starten.
+Wächter: `tests/agenten-durchstich.test.ts` (30 Fälle, Modell = `tests/fixtures/ki-fake.ts`, interne Aufrufe per Router in die Routen-Module; gegen
+den Stand 10b72dbc waren 19 davon rot).
+
+**Was sich sichtbar ändert**
+- **Das Ergebnis kommt bei ZOE an.** Gibt ZOE einen Auftrag an einen Head und der Head gibt ihn an einen Mitarbeiter, stand bei ZOE bisher nur der
+  Zwischenstand („an Nachfassen gegeben“) — das eigentliche Ergebnis blieb im Head-Thread. Jetzt kommt auch der Bericht des Mitarbeiters als Verweis in
+  den ZOE-Thread („Bericht von Head of Sales · Nachfassen …“, gekapselt). „Seit deinem letzten Besuch“ zeigt je Lauf EINE Zeile (vorher bis zu drei).
+- **Ohne Arbeiter sieht man es.** Läuft nur `next start` (oder steht der Container „arbeiter“), blieb ein Agenten-Lauf ewig „wartet“, und das Lagebild
+  „Arbeiter (Takt)“ war trotzdem grün, weil der offene Browser den Takt anstieß. Jetzt schreibt nur der Arbeiter (Dienstweg) den Herzschlag; ein Lauf, der
+  länger als 2 Min. wartet, während sich der Arbeiter seit über 5 Min. nicht meldet, trägt in „Läuft“ und im Thread den Satz „Der Hintergrund-Arbeiter
+  meldet sich nicht …“. Wartet ein Lauf aus einem Grund (Not-Aus, Head aus, Budget, Business-frei, Hilfe-Frage), steht der Grund dabei — und er steht in
+  „Läuft“ als „wartet“, nicht mehr fälschlich unter „Fertig“.
+- **Freigaben: eine Zahl überall.** Kopfleiste, Team (⚑ am Head), Überblick und „Als Nächstes“ zählen gleich (`freigabenJeHead`, lib/agenten/naechstes.ts):
+  Stapel-Vorschläge werden ihrem Head zugeordnet (auch Aufgaben-, CRM- und Plan-Vorschläge — vorher landeten sie in „Als Nächstes“ bei ZOE), Plan-Freigaben
+  zählen nicht mehr doppelt (Thread UND Stapel), und die Freigabe-Listen der eingebauten Heads (Sales/Marketing/Event, Finance) zählen mit. „Wartet auf
+  dich“ zeigt sie als Zeile „n Freigaben liegen bei den Heads“ mit Sprung zur Freigaben-Seite (vorher: „Nichts wartet auf dich“, obwohl dort etwas lag).
+- **Lernen zählt.** Freigeben/Ablehnen (mit Grund) eines Aufgaben-, CRM-, Kalender- oder Plan-Vorschlags eines Heads geht jetzt in seine Annahmequote
+  (Autonomie hoch/runter) — vorher zählten nur Skill-/Mitarbeiter-/Merksatz-Vorschläge. Der dauerhafte Eintrag in `zoe-entscheidungen` trägt dafür den Head
+  (`agent`, optional). CRM-Vorschläge eines Heads tragen im Anlass „<Head>: …“ vor der Begründung.
+- **„Neu starten“ läuft wirklich.** Nach „Abbrechen“ (oder Not-Aus) blieb der Thread „abgebrochen“, der Arbeiter übersprang den neuen Auftrag still, und
+  der Lauf stand trotzdem als „fertig“ da. Jetzt bekommt der Thread den neuen Auftrag („wartet“) und läuft.
+- **Löschen räumt auf.** Ein Thread geht mit ALLEN Threads darunter (ZOE → Head → Mitarbeiter; vorher nur die direkten Kinder — Mitarbeiter-Threads
+  blieben verwaist und ihre wartenden Läufe liefen und kosteten weiter); wartende Läufe verlassen die Warteschlange, offene Plan-Freigaben entfallen.
+- **Läufe ohne Ziel enden einmal.** Antwortet der Lauf mit 4xx (Thread/Skill/Hintergrundaufgabe gelöscht, Mitarbeiter aus, Head nicht sichtbar), ist das
+  eine Entscheidung: kein dreifaches Neueinreihen mehr. Die Pause nach Fehlschlägen gilt je Ziel (Skill, Aufgabe, Thread) — vorher legte EIN abgebrochener
+  Lauf (auch „von Hand abgebrochen“ oder der Not-Aus) alle geplanten Agenten-Läufe beider Personen für 5 · 3^(n−1) Min. still.
+- **Kostengrenze je Lauf gilt.** Die Grenze einer Hintergrundaufgabe bzw. eines Skills wurde beim Lauf still nicht angewendet; jetzt steht sie am Lauf.
+- **Hintergrund-KI der Person zählt im Takt.** Schaltet eine Person ihre Hintergrund-KI aus, reiht der Takt ihre Zeitpläne nicht mehr ein (vorher täglich
+  eingereiht und vom Arbeiter still verworfen); ein trotzdem verworfener Agenten-Lauf endet sichtbar statt den Thread „wartet“ zu lassen.
+- **Jahresziele im Kontext.** Der Agenten-Überblick zeigte „Jahresziele“, ZOE und die Heads kannten sie nicht (das Brain trug nur Nordstern und
+  Business-Meilensteine). Jetzt EINE Lesestelle `lib/planung/jahresziele-sicht.ts` für Überblick, ZOE-Prompt (`blockZiele`) und Heads — ein Business-Head
+  nur die Business-Ziele, Privat-Ziele nur für volle Mitglieder (Konto „nur Business“ nie).
+- **Ereignis-Skills ehrlich.** „Neue Mail / neuer Lead / Zahlungseingang“ als Auslöser ist noch an keine Quelle angebunden — der Skill-Editor sagt es jetzt
+  (vorher: einschaltbar, lief aber nie von selbst).
+
+**Geprüft und in Ordnung (ohne Änderung):** Warteschlange ZOE → Head → Mitarbeiter → zurück samt Glocke nur an die auslösende Person; Hilfe-Kette
+(Mitarbeiter fragt → Head antwortet im Arbeitsstand → Mitarbeiter setzt fort); Vorschlag → Freigabe: Aufgabe landet im Business, Zuständig = die Person,
+Doppelklick → genau eine Aufgabe, die andere Person sieht den Vorschlag nicht; Skill anlegen → Testlauf (echte Schleife, ohne Wirkung) → einschalten → Head
+lädt die Anleitung → Takt reiht zur Uhrzeit EINMAL ein, „Als Nächstes“ rückt auf morgen, verpasst wird am selben Tag nachgeholt, 22–7 Uhr nie, Not-Aus/
+Hintergrund-KI aus/Budget 100 % halten an und lösen; Not-Aus hält auch eingebaute Heads und Finanzchef an (Wartung läuft weiter); ohne KI-Schlüssel
+antworten alle Seiten, ZOE und Head sagen es klar; die zweite Person sieht keinen Lauf/Thread der ersten; Kosten: Thread (US-Cent) = „Läuft“ (Euro) =
+Instanz-Zähler.
+
+**Rückweg:** nur optionale Felder (`Lauf.hinweis` in der Antwort, `DauerEintrag.agent`, `WerkzeugKontext.herkunft`) und ein Anlass-Präfix bei Plan- und
+CRM-Vorschlägen; keine neuen Bestände, keine neuen Routen. Der alte Stand liest alles. Einziger Unterschied im Betrieb: der Herzschlag in
+`<daten>/system/takt.txt` kommt nur noch vom Arbeiter — ohne Arbeiter wird das Lagebild „Arbeiter (Takt)“ (richtigerweise) gelb/rot.
+
+**Offen / Fragen an Kevin**
+- Ereignis-Auslöser für Skills anbinden (neue Mail → Inbox-Abgleich, neuer Lead → CRM-Schreibweg, Zahlungseingang → Kontoauszug/Rechnung)? Heute nur ehrlich
+  als „noch nicht angebunden“ markiert.
+- Läufe, die wegen „Head aus“ oder „Budget erreicht“ warten, laufen nach dem Wieder-Einschalten bzw. im neuen Monat nicht von selbst weiter (Business-frei
+  schon) — „Abbrechen“ + „Neu starten“ geht. Sollen sie automatisch weiterlaufen?
+- ZOE kennt die Skills der Heads nicht beim Namen (sie gibt den Auftrag an den Head, der den Skill lädt). Sollen die Skill-Namen in ZOEs Prompt?
+- Ein Head-Lauf, der nur delegiert hat, schickt schon eine Glocke „Ergebnis liegt bereit“ (die zweite kommt mit dem Bericht des Mitarbeiters). Eine reicht?
+
 ## 09.10.2026 — Endprüfung des Nacht-Stands `agenten-nacht` (für Update 2 am 16.10.; nur lokal)
 
 Kevin 09.10. morgens: „Wenn du das Ganze fertig hast, nochmal überprüfen — das muss perfekt laufen.“ Alle Pakete der Nacht sind in `agenten-nacht`
