@@ -528,11 +528,11 @@ describe('5.12 / 5.15 / 5.16 · Make.One: ausführlich erfassen, ein Vormerk-Weg
     expect(g.text).toMatch(/12\.11\.2026 um 18:30 Uhr \(Musterstadt\)/);
     expect(g.text).toMatch(/Herbstabend/);
     expect(g.hinweis).toMatch(/§ 7 UWG/);
-    const y = einladungText(e, { vorname: 'Anna', anrede: 'Du' }, 'gelb')!;
+    const y = einladungText(e, { vorname: 'Anna', nachname: '', anrede: 'Du' }, 'gelb')!;
     expect(y.weg).toBe('persoenlich');
     expect(y.text).toMatch(/^Hallo Anna,/);
     expect(y.hinweis).toMatch(/nur persönlich/);
-    expect(einladungText(e, { vorname: 'Anna' }, 'rot')).toBeNull();
+    expect(einladungText(e, { vorname: 'Anna', nachname: '' }, 'rot')).toBeNull();
     expect(quelle('components/os/crm/events/Gaeste.tsx')).toContain('<EinladungKopieren e={e} k={k} farbe={einl.farbe} />');
   });
 });
