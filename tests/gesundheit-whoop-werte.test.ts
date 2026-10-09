@@ -142,6 +142,35 @@ describe('Gesundheits-Index: die WHOOP-Zusatzwerte zählen nur mit Werten — oh
   });
 });
 
+describe('Karten Schlaf + Körperwerte (components/os/gesundheit/WhoopWerte.tsx): zeigen, rechnen nicht; fehlend = „—“', () => {
+  it('mit allen Werten: Bedarf, Phasen, Abweichung gegen Ø 7 Tage — keine NaN, keine Null-Anzeige', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { createElement } = await import('react');
+    const { SchlafDetailKarte, KoerperwerteKarte } = await import('@/components/os/gesundheit/WhoopWerte');
+    const k = koerperwerteAus(logMitWhoop(), HEUTE);
+    const schlaf = renderToStaticMarkup(createElement(SchlafDetailKarte, { k, heute: HEUTE }));
+    expect(schlaf).toContain('6:24 h'); // 6,4 h
+    expect(schlaf).toContain('Bedarf 8:12 h');
+    expect(schlaf).toContain('1:48 h unter dem Bedarf');
+    expect(schlaf).toContain('Schlafphasen: Tief 1:30 h, REM 1:42 h, Leicht 3:12 h, Wach 0:36 h');
+    const koerper = renderToStaticMarkup(createElement(KoerperwerteKarte, { k, heute: HEUTE }));
+    expect(koerper).toContain('−12 gegen Ø 60');
+    expect(koerper).toContain('+0,6 °C');
+    expect(koerper).toContain('2.400 kcal');
+    expect(schlaf + koerper).not.toMatch(/NaN|undefined/);
+  });
+  it('ohne Zusatzwerte: Striche statt Nullen', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { createElement } = await import('react');
+    const { KoerperwerteKarte } = await import('@/components/os/gesundheit/WhoopWerte');
+    const html = renderToStaticMarkup(createElement(KoerperwerteKarte, { k: koerperwerteAus({ [HEUTE]: { hrv: 55 } }, HEUTE), heute: HEUTE }));
+    expect(html).toContain('55 ms');
+    expect(html).toContain('Bezug ab 3 Tagen');
+    expect(html.match(/—/g)?.length).toBeGreaterThanOrEqual(4); // Ruhepuls, Atem, SpO2, Haut
+    expect(html).not.toContain('kcal');
+  });
+});
+
 // ── Trennung (Art. 9): die neuen Werte nur für die Person selbst bzw. mit `teilt.gesundheit` ─────────────────────────────────
 const konto = (id: string, sp: string, rolle: 'inhaber' | 'mitglied', teilt: string[] = []) =>
   ({ id, speicher: sp, email: `${sp}@test.invalid`, name: sp, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: teilt }, haushalt: 'haus-test' });
