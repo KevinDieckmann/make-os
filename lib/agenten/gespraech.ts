@@ -46,7 +46,8 @@ export async function agentAufloesen(a: AgentRef, u: Umfang): Promise<Aufgeloest
   if (a.art === 'zoe') return fehler(400, 'ZOE spricht nur über ihr Gespräch (ZOE-Thread über /api/kimmi) — nicht über den Head-Chat.');
   const head = headDef(a.headId);
   if (!head) return fehler(404, 'Diesen Head gibt es nicht.');
-  const einstellung = await einstellungFuer(u.haushalt);
+  // Mit Person (09.10., Merge 4a/4b): Einstellungen der Privat-Heads (Modell, Aufwand, aus) stehen im Abschnitt der Person.
+  const einstellung = await einstellungFuer(u.haushalt, u.person);
   const eh = einstellung.heads[head.id] ?? {};
   if (eh.aktiv === false) return fehler(409, `${head.name} ist ausgeschaltet.`);
   if (a.art === 'head') return { head, mitarbeiter: null, einstellung };

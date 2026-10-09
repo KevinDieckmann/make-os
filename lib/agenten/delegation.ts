@@ -151,7 +151,7 @@ export async function planEntscheiden(o: { person: string; fadenId: string; plan
   if (o.entscheidung === 'freigeben' && f.agent.art === 'head') {
     const head = headDef(f.agent.headId)!;
     const u = await umfangFuer(o.person);
-    const ms = await aktiveMitarbeiter(head, u, await einstellungFuer(u.haushalt));
+    const ms = await aktiveMitarbeiter(head, u, await einstellungFuer(u.haushalt, u.person));
     for (const a of plan.auftraege) {
       const m = ms.find(x => x.id === a.mitarbeiterId);
       if (!m) continue;
@@ -485,11 +485,11 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
   if ('ok' in a && a.ok === false) { await laufEnde(person, fadenId, 'fehler', a.fehler); return { status: a.status, ok: false, fadenId, ergebnis: a.fehler }; }
   const { head, mitarbeiter, einstellung } = a as Aufgeloest;
   const hintergrund = o.hintergrund || !!f.hintergrund;
-  if (einstellung.notAus) { await laufEnde(person, fadenId, 'wartet', 'Not-Aus ist gesetzt — nach dem Aufheben neu starten.'); return { status: 200, ok: true, fadenId, ergebnis: 'Not-Aus', laufStatus: 'wartet' }; }
+  if (einstellung.notAus) { await laufEnde(person, fadenId, 'wartet', 'Not-Aus ist gesetzt — nach dem Aufheben neu starten.', 'not-aus'); return { status: 200, ok: true, fadenId, ergebnis: 'Not-Aus', laufStatus: 'wartet' }; }
   if (head.bereich === 'business') {
     const { businessFreiJetzt } = await import('@/lib/arbeitsrahmen/server');
     const bf = await businessFreiJetzt(person).catch(() => ({ frei: false }));
-    if (bf.frei) { await laufEnde(person, fadenId, 'wartet', 'ruht in der Business-freien Zeit — danach neu starten.'); return { status: 200, ok: true, fadenId, ergebnis: 'Business-frei: ruht', laufStatus: 'wartet' }; }
+    if (bf.frei) { await laufEnde(person, fadenId, 'wartet', 'ruht in der Business-freien Zeit — danach neu starten.', 'business-frei'); return { status: 200, ok: true, fadenId, ergebnis: 'Business-frei: ruht', laufStatus: 'wartet' }; }
   }
   const start = iso();
   await fadenAendern(person, fadenId, x => ({ ...x, status: 'laeuft', lauf: { ...(x.lauf ?? laufWartet(start)), status: 'laeuft', start, schritte: [] } }));
@@ -506,7 +506,10 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
     abbrechen: async () => {
       const x = await eigenerFaden(person, fadenId);
       if (x?.lauf?.status === 'abgebrochen') return 'von Hand abgebrochen';
-      if ((await einstellungFuer(u.haushalt)).notAus) return 'Not-Aus';
+      if ((await einstellungFuer(u.haushalt, u.person)).notAus) return 'Not-Aus';
+      // Merge 4a/4b (09.10.): auch Not-Aus DIESES Heads, „ausgeschaltet“ und sein Monatsbudget greifen mitten im Lauf (lib/agenten/einstellung.ts).
+      const sperre = await (await import('./einstellung')).laufSperre(person, head.id).catch(() => null);
+      if (sperre) return sperre.text;
       return null;
     },
   });
@@ -514,9 +517,10 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
   return { status: 200, ok: ergebnis.ok, fadenId, ergebnis: `${ergebnis.status}${ergebnis.grund ? ` (${ergebnis.grund})` : ''}`, laufStatus: ergebnis.status };
 }
 
-async function laufEnde(person: string, fadenId: string, status: 'wartet' | 'fehler', grund: string): Promise<void> {
+async function laufEnde(person: string, fadenId: string, status: 'wartet' | 'fehler', grund: string, wartetAuf?: 'business-frei' | 'not-aus' | 'plan'): Promise<void> {
   const jetzt = iso();
-  await fadenAendern(person, fadenId, x => ({ ...x, status: statusAusLauf(status), lauf: { ...(x.lauf ?? laufWartet(jetzt)), status, ...(status === 'fehler' ? { ende: jetzt } : {}), fehler: grund } }));
+  // `wartetAuf` (Vertrag, Paket 4b): der Takt holt Business-frei-Läufe danach einmal nach — am Feld, nicht am Text des Grundes.
+  await fadenAendern(person, fadenId, x => ({ ...x, status: statusAusLauf(status), lauf: { ...(x.lauf ?? laufWartet(jetzt)), status, ...(status === 'fehler' ? { ende: jetzt } : {}), fehler: grund, ...(wartetAuf ? { wartetAuf } : {}) } }));
 }
 
 /** Ergebnis in den Thread, Bericht in den Eltern-Thread (fremd, R9), Brett/Hilfe, Glocke, Lauf-Protokoll. */
