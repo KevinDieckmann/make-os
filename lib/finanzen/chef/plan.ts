@@ -8,6 +8,7 @@ import type { Modus } from './prompt';
 import type { ChefStand } from './stand';
 import { werktag } from './steuertermine';
 import { tageZwischen, monatPlus } from '../haushalt/monat';
+import { tagVon } from '@/lib/zeit';
 
 /** Dritter Werktag des Monats (JJJJ-MM-TT). */
 export function dritterWerktag(monat: string): string {
@@ -19,7 +20,8 @@ export function dritterWerktag(monat: string): string {
   return d;
 }
 
-const tag = (iso?: string) => (iso ? iso.slice(0, 10) : undefined);
+/** Berliner Tag eines Zeitstempels (09.10., Takt robust) — nie `.slice(0, 10)` (UTC-Tag). */
+const tag = (iso?: string) => (iso ? tagVon(iso) : undefined);
 
 export function faelligerModus(s: ChefStand, heute: string, wochentag: number, stunde: number, termine: { datum: string }[], jetzt: Date = new Date()): { modus: Modus; grund: string; monat?: string } | null {
   if (stunde < 8 || stunde >= 21) return null;
