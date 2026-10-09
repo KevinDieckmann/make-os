@@ -5,6 +5,7 @@
 
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { imHaushaltDerInhaber, kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
@@ -24,12 +25,10 @@ const PERSON_OK = /^[a-z0-9-]{1,40}$/;
 /** Die Person im Haushalt des Inhabers als Betrachter — null, wenn sie nicht dazugehört (die Route hat das schon geprüft). */
 export async function betrachterFuer(person: string): Promise<Betrachter | null> {
   if (!PERSON_OK.test(person)) return null;
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  const ich = konten.find(k => k.speicher === person);
-  if (!inhaber || !ich) return null;
-  const istInhaber = ich.speicher === inhaber.speicher;
-  if (!istInhaber && !(inhaber.haushalt && ich.haushalt === inhaber.haushalt)) return null;
+  // Haushalt der Inhaber nur über die EINE Regel (lib/zugang/inhaber.ts — mehrere Inhaber, Haupt-Inhaber aus der Einstellung), nie `find(rolle)`.
+  const st = await ladeKonten();
+  const ich = st.konten.find(k => k.speicher === person);
+  if (!ich || !imHaushaltDerInhaber(st, person)) return null;
   // Volles Mitglied = ohne Einschränkung „nur Business“ (auch der Inhaber selbst kann so eingeschränkt sein — dann sieht er kein Privat der anderen).
   const voll = ich.finanzRecht !== 'business';
   let marketing = false;
@@ -39,10 +38,7 @@ export async function betrachterFuer(person: string): Promise<Betrachter | null>
 
 /** Speichernamen der Konten im Haushalt des Inhabers (für die Privat-Kataloge mit Alben „Haushalt“). */
 export async function haushaltsPersonen(): Promise<string[]> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return [];
-  return konten.filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt)).map(k => k.speicher).filter(s => PERSON_OK.test(s));
+  return kontenImHaushaltDerInhaber(await ladeKonten()).map(k => k.speicher).filter(s => PERSON_OK.test(s));
 }
 
 // ── Kataloge ────────────────────────────────────────────────────────────────────────────────────────────────────────────

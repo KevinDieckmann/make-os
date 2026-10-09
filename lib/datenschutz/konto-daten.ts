@@ -451,6 +451,21 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       if (n) await protokolliere(kl, [{ liste: 'laeufe', op: 'geaendert', id: 'personen', felder: ['von'] }], { art: 'system' });
       return n;
     });
+    // KI-Medien (Auftragsbuch/Altbestand, 09.10. Nahtstellen-Prüfung): laufende Aufträge und „nur ich“ der Person in den Papierkorb, sonst
+    // Speichername „[gelöscht]“ — nie fällt ein Bild einem neuen Konto mit demselben Speichernamen zu (lib/ki/medien.ts `kiMedienOhnePerson`).
+    const km = `ki-medien--${konto.haushalt}`;
+    await nurWenn(km, async () => {
+      const { kiMedienOhnePerson } = await import('@/lib/ki/medien');
+      let n = 0;
+      await updateJson<Obj>(km, cur => {
+        if (!cur || !Array.isArray(cur.medien)) return cur as unknown as Obj;
+        const r = kiMedienOhnePerson(cur.medien as Parameters<typeof kiMedienOhnePerson>[0], speicher, GELOESCHT, new Date().toISOString());
+        n = r.anzahl;
+        return n ? { ...cur, medien: r.medien } : cur;
+      });
+      if (n) await protokolliere(km, [{ liste: 'medien', op: 'geaendert', id: 'personen', felder: ['person', 'status', 'geloeschtAm'] }], { art: 'system' });
+      return n;
+    });
     // Familie (08.10. abends, Fragebogen Teil 3 Frage 11 — erweitert die Vision-Regel der Gegenprüfung 08.10.): Einträge der Person
     // bleiben als gemeinsames Leben des Haushalts (Dates, Vereinbarungen, Themen, Wünsche, Gespräche, Reparatur, Vision …), aber OHNE
     // ihren Namen; ihre „nur ich“-Einträge, ungeteilten Reflexionen und ihr Profil fallen weg (sah nur sie — ohne sie wären sie

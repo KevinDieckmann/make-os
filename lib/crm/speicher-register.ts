@@ -482,7 +482,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     loeschfrist: '12 Monate (ältere Monate leert das Protokoll beim Schreiben, Marke „bereinigt“)',
   }),
   // Anbieter-Tor (09.10., Paket 6a, lib/ki/): erzeugte Medien je Haushalt, Tiefenberichte je Person, Zähler laufender Aufträge.
-  mit(H('ki-medien--*', 'Von der KI erzeugte Bilder und Videos je Haushalt (Metadaten): Art, Anbieter, Modell, eigener Auftragstext der auslösenden Person (keine Daten Dritter — die Medien-Zugänge nehmen nur die Kategorien „allgemein“/„web“), Kennzeichnung (SynthID/C2PA), Kosten, wer ausgelöst hat, Sichtbarkeit (Haushalt oder nur ich), Papierkorb. Dateien in <daten>/ki-medien (lib/ki/medien.ts). Seit Paket 4c (09.10.) nur noch Auftragsbuch laufender Video-Aufträge und Altbestand: fertige KI-Medien liegen als Medien (urheber „ki“) in medien--*/medien-privat--* (lib/medien/ki-ablage.ts, Marke uebernommenAls).'), {
+  mit(T('ki-medien--*', 'Von der KI erzeugte Bilder und Videos je Haushalt (Metadaten): Art, Anbieter, Modell, eigener Auftragstext der auslösenden Person (keine Daten Dritter — die Medien-Zugänge nehmen nur die Kategorien „allgemein“/„web“), Kennzeichnung (SynthID/C2PA), Kosten, wer ausgelöst hat, Sichtbarkeit (Haushalt oder nur ich), Papierkorb. Dateien in <daten>/ki-medien (lib/ki/medien.ts). Seit Paket 4c (09.10.) nur noch Auftragsbuch laufender Video-Aufträge und Altbestand: fertige KI-Medien liegen als Medien (urheber „ki“) in medien--*/medien-privat--* (lib/medien/ki-ablage.ts, Marke uebernommenAls).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO (eigene Arbeitsmittel des Haushalts, Marketing-Material)',
     art15: 'die Medien sieht der Haushalt (bzw. bei „nur ich“ die Person selbst) unter den KI-Medien; Konto-Export über NICHT_PERSOENLICH (Bestand je Haushalt)',
     loeschfrist: 'bis zur Löschung durch den Haushalt; Papierkorb 30 Tage, danach Datei und Eintrag endgültig',
@@ -492,7 +492,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'über die Metadaten (ki-medien--<haushalt>)',
     loeschfrist: 'mit dem Eintrag (Papierkorb 30 Tage)',
   }),
-  mit(H('ki-tiefenbericht--*', 'Tiefenberichte zum Lesen (Gemini Deep Research über Vertex) je Person: eigene Frage, Bericht, Quellen, Suchvorschläge. NUR die fragende Person liest ihn — nie Brain, nie ZOE/Agenten, nie Suche (Google-Bedingungen, lib/ki/tiefenbericht.ts).'), {
+  mit(T('ki-tiefenbericht--*', 'Tiefenberichte zum Lesen (Gemini Deep Research über Vertex) je Person: eigene Frage, Bericht, Quellen, Suchvorschläge. NUR die fragende Person liest ihn — nie Brain, nie ZOE/Agenten, nie Suche (Google-Bedingungen, lib/ki/tiefenbericht.ts).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung durch die Kontoperson)',
     art15: 'die Person sieht ihre Berichte selbst; Konto › Meine Daten exportiert sie (PERSON_BESTAENDE)',
     loeschfrist: '30 Tage nach Fertigstellung (eng gefasster „Verlauf“ nach den Bedingungen des Anbieters); Konto löschen entfernt den Bestand',

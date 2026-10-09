@@ -141,6 +141,28 @@ export async function medienAufraeumen(haushalt: string, jetzt = new Date()): Pr
   return weg.length;
 }
 
+/**
+ * Konto löschen (Nahtstellen-Prüfung 09.10., rein): das Auftragsbuch bzw. der Altbestand darf nach dem Löschen nichts mehr unter dem
+ * Speichernamen der Person ablegen — Speichernamen werden wieder vergeben (lib/zugang/konten.ts `speicherName`), sonst übernähme der Medien-Lauf
+ * (`kiMedienUebernehmen`) „nur ich“-Bilder samt Auftragstext in den Privat-Bestand eines NEUEN Kontos gleichen Namens. Regeln:
+ *   · laufende Aufträge der Person → „fehler“ (Konto gelöscht) und Papierkorb — der Takt holt sie nicht mehr ab;
+ *   · „nur ich“ bzw. Ziel Privat, noch nicht übernommen → Papierkorb (nach 30 Tagen Datei und Eintrag endgültig, `medienAufraeumen`);
+ *   · alles Übrige der Person → Speichername `ersatz` („[gelöscht]“) — so kann es nie einem neuen Konto zufallen.
+ */
+export function kiMedienOhnePerson(liste: readonly KiMedium[], speicher: string, ersatz: string, jetzt: string): { medien: KiMedium[]; anzahl: number } {
+  let anzahl = 0;
+  const medien = liste.map(m => {
+    if (m.person !== speicher) return m;
+    anzahl++;
+    const privat = m.sichtbarkeit === 'nur-ich' || m.ziel?.bereich === 'privat';
+    const offen = !m.uebernommenAls && !m.geloeschtAm;
+    if (m.status === 'laeuft') return { ...m, person: ersatz, status: 'fehler' as const, fehler: 'Konto gelöscht', ...(m.geloeschtAm ? {} : { geloeschtAm: jetzt }) };
+    if (privat && offen) return { ...m, person: ersatz, geloeschtAm: jetzt };
+    return { ...m, person: ersatz };
+  });
+  return { medien, anzahl };
+}
+
 /** Laufende Video-Aufträge eines Haushalts (für den Takt). */
 export async function laufendeMedien(haushalt: string): Promise<KiMedium[]> {
   if (!HAUSHALT.test(haushalt)) return [];
