@@ -20,6 +20,8 @@ const wurzel = await fs.mkdtemp(path.join(os.tmpdir(), 'make-os-onboarding-'));
 const DATEN = path.join(wurzel, 'daten');
 process.env.MAKE_OS_DATEN_DIR = DATEN;
 process.env.MAKE_OS_BRAIN_INDEX = 'aus';
+process.env.MAKE_VAULT_DIR = path.join(wurzel, 'Make.Claude'); // die Brain-Prüfung liest Regeln — nie der echte Vault
+process.env.MAKE_OS_DOKU_WURZEL = 'aus';
 process.env.MAKE_OS_KEY = 'pruef-schluessel-onboarding-0123456789';
 process.env.MAKE_OS_ADRESSE = 'https://instanz-geheim.example.invalid';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
@@ -388,11 +390,12 @@ describe('Alte Häkchen und rote Befunde', () => {
   it('alte Häkchen zählen nie — höchstens „bitte bestätigen“ bei Schritten ohne Prüfung und ohne Stichtagsbezug', () => {
     const m = hakenSicht(ALT, null, 'malin'); const k = hakenSicht(ALT, null, 'kevin');
     for (const s of [m, k]) expect(Object.keys(s.erledigt)).toEqual([]);
-    expect(m.frueher).toEqual(['agenten', 'ich-rundgang', 'regeln']);
-    expect(k.frueher).toEqual(['agenten', 'regeln']); // persönliche nur für die Person mit diesem Speichernamen
+    // Seit Update 2 hat „Agenten“ eine Prüfung (B3 Teil 2) — ein altes Häkchen darf dort nie mehr „bitte bestätigen“ zeigen.
+    expect(m.frueher).toEqual(['ich-rundgang', 'regeln']);
+    expect(k.frueher).toEqual(['regeln']); // persönliche nur für die Person mit diesem Speichernamen
     for (const id of ['kontostaende', 'zahlenziele', 'kartei', 'ich-zoe']) expect([...m.frueher, ...k.frueher]).not.toContain(id);
     for (const [, neu] of Object.entries(ALT_ZU_NEU)) { const s = schritt(neu); if (s.pruefung || s.stichtag) expect(frueherErlaubt(s), neu).toBe(false); }
-    expect(hakenSicht(ALT, null, null).frueher).toEqual(['agenten', 'regeln']);
+    expect(hakenSicht(ALT, null, null).frueher).toEqual(['regeln']);
   });
 
   it('Schreiben lässt alte Häkchen unangetastet liegen; bestätigt wird mit einem neuen Häkchen; Lesen schreibt nie', async () => {
@@ -418,7 +421,9 @@ describe('Alte Häkchen und rote Befunde', () => {
     expect(istFertig(kartei, { erledigt: {}, befunde: { kontakte: { erfuellt: true, wert: 'x' } } })).toBe(false);
     expect(istFertig(kartei, { erledigt: { kartei: { at: 'x', von: 'dir' } }, befunde: { kontakte: { erfuellt: true, wert: 'x' } } })).toBe(true);
     expect(istFertig(kartei, { erledigt: { kartei: { at: 'x', von: 'dir' } }, befunde: { kontakte: { erfuellt: false, wert: 'x' } } })).toBe(false);
-    expect(schritt('agenten').pruefung).toBeUndefined(); // die Zahl gespeicherter Einstellungen sagt nichts über „bewusst gesetzt“
+    // Update 2 (B3 Teil 2): „Agenten“ prüft den neuen Agenten-Bereich (ein Head eingestellt bzw. ein Thread) — dass alle durchgesehen sind,
+    // sagt die Zahl nicht; darum Prüfung UND Häkchen.
+    expect(schritt('agenten')).toMatchObject({ pruefung: 'agenten', bestaetigen: true });
     expect(lies('components/os/OnboardingView.tsx')).toContain('<details>'); // Anleitung bleibt bei erledigten Schritten aufklappbar
   });
 });

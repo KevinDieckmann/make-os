@@ -5,6 +5,8 @@
 // (nie gekürzt), Inhaber-Schritte nur ein Inhaber (403; seit 09.10. jeder Inhaber), Privat-Schritte nur mit Zugang zu den Privat-Finanzen (403), Build-Kennung (409
 // neu laden). Gespeichert wird der Speichername, nie ein Vorname. Alte Häkchen (vor dem 08.10.) zählen nie — nur `frueher` („bitte
 // bestätigen“). GET liest nur (auch WHOOP roh, lib/onboarding-status.ts) — Lesen schreibt nie.
+// Update 2 (16.10.): GET liefert zusätzlich `gruen` (B10: welche eigenen Schritte schon einmal grün waren — nur die der Person der Sitzung,
+// geschrieben im Morgenlauf). Befunde über private Finanzen und Familie filtert lib/onboarding-status.ts nach Recht (B11).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt, personStreng, ohnePerson, istDienst } from '@/lib/zugang/tor';
@@ -23,9 +25,9 @@ const GRENZE = 2048;
 const KENNUNG = /^[a-z0-9-]{1,60}$/;
 
 /** `von` für die Anzeige: „dir“ für die eigene Person, sonst der Vorname aus dem Konto (Altbestand: wie gespeichert). */
-async function mitAnzeige(h: HakenSicht, ich: string): Promise<{ erledigt: Record<string, Haken>; frueher: string[] }> {
+async function mitAnzeige(h: HakenSicht, ich: string): Promise<{ erledigt: Record<string, Haken>; frueher: string[]; gruen: Record<string, string> }> {
   const namen = new Map((await ladeKonten().catch(() => ({ konten: [] as { speicher: string; name: string }[] }))).konten.map(k => [k.speicher, (k.name ?? '').split(' ')[0] || k.speicher]));
-  return { erledigt: Object.fromEntries(Object.entries(h.erledigt).map(([id, x]) => [id, { at: x.at, von: x.von === ich ? 'dir' : namen.get(x.von) ?? x.von }])), frueher: h.frueher };
+  return { erledigt: Object.fromEntries(Object.entries(h.erledigt).map(([id, x]) => [id, { at: x.at, von: x.von === ich ? 'dir' : namen.get(x.von) ?? x.von }])), frueher: h.frueher, gruen: h.gruen };
 }
 
 export async function GET(req: Request) {

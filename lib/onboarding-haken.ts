@@ -7,13 +7,17 @@
 // nie als getan (Gegenprüfung: die neuen Schritte bedeuten mehr) — wo erlaubt (`frueherErlaubt`: ohne Prüfung, ohne Stichtagsbezug)
 // erscheinen sie als „früher abgehakt — bitte bestätigen“; persönliche nur für die Person mit genau diesem Speichernamen.
 // Lesen schreibt nie. Wächter: tests/onboarding-stand.test.ts.
+//
+// B10 (Update 2, 16.10.): im persönlichen Bestand steht zusätzlich `gruen` — Kennung eines Schritts mit Prüfung → Tag, an dem er zum ersten
+// Mal fertig war. Geschrieben NUR vom Morgenlauf (`gruenFesthalten`, lib/onboarding-status.ts `einrichtungFesthalten`), nie beim Lesen; gelesen nur
+// von der Person selbst. Nur Kennungen und Tage — nie ein Wert.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { ALT_ZU_NEU, altePerson, frueherErlaubt, istPersoenlich, schrittMitId } from '@/lib/make-one/onboarding-data';
 
 export interface Haken { at: string; von: string }
-export interface HakenDatei { erledigt: Record<string, Haken> }
-export interface HakenSicht { erledigt: Record<string, Haken>; frueher: string[] }
+export interface HakenDatei { erledigt: Record<string, Haken>; gruen?: Record<string, string> }
+export interface HakenSicht { erledigt: Record<string, Haken>; frueher: string[]; gruen: Record<string, string> }
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 /** Der gemeinsame Bestand (Haushalt + Instanz). */
@@ -42,7 +46,14 @@ export function hakenSicht(gemeinsam: HakenDatei | null | undefined, eigen: Hake
     frueher.add(neu);
   }
   if (person) for (const [id, h] of liste(eigen)) { const s = schrittMitId(id); if (s && istPersoenlich(s)) erledigt[id] = { at: h.at, von: person }; }
-  return { erledigt, frueher: [...frueher].filter(id => !erledigt[id]).sort() };
+  return { erledigt, frueher: [...frueher].filter(id => !erledigt[id]).sort(), gruen: person ? gruenAus(eigen) : {} };
+}
+
+const TAG = /^\d{4}-\d{2}-\d{2}$/;
+/** Die gemerkten grünen Schritte (nur bekannte Schritte mit Prüfung, nur gültige Tage). */
+function gruenAus(d: HakenDatei | null | undefined): Record<string, string> {
+  const roh = d?.gruen && typeof d.gruen === 'object' ? d.gruen : {};
+  return Object.fromEntries(Object.entries(roh).filter(([id, tag]) => typeof tag === 'string' && TAG.test(tag) && !!schrittMitId(id)?.pruefung));
 }
 
 /** Häkchen lesen — Lesen schreibt nie. */
@@ -72,4 +83,24 @@ export async function hakenSetzen(person: string, id: string, an: boolean, jetzt
     return { ...(cur ?? {}), erledigt: neu as Record<string, Haken> };
   });
   return hakenLesen(person);
+}
+
+/**
+ * B10: die Schritte mit Prüfung, die für diese Person gerade fertig sind, als „grün am <tag>“ festhalten — im persönlichen Bestand (nur
+ * Kennungen und Tage). Nur hinzufügen, nie entfernen und nie umschreiben („war schon einmal grün“) — nichts Neues → kein Schreiben.
+ * Aufrufer: der Morgenlauf (nie ein GET). Liefert die Zahl neu gemerkter Schritte.
+ */
+export async function gruenFesthalten(person: string, ids: readonly string[], tag: string): Promise<number> {
+  if (!PERSON.test(person) || !TAG.test(tag)) throw new Error('Person oder Tag ungültig.');
+  const gueltig = ids.filter(id => !!schrittMitId(id)?.pruefung);
+  if (!gueltig.length) return 0;
+  const alt = gruenAus(await loadJson<HakenDatei>(persoenlichName(person)));
+  const neu = gueltig.filter(id => !alt[id]);
+  if (!neu.length) return 0;
+  await updateJson<HakenDatei>(persoenlichName(person), cur => {
+    const g = { ...gruenAus(cur) };
+    for (const id of gueltig) g[id] ??= tag;
+    return { ...(cur ?? {}), erledigt: (cur?.erledigt && typeof cur.erledigt === 'object' ? cur.erledigt : {}) as Record<string, Haken>, gruen: g };
+  });
+  return neu.length;
 }

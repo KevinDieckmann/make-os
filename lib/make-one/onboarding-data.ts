@@ -14,12 +14,38 @@
 //   gemeinsam  Haushalt und Firmen — eine Person trägt ein, alle sehen den Stand (`nurInhaber`, wo ein Inhaber es tun muss)
 //   ich        „Meine Einrichtung“ — jede Person für sich; Prüfung und Häkchen gelten nur der Person der Sitzung
 // Wer welchen Schritt bekommt, steht NUR in `schrittFuer` (Rolle, Zahl der Konten, „eingeladen“ — alles aus dem Konto).
-// Wächter: tests/onboarding-stand.test.ts, tests/onboarding-ebenen.test.ts.
+// Wächter: tests/onboarding-stand.test.ts, tests/onboarding-ebenen.test.ts, tests/onboarding-u2.test.ts.
+//
+// Update 2 (16.10., ONBOARDING_PLAN.md A5 B4/B8/B10): jeder Schritt trägt sein Modul (`modul` — eine Instanz „nur Markttraktion“ zeigt nur
+// Grundlage + ihre Schritte, `nurModule`), Voraussetzungen (`nach` — nur als Hinweis und für „Als Nächstes“, nie eine zweite Fertig-Regel),
+// worauf er wartet (`wartetAuf`, Text) und welche Zahlen der Datenkarte er einträgt (`datenOrt`). Ein Befund kann „leer“ sein (nichts zu prüfen
+// — dann entscheidet das Häkchen) oder „veraltet“ (nur fürs Bild der Datenbasis). „Zurückgefallen“ (B10) = ein Schritt mit Prüfung, der schon
+// einmal grün war (`gruen`, festgehalten im Morgenlauf) und jetzt rot ist — EINE Regel `zurueckgefallen`, für Heute-Karte und Einrichtung.
 
 import { WEG } from '@/lib/wege';
 import { BUSINESS_EINHEITEN_NAMEN, UG_NAME } from '@/lib/einheiten';
 
 export type Ebene = 'instanz' | 'gemeinsam' | 'ich';
+
+/**
+ * Modul eines Schritts (A1.10 „modul-fähig“): `grundlage` braucht jede Instanz (Server, Zugang, Datenschutz, Abschluss); die übrigen gehören zu
+ * einem Bereich, den eine Instanz auch einzeln haben kann. Kennungen nie ändern (Filter, spätere Lizenzen).
+ */
+export type Modul = 'grundlage' | 'kalender' | 'postfach' | 'unternehmen' | 'finanzen' | 'markttraktion' | 'planung' | 'gesundheit' | 'familie' | 'zoe';
+export const MODULE: Readonly<Record<Modul, string>> = {
+  grundlage: 'Grundlage', kalender: 'Kalender', postfach: 'Postfächer', unternehmen: 'Unternehmen', finanzen: 'Finanzen', markttraktion: 'Markttraktion',
+  planung: 'Planung & Aufgaben', gesundheit: 'Gesundheit', familie: 'Familie', zoe: 'ZOE & Brain',
+};
+
+/** Ein Befund der Server-Prüfung (lib/onboarding-status.ts) — nur ja/nein und Zähler, nie Werte. */
+export interface PruefBefund {
+  erfuellt: boolean;
+  wert: string;
+  /** Es gibt (noch) nichts zu prüfen (z. B. kein laufendes Mandat, noch kein Monatsabschluss fällig) — dann entscheidet das Häkchen. */
+  leer?: true;
+  /** Rot, weil ein Stand zu alt ist (Kontostand, Sicherung) — nur fürs Bild der Datenbasis; zählt wie rot. */
+  veraltet?: true;
+}
 
 export interface Schritt {
   id: string;
@@ -63,6 +89,14 @@ export interface Schritt {
   nurAltbestand?: true;
   /** Nur für Konten, die über eine Einladung kamen (jedes Konto außer dem Haupt-Inhaber) — `Kontext.eingeladen`. */
   nurEingeladen?: true;
+  /** Modul (B4) — gesetzt an jedem Schritt (Wächter); fehlt es, gilt `grundlage`. */
+  modul?: Modul;
+  /** Voraussetzungen (Kennungen anderer Schritte, B4): nur Hinweis („erst …“) und Reihenfolge von „Als Nächstes“ — nie eine Sperre. */
+  nach?: string[];
+  /** Worauf der Schritt wartet, das sich nicht abhaken lässt (z. B. die erste Nachtsicherung) — Text, kein Wert. */
+  wartetAuf?: string;
+  /** Welche Zahlen der Datenkarte hier eingetragen werden (Kennungen aus `DATENKARTE`). */
+  datenOrt?: string[];
 }
 
 /** Die drei Ebenen als Seiten (Filter auf die Einrichtung). `nurInhaber`: die Seite zeigt ihre Schritte nur Inhabern. */
@@ -116,6 +150,7 @@ export const SCHRITTE: Schritt[] = [
   // ── Etappe 0 — Am Upload-Tag und direkt danach (Server, nur der Inhaber) ─────────────────────────────────────────────────────
   {
     id: 'update', etappe: 0, nr: '0.1', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25,
+    modul: 'grundlage',
     titel: 'Update einspielen',
     warum: 'Erst mit dem neuen Stand gibt es diese Einrichtung, die Prüfungen und alle Verbindungen. Vorher wird gesichert, damit es einen Weg zurück gibt.',
     wie: [
@@ -129,6 +164,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'pepper', etappe: 0, nr: '0.2', ebene: 'instanz', server: true, nurInhaber: true, minuten: 10, pruefung: 'pepper',
+    modul: 'grundlage', nach: ['update'],
     titel: 'Pepper und strenger Start-Riegel',
     warum: 'Mit dem Pepper sind die Fingerabdrücke gesperrter oder gelöschter Personen nicht mehr zu erraten. Der strenge Start-Riegel sorgt dafür, dass MAKE OS ohne seine Geheimnisse gar nicht erst startet.',
     wie: [
@@ -142,6 +178,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'altbestand', nurAltbestand: true, etappe: 0, nr: '0.5', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15,
+    modul: 'grundlage', nach: ['update', 'ich-gesundheit'],
     titel: 'Altbestand übernehmen — vor dem Update am 16.10.',
     warum: 'Bisherige persönliche Inhalte standen im Code: das Körper-Profil und der Nordstern (gemeinsamer Satz und persönliches Kernziel). Sie wandern genau einmal in die Daten des Inhabers bzw. des Haushalts und fliegen danach aus dem Code — nichts geht verloren.',
     wie: [
@@ -157,6 +194,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'sicherung', etappe: 0, nr: '0.6', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'sicherung',
+    modul: 'grundlage', nach: ['update'],
     titel: 'Nachtsicherung mit age und Wächter',
     warum: 'Jede Nacht sichert der Server alles verschlüsselt. Den privaten Schlüssel habt nur ihr — ohne ihn ist die Sicherung für niemanden lesbar. Fällt die Sicherung aus, schlägt der Wächter (Healthchecks) Alarm.',
     wie: [
@@ -170,7 +208,8 @@ export const SCHRITTE: Schritt[] = [
     wo: HOI,
   },
   {
-    id: 'sicherung-mac', spaeter: true, etappe: 0, nr: '0.7', ebene: 'instanz', server: true, nurInhaber: true, minuten: 45,
+    id: 'sicherung-mac', spaeter: true, etappe: 0, nr: '0.7', ebene: 'instanz', server: true, nurInhaber: true, minuten: 45, pruefung: 'abholung', bestaetigen: true,
+    modul: 'grundlage', nach: ['sicherung'], wartetAuf: 'die erste Nachtsicherung (03:15) — vorher gibt es kein age-Archiv',
     titel: 'Zweite Kopie am Mac — und einmal zurückspielen',
     warum: 'Eine Sicherung, die nie zurückgespielt wurde, ist ein Versprechen. Der zweite Ort holt jede Nacht das neueste Archiv auf den Mac; die Probe beweist, dass es sich wiederherstellen lässt.',
     wie: [
@@ -178,24 +217,26 @@ export const SCHRITTE: Schritt[] = [
       'Die Abholung einmal einrichten (nur lesender Zugang) und einmal sofort holen — RESTORE_TEST.md, Abschnitt 2.',
       'Dann die Probe — RESTORE_TEST.md, Abschnitt 3: die age-Identität vorübergehend in eine Datei (Rechte 600), den Datenschlüssel nur in die Umgebung, einmal der Produktionsbau am Mac (nicht gleichzeitig mit Tests). Ergebnis mit Datum in DEPLOY.md festhalten, die Identitäts-Datei danach löschen.',
     ],
-    danach: 'Im Head of IT steht „Sicherung am Mac“ auf Grün; ihr wisst, wie lange eine Wiederherstellung dauert.',
+    danach: 'Geprüft wird die Abholung: der Mac hat die letzte Sicherung abgeholt und bestätigt. Die Probe bestätigst du mit dem Häkchen — dann wisst ihr, wie lange eine Wiederherstellung dauert.',
     befehl: 'bash deploy/sicherung-abholen.sh --einrichten      # einmal\nbash deploy/sicherung-abholen.sh\nbash deploy/sicherung-probe.sh ~/MAKE-OS-Sicherungen/make-os-<JJJJ-MM-TT>.tar.gz.age <Datei mit der age-Identität> --app',
     wo: HOI,
   },
   {
-    id: 'vault', etappe: 0, nr: '0.8', ebene: 'instanz', server: true, nurInhaber: true, minuten: 30,
+    id: 'vault', etappe: 0, nr: '0.8', ebene: 'instanz', server: true, nurInhaber: true, minuten: 30, pruefung: 'vault',
+    modul: 'zoe', nach: ['update'],
     titel: 'Vault umziehen, Abgleich und App-Spiegel an',
     warum: 'Das Brain ist euer Wissen. Der Server-Vault wird die Wahrheit; der Abgleich hält ihn alle fünf Minuten mit dem Mac gleich. Der App-Spiegel schreibt Projekte, Mandate und Wochen als Notizen ins Brain.',
     wie: [
       'Den Vault genau nach VAULT_UMZUG_ANLEITUNG.md umziehen (Obsidian dabei geschlossen, etwa 20 Minuten). Private Ordner gehen nicht auf den Server.',
       'Am Server den App-Spiegel einschalten (Befehl unten). Der erste Lauf kommt nachts.',
     ],
-    danach: 'Konflikte oder gescheiterte Abgleiche zeigt der Head of IT rot.',
+    danach: 'Geprüft wird der Vault-Abgleich im Head of IT: kein Konflikt, kein gescheiterter Push, letzter Abgleich höchstens zwei Tage alt.',
     befehl: 'cd /srv/make-os/app && nano .env      # MAKE_OS_APP_SPIEGEL=an\ncd /srv/make-os/app && docker compose up -d app',
     wo: HOI,
   },
   {
     id: 'adresse', etappe: 0, nr: '0.9', ebene: 'instanz', server: true, nurInhaber: true, minuten: 5, pruefung: 'adresse',
+    modul: 'grundlage', nach: ['update'],
     titel: 'Adresse der Instanz prüfen',
     warum: 'Aus MAKE_OS_ADRESSE entstehen Rückruf-Adressen (Google, WHOOP), Einladungslinks und Cookies. Sie muss genau die Adresse sein, unter der ihr arbeitet — mit https.',
     wie: ['In der .env am Server MAKE_OS_ADRESSE prüfen: genau die Adresse, die im Browser oben steht, mit https:// und ohne Schrägstrich am Ende.'],
@@ -204,6 +245,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'whoop-app', etappe: 0, nr: '0.10', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15, pruefung: 'whoop-konfig',
+    modul: 'gesundheit', nach: ['adresse'],
     titel: 'WHOOP-Anwendung einmal je Instanz',
     warum: 'Damit jede Person ihr eigenes WHOOP-Konto verbinden kann, braucht die Instanz einmal eine eigene WHOOP-Anwendung (Schnittstelle v2).',
     wie: [
@@ -215,6 +257,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'google-app', etappe: 0, nr: '0.11', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'google-konfig',
+    modul: 'kalender', nach: ['adresse'],
     titel: 'Google prüfen und Gmail freischalten',
     warum: 'Business-Kalender und Gmail laufen über eine Google-Verbindung je Person. Die Instanz braucht dafür einmal ein Google-Projekt mit Gmail-Schnittstelle.',
     wie: [
@@ -227,6 +270,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'notfallmappe', samstag: true, etappe: 0, nr: '0.12', ebene: 'gemeinsam', minuten: 20,
+    modul: 'grundlage', nach: ['pepper', 'sicherung'],
     titel: 'Notfallmappe',
     warum: 'Fällt der Inhaber aus, muss jemand an Pepper, age-Schlüssel, Datenschlüssel, Server-Zugang und Wiederherstellungs-Codes kommen — sonst ist alles verschlüsselt und unerreichbar.',
     wie: [
@@ -235,10 +279,24 @@ export const SCHRITTE: Schritt[] = [
     ],
     danach: 'Beide wissen, was im Ernstfall zu tun ist.',
   },
+  {
+    id: 'medienspeicher', spaeter: true, etappe: 0, nr: '0.13', ebene: 'instanz', server: true, nurInhaber: true, minuten: 20, pruefung: 'medien',
+    modul: 'grundlage', nach: ['update'],
+    titel: 'Medienspeicher (Object Storage) einrichten',
+    warum: 'Fotos und Videos aus „Medien unterwegs“ liegen sonst im Ordner auf dem Server — außerhalb der Nachtsicherung und mit einer festen Grenze. Im Object Storage liegen sie verschlüsselt (je Medium ein eigener Schlüssel, der auf dem Server bleibt).',
+    wie: [
+      'In der Cloud-Konsole des Anbieters einen privaten Bucket anlegen (Versionierung aus) und eine Lebenszyklus-Regel für abgebrochene Uploads (2 Tage) setzen — Schritte in UPDATES.md (09.10., Medien unterwegs).',
+      'Zugangsschlüssel erzeugen und über das Skript am Server eintragen — es fragt verdeckt (Befehl unten). Nie in den Chat.',
+    ],
+    danach: 'Geprüft wird: der Object Storage ist vollständig eingerichtet (nicht mehr der Ordner auf dem Server). Der Head of IT meldet einen vollen Speicher.',
+    befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/medien-speicher-verbinden.sh',
+    wo: HOI,
+  },
 
   // ── Etappe 1 — Zugang, Sicherheit, Datenschutz ───────────────────────────────────────────────────────────────────────────────
   {
     id: 'zweite-einladung', samstag: true, nurEingeladen: true, etappe: 1, nr: '1.0', ebene: 'ich', minuten: 5,
+    modul: 'grundlage',
     titel: 'Einladung annehmen',
     warum: 'Erster Schritt: reinkommen. Es gibt keine offene Registrierung — eine Einladung des Inhabers ist der einzige Weg.',
     wie: [
@@ -249,6 +307,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-zwei-faktor', samstag: true, etappe: 1, nr: '1.1', ebene: 'ich', minuten: 5, pruefung: 'zwei-faktor',
+    modul: 'grundlage',
     titel: 'Zweiten Faktor einrichten',
     warum: 'Ein Passwort allein reicht für einen Server im Netz nicht. Mit dem zweiten Faktor kommt nur rein, wer zusätzlich dein Handy hat.',
     wie: [
@@ -261,6 +320,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'einladen', samstag: true, etappe: 1, nr: '1.2', ebene: 'instanz', nurInhaber: true, nurMitMehreren: true, minuten: 5, pruefung: 'personen',
+    modul: 'grundlage', nach: ['update'],
     titel: 'Zweite Person einladen',
     warum: 'Jede Person hat ein eigenes Konto. Gibt es das Konto schon, ist hier nichts zu tun; arbeitet ihr allein, entfällt der Schritt.',
     wie: [
@@ -272,6 +332,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'haushalt', samstag: true, etappe: 1, nr: '1.3', ebene: 'instanz', nurInhaber: true, minuten: 5, pruefung: 'haushalt',
+    modul: 'grundlage', nach: ['einladen'],
     titel: 'Haushalt und Finanzrecht',
     warum: 'Ohne Haushalt sieht ein Konto keine privaten Finanzen, keine Familie und keine Ernährung. „Nur Business“ sperrt Privates auf dem Server — nicht bloß in der Oberfläche.',
     wie: ['Konto › Haushalt: jedes Konto dem Haushalt zuordnen und bewusst entscheiden, ob es alles sieht oder nur Business.'],
@@ -280,6 +341,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'zwei-faktor-pflicht', samstag: true, etappe: 1, nr: '1.4', ebene: 'instanz', nurInhaber: true, minuten: 2, pruefung: 'zwei-faktor-pflicht',
+    modul: 'grundlage', nach: ['ich-zwei-faktor'],
     titel: 'Zweiten Faktor für alle zur Pflicht machen',
     warum: 'Damit kein Konto mit Passwort allein hereinkommt. Vorher zeigt der Head of IT, wie viele Konten noch ohne zweiten Faktor sind.',
     wie: [
@@ -290,7 +352,8 @@ export const SCHRITTE: Schritt[] = [
     wo: KONTO,
   },
   {
-    id: 'datenschutz', samstag: true, etappe: 1, nr: '1.5', ebene: 'instanz', nurInhaber: true, minuten: 35,
+    id: 'datenschutz', samstag: true, etappe: 1, nr: '1.5', ebene: 'instanz', nurInhaber: true, minuten: 35, pruefung: 'datenschutz', bestaetigen: true,
+    modul: 'grundlage',
     titel: 'Datenschutz der Instanz',
     warum: 'Sobald Kontakte und Mandanten drin sind, braucht die Instanz einen Verantwortlichen, ein vollständiges Empfänger-Register und klare Löschfristen. Hinweis, keine Rechtsberatung.',
     wie: [
@@ -299,22 +362,24 @@ export const SCHRITTE: Schritt[] = [
       'Die Vorlage für die Information nach Art. 14 prüfen (bevor Kontakte importiert werden, Schritt 4.2).',
       'Die Löschfristen ansehen.',
     ],
-    danach: 'Die Selbstprüfung unter Datenschutz zeigt, was noch fehlt — jeder Punkt mit Weg zum Beheben.',
+    danach: 'Geprüft wird die Selbstprüfung: Verantwortlicher benannt, jeder Auftragsverarbeiter mit bestätigtem Vertrag, Drittländer mit Garantie. Art.-14-Vorlage und Löschfristen bestätigst du mit dem Häkchen.',
     wo: { href: WEG.datenschutz('verantwortlicher'), label: 'Datenschutz › Verantwortlicher' },
   },
   {
-    id: 'ki-instanz', samstag: true, etappe: 1, nr: '1.6', ebene: 'instanz', nurInhaber: true, minuten: 10,
+    id: 'ki-instanz', samstag: true, etappe: 1, nr: '1.6', ebene: 'instanz', nurInhaber: true, minuten: 10, pruefung: 'ki',
+    modul: 'zoe', nach: ['datenschutz'],
     titel: 'KI der Instanz',
     warum: 'Ohne Schlüssel und Guthaben fallen ZOE und die Heads still auf das Regelwerk zurück. Die Schalter der Instanz legen fest, ob KI im Hintergrund läuft, ob sie im Web suchen darf und für welche Bereiche.',
     wie: [
       'Im Head of IT nachsehen, ob die KI erreichbar ist (Schlüssel, Guthaben).',
       'Unter Datenschutz › KI die Schalter der Instanz bewusst setzen.',
     ],
-    danach: 'Jede Person kann für sich nur noch weiter einschränken (Schritt 1.9).',
+    danach: 'Geprüft wird: Schlüssel da, Guthaben verfügbar, die Schalter der Instanz einmal bewusst gesetzt. Jede Person kann für sich nur noch weiter einschränken (Schritt 1.9).',
     wo: { href: WEG.datenschutz('ki'), label: 'Datenschutz › KI' },
   },
   {
     id: 'ich-sicht', samstag: true, etappe: 1, nr: '1.7', ebene: 'ich', minuten: 10,
+    modul: 'grundlage', nach: ['haushalt'],
     titel: 'Wer sieht was — und was ich teile',
     warum: 'Gemeinsam heißt nicht: alles für alle. Die Trennung macht der Server — was du nicht sehen darfst, kommt gar nicht erst bei dir an.',
     wie: [
@@ -328,6 +393,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-gesundheit', samstag: true, etappe: 1, nr: '1.8', ebene: 'ich', minuten: 5, pruefung: 'gesundheit-einwilligung',
+    modul: 'gesundheit',
     titel: 'Gesundheit: Einwilligung erklären',
     warum: 'Gesundheitsdaten sind besonders geschützt (Art. 9 DSGVO). MAKE OS erfasst sie erst, wenn du selbst einwilligst — jede Person für sich, niemand für eine andere. Der Inhaber macht das zuerst, vor der Übernahme des Altbestands (0.5).',
     wie: [
@@ -341,6 +407,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-ki', samstag: true, etappe: 1, nr: '1.9', ebene: 'ich', minuten: 5,
+    modul: 'zoe', nach: ['ki-instanz'],
     titel: 'Eigene KI-Schalter',
     warum: 'Die Instanz gibt den Rahmen vor; du kannst für dich nur weiter einschränken — etwa keine KI im Hintergrund für deine Bereiche.',
     wie: ['Datenschutz › KI: deine eigenen Schalter ansehen und bewusst setzen.'],
@@ -349,6 +416,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-handy', samstag: true, etappe: 1, nr: '1.10', ebene: 'ich', minuten: 5,
+    modul: 'grundlage', nach: ['ich-zwei-faktor'],
     titel: 'Handy einrichten',
     warum: 'Am Handy liegt MAKE OS wie eine App da — schneller Zugriff auf Heute, Inbox und ZOE.',
     wie: [
@@ -361,6 +429,7 @@ export const SCHRITTE: Schritt[] = [
   // Zweite gleichwertige Inhaberin (R9, Update 2 am 16.10.): Rolle in der App, eigener Server-Zugang per eigenem SSH-Schlüssel.
   {
     id: 'weitere-inhaber', spaeter: true, etappe: 1, nr: '1.11', ebene: 'instanz', nurInhaber: true, nurMitMehreren: true, minuten: 10, pruefung: 'inhaber',
+    modul: 'grundlage', nach: ['haushalt', 'ich-zwei-faktor'],
     titel: 'Zweite Person zur gleichwertigen Inhaberin machen',
     warum: 'Fällt ein Inhaber aus, muss jemand Konten, Haushalt, den zweiten Faktor, Datenschutz und Nachweise verwalten können. Inhaber heißt Verwaltung — Persönliches (Gesundheit, „nur ich“, private Notizen) bleibt bei jeder Person.',
     wie: [
@@ -373,6 +442,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ssh-zweiter-schluessel', spaeter: true, etappe: 1, nr: '1.12', ebene: 'instanz', server: true, nurInhaber: true, nurMitMehreren: true, minuten: 15,
+    modul: 'grundlage', nach: ['weitere-inhaber'],
     titel: 'Eigener Server-Zugang für die zweite Inhaberin',
     warum: 'Wer Inhaber ist, muss im Ernstfall auch an den Server kommen (Update, Sicherung, Schlüssel). Jede Person bekommt einen EIGENEN Schlüssel — nie einen geteilten: geht ein Gerät verloren, wird genau dieser herausgenommen.',
     wie: [
@@ -387,6 +457,7 @@ export const SCHRITTE: Schritt[] = [
   // ── Etappe 2 — Verbindungen ─────────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'ich-icloud', samstag: true, etappe: 2, nr: '2.1', ebene: 'ich', minuten: 10, pruefung: 'icloud',
+    modul: 'kalender',
     titel: 'iCloud-Kalender verbinden (Privat)',
     warum: 'Damit deine Termine in MAKE OS stehen, Planen um sie herum plant und Blöcke aus Planen und ZOE auf deinem eigenen iPhone landen. Die andere Person sieht deine Termine nur als „Belegt“.',
     wie: [
@@ -400,6 +471,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-google', samstag: true, etappe: 2, nr: '2.2', ebene: 'ich', minuten: 5, pruefung: 'google',
+    modul: 'kalender', nach: ['google-app'],
     titel: 'Google-Kalender verbinden (Business)',
     warum: 'Business-Termine liegen im Google-Kalender deines Firmenkontos — in beide Richtungen: was du hier anlegst, steht dort, und umgekehrt.',
     wie: [
@@ -411,6 +483,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-gmail', samstag: true, etappe: 2, nr: '2.3', ebene: 'ich', minuten: 5, pruefung: 'gmail',
+    modul: 'postfach', nach: ['google-app'],
     titel: 'Gmail verbinden',
     warum: 'Dein Firmen-Postfach erscheint in der Inbox — lesen, zuordnen, antworten per Klick. Nur du liest es; der Dienstweg und ZOE senden nie selbst.',
     wie: ['Inbox › Postfächer › „Gmail verbinden“ — die Google-Verbindung wird um Gmail ergänzt.'],
@@ -419,6 +492,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-postfaecher', samstag: true, etappe: 2, nr: '2.4', ebene: 'ich', minuten: 15, pruefung: 'postfach',
+    modul: 'postfach', nach: ['ich-gmail'],
     titel: 'Weitere Postfächer und ihr Bereich',
     warum: 'Die Inbox ist der tägliche Einstieg. Jedes Postfach gehört genau einer Person und genau einem Bereich (Privat oder eine Gesellschaft) — auch Gmail.',
     wie: [
@@ -431,6 +505,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'kalender-zuordnen', samstag: true, etappe: 2, nr: '2.5', ebene: 'gemeinsam', minuten: 20,
+    modul: 'kalender', nach: ['ich-icloud', 'ich-google'],
     titel: 'Kalender zuordnen',
     warum: 'MAKE OS muss wissen, welcher Kalender wem gehört, welcher gemeinsam ist und was als belegt zählt — sonst plant es in eure Termine hinein.',
     wie: [
@@ -444,6 +519,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-woanders', samstag: true, etappe: 2, nr: '2.6', ebene: 'ich', optional: true, minuten: 20,
+    modul: 'kalender', nach: ['kalender-zuordnen'], datenOrt: ['arbeitszeit-aussen'],
     titel: 'Zeit, die woanders belegt ist',
     warum: 'Arbeitest du auch in einem Kalender, den MAKE OS noch nicht anbinden kann (z. B. Microsoft 365 eines Arbeitgebers oder Kunden), gilt diese Zeit sonst als frei — in Kapazität, freier Zeit und bei ZOE.',
     wie: [
@@ -455,6 +531,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-whoop', samstag: true, etappe: 2, nr: '2.7', ebene: 'ich', optional: true, minuten: 3, pruefung: 'whoop',
+    modul: 'gesundheit', nach: ['whoop-app', 'ich-gesundheit'],
     titel: 'WHOOP verbinden',
     warum: 'Mit WHOOP kommen Erholung, Schlaf und Training von selbst in Gesundheit und Sport — ohne Abtippen. Jede Person verbindet nur ihr eigenes Konto; andere sehen die Werte nur, wenn du Gesundheit mit ihnen teilst.',
     wie: [
@@ -467,6 +544,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'mail-umzug', spaeter: true, etappe: 2, nr: '2.8', ebene: 'instanz', nurInhaber: true, minuten: 90,
+    modul: 'postfach', nach: ['ich-gmail'],
     titel: 'Mail-Domain umziehen (eigener Termin)',
     warum: 'Wenn die Post der Firma künftig über Google läuft, muss der Umzug in der richtigen Reihenfolge passieren — sonst gehen Mails verloren.',
     wie: [
@@ -479,6 +557,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'whatsapp', spaeter: true, etappe: 2, nr: '2.9', ebene: 'instanz', nurInhaber: true, minuten: 90,
+    modul: 'postfach', nach: ['datenschutz'], wartetAuf: 'die Verifizierung bei Meta (dauert Tage)',
     titel: 'WhatsApp Business (eigener Termin)',
     warum: 'Die Business-Nummer der Instanz erscheint in der Inbox. Die Verifizierung bei Meta dauert Tage — deshalb früh anstoßen, sobald der Weg entschieden ist.',
     wie: [
@@ -493,6 +572,7 @@ export const SCHRITTE: Schritt[] = [
   // ── Etappe 3 — Firmen & Zahlen ──────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'stichtag', stichtag: true, samstag: true, etappe: 3, nr: '3.1', ebene: 'gemeinsam', minuten: 10,
+    modul: 'finanzen',
     titel: 'Stichtag des 0-Punkts: 01.10.2026',
     warum: 'Ab dem Stichtag rechnet jede Business-Gesellschaft neu. Eure Entscheidung vom 08.10.: der 01.10.2026 für jede Business-Gesellschaft — derselbe Tag, an dem die Finanzplanung beginnt.',
     wie: [
@@ -504,6 +584,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'steckbrief', samstag: true, etappe: 3, nr: '3.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 35,
+    modul: 'unternehmen', nach: ['haushalt'], datenOrt: ['firmendaten'],
     titel: 'Steckbrief je Gesellschaft',
     warum: 'Rechtsform, Rolle und Geschäftsjahr steuern, wie MAKE OS rechnet — die Rolle „Holding“ etwa bestimmt die Holding-Sicht im Business-Index.',
     wie: [
@@ -515,6 +596,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'register', spaeter: true, etappe: 3, nr: '3.3', ebene: 'gemeinsam', nurInhaber: true, minuten: 50,
+    modul: 'unternehmen', nach: ['steckbrief'], datenOrt: ['beteiligungen', 'vertraege'],
     titel: 'Gesellschafter, Organe, Beschlüsse, Beteiligungen, Verträge',
     warum: 'Wer hält was, wer führt, was wurde beschlossen — und welche Verträge laufen. Verträge mit „kündigen bis“ erinnern rechtzeitig.',
     wie: [
@@ -527,6 +609,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'absender', samstag: true, etappe: 3, nr: '3.4', ebene: 'gemeinsam', nurInhaber: true, minuten: 20,
+    modul: 'unternehmen', nach: ['steckbrief'], datenOrt: ['firmendaten'],
     titel: 'Absender für Angebote',
     warum: 'Ohne vollständige Pflichtangaben kann MAKE OS kein sauberes Angebot erzeugen.',
     wie: ['Je Gesellschaft (Reiter „Absender“): Firmierung, Anschrift, Steuernummer, USt-ID, Register, Geschäftsführung, Bank, Logo, Nummernkürzel.'],
@@ -535,6 +618,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'eroeffnung', stichtag: true, samstag: true, etappe: 3, nr: '3.6', ebene: 'gemeinsam', nurInhaber: true, minuten: 30, pruefung: 'eroeffnung',
+    modul: 'finanzen', nach: ['stichtag', 'steckbrief'], datenOrt: ['konto-stichtag', 'posten-stichtag'],
     titel: '0-Punkt je Business-Gesellschaft',
     warum: `Ab dem 0-Punkt rechnet jede Business-Gesellschaft${BUSINESS} mit sauberen Zahlen: Kontostand am Stichtag plus alles, was dann offen war.`,
     wie: [
@@ -546,18 +630,20 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: WEG.eroeffnung(), label: 'Finanzen › Business › 0-Punkt' },
   },
   {
-    id: 'monatsabschluss', stichtag: true, samstag: true, etappe: 3, nr: '3.7', ebene: 'gemeinsam', minuten: 5,
+    id: 'monatsabschluss', stichtag: true, samstag: true, etappe: 3, nr: '3.7', ebene: 'gemeinsam', minuten: 5, pruefung: 'monatsabschluss',
+    modul: 'finanzen', nach: ['eroeffnung'], datenOrt: ['monatszahlen'], wartetAuf: 'das Ende des ersten Monats ab dem Stichtag',
     titel: 'Monatsabschlüsse ab Oktober',
     warum: 'Controlling und Business-Index rechnen mit den Monatszahlen. Mit dem Stichtag 01.10. zählen erst die Monate ab Oktober — Januar bis September werden nicht nachgetragen.',
     wie: [
       'Der erste Abschluss ist der Oktober — Anfang November, je Business-Gesellschaft, von Hand über das Formular.',
       'Am Samstag nur den Termin für den ersten Abschluss festlegen (etwa 30 Minuten Anfang November) und abhaken. Danach jeden Monat den Vormonat.',
     ],
-    danach: 'Controlling und Index haben echte Ist-Zahlen.',
+    danach: 'Geprüft wird ab dem ersten fälligen Monat, ob der Abschluss des Vormonats je Business-Gesellschaft vorliegt. Bis dahin zählt dein Häkchen (Termin festgelegt).',
     wo: { href: WEG.abschluss(), label: 'Finanzen › Business › Monatsabschluss' },
   },
   {
     id: 'kontostaende', stichtag: true, samstag: true, etappe: 3, nr: '3.8a', ebene: 'gemeinsam', minuten: 15, pruefung: 'konten',
+    modul: 'finanzen', nach: ['eroeffnung'], datenOrt: ['konto-danach'],
     titel: 'Kontostände nach dem Stichtag',
     warum: 'Die Liquiditäts-Vorschau startet beim aktuellen Kontostand. Ist der älter als eine Woche, ist die ganze Kurve unsicher.',
     wie: [
@@ -570,6 +656,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'offene-posten', stichtag: true, samstag: true, etappe: 3, nr: '3.8b', ebene: 'gemeinsam', minuten: 15, pruefung: 'posten',
+    modul: 'finanzen', nach: ['eroeffnung'], datenOrt: ['posten-danach'],
     titel: 'Offene Rechnungen und Zahlungen',
     warum: 'Das ist die Prioritätenliste: was zuerst raus muss, was noch reinkommt.',
     wie: [
@@ -581,18 +668,20 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: WEG.rechnungen(), label: 'Finanzen › Rechnungen & Zahlungen' },
   },
   {
-    id: 'business-grundlagen', spaeter: true, etappe: 3, nr: '3.9', ebene: 'gemeinsam', nurInhaber: true, minuten: 15,
+    id: 'business-grundlagen', spaeter: true, etappe: 3, nr: '3.9', ebene: 'gemeinsam', nurInhaber: true, minuten: 15, pruefung: 'business-einstellungen',
+    modul: 'finanzen', nach: ['steckbrief'], datenOrt: ['koepfe'],
     titel: 'Grundlagen des Business-Index',
     warum: 'Ohne Köpfe, Beratertage und Jahresziel bleiben Personal und Auslastung im Index „keine Daten“.',
     wie: [
       'Business › Feinjustierung: Köpfe (FTE), verfügbare Beratertage je Monat, Jahresziel je Gesellschaft (dieselbe Zahl wie in Planung › Jahr, Schritt 5.1).',
       'Bei Bedarf eigene Schwellen.',
     ],
-    danach: 'Der Index rechnet alle Säulen.',
+    danach: 'Geprüft wird: Köpfe und Jahresziel je Business-Gesellschaft gesetzt. Dann rechnet der Index alle Säulen.',
     wo: { href: WEG.einstellungen(), label: 'Finanzen › Business › Einstellungen' },
   },
   {
-    id: 'ich-privatkonten', privatFinanzen: true, spaeter: true, etappe: 3, nr: '3.10', ebene: 'ich', minuten: 45,
+    id: 'ich-privatkonten', privatFinanzen: true, spaeter: true, etappe: 3, nr: '3.10', ebene: 'ich', minuten: 45, pruefung: 'konten-register',
+    modul: 'finanzen', nach: ['haushalt'], datenOrt: ['konto-privat'],
     titel: 'Privatkonten und Kontoauszüge',
     warum: 'Die Haushaltsfinanzen rechnen mit euren Buchungen. Jede Person trägt ihre Konten ein, gemeinsame nur einmal. (Gilt nur für Konten mit Zugang zu den Privat-Finanzen.)',
     wie: [
@@ -600,11 +689,12 @@ export const SCHRITTE: Schritt[] = [
       'Kontoauszüge einlesen und die Kontrollsumme prüfen. Den Zeitraum gemeinsam festlegen.',
       'Bis zur Bank-Anbindung (vorgezogen in Phase 1) ist das der monatliche Weg.',
     ],
-    danach: 'Budget, Fixkosten und Privat-Index rechnen mit echten Zahlen.',
+    danach: 'Geprüft wird im Konten-Register: jedes deiner Konten und jedes gemeinsame mit einem Stand, der höchstens 31 Tage alt ist.',
     wo: { href: WEG.privat('buchungen'), label: 'Finanzen › Privat › Konten & Buchungen' },
   },
   {
-    id: 'privat-fixkosten', privatFinanzen: true, spaeter: true, etappe: 3, nr: '3.11', ebene: 'gemeinsam', minuten: 35,
+    id: 'privat-fixkosten', privatFinanzen: true, spaeter: true, etappe: 3, nr: '3.11', ebene: 'gemeinsam', minuten: 35, pruefung: 'haushalt-fixkosten',
+    modul: 'finanzen', nach: ['ich-privatkonten'], datenOrt: ['privat-ist', 'ruecklage'],
     titel: 'Fixkosten, Budget, Schulden und Rücklage (Privat)',
     warum: 'Damit der Privat-Index ehrlich rechnet: Fixkosten mit Rhythmus, Schulden mit Rate, ein Ziel für die Rücklage. Eure Entscheidung vom 08.10.: der Haushalt führt das Ist, die Finanzplanung liest daraus. (Nur für Konten mit Zugang zu den Privat-Finanzen.)',
     wie: [
@@ -612,13 +702,14 @@ export const SCHRITTE: Schritt[] = [
       'Budget, Schulden und Fixkosten im Haushalt pflegen (Privat › Konten & Buchungen) — nicht zusätzlich in der Finanzplanung. Die Brücke, über die die Finanzplanung daraus liest, kommt in Phase 1.',
       'Das Rücklage-Ziel im Privat-Index setzen.',
     ],
-    danach: 'Der Privat-Index zeigt euren echten Stand.',
+    danach: 'Geprüft wird: Buchungen da, keine Fixkosten mit „Rhythmus unklar“, jede offene Schuld mit Rate, eine Rücklage gesetzt.',
     wo: { href: WEG.privat('fixkosten'), label: 'Finanzen › Privat › Fixkosten' },
   },
 
   // ── Etappe 4 — Kontakte, Vertrieb & Mandate ─────────────────────────────────────────────────────────────────────────────────
   {
     id: 'team', spaeter: true, etappe: 4, nr: '4.1', ebene: 'gemeinsam', minuten: 10,
+    modul: 'grundlage', nach: ['haushalt'],
     titel: 'Team und Zuständigkeiten',
     warum: 'Wer kümmert sich um Vertrieb, Marketing und Events, wer um Haushaltsfinanzen, wer begleitet Gesundheit — daran hängen Vorschläge und Power Hour.',
     wie: ['Konto › Team: je Person die Rolle eintragen.'],
@@ -627,6 +718,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'kartei', bestaetigen: true, samstag: true, etappe: 4, nr: '4.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 50, pruefung: 'kontakte',
+    modul: 'markttraktion', nach: ['datenschutz'],
     titel: 'Kartei importieren und bereinigen',
     warum: 'Power Hour, Pipeline und Index rechnen mit der Kartei. Herkunft, Rechtsgrundlage und Zuständigkeit müssen stimmen, sonst schlägt das System die Falschen vor.',
     wie: [
@@ -639,26 +731,29 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: WEG.stammdaten(), label: 'Markttraktion › Stammdaten' },
   },
   {
-    id: 'produkte', spaeter: true, etappe: 4, nr: '4.3', ebene: 'gemeinsam', minuten: 30,
+    id: 'produkte', spaeter: true, etappe: 4, nr: '4.3', ebene: 'gemeinsam', minuten: 30, pruefung: 'produkte',
+    modul: 'markttraktion', nach: ['steckbrief'], datenOrt: ['produkte'],
     titel: 'Produkte',
     warum: 'Produkte sind die eine Quelle für Angebote, Mandate und die Umsatz-Bausteine der Finanzplanung.',
     wie: [
       'Mandate & Unternehmen › Produkte: Preis, Basis, Laufzeit, Gesellschaft und Leistungstext (ohne Leistungstext kein „aktiv“).',
       'Die alte Karte „Produkte“ unter Rechnungen nicht mehr pflegen.',
     ],
-    danach: 'Angebote und Finanzplan greifen auf denselben Katalog zu.',
+    danach: 'Geprüft wird: mindestens ein aktives Produkt mit Leistungstext. Angebote und Finanzplan greifen auf denselben Katalog zu.',
     wo: { href: WEG.produkt(), label: 'Mandate & Unternehmen › Produkte' },
   },
   {
-    id: 'mandate', spaeter: true, etappe: 4, nr: '4.4', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    id: 'mandate', spaeter: true, etappe: 4, nr: '4.4', ebene: 'gemeinsam', nurInhaber: true, minuten: 30, pruefung: 'mandate',
+    modul: 'markttraktion', nach: ['kartei', 'produkte'],
     titel: 'Laufende Mandate',
     warum: 'Mandate sind Umsatz, Zeit und Kapazität. Ohne sie fehlen Index, Liquidität und Planung die wichtigste Größe.',
     wie: ['Je laufendem Mandat: Firma (aus der Kartei), Produkt, Honorar, Rhythmus, Gesellschaft, Zahlungsziel, Zuständigkeit.'],
-    danach: 'Mandate tauchen in Zeit, Kapazität und Finanzplan auf.',
+    danach: 'Geprüft wird: jedes laufende Mandat mit Firma aus der Kartei, Honorar und Gesellschaft. Ohne laufendes Mandat zählt dein Häkchen.',
     wo: { href: WEG.mandat(), label: 'Mandate & Unternehmen › Mandate' },
   },
   {
     id: 'deals', spaeter: true, etappe: 4, nr: '4.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 20,
+    modul: 'markttraktion', nach: ['kartei'],
     titel: 'Offene Deals',
     warum: 'Die Pipeline zeigt, was kommt — aber nur, wenn jeder Deal einen nächsten Schritt mit Datum hat.',
     wie: ['Markttraktion › Deals: jeden offenen Deal mit Stufe, Wert und nächstem Schritt samt Datum.'],
@@ -667,6 +762,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'vertrieb', spaeter: true, etappe: 4, nr: '4.6', ebene: 'gemeinsam', minuten: 30,
+    modul: 'markttraktion', nach: ['team'],
     titel: 'Grundlagen des Vertriebs',
     warum: 'Positionierung, Wertelisten und Wochenziele machen Vorschläge, Texte und das Scoreboard erst passend.',
     wie: [
@@ -679,6 +775,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-visitenkarte', spaeter: true, etappe: 4, nr: '4.7', ebene: 'ich', optional: true, minuten: 10,
+    modul: 'markttraktion',
     titel: 'Eigene Visitenkarte',
     warum: 'Auf Veranstaltungen zeigst du deine Karte als QR-Code — wer sie scannt, hat deine Kontaktdaten.',
     wie: ['Netzwerken › Meine Karte: Profil anlegen, Design wählen.'],
@@ -687,6 +784,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-buchungsseite', spaeter: true, etappe: 4, nr: '4.8', ebene: 'ich', optional: true, minuten: 15,
+    modul: 'kalender', nach: ['datenschutz', 'kalender-zuordnen', 'ich-arbeitsrahmen'],
     titel: 'Buchungsseite für Erstgespräche',
     warum: 'Interessenten buchen selbst einen freien Termin bei dir. Braucht den Verantwortlichen (1.5), einen frischen Kalender und deine Wochenvorlage (5.7).',
     wie: ['Kalender › Buchungsseiten: Seite anlegen, Fenster und Dauer festlegen, Link kopieren.'],
@@ -697,6 +795,7 @@ export const SCHRITTE: Schritt[] = [
   // ── Etappe 5 — Planung & Finanzplan ─────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'jahresziele', samstag: true, etappe: 5, nr: '5.1', ebene: 'gemeinsam', minuten: 30, pruefung: 'ziele',
+    modul: 'planung', nach: ['altbestand'], datenOrt: ['jahresziel'],
     titel: 'Nordstern und Jahresziele',
     warum: 'Die Jahresziele sind die Messlatte für alles darunter — Quartal, Monat, Woche und die Indizes rechnen daraus.',
     wie: [
@@ -708,6 +807,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'zahlenziele', stichtag: true, spaeter: true, etappe: 5, nr: '5.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 10,
+    modul: 'finanzen', nach: ['jahresziele', 'business-grundlagen'], datenOrt: ['jahresziel'],
     titel: 'Zahlenziele gleichziehen',
     warum: 'Das Umsatzziel steht heute noch an mehreren Stellen. Bis es eine Quelle gibt, überall dieselbe Zahl — sonst widersprechen sich Controlling und Index.',
     wie: [
@@ -719,6 +819,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'meilensteine-fokus', spaeter: true, etappe: 5, nr: '5.3', ebene: 'gemeinsam', minuten: 30, pruefung: 'fokus',
+    modul: 'planung', nach: ['jahresziele'],
     titel: 'Meilensteine und Fokus',
     warum: 'Meilensteine mit Termin, Aufwand und Beteiligten machen die Kapazität sichtbar. Ein Fokus je Horizont sagt ZOE und Planen, was gerade wichtiger ist.',
     wie: [
@@ -729,7 +830,8 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: '/os/fokus', label: 'Planung › Fokus' },
   },
   {
-    id: 'finanzplan', privatFinanzen: true, samstag: true, etappe: 5, nr: '5.4', ebene: 'gemeinsam', minuten: 45,
+    id: 'finanzplan', privatFinanzen: true, samstag: true, etappe: 5, nr: '5.4', ebene: 'gemeinsam', minuten: 45, pruefung: 'finanzplan',
+    modul: 'finanzen', nach: ['eroeffnung'],
     titel: 'Finanzplan anlegen',
     warum: 'Die Finanzplanung rechnet Runway, Steuern und Szenarien. Sie startet mit einem Dokument — hochgeladen oder leer begonnen. (Nur für Konten mit Zugang zu den Privat-Finanzen.)',
     wie: [
@@ -737,11 +839,12 @@ export const SCHRITTE: Schritt[] = [
       'Die Kontostände der Gesellschaften kommen aus dem 0-Punkt (3.6). Stichtag und Planbeginn fallen zusammen (01.10.) — kein Handwert für den ersten Planmonat nötig.',
       'Budget, Schulden und Fixkosten nicht hier doppelt pflegen — der Haushalt führt das Ist (Datenkarte).',
     ],
-    danach: 'Runway und Szenarien rechnen mit euren Zahlen.',
+    danach: 'Geprüft wird: das Dokument ist da und die Netto-Tabelle ist kein Platzhalter mehr. Runway und Szenarien rechnen mit euren Zahlen.',
     wo: { href: WEG.finanzplanung('privat'), label: 'Finanzen › Privat › Planung' },
   },
   {
     id: 'steuerprofil', spaeter: true, etappe: 5, nr: '5.4b', ebene: 'gemeinsam', nurInhaber: true, minuten: 25,
+    modul: 'finanzen', nach: ['finanzplan', 'steckbrief'], datenOrt: ['steuerparameter'],
     titel: 'Steuerprofil',
     warum: `Fristen und Schätzungen rechnen mit Rechtsform, Hebesatz und Vorauszahlungen. Für die ${UG_NAME} rechnet das Steuer-Modul noch keine Fristen und keine Schätzung (es zeigt „nicht hinterlegt“). Hinweis, keine Steuerberatung.`,
     wie: [
@@ -754,6 +857,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'selbststaendigkeit', spaeter: true, etappe: 5, nr: '5.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    modul: 'finanzen', nach: ['finanzplan'], datenOrt: ['selbst-jan-sep', 'est-voraus'],
     titel: 'Selbstständigkeit: Januar bis September',
     warum: 'Die Einkommensteuer rechnet über das ganze Jahr. Die Monate vor dem Planbeginn (01.10.) gehören deshalb in die Finanzplanung — als Summen, nicht als Monatsabschlüsse.',
     wie: [
@@ -765,6 +869,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'finanzplan-business', spaeter: true, etappe: 5, nr: '5.6', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    modul: 'finanzen', nach: ['mandate', 'finanzplan'],
     titel: 'Finanzplan Business',
     warum: 'Der Business-Teil der Planung rechnet aus Mandaten, Sachkosten und dem Arbeitsplan.',
     wie: ['Finanzen › Business › Planung: Bausteine aus den Mandaten übernehmen, Sachkosten, Arbeitsplan setzen, offene Vorschläge entscheiden.'],
@@ -772,7 +877,8 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: WEG.finanzplanung('business'), label: 'Finanzen › Business › Planung' },
   },
   {
-    id: 'ich-arbeitsrahmen', spaeter: true, etappe: 5, nr: '5.7', ebene: 'ich', minuten: 20,
+    id: 'ich-arbeitsrahmen', spaeter: true, etappe: 5, nr: '5.7', ebene: 'ich', minuten: 20, pruefung: 'arbeitsrahmen',
+    modul: 'planung', nach: ['kalender-zuordnen'], datenOrt: ['arbeitszeit', 'urlaub'],
     titel: 'Mein Arbeitsrahmen',
     warum: 'Ohne Eintrag rechnet MAKE OS mit 40 Stunden bzw. Mo–Fr 9–18 Uhr. Deine echte Arbeitszeit macht Kapazität und freie Zeit ehrlich.',
     wie: [
@@ -780,27 +886,30 @@ export const SCHRITTE: Schritt[] = [
       'Kapazität: Grundwert; Urlaub nur einmal als „Abwesend“ im Kalender.',
       'Arbeitszeit außerhalb (2.6) als Block.',
     ],
-    danach: 'Machbarkeit und freie Zeit stimmen für dich.',
+    danach: 'Geprüft wird: ein Grundwert in der Kapazität oder Arbeits-Blöcke in deiner Wochenvorlage. Dann stimmen Machbarkeit und freie Zeit für dich.',
     wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
   },
   {
-    id: 'mandate-kapazitaet', spaeter: true, etappe: 5, nr: '5.8', ebene: 'gemeinsam', nurInhaber: true, minuten: 10,
+    id: 'mandate-kapazitaet', spaeter: true, etappe: 5, nr: '5.8', ebene: 'gemeinsam', nurInhaber: true, minuten: 10, pruefung: 'kapazitaet',
+    modul: 'planung', nach: ['mandate', 'ich-arbeitsrahmen'],
     titel: 'Mandate je Person',
     warum: 'Mandate binden Stunden. Erst mit der Zuweisung sieht die Kapazität, was wirklich frei ist.',
     wie: ['Planung › Kapazität: je aktivem Mandat die gebundenen Stunden je Woche und Person.'],
-    danach: 'Engpässe zeigen sich, bevor sie passieren.',
+    danach: 'Geprüft wird: jedes laufende Mandat hat eine Zuweisung. Ohne laufendes Mandat zählt dein Häkchen.',
     wo: { href: WEG.kapazitaet(), label: 'Planung › Kapazität' },
   },
   {
-    id: 'ich-routinen', spaeter: true, etappe: 5, nr: '5.9', ebene: 'ich', minuten: 10,
+    id: 'ich-routinen', spaeter: true, etappe: 5, nr: '5.9', ebene: 'ich', minuten: 10, pruefung: 'routinen',
+    modul: 'planung',
     titel: 'Eigene Routinen',
     warum: 'Was regelmäßig dran ist, steht dann auf Heute — abhakbar, ohne daran denken zu müssen.',
     wie: ['Planung › Routinen: mindestens eine eigene Routine mit Rhythmus anlegen.'],
-    danach: 'Heute zeigt, was dran ist.',
+    danach: 'Geprüft wird: mindestens eine aktive eigene Routine. Heute zeigt, was dran ist.',
     wo: { href: WEG.routinen(), label: 'Planung › Routinen' },
   },
   {
     id: 'rhythmen', spaeter: true, etappe: 5, nr: '5.10', ebene: 'gemeinsam', nurMitMehreren: true, minuten: 20,
+    modul: 'planung', nach: ['kalender-zuordnen'],
     titel: 'Gemeinsame Rhythmen',
     warum: 'Zu zweit hält ein fester Takt alles zusammen: Finanzen-Check, Wochenstart, Rückblick, Paar-Gespräch.',
     wie: [
@@ -813,6 +922,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'kompass', spaeter: true, etappe: 5, nr: '5.11', ebene: 'gemeinsam', minuten: 15, pruefung: 'kompass',
+    modul: 'planung', nach: ['jahresziele'],
     titel: 'Kompass stellen',
     warum: 'Die Regler steuern, wie das System euch behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt. Er gilt vorerst für beide.',
     wie: ['Lage wählen, die Regler durchgehen und die Wirkung mitlesen.', 'Unten die Abweichungen ansehen: dort steht, wo der Alltag dem Kompass widerspricht.'],
@@ -821,6 +931,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'projekte', spaeter: true, etappe: 5, nr: '5.12', ebene: 'gemeinsam', minuten: 30,
+    modul: 'planung', nach: ['mandate'],
     titel: 'Projekte und Listen je Space',
     warum: 'Ordnung in den Aufgaben: je Gesellschaft, Privat und Mandant die Projekte, die gerade laufen.',
     wie: ['Aufgaben › Überblick › „+ Projekt“ — aus Vorlagen, mit Verantwortlichen.'],
@@ -829,6 +940,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-aufgaben', spaeter: true, etappe: 5, nr: '5.13', ebene: 'ich', minuten: 20, pruefung: 'aufgaben-ich',
+    modul: 'planung', nach: ['projekte'],
     titel: 'Deine Aufgaben sichten',
     warum: 'Was auf dich zugewiesen ist, soll nicht in einer langen Liste untergehen.',
     wie: ['Aufgaben › Filter „Meine“.', 'Fälligkeiten setzen oder mit Kommentar zurückgeben; mit @Name holst du jemanden dazu.', 'Überfälliges neu datieren oder schließen.'],
@@ -839,6 +951,7 @@ export const SCHRITTE: Schritt[] = [
   // ── Etappe 6 — Gesundheit & Familie ─────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'ich-gesundheit-profil', samstag: true, etappe: 6, nr: '6.1', ebene: 'ich', minuten: 20,
+    modul: 'gesundheit', nach: ['ich-gesundheit', 'altbestand'],
     titel: 'Gesundheit für dich einrichten',
     warum: 'Ernährungsprofil, Sport-Einstieg und Körper-Profil gehören nur dir. Niemand richtet das für eine andere Person ein.',
     wie: [
@@ -851,6 +964,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-kopf-energie', samstag: true, etappe: 6, nr: '6.2', ebene: 'ich', optional: true, minuten: 5,
+    modul: 'gesundheit', nach: ['ich-gesundheit'],
     titel: '„Kopf & Energie“ in der Kapazität',
     warum: 'Deine Erholung kann in die Kapazität einfließen — nur mit deiner eigenen Einwilligung und wenn du Gesundheit mit allen im Haushalt teilst. Vorgabe: aus.',
     wie: ['Planung › Kapazität: bei dir „Kopf & Energie“ einschalten oder bewusst aus lassen.'],
@@ -858,36 +972,40 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: WEG.kapazitaet(), label: 'Planung › Kapazität' },
   },
   {
-    id: 'familie-rahmen', samstag: true, etappe: 6, nr: '6.3', ebene: 'gemeinsam', minuten: 15,
+    id: 'familie-rahmen', samstag: true, etappe: 6, nr: '6.3', ebene: 'gemeinsam', minuten: 15, pruefung: 'familie-rahmen', bestaetigen: true,
+    modul: 'familie', nach: ['kalender-zuordnen'],
     titel: 'Familie › Rahmen',
     warum: 'Paar-Gespräch, Business-freie Zeiten und Ausnahmezeit geben dem Familienbereich seinen Takt.',
     wie: [
       'Paar-Gespräch: Wochentag und Uhrzeit — es landet im gemeinsamen Kalender.',
       'Business-freie Zeiten und, wenn nötig, eine Ausnahmezeit.',
     ],
-    danach: 'Der Pflege-Rhythmus misst gegen euren Rahmen.',
+    danach: 'Geprüft wird, ob das nächste Paar-Gespräch im gemeinsamen Kalender steht; Business-freie Zeiten und Ausnahmezeit bestätigt ihr mit dem Häkchen.',
     wo: { href: WEG.familie(), label: 'Familie' },
   },
   {
-    id: 'familie-menschen', samstag: true, etappe: 6, nr: '6.4', ebene: 'gemeinsam', minuten: 15,
+    id: 'familie-menschen', samstag: true, etappe: 6, nr: '6.4', ebene: 'gemeinsam', minuten: 15, pruefung: 'familie-menschen',
+    modul: 'familie', datenOrt: ['geburtstage'],
     titel: 'Menschen und wichtige Tage',
     warum: 'Geburtstage und wichtige Tage erinnern rechtzeitig — private hier, die von Geschäftskontakten im CRM (siehe Datenkarte).',
     wie: ['Familie: die wichtigsten Menschen mit Geburtstag und die wichtigen Tage eintragen.'],
-    danach: 'Die Glocke erinnert am Vortag; Heute zeigt die nächsten Anlässe.',
+    danach: 'Geprüft wird, ob mindestens ein Mensch mit Geburtstag eingetragen ist. Die Glocke erinnert am Vortag; Heute zeigt die nächsten Anlässe.',
     wo: { href: WEG.familie(), label: 'Familie' },
   },
 
   // ── Etappe 7 — ZOE & Brain ──────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    id: 'agenten', spaeter: true, etappe: 7, nr: '7.1', ebene: 'gemeinsam', nurInhaber: true, minuten: 15,
+    id: 'agenten', spaeter: true, etappe: 7, nr: '7.1', ebene: 'gemeinsam', nurInhaber: true, minuten: 15, pruefung: 'agenten', bestaetigen: true,
+    modul: 'zoe', nach: ['ki-instanz'],
     titel: 'Autonomie der Agenten',
     warum: 'Jeder Agent braucht eine Stufe: nur vorschlagen, nach Freigabe oder selbstständig. Was nach außen geht, braucht immer eine Freigabe.',
     wie: ['ZOE › Agenten: jeden Agenten durchgehen und die Stufe bewusst setzen.', 'Abschalten, was gerade nicht gebraucht wird.'],
-    danach: 'Die Agenten arbeiten im gesetzten Rahmen.',
+    danach: 'Geprüft wird, ob mindestens ein Head eingestellt ist bzw. du schon mit einem Head arbeitest; dass alle durchgesehen sind, bestätigst du mit dem Häkchen.',
     wo: { href: WEG.agenten(), label: 'ZOE › Agenten' },
   },
   {
     id: 'ich-zoe', spaeter: true, etappe: 7, nr: '7.2', ebene: 'ich', minuten: 10, pruefung: 'zoe',
+    modul: 'zoe', nach: ['ich-ki'],
     titel: 'ZOE kennenlernen',
     warum: 'Fragen statt suchen. ZOE kennt die Zahlen, Aufgaben und Termine, die du sehen darfst — und bereitet Arbeit vor. Entscheiden tust du.',
     wie: [
@@ -899,18 +1017,20 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: '/zoe', label: 'ZOE' },
   },
   {
-    id: 'brain', spaeter: true, etappe: 7, nr: '7.3', ebene: 'gemeinsam', minuten: 45,
+    id: 'brain', spaeter: true, etappe: 7, nr: '7.3', ebene: 'gemeinsam', minuten: 45, pruefung: 'brain', bestaetigen: true,
+    modul: 'zoe', nach: ['vault'],
     titel: 'Brain: Regeln und Kern-Notizen',
     warum: 'Regeln und Konstitution sind Anweisungen an ZOE — sie gelten erst, wenn eine Person sie freigibt. Kern-Notizen sagen ZOE, wer ihr seid.',
     wie: [
       'Brain: Regeln und Konstitution prüfen und freigeben, Kern-Notizen „Wer wir sind“ anlegen.',
       'App-Brücke (Privat nur als Zahlen oder voll) und die Zeit-Freigabe je Person festlegen.',
     ],
-    danach: 'ZOE arbeitet nach euren Regeln.',
+    danach: 'Geprüft wird: mindestens eine freigegebene Regel und die App-Brücke bewusst gesetzt; die Kern-Notizen bestätigt ihr mit dem Häkchen.',
     wo: { href: WEG.wissen(), label: 'Brain' },
   },
   {
     id: 'uebergabe-probe', spaeter: true, etappe: 7, nr: '7.4', ebene: 'gemeinsam', nurMitMehreren: true, minuten: 10,
+    modul: 'planung', nach: ['haushalt'],
     titel: 'Probelauf: Übergabe',
     warum: 'Einmal ausprobieren, wie Arbeit zwischen euch wandert — bevor es darauf ankommt.',
     wie: ['Auf Heute eine Aufgabe mit @Name an die andere Person anlegen.', 'Die andere Person sieht sie in der Glocke, kommentiert und hakt sie ab.'],
@@ -921,6 +1041,7 @@ export const SCHRITTE: Schritt[] = [
   // ── Etappe 8 — Abschluss ────────────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'ich-rundgang', spaeter: true, etappe: 8, nr: '8.1', ebene: 'ich', minuten: 20,
+    modul: 'grundlage',
     titel: 'Rundgang durch die Software',
     warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
@@ -933,6 +1054,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'ich-bauplan', spaeter: true, etappe: 8, nr: '8.5', ebene: 'ich', minuten: 5,
+    modul: 'grundlage',
     titel: 'Mitbauen: Problem oder Idee melden',
     warum: 'Mitbauen braucht keinen Code. Was hakt oder fehlt, kommt als Karte auf das Bauplan-Board — mit der Seite, auf der du gerade warst.',
     wie: [
@@ -944,6 +1066,7 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'datenstand', spaeter: true, etappe: 8, nr: '8.2', ebene: 'gemeinsam', minuten: 15,
+    modul: 'grundlage',
     titel: 'Datenstand prüfen',
     warum: 'Am Ende einmal sehen, welcher Bereich gepflegt, leer oder veraltet ist.',
     wie: [
@@ -954,7 +1077,8 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: '/os/datenbasis', label: 'Einstellungen › Datenbasis' },
   },
   {
-    id: 'hoi-gruen', spaeter: true, etappe: 8, nr: '8.3', ebene: 'instanz', nurInhaber: true, minuten: 20,
+    id: 'hoi-gruen', spaeter: true, etappe: 8, nr: '8.3', ebene: 'instanz', nurInhaber: true, minuten: 20, pruefung: 'hoi',
+    modul: 'grundlage', nach: ['update', 'sicherung', 'adresse'],
     titel: 'Head of IT ohne Rot',
     warum: 'Das Lagebild zeigt, ob Server, Sicherung, Verbindungen und Schlüssel in Ordnung sind. Erst ohne Rot ist die Einrichtung abgeschlossen.',
     wie: [
@@ -962,11 +1086,12 @@ export const SCHRITTE: Schritt[] = [
       'Für den Außenblick in den GitHub-Einstellungen den eingeschränkten HOI-Schlüssel und die Adresse hinterlegen — nie den Dienstschlüssel.',
       'Alle roten Befunde abarbeiten.',
     ],
-    danach: 'Der Head of IT bleibt eure dauerhafte Ampel.',
+    danach: 'Geprüft wird: kein roter Befund, Lage-Sammler und Außenblick melden. Der Head of IT bleibt eure dauerhafte Ampel.',
     wo: HOI,
   },
   {
     id: 'regeln', spaeter: true, etappe: 8, nr: '8.4', ebene: 'gemeinsam', minuten: 5,
+    modul: 'grundlage',
     titel: 'Zusammenarbeit: Zonen und Updates',
     warum: 'Am Code wird laufend weitergebaut — aber nicht am laufenden System. Die Zonen sagen, was jederzeit geht und wann man kurz wartet.',
     wie: [
@@ -1022,29 +1147,78 @@ export function schritteFuer(k: Kontext | null): Schritt[] {
   return nachEtappe(SCHRITTE.filter(s => schrittFuer(s, k)));
 }
 
-export interface HakenZustand { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, { erfuellt: boolean; wert: string }>; frueher?: string[] }
+/**
+ * Der Zustand einer Person: Häkchen, Befunde (nur ja/nein + Zähler), alte Häkchen (`frueher`) und — B10 — die Schritte mit Prüfung, die schon
+ * einmal grün waren (`gruen`: Kennung → Tag, festgehalten im Morgenlauf, nur die eigenen).
+ */
+export interface HakenZustand { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, PruefBefund>; frueher?: string[]; gruen?: Record<string, string> }
 
 /**
  * Getan? Mit Prüfung zählt der Befund: rot ist NIE getan (auch nicht mit Häkchen); grün ist getan — bei `bestaetigen` erst mit Häkchen.
- * Ohne Prüfung (oder ohne Befund für diese Person) zählt das Häkchen.
+ * Ohne Prüfung (oder ohne Befund für diese Person, oder ein „leerer“ Befund — es gibt nichts zu prüfen) zählt das Häkchen.
+ * DIE Fertig-Regel — Fortschritt, „Als Nächstes“, Voraussetzungen, „zurückgefallen“, Heute-Karte und Datenbasis fragen nur sie.
  */
 export function istFertig(s: Schritt, z: HakenZustand | null | undefined): boolean {
   if (!z) return false;
   const b = s.pruefung ? z.befunde[s.pruefung] : undefined;
   const hand = !!z.erledigt[s.id];
-  if (b) return b.erfuellt && (!s.bestaetigen || hand);
+  if (b && !b.leer) return b.erfuellt && (!s.bestaetigen || hand);
   return hand;
 }
 
 /** Zählt erst, wenn getan: optionale und spätere Schritte (einzeln bis 16.10.). */
 const zaehltErstWennGetan = (s: Schritt) => !!(s.optional || s.spaeter);
 
-/** Fortschritt über eine Schrittliste — „Als Nächstes“ ist der erste offene, zählende Schritt in Etappen-Reihenfolge. */
+/**
+ * Fortschritt über eine Schrittliste. „Als Nächstes“ ist der erste offene, zählende Schritt in Etappen-Reihenfolge, dessen Voraussetzungen
+ * (`nach`, soweit sie in DIESER Liste stehen und zählen) getan sind — sonst der erste offene. Voraussetzungen sperren nie, sie ordnen nur.
+ */
 export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | null | undefined): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
   const sortiert = nachEtappe(schritte);
   const zaehlen = sortiert.filter(s => !zaehltErstWennGetan(s) || istFertig(s, z));
   const offen = zaehlen.filter(s => !istFertig(s, z));
-  return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster: offen[0] ?? null };
+  const offenIds = new Set(offen.map(s => s.id));
+  const bereit = offen.find(s => !(s.nach ?? []).some(id => offenIds.has(id)));
+  return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster: bereit ?? offen[0] ?? null };
+}
+
+/**
+ * Offene Voraussetzungen eines Schritts für diese Person (Hinweis „erst …“): nur Schritte, die die Person überhaupt sieht (Privat-Finanzen,
+ * Altbestand) und die bei ihr nicht entfallen (eine Person) — Instanz-Schritte der Inhaber zählen mit (alle sehen ihren Stand). Fertig nur
+ * über `istFertig`.
+ */
+export function offeneVoraussetzungen(s: Schritt, k: Kontext | null, z: HakenZustand | null | undefined): Schritt[] {
+  return (s.nach ?? []).map(schrittMitId).filter((v): v is Schritt =>
+    !!v && sichtbarFuer(v, k) && !(v.nurMitMehreren && k && k.personen < 2) && !(v.nurEingeladen && !schrittFuer(v, k)) && !istFertig(v, z));
+}
+
+/**
+ * B10 „dauerhafte Ampel“: Schritte mit Prüfung, die schon einmal grün waren (`z.gruen`, Morgenlauf) und jetzt rot sind — „braucht dich“.
+ * Ein leerer Befund ist nie zurückgefallen (nichts zu prüfen), ein fehlender auch nicht (kein Befund für diese Person). Rein.
+ */
+export function zurueckgefallen(schritte: readonly Schritt[], z: HakenZustand | null | undefined): Schritt[] {
+  if (!z?.gruen) return [];
+  return nachEtappe(schritte).filter(s => {
+    const b = s.pruefung ? z.befunde[s.pruefung] : undefined;
+    return !!b && !b.leer && !b.erfuellt && !!z.gruen![s.id] && !istFertig(s, z);
+  });
+}
+
+/** Modul eines Schritts (fehlt = Grundlage). */
+export const modulVon = (s: Pick<Schritt, 'modul'>): Modul => s.modul ?? 'grundlage';
+/** Nur die Schritte der Grundlage und der gegebenen Module (A1.10: eine Instanz „nur Markttraktion“) — ohne Angabe alle. */
+export function nurModule(schritte: readonly Schritt[], module?: readonly Modul[] | null): Schritt[] {
+  if (!module) return [...schritte];
+  return schritte.filter(s => modulVon(s) === 'grundlage' || module.includes(modulVon(s)));
+}
+
+/** Wie steht ein Bereich in der Datenbasis (B8)? Aus EINEM Befund: gepflegt · leer · veraltet · offen; ohne Befund „unbekannt“. */
+export type DatenStand = 'gepflegt' | 'leer' | 'veraltet' | 'offen' | 'unbekannt';
+export function datenStandVon(b: PruefBefund | null | undefined): DatenStand {
+  if (!b) return 'unbekannt';
+  if (b.leer) return 'leer';
+  if (b.erfuellt) return 'gepflegt';
+  return b.veraltet ? 'veraltet' : 'offen';
 }
 
 export type Gruppe = 'freitag' | 'samstag' | 'spaeter';
@@ -1095,31 +1269,34 @@ export const frueherErlaubt = (s: Pick<Schritt, 'pruefung' | 'stichtag'>): boole
 export const altePerson = (altId: string): string | null => (ALT_ZU_NEU[altId] ? /^([a-z0-9]+)-[a-z]/.exec(altId)?.[1] ?? null : null);
 
 // ── Datenkarte (ONBOARDING_PLAN.md A3): welche Zahl wohin, bis die Doppelungen weg sind ─────────────────────────────────────────
-export interface DatenkartenZeile { fakt: string; hier: string; nicht: string; href?: string; etappe: number }
+export interface DatenkartenZeile { /** Kennung (für `Schritt.datenOrt`) — nie ändern. */ id: string; fakt: string; hier: string; nicht: string; href?: string; etappe: number }
 export const DATENKARTE: DatenkartenZeile[] = [
-  { fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3 },
-  { fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3 },
-  { fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
-  { fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.eroeffnung(), etappe: 3 },
-  { fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.rechnungen(), etappe: 3 },
-  { fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3 },
-  { fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Business › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
-  { fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Steckbrief und Absender', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
-  { fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
-  { fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
-  { fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
-  { fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 5 },
-  { fakt: 'Produkte und Preise', hier: 'Mandate & Unternehmen › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
-  { fakt: 'Jahresziel Umsatz', hier: 'Planung › Jahr — dieselbe Zahl in Controlling und Business-Einstellungen', nicht: '–', href: WEG.jahr(), etappe: 5 },
-  { fakt: 'Arbeitszeit', hier: 'Wochenvorlage (Planung › Routinen)', nicht: 'Kalender-Arbeitsfenster, Beratertage', href: WEG.routinen(), etappe: 5 },
-  { fakt: 'Arbeitszeit außerhalb (fremder Kalender)', hier: 'Blöcke bzw. Abwesenheit (Schritt 2.6)', nicht: '–', href: WEG.routinen(), etappe: 2 },
-  { fakt: 'Urlaub', hier: 'Kalender „Abwesend“', nicht: 'Ausnahme in der Kapazität', href: WEG.kalender(), etappe: 5 },
-  { fakt: 'Budget, Schulden, Fixkosten und Ist privat', hier: 'Haushalt (Privat › Konten & Buchungen) — er führt das Ist', nicht: 'Finanzplanung (liest ab Phase 1 aus dem Haushalt)', href: WEG.privat('fixkosten'), etappe: 3 },
-  { fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
-  { fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },
-  { fakt: 'Persönliche Kennungen (Steuer-ID, SV-Nummer)', hier: 'vorerst nirgends', nicht: 'Einstellungen › Stammdaten', etappe: 3 },
-  { fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'konto-stichtag', fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3 },
+  { id: 'konto-danach', fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3 },
+  { id: 'konto-privat', fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
+  { id: 'posten-stichtag', fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.eroeffnung(), etappe: 3 },
+  { id: 'posten-danach', fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.rechnungen(), etappe: 3 },
+  { id: 'monatszahlen', fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3 },
+  { id: 'koepfe', fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Business › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
+  { id: 'firmendaten', fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Steckbrief und Absender', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'beteiligungen', fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'selbst-jan-sep', fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
+  { id: 'est-voraus', fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
+  { id: 'steuerparameter', fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 5 },
+  { id: 'produkte', fakt: 'Produkte und Preise', hier: 'Mandate & Unternehmen › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
+  { id: 'jahresziel', fakt: 'Jahresziel Umsatz', hier: 'Planung › Jahr — dieselbe Zahl in Controlling und Business-Einstellungen', nicht: '–', href: WEG.jahr(), etappe: 5 },
+  { id: 'arbeitszeit', fakt: 'Arbeitszeit', hier: 'Wochenvorlage (Planung › Routinen)', nicht: 'Kalender-Arbeitsfenster, Beratertage', href: WEG.routinen(), etappe: 5 },
+  { id: 'arbeitszeit-aussen', fakt: 'Arbeitszeit außerhalb (fremder Kalender)', hier: 'Blöcke bzw. Abwesenheit (Schritt 2.6)', nicht: '–', href: WEG.routinen(), etappe: 2 },
+  { id: 'urlaub', fakt: 'Urlaub', hier: 'Kalender „Abwesend“', nicht: 'Ausnahme in der Kapazität', href: WEG.kalender(), etappe: 5 },
+  { id: 'privat-ist', fakt: 'Budget, Schulden, Fixkosten und Ist privat', hier: 'Haushalt (Privat › Konten & Buchungen) — er führt das Ist', nicht: 'Finanzplanung (liest ab Phase 1 aus dem Haushalt)', href: WEG.privat('fixkosten'), etappe: 3 },
+  { id: 'ruecklage', fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
+  { id: 'geburtstage', fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },
+  { id: 'kennungen', fakt: 'Persönliche Kennungen (Steuer-ID, SV-Nummer)', hier: 'vorerst nirgends', nicht: 'Einstellungen › Stammdaten', etappe: 3 },
+  { id: 'vertraege', fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
 ];
+
+/** Eine Zeile der Datenkarte per Kennung (null = unbekannt). */
+export const datenkarteMitId = (id: string): DatenkartenZeile | null => DATENKARTE.find(d => d.id === id) ?? null;
 
 /** Die drei Zonen — die Abmachung, damit Weiterbauen und Arbeiten sich nicht in die Quere kommen. */
 export const ZONEN = [
