@@ -111,6 +111,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'inbox/senden': r('POST', 'person', 'Senden NUR per Einzelklick der Person über das Postfach des Gesprächs (eigenePerson; Dienstweg 403).'),
   'inbox/entwurf': r('POST', 'person', 'ZOE-Entwurf (Vorschlag) zu einem eigenen Gespräch (eigenePerson).'),
   'inbox/postfaecher': r('GET,POST', 'person', 'Eigene Postfächer verbinden/einstellen/erneuern/trennen; Passwörter nie in der Antwort (eigenePerson).'),
+  'inbox/ablegen': r('POST', 'person', 'Anhang bzw. Mail als Text aus einem EIGENEN Gespräch per Klick in die CRM-Ablage oder die Projekt-Dateien (Bytes nur aus dem eigenen Spiegel; Art. 18/Werbesperre, Bereich, Typ am Inhalt; eigenePerson, Dienstweg 403).'),
   'inbox/anhang': r('GET', 'person', 'Anhang aus dem eigenen IMAP-Postfach bzw. einem sichtbaren Team-Postfach (Zugang des Besitzers), nur als Download (eigenePerson).'),
   'inbox/uebergaben': r('GET,POST', 'person', 'Übergaben (freigegebene Kopien) an bzw. von der Person — Sicht serverseitig (uebergabeSichtbar, Privat nie an finanzRecht business), Schreiben nur Beteiligte (eigenePerson; Dienstweg 403).'),
   'inbox/suche': r('GET', 'person', 'Suche nur in dem, was die Person sieht (eigene Spiegel, sichtbare Team-Postfächer, eigene Übergaben); Suchbegriff nie im Protokoll (eigenePerson).'),

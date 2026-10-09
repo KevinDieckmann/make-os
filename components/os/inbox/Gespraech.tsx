@@ -10,6 +10,9 @@
 // „Zuordnen zu …“, wenn mehrere Akten die Nummer tragen (nie automatisch).
 // Teilen (08.10., Lücke 6): eigenes Gespräch → „Übergeben an …“ (Kopie, nur an Personen, die den Bereich sehen dürfen); Gespräch eines
 // Team-Postfachs bzw. WhatsApp → „Wer kümmert sich“ (Stand/409). Gesendet wird im Team-Postfach ALS dieses Postfach.
+// Flows (09.10., Kevin: „antworten, Dokumente wegsortieren oder Aufgabe erstellen — saubere Flows“): EIN Aktions-Block mit drei Hauptwegen
+// Antworten · Ablegen · Aufgabe (Flows.tsx, Ziel-Vorschlag lib/inbox/flows.ts), darunter die Rückmeldung „Aus diesem Gespräch“ mit Links;
+// „danach erledigen“ (je Browser gemerkt) legt das Gespräch nach jeder dieser Aktionen ab.
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -17,10 +20,8 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
-import { gespraechPfad } from '@/lib/inbox/strom';
-import { aufgabeAusGespraech, followUpAusGespraech, kontaktAusGespraech, kontaktAnlegenErlaubt, firmaVorschlag, spaceVon, terminVorgabe } from '@/lib/inbox/aus-gespraech';
+import { followUpAusGespraech, kontaktAusGespraech, kontaktAnlegenErlaubt, firmaVorschlag, spaceVon, terminVorgabe } from '@/lib/inbox/aus-gespraech';
 import { FACH_LABEL } from '@/lib/inbox/faecher';
-import type { Owner } from '@/types/common';
 import { Knopf, Chip, Hinweis, Ueberschrift, Karte, Leer, LEUCHT, useBreit } from '../ui';
 import { NeuerTermin } from '../kalender/NeuerTermin';
 import { GmailText } from './GmailText';
@@ -29,6 +30,8 @@ import { BelegAusMail } from './BelegAusMail';
 import { WaMedium } from '../whatsapp';
 import { WaAntwortInbox, WaEtikett, WaKopf, WaZustell } from './WhatsappTeile';
 import { KuemmertWahl, UebergebenFeld } from './Teilen';
+import { FlowAblegen, FlowAufgabe, FlowErgebnisse, useDanachErledigen } from './Flows';
+import type { AblageArt } from '@/lib/inbox/flows';
 import { aktion, anhangLink, datumLang, groesse, holen, naechsterMontag, senden, tagIn, type Ansicht } from './daten';
 
 interface AkteTermin { titel: string; start: string; ganztags?: boolean; abgesagt?: boolean }
@@ -38,14 +41,17 @@ const KONTEXT_TERMIN = (iso: string, ganztags?: boolean) => new Date(iso.length 
 export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, startAntwort }: {
   id: string; person: string; meldung: (t: string, rueck?: () => void) => void; onGeaendert: () => void; onZurueck?: () => void; startAntwort?: boolean;
 }) {
-  const { state, dispatch } = useTasks();
+  const { state } = useTasks();
   const breit = useBreit();
   const [a, setA] = useState<Ansicht | null>(null);
   const [fehler, setFehler] = useState('');
   const [offen, setOffen] = useState<string | null>(null);
   const [antwort, setAntwort] = useState<null | { allen: boolean; zoe?: string }>(null);
   const [termin, setTermin] = useState(false);
-  const [beleg, setBeleg] = useState(false);
+  const [beleg, setBeleg] = useState<false | { nachricht: string; teil: string; name: string; typ: string } | 'vorschlag'>(false);
+  const [flow, setFlow] = useState<null | { art: 'aufgabe'; datum?: string } | { art: 'ablegen'; start?: AblageArt }>(null);
+  const [ergebnisse, setErgebnisse] = useState<{ text: string; href: string }[]>([]);
+  const [danachErledigen, setDanachErledigen] = useDanachErledigen();
   const [spaeterAuf, setSpaeterAuf] = useState(false);
   const [kontextAuf, setKontextAuf] = useState(false);
   const [termine, setTermine] = useState<{ kommend?: AkteTermin; vergangen?: AkteTermin } | null>(null);
@@ -58,7 +64,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   }, [id]);
 
   useEffect(() => {
-    setA(null); setOffen(null); setAntwort(startAntwort ? { allen: false } : null); setTermin(false); setBeleg(false); setSpaeterAuf(false); setTermine(null);
+    setA(null); setOffen(null); setAntwort(startAntwort ? { allen: false } : null); setTermin(false); setBeleg(false); setSpaeterAuf(false); setTermine(null); setFlow(null); setErgebnisse([]);
     void laden().then(x => {
       // Öffnen = gelesen (zurückgeschrieben an Gmail bzw. IMAP \Seen).
       if (x?.gespraech.ungelesen) void aktion(id, 'gelesen').then(() => onGeaendert());
@@ -84,16 +90,13 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
     if (r.d.ok) onGeaendert();
     return r.d.ok;
   };
-  const aufgabe = (faellig?: string, titel?: string) => {
-    const v = aufgabeAusGespraech(g, faellig);
-    const t = (titel ?? v.title).slice(0, 300);
-    const link = gespraechPfad(id);
-    const schonDa = state.tasks.find(x => x.status !== 'done' && (x.description ?? '').includes(link));
-    if (!schonDa) dispatch({ type: 'ADD_TASK', payload: {
-      projectId: state.projects[0]?.id ?? '', ...v, title: t, status: 'todo', assignee: person as Owner, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
-    } });
-    meldung(schonDa ? `Aufgabe gab es schon: ${schonDa.title}` : `Aufgabe angelegt${v.dueDate ? ` bis ${v.dueDate.slice(8, 10)}.${v.dueDate.slice(5, 7)}.` : ''}: ${t}`);
+  /** Nach einer der drei Hauptaktionen: Rückmeldung mit Link — und, wenn gewünscht, das Gespräch ablegen (mit Rückgängig). */
+  const nachAktion = (text: string, href?: string) => {
+    if (href) setErgebnisse(l => [...l, { text, href }]);
+    if (!danachErledigen) { meldung(text); return; }
+    void tu('erledigt', {}, 'zurueck').then(ok => { if (ok && onZurueck) onZurueck(); });
   };
+  const aufgabe = (faellig?: string) => { setFlow({ art: 'aufgabe', ...(faellig ? { datum: faellig } : {}) }); setAntwort(null); };
   const followUp = async (faellig: string, text: string) => {
     const f = followUpAusGespraech(g, faellig, text);
     if (!f) { meldung('Ein Follow-up hängt an einer Person — erst „Kontakt anlegen“.'); return; }
@@ -114,7 +117,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   const vorschlag = (v: Ansicht['vorschlaege'][number]) => {
     if (v.art === 'aufgabe') return aufgabe(v.datum);
     if (v.art === 'termin') return setTermin(true);
-    if (v.art === 'beleg') return setBeleg(true);
+    if (v.art === 'beleg') return setBeleg('vorschlag');
     if (v.art === 'zuordnen') return void tu('zuordnen', {}, 'loesen').then(() => laden());
     if (v.art === 'deal') return void followUp(tagIn(7), `Deal „${z?.dealTitel ?? ''}“: nachfassen`);
     if (v.art === 'kontakt') return void kontaktAnlegen();
@@ -232,19 +235,39 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
       </div>
 
       {!antwort && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Knopf onClick={() => setAntwort({ allen: false })}>Antworten</Knopf>
-          {(a.antwort.empfaenger.allen.an.length + a.antwort.empfaenger.allen.cc.length > 1) && <Knopf leise onClick={() => setAntwort({ allen: true })}>Allen antworten</Knopf>}
-          <Knopf leise onClick={() => void tu('erledigt', {}, 'zurueck').then(ok => { if (ok && onZurueck) onZurueck(); })}>Erledigt</Knopf>
-          <Knopf leise onClick={() => setSpaeterAuf(x => !x)}>Später ▾</Knopf>
-          <Knopf leise onClick={() => void tu(g.ungelesen ? 'gelesen' : 'ungelesen')}>{g.ungelesen ? 'Gelesen' : 'Ungelesen'}</Knopf>
-          {!z && g.fach !== 'info' && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich) && <Knopf leise onClick={() => void kontaktAnlegen()} titel={firmaAusMail ? `Firma aus der Mail-Domain: ${firmaAusMail}` : undefined}>{firmaAusMail ? `Kontakt anlegen · ${firmaAusMail}` : 'Kontakt anlegen'}</Knopf>}
-          {/* Kevin 07.10.: unbekannte WhatsApp-Nummern kommen direkt in „Antworten“ — Blocken bleibt hier möglich (mit Rückgängig). */}
-          {wa && !z && <Knopf leise onClick={() => void tu('blocken', {}, 'offen').then(ok => { if (ok && onZurueck) onZurueck(); })}>Nummer blocken</Knopf>}
-          {!(a.vorschlaege.some(v => v.art === 'aufgabe')) && <Knopf leise onClick={() => aufgabe()}>Aufgabe</Knopf>}
-          {!(a.vorschlaege.some(v => v.art === 'termin')) && <Knopf leise onClick={() => setTermin(t => !t)}>Termin</Knopf>}
+        <div role="group" aria-label="Was tun mit diesem Gespräch?" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+          {/* Drei Hauptwege (09.10.): Antworten · Ablegen · Aufgabe — jeder öffnet seinen Flow, nichts passiert ohne Klick. */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Knopf onClick={() => { setFlow(null); setAntwort({ allen: false }); }}>Antworten</Knopf>
+            {(a.antwort.empfaenger.allen.an.length + a.antwort.empfaenger.allen.cc.length > 1) && <Knopf leise onClick={() => { setFlow(null); setAntwort({ allen: true }); }}>Allen antworten</Knopf>}
+            <Knopf leise onClick={() => setFlow(f => (f?.art === 'ablegen' ? null : { art: 'ablegen' }))}>{`Ablegen${g.anhaenge ? ` (${g.anhaenge})` : ''}`}</Knopf>
+            <Knopf leise onClick={() => (flow?.art === 'aufgabe' ? setFlow(null) : aufgabe())}>Aufgabe</Knopf>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
+              <input type="checkbox" checked={danachErledigen} onChange={e => setDanachErledigen(e.target.checked)} style={{ width: 20, height: 20 }} />
+              danach erledigen
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${C.linie}`, paddingTop: 10 }}>
+            <Knopf leise onClick={() => void tu('erledigt', {}, 'zurueck').then(ok => { if (ok && onZurueck) onZurueck(); })}>Erledigt</Knopf>
+            <Knopf leise onClick={() => setSpaeterAuf(x => !x)}>Später ▾</Knopf>
+            <Knopf leise onClick={() => void tu(g.ungelesen ? 'gelesen' : 'ungelesen')}>{g.ungelesen ? 'Gelesen' : 'Ungelesen'}</Knopf>
+            {!z && g.fach !== 'info' && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich) && <Knopf leise onClick={() => void kontaktAnlegen()} titel={firmaAusMail ? `Firma aus der Mail-Domain: ${firmaAusMail}` : undefined}>{firmaAusMail ? `Kontakt anlegen · ${firmaAusMail}` : 'Kontakt anlegen'}</Knopf>}
+            {/* Kevin 07.10.: unbekannte WhatsApp-Nummern kommen direkt in „Antworten“ — Blocken bleibt hier möglich (mit Rückgängig). */}
+            {wa && !z && <Knopf leise onClick={() => void tu('blocken', {}, 'offen').then(ok => { if (ok && onZurueck) onZurueck(); })}>Nummer blocken</Knopf>}
+            {!(a.vorschlaege.some(v => v.art === 'termin')) && <Knopf leise onClick={() => setTermin(t => !t)}>Termin</Knopf>}
+          </div>
         </div>
       )}
+      {flow?.art === 'aufgabe' && (
+        <FlowAufgabe key={`${id}-aufgabe-${flow.datum ?? ''}`} g={g} person={person} datum={flow.datum} onZu={() => setFlow(null)}
+          onAngelegt={(tid, t) => { setFlow(null); nachAktion(`Aufgabe angelegt: ${t}`, WEG.aufgabe(tid)); }} />
+      )}
+      {flow?.art === 'ablegen' && (
+        <FlowAblegen key={`${id}-ablegen`} g={g} a={a} start={flow.start} onZu={() => setFlow(null)}
+          onAbgelegt={(t, href) => { setFlow(null); nachAktion(t, href); }}
+          onBeleg={x => { setFlow(null); setBeleg(x); }} />
+      )}
+      <FlowErgebnisse gespraechId={id} ergebnisse={ergebnisse} />
       {!antwort && a.uebergabe && (a.uebergabe.personen.length > 0 || a.uebergabe.bestehend.length > 0) && (
         <UebergebenFeld gespraech={id} personen={a.uebergabe.personen} bestehend={a.uebergabe.bestehend} meldung={t => meldung(t)} onGeaendert={() => { void laden(); onGeaendert(); }} />
       )}
@@ -259,14 +282,14 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           heute={heute} standardDauer={60} kalender={[]} bereich={space} onZu={() => setTermin(false)}
           onAngelegt={x => { setTermin(false); meldung(x.uid ? (x.gaeste ? `Termin angelegt — Einladung an ${x.gaeste} ${x.gaeste === 1 ? 'Person' : 'Personen'} verschickt.` : 'Termin angelegt.') : 'Angelegt.'); }} />
       )}
-      {beleg && <BelegAusMail quelle={g.quelle} bereich={g.bereich} vorschlag={a.vorschlaege.find(v => v.art === 'beleg')?.anhang} onZu={() => setBeleg(false)} meldung={meldung} />}
+      {beleg && <BelegAusMail quelle={g.quelle} bereich={g.bereich} vorschlag={beleg === 'vorschlag' ? a.vorschlaege.find(v => v.art === 'beleg')?.anhang : beleg} onZu={() => setBeleg(false)} meldung={t => { if (/^Übernommen/.test(t)) nachAktion(t); else meldung(t); }} />}
       {antwort && wa && (
         <WaAntwortInbox key={`${id}-wa`} gespraech={id} fenster={wa.fenster} hinweis={antwort.zoe} meldung={t => meldung(t)} onZu={() => setAntwort(null)}
-          onGesendet={() => { setAntwort(null); void laden(); onGeaendert(); }} />
+          onGesendet={() => { setAntwort(null); void laden(); onGeaendert(); if (danachErledigen) nachAktion('Gesendet.'); }} />
       )}
       {antwort && !wa && (
         <Antwort key={`${id}-${antwort.allen}`} allen={antwort.allen} onZu={() => setAntwort(null)} meldung={t => meldung(t)}
-          onGesendet={() => { setAntwort(null); void laden(); onGeaendert(); }}
+          onGesendet={() => { setAntwort(null); void laden(); onGeaendert(); if (danachErledigen) nachAktion('Gesendet.'); }}
           v={{ gespraech: id, betreff: g.betreff, empfaenger: a.antwort.empfaenger, von: a.antwort.von, signatur: a.antwort.signatur, hinweis: a.antwort.hinweis, postfach: a.antwort.postfach, bereichName: a.antwort.bereichName, ...(antwort.zoe ? { start: { zoeHinweis: antwort.zoe } } : {}) }} />
       )}
     </div>

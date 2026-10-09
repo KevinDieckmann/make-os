@@ -44,6 +44,46 @@ Postfach-Register (`bereich: null`) → unter Business „Verbinde dein erstes P
 4. Unter „Alle“: „Bereiche in „Alle“ ▾“ → „Privat“ abwählen → Privates verschwindet aus „Alle“ (bleibt unter „Privat“ erreichbar); neu laden → bleibt so.
 5. Handy (375 px): Leiste seitwärts wischen, Zeilen tragen „Bereich · Postfach —“ vor dem Text, j/k/e/s/a/r/Esc am Rechner wie bisher.
 
+## 09.10.2026 — Inbox: Flows (Antworten, Ablegen, Aufgabe mit Zuordnung) (nur lokal — Branch `inbox-flows`, Basis a063e73a)
+
+Kevin 09.10.: „Entweder antworten, Dokumente wegsortieren in unsere Ablage oder Aufgabe erstellen — da müssen saubere Flows rein. Und die
+Aufgaben müssen dann wieder sauber zugeordnet werden zur Firma und dann am besten Projekt, vielleicht auch Kundenprojekte.“
+
+**Gebaut:** Im geöffneten Gespräch EIN Aktions-Block mit drei Hauptwegen — **Antworten** (der vorhandene Editor, ZOE-Entwurf nur als Vorschlag)
+· **Ablegen** · **Aufgabe** —, darunter die Nebenwege (Erledigt, Später, Gelesen, Kontakt anlegen, Termin) und das Häkchen **„danach erledigen“**
+(je Browser gemerkt, Vorgabe aus: nach Senden, Ablegen, Aufgabe oder Beleg-Übernahme wird das Gespräch abgelegt, mit Rückgängig). Unter dem Block
+steht **„Aus diesem Gespräch“**: angelegte Aufgaben (bleiben, aus dem Aufgaben-Stand) und Ablagen dieser Sitzung, jeweils mit Link.
+- **Aufgabe mit Zuordnung** (`FlowAufgabe`): Titel aus dem Betreff, **Wohin** (Bereich › Projekt › Liste, wie die Schnelleingabe), Fällig (Frist aus
+  der Mail), Zuständig, Bezug (Kontakt · Firma · Mandat · Deal einzeln abwählbar). Vorschlag an EINER Stelle `lib/inbox/flows.ts` `aufgabenZiel`:
+  frühere Aufgabe aus diesem Gespräch → derselbe Ort; Privat-Postfach → Privat; Business-Postfach → **Mandanten-Space** `m-<firmaId>`, wenn die
+  Firma der Person ein **aktives Mandat** hat, sonst die Gesellschaft des Postfachs, sonst `BUSINESS_VORGABE_SPACE`; Projekt = wo schon die meisten
+  Aufgaben zu Person/Firma liegen (mit ihrer häufigsten Liste), im Mandanten-Space mit genau einem laufenden Projekt dieses (**Kundenprojekt**),
+  sonst „Sonstige“. Art. 18: Bezug ohne die Person. Angelegt über `aufgabeAnlegen` (Aufgaben-Schreibweg, Server prüft Ort/Liste). Beschreibung =
+  Herkunft + Link `/os/inbox?offen=<Gespräch>` (nie Mailtext). Die alte Direkt-Aufgabe (landete im ersten Projekt der Liste) ist weg.
+- **Ablegen** (`FlowAblegen`, Route `POST /api/inbox/ablegen`, Klasse `person`): Anhänge wählen (oder **die Mail als Textdatei**, nur Projekt-
+  Ablage), Ziel **Firma/Kontakt** (CRM-Ablage `crm-dateien--<haushalt>`, Art aus dem Dateinamen: Vertrag/Angebot/Rechnung/Sonstiges) · **Projekt/
+  Aufgabe** (Projekt-Dateien) · **Beleg** (vorhandener Beleg-Weg). Die Bytes holt der **Server** aus dem eigenen Spiegel (Gmail, IMAP inkl. sichtbarer
+  Team-Postfächer mit Lese-Protokoll, WhatsApp) — der Browser schickt nur Kennungen. Geschrieben nur über `ablegen`/`aufgabenDateiAblegen`
+  (Typ am Inhalt, Grenzen 15/25 MB, verschlüsselt); Notiz am Eintrag = Herkunft + Link. **Nie ein Mandats-Bezug in der CRM-Ablage** (machte den
+  Eintrag zum nicht löschbaren Beleg). Regeln: Art. 18 → 409 (nichts ablegen); Werbesperre → nicht an der Person, Firma/Deal ja; nur Bezüge
+  dieses Gesprächs (sonst 400); **Privat ↔ Business nur bewusst** (Oberfläche zeigt Ziele des eigenen Bereichs, „Anderer Bereich …“ mit Hinweis;
+  Server 409 `code: 'bereich'` ohne `bereichWechsel: true`); andere Person 404, Dienstweg 403, `anfrageId` einmalig.
+- Dateien: `lib/inbox/flows.ts` (rein), `lib/inbox/ablegen-server.ts`, `app/api/inbox/ablegen/route.ts` (+ Routen-Register),
+  `components/os/inbox/Flows.tsx`, `components/os/inbox/Gespraech.tsx`. Tests: `tests/inbox-flows.test.ts` (Zuordnung rein),
+  `tests/inbox-flows-route.test.ts` (Route mit nachgebautem IMAP), dazu routen-register, design-kern, inbox2-rein, inbox-teilen, inbox-whatsapp-ui grün.
+
+**So testet ihr** (ein Business-Postfach mit einer Mail von einer Person aus der Kartei, deren Firma ein aktives Mandat hat, mit PDF-Anhang):
+1. Inbox → Gespräch öffnen → unter den Nachrichten **Antworten · Ablegen (1) · Aufgabe** und rechts „danach erledigen“.
+2. **Aufgabe** → „Vorschlag: aktives Mandat der Firma · das Kundenprojekt“, Wohin zeigt das Projekt im Mandanten-Space, Bezug Kontakt/Firma/Mandat.
+   Fällig setzen → **Aufgabe anlegen** → unten „Aus diesem Gespräch: Aufgabe: …  ›“ → Klick öffnet die Aufgabe (Beschreibung mit Link zurück).
+3. Nochmal **Aufgabe** → der Vorschlag ist jetzt „wie die letzte Aufgabe aus diesem Gespräch“.
+4. **Ablegen** → „Firma / Kontakt“ ist gewählt, der PDF-Anhang an, Art passt zum Namen → **Ablegen** → „Abgelegt (1) → <Firma> ›“ → Klick öffnet die
+   Akte; dort unter Umsatz/Dateien liegt die Datei mit der Notiz „Aus der Inbox · …“.
+5. **Ablegen** → „Projekt / Aufgabe“ → Projekt + „Aufgabe“ (die aus Schritt 2 steht oben „aus diesem Gespräch“) → „Die Mail als Textdatei“ dazu
+   anhaken → **Ablegen** → in der Aufgabe unter Dateien liegen PDF und `Mail <Datum> <Betreff>.txt`.
+6. Ein privates Postfach: **Ablegen** → „Firma / Kontakt“ zeigt den gelben Hinweis „Bereich wechselt“, der Knopf heißt „Bewusst ablegen“.
+7. „danach erledigen“ anhaken → eine Aufgabe anlegen → das Gespräch verschwindet aus der Liste, „Rückgängig“ holt es zurück.
+
 ## 09.10.2026 — Kalender: linke Spalte einklappbar (nur lokal — Branch `kalender-klappen`, Basis `agenten-nacht` 43bb4c14)
 
 Kevin 09.10.: „Guck mal, ob du den Kalender links einklappbar machen kannst, das sieht noch so verloren aus. Die Monatsansicht etc. einfach
