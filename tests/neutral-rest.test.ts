@@ -274,3 +274,116 @@ describe('3. Altbestand: frühere feste Kennungen bleiben stehen und werden beim
     expect(f!.orgs).toEqual({ 'alt-aufgabe': 'altfirma', 'neu-1': 'ug' });
   });
 });
+
+// ─── Rest 2 (09.10., Branch neutral-rest-2): die ZOE-Dateien, die der erste Durchgang nicht anfassen durfte ─────────────────────
+// Personen kommen aus den Konten (Haushalt) bzw. dem CRM-Team der Instanz, Firmen aus lib/einheiten.ts/dem Register, keine feste
+// Anrede. Hier gilt „auch Kommentare neutral“: geprüft wird der GANZE Quelltext. Gespeicherte Altwerte werden gelesen, nie umgeschrieben.
+describe('4. ZOE-Dateien (Rest 2): keine festen Personen, Firmen oder Anreden — auch nicht in Kommentaren', () => {
+  const quellenIn = (d: string): string[] => readdirSync(path.join(WURZEL, d)).flatMap(n => {
+    const rel = `${d}/${n}`;
+    return statSync(path.join(WURZEL, rel)).isDirectory() ? quellenIn(rel) : /\.(ts|tsx)$/.test(n) ? [rel] : [];
+  });
+  const ZOE = [
+    ...quellenIn('lib/zoe'), ...quellenIn('app/api/zoe'), 'app/api/kimmi/route.ts', 'lib/heads/takt.ts', 'lib/make-one/zoe-verlauf.ts',
+    'app/api/state/zoe-verlauf/route.ts', 'components/os/ZoePanel.tsx', 'components/os/ZoeStart.tsx', 'components/os/ZoeHirn.tsx',
+  ];
+
+  it('keine Vornamen, fremden Firmen oder Diagnosen — der ganze Quelltext samt Kommentaren', () => {
+    expect(ZOE.length).toBeGreaterThan(40);
+    expect(ZOE.flatMap(d => lies(d).split('\n').filter(z => ALLES.test(z)).map(z => `${d}: ${z.trim().slice(0, 140)}`))).toEqual([]);
+  });
+
+  it('keine feste Anrede (Empfang, schwebendes Fenster)', () => {
+    expect(ZOE.filter(d => /\bSir\b/.test(lies(d)))).toEqual([]);
+  });
+
+  /** Lesecode mit Grund — jede weitere Speicher-Kennung im Code macht den Wächter rot. */
+  const AUSNAHMEN_KENNUNG: Record<string, { zeilen: number; grund: string }> = {
+    'lib/zoe/raum.ts': { zeilen: 1, grund: '`ERSTKONTO`: wie die Bestände der gewachsenen Instanz liegen (ohne Suffix) — nie Anzeige oder Rolle (Plattform-Schuld, UPDATES.md)' },
+    'lib/zoe/kalender-vorschlag.ts': { zeilen: 1, grund: 'Kalendermodell: Kalender-Einstellungen mit festen Plätzen je gewachsener Person — eigenes offenes Paket' },
+  };
+  it('keine Personen-Kennung als Rückfall oder Sonderfall — Ausnahmen nur mit Grund', () => {
+    const FEST = /'(kevin|malin)'/;
+    const ist = Object.fromEntries(ZOE.map(d => [d, funde(d, FEST).length] as const).filter(([, n]) => n > 0));
+    expect(ist).toEqual(Object.fromEntries(Object.entries(AUSNAHMEN_KENNUNG).map(([d, a]) => [d, a.zeilen])));
+    for (const a of Object.values(AUSNAHMEN_KENNUNG)) expect(a.grund.length).toBeGreaterThan(20);
+  });
+
+  it('create_task: „für wen“ nur aus den Konten des Haushalts — Unbekanntes bleibt ohne Angabe (die anlegende Person, wie vorher)', async () => {
+    const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
+    const koerper: Record<string, unknown>[] = [];
+    const gesperrt = globalThis.fetch;
+    globalThis.fetch = (async (_u: unknown, init?: RequestInit) => {
+      koerper.push(JSON.parse(String(init?.body ?? '{}')));
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    try {
+      for (const wer of ['olaf', 'pia', 'both', 'fremdkennung']) {
+        expect(await WERKZEUGE.create_task.lauf({ title: `Probe ${wer}`, wer }, 'http://test', 'pia')).toMatch(/^Angelegt/);
+      }
+    } finally { globalThis.fetch = gesperrt; }
+    expect(koerper.map(k => k.owner)).toEqual(['olaf', 'pia', 'both', undefined]);
+  });
+
+  it('erfasse_planposten: Gesellschaften aus lib/einheiten.ts und dem Register; ein Altwert nur, wenn der Liquiplan ihn schon trägt', async () => {
+    const { planpostenFirma, WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
+    expect(planpostenFirma('kdv', [])).toBe('kdv');
+    expect(planpostenFirma('ug', [])).toBe('ug');
+    expect(planpostenFirma('g-abcd1234', [])).toBe('g-abcd1234');
+    expect(planpostenFirma('altfirma', [])).toBeUndefined();
+    expect(planpostenFirma('altfirma', [{ firmaId: 'altfirma' }])).toBe('altfirma');
+    expect(planpostenFirma('../x', [{ firmaId: '../x' }])).toBeUndefined();
+    expect(planpostenFirma(undefined, [{ firmaId: 'altfirma' }])).toBeUndefined();
+    await db.saveJson('liquiplan', { posten: [{ id: 'lp-alt', titel: 'Alt', betrag: -10, rhythmus: 'monatlich', ab: '2026-10-01', sicher: true, firmaId: 'altfirma' }] });
+    await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Neu mit Altwert', betrag: -20, firma: 'altfirma' }, 'http://test', 'pia');
+    await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Neu ohne Firma', betrag: -30, firma: 'nirgendwo' }, 'http://test', 'pia');
+    await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Alt', betrag: -15 }, 'http://test', 'pia'); // ohne Angabe bleibt die gespeicherte Firma
+    const p = (await db.loadJson<{ posten: { titel: string; betrag: number; firmaId?: string }[] }>('liquiplan'))!.posten;
+    expect(p.map(x => [x.titel, x.betrag, x.firmaId])).toEqual([['Alt', -15, 'altfirma'], ['Neu mit Altwert', -20, 'altfirma'], ['Neu ohne Firma', -30, undefined]]);
+  });
+
+  it('crm_vorschlag: Zuständig und Stimme aus dem CRM-Team der Instanz (Vorgabe bzw. Instanz-Variable), sonst ohne Angabe', async () => {
+    const { TEAM, BEIDE } = await import('@/lib/crm/team-liste');
+    const { crmVorschlag } = await import('@/lib/zoe/crm-vorschlag');
+    const { lies: stapel } = await import('@/lib/zoe/stapel');
+    const erster = TEAM[0].id;
+    const vorschlag = (e: Record<string, unknown>) => crmVorschlag(e, 'http://test', 'pia');
+    expect(await vorschlag({ art: 'aufgabe', titel: 'Probe-Aufgabe A', zustaendig: erster })).toMatch(/^VORGESCHLAGEN/);
+    await vorschlag({ art: 'aufgabe', titel: 'Probe-Aufgabe B', zustaendig: BEIDE });
+    await vorschlag({ art: 'aufgabe', titel: 'Probe-Aufgabe C', zustaendig: 'niemand-im-team' });
+    await vorschlag({ art: 'beitrag_entwurf', titel: 'Probe-Beitrag A', text: 'Erfundener Text.', stimme: erster });
+    await vorschlag({ art: 'beitrag_entwurf', titel: 'Probe-Beitrag B', text: 'Erfundener Text.', stimme: 'marke' });
+    await vorschlag({ art: 'beitrag_entwurf', titel: 'Probe-Beitrag C', text: 'Erfundener Text.', stimme: 'niemand-im-team' });
+    const offen = await stapel('offen');
+    const e = (t: string) => offen.find(v => v.titel.endsWith(`: ${t}`))?.eingabe as Record<string, unknown> | undefined;
+    expect(['A', 'B', 'C'].map(x => e(`Probe-Aufgabe ${x}`) && e(`Probe-Aufgabe ${x}`)!.owner)).toEqual([erster, 'both', undefined]);
+    expect(['A', 'B', 'C'].map(x => e(`Probe-Beitrag ${x}`) && e(`Probe-Beitrag ${x}`)!.stimme)).toEqual([erster, 'marke', undefined]);
+    // Unbekannte Gesellschaft: der Satz nennt die Kennungen aus lib/einheiten.ts.
+    const { GESELLSCHAFTEN } = await import('@/lib/einheiten');
+    expect(await vorschlag({ art: 'angebot_entwurf', gesellschaft: 'xyz', positionen: [{ titel: 'P', text: 'T', einzelpreis: 1 }] })).toBe(`Fehlgeschlagen: gesellschaft ist ${GESELLSCHAFTEN.join(', ')}.`);
+  });
+
+  it('ZOE-Verlauf: neu nur „nutzer“; die frühere Personen-Kennung im Altbestand liest sich weiter als die Person', async () => {
+    const { istNutzer, fuerPrompt } = await import('@/lib/make-one/zoe-verlauf');
+    expect([istNutzer('nutzer'), istNutzer('altkennung'), istNutzer('zoe')]).toEqual([true, true, false]);
+    const zeit = '2026-10-01T10:00:00.000Z';
+    expect(fuerPrompt([
+      { rolle: 'altkennung', text: 'Alte Frage', zeit }, { rolle: 'zoe', text: 'Alte Antwort', zeit },
+      { rolle: 'nutzer', text: 'Neue Frage', zeit }, { rolle: 'zoe', text: 'Neue Antwort', zeit },
+    ])).toEqual([
+      { role: 'user', content: 'Alte Frage' }, { role: 'assistant', content: 'Alte Antwort' },
+      { role: 'user', content: 'Neue Frage' }, { role: 'assistant', content: 'Neue Antwort' },
+    ]);
+  });
+
+  it('Räume und Gedächtnis: Anzeigename aus dem Speichernamen, Raum immer ausdrücklich (kein Rückfall auf eine feste Person)', async () => {
+    const { nameVon, speicherFuer } = await import('@/lib/zoe/raum');
+    expect(nameVon('olaf')).toBe('Olaf');
+    expect(speicherFuer('vitals', 'olaf')).toBe('vitals--olaf');
+    const G = await import('@/lib/zoe/gedaechtnis');
+    await G.merke({ art: 'vorliebe', thema: 'Probe', satz: 'Nur für eine Person (erfunden).', raum: 'olaf' });
+    await G.merke({ art: 'entscheidung', thema: 'Probe', satz: 'Für alle (erfunden).', raum: 'gemeinsam' });
+    expect((await G.lies({ raum: 'olaf', thema: 'Probe' })).map(f => f.raum).sort()).toEqual(['gemeinsam', 'olaf']);
+    expect((await G.lies({ raum: 'pia', thema: 'Probe' })).map(f => f.raum)).toEqual(['gemeinsam']);
+  });
+});

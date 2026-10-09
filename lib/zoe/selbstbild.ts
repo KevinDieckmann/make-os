@@ -1,5 +1,5 @@
 // ─── MAKE OS — Was die Software über sich selbst weiß ───────────────────────
-// Kevins Wunsch vom 07.09.: „dass die ganze Software da auch im Grunde
+// Wunsch vom 07.09.: „dass die ganze Software da auch im Grunde
 // genommen drin ist" — also im Gehirn.
 //
 // Der Text hier wird NICHT geschrieben, sondern aus den echten Quellen

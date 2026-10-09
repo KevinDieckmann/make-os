@@ -12,7 +12,7 @@
 // `entscheide`). Freigeben beansprucht den Vorschlag zuerst in der Sperre (`beanspruche`) — ein Doppelklick, ein zweites
 // Fenster oder „alle freigeben“ führt nichts doppelt aus. Nichts wird mehr still gekürzt: ein Grund über GRUND_MAX
 // oder eine zu große geänderte Eingabe → 413 mit Grund.
-// 29.09. (#94/#97, Kevin): Sammelfreigabe („alle“) nur für risikoarme Vorschläge — ZOE-Aufgaben-Vorschläge, die nur einen
+// 29.09. (#94/#97): Sammelfreigabe („alle“) nur für risikoarme Vorschläge — ZOE-Aufgaben-Vorschläge, die nur einen
 // Notiz-Entwurf und/oder Unteraufgaben ergänzen. Nie für CRM, Deals, Löschen, Versand oder andere Werkzeuge: die brauchen
 // je einen Blick (Antwort `einzeln`). Jede Sammelfreigabe bekommt eine Charge (`sammel`, „Charge rückgängig“).
 // S1 (29.09.): Tor `imHaushaltDesInhabers` für GET und POST (403 sonst) — Vorschläge des Systems (ohne Person) sieht und

@@ -1,16 +1,16 @@
 // ─── MAKE OS — Der Morgenlauf: ZOE bereitet vor ──────────────────────────
 // Baustein 2+4 zusammengeführt (07.09.). Bis hierher entstand ein Vorschlag
-// nur, wenn Kevin etwas angestoßen hat. ZOE konnte handeln — aber nie von
+// nur, wenn eine Person etwas angestoßen hat. ZOE konnte handeln — aber nie von
 // selbst anfangen.
 //
-// Kevins Antwort auf die Frage, woran er merkt, dass es sich lohnt:
+// Die Antwort auf die Frage, woran man merkt, dass es sich lohnt:
 // „Morgens liegt der Stapel fertig da." Genau das macht dieser Lauf. Er sieht
 // sich die Lage an und legt konkrete Vorschläge in den Stapel — nichts wird
 // ausgeführt, alles wartet auf einen Klick.
 //
 // Wichtig: ALLES wird gestapelt, auch was tagsüber frei durchliefe. Der
 // Unterschied ist nicht das Werkzeug, sondern dass niemand danach gefragt hat.
-// Was ZOE nachts allein erarbeitet, soll Kevin einmal gesehen haben.
+// Was ZOE nachts allein erarbeitet, soll ein Mensch einmal gesehen haben.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
@@ -38,7 +38,7 @@ export const dynamic = 'force-dynamic';
  *
  * Bewusst eng: er soll den Tag vorbereiten, nicht die Buchhaltung umschreiben.
  * Alles, was Geld bewegt, bleibt draußen — dafür fehlt ihm nachts jede
- * Grundlage, und ein Vorschlag ohne Grundlage ist nur Arbeit für Kevin.
+ * Grundlage, und ein Vorschlag ohne Grundlage ist nur Arbeit für die Person.
  */
 const ERLAUBT = ['create_task', 'plan_block'] as const;
 
@@ -105,7 +105,7 @@ function anweisung(wer: string, lage: string, zeit: Tageszeit, liegt: string): s
 }
 
 /**
- * Der Abendlauf. Kevins Vorgabe war „gebuendelt, morgens und abends" — der
+ * Der Abendlauf. Die Vorgabe war „gebuendelt, morgens und abends" — der
  * Morgen bereitet vor, der Abend raeumt nach.
  *
  * Bewusst ein ANDERER Auftrag, nicht derselbe zweimal: abends ist die Frage
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
     // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b).
     lage = promptBrain(brain, { bereiche: kiS.bereiche });
     kategorien = brainKategorien(brain, { bereiche: kiS.bereiche });
-    // Haushalt (24.09.): Kevin hat Beträge im Briefing ausdrücklich erlaubt — nur mit benannter Person.
+    // Haushalt (24.09.): Beträge im Briefing sind ausdrücklich erlaubt — nur mit benannter Person.
     // Privat-Finanzen (09.10., Anbieter-Tor): nur mit erlaubtem Zugang (mit Tor: nur EU) — sonst ohne den Haushalt.
     const hz = kiS.bereiche.finanzen && (await (await import('@/lib/ki/tor')).kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req).catch(() => null) : null;
     if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen', 'finanzen-privat']; }

@@ -1,9 +1,9 @@
 // ─── MAKE OS — Die Auftrags-Warteschlange ───────────────────────────────────
-// Baustein 3 (07.09.). Kevins Bedingung vom 06.09.: „dass ZOE alle Agents
+// Baustein 3 (07.09.). Bedingung vom 06.09.: „dass ZOE alle Agents
 // mindestens gleichzeitig laufen lassen kann wenn die CPU es hergibt oder auch
 // mehrmals nebeneinander, dass es schneller geht."
 //
-// Vorher steckte jede Ausführung in dem einen HTTP-Aufruf, auf den Kevin
+// Vorher steckte jede Ausführung in dem einen HTTP-Aufruf, auf den die Person
 // wartete: drei Runden, vier Agentenläufe, 180 Sekunden — und wenn einer hing,
 // kippte alles. Jetzt legt ZOE Aufträge ab und ein eigener Arbeiter holt
 // sie sich, so viele nebeneinander wie die Maschine trägt.
@@ -49,7 +49,7 @@ export interface Auftrag {
   beendet?: string;
   ergebnis?: string;
   fehler?: string;
-  /** Kevins Satz, aus dem der Auftrag entstand. */
+  /** Der Satz der Person, aus dem der Auftrag entstand. */
   anlass?: string;
   /**
    * Für wen der Auftrag läuft. Wichtig, weil der Arbeiter ihn später ausführt:

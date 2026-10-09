@@ -1,7 +1,7 @@
 // ─── Regelwerk-Rückfall für Morgen- und Abendlauf (27.09.) ──────────────────
 // Ohne KI (kein Schlüssel oder Guthaben leer) fällt der Lauf nicht aus, er wird
 // Regelwerk: ein ehrlicher Lagesatz aus den Zahlen, die ohnehin da sind. Er
-// stapelt nichts (Vorschläge ohne Herleitung wären Arbeit für Kevin), aber der
+// stapelt nichts (Vorschläge ohne Herleitung wären Arbeit für die Person), aber der
 // Takt bekommt einen Erfolg statt eines Fehlschlags — und die Nachricht sagt,
 // was liegt. Rein und getestet.
 

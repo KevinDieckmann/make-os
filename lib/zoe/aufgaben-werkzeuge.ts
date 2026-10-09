@@ -1,5 +1,5 @@
 // ─── ZOE an Aufgaben (Paket C4, 28.09. spät) — Schreibwege und Werkzeuge ────
-// Kevin: „ZOE soll ihre eigenen Aufgaben und Stapel bekommen, die sie abarbeiten kann und wir freigeben.“
+// Vorgabe: „ZOE soll ihre eigenen Aufgaben und Stapel bekommen, die sie abarbeiten kann und wir freigeben.“
 // Regeln rein in lib/aufgaben/zoe.ts; der Lauf in lib/zoe/aufgaben-lauf.ts; Route /api/aufgaben/zoe.
 //
 // Hier: jede Änderung an einer Aufgabe läuft über den EINEN Schreibweg `aufgabenAendern` (Stand je Zeile, 409,

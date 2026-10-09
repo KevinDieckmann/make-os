@@ -1,7 +1,7 @@
 // ─── ZOE-Gespräch: wann ein Werkzeug nur als Vorschlag wirkt (rein, getestet) ──
 // Prompt-Injection-Schutz (26.09., erweitert 28.09. K1 #98): Sobald in einem Gespräch Text Dritter
-// im Spiel ist, wirken schreibende Werkzeuge nur noch als Vorschlag (Stapel, Freigabe durch Kevin
-// oder Malin). Text Dritter ist auch der Kontext, den der Browser mitschickt (`payload.context` —
+// im Spiel ist, wirken schreibende Werkzeuge nur noch als Vorschlag (Stapel, Freigabe durch eine
+// Person des Haushalts). Text Dritter ist auch der Kontext, den der Browser mitschickt (`payload.context` —
 // z. B. die geöffnete Kontaktkarte mit Notizen, eine Mail in der Inbox): ist er nicht leer, gilt das
 // Gespräch von Anfang an als „fremd gelesen“.
 // Dauerhaftes Gedächtnis (`fakt_merken`) und Notizen im Vault (`notiz_anlegen`) gehen im Gespräch

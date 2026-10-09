@@ -1,5 +1,5 @@
 // ─── ZOE unterstützt die Markttraktion — nur Vorschläge, erst der Klick übernimmt (28.09., Paket C7) ───
-// Kevin 28.09.: „ZOE soll alles sehen und unterstützen können.“ Unterstützen heißt hier: ZOE bereitet vor, der
+// Vorgabe 28.09.: „ZOE soll alles sehen und unterstützen können.“ Unterstützen heißt hier: ZOE bereitet vor, der
 // Mensch entscheidet. Das Werkzeug `crm_vorschlag` ÄNDERT NICHTS am CRM — es prüft die Eingabe gegen den aktuellen
 // Bestand (Art. 18, Werbesperre, Kanal-Ampel), rechnet Vorher/Nachher und legt einen Vorschlag der Stapel-Art „crm“
 // ab (`lege({ …, bezug: { art: 'crm', id } })`, lib/zoe/stapel.ts). Übernommen wird nur per Klick im Stapel bzw. in
@@ -24,6 +24,11 @@ import { notiere } from './protokoll';
 import type { StapelArtFreigabe, ArtErgebnis } from './stapel-arten';
 import type { Risiko, Vorschau } from './register';
 import { crmSicht, eindeutig, EINGESCHRAENKT_NAME, NICHT_IM_HINTERGRUND, karteiFuerPruefung, type CrmSicht } from './crm-sicht';
+import { BEIDE, TEAM } from '@/lib/crm/team-liste';
+import { GESELLSCHAFTEN } from '@/lib/einheiten';
+
+/** Kennungen des CRM-Teams der Instanz (lib/crm/team-liste.ts) — nie feste Namen im Code (09.10., „neutral-rest-2“). */
+const teamIds = (): string[] => TEAM.map(t => t.id);
 
 type Eingabe = Record<string, unknown>;
 type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<string>;
@@ -234,7 +239,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const felder: Eingabe = {}; const vorher: string[] = []; const nachher: string[] = [];
       const setze = (f: string, neu: unknown, alt: unknown) => { felder[f] = neu; vorher.push(`${f} ${Array.isArray(alt) ? alt.join(', ') || '—' : String(alt ?? '—')}`); nachher.push(`${f} ${Array.isArray(neu) ? neu.join(', ') : String(neu)}`); };
       for (const f of ['typen', 'kategorien', 'labels'] as const) if (roh[f] !== undefined) { const w = werteSaeubern(liste(roh[f])); if (w) setze(f, w, f === 'typen' ? typenVon(k) : f === 'kategorien' ? kategorienVon(k) : labelsVon(k)); }
-      if (roh.zustaendig !== undefined || roh.besitzer !== undefined) { const w = wer(roh.zustaendig ?? roh.besitzer); if (!w) return 'Fehlgeschlagen: zustaendig ist kevin, malin oder beide.'; setze('besitzer', w, k.besitzer); }
+      if (roh.zustaendig !== undefined || roh.besitzer !== undefined) { const w = wer(roh.zustaendig ?? roh.besitzer); if (!w) return `Fehlgeschlagen: zustaendig ist ${[...teamIds(), BEIDE].join(', ')}.`; setze('besitzer', w, k.besitzer); }
       if (roh.phase !== undefined) { if (!istLifecycle(roh.phase)) return 'Fehlgeschlagen: phase ist lead, mql, sql, opportunity, angebot, kunde oder follow_up.'; setze('phase', roh.phase, k.phase); }
       if (roh.bean !== undefined) { if (!istBean(roh.bean)) return 'Fehlgeschlagen: bean ist B, E, A oder N.'; setze('bean', roh.bean, k.bean); }
       if (roh.kreis !== undefined) { if (!['A', 'B', 'C', 'D'].includes(String(roh.kreis))) return 'Fehlgeschlagen: kreis ist A, B, C oder D.'; setze('kreis', roh.kreis, k.kreis); }
@@ -264,7 +269,8 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const m = text(i.mandat, 80) ? crm.mandate.find(x => x.id === text(i.mandat, 80) || suchPasst([x.titel, x.kunde], text(i.mandat, 80))) : undefined;
       const bezug = { ...(k ? { kontaktId: k.id } : {}), ...(fi ? { firmaId: fi.id } : d?.firmaId ? { firmaId: d.firmaId } : {}), ...(d ? { dealId: d.id } : {}), ...(m ? { mandatId: m.id } : {}) };
       const faellig = tagOk(i.faellig);
-      const owner = i.zustaendig === 'beide' ? 'both' : i.zustaendig === 'malin' ? 'malin' : i.zustaendig === 'kevin' ? 'kevin' : undefined;
+      // Für wen: Kennung aus dem Team bzw. „beide“ (→ „both“ im Aufgaben-Schreibweg) — genau wie die Werkzeug-Beschreibung, sonst keine Angabe.
+      const owner = i.zustaendig === BEIDE ? 'both' : typeof i.zustaendig === 'string' && teamIds().includes(i.zustaendig) ? i.zustaendig : undefined;
       return {
         titel: `${ART_TITEL.aufgabe}: ${kurz(t, 70)}`, bezugId: k ? `kontakt:${k.id}` : fi ? `firma:${fi.id}` : d ? `deal:${d.id}` : m ? `mandat:${m.id}` : 'markttraktion',
         nachher: [faellig && `fällig ${faellig}`, owner && `für ${owner}`, k && anzeigename(k), fi && fi.name, d && `Deal ${d.titel}`].filter(Boolean).join(' · ') || 'ohne Frist',
@@ -348,7 +354,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const fi = firmaAus(s, i.firma); if (istFehler(fi)) return fi;
       const d = dealAus(s, i.deal); if (istFehler(d)) return d;
       const g = text(i.gesellschaft, 3) || alt?.gesellschaft;
-      if (!A.istGesellschaft(g)) return 'Fehlgeschlagen: gesellschaft ist kdc, kdv oder ug.';
+      if (!A.istGesellschaft(g)) return `Fehlgeschlagen: gesellschaft ist ${GESELLSCHAFTEN.join(', ')}.`;
       const pos = Array.isArray(i.positionen) ? (i.positionen as Eingabe[]).slice(0, A.ANGEBOT_GRENZEN.positionen).map((p, n) => ({
         id: `p${n + 1}`, titel: text(p.titel, A.ANGEBOT_GRENZEN.titel), text: text(p.text, A.ANGEBOT_GRENZEN.text), menge: Number(p.menge) > 0 ? Number(p.menge) : 1, einheit: text(p.einheit, 30) || 'pauschal',
         einzelpreisCent: Math.round((Number(p.einzelpreis) || 0) * 100), ustSatz: [19, 7, 0].includes(Number(p.ust_satz)) ? Number(p.ust_satz) : 19,
@@ -403,7 +409,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const t = text(i.titel, 200); const inhalt = text(i.text, 8000);
       if (!t || !inhalt) return 'Fehlgeschlagen: titel und text sind Pflicht.';
       const kanal = ['linkedin', 'newsletter', 'blog', 'podcast', 'vortrag', 'sonstig'].includes(String(i.beitrag_kanal)) ? String(i.beitrag_kanal) : 'linkedin';
-      const stimme = ['kevin', 'malin', 'marke'].includes(String(i.stimme)) ? String(i.stimme) : undefined;
+      const stimme = [...teamIds(), 'marke'].includes(String(i.stimme)) ? String(i.stimme) : undefined;
       return {
         titel: `${ART_TITEL.beitrag_entwurf}: ${kurz(t, 70)}`, bezugId: 'markttraktion',
         nachher: [`Entwurf · ${kanal}`, stimme && `Stimme ${stimme}`, 'veröffentlicht wird nichts'].filter(Boolean).join(' · '),

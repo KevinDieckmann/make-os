@@ -76,7 +76,7 @@ export async function fuehreAus(
   const vs = await vorschauVon(name, input, opt.person);
 
   // `vorschlagen` stapelt AUCH freie Werkzeuge. Gebraucht wird das vom
-  // Morgenlauf: was ZOE nachts von allein erarbeitet, soll Kevin einmal
+  // Morgenlauf: was ZOE nachts von allein erarbeitet, soll ein Mensch einmal
   // gesehen haben, bevor es passiert — auch wenn er es tagsüber im Gespräch
   // einfach durchlaufen ließe. Der Unterschied ist nicht das Werkzeug,
   // sondern dass niemand danach gefragt hat.
@@ -101,7 +101,7 @@ export async function fuehreAus(
     };
   }
 
-  // Kevins Vertraulichkeitsregeln im Vault: „Agenten bekommen nie privat."
+  // Die Vertraulichkeitsregeln im Vault: „Agenten bekommen nie privat."
   // Was ohne Gespräch im Hintergrund läuft, liest das Brain deshalb in der
   // Agenten-Sicht (ohne Person). Geschrieben wird weiterhin für die Person.
   // Projekt-/Aufgaben-Dateien (28.09., C2) liest ZOE im Hintergrund gar nicht: ohne Person lehnt das Werkzeug ab.

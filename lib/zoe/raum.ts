@@ -1,18 +1,17 @@
-// ─── MAKE OS — Die drei Räume ───────────────────────────────────────────────
-// Kevin am 06.09.: „Ich habe meinen Bereich, sie aber auch gleichzeitig. Ich
-// habe nachher meine Firmen und sie ihre Firmen. An sich sollte beides erstmal
-// getrennt sein, sodass jeder seinen Space hat und einen klaren Space zusammen."
+// ─── MAKE OS — Die Räume ────────────────────────────────────────────────────
+// Vorgabe vom 06.09.: jede Person hat ihren eigenen Bereich, dazu einen klaren
+// gemeinsamen — getrennt, sodass jeder seinen Space hat und einen Space zusammen.
 //
-// Also drei Räume: kevin · malin · gemeinsam. Jede der vier Sachen (Finanzen,
-// Aufgaben, Kontakte, Gesundheit) gibt es in allen dreien.
+// Also Räume: einer je Person (Speichername des Kontos) · gemeinsam. Jede der vier
+// Sachen (Finanzen, Aufgaben, Kontakte, Gesundheit) gibt es in allen.
 //
 // ────────────────────────────────────────────────────────────────────────────
 // WICHTIG, UND BEWUSST SO BENANNT: Das hier ist ZUSCHREIBUNG, KEIN SCHUTZ.
 //
 // Wer bin ich, steht heute in einem Cookie, den der Browser selbst setzt. Wer
 // den Zugangsschlüssel hat, kann ihn umschreiben. Das ist in Ordnung, solange
-// die Software auf einem Rechner läuft, den nur Kevin und Malin benutzen — und
-// es ist die Vorbereitung, nicht der Ersatz: Kevins Entscheidung vom 06.09.
+// die Software auf einem Rechner läuft, den nur der eigene Haushalt benutzt — und
+// es ist die Vorbereitung, nicht der Ersatz: Entscheidung vom 06.09.
 // war „Struktur jetzt, Zugang später". Sobald der Server mit echtem Login
 // steht, ändert sich genau EINE Funktion hier — personAus() — und alles andere
 // bleibt, wie es ist. Deshalb geht ab heute jede Zuschreibung durch diese
@@ -20,26 +19,30 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
-// SEIT 23.09. IST ES SCHUTZ. Kevins Ansage: „dieses Kevin/Malin-Thema geht
-// einfach raus" — echte Konten, echter Login. Die Person ist jetzt der
+// SEIT 23.09. IST ES SCHUTZ. Vorgabe: feste Personen gehen raus — echte
+// Konten, echter Login. Die Person ist jetzt der
 // Speichername des angemeldeten Kontos (lib/zugang/konten.ts). Die Middleware
 // prüft die Sitzung und setzt den Kopf x-make-user; Köpfe, die ein Client
 // selbst mitschickt, löscht sie vorher. Genau EINE Funktion hat sich dafür
 // geändert — personAus() — so, wie es am 06.09. angekündigt war.
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Der Speichername eines Kontos — „kevin", „malin", „joerg2" … */
+/** Der Speichername eines Kontos — „pia", „olaf2" … */
 export type Person = string;
 export type Raum = string;
 
-/** Anzeigenamen für die zwei gewachsenen Konten. Alle anderen kommen aus
- *  lib/zugang/konten.ts (namenVon); das hier ist der synchrone Rückfall. */
-export const PERSON_LABEL: Record<string, string> = { kevin: 'Kevin', malin: 'Malin' };
-export const RAUM_LABEL: Record<string, string> = { kevin: 'Kevin', malin: 'Malin', gemeinsam: 'gemeinsam' };
+/**
+ * Speichername des gewachsenen Erstkontos: seine persönlichen Bestände tragen KEIN Suffix (`speicherFuer`), und der Dienstweg ohne
+ * Person handelt als dieses Konto (`personAus`). Die EINE Stelle, an der ein Speichername im Code steht — sie beschreibt, wie
+ * die Daten der gewachsenen Instanz liegen, und wird nie als Anzeigename oder Rolle benutzt. Plattform-Schuld (UPDATES.md
+ * „neutral-rest-2“): je Instanz aus der Einrichtung statt aus dem Code; eine neue Instanz ohne dieses Konto bekommt für jede
+ * Person `<basis>--<person>`.
+ */
+const ERSTKONTO = 'kevin';
 
-/** Anzeigename, synchron: bekannt → Name, sonst der Speichername mit großem Anfang. */
+/** Anzeigename, synchron: der Speichername mit großem Anfang. Echte Namen kommen aus lib/zugang/konten.ts (`namenVon`). */
 export function nameVon(person: string): string {
-  return PERSON_LABEL[person] ?? (person.charAt(0).toUpperCase() + person.slice(1));
+  return person.charAt(0).toUpperCase() + person.slice(1);
 }
 
 /** Wer stellt gerade die Anfrage. */
@@ -52,16 +55,17 @@ export function personAus(req: Request): Person {
   const ausKopf = req.headers.get('x-make-person');
   if (ausKopf && /^[a-z0-9-]{1,40}$/.test(ausKopf)) return ausKopf;
   // Dienstweg ohne Person: das gewachsene Erstkonto. Bewusst kein Fehler —
-  // die Systemläufe (Tageslauf, Selbstbild) haben keine Person.
-  return 'kevin';
+  // die Systemläufe (Tageslauf, Selbstbild) haben keine Person. Schreibende und
+  // persönliche Wege prüfen vorher `personStreng` (Regel 5).
+  return ERSTKONTO;
 }
 
 /**
  * Wessen Bestand angezeigt werden soll.
  *
- * Kevins Entscheidung vom 23.09. („Malin ist Gesundheits-Beauftragte — sieht
- * sie deine Gesundheitsdaten?" — „Ja, alles"): beide dürfen die persönlichen
- * Bestände der anderen Person LESEN, über ?fuer=kevin|malin. Geschrieben wird
+ * Entscheidung vom 23.09.: Personen dürfen persönliche Bestände einer anderen
+ * Person LESEN, über ?fuer=<speichername> — Gesundheit nur, wenn sie geteilt ist
+ * (`darfGesundheitSehen`). Geschrieben wird
  * weiterhin nur der eigene — dafür bleibt personAus() zuständig. Die Trennung
  * ist damit Zuordnung, nicht Geheimnis: jeder weiß, wessen Werte er sieht.
  */
@@ -103,16 +107,17 @@ export function darfSehen(raum: Raum | undefined, person: Person): boolean {
 /**
  * Der Speichername für persönliche Bestände.
  *
- * Kevin behält den bestehenden Namen, Malin bekommt einen eigenen mit Suffix.
- * Absichtlich SO herum: dadurch muss kein einziger gewachsener Datensatz
- * umgezogen werden, und wenn etwas an dieser Trennung schiefgeht, liest Malin
- * im schlimmsten Fall einen leeren Speicher — nicht Kevin einen falschen.
+ * Das Erstkonto behält den bestehenden Namen, jede weitere Person bekommt einen
+ * eigenen mit Suffix. Absichtlich SO herum: dadurch muss kein einziger
+ * gewachsener Datensatz umgezogen werden, und wenn etwas an dieser Trennung
+ * schiefgeht, liest eine Person im schlimmsten Fall einen leeren Speicher —
+ * nicht eine andere einen falschen.
  *
- * Die Schreibweise mit doppeltem Bindestrich gibt es schon (lib/vitals.ts
- * kennt „vitals--malin"); sie steht jetzt hier, damit es EINE Regel ist.
+ * Die Schreibweise mit doppeltem Bindestrich („vitals--<person>") steht hier,
+ * damit es EINE Regel ist.
  */
 export function speicherFuer(basis: string, person: Person): string {
-  return person === 'kevin' ? basis : `${basis}--${person.replace(/[^a-z0-9-]/g, '')}`;
+  return person === ERSTKONTO ? basis : `${basis}--${person.replace(/[^a-z0-9-]/g, '')}`;
 }
 
 /**

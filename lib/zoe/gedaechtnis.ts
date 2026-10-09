@@ -2,9 +2,9 @@
 // Baustein 4a (07.09.). Vorher war ZOE' Gedächtnis eine Datei mit einem
 // einzigen Gespräch: alles, was nicht im laufenden Faden stand, war weg.
 //
-// Kevins Entscheidung vom 06.09.: „Sofort merken, sichtbar in einer Liste."
-// Also kein Vorschlagsstapel für Fakten — er merkt sich etwas im Vorbeigehen,
-// und Kevin sieht später, was da steht, und wirft raus, was nicht stimmt.
+// Entscheidung vom 06.09.: „Sofort merken, sichtbar in einer Liste."
+// Also kein Vorschlagsstapel für Fakten — ZOE merkt sich etwas im Vorbeigehen,
+// und die Person sieht später, was da steht, und wirft raus, was nicht stimmt.
 //
 // Bewusst strukturierte Fakten und NICHT Vektorsuche: „wann habe ich Anna
 // zuletzt gesprochen" ist eine Frage nach einem Feld, keine nach Ähnlichkeit.
@@ -28,13 +28,14 @@ export interface Fakt {
   zeit: string;
   tag: string;
   art: FaktArt;
-  /** Worum es geht — „Anna Beispiel", „KEMARIS", „Rücken". */
+  /** Worum es geht — „Anna Beispiel", „Beispiel GmbH", „Urlaub". */
   thema: string;
   /** Der Fakt selbst, so wie er gesagt wurde. */
   satz: string;
-  /** Woher er stammt: Kevins Satz, eine Mail, ein Agentenlauf. */
+  /** Woher er stammt: ein Satz der Person, eine Mail, ein Agentenlauf. */
   woher?: string;
-  /** Wem er gehört. Vorbereitet für Malins eigenen Raum (Baustein Räume). */
+  /** Wem er gehört: Speichername der Person oder „gemeinsam“ (lib/zoe/raum.ts). Altbestand trägt den Speichernamen, mit dem er
+   *  geschrieben wurde — er wird so gelesen, nie umgeschrieben. */
   raum: string;
   /** Ab wann er nicht mehr gilt — für Dinge mit Verfallsdatum. */
   bis?: string;
@@ -50,10 +51,10 @@ const GRENZE = 1200;
 const kennung = (thema: string, satz: string) =>
   `${thema.toLowerCase().trim()}|${satz.toLowerCase().replace(/\s+/g, ' ').trim()}`;
 
-export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag' | 'raum'> & { raum?: Fakt['raum'] }): Promise<{ fakt: Fakt; neu: boolean }> {
+/** Einen Fakt ablegen — der Raum ist Pflicht (Person oder „gemeinsam“): nie ein Rückfall auf eine feste Person (09.10.). */
+export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag'>): Promise<{ fakt: Fakt; neu: boolean }> {
   const fakt: Fakt = {
     ...neu,
-    raum: neu.raum ?? 'kevin',
     id: neueKennung('f'),
     zeit: new Date().toISOString(),
     tag: localDay(),
@@ -81,7 +82,7 @@ export async function lies(opt: { thema?: string; art?: FaktArt; raum?: Fakt['ra
   return liste.slice(0, opt.anzahl ?? 200);
 }
 
-/** Löschen heißt hier: als gelöscht stempeln. Ein Fakt, den Kevin rauswirft,
+/** Löschen heißt hier: als gelöscht stempeln. Ein Fakt, den die Person rauswirft,
  *  soll nicht durch einen späteren Import wieder auftauchen. */
 export async function vergiss(id: string): Promise<boolean> {
   let gefunden = false;

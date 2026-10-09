@@ -1,5 +1,5 @@
 // ─── MAKE OS — Was die KI kostet (Route) ────────────────────────────────────
-// Damit Kevin nach vier Wochen sagen kann, welcher Agent die Rechnung treibt —
+// Damit der Inhaber nach vier Wochen sagen kann, welcher Agent die Rechnung treibt —
 // und nicht aus Unsicherheit alles abschaltet.
 
 import { NextResponse } from 'next/server';

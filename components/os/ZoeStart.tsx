@@ -1,15 +1,15 @@
 'use client';
 
 // ─── MAKE OS — Der Empfang ──────────────────────────────────────────────────
-// Kevins Ansage vom 07.09.: „Wenn die Software hochgefahren wird, begrüßt mich
+// Vorgabe vom 07.09.: „Wenn die Software hochgefahren wird, begrüßt mich
 // erst ZOE und ich kann mit ihm die ganzen Sachen durchquatschen."
 //
-// Zweiter Durchgang, gleicher Tag. Sein Einwand: „da ist ja nichts lebendiges
-// dran". Er hatte recht — es war ein Bild, ein Absatz, ein Eingabefeld. Was
+// Zweiter Durchgang, gleicher Tag. Der Einwand: „da ist ja nichts lebendiges
+// dran". Zu Recht — es war ein Bild, ein Absatz, ein Eingabefeld. Was
 // jetzt anders ist, folgt einem Gedanken: die Oberfläche muss ZEIGEN, was
 // gerade passiert, ohne dass man es liest.
 //
-//   · Das Hirn reagiert auf die echte Lautstärke des Mikrofons. Wenn Kevin
+//   · Das Hirn reagiert auf die echte Lautstärke des Mikrofons. Wenn die Person
 //     spricht, schlägt der Kranz aus — nicht als Animation, sondern gemessen.
 //   · Vier Zustände mit eigener Farbe: ruht · hört zu · denkt · spricht.
 //   · Der Text kommt Wort für Wort an, wie gesprochen — nicht als Block.
@@ -148,7 +148,7 @@ export function ZoeStart() {
         // Einmal vorlesen, nicht bei jedem erneuten Rendern.
         if (!gesprochen.current) { gesprochen.current = true; stimme.lies(fuerStimme(d.text)); }
       })
-      .catch(() => setEmpfang('Ich bin da, Sir. Die Lage bekomme ich gerade nicht — frag mich trotzdem.'));
+      .catch(() => setEmpfang('Ich bin da. Die Lage bekomme ich gerade nicht — frag mich trotzdem.'));
     // stimme absichtlich nicht in den Abhängigkeiten: sonst liest er bei jedem
     // Wechsel des Sprach-Zustands erneut vor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
