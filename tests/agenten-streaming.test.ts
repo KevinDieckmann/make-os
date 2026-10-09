@@ -380,8 +380,8 @@ describe('/api/kimmi mit Strom', () => {
     const ab = new AbortController();
     const r = await stromRufen(kimmi.POST, '/api/kimmi', SSE_KOPF('person-a'), { message: 'MARKE-ABBRUCH-4411', zoeFaden: 'neu' }, ab.signal);
     expect(r.headers.get('content-type')).toMatch(/^text\/event-stream/);
-    // Die Frage steht im Thread, solange der Zug läuft.
-    expect(JSON.stringify(await bestand('person-a'))).toContain('MARKE-ABBRUCH-4411');
+    // Die Frage steht im Thread, solange der Zug läuft (seit dem Härtetest 09.10. legt der Zug sie selbst an — innerhalb von `einmalig`).
+    expect(await bis(async () => JSON.stringify(await bestand('person-a')).includes('MARKE-ABBRUCH-4411'))).toBe(true);
     const leser = r.body!.getReader();
     const dec = new TextDecoder();
     let gelesen = '';
