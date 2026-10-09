@@ -33,11 +33,27 @@ const kurz = (v: unknown, n: number) => String(v ?? '').replace(/[\u0000-\u001f\
  * In welche Kalender der Agent vorschlagen darf (Nachtrag 29.09.): nicht fest verdrahtet, sondern aus den
  * Kalender-Einstellungen (lib/kalender/einstellungen.ts) — der eigene Kalender der fragenden Person (Standard, wie beim
  * Anlegen in /api/kalender/termin) und der gemeinsame. Ohne Einstellungen gelten deren Standardnamen. Rein.
+ *
+ * Eigener Kalender (09.10., Plattform-Regel — vorher bekam JEDE Person außer einer festen den Kalender der anderen als „eigenen“):
+ * zuerst die eigene iCloud-Verbindung der Person (`eigenesIcloud`, Blockkalender — lib/kalender/icloud-person.ts `eigenesBlockZiel`),
+ * sonst ihre Zuordnung in den Einstellungen (`kalender.<speicher>`). Ist ihr keiner zugeordnet: `eigen: null` — dann nur der
+ * gemeinsame, nie der Kalender einer anderen Person (`KEIN_EIGENER_KALENDER` sagt es der Person).
  */
-export function vorschlagsKalender(einst: Pick<KalenderEinstellungen, 'kalender'> | null | undefined, person: string): { eigen: string; gemeinsam: string; erlaubt: ReadonlySet<string> } {
-  const k = (einst ?? EINSTELLUNGEN_LEER).kalender;
-  const eigen = person === 'malin' ? k.malin : k.kevin;
-  return { eigen, gemeinsam: k.beide, erlaubt: new Set([eigen, k.beide]) };
+export function vorschlagsKalender(einst: Pick<KalenderEinstellungen, 'kalender'> | null | undefined, person: string, eigenesIcloud?: string | null): { eigen: string | null; gemeinsam: string; erlaubt: ReadonlySet<string> } {
+  const k = (einst ?? EINSTELLUNGEN_LEER).kalender as Record<string, string>;
+  const zugeordnet = person !== 'beide' && Object.prototype.hasOwnProperty.call(k, person) ? kurz(k[person], 100) : '';
+  const eigen = kurz(eigenesIcloud, 100) || zugeordnet || null;
+  return { eigen, gemeinsam: k.beide, erlaubt: new Set(eigen ? [eigen, k.beide] : [k.beide]) };
+}
+
+/** Satz, wenn der Person kein eigener Kalender zugeordnet ist — statt still in einen fremden Kalender vorzuschlagen. */
+export const KEIN_EIGENER_KALENDER = 'Dir ist noch kein eigener Kalender zugeordnet (Kalender › Einstellungen: Zuordnung oder eigene iCloud-Verbindung) — Blöcke schlage ich deshalb nur im gemeinsamen Kalender vor.';
+
+/** Server: die Vorschlags-Kalender einer Person — Einstellungen + eigene iCloud-Verbindung (wirft nie). */
+export async function vorschlagsKalenderFuer(person: string, einst?: Pick<KalenderEinstellungen, 'kalender'> | null): Promise<ReturnType<typeof vorschlagsKalender>> {
+  const e = einst ?? await import('@/lib/kalender/einstellungen').then(m => m.ladeEinstellungen()).catch(() => null);
+  const eigen = await import('@/lib/kalender/icloud-person').then(m => m.eigenesBlockZiel(person)).catch(() => undefined);
+  return vorschlagsKalender(e, person, eigen ?? null);
 }
 
 /** Wandzeit „YYYY-MM-DDTHH:mm:00“ aus Tag + Minuten ab Mitternacht (über Mitternacht → Folgetag). Rein. */
@@ -116,6 +132,8 @@ export const KALENDER_STAPEL_ART: StapelArtFreigabe = {
     const t = vorschlagEingabe(v);
     if (!t) { await loslassen(v.id); return { ok: false, status: 400, fehler: 'Der Vorschlag ist unvollständig — nichts angelegt.' }; }
     if (t.start.slice(0, 10) < localDay()) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Der Termin liegt inzwischen in der Vergangenheit — nichts angelegt. Bitte ablehnen.' }; }
+    // Nur in einen Kalender, der der freigebenden Person zusteht (09.10.): ihr eigener oder der gemeinsame — nie der einer anderen Person.
+    if (!(await vorschlagsKalenderFuer(person)).erlaubt.has(t.kalender)) { await loslassen(v.id); return { ok: false, status: 403, fehler: `„${t.kalender}“ ist nicht dein Kalender — nichts angelegt. Bitte ablehnen.` }; }
     let text: string;
     let angelegt = false;
     try {

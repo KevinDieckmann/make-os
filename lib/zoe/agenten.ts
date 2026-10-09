@@ -8,6 +8,8 @@
 import { resolveAgent } from '@/lib/agent-config';
 import { localDay } from '@/lib/zeit';
 import { hintergrundKopf, laufImKontext } from '@/lib/datenschutz/ki-lauf';
+import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
+import { agentKategorien } from './agent-kategorien';
 
 /** Agenten, die ZOE selbst starten darf. */
 export const AUSFUEHRBAR = [
@@ -102,12 +104,29 @@ async function stapleAlle(liste: readonly (readonly [string, Record<string, unkn
  * erreichbar" stand. Wer Erfolg an Wörtern im Fließtext festmacht, liegt
  * früher oder später falsch. Also sagt der Lauf es selbst.
  */
-export interface AgentLauf { ok: boolean; text: string; /** Kein Aussetzer, sondern eine Entscheidung (nicht neu einreihen) — z. B. der Thread/Skill gibt es nicht mehr. */ endgueltig?: boolean }
+export interface AgentLauf {
+  ok: boolean; text: string; /** Kein Aussetzer, sondern eine Entscheidung (nicht neu einreihen) — z. B. der Thread/Skill gibt es nicht mehr. */ endgueltig?: boolean;
+  /**
+   * KI-Kategorien des Ergebnisses (09.10., KI-Etiketten): was im Text stehen kann — wer ihn an ein Modell weitergibt (ZOE `run_agent`,
+   * Mitarbeiter `fach_agent`), nimmt sie in den KI-Kontext, damit das KI-Tor (Einwilligung (b), Schalter, EU-Stufe) greift (lib/zoe/agent-kategorien.ts).
+   */
+  kategorien?: KiKategorie[];
+}
 const gut = (text: string): AgentLauf => ({ ok: true, text });
 const fehl = (text: string): AgentLauf => ({ ok: false, text });
 
-/** `person` = für wen der Lauf arbeitet (Sitzung bzw. Auftrag). Ohne Person ist es ein Systemlauf des Takts (26.09.). */
+/**
+ * `person` = für wen der Lauf arbeitet (Sitzung bzw. Auftrag). Ohne Person ist es ein Systemlauf des Takts (26.09.).
+ * Das Ergebnis trägt seine KI-Kategorien (09.10., KI-Etiketten): die festen des Agenten, „gesundheit“ nur, wenn der Lauf sie wirklich
+ * im Prompt hatte (Rückmeldung der Route) — ein gescheiterter Lauf trägt keine Inhalte, also nie „gesundheit“.
+ */
 export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string, person?: string, opt: { hintergrund?: boolean } = {}): Promise<AgentLauf> {
+  const marke: { gesundheit?: boolean } = {};
+  const l = await agentLaufen(id, auftrag, origin, person, opt, marke);
+  return { ...l, kategorien: agentKategorien(id, l.ok ? marke.gesundheit : false) };
+}
+
+async function agentLaufen(id: Ausfuehrbar, auftrag: string, origin: string, person: string | undefined, opt: { hintergrund?: boolean }, marke: { gesundheit?: boolean }): Promise<AgentLauf> {
   // Der Agenten-Schalter unter /os/agenten gilt weiterhin. Ausgeschaltet ist
   // ausgeschaltet — auch für ZOE.
   if (!SYSTEM.has(id)) {
@@ -172,14 +191,19 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       }
       case 'fokus': {
         const d = await post('/api/fokus', {});
-        return d.reply ? gut(`TAGESFORM (${d.zone}, Recovery ${d.recovery}%):\n${kuerze(d.reply, 1600)}`) : fehl(`Fokus fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        // Art. 9 (09.10., KI-Etiketten): Zone und Recovery stehen nur im Text, wenn die Route sie ausliefert — und das tut sie nur mit
+        // Einwilligung (b) der Person (`gesundheit: true`). Vorher stand „Recovery xx %“ immer hier und ging ins nächste Modell.
+        marke.gesundheit = d.gesundheit === true;
+        const form = marke.gesundheit && typeof d.zone === 'string' ? ` (${d.zone}${typeof d.recovery === 'number' && d.recovery > 0 ? `, Recovery ${d.recovery}%` : ''})` : '';
+        return d.reply ? gut(`TAGESFORM${form}:\n${kuerze(d.reply, 1600)}`) : fehl(`Fokus fehlgeschlagen: ${kuerze(d.error, 200)}`);
       }
       case 'kalender': {
         const d = await post('/api/kalender/analyse', {}, 120_000);
         if (!d.briefing && !d.vorschlaege) return fehl(`Kalender fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        marke.gesundheit = typeof d.gesundheit === 'boolean' ? d.gesundheit : undefined;
         const v = (d.vorschlaege ?? []).map((x: { title: string; date: string; startHour: number }) => `${x.title} ${x.date} ${x.startHour}:00`).join(' · ');
         // 29.09. (#K2): der Agent trägt nie selbst ein — die Blöcke liegen im Freigabe-Stapel (Art „kalender“).
-        return gut(`KALENDER-ANALYSE:\n${d.briefing ?? ''}\nKonflikte: ${(d.conflicts ?? []).length}\nVorschläge: ${v || 'keine'}${d.gestapelt ? `\n(${d.gestapelt} Blöcke liegen im Freigabe-Stapel — eingetragen wird erst per Klick. Behaupte nicht, sie stünden schon im Kalender.)` : v ? '\n(Nichts eingetragen — Eintragen braucht einen Klick.)' : ''}`);
+        return gut(`KALENDER-ANALYSE:\n${d.briefing ?? ''}${d.hinweis ? `\n${kuerze(d.hinweis, 300)}` : ''}\nKonflikte: ${(d.conflicts ?? []).length}\nVorschläge: ${v || 'keine'}${d.gestapelt ? `\n(${d.gestapelt} Blöcke liegen im Freigabe-Stapel — eingetragen wird erst per Klick. Behaupte nicht, sie stünden schon im Kalender.)` : v ? '\n(Nichts eingetragen — Eintragen braucht einen Klick.)' : ''}`);
       }
 
       // ── Neu ab 07.09.: die Agenten, die ZOE bisher nicht erreichte ──
@@ -232,6 +256,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const d = await post('/api/planung/vorschlag', { woche: localDay(mo), hinweis: auftrag || undefined }, 150_000);
         const b = (d.bloecke ?? []) as { titel?: string; date?: string; startMin?: number }[];
         if (!b.length) return fehl(`Planungs-Vorschlag fehlgeschlagen: ${kuerze(d.error ?? d.begruendung, 200)}`);
+        marke.gesundheit = typeof d.gesundheit === 'boolean' ? d.gesundheit : undefined;
         const hh = (m?: number) => `${String(Math.floor((m ?? 0) / 60)).padStart(2, '0')}:${String((m ?? 0) % 60).padStart(2, '0')}`;
         // Ein Platz für das Ergebnis (27.09.): jeder Block wird ein plan_block-Vorschlag im Stapel (Gruppe Planung) —
         // vorher stand der Plan nur als Text in der Warteschlange, und niemand konnte ihn annehmen.
@@ -243,14 +268,18 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       case 'ernaehrung': {
         const d = await post('/api/ernaehrung/vorschlag', { hinweis: auftrag || undefined, ablegen: true }, 240_000);
         if (!d.begruendung && !d.plan) return fehl(`Ernährung fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        marke.gesundheit = typeof d.gesundheit === 'boolean' ? d.gesundheit : undefined;
         const tage = Array.isArray(d.plan) ? d.plan.length : 0;
         return gut(`ESSENSPLAN (${tage} Tage):\n${kuerze(d.begruendung, 500)}\nEinkaufsliste: ${(d.einkauf ?? []).length} Posten. ${d.abgelegt ? 'Wartet unter Gesundheit › Ernährung auf „Übernehmen“.' : 'Steht unter /os/ernaehrung.'}`);
       }
       case 'performance': {
         const d = await post('/api/performance', { analyse: true }, 150_000);
-        const a = d.aktuell;
+        // Art. 9 (09.10., KI-Etiketten): nur die Sicht für die KI (`fuerZoe`) — ohne Einwilligung (b) weder der Gesamtindex (er enthält die
+        // Gesundheits-Säule) noch ein Gesundheits-Hebel. Vorher gingen `aktuell.index` und `hebel` immer ins nächste Modell.
+        const a = d.fuerZoe as { index?: number | null; label?: string; abdeckung?: number; hebel?: string | null; gesundheit?: boolean } | undefined;
         if (!a) return fehl(`Performance fehlgeschlagen: ${kuerze(d.error, 200)}`);
-        return gut(`MAKE SCORE: ${a.index} (${a.label}), ${Math.round((a.abdeckung ?? 0) * 100)} % echte Daten.`
+        marke.gesundheit = a.gesundheit === true;
+        return gut(`MAKE SCORE: ${a.index != null ? `${a.index} (${a.label})` : 'Gesamtwert privat (ohne Einwilligung „An die KI geben“)'}, ${Math.round((a.abdeckung ?? 0) * 100)} % echte Daten.`
           + `${a.hebel ? ` Größter Hebel: ${a.hebel}.` : ''}${d.lage ? `\n${kuerze(d.lage, 700)}` : ''}`);
       }
       case 'content': {

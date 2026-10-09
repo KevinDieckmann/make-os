@@ -190,7 +190,10 @@ describe('Übernahme aus dem Brain', () => {
     expect(vorhanden.kontakte[0]).toMatchObject({ stufe: 'gewonnen', lebensphase: 'kunde' });
     const r2 = ausBrain(d, r1.bestand, r1.kontakte, HEUTE, `${HEUTE}T11:00`, 'kevin');
     expect(r2.neu).toEqual({ mandate: 0, leistungen: 0, kontakte: 0 });
-    expect(kundenAusMandaten(r2.bestand).kunden).toEqual([{ name: 'Beispiel GmbH', status: 'aktiv', cashflow: 2000 }]);
+    // Bereich je Einheit (09.10., KI-Etiketten K3): die übernommenen Mandate gehören der Selbstständigkeit (Privat-Einheit) — die Business-
+    // Kunden-Sicht (ZOE-Zahlen, Business-Heads) zählt sie nicht; bei einer Business-Gesellschaft schon.
+    expect(kundenAusMandaten(r2.bestand).kunden).toEqual([]);
+    expect(kundenAusMandaten({ ...r2.bestand, mandate: r2.bestand.mandate.map(x => ({ ...x, gesellschaft: 'ug' })) }).kunden).toEqual([{ name: 'Beispiel GmbH', status: 'aktiv', cashflow: 2000 }]);
   });
 });
 

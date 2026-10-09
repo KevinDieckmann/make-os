@@ -69,3 +69,28 @@ export function artFuerStunde(h: number): LaufArt {
 
 // Datums-Key aus der einen Zeit-Quelle.
 export { localDay as tagKey } from '@/lib/zeit';
+
+// ── Task-Agent „autonom“: Prioritäten der Ausrichtung als Aufgaben (09.10., KI-Etiketten K6) ───────────────────────────────────
+// Vorher legte die Kette JEDE Priorität mit festem `space: 'business'` und dem „warum“ des Modells als Beschreibung an — die Ausrichtung
+// rechnet aber mit Tagesform/Vitalwerten, Privatem und der Inbox: der ganze Haushalt (auch „nur Business“) sah das. Jetzt (rein):
+//   • Bereich aus der Priorität selbst (`bereich`, vom Modell) — nur „business“ wird Business; alles andere (auch fehlend) bleibt PRIVAT
+//     und „nur ich“ (sieht nur die Person, für die der Lauf läuft).
+//   • keine Begründung des Modells in der Beschreibung (sie kann Gesundheitswerte tragen) — die steht im eigenen Tageslauf der Person.
+
+export interface AutoPrioritaet { titel?: unknown; warum?: unknown; wann?: unknown; bereich?: unknown }
+export interface AutoAufgabe { title: string; description: string; priority: 'high'; space: 'privat' | 'business'; sichtbarkeit?: 'nur-ich' }
+
+/** Aus einer Priorität der Ausrichtung die Eingabe für /api/tasks/create (rein) — null ohne Titel. */
+export function autoAufgabe(p: AutoPrioritaet): AutoAufgabe | null {
+  const title = typeof p.titel === 'string' ? p.titel.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 300) : '';
+  if (!title) return null;
+  const business = p.bereich === 'business';
+  const wann = typeof p.wann === 'string' && p.wann.trim() ? `Wann: ${p.wann.trim().slice(0, 120)} · ` : '';
+  return {
+    title,
+    description: `${wann}Automatisch aus der Tages-Ausrichtung (Task-Agent: autonom) — das Warum steht im eigenen Tageslauf.`,
+    priority: 'high',
+    space: business ? 'business' : 'privat',
+    ...(business ? {} : { sichtbarkeit: 'nur-ich' as const }),
+  };
+}

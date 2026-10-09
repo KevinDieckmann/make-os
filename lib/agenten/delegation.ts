@@ -351,7 +351,9 @@ export function handlerFuer(ctx: HandlerKontext): AgentenHandler {
           const l = await runAgent(agentId as (typeof AUSFUEHRBAR)[number], auftrag, ctx.origin, person, { hintergrund: ctx.hintergrund });
           const quelle = FREMD_AGENTEN[agentId];
           if (quelle) s.fremdGelesen = true;
-          return { text: quelle ? fremd(quelle, l.text) : l.text, ok: l.ok };
+          // KI-Etiketten (09.10.): die Kategorien des Ergebnisses (lib/zoe/agent-kategorien.ts) gehen mit zurück — die Schleife nimmt sie in den
+          // Zustand, der nächste Modellaufruf dieses Laufs trägt sie, das KI-Tor (Einwilligung (b), Schalter, EU-Stufe) greift.
+          return { text: quelle ? fremd(quelle, l.text) : l.text, ok: l.ok, ...(l.kategorien?.length ? { kategorien: l.kategorien } : {}) };
         }
         default: return { text: 'Nicht angeboten.', ok: false };
       }

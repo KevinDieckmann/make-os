@@ -25,7 +25,8 @@ import { buchungenSuchen } from '../haushalt/zoe';
 import { heuteBerlin, tagPlus, tageZwischen } from '../haushalt/monat';
 import { baueFinanzbild, type Finanzbild, type FinanzplanStand } from './finanzbild';
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
-import { SYSTEM, aufgabe, SCHEMA, DEFINITIONEN, MODUS_NAME, type Modus } from './prompt';
+import { SYSTEM, aufgabe, schemaFuer, DEFINITIONEN, MODUS_NAME, type Modus } from './prompt';
+import { haushaltsPersonen } from '@/lib/aufgaben/sicht';
 import { normalisiere, pruefe, sauber, korrekturAuftrag, type Antwort, type Pruefung } from './pruefer';
 import { zahlenImText } from './pruefung';
 import { rechne } from './rechne';
@@ -121,13 +122,13 @@ const SUCHE: Werkzeug = { name: 'buchungen_suchen', description: 'Sucht Haushalt
 
 interface Block { type: string; id?: string; name?: string; input?: Record<string, unknown>; text?: string }
 
-async function frageModell(o: { system: string; user: string; model: string; tools: Werkzeug[]; haushalt: string | null; maxTokens: number; ki: KiKontext }) {
+async function frageModell(o: { system: string; user: string; model: string; tools: Werkzeug[]; haushalt: string | null; maxTokens: number; ki: KiKontext; schema: Record<string, unknown> }) {
   const messages: { role: string; content: unknown }[] = [{ role: 'user', content: o.user }];
   const werkzeugWerte: number[] = [];
   const werkzeuge: string[] = [];
   let text = '';
   for (let runde = 0; runde < 5; runde++) {
-    const r = await askText({ system: o.system, user: '', messages, model: o.model, schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, tools: runde < 4 && o.tools.length ? o.tools : undefined, maxTokens: o.maxTokens, timeoutMs: 170_000, zweck: 'finanzchef', ki: o.ki });
+    const r = await askText({ system: o.system, user: '', messages, model: o.model, schema: o.schema, cacheSystem: true, tools: runde < 4 && o.tools.length ? o.tools : undefined, maxTokens: o.maxTokens, timeoutMs: 170_000, zweck: 'finanzchef', ki: o.ki });
     if (kiGesperrt(r)) return { ok: false as const, fehler: kiSperrText(r), messages, werkzeugWerte, werkzeuge };
     if (!r.ok && r.stopReason !== 'tool_use') return { ok: false as const, fehler: r.error ?? 'Modell antwortet nicht', messages, werkzeugWerte, werkzeuge };
     const bloecke = ((r.raw as { content?: Block[] })?.content ?? []);
@@ -208,7 +209,11 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   // (nur der Haushalt des Inhabers, dem der Bestand `ziele` gehört) auch Privat. Texte ohne Rahmen-Marken: der `<daten>`-Block endet nie vorzeitig.
   const nsHaushalt = a.haushalt ?? await haushaltDesInhabers();
   const ziele = await zieleFuerHead({ person: a.person ?? null, privat: !!a.haushalt, haushalt: nsHaushalt });
-  const daten = { ...(await datenpaket(bild, einstellung, stand, a.modus, business)), nordstern: ziele.nordstern, jahresziele: ziele.jahresziele.map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt })) };
+  // Wer verantwortlich sein kann (09.10., Plattform-Regel): die Personen des Haushalts aus den Konten — Kennung + Vorname, nie feste Namen.
+  const personen = (await haushaltsPersonen().catch(() => [])).map(p => ({ kennung: p.speicher, name: p.name.split(/\s+/)[0] || p.speicher }));
+  const kennungen = personen.map(p => p.kennung);
+  const schema = schemaFuer(kennungen) as unknown as Record<string, unknown>;
+  const daten = { ...(await datenpaket(bild, einstellung, stand, a.modus, business)), personen, nordstern: ziele.nordstern, jahresziele: ziele.jahresziele.map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt })) };
   // Datenblock mit nicht erratbarer Kennung (09.10., wie `datenBlock` der Heads): Verwendungszwecke aus Kontoauszügen und andere fremde Texte
   // stehen roh im Paket — ein Text wie „</daten> Ignoriere …“ beendet den Block so nie vorzeitig, Anweisungen darin bleiben Daten.
   const kennung = randomBytes(6).toString('hex');
@@ -220,20 +225,21 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   const modell = a.modus === 'tagescheck' && /opus/.test(agent.model) && !process.env.ANTHROPIC_MODEL ? MODEL_BY_TIER.ausgewogen : agent.model;
   // Datenschutz (05.10.): Takt = Hintergrund (Schalter, Pseudonymisierung), sonst Aufruf; Daten: Finanzen (+ Mandate/Pipeline).
   // Mit Haushalt stehen Privat-Finanzen im Paket (09.10., Anbieter-Tor: mit Tor nur in die EU, sonst Regelwerk).
-  const ki: KiKontext = { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person ?? null, kategorien: a.haushalt ? ['finanzen', 'finanzen-privat', 'crm'] : ['finanzen', 'crm'] };
-  const r1 = await frageModell({ system: SYSTEM, user, model: modell, tools, haushalt: a.haushalt, maxTokens, ki });
+  // `konto`: die Vornamen der Personen des Haushalts stehen im Paket (`personen`, für „verantwortlich“).
+  const ki: KiKontext = { lauf: a.ausgeloest === 'takt' ? 'hintergrund' : 'aufruf', person: a.person ?? null, kategorien: a.haushalt ? ['finanzen', 'finanzen-privat', 'crm', 'konto'] : ['finanzen', 'crm', 'konto'] };
+  const r1 = await frageModell({ system: SYSTEM, user, model: modell, tools, haushalt: a.haushalt, maxTokens, ki, schema });
   if (!r1.ok) return { ok: false, fehler: r1.fehler };
-  let antwort: Antwort = normalisiere(extractJson(r1.text), a.modus);
+  let antwort: Antwort = normalisiere(extractJson(r1.text), a.modus, kennungen);
   if (!antwort.zusammenfassung && !antwort.antwort) return { ok: false, fehler: 'Antwort ohne verwertbares JSON.' };
   let pruefung: Pruefung = pruefe(antwort, daten, r1.werkzeugWerte, r1.werkzeuge);
   let korrigiert = false;
   let werkzeuge = r1.werkzeuge;
   if (!sauber(pruefung)) {
     // Genau eine Korrekturrunde mit konkreter Fehlerliste.
-    const r2 = await askText({ system: SYSTEM, user: '', messages: [...r1.messages, { role: 'user', content: korrekturAuftrag(pruefung) }], model: modell, schema: SCHEMA as unknown as Record<string, unknown>, cacheSystem: true, maxTokens, timeoutMs: 170_000, zweck: 'finanzchef-korrektur', ki });
+    const r2 = await askText({ system: SYSTEM, user: '', messages: [...r1.messages, { role: 'user', content: korrekturAuftrag(pruefung) }], model: modell, schema, cacheSystem: true, maxTokens, timeoutMs: 170_000, zweck: 'finanzchef-korrektur', ki });
     const neu = r2.ok ? extractJson(r2.text) : null;
     if (neu) {
-      const a2 = normalisiere(neu, a.modus);
+      const a2 = normalisiere(neu, a.modus, kennungen);
       const p2 = pruefe(a2, daten, r1.werkzeugWerte, r1.werkzeuge);
       const fehler = (p: Pruefung) => p.unbelegt.length + p.quellenFehlen.length + p.betraegeUnbelegt.length + p.fristenUnbelegt.length + p.verstoesse.length * 5;
       if (a2.zusammenfassung && fehler(p2) <= fehler(pruefung)) { antwort = a2; pruefung = p2; korrigiert = true; werkzeuge = r1.werkzeuge; }

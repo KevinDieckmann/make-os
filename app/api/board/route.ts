@@ -16,6 +16,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { spaceBereich } from '@/lib/make-one/space-regeln';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
 
 export const runtime = 'nodejs';
@@ -41,10 +42,12 @@ export async function POST(req: Request) {
   if (Array.isArray(p.tasks) && p.tasks.length) {
     tasks = p.tasks;
   } else {
-    // Privat bleibt privat — Filter jetzt SERVER-seitig: nur business-Projekte.
+    // Privat bleibt privat — Filter jetzt SERVER-seitig: nur Business-Projekte. Bereich je Einheit (09.10., K3): nach dem Aufgaben-Space
+    // (`spaceBereich`: Privat-Einheiten wie die Selbstständigkeit → privat), nicht mehr nach der alten Projekt-Kategorie — die steht bei
+    // Projekten der Selbstständigkeit noch auf „business“. Projekte ohne Space (Altbestand) wie bisher nach der Kategorie.
     const store = await ladeAufgabenSicht(fuer); // Sichtfilter „nur ich“ (29.09.)
-    const businessIds = new Set((store?.projects ?? []).filter(x => x.category === 'business').map(x => x.id));
-    tasks = (store?.tasks ?? []).filter(t => t.projectId && businessIds.has(t.projectId));
+    const businessIds = new Set((store?.projects ?? []).filter(x => (x.spaceId ? spaceBereich(x.spaceId) : x.category) === 'business').map(x => x.id));
+    tasks = (store?.tasks ?? []).filter(t => t.projectId && businessIds.has(t.projectId) && (!t.spaceId || spaceBereich(t.spaceId) === 'business'));
   }
   const today = p.today && /^\d{4}-\d{2}-\d{2}$/.test(p.today) ? p.today : localDay();
 
@@ -105,7 +108,7 @@ export async function POST(req: Request) {
     'Je Sektion 2-4 Punkte, max 4 Risiken, 3 Fokus-Punkte für nächste Woche. Beziehe dich auf die echten Zahlen/Aufgaben.',
   ].join('\n');
 
-  const r = await askJson<{ headline?: string; sektionen?: unknown[]; risiken?: string[]; naechsteWoche?: string[] }>({ zweck: 'board', ki: kiAus(req, ['finanzen', 'aufgaben', 'crm']), system, user: context, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ headline?: string; sektionen?: unknown[]; risiken?: string[]; naechsteWoche?: string[] }>({ zweck: 'board', ki: kiAus(req, ['finanzen', 'aufgaben', 'crm'], { person: fuer }), system, user: context, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ headline: r.error ?? 'Analyse gerade nicht möglich — Kennzahlen stehen.', stats, sektionen: [], risiken: [], naechsteWoche: [] });
 
   const out = {
