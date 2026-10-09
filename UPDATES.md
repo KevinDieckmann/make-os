@@ -71,7 +71,7 @@ geht nur mit OAuth und heute gar nicht.
 **Nahtstellen für die anderen Pakete:** Die Ansicht liest Bereichsnamen und -farben über `bereichAnzeige(bereich, namen)` (namen = `bereiche`
 aus `/api/inbox`). Die Flows können für „Aufgabe aus Mail“ bei `m-<firmaId>` direkt den Mandanten-Space nehmen (`spaceId = bereich`).
 **Geänderte gemeinsame Dateien:** keine Inbox-Dateien der anderen Pakete (`InboxZwei.tsx`, `Gespraech.tsx`, `strom-server.ts`, `/api/inbox`
-bleiben unberührt — Probe-Merge mit `inbox-ansicht` und `inbox-flows` ohne Konflikt). Außerhalb der Inbox: `lib/crm/datenschutz.ts`,
+bleiben unberührt — Probe-Merge mit `inbox-ansicht` und `inbox-flows`: im Code kein Konflikt, nur UPDATES.md — beide Abschnitte behalten). Außerhalb der Inbox: `lib/crm/datenschutz.ts`,
 `lib/datenschutz/art15.ts`. **Nach dem Merge mit „Ansicht“ eine Zeile:** `waehlbar` in `stromFuer` aus `bereichWahlLaden()` (nach `space`
 gefiltert) statt aus allen Namen nehmen — sonst stehen dort auch Kunden mit beendetem Mandat (die der Server beim Zuordnen mit 400 ablehnt).
 
