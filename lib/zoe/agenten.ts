@@ -261,7 +261,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       }
       // ── Systemläufe ──
       case 'tagesstart': {
-        const d = await post('/api/tagesstart', {}, 200_000);
+        // 09.10. (Takt robust): die Zeitgrenze deckt den ganzen Lauf (Kalender bis 75 s + Tageslauf bis 240 s + Index) — vorher brach der
+        // Agent nach 200 s ab, während der Lauf auf dem Server weiterarbeitete, und der Arbeiter stieß ihn gleich noch einmal an.
+        const d = await post('/api/tagesstart', {}, 400_000);
+        if (d.laeuft) return gut('TAGESSTART: läuft gerade schon — nichts doppelt angestoßen.');
         if (d.uebersprungen) return gut('TAGESSTART: heute schon gelaufen, nichts doppelt getan.');
         const schritte = (d.schritte ?? []) as { name: string; ok: boolean; info?: string }[];
         return gut(`TAGESSTART: ${schritte.filter(x => x.ok).length} von ${schritte.length} Schritten. `
