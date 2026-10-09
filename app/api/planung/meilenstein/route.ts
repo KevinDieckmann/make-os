@@ -19,6 +19,7 @@ import { meilensteinStrukturSichern } from '@/lib/planung/meilenstein-aufgaben-s
 import { aktionLesen, raumFuerBrowser } from '@/lib/planung/meilenstein-raum';
 import { raumLaden, raumAendern } from '@/lib/planung/meilenstein-raum-server';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,12 +28,17 @@ const MAX_BYTES = 128 * 1024;
 const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
 const KENNUNG = /^[A-Za-z0-9_~:.-]{1,80}$/;
 
+/**
+ * Zugang + Haushalt des Austauschs. Seit 09.10. (E4-Rest, EINE Konto-Sicht) auch für ein Konto „nur Business“ im Haushalt der Inhaber —
+ * vorher scheiterte es an `haushaltFuer` (dem Finanz-Kern: kein Zugang zu den privaten Haushaltsfinanzen), und die Meilenstein-Seite blieb
+ * für den Partner leer. Was er sieht, entscheidet `meilensteinFinden` (`meilensteineSichtbarFuer`): Business ja, Privat-Bereich 404.
+ */
 async function zugangUndHaushalt(req: Request): Promise<{ person: string; haushalt: string } | NextResponse> {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return GESPERRT();
-  const h = await haushaltFuer(z.person);
+  const h = (await haushaltFuer(z.person))?.haushalt ?? await kontoSicht(z.person).then(k => (k?.nurBusiness && k.imHaushalt ? k.haushalt : null)).catch(() => null);
   if (!h) return NextResponse.json({ ok: false, error: 'Kein Haushalt zu dieser Person.' }, { status: 403 });
-  return { person: z.person, haushalt: h.haushalt };
+  return { person: z.person, haushalt: h };
 }
 
 /**

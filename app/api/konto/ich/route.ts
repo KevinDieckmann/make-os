@@ -9,6 +9,7 @@ import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
 import { eigeneZieleLesbar } from '@/lib/planung/eigene-ziele-sicht';
 import { istHauptInhaber, istWirksamerInhaber } from '@/lib/zugang/inhaber';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,9 @@ export async function GET(req: Request) {
     // Mehrere Inhaber (09.10., R9): Inhaber-Rechte (jeder Inhaber im Haushalt der Inhaber) und ob dieses Konto der Haupt-Inhaber ist.
     inhaber: istWirksamerInhaber(s, wer),
     hauptInhaber: istHauptInhaber(s, wer),
+    // EINE Konto-Sicht (09.10., E4-Rest): sieht dieses Konto nur den Business-Bereich? Der Kopf blendet dann „Privat“ aus — die Trennung selbst
+    // geschieht auf dem Server (jede Route filtert), das hier spart nur einen Schalter, hinter dem nichts kommt.
+    nurBusiness: kontoSichtAus(s, wer).nurBusiness,
     // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.
     zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),

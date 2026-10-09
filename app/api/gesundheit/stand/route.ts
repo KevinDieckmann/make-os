@@ -12,7 +12,7 @@ import { localDay } from '@/lib/zeit';
 import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from '@/lib/gesundheit/eintraege';
 import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import type { TaktStand } from '@/lib/gesundheit/takt';
-import { sichtbarFuer } from '@/lib/planung/routinen';
+import { routinenImUmfang, routinenSichtbarFuer } from '@/lib/planung/bereich-sicht-server';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { moduleWirksam, hatEintraege } from '@/lib/gesundheit/module';
 import { koerperLaden } from '@/lib/gesundheit/koerper-server';
@@ -20,7 +20,7 @@ import { koerperLaden } from '@/lib/gesundheit/koerper-server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Routine { id: string; label: string; wann: string; aktiv: boolean; kategorie?: string; owner?: string }
+interface Routine { id: string; label: string; wann: string; aktiv: boolean; kategorie?: string; owner?: string; space?: string; einheit?: string }
 
 export async function GET(req: Request) {
   const person = ansichtPerson(req);
@@ -43,8 +43,10 @@ export async function GET(req: Request) {
   const modulStand = moduleWirksam(koerper, { haut: hatEintraege(hautRoh), serie: hatEintraege(streakRoh) });
   const haut = modulStand.haut ? hautRoh : null;
   const streak = modulStand.serie ? streakRoh : null;
-  // Nur, was diese Person sieht: eigene und gemeinsame Routinen (27.09.).
-  const routinen = sichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person);
+  // Nur, was diese Person sieht: eigene und gemeinsame Routinen (27.09.). Seit 09.10. (E4-Rest) im Umfang der Person UND der anfragenden
+  // Person (lib/planung/bereich-sicht-server.ts): ein Konto „nur Business“ ohne den Privat-Bereich, außerhalb des Haushalts keine — vorher
+  // bekamen auch Testkunde und fremder Haushalt die Routinen „für beide“ (Messlatte 09.10.).
+  const routinen = await routinenImUmfang(await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person), ich);
   const t14 = tageZurueck(heute, 14);
   const q = routineQuote(hl ?? {}, routinen.map(r => r.id), heute, 7);
   const je = (id: string) => routineQuote(hl ?? {}, [id], heute, 7).quote;
