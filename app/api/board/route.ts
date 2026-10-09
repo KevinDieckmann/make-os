@@ -98,7 +98,7 @@ export async function POST(req: Request) {
   ].join('\n');
 
   const system = [
-    'Du bist der Reporting-/Board-Agent in Kevins MAKE OS. Erzeuge ein knappes, ehrliches Board-/Wochen-Pack.',
+    'Du bist der Reporting-/Board-Agent in MAKE OS. Erzeuge ein knappes, ehrliches Board-/Wochen-Pack.',
     'Du bekommst FERTIGE Kennzahlen — rechne nicht neu, erfinde nichts. Nüchtern, Klartext, kein Startup-Sprech.',
     'Antworte AUSSCHLIESSLICH als JSON, kein Markdown:',
     '{"headline":"<1-2 Sätze Executive Summary: wo steht die Woche wirklich>","sektionen":[{"titel":"Umsatz & Kurs","punkte":["...", "..."]},{"titel":"Pipeline","punkte":["..."]},{"titel":"Ausführung","punkte":["..."]}],"risiken":["<Risiko>", "..."],"naechsteWoche":["<konkreter Fokus 1>", "..."]}',

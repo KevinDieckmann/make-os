@@ -94,7 +94,7 @@ export async function fuehreAus(
     });
     return {
       text: `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}. `
-        + 'Das liegt jetzt in Kevins Freigabe-Stapel. Sag ihm knapp, was du vorbereitet hast, und dass es auf seine Freigabe wartet — behaupte NICHT, es sei erledigt.',
+        + 'Das liegt jetzt im Freigabe-Stapel der Person, die dich beauftragt hat. Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt.',
       ok: true, gestapelt: true,
     };
   }

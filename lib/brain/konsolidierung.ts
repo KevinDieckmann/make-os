@@ -90,7 +90,7 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
   if (!neu.length && !protokollTexte.length) return merke({ abgelegt: 0, schonDa: 0, ohneKi: false, text: 'Nichts Neues zu verdichten.' });
 
   const system = [
-    'Du bist der nächtliche Konsolidierungs-Lauf des Brains von Kevin und Malin (MAKE OS). Du liest, was der Tag hinterlassen hat, und machst daraus höchstens FÜNF Vorschläge für das Wissens-Brain.',
+    'Du bist der nächtliche Konsolidierungs-Lauf des Brains dieser MAKE-OS-Instanz. Du liest, was der Tag hinterlassen hat, und machst daraus höchstens FÜNF Vorschläge für das Wissens-Brain.',
     'Ein Vorschlag ist entweder eine NEUE Notiz (ziel "neu"), eine ERGÄNZUNG einer bestehenden Notiz (ziel "ergaenzung", ziel_notiz = Titel) oder eine REGEL (ziel "regel", prioritaet 0–3, gilt_fuer kevin|malin|beide|zoe) — nur, wenn etwas mehrfach oder ausdrücklich als Regel gesagt wurde.',
     'Jeder Vorschlag trägt eine Begründung (warum das ins Brain gehört) und die Quelle (welcher Fakt, welches Protokoll). Vertraulichkeit: "gemeinsam", wenn es beide betrifft; "privat-kevin"/"privat-malin", wenn es nur eine Person angeht.',
     'Nichts erfinden, nichts verallgemeinern. Widersprüche zu dem, was im Material steht, nennst du als eigenen Vorschlag mit ziel "ergaenzung". Findest du nichts Belastbares, gib eine leere Liste zurück.',

@@ -77,15 +77,15 @@ export async function POST(req: Request) {
   }
 
   const system = [
-    'Du schaust auf MAKE OS — das private Betriebssystem von Kevin und Malin — und schlägst Verbesserungen an der SOFTWARE vor.',
+    'Du schaust auf MAKE OS — das Betriebssystem dieses Haushalts — und schlägst Verbesserungen an der SOFTWARE vor.',
     'Grundlage sind echte Nutzungsdaten, keine Vermutungen. Was nie geöffnet wurde, ist ein Kandidat zum Entfernen oder Zusammenlegen; was ständig geöffnet wird, verdient weniger Klicks.',
     'Die Verweildauer liest du zusammen mit den Aufrufen: viele Aufrufe bei wenig Zeit heißt, die Seite liefert nicht, wonach dort gesucht wird. Viel Zeit bei wenigen Aufrufen heißt, dort wird echt gearbeitet — die verdient Werkzeug, keine Vereinfachung.',
-    'Kevin und Malin arbeiten in einer Instanz. Wenn beide denselben Bestand ändern, ist das ein Hinweis auf fehlende Absprache oder eine fehlende gemeinsame Ansicht.',
+    'Mehrere Personen arbeiten in einer Instanz. Wenn mehrere denselben Bestand ändern, ist das ein Hinweis auf fehlende Absprache oder eine fehlende gemeinsame Ansicht.',
     'REGELN: Höchstens 4 Vorschläge. Jeder muss aus den Daten unten begründbar sein — schreibe den Beleg dazu. Keine Allgemeinplätze („bessere UX"), sondern eine konkrete Änderung an einer benannten Seite. Wenn die Daten für einen Vorschlag nicht reichen, mach weniger Vorschläge.',
     'Antworte als reines JSON: {"vorschlaege":[{"titel":"kurz und konkret","warum":"Beleg aus den Daten plus erwarteter Nutzen","prio":1|2|3}]}',
   ].join('\n');
 
-  // Verweildauer: Kevins Ansage fürs Wochen-Reflexionsmeeting — „wie lange
+  // Verweildauer: Ansage fürs Wochen-Reflexionsmeeting — „wie lange
   // waren wir drauf". Viele Aufrufe bei wenig Zeit heißt: die Seite liefert
   // nicht, was man dort sucht. Viel Zeit bei wenigen Aufrufen heißt: hier wird
   // wirklich gearbeitet.
@@ -96,17 +96,20 @@ export async function POST(req: Request) {
     .slice(0, 12)
     .map(s => `${s.pfad} ${min(s.sekunden)}min/${s.anzahl}× (${s.person ?? '—'})`);
 
-  // Wer welchen Bestand anfasst — die Arbeitsteilung, wie sie wirklich ist.
-  const jeBestand = new Map<string, { kevin: number; malin: number }>();
+  // Wer welchen Bestand anfasst — die Arbeitsteilung, wie sie wirklich ist. Je Person, wie sie im Protokoll steht (09.10.:
+  // vorher fest zwei Namen — jede dritte Person zählte als die erste).
+  const jeBestand = new Map<string, Map<string, number>>();
   for (const e of (aenderungen?.eintraege ?? []).slice(-200)) {
-    const z = jeBestand.get(e.bestand) ?? { kevin: 0, malin: 0 };
-    if (e.person === 'Malin') z.malin++; else z.kevin++;
+    const z = jeBestand.get(e.bestand) ?? new Map<string, number>();
+    const wer = String(e.person ?? '—').slice(0, 40) || '—';
+    z.set(wer, (z.get(wer) ?? 0) + 1);
     jeBestand.set(e.bestand, z);
   }
+  const summe = (z: Map<string, number>) => Array.from(z.values()).reduce((a, b) => a + b, 0);
   const arbeitsteilung = Array.from(jeBestand.entries())
-    .sort((a, b) => (b[1].kevin + b[1].malin) - (a[1].kevin + a[1].malin))
+    .sort((a, b) => summe(b[1]) - summe(a[1]))
     .slice(0, 10)
-    .map(([b, z]) => `${b}: Kevin ${z.kevin}× / Malin ${z.malin}×`);
+    .map(([b, z]) => `${b}: ${Array.from(z.entries()).map(([wer, n]) => `${wer} ${n}×`).join(' / ')}`);
 
   const user = [
     `MEIST GEÖFFNET (Pfad × Aufrufe): ${benutzt.map(s => `${s.pfad}×${s.anzahl}`).join(', ') || '—'}`,
