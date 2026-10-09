@@ -32,7 +32,7 @@ const FELDER: Exclude<SpaltenFeld, 'zweck'>[] = ['datum', 'betrag', 'soll', 'hab
 const ERWEITERT: ReadonlySet<SpaltenFeld> = new Set(['valuta', 'waehrung', 'iban', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban', 'kennzeichen']);
 
 type Fehler = { ok: false; fehler?: string; csv?: Omit<CsvInfo, 'beispiel'>; anderesKonto?: { id: string; name: string }; vorschau?: VorschauAntwort; pruefung?: unknown };
-type Uebernahme = { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true };
+type Uebernahme = { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; zugeordnet?: number };
 type Zurueck = { ok: true; lauf: AuszugLauf; entfernt: number; konflikte: { datum: string; betrag: number; wer: string }[]; schonWeg: number; standZurueck: number; hinweis?: string };
 
 async function post<T>(sicht: KontenSicht, body: unknown): Promise<T | Fehler> {
@@ -98,7 +98,9 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
     if (!vorschau || !datei) return;
     const n = vorschau.zahlen.neu;
     const saldoText = vorschau.saldo?.status === 'neu' ? ` und den Saldo vom ${tag(vorschau.saldo.datum)} (${euro(vorschau.saldo.betrag)})` : '';
-    if (!(await bestaetigen({ titel: 'Kontoauszug übernehmen?', text: `${n} ${n === 1 ? 'Buchung' : 'Buchungen'}${saldoText} kommen zu „${konto.name}“. Rückgängig geht danach hier, solange nichts daran geändert wurde.`, ja: 'Übernehmen' }))) return;
+    // 09.10.: Umsätze, die schon als Rechnung bezahlt, Beleg oder von Hand gebucht sind, werden nur zugeordnet (nicht doppelt angelegt).
+    const zuText = vorschau.abgleiche ? ` ${vorschau.abgleiche} ${vorschau.abgleiche === 1 ? 'Umsatz ist' : 'Umsätze sind'} schon gebucht und ${vorschau.abgleiche === 1 ? 'wird' : 'werden'} nur zugeordnet.` : '';
+    if (!(await bestaetigen({ titel: 'Kontoauszug übernehmen?', text: `${n} ${n === 1 ? 'Buchung' : 'Buchungen'}${saldoText} kommen zu „${konto.name}“.${zuText} Rückgängig geht danach hier, solange nichts daran geändert wurde.`, ja: 'Übernehmen' }))) return;
     setLaeuft(true);
     const r = await post<Uebernahme>(bereich, { aktion: 'uebernehmen', kontoId: konto.id, datei: { inhalt: bytesZuBase64(datei.bytes) }, ...(csv ? { spalten } : {}), basis: vorschau.basis, trotzAbweichung: trotz, anfrageId });
     setLaeuft(false);
@@ -109,6 +111,7 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
     }
     const teile = [r.nichtsNeu ? 'Nichts Neues — alles war schon da.' : `${r.angelegt} ${r.angelegt === 1 ? 'Buchung' : 'Buchungen'} übernommen.`];
     if (r.doppelt) teile.push(`${r.doppelt} inzwischen schon vorhanden — nicht doppelt angelegt.`);
+    if (r.zugeordnet) teile.push(`${r.zugeordnet} schon gebucht (Rechnung bezahlt, Beleg oder von Hand) — zugeordnet, nicht doppelt.`);
     if (r.saldo === 'neu') teile.push('Saldo als Stand eingetragen.');
     setMeldung({ art: 'gut', text: teile.join(' ') });
     zuruecksetzen();
@@ -231,8 +234,8 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
           )}
           {vorschau.zeilen.length > 30 && <Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Weniger zeigen' : `Alle ${vorschau.zeilen.length} zeigen`}</Knopf>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Knopf haupt farbe={LEUCHT.geld} aus={laeuft || (vorschau.zahlen.neu === 0 && vorschau.saldo?.status !== 'neu') || (!!vorschau.pruefung && !vorschau.pruefung.stimmt && !trotz)} onClick={uebernehmen}>
-              {vorschau.zahlen.neu || vorschau.saldo?.status === 'neu' ? `Übernehmen (${vorschau.zahlen.neu} neu${vorschau.saldo?.status === 'neu' ? ' + Saldo' : ''})` : 'Nichts Neues'}
+            <Knopf haupt farbe={LEUCHT.geld} aus={laeuft || (vorschau.zahlen.neu === 0 && vorschau.saldo?.status !== 'neu' && !vorschau.abgleiche) || (!!vorschau.pruefung && !vorschau.pruefung.stimmt && !trotz)} onClick={uebernehmen}>
+              {vorschau.zahlen.neu || vorschau.saldo?.status === 'neu' || vorschau.abgleiche ? `Übernehmen (${vorschau.zahlen.neu} neu${vorschau.abgleiche ? ` · ${vorschau.abgleiche} zugeordnet` : ''}${vorschau.saldo?.status === 'neu' ? ' + Saldo' : ''})` : 'Nichts Neues'}
             </Knopf>
             <Knopf leise onClick={() => { zuruecksetzen(); setMeldung(null); }}>Verwerfen</Knopf>
           </div>

@@ -171,6 +171,45 @@ export async function finanzplanSpiegeln(haushalt: string, orte: readonly KontoO
   } catch (e) { console.error('[konten] Spiegel in den Finanzplan:', e instanceof Error ? e.message : e); }
 }
 
+/** Der Kontostand der Gesellschaft im Finanzplan VOR einem Kontoauszug, der das Register erst zur Quelle gemacht hat (09.10., Nahtstellen). */
+export interface FirmaVorher { kontostand: number | null; stand: string | null; /** Was der Rückweg-Spiegel danach eintrug (= der Saldo). */ gespiegelt: { betrag: number; datum: string } }
+
+/**
+ * Den Kontostand einer Gesellschaft festhalten, BEVOR ein Kontoauszug-Saldo das Register für sie zur Quelle macht — nur, wenn das Register sie
+ * noch nicht führt (sonst gilt ohnehin das Register). null = nichts festzuhalten. Nur im Haushalt des Inhabers (dem gehört der Finanzplan der Firmen).
+ */
+export async function firmaVorAuszug(haushalt: string, kontoId: string, saldo: { betrag: number; datum: string }): Promise<FirmaVorher | null> {
+  if (haushalt !== await inhaberHaushalt()) return null;
+  const r = await ladeRegister(haushalt);
+  const k = r.konten.find(x => x.id === kontoId);
+  if (!k || !istGesellschaft(k.ort) || regiert(r.konten, o => o === k.ort)) return null;
+  const f = (await loadJson<FinanzplanFirmen>('finanzplan'))?.firmen?.find(x => x.id === k.ort);
+  return { kontostand: typeof f?.kontostand === 'number' && Number.isFinite(f.kontostand) ? f.kontostand : null, stand: f?.stand ?? null, gespiegelt: { betrag: Math.round(saldo.betrag * 100) / 100, datum: saldo.datum } };
+}
+
+/**
+ * Nach „Rückgängig“ eines Kontoauszugs: führt das Register die Gesellschaft nicht mehr (nur der zurückgenommene Saldo hatte es zur Quelle gemacht),
+ * kommt der Kontostand der Firma im Finanzplan auf den Stand von vorher — aber nur, wenn dort noch steht, was der Spiegel eingetragen hatte (sonst
+ * hat inzwischen jemand gepflegt; das bleibt). Idempotent, wirft nie.
+ */
+export async function firmaVorherHerstellen(haushalt: string, ort: KontoOrt, vorher: FirmaVorher): Promise<boolean> {
+  try {
+    if (!istGesellschaft(ort) || haushalt !== await inhaberHaushalt()) return false;
+    if (regiert((await ladeRegister(haushalt)).konten, o => o === ort)) return false;
+    let hergestellt = false;
+    await updateJson<FinanzplanFirmen>('finanzplan', cur => {
+      if (!cur || !Array.isArray(cur.firmen)) return cur as FinanzplanFirmen;
+      const firmen = cur.firmen.map(f => {
+        if (f.id !== ort || f.kontostand !== vorher.gespiegelt.betrag || f.stand !== vorher.gespiegelt.datum) return f;
+        hergestellt = true;
+        return { ...f, kontostand: vorher.kontostand, stand: vorher.stand };
+      });
+      return hergestellt ? { ...cur, firmen } : cur;
+    });
+    return hergestellt;
+  } catch (e) { console.error('[konten] Kontostand vor dem Kontoauszug:', e instanceof Error ? e.message : e); return false; }
+}
+
 // ── Bisherige Schreibwege und 0-Punkt → Register ─────────────────────────────────────────────────────────────────────────────────
 
 /**

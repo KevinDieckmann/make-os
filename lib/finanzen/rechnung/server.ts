@@ -108,6 +108,9 @@ export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: u
  * damit ein zweiter Klick (oder „Mandat anlegen“ und der Knopf danach) nie eine zweite Rechnung anlegt.
  */
 export const einmalRechnungId = (angebotId: string) => `r-e${createHash('sha256').update(`einmalig|${angebotId}`).digest('hex').slice(0, 24)}`;
+/** Die Einmalposten-Rechnung eines Angebots, solange sie gilt (nicht storniert). */
+const einmalSchon = (l: readonly Rechnung[], fest: string) => l.find(r => r.id === fest && r.status !== 'storniert');
+export const EINMAL_SCHON = 'Die Einmalposten dieses Angebots stehen schon in einer eigenen Rechnung — keine zweite Rechnung über alle Positionen (sie verrechnete sie doppelt). Die laufende Leistung rechnet das Mandat ab (Monatsrechnung); sonst die Rechnung frei schreiben.';
 
 /**
  * Einen Rechnungsentwurf anlegen (Status „geplant“, ohne Nummer). `quelle`:
@@ -133,6 +136,8 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   let entwurf: Rechnung;
   /** Gibt es den Entwurf schon (aus diesem Angebot bzw. für dieses Mandat und diesen Monat)? Vor UND in der Sperre gefragt. */
   let vorhandenIn: ((l: Rechnung[]) => Rechnung | undefined) | null = null;
+  /** Rechnung über alle Positionen eines Angebots: Kennung der Einmalposten-Rechnung, die es dann nicht geben darf (auch in der Sperre geprüft). */
+  let sperreEinmal: string | null = null;
 
   const firma = (fid: unknown) => (firmaIdOk(fid) ? crm.firmen.find(f => f.id === fid && !f.geloeschtAm) : undefined);
   const kontakt = (kid: unknown) => (kontaktIdOk(kid) ? kontakte.find(k => k.id === kid) : undefined);
@@ -163,6 +168,13 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     if (offen) {
       if (!inSicht(offen, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
       return { rechnung: mitFassung(offen), vorhanden: true };
+    }
+    // Nahtstellen 09.10.: stehen die Einmalposten schon in ihrer eigenen Rechnung (feste Kennung, auch gestellt/bezahlt), entsteht keine zweite
+    // Rechnung über ALLE Positionen — sie verrechnete die Einmalposten ein zweites Mal (die laufende Leistung rechnet das Mandat ab).
+    if (!nurEinmalig) {
+      sperreEinmal = fest;
+      const einmal = einmalSchon(plan.rechnungen, fest);
+      if (einmal) throw new RechnungFehler(EINMAL_SCHON, 409, { grund: 'einmalposten-schon', rechnungId: einmal.id });
     }
     const k = kontakt(a.kontaktId);
     const f = firma(a.firmaId ?? k?.firmaId);
@@ -231,6 +243,7 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // Zwei gleichzeitige „aus Angebot/Mandat“: der zweite bekommt den ersten Entwurf (kein Doppel).
     const da = finde?.(f.rechnungen);
     if (da && cur) { schonDa = da; return cur; }
+    if (sperreEinmal && einmalSchon(f.rechnungen, sperreEinmal)) throw new RechnungFehler(EINMAL_SCHON, 409, { grund: 'einmalposten-schon' });
     const sauber = sauberFile({ rechnungen: [entwurf] }).rechnungen[0];
     const neu = ugFirmaNachziehen({ ...f, rechnungen: [...f.rechnungen, sauber] });
     const grenze = ueberGrenze(neu, f);

@@ -92,7 +92,7 @@ export function vorEroeffnung(datum: string | null | undefined, firmaId: string 
 }
 
 // ── Datum je Posten-Art (eine Regel je Art, oben beschrieben) ─────────────────────────────────────────────────────────────────────
-type RechnungArt = { firmaId?: string; datum?: string; faellig?: string; bezahltAm?: string };
+type RechnungArt = { firmaId?: string; datum?: string; faellig?: string; bezahltAm?: string; nummer?: string; status?: string };
 type ZahlungArt = { firmaId?: string; faellig?: string };
 type PlanpostenArt = { firmaId?: string; ab: string; bis?: string; rhythmus: string };
 type AbschlussArt = { firma: string; monat: string };
@@ -151,15 +151,37 @@ export const istEroeffnungsKennung = (id: string | undefined | null): boolean =>
 /** Ist der Posten noch offen? Betrag größer 0 und nicht bezahlt (09.10., L34). */
 export const postenOffen = (p: OffenerPosten): boolean => p.betrag > 0 && !p.bezahltAm;
 
+// ── Dieselbe Rechnung im Finanzplan UND in der Liste der offenen Posten (09.10., Nahtstellen) ─────────────────────────────────────────
+// Die OP-Liste des 0-Punkts (Daten-Assistent, mit Rechnungsnummer) und eine Rechnung im Finanzplan können dieselbe Rechnung sein — z. B. eine ältere
+// Rechnung ohne Rechnungsdatum, deren Fälligkeit nach dem Stichtag liegt (sie wird dann nicht archiviert). Dann zählten Liquidität, „kommt rein“ und
+// die offenen Forderungen dasselbe Geld zweimal. Regel (nur über die Rechnungsnummer, nie über Namen): gleiche Gesellschaft + gleiche Nummer →
+// es ist DIESELBE Rechnung: sie zählt einmal, als offener Posten des 0-Punkts; ist sie im Finanzplan bezahlt bzw. storniert, ist der Posten erledigt.
+const nrNorm = (s: unknown): string => String(s ?? '').normalize('NFC').toLowerCase().replace(/[^a-z0-9]/g, '');
+const nrSchluessel = (firma: string, nr: unknown): string | null => { const n = nrNorm(nr); return n.length >= 3 ? `${firma}|${n}` : null; };
+
+/** Rechnungsnummern (Gesellschaft|Nummer) der offenen Forderungen aller geltenden Eröffnungen. */
+function forderungsNummern(geltend: readonly Eroeffnung[]): Set<string> {
+  const raus = new Set<string>();
+  for (const e of geltend) for (const p of e.forderungen ?? []) { const k = nrSchluessel(e.firma, p.rechnungsnr); if (k) raus.add(k); }
+  return raus;
+}
+/** Schlüssel (Gesellschaft|Nummer) einer Rechnung des Finanzplans, wenn ihre Gesellschaft eine geltende Eröffnung hat. */
+function rechnungSchluessel(r: RechnungArt, g: Geltende): string | null {
+  const e = eroeffnungVon(r.firmaId, g);
+  return e ? nrSchluessel(e.firma, r.nummer) : null;
+}
+
 /**
  * Die offenen Posten einer Eröffnung als Rechnungen (Forderungen) und Zahlungen (Verbindlichkeiten). Bezahlte fallen heraus (09.10.); die Kennung
  * zählt die Stelle in der ganzen Liste — ein bezahlter Posten verschiebt die Kennungen der übrigen nicht.
  */
-export function offenePostenAls(e: Eroeffnung) {
+export function offenePostenAls(e: Eroeffnung, erledigt: ReadonlySet<string> = new Set()) {
   const name = finanzOrtName(e.firma);
-  const offen = (l: OffenerPosten[] | undefined) => (l ?? []).map((p, i) => ({ p, i })).filter(x => postenOffen(x.p));
+  // `erledigt` (Gesellschaft|Nummer): dieselbe Rechnung ist im Finanzplan bezahlt bzw. storniert → der Posten ist nicht mehr offen.
+  const offen = (l: OffenerPosten[] | undefined, mitNummer = false) => (l ?? []).map((p, i) => ({ p, i }))
+    .filter(x => postenOffen(x.p) && !(mitNummer && erledigt.has(nrSchluessel(e.firma, x.p.rechnungsnr) ?? '')));
   return {
-    rechnungen: offen(e.forderungen).map(({ p, i }) => ({
+    rechnungen: offen(e.forderungen, true).map(({ p, i }) => ({
       id: offenerPostenKennung(e, 'f', i), firmaId: e.firma, kunde: p.name, titel: `Offene Forderung zum 0-Punkt (${name})`,
       betrag: p.betrag, status: 'gestellt' as const, ...(p.faellig ? { faellig: p.faellig } : {}), ...(p.rechnungsnr ? { nummer: p.rechnungsnr } : {}), eroeffnung: true as const,
     })),
@@ -187,7 +209,11 @@ export function abEroeffnung<B extends FinanzBundle>(b: B, g: Geltende | null | 
     return raus;
   };
   const geltend = Object.values(g).filter((e): e is Eroeffnung => !!e);
-  const offen = geltend.map(offenePostenAls);
+  // Dieselbe Rechnung im Finanzplan und in der OP-Liste (gleiche Nummer): sie zählt einmal — als offener Posten; bezahlt/storniert im Finanzplan → erledigt.
+  const opNummern = forderungsNummern(geltend);
+  const imOp = (r: RechnungArt): boolean => { const k = rechnungSchluessel(r, g); return !!k && opNummern.has(k); };
+  const erledigt = new Set((b.rechnungen ?? []).filter(r => imOp(r as RechnungArt) && ((r as RechnungArt).status === 'bezahlt' || (r as RechnungArt).status === 'storniert')).map(r => rechnungSchluessel(r as RechnungArt, g)!));
+  const offen = geltend.map(e => offenePostenAls(e, erledigt));
   // Konten: Anfangsbestand der Eröffnung, außer ein später eingetragener Kontostand löst ihn ab; fehlt das Konto, entsteht es.
   let firmen = b.firmen;
   if (firmen) {
@@ -197,7 +223,7 @@ export function abEroeffnung<B extends FinanzBundle>(b: B, g: Geltende | null | 
     });
     for (const e of geltend) if (!firmen.some(f => f.id === e.firma)) firmen.push({ id: e.firma, name: finanzOrtName(e.firma), bank: '', kontostand: e.kontostand, stand: e.stichtag } as unknown as NonNullable<B['firmen']>[number]);
   }
-  const rechnungen = teile(b.rechnungen as R[] | undefined, r => rechnungVor(r as RechnungArt, g), archiv.rechnungen as R[]);
+  const rechnungen = teile(b.rechnungen as R[] | undefined, r => rechnungVor(r as RechnungArt, g) || imOp(r as RechnungArt), archiv.rechnungen as R[]);
   const zahlungen = teile(b.zahlungen as Z[] | undefined, z => zahlungVor(z as ZahlungArt, g), archiv.zahlungen as Z[]);
   const planposten = teile(b.planposten as P[] | undefined, p => planpostenVor(p as PlanpostenArt, g), archiv.planposten as P[]);
   return {

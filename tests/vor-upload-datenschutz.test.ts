@@ -74,7 +74,8 @@ describe('2. ZOE-Grundauftrag ohne Persönliches', () => {
     expect(t).not.toMatch(/Firmen zu kaufen|Maschinen/);
   });
   it('feste Prompt-Texte in Gespräch, Empfang, Morgen-/Abendlauf und Tageslauf: keine Namen, keine Gesundheit, keine festen Firmen', () => {
-    for (const d of ['app/api/kimmi/route.ts', 'app/api/zoe/empfang/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/tageslauf/route.ts', 'app/api/fokus/route.ts', 'lib/zoe/grundauftrag.ts']) {
+    // + Beleg lesen (09.10., Nahtstellen Finanzen: dort standen ein Personenname und feste Firmen im Prompt).
+    for (const d of ['app/api/kimmi/route.ts', 'app/api/zoe/empfang/route.ts', 'app/api/zoe/morgen/route.ts', 'app/api/tageslauf/route.ts', 'app/api/fokus/route.ts', 'lib/zoe/grundauftrag.ts', 'app/api/beleg/route.ts']) {
       const t = ohneKommentare(lies(d));
       const fund = t.split('\n').filter(z => VERBOTEN_IM_PROMPT.test(z));
       expect(fund, d).toEqual([]);

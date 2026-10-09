@@ -11,11 +11,17 @@
 //      nur, was im Bestand mindestens so oft vorkommt (auch von Hand erfasste oder mit dem bisherigen Haushalts-Import eingelesene Zeilen),
 //   3. im Haushalt zusätzlich der Fingerabdruck des bisherigen Imports (`zeilen_hash`, lib/finanzen/haushalt/import.ts) — kompatibel.
 // Business-Buchungen bekommen eine feste Kennung `bu-ka-<Konto>-<Schlüssel>` (idempotent wie `bu-re-<id>`).
+//   4. (Business, 09.10. Nahtstellen) dieselbe Geldbewegung schon als Rechnung „bezahlt“, Beleg oder von Hand gebucht (lib/finanzen/zahlung-abgleich.ts:
+//      gleiche Gesellschaft, Betrag auf den Cent, ≤ 14 Tage, Rechnungsnummer im Zweck oder Name passt) → „schon da“, die Zuordnung hält das
+//      Lauf-Protokoll (`abgeglichen`) — dieselbe Buchung schluckt nie einen zweiten Umsatz, „Rückgängig“ gibt sie frei.
+// Die externe Kennung zählt nur zusammen mit Buchungstag und Betrag: manche Banken vergeben Referenzen je Tag neu („0001“, „NONREF“) — eine Kennung
+// allein ließe den einzigen Umsatz eines späteren Tagesauszugs als „schon da“ verschwinden.
 
 import { centZuEuro, kurzHash, vergleichsText } from './text';
 import type { Auszug, AuszugEintrag, LeseErgebnis, Pruefsumme } from './typen';
 import { ibanGrundform, ibanMaskiert } from '@/lib/crm/zahlung';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
+import { centAus, naechsteZahlung, namenPassen, nummerImText } from '@/lib/finanzen/zahlung-abgleich';
 import { N26_KATEGORIEN, istUmbuchungText, katIdFinder, vorbereiten, type Entwurf, type Rohbuchung } from '@/lib/finanzen/haushalt/import';
 import type { Buchung as HaushaltBuchung, Einheit, Regel } from '@/lib/finanzen/haushalt/typen';
 import { einordnen, katNamen, type Einordnung } from '@/lib/finanzen/haushalt/einordnung';
@@ -72,7 +78,14 @@ export interface BusinessBuchung {
   id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; rechnungId?: string;
   /** Lauf des Kontoauszug-Imports, der sie angelegt hat (nur Rückgängig; optional). */
   auszug?: string;
+  /** Ein übernommener Beleg ist mit diesem Bank-Umsatz verknüpft (Kennung `b-…`, 09.10.) — er steht dann nicht noch einmal da. */
+  beleg?: string;
 }
+
+/** Stammt die Buchung aus einem Kontoauszug (eines beliebigen Kontos)? */
+export const ausAuszug = (b: Pick<BusinessBuchung, 'id' | 'auszug'>): boolean => !!b.auszug || b.id.startsWith(BUSINESS_PRAEFIX);
+/** Fingerabdruck des Umsatz-Schlüssels für das Lauf-Protokoll (nie die Bank-Referenz selbst). */
+export const abgleichSchluessel = (schluessel: string): string => kurzHash(`abgleich|${schluessel}`);
 
 export interface PlanZeile {
   /** Index im Auszug (`eintraege`). */
@@ -89,6 +102,8 @@ export interface PlanZeile {
   schluessel: string;
   /** Eigene Umbuchung (Gegen-IBAN ist ein eigenes Konto im Register). */
   umbuchung?: true;
+  /** „schon da“, weil dieselbe Zahlung schon gebucht ist (Rechnung bezahlt, Beleg, von Hand) — Kennung der Buchung; `neu` = erst diese Vorschau ordnet zu. */
+  abgleich?: { id: string; neu: boolean; art: 'rechnung' | 'hand' };
 }
 
 export interface SaldoPlan { cent: number; datum: string; status: 'neu' | 'vorhanden' | 'nicht'; grund?: string; /** Wird er der geltende Stand? */ geltend: boolean }
@@ -108,6 +123,8 @@ export interface Plan {
   ibanMaskiert?: string;
   /** Kennung genau dieser Vorschau. */
   basis: string;
+  /** Neue Zuordnungen Umsatz ↔ vorhandene Buchung (für das Lauf-Protokoll): Kennung der Buchung + Fingerabdruck des Umsatz-Schlüssels. */
+  abgleiche: { id: string; k: string }[];
 }
 
 export interface PlanEingabe {
@@ -120,6 +137,10 @@ export interface PlanEingabe {
   haushalt?: { buchungen: readonly HaushaltBuchung[]; regeln: Regel[]; kategorien: { id: string; name: string }[] };
   /** IBANs der eigenen Konten im Register (Grundform) — Umsätze dorthin sind Umbuchungen. */
   eigeneIbans?: ReadonlySet<string>;
+  /** Ziel `business`: schon festgehaltene Zuordnungen aller Läufe (Kennung der Buchung → Fingerabdruck des Umsatz-Schlüssels). */
+  abgeglichen?: ReadonlyMap<string, string>;
+  /** Ziel `business`: Rechnungsnummern je Rechnung (`rechnungId` der Buchung → Nummer) — für „Nummer im Verwendungszweck“. */
+  rechnungNummern?: ReadonlyMap<string, string>;
   heute: string;
   /** Weitere Hinweise (Zuordnung). */
   hinweise?: string[];
@@ -176,12 +197,27 @@ export function planBauen(x: PlanEingabe): Plan {
   let entwuerfe: Entwurf[] = [];
   const geb = auszug.eintraege.map((e, i) => ({ e, i })).filter(({ e }) => e.status === 'gebucht' && e.waehrung === 'EUR');
   const umbuchung = (e: AuszugEintrag) => !!(e.gegenIban && x.eigeneIbans?.has(e.gegenIban));
+  // Business: vorhandene Buchungen dieser Gesellschaft, die NICHT aus einem Kontoauszug stammen (Rechnung bezahlt, Beleg, von Hand) — Kandidaten
+  // für „dieselbe Zahlung“ (lib/finanzen/zahlung-abgleich.ts). `belegt`: schon einem Umsatz dieser Vorschau zugeordnet.
+  type Fremd = { id: string; fp: string; art: 'rechnung' | 'hand'; z: { datum: string; cent: number; name: string; nummer?: string } };
+  const fremde: Fremd[] = [];
+  const belegt = new Set<string>();
+  const abgleiche: Plan['abgleiche'] = [];
+  const offen: { pos: number; e: AuszugEintrag; k: string }[] = [];
+  const schonGebucht = (z: PlanZeile, c: Fremd, neu: boolean): PlanZeile => {
+    belegt.add(c.id); zaehle(genutzt, c.fp);
+    return { ...z, status: 'vorhanden', grund: c.art === 'rechnung' ? 'schon gebucht: Zahlungseingang einer Rechnung' : `schon gebucht (Buchung vom ${c.z.datum.split('-').reverse().join('.')})`, abgleich: { id: c.id, neu, art: c.art } };
+  };
   if (ziel.art === 'business') {
     for (const b of x.business ?? []) {
       if (b.ort !== ziel.ort || vonAnderemKonto(b.id, konto.id)) continue;
       const f = fpBusiness(b);
       zaehle(vorhandenFp, f);
       idFp.set(b.id, f);
+      if (!ausAuszug(b) && Number.isFinite(Number(b.betrag))) {
+        const nummer = b.rechnungId ? x.rechnungNummern?.get(b.rechnungId) : undefined;
+        fremde.push({ id: b.id, fp: f, art: b.rechnungId ? 'rechnung' : 'hand', z: { datum: b.datum, cent: centAus(b.betrag), name: b.wer ?? '', ...(nummer ? { nummer } : {}) } });
+      }
     }
   } else if (ziel.art === 'haushalt') {
     const h = x.haushalt ?? { buchungen: [], regeln: [], kategorien: [] };
@@ -215,14 +251,21 @@ export function planBauen(x: PlanEingabe): Plan {
       ? (() => { const bf = businessFelder(e); return fp(e.datum, e.cent, bf.wer, bf.zweck); })()
       : fp(e.datum, e.cent, entwurf!.empfaenger, entwurf!.beschreibung);
     const n = zaehle(vorkommen, f).get(f)!;
-    const ext = e.externeId && extZahl.get(e.externeId) === 1 ? `x:${e.externeId}` : null;
+    // Bank-Kennung nur mit Buchungstag und Betrag (Referenzen je Tag neu vergeben → sonst „schon da“ für einen fremden Umsatz).
+    const ext = e.externeId && extZahl.get(e.externeId) === 1 ? `x:${e.externeId}|${e.datum}|${e.cent}` : null;
     const schluessel = ext ?? `f:${f}#${n}`;
     // 1. Kennung (Business) bzw. `zeilen_hash` (Haushalt) schon im Bestand?
     const kennung = ziel.art === 'business' ? businessId(konto.id, schluessel) : entwurf!.zeilen_hash!;
     const treffer = idFp.get(kennung);
     if (treffer !== undefined) { zaehle(genutzt, treffer); zeilen.push({ ...basis, status: 'vorhanden', schluessel }); return; }
+    const k = ziel.art === 'business' ? abgleichSchluessel(schluessel) : '';
+    // 1b. Diesem Umsatz schon in einem früheren Lauf zugeordnet (Business).
+    const fest = k ? fremde.find(c => !belegt.has(c.id) && x.abgeglichen?.get(c.id) === k) : undefined;
+    if (fest) { zeilen.push(schonGebucht({ ...basis, status: 'neu', schluessel }, fest, false)); return; }
     // 2. Fingerabdruck als Menge.
     if ((genutzt.get(f) ?? 0) < (vorhandenFp.get(f) ?? 0)) { zaehle(genutzt, f); zeilen.push({ ...basis, status: 'vorhanden', schluessel }); return; }
+    // 3. (nach der Schleife) dieselbe Zahlung schon als Rechnung bezahlt, Beleg oder von Hand gebucht — erst alle Paare über die Rechnungsnummer.
+    if (k) offen.push({ pos: zeilen.length, e, k });
     zeilen.push({ ...basis, status: 'neu', schluessel });
     if (entwurf && einordnung) {
       const art = einordnen(entwurf, katName!);
@@ -230,6 +273,19 @@ export function planBauen(x: PlanEingabe): Plan {
       if (!entwurf.kategorie_id && !entwurf.ist_umbuchung) einordnung.ohneKategorie = (einordnung.ohneKategorie ?? 0) + 1;
     }
   });
+
+  // 3. Dieselbe Zahlung schon gebucht (Business): erst die sicheren Paare (Rechnungsnummer im Zweck), dann über den Namen — nur Buchungen, die
+  //    noch keinem Umsatz gehören (weder in dieser Vorschau noch festgehalten in einem Lauf).
+  for (const stufe of [0, 1] as const) {
+    for (const o of offen) {
+      if (zeilen[o.pos].status !== 'neu') continue;
+      const frei = fremde.filter(c => !belegt.has(c.id) && !x.abgeglichen?.has(c.id) && (genutzt.get(c.fp) ?? 0) < (vorhandenFp.get(c.fp) ?? 0));
+      const t = naechsteZahlung({ datum: o.e.datum, cent: o.e.cent, gegenpartei: o.e.gegenpartei, zweck: o.e.zweck }, frei, c => c.z, stufe);
+      if (!t) continue;
+      abgleiche.push({ id: t.id, k: o.k });
+      zeilen[o.pos] = schonGebucht(zeilen[o.pos], t, true);
+    }
+  }
 
   // Saldo → Stand im Register.
   let saldo: SaldoPlan | null = null;
@@ -251,15 +307,15 @@ export function planBauen(x: PlanEingabe): Plan {
   };
   const daten = auszug.eintraege.map(e => e.datum).sort();
   const zielSchluessel = ziel.art === 'haushalt' ? `h:${ziel.neu ? `neu:${ziel.kontoName}` : ziel.haushaltKontoId}` : ziel.art === 'business' ? `b:${ziel.ort}` : 'k';
-  const basis = kurzHash(JSON.stringify({ k: konto.id, z: zielSchluessel, l: zeilen.map(z => [z.schluessel, z.status]), s: saldo ? [saldo.cent, saldo.datum, saldo.status] : null }));
+  const basis = kurzHash(JSON.stringify({ k: konto.id, z: zielSchluessel, l: zeilen.map(z => [z.schluessel, z.status, z.abgleich?.id ?? '']), s: saldo ? [saldo.cent, saldo.datum, saldo.status] : null }));
   return {
     kontoId: konto.id, ziel, zeilen, saldo, zahlen, ...(einordnung ? { einordnung } : {}), zeitraum: daten.length ? { von: daten[0], bis: daten[daten.length - 1] } : null,
-    pruefung: auszug.pruefung, hinweise, ...(auszug.iban ? { ibanMaskiert: ibanMaskiert(auszug.iban) } : {}), basis,
+    pruefung: auszug.pruefung, hinweise, ...(auszug.iban ? { ibanMaskiert: ibanMaskiert(auszug.iban) } : {}), basis, abgleiche,
   };
 }
 
-/** Hat der Plan überhaupt etwas zu schreiben? */
-export const planHatWirkung = (p: Plan): boolean => p.zahlen.neu > 0 || p.saldo?.status === 'neu';
+/** Hat der Plan überhaupt etwas zu schreiben? (Auch eine neue Zuordnung „schon gebucht“ — sie muss ins Lauf-Protokoll.) */
+export const planHatWirkung = (p: Plan): boolean => p.zahlen.neu > 0 || p.saldo?.status === 'neu' || p.abgleiche.length > 0;
 
 // ── Zeilen bauen (für die Übernahme) ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -286,6 +342,45 @@ export function haushaltZeilen(p: Plan, auszug: Auszug, h: { regeln: Regel[]; ka
   const entwuerfe = vorbereiten(geb.map(({ e }) => haushaltRoh(e, umb(e))), p.ziel.haushaltKontoId, h.regeln, katIdFinder(h.kategorien), p.ziel.einheit, laufId, person);
   const nachIndex = new Map(geb.map(({ i }, n) => [i, entwuerfe[n]]));
   return p.zeilen.filter(z => z.status === 'neu').map(z => ({ ...nachIndex.get(z.i)!, id: neueId(), stand: 1, geaendert: jetzt }));
+}
+
+// ── Offene Posten, die ein neuer Umsatz begleicht (09.10., Nahtstellen) ─────────────────────────────────────────────────────────────
+// Der Saldo des Kontoauszugs enthält die Zahlung schon — steht die Rechnung (bzw. die offene Forderung/Verbindlichkeit des 0-Punkts, die offene
+// Zahlung) weiter als offen da, zählt die Liquidität dasselbe Geld zweimal („kommt rein“ + Kontostand). Bezahlt setzt nur ein Mensch per Klick —
+// die Vorschau sagt, wo. Gleiche Regel wie lib/finanzen/zahlung-abgleich.ts, aber ohne Fenster nach hinten (eine Rechnung kann spät bezahlt werden):
+// Betrag auf den Cent, Umsatz nicht vor dem Rechnungsdatum, Rechnungsnummer im Zweck oder Name passt.
+
+export interface OffenerPostenKurz {
+  art: 'rechnung' | 'forderung' | 'verbindlichkeit' | 'zahlung';
+  name: string;
+  /** Cent, mit Vorzeichen aus Sicht des Kontos: + erwarteter Eingang, − erwarteter Ausgang. */
+  cent: number;
+  nummer?: string;
+  /** Rechnungsdatum (falls bekannt) — ein Umsatz davor passt nie. */
+  datum?: string;
+}
+
+const ART_TEXT: Record<OffenerPostenKurz['art'], (o: OffenerPostenKurz) => string> = {
+  rechnung: o => `zur offenen Rechnung ${o.nummer ?? o.name} — nach dem Übernehmen dort „bezahlt“ setzen (die Buchung wird verknüpft, nicht verdoppelt)`,
+  forderung: o => `zur offenen Forderung des 0-Punkts (${o.name}${o.nummer ? `, ${o.nummer}` : ''}) — dort „bezahlt am“ setzen`,
+  verbindlichkeit: o => `zur offenen Verbindlichkeit des 0-Punkts (${o.name}${o.nummer ? `, ${o.nummer}` : ''}) — dort „bezahlt am“ setzen`,
+  zahlung: o => `zur offenen Zahlung an ${o.name} — dort als bezahlt vermerken`,
+};
+
+/** Hinweise: welcher NEUE Umsatz welchen offenen Posten begleicht (je Posten höchstens ein Umsatz). Rein. */
+export function offeneHinweise(p: Plan, auszug: Auszug, offene: readonly OffenerPostenKurz[]): string[] {
+  const frei = [...offene];
+  const raus: string[] = [];
+  for (const z of p.zeilen) {
+    if (z.status !== 'neu') continue;
+    const e = auszug.eintraege[z.i];
+    const i = frei.findIndex(o => o.cent === e.cent && (!o.datum || e.datum >= o.datum)
+      && ((o.nummer && nummerImText(o.nummer, `${e.zweck} ${e.gegenpartei}`)) || namenPassen(e.gegenpartei || e.zweck, o.name)));
+    if (i < 0) continue;
+    const o = frei.splice(i, 1)[0];
+    raus.push(`Der Umsatz vom ${e.datum.split('-').reverse().join('.')} (${(Math.abs(e.cent) / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €) passt ${ART_TEXT[o.art](o)} — sonst zählt die Liquidität dasselbe Geld zweimal.`);
+  }
+  return raus;
 }
 
 /** Für die Anzeige: Ziel in einem Satz. */

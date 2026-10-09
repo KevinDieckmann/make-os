@@ -143,16 +143,23 @@ export function registerFuerSicht(r: KontenRegister, sicht: KontenSicht): Konten
 /** Kasse eines Ortes: Summe der geltenden Stände, ältester und jüngster Stand, Zahl der Konten mit Stand und ohne (= `KontoIstWert` der Planung). */
 export type Kasse = KontoIstWert;
 
-/** Regiert das Register diesen Ort? Ja, sobald ein Kassen-Konto dort je einen Stand hatte (auch zurückgenommen). */
+/**
+ * Zählt ein Stand dafür, dass das Register einen Ort führt? Jeder — auch ein zurückgenommener (ein falscher Stand fällt nicht still auf eine alte
+ * Quelle zurück). Ausnahme (09.10., Nahtstellen): der zurückgenommene Saldo eines KONTOAUSZUGS — dessen „Rückgängig“ stellt den Zustand vor dem
+ * Einlesen her; sonst stünde danach die Kasse der Finanzplanung bei 0 bzw. der Kontostand der Gesellschaft auf „unbekannt“.
+ */
+export const fuehrtMit = (s: Pick<KontoStand, 'zurueckgenommenAm' | 'herkunft'>): boolean => !s.zurueckgenommenAm || s.herkunft?.art !== 'auszug';
+
+/** Regiert das Register diesen Ort? Ja, sobald ein Kassen-Konto dort je einen Stand hatte (auch zurückgenommen — außer einem Kontoauszug-Saldo). */
 export const regiert = (konten: readonly RegisterKonto[], pruefe: (o: KontoOrt) => boolean): boolean =>
-  konten.some(k => kassenKonto(k) && pruefe(k.ort) && k.staende.length > 0);
+  konten.some(k => kassenKonto(k) && pruefe(k.ort) && k.staende.some(fuehrtMit));
 
 const cent = (n: number) => Math.round(n * 100) / 100;
 
 /** Kasse über die Konten, die `pruefe` zulässt — null, wenn das Register diese Orte nicht regiert (dann gilt die bisherige Quelle). */
 export function kasseFuer(konten: readonly RegisterKonto[], pruefe: (o: KontoOrt) => boolean, art?: (a: KontoArt) => boolean): Kasse | null {
   const liste = konten.filter(k => kassenKonto(k) && pruefe(k.ort) && (!art || art(k.art)));
-  if (!liste.some(k => k.staende.length > 0)) return null;
+  if (!liste.some(k => k.staende.some(fuehrtMit))) return null;
   let betrag = 0, mit = 0, stand = '', aeltester = '';
   for (const k of liste) {
     const g = geltenderStand(k);
