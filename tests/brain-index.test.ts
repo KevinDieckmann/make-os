@@ -12,9 +12,13 @@ process.env.MAKE_OS_DATEN_DIR = daten;
 process.env.MAKE_OS_DOKU_WURZEL = 'aus';
 const ix = await import('../lib/brain/index');
 const vaultLib = await import('../lib/zoe/vault');
+const { haushaltKonten } = await import('./fixtures/konten');
+// Die Sicht kommt seit 09.10. aus den Konten: die zwei Speichernamen als Inhaber + Mitglied eines Haushalts.
+const sicht = (person: string, agent = false) => vaultLib.sichtAufloesen(agent ? { person, agent } : { person });
 
 const schreibe = async (rel: string, text: string) => { const p = path.join(vault, rel); await fs.mkdir(path.dirname(p), { recursive: true }); await fs.writeFile(p, text, 'utf8'); };
 beforeAll(async () => {
+  await haushaltKonten(await import('@/lib/store/local-db'));
   await fs.mkdir(path.join(wurzel, '.obsidian'), { recursive: true });
   await schreibe('01. KD Ventures/Anna Beispiel.md', '---\ntype: person\nscope: intern\ntags: [person, team]\nstand: 2026-09-20\n---\n# Anna Beispiel\n\n## Rolle\n\nAnna ist Mitgründerin und kümmert sich um die Finanzseite. Sie trifft Kevin dienstags. [[KEMARIS]]\n\n## Zahlen\n\nBeispielwert 10 Prozent.');
   await schreibe('01. KD Ventures/KEMARIS.md', '---\ntype: firma\nscope: intern\n---\n# KEMARIS\n\nBeratung für Mittelstand. Anna und Kevin sind Gesellschafter.');
@@ -27,13 +31,13 @@ describe('Brain-Index', () => {
     const l = await ix.aktualisieren(true);
     expect(l.neu).toBe(3); expect(l.chunks).toBeGreaterThanOrEqual(3); expect(l.entfernt).toBe(0);
     expect(ix.indexBereit()).toBe(true);
-    const kevin = ix.indexSuche('Anna', 5, { person: 'kevin' });
+    const kevin = ix.indexSuche('Anna', 5, await sicht('kevin'));
     expect(kevin.treffer.map(t => t.titel)).toContain('Geheimnis');
     expect(kevin.treffer[0].titel).toBe('Anna Beispiel');
     expect(kevin.treffer[0].abschnitt).toBeTruthy();
-    const malin = ix.indexSuche('Anna', 5, { person: 'malin' });
+    const malin = ix.indexSuche('Anna', 5, await sicht('malin'));
     expect(malin.treffer.map(t => t.titel)).not.toContain('Geheimnis');
-    const agent = ix.indexSuche('Uhr Geburtstag', 5, { person: 'kevin', agent: true });
+    const agent = ix.indexSuche('Uhr Geburtstag', 5, await sicht('kevin', true));
     expect(agent.treffer).toHaveLength(0);
     // Der Index bedient auch die normale Suche des Vaults
     const ueberVault = await vaultLib.suche('Finanzseite', 3, { person: 'kevin' });
@@ -46,8 +50,8 @@ describe('Brain-Index', () => {
     await fs.rm(path.join(vault, '02. Privat/Geheimnis.md'));
     const l = await ix.aktualisieren(true);
     expect(l).toMatchObject({ neu: 0, geaendert: 1, entfernt: 1, unveraendert: 1 });
-    expect(ix.indexSuche('Erfurt', 3, { person: 'kevin' }).treffer[0]?.titel).toBe('KEMARIS');
-    expect(ix.indexSuche('Uhr', 3, { person: 'kevin' }).treffer).toHaveLength(0);
+    expect(ix.indexSuche('Erfurt', 3, await sicht('kevin')).treffer[0]?.titel).toBe('KEMARIS');
+    expect(ix.indexSuche('Uhr', 3, await sicht('kevin')).treffer).toHaveLength(0);
     expect(ix.indexStand().notizen).toBe(2);
   });
 });

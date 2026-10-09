@@ -51,13 +51,17 @@ describe('Brain-Regeln nur mit Freigabe einer bekannten Person (#100)', () => {
 });
 
 describe('Vault-Sicht symmetrisch (#92)', () => {
-  it('Privates sieht nur, wem es gehört — auch Kevin nicht Malins', async () => {
-    const { darfSehen } = await import('@/lib/zoe/vault');
-    expect(darfSehen({ scope: 'privat', owner: 'malin' }, { person: 'kevin' })).toBe(false);
-    expect(darfSehen({ scope: 'privat', owner: 'malin' }, { person: 'malin' })).toBe(true);
-    expect(darfSehen({ scope: 'privat', owner: 'kevin' }, { person: 'kevin' })).toBe(true);
-    expect(darfSehen({ scope: 'privat' }, { person: 'malin' })).toBe(false); // ohne owner: Kevins Vault
-    expect(darfSehen({ scope: 'intern' }, { person: 'kevin' })).toBe(true);
+  it('Privates sieht nur, wem es gehört — auch der Inhaber nicht das der zweiten Person', async () => {
+    // Seit 09.10. aus den Konten: der Haupt-Inhaber ist Eigentümer des Vaults (owner-Rückfall), die zweite Person im Haushalt.
+    const { darfSehen, sichtAus, vaultPersonenAus } = await import('@/lib/zoe/vault');
+    const konto = (speicher: string, rolle: 'inhaber' | 'mitglied') => ({ id: `k-${speicher}`, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] as string[] }, haushalt: 'haus' });
+    const p = vaultPersonenAus({ konten: [konto('kevin', 'inhaber'), konto('malin', 'mitglied')] });
+    const s = (person: string) => sichtAus({ person }, p);
+    expect(darfSehen({ scope: 'privat', owner: 'malin' }, s('kevin'))).toBe(false);
+    expect(darfSehen({ scope: 'privat', owner: 'malin' }, s('malin'))).toBe(true);
+    expect(darfSehen({ scope: 'privat', owner: 'kevin' }, s('kevin'))).toBe(true);
+    expect(darfSehen({ scope: 'privat' }, s('malin'))).toBe(false); // ohne owner: Vault des Haupt-Inhabers
+    expect(darfSehen({ scope: 'intern' }, s('kevin'))).toBe(true);
   });
 });
 

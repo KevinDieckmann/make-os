@@ -29,7 +29,8 @@ const funde = (rel: string, muster: RegExp) => ohneKommentare(lies(rel)).split('
 /**
  * Vornamen der gewachsenen Instanz (als Anzeigename), fremde Firmen/Produkte und Diagnose-/Substanzwörter (allgemeine Liste wie
  * tests/vor-upload-datenschutz). Kleingeschriebene Speicher-Kennungen prüft `FEST` getrennt — nur in Dateien, deren Personen-Logik
- * dieses Paket neutralisiert hat (Kalendermodell, `speicherFuer`-Sonderfall, Vault-Sicht und Finanzkern-Felder sind offen, UPDATES.md).
+ * dieses Paket neutralisiert hat (Kalendermodell, `speicherFuer`-Sonderfall und Finanzkern-Felder sind offen, UPDATES.md; die Vault-Sicht
+ * ist seit 09.10. neutral — Branch brain-neutral, Wächter tests/vault-sicht.test.ts).
  */
 const PERSONEN = /\b(Kevin|Malin|Kevins|Malins)\b|Dieckmann|Würriehausen/;
 const FIRMEN = /KEMARIS|POINCAP|CapOS|ASTARNA|KD Management|Grant Pilot|Innovation Group/;
@@ -89,6 +90,9 @@ describe('1. Quelltext: Prompts, Vorgaben und public/ ohne feste Personen, Firme
     'components/os/NutzungsMelder.tsx', 'components/os/WissenView.tsx', 'components/os/flaeche/widgets.tsx', 'components/os/crm/Vernetzen.tsx',
     'components/os/crm/kontakt-teile.tsx', 'components/os/crm/SchnellErfassen.tsx', 'components/os/crm/Kartei.tsx', 'components/os/MeetingView.tsx',
     'components/os/bauplan/BauplanBoard.tsx', 'components/os/bauplan/KarteDetail.tsx', 'components/os/bauplan/Phasen.tsx', 'components/os/bauplan/gemeinsam.tsx',
+    // Vault- und Brain-Sicht (09.10., Paket 5): Personen aus den Konten, Eigentümer = Haupt-Inhaber.
+    'lib/zoe/vault.ts', 'lib/brain/inbox.ts', 'lib/brain/regeln.ts', 'lib/brain/konsolidierung.ts', 'lib/brain/kugel-server.ts', 'components/os/wissen/Regeln.tsx',
+    'components/os/wissen/Inbox.tsx', 'app/api/brain/regeln/route.ts', 'app/api/brain/inbox/route.ts', 'app/api/zoe/wissen/route.ts',
   ];
   it('keine festen Personen-Kennungen als Rückfall oder Sonderfall in den neutralisierten Dateien', () => {
     const FEST = /'(kevin|malin)'/;

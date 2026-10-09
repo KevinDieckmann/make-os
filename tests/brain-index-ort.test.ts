@@ -52,12 +52,14 @@ describe('kein Klartext-Brain-Index auf der Platte', () => {
     await fs.writeFile(path.join(daten, 'brain-index.sqlite'), 'SQLite format 3\u0000 VERTRAULICHER-INHALT');
     await fs.writeFile(path.join(daten, 'brain-index.sqlite-wal'), 'VERTRAULICHER-INHALT');
     expect(await ix.alterIndexDa()).toBe(true);
+    // Die Sicht kommt seit 09.10. aus den Konten (Inhaber + Mitglied eines Haushalts).
+    await (await import('./fixtures/konten')).haushaltKonten(await import('@/lib/store/local-db'));
     const nb = await ix.indexNachStart();
     expect(nb.fehler).toBeNull();
     expect(nb.notizen).toBe(1);
     expect(ix.indexOrt().art).toBe('arbeitsspeicher');
     expect(ix.indexBereit()).toBe(true);
-    expect(ix.indexSuche('Mandat', 5, { person: 'kevin' }).treffer.length).toBe(1);
+    expect(ix.indexSuche('Mandat', 5, await (await import('@/lib/zoe/vault')).sichtAufloesen({ person: 'kevin' })).treffer.length).toBe(1);
     expect(readdirSync(daten).filter(f => f.startsWith('brain-index'))).toEqual([]);
     expect(await ix.alterIndexDa()).toBe(false);
     expect(ix.indexGroesseMb()).toBeGreaterThan(0);
@@ -79,6 +81,8 @@ describe('kein Klartext-Brain-Index auf der Platte', () => {
 
   it('ohne Datenschlüssel (lokal) liegt er wie bisher als Datei im Datenordner', async () => {
     const s = process.env.MAKE_OS_DATEN_SCHLUESSEL;
+    // Die verschlüsselten Test-Konten (oben) wären ohne Schlüssel unlesbar — der Vault liest sie für die Ordner-Regel (09.10.).
+    await fs.rm(path.join(daten, 'konten.json'), { force: true });
     delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
     try {
       expect(ix.indexOrt().art).toBe('platte');

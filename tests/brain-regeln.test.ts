@@ -10,6 +10,10 @@ await fs.mkdir(path.join(wurzel, '.obsidian'), { recursive: true });
 await fs.mkdir(vault, { recursive: true });
 process.env.MAKE_VAULT_DIR = vault;
 process.env.MAKE_OS_DOKU_WURZEL = 'aus';
+// Die Sicht kommt seit 09.10. aus den Konten: eigener Datenordner mit den zwei Speichernamen als Inhaber + Mitglied.
+process.env.MAKE_OS_DATEN_DIR = path.join(wurzel, 'daten');
+delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
+await (await import('./fixtures/konten')).haushaltKonten(await import('@/lib/store/local-db'));
 const R = await import('../lib/brain/regeln');
 afterAll(() => fs.rm(wurzel, { recursive: true, force: true }));
 
