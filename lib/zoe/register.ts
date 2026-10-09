@@ -21,6 +21,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
 import { businessFirmaAus, finanzOrtName, istGesellschaft, kontoName } from '@/lib/einheiten';
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
+import { SPORT_REGISTER } from './sport-werkzeuge';
 import { ARBEIT_REGISTER } from './arbeit-werkzeug';
 import { fokusImJahr } from '@/lib/planung/jahr-fokus';
 import { localDay } from '@/lib/zeit';
@@ -403,6 +404,8 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   // ZOE-Aufgaben (28.09., C4): lesen und übergeben frei; das Übernehmen ist KEIN Werkzeug (nur Stapel/Route).
   ...AUFGABEN_REGISTER,
+  // Trainingsplan (09.10.): lesen frei, VORSCHLAGEN nur über den Stapel — gespeichert wird erst nach Freigabe der Person.
+  ...SPORT_REGISTER,
   // Eine Suche über Brain und App (29.09., B3, lib/zoe/arbeit-werkzeug.ts) — nur lesen.
   ...ARBEIT_REGISTER,
   // ZOE steuert die Heads (09.10., Paket 4a, lib/agenten/zoe-heads.ts). an_head ist frei, weil es NUR einreiht (Thread + Warteschlange):

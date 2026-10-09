@@ -5,8 +5,8 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP, SCHRIFT, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { feld, Pillen as UiPillen } from '../ui';
 import { parseZeit, formatZeit } from '@/lib/sport/pace';
-import type { Klasse, PlanEinheit, Quelle } from '@/lib/sport/modell';
-import { PLAN_LABEL, TYP_LABEL, INTENSITAET_LABEL } from '@/lib/sport/modell';
+import type { Klasse, Quelle } from '@/lib/sport/modell';
+export { einheitText } from '@/lib/sport/plan-bau';
 
 export const de = (n: number | null | undefined, stellen = 1) => (n == null || !Number.isFinite(n) ? '—' : n.toLocaleString('de-DE', { maximumFractionDigits: stellen }));
 export const datumKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
@@ -103,12 +103,6 @@ export function ZonenBalken({ zonen, hoehe = 8 }: { zonen: readonly number[]; ho
   );
 }
 
-/** Eine geplante Einheit als kurzer Text: „Lauf · Intervall · 45 min“ (mit `voll` auch Intensität und Zone). */
-export function einheitText(e: PlanEinheit, voll = false): string {
-  return [PLAN_LABEL[e.sparte], e.typ ? TYP_LABEL[e.typ] : null, e.dauerMin ? `${e.dauerMin} min` : null,
-    voll && e.intensitaet ? INTENSITAET_LABEL[e.intensitaet] : null, voll && e.zone ? `Zone ${e.zone}` : null, voll && e.strain !== undefined ? `Strain ${de(e.strain)}` : null,
-  ].filter(Boolean).join(' · ');
-}
 /** Sekunden als „2:07“ (Stunden:Minuten, gerundet) — für Spannen, die auf die Minute genau reichen. */
 export const stundeMinute = (sek: number) => { const m = Math.round(sek / 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
 

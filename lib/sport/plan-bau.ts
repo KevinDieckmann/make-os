@@ -10,7 +10,7 @@
 // Umfang von Deload/Taper (Vorgabe 60 %) ist ein Vorschlag und je Person einstellbar. Struktur und Erfassung, keine Trainingsberatung.
 
 import type { BlockPhase, Intensitaet, PlanBlock, PlanEinheit, PlanTag, PlanVorlage, Sparte, SportStand, Woche, Wochentag, Ziel } from './modell';
-import { EINHEIT_TYPEN, WOCHENTAGE, leereWoche } from './modell';
+import { EINHEIT_TYPEN, WOCHENTAGE, leereWoche, PLAN_LABEL, TYP_LABEL, INTENSITAET_LABEL } from './modell';
 import { montagVon, tagPlus, tageZwischen } from './pace';
 import { alleEinheiten, inWoche, summe, type Einheit } from './training';
 
@@ -29,6 +29,14 @@ export function einheitenVon(tag: PlanTag, wt: Wochentag): PlanEinheit[] {
   if (tag.einheiten?.length) return tag.einheiten;
   if (tag.art === 'ruhe' || tag.art === 'frei') return [];
   return [{ id: `${wt}-1`, sparte: tag.art, ...(tag.dauerMin ? { dauerMin: tag.dauerMin } : {}), ...(tag.notiz ? { notiz: tag.notiz } : {}) }];
+}
+
+/** Eine geplante Einheit als kurzer Text: „Lauf · Intervall · 45 min“ (mit `voll` auch Intensität, Zone, Strain-Ziel). */
+export function einheitText(e: PlanEinheit, voll = false): string {
+  const de = (n: number) => String(n).replace('.', ',');
+  return [PLAN_LABEL[e.sparte], e.typ ? TYP_LABEL[e.typ] : null, e.dauerMin ? `${e.dauerMin} min` : null,
+    voll && e.intensitaet ? INTENSITAET_LABEL[e.intensitaet] : null, voll && e.zone ? `Zone ${e.zone}` : null, voll && e.strain !== undefined ? `Strain ${de(e.strain)}` : null,
+  ].filter(Boolean).join(' · ');
 }
 
 /** Einen Tag aus Einheiten bauen (Art/Dauer abgeleitet wie im Säuberer); leer = frei, `ruhe` = Ruhetag. */
