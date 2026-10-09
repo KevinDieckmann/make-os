@@ -451,7 +451,7 @@ export async function fadenLauf(person: string, auftrag: LaufAuftrag, o: { origi
     if (!headSichtbar(sicht, sk.headId)) return { status: 403, ok: false, ergebnis: 'Diesen Head siehst du nicht.' };
     const agent: AgentRef = sk.mitarbeiterId ? { art: 'mitarbeiter', headId: sk.headId, mitarbeiterId: sk.mitarbeiterId } : { art: 'head', headId: sk.headId };
     const eingaben = Object.entries(auftrag.eingaben ?? {}).map(([k, v]) => `${k}: ${String(v).slice(0, 500)}`).join('\n');
-    const f = await startFaden(person, agent, `Skill „${sk.name}“`, `Skill „${sk.name}“ gestartet (${auftrag.ausloeser})${eingaben ? `\nEingaben (Daten):\n${eingaben}` : ''}`, 'system', { skillId: sk.id, hintergrund: o.hintergrund });
+    const f = await startFaden(person, agent, `Skill „${sk.name}“`, `Skill „${sk.name}“ gestartet (${auftrag.ausloeser})${eingaben ? `\nEingaben (Daten):\n${eingaben}` : ''}`, 'system', { skillId: sk.id, hintergrund: o.hintergrund, ...(sk.kostenGrenzeCent ? { kostenGrenzeCent: sk.kostenGrenzeCent } : {}) });
     if (!f.ok) return { status: f.status, ok: false, ergebnis: f.fehler };
     const erg = await threadAusfuehren(person, f.faden.id, sicht, u, o, sk);
     // Erfolgsquote je Skill (Antwort 7, Paket 3 `skillErfolgZaehlen`): jeder Lauf zählt, ein gescheiterter zusätzlich als Fehler.
@@ -464,7 +464,7 @@ export async function fadenLauf(person: string, auftrag: LaufAuftrag, o: { origi
   if (!plan || plan.besitzer !== person || !plan.aktiv) return { status: 404, ok: false, ergebnis: 'Diese Hintergrundaufgabe gibt es nicht (oder sie ist aus).' };
   if (plan.agent.art === 'zoe') return { status: 409, ok: false, ergebnis: 'Hintergrundaufgaben gehen an einen Head — ZOE gibt Aufträge mit an_head weiter, sie selbst läuft nicht im Hintergrund.' };
   if (!headSichtbar(sicht, plan.agent.headId)) return { status: 403, ok: false, ergebnis: 'Diesen Head siehst du nicht.' };
-  const f = await startFaden(person, plan.agent, plan.titel, plan.auftrag, 'person', { planId: plan.id, hintergrund: o.hintergrund });
+  const f = await startFaden(person, plan.agent, plan.titel, plan.auftrag, 'person', { planId: plan.id, hintergrund: o.hintergrund, ...(plan.kostenGrenzeCent ? { kostenGrenzeCent: plan.kostenGrenzeCent } : {}) });
   if (!f.ok) return { status: f.status, ok: false, ergebnis: f.fehler };
   // Start vermerken (Paket 3 `planLaufVermerken`: `letzterLauf`, eine einmalige Aufgabe ist danach aus) — vor dem Lauf, damit der Takt sie
   // nicht ein zweites Mal einreiht, solange sie läuft.
@@ -473,7 +473,7 @@ export async function fadenLauf(person: string, auftrag: LaufAuftrag, o: { origi
   return threadAusfuehren(person, f.faden.id, sicht, u, o);
 }
 
-async function startFaden(person: string, agent: AgentRef, titel: string, text: string, rolle: 'person' | 'system', o: { skillId?: string; planId?: string; hintergrund: boolean }): Promise<{ ok: true; faden: FadenKern } | Fehler> {
+async function startFaden(person: string, agent: AgentRef, titel: string, text: string, rolle: 'person' | 'system', o: { skillId?: string; planId?: string; hintergrund: boolean; kostenGrenzeCent?: number }): Promise<{ ok: true; faden: FadenKern } | Fehler> {
   if (agent.art === 'zoe') return fehler(409, 'Ein ZOE-Thread läuft nicht im Hintergrund — ZOE antwortet im Gespräch.');
   const head = headDef(agent.headId);
   if (!head) return fehler(404, 'Diesen Head gibt es nicht.');
@@ -482,7 +482,10 @@ async function startFaden(person: string, agent: AgentRef, titel: string, text: 
   const f = neuerFaden({ id: neueKennung('fd'), besitzer: person, agent, bereich: head.bereich, titel, jetzt, kette: [agentSchluessel(agent)], hintergrund: o.hintergrund, ...(o.skillId ? { skillId: o.skillId } : {}), ...(o.planId ? { planId: o.planId } : {}) });
   const n = anhaengen(f, [{ id: neuId(), rolle, von: rolle === 'person' ? person : 'system', text: t.text, zeit: jetzt }], jetzt);
   if (!n.ok) return n;
-  const r = await bestandAendern<FadenKern>(person, b => { const x = fadenHinzu(b, n.faden); return x.ok ? { bestand: x.bestand, e: n.faden } : x; });
+  // Durchstich 09.10.: die Kostengrenze je Lauf der Hintergrundaufgabe bzw. des Skills (Antwort 8) gilt — vorher entstand der Thread ohne
+  // Lauf-Zustand und die Grenze wurde still nicht angewendet. Der Lauf startet gleich danach (threadAusfuehren übernimmt den Zustand).
+  const mitGrenze: FadenKern = o.kostenGrenzeCent ? { ...n.faden, lauf: laufWartet(jetzt, undefined, o.kostenGrenzeCent) } : n.faden;
+  const r = await bestandAendern<FadenKern>(person, b => { const x = fadenHinzu(b, mitGrenze); return x.ok ? { bestand: x.bestand, e: mitGrenze } : x; });
   return r.ok ? { ok: true, faden: r.e } : r;
 }
 
@@ -498,7 +501,8 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
   // Feinschliff 09.10.: ein voller Thread nimmt kein Ergebnis mehr auf (413-Regel, nie kürzen) — dann gar nicht erst laufen (kostet nur).
   if (f.nachrichten.length >= GRENZEN.fadenNachrichten) { await laufEnde(person, fadenId, 'fehler', THREAD_VOLL); return { status: 200, ok: false, fadenId, ergebnis: THREAD_VOLL, laufStatus: 'fehler' }; }
   const a = await agentAufloesen(f.agent, u);
-  if ('ok' in a && a.ok === false) { await laufEnde(person, fadenId, 'fehler', a.fehler); return { status: a.status, ok: false, fadenId, ergebnis: a.fehler }; }
+  // Durchstich 09.10.: der Lauf IST beendet (Status am Thread) — `laufStatus` sagt das der Route, die den Auftrag dann nicht neu einreiht.
+  if ('ok' in a && a.ok === false) { await laufEnde(person, fadenId, 'fehler', a.fehler); return { status: 200, ok: false, fadenId, ergebnis: a.fehler, laufStatus: 'fehler' }; }
   const { head, mitarbeiter, einstellung } = a as Aufgeloest;
   const hintergrund = o.hintergrund || !!f.hintergrund;
   if (einstellung.notAus) { await laufEnde(person, fadenId, 'wartet', 'Not-Aus ist gesetzt — nach dem Aufheben neu starten.', 'not-aus'); return { status: 200, ok: true, fadenId, ergebnis: 'Not-Aus', laufStatus: 'wartet' }; }
@@ -607,6 +611,15 @@ async function laufEnde(person: string, fadenId: string, status: 'wartet' | 'feh
 /** Hinweis, wenn ein Thread kein Ergebnis mehr aufnimmt (`GRENZEN.fadenNachrichten`, 413-Regel — nie kürzen). */
 export const THREAD_VOLL = `Thread voll (${GRENZEN.fadenNachrichten} Nachrichten) — neuen Thread anlegen. Das Ergebnis dieses Laufs ist hier nicht gespeichert.`;
 
+/** Einen Bericht als Verweis in einen ZOE-Thread der Person (nur, wenn der Thread wirklich ZOE gehört) — gekapselt, Marken wandern mit (R9). */
+async function zoeBerichtAnhaengen(person: string, zoeFadenId: string, text: string, verweis: { fadenId: string; titel: string }, kind: Pick<FadenKern, 'fremdGelesen' | 'vertraulich'>, jetzt: string): Promise<void> {
+  await fadenAendern(person, zoeFadenId, x => {
+    if (x.agent.art !== 'zoe') return x;
+    const y = anhaengen(x, [{ id: neuId(), rolle: 'system', von: 'system', text, zeit: jetzt, verweis: { art: 'bericht', ...verweis }, fremd: 'agent' }], jetzt);
+    return y.ok ? { ...y.faden, fremdGelesen: x.fremdGelesen || kind.fremdGelesen, vertraulich: x.vertraulich || kind.vertraulich } : y;
+  });
+}
+
 /** Ergebnis in den Thread, Bericht in den Eltern-Thread (fremd, R9), Brett/Hilfe, Glocke, Lauf-Protokoll. */
 export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErgebnis, hintergrund: boolean): Promise<void> {
   const jetzt = iso();
@@ -637,7 +650,7 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
   if (f.agent.art === 'mitarbeiter' && f.elternId && e.status !== 'wartet') {
     const bericht = e.text.length > KERN_GRENZEN.berichtZeichen ? `${e.text.slice(0, KERN_GRENZEN.berichtZeichen)} … (ganzer Bericht im Thread)` : e.text;
     const titel = kind.titel;
-    await fadenAendern(person, f.elternId, x => {
+    const kopf = await fadenAendern(person, f.elternId, x => {
       const y = anhaengen(x, [{ id: neuId(), rolle: 'system', von: 'system', text: `Bericht aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, zeit: jetzt, verweis: { art: 'bericht', fadenId: f.id, titel }, fremd: 'agent' }], jetzt);
       if (!y.ok) return y;
       let neu: FadenKern = { ...y.faden, fremdGelesen: x.fremdGelesen || kind.fremdGelesen, vertraulich: x.vertraulich || kind.vertraulich };
@@ -648,6 +661,15 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
       return neu;
     });
     if (f.helfer && e.status === 'fertig') await fortsetzenNachAntwort(person, f.helfer.fuerFadenId, `Fund aus Thread „${titel}“: ${bericht.slice(0, 2_000)}`, hintergrund);
+    // Durchstich 09.10. (Kette ZOE → Head → Mitarbeiter): hat ZOE den Head beauftragt, kam bisher nur der Zwischenstand des Heads („an
+    // Mitarbeiter gegeben“) im ZOE-Thread an — das eigentliche Ergebnis blieb im Head-Thread. Jetzt geht der Bericht des Mitarbeiters auch
+    // als Verweis in den ZOE-Thread (gekapselt, Marken wandern mit). Hilfe-Läufe liefern nur Funde für den Head — die nicht.
+    if (!f.helfer && kopf.ok && kopf.faden.agent.art === 'head' && kopf.faden.elternId) {
+      const headName = headDef(kopf.faden.agent.headId)?.name ?? kopf.faden.agent.headId;
+      const { mitarbeiterFuerHead } = await import('./skills-lesen');
+      const mName = f.agent.art === 'mitarbeiter' ? (await mitarbeiterFuerHead(f.agent.headId, await umfangFuer(person)).catch(() => [])).find(m => f.agent.art === 'mitarbeiter' && m.id === f.agent.mitarbeiterId)?.name : undefined;
+      await zoeBerichtAnhaengen(person, kopf.faden.elternId, `Bericht von ${headName}${mName ? ` · ${mName}` : ''} aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, { fadenId: f.id, titel }, kind, jetzt);
+    }
   }
   // ZOE hat den Head beauftragt (`an_head`, Paket 4a): der Bericht geht als Verweis in den ZOE-Thread — gekapselt (Text eines anderen
   // Agenten, nie Zustimmung), die Marken des Head-Threads wandern mit (R9).
@@ -655,11 +677,7 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
     const bericht = e.text.length > KERN_GRENZEN.berichtZeichen ? `${e.text.slice(0, KERN_GRENZEN.berichtZeichen)} … (ganzer Bericht im Thread)` : e.text;
     const titel = kind.titel;
     const name = headDef(f.agent.headId)?.name ?? f.agent.headId;
-    await fadenAendern(person, f.elternId, x => {
-      if (x.agent.art !== 'zoe') return x;
-      const y = anhaengen(x, [{ id: neuId(), rolle: 'system', von: 'system', text: `Bericht von ${name} aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, zeit: jetzt, verweis: { art: 'bericht', fadenId: f.id, titel }, fremd: 'agent' }], jetzt);
-      return y.ok ? { ...y.faden, fremdGelesen: x.fremdGelesen || kind.fremdGelesen, vertraulich: x.vertraulich || kind.vertraulich } : y;
-    });
+    await zoeBerichtAnhaengen(person, f.elternId, `Bericht von ${name} aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, { fadenId: f.id, titel }, kind, jetzt);
   }
   const headId = f.agent.art === 'zoe' ? 'zoe' : f.agent.headId;
   if (voll || e.status !== 'wartet' || f.agent.art === 'head') {

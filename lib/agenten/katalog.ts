@@ -309,6 +309,17 @@ export const headDef = (id: string): HeadDef | null => KATALOG.find(h => h.id ==
 /** Heads eines Bereichs (Reihenfolge wie im Katalog). Wer sie SEHEN darf, entscheidet allein der Server (Paket 1, lib/agenten/sicht.ts). */
 export const headsIm = (b: Bereich): readonly HeadDef[] => KATALOG.filter(h => h.bereich === b);
 
+/**
+ * Von welchem Head stammt ein Stapel-Vorschlag? (Durchstich 09.10.: EINE Regel für den Freigaben-Zähler am Head, „Als Nächstes“ und die
+ * Annahmequote.) Werkstatt-Vorschläge tragen den Head als `bezug` (skill · mitarbeiter · merksatz), Werkzeug-Vorschläge aus dem Agenten-
+ * Bereich als Anlass „<Head-Name>: …“ bzw. „<Head-Name> · <Mitarbeiter>: …“ (lib/agenten/gespraech.ts `anlassVon`). Sonst null (ZOE/System).
+ */
+export function headVonVorschlag(v: { bezug?: { art: string; id: string }; anlass?: string }): string | null {
+  if (v.bezug && ['skill', 'mitarbeiter', 'merksatz'].includes(v.bezug.art) && headDef(v.bezug.id)) return v.bezug.id;
+  const a = v.anlass ?? '';
+  return KATALOG.find(h => a.startsWith(`${h.name}: `) || a.startsWith(`${h.name} · `))?.id ?? null;
+}
+
 /** Eine Mitarbeiter-Vorlage samt Heimat-Head — oder null. */
 export function vorlageVon(id: string): { head: HeadDef; vorlage: MitarbeiterVorlage } | null {
   for (const head of KATALOG) {

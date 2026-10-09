@@ -18,7 +18,7 @@ import { headFarbe } from './Avatar';
 import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelEntscheiden } from './daten';
 import { useAgenten } from './kontext';
 import {
-  dauerText, euro, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, wiederholText, zeitKurz,
+  dauerText, euro, freigabenBeiHeads, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, schrittAnteil, wartendeFaeden, wiederholText, zeitKurz,
   type Risiko, type VorschlagKurz,
 } from './regeln';
 import { WEG } from '@/lib/wege';
@@ -137,11 +137,14 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
 }
 
 export function WartetAufDich() {
-  const { stapel, faeden, form, melde } = useAgenten();
+  const { stapel, faeden, form, melde, agenten } = useAgenten();
   const rueckfragen = faeden.zustand === 'da' ? wartendeFaeden(faeden.daten.faeden) : [];
   const vorschlaege = stapel.zustand === 'da' ? stapel.daten.vorschlaege.filter(v => !v.status || v.status === 'offen') : [];
   const risikoarm = vorschlaege.filter(v => risikoVon(v) === 'risikoarm').length;
-  const zahl = rueckfragen.length + vorschlaege.length;
+  // Durchstich 09.10.: die Freigabe-Listen der eingebauten Heads (Sales, Marketing, Event, Finance) stehen nicht im Stapel — der Server zählt
+  // sie mit (`freigabenJeHead`). Hier eine Zeile mit Sprung auf die Freigaben-Seite, die sie bündelt; vorher hieß es „Nichts wartet auf dich“.
+  const beiHeads = stapel.zustand === 'da' ? freigabenBeiHeads(agenten.zustand === 'da' ? agenten.daten.ueberblick.freigaben.anzahl : undefined, vorschlaege.length) : 0;
+  const zahl = rueckfragen.length + vorschlaege.length + beiHeads;
   const alle = async () => {
     const r = await stapelEntscheiden({ alle: true });
     if (r.ok) melde(`${r.daten.erledigt ?? 0} risikoarme Freigaben erledigt.`, 'gut'); else melde(r.text, 'kritisch');
@@ -156,6 +159,12 @@ export function WartetAufDich() {
         <ul style={LISTE}>
           {rueckfragen.map(f => <RueckfrageZeile key={f.id} f={f} />)}
           {vorschlaege.slice(0, 6).map(v => <FreigabeZeile key={v.id} v={v} />)}
+          {beiHeads > 0 && (
+            <li style={{ ...zeile, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: ABSTAND.s, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: TYP.body, color: C.ink }}>{beiHeads === 1 ? '1 Freigabe liegt' : `${beiHeads} Freigaben liegen`} bei den Heads (Markttraktion, Finanzen)</span>
+              <Knopf leise href={WEG.freigaben()}>Ansehen ›</Knopf>
+            </li>
+          )}
         </ul>
       )}
       {(risikoarm > 1 || vorschlaege.length > 6) && (
@@ -197,6 +206,7 @@ export function LaufZeile({ l }: { l: Lauf }) {
         <span style={{ fontSize: TYP.body, fontWeight: 600 }}>{l.titel}</span>
       </button>
       {anteil != null && l.status === 'laeuft' && <Fortschritt anteil={anteil} farbe={C.aktiv} />}
+      {l.hinweis && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{l.hinweis}</span>}
       <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>
         {[l.schritte ? `Schritt ${Math.min(l.schritte.fertig + (l.status === 'laeuft' ? 1 : 0), l.schritte.gesamt)}/${l.schritte.gesamt}${l.schritte.aktuell ? ` · ${l.schritte.aktuell}` : ''}` : null,
           l.status === 'laeuft' ? null : zeitKurz(l.ende ?? l.start, jetzt), dauerText(dauer) || null,

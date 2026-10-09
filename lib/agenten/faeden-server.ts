@@ -134,11 +134,13 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
   const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
   const h = (await kontoFuerSpeicher(person))?.haushalt;
   const u = { person, haushalt: h && /^[a-z0-9][a-z0-9-]{0,39}$/.test(h) ? h : null };
-  const [einstellung, faeden, { lies, vorschlagSichtbar }] = await Promise.all([einstellungFuer(u.haushalt, person), sichtbareFaeden(sicht), import('@/lib/zoe/stapel')]);
+  const [einstellung, faeden] = await Promise.all([einstellungFuer(u.haushalt, person), sichtbareFaeden(sicht)]);
   // Paket 4b: Einstellungen, Kosten und Rechte je Head, Instanz-Budget (lib/agenten/einstellung.ts, lib/ki/tor.ts).
   const zusatz = await einstellungZusatz(person, sicht, u.haushalt, einstellung, faeden.filter(f => f.besitzer === person)).catch(e => { console.error('[agenten] Einstellungen nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return null; });
-  const offen = (await lies('offen')).filter(v => vorschlagSichtbar(v, person, true));
-  const plaeneOffen = (headId?: string) => faeden.filter(f => f.besitzer === person && (!headId || (f.agent.art !== 'zoe' && f.agent.headId === headId))).reduce((n, f) => n + (f.plaene ?? []).filter(p => p.status === 'offen').length, 0);
+  // Durchstich 09.10.: EINE Zählung offener Freigaben je Head (lib/agenten/naechstes.ts `freigabenJeHead`) — dieselbe wie „Als Nächstes“.
+  // Vorher zählte der Kopf Plan-Freigaben doppelt (Thread UND Stapel) und die Freigabe-Listen der eingebauten Heads gar nicht.
+  const freigaben = await (await import('./naechstes')).freigabenJeHead(person, new Set(headsFuer(sicht).map(h => h.id)), u.haushalt).catch(() => new Map<string, { anzahl: number }>());
+  const freigabenVon = (headId: string) => freigaben.get(headId)?.anzahl ?? 0;
   let businessFrei = false;
   try { const { businessFreiJetzt } = await import('@/lib/arbeitsrahmen/server'); businessFrei = (await businessFreiJetzt(person)).frei; } catch { /* offen statt blockiert */ }
   const neueste = (l: FadenKern[]) => [...l].sort((a, b) => b.aktualisiert.localeCompare(a.aktualisiert));
@@ -161,7 +163,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
       aktiv: eh.aktiv !== false, ...(gesperrt ? { gesperrt } : {}), kennzahlen,
       mitarbeiter: ms.map(m => ({ id: m.id, name: m.name, rolle: m.rolle, aktiv: m.aktiv && !aus.has(m.id), auchFuer: m.auchFuer, ...(m.headId !== d.id ? { aushilfe: true as const } : {}) })),
       skills,
-      zaehler: { freigaben: offen.filter(v => (v.anlass ?? '').startsWith(d.name)).length + plaeneOffen(d.id), laufend: eigene.filter(laufend).length, faeden: eigene.length },
+      zaehler: { freigaben: freigabenVon(d.id), laufend: eigene.filter(laufend).length, faeden: eigene.length },
       letzteFaeden: neueste(eigene).slice(0, 5).map(f => kurz(f, person)),
       ...(foto ? { foto } : {}),
       ...(einstellungSicht ? { einstellung: einstellungSicht } : {}),
@@ -170,30 +172,24 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
 
   const name = (f: FadenKern) => (f.agent.art === 'zoe' ? 'ZOE' : headDef(f.agent.headId)?.kurz ?? f.agent.headId);
   const link = (f: FadenKern) => WEG.agenten({ ...(f.agent.art !== 'zoe' ? { h: f.agent.headId } : {}), f: f.id });
-  const passiert: UeberblickZeile[] = [];
+  // Je Lauf EINE Zeile (Durchstich 09.10.): derselbe Bericht steht im Head-Thread UND — wenn ZOE beauftragt hat — im ZOE-Thread; der Lauf eines
+  // Heads steht als Antwort in seinem Thread und als Bericht bei ZOE. Schlüssel = der Thread, der lief; die Zeile beim Head gewinnt.
+  const roh: { z: UeberblickZeile; lauf: string; zoe: boolean }[] = [];
   for (const f of faeden) for (const n of f.nachrichten) {
     if (n.zeit <= seit) continue;
-    if (n.verweis?.art === 'bericht') passiert.push({ id: n.id, text: `${name(f)}: Bericht aus Thread „${n.verweis.titel ?? ''}“`, zeit: n.zeit, ...(f.agent.art !== 'zoe' ? { headId: f.agent.headId } : {}), link: link(f) });
-    else if (n.rolle === 'agent' && (n as NachrichtKern).lauf?.operation === 'invoke_agent' && f.agent.art === 'head') passiert.push({ id: n.id, text: `${name(f)}: Lauf in „${f.titel}“ ${f.lauf?.status === 'fertig' ? 'fertig' : 'beendet'}`, zeit: n.zeit, headId: f.agent.headId, link: link(f) });
+    if (n.verweis?.art === 'bericht') roh.push({ lauf: n.verweis.fadenId, zoe: f.agent.art === 'zoe', z: { id: n.id, text: `${name(f)}: Bericht aus Thread „${n.verweis.titel ?? ''}“`, zeit: n.zeit, ...(f.agent.art !== 'zoe' ? { headId: f.agent.headId } : {}), link: link(f) } });
+    else if (n.rolle === 'agent' && (n as NachrichtKern).lauf?.operation === 'invoke_agent' && f.agent.art === 'head') roh.push({ lauf: f.id, zoe: false, z: { id: n.id, text: `${name(f)}: Lauf in „${f.titel}“ ${f.lauf?.status === 'fertig' ? 'fertig' : 'beendet'}`, zeit: n.zeit, headId: f.agent.headId, link: link(f) } });
   }
+  const jeLauf = new Map<string, { z: UeberblickZeile; zoe: boolean }>();
+  for (const x of roh) { const da = jeLauf.get(x.lauf); if (!da || (da.zoe && !x.zoe)) jeLauf.set(x.lauf, x); }
+  const passiert: UeberblickZeile[] = Array.from(jeLauf.values(), x => x.z);
   passiert.sort((a, b) => String(b.zeit).localeCompare(String(a.zeit)));
   const inArbeit: UeberblickZeile[] = neueste(faeden.filter(laufend)).map(f => ({ id: f.id, text: `${name(f)}: „${f.titel}“ ${f.lauf?.status === 'laeuft' ? 'läuft' : 'wartet'}`, zeit: f.aktualisiert, ...(f.agent.art !== 'zoe' ? { headId: f.agent.headId } : {}), link: link(f) }));
-  const anzahl = offen.length + plaeneOffen();
+  const anzahl = Array.from(freigaben.values()).reduce((n, g) => n + g.anzahl, 0);
 
-  const ziele: Ueberblick['ziele'] = [];
-  try {
-    const { loadJson } = await import('@/lib/store/local-db');
-    const { zielJahr } = await import('@/lib/planung/zeitstrahl');
-    const { wirksamerSpace } = await import('@/lib/planung/bereich');
-    const laufendesJahr = new Date().getFullYear();
-    const d = await loadJson<import('@/lib/planung/typen').ZieleDatei>('ziele');
-    for (const z of d?.jahr ?? []) {
-      if (z.erledigt || zielJahr(z, laufendesJahr) !== laufendesJahr) continue;
-      const sp = wirksamerSpace(z);
-      if (sp === 'privat' && !sicht.vollesMitglied) continue;
-      ziele.push({ id: z.id, titel: z.titel, fortschritt: typeof z.fortschritt === 'number' ? z.fortschritt : null, link: WEG.ziel(z.id) });
-    }
-  } catch { /* ohne Ziele */ }
+  // Jahresziele über die EINE Lesestelle — dieselbe, aus der ZOE und die Heads sie im Kontext bekommen (Durchstich 09.10.).
+  const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
+  const ziele: Ueberblick['ziele'] = (await jahreszieleFuer({ privat: sicht.vollesMitglied })).map(z => ({ id: z.id, titel: z.titel, fortschritt: z.fortschritt, link: WEG.ziel(z.id) }));
 
   const teile = [
     passiert.length ? `${passiert.length} ${passiert.length === 1 ? 'Ergebnis' : 'Ergebnisse'} seit deinem letzten Besuch` : 'Seit deinem letzten Besuch nichts Neues',

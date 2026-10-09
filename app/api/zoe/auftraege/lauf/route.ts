@@ -45,7 +45,9 @@ export async function POST(req: Request) {
       // Art im selben Prozess (AsyncLocalStorage) und über den Kopf `x-make-lauf` weiter ans KI-Tor.
       const hintergrund = /^Takt:/.test(a.anlass ?? '');
       if (hintergrund && KI_LAEUFE.has(a.name) && !(await kiSchalterFuer(a.person ?? null)).hintergrund) {
-        await melde(a.id, token, 'fertig', 'Hintergrund-KI ist ausgeschaltet (System › Datenschutz) — nicht gelaufen.', true);
+        // Durchstich 09.10.: ein Agenten-Lauf (`faden`) endet sichtbar als „fehler“ — sonst blieb sein Thread für immer „wartet“ (der Auftrag
+        // war „fertig“, das Aufräumen im Takt sah keinen Grund). Der Takt räumt den Thread dann mit Satz und Glocke auf. Nicht neu einreihen.
+        await melde(a.id, token, a.name === 'faden' ? 'fehler' : 'fertig', 'Hintergrund-KI ist ausgeschaltet (System › Datenschutz) — nicht gelaufen.', true);
         return NextResponse.json({ ok: true, ergebnis: 'Hintergrund-KI aus' });
       }
       // Not-Aus (für alle bzw. je Head), ausgeschalteter Head, Head-Budget erreicht (09.10., Agenten-Bereich Paket 4b): eine Entscheidung,
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
       // Ein abgeschalteter Agent ist eine Entscheidung, kein Aussetzer —
       // den Auftrag deshalb nicht wieder in die Schlange legen.
       const abgeschaltet = /ist ausgeschaltet/.test(lauf.text);
-      await melde(a.id, token, lauf.ok ? 'fertig' : 'fehler', lauf.text, abgeschaltet);
+      await melde(a.id, token, lauf.ok ? 'fertig' : 'fehler', lauf.text, abgeschaltet || !!lauf.endgueltig);
       return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text });
     }
     // Die Identität kommt aus dem AUFTRAG, nicht aus dieser Anfrage: der

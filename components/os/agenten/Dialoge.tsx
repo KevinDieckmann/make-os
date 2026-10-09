@@ -26,7 +26,7 @@ import { Chip, Eigenschaft, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPill
 import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, mitRueckfrage, skillSenden } from './daten';
 import { sichtbareHeads, useAgenten, type DialogArt } from './kontext';
 import {
-  agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, euro, kostenImMonat, leererSkill, naechsterLaufText,
+  agentAusSchluessel, aktivierenFehlt, auftragText, ausloeserText, centAus, EREIGNIS_NAME, EREIGNIS_NOCH_NICHT, euro, kostenImMonat, leererSkill, naechsterLaufText,
   RHYTHMUS_NAME, skillName, skillPruefen, type Delegation, type SkillEntwurf,
 } from './regeln';
 
@@ -488,6 +488,8 @@ export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string;
               return (
                 <div style={{ display: 'grid', gap: ABSTAND.s }}>
                   <Pillen liste={EREIGNISSE} aktiv={a.ereignis} onWahl={x => setzeAusloeser({ ...a, ereignis: x })} />
+                  {/* Durchstich 09.10.: kein Takt und keine Quelle stößt Ereignis-Skills bisher an — ehrlich sagen statt still nie laufen. */}
+                  <Hinweis art="info">{EREIGNIS_NOCH_NICHT}</Hinweis>
                   <Feldzeile label="Nur wenn … (optional, als Satz)"><input value={a.filter ?? ''} onChange={x => setzeAusloeser({ ...a, filter: x.target.value || undefined })} placeholder="z. B. nur Leads aus Events" style={eingabe} /></Feldzeile>
                 </div>
               );

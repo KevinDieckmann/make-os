@@ -39,7 +39,8 @@ export function planEintraege(f: Pick<FadenKern, 'id' | 'besitzer' | 'agent' | '
     titel: `Plan von ${head?.name ?? 'einem Head'}: ${p.auftraege.length} ${p.auftraege.length === 1 ? 'Auftrag' : 'Aufträge'} an Mitarbeiter`,
     nachher: [...p.auftraege.slice(0, 6).map(a => `• ${kurz(a.auftrag.ziel, 160)}`), ...(p.auftraege.length > 6 ? [`• … und ${p.auftraege.length - 6} weitere`] : []), ...(typeof p.schaetzungCent === 'number' ? [`Schätzung: ca. ${(Math.round(p.schaetzungCent) / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`] : [])].join('\n'),
     eingabe: { fadenId: f.id, planId: p.id },
-    anlass: kurz(p.grund || 'Plan-Freigabe vor einem großen Auftrag', 300),
+    // Anlass „<Head>: …“ (Durchstich 09.10.): so ordnet `headVonVorschlag` den Plan seinem Head zu — Zähler, „Als Nächstes“, Annahmequote.
+    anlass: kurz(`${head ? `${head.name}: ` : ''}${p.grund || 'Plan-Freigabe vor einem großen Auftrag'}`, 300),
     person: f.besitzer,
     quelle: 'lauf' as const,
     bezug: planBezug(f.id, p.id),

@@ -224,6 +224,33 @@ export function zoeAufgabeEintraege(tasks: readonly { id: string; title: string;
 const sicher = async <T,>(p: Promise<T>, leer: T): Promise<T> => p.catch(e => { console.error('[agenten-naechstes] Quelle nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return leer; });
 
 /** „Als Nächstes“ für die Person (die nächsten `GRENZEN.naechsteTage` Tage), sortiert nach Eisenhower. */
+/**
+ * Offene Freigaben je Head — EINE Zählung (Durchstich 09.10.) für den Zähler am Head (GET /api/agenten: Team, Kopfleiste, Überblick) und
+ * „Als Nächstes“. Quellen: der Stapel (Head über `headVonVorschlag`: Werkstatt-Bezug oder Anlass „<Head>: …“ — auch Plan-Freigaben, die seit
+ * Paket 4b im Stapel stehen) und die eigenen Freigabe-Listen der eingebauten Heads (`head-<id>`) bzw. des Finanzchefs (entschieden wird dort —
+ * die Freigaben-Seite bündelt sie). Schlüssel `''` = ZOE/System. Nur Heads, die die Person sieht; Vorschläge nur, wenn sie sie sehen darf.
+ */
+export async function freigabenJeHead(person: string, sicht: ReadonlySet<string>, haushalt: string | null): Promise<Map<string, { anzahl: number; aeltestes: string }>> {
+  const { loadJson } = await import('@/lib/store/local-db');
+  const { lies: stapelLesen, vorschlagSichtbar } = await import('@/lib/zoe/stapel');
+  const { standName: chefStand } = await import('@/lib/finanzen/chef/stand');
+  const { headVonVorschlag } = await import('./katalog');
+  const gruppen = new Map<string, { anzahl: number; aeltestes: string }>();
+  const zaehle = (k: string, zeit: string) => { const g = gruppen.get(k) ?? { anzahl: 0, aeltestes: zeit }; g.anzahl++; if (zeit < g.aeltestes) g.aeltestes = zeit; gruppen.set(k, g); };
+  for (const v of await sicher(stapelLesen('offen'), [])) {
+    if (!vorschlagSichtbar(v, person, true)) continue;
+    const h = headVonVorschlag(v);
+    zaehle(h && sicht.has(h) ? h : '', v.zeit);
+  }
+  for (const h of ['sales', 'marketing', 'event'].filter(x => sicht.has(x))) {
+    const s = await sicher(loadJson<{ vorschlaege?: { status: string; erstellt: string; fuer?: string }[] }>(`head-${h}`), null);
+    for (const v of s?.vorschlaege ?? []) if (v.status === 'offen' && (!v.fuer || v.fuer === person || v.fuer === 'beide')) zaehle(h, v.erstellt);
+  }
+  if (sicht.has('finanzen')) for (const v of (await sicher(loadJson<{ vorschlaege?: { status: string; erstellt: string }[] }>(chefStand(null)), null))?.vorschlaege ?? []) if (v.status === 'offen') zaehle('finanzen', v.erstellt);
+  if (sicht.has('finanzen-privat') && haushalt) for (const v of (await sicher(loadJson<{ vorschlaege?: { status: string; erstellt: string }[] }>(chefStand(haushalt)), null))?.vorschlaege ?? []) if (v.status === 'offen') zaehle('finanzen-privat', v.erstellt);
+  return gruppen;
+}
+
 export async function naechstesLesen(person: string, jetzt: Date = new Date()): Promise<Naechstes[]> {
   const { loadJson } = await import('@/lib/store/local-db');
   const { sichtbareHeads, sichtbareSkills, umfangFuer } = await import('./skills-server');
@@ -346,22 +373,8 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
     }
   }
 
-  // 3) Offene Freigaben — EINE Zeile je Head (ZOE-Stapel, Freigabe-Listen der Heads und des Finanzchefs).
-  const { lies: stapelLesen, vorschlagSichtbar } = await import('@/lib/zoe/stapel');
-  const { standName: chefStand } = await import('@/lib/finanzen/chef/stand');
-  const gruppen = new Map<string, { anzahl: number; aeltestes: string }>();
-  const zaehle = (k: string, zeit: string) => { const g = gruppen.get(k) ?? { anzahl: 0, aeltestes: zeit }; g.anzahl++; if (zeit < g.aeltestes) g.aeltestes = zeit; gruppen.set(k, g); };
-  for (const v of await sicher(stapelLesen('offen'), [])) {
-    if (!vorschlagSichtbar(v, person, true)) continue;
-    const h = v.bezug && ['skill', 'mitarbeiter', 'merksatz'].includes(v.bezug.art) && sicht.has(v.bezug.id) ? v.bezug.id : '';
-    zaehle(h, v.zeit);
-  }
-  for (const h of ['sales', 'marketing', 'event'].filter(x => sicht.has(x))) {
-    const s = await sicher(loadJson<{ vorschlaege?: { status: string; erstellt: string; fuer?: string }[] }>(`head-${h}`), null);
-    for (const v of s?.vorschlaege ?? []) if (v.status === 'offen' && (!v.fuer || v.fuer === person || v.fuer === 'beide')) zaehle(h, v.erstellt);
-  }
-  if (sicht.has('finanzen')) for (const v of (await sicher(loadJson<{ vorschlaege?: { status: string; erstellt: string }[] }>(chefStand(null)), null))?.vorschlaege ?? []) if (v.status === 'offen') zaehle('finanzen', v.erstellt);
-  if (sicht.has('finanzen-privat') && umfang.haushalt) for (const v of (await sicher(loadJson<{ vorschlaege?: { status: string; erstellt: string }[] }>(chefStand(umfang.haushalt)), null))?.vorschlaege ?? []) if (v.status === 'offen') zaehle('finanzen-privat', v.erstellt);
+  // 3) Offene Freigaben — EINE Zeile je Head (ZOE-Stapel, Freigabe-Listen der Heads und des Finanzchefs) — dieselbe Zählung wie am Head.
+  const gruppen = await freigabenJeHead(person, sicht, umfang.haushalt);
   raus.push(...freigabeEintraege(Array.from(gruppen, ([k, g]) => ({ ...(k ? { headId: k } : {}), ...g })), jetzt));
 
   // 4) Fristen — dieselbe Stelle wie Kalender und Glocke; Privates nur für volle Mitglieder (`fuerPersonFiltern`).

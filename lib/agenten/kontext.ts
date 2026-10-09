@@ -137,7 +137,7 @@ async function brainKontext(head: HeadDef, person: string, kats: Set<KiKategorie
     const t = await ernaehrungTeil(person, kats);
     if (t.text) { teile.push(t.text); fremd = true; vertraulich = true; if (t.gesundheit) genutzt.add('gesundheit'); }
   }
-  teile.push(blockZiele(b));
+  teile.push(blockZiele(b, head.bereich));
   return { text: `KONTEXT DES BEREICHS (nur lesen):\n${teile.filter(Boolean).join('\n\n')}`, kategorien: Array.from(genutzt), fremd, vertraulich, ...(hinweis ? { hinweis } : {}) };
 }
 

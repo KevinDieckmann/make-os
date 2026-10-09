@@ -40,7 +40,18 @@ export function neuester<T extends { gestartet: string }>(liste: T[]): T | undef
 }
 
 /** Was der Takt von einem Auftrag braucht, um nach einem Fehlschlag zu warten. */
-export interface AuftragSpur { name: string; tag: string; status: string; zeit: string; beendet?: string }
+export interface AuftragSpur { name: string; tag: string; status: string; zeit: string; beendet?: string; eingabe?: Record<string, unknown> }
+
+/**
+ * Wofür ein Agenten-Lauf (`faden`) ist — Skill, Hintergrundaufgabe oder Thread (Durchstich 09.10.). Die Pause nach Fehlschlägen gilt je Ziel:
+ * vorher legte EIN abgebrochener oder gescheiterter Lauf (auch „von Hand abgebrochen“, Not-Aus, eine fremde Person) ALLE geplanten Agenten-Läufe
+ * der Instanz für 5 · 3^(n−1) Minuten still. Für alle anderen Läufe bleibt es der Name.
+ */
+export function pausenZiel(name: string, eingabe?: Record<string, unknown>): string | undefined {
+  if (name !== 'faden' || !eingabe) return undefined;
+  const id = eingabe.skillId ?? eingabe.planId ?? eingabe.fadenId;
+  return typeof id === 'string' ? id : undefined;
+}
 
 /**
  * Nach einem Fehlschlag nicht gleich wieder (25.09.). „morgen“ scheiterte am
@@ -50,8 +61,8 @@ export interface AuftragSpur { name: string; tag: string; status: string; zeit: 
  * Tages 5 · 3^(n−1) Minuten (5, 15, 45, 135), höchstens drei Stunden.
  * Rückgabe: Minuten, die noch zu warten sind — 0 heißt frei.
  */
-export function wartenNachFehler(auftraege: AuftragSpur[], name: string, heute: string, jetzt: Date): number {
-  const fehl = auftraege.filter(a => a.name === name && a.tag === heute && a.status === 'fehler');
+export function wartenNachFehler(auftraege: AuftragSpur[], name: string, heute: string, jetzt: Date, ziel?: string): number {
+  const fehl = auftraege.filter(a => a.name === name && a.tag === heute && a.status === 'fehler' && (ziel === undefined || pausenZiel(a.name, a.eingabe) === ziel));
   if (!fehl.length) return 0;
   const letzte = Math.max(...fehl.map(a => Date.parse(a.beendet ?? a.zeit)));
   const pause = Math.min(5 * 3 ** (fehl.length - 1), 180);
@@ -94,7 +105,7 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
   if (!roh.length) return roh;
   const auftraege = (await loadJson<{ auftraege?: AuftragSpur[] }>('zoe-auftraege'))?.auftraege ?? [];
   const heute = localDay(jetzt);
-  return roh.filter(f => wartenNachFehler(auftraege, f.auftrag.name, heute, jetzt) === 0);
+  return roh.filter(f => wartenNachFehler(auftraege, f.auftrag.name, heute, jetzt, pausenZiel(f.auftrag.name, f.auftrag.eingabe)) === 0);
 }
 
 async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {

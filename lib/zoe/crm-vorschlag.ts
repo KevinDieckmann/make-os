@@ -500,7 +500,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
 }
 
 /** Das Werkzeug `crm_vorschlag`: prüfen, Vorher/Nachher rechnen, als Stapel-Art „crm“ ablegen — ändert nichts. */
-export async function crmVorschlag(input: Eingabe, _origin: string, person?: string): Promise<string> {
+export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string }): Promise<string> {
   try {
     const s = await crmSicht(person);
     if (!s || !person) return NICHT_IM_HINTERGRUND;
@@ -511,7 +511,8 @@ export async function crmVorschlag(input: Eingabe, _origin: string, person?: str
     const v = await lege({
       werkzeug: CRM_VORSCHLAG_WERKZEUG, gruppe: 'crm', titel: p.titel, ...(p.vorher ? { vorher: p.vorher } : {}), nachher: p.nachher,
       eingabe: p.eingabe, person, quelle: 'gespraech', bezug: { art: 'crm', id: p.bezugId },
-      ...(text(input.begruendung, 400) ? { anlass: text(input.begruendung, 400) } : {}),
+      // Aus dem Agenten-Bereich (Durchstich 09.10.): „<Head>: …“ vorne — der Vorschlag zählt dann beim Head (Zähler, Annahmequote).
+      ...(kontext?.herkunft || text(input.begruendung, 400) ? { anlass: [kontext?.herkunft, text(input.begruendung, 400)].filter(Boolean).join(' — ').slice(0, 600) } : {}),
     });
     return `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${p.titel}: ${p.vorher ? `${p.vorher} → ` : ''}${p.nachher}. Liegt als Vorschlag ${v.id} im Freigabe-Stapel (und an der Kontakt-/Firmenakte). Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt oder versendet.`;
   } catch (e) {
