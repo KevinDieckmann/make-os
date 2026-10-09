@@ -16,6 +16,7 @@ import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
+import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, vitalsKurz, type ResolvedVitals } from '@/lib/vitals';
@@ -195,11 +196,12 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
   const geburtstage = await geburtstageIm({ von: heute, bis: anlaesseBis }, person).catch(() => []);
   // Nordstern (08.10. abends): aus dem Bestand des Haushalts der Person — wirft nie, ohne Haushalt/Eintrag null.
   const nordstern = await nordsternFuerPerson(person);
-  // Jahresziele (Durchstich 09.10.): wie der Agenten-Überblick — Privat nur für volle Mitglieder (Konto mit Haushalt). Wirft nie.
+  // Jahresziele (Durchstich 09.10.): wie der Agenten-Überblick — Privat nur für volle Mitglieder (Konto mit Haushalt), ein Konto
+  // „nur Business“ nie. Über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts). Wirft nie (unlesbar → nichts).
   const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
-  const { haushaltFuer: haushaltDerPerson } = await import('@/lib/finanzen/haushalt/zugriff');
-  const jahresziele = (await personImHaushaltDesInhabers(person).catch(() => false))
-    ? (await jahreszieleFuer({ privat: !!(await haushaltDerPerson(person).catch(() => null)), heute })).map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt }))
+  const konto = await kontoSicht(person).catch(() => null);
+  const jahresziele = konto?.imHaushalt
+    ? (await jahreszieleFuer({ privat: konto.vollesMitglied, heute }).catch(() => [])).map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt }))
     : [];
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 

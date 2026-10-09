@@ -123,10 +123,12 @@ async function dateienFuer(s: CrmSicht, f: { kontaktId?: string; firmaId?: strin
 
 async function aufgabenFuerBezug(s: CrmSicht, wer: { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[] }): Promise<string[]> {
   const { ladeAufgabenSicht: ladeAufgaben } = await import('@/lib/aufgaben/speicher'); // ohne Papierkorb (29.09.)
-  const { aufgabenFuer } = await import('@/lib/aufgaben/crm-verweise');
-  const state = await ladeAufgaben(s.person); // Sichtfilter „nur ich“ (29.09.)
-  // Privates hat in der Markttraktion nichts zu suchen — nur Business-Spaces (eigene Firmen, Mandanten).
-  return aufgabenFuer(state.tasks, wer).filter(t => t.spaceId !== 'privat' && t.space !== 'privat')
+  const [{ aufgabenFuer }, { aufgabeImPrivat }] = await Promise.all([import('@/lib/aufgaben/crm-verweise'), import('@/lib/aufgaben/bereich-sicht')]);
+  const state = await ladeAufgaben(s.person); // Sichtfilter „nur ich“ (29.09.) und Konto-Sicht (09.10., E4)
+  // Privates hat in der Markttraktion nichts zu suchen — nur Business-Spaces (eigene Firmen, Mandanten). EINE Regel (09.10., E4):
+  // `aufgabeImPrivat` (Bereich des Space) — vorher `spaceId !== 'privat'`, damit zählte die Selbstständigkeit (Privat-Einheit) als Business.
+  const nachId = new Map(state.tasks.map(t => [t.id, t]));
+  return aufgabenFuer(state.tasks, wer).filter(t => !aufgabeImPrivat(t, nachId) && t.space !== 'privat')
     .map(t => `- ${t.id} · ${t.title} · ${t.status}${t.dueDate ? ` · fällig ${t.dueDate}` : ''} · ${t.assignee}`);
 }
 

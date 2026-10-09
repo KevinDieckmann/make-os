@@ -9,7 +9,7 @@ import { resolveAgent } from '@/lib/agent-config';
 import { localDay } from '@/lib/zeit';
 import { hintergrundKopf, laufImKontext } from '@/lib/datenschutz/ki-lauf';
 import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
-import { agentKategorien } from './agent-kategorien';
+import { agentFuerKonto, PRIVAT_AGENTEN, agentKategorien } from './agent-kategorien';
 
 /** Agenten, die ZOE selbst starten darf. */
 export const AUSFUEHRBAR = [
@@ -141,6 +141,12 @@ async function agentLaufen(id: Ausfuehrbar, auftrag: string, origin: string, per
   // `fach_agent` eines Mitarbeiters) lief aber weiter — dieselbe Regel wie im Arbeiter (`auftragGesperrt`, Wartung bleibt ausgenommen).
   const gesperrt = await import('@/lib/agenten/einstellung').then(m => m.auftragGesperrt({ name: id, person: person ?? null })).catch(() => null);
   if (gesperrt) return fehl(`${gesperrt} — der Agent läuft erst wieder, wenn der Not-Aus gelöst ist.`);
+  // EINE Konto-Sicht (09.10., E4): Fach-Agenten aus dem Privat-Bereich (`PRIVAT_AGENTEN`) nie für ein Konto „nur Business“ — auch nicht über
+  // die Warteschlange oder einen Mitarbeiter (`fach_agent`). Konten unlesbar → nicht starten.
+  if (person && PRIVAT_AGENTEN.has(id)) {
+    const nurBusiness = await import('@/lib/zugang/konto-sicht-server').then(m => m.privatAusgeblendetFuer(person)).catch(() => true);
+    if (!agentFuerKonto(id, nurBusiness)) return fehl('Dieser Agent arbeitet im Privat-Bereich — dieses Konto sieht nur Business.');
+  }
 
   // Datenschutz (05.10.): ein Lauf des Takts trägt `x-make-lauf: hintergrund` mit — die Routen geben das dem KI-Tor weiter
   // (Schalter „Hintergrund-KI“, Pseudonymisierung). Vom Gespräch/Knopf ausgelöst bleibt es ein Aufruf.

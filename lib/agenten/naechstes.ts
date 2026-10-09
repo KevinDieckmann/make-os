@@ -232,13 +232,13 @@ const sicher = async <T,>(p: Promise<T>, leer: T): Promise<T> => p.catch(e => { 
  */
 export async function freigabenJeHead(person: string, sicht: ReadonlySet<string>, haushalt: string | null): Promise<Map<string, { anzahl: number; aeltestes: string }>> {
   const { loadJson } = await import('@/lib/store/local-db');
-  const { lies: stapelLesen, vorschlagSichtbar } = await import('@/lib/zoe/stapel');
+  const { vorschlaegeFuer } = await import('@/lib/zoe/stapel');
   const { standName: chefStand } = await import('@/lib/finanzen/chef/stand');
   const { headVonVorschlag } = await import('./katalog');
   const gruppen = new Map<string, { anzahl: number; aeltestes: string }>();
   const zaehle = (k: string, zeit: string) => { const g = gruppen.get(k) ?? { anzahl: 0, aeltestes: zeit }; g.anzahl++; if (zeit < g.aeltestes) g.aeltestes = zeit; gruppen.set(k, g); };
-  for (const v of await sicher(stapelLesen('offen'), [])) {
-    if (!vorschlagSichtbar(v, person, true)) continue;
+  // Nur, was die Person sieht — EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ ohne Vorschläge des Systems aus dem Privat-Bereich.
+  for (const v of await sicher(vorschlaegeFuer(person, 'offen'), [])) {
     const h = headVonVorschlag(v);
     zaehle(h && sicht.has(h) ? h : '', v.zeit);
   }

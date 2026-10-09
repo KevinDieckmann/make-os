@@ -10,16 +10,17 @@
 //
 // Zugang wie die CRM-Ablage: nur der Haushalt des Inhabers (Default-Deny) UND die anfragende Person muss
 // ausdrücklich benannt sein und einen Haushalt am Konto tragen (`personStreng`); Dienstweg nur mit Person im
-// Haushalt. Die Dateien liegen verschlüsselt je Haushalt (lib/dateien/aufgaben-ablage.ts) in einem EIGENEN Bestand
+// Haushalt. Seit 09.10. (E4, EINE Konto-Sicht): ein Konto „nur Business“ sieht und schreibt die Dateien des Business-Bereichs
+// (`aufgabenDateienZugang`, `aufgabenDateiSichtbar`) — Privat gibt es für es nicht (404). Die Dateien liegen verschlüsselt je Haushalt (lib/dateien/aufgaben-ablage.ts) in einem EIGENEN Bestand
 // — getrennt von der CRM-Ablage, die ZOE nie liest. Diese hier liest ZOE (gekapselt, lib/zoe/aufgaben-unterlagen.ts).
 
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { createHash } from 'crypto';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { AblageFehler } from '@/lib/dateien/ablage';
-import { aufgabenDateienListe, aufgabenDateiAblegen, aufgabenDateiAendern, aufgabenDateiEntfernen, aufgabenDateiLesen } from '@/lib/dateien/aufgaben-ablage';
+import { aufgabenDateienListe, aufgabenDateiAblegen, aufgabenDateiAendern, aufgabenDateiEntfernen, aufgabenDateiLesen, aufgabenDateienZugang, aufgabenDateiSichtbar } from '@/lib/dateien/aufgaben-ablage';
 import { DATEI_ID, dateinameAscii, dateinameSaeubern, endung } from '@/lib/dateien/regeln';
 import { AUFGABEN_KENNUNG, MAX_AUFGABEN_DATEI_BYTES, aufgabenDateienFuer, aufgabenTypErkennen } from '@/lib/dateien/aufgaben-regeln';
 import { begrenztLesen } from '@/lib/dateien/begrenzt-lesen';
@@ -35,22 +36,23 @@ const fehler = (text: string, status: number) => NextResponse.json({ ok: false, 
 const ZU_GROSS = () => fehler(`Datei zu groß (höchstens ${MAX_AUFGABEN_DATEI_BYTES / 1024 / 1024} MB).`, 413);
 const FALSCHER_TYP = () => fehler('Nur PDF, Bilder (PNG, JPG, WEBP, HEIC), Word, Excel, PowerPoint, CSV, TXT oder Markdown — und der Inhalt muss zur Endung passen.', 415);
 
-async function zugang(req: Request): Promise<{ person: string; haushalt: string } | null> {
+type Zugang = { person: string; haushalt: string; nurBusiness: boolean };
+async function zugang(req: Request): Promise<Zugang | null> {
   if (!(await imHaushaltDesInhabers(req))) return null;
-  const h = await haushaltVon(req);
-  return h ? { person: h.person, haushalt: h.haushalt } : null;
+  return aufgabenDateienZugang(personStreng(req));
 }
 
 /**
  * Sicht-Prüfung 08.10.: Dateien an einer fremden „nur ich“-Aufgabe gibt es für diese Person nicht — weder in der Liste noch
- * zum Herunterladen, Umbenennen, Löschen oder als Ziel eines Uploads (404, wie die Aufgabe selbst).
+ * zum Herunterladen, Umbenennen, Löschen oder als Ziel eines Uploads (404, wie die Aufgabe selbst). Seit 09.10. (E4) ebenso alles
+ * im Privat-Bereich für ein Konto „nur Business“ (`verborgeneAufgabenFuer` kennt die Privat-Aufgaben, der Eintrag seinen Bereich).
  */
 async function anVerborgener(person: string, aufgabeId: string | undefined): Promise<boolean> {
   return !!aufgabeId && (await verborgeneAufgabenFuer(person)).has(aufgabeId);
 }
-async function dateiVerborgen(z: { person: string; haushalt: string }, id: string): Promise<boolean> {
+async function dateiVerborgen(z: Zugang, id: string): Promise<boolean> {
   const e = (await aufgabenDateienListe(z.haushalt)).find(x => x.id === id);
-  return !!e && await anVerborgener(z.person, e.aufgabeId);
+  return !!e && !aufgabenDateiSichtbar(e, z, await verborgeneAufgabenFuer(z.person));
 }
 
 function ausFehler(e: unknown) {
@@ -68,7 +70,7 @@ export async function GET(req: Request) {
     if (id !== null) {
       if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
       const d = await aufgabenDateiLesen(z.haushalt, id);
-      if (!d || await anVerborgener(z.person, d.eintrag.aufgabeId)) return fehler('Nicht gefunden.', 404);
+      if (!d || !aufgabenDateiSichtbar(d.eintrag, z, await verborgeneAufgabenFuer(z.person))) return fehler('Nicht gefunden.', 404);
       const name = d.eintrag.datei.name;
       return new Response(new Uint8Array(d.bytes), {
         headers: {
@@ -85,7 +87,7 @@ export async function GET(req: Request) {
     if ((projektId && !AUFGABEN_KENNUNG.test(projektId)) || (aufgabeId && !AUFGABEN_KENNUNG.test(aufgabeId)) || (listeId && !AUFGABEN_KENNUNG.test(listeId))) return fehler('Unzulässige Kennung.', 400);
     if (!projektId && !aufgabeId) return fehler('projektId oder aufgabeId fehlt.', 400);
     const verborgen = await verborgeneAufgabenFuer(z.person);
-    const eintraege = aufgabenDateienFuer(await aufgabenDateienListe(z.haushalt), { projektId, aufgabeId, listeId }).filter(e => !e.aufgabeId || !verborgen.has(e.aufgabeId));
+    const eintraege = aufgabenDateienFuer(await aufgabenDateienListe(z.haushalt), { projektId, aufgabeId, listeId }).filter(e => aufgabenDateiSichtbar(e, z, verborgen));
     const etag = `"${createHash('sha256').update(JSON.stringify(eintraege)).digest('base64url').slice(0, 27)}"`;
     const kopf = { 'Cache-Control': 'no-store, private', ETag: etag };
     if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: kopf });

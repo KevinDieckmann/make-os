@@ -134,6 +134,12 @@ export function AufgabenRaum() {
     if (b !== bereichGemerkt) bereichSetzen(b);
     merke(RAUM_MERKER, raumId); setRaumGemerkt(raumId);
   }, [raumId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Ein Privat-Space, den der Server nicht liefert (Konto „nur Business“, 09.10., E4 — z. B. ein alter Link): zurück zum Überblick statt
+  // eines leeren Raums, in dem jedes Anlegen abgelehnt würde.
+  const raumVerborgen = ready && !!raumId && rohSpaces.length > 0 && !spaces.some(s => s.id === raumId) && bereichVonSpace(raumId) === 'privat';
+  useEffect(() => {
+    if (raumVerborgen) router.replace(aufgabenLink({ ansicht: 'ueberblick' }), { scroll: false });
+  }, [raumVerborgen, router]);
   const projektId = raumId && adresse.p && (state.projects.some(p => p.id === adresse.p) || adresse.p === sonstigeProjektId(raumId)) ? adresse.p : null;
 
   const offenJe = useMemo(() => {
@@ -164,7 +170,8 @@ export function AufgabenRaum() {
     ? { spaceId: raumId, ...(projektId ? { projectId: projektId } : {}), ...(projektId && adresse.l ? { listeId: adresse.l } : {}) }
     // Gemerkter Raum nur, wenn er zum Bereich passt (05.10.: die Selbstständigkeit steht im Privat-Bereich); sonst der erste Firmen-Space
     // des Business-Bereichs bzw. Privat.
-    : { spaceId: raumGemerkt && spaces.some(s => s.id === raumGemerkt && !s.archiv) && (adresse.bereich !== 'business' || bereichVonSpace(raumGemerkt) === 'business') ? raumGemerkt : adresse.bereich === 'business' ? (spaces.find(s => s.art === 'firma' && s.bereich === 'business' && !s.archiv)?.id ?? 'kdv') : 'privat' };
+    // Ohne Privat-Space (Konto „nur Business“, 09.10., E4 — der Server liefert ihn dann nicht) immer der erste Firmen-Space des Business.
+    : { spaceId: raumGemerkt && spaces.some(s => s.id === raumGemerkt && !s.archiv) && (adresse.bereich !== 'business' || bereichVonSpace(raumGemerkt) === 'business') ? raumGemerkt : adresse.bereich === 'business' || !spaces.some(s => s.id === 'privat') ? (spaces.find(s => s.art === 'firma' && s.bereich === 'business' && !s.archiv)?.id ?? 'kdv') : 'privat' };
 
   const filterZeile = raum && (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 12px' }}>

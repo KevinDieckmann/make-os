@@ -7,9 +7,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
-import { haushaltDesInhabers, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
-import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { kontoSichtLaden } from '@/lib/zugang/konto-sicht-server';
 import { type AgentenAntwort, type AgentenEinstellung, type HeadDef, type HeadEinstellung, type HeadKarte, type Ueberblick, type UeberblickZeile } from './typen';
 import { headDef, KATALOG } from './katalog';
 import { einstellungFuer, mitarbeiterFuerHead, skillsFuerHead } from './skills-lesen';
@@ -24,17 +22,12 @@ export type { Arbeit } from './faeden-ablage';
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const leer = (): FadenIndexKern => ({ v: 2, faeden: [] });
 
-/** Die Sicht eines Kontos für die Filterstelle — Haushalt, volles Mitglied, privater Finanzzugang, Gesundheits-Einwilligung. */
+/**
+ * Die Sicht eines Kontos für die Filterstelle — seit 09.10. (E4) die EINE Konto-Sicht (lib/zugang/konto-sicht.ts): Haushalt, volles Mitglied,
+ * privater Finanzzugang, Gesundheits-Einwilligung. Dieselben Werte wie vorher (Wächter tests/konto-sicht.test.ts).
+ */
 export async function sichtLaden(person: string): Promise<KontoSicht> {
-  const nichts: KontoSicht = { person, imHaushalt: false, vollesMitglied: false, privatFinanzen: false, gesundheit: { verarbeiten: false, ki: false } };
-  if (!PERSON.test(person) || !(await personImHaushaltDesInhabers(person))) return nichts;
-  const [h, inhaberHaushalt, g] = await Promise.all([haushaltFuer(person).catch(() => null), haushaltDesInhabers(), gesundheitStandFuer(person).catch(() => null)]);
-  return {
-    person, imHaushalt: true,
-    vollesMitglied: !!h,
-    privatFinanzen: !!h && h.haushalt === inhaberHaushalt,
-    gesundheit: { verarbeiten: !!g?.verarbeitungErlaubt, ki: !!g?.ki.an },
-  };
+  return kontoSichtLaden(person);
 }
 
 /**

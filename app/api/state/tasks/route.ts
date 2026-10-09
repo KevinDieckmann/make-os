@@ -27,7 +27,7 @@ import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
-import { sichtFuer, mitNeutralenListen, neutraleListenStandNamen } from '@/lib/aufgaben/sicht';
+import { sichtFuerKonto, neutraleListenStandNamen } from '@/lib/aufgaben/sicht';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -60,12 +60,13 @@ export async function GET(req: Request) {
   const nichts = unveraendert(req, etag);
   if (nichts) return nichts;
   const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
-  if (!roh) return jsonAntwort(req, { state: null, spaces: await spacesFuer({ projects: [], tasks: [] }) }, etag);
+  if (!roh) return jsonAntwort(req, { state: null, spaces: await spacesFuer({ projects: [], tasks: [] }, zugang.person) }, etag);
   const voll = await ladeAufgaben();
   // Sichtfilter „nur ich“ (29.09.): jede Person sieht nur ihre eigenen „nur ich“-Aufgaben; der Systemlauf keine.
   // Listen verborgener Meilensteine (Altbestand an einem nicht geteilten eigenen Ziel) nur mit neutralem Namen (08.10.).
-  const state = await mitNeutralenListen(sichtFuer(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person), zugang.person);
-  return jsonAntwort(req, { state: fuerBrowser(state), spaces: await spacesFuer(state) }, etag);
+  // Konto „nur Business“ (09.10., E4): ohne den Privat-Bereich — Aufgaben, Projekte, Listen, Status UND Spaces (`sichtFuerKonto`).
+  const state = await sichtFuerKonto(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person);
+  return jsonAntwort(req, { state: fuerBrowser(state), spaces: await spacesFuer(state, zugang.person) }, etag);
 }
 
 async function body(req: Request): Promise<Record<string, unknown> | NextResponse> {
@@ -88,7 +89,7 @@ export async function PATCH(req: Request) {
   const haushalt = (await haushaltFuer(zugang.person))?.haushalt;
   const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true, ...(haushalt ? { haushalt } : {}) });
   if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen, ...(r.serien?.length ? { serien: r.serien } : {}) });
-  const aktuell = r.konflikte?.length ? await mitNeutralenListen(sichtFuer(r.state ?? await ladeAufgaben(), zugang.person), zugang.person) : null;
+  const aktuell = r.konflikte?.length ? await sichtFuerKonto(r.state ?? await ladeAufgaben(), zugang.person) : null;
   return NextResponse.json({
     ok: false, error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}),
     ...(r.massenAenderung ? { massenAenderung: true, anzahl: r.anzahl, grenze: r.grenze } : {}),

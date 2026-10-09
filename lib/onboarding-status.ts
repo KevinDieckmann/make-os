@@ -566,8 +566,8 @@ export async function kontextFuer(person: string | null): Promise<(Kontext & { h
     haupt: inhaber?.speicher === person,
     eingeladen: !!inhaber && inhaber.speicher !== person,
     personen: konten.length,
-    // Wie `privatFinanzZugang`: Haushaltsmitglied ohne „nur Business“ UND Haushalt des Inhabers.
-    privatFinanzen: k.finanzRecht !== 'business' && !!k.haushalt && k.haushalt === inhaber?.haushalt,
+    // Wie `privatFinanzZugang`: Haushaltsmitglied ohne „nur Business“ UND Haushalt des Inhabers — die EINE Konto-Sicht (09.10., E4).
+    privatFinanzen: (await import('@/lib/zugang/konto-sicht')).kontoSichtAus(st, person).privatFinanzen,
     // Die einfachste korrekte Regel für Schritt 0.5: Altbestand gab es nur auf einer Instanz, deren Inhaber-Konto vor dem Tag angelegt
     // wurde, an dem die Inhalte den Code verließen — neue Kunden- und Demo-Instanzen haben keinen (dort fehlt der Schritt ganz).
     altbestand: process.env.MAKE_OS_DEMO !== '1' && !!inhaber && String(inhaber.angelegt ?? '').slice(0, 10) < ALTBESTAND_BIS,

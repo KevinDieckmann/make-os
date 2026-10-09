@@ -271,6 +271,24 @@ export function fuerBetrachter(s: Strang, betrachter: string): Strang {
   };
 }
 
+/**
+ * Konto „nur Business“ (09.10., E4 — EINE Konto-Sicht, lib/zugang/konto-sicht.ts): der ganze Privat-Space fällt weg — Knoten unter
+ * `space:privat` (Themen, Ziele, Meilensteine) und jeder Strang mit diesem Pfad, auch kein „Belegt“ (rein).
+ */
+export function ohnePrivatSpace<K extends Pick<Knoten, 'id' | 'eltern'>, S extends Pick<Strang, 'pfad'>>(knoten: readonly K[], straenge: readonly S[]): { knoten: K[]; straenge: S[] } {
+  const privat = knotenId.space('privat');
+  const nachId = new Map(knoten.map(k => [k.id, k]));
+  const imPrivat = (k: K): boolean => {
+    const gesehen = new Set<string>();
+    for (let x: K | undefined = k; x && !gesehen.has(x.id); x = x.eltern ? nachId.get(x.eltern) : undefined) {
+      if (x.id === privat) return true;
+      gesehen.add(x.id);
+    }
+    return false;
+  };
+  return { knoten: knoten.filter(k => !imPrivat(k)), straenge: straenge.filter(s => s.pfad[1] !== privat) };
+}
+
 /** Die Knoten, die der Betrachter sehen darf: eigene Ziele der ANDEREN Person (und ihre Meilensteine) fallen weg — Name und
  *  Link stünden sonst in Legende, Brotkrumen und Markierungen (Praxis-Fund 04.10.). Stränge darunter kürzt der Baum. */
 export function knotenFuerBetrachter(knoten: readonly Knoten[], betrachter: string): Knoten[] {

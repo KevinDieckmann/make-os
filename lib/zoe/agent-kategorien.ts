@@ -51,6 +51,15 @@ export function agentKategorien(agent: string, gesundheitImErgebnis?: boolean): 
 }
 
 /**
+ * Fach-Agenten, deren Ergebnis aus dem PRIVAT-BEREICH des Haushalts schöpft (09.10., E4 — EINE Konto-Sicht): die Ernährung (gemeinsamer
+ * Plan, Einkauf, Profile des Haushalts). Ein Konto „nur Business“ bekommt sie weder angeboten (kimmi) noch gestartet (`runAgent`). Die
+ * übrigen lesen Aufgaben/Ziele über die Sicht der Person (`ladeAufgabenSicht`, `gatherBrain`) — dort ist Privat schon herausgefiltert.
+ */
+export const PRIVAT_AGENTEN: ReadonlySet<string> = new Set(['ernaehrung']);
+/** Darf ein Konto mit dieser Sicht den Fach-Agenten nutzen? (rein) `nurBusiness` = Konto „nur Business“. */
+export const agentFuerKonto = (agent: string, nurBusiness: boolean): boolean => !nurBusiness || !PRIVAT_AGENTEN.has(agent);
+
+/**
  * Darf ZOE diesen Fach-Agenten der Person anbieten? Gesperrt, sobald eine seiner FESTEN Kategorien für sie aus ist (Bereich-Schalter) —
  * „gesundheit“ zählt hier nicht: ohne (b) läuft der Agent ohne Gesundheitswerte (und meldet das zurück). Liefert den Satz oder null.
  */

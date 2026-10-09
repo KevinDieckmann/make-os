@@ -47,9 +47,9 @@ async function buchungenLesen(person: string): Promise<ABuchung[]> {
  * (`vorschlagSichtbar`, F2 M6): eigene und die des Systems, nie die der anderen Person.
  */
 async function vorschlaegeZaehlen(person: string): Promise<{ kalender: number; gesamt: number }> {
-  const [{ lies, vorschlagSichtbar }, { personImHaushaltDesInhabers }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/zugang/haushalt-inhaber')]);
-  const imHaushalt = await personImHaushaltDesInhabers(person).catch(() => false);
-  const offen = (await lies('offen')).filter(v => vorschlagSichtbar(v, person, imHaushalt));
+  // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ zählt keine Vorschläge des Systems aus dem Privat-Bereich (`vorschlaegeFuer`).
+  const { vorschlaegeFuer } = await import('@/lib/zoe/stapel');
+  const offen = await vorschlaegeFuer(person, 'offen');
   return { gesamt: offen.length, kalender: offen.filter(v => v.bezug?.art === 'kalender' || v.gruppe === 'kalender').length };
 }
 

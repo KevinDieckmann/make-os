@@ -16,6 +16,8 @@ import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeK
 import { uebernehmen, alleSpaces, type AufgabenSpace } from './struktur';
 import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, auswahlUmbenennungen, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
 import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen, nurIchBesitzer } from './sicht';
+import { aufgabeImPrivat, listeImPrivat, projektImPrivat, spacesOhnePrivat, statusImPrivat, vorlageImPrivat } from './bereich-sicht';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { beideAufloesen, anlegerinVon, alleZustaendigen, SYSTEM } from './zustaendig';
 import { aufgabePruefen } from './pruefen';
 import { archivMarkeSchuetzen } from './archiv-einzeln';
@@ -72,9 +74,13 @@ const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEig
 // Lesen (übernommen, mit/ohne Papierkorb) liegt leichtgewichtig in ./sicht — hier weitergereicht für bestehende Aufrufer.
 export { orgZuordnung, ladeAufgaben, ladeAufgabenSicht, ladeAufgabenUngefiltert } from './sicht';
 
-/** Spaces für die Oberfläche: fest + Mandanten aus dem CRM (aktiv, Archiv). */
-export async function spacesFuer(state: TasksState): Promise<AufgabenSpace[]> {
-  return alleSpaces(await ladeCrm(), state.tasks);
+/**
+ * Spaces für die Oberfläche: fest + Mandanten aus dem CRM (aktiv, Archiv). Mit `person` (09.10., E4): ein Konto „nur Business“ bekommt
+ * die Spaces des Privat-Bereichs (Privat, Privat-Einheiten wie die Selbstständigkeit) gar nicht — die Leiste zeigt sie dann nicht.
+ */
+export async function spacesFuer(state: TasksState, person?: string | null): Promise<AufgabenSpace[]> {
+  const alle = alleSpaces(await ladeCrm(), state.tasks);
+  return person && (await privatAusgeblendetFuer(person)) ? spacesOhnePrivat(alle) : alle;
 }
 
 /** So geht der Bestand an den Browser: jede Zeile mit `stand`. */
@@ -216,6 +222,36 @@ export function teilMerge<T extends object>(alt: T, neu: T, felder: { gesetzt: r
   return n as T;
 }
 
+/** Antwort, wenn ein Konto „nur Business“ etwas in den Privat-Bereich legen will (09.10., E4). */
+export const NUR_BUSINESS_PRIVAT = 'Dieses Konto sieht nur den Business-Bereich — in den Privat-Bereich (Privat, Selbstständigkeit) legt es nichts an und verschiebt nichts dorthin. Nichts gespeichert.';
+
+/**
+ * Berührt eine Änderung VORHANDENES im Privat-Bereich (Aufgabe samt Kette, Projekt, Liste, eigener Status, Vorlage)? Dann gibt es das
+ * für ein Konto „nur Business“ nicht — der Satz für die 404-Antwort, sonst null (rein).
+ */
+function privatBeruehrt(vorher: TasksState, ops: AufgabenOps, alleVorher: ReadonlyMap<string, Task>): string | null {
+  const id = (o: { op: string; id?: string; eintrag?: { id: string } }) => (o.op === 'delete' ? o.id! : o.eintrag!.id);
+  const projekte = new Map(vorher.projects.map(p => [p.id, p]));
+  for (const o of ops.tasks) { const t = alleVorher.get(id(o)); if (t && aufgabeImPrivat(t, alleVorher)) return 'Aufgabe nicht gefunden.'; }
+  for (const o of ops.projects) { const p = projekte.get(id(o)); if (p && projektImPrivat(p)) return 'Projekt nicht gefunden.'; }
+  for (const o of ops.listen) { const l = (vorher.listen ?? []).find(x => x.id === id(o)); if (l && listeImPrivat(l, projekte)) return 'Liste nicht gefunden.'; }
+  for (const o of ops.statusEigen) { const s = (vorher.statusEigen ?? []).find(x => x.id === id(o)); if (s && statusImPrivat(s)) return 'Status nicht gefunden.'; }
+  for (const o of ops.vorlagen) { const v = (vorher.vorlagen ?? []).find(x => x.id === id(o)); if (v && vorlageImPrivat(v)) return 'Vorlage nicht gefunden.'; }
+  return null;
+}
+
+/** Liegt nach der Änderung eines der geschriebenen Elemente im Privat-Bereich? (rein; für Konten „nur Business“ → 403) */
+function nachPrivat(nachher: TasksState, ops: AufgabenOps, nachId: ReadonlyMap<string, Task>): boolean {
+  const ups = <E extends { id: string }>(l: readonly Op<E>[]) => new Set(l.filter(o => o.op === 'upsert' && o.eintrag).map(o => o.eintrag!.id));
+  const t = ups(ops.tasks), p = ups(ops.projects), l = ups(ops.listen), s = ups(ops.statusEigen), v = ups(ops.vorlagen);
+  const projekte = new Map(nachher.projects.map(x => [x.id, x]));
+  return nachher.tasks.some(x => t.has(x.id) && aufgabeImPrivat(x, nachId))
+    || nachher.projects.some(x => p.has(x.id) && projektImPrivat(x))
+    || (nachher.listen ?? []).some(x => l.has(x.id) && listeImPrivat(x, projekte))
+    || (nachher.statusEigen ?? []).some(x => s.has(x.id) && statusImPrivat(x))
+    || (nachher.vorlagen ?? []).some(x => v.has(x.id) && vorlageImPrivat(x));
+}
+
 /** Änderungen in EINER Sperre anwenden (Stand-Prüfung, Übernahme, Grenzen, Massen-Wache), danach Protokoll + Meldungen. */
 export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, opt: Optionen): Promise<SchreibErgebnis> {
   const orgs = opt.orgs ?? await orgZuordnung();
@@ -235,6 +271,10 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
     ? await (await import('@/lib/planung/eigene-ziele-sicht-server')).verborgeneMeilensteinListenFuer(echtePerson ? opt.person : null)
     : new Set<string>();
   const listeVerborgen = (id: string) => (verborgeneListen === null ? id.startsWith(MS_LISTE_PRAEFIX) : verborgeneListen.has(id));
+  // EINE Konto-Sicht (09.10., E4 — Kevin: „Ja, Privates bleibt privat“): ein Konto „nur Business“ schreibt nie in den Privat-Bereich.
+  // Vorhandenes dort gibt es für es nicht (404, wie „nur ich“), Neues dorthin (anlegen, verschieben, umhängen) → 403. Server-Schreiber
+  // (`system`) und Systemläufe ohne Person sind ausgenommen — sie haben keine Konto-Sicht.
+  const ohnePrivat = !opt.system && echtePerson && await privatAusgeblendetFuer(opt.person);
   let erg: SchreibErgebnis = { ok: false, status: 409, angewandt: 0, zeilen: [] };
   let vorher: TasksState = leer();
   let nachher: TasksState = leer();
@@ -261,6 +301,10 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
       }
       for (const o of ops.listen) {
         if (listeVerborgen(o.op === 'delete' ? o.id! : o.eintrag!.id)) { erg = { ok: false, status: 404, fehler: 'Liste nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+      }
+      if (ohnePrivat) {
+        const grund = privatBeruehrt(vorher, ops, alleVorher);
+        if (grund) { erg = { ok: false, status: 404, fehler: grund, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
       }
     }
     // Gruppen (Umbau v3, 06.10.): auch Server-Schreiber legen keine mehr an.
@@ -450,6 +494,24 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
     if (!opt.system) {
       const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
       for (const id of upserts) { const t = nachId.get(id); if (t && !darfSehen(t, echtePerson ? opt.person : null, nachId)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; } }
+      // Konto „nur Business“ (09.10., E4): nichts landet durch diese Änderung im Privat-Bereich (neu, verschoben, umgehängt) → 403.
+      if (ohnePrivat && nachPrivat(nachher, ops, nachId)) { erg = { ok: false, status: 403, fehler: NUR_BUSINESS_PRIVAT, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+    }
+    // Zuständig für eine Privat-Aufgabe wird kein Konto „nur Business“ (es sähe sie nie) — nur neu gesetzte Personen zählen (09.10., E4).
+    // Server-Schreiber setzen ihre Zuständigen selbst (ausgenommen, wie beim Ort); Meldungen erreichen das Konto ohnehin nie.
+    if (!opt.system) {
+      const nurBusiness = new Set(personenListe.filter(p => p.nurBusiness).map(p => p.speicher));
+      if (nurBusiness.size) {
+        const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
+        const vorId = new Map(vorher.tasks.map(t => [t.id, t]));
+        for (const id of upserts) {
+          const t = nachId.get(id);
+          if (!t || !aufgabeImPrivat(t, nachId)) continue;
+          const a = vorId.get(id);
+          const neu = [t.assignee, ...(t.beteiligte ?? [])].filter(p => nurBusiness.has(p) && p !== a?.assignee && !(a?.beteiligte ?? []).includes(p));
+          if (neu.length) { erg = { ok: false, status: 400, fehler: 'Diese Person sieht den Privat-Bereich nicht (Konto „nur Business“) — sie kann für eine Privat-Aufgabe nicht zuständig oder beteiligt sein. Nichts gespeichert.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+        }
+      }
     }
     const serien = [...uebersprungen, ...serienBeimErledigen(vorher.tasks, nachher.tasks, upserts, berlinerTag(new Date(jetzt)), jetzt)];
     if (serien.length) nachher = { ...nachher, tasks: [...nachher.tasks, ...serien.filter(x => !nachher.tasks.some(y => y.id === x.id))] };
@@ -536,7 +598,7 @@ export async function papierkorbDateienEntfernen(haushalt: string, person: strin
 // ── Meldungen ──────────────────────────────────────────────────────────────
 
 /** Personen des Haushalts des Inhabers (Speichername + Anzeigename) — für „beide“ und für Texte. */
-export async function haushaltPersonen(): Promise<{ speicher: string; name: string }[]> {
+export async function haushaltPersonen(): Promise<{ speicher: string; name: string; nurBusiness?: true }[]> {
   return haushaltsPersonen();
 }
 
@@ -550,11 +612,11 @@ const vorname = (n: string | undefined, rueck: string) => (n ?? '').trim().split
  *    Meldung gebündelt („Kevin hat dir 5 Aufgaben zugewiesen“, #42).
  *  · Neuer Kommentar → Erwähnte „erwaehnung“, übrige Zuständige (verantwortlich + beteiligt) „kommentar“.
  *  · Nie an die schreibende Person selbst, nie über erledigte/abgebrochene Aufgaben (Zuweisung), nie über eine Aufgabe,
- *    die die Empfängerin nicht sehen darf („nur ich“).
+ *    die die Empfängerin nicht sehen darf („nur ich“; Privat-Bereich für ein Konto „nur Business“, 09.10.).
  */
 export function meldungenBerechnen(
   vorher: TasksState, nachher: TasksState, neueKommentare: readonly { task: Task; k: AufgabeKommentar }[], person: string,
-  personen: readonly { speicher: string; name: string }[],
+  personen: readonly { speicher: string; name: string; nurBusiness?: boolean }[],
 ): MeldungEingabe[] {
   const alle = personen.map(p => p.speicher);
   const ichName = person === SYSTEM ? 'MAKE OS' : vorname(personen.find(p => p.speicher === person)?.name, person);
@@ -562,7 +624,9 @@ export function meldungenBerechnen(
   const raus: MeldungEingabe[] = [];
   const alt = new Map(vorher.tasks.map(t => [t.id, t]));
   const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
-  const sieht = (t: Task, an: string) => darfSehen(t, an, nachId);
+  // „nur ich“ — und Konten „nur Business“ (09.10., E4) erfahren nie etwas über eine Aufgabe im Privat-Bereich.
+  const nurBusiness = new Set(personen.filter(p => p.nurBusiness).map(p => p.speicher));
+  const sieht = (t: Task, an: string) => darfSehen(t, an, nachId) && !(nurBusiness.has(an) && aufgabeImPrivat(t, nachId));
   const zuweisungen = new Map<string, MeldungEingabe[]>();
   const merke = (m: MeldungEingabe) => zuweisungen.set(m.an, [...(zuweisungen.get(m.an) ?? []), m]);
   for (const t of nachher.tasks) {
@@ -598,7 +662,7 @@ export function meldungenBerechnen(
   return raus;
 }
 
-async function meldungenNachSchreiben(vorher: TasksState, nachher: TasksState, neueKommentare: { task: Task; k: AufgabeKommentar }[], person: string, personen?: readonly { speicher: string; name: string }[]) {
+async function meldungenNachSchreiben(vorher: TasksState, nachher: TasksState, neueKommentare: { task: Task; k: AufgabeKommentar }[], person: string, personen?: readonly { speicher: string; name: string; nurBusiness?: boolean }[]) {
   try {
     const liste = meldungenBerechnen(vorher, nachher, neueKommentare, person, personen ?? await haushaltPersonen());
     for (const m of liste) await melde(m);

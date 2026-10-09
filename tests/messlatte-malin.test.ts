@@ -345,6 +345,10 @@ const HAUSHALT_PRIVAT = {
   familie: 'MESSLATTE-HH-FAMILIE-THEMA',
   medium: 'MESSLATTE-HH-MEDIUM-HAUSHALT',
   album: 'MESSLATTE-HH-ALBUM-HAUSHALT',
+  // EINE Konto-Sicht (09.10., E4 — Kevin: „Ja, Privates bleibt privat“): Aufgaben im Privat-Bereich des Haushalts (Space Privat und die
+  // Selbstständigkeit als Privat-Einheit) — weder „nur ich“ noch einer Person zugeordnet. Volle Mitglieder sehen sie, „nur Business“ nie.
+  aufgabe: 'MESSLATTE-HH-AUFGABE-PRIVAT',
+  selbst: 'MESSLATTE-HH-AUFGABE-SELBST',
 };
 
 /**
@@ -435,6 +439,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
         a('t-messlatte-geheim', SYS.aufgabe, { sichtbarkeit: 'nur-ich', angelegtVon: 'kevin', description: SYS.aufgabe }),
         a('t-messlatte-geheim-u', SYS.unteraufgabe, { parentId: 't-messlatte-geheim' }),
         a('t-messlatte-offen', 'Messlatte gemeinsame Aufgabe'),
+        a('t-messlatte-hh', HAUSHALT_PRIVAT.aufgabe, { assignee: 'malin', notiz: HAUSHALT_PRIVAT.aufgabe }),
+        a('t-messlatte-selbst', HAUSHALT_PRIVAT.selbst, { projectId: 'sonstige-kdc', spaceId: 'kdc', assignee: 'malin' }),
       ],
     });
 

@@ -487,6 +487,6 @@ export const offeneLaeufeAlle = (b: Pick<FadenKern, 'agent' | 'lauf'>[] | { faed
 
 /** Offene Freigaben der Person im Stapel (eigene; im Haushalt auch die des Systems). */
 export async function stapelOffenFuer(person: string): Promise<number> {
-  const { lies, vorschlagSichtbar } = await import('@/lib/zoe/stapel');
-  return (await lies('offen')).filter(v => vorschlagSichtbar(v, person, true)).length;
+  const { vorschlaegeFuer } = await import('@/lib/zoe/stapel'); // EINE Konto-Sicht (09.10., E4)
+  return (await vorschlaegeFuer(person, 'offen')).length;
 }

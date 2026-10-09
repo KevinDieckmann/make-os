@@ -3,7 +3,9 @@
 // (Meldungen, CRM, Konten) mitzuziehen. Zwei Wege:
 //   · `ladeAufgaben`     — übernommen (Space, Unteraufgaben, Sonstige …) MIT Papierkorb: Schreibwege, Aufgaben-Seite.
 //   · `ladeAufgabenSicht(person)` — übernommen OHNE Papierkorb und durch den Sichtfilter „nur ich“ (29.09.): ALLE Leser
-//     (Listen, Heute, Glocke, Kalender, Board, Indizes, ZOE, Brain, Suche).
+//     (Listen, Heute, Glocke, Kalender, Board, Indizes, ZOE, Brain, Suche). Seit 09.10. (E4, Kevin: „Ja, Privates bleibt privat“) dazu
+//     die EINE Konto-Sicht: ein Konto „nur Business“ bekommt den Privat-Bereich gar nicht (./bereich-sicht.ts) — `sichtFuerKonto`
+//     ist dieselbe Regel für Leser, die den Bestand schon haben (GET /api/state/tasks, Export, 409-Antworten).
 // Nie `loadJson('tasks')` roh lesen — dort fehlt die Übernahme, und der Papierkorb stünde mitten in den Listen.
 // Ausnahmen mit Grund: Art. 15/17 (lib/crm/person-bestaende.ts — auch der Papierkorb ist personenbezogen), die
 // Verbindungsprüfung (lib/crm/verbindungen-laden.ts — Dateien an Papierkorb-Einträgen sind nicht „tot“) und Server-
@@ -16,6 +18,9 @@ import type { Task, TasksState } from '@/types/tasks';
 import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
 import { istNurIch, darfSehen } from './sicht-regel';
+import { aufgabeImPrivat, ohnePrivatBereich } from './bereich-sicht';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
 export const AUFGABEN_BESTAND_NAME = 'tasks';
 const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
@@ -54,14 +59,15 @@ export async function orgZuordnung(): Promise<Record<string, string>> {
  * Seit 09.10. (mehrere Inhaber): genau EINER steht vorn — der Haupt-Inhaber (lib/zugang/inhaber.ts), danach die übrigen Inhaber,
  * dann alle anderen, je in der Reihenfolge des Bestands. Mit einem Inhaber dieselbe Liste wie vorher.
  */
-export async function haushaltsPersonen(): Promise<{ speicher: string; name: string }[]> {
+export async function haushaltsPersonen(): Promise<{ speicher: string; name: string; nurBusiness?: true }[]> {
   const st = await ladeKonten();
   const haupt = hauptInhaber(st);
   if (!haupt) return [];
   const rang = (k: { speicher: string; rolle: string }) => (k.speicher === haupt.speicher ? 0 : k.rolle === 'inhaber' ? 1 : 2);
+  // `nurBusiness` (09.10., E4): Konto „nur Business“ — Meldungen über Privat-Aufgaben erreichen es nie, zuständig für eine wird es nicht.
   return kontenImHaushaltDerInhaber(st)
     .sort((a, b) => rang(a) - rang(b))
-    .map(k => ({ speicher: k.speicher, name: k.name }));
+    .map(k => ({ speicher: k.speicher, name: k.name, ...(kontoSichtAus(st, k.speicher).nurBusiness ? { nurBusiness: true as const } : {}) }));
 }
 /** Nur die Speichernamen (Inhaber zuerst). */
 export const haushaltsSpeicher = async (): Promise<string[]> => (await haushaltsPersonen()).map(p => p.speicher);
@@ -80,7 +86,18 @@ export async function ladeAufgaben(orgs?: Record<string, string>): Promise<Tasks
  * `person` ist Pflicht: `null` = Systemlauf → keine „nur ich“-Aufgabe. So kann kein Leser den Filter vergessen.
  */
 export async function ladeAufgabenSicht(person: string | null, orgs?: Record<string, string>): Promise<TasksState> {
-  return mitNeutralenListen(sichtFuer(aufgabenSicht(await ladeAufgaben(orgs)), person), person);
+  return sichtFuerKonto(aufgabenSicht(await ladeAufgaben(orgs)), person);
+}
+
+/**
+ * Die Sicht der Person auf einen schon geladenen Bestand (09.10., E4): „nur ich“ (`sichtFuer`), für Konten „nur Business“ ohne den
+ * Privat-Bereich (lib/zugang/konto-sicht.ts `privatAusblenden`, ./bereich-sicht.ts), Listen verborgener Meilensteine neutral benannt.
+ * `null` = Systemlauf (keine „nur ich“-Aufgabe, kein Bereichsfilter). Jede Ausgabe des Bestands an eine Person läuft hier durch.
+ */
+export async function sichtFuerKonto<S extends TasksState>(state: S, person: string | null): Promise<S> {
+  const nurIch = sichtFuer(state, person);
+  const bereich = (await privatAusgeblendetFuer(person)) ? ohnePrivatBereich(nurIch) : nurIch;
+  return mitNeutralenListen(bereich, person);
 }
 
 /**
@@ -118,7 +135,9 @@ export async function ladeAufgabenUngefiltert(orgs?: Record<string, string>): Pr
  */
 export async function verborgeneAufgabenFuer(person: string): Promise<Set<string>> {
   const { tasks } = await ladeAufgaben();
-  if (!tasks.some(istNurIch)) return new Set();
+  // Konto „nur Business“ (09.10., E4): Aufgaben im Privat-Bereich sind für diese Person ebenso verborgen (Dateien daran: 404).
+  const ohnePrivat = await privatAusgeblendetFuer(person);
+  if (!ohnePrivat && !tasks.some(istNurIch)) return new Set();
   const nachId = new Map(tasks.map(t => [t.id, t]));
-  return new Set(tasks.filter(t => !darfSehen(t, person, nachId)).map(t => t.id));
+  return new Set(tasks.filter(t => !darfSehen(t, person, nachId) || (ohnePrivat && aufgabeImPrivat(t, nachId))).map(t => t.id));
 }

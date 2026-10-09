@@ -364,14 +364,15 @@ export async function agentenEinstellungLesbar(): Promise<boolean> {
 /** Speichernamen im Haushalt des Inhabers und welche davon volle Mitglieder sind (ohne „nur Business“). */
 export async function haushaltsPersonen(): Promise<{ alle: { id: string; name: string; voll: boolean }[]; haushalt: string | null }> {
   // Nahtstellen-Prüfung Punkt 9: Haushalt und Reihenfolge (wirksame Inhaber zuerst, Haupt-Inhaber vorn) aus der zentralen Regel lib/zugang/inhaber.ts.
-  const [{ ladeKonten }, { haushaltDesInhabers }, { kontenImHaushaltDerInhaber, wirksameInhaber }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/zugang/haushalt-inhaber'), import('@/lib/zugang/inhaber')]);
+  const [{ ladeKonten }, { haushaltDesInhabers }, { kontenImHaushaltDerInhaber, wirksameInhaber }, { kontoSichtAus }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/zugang/haushalt-inhaber'), import('@/lib/zugang/inhaber'), import('@/lib/zugang/konto-sicht')]);
   const [st, h] = await Promise.all([ladeKonten(), haushaltDesInhabers()]);
   const vorn = wirksameInhaber(st).map(k => k.speicher);
   const rang = (s: string) => { const i = vorn.indexOf(s); return i < 0 ? vorn.length : i; };
   const alle = kontenImHaushaltDerInhaber(st)
     .filter(k => PERSON.test(k.speicher))
     .sort((a, b) => rang(a.speicher) - rang(b.speicher))
-    .map(k => ({ id: k.speicher, name: (k.name || k.speicher).slice(0, 60), voll: !!k.haushalt && k.finanzRecht !== 'business' }));
+    // Volles Mitglied über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts).
+    .map(k => ({ id: k.speicher, name: (k.name || k.speicher).slice(0, 60), voll: kontoSichtAus(st, k.speicher).vollesMitglied }));
   return { alle, haushalt: h };
 }
 
