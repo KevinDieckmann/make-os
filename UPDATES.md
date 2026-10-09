@@ -4,6 +4,27 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Endprüfung „Nahtstellen Finanzen & Daten“ (nur lokal — Branch `nahtstellen-finanzen`, Basis `agenten-nacht` 92f33978)
+
+Kevin: „Das muss perfekt laufen.“ Gesucht wurde, was ZWISCHEN den Paketen der Nacht bricht (Kontoauszug, Konten-Register, Rechnungen, Daten-Assistenten,
+0-Punkt, Neutral). Wächter: `tests/nahtstellen-finanzen.test.ts` (20 Fälle, über die echten Routen; vor den Korrekturen 10 rot).
+
+- **Eine Zahlung — einmal** (`lib/finanzen/zahlung-abgleich.ts`, EINE Regel: gleiche Gesellschaft, Betrag auf den Cent, ≤ 14 Tage, Rechnungsnummer im
+  Verwendungszweck oder Name ohne Rechtsform passt): Kontoauszug nach „Rechnung bezahlt“/Beleg/Buchung von Hand → Umsatz „schon gebucht“, nur zugeordnet
+  (Lauf-Protokoll `abgeglichen`: Kennung + Fingerabdruck, Rückgängig gibt frei); „bezahlt“/Beleg NACH dem Kontoauszug → der Bank-Umsatz bekommt
+  `rechnungId` bzw. `beleg` statt einer zweiten Buchung; Storno findet den verknüpften Eingang. Vorher stand derselbe Eingang zweimal in Buchungen,
+  „Dieser Monat“ und Fluss.
+- **Bank-Referenz** zählt nur mit Buchungstag + Betrag (Referenzen je Tag neu, „NONREF“ → der einzige Umsatz eines späteren Tagesauszugs verschwand als „schon da“).
+- **Rückgängig eines Kontoauszugs** stellt den Zustand vorher her: ein zurückgenommener Kontoauszug-Saldo führt im Konten-Register nicht mehr
+  (`fuehrtMit`); der Firmen-Kontostand von vorher steht im Lauf (`firmaVorher`) und kommt zurück. Vorher: Gesellschaft „Kontostand unbekannt“, Privat-Kasse
+  der Finanzplanung 0 €.
+- **Vorschau-Hinweise**: Umsatz passt zu offener Rechnung / 0-Punkt-Posten / offener Zahlung („dort bezahlt setzen“), erster Saldo macht das Register zur
+  Quelle (Konten ohne Stand; Privat: eigene Kontostände der Finanzplanung, die dann nicht mehr zählen).
+- **0-Punkt**: dieselbe Rechnung in der OP-Liste und im Finanzplan (gleiche Nummer) zählt einmal; im Finanzplan bezahlt/storniert → Posten erledigt.
+- **Rechnung aus Angebot**: steht die Einmalposten-Rechnung, keine zweite über alle Positionen (409).
+- **Beleg lesen**: Prompt ohne Personennamen/feste Firmen (Gesellschaften zur Laufzeit), Wächter `vor-upload-datenschutz`.
+- Rückweg: nur optionale Felder (`beleg` an Buchungen, `abgeglichen`/`firmaVorher` im Lauf-Protokoll). Der alte Stand ignoriert sie.
+
 ## 09.10.2026 — Plattform neutral, Rest 2: die ZOE-Dateien (nur lokal — Branch `neutral-rest-2`, Basis `agenten-nacht` a2b8a5ee)
 
 Der Durchgang „neutral-rest“ durfte die ZOE-Dateien nicht anfassen (Status-Zeile „kimmi, werkzeuge.ts, register.ts, agenten.ts, heads/takt.ts,
