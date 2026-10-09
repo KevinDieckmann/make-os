@@ -54,7 +54,12 @@ export async function haushaltFuer(person: string | null | undefined): Promise<H
  * Beides zusammen: Haushaltsmitglied ohne Einschränkung UND Haushalt des Inhabers — sonst null (→ 403).
  */
 export async function privatFinanzZugang(req: Request): Promise<HaushaltZugang | null> {
-  const z = await haushaltVon(req);
+  return privatFinanzZugangFuer(personStreng(req));
+}
+
+/** Dieselbe Regel für eine Person (Speichername) — z. B. im KI-Tor für die Kategorie „finanzen-privat“ (09.10., Agenten-Bereich Paket 4b). */
+export async function privatFinanzZugangFuer(person: string | null | undefined): Promise<HaushaltZugang | null> {
+  const z = await haushaltFuer(person);
   if (!z) return null;
   return z.haushalt === (await haushaltDesInhabers()) ? z : null;
 }

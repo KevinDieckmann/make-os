@@ -2,7 +2,8 @@
 // GET  `?head=<id>` → `SkillsAntwort` + `staende` (Stand je Skill/Mitarbeiter) + `leistung` (Zahlen des Heads, Monat `?monat=`) +
 //      `autonomie`; ohne `head` alle sichtbaren Heads; `?id=<sk-…>` → `SkillAntwort` (+ `aktivierenFehlt`).
 // POST `SkillAnfrage` (lib/agenten/typen.ts) — dazu `aus-faden` („Das als Skill speichern“, { fadenId, headId? }), `autonomie`
-//      ({ headId, stufe }), beim Testlauf `kostenBestaetigt`/`nachts`. Anlegen mit `anfrageId` nur einmal (`einmalig`).
+//      ({ headId, stufe }), beim Testlauf `kostenBestaetigt`/`nachts`, `mitarbeiter-probelauf` (Paket 4b: Testeingabe ohne Wirkung,
+//      Ergebnis nur im Thread). Anlegen mit `anfrageId` nur einmal (`einmalig`).
 // Nur die Person selbst (`eigenePerson`: Sitzung, Haushalt des Inhabers; Dienstweg 403), nur Heads, die sie sieht (sonst 403/404).
 // Vorschläge von Agenten kommen NIE hierüber, sondern über den Stapel (Arten `skill`/`mitarbeiter`/`merksatz`). Einzeländerungen mit
 // Stand (409), Grenzen 413, Body ≤ 64 KB (`jsonBegrenzt`).
@@ -15,7 +16,7 @@ import { AGENTEN_NUR_SELBST } from '@/lib/agenten/typen';
 import { headDef } from '@/lib/agenten/katalog';
 import {
   merksatzAktion, merksatzWegAktion, mitarbeiterAendernAktion, mitarbeiterAnlegen, skillAendernAktion, skillAktivAktion, skillAnlegen,
-  skillAusFadenAktion, skillImportAktion, skillLoeschenAktion, skillMitStand, skillTestlaufAktion, umfangFuer, werkstattSicht, type Fehler,
+  skillAusFadenAktion, skillImportAktion, skillLoeschenAktion, skillMitStand, skillTestlaufAktion, umfangFuer, werkstattSicht, mitarbeiterProbelaufAktion, type Fehler,
 } from '@/lib/agenten/skills-server';
 import { autonomiePflegen, autonomieSetzen, leistungFuerHead } from '@/lib/agenten/leistung';
 
@@ -89,6 +90,11 @@ async function ausfuehren(req: Request, p: string, b: Body): Promise<NextRespons
     case 'merksatz': return merksatzAktion(p, b.agent, b.text);
     case 'merksatz-weg': return merksatzWegAktion(p, b.agent, b.id);
     case 'autonomie': return autonomieSetzen(p, b.headId, b.stufe);
+    // Paket 4b: Probelauf eines Mitarbeiters — ein Lauf mit Testeingabe ohne Wirkung, Ergebnis nur in einem eigenen Thread.
+    case 'mitarbeiter-probelauf': {
+      const s = modellSchranke(req); if (s) return s;
+      return mitarbeiterProbelaufAktion(p, b.headId, { id: b.id, entwurf: b.entwurf, eingabe: b.eingabe, kostenBestaetigt: b.kostenBestaetigt });
+    }
     default: return { ok: false, status: 400, fehler: 'Unbekannte Aktion.' } as Fehler;
   }
 }

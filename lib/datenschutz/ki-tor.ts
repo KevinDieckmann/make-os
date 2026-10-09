@@ -4,7 +4,9 @@
 //
 //   1. Hintergrund-KI aus (Instanz oder Person)        → gesperrt `hintergrund-aus`  (kein Byte verlässt den Server)
 //   2. Kategorie „gesundheit“ ohne Einwilligung (b)     → gesperrt `einwilligung-gesundheit` (Systemlauf ohne Person: immer)
-//   3. ein Bereich (crm, kalender, aufgaben, finanzen, brain) für ZOE nicht erlaubt → gesperrt `bereich-<x>`
+//   3. ein Bereich (crm, kalender, aufgaben, finanzen, brain, familie) für ZOE nicht erlaubt → gesperrt `bereich-<x>`
+//   3a. Kategorie „finanzen-privat“ ohne privaten Finanzzugang der Person (Haushaltsmitglied ohne „nur Business“ im Haushalt des
+//       Inhabers — dieselbe Regel wie `privatFinanzZugang`; Systemlauf ohne Person: nie) → gesperrt `finanzen-privat` (Paket 4b)
 //   4. Web-Suche gewünscht, aber aus                    → das Werkzeug fällt weg (der Aufruf läuft ohne)
 //   5. Hintergrund-Lauf                                 → Namen der CRM-Kontakte pseudonymisiert (lib/datenschutz/pseudonym.ts)
 //
@@ -37,11 +39,13 @@ export type TorEntscheid =
   | { ok: false; lauf: KiLauf; person: string | null; grund: string };
 
 /** Die Entscheidung (rein). */
-export function torEntscheiden(s: KiSchalter, gesundheitKi: boolean, k: { lauf: KiLauf; person: string | null; kategorien: readonly KiKategorie[]; pseudonym?: boolean }, websucheGewuenscht: boolean): TorEntscheid {
+export function torEntscheiden(s: KiSchalter, gesundheitKi: boolean, k: { lauf: KiLauf; person: string | null; kategorien: readonly KiKategorie[]; pseudonym?: boolean }, websucheGewuenscht: boolean, opt: { privatFinanzen?: boolean } = {}): TorEntscheid {
   const basis = { lauf: k.lauf, person: k.person };
   if (k.lauf === 'hintergrund' && !s.hintergrund) return { ...basis, ok: false, grund: 'hintergrund-aus' };
   if (k.kategorien.includes('gesundheit') && !gesundheitKi) return { ...basis, ok: false, grund: 'einwilligung-gesundheit' };
   for (const kat of k.kategorien) if (istBereich(kat) && !s.bereiche[kat]) return { ...basis, ok: false, grund: `bereich-${kat}` };
+  // Private Finanzen nur mit privatem Finanzzugang der Person (Paket 4b) — ohne Angabe (alte Aufrufer, Tests) wie bisher erlaubt.
+  if (k.kategorien.includes('finanzen-privat') && opt.privatFinanzen === false) return { ...basis, ok: false, grund: 'finanzen-privat' };
   return { ...basis, ok: true, websuche: websucheGewuenscht && s.websuche, pseudonym: k.lauf === 'hintergrund' && k.pseudonym !== false };
 }
 
@@ -60,7 +64,12 @@ export async function kiTor(k: KiKontext | undefined, websucheGewuenscht: boolea
     const { gesundheitKiEinwilligung } = await import('./gesundheit-einwilligung');
     gesundheitKi = person ? await gesundheitKiEinwilligung(person) : false;
   }
-  return torEntscheiden(s, gesundheitKi, { lauf, person, kategorien, pseudonym: k?.pseudonym }, websucheGewuenscht);
+  let privatFinanzen: boolean | undefined;
+  if (kategorien.includes('finanzen-privat')) {
+    const { privatFinanzZugangFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+    privatFinanzen = person ? !!(await privatFinanzZugangFuer(person).catch(() => null)) : false;
+  }
+  return torEntscheiden(s, gesundheitKi, { lauf, person, kategorien, pseudonym: k?.pseudonym }, websucheGewuenscht, { privatFinanzen });
 }
 
 let merk: { p: Pseudonymisierer; bis: number } | null = null;

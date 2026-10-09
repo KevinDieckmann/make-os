@@ -88,7 +88,9 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
   if (!roh0.length) return roh0;
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
   const kiAn = (await kiSchalterFuer(null)).hintergrund;
-  const roh = kiAn ? roh0 : roh0.filter(f => !KI_LAEUFE.has(f.auftrag.name));
+  const roh1 = kiAn ? roh0 : roh0.filter(f => !KI_LAEUFE.has(f.auftrag.name));
+  // Not-Aus (für alle bzw. je Head), ausgeschaltete Heads und erreichtes Head-Budget: nichts einreihen (09.10., Agenten-Bereich Paket 4b).
+  const roh = await import('@/lib/agenten/einstellung').then(m => m.taktSperreFiltern(roh1, jetzt)).catch(() => roh1);
   if (!roh.length) return roh;
   const auftraege = (await loadJson<{ auftraege?: AuftragSpur[] }>('zoe-auftraege'))?.auftraege ?? [];
   const heute = localDay(jetzt);

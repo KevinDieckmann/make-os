@@ -182,7 +182,8 @@ export function kiSperrText(r: { error?: string } | null | undefined): string {
   if (g === 'kategorie-nicht-erlaubt') return 'Diese Daten dürfen an den KI-Anbieter dieser Funktion nicht gehen';
   if (g === 'anbieter-ausgefallen') return 'Der KI-Anbieter ist gerade nicht erreichbar — ein schwächer geschützter Ersatz ist nicht erlaubt';
   if (g === 'faehigkeit-aus') return 'Diese KI-Funktion ist ausgeschaltet (System › Datenschutz › KI)';
-  if (g === 'budget') return 'Das KI-Budget des Monats ist erreicht';
+  if (g === 'budget') return 'Das KI-Budget ist erreicht (Monat bzw. gesamt)';
+  if (g === 'finanzen-privat') return 'Private Finanzen gehen nur mit privatem Finanzzugang an die KI';
   if (g === 'grenze-auftrag') return 'Der Auftrag kostet mehr als die Grenze je Auftrag (System › Datenschutz › KI)';
   if (g === 'kosten-rueckfrage') return 'Erst die Kostenschätzung bestätigen';
   return 'Durch die Datenschutz-Einstellungen gesperrt (System › Datenschutz)';

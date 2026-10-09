@@ -21,8 +21,8 @@
 //     Anbieter-Tor, bis dahin läuft der Auftrag normal.
 
 import { HEAD_IDS, headDef } from './katalog';
-import { LAUF_AGENT, planBestand, fadenBestand, skillsHaushaltBestand, skillsPersonBestand,
-  type AgentRef, type Bereich, type FadenBestand, type Hintergrundaufgabe, type LaufAuftrag, type ModelTier, type PlanBestand,
+import { LAUF_AGENT, einstellungBestand, planBestand, fadenBestand, skillsHaushaltBestand, skillsPersonBestand,
+  type AgentRef, type AgentenEinstellung, type Bereich, type Faden, type FadenBestand, type Hintergrundaufgabe, type LaufAuftrag, type ModelTier, type PlanBestand,
   type Rhythmus, type Skill, type SkillAusloeser, type WerkstattBestand, type Zeitplan } from './typen';
 import { ausWandzeit, tagPlus, tagVon, wandAus, wandzeit } from '@/lib/kalender/zeit';
 import { istWerktag, wochentag } from '@/lib/zeit/kalender-kern';
@@ -292,18 +292,23 @@ export interface KandidatenStand {
 export async function kandidatenLaden(sicht?: HeadSichtPruefer): Promise<KandidatenStand> {
   const { loadJson } = await import('@/lib/store/local-db');
   const { ladeKonten } = await import('@/lib/zugang/konten');
-  const { einstellungFuer } = await import('./skills-lesen');
   const pruefer = sicht ?? (await import('./skills-server')).headSichtbar;
   const { konten } = await ladeKonten();
   const inhaber = konten.find(k => k.rolle === 'inhaber');
   const haushalt = inhaber?.haushalt ?? null;
   const personen = konten.filter(k => k.speicher === inhaber?.speicher || (!!haushalt && k.haushalt === haushalt)).map(k => k.speicher).filter(p => PERSON.test(p));
   const personSet = new Set(personen);
-  const einst = await einstellungFuer(haushalt).catch(() => null);
+  // Roh mit den Abschnitten der Personen (Paket 4b) — `headEinstellungVon` wählt je Kandidat den richtigen; nie nach außen gegeben.
+  const roh = haushalt ? await loadJson<AgentenEinstellung>(einstellungBestand(haushalt)).catch(() => null) : null;
+  const einst: AgentenEinstellung | null = roh ? { ...roh, heads: roh.heads ?? {} } : null;
   const kandidaten: ZeitplanKandidat[] = [];
+  const { headEinstellungVon } = await import('./einstellung');
   const darf = async (k: ZeitplanKandidat): Promise<boolean> => {
     if (k.headId === ZOE_SCHLUESSEL) return true;
-    if (einst?.heads[k.headId]?.aktiv === false) return false;
+    const h = headDef(k.headId);
+    // Paket 4b: ausgeschaltet oder Not-Aus des Heads (Privat-Heads: der Abschnitt der Person) → kein Zeitplan-Lauf.
+    const e = einst && h ? headEinstellungVon(einst, h, k.person) : null;
+    if (e?.aktiv === false || e?.notAus) return false;
     return pruefer(k.person, k.headId).catch(() => false);
   };
   const sicher = async <T,>(p: Promise<T>): Promise<T | null> => p.catch(e => { console.error('[agenten-zeitplan] Bestand nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return null; });
@@ -347,16 +352,61 @@ export async function zeitplanLage(jetzt: Date, personen: readonly string[], bus
   return { jetzt, kiHintergrund: !!ki.hintergrund, frei: p => frei.get(p) ?? [], auftraege, faeden };
 }
 
+// ── Business-frei vorbei: wartende Läufe nachholen (Paket 4b) ──────────────────────────────────────────────────────────
+
+/** Ein Lauf, der wegen Business-frei wartet — Feld `wartetAuf` (Vertrag) oder, ohne Feld, der Grund, den der Kern schreibt. Rein. */
+export const wartetAufBusinessFrei = (f: Pick<Faden, 'lauf'>): boolean =>
+  !!f.lauf && f.lauf.status === 'wartet' && (f.lauf.wartetAuf === 'business-frei' || (!f.lauf.wartetAuf && /business-frei/i.test(f.lauf.fehler ?? '')));
+/** Höchstens so viele Nachhol-Läufe je Thread und Tag (Schutz, falls der Rahmen am Server anders rechnet als im Takt). */
+export const NACHHOLEN_JE_TAG = 2;
+export const NACHHOLEN_ANLASS = 'Takt: Business-frei vorbei';
+
 /**
- * Die EINE Zeile im Takt (lib/zoe/takt.ts): Skill- und Plan-Zeitpläne als Aufträge `faden`. Liest nur — eingereiht wird vom Takt
- * (POST /api/zoe/takt), die Vorschau (GET ?in=) bleibt ohne Wirkung. Fehler → nichts (der Takt läuft weiter).
+ * Was der Takt nachholt (rein): Threads von Business-Heads, deren Lauf wegen Business-frei wartet, sobald der Rahmen der Person vorbei ist
+ * (und das Takt-Fenster offen) — EINMAL je Wartezeit: nicht, wenn für den Thread schon ein Auftrag offen ist oder seit dem letzten Warten
+ * einer eingereiht wurde, höchstens `NACHHOLEN_JE_TAG` je Tag. Hintergrund-KI aus → nichts.
+ */
+export function businessFreiNachholenRein(faeden: readonly { person: string; faden: Faden }[], lage: Pick<ZeitplanLage, 'jetzt' | 'kiHintergrund' | 'frei' | 'auftraege'>): Faellig[] {
+  if (!lage.kiHintergrund) return [];
+  const jetztWand = wandzeit(lage.jetzt), heute = tagVon(jetztWand);
+  const raus: Faellig[] = [];
+  for (const { person, faden: f } of faeden) {
+    if (f.besitzer !== person || f.agent.art === 'zoe' || !wartetAufBusinessFrei(f)) continue;
+    if (headDef(f.agent.headId)?.bereich !== 'business') continue;
+    if (!taktOffen(jetztWand, lage.frei(person))) continue;
+    const zuDiesem = lage.auftraege.filter(a => a.name === LAUF_AGENT && a.eingabe?.fadenId === f.id);
+    if (zuDiesem.some(a => a.status === 'offen' || a.status === 'laeuft')) continue;
+    if (zuDiesem.some(a => a.anlass === NACHHOLEN_ANLASS && Date.parse(a.zeit) >= Date.parse(f.aktualisiert))) continue;
+    if (zuDiesem.filter(a => a.anlass === NACHHOLEN_ANLASS && a.tag === heute).length >= NACHHOLEN_JE_TAG) continue;
+    const eingabe: ZeitplanEingabe = { art: 'faden', fadenId: f.id, headId: f.agent.headId };
+    raus.push({
+      id: `agenten-nachholen-${f.id}`,
+      grund: 'Agenten: Lauf nach Business-frei fortsetzen',
+      auftrag: { art: 'agent', name: LAUF_AGENT, auftrag: JSON.stringify(eingabe), eingabe: eingabe as unknown as Record<string, unknown>, person, anlass: NACHHOLEN_ANLASS },
+    });
+  }
+  return raus;
+}
+
+/**
+ * Die EINE Zeile im Takt (lib/zoe/takt.ts): Skill- und Plan-Zeitpläne als Aufträge `faden` — dazu (Paket 4b) Läufe, die wegen Business-frei
+ * warteten und deren Rahmen vorbei ist. Liest nur — eingereiht wird vom Takt (POST /api/zoe/takt), die Vorschau (GET ?in=) bleibt ohne
+ * Wirkung. Fehler → nichts (der Takt läuft weiter).
  */
 export async function zeitplaeneFaellig(jetzt: Date = new Date()): Promise<Faellig[]> {
   try {
     const { kandidaten, personen, notAus } = await kandidatenLaden();
-    if (notAus || !kandidaten.length) return [];
-    const business = new Set(kandidaten.filter(k => k.bereich === 'business').map(k => k.person));
-    return zeitplaeneFaelligRein(kandidaten, await zeitplanLage(jetzt, personen, business));
+    if (notAus) return [];
+    const { loadJson } = await import('@/lib/store/local-db');
+    const wartend: { person: string; faden: Faden }[] = [];
+    for (const p of personen) {
+      const b = await loadJson<FadenBestand>(fadenBestand(p)).catch(() => null);
+      for (const f of b?.faeden ?? []) if (wartetAufBusinessFrei(f)) wartend.push({ person: p, faden: f });
+    }
+    if (!kandidaten.length && !wartend.length) return [];
+    const business = new Set([...kandidaten.filter(k => k.bereich === 'business').map(k => k.person), ...wartend.map(w => w.person)]);
+    const lage = await zeitplanLage(jetzt, personen, business);
+    return [...zeitplaeneFaelligRein(kandidaten, lage), ...businessFreiNachholenRein(wartend, lage)];
   } catch (err) {
     console.error('[agenten-zeitplan] übersprungen:', err instanceof Error ? err.message.slice(0, 200) : err);
     return [];

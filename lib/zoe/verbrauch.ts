@@ -34,7 +34,13 @@ export interface Posten {
   mengen?: Mengen;
 }
 interface Tag { tag: string; posten: Posten[] }
-interface Stand { tage: Tag[] }
+/**
+ * `summe` (09.10., Agenten-Bereich Paket 4b): fortlaufender Zähler aller Kosten in US-Cent — die Tage oben fallen nach `TAGE` heraus, der
+ * Zähler nicht. Für die Gesamt-Grenze (Test-Budget) im Anbieter-Tor: verbraucht = Zähler jetzt − Zähler beim Setzen. Fehlt er (Altbestand),
+ * beginnt er bei der Summe der vorhandenen Tage.
+ */
+interface Stand { tage: Tag[]; summe?: { usdCent: number; seit: string } }
+const summeDer = (tage: readonly Tag[]): number => tage.reduce((a, t) => a + t.posten.reduce((b, p) => b + p.cent, 0), 0);
 
 /** So viele Tage bleiben stehen — reicht für „was hat der Monat gekostet". */
 const TAGE = 45;
@@ -68,6 +74,8 @@ async function buche(z: { modell: string; zweck: string; anbieter?: AnbieterId; 
   const anbieter = z.anbieter && z.anbieter !== 'anthropic' ? z.anbieter : undefined;
   await updateJson<Stand>('ki-verbrauch', current => {
     const tage = current?.tage ?? [];
+    // Zähler VOR dieser Buchung (ohne Zähler: die Summe der vorhandenen Tage) — vor dem Ändern der Posten gelesen.
+    const summe = { usdCent: (current?.summe?.usdCent ?? summeDer(tage)) + z.cent, seit: current?.summe?.seit ?? new Date().toISOString() };
     const tag = tage.find(t => t.tag === heute) ?? { tag: heute, posten: [] };
     const rest = tage.filter(t => t.tag !== heute);
     const da = tag.posten.find(p => p.modell === z.modell && p.zweck === z.zweck && p.anbieter === anbieter);
@@ -80,8 +88,14 @@ async function buche(z: { modell: string; zweck: string; anbieter?: AnbieterId; 
     } else {
       tag.posten.push({ modell: z.modell, zweck: z.zweck, ein: z.ein, aus: z.aus, anzahl: 1, ...(z.cl ? { cl: z.cl } : {}), ...(z.cs ? { cs: z.cs } : {}), ...(anbieter ? { anbieter } : {}), ...(z.mengen ? { mengen: z.mengen } : {}), cent: z.cent });
     }
-    return { tage: [tag, ...rest].slice(0, TAGE) };
+    return { tage: [tag, ...rest].slice(0, TAGE), summe };
   });
+}
+
+/** Fortlaufender Zähler aller Kosten (US-Cent) — für die Gesamt-Grenze im Anbieter-Tor (lib/ki/tor.ts). */
+export async function gesamtUsdCent(vorgeladen?: Stand | null): Promise<number> {
+  const s = vorgeladen !== undefined ? vorgeladen : await loadJson<Stand>('ki-verbrauch');
+  return s?.summe?.usdCent ?? summeDer(s?.tage ?? []);
 }
 
 export async function uebersicht(tage = 30): Promise<{

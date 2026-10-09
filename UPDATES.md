@@ -53,6 +53,64 @@ nach dem Upload stehen nur im Thread.
 **Offen (nicht in 4a):** Streaming (`askStream`), Einstellungen schreiben / Not-Aus / Budget je Head (Paket 4b), ZOE-Hintergrundaufgaben
 (`agenten-plan` mit Agent `zoe` lehnt weiter ab), Familie-KI-Kategorie im Katalog, `AI_CEO_MODUL.md` D3.3.
 
+## 09.10.2026 nachts — Agenten-Bereich Paket 4b: Einstellungen, Not-Aus, Budget, Takt (nur lokal — Branch `agenten-p4b`, Basis `agenten-nacht`)
+
+AGENTEN_KONZEPT.md C11 Entscheidung 10; Antworten 12/14 (Agenten-Bereich), Fragerunde Teil 1 Nr. 6/15/16/17; BAUSTAND › „Live-Test der Agenten“
+(50 € Test-Budget). Parallel baut Paket 4a die Schleife/ZOE auf Threads — dessen Dateien sind hier unberührt.
+
+- **Einstellungen je Head schreiben** (`lib/agenten/einstellung.ts`, `POST /api/agenten { aktion: 'einstellung' }`): Modell (Stufe mit dem Modell
+  dahinter aus `lib/ki/modelle.ts`), Aufwand, Budget je Monat (Euro), Autonomie (nur verschärfen — dieselbe Prüfung wie Paket 3), zuständige Person
+  (aus den Konten; für Privat-Heads nur volle Mitglieder), an/aus, Foto-Avatar (ein Bild aus „Fotos & Videos“, nur gezeigt, wer es sieht — kein
+  Upload-Zwang), Mitarbeiter aus. Stand je Head → 409, Prüfung → 400, Protokoll nur Kennung + Feldnamen. **Rechte serverseitig:** Haushalts-Heads nur
+  volle Mitglieder, Privat-Heads (Ebene Person) nur die Person selbst — in IHREM Abschnitt `personen[<speicher>]` desselben Bestands
+  `agenten-einstellung--<haushalt>` (`einstellungFuer(haushalt, person)` legt ihn über; ohne Person kommen die Abschnitte nie heraus), Business-Partner
+  ändern nichts (Not-Aus eines Business-Heads geht), Dienstweg/fremder Haushalt 403.
+- **Not-Aus** (`POST /api/agenten { aktion: 'not-aus', an, headId? }`): für alle (nur volle Mitglieder) bzw. je Head (wer ihn sieht). Setzen hält
+  sofort an — laufende/wartende Threads „abgebrochen“, offene Aufträge raus (`abbrechenWo` in lib/zoe/auftraege.ts). Wirkt im **Takt** (eine Zeile in
+  `lib/zoe/takt.ts`: `taktSperreFiltern` — auch ausgeschaltete Heads und erreichtes Head-Budget), im **Arbeiter** (`auftragGesperrt`), in der
+  **Thread-Route** (Senden an Heads/Mitarbeiter 409) und vor jedem **Thread-Lauf**. Wartung (Morgenlauf-Vorbereitung, Löschfristen, Durchsicht,
+  Lagebild …) läuft weiter. Mit ZOE sprechen geht weiter.
+- **Budget** (Anbieter-Tor `lib/ki/tor.ts`): Instanz-Grenze **je Kalendermonat** (Vorgabe) **oder/und gesamt ab jetzt** (Test-Budget) — gesetzt nur vom
+  Inhaber über dieselbe Schreibstelle wie System › Datenschutz (`budgetAnwenden`). Gesamt zählt über einen fortlaufenden Zähler in `ki-verbrauch`
+  (`summe`), Beginn = Stand beim Setzen. Glocke bei 80/95/100 % (je Stufe einmal je Monat bzw. je Gesamt-Grenze), bei 100 % ruft kein Weg mehr ein
+  Modell (`ki-gesperrt:budget` → Regelwerk). Ohne Grenze: nur messen. **Budget je Head** (Monat): Kosten aus der Kostenmessung (Zweck `agent-<head>`,
+  `head-<id>-…`, `finanzchef…`; Privat-Heads nur aus den eigenen Threads), ab 80 % eine Glocke, ab 100 % pausiert der Head (Chat, Lauf, Takt).
+- **Vertrag** (`lib/agenten/typen.ts`, additiv): Stapel-Art `plan` (Plan-Freigabe auch über den Stapel — `lib/agenten/plan-stapel.ts`, idempotent,
+  nur die Besitzerin), `Faden.geteilt/bretter/plaene/kette/loeschfristMonate` + `Brett`, `PlanFreigabe`, `AuftragKarte` im Vertrag, Aktion
+  `bewerten` (Daumen an Antworten und Berichten, nur Metadaten, Grund nur aus der Liste der Heads), `HeadKarte.foto/einstellung`, `planStaende`,
+  `LaufZustand.wartetAuf`, Probelauf eines Mitarbeiters (`mitarbeiter-probelauf`, ein Lauf ohne Werkzeuge, Ergebnis nur in einem eigenen Thread;
+  4a hängt die echte Schleife über `mitarbeiterProbelaeuferVerdrahten` ein).
+- **Takt:** Läufe, die wegen Business-frei warten, laufen nach dem Ende des Rahmens EINMAL weiter (`businessFreiNachholenRein`). **Heads ohne festes
+  Kürzel** (`powerHourPersonen`: Team mit Konto, sonst die Konten im Haushalt des Inhabers; alter Riegel gilt für den Inhaber) — Takt und „Als
+  Nächstes“ mit derselben Regel.
+- **KI:** Bereich `familie` je Person/Instanz ein- und ausschaltbar wie die anderen; `finanzen-privat` geht nur mit privatem Finanzzugang der Person
+  an das Modell (KI-Tor, `privatFinanzZugangFuer`; Systemlauf ohne Person nie).
+- **Paket-3-Haken:** Abbruch am Thread verdrahtet (`fadenAbbruchKern`), Warteschlange nur noch über `lib/zoe/auftraege.ts` (`abbrechen`),
+  `kostenCent` rechnet über `lib/ki/kosten.ts` (Katalogpreis, Kurs der Instanz).
+- **Oberfläche:** Kopf-Balken zeigt das echte Budget (die strengere Grenze), „⋯ › Budget“ setzt sie (klar „Je Kalendermonat“ / „Gesamt ab jetzt“),
+  Not-Aus schreibt; Head › Einstellungen bedienbar; Daumen gehen an den Server; Geplant: Pausieren/Fortsetzen/Löschen; Mitarbeiter-Probelauf.
+- **Recht:** Konto-Export nennt den eigenen Abschnitt und eigene Vermerke, Konto löschen entfernt den Abschnitt und tilgt den Speichernamen
+  (`einstellungOhnePerson`). Messlatte: Marke für den Abschnitt in der Saat.
+- Tests: `agenten-p4b` (26); angepasst `agenten-vertrag`, `heads` (neutrale Namen), `messlatte-malin`.
+
+**Für Kevins Live-Test (50 €):** Agenten › „⋯ › Budget“ (als Inhaber) → „Gesamt ab jetzt“ → `50` → „Grenze speichern“. Der Balken oben zeigt
+„x € / 50,00 € gesamt“; Glocke bei 40 €/47,50 €, bei 50 € ist Schluss (Regelwerk). Alternativ „Je Kalendermonat“ — dann beginnt die Zählung am
+Monatsersten neu.
+
+**So testet ihr:**
+1. Agenten › Sales › Einstellungen: Modell „Stark“ → Meldung „gespeichert“; zweites Fenster mit altem Stand → „inzwischen geändert“.
+2. Als Konto „nur Business“: Einstellungen nur ansehen; „Sales anhalten (Not-Aus)“ geht; Not-Aus oben → Hinweis „volle Mitglieder“.
+3. Not-Aus oben → „Alle anhalten“: laufende Hintergrundläufe stehen auf „abgebrochen“, ein Auftrag an einen Head → ruhiger Hinweis. Lösen → wieder frei.
+4. „⋯ › Budget“ wie oben; als zweite Person: nur Anzeige („Die Grenze setzt der Inhaber“).
+5. Head › Einstellungen › Budget je Monat `1` → nach dem nächsten Lauf „Monatsbudget erreicht — pausiert“ + Glocke.
+6. Daumen an einer Head-Antwort → Leistung zeigt „Daumen hoch · runter“.
+7. Rechts „Geplant“: Pausieren/Fortsetzen/Löschen.
+8. Mitarbeiter › Duplizieren › „Plan ansehen“ › „Probelauf“ → Testeingabe → öffnet einen Thread „Probelauf: …“ (nichts gespeichert/gesendet).
+9. System › Datenschutz › KI: Bereich „Familie & Partnerschaft“ ausschalten → der Familie-Head antwortet nicht mehr mit KI.
+
+**Rückweg:** nur neue optionale Felder (`personen`, `notAus`/`foto` je Head, `budget.gesamt*`, `ki-verbrauch.summe`, `daumen`, `wartetAuf`) — der alte
+Stand liest sie nicht und lässt sie stehen; Einstellungen der Privat-Heads gelten dort nicht.
+
 ## 09.10.2026 — KI-Anbieter-Tor: Claude in der EU, Bilder, Video, Tiefenbericht, Transkription, Budget (Paket 6a; nur lokal — Branch `ki-anbieter`)
 
 Kevin 08.10. spät (ENTSCHEIDUNGEN_FRAGEBOGEN.md › Agenten-Bereich Teil 1, Antworten 14, 16, 19–25), Grundlage `research/agenten/MODELLE.md`:

@@ -5,12 +5,15 @@
 // Geplant · Budget-Balken · Not-Aus · Modell & Aufwand in den Einstellungen je Head · Leitplanken unter ⋯.“
 // Budget in Euro (nie Credits), erster Monat nur messen. Not-Aus mit Rückfrage. Unter „⋯“: Leitplanken und die bisherige
 // Agenten-Übersicht (AgentenView). Am Handy schrumpft die Leiste auf „+“, die Freigaben-Zahl und „⋯“.
+// Seit Paket 4b echt: der Balken zeigt das Instanz-Budget vom Server (Monat bzw. gesamt, die strengere Grenze), der Not-Aus schreibt
+// (POST /api/agenten — für alle nur volle Mitglieder; die Route entscheidet, die Leiste fragt nur nach).
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MoreHorizontal, Plus, Power } from 'lucide-react';
 import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, RAND, SCHRIFT, TIEF, TYP, ZIEL } from '@/lib/make-one/design';
 import { Chip, Knopf, SymbolKnopf } from '../ui';
 import { useAgenten, type DialogArt } from './kontext';
+import { einstellungSenden } from './daten';
 import { euro, kostenImMonat } from './regeln';
 import { WEG } from '@/lib/wege';
 
@@ -53,16 +56,22 @@ const NEU: { label: string; satz: string; art: DialogArt }[] = [
   { label: 'Skill', satz: 'Anleitung mit Beispielen, Werkzeugen und Tests', art: { art: 'skill' } },
 ];
 
-/** Budget-Balken in Euro: diesen Monat gemessen; ohne Grenze nur die Zahl (Fragerunde 16: „erster Monat nur messen“). */
-export function BudgetBalken({ grenzeCent }: { grenzeCent?: number }) {
-  const { laeufe, dialog, jetzt } = useAgenten();
-  const cent = laeufe.zustand === 'da' ? kostenImMonat(laeufe.daten.laeufe, jetzt) : null;
+/**
+ * Budget-Balken in Euro: das Instanz-Budget vom Server (Paket 4b) — die strengere von Monats- und Gesamt-Grenze; ohne Grenze nur die
+ * gemessene Zahl (Fragerunde 16: „erster Monat nur messen“). Ohne Server-Stand der Rückfall auf die Läufe des Monats.
+ */
+export function BudgetBalken({ grenzeCent: vorgabe }: { grenzeCent?: number }) {
+  const { laeufe, agenten, dialog, jetzt } = useAgenten();
+  const b = agenten.zustand === 'da' ? agenten.daten.budget : undefined;
+  const teil = b ? (b.gesamt && (b.gesamt.prozent ?? 0) >= (b.monat.prozent ?? -1) ? b.gesamt : b.monat) : null;
+  const cent = teil ? teil.verbrauchtCent : laeufe.zustand === 'da' ? kostenImMonat(laeufe.daten.laeufe, jetzt) : null;
+  const grenzeCent = teil ? teil.grenzeCent ?? undefined : vorgabe;
   const anteil = cent != null && grenzeCent ? Math.min(1, cent / grenzeCent) : null;
   const farbe = anteil == null ? C.aktiv : anteil >= 0.95 ? LEUCHT.kritisch : anteil >= 0.8 ? LEUCHT.achtung : LEUCHT.gut;
   return (
     <button type="button" onClick={() => dialog({ art: 'budget' })} className="fassbar" aria-label={`Kosten diesen Monat: ${cent == null ? 'noch nicht gemessen' : euro(cent)}${grenzeCent ? ` von ${euro(grenzeCent)}` : ' — nur gemessen'}`}
       style={{ display: 'grid', gap: ABSTAND.xs, minHeight: ZIEL.rechner, minWidth: 120, padding: `${ABSTAND.xs}px ${ABSTAND.m}px`, borderRadius: ECKE.eingabe, border: `1px solid ${RAND.flaeche}`, background: FLAECHE_STIL.flach.background, color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, textAlign: 'left' }}>
-      <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{cent == null ? '— €' : euro(cent)}{grenzeCent ? ` / ${euro(grenzeCent)}` : ' · gemessen'}</span>
+      <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{cent == null ? '— €' : euro(cent)}{grenzeCent ? ` / ${euro(grenzeCent)}${teil && b?.gesamt === teil ? ' gesamt' : ' im Monat'}` : ' · gemessen'}</span>
       <span aria-hidden style={{ height: 4, borderRadius: ECKE.eingabe, background: RAND.haar, overflow: 'hidden' }}>
         <span style={{ display: 'block', height: '100%', width: `${Math.round((anteil ?? (cent ? 1 : 0)) * 100)}%`, background: anteil == null ? TIEF.rand(farbe) : TIEF.verlauf(farbe) }} />
       </span>
@@ -76,17 +85,23 @@ export function Kopfleiste() {
   const freigaben = stapel.zustand === 'da' ? stapel.daten.offen : agenten.zustand === 'da' ? agenten.daten.ueberblick.freigaben.anzahl : 0;
   const geplant = laeufe.zustand === 'da' ? laeufe.daten.plan.length : 0;
   const notAus = agenten.zustand === 'da' && agenten.daten.notAus;
+  const darf = agenten.zustand === 'da' && agenten.daten.notAusAendern !== false;
   const notAusFragen = async () => {
+    if (!darf) { melde('Den Not-Aus für alle setzen und lösen volle Mitglieder des Haushalts — einen einzelnen Head hältst du in seinen Einstellungen an.', 'info'); return; }
     const ja = await bestaetigen({
       titel: notAus ? 'Not-Aus lösen?' : 'Not-Aus: alle Agenten anhalten?',
-      text: notAus ? 'Hintergrundläufe und Zeitpläne laufen danach wieder.' : 'Alle Hintergrundläufe halten an, Zeitpläne pausieren. Chats bleiben möglich.\n\nDer Schalter wird mit dem nächsten Paket scharf geschaltet; bis dahin lassen sich einzelne Agenten unter „⋯ › Bisherige Übersicht“ abschalten.',
-      ja: notAus ? 'Lösen' : 'Übersicht öffnen', gefahr: !notAus,
+      text: notAus ? 'Zeitpläne laufen danach wieder. Angehaltene Läufe startest du von Hand neu.' : 'Alle Agenten halten sofort an: laufende Hintergrundläufe werden abgebrochen, Zeitpläne und neue Aufträge an Heads ruhen. Mit ZOE sprechen geht weiter.',
+      ja: notAus ? 'Lösen' : 'Alle anhalten', gefahr: !notAus,
     });
-    if (ja) { if (notAus) melde('Den Not-Aus lösen kommt mit dem nächsten Paket.', 'info'); else dialog({ art: 'uebersicht' }); }
+    if (!ja) return;
+    const r = await einstellungSenden({ aktion: 'not-aus', an: !notAus });
+    if (!r.ok) { melde(r.text, 'kritisch'); return; }
+    melde(notAus ? 'Not-Aus gelöst.' : `Not-Aus gesetzt${r.daten.angehalten ? ` — ${r.daten.angehalten} ${r.daten.angehalten === 1 ? 'Lauf angehalten' : 'Läufe angehalten'}` : ''}.`, notAus ? 'gut' : 'info');
   };
   const mehr = [
     { label: 'Leitplanken', satz: 'Was Agenten dürfen — und was nie', tun: () => dialog({ art: 'leitplanken' }) },
     { label: 'Geplant', satz: 'Wiederkehrende und geplante Aufgaben', tun: () => dialog({ art: 'geplant' }) },
+    { label: 'Budget', satz: 'Kosten in Euro, Grenze je Monat oder gesamt', tun: () => dialog({ art: 'budget' }) },
     { label: 'Bisherige Übersicht', satz: 'Alle Agenten mit Schaltern, Modell und Autonomie', tun: () => dialog({ art: 'uebersicht' }) },
   ];
   return (

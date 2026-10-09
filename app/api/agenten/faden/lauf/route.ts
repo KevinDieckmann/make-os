@@ -10,7 +10,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHintergrund, kiLaufAus } from '@/lib/datenschutz/ki-lauf';
 import { innenAdresse } from '@/lib/innen';
 import { HEAD_IDS } from '@/lib/agenten/katalog';
-import type { LaufAuftrag } from '@/lib/agenten/typen';
+import type { Faden, Hintergrundaufgabe, LaufAuftrag } from '@/lib/agenten/typen';
 import { istFadenId } from '@/lib/agenten/faeden';
 
 export const runtime = 'nodejs';
@@ -34,6 +34,46 @@ function laufAus(roh: unknown): LaufAuftrag | null {
   return null;
 }
 
+/** Head eines Lauf-Auftrags: Thread → sein Agent, Skill → `headId`, Hintergrundaufgabe → ihr Agent. */
+async function headVon(person: string, a: LaufAuftrag): Promise<{ headId: string | null; fadenId?: string }> {
+  if (a.art === 'skill') return { headId: a.headId };
+  const [{ loadJson }, { fadenBestand, planBestand }] = await Promise.all([import('@/lib/store/local-db'), import('@/lib/agenten/typen')]);
+  if (a.art === 'faden') {
+    const f = (await loadJson<{ faeden?: Faden[] }>(fadenBestand(person)).catch(() => null))?.faeden?.find(x => x.id === a.fadenId && x.besitzer === person);
+    return { headId: f && f.agent.art !== 'zoe' ? f.agent.headId : null, fadenId: f?.id };
+  }
+  const p = (await loadJson<{ aufgaben?: Hintergrundaufgabe[] }>(planBestand(person)).catch(() => null))?.aufgaben?.find(x => x.id === a.planId && x.besitzer === person);
+  return { headId: p && p.agent.art !== 'zoe' ? p.agent.headId : null };
+}
+
+/** Sperre vor dem Lauf (Paket 4b) — und am Thread vermerken, warum er nicht läuft. */
+async function laufSperreFuer(person: string, a: LaufAuftrag): Promise<{ status: 'abgebrochen' | 'wartet'; text: string; fadenId?: string } | null> {
+  const { headId, fadenId } = await headVon(person, a);
+  if (!headId) return null;
+  const { laufSperre, ANGEHALTEN } = await import('@/lib/agenten/einstellung');
+  const s = await laufSperre(person, headId).catch(() => null);
+  if (!s) return null;
+  const status = s.grund === 'not-aus' ? 'abgebrochen' as const : 'wartet' as const;
+  if (fadenId) {
+    const { fadenAendern } = await import('@/lib/agenten/faeden-server');
+    const jetzt = new Date().toISOString();
+    await fadenAendern(person, fadenId, f => (f.lauf && f.lauf.status !== 'wartet' && f.lauf.status !== 'laeuft' ? f : {
+      ...f, status, lauf: { ...(f.lauf ?? { schritte: [], start: jetzt, kostenCent: 0 }), status, fehler: s.grund === 'not-aus' ? ANGEHALTEN : s.text, ...(status === 'abgebrochen' ? { ende: jetzt, wartetAuf: 'not-aus' as const } : {}) },
+    })).catch(() => null);
+  }
+  return { status, text: s.grund === 'not-aus' ? ANGEHALTEN : s.text, ...(fadenId ? { fadenId } : {}) };
+}
+
+/** Der Head-Thread eines Mitarbeiter-Laufs (Eltern) bzw. der Thread selbst — dort stehen die Pläne. */
+async function planStapelnFuer(person: string, fadenId: string): Promise<number> {
+  const { eigenerFaden } = await import('@/lib/agenten/faeden-server');
+  const { planStapeln } = await import('@/lib/agenten/plan-stapel');
+  const f = await eigenerFaden(person, fadenId);
+  let n = await planStapeln(person, fadenId);
+  if (f?.elternId) n += await planStapeln(person, f.elternId);
+  return n;
+}
+
 export async function POST(req: Request) {
   if (!istDienst(req)) return nurDienstweg();
   const person = req.headers.get('x-make-person');
@@ -43,11 +83,17 @@ export async function POST(req: Request) {
   try { body = await jsonBegrenzt(req, 16_000); } catch (e) { return jsonZuGross(e) ?? nein(400, 'Kein gültiges JSON.'); }
   const auftrag = laufAus(body);
   if (!auftrag) return nein(400, 'Kein gültiger Lauf — erwartet wird ein Lauf-Auftrag (Thread, Skill oder Hintergrundaufgabe), kein freier Text.');
+  // Paket 4b: Not-Aus (für alle bzw. je Head), ausgeschalteter Head, Head-Budget — VOR dem Lauf. Kein Fehler für die Warteschlange (200,
+  // nicht neu einreihen): ein Thread bekommt „abgebrochen“ (Not-Aus) bzw. „wartet“ (Budget, aus) mit Grund; neu starten geht von Hand.
+  const sperre = await laufSperreFuer(person, auftrag);
+  if (sperre) return NextResponse.json({ ok: true, ...(sperre.fadenId ? { fadenId: sperre.fadenId } : {}), laufStatus: sperre.status, ergebnis: sperre.text });
   const hintergrund = kiLaufAus(req, 'aufruf') === 'hintergrund';
   const { fadenLauf } = await import('@/lib/agenten/delegation');
   const lauf = () => fadenLauf(person, auftrag, { origin: innenAdresse(req), hintergrund });
   try {
     const r = hintergrund ? await imHintergrund(lauf) : await lauf();
+    // Plan-Freigaben, die der Lauf angelegt hat, auch in den Stapel (Art `plan`, idempotent) — für den Head-Thread des Laufs.
+    if (r.fadenId) await planStapelnFuer(person, r.fadenId).catch(() => 0);
     return NextResponse.json({ ok: r.ok, ...(r.fadenId ? { fadenId: r.fadenId } : {}), ...(r.laufStatus ? { laufStatus: r.laufStatus } : {}), ergebnis: r.ergebnis, ...(r.ok ? {} : { fehler: r.ergebnis, error: r.ergebnis }) }, { status: r.status });
   } catch (e) {
     return nein(500, `Lauf fehlgeschlagen (${e instanceof Error ? e.message.slice(0, 160) : 'Fehler'}).`);

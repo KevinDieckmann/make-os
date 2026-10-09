@@ -274,7 +274,8 @@ describe('Bestände: Namen, Speicher-Register, Konto-Export/-Löschen, Art. 17',
 
 describe('Routen: Register und Stubs', () => {
   const ERWARTET: Record<string, Record<string, string>> = {
-    'agenten': { GET: 'person' },
+    // Paket 4b: POST für Einstellungen je Head und Not-Aus.
+    'agenten': { GET: 'person', POST: 'person' },
     'agenten/faden': { GET: 'person', POST: 'person' },
     'agenten/faden/lauf': { POST: 'dienst' },
     'agenten/skills': { GET: 'person', POST: 'person' },
@@ -337,7 +338,8 @@ describe('Routen: Register und Stubs', () => {
 describe('Vertrag: Stapel-Arten, Agenten-Schlüssel, Fixture', () => {
   it('die Stapel-Arten des Agenten-Bereichs gehören zu StapelArt (Freigabe baut Paket 3)', () => {
     const arten: StapelArt[] = [...AGENTEN_STAPEL_ARTEN];
-    expect(arten).toEqual(['skill', 'mitarbeiter', 'merksatz']);
+    // Paket 4b: `plan` — Plan-Freigabe auch über den Stapel (lib/agenten/plan-stapel.ts).
+    expect(arten).toEqual(['skill', 'mitarbeiter', 'merksatz', 'plan']);
   });
   it('agentSchluessel ist eindeutig je Agent', () => {
     expect(agentSchluessel({ art: 'zoe' })).toBe('zoe');

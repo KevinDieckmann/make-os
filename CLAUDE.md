@@ -1860,6 +1860,22 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
 - **Paket-3-Haken:** Werkstatt-Sicht = `headSichtbarKern` (die EINE Filterstelle), Probelauf = Schleife im Trockenlauf (`lib/agenten/probelauf.ts`),
   Agenten-Vorschläge nur über `vorschlag*Legen` (skills-server.ts), Skill-Läufe `skillErfolgZaehlen`, Plan-Läufe `planLaufVermerken`.
 
+## Agenten-Bereich Paket 4b — Einstellungen, Not-Aus, Budget (09.10., Branch `agenten-p4b`, nur lokal; UPDATES.md)
+- **Einstellungen je Head** nur über `lib/agenten/einstellung.ts` (`POST /api/agenten { aktion: 'einstellung' | 'not-aus' }`, Stand je Head → 409): EIN
+  Bestand `agenten-einstellung--<haushalt>`; Privat-Heads (Ebene Person) im Abschnitt `personen[<speicher>]` — lesen NUR über `einstellungFuer(haushalt,
+  person)` bzw. `headEinstellungVon` (ohne Person nie die Abschnitte). Rechte: Haushalts-Heads volle Mitglieder, Privat-Heads die Person selbst, Not-Aus
+  je Head wer ihn sieht, für alle nur volle Mitglieder. Neue Leser der Einstellungen: immer MIT Person (sonst fehlen die Privat-Heads).
+- **Not-Aus/aus/Head-Budget** wirken an genau vier Stellen: `taktSperreFiltern` (lib/zoe/takt.ts), `auftragGesperrt` (Arbeiter), `laufSperre` (Thread-Route
+  beim Senden, Thread-Lauf, Probelauf), `laeufeAnhalten` beim Setzen. Ausgenommen sind nur Wartungsläufe (`NOT_AUS_AUSGENOMMEN`). Neuer Agenten-Lauf im
+  Takt → er läuft automatisch durch den Filter; ein neuer Weg, der einen Head startet, ruft `laufSperre`.
+- **Budget der Instanz:** Monat und/oder gesamt (`instanz.budget.gesamtEuroCent` + `gesamtAb` + `gesamtBasisUsdCent`, Zähler `ki-verbrauch.summe`),
+  geschrieben NUR über `budgetAnwenden` (lib/datenschutz/ki-einstellungen.ts), gelesen über `budgetStand`/`budgetAnzeige` (lib/ki/tor.ts). Head-Kosten:
+  `headVonZweck` — neue Modellaufrufe eines Heads tragen `zweck: agent-<head>`.
+- **Plan-Freigabe** auch im Stapel (Art `plan`, `lib/agenten/plan-stapel.ts`): wer Pläne anlegt, ruft danach `planStapeln`; im Thread entschieden →
+  `planStapelErledigen`. **Daumen** = Aktion `bewerten` (nur Besitzerin, nur Metadaten). **Wartende Business-frei-Läufe** holt der Takt nach
+  (`LaufZustand.wartetAuf: 'business-frei'` setzen, sobald der Kern ihn kennt). **Heads-Takt** ohne Kürzel: `powerHourPersonen`.
+- **KI:** `familie` ist ein Bereich (Schalter je Person/Instanz); `finanzen-privat` nur mit `privatFinanzZugangFuer(person)` (KI-Tor). Wächter `tests/agenten-p4b.test.ts`.
+
 ## Head of IT (HOI)
 - Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
 - Drei Quellen: innen (App), Host (`deploy/lage-sammeln.sh` → `<daten>/system/lage.json`, Klartext, nur Zähler), außen (`.github/workflows/hoi-aussenblick.yml`).

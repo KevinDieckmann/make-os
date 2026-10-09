@@ -111,7 +111,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'zoe-chargen--*': 'ZOE-Chargen je Haushalt (nur Kennungen)',
   // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): Bestände je HAUSHALT — Export/Löschen der eigenen Einträge baut das jeweilige Paket.
   'agenten-skills--*': 'Werkstatt der Heads je Haushalt (Skills, eigene Mitarbeiter, Gedächtnis) — im Export die selbst angelegten/freigegebenen, beim Löschen Speichername „[gelöscht]“ (Paket 3)',
-  'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt (keine Inhalte) — beim Löschen Speichername „[gelöscht]“ (Paket 4)',
+  'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt (keine Inhalte) — im Export der eigene Abschnitt der Privat-Heads und die eigenen Vermerke; beim Löschen fällt der Abschnitt weg, der Speichername wird „[gelöscht]“ (Paket 4b)',
   'medien--*': 'Business-Medien je Haushalt — im Export die selbst aufgenommenen, beim Löschen bleibt das Medium mit `von` „[gelöscht]“ (Paket 5)',
 };
 
@@ -216,6 +216,11 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     // Kontoauszug einlesen (09.10.): die selbst ausgelösten Läufe (nur Kennungen und Zahlen).
     const eigeneLaeufe = await (await import('@/lib/finanzen/kontoauszug/server')).laeufeDerPerson(k.haushalt, speicher).catch(() => []);
     if (eigeneLaeufe.length) eintraege[`kontoauszug-laeufe--${k.haushalt}`] = eigeneLaeufe;
+
+    // Agenten-Einstellungen (09.10., Paket 4b): der eigene Abschnitt der Privat-Heads, Zuständigkeiten und Not-Aus der Person.
+    const einstName = `agenten-einstellung--${k.haushalt}`;
+    const einst = await loadJson<import('@/lib/agenten/typen').AgentenEinstellung>(einstName).catch(() => null);
+    if (einst) merke(einstName, (await import('@/lib/agenten/einstellung')).einstellungEintraegeVon(einst, speicher));
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
     const kid = `${KONTO_PRAEFIX}${speicher}`;
     if (kapa && JSON.stringify(kapa).includes(`"${kid}"`)) eintraege[`kapazitaet--${k.haushalt}`] = [{ hinweis: 'Ihre Kapazitätswerte stehen vollständig in der Kapazitäts-Auskunft (Planung › Kapazität).', person: kid }];
@@ -395,6 +400,15 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     await sicher(`agenten-skills--${konto.haushalt}`, async () => {
       const [{ werkstattKontoLoeschen }, { inhaberSpeicher }] = await Promise.all([import('@/lib/agenten/skills-server'), import('@/lib/zugang/haushalt-inhaber')]);
       return werkstattKontoLoeschen(konto.haushalt!, speicher, await inhaberSpeicher());
+    });
+    // Agenten-Einstellungen (09.10., Paket 4b): der eigene Abschnitt (Privat-Heads) fällt weg, Zuständigkeit entfällt, Speichername „[gelöscht]“.
+    const einstName = `agenten-einstellung--${konto.haushalt}`;
+    await nurWenn(einstName, async () => {
+      const { einstellungOhnePerson } = await import('@/lib/agenten/einstellung');
+      let n = 0;
+      await updateJson<import('@/lib/agenten/typen').AgentenEinstellung>(einstName, cur => { if (!cur) return cur as unknown as import('@/lib/agenten/typen').AgentenEinstellung; const r = einstellungOhnePerson(cur, speicher); n = r.n; return n ? r.neu : cur; });
+      if (n) await protokolliere(einstName, [{ liste: 'personen', op: 'geaendert', id: 'konto', felder: ['zustaendig', 'notAus', 'geaendertVon'] }], { art: 'system' });
+      return n;
     });
     // Konten-Register (08.10.): Konten und Stände bleiben (Finanzen des Haushalts), die Personen-Kennung wird „[gelöscht]“.
     const kr = `konten--${konto.haushalt}`;

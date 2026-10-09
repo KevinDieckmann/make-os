@@ -9,15 +9,15 @@
 
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP, ZIEL } from '@/lib/make-one/design';
 import { headDef } from '@/lib/agenten/katalog';
-import { TON_SATZ, GRENZEN, type FadenAntwort, type HeadDef, type HeadKarte, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
+import { TON_SATZ, GRENZEN, type Aufwand, type AutonomieStufe, type EinstellungFeld, type FadenAntwort, type HeadDef, type HeadKarte, type ModelTier, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
-import { Chip, Eigenschaft, Hinweis, Karte, Kennzahl, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, SymbolKnopf, Wahl, Zeile, eingabe } from '../ui';
+import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, Schalter, Segmente, SymbolKnopf, Wahl, Zeile, auswahl, eingabe } from '../ui';
 import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { LaufZeile } from './Hintergrund';
-import { anfrageId, fadenSenden, ladeFaden, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf } from './daten';
+import { anfrageId, einstellungSenden, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import {
   ansprache, ansprechbarFuer, ausloeserText, euro, FADEN_STATUS_NAME, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
@@ -148,7 +148,7 @@ function HeadChat({ k, fadenId: ausAdresse }: { k: HeadKarte; fadenId?: string }
           {threads.slice(0, 8).map(t => <Wahl key={t.id} klein an={t.id === fadenId} onClick={() => { setNeu(false); oeffne({ h: k.id, f: t.id }); }}>{t.titel}{t.status === 'wartet' ? ' ⚑' : ''}</Wahl>)}
         </div>
       )}
-      <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel} leer={leer}
+      <ChatVerlauf nachrichten={nachrichten} kinder={fa?.kinder ?? []} stapel={stapel} leer={leer} fadenId={fa && !(threads.find(t => t.id === fa.faden.id) as { besitzer?: string } | undefined)?.besitzer ? fa.faden.id : undefined}
         onAlsSkill={(n) => dialog({ art: 'skill', headId: k.id, entwurf: { anleitung: n.text, quelle: 'gespraech' } })}
         unten={laeuft ? <Schreibt name={k.kurz} /> : undefined} />
       <ChatFeld platzhalter={`Nachricht an ${k.kurz} … (@Mitarbeiter beauftragt)`} ansprechbar={ansprechbar} onSenden={senden} laeuft={laeuft}
@@ -298,6 +298,8 @@ function Gedaechtnis({ k, def, skills }: { k: HeadKarte; def: HeadDef | null; sk
 function LeistungReiter({ k, skills }: { k: HeadKarte; skills: Abruf<SkillsAntwort> }) {
   const { laeufe } = useAgenten();
   const l = leistungVon(k.id, skills.zustand === 'da' ? skills.daten.skills : k.skills, laeufe.zustand === 'da' ? laeufe.daten.laeufe : []);
+  // Daumen (Paket 4b): die Leistung des Heads vom Server (GET /api/agenten/skills?head=…), nur Zahlen.
+  const daumen = skills.zustand === 'da' ? (skills.daten as { leistung?: { daumen?: { hoch: number; runter: number } } }).leistung?.daumen : undefined;
   return (
     <div style={{ display: 'grid', gap: ABSTAND.l }}>
       <Raster min={160}>
@@ -311,29 +313,121 @@ function LeistungReiter({ k, skills }: { k: HeadKarte; skills: Abruf<SkillsAntwo
           <Liste>{l.jeSkill.map(s => <Zeile key={s.id} titel={<span style={{ fontFamily: SCHRIFT.mono }}>/{s.name}</span>} unter={`${s.laeufe} Läufe`} rechts={<Chip farbe={C.aktiv}>{s.text}</Chip>} />)}</Liste>
         ) : <Leer>Noch keine gemessenen Skill-Läufe.</Leer>}
       </div>
-      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gemessen werden Agenten, nie Menschen. Daumen je Antwort fließen ein, sobald ihre Schnittstelle steht.</span>
+      {daumen && <Raster min={160}><Kennzahl klein wert={`${daumen.hoch} · ${daumen.runter}`} label="Daumen hoch · runter (dieser Monat)" /></Raster>}
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gemessen werden Agenten, nie Menschen. Daumen je Antwort zählen hier mit.</span>
     </div>
   );
 }
 
+const STUFEN: { id: ModelTier; label: string }[] = [{ id: 'schnell', label: 'Schnell' }, { id: 'ausgewogen', label: 'Ausgewogen' }, { id: 'stark', label: 'Stark' }];
+const AUFWAENDE: { id: Aufwand; label: string }[] = [{ id: 'low', label: 'Gering' }, { id: 'medium', label: 'Mittel' }, { id: 'high', label: 'Hoch' }];
+const AUTONOMIE: { id: AutonomieStufe; label: string }[] = [{ id: 'vorschlag', label: 'Nur Vorschlag' }, { id: 'intern', label: 'Risikoarm selbst' }];
+/** Euro-Eingabe („20“, „20,50“) → Cent; leer = null (nur messen). */
+const euroAus = (t: string): number | null | 'falsch' => {
+  const x = t.trim().replace(/\s|€/g, '').replace(/\./g, '').replace(',', '.');
+  if (!x) return null;
+  const n = Number(x);
+  return Number.isFinite(n) && n >= 0 && n <= 100_000 ? Math.round(n * 100) : 'falsch';
+};
+const euroText = (cent: number) => (cent / 100).toFixed(2).replace('.', ',');
+
+/** Foto-Avatar wählen (Paket 4b): Bilder aus „Fotos & Videos“, die die Person sieht — kein Upload-Zwang, „Kürzel“ geht immer. */
+function FotoWahl({ aktuell, onWahl }: { aktuell: string | null; onWahl: (id: string | null) => void }) {
+  const [offen, setOffen] = useState(false);
+  const fotos = useAbruf(offen ? 'agenten-fotos' : null, ladeFotos);
+  return (
+    <div style={{ display: 'grid', gap: ABSTAND.s }}>
+      <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
+        <Knopf leise onClick={() => setOffen(o => !o)}>{offen ? 'Auswahl schließen' : 'Bild wählen'}</Knopf>
+        {aktuell && <Knopf leise onClick={() => onWahl(null)}>Kürzel statt Foto</Knopf>}
+      </div>
+      {offen && (fotos.stand.zustand === 'da'
+        ? fotos.stand.daten.fotos.length
+          ? <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>{fotos.stand.daten.fotos.map(f => (
+            <button key={f.id} type="button" onClick={() => { onWahl(f.id); setOffen(false); }} aria-label={`Foto „${f.name}“ wählen`} className="fassbar"
+              style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', minHeight: ZIEL.handy }}>
+              <KuerzelKugel name={f.name} farbe={C.aktiv} groesse={KUGEL_GROESSE.kopf} foto={f.vorschau} />
+            </button>
+          ))}</div>
+          : <Leer>Noch keine Bilder in „Fotos & Videos“.</Leer>
+        : fotos.stand.zustand === 'laedt' ? <Leer>Bilder werden geladen …</Leer> : <Leer>{'text' in fotos.stand ? fotos.stand.text : ''}</Leer>)}
+    </div>
+  );
+}
+
+/**
+ * Reiter „Einstellungen“ (Paket 4b): Modell und Aufwand, Autonomie (nur verschärfen), Budget je Monat, zuständige Person, an/aus, Foto,
+ * Not-Aus dieses Heads. Ändern nur, wer darf (`einstellung.aendern` — Haushalts-Heads volle Mitglieder, Privat-Heads nur die Person);
+ * entschieden hat der Server, die Seite zeigt sonst nur an. Jede Änderung mit dem Stand (409 → neu laden).
+ */
 function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
-  const { laeufe, dialog, jetzt } = useAgenten();
-  const kosten = kostenImMonat((laeufe.zustand === 'da' ? laeufe.daten.laeufe : []).filter(l => l.headId === k.id), jetzt);
+  const { laeufe, dialog, jetzt, melde, bestaetigen, agenten } = useAgenten();
+  const e = k.einstellung;
+  const kosten = e?.kostenCentMonat ?? kostenImMonat((laeufe.zustand === 'da' ? laeufe.daten.laeufe : []).filter(l => l.headId === k.id), jetzt);
+  const [budget, setBudget] = useState(e?.budgetCentMonat != null ? euroText(e.budgetCentMonat) : '');
+  const personen = agenten.zustand === 'da' ? agenten.daten.personen ?? [] : [];
+  const darf = !!e?.aendern;
+  const schreibe = async (teil: Partial<Record<EinstellungFeld, unknown>>, gut: string) => {
+    if (!e) return;
+    const r = await einstellungSenden({ aktion: 'einstellung', headId: k.id, teil, stand: e.stand });
+    if (r.ok) melde(gut, 'gut'); else melde(r.status === 409 ? 'Die Einstellungen haben sich inzwischen geändert — neu geladen, bitte noch einmal.' : r.text, 'kritisch');
+  };
+  const budgetSpeichern = async () => {
+    const cent = euroAus(budget);
+    if (cent === 'falsch') { melde('Budget in Euro, z. B. 20 oder 20,50 (höchstens 100.000 €).', 'kritisch'); return; }
+    await schreibe({ budgetCentMonat: cent }, cent == null ? 'Kein Budget — nur gemessen.' : `Budget gesetzt: ${euro(cent)} im Monat.`);
+  };
+  const notAus = async () => {
+    const an = !e?.notAus;
+    if (!(await bestaetigen({ titel: an ? `${k.kurz} anhalten?` : `Not-Aus für ${k.kurz} lösen?`, text: an ? 'Laufende Läufe dieses Heads werden abgebrochen, Zeitpläne und neue Aufträge ruhen.' : 'Zeitpläne laufen danach wieder. Angehaltene Läufe startest du von Hand neu.', ja: an ? 'Anhalten' : 'Lösen', gefahr: an }))) return;
+    const r = await einstellungSenden({ aktion: 'not-aus', an, headId: k.id });
+    if (r.ok) melde(an ? `${k.kurz} ist angehalten.` : `${k.kurz} läuft wieder.`, an ? 'info' : 'gut'); else melde(r.text, 'kritisch');
+  };
+  const stufe = e?.stufe ?? def?.stufe ?? 'ausgewogen';
+  const aufwand = e?.aufwand ?? def?.aufwand ?? 'medium';
+  const autonomie = e?.autonomie ?? e?.vorgabe.autonomie ?? 'vorschlag';
   return (
     <div style={{ display: 'grid', gap: ABSTAND.l }}>
+      {e?.notAus && <Hinweis art="achtung" titel="Not-Aus">Dieser Head ist angehalten — seit {new Date(e.notAus.seit).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.</Hinweis>}
       <Karte flach>
-        <div style={{ display: 'grid', gap: ABSTAND.s }}>
-          <Eigenschaft label="Modell">{def ? MODEL_LABEL[def.stufe] : '—'} <span style={{ color: C.inkLeise }}>(Vorgabe)</span></Eigenschaft>
-          <Eigenschaft label="Aufwand">{def ? AUFWAND_NAME[def.aufwand] : '—'}</Eigenschaft>
-          <Eigenschaft label="Autonomie">Vorschlag — nach außen nie ohne Klick. Die Stufe lässt sich je Head nur verschärfen.</Eigenschaft>
-          <Eigenschaft label="Budget">{euro(kosten)} in diesem Monat · erster Monat: nur messen</Eigenschaft>
+        <div style={{ display: 'grid', gap: ABSTAND.m }}>
+          <Feldzeile label={`Modell${e ? ` — ${e.modelle[stufe]}` : ''}${e && stufe === e.vorgabe.stufe ? ' (Vorgabe)' : ''}`}>
+            {darf ? <Segmente liste={STUFEN} aktiv={stufe} onWahl={x => schreibe({ stufe: x === e!.vorgabe.stufe ? null : x }, 'Modell gespeichert.')} />
+              : <span style={{ fontSize: TYP.body, color: C.ink }}>{MODEL_LABEL[stufe]} <span style={{ color: C.inkLeise }}>(Vorgabe)</span></span>}
+          </Feldzeile>
+          <Feldzeile label="Aufwand (Denktiefe)">
+            {darf ? <Segmente liste={AUFWAENDE} aktiv={aufwand} onWahl={x => schreibe({ aufwand: x === e!.vorgabe.aufwand ? null : x }, 'Aufwand gespeichert.')} />
+              : <span style={{ fontSize: TYP.body, color: C.ink }}>{AUFWAND_NAME[aufwand]}</span>}
+          </Feldzeile>
+          <Feldzeile label="Autonomie — nach außen nie ohne Klick; die Stufe lässt sich je Head nur verschärfen">
+            {darf ? <Segmente liste={AUTONOMIE.filter(a => a.id === 'vorschlag' || e!.vorgabe.autonomie === 'intern')} aktiv={autonomie} onWahl={x => schreibe({ autonomie: x === e!.vorgabe.autonomie ? null : x }, 'Autonomie gespeichert.')} />
+              : <span style={{ fontSize: TYP.body, color: C.ink }}>{autonomie === 'intern' ? 'Risikoarm selbst' : 'Nur Vorschlag'}</span>}
+          </Feldzeile>
+          <Feldzeile label={`Budget je Monat in Euro — ${euro(kosten)} in diesem Monat${e?.budgetCentMonat != null ? ` von ${euro(e.budgetCentMonat)}` : ' · ohne Grenze nur messen'}`}>
+            {darf ? (
+              <form onSubmit={x => { x.preventDefault(); void budgetSpeichern(); }} style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
+                <input value={budget} onChange={x => setBudget(x.target.value)} inputMode="decimal" placeholder="leer = nur messen" aria-label="Budget je Monat in Euro" style={{ ...eingabe, flex: 1, minWidth: 140 }} />
+                <Knopf typ="submit">Speichern</Knopf>
+              </form>
+            ) : <span style={{ fontSize: TYP.body, color: C.ink }}>{e?.budgetCentMonat != null ? euro(e.budgetCentMonat) : 'keine Grenze — nur messen'}</span>}
+          </Feldzeile>
+          <Feldzeile label="Zuständig (Person aus den Konten)">
+            {darf && personen.length ? (
+              <select value={e?.zustaendig ?? ''} onChange={x => schreibe({ zustaendig: x.target.value || null }, 'Zuständigkeit gespeichert.')} style={{ ...auswahl, width: '100%', minHeight: ZIEL.handy }} aria-label="Zuständige Person">
+                <option value="">Niemand Bestimmtes</option>
+                {personen.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            ) : <span style={{ fontSize: TYP.body, color: C.ink }}>{personen.find(p => p.id === e?.zustaendig)?.name ?? '—'}</span>}
+          </Feldzeile>
+          {darf && <Schalter an={k.aktiv} onChange={an => schreibe({ aktiv: an }, an ? `${k.kurz} ist an.` : `${k.kurz} ist aus.`)}>{k.aktiv ? 'Head ist an' : 'Head ist aus'}</Schalter>}
+          {darf && <Feldzeile label="Foto (optional — sonst das Kürzel)"><FotoWahl aktuell={e?.foto ?? null} onWahl={id => schreibe({ foto: id }, id ? 'Foto gespeichert.' : 'Wieder mit Kürzel.')} /></Feldzeile>}
           <Eigenschaft label="Anbieter">Anthropic (über das KI-Tor)</Eigenschaft>
           <Eigenschaft label="Ebene">{k.ebene === 'haushalt' ? 'Haushalt — gilt für alle im Haushalt' : 'Persönlich — gilt nur für dich'}</Eigenschaft>
         </div>
       </Karte>
-      <Hinweis art="info" titel="Ändern kommt mit dem nächsten Paket" aktion={<Knopf leise onClick={() => dialog({ art: 'uebersicht' })}>Bisherige Agenten-Schalter ›</Knopf>}>
-        Modell, Aufwand, Autonomie und Budget je Head bekommen eine eigene, geprüfte Schreibstelle. Bis dahin gelten die Vorgaben.
-      </Hinweis>
+      {!e && <Hinweis art="info" aktion={<Knopf leise onClick={() => dialog({ art: 'uebersicht' })}>Bisherige Agenten-Schalter ›</Knopf>}>Die Einstellungen kommen mit dem Agenten-Kern. Bis dahin gelten die Vorgaben.</Hinweis>}
+      {e && !darf && <Hinweis art="info">Die Einstellungen dieses Heads ändern volle Mitglieder des Haushalts. Anhalten kannst du ihn trotzdem.</Hinweis>}
+      {e && <div><Knopf leise farbe={LEUCHT.kritisch} onClick={notAus}>{e.notAus ? `Not-Aus für ${k.kurz} lösen` : `${k.kurz} anhalten (Not-Aus)`}</Knopf></div>}
     </div>
   );
 }

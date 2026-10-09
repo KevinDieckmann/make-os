@@ -70,7 +70,9 @@ const MODUS_TITEL: Readonly<Record<string, string>> = {
 export const modusTitel = (m: string): string => MODUS_TITEL[m] ?? 'Lauf';
 
 const STATUS_AUFTRAG: Readonly<Record<string, LaufStatus>> = { offen: 'wartet', laeuft: 'laeuft', fertig: 'fertig', fehler: 'fehler' };
-const auftragStatus = (a: AuftragRoh): LaufStatus => (a.status === 'fehler' && a.fehler === ABGEBROCHEN ? 'abgebrochen' : STATUS_AUFTRAG[a.status] ?? 'wartet');
+/** Fehlertext eines vom Not-Aus angehaltenen Auftrags (lib/agenten/einstellung.ts `ANGEHALTEN`) — zählt wie „abgebrochen“. */
+const NOT_AUS_TEXT = 'Angehalten (Not-Aus).';
+const auftragStatus = (a: AuftragRoh): LaufStatus => (a.status === 'fehler' && (a.fehler === ABGEBROCHEN || a.fehler === NOT_AUS_TEXT) ? 'abgebrochen' : STATUS_AUFTRAG[a.status] ?? 'wartet');
 const dauer = (start?: string, ende?: string): number | undefined => {
   const a = Date.parse(start ?? ''), b = Date.parse(ende ?? '');
   return Number.isFinite(a) && Number.isFinite(b) && b >= a ? b - a : undefined;
@@ -245,43 +247,54 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
 
 export type LaufAktionErgebnis = { ok: true; text: string; auftragId?: string } | { ok: false; status: 400 | 403 | 404 | 409; fehler: string; [k: string]: unknown };
 
-/** Paket 1 (Thread-Lauf): einen laufenden Thread-Lauf anhalten (Status `abgebrochen` am Thread, vor jeder Runde geprüft — R15). */
+/** Einen laufenden Thread-Lauf anhalten (Status `abgebrochen` am Thread, vor jeder Runde geprüft — R15). */
 export type FadenAbbruch = (person: string, fadenId: string) => Promise<boolean>;
-let fadenAbbruchImpl: FadenAbbruch | null = null;
-/** Beim Zusammenführen: Paket 1 hängt hier ein, wie ein Thread-Lauf angehalten wird. */
+
+/**
+ * Seit Paket 4b verdrahtet: der Kern (lib/agenten/faeden-server.ts) setzt „abgebrochen“ am eigenen Thread (Lauf wartet/läuft). Die Schleife
+ * (lib/agenten/delegation.ts) prüft den Status vor jeder Runde und hält an. Tests können über `abbruchVerdrahten` ersetzen.
+ */
+export const fadenAbbruchKern: FadenAbbruch = async (person, fadenId) => {
+  const { fadenAendern } = await import('./faeden-server');
+  const jetzt = new Date().toISOString();
+  const r = await fadenAendern(person, fadenId, f => {
+    if (f.besitzer !== person || !f.lauf || (f.lauf.status !== 'wartet' && f.lauf.status !== 'laeuft')) return { ok: false, status: 409, fehler: 'Hier läuft nichts.' };
+    return { ...f, status: 'abgebrochen', lauf: { ...f.lauf, status: 'abgebrochen', ende: jetzt, abgebrochenVon: person } };
+  });
+  return r.ok;
+};
+let fadenAbbruchImpl: FadenAbbruch = fadenAbbruchKern;
+/** Für Tests: den Abbruch am Thread ersetzen. */
 export function abbruchVerdrahten(f: FadenAbbruch): void { fadenAbbruchImpl = f; }
 
 /**
  * Abbrechen — nur eigene Läufe. Ein wartender Auftrag wird nie mehr ausgeführt; ein laufender Agenten-Lauf verliert seine Pacht (sein
- * Ergebnis zählt nicht mehr) und bekommt — sobald Paket 1 verdrahtet ist — `abgebrochen` am Thread. Einzige weitere Schreibstelle auf
- * `zoe-auftraege` außer lib/zoe/auftraege.ts (beim Zusammenführen dorthin als `abbrechen` ziehen).
+ * Ergebnis zählt nicht mehr) und bekommt `abgebrochen` am Thread. Geschrieben wird die Warteschlange NUR über lib/zoe/auftraege.ts
+ * (`abbrechen`, seit Paket 4b).
  */
 export async function laufAbbrechen(person: string, laufId: unknown): Promise<LaufAktionErgebnis> {
   if (typeof laufId !== 'string' || !laufId) return { ok: false, status: 400, fehler: 'Lauf fehlt.' };
   if (laufId.startsWith('fd:')) {
     const fadenId = laufId.slice(3);
-    if (!fadenAbbruchImpl) return { ok: false, status: 409, fehler: 'Dieser Lauf läuft schon im Thread — anhalten geht dort, sobald der Kern verdrahtet ist.' };
     return (await fadenAbbruchImpl(person, fadenId)) ? { ok: true, text: 'Angehalten.' } : { ok: false, status: 404, fehler: 'Lauf nicht gefunden.' };
   }
-  const { updateJson } = await import('@/lib/store/local-db');
-  let raus: LaufAktionErgebnis = { ok: false, status: 404, fehler: 'Lauf nicht gefunden.' };
-  let fadenId: string | null = null;
-  const jetzt = new Date().toISOString();
-  await updateJson<{ auftraege: AuftragRoh[] & { versuche?: number }[] }>('zoe-auftraege', cur => {
-    const liste = (cur?.auftraege ?? []) as (AuftragRoh & { versuche?: number; pachtBis?: string; pachtToken?: string })[];
-    const i = liste.findIndex(a => a.id === laufId);
-    if (i < 0 || liste[i].person !== person) { raus = { ok: false, status: 404, fehler: 'Lauf nicht gefunden.' }; return cur as { auftraege: AuftragRoh[] }; }
-    const a = liste[i];
-    if (a.status !== 'offen' && a.status !== 'laeuft') { raus = { ok: false, status: 409, fehler: 'Der Lauf ist schon beendet.' }; return cur as { auftraege: AuftragRoh[] }; }
-    if (a.status === 'laeuft' && !(a.art === 'agent' && a.name === LAUF_AGENT)) { raus = { ok: false, status: 409, fehler: 'Läuft schon — anhalten lassen sich nur Agenten-Läufe.' }; return cur as { auftraege: AuftragRoh[] }; }
-    if (typeof a.eingabe?.fadenId === 'string') fadenId = a.eingabe.fadenId;
-    const { pachtBis: _p, pachtToken: _t, ...rest } = a;
-    const neu = { ...rest, status: 'fehler', fehler: ABGEBROCHEN, beendet: jetzt, versuche: 3 };
-    raus = { ok: true, text: 'Abgebrochen.', auftragId: a.id };
-    return { auftraege: liste.map((x, j) => (j === i ? neu : x)) } as { auftraege: AuftragRoh[] };
+  const { abbrechen } = await import('@/lib/zoe/auftraege');
+  const r = await abbrechen(laufId, {
+    text: ABGEBROCHEN,
+    pruefe: a => {
+      if (a.person !== person) return 'fremd';
+      if (a.status === 'laeuft' && !(a.art === 'agent' && a.name === LAUF_AGENT)) return 'laeuft';
+      return null;
+    },
   });
-  if (raus.ok && fadenId && fadenAbbruchImpl) await fadenAbbruchImpl(person, fadenId).catch(() => false);
-  return raus;
+  if (!r.ok) {
+    if (r.grund === 'beendet') return { ok: false, status: 409, fehler: 'Der Lauf ist schon beendet.' };
+    if (r.grund === 'abgelehnt' && r.text === 'laeuft') return { ok: false, status: 409, fehler: 'Läuft schon — anhalten lassen sich nur Agenten-Läufe.' };
+    return { ok: false, status: 404, fehler: 'Lauf nicht gefunden.' };
+  }
+  const fadenId = typeof r.auftrag.eingabe?.fadenId === 'string' ? r.auftrag.eingabe.fadenId : null;
+  if (fadenId) await fadenAbbruchImpl(person, fadenId).catch(() => false);
+  return { ok: true, text: 'Abgebrochen.', auftragId: r.auftrag.id };
 }
 
 /**

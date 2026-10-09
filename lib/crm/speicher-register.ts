@@ -249,10 +249,10 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'die Person sieht ihre Aufgaben unter „Hintergrund“ im Agenten-Bereich; Konto › Meine Daten exportiert den Bestand',
     loeschfrist: 'bis die Person die Aufgabe bzw. ihr Konto löscht',
   }),
-  mit(H('agenten-einstellung--*', 'Einstellungen der Heads je Haushalt: an/aus, Modell, Aufwand, Budget, Autonomie-Stufe, Not-Aus, zuständige Person (Speichername) — keine Inhalte, keine Dritten.'), {
+  mit(H('agenten-einstellung--*', 'Einstellungen der Heads je Haushalt: an/aus, Modell, Aufwand, Budget, Autonomie-Stufe, Not-Aus, zuständige Person (Speichername), Foto (Kennung eines Mediums) — dazu je Person der Abschnitt ihrer Privat-Heads (nur sie selbst liest ihn). Keine Inhalte, keine Dritten.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Betrieb der Software im Haushalt',
-    art15: 'jedes Mitglied sieht die Einstellungen der Heads, die es sehen darf; der eigene Speichername (zuständig, Not-Aus) steht im Konto-Export',
-    loeschfrist: 'solange die Instanz läuft; beim Konto-Löschen wird der Speichername „[gelöscht]“ (Paket 4)',
+    art15: 'jedes Mitglied sieht die Einstellungen der Heads, die es sehen darf (Privat-Heads nur die eigenen); der eigene Abschnitt und der eigene Speichername (zuständig, Not-Aus) stehen im Konto-Export',
+    loeschfrist: 'solange die Instanz läuft; beim Konto-Löschen fällt der eigene Abschnitt weg und der Speichername wird „[gelöscht]“ (Paket 4b)',
   }),
   // Medien unterwegs (09.10., Paket 5 V1; Kevins Antworten Fragerunde Teil 2): Kataloge (Metadaten, Personen im Bild, Freigaben, Einwilligungen) —
   // die Dateien liegen NIE im Datenordner-Bestand, sondern verschlüsselt je Segment im Medienspeicher (Hetzner Object Storage, ohne Einrichtung

@@ -176,6 +176,48 @@ export async function melde(id: string, pachtToken: string, status: 'fertig' | '
   return angenommen;
 }
 
+/**
+ * Einen Auftrag von Hand abbrechen (09.10., Agenten-Bereich Paket 4b — vorher schrieb lib/agenten/laeufe.ts selbst in die Warteschlange):
+ * nur offene bzw. — mit `auchLaufend` — laufende; die Pacht fällt weg (ein laufender Läufer meldet danach ins Leere), `versuche` auf das
+ * Maximum (kein neuer Versuch). `pruefe` sieht den Auftrag in der Sperre (Person, Art) und liefert einen Grund zum Ablehnen.
+ */
+export async function abbrechen(id: string, o: { text: string; pruefe?: (a: Auftrag) => string | null }): Promise<{ ok: true; auftrag: Auftrag } | { ok: false; grund: 'fehlt' | 'beendet' | 'abgelehnt'; text?: string }> {
+  let raus: { ok: true; auftrag: Auftrag } | { ok: false; grund: 'fehlt' | 'beendet' | 'abgelehnt'; text?: string } = { ok: false, grund: 'fehlt' };
+  await updateJson<Stand>('zoe-auftraege', current => {
+    const liste = current?.auftraege ?? [];
+    const i = liste.findIndex(a => a.id === id);
+    if (i < 0) { raus = { ok: false, grund: 'fehlt' }; return current as Stand; }
+    const a = liste[i];
+    const nein = o.pruefe?.(a);
+    if (nein) { raus = { ok: false, grund: 'abgelehnt', text: nein }; return current as Stand; }
+    if (a.status !== 'offen' && a.status !== 'laeuft') { raus = { ok: false, grund: 'beendet' }; return current as Stand; }
+    const { pachtBis: _p, pachtToken: _t, ...rest } = a;
+    const neu: Auftrag = { ...rest, status: 'fehler', fehler: o.text.slice(0, 600), beendet: new Date().toISOString(), versuche: MAX_VERSUCHE };
+    raus = { ok: true, auftrag: neu };
+    return { auftraege: liste.map((x, j) => (j === i ? neu : x)) };
+  });
+  return raus;
+}
+
+/** Alle Aufträge, auf die `passt` zutrifft (nur offene bzw. laufende), abbrechen — z. B. beim Not-Aus. Liefert die Kennungen. */
+export async function abbrechenWo(passt: (a: Auftrag) => boolean, text: string): Promise<string[]> {
+  const ids: string[] = [];
+  if ((await loadJson<Stand>('zoe-auftraege')) === null) return ids;
+  await updateJson<Stand>('zoe-auftraege', current => {
+    const liste = current?.auftraege ?? [];
+    const jetzt = new Date().toISOString();
+    let n = 0;
+    const neu = liste.map(a => {
+      if ((a.status !== 'offen' && a.status !== 'laeuft') || !passt(a)) return a;
+      n++; ids.push(a.id);
+      const { pachtBis: _p, pachtToken: _t, ...rest } = a;
+      return { ...rest, status: 'fehler' as AuftragStatus, fehler: text.slice(0, 600), beendet: jetzt, versuche: MAX_VERSUCHE };
+    });
+    return n ? { auftraege: neu } : (current as Stand);
+  });
+  return ids;
+}
+
 /** Hält der Aufrufer die aktuelle Pacht dieses Auftrags? (vor dem Ausführen prüfen) */
 export async function pachtGueltig(id: string, pachtToken: unknown): Promise<Auftrag | null> {
   if (typeof pachtToken !== 'string' || !pachtToken) return null;

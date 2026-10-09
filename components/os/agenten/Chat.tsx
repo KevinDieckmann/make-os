@@ -6,7 +6,8 @@
 //   • „An Thread … gesendet ›“ als aufklappbare Delegations-Karte (Ziel · Format · Grenzen · Quellen — erst beim Aufklappen
 //     geladen), „◂ Bericht aus Thread …“ als Verweis;
 //   • Vorschläge, die ein Werkzeug in den Stapel gelegt hat, als Karte — dieselbe Entscheidung wie im Stapel, kein zweiter Weg;
-//   • Daumen je Antwort (gemerkt auf diesem Gerät, bis die Schnittstelle dafür steht), Vorlesen per Gerätestimme,
+//   • Daumen je Antwort (seit Paket 4b auf dem Server — Aktion `bewerten`, zählt in die Leistung des Heads; ohne Thread, z. B. im
+//     ZOE-Chat über /api/kimmi, nur auf diesem Gerät), Vorlesen per Gerätestimme,
 //     „Als Skill speichern“;
 //   • das Feld: 16 px (kein Zoom am iPhone), Enter sendet, @Name spricht an (Chips), Mikro zum Diktieren (useStimme).
 
@@ -18,7 +19,7 @@ import { useStimme } from '@/hooks/useStimme';
 import { KiMarke } from '../KiMarke';
 import { Chip, Knopf, Leer, SymbolKnopf, Wahl, eingabe, Eigenschaft, Schalter } from '../ui';
 import { KuerzelKugel, ZoeStandbild, headFarbe } from './Avatar';
-import { ladeFaden, stapelEntscheiden, type StapelAntwort } from './daten';
+import { bewerten, ladeFaden, stapelEntscheiden, type StapelAntwort } from './daten';
 import {
   absenderVon, agentAusSchluessel, delegationTeile, euro, FADEN_STATUS_NAME, risikoVon, RISIKO_NAME, zeitKurz,
   type Ansprechbar, type Risiko,
@@ -30,18 +31,25 @@ import type { Abruf } from './daten';
 
 const RISIKO_FARBE: Readonly<Record<Risiko, string>> = { risikoarm: LEUCHT.gut, intern: LEUCHT.achtung, aussen: LEUCHT.kritisch };
 
-// ── Daumen (Fragerunde 17) — bis die Schnittstelle steht, nur auf diesem Gerät gemerkt ──────────────────────────────────
+// ── Daumen (Fragerunde 17) — mit Thread auf dem Server (Paket 4b), sonst nur auf diesem Gerät ──────────────────────────────
 
 const DAUMEN_MERKER = 'make-agenten-daumen';
 function daumenLesen(): Record<string, 'hoch' | 'runter'> {
   try { const r = sessionStorage.getItem(DAUMEN_MERKER); return r ? JSON.parse(r) : {}; } catch { return {}; }
 }
-function Daumen({ id }: { id: string }) {
-  const [wert, setWert] = useState<'hoch' | 'runter' | null>(null);
-  useEffect(() => { setWert(daumenLesen()[id] ?? null); }, [id]);
-  const setze = (w: 'hoch' | 'runter') => {
+function Daumen({ id, fadenId, start }: { id: string; fadenId?: string; start?: 'hoch' | 'runter' }) {
+  const { melde } = useAgenten();
+  const [wert, setWert] = useState<'hoch' | 'runter' | null>(start ?? null);
+  useEffect(() => { setWert(fadenId ? start ?? null : daumenLesen()[id] ?? null); }, [id, fadenId, start]);
+  const setze = async (w: 'hoch' | 'runter') => {
     const neu = wert === w ? null : w;
+    const vorher = wert;
     setWert(neu);
+    if (fadenId) {
+      const r = await bewerten(fadenId, id, neu);
+      if (!r.ok) { setWert(vorher); melde(r.text, 'kritisch'); }
+      return;
+    }
     try { const alle = daumenLesen(); if (neu) alle[id] = neu; else delete alle[id]; sessionStorage.setItem(DAUMEN_MERKER, JSON.stringify(alle)); } catch { /* egal */ }
   };
   return (
@@ -156,8 +164,10 @@ export function VerweisKarte({ n, kind, startOffen }: { n: Nachricht; kind?: Fad
 
 // ── Der Verlauf ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 'Du', onAlsSkill, unten }: {
+export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 'Du', onAlsSkill, unten, fadenId }: {
   nachrichten: readonly Nachricht[];
+  /** Eigener Thread (Paket 4b): Daumen gehen an den Server (`bewerten`); ohne (ZOE über /api/kimmi, geteilte Threads) nur auf dem Gerät. */
+  fadenId?: string;
   /** Kinder-Threads (Status an der Delegations-Karte). */
   kinder?: readonly FadenKurz[];
   stapel: Abruf<StapelAntwort>;
@@ -177,7 +187,7 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
     <ol aria-label="Verlauf" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: ABSTAND.l }}>
       {nachrichten.map(n => {
         if (n.rolle === 'system') {
-          if (n.verweis) return <li key={n.id}><VerweisKarte n={n} kind={kinder.find(k => k.id === n.verweis!.fadenId)} /></li>;
+          if (n.verweis) return <li key={n.id} style={{ display: 'grid', gap: ABSTAND.xs }}><VerweisKarte n={n} kind={kinder.find(k => k.id === n.verweis!.fadenId)} />{n.verweis.art === 'bericht' && fadenId && <Daumen id={n.id} fadenId={fadenId} start={n.daumen?.wert} />}</li>;
           return <li key={n.id} style={{ textAlign: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>{n.text} · {zeitKurz(n.zeit, jetzt)}</li>;
         }
         if (n.rolle === 'person') {
@@ -205,7 +215,7 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
               {gestapelt.map((w, i) => <VorschlagKarte key={w.vorschlagId ?? `${w.name}-${i}`} vorschlagId={w.vorschlagId} werkzeug={w.name} stapel={stapel} />)}
               <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, flexWrap: 'wrap' }}>
                 {n.ki && <KiMarke text="KI-Antwort — bitte prüfen" />}
-                <Daumen id={n.id} />
+                <Daumen id={n.id} fadenId={fadenId} start={n.daumen?.wert} />
                 {stimme.kannSprechen && (
                   <SymbolKnopf ariaLabel="Vorlesen" onClick={() => (stimme.spricht ? stimme.schweig() : stimme.lies(n.text))}><Volume2 size={16} /></SymbolKnopf>
                 )}

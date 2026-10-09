@@ -36,6 +36,8 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   skill: async () => (await import('@/lib/agenten/skills-server')).SKILL_STAPEL_ART,
   mitarbeiter: async () => (await import('@/lib/agenten/skills-server')).MITARBEITER_STAPEL_ART,
   merksatz: async () => (await import('@/lib/agenten/skills-server')).MERKSATZ_STAPEL_ART,
+  // Paket 4b (09.10.): Plan-Freigabe vor großen Aufträgen auch über den Stapel — entschieden über dieselbe Schreibstelle wie im Thread.
+  plan: async () => (await import('@/lib/agenten/plan-stapel')).PLAN_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */
