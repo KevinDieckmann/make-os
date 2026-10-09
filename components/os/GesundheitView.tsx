@@ -39,6 +39,7 @@ import { ErnaehrungView } from './ErnaehrungView';
 import { EnergieView } from './EnergieView';
 import { GesundheitIndex, GesundheitIndexKurz } from './gesundheit/GesundheitIndex';
 import { SportKurz } from './sport/SportKurz';
+import { HeuteZuerst } from './gesundheit/HeuteZuerst';
 import { EinwilligungHinweis } from './gesundheit/EinwilligungHinweis';
 import { useZuZiel } from './ziel';
 import { WEG } from '@/lib/wege';
@@ -252,6 +253,10 @@ export function GesundheitView() {
       {segment === 'heute' && (
         <>
           <Flaeche seite="gesundheit-heute">
+          {/* „Zuerst“ (09.10.): was morgens oben steht — Tagesform · Schlaf · Training heute · Countdown, je Person einstellbar; nur die EIGENE
+              Ansicht (der Sport-Bestand ist persönlich). Platz für „Schlaf-Hilfe“ und „Ernährung heute“ (eigene Bauteile eines anderen Pakets:
+              components/os/gesundheit/SchlafHilfeKarte, ErnaehrungHeuteKarte) — hier einhängen, sobald es sie gibt. */}
+          {eigene && <Kachel id="zuerst" titel="Zuerst" breite={6}><HeuteZuerst heute={heute} rec={rec} schlaf={schlaf} strain={strain} kw={kw && kw.tag === v?.stand ? kw : undefined} /></Kachel>}
           {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
           {eigene && <Kachel id="fluss" titel="Für dich" breite={6}><FlussKarte bereich="gesundheit" farbe={LEUCHT.gut} /></Kachel>}
           <Kachel id="index-kurz" titel="Gesundheits-Index" breite={3}><GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} /></Kachel>
@@ -286,7 +291,7 @@ export function GesundheitView() {
           {/* 09.10.: die weiteren WHOOP-Werte als zwei kleine Karten — nur, wenn es sie gibt (Server-Tor wie die Vitalwerte). */}
           {kw && !kw.leer && <Kachel id="schlaf-detail" titel="Schlaf" breite={3}><SchlafDetailKarte k={kw} heute={heute} i={1} /></Kachel>}
           {kw && !kw.leer && <Kachel id="koerperwerte" titel="Körperwerte" breite={3}><KoerperwerteKarte k={kw} heute={heute} i={2} /></Kachel>}
-          <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} /></Kachel>
+          <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} fuer={eigene ? undefined : ansicht} /></Kachel>
           {/* WHOOP je Person (08.10.): nur die EIGENE Verbindung — in der Ansicht einer anderen Person keine Karte. */}
           {eigene && <Kachel id="whoop" titel="WHOOP" breite={3}><WhoopKarte i={2} /></Kachel>}
           {/* 09.10.: eigene Unterlagen + Weg zum Auftrag an den Gesundheits-Agenten — nur in der EIGENEN Ansicht (Art. 9, nie für andere). */}

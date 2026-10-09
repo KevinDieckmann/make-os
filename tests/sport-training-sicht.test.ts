@@ -1,6 +1,7 @@
-// ─── Wächter (Art. 9): Trainings sieht nur die Person selbst — auch wer Gesundheit geteilt bekommt, sieht den Sport NICHT (09.10.) ────
-// Sport ist persönlich (Route ohne ?fuer=, Bestand je Person). Geprüft: GET /api/sport, „Für dich“ (/api/fluss Gesundheit), die Sport-Kachel
-// in einer fremden Ansicht, und die Trainings-Ansicht selbst (statisches Rendern, erfundene WHOOP-Workouts). Eigener Datenordner, nie .data.
+// ─── Wächter (Art. 9): Trainings sieht nur die Person selbst — eine andere Person nur, wenn sie ihre Gesundheit mit ihr TEILT (09.10.) ──
+// Sport ist persönlich (Bestand je Person, schreiben nur selbst). Lesen per `?fuer=` nur mit „teilt.gesundheit“ (dasselbe Tor wie Gesundheit ›
+// Heute), schreibgeschützt. Geprüft: GET /api/sport, „Für dich“ (/api/fluss Gesundheit — immer nur die eigene Person), die Sport-Kachel in einer
+// fremden Ansicht, und die Trainings-Ansicht selbst (statisches Rendern, erfundene WHOOP-Workouts). Eigener Datenordner, nie .data.
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -43,8 +44,8 @@ const req = (url: string, person: string) => new Request(`http://test${url}`, { 
 beforeAll(async () => {
   const db = await import('@/lib/store/local-db');
   const k = (id: string, speicher: string, rolle: string, teilt: string[]) => ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: teilt }, haushalt: 'pruef-haus' });
-  // Pia teilt ihre Gesundheit ausdrücklich mit Olaf — der Sport bleibt trotzdem nur ihrer.
-  await db.saveJson('konten', { konten: [k('k1', 'pia', 'inhaber', ['olaf']), k('k2', 'olaf', 'mitglied', [])], einladungen: [] });
+  // Pia teilt ihre Gesundheit ausdrücklich mit Olaf (nicht mit Jan) — Olaf darf ihren Sport LESEN, nie schreiben; Jan bekommt nichts.
+  await db.saveJson('konten', { konten: [k('k1', 'pia', 'inhaber', ['olaf']), k('k2', 'olaf', 'mitglied', []), k('k3', 'jan', 'mitglied', [])], einladungen: [] });
   const { speicherFuer } = await import('@/lib/zoe/raum');
   await db.saveJson(speicherFuer('sport', 'pia'), STAND);
   sport = (await import('@/app/api/sport/route')) as unknown as Mod;
@@ -55,16 +56,36 @@ afterAll(async () => {
   rmSync(ordner, { recursive: true, force: true });
 });
 
-describe('Sicht Olaf bekommt nichts aus Pias Training', () => {
-  it('GET /api/sport: Pia sieht ihre Trainings, Olaf einen eigenen leeren Stand — auch mit ?fuer=pia', async () => {
+describe('Sicht Jan bekommt nichts aus Pias Training; Olaf nur lesend, weil Pia teilt', () => {
+  it('GET /api/sport: Pia sieht ihre Trainings; ohne ?fuer= sieht jede andere Person nur ihren eigenen (leeren) Stand', async () => {
     const p = await (await sport.GET(req('/api/sport', 'pia'))).json();
     expect(p.stand.training).toHaveLength(3);
-    for (const url of ['/api/sport', '/api/sport?fuer=pia', '/api/sport?person=pia']) {
-      const o = await (await sport.GET(req(url, 'olaf'))).json();
-      expect(o.ich, url).toBe('olaf');
+    expect(p.nurLesen).toBeUndefined();
+    for (const wer of ['olaf', 'jan']) for (const url of ['/api/sport', '/api/sport?person=pia']) {
+      const o = await (await sport.GET(req(url, wer))).json();
+      expect(o.ich, url).toBe(wer);
       expect(o.stand.training, url).toBeUndefined();
       expect(JSON.stringify(o), url).not.toMatch(/functional-fitness|strength-trainer|whoop:/);
     }
+  });
+  it('?fuer=pia: Jan (Pia teilt nicht mit ihm) → 403 ohne Inhalt; Olaf → Pias Stand, schreibgeschützt', async () => {
+    const j = await sport.GET(req('/api/sport?fuer=pia', 'jan'));
+    expect(j.status).toBe(403);
+    expect(JSON.stringify(await j.json())).not.toMatch(/functional-fitness|whoop:/);
+    const o = await (await sport.GET(req('/api/sport?fuer=pia', 'olaf'))).json();
+    expect(o).toMatchObject({ ok: true, ich: 'olaf', fuer: 'pia', nurLesen: true });
+    expect(o.stand.training).toHaveLength(3);
+  });
+  it('schreiben geht nie für eine andere Person: PUT wirkt immer auf den eigenen Bestand', async () => {
+    const put = (sport as unknown as { PUT: (r: Request) => Promise<Response> }).PUT;
+    const e = await import('@/lib/datenschutz/gesundheit-einwilligung');
+    await e.gesundheitErklaeren('olaf', 'verarbeiten', true, e.GESUNDHEIT_FASSUNG);
+    const r = await put(new Request('http://test/api/sport?fuer=pia', { method: 'PUT', headers: { 'x-make-user': 'olaf', 'content-type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'sportart', sport: 'sauna', klasse: 'gym' }] }) }));
+    expect(r.status).toBe(200);
+    const p = await (await sport.GET(req('/api/sport', 'pia'))).json();
+    expect(p.stand.sportArten).toBeUndefined();
+    const o = await (await sport.GET(req('/api/sport', 'olaf'))).json();
+    expect(o.stand.sportArten).toEqual({ sauna: 'gym' });
   });
   it('„Für dich“ (Fluss Gesundheit): Pias Einheiten zählen nur bei Pia', async () => {
     const summe = (a: number[]) => a.reduce((x, y) => x + y, 0);

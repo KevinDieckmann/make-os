@@ -83,6 +83,28 @@ describe('Ziele & Plan (statisch gerendert)', () => {
   });
 });
 
+describe('Gesundheits-Cockpit „Zuerst“ (je Person einstellbar, Handy/Gym: große Zahl, ein Tipp)', () => {
+  const kw = { tag: HEUTE, schlaf: { dauer: 6.5, bedarf: 8, konsistenz: 71 }, koerper: [], leer: false };
+  it('Vorgabe Tagesform zuerst; Schlaf, Training, Countdown kompakt darunter', async () => {
+    const { HeuteZuerstAnsicht } = await import('@/components/os/gesundheit/HeuteZuerst');
+    const html = renderToStaticMarkup(createElement(HeuteZuerstAnsicht, { heute: HEUTE, rec: 55, schlaf: 6.5, strain: 8, kw, stand: STAND, schicke: async () => true }));
+    expect(html.indexOf('Tagesform')).toBeLessThan(html.indexOf('Schlaf'));
+    expect(html).toContain('Bedarf 8:00');
+    expect(html).toContain('Lauf · Intervall · 45 min');
+    expect(html).toContain('Halbmarathon Prüfstadt');
+  });
+  it('„Schlaf zuerst“ als Einstellung: Schlaf oben mit Regelmäßigkeit; Training heute mit Tagesform-Hinweis und „Erledigt“', async () => {
+    const { HeuteZuerstAnsicht } = await import('@/components/os/gesundheit/HeuteZuerst');
+    const schlafZuerst = { ...STAND, einstellungen: { zuerst: 'schlaf' as const } };
+    const html = renderToStaticMarkup(createElement(HeuteZuerstAnsicht, { heute: HEUTE, rec: 55, schlaf: 6.5, kw, stand: schlafZuerst, schicke: async () => true }));
+    expect(html.indexOf('aria-label="Schlaf"')).toBeLessThan(html.indexOf('aria-label="Tagesform"'));
+    expect(html).toContain('Regelmäßigkeit 71 %');
+    const training = renderToStaticMarkup(createElement(HeuteZuerstAnsicht, { heute: HEUTE, rec: 55, stand: { ...STAND, einstellungen: { zuerst: 'training' as const } }, schicke: async () => true }));
+    expect(training).toContain('heute leichter');
+    expect(training).toContain('Erledigt');
+  });
+});
+
 describe('POST /api/sport/kalender — nur die Person, nur über blockAnlegen', () => {
   type Mod = { POST: (r: Request) => Promise<Response> };
   let route: Mod;
