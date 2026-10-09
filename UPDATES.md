@@ -4,6 +4,54 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Kopf-Schalter nur Privat · Business (nur lokal — Branch `nur-zwei-bereiche`, Basis 7e80f4fc)
+
+Kevin 09.10. spät (mit Bildschirmfoto von `/os?space=business`): „Oben der Knopf ‚Alles‘ kann raus — es gibt nur Business oder Privat. Und die
+Zeit wird jedes Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“ Das nimmt die Nachbesserung vom 08.10. („ein Schalter, oben, mit
+Alles“) zurück: man ist immer in genau einem Bereich.
+
+**Gebaut:**
+- **Kopf:** der Schalter hat nur noch **Privat · Business** (`SPACE_WAHLEN`, `SpaceWahl` = `SpaceId`). `ALLES`, `ALLES_EINTRAEGE`, `ALLES_GRUPPEN`
+  und `wahlInfo` sind entfernt; `wechselZiel` springt wie bisher zum Gegenstück im anderen Bereich, sonst zu dessen Heute.
+- **Alte Adressen und Merker:** `?space=alles` (Links, Lesezeichen vom 08./09.10.) zählt wie kein Parameter — die Seite bzw. der gemerkte Bereich
+  gilt — und der Kopf schreibt die Adresse einmal auf den wirksamen Bereich um (`adresseOhneAlles`, `router.replace`, kein Verlaufseintrag).
+  Ein gemerktes „alles“ (`make-space`) nimmt den zuletzt konkreten Bereich (`make-space-zuletzt`), sonst **Business** (`gemerkteWahlAus`,
+  `SPACE_VORGABE`); ein Konto „nur Business“ ist immer Business. Es entsteht nie wieder „alles“ (beide Merker werden gleich gehalten).
+- **`useSpace()`:** `wahl` ist immer konkret; `space` und `filter` sind dieselbe Wahl (Felder bleiben für die Aufrufer); neu `bereit`
+  (Merker gelesen).
+- **Leiste und Handy-Menü:** nur noch die Punkte des Bereichs (`leisteFuer`), keine Gruppen; die Handy-Leiste bleibt bei fünf Einträgen.
+- **Heute (`/os`)** zeigt ohne `?space=` den Bereich der Wahl. Flächen bleiben `uebersicht-privat` / `uebersicht-business`; die frühere Fläche
+  `home` („Alles“) wird nicht mehr gezeigt — gespeicherte Layouts darunter bleiben liegen (`HEUTE_FLAECHE_FRUEHER_ALLES`), nichts gelöscht.
+- **„Das Ganze“ = Zeit-Karte:** das vorhandene Widget „Zeit & Fokus“ kann jetzt **„Privat und Business“** (`space: 'beide'`): je Bereich heute
+  und 7 Tage (davon bewusst), darunter der Anteil als Balken mit Prozent; ältere Messung ohne Bereich steht klein daneben. Steht im Standard
+  **beider** Heute-Sichten gleich hinter dem Index (Standard wird nie gespeichert — wer sein Layout angepasst hat, bekommt die Karte an ihrer
+  Standardstelle dazu). Auch im Katalog „+ Widget“ als „Zeit · Privat und Business“. Rechnung rein: `privatGegenBusiness` (lib/zeitmessung/modell.ts).
+- **Zeitmessung:** Ping und Fokus-Zähler tragen immer Privat oder Business (der Server nimmt ohnehin nur diese); nichts wird umgeschrieben —
+  alte Zeit ohne Bereich bleibt „gemeinsam“.
+- **Seiten mit eigenem Filter bleiben:** Kalender (Seitenleiste „Alles · Privat · Business“), Planung (Filter „alle“ — ändert den Kopf nicht
+  mehr), Inbox (Reiter „Alle“ innerhalb der Bereiche; `/os/inbox` ohne `?space=` aus Glocke/Gesprächs-Links zeigt weiter alle eigenen
+  Postfächer), Finanzen (Reiter „Gesamt“ unter Privat), Aufgaben-Überblick. Die Agenten-Seite zeigt die Heads des gewählten Bereichs.
+- **Suche (⌘K):** sucht im Bereich des Kopfs; unten neu **„Auch in Business suchen“ / „Auch in Privat suchen“** — dann kommen die Treffer des
+  anderen Bereichs gekennzeichnet dazu (Server-Routen filtern selbst; Konto „nur Business“ sieht den Knopf nicht).
+- Tests: `tests/spaces.test.ts` (Wahl, alte `?space=alles`, Merker, Schalter), `tests/aufraeumen-etappe1.test.ts` (Leiste ohne „Alles“, Heute je
+  Sicht mit Zeit-Karte, Kopf schreibt um, Zeitmessung immer konkret, Suche), `tests/zeitmessung.test.ts` (`privatGegenBusiness`, `?space=alles`
+  zählt für den Bereich, in dem man ist), angepasst `aufgaben-crm-flaechen`, `onboarding-stand`.
+
+**So testet ihr:**
+1. Oben im Kopf stehen nur **Privat** und **Business**. Business wählen → Leiste zeigt Heute · Inbox · Kalender · Aufgaben · Planung · Finanzen ·
+   Markttraktion · Mandate & Unternehmen · Kontakte · ZOE; Privat wählen → … Gesundheit · Familie · Kontakte · ZOE.
+2. Heute (Business und Privat): die Karte **„Zeit · Privat und Business“** steht neben dem Index — heute, 7 Tage, Balken mit Prozent. Ein paar
+   Minuten auf einer Privat-Seite arbeiten, neu laden → Privat-Zeit wächst; auf einer Business-Seite → Business wächst.
+3. Alte Adresse aufrufen: `/os?space=alles` → die Adresse wird sofort zu `/os?space=<zuletzt gewählter Bereich>`, Browser-Zurück führt nicht
+   wieder auf „alles“. `/os/aufgaben?space=alles` ebenso.
+4. Inbox öffnen, oben auf Privat schalten → Inbox des anderen Bereichs; Gesundheit öffnen, auf Business schalten → Business-Heute.
+5. ⌘K → im Business nach einem Familiennamen suchen: nichts; unten „Auch in Privat suchen“ → der Mensch erscheint mit „Privat“ rechts.
+6. Handy (375 px): unten Heute · Inbox · Menü · ZOE · Netzwerken; „Menü“ zeigt oben Privat · Business, darunter die Punkte des Bereichs.
+
+**Für CLAUDE.md (macht Kevin):** im Abschnitt „Spaces Privat/Business“ › „Nachbesserung (08.10., Branch `aufraeumen-1b`)“ und in „Heute“ die
+Sätze zu `SpaceWahl` = `alles` | …, „Alles“ in Leiste/Kopf, `ALLES_EINTRAEGE`/`ALLES_GRUPPEN`, `filter` „alle“ bei Alles und Heute „ohne Parameter
+Privat + Business zusammen“ durch diesen Stand ersetzen.
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.
