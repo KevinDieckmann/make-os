@@ -20,17 +20,17 @@ import {
   type SkillBeispiel, type SkillEingabeFeld, type SkillEreignis, type SkillKurz, type SkillTest, type SkillTestlauf, type WerkstattBestand,
 } from './typen';
 import { wiederkehrendPruefen, type Pruefung } from './zeitplan';
+import { SKILL_EREIGNISSE, EREIGNIS_NAME } from '@/lib/ereignisse/arten';
 
 export type { Pruefung };
 
 /** Name wie in SKILL.md: Kleinbuchstaben, Ziffern, Bindestriche. */
 export const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-/** Ereignisse, die als Auslöser schon gewählt werden dürfen (Antwort 7). Die Ereignisquelle bindet die Verdrahtung an (Paket 4). */
-export const SKILL_EREIGNISSE: readonly SkillEreignis[] = ['neue-mail', 'neuer-lead', 'zahlungseingang'];
-export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
-  'neue-mail': 'neue Mail', 'neuer-lead': 'neuer Lead', zahlungseingang: 'Zahlungseingang', 'neue-aufgabe': 'neue Aufgabe',
-  'termin-vorbei': 'Termin vorbei', 'frist-naht': 'Frist naht', 'neues-medium': 'neues Foto/Video',
-};
+/**
+ * Ereignisse, die als Auslöser gewählt werden dürfen (Antwort 7): genau die, die eine Quelle speist (09.10., E1 Ereignisstelle — EINE Liste in
+ * lib/ereignisse/arten.ts; der Takt reiht sie über lib/ereignisse/takt.ts ein). Namen ebenda.
+ */
+export { SKILL_EREIGNISSE, EREIGNIS_NAME } from '@/lib/ereignisse/arten';
 export const MODELL_STUFEN: readonly ModelTier[] = ['schnell', 'ausgewogen', 'stark'];
 export const AUFWAENDE: readonly Aufwand[] = ['low', 'medium', 'high'];
 const FELD_ARTEN: readonly SkillEingabeFeld['art'][] = ['text', 'zahl', 'datum', 'auswahl', 'kontakt', 'firma'];

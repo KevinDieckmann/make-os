@@ -219,6 +219,8 @@ async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unkno
   if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}), ...stand2, stand: stand2 }, { status: e.status });
   // Änderungsprotokoll (09.10.): nur Kennung + Feldnamen (status, bezahltAm) — die Buchung protokolliert ihr eigener Schreibweg.
   if (!e.schonBezahlt) await protokolliereBestand('finanzplan', { rechnungen: [vorherRechnung ?? e.rechnung] }, { rechnungen: [e.rechnung] }, werAus(req));
+  // Ereignis (09.10., E1): Zahlungseingang → Agenten (nur Kennungen, nie Beträge) — nach dem Speichern, wirft nie.
+  if (!e.schonBezahlt) await import('@/lib/ereignisse/quellen').then(q => q.rechnungBezahltEreignis(e.rechnung)).catch(() => 0);
   return NextResponse.json({ ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null, ...stand2, stand: stand2 });
 }
 

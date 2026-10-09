@@ -5,7 +5,7 @@
 
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
-import { werIstDran } from '@/lib/crm/heute';
+import { werIstDran, type WerIstDranOptionen } from '@/lib/crm/heute';
 import { ampel, art14, kanalStatus } from '@/lib/crm/recht';
 import { prognose, gesundheit, gesamtwert, OFFENE_STUFEN, STUFEN, winRate } from '@/lib/crm/pipeline';
 import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
@@ -77,7 +77,7 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
 }
 
 /** `personName` null = Systemlauf des Takts: die Karten aller (werIstDran ohne Personenfilter), `meta.fuer` = null. */
-export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string | null, frueher: { titel: string; status: string }[]) {
+export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string | null, frueher: { titel: string; status: string }[], opt: WerIstDranOptionen = {}) {
   // Werbesperre und Einschränkung (Art. 18, U2): nie in ein Agentenpaket.
   const aktiv = kontakte.filter(k => !ausgenommen(k));
   const nachId = new Map(aktiv.map(k => [k.id, k]));
@@ -116,7 +116,8 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
   }
 
   if (head === 'sales') {
-    const a = werIstDran(aktiv, crm, heute, personName, 12);
+    // 09.10. (E1 Ereignisse): wer der Person gerade geschrieben hat, bekommt kein Nachfassen (nur mit Person — nie fremde Postfächer).
+    const a = werIstDran(aktiv, crm, heute, personName, 12, [], opt);
     const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
     const verloren = crm.chancen.filter(c => c.stufe === 'verloren' && c.grund);
     return {

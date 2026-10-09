@@ -145,6 +145,8 @@ export interface WebhookErgebnis {
   medien: string[];
   /** Neue eingehende Nachrichten je wa_id (für die Glocke/Inbox). */
   von: string[];
+  /** Die neuen eingehenden Nachrichten (WAMID + Nummer) — für die Ereignisstelle (09.10., E1); nie gespeichert. */
+  eingang: { id: string; nummer: string }[];
 }
 
 /**
@@ -157,7 +159,8 @@ export function webhookAnwenden(s: WaSpiegel, koerper: WebhookKoerper, telefonnu
   let neu = 0, status = 0, uebersprungen = 0, gesehen = 0;
   const medien: string[] = [];
   const von = new Set<string>();
-  if (koerper?.object !== 'whatsapp_business_account' || !Array.isArray(koerper.entry)) return { spiegel: s, neu, status, uebersprungen: 1, medien, von: [] };
+  const eingang: { id: string; nummer: string }[] = [];
+  if (koerper?.object !== 'whatsapp_business_account' || !Array.isArray(koerper.entry)) return { spiegel: s, neu, status, uebersprungen: 1, medien, von: [], eingang };
   for (const e of koerper.entry) {
     for (const c of Array.isArray(e?.changes) ? e.changes : []) {
       const w = c?.value;
@@ -175,6 +178,7 @@ export function webhookAnwenden(s: WaSpiegel, koerper: WebhookKoerper, telefonnu
         nachrichten[m.id] = m;
         neu++;
         von.add(m.nummer);
+        if (m.richtung === 'ein') eingang.push({ id: m.id, nummer: m.nummer });
         if (m.medium) medien.push(m.id);
         const k = kontakte[m.nummer] ?? { nummer: m.nummer };
         kontakte[m.nummer] = { ...k, ...(!k.zuletztEingehend || m.am > k.zuletztEingehend ? { zuletztEingehend: m.am } : {}) };
@@ -193,7 +197,7 @@ export function webhookAnwenden(s: WaSpiegel, koerper: WebhookKoerper, telefonnu
     }
   }
   const geaendert = neu || status || Object.keys(kontakte).length !== Object.keys(s.kontakte).length || Object.entries(kontakte).some(([k, v]) => s.kontakte[k] !== v);
-  return { spiegel: geaendert ? { v: 1, nachrichten, kontakte } : s, neu, status, uebersprungen, medien, von: [...von] };
+  return { spiegel: geaendert ? { v: 1, nachrichten, kontakte } : s, neu, status, uebersprungen, medien, von: [...von], eingang };
 }
 
 /** Eine gesendete Nachricht merken (rein). */

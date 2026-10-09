@@ -53,7 +53,9 @@ export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'head
   // 07.10. (WhatsApp Business): der Spiegel der Business-Nummer (einzige dauerhafte Kopie) und seine Medien.
   | 'whatsapp-spiegel' | 'whatsapp-medien'
   // 09.10. (Medien unterwegs, Paket 5): offene Uploads, Papierkorb, Rohmaterial mit erkennbaren Personen (nur Prüf-Aufgabe).
-  | 'medien-upload' | 'medien-papierkorb' | 'medien-roh';
+  | 'medien-upload' | 'medien-papierkorb' | 'medien-roh'
+  // 09.10. (E1 Ereignisstelle): Ereignisse für die Agenten (nur Kennungen) — rollend.
+  | 'ereignisse';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -116,6 +118,8 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'medien-upload', titel: 'Fotos & Videos: unfertige Uploads', einheit: 'tage', standard: 7, min: 1, max: 30, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Abgebrochene Uploads (App geschlossen, Netz weg): Stücke im Medienspeicher und die Sitzung fallen nach der Frist weg — auf dem Gerät bleibt das Original.' },
   { id: 'medien-papierkorb', titel: 'Fotos & Videos: Papierkorb', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e, Art. 17 DSGVO', hinweis: 'Gelöschte Medien bleiben so lange wiederherstellbar — danach werden Dateien (verschlüsselt im Medienspeicher) und Eintrag samt Schlüssel endgültig gelöscht.' },
   { id: 'medien-roh', titel: 'Fotos & Videos: Rohmaterial mit erkennbaren Personen', einheit: 'monate', standard: 12, min: 3, max: 60, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch gelöscht: Business-Medien mit erkennbaren Personen, die seit der Frist nicht fürs Marketing freigegeben wurden, zählen in EINE Prüf-Aufgabe (löschen oder begründen). Die Dateien selbst liegen nicht in der Nachtsicherung.' },
+  // 09.10. (E1 Ereignisstelle, lib/ereignisse): nur Kennungen (welche Mail, welcher Deal, welche Zahlung) und wann — damit Agenten darauf reagieren.
+  { id: 'ereignisse', titel: 'Ereignisse für die Agenten (neue Mail, Zahlung, Deal-Stufe …)', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Nur Kennungen und Zeitpunkt (nie Betreff, Text oder Betrag) — ein Agent reagiert höchstens 72 Stunden darauf. Ältere Einträge fallen beim nächsten Ereignis und im täglichen Lauf weg.' },
   { id: 'sicherungen', titel: 'Sicherungen (Tages-, Wochen-, Monatsgenerationen)', einheit: 'monate', standard: SICHERUNG_GENERATIONEN.monatlich, min: SICHERUNG_GENERATIONEN.monatlich, max: SICHERUNG_GENERATIONEN.monatlich, wirkung: 'fest', anzeige: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate`, norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO', hinweis: SICHERUNG_SATZ },
 ];
 

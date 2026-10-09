@@ -113,6 +113,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'team--*': 'Team je Haushalt — der Eintrag des Kontos fällt beim Löschen weg',
   'uebergabe-journal--*': 'Übergaben an Kunden (Kartei)',
   'zoe-chargen--*': 'ZOE-Chargen je Haushalt (nur Kennungen)',
+  'ereignisse--*': 'Ereignisse für die Agenten je Haushalt (09.10., E1) — nur Kennungen, rollend 30 Tage; nicht im Export (keine Inhalte der Person), beim Konto-Löschen fallen die Ereignisse NUR dieser Person weg (Mail, „An ZOE gegeben“), aus Personen-Listen wird sie gestrichen',
   // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): Bestände je HAUSHALT — Export/Löschen der eigenen Einträge baut das jeweilige Paket.
   'agenten-skills--*': 'Werkstatt der Heads je Haushalt (Skills, eigene Mitarbeiter, Gedächtnis) — im Export die selbst angelegten/freigegebenen, beim Löschen Speichername „[gelöscht]“ (Paket 3)',
   'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt (keine Inhalte) — im Export der eigene Abschnitt der Privat-Heads und die eigenen Vermerke; beim Löschen fällt der Abschnitt weg, der Speichername wird „[gelöscht]“ (Paket 4b)',
@@ -455,6 +456,14 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<import('@/lib/agenten/typen').AgentenEinstellung>(einstName, cur => { if (!cur) return cur as unknown as import('@/lib/agenten/typen').AgentenEinstellung; const r = einstellungOhnePerson(cur, speicher); n = r.n; return n ? r.neu : cur; });
       if (n) await protokolliere(einstName, [{ liste: 'personen', op: 'geaendert', id: 'konto', felder: ['zustaendig', 'notAus', 'geaendertVon'] }], { art: 'system' });
+      return n;
+    });
+    // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
+    const ev = `ereignisse--${konto.haushalt}`;
+    await nurWenn(ev, async () => {
+      const { ereignisseOhnePerson } = await import('@/lib/ereignisse/server');
+      let n = 0;
+      await updateJson<import('@/lib/ereignisse/typen').EreignisBestand>(ev, cur => { if (!cur) return cur as unknown as import('@/lib/ereignisse/typen').EreignisBestand; const r = ereignisseOhnePerson(cur, speicher); n = r.n; return n ? r.neu : cur; });
       return n;
     });
     // Konten-Register (08.10.): Konten und Stände bleiben (Finanzen des Haushalts), die Personen-Kennung wird „[gelöscht]“.

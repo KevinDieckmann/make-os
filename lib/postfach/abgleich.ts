@@ -136,6 +136,10 @@ async function einmal(person: string, p: Postfach): Promise<ImapAbgleichErgebnis
     for (const id of Object.keys(texte)) if (w.has(id) || (!st.koepfe[id] && id.startsWith(`${p.id}:`))) delete texte[id];
     return { v: 1, texte };
   });
+  // Ereignisse (09.10., E1): neue Nachrichten im Posteingang → Agenten (nur Kennungen, nur für diese Person) — nicht beim ersten Lesen des Ordners
+  // (sonst wäre jede Mail des Fensters „neu“) und nicht nach einem neuen UIDVALIDITY.
+  const ein = ergebnisse.filter(e => e.o === 'e' && !e.r.verworfen && !!sync.ordner.e).flatMap(e => e.r.neu.map(n => n.kopf));
+  if (ein.length) await import('@/lib/ereignisse/quellen').then(q => q.imapEreignisse(person, p, ein)).catch(() => 0);
   // Verlauf der Kontaktakte nur für Gespräche, die die Person „Zugeordnet“ hat (lib/inbox/verlauf.ts) — Fehler stören den Abgleich nie.
   if (neuZahl) await import('@/lib/inbox/verlauf').then(v => v.verlaufNachziehen(person)).catch(x => console.warn(`[postfach] Verlauf: ${x instanceof Error ? x.name : 'Fehler'}`));
   return { neu: neuZahl, geaendert, entfernt, nachrichten: koepfeVon(st, p.id).length };

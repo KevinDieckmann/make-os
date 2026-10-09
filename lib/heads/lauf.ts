@@ -99,7 +99,11 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   // vorher fiel der ganze Head-Lauf aufs Regelwerk zurück, sobald der Kalender-Bereich aus war.
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
   const mitKalender = (await kiSchalterFuer(a.person ?? null).catch(() => null))?.bereiche.kalender === true;
-  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele) as Record<string, unknown>;
+  // 09.10. (E1 Ereignisse): wer der Person gerade geschrieben hat (eigene Postfächer — nie fremde), und was seit dem letzten Lauf passiert ist.
+  const ev = await import('@/lib/ereignisse/leser').catch(() => null);
+  const geradeGeschrieben = a.person && ev ? await ev.geradeGeschriebenFuer(a.person).catch(() => new Set<string>()) : new Set<string>();
+  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben }) as Record<string, unknown>;
+  if (ev && a.modus !== 'frage') { const seit = await ev.seitLetztemLauf(a.person, alt.letzte[r] ?? '', kontakte, crm).catch(() => null); if (seit) daten.seit_letztem_lauf = seit; }
 
   // Nichts zu tun → ohne Modell.
   const leer = a.head === 'sales' && a.modus === 'power_hour' ? !(daten.karten as unknown[]).length

@@ -575,6 +575,13 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'System › Datenschutz zeigt dem Haushalt des Inhabers alles; die Angaben stehen in jeder Auskunft (GET /api/crm/datenschutz › verantwortlich) und im Verzeichnis-Export',
     loeschfrist: 'solange die Instanz betrieben wird; der Inhaber ändert bzw. leert die Angaben jederzeit (frühere Fassungen nur in den Sicherungen, bis zu 12 Monate)',
   }),
+  // Ereignisse (09.10., E1 „Ereignisstelle“, lib/ereignisse): NUR Kennungen (Mail-, Buchungs-, Deal-, Aufgaben-Kennung, Kontakt-/Firmen-Kennung im
+  // Bezug), Art, Bereich, für wen sichtbar, Zeitpunkt — nie Betreff, Text, Beträge, Namen oder Adressen. Rollend nach Frist „ereignisse“.
+  mit(E('ereignisse--*', 'Ereignisse für die Agenten je Haushalt (neue Mail, Zahlungseingang, Deal-Stufe, Anfrage, Absage, An ZOE gegeben) — Art. 17: Einträge mit der Kennung der Person fallen weg (person-weitere.ts); Konto löschen: Einträge NUR dieser Person fallen weg.', 'ereignisse'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Nutzung der Software durch die Kontoperson: Agenten reagieren auf eigene Daten); Kennungen Dritter Art. 6 Abs. 1 lit. f (eigene Arbeit organisieren, nur Kennungen)',
+    art15: 'nur Kennungen — die Auskunft eines Kontakts zählt die Einträge, die seine Kennung tragen (weitere Speicher); Inhalte stehen in der Quelle (Postfach, Kartei, Finanzen)',
+    loeschfrist: 'Frist „ereignisse“ (Vorgabe 30 Tage, Stammdaten › Datenschutz): ältere Einträge fallen beim nächsten Ereignis und im täglichen Löschfristen-Lauf weg; ein Agent reagiert höchstens 72 Stunden darauf',
+  }),
   // Pannen-Register (05.10., Zusatz; Art. 33 Abs. 5): nur Kategorien/Anzahl Betroffener, keine Namen; nur der Inhaber.
   mit(H('datenschutz-pannen', 'Pannen-Register (lib/datenschutz/pannen.ts): Kenntnis, Beschreibung, Art, Betroffene nur als Kategorien/Anzahl, Datenkategorien, Risiko, Meldung an die Behörde, Benachrichtigung, Maßnahmen, Abschluss, wer — liest und schreibt nur der Inhaber.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. Art. 33 Abs. 5 (Dokumentationspflicht)',

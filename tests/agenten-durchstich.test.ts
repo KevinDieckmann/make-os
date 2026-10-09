@@ -674,9 +674,11 @@ describe('(7) Oberfläche: was die Verbindungen sichtbar macht', () => {
     expect(html).toContain('Hintergrund-Arbeiter meldet sich nicht');
   });
 
-  it('der Skill-Editor sagt ehrlich, dass Ereignis-Auslöser noch nicht angebunden sind', async () => {
+  it('der Skill-Editor sagt ehrlich, welche Ereignis-Auslöser noch nicht angebunden sind (seit E1 09.10. nur noch die übrigen)', async () => {
     const { SkillEditor } = await import('@/components/os/agenten/Dialoge');
-    const html = await rendere(await hEl(SkillEditor, { headId: 'sales', start: { ausloeser: { art: 'ereignis', ereignis: 'neue-mail' } }, onZu: () => {} }));
-    expect(html).toContain('Ereignisse sind noch nicht angebunden');
+    const mail = await rendere(await hEl(SkillEditor, { headId: 'sales', start: { ausloeser: { art: 'ereignis', ereignis: 'neue-mail' } }, onZu: () => {} }));
+    expect(mail).not.toContain('noch nicht angebunden');
+    const frist = await rendere(await hEl(SkillEditor, { headId: 'sales', start: { ausloeser: { art: 'ereignis', ereignis: 'frist-naht' } }, onZu: () => {} }));
+    expect(frist).toContain('noch nicht angebunden');
   });
 });

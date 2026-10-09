@@ -38,6 +38,8 @@ export async function webhookVerarbeiten(roh: Buffer, signatur: string | null, k
     return { status: 500 };
   }
   const x = r as WebhookErgebnis | null;
+  // Ereignisse (09.10., E1): neue eingehende Nachrichten → Agenten (nur Kennungen) — nach dem Speichern, wirft nie, nichts verlässt das System.
+  if (x?.eingang.length) await import('@/lib/ereignisse/quellen').then(q => q.whatsappEreignisse(x.eingang, k)).catch(() => 0);
   // Keine Glocke je Nachricht (die Inbox zeigt sie; das Lagebild zählt sie) — die Glocke läutet nur bei „Verbindung erneuern“.
   return { status: 200, neu: x?.neu ?? 0, medien: x?.medien ?? [] };
 }

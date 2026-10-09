@@ -106,6 +106,27 @@ export interface InnenLage {
   agentenBestaende?: AgentenBestandLage | null;
   /** Takt robust (09.10.): Warteschlange voll, Agenten-Sperre unlesbar, Morgenlauf hakt, Freigabe-Listen der Heads voll — nur Zahlen. */
   taktRobust?: TaktRobustLage | null;
+  /** Ereignisse (09.10., E1 Ereignisstelle): letzte 24 h, wartend/gestaut (letzter Takt), heute abgelehnt — nur Zahlen. */
+  ereignisse?: EreignisLageHoi | null;
+}
+
+/** Ereignisse (09.10., E1) — dieselbe Form wie lib/ereignisse/server.ts `ereignisLage` (nur Zahlen, nie Kennungen). */
+export interface EreignisLageHoi { letzte24h: number; wartend: number; gestaut: number; abgelehntHeute: number; stand?: string }
+
+/**
+ * Ereignisse (09.10., E1): wie viele in 24 h kamen, ob welche länger als 1 h ohne zeitlichen Grund warten (Arbeiter steht, Sperre nicht lesbar,
+ * Tageshöchstzahl, Head-Budget — Nachtruhe, Business-frei und Entprellen zählen nicht) und ob der Bestand voll war. Rein, getestet.
+ */
+export function ereignisBefunde(e: EreignisLageHoi | null | undefined): Befund[] {
+  if (!e) return [];
+  const rot = e.abgelehntHeute > 0, gelb = e.gestaut > 0;
+  return [{
+    id: 'ereignisse', bereich: 'app', label: 'Ereignisse für die Agenten', ampel: rot ? 'rot' : gelb ? 'gelb' : 'gruen',
+    wert: `${e.letzte24h} in 24 h · ${e.wartend} wartend${e.gestaut ? ` · ${e.gestaut} länger als 1 h unverarbeitet` : ''}${e.abgelehntHeute ? ` · heute ${e.abgelehntHeute} abgelehnt` : ''}`,
+    satz: rot ? 'Bestand voll — neue Ereignisse werden abgelehnt (nichts gekürzt); Quelle prüfen (läuft ein Abgleich Amok?)'
+      : gelb ? 'Ereignisse warten ohne zeitlichen Grund — Arbeiter, Agenten-Einstellungen, Tageshöchstzahl oder Budget prüfen (Agenten › Läuft)'
+        : 'Agenten reagieren auf Mail, Zahlung, Deal-Stufe, Anfrage, Absage und „An ZOE geben“ — nur Kennungen, rollend 30 Tage',
+  }];
 }
 
 /**
@@ -669,6 +690,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...einrichtungBefunde(innen.einrichtung, innen));
   b.push(...zugangBefunde(innen.zugang, jetzt));
   b.push(...taktRobustBefunde(innen.taktRobust));
+  b.push(...ereignisBefunde(innen.ereignisse));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
   b.push(...kettenBefunde(innen.protokollKette, jetzt));
