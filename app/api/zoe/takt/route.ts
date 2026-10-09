@@ -58,7 +58,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await taktErlaubt(req))) return TAKT_GESPERRT();
-  void herzschlag();
+  // Herzschlag nur vom Arbeiter (Dienstweg) — der Browser stößt den Takt als Rückfall auch an; sein Anstoß hielt das Lagebild „Arbeiter“ grün
+  // und Agenten-Läufe warteten unsichtbar, obwohl niemand die Warteschlange abholt (Durchstich 09.10.).
+  if (istDienst(req)) void herzschlag();
   // Brain-Index alle 30 Minuten leise mit dem Vault abgleichen (27.09.; erst 10, seit der Tempo-Prüfung 30 — der Lauf
   // liest alle Notizen und rechnet synchron in SQLite) — nie blockierend.
   void import('@/lib/brain/index').then(ix => ix.indexFrischHalten(30)).catch(() => {});

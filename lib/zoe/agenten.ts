@@ -102,7 +102,7 @@ async function stapleAlle(liste: readonly (readonly [string, Record<string, unkn
  * erreichbar" stand. Wer Erfolg an Wörtern im Fließtext festmacht, liegt
  * früher oder später falsch. Also sagt der Lauf es selbst.
  */
-export interface AgentLauf { ok: boolean; text: string }
+export interface AgentLauf { ok: boolean; text: string; /** Kein Aussetzer, sondern eine Entscheidung (nicht neu einreihen) — z. B. der Thread/Skill gibt es nicht mehr. */ endgueltig?: boolean }
 const gut = (text: string): AgentLauf => ({ ok: true, text });
 const fehl = (text: string): AgentLauf => ({ ok: false, text });
 
@@ -385,8 +385,16 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         let lauf: unknown;
         try { lauf = JSON.parse(auftrag); } catch { return fehl('Agenten-Lauf abgelehnt: kein Lauf-Auftrag (freier Text wird nicht ausgeführt).'); }
         if (!lauf || typeof lauf !== 'object') return fehl('Agenten-Lauf abgelehnt: kein Lauf-Auftrag.');
-        const d = await post('/api/agenten/faden/lauf', lauf, 330_000);
-        return gut(`AGENTEN-LAUF: ${kuerze(d.laufStatus ?? 'fertig', 40)}${d.fadenId ? ` (Thread ${kuerze(d.fadenId, 60)})` : ''} — das Ergebnis steht im Thread.`);
+        try {
+          const d = await post('/api/agenten/faden/lauf', lauf, 330_000);
+          return gut(`AGENTEN-LAUF: ${kuerze(d.laufStatus ?? 'fertig', 40)}${d.fadenId ? ` (Thread ${kuerze(d.fadenId, 60)})` : ''} — das Ergebnis steht im Thread.`);
+        } catch (e) {
+          // Durchstich 09.10.: antwortet die Route mit 4xx (Thread/Skill/Hintergrundaufgabe gibt es nicht mehr, Head nicht sichtbar, ZOE-Thread),
+          // ist das eine Entscheidung über die Daten — kein Aussetzer. Vorher reihte der Arbeiter so einen Lauf bis zu dreimal neu ein.
+          const t = e instanceof Error ? e.message : String(e);
+          if (/antwortet 4\d\d/.test(t)) return { ok: false, text: `Agenten-Lauf nicht gestartet: ${kuerze(t, 200)}`, endgueltig: true };
+          throw e;
+        }
       }
       case 'absichten': {
         // Paket D-C (29.09., #17): offene Absichten fertigstellen — Schritte idempotent, nach 3 Fehlversuchen „gescheitert“ (HOI rot).

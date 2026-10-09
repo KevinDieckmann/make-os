@@ -569,6 +569,8 @@ export interface Lauf {
   fadenId?: string;
   /** Was die Person damit tun darf (nur eigene Läufe). */
   aktionen: ('abbrechen' | 'neu-starten')[];
+  /** Ein Satz, warum ein Lauf (noch) wartet bzw. nicht lief — z. B. „der Hintergrund-Arbeiter meldet sich nicht“ (Durchstich 09.10.). */
+  hinweis?: string;
 }
 
 /** „Als Nächstes“ (Antwort 9): geplante Läufe mit Uhrzeit, offene Freigaben, Fristen — nach Eisenhower sortiert. */

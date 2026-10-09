@@ -107,11 +107,16 @@ export function annahmeAusListe(vorschlaege: readonly { status: string; entschie
   return { angenommen: a, abgelehnt: b };
 }
 
-/** Entscheidungen im Stapel zu Vorschlägen eines Heads (Arten skill/mitarbeiter/merksatz, `bezug.id` = Head). */
-export function annahmeAusEntscheidungen(eintraege: readonly { typ: string; entscheidung?: string; bezug?: { art: string; id: string } }[], headId: string): { angenommen: number; abgelehnt: number } {
+/**
+ * Entscheidungen im Stapel zu Vorschlägen eines Heads: Werkstatt-Arten (skill/mitarbeiter/merksatz, `bezug.id` = Head) und — seit dem Durchstich
+ * 09.10. — jeder andere Vorschlag aus dem Agenten-Bereich (Aufgabe, CRM, Kalender, Plan …), dessen Eintrag den Head trägt (`agent`). Vorher
+ * zählten freigegebene/abgelehnte Werkzeug-Vorschläge der Heads nie — Ablehnen mit Grund blieb ohne Wirkung auf Quote und Autonomie.
+ */
+export function annahmeAusEntscheidungen(eintraege: readonly { typ: string; entscheidung?: string; bezug?: { art: string; id: string }; agent?: string }[], headId: string): { angenommen: number; abgelehnt: number } {
   let a = 0, b = 0;
   for (const e of eintraege) {
-    if (e.typ !== 'entscheidung' || !e.bezug || !['skill', 'mitarbeiter', 'merksatz'].includes(e.bezug.art) || e.bezug.id !== headId) continue;
+    const werkstatt = !!e.bezug && ['skill', 'mitarbeiter', 'merksatz'].includes(e.bezug.art) && e.bezug.id === headId;
+    if (e.typ !== 'entscheidung' || !(werkstatt || e.agent === headId)) continue;
     if (e.entscheidung === 'freigegeben') a++;
     else if (e.entscheidung === 'abgelehnt' || e.entscheidung === 'zurueck') b++;
   }

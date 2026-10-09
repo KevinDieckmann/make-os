@@ -18,6 +18,7 @@ import { monatBerlin, protokollKennung } from '@/lib/store/aenderungsprotokoll';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { tagVon } from '@/lib/zeit';
+import { headVonVorschlag } from '@/lib/agenten/katalog';
 
 export const ENTSCHEIDUNGEN_PRAEFIX = 'zoe-entscheidungen';
 /** Was mit einem Vorschlag geschah — „zurueck“ = abgelehnt und gleich wieder an ZOE gegeben (Aufgaben). */
@@ -37,6 +38,8 @@ export interface DauerEintrag {
   bezug?: { art: string; id: string };
   /** Bei CRM-Vorschlägen: welche Art (aktivitaet, followup …). */
   vorschlagArt?: string;
+  /** Head, von dem der Vorschlag stammt (lib/agenten/katalog.ts `headVonVorschlag`) — für die Annahmequote je Head (Durchstich 09.10.). */
+  agent?: string;
   titel?: string;
   /** Wer entschieden bzw. für wen ZOE gehandelt hat — fehlt = Systemlauf. */
   person?: string;
@@ -80,12 +83,13 @@ export async function haushaltFuer(person: string | undefined | null): Promise<s
 
 /** Eine Stapel-Entscheidung als dauerhafter Eintrag (rein). */
 export function entscheidungEintrag(v: {
-  id: string; werkzeug: string; gruppe: string; titel?: string; person?: string; bezug?: { art: string; id: string }; eingabe?: Record<string, unknown>;
+  id: string; werkzeug: string; gruppe: string; titel?: string; person?: string; bezug?: { art: string; id: string }; eingabe?: Record<string, unknown>; anlass?: string;
 }, e: { entscheidung: EntscheidungArt; von?: string | null; grund?: string; ergebnis?: string; at: string; nachgetragen?: boolean }): DauerEintrag {
   const art = v.bezug?.art === 'crm' && typeof v.eingabe?.art === 'string' ? String(v.eingabe.art).slice(0, 40) : undefined;
+  const agent = headVonVorschlag(v);
   return {
     at: e.at, typ: 'entscheidung', quelleId: v.id, werkzeug: v.werkzeug, gruppe: v.gruppe, entscheidung: e.entscheidung,
-    ...(v.bezug ? { bezug: bezugFuerProtokoll(v.bezug) } : {}), ...(art ? { vorschlagArt: art } : {}),
+    ...(v.bezug ? { bezug: bezugFuerProtokoll(v.bezug) } : {}), ...(art ? { vorschlagArt: art } : {}), ...(agent ? { agent } : {}),
     ...(kurz(v.titel, 200) ? { titel: kurz(v.titel, 200) } : {}),
     ...(e.von && PERSON.test(e.von) ? { person: e.von } : {}), ...(v.person && PERSON.test(v.person) ? { fuer: v.person } : {}),
     ...(kurz(e.grund, 2000) ? { grund: kurz(e.grund, 2000) } : {}), ...(kurz(e.ergebnis, 300) ? { ergebnis: kurz(e.ergebnis, 300) } : {}),

@@ -1136,6 +1136,12 @@ export interface WerkzeugKontext {
    * `fuehreAus`), nie aus der Eingabe des Modells. `an_head` hängt den Head-Thread daran und vererbt die Marken.
    */
   zoe?: { fadenId?: string; fremdGelesen?: boolean; vertraulich?: boolean };
+  /**
+   * Der Agent, der aufruft (Durchstich 09.10.) — Anlass „<Head>: …“ (lib/agenten/gespraech.ts `anlassVon`), gesetzt NUR vom Agenten-Bereich über
+   * `fuehreAus`. Werkzeuge, die selbst in den Stapel legen (`crm_vorschlag`), schreiben ihn in den Anlass — so zählt der Vorschlag beim Head
+   * (Freigaben-Zähler, „Als Nächstes“, Annahmequote: lib/agenten/katalog.ts `headVonVorschlag`).
+   */
+  herkunft?: string;
 }
 type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<string>;
 const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person, kontext) => {

@@ -87,7 +87,8 @@ function LaufKopf({ fa }: { fa: FadenAntwort }) {
           </li>
         ))}
       </ol>
-      {l.fehler && <Hinweis art="kritisch">{l.fehler}</Hinweis>}
+      {l.fehler && <Hinweis art={l.status === 'wartet' ? 'achtung' : 'kritisch'}>{l.fehler}</Hinweis>}
+      {!l.fehler && lauf?.hinweis && <Hinweis art="achtung">{lauf.hinweis}</Hinweis>}
     </div>
   );
 }

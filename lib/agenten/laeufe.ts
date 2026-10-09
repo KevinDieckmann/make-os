@@ -115,15 +115,25 @@ function ausFaden(f: Faden, basis: Partial<Lauf>): Partial<Lauf> {
     ...(l.schritte.length ? { schritte: { gesamt: l.schritte.length, fertig: l.schritte.filter(s => s.status === 'fertig' || s.status === 'uebersprungen').length, ...(l.schritte.find(s => s.status === 'laeuft') ? { aktuell: l.schritte.find(s => s.status === 'laeuft')!.titel } : {}) } } : {}),
     // Euro-Cent wie die Grenze (der Thread misst US-Cent — umgerechnet über lib/ki/kosten.ts, Feinschliff 09.10.).
     kosten: { cent: Math.round(inEuroCent(l.kostenCent) * 100) / 100, ...(l.kostenGrenzeCent ? { grenzeCent: l.kostenGrenzeCent } : {}) },
+    // Durchstich 09.10.: warum ein Lauf wartet (Not-Aus, Business-frei, Budget, Head aus, Hilfe-Frage) steht am Thread — jetzt auch in „Läuft“.
+    ...(l.status === 'wartet' && l.fehler ? { hinweis: l.fehler } : {}),
     fadenId: f.id, link: WEG.agenten({ f: f.id }),
   };
 }
+
+/** Ab wie vielen Minuten ohne Meldung des Arbeiters ein wartender Agenten-Lauf den Hinweis bekommt (der Arbeiter fragt jede Minute). */
+export const ARBEITER_STILL_MIN = 5;
+/** Ab wie vielen Minuten Warten der Hinweis erscheint (frisch eingereihte Läufe holt der Arbeiter binnen einer Minute). */
+export const WARTET_HINWEIS_MIN = 2;
+/** Der Satz, wenn niemand die Warteschlange abholt (z. B. nur `next start` ohne `worker.mjs`, Container „arbeiter“ steht). */
+export const arbeiterStillText = (minuten: number | null): string =>
+  `Der Hintergrund-Arbeiter meldet sich nicht (${minuten === null ? 'noch nie gemeldet' : `zuletzt vor ${minuten.toLocaleString('de-DE')} Min.`}) — der Lauf startet, sobald er wieder läuft.`;
 
 /**
  * Das Lesemodell (rein) — die EINE Filterstelle. `person` = die Person der Sitzung. Eigene Läufe voll, Systemläufe neutral,
  * fremde nie. Laufende zuerst, dann die jüngsten fertigen der letzten `LAEUFE_TAGE` Tage, höchstens `LAEUFE_MAX`.
  */
-export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Date(), opt: { privat?: boolean } = {}): Lauf[] {
+export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Date(), opt: { privat?: boolean; /** Minuten seit der letzten Meldung des Arbeiters (null = nie); fehlt = nicht prüfen. */ arbeiterMinuten?: number | null } = {}): Lauf[] {
   const grenze = new Date(jetzt.getTime() - LAEUFE_TAGE * 864e5).toISOString();
   // Gegenprüfung 09.10.: Konten ohne Privat-Bereich („nur Business“) sehen Systemläufe aus Privat nicht einmal neutral.
   const privatSehen = opt.privat !== false;
@@ -151,8 +161,10 @@ export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Da
       const l: Lauf = { ...basis, ...agentenLauf(a, q) };
       const f = fadenZu(a, q);
       const voll = f?.lauf && (f.lauf.auftragId === a.id || !f.lauf.auftragId) ? { ...l, ...ausFaden(f, l) } as Lauf : l;
-      // Die Warteschlange ist beendet (fertig, Fehler, abgebrochen), der Thread sagt noch „wartet/läuft“: die Warteschlange gilt.
-      if (!offen(status) && offen(voll.status)) { voll.status = status; if (ende) voll.ende = ende; }
+      // Die Warteschlange ist beendet (fertig, Fehler, abgebrochen), der Thread sagt noch „wartet/läuft“: die Warteschlange gilt — außer der Thread
+      // wartet MIT Grund (Not-Aus, Business-frei, Budget, Head aus, Hilfe-Frage): dann wartet er wirklich (Durchstich 09.10.; vorher stand so ein
+      // Lauf in „Fertig“, obwohl er nie lief).
+      if (!offen(status) && offen(voll.status) && !(voll.status === 'wartet' && f?.lauf?.fehler)) { voll.status = status; if (ende) voll.ende = ende; delete voll.hinweis; }
       if (voll.fadenId) gesehen.add(`fd:${voll.fadenId}`);
       voll.aktionen = offen(voll.status) ? ['abbrechen'] : ['neu-starten'];
       raus.push(voll); gesehen.add(a.id);
@@ -201,6 +213,13 @@ export function laeufeBauen(q: LaufQuellen, person: string, jetzt: Date = new Da
     raus.push({ id: `log:${e.id}`, quelle: e.person ? 'auftrag' : 'takt', art: 'einmalig', titel: e.person ? (e.title || neutralerTitel(e.agent)).slice(0, 140) : neutralerTitel(e.agent), status: 'fertig', start: e.ts, ende: e.ts, link: WEG.agenten(), aktionen: [] });
   }
 
+  // Durchstich 09.10.: ohne Arbeiter (nur `next start`) bleibt ein Agenten-Lauf ewig „wartet“ — das steht jetzt dabei.
+  if (opt.arbeiterMinuten !== undefined && (opt.arbeiterMinuten === null || opt.arbeiterMinuten > ARBEITER_STILL_MIN)) {
+    for (const l of raus) {
+      if (l.status !== 'wartet' || l.hinweis || !(l.quelle === 'faden' || l.quelle === 'skill' || l.quelle === 'plan' || l.quelle === 'auftrag' || l.quelle === 'takt')) continue;
+      if (jetzt.getTime() - Date.parse(l.start) >= WARTET_HINWEIS_MIN * 60_000) l.hinweis = arbeiterStillText(opt.arbeiterMinuten);
+    }
+  }
   const laufend = raus.filter(l => offen(l.status)).sort((a, b) => b.start.localeCompare(a.start));
   const fertig = raus.filter(l => !offen(l.status)).sort((a, b) => (b.ende ?? b.start).localeCompare(a.ende ?? a.start));
   return [...laufend, ...fertig.slice(0, Math.max(0, LAEUFE_MAX - laufend.length))];
@@ -243,6 +262,8 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
     const s = await sicher(loadJson<{ berichte?: BerichtRoh[] }>(chefStand(umfang.haushalt)), null);
     if (s?.berichte?.length) berichte.push({ headId: 'finanzen-privat', quelle: 'finanzchef', berichte: s.berichte });
   }
+  const { letzterTakt } = await import('@/lib/hoi/innen');
+  const arbeiterMinuten = await letzterTakt(jetzt.toISOString()).catch(() => null);
   return laeufeBauen({
     auftraege: auftraege as AuftragRoh[],
     faeden: (faedenRoh?.faeden ?? []).filter(f => f.besitzer === person),
@@ -250,7 +271,7 @@ export async function laeufeLesen(person: string, jetzt: Date = new Date()): Pro
     skills: new Map(skills.map(s => [s.id, { name: s.name, headId: s.headId, zeitplan: s.ausloeser.art === 'zeitplan' }])),
     berichte,
     log,
-  }, person, jetzt, { privat });
+  }, person, jetzt, { privat, arbeiterMinuten });
 }
 
 // ── Server: abbrechen, neu starten ───────────────────────────────────────────────────────────────────────────────────────
@@ -335,6 +356,14 @@ export async function laufNeuStarten(person: string, laufId: unknown, opt: { tro
   if (!pruef.ok) return pruef;
   const { angelegt, schonDa } = await reihe([{ art: 'agent', name: LAUF_AGENT, auftrag: JSON.stringify(eingabe), eingabe: eingabe!, person, anlass: 'Neu gestartet von Hand' }]);
   if (!angelegt.length && schonDa) return { ok: false, status: 409, fehler: 'Derselbe Lauf wartet schon.' };
+  // Durchstich 09.10.: ein Thread-Lauf bekommt seinen neuen Auftrag am Thread („wartet“) — vorher blieb ein abgebrochener Thread „abgebrochen“,
+  // der Arbeiter übersprang ihn („abgebrochen — nicht gelaufen“) und „Neu starten“ tat still nichts (auch nach dem Not-Aus).
+  if (eingabe!.art === 'faden' && typeof eingabe!.fadenId === 'string' && angelegt[0]) {
+    const { fadenAendern } = await import('./faeden-server');
+    const { laufWartet } = await import('./faeden');
+    const neuId = angelegt[0].id;
+    await fadenAendern(person, eingabe!.fadenId, f => ({ ...f, status: 'wartet', lauf: laufWartet(new Date().toISOString(), neuId, f.lauf?.kostenGrenzeCent) })).catch(() => null);
+  }
   return { ok: true, text: 'Neu gestartet.', auftragId: angelegt[0]?.id };
 }
 

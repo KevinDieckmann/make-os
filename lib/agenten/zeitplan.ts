@@ -201,6 +201,12 @@ export interface ZeitplanLage {
   auftraege: readonly AuftragSpurAgent[];
   /** Threads (aller betroffenen Personen) mit Herkunft. */
   faeden: readonly { skillId?: string; planId?: string; erstellt: string }[];
+  /**
+   * Hintergrund-KI der Person (die Person kann nur einschränken — System › Datenschutz). Durchstich 09.10.: vorher reihte der Takt nach der
+   * Instanz-Einstellung ein, der Arbeiter verwarf den Lauf dann still als „Hintergrund-KI aus“ — täglich, und ein wartender Thread blieb stehen.
+   * Fehlt = nur die Instanz zählt.
+   */
+  kiPerson?: (person: string) => boolean;
 }
 
 const betrifft = (e: Record<string, unknown> | undefined, k: Pick<ZeitplanKandidat, 'art' | 'id'>): boolean =>
@@ -225,6 +231,7 @@ export function zeitplaeneFaelligRein(kandidaten: readonly ZeitplanKandidat[], l
   const zaehler = new Map<string, number>();
   const raus: Faellig[] = [];
   for (const k of kandidaten) {
+    if (lage.kiPerson && !lage.kiPerson(k.person)) continue;
     const frei = k.bereich === 'business' ? lage.frei(k.person) : [];
     const slot = faelligerSlot(k.regel, jetztWand, frei);
     if (!slot || schonGelaufen(k, slot, lage)) continue;
@@ -353,7 +360,9 @@ export async function zeitplanLage(jetzt: Date, personen: readonly string[], bus
   }
   const frei = new Map<string, readonly Spanne[]>();
   for (const p of business) frei.set(p, await businessFreiFensterFuer(p, tagPlus(heute, -1), tagPlus(heute, 1)).catch(() => []));
-  return { jetzt, kiHintergrund: !!ki.hintergrund, frei: p => frei.get(p) ?? [], auftraege, faeden };
+  const kiJe = new Map<string, boolean>();
+  for (const p of personen) kiJe.set(p, !!(await kiSchalterFuer(p).catch(() => ({ hintergrund: false }))).hintergrund);
+  return { jetzt, kiHintergrund: !!ki.hintergrund, frei: p => frei.get(p) ?? [], auftraege, faeden, kiPerson: p => kiJe.get(p) ?? !!ki.hintergrund };
 }
 
 // ── Business-frei vorbei: wartende Läufe nachholen (Paket 4b) ──────────────────────────────────────────────────────────
@@ -370,12 +379,13 @@ export const NACHHOLEN_ANLASS = 'Takt: Business-frei vorbei';
  * (und das Takt-Fenster offen) — EINMAL je Wartezeit: nicht, wenn für den Thread schon ein Auftrag offen ist oder seit dem letzten Warten
  * einer eingereiht wurde, höchstens `NACHHOLEN_JE_TAG` je Tag. Hintergrund-KI aus → nichts.
  */
-export function businessFreiNachholenRein(faeden: readonly { person: string; faden: Faden }[], lage: Pick<ZeitplanLage, 'jetzt' | 'kiHintergrund' | 'frei' | 'auftraege'>): Faellig[] {
+export function businessFreiNachholenRein(faeden: readonly { person: string; faden: Faden }[], lage: Pick<ZeitplanLage, 'jetzt' | 'kiHintergrund' | 'frei' | 'auftraege' | 'kiPerson'>): Faellig[] {
   if (!lage.kiHintergrund) return [];
   const jetztWand = wandzeit(lage.jetzt), heute = tagVon(jetztWand);
   const raus: Faellig[] = [];
   for (const { person, faden: f } of faeden) {
     if (f.besitzer !== person || f.agent.art === 'zoe' || !wartetAufBusinessFrei(f)) continue;
+    if (lage.kiPerson && !lage.kiPerson(person)) continue;
     if (headDef(f.agent.headId)?.bereich !== 'business') continue;
     if (!taktOffen(jetztWand, lage.frei(person))) continue;
     const zuDiesem = lage.auftraege.filter(a => a.name === LAUF_AGENT && a.eingabe?.fadenId === f.id);

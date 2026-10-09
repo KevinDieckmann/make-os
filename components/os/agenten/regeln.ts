@@ -479,3 +479,13 @@ export const wartendeFaeden = (faeden: readonly FadenKurz[]): FadenKurz[] => fae
 export const FADEN_STATUS_NAME: Readonly<Record<FadenKurz['status'], string>> = {
   offen: 'offen', wartet: 'wartet auf dich', laeuft: 'läuft', fertig: 'fertig', fehler: 'Fehler', abgebrochen: 'abgebrochen',
 };
+
+/**
+ * Freigaben, die nicht im Stapel stehen (Freigabe-Listen der eingebauten Heads und des Finanzchefs): Server-Zählung (GET /api/agenten,
+ * `freigabenJeHead`) minus die offenen Stapel-Vorschläge der Person. EINE Regel für Kopfleiste und „Wartet auf dich“ (Durchstich 09.10.).
+ */
+export const freigabenBeiHeads = (gesamt: number | undefined, stapelOffen: number | undefined): number =>
+  gesamt === undefined || stapelOffen === undefined ? 0 : Math.max(0, gesamt - stapelOffen);
+
+/** Ereignis-Auslöser (neue Mail, neuer Lead, Zahlungseingang) sind noch an keine Quelle angebunden (Durchstich 09.10.) — der Satz im Skill-Editor. */
+export const EREIGNIS_NOCH_NICHT = 'Ereignisse sind noch nicht angebunden — so ein Skill startet bis dahin nicht von selbst. Er läuft, wenn ein Head ihn im Chat lädt, oder mit einem Zeitplan.';

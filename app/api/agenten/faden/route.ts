@@ -185,15 +185,36 @@ export async function POST(req: Request) {
     }
     case 'loeschen': {
       if (stand === undefined) return nein(400, 'Stand fehlt.');
+      let geloescht = new Set<string>();
       const r = await bestandAendern<boolean>(person, b => {
         const f = b.faeden.find(x => x.id === fadenId);
         if (!f) return { ok: false, status: 404, fehler: 'Diesen Thread gibt es nicht (mehr).' };
         if (fadenStand(f) !== stand) return { ok: false, status: 409, fehler: 'Der Thread hat sich inzwischen geändert — bitte neu laden.' };
-        // Der Thread samt seiner Mitarbeiter-Threads (ein Gespräch); laufende Läufe zuerst abbrechen.
-        const weg = new Set([f.id, ...b.faeden.filter(x => x.elternId === f.id).map(x => x.id)]);
+        // Der Thread samt ALLEN Threads darunter (ein Gespräch: ZOE → Head → Mitarbeiter); laufende Läufe zuerst abbrechen.
+        // Durchstich 09.10.: vorher gingen nur die direkten Kinder — beim Löschen eines ZOE-Gesprächs blieben die Mitarbeiter-Threads der Heads
+        // verwaist stehen, und ihre wartenden Läufe liefen (und kosteten) trotzdem.
+        const weg = new Set([f.id]);
+        for (let neu = true; neu;) { neu = false; for (const x of b.faeden) if (x.elternId && weg.has(x.elternId) && !weg.has(x.id)) { weg.add(x.id); neu = true; } }
         if (b.faeden.some(x => weg.has(x.id) && x.lauf?.status === 'laeuft')) return { ok: false, status: 409, fehler: 'Ein Lauf in diesem Thread läuft noch — erst abbrechen.' };
+        geloescht = weg;
         return { bestand: { ...b, faeden: b.faeden.filter(x => !weg.has(x.id)) }, e: true };
       });
+      // Wartende Läufe dieser Threads verlassen die Warteschlange (sie fänden ihren Thread nicht mehr).
+      if (r.ok && geloescht.size) {
+        const { abbrechenWo } = await import('@/lib/zoe/auftraege');
+        const { LAUF_AGENT } = await import('@/lib/agenten/typen');
+        const ids = geloescht;
+        await abbrechenWo(a => a.name === LAUF_AGENT && a.person === person && typeof a.eingabe?.fadenId === 'string' && ids.has(a.eingabe.fadenId), 'Thread gelöscht.').catch(() => []);
+        // Offene Plan-Freigaben dieser Threads im Stapel entfallen (sonst blieben sie offen und ließen sich nie mehr freigeben).
+        try {
+          const { lies, entscheide } = await import('@/lib/zoe/stapel');
+          const { planAusBezug } = await import('@/lib/agenten/plan-stapel');
+          for (const v of await lies('offen')) {
+            const b = v.bezug?.art === 'plan' ? planAusBezug(v.bezug.id) : null;
+            if (b && v.person === person && ids.has(b.fadenId)) await entscheide(v.id, 'fehlgeschlagen', { ergebnis: 'Thread gelöscht — der Plan entfällt.', von: person });
+          }
+        } catch { /* der Thread ist gelöscht — ein offener Plan-Eintrag lässt sich noch ablehnen */ }
+      }
       return r.ok ? NextResponse.json({ ok: true, geloescht: fadenId }) : nein(r.status, r.fehler);
     }
     case 'bewerten': {

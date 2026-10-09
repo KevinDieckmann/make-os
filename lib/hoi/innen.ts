@@ -41,7 +41,8 @@ export async function herzschlag(): Promise<void> {
   try { await fs.mkdir(systemOrdner(), { recursive: true }); await fs.writeFile(path.join(systemOrdner(), 'takt.txt'), new Date().toISOString()); } catch { /* ohne Datei bleibt der Takt grau */ }
 }
 
-async function letzterTakt(jetzt: string): Promise<number | null> {
+/** Vor wie vielen Minuten hat sich der Arbeiter zuletzt gemeldet (null = nie)? Auch für „Läuft“ im Agenten-Bereich (Durchstich 09.10.). */
+export async function letzterTakt(jetzt: string): Promise<number | null> {
   try { const t = (await fs.readFile(path.join(systemOrdner(), 'takt.txt'), 'utf8')).trim(); const z = Date.parse(t); return Number.isNaN(z) ? null : Math.max(0, Math.round((Date.parse(jetzt) - z) / 60_000)); } catch { return null; }
 }
 

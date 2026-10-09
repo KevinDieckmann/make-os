@@ -102,6 +102,11 @@ export interface Brain {
   nordstern?: string | null;
   /** Team-Zeilen aus `team--<haushalt>` (28.09., U4) — Namen nur aus den Daten; fehlt es, gelten die Rollen-Platzhalter. */
   team?: string[];
+  /**
+   * Offene Jahresziele des laufenden Jahres, die die Person sieht (Durchstich 09.10., lib/planung/jahresziele-sicht.ts — dieselbe Stelle wie der
+   * Agenten-Überblick). Privat nur für volle Mitglieder. Optional: fehlt es, sagt der Kontext „keine hinterlegt“.
+   */
+  jahresziele?: { titel: string; bereich: 'privat' | 'business'; fortschritt: number | null }[];
   /** Geldfluss aus der Finanzplanung + Mandate aus dem CRM. */
   geld: { forderungen: number; vorbereitung: number; ueberfaelligeForderungen: number };
   mandate: { aktiv: number; gespraech: number; cashflow: number };
@@ -172,6 +177,12 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
   const geburtstage = await geburtstageIm({ von: heute, bis: anlaesseBis }, person).catch(() => []);
   // Nordstern (08.10. abends): aus dem Bestand des Haushalts der Person — wirft nie, ohne Haushalt/Eintrag null.
   const nordstern = await nordsternFuerPerson(person);
+  // Jahresziele (Durchstich 09.10.): wie der Agenten-Überblick — Privat nur für volle Mitglieder (Konto mit Haushalt). Wirft nie.
+  const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
+  const { haushaltFuer: haushaltDerPerson } = await import('@/lib/finanzen/haushalt/zugriff');
+  const jahresziele = (await personImHaushaltDesInhabers(person).catch(() => false))
+    ? (await jahreszieleFuer({ privat: !!(await haushaltDerPerson(person).catch(() => null)), heute })).map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt }))
+    : [];
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 
   const store = val(tasksR);
@@ -248,6 +259,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
       return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? tag(m.faellig) : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
     })(),
     nordstern,
+    jahresziele,
     team: teamZeilenAus(val(teamR) ?? []),
     geld: (() => {
       const re = (val(fplanR)?.rechnungen ?? []).filter(r => r.firmaId !== 'privat');
@@ -431,13 +443,16 @@ function blockGedaechtnisRoh(b: Brain, max = 6): string {
  * Nordstern, Meilensteine, Team — alles aus den Daten (08.10. abends). Nordstern und Meilensteine sind Bestände des Haushalts und stehen
  * deshalb im <daten>-Rahmen (Wissen, nie Anweisung); fehlt etwas, steht dort ehrlich „keiner/keine hinterlegt“ — nie etwas Erfundenes.
  */
-export function blockZiele(b?: Brain): string {
+export function blockZiele(b?: Brain, bereich?: 'privat' | 'business'): string {
   const ms = b?.meilensteine ?? [];
   const nordstern = b?.nordstern ? daten('nordstern', b.nordstern) : 'kein Nordstern hinterlegt — er wird unter Planung › Jahr gepflegt. Erfinde keinen; frag nach, wenn er für die Antwort fehlt.';
+  // Durchstich 09.10.: die Jahresziele wie im Agenten-Überblick — ein Head nur die seines Bereichs (Business nie Privat).
+  const jz = (b?.jahresziele ?? []).filter(z => !bereich || z.bereich === bereich);
+  const jahresziele = jz.length ? daten('jahresziele', jz.map(z => `- ${z.titel} (${z.bereich === 'privat' ? 'Privat' : 'Business'}${z.fortschritt !== null ? `, ${z.fortschritt} %` : ''})`).join('\n')) : 'keine hinterlegt.';
   const meilensteine = ms.length ? daten('meilensteine', ms.map(m => `- ${m}`).join('\n')) : 'keine hinterlegt.';
   const team = b?.team ?? [];
   const teamText = team.length ? team.map(t => `- ${t}`).join('\n') : 'kein Team hinterlegt — es wird unter Konto › Team gepflegt. Nenne keine Person, die hier nicht steht.';
-  return `NORDSTERN-ZIEL: ${nordstern}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamText}`;
+  return `NORDSTERN-ZIEL: ${nordstern}\n\nJAHRESZIELE (Planung › Jahr): ${jahresziele}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamText}`;
 }
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */

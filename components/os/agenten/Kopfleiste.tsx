@@ -14,7 +14,7 @@ import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, RAND, SCHRIFT, TIEF, T
 import { Chip, Knopf, SymbolKnopf } from '../ui';
 import { useAgenten, type DialogArt } from './kontext';
 import { einstellungSenden } from './daten';
-import { euro, kostenImMonat } from './regeln';
+import { euro, freigabenBeiHeads, kostenImMonat } from './regeln';
 import { WEG } from '@/lib/wege';
 
 /** Ein Menü unter einem Knopf: Esc und Klick daneben schließen; die Einträge sind ganze Knöpfe (≥ 44 px). */
@@ -82,7 +82,8 @@ export function BudgetBalken({ grenzeCent: vorgabe }: { grenzeCent?: number }) {
 export function Kopfleiste() {
   const { form, stapel, laeufe, dialog, bestaetigen, melde, agenten } = useAgenten();
   const handy = form === 'handy';
-  const freigaben = stapel.zustand === 'da' ? stapel.daten.offen : agenten.zustand === 'da' ? agenten.daten.ueberblick.freigaben.anzahl : 0;
+  const gesamtFreigaben = agenten.zustand === 'da' ? agenten.daten.ueberblick.freigaben.anzahl : undefined;
+  const freigaben = stapel.zustand === 'da' ? stapel.daten.offen + freigabenBeiHeads(gesamtFreigaben, stapel.daten.offen) : gesamtFreigaben ?? 0;
   const geplant = laeufe.zustand === 'da' ? laeufe.daten.plan.length : 0;
   const notAus = agenten.zustand === 'da' && agenten.daten.notAus;
   const darf = agenten.zustand === 'da' && agenten.daten.notAusAendern !== false;
