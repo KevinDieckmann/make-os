@@ -13,13 +13,16 @@
 // Update 2 (16.10., B4/B10): oben „Nächster Schritt“ mit Anleitung und Fortschritt je Ebene; je Schritt Voraussetzungen („erst …“), worauf
 // er wartet und welche Zahl er einträgt (Datenkarte) — alles nur über `fortschrittVon`/`istFertig`/`offeneVoraussetzungen` (keine zweite
 // Fertig-Regel). Fällt ein schon einmal grüner Schritt zurück, steht oben „braucht dich“ (`zurueckgefallen`, dieselbe Regel wie auf Heute).
+// Rundgang 09.10.: Ablauf, Gruppen, Etappen, Datenkarte und Schritt-Texte mit Daten der gewachsenen Instanz (Upload-Tage, Stichtag, „eure
+// Entscheidung vom …“) nur mit Altbestand (`Kontext.altbestand`, der Server entscheidet) — sonst die neutrale Fassung (`ablaufFuer`,
+// `gruppenFuer`, `etappenFuer`, `datenkarteFuer`, `texteFuer`). Fertig-Regel und Prüfungen bleiben unverändert.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  ABLAUF, DATENKARTE, EBENEN, ETAPPEN, GRUPPEN, datenkarteMitId, ebeneMitId, fortschrittVon, gruppeVon, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
-  schritteFuer, sichtbarFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
+  EBENEN, ablaufFuer, datenkarteFuer, ebeneMitId, etappenFuer, fortschrittVon, gruppeVon, gruppenFuer, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
+  schritteFuer, sichtbarFuer, texteFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
 } from '@/lib/make-one/onboarding-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Leerzustand, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
 
@@ -122,8 +125,9 @@ const befundFarbe = (b: PruefBefund) => (b.erfuellt ? LEUCHT.gut : b.leer ? C.in
  * wartet, und welche Zahlen der Datenkarte er einträgt. Nichts davon sperrt — es sind Hinweise.
  */
 function SchrittHinweise({ s, z }: { s: Schritt; z: Zustand | null }) {
-  const offen = offeneVoraussetzungen(s, z?.ich ?? null, z);
-  const orte = (s.datenOrt ?? []).map(datenkarteMitId).filter((d): d is NonNullable<typeof d> => !!d);
+  const offen = offeneVoraussetzungen(s, z?.ich ?? null, z).map(v => texteFuer(v, z?.ich));
+  const karte = datenkarteFuer(!!z?.ich?.altbestand);
+  const orte = (s.datenOrt ?? []).map(id => karte.find(d => d.id === id)).filter((d): d is NonNullable<typeof d> => !!d);
   if (!offen.length && !s.wartetAuf && !orte.length) return null;
   return (
     <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
@@ -135,7 +139,8 @@ function SchrittHinweise({ s, z }: { s: Schritt; z: Zustand | null }) {
 }
 
 /** Eine Schritt-Zeile. Funktion statt Komponente — sonst baut React sie bei jedem Klick neu auf. */
-function schrittZeile(s: Schritt, z: Zustand | null, haken: (id: string, an: boolean) => void, mitWann: boolean) {
+function schrittZeile(roh: Schritt, z: Zustand | null, haken: (id: string, an: boolean) => void, mitWann: boolean) {
+  const s = texteFuer(roh, z?.ich);
   const befund = s.pruefung ? z?.befunde[s.pruefung] : undefined;
   // Ein „leerer“ Befund (nichts zu prüfen) lässt das Häkchen entscheiden — dann ist der Haken klickbar.
   const automatisch = !!befund && !befund.leer && !s.bestaetigen;
@@ -152,7 +157,7 @@ function schrittZeile(s: Schritt, z: Zustand | null, haken: (id: string, an: boo
         rechts={
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <Chip farbe={s.ebene === 'ich' ? LEUCHT.schlaf : s.nurInhaber ? LEUCHT.puls : LEUCHT.beziehung}>{werText(s)}</Chip>
-            {mitWann && <Chip farbe={C.inkLeise}>{GRUPPEN[gruppeVon(s)].titel}</Chip>}
+            {mitWann && <Chip farbe={C.inkLeise}>{gruppenFuer(!!z?.ich?.altbestand)[gruppeVon(s)].titel}</Chip>}
             {s.optional && <Chip farbe={C.inkLeise}>optional</Chip>}
             {frueher && <Chip farbe={LEUCHT.achtung}>früher abgehakt — bitte bestätigen</Chip>}
             {befund && <Chip umbrechen farbe={befundFarbe(befund)}>{befund.erfuellt ? '✓ ' : befund.leer ? '○ ' : '◇ '}{befund.wert}</Chip>}
@@ -179,7 +184,7 @@ function schrittZeile(s: Schritt, z: Zustand | null, haken: (id: string, an: boo
 
 /** Schritte nach Etappen gruppiert — mit Satz und den Hinweisen der Etappe (entschieden, aber noch nicht gebaut). */
 function NachEtappen({ schritte, z, haken, start, mitWann = false, hinweise = true }: { schritte: readonly Schritt[]; z: Zustand | null; haken: (id: string, an: boolean) => void; start: number; mitWann?: boolean; hinweise?: boolean }) {
-  const etappen = ETAPPEN.filter(e => schritte.some(s => s.etappe === e.nr));
+  const etappen = etappenFuer(!!z?.ich?.altbestand).filter(e => schritte.some(s => s.etappe === e.nr));
   return (
     <>
       {etappen.map((e, i) => {
@@ -201,8 +206,9 @@ function NachEtappen({ schritte, z, haken, start, mitWann = false, hinweise = tr
   );
 }
 
-/** Die Datenkarte (ONBOARDING_PLAN.md A3): je Fakt EIN Eingabeort. */
-export function DatenkarteKarte({ i }: { i: number }) {
+/** Die Datenkarte (ONBOARDING_PLAN.md A3): je Fakt EIN Eingabeort. `altbestand`: mit den Daten der gewachsenen Instanz (sonst neutral). */
+export function DatenkarteKarte({ i, altbestand = false }: { i: number; altbestand?: boolean }) {
+  const DATENKARTE = datenkarteFuer(altbestand);
   return (
     <Karte i={i} id="datenkarte">
       <Ueberschrift rechts={`${DATENKARTE.length} Fakten`}>Datenkarte — welche Zahl wohin</Ueberschrift>
@@ -239,7 +245,8 @@ export function EbeneView({ ebene }: { ebene: Ebene }) {
   const gesperrt = !!meta.nurInhaber && !!z && !ich?.inhaber;
   const schritte = gesperrt ? [] : schritteAufEbene(ebene, ich);
   const f = fortschrittVon(schritte, z);
-  const weiter = [{ id: 'alles', titel: 'Einrichtung — alle deine Schritte', satz: 'Freitag, Samstag und „einzeln bis 16.10.“ in der richtigen Reihenfolge.', href: '/os/onboarding' },
+  const namen = gruppenFuer(!!ich?.altbestand);
+  const weiter = [{ id: 'alles', titel: 'Einrichtung — alle deine Schritte', satz: `${namen.freitag.titel.split(' · ')[0]}, ${namen.samstag.titel} und „${namen.spaeter.titel}“ in der richtigen Reihenfolge.`, href: '/os/onboarding' },
     ...EBENEN.filter(e => e.id !== ebene && (!e.nurInhaber || !!ich?.inhaber))];
   return (
     <Seite titel={meta.titel} unter={meta.satz} rechts={<Knopf leise href="/os/onboarding">Einrichtung ›</Knopf>}>
@@ -260,7 +267,7 @@ export function EbeneView({ ebene }: { ebene: Ebene }) {
             </p>
           </Karte>
           <NachEtappen schritte={schritte} z={z} haken={haken} start={1} mitWann />
-          {ebene === 'gemeinsam' && <DatenkarteKarte i={MAX_I} />}
+          {ebene === 'gemeinsam' && <DatenkarteKarte i={MAX_I} altbestand={!!ich?.altbestand} />}
         </>
       )}
       <Karte i={MAX_I}>
@@ -289,7 +296,7 @@ function abschnitte(meine: readonly Schritt[], z: Zustand | null): Gruppe[] {
  * Ohne solche Schritte keine Karte.
  */
 function BrauchtDich({ schritte, z }: { schritte: readonly Schritt[]; z: Zustand | null }) {
-  const zurueck = zurueckgefallen(schritte, z);
+  const zurueck = zurueckgefallen(schritte, z).map(s => texteFuer(s, z?.ich));
   if (!zurueck.length) return null;
   return (
     <Hinweis art="kritisch" rolle="status" titel={zurueck.length === 1 ? '1 Punkt braucht dich' : `${zurueck.length} Punkte brauchen dich`}>
@@ -300,7 +307,8 @@ function BrauchtDich({ schritte, z }: { schritte: readonly Schritt[]; z: Zustand
 }
 
 /** B4: der nächste Schritt oben — mit Anleitung, Ort und den Hinweisen (über `fortschrittVon`, keine eigene Reihenfolge). */
-function NaechsterSchritt({ s, z }: { s: Schritt; z: Zustand | null }) {
+function NaechsterSchritt({ s: roh, z }: { s: Schritt; z: Zustand | null }) {
+  const s = texteFuer(roh, z?.ich);
   const befund = s.pruefung ? z?.befunde[s.pruefung] : undefined;
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.linie}` }}>
@@ -338,6 +346,8 @@ export function OnboardingUebersicht() {
   const meine = schritteFuer(z?.ich ?? null);
   const f = fortschrittVon(meine, z);
   const gruppen = abschnitte(meine, z);
+  const alt = !!z?.ich?.altbestand;
+  const namen = gruppenFuer(alt);
   return (
     <Seite titel="Einrichtung" unter="Alles verbinden und eure echten Zahlen eintragen — Schritt für Schritt, mit Erklärung.">
       <Meldung text={meldung} />
@@ -348,15 +358,15 @@ export function OnboardingUebersicht() {
         <EbenenStand z={z} />
         {f.naechster && <NaechsterSchritt s={f.naechster} z={z} />}
         <p style={{ ...absatz, marginTop: 12 }}>
-          Gezählt werden deine Schritte („Meine Einrichtung“), die gemeinsamen{z?.ich?.inhaber ? ' und — als Inhaber — die der Instanz' : ''}, für Freitag und Samstag.
-          „Einzeln bis 16.10.“ und Optionales zählt erst, wenn es getan ist. Vieles prüft die Software selbst; ein roter Befund schlägt jedes Häkchen.
+          Gezählt werden deine Schritte („Meine Einrichtung“), die gemeinsamen{z?.ich?.inhaber ? ' und — als Inhaber — die der Instanz' : ''}, für „{namen.freitag.titel}“ und „{namen.samstag.titel}“.
+          „{namen.spaeter.titel}“ und Optionales zählt erst, wenn es getan ist. Vieles prüft die Software selbst; ein roter Befund schlägt jedes Häkchen.
           Wie weit die Daten insgesamt sind, zeigt die <Link href="/os/datenbasis" style={stark}>Datenbasis ›</Link>
         </p>
       </Karte>
 
       <Karte i={1}>
         <Ueberschrift>So läuft die Einrichtung</Ueberschrift>
-        <Liste>{ABLAUF.map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
+        <Liste>{ablaufFuer(alt).map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
         <p style={{ ...absatz, marginTop: 10 }}>
           Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur die Inhaber), <strong style={stark}>Gemeinsam</strong> (Haushalt und
           Firmen — alle sehen den Stand) und <strong style={stark}>Meine Einrichtung</strong> (jede Person für sich). Prüfungen zeigen nur ja/nein oder Zähler — nie
@@ -370,8 +380,8 @@ export function OnboardingUebersicht() {
         return (
           <div key={g} style={{ display: 'contents' }}>
             <Karte i={Math.min(2 + gi, MAX_I)} flach>
-              <Ueberschrift rechts={`${fertig} von ${liste.length}`}>{GRUPPEN[g].titel}</Ueberschrift>
-              <p style={absatz}>{GRUPPEN[g].satz}</p>
+              <Ueberschrift rechts={`${fertig} von ${liste.length}`}>{namen[g].titel}</Ueberschrift>
+              <p style={absatz}>{namen[g].satz}</p>
             </Karte>
             <NachEtappen schritte={liste} z={z} haken={haken} start={3 + gi} hinweise={g !== 'spaeter'} />
           </div>
@@ -393,7 +403,7 @@ export function OnboardingUebersicht() {
           ))}
         </div>
       </Karte>
-      <DatenkarteKarte i={MAX_I} />
+      <DatenkarteKarte i={MAX_I} altbestand={alt} />
     </Seite>
   );
 }

@@ -97,6 +97,11 @@ export interface Schritt {
   wartetAuf?: string;
   /** Welche Zahlen der Datenkarte hier eingetragen werden (Kennungen aus `DATENKARTE`). */
   datenOrt?: string[];
+  /**
+   * Die Fassung für eine Instanz OHNE Altbestand (Rundgang 09.10.): wo Titel oder Anleitung Daten und Entscheidungen der gewachsenen
+   * Instanz tragen (Stichtag, Planbeginn, „eure Entscheidung vom …“), steht hier der neutrale Text. Gelesen NUR über `texteFuer`.
+   */
+  allgemein?: Partial<Pick<Schritt, 'titel' | 'warum' | 'wie' | 'danach'>>;
 }
 
 /** Die drei Ebenen als Seiten (Filter auf die Einrichtung). `nurInhaber`: die Seite zeigt ihre Schritte nur Inhabern. */
@@ -109,13 +114,18 @@ export const EBENEN: readonly EbeneSeite[] = [
 /** Die Ebene per Kennung (null = unbekannt). */
 export const ebeneMitId = (id: string): EbeneSeite | null => EBENEN.find(e => e.id === id) ?? null;
 
-/** Ein Hinweis in einer Etappe: entschieden, aber noch nicht gebaut — kein Schritt, kein Häkchen. */
-export interface EtappenHinweis { titel: string; satz: string; wann: string }
-export interface Etappe { nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[] }
+/**
+ * Ein Hinweis in einer Etappe: entschieden, aber noch nicht gebaut — kein Schritt, kein Häkchen. `nurAltbestand`: betrifft nur die
+ * gewachsene Instanz (z. B. ein Abschalten nach ihrem Upload) — eine neue Instanz zeigt ihn nicht.
+ */
+export interface EtappenHinweis { titel: string; satz: string; wann: string; nurAltbestand?: true }
+/** `allgemein`: Titel/Satz für eine Instanz ohne Altbestand (ohne Upload-Tag und Daten) — gelesen nur über `etappenFuer`. */
+export interface Etappe { nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[]; allgemein?: { titel?: string; satz?: string } }
 
 export const ETAPPEN: Etappe[] = [
   { nr: 0, titel: 'Am Upload-Tag und direkt danach', satz: 'Am Server, nur der Inhaber — am Abend des Uploads. Die zweite Kopie am Mac geht erst am Tag nach der ersten Nachtsicherung.',
-    hinweise: [{ titel: 'Mac-Zulieferer wird abgeschaltet', wann: 'nach dem Upload', satz: 'Alles läuft nur noch auf dem Server; am Mac bleibt nur der Mail-Weg. Unter Einstellungen › Verbindungen › Mac-Zulieferer die Apple-Erinnerungen einmal als Aufgaben übernehmen (Vorschau → Bestätigen) — danach ist der Zulieferer aus; am Mac den Dienst mit scripts/mac-zulieferer-entfernen.sh entfernen. Kein eigener Zulieferer-Schlüssel mehr.' }] },
+    allgemein: { titel: 'Server und Instanz', satz: 'Am Server, nur die Inhaber — bevor die anderen loslegen. Die zweite Kopie der Sicherung geht erst nach der ersten Nachtsicherung.' },
+    hinweise: [{ titel: 'Mac-Zulieferer wird abgeschaltet', wann: 'nach dem Upload', nurAltbestand: true, satz: 'Alles läuft nur noch auf dem Server; am Mac bleibt nur der Mail-Weg. Unter Einstellungen › Verbindungen › Mac-Zulieferer die Apple-Erinnerungen einmal als Aufgaben übernehmen (Vorschau → Bestätigen) — danach ist der Zulieferer aus; am Mac den Dienst mit scripts/mac-zulieferer-entfernen.sh entfernen. Kein eigener Zulieferer-Schlüssel mehr.' }] },
   { nr: 1, titel: 'Zugang, Sicherheit, Datenschutz', satz: 'Wer reinkommt, wie er sich ausweist, wer was sieht — und was die Instanz mit Daten tun darf.' },
   { nr: 2, titel: 'Verbindungen', satz: 'Kalender, Postfächer und Geräte. Jede Person verbindet nur ihre eigenen Konten; niemand liest die Post einer anderen Person.',
     hinweise: [{ titel: 'ZOE aufs Handy über WhatsApp', wann: 'kommt in Phase 1', satz: 'ZOE bekommt eine eigene, zweite WhatsApp-Business-Nummer — nur für ZOE, getrennt von der Business-Nummer der Inbox. Telegram ist raus; bis dahin gibt es dafür keinen Schritt.' }] },
@@ -141,6 +151,33 @@ export const ABLAUF: { wann: string; was: string }[] = [
   { wann: 'Samstag 10.10. (höchstens etwa 8 Stunden)', was: 'Alle Schritte mit „Samstag“: vormittags jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Die zweite Person braucht deutlich weniger Zeit.' },
   { wann: 'Einzeln bis 16.10.', was: 'Alles mit „einzeln“: zweite Kopie am Mac und Probe (frühestens Sonntag), Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss (Oktober) kommt Anfang November. Der Altbestand (0.5) muss vor dem Update am 16.10. übernommen sein.' },
 ];
+
+/**
+ * Der Ablauf einer Instanz ohne Altbestand (Rundgang 09.10.: eine neue bzw. fremde Instanz sah sonst den Upload-Fahrplan der gewachsenen
+ * Instanz mit festen Tagen): dieselbe Reihenfolge, ohne Datum.
+ */
+export const ABLAUF_ALLGEMEIN: { wann: string; was: string }[] = [
+  { wann: 'Zuerst · am Server', was: 'Etappe 0 — nur die Inhaber: Update, Schlüssel, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen, jeweils mit Befehl. Wer Gesundheitsdaten nutzt, gibt vorher die eigene Einwilligung (1.8).' },
+  { wann: 'Der Kern', was: 'Alle Schritte mit „Der Kern“: zuerst jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Weitere Personen brauchen deutlich weniger Zeit.' },
+  { wann: 'Nach und nach', was: 'Alles mit „Nach und nach“: zweite Kopie der Sicherung und Probe, Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.' },
+];
+
+/** Der Ablauf für diese Instanz: mit Altbestand der Fahrplan ihres Uploads (`ABLAUF`), sonst der neutrale ohne Datum. Rein. */
+export const ablaufFuer = (altbestand: boolean): readonly { wann: string; was: string }[] => (altbestand ? ABLAUF : ABLAUF_ALLGEMEIN);
+
+/** Die Etappen für diese Instanz: ohne Altbestand mit neutralem Titel/Satz und ohne Hinweise, die nur die gewachsene Instanz betreffen. Rein. */
+export function etappenFuer(altbestand: boolean): Etappe[] {
+  if (altbestand) return ETAPPEN;
+  return ETAPPEN.map(({ allgemein, hinweise, ...e }) => {
+    const h = (hinweise ?? []).filter(x => !x.nurAltbestand);
+    return { ...e, ...(allgemein ?? {}), ...(h.length ? { hinweise: h } : {}) };
+  });
+}
+
+/** Titel, Anleitung und Ergebnis eines Schritts für diese Person — ohne Altbestand die neutrale Fassung (`allgemein`). Rein. */
+export function texteFuer(s: Schritt, k: Pick<Kontext, 'altbestand'> | null | undefined): Schritt {
+  return k?.altbestand || !s.allgemein ? s : { ...s, ...s.allgemein };
+}
 
 const KONTO = { href: WEG.konto(), label: 'Konto' };
 const HOI = { href: '/os/hoi', label: 'Head of IT' };
@@ -285,7 +322,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Medienspeicher (Object Storage) einrichten',
     warum: 'Fotos und Videos aus „Medien unterwegs“ liegen sonst im Ordner auf dem Server — außerhalb der Nachtsicherung und mit einer festen Grenze. Im Object Storage liegen sie verschlüsselt (je Medium ein eigener Schlüssel, der auf dem Server bleibt).',
     wie: [
-      'In der Cloud-Konsole des Anbieters einen privaten Bucket anlegen (Versionierung aus) und eine Lebenszyklus-Regel für abgebrochene Uploads (2 Tage) setzen — Schritte in UPDATES.md (09.10., Medien unterwegs).',
+      'In der Cloud-Konsole des Anbieters einen privaten Bucket anlegen (Versionierung aus) und eine Lebenszyklus-Regel für abgebrochene Uploads (2 Tage) setzen — Schritte in UPDATES.md, Abschnitt „Medien unterwegs“.',
       'Zugangsschlüssel erzeugen und über das Skript am Server eintragen — es fragt verdeckt (Befehl unten). Nie in den Chat.',
     ],
     danach: 'Geprüft wird: der Object Storage ist vollständig eingerichtet (nicht mehr der Ordner auf dem Server). Der Head of IT meldet einen vollen Speicher.',
@@ -362,6 +399,12 @@ export const SCHRITTE: Schritt[] = [
       'Die Vorlage für die Information nach Art. 14 prüfen (bevor Kontakte importiert werden, Schritt 4.2).',
       'Die Löschfristen ansehen.',
     ],
+    allgemein: { wie: [
+      'Den Verantwortlichen in der App eintragen (Datenschutz › Verantwortlicher) — in der Regel die Gesellschaft, die die Instanz betreibt.',
+      'Empfänger auf Stand bringen: genutzte Dienste mit Datum des Auftragsverarbeitungsvertrags eintragen, nicht genutzte archivieren. Eine schon gespeicherte Liste kennt neue Startwerte nicht — die von Hand ergänzen.',
+      'Die Vorlage für die Information nach Art. 14 prüfen (bevor Kontakte importiert werden, Schritt 4.2).',
+      'Die Löschfristen ansehen.',
+    ] },
     danach: 'Geprüft wird die Selbstprüfung: Verantwortlicher benannt, jeder Auftragsverarbeiter mit bestätigtem Vertrag, Drittländer mit Garantie. Art.-14-Vorlage und Löschfristen bestätigst du mit dem Häkchen.',
     wo: { href: WEG.datenschutz('verantwortlicher'), label: 'Datenschutz › Verantwortlicher' },
   },
@@ -562,7 +605,7 @@ export const SCHRITTE: Schritt[] = [
     warum: 'Die Business-Nummer der Instanz erscheint in der Inbox. Die Verifizierung bei Meta dauert Tage — deshalb früh anstoßen, sobald der Weg entschieden ist.',
     wie: [
       'Den Weg für ZOE über WhatsApp vorher gemeinsam entscheiden.',
-      'Anleitung UPDATES.md (07.10.), Zugangsdaten über das Skript am Server (fragt verdeckt).',
+      'Anleitung in UPDATES.md, Abschnitt „WhatsApp Business“; Zugangsdaten über das Skript am Server (fragt verdeckt).',
     ],
     danach: 'System › Verbindungen zeigt den Zustand der Nummer; der Head of IT meldet Probleme.',
     befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whatsapp-verbinden.sh',
@@ -581,6 +624,16 @@ export const SCHRITTE: Schritt[] = [
       'Weil Stichtag und Planbeginn zusammenfallen, braucht die Finanzplanung keinen Handwert für den ersten Planmonat.',
     ],
     danach: 'Abhaken, wenn beide den Stichtag kennen; Schritt 3.6 trägt ihn je Gesellschaft ein.',
+    allgemein: {
+      titel: 'Stichtag des 0-Punkts festlegen',
+      warum: 'Ab dem Stichtag rechnet jede Business-Gesellschaft neu. Am einfachsten ist der Erste eines Monats — am besten derselbe Tag, an dem die Finanzplanung beginnt.',
+      wie: [
+        'Alles davor bleibt gespeichert und sichtbar („vor dem 0-Punkt“), zählt aber nicht mehr: Rechnungen, Zahlungen, Planposten, Buchungen und Monatsabschlüsse davor. Nichts davon wird nachgetragen.',
+        'Ein Kontostand mit Datum genau am Stichtag zählt nicht — dort gilt der 0-Punkt. Neue Kontostände tragen ein Datum nach dem Stichtag.',
+        'Fallen Stichtag und Planbeginn zusammen, braucht die Finanzplanung keinen Handwert für den ersten Planmonat.',
+      ],
+      danach: 'Abhaken, wenn alle den Stichtag kennen; Schritt 3.6 trägt ihn je Gesellschaft ein.',
+    },
   },
   {
     id: 'steckbrief', samstag: true, etappe: 3, nr: '3.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 35,
@@ -626,6 +679,11 @@ export const SCHRITTE: Schritt[] = [
       'Alle zum Stichtag offenen Forderungen und Verbindlichkeiten eintragen — je Posten mit Fälligkeit, auch Rechnungen aus der Liste mit Datum vor dem Stichtag (die werden archiviert).',
       'Ein Eröffnungs-Posten, der später bezahlt wird, geht heute nur über eine neue Fassung des 0-Punkts raus.',
     ],
+    allgemein: { wie: [
+      'Finanzen › Business › 0-Punkt: den Stichtag (Schritt 3.1) und den Kontostand an diesem Tag.',
+      'Alle zum Stichtag offenen Forderungen und Verbindlichkeiten eintragen — je Posten mit Fälligkeit, auch Rechnungen aus der Liste mit Datum vor dem Stichtag (die werden archiviert).',
+      'Ein Eröffnungs-Posten, der später bezahlt wird, geht heute nur über eine neue Fassung des 0-Punkts raus.',
+    ] },
     danach: 'Älteres bleibt sichtbar („vor dem 0-Punkt“), zählt aber nicht mehr.',
     wo: { href: WEG.eroeffnung(), label: 'Finanzen › Business › 0-Punkt' },
   },
@@ -638,6 +696,14 @@ export const SCHRITTE: Schritt[] = [
       'Der erste Abschluss ist der Oktober — Anfang November, je Business-Gesellschaft, von Hand über das Formular.',
       'Am Samstag nur den Termin für den ersten Abschluss festlegen (etwa 30 Minuten Anfang November) und abhaken. Danach jeden Monat den Vormonat.',
     ],
+    allgemein: {
+      titel: 'Monatsabschlüsse ab dem Stichtag',
+      warum: 'Controlling und Business-Index rechnen mit den Monatszahlen. Ab dem Stichtag zählen erst die Monate danach — ältere werden nicht nachgetragen.',
+      wie: [
+        'Der erste Abschluss ist der erste volle Monat ab dem Stichtag — kurz nach dessen Ende, je Business-Gesellschaft, von Hand über das Formular.',
+        'Beim Einrichten nur den Termin für den ersten Abschluss festlegen (etwa 30 Minuten) und abhaken. Danach jeden Monat den Vormonat.',
+      ],
+    },
     danach: 'Geprüft wird ab dem ersten fälligen Monat, ob der Abschluss des Vormonats je Business-Gesellschaft vorliegt. Bis dahin zählt dein Häkchen (Termin festgelegt).',
     wo: { href: WEG.abschluss(), label: 'Finanzen › Business › Monatsabschluss' },
   },
@@ -651,6 +717,11 @@ export const SCHRITTE: Schritt[] = [
       'Das Datum muss nach dem Stichtag liegen (ab 02.10.) — sonst gilt der 0-Punkt.',
       'Bis zur Bank-Anbindung (Phase 1) von Hand, etwa einmal die Woche.',
     ],
+    allgemein: { wie: [
+      'Liquidität › Kontostände: für jede Business-Gesellschaft den aktuellen Stand mit Datum eintragen.',
+      'Das Datum muss nach dem Stichtag liegen — sonst gilt der 0-Punkt.',
+      'Bis zur Bank-Anbindung von Hand, etwa einmal die Woche.',
+    ] },
     danach: 'Geprüft wird, ob jedes Geschäftskonto einen Stand hat, der höchstens sieben Tage alt ist (der 0-Punkt zählt mit).',
     wo: { href: WEG.kontostaende(), label: 'Finanzen › Liquidität' },
   },
@@ -664,6 +735,11 @@ export const SCHRITTE: Schritt[] = [
       'Offene Zahlungen mit Fälligkeit versehen.',
       'Datum nach dem Stichtag (ab 02.10.), sonst gilt der 0-Punkt — Offenes vom Stichtag steht im 0-Punkt (3.6) und wird DORT gepflegt: Fälligkeit nachtragen bzw. bezahlt über eine neue Fassung.',
     ],
+    allgemein: { wie: [
+      'Gestellte Rechnungen prüfen — was eingegangen ist, auf „bezahlt“ setzen.',
+      'Offene Zahlungen mit Fälligkeit versehen.',
+      'Datum nach dem Stichtag, sonst gilt der 0-Punkt — Offenes vom Stichtag steht im 0-Punkt (3.6) und wird DORT gepflegt: Fälligkeit nachtragen bzw. bezahlt über eine neue Fassung.',
+    ] },
     danach: 'Geprüft wird: keine überfällige gestellte Rechnung, keine offene Zahlung ohne Fälligkeit — Posten aus dem 0-Punkt werden eigens ausgewiesen.',
     wo: { href: WEG.rechnungen(), label: 'Finanzen › Rechnungen & Zahlungen' },
   },
@@ -697,6 +773,7 @@ export const SCHRITTE: Schritt[] = [
     modul: 'finanzen', nach: ['ich-privatkonten'], datenOrt: ['privat-ist', 'ruecklage'],
     titel: 'Fixkosten, Budget, Schulden und Rücklage (Privat)',
     warum: 'Damit der Privat-Index ehrlich rechnet: Fixkosten mit Rhythmus, Schulden mit Rate, ein Ziel für die Rücklage. Eure Entscheidung vom 08.10.: der Haushalt führt das Ist, die Finanzplanung liest daraus. (Nur für Konten mit Zugang zu den Privat-Finanzen.)',
+    allgemein: { warum: 'Damit der Privat-Index ehrlich rechnet: Fixkosten mit Rhythmus, Schulden mit Rate, ein Ziel für die Rücklage. Der Haushalt führt das Ist, die Finanzplanung liest daraus. (Nur für Konten mit Zugang zu den Privat-Finanzen.)' },
     wie: [
       'Fixkosten durchgehen, bis keine mehr „Rhythmus unklar“ hat.',
       'Budget, Schulden und Fixkosten im Haushalt pflegen (Privat › Konten & Buchungen) — nicht zusätzlich in der Finanzplanung. Die Brücke, über die die Finanzplanung daraus liest, kommt in Phase 1.',
@@ -839,6 +916,11 @@ export const SCHRITTE: Schritt[] = [
       'Die Kontostände der Gesellschaften kommen aus dem 0-Punkt (3.6). Stichtag und Planbeginn fallen zusammen (01.10.) — kein Handwert für den ersten Planmonat nötig.',
       'Budget, Schulden und Fixkosten nicht hier doppelt pflegen — der Haushalt führt das Ist (Datenkarte).',
     ],
+    allgemein: { wie: [
+      'Finanzen › Privat › Planung: Dokument hochladen oder leer beginnen; Gehälter, Netto-Tabelle, Privatkonten, Darlehen.',
+      'Die Kontostände der Gesellschaften kommen aus dem 0-Punkt (3.6). Fallen Stichtag und Planbeginn zusammen, braucht der erste Planmonat keinen Handwert.',
+      'Budget, Schulden und Fixkosten nicht hier doppelt pflegen — der Haushalt führt das Ist (Datenkarte).',
+    ] },
     danach: 'Geprüft wird: das Dokument ist da und die Netto-Tabelle ist kein Platzhalter mehr. Runway und Szenarien rechnen mit euren Zahlen.',
     wo: { href: WEG.finanzplanung('privat'), label: 'Finanzen › Privat › Planung' },
   },
@@ -864,6 +946,14 @@ export const SCHRITTE: Schritt[] = [
       'Planung › Blatt „Selbstständigkeit“: Einnahmen, Ausgaben und Gehalt von Januar bis September.',
       'Die Vorauszahlungen zur Einkommensteuer NUR hier eintragen — die Steuer-Einstellungen zählen mit Finanzplanung nicht.',
     ],
+    allgemein: {
+      titel: 'Selbstständigkeit: Monate vor dem Planbeginn',
+      warum: 'Die Einkommensteuer rechnet über das ganze Jahr. Die Monate des laufenden Jahres vor dem Planbeginn gehören deshalb in die Finanzplanung — als Summen, nicht als Monatsabschlüsse.',
+      wie: [
+        'Planung › Blatt „Selbstständigkeit“: Einnahmen, Ausgaben und Gehalt der Monate vor dem Planbeginn.',
+        'Die Vorauszahlungen zur Einkommensteuer NUR hier eintragen — die Steuer-Einstellungen zählen mit Finanzplanung nicht.',
+      ],
+    },
     danach: 'Die Steuer des laufenden Jahres stimmt.',
     wo: { href: WEG.finanzplanung('privat', 'selbst'), label: 'Finanzen › Privat › Planung' },
   },
@@ -1229,6 +1319,14 @@ export const GRUPPEN: Record<Gruppe, { titel: string; satz: string }> = {
   samstag: { titel: 'Samstag', satz: 'Der Kern an einem langen Tag — von oben nach unten.' },
   spaeter: { titel: 'Einzeln bis 16.10.', satz: 'Zählt erst, wenn getan — nach und nach, jede Person und gemeinsam.' },
 };
+/** Dieselben drei Gruppen ohne Wochentage und Datum (Instanz ohne Altbestand, Rundgang 09.10.). Die Zuordnung `gruppeVon` bleibt. */
+export const GRUPPEN_ALLGEMEIN: Record<Gruppe, { titel: string; satz: string }> = {
+  freitag: { titel: 'Zuerst · am Server', satz: 'Etappe 0 — nur die Inhaber, bevor die anderen loslegen.' },
+  samstag: { titel: 'Der Kern', satz: 'Das Wichtigste in einem Zug — von oben nach unten.' },
+  spaeter: { titel: 'Nach und nach', satz: 'Zählt erst, wenn getan — in eigenem Tempo, jede Person und gemeinsam.' },
+};
+/** Die Gruppen-Namen für diese Instanz. Rein. */
+export const gruppenFuer = (altbestand: boolean): Record<Gruppe, { titel: string; satz: string }> => (altbestand ? GRUPPEN : GRUPPEN_ALLGEMEIN);
 
 /** Minuten des Samstag-Kerns für eine Person (ohne optionale) — für den Wächter „≈ 8 h“. */
 export const samstagMinuten = (k: Kontext): number => schritteFuer(k).filter(s => s.samstag && !s.optional).reduce((n, s) => n + s.minuten, 0);
@@ -1269,18 +1367,22 @@ export const frueherErlaubt = (s: Pick<Schritt, 'pruefung' | 'stichtag'>): boole
 export const altePerson = (altId: string): string | null => (ALT_ZU_NEU[altId] ? /^([a-z0-9]+)-[a-z]/.exec(altId)?.[1] ?? null : null);
 
 // ── Datenkarte (ONBOARDING_PLAN.md A3): welche Zahl wohin, bis die Doppelungen weg sind ─────────────────────────────────────────
-export interface DatenkartenZeile { /** Kennung (für `Schritt.datenOrt`) — nie ändern. */ id: string; fakt: string; hier: string; nicht: string; href?: string; etappe: number }
+export interface DatenkartenZeile {
+  /** Kennung (für `Schritt.datenOrt`) — nie ändern. */ id: string; fakt: string; hier: string; nicht: string; href?: string; etappe: number;
+  /** Fassung für eine Instanz ohne Altbestand (ohne Stichtag/Planbeginn der gewachsenen Instanz) — gelesen nur über `datenkarteFuer`. */
+  allgemein?: { fakt?: string; hier?: string };
+}
 export const DATENKARTE: DatenkartenZeile[] = [
-  { id: 'konto-stichtag', fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3 },
-  { id: 'konto-danach', fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3 },
+  { id: 'konto-stichtag', fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3, allgemein: { fakt: 'Kontostand einer Gesellschaft am Stichtag' } },
+  { id: 'konto-danach', fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3, allgemein: { hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum nach dem Stichtag)' } },
   { id: 'konto-privat', fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
   { id: 'posten-stichtag', fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.eroeffnung(), etappe: 3 },
   { id: 'posten-danach', fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.rechnungen(), etappe: 3 },
-  { id: 'monatszahlen', fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3 },
+  { id: 'monatszahlen', fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3, allgemein: { hier: 'Monatsabschluss ab dem Stichtag (frühere Monate nicht nachtragen)' } },
   { id: 'koepfe', fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Business › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
   { id: 'firmendaten', fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Steckbrief und Absender', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
   { id: 'beteiligungen', fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
-  { id: 'selbst-jan-sep', fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
+  { id: 'selbst-jan-sep', fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5, allgemein: { fakt: 'Selbstständigkeit: Monate vor dem Planbeginn' } },
   { id: 'est-voraus', fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
   { id: 'steuerparameter', fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 5 },
   { id: 'produkte', fakt: 'Produkte und Preise', hier: 'Mandate & Unternehmen › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
@@ -1297,6 +1399,8 @@ export const DATENKARTE: DatenkartenZeile[] = [
 
 /** Eine Zeile der Datenkarte per Kennung (null = unbekannt). */
 export const datenkarteMitId = (id: string): DatenkartenZeile | null => DATENKARTE.find(d => d.id === id) ?? null;
+/** Die Datenkarte für diese Instanz — ohne Altbestand die neutrale Fassung jeder Zeile (`allgemein`). Rein. */
+export const datenkarteFuer = (altbestand: boolean): DatenkartenZeile[] => (altbestand ? DATENKARTE : DATENKARTE.map(({ allgemein, ...d }) => ({ ...d, ...(allgemein ?? {}) })));
 
 /** Die drei Zonen — die Abmachung, damit Weiterbauen und Arbeiten sich nicht in die Quere kommen. */
 export const ZONEN = [
