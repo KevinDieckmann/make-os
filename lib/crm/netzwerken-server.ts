@@ -42,9 +42,9 @@ import { sperrlisteLaden, neuanlageSperre } from './sperrliste';
 import { datenschutzStempeln } from './datenschutz-stempel';
 import { kontaktAusKarte, firmaZurKarte, type VisitenkartenDaten } from './visitenkarte';
 import { warEventGeloescht } from './events-geloescht';
-import { domainVon, firmenId, bestehendeFirma } from './firmen';
+import { bestehendeFirma } from './firmen';
+import { firmaPlanen, leadZiel } from './person-anlegen';
 import { neuesFollowUp } from './followup';
-import { leereKriterien } from './leads';
 import { dealAnlegen } from './deal-anlegen';
 import { kontextAus } from './segmente';
 import { gastVormerken, einladungswegAus } from './eventplanung';
@@ -293,12 +293,14 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     if ((nameDa || bestehende) && (!bestehende || bestehende.firmaId || (bestehende.firma ?? '').trim())) return;
     let fehlt = false;
     await aendereCrm(b => {
-      if (e.firmaId) { if (!b.firmen.some(f => f.id === e.firmaId)) fehlt = true; return b; }
-      if (bestehendeFirma(b.firmen, firmaName) || firmaZurKarte({ firma: firmaName, email: e.kontakt.email, webseite: e.kontakt.webseite }, b.firmen)) return b;
-      const domain = domainVon({ email: e.kontakt.email, firmaWebseite: e.kontakt.webseite });
+      if (e.firmaId) { if (!b.firmen.some(f => f.id === e.firmaId && !f.geloeschtAm)) fehlt = true; return b; }
+      // EINE Firmen-Regel mit „Person anlegen“ (Woche 2 · 1.8, lib/crm/person-anlegen.ts `firmaPlanen`): vorhanden (Name, Kennung, Domain) →
+      // verknüpfen; im Papierkorb → zurückholen (1.6 — vorher blieb sie dort, die Person bekam keine Firma); sonst neu.
+      const plan = firmaPlanen(b.firmen.filter(f => !f.geloeschtAm), b.firmen, firmaName, { email: e.kontakt.email, webseite: e.kontakt.webseite }, heute, jetztIso);
+      if (!plan || plan.art === 'vorhanden') return b;
+      if (plan.art === 'zurueck') { hinweise.push(`Die Firma „${plan.firma.name}“ lag im Papierkorb — sie ist zurückgeholt.`); return { ...b, firmen: b.firmen.map(f => (f.id === plan.firma.id ? plan.firma : f)) }; }
       const stadt = stadtAusAnschrift(e.kontakt.anschrift);
-      const neu: Firma = { id: firmenId(firmaName), name: firmaName, rolle: 'offen', ...(e.kontakt.webseite ? { webseite: e.kontakt.webseite } : {}), ...(domain ? { domain } : {}), ...(stadt ? { stadt } : {}), geaendert: jetztIso };
-      return { ...b, firmen: [...b.firmen, neu] };
+      return { ...b, firmen: [...b.firmen, { ...plan.firma, ...(stadt ? { stadt } : {}) }] };
     }, ctx.wer);
     if (fehlt) throw new ErfassungFehler('Die gewählte Firma gibt es nicht mehr.', 404);
   });
@@ -480,22 +482,19 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
    * und eine Firma ohne Vertrieb (Dienstleister, Investor, Wettbewerber) bekommt keinen Lead — dann ein Hinweis und das Label „Lead prüfen“.
    */
   const leadStellen = async () => {
+    // EINE Lead-Regel mit der Anfrage (Woche 2 · 1.8, lib/crm/person-anlegen.ts `leadZiel`) — gerechnet auf dem Stand IN der jeweiligen Sperre.
     const ziel = e.schritt === 'qualifizieren' ? 'qualifizierung' as const : 'kontaktiert' as const;
     const firmaDa = kontakt0.firmaId ? (await ladeCrm()).firmen.find(x => x.id === kontakt0.firmaId) : undefined;
     const subjekt = firmaDa ? 'Firma' : 'Person';
-    const ohneVertrieb = firmaDa && (firmaDa.rolle === 'dienstleister' || firmaDa.rolle === 'investor' || firmaDa.rolle === 'wettbewerb');
-    const alt = firmaDa ? firmaDa.lead : kontakt0.lead;
-    const grund = ohneVertrieb ? { dienstleister: 'Dienstleister', investor: 'Investor', wettbewerb: 'Wettbewerber' }[firmaDa!.rolle as 'dienstleister' | 'investor' | 'wettbewerb']
-      : alt && (alt.status === 'kein_fit' || alt.status === 'ruht' || alt.status === 'sql') ? { kein_fit: 'Kein Fit', ruht: 'Ruht', sql: 'SQL' }[alt.status] : null;
-    if (grund) {
-      hinweise.push(`${subjekt} ist als „${grund}“ geführt — Lead nicht geändert.`);
+    const vorab = leadZiel(firmaDa ? firmaDa.lead : kontakt0.lead, ziel, { firmaRolle: firmaDa?.rolle, jetzt: jetztIso, person: ctx.person });
+    if (vorab.art === 'pruefen') {
+      hinweise.push(`${subjekt} ist als „${vorab.grund}“ geführt — Lead nicht geändert.`);
       await labelSetzen(LABEL_LEAD_PRUEFEN);
       return;
     }
-    const aenderbar = !alt || alt.status === 'neu' || (ziel === 'qualifizierung' && (alt.status === 'kontaktiert' || alt.status === 'im_gespraech'));
-    if (!aenderbar) return; // bestehender aktiver Status (oder Kunde) bleibt
-    const stelle = (a: Kontakt['lead'] | Firma['lead']) => ({ ...(a ?? { kriterien: leereKriterien() }), status: ziel, geaendert: jetztIso, geaendertVon: ctx.person });
-    if (firmaDa) await aendereCrm(b => ({ ...b, firmen: b.firmen.map(x => (x.id === firmaDa.id ? { ...x, lead: stelle(x.lead), geaendert: jetztIso } : x)) }), ctx.wer);
+    if (vorab.art === 'bleibt') return; // bestehender aktiver Status (oder Kunde) bleibt
+    const stelle = <L extends Kontakt['lead']>(a: L, rolle?: Firma['rolle']) => { const z = leadZiel(a, ziel, { firmaRolle: rolle, jetzt: jetztIso, person: ctx.person }); return z.art === 'setzen' ? z.lead : a; };
+    if (firmaDa) await aendereCrm(b => ({ ...b, firmen: b.firmen.map(x => (x.id === firmaDa.id ? { ...x, lead: stelle(x.lead, x.rolle), geaendert: jetztIso } : x)) }), ctx.wer);
     else await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const f = cur ?? { kontakte: [] };
       return { ...f, kontakte: f.kontakte.map(k => (k.id === kontaktId && !k.eingeschraenkt ? { ...k, lead: stelle(k.lead), geaendertAm: heute } : k)) };

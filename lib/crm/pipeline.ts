@@ -154,6 +154,17 @@ export function prognose(chancen: Chance[], heute: string, eigene?: CrmBestand['
  * ab Angebot/gesamt/ab 10 · 180 Tage/alle Stufen/ab 5 · Schwellen 40/20 — Prüfbericht 27.09., Punkt 12).
  */
 export const WIN_RATE = { tage: 180, mindestens: 10, gruen: 25, rot: 15 } as const;
+/** Texte zur Win Rate — EINE Quelle (2.14, 09.10.): vorher stand „ab 5“ bzw. „Ziel ≥ 40 %“, gerechnet wurde ab 10 und grün ab 25 %. */
+export const WIN_RATE_TEXT = {
+  label: `Win Rate · ${WIN_RATE.tage} Tage`,
+  ohneQuote: `gewonnen · verloren (Quote ab ${WIN_RATE.mindestens})`,
+  ziel: `≥ ${WIN_RATE.gruen} %`,
+  formel: `gewonnen ÷ (gewonnen + verloren), Entscheidungen der letzten ${WIN_RATE.tage} Tage, erst ab ${WIN_RATE.mindestens}`,
+  luecke: `Noch keine ${WIN_RATE.mindestens} Entscheidungen`,
+  erstAb: (g: number, v: number) => `erst ab ${WIN_RATE.mindestens} Entscheidungen (${g} gewonnen · ${v} verloren)`,
+} as const;
+/** Farbe der Win Rate nach denselben Schwellen wie die Kennzahl: grün ab `gruen`, rot unter `rot`, dazwischen gelb. */
+export const winRateStufe = (q: number): 'gruen' | 'gelb' | 'rot' => (q >= WIN_RATE.gruen ? 'gruen' : q < WIN_RATE.rot ? 'rot' : 'gelb');
 export function winRate(chancen: Chance[], heute: string): { gewonnen: number; verloren: number; quote: number | null; fenster: number } {
   const ab = tagPlus(heute, -WIN_RATE.tage);
   const entschiedenAm = (c: Chance) => tagVon(c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am ?? c.geaendert);

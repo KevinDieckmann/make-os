@@ -18,7 +18,7 @@ import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import { gespraechPfad } from '@/lib/inbox/strom';
-import { aufgabeAusGespraech, followUpAusGespraech, kontaktAusGespraech, spaceVon, terminVorgabe } from '@/lib/inbox/aus-gespraech';
+import { aufgabeAusGespraech, followUpAusGespraech, kontaktAusGespraech, kontaktAnlegenErlaubt, firmaVorschlag, spaceVon, terminVorgabe } from '@/lib/inbox/aus-gespraech';
 import { FACH_LABEL } from '@/lib/inbox/faecher';
 import type { Owner } from '@/types/common';
 import { Knopf, Chip, Hinweis, Ueberschrift, Karte, Leer, LEUCHT, useBreit } from '../ui';
@@ -102,10 +102,13 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   };
   const kontaktAnlegen = async () => {
     const n = [...a.nachrichten].reverse().find(x => !x.vonUns);
-    const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', ...kontaktAusGespraech({ ...g, gegenueber: { ...g.gegenueber, name: n?.von.name ?? g.gegenueber.name } }, (n?.text ?? '').slice(0, 300), heute) });
+    // 1.9 (09.10.): der Server prüft das Postfach (nur Business) über `gespraechId`; die Firma kommt aus der Mail-Domain (`firmaVorschlag`).
+    const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', gespraechId: g.id, ...kontaktAusGespraech({ ...g, gegenueber: { ...g.gegenueber, name: n?.von.name ?? g.gegenueber.name } }, (n?.text ?? '').slice(0, 300), heute) });
     meldung(r.d.ok ? `${String(r.d.text ?? 'Kontakt angelegt.')}${wa ? ' Jetzt „Zuordnen“, damit das Gespräch im Verlauf der Akte steht.' : ''}` : String(r.d.fehler ?? 'Kontakt nicht angelegt.'));
     if (r.d.ok) { await laden(); onGeaendert(); }
   };
+  /** Firma aus der Mail-Domain (1.9) — steht am Knopf, damit man sieht, wohin der Lead geht. */
+  const firmaAusMail = firmaVorschlag(g);
   /** Mehrdeutige Nummer: die Person wählt die Akte (nie automatisch) — derselbe Weg wie „Zuordnen“. */
   const zuordnenZu = (kontaktId: string) => void tu('zuordnen', { kontaktId }, 'loesen').then(() => laden());
   const vorschlag = (v: Ansicht['vorschlaege'][number]) => {
@@ -235,7 +238,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           <Knopf leise onClick={() => void tu('erledigt', {}, 'zurueck').then(ok => { if (ok && onZurueck) onZurueck(); })}>Erledigt</Knopf>
           <Knopf leise onClick={() => setSpaeterAuf(x => !x)}>Später ▾</Knopf>
           <Knopf leise onClick={() => void tu(g.ungelesen ? 'gelesen' : 'ungelesen')}>{g.ungelesen ? 'Gelesen' : 'Ungelesen'}</Knopf>
-          {!z && g.fach !== 'info' && kandidaten.length < 2 && <Knopf leise onClick={() => void kontaktAnlegen()}>Kontakt anlegen</Knopf>}
+          {!z && g.fach !== 'info' && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich) && <Knopf leise onClick={() => void kontaktAnlegen()} titel={firmaAusMail ? `Firma aus der Mail-Domain: ${firmaAusMail}` : undefined}>{firmaAusMail ? `Kontakt anlegen · ${firmaAusMail}` : 'Kontakt anlegen'}</Knopf>}
           {/* Kevin 07.10.: unbekannte WhatsApp-Nummern kommen direkt in „Antworten“ — Blocken bleibt hier möglich (mit Rückgängig). */}
           {wa && !z && <Knopf leise onClick={() => void tu('blocken', {}, 'offen').then(ok => { if (ok && onZurueck) onZurueck(); })}>Nummer blocken</Knopf>}
           {!(a.vorschlaege.some(v => v.art === 'aufgabe')) && <Knopf leise onClick={() => aufgabe()}>Aufgabe</Knopf>}

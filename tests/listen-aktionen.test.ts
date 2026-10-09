@@ -205,9 +205,10 @@ describe('Server: CRM-Bestand und Angebote', () => {
     expect((await patch('malin', [{ liste: 'segmente', op: 'teil', id: 'sg-1', felder: { geloeschtAm: '1999-01-01T00:00:00.000Z' } }])).status).toBe(200);
     const am = (await roh()).segmente[0].geloeschtAm!;
     expect(Date.parse(am)).toBeGreaterThanOrEqual(vorher - 1000);
-    expect((await speicher.ladeCrm()).segmente).toEqual([]);
+    // Das System-Segment „Vernetzen“ steht seit 09.10. ab dem ersten Laden da (Markttraktion 1.15) — geprüft wird nur der Papierkorb-Eintrag.
+    expect((await speicher.ladeCrm()).segmente.filter(s => s.id === 'sg-1')).toEqual([]);
     const g = await (await bestand.GET(new Request('http://test/api/crm/bestand', { headers: kopf('kevin') }))).json() as { stand: CrmBestand; papierkorb: { liste: string; id: string }[] };
-    expect(g.stand.segmente).toEqual([]);
+    expect(g.stand.segmente.filter(s => s.id === 'sg-1')).toEqual([]);
     expect(g.papierkorb.map(e => `${e.liste}:${e.id}`)).toEqual(expect.arrayContaining(['segmente:sg-1', 'firmen:f-alt-korb']));
     expect((await patch('kevin', [{ liste: 'segmente', op: 'teil', id: 'sg-1', felder: { geloeschtAm: null } }])).status).toBe(200);
     expect((await roh()).segmente[0].geloeschtAm).toBeUndefined();

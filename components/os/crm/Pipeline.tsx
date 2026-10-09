@@ -23,7 +23,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, us
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
+import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, kurzEuro, plusTage, nurFelder } from './daten';
@@ -74,7 +74,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const zahlen = werZahlen(crm.stand.chancen.filter(istOffen), c => c.besitzer, 'sales', ich);
   const p = wahl === 'alle' ? crm.prognose : prognose(chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
   const jePerson = prognoseJePerson(crm.stand.chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
-  // Eine Definition für die Win Rate überall (Auswertung, Kennzahl, hier): 180 Tage, ab 5 Entscheidungen.
+  // Eine Definition für die Win Rate überall (Auswertung, Kennzahl, hier): Fenster, Mindestzahl und Texte aus `WIN_RATE` (2.14).
   const wl = winLoss(crm.stand.chancen, crm.heute);
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Fokus-Signatur (04.10.): die gewichteten erwarteten Abschlüsse der nächsten sechs Monate (Auswahl wie die Prognose).
@@ -169,7 +169,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           <Zahl wert={kurzEuro(p.commit)} label="Commit · Abschluss" farbe={LEUCHT.gut} />
           <Zahl wert={kurzEuro(p.bestCase)} label="Best Case · ab Angebot" />
           <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
-          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? 'Win Rate · 180 Tage' : 'gewonnen · verloren (Quote ab 5)'} />
+          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? WIN_RATE_TEXT.label : WIN_RATE_TEXT.ohneQuote} />
         </Raster>
         {jeMonat && jeMonat.some(v => v > 0) && (
           <FadenLinie reihe={jeMonat} heute={0} label="Erwartete Abschlüsse gewichtet je Monat, nächste 6 Monate" beschriftung={monatBeschriftung(crm.heute)} format={kurzEuro}

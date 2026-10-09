@@ -7,6 +7,10 @@
 //        Follow-up „Anfrage beantworten“ (heute), Lead → „kontaktiert“.
 // Beantwortet wird über /api/crm/followup { aktion: 'erledigen', id } — dieselbe
 // Follow-up-Ebene wie überall. Versendet wird nichts.
+// Woche 2 (09.10.): · 1.8 — eine NEUE Person mit Firmennamen bekommt ihre Firma über denselben Weg wie „Person anlegen“ (`firmaSichern`:
+//   vorhanden verknüpfen, sonst anlegen, aus dem Papierkorb zurückholen) — vorher blieb der Name nur Text und der Lead hing an der Person.
+//   · 1.9 — aus der Inbox (`gespraechId`): nur, wenn das Postfach im Business-Bereich liegt (der Server liest das Gespräch der Person);
+//   aus einem Privat-Postfach entsteht kein Business-Lead (403).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -23,6 +27,10 @@ import { anfrageBauen, anfragenListe, ANFRAGE_KANAELE, type AnfrageEingabe } fro
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
 import { neueKennung } from '@/lib/kennung';
 import { nameVon } from '@/lib/crm/team';
+import { firmaSichern } from '@/lib/crm/person-anlegen-server';
+import { dublettePruefen } from '@/lib/crm/person-anlegen';
+import { kontaktAnlegenErlaubt, KONTAKT_NUR_BUSINESS } from '@/lib/inbox/aus-gespraech';
+import { istGespraechId } from '@/lib/inbox/strom';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,12 +51,27 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: Partial<AnfrageEingabe> & { aktion?: string };
+  let b: Partial<AnfrageEingabe> & { aktion?: string; gespraechId?: string };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion !== 'anlegen') return NextResponse.json({ ok: false, fehler: 'aktion: anlegen.' }, { status: 400 });
   const person = personAus(req);
   const heute = localDay();
   const jetzt = new Date().toISOString();
+  // 1.9: aus der Inbox nur im Business-Bereich — das Gespräch muss der Person gehören (gelesen aus IHREN Spiegeln).
+  if (b.gespraechId !== undefined) {
+    if (!istGespraechId(b.gespraechId) || !person) return NextResponse.json({ ok: false, fehler: 'Gespräch nicht gefunden.' }, { status: 404 });
+    const { gespraechLesen } = await import('@/lib/inbox/gespraech-server');
+    const g = await gespraechLesen(person, b.gespraechId);
+    if (!g) return NextResponse.json({ ok: false, fehler: 'Gespräch nicht gefunden.' }, { status: 404 });
+    if (!kontaktAnlegenErlaubt(g.gespraech.bereich)) return NextResponse.json({ ok: false, fehler: KONTAKT_NUR_BUSINESS }, { status: 403 });
+  }
+  // 1.8: die Firma einer NEUEN Person über den EINEN Weg sichern (nicht, wenn die Mail/Nummer schon eine Person der Kartei trifft — die behält ihre Firma).
+  const neuFirma = !b.kontaktId && typeof b.neu?.firma === 'string' ? b.neu.firma.trim() : '';
+  if (neuFirma) {
+    const kartei = await kontakteLaden();
+    const n = b.neu ?? {};
+    if (!dublettePruefen({ vorname: n.vorname, nachname: n.nachname, email: n.email, telefon: n.telefon }, kartei, '').gleich) await firmaSichern(neuFirma, { email: n.email }, werAus(req));
+  }
   const crm = await ladeCrm();
   const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
   const ids = { kontakt: neueId('c'), followUp: neueId('fu') };

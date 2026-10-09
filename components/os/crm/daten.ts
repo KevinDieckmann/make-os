@@ -287,6 +287,28 @@ export function useCrm() {
     });
   }, [nacheinander]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Person anlegen — der EINE Weg (Woche 2 · 1.8, POST /api/crm/person; Regeln je Weg in lib/crm/person-anlegen.ts). In der Kette nach den
+   * übrigen Schreibvorgängen; danach frisch geladen (Firma, Follow-up und Kontakt kommen vom Server). Fehler stehen in der Antwort (Dublette,
+   * Art. 18, zu lang) — der Aufrufer zeigt sie an der Eingabe und bleibt stehen. Hinweise (Sperrliste, Papierkorb, vermutliche Dublette)
+   * stehen danach oben.
+   */
+  const personAnlegen = useCallback(async (weg: 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone', person: Record<string, unknown>, id?: string) => {
+    unterwegs.current++;
+    neuerVersuch();
+    type Antwort = { ok: boolean; fehler?: string; kontaktId?: string; firmaId?: string; followUpId?: string; hinweise?: string[]; dublette?: { id: string; name: string }; neuLaden?: boolean };
+    let r: Antwort = { ok: false, fehler: 'keine Verbindung' };
+    await nacheinander(async () => {
+      try {
+        r = await fetch('/api/crm/person', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', weg, person, ...(id ? { id } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+        if (r.neuLaden) r = { ...r, fehler: `Nicht angelegt — ${NEU_LADEN_TEXT}` };
+      } finally { unterwegs.current--; }
+      return r.ok;
+    });
+    if (r.ok) { await laden(true); if (r.hinweise?.length) setHinweis(r.hinweise.join(' · ')); }
+    return r;
+  }, [nacheinander, laden]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** LinkedIn-Netzwerk (/api/crm/netzwerk): ein Schritt an einer Person — die Antwort ersetzt die Person im Stand. */
   const netzwerk = useCallback(async (body: Record<string, unknown>) => {
     unterwegs.current++;
@@ -301,7 +323,7 @@ export function useCrm() {
     });
   }, [nacheinander]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { crm, kontakte, fehler, setFehler, hinweis, setHinweis, laden, setze, teil, uebergeben, weg, kontaktSetzen, kontaktTeil, aktivitaet, netzwerk, ich: crm?.ich ?? null };
+  return { crm, kontakte, fehler, setFehler, hinweis, setHinweis, laden, setze, teil, uebergeben, weg, kontaktSetzen, kontaktTeil, aktivitaet, netzwerk, personAnlegen, ich: crm?.ich ?? null };
 }
 export type CrmApi = ReturnType<typeof useCrm>;
 

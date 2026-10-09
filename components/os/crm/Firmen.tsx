@@ -39,6 +39,7 @@ import { firmenGruppe, muetter, toechter as toechterVon } from '@/lib/crm/konzer
 import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
 import { AufgabenAkte } from '../aufgaben/AufgabenAkte';
 import { ZoeVorschlaege, ZoeFragenKnopf } from './ZoeFragen';
+import { NeuePersonKurz } from './PersonAnlegen';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -198,6 +199,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
   // Zeitlinie (28.09.): Aktivitäten, die bei dieser Firma entstanden — auch von Personen, die inzwischen weitergezogen sind.
   const verlauf: Aktivitaet[] = [...personen, ...ehemalig].flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system' && aktivitaetZurFirma(k, a, f.id)).map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
   const [zuordnen, setZuordnen] = useState('');
+  const [neuePerson, setNeuePerson] = useState(false);
   const firmaName = (id: string) => (id === f.id ? f.name : firmen.find(x => x.id === id)?.name);
   /**
    * Person dieser Firma zuordnen (Kevin 28.09.): ohne bisherige Firma einfach verknüpfen; sonst kurz nachfragen —
@@ -254,6 +256,10 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
         {personen.map(k => { const st = stationIn(k, f.id); return <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{[st?.rolle ?? (k.firmaId === f.id ? k.position ?? k.jobtitel : undefined), st?.art ? STATION_ART_LABEL[st.art] : undefined, st && !st.haupt ? 'weitere Station' : undefined].filter(Boolean).join(' · ')}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>; })}
         {!personen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Niemand ist aktuell zugeordnet.</div>}
         <input value={zuordnen} onChange={e => setZuordnen(e.target.value)} placeholder="Person zuordnen …" aria-label="Person zuordnen" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', marginTop: 8 }} />
+        {/* 1.13 (09.10.): eine NEUE Person direkt an dieser Firma — über den EINEN Weg (POST /api/crm/person, Weg „firmenkarte“); erst mit einer
+            Person wird die Firma ein Lead. */}
+        {!neuePerson && <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setNeuePerson(true)}>+ neue Person</Knopf></div>}
+        {neuePerson && <div style={{ marginTop: 8 }}><NeuePersonKurz api={api} weg="firmenkarte" firmaId={f.id} firmaName={f.name} onFertig={id => { setNeuePerson(false); if (id) zuPerson(id); }} /></div>}
         {kandidaten.map(k => (
           <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, padding: '3px 0' }}>
             <span>{anzeigename(k)}{k.firma ? ` · bisher ${k.firma}` : ''}</span>

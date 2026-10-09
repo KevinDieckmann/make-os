@@ -320,8 +320,9 @@ describe('4.2 / 5.11 · Rückmeldungen: Fehler bleiben stehen, Erfolg nur, wenn 
   });
   it('Make.One-Abend: eine Person, die nicht gespeichert ist, wird nicht als „da“ eingetragen', () => {
     const s = quelle('components/os/crm/events/Abend.tsx');
-    expect(s.indexOf('if (!(await api.kontaktSetzen(k)))')).toBeGreaterThan(-1);
-    expect(s.indexOf('if (!(await api.kontaktSetzen(k)))')).toBeLessThan(s.indexOf('if (!(await eintragen(id)))'));
+    // Seit 09.10. (Woche 2 · 1.8) legt der Abend über den EINEN Weg an (api.personAnlegen) — erst wenn die Person steht, „da“.
+    expect(s.indexOf('if (!r.ok || !r.kontaktId)')).toBeGreaterThan(-1);
+    expect(s.indexOf('if (!r.ok || !r.kontaktId)')).toBeLessThan(s.indexOf('if (!(await eintragen(r.kontaktId)))'));
   });
 });
 

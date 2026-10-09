@@ -26,6 +26,8 @@ import { suchPasst } from '@/lib/text/such-norm';
 import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SearchX } from 'lucide-react';
 import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
@@ -38,6 +40,8 @@ import { type CrmApi, datum } from './daten';
 import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
+import { ZustaendigWahl, SchrittFelder, schrittEingabe } from './PersonAnlegen';
+import { zustaendigFuer } from '@/lib/crm/person-anlegen';
 import { FirmenDatalist } from './FirmenDatalist';
 import { bestehendeFirma } from '@/lib/crm/firmen';
 import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
@@ -54,7 +58,6 @@ import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/
 import { LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN } from '@/lib/crm/netzwerken';
 import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
-import { neueKontaktKennung } from '@/lib/kennung';
 import { useNaechsterTermin } from '../kalender/TermineAkte';
 
 type Modus = 'personen' | 'firmen';
@@ -215,6 +218,8 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
       {modus === 'personen' && zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Qualifizierung</Knopf><Knopf leise onClick={() => zuRunde('vernetzen')}>Vernetzen-Runde</Knopf></>}
+      {/* 1.14 (09.10.): die Zielliste (Prospecting) auch aus der Markttraktion — kein neuer Reiter, ein Link bei den Firmen. */}
+      {modus === 'firmen' && <Link href={WEG.prospecting()} className="fassbar" style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Zielliste (Prospecting) ›</Link>}
       {modus === 'personen' ? <Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
         : <Knopf haupt onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
       {nachfrage}
@@ -376,9 +381,13 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
   );
 }
 
-function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFertig: (id: string | null) => void }) {
+function Anlegen({ api, onFertig }: { api: CrmApi; heute: string; onFertig: (id: string | null) => void }) {
   // linkedin/webseite/mobil kommen nur von der Visitenkarte (keine eigenen Eingabefelder) und werden mit gespeichert.
   const [e, setE] = useState({ vorname: '', nachname: '', email: '', telefon: '', position: '', firma: '', lebensphase: 'kontakt' as Lebensphase, herkunft: undefined as Herkunft | undefined, anrede: 'Sie' as 'Sie' | 'Du', linkedin: '', webseite: '', mobil: '', vonKarte: false });
+  // 1.10 (09.10.): Zuständig wählbar, Vorgabe nach Welt (Sales) — vorher wurde immer, wer anlegt, zuständig. 1.12: nächster Schritt → Follow-up.
+  const [zust, setZust] = useState(() => zustaendigFuer('kartei', undefined, api.ich));
+  const [schritt, setSchritt] = useState({ text: '', datum: '' });
+  const [fehler, setFehler] = useState<string | null>(null);
   const firmen = api.crm?.stand.firmen ?? [];
   const dublette = e.email.includes('@') ? (api.kontakte ?? []).find(k => hatAdresse(k, e.email)) : undefined;
   // Ohne Titel verglichen: „Dr. Anna Weber“ von der Karte ist „Anna Weber“ in der Kartei.
@@ -388,21 +397,19 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
   const ok = e.nachname.trim() && !dublette;
   const anlegen = async () => {
     if (!ok) return;
-    let firmaId = firma?.id;
-    // 1.5 (08.10.): Rückgabe prüfen — scheitert die Firma, bleibt der Dialog stehen (die Meldung zeigt die Kette); sonst zeigte der
-    // Kontakt auf eine Firma, die es nicht gibt, und wurde nie ein Lead.
-    if (!firmaId && e.firma.trim()) { const f = { ...neueFirma(e.firma), ...(e.webseite ? { webseite: e.webseite } : {}) }; firmaId = f.id; if (!(await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>))) return; }
-    const id = neueKontaktKennung(); // Paket D-C #35: `c-<uuid>` — keine Zeit, keine E-Mail in der Kennung
-    const herk = HERKUNFT.find(h => h.id === e.herkunft);
-    const gespeichert = await api.kontaktSetzen({
-      id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),
-      ...(e.position.trim() ? { position: e.position.trim() } : {}), ...(e.firma.trim() ? { firma: firma?.name ?? e.firma.trim(), firmaId } : {}),
-      ...(e.mobil ? { sms: e.mobil } : {}), ...(e.linkedin ? { linkedin: e.linkedin } : {}), ...(e.webseite ? { firmaWebseite: e.webseite } : {}),
-      eignung: '', prio: '', stufe: 'neu', lebensphase: e.lebensphase, anrede: e.anrede, ...(api.ich ? { besitzer: api.ich } : {}), ...(e.herkunft ? { herkunft: e.herkunft, ...(herk?.fremd ? { fremddaten: true } : {}) } : {}),
-      quelle: e.vonKarte ? 'Visitenkarte' : 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: e.vonKarte ? 'Per Visitenkarte angelegt' : 'Von Hand angelegt', von: 'system' }], importiertAm: heute, geaendertAm: heute,
+    const s = schrittEingabe(schritt.text, schritt.datum);
+    if (s.fehlt) { setFehler(s.fehlt); return; }
+    setFehler(null);
+    // EIN Weg (Woche 2 · 1.8, POST /api/crm/person): Firma (vorhanden, neu oder aus dem Papierkorb zurück), Sperrliste, Datenschutz-Stempel,
+    // Follow-up entscheidet der Server. Die Karte öffnet nur, wenn die Person wirklich steht (1.5) — sonst bleibt der Dialog mit dem Grund stehen.
+    const r = await api.personAnlegen('kartei', {
+      vorname: e.vorname, nachname: e.nachname, email: e.email, telefon: e.telefon, position: e.position, ...(e.firma.trim() ? { firma: e.firma.trim() } : {}),
+      ...(e.mobil ? { mobil: e.mobil } : {}), ...(e.linkedin ? { linkedin: e.linkedin } : {}), ...(e.webseite ? { webseite: e.webseite } : {}),
+      lebensphase: e.lebensphase, anrede: e.anrede, ...(e.herkunft ? { herkunft: e.herkunft } : {}), vonKarte: e.vonKarte, zustaendig: zust,
+      ...(s.naechsterSchritt ? { naechsterSchritt: s.naechsterSchritt } : {}),
     });
-    if (!gespeichert) return; // die Karte öffnet nur, wenn der Kontakt wirklich steht (1.5)
-    onFertig(id);
+    if (!r.ok || !r.kontaktId) { setFehler(r.fehler ?? 'Nicht angelegt.'); return; }
+    onFertig(r.kontaktId);
   };
   return (
     <div style={{ display: 'grid', gap: 10, marginTop: 14, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
@@ -423,6 +430,9 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
       <Feldzeile label="Lebensphase"><Wahl label="Lebensphase" liste={PHASEN} wert={e.lebensphase} onWahl={lebensphase => setE({ ...e, lebensphase })} /></Feldzeile>
       <Feldzeile label="Herkunft"><Wahl label="Herkunft" liste={HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }))} wert={e.herkunft} onWahl={herkunft => setE({ ...e, herkunft })} onLeeren={() => setE({ ...e, herkunft: undefined })} /></Feldzeile>
       <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={e.anrede} onWahl={a => setE({ ...e, anrede: a as 'Sie' | 'Du' })} /></Feldzeile>
+      <ZustaendigWahl wert={zust} onWahl={setZust} />
+      <SchrittFelder text={schritt.text} datum={schritt.datum} onText={text => setSchritt({ ...schritt, text })} onDatum={datum => setSchritt({ ...schritt, datum })} />
+      {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
       {dublette && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}
       {!dublette && namensgleich && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Achtung: {anzeigename(namensgleich)}{namensgleich.firma ? ` (${namensgleich.firma})` : ''} gibt es schon — gleiche Person?</div>}
       {e.firma.trim() && !firma && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Neue Firma „{e.firma.trim()}“ wird mit angelegt.</div>}

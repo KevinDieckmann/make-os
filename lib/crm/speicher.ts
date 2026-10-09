@@ -4,7 +4,7 @@
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
 import { papierkorbMarke, markeVomServer } from '@/lib/eintraege/sicher';
-import { ablageZusatz, ablageVomServer, crmSicht, istPapierkorbListe, neuImPapierkorb, papierkorbPflicht } from './ablage';
+import { ablageZusatz, ablageVomServer, crmSicht, istPapierkorbListe, neuImPapierkorb, papierkorbPflicht, firmaZurueckholen } from './ablage';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
@@ -12,7 +12,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
-import { localDay, istKalendertag } from '@/lib/zeit';
+import { localDay, istKalendertag, tagVon } from '@/lib/zeit';
 import { istKontaktKennung } from '@/lib/kennung';
 import { crmKonflikte, loeschSperren, type CrmKonflikt, type LoeschSperre, type VerweisKontext } from './crm-stand';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
@@ -30,6 +30,7 @@ import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import { personenSchranke, kampagnenHinweise, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
+import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
 import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
 import type { Gesellschaft } from './typen';
@@ -49,9 +50,19 @@ export async function ladeCrm(): Promise<CrmBestand> {
   return crmSicht(await ladeCrmMitPapierkorb());
 }
 
+/**
+ * 1.15 (09.10., Woche 2): das System-Segment „Vernetzen · kalte Leads“ gibt es ab dem ERSTEN Laden — vorher entstand es erst beim ersten
+ * Import, und die Qualifizierungs-Runde verwies ins Leere. Beim Lesen ergänzt (Lesen schreibt nicht), mit der nächsten Änderung am Bestand
+ * dauerhaft (`crmSchreiben`) — idempotent über die feste Kennung; die feste Zeit hält den Stand (Fingerabdruck) bis dahin gleich.
+ */
+export const SEGMENT_VERNETZEN_START = '2026-01-01T00:00:00.000Z';
+export function mitSegmentVernetzen<B extends Pick<CrmBestand, 'segmente'>>(b: B): B {
+  return (b.segmente ?? []).some(s => s.id === SEGMENT_VERNETZEN_ID) ? b : { ...b, segmente: [...(b.segmente ?? []), segmentVernetzen(SEGMENT_VERNETZEN_START)] };
+}
+
 /** Der ganze Bestand MIT Papierkorb — nur für Papierkorb-Liste, endgültiges Löschen und den Morgenlauf. */
 export async function ladeCrmMitPapierkorb(): Promise<CrmBestand> {
-  const roh = { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
+  const roh = mitSegmentVernetzen({ ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) });
   // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen — hier im Speicher, dauerhaft mit der nächsten Änderung (aendereCrm).
   // 03.10.: die Scoring-Einstellungen (eigener Bestand `crm-scoring`) werden beim LESEN angehängt — jede Stelle, die Leads rechnet, sieht dieselben Werte;
   // geschrieben wird `scoring` nie mit dem CRM (crmSchreiben liest den rohen Bestand).
@@ -627,7 +638,8 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   if (abgelehnt.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: [], abgelehnt };
   const { ops: regelOps, fehler, grenze } = dealRegeln(b, roh, jetzt, person);
   if (grenze.length) return { bestand: b, angewandt: 0, fehler, konflikte: [], sperren: [], grenze };
-  const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps));
+  const zurueck: string[] = [];
+  const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps), jetzt, zurueck);
   const neu = { ...b };
   for (const l of CRM_LISTEN) {
     const eigene = ops.filter(o => o.liste === l);
@@ -652,7 +664,7 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   }
   // Folgen in derselben Sperre (28.09. spät, lib/crm/bestand-folgen.ts): gelöschter Deal → Firmen-Lead zurück auf
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
-  const hinweise = kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []);
+  const hinweise = [...kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []), ...zurueck.map(n => `Die Firma „${n}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`)];
   return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [], ...(hinweise.length ? { hinweise } : {}) };
 }
 
@@ -695,11 +707,19 @@ export function firmaZusammenfuehren(alt: Firma, neu: Record<string, unknown>): 
   for (const [f, v] of Object.entries(neu)) if (f !== 'id' && leerWert(out[f]) && !leerWert(v)) out[f] = v;
   return out;
 }
-function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
+/**
+ * 1.6 (09.10., Woche 2): liegt die Firma mit derselben Kennung im Papierkorb, holt der Upsert sie ZURÜCK (ohne Papierkorb-Marke, Vermerk in
+ * der Notiz, `firmaZurueckholen` aus lib/crm/person-anlegen.ts) — vorher blieb die Marke stehen, die Person hing an einer für alle unsichtbaren
+ * Firma und wurde nie ein Lead. `zurueck` sammelt die Namen für den Hinweis.
+ */
+function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[], jetzt: string, zurueck: string[] = []): ListenOp[] {
   return ops.map(o => {
     if (o.liste !== 'firmen' || o.op !== 'upsert' || !o.eintrag) return o;
     const alt = b.firmen.find(f => f.id === o.eintrag!.id);
-    return alt ? { ...o, eintrag: firmaZusammenfuehren(alt, o.eintrag) } : o;
+    if (!alt) return o;
+    if (alt.geloeschtAm) zurueck.push(alt.name);
+    const basis = alt.geloeschtAm ? firmaZurueckholen(alt, tagVon(jetzt), jetzt) : alt;
+    return { ...o, eintrag: firmaZusammenfuehren(basis, o.eintrag) };
   });
 }
 
@@ -780,7 +800,7 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   const person = personVon(protokollWer);
   const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => {
     // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
-    const basis = firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand;
+    const basis = mitSegmentVernetzen(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand);
     const kontakte = (await loadJson<Kartei>('kontakte'))?.kontakte ?? [];
     const roh = await personenImLauf.run(kontakte, () => mut(basis));
     // Auch eine Funktions-Änderung geht durch die Personen-Schranke (nur NEUE Teilnahmen/Kampagnen-Personen) — wer sie aufruft, bekommt

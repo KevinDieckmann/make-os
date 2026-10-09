@@ -28,6 +28,13 @@ import { type CrmApi, plusTage } from './daten';
 import { NotizFormular, Pillen, festhalten, hatMailEinwilligung, ERGEBNIS_KNOEPFE, type NotizErgebnis } from './teile';
 import { Wahl } from './Wahl';
 import { Person } from './team';
+import { NeuePersonKurz } from './PersonAnlegen';
+
+/** Vorbelegung aus dem Suchtext: „Vorname Nachname“ — ein Wort ist der Nachname. */
+const nameAusSuche = (t: string): { vorname?: string; nachname?: string } => {
+  const w = t.trim().split(/\s+/).filter(Boolean);
+  return w.length <= 1 ? { nachname: w[0] } : { vorname: w.slice(0, -1).join(' '), nachname: w[w.length - 1] };
+};
 
 type Art = Extract<AktivitaetArt, 'anruf' | 'termin' | 'gespraech' | 'linkedin' | 'mail' | 'notiz'>;
 /** Welche Ergebnisse zur Art passen — ein Termin geht nicht auf die Mailbox. Ohne Liste: nur die Notiz. */
@@ -49,6 +56,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
   // Rückfrage (Sperre) — hängt neben dem Dialog in einer Hülle, die Klicks abfängt (sonst schlösse der Grund den Dialog).
   const { bestaetigen, dialog } = useRueckfrage();
   const [suche, setSuche] = useState('');
+  const [neuAuf, setNeuAuf] = useState(false);
   const [markiert, setMarkiert] = useState(0);
   const [personId, setPersonId] = useState<string | null>(null);
   /** Person im Dialog gesucht (nicht vorbelegt) — dann springt der Fokus danach in die Notiz. */
@@ -77,7 +85,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
   useEffect(() => {
     if (!offen) return;
     vorher.current = document.activeElement as HTMLElement | null;
-    setSuche(''); setMarkiert(0); setPersonId(kontaktId ?? null); setGesucht(false); setArt('gespraech'); setErgebnis('gespraech'); setAnlass('');
+    setSuche(''); setMarkiert(0); setPersonId(kontaktId ?? null); setGesucht(false); setNeuAuf(false); setArt('gespraech'); setErgebnis('gespraech'); setAnlass('');
     setChance(null); setAngelegt(null); setLaeuft(false); setFertig(''); setFehler('');
     const handy = window.matchMedia(`(max-width: ${HANDY_BIS}px)`).matches; // einmal beim Öffnen gelesen
     const t = setTimeout(() => { if (!kontaktId || !handy) sucheRef.current?.focus(); }, 30);
@@ -198,7 +206,19 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                   ))}
                 </div>
               )}
-              {suche.trim().length >= 2 && !treffer.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Nicht in der Kartei — neue Personen legst du unter Markttraktion › Kontakte an.</div>}
+              {/* 1.7 (09.10.): kein Treffer → gleich hier eine neue Person anlegen (der EINE Weg, POST /api/crm/person, Weg „schnell“); danach ist sie gewählt. */}
+              {suche.trim().length >= 2 && !treffer.length && !neuAuf && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nicht in der Kartei.</span>
+                  <Knopf leise onClick={() => setNeuAuf(true)}>{`+ „${suche.trim().slice(0, 40)}“ als neue Person`}</Knopf>
+                </div>
+              )}
+              {neuAuf && !k && (
+                <div style={{ marginTop: 8 }}>
+                  <NeuePersonKurz api={api} weg="schnell" vorgabe={nameAusSuche(suche)} knopf="Anlegen und weiter"
+                    onFertig={id => { setNeuAuf(false); if (id) { setPersonId(id); setGesucht(true); setSuche(''); setMarkiert(0); setChance(null); } }} />
+                </div>
+              )}
               {k && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.business}12`, border: `1px solid ${LEUCHT.business}33` }}>
                   <Person id={haeltBeziehung(k)} groesse={22} />

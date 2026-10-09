@@ -20,6 +20,7 @@ import { nachrichtenVon } from './verlauf';
 import { uebergabeEmpfaenger } from './teilen';
 import { uebergabenFuer } from './uebergaben-speicher';
 import type { Gespraech, StromKopf } from './strom';
+import { kontaktAnlegenErlaubt } from './aus-gespraech';
 
 export interface NachrichtAnsicht {
   id: string; am: string; von: Adr; an: Adr[]; cc: Adr[]; betreff: string; text: string; vonUns: boolean; ungelesen: boolean;
@@ -72,7 +73,8 @@ export function vorschlaegeFuer(g: Gespraech, nachrichten: readonly NachrichtAns
   if (pdf) raus.push({ art: 'beleg', text: `Beleg ablegen (${pdf.name})`, anhang: pdf });
   if (g.zuordnung && !g.zugeordnet && !g.zuordnung.sperre) raus.push({ art: 'zuordnen', text: `${g.zuordnung.name} zuordnen (Verlauf der Akte)` });
   if (g.zuordnung?.dealId && !g.zuordnung.sperre) raus.push({ art: 'deal', text: `Deal „${g.zuordnung.dealTitel}“: Nachfassen planen` });
-  if (!g.zuordnung && g.fach !== 'info' && g.fach !== 'warten') raus.push({ art: 'kontakt', text: 'Kontakt anlegen' });
+  // „Kontakt anlegen“ macht einen Business-Lead — nur aus Business-Postfächern (Markttraktion 1.9, 09.10.).
+  if (!g.zuordnung && g.fach !== 'info' && g.fach !== 'warten' && kontaktAnlegenErlaubt(g.bereich)) raus.push({ art: 'kontakt', text: 'Kontakt anlegen' });
   if (!frist && g.fach === 'antworten' && raus.length < 3) raus.push({ art: 'aufgabe', text: 'Aufgabe daraus machen' });
   return raus.slice(0, 3);
 }

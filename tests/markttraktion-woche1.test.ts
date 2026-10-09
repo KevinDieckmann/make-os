@@ -518,8 +518,9 @@ describe('D · Marketing-Herkunft, Kampagne in der Power Hour, Netzwerken-Namen'
   it('5.1/1.5 · Kartei: Visitenkarte → Herkunft „Veranstaltung“; Anlegen prüft Firma und Kontakt, bevor die Karte öffnet', () => {
     const src = quelle('components/os/crm/Kartei.tsx');
     expect(src).toContain("herkunft: e.herkunft ?? 'veranstaltung'");
-    expect(src).toContain("if (!(await api.setze('firmen'");
-    expect(src).toContain('if (!gespeichert) return;');
+    // Seit 09.10. (Woche 2 · 1.8): Firma und Kontakt legt der Server in EINEM Weg an — die Karte öffnet nur, wenn er „ok“ meldet.
+    expect(src).toContain("api.personAnlegen('kartei'");
+    expect(src).toContain('if (!r.ok || !r.kontaktId) { setFehler(');
   });
   it('5.3/5.2 · Kampagne: „heute in der Power Hour: n“ aus derselben Rechnung, ehrlicher Text; Ampel-Hinweis des Servers sichtbar', async () => {
     const { kampagneInPowerHour, NEU_MAX } = await import('@/lib/crm/heute');
