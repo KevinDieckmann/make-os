@@ -349,6 +349,12 @@ const HAUSHALT_PRIVAT = {
   // Selbstständigkeit als Privat-Einheit) — weder „nur ich“ noch einer Person zugeordnet. Volle Mitglieder sehen sie, „nur Business“ nie.
   aufgabe: 'MESSLATTE-HH-AUFGABE-PRIVAT',
   selbst: 'MESSLATTE-HH-AUFGABE-SELBST',
+  // E4-Rest (09.10.): die gemeinsame Planung des Privat-Bereichs — eine Routine für beide, ein geteiltes Ziel, ein Meilenstein, ein Fokus-Satz
+  // (`privat:jahr`). Volle Mitglieder sehen sie, „nur Business“ nie (lib/planung/bereich-sicht.ts).
+  routine: 'MESSLATTE-HH-ROUTINE-PRIVAT',
+  ziel: 'MESSLATTE-HH-ZIEL-PRIVAT',
+  meilenstein: 'MESSLATTE-HH-MEILENSTEIN-PRIVAT',
+  fokus: 'MESSLATTE-HH-FOKUS-PRIVAT',
 };
 
 /**
@@ -448,6 +454,17 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     const ziele = (await import('@/app/api/state/ziele/route')) as unknown as Handler3;
     const zr = await schreiben(ziele.PATCH, 'PATCH', '/api/state/ziele', 'kevin', { horizont: 'jahr', fuer: 'ich', ops: [{ op: 'upsert', eintrag: { id: 'z-messlatte-eigen', titel: SYS.ziel, fortschritt: 10, space: 'privat' } }] });
     expect(zr.status, await zr.clone().text()).toBe(200);
+
+    // E4-Rest (09.10.): gemeinsame Planung im Privat-Bereich des Haushalts — Routine für beide, geteiltes Ziel, Meilenstein, Fokus-Satz.
+    await db.updateJson<{ routinen?: unknown[]; bloecke?: unknown[] }>('routinen', cur => ({ ...(cur ?? {}), routinen: [...(cur?.routinen ?? []),
+      { id: 'r-messlatte-hh', label: HAUSHALT_PRIVAT.routine, wann: 'abend', kategorie: 'leben', dauerMin: 20, aktiv: true, owner: 'beide', space: 'privat' }] }));
+    const zh = await schreiben(ziele.PATCH, 'PATCH', '/api/state/ziele', 'kevin', { horizont: 'jahr', ops: [{ op: 'upsert', eintrag: { id: 'z-messlatte-hh', titel: HAUSHALT_PRIVAT.ziel, fortschritt: 20, space: 'privat' } }] });
+    expect(zh.status, await zh.clone().text()).toBe(200);
+    const zf = await schreiben(ziele.PUT, 'PUT', '/api/state/ziele', 'kevin', { horizont: 'privat:jahr', fokus: HAUSHALT_PRIVAT.fokus });
+    expect(zf.status, await zf.clone().text()).toBe(200);
+    const msR = (await import('@/app/api/state/meilensteine/route')) as unknown as { PATCH: Handler };
+    const mh = await schreiben(msR.PATCH, 'PATCH', '/api/state/meilensteine', 'kevin', { ops: [{ op: 'upsert', eintrag: { id: 'ms-messlatte-hh', titel: HAUSHALT_PRIVAT.meilenstein, space: 'privat', faellig: tagePlus(H, 4), fortschritt: 0, erledigt: false } }] });
+    expect(mh.status, await mh.clone().text()).toBe(200);
 
     // Zeit: ein privater Fokus-Block und ein laufender Fokus.
     const zeit = (await import('@/app/api/state/zeit/route')) as unknown as { POST: Handler };

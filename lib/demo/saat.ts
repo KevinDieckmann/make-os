@@ -32,11 +32,17 @@ export const DEMO_PERSONEN = [
   { speicher: 'lena', name: 'Lena Hartmann', email: `lena@${DEMO_DOMAIN}`, rolle: 'inhaber' as const, kurz: 'Lena', aufgabe: 'Geschäftsführung' },
   { speicher: 'jonas', name: 'Jonas Hartmann', email: `jonas@${DEMO_DOMAIN}`, rolle: 'mitglied' as const, kurz: 'Jonas', aufgabe: 'Produkt & Finanzen' },
 ] as const;
+/**
+ * Das dritte Konto (09.10., E4-Rest — Kevin: „Ja, Privates bleibt privat“): ein erfundener Vertriebspartner mit Finanzrecht „nur Business“
+ * (`finanzRecht: 'business'`) im Haushalt der Demo — führt die Rolle vor: Business sieht er voll, aus dem Privat-Bereich (Privat-Ziel,
+ * gemeinsame Privat-Routine, Urlaubs-Projekt, private Finanzen) bekommt er serverseitig nichts. Kein Inhaber, teilt nichts, mit ihm teilt niemand.
+ */
+export const DEMO_PARTNER = { speicher: 'ben', name: 'Ben Kramer', email: `ben@${DEMO_DOMAIN}`, rolle: 'mitglied' as const, kurz: 'Ben', aufgabe: 'Vertriebspartner (nur Business)' } as const;
 /** Eine Team-Person ohne Konto (freie Mitarbeit) — zeigt Kapazität, Zuweisungen und die Team-Löschfrist. */
 const MIRA = { id: 't-demo-mira', name: 'Mira Sommer', kurz: 'Mira', rolle: 'Design (frei)', email: `mira@${DEMO_DOMAIN}`, aktiv: true, kreis: 'partner' as const };
 
-const LENA = DEMO_PERSONEN[0].speicher, JONAS = DEMO_PERSONEN[1].speicher;
-const KONTO_LENA = `konto-${LENA}`, KONTO_JONAS = `konto-${JONAS}`;
+const LENA = DEMO_PERSONEN[0].speicher, JONAS = DEMO_PERSONEN[1].speicher, BEN = DEMO_PARTNER.speicher;
+const KONTO_LENA = `konto-${LENA}`, KONTO_JONAS = `konto-${JONAS}`, KONTO_BEN = `konto-${BEN}`;
 
 export interface SaatBericht { schritte: { name: string; anzahl: number }[]; heute: string; personen: { name: string; email: string }[] }
 /** Zugangsdaten, die beim Zurücksetzen bleiben (die Sitzung des Vorführenden bleibt gültig). */
@@ -135,32 +141,41 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const heute = o.heute ?? localDay();
   const jetzt = o.jetzt ?? new Date();
   const montag = montagVon(heute);
-  const bericht: SaatBericht = { schritte: [], heute, personen: DEMO_PERSONEN.map(p => ({ name: p.name, email: p.email })) };
+  const bericht: SaatBericht = { schritte: [], heute, personen: [...DEMO_PERSONEN, DEMO_PARTNER].map(p => ({ name: p.name, email: p.email })) };
   const schritt = (name: string, anzahl: number) => { bericht.schritte.push({ name, anzahl }); };
 
   // 1) Konten + Haushalt (direkt — die Einrichtung im Browser bräuchte den Instanz-Schlüssel).
   if (!o.zugang && !o.passwort) throw new DemoFehler('Ohne Passwort keine Demo-Konten.');
   const hashes: Record<string, Zugang> = {};
-  for (const p of DEMO_PERSONEN) hashes[p.speicher] = o.zugang?.[p.speicher] ?? await passwortHashen(o.passwort as string);
+  for (const p of [...DEMO_PERSONEN, DEMO_PARTNER]) hashes[p.speicher] = o.zugang?.[p.speicher] ?? await passwortHashen(o.passwort as string);
   await aendereKonten(() => ({
-    konten: DEMO_PERSONEN.map((p, i) => ({
-      id: `k-demo-${p.speicher}`, speicher: p.speicher, email: p.email, name: p.name, rolle: p.rolle, angelegt: jetzt.toISOString(),
-      // Eigene Ziele (08.10.): in der Demo teilen beide sie miteinander — so ist die Einstellung „geteilt“ vorführbar (Vorgabe: niemand).
-      haushalt: DEMO_HAUSHALT, teilt: { gesundheit: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher), ziele: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher) },
-      ...hashes[p.speicher],
-    })),
+    konten: [
+      ...DEMO_PERSONEN.map((p, i) => ({
+        id: `k-demo-${p.speicher}`, speicher: p.speicher, email: p.email, name: p.name, rolle: p.rolle, angelegt: jetzt.toISOString(),
+        // Eigene Ziele (08.10.): in der Demo teilen beide sie miteinander — so ist die Einstellung „geteilt“ vorführbar (Vorgabe: niemand).
+        haushalt: DEMO_HAUSHALT, teilt: { gesundheit: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher), ziele: DEMO_PERSONEN.filter((_, j) => j !== i).map(x => x.speicher) },
+        ...hashes[p.speicher],
+      })),
+      // Der Partner (09.10., E4-Rest): Haushalt der Demo + Finanzrecht „nur Business“ — dieselbe Form, die der Inhaber unter Konto vergibt.
+      {
+        id: `k-demo-${BEN}`, speicher: BEN, email: DEMO_PARTNER.email, name: DEMO_PARTNER.name, rolle: DEMO_PARTNER.rolle, angelegt: jetzt.toISOString(),
+        haushalt: DEMO_HAUSHALT, finanzRecht: 'business' as const, teilt: { gesundheit: [] },
+        ...hashes[BEN],
+      },
+    ],
     einladungen: [],
   }));
   await saveJson(DEMO_MARKE, { saat: DEMO_SAAT_VERSION, angelegt: jetzt.toISOString(), haushalt: DEMO_HAUSHALT });
-  schritt('Konten', DEMO_PERSONEN.length);
+  schritt('Konten', DEMO_PERSONEN.length + 1);
 
   // 2) Team: Kurzwort/Rolle der Konten + eine freie Mitarbeiterin ohne Konto.
   await rufe(R.team(), 'PATCH', '/api/team', LENA, { ops: [
     upsert({ id: KONTO_LENA, name: DEMO_PERSONEN[0].name, kurz: DEMO_PERSONEN[0].kurz, rolle: DEMO_PERSONEN[0].aufgabe, aktiv: true, kreis: 'kern' }),
     upsert({ id: KONTO_JONAS, name: DEMO_PERSONEN[1].name, kurz: DEMO_PERSONEN[1].kurz, rolle: DEMO_PERSONEN[1].aufgabe, aktiv: true, kreis: 'kern' }),
+    upsert({ id: KONTO_BEN, name: DEMO_PARTNER.name, kurz: DEMO_PARTNER.kurz, rolle: DEMO_PARTNER.aufgabe, aktiv: true, kreis: 'partner' }),
     upsert(MIRA),
   ] });
-  schritt('Team', 3);
+  schritt('Team', 4);
 
   // 3) CRM: Firmen + Produkte (Bestand), Kontakte (Kartei), Mandate, Deals (Anlage-Weg).
   const firmenName = (id?: string) => FIRMEN.find(f => f.id === id)?.name;
@@ -231,10 +246,14 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { id: 'r-demo-plan', label: 'Tagesplan festlegen · 10 Min', wann: 'morgen', kategorie: 'business', dauerMin: 10, owner: 'beide', space: 'business' },
     { id: 'r-demo-spaziergang', label: 'Spaziergang an der frischen Luft', wann: 'tag', kategorie: 'leben', dauerMin: 20, owner: LENA, space: 'privat' },
     { id: 'r-demo-lesen', label: 'Lesen · 20 Min', wann: 'abend', kategorie: 'leben', dauerMin: 20, owner: LENA, space: 'privat' },
+    // Gemeinsam im Privat-Bereich (09.10., E4-Rest): sehen Lena und Jonas, der Partner nie (auch nicht als „Belegt“).
+    { id: 'r-demo-abendessen', label: 'Gemeinsames Abendessen ohne Handy', wann: 'abend', kategorie: 'leben', dauerMin: 45, owner: 'beide', space: 'privat' },
   ];
   await rufe(R.routinen(), 'PATCH', '/api/state/routinen', LENA, { ops: routinen.map(upsert) });
   await rufe(R.routinen(), 'PATCH', '/api/state/routinen', JONAS, { ops: [upsert({ id: 'r-demo-wochenrueckblick', label: 'Wochenrückblick vorbereiten', wann: 'tag', kategorie: 'business', dauerMin: 30, owner: JONAS, space: 'business', rhythmus: 'woechentlich' })] });
-  schritt('Nordstern', 1); schritt('Routinen', routinen.length + 1);
+  // Der Partner legt seine eigene Business-Routine über denselben Weg an (ein Privat-Eintrag würde mit 403 abgelehnt).
+  await rufe(R.routinen(), 'PATCH', '/api/state/routinen', BEN, { ops: [upsert({ id: 'r-demo-partner-pipeline', label: 'Pipeline-Abgleich mit Lena', wann: 'tag', kategorie: 'business', dauerMin: 20, owner: BEN, space: 'business', rhythmus: 'woechentlich' })] });
+  schritt('Nordstern', 1); schritt('Routinen', routinen.length + 2);
 
   // 6) Gründungsfahrplan der neuen Gesellschaft — wie der Knopf im Steckbrief (components/os/unternehmen/Fahrplan.tsx).
   const plan = fahrplanFuer(neu.id, { name: 'Nordlicht Ventures GmbH', art: 'gruendung' }, 'Nordlicht Ventures GmbH', heute);
@@ -323,6 +342,8 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await rufe(R.kapazitaet(), 'PATCH', '/api/kapazitaet', LENA, { ops: [
     { op: 'grundwert', person: KONTO_LENA, stundenWoche: 40 },
     { op: 'grundwert', person: MIRA.id, stundenWoche: 16 },
+    // Der Partner arbeitet nebenher mit (sonst zählte für ihn die Annahme 40 h je Konto).
+    { op: 'grundwert', person: KONTO_BEN, stundenWoche: 10 },
     { op: 'zuweisung', zuweisung: { id: 'kz-demo-1', person: KONTO_LENA, art: 'mandat', bezugId: 'm-demo-nordwerk', stundenWoche: 6 } },
     { op: 'zuweisung', zuweisung: { id: 'kz-demo-2', person: KONTO_JONAS, art: 'mandat', bezugId: 'm-demo-lumen', stundenWoche: 8 } },
     { op: 'ausnahme', person: MIRA.id, ausnahme: { id: 'ka-demo-1', art: 'urlaub', von: tagPlus(montag, 21), bis: tagPlus(montag, 25), titel: 'Urlaub' } },

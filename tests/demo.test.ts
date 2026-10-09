@@ -108,7 +108,7 @@ describe('Saat', () => {
   it('sät eine vollständige, erfundene Demo über die Schreibwege', async () => {
     const b = await server.demoSaenInLeerenOrdner({ passwort: 'pruef-passwort-demo', heute: localDay() }); // echtes Heute: die Deal-Prüfung vergleicht mit der Uhr
     const n = Object.fromEntries(b.schritte.map(s => [s.name, s.anzahl]));
-    expect(n).toMatchObject({ Konten: 2, Team: 3, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4, 'Körper-Profil': 1 });
+    expect(n).toMatchObject({ Konten: 3, Team: 4, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4, 'Körper-Profil': 1 });
     const crm = await db.loadJson<{ chancen: unknown[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[] }>('crm');
     expect(crm?.chancen).toHaveLength(4);
     expect(crm?.mandate).toHaveLength(2);
@@ -128,6 +128,29 @@ describe('Saat', () => {
     expect(kz?.planTreue).toBeGreaterThan(0);
     expect(await db.loadJson(DEMO_MARKE)).toMatchObject({ saat: 1, haushalt: 'demo' });
   }, 240_000);
+
+  it('drittes Konto „nur Business“ (E4-Rest, 09.10.): der Partner sieht Business, aus dem Privat-Bereich nichts — Lena alles', async () => {
+    const { DEMO_PARTNER } = await import('@/lib/demo/saat');
+    const konten = await db.loadJson<{ konten: { speicher: string; finanzRecht?: string; rolle: string; haushalt: string; email: string }[] }>('konten');
+    const p = konten?.konten.find(k => k.speicher === DEMO_PARTNER.speicher);
+    expect(p).toMatchObject({ finanzRecht: 'business', rolle: 'mitglied', haushalt: 'demo' });
+    expect(p?.email.endsWith('@example.invalid')).toBe(true);
+    const sitzungVon = (wer: string) => ({ headers: { 'content-type': 'application/json', 'x-make-user': wer } });
+    const ROUTEN = { ziele: () => import('@/app/api/state/ziele/route'), routinen: () => import('@/app/api/state/routinen/route'), meilensteine: () => import('@/app/api/state/meilensteine/route') };
+    const lies = async (modul: keyof typeof ROUTEN, pfad: string, wer: string) => {
+      const m = (await ROUTEN[modul]()) as unknown as { GET: (r: Request) => Promise<Response> };
+      const r = await m.GET(new Request(`http://test${pfad}`, sitzungVon(wer)));
+      expect(r.status, `${pfad} ${wer}`).toBe(200);
+      return r.text();
+    };
+    const PRIVAT = ['Vier Wochen Urlaub ohne Laptop', 'Gemeinsames Abendessen ohne Handy', 'Spaziergang an der frischen Luft'];
+    const partner = [await lies('ziele', '/api/state/ziele', DEMO_PARTNER.speicher), await lies('routinen', '/api/state/routinen', DEMO_PARTNER.speicher), await lies('meilensteine', '/api/state/meilensteine', DEMO_PARTNER.speicher)].join('\n');
+    expect(PRIVAT.filter(t => partner.includes(t))).toEqual([]);
+    expect(partner).toContain('Pipeline-Abgleich mit Lena'); // seine eigene Business-Routine
+    expect(partner).toContain('Wiederkehrender Umsatz'); // Business-Ziel
+    const lena = [await lies('ziele', '/api/state/ziele', 'lena'), await lies('routinen', '/api/state/routinen', 'lena')].join('\n');
+    expect(PRIVAT.filter(t => !lena.includes(t))).toEqual([]);
+  });
 
   it('nichts aus unserem Bestand: keine echten Namen, Firmen oder Adressen in den Dateien der Demo', () => {
     const VERBOTEN = new RegExp(['Kev' + 'in', 'Mal' + 'in', 'Dieck' + 'mann', 'KEM' + 'ARIS', 'POIN' + 'CAP', 'KD Ven' + 'tures', 'MAKE Inno' + 'vation', 'kemaris\\.de', 'makeinnovation\\.de'].join('|'), 'i');

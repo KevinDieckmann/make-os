@@ -8,12 +8,12 @@ Die Demo ist **eine eigene Instanz** mit eigenem Datenordner — nie ein Konto a
 
 ## Was gesät wird (lib/demo/saat.ts — alles erfunden)
 
-Ein Haushalt `demo` mit zwei Personen und einer freien Mitarbeiterin — eine kleine Beratung mit Software-Produkt:
+Ein Haushalt `demo` mit zwei Personen, einem Vertriebspartner („nur Business“) und einer freien Mitarbeiterin — eine kleine Beratung mit Software-Produkt:
 
 | Bereich | Inhalt |
 |---|---|
-| Konten | Lena Hartmann (Inhaberin) und Jonas Hartmann, beide `@example.invalid`, Gesundheit gegenseitig geteilt |
-| Team | beide Konten + Mira Sommer (Design, frei, ohne Konto) |
+| Konten | Lena Hartmann (Inhaberin) und Jonas Hartmann, beide `@example.invalid`, Gesundheit gegenseitig geteilt; dazu **Ben Kramer** (`ben@example.invalid`, Vertriebspartner, Konto mit Finanzrecht „nur Business“ — 09.10., E4-Rest) |
+| Team | alle drei Konten (Ben im Kreis „Partner“, 10 h/Woche) + Mira Sommer (Design, frei, ohne Konto) |
 | CRM | 6 Firmen, 8 Kontakte, 3 Produkte (aktiv, mit Angebotstext), 2 Mandate, 4 offene Deals in verschiedenen Stufen |
 | Unternehmen | Beratung (Einzelunternehmen), Holding (UG, hält die operative 100 %), operative GmbH (mit Büro-Mietvertrag und Kündigungsfrist), neue Gesellschaft in Gründung (Holding 60 % / Jonas 40 %) **mit Gründungsfahrplan** (Ziel, 9 Meilensteine, 22 Aufgaben) |
 | Ziele & Meilensteine | 3 Business-Jahresziele + 1 privates, 5 Meilensteine mit Aufwand, Personen, Kette („wartet auf“) und Mandat |
@@ -33,6 +33,12 @@ Montag von damals); im Agenten-Bereich die Antworten/Berichte der Threads, der T
 Medium (dafür gibt es ohne Modellaufruf keinen Weg — Begründung im Kopf von lib/demo/saat-agenten.ts). Kennungen sind deterministisch — Links bleiben nach dem Zurücksetzen gleich (außer der neuen Gesellschaft).
 
 **Alles ist bearbeitbar und löschbar** — es gibt keinen Sonderweg. Einziger Zusatz: „Demo zurücksetzen“.
+
+**Rolle „nur Business“ vorführen (09.10., E4-Rest — Kevin: „Ja, Privates bleibt privat“):** als `ben@example.invalid` anmelden (dasselbe Demo-Passwort).
+Im Kopf fehlt „Privat“; Aufgaben, Planung (Ziele, Meilensteine, Fokus), Routinen, Kalender-Fristen, Überblick „Für dich“ und ZOE zeigen nur Business — das
+private Jahresziel „Vier Wochen Urlaub ohne Laptop“, das Urlaubs-Projekt, die gemeinsame Routine „Gemeinsames Abendessen ohne Handy“ und Lenas eigene Routinen
+kommen serverseitig gar nicht an (auch nicht als „Belegt“). Seine eigene Business-Routine („Pipeline-Abgleich mit Lena“) hat die Saat über den Routinen-Weg als Ben
+angelegt; eine im Privat-Bereich lehnt der Server ab (403). Zum Vergleich als Lena oder Jonas anmelden: dort steht alles.
 
 ## Schutz (lib/demo/schutz.ts — jeder Riegel reicht zum Abbruch)
 

@@ -51,6 +51,7 @@ import { Seil } from './seil/Seil';
 import { useKapazitaet } from './kapazitaet/useKapazitaet';
 import { LastBand } from './kapazitaet/teile';
 import { wirksamerSpace } from '@/lib/planung/bereich';
+import { useNurBusiness } from './useInhaber';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -103,7 +104,9 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   // Bereich abgeleitet (05.10. abends): Ziele der Selbstständigkeit stehen unter Privat (`wirksamerSpace`).
   const zieleImSpace = ziele.filter(z => { const zs = wirksamerSpace(z); return (spaceFilter === 'alle' || !zs || zs === spaceFilter) && (!istJahr || zielJahr(z, laufend) === planJahr); });
   // Fokus je Space (26.09.) und im Jahr je Jahr (30.09., lib/planung/jahr-fokus.ts): im Space der Space-Satz, ohne Space der gemeinsame.
-  const fokusBasis = fokusSchluessel(horizont, spaceFilter === 'alle' ? null : spaceFilter);
+  // Konto „nur Business“ (09.10., E4-Rest): den gemeinsamen Satz liefert der Server ihm nicht (im Zweifel privat) — in „Alles“ gilt sein Business-Satz.
+  const nurBusiness = useNurBusiness();
+  const fokusBasis = fokusSchluessel(horizont, spaceFilter === 'alle' ? (nurBusiness ? 'business' : null) : spaceFilter);
   const fokusKey = istJahr ? fokusJahrSchluessel(fokusBasis, planJahr) : fokusBasis;
   const fokus = istJahr ? fokusImJahr(fokusAlle, fokusBasis, planJahr, laufend) : (fokusAlle[fokusKey] ?? '');
   useZuZiel(zielM, geladen);

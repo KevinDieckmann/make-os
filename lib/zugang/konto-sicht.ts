@@ -98,5 +98,11 @@ export function bereichErlaubt(k: Pick<KontoSicht, 'nurBusiness'> | null | undef
   return bereich !== 'privat' || !privatAusblenden(k);
 }
 
+/**
+ * Antwort (403), wenn ein Konto „nur Business“ etwas in den Privat-Bereich legen oder dorthin verschieben will — EIN Satz für alle
+ * Schreibwege (Aufgaben, Routinen/Blöcke, Ziele/Fokus, Meilensteine; 09.10., E4 und E4-Rest).
+ */
+export const NUR_BUSINESS_PRIVAT = 'Dieses Konto sieht nur den Business-Bereich — in den Privat-Bereich (Privat, Selbstständigkeit) legt es nichts an und verschiebt nichts dorthin. Nichts gespeichert.';
+
 /** Die leere Sicht (unbekannte Person) — nichts im Haushalt. */
 export const keineKontoSicht = (person: string): KontoSicht => kontoSichtAus({ konten: [] }, person);

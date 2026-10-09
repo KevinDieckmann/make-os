@@ -16,6 +16,8 @@ import { bezuegeZurueck, istBezugKennung, kennungenSaeubern, oberzielPruefen, ty
 import { ladeAufgaben } from '@/lib/aufgaben/speicher';
 import { zielBezuegeInAufgabenSetzen } from '@/lib/aufgaben/ziel-bezug-server';
 import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { PLANUNG_NICHT_GEFUNDEN, meilensteineOhnePrivat, zielImPrivat, zieleOhnePrivat } from '@/lib/planung/bereich-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,8 +46,13 @@ export async function POST(req: Request) {
 
   const ms = await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine');
   const aufgaben = await ladeAufgaben();
+  // EINE Konto-Sicht (09.10., E4-Rest): ein Konto „nur Business“ setzt keinen Bezug im Privat-Bereich zurück — weder an einem Privat-Ziel
+  // noch an Privat-Zielen/-Meilensteinen (die Kennungen kommen aus dem Körper). Ein Privat-Ziel gibt es für es nicht (404).
+  const ohnePrivat = await privatAusgeblendetFuer(zugang.person).catch(() => true);
+  if (ohnePrivat && alle.some(z => z.id === g.zielId && zielImPrivat(z))) return NextResponse.json({ ok: false, fehler: PLANUNG_NICHT_GEFUNDEN }, { status: 404 });
   const wer = bezuegeZurueck(g, {
-    zielLebt: lebt, ziele: alle, meilensteine: ms?.meilensteine ?? [], aufgaben: aufgaben.tasks, projekte: aufgaben.projects,
+    zielLebt: lebt, ziele: ohnePrivat ? zieleOhnePrivat(alle) : alle, meilensteine: ohnePrivat ? meilensteineOhnePrivat(ms?.meilensteine ?? []) : (ms?.meilensteine ?? []),
+    aufgaben: aufgaben.tasks, projekte: aufgaben.projects,
   });
   const gesetzt = { ziele: 0, meilensteine: 0, aufgaben: 0, projekte: 0 };
 

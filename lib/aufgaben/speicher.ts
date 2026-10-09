@@ -18,6 +18,7 @@ import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vor
 import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen, nurIchBesitzer } from './sicht';
 import { aufgabeImPrivat, listeImPrivat, projektImPrivat, spacesOhnePrivat, statusImPrivat, vorlageImPrivat } from './bereich-sicht';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { NUR_BUSINESS_PRIVAT } from '@/lib/zugang/konto-sicht';
 import { beideAufloesen, anlegerinVon, alleZustaendigen, SYSTEM } from './zustaendig';
 import { aufgabePruefen } from './pruefen';
 import { archivMarkeSchuetzen } from './archiv-einzeln';
@@ -222,8 +223,8 @@ export function teilMerge<T extends object>(alt: T, neu: T, felder: { gesetzt: r
   return n as T;
 }
 
-/** Antwort, wenn ein Konto „nur Business“ etwas in den Privat-Bereich legen will (09.10., E4). */
-export const NUR_BUSINESS_PRIVAT = 'Dieses Konto sieht nur den Business-Bereich — in den Privat-Bereich (Privat, Selbstständigkeit) legt es nichts an und verschiebt nichts dorthin. Nichts gespeichert.';
+/** Antwort, wenn ein Konto „nur Business“ etwas in den Privat-Bereich legen will (09.10., E4) — der Satz steht seit E4-Rest in der Konto-Sicht. */
+export { NUR_BUSINESS_PRIVAT };
 
 /**
  * Berührt eine Änderung VORHANDENES im Privat-Bereich (Aufgabe samt Kette, Projekt, Liste, eigener Status, Vorlage)? Dann gibt es das

@@ -25,6 +25,8 @@ import { BEREICH_GETRENNT, ZIEL_FEHLT, meilensteinBezugPruefen } from '@/lib/pla
 import { zieleFuerBezug } from '@/lib/planung/bezuege-server';
 import { meilensteineFuerBetrachter, meilensteinVerborgen } from '@/lib/planung/eigene-ziele-sicht';
 import { verborgeneZieleFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { konflikteOhnePrivat, meilensteinImPrivat, meilensteineOhnePrivat, privatBehalten, privatSchreibPruefen, privatStatus } from '@/lib/planung/bereich-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,13 +53,21 @@ const sauberListe = (roh: unknown, mandate: ReadonlyMap<string, MandatKurz> | nu
 // Person hängen, gehen an diese Person nie hinaus (jede Antwort über `sichtbar`) und sind für sie nicht änderbar (403). Seit 07.10.
 // entsteht kein neuer solcher Meilenstein mehr (Ziel-Bezug nur auf den geteilten Bestand, lib/planung/bezuege.ts).
 const VERBORGEN = 'Dieser Meilenstein hängt an einem eigenen Ziel einer anderen Person, das sie nicht mit dir teilt.';
-const sichtbar = (liste: readonly Meilenstein[] | undefined, verborgen: ReadonlySet<string>) => mitStand(meilensteineFuerBetrachter(Array.isArray(liste) ? liste : [], verborgen));
+// EINE Konto-Sicht (09.10., E4-Rest — Kevin: „Ja, Privates bleibt privat“): ein Konto „nur Business“ bekommt Meilensteine des Privat-Bereichs
+// (`meilensteinSpace` — Privat, Gesundheit, die Selbstständigkeit) in keiner Antwort (auch nicht im 409); Vorhandenes dort ändern/löschen → 404,
+// Neues/Verschobenes dorthin → 403, der Altweg PUT behält sie in ihrer gespeicherten Fassung (lib/planung/bereich-sicht.ts).
+const sichtbar = (liste: readonly Meilenstein[] | undefined, verborgen: ReadonlySet<string>, ohnePrivat = false) => {
+  const l = meilensteineFuerBetrachter(Array.isArray(liste) ? liste : [], verborgen);
+  return mitStand(ohnePrivat ? meilensteineOhnePrivat(l) : l);
+};
+/** Konto „nur Business“? Systemlauf → nein; Konten unlesbar → ja (fail-closed). */
+const ohnePrivatFuer = (req: Request) => privatAusgeblendetFuer(personStreng(req)).catch(() => true);
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  const [f, verborgen] = await Promise.all([loadJson<MeilensteinFile>('meilensteine'), verborgeneZieleFuer(personStreng(req))]);
+  const [f, verborgen, ohnePrivat] = await Promise.all([loadJson<MeilensteinFile>('meilensteine'), verborgeneZieleFuer(personStreng(req)), ohnePrivatFuer(req)]);
   // Jede Zeile trägt ihren Stand — Änderungen kommen als PATCH mit diesem Stand zurück (28.09.).
-  return NextResponse.json({ meilensteine: sichtbar(f?.meilensteine, verborgen) });
+  return NextResponse.json({ meilensteine: sichtbar(f?.meilensteine, verborgen, ohnePrivat) });
 }
 
 export async function PUT(req: Request) {
@@ -70,11 +80,17 @@ export async function PUT(req: Request) {
   // Eigene Ziele nur geteilt (08.10.): verborgene Meilensteine (Altbestand) kennt dieser Browser nicht — sie bleiben, wie sie sind;
   // nennt der Körper einen davon, ist das ein Schreiben auf Fremdes → 403.
   const verborgen = await verborgeneZieleFuer(personStreng(req));
-  const gespeichert = verborgen.size ? (await loadJson<MeilensteinFile>('meilensteine'))?.meilensteine : [];
+  const ohnePrivat = await ohnePrivatFuer(req);
+  const gespeichert = verborgen.size || ohnePrivat ? (await loadJson<MeilensteinFile>('meilensteine'))?.meilensteine : [];
   const fremd = (Array.isArray(gespeichert) ? gespeichert : []).filter(m => meilensteinVerborgen(m, verborgen));
   if (fremd.some(m => gesaeubert.some(x => x.id === m.id))) return NextResponse.json({ ok: false, error: VERBORGEN }, { status: 403 });
+  // Konto „nur Business“ (09.10.): die Meilensteine des Privat-Bereichs kennt es nicht — sie bleiben stehen; nennt der Körper einen davon → 404,
+  // einen neuen dort → 403.
+  const p = ohnePrivat ? privatBehalten(Array.isArray(gespeichert) ? gespeichert : [], gesaeubert, meilensteinImPrivat) : { liste: gesaeubert };
+  if ('fehler' in p) return NextResponse.json({ ok: false, error: p.fehler }, { status: privatStatus(p.fehler) ?? 403 });
+  const behalten = [...p.liste, ...fremd.filter(m => !p.liste.some(x => x.id === m.id))];
   // Kette (01.10.): Verweise ins Leere fallen weg (die Liste ist ja gerade DER Bestand), Kreise und zu viele Vorgänger lehnt der Weg ab.
-  const sauber = ohneToteVerweise([...gesaeubert, ...fremd]).liste;
+  const sauber = ohneToteVerweise(behalten).liste;
   const kette = kettePruefen(sauber, sauber.map(m => m.id));
   if (kette) return NextResponse.json({ ok: false, error: kette }, { status: kette.startsWith('Abgelehnt: höchstens') ? 413 : 409 });
   // Vorher ersetzte jeder PUT die Liste bedingungslos — ein Client mit halbem
@@ -90,7 +106,8 @@ export async function PUT(req: Request) {
   }
   // Meilenstein ↔ Aufgaben (30.09.): jeder Meilenstein hat seine Liste im Aufgaben-Bestand (idempotent).
   await meilensteinStrukturSichern(null, { person: personStreng(req) });
-  return NextResponse.json({ ok: true, meilensteine: meilensteineFuerBetrachter(next.meilensteine, verborgen) });
+  const l = meilensteineFuerBetrachter(next.meilensteine, verborgen);
+  return NextResponse.json({ ok: true, meilensteine: ohnePrivat ? meilensteineOhnePrivat(l) : l });
 }
 
 /**
@@ -107,6 +124,7 @@ export async function PATCH(req: Request) {
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, 160) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   // Eigene Ziele nur geteilt (08.10.): Änderungen an verborgenen Meilensteinen (Altbestand) → 403, nichts geschrieben.
   const verborgen = await verborgeneZieleFuer(personStreng(req));
+  const ohnePrivat = await ohnePrivatFuer(req);
   if (verborgen.size) {
     const fremd = new Set(((await loadJson<MeilensteinFile>('meilensteine'))?.meilensteine ?? []).filter(m => meilensteinVerborgen(m, verborgen)).map(m => m.id));
     if (ops.some(o => fremd.has(o.op === 'upsert' ? o.eintrag?.id ?? '' : o.id ?? ''))) return NextResponse.json({ ok: false, error: VERBORGEN }, { status: 403 });
@@ -120,6 +138,10 @@ export async function PATCH(req: Request) {
     // Ein gelöschter Meilenstein verschwindet auch aus „wartet auf“ der anderen (01.10.) — Rückgängig legt den Verweis wieder an.
     danach: f => ({ ...f, meilensteine: ohneToteVerweise(fortschrittAnwenden(Array.isArray(f.meilensteine) ? f.meilensteine : [], aufgaben).liste).liste }),
     pruefen: (liste, o) => {
+      // Konto „nur Business“ (09.10.) zuerst: Meilensteine des Privat-Bereichs gibt es nicht (404), neue/verschobene dorthin → 403 (`teil`
+      // über dieselbe Säuberung wie der Schreibweg).
+      const privat = ohnePrivat ? privatSchreibPruefen(liste, o, meilensteinImPrivat, (alt, felder) => sauberListe([{ ...alt, ...felder }])[0] ?? null) : null;
+      if (privat) return privat;
       const ids = new Set(liste.map(m => m.id));
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id)).size;
       if (neu && liste.length + neu > GRENZE) return `Abgelehnt: höchstens ${GRENZE} Meilensteine.`;
@@ -133,8 +155,9 @@ export async function PATCH(req: Request) {
   });
   if (!r.ok) {
     const aktuell = await loadJson<MeilensteinFile>('meilensteine');
-    const status = r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
-    return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], meilensteine: sichtbar(aktuell?.meilensteine, verborgen) }, { status });
+    const status = privatStatus(r.fehler) ?? (r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400);
+    const konflikte = ohnePrivat ? konflikteOhnePrivat(r.konflikte ?? [], meilensteinImPrivat) : (r.konflikte ?? []);
+    return NextResponse.json({ ok: false, error: r.fehler, konflikte, meilensteine: sichtbar(aktuell?.meilensteine, verborgen, ohnePrivat) }, { status });
   }
   // Meilenstein ↔ Aufgaben (30.09.): neue/geänderte bekommen ihre Liste (Space, Titel, Reihenfolge nachgezogen), gelöschte
   // archivieren ihre Liste (Aufgaben bleiben; kommt der Meilenstein zurück, wird sie wieder aktiv). Ziele ziehen nach.
@@ -145,5 +168,5 @@ export async function PATCH(req: Request) {
   if (upserts.length) await meilensteinStrukturSichern(upserts, { person });
   if (weg.length) await meilensteinListenArchivieren(weg, { person });
   await zieleNachziehen(r.next?.meilensteine ?? []);
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, meilensteine: sichtbar(r.next?.meilensteine, verborgen) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, meilensteine: sichtbar(r.next?.meilensteine, verborgen, ohnePrivat) });
 }

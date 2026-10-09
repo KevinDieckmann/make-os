@@ -13,6 +13,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { WEG } from '@/lib/wege';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from '@/lib/crm/pipeline';
@@ -34,15 +35,19 @@ export interface FlussAnfrage { bereich: FlussBereich; person: string; heute: st
 
 /** Die Reihe eines Bereichs für eine Person — null, wenn der Bereich keine Daten hat bzw. die Person nicht im Haushalt ist. */
 export async function flussLaden(a: FlussAnfrage): Promise<FlussReihe | null> {
+  // EINE Konto-Sicht (09.10., E4-Rest — Kevin: „Ja, Privates bleibt privat“): ein Konto „nur Business“ bekommt die Reihen des Privat-Bereichs
+  // des Haushalts nicht (Familie, private Finanzen) und in der Planung nur Business — vorher lieferte `?bereich=finanzen-privat|familie` dem
+  // Partner die Haushaltsbuchungen und die Paar-Termine. Konten unlesbar → wie „nur Business“ (fail-closed).
+  const ohnePrivat = await privatAusgeblendetFuer(a.person).catch(() => true);
   switch (a.bereich) {
     case 'markttraktion': return markttraktion(a.heute);
-    case 'finanzen-privat': return finanzenPrivat(a.heute);
+    case 'finanzen-privat': return ohnePrivat ? null : finanzenPrivat(a.heute);
     case 'finanzen-business': return finanzenBusiness(a.heute);
-    case 'planung': return planung(a.person, a.heute, a.space ?? null);
+    case 'planung': return ohnePrivat && a.space === 'privat' ? null : planung(a.person, a.heute, ohnePrivat ? 'business' : (a.space ?? null));
     case 'aufgaben': return aufgaben(a.person, a.heute, a.space ?? null);
     case 'kalender': return kalender(a.person, a.heute);
     case 'gesundheit': return gesundheit(a.person, a.heute);
-    case 'familie': return familie(a.person, a.heute);
+    case 'familie': return ohnePrivat ? null : familie(a.person, a.heute);
     case 'netzwerken': return netzwerken(a.heute);
     case 'inbox': return inbox(a.person, a.heute);
   }
@@ -188,7 +193,8 @@ async function kalender(person: string, heute: string): Promise<FlussReihe> {
 
 // ── Gesundheit (nur die eigene Person) ───────────────────────────────────────
 async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
-  const { sichtbarFuer } = await import('@/lib/planung/routinen');
+  // Routinen im Umfang der Person (09.10., E4-Rest — lib/planung/bereich-sicht-server.ts): „nur Business“ ohne Privat, außerhalb des Haushalts keine.
+  const { routinenSichtbarFuer } = await import('@/lib/planung/bereich-sicht-server');
   type Sport = Partial<Pick<import('@/lib/sport/modell').SportStand, 'hyrox' | 'laeufe' | 'gym' | 'woche' | 'planStart' | 'ziele' | 'einstieg'>>;
   const [sport, r] = await Promise.all([
     loadJson<Sport>(speicherFuer('sport', person)).catch(() => null),
@@ -196,7 +202,7 @@ async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
   ]);
   const einheiten = [...(sport?.hyrox ?? []), ...(sport?.laeufe ?? []), ...(sport?.gym?.einheiten ?? [])].map(e => tag(e.datum)).filter((t): t is string => !!t);
   const planJeWoche = sport?.einstieg?.fertig && sport.woche ? Object.values(sport.woche).filter(p => p && p.art !== 'ruhe' && p.art !== 'frei').length : 0;
-  const routinen = sichtbarFuer(r?.routinen ?? [], person).filter(x => x.aktiv && x.kategorie === 'gesundheit' && tag(x.naechstesMal));
+  const routinen = (await routinenSichtbarFuer(r?.routinen ?? [], person)).filter(x => x.aktiv && x.kategorie === 'gesundheit' && tag(x.naechstesMal));
   return flussGesundheit({
     heute, planJeWoche, planAb: tag(sport?.planStart), link: WEG.gesundheit(),
     einheiten,

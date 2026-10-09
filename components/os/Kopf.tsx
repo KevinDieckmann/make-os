@@ -24,6 +24,7 @@ import { fokusTitel } from '@/lib/zeitmessung/fokus-regeln';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 import { Glocke } from './Glocke';
 import { UpdateHinweis } from './UpdateHinweis';
+import { useNurBusiness } from './useInhaber';
 
 /** Zeit-Ereignis: der Fokus-Zähler meldet einen gespeicherten Block (Zeit je Einheit/Mandat laden dann neu). */
 export const ZEIT_EREIGNIS = 'make-zeit-geaendert';
@@ -36,7 +37,12 @@ export const ZEIT_EREIGNIS = 'make-zeit-geaendert';
 function SpaceSchalter({ wahl, setzen }: { wahl: SpaceWahl; setzen: (s: SpaceWahl) => void }) {
   const router = useRouter();
   const pfad = usePathname() ?? '/os';
-  const { suche } = useSpace();
+  const { suche, ausAdresse } = useSpace();
+  // Konto „nur Business“ (09.10., E4-Rest): kein Knopf „Privat“ — der Server liefert dort nichts aus dem Haushalt. Ein nur GEMERKTES
+  // „Privat“ (keine Seite, kein `?space=`) springt einmal auf Business; eine Adresse mit Privat bleibt, wie sie ist (Seiten zeigen dann leer).
+  const nurBusiness = useNurBusiness();
+  const wahlen = nurBusiness ? SPACE_WAHLEN.filter(id => id !== 'privat') : SPACE_WAHLEN;
+  useEffect(() => { if (nurBusiness && wahl === 'privat' && !ausAdresse) setzen('business'); }, [nurBusiness, wahl, ausAdresse, setzen]);
   const waehlen = (s: SpaceWahl) => {
     if (s === wahl) return;
     setzen(s);
@@ -46,6 +52,7 @@ function SpaceSchalter({ wahl, setzen }: { wahl: SpaceWahl; setzen: (s: SpaceWah
   return (
     <span role="group" aria-label="Bereich wählen" className="kopf-space" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', flex: '0 0 auto' }}>
       {SPACE_WAHLEN.map(id => {
+        if (!wahlen.includes(id)) return null;
         const s = wahlInfo(id);
         const an = id === wahl;
         return (
