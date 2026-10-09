@@ -5,6 +5,8 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
 
 const wurzel = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,6 +25,11 @@ process.env.MAKE_OS_FORMAT ??= 'v2';
 // Datenordnern hinge das vom Kalendertag ab. Deshalb „kompatibel“ (wie Kevins Instanz); tests/ki-datenschutz.test.ts prüft
 // „sparsam“ ausdrücklich (setzt die Variable selbst).
 process.env.MAKE_OS_KI_VORGABE ??= 'kompatibel';
+// Echte Notizen nie in Tests (09.10.): ohne MAKE_VAULT_DIR fällt lib/zoe/vault.ts am Mac auf den echten Vault zurück (~/Vaults, Schreibtisch,
+// iCloud) — ein Test, der die Variable vergaß, las so echte Notizen. Vorgabe für ALLE Tests: ein leerer Wegwerf-Vault und keine Doku-Wurzel.
+// Tests, die einen eigenen Vault brauchen, setzen MAKE_VAULT_DIR selbst; wer den Rückfall prüft, löscht die Variable im Test.
+process.env.MAKE_VAULT_DIR ??= mkdtempSync(path.join(tmpdir(), 'make-os-test-vault-'));
+process.env.MAKE_OS_DOKU_WURZEL ??= 'aus';
 
 export default defineConfig({
   resolve: {
@@ -34,6 +41,6 @@ export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
     include: ['tests/**/*.test.ts'],
-    env: { TZ: testZone, MAKE_OS_FORMAT: process.env.MAKE_OS_FORMAT, MAKE_OS_KI_VORGABE: process.env.MAKE_OS_KI_VORGABE },
+    env: { TZ: testZone, MAKE_OS_FORMAT: process.env.MAKE_OS_FORMAT, MAKE_OS_KI_VORGABE: process.env.MAKE_OS_KI_VORGABE, MAKE_VAULT_DIR: process.env.MAKE_VAULT_DIR, MAKE_OS_DOKU_WURZEL: process.env.MAKE_OS_DOKU_WURZEL },
   },
 });
