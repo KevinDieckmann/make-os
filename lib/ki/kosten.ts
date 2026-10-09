@@ -33,6 +33,12 @@ export function kostenUsdCent(modell: string, mengen: Mengen, opt: { faehigkeit?
 }
 
 export const inEuroCent = (usdCent: number, kurs: number = usdEurKurs()): number => usdCent * kurs;
+/**
+ * Euro-Cent → US-Cent — die Gegenrichtung von `inEuroCent` mit DEMSELBEN Kurs (Feinschliff 09.10.). Gemessen wird in US-Cent (Katalogpreise,
+ * `ki-verbrauch`, Thread-Kosten `LaufZustand.kostenCent`/`Nachricht.kosten.cent`); Grenzen und Budgets setzt die Person in Euro-Cent. Wer beides
+ * vergleicht, rechnet NUR hierüber um — nie mit einem eigenen Kurs.
+ */
+export const inUsdCent = (euroCent: number, kurs: number = usdEurKurs()): number => euroCent / kurs;
 
 /** „1,30 €“ bzw. „ca. 1,30 €“ (auf ganze Cent gerundet; unter einem Cent „< 0,01 €“). */
 export function euroText(euroCent: number, ca = false): string {

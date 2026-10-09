@@ -19,6 +19,7 @@ import { agentNurVorschlag } from '@/lib/zoe/gespraech-schutz';
 import { FREMD_AGENTEN } from '@/lib/zoe/fremd';
 import { neueKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
+import { inEuroCent, inUsdCent, usdEurKurs } from '@/lib/ki/kosten';
 import { headDef } from './katalog';
 import { skillLesen, einstellungFuer } from './skills-lesen';
 import { GRENZEN, LAUF_AGENT, agentSchluessel, planBestand, type AgentRef, type AgentenEinstellung, type HeadDef, type LaufAuftrag, type Merksatz, type Mitarbeiter, type PlanBestand, type Skill, type Umfang } from './typen';
@@ -125,9 +126,12 @@ export async function delegieren(o: { person: string; head: HeadDef; headFaden: 
   return { ok: true, faden: r.e, ...(auftragId ? { auftragId } : {}) };
 }
 
-/** Mittlere Kosten eines fertigen Mitarbeiter-Laufs dieses Heads (eigene Erfahrung — ohne Messung keine Schätzung). */
-export function schaetzungCent(faeden: readonly FadenKern[], headId: string): number | null {
-  const l = faeden.filter(f => f.agent.art === 'mitarbeiter' && f.agent.headId === headId && f.lauf?.status === 'fertig').map(f => f.lauf!.kostenCent);
+/**
+ * Mittlere Kosten eines fertigen Mitarbeiter-Laufs dieses Heads in EURO-Cent (eigene Erfahrung — ohne Messung keine Schätzung). Die Threads
+ * messen US-Cent; umgerechnet nur über lib/ki/kosten.ts (`inEuroCent`) — die Schwelle `planSchwelleCent` ist in Euro-Cent (Feinschliff 09.10.).
+ */
+export function schaetzungCent(faeden: readonly FadenKern[], headId: string, kurs: number = usdEurKurs()): number | null {
+  const l = faeden.filter(f => f.agent.art === 'mitarbeiter' && f.agent.headId === headId && f.lauf?.status === 'fertig').map(f => inEuroCent(f.lauf!.kostenCent, kurs));
   return l.length ? l.reduce((a, b) => a + b, 0) / l.length : null;
 }
 
@@ -484,6 +488,8 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
   // Ein Lauf je Thread: läuft er noch (Pacht des Arbeiters abgelaufen, Auftrag neu vergeben), läuft er nicht ein zweites Mal.
   if (f.lauf?.status === 'laeuft' && Date.now() - Date.parse(f.lauf.start) < KERN_GRENZEN.laufMs + 60_000) return { status: 200, ok: true, fadenId, ergebnis: 'läuft schon — nicht doppelt gestartet', laufStatus: 'laeuft' };
   if (!headSichtbar(sicht, f.agent.headId)) return { status: 403, ok: false, fadenId, ergebnis: 'Diesen Head siehst du nicht.' };
+  // Feinschliff 09.10.: ein voller Thread nimmt kein Ergebnis mehr auf (413-Regel, nie kürzen) — dann gar nicht erst laufen (kostet nur).
+  if (f.nachrichten.length >= GRENZEN.fadenNachrichten) { await laufEnde(person, fadenId, 'fehler', THREAD_VOLL); return { status: 200, ok: false, fadenId, ergebnis: THREAD_VOLL, laufStatus: 'fehler' }; }
   const a = await agentAufloesen(f.agent, u);
   if ('ok' in a && a.ok === false) { await laufEnde(person, fadenId, 'fehler', a.fehler); return { status: a.status, ok: false, fadenId, ergebnis: a.fehler }; }
   const { head, mitarbeiter, einstellung } = a as Aufgeloest;
@@ -509,7 +515,8 @@ async function threadAusfuehren(person: string, fadenId: string, sicht: KontoSic
   const ctx: HandlerKontext = { sicht, umfang: u, origin: o.origin, hintergrund, modus: 'lauf', faden: fl, head, mitarbeiter, einstellung, laufId };
   const ergebnis = await agentLauf({
     sicht, umfang: u, faden: fl, modus: 'lauf', origin: o.origin, hintergrund, handler: handlerFuer(ctx), gedaechtnis: gedaechtnisFuer(bestand, f.agent), skill: skill ?? null,
-    zusatz, brett: !!brett, offeneFragen: offeneBretter.length > 0, laufId, kostenGrenzeCent: f.lauf?.kostenGrenzeCent,
+    // Die Kostengrenze des Laufs setzt die Person in Euro-Cent; die Schleife misst US-Cent — umgerechnet NUR über lib/ki/kosten.ts (Feinschliff 09.10.).
+    zusatz, brett: !!brett, offeneFragen: offeneBretter.length > 0, laufId, ...(f.lauf?.kostenGrenzeCent ? { kostenGrenzeCent: inUsdCent(f.lauf.kostenGrenzeCent) } : {}),
     abbrechen: async () => {
       const x = await eigenerFaden(person, fadenId);
       if (x?.lauf?.status === 'abgebrochen') return 'von Hand abgebrochen';
@@ -530,6 +537,9 @@ async function laufEnde(person: string, fadenId: string, status: 'wartet' | 'feh
   await fadenAendern(person, fadenId, x => ({ ...x, status: statusAusLauf(status), lauf: { ...(x.lauf ?? laufWartet(jetzt)), status, ...(status === 'fehler' ? { ende: jetzt } : {}), fehler: grund, ...(wartetAuf ? { wartetAuf } : {}) } }));
 }
 
+/** Hinweis, wenn ein Thread kein Ergebnis mehr aufnimmt (`GRENZEN.fadenNachrichten`, 413-Regel — nie kürzen). */
+export const THREAD_VOLL = `Thread voll (${GRENZEN.fadenNachrichten} Nachrichten) — neuen Thread anlegen. Das Ergebnis dieses Laufs ist hier nicht gespeichert.`;
+
 /** Ergebnis in den Thread, Bericht in den Eltern-Thread (fremd, R9), Brett/Hilfe, Glocke, Lauf-Protokoll. */
 export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErgebnis, hintergrund: boolean): Promise<void> {
   const jetzt = iso();
@@ -539,12 +549,21 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
     ...(f.agent.art === 'mitarbeiter' ? { fremd: 'agent' } : {}),
   };
   const laufStatus = e.status === 'wartet' ? 'wartet' as const : e.status;
+  // Feinschliff 09.10.: ist der Thread voll (413), passt das Ergebnis nicht mehr hinein — vorher scheiterte die ganze Änderung still und der
+  // Lauf blieb „läuft“. Jetzt endet er sichtbar mit Status „fehler“ und dem Hinweis (Kosten werden trotzdem gezählt); gekürzt wird nie.
+  let voll = false;
   const r = await fadenAendern(person, f.id, x => {
     const y = anhaengen(x, [nachricht], jetzt);
-    if (!y.ok) return y;
+    const marken = { fremdGelesen: x.fremdGelesen || e.fremdGelesen, vertraulich: x.vertraulich || e.vertraulich };
+    const kosten = Math.round(((x.lauf?.kostenCent ?? 0) + e.kostenCent) * 100) / 100;
+    if (!y.ok) {
+      if (y.status !== 413) return y;
+      voll = true;
+      return { ...x, ...marken, status: 'fehler', lauf: { ...(x.lauf ?? laufWartet(jetzt)), status: 'fehler', schritte: e.schritte, kostenCent: kosten, ende: jetzt, fehler: THREAD_VOLL } };
+    }
     return {
-      ...y.faden, status: statusAusLauf(laufStatus), fremdGelesen: x.fremdGelesen || e.fremdGelesen, vertraulich: x.vertraulich || e.vertraulich,
-      lauf: { ...(x.lauf ?? laufWartet(jetzt)), status: laufStatus, schritte: e.schritte, kostenCent: Math.round(((x.lauf?.kostenCent ?? 0) + e.kostenCent) * 100) / 100, ...(laufStatus !== 'wartet' ? { ende: jetzt } : {}), ...(e.grund && laufStatus !== 'fertig' ? { fehler: e.grund } : {}) },
+      ...y.faden, status: statusAusLauf(laufStatus), ...marken,
+      lauf: { ...(x.lauf ?? laufWartet(jetzt)), status: laufStatus, schritte: e.schritte, kostenCent: kosten, ...(laufStatus !== 'wartet' ? { ende: jetzt } : {}), ...(e.grund && laufStatus !== 'fertig' ? { fehler: e.grund } : {}) },
     };
   });
   const kind = r.ok ? r.faden : f;
@@ -576,9 +595,9 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
     });
   }
   const headId = f.agent.art === 'zoe' ? 'zoe' : f.agent.headId;
-  if (e.status !== 'wartet' || f.agent.art === 'head') {
+  if (voll || e.status !== 'wartet' || f.agent.art === 'head') {
     const { melde } = await import('@/lib/meldungen/melden');
-    await melde({ an: person, art: 'agenten', titel: 'Ein Agenten-Ergebnis liegt bereit', link: WEG.agenten({ ...(headId !== 'zoe' ? { h: headId } : {}), f: f.id }) });
+    await melde({ an: person, art: 'agenten', titel: voll ? 'Ein Agenten-Thread ist voll — bitte einen neuen anlegen' : 'Ein Agenten-Ergebnis liegt bereit', link: WEG.agenten({ ...(headId !== 'zoe' ? { h: headId } : {}), f: f.id }) });
   }
   const { logRun } = await import('@/lib/agent-log');
   await logRun(`faden:${headId}`, 'Agenten-Lauf', e.span, { person });

@@ -77,10 +77,11 @@ describe('Daumen, Annahmequote, Erfolgsquote, Kosten je Ergebnis (rein)', () => 
       faden('fd-2', 'sales', { status: 'fehler', schritte: [], start: T, kostenCent: 3 }),
       faden('fd-3', 'marketing', { status: 'fertig', schritte: [], start: T, kostenCent: 99 }),
       faden('fd-4', 'sales', undefined, [nachricht('k', 'agent', { kosten: { cent: 5 } })]),
-    ], 'sales', '2026-10-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z');
-    expect(fz).toMatchObject({ laeufe: { gesamt: 2, fertig: 1, fehler: 1 }, kostenCent: 20, daumen: { hoch: 1, runter: 0 }, gemessenCent: [12] });
+    ], 'sales', '2026-10-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z', 0.5);
+    // Feinschliff 09.10.: die Threads messen US-Cent, zurück kommen Euro-Cent (Kurs 0,5 im Test) — klar benannt.
+    expect(fz).toMatchObject({ laeufe: { gesamt: 2, fertig: 1, fehler: 1 }, kostenEuroCent: 10, daumen: { hoch: 1, runter: 0 }, gemessenEuroCent: [6] });
     const l = headLeistung({ headId: 'sales', von: 'a', bis: 'b', faden: fz, entscheidungen: [{ angenommen: 3, abgelehnt: 1 }], skills: [{ id: 'sk-1', name: 'geheimer-name', erfolg: { laeufe: 4, angenommen: 3, abgelehnt: 0, fehler: 1 } }] });
-    expect(l.kosten).toEqual({ cent: 20, jeErgebnisCent: 5 });
+    expect(l.kosten).toEqual({ cent: 10, jeErgebnisCent: 2.5 });
     expect(l.skills[0]).toMatchObject({ quote: 0.75, laeufe: 4 });
     const r = reviewDatenAus('2026-10', [{ ...l, autonomie: 'intern' }]);
     expect(JSON.stringify(r)).not.toContain('geheimer-name');
@@ -137,7 +138,10 @@ describe('Autonomie: nur verschärfen über den Boden; hoch per Klick mit Quote;
     });
     it('Review-Daten: nur sichtbare Heads, nur Zahlen', async () => {
       const r = await reviewDaten('person-a');
-      expect(r.heads.find(h => h.headId === 'sales')).toMatchObject({ laeufe: { fertig: 1 }, kosten: { cent: 7 }, annahme: { angenommen: 2, abgelehnt: 8 } });
+      expect(r.heads.find(h => h.headId === 'sales')).toMatchObject({ laeufe: { fertig: 1 }, annahme: { angenommen: 2, abgelehnt: 8 } });
+      // 7 US-Cent gemessen → Euro-Cent über den Kurs der Instanz (Feinschliff 09.10.).
+      const { usdEurKurs } = await import('@/lib/ki/kosten');
+      expect(r.heads.find(h => h.headId === 'sales')!.kosten.cent).toBeCloseTo(7 * usdEurKurs(), 2);
       expect((await reviewDaten('gast')).heads).toEqual([]);
     });
   });
