@@ -539,7 +539,7 @@ export function KompassView() {
               ...(f.orgs ?? []).map(x => ORTE.find(o => o.id === x)?.kurz),
               ...(f.prios ?? []).map(x => PRIOS.find(p => p[0] === x)?.[1]),
               ...(f.wege ?? []).map(x => WER_LABEL[x as keyof typeof WER_LABEL]),
-              ...(f.stichworte ?? []).map(x => STICHWORTE.find(s => s.id === x)?.label ?? eigeneSw.find(s => s.id === x)?.label),
+              ...(f.stichworte ?? []).map(x => STICHWORTE.find(s => s.id === x)?.label ?? eigeneSw.find(s => s.id === x)?.label ?? x),
             ].filter(Boolean);
             return (
               <div key={f.id} style={{ background: auf ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.03)', borderRadius: 14, padding: '10px 14px', transition: 'background .2s ease' }}>

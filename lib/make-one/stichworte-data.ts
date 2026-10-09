@@ -3,8 +3,10 @@
 // wiederfinden — Aufgaben, Kennzahlen, Notizen. Erkannt am Text; von Hand
 // gesetzte gewinnen immer.
 //
-// Herkunft: aus 302 echten Dateien gezogen (KEMA_Brain, MAKE Brain, unsere
-// Stores, KPI-Register) — keine erfundenen Standardbegriffe.
+// Herkunft: aus echten Arbeitsdateien verdichtet — keine erfundenen Standardbegriffe.
+// Seit 09.10. (Paket „neutral-rest“, Plattform-Regel): nur allgemeine Begriffe — keine Personen, Firmen, Produkte, Adressen
+// oder privaten Einzelfälle. Eigene Begriffe pflegt jede Instanz als eigene Stichworte (Kompass, `mitEigenen`). Von Hand gesetzte
+// Kennungen früherer Stichworte bleiben in den Daten stehen und werden mit ihrer Kennung angezeigt.
 //
 // Zweck ist das Abarbeiten am Stück: „Steuerberater" anklicken und alles
 // sehen, was dazu offen ist — quer über Projekte und Themen hinweg.
@@ -28,11 +30,11 @@ export const STICHWORTE: Stichwort[] = [
   { id: 'gruendung', label: 'Gründung', thema: 'recht', muster: /gr[üu]ndung|gegr[üu]ndet|beurkund/i },
   { id: 'gewerbeanmeldung', label: 'Gewerbeanmeldung', thema: 'recht', muster: /gewerbe/i },
   { id: 'handelsregister', label: 'Handelsregister', thema: 'recht', muster: /handelsregister|\bhrb\b|hr-?eintrag/i },
-  { id: 'notar', label: 'Notar', thema: 'recht', muster: /notar|eichenauer/i },
-  { id: 'stammkapital', label: 'Stammkapital', thema: 'recht', muster: /stammkapital|einlage|500\s?€/i },
+  { id: 'notar', label: 'Notar', thema: 'recht', muster: /notar/i },
+  { id: 'stammkapital', label: 'Stammkapital', thema: 'recht', muster: /stammkapital|einlage/i },
   { id: 'steuernummer', label: 'Steuernummer', thema: 'recht', muster: /steuernummer|steuer-?nr|elster|steuerliche erfassung/i },
   { id: 'umsatzsteuer', label: 'Umsatzsteuer', thema: 'recht', muster: /umsatzsteuer|\bust\b|mwst|vorsteuer|reverse charge|kleinunternehmer/i },
-  { id: 'steuerberater', label: 'Steuerberater', thema: 'recht', muster: /steuerberat|j[öo]rn peters|steuerlich/i },
+  { id: 'steuerberater', label: 'Steuerberater', thema: 'recht', muster: /steuerberat|steuerlich/i },
   { id: 'buchhaltung', label: 'Buchhaltung', thema: 'recht', muster: /buchhalt|\bbeleg|kontier|datev/i },
   { id: 'lohnbuchhaltung', label: 'Lohnbuchhaltung', thema: 'recht', muster: /lohnbuch|gehaltsabrechn|lohnabrechn/i },
   { id: 'jahresabschluss', label: 'Jahresabschluss', thema: 'recht', muster: /jahresabschluss|bilanz|\beuer\b|gewinnermittl/i },
@@ -46,9 +48,9 @@ export const STICHWORTE: Stichwort[] = [
   { id: 'anstellung', label: 'Anstellung', thema: 'recht', muster: /anstell|einstell|arbeitsvertrag|angestellt|\bbav\b/i },
   { id: 'versicherung', label: 'Versicherung', thema: 'recht', muster: /versicher|haftpflicht|rechtsschutz/i },
   { id: 'behoerde', label: 'Behörde', thema: 'recht', muster: /beh[öo]rde|agentur f[üu]r arbeit|finanzamt|betriebsnummer|gewerbeamt/i },
-  { id: 'namensaenderung', label: 'Namensänderung', thema: 'recht', muster: /namens[äa]nder|umbenenn|kd management|namensf[üu]hrung/i },
-  { id: 'geschaeftsadresse', label: 'Geschäftsadresse', thema: 'recht', muster: /gesch[äa]ftsadresse|firmenadresse|firmendomizil|office club|kurf[üu]rstendamm|postzustell/i },
-  { id: 'rechtsstreit', label: 'Rechtsstreit', thema: 'recht', muster: /rechtsstreit|klage|gericht|sachverst[äa]ndig|mietpreisbremse/i },
+  { id: 'namensaenderung', label: 'Namensänderung', thema: 'recht', muster: /namens[äa]nder|umbenenn|namensf[üu]hrung/i },
+  { id: 'geschaeftsadresse', label: 'Geschäftsadresse', thema: 'recht', muster: /gesch[äa]ftsadresse|firmenadresse|firmendomizil|postzustell/i },
+  { id: 'rechtsstreit', label: 'Rechtsstreit', thema: 'recht', muster: /rechtsstreit|klage|gericht|sachverst[äa]ndig/i },
   { id: 'anwalt', label: 'Anwalt', thema: 'recht', muster: /anwalt|kanzlei|juristisch/i },
   { id: 'datenschutz', label: 'Datenschutz', thema: 'recht', muster: /datenschutz|dsgvo|einwillig|consent/i },
   { id: 'frist', label: 'Frist', thema: 'recht', muster: /\bfrist|deadline|termingebunden/i },
@@ -107,13 +109,9 @@ export const STICHWORTE: Stichwort[] = [
   // ── PRODUKT & SYSTEM ──────────────────────────────────────────────────────
   { id: 'makeos', label: 'MAKE OS', thema: 'produkt', muster: /make ?os|make\.one|unser system|eigene software/i },
   { id: 'zoe', label: 'ZOE', thema: 'produkt', muster: /zoe|zentrale intelligenz|assistent/i },
-  { id: 'kemaris', label: 'KEMARIS', thema: 'produkt', muster: /kemaris|innovation group|\bkig\b/i },
-  { id: 'capos', label: 'CapOS', thema: 'produkt', muster: /capos|cap.?os\b|capital operations|capital readiness/i },
-  { id: 'connect', label: 'KEMARIS Connect', thema: 'produkt', muster: /\bconnect\b|inner circle|community/i },
-  { id: 'kimmi', label: 'Kimmi', thema: 'produkt', muster: /kimmi|ki-?cfo|kemaris ai/i },
-  { id: 'ksi', label: 'Souveränitäts-Index', thema: 'produkt', muster: /\bksi\b|souver[äa]nit[äa]ts/i, kpi: true },
+  { id: 'connect', label: 'Community', thema: 'produkt', muster: /\bconnect\b|inner circle|community/i },
   { id: 'markttraktion', label: 'Markttraktion', thema: 'produkt', muster: /markttraktion|market.?traction|traktion/i, kpi: true },
-  { id: 'grantpilot', label: 'Grant Pilot', thema: 'produkt', muster: /grant.?pilot|cashradar|taxtool|f[öo]rdermittel-?check/i },
+  { id: 'foerdermittel', label: 'Fördermittel', thema: 'produkt', muster: /f[öo]rdermittel|zuschuss|f[öo]rderprogramm/i },
   { id: 'riskshield', label: 'Risk-Shields', thema: 'produkt', muster: /risk.?shield|risiko-?monitoring|\balert|warnung/i },
   { id: 'agent', label: 'Agent', thema: 'produkt', muster: /\bagenten?\b|ki-?agent|agenten-?lauf/i },
   { id: 'automatisierung', label: 'Automatisierung', thema: 'produkt', muster: /automatis|workflow|\bloop\b|trigger|no-?code/i },
@@ -138,13 +136,15 @@ export const STICHWORTE: Stichwort[] = [
   { id: 'terminologie', label: 'Terminologie', thema: 'produkt', muster: /terminologie|sprachregel|vokabular|wording/i },
   { id: 'content', label: 'Content', thema: 'produkt', muster: /content|beitrag|artikel/i },
   { id: 'transkript', label: 'Transkript', thema: 'produkt', muster: /transkript|mitschrift|fireflies|protokoll/i },
-  { id: 'fuf', label: 'F&F-Launch', thema: 'produkt', muster: /f&f|friends.?family|launch|markteintritt/i },
+  { id: 'fuf', label: 'Launch', thema: 'produkt', muster: /f&f|friends.?family|launch|markteintritt/i },
   { id: 'uebergabe', label: 'Übergabe', thema: 'produkt', muster: /[üu]bergabe|handover|onboarding|dokumentation/i },
-  { id: 'team', label: 'Team', thema: 'produkt', muster: /\bteam|mitarbeit|\brolle|zust[äa]ndig|delegier|quapler|\bcto\b/i },
+  { id: 'team', label: 'Team', thema: 'produkt', muster: /\bteam|mitarbeit|\brolle|zust[äa]ndig|delegier|\bcto\b/i },
 
   // ── GESUNDHEIT & LEBEN ────────────────────────────────────────────────────
-  { id: 'rehabilitation', label: 'Rehabilitation', thema: 'leben', muster: /\breha|physio|\br[üu]cken|genesung|mobilit[äa]t/i },
-  { id: 'behandlung', label: 'Behandlung', thema: 'leben', muster: /behandlung|infiltration|spritze|orthop[äa]de|\barzt|[äa]rztlich|praxis/i },
+  // Allgemeine Begriffe (09.10.: keine Behandlung einer bestimmten Person) — sie erkennen auch Gesundheitstermine im Kalender
+  // (lib/kalender/zoe-sicht.ts), darum eher breit als eng.
+  { id: 'rehabilitation', label: 'Rehabilitation', thema: 'leben', muster: /\breha|physio|genesung|mobilit[äa]t|therapie|krankengymnast/i },
+  { id: 'behandlung', label: 'Behandlung', thema: 'leben', muster: /behandlung|untersuchung|\barzt|[äa]rztin|[äa]rztlich|praxis|klinik|krankenhaus|facharzt|zahnarzt|orthop[äa]d|spritze|impfung/i },
   { id: 'sport', label: 'Sport', thema: 'leben', muster: /sport|training|\bkraft|bouldern|padel|fu[ßs]ball|fitness/i, kpi: true },
   { id: 'laufen', label: 'Laufen', thema: 'leben', muster: /\blaufen|\blauf\b|running|longrun|marathon|hyrox/i, kpi: true },
   { id: 'ernaehrung', label: 'Ernährung', thema: 'leben', muster: /ern[äa]hrung|\bessen\b|kalorien|meal.?prep|mahlzeit|kochen/i },
@@ -159,10 +159,10 @@ export const STICHWORTE: Stichwort[] = [
   { id: 'journal', label: 'Journal', thema: 'leben', muster: /journal|tagebuch|reflexion|r[üu]ckblick|review/i },
   { id: 'fokus', label: 'Fokuszeit', thema: 'leben', muster: /fokus|konzentration|ablenkung|deep work|arbeitsmodus/i, kpi: true },
   { id: 'beziehung', label: 'Beziehung', thema: 'leben', muster: /beziehung|partnerschaft|\bpaar\b|date night|emotional bank/i, kpi: true },
-  { id: 'abstimmung', label: 'MAKE Abstimmung', thema: 'leben', muster: /make.?abstimmung|make.?reflexion|check-?in|sunday dinner/i, kpi: true },
+  { id: 'abstimmung', label: 'Abstimmung zu zweit', thema: 'leben', muster: /abstimmung zu zweit|paar.?abstimmung|wochen.?reflexion|check-?in/i, kpi: true },
   { id: 'familie', label: 'Familie', thema: 'leben', muster: /familie|eltern|\bmama\b|\bpapa\b|kinder/i },
   { id: 'freunde', label: 'Freunde', thema: 'leben', muster: /freunde|freundeskreis|treffen mit/i },
-  { id: 'luna', label: 'Luna', thema: 'leben', muster: /\bluna\b|\bhund\b|tierarzt|gassi/i },
+  { id: 'haustier', label: 'Haustier', thema: 'leben', muster: /\bhund\b|\bkatze\b|haustier|tierarzt|gassi/i },
   { id: 'wohnung', label: 'Wohnung', thema: 'leben', muster: /wohnung|\bmiete\b|vermieter|umzug|zuhause/i },
   { id: 'haushalt', label: 'Haushalt', thema: 'leben', muster: /haushalt|putzen|reinig|reparatur|handwerker|waschmaschine|ikea/i },
   { id: 'urlaub', label: 'Urlaub', thema: 'leben', muster: /urlaub|\breise|auszeit|bucket list/i },

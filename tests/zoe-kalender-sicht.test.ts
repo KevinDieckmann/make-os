@@ -37,6 +37,8 @@ beforeAll(async () => {
       ev('e-malin', 'Yoga mit Freundin', 14, 'Privat Malin'),
       ev('e-team', 'Teamcall Probe GmbH', 16, 'Privat Kevin'),
       ev('e-reha-gemeinsam', 'Physio-Termin', 18, 'Gemeinsam'),
+      // Seit 09.10. gibt es keine feste Zweitquelle (M365-Snapshot) mehr — der Gesundheitstermin steht im eigenen Kalender.
+      ev('e-physio', 'Physiotherapie Rücken', 19, 'Privat Kevin'),
       // Gestern, privat (Kevin): für Malin nur „Belegt“ (der frühere Netzwerk-Verlauf ist seit F2 M7 entfernt).
       { id: 'e-gestern', title: 'Abendessen mit Petra Probefrau', startDate: `${tagePlus(H, -1)}T19:00:00`, endDate: `${tagePlus(H, -1)}T21:00:00`, allDay: false, calendarName: 'Privat Kevin' },
     ],
@@ -44,7 +46,6 @@ beforeAll(async () => {
   // „privat“ als Sicherung im Neben-Bestand (Apple verliert CLASS) — derselbe Weg wie in der Kalender-Sicht.
   await db.saveJson('kalender-bezug', { bezuege: { 'e-privat': { privat: true, von: 'kevin', geaendert: J }, 'e-gestern': { privat: true, von: 'kevin', geaendert: J } } });
   await db.saveJson('netzwerk', { kontakte: [{ id: 'n-probe-1', name: 'Petra Probefrau', email: 'petra@example.invalid' }], chancen: [] });
-  await db.saveJson('kemaris-calendar', { at: J, events: [{ title: 'Physiotherapie Rücken', start: `${H}T19:00:00`, end: `${H}T19:30:00` }] });
   brain = await import('@/lib/brain');
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
@@ -140,7 +141,6 @@ describe('#K1 Nachtrag — nur Text Dritter ist fremd (iCloud-Stand mit Teilnehm
 
   it('Einladung, Abo, fremder Kalender und Buchung sind fremd — der eigene Termin nicht', async () => {
     const db = await import('@/lib/store/local-db');
-    await db.saveJson('kemaris-calendar', { at: J, events: [] });
     await db.saveJson('kalender-icloud', stand({
       'k-kevin': [
         { href: '/k/eigen.ics', ics: ics('eigen-1', 'Steuerunterlagen sortieren', 8) },
@@ -170,15 +170,13 @@ describe('#K1 Nachtrag — nur Text Dritter ist fremd (iCloud-Stand mit Teilnehm
     expect(brain.kalenderImPrompt(b)).toBe(false);
     expect(brain.promptBrain(b)).not.toContain('<fremde_daten quelle="kalender">\n');
     await db.saveJson('kalender-icloud', { kalender: [], objekte: {} });
-    await db.saveJson('kemaris-calendar', { at: J, events: [{ title: 'Physiotherapie Rücken', start: `${H}T19:00:00`, end: `${H}T19:30:00` }] });
-  });
-  it('terminFremd: Mac-Lieferung und KEMARIS gelten als fremd (keine Teilnehmer-Angabe)', async () => {
+    });
+  it('terminFremd: die Mac-Lieferung gilt als fremd (keine Teilnehmer-Angabe)', async () => {
     const { terminFremd } = await import('@/lib/kalender/zoe-sicht');
     const h = { haushalt: new Set(['privat kevin']), nurLesen: new Set<string>() };
     const t = { kalender: 'Privat Kevin', mitTeilnehmern: false };
     expect(terminFremd(t, { ...h, quelle: 'icloud' })).toBe(false);
     expect(terminFremd(t, { ...h, quelle: 'mac' })).toBe(true);
-    expect(terminFremd(t, { ...h, quelle: 'kemaris' })).toBe(true);
   });
 });
 

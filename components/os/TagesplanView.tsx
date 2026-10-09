@@ -42,14 +42,14 @@ const START = 6 * 60, ENDE = 22 * 60, PX = 0.85;
 const H = (ENDE - START) * PX;
 
 /**
- * Kevins Ansage: „Nimm im Planer auch viele Standards mit dabei." Das sind die
- * Bausteine, aus denen ein Tag bei Kevin und Malin tatsächlich besteht —
- * einmal anklicken statt jedes Mal neu tippen.
+ * „Nimm im Planer auch viele Standards mit dabei." Allgemeine Bausteine eines Arbeitstags — einmal anklicken statt jedes Mal
+ * neu tippen. Seit 09.10. ohne Bausteine einer bestimmten Person (Körperstelle, Termin mit einer Person): eigene Abläufe stehen
+ * als Routinen und Wochenvorlage in den Daten (Planung › Routinen).
  */
 const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
   { art: 'fokus', titel: 'Kurzer Fokus', dauerMin: 45 },
-  { art: 'reha', titel: 'Reha / Rücken', dauerMin: 30 },
+  { art: 'reha', titel: 'Reha / Training', dauerMin: 30 },
   { art: 'reha', titel: 'Bewegung / Spaziergang', dauerMin: 30 },
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'pause', titel: 'Mittag', dauerMin: 45 },
@@ -57,7 +57,7 @@ const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = 
   { art: 'block', titel: 'Postfach leeren', dauerMin: 30 },
   { art: 'block', titel: 'Telefonate / Rückrufe', dauerMin: 45 },
   { art: 'block', titel: 'Finanzen & Rechnungen', dauerMin: 60 },
-  { art: 'block', titel: 'Termin mit Malin', dauerMin: 60 },
+  { art: 'block', titel: 'Abstimmung im Team', dauerMin: 60 },
   { art: 'routine', titel: 'Tagesstart', dauerMin: 15 },
   { art: 'routine', titel: 'Tagesende', dauerMin: 15 },
 ];
@@ -173,9 +173,9 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     const s = new Set<string>();
     for (const [k, v] of Object.entries(regler)) if (v >= FOKUS_SCHWELLE) s.add(k);
     const ft = `${fokusAlle.tag ?? ''} ${fokusAlle.woche ?? ''} ${fokusAlle.monat ?? ''}`.toLowerCase();
-    if (/gesund|reha|rücken|schlaf|energie|stabilisier/.test(ft)) s.add('health');
-    if (/kunde|umsatz|vertrieb|launch|f&f|capos|pipeline|onboard/.test(ft)) s.add('business');
-    if (/malin|familie|beziehung|team/.test(ft)) s.add('social');
+    if (/gesund|reha|schlaf|energie|stabilisier|training|bewegung/.test(ft)) s.add('health');
+    if (/kunde|umsatz|vertrieb|launch|pipeline|onboard/.test(ft)) s.add('business');
+    if (/partner|familie|beziehung|team/.test(ft)) s.add('social');
     return s;
   }, [regler, fokusAlle]);
   const passtZumFokus = (r: Routine) => fokusSaeulen.has(KATEGORIE_ZU_SAEULE[r.kategorie] ?? '');

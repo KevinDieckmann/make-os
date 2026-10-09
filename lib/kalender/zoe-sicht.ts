@@ -43,7 +43,7 @@ export function istGesundheitsTermin(t: { titel?: string; ort?: string; notiz?: 
 
 /** Die Herkunft, gegen die ein Termin geprüft wird. `haushalt`/`nurLesen`: Kalendernamen, klein geschrieben. */
 export interface TerminHerkunft {
-  quelle: 'icloud' | 'mac' | 'leer' | 'kemaris';
+  quelle: 'icloud' | 'mac' | 'leer';
   haushalt: ReadonlySet<string>;
   nurLesen: ReadonlySet<string>;
 }

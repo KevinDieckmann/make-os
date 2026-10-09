@@ -144,10 +144,11 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; quelle?: 'privat' | 'business' }
 /**
  * Termine der nächsten Tage — seit 29.09. (K5) über /api/kalender (iCloud, private Termine der anderen Person nur als
- * „Belegt“, K1 `maskieren`) statt über den Altweg /api/apple-calendar (Rohtitel ohne Maskierung) und ohne die
- * KEMARIS-Beispieldaten. Der Space eines Termins kommt aus den Kalender-Einstellungen.
+ * „Belegt“, K1 `maskieren`) statt über den Altweg /api/apple-calendar (Rohtitel ohne Maskierung) und ohne Beispieldaten
+ * einer festen Zweitquelle. Der Space eines Termins kommt aus den Kalender-Einstellungen. (Ein gespeicherter Schalter
+ * `business` aus alten Layouts wird ignoriert — er tat seit K5 nichts mehr.)
  */
-function useTermine(tage: number, _mitBusiness: boolean, space: 'alle' | 'privat' | 'business' = 'alle'): Termin[] | undefined {
+function useTermine(tage: number, space: 'alle' | 'privat' | 'business' = 'alle'): Termin[] | undefined {
   const heute = localDay();
   const bis = plusTage(heute, tage - 1);
   const kal = useDaten<{ termine: { id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string }[]; einstellungen?: object }>(`/api/kalender?von=${heute}&bis=${plusTage(heute, tage)}`, d => {
@@ -166,7 +167,7 @@ function TermineWidget({ e, titel, i }: WidgetProps) {
   const heute = localDay();
   const tage = num(e.tage, 1);
   const sp = str(e.space, 'alle') as 'alle' | 'privat' | 'business';
-  const termine = useTermine(tage, e.business === true, sp);
+  const termine = useTermine(tage, sp);
   const gruppen = useMemo(() => {
     const m = new Map<string, Termin[]>();
     for (const t of termine ?? []) { const d = (t.startDate ?? '').slice(0, 10); m.set(d, [...(m.get(d) ?? []), t]); }
@@ -651,7 +652,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
     einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'einheit', label: 'Einheit', art: 'wahl', optionen: [{ w: 'alle', label: 'alle' }, ...KERN_EINHEITEN_NAMEN.map(n => ({ w: n, label: `nur ${n}` })), { w: 'ohne', label: 'Business ohne Einheit' }], standard: 'alle' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
   termine: { art: 'termine', label: 'Termine', bereich: 'Tag', beschreibung: 'Heute oder die nächsten Tage aus dem Kalender', breite: 4, Komponente: TermineWidget,
-    einstellungen: [TAGE_WAHL, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'business', label: 'KEMARIS-Termine dazu', art: 'schalter', standard: false }] },
+    einstellungen: [TAGE_WAHL, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }] },
   fokus: { art: 'fokus', label: 'Fokus', bereich: 'Tag', beschreibung: 'Worauf es heute, diese Woche oder diesen Monat ankommt', breite: 2, Komponente: FokusWidget,
     einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'auto', label: 'der nächste gesetzte' }, { w: 'tag', label: 'heute' }, { w: 'woche', label: 'Woche' }, { w: 'monat', label: 'Monat' }], standard: 'auto' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'gemeinsam' }, { w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'alle' }] },
   koerper: { art: 'koerper', label: 'Körper', bereich: 'Gesundheit', beschreibung: 'Recovery und Routinen von heute', breite: 2, Komponente: KoerperWidget },
@@ -682,7 +683,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'aufgaben', label: 'Aufgaben', beschreibung: WIDGETS.aufgaben.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'termine', label: 'Termine heute', beschreibung: 'Die Termine von heute', bereich: 'Tag', breite: 4 },
-  { art: 'termine', label: 'Nächste 7 Tage', beschreibung: 'Was in der Woche ansteht — privat und KEMARIS', bereich: 'Tag', breite: 4, voreinstellung: { tage: 7, business: true } },
+  { art: 'termine', label: 'Nächste 7 Tage', beschreibung: 'Was in der Woche ansteht — privat und Business', bereich: 'Tag', breite: 4, voreinstellung: { tage: 7 } },
   { art: 'fokus', label: 'Fokus', beschreibung: 'Der nächste gesetzte Fokus', bereich: 'Tag', breite: 2 },
   { art: 'fokus', label: 'Wochenfokus', beschreibung: 'Worauf es diese Woche ankommt', bereich: 'Tag', breite: 2, voreinstellung: { horizont: 'woche' } },
   { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },

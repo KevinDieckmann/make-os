@@ -14,7 +14,7 @@ import { ZoeReiter } from './ZoeReiter';
 interface Item { id: number; q: string; a: string; webUsed?: boolean; loading?: boolean; }
 
 const SUGGEST = [
-  'Wettbewerber für ein Controlling-Cockpit (CapOS) im deutschen KMU-Markt',
+  'Wettbewerber für ein Controlling-Cockpit im deutschen KMU-Markt',
   'Wie ist BSFZ-Forschungszulage 2026 geregelt — Sätze & Voraussetzungen?',
   'Marktgröße & Trends: Finanz-/Liquiditätsplanung-Software für KMU (DACH)',
 ];

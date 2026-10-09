@@ -11,6 +11,7 @@
 // Client-safe: keine Server-Importe.
 
 import { FINANZ_ORTE, ORT_STICHWORTE, type FinanzOrt } from '@/lib/einheiten';
+import { altProjekt } from './alt-projekte';
 
 export interface Ort {
   id: FinanzOrt;
@@ -47,9 +48,6 @@ export const ORT: Readonly<Record<string, Ort>> = Object.fromEntries(ORTE.map(o 
 /** Ohne Hinweis im Text: Business ohne eigene Gesellschaft — die Beteiligungsgesellschaft (wie bisher). */
 export const ORT_BUSINESS_STANDARD: FinanzOrt = 'kdv';
 
-/** Projekt-Kennungen aus dem allerersten Startbestand, die privat waren — nur Altbestand (neue Projekte tragen ihren Space selbst). */
-const ALT_PRIVAT_PROJEKT = /^proj-(privat|health|make)$/;
-
 /**
  * Ort einer Aufgabe: von Hand > Text > Projekt aus dem Altbestand > Business-Standard. Eine Zuordnung von Hand, die kein Ort
  * mehr ist (Altwert einer früheren festen Beteiligung), zählt als Business ohne eigene Gesellschaft — wie vorher Business.
@@ -63,6 +61,7 @@ export function ortVon(
   // Der Text schlägt alles andere: „Selbständigkeit: Buchhaltung“ gehört zur Selbstständigkeit.
   const text = `${t.title} ${t.description ?? ''}`;
   for (const o of ORTE) if (o.muster.test(text)) return o.id;
-  if (t.projectId && ALT_PRIVAT_PROJEKT.test(t.projectId)) return 'privat';
+  // Projekte aus dem ersten Startbestand (Altbestand, alt-projekte.ts): privat bleibt privat — neue Projekte tragen ihren Space selbst.
+  if (altProjekt(t.projectId)?.privat) return 'privat';
   return ORT_BUSINESS_STANDARD;
 }

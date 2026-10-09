@@ -5,16 +5,15 @@
 // der Fokus-Regler überall GLEICH lenkt.
 
 import { THEME } from './os-data';
+import { ALT_PROJEKTE } from './alt-projekte';
 
 export type SaeuleKey = 'health' | 'business' | 'planning' | 'finance' | 'social';
 
-/** Projekt → Score-Säule (für die Aufgaben-Lenkung durch den Fokus-Regler). */
-export const SAEULE_VON_PROJEKT: Record<string, string> = {
-  'proj-health': 'health',
-  'proj-capos': 'business', 'proj-ig': 'business', 'proj-kdm': 'business',
-  'proj-make': 'social',
-  'proj-privat': 'finance',
-};
+/**
+ * Projekt → Score-Säule (für die Aufgaben-Lenkung durch den Fokus-Regler). Nur die Projekte des ersten Startbestands tragen eine
+ * feste Säule (lib/make-one/alt-projekte.ts, Altbestand) — keine Firmen- oder Produktnamen im Code (09.10.).
+ */
+export const SAEULE_VON_PROJEKT: Record<string, string> = Object.fromEntries(Object.entries(ALT_PROJEKTE).map(([id, p]) => [id, p.saeule]));
 
 /** Routine-Kategorie → Score-Säule (für „zahlt auf den Fokus ein"). */
 export const KATEGORIE_ZU_SAEULE: Record<string, string> = {

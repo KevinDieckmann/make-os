@@ -1,10 +1,12 @@
 // ─── MAKE OS — Die Ordnung ──────────────────────────────────────────────────
-// Kevins & Malins Grundsatz-Reihenfolge: WAS zuerst zählt, wenn alles wichtig
+// Die Grundsatz-Reihenfolge des Haushalts: WAS zuerst zählt, wenn alles wichtig
 // ist. Die Reihenfolge der Themen ist die eigentliche Priorisierung — sie
 // steht über der Dringlichkeit einer einzelnen Aufgabe (Eisenhower: erst das
 // Wichtige, dann das Dringende).
 //
 // Client-safe: keine Server-Importe (wird auch in Views geladen).
+
+import { ALT_PROJEKTE } from './alt-projekte';
 
 export interface Thema {
   id: string;
@@ -37,7 +39,7 @@ export const THEMEN: Thema[] = [
     label: 'Produkt & System',
     satz: 'Die eigene Software und die Systeme dahinter — unser Hebel.',
     farbe: '#4A6CF7',
-    muster: /software|make os|capos|agent|system|bauplan|deploy|hetzner|github|datenbasis|stammdaten|dashboard|automatis|f&f|launch|zoe|prototyp/i,
+    muster: /software|make os|agent|system|bauplan|deploy|hetzner|github|datenbasis|stammdaten|dashboard|automatis|launch|zoe|prototyp/i,
   },
   {
     id: 'leben',
@@ -50,16 +52,11 @@ export const THEMEN: Thema[] = [
 
 export const THEMA = Object.fromEntries(THEMEN.map(t => [t.id, t])) as Record<string, Thema>;
 
-/** Kevins diktierte Startreihenfolge — von Kevin & Malin jederzeit änderbar. */
+/** Startreihenfolge — vom Haushalt jederzeit änderbar (Kompass). */
 export const STANDARD_ORDNUNG = ['recht', 'umsatz', 'produkt', 'leben'];
 
-/** Projekte, die immer in eine feste Bahn gehören (schlägt die Mustererkennung). */
-const PROJEKT_THEMA: Record<string, string> = {
-  'proj-health': 'leben',
-  'proj-privat': 'leben',
-  'proj-make': 'produkt',
-  'proj-capos': 'produkt',
-};
+/** Projekte aus dem ersten Startbestand, die immer in eine feste Bahn gehören (schlägt die Mustererkennung; Altbestand, alt-projekte.ts). */
+const PROJEKT_THEMA: Record<string, string> = Object.fromEntries(Object.entries(ALT_PROJEKTE).flatMap(([id, p]) => (p.thema ? [[id, p.thema]] : [])));
 
 /**
  * Bahn einer Aufgabe: von Hand gesetzt > Projekt-Zuordnung > Muster im Text >
@@ -79,7 +76,7 @@ export function themaVon(
 }
 
 /**
- * Themen mit Kevins und Malins eigenen Bezeichnungen. Kommt aus dem Kompass
+ * Themen mit den eigenen Bezeichnungen des Haushalts. Kommt aus dem Kompass
  * („Eigene Bezeichnungen") — leer heißt: es bleibt beim Standard.
  */
 export function themenMit(eigene: Record<string, string> = {}): Record<string, Thema> {
