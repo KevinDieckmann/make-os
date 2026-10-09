@@ -4,6 +4,29 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Kalender: linke Spalte einklappbar (nur lokal — Branch `kalender-klappen`, Basis `agenten-nacht` 43bb4c14)
+
+Kevin 09.10.: „Guck mal, ob du den Kalender links einklappbar machen kannst, das sieht noch so verloren aus. Die Monatsansicht etc. einfach
+einklappbar — dann sieht man den Kalender danach besser und er hat ausreichend Platz.“
+
+**Gebaut:** Die linke Spalte von `/os/kalender` (Erstellen, Mini-Monat, Sicht, Bereich, Kalenderliste, Planen-Bausteine, Ohne Termin, Agent,
+Auswertung, Einstellungen) klappt ein — Knopf neben „Erstellen“, **⌘B bzw. Strg+B** (nicht in Eingabefeldern, nicht über einem offenen
+Termin-Fenster), je Browser gemerkt (`make-kalender-links`, Vorgabe offen). Zugeklappt bekommt das Raster die ganze Breite; vorne in der Kopfzeile
+stehen „Spalte öffnen“ und ein kleines „Erstellen ▾“ (dazu die Kürzel c/n). Die Spalte bleibt dabei geladen (`hidden`), Einstellungen und Karten
+behalten ihren Zustand. **Nur am breiten Bildschirm** (Spalte neben dem Raster, `SPALTEN_AB`); schmal liegt sie wie bisher unter dem Raster.
+**Planen:** wer mit zugeklappter Spalte nach „Planen“ wechselt (Segment, Taste p, Link `?modus=planen`), bekommt die Spalte geöffnet — die Bausteine
+stehen dort; das wird nicht gemerkt. Rückkehr mit `?einstellungen=1`/`?google=…` öffnet sie ebenso. Regeln rein in `components/os/kalender/klappen.ts`;
+Taste und Merker gemeinsam mit der Agenten-Seite in `lib/make-one/klappen.ts` (`components/os/agenten/klappen.ts` nutzt sie, Verhalten gleich).
+Tests: `tests/kalender-klappen.test.ts` (neu), `tests/agenten-aufraeumen.test.ts`, alle `tests/kalender-*.test.ts`, Design-Wächter grün.
+
+**So testet ihr** (am Rechner, Fenster breit):
+1. Kalender öffnen → oben in der linken Spalte rechts neben „+ Erstellen“ das Symbol „Spalte zuklappen“ klicken → das Raster wird breit, vorne in
+   der Kopfzeile stehen „Spalte öffnen“ und „+ Erstellen“.
+2. „+ Erstellen ▾“ in der Kopfzeile → Termin → der Anlege-Dialog öffnet sich.
+3. Seite neu laden → die Spalte bleibt zu. ⌘B drücken → sie geht auf, nochmal ⌘B → zu. Ins Suchfeld klicken und ⌘B drücken → nichts klappt.
+4. Spalte zu lassen, oben „Planen“ wählen → die Spalte geht auf, die Bausteine stehen oben links.
+5. Fenster schmal ziehen (Handy-Breite) → die Spalte steht wie bisher unter dem Kalender, kein Klapp-Knopf.
+
 ## 09.10.2026 — Neustart-Umzug: neue leere Instanz, Kartei + Markttraktion + eigene Aufgaben kommen mit (nur lokal — Branch `neustart-umzug`, Basis 523fbbfc + `agenten-nacht`)
 
 Kevin 09.10.: „Wir können alles aus [neu] machen, aber die Kundendaten und Datensätze und Infos werden mit übernommen. Das ist der Kern unserer

@@ -18,9 +18,13 @@
 // Adresse: `?modus=planen`, `?tag=YYYY-MM-DD` (Woche/Tag dorthin), `?space=privat|business` (Bereich).
 // Umschalter oben rechts (Kevin 29.09., wie Google): Kalender | Aufgaben (`?modus=aufgaben`, Taste k bzw. u) — Aufgaben
 // nach Fälligkeit (AufgabenModus.tsx). Planen gehört zur Kalender-Seite; Aufgaben schließt Planen aus (lib/kalender/modus.ts).
+// Seit 09.10. (Kevin: „Kalender links einklappbar … dann hat er ausreichend Platz“): die linke Spalte klappt ein — Knopf neben
+// „Erstellen“, ⌘B/Strg+B, je Browser gemerkt; zugeklappt „Spalte öffnen“ + kleines „Erstellen“ vorne in der Kopfzeile. Nur breit (nebeneinander);
+// Planen öffnet eine zugeklappte Spalte (die Bausteine stehen dort). Regeln rein in ./klappen.ts.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
@@ -65,6 +69,7 @@ import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
 import { useSpace } from '@/hooks/useSpace';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
+import { LINKS_ID, LINKS_TASTE, linksOffenLesen, linksOffenMerken, linksSichtbar, linksTaste, oeffnenFuerPlanen } from './klappen';
 
 type Ansicht = KalenderAnsicht;
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
@@ -132,8 +137,13 @@ export function Kalender() {
   const [meldung, setMeldung] = useState<string | null>(null);
   const [einst, setEinst] = useState<Einstellungen | null>(null);
   const [zeigeEinst, setZeigeEinst] = useState(false);
-  // Rückkehr von Google (?google=…) oder aus den Einstellungen (?einstellungen=1, 08.10.): die Einstellungen öffnen.
-  useEffect(() => { try { const a = new URLSearchParams(window.location.search); if (a.has('google') || a.get('einstellungen') === '1') setZeigeEinst(true); } catch { /* ohne Adresse */ } }, []);
+  // Linke Spalte (09.10.): je Browser gemerkt, Vorgabe offen — gelesen nach dem ersten Zeichnen (Server kennt den Speicher nicht).
+  const [linksOffen, setLinksOffen] = useState(true);
+  useEffect(() => { setLinksOffen(linksOffenLesen()); }, []);
+  const linksUmschalten = (offen?: boolean) => { const n = offen ?? !linksOffen; setLinksOffen(n); linksOffenMerken(n); };
+  // Rückkehr von Google (?google=…) oder aus den Einstellungen (?einstellungen=1, 08.10.): die Einstellungen öffnen — sie stehen in der
+  // linken Spalte, also auch diese (nur für den Moment, nicht gemerkt).
+  useEffect(() => { try { const a = new URLSearchParams(window.location.search); if (a.has('google') || a.get('einstellungen') === '1') { setZeigeEinst(true); setLinksOffen(true); } } catch { /* ohne Adresse */ } }, []);
   const [analyse, setAnalyse] = useState<Analyse | null>(null);
   const [analysiert, setAnalysiert] = useState(false);
   const [eingetragen, setEingetragen] = useState<Record<number, 'ok' | 'busy' | 'err'>>({});
@@ -162,6 +172,8 @@ export function Kalender() {
   useEffect(() => { if (planenStart.current && breit) { planenStart.current = false; setAnsichtRoh('woche'); } }, [breit, modus]);
   // Planen braucht das Zeitraster: aus Monat/Jahr/Termine geht es in die Woche (am Handy in den Tag).
   useEffect(() => { if (modus === 'planen' && !MIT_RASTER.includes(ansicht)) setAnsichtRoh(breit ? 'woche' : 'tag'); }, [modus, ansicht, breit]);
+  // Planen braucht die Bausteine links: eine zugeklappte Spalte geht beim Wechsel nach „Planen“ auf (klappen.ts, nicht gemerkt).
+  useEffect(() => { if (oeffnenFuerPlanen(modus, breit, linksOffen)) setLinksOffen(true); }, [modus, breit]); // eslint-disable-line react-hooks/exhaustive-deps
   const setModus = (m: Modus) => { setModusRoh(m); adresseSetzen({ modus: m === 'kalender' ? undefined : m }); };
   useEffect(() => {
     fetch('/api/state/kalender-einstellungen').then(r => r.json()).then((e: Einstellungen) => { setEinst(e); if (e.standardSicht) setSicht(e.standardSicht); }).catch(() => {});
@@ -252,6 +264,17 @@ export function Kalender() {
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
   }, [ansicht, anker, heute, sicht, bereich, modus]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ⌘B / Strg+B klappt die linke Spalte (nur breit, nicht im Eingabefeld, nicht über einem offenen Termin-Fenster).
+  useEffect(() => {
+    if (!breit) return;
+    const taste = (e: KeyboardEvent) => {
+      if (offen || neu || !linksTaste(e, document.activeElement as HTMLElement | null)) return;
+      e.preventDefault();
+      linksUmschalten();
+    };
+    window.addEventListener('keydown', taste);
+    return () => window.removeEventListener('keydown', taste);
+  }, [breit, linksOffen, offen, neu]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const titel = ansicht === 'tag' ? `${WD[new Date(`${anker}T12:00:00`).getDay()]}, ${Number(anker.slice(8, 10))}. ${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}`
     : ansicht === 'woche' ? `KW ${kalenderwoche(tage[0])} · ${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[6].slice(8, 10))}.${Number(tage[6].slice(5, 7))}.${tage[6].slice(0, 4)}`
@@ -292,7 +315,12 @@ export function Kalender() {
 
   const leiste = (
     <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
-      {breit && <div><ErstellenMenue breit onArt={a => setNeu(neuVon(a))} /></div>}
+      {breit && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <ErstellenMenue breit onArt={a => setNeu(neuVon(a))} />
+          <SymbolKnopf ariaLabel={`Spalte zuklappen (${LINKS_TASTE})`} offen steuert={LINKS_ID} onClick={() => linksUmschalten(false)}><PanelLeftClose size={18} /></SymbolKnopf>
+        </div>
+      )}
       {planen.leiste}
       <Karte i={1}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -404,6 +432,9 @@ export function Kalender() {
   const haupt = (
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minHeight: 0, minWidth: 0, height: breit ? 'calc(100vh - 190px)' : undefined }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Spalte zugeklappt (09.10.): „Spalte öffnen“ und ein kleines „Erstellen“ vorne — sonst stünde „Erstellen“ nur in der Spalte. */}
+        {breit && !linksOffen && <SymbolKnopf ariaLabel={`Spalte öffnen — Monat, Sicht, Kalender (${LINKS_TASTE})`} offen={false} steuert={LINKS_ID} onClick={() => linksUmschalten(true)}><PanelLeftOpen size={18} /></SymbolKnopf>}
+        {breit && !linksOffen && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
         <Knopf leise onClick={() => setAnker(heute)}>Heute</Knopf>
         <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>‹</button>
         <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>›</button>
@@ -441,10 +472,11 @@ export function Kalender() {
       {planen.kopf && <div style={{ marginBottom: 12 }}>{planen.kopf}</div>}
       {/* 06.10.: „<Firma> verbinden“ (Business, Google) bzw. iCloud (Privat) — für die eigene Person, dort wo es hingehört. */}
       {(bereich === 'business' || bereich === 'privat') && <BereichVerbindungen key={bereich} bereich={bereich} onGeaendert={() => void laden()} />}
-      <div style={{ display: 'grid', gridTemplateColumns: breit ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>
-        {breit && leiste}
+      {/* Linke Spalte (09.10.): zugeklappt bleibt sie geladen (`hidden`, Zustand und Karten bleiben), das Raster bekommt die ganze Breite. */}
+      <div style={{ display: 'grid', gridTemplateColumns: breit && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>
+        {breit && <div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0 }}>{leiste}</div>}
         {haupt}
-        {!breit && leiste}
+        {!breit && <div id={LINKS_ID} style={{ minWidth: 0 }}>{leiste}</div>}
       </div>
       {planen.unten && <div style={{ marginTop: 14 }}>{planen.unten}</div>}
       {rueckgaengig}
