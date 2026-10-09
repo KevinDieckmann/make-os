@@ -679,7 +679,6 @@ export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErg
     const name = headDef(f.agent.headId)?.name ?? f.agent.headId;
     await zoeBerichtAnhaengen(person, f.elternId, `Bericht von ${name} aus Thread „${titel}“ (${e.status === 'fertig' ? 'fertig' : e.status}):\n${bericht}`, { fadenId: f.id, titel }, kind, jetzt);
   }
-  const headId = f.agent.art === 'zoe' ? 'zoe' : f.agent.headId;
   // Nachschliff 09.10. („Eine Glocke je Auftrag, erst mit dem Ergebnis“): ein Head, der nur an Mitarbeiter gegeben hat, meldet noch nichts —
   // es meldet der LETZTE Lauf des Auftrags (Regel rein in faeden.ts `glockeNachLauf`), an die auslösende Person (Besitzerin der Threads). Das fertige
   // Ergebnis verlinkt dorthin, wo sie den Auftrag gab (ZOE- bzw. Head-Thread); Fehler, Abbruch und „voll“ melden wie bisher den Thread selbst.
