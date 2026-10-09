@@ -11,6 +11,7 @@ import { Chip, LEUCHT } from '../../ui';
 import { temperaturFarbe, temperaturLabel, type LeadScore } from '@/lib/crm/score';
 import type { SeitenErgebnis } from '@/lib/crm/scoring';
 import { punkteText } from './hilfen';
+import { sqlFortschritt } from '@/lib/crm/leads';
 
 /** Ein Teil des Wegs: „MQL · 22 von 20“ bzw. „SQL · 12 von 28 · fehlt: Schmerz“. */
 export function SeitenChip({ s, name, kurz }: { s: SeitenErgebnis; name: 'MQL' | 'SQL'; kurz?: boolean }) {
@@ -48,14 +49,21 @@ export function StandKette({ score }: { score: LeadScore }) {
 export function ScoreKopf({ score, kompakt }: { score: LeadScore; kompakt?: boolean }) {
   const [auf, setAuf] = useState(false);
   const f = temperaturFarbe(score.temperatur);
+  const sql = sqlFortschritt(score);
   return (
     <div style={{ display: 'grid', gap: 8, padding: kompakt ? '10px 12px' : '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: `1px solid ${f}33` }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: kompakt ? 26 : 30, fontWeight: 700, letterSpacing: '-.02em', color: f, fontVariantNumeric: 'tabular-nums' }}>{score.punkte}</span>
-        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>von 100</span>
+        <span title="Lead-Score — die Temperatur kommt aus den Grenzen der Scoring-Einstellungen" style={{ fontFamily: SCHRIFT.display, fontSize: kompakt ? 26 : 30, fontWeight: 700, letterSpacing: '-.02em', color: f, fontVariantNumeric: 'tabular-nums' }}>{score.punkte}</span>
         <Chip farbe={f}>{temperaturLabel(score.temperatur)}</Chip>
         <button type="button" onClick={() => setAuf(!auf)} aria-expanded={auf} className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: '10px 4px', minHeight: 44 }}>{auf ? 'Zusammensetzung ausblenden' : 'Zusammensetzung'}</button>
       </div>
+      {/* 2.7 (09.10.): statt „von 100“ der Weg zum SQL — Sales-Punkte gegen die Schwelle der Einstellungen. */}
+      {sql && (
+        <div title={`Sales-Punkte ${punkteText(sql.punkte)} von ${punkteText(sql.schwelle)} (SQL-Schwelle)${sql.fehlt.length ? ` — fehlt: ${sql.fehlt.join(', ')}` : ''}`}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.inkDim, marginBottom: 3 }}><span>Bis SQL</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{sql.erreicht ? 'erreicht ✓' : `${sql.prozent} %`}</span></div>
+          <div role="progressbar" aria-label="Fortschritt bis SQL" aria-valuenow={sql.prozent} aria-valuemin={0} aria-valuemax={100} style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><div style={{ width: `${sql.prozent}%`, height: '100%', background: sql.erreicht ? LEUCHT.gut : LEUCHT.business, transition: 'width .3s' }} /></div>
+        </div>
+      )}
       <StandKette score={score} />
       {auf && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>

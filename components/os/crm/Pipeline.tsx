@@ -14,16 +14,16 @@
 // wieder auf seiner letzten offenen Stufe (Server-Regel: nächster Schritt mit Datum). Löschen nur eine Fehlanlage (ohne
 // Geschichte, Wert, Notiz) nach Rückfrage — ein Deal mit Geschichte wird nie gelöscht (Server-Regel `dealRegeln`).
 import { useLinkAuswahl } from '../Verlauf';
-import { mandateLink } from '@/lib/crm/adresse';
+import { mandateLink, qualifizierungLink } from '@/lib/crm/adresse';
 import { WEG, eventLink } from '@/lib/wege';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
+import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, kurzEuro, plusTage, nurFelder } from './daten';
@@ -39,6 +39,7 @@ import { winLoss } from '@/lib/crm/deal-auswertung';
 import type { DealsAnsicht } from '@/lib/crm/adresse';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { sqlRegelText, standardZumRechnen } from '@/lib/crm/scoring';
+import { leadZeileFuer } from '@/lib/crm/leads';
 
 import { tagVon } from '@/lib/zeit';
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
@@ -74,6 +75,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const zahlen = werZahlen(crm.stand.chancen.filter(istOffen), c => c.besitzer, 'sales', ich);
   const p = wahl === 'alle' ? crm.prognose : prognose(chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
   const jePerson = prognoseJePerson(crm.stand.chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
+  const ohneWert = dealsOhneWert(chancen);
   // Eine Definition für die Win Rate überall (Auswertung, Kennzahl, hier): Fenster, Mindestzahl und Texte aus `WIN_RATE` (2.14).
   const wl = winLoss(crm.stand.chancen, crm.heute);
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
@@ -107,7 +109,10 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
       api.setFehler(c.naechsterSchritt ? `„${c.titel}“: der nächste Schritt vom ${c.naechsterSchritt.datum} ist überfällig — unten ein neues Datum setzen, dann die Stufe wechseln.` : `„${c.titel}“: erst einen nächsten Schritt mit Datum festhalten, dann die Stufe wechseln.`);
       return;
     }
+    // 2.16 (09.10.): „Rückgängig“ wie beim Parken — die alte Stufe hat ihren Schritt noch (eben geprüft), der Server nimmt sie zurück.
+    const vorher = c.stufe;
     void api.teil('chancen', id, { stufe: ziel });
+    melden(`„${c.titel}“ → ${crm.stufen.find(s => s.id === ziel)?.label ?? ziel}`, () => void api.teil('chancen', id, { stufe: vorher }));
   };
   // ── Archivieren · Zurückholen · Löschen (04.10.) ──
   const fehlanlage = (c: Chance) => c.historie.length <= 1 && !c.wert.betrag && !(c.notiz ?? '').trim();
@@ -169,6 +174,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           <Zahl wert={kurzEuro(p.commit)} label="Commit · Abschluss" farbe={LEUCHT.gut} />
           <Zahl wert={kurzEuro(p.bestCase)} label="Best Case · ab Angebot" />
           <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
+          {/* 2.13 (09.10.): Deals ohne Wert zählen 0 € — hier steht, wie viele es sind (nie eine Null: nur, wenn es welche gibt). */}
+          {ohneWert > 0 && <Zahl wert={String(ohneWert)} label={ohneWert === 1 ? 'Deal ohne Wert (zählt 0 €)' : 'Deals ohne Wert (zählen 0 €)'} farbe={LEUCHT.achtung} />}
           <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? WIN_RATE_TEXT.label : WIN_RATE_TEXT.ohneQuote} />
         </Raster>
         {jeMonat && jeMonat.some(v => v > 0) && (
@@ -207,7 +214,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                   <div key={s.id} onDragOver={e => e.preventDefault()} onDrop={e => zieh(e, s.id)} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, minHeight: 160 }}>
                     <div title={`Weiter, wenn: ${s.weiterWenn}`} style={{ padding: '2px 4px 10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkDim }}><span>{s.label}</span><span style={{ color: C.inkLeise }}>{s.p} %</span></div>
-                      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{l.length} · {kurzEuro(js?.wert ?? 0)}{js?.haengt ? <span style={{ color: LEUCHT.kritisch }}> · {js.haengt} hängt</span> : null}</div>
+                      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 2 }}>{l.length} · {kurzEuro(js?.wert ?? 0)}{dealsOhneWert(l) ? <span style={{ color: LEUCHT.achtung }}> · {dealsOhneWert(l)} ohne Wert</span> : null}{js?.haengt ? <span style={{ color: LEUCHT.kritisch }}> · {js.haengt} hängt</span> : null}</div>
                     </div>
                     <div style={{ display: 'grid', gap: 8 }}>
                       {l.map(c => {
@@ -253,7 +260,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         const js = p.jeStufe.find(x => x.stufe === s.id);
         return (
           <Karte key={s.id} i={i + 1}>
-            <Ueberschrift rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>{s.label}</Ueberschrift>
+            <Ueberschrift rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${dealsOhneWert(l) ? ` · ${dealsOhneWert(l)} ohne Wert` : ''}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>{s.label}</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Weiter, wenn: {s.weiterWenn}</div>
             <Liste>
               {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}
@@ -323,9 +330,30 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
   };
   const fuehrt = zustaendig(c.besitzer, 'sales');
   const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(k => `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
+  // 2.11 (09.10.): Datum ohne Text wird gemerkt (mit Hinweis), nicht still verworfen; den Schritt eines OFFENEN Deals leeren nur nach Rückfrage
+  // (ohne Schritt hängt er) — Pflicht bleibt beim Anlegen und beim Stufenwechsel (Server).
+  const [datumOhneText, setDatumOhneText] = useState<string | null>(null);
+  const [schrittNeu, setSchrittNeu] = useState(0);
+  const dealOffen = !!crm.stufen.find(s => s.id === c.stufe)?.offen;
+  const schrittText = async (text: string) => {
+    const t = text.trim();
+    if (t) { void setze({ naechsterSchritt: { text: t, datum: datumOhneText ?? c.naechsterSchritt?.datum ?? plusTage(crm.heute, 3) } }); setDatumOhneText(null); return; }
+    if (!c.naechsterSchritt) return;
+    if (dealOffen && !(await bestaetigen({ titel: 'Nächsten Schritt leeren?', text: 'Ein offener Deal ohne nächsten Schritt hängt (Ampel rot) und erscheint in keiner Liste als fällig. Besser: gleich einen neuen Schritt mit Datum eintragen.', ja: 'Trotzdem leeren', gefahr: true }))) { setSchrittNeu(n => n + 1); return; }
+    void setze({ naechsterSchritt: undefined });
+  };
+  const schrittDatum = (d2: string) => {
+    if (!d2) return;
+    if (c.naechsterSchritt) { void setze({ naechsterSchritt: { ...c.naechsterSchritt, datum: d2 } }); return; }
+    setDatumOhneText(d2);
+  };
+  // 2.15 (09.10.): die Fragen des LEADS (Stufen der Scoring-Einstellungen) — dieselben wie in der Qualifizierung; die alten sechs Kernfragen
+  // stehen nur noch bei Deals ohne Person (kein Lead).
+  const leadZ = useMemo(() => (personen[0] ? leadZeileFuer(personen[0], api.kontakte ?? [], crm.stand, crm.heute) : undefined), [personen, api.kontakte, crm.stand, crm.heute]);
+  const leadFragen = (leadZ?.score.scoring?.sales.teile.flatMap(t => t.kriterien) ?? []).filter(x => x.quelle === 'frage');
 
   return (
-    <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+    <div className="quali-seite" style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
       <Feldzeile label="Führt">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <ZustaendigWahl wert={c.besitzer} welt="sales" onWahl={besitzer => void api.teil('chancen', c.id, { besitzer })} />
@@ -363,12 +391,32 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         </div>
       </Feldzeile>
       <Feldzeile label="Nächster Schritt">
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}><Feld wert={c.naechsterSchritt?.text} platzhalter="Was als Nächstes passiert" onFertig={text => setze({ naechsterSchritt: text.trim() ? { text: text.trim(), datum: c.naechsterSchritt?.datum ?? plusTage(crm.heute, 3) } : undefined })} /></div>
-          <Feld typ="date" wert={c.naechsterSchritt?.datum} breite={150} platzhalter="Datum" onFertig={d2 => c.naechsterSchritt && setze({ naechsterSchritt: { ...c.naechsterSchritt, datum: d2 } })} />
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 180px' }}><Feld key={schrittNeu} wert={c.naechsterSchritt?.text} platzhalter="Was als Nächstes passiert" onFertig={text => void schrittText(text)} /></div>
+            <Feld typ="date" wert={c.naechsterSchritt?.datum ?? datumOhneText ?? undefined} breite={150} platzhalter="Datum" onFertig={schrittDatum} />
+          </div>
+          {datumOhneText && !c.naechsterSchritt && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Datum {datum(datumOhneText)} gemerkt — jetzt eintragen, was passiert; ohne Text wird nichts gespeichert.</div>}
         </div>
       </Feldzeile>
       <Feldzeile label="Entscheidung bis"><Feld typ="date" wert={c.erwartetAm} breite={160} platzhalter="Datum" onFertig={erwartetAm => setze({ erwartetAm: erwartetAm || undefined })} /></Feldzeile>
+      {leadZ && leadFragen.length > 0 ? (
+        <div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Qualifizierung des Leads — dieselben Fragen wie in der Runde</span>
+            <Link href={qualifizierungLink(leadZ.id)} style={{ fontSize: TYP.bedien, color: C.aktiv, marginLeft: 'auto' }}>In der Qualifizierung bearbeiten ›</Link>
+          </div>
+          <div style={{ display: 'grid', gap: 4 }}>
+            {leadFragen.map(x => (
+              <div key={x.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(110px, 40%) 1fr', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}>
+                <span style={{ color: C.inkDim }}>{x.name}</span>
+                <span style={{ color: x.offen || !x.beantwortet ? C.inkLeise : x.punkte >= x.max * 0.6 ? LEUCHT.gut : x.punkte > 0 ? LEUCHT.achtung : LEUCHT.kritisch }}>{x.stufeText ?? 'offen'}</span>
+              </div>
+            ))}
+          </div>
+          {leadZ.score.scoring && !leadZ.score.scoring.sales.erreicht && leadZ.score.scoring.sales.fehlt.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Bis SQL fehlt: {leadZ.score.scoring.sales.fehlt.join(', ')}</div>}
+        </div>
+      ) : (
       <div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Qualifizierung — was noch unklar ist, ist die nächste Frage</div>
         <div style={{ display: 'grid', gap: 6 }}>
@@ -381,6 +429,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
           ))}
         </div>
       </div>
+      )}
       <Feldzeile label="Produkt">
         <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status !== 'eingestellt' && !x.geloeschtAm) || x.id === c.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={c.leistungId}
           onWahl={leistungId => setze({ leistungId })} onLeeren={() => setze({ leistungId: undefined })} />

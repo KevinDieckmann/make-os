@@ -275,6 +275,79 @@ describe('2.14 · Win-Rate-Texte aus WIN_RATE', () => {
   });
 });
 
+// ── 2 · Lead → Qualifizierung → Deal (2.4, 2.7, 2.10, 2.11, 2.13, 2.15, 2.16, 2.17) ─────────────────────────────────────────────
+describe('2.x · Qualifizierung und Deals', () => {
+  it('2.4 · dealPersonenVorgabe: alle bis zur Grenze; darüber der Hauptkontakt (sonst die erste) — nie 413 ohne Ausweg', async () => {
+    const { dealPersonenVorgabe, DEAL_PERSONEN_MAX } = await import('@/lib/crm/pipeline');
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => `c-p${i}`);
+    expect(dealPersonenVorgabe(ids(3))).toEqual(ids(3));
+    expect(dealPersonenVorgabe(ids(DEAL_PERSONEN_MAX))).toHaveLength(DEAL_PERSONEN_MAX);
+    expect(dealPersonenVorgabe(ids(DEAL_PERSONEN_MAX + 5), 'c-p7')).toEqual(['c-p7']);
+    expect(dealPersonenVorgabe(ids(DEAL_PERSONEN_MAX + 5), 'c-fremd')).toEqual(['c-p0']);
+    // Dieselbe Grenze wie der Anlageweg (deal-anlegen re-exportiert sie).
+    expect((await import('@/lib/crm/deal-anlegen')).DEAL_PERSONEN_MAX).toBe(DEAL_PERSONEN_MAX);
+    const leadsUi = quelle('components/os/crm/Leads.tsx');
+    expect(leadsUi).toMatch(/label="Personen am Deal"/);
+    expect(leadsUi).toMatch(/kontaktIds: dealPersonen/);
+    expect(quelle('app/api/crm/lead/route.ts')).toMatch(/dealPersonenVorgabe\(zeile\.personen/);
+  });
+
+  it('2.7 · sqlFortschritt: Sales-Punkte gegen die Schwelle (Prozent, erreicht = 100); der Score-Kopf zeigt „Bis SQL“ statt „von 100“', async () => {
+    const { sqlFortschritt } = await import('@/lib/crm/leads');
+    const s = (punkte: number, schwelle: number, erreicht: boolean) => ({ scoring: { sales: { punkte, schwelle, erreicht, fehlt: erreicht ? [] : ['Schmerz'] } } }) as never;
+    expect(sqlFortschritt(s(14, 28, false))).toMatchObject({ prozent: 50, erreicht: false, fehlt: ['Schmerz'] });
+    expect(sqlFortschritt(s(40, 28, false))?.prozent).toBe(99); // ohne Muss nie „100 %“
+    expect(sqlFortschritt(s(30, 28, true))?.prozent).toBe(100);
+    expect(sqlFortschritt({ scoring: undefined } as never)).toBeNull();
+    const ui = quelle('components/os/crm/quali/ScoreAnzeige.tsx');
+    expect(ui).not.toMatch(/>von 100</);
+    expect(ui).toMatch(/Bis SQL/);
+  });
+
+  it('2.10 · Gesprächsmodus: ein festgehaltenes Gespräch wird nicht noch einmal festgehalten; „Weiter qualifizieren“ prüft die Antwort', () => {
+    const g = quelle('components/os/crm/quali/Gespraechsmodus.tsx');
+    expect(g).toMatch(/festgehalten\.current === stand/);
+    expect(g).toMatch(/festgehalten\.current = stand/);
+    expect(g).toMatch(/const r = await leadPost\(\{ aktion: 'setze'/);
+    expect(g).toMatch(/if \(!r\.ok\) \{ setMeldung\(/);
+  });
+
+  it('2.11 · Deal-Detail: Datum ohne Text wird gemerkt (Hinweis), Leeren des Schritts eines offenen Deals nur nach Rückfrage', () => {
+    const p = quelle('components/os/crm/Pipeline.tsx');
+    expect(p).toMatch(/setDatumOhneText\(d2\)/);
+    expect(p).toMatch(/gemerkt — jetzt eintragen, was passiert/);
+    expect(p).toMatch(/titel: 'Nächsten Schritt leeren\?'/);
+    expect(p).not.toMatch(/onFertig=\{d2 => c\.naechsterSchritt && setze/);
+  });
+
+  it('2.13 · dealsOhneWert zählt offene Deals ohne Wert; die Prognose nennt sie, die Spalten auch', async () => {
+    const { dealsOhneWert } = await import('@/lib/crm/pipeline');
+    const c = (stufe: string, betrag: number) => ({ stufe, wert: { betrag, basis: 'monat' } }) as never;
+    expect(dealsOhneWert([c('qualifiziert', 0), c('angebot', 1000), c('gewonnen', 0), c('bedarf', 0)])).toBe(2);
+    expect(quelle('components/os/crm/Pipeline.tsx')).toMatch(/ohneWert > 0 && <Zahl/);
+  });
+
+  it('2.15 · der Deal zeigt die Fragen des Leads (Stufen) mit Weg in die Qualifizierung; die alten Kernfragen nur ohne Lead', () => {
+    const p = quelle('components/os/crm/Pipeline.tsx');
+    expect(p).toMatch(/leadZeileFuer\(personen\[0\]/);
+    expect(p).toMatch(/In der Qualifizierung bearbeiten/);
+    expect(p).toMatch(/leadZ && leadFragen\.length > 0 \?/);
+  });
+
+  it('2.16 · Board: nach dem Ziehen auf eine offene Stufe gibt es „Rückgängig“', () => {
+    const p = quelle('components/os/crm/Pipeline.tsx');
+    const ziehen = p.slice(p.indexOf('const zieheNach'), p.indexOf('// ── Archivieren'));
+    expect(ziehen).toMatch(/melden\(/);
+    expect(ziehen).toMatch(/\{ stufe: vorher \}/);
+  });
+
+  it('2.17 · Leads-Formular und Deal-Detail tragen die Klasse für Tippziele ≥ 44 px', () => {
+    expect(quelle('components/os/crm/Leads.tsx')).toMatch(/<div className="quali-seite" style=\{\{ display: 'grid', gap: 14 \}\}>/);
+    expect(quelle('components/os/crm/Pipeline.tsx')).toMatch(/<div className="quali-seite" style=\{\{ padding: '10px 2px 18px'/);
+    expect(quelle('app/globals.css')).toMatch(/\.quali-seite button:not\(\.treffer44\)/);
+  });
+});
+
 // ── Routen ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const sitzung = (p: string) => ({ 'content-type': 'application/json', 'x-make-user': p });
 const dienst = (p: string) => ({ 'content-type': 'application/json', 'x-make-key': 'pruef-schluessel-mt-woche2a', 'x-make-person': p, 'x-forwarded-for': '127.0.0.1' });
@@ -385,6 +458,20 @@ describe('Route POST /api/crm/person — der EINE Weg', () => {
     expect((await zwei.json())).toMatchObject({ firmaId: d.firmaId, art: 'vorhanden' });
     expect((await ladeCrm()).firmen.find(f => f.id === d.firmaId)?.branche).toBe('Maschinenbau');
     expect((await route.POST(anfrage('/api/crm/person', sitzung('kevin'), 'POST', { aktion: 'firma', firma: { name: 'x'.repeat(161) } }))).status).toBe(413);
+  });
+});
+
+describe('2.4 · Route: Lead mit mehr als 20 Personen → Deal mit dem Hauptkontakt (kein 413)', () => {
+  it('sql + trotzdem ohne Auswahl: Deal entsteht mit EINER Person', async () => {
+    const viele = Array.from({ length: 22 }, (_, i) => k(`viel${i}`, { firmaId: 'f-viele', firma: 'Firma f-viele', letzterKontakt: i === 5 ? T : vor(10) }));
+    await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: [...(cur?.kontakte ?? []), ...viele] }));
+    await db.updateJson<CrmBestand>('crm', cur => ({ ...(cur as CrmBestand), firmen: [...(cur?.firmen ?? []), firma('f-viele')] }));
+    const route = await import('@/app/api/crm/lead/route');
+    const r = await route.POST(anfrage('/api/crm/lead', sitzung('kevin'), 'POST', { aktion: 'sql', id: 'f-viele', trotzdem: true, deal: { titel: 'Groß', schritt: { text: 'Bedarf', datum: heute } } }));
+    const d = await r.json();
+    expect(r.status).toBe(200);
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    expect((await ladeCrm()).chancen.find(c => c.id === d.chanceId)?.kontaktIds).toEqual(['c-viel5']);
   });
 });
 

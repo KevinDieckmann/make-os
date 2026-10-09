@@ -363,6 +363,16 @@ export function kalteAusgeblendet(zeilen: LeadZeile[], f: RundenFilter): number 
 export const salesBereit = (z: Pick<LeadZeile, 'kriterien' | 'score'>): boolean => z.score.scoring?.sales.erreicht ?? sqlBereit(z.kriterien);
 /** Was bis zum SQL fehlt (Muss-Kriterien, dann Punkte) — wie `fehltBisSql`, aber nach den Einstellungen. */
 export const fehltBisSqlZeile = (z: Pick<LeadZeile, 'kriterien' | 'score'>): string[] => z.score.scoring?.sales.fehlt ?? fehltBisSql(z.kriterien);
+/**
+ * Fortschritt zur SQL-Schwelle (2.7, 09.10.): Sales-Punkte gegen die Schwelle der Einstellungen, in Prozent (≤ 100) — statt „13 von 100“ beim
+ * Score, der mit den Temperatur-Grenzen (lau/warm/heiß) nichts über den Weg zum SQL sagt. Ohne Scoring-Ergebnis null.
+ */
+export function sqlFortschritt(score: Pick<LeadScore, 'scoring'>): { prozent: number; punkte: number; schwelle: number; erreicht: boolean; fehlt: string[] } | null {
+  const s = score.scoring?.sales;
+  if (!s) return null;
+  const prozent = s.erreicht ? 100 : s.schwelle > 0 ? Math.max(0, Math.min(99, Math.floor((100 * s.punkte) / s.schwelle))) : 0;
+  return { prozent, punkte: s.punkte, schwelle: s.schwelle, erreicht: s.erreicht, fehlt: s.fehlt };
+}
 /** Marketing-Schwelle (MQL) erreicht — Signale und Interaktionen reichen. */
 export const mqlErreicht = (z: Pick<LeadZeile, 'score'>): boolean => z.score.scoring?.marketing.erreicht ?? false;
 /** Die Stufe, in der der Lead steht: Lead → MQL → SQL-bereit (nur Anzeige, nichts davon wird gespeichert). */

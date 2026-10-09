@@ -28,7 +28,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
 import { leads, leereKriterien, salesBereit, fehltBisSqlZeile, quelleAusLead, type LeadZeile } from './leads';
 import { ladeScoring } from './scoring-server';
-import { OFFENE_STUFEN } from './pipeline';
+import { OFFENE_STUFEN, DEAL_PERSONEN_MAX } from './pipeline';
 import { wer, BEIDE, verantwortlich } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
@@ -59,7 +59,8 @@ export interface DealEingabe {
 const ARTEN: ChancenArt[] = ['retainer', 'projekt', 'workshop', 'vermittlung', 'software'];
 const ART_WORT: Record<ChancenArt, string> = { retainer: 'Retainer', projekt: 'Projekt', workshop: 'Workshop', vermittlung: 'Vermittlung', software: 'Software' };
 /** Höchstens so viele Personen an einem Deal (wie `LISTEN_GRENZEN` im Bestand) — darüber 413, nie still gekürzt. */
-export const DEAL_PERSONEN_MAX = 20;
+// Grenze und Vorgabe der Personen am Deal stehen client-sicher in lib/crm/pipeline.ts (2.4, 09.10.).
+export { DEAL_PERSONEN_MAX, dealPersonenVorgabe } from './pipeline';
 
 /**
  * Titel ohne Titel-Eingabe: mit Firma „<Firma> · <Art>“, ohne Firma „Deal · <Art>“ plus Anfangsbuchstabe des

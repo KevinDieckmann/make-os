@@ -50,6 +50,7 @@ import { folgenVorschau, folgenAnwenden, zusammenVorschau, zusammenfuehren } fro
 import { neuesFollowUp } from '@/lib/crm/followup';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
+import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { phaseHeben } from '@/lib/crm/lifecycle';
 import { wer, BEIDE, nameVon } from '@/lib/crm/team';
@@ -263,7 +264,8 @@ export async function POST(req: Request) {
     if (!schritt?.text?.trim() || !tagOk(schritt.datum)) return NextResponse.json({ ok: false, fehler: 'Nächster Schritt mit Datum ist Pflicht — ohne ihn verliert sich der Deal.' }, { status: 400 });
     if (!salesBereit(zeile) && !b.trotzdem) return NextResponse.json({ ok: false, fehler: `Noch kein SQL — es fehlt: ${fehltBisSqlZeile(zeile).join(', ')}.`, fehlt: fehltBisSqlZeile(zeile) }, { status: 400 });
     const besitzer = wer(d.besitzer) && wer(d.besitzer) !== BEIDE ? wer(d.besitzer)! : zeile.besitzer === BEIDE ? person : zeile.besitzer;
-    const kontaktIds = Array.isArray(d.kontaktIds) && d.kontaktIds.length ? (d.kontaktIds as string[]) : zeile.personen.map(p => p.id);
+    // 2.4 (09.10.): ohne Auswahl alle Personen — bei mehr als DEAL_PERSONEN_MAX nur der Hauptkontakt (nie 413 ohne Ausweg).
+    const kontaktIds = Array.isArray(d.kontaktIds) && d.kontaktIds.length ? (d.kontaktIds as string[]) : dealPersonenVorgabe(zeile.personen.map(p => p.id), zeile.hauptKontaktId);
     const r = await dealAnlegen({
       titel: String(d.titel ?? ''), kontaktIds, ...(zeile.art === 'firma' ? { firmaId: zeile.id } : {}),
       art: d.art as never, wert: { betrag: Number(d.betrag) || 0, basis: d.basis === 'einmalig' ? 'einmalig' : d.basis === 'jahr' ? 'jahr' : 'monat' },

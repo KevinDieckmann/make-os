@@ -40,7 +40,7 @@ import { type CrmApi, datum } from './daten';
 import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
-import { ZustaendigWahl, SchrittFelder, schrittEingabe } from './PersonAnlegen';
+import { ZustaendigFeld, SchrittFelder, schrittEingabe } from './PersonAnlegen';
 import { zustaendigFuer } from '@/lib/crm/person-anlegen';
 import { FirmenDatalist } from './FirmenDatalist';
 import { bestehendeFirma } from '@/lib/crm/firmen';
@@ -430,7 +430,7 @@ function Anlegen({ api, onFertig }: { api: CrmApi; heute: string; onFertig: (id:
       <Feldzeile label="Lebensphase"><Wahl label="Lebensphase" liste={PHASEN} wert={e.lebensphase} onWahl={lebensphase => setE({ ...e, lebensphase })} /></Feldzeile>
       <Feldzeile label="Herkunft"><Wahl label="Herkunft" liste={HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }))} wert={e.herkunft} onWahl={herkunft => setE({ ...e, herkunft })} onLeeren={() => setE({ ...e, herkunft: undefined })} /></Feldzeile>
       <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={e.anrede} onWahl={a => setE({ ...e, anrede: a as 'Sie' | 'Du' })} /></Feldzeile>
-      <ZustaendigWahl wert={zust} onWahl={setZust} />
+      <ZustaendigFeld wert={zust} weg="kartei" onWahl={setZust} />
       <SchrittFelder text={schritt.text} datum={schritt.datum} onText={text => setSchritt({ ...schritt, text })} onDatum={datum => setSchritt({ ...schritt, datum })} />
       {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
       {dublette && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}

@@ -51,6 +51,23 @@ export function wahrscheinlichkeit(stufe: ChancenStufe, eigene?: CrmBestand['wah
 }
 
 /** Gesamtwert einer Chance: Monatshonorar × Laufzeit (Standard 12), Jahreswert × Jahre, Einmalbetrag. */
+/** Höchstzahl Personen an einem Deal (lib/crm/deal-anlegen.ts lehnt mehr mit 413 ab — nie still gekürzt). */
+export const DEAL_PERSONEN_MAX = 20;
+/**
+ * Welche Personen an einen Deal aus dem Lead gehen, wenn niemand ausgewählt hat (2.4, 09.10.): alle — hat die Firma mehr als
+ * `DEAL_PERSONEN_MAX`, nur der Hauptkontakt (sonst die erste Person). Vorher kam dann 413 „bitte die wichtigsten auswählen“ ohne Auswahl.
+ */
+export function dealPersonenVorgabe(personen: readonly string[], haupt?: string): string[] {
+  if (personen.length <= DEAL_PERSONEN_MAX) return [...personen];
+  return [haupt && personen.includes(haupt) ? haupt : personen[0]];
+}
+
+/**
+ * Offene Deals ohne Wert (2.13, 09.10.): sie zählen in der Prognose 0 € — ohne diese Zahl sah „0 €“ in einer Spalte wie „nichts drin“ aus.
+ * Die Prognose rechnet weiter ohne sie; die Anzeige nennt sie daneben.
+ */
+export const dealsOhneWert = (chancen: readonly Pick<Chance, 'wert' | 'stufe'>[]): number => chancen.filter(c => OFFENE_STUFEN.includes(c.stufe) && !(gesamtwert(c) > 0)).length;
+
 export function gesamtwert(c: Pick<Chance, 'wert'>): number {
   const { betrag, basis, laufzeitMonate } = c.wert;
   if (!(betrag > 0)) return 0;

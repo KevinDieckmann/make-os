@@ -3,7 +3,7 @@
 // ─── Markttraktion · Bausteine für den EINEN Weg „Person anlegen“ (09.10., Woche 2 · 1.8/1.10/1.12) ─────────────────────────────
 // Kartei, Firmenkarte, „+ Aktivität“ und Prospecting legen über `api.personAnlegen` an (POST /api/crm/person, Regeln je Weg in
 // lib/crm/person-anlegen.ts). Hier stehen die gemeinsamen Felder:
-//   · `ZustaendigWahl`   wer die Beziehung hält — wählbar, Vorgabe nach Welt (1.10: vorher wurde immer, wer anlegt, zuständig)
+//   · `ZustaendigFeld`   wer die Beziehung hält — wählbar, Vorgabe nach Welt (1.10: vorher wurde immer, wer anlegt, zuständig)
 //   · `SchrittFelder`    nächster Schritt + Datum (1.12) → Follow-up
 //   · `NeuePersonKurz`   das Kurzformular (Vor-/Nachname, Kontakt, Position, Firma, Zuständig, Schritt) — bleibt bei einem Fehler stehen
 
@@ -11,18 +11,16 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT, feld } from '../ui';
-import { Wahl } from './Wahl';
 import { Feld, Feldzeile } from './teile';
 import { FirmenDatalist } from './FirmenDatalist';
-import { TEAM, BEIDE, nameVon } from '@/lib/crm/team';
+import { ZustaendigWahl } from './team';
 import { ANLEGE_REGELN, zustaendigFuer, type PersonWeg } from '@/lib/crm/person-anlegen';
 import { WEG } from '@/lib/wege';
 import type { CrmApi } from './daten';
 
-/** Zuständig (1.10): Team + „Beide“ — die Vorgabe kommt aus dem Weg (`zustaendigFuer`). */
-export function ZustaendigWahl({ wert, onWahl }: { wert: string; onWahl: (w: string) => void }) {
-  const liste = [...TEAM.map(t => ({ id: t.id, label: t.name })), { id: BEIDE, label: nameVon(BEIDE) }];
-  return <Feldzeile label="Zuständig"><Wahl label="Zuständig" liste={liste} wert={wert} onWahl={onWahl} /></Feldzeile>;
+/** Zuständig (1.10): der Team-Wähler der Markttraktion (`ZustaendigWahl` aus ./team) — die Vorgabe kommt aus dem Weg (`zustaendigFuer`). */
+export function ZustaendigFeld({ wert, weg, onWahl }: { wert: string; weg: PersonWeg; onWahl: (w: string) => void }) {
+  return <Feldzeile label="Zuständig"><ZustaendigWahl wert={wert} welt={ANLEGE_REGELN[weg].welt} onWahl={onWahl} /></Feldzeile>;
 }
 
 /** Nächster Schritt (optional) — Text + Datum; nur zusammen gültig (der Server lehnt halbe Angaben ab). */
@@ -94,7 +92,7 @@ export function NeuePersonKurz({ api, weg, firmaId, firmaName, vorgabe, onFertig
         )}
       </div>
       {firmaId && firmaName && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Firma: {firmaName}</div>}
-      <ZustaendigWahl wert={zust} onWahl={setZust} />
+      <ZustaendigFeld wert={zust} weg={weg} onWahl={setZust} />
       {mitSchritt && <SchrittFelder text={schritt.text} datum={schritt.datum} onText={text => setSchritt({ ...schritt, text })} onDatum={datum => setSchritt({ ...schritt, datum })} />}
       {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
       {dublette && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><Knopf leise onClick={() => onFertig(dublette.id)}>{`${dublette.name} nehmen`}</Knopf><Link href={WEG.akte(dublette.id)} style={{ fontSize: TYP.bedien, color: C.aktiv }}>Kontakt öffnen ›</Link></div>}

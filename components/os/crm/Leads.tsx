@@ -33,10 +33,10 @@ import { useLeadFragen } from './quali/useLeadFragen';
 import { useScoringEinstellungen } from './quali/hilfen';
 import { StandKette } from './quali/ScoreAnzeige';
 import { temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
-import { STUFEN } from '@/lib/crm/pipeline';
+import { STUFEN, DEAL_PERSONEN_MAX, dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
 import { Pillen, Feldzeile } from './teile';
-import { Wahl } from './Wahl';
+import { Wahl, WahlMehrfach } from './Wahl';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { verantwortlich } from '@/lib/crm/team';
 import { HeadPanel } from './HeadPanel';
@@ -226,6 +226,8 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
   const [meldung, setMeldung] = useState('');
   const [deal, setDeal] = useState({ titel: z.name.replace(/ \(.*\)$/, ''), art: 'retainer' as ChancenArt, betrag: '', basis: 'monat' as 'monat' | 'einmalig', schritt: '', datum: plusTage(heute, 3), erwartetAm: '', besitzer: z.besitzer === 'beide' ? api.ich ?? verantwortlich('sales') : z.besitzer });
   const [trotzdem, setTrotzdem] = useState(false);
+  // 2.4 (09.10.): wer an den Deal geht — Vorgabe alle, bei sehr großen Firmen der Hauptkontakt; wählbar, nie 413 ohne Ausweg.
+  const [dealPersonen, setDealPersonen] = useState<string[]>(() => dealPersonenVorgabe(z.personen.map(p => p.id), z.hauptKontaktId));
   // 2.3 (08.10.): ein zweiter offener Deal nur bewusst — der Server meldet den offenen (409 mit `offen`), dann dieser Knopf.
   const [offenerDeal, setOffenerDeal] = useState<{ id: string; titel: string } | null>(null);
   // 2.8 (08.10.): „Ruht“ und „Kein Fit“ über dieselben Dialoge wie die Runde (Wiedervorlage, Grund-Art, Sperre bei offenem Deal).
@@ -235,7 +237,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
   const bereit = fr.bereit;
   const fehltText = fr.fehlt.join(', ');
   const zumSql = async (zweiter = false) => {
-    const r = await post({ aktion: 'sql', id: z.id, trotzdem: !bereit, ...(zweiter ? { zweiter: true } : {}), deal: { titel: deal.titel, art: deal.art, betrag: Number(deal.betrag.replace(',', '.')) || 0, basis: deal.basis, schritt: { text: deal.schritt, datum: deal.datum }, ...(deal.erwartetAm ? { erwartetAm: deal.erwartetAm } : {}), besitzer: deal.besitzer } });
+    const r = await post({ aktion: 'sql', id: z.id, trotzdem: !bereit, ...(zweiter ? { zweiter: true } : {}), deal: { titel: deal.titel, art: deal.art, betrag: Number(deal.betrag.replace(',', '.')) || 0, basis: deal.basis, schritt: { text: deal.schritt, datum: deal.datum }, ...(deal.erwartetAm ? { erwartetAm: deal.erwartetAm } : {}), besitzer: deal.besitzer, ...(dealPersonen.length ? { kontaktIds: dealPersonen } : {}) } });
     setMeldung(r.ok ? r.text : r.fehler);
     setOffenerDeal(!r.ok && r.offen ? r.offen : null);
     if (r.ok) { if (r.sql) setStatus('sql'); void laden(); void api.laden(); }
@@ -244,7 +246,8 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
   const inDeal = z.deal?.offen;
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    // 2.17 (09.10.): Tippziele ≥ 44 px am Handy — dieselbe Klasse wie das Seitenfenster der Runde (app/globals.css).
+    <div className="quali-seite" style={{ display: 'grid', gap: 14 }}>
       <div>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 20, fontWeight: 700, letterSpacing: '-.015em' }}>{z.name}</div>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[z.art === 'firma' ? 'Firma' : 'Person ohne Firma', z.branche, z.stadt].filter(Boolean).join(' · ')}</div>
@@ -309,8 +312,17 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
               </Feldzeile>
               <Feldzeile label="Entscheidung bis"><input type="date" value={deal.erwartetAm} onChange={e => setDeal({ ...deal, erwartetAm: e.target.value })} aria-label="Entscheidung bis" style={{ ...eingabe, width: 150 }} /></Feldzeile>
               <Feldzeile label="Führt den Deal"><ZustaendigWahl wert={deal.besitzer} welt="sales" beide={false} onWahl={besitzer => setDeal({ ...deal, besitzer })} /></Feldzeile>
+              {z.personen.length > 1 && (
+                <Feldzeile label="Personen am Deal">
+                  <span style={{ display: 'grid', gap: 4 }}>
+                    <WahlMehrfach label="Personen am Deal" liste={z.personen.map(p => ({ id: p.id, label: p.id === z.hauptKontaktId ? `${p.name} ★` : p.name }))} wert={dealPersonen} onWahl={setDealPersonen} />
+                    {dealPersonen.length > DEAL_PERSONEN_MAX && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>Höchstens {DEAL_PERSONEN_MAX} Personen — bitte die wichtigsten wählen; alle weiteren hängen an der Firma.</span>}
+                    {z.personen.length > DEAL_PERSONEN_MAX && dealPersonen.length <= DEAL_PERSONEN_MAX && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Die Firma hat {z.personen.length} Personen — vorgewählt ist der Hauptkontakt.</span>}
+                  </span>
+                </Feldzeile>
+              )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Knopf farbe={LEUCHT.gut} aus={!deal.schritt.trim() || !deal.datum} onClick={() => zumSql()}>{bereit ? 'Zum SQL → Deal anlegen' : 'Deal trotzdem anlegen'}</Knopf>
+                <Knopf farbe={LEUCHT.gut} aus={!deal.schritt.trim() || !deal.datum || dealPersonen.length > DEAL_PERSONEN_MAX} onClick={() => zumSql()}>{bereit ? 'Zum SQL → Deal anlegen' : 'Deal trotzdem anlegen'}</Knopf>
                 {!bereit && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>ohne SQL-Kriterien: der Lead bleibt in der Qualifizierung, der Deal gilt als „direkt angelegt“</span>}
               </div>
               {offenerDeal && (

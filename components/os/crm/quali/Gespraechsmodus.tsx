@@ -55,6 +55,11 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState('');
   const kopf = useRef<HTMLDivElement>(null);
+  /**
+   * 2.10 (09.10.): was schon als Aktivität festgehalten ist (Person + Notiz + Antworten) — „SQL“, Abbruch, erneut „SQL“ ergab vorher eine zweite
+   * gleiche Gesprächs-Aktivität. Gleicher Stand → nicht noch einmal; ein danach gesetzter nächster Schritt geht als Feld an die Person.
+   */
+  const festgehalten = useRef<string | null>(null);
   const { bestaetigen, dialog } = useRueckfrage();
 
   useEffect(() => { try { if (notiz) sessionStorage.setItem(merker(z.id), notiz); else sessionStorage.removeItem(merker(z.id)); } catch { /* ohne Speicher: nur im Fenster */ } }, [notiz, z.id]);
@@ -86,12 +91,20 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
   const festhalten = async (naechster?: { text: string; datum: string }): Promise<boolean> => {
     if (!partner || (!beruehrt && !notiz.trim() && !naechster)) return true;
     const antwortenText = fragen.map(f => { const x = ergebnis.get(f.kriterium.id); return x && x.herkunft === 'lead' && x.stufeText ? `${f.kriterium.name}: ${x.stufeText}` : ''; }).filter(Boolean).join(' · ');
+    const stand = `${partner.id}|${notiz.trim()}|${antwortenText}`;
+    if (festgehalten.current === stand) {
+      // Schon festgehalten — nur noch den nächsten Schritt an die Person (kein zweites Gespräch im Verlauf).
+      if (!naechster) return true;
+      if (!(await api.kontaktTeil(partner.id, { naechsterSchritt: naechster }))) { setMeldung('Der nächste Schritt konnte nicht gespeichert werden — bitte noch einmal.'); return false; }
+      return true;
+    }
     const r = await api.aktivitaet({
       id: partner.id, art: 'gespraech', ergebnis: 'gespraech', text: notiz.trim().split('\n')[0].slice(0, 200) || 'Qualifizierungsgespräch',
       notiz: { ...(notiz.trim() ? { erkenntnisse: notiz.trim().slice(0, 1500) } : {}), ...(antwortenText ? { signale: antwortenText.slice(0, 1500) } : {}), bedarf: z.name.slice(0, 200) },
       ...(naechster ? { naechster } : {}),
     });
     if (!r.ok && !r.kontakt) { setMeldung(r.error ?? r.fehler ?? 'Das Gespräch konnte nicht festgehalten werden.'); return false; }
+    festgehalten.current = stand;
     return true;
   };
   const sauber = () => { try { sessionStorage.removeItem(merker(z.id)); } catch { /* egal */ } };
@@ -102,7 +115,9 @@ export function Gespraechsmodus({ api, z, einstellungen, score, stufen, antworte
     try {
       if (!(await festhalten({ text: schritt.text.trim(), datum: schritt.datum }))) return;
       const aktiv = ['neu', 'kontaktiert', 'im_gespraech'].includes(z.status);
-      await leadPost({ aktion: 'setze', id: z.id, felder: { geprueft: true, ...(aktiv ? { status: 'qualifizierung' } : {}) } });
+      // 2.10: die Antwort zählt — ein Fehler bleibt stehen, nie „festgehalten“ melden, wenn der Lead nicht gespeichert ist.
+      const r = await leadPost({ aktion: 'setze', id: z.id, felder: { geprueft: true, ...(aktiv ? { status: 'qualifizierung' } : {}) } });
+      if (!r.ok) { setMeldung(`Gespräch festgehalten, aber der Lead ist nicht aktualisiert — ${r.fehler ?? 'bitte noch einmal'}.`); return; }
       await api.laden(true); sauber();
       onFertig({ text: `Gespräch festgehalten — nächster Schritt: ${schritt.text.trim()} am ${schritt.datum.slice(8, 10)}.${schritt.datum.slice(5, 7)}.`, weiter: true });
     } finally { setLaeuft(false); }
