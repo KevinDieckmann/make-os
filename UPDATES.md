@@ -4,6 +4,36 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten-Datenschicht: zwei Welten angeglichen, Fristen, nie kürzen (nur lokal — Branch `agenten-datenschicht`, Basis 297458af)
+
+Funde der Datenschicht-Analyse unter dem Agenten-System (alter Heads-Takt ↔ neuer Agenten-Bereich), je nachgeprüft und mit Wächter
+(`tests/agenten-datenschicht.test.ts`, vorher rot, jetzt grün). Keine neuen Bestände, keine neuen Routen, kein Grundsatz-Umbau.
+
+| Fund | Vorher | Jetzt |
+|---|---|---|
+| RAUSCHEN (lib/store/memo.ts) | toter Eintrag `verbrauch`; jeder Modellaufruf (`ki-verbrauch`, `ki-protokoll--*`), jedes Thread-/Werkstatt-/Plan-/Einstellungs-Schreiben, jeder Head-Lauf machte ALLE gemerkten Indizes ungültig | diese Bestände (+ `heads-replay-*`, `finanzchef`, `haushalt-chef--*`, `zoe-empfang`) sind Rauschen; die Traktion trägt den Stand der Head-Bestände im Memo-Schlüssel (Entscheidung zeigt sich sofort); Onboarding-Befunde zählen Heads/Threads mit 60 s TTL |
+| D1 Not-Aus beim Hand-Lauf | `POST /api/heads/<head> {aktion: lauf}` und `POST /api/finanzchef {aktion: lauf}` prüften nur `agents-config` — Lauf trotz Not-Aus, „Head aus“, Budget | dieselbe Sperre wie Threads/Arbeiter/Takt (`laufSperre`) → 409 `{ gesperrt: 'not-aus' \| 'aus' \| 'budget' }`, kein Modellaufruf (auch Takt-Systemlauf der Route) |
+| D2 Autonomie | alter Heads-Lauf sah nur `head-<id>.autonomie === 'aus'`; Stufe „vorschlag“ aus dem Agenten-Bereich und Auto-Zurückstufen erreichten ihn nie | `autonomieWirksam` (lib/agenten/leistung.ts, dieselbe Regel `autonomieLage`: Einstellung, Boden, schlechte Quote sofort) — die strengere gilt |
+| U1 „Rückgängig“ | Aufgabe hart aus `tasks` gefiltert (roh gelesen, ohne Papierkorb/Verlauf/Protokoll; Unteraufgaben blieben verwaist) | Papierkorb über `systemAufgabenAendern` (neu: `loeschen`, nie endgültig) samt Unteraufgaben, Prüfung „noch unverändert?“ in der Sperre (sonst 409) |
+| D7 Skill-Erfolgsquote | nur Läufe/Fehler gezählt — angenommen/abgelehnt nie, Quote stand bei jedem Fehler auf 0 % | `entscheide` (Stapel) zählt bei Vorschlägen aus Agenten-Läufen über `skillEntscheidungZaehlen`: Skill über den Thread der Person (`werkzeuge[].vorschlagId`, auch über Mitarbeiter-Threads) |
+| D8 Löschfrist der Threads | fest 12 Monate im Code, nur beim nächsten Schreiben; Register „Frist offen“ | Frist „zoe-verlauf“ der EINEN Tabelle (Titel jetzt „Gespräche mit ZOE und den Agenten (Threads)“, Stammdaten › Datenschutz einstellbar); Löschfristen-Lauf Schritt 11a räumt `agenten-faeden--*` je Person täglich (laufende Threads bleiben, Protokoll ohne Inhalte, idempotent); Register mit Frist |
+| `agent-log` überflutet | jeder Chat-Zug, jede „ZOE fragt“-Frage und jeder Thread-Lauf (`faden:*`) schob Loop-Historie, ZOEs „letzte Läufe“ und den Agenten-Score aus dem Ring (200) | kein `faden:*` mehr im Ring — der Span steht an der Nachricht im Thread, der Auftrag in der Warteschlange |
+| Kürzen statt ablehnen | `zoe-gedaechtnis` `slice(0, 1200)` warf den ältesten AKTIVEN Fakt weg; Head of Finance `slice(-120)` auch offene Vorschläge | Gedächtnis: erst Nachweise vergessener, dann abgelaufene Fakten — sonst `GedaechtnisVoll` (413-Satz „Fehlgeschlagen: …“, nichts gemerkt); Finanzchef: über der Grenze nur Entschiedene (erst abgelehnt/erledigt, dann angenommen), Offenes nie — volle Liste weist Neues ab (`abgewiesen`) |
+| `zoe-empfang` | `saveJson` mit EINEM Schlüssel löschte den Gruß der anderen Person (zweiter Modellaufruf) | `updateJson` je Person, behalten nur Einträge der laufenden Stunde |
+| Stapel-Dubletten | gleiche Wirkung der anderen Person verwarf den Vorschlag still — und gab den fremden Vorschlag zurück | Dublette nur innerhalb derselben Person (personlose nur mit personlosen) |
+| HOI | — | Befund „Agenten-Bestände“ (nur Zahlen): gelb ab einer Datei > 5 MB oder Schreiben > 200 ms; Schreibdauer je Bestand neu gemessen (`schreibMessen`) |
+
+**Nicht geändert (andere Pakete):** `lib/zoe/werkzeuge.ts` (U2–U4), Warteschlange/Pacht und `slice` der Head-Vorschläge (`lib/zoe/auftraege.ts`,
+`lib/heads/stand.ts`, Takt), KI-Kategorien/`run_agent`/Fokus/HoF-Personen. Hinweis für `fakt_merken` (werkzeuge.ts): `merke` wirft jetzt bei vollem
+Gedächtnis `GedaechtnisVoll` — die Schleife meldet den Fehlschlag, der Stapel lässt den Vorschlag offen.
+
+**Offen — entscheidet Kevin (nicht gebaut):** (1) Threads je Thread teilen (Index `agenten-faeden--<p>` + `agenten-faden--<p>--<id>`) — heute schreibt jede
+Nachricht die ganze Datei (~20–40 MB je Person und Jahr); (2) KI-Protokoll puffern oder auf Tagesdateien (heute schreibt jeder Aufruf die ganze Monatsdatei);
+(3) Freigaben (Stapel, Head-Listen, Finanzchef) und Gedächtnis (ZOE, Head, Werkstatt, persönlich) zu je EINER Quelle zusammenführen; (4) Kosten an einer
+Stelle in einer Einheit (D6). Der neue HOI-Befund zeigt, wann (1)/(2) drängen.
+
+**Rückweg:** nur Verhalten und Fristen — keine neue Form. Der alte Stand liest alles; Threads, die der Lauf entfernt hat, bleiben weg (gewollt, Frist).
+
 ## 09.10.2026 — Agenten-Seite aufgeräumt (Claude-Muster) (nur lokal — Branch `agenten-aufraeumen`, Basis `agenten-nacht` a94d4052, `agenten-nacht` 1df0cdd9 eingemischt)
 
 Kevin 09.10.: „Das ganze Agent-System ist noch unübersichtlich, schau, wie du das sauberer hinbekommst. Bei Claude hier sieht das aufgeräumter und sauberer
