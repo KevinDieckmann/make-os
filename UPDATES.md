@@ -12,14 +12,15 @@ dann auch dem richtigen Stapel zuordnen.“ Nachtrag (Kevin, später am Abend): 
 — Vorschläge mit unklarem Bereich stehen deshalb in BEIDEN Sichten oben unter „Bereich wählen“.
 
 **Die Regel** (EINE Stelle, rein: `lib/zoe/bereich.ts` `bereichFuerVorschlag`; Bestand lesen: `lib/zoe/bereich-server.ts`):
-1. **(a) Fachlicher Bezug:** Aufgabe → Space der Aufgabe · CRM-Kontakt/-Firma/-Deal/-Mandat → Business, außer alle Deals/Mandate gehören einer
-   Privat-Einheit (`bereichVonGesellschaft`) · Kalender-Vorschlag → Space des Kalenders · Vorschlag eines Heads → Bereich des Heads · Gruppe
+1. **(a) Fachlicher Bezug:** Aufgabe → Space der Aufgabe · alles aus der Markttraktion (Kontakt, Firma, Deal, Mandat, Angebot) → IMMER Business, auch
+   wenn Deals/Mandate über die Selbstständigkeit laufen (Kevins Antwort) · Kalender-Vorschlag → Space des Kalenders · Vorschlag eines Heads → Bereich des Heads · Gruppe
    (Gesundheit, Haushalt, Familie → Privat; Markttraktion, Kontakte, Kunden, Business, Bauplan → Business) · ausdrückliche Angabe in der Eingabe
    (`space`/`bereich`, `spaceId`/`einheit`/`firma` über den Bereich der Einheit).
 2. **(b) Inhalt:** nennt der Vorschlag eine Firma oder Person (voller Name) aus der Markttraktion oder eine eigene Gesellschaft — Namen nur aus dem
    Bestand, nie aus dem Code, Art.-18-Personen nie — gilt deren Bereich. Widersprechen sich die Treffer, entscheidet (c).
 3. **(c) Gespräch:** der Bereich, in dem das Gespräch stattfand (der Browser schickt `space` wie bisher; Server prüft nur die Form; Heads: ihr Bereich).
-4. **(d) unklar:** kein Feld am Vorschlag — auch der ganze Altbestand. Steht in Privat UND Business oben unter „Bereich wählen“.
+4. **(d) unklar:** kein Feld am Vorschlag — auch der ganze Altbestand. Steht in Privat UND Business oben unter „Bereich wählen“; **ohne Bereich keine
+   Freigabe** (Kevins Antwort) — erst Privat oder Business wählen, Ablehnen geht jederzeit.
 
 **Gebaut:**
 - **Vorschlag trägt `bereich`** (+ `bereichQuelle` bezug · inhalt · gespraech · hand, `bereichOrt` Gesellschaft/Mandanten-Space wenn eindeutig,
@@ -43,6 +44,24 @@ dann auch dem richtigen Stapel zuordnen.“ Nachtrag (Kevin, später am Abend): 
   Gedächtnis-Karte nur der Sicht (mit Bereich). **Zähler je Sicht:** ZoePanel, Heute-Widget „ZOE“ (Space der Fläche), „Steht an“ (je Bereich),
   Glocke-Link der Kalender-Vorschläge in den Bereich, in dem sie stehen.
 - Konto löschen: `entschiedenVon`/`bereichVon` an Vorschlägen des Systems → „[gelöscht]“ (vorher blieb `entschiedenVon` stehen).
+- **Nachtrag (Kevins Antworten auf die offenen Fragen, 09./10.10.):**
+  - **Markttraktion immer Business** (`lib/zoe/crm-sicht.ts`: `firmaBereichAus`, `crmBezugBereich`, `crmBekannteNamen`) — die Ausnahme „Privat-Einheit“
+    ist weg.
+  - **Ohne Bereich keine Freigabe:** `beanspruche()` (lib/zoe/stapel.ts) lehnt ab — jede Freigabe läuft dort durch (Route, Arten, ZOE-Kanal); die Route
+    antwortet 409 `code: 'bereich-fehlt'` mit verständlichem Satz, die Sammelfreigabe nimmt nie einen unklaren. Oberfläche: statt „Freigeben“ die Knöpfe
+    **Privat · Business** (ZOE › Freigaben, Agenten › „Wartet auf dich“, Vorschlags-Karte im Chat), danach normal „Freigeben“. WhatsApp-Kanal:
+    „ja <Kennung> privat“ bzw. „… business“ (die Ansage nennt es, „ja <Kennung>“ allein erklärt es). Der Bereich wirkt bei der Freigabe auf den Ort:
+    eine Aufgabe ohne eigenen Ort landet im gewählten Bereich (`eingabeMitBereich`, nur in `fuehreAus`).
+  - **Agenten-Seite und Empfang je Sicht** — EINE Filterstelle `lib/agenten/sicht.ts` (`imBereichDerSicht`, `headImBereich`, `fadenImBereich`,
+    `laufImBereich`, `planImBereich`, `naechstesImBereich`): `GET /api/agenten?space=` (Heads, Threads im Überblick, Freigaben-Zahl, Jahresziele),
+    `/api/agenten/faden?space=` (Liste und einzelner Thread), `/api/agenten/laeufe?space=` (Läufe nach Thread bzw. Head, geplante Aufgaben nach Head,
+    „Als Nächstes“ nach eigenem Bereich bzw. Head; Fristen und ZOE-Aufgaben tragen ihren Bereich). Ohne erkennbaren Bereich (Systemlauf, ZOE-Plan) →
+    in beiden. Empfang `/zoe`: der ZOE-Thread des Bereichs, `GET /api/zoe/empfang?space=` zählt nur dessen Freigaben und lässt die Lage des anderen
+    Bereichs weg (`lageFuerSicht`: Privat ohne Markttraktion, Business ohne Familie, Körper, Haushalt), der Gruß wird je Sicht gehalten. Bestehende
+    Bestände bleiben, wie sie sind (Feld `bereich` als Übergang — „Firma und Privat liegen getrennt, auch in der Datenhaltung“ plant ihr separat).
+  - Reste von „Alles“: Freigaben-Seite und ZoePanel nehmen den konkreten Space des Kopfs.
+  - Wächter `tests/agenten-bereich-sicht.test.ts` („Sicht Privat bekommt keinen Business-Thread/-Lauf“ und umgekehrt); angepasst: `zoe-entscheidungen`,
+    `zoe-whatsapp-route`, `agenten-nachschliff-kalender`, `zoe-bereich*`; `agenten-durchstich` uhrzeitunabhängig (Teil aus 7e80f4fc).
 - Tests: `tests/zoe-bereich.test.ts` (Regel a–d rein, Namensabgleich, Sichten, Werkzeug-Wahl, Zähler/Glocke), `tests/zoe-bereich-route.test.ts`
   (Befund nachgestellt, Wächter „Sicht Privat bekommt keinen Business-Vorschlag“, Altbestand, Bereich wählen mit Stand/409, Freigeben mit Stand,
   Sammelfreigabe je Sicht, Gedächtnis je Bereich in Route, Werkzeug und Prompt, Konto löschen). Alle `tests/zoe-*`, `agenten-*` (bis auf drei Fälle in
@@ -55,21 +74,26 @@ dann auch dem richtigen Stapel zuordnen.“ Nachtrag (Kevin, später am Abend): 
 2. ZOE › Freigaben (Kopf Privat): der Vorschlag ist NICHT da. Kopf auf **Business**: da, mit Etikett „Business“; aufklappen → „der Inhalt nennt eine
    Firma aus dem Bestand“ + „Firma in der Markttraktion öffnen ›“.
 3. Kopf Privat, ZOE: „keine Termine vor 10 Uhr, merk dir das“ → Vorschlag unter Privat (Etikett „Privat“, „aus dem Gespräch im Bereich Privat“).
-4. Alte Vorschläge (vor dem Update) stehen in Privat UND Business oben unter „Bereich wählen“ → aufklappen, „Business“ klicken → Meldung, unter Privat
-   ist er weg, unter Business mit Etikett. In einem zweiten Fenster mit altem Stand „Freigeben“ → „Inzwischen geändert … Nichts freigegeben.“
+4. Alte Vorschläge (vor dem Update) stehen in Privat UND Business oben unter „Bereich wählen“ — statt „Freigeben“ stehen dort „Privat“ · „Business“.
+   „Business“ klicken → Meldung, unter Privat ist er weg, unter Business mit Etikett und „Freigeben“. In einem zweiten Fenster mit altem Stand
+   „Freigeben“ → „Inzwischen geändert … Nichts freigegeben.“
 5. Business-Merksatz freigeben → ZOE › Freigaben › Gedächtnis zeigt ihn unter Business mit „· Business“, unter Privat nicht. ZOE in Privat fragen
    „Was weißt du über <Firma>?“ → der Business-Merksatz kommt nicht vor; in Business schon.
 6. Heute (Privat bzw. Business): Karte „ZOE“ und „Steht an“ zählen nur die Vorschläge dieser Sicht (+ unklare).
+7. ZOE › Agenten, Kopf **Privat**: links nur Privat-Heads und ihre Threads, „Hintergrund“ nur deren Läufe/geplante Aufgaben; Kopf **Business** umgekehrt.
+   Ein Business-Thread taucht unter Privat nirgends auf (auch nicht in „Als Nächstes“ oder im Überblick).
+8. `/zoe` (Empfang) mit Kopf Privat → Begrüßung ohne Markttraktion; Kopf Business → ohne Familie/Gesundheit/Haushalt; je Sicht ein eigener ZOE-Thread.
+9. WhatsApp-Kanal: „Aufgabe: …“ → Ansage „Antworte „ja K privat“ oder „ja K business““; „ja K“ allein erklärt es; „ja K business“ legt die Aufgabe
+   unter Business an.
 
-**Offen / Fragen an Kevin:**
-- Rechnet ein Deal/Mandat der Selbstständigkeit (Privat-Einheit), wird seine Firma als **Privat** erkannt (so sagt es die Regel „Bereich je Einheit“).
-  Soll eine Firma der Markttraktion IMMER Business sein, egal welche Gesellschaft den Deal führt?
+**Offen:**
 - Erkannt werden Namen aus Markttraktion (Firmen, Kontakte mit vollem Namen) und Gesellschafts-Register — nicht Projekt-, Ziel- oder
   Meilenstein-Titel (zu viele Zufallstreffer bei kurzen Wörtern). Ist eines der Business-Themen nur ein Ziel/Projekt, landet der Fakt im Bereich des
   Gesprächs bzw. unter „Bereich wählen“.
-- Ein unklarer Vorschlag lässt sich auch ohne Bereich freigeben (wird dann ein neutraler Merksatz) — oder soll die Freigabe erst nach „Bereich wählen“
-  gehen?
-- Die Agenten-Seite („Wartet auf dich“) zeigt weiter alle eigenen Vorschläge ohne Sicht-Filter.
+- ZOE-Threads, die vor dem Update aus dem alten Verlauf bzw. über Telegram/WhatsApp entstanden, tragen „Privat“ (so legt die Ablage sie an) —
+  sie stehen unter Privat.
+- Die Begrüßung des Empfangs lässt den anderen Bereich über die vorhandenen Schalter weg (Markttraktion bzw. Familie/Körper/Haushalt); Aufgaben,
+  Kalender und Ziele in der Lage sind noch nicht nach Bereich getrennt.
 
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
