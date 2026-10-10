@@ -278,8 +278,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         </Karte>
       )}
 
-      {/* Jahr: der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). Seit 08.10. abends gemeinsames, pflegbares Ziel
-          des Haushalts (Daten statt Konstante, /api/planung/nordstern) — die Karte lädt, zeigt den Leerzustand und bearbeitet selbst. */}
+      {/* Jahr: der Nordstern als eigene Karte in Business/Alles. Seit 08.10. abends gemeinsames, pflegbares Ziel des Haushalts (Daten statt
+          Konstante, /api/planung/nordstern); seit 09.10. steht er im Privat-Filter oben in „Unsere Ziele“ (ZieleUebersicht). */}
       {hatNordstern && (
         <NordsternKarte i={kNordstern}
           rechts={<Link href={spaceFilter === 'business' ? '/os/finanzen?s=business' : '/os/gesundheit?s=index'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{spaceFilter === 'business' ? 'Meilensteine zählen im Business-Index ›' : 'Meilensteine zählen in den Indizes ›'}</Link>} />

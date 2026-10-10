@@ -51,6 +51,9 @@ import { spaceAusFlaeche } from '@/lib/flaeche/space';
 import { dranOhneZusagen } from '@/lib/heute/anstehend';
 import { Anstehend } from '../heute/Anstehend';
 import { fortschrittVon, restzeitText, schritteFuer, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
+import { useZieleSpalten } from '@/lib/planung/ziele-client';
+import { offenErledigt } from '@/lib/planung/rang';
+import type { Ziel, ZielHorizont } from '@/lib/planung/typen';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -226,6 +229,52 @@ function FokusWidget({ e, titel, i }: WidgetProps) {
       {text
         ? <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{text}</div>
         : <Leer>{f === undefined ? 'lade …' : <>Noch kein Fokus {wann} — <Link href="/os/fokus" style={{ color: C.inkDim }}>worauf kommt es an? ›</Link></>}</Leer>}
+    </Karte>
+  );
+}
+
+// ── Ziele: Unsere · Meine · <Name> (09.10.) ─────────────────────────────────
+// Kevin 09.10.: „Irgendwie müssen wir das Ganze ja sehen, sonst macht es keinen Sinn.“ Dieselben drei Spalten wie in der Planung, nur lesen:
+// gemeinsam (Privat), eigen, je Partner NUR das Geteilte (der Server filtert, lib/planung/ziele-client.ts `useZieleSpalten`). Anlegen/Teilen
+// in Planung › Jahr (bzw. dem gewählten Horizont).
+const ZIELE_HORIZONT_WORT: Record<string, string> = { jahr: 'Jahr', quartal: 'Quartal', monat: 'Monat', woche: 'Woche' };
+function ZieleWidget({ e, titel, i }: WidgetProps) {
+  const h = str(e.horizont, 'jahr') as ZielHorizont;
+  const laufend = Number(localDay().slice(0, 4));
+  const d = useZieleSpalten(h, laufend);
+  const planung = `/os/planung/${h === 'woche' ? 'jahr' : h}?space=privat`;
+  const spalte = (name: string, farbe: string, ziele: Ziel[], leer: ReactNode) => {
+    const { offen } = offenErledigt(ziele);
+    const schnitt = ziele.length ? Math.round(ziele.reduce((a, z) => a + (z.erledigt ? 100 : z.fortschritt), 0) / ziele.length) : null;
+    return (
+      <div key={name} style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, color: farbe, marginBottom: 4 }}>
+          <span>{name}</span>{schnitt != null && <span style={{ color: C.inkLeise }}>Ø {schnitt} %</span>}
+        </div>
+        {offen.length ? (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {offen.slice(0, 3).map(z => (
+              <div key={z.id} style={{ display: 'grid', gap: 3 }}>
+                <span style={{ fontSize: TYP.bedien, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.titel}</span>
+                <Fortschritt anteil={z.fortschritt / 100} farbe={farbe} />
+              </div>
+            ))}
+            {offen.length > 3 && <Link href={planung} style={{ ...link, fontSize: TYP.bedien }}>+ {offen.length - 3} weitere ›</Link>}
+          </div>
+        ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>{leer}</div>}
+      </div>
+    );
+  };
+  return (
+    <Karte i={i} akzent={SPACE_FARBE.privat}>
+      <Ueberschrift farbe={SPACE_FARBE.privat} rechts={<Link href={planung} style={link}>Planung ›</Link>}>{titel ?? `Ziele · ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'}`}</Ueberschrift>
+      {!d ? <Leer>lade …</Leer> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14 }}>
+          {spalte('Unsere', SPACE_FARBE.privat, d.unsere, <Link href={planung} style={{ color: C.inkDim }}>Noch kein gemeinsames Ziel — eintragen ›</Link>)}
+          {spalte('Meine', LEUCHT.planung, d.meine, <Link href={planung} style={{ color: C.inkDim }}>Noch kein eigenes Ziel — eintragen ›</Link>)}
+          {d.partner.map(x => spalte(x.person.vorname, LEUCHT.schlaf, x.ziele, x.nichtGeteilt ? `${x.person.vorname} hat noch nichts geteilt.` : `Für dieses ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'} nichts geteilt.`))}
+        </div>
+      )}
     </Karte>
   );
 }
@@ -684,6 +733,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
     einstellungen: [TAGE_WAHL, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }] },
   fokus: { art: 'fokus', label: 'Fokus', bereich: 'Tag', beschreibung: 'Worauf es heute, diese Woche oder diesen Monat ankommt', breite: 2, Komponente: FokusWidget,
     einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'auto', label: 'der nächste gesetzte' }, { w: 'tag', label: 'heute' }, { w: 'woche', label: 'Woche' }, { w: 'monat', label: 'Monat' }], standard: 'auto' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'gemeinsam' }, { w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'alle' }] },
+  ziele: { art: 'ziele', label: 'Ziele · Unsere · Meine', bereich: 'Tag', beschreibung: 'Gemeinsame Ziele, deine eigenen und was dein Gegenüber mit dir teilt — mit Fortschritt', breite: 4, Komponente: ZieleWidget,
+    einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'jahr', label: 'Jahr' }, { w: 'quartal', label: 'Quartal' }, { w: 'monat', label: 'Monat' }], standard: 'jahr' }] },
   koerper: { art: 'koerper', label: 'Körper', bereich: 'Gesundheit', beschreibung: 'Recovery und Routinen von heute', breite: 2, Komponente: KoerperWidget },
   routinen: { art: 'routinen', label: 'Routinen & Streak', bereich: 'Gesundheit', beschreibung: 'Welche Routinen heute schon stehen, dein Streak', breite: 2, Komponente: RoutinenWidget },
   'routinen-heute': { art: 'routinen-heute', label: 'Routinen heute', bereich: 'Tag', beschreibung: 'Was heute dran ist — eigene und gemeinsame Routinen nach Rhythmus, abhakbar', breite: 2, Komponente: RoutinenHeuteWidget,
@@ -718,6 +769,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${BUSINESS_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
+  { art: 'ziele', label: 'Ziele · Unsere · Meine', beschreibung: WIDGETS.ziele.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen-heute', label: 'Routinen heute · Privat', beschreibung: 'Heute fällige private Routinen — eigene und gemeinsame, abhakbar', bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },

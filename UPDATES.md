@@ -4,6 +4,52 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Ziele: gemeinsam und je Person (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
+
+Kevin 09.10.: „Wir müssen im privaten Bereich irgendwie einen Bereich haben, wo wir zusammen unsere Ziele eintragen können — und jeder für
+sich. Das ist unfassbar wichtig. Auch bei der Planung. Irgendwie müssen wir das Ganze ja sehen, sonst macht es keinen Sinn.“
+
+**Befund (warum es unsichtbar war):** Eigene Ziele (`ziele-eigen--<person>`) gab es seit dem 26.09. nur auf dem Server — keine Ansicht legte
+sie an oder zeigte sie; nur der Kompass las und schrieb die eigenen FOKUS-Sätze. Die Planung (Jahr/Quartal/Monat, Woche in Kalender › Planen,
+Tag) zeigte allein den gemeinsamen Bestand `ziele`, gemischt mit Business. Die Ziele der anderen Person kamen nur „ganz oder gar nicht“
+(Konto › „Eigene Ziele teilen“, 08.10.) — und auch dann nirgends als Liste. Für das Paar gab es also keinen Ort, an dem „wir“, „ich“ und
+„du“ nebeneinander stehen.
+
+**Gebaut:**
+- **Drei Spalten im Privat-Bereich, auf jedem Horizont** (`components/os/planung/ZieleUebersicht.tsx`, eingehängt in `ZieleMeilensteine` statt
+  der Ziele-Karte, sobald der Filter „Privat“ ist — damit gilt es in Planung › Jahr/Quartal/Monat, Kalender › Planen (Woche) und Tagesplanung):
+  **Unsere Ziele** (gemeinsamer Bestand, Privat + ohne Bereich, beide bearbeiten; im Jahr oben der **Nordstern**, sonst als eine Zeile),
+  **Meine Ziele** (eigener Bestand, nur ich) und **<Vorname der anderen Person>** (nur, was sie geteilt hat — nur lesen). Anlegen direkt in
+  jeder Spalte (Enter; im Jahr optional Zahl/Termin, Privat-Einheit), Haken, Fortschritt je Ziel und als Ø im Kopf, Pfeile, Umbenennen,
+  Archivieren/Löschen mit „Rückgängig“, Meilensteine je gemeinsamem Ziel aufklappbar. Namen aus den Konten, nie im Code. Business unverändert;
+  im Kopf-Schalter „Alles“ (solange es ihn gibt) bleibt die Ziele-Karte, darüber Meine + <Name>.
+- **Je Ziel teilen:** Schalter „mit <Name> teilen“ an jedem eigenen Ziel (neues optionales Feld `Ziel.geteilt`, Vorgabe aus). Abgeleitete Ziele
+  der Kaskade erben es vom Jahresziel. Der Speicherort ändert sich nicht (bleibt `ziele-eigen--<person>`).
+- **Server filtert** (`lib/planung/eigene-ziele-sicht.ts`): `eigeneZieleSicht` = alles (eigen bzw. ganz geteilt wie bisher) · geteilte (zwei VOLLE
+  Mitglieder desselben Haushalts — nie ein Konto „nur Business“, nie ein fremder Haushalt) · nichts; `nurGeteilte` liefert nur `geteilt: true`
+  (und Fokus-Sätze unter `fokusGeteilt`, für Teil C). `GET /api/state/ziele?fuer=<person>` gibt bei „geteilte“ NUR das, ohne etwas Geteiltes
+  403 wie bisher; schreiben auf fremde Ziele bleibt 403. Die Sammel-Ansichten (Lichtfäden, Seil, Brain-Kugel, Fluss) bleiben bewusst bei der
+  strengen Regel (nur ganz Geteiltes). `/api/konto/ich` nennt je anderer Person `partner` (volles Mitglied desselben Haushalts).
+- **Heute (Privat):** neue Karte „Ziele · Unsere · Meine“ (Widget `ziele`, Standard in `uebersicht-privat`, Horizont wählbar) — dieselben
+  Spalten zum Lesen, „Planung ›“ führt zum Eintragen. Browser liest dafür nur über `lib/planung/ziele-client.ts` (`usePlanPersonen`,
+  `useZieleSpalten`); geschrieben wird über `usePlanung(horizont, true, 'ich')`.
+- **Recht:** eigene Ziele bleiben persönlich — `ziele-eigen` steht schon in `PERSON_BESTAENDE` (Konto-Export, Konto löschen) und im
+  Speicher-Register; `geteilt` reist im Export mit, ändert nichts am Ort. Neuer Bestand: keiner.
+
+Tests: `tests/ziele-unsere-meine.test.ts` (neu: Regel, Route „ungeteiltes eigenes Ziel der anderen Person kommt nie an“, „nur Business“/fremder
+Haushalt 403, Schreiben 403, Kaskade vererbt, Partner-Liste, Einhängen), dazu grün: `eigene-ziele-teilen`, `ziele-eine-quelle`, `nordstern`,
+`messlatte-malin`, `planung-*`, Design-Wächter.
+
+**So testet ihr** (beide Konten, Kopf-Schalter „Privat“):
+1. Planung › Jahr: unter dem Zeitstrahl stehen „Unsere Ziele“ (mit dem Nordstern oben), „Meine Ziele“ und eine Spalte mit dem Vornamen der
+   anderen Person.
+2. In „Meine Ziele“ ein Ziel eintippen, Enter → es steht da mit „nur ich“. Bei der anderen Person (anderes Gerät/Konto) taucht es NICHT auf.
+3. Am Ziel den Schalter „mit <Name> teilen“ antippen → „geteilt mit <Name>“. Die andere Person lädt Planung › Jahr neu → das Ziel steht in ihrer
+   Spalte mit deinem Vornamen (nur lesen, kein Haken).
+4. In „Unsere Ziele“ ein Ziel anlegen → beide sehen es und können es abhaken; „▸ n Meilensteine“ klappt die Meilensteine auf.
+5. Planung › Quartal und › Monat, Kalender › Planen (Woche): dieselben drei Spalten.
+6. Heute (Privat): Karte „Ziele · Jahr“ mit den drei Spalten und dem Fortschritt.
+
 ## 09.10.2026 — Kalender: Wischen (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
 
 Kevin 09.10.: „Wenn ich mit 2 Fingern nach links wische, soll die nächste Woche angezeigt werden, nach rechts wieder zurück.“

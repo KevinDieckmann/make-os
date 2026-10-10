@@ -56,6 +56,8 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'fokus', art: 'fokus', breite: 2, einstellungen: { space: 'privat' } },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'privat' }, titel: 'Nächste 3 Tage · Privat' },
     { id: 'index', art: 'index', breite: 2, einstellungen: { saeule: 'privat' } },
+    // Ziele (09.10., Kevin: „zusammen unsere Ziele — und jeder für sich … sonst macht es keinen Sinn“): Unsere · Meine · <Name>.
+    { id: 'ziele', art: 'ziele', breite: 4 },
     { id: 'aufgaben', art: 'aufgaben', breite: 4, einstellungen: { space: 'privat', nur: 'dran' } },
     { id: 'koerper', art: 'koerper', breite: 2 },
     { id: 'finanzen-privat', art: 'finanzen-privat', breite: 2 },

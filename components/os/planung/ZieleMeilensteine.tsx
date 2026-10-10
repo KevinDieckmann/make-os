@@ -29,6 +29,10 @@
 // (`wirksamerSpace`/`meilensteinSpace`, lib/planung/bereich.ts) — Einträge mit der Einheit „Selbstständigkeit“ stehen unter Privat, ihr
 // Einheiten-Chip in der Privat-Farbe (nie als Business-Einheit). Im Privat-Filter lässt sich die Privat-Einheit beim Anlegen wählen;
 // gespeichert wird in der Form, die der alte Stand kennt (Server, `speicherSpace`).
+// 09.10. (Kevin: „im privaten Bereich … zusammen unsere Ziele eintragen — und jeder für sich … auch bei der Planung“): im Privat-Filter steht
+// statt der Ziele-Karte die Übersicht Unsere · Meine · <Name> (./ZieleUebersicht.tsx) — auf JEDEM Horizont, weil Jahr/Quartal/Monat, Woche
+// (Kalender › Planen) und Tag dieses Bauteil einhängen. In „Alles“ (solange es ihn gibt) bleibt die Ziele-Karte, darüber Meine + <Name>.
+// Business bleibt unverändert.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -58,6 +62,7 @@ import { aufgabenVonMeilenstein, aufgabenStand, wirksamerFortschritt, fortschrit
 import { wartetText } from '@/lib/planung/meilenstein-kette';
 import { loescheMeilenstein } from './meilenstein-loeschen';
 import { loescheZiel } from './ziel-loeschen';
+import { ZieleUebersicht } from './ZieleUebersicht';
 
 type SpaceFilter = SpaceId | 'alle';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -403,9 +408,13 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
         )}
       </div>
 
+      {/* Privat (09.10.): Unsere · Meine · <Name>; in „Alles“ nur Meine + <Name> (die gemeinsamen stehen in der Ziele-Karte). */}
+      {spaceFilter !== 'business' && (
+        <ZieleUebersicht horizont={horizont} gemeinsam={p} planJahr={planJahr} rueck={rueck} i={i + 1} kompakt={kompakt} ohneUnsere={spaceFilter === 'alle'} />
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 14, alignItems: 'start' }}>
-        {/* Ziele */}
-        <Karte i={i + 1} akzent={farbe}>
+        {/* Ziele (im Privat-Filter stehen sie oben in der Übersicht) */}
+        {spaceFilter !== 'privat' && <Karte i={i + 1} akzent={farbe}>
           <Ueberschrift farbe={farbe} rechts={zOffen.length ? `${zOffen.length} offen` : undefined}>Ziele</Ueberschrift>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') zielAnlegen(); }} aria-label="Neues Ziel"
@@ -427,7 +436,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
             : <Liste>{zOffen.map((z, k) => zielZeile(z, k, zOffen.length))}</Liste>}
           {erledigtBereich(zErledigt.map((z, k) => zielZeile(z, k, zErledigt.length)), zErledigt.length)}
           {erledigtBereich(zArchiv.map((z, k) => zielZeile(z, k, zArchiv.length)), zArchiv.length, 'Archiv')}
-        </Karte>
+        </Karte>}
 
         {/* Meilensteine */}
         <Karte i={i + 2} akzent={LEUCHT.achtung}>

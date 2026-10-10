@@ -69,6 +69,13 @@ export interface Ziel {
   aufwand?: number;
   /** Wer daran arbeitet: Kennungen aus dem Team (lib/kapazitaet). Leer = das ganze Team. */
   personen?: string[];
+  /**
+   * Geteilt (09.10., Kevin: „im privaten Bereich … zusammen unsere Ziele eintragen — und jeder für sich“): nur an EIGENEN Zielen
+   * (`ziele-eigen--<person>`) — `true` = die anderen vollen Mitglieder des Haushalts sehen genau dieses Ziel (lesen, nie schreiben);
+   * fehlt = nur ich. Gefiltert NUR auf dem Server (lib/planung/eigene-ziele-sicht.ts `nurGeteilte`). Ändert nichts am Speicherort;
+   * abgeleitete Ziele der Kaskade erben es vom Jahresziel. Im gemeinsamen Bestand ohne Bedeutung.
+   */
+  geteilt?: boolean;
 }
 
 export interface Meilenstein {

@@ -57,6 +57,8 @@ export function sauberZiel(roh: unknown): Ziel | null {
   Object.assign(aus, bezugSaeubern(z, aus.space === 'business'));
   // Kapazität (04.10.): Aufwand + Personen — optional, nicht im Privat-Space.
   Object.assign(aus, aufwandSaeubern(z, aus.space !== 'privat'));
+  // Geteilt (09.10.): nur `true` zählt — eigenes Ziel, das die anderen vollen Mitglieder des Haushalts lesen dürfen.
+  if (z.geteilt === true) aus.geteilt = true;
   return aus;
 }
 

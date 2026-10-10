@@ -13,11 +13,19 @@
 // -Werkzeuge, Business-Index (nur ohne Titel), Kapazität (ganz ohne den Posten), Verbindungsprüfung, Gesundheit, Schilde, Loops; die
 // Aufgaben-Liste `lm-…` trägt für sie nur `LISTE_NICHT_GETEILT`. Ohne Person (Systemlauf) gilt: kein Meilenstein an einem eigenen Ziel.
 
+// Seit 09.10. (Kevin: „im privaten Bereich … einen Bereich, wo wir zusammen unsere Ziele eintragen können — und jeder für sich. Das ist
+// unfassbar wichtig“) zusätzlich JE ZIEL: ein eigenes Ziel mit `geteilt: true` sehen die anderen VOLLEN Mitglieder des Haushalts (nicht
+// ein Konto „nur Business“) — und nur dieses Ziel, nur lesend. Dazu je Fokus-Satz `fokusGeteilt` (Schlüssel, die die Person teilt).
+// Drei Stufen je Paar (`eigeneZieleSicht`): alles (eigene bzw. ganz geteilt über `teilt.ziele`) · geteilte (einzeln) · nichts. Die
+// Route GET /api/state/ziele?fuer=<person> liefert bei „geteilte“ NUR `nurGeteilte(datei)` — ein ungeteiltes Ziel kommt nie an (auch kein
+// Titel, keine Kennung, kein Zähler). Die Sammel-Ansichten (Lichtfäden, Seil, Brain-Kugel, Fluss) bleiben bewusst bei der strengen Regel
+// oben (`lesbareEigentuemer`/`verborgeneZielIds`: nur ganz geteilt) — einzeln Geteiltes steht nur in den Ziele-Spalten der Planung und auf Heute.
+
 /** Gemeinsamer Bestand (`ziele`) — gehört allen im Haushalt (wie `BEIDE` in lib/lichtfaeden/modell.ts). */
 export const GEMEINSAM = 'beide';
 
-/** Was die Regel vom Konto braucht. */
-export interface KontoZieleTeilen { speicher: string; haushalt?: string; teilt?: { ziele?: readonly string[] } }
+/** Was die Regel vom Konto braucht. `finanzRecht: 'business'` = Konto „nur Business“ (sieht nie Privates, auch nichts einzeln Geteiltes). */
+export interface KontoZieleTeilen { speicher: string; haushalt?: string; finanzRecht?: string; teilt?: { ziele?: readonly string[] } }
 
 /**
  * Darf `betrachter` die eigenen Ziele von `eigentuemer` lesen? Die eigenen immer; fremde nur, wenn die Eigentümerin sie mit genau
@@ -79,4 +87,58 @@ export const LISTE_NICHT_GETEILT = 'Meilenstein-Liste';
 export function listenFuerBetrachter<S extends { listen?: { id: string; titel: string }[] }>(state: S, verborgeneListen: ReadonlySet<string>): S {
   if (!verborgeneListen.size || !state.listen?.some(l => verborgeneListen.has(l.id))) return state;
   return { ...state, listen: state.listen.map(l => (verborgeneListen.has(l.id) ? { ...l, titel: LISTE_NICHT_GETEILT } : l)) } as S;
+}
+
+// ── Einzeln geteilt (09.10.) ──────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Wie viel `betrachter` aus dem eigenen Bestand von `eigentuemer` sieht. */
+export type EigeneZieleSicht = 'alles' | 'geteilte' | 'nichts';
+
+/** Volles Mitglied: Haushalt am Konto eingetragen, nicht „nur Business“. */
+const vollesMitglied = (k: KontoZieleTeilen | undefined): k is KontoZieleTeilen & { haushalt: string } => !!k && !!k.haushalt && k.finanzRecht !== 'business';
+
+/**
+ * Alles: die eigenen bzw. ganz geteilt (`eigeneZieleLesbar`). Geteilte: beide volle Mitglieder desselben Haushalts — dann nur, was die
+ * Eigentümerin einzeln geteilt hat. Sonst (Systemlauf, fremder Haushalt, Konto „nur Business“, Person ohne Konto): nichts.
+ */
+export function eigeneZieleSicht(konten: readonly KontoZieleTeilen[], eigentuemer: string, betrachter: string | null | undefined): EigeneZieleSicht {
+  if (!betrachter) return 'nichts';
+  if (eigeneZieleLesbar(konten, eigentuemer, betrachter)) return 'alles';
+  const e = konten.find(k => k.speicher === eigentuemer), b = konten.find(k => k.speicher === betrachter);
+  return vollesMitglied(e) && vollesMitglied(b) && e.haushalt === b.haushalt ? 'geteilte' : 'nichts';
+}
+
+/** Die Partner einer Person: die anderen vollen Mitglieder ihres Haushalts (für die Spalten „<Name>“). Ohne Haushalt/„nur Business“: niemand. */
+export function partnerVon(konten: readonly KontoZieleTeilen[], person: string | null | undefined): string[] {
+  const ich = konten.find(k => k.speicher === person);
+  if (!vollesMitglied(ich)) return [];
+  return konten.filter(k => k.speicher !== ich.speicher && vollesMitglied(k) && k.haushalt === ich.haushalt).map(k => k.speicher);
+}
+
+/** Die Form eines eigenen Bestands, wie die Regel sie braucht (alle Horizonte + Fokus + geteilte Fokus-Schlüssel). */
+export interface EigeneDatei { tag?: unknown; woche?: unknown; monat?: unknown; quartal?: unknown; jahr?: unknown; fokus?: Record<string, string>; fokusGeteilt?: unknown }
+const HORIZONTE = ['tag', 'woche', 'monat', 'quartal', 'jahr'] as const;
+
+/** Die einzeln geteilten Fokus-Schlüssel (nur Texte, ohne Doppel). */
+export function fokusGeteiltListe(d: Pick<EigeneDatei, 'fokusGeteilt'> | null | undefined): string[] {
+  const l = d?.fokusGeteilt;
+  return Array.isArray(l) ? [...new Set(l.filter((x): x is string => typeof x === 'string' && !!x))] : [];
+}
+
+/**
+ * NUR das einzeln Geteilte (rein, Server): je Horizont die Ziele mit `geteilt === true`, der Fokus nur unter den geteilten Schlüsseln,
+ * `fokusGeteilt` selbst geht nicht mit (die Liste verrät, was es gibt). Alles andere Feld der Datei fällt weg.
+ */
+export function nurGeteilte<D extends EigeneDatei>(d: D | null | undefined): D {
+  const aus: Record<string, unknown> = {};
+  for (const h of HORIZONTE) aus[h] = (Array.isArray(d?.[h]) ? (d![h] as { geteilt?: unknown }[]) : []).filter(z => z && z.geteilt === true);
+  const teile = new Set(fokusGeteiltListe(d));
+  aus.fokus = Object.fromEntries(Object.entries(d?.fokus ?? {}).filter(([k, v]) => teile.has(k) && typeof v === 'string'));
+  return aus as D;
+}
+
+/** Hat die Datei überhaupt etwas einzeln Geteiltes (ein Ziel oder einen nicht leeren Fokus-Satz)? */
+export function hatGeteiltes(d: EigeneDatei | null | undefined): boolean {
+  const g = nurGeteilte(d);
+  return HORIZONTE.some(h => (g[h] as unknown[]).length > 0) || Object.values(g.fokus ?? {}).some(v => !!v.trim());
 }
