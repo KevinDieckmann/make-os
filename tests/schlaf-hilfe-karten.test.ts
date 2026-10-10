@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { schlafLage } from '@/lib/gesundheit/schlaf';
-import { aktiveFragen, CHECK_FRAGEN, CHECK_MAX } from '@/lib/gesundheit/tages-check';
+import { aktiveFragen, checkAuswertung, ANSPANNUNG_HINWEIS, ANSPANNUNG_ID, CHECK_FRAGEN, CHECK_MAX } from '@/lib/gesundheit/tages-check';
 import { essenOrientierung, ERGAENZUNG_VORLAGEN } from '@/lib/ernaehrung/orientierung';
 import { leererAlltag, alltagEinstellungen } from '@/lib/gesundheit/alltag';
 import { tagePlus } from '@/lib/zeit';
@@ -76,6 +76,23 @@ describe('Karten zeichnen', () => {
     expect(html).toContain('min-height:44px');
     expect((html.match(/aria-pressed="true"/g) ?? []).length).toBe(1);
     expect(html).toContain('kein Beweis');
+    expect(html).not.toContain('Stressiger Tag');
+    expect(html).not.toContain(ANSPANNUNG_HINWEIS); // kein Stress-Befund → kein Hinweis zur Quelle
+  });
+
+  it('Tages-Check: „Stress“ steht als Befund aus der Anspannung — mit der Quelle „Anspannung (Morgen-Check)“, nie als Frage', async () => {
+    const journal: Record<string, { stress: number }> = {};
+    const vitals: Record<string, { sleep: number }> = {};
+    [5, 1, 4, 2, 4, 3].forEach((w, i) => { const d = tagePlus(HEUTE, -i - 1); journal[d] = { stress: w }; vitals[tagePlus(d, 1)] = { sleep: w >= 4 ? 6 : 7.5 }; });
+    const aus = checkAuswertung(journal, vitals, [ANSPANNUNG_ID], HEUTE);
+    const s = sicht();
+    antwort = { ...s, sicht: { ...s.sicht, check: { ...s.sicht.check, befunde: aus.befunde, fortschritt: aus.fortschritt } } };
+    const { TagesCheckKarte } = await import('@/components/os/gesundheit/TagesCheckKarte');
+    const html = renderToStaticMarkup(h(TagesCheckKarte, {}));
+    expect(html).toContain('An Tagen mit „Stress“ hattest du im Schnitt 90 Min. weniger Schlaf');
+    expect(html).toContain(ANSPANNUNG_HINWEIS);
+    expect(html).toContain('Anspannung (Morgen-Check)');
+    expect(html).not.toContain('Stressiger Tag');
   });
 
   it('Essen & Trinken: ein Satz mit Gründen, Ø kcal als Orientierung, Trink-Hinweis, Haken — keine Mengenempfehlung', async () => {

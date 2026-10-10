@@ -29,6 +29,7 @@ import * as B from '@/lib/agenten/brain-agenten';
 import { auftragBrainBlock, auftragHash } from '@/lib/agenten/auftrag';
 import { fremd } from '@/lib/anthropic';
 import { einstellungBestand, wissenBestand, skillsHaushaltBestand, GRENZEN } from '@/lib/agenten/typen';
+import { headDef } from '@/lib/agenten/katalog';
 
 const H = 'haus-a';
 const ORDNER = '01. Firma Brain/Agenten';
@@ -87,12 +88,14 @@ let db: typeof import('@/lib/store/local-db');
 beforeAll(async () => {
   globalThis.fetch = (async () => { throw new Error('Netz im Test gesperrt'); }) as typeof fetch;
   await fs.mkdir(path.join(wurzel, 'Vault', '.obsidian'), { recursive: true });
-  await schreibe(`${ORDNER}/_Agenten_Index.md`, '---\ntype: index\nscope: intern\n---\n# Agenten\n\n| Abteilung | Datei | Modell |\n|---|---|---|\n| Vertrieb | [[vertrieb]] | stark |\n| Betrieb und Abläufe | [[ops]] | schnell |\n| Team / Fürsorge | [[team]] | schnell |\n');
+  await schreibe(`${ORDNER}/_Agenten_Index.md`, '---\ntype: index\nscope: intern\n---\n# Agenten\n\n| Abteilung | Datei | Modell |\n|---|---|---|\n| Vertrieb | [[vertrieb]] | stark |\n| Betrieb und Abläufe | [[ops]] | schnell |\n| Team / Fürsorge | [[team]] | schnell |\n| People / Founder-Care | [[people]] | schnell |\n');
   await schreibe(`${ORDNER}/vertrieb.md`, VERTRIEB);
   await schreibe(`${ORDNER}/ops.md`, '---\ntype: agent\nscope: intern\nabteilung: ops\nmodell: schnell\n---\n# Agent · Betrieb\n\n## Mission\nAbläufe am Laufen halten.\n\n## Sub-Agenten\ninbox · kalender · wissen\n');
   await schreibe(`${ORDNER}/finance.md`, '---\ntype: agent\nscope: intern\n---\n# Agent · Finance\n\n## Mission\nZahlen im Blick behalten.\n\n## Sub-Agenten\ncontrolling · board\n');
   await schreibe(`${ORDNER}/health.md`, '---\ntype: agent\nscope: intern\nabteilung: health\n---\n# Agent · Gesundheit\n\n## Mission\nRuhe und Erholung.\n');
   await schreibe(`${ORDNER}/team.md`, '---\ntype: agent\nscope: intern\nabteilung: team\n---\n# Agent · Team / Fürsorge\n\n## Mission\nAuf das Team achten.\n\n## Sub-Agenten\nfokus · health\n');
+  // Abteilung ohne eigenen Head im Katalog (10.10.): wird ein Mitarbeiter unter CEO-Office — erkannt an Kopf/Dateiname/Titel, nie am Inhalt.
+  await schreibe(`${ORDNER}/people.md`, '---\ntype: agent\nscope: intern\nabteilung: people\nmodell: schnell\n---\n# Agent · People / Founder-Care\n\n## Mission\nAchtet auf Belastung und Pausen im Team. Schlägt Entlastung vor.\n\n## Sub-Agenten\nfokus · health\n\n## Wissen\n[[Privates_Ding]]\n\n## Darf\nNur Vorschläge.\n');
   await schreibe(`${ORDNER}/geheim.md`, '---\ntype: agent\nscope: privat\nowner: person-a\nabteilung: sales\n---\n# Agent · Geheim\n\n## Mission\nGEHEIMER-AUFTRAG-MARKE\n');
   await schreibe(`${ORDNER}/helfer.md`, '---\ntype: mitarbeiter\nscope: intern\nunter: sales\n---\n# Angebots-Helfer\n\n## Mission\nBereitet Angebote vor. Prüft Preise.\n\n## Darf\nNur lesen.\n');
   await schreibe('01. Firma Brain/02_Vertrieb_Wissen/Vertrieb_Wissen.md', '---\ntype: wissen\nscope: intern\n---\n# Vertrieb_Wissen\n\nPreisliste Beispiel.\n');
@@ -143,6 +146,30 @@ describe('Agenten-Notiz lesen (rein, nach Struktur)', () => {
     expect(ma).toMatchObject({ headId: 'marketing', als: 'mitarbeiter' });
     expect(B.zuordnen(B.agentDateiLesen(roh('A/y.md', '---\ntype: agent\n---\n# Agent · Unbekannt\n')), new Map([['y', 'Rechnungswesen / Finance']])).headId).toBe('finanzen');
   });
+  it('Abteilung ohne eigenen Head (People/Founder-Care) → „als Mitarbeiter unter CEO-Office“ — über Kopf, Dateiname, Titel oder Index', () => {
+    const z = (pfad: string, text: string, index = new Map<string, string>()) => B.zuordnen(B.agentDateiLesen(roh(pfad, text)), index);
+    const people = z('A/people.md', '---\ntype: agent\nabteilung: people\n---\n# Agent · People / Founder-Care\n');
+    expect(people).toMatchObject({ headId: 'strategie', als: 'mitarbeiter' });
+    expect(people.grund).toContain('als Mitarbeiter unter CEO-Office');
+    expect(z('A/people.md', '---\ntype: agent\n---\n# Agent · X\n')).toMatchObject({ headId: 'strategie', als: 'mitarbeiter' });
+    expect(z('A/x.md', '---\ntype: agent\n---\n# Agent · Founder-Care\n')).toMatchObject({ headId: 'strategie', als: 'mitarbeiter' });
+    expect(z('A/y.md', '---\ntype: agent\n---\n# Agent · Unbekannt\n', new Map([['y', 'People / Founder-Care']]))).toMatchObject({ headId: 'strategie', als: 'mitarbeiter' });
+    // Ein eigener Head geht vor (erster Kandidat gewinnt); „personal“ (englisch = privat) ist bewusst keine Abteilung.
+    expect(z('A/people.md', '---\ntype: agent\nabteilung: sales\n---\n# Agent · People\n')).toMatchObject({ headId: 'sales', als: 'head' });
+    expect(z('A/personal.md', '---\ntype: agent\n---\n# Agent · Personal\n').headId).toBeNull();
+    // Wächter: nur Business-Heads als Ziel; keine Bezeichnung ist zugleich ein Head-Schlüssel (sonst würde sie nie greifen).
+    for (const [headId, aliase] of Object.entries(B.MITARBEITER_ALIASE)) {
+      expect(headDef(headId)?.bereich, headId).toBe('business');
+      for (const a of aliase) expect(z(`A/${a}.md`, '---\ntype: agent\n---\n# Agent · Unbekannt\n'), a).toMatchObject({ headId, als: 'mitarbeiter' });
+    }
+    // Privat bleibt privat: eine private Notiz geht nie an Agenten, auch nicht als Mitarbeiter.
+    const plan = B.planBauen({
+      dateien: [B.agentDateiLesen(roh('A/people.md', '---\ntype: agent\nscope: privat\nabteilung: people\n---\n# Agent · People\n\n## Mission\nX.\n'))], index: new Map(), sichtbar: new Set(['strategie']),
+      einstellung: () => ({}), stand: () => 's', wissen: () => null, wissenStand: () => 'w', mitarbeiter: () => [], fachAgenten: [], brain: { notizen: [], ordner: [] },
+    });
+    expect(plan[0].ziel).toBeNull();
+    expect(plan[0].mitarbeiter).toEqual([]);
+  });
   it('der Auftrag aus dem Brain steht gekapselt im System-Text — nie „von einem Menschen geschrieben“', () => {
     const block = auftragBrainBlock({ ebene: 'haushalt' }, 'Auftrag: X', fremd);
     expect(block).toContain('<fremde_daten quelle="brain-auftrag">');
@@ -178,7 +205,7 @@ describe('Vorschau (schreibt nichts)', () => {
     expect(r.status).toBe(200);
     expect(r.j.ordner).toEqual({ pfad: ORDNER, quelle: 'index' });
     expect(r.text).not.toContain('GEHEIMER-AUFTRAG-MARKE');
-    expect((r.j.eintraege as B.PlanEintrag[]).map(e => e.name).sort()).toEqual(['finance', 'health', 'helfer', 'ops', 'team', 'vertrieb']);
+    expect((r.j.eintraege as B.PlanEintrag[]).map(e => e.name).sort()).toEqual(['finance', 'health', 'helfer', 'ops', 'people', 'team', 'vertrieb']);
     expect((r.j.heads as { bereich: string }[]).every(h => h.bereich === 'business')).toBe(true);
     // nichts geschrieben
     expect(await db.loadJson(einstellungBestand(H))).toBeNull();
@@ -209,6 +236,14 @@ describe('Vorschau (schreibt nichts)', () => {
     const helfer = eintrag(r.j, 'helfer');
     expect(helfer.ziel).toMatchObject({ headId: 'sales', als: 'mitarbeiter' });
     expect(helfer.mitarbeiter[0]).toMatchObject({ aktion: 'anlegen', neu: { name: 'Angebots-Helfer', rolle: 'Bereitet Angebote vor.' } });
+    // People/Founder-Care (10.10.): Vorschlag „als Mitarbeiter unter CEO-Office“ (Business), vorausgewählt; Wissen geht als Mitarbeiter nicht mit.
+    const people = eintrag(r.j, 'people');
+    expect(people.ziel).toEqual({ headId: 'strategie', headName: 'CEO-Office', als: 'mitarbeiter' });
+    expect(people.zielGrund).toContain('als Mitarbeiter unter CEO-Office');
+    expect(people.mitarbeiter).toEqual([expect.objectContaining({ kuerzel: 'people', aktion: 'anlegen', neu: expect.objectContaining({ name: 'People / Founder-Care', rolle: 'Achtet auf Belastung und Pausen im Team.' }) })]);
+    expect(people.wissen).toEqual([]);
+    expect(people.auftrag).toBeNull();
+    expect((r.j.vorauswahl as B.UebernahmeWahl[]).find(w => w.datei === `${ORDNER}/people.md`)?.mitarbeiter).toEqual(['people']);
   });
   it('ein Ziel in der Vorschau wählen: ein Privat-Head bleibt ausgeschlossen, „als Mitarbeiter“ geht', async () => {
     const r = await anfrage(brain.POST, '/api/agenten/brain', 'POST', sitzung('person-a'), { aktion: 'vorschau', ziele: { [`${ORDNER}/team.md`]: { headId: 'strategie', als: 'mitarbeiter' }, [`${ORDNER}/health.md`]: { headId: 'gesundheit' } } });
@@ -252,6 +287,12 @@ describe('Übernehmen — vorhandene Schreibwege, nur Business, nichts doppelt',
     const helfer = ws.mitarbeiter.find((m: any) => m.name === 'Angebots-Helfer');
     expect(helfer).toMatchObject({ headId: 'sales', ausFremdemText: true, herkunft: { art: 'brain', datei: `${ORDNER}/helfer.md` } });
     expect(helfer.anleitung).toContain('Darf: Nur lesen.');
+    // People/Founder-Care: eigener Mitarbeiter unter CEO-Office, im Business-Bestand der Werkstatt (nie privat), Text aus dem Vault markiert.
+    const people = ws.mitarbeiter.find((m: any) => m.name === 'People / Founder-Care');
+    expect(people).toMatchObject({ headId: 'strategie', ausFremdemText: true, herkunft: { art: 'brain', datei: `${ORDNER}/people.md` } });
+    expect(headDef(people.headId)?.bereich).toBe('business');
+    expect(JSON.stringify(people)).not.toContain('Privates_Ding');
+    expect(e.heads.strategie?.auftrag).toBeUndefined(); // als Mitarbeiter: kein Auftrag für den Head
   });
   it('zweite Vorschau: alles schon da — nichts vorausgewählt, nichts doppelt', async () => {
     expect(erste).toBeTruthy();
@@ -261,6 +302,7 @@ describe('Übernehmen — vorhandene Schreibwege, nur Business, nichts doppelt',
     expect(vt.mitarbeiter.find(m => m.kuerzel === 'outreach')?.aktion).toBe('vorhanden');
     expect(vt.wissen.every(x => x.aktion === 'schon')).toBe(true);
     expect(eintrag(v.j, 'helfer').mitarbeiter[0].aktion).toBe('vorhanden');
+    expect(eintrag(v.j, 'people').mitarbeiter[0].aktion).toBe('vorhanden');
     const sel = (v.j.vorauswahl as B.UebernahmeWahl[]).find(w => w.datei === `${ORDNER}/vertrieb.md`)!;
     expect(sel).toMatchObject({ auftrag: false, mitarbeiter: [], wissen: [] });
   });

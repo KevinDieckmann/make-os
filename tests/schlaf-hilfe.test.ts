@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { aufstehenStufe, uhrZuMin, minZuUhr, uhrAbstand, schlafLage, konsistenzAus, erinnerungFaellig, schlafTipp, type SchlafNacht, type SchlafEingabe } from '@/lib/gesundheit/schlaf';
 import { naechteAus, ortsMinute } from '@/lib/gesundheit/schlaf-naechte';
 import { alltagAnwenden, alltagSaeubern, leererAlltag, nurAusschalten, AlltagFehler, alltagEinstellungen } from '@/lib/gesundheit/alltag';
-import { aktiveFragen, checkAnwenden, checkAuswertung, checkEingangSaeubern, checkSaeubern, checkTagFuer, befundSatz, CHECK_FRAGEN, CHECK_VORGABE, CHECK_MAX } from '@/lib/gesundheit/tages-check';
+import { aktiveFragen, checkAnwenden, checkAuswertung, checkEingangSaeubern, checkSaeubern, checkTagFuer, befundSatz, gestresstAusAnspannung, abgeloesteAntworten, CHECK_FRAGEN, CHECK_VORGABE, CHECK_MAX, CHECK_ABGELOEST, ANSPANNUNG_ID, ANSPANNUNG_STRESS_AB } from '@/lib/gesundheit/tages-check';
 import { essenOrientierung, belastungsTage, belastungsTageHaushalt, belastungsZeile, planBelastung, strainJeWochentag, wTagVon, ergaenzungLabel, ERGAENZUNG_VORLAGEN } from '@/lib/ernaehrung/orientierung';
 import { telegramInhalteFinden, hinweisSchlafenszeit, SCHLAF_ERINNERUNG_TITEL } from '@/lib/datenschutz/telegram-text';
 import { tagePlus } from '@/lib/zeit';
@@ -186,6 +186,7 @@ describe('Einstellungen je Person (gesundheit-alltag)', () => {
     expect(fehler([{ op: 'schlaf', felder: { schrittMin: 2 } }])).toBe(400);
     expect(fehler([{ op: 'schlaf', felder: { geheim: 1 } }])).toBe(400);
     expect(fehler([{ op: 'check', fragen: ['gibt-es-nicht'] }])).toBe(400);
+    expect(fehler([{ op: 'check', fragen: ['alkohol', 'stress'] }])).toBe(400); // abgelöst (10.10.): nicht mehr wählbar
     expect(fehler([{ op: 'check', fragen: CHECK_FRAGEN.map(f => f.id) }])).toBe(413);
     expect(fehler([{ op: 'ergaenzung', routine: 'r-1', vorlage: 'zauberpulver' }])).toBe(400);
     expect(fehler(Array.from({ length: 21 }, () => ({ op: 'essen', orientierung: true })))).toBe(413);
@@ -203,6 +204,11 @@ describe('Einstellungen je Person (gesundheit-alltag)', () => {
     expect(nurAusschalten([{ op: 'schlaf', felder: { aufstehen: '07:00' } }])).toBe(false);
     expect(nurAusschalten([])).toBe(false);
   });
+  it('eine gespeicherte Auswahl mit „stress“ wird beim Lesen still gesäubert — nie ein Fehler', () => {
+    expect(alltagSaeubern({ check: { fragen: ['stress', 'alkohol', 'getrunken'] } }).check).toEqual({ fragen: ['alkohol', 'getrunken'] });
+    expect(alltagSaeubern({ check: { fragen: ['stress'] } }).check).toEqual({ fragen: [] });
+    expect(() => alltagAnwenden(leererAlltag(), [{ op: 'check', fragen: ['stress'] }], HEUTE)).toThrow(/Anspannung/);
+  });
   it('der Riegel gehört nicht zu den Einstellungen', () => {
     const a = { ...leererAlltag(), erinnert: HEUTE, geaendert: 'x' };
     expect(alltagEinstellungen(a)).not.toHaveProperty('erinnert');
@@ -212,18 +218,61 @@ describe('Einstellungen je Person (gesundheit-alltag)', () => {
 describe('Tages-Check', () => {
   it('Vorgabe: fünf Fragen; eigene Auswahl in Reihenfolge des Katalogs; höchstens sechs', () => {
     expect(aktiveFragen(undefined).map(f => f.id)).toEqual([...CHECK_VORGABE]);
-    expect(aktiveFragen({ fragen: ['stress', 'alkohol'] }).map(f => f.id)).toEqual(['alkohol', 'stress']);
+    expect(aktiveFragen({ fragen: ['draussen', 'alkohol'] }).map(f => f.id)).toEqual(['alkohol', 'draussen']);
     expect(aktiveFragen({ fragen: [] })).toEqual([]);
     expect(CHECK_VORGABE.length).toBeLessThanOrEqual(CHECK_MAX);
   });
   it('Eingang: nur Katalog-Fragen, nur ja/nein/null — sonst Fehler, nie still verworfen', () => {
-    expect(checkEingangSaeubern({ alkohol: true, getrunken: false, stress: null })).toEqual({ ok: true, werte: { alkohol: true, getrunken: false, stress: null } });
+    expect(checkEingangSaeubern({ alkohol: true, getrunken: false, draussen: null })).toEqual({ ok: true, werte: { alkohol: true, getrunken: false, draussen: null } });
     expect(checkEingangSaeubern({ alkohol: 'ja' }).ok).toBe(false);
     expect(checkEingangSaeubern({ fremd: true }).ok).toBe(false);
     expect(checkEingangSaeubern([]).ok).toBe(false);
-    expect(checkAnwenden({ alkohol: true, getrunken: true }, { alkohol: null, stress: false })).toEqual({ getrunken: true, stress: false });
+    expect(checkAnwenden({ alkohol: true, getrunken: true }, { alkohol: null, draussen: false })).toEqual({ getrunken: true, draussen: false });
     expect(checkAnwenden({ alkohol: true }, { alkohol: null })).toBeUndefined();
     expect(checkSaeubern({ alkohol: true, x: true, getrunken: 'ja' })).toEqual({ alkohol: true });
+  });
+  it('Stress nur noch als Anspannung 1–5 (10.10.): die Ja/Nein-Frage ist nicht wählbar und nicht zu beantworten', () => {
+    expect(CHECK_ABGELOEST).toContain('stress');
+    expect(CHECK_FRAGEN.map(f => f.id)).not.toContain('stress');
+    expect(CHECK_FRAGEN.some(f => /stress/i.test(f.frage))).toBe(false);
+    expect(aktiveFragen({ fragen: ['stress', 'alkohol'] }).map(f => f.id)).toEqual(['alkohol']);
+    const e = checkEingangSaeubern({ alkohol: true, stress: true });
+    expect(e.ok).toBe(false);
+    expect(e.ok ? '' : e.fehler).toContain('Anspannung');
+    expect(checkEingangSaeubern({ stress: null }).ok).toBe(false);
+  });
+  it('Altbestand: gespeicherte „stress“-Antworten bleiben im Journal liegen — nie gezeigt, nie gelöscht', () => {
+    expect(checkSaeubern({ stress: true, alkohol: false })).toEqual({ alkohol: false });
+    expect(checkSaeubern({ stress: true })).toBeUndefined();
+    expect(abgeloesteAntworten({ stress: false, alkohol: true, x: true })).toEqual({ stress: false });
+    expect(checkAnwenden({ stress: true, alkohol: true }, { alkohol: null })).toEqual({ stress: true });
+    expect(checkAnwenden({ stress: false }, { getrunken: true })).toEqual({ stress: false, getrunken: true });
+    expect(checkAnwenden({ stress: 'ja', alkohol: true }, { alkohol: null })).toBeUndefined(); // kein echtes ja/nein → nie aufgehoben
+  });
+  it('gestresst aus der Anspannung: ≥ 4 ja, 1–3 nein, fehlt/ungültig kein Datenpunkt', () => {
+    expect(ANSPANNUNG_STRESS_AB).toBe(4);
+    expect([1, 2, 3, 4, 5].map(gestresstAusAnspannung)).toEqual([false, false, false, true, true]);
+    for (const x of [undefined, null, 0, 6, '4', Number.NaN, {}]) expect(gestresstAusAnspannung(x)).toBeUndefined();
+  });
+  it('Auswertung „Stress“ aus der Anspannung des Tages D gegen die Nacht danach — alte Ja/Nein-Antworten zählen nicht', () => {
+    const journal: Record<string, { check?: unknown; stress?: unknown }> = {};
+    const vitals: VitalsLog = {};
+    const werte = [5, 1, 4, 2, 4, 3, 5, 1];
+    werte.forEach((w, i) => {
+      const d = T(-i - 1);
+      // Die alte Ja/Nein-Antwort sagt jeweils das GEGENTEIL — sie darf nichts ändern.
+      journal[d] = { stress: w, check: { stress: w < 4 } };
+      vitals[tagePlus(d, 1)] = { sleep: w >= 4 ? 6 : 7.5, rec: w >= 4 ? 45 : 65 };
+    });
+    journal[T(-9)] = { check: { stress: true } }; // nur die alte Antwort, keine Anspannung → kein Datenpunkt
+    vitals[T(-8)] = { sleep: 3 };
+    const r = checkAuswertung(journal, vitals, ['alkohol', ANSPANNUNG_ID, 'stress'], HEUTE);
+    expect(r.befunde.map(b => b.id)).toEqual([ANSPANNUNG_ID]);
+    expect(r.befunde[0]).toMatchObject({ kurz: 'Stress', quelle: 'Anspannung (Morgen-Check)', schlafDiffMin: -90, recDiff: -20, ja: { n: 4 }, nein: { n: 4 } });
+    expect(r.befunde[0].satz).toBe('An Tagen mit „Stress“ hattest du im Schnitt 90 Min. weniger Schlaf und eine um 20 Punkte niedrigere Recovery (4 Tage mit, 4 ohne).');
+    expect(r.fortschritt.map(f => f.id)).toEqual(['alkohol', ANSPANNUNG_ID]); // die abgelöste Frage zählt gar nicht
+    // Nur alte Antworten, keine Anspannung → nichts.
+    expect(checkAuswertung({ [T(-2)]: { check: { stress: true } } }, { [T(-1)]: { sleep: 7 } }, [ANSPANNUNG_ID], HEUTE).fortschritt[0]).toMatchObject({ ja: 0, nein: 0 });
   });
   it('vor 14 Uhr fragt die Karte nach gestern, danach nach heute', () => {
     expect(checkTagFuer(`${HEUTE}T07:30:00`)).toEqual({ tag: T(-1), welcher: 'gestern' });

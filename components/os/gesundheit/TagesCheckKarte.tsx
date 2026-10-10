@@ -7,12 +7,14 @@
 // PATCH /api/state/journal) — derselbe Ort wie die drei Abendfragen, kein Bestand daneben. Darunter die Auswertung aus den eigenen
 // Tagen (ab 3 Tagen mit und 3 ohne): „An Tagen mit … hattest du im Schnitt … Schlaf“. Einbinden: `<TagesCheckKarte />` (neben „Drei
 // Fragen“). Ohne Einwilligung (a): null (bzw. mit `hinweis` ein Hinweis).
+// 10.10. (Entscheidung „Nur Anspannung 1–5“): keine Ja/Nein-Frage „Stressiger Tag?“ mehr — Stress steht in der Auswertung aus der Anspannung des
+// Morgen-Checks (Befund mit `quelle`); der Hinweis darunter nennt die Quelle.
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, ECKE, TIEF, RAND } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Klappbar, MehrfachPillen, LEUCHT } from '../ui';
-import { CHECK_HINWEIS } from '@/lib/gesundheit/tages-check';
+import { CHECK_HINWEIS, ANSPANNUNG_HINWEIS } from '@/lib/gesundheit/tages-check';
 import { useAlltag, datumKurz } from './alltag-daten';
 
 function JaNein({ frage, wert, jaGut, onWahl }: { frage: string; wert: boolean | undefined; jaGut?: boolean; onWahl: (w: boolean | null) => void }) {
@@ -74,6 +76,7 @@ export function TagesCheckKarte({ i = 0, hinweis = false }: { i?: number; hinwei
   };
   const beantwortet = c.fragen.filter(f => typeof wert(f.id) === 'boolean').length;
   const fehlt = c.fortschritt.reduce((m, f) => Math.min(m, f.fehlt), Infinity);
+  const befunde = c.befunde.slice(0, 3);
 
   return (
     <Karte i={i}>
@@ -84,9 +87,10 @@ export function TagesCheckKarte({ i = 0, hinweis = false }: { i?: number; hinwei
           : <div style={{ fontSize: TYP.body, color: C.inkDim }}>Keine Fragen gewählt — unter „Fragen wählen“ bis zu {c.max} einschalten.</div>}
         {meldung && <Hinweis art={meldung.art} rolle="status">{meldung.text}</Hinweis>}
 
-        {c.befunde.length > 0 && (
+        {befunde.length > 0 && (
           <div style={{ display: 'grid', gap: 8 }}>
-            {c.befunde.slice(0, 3).map(b => <div key={b.id} style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>{b.satz}</div>)}
+            {befunde.map(b => <div key={b.id} style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>{b.satz}</div>)}
+            {befunde.some(b => b.quelle) && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{ANSPANNUNG_HINWEIS}</div>}
           </div>
         )}
         {c.befunde.length === 0 && c.fragen.length > 0 && Number.isFinite(fehlt) && (
@@ -96,6 +100,7 @@ export function TagesCheckKarte({ i = 0, hinweis = false }: { i?: number; hinwei
         <Klappbar id="check-fragen" titel="Fragen wählen" offen={offen} umschalten={() => setOffen(o => !o)}>
           <div style={{ display: 'grid', gap: 10 }}>
             <MehrfachPillen liste={c.katalog.map(f => ({ id: f.id, label: f.kurz }))} aktiv={wahl} onWahl={ids => setWahl(ids)} farbe={LEUCHT.schlaf} />
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{ANSPANNUNG_HINWEIS}</div>
             {wahl.length > c.max && <Hinweis art="achtung">Höchstens {c.max} Fragen — damit der Check in 10 Sekunden geht.</Hinweis>}
             <Knopf haupt aus={wahl.length > c.max} onClick={() => fragenSpeichern()} farbe={LEUCHT.schlaf}>Fragen speichern</Knopf>
           </div>

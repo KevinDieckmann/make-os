@@ -4,6 +4,41 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Stress nur als Anspannung 1–5 · Brain-Notiz „People“ als Mitarbeiter unter CEO-Office (nur lokal — Branch `stress-people`, Basis 4fd45912)
+
+Zwei kleine Entscheidungen vom 10.10.: „Nur Anspannung 1–5“ und `people.md` (Founder-Care) → als Mitarbeiter unter CEO-Office, Business.
+
+**1. Stress nur noch als Anspannung 1–5** (`lib/gesundheit/tages-check.ts`, EINE reine Regel `gestresstAusAnspannung`)
+- Die Ja/Nein-Frage „Stressiger Tag?“ ist aus dem Katalog des Tages-Checks raus (`CHECK_ABGELOEST = ['stress']`) — nicht mehr wählbar, nicht mehr
+  zu beantworten: Einstellungen (`/api/gesundheit/alltag`, `op: 'check'` mit `stress`) → 400 mit Grund; Journal (`PATCH /api/state/journal`,
+  ZOE `journal_eintrag`) mit `check.stress` → 400 mit Grund.
+- Die Auswertung „Hängt das mit deinem Schlaf zusammen?“ führt **Stress immer mit** — aus der Anspannung des Tages (Journal-Feld `stress`,
+  Morgen-Check unter Gesundheit › Heute): ≥ 4 = gestresst, 1–3 = nicht, fehlt = kein Datenpunkt; Tag D gegen die Nacht danach wie bisher. Merkmal
+  `ANSPANNUNG_ID`, Befund mit `quelle: 'Anspannung (Morgen-Check)'`; die Karte nennt die Quelle unter dem Befund (`ANSPANNUNG_HINWEIS`).
+- **Altbestand:** gespeicherte `check.stress`-Antworten bleiben im Journal liegen — auch, wenn am selben Tag eine andere Frage beantwortet wird
+  (`checkAnwenden` nimmt sie mit) —, werden aber nicht gezeigt und nicht ausgewertet. Eine gespeicherte Auswahl mit `stress` wird beim Lesen still
+  gesäubert (kein Fehler, kein 409 beim nächsten Speichern).
+- Tests: `tests/schlaf-hilfe.test.ts` (Regel, Altbestand, Auswertung), `tests/schlaf-hilfe-route.test.ts` (400, Altbestand bleibt, Säuberung),
+  `tests/schlaf-hilfe-karten.test.ts` (Befund mit Quelle).
+
+**2. Brain-Notiz „People“ → Mitarbeiter unter CEO-Office** (`lib/agenten/brain-agenten.ts`, `MITARBEITER_ALIASE`)
+- Abteilungen ohne eigenen Head im Katalog, die als Mitarbeiter unter einen Business-Head gehören: `strategie` ← people · founder care · people care ·
+  people culture · hr · human resources · personalwesen (nur Bezeichnungen, nie Inhalte oder Namen; bewusst NICHT „personal“ — englisch = privat).
+  Erkannt wie die übrigen Notizen über Kopf (`abteilung`/`head`/`unter`), Dateiname, Titel und Index; ein eigener Head geht immer vor.
+- In der Vorschau steht „als Mitarbeiter unter CEO-Office“ vorgeschlagen und vorausgewählt — änderbar wie jede Zuordnung. Als Mitarbeiter nimmt die
+  Notiz kein Wissen und keine Sub-Agenten mit; sie landet im Business-Bestand der Werkstatt. `scope: privat` bleibt wie immer draußen.
+- Tests: `tests/agenten-brain-uebernahme.test.ts` (Zuordnung über Kopf/Dateiname/Titel/Index, Head geht vor, nur Business-Heads, keine Doppelung mit
+  Head-Schlüsseln, privat nie; Vorschau + Übernahme + zweite Vorschau „vorhanden“).
+
+**So testet ihr**
+1. Gesundheit › Heute: im Morgen-Check die Anspannung setzen (z. B. 4). Unter „Tages-Check“ › „Fragen wählen“ gibt es „Stress“ nicht mehr; darunter
+   steht, woher „Stress“ kommt.
+2. Nach ein paar Tagen mit Anspannung 4–5 und 1–3 (je mindestens 3, mit Schlafwerten der Nacht danach) erscheint in der Tages-Check-Karte der Satz
+   „An Tagen mit „Stress“ …“ und darunter die Quelle „Anspannung (Morgen-Check)“.
+3. Wer „Stress“ früher gewählt hatte: Karte lädt ohne Fehler, die Frage fehlt einfach; „Fragen speichern“ klappt.
+4. Agenten › „Aus dem Brain übernehmen“: bei `people.md` steht „Wird zu: als Mitarbeiter unter CEO-Office“ (Grund: „… kein eigener Head; als Mitarbeiter
+   unter CEO-Office“). Übernehmen → unter CEO-Office erscheint der Mitarbeiter „People / Founder-Care“. Zweite Vorschau: „Schon da“.
+
 ## 09.10.2026 — ZOE: Bereich erkennen, Stapel und Gedächtnis je Bereich (nur lokal — Branch `zoe-bereich`, Basis 4178e395)
 
 Befund live (Kevin, 09.10. spät): im Kopf-Schalter „Privat“ stand unter ZOE › Freigaben „Gedächtnis · Fakt merken — weil du gesagt hast:
