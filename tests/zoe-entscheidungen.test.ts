@@ -3,6 +3,7 @@
 // dauerhaft in `zoe-entscheidungen--<haushalt>--<monat>`; Stapel und Protokoll kürzen nur Festgehaltenes (Altbestand
 // wird nachgetragen); Grund/Eingabe über der Grenze → 413 statt kürzen; paralleles Freigeben legt nichts doppelt an.
 // Eigener Datenordner, erfundene Konten und Daten, kein Modellaufruf.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -33,7 +34,7 @@ const monat = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin'
 const dauer = async () => E.entscheidungenMonat('haus', monat());
 const entscheiden = async (id: string, person: string, entscheidung: 'freigeben' | 'ablehnen', extra: Record<string, unknown> = {}) =>
   stapelRoute.POST(anfrage('/api/zoe/stapel', sitzung(person), 'POST', { id, entscheidung, ...extra }));
-const lauf = (name: string, eingabe: Record<string, unknown>, person?: string) => W.WERKZEUGE[name].lauf(eingabe, 'http://test', person);
+const lauf = (name: string, eingabe: Record<string, unknown>, person?: string) => W.WERKZEUGE[name].lauf(eingabe, 'http://test', person).then(meldungVon);
 const offeneCrm = async () => (await stapel.lies('offen')).filter(v => v.bezug?.art === 'crm');
 
 beforeAll(async () => {

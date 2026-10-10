@@ -7,6 +7,7 @@
 //   3. Altbestand liest sich wie vorher: frÃ¼here feste Kennungen (Hand-Zuordnung einer Beteiligung, Personen-Block im Bauplan,
 //      Liquiplan-Zuordnung) bleiben stehen und werden beim Lesen Ã¼bersetzt.
 // Ausnahmen (mit Grund) stehen in AUSNAHMEN â€” sonst ist der WÃ¤chter rot. Eigener Datenordner, erfundene Konten, kein Netz.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -319,7 +320,7 @@ describe('4. ZOE-Dateien (Rest 2): keine festen Personen, Firmen oder Anreden â€
     }) as typeof fetch;
     try {
       for (const wer of ['olaf', 'pia', 'both', 'fremdkennung']) {
-        expect(await WERKZEUGE.create_task.lauf({ title: `Probe ${wer}`, wer }, 'http://test', 'pia')).toMatch(/^Angelegt/);
+        expect(meldungVon(await WERKZEUGE.create_task.lauf({ title: `Probe ${wer}`, wer }, 'http://test', 'pia'))).toMatch(/^Angelegt/);
       }
     } finally { globalThis.fetch = gesperrt; }
     expect(koerper.map(k => k.owner)).toEqual(['olaf', 'pia', 'both', undefined]);
@@ -335,9 +336,9 @@ describe('4. ZOE-Dateien (Rest 2): keine festen Personen, Firmen oder Anreden â€
     expect(planpostenFirma('../x', [{ firmaId: '../x' }])).toBeUndefined();
     expect(planpostenFirma(undefined, [{ firmaId: 'altfirma' }])).toBeUndefined();
     await db.saveJson('liquiplan', { posten: [{ id: 'lp-alt', titel: 'Alt', betrag: -10, rhythmus: 'monatlich', ab: '2026-10-01', sicher: true, firmaId: 'altfirma' }] });
-    await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Neu mit Altwert', betrag: -20, firma: 'altfirma' }, 'http://test', 'pia');
-    await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Neu ohne Firma', betrag: -30, firma: 'nirgendwo' }, 'http://test', 'pia');
-    await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Alt', betrag: -15 }, 'http://test', 'pia'); // ohne Angabe bleibt die gespeicherte Firma
+    meldungVon(await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Neu mit Altwert', betrag: -20, firma: 'altfirma' }, 'http://test', 'pia'));
+    meldungVon(await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Neu ohne Firma', betrag: -30, firma: 'nirgendwo' }, 'http://test', 'pia'));
+    meldungVon(await WERKZEUGE.erfasse_planposten.lauf({ titel: 'Alt', betrag: -15 }, 'http://test', 'pia')); // ohne Angabe bleibt die gespeicherte Firma
     const p = (await db.loadJson<{ posten: { titel: string; betrag: number; firmaId?: string }[] }>('liquiplan'))!.posten;
     expect(p.map(x => [x.titel, x.betrag, x.firmaId])).toEqual([['Alt', -15, 'altfirma'], ['Neu mit Altwert', -20, 'altfirma'], ['Neu ohne Firma', -30, undefined]]);
   });
@@ -347,7 +348,7 @@ describe('4. ZOE-Dateien (Rest 2): keine festen Personen, Firmen oder Anreden â€
     const { crmVorschlag } = await import('@/lib/zoe/crm-vorschlag');
     const { lies: stapel } = await import('@/lib/zoe/stapel');
     const erster = TEAM[0].id;
-    const vorschlag = (e: Record<string, unknown>) => crmVorschlag(e, 'http://test', 'pia');
+    const vorschlag = (e: Record<string, unknown>) => crmVorschlag(e, 'http://test', 'pia').then(meldungVon);
     expect(await vorschlag({ art: 'aufgabe', titel: 'Probe-Aufgabe A', zustaendig: erster })).toMatch(/^VORGESCHLAGEN/);
     await vorschlag({ art: 'aufgabe', titel: 'Probe-Aufgabe B', zustaendig: BEIDE });
     await vorschlag({ art: 'aufgabe', titel: 'Probe-Aufgabe C', zustaendig: 'niemand-im-team' });

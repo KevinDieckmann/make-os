@@ -56,6 +56,9 @@ import { haushaltsSpeicher } from '@/lib/aufgaben/sicht';
 import { zugZuruecknehmenFuer } from '@/lib/agenten/faeden-server';
 import { willStrom } from '@/lib/http/sse';
 import { sseAntwort, type StromArbeit } from '@/lib/http/sse-antwort';
+import { erfolg, fehlschlag, vertragPasstZurSicht } from '@/lib/werkzeuge/vertrag';
+import { vertragVon } from '@/lib/werkzeuge/register';
+import { ausgangVermerken, vertragsPruefung } from '@/lib/werkzeuge/huelle';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -261,7 +264,13 @@ export async function POST(req: Request) {
   // Finanzbestände `finanzplan`/`liquiplan` (Routen-Klasse `finanz-privat`, 09.10. Funde Abdeckung #1): nur mit privatem Finanzzugang anbieten —
   // ein Konto „nur Business“ bekommt die Werkzeuge gar nicht (die Route lehnte die Wirkung ohnehin ab).
   const privatFinanzen = !!(await privatFinanzZugang(req).catch(() => null));
+  // Werkzeug-Verträge (10.10., Paket V3): nur Werkzeuge MIT Vertrag, und nur die, deren Bereich zur Sicht passt — in der Sicht Privat kein
+  // Business-Werkzeug und umgekehrt (serverseitig; `fuehreAus` lehnt es zusätzlich ab). Ausnahme nur Vorschlags-Werkzeuge (crm_vorschlag): der
+  // Stapel ordnet den Vorschlag seinem Bereich zu („Wohin damit“). Ohne Space (Alles, Telegram) keine Grenze, ein Konto „nur Business“ sieht nur Business.
+  const werkzeugSicht = bereichAus(payload.space) ?? (konto?.nurBusiness ? 'business' : null);
   const darf = (name: string): boolean => {
+    const v = vertragVon(name);
+    if (!v || !vertragPasstZurSicht(v, werkzeugSicht)) return false;
     if (!WERKZEUGE[name]) return name === 'run_agent' || name === 'open_agent';
     if (NUR_HAUSHALT_DES_INHABERS.includes(name) && !crmErlaubt) return false;
     if (FINANZPLAN_ALTWEG_WERKZEUGE.has(name) && !privatFinanzen) return false;
@@ -349,7 +358,6 @@ export async function POST(req: Request) {
       let headFragenBudget = HEAD_FRAGEN_JE_ZUG;
       const anlass = message.slice(0, 200);
       const zoeKontext = (z: { fremdGelesen: boolean; vertraulich: boolean }) => ({ ...(zug ? { fadenId: zug.faden.id } : {}), fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich });
-      const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet|nicht erfasst|nicht notiert|nicht eingereiht|nicht vermerkt/i;
 
       // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des ZOE-Gesprächs: 3 Runden, parallel, Register-Stufe.
       meta.lief = true;
@@ -369,8 +377,12 @@ export async function POST(req: Request) {
         ...(strom ? { ereignis: strom.sende, signal: strom.signal } : {}),
         ausfuehren: async (a, z): Promise<AufrufErgebnis> => {
           const name = a.name;
-          // open_agent ist nur ein Verweis (Antwort `handoffs`) — kein Lauf.
-          if (name === 'open_agent') return { inhalt: 'Notiert — erscheint als Vorschlag.', ok: true, zaehlt: false };
+          // open_agent ist nur ein Verweis (Antwort `handoffs`) — kein Lauf. Vertrag (V3): die Eingabe muss passen, sonst ein klarer Satz.
+          if (name === 'open_agent') {
+            const p = vertragsPruefung(name, a.input ?? {}, { sicht: werkzeugSicht });
+            const e = ausgangVermerken(name, p.ok ? erfolg('Notiert — erscheint als Vorschlag.') : p.ergebnis);
+            return { inhalt: e.meldung, ok: e.ok, zaehlt: false };
+          }
           // Nur, was in DIESEM Zug angeboten war (≤ 20) — alles andere über den zuständigen Head.
           if (!angebotenSet.has(name)) return { inhalt: 'Nicht angeboten in diesem Zug — frag den zuständigen Head (head_fragen) oder gib ihm den Auftrag (an_head).', ok: false, name: name === 'run_agent' ? String(a.input?.agent ?? '') : name };
           if (name === 'head_fragen' && headFragenBudget-- <= 0) return { inhalt: `Nicht ausgeführt: höchstens ${HEAD_FRAGEN_JE_ZUG} Fragen an Heads je Zug — frag gezielt oder gib den Auftrag mit an_head.`, ok: false };
@@ -383,7 +395,7 @@ export async function POST(req: Request) {
             // starte_auftraege mit einem Web-Agenten nach vertraulichem Lesen: nur als Vorschlag (#91).
             const webAuftrag = name === 'starte_auftraege' && z.vertraulich && Array.isArray(a.input?.auftraege) && (a.input.auftraege as unknown[]).some(x => WEB_AGENTEN.has(String((x as { agent?: unknown })?.agent ?? '')));
             const vorschlagen = nurVorschlag(name, a.input, z.fremdGelesen) || webAuftrag;
-            const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z), bereich: gespraechBereich });
+            const lauf = await fuehreAus(name, a.input ?? {}, origin, { anlass, person, ...(vorschlagen ? { vorschlagen: true } : {}), zoe: zoeKontext(z), bereich: gespraechBereich, sicht: werkzeugSicht, fremdGelesen: z.fremdGelesen });
             const k = kategorieVonWerkzeug(name, gruppeVon(name));
             const kats: KiKategorie[] = k ? [k] : [];
             // suche_arbeit (09.10., Funde #6): Brain und Markttraktion lesen nur, wenn eingeschaltet — und genau diese Kategorien stehen im Protokoll.
@@ -393,24 +405,28 @@ export async function POST(req: Request) {
             // head_fragen: die Antwort trägt die Kategorien, mit denen der Head lief (Schalter, Einwilligung — nie mehr).
             if (name === 'head_fragen' && lauf.ok) kats.push(...(await headFrageKategorien(person, String(a.input?.head ?? '')).catch(() => [] as KiKategorie[])));
             const quelle = FREMD_WERKZEUGE[name] ?? null;
-            // Ein Vorschlag im Stapel ist kein Fehlschlag (vorher zählte „NICHT AUSGEFÜHRT“ als Fehler).
-            return { inhalt: lauf.text, ok: lauf.gestapelt || !FEHLER_TEXT.test(lauf.text), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(quelle ? { quelle } : {}), kategorien: kats };
+            // Der Ausgang kommt typisiert aus der Hülle (V3) — ein Vorschlag im Stapel ist kein Fehlschlag, nie mehr ein Muster über den Text.
+            return { inhalt: lauf.text, ok: lauf.ok, ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(quelle ? { quelle } : {}), kategorien: kats };
           }
-          // run_agent
+          // run_agent — Vertrag (V3): die Eingabe muss passen (Agent als Text, Auftrag als Text), sonst ein klarer Satz, nichts gestartet.
+          const pr = vertragsPruefung('run_agent', a.input ?? {}, { sicht: werkzeugSicht });
+          if (!pr.ok) { const e = ausgangVermerken('run_agent', pr.ergebnis); return { inhalt: e.meldung, ok: false, name: String(a.input?.agent ?? 'run_agent') }; }
           const agentId = String(a.input?.agent ?? '');
           const gueltig = agentenAngebot.includes(agentId) && laufBudget-- > 0;
-          if (!gueltig) return { inhalt: 'Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).', ok: false, name: agentId };
+          if (!gueltig) { const e = ausgangVermerken('run_agent', fehlschlag('grenze', 'Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).')); return { inhalt: e.meldung, ok: false, name: agentId }; }
           const quelle = FREMD_AGENTEN[agentId] ?? null;
           // run_agent darf nurVorschlag nicht umgehen (29.09., #90/#91): nach Fremdtext (außer reinen Lese-Agenten) und
           // Web-Agenten nach vertraulichem Lesen → als Auftrag in den Stapel (starte_auftraege, Freigabe per Klick).
           if (agentNurVorschlag(agentId, z.fremdGelesen, z.vertraulich)) {
             const l = await fuehreAus('starte_auftraege', { auftraege: [{ agent: agentId, ...(a.input?.auftrag ? { auftrag: String(a.input.auftrag).slice(0, 4000) } : {}) }] }, origin, { anlass, person, vorschlagen: true, bereich: gespraechBereich });
-            return { inhalt: l.text, ok: l.gestapelt || !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
+            return { inhalt: l.text, ok: l.ok, name: agentId, ...(quelle ? { quelle } : {}), ...(l.gestapelt ? { gestapelt: true } : {}) };
           }
           const l = await runAgent(agentId as Ausfuehrbar, String(a.input?.auftrag ?? ''), origin, person);
+          // Der Lauf sagt selbst, ob er gelang (`AgentLauf.ok`, seit 07.09.) — nie mehr ein Muster über seinen Text.
+          ausgangVermerken('run_agent', l.ok ? erfolg(l.text) : fehlschlag(l.endgueltig ? 'sperre' : 'intern', l.text));
           // KI-Etiketten (09.10.): das Ergebnis trägt seine Kategorien (Gesundheit nur, wenn der Lauf sie mit (b) hatte) — die Schleife nimmt
           // sie in den Zustand, der NÄCHSTE Modellaufruf trägt sie, das KI-Tor greift (vorher ging z. B. die Tagesform ohne Etikett weiter).
-          return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), kategorien: l.kategorien ?? agentKategorien(agentId, false) };
+          return { inhalt: l.text, ok: l.ok, name: agentId, ...(quelle ? { quelle } : {}), kategorien: l.kategorien ?? agentKategorien(agentId, false) };
         },
       });
       // Lauf-Spur: Ausgang als Klasse (nie der Grund als Text). Eine Sperre durch Datenschutz oder Budget ist kein Fehler.

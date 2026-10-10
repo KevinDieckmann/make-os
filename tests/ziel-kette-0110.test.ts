@@ -5,6 +5,7 @@
 // Datenordner und erfundenen Einträgen: Kreis/unbekannt/Grenze abgelehnt, Löschen räumt `wartetAuf`, Ziel löschen löst nur den
 // Bezug, Verbindungsprüfung, Glocke (Frist). Rückweg: der WÖRTLICH kopierte alte Säuberer (af4679a) verwirft die neuen
 // Felder und sonst nichts.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
@@ -404,19 +405,19 @@ describe('ZOE: setze_meilenstein kennt Ziel und Kette', () => {
   });
   it('ordnet einem Ziel zu und setzt „wartet auf“ — über Titelteile', async () => {
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    const r = await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Portal Launch', ziel: 'kundenportal', wartet_auf: ['Konzept Portal', 'Entwurf'] }, 'http://test', 'kevin');
+    const r = meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Portal Launch', ziel: 'kundenportal', wartet_auf: ['Konzept Portal', 'Entwurf'] }, 'http://test', 'kevin'));
     expect(r).toMatch(/^Erfasst:.*zahlt auf das Ziel „Kundenportal bauen“ ein.*wartet auf „Konzept Portal“, „Entwurf Portal“/);
     const m = (await ladeMs()).find(x => x.id === 'zo-3')!;
     expect(m).toMatchObject({ zielId: 'z-zoe', wartetAuf: ['zo-1', 'zo-2'] });
     // Kreis (Konzept soll auf den Launch warten) wird abgelehnt, nichts geändert
-    const kreis = await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Konzept Portal', wartet_auf: ['Portal Launch'] }, 'http://test', 'kevin');
+    const kreis = meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Konzept Portal', wartet_auf: ['Portal Launch'] }, 'http://test', 'kevin'));
     expect(kreis).toMatch(/^Fehlgeschlagen:.*Kreis/);
     expect((await ladeMs()).find(x => x.id === 'zo-1')).not.toHaveProperty('wartetAuf');
     // unbekanntes Ziel und nicht eindeutiger Vorgänger
-    expect(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Portal Launch', ziel: 'gibt es nicht' }, 'http://test', 'kevin')).toMatch(/^Fehlgeschlagen: Kein Ziel/);
-    expect(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Konzept Portal', wartet_auf: ['Portal'] }, 'http://test', 'kevin')).toMatch(/^Fehlgeschlagen:.*nicht eindeutig/);
+    expect(meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Portal Launch', ziel: 'gibt es nicht' }, 'http://test', 'kevin'))).toMatch(/^Fehlgeschlagen: Kein Ziel/);
+    expect(meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Konzept Portal', wartet_auf: ['Portal'] }, 'http://test', 'kevin'))).toMatch(/^Fehlgeschlagen:.*nicht eindeutig/);
     // lösen: leere Liste / leeres Ziel
-    const los = await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Portal Launch', ziel: '', wartet_auf: [] }, 'http://test', 'kevin');
+    const los = meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Portal Launch', ziel: '', wartet_auf: [] }, 'http://test', 'kevin'));
     expect(los).toMatch(/ohne Ziel-Bezug.*wartet auf niemanden mehr/);
     const danach = (await ladeMs()).find(x => x.id === 'zo-3')!;
     expect(danach).not.toHaveProperty('zielId');

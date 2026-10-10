@@ -16,9 +16,10 @@ import { anzeigename, STUFE_LABEL, STAMMDATEN_FELDER, ereignisMs, type Kontakt, 
 import type { Chance, Firma, Mandat, Angebot, Kampagne, Event, CrmBestand } from '@/lib/crm/typen';
 import { hatTerminVerweise, kontakteMitTerminZeit } from '@/lib/crm/aktivitaeten';
 import { crmSicht, crmAntwort, ausgeblendetText, eindeutig, NICHT_IM_HINTERGRUND, ABLAGE_QUELLE, EINGESCHRAENKT_NAME, type CrmSicht } from './crm-sicht';
+import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 type Eingabe = Record<string, unknown>;
-type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<string>;
+type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
 
 const eur = (n: number | null | undefined) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
 const zeile = (...teile: (string | false | null | undefined | 0)[]) => teile.filter(Boolean).join(' · ');
@@ -28,15 +29,15 @@ const anzahl = (v: unknown, std: number, max: number) => Math.min(max, Math.max(
 const block = (titel: string, zeilen: string[], leer = 'keine') => `${titel} (${zeilen.length}):\n${zeilen.length ? zeilen.join('\n') : `- ${leer}`}`;
 
 /** Ablage/Bestand nicht lesbar → ein Satz statt eines abgebrochenen Gesprächs; ohne Sicht → Ablehnung. */
-function sicher(f: (input: Eingabe, s: CrmSicht) => Promise<string> | string): Lauf {
+function sicher(f: (input: Eingabe, s: CrmSicht) => Promise<WerkzeugRueckgabe> | WerkzeugRueckgabe): Lauf {
   return async (input, _origin, person) => {
     try {
       const s = await crmSicht(person);
-      if (!s) return NICHT_IM_HINTERGRUND;
+      if (!s) return fehlschlag('rechte', NICHT_IM_HINTERGRUND);
       return await f(input, await mitTerminZeiten(s));
     } catch (e) {
       console.error('[zoe/crm]', e instanceof Error ? e.message : e);
-      return 'Fehlgeschlagen: Die Markttraktion ist gerade nicht lesbar.';
+      return fehlschlag('voruebergehend', 'Fehlgeschlagen: Die Markttraktion ist gerade nicht lesbar.');
     }
   };
 }
@@ -62,23 +63,23 @@ function kontaktKurz(s: CrmSicht, k: Kontakt): string {
   return zeile(`${k.id} ${anzeigename(k)}`, k.position, k.firma, STUFE_LABEL[k.stufe], k.werbesperre && 'WERBESPERRE');
 }
 
-function kontaktFinden(s: CrmSicht, suche: string): Kontakt | Kontakt[] | string {
+function kontaktFinden(s: CrmSicht, suche: string): Kontakt | Kontakt[] | WerkzeugErgebnis {
   const hinweis = suche.trim();
-  if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Kennung c-… oder Name).';
-  if (s.eingeschraenkt.has(hinweis)) return `Kontakt ${hinweis}: Verarbeitung eingeschränkt (Art. 18) — ZOE zeigt und verarbeitet ihn nicht.`;
+  if (!hinweis) return fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt (Kennung c-… oder Name).');
+  if (s.eingeschraenkt.has(hinweis)) return fehlschlag('sperre', `Kontakt ${hinweis}: Verarbeitung eingeschränkt (Art. 18) — ZOE zeigt und verarbeitet ihn nicht.`);
   const r = eindeutig(s.kontakte, hinweis, k => [anzeigename(k), k.firma, k.email, ...(k.emails ?? []).map(e => e.adresse)], suchPasst);
-  if (!r) return `Kein Kontakt zu dieser Angabe gefunden (${s.kontakte.length} durchsucht${ausgeblendetText(s.eingeschraenkt.size)}).`;
+  if (!r) return fehlschlag('nicht_gefunden', `Kein Kontakt zu dieser Angabe gefunden (${s.kontakte.length} durchsucht${ausgeblendetText(s.eingeschraenkt.size)}).`);
   return r;
 }
 
-function firmaFinden(s: CrmSicht, suche: string): Firma | Firma[] | string {
-  if (!suche.trim()) return 'Fehlgeschlagen: firma fehlt (Kennung f-… oder Name).';
+function firmaFinden(s: CrmSicht, suche: string): Firma | Firma[] | WerkzeugErgebnis {
+  if (!suche.trim()) return fehlschlag('eingabe', 'Fehlgeschlagen: firma fehlt (Kennung f-… oder Name).');
   const r = eindeutig(s.crm.firmen, suche, f => [f.name, f.domain, f.stadt], suchPasst);
-  return r ?? 'Keine Firma zu dieser Angabe gefunden.';
+  return r ?? fehlschlag('nicht_gefunden', 'Keine Firma zu dieser Angabe gefunden.');
 }
 
 const mehrdeutig = <T extends { id: string }>(liste: T[], name: (x: T) => string) =>
-  `Nicht eindeutig — bitte mit Kennung erneut:\n${liste.map(x => `- ${x.id} · ${name(x)}`).join('\n')}`;
+  fehlschlag('eingabe', `Nicht eindeutig — bitte mit Kennung erneut:\n${liste.map(x => `- ${x.id} · ${name(x)}`).join('\n')}`);
 
 function aktivitaetZeile(s: CrmSicht, a: Aktivitaet): string {
   const n = a.notiz ? Object.entries(a.notiz).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' | ') : '';
@@ -144,7 +145,7 @@ async function followupsFuer(s: CrmSicht, passt: (f: { kontaktId?: string; bezug
 const ARTEN = ['kontakte', 'firmen', 'deals', 'mandate', 'angebote', 'kampagnen', 'events'] as const;
 type SuchArt = typeof ARTEN[number];
 
-async function crmSuche(i: Eingabe, s: CrmSicht): Promise<string> {
+async function crmSuche(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const frage = text(i.frage, 200);
   const arten = (Array.isArray(i.arten) ? i.arten.map(String) : typeof i.arten === 'string' ? [i.arten] : []).filter((a): a is SuchArt => (ARTEN as readonly string[]).includes(a));
   const nur = arten.length ? new Set<SuchArt>(arten) : new Set<SuchArt>(ARTEN);
@@ -245,9 +246,9 @@ async function crmSuche(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── kontakt_akte ──────────────────────────────────────────────────────────
 
-async function kontaktAkte(i: Eingabe, s: CrmSicht): Promise<string> {
+async function kontaktAkte(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const r = kontaktFinden(s, text(i.kontakt, 160));
-  if (typeof r === 'string') return r;
+  if (istWerkzeugErgebnis(r)) return r;
   if (Array.isArray(r)) return mehrdeutig(r, k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`);
   const k = r;
   const { crm, heute } = s;
@@ -309,9 +310,9 @@ async function kontaktAkte(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── firma_akte ────────────────────────────────────────────────────────────
 
-async function firmaAkte(i: Eingabe, s: CrmSicht): Promise<string> {
+async function firmaAkte(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const r = firmaFinden(s, text(i.firma, 160));
-  if (typeof r === 'string') return r;
+  if (istWerkzeugErgebnis(r)) return r;
   if (Array.isArray(r)) return mehrdeutig(r, f => `${f.name}${f.stadt ? ` (${f.stadt})` : ''}`);
   const f = r;
   const { crm, heute } = s;
@@ -361,13 +362,13 @@ async function firmaAkte(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── pipeline (inkl. Deal-Akte) ────────────────────────────────────────────
 
-async function pipeline(i: Eingabe, s: CrmSicht): Promise<string> {
+async function pipeline(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { crm, heute } = s;
   const p = await ladePipeline();
   const dealSuche = text(i.deal, 120);
   if (dealSuche) {
     const r = eindeutig(crm.chancen, dealSuche, c => [c.titel, c.firma], suchPasst);
-    if (!r) return 'Kein Deal zu dieser Angabe gefunden.';
+    if (!r) return fehlschlag('nicht_gefunden', 'Kein Deal zu dieser Angabe gefunden.');
     if (Array.isArray(r)) return mehrdeutig(r, c => `${c.titel} (${c.stufe})`);
     const c = r;
     const { angeboteZu } = await import('@/lib/crm/angebote');
@@ -408,7 +409,7 @@ async function pipeline(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── mandate_lage ──────────────────────────────────────────────────────────
 
-async function mandateLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function mandateLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { mandatLage, mrr, konzentration } = await import('@/lib/crm/kunden');
   const rechnungen = (await loadJson<{ rechnungen?: import('@/lib/crm/kunden').RechnungKurz[] }>('finanzplan'))?.rechnungen ?? [];
   const alle = s.crm.mandate.filter(m => !i.mandat || m.id === text(i.mandat, 80) || suchPasst([m.titel, m.kunde], text(i.mandat, 80)));
@@ -432,13 +433,13 @@ async function mandateLage(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── angebote_lage ─────────────────────────────────────────────────────────
 
-async function angeboteLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function angeboteLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const A = await import('@/lib/crm/angebote');
   const alle = s.crm.angebote ?? [];
   const suche = text(i.angebot, 80);
   if (suche) {
     const r = eindeutig(alle, suche, a => [a.titel, a.nummer], suchPasst);
-    if (!r) return 'Kein Angebot zu dieser Angabe gefunden.';
+    if (!r) return fehlschlag('nicht_gefunden', 'Kein Angebot zu dieser Angabe gefunden.');
     if (Array.isArray(r)) return mehrdeutig(r, a => `${a.titel} (${a.status})`);
     const a = r;
     const sum = A.angebotSummen(a);
@@ -467,7 +468,7 @@ async function angeboteLage(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── kampagnen_lage / events_lage / marketing_lage ─────────────────────────
 
-async function kampagnenLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function kampagnenLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { kampagnenZahlen, PLAYBOOKS } = await import('@/lib/crm/kampagnen');
   const l = s.crm.kampagnen.filter((k: Kampagne) => !i.kampagne || k.id === text(i.kampagne, 80) || suchPasst([k.name], text(i.kampagne, 80)));
   const zeilen = l.map(k => {
@@ -481,7 +482,7 @@ async function kampagnenLage(i: Eingabe, s: CrmSicht): Promise<string> {
   return crmAntwort(`KAMPAGNEN · ${l.length}${ausgeblendetText(s.eingeschraenkt.size)} · versendet wird nichts`, koerper, i.teil, t => `kampagnen_lage mit teil: ${t}`);
 }
 
-async function eventsLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function eventsLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { eventZahlen, nachfassenRest } = await import('@/lib/crm/events');
   const { eventName, istNetzwerkenEvent, reiheVon } = await import('@/lib/crm/marke');
   // Fremde Veranstaltungen aus „Netzwerken“ sind keine Make.One-Events — hier nicht listen.
@@ -505,7 +506,7 @@ async function eventsLage(i: Eingabe, s: CrmSicht): Promise<string> {
  * Wirkung und Urteil kommen aus derselben Rechnung wie die Akte (`besuchUebersicht`); die erfassten Personen aus dem Abendbericht (`berichtAus`,
  * ohne eingeschränkte Personen — die fehlen in `s.kontakte` ohnehin). Sprachnotizen ohne Abschrift stehen als offener Punkt, nie als Inhalt.
  */
-async function besucheLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function besucheLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { besuchUebersicht, besuchWirkung, besuchUrteil } = await import('@/lib/crm/besuche');
   const { berichtAus, schrittLabel } = await import('@/lib/crm/netzwerken');
   const { istBesuch, anmeldungVon, anmeldungLabel, fuerVon } = await import('@/lib/crm/besuche-form');
@@ -527,7 +528,7 @@ async function besucheLage(i: Eingabe, s: CrmSicht): Promise<string> {
   return crmAntwort(`BESUCHTE EVENTS · ${l.length} · erfasst ${summe.kontakte} · Deals ${summe.deals} · Pipeline ${eur(summe.pipeline)}${ausgeblendetText(s.eingeschraenkt.size)}`, block('Besuchte Events', zeilen), i.teil, t => `besuche_lage mit teil: ${t}`);
 }
 
-async function marketingLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function marketingLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const M = await import('@/lib/crm/marketing');
   const { segmentAuswerten, kontextAus } = await import('@/lib/crm/segmente');
   const { crm, heute } = s;
@@ -548,7 +549,7 @@ async function marketingLage(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── kennzahlen / sales_lage / qualifizierung_lage ─────────────────────────
 
-async function kennzahlenLesen(i: Eingabe, s: CrmSicht): Promise<string> {
+async function kennzahlenLesen(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { kennzahlen } = await import('@/lib/crm/kennzahlen');
   const { marketingKennzahlen } = await import('@/lib/crm/marketing');
   const { eventKennzahlen, traktion, uebergaben } = await import('@/lib/crm/traktion');
@@ -572,7 +573,7 @@ async function kennzahlenLesen(i: Eingabe, s: CrmSicht): Promise<string> {
   return crmAntwort(`KENNZAHLEN ${heute} · Index ${idx.index ?? '—'} · ${sales.length + marketing.length + event.length} Kennzahlen${ausgeblendetText(s.eingeschraenkt.size)}`, koerper, i.teil, x => `kennzahlen mit teil: ${x}`);
 }
 
-async function salesLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function salesLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { werIstDran } = await import('@/lib/crm/heute');
   const { fuerDich, teamFeed, nameVon } = await import('@/lib/crm/team');
   const { teamZahlen } = await import('@/lib/crm/pipeline');
@@ -596,7 +597,7 @@ async function salesLage(i: Eingabe, s: CrmSicht): Promise<string> {
   return crmAntwort(`SALES ${heute} · ${a.karten.length} Karten für die Power Hour${ausgeblendetText(s.eingeschraenkt.size)} · Vorschläge (Reihenfolge, Leitfaden, Entwurf) über crm_vorschlag`, koerper, i.teil, t => `sales_lage mit teil: ${t}`);
 }
 
-async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { leads, zuQualifizieren, trichter, fehltBisSqlZeile } = await import('@/lib/crm/leads');
   const { gespraechsFragen, standardScoring } = await import('@/lib/crm/scoring');
   const { temperaturVerteilung } = await import('@/lib/crm/score');
@@ -624,7 +625,7 @@ async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── stammdaten_lage / datenqualitaet ──────────────────────────────────────
 
-async function stammdatenLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function stammdatenLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { gesellschaftenLaden } = await import('@/lib/crm/angebot-server');
   const { gesellschaftFuerAnzeige, mitVorgaben } = await import('@/lib/crm/gesellschaften');
   const { produktAngebotFehlt } = await import('@/lib/crm/angebote');
@@ -643,7 +644,7 @@ async function stammdatenLage(i: Eingabe, s: CrmSicht): Promise<string> {
   return crmAntwort(`STAMMDATEN · ${g.length} Gesellschaften · ${s.crm.leistungen.length} Produkte · ${sichtbar.length} Import-Konflikte`, koerper, i.teil, t => `stammdaten_lage mit teil: ${t}`);
 }
 
-async function datenqualitaet(i: Eingabe, s: CrmSicht): Promise<string> {
+async function datenqualitaet(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { ladeVerbindungsBestaende } = await import('@/lib/crm/verbindungen-laden');
   const { verbindungenPruefen, verbindungsAmpel } = await import('@/lib/crm/verbindungen');
   const { dubletten, wasWandert, wanderungText } = await import('@/lib/crm/dubletten');
@@ -666,7 +667,7 @@ async function datenqualitaet(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── heads_lage — die Heads (Sales, Marketing, Event) in derselben Freigabe-Logik ──
 
-async function headsLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function headsLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { HEADS, HEAD_NAME } = await import('@/lib/heads/prompt');
   const { standName, leererStand } = await import('@/lib/heads/stand');
   const nur = HEADS.filter(h => !i.head || h === i.head);
@@ -693,14 +694,14 @@ async function headsLage(i: Eingabe, s: CrmSicht): Promise<string> {
 
 // ── crm_datei_lesen ───────────────────────────────────────────────────────
 
-async function crmDateiLesen(i: Eingabe, s: CrmSicht): Promise<string> {
+async function crmDateiLesen(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { DATEI_ID, nurCrm, groesseText } = await import('@/lib/dateien/regeln');
   const id = text(i.datei, 80);
-  if (!DATEI_ID.test(id)) return 'Fehlgeschlagen: datei braucht die Kennung (d-…) aus kontakt_akte, firma_akte oder pipeline.';
-  if (!s.haushalt) return 'Fehlgeschlagen: Für diese Person ist kein Haushalt gesetzt — die Dateiablage ist nicht erreichbar.';
+  if (!DATEI_ID.test(id)) return fehlschlag('eingabe', 'Fehlgeschlagen: datei braucht die Kennung (d-…) aus kontakt_akte, firma_akte oder pipeline.');
+  if (!s.haushalt) return fehlschlag('rechte', 'Fehlgeschlagen: Für diese Person ist kein Haushalt gesetzt — die Dateiablage ist nicht erreichbar.');
   const { lesen, ablageListe } = await import('@/lib/dateien/ablage');
   const eintrag = nurCrm(await ablageListe(s.haushalt)).find(d => d.id === id);
-  if (!eintrag) return 'Fehlgeschlagen: Diese Kennung gibt es in der CRM-Ablage nicht (Projekt-/Aufgaben-Dateien liest datei_lesen).';
+  if (!eintrag) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Diese Kennung gibt es in der CRM-Ablage nicht (Projekt-/Aufgaben-Dateien liest datei_lesen).');
   // Art. 18: Unterlagen einer eingeschränkten Person liest ZOE nicht.
   if (eintrag.kontaktId && s.eingeschraenkt.has(eintrag.kontaktId)) return `DATEI ${id} · gehört zu einem eingeschränkten Kontakt (Art. 18) — ZOE liest sie nicht.`;
   const { einwilligungenMitBeleg } = await import('@/lib/dateien/einwilligung-beleg');
@@ -717,7 +718,7 @@ async function crmDateiLesen(i: Eingabe, s: CrmSicht): Promise<string> {
   // Sprachnotizen (Netzwerken, 02.10.): kein Text lesbar — die Abschrift folgt (KI), bis dahin nur die Angaben.
   if (eintrag.datei.typ.startsWith('audio/')) return crmAntwort(`DATEI ${id} · Sprachnotiz — kein Text lesbar (Abschrift folgt), nur die Angaben`, meta, 1, () => '', ABLAGE_QUELLE);
   const d = await lesen(s.haushalt, id);
-  if (!d) return `Fehlgeschlagen: Die Datei ${id} liegt nicht (mehr) auf der Platte.`;
+  if (!d) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: Die Datei ${id} liegt nicht (mehr) auf der Platte.`);
   const { textAuslesen, NichtLesbar } = await import('@/lib/dateien/text-auslesen');
   let inhalt: Awaited<ReturnType<typeof textAuslesen>>;
   try { inhalt = await textAuslesen(d.bytes, eintrag.datei.typ); } catch (e) {
@@ -732,14 +733,14 @@ async function crmDateiLesen(i: Eingabe, s: CrmSicht): Promise<string> {
 // ── Alte Namen, neue Wege (nicht doppeln, nichts brechen) ─────────────────
 
 /** suche_kontakt (seit 18.09.) läuft jetzt über crm_suche — nur Kontakte, dieselben Leitplanken. */
-async function sucheKontaktNeu(i: Eingabe, s: CrmSicht): Promise<string> {
-  if (!text(i.frage)) return 'Fehlgeschlagen: frage fehlt.';
+async function sucheKontaktNeu(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
+  if (!text(i.frage)) return fehlschlag('eingabe', 'Fehlgeschlagen: frage fehlt.');
   if (!s.kontakte.length && !s.eingeschraenkt.size) return 'Die Kartei ist leer — die Masterliste wurde noch nicht importiert (Markttraktion › Stammdaten › Import).';
   return crmSuche({ frage: i.frage, arten: ['kontakte'], anzahl: Math.min(8, Math.max(1, Number(i.anzahl) || 5)), teil: i.teil }, s);
 }
 
 /** crm_lage (seit 24.09.) bleibt der schnelle Überblick — jetzt ohne eingeschränkte Kontakte und gekapselt. */
-async function crmLage(i: Eingabe, s: CrmSicht): Promise<string> {
+async function crmLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const { werIstDran } = await import('@/lib/crm/heute');
   const { kennzahlen } = await import('@/lib/crm/kennzahlen');
   const { befunde } = await import('@/lib/crm/befunde');

@@ -7,15 +7,14 @@
 // Dauerhaftes Gedächtnis (`fakt_merken`) und Notizen im Vault (`notiz_anlegen`) gehen im Gespräch
 // IMMER über den Stapel — ein eingeschleuster Satz darf sich nicht selbst ins Gedächtnis schreiben.
 
-/** Werkzeuge, die nur lesen — sie laufen auch nach Fremdtext frei. */
-export const LESEND = new Set(['trainingsplan_lesen', 'lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'gesellschaften_lesen', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt', 'projekt_unterlagen', 'datei_lesen', 'meine_aufgaben', 'suche_arbeit',
-  // Markttraktion lesen (28.09., C7) — und crm_vorschlag: legt NUR in den Stapel (Art „crm“), übernommen wird erst per Klick.
-  'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage', 'marketing_lage',
-  'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag',
-  // K6a (29.09.): freie Zeit — nur Zeiten, nichts wird angelegt.
-  'freie_zeit',
-  // Paket 4a (09.10.): einen Head fragen — er bekommt nur lesende Werkzeuge und legt nichts an.
-  'head_fragen']);
+import { LESEND_ABGELEITET } from '@/lib/werkzeuge/einordnung';
+
+/**
+ * Werkzeuge, die nur lesen (bzw. nur einen Vorschlag in den Stapel legen, z. B. `crm_vorschlag`) — sie laufen auch nach Fremdtext frei.
+ * Seit V3 (10.10.) ABGELEITET aus der einen Einordnung je Werkzeug (lib/werkzeuge/einordnung.ts, Rechteklasse `lesen`/`vorschlag`) —
+ * dort steht je Werkzeug die Begründung; hier nichts nachtragen.
+ */
+export const LESEND: Set<string> = new Set(LESEND_ABGELEITET);
 /**
  * Im Gespräch immer nur Vorschlag. `notiz_ergaenzen` seit S1 #12 (29.09.): es schreibt wie `notiz_anlegen` dauerhaft in
  * den Vault (Offene Fragen, Taskmanagement, Zoe-Log) — ein eingeschleuster Satz darf sich dort nicht selbst anhängen.

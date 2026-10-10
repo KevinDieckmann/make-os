@@ -3,6 +3,7 @@
 // davon aus — jede 201. Rechnung verschwand beim nächsten Speichern. Und „bezahlt“
 // schickte die Buchung als zweiten Aufruf hinterher, der still verloren gehen konnte.
 // Eigener Datenordner, Dienstaufruf mit Schlüssel + Person. Erfundene Zahlen.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -73,13 +74,13 @@ describe('Finanzplan kürzt nie still', () => {
     const { GRENZEN, ueberGrenze } = await import('@/lib/finanzen/finanzplan-bestand');
     const vorher = await lade();
     // Seit 09.10. (ZOE-Schreibwege): über die Route mit der auslösenden Person, nur eine Business-Gesellschaft (die Selbstständigkeit gehört zu Privat).
-    expect(await WERKZEUGE.erfasse_zahlung.lauf({ an: 'Testempfänger', betrag: 12, firma: 'kdv' }, 'http://test', 'kevin')).toMatch(/^Erfasst/);
+    expect(meldungVon(await WERKZEUGE.erfasse_zahlung.lauf({ an: 'Testempfänger', betrag: 12, firma: 'kdv' }, 'http://test', 'kevin'))).toMatch(/^Erfasst/);
     expect((await lade()).zahlungen.length).toBe(vorher.zahlungen.length + 1);
     // Bestand auf die Grenze füllen (Rohschreiben wie ein Altbestand) — ZOE lehnt ab, statt den PATCH später kürzen zu lassen.
     const roh = (await db.loadJson<Record<string, unknown> & { zahlungen: unknown[] }>('finanzplan'))!;
     const voll = Array.from({ length: GRENZEN.zahlungen }, (_, i) => ({ id: `z-v${i}`, firmaId: 'kdc', an: `E${i}`, titel: '', betrag: 1, status: 'offen' }));
     await db.saveJson('finanzplan', { ...roh, zahlungen: voll });
-    expect(await WERKZEUGE.erfasse_zahlung.lauf({ an: 'Zuviel', betrag: 1, firma: 'kdv' }, 'http://test', 'kevin')).toMatch(/^Fehlgeschlagen: höchstens/);
+    expect(meldungVon(await WERKZEUGE.erfasse_zahlung.lauf({ an: 'Zuviel', betrag: 1, firma: 'kdv' }, 'http://test', 'kevin'))).toMatch(/^Fehlgeschlagen: höchstens/);
     // Ein PATCH an anderer Stelle lässt alle Zahlungen stehen (vorher: auf 100 gekürzt).
     expect((await patch({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: rechnung(999) }] })).status).toBe(200);
     expect((await lade()).zahlungen.length).toBe(GRENZEN.zahlungen);

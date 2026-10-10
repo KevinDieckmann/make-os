@@ -5,6 +5,7 @@
 // (`suche_arbeit`), Stapel. Volle Mitglieder sehen unverändert alles (Gegenprobe). Dazu die reine Regel (lib/zugang/konto-sicht.ts) und
 // die Agenten-Sicht (`sichtLaden`), die jetzt dieselbe Stelle nimmt — mit denselben Werten wie vorher.
 // Eigener Datenordner, erfundene Konten (`@example.invalid`) und Marken, kein Netz, kein echter KI-Aufruf.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -248,12 +249,12 @@ describe('Aufgaben-Route: lesen', () => {
     expect(ex.text).toContain(BUSINESS.datei);
     expect(lecks(ex.text)).toEqual([]);
     const W = await import('@/lib/zoe/werkzeuge');
-    const u = (input: Record<string, unknown>, p: string) => W.WERKZEUGE.projekt_unterlagen.lauf(input, 'http://test', p);
+    const u = (input: Record<string, unknown>, p: string) => W.WERKZEUGE.projekt_unterlagen.lauf(input, 'http://test', p).then(meldungVon);
     expect(await u({ projekt: 'p-biz' }, 'partner')).toContain(BUSINESS.datei);
     const pu = await u({ projekt: 'p-privat' }, 'partner');
     expect(lecks(pu)).toEqual([]);
     expect(pu).toMatch(/kein Projekt/);
-    expect(lecks(await W.WERKZEUGE.datei_lesen.lauf({ datei: 'd-ks-privat' }, 'http://test', 'partner'))).toEqual([]);
+    expect(lecks(meldungVon(await W.WERKZEUGE.datei_lesen.lauf({ datei: 'd-ks-privat' }, 'http://test', 'partner')))).toEqual([]);
     expect(await u({ projekt: 'p-privat' }, 'zweite')).toContain(PRIVAT.datei);
   });
 });
@@ -348,12 +349,12 @@ describe('ZOE-Kern', () => {
 
   it('Suche (`suche_arbeit`) und `meine_aufgaben`: der Partner findet nichts aus Privat', async () => {
     const W = await import('@/lib/zoe/werkzeuge');
-    const such = (p: string) => W.WERKZEUGE.suche_arbeit.lauf({ frage: 'KONTOSICHT', nur: 'app' }, 'http://test', p);
+    const such = (p: string) => W.WERKZEUGE.suche_arbeit.lauf({ frage: 'KONTOSICHT', nur: 'app' }, 'http://test', p).then(meldungVon);
     const p = await such('partner');
     expect(lecks(p)).toEqual([]);
     expect(p).toContain(BUSINESS.aufgabe);
     expect(await such('zweite')).toContain(PRIVAT.aufgabe);
-    expect(lecks(await W.WERKZEUGE.meine_aufgaben.lauf({}, 'http://test', 'partner'))).toEqual([]);
+    expect(lecks(meldungVon(await W.WERKZEUGE.meine_aufgaben.lauf({}, 'http://test', 'partner')))).toEqual([]);
   });
 
   it('ZOE-Gespräch (/api/kimmi): der Prompt an das Modell trägt beim Partner nichts aus Privat, beim vollen Mitglied schon; kein Privat-Agent im Angebot', async () => {

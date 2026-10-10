@@ -1,6 +1,7 @@
 // ─── ZOE an Aufgaben (Paket C4, 28.09. spät): zuweisen, Lauf nur mit Vorschlägen, freigeben, ablehnen ──────────
 // Eigener Datenordner, erfundene Konten und Aufgaben. Das Modell ist gemockt (kein echter Aufruf), melde() wird
 // mitgeschnitten, `fetch` beobachtet (ZOE schickt nichts nach außen).
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -307,16 +308,16 @@ describe('Freigabe-Stapel: Art „aufgabe“', () => {
 describe('Werkzeuge im Gespräch', () => {
   it('meine_aufgaben / aufgabe_an_zoe: nur Personen im Haushalt, nur eigene; mehrdeutig → keine Wirkung', async () => {
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    expect(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'a1' }, 'http://x', 'fremd')).toMatch(/^Nicht ausgeführt/);
-    expect(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'a1' }, 'http://x')).toMatch(/^Nicht ausgeführt/);
-    expect(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'Aufgabe' }, 'http://x', 'malin')).toMatch(/mehrdeutig/);
-    expect(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'Aufgabe a2', hinweis: 'kurz' }, 'http://x', 'malin')).toMatch(/liegt jetzt bei ZOE/);
+    expect(meldungVon(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'a1' }, 'http://x', 'fremd'))).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'a1' }, 'http://x'))).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'Aufgabe' }, 'http://x', 'malin'))).toMatch(/mehrdeutig/);
+    expect(meldungVon(await WERKZEUGE.aufgabe_an_zoe.lauf({ aufgabe: 'Aufgabe a2', hinweis: 'kurz' }, 'http://x', 'malin'))).toMatch(/liegt jetzt bei ZOE/);
     const t = await task('a2');
     expect(t.zoe!.status).toBe('offen');
     expect(zoe.auftraggeberinVon(t)).toBe('malin');
     expect(zoe.zoeHinweis(t)).toBe('kurz');
-    expect(await WERKZEUGE.meine_aufgaben.lauf({}, 'http://x', 'malin')).toMatch(/„Aufgabe a2“ \[a2\] · bei ZOE/);
-    expect(await WERKZEUGE.meine_aufgaben.lauf({}, 'http://x', 'kevin')).toMatch(/keine Aufgabe/);
+    expect(meldungVon(await WERKZEUGE.meine_aufgaben.lauf({}, 'http://x', 'malin'))).toMatch(/„Aufgabe a2“ \[a2\] · bei ZOE/);
+    expect(meldungVon(await WERKZEUGE.meine_aufgaben.lauf({}, 'http://x', 'kevin'))).toMatch(/keine Aufgabe/);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

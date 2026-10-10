@@ -11,8 +11,9 @@ import { fremd } from '@/lib/anthropic';
 import { personImHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import type { AppArt, AppTreffer } from '@/lib/brain/app-index';
 import type { Risiko, Vorschau } from './register';
+import { fehlschlag, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
-type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<string>;
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
 
 export const ARBEIT_QUELLE = 'arbeitsbestaende';
 const ARTEN: readonly AppArt[] = ['aufgabe', 'kommentar', 'projekt', 'angebot', 'mandat'];
@@ -69,12 +70,12 @@ export async function arbeitKategorien(input: Record<string, unknown>, person: s
   return arbeitQuellen(input, { aufgaben: s.bereiche.aufgaben, crm: s.bereiche.crm, brain: s.bereiche.brain }).kategorien;
 }
 
-async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   if (!(await personImHaushaltDesInhabers(person))) return NUR_HAUSHALT;
   const frage = String(input.frage ?? input.suche ?? '').replace(/\u0000/g, '').trim();
-  if (!frage) return 'Fehlgeschlagen: frage fehlt (Stichworte).';
-  if (frage.length > 300) return 'Nicht ausgeführt: die Frage ist länger als 300 Zeichen — bitte Stichworte.';
+  if (!frage) return fehlschlag('eingabe', 'Fehlgeschlagen: frage fehlt (Stichworte).');
+  if (frage.length > 300) return fehlschlag('eingabe', 'Nicht ausgeführt: die Frage ist länger als 300 Zeichen — bitte Stichworte.');
   const anzahl = Math.max(1, Math.min(20, Number(input.anzahl) || 8));
   const haushalt = await haushaltDesInhabers();
   if (!haushalt) return NUR_HAUSHALT;
@@ -89,7 +90,7 @@ async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: 
   let app: { treffer: AppTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
   if (q.arten.length) {
     const A = await import('@/lib/brain/app-index');
-    try { await A.appIndexAktualisieren(); } catch (e) { return `Fehlgeschlagen: Such-Index nicht lesbar (${e instanceof Error ? e.message.slice(0, 120) : 'unbekannt'}).`; }
+    try { await A.appIndexAktualisieren(); } catch (e) { return fehlschlag('voruebergehend', `Fehlgeschlagen: Such-Index nicht lesbar (${e instanceof Error ? e.message.slice(0, 120) : 'unbekannt'}).`); }
     app = A.appSuche(frage, { haushalt, privat }, anzahl, q.arten);
   }
   // Das Brain (Vault) mit der Sicht der Person — Sicht vor dem Ranking (lib/zoe/vault.ts `suche`).
@@ -121,10 +122,10 @@ export const ARBEIT_WERKZEUG_DEFS = [
     input_schema: {
       type: 'object',
       properties: {
-        frage: { type: 'string', description: 'Stichworte (höchstens 300 Zeichen)' },
+        frage: { type: 'string', minLength: 1, maxLength: 300, description: 'Stichworte (höchstens 300 Zeichen)' },
         art: { type: 'string', enum: [...ARTEN], description: 'optional: nur diese Art aus der App' },
         nur: { type: 'string', enum: ['app', 'brain'], description: 'optional: nur App-Bestände oder nur das Brain' },
-        anzahl: { type: 'number', description: 'optional: höchstens so viele Treffer (1–20, Standard 8)' },
+        anzahl: { type: 'integer', minimum: 1, maximum: 20, description: 'optional: höchstens so viele Treffer (1–20, Standard 8)' },
       },
       required: ['frage'],
     },

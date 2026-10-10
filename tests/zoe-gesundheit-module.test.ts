@@ -2,6 +2,7 @@
 // `haut_eintrag` und `streak_eintrag` schreiben nur wie die Oberfläche: Einwilligung (a) der Person zuerst, dann ihr Modul
 // (lib/gesundheit/module-server.ts). Ein ZOE-Eintrag schaltet ein Modul nie „von selbst“ über den Altbestand ein.
 // Eigener Datenordner, erfundene Personen und Werte.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -32,7 +33,7 @@ beforeAll(async () => {
 });
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));
 
-const lauf = (name: string, input: Record<string, unknown>, person: string) => W.WERKZEUGE[name].lauf(input, 'http://test', person);
+const lauf = (name: string, input: Record<string, unknown>, person: string) => W.WERKZEUGE[name].lauf(input, 'http://test', person).then(meldungVon);
 
 describe('ZOE: Symptom-Tagebuch und Zähler nur mit Einwilligung und eingeschaltetem Modul', () => {
   it('ohne Einwilligung (a): abgelehnt, nichts gespeichert', async () => {

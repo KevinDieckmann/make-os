@@ -2,6 +2,7 @@
 // Leitplanken: nur im Haushalt · Art. 18 ausgeblendet · fremde private Notizen nie · IBAN maskiert · gekapselt mit
 // Grenze · Vorschläge ändern nichts bis zur Freigabe · Freigabe über die normalen Wege (409, Art.-18-Sperre) ·
 // Angebot nur Entwurf · kein Versand. Eigener Datenordner, erfundene Konten und Daten; das Modell ist gemockt.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -46,7 +47,7 @@ let stapel: typeof import('@/lib/zoe/stapel');
 let speicher: typeof import('@/lib/crm/speicher');
 let stapelRoute: { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> };
 const ids = { vertrag: '', beleg: '', bernd: '' };
-const lauf = (name: string, eingabe: Record<string, unknown>, person?: string) => W.WERKZEUGE[name].lauf(eingabe, 'http://test', person);
+const lauf = (name: string, eingabe: Record<string, unknown>, person?: string) => W.WERKZEUGE[name].lauf(eingabe, 'http://test', person).then(meldungVon);
 const kontakte = async () => (await db.loadJson<{ kontakte: Record<string, unknown>[] }>('kontakte'))!.kontakte;
 const offeneCrm = async () => (await stapel.lies('offen')).filter(v => v.bezug?.art === 'crm');
 const entscheiden = async (id: string, person: string, entscheidung: 'freigeben' | 'ablehnen', grund?: string) =>

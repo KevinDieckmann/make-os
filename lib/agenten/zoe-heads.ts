@@ -19,6 +19,7 @@ import { headDef, KATALOG } from './katalog';
 import { headSichtbar, kategorienFuer, headsFuer, type KontoSicht } from './sicht';
 import { anhaengen, auftragText, gedaechtnisFuer, neuerFaden, offeneLaeufe, textPruefen, type AuftragKarte, type FadenKern, type FadenKopfKern, type NachrichtKern } from './faeden';
 import { ablageAendernFuer, bestandLesen, sichtLaden } from './faeden-server';
+import { fehlschlag, klasseAusStatus, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 const UNBEKANNT = 'Nicht ausgeführt: Diesen Head gibt es für diese Person nicht (oder er ist nicht sichtbar).';
@@ -69,24 +70,24 @@ const offeneHeadLaeufe = (b: { faeden: readonly Pick<FadenKopfKern, 'agent' | 'k
  * `an_head`: Auftrag an einen Head. Legt den Thread an (Eltern = ZOE-Thread, wenn ZOE in einem spricht), reiht den Lauf ein und
  * vermerkt im ZOE-Thread „An … gesendet“. Nach Fremdtext im Gespräch erbt der Head-Thread die Marken („nur Vorschlag“, Web nur mit Klick).
  */
-export async function anHead(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return KEINE_PERSON;
+export async function anHead(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const sicht = await sichtLaden(person);
-  if (!sicht.imHaushalt) return 'Nicht ausgeführt: Heads gibt es nur im Haushalt des Inhabers.';
+  if (!sicht.imHaushalt) return fehlschlag('rechte', 'Nicht ausgeführt: Heads gibt es nur im Haushalt des Inhabers.');
   const head = headAusEingabe(input.head, sicht);
-  if (!head) return UNBEKANNT;
+  if (!head) return fehlschlag('nicht_gefunden', UNBEKANNT);
   const t = textPruefen(input.auftrag, GRENZEN.auftragZeichen, 'Auftrag');
-  if (!t.ok) return `Nicht ausgeführt: ${t.fehler}`;
+  if (!t.ok) return fehlschlag(klasseAusStatus(t.status), `Nicht ausgeführt: ${t.fehler}`);
   const { umfangFuer, einreihen } = await import('./delegation');
   const { agentAufloesen } = await import('./gespraech');
   const u = await umfangFuer(person);
   const agent: AgentRef = { art: 'head', headId: head.id };
   const a = await agentAufloesen(agent, u);
-  if ('ok' in a && a.ok === false) return `Nicht ausgeführt: ${a.fehler}`;
-  if ('einstellung' in a && a.einstellung.notAus) return 'Nicht ausgeführt: Not-Aus ist gesetzt — die Agenten halten an.';
+  if ('ok' in a && a.ok === false) return fehlschlag(klasseAusStatus(a.status), `Nicht ausgeführt: ${a.fehler}`);
+  if ('einstellung' in a && a.einstellung.notAus) return fehlschlag('sperre', 'Nicht ausgeführt: Not-Aus ist gesetzt — die Agenten halten an.');
   // Gegenprüfung 09.10.: Not-Aus, „aus“ und Monatsbudget DIESES Heads schon hier — sonst entstünde ein Thread, dessen Lauf gleich wieder anhält.
   const sperre = await (await import('./einstellung')).laufSperre(person, head.id).catch(() => null);
-  if (sperre) return `Nicht ausgeführt: ${sperre.text}`;
+  if (sperre) return fehlschlag('sperre', `Nicht ausgeführt: ${sperre.text}`);
 
   const zoe = kontext?.zoe;
   const jetzt = iso();
@@ -113,7 +114,7 @@ export async function anHead(input: Record<string, unknown>, _origin: string, pe
     }
     return { e: k.faden };
   });
-  if (!r.ok) return `Nicht ausgeführt: ${r.fehler}`;
+  if (!r.ok) return fehlschlag(klasseAusStatus(r.status), `Nicht ausgeführt: ${r.fehler}`);
   await einreihen(person, r.e.id, { hintergrund: false });
   return `An ${head.name} gesendet (Thread „${r.e.titel}“) — ${head.kurz} arbeitet im Hintergrund; der Bericht kommt in dieses Gespräch und als Glocke. Schreibendes legt ${head.kurz} nur als Vorschlag in den Freigabe-Stapel.`;
 }
@@ -122,21 +123,21 @@ export async function anHead(input: Record<string, unknown>, _origin: string, pe
  * `head_fragen`: der Head beantwortet EINE Frage — synchron, nur mit dem Kontext seines Bereichs und nur lesenden Werkzeugen (er legt
  * nichts an). Der Thread wird nicht gespeichert (eine Frage, keine Arbeit); das Lauf-Protokoll hält nur Metadaten fest.
  */
-export async function headFragen(input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return KEINE_PERSON;
+export async function headFragen(input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const sicht = await sichtLaden(person);
-  if (!sicht.imHaushalt) return 'Nicht ausgeführt: Heads gibt es nur im Haushalt des Inhabers.';
+  if (!sicht.imHaushalt) return fehlschlag('rechte', 'Nicht ausgeführt: Heads gibt es nur im Haushalt des Inhabers.');
   const head = headAusEingabe(input.head, sicht);
-  if (!head) return UNBEKANNT;
+  if (!head) return fehlschlag('nicht_gefunden', UNBEKANNT);
   const t = textPruefen(input.frage, 2_000, 'Frage');
-  if (!t.ok) return `Nicht ausgeführt: ${t.fehler}`;
+  if (!t.ok) return fehlschlag(klasseAusStatus(t.status), `Nicht ausgeführt: ${t.fehler}`);
   const [{ umfangFuer }, { agentLauf }] = await Promise.all([import('./delegation'), import('./gespraech')]);
   const u = await umfangFuer(person);
   const agent: AgentRef = { art: 'head', headId: head.id };
   const jetzt = iso();
   const f0 = neuerFaden({ id: neueKennung('fd'), besitzer: person, agent, bereich: head.bereich, titel: t.text, jetzt, fremdGelesen: !!kontext?.zoe?.fremdGelesen, vertraulich: !!kontext?.zoe?.vertraulich, kette: ['zoe', agentSchluessel(agent)] });
   const k = anhaengen(f0, [{ id: neueKennung('nr'), rolle: 'agent', von: 'zoe', text: `FRAGE von ZOE (im Auftrag der Person, mit der ZOE spricht): ${t.text}`, zeit: jetzt }], jetzt);
-  if (!k.ok) return `Nicht ausgeführt: ${k.fehler}`;
+  if (!k.ok) return fehlschlag(klasseAusStatus(k.status), `Nicht ausgeführt: ${k.fehler}`);
   const bestand = await bestandLesen(person);
   const ohne = { async ausfuehren() { return { text: 'Nicht angeboten.', ok: false }; } };
   const e = await agentLauf({
@@ -145,7 +146,7 @@ export async function headFragen(input: Record<string, unknown>, origin: string,
   });
   // Agenten-Datenschicht (09.10.): kein Eintrag mehr im Ring `agent-log` (200 Einträge) — Chat-Züge und Thread-Läufe fluteten ihn und schoben
   // Loop-Historie und ZOEs „letzte Läufe“ hinaus. Der Lauf steht mit seinem Span an der Nachricht im Thread (`lauf`), der Auftrag in der Warteschlange.
-  if (!e.ki) return `Nicht beantwortet: ${e.grund ?? 'keine Antwort'}.`;
+  if (!e.ki) return fehlschlag(e.gesperrt ? 'sperre' : 'intern', `Nicht beantwortet: ${e.grund ?? 'keine Antwort'}.`);
   return `ANTWORT von ${head.name} (Daten aus seinem Bereich):\n${e.text}`;
 }
 

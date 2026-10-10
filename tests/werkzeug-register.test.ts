@@ -7,6 +7,7 @@
 // Register würde sonst mit der Standardstufe laufen. Der Standard ist zwar
 // fail-closed (freigabe), aber unbemerkt bleiben soll es trotzdem nicht.
 
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect } from 'vitest';
 import { WERKZEUGE } from '../lib/zoe/werkzeuge';
 import { REGISTER, risikoVon, fehlendeStufen } from '../lib/zoe/register';
@@ -53,7 +54,7 @@ describe('Haushaltsfinanzen-Werkzeuge (24.09.)', () => {
   });
   it('ohne benannte Person (Hintergrund, Rücknahme) verweigern alle — private Finanzen nie im Auftrag von niemandem', async () => {
     for (const n of ['haushalt_stand', 'haushalt_buchungen', 'haushalt_zuordnen', 'haushalt_rechnung_bezahlt', 'haushalt_rechnung_erfassen']) {
-      expect(await WERKZEUGE[n].lauf({}, 'http://localhost', undefined), n).toMatch(/^Nicht verfügbar/);
+      expect(meldungVon(await WERKZEUGE[n].lauf({}, 'http://localhost', undefined)), n).toMatch(/^Nicht verfügbar/);
     }
   });
 });

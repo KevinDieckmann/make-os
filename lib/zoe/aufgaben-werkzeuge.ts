@@ -35,6 +35,7 @@ import { notiere } from './protokoll';
 import type { Risiko, Vorschau } from './register';
 import type { StapelArtFreigabe } from './stapel-arten';
 import { neueKennung } from '@/lib/kennung';
+import { fehlschlag, klasseAusStatus, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 export type ZoeErgebnis<T = Task> = { ok: true; wert: T } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean; /** Seit dem Vorschlag geändert (#95). */ diff?: ZoeKonflikt[] };
 const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string, konflikt = false, diff?: ZoeKonflikt[]): { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean; diff?: ZoeKonflikt[] } => ({ ok: false, status, fehler, ...(konflikt ? { konflikt } : {}), ...(diff?.length ? { diff } : {}) });
@@ -246,11 +247,11 @@ export const AUFGABE_STAPEL_ART: StapelArtFreigabe = {
 
 // ── Werkzeuge (Register-Einträge in register.ts/werkzeuge.ts per Spread) ──────
 
-type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<string>;
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
 const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 const NUR_HAUSHALT = 'Nicht ausgeführt: Aufgaben gehören zum Haushalt des Inhabers — für dieses Konto nicht verfügbar.';
 const imHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
-  if (!person) return KEINE_PERSON;
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   if (!(await personImHaushaltDesInhabers(person))) return NUR_HAUSHALT;
   return lauf(input, origin, person);
 };
@@ -259,7 +260,7 @@ const imHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
  * Was liegt bei ZOE — nur die eigenen Aufträge, nur Titel/Status/Deadline (keine Notizen). `space` (privat | business, optional) begrenzt auf
  * einen Bereich — der Agenten-Bereich setzt ihn fest auf den Bereich des Heads (lib/agenten/werkzeuge.ts `eingabeImBereich`, Feinschliff 09.10.).
  */
-async function meineAufgaben(i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function meineAufgaben(i: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const stand = await ladeAufgabenSicht(person ?? null);
   const bereich = i.space === 'privat' || i.space === 'business' ? i.space : null;
   const { bereichVonSpace } = await import('@/lib/aufgaben/struktur');
@@ -276,19 +277,19 @@ async function meineAufgaben(i: Record<string, unknown>, _o: string, person?: st
 }
 
 /** Im Gespräch: „gib das an dich“ — per Kennung oder eindeutigem Titel einer offenen Aufgabe. */
-async function aufgabeAnZoe(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function aufgabeAnZoe(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const frage = String(input.aufgabe ?? '').trim();
-  if (!frage) return 'Fehlgeschlagen: aufgabe fehlt (Kennung oder Titel).';
+  if (!frage) return fehlschlag('eingabe', 'Fehlgeschlagen: aufgabe fehlt (Kennung oder Titel).');
   const state = await ladeAufgabenSicht(person ?? null);
   const offen = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
   const klein = frage.toLowerCase();
   const genau = offen.filter(t => t.id === frage || t.title.toLowerCase() === klein);
   // Normalisiert (#58): „mueller“ findet „Müller“, auch in der Beschreibung.
   const treffer = genau.length ? genau : offen.filter(t => suchPasst([t.title, t.description], frage));
-  if (!treffer.length) return `Nicht ausgeführt: keine offene Aufgabe „${kurz(frage, 60)}“ gefunden.`;
-  if (treffer.length > 1) return `Nicht ausgeführt: mehrdeutig — ${treffer.slice(0, 5).map(t => `„${kurz(t.title, 60)}“ [${t.id}]`).join(', ')}. Bitte die Kennung nennen.`;
+  if (!treffer.length) return fehlschlag('nicht_gefunden', `Nicht ausgeführt: keine offene Aufgabe „${kurz(frage, 60)}“ gefunden.`);
+  if (treffer.length > 1) return fehlschlag('eingabe', `Nicht ausgeführt: mehrdeutig — ${treffer.slice(0, 5).map(t => `„${kurz(t.title, 60)}“ [${t.id}]`).join(', ')}. Bitte die Kennung nennen.`);
   const r = await anZoeGeben(treffer[0].id, person!, { hinweis: typeof input.hinweis === 'string' ? input.hinweis : undefined, durchZoe: true });
-  if (!r.ok) return `Nicht ausgeführt: ${r.fehler}`;
+  if (!r.ok) return fehlschlag(klasseAusStatus(r.status), `Nicht ausgeführt: ${r.fehler}`);
   return `„${kurz(treffer[0].title)}“ liegt jetzt bei ZOE (offen). Sie bereitet beim nächsten Lauf einen Vorschlag vor — übernommen wird erst nach Freigabe.`;
 }
 

@@ -13,16 +13,17 @@
 import type { Vorschau, Risiko } from './register';
 import type { WerkzeugKontext } from './werkzeuge';
 import { saeubere, wendeAn, PLAN_GRENZEN, SPARTEN, EINHEIT_TYPEN, INTENSITAETEN, WOCHENTAGE, WOCHENTAG_LABEL, PHASE_LABEL, type PlanEinheit, type SportStand, type Woche, type Wochentag } from '@/lib/sport/modell';
+import { fehlschlag, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
-type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<string>;
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<WerkzeugRueckgabe>;
 
 const KEINE = 'Nicht ausgeführt: Trainingspläne gibt es nur im Gespräch einer angemeldeten Person — für sich selbst.';
 const OHNE_EINWILLIGUNG = 'Nicht ausgeführt: Trainingsdaten gehen nur mit der Einwilligung „An die KI geben“ an ZOE (System › Datenschutz › Gesundheit). Sag das ruhig und ohne Druck.';
 
-async function erlaubt(person?: string): Promise<string | null> {
-  if (!person) return KEINE;
+async function erlaubt(person?: string): Promise<WerkzeugErgebnis | null> {
+  if (!person) return fehlschlag('rechte', KEINE);
   const { gesundheitAnKi } = await import('@/lib/datenschutz/gesundheit-einwilligung');
-  return (await gesundheitAnKi(person)) ? null : OHNE_EINWILLIGUNG;
+  return (await gesundheitAnKi(person)) ? null : fehlschlag('sperre', OHNE_EINWILLIGUNG);
 }
 
 async function standVon(person: string): Promise<SportStand> {
@@ -32,7 +33,7 @@ async function standVon(person: string): Promise<SportStand> {
 
 // ── Lesen ────────────────────────────────────────────────────────────────────
 
-async function trainingsplanLesen(_input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function trainingsplanLesen(_input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const nein = await erlaubt(person);
   if (nein) return nein;
   const [{ localDay }, { loadJson }, { speicherFuer }, plan, { tagesformHinweis }, { entlastungPruefen }, { wettkampfRechnung, taperUebernommen }, { formatZeit, montagVon, tagPlus }, { alleEinheiten, summe, inWoche }] = await Promise.all([
@@ -104,15 +105,15 @@ export function wocheAusEingabe(input: Record<string, unknown>): { woche: Woche;
 
 const nameAus = (input: Record<string, unknown>) => (typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 60) : 'Vorschlag von ZOE');
 
-async function trainingsplanUebernehmen(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return KEINE;
+async function trainingsplanUebernehmen(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE);
   // Gespeichert wird nur nach der Freigabe der Person (`fuehreAus` mit `erzwingen`) — ein direkter Aufruf ohne Freigabe legt nichts an.
-  if (!kontext?.freigegebenVon) return 'Nicht ausgeführt: Ein Trainingsplan wird nur nach Freigabe der Person gespeichert.';
-  if (kontext.freigegebenVon !== person) return 'Nicht ausgeführt: Nur die Person selbst übernimmt ihren Trainingsplan.';
+  if (!kontext?.freigegebenVon) return fehlschlag('rechte', 'Nicht ausgeführt: Ein Trainingsplan wird nur nach Freigabe der Person gespeichert.');
+  if (kontext.freigegebenVon !== person) return fehlschlag('rechte', 'Nicht ausgeführt: Nur die Person selbst übernimmt ihren Trainingsplan.');
   const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung');
-  if (!(await gesundheitVerarbeitungErlaubt(person))) return 'Nicht ausgeführt: Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (System › Datenschutz).';
+  if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Nicht ausgeführt: Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (System › Datenschutz).');
   const { woche, fehler } = wocheAusEingabe(input);
-  if (fehler) return `Nicht ausgeführt: ${fehler}`;
+  if (fehler) return fehlschlag('eingabe', `Nicht ausgeführt: ${fehler}`);
   const name = nameAus(input);
   const id = kontext.vorschlagId ? `zoe-${kontext.vorschlagId.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')}`.slice(0, 60).replace(/-+$/, '') : (await import('@/lib/kennung')).neueKennung('pv');
   const [{ updateJson }, { speicherFuer }] = await Promise.all([import('@/lib/store/local-db'), import('./raum')]);
@@ -121,7 +122,7 @@ async function trainingsplanUebernehmen(input: Record<string, unknown>, _origin:
     const s = saeubere(alt);
     try { return wendeAn(s, { op: 'plan-vorlage', eintrag: { id, name, woche, vonZoe: true } }); } catch (e) { fehlerText = e instanceof Error ? e.message : 'nicht möglich'; return s; }
   });
-  if (fehlerText) return `Nicht ausgeführt: ${fehlerText}`;
+  if (fehlerText) return fehlschlag('intern', `Nicht ausgeführt: ${fehlerText}`);
   return `Gespeichert als eigene Vorlage „${name}“ — aktiv wird sie erst, wenn die Person sie unter Sport › Ziele & Plan › Wochenplan bauen übernimmt.`;
 }
 

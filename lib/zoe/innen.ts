@@ -10,6 +10,8 @@
 // verweigert), ohne Buchung bei „bezahlt“, ohne Kette/Bezugsprüfung, ohne Anlass-Pflicht und Sperrliste.
 // Neue schreibende ZOE-Werkzeuge: IMMER über `innen()` — nie am Schreibweg vorbei. Neue Route → Zeile in `ROUTEN`.
 
+import { klasseAusStatus, type Fehlerklasse } from '@/lib/werkzeuge/vertrag';
+
 type Handler = (req: Request, ctx: { params: Promise<Record<string, string>> }) => Promise<Response>;
 
 /** Die Routen, die ZOE/Agenten intern aufrufen dürfen (dynamisch geladen: die Routen lesen ihrerseits das ZOE-Register). */
@@ -66,3 +68,8 @@ export async function innen(pfad: InnenPfad, methode: 'GET' | 'POST' | 'PATCH' |
 export const innenFehler = (a: InnenAntwort): string => String(a.json.fehler ?? a.json.error ?? `Abgelehnt (${a.status}).`);
 /** Hat die Route abgelehnt? */
 export const innenNein = (a: InnenAntwort): boolean => a.status >= 400 || a.json.ok === false;
+/**
+ * Fehlerklasse einer abgelehnten Antwort (V3, lib/werkzeuge/vertrag.ts `klasseAusStatus`): 400 Eingabe · 401/403 Rechte · 404 nicht gefunden ·
+ * 409 Konflikt · 413 Grenze · 5xx vorübergehend; eine 2xx-Antwort mit `ok: false` gilt als Eingabe (die Route hat die Werte abgelehnt).
+ */
+export const innenKlasse = (a: InnenAntwort): Fehlerklasse => (a.status >= 400 ? klasseAusStatus(a.status) : 'eingabe');

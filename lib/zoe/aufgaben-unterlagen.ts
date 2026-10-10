@@ -26,6 +26,7 @@ import { AblageFehler } from '@/lib/dateien/ablage';
 import { DATEI_ID, groesseText } from '@/lib/dateien/regeln';
 import { TYP_LABEL, abschnittWaehlen, aufgabenDateienFuer, typGruppe } from '@/lib/dateien/aufgaben-regeln';
 import type { Project, Task } from '@/types/tasks';
+import { fehlschlag, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 /** Die beiden Werkzeuge — für Angebot (kimmi), Kapselung (fremd.ts) und Protokoll (ausfuehren.ts). */
 export const AUFGABEN_DATEI_WERKZEUGE = ['projekt_unterlagen', 'datei_lesen'] as const;
@@ -93,28 +94,28 @@ function antwort(kopf: string, koerper: string, teil: unknown, weiter: (t: numbe
  */
 const bereichAus = (i: Record<string, unknown>): 'privat' | 'business' | null => (i.space === 'privat' || i.space === 'business' ? i.space : null);
 
-async function unterlagen(input: Record<string, unknown>, person?: string): Promise<string> {
+async function unterlagen(input: Record<string, unknown>, person?: string): Promise<WerkzeugRueckgabe> {
   const h = await haushalt(person);
-  if (!h) return NICHT_IM_HINTERGRUND;
+  if (!h) return fehlschlag('rechte', NICHT_IM_HINTERGRUND);
   const sicht = await ladeAufgabenSicht(person ?? null); // Sichtfilter „nur ich“ (29.09.)
   const nur = bereichAus(input);
   const state = nur ? { ...sicht, projects: sicht.projects.filter(p => bereichVonSpace(p.spaceId) === nur), tasks: sicht.tasks.filter(t => bereichVonSpace(t.spaceId) === nur) } : sicht;
   const aufgabeSuche = String(input.aufgabe ?? '').trim();
   const projektSuche = String(input.projekt ?? '').trim();
-  if (!aufgabeSuche && !projektSuche) return 'Fehlgeschlagen: projekt oder aufgabe angeben (Kennung oder Titel).';
+  if (!aufgabeSuche && !projektSuche) return fehlschlag('eingabe', 'Fehlgeschlagen: projekt oder aufgabe angeben (Kennung oder Titel).');
   let projekt: Project | undefined;
   let aufgabe: Task | undefined;
   if (projektSuche) {
     const p = finde(state.projects, projektSuche, x => x.title);
-    if (!p) return `Fehlgeschlagen: kein Projekt zu dieser Angabe gefunden.`;
-    if (Array.isArray(p)) return `Nicht eindeutig — mehrere Projekte passen:\n${fremd(UNTERLAGEN_QUELLE, p.map(x => `- ${x.id} · ${x.title}`).join('\n'))}`;
+    if (!p) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: kein Projekt zu dieser Angabe gefunden.`);
+    if (Array.isArray(p)) return fehlschlag('eingabe', `Nicht eindeutig — mehrere Projekte passen:\n${fremd(UNTERLAGEN_QUELLE, p.map(x => `- ${x.id} · ${x.title}`).join('\n'))}`);
     projekt = p;
   }
   if (aufgabeSuche) {
     const kandidaten = projekt ? state.tasks.filter(t => t.projectId === projekt!.id) : state.tasks;
     const t = finde(kandidaten, aufgabeSuche, x => x.title);
-    if (!t) return 'Fehlgeschlagen: keine Aufgabe zu dieser Angabe gefunden.';
-    if (Array.isArray(t)) return `Nicht eindeutig — mehrere Aufgaben passen:\n${fremd(UNTERLAGEN_QUELLE, t.map(x => `- ${x.id} · ${x.title}`).join('\n'))}`;
+    if (!t) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: keine Aufgabe zu dieser Angabe gefunden.');
+    if (Array.isArray(t)) return fehlschlag('eingabe', `Nicht eindeutig — mehrere Aufgaben passen:\n${fremd(UNTERLAGEN_QUELLE, t.map(x => `- ${x.id} · ${x.title}`).join('\n'))}`);
     aufgabe = t;
     projekt = projekt ?? state.projects.find(p => p.id === t.projectId);
   }
@@ -135,14 +136,14 @@ async function unterlagen(input: Record<string, unknown>, person?: string): Prom
   return antwort(kopf, koerper, input.teil, t => `projekt_unterlagen mit teil: ${t}`);
 }
 
-async function lesen(input: Record<string, unknown>, person?: string): Promise<string> {
+async function lesen(input: Record<string, unknown>, person?: string): Promise<WerkzeugRueckgabe> {
   const h = await haushalt(person);
-  if (!h) return NICHT_IM_HINTERGRUND;
+  if (!h) return fehlschlag('rechte', NICHT_IM_HINTERGRUND);
   const id = String(input.datei ?? '').trim();
-  if (!DATEI_ID.test(id)) return 'Fehlgeschlagen: datei braucht die Kennung (d-…) aus projekt_unterlagen.';
+  if (!DATEI_ID.test(id)) return fehlschlag('eingabe', 'Fehlgeschlagen: datei braucht die Kennung (d-…) aus projekt_unterlagen.');
   const d = await aufgabenDateiLesen(h.haushalt, id);
   const nur = bereichAus(input);
-  if (!d || (nur && d.eintrag.bereich !== nur) || !aufgabenDateiSichtbar(d.eintrag, h, await verborgeneAufgabenFuer(h.person))) return 'Fehlgeschlagen: Diese Kennung ist keine Projekt- oder Aufgaben-Datei (die CRM-Ablage liest ZOE nicht) — oder die Datei fehlt.';
+  if (!d || (nur && d.eintrag.bereich !== nur) || !aufgabenDateiSichtbar(d.eintrag, h, await verborgeneAufgabenFuer(h.person))) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Diese Kennung ist keine Projekt- oder Aufgaben-Datei (die CRM-Ablage liest ZOE nicht) — oder die Datei fehlt.');
   const g = typGruppe(d.eintrag.datei.typ);
   const meta = [`Datei: ${d.eintrag.datei.name}`, `Typ: ${TYP_LABEL[g]} · ${groesseText(d.eintrag.datei.groesse)} · von ${d.eintrag.hochgeladenVon} am ${datum(d.eintrag.hochgeladenAm)}`, d.eintrag.notiz ? `Beschreibung: ${d.eintrag.notiz}` : ''].filter(Boolean).join('\n');
   let inhalt: Awaited<ReturnType<typeof textAuslesen>>;
@@ -158,11 +159,11 @@ async function lesen(input: Record<string, unknown>, person?: string): Promise<s
 
 
 /** Ablage/Bestand nicht lesbar (z. B. Schlüssel fehlt) → ein Satz statt eines abgebrochenen Gesprächs. */
-const sicher = (f: (i: Record<string, unknown>, p?: string) => Promise<string>) => async (input: Record<string, unknown>, _o: string, person?: string): Promise<string> => {
+const sicher = (f: (i: Record<string, unknown>, p?: string) => Promise<WerkzeugRueckgabe>) => async (input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> => {
   try { return await f(input, person); }
   catch (e) {
     console.error('[zoe/unterlagen]', e instanceof Error ? e.message : e);
-    return `Fehlgeschlagen: ${e instanceof AblageFehler ? e.message : 'Unterlagen gerade nicht lesbar.'}`;
+    return fehlschlag('voruebergehend', `Fehlgeschlagen: ${e instanceof AblageFehler ? e.message : 'Unterlagen gerade nicht lesbar.'}`);
   }
 };
 

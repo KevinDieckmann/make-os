@@ -3,6 +3,7 @@
 // mit Datum im nächsten Jahr, „Fokus des Jahres“ je Jahr, ZOE verschiebt ins
 // nächste Jahr. Geprüft über die Routen (wie im Browser) und das ZOE-Werkzeug.
 // Eigener Datenordner, erfundene Einträge.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { haushaltKonten } from './fixtures/konten';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -78,13 +79,13 @@ describe('Meilensteine im nächsten Jahr — über den vorhandenen Schreibweg', 
   });
   it('ZOE verschiebt ins nächste Jahr; ein abgeleiteter Meilenstein bleibt dann „angepasst“', async () => {
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    expect(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Launch nächstes', faellig: `${N}-04-20`, fortschritt: 20 }, 'http://test', 'kevin')).toMatch(/verschoben.*20%/);
+    expect(meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Launch nächstes', faellig: `${N}-04-20`, fortschritt: 20 }, 'http://test', 'kevin'))).toMatch(/verschoben.*20%/);
     const m = (await ladeMs()).find(x => x.abgeleitetVon === 'z-launch')!;
     expect(m).toMatchObject({ faellig: `${N}-04-20`, fortschritt: 20, angepasst: true });
     // Die nächste Kaskade zieht das Datum nicht auf den Termin des Ziels zurück.
     await ziele.PATCH(req('/api/state/ziele', 'PATCH', { horizont: 'jahr', ops: [{ op: 'upsert', eintrag: { id: 'z-weiter', titel: 'Noch ein Ziel', fortschritt: 0 } }] }));
     expect((await ladeMs()).find(x => x.abgeleitetVon === 'z-launch')!.faellig).toBe(`${N}-04-20`);
-    expect(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Messe', faellig: `${N}-02-30` }, 'http://test', 'kevin')).toMatch(/^Fehlgeschlagen/);
+    expect(meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'Messe', faellig: `${N}-02-30` }, 'http://test', 'kevin'))).toMatch(/^Fehlgeschlagen/);
   });
 });
 
@@ -107,7 +108,7 @@ describe('Fokus des Jahres je Jahr', () => {
     // Seit 09.10. in den getrennten Fokus-Beständen (Privat ≠ Business, lib/planung/fokus.ts) — der gemischte Bestand `ziele` bleibt unberührt.
     const vorher = (await db.loadJson<{ fokus: Record<string, string> }>('ziele'))!.fokus;
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    expect(await WERKZEUGE.setze_fokus.lauf({ horizont: 'jahr', space: 'privat', jahr: N, text: 'Gesund bleiben' }, 'http://test', 'kevin')).toMatch(/Gilt ab Januar/);
+    expect(meldungVon(await WERKZEUGE.setze_fokus.lauf({ horizont: 'jahr', space: 'privat', jahr: N, text: 'Gesund bleiben' }, 'http://test', 'kevin'))).toMatch(/Gilt ab Januar/);
     expect((await db.loadJson<{ fokus: Record<string, string> }>('ziele'))!.fokus).toEqual(vorher);
     const neu = (await db.loadJson<{ fokus: Record<string, string> }>('fokus-privat--test-haus'))!.fokus;
     expect(neu[`jahr:${N}`]).toBe('Gesund bleiben');

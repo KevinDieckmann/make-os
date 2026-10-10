@@ -3,6 +3,7 @@
 // „bezahlt“, Anlass-Pflicht, Sperrliste, Kette/Bezüge; „Sicht Business bekommt nichts aus Privat“ (auch `finanzRecht: 'business'`); keine
 // stille Selbstständigkeit; nichts doppelt bei Wiederholung derselben Freigabe. Eigener Datenordner, erfundene Konten und Daten, das
 // Modell ist gemockt (kein echter KI-Aufruf).
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -49,7 +50,7 @@ let db: typeof import('@/lib/store/local-db');
 let W: typeof import('@/lib/zoe/werkzeuge');
 type Plan = { firmen: { id: string; kontostand: number | null; stand: string | null }[]; rechnungen: { id: string; firmaId: string; kunde: string; status: string; bezahltAm?: string; betrag: number }[]; zahlungen: { id: string; firmaId: string; an: string; betrag: number }[] };
 const plan = async () => (await db.loadJson<Plan>('finanzplan'))!;
-const lauf = (name: string, eingabe: Record<string, unknown>, person?: string, kontext?: Record<string, unknown>) => W.WERKZEUGE[name].lauf(eingabe, 'http://test', person, kontext as never);
+const lauf = (name: string, eingabe: Record<string, unknown>, person?: string, kontext?: Record<string, unknown>) => W.WERKZEUGE[name].lauf(eingabe, 'http://test', person, kontext as never).then(meldungVon);
 const protokoll = async () => {
   const { protokollMonat, monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
   return protokollMonat(HAUS, monatBerlin());
@@ -389,9 +390,13 @@ describe('Kleines (Funde klein)', () => {
       { id: 'r-priv', label: 'Dehnen Probe', aktiv: true, space: 'privat', owner: 'pia' },
     ] });
     const { fuehreAus } = await import('@/lib/zoe/ausfuehren');
-    const ok = await fuehreAus('hake_routine', { routine: 'Wochenplanung' }, 'http://test', { person: 'pia' });
+    // V3 (Werkzeug-Verträge): die Eingabe folgt dem Schema (`routinen` als Liste) — das frühere Einzelfeld `routine` wird klar abgelehnt, nie still gedeutet.
+    expect((await fuehreAus('hake_routine', { routine: 'Wochenplanung' }, 'http://test', { person: 'pia' })).ergebnis).toMatchObject({ ok: false, klasse: 'eingabe' });
+    const ok = await fuehreAus('hake_routine', { routinen: ['Wochenplanung'] }, 'http://test', { person: 'pia' });
     expect(ok.text).toMatch(/^Abgehakt: Wochenplanung Probe/);
-    const priv = await fuehreAus('hake_routine', { routine: 'Dehnen' }, 'http://test', { person: 'pia' });
+    const priv = await fuehreAus('hake_routine', { routinen: ['Dehnen'] }, 'http://test', { person: 'pia' });
+    // „Keine Routine passt“ ist jetzt ein typisierter Fehlschlag (nicht gefunden) — vorher galt der Satz als Erfolg.
+    expect(priv.ergebnis).toMatchObject({ ok: false, klasse: 'nicht_gefunden' });
     expect(priv.text).toMatch(/Keine Routine passt/);
     expect(priv.text).not.toContain('Dehnen Probe');
   });

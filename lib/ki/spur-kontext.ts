@@ -6,7 +6,8 @@
 // (`Auftrag.spur`), über interne Sprünge im Kopf `x-make-spur` (nur Dienstweg). Nie Inhalte — nur Kennungen und Zahlen.
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { SPUR_KOPF, spurKopfWert, type SpurBereich, type SpurBezug, type SpurToken } from '@/lib/agenten/spur';
+import { SPUR_KOPF, leereWerkzeugZaehler, spurKopfWert, type SpurBereich, type SpurBezug, type SpurToken, type SpurWerkzeuge } from '@/lib/agenten/spur';
+import type { ErgebnisArt, Fehlerklasse } from '@/lib/werkzeuge/vertrag';
 
 /** Was ein offener Abschnitt über seine Modellaufrufe sammelt. */
 export interface SpurSammler {
@@ -20,6 +21,8 @@ export interface SpurSammler {
   gesperrt: number;
   /** Zeit bis zum ersten Wort (ms seit Beginn), einmal gesetzt. */
   ersteWortMs?: number;
+  /** Ausgänge der Werkzeug-Aufrufe in diesem Abschnitt (V3, `werkzeugAusgangVermerken`) — ohne Kind-Abschnitte. */
+  wz?: SpurWerkzeuge;
 }
 
 export interface SpurKontext {
@@ -61,3 +64,19 @@ export function erstesWortVermerken(jetzt = Date.now()): void {
 }
 
 export const neuerSammler = (): SpurSammler => ({ aufrufe: 0, token: { ein: 0, aus: 0, cacheLesen: 0, cacheSchreiben: 0 }, cent: 0, gesperrt: 0 });
+
+/**
+ * Ausgang EINES Werkzeug-Aufrufs vermerken (10.10., Paket V3): in den Sammler des offenen Abschnitts — Art, Fehlerklasse und ob der Text-Rückfall
+ * griff (`rueckfall`, Ziel 0). Ohne offenen Abschnitt (Freigabe aus dem Stapel, Takt ohne Kette): nichts. Wirft nie. Nur Zahlen.
+ */
+export function werkzeugAusgangVermerken(art: ErgebnisArt, o: { klasse?: Fehlerklasse; rueckfall?: boolean } = {}): void {
+  const s = spurJetzt()?.sammler;
+  if (!s) return;
+  const w = s.wz ?? (s.wz = leereWerkzeugZaehler());
+  if (art === 'erfolg') w.erfolg++;
+  else if (art === 'abgelehnt') w.abgelehnt++;
+  else if (art === 'fehler') w.fehler++;
+  else w.freigabe++;
+  if (o.klasse) (w.klassen ??= {})[o.klasse] = ((w.klassen ?? {})[o.klasse] ?? 0) + 1;
+  if (o.rueckfall) w.rueckfall++;
+}

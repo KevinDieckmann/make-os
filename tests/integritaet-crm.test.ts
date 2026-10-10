@@ -1,5 +1,6 @@
 // ─── Integritätsprüfung 28.09. abends — K2, W1, W4, W6, W8, W10, Kleines ─────
 // Alle Daten erfunden (@example.invalid), eigener Datenordner — nie echte Bestände.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -274,15 +275,15 @@ describe('Kleines — nie abschneiden, kein Teilstring-Treffer', () => {
   it('ZOE setze_kunde: Teilstring schreibt nicht; exakter Name ändert über den Mandat-Weg; neu nur ohne Treffer', async () => {
     const { WERKZEUGE } = await import('../lib/zoe/werkzeuge');
     await db.saveJson('crm', { ...speicher.leererBestand(), mandate: [mandat('m-1', { kunde: 'Beispiel AG' }), mandat('m-2', { kunde: 'Beispielbau GmbH' })] });
-    const r1 = await WERKZEUGE.setze_kunde.lauf({ name: 'Beisp', cashflow: 999 }, 'http://test', 'kevin');
+    const r1 = meldungVon(await WERKZEUGE.setze_kunde.lauf({ name: 'Beisp', cashflow: 999 }, 'http://test', 'kevin'));
     expect(r1).toMatch(/^Nicht ausgeführt: Kein Mandat heißt genau/);
     expect((await speicher.ladeCrm()).mandate.map(m => m.honorar.betrag)).toEqual([2500, 2500]);
-    const r2 = await WERKZEUGE.setze_kunde.lauf({ name: 'beispiel ag', cashflow: 3000, status: 'ruht' }, 'http://test', 'kevin');
+    const r2 = meldungVon(await WERKZEUGE.setze_kunde.lauf({ name: 'beispiel ag', cashflow: 3000, status: 'ruht' }, 'http://test', 'kevin'));
     expect(r2).toMatch(/^Erfasst: Beispiel AG aktualisiert/);
     const m = (await speicher.ladeCrm()).mandate;
     expect(m[0]).toMatchObject({ status: 'pausiert', honorar: { betrag: 3000, basis: 'monat' } });
     expect(m[1].honorar.betrag).toBe(2500);
-    expect(await WERKZEUGE.setze_kunde.lauf({ name: 'Ganz Neu GmbH' }, 'http://test', 'kevin')).toMatch(/als Mandat angelegt/);
+    expect(meldungVon(await WERKZEUGE.setze_kunde.lauf({ name: 'Ganz Neu GmbH' }, 'http://test', 'kevin'))).toMatch(/als Mandat angelegt/);
     expect((await speicher.ladeCrm()).mandate.map(x => x.kunde)).toContain('Ganz Neu GmbH');
   });
   it('Kampagne übernimmt die ganze Zielgruppe (vorher still höchstens 40)', async () => {

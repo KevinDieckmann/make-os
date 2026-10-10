@@ -214,7 +214,8 @@ export async function laufSpurLage(jetzt: Date): Promise<import('./lage').LaufSp
   const l = (await spurLesen({ bereiche: ['privat', 'business'], monate: 2, jetzt })).filter(e => e.zeit >= ab);
   const s = summeVon(l, 1);
   const z = zoeTempo(l);
-  return { laeufe7d: s.laeufe, fehlerQuote7d: s.fehlerQuote, zoeZuege7d: z.zuege, zoeTtftP95Ms: z.ttftP95, zoeDauerP95Ms: z.dauerP95, zoeCacheQuote: z.cacheQuote };
+  const { klassen: _k, ...wz } = s.wz;
+  return { laeufe7d: s.laeufe, fehlerQuote7d: s.fehlerQuote, zoeZuege7d: z.zuege, zoeTtftP95Ms: z.ttftP95, zoeDauerP95Ms: z.dauerP95, zoeCacheQuote: z.cacheQuote, werkzeuge7d: wz };
 }
 
 /**

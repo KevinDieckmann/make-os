@@ -3,6 +3,13 @@
 // Wirkung eintritt. ZOE' Schleife und die Freigabe aus dem Stapel gehen
 // beide durch diese Funktion; dadurch gibt es keinen Pfad, der am Protokoll
 // oder an der Risiko-Stufe vorbeiführt.
+//
+// Seit V3 (10.10., „Werkzeug-Verträge“, AGENTEN_KONZEPT_V2.md C3/C10) ist sie die HÜLLE um jeden Register-Werkzeug-Aufruf:
+//   Vertrag (lib/werkzeuge/register.ts) → Bereich gegen die Sicht → Eingabe gegen das Schema (Laufzeitprüfung, nie still klemmen) →
+//   Wirkung nach `wirkungsEntscheid` (Rechteklasse + Stufe + Marken: Außenwirkung/Geld/Löschen und alles Schreibende nach fremdem Text
+//   nur über den Stapel) → typisiertes Ergebnis (`ergebnis`: erfolg · abgelehnt · fehler · braucht_freigabe, mit Fehlerklasse) → Lauf-Spur.
+// Der Erfolg wird NICHT mehr am Antworttext erkannt; nur ein Werkzeug, das noch einen bloßen Fehlersatz liefert, fängt der Rückfall
+// `ausAltText` ab — und zählt es in der Spur (`rueckfall`, Ziel 0).
 
 import { WERKZEUGE } from './werkzeuge';
 import { REGISTER, risikoFuerAufruf, gruppeVon, vorschauVon } from './register';
@@ -13,6 +20,8 @@ import { SELBST_GEKAPSELT } from './fremd';
 import { LESEND } from './gespraech-schutz';
 import { ZOE_BUSINESS_GRUPPEN, ZOE_ZURUECKGEHALTEN } from '@/lib/arbeitsrahmen/regel';
 import { bereichAus, BEREICH_NAME, eingabeMitBereich, type Bereich } from './bereich';
+import { brauchtFreigabe, fehlschlag, wirkungsEntscheid, type WerkzeugErgebnis } from '@/lib/werkzeuge/vertrag';
+import { ausgangVermerken, vertragsPruefung } from '@/lib/werkzeuge/huelle';
 
 export interface Lauf {
   /** Was dem Modell (oder dem Aufrufer) zurückgemeldet wird. */
@@ -25,7 +34,15 @@ export interface Lauf {
    * Mitarbeiter) ihren Eintrag findet und Freigeben/Ablehnen anbietet — vorher stand dort nur „Ein Vorschlag (create_task) …“ ohne Knöpfe.
    */
   vorschlagId?: string;
+  /** Das typisierte Ergebnis (V3): Art, Fehlerklasse, Satz, Spur — `text`/`ok`/`gestapelt` sind daraus abgeleitet. */
+  ergebnis: WerkzeugErgebnis;
 }
+
+/** Ein Ergebnis ohne Lauf des Werkzeugs (Sperre, Vertrag, Eingabe) — vermerkt in der Spur. */
+const nein = (name: string, e: WerkzeugErgebnis): Lauf => {
+  const r = ausgangVermerken(name, e);
+  return { text: r.meldung, ok: r.ok, gestapelt: false, ergebnis: r };
+};
 
 /**
  * Führt ein Werkzeug aus — oder legt es in den Stapel, wenn es eine Freigabe
@@ -47,10 +64,18 @@ export async function fuehreAus(
      * des Gedächtnisses beim Lesen); bei der Freigabe (`erzwingen`) der Bereich des Vorschlags — „Fakt merken“ legt den Merksatz dort ab.
      * Nur vom Server gesetzt, nie aus der Eingabe des Modells.
      */
-    bereich?: Bereich | null } = {},
+    bereich?: Bereich | null;
+    /**
+     * Sicht des Laufs (V3): Privat bzw. Business — ein Werkzeug des anderen Bereichs wird abgelehnt (nichts läuft, nichts im Stapel). ZOE: der
+     * Space der Seite (ohne: „Alles“, keine Grenze), Heads/Mitarbeiter: der Bereich des Heads. Nicht bei der Freigabe aus dem Stapel (dort hat
+     * ein Mensch entschieden, und der Stapel zeigt je Sicht nur ihre Vorschläge).
+     */
+    sicht?: Bereich | null;
+    /** Der Lauf hat fremden Text gelesen (V3, Rule of Two): Schreibendes wirkt dann nur als Vorschlag — auch wenn der Aufrufer es nicht sagt. */
+    fremdGelesen?: boolean } = {},
 ): Promise<Lauf> {
   const werk = WERKZEUGE[name];
-  if (!werk) return { text: `Unbekanntes Werkzeug: ${name}.`, ok: false, gestapelt: false };
+  if (!werk) return nein(name, fehlschlag('nicht_gefunden', `Unbekanntes Werkzeug: ${name}.`));
 
   // Stufe je Aufruf (29.09., #90/#93): z. B. create_task für eine andere Person → Freigabe.
   const risiko = risikoFuerAufruf(name, input, opt.person);
@@ -58,7 +83,7 @@ export async function fuehreAus(
 
   if (risiko === 'nie' && !opt.erzwingen) {
     await notiere({ werkzeug: name, gruppe, risiko, eingabe: input, ergebnis: 'gesperrt', ok: false, quelle: 'zoe', person: opt.person });
-    return { text: `${name} ist gesperrt und wird nicht ausgeführt.`, ok: false, gestapelt: false };
+    return nein(name, fehlschlag('sperre', `${name} ist gesperrt und wird nicht ausgeführt.`));
   }
 
   // Datenschutz (05.10.): ein für ZOE ausgeschalteter Bereich und Gesundheit ohne Einwilligung (b) — hier, an der EINEN
@@ -70,8 +95,16 @@ export async function fuehreAus(
     const sperre = k && (!opt.erzwingen || k === 'gesundheit') ? await werkzeugSperreFuer(k, opt.person) : null;
     if (sperre) {
       await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: 'gesperrt (Datenschutz)', ok: false, quelle: 'zoe', person: opt.person });
-      return { text: sperre, ok: false, gestapelt: false };
+      return nein(name, fehlschlag('sperre', sperre));
     }
+  }
+
+  // Vertrag (V3): ohne Vertrag läuft nichts; ein Werkzeug des anderen Bereichs nicht in dieser Sicht; die Eingabe muss zum Schema passen —
+  // sonst ein klarer Satz an das Modell bzw. in den Stapel, NICHTS ausgeführt und NICHTS vorgeschlagen (kein ungültiger Vorschlag im Stapel).
+  const pruefung = vertragsPruefung(name, opt.erzwingen ? eingabeMitBereich(name, input, bereichAus(opt.bereich)) : input, { sicht: opt.erzwingen ? null : bereichAus(opt.sicht) });
+  if (!pruefung.ok) {
+    await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: pruefung.ergebnis.klasse === 'eingabe' ? 'abgelehnt (Eingabe ungültig)' : pruefung.ergebnis.klasse === 'rechte' ? 'abgelehnt (anderer Bereich)' : 'abgelehnt (ohne Vertrag)', ok: false, quelle: opt.erzwingen ? 'stapel' : 'zoe', person: opt.person });
+    return nein(name, pruefung.ergebnis);
   }
 
   // Business-frei (08.10., Lücke 7): Läufe im Hintergrund (Morgen, Abend, Tageslauf, Agenten) legen in einer Business-freien Zeit
@@ -82,7 +115,8 @@ export async function fuehreAus(
     const frei = await (opt.person ? businessFreiJetzt(opt.person) : haushaltBusinessFreiJetzt()).catch(() => ({ frei: false }));
     if (frei.frei) {
       await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: 'zurückgehalten (Business-frei)', ok: true, quelle: 'zoe', person: opt.person });
-      return { text: ZOE_ZURUECKGEHALTEN, ok: true, gestapelt: false };
+      // Eine Entscheidung (Sperre), kein Fehler — die Warteschlange wiederholt sie nicht (`wiederholbar`).
+      return nein(name, fehlschlag('sperre', ZOE_ZURUECKGEHALTEN));
     }
   }
 
@@ -96,7 +130,10 @@ export async function fuehreAus(
   // gesehen haben, bevor es passiert — auch wenn er es tagsüber im Gespräch
   // einfach durchlaufen ließe. Der Unterschied ist nicht das Werkzeug,
   // sondern dass niemand danach gefragt hat.
-  if ((risiko === 'freigabe' || opt.vorschlagen) && !opt.erzwingen) {
+  // Seit V3 an EINER Stelle (`wirkungsEntscheid`, Rule of Two): Außenwirkung, Geld und Löschen IMMER als Vorschlag; Stufe „freigabe“ und
+  // `vorschlagen` wie bisher; nach fremdem Text (Marke des Laufs) wirkt nichts Schreibendes ohne Klick — auch wenn ein Aufrufer vergäße, es zu sagen.
+  const wirkung = wirkungsEntscheid({ rechteklasse: pruefung.vertrag.rechteklasse, risiko }, { erzwingen: opt.erzwingen, vorschlagen: opt.vorschlagen, fremdGelesen: !!(opt.fremdGelesen || opt.zoe?.fremdGelesen) });
+  if (wirkung === 'vorschlag') {
     const gespraech = bereichAus(opt.bereich);
     const v = await lege({
       werkzeug: name, gruppe, titel: vs.titel, vorher: vs.vorher, nachher: vs.nachher,
@@ -111,12 +148,13 @@ export async function fuehreAus(
       ergebnis: `in den Stapel gelegt (${v.id})`, ok: true, quelle: 'zoe', ruecknahme: null,
       person: opt.person,
     });
-    return {
-      text: `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}. `
+    const erg = ausgangVermerken(name, brauchtFreigabe(
+      `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${vs.titel}: ${vs.vorher ? `${vs.vorher} → ` : ''}${vs.nachher}. `
         + `Das liegt jetzt im Freigabe-Stapel der Person, die dich beauftragt hat${stapelOrtSatz(bereichAus(v.bereich), gespraech)}. Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt.`
         + (name === 'fakt_merken' && v.bereichNennt?.length ? ` ${crmWegSatz(v.bereichNennt)}` : ''),
-      ok: true, gestapelt: true, vorschlagId: v.id,
-    };
+      v.id,
+    ));
+    return { text: erg.meldung, ok: true, gestapelt: true, vorschlagId: v.id, ergebnis: erg };
   }
 
   // Die Vertraulichkeitsregeln im Vault: „Agenten bekommen nie privat."
@@ -132,13 +170,18 @@ export async function fuehreAus(
     : bereichAus(opt.bereich);
   const kontext = opt.erzwingen || opt.zoe || opt.herkunft || bereich ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}), ...(bereich ? { bereich } : {}) } : undefined;
   // Bei der Freigabe wirkt der Bereich des Vorschlags auf den Ort (eine Aufgabe ohne Ort landet dort, lib/zoe/bereich.ts `eingabeMitBereich`).
-  const text = await werk.lauf(opt.erzwingen ? eingabeMitBereich(name, input, bereich) : input, origin, leseSicht ? undefined : opt.person, kontext);
-  // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
-  // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
-  // Nachschliff 09.10.: „Nicht eingeplant“ (plan_block in einer Business-freien Zeit) ist ein Fehlschlag — vorher galt der Vorschlag im Stapel als
-  // „freigegeben“, obwohl kein Block angelegt war.
-  // 09.10. (ZOE-Schreibwege): auch „Nicht erfasst“, „Nicht notiert“, „Nicht eingereiht“, „NICHT vermerkt“ — sonst galt eine abgelehnte Wirkung im Stapel als freigegeben.
-  const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|nicht eingeplant|Kollision|Kein Meilenstein|Nicht ausgeführt|nicht erfasst|nicht notiert|nicht eingereiht|nicht vermerkt/i.test(text.slice(0, 200));
+  let roh: Awaited<ReturnType<typeof werk.lauf>>;
+  try {
+    roh = await werk.lauf(opt.erzwingen ? eingabeMitBereich(name, input, bereich) : input, origin, leseSicht ? undefined : opt.person, kontext);
+  } catch (e) {
+    // Ein Werkzeug, das wirft, zählt als interner Fehler in der Spur — der Fehler geht weiter wie bisher (Stapel: loslassen, Schleife: ein Satz).
+    ausgangVermerken(name, fehlschlag('intern', 'Fehlgeschlagen: interner Fehler im Werkzeug.'));
+    throw e;
+  }
+  // Der Ausgang kommt aus dem Werkzeug selbst (`erfolg`/`fehlschlag`, V3) — nicht mehr aus einem Muster über den Text.
+  const erg = ausgangVermerken(name, roh);
+  const text = erg.meldung;
+  const ok = erg.ok;
   await notiere({
     // Selbst gekapselte Leser (Dateien, Notizen): nur die Kopfzeile — nie Inhalte ins Protokoll.
     werkzeug: name, gruppe, risiko, eingabe: input, ergebnis: (SELBST_GEKAPSELT.has(name) ? text.split('\n')[0] : text).slice(0, 600), ok,
@@ -148,7 +191,7 @@ export async function fuehreAus(
       ? { werkzeug: vs.zurueck.werkzeug, eingabe: vs.zurueck.eingabe, text: `Zurück auf ${vs.vorher ?? 'den vorherigen Stand'}` }
       : null,
   });
-  return { text, ok, gestapelt: false };
+  return { text, ok, gestapelt: false, ergebnis: erg };
 }
 
 /**

@@ -2042,6 +2042,20 @@ Kevin: „im Sales der Head of Sales, im Marketing der Head of Marketing usw. �
 - **Arbeiter-Wecker:** `reihe()` → `arbeiterWecken()` (`lib/zoe/wecker.ts`, am `globalThis`); `POST /api/zoe/auftraege/nimm { wartenMs }` ist eine lange Abfrage.
 - **Nie still kürzen:** Antworten in Threads über `inTeilen` (lib/agenten/faeden.ts, „Teil x von n“) — nie `text.slice(0, GRENZEN.nachrichtZeichen)`.
 
+## Agenten v2 · V3 „Werkzeug-Verträge“ (10.10., Branch `agenten-v3-vertraege`, nur lokal; AGENTEN_KONZEPT_V2.md C3/C10, UPDATES.md 10.10.)
+- **Regel: neues Werkzeug NUR mit Vertrag.** Eine Zeile in `lib/werkzeuge/einordnung.ts` (Rechteklasse `lesen · vorschlag · intern · aussen · geld · loeschen`,
+  ggf. Bereich, Fremd-Quelle, Kapselung, Kategorie-Ausnahme) + Schema in `lib/zoe/werkzeug-defs.ts` (bzw. der Teil-Quelle/`agentenDefs`) + Stufe im Register —
+  der Vertrag entsteht daraus in `lib/werkzeuge/register.ts` (`vertragVon`). Ohne Vertrag läuft ein Werkzeug nicht. `LESEND`, `FREMD_WERKZEUGE`,
+  `SELBST_GEKAPSELT`, `WERKZEUG_KATEGORIE` sind daraus ABGELEITET — nie dort nachtragen. Wächter `tests/werkzeug-vertraege.test.ts`.
+- **Ausgang typisiert:** ein Werkzeug meldet Fehlschläge mit `fehlschlag(klasse, satz)` (`eingabe · rechte · sperre · nicht_gefunden · konflikt · grenze ·
+  voruebergehend · intern`; Route-Status → `klasseAusStatus`/`innenKlasse`), Erfolg als Text oder `erfolg(…)` — NIE ein Fehlersatz als bloßer Text (Wächter scannt
+  die Werkzeug-Quellen). Erfolg wird nirgends mehr am Text erkannt; der einzige Rückfall `ausAltText` (lib/werkzeuge/vertrag.ts) zählt in der Lauf-Spur
+  (`wz.rueckfall`, HOI „Werkzeuge · Verträge“, Ziel 0). `Lauf.ergebnis` (fuehreAus) trägt Art + Klasse; die Warteschlange wiederholt nur `wiederholbar`.
+- **EINE Hülle** (`fuehreAus` + `lib/werkzeuge/huelle.ts`): Vertrag → Bereich gegen Sicht (`vertragPasstZurSicht`: Business nie in Privat und umgekehrt, außer
+  `vorschlag` — der Stapel ordnet zu) → Eingabe gegen das Schema (`pruefeEingabe`, nie still klemmen/kürzen: Grenzen gehören INS Schema) → `wirkungsEntscheid`
+  (Rule of Two: `aussen`/`geld`/`loeschen` IMMER Stapel; nach fremdem Text nur `lesen`/`vorschlag` ohne Klick; Marke `fremdGelesen` gibt der Aufrufer mit).
+  ZOE gibt `sicht` (Space der Seite) mit, Heads/Mitarbeiter den Bereich des Heads; Agenten-Werkzeuge prüfen gegen das in DIESEM Lauf angebotene Schema.
+
 ## Agenten — Querliegendes
 - **Ereignisstelle (09.10., E1; ANALYSE_AGENTEN_DATEN.md):** Agenten erfahren von Änderungen nur über `ereignis(e)` (`lib/ereignisse/server.ts`, wirft nie,
   Dedup über deterministische Kennung, nach dem Speichern der Quelle) → Bestand `ereignisse--<haushalt>` (nur Kennungen, nie Betreff/Text/Beträge; Frist
