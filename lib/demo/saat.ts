@@ -577,6 +577,18 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const { agentenUndMedienSaen } = await import('./saat-agenten');
   for (const s of await agentenUndMedienSaen({ lena: LENA, jonas: JONAS, haushalt: DEMO_HAUSHALT, heute, jetzt })) schritt(s.name, s.anzahl);
 
+  // 14c) Fulfillment (10.10.): Vorlagen, Bausteine, Fälle (C1), Kunden-Link aus + Antworten + Puls (C2), Dossier mit gespeicherten Läufen (C3) —
+  //      jedes Paket in seiner Datei (lib/demo/fulfillment-*.ts), über die Routen; der Kontext bringt Personen, Mandate, Produkte und `rufe` mit.
+  const { fulfillmentSaeen, FULFILLMENT_ROUTEN } = await import('./saat-fulfillment');
+  for (const s of await fulfillmentSaeen({
+    inhaber: LENA, mitglied: JONAS, partner: BEN, haushalt: DEMO_HAUSHALT, heute, jetzt, rufe, routen: FULFILLMENT_ROUTEN,
+    mandate: [
+      { id: 'm-demo-nordwerk', leistungId: 'l-demo-retainer', firmaId: 'f-demo-nordwerk', kontaktIds: [kontaktId('sophie')] },
+      { id: 'm-demo-lumen', leistungId: 'l-demo-software', firmaId: 'f-demo-lumen', kontaktIds: [kontaktId('paul')] },
+    ],
+    leistungen: PRODUKTE.map(p => p.id), kontaktId,
+  })) schritt(s.name, s.anzahl);
+
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;
   if (o.vaultDir) {

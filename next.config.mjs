@@ -56,6 +56,10 @@ const nextConfig = {
       // Abmeldelink (05.10., Betroffenenrechte v2): das Token steht im Pfad — dieselbe strenge Richtlinie (kein Referrer, nicht indexieren).
       { source: '/abmelden/:pfad*', headers: buchung },
       { source: '/api/abmelden/:pfad*', headers: buchung },
+      // Kunden-Link (10.10., Fulfillment C2): das Token steht im Fragment — dieselbe strenge Richtlinie wie die Buchung (kein Referrer, keine Rahmen,
+      // nicht indexieren, nicht zwischenspeichern, CSP ohne fremde Quellen).
+      { source: '/kunde/:pfad*', headers: buchung },
+      { source: '/api/kunde/:pfad*', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

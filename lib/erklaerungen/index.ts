@@ -16,12 +16,19 @@ import { EINSTELLUNGEN_DATENSCHUTZ } from './einstellungen-datenschutz';
 import { EINSTELLUNGEN_KONTO } from './einstellungen-konto';
 import { EINSTELLUNGEN_PRIVAT } from './einstellungen-privat';
 import { EINSTELLUNGEN_BUSINESS } from './einstellungen-business';
+// Fulfillment (10.10.): je Paket eine Datei (C1 Prozesse, C2 Kunde, C3 Analyse) — angelegt in C0, gefüllt von den Paketen.
+import { EINSTELLUNGEN_FULFILLMENT_PROZESSE } from './fulfillment-prozesse';
+import { EINSTELLUNGEN_FULFILLMENT_KUNDE } from './fulfillment-kunde';
+import { EINSTELLUNGEN_FULFILLMENT_ANALYSE } from './fulfillment-analyse';
 
 export type { EinstellungsText, ErklaerAbschnitt } from './typen';
 export { KOPF } from './typen';
 
 /** Alle Erklärungen von Einstellungen und Karten, Schlüssel „bereich.ding“. */
-export const EINSTELLUNGEN = { ...EINSTELLUNGEN_DATENSCHUTZ, ...EINSTELLUNGEN_KONTO, ...EINSTELLUNGEN_PRIVAT, ...EINSTELLUNGEN_BUSINESS } as const;
+export const EINSTELLUNGEN = {
+  ...EINSTELLUNGEN_DATENSCHUTZ, ...EINSTELLUNGEN_KONTO, ...EINSTELLUNGEN_PRIVAT, ...EINSTELLUNGEN_BUSINESS,
+  ...EINSTELLUNGEN_FULFILLMENT_PROZESSE, ...EINSTELLUNGEN_FULFILLMENT_KUNDE, ...EINSTELLUNGEN_FULFILLMENT_ANALYSE,
+} as const;
 
 export type EinstellungsSchluessel = keyof typeof EINSTELLUNGEN;
 /** Woher eine Erklärung kommt: ein Schlüssel aus EINSTELLUNGEN oder fertig zusammengesetzte Abschnitte (Kennzahl, Head, Onboarding-Schritt). */

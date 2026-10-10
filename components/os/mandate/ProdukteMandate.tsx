@@ -23,8 +23,11 @@ import { MandateUebersicht } from '../crm/Kunden';
 import { Produkte } from './Produkte';
 import { MandateTabelle } from './MandateTabelle';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
+import { OnboardingHinweis } from '../fulfillment/prozesse';
 
 type Reiter = 'mandate' | 'produkte';
+/** Fulfillment (10.10.): dritter Punkt der Segmente — eine eigene Seite (`/os/mandate/fulfillment`, components/os/fulfillment/FulfillmentSeite.tsx). */
+type Segment = Reiter | 'fulfillment';
 
 export function ProdukteMandate() {
   const router = useRouter();
@@ -32,12 +35,15 @@ export function ProdukteMandate() {
   const reiter: Reiter = params.get('s') === 'produkte' ? 'produkte' : 'mandate';
   const api = useCrm();
   const zuKontakt = (id: string) => router.push(markttraktion('kontakte', 'akte', id));
+  const zu = (s: Segment) => router.push(s === 'fulfillment' ? WEG.fulfillment() : mandateLink(s), { scroll: false });
   return (
     <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Health, Umsatz.'}
       // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
-      rechts={<Segmente liste={[{ id: 'mandate' as const, label: 'Mandate' }, { id: 'produkte' as const, label: 'Produkte' }]} aktiv={reiter} onWahl={r => router.push(mandateLink(r), { scroll: false })} />}>
+      rechts={<Segmente<Segment> liste={[{ id: 'mandate', label: 'Mandate' }, { id: 'produkte', label: 'Produkte' }, { id: 'fulfillment', label: 'Fulfillment' }]} aktiv={reiter} onWahl={zu} />}>
       {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
       {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
+      {/* Fulfillment (10.10.): „Kundenonboarding starten“ für unterschriebene Mandate ohne Fall (Paket C1; bis dahin leer). */}
+      {reiter === 'mandate' && <OnboardingHinweis api={api} />}
       {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}
       {reiter === 'mandate' && <GewonneneOhneMandat api={api} />}
       {/* Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig. */}

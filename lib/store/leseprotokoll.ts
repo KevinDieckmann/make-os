@@ -22,7 +22,7 @@ import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 
-export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien';
+export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien' | 'fulfillment' | 'personenrecherche';
 export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> = {
   gesundheit: { label: 'Gesundheit', art9: true },
   erholung: { label: 'Erholung', art9: true },
@@ -40,6 +40,9 @@ export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> 
   inbox: { label: 'Inbox (Suche, Übergaben, Team-Postfächer)' },
   // 09.10. (Medien unterwegs, Paket 5): Original eines Mediums mit erkennbaren Personen bzw. Einwilligungen abgebildeter Personen gelesen.
   medien: { label: 'Fotos & Videos mit Personen' },
+  // 10.10. (Fulfillment): Fälle mit Stakeholder-Karte, Kunden-Antworten und Dossiers — und getrennt der Personenteil der Dossiers.
+  fulfillment: { label: 'Mandate & Dossiers' },
+  personenrecherche: { label: 'Personenteil der Dossiers' },
 };
 export const istLeseBereich = (b: unknown): b is LeseBereich => typeof b === 'string' && b in LESE_BEREICHE;
 

@@ -22,6 +22,7 @@
 
 import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, type AngebotAdresse, type PlanungAnsicht } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
+import { fulfillmentLink, fallLink, type FulfillmentBereich, type FallReiter } from '@/lib/fulfillment/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
@@ -133,6 +134,14 @@ export const WEG = {
   unterlagen: (gesellschaftId: string, vertragId?: string) => q('/os/unternehmen', { ablage: gesellschaftId, v: vertragId }),
   mandat: (id?: string) => mandateLink('mandate', id),
   produkt: (id?: string) => mandateLink('produkte', id),
+  /**
+   * Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 10): die eigene Seite unter Produkte & Mandate (`/os/mandate/fulfillment`) mit
+   * Unternavigation `u` (Prozesse · Bausteine · Onboarding · Analysen · Kreislauf · Visualisierung), `k` = Knoten im Drill-down, `b` = Baustein.
+   * `fall` = ein Mandat als laufender Fall mit Reiter; `dossier` = dessen Reiter „Analyse“. Regeln: lib/fulfillment/adresse.ts.
+   */
+  fulfillment: (u?: FulfillmentBereich, p?: { k?: string; b?: string }) => fulfillmentLink(u, p),
+  fall: (mandatId: string, r?: FallReiter) => fallLink(mandatId, r),
+  dossier: (mandatId: string) => fallLink(mandatId, 'analyse'),
   // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.
   deal: (id?: string) => (id ? dealAkte(id) : markttraktion('deals')),
   deals: () => markttraktion('deals'),

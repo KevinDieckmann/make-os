@@ -135,7 +135,13 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen nur als Team-Kürzel, Dritte nur als Mandat-Kennung)',
-  'produkt-treppe--*': 'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert hat nur als Speichername)',
+  // Fulfillment (10.10.): Bestände je Haushalt — keine Einträge je Person; beim Konto-Löschen wird der Speichername „[gelöscht]“ (fulfillmentKontoLoeschen).
+  'fulfillment--*': 'Fulfillment je Haushalt (Vorlagen, Bausteine, Rituale, Einstellungen — Geschäftswissen, Personen nur als Speichername)',
+  'fulfillment-faelle--*': 'Fälle je Haushalt (je Mandat; Dritte nur als Kontakt-Kennung — Art. 15/17 über die Kartei) — wer geändert hat nur als Speichername',
+  'fulfillment-kunde--*': 'Kunden-Links, Antworten und Puls je Haushalt (Daten Dritter, Art. 15/17 über die Kartei) — keine Einträge je Konto',
+  'fulfillment-dossiers--*': 'Dossiers je Haushalt (je Mandat; Firmenangaben, Läufe) — wer geändert/gestartet hat nur als Speichername',
+  'fulfillment-personen--*': 'Berufliche Personenkarten je Haushalt (Dritte, Art. 15/17 über die Kartei, eigene Löschfrist) — keine Einträge je Konto',
+  'produkt-treppe--*':'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert hat nur als Speichername)',
   'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
   'fokus-steuerung-privat--*': 'Prioritäten · Privat je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld) — wer sie geändert hat, steht nur im Änderungsprotokoll',
   'fokus-steuerung-business--*': 'Prioritäten · Business je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld)',
@@ -521,6 +527,8 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     // Unternehmen › Schild (10.10.): Einträge bleiben (Geschäftsunterlagen), „wer“ wird „[gelöscht]“.
     const schild = `unternehmen-schild--${konto.haushalt}`;
     await nurWenn(schild, async () => (await import('@/lib/gesellschaften/schild-server')).schildKontoLoeschen(konto.haushalt!, speicher));
+    // Fulfillment (10.10.): alle fünf Bestände bleiben (Geschäftsunterlagen), der Speichername der Person wird „[gelöscht]“.
+    await sicher(`fulfillment--${konto.haushalt}`, async () => (await import('@/lib/fulfillment/speicher')).fulfillmentKontoLoeschen(konto.haushalt!, speicher));
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
     const ev = `ereignisse--${konto.haushalt}`;
     await nurWenn(ev, async () => {

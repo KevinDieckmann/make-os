@@ -35,6 +35,7 @@ import { useLinkAuswahl } from '../Verlauf';
 import { produktAngebotFehlt } from '@/lib/crm/angebote';
 import { angebotLink } from '@/lib/crm/adresse';
 import { TreppenBereich } from './treppe/Treppe';
+import { ProduktFulfillmentZeile } from '../fulfillment/prozesse';
 
 const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: 'Kern', premium: 'Premium' };
 const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', workshop: 'Workshop', retainer: 'Retainer', sprint: 'Sprint', vermittlung: 'Vermittlung', software: 'Software' };
@@ -224,6 +225,8 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
         <Zahl wert={String(z.dealsOffen)} label={z.pipelineWert ? `Deals offen · ${kurzEuro(z.pipelineWert)}/Monat` : 'Deals offen'} farbe={LEUCHT.business} />
         <Zahl wert={z.quote !== null ? `${Math.round(z.quote * 100)} %` : '—'} label={`Abschlussquote (${z.gewonnen} gewonnen, ${z.verloren} verloren)`} />
       </Raster>
+      {/* Fulfillment (10.10.): welche Prozess-Vorlage dieses Produkt liefert (Paket C1; bis dahin leer). */}
+      <ProduktFulfillmentZeile leistungId={l.id} />
 
       <Feldzeile label="Name"><Feld wert={l.name} onFertig={name => name.trim() && setze({ name: name.trim() })} /></Feldzeile>
       <Feldzeile label="Produktlinie">

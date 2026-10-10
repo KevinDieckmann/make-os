@@ -379,6 +379,14 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('uebergabe-journal', await journalAufraeumen(heute, f['uebergabe-protokolle']));
   });
 
+  // 15b · Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Personenkarten, Unterlagen, Mandatsdaten — je ab Mandatsende; die Pakete zählen
+  //       nur (keine Namen), lib/fulfillment/fristen-server.ts verteilt.
+  await schritt('fulfillment', async () => {
+    const { fulfillmentFristen } = await import('@/lib/fulfillment/fristen-server');
+    const r = await fulfillmentFristen({ heute, jetzt, fristen: { personenTage: f['fulfillment-personen'], unterlagenTage: f['fulfillment-unterlagen'], mandatsdatenMonate: f['fulfillment-mandatsdaten'] } });
+    for (const [name, n] of Object.entries(r)) zaehle(name, n);
+  });
+
   // 16 · Bauplan-Bildschirmfotos (05.10., DSGVO-Grundlagen): können Personendaten zeigen — fertige/verworfene Karten nach der Frist,
   //      verwaiste nach 7 Tagen (lib/bauplan/bilder-frist.ts).
   await schritt('bauplan-bilder', async () => {

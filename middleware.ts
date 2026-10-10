@@ -47,6 +47,19 @@ const BUCHUNG_OFFEN = [/^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/, /^
 // Servern der Mail-Anbieter, ohne Origin) und antwortet immer gleich. GET auf die Schnittstelle (Mail-Programm öffnet den List-Unsubscribe-Link)
 // leitet nur auf die Seite um — deshalb auch von einer fremden Seite aus erreichbar (vor `crossSiteVerboten`).
 const ABMELDE_OFFEN = [/^\/abmelden\/a1-[0-9a-f]{32}$/, /^\/api\/abmelden\/a1-[0-9a-f]{32}$/];
+// Kunden-Link (10.10., Fulfillment C2 — kommt AUSGESCHALTET, FULFILLMENT_KONZEPT.md 5.4): NUR diese vier Formen sind ohne Sitzung offen — die Seite
+// `/kunde/kl-<24 hex>` und ihre Schnittstellen. Seite und API-Wurzel nur GET, `formular`/`upload`/`puls` nur POST (`kundeOffen`). Keine Ausnahme bei der
+// Origin-Prüfung (die Formulare senden von der eigenen Seite). Die Routen handeln für niemanden (Köpfe gelöscht), drosseln selbst und antworten für jede
+// Fehlerart (unbekannt, falsches Token, abgelaufen, Schalter aus) dieselbe 404. Wächter: tests/fulfillment-fundament-middleware.test.ts (+ C2).
+const KUNDE_SEITE = /^\/kunde\/kl-[a-f0-9]{24}$/;
+const KUNDE_API = /^\/api\/kunde\/kl-[a-f0-9]{24}(\/(formular|upload|puls))?$/;
+/** Ist dieser Weg ein offener Kunden-Link-Weg (Pfad UND Methode)? */
+function kundeOffen(pfad: string, methode: string): boolean {
+  if (KUNDE_SEITE.test(pfad)) return methode === 'GET' || methode === 'HEAD';
+  const m = KUNDE_API.exec(pfad);
+  if (!m) return false;
+  return m[2] ? methode === 'POST' : methode === 'GET' || methode === 'HEAD';
+}
 
 /** Solange die 2FA-Pflicht offen ist, erlaubt: den Faktor einrichten, sich selbst sehen, abmelden (05.10.). */
 const ZF_EINRICHTEN: [string, RegExp][] = [['POST', /^\/api\/konto\/zwei-faktor$/], ['GET', /^\/api\/konto\/ich$/], ['POST', /^\/api\/konto\/abmelden$/]];
@@ -158,6 +171,8 @@ export async function middleware(req: NextRequest) {
   if (OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
   // Öffentliche Buchung: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Routen handeln für niemanden.
   if (BUCHUNG_OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
+  // Kunden-Link: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Routen handeln für niemanden.
+  if (kundeOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)

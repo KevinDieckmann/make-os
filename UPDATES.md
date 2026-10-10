@@ -110,6 +110,25 @@ dieser Runde). **Rückweg:** der alte Stand liest die neuen Felder nicht und leh
 verwirft beim Speichern eines Beschlusses dessen neue Felder; `fassungen` bleiben im Eintrag liegen (der alte Schreibweg behält unbekannte Felder). Vor dem
 Upload Sicherung (Live-Daten-Regel); zurück nur mit Sicherung, wenn neue Beschlüsse bearbeitet wurden.
 
+## 10.10.2026 — Fulfillment C0: Fundament (nur lokal — Branch `fulfillment-c0`, Basis `update-0910b`; Konzept `FULFILLMENT_KONZEPT.md`)
+
+Grundlage für den neuen Bereich Fulfillment (WIE wir liefern) unter Produkte & Mandate — die Pakete C1 (Prozesse, Fall, Onboarding), C2 (Kunden-Link)
+und C3 (Analyse) bauen parallel darauf. Nur additiv: fünf NEUE Bestände (`fulfillment--<h>`, `-faelle--`, `-kunde--`, `-dossiers--`, `-personen--`, alle
+Business) und der Datei-Ordner `fulfillment-unterlagen`; an Vorhandenem nichts umgeformt. Kein Bestand wird beim Lesen angelegt.
+
+**Gebaut:** Typen, Säuberer, Grenzen (413, nie gekürzt), reine Regeln (Ebenen, Fortschritt, aktueller Knoten, wartet auf euch, Wert-Konto, Puls,
+Mandatsende, Unterschrift, Onboarding-Kandidaten, welcher Kunde steht wo), neutrale Muster (Hochhaus, drei Paket-Gerüste, Onboarding-Checkliste, Rituale,
+Playbook-Gerüst), Orte → WEG, Adressen (`WEG.fulfillment/fall/dossier`), Speicher mit EINER Schreibstelle, Tor `fulfillmentZugang` (Business only,
+`?space=privat` 403, Dienstweg schreibt nie) und `personenteilZugang`. Seite mit Unternavigation und Fall-Reitern; alle Routen als Stubs (501, öffentlich 404);
+öffentliche Seite `/kunde/kl-…` („nicht aktiv“). Register: Routen (Modul `fulfillment`), Speicher (Angaben, `IN_BUSINESS`), Art. 15/17, drei Löschfristen,
+drei Verarbeitungen (VVT), Lese-Bereiche, Stapel-Art `fulfillment`, Morgenlauf-Schritt, Middleware `KUNDE_OFFEN` + strenge Köpfe. Demo-Saat-Haken.
+
+**So testet ihr** (Klickdummy `localhost:3001`):
+1. Produkte & Mandate öffnen → oben „Fulfillment“ → die Seite mit sechs Unterpunkten erscheint, jeder zeigt „kommt mit Paket …“.
+2. ⌘K „Fulfillment“ → sechs Treffer.
+3. `/kunde/kl-000000000000000000000000` → „Dieser Link ist nicht aktiv.“
+4. `npx tsc --noEmit` und `npx vitest run tests/fulfillment-fundament*.test.ts` sind grün.
+
 ## 10.10.2026 — Kalender: Ansicht wie Google (nur lokal — Branch `kalender-ansicht`, Basis 7c9e1335 = `update-0910b`)
 
 Entscheidung 10.10.: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im Vergleich zu
