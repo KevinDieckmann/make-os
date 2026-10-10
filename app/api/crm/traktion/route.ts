@@ -34,6 +34,7 @@ import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { wochenScoreboard, verlaufEintrag, verlaufFortschreiben, verlaufSeit, gleicherStand, jePersonSieben, VERLAUF_SPEICHER, type TraktionVerlauf, type VerlaufTag } from '@/lib/crm/scoreboard';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import { botenKanalFuer, botenEingerichtet } from '@/lib/zoe/an-person';
+import { planWochenziele } from '@/lib/crm/planung-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,13 +85,15 @@ export async function GET(req: Request) {
     return { id: h, name: HEAD_NAME[h], verantwortlich: verantwortlich(h), offen: s.vorschlaege.filter(v => v.status === 'offen').length, status: b?.antwort.status ?? null, zeit: b?.zeit ?? null, zusammenfassung: b?.antwort.zusammenfassung ?? s.ruhig?.text ?? null };
   });
   const t = alsTraktion(index);
-  const [verlauf, tg, indexVerlauf, bote, boteDa] = await Promise.all([
+  const [verlauf, tg, indexVerlauf, bote, boteDa, plan] = await Promise.all([
     schnappschuss(verlaufEintrag(t, heute, jePersonSieben(kontakte, crm, heute)), heute),
     ladeTelegram().catch(() => null),
     fortschreiben('traktion-index', datei, index, heute, kontakte.length > 0),
     // 7.3 (08.10.): der EINE Sendeweg (`anPersonMelden`: ZOE auf WhatsApp, sonst Telegram) — die Karte nennt den Kanal der Person.
     botenKanalFuer(ich).catch(() => null),
     botenEingerichtet().catch(() => false),
+    // 10.10. (Schnellknopf „Planung“): die Wochenziele aus der Planung — ohne Plan null, das Scoreboard bleibt wie bisher.
+    planWochenziele(heute),
   ]);
   return {
     ok: true, heute, ich, team: TEAM,
@@ -101,7 +104,8 @@ export async function GET(req: Request) {
     traktion: t,
     index, indexVerlauf,
     verlauf,
-    scoreboard: wochenScoreboard(kontakte, crm, heute),
+    scoreboard: wochenScoreboard(kontakte, crm, heute, 8, plan),
+    planWoche: plan,
     telegram: { konfiguriert: telegramKonfiguriert(), gekoppelt: !!tg && chatsFuerPerson(tg, ich).length > 0 },
     bote: { kanal: bote, eingerichtet: boteDa },
     grundlage: [...sales, ...marketing].filter(k => GRUNDLAGE.includes(k.id)),

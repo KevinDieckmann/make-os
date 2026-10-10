@@ -352,6 +352,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/mandate-tabelle': r('GET,POST', MT, 'Mandate aus Excel/CSV einfügen: Firmen über den EINEN Weg (firmaSichern), Mandate über den CRM-Schreibweg; Vorschau → Übernehmen (Vorschau-Kennung, 409) → Rückgängig (nur Unverändertes); nur von Hand.'),
   'crm/person': r('POST', MT, 'EIN Weg „Person anlegen“ (Kartei, Firmenkarte, + Aktivität, Prospecting, Make.One-Abend; Woche 2 · 1.8) — nur von Hand.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
+  'crm/planung': r('GET,PATCH', MT, 'Markttraktion-Planung (Schnellknopf „Planung“, 10.10.): Leadkanäle, Kreislauf, Umsatzziele, Challenges — Business; Schreiben nur per Sitzung (Dienstweg 403).'),
   'crm/signale': r('GET,POST', MT, 'Signale.'),
   'crm/stammdaten': r('GET,POST', MT, 'CRM-Stammdaten.', undefined, 'Idempotenter Nachtrag fehlender Verarbeitungen ins Verzeichnis (Art. 30) — schreibt nur, wenn ein Eintrag fehlt, nie Personendaten.'),
   'crm/suche': r('GET', MT, 'Suche.'),

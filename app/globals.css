@@ -551,6 +551,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 }
 .mt-schnell[aria-selected="true"]::before { opacity: .32; animation-name: mtPulsAn; }
 .mt-schnell + .mt-schnell::before { animation-delay: -1.7s; }
+.mt-schnell + .mt-schnell + .mt-schnell::before { animation-delay: -.85s; } /* dritter Schnellknopf „Planung“ (10.10.) — leicht versetzt */
 @keyframes mtPuls { 0%, 100% { opacity: .08; transform: scale(.94); } 50% { opacity: .38; transform: scale(1.06); } }
 @keyframes mtPulsAn { 0%, 100% { opacity: .22; transform: scale(.97); } 50% { opacity: .5; transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .mt-schnell::before { animation: none !important; } }

@@ -20,7 +20,7 @@
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
-import { mandateLink, markttraktion, dealAkte, angebotLink, type AngebotAdresse } from '@/lib/crm/adresse';
+import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, type AngebotAdresse, type PlanungAnsicht } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 
@@ -133,6 +133,8 @@ export const WEG = {
   /** Qualifizierungs-Runde mit dem Filter „Nicht zugeordnet“ (08.10., Woche 2 · 6.2): Leads ohne Zuständigkeit übernehmen. */
   nichtZugeordnet: () => `${markttraktion('qualifizierung')}&wer=ohne`,
   angebot: (x?: AngebotAdresse) => angebotLink(x),
+  /** Markttraktion › Planung (10.10.): Kreislauf, Umsatzziele → Aktivitäten, Leadkanäle, Challenges; `kanal` filtert auf einen Leadkanal. */
+  vertriebsplanung: (a?: PlanungAnsicht, kanal?: string) => planungLink(a, kanal),
 
   /** Ein Termin im Kalender (K3): Tag anspringen und das Termin-Fenster öffnen (Schlüssel `uid` bzw. `uid::RID`). */
   termin: (id: string, tag?: string) => q('/os/kalender', { tag, termin: id }),
