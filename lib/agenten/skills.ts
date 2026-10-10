@@ -451,9 +451,14 @@ const EINGEBAUT: Readonly<Record<string, { beschreibung: string; ausloeser: Skil
   'finanzchef:wochenreview': { beschreibung: 'Wochenblick zum Wochenstart: Plan/Ist, die nächsten zwölf Wochen, Entscheidungen.', ausloeser: zp('woechentlich', '08:00', [1]) },
   'finanzchef:monatsabschluss': { beschreibung: 'Begleitet den Monatsabschluss des Vormonats (vom dritten Werktag bis zum 20.).', ausloeser: zp('monatlich', '08:00', [3]) },
   'finanzchef:steuercheck': { beschreibung: 'Prüft vor einem Steuertermin die Rücklage und die Fristen — Hinweis, keine Steuerberatung.', ausloeser: { art: 'hand' } },
+  // Head of Recht (10.10., lib/recht): Regelwerk ohne Modell im Morgenlauf bzw. beim Hochladen und per Knopf — nur Vorschläge, keine Rechtsberatung.
+  'recht:recht_check': { beschreibung: 'Wöchentlicher Recht-Check zum Wochenstart: Fristen der nächsten vier Wochen, Pflichten-Ampel je Gesellschaft, was fehlt (Dokumente, Meldungen), Datenschutz-Zähler — ohne Modell; Vorschläge in den Stapel.', ausloeser: zp('woechentlich', '07:00', [1]) },
+  'recht:risikorunde': { beschreibung: 'Bereitet die Quartals-Risikorunde vor: Veränderungen seit der letzten Bewertung, neue Risiken aus Ereignissen, eine Prüffrage je Risiko — bewertet wird im Schild.', ausloeser: { art: 'hand' } },
+  'recht:vertrag_checkliste': { beschreibung: 'Liest einen neu hochgeladenen Vertrag als Checkliste (Laufzeit, Kündigung, Haftung, Datenschutz/AVV, Gerichtsstand, IP) mit Fundstellen — keine Bewertung; Fristen als Vorschlag.', ausloeser: { art: 'hand' } },
+  'recht:anwalts_mappe': { beschreibung: 'Stellt auf Knopfdruck eine Anwalts-Mappe zu Gesellschaft, Vertrag oder Risiko zusammen (PDF in der Ablage) — weitergegeben wird nur von Hand.', ausloeser: { art: 'hand' } },
 };
 
-export const eingebautId = (quelle: 'heads' | 'finanzchef', modus: string) => `eingebaut:${quelle}:${modus}`;
+export const eingebautId = (quelle: 'heads' | 'finanzchef' | 'recht', modus: string) => `eingebaut:${quelle}:${modus}`;
 export const istEingebautId = (id: string): boolean => id.startsWith('eingebaut:');
 
 /** Die eingebauten Skills eines Heads (rein). Unbekannte Modi bekommen eine neutrale Beschreibung. */

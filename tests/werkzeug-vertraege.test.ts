@@ -38,6 +38,9 @@ import { beispielEingabe, pruefeEingabe } from '@/lib/werkzeuge/schema';
 import { EINORDNUNG, ALT_NAMEN } from '@/lib/werkzeuge/einordnung';
 import { LESEND_VOR_V3, FREMD_VOR_V3, GEKAPSELT_VOR_V3, KATEGORIE_VOR_V3 } from './fixtures/werkzeug-listen-vor-v3';
 
+/** Werkzeuge, die nach V3 dazukamen — ihre Einordnung steht in lib/werkzeuge/einordnung.ts; der Altbestand bleibt bit-gleich (Abschnitt b). */
+const NEU_SEIT_V3: ReadonlySet<string> = new Set(['recht_lage', 'vertrag_checkliste', 'recht_vorschlag']);
+
 const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
   ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus', ...extra });
 const sitzung = (p: string) => ({ 'content-type': 'application/json', 'x-make-user': p });
@@ -102,9 +105,10 @@ describe('(a) jedes Werkzeug hat einen Vertrag', () => {
   });
 
   it('die Werkzeuge der Heads und Mitarbeiter haben Verträge, die zum Bereich des Heads passen', async () => {
-    const [{ vertragVon }, { KATALOG }, { MEDIEN_AGENTEN }] = await Promise.all([import('@/lib/werkzeuge/register'), import('@/lib/agenten/katalog'), import('@/lib/agenten/medien-werkzeuge')]);
+    const [{ vertragVon }, { KATALOG }, { MEDIEN_AGENTEN }, { RECHT_AGENTEN }] = await Promise.all([import('@/lib/werkzeuge/register'), import('@/lib/agenten/katalog'), import('@/lib/agenten/medien-werkzeuge'), import('@/lib/agenten/recht-werkzeuge')]);
     for (const h of KATALOG) {
-      const namen = [...h.werkzeuge, ...(h.mitarbeiter ?? []).flatMap(m => m.werkzeuge), ...(MEDIEN_AGENTEN.heads[h.id] ?? [])];
+      const namen = [...h.werkzeuge, ...(h.mitarbeiter ?? []).flatMap(m => m.werkzeuge), ...(MEDIEN_AGENTEN.heads[h.id] ?? []),
+        ...(RECHT_AGENTEN.heads[h.id] ?? []), ...(h.mitarbeiter ?? []).flatMap(m => RECHT_AGENTEN.mitarbeiter[m.id] ?? [])];
       for (const n of namen) {
         const v = vertragVon(n);
         expect(v, `${h.id}: ${n}`).toBeTruthy();
@@ -119,10 +123,14 @@ describe('(b) die alten Listen sind aus der Einordnung abgeleitet — und gleich
     const [{ LESEND }, { FREMD_WERKZEUGE, SELBST_GEKAPSELT }, { WERKZEUG_KATEGORIE }] = await Promise.all([
       import('@/lib/zoe/gespraech-schutz'), import('@/lib/zoe/fremd'), import('@/lib/datenschutz/ki-werkzeuge'),
     ]);
-    expect([...LESEND].sort()).toEqual([...LESEND_VOR_V3].sort());
-    expect(FREMD_WERKZEUGE).toEqual(FREMD_VOR_V3);
-    expect([...SELBST_GEKAPSELT].sort()).toEqual([...GEKAPSELT_VOR_V3].sort());
-    expect(WERKZEUG_KATEGORIE).toEqual(KATEGORIE_VOR_V3);
+    // Der Altbestand bleibt bit-gleich; Werkzeuge, die nach V3 dazukamen (NEU_SEIT_V3, eine Zeile je Werkzeug), kommen hinzu (Kopf der Fixture).
+    const alt = <T,>(m: Record<string, T>) => Object.fromEntries(Object.entries(m).filter(([n]) => !NEU_SEIT_V3.has(n)));
+    expect([...LESEND].filter(n => !NEU_SEIT_V3.has(n)).sort()).toEqual([...LESEND_VOR_V3].sort());
+    expect(alt(FREMD_WERKZEUGE)).toEqual(FREMD_VOR_V3);
+    expect([...SELBST_GEKAPSELT].filter(n => !NEU_SEIT_V3.has(n)).sort()).toEqual([...GEKAPSELT_VOR_V3].sort());
+    expect(alt(WERKZEUG_KATEGORIE)).toEqual(KATEGORIE_VOR_V3);
+    // Jedes neue Werkzeug hat seine Einordnung.
+    for (const n of NEU_SEIT_V3) expect(EINORDNUNG[n], n).toBeTruthy();
   });
 
   it('Rechteklasse und Stufe passen zusammen: lesen/vorschlag laufen frei, Schreibendes nie still nach Fremdtext', async () => {

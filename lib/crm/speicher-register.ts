@@ -335,6 +335,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'Papierkorb 30 Tage (Morgenlauf); sonst bis zur Löschung durch den Haushalt — Belege in crm-dateien--* nach § 257 HGB; Konto löschen tilgt „wer“ („[gelöscht]“)',
     kategorie: ['vertraulich'],
   }),
+  // Head of Recht (10.10., lib/recht): letzter Wochen-Check (Fristen, Ampeln, „was fehlt“ — aus Schild/Register gerechnet), vorbereitete Risikorunden,
+  // Marken gegen Wiederholung, Checklisten-Riegel je Datei-Kennung, Kennungen erstellter Anwalts-Mappen. Keine Personen, keine Vertragstexte.
+  mit(H('recht-check--*', 'Head of Recht je Haushalt (lib/recht): letzter Wochen-Check (Fristen, Pflichten-Ampel, was fehlt, Datenschutz-Zähler — nur Business-Gesellschaften), vorbereitete Risikorunden, Marken der Vorschläge, Riegel je Datei-Kennung der Vertrags-Checklisten, Datei-Kennungen erstellter Anwalts-Mappen. Keine Personen-Felder und keine Vertragstexte (die liegen verschlüsselt in der Ablage bzw. als Entwurf im Schild); Titel aus dem Schild (Risiken, Dokumente, Marken) stehen im Bericht, wie sie dort eingetragen sind.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO (Organisations- und Aufbewahrungspflichten der Gesellschaft), lit. f (Risikofrüherkennung der eigenen Gesellschaften, § 1 StaRUG) — keine Personen-Felder',
+    art15: 'keine Personen-Felder — die Personen des Haushalts sehen den Check unter Unternehmen › Überblick (Titel wie im Schild)',
+    loeschfrist: 'der Wochen-Check wird jede Woche ersetzt, Risikorunden je Quartal; Marken und Riegel rollend (höchstens 500); mit der Instanz gelöscht',
+  }),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -769,8 +776,8 @@ const IN_BUSINESS: readonly string[] = [
   'whatsapp-spiegel', 'whatsapp-zustand', 'whatsapp-medien',
   // Business-Medien, Team, Planungs-Einheiten, Business-Finanzen ohne Privat-Einheit
   'medien--*', 'team--*', 'planung-einheiten--*', 'finance', 'business-eroeffnung',
-  // Unternehmen › Schild (10.10.): nur Business-Gesellschaften — getrennt vom gemischten Register
-  'unternehmen-schild--*',
+  // Unternehmen › Schild (10.10.): nur Business-Gesellschaften — getrennt vom gemischten Register; Head of Recht (10.10.) ebenso
+  'unternehmen-schild--*', 'recht-check--*',
 ];
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber

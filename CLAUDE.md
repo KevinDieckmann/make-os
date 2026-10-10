@@ -53,6 +53,14 @@ lokal, Route `/os`, Port 3001.
   Schwellen/Prüftermine GERECHNET, gespeichert nur Vermerke „erledigt am“ und Bewertungs-Verlauf). Kalender über `Quellen.unternehmen` (Art `pflicht`), Erinnerungen
   `usp-/usd-/usm-/usr-` (Glocke mit der vorhandenen Art „vertrag“), Morgenlauf-Schritt „Unternehmen › Schild“. Head of Recht liest NUR `unternehmenLage(haushalt)`.
   Neue Pflicht = Zeile in `PFLICHT_REGELN`/`EREIGNIS_ARTEN`, neues Dokument = Zeile in `DOKUMENT_KATALOG` (Kennung nie ändern) + Test `tests/unternehmen-schild.test.ts`.
+- **Head of Recht (10.10., Branch `head-recht`, nur lokal; UPDATES.md):** Business-Head `recht` (Name „Head of Recht“, `alteNamen` für alte Stapel-Anlässe),
+  Chat auf `/os/unternehmen` und `/os/datenschutz` (nur Business). Grenze RDG: Checklisten, Fundstellen, Vorlagen, Fristen — NIE eine rechtliche Bewertung;
+  Hinweis „keine Rechtsberatung — anwaltlich prüfen“ überall (`lib/recht/typen.ts`). Regeln rein in `lib/recht/` (check · risikorunde · vertrag-checkliste ·
+  mappe), Server `lib/recht/server.ts` (Zugang `rechtZugangFuer` = wie das Schild, Morgenlauf `rechtMorgenlauf` einmal je ISO-Woche, `vertragEingang` nach dem
+  Upload eines Vertrags, `mappeErstellen`, Stapel-Art `recht`), Bestand `recht-check--<haushalt>`, Route `/api/gesellschaften/recht`. Agenten-Werkzeuge
+  `recht_lage` · `vertrag_checkliste` (Text Dritter gekapselt) · `recht_vorschlag` (nur Stapel) in `lib/agenten/recht-werkzeuge.ts`. Jede Wirkung erst nach
+  Klick; geschrieben nur über die Schreibstellen von Schild, Register, Aufgaben, Ablage. Neues Agenten-Werkzeug nach V3 → `NEU_SEIT_V3` in
+  `tests/werkzeug-vertraege.test.ts`. Wächter `tests/head-recht.test.ts`.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
   Gesundheitsthemen laufen über sie.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben

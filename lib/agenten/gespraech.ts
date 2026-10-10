@@ -38,6 +38,7 @@ import { istMedienWerkzeug, medienAngebotErgaenzen, medienWerkzeugAusfuehren } f
 import { istUnterlagenWerkzeug, unterlagenAngebotErgaenzen, unterlagenWerkzeugAusfuehren } from './unterlagen-werkzeug';
 import { auftragBlock, auftragBrainBlock } from './auftrag';
 import { istWissenWerkzeug, wissenAngebotErgaenzen, wissenAusfuehren, wissenBeschraenkt, wissenSystemSatz, WISSEN_QUELLE } from './wissen-werkzeug';
+import { istRechtWerkzeug, rechtAngebotErgaenzen, rechtSystemSatz, rechtWerkzeugAusfuehren } from './recht-werkzeuge';
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
 import { anhaengen, brettText, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, inTeilen, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
 import { bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, zugZuruecknehmenFuer } from './faeden-server';
@@ -280,6 +281,9 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
   // nur mit zugeordneten Ordnern und offenem Bereich „brain“. Privat-Heads haben dort nie Wissen.
   const wissen = await (await import('./wissen-server')).wissenFuerHead(e.umfang.haushalt, head);
   wissenAngebotErgaenzen(angebot, { wissen, schalter, gesundheitKi, nurLesen: !!e.nurLesen, webMitarbeiter });
+  // 10.10.: Head of Recht — Lage, Vertrags-Checkliste, Vorschläge (lib/agenten/recht-werkzeuge.ts); nur in seinem Bereich, nie bei „nur lesen“, nie für einen
+  // Recherche-Mitarbeiter mit Web-Agent (R9); im Trockenlauf und für Helfer nur die lesenden.
+  if (!webMitarbeiter) rechtAngebotErgaenzen(angebot, { art: m ? 'mitarbeiter' : 'head', head, mitarbeiter: m ?? null, kategorien: kats, nurLesen: !!e.nurLesen, helfer: !!e.faden.helfer || !!e.trocken });
   for (const w of angebot.register) { const k = kategorieVonWerkzeug(w, gruppeVon(w)); if (k) kategorien.add(k); }
 
   const skills = (await skillsFuerHead(head.id, e.umfang)).filter(s => s.aktiv && (!m || !s.mitarbeiterId || s.mitarbeiterId === m.id));
@@ -294,7 +298,8 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
   }
   const zustaendig = eh.zustaendig && eh.zustaendig !== person ? await vornameVon(eh.zustaendig) : undefined;
   const wissenText = wissenSystemSatz(wissen, angebot);
-  const system = systemText({ head, m, name, kontext: kontext.text, gedaechtnis: [...haushaltMerk, ...e.gedaechtnis], skills, mitarbeiter: mitarbeiterListeHead, skill: e.skill, zusatz: e.zusatz, businessFrei, zustaendig, ...(auftragLage?.an ? { auftrag: auftragText, auftragAusBrain } : {}), ...(wissenText ? { wissen: wissenText } : {}) });
+  const zusatz = [e.zusatz ?? '', rechtSystemSatz(angebot)].filter(Boolean).join('\n\n');
+  const system = systemText({ head, m, name, kontext: kontext.text, gedaechtnis: [...haushaltMerk, ...e.gedaechtnis], skills, mitarbeiter: mitarbeiterListeHead, skill: e.skill, ...(zusatz ? { zusatz } : {}), businessFrei, zustaendig, ...(auftragLage?.an ? { auftrag: auftragText, auftragAusBrain } : {}), ...(wissenText ? { wissen: wissenText } : {}) });
   const hinweise = [kontext.hinweis, anbieter && anbieter !== 'anthropic' ? `Anbieter „${anbieter}“ ist noch nicht angebunden — es antwortet das Standard-Modell.` : '', businessFrei ? `Gerade Business-frei (${businessFrei}) — ${head.kurz} hilft, wenn du fragst; im Hintergrund ruht der Bereich.` : '',
     auftragLage && !auftragLage.an ? `Der Auftrag an ${head.kurz} ging nicht mit: ${auftragLage.grund ?? 'gerade nicht erlaubt.'}` : ''].filter(Boolean);
 
@@ -345,6 +350,8 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
         if (nein) return { inhalt: nein.meldung, ok: false };
         const w = istUnterlagenWerkzeug(wname)
           ? await unterlagenWerkzeugAusfuehren(input, { person, head })
+          : istRechtWerkzeug(wname)
+          ? await rechtWerkzeugAusfuehren(wname, input, { person, head, mitarbeiter: m, titel: e.faden.titel })
           : istWissenWerkzeug(wname)
           ? await wissenAusfuehren(input, { person, head, wissen })
           : istMedienWerkzeug(wname)

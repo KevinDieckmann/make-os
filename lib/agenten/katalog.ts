@@ -14,6 +14,7 @@
 // Neuer Head / neue Vorlage = Eintrag hier (additiv) — Kennungen nie ändern (Threads, Skills und Einstellungen hängen daran).
 
 import type { Bereich, HeadDef, MitarbeiterVorlage } from './typen';
+import { RECHT_MODI } from '@/lib/recht/typen';
 
 /** Die Modi der vorhandenen Heads (lib/heads/prompt.ts `MODI`) ohne „frage“ — die Frage ist jetzt der Chat. */
 const HEADS_MODI = {
@@ -188,18 +189,23 @@ export const KATALOG: readonly HeadDef[] = [
     ],
   },
   {
-    id: 'recht', name: 'Recht & Datenschutz', kurz: 'Recht', bereich: 'business', ebene: 'haushalt', ton: 'sorgfaeltig', farbe: 'puls',
-    auftrag: 'Gibt Hinweise zu Datenschutz, Verträgen und Fristen — keine Rechtsberatung.',
+    // 10.10. (Entscheidung): aus „Recht & Datenschutz“ wird der Head of Recht — Kennung bleibt `recht` (Threads, Skills, Einstellungen hängen daran).
+    // Grundlage research/unternehmen/FAKTEN_UNTERNEHMEN_RECHT.md › 6; Werkzeuge der Firmen-Akte als Agenten-Werkzeuge (lib/agenten/recht-werkzeuge.ts),
+    // Abläufe im Morgenlauf bzw. per Knopf (lib/recht). Grenze RDG: Checklisten, Fundstellen, Vorlagen, Fristen — nie eine rechtliche Bewertung.
+    id: 'recht', name: 'Head of Recht', kurz: 'Recht', alteNamen: ['Recht & Datenschutz'], bereich: 'business', ebene: 'haushalt', ton: 'sorgfaeltig', farbe: 'puls',
+    auftrag: 'Hält Pflichten, Fristen, Verträge und Datenschutz der Business-Gesellschaften im Blick — mit Checklisten, Fundstellen, Vorlagen und Fristen, nie mit einer rechtlichen Bewertung.',
     kategorien: ['allgemein', 'finanzen', 'brain', 'aufgaben'],
     werkzeugGruppen: ['business', 'wissen', 'aufgaben'],
     werkzeuge: ['gesellschaften_lesen', 'suche_wissen', 'lies_notiz', 'suche_arbeit', 'create_task'],
-    kontext: 'brain', kennzahlen: [], stufe: 'ausgewogen', aufwand: 'high', hinweis: 'Hinweis, keine Rechtsberatung.',
-    offen: 'Die Datenschutz-Selbstprüfung (lib/datenschutz) hat kein ZOE-Werkzeug — der Kontext des Heads liest sie (Paket 1).',
+    kontext: 'brain', eingebaut: { quelle: 'recht', modi: RECHT_MODI }, kennzahlen: [], stufe: 'ausgewogen', aufwand: 'high', hinweis: 'Hinweis, keine Rechtsberatung — anwaltlich prüfen.',
+    offen: 'Firmen-Akte (Unternehmen › Schild) und Datenschutz-Zähler liest der Kontext des Heads (lib/agenten/kontext.ts); Lage, Vertrags-Checkliste und Vorschläge über die Agenten-Werkzeuge `recht_lage`, `vertrag_checkliste`, `recht_vorschlag`. Als verkauftes Produkt für Kunden: KI-Einzelfallprüfung erst nach anwaltlicher Klärung (research › 6a Nr. 2).',
     mitarbeiter: [
-      { id: 'recht-datenschutz', name: 'Datenschutz-Prüfung', rolle: 'Erklärt offene Punkte der Datenschutz-Selbstprüfung und ihre Fristen — als Hinweis.',
-        werkzeuge: ['suche_wissen', 'create_task'], stufe: 'ausgewogen' },
-      { id: 'recht-vertraege', name: 'Verträge & Fristen', rolle: 'Behält Vertragsfristen und Kündigungstermine im Blick.',
+      { id: 'recht-fristen', name: 'Fristen & Pflichten', rolle: 'Behält Pflichten-Kalender, Ereignis-Meldungen und Schwellen je Gesellschaft im Blick und schlägt Aufgaben und Erinnerungen vor — mit Norm und Regel-Stand.',
         werkzeuge: ['gesellschaften_lesen', 'create_task'], stufe: 'schnell' },
+      { id: 'recht-vertraege', name: 'Verträge', rolle: 'Liest Verträge der Firmen-Akte als Checkliste (Laufzeit, Kündigung, Haftung, Datenschutz/AVV, Gerichtsstand, IP) mit Fundstellen und schlägt Vertragsfristen vor — ohne Bewertung.',
+        werkzeuge: ['gesellschaften_lesen', 'create_task'], stufe: 'ausgewogen' },
+      { id: 'recht-datenschutz', name: 'Datenschutz & Compliance', rolle: 'Erklärt offene Punkte der Datenschutz-Selbstprüfung, das AVV-Register, das Verzeichnis und die Pannen-Lage — nur aus Zählern und Status, nie aus Inhalten Betroffener.',
+        werkzeuge: ['suche_wissen', 'create_task'], stufe: 'ausgewogen' },
     ],
   },
   {
@@ -317,7 +323,7 @@ export const headsIm = (b: Bereich): readonly HeadDef[] => KATALOG.filter(h => h
 export function headVonVorschlag(v: { bezug?: { art: string; id: string }; anlass?: string }): string | null {
   if (v.bezug && ['skill', 'mitarbeiter', 'merksatz'].includes(v.bezug.art) && headDef(v.bezug.id)) return v.bezug.id;
   const a = v.anlass ?? '';
-  return KATALOG.find(h => a.startsWith(`${h.name}: `) || a.startsWith(`${h.name} · `))?.id ?? null;
+  return KATALOG.find(h => [h.name, ...(h.alteNamen ?? [])].some(n => a.startsWith(`${n}: `) || a.startsWith(`${n} · `)))?.id ?? null;
 }
 
 /** Eine Mitarbeiter-Vorlage samt Heimat-Head — oder null. */

@@ -44,6 +44,77 @@ gerendert, Quell-Wächter); bestehende `kalender-*`, `design-*`, `erklaerungen` 
 **Nicht gebaut / offen:** Sichtprüfung im Browser steht aus (kein Server in dieser Runde — Last auf Kevins Mac); mehrtägige Termine MIT Uhrzeit bleiben im Raster je Tag
 ein Block (wie bisher), im Monat je Tag eine Pille. **Rückweg:** nur Oberfläche + ein Browser-Merker — der alte Stand ignoriert ihn.
 
+## 10.10.2026 — Head of Recht: Recht-Check, Risikorunde, Vertrags-Checkliste, Anwalts-Mappe (nur lokal — Branch `head-recht`, Basis 7c9e1335 = `update-0910b`)
+
+Entscheidungen 10.10.: ein eigener Business-Head **„Head of Recht“** (aus „Recht & Datenschutz“, Kennung bleibt `recht`), Chat je Bereich auf
+**Unternehmen** und unter **System › Datenschutz** (Business-Sicht); von sich aus — alles nur Vorschlag + Freigabe: wöchentlicher Recht-Check,
+Quartals-Risikorunde vorbereiten, neuer Vertrag → Checkliste, Anwalts-Mappe auf Knopfdruck. Grundlage `research/unternehmen/FAKTEN_UNTERNEHMEN_RECHT.md` › 6
+(Aufgaben, Grenzen, Hinweistexte). **Grenze RDG:** für die eigenen Gesellschaften ein Werkzeug — Checklisten, Fundstellen, Vorlagen, Fristen; KEINE rechtliche
+Bewertung; überall „Hinweis, keine Rechtsberatung — anwaltlich prüfen“. Nichts wird eingereicht, versandt oder unterschrieben.
+
+**Gebaut:**
+- **Katalog** (`lib/agenten/katalog.ts`): Head of Recht (`alteNamen` — alte Stapel-Vorschläge „Recht & Datenschutz: …“ zählen weiter zu ihm) mit drei Vorlagen
+  **Fristen & Pflichten** (neu `recht-fristen`), **Verträge**, **Datenschutz & Compliance**; eingebaute Abläufe `recht_check` (montags), `risikorunde`,
+  `vertrag_checkliste`, `anwalts_mappe` (sichtbar unter Skills, „Als Nächstes“ zeigt den nächsten Recht-Check). Erklärungen tut / tut nie / Beispiel.
+- **Chat je Bereich:** `/os/unternehmen` → Head of Recht (vorher CEO-Office), `/os/datenschutz` → Head of Recht nur in Business (Privat: ZOE). Vertragsfristen
+  in „Als Nächstes“ gehören jetzt zum Head of Recht.
+- **Wöchentlicher Recht-Check** (`lib/recht/check.ts`, Regelwerk OHNE Modell, Morgenlauf-Schritt „Head of Recht“, einmal je ISO-Woche): Fristen der nächsten
+  4 Wochen (Pflichten, Dokument-Abläufe, Marken/Domains/Policen, Vertragsfristen), Pflichten-Ampel je Gesellschaft, was fehlt (Pflichtdokumente, Meldungen
+  aus Ereignissen, Profil, Schwellen, Risiken, Schutz), Datenschutz & Compliance NUR als Zähler (Selbstprüfung, AVV offen, Drittland, Verzeichnis, Pannen),
+  Eskalation („Hier lohnt eine anwaltliche Einschätzung …“). Bericht gespeichert + Glocke; Vorschläge (höchstens 8 je Woche, nicht doppelt zu den
+  Schild-Erinnerungen, frühestens nach 28 Tagen wieder) in den **Stapel** (neue Art `recht`): Aufgabe (`rcw-…`, idempotent) bzw. Anwalts-Mappe bei Eskalation.
+- **Quartals-Risikorunde vorbereiten** (`lib/recht/risikorunde.ts`): je Gesellschaft mit fälliger Runde (bzw. ohne erfasstes Risiko) Veränderungen seit der
+  letzten Bewertung, eine **Prüffrage je Risiko** (nie eine Zahl), Kandidaten aus dem Startkatalog, die Ereignisse/Schwellen/Holding/Schutzrechte nahelegen →
+  Vorschlag „ins Register übernehmen“ (bewertet wird im Schild).
+- **Neuer Vertrag → Checkliste** (`lib/recht/vertrag-checkliste.ts`): beim Hochladen unter Unternehmen › Verträge (Datei-Art „Vertrag“) liest der Server den
+  Text (`text-auslesen`), sucht Laufzeit · Kündigung · Haftung · Datenschutz/AVV · Gerichtsstand · IP und zeigt **Fundstellen als wörtliches Zitat mit Stelle**
+  (§ · Seite) — keine Wertung; „keine Stelle gefunden — selbst nachsehen“. Erkannte Stichtage (Beginn/Ende/Kündigung) als je eigener Vorschlag
+  „Vertragsfrist eintragen“ (Freigabe → Stichtag am Vertrag, „kündigen bis“ nur, wenn leer → Kalender + Erinnerung). Die Checkliste per Freigabe als
+  Entwurf in der Firmen-Akte (Dokumente › Entwürfe). Nur für die hochladende Person, nur Business-Gesellschaften.
+- **Anwalts-Mappe auf Knopfdruck** (`lib/recht/mappe.ts` + `mappe-pdf.ts`): Unternehmen › Überblick › Karte „Anwalts-Mappe“ — Thema Gesellschaft, Vertrag
+  oder Risiko, offene Fragen; EIN PDF mit Sachverhalt (chronologisch), Beteiligten (Rollen), Dokumenten mit Daten, Fristen, bisherigen Schritten, offenen
+  Fragen und den Unterlagen als Anlagen (PDF-Seiten bzw. Bild; was nicht geht, steht mit Grund im Verzeichnis). Ohne Notiz-Felder. Liegt verschlüsselt in der
+  Ablage der Gesellschaft — weitergegeben wird nur, was ihr herunterladet.
+- **Werkzeuge des Heads** (Agenten-Werkzeuge mit Vertrag, `lib/agenten/recht-werkzeuge.ts`): `recht_lage` (lesen), `vertrag_checkliste` (lesen, Text Dritter
+  gekapselt, Quelle wie die CRM-Ablage), `recht_vorschlag` (vorschlag — nur Stapel: Frist, Katalog-Risiko, Checkliste, Mappe; ein Stichtag nur, wenn er im Text
+  steht). Nur für den Head of Recht und seinen Bereich, nur mit KI-Bereich „Finanzen“ (Gesellschafts-Daten), nie bei „nur lesen“, nie Web-Mitarbeiter. Der
+  System-Text nennt die RDG-Grenze und die Eskalationsliste. Kontext des Heads: Datenschutz-Selbstprüfung + Recht-Check jetzt + vorbereitete Runde.
+- **Oberfläche:** Unternehmen › Überblick unten: Karte „Head of Recht · Recht-Check“ (Ampel, Fristen 4 Wochen, was fehlt, Datenschutz-Zähler, vorbereitete
+  Risikorunden, „Jetzt prüfen“ = nur lesen) und „Anwalts-Mappe“. Im Stapel zeigt ein Vorschlag der Art `recht` seinen Text (Checkliste, Fundstelle).
+
+**Daten und Recht:** eigener Business-Bestand `recht-check--<haushalt>` (letzter Check, Runden, Marken, Riegel je Datei, Kennungen der Mappen; Speicher-
+Register mit Angaben, `IN_BUSINESS`, Konto-Daten `NICHT_PERSOENLICH`). Route `/api/gesellschaften/recht` (GET Bericht · `?jetzt=1` · POST `mappe`; Klasse
+`haushalt`, Sicht Business über `gesellschaften`): Zugang wie das Schild — Haushalt des Inhabers mit vollem Haushaltszugang; Konto „nur Business“, Testkunde,
+fremder Haushalt → 403; die Mappe nur per Sitzung (Dienstweg 403). Freigaben der Art `recht` ebenso nur mit Zugang zur Firmen-Akte; geschrieben wird nur
+über die vorhandenen Schreibstellen (Schild, Register, Aufgaben, Ablage). Glocke mit der vorhandenen Art „vertrag“ (Business), Messenger-Text neutral
+(„Der Head of Recht hat etwas vorbereitet“). Kein Modellaufruf außerhalb des Head-Chats; der Chat läuft über `askText`/KI-Tor wie jeder Head.
+
+**Wächter:** `tests/head-recht.test.ts` (rein: Check, Checkliste ohne Wertung, Risikorunde, Mappe-Eingaben, „Als Nächstes“; Katalog, Verträge der Werkzeuge,
+Sicht Privat bekommt den Head nicht; Server: 403 für fremden Haushalt/Testkunde/„nur Business“, Morgenlauf nur Stapel + Glocke + idempotent, kein Schreibweg
+ohne Freigabe, Vertragseingang bis „kündigen bis“, Upload stößt an, Anwalts-Mappe mit Anlage, Werkzeuge, Kontext). Angepasst: `werkzeug-vertraege` (neue
+Werkzeuge kommen zum Altbestand hinzu — `NEU_SEIT_V3`), `agenten-vertrag` (eingebaute Abläufe `recht`), `chat-je-bereich` (Unternehmen → Recht). Geprüft:
+`agenten-*`, `unternehmen-schild`, `erklaerungen`, `sicht-business-privat`, `routen-register`, `datenschutz-register`, `trennung-bereiche`, `ki-datenschutz`,
+`neutral-rest`, `messlatte-malin`, `design-standard`, `repo-sauber`, `kennungen`. Schon auf der Basis rot (nicht von diesem Paket): `phase0-oberflaeche`
+(StapelProtokoll-Text) und `gesellschaften-register` (ZOE-Werkzeug liefert seit V3 typisiert).
+
+**So testet ihr (in Klicks):**
+1. Kopf auf **Business** → Leiste **Unternehmen**: der Chat unten heißt jetzt **Head of Recht**. Frage z. B. „Was steht in den nächsten vier Wochen an?“ —
+   die Antwort nennt Fristen mit Norm und endet mit „Hinweis, keine Rechtsberatung“. Kopf auf **Privat** → derselbe Chat ist ZOE.
+2. **Unternehmen › Überblick** ganz unten: Karte „Head of Recht · Recht-Check“ → **Jetzt prüfen**: Ampel, Fristen der nächsten vier Wochen, „Was fehlt“
+   (Pflichtdokumente, Meldungen, Datenschutz-Zähler). Am Montag nach dem Morgenlauf steht derselbe Bericht gespeichert da (Glocke „Recht-Check KW … liegt bereit“).
+3. **Aufträge & Freigaben** (Business): Vorschläge „Pflichtdokument ablegen …“, „Risiko prüfen: …“ — aufklappen zeigt den Text; **Freigeben** legt die Aufgabe
+   bzw. das Risiko im Schild an (bewertet wird dort), **Ablehnen** — nach 28 Tagen kommt der Vorschlag wieder, solange die Lücke besteht.
+4. **Unternehmen › Gesellschaft › Verträge** → Vertrag bearbeiten → „Neue Datei an diesen Vertrag“ (PDF mit Kündigungsklausel) → speichern. In den Freigaben
+   erscheinen „Checkliste zum Vertrag …“ (Fundstellen als Zitat, „keine rechtliche Bewertung“) und „Vertragsfrist eintragen: Kündigung …“. Freigeben →
+   Checkliste unter Dokumente › Entwürfe; der Stichtag steht am Vertrag und im Kalender.
+5. **Unternehmen › Überblick** → Karte „Anwalts-Mappe“: Gesellschaft, Thema (z. B. Vertrag), eine offene Frage → **Anwalts-Mappe erstellen** →
+   „Herunterladen“: ein PDF mit Sachverhalt, Beteiligten, Dokumenten, Fristen, Fragen und den Vertragsseiten als Anlage. Die Mappe steht auch unter Unterlagen.
+6. Mit einem Konto „nur Business“: Unternehmen bleibt gesperrt; der Head of Recht sagt, dass er die Firmen-Akte für dieses Konto nicht sieht.
+
+**Offen (nicht in diesem Paket):** Ereignis-Assistent, Beschlussvorlagen über den Head (die Vorlagen gibt es im Schild), Krisen-Frühwarnung aus der
+Finanzplanung, Versicherungs- und Außenauftritt-Check (research › 6 A4/A5/A10/A13/A15); RDG-Einordnung als verkauftes Produkt (vor Testkunden anwaltlich
+klären, research › 6a Nr. 2); Verzeichnis-Eintrag „Vertragsprüfung durch die KI“ prüfen (heute über den bestehenden KI-Eintrag).
+
 ## 10.10.2026 — Unternehmen › Schild: Pflichtdokumente, Pflichten-Kalender, Risiko-Register, Struktur, Marken & Versicherungen (nur lokal — Branch `unternehmen-schild`, Basis 6086ee72 = `update-0910b`)
 
 Entscheidung 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein Schild aufstellen, das Risiko immer wieder mitbewerten,

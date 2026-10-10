@@ -5,10 +5,11 @@
 //                                                Unterlagen bleiben, Aufbewahrung § 257 HGB). Dazu `bezug` (Name, gelöscht ja/nein).
 // POST multipart { id, datei, titel?, art? }    → Unterlage ablegen (PDF/PNG/JPG/DOCX, ≤ 15 MB, Typ am Inhalt geprüft)
 // Herunterladen wie jede Ablage-Datei über GET /api/crm/dateien?id=d-… (dieselbe Ablage, derselbe Haushalt).
+// Seit 10.10.: art „vertrag“ → der Head of Recht legt danach eine Checkliste (Fundstellen, Stichtage) als Vorschlag in den Stapel (lib/recht).
 // Die bestehende Dateiablage (lib/dateien/ablage.ts, verschlüsselt je Haushalt) — kein zweiter Speicher. Den Bezug
 // `gesellschaft` setzt nur der Server. Zugang wie /api/gesellschaften: nur der Haushalt des Inhabers (sonst 403).
 
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -88,6 +89,12 @@ export async function POST(req: Request) {
   const titel = String(form.get('titel') ?? '').slice(0, 160) || undefined;
   try {
     const e = await ablegen(z.haushalt, z.person, { art: dateiArt, ...(titel ? { titel } : {}) }, { bytes, name, typ }, new Date().toISOString(), { gesellschaft: id });
+    // Head of Recht (10.10.): ein neuer VERTRAG einer Business-Gesellschaft → Checkliste mit Fundstellen und erkannte Stichtage als Vorschläge für die
+    // hochladende Person (Regelwerk, ohne Modell; lib/recht/server.ts `vertragEingang` prüft Zugang und Bereich selbst und wirft nie). Nach der Antwort.
+    if (dateiArt === 'vertrag') {
+      const pruefen = async () => { await (await import('@/lib/recht/server')).vertragEingang(z.haushalt, z.person, e.id); };
+      try { after(pruefen); } catch { void pruefen().catch(() => {}); }
+    }
     return NextResponse.json({ ok: true, eintrag: e });
   } catch (e) {
     if (e instanceof AblageFehler) return fehler(e.message, e.status);

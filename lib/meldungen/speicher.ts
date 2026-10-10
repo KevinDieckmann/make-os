@@ -70,6 +70,9 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   // Unternehmen › Schild (10.10.): Erinnerungen (`usp-`, `usd-`, `usm-`, `usr-`; Glocke mit der vorhandenen Art „vertrag“ — eine neue Art bräche den
   // Rückweg: die alte Glocke kennt sie nicht) und ihre Fälligkeit nennen weder Gesellschaft noch Pflicht.
   if (m.bezug?.art === 'aufgabe' && /^us[pdmr]-/.test(m.bezug.id)) return 'Eine Unternehmens-Pflicht naht — Details in MAKE OS';
+  // Head of Recht (10.10.): Recht-Check, Risikorunde, Vertrags-Checkliste (Glocke Art „vertrag“, Bezug `rck-…` = Kennung des Laufs, keine Aufgabe) und
+  // die Aufgaben aus dem Check (`rcw-…`) nennen weder Gesellschaft noch Pflicht noch Vertrag.
+  if (m.bezug?.art === 'aufgabe' && /^rc[kw]-/.test(m.bezug.id)) return 'Der Head of Recht hat etwas vorbereitet — Details in MAKE OS';
   if (m.art === 'sicherheit') return 'Am Zugang wurde etwas geändert — Details in MAKE OS';
   if (m.art === 'vertrag') return 'Eine Vertragsfrist naht — Details in MAKE OS';
   if (m.art === 'verbindung') return 'Eine Verbindung braucht eine neue Anmeldung — Details in MAKE OS';

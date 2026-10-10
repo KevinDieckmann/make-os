@@ -309,6 +309,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'gesellschaften': r('GET,POST,PATCH', 'haushalt', 'Gesellschafts-Register des Haushalts.'),
   'gesellschaften/unterlagen': r('GET,POST', 'haushalt', 'Unterlagen im Gesellschafts-Register.'),
   'gesellschaften/schild': r('GET,PATCH', 'haushalt', 'Unternehmen › Schild: Pflichtdokumente, Pflichten, Risiken, Marken/Domains/Versicherungen der Business-Gesellschaften des Haushalts.'),
+  'gesellschaften/recht': r('GET,POST', 'haushalt', 'Head of Recht: letzter Wochen-Check, vorbereitete Risikorunden, Recht-Check jetzt (nur lesen) und Anwalts-Mappe auf Knopfdruck (POST, nur per Sitzung, PDF in die verschlüsselte Ablage — verschickt nichts); Zugang wie das Schild (Haushalt des Inhabers, voller Haushaltszugang).'),
   'crm/gesellschaften': r('GET,POST,PATCH,DELETE', 'haushalt', 'Gesellschaften-Register (CRM-Sicht) des Haushalts.'),
 
   // ── Kartei, Netzwerk, Markttraktion ────────────────────────────────────────────────────────────────────────

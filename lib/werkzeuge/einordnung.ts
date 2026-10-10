@@ -152,6 +152,11 @@ export const EINORDNUNG: Readonly<Record<string, Einordnung>> = {
   wissen_suchen: a('lesen', { bereich: 'business' }),
   // 09.10.: Gesundheits-Unterlagen der Person (nur der Gesundheits-Head, lib/agenten/unterlagen-werkzeug.ts) — Kopfzeile + eigener Rahmen.
   gesundheit_unterlagen: a('lesen', { bereich: 'privat', gekapselt: true }),
+  // 10.10.: Head of Recht (lib/agenten/recht-werkzeuge.ts) — nur Business, Gesellschafts-Daten (Kategorie wie `gesellschaften_lesen`). `vertrag_checkliste`
+  // liest Vertragstext DRITTER aus der Ablage (Kopfzeile + eigener Rahmen, Quelle wie die CRM-Ablage); `recht_vorschlag` legt NUR in den Stapel.
+  recht_lage: a('lesen', { bereich: 'business', kategorie: 'finanzen' }),
+  vertrag_checkliste: a('lesen', { bereich: 'business', kategorie: 'finanzen', fremd: 'crm-ablage', gekapselt: true }),
+  recht_vorschlag: a('vorschlag', { bereich: 'business', kategorie: 'finanzen' }),
 };
 
 /**

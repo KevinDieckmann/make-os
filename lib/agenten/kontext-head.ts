@@ -73,7 +73,8 @@ export const SEITEN_REGELN: readonly SeitenRegel[] = [
   { muster: '/os/mandate', head: 'kundenerfolg' },
   // Produkte (10.10., Leistungstreppe): Pakete, Treppe und Positionierung sind Sache des Head of Sales.
   { muster: '/os/mandate?s=produkte', head: 'sales' },
-  { muster: '/os/unternehmen', head: 'strategie' },
+  // Unternehmen (Firmen-Akte, Schild, Verträge) und Datenschutz (10.10., Entscheidung „Chat je Bereich“) → Head of Recht.
+  { muster: '/os/unternehmen', head: 'recht' },
   { muster: '/os/board', head: 'strategie' },
   { muster: '/os/meeting', head: 'operations' },
   { muster: '/os/research', head: 'research' },
@@ -82,7 +83,8 @@ export const SEITEN_REGELN: readonly SeitenRegel[] = [
   { muster: '/os/system', head: 'it' },
   { muster: '/os/verbindungen', head: 'it' },
   { muster: '/os/datenbasis', head: 'it' },
-  { muster: '/os/datenschutz', head: 'recht' },
+  // System › Datenschutz: in der Business-Sicht der Head of Recht, in der Privat-Sicht ZOE (ein Business-Head nie in Privat).
+  { muster: '/os/datenschutz', head: { business: 'recht', privat: null } },
   // Beide Bereiche — der Head je Sicht
   { muster: '/os/finanzen', head: { privat: 'finanzen-privat', business: 'finanzen' } },
   { muster: '/os/aufgaben', head: { privat: 'assistenz', business: 'operations' } },

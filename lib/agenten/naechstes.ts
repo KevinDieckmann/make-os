@@ -119,8 +119,26 @@ const MODUS_TITEL: Readonly<Record<string, string>> = {
   power_hour: 'Power Hour vorbereiten', lead_review: 'Leads qualifizieren', kundenreview: 'Kundenreview', wochenreview: 'Wochenreview',
   wochenplan: 'Wochenplan', netzwerk: 'Vernetzen-Runde', monatsreview: 'Monatsreview', planung: 'Event-Countdown', nachfassen: 'Nachfassen nach dem Event',
   tagescheck: 'Tagescheck', monatsabschluss: 'Monatsabschluss', steuercheck: 'Steuercheck',
+  recht_check: 'Recht-Check',
 };
-const REVIEW = new Set(['wochenreview', 'kundenreview', 'monatsreview', 'monatsabschluss', 'steuercheck', 'lead_review']);
+const REVIEW = new Set(['wochenreview', 'kundenreview', 'monatsreview', 'monatsabschluss', 'steuercheck', 'lead_review', 'recht_check']);
+
+/**
+ * Der Recht-Check des Head of Recht (10.10.): läuft im Morgenlauf (lib/recht/server.ts `rechtMorgenlauf`) beim ersten Lauf einer ISO-Woche — ab
+ * `TAKT_VON` Uhr. Dieselbe Regel wie dort (`wocheFaellig`): die nächsten Montage ab jetzt, die aktuelle Woche nur, wenn sie noch nicht lief. Rein.
+ */
+export function rechtCheckZeiten(jetzt: Date, bis: Date, letzteKw: string | undefined, kwVon: (tag: string) => string): Date[] {
+  const raus: Date[] = [];
+  const heute = tagVon(wandzeit(jetzt));
+  for (let i = 0; i <= GRENZEN.naechsteTage + 1; i++) {
+    const tag = tagPlus(heute, i);
+    const neueWoche = i === 0 ? kwVon(tag) !== letzteKw : kwVon(tag) !== kwVon(tagPlus(tag, -1));
+    if (!neueWoche) continue;
+    const t = i === 0 ? jetzt : ausWandzeit(`${tag}T${String(TAKT_VON).padStart(2, '0')}:00:00`);
+    if (t.getTime() < bis.getTime()) raus.push(t);
+  }
+  return raus;
+}
 
 /** Treffer eines Heads → Einträge (rein); Power Hour einer anderen Person fällt weg. */
 export function headEintraege(headId: string, treffer: readonly ModusTreffer[], person: string, jetzt: Date): Naechstes[] {
@@ -189,7 +207,8 @@ export function headFuerFrist(f: { art: string; bereich: 'privat' | 'business' }
     case 'mandat': return 'kundenerfolg';
     case 'angebot': case 'deal': return 'sales';
     case 'dsgvo': case 'pflicht': return 'recht';
-    case 'vertrag': return 'strategie';
+    // 10.10.: Vertragsfristen (Register, Marken, Domains, Versicherungen) führt der Head of Recht.
+    case 'vertrag': return 'recht';
     case 'etappe': return 'produkt';
     case 'meilenstein': return f.bereich === 'privat' ? 'assistenz' : 'strategie';
     default: return null;
@@ -372,6 +391,15 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date(), s
           ausserhalbTakt);
         raus.push(...headEintraege('finanzen', treffer, person, jetzt));
       }
+    }
+  }
+
+  // 2b) Head of Recht (10.10.): der wöchentliche Recht-Check — nur, wer den Head sieht UND Zugang zur Firmen-Akte hat (wie Unternehmen › Schild).
+  if (!einst.notAus && sicht.has('recht') && einst.heads.recht?.aktiv !== false && !einst.heads.recht?.notAus) {
+    const r = await sicher(import('@/lib/recht/server').then(async m => { const z = await m.rechtZugangFuer(person); return z ? { stand: await m.ladeRechtStand(z.haushalt) } : null; }), null);
+    if (r) {
+      const { kwVon } = await import('@/lib/recht/check');
+      raus.push(...headEintraege('recht', rechtCheckZeiten(jetzt, bis, r.stand.woche?.kw, kwVon).map(wann => ({ modus: 'recht_check', wann })), person, jetzt));
     }
   }
 

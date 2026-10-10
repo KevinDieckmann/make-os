@@ -46,7 +46,8 @@ export const ANSPRUCH_MS = 10 * 60_000;
  */
 // Medien unterwegs (09.10., Paket 5): `medien` — ein Head schlägt Auswahl, Zuschnitte und Texte zu Medien eines Auftrags vor (lib/medien/heads.ts).
 // Produkte (10.10., Leistungstreppe): `produkte` — Treppe aus einem Dokument, Fortschritts-Report, nächste Stufe (lib/crm/treppe-server.ts).
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | AgentenStapelArt;
+// Head of Recht (10.10.): `recht` — Aufgabe aus dem Recht-Check, Katalog-Risiko, Checkliste als Entwurf, Vertragsfrist, Anwalts-Mappe (lib/recht/server.ts).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {
