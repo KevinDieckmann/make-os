@@ -32,6 +32,7 @@ import { neueKennung } from '@/lib/kennung';
 import { suchPasst } from '@/lib/text/such-norm';
 import { PlanerLeiste } from './PlanerLeiste';
 import { usePersonen } from './aufgaben/hilfe';
+import { FokusTafel } from './planung/FokusTafel';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -56,15 +57,6 @@ interface EigenesStichwort { id: string; label: string; thema: string; woerter: 
 
 const PRIOS = [['critical', 'kritisch'], ['high', 'hoch'], ['medium', 'mittel'], ['low', 'niedrig']] as const;
 
-/** Die Horizonte, für die je ein Fokus-Satz gesetzt wird. */
-const HORIZONTE = [
-  { id: 'jahr', label: 'Jahr', frage: 'Worauf läuft dieses Jahr hinaus?' },
-  { id: 'quartal', label: 'Quartal', frage: 'Was muss dieses Quartal stehen?' },
-  { id: 'monat', label: 'Monat', frage: 'Worauf liegt der Fokus diesen Monat?' },
-  { id: 'woche', label: 'Woche', frage: 'Worauf liegt der Fokus diese Woche?' },
-  { id: 'tag', label: 'Heute', frage: 'Worauf liegt der Fokus heute?' },
-];
-
 export function KompassView() {
   // Personen des Haushalts aus dem Team (09.10.: keine festen Namen im Filter „Wer“).
   const teamPersonen = usePersonen();
@@ -83,7 +75,7 @@ export function KompassView() {
   const [wessen, setWessen] = useState<'wir' | 'ich' | string>('wir');
   const [fokusLesend, setFokusLesend] = useState(false);
   // Fokus je Space (26.09., Kevin): gemeinsam · Privat · Business — Schlüssel „privat:jahr“ usw.
-  const { ausAdresse: spaceAusAdresse } = useSpace();
+  const { ausAdresse: spaceAusAdresse, space: spaceAktiv } = useSpace();
   const [fokusSpace, setFokusSpace] = useState<SpaceId | null>(null);
   useEffect(() => { setFokusSpace(spaceAusAdresse); }, [spaceAusAdresse]);
   const kf = (h: string) => fokusSchluessel(h, fokusSpace);
@@ -337,7 +329,6 @@ export function KompassView() {
     </div>
   );
 
-  const gesetzt = HORIZONTE.filter(h => (fokus[kf(h.id)] ?? '').trim()).length;
   let k = 0; // laufender Karten-Index fürs gestaffelte Erscheinen
 
   return (
@@ -410,37 +401,23 @@ export function KompassView() {
           geben und welchen Fokus." Der Satz je Horizont steht in denselben
           Daten, aus denen ZOE, der Tagesplan und die Wochensicht lesen. */}
       <Karte i={k++}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Chip farbe={gesetzt === HORIZONTE.length ? LEUCHT.gut : gesetzt ? LEUCHT.achtung : C.inkLeise}>{gesetzt} von {HORIZONTE.length} gesetzt</Chip>}>{wessen === 'wir' ? 'Unser Fokus' : wessen === 'ich' ? 'Mein Fokus' : `Fokus von ${personen.andere.find(a => a.speicher === wessen)?.name ?? wessen}`}</Ueberschrift>
-        {/* Wessen Fokus (26.09.): gemeinsam, meiner, der der anderen Person (nur lesen) */}
+        <Ueberschrift farbe={LEUCHT.schlaf}>Fokus</Ueberschrift>
+        {/* Seit 09.10. (Kevin: „dass wir selber alle immer Fokusse einstellen können … individuell“): je Horizont Unser + Mein Fokus aus den
+            getrennten Beständen (Privat · Business), Mein Fokus einzeln teilbar — dieselbe Tafel wie Planung › Fokus (FokusTafel). */}
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont — gemeinsam und für dich. Was hier steht, taucht auf Heute, im Tag, in der Woche und bei ZOE wieder auf.</div>
+        <FokusTafel vorgabe={fokusSpace ?? spaceAktiv} />
+        <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Je Priorität — wessen und welcher Bereich</div>
+        {/* Wessen Fokus je Priorität (26.09.): gemeinsam, meiner, der der anderen Person (nur lesen) */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           {([['wir', 'Wir'], ['ich', 'Ich']] as const).map(([id, label]) => chip(wessen === id, LEUCHT.schlaf, label, () => setWessen(id), id))}
           {personen.andere.map(a => chip(wessen === a.speicher, LEUCHT.beziehung, a.name, () => setWessen(a.speicher), a.speicher))}
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du — andere sehen ihn nur, wenn du deine eigenen Ziele teilst (Konto)'}</span>
         </div>
-        {/* Welcher Space (26.09.): gemeinsam, Privat, Business — jeder Space hat seinen eigenen Satz je Horizont. */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           {chip(fokusSpace === null, C.aktiv, 'Gemeinsam', () => setFokusSpace(null), 'sp-gemeinsam')}
           {(['privat', 'business'] as const).map(sp => chip(fokusSpace === sp, SPACE_FARBE[sp], SPACE_LABEL[sp], () => setFokusSpace(sp), `sp-${sp}`))}
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusSpace ? `nur ${SPACE_LABEL[fokusSpace]} — Planer und ZOE nehmen ihn im ${SPACE_LABEL[fokusSpace]}-Space` : 'gilt überall, wo kein Space-Fokus steht'}</span>
-        </div>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei ZOE wieder auf.</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {HORIZONTE.map(h => (
-            <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ ...MIKRO, width: 62, flex: '0 0 auto' }}>{h.label}</span>
-              <input
-                value={fokus[kf(h.id)] ?? ''}
-                readOnly={fokusLesend}
-                onChange={e => fokusSetzen(kf(h.id), e.target.value)}
-                placeholder={fokusLesend ? '—' : h.frage}
-                aria-label={`Fokus ${h.label}`}
-                style={{ ...feld, fontWeight: fokus[kf(h.id)] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
-              />
-            </div>
-          ))}
         </div>
         {/* Fokus je Priorität (Malin 26.09.: „die Kreise 1–4“): die vier obersten Prioritäten bekommen je einen Satz. */}
-        <div style={{ ...MIKRO, margin: '16px 0 8px' }}>Je Priorität</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {themen.slice(0, 4).map((b, i) => (
             <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

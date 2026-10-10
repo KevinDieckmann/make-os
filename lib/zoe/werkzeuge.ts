@@ -26,6 +26,9 @@ import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
 import { CRM_VORSCHLAG_LAUF, ausVorschlag } from './crm-vorschlag';
 import { innen, innenFehler, innenNein } from './innen';
+import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { istFokusHorizont } from '@/lib/planung/fokus';
+import { fokusSichtFuer } from '@/lib/planung/fokus-server';
 import { setzeKontostand, erfasseRechnung, erfasseZahlung, erfassePlanposten, setzeZiele } from './finanz-werkzeuge';
 import { neueKennung } from '@/lib/kennung';
 import type { PlanArt } from '@/types/planer';
@@ -203,22 +206,33 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
   return `Erfasst: Meilenstein „${m.titel}“ ${teile.join(' und ')}.`;
 }
 
-/** Fokus-Satz setzen (09.10.): NUR über `PUT /api/state/ziele` (gemeinsamer Bestand „wir“, Protokoll, Jahres-Schlüssel wie die Oberfläche). */
+/**
+ * Fokus-Satz setzen — seit 09.10. NUR über `PUT /api/planung/fokus` (Privat und Business liegen getrennt, auch in den Daten): `fuer`
+ * wir = Unser Fokus (Standard), ich = Mein Fokus der auslösenden Person; `space` privat|business (ohne Angabe
+ * Privat, bei einem Konto „nur Business“ Business). Der Stand kommt aus derselben Lesestelle (lib/planung/fokus-server.ts) — 409 statt
+ * Überschreiben, über 300 Zeichen 413 (nie gekürzt).
+ */
 async function setzeFokus(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
   if (!person) return KEINE_PERSON_PLAN;
   const h = String(input.horizont ?? '');
-  if (!['tag', 'woche', 'monat', 'quartal', 'jahr'].includes(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
-  // Fokus je Space (26.09.): ohne Angabe der gemeinsame Satz, sonst „privat:jahr“ / „business:jahr“.
-  const space = input.space === 'privat' || input.space === 'business' ? String(input.space) : null;
-  // Fokus des Jahres je Jahr (30.09., lib/planung/jahr-fokus.ts): `jahr` nur beim Horizont Jahr, höchstens 10 Jahre um heute.
+  if (!istFokusHorizont(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
+  const zugang = await planZugangFuer(person);
+  if (!zugang) return 'Fehlgeschlagen: Der Fokus gehört zu einem Haushalt — dieses Konto hat keinen.';
+  const bereich = input.space === 'privat' || input.space === 'business' ? input.space : zugang.sicht === 'privat' ? 'privat' : 'business';
+  const wessen = input.fuer === 'ich' ? 'mein' : 'unser';
+  // Fokus des Jahres je Jahr (30.09.): `jahr` nur beim Horizont Jahr, höchstens 10 Jahre um heute.
   const laufend = Number(localDay().slice(0, 4));
   const jahr = h === 'jahr' && input.jahr != null ? Number(input.jahr) : laufend;
   if (!Number.isInteger(jahr) || Math.abs(jahr - laufend) > 10) return 'Fehlgeschlagen: jahr als Jahreszahl angeben (höchstens 10 Jahre um heute).';
-  const key = space ? `${space}:${h}` : h;
-  const text = String(input.text ?? '').slice(0, 300);
-  const r = await innen('/api/state/ziele', 'PUT', { horizont: h === 'jahr' ? `${key}:${jahr}` : key, fokus: text }, person);
+  const s = await fokusSichtFuer(person, bereich, { jahr });
+  if ('fehler' in s) return `Fehlgeschlagen: ${s.fehler}`;
+  const text = String(input.text ?? '');
+  const zelle = wessen === 'unser' ? s.horizonte[h].unser : s.horizonte[h].mein;
+  const r = await innen('/api/planung/fokus', 'PUT', { bereich, wessen, horizont: h, ...(h === 'jahr' ? { jahr } : {}), text, stand: zelle.stand }, person);
+  if (r.status === 409) return 'Fehlgeschlagen: Der Fokus wurde inzwischen geändert — nichts überschrieben, bitte noch einmal.';
   if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r)}`;
-  return `Erfasst: Fokus (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}${space ? `, ${space}` : ''}) = „${text}“. ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Home, in der Übersicht und lenkt die Planung.'}`;
+  const wer = wessen === 'unser' ? 'Unser Fokus' : 'Mein Fokus';
+  return `Erfasst: ${wer} (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}, ${bereich === 'privat' ? 'Privat' : 'Business'}) = „${text.trim()}“. ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Heute und in Planung › Fokus und lenkt die Planung.'}`;
 }
 
 // ── Gesundheit (23.09.): die Griffe, die ein Satz auslöst ───────────────────

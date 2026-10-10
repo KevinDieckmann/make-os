@@ -8,7 +8,7 @@
 //     in den Kalender klicken oder aufziehen → der Block entsteht als iCloud-Termin (Art Fokus/Block, lib/planung/
 //     bloecke.ts) — ein Block IST ein Termin: verschieben, Dauer, löschen wie jeder Termin (mit ETag);
 //   · ZOE belegt die Woche (Vorschlag; „Übernehmen“ legt die Blöcke an — nichts ohne Klick);
-//   · Fokus der Woche + Ziele/Meilensteine (Planung gegen Ziele, nicht ins Blaue);
+//   · Fokus der Woche (seit 09.10. Unser + Mein Fokus, direkt setzbar — FokusTafel) + Ziele/Meilensteine (Planung gegen Ziele, nicht ins Blaue);
 //   · die Übernahme der alten Wochenplan-Blöcke (einmal, mit Vorschau) und ihr Archiv (vergangene Blöcke, nur lesen).
 // Tippen statt Ziehen: funktioniert am Handy genauso (HTML-Ziehen gibt es auf Touch nicht).
 
@@ -20,7 +20,6 @@ import { ART_FARBE, type PlanArt } from '@/types/planer';
 import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { fokusFuerSpace } from '@/lib/make-one/space-regeln';
 import { useSpace } from '@/hooks/useSpace';
 import { blockAnfrage, wochenStunden, planArtVon } from '@/lib/planung/bloecke';
 import { uebernahmeTexte, type ArchivBlock } from '@/lib/planung/wochenplan-uebernahme';
@@ -28,6 +27,7 @@ import { wandAus } from '@/lib/kalender/zeit';
 import { ZieleMeilensteine } from '../planung/ZieleMeilensteine';
 import { WEG } from '@/lib/wege';
 import type { KTermin, Wer } from './teile';
+import { FokusTafel } from '../planung/FokusTafel';
 
 /** Was man gerade platziert (antippen → in den Kalender klicken). */
 export interface Baustein { art: PlanArt; titel: string; dauerMin: number; taskId?: string }
@@ -68,14 +68,13 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   laden: () => Promise<void> | void; melden: (text: string | null) => void;
 }) {
   const { state: aufgabenStand } = useTasks();
-  const { ausAdresse: spaceAusAdresse } = useSpace();
+  const { ausAdresse: spaceAusAdresse, space: spaceAktiv } = useSpace();
   // Rückfrage-Karte zur Übernahme — `dialog` hängt in der Leiste, wo die Knöpfe sitzen.
   const { bestaetigen, dialog } = useRueckfrage();
   const [gewaehlt, setGewaehlt] = useState<Baustein | null>(null);
   const [ich, setIch] = useState<Wer>('kevin');
   const [routinen, setRoutinen] = useState<{ id: string; label: string; dauerMin: number }[]>([]);
   const [regler, setRegler] = useState<Record<string, number>>({});
-  const [ziele, setZiele] = useState<{ fokus?: Record<string, string> }>({});
   const [neuTitel, setNeuTitel] = useState('');
   const [neuDauer, setNeuDauer] = useState(60);
   const [neuArt, setNeuArt] = useState<PlanArt>('block');
@@ -90,7 +89,6 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich?.speicher === 'malin') setIch('malin'); }).catch(() => {});
     fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen(((d.routinen ?? []) as { id: string; label: string; dauerMin: number; aktiv: boolean }[]).filter(x => x.aktiv))).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
-    fetch('/api/state/ziele').then(r => r.json()).then(d => setZiele({ fokus: d.fokus ?? {} })).catch(() => {});
   }, [aktiv]);
 
   // Archiv (alte, nicht übernommene Blöcke) des Zeitraums — nur lesen. Sicht: die eigenen bzw. die der gewählten Person.
@@ -202,7 +200,6 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     await Promise.all([uebernahmeLaden(), archivLaden(), laden()]);
   }
 
-  const fokus = fokusFuerSpace(ziele.fokus, spaceAusAdresse);
   const chip = (b: Baustein, farbe: string, inhalt: React.ReactNode, key: string, breit?: number) => {
     const an = gewaehlt?.titel === b.titel && gewaehlt.art === b.art && gewaehlt.taskId === b.taskId;
     return (
@@ -329,12 +326,11 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   /** Unter dem Raster: Fokus, Ziele, ZOE. */
   const unten = !aktiv ? null : (
     <div style={{ display: 'grid', gap: 12 }}>
-      {(fokus.woche || fokus.monat) && (
-        <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/monat" style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Monatsziele ›</Link>}>Fokus</Ueberschrift>
-          <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4 }}><span style={{ color: LEUCHT.schlaf }}>◎</span> {fokus.woche || fokus.monat}</div>
-        </Karte>
-      )}
+      {/* Wochenfokus (09.10.): Unser + Mein Fokus aus den getrennten Beständen, direkt setzbar (FokusTafel) — dagegen wird geplant. */}
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/fokus" style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Alle Horizonte ›</Link>}>Fokus der Woche</Ueberschrift>
+        <FokusTafel horizonte={['woche']} {...(spaceAusAdresse ? { bereich: spaceAusAdresse } : { vorgabe: spaceAktiv })} />
+      </Karte>
       <ZieleMeilensteine horizont="woche" farbe={LEUCHT.schlaf} i={1} kompakt />
       <Karte i={2} akzent={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>ZOE belegt die Woche</Ueberschrift>

@@ -47,7 +47,8 @@ export interface PlanungStand {
   msNeuLaden: () => Promise<void>;
   /** Die Ziele dieses Horizonts frisch holen (07.10.: nachdem „Rückgängig“ Unterzielen ihr Oberziel zurückgegeben hat). */
   zieleNeuLaden: () => Promise<void>;
-  fokusSetzen: (schluessel: string, wert: string) => void;
+  // `fokusSetzen` ist seit 09.10. weg: der Fokus liegt in getrennten Beständen (Privat/Business) — schreiben nur über
+  // lib/planung/fokus-client.ts (`useFokus`), nie mehr in den gemischten Bestand `ziele`. `fokus` oben bleibt nur lesend (Altbestand).
   einheitAnlegen: (name: string) => Promise<string | null>;
   /** Hinweis nach einem abgelehnten Speichern (z. B. „inzwischen geändert“) — sonst null. */
   hinweis: string | null;
@@ -101,7 +102,6 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true, fuer?: string):
   useEffect(() => { const neu = () => setRunde(r => r + 1); window.addEventListener(NEU_ANGEFANGEN, neu); return () => window.removeEventListener(NEU_ANGEFANGEN, neu); }, []);
   const zieleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const msTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const fokusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /** Die aktuelle Sicht — Grundlage für „was hat die Person gerade geändert“. */
   const zieleRef = useRef<ZielZeile[]>([]);
   const msRef = useRef<MsZeile[]>([]);
@@ -225,14 +225,6 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true, fuer?: string):
     if (msSchreiber.hatOffenes) void msSchreiber.senden();
   }, [zieleSchreiber, msSchreiber]);
 
-  const fokusSetzen = useCallback((schluessel: string, wert: string) => {
-    setFokus(a => ({ ...a, [schluessel]: wert }));
-    clearTimeout(fokusTimer.current);
-    fokusTimer.current = setTimeout(() => {
-      fetch('/api/state/ziele', { method: 'PUT', headers: kopf, body: JSON.stringify({ horizont: schluessel, fokus: wert, ...(fuer ? { fuer } : {}) }) }).catch(() => {});
-    }, 600);
-  }, [fuer]);
-
   const einheitAnlegen = useCallback(async (name: string): Promise<string | null> => {
     try {
       const r = await fetch('/api/planung/einheiten', { method: 'POST', headers: kopf, body: JSON.stringify({ name }) });
@@ -243,5 +235,5 @@ export function usePlanung(horizont: ZielHorizont, aktiv = true, fuer?: string):
     } catch { return null; }
   }, []);
 
-  return { heute, zr, geladen, ziele, alleZiele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, persistZieleJetzt, msNeuLaden: ladeMs, zieleNeuLaden: ladeZiele, fokusSetzen, einheitAnlegen, hinweis, ...(fuer ? { fuer } : {}), darfSchreiben, nichtGeteilt };
+  return { heute, zr, geladen, ziele, alleZiele, fokus, ms, einheiten, persistZiele, persistMs, persistMsJetzt, persistZieleJetzt, msNeuLaden: ladeMs, zieleNeuLaden: ladeZiele, einheitAnlegen, hinweis, ...(fuer ? { fuer } : {}), darfSchreiben, nichtGeteilt };
 }

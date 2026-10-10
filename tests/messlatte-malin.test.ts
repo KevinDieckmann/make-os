@@ -336,6 +336,9 @@ const SYS = {
   // seiner Gesundheits-Unterlage (`gesundheit-unterlagen--kevin`) — nur er selbst.
   agentenAuftrag: 'MESSLATTE-SYS-AGENTEN-AUFTRAG',
   unterlage: 'MESSLATTE-SYS-GESUNDHEIT-UNTERLAGE',
+
+  // 09.10. „Fokus: gemeinsam und je Person“: Kevins eigener Fokus (`fokus-eigen--kevin`, nicht geteilt) — nur er selbst.
+  fokusMein: 'MESSLATTE-SYS-FOKUS-MEIN',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -534,6 +537,7 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('stammdaten', { firmen: [], konten: [], partner: [], personen: [{ id: 'p-messlatte', name: 'kevin', person: 'kevin', steuerId: SYS.steuerId, svNummer: SYS.steuerId }] });
     // Arbeitsrahmen (Business-frei, Lücke 7): Kevins eigene Ergänzung — nur er selbst sieht sie.
     await db.saveJson('arbeitsrahmen--kevin', { businessFrei: [{ tage: [2], von: '05:17', bis: '06:43' }], geaendertAm: SYS.arbeitsrahmen });
+    await db.saveJson('fokus-eigen--kevin', { fokus: { monat: SYS.fokusMein, woche: SYS.fokusMein } });
 
     await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
 

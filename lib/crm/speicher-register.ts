@@ -444,6 +444,28 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     art15: 'alle Konten des Haushalts sehen ihn unter Planung › Jahr (Business-Konten lesend); als Freitext kann er Vornamen der Mitglieder nennen',
     loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird; Art. 17 (Konto löschen) tilgt im Freitext nicht automatisch — einen Namen darin entfernen die übrigen Mitglieder unter Planung › Jahr (Text bearbeiten)',
   }),
+  // Fokus je Bereich (09.10., Kevin: „Firma und Privat müssen immer getrennt liegen — auch von den Daten“): Unser Fokus je Haushalt getrennt
+  // nach Privat und Business, Mein Fokus je Person (Privat und Business getrennt) — Freitext der Mitglieder, keine Dritten (lib/planung/fokus.ts).
+  mit(H('fokus-privat--*', 'Unser Fokus · Privat je Haushalt — ein Satz je Horizont, von den Mitgliedern selbst gepflegt; Freitext ohne Personen-Feld, keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Nutzung der Planung durch die Mitglieder des Haushalts',
+    art15: 'die vollen Mitglieder des Haushalts sehen ihn unter Planung › Fokus und auf Heute (Privat)',
+    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird; Konto löschen tilgt im Freitext nicht automatisch — die übrigen Mitglieder ändern ihn unter Planung › Fokus',
+  }),
+  mit(H('fokus-business--*', 'Unser Fokus · Business je Haushalt und Gesellschaft — ein Satz je Horizont; Freitext ohne Personen-Feld, keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der Gesellschaften durch die Mitglieder des Haushalts',
+    art15: 'alle Konten des Haushalts sehen ihn unter Planung › Fokus (Business) und auf Heute (Business-Konten lesend)',
+    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird',
+  }),
+  mit(H('fokus-eigen--*', 'Mein Fokus · Privat je Person — eigene Sätze je Horizont, einzelne mit den anderen Mitgliedern geteilt (`geteilt`); keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die Person plant für sich selbst',
+    art15: 'Konto-Export (PERSON_BESTAENDE); sichtbar nur der Person selbst und, je Satz geteilt, den anderen vollen Mitgliedern des Haushalts',
+    loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand)',
+  }),
+  mit(H('fokus-eigen-business--*', 'Mein Fokus · Business je Person — eigene Sätze je Horizont, einzelne geteilt (`geteilt`); keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG — die Person plant ihre Arbeit selbst',
+    art15: 'Konto-Export (PERSON_BESTAENDE); sichtbar nur der Person selbst und, je Satz geteilt, den anderen vollen Mitgliedern des Haushalts',
+    loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand)',
+  }),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
   // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.
   T('meilenstein-raum--*', 'Verlauf/Notiz/Links je Meilenstein — bleiben, Namen/Adressen der Person getilgt (lib/crm/person-weitere.ts).'),

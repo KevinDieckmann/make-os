@@ -4,6 +4,60 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Fokus: gemeinsam und je Person (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
+
+Kevin 09.10. spät: „Bau die Fokus-Seite auch nochmal ein wenig um, dass wir selber alle immer Fokusse einstellen können — sonst macht das
+ja alles keinen Sinn. Muss ja auch wieder individuell sein.“ Dazu die neue Regel: „Firma und Privat müssen immer getrennt liegen — auch von
+den Daten.“
+
+**Befund vorher:** Der Fokus lag als Satz je Horizont im gemischten Bestand `ziele` (`monat`, `privat:monat`, `business:monat` …) — ein
+„gemeinsamer“ Satz ohne Bereich, eigene Sätze nur über den Kompass (`ziele-eigen--<person>`), nichts davon teilbar, und die Prompts (Kalender-
+Agent, Wochenvorschlag) lasen den gemeinsamen Satz für jede Person — auch für ein Konto „nur Business“. `gatherBrain` kannte den Fokus gar nicht.
+
+**Gebaut:**
+- **Getrennte Bestände** (`lib/planung/fokus.ts`): Unser Fokus · Privat `fokus-privat--<haushalt>`, Unser Fokus · Business je Gesellschaft
+  `fokus-business--<haushalt>` (Schlüssel `<gesamt|gesellschaft>:<h>`), Mein Fokus · Privat `fokus-eigen--<person>`, Mein Fokus · Business
+  `fokus-eigen-business--<person>`; je Satz „teilen“ (`geteilt`). Kein Bestand mischt Privat und Business. **Altbestand bleibt** und wird nur
+  gelesen: Privat `privat:<h>`, sonst der bisherige gemeinsame Satz; Business-Gesamt `business:<h>`; Mein Fokus aus `ziele-eigen--<person>` — nur
+  im Haushalt der Inhaber (`ziele` liegt instanzweit). Sobald ein neuer Satz gespeichert ist, gilt er (auch leer = bewusst gelöscht). Nichts wird
+  mehr in `ziele` geschrieben.
+- **EINE Stelle** `lib/planung/fokus-server.ts` + Route `GET/PUT /api/planung/fokus` (Register `haushalt`, Tor `planZugangVon`): je Horizont
+  Unser, Mein (+ geteilt) und je Partner NUR Geteiltes (Regel wie bei den Zielen: volle Mitglieder desselben Haushalts). Schreiben mit Stand der
+  Zelle → 409 mit der neuen Fassung; > 300 Zeichen → 413; Unser nur volle Mitglieder (Konto „nur Business“ liest den Business-Fokus, schreibt
+  nur seinen eigenen); Privat für „nur Business“ 403.
+- **Oberfläche:** `components/os/planung/FokusTafel.tsx` — Privat · Business (im Business Gesamt + je Gesellschaft), Jahr · Quartal · Monat ·
+  Woche · Heute, je Zeile „Unser Fokus“ und „Mein Fokus“ mit Schalter „mit <Name> teilen“, darunter Geteiltes der anderen Person. Ein Feld, Enter
+  oder Verlassen speichert. Eingehängt in **Planung › Fokus**, die Fokus-Karte auf **Jahr/Quartal/Monat**, **Kalender › Planen** (Woche) und im
+  **Kompass** (der Fokus je Priorität bleibt dort wie bisher). **Heute:** die Fokus-Karte fragt bei fehlendem Satz direkt („Noch kein Fokus
+  diesen Monat — Worauf kommt es diesen Monat an?“) mit Eingabefeld; Tagesstart (Ritual) schreibt „Mein Fokus · Heute“; Tagesplanung und Wachstum
+  lesen über denselben Hook (`lib/planung/fokus-client.ts` `useFokus`).
+- **ZOE/Agenten lesen den Fokus der AUSLÖSENDEN Person:** `fokusZeilenFuer(person)` (Unser + Mein + mit ihr Geteiltes, Privat nur mit Privat-Zugang)
+  — in `gatherBrain` (`Brain.fokus`, im `<daten>`-Rahmen in `blockZiele`, ein Head nur seinen Bereich), im Kalender-Agenten
+  (`/api/kalender/analyse`) und im Wochenvorschlag (`/api/planung/vorschlag`). ZOE `setze_fokus` schreibt über `PUT /api/planung/fokus` (neu:
+  `fuer: wir|ich`, Bereich Privat/Business, Vorschau aus derselben Lesestelle).
+- **Recht:** Speicher-Register (4 Einträge mit Angaben), `PERSON_BESTAENDE` (`fokus-eigen`, `fokus-eigen-business`, immer mit Suffix → Konto-Export
+  und Konto löschen), `NICHT_PERSOENLICH` (die zwei Haushalts-Bestände); Messlatte: Marke in `fokus-eigen--kevin`. Onboarding-Prüfung „Fokus“
+  zählt die neuen Bestände mit.
+
+Tests: `tests/fokus-unser-mein.test.ts` (neu: Regel, Altbestand, Route „ungeteilter eigener Fokus kommt nie an“, „nur Business“ nie Privat,
+fremder Haushalt nichts — auch nicht aus dem Altbestand, Stand/409, 413, getrennte Bestände, `ziele` unberührt, EINE Lesestelle), angepasst:
+`zoe-schreibwege`, `planung-naechstes-jahr`, `design-kern`, `messlatte-malin`; grün: `routen-register`, `datenschutz-register`, `betroffenenrechte`,
+Design-Wächter, Onboarding, Brain/Agenten.
+
+**So testet ihr** (beide Konten):
+1. Planung › Fokus: oben Privat · Business. Bei „Monat“ unter „Unser Fokus“ einen Satz eintippen, Enter → „gespeichert“. Die andere Person
+   lädt neu → sieht denselben Satz.
+2. Unter „Mein Fokus“ einen Satz eintippen → die andere Person sieht ihn NICHT. Schalter „mit <Name> teilen“ an → bei ihr steht er unter dem
+   Feld mit deinem Vornamen.
+3. Business wählen → Gesamt und je Gesellschaft ein eigener Satz.
+4. Heute (Privat) ohne Monatsfokus: die Fokus-Karte fragt „Worauf kommt es diesen Monat an?“ — eintippen, Enter → der Satz steht in der Karte.
+5. Planung › Jahr/Quartal/Monat: die Fokus-Karte oben zeigt Unser + Mein für diesen Horizont. Kalender › Planen: „Fokus der Woche“.
+6. ZOE: „Setz meinen Fokus für diese Woche auf …“ → Vorschlag im Stapel → freigeben → steht unter „Mein Fokus · Woche“.
+7. Bisherige Sätze (vor dem Update) erscheinen als „bisheriger Satz“, bis jemand sie überschreibt.
+
+**Offen:** Der Fokus je Priorität im Kompass liegt weiter im bisherigen Bestand (nicht umgezogen); Gesellschaften aus dem Register (`g-…`) haben
+noch keinen eigenen Business-Fokus (nur die festen Business-Gesellschaften).
+
 ## 09.10.2026 — Ziele: gemeinsam und je Person (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
 
 Kevin 09.10.: „Wir müssen im privaten Bereich irgendwie einen Bereich haben, wo wir zusammen unsere Ziele eintragen können — und jeder für

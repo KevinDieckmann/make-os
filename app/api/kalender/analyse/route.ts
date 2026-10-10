@@ -15,7 +15,7 @@
 //   · #K1 — Titel fremder Termine (Einladung, Abo, Buchungsseite) stehen als <fremde_daten quelle="kalender">.
 //   · Vorschlags-Kalender aus den Kalender-Einstellungen (`vorschlagsKalender`), Standard: der eigene der Person.
 // S1 #9 (29.09.): kein fester Gesundheits-/Personenkontext mehr im Prompt — optional aus dem eigenen Profil der fragenden
-// Person (lib/gesundheit/kontext.ts), nie aus dem der anderen; das Ziel kommt aus den gepflegten Zielen (`ziele`).
+// Person (lib/gesundheit/kontext.ts), nie aus dem der anderen; der Fokus seit 09.10. aus lib/planung/fokus-server.ts (der fragenden Person).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -31,8 +31,9 @@ import { ausWandzeit, wandzeit, tagPlus as wandTagPlus } from '@/lib/kalender/ze
 import { legeKalenderVorschlaege, vorschlagsKalenderFuer, KEIN_EIGENER_KALENDER, type KalenderBlock } from '@/lib/zoe/kalender-vorschlag';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { nameVon } from '@/lib/zoe/raum';
-import { loadJson } from '@/lib/store/local-db';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { fokusZeilenFuer } from '@/lib/planung/fokus-server';
+import { fokusSatz } from '@/lib/planung/fokus';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -118,9 +119,10 @@ export async function POST(req: Request) {
   const agent = await resolveAgent('kalender');
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), briefing: '', conflicts, vorschlaege: [], eingetragen: false, gestapelt: 0 });
 
-  const [eigeneAngaben, ziele] = await Promise.all([
+  // Fokus (09.10.): der der fragenden Person (Unser + Mein + mit ihr Geteiltes, Privat nur mit Privat-Zugang) — EINE Lesestelle.
+  const [eigeneAngaben, fokus] = await Promise.all([
     eigenerGesundheitsKontext(zugang.person),
-    loadJson<{ fokus?: Record<string, string> }>('ziele').catch(() => null),
+    fokusZeilenFuer(zugang.person, { horizonte: ['woche'] }),
   ]);
   const name = nameVon(zugang.person);
   const system = [
@@ -140,7 +142,7 @@ export async function POST(req: Request) {
   const termine = scheduleText(events, fromTs);
   const user = [
     `Heute: ${today}`,
-    ziele?.fokus?.woche ? `Fokus der Woche: ${ziele.fokus.woche}` : '',
+    fokus.length ? fokusSatz(fokus) : '',
     eigeneAngaben,
     `Erlaubte Ziel-Tage: ${days.join(', ')}`,
     '',
