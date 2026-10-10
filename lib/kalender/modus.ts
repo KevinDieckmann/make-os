@@ -27,6 +27,14 @@ export type KalenderAnsicht = (typeof KALENDER_ANSICHTEN)[number];
 export function startAnsicht(gemerkt: string | null | undefined, breit: boolean): KalenderAnsicht {
   return (KALENDER_ANSICHTEN as readonly string[]).includes(gemerkt ?? '') ? (gemerkt as KalenderAnsicht) : breit ? 'woche' : 'tag';
 }
+/**
+ * Wie viele Tage die Ansicht „4 Tage“ zeigt (10.10., Kevin: „Handy: Tag bzw. 3 Tage“): am Handy drei — vier schmale Spalten sind auf
+ * 375 px nicht lesbar —, sonst vier. Kennung (`vier`), Kürzel (x) und gemerkte Wahl bleiben dieselben.
+ */
+export const mehrereTage = (handy: boolean): 3 | 4 => (handy ? 3 : 4);
+/** Beschriftung der Ansicht „4 Tage“ bzw. am Handy „3 Tage“. */
+export const mehrereTageLabel = (handy: boolean): string => `${mehrereTage(handy)} Tage`;
+
 export type WerFilter = 'alle' | 'meine' | 'beteiligt';
 
 export interface ModusAdresse { modus: Modus; as?: string; ap?: string; al?: string; wer?: WerFilter; space?: 'privat' | 'business'; tag?: string }

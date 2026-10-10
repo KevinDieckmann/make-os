@@ -23,10 +23,15 @@
 // Planen öffnet eine zugeklappte Spalte (die Bausteine stehen dort). Regeln rein in ./klappen.ts.
 // Seit 09.10. (Kevin: „mit 2 Fingern nach links wischen = nächste Woche, nach rechts zurück“): Wischen blättert in Tag/4 Tage/Woche/Monat —
 // Trackpad mit zwei Fingern, am Handy ein Finger auf der Kopfzeile der Tage; dieselbe Funktion wie die Pfeile. Regeln rein in ./wischen.ts.
+// Seit 10.10. (Kevin: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im
+// Vergleich zu Google“): der Kalender füllt den Bildschirm (`useVolleHoehe` — Raster und linke Spalte rollen je in sich, nicht die Seite);
+// EINE schlanke Kopfzeile (Heute ‹ › · Zeitraum „5.–11. Okt. 2026 · KW 41“ · Abgleich als Punkte · Suche als Symbol · Ansicht · Kalender/Planen ·
+// Kalender|Aufgaben · Darstellung), kein Seitenkopf darüber (der Titel bleibt für Vorleser). Darstellung je Gerät (./darstellung.tsx): Zeilenhöhe,
+// Zoom (Strg/⌘ + Rad bzw. Pinch im Raster), „Aufgaben ohne Uhrzeit anzeigen“, Bedienungshilfe. Am Handy heißt „4 Tage“ „3 Tage“.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Blocks, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
@@ -34,7 +39,7 @@ import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { montagVon, monatsblatt } from '@/lib/kalender/layout';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { Erklaert, Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit, FlussKarte } from '../ui';
+import { Erklaert, Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, feld, LEUCHT, useBreit, useHandy, FlussKarte } from '../ui';
 import { useKalender, TerminFenster, WER_FARBE, WER_LABEL, type KTermin, type Wer } from './teile';
 import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
@@ -46,7 +51,6 @@ import { VierTage } from './VierTage';
 import { Jahr, useJahr } from './Jahr';
 import { useQuellTermine, istQuellTermin, QUELL_KALENDER } from './quellen';
 import { AuswertungKarte } from './Auswertung';
-import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 import { useTasks } from '@/context/TasksContext';
 import { ART_INFO, TERMIN_ARTEN, type TerminArt } from '@/lib/kalender/arten';
 // K3 (30.09.): Aufgaben abhaken/einplanen/„Ohne Termin“ und Termin aus der Adresse öffnen (Akten im CRM).
@@ -59,7 +63,9 @@ import { suchPasst } from '@/lib/text/such-norm';
 import { useVerschieben } from './verschieben';
 import { EinstellungenBelegt } from './EinstellungenBelegt';
 import { useArbeitsrahmen, BusinessFreiLink } from '../arbeitsrahmen/BusinessFrei';
-import { AbgleichStand } from './AbgleichStand';
+import { AbgleichPunkte, type AbgleichQuelle } from './AbgleichStand';
+import { DarstellungKnopf, kalenderDarstellungAendern, useKalenderDarstellung, useVolleHoehe } from './darstellung';
+import { arbeitsbeginnAus, pxJeMinute, zeitraumText, zoomMal } from '@/lib/kalender/darstellung';
 import { GoogleVerbindung } from './GoogleVerbindung';
 import { IcloudVerbindung } from './IcloudVerbindung';
 import { BereichVerbindungen } from './VerbindenKarten';
@@ -68,7 +74,7 @@ import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
 import { icsVonPlanArt, planArtAusTitel } from '@/lib/planung/bloecke';
 import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
-import { modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
+import { mehrereTage, mehrereTageLabel, modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
 import { useSpace } from '@/hooks/useSpace';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 import { LINKS_ID, LINKS_TASTE, linksOffenLesen, linksOffenMerken, linksSichtbar, linksTaste, oeffnenFuerPlanen } from './klappen';
@@ -79,7 +85,6 @@ type Ansicht = KalenderAnsicht;
 const MIT_RASTER: readonly Ansicht[] = ['tag', 'vier', 'woche'];
 const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'vier', label: '4 Tage', taste: 'x' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'jahr', label: 'Jahr', taste: 'y' }, { id: 'agenda', label: 'Termine', taste: 'a' }];
 const MERKER = 'make-os:kalender-ansicht';
-const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const uhr = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const monatPlus = (tag: string, n: number) => { const d = new Date(`${tag.slice(0, 7)}-15T12:00:00`); d.setMonth(d.getMonth() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
@@ -89,8 +94,8 @@ interface Analyse { briefing?: string; conflicts?: { date: string; a: string; b:
 type Bereich = 'alle' | 'privat' | 'business';
 
 
-/** „Erstellen ▾“ wie Google: Menü der Arten. */
-function ErstellenMenue({ onArt, breit }: { onArt: (a: TerminArt) => void; breit: boolean }) {
+/** Klappmenü am Knopf: Klick daneben oder Esc schließt (Erstellen, Ansicht). */
+function useKlappMenue() {
   const [auf, setAuf] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -100,18 +105,49 @@ function ErstellenMenue({ onArt, breit }: { onArt: (a: TerminArt) => void; breit
     document.addEventListener('mousedown', weg); document.addEventListener('keydown', taste);
     return () => { document.removeEventListener('mousedown', weg); document.removeEventListener('keydown', taste); };
   }, [auf]);
+  return { auf, setAuf, box };
+}
+const MENUE: React.CSSProperties = { position: 'absolute', top: 'calc(100% + 6px)', zIndex: 40, minWidth: 190, display: 'grid', padding: 6, borderRadius: 12, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' };
+const MENUE_ZEILE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 10px', border: 'none', borderRadius: 8, background: 'transparent', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer' };
+
+/** „Erstellen ▾“ wie Google: Menü der Arten. `kompakt` (Handy, 10.10.): nur „+“ — die Kopfzeile passt so in zwei Zeilen. */
+function ErstellenMenue({ onArt, breit, kompakt }: { onArt: (a: TerminArt) => void; breit: boolean; kompakt?: boolean }) {
+  const { auf, setAuf, box } = useKlappMenue();
   return (
-    <div ref={box} style={{ position: 'relative', display: 'inline-flex' }}>
-      <button type="button" onClick={() => setAuf(a => !a)} aria-haspopup="menu" aria-expanded={auf} className="fassbar"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: breit ? '10px 18px' : '8px 14px', borderRadius: 14, border: `1px solid ${LEUCHT.puls}80`, background: `${LEUCHT.puls}24`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 18px -8px rgba(0,0,0,.6)' }}>
-        <span aria-hidden style={{ fontSize: 18, lineHeight: 1, color: LEUCHT.puls }}>+</span> Erstellen <span aria-hidden style={{ fontSize: TYP.bedien, color: C.inkLeise }}>▾</span>
+    <div ref={box} style={{ position: 'relative', display: 'inline-flex', flex: '0 0 auto' }}>
+      <button type="button" onClick={() => setAuf(a => !a)} aria-haspopup="menu" aria-expanded={auf} aria-label={kompakt ? 'Erstellen' : undefined} title={kompakt ? 'Erstellen (c)' : undefined} className="fassbar"
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 40, minWidth: kompakt ? 44 : undefined, padding: kompakt ? 0 : breit ? '10px 18px' : '8px 14px', borderRadius: 14, border: `1px solid ${LEUCHT.puls}80`, background: `${LEUCHT.puls}24`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 18px -8px rgba(0,0,0,.6)' }}>
+        <span aria-hidden style={{ fontSize: 18, lineHeight: 1, color: LEUCHT.puls }}>+</span>{!kompakt && <> Erstellen <span aria-hidden style={{ fontSize: TYP.bedien, color: C.inkLeise }}>▾</span></>}
       </button>
       {auf && (
-        <div role="menu" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 40, minWidth: 190, display: 'grid', padding: 6, borderRadius: 12, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
+        <div role="menu" style={{ ...MENUE, ...(kompakt ? { right: 0 } : { left: 0 }) }}>
           {TERMIN_ARTEN.map(a => (
-            <button key={a} role="menuitem" type="button" onClick={() => { setAuf(false); onArt(a); }} className="fassbar"
-              style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 10px', border: 'none', borderRadius: 8, background: 'transparent', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer' }}>
+            <button key={a} role="menuitem" type="button" onClick={() => { setAuf(false); onArt(a); }} className="fassbar" style={MENUE_ZEILE}>
               <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: ART_INFO[a].farbe ?? LEUCHT.puls }} />{ART_INFO[a].label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Ansicht als Menü „Woche ▾“ (10.10., wie Google) — für die schmale Kopfzeile; breit stehen die Segmente. Mit den Tasten (d · x · w · m · y · a). */
+function AnsichtMenue({ liste, aktiv, onWahl }: { liste: readonly { id: Ansicht; label: string; taste: string }[]; aktiv: Ansicht; onWahl: (a: Ansicht) => void }) {
+  const { auf, setAuf, box } = useKlappMenue();
+  const jetzt = liste.find(a => a.id === aktiv) ?? liste[0];
+  return (
+    <div ref={box} style={{ position: 'relative', display: 'inline-flex', flex: '0 0 auto' }}>
+      <button type="button" onClick={() => setAuf(a => !a)} aria-haspopup="menu" aria-expanded={auf} aria-label={`Ansicht: ${jetzt?.label ?? ''} — wechseln`} className="fassbar"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '0 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        {jetzt?.label}<span aria-hidden style={{ color: C.inkLeise }}>▾</span>
+      </button>
+      {auf && (
+        <div role="menu" style={{ ...MENUE, right: 0, minWidth: 170 }}>
+          {liste.map(a => (
+            <button key={a.id} role="menuitemradio" aria-checked={a.id === aktiv} type="button" onClick={() => { setAuf(false); onWahl(a.id); }} className="fassbar"
+              style={{ ...MENUE_ZEILE, fontWeight: a.id === aktiv ? 700 : 500, background: a.id === aktiv ? 'rgba(255,255,255,.06)' : 'transparent' }}>
+              {a.label}<span aria-hidden style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: TYP.bedien }}>{a.taste}</span>
             </button>
           ))}
         </div>
@@ -122,7 +158,18 @@ function ErstellenMenue({ onArt, breit }: { onArt: (a: TerminArt) => void; breit
 
 export function Kalender() {
   const breit = useBreit();
+  const handy = useHandy();
   const router = useRouter();
+  // Darstellung je Gerät (10.10.): Zeilenhöhe × Zoom, Aufgaben ohne Uhrzeit, Bedienungshilfe; am Handy „3 Tage“ statt 4.
+  const darstellung = useKalenderDarstellung();
+  const px = pxJeMinute(darstellung);
+  const nTage = mehrereTage(handy);
+  const ansichten = useMemo(() => ANSICHTEN.map(a => (a.id === 'vier' ? { ...a, label: mehrereTageLabel(handy) } : a)), [handy]);
+  // Volle Höhe (10.10.): der Kalender reicht bis zum unteren Fensterrand, Raster und linke Spalte rollen in sich.
+  const flaeche = useRef<HTMLDivElement>(null);
+  const hoehe = useVolleHoehe(flaeche);
+  const [sucheOffen, setSucheOffen] = useState(false);
+  const sucheFeld = useRef<HTMLInputElement>(null);
   const heute = localDay();
   const [ansicht, setAnsichtRoh] = useState<Ansicht>('woche');
   const [anker, setAnker] = useState(heute);
@@ -189,13 +236,13 @@ export function Kalender() {
   // Zeitraum je Ansicht
   const { von, bis, tage, blatt } = useMemo(() => {
     if (ansicht === 'tag') return { von: anker, bis: tagPlus(anker, 1), tage: [anker], blatt: [] as string[] };
-    if (ansicht === 'vier') { const t = Array.from({ length: 4 }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, 4), tage: t, blatt: [] as string[] }; }
+    if (ansicht === 'vier') { const t = Array.from({ length: nTage }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, nTage), tage: t, blatt: [] as string[] }; }
     // Jahr (K2): die Ansicht lädt ihr Jahr verdichtet selbst (useJahr) — hier nur der Ankertag für Leiste/Mini-Monat.
     if (ansicht === 'jahr') return { von: anker, bis: tagPlus(anker, 1), tage: [anker], blatt: [] as string[] };
     if (ansicht === 'woche') { const mo = montagVon(anker); const t = Array.from({ length: 7 }, (_, i) => tagPlus(mo, i)); return { von: mo, bis: tagPlus(mo, 7), tage: t, blatt: [] as string[] }; }
     if (ansicht === 'monat') { const b = monatsblatt(Number(anker.slice(0, 4)), Number(anker.slice(5, 7))); return { von: b[0], bis: tagPlus(b[41], 1), tage: b, blatt: b }; }
     const t = Array.from({ length: 30 }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, 30), tage: t, blatt: [] as string[] };
-  }, [ansicht, anker]);
+  }, [ansicht, anker, nTage]);
   // Sicht Privat · Business (10.10.): der Bereich geht an den Server — nur „Alles“ (ausdrücklich gewählt) holt beide.
   const { daten, laedt, laden, setDaten } = useKalender(von, bis, bereich);
   // Business-frei (08.10., Lücke 7): die EIGENEN Business-freien Zeiten des Zeitraums — dezent im Raster.
@@ -249,7 +296,7 @@ export function Kalender() {
   const arbeitsortNeu = (tag: string, wer: Wer) => setNeu({ tag, art: 'arbeitsort', ganztags: true, wer });
 
   // Navigation
-  const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'vier' ? tagPlus(a, 4 * richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : ansicht === 'jahr' ? monatPlus(a, 12 * richtung) : tagPlus(a, 30 * richtung));
+  const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'vier' ? tagPlus(a, nTage * richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : ansicht === 'jahr' ? monatPlus(a, 12 * richtung) : tagPlus(a, 30 * richtung));
   // Wischen (09.10.): Trackpad zwei Finger waagerecht bzw. ein Finger auf der Kopfzeile der Tage — dieselbe Funktion wie die Pfeile.
   const inhalt = useRef<HTMLDivElement>(null);
   useKalenderWischen(inhalt, { aktiv: wischenAktiv(ansicht, modus) && !offen && !neu, weiter: springe });
@@ -265,12 +312,13 @@ export function Kalender() {
       else if (e.key === 'p') setModus(modus === 'planen' ? 'kalender' : 'planen');
       else if (e.key === 'k') setModus('kalender');
       else if (e.key === 'u') setModus('aufgaben');
+      else if (e.key === '/') { setSucheOffen(true); setTimeout(() => sucheFeld.current?.focus(), 0); }
       else { const a = ANSICHTEN.find(x => x.taste === e.key); if (a) setAnsicht(a.id); else return; }
       e.preventDefault();
     };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [ansicht, anker, heute, sicht, bereich, modus]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ansicht, anker, heute, sicht, bereich, modus, nTage]); // eslint-disable-line react-hooks/exhaustive-deps
   // ⌘B / Strg+B klappt die linke Spalte (nur breit, nicht im Eingabefeld, nicht über einem offenen Termin-Fenster).
   useEffect(() => {
     if (!breit) return;
@@ -283,11 +331,8 @@ export function Kalender() {
     return () => window.removeEventListener('keydown', taste);
   }, [breit, linksOffen, offen, neu]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const titel = ansicht === 'tag' ? `${WD[new Date(`${anker}T12:00:00`).getDay()]}, ${Number(anker.slice(8, 10))}. ${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}`
-    : ansicht === 'woche' ? `KW ${kalenderwoche(tage[0])} · ${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[6].slice(8, 10))}.${Number(tage[6].slice(5, 7))}.${tage[6].slice(0, 4)}`
-    : ansicht === 'vier' ? `${Number(tage[0].slice(8, 10))}.${Number(tage[0].slice(5, 7))}. – ${Number(tage[3].slice(8, 10))}.${Number(tage[3].slice(5, 7))}.${tage[3].slice(0, 4)}`
-    : ansicht === 'jahr' ? `${jahr}`
-    : ansicht === 'monat' ? `${MONATE[Number(anker.slice(5, 7)) - 1]} ${anker.slice(0, 4)}` : `Nächste 30 Tage ab ${Number(anker.slice(8, 10))}.${Number(anker.slice(5, 7))}.`;
+  // Zeitraum der Kopfzeile in EINER Zeile (10.10.): „5.–11. Okt. 2026 · KW 41“ (lib/kalender/darstellung.ts).
+  const titel = zeitraumText(ansicht, tage, anker);
 
   // Schreiben
   // Verschieben/Dauer mit Stand (ETag, 409 statt still überschreiben) + „Rückgängig“ (Standard `useRueckgaengig`, R-K2 #92, verschieben.tsx);
@@ -318,6 +363,14 @@ export function Kalender() {
   // iCloud je Person (06.10.): die eigene Verbindung zählt auch als Live-Quelle.
   const icloudLive = !!daten?.icloud || !!daten?.icloudEigen;
   const live = icloudLive || mitGoogle;
+  // Abgleich je Quelle als Punkt in der Kopfzeile (10.10.) — statt einer Textzeile „letzter Abgleich …“ je Kalender.
+  const abgleichQuellen = useMemo<AbgleichQuelle[]>(() => [
+    ...(daten?.icloud && daten.abgleich ? [{ name: `iCloud${daten.konto ? ` · ${daten.konto}` : ''}`, quelle: 'iCloud', a: daten.abgleich }] : []),
+    ...(daten?.icloudEigen ? [{ name: 'Meine iCloud', quelle: 'iCloud', a: daten.icloudEigen.abgleich }] : []),
+    ...(daten?.google ?? []).map(g => ({ name: `${g.kalender} (Google)`, quelle: 'Google', a: g.abgleich })),
+  ], [daten]);
+  // Arbeitsbeginn (10.10.): dorthin rollt das Raster, wenn heute nicht zu sehen ist — aus den eigenen Business-freien Zeiten, sonst 7 Uhr.
+  const arbeitsbeginn = useMemo(() => arbeitsbeginnAus(rahmen?.fenster, tage), [rahmen, tage]);
   const quelleText = daten?.quelle === 'icloud' ? [daten.icloud ? `iCloud${daten.konto ? ` · ${daten.konto}` : ''}` : '', mitGoogle ? 'Google' : ''].filter(Boolean).join(' + ') : daten?.quelle === 'mac' ? 'Stand vom Mac (nur lesen)' : 'noch keine Quelle';
 
   const leiste = (
@@ -436,37 +489,76 @@ export function Kalender() {
     </div>
   );
 
-  const haupt = (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minHeight: 0, minWidth: 0, height: breit ? 'calc(100vh - 190px)' : undefined }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+  // Eigenschaften, die Tag/Woche und 4 Tage gleich bekommen (Darstellung je Gerät, Arbeitsbeginn, Planen-Stunden im Tageskopf).
+  const rasterGemeinsam = {
+    heute, fristen, erinnerungen, aufgaben: aufgabenImZeitraum, aufgabeDauer: einst?.dauer.aufgabe ?? 30,
+    onNeu: neuImRaster, onVerschieben: verschieben, onAufgabe: ka.oeffnen, onAufgabeHaken: ka.abhaken, onAufgabeEinplanen: ka.einplanen, onArbeitsortNeu: arbeitsortNeu,
+    businessFrei: rahmen?.fenster, px, onZoom: (f: number) => { kalenderDarstellungAendern({ zoom: zoomMal(darstellung.zoom, f) }); },
+    aufgabenGanztags: darstellung.aufgabenOhneZeit, hilfe: darstellung.hilfe, onHilfe: (an: boolean) => { kalenderDarstellungAendern({ hilfe: an }); },
+    tagZusatz: planen.tagZusatz, arbeitsbeginn,
+  };
+  const ansichtListe = modus === 'planen' ? ansichten.filter(a => MIT_RASTER.includes(a.id)) : ansichten;
+  const sucheAuf = () => { setSucheOffen(true); setTimeout(() => sucheFeld.current?.focus(), 0); };
+  // Monat (10.10.): „Aufgaben ohne Uhrzeit anzeigen“ gilt auch hier — mit Uhrzeit bleiben sie.
+  const monatAufgaben = darstellung.aufgabenOhneZeit ? aufgabenImZeitraum : aufgabenImZeitraum.filter(a => !!a.zeit);
+
+  // EINE schlanke Kopfzeile (10.10.): links Navigation + Zeitraum + Abgleich-Punkte, rechts Suche · Ansicht · Kalender/Planen · Kalender|Aufgaben ·
+  // Darstellung. Breit (Containerabfrage `.kalender-kopf`, app/globals.css) stehen Ansicht und Kalender/Planen als Segmente, schmal als Menü bzw. Symbol.
+  // Suche als Symbol (10.10.): ein Klick (oder „/“) öffnet das Feld; leer und verlassen bzw. Esc klappt es wieder zu.
+  const sucheElement = sucheOffen || suche ? (
+    <input ref={sucheFeld} value={suche} onChange={e => setSuche(e.target.value)} onBlur={() => { if (!suche.trim()) setSucheOffen(false); }}
+      onKeyDown={e => { if (e.key === 'Escape') { setSuche(''); setSucheOffen(false); e.currentTarget.blur(); } }}
+      placeholder={modus === 'aufgaben' ? 'Aufgaben suchen …' : 'Suchen …'} aria-label={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} className="kalender-suche" style={{ ...feld, fontSize: 13, padding: '7px 11px' }} />
+  ) : (
+    <SymbolKnopf ariaLabel={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} titel="Suchen (/)" onClick={sucheAuf}><Search size={18} /></SymbolKnopf>
+  );
+  const kopfzeile = (
+    <div className="kalender-kopf" role="group" aria-label="Kalender bedienen">
+      <div className="kalender-kopf-links">
         {/* Spalte zugeklappt (09.10.): „Spalte öffnen“ und ein kleines „Erstellen“ vorne — sonst stünde „Erstellen“ nur in der Spalte. */}
         {breit && !linksOffen && <SymbolKnopf ariaLabel={`Spalte öffnen — Monat, Sicht, Kalender (${LINKS_TASTE})`} offen={false} steuert={LINKS_ID} onClick={() => linksUmschalten(true)}><PanelLeftOpen size={18} /></SymbolKnopf>}
         {breit && !linksOffen && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
         <Knopf leise onClick={() => setAnker(heute)}>Heute</Knopf>
-        <button onClick={() => springe(-1)} aria-label="zurück" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>‹</button>
-        <button onClick={() => springe(1)} aria-label="weiter" style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 9, color: C.ink, width: 40, height: 40, cursor: 'pointer', fontSize: 18 }}>›</button>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', marginRight: 'auto' }}>{titel}{laedt && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontWeight: 400, marginLeft: 8 }}>lädt …</span>}{daten?.icloud && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.abgleich} /></span>}{daten?.icloudEigen && <span style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={daten.icloudEigen.abgleich} bezeichnung="Meine iCloud" /></span>}{(daten?.google ?? []).map(g => <span key={g.person} style={{ marginLeft: 10, letterSpacing: 0 }}><AbgleichStand a={g.abgleich} quelle="Google" bezeichnung={g.kalender} /></span>)}</span>
-        {/* Umschalter Kalender | Aufgaben (Kevin 29.09., wie Google) — vor der Suche, damit er am Handy in der ersten Zeile bleibt. */}
+        <SymbolKnopf ariaLabel="zurück" titel="Zurück (←)" onClick={() => springe(-1)}><ChevronLeft size={20} /></SymbolKnopf>
+        <SymbolKnopf ariaLabel="weiter" titel="Weiter (→)" onClick={() => springe(1)}><ChevronRight size={20} /></SymbolKnopf>
+        <span className="kalender-zeitraum" aria-live="polite" title={titel} style={{ fontFamily: SCHRIFT.display }}>{handy ? zeitraumText(ansicht, tage, anker, { kurz: heute }) : titel}</span>
+        <AbgleichPunkte quellen={abgleichQuellen} onAbgleichen={live ? () => void jetztAbgleichen() : undefined} laeuft={abgleich} />
+        {laedt && !daten && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
+        {/* Am Handy steht die Suche in der ersten Zeile — so passt die zweite (Ansicht · Planen · Kalender|Aufgaben · Darstellung · +). */}
+        {handy && sucheElement}
+      </div>
+      <div className="kalender-kopf-rechts">
+        {!handy && sucheElement}
+        {modus !== 'aufgaben' && <div className="kal-breit"><Segmente liste={ansichtListe.map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
+        {modus !== 'aufgaben' && <div className="kal-schmal"><AnsichtMenue liste={ansichtListe} aktiv={ansicht} onWahl={setAnsicht} /></div>}
+        {/* Modus (K5): Kalender · Planen — dasselbe Raster (nur auf der Kalender-Seite des Umschalters); schmal als Symbol. */}
+        {modus !== 'aufgaben' && <div className="kal-breit"><Segmente liste={[{ id: 'kalender' as Modus, label: 'Kalender' }, { id: 'planen' as Modus, label: 'Planen' }]} aktiv={modus} onWahl={setModus} /></div>}
+        {modus !== 'aufgaben' && <div className="kal-schmal"><SymbolKnopf ariaLabel="Planen" titel={modus === 'planen' ? 'Planen beenden (p)' : 'Woche planen — Blöcke setzen (p)'} gedrueckt={modus === 'planen'} onClick={() => setModus(modus === 'planen' ? 'kalender' : 'planen')}><Blocks size={18} /></SymbolKnopf></div>}
+        {/* Umschalter Kalender | Aufgaben (Kevin 29.09., wie Google). */}
         <KalenderAufgabenSchalter aktiv={modus === 'aufgaben' ? 'aufgaben' : 'kalender'} kalender={{ onClick: () => setModus(modus === 'planen' ? 'planen' : 'kalender') }} aufgaben={{ onClick: () => setModus('aufgaben') }} tasten={{ kalender: 'k', aufgaben: 'u' }} />
-        <input value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'aufgaben' ? 'Aufgaben suchen …' : 'Suchen …'} aria-label={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} style={{ ...feld, width: breit ? 180 : '100%', fontSize: 13, padding: '7px 11px' }} />
-        {/* Modus (K5): Kalender · Planen — dasselbe Raster (nur auf der Kalender-Seite des Umschalters). */}
-        {modus !== 'aufgaben' && <Segmente liste={[{ id: 'kalender' as Modus, label: 'Kalender' }, { id: 'planen' as Modus, label: 'Planen' }]} aktiv={modus} onWahl={setModus} />}
-        {/* Sechs Ansichten passen am Handy nicht nebeneinander — die Leiste rollt statt die Seite zu verbreitern. */}
-        {modus !== 'aufgaben' && <div className="ui-reiter-zeile" style={{ maxWidth: '100%' }}><Reiter ariaLabel="Ansicht des Kalenders" liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
-        {!breit && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
+        <DarstellungKnopf />
+        {!breit && <ErstellenMenue breit={false} kompakt={handy} onArt={a => setNeu(neuVon(a))} />}
+      </div>
+    </div>
+  );
+
+  const haupt = (
+    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, minHeight: 0, minWidth: 0, height: breit ? '100%' : hoehe ?? undefined }}>
+      <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+        {kopfzeile}
+        {/* Planen (K5): Stunden des Zeitraums als EINE schmale Zeile (die Stunden je Tag stehen im Tageskopf des Rasters). */}
+        {planen.kopf}
       </div>
       {/* overscroll-behavior-x: kein „Zurück“ des Browsers am Rand, wenn waagerecht gewischt wird (wischen.ts fängt den Wischer ab). */}
-      <div ref={inhalt} style={{ minHeight: 0, overscrollBehaviorX: 'none', ...(modus === 'aufgaben' ? { overflowY: 'auto' as const } : {}) }}>
+      <div ref={inhalt} style={{ minHeight: 0, overscrollBehaviorX: 'none', ...(modus === 'aufgaben' || ansicht === 'agenda' ? { overflowY: 'auto' as const, overscrollBehaviorY: 'contain' as const } : {}) }}>
         {modus === 'aufgaben' && <AufgabenModus heute={heute} woche={wocheDesAnkers} sicht={sicht} bereich={bereich} suche={suche} filter={aufgabenFilter} onFilter={setAufgabenFilter} />}
         {modus !== 'aufgaben' && (ansicht === 'tag' || ansicht === 'woche') && (
-          <Zeitraster tage={tage} heute={heute} termine={k4.raster(rasterTermine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={k4.farbe(farbe)}
-            onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} businessFrei={rahmen?.fenster} />
+          <Zeitraster tage={tage} termine={k4.raster(rasterTermine)} farbe={k4.farbe(farbe)} onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} {...rasterGemeinsam} />
         )}
         {modus !== 'aufgaben' && ansicht === 'vier' && (
-          <VierTage start={anker} heute={heute} termine={rasterTermine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={farbe}
-            onOeffnen={oeffnen} onNeu={neuImRaster} onVerschieben={verschieben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} onArbeitsortNeu={arbeitsortNeu} businessFrei={rahmen?.fenster} />
+          <VierTage start={anker} anzahl={nTage} termine={rasterTermine} farbe={farbe} onOeffnen={oeffnen} {...rasterGemeinsam} />
         )}
-        {modus !== 'aufgaben' && ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine.filter(t => t.art !== 'arbeitsort')} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} />}
+        {modus !== 'aufgaben' && ansicht === 'monat' && <Monat blatt={blatt} monat={Number(anker.slice(5, 7))} heute={heute} termine={termine.filter(t => t.art !== 'arbeitsort')} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} onOeffnen={oeffnen} aufgaben={monatAufgaben} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} onAufgabeEinplanen={ka.einplanen} />}
         {modus !== 'aufgaben' && ansicht === 'jahr' && <Jahr jahr={jahr} heute={heute} daten={jahrDaten} quellen={quell.filter(t => !aus.has(t.kalender))} kalenderAn={kalenderAn} farbe={kalenderFarbe} onTag={tag => { setAnker(tag); setAnsicht('tag'); }} />}
         {modus !== 'aufgaben' && ansicht === 'agenda' && <Karte i={0}><Agenda tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} farbe={farbe} suche={such} onOeffnen={oeffnen} aufgaben={aufgabenImZeitraum} onAufgabe={ka.oeffnen} onAufgabeHaken={ka.abhaken} /></Karte>}
       </div>
@@ -474,19 +566,21 @@ export function Kalender() {
   );
 
   return (
-    <Seite titel="Kalender" unter={modus === 'aufgaben' ? 'Aufgaben nach Fälligkeit — abhaken, öffnen, einplanen. Tasten: k Kalender · u Aufgaben.' : modus === 'planen' ? 'Bausteine, Routinen und Aufgaben antippen, dann in den Kalender klicken. Tasten: p · t · ← →' : 'iCloud und Google, dazu Feiertage, Geburtstage, Fristen und Aufgaben — t heute · c neu · p planen.'} rechts={<Chip farbe={LEUCHT.puls}>{icloudLive && mitGoogle ? 'iCloud + Google · live' : mitGoogle ? 'Google · live' : icloudLive ? 'iCloud · live' : 'nur lesen'}</Chip>}>
-      {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<span style={{ marginLeft: 'auto' }}><SymbolKnopf onClick={() => setMeldung(null)} ariaLabel="Hinweis schließen">✕</SymbolKnopf></span></div>}
+    // Kein sichtbarer Seitenkopf (10.10.): die Kopfzeile trägt Zeitraum und Bedienung; der Titel bleibt für Vorleser (.kalender-seite, globals.css).
+    <Seite titel="Kalender" className="kalender-seite" breit={2400}>
+      {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px', display: 'flex', gap: 10, alignItems: 'center' }}>{meldung}<span style={{ marginLeft: 'auto' }}><SymbolKnopf onClick={() => setMeldung(null)} ariaLabel="Hinweis schließen">✕</SymbolKnopf></span></div>}
       {!daten && !laedt && <Leer>Kalender wird geladen …</Leer>}
-      {planen.kopf && <div style={{ marginBottom: 12 }}>{planen.kopf}</div>}
-      {/* 06.10.: „<Firma> verbinden“ (Business, Google) bzw. iCloud (Privat) — für die eigene Person, dort wo es hingehört. */}
-      {(bereich === 'business' || bereich === 'privat') && <BereichVerbindungen key={bereich} bereich={bereich} onGeaendert={() => void laden()} />}
-      {/* Linke Spalte (09.10.): zugeklappt bleibt sie geladen (`hidden`, Zustand und Karten bleiben), das Raster bekommt die ganze Breite. */}
-      <div style={{ display: 'grid', gridTemplateColumns: breit && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: 'start' }}>
-        {breit && <div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0 }}>{leiste}</div>}
+      {/* 06.10.: „<Firma> verbinden“ (Business, Google) bzw. iCloud (Privat) — für die eigene Person, dort wo es hingehört. Verbunden steht hier nichts
+          mehr (10.10.): den Stand zeigen die Abgleich-Punkte der Kopfzeile. */}
+      {(bereich === 'business' || bereich === 'privat') && <BereichVerbindungen key={bereich} bereich={bereich} onGeaendert={() => void laden()} ohneHinweis />}
+      {/* Linke Spalte (09.10.): zugeklappt bleibt sie geladen (`hidden`, Zustand und Karten bleiben), das Raster bekommt die ganze Breite.
+          Volle Höhe (10.10.): breit hat die Fläche die Höhe bis zum Fensterrand — Spalte und Raster rollen je in sich; schmal das Raster allein. */}
+      <div ref={flaeche} style={{ display: 'grid', gridTemplateColumns: breit && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: breit ? 'stretch' : 'start', ...(breit ? { height: hoehe ?? 'calc(100vh - 140px)', gridTemplateRows: 'minmax(0, 1fr)' } : {}) }}>
+        {breit && <div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', paddingRight: 4 }}>{leiste}</div>}
         {haupt}
         {!breit && <div id={LINKS_ID} style={{ minWidth: 0 }}>{leiste}</div>}
       </div>
-      {planen.unten && <div style={{ marginTop: 14 }}>{planen.unten}</div>}
+      {planen.unten}
       {rueckgaengig}
       {offen && <TerminFenster key={offen.id} termin={offen} icloud={daten?.icloud ?? false} space={spaceVonKalender(einst, offen.kalender)} kalenderFarbe={kalFarbe(offen.kalender, offen.wer)} onZu={() => setOffen(null)} onGespeichert={() => void laden()} />}
       {neu && <NeuerTermin vorgabe={neu} heute={heute} standardDauer={standardDauer} fokusDauer={einst?.dauer.fokus ?? 90} kalender={daten?.kalender ?? []} kalenderStandard={einst?.kalender} bereich={bereich === 'business' ? 'business' : 'privat'} onZu={() => setNeu(null)} onAngelegt={x => { if (x.uid) void laden(); }} />}

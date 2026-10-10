@@ -9,6 +9,7 @@ import { Seite, Karte, Ueberschrift, Beschriftung, Segmente, Schalter, Knopf, Hi
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { BEDIENUNG_VORGABE, DICHTEN, WISCH_WAHLEN, type WischWahl } from '@/lib/make-one/bedienung';
+import { DarstellungFelder } from './kalender/darstellung';
 
 const text = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '8px 0 0' } as const;
 
@@ -69,7 +70,13 @@ export function BedienungView() {
         </Schalter>
       </Karte>
 
+      {/* Kalender (10.10.): Zeilenhöhe, Aufgaben ohne Uhrzeit, Bedienungshilfe — dieselben Felder wie „Darstellung“ in der Kopfzeile des Kalenders. */}
       <Karte i={5}>
+        <Ueberschrift>Kalender</Ueberschrift>
+        <DarstellungFelder />
+      </Karte>
+
+      <Karte i={6}>
         <Ueberschrift>Ausprobieren</Ueberschrift>
         <Liste>
           <ZeileAktionen titel="Probezeile" archiviert={probe === 'archiv'}

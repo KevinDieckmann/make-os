@@ -101,6 +101,17 @@ export function ganztagsAm(liste: readonly KalenderAufgabe[], tag: string): (Kal
   return raus;
 }
 
+/**
+ * Die Tage, an denen die Aufgabe in der Ganztags-Zeile steht — als EIN Balken (10.10., lib/kalender/layout.ts `ganztagsLegen`): vom Start
+ * (sonst der Deadline) bis zur Deadline; mit Uhrzeit nur bis zum Vortag (der Block steht am Deadline-Tag im Raster). `null` = gar nicht.
+ * Dieselbe Regel wie `ganztagsAm` (Tag für Tag) — der Test hält beide gleich.
+ */
+export function ganztagsSpanne(a: Pick<KalenderAufgabe, 'tag' | 'start' | 'zeit'>): { von: string; bis: string } | null {
+  const von = a.start ?? a.tag;
+  const bis = a.zeit ? tagPlus(a.tag, -1) : a.tag;
+  return bis >= von ? { von, bis } : null;
+}
+
 /** Aufgaben mit Uhrzeit, deren Deadline `tag` ist (Blöcke im Raster). */
 export const mitZeitAm = (liste: readonly KalenderAufgabe[], tag: string): KalenderAufgabe[] => liste.filter(a => a.tag === tag && !!a.zeit);
 

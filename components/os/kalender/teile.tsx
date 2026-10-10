@@ -4,12 +4,10 @@
 // Der Wochenplaner ist jetzt der Kalender: Termine aus iCloud (anlegen,
 // verschieben, umbenennen, löschen), dazu, was an einem Tag „dran“ ist —
 // Aufgaben mit Datum, Apple-Erinnerungen, Fristen aus dem ganzen System.
-// Hier: Daten laden (useKalender), Farben, die Ganztags-Zelle und das
-// Termin-Fenster.
+// Hier: Daten laden (useKalender), Farben und das Termin-Fenster.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, Segmente, Chip, feld, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import { ART_FARBE } from '@/types/planer';
@@ -21,9 +19,7 @@ import { TEILNAHME_LABEL, type GastWahl } from '@/lib/kalender/gaeste';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 import { fokusFuerTermin } from '@/lib/zeitmessung/fokus-laufend';
 import { ZuordnungWahl, type Zuordnung } from '../zeit/Zuordnung';
-import type { Abschnitt } from '@/lib/kalender/aufgaben';
 import type { Teilnahme, Teilnehmer } from '@/lib/kalender/gaeste';
-import { aufgabeZiehStart } from './aufgaben';
 
 export type Wer = 'kevin' | 'malin' | 'beide';
 /** Ein Termin, wie ihn /api/kalender liefert (Bezug angewandt, für die ansehende Person maskiert). */
@@ -126,98 +122,8 @@ export function useKalender(von: string, bis: string, bereich: 'privat' | 'busin
 
 const uhr = (wand: string) => wand.slice(11, 16);
 
-/** Ein Eintrag in der Ganztags-Zeile: kleine Pille, farbig nach Art. */
-function Pille({ farbe, titel, children, onClick, href, durch, stil: extra }: { farbe: string; titel?: string; children: React.ReactNode; onClick?: () => void; href?: string; durch?: boolean; stil?: React.CSSProperties }) {
-  const stil: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 5, width: '100%', minWidth: 0, textAlign: 'left', padding: '3px 6px', borderRadius: 6, fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3,
-    background: `${farbe}1c`, color: farbe, border: 'none', cursor: onClick || href ? 'pointer' : 'default', textDecoration: durch ? 'line-through' : 'none', fontFamily: SCHRIFT.text, ...extra,
-  };
-  const inhalt = <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, display: 'flex', alignItems: 'center', gap: 5 }}>{children}</span>;
-  if (href) return <Link href={href} title={titel} style={stil} className="fassbar">{inhalt}</Link>;
-  return <button type="button" onClick={onClick} title={titel} style={stil} className="fassbar">{inhalt}</button>;
-}
-
-const HOECHSTENS = 4;
-
-/**
- * Was an einem Tag „dran“ ist, ohne Uhrzeit: ganztägige Termine, Fristen,
- * Aufgaben, Erinnerungen. Höchstens vier, der Rest auf Klick — und
- * Überfälliges als eine Pille, sonst verschwindet der Tag darunter.
- */
-export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberfaellig = 0, onTermin, onAufgabeHaken, onAufgabeOeffnen, aufgabenZiehbar }: {
-  termine: KTermin[];
-  /** K3: `abschnitt` = Teil des Balkens Start → Deadline, `eltern` = Unteraufgabe von … */
-  aufgaben: { id: string; title: string; done: boolean; priority?: string; abschnitt?: Abschnitt; eltern?: string; wiederkehrend?: boolean }[];
-  erinnerungen: KErinnerung[]; fristen: KFrist[];
-  ueberfaellig?: number; onTermin: (t: KTermin) => void;
-  /** Haken. Ohne `onAufgabeOeffnen` hakt der Klick auf die ganze Pille ab (Wochenplaner). */
-  onAufgabeHaken: (id: string) => void;
-  /** K3: Klick auf den Titel öffnet die Aufgabe, der Haken hakt ab. */
-  onAufgabeOeffnen?: (id: string) => void;
-  /** K3: Aufgaben lassen sich auf einen anderen Tag oder ins Raster ziehen. */
-  aufgabenZiehbar?: boolean;
-}) {
-  const [alle, setAlle] = useState(false);
-  const gesamt = termine.length + fristen.length + aufgaben.length + erinnerungen.length;
-  let platz = alle ? Infinity : HOECHSTENS;
-  const nimm = <T,>(l: T[]) => { const n = l.slice(0, Math.max(0, platz)); platz -= n.length; return n; };
-  termine = nimm(termine); fristen = nimm(fristen); aufgaben = nimm(aufgaben); erinnerungen = nimm(erinnerungen);
-  const rest = gesamt - termine.length - fristen.length - aufgaben.length - erinnerungen.length;
-  return (
-    <div style={{ display: 'grid', gap: 3, alignContent: 'start', minWidth: 0 }}>
-      {ueberfaellig > 0 && (
-        <Pille farbe={LEUCHT.kritisch} href="/os/aufgaben" titel={`${ueberfaellig} Aufgaben sind überfällig — zu den Aufgaben`}>
-          <span aria-hidden>‼</span>{ueberfaellig} überfällig
-        </Pille>
-      )}
-      {termine.map(t => (
-        // K2 (29.09.): Quell-Einträge (Feiertage NRW, Geburtstage) tragen eigene Farbe und Hinweis (components/os/kalender/quellen.tsx).
-        // K1 (29.09.): Abwesend rot, eigene Farbe je Termin, privat mit Schloss.
-        <Pille key={t.id} farbe={t.art === 'abwesend' ? LEUCHT.kritisch : (t as { farbe?: string }).farbe ?? t.farbeEigen ?? WER_FARBE[t.wer]} titel={`${t.art && t.art !== 'termin' ? `${ART_INFO[t.art].label}: ` : ''}${t.titel} · ${t.kalender}${(t as { hinweis?: string }).hinweis ? ` — ${(t as { hinweis?: string }).hinweis}` : t.bearbeitbar ? '' : ` (nur in ${istGoogleTermin(t) ? 'Google' : 'Apple'} änderbar)`}`} onClick={() => onTermin(t)}>
-          {t.art === 'abwesend' && <span aria-hidden>⊘</span>}{t.sichtbarkeit === 'privat' && <span aria-hidden>🔒</span>}{t.titel}
-        </Pille>
-      ))}
-      {fristen.map(f => (
-        <Pille key={f.id} farbe={FRIST_ZEICHEN[f.art].farbe} titel={`${FRIST_ZEICHEN[f.art].label}: ${f.titel}${f.unter ? ` · ${f.unter}` : ''}`} href={f.href} durch={f.erledigt}>
-          <span aria-hidden>{FRIST_ZEICHEN[f.art].zeichen}</span>{f.titel}
-        </Pille>
-      ))}
-      {aufgaben.map(a => {
-        // Balken Start → Deadline (K3): links offen ab dem 2. Tag, rechts offen bis zur Deadline, dazwischen gestrichelt.
-        const ab = a.abschnitt ?? 'einzel';
-        const balken: React.CSSProperties = ab === 'einzel' ? {} : {
-          borderRadius: ab === 'start' ? '6px 0 0 6px' : ab === 'ende' ? '0 6px 6px 0' : 0, opacity: ab === 'mitte' ? 0.75 : 1,
-          borderTop: `1px dashed ${ART_FARBE.aufgabe}55`, borderBottom: `1px dashed ${ART_FARBE.aufgabe}55`,
-        };
-        const titel = `Aufgabe${a.eltern ? ` (Unteraufgabe von „${a.eltern}“)` : ''}: ${a.title}${ab === 'start' ? ' — Start' : ab === 'mitte' ? ' — läuft' : ab === 'ende' ? ' — Deadline' : ''}${aufgabenZiehbar ? ' · ziehen verschiebt die Deadline' : ''}`;
-        const haken = <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: a.done ? ART_FARBE.aufgabe : 'transparent' }} />;
-        const inhalt = <>{ab === 'mitte' || ab === 'ende' ? <span aria-hidden>‹</span> : null}{a.eltern ? <span aria-label="Unteraufgabe">↳</span> : null}{a.priority === 'critical' ? '‼ ' : ''}{a.wiederkehrend ? <span aria-label="wiederkehrend">↻</span> : null}{a.title}{ab === 'start' || ab === 'mitte' ? <span aria-hidden style={{ marginLeft: 'auto' }}>›</span> : null}</>;
-        if (!onAufgabeOeffnen) return <Pille key={a.id} farbe={ART_FARBE.aufgabe} titel={titel} onClick={() => onAufgabeHaken(a.id)} durch={a.done} stil={balken}>{haken}{inhalt}</Pille>;
-        return (
-          <div key={a.id} data-aufgabe={a.id} draggable={!!aufgabenZiehbar} onDragStart={e => aufgabeZiehStart(e, a.id)} title={titel}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, padding: '3px 6px', borderRadius: 6, background: `${ART_FARBE.aufgabe}1c`, color: ART_FARBE.aufgabe, fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3, fontFamily: SCHRIFT.text, cursor: aufgabenZiehbar ? 'grab' : 'default', ...balken }}>
-            <button type="button" onClick={() => onAufgabeHaken(a.id)} aria-label={`„${a.title}“ als erledigt markieren`} title="Abhaken"
-              style={{ width: 12, height: 12, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: 'transparent', padding: 0, cursor: 'pointer' }} />
-            <button type="button" onClick={() => onAufgabeOeffnen(a.id)} className="fassbar"
-              style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', textDecoration: a.done ? 'line-through' : 'none' }}>
-              {inhalt}
-            </button>
-          </div>
-        );
-      })}
-      {erinnerungen.map(e => (
-        <Pille key={e.id} farbe={LEUCHT.schlaf} titel={`Erinnerung${e.liste ? ` (${e.liste})` : ''}: ${e.titel}`}>
-          <span aria-hidden>◷</span>{e.zeit ? `${e.zeit} ` : ''}{e.titel}
-        </Pille>
-      ))}
-      {(rest > 0 || alle) && gesamt > HOECHSTENS && (
-        <button type="button" onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: TYP.bedien, textAlign: 'left', cursor: 'pointer', padding: '1px 6px', fontFamily: SCHRIFT.text }}>
-          {alle ? 'weniger' : `+${rest} mehr`}
-        </button>
-      )}
-    </div>
-  );
-}
+// Die Ganztags-Zeile (bis 09.10. eine Zelle je Tag, „GanztagsZelle“) ist seit 10.10. ein eigener Baustein: ./Ganztags.tsx (Bahnen,
+// ein mehrtägiger Eintrag = EIN Balken).
 
 /** Warum ein Termin nur in Apple änderbar ist — in Worten. */
 export function nurAppleGrund(t: KTermin, icloud = true): string | null {
