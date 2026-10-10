@@ -1913,6 +1913,21 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   - Dateiablage schreibt im Format des Modus (kompatibel „MKOSDAT1“, v2 „MKOSDAT2“ mit Schlüssel-ID + AAD Haushalt/Kennung,
     `lib/store/datei-huelle.mjs` `binImModus`), liest v1 + v2 über den Schlüsselring; Kennungen `d-<uuid>`.
 
+## Agenten v2 · V1 „Messen & sparen“ (10.10., Branch `agenten-v1-messen`, nur lokal; AGENTEN_KONZEPT_V2.md Teil D, UPDATES.md 10.10.)
+- **Lauf-Spur (Entscheidung 10.10.: eigene Spur im Server, nur Metadaten, Hash-Kette):** EINE Kette je Anstoß, je Abschnitt (ZOE-Zug · Head-/Mitarbeiter-Lauf ·
+  Modellaufruf über einen Sprung) EIN Eintrag — Regeln rein `lib/agenten/spur.ts`, schreiben/lesen `lib/agenten/spur-server.ts` (`mitSpur`, `mitSpurBezug`,
+  `modellAufruf`, `spurLesen`, `spurAufraeumen`), Zusammenhang im Prozess `lib/ki/spur-kontext.ts` (AsyncLocalStorage). Über die Warteschlange `Auftrag.spur`
+  (nie in `eingabe` — Idempotenz-Schlüssel), über interne Sprünge `x-make-spur` (nur Dienstweg: `kiAus`, `spurAusAnfrage`). Ablage je Bereich
+  `lauf-spur--privat|business--JJJJ-MM` (Familie `lauf-spur` in MONATS_FAMILIEN, 12 Monate). Nie Inhalte (`spurSaeubern`). Neuer Agenten-Weg (Lauf, Chat,
+  Sprung): in einem Abschnitt laufen bzw. den Bezug weitergeben — nie eine eigene Kostenrechnung daneben. Das KI-Protokoll trägt `spur`/`kette`.
+- **Kosten je Auftrag:** NUR `GET /api/agenten/kosten` (`kostenSicht`: eigene Ketten; Inhaber zusätzlich Summen der Instanz ohne fremde Einzelheiten; Bereiche aus
+  der Konto-Sicht + `?space=`), Oberfläche Agenten › ⋯ › „Kosten je Auftrag“ (`components/os/agenten/KostenSpur.tsx`), HOI `laufSpurBefunde` (nur gelb).
+- **ZOE-Prompt-Cache:** `systemPrompt` liefert `{ stabil, variabel }` — Uhrzeit, Gedächtnis, Live-Zustand, Browser-Zusatz, Bezug NUR im flüchtigen Teil; `askText`
+  mit `cacheSystem` + `systemStabil` schickt zwei Blöcke (`systemFuerApi`). Werkzeuge in Definitions-Reihenfolge. Neuer Satz im ZOE-Prompt: hängt er an Zeit
+  oder Daten des Zugs → `variabel`, sonst `stabil` (Wächter `tests/zoe-cache.test.ts`).
+- **Arbeiter-Wecker:** `reihe()` → `arbeiterWecken()` (`lib/zoe/wecker.ts`, am `globalThis`); `POST /api/zoe/auftraege/nimm { wartenMs }` ist eine lange Abfrage.
+- **Nie still kürzen:** Antworten in Threads über `inTeilen` (lib/agenten/faeden.ts, „Teil x von n“) — nie `text.slice(0, GRENZEN.nachrichtZeichen)`.
+
 ## Agenten — Querliegendes
 - **Ereignisstelle (09.10., E1; ANALYSE_AGENTEN_DATEN.md):** Agenten erfahren von Änderungen nur über `ereignis(e)` (`lib/ereignisse/server.ts`, wirft nie,
   Dedup über deterministische Kennung, nach dem Speichern der Quelle) → Bestand `ereignisse--<haushalt>` (nur Kennungen, nie Betreff/Text/Beträge; Frist

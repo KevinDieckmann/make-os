@@ -67,6 +67,11 @@ export interface AufrufErgebnis {
 
 export interface SchleifenEingabe {
   system: string;
+  /**
+   * Der stabile Anfang von `system` (10.10., Paket V1): geht mit `ask.cacheSystem` als eigener Block mit Cache-Marke hinaus, der flüchtige Rest
+   * dahinter ohne (lib/anthropic.ts `systemFuerApi`) — so trifft der Prompt-Cache auch von Zug zu Zug, nicht nur zwischen den Runden eines Zugs.
+   */
+  systemStabil?: string;
   /** Verlauf fürs Modell — die Schleife hängt Assistent-Züge und Werkzeug-Ergebnisse DIREKT an (der Aufrufer sieht den Stand, z. B. „Rat holen“). */
   messages: unknown[];
   /** Das Feld `user` des Modell-Aufrufs (bei `messages` nur Rückfall). */
@@ -228,7 +233,7 @@ export async function schleife(e: SchleifenEingabe): Promise<SchleifenAusgang> {
     if (e.kostenGrenzeCent && cent >= e.kostenGrenzeCent) { status = 'abgebrochen'; grund = 'Kostengrenze des Laufs erreicht'; break; }
     const mitWerkzeugen = e.tools.length > 0 && budget > 0 && !(e.letzteRundeOhneWerkzeuge && runde >= e.runden - 1);
     const frage = {
-      system: e.system, user: e.user ?? '', messages, ...(e.ask.model ? { model: e.ask.model } : {}), ...(e.ask.effort ? { effort: e.ask.effort } : {}),
+      system: e.system, ...(e.systemStabil !== undefined ? { systemStabil: e.systemStabil } : {}), user: e.user ?? '', messages, ...(e.ask.model ? { model: e.ask.model } : {}), ...(e.ask.effort ? { effort: e.ask.effort } : {}),
       maxTokens: e.ask.maxTokens, ...(e.ask.cacheSystem ? { cacheSystem: true } : {}), tools: mitWerkzeugen ? [...e.tools] : (e.letzteRundeOhneWerkzeuge ? [] : [...e.tools]),
       timeoutMs: Math.min(e.ask.timeoutMs, rest), zweck: e.ask.zweck,
     };

@@ -571,6 +571,18 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'GET /api/datenschutz/ki-protokoll?auskunft=1 (Empfänger, Kategorien, Zeitraum, eigene Zeilen); Kontakte: Kategorie „crm“ in der Kontakt-Auskunft',
     loeschfrist: '12 Monate (Tagesdateien älter als die Aufbewahrung entfernt das Protokoll einmal am Tag samt Tagessicherungen; alte Monatsdateien werden geleert, Marke „bereinigt“)',
   }),
+  // Lauf-Spur (10.10., Paket V1 „Messen & sparen“, Entscheidung 10.10.: eigene Spur im Server, nur Metadaten, Hash-Kette): je Abschnitt einer
+  // Agenten-Kette (ZOE-Zug, Head-/Mitarbeiter-Lauf, Modellaufruf über einen Sprung) EIN Eintrag — getrennt je Bereich (lib/agenten/spur.ts).
+  mit(H('lauf-spur--privat--*', 'Lauf-Spur des Privat-Bereichs je Berliner Monat: je Abschnitt Kette/Lauf-Kennung, Art, Agent (Kennwort), Person (Speichername), Start/Dauer, Zeit bis zum ersten Wort, Modell, Token inkl. Cache, geschätzte Kosten, Zahl der Werkzeug- und Modellaufrufe, Ergebnis-Klasse — NIE Inhalte, Prompts, Antworten, Titel oder Namen (lib/agenten/spur-server.ts, Hash-Kette).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Betrieb, Kostenkontrolle und Fehlersuche der Agenten), Art. 5 Abs. 2 und Art. 32 (Nachvollziehbarkeit)',
+    art15: 'GET /api/agenten/kosten (eigene Abschnitte, Agenten › ⋯ › Kosten je Auftrag); Konto-Export (eigene Einträge unter „protokolle“)',
+    loeschfrist: '12 Monate (ältere Monate leert die nächtliche Durchsicht, Vermerk mit Anzahl bleibt); Konto löschen: Speichername → „[gelöscht]“',
+  }),
+  mit(H('lauf-spur--business--*', 'Lauf-Spur des Business-Bereichs je Berliner Monat — dieselben Felder wie im Privat-Bereich, nur Metadaten (lib/agenten/spur-server.ts, Hash-Kette).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Betrieb, Kostenkontrolle und Fehlersuche der Agenten), Art. 5 Abs. 2 und Art. 32 (Nachvollziehbarkeit)',
+    art15: 'GET /api/agenten/kosten (eigene Abschnitte, Agenten › ⋯ › Kosten je Auftrag); Konto-Export (eigene Einträge unter „protokolle“)',
+    loeschfrist: '12 Monate (ältere Monate leert die nächtliche Durchsicht, Vermerk mit Anzahl bleibt); Konto löschen: Speichername → „[gelöscht]“',
+  }),
   // Anbieter-Tor (09.10., Paket 6a, lib/ki/): erzeugte Medien je Haushalt, Tiefenberichte je Person, Zähler laufender Aufträge.
   mit(T('ki-medien--*', 'Von der KI erzeugte Bilder und Videos je Haushalt (Metadaten): Art, Anbieter, Modell, eigener Auftragstext der auslösenden Person (keine Daten Dritter — die Medien-Zugänge nehmen nur die Kategorien „allgemein“/„web“), Kennzeichnung (SynthID/C2PA), Kosten, wer ausgelöst hat, Sichtbarkeit (Haushalt oder nur ich), Papierkorb. Dateien in <daten>/ki-medien (lib/ki/medien.ts). Seit Paket 4c (09.10.) nur noch Auftragsbuch laufender Video-Aufträge und Altbestand: fertige KI-Medien liegen als Medien (urheber „ki“) in medien--*/medien-privat--* (lib/medien/ki-ablage.ts, Marke uebernommenAls).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO (eigene Arbeitsmittel des Haushalts, Marketing-Material)',
@@ -683,6 +695,8 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
 
 const IN_PRIVAT: readonly string[] = [
   'familie--*', 'ernaehrung', 'ernaehrung-vorschlag', 'kompass', 'nordstern--*', 'gesundheit-takt',
+  // Lauf-Spur des Privat-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
+  'lauf-spur--privat--*',
   // Fokus · Privat je Haushalt (10.10.)
   'fokus-privat--*',
 ];
@@ -693,6 +707,8 @@ const IN_BUSINESS: readonly string[] = [
   'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
+  // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
+  'lauf-spur--business--*',
   // Business-Postfächer und -Kalender (Google Workspace mit Domain-Prüfung, Microsoft 365, WhatsApp-Nummer nur im Business)
   'gmail-stand--*', 'gmail-text--*', 'kalender-google--*', 'kalender-umzug-sicherung--*', 'm365-postfach', 'microsoft-inbox', 'kemaris-calendar',
   'whatsapp-spiegel', 'whatsapp-zustand', 'whatsapp-medien',

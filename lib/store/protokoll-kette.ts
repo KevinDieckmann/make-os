@@ -4,6 +4,7 @@
 //   · Änderungsprotokoll  `aenderungsprotokoll--<haushalt>--<JJJJ-MM>` (lib/store/aenderungsprotokoll.ts)
 //   · Lese-Protokoll      `leseprotokoll--<haushalt>--<JJJJ-MM>`       (lib/store/leseprotokoll.ts)
 //   · Anmeldeprotokoll    `anmeldungen` (rollend, 300 Einträge)        (lib/zugang/anmeldungen.ts)
+//   · Lauf-Spur           `lauf-spur--<privat|business>--<JJJJ-MM>`  (lib/agenten/spur-server.ts, seit 10.10. — je Bereich eine Reihe)
 //
 // Aufbau (nur zusätzliche Felder — alte Leser sehen weiter `eintraege`):
 //   Datei   `kette: { v: 1, alg, vor, start, seit, nachversiegelt?, nachversiegeltAnzahl?, verworfen? }`
@@ -47,7 +48,7 @@ export const KETTE_ANFANG = 'anfang';
 export const SIEGEL_SPEICHER = 'protokoll-siegel';
 export const PRUEFUNG_SPEICHER = 'protokoll-pruefung';
 /** Monatsdateien mit Kette (Präfix--Haushalt--JJJJ-MM). */
-export const MONATS_FAMILIEN = ['aenderungsprotokoll', 'leseprotokoll'] as const;
+export const MONATS_FAMILIEN = ['aenderungsprotokoll', 'leseprotokoll', 'lauf-spur'] as const;
 /** Rollende Einzeldateien mit Kette. */
 export const ROLLENDE_FAMILIEN = ['anmeldungen'] as const;
 const MONATS_DATEI = new RegExp(`^(${MONATS_FAMILIEN.join('|')})--([a-z0-9-]+)--(\\d{4}-\\d{2})$`);

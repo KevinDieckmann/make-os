@@ -24,11 +24,12 @@ import { headDef } from './katalog';
 import { skillLesen, einstellungFuer } from './skills-lesen';
 import { GRENZEN, LAUF_AGENT, agentSchluessel, planBestand, type AgentRef, type AgentenEinstellung, type HeadDef, type LaufAuftrag, type Merksatz, type Mitarbeiter, type PlanBestand, type Skill, type Umfang } from './typen';
 import {
-  KERN_GRENZEN, anhaengen, auftragText, brettEintragen, brettText, brettVon, fehler, gedaechtnisFuer, glockeNachLauf, laufWartet, merksatzHinzu, merksatzPruefen,
+  KERN_GRENZEN, anhaengen, auftragText, inTeilen, brettEintragen, brettText, brettVon, fehler, gedaechtnisFuer, glockeNachLauf, laufWartet, merksatzHinzu, merksatzPruefen,
   neuerFaden, offeneFragen, offeneLaeufe, statusAusLauf, textAbdruck, textPruefen, wurzelFaden, type AuftragKarte, type Brett, type FadenKern, type FadenKopfKern, type Fehler, type NachrichtKern, type PlanFreigabe,
 } from './faeden';
 import { ablageAendernFuer, bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, indexAendern, sichtLaden } from './faeden-server';
 import { headSichtbar, type KontoSicht } from './sicht';
+import { spurBereichAus } from './spur';
 import { agentAufloesen, agentLauf, aktiveMitarbeiter, anlassVon, type AgentenHandler, type Aufgeloest, type LaufErgebnis, type SchleifenStand, type WerkzeugAntwort } from './gespraech';
 
 const neuId = () => neueKennung('nr');
@@ -627,17 +628,21 @@ async function zoeBerichtAnhaengen(person: string, zoeFadenId: string, text: str
 /** Ergebnis in den Thread, Bericht in den Eltern-Thread (fremd, R9), Brett/Hilfe, Glocke, Lauf-Protokoll. */
 export async function ergebnisSchreiben(person: string, f: FadenKern, e: LaufErgebnis, hintergrund: boolean): Promise<void> {
   const jetzt = iso();
-  const nachricht: NachrichtKern = {
-    id: neuId(), rolle: 'agent', von: agentSchluessel(f.agent), text: e.text.slice(0, GRENZEN.nachrichtZeichen), zeit: jetzt,
-    ...(e.werkzeuge.length ? { werkzeuge: e.werkzeuge } : {}), ...(e.ki ? { ki: true as const } : {}), kosten: { cent: e.kostenCent }, lauf: e.span,
-    ...(f.agent.art === 'mitarbeiter' ? { fremd: 'agent' } : {}),
-  };
+  // Nie still kürzen (10.10., Paket V1 — vorher `e.text.slice(0, GRENZEN.nachrichtZeichen)`): eine lange Antwort geht in Teilen „Teil x von n“
+  // in den Thread (`inTeilen`). Jeder Teil trägt die Marken (KI, „fremd“ beim Mitarbeiter — im Prompt immer gekapselt); Werkzeuge, Kosten und
+  // Lauf-Protokoll stehen am letzten Teil (dort endet die Antwort).
+  const teile = inTeilen(e.text);
+  const nachrichten: NachrichtKern[] = teile.map((t, i) => ({
+    id: neuId(), rolle: 'agent', von: agentSchluessel(f.agent), text: t, zeit: jetzt,
+    ...(e.ki ? { ki: true as const } : {}), ...(f.agent.art === 'mitarbeiter' ? { fremd: 'agent' } : {}),
+    ...(i === teile.length - 1 ? { ...(e.werkzeuge.length ? { werkzeuge: e.werkzeuge } : {}), kosten: { cent: e.kostenCent }, lauf: e.span } : {}),
+  }));
   const laufStatus = e.status === 'wartet' ? 'wartet' as const : e.status;
   // Feinschliff 09.10.: ist der Thread voll (413), passt das Ergebnis nicht mehr hinein — vorher scheiterte die ganze Änderung still und der
   // Lauf blieb „läuft“. Jetzt endet er sichtbar mit Status „fehler“ und dem Hinweis (Kosten werden trotzdem gezählt); gekürzt wird nie.
   let voll = false;
   const r = await fadenAendern(person, f.id, x => {
-    const y = anhaengen(x, [nachricht], jetzt);
+    const y = anhaengen(x, nachrichten, jetzt);
     const marken = { fremdGelesen: x.fremdGelesen || e.fremdGelesen, vertraulich: x.vertraulich || e.vertraulich };
     const kosten = Math.round(((x.lauf?.kostenCent ?? 0) + e.kostenCent) * 100) / 100;
     if (!y.ok) {
@@ -706,6 +711,14 @@ export async function zweiteMeinung(o: { person: string; sicht: KontoSicht; fade
   if (!f) return fehler(404, 'Diesen Thread gibt es nicht.');
   if (f.agent.art === 'zoe' || !headSichtbar(o.sicht, f.agent.headId)) return fehler(403, 'Diesen Head siehst du nicht.');
   if (![...f.nachrichten].reverse().find(n => n.rolle === 'person')) return fehler(400, 'Es gibt noch keine Frage in diesem Thread.');
+  // Lauf-Spur (10.10., Paket V1): beide Entwürfe und der Prüfer sind EINE Kette — die Entwürfe als Kind-Abschnitte, der Prüfer zählt hier.
+  const mitSpur = await import('./spur-server').then(m => m.mitSpur).catch(() => null);
+  if (!mitSpur) return zweiteMeinungLaufen(o, f);
+  return mitSpur({ art: 'chat', agent: agentSchluessel(f.agent), person: o.person, bereich: spurBereichAus(f.bereich) }, () => zweiteMeinungLaufen(o, f), r => ({ ergebnis: 'ok' in r && r.ok ? 'ok' : 'fehler' }));
+}
+
+async function zweiteMeinungLaufen(o: { person: string; sicht: KontoSicht; fadenId: string; origin: string }, f: FadenKern): Promise<{ ok: true; faden: FadenKern; antwort: NachrichtKern } | Fehler> {
+  if (f.agent.art === 'zoe') return fehler(403, 'Diesen Head siehst du nicht.');
   const u = await umfangFuer(o.person);
   const a = await agentAufloesen(f.agent, u);
   if ('ok' in a && a.ok === false) return a;
@@ -727,7 +740,10 @@ export async function zweiteMeinung(o: { person: string; sicht: KontoSicht; fade
   const gewaehlt = b ? y : x;
   const jetzt = iso();
   const cent = Math.round((x.kostenCent + y.kostenCent) * 100) / 100;
-  const antwort: NachrichtKern = { id: neuId(), rolle: 'agent', von: agentSchluessel(f.agent), text: `${gewaehlt.text}\n\n— Zweite Meinung: Entwurf ${b ? 'B' : 'A'} gewählt${typeof j?.grund === 'string' ? ` (${j.grund.slice(0, 300)})` : ''}.`.slice(0, GRENZEN.nachrichtZeichen), zeit: jetzt, ki: true, kosten: { cent }, lauf: gewaehlt.span };
-  const r = await fadenAendern(o.person, o.fadenId, z => { const n = anhaengen(z, [antwort], jetzt); return n.ok ? n.faden : n; });
+  // Nie still kürzen (10.10.): lange Entwürfe in Teilen; Kosten und Lauf am letzten Teil.
+  const teile = inTeilen(`${gewaehlt.text}\n\n— Zweite Meinung: Entwurf ${b ? 'B' : 'A'} gewählt${typeof j?.grund === 'string' ? ` (${j.grund.slice(0, 300)})` : ''}.`);
+  const nachrichten: NachrichtKern[] = teile.map((t, i) => ({ id: neuId(), rolle: 'agent', von: agentSchluessel(f.agent), text: t, zeit: jetzt, ki: true, ...(i === teile.length - 1 ? { kosten: { cent }, lauf: gewaehlt.span } : {}) }));
+  const antwort = nachrichten[nachrichten.length - 1];
+  const r = await fadenAendern(o.person, o.fadenId, z => { const n = anhaengen(z, nachrichten, jetzt); return n.ok ? n.faden : n; });
   return r.ok ? { ok: true, faden: r.faden, antwort } : r;
 }

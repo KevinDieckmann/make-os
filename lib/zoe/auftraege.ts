@@ -21,6 +21,9 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay, tagePlus } from '@/lib/zeit';
 import type { Person } from './raum';
 import { neueKennung } from '@/lib/kennung';
+import { spurBezugJetzt } from '@/lib/ki/spur-kontext';
+import type { SpurBezug } from '@/lib/agenten/spur';
+import { arbeiterWecken } from './wecker';
 
 export type AuftragStatus = 'offen' | 'laeuft' | 'fertig' | 'fehler';
 export type AuftragArt = 'werkzeug' | 'agent';
@@ -63,6 +66,12 @@ export interface Auftrag {
    * würde preisgeben, was die Oberfläche korrekt verbirgt.
    */
   person?: Person;
+  /**
+   * Lauf-Spur (10.10., Paket V1): aus welcher Kette der Auftrag kam (Kette, Eltern-Abschnitt, Bereich — nur Kennungen). Bewusst NICHT in
+   * `eingabe`: die gehört zum Idempotenz-Schlüssel, und derselbe Thread-Lauf darf aus einer zweiten Kette nicht doppelt eingereiht werden.
+   * Die Lauf-Route stellt den Zusammenhang damit wieder her (`mitSpurBezug`) — so endet eine Kette ZOE → Head → Mitarbeiter nicht an der Warteschlange.
+   */
+  spur?: SpurBezug;
 }
 
 interface Stand {
@@ -120,6 +129,8 @@ export interface NeuerAuftrag {
   auftrag?: string;
   anlass?: string;
   person?: Person;
+  /** Bezug zur Kette — ohne Angabe der laufende Zusammenhang (lib/ki/spur-kontext.ts), sonst keiner. */
+  spur?: SpurBezug | null;
 }
 
 /**
@@ -129,6 +140,8 @@ export interface NeuerAuftrag {
 export async function reihe(neue: NeuerAuftrag[], jetzt = new Date()): Promise<{ angelegt: Auftrag[]; schonDa: number; abgelehnt: number }> {
   const angelegt: Auftrag[] = [];
   let schonDa = 0, abgelehnt = 0;
+  const spurJetzt = spurBezugJetzt();
+  const spurVon = (n: NeuerAuftrag): SpurBezug | null => (n.spur === undefined ? spurJetzt : n.spur);
   await updateJson<Stand>('zoe-auftraege', current => {
     angelegt.length = 0; schonDa = 0; abgelehnt = 0;
     const liste = aufraeumen(current?.auftraege ?? [], jetzt);
@@ -148,6 +161,7 @@ export async function reihe(neue: NeuerAuftrag[], jetzt = new Date()): Promise<{
         ...(n.auftrag ? { auftrag: n.auftrag } : {}),
         ...(n.anlass ? { anlass: n.anlass } : {}),
         ...(n.person ? { person: n.person } : {}),
+        ...(spurVon(n) ? { spur: spurVon(n)! } : {}),
         schluessel, status: 'offen', versuche: 0,
       });
     }
@@ -159,6 +173,9 @@ export async function reihe(neue: NeuerAuftrag[], jetzt = new Date()): Promise<{
     };
   });
   if (abgelehnt) console.error(`[Aufträge] Warteschlange voll (${HARTE_GRENZE}) — ${abgelehnt} neue Aufträge abgelehnt, nichts gekürzt.`);
+  // Arbeiter-Wecker (10.10., Paket V1): ein wartender Arbeiter (lange Abfrage an /api/zoe/auftraege/nimm) holt den Auftrag sofort — vorher bis
+  // zu 30 s Pause je Sprung (ZOE → Head → Mitarbeiter = zwei Sprünge).
+  if (angelegt.length) arbeiterWecken();
   return { angelegt, schonDa, abgelehnt };
 }
 

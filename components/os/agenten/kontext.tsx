@@ -39,6 +39,8 @@ export type DialogArt =
   | { art: 'leitplanken' }
   | { art: 'geplant' }
   | { art: 'budget' }
+  /** 10.10. (Paket V1): Kosten je Auftrag aus der Lauf-Spur. */
+  | { art: 'kosten' }
   | { art: 'uebersicht' }
   /** 09.10.: „Aus dem Brain übernehmen“ (nur Inhaber — die Route entscheidet). */
   | { art: 'brain' };

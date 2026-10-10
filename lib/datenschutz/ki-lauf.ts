@@ -11,6 +11,7 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { istDienst } from '@/lib/zugang/dienst';
+import { SPUR_KOPF, spurKopfLesen } from '@/lib/agenten/spur';
 
 export type KiLauf = 'gespraech' | 'aufruf' | 'hintergrund';
 export const LAUF_KOPF = 'x-make-lauf';
@@ -44,5 +45,8 @@ export function kiAus(req: Request, kategorien: import('./ki-einstellungen').KiK
   const p = req.headers.get('x-make-user') || req.headers.get('x-make-person');
   const person = extra.person !== undefined ? extra.person : (p && /^[a-z0-9-]{1,40}$/.test(p) ? p : null);
   const lauf = laufImKontext() === 'hintergrund' ? 'hintergrund' : (extra.lauf ?? kiLaufAus(req));
-  return { lauf, person, kategorien, ...(extra.anzahl !== undefined ? { anzahl: extra.anzahl } : {}), ...(extra.pseudonym !== undefined ? { pseudonym: extra.pseudonym } : {}) };
+  // Lauf-Spur (10.10., Paket V1): ein interner Sprung (Fach-Agent aus einem ZOE-Zug, Lauf aus der Warteschlange) trägt `x-make-spur` — nur
+  // auf dem Dienstweg geglaubt; der Modellaufruf zählt dann in die Kette, die ihn ausgelöst hat.
+  const spur = istDienst(req) ? spurKopfLesen(req.headers.get(SPUR_KOPF)) : null;
+  return { lauf, person, kategorien, ...(extra.anzahl !== undefined ? { anzahl: extra.anzahl } : {}), ...(extra.pseudonym !== undefined ? { pseudonym: extra.pseudonym } : {}), ...(spur ? { spur } : {}) };
 }

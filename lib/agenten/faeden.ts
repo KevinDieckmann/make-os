@@ -27,6 +27,8 @@ export type { AuftragKarte } from './typen';
 export interface LaufSpan {
   lauf_id: string;
   eltern_lauf_id?: string;
+  /** Kette (trace) dieses Laufs (10.10., Lauf-Spur V1 — lib/agenten/spur.ts): dieselbe Kennung wie in `lauf-spur--<bereich>--<monat>`. */
+  kette_id?: string;
   agent: string;
   operation: 'chat' | 'invoke_agent';
   modell: string;
@@ -273,6 +275,29 @@ export function anhaengen(f: FadenKern, neu: NachrichtKern[], jetzt: string): { 
   const kf = kurzfassung(nachrichten);
   const { kurzfassung: _alt, ...rest } = f;
   return { ok: true, faden: { ...rest, nachrichten, aktualisiert: jetzt, ...(kf ? { kurzfassung: kf } : {}) } };
+}
+
+/**
+ * Eine Antwort, die länger ist als eine Nachricht (10.10., Paket V1 — vorher still auf `GRENZEN.nachrichtZeichen` gekürzt, AGENTEN_KONZEPT_V2.md
+ * S8): in Teile ≤ `max` — nie gekürzt, nichts geht verloren. Geschnitten wird an Absatz-, sonst Zeilen-, sonst Wortgrenzen; jeder Teil sagt
+ * sichtbar „Teil x von n“. Ein Text innerhalb der Grenze bleibt EIN Teil, unverändert. Rein.
+ */
+export const TEIL_RESERVE = 100;
+export function inTeilen(text: string, max: number = GRENZEN.nachrichtZeichen): string[] {
+  if (text.length <= max) return [text];
+  const budget = Math.max(200, max - TEIL_RESERVE);
+  const stuecke: string[] = [];
+  let rest = text;
+  while (rest.length > budget) {
+    const fenster = rest.slice(0, budget);
+    const ab = Math.floor(budget * 0.5);
+    const schnitt = [fenster.lastIndexOf('\n\n'), fenster.lastIndexOf('\n'), fenster.lastIndexOf(' ')].find(i => i >= ab) ?? budget;
+    stuecke.push(rest.slice(0, schnitt).trimEnd());
+    rest = rest.slice(schnitt).replace(/^\s+/, '');
+  }
+  if (rest) stuecke.push(rest);
+  const n = stuecke.length;
+  return stuecke.map((s, i) => `${i ? `_(Teil ${i + 1} von ${n})_\n\n` : ''}${s}${i < n - 1 ? `\n\n_(Teil ${i + 1} von ${n} — weiter in der nächsten Nachricht)_` : ''}`);
 }
 
 /** Länger als ein Zug je dauern darf (Schleife: höchstens 5 Minuten) — danach gilt eine unbeantwortete Nachricht als liegen geblieben. */

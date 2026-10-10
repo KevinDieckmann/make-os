@@ -33,6 +33,11 @@ export interface KiKontext {
   anzahl?: number;
   /** false = in diesem Hintergrund-Lauf NICHT pseudonymisieren (Begründung im Code, z. B. Recherche zu einer Person). */
   pseudonym?: boolean;
+  /**
+   * Lauf-Spur (10.10., Paket V1): Bezug zur Kette, wenn der Aufruf über einen internen Sprung kam (`x-make-spur`, nur Dienstweg — `kiAus`).
+   * Im selben Prozess trägt der Zusammenhang die Spur ohnehin (lib/ki/spur-kontext.ts); nur Kennungen, nie Inhalte.
+   */
+  spur?: import('@/lib/agenten/spur').SpurBezug;
 }
 
 export type TorEntscheid =

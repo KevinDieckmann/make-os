@@ -16,7 +16,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { FREMD_AGENTEN, FREMD_WERKZEUGE } from '@/lib/zoe/fremd';
 import { verlaufFremd, verlaufVertraulich } from '@/lib/zoe/gespraech-schutz';
 import { GRENZEN, type AgentRef, type Bereich } from './typen';
-import { anhaengen, fehler, fuerPrompt, istFadenId, textAbdruck, titelAus, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type FadenKopfKern, type NachrichtKern, type PromptNachricht } from './faeden';
+import { anhaengen, fehler, fuerPrompt, inTeilen, istFadenId, textAbdruck, titelAus, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type FadenKopfKern, type NachrichtKern, type PromptNachricht } from './faeden';
 import { ablageAendernFuer, bestandLesen, fadenAendern, fadenAnlegen } from './faeden-server';
 
 export const ZOE: AgentRef = { art: 'zoe' };
@@ -85,8 +85,11 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
 /** Die Antwort von ZOE anhängen und die Marken des Zugs („fremd gelesen“, „vertraulich“) am Thread festhalten — nur ODER, nie zurück. */
 export async function zoeAntwortAnhaengen(person: string, fadenId: string, text: string, o: { ki: boolean; werkzeuge?: NachrichtKern['werkzeuge']; fremdGelesen: boolean; vertraulich: boolean; kostenCent?: number }): Promise<FadenKern | null> {
   const jetzt = iso();
+  // Nie still kürzen (10.10., Paket V1 — vorher `grenze(text)`): eine lange Antwort in Teilen „Teil x von n“; Werkzeuge und Kosten am letzten Teil.
+  const teile = inTeilen(text);
+  const ns = teile.map((t, i) => zoeNachricht(t, jetzt, i === teile.length - 1 ? o : { ki: o.ki }));
   const r = await fadenAendern(person, fadenId, f => {
-    const x = anhaengen(f, [zoeNachricht(grenze(text), jetzt, o)], jetzt);
+    const x = anhaengen(f, ns, jetzt);
     return x.ok ? { ...x.faden, fremdGelesen: f.fremdGelesen || o.fremdGelesen, vertraulich: f.vertraulich || o.vertraulich, gelesenAm: jetzt } : x;
   });
   return r.ok ? r.faden : null;
@@ -98,8 +101,11 @@ export async function zoeAntwortAnhaengen(person: string, fadenId: string, text:
  */
 export async function zoeHinweisAnhaengen(person: string, fadenId: string, text: string, o: { fremdGelesen: boolean; vertraulich: boolean; werkzeuge?: NachrichtKern['werkzeuge'] }): Promise<boolean> {
   const jetzt = iso();
+  // Nie still kürzen (10.10.): ein langer Hinweis in Teilen; die Werkzeuge am letzten Teil.
+  const teile = inTeilen(text);
+  const ns: NachrichtKern[] = teile.map((t, i) => ({ id: neueKennung('nr'), rolle: 'system', von: 'system', text: t, zeit: jetzt, ...(i === teile.length - 1 && o.werkzeuge?.length ? { werkzeuge: o.werkzeuge } : {}) }));
   const r = await fadenAendern(person, fadenId, f => {
-    const x = anhaengen(f, [{ id: neueKennung('nr'), rolle: 'system', von: 'system', text: grenze(text), zeit: jetzt, ...(o.werkzeuge?.length ? { werkzeuge: o.werkzeuge } : {}) }], jetzt);
+    const x = anhaengen(f, ns, jetzt);
     return x.ok ? { ...x.faden, fremdGelesen: f.fremdGelesen || o.fremdGelesen, vertraulich: f.vertraulich || o.vertraulich } : x;
   });
   return r.ok;
@@ -173,7 +179,8 @@ export async function zoeVerlaufUebernehmen(person: string): Promise<number> {
 export async function zoeKanalZug(person: string, kanal: 'telegram' | 'whatsapp', frage: string, antwort: string, jetzt = new Date()): Promise<string> {
   const id = `fd-${kanal === 'telegram' ? 'tg' : 'wa'}-${localDay(jetzt)}`;
   const zeit = jetzt.toISOString();
-  const neu = [personNachricht(person, grenze(frage), zeit), zoeNachricht(grenze(antwort), zeit, { ki: true })];
+  // Die Frage kommt schon begrenzt (kimmi: 8.000 Zeichen); die Antwort nie still kürzen (10.10.) — in Teilen.
+  const neu = [personNachricht(person, grenze(frage), zeit), ...inTeilen(antwort).map(t => zoeNachricht(t, zeit, { ki: true }))];
   const r = await ablageAendernFuer<string>(person, async t => {
     const f = await t.faden(id);
     if (f) {

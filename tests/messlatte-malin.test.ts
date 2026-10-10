@@ -345,6 +345,10 @@ const SYS = {
 
   // 10.10. „eigene Meilensteine“: ein Meilenstein an Kevins NICHT geteiltem eigenem Ziel (`meilensteine-eigen--kevin`) — nur er selbst.
   meilensteinEigen: 'MESSLATTE-SYS-MEILENSTEIN-EIGEN',
+
+  // 10.10. Lauf-Spur (Paket V1): Kevins eigene Abschnitte (Privat und Business) — nur er selbst sieht ihre Kennungen; ein Inhaber sonst nur Summen.
+  laufSpurPrivat: 'lauf-00000000-0000-4000-8000-0000000a5f01',
+  laufSpurBusiness: 'lauf-00000000-0000-4000-8000-0000000a5f02',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -549,6 +553,14 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     // Arbeitsrahmen (Business-frei, Lücke 7): Kevins eigene Ergänzung — nur er selbst sieht sie.
     await db.saveJson('arbeitsrahmen--kevin', { businessFrei: [{ tage: [2], von: '05:17', bis: '06:43' }], geaendertAm: SYS.arbeitsrahmen });
     await db.saveJson('fokus-eigen--kevin', { fokus: { monat: SYS.fokusMein, woche: SYS.fokusMein } });
+    // Lauf-Spur (10.10., Paket V1): ein Abschnitt von Kevin je Bereich — die Marke steckt in der Kennung (nur sie geht an die eigene Person hinaus).
+    {
+      const { spurBestand, spurMonat } = await import('@/lib/agenten/spur');
+      const jetzt = new Date().toISOString();
+      const ab = (lauf: string, bereich: 'privat' | 'business') => ({ zeit: jetzt, lauf, kette: lauf, art: 'zug', agent: 'zoe', person: 'kevin', bereich, start: jetzt, dauerMs: 900, ttftMs: 400, aufrufe: 1, token: { ein: 10, aus: 5, cacheLesen: 0, cacheSchreiben: 0 }, cent: 1, werkzeuge: 0, ergebnis: 'ok' });
+      await db.saveJson(spurBestand('privat', spurMonat()), { eintraege: [ab(SYS.laufSpurPrivat, 'privat')] });
+      await db.saveJson(spurBestand('business', spurMonat()), { eintraege: [ab(SYS.laufSpurBusiness, 'business')] });
+    }
 
     await db.saveJson('zoe-kanal--kevin', { v: 1, status: 'verbunden', nummer: '491700000001', verbundenSeit: SYS.zoeKanal, ereignisse: [{ zeit: SYS.zoeKanal, art: 'bestaetigt', von: 'kevin', quelle: 'whatsapp' }] });
 

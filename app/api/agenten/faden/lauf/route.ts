@@ -91,7 +91,10 @@ export async function POST(req: Request) {
   if (sperre) return NextResponse.json({ ok: true, ...(sperre.fadenId ? { fadenId: sperre.fadenId } : {}), laufStatus: sperre.status, ergebnis: sperre.text });
   const hintergrund = kiLaufAus(req, 'aufruf') === 'hintergrund';
   const { fadenLauf } = await import('@/lib/agenten/delegation');
-  const lauf = () => fadenLauf(person, auftrag, { origin: innenAdresse(req), hintergrund });
+  // Lauf-Spur (10.10., Paket V1): kam der Lauf aus einer Kette (ZOE → Head → Mitarbeiter über die Warteschlange), trägt der Sprung sie im Kopf
+  // `x-make-spur` (nur Dienstweg — `spurAusAnfrage`); der Head-/Mitarbeiter-Lauf hängt sich dort als Abschnitt an.
+  const { mitSpurBezug, spurAusAnfrage } = await import('@/lib/agenten/spur-server');
+  const lauf = () => mitSpurBezug(spurAusAnfrage(req), person, () => fadenLauf(person, auftrag, { origin: innenAdresse(req), hintergrund }));
   try {
     const r = hintergrund ? await imHintergrund(lauf) : await lauf();
     // Plan-Freigaben, die der Lauf angelegt hat, auch in den Stapel (Art `plan`, idempotent) — für den Head-Thread des Laufs.

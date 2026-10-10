@@ -202,7 +202,19 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     taktRobust: await taktRobustLage(new Date(jetzt)).catch(() => null),
     // Ereignisse (09.10., E1): nur Zahlen aus dem Bestand des Haushalts (lib/ereignisse/server.ts).
     ereignisse: await import('@/lib/ereignisse/server').then(m => m.ereignisLage(new Date(jetzt))).catch(() => null),
+    // Lauf-Spur (10.10., Paket V1): Läufe der letzten 7 Tage beider Bereiche — nur Zahlen (Fehlerquote, Tempo und Zwischenspeicher von ZOE).
+    laufSpur: await laufSpurLage(new Date(jetzt)).catch(() => null),
   };
+}
+
+/** Lauf-Spur der letzten 7 Tage (beide Bereiche) als Zahlen für den Head of IT — nie Personen, Agenten oder Kennungen. */
+export async function laufSpurLage(jetzt: Date): Promise<import('./lage').LaufSpurLage> {
+  const [{ spurLesen }, { summeVon, zoeTempo }] = await Promise.all([import('@/lib/agenten/spur-server'), import('@/lib/agenten/spur')]);
+  const ab = new Date(jetzt.getTime() - 7 * 86_400_000).toISOString();
+  const l = (await spurLesen({ bereiche: ['privat', 'business'], monate: 2, jetzt })).filter(e => e.zeit >= ab);
+  const s = summeVon(l, 1);
+  const z = zoeTempo(l);
+  return { laeufe7d: s.laeufe, fehlerQuote7d: s.fehlerQuote, zoeZuege7d: z.zuege, zoeTtftP95Ms: z.ttftP95, zoeDauerP95Ms: z.dauerP95, zoeCacheQuote: z.cacheQuote };
 }
 
 /**

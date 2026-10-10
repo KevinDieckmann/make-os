@@ -113,15 +113,25 @@ async function fuehreAus(auftrag) {
   }
 }
 
+/**
+ * Lange Abfrage (10.10., Arbeiter-Wecker — lib/zoe/wecker.ts): ist nichts da, hält die App die Anfrage bis zu `WARTEN_MS` offen und antwortet
+ * sofort, sobald etwas eingereiht wird. Antwortet die App mit `gewartet`, braucht es danach keine eigene Pause (vorher bis zu 30 s je Sprung).
+ * Eine ältere App ohne Wecker antwortet sofort ohne `gewartet` — dann gilt die Pause wie bisher.
+ */
+const WARTEN_MS = 15_000;
+let langeAbfrage = false;
+
 async function runde() {
+  langeAbfrage = false;
   await takt();
   const frei = plaetze(laufend);
   if (frei <= 0) return false;
   const r = await fetch(`${ORT}/api/zoe/auftraege/nimm`, {
-    method: 'POST', headers: kopf, body: JSON.stringify({ anzahl: frei, pacht: 300 }),
-    signal: AbortSignal.timeout(20_000),
+    method: 'POST', headers: kopf, body: JSON.stringify({ anzahl: frei, pacht: 300, wartenMs: WARTEN_MS }),
+    signal: AbortSignal.timeout(WARTEN_MS + 20_000),
   });
   const d = await r.json();
+  langeAbfrage = d.gewartet === true;
   const neue = Array.isArray(d.auftraege) ? d.auftraege : [];
   if (!neue.length) return false;
   console.log(`[${zeit()}] ${neue.length} übernommen (${laufend} laufen schon, bis zu ${MAX_PARALLEL} parallel)`);
@@ -153,7 +163,7 @@ while (weiter) {
     // der Arbeiter auch — sonst läuft er als Waise weiter.
     if (appWeg >= 20) { console.log(`[${zeit()}] App seit Langem nicht erreichbar. Arbeiter beendet sich.`); break; }
   }
-  // Ruhig, wenn nichts los ist; sofort wieder da, sobald Arbeit kam.
-  const pause = stillGesehen === 0 ? 1200 : Math.min(KERNE <= 2 ? 30_000 : 15_000, 2000 + stillGesehen * 800);
+  // Ruhig, wenn nichts los ist; sofort wieder da, sobald Arbeit kam. Mit langer Abfrage hat die App schon gewartet (Wecker) — dann nur kurz.
+  const pause = stillGesehen === 0 ? 1200 : langeAbfrage && appWeg === 0 ? 250 : Math.min(KERNE <= 2 ? 30_000 : 15_000, 2000 + stillGesehen * 800);
   await new Promise(r => setTimeout(r, pause));
 }

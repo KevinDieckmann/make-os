@@ -23,6 +23,7 @@ import {
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Fenster } from '../Fenster';
 import { BrainUebernahmeFenster } from './BrainUebernahme';
+import { KostenFenster } from './KostenSpur';
 import { Chip, Eigenschaft, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPillen, Pillen, Schalter, Schritte, Segmente, SymbolKnopf, Zeile, auswahl, eingabe, feld } from '../ui';
 import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, mitRueckfrage, skillSenden } from './daten';
 import { WEG } from '@/lib/wege';
@@ -730,6 +731,7 @@ export function AgentenDialog({ d, onZu }: { d: DialogArt | null; onZu: () => vo
     case 'leitplanken': return <LeitplankenFenster onZu={onZu} />;
     case 'geplant': return <GeplantFenster onZu={onZu} />;
     case 'budget': return <BudgetFenster onZu={onZu} />;
+    case 'kosten': return <KostenFenster onZu={onZu} />;
     case 'brain': return <BrainUebernahmeFenster onZu={onZu} />;
     default: return null;
   }

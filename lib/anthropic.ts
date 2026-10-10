@@ -112,6 +112,13 @@ export interface AskOptions {
   schema?: Record<string, unknown>;
   /** System-Text als Cache-Block markieren — lohnt bei langen, stabilen Prompts. */
   cacheSystem?: boolean;
+  /**
+   * Der STABILE Anfang von `system` (10.10., Paket V1 „Messen & sparen“): mit `cacheSystem` geht er als eigener Block MIT Cache-Marke hinaus,
+   * der Rest von `system` (Uhrzeit, Live-Zustand, Gedächtnis …) als zweiter Block OHNE Marke dahinter — so trifft der Cache von Zug zu Zug,
+   * obwohl sich der flüchtige Teil ändert (Reihenfolge der API: tools → system → messages). `system` bleibt der GANZE Text (Prüfmodell,
+   * Tests, Protokoll lesen ihn wie bisher); beginnt `system` nicht mit `systemStabil`, gilt die alte Regel (ein Block).
+   */
+  systemStabil?: string;
   /** Denktiefe (output_config.effort). Lehnt die API sie ab, läuft der Aufruf ohne — das Schema bleibt. */
   effort?: 'low' | 'medium' | 'high';
   /**
@@ -265,6 +272,24 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
 type Sender = (opts: AskOptions, ziel: TextZiel | undefined, pseudonymisiert: boolean) => Promise<AskResult>;
 
 /**
+ * Lauf-Spur je Modellaufruf (10.10., Paket V1): die Kennungen für das KI-Protokoll (`spur`, `kette`) und das Vermerken des Aufrufs — im offenen
+ * Abschnitt zählt er in dessen Sammler, über einen Sprung (Warteschlange, `x-make-spur`) wird er ein eigener Abschnitt (lib/agenten/spur-server.ts).
+ * Nur Kennungen und Zahlen; ein Fehler hier verhindert nie eine Antwort.
+ */
+async function spurFuer(opts: AskOptions): Promise<{ felder: { spur?: string; kette?: string }; vermerken: (modell: string, ergebnis: 'ok' | 'fehler' | 'gesperrt', r?: AskResult) => Promise<void> }> {
+  const beginn = Date.now();
+  try {
+    const s = await import('./agenten/spur-server');
+    return {
+      felder: s.spurFelder(opts.ki?.spur),
+      vermerken: (modell, ergebnis, r) => s.modellAufruf({ bezug: opts.ki?.spur ?? null, person: opts.ki?.person ?? null, zweck: opts.zweck ?? 'unbenannt', modell, ...(r?.anbieter ? { anbieter: r.anbieter } : {}), ...(r?.usage ? { usage: r.usage } : {}), ergebnis, beginn }),
+    };
+  } catch {
+    return { felder: {}, vermerken: async () => { /* ohne Spur */ } };
+  }
+}
+
+/**
  * Die EINE Schranke vor jedem Modell-Aufruf (Schlüssel, Guthaben, KI-Tor, Budget, Anbieter-Tor, Web-Suche, Pseudonymisierung, KI-Protokoll) —
  * `askText` und `askStream` gehen beide hier durch; nur der Versand am Ende unterscheidet sich.
  */
@@ -279,10 +304,13 @@ async function kiAufruf(opts: AskOptions, sender: Sender): Promise<AskResult> {
   const webGewuenscht = (opts.tools ?? []).some(istWebSuche);
   const tor = await kiTor(opts.ki, webGewuenscht);
   const kategorien = opts.ki?.kategorien?.length ? opts.ki.kategorien : ['allgemein' as const];
+  const modell = String(opts.model ?? MODEL);
+  const spur = await spurFuer(opts);
   const protokoll = (ergebnis: 'ok' | 'fehler' | 'gesperrt', extra: { grund?: string; pseudonym?: number; websuche?: boolean; tokenEin?: number; tokenAus?: number } = {}) =>
-    void kiProtokollieren({ zweck: opts.zweck ?? 'unbenannt', lauf: tor.lauf, person: tor.person, kategorien: extra.websuche ? [...kategorien, 'web'] : kategorien, anzahl: opts.ki?.anzahl, modell: String(opts.model ?? MODEL), ergebnis, anbieter: 'anthropic', ...extra });
+    void kiProtokollieren({ zweck: opts.zweck ?? 'unbenannt', lauf: tor.lauf, person: tor.person, kategorien: extra.websuche ? [...kategorien, 'web'] : kategorien, anzahl: opts.ki?.anzahl, modell, ergebnis, anbieter: 'anthropic', ...spur.felder, ...extra });
   if (!tor.ok) {
     protokoll('gesperrt', { grund: tor.grund });
+    await spur.vermerken(modell, 'gesperrt');
     return { ok: false, status: 403, text: '', error: `ki-gesperrt:${tor.grund}` };
   }
   // Instanz-Budget (09.10., lib/ki/tor.ts): nur wenn eines gesetzt ist (Inhaber-Einstellung oder Umgebung) — ohne Budget liest diese Zeile
@@ -290,15 +318,17 @@ async function kiAufruf(opts: AskOptions, sender: Sender): Promise<AskResult> {
   const budget = await (await import('./ki/tor')).budgetSperre();
   if (budget) {
     protokoll('gesperrt', { grund: budget });
+    await spur.vermerken(modell, 'gesperrt');
     return { ok: false, status: 403, text: '', error: `ki-gesperrt:${budget}` };
   }
   const tools = webGewuenscht && !tor.websuche ? (opts.tools ?? []).filter(t => !istWebSuche(t)) : opts.tools;
   const ps = tor.pseudonym ? await pseudonymFuerLauf().catch(() => null) : null;
   const r = await sender(ps
-    ? { ...opts, tools, system: ps.ersetze(opts.system), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
+    ? { ...opts, tools, system: ps.ersetze(opts.system), ...(opts.systemStabil !== undefined ? { systemStabil: ps.ersetze(opts.systemStabil) } : {}), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
     : { ...opts, tools }, undefined, !!ps);
   const websuche = webGewuenscht && tor.websuche;
   protokoll(r.ok ? 'ok' : 'fehler', { ...(ps?.ersetzt() ? { pseudonym: ps.ersetzt() } : {}), ...(websuche ? { websuche } : {}), ...(r.usage ? { tokenEin: r.usage.ein, tokenAus: r.usage.aus } : {}) });
+  await spur.vermerken(modell, r.ok ? 'ok' : 'fehler', r);
   if (!ps) return r;
   return { ...r, text: ps.zurueck(r.text), ...(r.raw !== undefined ? { raw: ps.tiefZurueck(r.raw) } : {}) };
 }
@@ -317,25 +347,28 @@ async function askTextUeberTor(opts: AskOptions, sender: Sender): Promise<AskRes
   const tor = await anbieterTor({ faehigkeit: 'text', ki: opts.ki, webGewuenscht, ausgefallen: leer ? ['anthropic'] : [] });
   const kategorien = opts.ki?.kategorien?.length ? opts.ki.kategorien : ['allgemein' as const];
   const modell = String(opts.model ?? MODEL);
+  const spur = await spurFuer(opts);
   const protokoll = (ergebnis: 'ok' | 'fehler' | 'gesperrt', extra: { grund?: string; pseudonym?: number; websuche?: boolean; tokenEin?: number; tokenAus?: number } = {}) =>
-    void kiProtokollieren({ zweck: opts.zweck ?? 'unbenannt', lauf: tor.lauf, person: tor.person, kategorien: extra.websuche ? [...kategorien, 'web'] : kategorien, anzahl: opts.ki?.anzahl, modell, ergebnis, ...(tor.ok ? { anbieter: tor.anbieter, region: tor.region, stufe: tor.stufe } : {}), ...extra });
+    void kiProtokollieren({ zweck: opts.zweck ?? 'unbenannt', lauf: tor.lauf, person: tor.person, kategorien: extra.websuche ? [...kategorien, 'web'] : kategorien, anzahl: opts.ki?.anzahl, modell, ergebnis, ...(tor.ok ? { anbieter: tor.anbieter, region: tor.region, stufe: tor.stufe } : {}), ...spur.felder, ...extra });
   if (!tor.ok) {
     if (leer && tor.grund === 'anbieter-ausgefallen') return { ok: false, status: 402, text: '', error: 'guthaben-leer' };
     protokoll('gesperrt', { grund: tor.grund });
+    await spur.vermerken(modell, 'gesperrt');
     return { ok: false, status: 403, text: '', error: `ki-gesperrt:${tor.grund}` };
   }
   let ziel: TextZiel | undefined;
   if (tor.anbieter === 'anthropic-vertex-eu') {
     try { ziel = (await import('./ki/adapter/anthropic-vertex')).vertexClaudeZiel(); }
-    catch { protokoll('fehler'); return { ok: false, status: 0, text: '', error: 'Claude über Vertex EU ist nicht eingerichtet', anbieter: tor.anbieter }; }
+    catch { protokoll('fehler'); await spur.vermerken(modell, 'fehler'); return { ok: false, status: 0, text: '', error: 'Claude über Vertex EU ist nicht eingerichtet', anbieter: tor.anbieter }; }
   }
   const tools = webGewuenscht && !tor.websuche ? (opts.tools ?? []).filter(t => !istWebSuche(t)) : opts.tools;
   const ps = tor.pseudonym ? await pseudonymFuerLauf().catch(() => null) : null;
   const r = await sender(ps
-    ? { ...opts, tools, system: ps.ersetze(opts.system), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
+    ? { ...opts, tools, system: ps.ersetze(opts.system), ...(opts.systemStabil !== undefined ? { systemStabil: ps.ersetze(opts.systemStabil) } : {}), user: ps.ersetze(opts.user ?? ''), ...(opts.messages ? { messages: ps.tiefErsetzen(opts.messages) } : {}) }
     : { ...opts, tools }, ziel, !!ps);
   const websuche = webGewuenscht && tor.websuche;
   protokoll(r.ok ? 'ok' : 'fehler', { ...(ps?.ersetzt() ? { pseudonym: ps.ersetzt() } : {}), ...(websuche ? { websuche } : {}), ...(r.usage ? { tokenEin: r.usage.ein, tokenAus: r.usage.aus } : {}) });
+  await spur.vermerken(modell, r.ok ? 'ok' : 'fehler', r);
   if (!ps) return r;
   return { ...r, text: ps.zurueck(r.text), ...(r.raw !== undefined ? { raw: ps.tiefZurueck(r.raw) } : {}) };
 }
@@ -374,6 +407,21 @@ async function stromLesen(res: Response, zb: NachrichtZusammenbau, stueck: (t: s
 }
 
 /**
+ * Der System-Text in der Form der API (rein): ohne `cacheSystem` der Text; mit `cacheSystem` ein Block mit Cache-Marke — und, wenn `systemStabil`
+ * der Anfang von `system` ist (10.10., Paket V1), ZWEI Blöcke: der stabile mit Marke, der flüchtige Rest ohne. Ein leerer Rest fällt weg (die API
+ * nimmt keine leeren Blöcke).
+ */
+export function systemFuerApi(o: Pick<AskOptions, 'system' | 'cacheSystem' | 'systemStabil'>): string | { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }[] {
+  if (!o.cacheSystem) return o.system;
+  const st = o.systemStabil;
+  if (st && o.system.startsWith(st)) {
+    const rest = o.system.slice(st.length).replace(/^\s+/, '');
+    return [{ type: 'text', text: st, cache_control: { type: 'ephemeral' } }, ...(rest ? [{ type: 'text' as const, text: rest }] : [])];
+  }
+  return [{ type: 'text', text: o.system, cache_control: { type: 'ephemeral' } }];
+}
+
+/**
  * Der eigentliche Versand (nach dem Tor). `ziel` = anderer Zugang (Claude über Vertex EU); ohne: Anthropic direkt wie bisher.
  * `strom` (09.10.): mit `onText` und ohne `ziel` dieselbe Anfrage mit `stream: true` — die Ereignisse werden wieder zu EINER Antwort
  * zusammengesetzt (lib/ki/nachricht-strom.ts), Text-Stücke gehen unterwegs an `onText`. Wiederholt wird nur, solange noch kein Stück
@@ -389,7 +437,7 @@ async function askTextSenden(opts: AskOptions, ziel?: TextZiel, strom?: StromOpt
     // Antwort. Zu klein → das Modell verbrennt alles im Denken (stop:max_tokens)
     // und der Text-Block bleibt leer.
     max_tokens: Math.max(1200, opts.maxTokens ?? 4000),
-    system: opts.cacheSystem ? [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }] : opts.system,
+    system: systemFuerApi(opts),
     messages: opts.messages ?? [{ role: 'user', content: opts.user }],
   };
   if (opts.tools && opts.tools.length) body.tools = opts.tools;
