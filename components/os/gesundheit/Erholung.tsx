@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Leaf } from 'lucide-react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Fortschritt, Leer, Leerzustand, Hinweis, Schalter, Zeile, Feldzeile, feld, auswahl, LEUCHT } from '../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Fortschritt, Leer, Leerzustand, Hinweis, Schalter, Zeile, Feldzeile, feld, auswahl, LEUCHT, useRueckfrage } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
@@ -185,10 +185,12 @@ function ProgrammFormular({ start, speichern, abbrechen }: { start?: ErholungPro
 
 function ProgrammeKarte({ d, aendern }: { d: ErholungAntwort; aendern: (ops: Op[]) => Promise<boolean> }) {
   const [offen, setOffen] = useState<string | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
   const s = d.erholung, eigene = d.eigene;
   const reihe = [...s.programme].sort((a, b) => PROGRAMM_STATUS.indexOf(a.status) - PROGRAMM_STATUS.indexOf(b.status) || a.name.localeCompare(b.name));
   return (
     <Karte i={2}>
+      {dialog}
       <Ueberschrift farbe={ERHOLUNG_FARBE} rechts={eigene && offen !== 'neu' ? <button type="button" onClick={() => setOffen('neu')} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>+ Programm</button> : undefined}>Programme</Ueberschrift>
       {offen === 'neu' && <ProgrammFormular speichern={p => aendern([{ op: 'programm', programm: p }])} abbrechen={() => setOffen(null)} />}
       {reihe.length === 0 && offen !== 'neu' && <Leer>{eigene ? 'Noch kein Programm. Eigene Übungen anlegen oder rechts eine Vorlage übernehmen.' : 'Keine Programme.'}</Leer>}
@@ -199,7 +201,7 @@ function ProgrammeKarte({ d, aendern }: { d: ErholungAntwort; aendern: (ops: Op[
             unter={[erholungArtName(p.art), `${p.proWoche}× je Woche`, p.tage.length ? p.tage.map(t => WD[t - 1]).join(' ') : 'flexibel', programmMinuten(p) ? `${programmMinuten(p)} min` : '', p.stufe ?? '', p.uebungen.length ? `${p.uebungen.length} Übung${p.uebungen.length === 1 ? '' : 'en'}` : '', p.ziel ?? ''].filter(Boolean).join(' · ')}
             rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {p.status !== 'aktiv' && <Chip farbe={C.inkDim}>{PROGRAMM_STATUS_NAME[p.status]}</Chip>}
-              {eigene && <Knopf leise ariaLabel={`${p.name} entfernen`} onClick={async () => { if (window.confirm(`„${p.name}“ entfernen? Erledigte Einheiten bleiben im Protokoll.`)) await aendern([{ op: 'weg', liste: 'programme', id: p.id }]); }}>×</Knopf>}
+              {eigene && <Knopf leise ariaLabel={`${p.name} entfernen`} onClick={async () => { if (await bestaetigen({ titel: `„${p.name}“ entfernen?`, text: 'Erledigte Einheiten bleiben im Protokoll.', ja: 'Entfernen', gefahr: true })) await aendern([{ op: 'weg', liste: 'programme', id: p.id }]); }}>×</Knopf>}
             </span>} />
         )
       ))}
@@ -235,10 +237,12 @@ function BehandlungKarte({ b, eigene, aendern, heute, termine, unterlagen }: { b
   const [art, setArt] = useState(b.art);
   const [geplant, setGeplant] = useState<number | ''>(b.geplant ?? '');
   const [status, setStatus] = useState<BehandlungStatus>(b.status);
+  const { bestaetigen, dialog } = useRueckfrage();
   const erledigt = b.termine.filter(t => t.erledigt).length;
   const naechster = b.termine.find(t => !t.erledigt && t.tag >= heute);
   return (
     <div style={{ borderBottom: `1px solid ${C.linie}`, padding: '10px 0', display: 'grid', gap: 8 }}>
+      {dialog}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600 }}>{b.art}</span>
         <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{b.geplant ? `${erledigt} von ${b.geplant}` : `${erledigt} erledigt`} · {BEHANDLUNG_STATUS_NAME[b.status]}</span>
@@ -273,7 +277,7 @@ function BehandlungKarte({ b, eigene, aendern, heute, termine, unterlagen }: { b
           <Reihe>{unterlagen.map(u => { const an = b.unterlagen.includes(u.id); return <button key={u.id} type="button" className="fassbar" aria-pressed={an} onClick={() => { void aendern([{ op: 'behandlung', id: b.id, behandlung: { unterlagen: an ? b.unterlagen.filter(x => x !== u.id) : [...b.unterlagen, u.id] } }]); }} style={{ minHeight: 44, padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, background: an ? `${ERHOLUNG_FARBE}26` : 'rgba(255,255,255,.05)', color: an ? ERHOLUNG_FARBE : C.inkDim }}>{u.name}</button>; })}</Reihe>
         </div>
       )}
-      {eigene && !bearbeiten && <Reihe><Knopf leise onClick={() => setBearbeiten(true)}>Bearbeiten</Knopf><Knopf leise onClick={async () => { if (window.confirm(`„${b.art}“ entfernen?`)) await aendern([{ op: 'weg', liste: 'behandlungen', id: b.id }]); }}>Entfernen</Knopf></Reihe>}
+      {eigene && !bearbeiten && <Reihe><Knopf leise onClick={() => setBearbeiten(true)}>Bearbeiten</Knopf><Knopf leise onClick={async () => { if (await bestaetigen({ titel: `„${b.art}“ entfernen?`, ja: 'Entfernen', gefahr: true })) await aendern([{ op: 'weg', liste: 'behandlungen', id: b.id }]); }}>Entfernen</Knopf></Reihe>}
       {eigene && bearbeiten && (
         <form onSubmit={async ev => { ev.preventDefault(); if (await aendern([{ op: 'behandlung', id: b.id, behandlung: { art, geplant: geplant || null, status } }])) setBearbeiten(false); }} style={{ display: 'grid', gap: 6 }}>
           <Reihe>
