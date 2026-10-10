@@ -301,7 +301,8 @@ export async function ladeFotos(): Promise<Abruf<{ fotos: FotoWahl[] }>> {
 //   Agenten-Ordner merken. POST /api/agenten { aktion: 'wissen' } → Wissen eines Business-Heads (Business-Bestand, Stand → 409).
 
 export const WEG_BRAIN = '/api/agenten/brain';
-export type { BrainVorschau, UebernahmeErgebnis as BrainErgebnis } from '@/lib/agenten/brain-agenten-server';
+import type { BrainVorschau, UebernahmeErgebnis as BrainErgebnis } from '@/lib/agenten/brain-agenten-server';
+export type { BrainVorschau, BrainErgebnis };
 export type BrainZiele = Record<string, { headId: string | null; als?: 'head' | 'mitarbeiter' }>;
 
 /** Vorschau laden — `ordner` = anderer Agenten-Ordner, `ziele` = in der Vorschau gewählte Heads (dann per POST, schreibt nichts). */
