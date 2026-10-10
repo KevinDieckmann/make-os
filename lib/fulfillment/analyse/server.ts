@@ -24,7 +24,8 @@ export const ENTWURF_TAGE = 90;
 
 /** Kurzform je Mandat für das Cockpit — Schlüssel = Mandat-Kennung. */
 export async function dossierKurzFuer(mandatIds: readonly string[]): Promise<Record<string, DossierKurz>> {
-  const [dossiers, personen] = await Promise.all([fulfillmentLesen('dossiers'), fulfillmentLesen('personen')]);
+  const [dossiers, personen, { mitKontaktArt14 }] = await Promise.all([fulfillmentLesen('dossiers'), fulfillmentLesen('personen'), import('./personen-server')]);
+  const karten = await mitKontaktArt14(personen.karten.filter(k => mandatIds.includes(k.mandatId)));
   const { localDay } = await import('@/lib/zeit');
   const heute = localDay(), jetzt = Date.now();
   return Object.fromEntries(mandatIds.map(m => {
@@ -32,7 +33,7 @@ export async function dossierKurzFuer(mandatIds: readonly string[]): Promise<Rec
     if (!d) return [m, { vorhanden: false, f1: false, f2: false, laeufe: {}, kostenCent: 0, art14Bald: 0 } satisfies DossierKurz];
     const laeufe: Partial<Record<AnalyseAgentId, LaufStatus>> = {};
     for (const l of d.laeufe) laeufe[l.agent] = laufStatusAnzeige(l, jetzt);
-    const art14Bald = personen.karten.filter(k => k.mandatId === m && ['bald', 'ueberfaellig'].includes(art14Stand(k, heute).stufe)).length;
+    const art14Bald = karten.filter(k => k.mandatId === m && ['bald', 'ueberfaellig'].includes(art14Stand(k, heute).stufe)).length;
     return [m, { vorhanden: true, f1: !!d.f1, f2: !!d.f2, laeufe, kostenCent: Math.round(d.laeufe.reduce((s, l) => s + (l.kostenCent ?? 0), 0)), art14Bald } satisfies DossierKurz];
   }));
 }
@@ -47,10 +48,10 @@ export async function analyseMorgenlauf(h: string, heute: string): Promise<Morge
     verwaist = n;
     return n ? { ok: true, datei: { ...cur, dossiers }, geaendert: [] } : { ok: false, status: 400, fehler: 'nichts' };
   }, { art: 'system' }, h);
-  const [personen, dossiers, stapel] = await Promise.all([fulfillmentLesen('personen', h), fulfillmentLesen('dossiers', h), import('@/lib/zoe/stapel')]);
+  const [personen, dossiers, stapel, { mitKontaktArt14 }] = await Promise.all([fulfillmentLesen('personen', h), fulfillmentLesen('dossiers', h), import('@/lib/zoe/stapel'), import('./personen-server')]);
   const offen = new Set((await stapel.lies('offen')).filter(v => v.bezug?.art === 'fulfillment').map(v => v.bezug!.id));
   let vorschlaege = 0;
-  for (const k of personen.karten) {
+  for (const k of await mitKontaktArt14(personen.karten)) {
     const st = art14Stand(k, heute);
     if (st.stufe !== 'bald' && st.stufe !== 'ueberfaellig') continue;
     const id = `a:art14:${k.id}`;
@@ -133,7 +134,8 @@ export const ANALYSE_STAPEL: StapelArtFreigabe = {
     if (!a.ok) return { ok: false, status: a.status, fehler: a.fehler };
     try {
       const kid = a.v.bezug!.id.slice('a:art14:'.length);
-      const karte = (await fulfillmentLesen('personen')).karten.find(k => k.id === kid);
+      const roh = (await fulfillmentLesen('personen')).karten.find(k => k.id === kid);
+      const karte = roh ? (await (await import('./personen-server')).mitKontaktArt14([roh]))[0] : undefined;
       if (!karte) { await loslassen(a.v.id); return { ok: false, status: 404, fehler: 'Die Personenkarte gibt es nicht mehr (gelöscht oder nach der Frist entfernt).' }; }
       const st = art14Stand(karte, (await import('@/lib/zeit')).localDay());
       let text = 'Der Art.-14-Hinweis ist schon vermerkt — nichts zu tun.';

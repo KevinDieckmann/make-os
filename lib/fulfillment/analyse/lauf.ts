@@ -329,7 +329,8 @@ async function laufAusfuehren(mandatId: string, laufId: string, person: string, 
     d.eingaben.urls.length ? `Adressen aus den Eingaben:\n${d.eingaben.urls.map(u => `- ${u}`).join('\n')}` : '',
     funktion ? `Funktion: ${funktion}` : '',
   ].filter(Boolean).join('\n');
-  const messages: unknown[] = [{ role: 'user', content: `${eingaben}${kandidaten ? `\n\nAdressen aus der Suche dieses Laufs (nur diese und die Domains des Mandats sind lesbar):\n${fremd('web', kandidaten)}` : ''}\n\nArbeite den Auftrag ab und antworte am Ende nur mit dem JSON.` }];
+  // Die Eingaben stammen aus der Firmenakte bzw. von Hand (auch aus Importen) — als Daten gerahmt, nie als Anweisung.
+  const messages: unknown[] = [{ role: 'user', content: `Eingaben des Mandats:\n${fremd('eingaben', eingaben)}${kandidaten ? `\n\nAdressen aus der Suche dieses Laufs (nur diese und die Domains des Mandats sind lesbar):\n${fremd('web', kandidaten)}` : ''}\n\nArbeite den Auftrag ab und antworte am Ende nur mit dem JSON.` }];
   const grenzeUsd = Math.max(0, inUsdCent(l.grenzeCent) - usdCent);
   const ausgang = await schleife({
     system, messages, tools: werkzeugeFuer(l.agent), runden: 4, letzteRundeOhneWerkzeuge: true, werkzeugBudget: 20, doppeltErkennen: true,

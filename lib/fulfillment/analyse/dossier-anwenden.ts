@@ -77,9 +77,10 @@ export function eingabenSaeubern(e: Partial<DossierEingaben>, alt?: DossierEinga
   return { ok: true, eingaben: { firma, domains, urls, ...(opt('registerNr') ? { registerNr: opt('registerNr') } : {}), ...(opt('sitz') ? { sitz: opt('sitz') } : {}), ...(opt('branche') ? { branche: opt('branche') } : {}) } };
 }
 
-/** Inhalt geändert → F2 und Prüfung zurück, geänderte Abschnitte wieder „Entwurf“. */
+/** Inhalt geändert → F2 und Prüfung zurück, geänderte Abschnitte wieder „Entwurf“; endet damit eine geprüfte Fassung, zählt die Version hoch. */
 function inhaltGeaendert(d: Dossier): Dossier {
-  const { f2: _f2, pruefung: _p, ...rest } = d;
+  const { f2, pruefung: _p, ...rest } = d;
+  if (f2) rest.version = d.version + 1;
   const abschnitte = Object.fromEntries(Object.entries(d.abschnitte).map(([k, a]) => [k, a && a.status === 'geprueft' ? { ...a, status: 'entwurf' as const } : a])) as Dossier['abschnitte'];
   return { ...rest, abschnitte };
 }

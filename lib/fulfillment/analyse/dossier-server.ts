@@ -79,7 +79,8 @@ async function pruefen(mandatId: string, person: string, wer: Wer, m: import('@/
   const ende = mandatsEnde(m) ?? (m.ende ? m.ende.slice(0, 10) : null);
   // Löschtag der Karten nachziehen, sobald das Mandatsende feststeht (Plan: Mandatsende + Frist).
   await fulfillmentAendern('personen', p => personenAnwenden(p, { op: 'loeschtage', mandatId, loeschAm: loeschAmFuer(ende, tage) }, { person, heute, standVon: k => eintragStand(k) }), wer);
-  const karten = (await fulfillmentLesen('personen')).karten.filter(k => k.mandatId === mandatId);
+  const { mitKontaktArt14 } = await import('./personen-server');
+  const karten = await mitKontaktArt14((await fulfillmentLesen('personen')).karten.filter(k => k.mandatId === mandatId));
   const k = ctx(person);
   const grenze = tagPlus(heute, -VERALTET_TAGE);
   const r = await fulfillmentAendern('dossiers', cur => {

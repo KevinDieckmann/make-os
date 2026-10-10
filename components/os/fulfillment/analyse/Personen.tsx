@@ -20,6 +20,8 @@ const STUFE_FARBE: Record<string, string> = { gegeben: LEUCHT.gut, offen: C.inkL
 const LISTEN = [['werdegang', 'Werdegang'], ['themen', 'Themen'], ['auftritte', 'Auftritte'], ['aufhaenger', 'Gesprächsaufhänger']] as const;
 
 export function Personen({ mandatId, firmaId, rueck }: { mandatId: string; firmaId?: string; rueck: Rueck }) {
+  const crm = useCrm();
+  const kandidaten = firmaId && crm.kontakte ? personenDerFirma(crm.kontakte, firmaId, { nurAktiv: true }) : [];
   const [karten, setKarten] = useState<KarteAntwort[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
@@ -44,18 +46,16 @@ export function Personen({ mandatId, firmaId, rueck }: { mandatId: string; firma
       <Ueberschrift erklaerung="fulfillment.loeschfristPersonen">Löschfrist und Art. 14</Ueberschrift>
       {fehler && <Hinweis art="achtung">{fehler}</Hinweis>}
       {!karten.length && <Leer>Noch keine Karten. Sie entstehen nur aus einem bestätigten Personen-Lauf (A4) zu einer Funktion aus F1.</Leer>}
-      {karten.map(k => <KarteAnsicht key={k.id} k={k} firmaId={firmaId} schritt={b => schritt(k, b)} rueck={rueck} />)}
+      {karten.map(k => <KarteAnsicht key={k.id} k={k} kandidaten={kandidaten} schritt={b => schritt(k, b)} rueck={rueck} />)}
     </div>
   );
 }
 
-function KarteAnsicht({ k, firmaId, schritt, rueck }: { k: KarteAntwort; firmaId?: string; schritt: (b: Record<string, unknown>) => Promise<void>; rueck: Rueck }) {
-  const crm = useCrm();
+function KarteAnsicht({ k, kandidaten, schritt, rueck }: { k: KarteAntwort; kandidaten: readonly { id: string; vorname?: string; nachname?: string }[]; schritt: (b: Record<string, unknown>) => Promise<void>; rueck: Rueck }) {
   const [gegebenAm, setGegebenAm] = useState('');
   const [wie, setWie] = useState<'kickoff' | 'mail' | 'erster-kontakt'>('kickoff');
   const [kontakt, setKontakt] = useState(k.kontaktId ?? '');
   const quellen = new Map(k.quellen.map(q => [q.id, q]));
-  const kandidaten = firmaId && crm.kontakte ? personenDerFirma(crm.kontakte, firmaId, { nurAktiv: true }) : [];
   return (
     <Karte>
       <Ueberschrift rechts={<span style={{ display: 'flex', gap: 6 }}>

@@ -129,6 +129,42 @@ drei Verarbeitungen (VVT), Lese-Bereiche, Stapel-Art `fulfillment`, Morgenlauf-S
 3. `/kunde/kl-000000000000000000000000` → „Dieser Link ist nicht aktiv.“
 4. `npx tsc --noEmit` und `npx vitest run tests/fulfillment-fundament*.test.ts` sind grün.
 
+## 10.10.2026 — Fulfillment C3: Analyse-Strecke — Dossier, Agenten, Web-Abruf, Prüfer, Personenteil, Tiefenbericht (nur lokal — Branch `fulfillment-c3`, Basis 5c79f727 = `update-0910b`; Konzept `FULFILLMENT_KONZEPT.md` 4, 11)
+
+Fall › Analyse: je Mandat ein Dossier (fester Aufbau, Quelle + Datum je Aussage), 16 Agenten in vier Wellen als Daten, **jeder Lauf einzeln mit Kostenschätzung
+bestätigt** (kein Autostart, kein „alle starten“, Morgenlauf startet nie), Entwurf → abschnittsweise übernehmen, deterministische Prüfung + Prüfer-Agent,
+F1 (Umfang, Funktionen, Interessenabwägung) und F2 (nur mit bestandener Prüfung, Datenschutz nie überstimmbar). Personenteil getrennt (eigener Bestand,
+Mandatsende + 90 Tage, Art.-14-Uhr, nur Inhaber/volle Mitglieder). Tiefenbericht nur als Leseteil für die auslösende Person. Nur additiv: keine neuen Bestände
+außer den fünf aus C0, keine Formänderung.
+
+**Gebaut:** `lib/fulfillment/analyse/**` (agenten, schaetzen, ausgabe, quellen, dsgvo, pruefen, dossier-anwenden, personen-anwenden, web-lesen, werkzeug-defs,
+werkzeuge, lauf, lage, sicht, dossier-server, personen-server, zoe-werkzeug, server), `lib/netz/oeffentlich.ts` (`ipIntern` jetzt EINE Regel für Postfächer und
+Web-Abruf), `lib/ki/leseteil.ts`, Routen `fulfillment/{dossier,analyse,personen,dossier/leseteil}`, Oberfläche `components/os/fulfillment/analyse/**`, Werkzeuge mit
+Vertrag (`web_lesen`, `fall_unterlagen`, `dossier_teile` nur im Analyse-Handler; ZOE `fulfillment_lage`), Erklärungen (`fulfillment.*` + Agent-Texte), Demo-Dossier.
+
+**So testet ihr** (Klickdummy `localhost:3001`, Demo bzw. mit einem Business-Mandat):
+1. Produkte & Mandate › Fulfillment › Analysen → Liste der Dossiers; Mandat ohne Dossier → „Dossier anlegen ›“.
+2. Fall › Analyse → „Dossier anlegen“ (Firma und Domain aus der Firmenakte vorbelegt) → Läufe › A0 „Prüfen“ (ohne Kosten) → unter Aufgaben steht „Registerauszug und
+   Gesellschafterliste als PDF ablegen“.
+3. Welle 1 zeigt A1, A5, A7, A8 und TB je mit „ca. … · höchstens …“ → A1 „Starten“ → Rückfrage mit Kosten und Datenweg → läuft → „Entwurf fertig“ → Abschnitte
+   anhaken → „In das Dossier übernehmen“. (Ohne KI-Schlüssel bzw. mit Web-Suche aus steht oben ehrlich, was fehlt — mit Weg zu den KI-Schaltern; nichts wird umgeschaltet.)
+4. A4 bleibt gesperrt → Recht & Freigaben: Interessenabwägung speichern (Muster vorbelegt), F1 mit „Vertriebsleitung“ → A4 bereit (je Funktion eine Zeile).
+5. Dossier › Aussage von Hand mit einem Satz über eine Krankheit der Geschäftsführung → Recht & Freigaben „Jetzt prüfen“ → Datenschutz-Befund, „Überstimmen“ gibt es
+   nicht → Aussage entfernen → prüfen → „F2 setzen“ → Dossier › „Quick Wins in den Fall“ (braucht C1) bzw. „In die Firmenakte übernehmen“ (CRM-Schreibweg mit Stand).
+6. Tiefenbericht: Frage anpassen → starten (nur mit Google Vertex + Schalter des Inhabers, sonst der Satz) → nur du siehst „Dein Leseteil“; ein zweites Konto sieht
+   nur „es gibt einen Tiefenbericht“.
+7. Mit einem Konto „nur Business“: Analyse sichtbar, Reiter „Personen“ fehlt, `/api/fulfillment/personen` → 403.
+8. Demo: Dossier „Nordwerk“ mit allen Abschnitten, Läufen mit Kosten, Prüfbericht (ein überstimmter Hinweis), F1/F2, einer Personenkarte mit Art.-14-Uhr — ohne KI.
+
+**Tests:** `tests/fulfillment-c3-{rein,web,routen,demo}.test.ts` (rein: Agenten, Schätzung, Ausgabe, Prüfung, Dossier-/Personen-Schritte, Netz; Web: privat/Loopback/
+CGNAT/ULA, Rebinding, Weiterleitung, 2 MB, nur Text, Erlaubnis, robots.txt, echter Abruf mit festgehaltener Adresse; Routen: Sicht X ↛ Y, 409 Kosten, 429, ≤ 3 je Agent,
+Pacht, F1/F2, KI-Kategorien, Personenteil, Lese-Protokoll, Leseteil, ZOE, Morgenlauf, Art. 15, Löschfrist; Demo ohne Modell). Angepasst: `tests/werkzeug-vertraege.test.ts`
+(`NEU_SEIT_V3` + 4 Werkzeuge), `tests/fulfillment-fundament.test.ts` (zwei Stub-Erwartungen der C3-Routen). Grün: routen-register, erklaerungen, ki-datenschutz,
+ki-anbieter-tor, agenten-p4a-zoe, integritaet-zugang, sicht-business-privat, trennung-bereiche, messlatte-malin, design-standard, demo, inbox2-rein.
+**Offen:** Form der Fall-Ops `quickwins-setzen`/`kickoff-fragen` mit C1 abgleichen (gesendet wird `{ m, ops: [{ op, quickWins | fragen }] }`); C2 liefert Unterlagen
+und Playbook-Antworten (bis dahin bleibt A2 gesperrt). Anwalt liest Interessenabwägungs- und Art.-14-Muster gegen. **Rückweg:** der alte Stand kennt die Bestände
+`fulfillment-dossiers--*`/`-personen--*` nicht und lässt sie liegen; Sicherung vor dem Upload.
+
 ## 10.10.2026 — Kalender: Ansicht wie Google (nur lokal — Branch `kalender-ansicht`, Basis 7c9e1335 = `update-0910b`)
 
 Entscheidung 10.10.: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im Vergleich zu

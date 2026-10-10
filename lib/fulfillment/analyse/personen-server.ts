@@ -17,6 +17,20 @@ import { mandatFuer, personenTage } from './lauf';
 export type Antwort = { status: number; body: Record<string, unknown> };
 const nein = (status: number, fehler: string): Antwort => ({ status, body: { ok: false, fehler } });
 
+/**
+ * Karten mit dem Art.-14-Stand eines verknüpften CRM-Kontakts: ist die Person dort informiert (`art14InformiertAm`, CRM-Weg art14-entwurf/art14-raus),
+ * gilt der Hinweis hier als gegeben — nur gelesen, nie gespeichert (eine Wahrheit: die Kontaktakte).
+ */
+export async function mitKontaktArt14(karten: PersonenKarte[]): Promise<PersonenKarte[]> {
+  if (!karten.some(k => k.kontaktId && !k.art14.gegebenAm)) return karten;
+  const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+  const kontakte = new Map((await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).map(k => [k.id, k]));
+  return karten.map(k => {
+    const am = k.kontaktId && !k.art14.gegebenAm ? kontakte.get(k.kontaktId)?.art14InformiertAm : undefined;
+    return am ? { ...k, art14: { ...k.art14, gegebenAm: am.slice(0, 10), wie: 'mail' as const } } : k;
+  });
+}
+
 async function kartenAntwort(mandatId: string): Promise<{ karten: Record<string, unknown>[]; ids: string[] }> {
   const heute = localDay();
   const [{ verantwortlicherLaden }, { kontakteFuerVerarbeitung }, { art14Frist }, tage] = await Promise.all([
@@ -24,14 +38,17 @@ async function kartenAntwort(mandatId: string): Promise<{ karten: Record<string,
   ]);
   const v = await verantwortlicherLaden();
   const verantwortlicher = v.v ? [v.v.name, v.v.anschrift.replace(/\n+/g, ', '), v.v.mail].filter(Boolean).join(' · ') : null;
-  const karten = (await fulfillmentLesen('personen')).karten.filter(k => k.mandatId === mandatId);
+  const roh = (await fulfillmentLesen('personen')).karten.filter(k => k.mandatId === mandatId);
+  // Stand aus der GESPEICHERTEN Karte (sonst 409 beim nächsten Schritt); angezeigt wird der Art.-14-Stand samt verknüpftem Kontakt.
+  const staende = new Map(roh.map(k => [k.id, eintragStand(k)]));
+  const karten = await mitKontaktArt14(roh);
   const kontakte = karten.some(k => k.kontaktId) ? await kontakteFuerVerarbeitung({ mitEingeschraenkten: true }) : [];
   return {
     ids: karten.map(k => k.id),
     karten: karten.map(k => {
       const kontakt = k.kontaktId ? kontakte.find(x => x.id === k.kontaktId) : undefined;
       return {
-        ...k, stand: eintragStand(k), art14Stand: art14Stand(k, heute), maengel: karteMaengel(k),
+        ...k, stand: staende.get(k.id)!, art14Stand: art14Stand(k, heute), maengel: karteMaengel(k),
         art14Text: art14Text({ verantwortlicher, herkunft: herkunftVon(k), funktion: k.funktion, frist: `${tage} Tage nach Ende des Mandats` }),
         ...(k.kontaktId ? { kontakt: kontakt ? { vorhanden: true, art14: art14Frist(kontakt, heute) } : { vorhanden: false } } : {}),
       };

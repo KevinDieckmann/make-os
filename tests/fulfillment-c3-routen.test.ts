@@ -389,6 +389,23 @@ describe('Personenteil, F1, Art. 14, Löschfrist', () => {
   });
 });
 
+describe('Art. 14 über den CRM-Weg', () => {
+  it('ist die verknüpfte Person in der Kontaktakte informiert, gilt der Hinweis an der Karte als gegeben — ohne 409 beim nächsten Schritt', async () => {
+    await db.saveJson('kontakte', { kontakte: [{ id: 'c-max', vorname: 'Max', nachname: 'Beispiel', firmaId: 'f-1', art14InformiertAm: '2026-10-05T09:00:00.000Z', aktivitaeten: [] }] });
+    const { personenAnwenden } = await import('@/lib/fulfillment/analyse/personen-anwenden');
+    const vor26 = new Date(Date.now() - 26 * 86_400_000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+    const { einMonatNach } = await import('@/lib/datenschutz/art14');
+    await sp.fulfillmentAendern('personen', p => personenAnwenden(p, { op: 'karte-neu', karte: { id: 'pp-crm', mandatId: 'm-1', funktion: 'Vertriebsleitung', name: 'Max Beispiel', kontaktId: 'c-max', werdegang: [], themen: [], auftritte: [], aufhaenger: [], identitaet: 'hoch', ausgelassen: [], quellen: [], art14: { faelligAm: einMonatNach(vor26) }, erfasstAm: vor26, status: 'entwurf' } }, { person: 'pia', heute: vor26, standVon: () => '' }));
+    const g = await rufe('fulfillment/personen', 'GET', sitzung('pia'), undefined, '?m=m-1');
+    const k = (g.j.karten as { id: string; stand: string; art14Stand: { stufe: string }; kontakt?: { vorhanden: boolean } }[]).find(x => x.id === 'pp-crm')!;
+    expect(k.art14Stand.stufe).toBe('gegeben');
+    expect(k.kontakt?.vorhanden).toBe(true);
+    expect((await rufe('fulfillment/personen', 'POST', sitzung('pia'), { aktion: 'pruefen', mandatId: 'm-1', id: 'pp-crm', stand: k.stand })).status).toBe(200);
+    // gespeichert bleibt die Karte ohne Vermerk — die Wahrheit liegt in der Kontaktakte
+    expect((await sp.fulfillmentLesen('personen')).karten.find(x => x.id === 'pp-crm')?.art14.gegebenAm).toBeUndefined();
+  });
+});
+
 describe('Wächter im Code', () => {
   const dateien = (dir: string): string[] => readdirSync(path.join(WURZEL, dir)).flatMap(n => { const rel = `${dir}/${n}`; return statSync(path.join(WURZEL, rel)).isDirectory() ? dateien(rel) : /\.(ts|tsx)$/.test(n) ? [rel] : []; });
   it('nur die Leseteil-Route liest lib/ki/leseteil — kein Modul unter lib/fulfillment/** oder components/os/fulfillment/**', () => {
