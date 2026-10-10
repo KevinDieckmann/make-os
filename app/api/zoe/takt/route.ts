@@ -84,6 +84,9 @@ export async function POST(req: Request) {
   void whoopJobsImTakt().catch(() => {});
   // ZOE auf WhatsApp (08.10.): liegen gebliebene Nachrichten an ZOE verarbeiten, Sprachnachrichten nach 30 Tagen löschen — ohne Einrichtung nichts.
   void zoeWhatsappJobsImTakt().catch(() => {});
+  // Schlaf-Hilfe (09.10.): Abend-Erinnerung zur Schlafenszeit je Person mit eingeschalteter Erinnerung und Einwilligung (a) — einmal je Tag
+  // (Riegel im eigenen Bestand), Glocke immer, Handy nur auf Wunsch, beides neutral. Ohne KI, nie blockierend (lib/gesundheit/alltag-server.ts).
+  void import('@/lib/gesundheit/alltag-server').then(m => m.schlafJobsImTakt()).catch(() => {});
   void businessTagesstand();
   // Agenten (Härtetest 09.10.): verwaiste Läufe („läuft“ ohne Prozess nach einem Neustart, „wartet“ auf einen aufgegebenen Auftrag) enden
   // sichtbar mit „fehler“ und einer Glocke — nie „läuft“ für immer. Nie blockierend.

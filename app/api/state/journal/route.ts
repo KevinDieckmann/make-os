@@ -10,6 +10,7 @@ import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/l
 
 import { localDay } from '@/lib/zeit';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
+import { checkEingangSaeubern, checkAnwenden } from '@/lib/gesundheit/tages-check';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,9 @@ export interface JournalEntry {
   // Ältere Einträge tragen noch zwei feste Merkmale des früheren Tages-Checks (Werte „schub“/„schmerz“). Nichts schreibt sie
   // mehr; sie bleiben in den Daten (PUT schreibt den Bestand unverändert zurück) und die Oberfläche zeigt sie allgemein an.
   flags?: string[];// allgemeine Merkmale, z.B. bewegt, gutgeschlafen, sauber (Zähler laut Körper-Profil)
+  /** Tages-Check „wie im WHOOP-Journal“ (09.10.): Frage → ja/nein (Katalog lib/gesundheit/tages-check.ts; welche Fragen, stellt jede
+   *  Person selbst ein). Die Auswertung „an Tagen mit … war dein Schlaf …“ liest NUR die eigenen Tage. */
+  check?: Record<string, boolean>;
   at?: string;
 }
 export type Journal = Record<string, JournalEntry>;
@@ -63,7 +67,9 @@ export async function PUT(req: Request) {
 
 /** PATCH { datum?, eintrag } → einen Tag zusammenführen. Für die drei Fragen
  *  auf der Gesundheitsseite: ein Feld, ein Aufruf — der Schrumpf-Wächter des
- *  PUT ist hier überflüssig, weil nie ein ganzer Bestand geschickt wird. */
+ *  PUT ist hier überflüssig, weil nie ein ganzer Bestand geschickt wird.
+ *  09.10.: `eintrag.check` = Antworten des Tages-Checks ({ frage: true | false | null }, null entfernt) — unbekannte Frage → 400,
+ *  zusammengeführt mit den Antworten, die schon am Tag stehen. */
 export async function PATCH(req: Request) {
   // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
@@ -79,11 +85,19 @@ export async function PATCH(req: Request) {
     ...(t(e.hart, 800) ? { hart: t(e.hart, 800) } : {}), ...(t(e.text, 2000) ? { text: t(e.text, 2000) } : {}),
     ...(z(e.mood) ? { mood: z(e.mood) } : {}), ...(z(e.energy) ? { energy: z(e.energy) } : {}), ...(z(e.stress) ? { stress: z(e.stress) } : {}),
   };
-  if (!Object.keys(neu).length) return NextResponse.json({ ok: false, error: 'Nichts zum Eintragen.' }, { status: 400 });
+  let check: Record<string, boolean | null> | null = null;
+  if (e.check !== undefined) {
+    const c = checkEingangSaeubern(e.check);
+    if (!c.ok) return NextResponse.json({ ok: false, error: c.fehler }, { status: 400 });
+    check = c.werte;
+  }
+  if (!Object.keys(neu).length && !check) return NextResponse.json({ ok: false, error: 'Nichts zum Eintragen.' }, { status: 400 });
   const { updateJson } = await import('@/lib/store/local-db');
   const log = await updateJson<Journal>(speicherFuer('journal', personAus(req)), current => {
     const j = current ?? {};
-    return { ...j, [datum]: { ...(j[datum] ?? {}), ...neu, at: new Date().toISOString() } };
+    const tag: JournalEntry = { ...(j[datum] ?? {}), ...neu, at: new Date().toISOString() };
+    if (check) { const c = checkAnwenden(tag.check, check); if (c) tag.check = c; else delete tag.check; }
+    return { ...j, [datum]: tag };
   });
   return NextResponse.json({ ok: true, datum, eintrag: log[datum] });
 }

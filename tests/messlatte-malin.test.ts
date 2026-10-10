@@ -336,6 +336,9 @@ const SYS = {
   // seiner Gesundheits-Unterlage (`gesundheit-unterlagen--kevin`) — nur er selbst.
   agentenAuftrag: 'MESSLATTE-SYS-AGENTEN-AUFTRAG',
   unterlage: 'MESSLATTE-SYS-GESUNDHEIT-UNTERLAGE',
+  // 09.10. Schlaf-Hilfe, Tages-Check, Essen nach WHOOP: Kevins Einstellungen (`gesundheit-alltag`, Erstkonto ohne Suffix) — die Marke steckt in
+  // der Kennung einer Ergänzungs-Routine (nur er selbst sieht seine Einstellungen, auch bei „Teilen“ nicht).
+  alltag: 'MESSLATTE-SYS-ALLTAG',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -523,6 +526,7 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     }] });
     await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
     const { speicherFuer: sf } = await import('@/lib/zoe/raum');
+    await db.saveJson(sf('gesundheit-alltag', 'kevin'), { v: 1, schlaf: { aufstehen: '07:30', aufstehenZiel: '06:45', schrittMin: 15, schrittTage: 3, ab: H, erinnerung: true, vorlaufMin: 30, handy: false }, essen: { orientierung: true }, ergaenzungen: { [SYS.alltag]: 'kreatin' } });
     await db.saveJson(sf('gesundheit-koerper', 'kevin'), { v: 1, leitsatz: SYS.koerper, beschwerden: [{ id: 'kb-messlatte', name: SYS.koerper, status: '', notiz: SYS.koerper, ton: 'achtung' }], hebel: [], stufen: [], zusammenhaenge: [], hinweis: SYS.koerper, symptom: { name: SYS.koerper }, sauberZaehler: true, routinenHinweise: [] });
     // Onboarding: Kevins persönliches Häkchen (die Marke steckt im Zeitstempel) und alte Häkchen seiner früheren Spur im gemeinsamen
     // Bestand — die zählen nie und erscheinen höchstens als Kennung „früher abgehakt“, nie mit Zeitstempel.

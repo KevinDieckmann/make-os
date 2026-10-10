@@ -326,6 +326,9 @@ async function einkaufSetzen(input: Record<string, unknown>, _o: string, person?
 
 async function journalEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   if (!person) return KEINE_PERSON;
+  // Wie die Oberfläche (PATCH /api/state/journal): das Journal trägt Gesundheitsdaten (seit 09.10. auch den Tages-Check) — nur mit
+  // Einwilligung (a) der Person (Bestandskonten ohne Erklärung wie bisher).
+  { const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung'); if (!(await gesundheitVerarbeitungErlaubt(person))) return 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.'; }
   const { speicherFuer } = await import('./raum');
   const datum = HEUTE_ODER(input.datum);
   const t = (v: unknown, n = 800) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };
@@ -339,12 +342,22 @@ async function journalEintrag(input: Record<string, unknown>, _o: string, person
     ...(z(input.energie) ? { energy: z(input.energie) } : {}),
     ...(z(input.stress) ? { stress: z(input.stress) } : {}),
   };
-  if (!Object.keys(neu).length) return 'Fehlgeschlagen: nichts zum Eintragen (gut, dankbar, hart, text, stimmung, energie, stress).';
+  // Tages-Check (09.10.): dieselbe Säuberung wie PATCH /api/state/journal — unbekannte Frage → Fehler, nichts still verworfen.
+  const { checkEingangSaeubern, checkAnwenden } = await import('@/lib/gesundheit/tages-check');
+  let check: Record<string, boolean | null> | null = null;
+  if (input.check !== undefined && input.check !== null) {
+    const c = checkEingangSaeubern(input.check);
+    if (!c.ok) return `Fehlgeschlagen: ${c.fehler}`;
+    check = c.werte;
+  }
+  if (!Object.keys(neu).length && !check) return 'Fehlgeschlagen: nichts zum Eintragen (gut, dankbar, hart, text, stimmung, energie, stress, check).';
   await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('journal', person), current => {
     const log = current ?? {};
-    return { ...log, [datum]: { ...(log[datum] ?? {}), ...neu, at: new Date().toISOString() } };
+    const tag: Record<string, unknown> = { ...(log[datum] ?? {}), ...neu, at: new Date().toISOString() };
+    if (check) { const c = checkAnwenden(tag.check, check); if (c) tag.check = c; else delete tag.check; }
+    return { ...log, [datum]: tag };
   });
-  return `Journal ${datum === localDay() ? 'heute' : datum}: ${Object.keys(neu).join(', ')} festgehalten.`;
+  return `Journal ${datum === localDay() ? 'heute' : datum}: ${[...Object.keys(neu), ...(check ? ['Tages-Check'] : [])].join(', ')} festgehalten.`;
 }
 
 async function streakEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {

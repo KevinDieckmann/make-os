@@ -52,6 +52,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'whoop-verbindung', export: false, grund: 'Zugang zu WHOOP (verschlüsselte Token) — nie in einer Datei; beim Löschen bei WHOOP widerrufen und entfernt' },
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): gehört allein der Person — Export und Löschen mit dem Konto.
   { basis: 'gesundheit-koerper' },
+  // Gesundheit im Alltag (09.10.): Einstellungen der Schlaf-Hilfe, des Tages-Checks und der Essens-Orientierung — gehören allein der Person.
+  { basis: 'gesundheit-alltag' },
   // Gesundheits-Unterlagen (09.10.): die Liste gehört allein der Person — IMMER mit Suffix; die Dateien entfernt `kontoLoeschen` vorher (Schritt 2e),
   // im Export steht die Liste, die Dateien einzeln über den Download (`nichtEnthalten`).
   { basis: 'gesundheit-unterlagen', nurMitSuffix: true },

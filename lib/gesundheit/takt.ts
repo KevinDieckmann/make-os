@@ -57,6 +57,8 @@ export interface MorgenEingabe {
   name: string;
   vitals?: { rec?: number; sleep?: number; heute: boolean };
   routinen: string[];
+  /** Schlaf-Hilfe (09.10.): die Schlafenszeit von heute Abend („HH:MM“), wenn die Person sie eingerichtet hat. */
+  schlafenszeit?: string;
 }
 
 export function morgenText(e: MorgenEingabe): string {
@@ -69,6 +71,7 @@ export function morgenText(e: MorgenEingabe): string {
     z.push('Ich habe noch keine Werte von heute. Sag mir Recovery und Schlaf, wenn du sie hast — oder wie du dich fühlst.');
   }
   if (e.routinen.length) z.push(`Heute Morgen: ${e.routinen.join(' · ')}.`);
+  if (e.schlafenszeit) z.push(`Heute Abend: um ${e.schlafenszeit} ins Bett.`);
   z.push('Antworte mit einem Satz. Ich trage es ein.');
   return z.join('\n');
 }
@@ -84,6 +87,8 @@ export interface AbendEingabe {
   streakAktiv: boolean;
   /** Name des Symptom-Reglers — nur, wenn die Person das Modul `haut` führt (`symptomAnzeige`); ohne Namen keine Frage. */
   symptom?: string | null;
+  /** Tages-Check (09.10.): die Kurznamen der Fragen, die die Person gewählt hat (lib/gesundheit/tages-check.ts) — leer = keine Zeile. */
+  check?: string[];
 }
 
 export function abendText(e: AbendEingabe): string {
@@ -95,6 +100,7 @@ export function abendText(e: AbendEingabe): string {
   if (e.symptom?.trim()) fragen.push(`${e.symptom.trim()}: 0–10, Schub ja/nein, Auslöser?`);
   if (e.routinen.length) fragen.push(`Erledigt? ${e.routinen.join(' · ')}`);
   if (e.streakAktiv) fragen.push('Sauber geblieben? Verlangen 0–10?');
+  if (e.check?.length) fragen.push(`Tages-Check, ja oder nein: ${e.check.join(' · ')}`);
   return `${e.name}, Tagesabschluss — eine Antwort reicht, in deinen Worten:\n` + fragen.map(f => `· ${f}`).join('\n');
 }
 

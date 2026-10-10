@@ -395,7 +395,20 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   mit(H('streak', 'Zähler „Sauber geblieben“ (Erstkonto; Modul je Person) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('streak--*', 'Zähler „Sauber geblieben“ je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
-  H('journal--*', 'Journal je Person — eigene Daten.'),
+  // Journal (09.10.): trägt jetzt auch den Tages-Check „wie im WHOOP-Journal“ (Alkohol, Koffein spät … — Gesundheitsdaten) — seitdem mit den
+  // Angaben für Gesundheitsdaten (die Route nahm schon vorher Einwilligung (a) und das Teilen-Tor).
+  mit(H('journal--*', 'Journal je Person — Abendfragen, Stimmung/Energie/Anspannung und Tages-Check (Frage → ja/nein); eigene Gesundheitsdaten.'), GESUNDHEIT),
+  // Gesundheit im Alltag (09.10., lib/gesundheit/alltag.ts): Einstellungen der Schlaf-Hilfe (Aufstehzeit heute/Ziel, Schrittweite, Schlafziel,
+  // Erinnerung), gewählte Check-Fragen, Orientierung an/aus, welche eigenen Routinen aus einer Ergänzungs-Vorlage stammen; Riegel der
+  // Abend-Erinnerung. NUR die Person selbst (auch bei „Teilen“ nie andere Konten).
+  mit(H('gesundheit-alltag', 'Gesundheit im Alltag (Erstkonto): Einstellungen der Schlaf-Hilfe, des Tages-Checks und der Essens-Orientierung — nur die Person selbst.'), {
+    ...KOERPER,
+    art15: 'nur die Person selbst sieht und ändert ihre Einstellungen (Gesundheit › Schlaf-Hilfe, Tages-Check, Essen & Trinken); Konto › Meine Daten exportiert sie',
+  }),
+  mit(H('gesundheit-alltag--*', 'Gesundheit im Alltag je Person: Einstellungen der Schlaf-Hilfe, des Tages-Checks und der Essens-Orientierung — nur die Person selbst.'), {
+    ...KOERPER,
+    art15: 'nur die Person selbst sieht und ändert ihre Einstellungen (Gesundheit › Schlaf-Hilfe, Tages-Check, Essen & Trinken); Konto › Meine Daten exportiert sie',
+  }),
   H('steuern', 'Eigene Steuern des Haushalts (Einstellungen, Vorauszahlungen).'),
   H('haushalt-*--*', 'Haushaltsfinanzen (Konten, Buchungen, Rechnungen) — eigene Daten des Haushalts.'),
   // Konten-Register (08.10.): EIN Ort für Konten und Kontostände (Gesellschaften, privat, gemeinsam) — Name, Art, Bank, IBAN (nur maskiert ausgeliefert),
@@ -430,7 +443,7 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   mit(H('gesundheitszeit', 'Gesundheits-Zeit (Schalter an/aus, nur Uhrzeiten) — Altbestand ohne Suffix, gehört dem Inhaber.'), GESUNDHEIT),
   mit(H('gesundheitszeit--*', 'Gesundheits-Zeit je Person (Schalter an/aus, nur Uhrzeiten) — liest und schaltet nur die Person selbst.'), GESUNDHEIT),
   mit(H('health-log', 'Eigene Gesundheitsdaten des Haushalts.'), GESUNDHEIT),
-  H('journal', 'Eigenes Journal des Haushalts.'),
+  mit(H('journal', 'Journal (Erstkonto) — Abendfragen, Stimmung/Energie/Anspannung und Tages-Check; eigene Gesundheitsdaten.'), GESUNDHEIT),
   H('routinen', 'Eigene Routinen des Haushalts.'),
   H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
   H('ziele-eigen', 'Persönliche Ziele der ersten Person (Altname ohne Suffix) — eigene Planung, keine Dritten (gelesen u. a. von den Lichtfäden).'),
