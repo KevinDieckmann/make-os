@@ -47,6 +47,7 @@ import { ErnaehrungHeuteKarte } from './gesundheit/ErnaehrungHeuteKarte';
 import { EinwilligungHinweis } from './gesundheit/EinwilligungHinweis';
 import { ErholungReiter } from './gesundheit/Erholung';
 import { useZuZiel } from './ziel';
+import { RoutineSteuer, routineHakenSenden, streakText } from './routinen/haken';
 import { WEG } from '@/lib/wege';
 
 type Segment = 'heute' | 'erholung' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper';
@@ -65,7 +66,12 @@ interface Stand {
   module?: ModulStand;
   haut: { trend: { tage: number; heute?: number; juckreiz7?: number; schuebe30: number; richtung: 'besser' | 'schlechter' | 'gleich' | 'unbekannt'; ausloeser: { was: string; mal: number }[] }; tage: { d: string; e: { juckreiz: number; schub: boolean } | null }[] };
   streak: { sauberTage: number; letzterRueckfall?: string; aktuell: boolean; craving7?: number; eintraege30: number };
-  routinen: { liste: { id: string; label: string; wann: string; heute: boolean }[]; quote7?: number; tage: { d: string; n: number }[] };
+  // Routinen 2 (10.10.): `liste` = was heute dran ist (Rhythmus, Pause, Zeitraum) mit Zähler, Streak und Quote je Regel; `alle` = jede aktive Routine.
+  routinen: {
+    liste: { id: string; label: string; wann: string; heute: boolean; ziel?: number; ist?: number; rhythmus?: string; streak?: number; streakEinheit?: 'tag' | 'woche' | 'termin'; quote?: number | null; ueberfaellig?: boolean; dieseWoche?: number; proWoche?: number; uhrzeiten?: string[] }[];
+    alle?: { id: string; label: string }[];
+    quote7?: number; tage: { d: string; n: number }[];
+  };
   journal: { tage7: number; heute: { gut?: string; dankbar?: string; hart?: string; stress?: number } | null };
   telegram: { konfiguriert: boolean; gekoppelt: boolean };
 }
@@ -192,13 +198,20 @@ export function GesundheitView() {
   const geheZu = (s: Segment) => router.push(s === 'heute' ? pfad : `${pfad}?s=${s}`, { scroll: false });
 
   // ── Schreiben (nur auf der eigenen Seite) ──
-  const hake = (id: string) => {
+  // Routinen 2 (10.10.): abhaken bzw. zählen — EIN PATCH je Tipp (der Server zählt und setzt den Haken mit dem Tagesziel), nie mehr der ganze Log.
+  const [hakFehler, setHakFehler] = useState<string | null>(null);
+  const routineSchritt = async (id: string, schritt: { erledigt: boolean } | { zaehler: 'plus' | 'minus' }) => {
     if (!eigene) return;
-    const tag = new Set(hl[heute] ?? []);
-    if (tag.has(id)) tag.delete(id); else tag.add(id);
-    const next = { ...hl, [heute]: Array.from(tag) };
-    setHl(next);
-    fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+    setStand(s => (s ? { ...s, routinen: { ...s.routinen, liste: s.routinen.liste.map(r => {
+      if (r.id !== id) return r;
+      const ziel = r.ziel ?? 1;
+      const ist = 'erledigt' in schritt ? (schritt.erledigt ? Math.max(r.ist ?? 0, ziel) : 0) : Math.max(0, (r.ist ?? 0) + (schritt.zaehler === 'plus' ? 1 : -1));
+      return { ...r, ist, heute: ist >= ziel };
+    }) } } : s));
+    const a = await routineHakenSenden(id, schritt);
+    if (!a.ok) setHakFehler(a.error ?? 'Nicht gespeichert.');
+    else { setHakFehler(null); if (a.erledigt) setHl(h => ({ ...h, [heute]: a.erledigt! })); }
+    void laden();
   };
   const hautSetzen = (j: number) => {
     setJuckreiz(j);
@@ -238,9 +251,11 @@ export function GesundheitView() {
     const lage = rec >= 66 ? 'Grün — heute darf es Druck sein.' : rec >= 40 ? 'Gelb — fokussiert, mit Puffer.' : 'Rot — heute nur das Nötige.';
     return `${lage}${v?.heute ? '' : ` Werte von gestern (${v?.stand.slice(5)}).`}`;
   }, [stand, rec, v]);
-  const heuteDrin = new Set(hl[heute] ?? []);
   const sieben = (stand?.routinen.tage ?? []).slice(0, 7).reverse();
-  const anzahl = stand?.routinen.liste.length ?? 1;
+  // Heute dran (nach Rhythmus) bzw. alle aktiven Routinen (für die 7- und 30-Tage-Balken, die jeden Haken eines Tages zählen).
+  const heuteListe = stand?.routinen.liste ?? [];
+  const heuteN = heuteListe.filter(r => r.heute).length;
+  const anzahl = (stand?.routinen.alle ?? heuteListe).length || 1;
 
   const tage30 = useMemo(() => Array.from({ length: 30 }, (_, i) => { const d = new Date(`${heute}T12:00:00`); d.setDate(d.getDate() - (29 - i)); return localDay(d); }), [heute]);
 
@@ -345,13 +360,16 @@ export function GesundheitView() {
           )}
           <Kachel id="routinen" titel="Routinen heute" breite={3}>
           <Karte i={1} id="routinen" style={{ scrollMarginTop: 90 }}>
-            <Ueberschrift farbe={LEUCHT.gut} rechts={<span>{heuteDrin.size} von {anzahl} · <Link href={WEG.routinen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>planen ›</Link></span>}>Heute</Ueberschrift>
-            <Fortschritt anteil={anzahl ? heuteDrin.size / anzahl : 0} farbe={LEUCHT.gut} />
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<span>{heuteN} von {heuteListe.length} · <Link href={WEG.routinen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>planen ›</Link></span>}>Heute</Ueberschrift>
+            <Fortschritt anteil={heuteListe.length ? heuteN / heuteListe.length : 0} farbe={LEUCHT.gut} />
+            {hakFehler && <Hinweis art="achtung">{hakFehler}</Hinweis>}
             <div style={{ marginTop: 6 }}>
-              {(stand?.routinen.liste ?? []).map(r => (
-                <Zeile key={r.id} wann={r.wann === 'abend' ? 'Abend' : r.id === 'essen' ? 'Mittag' : 'Morgen'} titel={r.label}
-                  unter={eigeneSicher ? routinenHinweis(koerper.koerper, r.id) : undefined}
-                  kinder={<Schalter erklaerungOhne="Erledigt-Haken einer Routine, keine Einstellung" an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} ariaLabel={`${r.label} heute erledigt`} />} />
+              {stand && !heuteListe.length && <Leer>Heute ist keine Routine dran.</Leer>}
+              {heuteListe.map(r => (
+                <Zeile key={r.id} wann={r.uhrzeiten?.length ? r.uhrzeiten[0] : r.wann === 'abend' ? 'Abend' : r.wann === 'tag' ? 'Mittag' : 'Morgen'} titel={r.label}
+                  unter={[eigeneSicher ? routinenHinweis(koerper.koerper, r.id) : undefined, r.rhythmus, r.ueberfaellig ? 'überfällig' : '', r.proWoche ? `${r.dieseWoche ?? 0}/${r.proWoche} diese Woche` : '', r.streak ? streakText(r.streak, r.streakEinheit ?? 'tag') : '', r.quote != null ? `${Math.round(r.quote * 100)} % erfüllt` : ''].filter(Boolean).join(' · ') || undefined}
+                  kinder={<RoutineSteuer label={r.label} ziel={r.ziel ?? 1} ist={r.ist ?? (r.heute ? 1 : 0)} erledigt={r.heute} aus={!eigene}
+                    onHaken={() => void routineSchritt(r.id, { erledigt: !r.heute })} onZaehlen={z => void routineSchritt(r.id, { zaehler: z })} />} />
               ))}
               {symptomName && (<>
               <div id="haut" style={{ scrollMarginTop: 90 }} />
@@ -431,7 +449,7 @@ export function GesundheitView() {
           {koerper.koerper && <Kachel id="aufmerksamkeit" titel="Was Aufmerksamkeit braucht" breite={3}><BeschwerdenKarte k={koerper.koerper} aendern={koerper.aendern} /></Kachel>}
           {koerper.koerper && <Kachel id="hebel" titel="Hebel · live" breite={3}><HebelKarte k={koerper.koerper} aendern={koerper.aendern} kennzahlen={hebel} zumIndex={() => geheZu('index')} /></Kachel>}
           {koerper.koerper && <Kachel id="zusammenhaenge" titel="Zusammenhänge" breite={3}><ZusammenhaengeKarte k={koerper.koerper} aendern={koerper.aendern} /></Kachel>}
-          {koerper.koerper && <Kachel id="anzeige" titel="Sätze unter Routinen" breite={3}><AnzeigeKarte k={koerper.koerper} aendern={koerper.aendern} routinen={(stand?.routinen.liste ?? []).map(r => ({ id: r.id, label: r.label }))} /></Kachel>}
+          {koerper.koerper && <Kachel id="anzeige" titel="Sätze unter Routinen" breite={3}><AnzeigeKarte k={koerper.koerper} aendern={koerper.aendern} routinen={(stand?.routinen.alle ?? stand?.routinen.liste ?? []).map(r => ({ id: r.id, label: r.label }))} /></Kachel>}
           </Flaeche>
         </>
       )}

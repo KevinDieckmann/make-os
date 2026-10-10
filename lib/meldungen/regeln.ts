@@ -52,7 +52,9 @@ export type GespeicherteArt = MeldungArt | 'sammel';
  * heute/überfällig, Kalender-Vorschläge von ZOE im Stapel — alle aus lib/heute/anstehend.ts (`anstehendAbleiten`).
  * Offene Buchungsanfragen meldet die Glocke schon beim Eingang (gespeicherte Art „buchung“) — hier nicht doppelt.
  */
-export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei';
+export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei' | 'routine';
+// `routine` (10.10., Routinen 2): eine Routine mit „Erinnerung“ ist jetzt dran (Uhrzeit bzw. Tageszeit erreicht, noch nicht erledigt) —
+// aus Routinen + eigenem Log abgeleitet (lib/planung/routinen-erinnerung.ts), nie gespeichert; ein älterer Stand leitet sie einfach nicht ab.
 // `danke` (02.10., Netzwerken): „n Danke-Mails bereit“ — ab dem Folgetag eines Events, aus Teilnahme + Kartei abgeleitet.
 
 export interface Meldung {
@@ -324,6 +326,18 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   for (const d of a.danke ?? []) if (d.n > 0) dazu('danke', `${d.id}-${d.n}`, `${d.n} Danke-Mail${d.n === 1 ? '' : 's'} bereit — ${d.eventTitel}`, d.href);
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
   return raus;
+}
+
+/** Routinen-Erinnerungen für die Glocke (Routinen 2, 10.10.): je offener Routine EINE Meldung, Kennung je Tag und Uhrzeit — erledigt verschwindet
+ *  sie, die nächste Uhrzeit (mehrmals täglich) meldet sich neu. Der Name der Routine steht nur in der EIGENEN Glocke. */
+export interface RoutineFuerGlocke { schluessel: string; label: string; uhr: string; ist: number; ziel: number; business: boolean; link: string }
+export function routinenAbleiten(liste: readonly RoutineFuerGlocke[], o: { heute: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
+  const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
+  return liste.filter(r => istLink(r.link)).map(r => {
+    const id = `routine:${o.heute}:${kennung(r.schluessel)}`;
+    const titel = `Routine um ${r.uhr}: ${r.label}${r.ziel > 1 ? ` (${r.ist} von ${r.ziel})` : ''}`;
+    return { id, art: 'routine' as const, titel: titel.slice(0, TITEL_MAX), link: r.link, am: o.am, virtuell: true as const, gelesen: merker.has(id), ...(r.business ? { business: true as const } : {}) };
+  });
 }
 
 /** Kurzer, stabiler Schlüssel aus einer langen Kennung (Termin `kalender|uid::RID`) — FNV-1a. */

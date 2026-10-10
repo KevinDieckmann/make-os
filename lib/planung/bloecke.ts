@@ -94,7 +94,13 @@ export function planArtAusTitel(titel: string): PlanArt {
 }
 
 /** Was POST /api/kalender/termin für einen neuen Block bekommt (Browser und Server gleich). */
-export interface BlockNeu { date: string; startMin: number; dauerMin: number; titel: string; art: PlanArt; taskId?: string }
+export interface BlockNeu {
+  date: string; startMin: number; dauerMin: number; titel: string; art: PlanArt; taskId?: string;
+  /** Routinen 2 (10.10.): feste UID (idempotent — ein zweites Anlegen findet den Block statt ihn zu verdoppeln). Nur Server-Wege. */
+  uid?: string;
+  /** Routinen 2 (10.10.): als privat anlegen — andere sehen den Block nur „Belegt“. */
+  privat?: true;
+}
 export function blockAnfrage(b: BlockNeu, wer?: string): Record<string, unknown> {
   const { art, blockArt } = icsVonPlanArt(b.art);
   const start = Math.max(0, Math.min(24 * 60 - 15, Math.round(b.startMin / 15) * 15));
@@ -104,7 +110,7 @@ export function blockAnfrage(b: BlockNeu, wer?: string): Record<string, unknown>
     start: wandAus(b.date, start), ende: wandAus(b.date, start + dauer), ganztags: false,
     art, ...(blockArt ? { blockArt } : {}), beschaeftigt: true,
     // Erholung (10.10.): Gesundheit — als privat angelegt (andere sehen nur „Belegt“; `maskieren` verdeckt Erholungs-Blöcke ohnehin).
-    ...(blockArt && istErholungsArt(blockArt) ? { sichtbarkeit: 'privat' } : {}),
+    ...((blockArt && istErholungsArt(blockArt)) || b.privat ? { sichtbarkeit: 'privat' } : {}),
     ...(wer ? { wer } : {}),
     ...(b.taskId ? { bezug: { aufgabeId: b.taskId } } : {}),
   };

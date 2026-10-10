@@ -907,6 +907,17 @@ Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehm
   **Keine Startroutinen (08.10. abends, Fragebogen Teil 3):** ein leerer Bestand bleibt leer (die früheren Startroutinen waren die einer echten
   Person) — GET liest nur, `planung/vorschlag` nimmt nur den Bestand. Beispiele gibt es nur in der Demo-Saat (erfunden, über den PATCH).
 - Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
+- **Routinen 2 (10.10., Branch `routinen-2`, UPDATES.md):** Regeln (Werktage, feste Wochentage/jede n-te Woche, x-mal pro Woche, alle n Tage/Wochen/Monate,
+  monatlich am Tag/n-ten Wochentag), mehrmals täglich (`uhrzeiten`), Zähler (`tagesZiel`, `zaehlWort`), `zeitraum`, `pausen`, `zielId`, `erinnerung`, `kalender`,
+  `angelegtAm` — alles optional. Regel lesen NUR über `regelVon` (alter `rhythmus` = Kurzform, rechnet bit-gleich — Wächter gegen den alten Code in
+  `tests/fixtures/routinen-vor-10-10.ts`); der Schreibweg speichert eine Regel als alten `rhythmus`, wo es geht. Fälligkeit, Streak/Quote (`routineStatistik`,
+  je Regel: Tage/Wochen/Termine, Pausen zählen nie gegen) und geplante Tage NUR in `lib/planung/rhythmus.ts`, feste Kalendertage über
+  `lib/aufgaben/wiederholung.ts` (dort `nter`) — keine zweite Kalenderrechnung. Abhaken/Zählen NUR über `routineHaken` (`routinen-haken-server.ts`: Zähler in
+  `routinen-person--<person>` + Haken im `health-log` erst mit Tagesziel, eine Sperre; Route `PATCH /api/state/health` `zaehler`, ZOE `hake_routine` `anzahl`) —
+  keine Ansicht schreibt mehr den ganzen Log. Erinnerung: Glocke abgeleitet (Art `routine`), Handy nur mit Einstellung der Person + Einwilligung (a), neutral
+  (`hinweisRoutine`), Takt `routinenErinnerungenImTakt`. Kalender-Block nur eigene Routine, `blockAnlegen` mit fester UID + privat, Morgenlauf „Routinen-Blöcke“
+  (`routineBloeckeAbgleichen`, entfernt nur eigene künftige). Editor `components/os/routinen/RoutineEditor.tsx` (Umrechnung `lib/planung/routine-entwurf.ts`),
+  Abhaken/Zählen `components/os/routinen/haken.tsx`, Vorlagen `lib/planung/routinen-vorlagen.ts` (neutral). Belegt-Form: Regel/Uhrzeiten/Zeitraum/Pausen ohne Grund.
 - **Nordstern = Daten des Haushalts (08.10. abends, Kevin: „gemeinsames Ziel von uns beiden pflegbar (Planung › Jahr)“, Branch
   `privat-raus-nordstern`):** Bestand `nordstern--<haushalt>` (Freitext ohne Personen-Feld — kann Vornamen nennen, Konto löschen tilgt darin
   nicht automatisch; nicht der „Fokus des Jahres“ — der gilt je Jahr und

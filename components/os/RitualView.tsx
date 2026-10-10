@@ -20,6 +20,9 @@ import { Seite, Karte, Chip, Knopf, Segmente, feld, LEUCHT } from './ui';
 import { useFokus } from '@/lib/planung/fokus-client';
 import { FokusFeld } from './planung/FokusTafel';
 import { useNurBusiness } from './useInhaber';
+import type { Routine as PlanRoutine } from '@/lib/planung/typen';
+import { faelligkeit } from '@/lib/planung/rhythmus';
+import { erledigtTage } from '@/lib/planung/routinen';
 
 interface Vitals { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
 interface JournalEintrag { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; tagesnote?: number }
@@ -105,8 +108,10 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
       fetch('/api/state/routinen?sicht=ich').then(r => r.json()).catch(() => ({ routinen: [] })),
       fetch('/api/state/health').then(r => r.json()).catch(() => ({ log: {} })),
     ]).then(([r, h]) => {
-      const aktiv = ((r.routinen ?? []) as { id: string; aktiv: boolean }[]).filter(x => x.aktiv);
-      const done = new Set((h.log?.[heute] ?? []) as string[]);
+      // Routinen 2 (10.10.): nur, was heute nach Rhythmus dran ist (oder schon abgehakt) — nicht jede aktive Routine.
+      const log = (h.log ?? {}) as Record<string, string[]>;
+      const aktiv = ((r.routinen ?? []) as PlanRoutine[]).filter(x => x.aktiv && (erledigtTage(log, x.id).includes(heute) || faelligkeit(x, erledigtTage(log, x.id), heute).faellig));
+      const done = new Set((log[heute] ?? []) as string[]);
       setRoutinen({ gesamt: aktiv.length, erledigt: aktiv.filter(x => done.has(x.id)).length });
     });
     fetch('/api/state/arbeitsmodus').then(r => r.json()).then(d => setArbeit(d.heute ?? null)).catch(() => {});

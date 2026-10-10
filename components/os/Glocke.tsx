@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Erklaert } from './ui';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, ImageIcon, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, ImageIcon, Repeat, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -139,6 +139,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
   // 09.10. (Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — neutral.
   gesundheit: { Icon: Moon, label: 'Gesundheit', farbe: C.aktiv },
+  // 10.10. (Routinen 2): eine Routine mit Erinnerung ist jetzt dran — abgeleitet, nie gespeichert.
+  routine: { Icon: Repeat, label: 'Routine', farbe: C.aktiv },
 };
 /**
  * Unternehmen › Schild (10.10.): Erinnerungen des Schilds tragen die vorhandene Art „vertrag“ (Rückweg: eine neue Art kennt die alte Glocke nicht) und
@@ -148,7 +150,7 @@ const ART_UNTERNEHMEN = { Icon: Hourglass, label: 'Unternehmen', farbe: C.achtun
 const artVon = (m: { art: string; bezug?: { art?: string; id?: string } }) => (m.art === 'vertrag' && /^us[pdmr]-/.test(m.bezug?.id ?? '') ? ART_UNTERNEHMEN : ART[m.art as keyof typeof ART]);
 
 function zeitVon(m: Meldung, jetzt: number): string {
-  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' || m.art === 'danke' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
+  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' || m.art === 'danke' || m.art === 'routine' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
   return vorZeit(m.am, jetzt);
 }
 

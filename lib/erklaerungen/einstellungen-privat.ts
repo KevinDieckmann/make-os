@@ -123,6 +123,54 @@ export const EINSTELLUNGEN_PRIVAT = {
     was: 'Routinen sind wiederkehrende Aufgaben mit Tageszeit, Rhythmus und Zuständigem. Pausiert eine Routine, erscheint sie nicht mehr in der Tagesliste, bleibt aber gespeichert.',
     beispiel: 'Die Routine „Wochenplan prüfen“ läuft montags. In einer Urlaubswoche pausierst du sie — am Tag nach dem Urlaub aktivierst du sie wieder.',
   },
+  // ── Routinen 2 (10.10.): der Routine-Editor ──────────────────────────────────────────────────────────────────────────────────
+  'routinen.rhythmus': {
+    was: 'Wann die Routine dran ist. Täglich: jeden Tag. Werktage: Montag bis Freitag ohne Feiertage. Feste Wochentage: nur an den gewählten Tagen, auf Wunsch nur jede zweite Woche. x-mal pro Woche: so oft, egal an welchem Tag. Alle x Tage, Wochen oder Monate: gerechnet ab dem letzten Mal. Monatlich: an einem Tag im Monat oder am n-ten Wochentag.',
+    beispiel: 'Laufen „3× pro Woche“ ist dran, bis du es in dieser Woche dreimal abgehakt hast. „Zahnarzt alle 6 Monate“ meldet sich ein halbes Jahr nach dem letzten Haken. „Am letzten Freitag im Monat“ steht nur an diesem Tag an.',
+  },
+  'routinen.zaehler': {
+    was: 'Wie oft die Routine an einem Tag dran ist. Bei mehr als einmal zählst du hoch, statt nur abzuhaken („5 von 8“); erledigt ist sie, wenn das Tagesziel erreicht ist. Das Wort beschreibt, was du zählst.',
+    beispiel: 'Wasser trinken mit Tagesziel 8 und dem Wort „Gläser“: Jeder Tipp auf „+1“ zählt ein Glas. Nach dem achten ist der Tag erfüllt und zählt für den Streak.',
+  },
+  'routinen.uhrzeiten': {
+    was: 'Feste Uhrzeiten für die Routine. Eine Uhrzeit heißt: zu dieser Zeit. Mehrere heißen: mehrmals täglich, je Uhrzeit einmal — die Zahl der Uhrzeiten ist dann das Tagesziel. Ohne Uhrzeit gilt die Tageszeit (morgens, tagsüber, abends).',
+    beispiel: 'Tabletten um 08:00 und 20:00: Die Routine ist zweimal am Tag dran. Ist die erste erledigt, meldet sich am Abend nur noch die zweite.',
+  },
+  'routinen.erinnerung': {
+    was: 'MAKE OS erinnert dich, wenn die Routine dran ist — zur festen Uhrzeit, sonst zur Tageszeit. Die Erinnerung steht in deiner Glocke und verschwindet, sobald du abhakst.',
+    beispiel: 'Mobility abends mit Erinnerung: Um 19:30 steht „Routine um 19:30: Mobility“ in der Glocke. Hakst du sie vorher ab, kommt keine Erinnerung.',
+    an: 'Die Glocke meldet die Routine, wenn sie dran und noch offen ist. Aufs Handy nur, wenn du das unten für dich eingeschaltet hast.',
+    aus: 'Keine Erinnerung — die Routine steht wie bisher in den Listen von Heute und Gesundheit.',
+  },
+  'routinen.handy': {
+    was: 'Deine eigene Einstellung für alle deine Erinnerungen: zusätzlich zur Glocke ein kurzer Hinweis aufs Handy über den Boten (WhatsApp oder Telegram). Der Hinweis nennt keinen Namen und keine Zahl, nur dass etwas ansteht, mit Link.',
+    beispiel: 'Du hast drei Routinen mit Erinnerung. Um 08:00 bekommst du „Eine Routine steht an — Details in MAKE OS“ und öffnest den Link.',
+    an: 'Erinnerungen kommen auch aufs Handy, je Routine und Uhrzeit höchstens einmal am Tag.',
+    aus: 'Erinnerungen stehen nur in der Glocke.',
+    daten: 'Der Hinweis geht über den Boten, den du verbunden hast. Er enthält keine Inhalte — keine Routine, keinen Wert. Einschalten geht nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten, weil die Erinnerung dein Gesundheits-Log liest.',
+  },
+  'routinen.kalender': {
+    was: 'MAKE OS trägt die Routine als Block in deinen Kalender ein — für die nächsten zwei Wochen, zur festen Uhrzeit oder zur Tageszeit, so lang wie die Dauer. Andere sehen den Block nur als „Belegt“. Geht nur bei Routinen einer Person.',
+    beispiel: 'Laufen montags und donnerstags um 07:00 für 45 Minuten: In deinem Kalender stehen die nächsten vier Termine. Änderst du die Uhrzeit, zieht MAKE OS die Blöcke nach.',
+    an: 'Die nächsten zwei Wochen stehen als private Blöcke im Kalender und werden jeden Morgen nachgezogen.',
+    aus: 'MAKE OS entfernt die künftigen Blöcke, die es für diese Routine angelegt hat. Vergangene bleiben stehen.',
+  },
+  'routinen.zeitraum': {
+    was: 'Von wann bis wann die Routine gilt. Vorher und nachher ist sie nicht dran und zählt nicht in die Quote. Leer heißt: ohne Anfang und Ende.',
+    beispiel: 'Eine Fastenzeit vom 1. bis 31. März: Nur in diesem Monat ist die Routine dran, danach ruht sie, bleibt aber gespeichert.',
+  },
+  'routinen.pause': {
+    was: 'Eine Pause für Urlaub, Krankheit oder Sonstiges. In der Pause ist die Routine nicht dran, und der Streak reißt nicht — die Tage zählen weder für noch gegen dich.',
+    beispiel: 'Du hast einen Streak von 20 Tagen und bist eine Woche krank. Du trägst die Pause ein; danach läuft der Streak bei 20 weiter.',
+  },
+  'routinen.ziel': {
+    was: 'Das Ziel, auf das die Routine einzahlt. Es steht als Hinweis an der Routine, damit du siehst, wofür du sie machst. An der Routine selbst ändert es nichts.',
+    beispiel: 'Die Routine „Lesen“ zahlt auf das Jahresziel „Zwölf Bücher“ ein. In der Liste steht darunter: zahlt ein auf Zwölf Bücher.',
+  },
+  'routinen.vorlagen': {
+    was: 'Fertige Vorschläge zum Übernehmen. Ein Klick legt die Routinen der Vorlage an, für dich oder gemeinsam; danach kannst du jede frei ändern oder löschen.',
+    beispiel: 'Die Vorlage „Trinken“ legt die Routine „Wasser trinken“ mit Tagesziel 8 Gläser an. Du änderst das Ziel auf 6 — fertig.',
+  },
 
   // ── Kapazität und Planung ──────────────────────────────────────────────────────────────────────────────────────────────
   'kapazitaet.grundwert': {

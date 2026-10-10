@@ -36,7 +36,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { sauberRoutine, sauberBlock, sichtbarFuer, routinenFuerBetrachter, bloeckeFuerBetrachter, routinenSchreibPruefen, routinenVollSchreiben, ROUTINE_FREMD } from '@/lib/planung/routinen';
+import { sauberRoutine, sauberBlock, sichtbarFuer, routinenFuerBetrachter, bloeckeFuerBetrachter, routinenSchreibPruefen, routinenVollSchreiben, routineGrenzenFehler, ROUTINE_FREMD } from '@/lib/planung/routinen';
 import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { routinenOhnePrivat, bloeckeOhnePrivat, routineImPrivat, blockImPrivat, privatSchreibPruefen, privatBehalten, privatStatus, konflikteOhnePrivat, nurBereich, type PlanSicht } from '@/lib/planung/bereich-sicht';
@@ -100,6 +100,7 @@ export async function PUT(req: Request) {
   }
   if (!Array.isArray(body.routinen)) return NextResponse.json({ ok: false, error: 'routinen fehlt.' }, { status: 400 });
   if (body.routinen.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` }, { status: 413 });
+  { const g = body.routinen.map(routineGrenzenFehler).find(Boolean); if (g) return NextResponse.json({ ok: false, error: g }, { status: 413 }); }
   const sauber = body.routinen.map(sauberRoutine).filter((r): r is Routine => !!r);
   const ich = personStreng(req) ?? '';
   const ohnePrivat = await ohnePrivatFuer(personStreng(req));
@@ -152,6 +153,11 @@ export async function PATCH(req: Request) {
   }
 
   if (Array.isArray(body.ops) && body.ops.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Änderungen je Aufruf.` }, { status: 413 });
+  // Routinen 2 (10.10.): Uhrzeiten, Pausen, Tagesziel über den Grenzen → die ganze Änderung abgelehnt, nie still gekürzt.
+  if (Array.isArray(body.ops)) {
+    const g = (body.ops as { eintrag?: unknown; felder?: unknown }[]).map(o => routineGrenzenFehler(o?.eintrag) ?? routineGrenzenFehler(o?.felder)).find(Boolean);
+    if (g) return NextResponse.json({ ok: false, error: g }, { status: 413 });
+  }
   const ops = opsLesen<Routine>(body.ops, sauberRoutine, MAX_ROUTINEN);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, MAX_ROUTINEN) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   // Fremde Routinen (08.10.): weder ändern, löschen noch neu für die andere Person anlegen → 403. `teil` läuft durch denselben

@@ -17,7 +17,7 @@ import { WEG } from '@/lib/wege';
 import type { MeldungEingabe } from './melden';
 import {
   MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, buchungenErledigen, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, anstehendAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
-  type BuchungenLage, type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke,
+  routinenAbleiten, type BuchungenLage, type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke, type RoutineFuerGlocke,
 } from './regeln';
 import { lebendAus, verweisLebt } from '@/lib/kalender/bezug';
 import { anstehendLesen, anstehendStand } from '@/lib/heute/anstehend-server';
@@ -34,6 +34,9 @@ import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { businessFreiIdsAufloesen, businessFreiSammeln, istBusinessMeldung, meldungBereich, type BusinessFreiLage } from './regeln';
 import { aufgabenNurBereich } from '@/lib/aufgaben/bereich-sicht';
 import { anstehendFuerSpace, type Anstehend } from '@/lib/heute/anstehend';
+import { speicherFuer } from '@/lib/zoe/raum';
+import { personStandSaeubern, routinenPersonName } from '@/lib/planung/routinen-person';
+import type { Routine } from '@/lib/planung/typen';
 
 /** Speichername je Person — für alle Konten gleich gebaut (auch „kevin“), nie im Code mit Daten. */
 export function meldungenSpeicher(person: string): string {
@@ -85,6 +88,8 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
   // Schlaf-Hilfe (09.10.): Gesundheit nie im Wortlaut auf einen Messenger.
   if (m.art === 'gesundheit') return 'Ein Gesundheits-Hinweis wartet — Details in MAKE OS';
+  // Routinen 2 (10.10.): nie der Name einer Routine auf einen Messenger (oft Gesundheit).
+  if (m.art === 'routine') return 'Eine Routine steht an — Details in MAKE OS';
   return m.titel;
 }
 
@@ -113,7 +118,9 @@ export async function meldungenStand(person: string, jetzt: Date = new Date()): 
   // Nachtrag F1: der Buchungs-Bestand (Terminanfrage freigegeben/abgelehnt/abgesagt → Meldung erledigt).
   // Business-frei (Lücke 7): Beginn und Ende eines Fensters ändern die Sicht ohne Schreibung — der Zustand gehört ins ETag.
   const bf = await businessFreiJetzt(person, jetzt).catch(() => ({ frei: false, bisIso: undefined }));
-  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', eigenerRahmenName(person), ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : [])])}|${await anstehendStand(jetzt)}|bf:${bf.frei ? bf.bisIso : '-'}`;
+  // Routinen 2 (10.10.): die Erinnerungen hängen an Routinen, dem eigenen Log und den eigenen Zählern — samt 10-Minuten-Uhr (aus `anstehendStand`).
+  const routinenQuellen = ['routinen', speicherFuer('health-log', person), routinenPersonName(person)];
+  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', eigenerRahmenName(person), ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : []), ...routinenQuellen])}|${await anstehendStand(jetzt)}|bf:${bf.frei ? bf.bisIso : '-'}`;
 }
 
 /**
@@ -154,17 +161,37 @@ const anstehendFuerGlocke = (person: string, jetzt: Date): Promise<AnstehendFuer
 /** Geburtstage heute und morgen (K2) — wirft nie. */
 const geburtstageLesen = (person: string, heute: string): Promise<Geburtstag[]> => geburtstageIm({ von: heute, bis: tagPlus(heute, 2) }, person);
 
+/**
+ * Routinen-Erinnerungen der Person (Routinen 2, 10.10.): eigene und gemeinsame Routinen mit „Erinnerung“, die JETZT offen sind
+ * (lib/planung/routinen-erinnerung.ts). Liest Routinen, den EIGENEN Gesundheits-Log und die eigenen Zähler — die Glocke sieht nur die Person
+ * selbst. Wirft nie; ohne Routinen nichts.
+ */
+async function routinenFuerGlocke(person: string, heute: string, jetztUhr: string): Promise<RoutineFuerGlocke[]> {
+  try {
+    const [{ routinenSichtbarFuer }, { offeneErinnerungen }, f, log, stand] = await Promise.all([
+      import('@/lib/planung/bereich-sicht-server'), import('@/lib/planung/routinen-erinnerung'),
+      loadJson<{ routinen?: Routine[] }>('routinen'), loadJson<Record<string, string[]>>(speicherFuer('health-log', person)), loadJson<unknown>(routinenPersonName(person)),
+    ]);
+    const mitErinnerung = (Array.isArray(f?.routinen) ? f!.routinen : []).filter(r => r.erinnerung && r.aktiv);
+    if (!mitErinnerung.length) return [];
+    const sichtbar = await routinenSichtbarFuer(mitErinnerung, person);
+    return offeneErinnerungen(sichtbar, log, personStandSaeubern(stand).zaehler, heute, jetztUhr)
+      .map(e => ({ schluessel: e.schluessel, label: e.routine.label, uhr: e.uhr, ist: e.ist, ziel: e.ziel, business: e.business, link: e.business ? WEG.routinen() : WEG.gesundheit('routinen') }));
+  } catch { return []; }
+}
+
 async function aufgabenLesen(person: string): Promise<unknown[]> {
   const s = await ladeAufgabenSicht(person); // Sichtfilter „nur ich“ (29.09.)
   return Array.isArray(s?.tasks) ? s.tasks : [];
 }
 
-function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: string, heute: string, geburtstage: readonly Geburtstag[] = [], anstehend: AnstehendFuerGlocke = LEER_ANSTEHEND, jetztWand = `${heute}T00:00:00`): Meldung[] {
+function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: string, heute: string, geburtstage: readonly Geburtstag[] = [], anstehend: AnstehendFuerGlocke = LEER_ANSTEHEND, jetztWand = `${heute}T00:00:00`, routinen: readonly RoutineFuerGlocke[] = []): Meldung[] {
   const am = ausWandzeit(`${heute}T00:00:00`).toISOString();
   return [
     ...faelligAbleiten(aufgaben, { person, heute, am, link: WEG.aufgabe, tagVonIso, gelesen: bestand.faelligGelesen }),
     ...geburtstagAbleiten(geburtstage, { person, heute, morgen: tagPlus(heute, 1), am, gelesen: bestand.faelligGelesen }),
     ...anstehendAbleiten(anstehend, { heute, jetztWand, am, gelesen: bestand.faelligGelesen }),
+    ...routinenAbleiten(routinen, { heute, am, gelesen: bestand.faelligGelesen }),
   ];
 }
 
@@ -177,8 +204,8 @@ function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: stri
 async function quellenLesen(person: string, heute: string, jetzt: Date) {
   const uhr = wandzeit(jetzt);
   const q = await merken(`glocke-quellen:${person}:${uhr.slice(0, 15)}`, 60_000, async () => {
-    const [aufgaben, geburtstage, anstehend] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt)]);
-    return { aufgaben, geburtstage, anstehend };
+    const [aufgaben, geburtstage, anstehend, routinen] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt), routinenFuerGlocke(person, heute, uhr.slice(11, 16))]);
+    return { aufgaben, geburtstage, anstehend, routinen };
   });
   return { ...q, jetztWand: uhr };
 }
@@ -211,6 +238,7 @@ function quellenFuerSicht(q: Quellen, sicht: GlockenSicht): Quellen {
     geburtstage: q.geburtstage.filter(g => g.space === sicht),
     // Die leere Ersatz-Lage (Lesefehler) trägt keine Geburtstage/Vorschläge — dann gibt es nichts zu filtern.
     anstehend: 'geburtstage' in a ? anstehendFuerSpace(a as Anstehend, sicht) : a,
+    routinen: q.routinen.filter(r => (r.business ? 'business' : 'privat') === sicht),
   };
 }
 function bestandFuerSicht(b: MeldungenBestand, sicht: GlockenSicht, aufgaben: unknown[]): MeldungenBestand {
@@ -230,7 +258,7 @@ export async function meldungenSicht(person: string, jetzt: Date = new Date(), s
   const gespeichert = bestandSaeubern(roh);
   // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke; Restpunkte 29.09.: gelöste Termine auch nicht.
   const bestand = bestandFuerSicht(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)), sicht, q0.aufgaben);
-  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, await businessFreiLage(person, q0.aufgaben, jetzt));
+  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q0.aufgaben, jetzt));
 }
 
 /** „Gelesen“ setzen — nur im eigenen Bestand der Person. Eine Sammelmeldung „aus der freien Zeit“ setzt alle ihre Meldungen. */
@@ -243,14 +271,14 @@ export async function meldungenGelesen(person: string, auswahl0: GelesenAuswahl,
   const lage = await businessFreiLage(person, q.aufgaben, jetzt);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
     const b = bestandSaeubern(cur);
-    const abg = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand);
+    const abg = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen);
     const s = businessFreiSammeln([...abg, ...b.eintraege.map(e => ({ ...e, gelesen: !!e.gelesen }))], lage);
     const ids = auswahl.ids ? businessFreiIdsAufloesen(auswahl.ids, s.gruppen) : undefined;
     return gelesenSetzen(b, { ...auswahl, ...(ids ? { ids } : {}) }, heute, abg.map(m => m.id), s.ruhen);
   });
   if (sicht) return meldungenSicht(person, jetzt, sicht);
   const stand = buchungenErledigen(next, await buchungenLage(next, jetzt));
-  return sichtBauen(stand, abgeleitet(stand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, lage);
+  return sichtBauen(stand, abgeleitet(stand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, lage);
 }
 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */
@@ -259,5 +287,5 @@ export async function meldungenEinstellen(person: string, e: { telegram: boolean
   const q = await quellenLesen(person, heute, jetzt);
   const gespeichert = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
   const next = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
-  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, await businessFreiLage(person, q.aufgaben, jetzt));
+  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q.aufgaben, jetzt));
 }

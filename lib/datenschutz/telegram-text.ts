@@ -28,6 +28,12 @@ export function hinweisCheckIn(name: string, slot: 'morgen' | 'mittag' | 'abend'
 export const SCHLAF_ERINNERUNG_TITEL = 'Zeit, den Tag ausklingen zu lassen';
 export const hinweisSchlafenszeit = (link: string) => `${SCHLAF_ERINNERUNG_TITEL} — ${link}`;
 
+/**
+ * Routinen-Erinnerung aufs Handy (Routinen 2, 10.10.) — IMMER neutral: weder Name der Routine (oft Gesundheit: „Tabletten“) noch Zahl noch
+ * Uhrzeit, nur dass etwas ansteht, und der Link. In der eigenen Glocke steht der Name (sie sieht nur die Person selbst).
+ */
+export const hinweisRoutine = (anzahl: number, link: string) => `${anzahl > 1 ? 'Ein paar Routinen stehen' : 'Eine Routine steht'} an — Details in MAKE OS: ${link}`;
+
 /** Hinweis zur Kopplung — neutral, ohne Personen oder Haushalt zu nennen (Plattform-Regel). */
 export const TELEGRAM_FREMD = 'Dieser Bot gehört zu einer privaten MAKE-OS-Instanz. Koppeln geht nur aus MAKE OS heraus (Konto › Telegram).';
 

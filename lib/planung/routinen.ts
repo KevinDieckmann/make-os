@@ -5,8 +5,8 @@
 // Tests: tests/planung-routinen.test.ts.
 
 import { istSpace } from '@/lib/make-one/space-regeln';
-import { OWNER_BEIDE, istRhythmus, type Block, type Routine, type SpaceId, type Wochentag } from './typen';
-import { faelligkeit, type Faelligkeit } from './rhythmus';
+import { OWNER_BEIDE, istRhythmus, type Block, type Routine, type RoutinePause, type SpaceId, type Wochentag } from './typen';
+import { faelligkeit, regelSaeubern, rhythmusAusRegel, tagesZielVon, ROUTINE_GRENZEN, type Faelligkeit } from './rhythmus';
 import { sauberEinheit } from './einheiten';
 import { neueKennung } from '@/lib/kennung';
 import { speicherSpace, wirksamerSpace, hatPrivatEinheit } from './bereich';
@@ -38,13 +38,71 @@ export function sauberRoutine(roh: unknown): Routine | null {
   const space = speicherSpace(istSpace(r.space) ? r.space : undefined, r.einheit);
   if (space) aus.space = space;
   if (r.owner !== undefined && r.owner !== null && r.owner !== '') aus.owner = sauberOwner(r.owner);
-  if (istRhythmus(r.rhythmus) && r.rhythmus !== 'taeglich') aus.rhythmus = r.rhythmus;
-  if (aus.rhythmus && aus.rhythmus !== '3x-woche' && typeof r.naechstesMal === 'string' && ISO_TAG.test(r.naechstesMal)) aus.naechstesMal = r.naechstesMal;
+  // Routinen 2 (10.10.): eine Regel, die sich GENAU als alter Rhythmus schreiben lässt, wird als alter Rhythmus gespeichert (die Form, die
+  // der alte Stand kennt) — `regel` steht nur, wo es nötig ist. Ohne (gültige) Regel gilt wie bisher `rhythmus`.
+  const regel = r.regel !== undefined && r.regel !== null ? regelSaeubern(r.regel) : null;
+  const alt = regel ? rhythmusAusRegel(regel) : null;
+  if (regel) { if (alt && alt !== 'taeglich') aus.rhythmus = alt; }
+  else if (istRhythmus(r.rhythmus) && r.rhythmus !== 'taeglich') aus.rhythmus = r.rhythmus;
+  // „Nächstes Mal am“ nur, wo ab dem letzten Mal gerechnet wird (wöchentlich … jährlich, alle n Tage/Wochen/Monate).
+  const abLetztem = regel && !alt ? regel.art === 'intervall' : !!aus.rhythmus && aus.rhythmus !== '3x-woche';
+  if (abLetztem && typeof r.naechstesMal === 'string' && ISO_TAG.test(r.naechstesMal)) aus.naechstesMal = r.naechstesMal;
   if (Number.isInteger(rang) && rang > 0) aus.rang = rang;
   // Einheit (27.09.): nur im Business, Namen aus der einen Quelle — Privat verwirft sie.
   const einheit = aus.space === 'business' ? sauberEinheit(r.einheit) : null;
   if (einheit) aus.einheit = einheit;
-  return aus;
+  // ── Routinen 2 (10.10.): alles optional und erst HIER angehängt — ein Eintrag ohne diese Felder kommt bit-gleich heraus. ──
+  if (regel && !alt) aus.regel = regel;
+  return Object.assign(aus, routineZusatzSaeubern(r, aus.owner));
+}
+
+const ZIEL_ID = /^[A-Za-z0-9_~.:-]{1,80}$/;
+const PAUSE_GRUENDE: readonly NonNullable<RoutinePause['grund']>[] = ['urlaub', 'krank', 'sonst'];
+const STEUERZEICHEN = /[\u0000-\u001f\u007f]/g;
+
+/** Die Zusatz-Felder von Routinen 2 — nur Gültiges, in fester Reihenfolge (der Stand-Fingerabdruck bleibt stabil). Nie gekürzt: Listen
+ *  über den Grenzen lehnt die Route vorher ab (`routineGrenzenFehler`). */
+function routineZusatzSaeubern(r: Partial<Routine> & Record<string, unknown>, owner: string | undefined): Partial<Routine> {
+  const z: Partial<Routine> = {};
+  const ziel = Number(r.tagesZiel);
+  if (Number.isInteger(ziel) && ziel >= 2 && ziel <= ROUTINE_GRENZEN.tagesZiel) z.tagesZiel = ziel;
+  const wort = typeof r.zaehlWort === 'string' ? r.zaehlWort.replace(STEUERZEICHEN, ' ').trim() : '';
+  if (wort && wort.length <= ROUTINE_GRENZEN.zaehlWort) z.zaehlWort = wort;
+  const uhr = Array.isArray(r.uhrzeiten) ? [...new Set(r.uhrzeiten.filter((u): u is string => typeof u === 'string' && UHR.test(u)))].sort() : [];
+  if (uhr.length) z.uhrzeiten = uhr;
+  const zr = (r.zeitraum && typeof r.zeitraum === 'object' ? r.zeitraum : {}) as { von?: unknown; bis?: unknown };
+  const von = typeof zr.von === 'string' && ISO_TAG.test(zr.von) ? zr.von : undefined;
+  const bis = typeof zr.bis === 'string' && ISO_TAG.test(zr.bis) ? zr.bis : undefined;
+  if ((von || bis) && !(von && bis && bis < von)) z.zeitraum = { ...(von ? { von } : {}), ...(bis ? { bis } : {}) };
+  const pausen = (Array.isArray(r.pausen) ? r.pausen : [])
+    .map((x): RoutinePause | null => {
+      const o = (x ?? {}) as Partial<RoutinePause>;
+      if (typeof o.von !== 'string' || typeof o.bis !== 'string' || !ISO_TAG.test(o.von) || !ISO_TAG.test(o.bis) || o.bis < o.von) return null;
+      return { von: o.von, bis: o.bis, ...(PAUSE_GRUENDE.includes(o.grund as NonNullable<RoutinePause['grund']>) ? { grund: o.grund } : {}) };
+    })
+    .filter((x): x is RoutinePause => !!x)
+    .sort((a, b) => a.von.localeCompare(b.von) || a.bis.localeCompare(b.bis))
+    .filter((x, i, l) => i === 0 || x.von !== l[i - 1].von || x.bis !== l[i - 1].bis);
+  if (pausen.length) z.pausen = pausen;
+  if (typeof r.zielId === 'string' && ZIEL_ID.test(r.zielId)) z.zielId = r.zielId;
+  if (r.erinnerung === true) z.erinnerung = true;
+  // Kalender-Block nur an der Routine EINER Person (der Block landet in ihrem Kalender) — gemeinsame tragen ihn nicht.
+  if (r.kalender === true && owner && owner !== OWNER_BEIDE) z.kalender = true;
+  if (typeof r.angelegtAm === 'string' && ISO_TAG.test(r.angelegtAm)) z.angelegtAm = r.angelegtAm;
+  return z;
+}
+
+/**
+ * Grenzen von Routinen 2 (10.10.) — darüber lehnt der Schreibweg die GANZE Änderung ab (413), statt still zu kürzen. `null` = in Ordnung.
+ * Genutzt von PATCH/PUT `/api/state/routinen` vor der Säuberung.
+ */
+export function routineGrenzenFehler(roh: unknown): string | null {
+  const r = (roh ?? {}) as Record<string, unknown>;
+  if (Array.isArray(r.uhrzeiten) && r.uhrzeiten.length > ROUTINE_GRENZEN.uhrzeiten) return `Abgelehnt: höchstens ${ROUTINE_GRENZEN.uhrzeiten} Uhrzeiten je Routine. Nichts gespeichert.`;
+  if (Array.isArray(r.pausen) && r.pausen.length > ROUTINE_GRENZEN.pausen) return `Abgelehnt: höchstens ${ROUTINE_GRENZEN.pausen} Pausen je Routine — alte Pausen bitte entfernen. Nichts gespeichert.`;
+  if (r.tagesZiel !== undefined && r.tagesZiel !== null && Number(r.tagesZiel) > ROUTINE_GRENZEN.tagesZiel) return `Abgelehnt: das Tagesziel geht bis ${ROUTINE_GRENZEN.tagesZiel}. Nichts gespeichert.`;
+  if (typeof r.zaehlWort === 'string' && r.zaehlWort.trim().length > ROUTINE_GRENZEN.zaehlWort) return `Abgelehnt: das Wort für den Zähler hat höchstens ${ROUTINE_GRENZEN.zaehlWort} Zeichen. Nichts gespeichert.`;
+  return null;
 }
 
 export function sauberBlock(roh: unknown): Block | null {
@@ -106,6 +164,12 @@ export function routineBelegt(r: Routine): Routine {
     ...(space === 'business' ? { space } : {}),
     ...(r.rhythmus ? { rhythmus: r.rhythmus } : {}),
     ...(r.naechstesMal ? { naechstesMal: r.naechstesMal } : {}),
+    // Routinen 2 (10.10.): WANN sie belegt — Regel, Uhrzeiten, Zeitraum, Pausen (ohne Grund: „krank“ wäre eine Gesundheitsangabe). Nicht:
+    // Zähler, Wort, Ziel, Erinnerung, Kalender-Schalter.
+    ...(r.regel ? { regel: r.regel } : {}),
+    ...(r.uhrzeiten?.length ? { uhrzeiten: r.uhrzeiten } : {}),
+    ...(r.zeitraum ? { zeitraum: r.zeitraum } : {}),
+    ...(r.pausen?.length ? { pausen: r.pausen.map(x => ({ von: x.von, bis: x.bis })) } : {}),
     belegt: true,
   };
 }
@@ -201,19 +265,34 @@ export function erledigtTage(log: Record<string, string[]> | null | undefined, i
   return Object.entries(log ?? {}).filter(([, ids]) => Array.isArray(ids) && ids.includes(id)).map(([tag]) => tag).sort();
 }
 
-export interface FaelligeRoutine { routine: Routine; f: Faelligkeit; heuteErledigt: boolean }
+export interface FaelligeRoutine {
+  routine: Routine; f: Faelligkeit; heuteErledigt: boolean;
+  /** Routinen 2 (10.10.): Tagesziel (1 = einfacher Haken) und wie oft heute schon (Zähler / mehrmals täglich). */
+  ziel: number; ist: number;
+}
+
+/** Zähler je Tag und Routine (Bestand `routinen-person--<person>`, lib/planung/routinen-person.ts). */
+export type ZaehlerLog = Record<string, Record<string, number>>;
+
+/** Wie oft heute: der Zähler, sonst (einfacher Haken) 1 bzw. 0; ein erledigter Tag ohne Zähler (alter Haken) zählt als voll. */
+export function heuteIst(routine: Pick<Routine, 'id' | 'tagesZiel' | 'uhrzeiten'>, heuteErledigt: boolean, zaehler: ZaehlerLog | null | undefined, heute: string): number {
+  const z = zaehler?.[heute]?.[routine.id];
+  const ziel = tagesZielVon(routine);
+  return typeof z === 'number' && Number.isInteger(z) && z >= 0 ? (heuteErledigt ? Math.max(z, ziel) : z) : (heuteErledigt ? ziel : 0);
+}
 
 /**
  * Was heute für eine Person dran ist: aktiv, sichtbar (eigen oder gemeinsam),
  * im gewünschten Space, nach Rhythmus fällig — heute schon Abgehaktes bleibt
- * in der Liste (als erledigt), damit der Haken nicht verschwindet.
+ * in der Liste (als erledigt), damit der Haken nicht verschwindet. Pausen und
+ * Zeitraum (Routinen 2) nimmt `faelligkeit` mit; `zaehler` liefert „5 von 8“.
  */
-export function heuteFaellig(routinen: readonly Routine[], person: string, log: Record<string, string[]> | null | undefined, heute: string, space: SpaceId | 'alle' = 'alle'): FaelligeRoutine[] {
+export function heuteFaellig(routinen: readonly Routine[], person: string, log: Record<string, string[]> | null | undefined, heute: string, space: SpaceId | 'alle' = 'alle', zaehler?: ZaehlerLog | null): FaelligeRoutine[] {
   return sichtbarFuer(routinen.filter(r => r.aktiv && (space === 'alle' || spaceVonRoutine(r) === space)), person)
     .map(routine => {
       const tage = erledigtTage(log, routine.id);
       const heuteErledigt = tage.includes(heute);
-      return { routine, f: faelligkeit(routine, tage, heute), heuteErledigt };
+      return { routine, f: faelligkeit(routine, tage, heute), heuteErledigt, ziel: tagesZielVon(routine), ist: heuteIst(routine, heuteErledigt, zaehler, heute) };
     })
     .filter(x => x.f.faellig || x.heuteErledigt);
 }

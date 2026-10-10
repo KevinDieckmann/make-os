@@ -20,7 +20,7 @@ import { appLink, hinweisCheckIn } from '@/lib/datenschutz/telegram-text';
 import { aussenAdresse } from '@/lib/innen';
 import { MODULE_AUS, symptomAnzeige, type ModulStand } from './module';
 
-interface Routine { id: string; label: string; wann: string; aktiv: boolean; owner?: string; space?: string; einheit?: string }
+type Routine = import('@/lib/planung/typen').Routine;
 
 
 /**
@@ -98,7 +98,11 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
   // `voll` ausdrücklich: ein Weg, der den Kanal schon kennt (die Telegram-Kopplung schickt direkt in den Chat → Telegram-Ausnahme).
   const voll = o.voll ?? await inhalteErlaubtFuer(person).catch(() => false);
   if (!voll) return hinweisCheckIn(name, slot, appLink(aussenAdresse(), '/os/gesundheit'));
-  const alle = await routinen(person);
+  // Routinen 2 (10.10.): nur, was heute nach Rhythmus dran ist (feste Tage, x-mal pro Woche, Pausen, Zeitraum) — nicht jede aktive Routine.
+  const alleAktiv = await routinen(person);
+  const { heuteFaellig } = await import('@/lib/planung/routinen');
+  const log = (await loadJson<RoutinenLog>(speicherFuer('health-log', person))) ?? {};
+  const alle = heuteFaellig(alleAktiv, person, log, heute).map(x => x.routine);
   if (slot === 'morgen') {
     await whoopHolen(person);
     const v = await resolveVitals(heute, person);
@@ -132,7 +136,7 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
   ]);
   const t7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(`${heute}T12:00:00`); d.setDate(d.getDate() - i); return localDay(d); });
   const recs = t7.map(d => vitalsLog?.[d]?.rec).filter((x): x is number => typeof x === 'number');
-  const q = routineQuote(hl ?? {}, alle.map(r => r.id), heute, 7);
+  const q = routineQuote(hl ?? {}, alleAktiv.map(r => r.id), heute, 7);
   return wochenText({
     name,
     recovery7: recs.length ? Math.round(recs.reduce((a, b) => a + b, 0) / recs.length) : undefined,

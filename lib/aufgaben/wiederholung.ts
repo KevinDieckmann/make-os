@@ -44,6 +44,22 @@ function monatPlus(j: number, m: number, n: number): { j: number; m: number } {
 }
 /** Tag im Monat, gekappt aufs Monatsende (31 → 30/28/29). */
 const gekappt = (j: number, m: number, t: number) => tagAus(j, m, Math.min(Math.max(1, t), tageImMonat(j, m)));
+/**
+ * Der n-te Wochentag eines Monats (10.10., Routinen 2): `n` 1–4 (bzw. 5, wenn es ihn gibt — sonst der letzte) oder −1 = der letzte;
+ * `wt` 0 = Sonntag … 6 = Samstag. „1. Montag im Februar 2027“ → 2027-02-01.
+ */
+export function nterImMonat(j: number, m: number, n: number, wt: number): string {
+  if (n < 0) {
+    const letzter = tageImMonat(j, m);
+    const w = wochentag(tagAus(j, m, letzter));
+    return tagAus(j, m, letzter - ((w - wt + 7) % 7));
+  }
+  const ersterWt = wochentag(tagAus(j, m, 1));
+  const tag = 1 + ((wt - ersterWt + 7) % 7) + 7 * (Math.max(1, n) - 1);
+  return tag <= tageImMonat(j, m) ? tagAus(j, m, tag) : nterImMonat(j, m, -1, wt);
+}
+const nterGueltig = (w: Wiederholung) => !!w.nter && Number.isInteger(w.nter.n) && (w.nter.n === -1 || (w.nter.n >= 1 && w.nter.n <= 5))
+  && Number.isInteger(w.nter.wochentag) && w.nter.wochentag >= 0 && w.nter.wochentag <= 6;
 
 const intervall = (w: Wiederholung) => Math.max(1, Math.min(365, Math.trunc(Number(w.intervall ?? 1)) || 1));
 const tageDerWoche = (w: Wiederholung) => Array.from(new Set((w.wochentage ?? []).filter(x => Number.isInteger(x) && x >= 0 && x <= 6))).sort();
@@ -75,6 +91,14 @@ export function schritt(w: Wiederholung, basis: string, richtung: 1 | -1 = 1): s
     }
     case 'monatlich': {
       const { j, m, t } = teile(basis);
+      // n-ter Wochentag (Routinen 2): wie der Monatstag, nur liegt der Tag je Monat woanders.
+      if (nterGueltig(w)) {
+        const am = (jj: number, mm: number) => nterImMonat(jj, mm, w.nter!.n, w.nter!.wochentag);
+        const dort = am(j, m);
+        if (richtung > 0 ? dort > basis : dort < basis) return dort;
+        const z = monatPlus(j, m, richtung * n);
+        return am(z.j, z.m);
+      }
       const soll = w.monatstag ?? t;
       const hier = gekappt(j, m, soll);
       if (richtung > 0 ? hier > basis : hier < basis) return hier;
@@ -113,7 +137,7 @@ export function vorherigerTermin(w: Wiederholung, basis: string): string | null 
 export function ersterTermin(w: Wiederholung, ab: string): string | null {
   if (!istTag(ab)) return null;
   let d: string;
-  if (w.regel === 'taeglich' || w.regel === 'jaehrlich' || (w.regel === 'woechentlich' && !tageDerWoche(w).length) || (w.regel === 'monatlich' && !w.monatstag)) d = ab;
+  if (w.regel === 'taeglich' || w.regel === 'jaehrlich' || (w.regel === 'woechentlich' && !tageDerWoche(w).length) || (w.regel === 'monatlich' && !w.monatstag && !nterGueltig(w))) d = ab;
   else if (w.regel === 'werktage') d = istWerktag(ab) ? ab : schritt({ ...w, intervall: 1 }, ab, 1);
   else d = schritt({ ...w, intervall: 1 }, tagPlus(ab, -1), 1);
   return w.bis && d > w.bis ? null : d;
@@ -161,6 +185,7 @@ export function ohneNaechste(w: Wiederholung): Wiederholung {
 // ── Anzeige ────────────────────────────────────────────────────────────────
 
 export const WOCHENTAGE_KURZ = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] as const;
+export const WOCHENTAGE_LANG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'] as const;
 export const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] as const;
 export const REGEL_LABEL: Record<WiederholungRegel, string> = { taeglich: 'täglich', werktage: 'Werktage', woechentlich: 'wöchentlich', monatlich: 'monatlich', jaehrlich: 'jährlich' };
 
@@ -179,7 +204,7 @@ export function wiederholungText(w: Wiederholung): string {
     case 'taeglich': s = n === 1 ? 'täglich' : `alle ${n} Tage`; break;
     case 'werktage': s = n === 1 ? 'werktags (Mo–Fr, ohne Feiertage NRW)' : `alle ${n} Werktage`; break;
     case 'woechentlich': s = `${n === 1 ? 'wöchentlich' : `alle ${n} Wochen`}${wt}`; break;
-    case 'monatlich': s = `${n === 1 ? 'monatlich' : `alle ${n} Monate`}${w.monatstag ? ` am ${w.monatstag}.${w.monatstag > 28 ? ' (sonst Monatsende)' : ''}` : ''}`; break;
+    case 'monatlich': s = `${n === 1 ? 'monatlich' : `alle ${n} Monate`}${nterGueltig(w) ? ` am ${w.nter!.n === -1 ? 'letzten' : `${w.nter!.n}.`} ${WOCHENTAGE_LANG[w.nter!.wochentag]}` : w.monatstag ? ` am ${w.monatstag}.${w.monatstag > 28 ? ' (sonst Monatsende)' : ''}` : ''}`; break;
     case 'jaehrlich': s = n === 1 ? 'jährlich' : `alle ${n} Jahre`; break;
     default: s = 'wiederkehrend';
   }

@@ -446,6 +446,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   mit(H('streak', 'Zähler „Sauber geblieben“ (Erstkonto; Modul je Person) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('streak--*', 'Zähler „Sauber geblieben“ je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('health-log--*', 'Gesundheits-Log je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  // Routinen 2 (10.10., lib/planung/routinen-person.ts): je Person Zähler je Tag und Routine („5 von 8 Gläsern“), die eigene Einstellung
+  // „Erinnerungen aufs Handy“, der Riegel gesendeter Erinnerungen (nur die letzten Tage) und die Kennungen der Kalender-Blöcke, die MAKE OS für
+  // ihre Routinen angelegt hat — IMMER mit Suffix. Zähler von Gesundheits-Routinen sind Gesundheitsdaten (wie der Gesundheits-Log).
+  mit(H('routinen-person--*', 'Routinen je Person: Zähler je Tag (z. B. Gläser Wasser), Einstellung „Erinnerung aufs Handy“, Riegel der Erinnerungen, Kennungen eigener Routinen-Blöcke im Kalender — eigene Gesundheitsdaten (Art. 9).'), {
+    ...GESUNDHEIT,
+    art15: 'die Person sieht ihre Zähler in Gesundheit › Heute, Planung › Routinen und auf Heute; Konto › Meine Daten exportiert den Bestand; andere Konten sehen die Zähler nur bei „Teilen“',
+  }),
   // Journal (09.10.): trägt jetzt auch den Tages-Check „wie im WHOOP-Journal“ (Alkohol, Koffein spät … — Gesundheitsdaten) — seitdem mit den
   // Angaben für Gesundheitsdaten (die Route nahm schon vorher Einwilligung (a) und das Teilen-Tor).
   mit(H('journal--*', 'Journal je Person — Abendfragen, Stimmung/Energie/Anspannung und Tages-Check (Frage → ja/nein); eigene Gesundheitsdaten.'), GESUNDHEIT),
@@ -784,6 +791,8 @@ const JE_PERSON: readonly string[] = [
   'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
   'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*', 'erholung--*',
+  // Routinen 2 (10.10.): Zähler, Erinnerungs-Einstellung und Riegel je Person — wie der Gesundheits-Log
+  'routinen-person--*',
   // Mein Fokus · Privat (10.10.), eigene Soll-Zeit · Privat (10.10., Fokus-Steuerung)
   'fokus-eigen--*', 'fokus-soll-privat--*',
   // Eigene Meilensteine an eigenen Zielen (10.10.) — immer Privat, je Person

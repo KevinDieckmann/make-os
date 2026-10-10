@@ -141,6 +141,17 @@ export const KENNZAHL_TEXTE: Readonly<Record<string, KennzahlText>> = {
     beispiel: 'Ziel 5 Gespräche pro Woche. Die Zeile zeigt 3, 6, 5, 4 — zwei Wochen haben das Ziel erreicht, zwei nicht.',
     tun: 'Setze die Ziele realistisch; liegen alle Wochen darunter, ist das Ziel zu hoch oder der Rhythmus zu schwach.',
   },
+  // Routinen 2 (10.10.): Streak und Erfüllungsquote je Routine — gerechnet so, wie der Rhythmus es meint (lib/planung/rhythmus.ts `routineStatistik`).
+  'routinen.streak': {
+    wie: 'Wie oft hintereinander erfüllt, rückwärts gezählt ab dem letzten fälligen Termin. Täglich, Werktage und feste Wochentage zählen in Tagen, „x-mal pro Woche“ in Wochen, „alle x …“ und „monatlich“ in Terminen. Heute zählt erst, wenn erledigt; Pausen und Tage außerhalb des Zeitraums überspringt der Streak.',
+    beispiel: '3× pro Woche, die letzten vier Wochen jeweils dreimal geschafft: Streak 4 Wochen. Eine Woche Urlaub als Pause dazwischen reißt ihn nicht.',
+    tun: 'Reißt der Streak oft, ist der Rhythmus zu ehrgeizig — lieber 2× statt 3× pro Woche, oder Pausen eintragen, wenn du weg bist.',
+  },
+  'routinen.quote': {
+    wie: 'Erfüllte Termine geteilt durch fällige Termine im Fenster: vier Wochen bei täglich und festen Tagen, die letzten vier Wochen (plus die laufende, sobald sie erfüllt ist) bei „x-mal pro Woche“, die letzten sechs Termine bei „monatlich“. Gemessen wird ab dem Anlegen der Routine bzw. ab dem ersten Haken.',
+    beispiel: 'Feste Tage Montag und Donnerstag, in vier Wochen acht Termine, sieben erledigt: 88 %.',
+    tun: 'Unter 50 %? Rhythmus, Uhrzeit oder Erinnerung anpassen — eine Routine, die passt, wird gemacht.',
+  },
 };
 
 /** Die Erklärung einer Zahl ohne Register (`KENNZAHL_TEXTE`) — keine Abschnitte, wenn es sie nicht gibt. */

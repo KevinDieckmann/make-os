@@ -16,7 +16,7 @@ import { WEG } from '@/lib/wege';
 // Feste Termine = die übrigen Termine des Tages (beschäftigt, mit Uhrzeit). Keine KEMARIS-Beispieldaten mehr.
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useNachspeichern } from '@/lib/make-one/nachspeichern';
+import { routineHakenSenden } from './routinen/haken';
 import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { useKalender } from './kalender/teile';
@@ -34,9 +34,11 @@ import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import { useFokus } from '@/lib/planung/fokus-client';
 import { useNurBusiness } from './useInhaber';
 import { spaceVonZiel } from '@/lib/lichtfaeden/modell';
-import type { Ziel } from '@/lib/planung/typen';
+import type { Ziel, Routine as PlanRoutine } from '@/lib/planung/typen';
+import { faelligkeit } from '@/lib/planung/rhythmus';
+import { erledigtTage } from '@/lib/planung/routinen';
 
-interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
+type Routine = Pick<PlanRoutine, 'id' | 'label' | 'wann' | 'kategorie' | 'dauerMin' | 'aktiv' | 'rhythmus' | 'naechstesMal' | 'regel' | 'pausen' | 'zeitraum' | 'angelegtAm'>;
 interface Fix { titel: string; startMin: number; dauerMin: number }
 
 const KATEGORIE_FARBE: Record<string, string> = { gesundheit: LEUCHT.gut, leben: LEUCHT.beziehung, business: LEUCHT.business };
@@ -110,9 +112,6 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
   const [jetztMin, setJetztMin] = useState<number | null>(null);
-  const hSpaeter = useNachspeichern<Record<string, string[]>>(next => {
-    fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-  }, 300);
 
   useEffect(() => {
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (typeof d.ich?.speicher === 'string') setIch(d.ich.speicher); }).catch(() => {});
@@ -198,14 +197,18 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   }, [regler, fokusAlle.tag, fokusAlle.woche, fokusAlle.monat]);
   const passtZumFokus = (r: Routine) => fokusSaeulen.has(KATEGORIE_ZU_SAEULE[r.kategorie] ?? '');
 
-  // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit.
+  // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit. Routinen 2 (10.10.): EIN PATCH je Haken über die eine Schreibstelle
+  // (`routineHaken` — bei einem Zähler füllt der Haken das Tagesziel auf bzw. leert es), nie mehr der ganze Log aus dem Browser.
   const erledigt = useMemo(() => new Set(hlog[heute] ?? []), [hlog, heute]);
   function toggleRoutine(id: string) {
+    const an = !(hlog[heute] ?? []).includes(id);
     const tag = new Set(hlog[heute] ?? []);
-    if (tag.has(id)) tag.delete(id); else tag.add(id);
-    const next = { ...hlog, [heute]: Array.from(tag) };
-    setHlog(next);
-    hSpaeter(next);
+    if (an) tag.add(id); else tag.delete(id);
+    setHlog(h => ({ ...h, [heute]: Array.from(tag) }));
+    void routineHakenSenden(id, { erledigt: an }).then(a => {
+      if (a.ok && a.erledigt) setHlog(h => ({ ...h, [heute]: a.erledigt! }));
+      else if (!a.ok) setMeldung(a.error ?? 'Routine nicht gespeichert.');
+    });
   }
 
   // ── Aufgaben-Leiste: Priorität schlägt immer, dann Fokus-Regler, dann Fälligkeit ──
@@ -277,7 +280,9 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const datum = new Date(`${heute}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const sortiertNachFokus = (a: Routine, b: Routine) => Number(passtZumFokus(b)) - Number(passtZumFokus(a));
-  const routinenErledigt = Array.from(erledigt).filter(id => routinen.some(r => r.id === id)).length;
+  // Routinen 2 (10.10.): heute nur, was nach Rhythmus dran ist (feste Tage, x-mal pro Woche, Pausen, Zeitraum) — Abgehaktes bleibt stehen.
+  const routinenHeute = routinen.filter(r => { const t = erledigtTage(hlog, r.id); return t.includes(heute) || faelligkeit(r, t, heute).faellig; });
+  const routinenErledigt = Array.from(erledigt).filter(id => routinenHeute.some(r => r.id === id)).length;
 
   return (
     <Seite titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste aktiv="tag" tag={heute} /></div></div>}>
@@ -418,12 +423,12 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           {/* Routinen heute — Fokus-passende zuerst (◎), dieselben Häkchen wie im Cockpit */}
           <Karte i={5}>
             <Ueberschrift farbe={LEUCHT.gut} rechts={<>
-              <span style={{ color: routinenErledigt ? LEUCHT.gut : C.inkLeise, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{routinenErledigt}/{routinen.length}</span>
+              <span style={{ color: routinenErledigt ? LEUCHT.gut : C.inkLeise, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{routinenErledigt}/{routinenHeute.length}</span>
               <Link href="/os/planung/routinen" style={verweis}>planen ›</Link>
             </>}>Routinen heute</Ueberschrift>
             <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>◎ zahlt auf den Fokus ein · auch in den Tag ziehbar</div>
             {(['morgen', 'tag', 'abend'] as const).map(wann => {
-              const eigene = routinen.filter(r => r.wann === wann).sort(sortiertNachFokus);
+              const eigene = routinenHeute.filter(r => r.wann === wann).sort(sortiertNachFokus);
               if (!eigene.length) return null;
               return (
                 <div key={wann} style={{ marginTop: 8 }}>

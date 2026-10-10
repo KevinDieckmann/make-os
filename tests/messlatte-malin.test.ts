@@ -349,6 +349,9 @@ const SYS = {
   meilensteinEigen: 'MESSLATTE-SYS-MEILENSTEIN-EIGEN',
 
   // 10.10. Lauf-Spur (Paket V1): Kevins eigene Abschnitte (Privat und Business) — nur er selbst sieht ihre Kennungen; ein Inhaber sonst nur Summen.
+  // 10.10. Routinen 2: Kevins Zähler je Tag und Routine (`routinen-person--kevin`, Art. 9) — nur er selbst bzw. wem er die Gesundheit zeigt.
+  routinenZaehler: 'MESSLATTE-SYS-ROUTINEN-ZAEHLER',
+
   laufSpurPrivat: 'lauf-00000000-0000-4000-8000-0000000a5f01',
   laufSpurBusiness: 'lauf-00000000-0000-4000-8000-0000000a5f02',
 };
@@ -603,6 +606,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
 
     // Nahtstellen 09.10.: Zähler „Sauber geblieben“ (Modul `serie` — im Körper-Profil oben an) des Erstkontos, Altbestand ohne Suffix.
     await db.saveJson('streak', { [H]: { sauber: true, craving: 2, notiz: SYS.streak, at: J } });
+    // Routinen 2 (10.10.): Kevins Zähler (die Marke ist die Kennung der gezählten Routine) und seine Einstellung „aufs Handy“.
+    await db.saveJson('routinen-person--kevin', { zaehler: { [H]: { [SYS.routinenZaehler]: 3 } }, handy: true });
     // Privates des Haushalts: ein Privat-Konto im Konten-Register und eine Haushaltsbuchung (Verwendungszweck, wie ihn der Kontoauszug bringt).
     await db.saveJson('konten--haus-messlatte', { v: 1, konten: [{ id: 'kt-00000000-0000-4000-8000-0000000000c1', name: HAUSHALT_PRIVAT.konto, art: 'giro', ort: 'privat', person: 'kevin', staende: [{ id: 'ks-00000000-0000-4000-8000-0000000000c1', betrag: 1234.5, datum: H, quelle: 'hand', erfasstVon: 'kevin', erfasstAm: J }], angelegtVon: 'kevin', angelegtAm: J }] });
     await db.saveJson('haushalt-buchungen--haus-messlatte', { einheiten: 2, buchungen: [{ id: 'hb-messlatte', stand: J, konto_id: 'hk-messlatte', datum: H, betrag: -1234, beschreibung: HAUSHALT_PRIVAT.buchung, empfaenger: HAUSHALT_PRIVAT.buchung, kategorie_id: null, ist_umbuchung: false, ist_fixkosten: false, turnus: 'einmalig', einheit: 'privat', zeilen_hash: null, notiz: null, import_id: null, erfasst_von: 'kevin', geaendert: J }] });

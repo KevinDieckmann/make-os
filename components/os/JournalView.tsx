@@ -12,6 +12,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, Wahl, ZielBezug, feld, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { WEG } from '@/lib/wege';
+import { routineHakenSenden } from './routinen/haken';
 
 interface Entry { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; gut?: string; dankbar?: string; hart?: string; tagesnote?: string }
 type Journal = Record<string, Entry>;
@@ -76,7 +77,8 @@ export function JournalView() {
     if (id === 'bewegt' && an) fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => {
       const reha = (d.routinen ?? []).find((r: { id: string; label: string; aktiv: boolean }) => r.aktiv && /reha|mobil|beweg/i.test(`${r.id} ${r.label}`));
       if (!reha) return;
-      return fetch('/api/state/health').then(r => r.json()).then(h => { const log = h.log ?? {}; const tag = new Set<string>(log[today] ?? []); tag.add(reha.id); return fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...log, [today]: Array.from(tag) }) }); });
+      // Routinen 2 (10.10.): EIN PATCH über die eine Schreibstelle — nie mehr der ganze Log aus dem Browser.
+      return routineHakenSenden(reha.id, { erledigt: true }, today);
     }).catch(() => {});
   };
   const toggleFlag = (id: string) => {

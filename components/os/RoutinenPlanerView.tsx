@@ -11,33 +11,43 @@ import Link from 'next/link';
 // (Wochenvorlage je Person: wann Privat, wann Arbeit), Routinen je Person und
 // gemeinsam, Rhythmus täglich … jährlich mit „nächstes Mal am“, Reihenfolge
 // per Pfeil. Datenmodell additiv (lib/planung/typen.ts), gesäubert im Schreibweg.
+// 10.10. (Routinen 2, Rückmeldung aus dem Onboarding: „mehr Einstellungen bei den einzelnen Routinen“): Einstellen über den Routine-Editor
+// (components/os/routinen/RoutineEditor.tsx — Rhythmus, mehrmals täglich/Zähler, Uhrzeiten, Erinnerung, Kalender-Block, Zeitraum, Pausen,
+// Ziel), Vorlagen zum Übernehmen, Streak und Erfüllungsquote je Routine (rhythmusgerecht, lib/planung/rhythmus.ts `routineStatistik`) und
+// die eigene Einstellung „Erinnerungen auch aufs Handy“. Anlegen geht immer über den Editor — eine Stelle für alle Felder.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ListenSchreiber, type SchreibErgebnis } from '@/lib/make-one/liste-stand';
 import { localDay } from '@/lib/zeit';
 import { SPACE_FARBE, SPACE_LABEL, type SpaceId } from '@/lib/make-one/space-regeln';
-import { RHYTHMEN, WOCHENTAGE, OWNER_BEIDE, type Block, type Routine, type Wochentag } from '@/lib/planung/typen';
+import { WOCHENTAGE, OWNER_BEIDE, type Block, type Routine, type Wochentag } from '@/lib/planung/typen';
 import { sortiertNachRang, verschiebe, naechsterRang } from '@/lib/planung/rang';
-import { bloeckeFuer, standardBloecke, spaceVonRoutine, ownerVonRoutine } from '@/lib/planung/routinen';
+import { bloeckeFuer, standardBloecke, spaceVonRoutine, ownerVonRoutine, erledigtTage, heuteIst, type ZaehlerLog } from '@/lib/planung/routinen';
 import { EinheitWahl, useEinheiten } from './aufgaben/Einheit';
 import { Wahl, type WahlEintrag } from './crm/Wahl';
 import { einheitFarbe, einheitKurz, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
 import { EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
-import { einheitName, PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
-import { hatPrivatEinheit, speicherSpace } from '@/lib/planung/bereich';
-import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
+import { einheitName } from '@/lib/einheiten';
+import { hatPrivatEinheit } from '@/lib/planung/bereich';
+import { routineRhythmusKurz, routineStatistik, faelligkeit, tagesZielVon, pausiertAm } from '@/lib/planung/rhythmus';
+import { ROUTINEN_VORLAGEN, vorlageAnlegen } from '@/lib/planung/routinen-vorlagen';
 import { PlanerLeiste } from './PlanerLeiste';
-import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen, ZeileAktionen, useRueckgaengig } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen, ZeileAktionen, useRueckgaengig, Kennzahl, Hinweis, Zeile } from './ui';
 import { PfeilRang } from './planung/PfeilRang';
 import { neueKennung } from '@/lib/kennung';
+import { RoutineEditor, type Kategorie } from './routinen/RoutineEditor';
+import { streakText } from './routinen/haken';
+import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
+import type { RoutineEntwurf } from '@/lib/planung/routine-entwurf';
+import { useZieleUndMeilensteine } from '@/lib/planung/ziele-client';
 
 const WANN: { id: Routine['wann']; label: string; hint: string }[] = [
   { id: 'morgen', label: 'Morgens', hint: 'der Start — vor allem anderen' },
   { id: 'tag', label: 'Tagsüber', hint: 'zwischen den Blöcken' },
   { id: 'abend', label: 'Abends', hint: 'der Abschluss — runterfahren' },
 ];
-const KAT: { id: Routine['kategorie']; label: string; farbe: string }[] = [
+const KAT: Kategorie[] = [
   { id: 'gesundheit', label: 'Gesundheit', farbe: LEUCHT.gut },
   // Erholung (10.10.): zählt in Gesundheit › Erholung, wenn abgehakt — andere sehen die Routine nur „Belegt“.
   { id: 'erholung', label: 'Erholung', farbe: LEUCHT.schlaf },
@@ -47,13 +57,12 @@ const KAT: { id: Routine['kategorie']; label: string; farbe: string }[] = [
 const katFarbe = (k: Routine['kategorie']) => KAT.find(x => x.id === k)!.farbe;
 
 const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
-const mini: CSSProperties = { width: 24, height: 24, fontSize: TYP.bedien, lineHeight: 1, borderRadius: 7, cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,.08)', color: C.inkDim, padding: 0 };
-const linkStil = { color: C.inkDim, textDecoration: 'none' as const };
 const loeschen: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, background: 'transparent', border: 'none', cursor: 'pointer', flex: '0 0 auto', padding: '2px 4px' };
 const pille = (an: boolean, farbe: string): CSSProperties => ({ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim });
 const dtKurz = (iso: string) => `${iso.slice(8)}.${iso.slice(5, 7)}.`;
 
 interface Person { speicher: string; name: string }
+type Editor = { routine: Routine | null; vorgabe?: Partial<RoutineEntwurf> };
 
 /**
  * Einheit am Block (28.09.): dieselbe Auswahl wie bei Routinen (Werteliste des Haushalts,
@@ -72,6 +81,34 @@ function BlockEinheit({ wert, setzen, einheiten, anlegen }: { wert?: string; set
   );
 }
 
+/** Kurzfassung unter einer Routine: Tageszeit · Dauer · heute · Streak/Quote · Erinnerung · Kalender · Pause/Zeitraum. */
+function zusammenfassung(r: Routine, heute: string, log: Record<string, string[]> | null, zaehler: ZaehlerLog | null, eigen: boolean, zielTitel?: string): string {
+  // Uhrzeiten stehen schon im Rhythmus-Chip — ohne Uhrzeit die Tageszeit.
+  const teile = [r.uhrzeiten?.length ? '' : WANN.find(w => w.id === r.wann)?.label ?? '', `${r.dauerMin} min`];
+  if (eigen && log) {
+    const tage = erledigtTage(log, r.id);
+    const f = faelligkeit(r, tage, heute);
+    const ziel = tagesZielVon(r);
+    const ist = heuteIst(r, tage.includes(heute), zaehler, heute);
+    if (f.pausiert) teile.push('heute in Pause');
+    else if (f.ausserhalb === 'vorher') teile.push(`ab ${dtKurz(f.naechstes)}`);
+    else if (f.ausserhalb === 'nachher') teile.push('Zeitraum vorbei');
+    else if (ziel > 1) teile.push(`heute ${ist} von ${ziel}`);
+    else teile.push(f.faellig ? (f.ueberfaellig ? `fällig seit ${dtKurz(f.naechstes)}` : 'heute dran') : tage.includes(heute) ? 'heute erledigt' : `nächstes Mal ${dtKurz(f.naechstes)}`);
+    if (f.proWoche) teile.push(`${f.dieseWoche ?? 0}/${f.proWoche} diese Woche`);
+    const s = routineStatistik(r, tage, heute);
+    const st = streakText(s.streak, s.einheit);
+    if (st) teile.push(st);
+    if (s.quote != null) teile.push(`${Math.round(s.quote * 100)} % erfüllt`);
+  }
+  const p = pausiertAm(r, heute) ?? (r.pausen ?? []).find(x => x.von > heute);
+  if (p && !pausiertAm(r, heute)) teile.push(`Pause ab ${dtKurz(p.von)}`);
+  if (r.erinnerung) teile.push('erinnert');
+  if (r.kalender) teile.push('im Kalender');
+  if (zielTitel) teile.push(`zahlt ein auf „${zielTitel}“`);
+  return teile.filter(Boolean).join(' · ');
+}
+
 export function RoutinenPlanerView() {
   const heute = localDay();
   const [routinen, setRoutinen] = useState<Routine[]>([]);
@@ -87,13 +124,25 @@ export function RoutinenPlanerView() {
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>(kopfSpace);
   useEffect(() => { setSpaceFilter(kopfSpace); }, [kopfSpace]);
   const [werFilter, setWerFilter] = useState<string>('alle');
-  const [neu, setNeu] = useState({ label: '', wann: 'morgen' as Routine['wann'], kat: 'gesundheit' as Routine['kategorie'], space: 'privat' as SpaceId, owner: OWNER_BEIDE, rhythmus: 'taeglich' as Routine['rhythmus'] | 'taeglich', naechstesMal: '', einheit: undefined as string | undefined });
+  const [neuName, setNeuName] = useState('');
+  const [editor, setEditor] = useState<Editor | null>(null);
+  // Routinen 2 (10.10.): eigener Log + Zähler (Streak, Quote, „heute 5 von 8“) und die eigene Einstellung „aufs Handy“.
+  const [log, setLog] = useState<Record<string, string[]> | null>(null);
+  const [zaehler, setZaehler] = useState<ZaehlerLog | null>(null);
+  const [handy, setHandy] = useState<boolean | null>(null);
+  const [handyFehler, setHandyFehler] = useState<string | null>(null);
+  const [vorlageFuer, setVorlageFuer] = useState<'ich' | 'beide'>('ich');
+  // Ziel-Verknüpfung (10.10.): der Titel des Ziels, auf das eine Routine einzahlt — nur zum Anzeigen.
+  const planDaten = useZieleUndMeilensteine();
+  const zielTitel = (id?: string) => (id ? planDaten?.ziele.find(z => z.id === id)?.titel : undefined);
   // Business-Einheit (27.09.) wie bei Zielen und Aufgaben — nur im Business.
   const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
   const [blockPerson, setBlockPerson] = useState<string>('');
   const [blockNeu, setBlockNeu] = useState({ wochentag: 1 as Wochentag, von: '09:00', bis: '18:00', art: 'business' as SpaceId, titel: '', einheit: undefined as string | undefined });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const blockTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Nach dem Speichern auszuführen (Kalender-Blöcke nachziehen) — erst, wenn der Server bestätigt hat. */
+  const nachSpeichern = useRef<(() => void)[]>([]);
   // Geteilter Bestand (28.09.): nur Einzeländerungen mit Stand — Routinen über `{ ops }`, Blöcke über `{ bloecke: ops }`
   // (nur die eigenen). Die Refs halten die aktuelle Sicht als Grundlage für „was wurde gerade geändert“.
   const routinenSchreiber = useMemo(() => new ListenSchreiber<Routine>({ pfad: '/api/state/routinen', liste: d => (Array.isArray(d.routinen) ? d.routinen as Routine[] : null) }), []);
@@ -124,15 +173,23 @@ export function RoutinenPlanerView() {
       if (me) { setIch(me); setBlockPerson(me); }
       setPersonen([...(me ? [{ speicher: me, name: (d.ich?.name ?? me).split(' ')[0] }] : []), ...((d.andere ?? []) as Person[]).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] }))]);
     }).catch(() => {});
-  }, []);
+    fetch('/api/state/health').then(r => (r.ok ? r.json() : null)).then(d => { if (d) { setLog(d.log ?? {}); setZaehler(d.zaehler ?? {}); } }).catch(() => {});
+    fetch('/api/planung/routinen-person').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ok) setHandy(!!d.handy); }).catch(() => {});
+  }, [routinenSchreiber, blockSchreiber]); // beide stabil (useMemo ohne Abhängigkeiten) — läuft einmal
 
-  function persist(next: Routine[]) {
+  function persist(next: Routine[], danach?: () => void) {
     if (ladeFehler || !routinenSchreiber.geladen) { setRoutinen(next); return; }
     routinenSchreiber.aendern(routinenRef.current, next);
     zeigeRoutinen(next);
+    if (danach) nachSpeichern.current.push(danach);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void routinenSchreiber.senden().then(e => { nachSenden(e); if (e.sicht && !e.nichts) zeigeRoutinen(e.sicht); });
+      void routinenSchreiber.senden().then(e => {
+        nachSenden(e);
+        if (e.sicht && !e.nichts) zeigeRoutinen(e.sicht);
+        const auftraege = nachSpeichern.current.splice(0);
+        if (e.ok) for (const a of auftraege) a();
+      });
     }, 500);
   }
   /** Nur eigene Blöcke — der Server lehnt fremde ohnehin ab (403). */
@@ -153,38 +210,56 @@ export function RoutinenPlanerView() {
   }, [routinenSchreiber, blockSchreiber]);
 
   const nameVon = (sp: string) => (sp === OWNER_BEIDE ? 'gemeinsam' : personen.find(p => p.speicher === sp)?.name ?? (sp === ich ? 'ich' : sp));
-  // Wechsel des Bereichs: Privat verwirft die Einheit; nach Business fällt auch eine Privat-Einheit (Selbstständigkeit) weg — sonst stünde die
-  // Routine weiter unter Privat (05.10. abends, Bereich abgeleitet).
   // Löschen (10.10., Standard Zeilen-Aktionen): wischen bzw. „⋯“ statt eines ✕ in der Zeile — mit 10 s „Rückgängig“.
   const { melden, hinweis: rueckHinweis } = useRueckgaengig();
   const routineLoeschen = (r: Routine) => {
-    persist(routinenRef.current.filter(x => x.id !== r.id));
-    melden(`Routine „${r.label}“ gelöscht`, () => { if (!routinenRef.current.some(x => x.id === r.id)) persist([...routinenRef.current, r]); });
+    persist(routinenRef.current.filter(x => x.id !== r.id), r.kalender ? kalenderNachziehen : undefined);
+    melden(`Routine „${r.label}“ gelöscht`, () => { if (!routinenRef.current.some(x => x.id === r.id)) persist([...routinenRef.current, r], r.kalender ? kalenderNachziehen : undefined); });
   };
-  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p, ...(p.space === 'privat' || (p.space === 'business' && hatPrivatEinheit(x)) ? { einheit: undefined } : {}) } : x)));
-  /** Privat-Einheit (Selbstständigkeit) an einer Privat-Routine setzen/lösen — gespeichert in der Form des alten Stands (Business + Einheit). */
-  const privatEinheitSetzen = (id: string, e: string) => persist(routinen.map(x => (x.id !== id ? x : e ? { ...x, space: speicherSpace('privat', e), einheit: e } : { ...x, space: 'privat' as const, einheit: undefined })));
-  const privatEinheitWahl = (wert: string | undefined, setzen: (e: string) => void) => (PRIVAT_EINHEITEN_NAMEN.length ? (
-    <select value={wert && PRIVAT_EINHEITEN_NAMEN.includes(wert) ? wert : ''} onChange={e => setzen(e.target.value)} aria-label="Einheit der Routine (Privat)" style={{ ...wahl, padding: '5px 8px', color: wert ? SPACE_FARBE.privat : C.inkDim }}>
-      <option value="">ohne Einheit</option>
-      {PRIVAT_EINHEITEN_NAMEN.map(n => <option key={n} value={n}>{n}</option>)}
-    </select>
-  ) : null);
+  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p } : x)));
 
-  const add = () => {
-    const l = neu.label.trim();
-    if (!l) return;
-    const r: Routine = {
-      id: neueKennung('r'), label: l, wann: neu.wann, kategorie: neu.kat, dauerMin: 15, aktiv: true,
-      space: neu.space === 'privat' && neu.einheit && PRIVAT_EINHEITEN_NAMEN.includes(neu.einheit) ? speicherSpace('privat', neu.einheit) : neu.space, owner: neu.owner, rang: naechsterRang(routinen),
-      ...(neu.space === 'business' && neu.einheit ? { einheit: neu.einheit } : {}),
-      ...(neu.space === 'privat' && neu.einheit && PRIVAT_EINHEITEN_NAMEN.includes(neu.einheit) ? { einheit: neu.einheit } : {}),
-      ...(neu.rhythmus !== 'taeglich' ? { rhythmus: neu.rhythmus } : {}),
-      ...(neu.rhythmus !== 'taeglich' && neu.rhythmus !== '3x-woche' && neu.naechstesMal ? { naechstesMal: neu.naechstesMal } : {}),
-    };
-    persist([...routinen, r]);
-    setNeu({ ...neu, label: '', naechstesMal: '' });
+  /** Kalender-Blöcke der eigenen Routinen nachziehen (sonst morgens im Morgenlauf) — Ergebnis als Hinweis. */
+  async function kalenderNachziehen() {
+    try {
+      const r = await fetch('/api/planung/routinen-person', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'kalender' }) });
+      const d = await r.json().catch(() => ({}));
+      setHinweis(r.ok ? null : `Kalender-Blöcke: ${d.error ?? 'nicht nachgezogen'} — der Morgenlauf versucht es wieder.`);
+    } catch { setHinweis('Kalender-Blöcke: keine Verbindung — der Morgenlauf versucht es wieder.'); }
+  }
+
+  /** Vom Editor: neue Routine anlegen bzw. eine bestehende ersetzen; Kalender-Blöcke nachziehen, wenn sie betroffen sind. */
+  const ausEditor = (r: Routine) => {
+    const vorher = routinen.find(x => x.id === r.id);
+    const kalenderBetroffen = !!r.kalender || !!vorher?.kalender;
+    if (!vorher) {
+      const neu: Routine = { ...r, id: neueKennung('r'), rang: naechsterRang(routinen) };
+      persist([...routinen, neu], kalenderBetroffen ? kalenderNachziehen : undefined);
+      setNeuName('');
+    } else {
+      persist(routinen.map(x => (x.id === r.id ? r : x)), kalenderBetroffen ? kalenderNachziehen : undefined);
+    }
+    setEditor(null);
   };
+
+  const vorlageUebernehmen = (id: string) => {
+    const v = ROUTINEN_VORLAGEN.find(x => x.id === id);
+    if (!v || !ich) return;
+    const neu = vorlageAnlegen(v, { owner: vorlageFuer === 'ich' ? ich : OWNER_BEIDE, heute, rangAb: naechsterRang(routinen) });
+    persist([...routinen, ...neu]);
+    const ids = new Set(neu.map(r => r.id));
+    melden(`Vorlage „${v.titel}“ übernommen (${neu.length} Routine${neu.length === 1 ? '' : 'n'})`, () => persist(routinenRef.current.filter(x => !ids.has(x.id))));
+  };
+
+  async function handySetzen(an: boolean) {
+    setHandyFehler(null);
+    const vorher = handy;
+    setHandy(an);
+    try {
+      const r = await fetch('/api/planung/routinen-person', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handy: an }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setHandy(vorher); setHandyFehler(d.error ?? 'Nicht gespeichert.'); }
+    } catch { setHandy(vorher); setHandyFehler('Keine Verbindung — nicht gespeichert.'); }
+  }
 
   // Sicht: Space und Person
   const sicht = useMemo(() => sortiertNachRang(routinen.filter(r =>
@@ -193,6 +268,15 @@ export function RoutinenPlanerView() {
   )), [routinen, spaceFilter, werFilter]);
   const aktivN = routinen.filter(r => r.aktiv).length;
   const nBusiness = routinen.filter(r => spaceVonRoutine(r) === 'business').length;
+  // „Dein Rhythmus“: Streak und Quote über die eigenen und gemeinsamen aktiven Routinen (nicht die verdeckten der anderen Person).
+  const rhythmus = useMemo(() => {
+    if (!log) return null;
+    const meine = routinen.filter(r => r.aktiv && !r.belegt && (ownerVonRoutine(r) === OWNER_BEIDE || ownerVonRoutine(r) === ich));
+    const s = meine.map(r => ({ r, s: routineStatistik(r, erledigtTage(log, r.id), heute) }));
+    const quoten = s.map(x => x.s.quote).filter((q): q is number => q != null);
+    const best = s.reduce<typeof s[number] | null>((m, x) => (!m || x.s.streak > m.s.streak ? x : m), null);
+    return { quote: quoten.length ? quoten.reduce((a, b) => a + b, 0) / quoten.length : null, best };
+  }, [routinen, log, ich, heute]);
 
   // Blöcke der gewählten Person
   const meineBloecke = useMemo(() => bloeckeFuer(bloecke, blockPerson), [bloecke, blockPerson]);
@@ -205,11 +289,12 @@ export function RoutinenPlanerView() {
     setBlockNeu({ ...blockNeu, titel: '' });
   };
   const blockBewegen = (b: Block, r: 'auf' | 'ab') => persistBloecke(verschiebe(bloecke, b.id, r, meineBloecke.filter(x => x.wochentag === b.wochentag).map(x => x.id)));
+  const neuOeffnen = () => setEditor({ routine: null, vorgabe: { label: neuName.trim(), ...(spaceFilter !== 'alle' ? { space: spaceFilter, ...(spaceFilter === 'business' ? { kategorie: 'business' as const } : {}) } : {}) } });
 
   return (
     <Seite
       titel="Routinen"
-      unter={<>Was dich jeden Tag trägt — hier geplant, wirksam im <Link href="/os/kalender?modus=planen" style={linkStil}>Wochenplaner</Link>, auf Heute und in der Gesundheit.</>}
+      unter={<>Was dich jeden Tag trägt — hier geplant, wirksam im <Link href="/os/kalender?modus=planen" style={{ color: C.inkDim, textDecoration: 'none' }}>Wochenplaner</Link>, auf Heute und in der Gesundheit.</>}
       rechts={<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip farbe={aktivN ? LEUCHT.gut : C.inkLeise}>{aktivN} aktive Routinen</Chip>
         <Chip farbe={SPACE_FARBE.privat}>{routinen.length - nBusiness} Privat</Chip>
@@ -218,36 +303,30 @@ export function RoutinenPlanerView() {
     >
       <PlanerLeiste aktiv="routinen" />
 
-      {/* Neu anlegen */}
+      {/* Neu anlegen — Name, dann der Editor mit allen Einstellungen */}
       <Karte i={0} ton={LEUCHT.gut}>
         <Ueberschrift farbe={LEUCHT.gut}>Neue Routine</Ueberschrift>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={neu.label} onChange={e => setNeu({ ...neu, label: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') add(); }}
-            placeholder="z. B. 10 Min Spazieren nach dem Mittag · Steuererklärung · Arzt …"
+        <form onSubmit={x => { x.preventDefault(); neuOeffnen(); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={neuName} onChange={e => setNeuName(e.target.value)} aria-label="Name der neuen Routine"
+            placeholder="z. B. Wasser trinken · Laufen · Steuererklärung …"
             style={{ ...feld, width: 'auto', flex: '1 1 240px', minWidth: 0 }} />
-          <select value={neu.space} onChange={e => setNeu({ ...neu, space: e.target.value as SpaceId, einheit: undefined, kat: e.target.value === 'business' ? 'business' : neu.kat === 'business' ? 'leben' : neu.kat })} aria-label="Space" style={{ ...wahl, color: SPACE_FARBE[neu.space] }}>
-            <option value="privat">Privat</option><option value="business">Business</option>
-          </select>
-          {neu.space === 'business' && <EinheitWahl wert={neu.einheit} setzen={e => setNeu({ ...neu, einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der Routine" />}
-          {neu.space === 'privat' && privatEinheitWahl(neu.einheit, e => setNeu({ ...neu, einheit: e || undefined }))}
-          <select value={neu.owner} onChange={e => setNeu({ ...neu, owner: e.target.value })} aria-label="Wer" style={wahl}>
-            <option value={OWNER_BEIDE}>gemeinsam</option>
-            {personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}
-          </select>
-          <select value={neu.rhythmus} onChange={e => setNeu({ ...neu, rhythmus: e.target.value as Routine['rhythmus'] })} aria-label="Rhythmus" style={wahl}>
-            {RHYTHMEN.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-          </select>
-          {neu.rhythmus !== 'taeglich' && neu.rhythmus !== '3x-woche' && (
-            <input type="date" value={neu.naechstesMal} onChange={e => setNeu({ ...neu, naechstesMal: e.target.value })} aria-label="Nächstes Mal am" title="Nächstes Mal am — leer heißt: ab heute dran" style={{ ...feld, width: 'auto', flex: '0 1 150px', colorScheme: 'dark' }} />
-          )}
-          <select value={neu.wann} onChange={e => setNeu({ ...neu, wann: e.target.value as Routine['wann'] })} aria-label="Tageszeit" style={wahl}>
-            {WANN.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}
-          </select>
-          <select value={neu.kat} onChange={e => setNeu({ ...neu, kat: e.target.value as Routine['kategorie'] })} aria-label="Kategorie" style={{ ...wahl, color: katFarbe(neu.kat) }}>
-            {KAT.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
-          </select>
-          <Knopf onClick={add}>+ Routine</Knopf>
+          <Knopf typ="submit">+ Routine einstellen</Knopf>
+        </form>
+      </Karte>
+
+      {/* Dein Rhythmus: Streak, Quote, Erinnerung aufs Handy (eigene Einstellung) */}
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.puls}>Dein Rhythmus</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 10 }}>
+          <Kennzahl klein wert={rhythmus?.best && rhythmus.best.s.streak > 0 ? String(rhythmus.best.s.streak) : undefined} label="Längster Streak"
+            unter={rhythmus?.best && rhythmus.best.s.streak > 0 ? `${rhythmus.best.r.label} · ${streakText(rhythmus.best.s.streak, rhythmus.best.s.einheit).replace(/^Streak \d+ /, '')}` : 'noch keiner'} erklaerung={kennzahlTextVon('routinen.streak')} />
+          <Kennzahl klein wert={rhythmus?.quote != null ? `${Math.round(rhythmus.quote * 100)} %` : undefined} label="Ø erfüllt"
+            unter="je Routine nach ihrem Rhythmus" erklaerung={kennzahlTextVon('routinen.quote')} />
         </div>
+        <div style={{ marginTop: 10 }}>
+          <Schalter erklaerung="routinen.handy" an={!!handy} aus={handy === null} onChange={v => void handySetzen(v)}>Erinnerungen auch aufs Handy</Schalter>
+        </div>
+        {handyFehler && <Hinweis art="achtung">{handyFehler}</Hinweis>}
       </Karte>
 
       {/* Filter: Space · Person — zwei wischbare Zeilen Wahl-Chips (Standard) */}
@@ -255,6 +334,8 @@ export function RoutinenPlanerView() {
         <Pillen einzeilig liste={[{ id: 'privat', label: SPACE_LABEL.privat }, { id: 'business', label: SPACE_LABEL.business }, { id: 'alle', label: 'Alle' }]} aktiv={spaceFilter} onWahl={k => setSpaceFilter(k as typeof spaceFilter)} />
         <Pillen einzeilig farbe={LEUCHT.puls} liste={[{ id: 'alle', label: 'Alle Personen' }, ...personen.map(p => ({ id: p.speicher, label: p.name })), { id: OWNER_BEIDE, label: 'nur gemeinsam' }]} aktiv={werFilter} onWahl={w => setWerFilter(w)} />
       </div>
+
+      {hinweis && <Hinweis art="achtung" rolle="status">{hinweis}</Hinweis>}
 
       {/* Drei Tageszeiten */}
       {!geladen ? (
@@ -268,12 +349,12 @@ export function RoutinenPlanerView() {
         return (
           <Karte key={w.id} i={2 + wi}>
             <Ueberschrift farbe={LEUCHT.puls} rechts={<>{w.hint} · <b style={{ color: aktivHier ? C.inkDim : C.inkLeise, fontWeight: 600 }}>{aktivHier} aktiv</b></>} erklaerung="routinen.planer">{w.label}</Ueberschrift>
-            {!eigene.length && <Leer>Noch nichts{spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : ''} — leg oben eine an.</Leer>}
+            {!eigene.length && <Leer>Noch nichts{spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : ''} — leg oben eine an oder übernimm eine Vorlage.</Leer>}
             <Liste>
               {eigene.map(r => {
                 const sp = spaceVonRoutine(r);
                 const owner = ownerVonRoutine(r);
-                const rh = r.rhythmus ?? 'taeglich';
+                const rh = routineRhythmusKurz(r);
                 // Routine der anderen Person: nur „Belegt“ mit Besitz, Bereich und Rhythmus — der Server schickt nichts anderes mit.
                 if (r.belegt) return (
                   <div key={r.id} className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 0.7 : 0.4 }}>
@@ -282,58 +363,35 @@ export function RoutinenPlanerView() {
                       <span style={{ flex: 1, minWidth: 0, color: C.inkDim, fontSize: TYP.body }}>Belegt</span>
                       <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
                       <Chip farbe={LEUCHT.puls}>{nameVon(owner)}</Chip>
-                      {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
+                      {rh && <Chip farbe={LEUCHT.agenten}>{rh}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
                     </div>
                   </div>
                 );
                 const pos = ids.indexOf(r.id);
                 return (
                   <ZeileAktionen key={r.id} titel={r.label} onLoeschen={() => routineLoeschen(r)}
-                    mehr={[{ id: 'aktiv', label: r.aktiv ? 'Pausieren' : 'Wieder aktivieren', tun: () => patch(r.id, { aktiv: !r.aktiv }) }]}>
+                    mehr={[
+                      { id: 'einstellen', label: 'Einstellen …', tun: () => setEditor({ routine: r }) },
+                      { id: 'aktiv', label: r.aktiv ? 'Pausieren' : 'Wieder aktivieren', tun: () => patch(r.id, { aktiv: !r.aktiv }) },
+                    ]}>
                   <div className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <Schalter erklaerungOhne="Zeile im Planer — der Tooltip sagt „aktiv/pausiert“, die Überschrift des Fensters erklärt Routinen" an={r.aktiv} farbe={LEUCHT.gut} onChange={v => patch(r.id, { aktiv: v })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={`Routine ${r.label} aktiv`} />
                       <Punkt farbe={katFarbe(r.kategorie)} groesse={8} />
                       <input value={r.label} onChange={e => patch(r.id, { label: e.target.value })} aria-label="Routine"
                         style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 500 }} />
+                      <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === ids.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, paddingLeft: 46 }}>
                       <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
                       {sp === 'business' && <EinheitWahl wert={r.einheit} setzen={e => patch(r.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der Routine" />}
                       {sp === 'privat' && hatPrivatEinheit(r) && <Chip farbe={SPACE_FARBE.privat}>{r.einheit}</Chip>}
                       <Chip farbe={owner === OWNER_BEIDE ? LEUCHT.beziehung : LEUCHT.puls}>{nameVon(owner)}</Chip>
-                      {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
-                      <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === ids.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />
+                      <Chip farbe={LEUCHT.agenten}>{rh || 'täglich'}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>
+                      <Knopf leise onClick={() => setEditor({ routine: r })} ariaLabel={`Routine ${r.label} einstellen`}>Einstellen</Knopf>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, paddingLeft: 46 }}>
-                      <select value={sp} onChange={e => patch(r.id, { space: e.target.value as SpaceId })} aria-label="Space" style={{ ...wahl, padding: '5px 8px', color: SPACE_FARBE[sp] }}>
-                        <option value="privat">Privat</option><option value="business">Business</option>
-                      </select>
-                      {sp === 'privat' && privatEinheitWahl(r.einheit, e => privatEinheitSetzen(r.id, e))}
-                      <select value={owner} onChange={e => patch(r.id, { owner: e.target.value })} aria-label="Wer" style={{ ...wahl, padding: '5px 8px' }}>
-                        <option value={OWNER_BEIDE}>gemeinsam</option>
-                        {personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}
-                        {owner !== OWNER_BEIDE && !personen.some(p => p.speicher === owner) && <option value={owner}>{owner}</option>}
-                      </select>
-                      <select value={rh} onChange={e => { const v = e.target.value as Routine['rhythmus']; patch(r.id, { rhythmus: v === 'taeglich' ? undefined : v, ...(v === 'taeglich' || v === '3x-woche' ? { naechstesMal: undefined } : {}) }); }} aria-label="Rhythmus" style={{ ...wahl, padding: '5px 8px' }}>
-                        {RHYTHMEN.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
-                      </select>
-                      {rh !== 'taeglich' && rh !== '3x-woche' && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}>
-                          nächstes Mal
-                          <input type="date" value={r.naechstesMal ?? ''} onChange={e => patch(r.id, { naechstesMal: e.target.value || undefined })} aria-label="Nächstes Mal am" style={{ ...wahl, padding: '4px 8px' }} />
-                          {!r.naechstesMal && <button onClick={() => patch(r.id, { naechstesMal: naechstesMalNach(rh, heute) ?? undefined })} title="ab heute einen Rhythmus weiter" style={{ ...loeschen, fontSize: TYP.bedien, color: LEUCHT.agenten }}>ab heute + 1</button>}
-                        </span>
-                      )}
-                      <select value={r.kategorie} onChange={e => patch(r.id, { kategorie: e.target.value as Routine['kategorie'] })} aria-label="Kategorie" style={{ ...wahl, padding: '5px 8px', color: katFarbe(r.kategorie) }}>
-                        {KAT.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
-                      </select>
-                      <select value={r.wann} onChange={e => patch(r.id, { wann: e.target.value as Routine['wann'] })} aria-label="Tageszeit" style={{ ...wahl, padding: '5px 8px' }}>
-                        {WANN.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
-                      </select>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim, flex: '0 0 auto' }}>
-                        <button onClick={() => patch(r.id, { dauerMin: Math.max(5, r.dauerMin - 5) })} aria-label="5 Minuten weniger" style={mini}>−</button>
-                        <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: 34, textAlign: 'center' }}>{r.dauerMin} min</span>
-                        <button onClick={() => patch(r.id, { dauerMin: Math.min(120, r.dauerMin + 5) })} aria-label="5 Minuten mehr" style={mini}>＋</button>
-                      </span>
+                    <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, paddingLeft: 46, lineHeight: 1.5 }}>
+                      {zusammenfassung(r, heute, log, zaehler, owner === OWNER_BEIDE || owner === ich, zielTitel(r.zielId))}
                     </div>
                   </div>
                   </ZeileAktionen>
@@ -343,6 +401,22 @@ export function RoutinenPlanerView() {
           </Karte>
         );
       })}
+
+      {/* Vorlagen zum Übernehmen — neutral, frei änderbar */}
+      <Karte i={5}>
+        <Ueberschrift farbe={LEUCHT.gut} erklaerung="routinen.vorlagen" rechts={<Pillen liste={[{ id: 'ich' as const, label: 'für mich' }, { id: 'beide' as const, label: 'gemeinsam' }]} aktiv={vorlageFuer} onWahl={v => setVorlageFuer(v)} />}>Vorlagen</Ueberschrift>
+        <Liste>
+          {ROUTINEN_VORLAGEN.map(v => (
+            <Zeile key={v.id} titel={v.titel} unter={v.beschreibung} rechts={<Knopf leise aus={!ich || ladeFehler} onClick={() => vorlageUebernehmen(v.id)} ariaLabel={`Vorlage ${v.titel} übernehmen`}>Übernehmen</Knopf>} />
+          ))}
+        </Liste>
+      </Karte>
+
+      {editor && (
+        <RoutineEditor routine={editor.routine} vorgabe={editor.vorgabe} heute={heute} ich={ich} personen={personen} kategorien={KAT}
+          einheiten={einheiten} einheitAnlegen={einheitAnlegen} onSpeichern={ausEditor} onZu={() => setEditor(null)} />
+      )}
+
 
       {/* Blöcke: die Wochenvorlage je Person — wann Privat, wann Arbeit */}
       <Karte i={5} akzent={SPACE_FARBE.business}>
@@ -383,7 +457,6 @@ export function RoutinenPlanerView() {
             );
           })}
         </div>
-        {hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>{hinweis}</div>}
         {blockPerson && !blockEigen && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12 }}>Die Wochenvorlage von {nameVon(blockPerson)} ändert nur {nameVon(blockPerson)} selbst.</div>}
         {blockPerson && blockEigen && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
