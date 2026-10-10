@@ -40,6 +40,7 @@ import { RoutineEditor, type Kategorie } from './routinen/RoutineEditor';
 import { streakText } from './routinen/haken';
 import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
 import type { RoutineEntwurf } from '@/lib/planung/routine-entwurf';
+import { useZieleUndMeilensteine } from '@/lib/planung/ziele-client';
 
 const WANN: { id: Routine['wann']; label: string; hint: string }[] = [
   { id: 'morgen', label: 'Morgens', hint: 'der Start — vor allem anderen' },
@@ -81,7 +82,7 @@ function BlockEinheit({ wert, setzen, einheiten, anlegen }: { wert?: string; set
 }
 
 /** Kurzfassung unter einer Routine: Tageszeit · Dauer · heute · Streak/Quote · Erinnerung · Kalender · Pause/Zeitraum. */
-function zusammenfassung(r: Routine, heute: string, log: Record<string, string[]> | null, zaehler: ZaehlerLog | null, eigen: boolean): string {
+function zusammenfassung(r: Routine, heute: string, log: Record<string, string[]> | null, zaehler: ZaehlerLog | null, eigen: boolean, zielTitel?: string): string {
   // Uhrzeiten stehen schon im Rhythmus-Chip — ohne Uhrzeit die Tageszeit.
   const teile = [r.uhrzeiten?.length ? '' : WANN.find(w => w.id === r.wann)?.label ?? '', `${r.dauerMin} min`];
   if (eigen && log) {
@@ -104,6 +105,7 @@ function zusammenfassung(r: Routine, heute: string, log: Record<string, string[]
   if (p && !pausiertAm(r, heute)) teile.push(`Pause ab ${dtKurz(p.von)}`);
   if (r.erinnerung) teile.push('erinnert');
   if (r.kalender) teile.push('im Kalender');
+  if (zielTitel) teile.push(`zahlt ein auf „${zielTitel}“`);
   return teile.filter(Boolean).join(' · ');
 }
 
@@ -130,6 +132,9 @@ export function RoutinenPlanerView() {
   const [handy, setHandy] = useState<boolean | null>(null);
   const [handyFehler, setHandyFehler] = useState<string | null>(null);
   const [vorlageFuer, setVorlageFuer] = useState<'ich' | 'beide'>('ich');
+  // Ziel-Verknüpfung (10.10.): der Titel des Ziels, auf das eine Routine einzahlt — nur zum Anzeigen.
+  const planDaten = useZieleUndMeilensteine();
+  const zielTitel = (id?: string) => (id ? planDaten?.ziele.find(z => z.id === id)?.titel : undefined);
   // Business-Einheit (27.09.) wie bei Zielen und Aufgaben — nur im Business.
   const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
   const [blockPerson, setBlockPerson] = useState<string>('');
@@ -170,7 +175,7 @@ export function RoutinenPlanerView() {
     }).catch(() => {});
     fetch('/api/state/health').then(r => (r.ok ? r.json() : null)).then(d => { if (d) { setLog(d.log ?? {}); setZaehler(d.zaehler ?? {}); } }).catch(() => {});
     fetch('/api/planung/routinen-person').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ok) setHandy(!!d.handy); }).catch(() => {});
-  }, []);
+  }, [routinenSchreiber, blockSchreiber]); // beide stabil (useMemo ohne Abhängigkeiten) — läuft einmal
 
   function persist(next: Routine[], danach?: () => void) {
     if (ladeFehler || !routinenSchreiber.geladen) { setRoutinen(next); return; }
@@ -386,7 +391,7 @@ export function RoutinenPlanerView() {
                       <Knopf leise onClick={() => setEditor({ routine: r })} ariaLabel={`Routine ${r.label} einstellen`}>Einstellen</Knopf>
                     </div>
                     <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, paddingLeft: 46, lineHeight: 1.5 }}>
-                      {zusammenfassung(r, heute, log, zaehler, owner === OWNER_BEIDE || owner === ich)}
+                      {zusammenfassung(r, heute, log, zaehler, owner === OWNER_BEIDE || owner === ich, zielTitel(r.zielId))}
                     </div>
                   </div>
                   </ZeileAktionen>

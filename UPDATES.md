@@ -4,6 +4,80 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Routinen 2: Rhythmus nach Wahl, mehrmals täglich, Zähler, Erinnerung, Pausen, Kalender-Block, Vorlagen (nur lokal — Branch `routinen-2`, Basis 7c9e1335 = `update-0910b`)
+
+Rückmeldung aus dem Onboarding (10.10.): „Beim Thema Routinen brauchen wir mehr — mehr Einstellungen bei den einzelnen Routinen: täglich, mehrmals täglich,
+1× pro Woche und individuell einstellbar.“
+
+**Gebaut:**
+- **Rhythmen** (EINE Rechenstelle `lib/planung/rhythmus.ts`, feste Kalendertage über die Wiederholung der Aufgaben `lib/aufgaben/wiederholung.ts` — dort neu
+  der n-te Wochentag `nter`): täglich · Werktage (Mo–Fr ohne Feiertage) · feste Wochentage (auch „nur jede 2. Woche“) · **x-mal pro Woche, egal welcher Tag** ·
+  alle x Tage/Wochen/Monate (ab dem letzten Mal, „nächstes Mal am“) · monatlich am Tag bzw. am n-ten Wochentag (auch alle n Monate). **Mehrmals täglich**
+  über feste Uhrzeiten (eine Uhrzeit = feste Uhrzeit, mehrere = je Uhrzeit einmal) oder „n-mal am Tag“.
+- **Zähler** („8 Gläser“): Tagesziel + Wort, „− 5/8 +“ in Gesundheit › Heute, im Heute-Widget „Routinen heute“; der Haken im Gesundheits-Log steht erst mit
+  erreichtem Ziel (alle bisherigen Leser — Quote, Index, Ritual — zählen so weiter richtig).
+- **Je Routine:** Tageszeit/feste Uhrzeit, Dauer, **Erinnerung** (Glocke; aufs Handy nur mit der eigenen Einstellung „Erinnerungen auch aufs Handy“, immer
+  neutral ohne Namen/Zahl), **Zeitraum** von–bis, **Pausen** (Urlaub/krank/sonst — nicht dran, der Streak reißt nicht), Bereich/Kategorie (inkl. Erholung),
+  **Ziel** („zahlt ein auf …“), **Kalender-Block** (nur Routine einer Person: die nächsten 14 Tage als private Blöcke „Belegt“ für andere, feste UID,
+  nachgezogen im Morgenlauf und nach dem Speichern; entfernt werden nur eigene künftige Blöcke).
+- **Streak und Erfüllungsquote je Regel** (`routineStatistik`): Tage bei täglich/Werktage/festen Tagen, **Wochen bei x-mal pro Woche** (die Woche zählt),
+  Termine bei monatlich und „alle x …“ (rechtzeitig?). Pausen und Zeitraum zählen nie gegen. Anzeige in Gesundheit › Heute, im Routinen-Planer (je Routine +
+  Kacheln „Längster Streak“ / „Ø erfüllt“ mit Erklärung) und im Heute-Widget.
+- **Routine-Editor** (`components/os/routinen/RoutineEditor.tsx`): ein Fenster für Anlegen und Ändern, am Handy ganzflächig, jede Wahl mit „i“ (Erklärung +
+  Beispiel), Vorschau der nächsten Termine. Der Planer legt neue Routinen nur noch über den Editor an („+ Routine einstellen“), „Einstellen“ je Zeile bzw. im „⋯“.
+- **Vorlagen** zum Übernehmen (Morgenroutine, Abendroutine, Trinken, Mobility, Lesen — neutral, „für mich“ oder „gemeinsam“, mit „Rückgängig“).
+- **Nach Rhythmus statt „jede aktive Routine“:** Gesundheit › Heute (Server), Heute-Widget, Tagesplanung, Abendritual, Morgen-/Abendnachricht des
+  Gesundheits-Takts, Lichtfäden (nur „alle x …“ mit Datum).
+- **ZOE `hake_routine`:** neues Feld `anzahl` (1–99, im Werkzeug-Vertrag/Schema) — „2 Gläser getrunken“ zählt +2, „erledigt: false“ zählt herunter; einfache
+  Routinen wie bisher an/aus. Antwort „Wasser trinken 6/8 Gläser“.
+
+**Altbestand (live werden gerade echte Routinen eingetragen):** nur optionale neue Felder (`regel`, `tagesZiel`, `zaehlWort`, `uhrzeiten`, `zeitraum`, `pausen`,
+`zielId`, `erinnerung`, `kalender`, `angelegtAm`) — nichts wird umbenannt, umgeschrieben oder beim Lesen verworfen, keine Migration. Lässt sich eine Regel als
+alter `rhythmus` schreiben (täglich, 3×/Woche, wöchentlich … jährlich), speichert der Schreibweg den alten — `regel` steht nur, wo es nötig ist. Wächter
+`tests/routinen-2-rhythmus.test.ts`: Fälligkeit des Altbestands über 16.800 Fälle gleich dem wörtlich übernommenen alten Code
+(`tests/fixtures/routinen-vor-10-10.ts`), Säuberung Byte für Byte gleich. **Rückweg:** der alte Stand liest eine Routine mit `regel` als „täglich“ und verwirft
+die neuen Felder beim nächsten Speichern dieser Routine; Zähler-Bestände bleiben liegen, der Haken im Log gilt weiter.
+
+**Daten und Recht:** neuer Bestand je Person `routinen-person--<person>` (immer mit Suffix): Zähler je Tag, Einstellung „aufs Handy“, Riegel der Erinnerungen
+(3 Tage), Kennungen eigener Routinen-Blöcke — Speicher-Register mit Angaben (Art. 9 wie der Gesundheits-Log), `JE_PERSON`, `PERSON_BESTAENDE` (Export und
+Löschen mit dem Konto). EINE Schreibstelle `routineHaken` (lib/planung/routinen-haken-server.ts: Zähler außen, Log innen, eine Sperre) für Route und ZOE.
+`PATCH /api/state/health` nimmt `zaehler: 'plus' | 'minus' | n` (+ `anzahl`), GET liefert `zaehler` (dasselbe Tor wie der Log). Neue Route
+`/api/planung/routinen-person` (Klasse `person`: GET Einstellung, PATCH `handy` — einschalten nur mit Einwilligung (a), POST `kalender`; Dienstweg 403).
+Glocke: abgeleitete Art `routine` (nie gespeichert — kein Rückweg-Problem). Takt `routinenErinnerungenImTakt` (Handy, neutral, einmal je Routine und Uhrzeit,
+Business ruht in der Business-freien Zeit), Morgenlauf-Schritt „Routinen-Blöcke“. Belegt-Form für die andere Person: WANN (Regel, Uhrzeiten, Zeitraum, Pausen
+ohne Grund), nie Zähler, Wort, Ziel, Erinnerung. Grenzen (12 Uhrzeiten, 20 Pausen, Ziel 50, Wort 20 Zeichen) → 413, nie gekürzt. Blöcke aus `blockAnlegen`
+können jetzt `uid` und `privat` tragen (Erholungs-Blöcke werden dadurch auch in Apple als privat angelegt).
+
+**Wächter:** `tests/routinen-2-rhythmus.test.ts` (Regeln, Altbestand, Pause, Zeitraum, Zähler, Streak/Quote, Belegt), `tests/routinen-2-haken.test.ts` (Route,
+Zähler je Person, fremde Routine 404, ZOE `anzahl`, Grenzen 413, Belegt), `tests/routinen-2-erinnerung.test.ts` (Glocke je Bereich, Handy neutral + Riegel +
+Einwilligung, Kalender-Blöcke idempotent/nachziehen/entfernen, Vorlagen, Editor-Entwurf), `tests/routinen-2-oberflaeche.test.ts` (Editor mit Erklärungen,
+16 px, kein PUT des ganzen Logs mehr). Erweitert: `messlatte-malin` (Marke im Zähler-Bestand), `design-privat` (Ordner `components/os/routinen`).
+Geprüft: `routinen-*`, `planung-*`, `aufgaben-serie`, `gesundheit-*`, `erholung-*`, `werkzeug-vertraege`, `zoe-*`, `messlatte-malin`, `sicht-business-privat`,
+`erklaerungen`, `design-*`, `routen-register`, `datenschutz-register`, `betroffenenrechte`, `trennung-bereiche`, `schlaf-hilfe-*`, `lichtfaeden*`, `kalender-k5*`,
+`meldungen-*`, `demo`.
+
+**So testet ihr (in Klicks):**
+1. **Planung › Routinen** → oben „Neue Routine“: „Wasser trinken“ eintippen → **+ Routine einstellen** → im Fenster „Wie oft am Tag“ auf **8** stellen, Wort
+   **Gläser** → **Routine anlegen**. Das „i“ neben jeder Überschrift zeigt Erklärung und Beispiel.
+2. **Gesundheit › Heute** → Karte „Heute“: bei „Wasser trinken“ steht „0/8“ mit **− / +**. Dreimal **+** → „3/8“; nach acht steht ein grüner Haken in der Zeile
+   darüber („x von y“ zählt sie als erledigt). Dasselbe auf **Heute** im Widget „Routinen heute“.
+3. Routine **„Laufen“** anlegen: Rhythmus **Feste Tage** → Mo und Do, „Feste Uhrzeiten“ **07:00**, Schalter **Erinnern, wenn sie dran ist** an. Unter dem Rhythmus
+   steht „jeden Montag und Donnerstag — nächste: …“. An einem Dienstag steht „Laufen“ nicht in Gesundheit › Heute.
+4. **Mehrmals täglich:** Routine „Tabletten“ mit zwei Uhrzeiten **08:00** und **20:00** → in der Liste „0/2“, nach 08:00 steht in der **Glocke** „Routine um 08:00:
+   Tabletten (0 von 2)“; einmal **+** → die Meldung verschwindet, ab 20:00 meldet sich die zweite.
+5. **x-mal pro Woche:** „Mobility“ über **Vorlagen › Mobility › Übernehmen** (für mich). In der Zeile steht „0/3 diese Woche“; nach drei Haken in einer Woche
+   ist sie bis Montag nicht mehr dran, der Streak zählt in Wochen.
+6. **Pause:** eine Routine **Einstellen** → **Pausen**: von heute bis in drei Tagen, Grund „Urlaub“ → **Pause eintragen** → **Speichern**. Sie steht heute nicht in
+   Gesundheit › Heute; im Planer steht „heute in Pause“, der Streak bleibt.
+7. **Handy:** Planung › Routinen → Karte „Dein Rhythmus“ → **Erinnerungen auch aufs Handy** an (braucht die Einwilligung unter System › Datenschutz › Gesundheit).
+   Zur Uhrzeit kommt über den Boten nur „Eine Routine steht an — Details in MAKE OS: <Link>“ — kein Name, keine Zahl.
+8. **Kalender-Block:** bei „Laufen“ (für mich) **Als Block in meinen Kalender** an → Speichern → im **Kalender** stehen die nächsten Montage und Donnerstage um
+   07:00 als Block „Laufen“; die andere Person sieht dort nur „Belegt“. Uhrzeit auf 18:00 ändern → die künftigen Blöcke ziehen um; Schalter aus → sie
+   verschwinden (vergangene bleiben).
+9. **ZOE:** „Ich habe 2 Gläser Wasser getrunken“ → ZOE hakt ab und antwortet „Wasser trinken 5/8 Gläser“ (bzw. der neue Stand).
+10. **Altbestand:** eure vorhandenen Routinen sehen aus wie vorher (täglich, 3×/Woche, wöchentlich … mit „nächstes Mal“) und rechnen genauso; erst wer eine im
+    Editor speichert, bekommt die neuen Felder.
+
 ## 10.10.2026 — Unternehmen › Schild: Pflichtdokumente, Pflichten-Kalender, Risiko-Register, Struktur, Marken & Versicherungen (nur lokal — Branch `unternehmen-schild`, Basis 6086ee72 = `update-0910b`)
 
 Entscheidung 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein Schild aufstellen, das Risiko immer wieder mitbewerten,

@@ -68,7 +68,7 @@ interface Stand {
   streak: { sauberTage: number; letzterRueckfall?: string; aktuell: boolean; craving7?: number; eintraege30: number };
   // Routinen 2 (10.10.): `liste` = was heute dran ist (Rhythmus, Pause, Zeitraum) mit Zähler, Streak und Quote je Regel; `alle` = jede aktive Routine.
   routinen: {
-    liste: { id: string; label: string; wann: string; heute: boolean; ziel?: number; ist?: number; rhythmus?: string; streak?: number; streakEinheit?: 'tag' | 'woche' | 'termin'; ueberfaellig?: boolean; dieseWoche?: number; proWoche?: number; uhrzeiten?: string[] }[];
+    liste: { id: string; label: string; wann: string; heute: boolean; ziel?: number; ist?: number; rhythmus?: string; streak?: number; streakEinheit?: 'tag' | 'woche' | 'termin'; quote?: number | null; ueberfaellig?: boolean; dieseWoche?: number; proWoche?: number; uhrzeiten?: string[] }[];
     alle?: { id: string; label: string }[];
     quote7?: number; tage: { d: string; n: number }[];
   };
@@ -367,7 +367,7 @@ export function GesundheitView() {
               {stand && !heuteListe.length && <Leer>Heute ist keine Routine dran.</Leer>}
               {heuteListe.map(r => (
                 <Zeile key={r.id} wann={r.uhrzeiten?.length ? r.uhrzeiten[0] : r.wann === 'abend' ? 'Abend' : r.wann === 'tag' ? 'Mittag' : 'Morgen'} titel={r.label}
-                  unter={[eigeneSicher ? routinenHinweis(koerper.koerper, r.id) : undefined, r.rhythmus, r.ueberfaellig ? 'überfällig' : '', r.proWoche ? `${r.dieseWoche ?? 0}/${r.proWoche} diese Woche` : '', r.streak ? streakText(r.streak, r.streakEinheit ?? 'tag') : ''].filter(Boolean).join(' · ') || undefined}
+                  unter={[eigeneSicher ? routinenHinweis(koerper.koerper, r.id) : undefined, r.rhythmus, r.ueberfaellig ? 'überfällig' : '', r.proWoche ? `${r.dieseWoche ?? 0}/${r.proWoche} diese Woche` : '', r.streak ? streakText(r.streak, r.streakEinheit ?? 'tag') : '', r.quote != null ? `${Math.round(r.quote * 100)} % erfüllt` : ''].filter(Boolean).join(' · ') || undefined}
                   kinder={<RoutineSteuer label={r.label} ziel={r.ziel ?? 1} ist={r.ist ?? (r.heute ? 1 : 0)} erledigt={r.heute} aus={!eigene}
                     onHaken={() => void routineSchritt(r.id, { erledigt: !r.heute })} onZaehlen={z => void routineSchritt(r.id, { zaehler: z })} />} />
               ))}

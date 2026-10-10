@@ -75,7 +75,8 @@ export function RoutineEditor({ routine, vorgabe, heute, ich, personen, kategori
     const g = regelAusEntwurf(e);
     if (e.art === 'wochentage' && !e.tage.length) return 'Bitte Tage wählen.';
     const naechste = g.art === 'werktage' || g.art === 'wochentage' || g.art === 'monatlich' ? termineIm(g, heute, tagePlus(heute, 400)).slice(0, 3) : [];
-    return `${regelText(g)}${naechste.length ? ` — nächste: ${naechste.map(kurzDatum).join(' · ')}` : ''}.`;
+    // Die Daten enden selbst mit einem Punkt („19.10.“) — dann keiner mehr dahinter.
+    return naechste.length ? `${regelText(g)} — nächste: ${naechste.map(kurzDatum).join(' · ')}` : `${regelText(g)}.`;
   }, [e, heute]);
 
   const speichern = () => {

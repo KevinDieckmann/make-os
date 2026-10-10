@@ -306,6 +306,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { id: 'r-demo-lesen', label: 'Lesen · 20 Min', wann: 'abend', kategorie: 'leben', dauerMin: 20, owner: LENA, space: 'privat' },
     // Gemeinsam im Privat-Bereich (09.10., E4-Rest): sehen Lena und Jonas, der Partner nie (auch nicht als „Belegt“).
     { id: 'r-demo-abendessen', label: 'Gemeinsames Abendessen ohne Handy', wann: 'abend', kategorie: 'leben', dauerMin: 45, owner: 'beide', space: 'privat' },
+    // Routinen 2 (10.10.): ein Zähler, feste Wochentage mit Uhrzeit und Erinnerung, ein n-ter Wochentag — erfunden und neutral.
+    { id: 'r-demo-wasser', label: 'Wasser trinken', wann: 'tag', kategorie: 'gesundheit', dauerMin: 5, owner: LENA, space: 'privat', tagesZiel: 8, zaehlWort: 'Gläser' },
+    { id: 'r-demo-laufen', label: 'Laufen', wann: 'morgen', kategorie: 'gesundheit', dauerMin: 40, owner: LENA, space: 'privat', regel: { art: 'wochentage', tage: [1, 4] }, uhrzeiten: ['07:00'], erinnerung: true },
+    { id: 'r-demo-finanzen', label: 'Haushaltsbuch abschließen', wann: 'abend', kategorie: 'leben', dauerMin: 30, owner: 'beide', space: 'privat', regel: { art: 'monatlich', nter: { n: 1, tag: 1 } } },
   ];
   await rufe(R.routinen(), 'PATCH', '/api/state/routinen', LENA, { ops: routinen.map(upsert) });
   await rufe(R.routinen(), 'PATCH', '/api/state/routinen', JONAS, { ops: [upsert({ id: 'r-demo-wochenrueckblick', label: 'Wochenrückblick vorbereiten', wann: 'tag', kategorie: 'business', dauerMin: 30, owner: JONAS, space: 'business', rhythmus: 'woechentlich' })] });
