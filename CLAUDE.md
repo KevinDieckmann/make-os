@@ -1368,6 +1368,23 @@ runterplanen, mit Kapa“, „planen pro Leadkanal“, „der Kunde bleibt im Kr
 - Oberfläche `components/os/crm/planung/` (EIN Abruf `usePlanung`). Tests `tests/markttraktion-planung{,-route}.test.ts`. Offen: Head of Sales an die Challenge-Regel
   hängen (ändert sein Datenpaket → Evals zuerst).
 
+## Produkte & Mandate · Leistungstreppe, Fortschritt, Report; Mandat immer mit Lead (10.10., Branch `produkte-treppe`, nur lokal; UPDATES.md)
+Entscheidung 10.10.: die Pakete sauber abbilden und immer visualisieren — wohin wir wollen und warum die Schritte wichtig sind. **Generisch:** Stufen, Preise,
+Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im Code (Demo-Saat: erfundene Beispiel-Treppe).
+- **EIN Bestand** `produkt-treppe--<haushalt>` (Business): Stufen (Ebene; gleiche Ebene = Alternativen), Kundenreise (Stationen), Roadmap, Positionierung, je
+  Mandat-Kennung Fortschritt (Stufe, erledigte Lieferobjekte, nächster Schritt, Verlauf), Report-Vermerk, Marken der Vorschläge. Regeln rein
+  `lib/crm/treppe-daten.ts` (`treppeAnwenden`: Einzel-Schritte, Stand → 409, Grenzen → 413), Rechnung `lib/crm/treppe.ts` (Stufe je Mandat: gewählt vor abgeleitet
+  über `leistungIds`; aktueller Schritt = `Mandat.phase`, nie doppelt), Server `lib/crm/treppe-server.ts`, Route `/api/crm/treppe` (+ `/dokument`, `/report`).
+  `ProduktPhase` hat optional `ziel/ergebnis/kennzahl/aufwandStunden` (im Säuberer).
+- **Nichts ohne Klick:** Dokument → Vorschlag nur in den Freigabe-Stapel (Stapel-Art `produkte`, Feld-Häkchen `auswahl`), Report-PDF nur am Mandat (Dateiablage),
+  Versand NUR über `/api/inbox/senden` mit `anhaenge: [{ datei }]` (lib/inbox/anhaenge-server.ts — nur Kennungen eigener Ablage-Dateien mit CRM-Bezug, ≤ 3, ≤ 4 MB;
+  `mimeBauen` baut dann multipart/mixed). Morgenlauf `treppeMorgenlauf`: Report-Vorschlag alle 14 Tage, „nächste Stufe“ einmal je Stufe (Marken), Glocke Art `produkte`.
+- **Mandat immer mit Lead:** „+ Mandat“ (und „+ Kunde“ an einer Stufe) nur über `MandatAnlegen` → `/api/crm/lead` `mandat-neu` (Firma `{id}|{name}` über
+  `firmaSichern`, Person `{id}|{neu}` über `personAnlegen` Weg Firmenkarte; erst prüfen — Art. 18/Dublette 409 — dann schreiben); `mandat-firma` = „Firma zuordnen“
+  für Altbestand (nur auf Klick). Folgen an EINER Stelle: `firmaWirdKunde` (Rolle + Lead → Kunde), `personenWerdenKunde` (auch vom Deal-Weg `mandat` genutzt).
+- Anschlüsse: Kreislauf der Planung liest `fortschrittFuerKreislauf`; Head of Sales bekommt `treppeFuerHead` im Datenpaket; Chat unter `/os/mandate?s=produkte` = Sales.
+  Tests `tests/produkte-treppe{,-route}.test.ts` (inkl. Altbestand bleibt unverändert).
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.

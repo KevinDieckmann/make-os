@@ -71,6 +71,8 @@ export const SEITEN_REGELN: readonly SeitenRegel[] = [
   { muster: '/os/content', head: 'marketing' },
   { muster: '/os/medien', head: { business: 'marketing' } },
   { muster: '/os/mandate', head: 'kundenerfolg' },
+  // Produkte (10.10., Leistungstreppe): Pakete, Treppe und Positionierung sind Sache des Head of Sales.
+  { muster: '/os/mandate?s=produkte', head: 'sales' },
   { muster: '/os/unternehmen', head: 'strategie' },
   { muster: '/os/board', head: 'strategie' },
   { muster: '/os/meeting', head: 'operations' },

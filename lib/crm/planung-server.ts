@@ -120,6 +120,8 @@ export async function planungLage(person: string, filter: string | null, heute =
     const [datei, kontakte, crm, ausgeblendet, gesellschaften, zz, frei] = await Promise.all([
       ladePlanung(), kontakteFuerVerarbeitung(), ladeCrm(), eingeschraenkteKennungen(), gesellschaftenZurWahl(), zahlenziele(heute), freieStunden(person, heute),
     ]);
+    // Fortschritt im Paket (10.10., Leistungstreppe unter Produkte & Mandate) — Fulfillment und „Nach der Leistung“ zeigen ihn; Fehler → wie bisher.
+    const fortschritt = await (await import('./treppe-server')).fortschrittFuerKreislauf(crm, heute).catch(() => ({}));
     const zeilen = leads(kontakte, crm, heute);
     const zo = zuordnen(datei.kanaele, zeilen, crm);
     const kontaktNach = new Map(kontakte.map(k => [k.id, k]));
@@ -147,7 +149,7 @@ export async function planungLage(person: string, filter: string | null, heute =
       },
       standard: { quoten: standardQuoten(crm.wahrscheinlichkeiten), dealWert: z.dealGroesse, zyklusWochen: z.median != null ? Math.max(1, Math.round(z.median / 7)) : null },
       kanaele: kanalStaende({ kanaele: datei.kanaele, zeilen, crm, kontaktNach, heute, zuordnung: zo }),
-      kreislauf: kreislauf({ heute, kanaele: datei.kanaele, zeilen, crm, kontakte, nachLeistung: datei.nachLeistung, followup: { faellig: f.length, ueberfaellig: f.filter(x => x.faellig < heute).length }, zuordnung: zo }, filter),
+      kreislauf: kreislauf({ heute, kanaele: datei.kanaele, zeilen, crm, kontakte, nachLeistung: datei.nachLeistung, followup: { faellig: f.length, ueberfaellig: f.filter(x => x.faellig < heute).length }, zuordnung: zo, fortschritt }, filter),
       ziele: lagen,
       wochenziele: plan,
       jeWelt: jeWelt(lagen),

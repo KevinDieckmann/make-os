@@ -24,7 +24,7 @@ const AKZENT = rgb(0.13, 0.71, 0.67);
 export interface PdfLogo { bytes: Uint8Array; typ: 'image/png' | 'image/jpeg' }
 
 /** Text auf die Zeichen bringen, die die Schrift kann (WinAnsi); Ersatz für Häufiges. */
-function sicherFuer(font: PDFFont): (t: string) => string {
+export function sicherFuer(font: PDFFont): (t: string) => string {
   const kann = new Set(font.getCharacterSet());
   const ersatz: Record<string, string> = { '→': '->', '←': '<-', '✓': 'x', '×': 'x', ' ': ' ', ' ': ' ', ' ': ' ', '−': '-', '‑': '-', '≈': '~', '•': '•', '…': '...' };
   // Zeilenumbrüche bleiben (Absätze trennt `umbrechen`), alles andere, was die Schrift nicht kann, wird ersetzt.
@@ -32,7 +32,7 @@ function sicherFuer(font: PDFFont): (t: string) => string {
 }
 
 /** Zeilen umbrechen (an Wortgrenzen, zu lange Wörter hart). Absätze bleiben. */
-function umbrechen(text: string, font: PDFFont, groesse: number, breite: number): string[] {
+export function umbrechen(text: string, font: PDFFont, groesse: number, breite: number): string[] {
   const out: string[] = [];
   for (const absatz of String(text ?? '').split('\n')) {
     const woerter = absatz.split(/\s+/).filter(Boolean);

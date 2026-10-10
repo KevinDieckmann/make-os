@@ -221,7 +221,10 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     gesellschaft: ges(o.gesellschaft), status: aus(o.status, ['aktiv', 'entwurf', 'eingestellt'] as const, 'entwurf'),
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}),
     ...(opt(o.linie, 80) ? { linie: opt(o.linie, 80) } : {}),
-    ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'phasen')).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}) })).filter(x => x.name) } : {}),
+    ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'phasen')).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}),
+      // Leistungstreppe (10.10.): Ziel & Warum, Ergebnis, Kennzahl, Aufwand je Schritt (alles optional).
+      ...(opt(x.ziel, 600) ? { ziel: opt(x.ziel, 600) } : {}), ...(opt(x.ergebnis, 600) ? { ergebnis: opt(x.ergebnis, 600) } : {}), ...(opt(x.kennzahl, 200) ? { kennzahl: opt(x.kennzahl, 200) } : {}),
+      ...(zahl(x.aufwandStunden, 0, 2000) ? { aufwandStunden: zahl(x.aufwandStunden, 0, 2000) } : {}) })).filter(x => x.name) } : {}),
     // Angebotstexte (28.09.): Leistungstext ist Pflicht für „aktiv“ — die Regel prüft `regelnAbgelehnt`.
     ...(leistungAngebotSaeubern(o.angebot) ? { angebot: leistungAngebotSaeubern(o.angebot) } : {}),
     ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'unterlagen')).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),

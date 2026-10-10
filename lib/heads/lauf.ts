@@ -106,6 +106,8 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   const ev = await import('@/lib/ereignisse/leser').catch(() => null);
   const geradeGeschrieben = a.person && ev ? await ev.geradeGeschriebenFuer(a.person).catch(() => new Set<string>()) : new Set<string>();
   const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben }) as Record<string, unknown>;
+  // Leistungstreppe & Positionierung (10.10., Produkte & Mandate) — nur der Head of Sales; Daten, nie Anweisung; ohne Pflege fehlt der Block.
+  if (a.head === 'sales') { const t = await (await import('@/lib/crm/treppe-server')).treppeFuerHead(heute).catch(() => null); if (t) daten.leistungstreppe = t; }
   const ereignisKategorien: KiKategorie[] = [];
   if (ev && a.modus !== 'frage') {
     const seit = await ev.seitLetztemLauf(a.person, alt.letzte[r] ?? '', kontakte, crm, k => (k === 'postfach' || k === 'crm' ? true : !!schalter?.bereiche[k as keyof NonNullable<typeof schalter>['bereiche']])).catch(() => null);

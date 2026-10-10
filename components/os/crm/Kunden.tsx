@@ -38,7 +38,7 @@ import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, GESELLSCHAFT_FILTER, pas
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
 import type { Mandat } from '@/lib/crm/typen';
-import { type CrmApi, neueId, datum, euro, kurzEuro, nurFelder } from './daten';
+import { type CrmApi, datum, euro, kurzEuro, nurFelder } from './daten';
 import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GesellschaftWahl } from './GesellschaftWahl';
@@ -52,6 +52,8 @@ import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName } from '@/lib/finanzen/rechnung/regeln';
+import { MandatFortschritt } from '../mandate/treppe/Fortschritt';
+import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -80,6 +82,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const ablage = useCrmAblage(api, 'mandate');
   const [korbOffen, setKorbOffen] = useState(false);
   const [neuWahl, setNeuWahl] = useState(false);
+  // „Firma zuordnen“ (10.10.) für ein bestehendes Mandat ohne Firma — nur auf Klick, sonst bleibt der Altbestand unverändert.
+  const [zuordnen, setZuordnen] = useState<string | null>(null);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
   useEffect(() => { void ladeLiqui(); }, []);
   const crm = api.crm;
@@ -118,16 +122,16 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
     ablage.loeschen(m.id, `${m.kunde} · ${m.titel}`, m.status === 'beendet' ? undefined : { archivAnbieten: false, text: 'Das Mandat läuft noch. Im Papierkorb ist es überall ausgeblendet (Umsatz, Zahlen, Suche). Gibt es Rechnungen, Dateien oder offene Follow-ups dazu, bleibt es stehen — dann ist „Beenden“ der Weg. Ist es nur vorbei: Archivieren (beendet).' });
   };
   // Neues Mandat ohne Deal (08.10., Woche 2 · 3.13): die Gesellschaft wird VOR dem Anlegen gewählt (bzw. aus dem Filter) — vorher entstand
-  // es mit „offen“, und die Rechnung landete still bei der Vorgabe.
-  const neuesMandat = (gesellschaft: Mandat['gesellschaft']) => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft, status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); };
+  // es mit „offen“, und die Rechnung landete still bei der Vorgabe. Seit 10.10. IMMER mit Lead (Firma + Ansprechperson, vorhanden oder neu) —
+  // der Dialog `MandatAnlegen` schreibt über EINEN Server-Weg (POST /api/crm/lead `mandat-neu`), die Firma steht danach unter den Kunden.
   const produktName = (m: Mandat) => { const p = crm.stand.leistungen.find(x => x.id === m.leistungId); const ph = mandatPhase(m, p); return p ? `${p.name.slice(0, 40)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}` : ''; };
 
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={neuWahl
-          ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Für welche Gesellschaft?</span><GesellschaftWahl wert="offen" onWahl={g => { if (g !== 'offen') { setNeuWahl(false); neuesMandat(g); } }} /><Knopf leise onClick={() => setNeuWahl(false)}>Abbrechen</Knopf></span>
-          : <Knopf onClick={() => (ges !== 'alle' ? neuesMandat(ges) : setNeuWahl(true))}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
+        <Ueberschrift rechts={<Knopf onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
+        {zuordnen && <MandatAnlegen api={api} modus="zuordnen" mandatId={zuordnen} onZu={() => setZuordnen(null)} onFertig={() => setZuordnen(null)} />}
+        {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => setNeuWahl(false)} onFertig={id => { setNeuWahl(false); setAuswahl(id); }} />}
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
@@ -176,7 +180,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                 <ZeileAktionen titel={`${m.kunde} · ${m.titel}`} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}
                   loeschenFragt={m.status !== 'beendet'} href={WEG.mandat(m.id)} onOeffnen={() => setAuswahl(m.id)}
                   mehr={[
-                    ...(m.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => router.push(WEG.firma(m.firmaId)) }] : []),
+                    ...(m.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => router.push(WEG.firma(m.firmaId)) }] : [{ id: 'firma-zuordnen', label: 'Firma zuordnen', tun: () => setZuordnen(m.id) }]),
                     ...(m.kontaktIds[0] ? [{ id: 'kontakt', label: 'Ansprechpartner öffnen', tun: () => zuKontakt(m.kontaktIds[0]) }] : []),
                     { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'mandat', id: m.id }) },
                   ]}>
@@ -188,6 +192,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                     {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
                     {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>Liquiplan weicht ab</Chip>}
                     {breit && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
+                    {breit && !m.firmaId && <Chip farbe={LEUCHT.achtung}>ohne Firma</Chip>}
                     <Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>
                     <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
                   </span>} />
@@ -245,7 +250,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
       {/* Mandanten klickbar (28.09.): das Mandat führt zurück in die Firmenakte (per Kennung, sonst eindeutiger Name). */}
       {firma ? <Feldzeile label="Firma"><span style={{ fontSize: TYP.bedien }}><MandantLink firmaId={firma.id} firmaDa name={firma.name} /></span></Feldzeile>
-        : m.firmaId ? <Feldzeile label="Firma"><span style={{ fontSize: TYP.bedien }}><MandantLink firmaId={m.firmaId} firmaDa={false} name={m.kunde} /></span></Feldzeile> : null}
+        : <Feldzeile label="Firma"><span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>{m.firmaId && <MandantLink firmaId={m.firmaId} firmaDa={false} name={m.kunde} />}<FirmaZuordnen api={api} mandatId={m.id} /></span></Feldzeile>}
       <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Produkt">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -257,6 +262,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       {produkt && (produkt.phasen?.length
         ? <Feldzeile label="Phase"><Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} /></Feldzeile>
         : <Feldzeile label="Phase"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span></Feldzeile>)}
+      {/* Leistungstreppe (10.10.): Fortschritt im Paket, Health-Ampel, nächste Stufe und der Fortschritts-Report an den Kunden. */}
+      <MandatFortschritt mandatId={m.id} />
       <Feldzeile label="Honorar">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="number" wert={m.honorar.betrag ? String(m.honorar.betrag) : ''} breite={120} platzhalter="€" onFertig={b => setze({ honorar: { ...m.honorar, betrag: Number(b) || 0 } })} />

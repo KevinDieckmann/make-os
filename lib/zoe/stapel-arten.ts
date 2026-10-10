@@ -38,6 +38,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   merksatz: async () => (await import('@/lib/agenten/skills-server')).MERKSATZ_STAPEL_ART,
   // Paket 4b (09.10.): Plan-Freigabe vor großen Aufträgen auch über den Stapel — entschieden über dieselbe Schreibstelle wie im Thread.
   plan: async () => (await import('@/lib/agenten/plan-stapel')).PLAN_STAPEL_ART,
+  // Produkte (10.10., Leistungstreppe): Treppe aus einem Dokument übernehmen (nur die angehakten Teile), Fortschritts-Report erstellen (PDF am
+  // Mandat — gesendet wird erst per Klick in der Inbox), nächste Stufe als Follow-up am Mandat (lib/crm/treppe-server.ts).
+  produkte: async () => (await import('@/lib/crm/treppe-server')).TREPPE_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

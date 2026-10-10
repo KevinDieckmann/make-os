@@ -693,6 +693,14 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'bis der Haushalt Kanäle, Ziele und Challenges entfernt bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen nicht automatisch — die übrigen Mitglieder ändern die Einträge',
     kategorie: ['beschaeftigte'],
   }),
+  // Produkte · Leistungstreppe (10.10., lib/crm/treppe-daten.ts): Stufen, Kundenreise, Roadmap, Positionierung des Haushalts; je Mandat (nur Kennung)
+  // Stufe, erledigte Lieferobjekte, nächster Schritt, Report-Vermerk — keine Kontaktdaten Dritter, Personen nur als Speichername.
+  mit(H('produkt-treppe--*', 'Leistungstreppe des Haushalts: Stufen (Name, Ebene, Aufgabe, Ergebnis, Lieferobjekte, Kennzahl, Dauer, Aufwand, Preis, Regeln, verknüpfte Leistungen, Ziel), Kundenreise (Stationen, Messgröße, Ziel), Roadmap (Pakete, Zeitplan), Positionierung (Claim, Zielgruppe, Problem, Versprechen, Story); je Mandat-Kennung Stufe, erledigte Lieferobjekte, nächster Schritt (Freitext + Datum), Report-Vermerk (Tag, Datei-Kennung); Marken der Vorschläge; wer zuletzt geändert hat (Speichername).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung und Erbringung der eigenen Leistungen durch die Mitglieder des Haushalts; Mandate nur als Kennung',
+    art15: 'alle Konten des Haushalts sehen sie unter Produkte & Mandate (GET /api/crm/treppe); Kontakte Dritter stehen hier nicht — Mandate nur als Kennung, Report-PDFs in der Dateiablage am Mandat',
+    loeschfrist: 'bis der Haushalt Stufen, Stationen und Pakete entfernt bzw. die Instanz gelöscht wird; der Fortschritt je Mandat bleibt so lange wie das Mandat; Konto löschen tilgt den Speichernamen nicht automatisch',
+    kategorie: ['beschaeftigte'],
+  }),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
@@ -748,7 +756,7 @@ const IN_PRIVAT: readonly string[] = [
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
-  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'markttraktion-planung--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
+  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'markttraktion-planung--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
   'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',

@@ -77,6 +77,8 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   if (m.art === 'agenten') return 'Ein Agenten-Ergebnis liegt bereit — Details in MAKE OS';
   // Paket 4c: nie Bild- oder Albumnamen auf einen Messenger.
   if (m.art === 'medien') return 'Bei Fotos & Videos wartet etwas auf dich — Details in MAKE OS';
+  // Produkte (10.10.): Report fällig / nächste Stufe — nie Kunde oder Paket auf einen Messenger.
+  if (m.art === 'produkte') return 'Bei Produkte & Mandate wartet ein Vorschlag — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
   // Schlaf-Hilfe (09.10.): Gesundheit nie im Wortlaut auf einen Messenger.
   if (m.art === 'gesundheit') return 'Ein Gesundheits-Hinweis wartet — Details in MAKE OS';

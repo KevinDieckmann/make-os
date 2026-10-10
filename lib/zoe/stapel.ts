@@ -45,7 +45,8 @@ export const ANSPRUCH_MS = 10 * 60_000;
  * (Head-Chat), die Freigabe baut Paket 3 in stapel-arten.ts; bis dahin ist eine Freigabe dieser Arten 409 (unbekannte Art).
  */
 // Medien unterwegs (09.10., Paket 5): `medien` — ein Head schlägt Auswahl, Zuschnitte und Texte zu Medien eines Auftrags vor (lib/medien/heads.ts).
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | AgentenStapelArt;
+// Produkte (10.10., Leistungstreppe): `produkte` — Treppe aus einem Dokument, Fortschritts-Report, nächste Stufe (lib/crm/treppe-server.ts).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

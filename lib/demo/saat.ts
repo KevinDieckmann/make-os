@@ -93,6 +93,7 @@ const R = {
   koerper: () => import('@/app/api/gesundheit/koerper/route') as Promise<Modul>,
   erholung: () => import('@/app/api/gesundheit/erholung/route') as Promise<Modul>,
   planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
+  treppe: () => import('@/app/api/crm/treppe/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -218,6 +219,26 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { op: 'schritt', mandatId: 'm-demo-nordwerk', schritt: 'bewertung', erledigt: true },
   ] });
   schritt('Markttraktion-Planung', 5);
+
+  // 3c) Produkte · Leistungstreppe (10.10.): eine erfundene Beispiel-Treppe (Check → Diagnose → zwei Pakete nebeneinander), die Kundenreise als
+  //     Kreislauf, ein Paket in der Roadmap, Positionierung & Story und der Fortschritt eines Mandats — über die Route (Einzel-Schritte), wie im Browser.
+  const tr = await rufe(R.treppe(), 'GET', '/api/crm/treppe', LENA);
+  await rufe(R.treppe(), 'PATCH', '/api/crm/treppe', LENA, { ops: [
+    { op: 'stufe', eintrag: { id: 'ts-demo-check', name: 'Kennzahlen-Check', ebene: 1, preis: { art: 'kostenlos' }, dauerTage: 7, aufwandStunden: 2, lieferobjekte: ['Kurzbefund auf einer Seite'], kennzahl: 'Anzahl offener Steuerungsfragen', aufgabe: 'Zeigt in einer Woche, wo die Steuerung hakt — ohne Risiko für den Kunden. Schafft den Anlass für die Diagnose.', ergebnis: 'Ein Kurzbefund und die Entscheidung, ob eine Diagnose lohnt.' } },
+    { op: 'stufe', eintrag: { id: 'ts-demo-diagnose', name: 'Klarheits-Diagnose', ebene: 2, preis: { art: 'fest', betrag: 4800 }, dauerTage: 14, aufwandStunden: 16, leistungIds: ['l-demo-diagnose'], lieferobjekte: ['Zwei Workshops', 'Kennzahlen-Bild', 'Fahrplan 90 Tage'], kennzahl: 'Tage bis zur Monatszahl', regeln: { anrechnung: 'wird bei Buchung der Begleitung angerechnet' }, ziel: { umsatz: 48_000, kunden: 10 }, aufgabe: 'Macht sichtbar, was wirklich bremst — erst mit diesem Bild lohnt eine laufende Begleitung.', ergebnis: 'Ein gemeinsames Kennzahlen-Bild und ein Fahrplan für 90 Tage.' } },
+    { op: 'stufe', eintrag: { id: 'ts-demo-begleitung', name: 'Strategie-Begleitung', ebene: 3, preis: { art: 'monat', betrag: 3500 }, aufwandStunden: 18, leistungIds: ['l-demo-retainer'], lieferobjekte: ['Monatlicher Steuerungstermin', 'Kennzahlen-Review'], kennzahl: 'Ziele im Quartal erreicht', regeln: { mindestlaufzeitMonate: 6, bonus: 'bei erreichten Quartalszielen', maxGleichzeitig: 4 }, ziel: { umsatz: 84_000, kunden: 4 }, aufgabe: 'Setzt den Fahrplan Monat für Monat um und hält die Geschäftsführung auf Kurs.' } },
+    { op: 'stufe', eintrag: { id: 'ts-demo-cockpit', name: 'Cockpit-Lizenz', ebene: 3, preis: { art: 'monat', betrag: 490 }, aufwandStunden: 2, leistungIds: ['l-demo-software'], lieferobjekte: ['Einrichtung', 'Schulung'], kennzahl: 'aktive Nutzer je Woche', aufgabe: 'Für Kunden, die selbst steuern wollen — die Zahlen jeden Tag im Blick.' } },
+    { op: 'station', eintrag: { id: 'st-demo-sichtbar', name: 'Sichtbarkeit', messgroesse: 'Anfragen je Monat', ziel: 6, ist: 4 } },
+    { op: 'station', eintrag: { id: 'st-demo-check', name: 'Check', messgroesse: 'Checks im Jahr', ziel: 20, stufeId: 'ts-demo-check' } },
+    { op: 'station', eintrag: { id: 'st-demo-diagnose', name: 'Diagnose', messgroesse: 'Diagnosen im Jahr', ziel: 10, stufeId: 'ts-demo-diagnose' } },
+    { op: 'station', eintrag: { id: 'st-demo-mandat', name: 'Mandat', messgroesse: 'laufende Begleitungen', ziel: 4, stufeId: 'ts-demo-begleitung' } },
+    { op: 'station', eintrag: { id: 'st-demo-empfehlung', name: 'Empfehlung', messgroesse: 'Empfehlungen je Quartal', ziel: 3, ist: 1 } },
+    { op: 'paket', eintrag: { id: 'rp-demo-training', titel: 'Kennzahlen-Training für Teams', status: 'geplant', start: `${tagPlus(heute, 35).slice(0, 7)}`, fertig: `${tagPlus(heute, 95).slice(0, 7)}`, stufeId: 'ts-demo-begleitung', warum: 'Teams lernen, die Zahlen selbst zu lesen — macht die Begleitung leichter und öffnet die Cockpit-Lizenz.' } },
+    { op: 'positionierung', stand: (tr.datei as { positionierungStand: string }).positionierungStand, felder: { claim: 'Mit klaren Kennzahlen schneller entscheiden.', zielgruppe: 'Geschäftsführung inhabergeführter Mittelständler mit 50 bis 500 Mitarbeitenden.', problem: 'Entscheidungen fallen aus dem Bauch, weil die Zahlen zu spät oder zu verstreut kommen.', versprechen: 'In 90 Tagen ein Kennzahlen-Bild, das jeden Monat trägt.' } },
+    { op: 'kunde', mandatId: 'm-demo-nordwerk', felder: { naechster: { text: 'Quartals-Review vorbereiten', datum: tagPlus(heute, 9) } } },
+    { op: 'lieferobjekt', mandatId: 'm-demo-nordwerk', was: 'Monatlicher Steuerungstermin', erledigt: true },
+  ] });
+  schritt('Leistungstreppe', 4);
 
   // 4) Gesellschaften: Holding (kdv) hält die operative (ug); die Beratung (kdc) als Einzelunternehmen; eine neue in Gründung.
   const reg = await rufe(R.gesellschaften(), 'GET', '/api/gesellschaften', LENA);

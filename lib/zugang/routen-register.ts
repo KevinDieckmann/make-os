@@ -354,6 +354,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/person': r('POST', MT, 'EIN Weg „Person anlegen“ (Kartei, Firmenkarte, + Aktivität, Prospecting, Make.One-Abend; Woche 2 · 1.8) — nur von Hand.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
   'crm/planung': r('GET,PATCH', MT, 'Markttraktion-Planung (Schnellknopf „Planung“, 10.10.): Leadkanäle, Kreislauf, Umsatzziele, Challenges — Business; Schreiben nur per Sitzung (Dienstweg 403).'),
+  // Produkte & Mandate · Leistungstreppe (10.10.): Treppe, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung.
+  'crm/treppe': r('GET,PATCH', MT, 'Leistungstreppe (Produkte & Mandate, 10.10.): Stufen, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung (Dienstweg 403), Stand/409.'),
+  'crm/treppe/dokument': r('POST', MT, '„Aus Dokument übernehmen“ (10.10.): der Head of Sales liest ein Dokument (KI über askText, Text als fremd()) und legt einen Vorschlag in den Freigabe-Stapel — die Datei wird nicht gespeichert; nur per Sitzung.'),
+  'crm/treppe/report': r('GET,POST', MT, 'Fortschritts-Report (10.10.): PDF am Mandat ablegen + Mail-Vorlage/KI-Entwurf (kein Versand — gesendet wird über /api/inbox/senden per Klick); GET nur das Report-PDF; nur per Sitzung.'),
   'crm/signale': r('GET,POST', MT, 'Signale.'),
   'crm/stammdaten': r('GET,POST', MT, 'CRM-Stammdaten.', undefined, 'Idempotenter Nachtrag fehlender Verarbeitungen ins Verzeichnis (Art. 30) — schreibt nur, wenn ein Eintrag fehlt, nie Personendaten.'),
   'crm/suche': r('GET', MT, 'Suche.'),

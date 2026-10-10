@@ -22,6 +22,11 @@
 // Die neuen Schreib-Aktionen laufen nie über den Dienstweg (403) und prüfen die Bau-Kennung.
 // POST { aktion: 'mandat', chanceId }   → gewonnener Deal wird Mandat (Deals ›
 //      Kunden); Firma wird Kunde, Personen Lebensphase „Kunde“.
+// POST { aktion: 'mandat-neu', firma: { id } | { name }, person: { id } | { neu: { vorname, nachname, email, … } }, gesellschaft, titel?,
+//        leistungId?, stufeId?, zustaendig?, anfrageId? }   (10.10.) → „+ Mandat“ IMMER mit Lead: Firma + Ansprechperson (vorhanden per Klick oder
+//        neu — Firma ohne Dublette über `firmaSichern`, Person über den EINEN Weg „Person anlegen“), dann dieselbe Folge wie oben (Firma/Lead →
+//        Kunde, Personen → Lebensphase Kunde). Dublette 409 `dublette`, Art. 18 409 `eingeschraenkt` — dann ist NICHTS geschrieben.
+// POST { aktion: 'mandat-firma', mandatId, firma, person? } (10.10.) → „Firma zuordnen“ für ein bestehendes Mandat ohne Firma (nur auf Klick).
 // Nichts wird versendet.
 //
 // Ablaufprüfung 28.09.: Art. 18 — eine eingeschränkte Person wird nicht verarbeitet: `setze` an ihrem Lead und
@@ -52,7 +57,8 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { leadSaeubern } from '@/lib/crm/lead-form';
-import { phaseHeben } from '@/lib/crm/lifecycle';
+import { personenWerdenKunde } from '@/lib/crm/mandat-anlegen-server';
+import { einmalig } from '@/lib/store/anfragen';
 import { wer, BEIDE, nameVon } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import type { Lead, Mandat } from '@/lib/crm/typen';
@@ -88,7 +94,7 @@ async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | 
 }
 
 /** Neue Schreib-Aktionen (03.10.): nie über den Dienstweg — nur eine angemeldete Person des Haushalts. */
-const VON_HAND = ['parken', 'raus', 'abgeben', 'firma-folgen', 'firmen-zusammen'];
+const VON_HAND = ['parken', 'raus', 'abgeben', 'firma-folgen', 'firmen-zusammen', 'mandat-neu', 'mandat-firma'];
 
 export async function POST(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
@@ -111,6 +117,26 @@ export async function POST(req: Request) {
     const r = b.aktion === 'firmen-zusammen' ? await zusammenfuehren(String(b.behalten ?? ''), String(b.weg ?? ''), person, werAus(req)) : await zusammenVorschau(String(b.behalten ?? ''), String(b.weg ?? ''));
     return r.ok ? NextResponse.json({ ok: true, vorschau: r.vorschau }) : NextResponse.json({ ok: false, fehler: r.fehler, ...(r.fremd ? { fremd: r.fremd } : {}) }, { status: r.status });
   }
+  // „+ Mandat“ mit Lead (10.10.): Firma + Ansprechperson (vorhanden oder neu) → Mandat → Firma/Lead/Personen werden Kunde; „Firma zuordnen“
+  // für ein bestehendes Mandat ohne Firma — dieselben Folgen wie „Mandat anlegen“ aus dem Deal (lib/crm/mandat-anlegen-server.ts).
+  if (b.aktion === 'mandat-neu' || b.aktion === 'mandat-firma') {
+    const roh = b as Record<string, unknown>;
+    const { mandatMitLeadAnlegen, mandatFirmaZuordnen } = await import('@/lib/crm/mandat-anlegen-server');
+    if (b.aktion === 'mandat-firma') {
+      const r = await mandatFirmaZuordnen(String(roh.mandatId ?? ''), roh.firma, roh.person, zugang.person, werAus(req), jetzt);
+      return NextResponse.json(r.ok ? { ...r, text: 'Firma zugeordnet.' } : r, { status: r.ok ? 200 : r.status });
+    }
+    const { mandatEingabeAus } = await import('@/lib/crm/mandat-anlegen');
+    const e = mandatEingabeAus(roh);
+    if (!e.ok) return NextResponse.json({ ok: false, fehler: e.fehler }, { status: e.status });
+    // Wiederholung nach einem Netzfehler legt kein zweites Mandat an (`anfrageId`, nur für dieselbe Person).
+    const a = await einmalig<Record<string, unknown>>('mandat-neu', roh.anfrageId, async () => {
+      const x = await mandatMitLeadAnlegen(e.e, zugang.person, werAus(req), jetzt);
+      return { status: x.ok ? 200 : x.status, body: x.ok ? { ...x, text: 'Mandat angelegt — die Firma steht unter den Kunden.' } : x };
+    }, undefined, { wer: zugang.person });
+    return NextResponse.json(a.body, { status: a.status });
+  }
+
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
 
@@ -149,11 +175,8 @@ export async function POST(req: Request) {
     });
     if (schonDa) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     // Lifecycle (Prüfbericht F1): eine gesetzte Phase vor „Kunde“ wird Kunde — ohne gesetzte Phase bleibt es beim Vorschlag.
-    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
-      if (!ids.has(k.id) || k.eingeschraenkt) return k;
-      const phase = phaseHeben(k.phase, 'kunde');
-      return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
-    }) }), werAus(req));
+    // 10.10.: dieselbe Folge wie „+ Mandat“ mit Lead (lib/crm/mandat-anlegen-server.ts `personenWerdenKunde`) — eine Stelle.
+    await personenWerdenKunde(Array.from(ids), jetzt, werAus(req));
     return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
   }
 

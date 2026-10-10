@@ -295,7 +295,23 @@ export interface MailEntwurf {
   /** Eigene Message-ID (Standard: zufällig auf der Domain des Absenders). */
   messageId?: string;
   datum?: Date;
+  /** Anhänge (10.10., Fortschritts-Report): dann multipart/mixed — Text zuerst, je Anhang base64 mit Dateiname (RFC 2231). */
+  anhaenge?: MailAnhang[];
 }
+/** Ein Anhang einer ausgehenden Mail — Inhalt als Bytes, Typ aus der Ablage (geprüft am Inhalt), Name ohne Pfad. */
+export interface MailAnhang { name: string; typ: string; bytes: Uint8Array }
+/** Grenzen für Anhänge: höchstens drei, zusammen 4 MB (Annahme: Gmail nimmt über `messages/send` mit `raw` im JSON-Körper nur kleinere Nachrichten). */
+export const ANHANG_GRENZEN = { anzahl: 3, bytes: 4 * 1024 * 1024 } as const;
+const MIME_TYP = /^[a-z]+\/[a-z0-9.+-]{1,80}$/;
+/** Dateiname für den Kopf: ASCII-Rückfall (`filename="…"`) und UTF-8 nach RFC 2231 (`filename*=UTF-8''…`). */
+function dateinameKopf(name: string): { ascii: string; utf8: string } {
+  const sauber = zeilenfrei(name).replace(/[\\/"]/g, '_').slice(0, 120) || 'anhang';
+  const ascii = sauber.normalize('NFKD').replace(/[^\x20-\x7e]/g, '_');
+  const utf8 = Array.from(new TextEncoder().encode(sauber)).map(b => (/[A-Za-z0-9._-]/.test(String.fromCharCode(b)) ? String.fromCharCode(b) : `%${b.toString(16).toUpperCase().padStart(2, '0')}`)).join('');
+  return { ascii, utf8 };
+}
+/** base64 in Zeilen zu 76 Zeichen (RFC 2045). */
+const base64Zeilen = (b: Uint8Array): string => (Buffer.from(b).toString('base64').match(/.{1,76}/g) ?? []).join('\r\n');
 
 const MID = /^<[^<>\s@]{1,200}@[^<>\s@]{1,200}>$/;
 export const messageIdOk = (v: unknown): v is string => typeof v === 'string' && v.length <= 400 && MID.test(v);
@@ -351,10 +367,22 @@ export function mimeBauen(e: MailEntwurf): string {
     ...(e.inReplyTo && messageIdOk(e.inReplyTo) ? [`In-Reply-To: ${e.inReplyTo}`] : []),
     ...(e.references?.filter(messageIdOk).length ? [falten('References', e.references.filter(messageIdOk).join(' '))] : []),
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: quoted-printable',
   ];
-  return `${zeilen.join('\r\n')}\r\n\r\n${quotedPrintableBauen(e.text.replace(/\s+$/, ''))}\r\n`;
+  const textTeil = ['Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: quoted-printable'];
+  const textKoerper = quotedPrintableBauen(e.text.replace(/\s+$/, ''));
+  if (!e.anhaenge?.length) return `${[...zeilen, ...textTeil].join('\r\n')}\r\n\r\n${textKoerper}\r\n`;
+  if (e.anhaenge.length > ANHANG_GRENZEN.anzahl) throw new Error(`Höchstens ${ANHANG_GRENZEN.anzahl} Anhänge.`);
+  if (e.anhaenge.reduce((a, x) => a + x.bytes.length, 0) > ANHANG_GRENZEN.bytes) throw new Error('Die Anhänge sind zu groß.');
+  const grenze = `mk-${bytesBase64url(randomBytes(18)).replace(/[^A-Za-z0-9]/g, '')}`;
+  const teile = [
+    `--${grenze}\r\n${textTeil.join('\r\n')}\r\n\r\n${textKoerper}\r\n`,
+    ...e.anhaenge.map(a => {
+      const n = dateinameKopf(a.name);
+      const typ = MIME_TYP.test(a.typ) ? a.typ : 'application/octet-stream';
+      return `--${grenze}\r\nContent-Type: ${typ}; name="${n.ascii}"\r\nContent-Disposition: attachment; filename="${n.ascii}"; filename*=UTF-8''${n.utf8}\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64Zeilen(a.bytes)}\r\n`;
+    }),
+  ];
+  return `${[...zeilen, `Content-Type: multipart/mixed; boundary="${grenze}"`].join('\r\n')}\r\n\r\n${teile.join('')}--${grenze}--\r\n`;
 }
 
 // ── Rohformat lesen (RFC 822) ───────────────────────────────────────────────

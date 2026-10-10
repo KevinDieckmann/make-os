@@ -212,6 +212,8 @@ export interface NachLeistungZeile {
   mandatId: string; kunde: string; titel: string; status: Mandat['status']; produkt?: string; phase?: string;
   schritte: { id: NachLeistungSchritt; label: string; erledigt: boolean; quelle: 'abgeleitet' | 'hand' | null; am?: string; von?: string; grund?: string }[];
   offen: number; href: string;
+  /** Fortschritt im Paket (10.10., Leistungstreppe): Stufe, Lieferungen „n/m“, reif für die nächste Stufe — nur, wenn eine Treppe gepflegt ist. */
+  paket?: string; lieferungen?: string; naechsteStufe?: string;
 }
 export interface Kreislauf {
   stufen: KreislaufStufe[];
@@ -230,6 +232,8 @@ export interface KreislaufEingabe {
   /** Fällige Follow-ups (lib/crm/followup.ts `faellige`) — je Lead-Kennung bzw. ohne. */
   followup: { faellig: number; ueberfaellig: number };
   zuordnung?: Zuordnung;
+  /** Fortschritt je Mandat aus der Leistungstreppe (Produkte & Mandate, lib/crm/treppe-server.ts `fortschrittFuerKreislauf`) — fehlt: wie bisher. */
+  fortschritt?: Record<string, { paket?: string; lieferungen?: string; naechsteStufe?: string }>;
 }
 
 const pz = (n: number | null | undefined) => (n == null ? '—' : `${Math.round(n)} %`);
@@ -253,6 +257,14 @@ export function nachLeistungSchritte(m: Mandat, crm: Pick<CrmBestand, 'chancen'>
     const hand = marken?.[s.id];
     return { id: s.id, label: s.label, erledigt: !!grund || !!hand, quelle: grund ? 'abgeleitet' as const : hand ? 'hand' as const : null, ...(grund ? { grund } : {}), ...(hand && !grund ? { am: hand.am, von: hand.von } : {}) };
   });
+}
+
+/** Zusatz der Stufe „Fulfillment“ aus der Leistungstreppe: wie viele aktive Kunden im Paket stehen und wie viele reif für die nächste Stufe sind. */
+function fortschrittZusatz(aktive: readonly Pick<Mandat, 'id'>[], f: KreislaufEingabe['fortschritt']): string[] {
+  if (!f || !Object.keys(f).length) return [];
+  const imPaket = aktive.filter(m => f[m.id]?.paket).length;
+  const reif = aktive.filter(m => f[m.id]?.naechsteStufe).length;
+  return [`${imPaket} im Paket`, ...(reif ? [`${reif} reif für die nächste Stufe`] : [])];
 }
 
 /** Der ganze Kreislauf — optional nur für einen Kanal (`filter` = Kennung, `'ohne'` = ohne Kanal). */
@@ -298,7 +310,7 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
       mandatId: m.id, kunde: m.kunde, titel: m.titel, status: m.status, ...(l ? { produkt: l.name } : {}),
       ...(m.phase && l?.phasen?.find(p => p.id === m.phase) ? { phase: l.phasen.find(p => p.id === m.phase)!.name } : {}),
       schritte, offen: schritte.filter(s => !s.erledigt && (m.status === 'beendet' || NACH_LEISTUNG.find(x => x.id === s.id)?.schonWaehrend)).length,
-      href: mandateLink('mandate', m.id),
+      href: mandateLink('mandate', m.id), ...(e.fortschritt?.[m.id] ?? {}),
     };
   }).sort((a, b) => b.offen - a.offen || a.kunde.localeCompare(b.kunde));
   // Wiederkauf: Firmen mit gewonnenem Deal oder Mandat; wer danach einen weiteren Deal hat, kauft wieder.
@@ -321,7 +333,7 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
     { id: 'deals', label: 'Deals (SQL … Abschluss)', anzahl: offen.length, zusatz: `${Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)).toLocaleString('de-DE')} € offen`,
       plan: `SQL → Gewonnen ${pz(sqlZuGewPlan)}`, ist: `SQL → Gewonnen ${pz(gq?.quote)}`, annahme: annahme('sqlZuAngebot', 'angebotZuGewonnen'), href: WEG.deals(), hrefLabel: 'Deals öffnen' },
     { id: 'followup', label: 'Abschluss & Follow-up', anzahl: e.followup.faellig, zusatz: e.followup.ueberfaellig ? `${e.followup.ueberfaellig} überfällig` : 'nichts überfällig', href: WEG.followup(), hrefLabel: 'Follow-up öffnen' },
-    { id: 'fulfillment', label: 'Fulfillment', anzahl: aktiveM.length, zusatz: `${ff.size} Produkt-Phasen`, href: WEG.mandat(), hrefLabel: 'Produkte & Mandate öffnen' },
+    { id: 'fulfillment', label: 'Fulfillment', anzahl: aktiveM.length, zusatz: [`${ff.size} Produkt-Phasen`, ...(fortschrittZusatz(aktiveM, e.fortschritt))].join(' · '), href: WEG.mandat(), hrefLabel: 'Produkte & Mandate öffnen' },
     { id: 'nachher', label: 'Nach der Leistung', anzahl: kunden.filter(k => k.offen > 0).length, zusatz: 'Upselling · Cross-Selling · Bewertung · Testimonial · Newsletter', href: '', hrefLabel: 'Schritte je Kunde' },
     { id: 'wiederkauf', label: 'Wiederkauf', anzahl: wieder, zusatz: `${offenWieder} offene Deals mit Bestandskunden`,
       ist: kundenZahl >= MINDESTMENGE ? `${Math.round((100 * wieder) / kundenZahl)} % kaufen wieder` : `${wieder} von ${kundenZahl} Kunden`, href: WEG.deals(), hrefLabel: 'Deals öffnen' },

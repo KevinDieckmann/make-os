@@ -138,6 +138,20 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Produkte-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0d2) Produkte · Leistungstreppe (10.10.): je aktivem Mandat alle zwei Wochen ein Vorschlag „Fortschritts-Report“ und einmal je erreichter
+  //      Stufe „nächste Stufe anbieten“ — nur in den Freigabe-Stapel + Glocke, idempotent über die Marken im Bestand; verschickt wird nichts.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Produkte: Fortschritt', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { treppeMorgenlauf } = await import('@/lib/crm/treppe-server');
+      const t = await treppeMorgenlauf(today);
+      const was = [t.reports ? `${t.reports} Report-Vorschl${t.reports === 1 ? 'ag' : 'äge'}` : '', t.stufen ? `${t.stufen}× nächste Stufe` : ''].filter(Boolean).join(', ');
+      schritte.push({ name: 'Produkte: Fortschritt', ok: true, info: was ? `im Stapel: ${was}` : 'nichts fällig' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Produkte: Fortschritt', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0e) CRM-Papierkorb der übrigen Listen (04.10., lib/crm/ablage.ts): Firmen, Mandate, Events, Segmente, Beiträge, Ausgaben,
   //     Kampagnen — älter als 30 Tage und ohne Verweise → endgültig; Events mit Kalender-Termin/Übergaben nur von Hand.
   try {

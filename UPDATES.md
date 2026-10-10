@@ -132,6 +132,90 @@ und die Teilen-Schalter in Textzeilen haben kein eigenes „i“ (Grund steht je
 (4) Mitarbeiter, die jemand selbst anlegt, haben keine Erklärung (nur die Vorlagen des Katalogs). (5) Weitere Kennzahl-Kacheln außerhalb der Index-Register (Controlling, Sport, Events)
 bekommen ihre Texte, sobald jemand sie braucht — der Baustein (`Kennzahl`/`Zahl` mit `erklaerung`) ist da.
 
+## 10.10.2026 — Produkte & Mandate: Leistungstreppe, Kundenreise, Zielbild, Fortschritt je Kunde, Fortschritts-Report (nur lokal — Branch `produkte-treppe`, Basis 4173ec89 = `update-0910b`)
+
+Entscheidung 10.10.: Produkte & Mandate ist ein eigener Leistenpunkt. Im Produkt-Bereich werden die Pakete sauber abgebildet und **immer visualisiert** —
+wohin wir wollen und warum die Schritte so wichtig sind. Das Modell ist generisch: Stufen, Preise, Regeln und Messgrößen sind Daten des Haushalts (nichts
+davon im Code); die Demo-Saat bringt eine erfundene Beispiel-Treppe.
+
+**Gebaut:**
+- **Leistungstreppe** (Produkte & Mandate › Produkte, oben): Stufen in Ebenen — gleiche Ebene = Alternativen nebeneinander (z. B. zwei Monatspakete). Rechner:
+  die Stufen steigen von links nach rechts, Handy: Liste. Je Stufe: Aufgabe/„warum vor der nächsten“, Ergebnis + Lieferobjekte, Kennzahl beim Kunden, Dauer,
+  Aufwand (h; bei Monats-/Jahrespaketen je Monat/Jahr → Kapazität), Preis/Preisart (kostenlos · fest · je Monat · je Jahr), Regeln (Mindestlaufzeit, Anrechnung,
+  Bonus, höchstens N gleichzeitig), verknüpfte Produkte aus dem Katalog, Ziel im Zieljahr (Umsatz, Kunden). Klick = Detail mit den **Schritten** (Phasen der
+  verknüpften Produkte) je mit Ziel & Warum · Ergebnis · Kennzahl · Dauer/Aufwand (neue optionale Felder an `ProduktPhase`, im Säuberer).
+- **„Aus Dokument übernehmen“**: PDF/Word/PowerPoint/Markdown hochladen → der Head of Sales liest es (KI nur über `askText`, Kategorie „crm“, Text als `fremd()`),
+  schlägt Treppe + Kundenreise + Positionierung vor → **Freigabe-Stapel** (neue Stapel-Art `produkte`, nur für die hochladende Person). Die Vorschau zeigt jeden
+  Teil mit Häkchen; erst „Übernehmen (n)“ schreibt — Stufen kommen NEU dazu (nie überschrieben). Die Datei wird nicht gespeichert. Ohne KI: „Leere Vorlage anlegen“
+  (fünf Platzhalter-Stufen, eine Station je Stufe).
+- **Kundenreise als Kreislauf** (Stationen in Reihenfolge, letzter Pfeil zurück zum Anfang): je Station Messgröße, Ziel, Ist — aus der verknüpften Stufe (Kunden
+  im Zieljahr) oder von Hand.
+- **Zielbild**: Ziel gegen Ist je Stufe (Umsatz aus den Mandaten der Stufe bis heute, Kunden aus Mandaten + Deals auf den Produkten der Stufe, je Firma einmal),
+  Übergänge zwischen Stufen (aus dem Verlauf je Kunde), **Kapazität**: Aufwand der Kunden in den Paketen je Woche gegen die freien Stunden des Teams (Planung ›
+  Kapazität), Plätze je Stufe gegen „höchstens N gleichzeitig“. **Roadmap**: geplante Pakete mit Zeitplan (Monat), Status, Stufe, Warum. **Positionierung & Story**:
+  Claim, Zielgruppe, Problem, Versprechen, Story — der Head of Sales liest sie (mit Treppe + Roadmap) im Datenpaket, als Daten.
+- **Je Kunde (im geöffneten Mandat, „Fortschritt im Paket“)**: Stufe (aus dem Produkt abgeleitet oder gewählt), aktueller Schritt (= Phase des Mandats), Lieferobjekte
+  zum Abhaken, nächster Schritt mit Datum, **Health-Ampel** Termine · Lieferungen · Zahlungen · Zufriedenheit (Zahlung/Stimmung aus der vorhandenen Mandat-Health,
+  Laufzeit-Ampel inklusive), **„reif für die nächste Stufe“** (Regel: alle Lieferobjekte erledigt, letzte Phase oder Dauer um).
+- **Fortschritts-Report**: „Fortschritts-Report erstellen“ → PDF (erreicht, nächste Schritte, Kennzahlen; Gerüst wie das Angebot) verschlüsselt **am Mandat** in der
+  Dateiablage → „Mail vorbereiten“: Vorlage Du/Sie nach der Akte („Hey …, ich wollte dich gerade updaten — das ist der Stand …“) oder „Mit KI formulieren“
+  (gekennzeichnet, `KiMarke`), Absender = Postfach des Business-Bereichs (vorgewählt das Postfach der Gesellschaft), **PDF angehängt, gesendet NUR per Klick** über
+  die Inbox (`/api/inbox/senden` kann jetzt Anhänge: nur Kennungen eigener Ablage-Dateien mit CRM-Bezug, höchstens drei, zusammen 4 MB; Art. 18 und § 7 UWG wie
+  immer mit Rückfrage).
+- **Morgenlauf** (Schritt „Produkte: Fortschritt“, idempotent über Marken im Bestand): je aktivem Mandat **alle zwei Wochen** ein Vorschlag „Fortschritts-Report“
+  in den Freigabe-Stapel + Glocke (neue Meldungsart „Produkte & Mandate“, Business, Messenger-Text neutral); einmal je erreichter Stufe ein Vorschlag des Head of
+  Sales „nächste Stufe anbieten“ → Freigabe legt ein Follow-up am Mandat an. Freigabe des Report-Vorschlags erstellt das PDF — verschickt wird nichts.
+- **Anschlüsse**: Markttraktion › Planung › Kreislauf zeigt bei Fulfillment „n im Paket · m reif für die nächste Stufe“ und je Kunde „Paket: … · n/m geliefert“ +
+  „reif für: …“; Chat unten unter Produkte = Head of Sales.
+- **Mandat immer mit Lead (Entscheidung 10.10. ~20:30)**: „+ Mandat“ (und „+ Kunde“ in einer Stufe der Treppe) öffnet einen Dialog: Gesellschaft, **Firma** und
+  **Ansprechperson** — vorhandene per Klick wählen (Chip mit Suche; Personen der Firma zuerst) oder im Menü „„…“ anlegen“ (Firma ohne Dublette, auch bei anderer
+  Schreibweise/Rechtsform; Person über den einen Weg „Person anlegen“ mit Station bei der Firma). Danach: Mandat mit Firma + Ansprechperson (aktiv ab heute,
+  Vertrag/Kickoff als offene Punkte), Firma → Rolle Kunde, **Lead der Firma → Kunde**, Person → Lebensphase Kunde — dieselbe Folge wie „Mandat anlegen“ aus dem
+  gewonnenen Deal (eine Stelle `personenWerdenKunde`). Dublette → „Diese Person nehmen“, eingeschränkte Person (Art. 18) → abgelehnt, NICHTS geschrieben.
+  Bestehende Mandate ohne Firma: Chip „ohne Firma“, im Menü „⋯“ und im Mandat **„Firma zuordnen“** (gleicher Dialog, nur auf Klick — sonst bleibt alles, wie es ist).
+
+**Datenbestand bleibt (Live-Instanz):** neue Bestände nur `produkt-treppe--<haushalt>` (Business, Speicher-Register mit Angaben, `IN_BUSINESS`, `NICHT_PERSOENLICH`);
+an bestehenden Daten nur **optionale** Felder (`ProduktPhase.ziel/ergebnis/kennzahl/aufwandStunden`, im Säuberer). Nichts wird umgeschrieben, umbenannt oder beim
+Lesen verworfen, keine Migration beim Start; GET schreibt nie (Wächter im Routen-Test). Mandate ohne Firma bleiben, wie sie sind — eine Firma kommt nur per Klick
+(„Firma zuordnen“) dazu. Tests „Altbestand ohne neue Felder wird gleich gelesen und bleibt nach Schreiben eines neuen Felds vollständig erhalten“ (Produkt mit
+Phasen, Mandat) und „Altbestand ohne Firma bleibt lesbar; Zuordnen ändert nur Firma + Anzeigename“ in `tests/produkte-treppe-route.test.ts`.
+
+**Recht/Wächter:** Routen `/api/crm/treppe` (GET/PATCH), `/api/crm/treppe/dokument` (POST), `/api/crm/treppe/report` (GET PDF/POST) — Routen-Register
+`modul:markttraktion`, Haushalt des Inhabers (auch Konto „nur Business“), `?space=privat` → 400 (und die Middleware sperrt `/api/crm` für Privat), Schreiben nur per
+Sitzung (Dienstweg 403), `bauPruefen`, `jsonBegrenzt`, Stand/409, Grenzen 413, Lese-Protokoll „firmen“. Tests: `tests/produkte-treppe.test.ts` (Regeln, Mail mit
+Anhang), `tests/produkte-treppe-route.test.ts` (Zugang, 409/413, Report + Senden mit nachgebautem Postfach, Morgenlauf, Stapel, Altbestand, Anschlüsse);
+angepasst `demo`.
+
+**So testet ihr (in Klicks):**
+1. Produkte & Mandate → Reiter **Produkte**. Ganz oben „Leistungstreppe“ — leer: „Leere Vorlage anlegen“ antippen → fünf Stufen erscheinen als Treppe.
+2. Eine Stufe antippen → Detail. „Bearbeiten“ → Name, Ebene (zwei Stufen mit derselben Ebene = Alternativen), Preisart + Preis, Dauer, Aufwand, Regeln, Lieferobjekte
+   (eins je Zeile), Kennzahl, Produkte wählen → Speichern. Im Detail stehen jetzt unter „Schritte“ die Phasen der Produkte — „Ziel & warum wichtig“ eintragen.
+3. Statt Vorlage: „Aus Dokument übernehmen“ → ein Positionierungs-Dokument (PDF/Word/Markdown) wählen → nach dem Lesen steht oben „Vorschlag aus …“ mit Häkchen →
+   ein paar abwählen → „Übernehmen (n)“. (Ohne KI-Schlüssel kommt der Hinweis auf die leere Vorlage.)
+4. Darunter **Kundenreise** → „+ Station“, Station antippen → Messgröße, Ziel, Stufe verknüpfen. **Zielbild** → Zieljahr, je Stufe Umsatz-/Kundenziel; unten
+   Übergänge und Kapazität. **Roadmap** → „+ Paket“ mit Start/Fertig (JJJJ-MM). **Positionierung & Story** ausfüllen.
+5. Reiter **Mandate** → ein aktives Mandat öffnen → „Fortschritt im Paket“: Stufe (aus dem Produkt), Lieferobjekte abhaken, nächster Schritt + Datum, Ampel-Chips.
+6. „Fortschritts-Report erstellen“ → das Fenster „Fortschritts-Report senden“ öffnet: Postfach (Business), An, Betreff, Text (Du/Sie nach der Akte), Anhang. „Mit KI
+   formulieren“ → KI-Marke erscheint. „Senden“ → die Mail geht aus dem gewählten Postfach mit dem PDF; danach „zuletzt gesendet am …“. „↓ PDF“ lädt den Report.
+7. Morgenlauf (System › Tagesstart erneut auslösen oder am nächsten Morgen): bei Mandaten, die seit zwei Wochen keinen Report hatten, steht ein Vorschlag im
+   Freigabe-Stapel (Business) + Glocke „Produkte & Mandate“. Freigeben → Report liegt am Mandat, gesendet wird erst im Mandat per Klick.
+8. Alle Lieferobjekte einer Stufe abhaken → „reif für: …“; nach dem nächsten Morgenlauf schlägt der Head of Sales „nächste Stufe anbieten“ vor → Freigeben → Follow-up am Mandat.
+9. Markttraktion › Planung › Kreislauf → „Fulfillment“: „n im Paket“; „Nach der Leistung“ zeigt je Kunde Paket und Lieferungen.
+10. Reiter Mandate → „+ Mandat“: Gesellschaft wählen, bei „Firma“ eine vorhandene suchen oder einen neuen Namen tippen → „„…“ anlegen“; bei „Ansprechperson“
+    eine Person wählen oder „„Vorname Nachname“ anlegen“ (Felder E-Mail, Position, Du/Sie erscheinen) → „Mandat anlegen“. Die Firma steht danach mit Rolle
+    Kunde, die Person mit Lebensphase Kunde. Dieselbe Mail noch einmal als neue Person → Hinweis „steht schon in der Kartei“ + „Diese Person nehmen“.
+11. Ein altes Mandat ohne Firma: Chip „ohne Firma“ → öffnen → „Firma zuordnen“ → Firma wählen/anlegen → zugeordnet; sonst ist am Mandat nichts verändert.
+12. Produkte → Stufe antippen → „+ Kunde“: derselbe Dialog, Produkt vorbelegt; das neue Mandat steht gleich in dieser Stufe.
+13. Am Handy (375 px): die Treppe als Liste, die Kundenreise als Liste, Fenster ganzflächig.
+
+**Offen / bewusst nicht:** der Report-Vorschlag landet bei der zuständigen Person des Mandats (Team-Kürzel; „beide“ → im Stapel des Haushalts); die Health-Zahlung
+liest hier nur den Wert am Mandat (nicht die Rechnungen des Finanzplans wie die Mandats-Übersicht); Gmail-Versand mit Anhang ist auf 4 MB begrenzt (Annahme zu
+`messages/send` mit `raw`, im Code vermerkt). Stufen-Übergänge entstehen nur, wenn ein Kunde von Hand in die nächste Stufe gehoben wird.
+
+**Rückweg:** nur ein neuer Bestand, eine neue Stapel-/Meldungsart und optionale Felder — der alte Stand kennt `produkt-treppe--*` nicht; offene Vorschläge der Art
+`produkte` lässt er liegen (Freigabe dort 409 „unbekannte Art“), Meldungen der Art `produkte` verwirft er beim Lesen der Glocke; Phasen-Felder bleiben im Bestand,
+fallen aber beim nächsten Speichern eines Produkts im alten Stand weg (der alte Säuberer kennt sie nicht).
+
 ## 10.10.2026 — Sicht Business zeigt nie Privat-Themen (Sweep über alle Bereiche; nur lokal — Branch `sweep-bereiche`, Basis a51bc21b = `update-0910b`)
 
 Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat — wir haben im Business-Bereich keinen Bereich, der Familie und

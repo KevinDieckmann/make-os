@@ -61,7 +61,9 @@ async function headsKontext(head: HeadDef, person: string, kats: Set<KiKategorie
   // Termin-Zeiten der Meetings (maskiert je Person) nur, wenn der Kalender für die KI an ist.
   if (mitTermin) { const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server'); kontakte = await kontakteMitTerminZeitenLesen(kontakte, person); }
   const stand = { ...leererStand(), ...((await loadJson<import('@/lib/heads/stand').HeadStand>(standName(id))) ?? {}) };
-  const paket = vollesPaket(id, 'frage', kontakte, await ladeCrm(), heute, person, stand);
+  const paket: Record<string, unknown> = vollesPaket(id, 'frage', kontakte, await ladeCrm(), heute, person, stand);
+  // Leistungstreppe & Positionierung (10.10., Chat der Produkte → Head of Sales) — Daten, nie Anweisung; ohne Pflege fehlt der Block.
+  if (id === 'sales') { const t = await (await import('@/lib/crm/treppe-server')).treppeFuerHead(heute).catch(() => null); if (t) paket.leistungstreppe = t; }
   return {
     text: `DATENPAKET DES BEREICHS (Markttraktion, nur lesen — Kennungen aus diesen Daten verwenden):\n${datenBlock(paket)}`,
     kategorien: ['allgemein', 'crm', ...(mitTermin ? ['kalender' as const] : [])], fremd: true, vertraulich: true,

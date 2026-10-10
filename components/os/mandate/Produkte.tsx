@@ -34,6 +34,7 @@ import { GesellschaftWahl } from '../crm/GesellschaftWahl';
 import { useLinkAuswahl } from '../Verlauf';
 import { produktAngebotFehlt } from '@/lib/crm/angebote';
 import { angebotLink } from '@/lib/crm/adresse';
+import { TreppenBereich } from './treppe/Treppe';
 
 const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: 'Kern', premium: 'Premium' };
 const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', workshop: 'Workshop', retainer: 'Retainer', sprint: 'Sprint', vermittlung: 'Vermittlung', software: 'Software' };
@@ -130,6 +131,8 @@ export function Produkte({ api }: { api: CrmApi }) {
 
   return (
     <>
+      {/* Leistungstreppe (10.10.): die Pakete als Treppe — wohin wir wollen und warum die Schritte wichtig sind; darunter der Katalog. */}
+      <TreppenBereich crmApi={api} />
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={neu}>+ Produkt</Knopf>}>Produkte</Ueberschrift>
         <Raster min={150}>

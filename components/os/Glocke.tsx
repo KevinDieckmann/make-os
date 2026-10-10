@@ -133,6 +133,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   agenten: { Icon: Sparkles, label: 'Agenten', farbe: C.aktiv },
   // 09.10. (Paket 4c): ein Medium wartet auf deine Freigabe bzw. ein KI-Video ist fertig.
   medien: { Icon: ImageIcon, label: 'Fotos & Videos', farbe: C.aktiv },
+  // 10.10. (Leistungstreppe): Fortschritts-Report fällig bzw. ein Kunde ist reif für die nächste Stufe — neutral, Link ins Mandat.
+  produkte: { Icon: Sparkles, label: 'Produkte & Mandate', farbe: C.aktiv },
   // 08.10. (Lücke 7): Business-Hinweise, die während einer Business-freien Zeit kamen — gesammelt, danach EINE Meldung.
   businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
   // 09.10. (Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — neutral.
