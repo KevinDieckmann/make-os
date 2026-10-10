@@ -26,7 +26,7 @@ export function EmpfaengerKarte({ liste, darf, onGeaendert, i = 1 }: { liste: Em
   const tun = async (body: unknown, ok: string) => { const r = await senden(body); setMeldung(r.ok ? ok : r.fehler ?? 'Nicht gespeichert.'); if (r.ok) onGeaendert(); return r.ok; };
   const zeile = (e: Empfaenger) => (
     <div key={e.id}>
-      <ZeileAktionen titel={e.name} darf={darf} archiviert={e.archiviert}
+      <ZeileAktionen titel={e.name} darf={darf} archiviert={e.archiviert} loeschenFragt onOeffnen={() => setOffen(e.id)}
         onArchivieren={() => tun({ aktion: 'empfaenger-archiv', id: e.id, archiviert: !e.archiviert }, e.archiviert ? `„${e.name}“ ist wieder in Gebrauch.` : `„${e.name}“ ist archiviert (nicht in Gebrauch).`)}
         onLoeschen={async () => { if (await bestaetigen({ titel: `„${e.name}“ löschen?`, text: 'Der Eintrag und sein AVV-Nachweis verschwinden aus dem Register. Wird der Dienst nur nicht mehr genutzt, ist „Archivieren“ besser — der Nachweis bleibt.', ja: 'Löschen', gefahr: true })) await tun({ aktion: 'empfaenger-weg', id: e.id }, `„${e.name}“ gelöscht.`); }}>
         <Zeile onClick={() => setOffen(offen === e.id ? null : e.id)} aktiv={offen === e.id} links={<Punkt farbe={AVV_FARBE(e)} />} titel={e.name}

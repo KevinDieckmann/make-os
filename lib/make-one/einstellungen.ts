@@ -1,6 +1,6 @@
 // ─── MAKE OS — Einstellungen (Aufräumen Etappe 1, 08.10.) ───────────────────
 // Kevin: „ich weiß gar nicht mehr wo alles ist.“ Die frühere System-Seite (23 Links, Telegram und Wachstum doppelt, ZOE und
-// „Bauen“ gemischt) heißt jetzt „Einstellungen“ — Adresse bleibt /os/system. Vier klare Gruppen, jede Seite genau einmal.
+// „Bauen“ gemischt) heißt jetzt „Einstellungen“ — Adresse bleibt /os/system. Klare Gruppen (seit 10.10. fünf: + Bedienung), jede Seite genau einmal.
 // Agenten- und ZOE-Dinge stehen hier NICHT (die liegen unter ZOE, lib/make-one/spaces.ts `ZOE_BEREICH`); Research, Content,
 // Meeting, Board und Prospecting erreicht man über ZOE › Agenten. Rein (kein React), damit Leiste, Seite und Wächter
 // (tests/aufraeumen-etappe1.test.ts) dieselbe Liste lesen.
@@ -11,6 +11,10 @@ export interface EinstellungsGruppe { id: string; titel: string; eintraege: Eins
 export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
   { id: 'konto', titel: 'Konto & Sicherheit', eintraege: [
     { href: '/os/konto', label: 'Konto', was: 'Name, Passwort, Anmelde-Adressen, zweiter Faktor, Team, Einladen, Gesundheit teilen' },
+  ] },
+  // 10.10. (Kevin: „… rechts mit drei Punkten und Einstellungen“): Wischen, „⋯“, Rückfrage vor dem Löschen, Dichte — je Gerät.
+  { id: 'bedienung', titel: 'Bedienung', eintraege: [
+    { href: '/os/system/bedienung', label: 'Bedienung', was: 'Wischen am Handy, Menü „⋯“, Rückfrage vor dem Löschen, Dichte der Listen, Vibrieren — je Gerät' },
   ] },
   { id: 'verbindungen', titel: 'Verbindungen', eintraege: [
     // Telegram steht nur hier (die Kopplung selbst liegt im Konto, die Verbindungs-Seite verweist dorthin).

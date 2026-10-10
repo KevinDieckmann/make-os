@@ -277,7 +277,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const zs = wirksamerSpace(z);
     const f = zs ? SPACE_FARBE[zs] : farbe;
     return (
-      <ZeileAktionen key={z.id} titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => zArchivieren(z)} onLoeschen={() => zLoeschenFrage(z)}>
+      <ZeileAktionen key={z.id} titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => zArchivieren(z)} onLoeschen={() => zLoeschenFrage(z)}
+        loeschenFragt={!!z.abgeleitetVon && !z.angepasst} href={WEG.ziel(z.id)}
+        mehr={z.erledigt ? undefined : [{ id: 'umbenennen', label: 'Umbenennen', tun: () => setBearbeite({ id: z.id, text: z.titel }) }]}>
       <Zeile
         links={<Haken an={!!z.erledigt} farbe={f} onChange={() => zErledigen(z)} />}
         titel={bearbeite?.id === z.id ? titelFeld(z.id, t => zPatch(z.id, { titel: t }, true)) : <Link href={WEG.ziel(z.id)} title="Ziel öffnen — Meilensteine als Kette, Beschreibung, Messlatte" style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</Link>}
@@ -330,7 +332,12 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const ms = aufgabenStand(aufgabenVonMeilenstein(tasksState, m.id));
     return (
       <div key={m.id} id={`ziel-${m.id}`} style={zielRahmen(zielM === m.id, bf)}>
-        <ZeileAktionen titel={m.titel} archiviert={!!m.archiviertAm} onArchivieren={() => mArchivieren(m)} onLoeschen={() => mLoeschenFrage(m)}>
+        <ZeileAktionen titel={m.titel} archiviert={!!m.archiviertAm} onArchivieren={() => mArchivieren(m)} onLoeschen={() => mLoeschenFrage(m)}
+          loeschenFragt={!!m.abgeleitetVon && !m.angepasst} href={WEG.meilenstein(m.id)}
+          mehr={[
+            ...(onMsOeffnen ? [{ id: 'bearbeiten', label: 'Bearbeiten', hinweis: 'Datum, Ziel, Kette, Aufwand', tun: () => onMsOeffnen(m.id) }] : []),
+            { id: 'umbenennen', label: 'Umbenennen', tun: () => setBearbeite({ id: m.id, text: m.titel }) },
+          ]}>
         <Zeile
           links={<Haken an={m.erledigt} farbe={bf} onChange={() => mErledigen(m)} />}
           titel={bearbeite?.id === m.id ? titelFeld(m.id, t => mPatch(m.id, { titel: t }, true)) : <Link href={WEG.meilenstein(m.id)} title="Meilenstein öffnen — Aufgaben, Verlauf, Dateien, Notizen" style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</Link>}

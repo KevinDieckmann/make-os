@@ -51,7 +51,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 | `eingabe`, `feld`, `auswahl`, `Feldzeile` | Formularfeld 48/16 · kompakt 44 · Auswahlliste 40/44 · Feld mit Beschriftung und Fehlertext |
 | `Aktionsleiste` | die Hauptaktion unten mitlaufend am Handy, über der Tastatur beim Tippen |
 | `Klappbar` | Abschnitt einer Seite zum Auf- und Zuklappen (08.10.): Kopfzeile = Knopf (Anzeigeschrift 18, Pfeil, optional Zähler), zugeklappt wird der Inhalt NICHT gerendert, Anker `#<id>`; keine Karte (der Inhalt trägt seine Karten) — Finanzen › Planung |
-| `ZeileAktionen` | Archivieren & Löschen an jeder Listenzeile: Handy nach links wischen, Rechner Knöpfe am Rand (siehe „Löschen & Archivieren“) |
+| `ZeileAktionen` | Aktionen an jeder Listenzeile: „⋯“ in eigener Spalte → Menü (Öffnen · Link · neuer Tab · `mehr` · Archivieren · Löschen); Handy wischen nach Einstellung (siehe „Zeilen-Aktionen“) |
 | `EinfuegeTabelle` | Daten-Assistent (09.10., B9 a–c): aus Excel einfügen (Tab-getrennt) oder CSV wählen → Spalten/Positionen zuordnen (Vorschlag, je Quelle eine Auswahl 44/16) → Vorschau vom Server (neu · geändert · gleich · entfällt · Fehler je Zeile, abwählbar per `HakenZiel`) → EINE Hauptaktion „n übernehmen“ → „Rückgängig“ im Hinweis. Liste statt breiter Tabelle (Handy). Leser: `lib/tabelle/einfuegen.ts` — kein zweiter CSV-Leser |
 | `Rueckfrage`/`useRueckfrage`, `RueckgaengigLeiste`/`useRueckgaengig` | Rückfrage statt `window.confirm` (Abbrechen hat den Fokus) · Hinweis unten mit „Rückgängig“ (10 s) |
 
@@ -265,8 +265,8 @@ Alles andere macht da keinen Sinn.“ Baustein `components/os/ui/zeile-aktionen.
 
 | Teil | Verhalten |
 |---|---|
-| Handy | Zeile nach links wischen → „Archivieren“ (ruhig, Fläche) und „Löschen“ (Achtung-Farbe `BEDEUTUNG_FARBE.kritisch`), je 88 px breit. Ab 40 % der Breite bleibt sie offen; zurückwischen, Tippen daneben, Tippen auf die Zeile oder Escape schließt. Immer nur EINE Zeile offen. Senkrechtes Scrollen bleibt frei: `touch-action: pan-y` + Richtungs-Erkennung ab 10 px (waagerecht erst, wenn \|dx\| > 1,2 · \|dy\|). Der Klick nach dem Wischen öffnet die Zeile nicht. Pointer-Events, keine Bibliothek. |
-| Rechner | Dieselben zwei Aktionen als Symbol-Knöpfe (40 px) am rechten Rand der Zeile, sichtbar beim Überfahren und beim Tastatur-Fokus (Tab erreicht sie, Fokus-Rahmen sichtbar). Beschriftung für Vorleser: „„Titel“ archivieren“ / „„Titel“ löschen (Papierkorb)“; im Archiv „… aus dem Archiv zurückholen“. Ohne Zeiger (Handy) sind die Rand-Knöpfe nur für Vorleser/Tastatur da. |
+| Handy | **Seit 10.10. (Abschnitt „Zeilen-Aktionen“):** nach LINKS wischen = Archivieren, nach RECHTS = Löschen (je Gerät umstellbar), ab der Schwelle ausgelöst, darunter schnappt die Zeile zurück. Senkrechtes Scrollen bleibt frei: `touch-action: pan-y` + Richtungs-Erkennung ab 10 px (waagerecht erst, wenn \|dx\| > 1,2 · \|dy\|). Der Klick nach dem Wischen öffnet die Zeile nicht. Pointer-Events, keine Bibliothek. |
+| Rechner | **Seit 10.10.:** „⋯“ in einer eigenen Spalte rechts → Menü mit Archivieren/Zurückholen und Löschen unten (die Rand-Knöpfe über dem Inhalt sind weg). |
 | Rechte | **Entschieden wird auf dem Server** (Plattform-Regel: Sicht/Rolle/Haushalt nie nur in der Oberfläche): Produkte nur im Haushalt des Inhabers (`/api/crm/bestand`, fremder Haushalt/Testkunde/Partner 403 — auch beim Lesen des Papierkorbs); Aufgaben: fremde „nur ich“ gibt es für andere nicht (Papierkorb-/Archiv-Liste serverseitig gefiltert, `sichtFuer`; löschen, endgültig löschen, archivieren, wiederherstellen → 404). `darf={false}` blendet die Aktion zusätzlich aus, ersetzt die Prüfung aber nie. Wächter: `tests/zeile-aktionen.test.ts` › Server. |
 | Bewegung | `transform` + Breite, 0,24 s; „Bewegung reduzieren“ = sofort (Regel in globals.css). Nur Token-Farben. |
 
@@ -308,6 +308,44 @@ CRM-Papierkorb: `ladeCrm()` und `/api/crm/bestand` blenden ihn für ALLE Leser a
 Oberfläche `components/os/crm/ablage.tsx` (`useCrmAblage`, `AblageReiter`, `PapierkorbKarte`). **Rückfragen:** `useRueckfrage().bestaetigen({ titel, text, ja, gefahr })`
 ist der Ersatz für `window.confirm` (Promise, „Abbrechen“ immer dabei) — im Repo gibt es kein `window.confirm` mehr (Ausnahme: Stammdaten › Gesellschaften, Register-Paket).
 Kalender-Verschieben nutzt `useRueckgaengig` (10 s statt eigener 8-s-Leiste); `planung/Rueckgaengig.tsx` ist aufgegangen.
+
+## Zeilen-Aktionen (10.10.)
+Kevin 10.10. (Bildschirmfoto Mandate & Unternehmen › Mandate): beim Überfahren lagen Archivieren/Löschen als Knöpfe ÜBER dem Inhalt (verdeckten den
+Chip „Pa…“). „Löschen und Archivieren muss anders laufen — z. B. nach links wischen oder rechts mit drei Punkten und Einstellungen. Denk drauf rum,
+was für Einstellungen zusätzlich Sinn machen. Bau den Standard überall mit ein.“ Baustein `components/os/ui/zeile-aktionen.tsx` (+ Menü
+`zeilen-menue.tsx`, Einstellungen `bedienung.tsx`), Regeln rein in `lib/make-one/bedienung.ts`, Wächter `tests/zeilen-menue.test.ts` und
+`tests/zeile-aktionen.test.ts`.
+
+**Regel: nichts liegt über dem Inhalt.** Jede Listenzeile mit Aktionen hängt an `ZeileAktionen`; die Aktionen stehen hinter „⋯“ in einer eigenen,
+reservierten Spalte (44 px, `ZEILE_MEHR_BREITE` — Tabellenköpfe darüber rücken rechts um so viel ein). Kein eigener Löschen-/Archiv-Knopf in der Zeile.
+
+| Teil | Verhalten |
+|---|---|
+| Rechner | Rechts ein ruhiges „⋯“ (44 × 44) in eigener Spalte — sichtbar beim Überfahren, beim Tastatur-Fokus und solange das Menü offen ist; mit der Einstellung „⋯ immer sichtbar“ immer. `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, Beschriftung „Aktionen für „Titel““. Enter/Leertaste/Pfeil runter öffnet. |
+| Menü | Portal, Rolle `menu`/`menuitem`, Punkte ≥ 44 px. **Reihenfolge fest:** 1. Allgemeines, das der Baustein selbst kann — „Öffnen“ (`onOeffnen`, sonst `href`), „Link kopieren“, „In neuem Tab öffnen“ (nur interne Wege `/os…` über `WEG`); 2. die Einträge der Liste (`mehr`: Bearbeiten, Umbenennen, Firma öffnen, Parken, Verloren, Verschieben nach … — mit `auswahl` eine Unterliste mit Suche ab 7 Einträgen, `deaktiviert` + `grund` grau); ── Trennlinie ── 3. „Archivieren“ bzw. „Zurückholen“ und „Löschen“ (Achtung-Farbe, immer zuletzt). Pfeiltasten/Pos1/Ende wandern, Escape/Tab schließt, „⋯“ bekommt den Fokus zurück. Rechner: am Knopf (oben, wenn unten kein Platz); Handy: Blatt von unten über dunklem Grund, mit Titel und „Schließen“. |
+| Handy | Wischen nach LINKS = Archivieren, nach RECHTS = Löschen (Vorgabe). Hinter der Zeile steht, was passiert (Symbol + Wort, Farbe nach Bedeutung, Rezept `TIEF`); ab der Schwelle (≈ ⅓ der Zeile, 72–140 px, `wischSchwelle`) wird es kräftiger und löst beim Loslassen aus, darunter schnappt die Zeile zurück. Senkrecht scrollen hat Vorrang. Hat die Liste die Aktion nicht (kein Archiv), gibt es in diese Richtung kein Wischen. „⋯“ steht am Handy immer. |
+| Löschen | Wie bisher sicher statt endgültig (Papierkorb + 10 s „Rückgängig“ über `useRueckgaengig`). Mit der Einstellung „Vor dem Löschen nachfragen“ fragt der Baustein vorher (`useRueckfrage`) — außer die Liste fragt selbst (`loeschenFragt`: Sperren, Grund, was mitgeht; z. B. Kontakte Art. 17, Deals, Pannen). |
+| Rechte | `darf={false}` = nur die Zeile: kein „⋯“, kein Wischen, kein Eintrag. Entschieden wird weiter auf dem Server. |
+
+**Einstellungen › Bedienung** (`/os/system/bedienung`, `WEG.bedienung()`, Gruppe „Bedienung“ in `lib/make-one/einstellungen.ts`) — **je Gerät**
+(Merker `make-bedienung` im Browser, nur Abweichungen von der Vorgabe; ohne Speicher gilt die Vorgabe): Wischen nach links/rechts (Archivieren ·
+Löschen · Aktionen zeigen · Aus), „Vor dem Löschen nachfragen“ (aus), „⋯ immer sichtbar“ (aus), Dichte der Listen (Normal · Kompakt — Tippziel
+bleibt ≥ 44 px), „Kurz vibrieren beim Wischen“ (aus; nur wo der Browser `navigator.vibrate` kann). Warum je Gerät: Wischen, Vibrieren und Dichte
+sind Eigenschaften des Geräts — keine Personendaten, kein Server-Bestand. `BedienungAnwenden` im /os-Rahmen setzt `data-za-mehr`/`data-dichte`
+am `<html>`; Zeilen lesen die Einstellung über EIN Abo (`useBedienung`).
+
+**Einsatz:**
+```tsx
+<ZeileAktionen titel={x.name} href={WEG.x(x.id)} onOeffnen={() => oeffne(x.id)}
+  onArchivieren={() => archivieren(x)} onLoeschen={() => loeschen(x)} loeschenFragt={hatVerweise(x)} darf={darf}
+  mehr={[{ id: 'bearbeiten', label: 'Bearbeiten', tun: () => bearbeiten(x) }]}>
+  <Zeile titel={x.name} … />
+</ZeileAktionen>
+```
+**Eingebaut mit Weg/`mehr` (10.10.):** Mandate (Firma/Ansprechpartner öffnen), Kontakte (Firma öffnen), Firmen, Deals (Parken, Verloren …, Kontakt),
+Angebote (Markttraktion jeweils mit „Mit ZOE besprechen“ = `zoeFragen` mit Bezug), Ziele (Umbenennen) & Meilensteine (Bearbeiten, Umbenennen), Bauplan (Verschieben nach …), Aufgaben (das frühere eigene Menü „…“ —
+Verschieben nach, Umwandeln, Umhängen — ist jetzt `mehr`; die CSS-Sonderregel ist weg), Produkte, Kampagnen, Segmente, Newsletter, Beiträge,
+Events, Datenschutz (Pannen, Empfänger). Neu am Baustein: Routinen (Pausieren) und die Einkaufsliste (Abhaken) — vorher ein ✕ ohne Rückweg.
 
 ## Aufräumen: der Rest am Standard (04.10.)
 Kevin: „Dann ist die Software fast fertig.“ Die letzten 28 Dateien hingen noch an `schlank.tsx`: Board-Pack, Content, Meeting, Prospecting, Research, Roadmap,

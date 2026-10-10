@@ -78,6 +78,65 @@ Planungs-Ziele (sie liegen im Art.-9-Bestand — in der Planung nur als Karte); 
 9. Planung › Kapazität: ein Erholungs-Block in der Arbeitszeit senkt „frei“ der Woche (als Termin-Stunden, ohne Art/Titel).
 10. Zweite Person, die ihre Gesundheit teilt: Gesundheit › Name der anderen Person › Erholung → nur lesen, keine Unterlagen, kein Kalender-Verweis.
 
+## 10.10.2026 — Zeilen-Aktionen neu: „⋯“ in eigener Spalte, Wischen nach Einstellung, Einstellungen › Bedienung (nur lokal — Branch `zeilen-aktionen`, Basis 475bcb06 = `update-0910b`)
+
+Kevin 10.10. (Bildschirmfoto Mandate & Unternehmen › Mandate): beim Überfahren lagen Archivieren/Löschen als Knöpfe ÜBER dem Inhalt (verdeckten den
+Chip „Pa…“). „Löschen und Archivieren muss anders laufen — z. B. nach links wischen oder rechts mit drei Punkten und Einstellungen. Denk drauf rum, was
+für Einstellungen zusätzlich Sinn machen. Bau den Standard überall mit ein.“ Doku: `DESIGN_STANDARD.md` › „Zeilen-Aktionen (10.10.)“.
+
+**1. Der Baustein `ZeileAktionen` (components/os/ui/zeile-aktionen.tsx) — gilt sofort für ALLE ~35 Listen, die ihn schon nutzen**
+- Rechner: rechts ein ruhiges „⋯“ in einer **eigenen, reservierten Spalte** (44 px) — nie mehr über dem Inhalt. Sichtbar beim Überfahren, beim
+  Tastatur-Fokus und solange das Menü offen ist; am Handy immer. Menü-Knopf mit `aria-haspopup="menu"`, Enter/Pfeil runter öffnet, Escape schließt,
+  der Fokus kommt zurück. Die alten Rand-Knöpfe (`.ui-za-schnell`) sind weg.
+- Menü (components/os/ui/zeilen-menue.tsx, EINE Mechanik): oben **Öffnen · Link kopieren · In neuem Tab öffnen** (wenn die Liste einen Weg gibt, nur
+  interne `/os…`-Wege), dann die Einträge der Liste (`mehr`), Trennlinie, unten **Archivieren/Zurückholen · Löschen** (rot). Am Handy ein Blatt von unten.
+- Handy: **nach links wischen = Archivieren, nach rechts = Löschen** (Vorgabe), ab ≈ ⅓ der Zeile ausgelöst, darunter schnappt sie zurück; senkrecht
+  scrollen geht vor; ohne Archiv in einer Liste gibt es nach links kein Wischen. Löschen bleibt Papierkorb + 10 s „Rückgängig“ wie bisher.
+- Neue Props: `href` (über `WEG`), `onOeffnen`, `mehr`, `loeschenFragt` (die Liste fragt selbst — dann keine zweite Rückfrage).
+
+**2. Einstellungen › Bedienung** (`/os/system/bedienung`, neue Gruppe auf der Einstellungen-Seite, Schnellsuche „Bedienung“) — je Gerät
+- Wischen nach links / nach rechts: Archivieren · Löschen · Aktionen zeigen · Aus · „Vor dem Löschen nachfragen“ (Vorgabe aus) · „⋯ immer sichtbar“
+  (Vorgabe aus) · Dichte der Listen Normal/Kompakt (Zeile bleibt ≥ 44 px) · „Kurz vibrieren beim Wischen“ (Vorgabe aus; iPhone-Safari kann es nicht).
+- Gespeichert im Browser (`make-bedienung`, nur Abweichungen; ohne Speicher gilt die Vorgabe) — **Begründung:** Wischen, Vibrieren und Dichte sind
+  Eigenschaften des Geräts (am Handy anders als am Rechner), keine Personendaten → kein neuer Server-Bestand, kein Register-/Routen-/Messlatten-Eintrag.
+- Unten auf der Seite eine **Probezeile** zum Ausprobieren (ändert nichts).
+
+**3. Überall eingebaut**
+- Mit Weg/Menü-Einträgen: Mandate (Firma / Ansprechpartner öffnen), Kontakte (Firma öffnen), Firmen, Deals (Parken, Verloren …, Kontakt öffnen),
+  Angebote — in der Markttraktion jeweils auch „Mit ZOE besprechen“ (öffnet ZOE mit diesem Bezug, wie „ZOE fragen“), Ziele (Umbenennen), Meilensteine (Bearbeiten, Umbenennen), Bauplan (Verschieben nach … — auch ohne Ziehen), Aufgaben, Produkte, Kampagnen,
+  Segmente, Newsletter, Beiträge, Events, Datenschutz (Pannen, Empfänger).
+- **Aufgaben:** das eigene Menü „…“ (`aufgaben/ZeilenMenue.tsx`) ist im Standard aufgegangen — Verschieben nach, In Liste umwandeln, Zur Unteraufgabe
+  machen, Umhängen, Liste umbenennen/Farbe/In Aufgabe umwandeln stehen jetzt im selben „⋯“; die CSS-Sonderregel ist weg.
+- **Neu am Baustein:** Routinen (vorher ✕ ohne Rückweg → Löschen mit Rückgängig, „Pausieren“ im Menü) und die Einkaufsliste (vorher ✕ → wischen/⋯ mit
+  Rückgängig, „Abhaken“ im Menü). Tabellenköpfe (Kontakte, Firmen) rücken um die „⋯“-Spalte ein.
+- **Offen (Vorschlag, nicht gebaut):** weitere eigene ✕-Knöpfe in Editoren (Budget-/Ablaufpunkte von Events, Angebotspositionen, Blöcke der
+  Wochenvorlage, Kapazität-Ausnahmen, Vorlagen, Aufgaben-Dateien mit eigener Rückfrage) bleiben vorerst, wie sie sind; weitere Einstellungen als
+  Vorschlag: Wisch-Empfindlichkeit, „⋯“ links (Linkshänder), Bewegung in der App reduzieren (unabhängig vom System), Tastenkürzel an der Zeile
+  (E = archivieren, Entf = löschen), Einstellungen je Person auf dem Server (würde einen Bestand je Person brauchen).
+
+Tests: `tests/zeilen-menue.test.ts` (neu: Einstellungen, Wischen, Menü-Reihenfolge, Rechte, Render, CSS, überall), `tests/zeile-aktionen.test.ts`,
+`tests/design-standard.test.ts` › Zeilen-Aktionen, `tests/listen-aktionen.test.ts` (+ Routinen, Einkaufsliste), `tests/aufraeumen-etappe1.test.ts`
+(fünf Einstellungs-Gruppen).
+
+**So testet ihr — Rechner**
+1. Mandate & Unternehmen › Mandate: mit der Maus über eine Zeile fahren → rechts erscheint „⋯“ in einer eigenen Spalte, der Status-Chip bleibt ganz
+   sichtbar. Ohne Überfahren ist die Spalte leer.
+2. „⋯“ klicken → Menü: Öffnen · Link kopieren · In neuem Tab öffnen · Firma öffnen (falls verknüpft) · ── · Archivieren · Löschen (rot). „Link
+   kopieren“ → unten „Link kopiert“; in einem neuen Tab einfügen → das Mandat ist offen.
+3. Tastatur: mit Tab auf „⋯“ (erscheint), Enter → Menü, Pfeil runter/hoch wandern, Escape → Menü zu, Fokus wieder auf „⋯“.
+4. Aufgaben (ein Space mit Projekt): „⋯“ an einer Aufgabe → „Verschieben nach …“ → Liste wählen; „In Liste umwandeln“ → „Rückgängig“ unten.
+5. Einstellungen › Bedienung: „⋯ immer sichtbar“ an → zurück zu Mandate: „⋯“ steht an jeder Zeile. „Vor dem Löschen nachfragen“ an → Löschen über
+   „⋯“ fragt erst. Dichte „Kompakt“ → Listen enger. „Auf Vorgabe zurücksetzen“.
+
+**So testet ihr — Handy** (am iPhone über die Adresse, ein Wegwerf-Eintrag)
+1. Einstellungen › Bedienung › „Ausprobieren“: die Probezeile nach links wischen → hinten erscheint „Archivieren“, ab einem Drittel wird es kräftiger,
+   loslassen → unten „Probe: archiviert“ mit „Rückgängig“. Kurz wischen und loslassen → die Zeile schnappt zurück, nichts passiert.
+2. Nach rechts wischen → „Löschen“ (rot) → „Probe: gelöscht — es ist nichts passiert“.
+3. Senkrecht über die Zeilen scrollen → nichts wird gewischt.
+4. „Nach rechts wischen“ auf „Aktionen zeigen“ stellen → nach rechts wischen öffnet das Menü als Blatt von unten (mit „Schließen“).
+5. Gesundheit › Ernährung › Einkaufsliste: einen Posten nach rechts wischen → weg, „Rückgängig“ holt ihn zurück. Planung › Routinen: „⋯“ an einer
+   Routine → „Pausieren“.
+
 ## 10.10.2026 — Stress nur als Anspannung 1–5 · Brain-Notiz „People“ als Mitarbeiter unter CEO-Office (nur lokal — Branch `stress-people`, Basis 4fd45912)
 
 Zwei kleine Entscheidungen vom 10.10.: „Nur Anspannung 1–5“ und `people.md` (Founder-Care) → als Mitarbeiter unter CEO-Office, Business.

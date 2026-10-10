@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { mandateLink } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
+import { zoeFragen } from './ZoeFragen';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -66,6 +67,7 @@ interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-po
 export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
   // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
+  const router = useRouter();
   // Am Handy: Hinweise in die Zeile darunter — sonst drücken die Chips den Kundennamen weg.
   const breit = useBreit();
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
@@ -171,7 +173,13 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
             const lq = liqui?.mandate.find(x => x.id === m.id);
             return (
               <div key={m.id} id={`ziel-${m.id}`}>
-                <ZeileAktionen titel={`${m.kunde} · ${m.titel}`} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}>
+                <ZeileAktionen titel={`${m.kunde} · ${m.titel}`} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}
+                  loeschenFragt={m.status !== 'beendet'} href={WEG.mandat(m.id)} onOeffnen={() => setAuswahl(m.id)}
+                  mehr={[
+                    ...(m.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => router.push(WEG.firma(m.firmaId)) }] : []),
+                    ...(m.kontaktIds[0] ? [{ id: 'kontakt', label: 'Ansprechpartner öffnen', tun: () => zuKontakt(m.kontaktIds[0]) }] : []),
+                    { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'mandat', id: m.id }) },
+                  ]}>
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}

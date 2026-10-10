@@ -182,7 +182,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
     const wer = zustaendig(e.zustaendig, 'event');
     return (
       <div key={e.id}>
-        <ZeileAktionen titel={e.titel} archiviert={!!e.archiviertAm} onArchivieren={() => (e.archiviertAm ? ablage.zurueckholen(e.id, e.titel) : ablage.archivieren(e.id, e.titel))} onLoeschen={() => eventPapierkorb(ablage, api, e)}>
+        <ZeileAktionen href={WEG.event(e.id)} titel={e.titel} archiviert={!!e.archiviertAm} onArchivieren={() => (e.archiviertAm ? ablage.zurueckholen(e.id, e.titel) : ablage.archivieren(e.id, e.titel))} onLoeschen={() => eventPapierkorb(ablage, api, e)}>
         <Zeile onClick={() => waehle(breit ? e.id : aktivId === e.id ? null : e.id)} aktiv={aktivId === e.id}
           links={<Punkt farbe={e.status === 'durchgefuehrt' ? LEUCHT.gut : e.status === 'abgesagt' ? C.inkLeise : warnung ? LEUCHT.achtung : LEUCHT.beziehung} />}
           titel={reiheAktiv && reiheAktiv !== OHNE_REIHE ? e.titel : <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}><span>{e.titel}</span><ReiheAbzeichen e={e} /></span>} unter={unter}

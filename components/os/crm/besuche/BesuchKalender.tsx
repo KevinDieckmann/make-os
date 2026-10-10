@@ -60,7 +60,7 @@ export function BesuchKalender({ api, crm, ablage, onAkte }: Pick<BesuchProps, '
       );
     }
     return (
-      <ZeileAktionen key={e.id} titel={e.titel} archiviert={!!e.archiviertAm} onArchivieren={() => (e.archiviertAm ? ablage.zurueckholen(e.id, e.titel) : ablage.archivieren(e.id, e.titel))} onLoeschen={() => eventPapierkorb(ablage, api, e)}>
+      <ZeileAktionen key={e.id} href={WEG.besuch(e.id)} onOeffnen={() => onAkte(e.id)} titel={e.titel} archiviert={!!e.archiviertAm} onArchivieren={() => (e.archiviertAm ? ablage.zurueckholen(e.id, e.titel) : ablage.archivieren(e.id, e.titel))} onLoeschen={() => eventPapierkorb(ablage, api, e)}>
       <Zeile onClick={() => onAkte(e.id)} links={<Punkt farbe={ANMELDE_FARBE[a]} />}
         titel={e.titel} unter={[unter, kosten > 0 ? euro(kosten) : ''].filter(Boolean).join(' · ')}
         rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>

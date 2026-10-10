@@ -118,7 +118,7 @@ export function Produkte({ api }: { api: CrmApi }) {
     const zahlen = [z.mandateAktiv ? `${z.mandateAktiv} aktiv` : '', z.mrr ? `${kurzEuro(z.mrr)}/Monat` : '', z.dealsOffen ? `${z.dealsOffen} Deal${z.dealsOffen === 1 ? '' : 's'} offen` : '', z.quote !== null ? `Quote ${Math.round(z.quote * 100)} %` : ''].filter(Boolean).join(' · ');
     return (
       <div key={l.id}>
-        <ZeileAktionen titel={l.name} archiviert={sicht === 'archiv'} onArchivieren={() => (sicht === 'archiv' ? zurueckholen(l) : archivieren(l))} onLoeschen={() => loeschen(l)}>
+        <ZeileAktionen titel={l.name} href={WEG.produkt(l.id)} onOeffnen={() => setAuswahl(l.id)} archiviert={sicht === 'archiv'} onArchivieren={() => (sicht === 'archiv' ? zurueckholen(l) : archivieren(l))} onLoeschen={() => loeschen(l)}>
           <Zeile onClick={() => setAuswahl(auswahl === l.id ? null : l.id)} aktiv={auswahl === l.id} links={<Punkt farbe={statusFarbe(l.status)} />}
             titel={l.name} unter={[`${STUFE[l.stufe]} · ${preisText(l)}`, zahlen, sicht === 'produkte' && planungFehlt(l).length ? `Planung: ${planungFehlt(l).join(', ')} fehlt` : ''].filter(Boolean).join(' · ')}
             rechts={<span style={{ display: 'flex', gap: 6 }}>{l.phasen?.length ? <Chip farbe={C.inkDim}>{l.phasen.length} Phasen</Chip> : null}{l.status !== 'eingestellt' && produktAngebotFehlt(l).length ? <Chip farbe={LEUCHT.achtung}>Text fehlt</Chip> : null}<Chip farbe={statusFarbe(l.status)}>{l.status}</Chip></span>} />

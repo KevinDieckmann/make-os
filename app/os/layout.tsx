@@ -16,6 +16,7 @@ import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
 import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
 import { MedienSender } from '@/components/os/medien/Sender';
 import { IdeeErfassen } from '@/components/os/bauplan/IdeeErfassen';
+import { BedienungAnwenden } from '@/components/os/ui/bedienung';
 import { wache } from '@/lib/zugang/wache';
 
 // Alles hinter der Anmeldung wird je Anfrage gebaut (25.09., schneller Modus): Die Wache liest das
@@ -30,6 +31,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
     <div className="os-shell" style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
       {/* Tempo (27.09.): gleiche GET-Abfragen an /api werden geteilt statt dreifach gestellt. */}
       <AnfrageBuendel />
+      {/* Bedienung je Gerät (10.10.): „⋯ immer sichtbar“ und die Dichte der Listen als Merkmale am <html> (Einstellungen › Bedienung). */}
+      <BedienungAnwenden />
       {/* Schreibt Browser-Fehler mit, damit sie nicht nur auf dem Bildschirm stehen. */}
       <FehlerMelder />
       {/* Wer welchen Bestand geändert hat, schreibt seit 28.09. der Server selbst (lib/store/aenderungsprotokoll.ts). */}

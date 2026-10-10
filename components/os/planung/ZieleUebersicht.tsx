@@ -214,7 +214,7 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
     );
     return (
       <div key={z.id}>
-        {darf ? <ZeileAktionen titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => archivieren(z)} onLoeschen={() => loeschen(z)}>{kern}</ZeileAktionen> : kern}
+        {darf ? <ZeileAktionen href={WEG.ziel(z.id)} titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => archivieren(z)} onLoeschen={() => loeschen(z)}>{kern}</ZeileAktionen> : kern}
         {offenMs && mitEigenen && eigeneMs && <EigeneMeilensteineListe zielId={z.id} zielTitel={z.titel} stand={eigeneMs} darf={darfMs} rueck={rueck} farbe={farbe} heute={heute} />}
         {offenMs && zMs.length > 0 && (
           <div style={{ margin: '2px 0 8px 36px', display: 'grid', gap: 4 }}>

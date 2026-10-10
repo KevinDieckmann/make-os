@@ -14,8 +14,11 @@ export { ZielBezug } from './ziel-bezug';
 export { useHandy, useBreit, useMedien, HANDY_BIS, SPALTEN_AB } from './medien';
 // Fokus-Signatur (04.10., DESIGN_STANDARD.md › Fokus-Signatur): Mini-Strahl über einer echten Reihe, Segmentbalken, Kante, Netz.
 export { FadenLinie, Segmentbalken, FokusKante, NetzMotiv, type FadenLinieProps } from './fokus';
-// Zeilen-Aktionen (04.10., DESIGN_STANDARD.md › Löschen & Archivieren): Wischen/Überfahren → Archivieren · Löschen, „Rückgängig“, Rückfrage.
-export { ZeileAktionen, RueckgaengigLeiste, useRueckgaengig, Rueckfrage, useRueckfrage, RUECKGAENGIG_MS, AKTION_BREITE, RICHTUNG_AB, type ZeileAktionenProps, type Rueckgaengig, type RueckfrageDaten, type RueckfrageWahl, type Bestaetigung } from './zeile-aktionen';
+// Zeilen-Aktionen (04.10., neu 10.10. — DESIGN_STANDARD.md › Zeilen-Aktionen): „⋯“ in eigener Spalte → Menü; Handy: wischen (je Gerät
+// einstellbar, Einstellungen › Bedienung); „Rückgängig“, Rückfrage.
+export { ZeileAktionen, RueckgaengigLeiste, useRueckgaengig, Rueckfrage, useRueckfrage, RUECKGAENGIG_MS, RICHTUNG_AB, ZEILE_MEHR_BREITE, type ZeileAktionenProps, type Rueckgaengig, type RueckfrageDaten, type RueckfrageWahl, type Bestaetigung } from './zeile-aktionen';
+export { MenueListe, ZeilenMenueFenster, zeilenMenueEintraege, type ZeilenMehr, type ZeilenAuswahl, type MenueEintrag } from './zeilen-menue';
+export { useBedienung, bedienungAendern, BedienungAnwenden, ruckeln, kannVibrieren } from './bedienung';
 export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, LEUCHT, zoneFarbe, prioFarbe } from '../schlank';
 // Überblick „Für dich“ je Bereich (04.10. abends, DESIGN_STANDARD.md › Überblick): Ist 3 Monate · heute · Prognose aus echten Daten.
 export { FlussKarte, useFluss, flussPunkte, type FlussKarteProps } from './fluss';

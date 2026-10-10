@@ -28,9 +28,10 @@ import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
+import { zoeFragen } from './ZoeFragen';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SearchX } from 'lucide-react';
-import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, useRueckgaengig, useRueckfrage } from '../ui';
 import { useArt17 } from './kontakt/art17';
 import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
@@ -298,14 +299,16 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
             ) : (
               <div className="kartei-liste">
                 {breit && (
-                  <div className="kartei-zeile" style={{ display: 'grid', gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                  <div className="kartei-zeile" style={{ display: 'grid', gap: 12, padding: `0 ${8 + ZEILE_MEHR_BREITE}px 6px 8px`, fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                     <span /><span /><span>Name</span><span>Firma</span><span title="BEAN-Kundengruppe">BEAN</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
                   </div>
                 )}
                 <div>
                   {sichtbar.map((x, i) => (
                     <div key={x.id} data-kid={x.id}>
-                      <ZeileAktionen titel={anzeigename(x)} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => void art17.loeschen(x, () => { if (auswahl === x.id) setAuswahl(null); })}>
+                      <ZeileAktionen titel={anzeigename(x)} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => void art17.loeschen(x, () => { if (auswahl === x.id) setAuswahl(null); })}
+                        loeschenFragt href={WEG.akte(x.id)} onOeffnen={zuAkte ? () => zuAkte(x.id) : undefined}
+                        mehr={[...(x.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => zuFirma(x.firmaId!) }] : []), { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'kontakt', id: x.id }) }]}>
                       <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
                         chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
                       </ZeileAktionen>

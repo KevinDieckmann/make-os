@@ -130,7 +130,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
               const z = d.zahlen[k.id];
               return (
                 <div key={k.id}>
-                  <ZeileAktionen titel={k.name} archiviert={sicht === 'archiv'} onArchivieren={() => { setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(k.id, k.name); else ablage.archivieren(k.id, k.name); }} onLoeschen={() => { setOffen(null); kampagneLoeschen(ablage, k); }}>
+                  <ZeileAktionen href={WEG.kampagne(k.id)} onOeffnen={() => setOffen(k.id)} titel={k.name} archiviert={sicht === 'archiv'} onArchivieren={() => { setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(k.id, k.name); else ablage.archivieren(k.id, k.name); }} onLoeschen={() => { setOffen(null); kampagneLoeschen(ablage, k); }}>
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
                     titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}

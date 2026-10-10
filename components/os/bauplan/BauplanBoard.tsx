@@ -14,7 +14,8 @@ import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ThumbsUp, MessageSquare, Image as BildIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, feld, LEUCHT, ZeileAktionen, useRueckgaengig } from '../ui';
+import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, feld, LEUCHT, ZeileAktionen, useRueckgaengig, type ZeilenMehr } from '../ui';
+import { WEG } from '@/lib/wege';
 import { Pillen } from '../crm/teile';
 import { useLinkAuswahl } from '../Verlauf';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
@@ -110,6 +111,16 @@ export function BauplanBoard() {
     void tu({ aktion: 'verschieben', id, spalte, index }, l => verschieben(l, id, spalte, index, new Date().toISOString()));
   };
 
+  // „Verschieben nach …“ im Menü „⋯“ (10.10.): die Tastatur-/Handy-Alternative zum Ziehen — ans Ende der Spalte.
+  const nachSpalte = (id: string, spalte: Spalte) => {
+    const index = spalten[spalte].filter(i => i.id !== id).length;
+    void tu({ aktion: 'verschieben', id, spalte, index }, l => verschieben(l, id, spalte, index, new Date().toISOString()));
+  };
+  const kartenMehr = (k: { id: string }, jetzt: Spalte): ZeilenMehr[] => [{
+    id: 'verschieben', label: 'Verschieben nach', hinweis: 'in eine andere Spalte (auch ohne Maus)',
+    auswahl: { titel: 'Verschieben nach …', eintraege: SPALTEN.filter(s => s.id !== jetzt).map(s => ({ id: s.id, label: s.label, punkt: SPALTEN_FARBE[s.id] })), waehlen: s => nachSpalte(k.id, s as Spalte) },
+  }];
+
   const heute = localDay();
   // Nie eine Null (Muster seit 23.09.): leer zeigt „—“.
   const zahl = (n: number) => (items && n ? String(n) : undefined);
@@ -183,7 +194,7 @@ export function BauplanBoard() {
                   {sichtbar.map(k => (
                     <div key={k.id} style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
                       {hier && ziel?.vor === k.id && linie}
-                      <ZeileAktionen titel={k.titel} onArchivieren={() => verwerfen(k, true)}>
+                      <ZeileAktionen titel={k.titel} onArchivieren={() => verwerfen(k, true)} href={WEG.bauplan(k.id)} onOeffnen={() => setOffen(k.id)} mehr={kartenMehr(k, s.id)}>
                       <KarteMini k={k} namen={namen} ich={ich} heute={heute} frisch={frisch === k.id} zieht={zieht === k.id}
                         onOeffnen={() => setOffen(k.id)}
                         onZiehStart={e => { e.dataTransfer.setData('text/plain', k.id); e.dataTransfer.effectAllowed = 'move'; setZieht(k.id); }}
@@ -207,7 +218,7 @@ export function BauplanBoard() {
                 {verworfeneZeigen ? 'Verworfene ausblenden' : `${verworfen.length} verworfen — ansehen`}
               </button>
               {verworfeneZeigen && verworfen.map(i => (
-                <ZeileAktionen key={i.id} titel={i.titel} archiviert onArchivieren={() => verwerfen(i, false)}>
+                <ZeileAktionen key={i.id} titel={i.titel} archiviert onArchivieren={() => verwerfen(i, false)} href={WEG.bauplan(i.id)} onOeffnen={() => setOffen(i.id)}>
                   <button onClick={() => setOffen(i.id)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 0', textDecoration: 'line-through', minHeight: 32 }}>{i.titel}</button>
                 </ZeileAktionen>
               ))}

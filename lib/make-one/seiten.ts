@@ -96,6 +96,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   // Einstellungen
   s('einstellungen', 'Einstellungen', '/os/system'),
   s('konto', 'Einstellungen · Konto', WEG.konto()),
+  s('bedienung', 'Einstellungen · Bedienung (Wischen, Menü ⋯, Löschen, Dichte)', WEG.bedienung()),
   s('verbindungen', 'Einstellungen · Verbindungen (WhatsApp, ZOE auf WhatsApp, Telegram …)', WEG.verbindungen()),
   s('datenschutz', 'Einstellungen · Datenschutz', WEG.datenschutz()),
   s('stammdaten', 'Einstellungen · Stammdaten', '/os/stammdaten'),

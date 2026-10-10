@@ -43,7 +43,7 @@ export function PannenKarte({ i = 4 }: { i?: number }) {
           const o = d.offen[p.id] ?? [];
           const farbe = o.some(x => x.dringend) ? LEUCHT.kritisch : p.abgeschlossenAm ? LEUCHT.gut : LEUCHT.achtung;
           return (
-            <ZeileAktionen key={p.id} titel={p.beschreibung.slice(0, 40)} onLoeschen={async () => { if (await bestaetigen({ titel: 'Eintrag löschen?', text: 'Das Register ist ein Nachweis (Art. 33 Abs. 5). Normal: abschließen — die Löschfrist räumt nach 36 Monaten auf.', ja: 'Trotzdem löschen', gefahr: true })) await senden({ aktion: 'panne-weg', id: p.id }); }}>
+            <ZeileAktionen key={p.id} titel={p.beschreibung.slice(0, 40)} loeschenFragt onOeffnen={() => setEntwurf({ ...p, kenntnisAm: lokal(p.kenntnisAm) })} onLoeschen={async () => { if (await bestaetigen({ titel: 'Eintrag löschen?', text: 'Das Register ist ein Nachweis (Art. 33 Abs. 5). Normal: abschließen — die Löschfrist räumt nach 36 Monaten auf.', ja: 'Trotzdem löschen', gefahr: true })) await senden({ aktion: 'panne-weg', id: p.id }); }}>
               <Zeile onClick={() => setEntwurf({ ...p, kenntnisAm: lokal(p.kenntnisAm) })} links={<Punkt farbe={farbe} />} umbrechen
                 titel={`${p.kenntnisAm.slice(0, 10)} · ${p.beschreibung.slice(0, 80)}`}
                 unter={o.length ? o.map(x => x.text).join(' · ') : `abgeschlossen am ${p.abgeschlossenAm}`}
