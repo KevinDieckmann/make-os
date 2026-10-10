@@ -114,7 +114,9 @@ export function robotsErlaubt(regeln: readonly RobotsRegel[], pfad: string): boo
   let best: RobotsRegel | null = null;
   for (const r of regeln) {
     if (!r.pfad) continue;
-    const muster = new RegExp(`^${r.pfad.replace(/[.+?^{}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\\\$$/, '$').replace(/\$$/, '$')}`);
+    // `*` = beliebig, `$` am Ende = Ende des Pfads; ein `$` mitten im Pfad wird wörtlich genommen.
+    const roh = r.pfad.endsWith('$') ? r.pfad.slice(0, -1) : r.pfad;
+    const muster = new RegExp(`^${roh.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}${r.pfad.endsWith('$') ? '$' : ''}`);
     if (!muster.test(pfad)) continue;
     if (!best || r.pfad.length > best.pfad.length || (r.pfad.length === best.pfad.length && r.erlaubt)) best = r;
   }

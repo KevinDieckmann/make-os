@@ -338,6 +338,9 @@ describe('Netz und Quellen', () => {
     expect(robotsErlaubt(r, '/intern/x')).toBe(false);
     expect(robotsErlaubt(r, '/intern/presse/1')).toBe(true);
     expect(robotsErlaubt(r, '/')).toBe(true);
+    const ende = robotsLesen('User-agent: *\nDisallow: /*.pdf$');
+    expect(robotsErlaubt(ende, '/unterlagen/a.pdf')).toBe(false);
+    expect(robotsErlaubt(ende, '/unterlagen/a.pdf?x=1')).toBe(true);
     const eigen = robotsLesen('User-agent: *\nDisallow:\n\nUser-agent: MAKE-OS-Recherche\nDisallow: /');
     expect(robotsErlaubt(eigen, '/irgendwas')).toBe(false);
     const t = teilVon('a'.repeat(WEB.zeichen + 5), 2);

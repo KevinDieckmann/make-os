@@ -176,10 +176,15 @@ export async function laufStarten(e: StartEingabe, person: string): Promise<Star
 
   if (a.art === 'regel') {
     // A0 ohne Modell: Gerüst + Prüfliste + Aufgabe für den Menschenschritt; nichts zu übernehmen → gleich „übernommen“.
-    const ergebnis = await startPruefer(e.mandatId, d, daten, person, mandat.mandat);
-    await dossierSchreiben({ op: 'geruest', mandatId: e.mandatId }, person);
-    await dossierSchreiben({ op: 'lauf-ende', mandatId: e.mandatId, laufId: lauf.id, status: 'uebernommen', kostenCent: 0, ergebnis }, person);
-    return { status: 200, body: { ok: true, lauf: lauf.id, fertig: true, ergebnis } };
+    try {
+      const ergebnis = await startPruefer(e.mandatId, d, daten, person, mandat.mandat);
+      await dossierSchreiben({ op: 'geruest', mandatId: e.mandatId }, person);
+      await dossierSchreiben({ op: 'lauf-ende', mandatId: e.mandatId, laufId: lauf.id, status: 'uebernommen', kostenCent: 0, ergebnis }, person);
+      return { status: 200, body: { ok: true, lauf: lauf.id, fertig: true, ergebnis } };
+    } catch (x) {
+      await laufFehler(e.mandatId, lauf.id, person, x instanceof Error ? x.message : 'Der Start-Prüfer ist gescheitert.', 0);
+      return { status: 500, body: { ok: false, fehler: 'Der Start-Prüfer ist gescheitert — nichts weiter geändert.' } };
+    }
   }
 
   const arbeit = async () => { try { await laufAusfuehren(e.mandatId, lauf.id, person, mandat.mandat); } catch (x) { await laufFehler(e.mandatId, lauf.id, person, x instanceof Error ? x.message : 'Fehler', 0); } };
@@ -331,7 +336,9 @@ async function laufAusfuehren(mandatId: string, laufId: string, person: string, 
   ].filter(Boolean).join('\n');
   // Die Eingaben stammen aus der Firmenakte bzw. von Hand (auch aus Importen) — als Daten gerahmt, nie als Anweisung.
   const messages: unknown[] = [{ role: 'user', content: `Eingaben des Mandats:\n${fremd('eingaben', eingaben)}${kandidaten ? `\n\nAdressen aus der Suche dieses Laufs (nur diese und die Domains des Mandats sind lesbar):\n${fremd('web', kandidaten)}` : ''}\n\nArbeite den Auftrag ab und antworte am Ende nur mit dem JSON.` }];
-  const grenzeUsd = Math.max(0, inUsdCent(l.grenzeCent) - usdCent);
+  // Ist die Grenze schon mit der Suche erreicht, endet der Lauf hier (die Schleife liest 0 als „keine Grenze“).
+  const grenzeUsd = inUsdCent(l.grenzeCent) - usdCent;
+  if (grenzeUsd <= 0) { await laufFehler(mandatId, laufId, person, 'Kostengrenze des Laufs schon mit der Suche erreicht — abgebrochen.', usdCent); return; }
   const ausgang = await schleife({
     system, messages, tools: werkzeugeFuer(l.agent), runden: 4, letzteRundeOhneWerkzeuge: true, werkzeugBudget: 20, doppeltErkennen: true,
     deadline: Date.now() + 5 * 60_000, kostenGrenzeCent: grenzeUsd, stillstand: 3,
