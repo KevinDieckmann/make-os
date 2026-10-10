@@ -51,6 +51,65 @@ Jahresziele“ und „Täglich Top-3 festlegen; Prioritäten (Eisenhower) sichtb
 das Briefing als Morgenlauf-Text je Person (der Lauf ist ein Systemlauf des Inhabers, Offen in CLAUDE.md Regel 5). **Rückweg:** nur neue Routen, ein neuer Bestand je Person, Oberfläche — der alte Stand
 ignoriert `heute-top3--*` und kennt die Karten `top3`/`briefing` nicht (ein gespeichertes Layout mit ihnen würde beim alten Stand ignoriert).
 
+## 10.10.2026 — Unternehmen › Beschlüsse & Satzung: Beschluss-Buch, Gegenstand mit Historie, Folgen, Dokument → Vorschlag (nur lokal — Branch `unternehmen-beschluesse`, Basis 1db85a25 = `update-0910b`)
+
+Kevin 10.10.: „Unternehmen wird extrem spannend, wenn ich da alle Gesellschafterbeschlüsse, den Gegenstand und alles dazu gesammelt habe.“
+**Daten additiv:** kein neuer Bestand — alles steht als OPTIONALES Feld im vorhandenen Register-Eintrag (`gesellschaften--<haushalt>`): `beschluesse[]` bekommt
+Nummer, Gremium, Beteiligte, Abstimmung, Wirkung, angemeldet/eingetragen am, Verweise, Änderungen, Vorlage (neue Arten und Status „angemeldet“), dazu die neue Liste
+`fassungen[]`. Bestehende Beschlüsse bleiben unverändert gültig (Nummer nur angezeigt-abgeleitet, nie umgeschrieben); `Ereignis.beschlussId` im Schild (optional).
+
+**Gebaut:**
+- **Beschluss-Buch je Gesellschaft** (neuer Reiter „Beschlüsse & Satzung“, `?s=beschluesse&w=<gesellschaft>`): chronologisch, fortlaufend nummeriert je Gesellschaft
+  und Jahr — die Nummer vergibt der Server beim ersten „nicht mehr Entwurf“ (`lib/gesellschaften/server.ts`, Regeln `lib/gesellschaften/beschluesse.ts`). Arten:
+  Gesellschafter-, Umlauf-, GF-Beschluss, Satzungsänderung, Kapitalmaßnahme, GF-Bestellung/Abberufung, Gewinnverwendung, Feststellung Jahresabschluss, Sonstiges.
+  Gremium, Beteiligte (Gesellschafter-/Organ-Einträge per Kennung), Abstimmung ja/nein/Enthaltung mit Ergebnis nach Anteilen (Gewicht zum Zeitpunkt der Abstimmung,
+  stimmrechtslose zählen nicht, Mehrheit als gesetzlicher Regelfall), Wirkung ab, Status Entwurf · gefasst · angemeldet · eingetragen · aufgehoben, Unterlagen
+  (verschlüsselte Ablage), Verweise (Vertrag, Gesellschafter, Risiko). Filter (Jahr, Status, Art), Suche, **PDF des Buchs** (pdf-lib, `/api/gesellschaften/beschluesse?pdf=1`).
+- **Gegenstand & Satzung mit Historie:** Gegenstand, Satzungsfassung, Stammkapital, Sitz, Geschäftsführung, Firmierung — jede Änderung eine neue Fassung mit „gültig
+  ab“ und Verweis auf den Beschluss, nie überschrieben (409), falsche in den Papierkorb. „Stand am Datum X“; der Steckbrief zeigt die gültige Fassung (Karte
+  „Gegenstand & Satzung“; eine heute gültige neue Fassung zieht Sitz/Kapital/GF/Firmierung im selben Schreiben nach, Abweichungen → „Steckbrief angleichen“).
+- **Folgen eines Beschlusses** (nach „gefasst“, Stapel-Art `recht`, nichts automatisch): Ereignis im Pflichten-Kalender des Schilds (daraus Handelsregister-
+  Anmeldung, Gesellschafterliste, Transparenzregister mit Frist — EINE Quelle, die vorhandenen Ereignis-Pflichten), neue Fassung, Cap-Table anpassen (Aufgabe).
+  Je Folge höchstens einmal (Marke im Bestand des Head of Recht); die Freigabe rechnet die Folge aus dem jetzigen Bestand neu. **Nachtragen ohne Flut:** von
+  selbst nur für Beschlüsse der letzten 90 Tage (`folgenFaellig`); ältere (nachgetragene) — ob von Hand oder aus einem Dokument — nur über den Knopf
+  „Folgen vorschlagen“ an der Zeile bzw. in der Karte „Folgen des Beschlusses“.
+- **Aus Dokument übernehmen:** Beschluss-/Satzungs-PDF hochladen → Text ohne Modell lesen (`lib/gesellschaften/beschluss-import.ts`, Vorbild Vertrags-Checkliste) →
+  Datum, Art, Gremium, Titel, Gegenstand-Wortlaut, Stammkapital, Sitz, Firmierung als Vorschlag mit wörtlichen Fundstellen (Seite/Paragraf); Beteiligte nur als Text.
+  „Als Beschluss übernehmen“ füllt nur das Formular; „… als Fassung“ legt je Änderung eine Fassung an. Liegt das erkannte Datum mehr als 90 Tage zurück, steht
+  der Status auf „eingetragen“ (Satzung/Kapital/GF) bzw. „gefasst“, mit der Zeile „Älterer Beschluss — keine Folgen vorgeschlagen.“ (`dokumentVorbelegung`).
+  Wer einen alten Beschluss gleich als „eingetragen“ anlegt, bekommt keinen Eintragungstag „heute“ gestempelt.
+- **Vorlagen** (`lib/gesellschaften/beschluss-vorlagen.ts`): elf neutrale Startvorlagen mit Platzhaltern aus dem Register, Hinweis „keine Rechtsberatung, vor
+  Verwendung prüfen“; allgemeiner Beschluss, Einpersonen-Niederschrift und Jahresabschluss kommen aus der Vorlagen-Bibliothek des Schilds (nichts doppelt).
+- **Head of Recht:** der Recht-Check nennt Beschlüsse ohne Anmeldung bzw. lange ohne Eintragung („was fehlt“, mit Weg ins Buch). ZOE `gesellschaften_lesen` nennt
+  gültigen Gegenstand, die jüngsten Beschlüsse (Nummer, Datum, Art, Status, nie Wortlaut) und offene Eintragungen — nur lesen.
+- **Recht:** Art. 15 nennt die Beteiligung an einem Beschluss mit der EIGENEN Stimme (nie Wortlaut, nie fremde Stimmen); Art. 17 tilgt wie bisher im Register.
+  Zugang wie das Register (Haushalt des Inhabers; „nur Business“, Testkunde, fremder Haushalt, Dienstweg ohne Person → 403), Lese-Protokoll. Demo-Saat:
+  erfundene Fassungen und vier Beschlüsse (die gefasste Kapitalerhöhung legt ihre Folgen in den Stapel).
+
+**So testet ihr** (Klickdummy `localhost:3001`):
+1. Unternehmen › „Beschlüsse & Satzung“ → Gesellschaft wählen → „+ Beschluss“ → Vorlage „Kapitalerhöhung“: Inhalt ist gefüllt (Firma, Sitz, Stammkapital), Rest „[…]“,
+   Änderung „Stammkapital“ vorbelegt. Neuen Betrag eintragen, Beteiligte anhaken, Stimmen „Ja“ → das Ergebnis zeigt Anteile und „angenommen“.
+2. Status „gefasst“ → Eintragen: der Beschluss steht mit „Nr. n/2026“ oben in der Liste. Öffnen: die Karte „Folgen des Beschlusses“ zeigt drei Folgen „in den Freigaben“.
+3. Freigaben (Business): „Pflichten anlegen: Kapitalmaßnahme“ freigeben → Unternehmen › Pflichten zeigt Notar/Handelsregister, Gesellschafterliste,
+   Transparenzregister mit Frist. „Neue Fassung: Stammkapital“ freigeben → Steckbrief zeigt das neue Stammkapital. „Cap-Table anpassen“ → Aufgabe unter Aufgaben.
+4. „Gegenstand & Satzung“: „+ Neue Fassung“ (Gegenstand, gültig ab gestern) → steht als „gilt“; Datum bei „Stand am“ vor diesen Tag stellen → der alte Wortlaut.
+   Eine Fassung ändern geht nicht (nur neue anlegen); „Löschen“ legt sie in den Papierkorb.
+5. „Aus Dokument“: ein Beschluss-PDF hochladen → Datum, Art, Titel mit wörtlicher Fundstelle (Seite); „Als Beschluss übernehmen“ → Formular gefüllt, die Datei hängt als
+   Unterlage dran; erst „Eintragen“ speichert. Ein PDF mit einem Datum von vor einem Jahr (z. B. alte GF-Bestellung): Status steht auf „eingetragen“, Zeile „Älterer
+   Beschluss — keine Folgen vorgeschlagen.“; nach dem Eintragen liegt in den Freigaben nichts Neues. An der Zeile „Folgen vorschlagen“ → jetzt liegen sie dort.
+6. Filter: Jahr, Status, Art, Suche (Titel/Inhalt/Nummer). „PDF“ lädt das Buch (mit Jahresfilter nur das Jahr).
+7. Recht-Check (Unternehmen › Überblick, „Jetzt prüfen“): unter „Was fehlt“ steht die gefasste, nicht angemeldete Kapitalerhöhung mit Weg ins Buch.
+8. Gesellschaft öffnen › Steckbrief: Karte „Gegenstand & Satzung“ mit der gültigen Fassung; Reiter „Organe & Beschlüsse“ zeigt die letzten Beschlüsse mit „Beschluss-Buch ›“.
+
+**Tests:** `tests/beschluss-buch.test.ts` (32: Nummern, 90-Tage-Regel, Säubern, Ergebnis, Stand am, Folgen, offene Eintragungen, Import, Vorlagen, PDF; Server: 403-Wächter,
+„Sicht X bekommt nichts aus Y“, Altbestand bit-gleich, Folgen nur im Stapel + idempotent, Freigabe → Schild/Register/Aufgabe, Fassungen nie überschrieben, Recht-Check,
+ZOE, Art. 15); bestehende `gesellschaften-*`, `unternehmen-schild`, `head-recht`, `routen-register`, `erklaerungen`, `demo`, `messlatte-malin`, `datenschutz-register`,
+`trennung-bereiche`, `sicht-business-privat` grün. Neue Erklärungen `unternehmen.beschluss*`, `unternehmen.fassung*`, `unternehmen.standAm`, `unternehmen.abstimmung`.
+**Nicht gebaut / offen:** der optionale Modellaufruf beim Dokument-Import (KI-Tor, `fremd()`) — heute nur Regelwerk; Sichtprüfung im Browser steht aus (kein Server in
+dieser Runde). **Rückweg:** der alte Stand liest die neuen Felder nicht und lehnt beim Ändern eines Beschlusses mit neuer Art bzw. Status „angemeldet“ ab (400) bzw.
+verwirft beim Speichern eines Beschlusses dessen neue Felder; `fassungen` bleiben im Eintrag liegen (der alte Schreibweg behält unbekannte Felder). Vor dem
+Upload Sicherung (Live-Daten-Regel); zurück nur mit Sicherung, wenn neue Beschlüsse bearbeitet wurden.
+
 ## 10.10.2026 — Kalender: Ansicht wie Google (nur lokal — Branch `kalender-ansicht`, Basis 7c9e1335 = `update-0910b`)
 
 Entscheidung 10.10.: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im Vergleich zu

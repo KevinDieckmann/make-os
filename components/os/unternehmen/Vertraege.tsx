@@ -106,7 +106,8 @@ function BeteiligungForm({ daten, alt, schreibe, fertig }: { daten: RegisterDate
 
 // ── Unterlagen (Dateiablage) ───────────────────────────────────────────────────────────────────────────────────
 
-function useUnterlagen(id: string) {
+/** Unterlagen einer Gesellschaft aus der Ablage + Hochladen (auch für das Beschluss-Buch, Beschlüsse.tsx). */
+export function useUnterlagen(id: string) {
   const [liste, setListe] = useState<DateiEintrag[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const laden = useCallback(async () => {

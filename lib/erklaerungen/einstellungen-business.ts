@@ -169,6 +169,48 @@ export const EINSTELLUNGEN_BUSINESS = {
     an: 'Der Gesellschafter zählt bei Beschlüssen mit.',
     aus: 'Er hält Anteile, stimmt aber nicht mit.',
   },
+  // Beschluss-Buch (10.10.): Unternehmen › Beschlüsse & Satzung.
+  'unternehmen.beschlussNummer': {
+    was: 'Jeder Beschluss bekommt eine laufende Nummer je Gesellschaft und Jahr. Sie vergibt MAKE OS, sobald der Beschluss nicht mehr Entwurf ist, und sie ändert sich nie. Ältere Beschlüsse ohne gespeicherte Nummer werden nur in der Anzeige nach Datum gezählt (mit Sternchen). „PDF“ lädt das Buch zum Drucken.',
+    beispiel: 'Im Februar gefasst, ist die Bestellung der Geschäftsführung „Nr. 1/2026“; die Kapitalerhöhung im März wird „Nr. 2/2026“. Ein verworfener Entwurf bekommt nie eine Nummer, ein gelöschter Beschluss hinterlässt eine Lücke.',
+  },
+  'unternehmen.beschlussStatus': {
+    was: 'Wo der Beschluss steht: Entwurf (noch nicht gefasst), gefasst, angemeldet (beim Handelsregister), eingetragen, aufgehoben. Beim Wechsel auf „angemeldet“ bzw. „eingetragen“ trägt MAKE OS den Tag ein, wenn er leer ist.',
+    beispiel: 'Die Satzungsänderung ist am 01.03. gefasst und am 10.03. über den Notar angemeldet. Steht sie nach 60 Tagen noch auf „angemeldet“, fragt der Recht-Check nach der Eintragung.',
+  },
+  'unternehmen.beschlussWirkung': {
+    was: 'Ab wann der Beschluss wirkt. Leer heißt: ab dem Beschlusstag. Eine Satzungsänderung wirkt erst mit der Eintragung im Handelsregister — die neue Fassung bekommt dann den Tag der Eintragung als „gültig ab“.',
+    beispiel: 'Die Bestellung einer Geschäftsführerin wird am 15.05. gefasst, soll aber erst ab 01.07. gelten: Wirkung ab 01.07. eintragen.',
+  },
+  'unternehmen.abstimmung': {
+    was: 'Wer beteiligt war (Gesellschafter oder Organe dieser Gesellschaft) und wie abgestimmt wurde. Gerechnet wird nach Anteilen zum Zeitpunkt der Abstimmung, stimmrechtslose Anteile zählen nicht; Enthaltungen zählen nicht als abgegeben. Die Mehrheit ist der gesetzliche Regelfall — eure Satzung kann abweichen.',
+    beispiel: 'Zwei Gesellschafter mit 15.000 € und 10.000 € Nennbetrag: Ja und Enthaltung ergibt 15.000 € Ja und 0 € Nein — angenommen. Bei einer Satzungsänderung braucht es drei Viertel der abgegebenen Stimmen.',
+  },
+  'unternehmen.beschlussFolgen': {
+    was: 'Was aus einem gefassten Beschluss folgt — als Vorschläge in den Freigaben: Pflichten im Pflichten-Kalender (Handelsregister, Gesellschafterliste, Transparenzregister mit Frist), die neue Fassung von Gegenstand oder Satzung, Cap-Table anpassen. Von selbst nur für Beschlüsse der letzten 90 Tage; nachgetragene ältere nur über „Folgen vorschlagen“. Nichts passiert ohne deinen Klick.',
+    beispiel: 'Kapitalerhöhung gefasst: Es kommen „Pflichten anlegen: Kapitalmaßnahme“, „Neue Fassung: Stammkapital“ und „Cap-Table anpassen“ in die Freigaben. Gibst du die Pflichten frei, stehen Notar, Gesellschafterliste und Transparenzregister mit Frist im Kalender.',
+  },
+  'unternehmen.beschlussImport': {
+    was: 'Lädt ein Beschluss- oder Satzungs-PDF in die Unterlagen der Gesellschaft und liest den Text ohne KI: Datum, Art, Titel, Gegenstand, Stammkapital, Sitz — als Vorschlag, jede Fundstelle wörtlich mit Seite. Beteiligte erscheinen nur als Text. Übernommen wird erst mit deinem Klick.',
+    beispiel: 'Du lädst die Niederschrift einer Gesellschafterversammlung hoch. Der Vorschlag zeigt „Datum 12.03.2026“ mit dem Satz „Bielefeld, den 12.03.2026“ als Fundstelle; mit „Als Beschluss übernehmen“ füllt sich das Formular, gespeichert wird erst beim Eintragen.',
+    daten: 'Die Datei liegt verschlüsselt in der Ablage der Gesellschaft; der Text wird nur auf eurem Server gelesen und an niemanden geschickt.',
+  },
+  'unternehmen.beschlussVorlage': {
+    was: 'Startvorlagen für typische Beschlüsse — neutral, mit Platzhaltern. Gefüllt wird nur, was im Register steht (Firmierung, Sitz, Register, Geschäftsführung, Stammkapital); alles andere bleibt „[…]“. Mustertext, keine Rechtsberatung: vor Verwendung prüfen.',
+    beispiel: '„Kapitalerhöhung“ füllt Firma, Sitz und das bisherige Stammkapital ein und legt die Änderung „Stammkapital“ an; den neuen Betrag und den Übernehmer trägst du ein.',
+  },
+  'unternehmen.fassung': {
+    was: 'Gegenstand, Satzung, Stammkapital, Sitz, Geschäftsführung und Firmierung mit Historie: Jede Änderung ist eine neue Fassung mit „gültig ab“ und Verweis auf den Beschluss — nie überschrieben. Eine heute gültige neue Fassung zieht den Steckbrief gleich mit.',
+    beispiel: 'Der Gegenstand galt seit der Gründung; die Satzungsänderung wird am 20.04. eingetragen. Neue Fassung ab 20.04. — die alte bleibt in der Historie, „Stand am“ einem Tag davor zeigt weiter den alten Wortlaut.',
+  },
+  'unternehmen.fassungSteckbrief': {
+    was: 'Der gültige Gegenstand des Unternehmens und die gültige Satzungsfassung, wie sie im Beschluss-Buch festgehalten sind. Ist eine Änderung schon beschlossen, aber noch nicht gültig, steht hier „neu ab …“.',
+    beispiel: 'Gegenstand „Beratung und Software“, gültig ab 10.01.2023; die beschlossene Erweiterung gilt erst ab der Eintragung und steht bis dahin als „neu ab …“ darunter.',
+  },
+  'unternehmen.standAm': {
+    was: 'Zeigt, was an einem Tag galt: je Merkmal die jüngste Fassung mit „gültig ab“ bis zu diesem Tag. Ohne festgehaltene Fassung steht der Wert aus dem Steckbrief, solange er nicht schon durch eine neuere Fassung ersetzt ist.',
+    beispiel: 'Du wählst den 31.12. des Vorjahres und siehst den damaligen Sitz und das damalige Stammkapital — etwa für einen Vertrag, der an diesem Tag geschlossen wurde.',
+  },
 
   // ── Finanzplanung ──────────────────────────────────────────────────────────────────────────────────────────────────────
   'finanzplan.istJanSep': {

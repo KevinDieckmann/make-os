@@ -9,6 +9,7 @@
 
 import type { Lage, GesellschaftLage } from '@/lib/gesellschaften/schild/ampel';
 import type { VertragsStichtag } from '@/lib/gesellschaften/modell';
+import type { BeschlussOffen } from '@/lib/gesellschaften/beschluesse';
 import { tagePlus, tageZwischen, tagText } from '@/lib/gesellschaften/schild/zeit';
 import { dokSchwere, DOK_ZUSTAND_TEXT } from '@/lib/gesellschaften/schild/dokumente';
 import { isoWoche } from '@/lib/zeit/kalender-kern';
@@ -88,11 +89,20 @@ const AMPEL_WORT: Record<Ampel, string> = { rot: 'handeln', gelb: 'prüfen', gru
 /** Eine Pflicht mit Eskalation (Anwalt/Steuerbüro einbeziehen), die noch nicht vermerkt ist. */
 const eskalationOffen = (p: GesellschaftLage['pflichten'][number]) => !!p.eskalation && (p.status === 'offen' || p.status === 'faellig' || p.status === 'ueberfaellig');
 
+/** Beschlüsse ohne Anmeldung bzw. Eintragung (Beschluss-Buch, 10.10.) als „was fehlt“ — gelb (die Fristen selbst führt der Pflichten-Kalender). */
+function beschluesseFehlt(l: readonly BeschlussOffen[] | undefined, namen: ReadonlyMap<string, string>): CheckFehlt[] {
+  return (l ?? []).filter(b => namen.has(b.gesellschaftId)).map(b => ({
+    gesellschaftId: b.gesellschaftId, gesellschaft: namen.get(b.gesellschaftId), art: 'beschluss' as const,
+    text: b.text, weg: WEG.beschluss(b.gesellschaftId, b.beschlussId), schwere: 'gelb' as const,
+  }));
+}
+
 /**
  * Der Wochen-Check (rein). `vertragsFristen` = Stichtage der Verträge der BUSINESS-Gesellschaften (der Aufrufer filtert), `datenschutz` = Zähler
- * aus System › Datenschutz oder null (nicht lesbar bzw. nicht für diese Sicht).
+ * aus System › Datenschutz oder null (nicht lesbar bzw. nicht für diese Sicht), `beschluesse` = Beschlüsse ohne Anmeldung bzw. Eintragung
+ * (lib/gesellschaften/beschluesse.ts `beschluesseOhneEintragung`, nur Business-Gesellschaften).
  */
-export function wochenCheck(o: { lage: Lage; vertragsFristen: readonly VertragsStichtag[]; datenschutz: DatenschutzZahlen | null; heute: string }): WochenCheck {
+export function wochenCheck(o: { lage: Lage; vertragsFristen: readonly VertragsStichtag[]; datenschutz: DatenschutzZahlen | null; heute: string; beschluesse?: readonly BeschlussOffen[] }): WochenCheck {
   const { lage, heute } = o;
   const bis = tagePlus(heute, CHECK_TAGE);
   const gesellschaften: CheckGesellschaft[] = lage.gesellschaften.map(g => ({
@@ -106,7 +116,7 @@ export function wochenCheck(o: { lage: Lage; vertragsFristen: readonly VertragsS
     ...o.vertragsFristen.filter(v => namen.has(v.gesellschaftId) && v.tag >= heute && v.tag <= bis)
       .map(v => ({ tag: v.tag, inTagen: tageZwischen(heute, v.tag), titel: v.titel, unter: v.unter ?? namen.get(v.gesellschaftId) ?? '', art: 'vertrag' as const, href: WEG.unternehmen(v.gesellschaftId, 'vertraege') })),
   ].sort((a, b) => a.tag.localeCompare(b.tag) || a.titel.localeCompare(b.titel, 'de'));
-  const fehlt = [...lage.gesellschaften.flatMap(fehltVon), ...datenschutzFehlt(o.datenschutz)];
+  const fehlt = [...lage.gesellschaften.flatMap(fehltVon), ...beschluesseFehlt(o.beschluesse, namen), ...datenschutzFehlt(o.datenschutz)];
   // Eskalation sofort, solange die Pflicht offen ist (nicht erst im Vorlauf): Zahlungsunfähigkeit, Überschuldung, Verlust der Hälfte (research › 6a Nr. 4).
   const eskalation = lage.gesellschaften.flatMap(g => g.pflichten.filter(eskalationOffen)
     .map(p => eskalationText(`${p.titel} (${g.name}, ${p.norm})`)));

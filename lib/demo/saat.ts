@@ -254,8 +254,31 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const neu = (await rufe(R.gesellschaften(), 'POST', '/api/gesellschaften', LENA, { felder: { name: 'Nordlicht Ventures GmbH', rechtsform: 'gmbh', status: 'gruendung', rolle: 'holding', sitz: 'Bielefeld', stammkapitalCent: '25.000' } })).gesellschaft as { id: string; stand: string };
   let ng = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: neu.id, stand: neu.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'gesellschaft', id: 'kdv' }, nennbetragCent: '15.000', einlage: 'nein' } })).gesellschaft as { stand: string };
   ng = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: neu.id, stand: ng.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'person', id: JONAS }, nennbetragCent: '10.000', einlage: 'nein' } })).gesellschaft as { stand: string };
-  void ng; void kdv; void ug;
+  void ng; void kdv;
   schritt('Gesellschaften', 4);
+
+  // 4a) Beschluss-Buch (10.10.): erfundene Fassungen und Beschlüsse der operativen Gesellschaft — über dieselbe Route wie die Oberfläche (Stand aus der
+  //     letzten Antwort). Die Kapitalerhöhung ist „gefasst“ → ihre Folgen (Pflichten, Fassung, Cap-Table) liegen danach als Vorschläge im Stapel.
+  type GAnt = { stand: string; gesellschafter?: { id: string }[]; beschluesse?: { id: string }[] };
+  let ugB = ug as GAnt;
+  const gsHolding = ugB.gesellschafter?.[0]?.id;
+  const register = async (liste: 'beschluesse' | 'fassungen', eintrag: Record<string, unknown>) => {
+    ugB = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: 'ug', stand: ugB.stand, liste, eintrag })).gesellschaft as GAnt;
+  };
+  await register('fassungen', { merkmal: 'satzung', ab: '2023-01-10', text: 'Gründungsfassung (Beispiel)' });
+  await register('fassungen', { merkmal: 'gegenstand', ab: '2023-01-10', text: 'Beratung zu Kennzahlen und Unternehmenssteuerung (Beispiel).' });
+  await register('fassungen', { merkmal: 'stammkapital', ab: '2023-01-10', cent: '25.000' });
+  const stimme = gsHolding ? { beteiligte: [gsHolding], abstimmung: [{ id: gsHolding, stimme: 'ja' }] } : {};
+  await register('beschluesse', { datum: '2023-01-10', art: 'gf-bestellung', titel: 'Bestellung der Geschäftsführung (Beispiel)', status: 'eingetragen', eingetragenAm: '2023-02-01', ...stimme,
+    inhalt: 'Zur Geschäftsführerin wird Lena (Beispiel) bestellt; sie vertritt die Gesellschaft einzeln.', aenderungen: [{ merkmal: 'geschaeftsfuehrung', text: 'Lena (Beispiel), einzelvertretungsberechtigt' }] });
+  await register('beschluesse', { datum: tagPlus(heute, -280), art: 'jahresabschluss', titel: 'Feststellung des Jahresabschlusses (Beispiel)', status: 'gefasst', ...stimme,
+    inhalt: 'Der Jahresabschluss des Vorjahres wird festgestellt; das Ergebnis wird auf neue Rechnung vorgetragen; der Geschäftsführung wird Entlastung erteilt.' });
+  await register('beschluesse', { datum: tagPlus(heute, -40), art: 'satzungsaenderung', titel: 'Satzungsänderung: Gegenstand erweitert (Beispiel)', status: 'angemeldet', angemeldetAm: tagPlus(heute, -30), ...stimme,
+    aenderungen: [{ merkmal: 'gegenstand', text: 'Beratung zu Kennzahlen und Unternehmenssteuerung sowie Entwicklung und Vertrieb von Software (Beispiel).' }] });
+  await register('beschluesse', { datum: tagPlus(heute, -3), art: 'kapitalmassnahme', titel: 'Kapitalerhöhung auf 50.000 € (Beispiel)', status: 'gefasst', ...stimme,
+    aenderungen: [{ merkmal: 'stammkapital', cent: '50.000' }], inhalt: 'Das Stammkapital wird um 25.000 € auf 50.000 € erhöht; die neuen Anteile übernimmt die Holding (Beispiel).' });
+  void ugB;
+  schritt('Beschluss-Buch', 7);
 
   // 4b) Unternehmen › Schild (10.10.): die operative Gesellschaft mit Profil, Dokumenten-Status, drei Risiken (bewertet), einer Marke und einer
   //     Versicherung — erfunden, über dieselbe Route wie die Oberfläche (Stand aus der letzten Antwort).

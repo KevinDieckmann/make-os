@@ -3,12 +3,15 @@
 // (Geschäftsführung, Beirat …) und als Vertragspartei. Vorher zählte die Auskunft nur „n Treffer in gesellschaften--…“ —
 // jetzt steht dort die KOPIE dieser Angaben (Art. 15 Abs. 3), auch für Papierkorb- und Archiv-Einträge (mit Marke).
 // Nicht in der Kopie: interne Notizen/Beschlussinhalte (Wortlaut über Dritte) — sie zählt `weitereSpeicher` weiter mit.
+// Beschluss-Buch (10.10.): ein Kontakt, der als Gesellschafter oder Organ an einem Beschluss beteiligt war bzw. abgestimmt hat, bekommt Nummer,
+// Datum, Art, Titel, Status und seine eigene Stimme (nie den Wortlaut, nie die Stimmen anderer).
 
 import { anzeigeName, organLabel, vertragArtLabel, vertragStatusLabel, euroText, type RegisterDatei, type Bezug } from './modell';
+import { artLabel, beschlussNummern, nummerText, statusLabelB, stimmeLabel } from './beschluesse';
 
 export interface RegisterAuskunft {
   gesellschaft: string;
-  rolle: 'Gesellschafter' | 'Organ' | 'Vertragspartei';
+  rolle: 'Gesellschafter' | 'Organ' | 'Vertragspartei' | 'Beschluss';
   angaben: string;
   seit?: string;
   bis?: string;
@@ -36,6 +39,17 @@ export function registerAuskunft(d: RegisterDatei | null | undefined, kontaktId:
       if (!istKontakt(o.wer, kontaktId)) continue;
       raus.push({ gesellschaft: name, rolle: 'Organ', angaben: organLabel(o.funktion), ...(o.seit ? { seit: o.seit } : {}),
         ...(o.bis ? { bis: o.bis, archiv: true as const } : {}), ...(imKorb(o) ? { papierkorb: true as const } : {}) });
+    }
+    // Beschlüsse, an denen ein Eintrag dieser Person beteiligt war (über die Kennung des Gesellschafter- bzw. Organ-Eintrags).
+    const eigene = new Set([...(g.gesellschafter ?? []).filter(s => istKontakt(s.wer, kontaktId)).map(s => s.id), ...(g.organe ?? []).filter(o => istKontakt(o.wer, kontaktId)).map(o => o.id)]);
+    if (eigene.size) {
+      const nr = beschlussNummern(g.beschluesse);
+      for (const b of g.beschluesse ?? []) {
+        const stimme = (b.abstimmung ?? []).find(x => eigene.has(x.id));
+        if (!stimme && !(b.beteiligte ?? []).some(x => eigene.has(x))) continue;
+        raus.push({ gesellschaft: name, rolle: 'Beschluss', angaben: `${nummerText(nr.get(b.id))} vom ${b.datum.slice(8, 10)}.${b.datum.slice(5, 7)}.${b.datum.slice(0, 4)} · ${artLabel(b.art)} „${b.titel}“ · ${statusLabelB(b.status)}${stimme ? ` · eigene Stimme: ${stimmeLabel(stimme.stimme)}` : ' · beteiligt'}`,
+          seit: b.datum, ...(b.status === 'aufgehoben' ? { archiv: true as const } : {}), ...(imKorb(b) ? { papierkorb: true as const } : {}) });
+      }
     }
     for (const v of g.vertraege ?? []) {
       if (!(v.parteien ?? []).some(p => istKontakt(p, kontaktId))) continue;

@@ -58,7 +58,7 @@ export interface CheckFrist {
   href: string;
   eskalation?: true;
 }
-export type FehltArt = 'dokument' | 'meldung' | 'profil' | 'schwelle' | 'risiko' | 'schutz' | 'datenschutz';
+export type FehltArt = 'dokument' | 'meldung' | 'profil' | 'schwelle' | 'risiko' | 'schutz' | 'datenschutz' | 'beschluss';
 export interface CheckFehlt { gesellschaftId?: GesellschaftId; gesellschaft?: string; art: FehltArt; text: string; weg: string; schwere: 'rot' | 'gelb' }
 export interface CheckGesellschaft {
   id: GesellschaftId;

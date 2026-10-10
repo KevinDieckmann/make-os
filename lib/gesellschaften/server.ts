@@ -16,9 +16,10 @@ import {
   alleGesellschaften, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
   eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, GRENZEN, PRAEFIX,
   type RegisterDatei, type RegisterGesellschaft, type RegisterFehler, type RegisterListe, type EintragAktion, type CrmVerweisTeil,
-  beschlussSaeubern, organSaeubern, faelligeErinnerungen, geloeschtVermerken, operativeBusinessGesellschaft,
-  type Gesellschafter, type FremdBeteiligung, type Vertrag, type Beschluss, type Organ, type ListenEintrag,
+  beschlussSaeubern, organSaeubern, fassungSaeubern, faelligeErinnerungen, geloeschtVermerken, operativeBusinessGesellschaft,
+  type Gesellschafter, type FremdBeteiligung, type Vertrag, type Beschluss, type Organ, type Fassung, type ListenEintrag,
 } from './modell';
+import { braucheNummer, naechsteNummer, steckbriefNachziehen } from './beschluesse';
 
 export const registerName = gesellschaftenName;
 export const standVon = (g: RegisterGesellschaft) => fingerabdruck(g as unknown as Record<string, unknown>);
@@ -103,20 +104,42 @@ export const steckbrief = (felder: Record<string, unknown>): Aenderung => (alt, 
 
 type Eintrag = ListenEintrag;
 
-/** Einen Listeneintrag anlegen (ohne `eintragId`, Kennung vom Server) oder ändern. */
-export const eintragSchreiben = (liste: RegisterListe, roh: unknown, eintragId?: string): Aenderung => alt => {
+/**
+ * Einen Listeneintrag anlegen (ohne `eintragId`, Kennung vom Server) oder ändern. `person` = wer schreibt (Fassungen: `von`).
+ * Beschluss-Buch (10.10.): die Nummer vergibt NUR diese Stelle (beim ersten „nicht mehr Entwurf“, je Gesellschaft und Jahr, nie umgeschrieben);
+ * Fassungen werden nie geändert (409) — eine NEUE Fassung, die heute gilt und die jüngste ihres Merkmals ist, zieht das Steckbrief-Feld im selben
+ * Schreiben nach (der Steckbrief zeigt die gültige Fassung).
+ */
+export const eintragSchreiben = (liste: RegisterListe, roh: unknown, eintragId?: string, person = ''): Aenderung => alt => {
   const l = (alt[liste] ?? []) as Eintrag[];
   const vorhanden = eintragId ? l.find(e => e.id === eintragId) : undefined;
   if (eintragId && !vorhanden) return { fehler: [{ feld: 'eintragId', text: 'Eintrag nicht gefunden.' }], status: 404 };
   if (!vorhanden && l.length >= GRENZEN[liste]) return { fehler: [{ feld: liste, text: `Höchstens ${GRENZEN[liste]} Einträge.` }], status: 413 };
   const mitId = vorhanden ? roh : { ...((roh && typeof roh === 'object' ? roh : {}) as object), id: neueKennung(PRAEFIX[liste]) };
+  const jetzt = new Date().toISOString();
+  const heute = localDay();
+  if (liste === 'fassungen') {
+    if (vorhanden) return { fehler: [{ feld: 'eintragId', text: 'Eine Fassung wird nie überschrieben — lege eine neue Fassung an; eine falsche geht in den Papierkorb.' }], status: 409 };
+    const f = fassungSaeubern(mitId, { jetzt, person, beschluesse: alt.beschluesse ?? [] });
+    if (f.fehler.length || !f.e) return { fehler: f.fehler };
+    const mitFassung: RegisterGesellschaft = { ...alt, fassungen: [...l as Fassung[], f.e] };
+    const nach = steckbriefNachziehen(mitFassung, f.e, heute);
+    // Eine Herabsetzung unter das schon Eingezahlte zieht der Steckbrief nicht still nach — die Karte zeigt die Abweichung („Steckbrief angleichen“).
+    const passt = nach && !(nach.feld === 'stammkapitalCent' && typeof alt.eingezahltCent === 'number' && alt.eingezahltCent > (nach.wert as number));
+    return { g: nach && passt ? { ...mitFassung, [nach.feld]: nach.wert } : mitFassung };
+  }
   const r: { e?: Eintrag; fehler: RegisterFehler[] } = liste === 'gesellschafter' ? gesellschafterSaeubern(mitId, alt.id, vorhanden as Gesellschafter | undefined)
     : liste === 'beteiligungen' ? beteiligungSaeubern(mitId, vorhanden as FremdBeteiligung | undefined)
-      : liste === 'beschluesse' ? beschlussSaeubern(mitId, vorhanden as Beschluss | undefined)
+      : liste === 'beschluesse' ? beschlussSaeubern(mitId, vorhanden as Beschluss | undefined, alt, { jetzt, heute })
         : liste === 'organe' ? organSaeubern(mitId, vorhanden as Organ | undefined)
           : vertragSaeubern(mitId, vorhanden as Vertrag | undefined);
   if (r.fehler.length || !r.e) return { fehler: r.fehler };
-  const neu = vorhanden ? l.map(e => (e.id === vorhanden.id ? r.e! : e)) : [...l, r.e];
+  let e = r.e;
+  if (liste === 'beschluesse' && braucheNummer(e as Beschluss, vorhanden as Beschluss | undefined)) {
+    const b = e as Beschluss;
+    e = { ...b, nummer: naechsteNummer((l as Beschluss[]).filter(x => x.id !== b.id), Number(b.datum.slice(0, 4))) };
+  }
+  const neu = vorhanden ? l.map(x => (x.id === vorhanden.id ? e : x)) : [...l, e];
   return { g: { ...alt, [liste]: neu } };
 };
 
@@ -125,6 +148,7 @@ export const eintragHandeln = (liste: RegisterListe, eintragId: string, aktion: 
   const l = (alt[liste] ?? []) as Eintrag[];
   const e = l.find(x => x.id === eintragId);
   if (!e) return { fehler: [{ feld: 'eintragId', text: 'Eintrag nicht gefunden.' }], status: 404 };
+  if (liste === 'fassungen' && (aktion === 'archivieren' || aktion === 'zurueckholen')) return { fehler: [{ feld: 'aktion', text: 'Fassungen werden nicht archiviert — eine neue Fassung löst die alte ab; eine falsche geht in den Papierkorb.' }], status: 400 };
   if (aktion === 'endgueltig') {
     if (!imPapierkorb(e)) return { fehler: [{ feld: 'aktion', text: 'Endgültig löschen geht nur aus dem Papierkorb.' }], status: 409 };
     return { g: { ...alt, [liste]: l.filter(x => x.id !== eintragId) } };

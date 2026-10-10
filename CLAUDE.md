@@ -53,6 +53,17 @@ lokal, Route `/os`, Port 3001.
   Schwellen/Prüftermine GERECHNET, gespeichert nur Vermerke „erledigt am“ und Bewertungs-Verlauf). Kalender über `Quellen.unternehmen` (Art `pflicht`), Erinnerungen
   `usp-/usd-/usm-/usr-` (Glocke mit der vorhandenen Art „vertrag“), Morgenlauf-Schritt „Unternehmen › Schild“. Head of Recht liest NUR `unternehmenLage(haushalt)`.
   Neue Pflicht = Zeile in `PFLICHT_REGELN`/`EREIGNIS_ARTEN`, neues Dokument = Zeile in `DOKUMENT_KATALOG` (Kennung nie ändern) + Test `tests/unternehmen-schild.test.ts`.
+  **Beschlüsse & Satzung (10.10., Branch `unternehmen-beschluesse`; UPDATES.md):** Beschluss-Buch und Fassungen stehen OPTIONAL im Register-Eintrag (`beschluesse[]` mit
+  Nummer/Gremium/Beteiligte/Abstimmung/Wirkung/Verweise/Änderungen, neue Liste `fassungen[]`) — kein eigener Bestand, geschrieben NUR über `eintragSchreiben` (PATCH
+  `/api/gesellschaften`). Die Nummer vergibt NUR der Server (`braucheNummer`/`naechsteNummer`, je Gesellschaft und Jahr, nie umgeschrieben; Altbestand nur angezeigt-
+  abgeleitet `beschlussNummern`); Beteiligte/Stimmen nur als Kennung eines Gesellschafter-/Organ-Eintrags, Gewicht der Stimme hält der Server zum Zeitpunkt der
+  Abstimmung fest. Fassungen nie ändern (409) — neue Fassung; eine heute gültige zieht das Steckbrief-Feld im selben Schreiben nach (`steckbriefNachziehen`). Regeln
+  rein in `lib/gesellschaften/beschluesse.ts` (Ergebnis, `standAm`, Folgen, offene Eintragungen, Buch), Import ohne Modell `beschluss-import.ts`, Vorlagen
+  `beschluss-vorlagen.ts`, PDF `beschluss-pdf.ts`, Server `beschluss-server.ts`, Route `/api/gesellschaften/beschluesse` (PDF, Vorschlag aus Unterlage, Folgen).
+  **Folgen eines gefassten Beschlusses nur als Vorschlag** (Stapel-Art `recht`, Werkzeuge `recht_beschluss_*`, Marke `bf:` im Bestand des Head of Recht) — von
+  selbst NUR, wenn `folgenFaellig(b, heute)` (≤ 90 Tage; nachgetragene ältere nur per Knopf „Folgen vorschlagen“, POST `aktion: 'folgen'`). Pflichten
+  laufen über ein EREIGNIS des Schilds (`EREIGNIS_ARTEN`, `Ereignis.beschlussId`) — nie eigene Pflichten/Fristen daneben bauen. Oberfläche
+  `components/os/unternehmen/Beschluesse.tsx` + `Satzung.tsx` (Reiter `?s=beschluesse`, `WEG.beschluss`). Test `tests/beschluss-buch.test.ts`.
 - **Head of Recht (10.10., Branch `head-recht`, nur lokal; UPDATES.md):** Business-Head `recht` (Name „Head of Recht“, `alteNamen` für alte Stapel-Anlässe),
   Chat auf `/os/unternehmen` und `/os/datenschutz` (nur Business). Grenze RDG: Checklisten, Fundstellen, Vorlagen, Fristen — NIE eine rechtliche Bewertung;
   Hinweis „keine Rechtsberatung — anwaltlich prüfen“ überall (`lib/recht/typen.ts`). Regeln rein in `lib/recht/` (check · risikorunde · vertrag-checkliste ·

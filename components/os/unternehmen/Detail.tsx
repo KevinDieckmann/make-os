@@ -24,6 +24,7 @@ import { GesellschafterReiter } from './Gesellschafter';
 import { BeteiligungenReiter, VertraegeReiter, UnterlagenReiter } from './Vertraege';
 import { FahrplanKarte } from './Fahrplan';
 import { OrganeReiter } from './Organe';
+import { GueltigeFassungKarte } from './Satzung';
 
 type ReiterId = 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender';
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
@@ -96,6 +97,8 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
         </Karte>
       )}
       {!g.geloeschtAm && <FahrplanKarte g={g} daten={daten} />}
+      {/* Beschluss-Buch (10.10.): der Steckbrief zeigt die gültige Fassung von Gegenstand und Satzung — Historie unter „Beschlüsse & Satzung“. */}
+      {kap && !g.geloeschtAm && <GueltigeFassungKarte g={g} />}
       {/* 0-Punkt (05.10.): Eröffnung mit Stichtag und Anfangsbestand — gepflegt unter Finanzen › Business (eine Quelle). */}
       {istBusinessGesellschaft(g.id) && !g.geloeschtAm && (
         <Hinweis art="info" titel="0-Punkt (Eröffnung)" aktion={<Knopf leise href={WEG.eroeffnung()}>Öffnen</Knopf>}>
