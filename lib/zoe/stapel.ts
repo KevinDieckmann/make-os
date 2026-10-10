@@ -310,7 +310,14 @@ export async function bereichSetzen(id: string, bereich: Bereich, o: { von: stri
   return raus;
 }
 
-export type Anspruch = { ok: true; v: Vorschlag } | { ok: false; status: 403 | 404 | 409; fehler: string };
+export type Anspruch = { ok: true; v: Vorschlag } | { ok: false; status: 403 | 404 | 409; fehler: string; code?: typeof BEREICH_FEHLT_CODE };
+
+/**
+ * Ohne Bereich keine Freigabe (Kevin 09.10. spät: „Unklar erst Bereich wählen“) — auch der Altbestand. Ablehnen geht jederzeit. Geprüft IN
+ * `beanspruche`, durch das jede Freigabe läuft (Route, Arten, ZOE-Kanal); die Route antwortet vorher schon mit `code`.
+ */
+export const BEREICH_FEHLT_CODE = 'bereich-fehlt' as const;
+export const BEREICH_FEHLT = 'Erst den Bereich wählen (Privat oder Business), dann freigeben — ZOE konnte ihn nicht sicher erkennen. Ablehnen geht jederzeit. Nichts freigegeben.';
 
 /**
  * Freigeben, Schritt 1 — IN der Sperre: nur ein offener (oder verwaister) Vorschlag, und nur wenn `pruefe` nichts
@@ -329,6 +336,7 @@ export async function beanspruche(id: string, von: string, pruefe?: (v: Vorschla
     if (v.status !== 'offen') { raus = { ok: false, status: 409, fehler: `Schon entschieden (${v.status}).` }; return { vorschlaege: liste }; }
     const nein = pruefe?.(v) ?? null;
     if (nein) { raus = { ok: false, ...nein }; return { vorschlaege: liste }; }
+    if (!bereichAus(v.bereich)) { raus = { ok: false, status: 409, fehler: BEREICH_FEHLT, code: BEREICH_FEHLT_CODE }; return { vorschlaege: liste }; }
     const neu: Vorschlag = { ...v, status: 'in_arbeit', inArbeit: { seit: jetzt, von: String(von || 'system').slice(0, 40) } };
     raus = { ok: true, v: neu };
     return { vorschlaege: liste.map((x, j) => (j === i ? neu : x)) };

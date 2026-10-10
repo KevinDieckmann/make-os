@@ -4,8 +4,8 @@
 // richtigen Stapel zuordnen.“
 //
 // EINE Regel `bereichFuerVorschlag` — in dieser Reihenfolge, die erste, die etwas sagt, gewinnt:
-//   (a) der fachliche Bezug: was der Server zum Bezug aufgelöst hat (Aufgabe → ihr Space, CRM-Kontakt/-Firma/-Deal/-Mandat → Business außer
-//       Privat-Einheit, Kalender → Space des Kalenders, Vorschlag eines Heads → Bereich des Heads), sonst die Gruppe des Werkzeugs (Gesundheit,
+//   (a) der fachliche Bezug: was der Server zum Bezug aufgelöst hat (Aufgabe → ihr Space, CRM-Kontakt/-Firma/-Deal/-Mandat → IMMER Business
+//       (Kevin 09.10. spät), Kalender → Space des Kalenders, Vorschlag eines Heads → Bereich des Heads), sonst die Gruppe des Werkzeugs (Gesundheit,
 //       Haushalt, Familie → Privat; Markttraktion, Kontakte, Kunden, Business, Bauplan → Business), sonst die ausdrückliche Angabe in der
 //       Eingabe (`space`/`bereich`, `spaceId`/`einheit`/`firma` über den Bereich der Einheit);
 //   (b) der Inhalt nennt einen bekannten Namen aus dem BESTAND (CRM-Firma, CRM-Kontakt mit vollem Namen, eigene Gesellschaft) — nie feste

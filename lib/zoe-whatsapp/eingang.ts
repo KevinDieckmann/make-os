@@ -212,7 +212,7 @@ async function entscheiden(person: string, k: ZoeKanal, art: 'ja' | 'nein', kenn
     return;
   }
   const a = await beanspruche(v.id, person, x => (x.person === person ? null : { status: 404, fehler: 'Vorschlag nicht gefunden.' }));
-  if (!a.ok) { await antworte(KANAL_TEXTE.schonEntschieden(kennung)); return; }
+  if (!a.ok) { await antworte(a.code === 'bereich-fehlt' ? KANAL_TEXTE.bereichFehlt(kennung, link(WEG.freigaben())) : KANAL_TEXTE.schonEntschieden(kennung)); return; }
   const { fuehreAus } = await import('@/lib/zoe/ausfuehren');
   let erg: { ok: boolean; text: string };
   try { erg = await fuehreAus(a.v.werkzeug, a.v.eingabe, innenAdresse(), { erzwingen: true, person, freigegebenVon: person }); }

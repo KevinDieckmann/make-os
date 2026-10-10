@@ -209,6 +209,8 @@ export const KANAL_TEXTE = {
   fehlgeschlagen: (k: string, link: string) => `Vorschlag ${k} ließ sich nicht übernehmen — bitte in MAKE OS ansehen: ${link}`,
   abgelehnt: (k: string) => `Vorschlag ${k} abgelehnt.`,
   schonEntschieden: (k: string) => `Vorschlag ${k} ist schon entschieden.`,
+  /** Ohne Bereich keine Freigabe (09.10. spät) — neutral, ohne Inhalt. */
+  bereichFehlt: (k: string, ziel: string) => `Vorschlag ${k}: erst in MAKE OS den Bereich wählen (Privat oder Business), dann freigeben — ${ziel}`,
   welcher: (offen: readonly string[]) => (offen.length ? `Welcher Vorschlag? Antworte „ja <Kennung>“ — offen: ${offen.join(', ')}.` : 'Gerade liegt kein Vorschlag von hier offen.'),
 } as const;
 

@@ -16,7 +16,7 @@ import { anstehendAbleiten } from '@/lib/meldungen/regeln';
 const firma = (id: string, name: string, bereich: 'privat' | 'business' = 'business'): BekannterName => ({ art: 'firma', id, schluessel: namensSchluessel(name, 'firma'), bereich });
 const kontakt = (id: string, name: string, bereich: 'privat' | 'business' = 'business'): BekannterName => ({ art: 'kontakt', id, schluessel: namensSchluessel(name, 'kontakt'), bereich });
 const NAMEN: BekannterName[] = [
-  firma('f-pelikan', 'Pelikanwerk GmbH'), firma('f-garten', 'Gartenhof Selbst', 'privat'), kontakt('c-zora', 'Dr. Zora Probestein'),
+  firma('f-pelikan', 'Pelikanwerk GmbH'), { art: 'gesellschaft', id: 'kdc', schluessel: namensSchluessel('Gartenhof Selbst', 'gesellschaft'), bereich: 'privat', ort: { id: 'kdc', name: 'Gartenhof Selbst' } }, kontakt('c-zora', 'Dr. Zora Probestein'),
   { art: 'gesellschaft', id: 'g-holz', schluessel: namensSchluessel('Holzbrücke Beteiligungen UG (haftungsbeschränkt)', 'gesellschaft'), bereich: 'business', ort: { id: 'g-holz', name: 'Holzbrücke Beteiligungen' } },
 ];
 const fakt = (satz: string, thema = 'Notiz') => ({ werkzeug: 'fakt_merken', gruppe: 'gedaechtnis', titel: 'Fakt merken', nachher: `${thema}: ${satz}`, eingabe: { thema, satz } });
@@ -73,8 +73,8 @@ describe('Regel (b): der Inhalt nennt bekannte Namen aus dem Bestand', () => {
     expect(bereichFuerVorschlag(beide, { namen: NAMEN, gespraech: 'privat' })).toMatchObject({ bereich: 'privat', quelle: 'gespraech' });
     expect(bereichFuerVorschlag(beide, { namen: NAMEN }).bereich).toBe('unklar');
   });
-  it('eine Firma einer Privat-Einheit macht den Vorschlag privat; Ort nur, wenn eindeutig', () => {
-    expect(bereichFuerVorschlag(fakt('Gartenhof Selbst zahlt jetzt per Lastschrift'), { namen: NAMEN, gespraech: 'business' })).toMatchObject({ bereich: 'privat', quelle: 'inhalt' });
+  it('eine eigene Gesellschaft im Privat-Bereich (Privat-Einheit) macht den Vorschlag privat; Ort nur, wenn eindeutig', () => {
+    expect(bereichFuerVorschlag(fakt('Gartenhof Selbst zahlt jetzt per Lastschrift'), { namen: NAMEN, gespraech: 'business' })).toMatchObject({ bereich: 'privat', quelle: 'inhalt', ort: { id: 'kdc' } });
     expect(bereichFuerVorschlag(fakt('Holzbrücke Beteiligungen zieht um'), { namen: NAMEN })).toMatchObject({ bereich: 'business', ort: { id: 'g-holz' } });
   });
   it('vorschlagTexte: Titel, Vorher/Nachher, Anlass und Text-Werte der Eingabe — nie `_`-Felder', () => {
