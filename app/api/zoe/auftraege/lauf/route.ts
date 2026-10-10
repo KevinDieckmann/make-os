@@ -14,6 +14,7 @@ import { istDienst } from '@/lib/zugang/dienst';
 import { imHintergrund } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer } from '@/lib/datenschutz/ki-einstellungen';
 import { KI_LAEUFE } from '@/lib/zoe/takt';
+import { mitSpurBezug } from '@/lib/agenten/spur-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,9 +61,11 @@ export async function POST(req: Request) {
         await melde(a.id, token, 'fehler', gesperrt, true);
         return NextResponse.json({ ok: true, ergebnis: gesperrt });
       }
-      const lauf = hintergrund
-        ? await imHintergrund(() => runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined, { hintergrund: true }))
-        : await runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined);
+      // Lauf-Spur (10.10., Paket V1): kam der Auftrag aus einer Kette (ZOE-Zug, Head-Lauf), läuft er in ihrem Zusammenhang weiter — der
+      // Sprung zur Lauf-Route trägt ihn als `x-make-spur` (runAgent), die Modellaufrufe zählen in dieselbe Kette.
+      const lauf = await mitSpurBezug(a.spur, a.person ?? null, () => (hintergrund
+        ? imHintergrund(() => runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined, { hintergrund: true }))
+        : runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined)));
       // Ein abgeschalteter Agent ist eine Entscheidung, kein Aussetzer —
       // den Auftrag deshalb nicht wieder in die Schlange legen.
       const abgeschaltet = /ist ausgeschaltet/.test(lauf.text);
@@ -72,7 +75,7 @@ export async function POST(req: Request) {
     // Die Identität kommt aus dem AUFTRAG, nicht aus dieser Anfrage: der
     // Arbeiter ruft hier an, nicht die Person. Sonst liefe alles, was nachts
     // passiert, unter einer Dienst-Identität.
-    const lauf = await fuehreAus(a.name, a.eingabe, origin, { anlass: a.anlass, person: a.person, hintergrund: true });
+    const lauf = await mitSpurBezug(a.spur, a.person ?? null, () => fuehreAus(a.name, a.eingabe, origin, { anlass: a.anlass, person: a.person, hintergrund: true }));
     await melde(a.id, token, lauf.ok ? 'fertig' : 'fehler', lauf.text);
     return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text, gestapelt: lauf.gestapelt });
   } catch (err) {

@@ -151,9 +151,12 @@ export async function durchsichtLauf(jetzt = new Date(), erzwingen = false): Pro
   try {
     const { leseprotokollAufraeumen } = await import('./leseprotokoll');
     const geleert = await leseprotokollAufraeumen(jetzt);
+    // Lauf-Spur (10.10., Paket V1): Aufbewahrung 12 Monate wie das Lese-Protokoll — ältere Monate leeren, Vermerk bleibt (Kette erkennt die Frist).
+    const spur = await (await import('@/lib/agenten/spur-server')).spurAufraeumen(jetzt).catch(() => [] as string[]);
+    geleert.push(...spur);
     const { kettePruefenUndMerken } = await import('./protokoll-kette');
     const k = await kettePruefenUndMerken(jetzt);
-    kette = `, Protokoll-Kette ${k.ok ? 'unverändert' : `${k.fehler} Bruch/Brüche`} (${k.dateien} Dateien, ${k.eintraege} Einträge)${geleert.length ? `, ${geleert.length} Lese-Protokoll-Monat(e) nach 12 Monaten geleert` : ''}`;
+    kette = `, Protokoll-Kette ${k.ok ? 'unverändert' : `${k.fehler} Bruch/Brüche`} (${k.dateien} Dateien, ${k.eintraege} Einträge)${geleert.length ? `, ${geleert.length} Protokoll-Monat(e) (Lese-Protokoll, Lauf-Spur) nach 12 Monaten geleert` : ''}`;
   } catch (e) { console.error('[durchsicht] Protokoll-Kette nicht geprüft:', e instanceof Error ? e.message : e); kette = ', Protokoll-Kette nicht geprüft'; }
   const v = 'fehler' in ergebnis.verbindungen ? `Verbindungen ${ergebnis.verbindungen.fehler} Fehler/${ergebnis.verbindungen.warnung} Warnungen` : 'Verbindungen nicht geprüft';
   const a = ergebnis.absichten ? `, Absichten ${ergebnis.absichten.fertig} fertiggestellt/${ergebnis.absichten.offen} offen/${ergebnis.absichten.gescheitert} gescheitert` : '';

@@ -108,6 +108,36 @@ export interface InnenLage {
   taktRobust?: TaktRobustLage | null;
   /** Ereignisse (09.10., E1 Ereignisstelle): letzte 24 h, wartend/gestaut (letzter Takt), heute abgelehnt — nur Zahlen. */
   ereignisse?: EreignisLageHoi | null;
+  /** Lauf-Spur (10.10., Paket V1): Agenten-Läufe der letzten 7 Tage — Fehlerquote, Tempo und Cache-Anteil von ZOE; nur Zahlen. */
+  laufSpur?: LaufSpurLage | null;
+}
+
+/** Lauf-Spur (10.10., Paket V1 „Messen & sparen“) — gerechnet aus lib/agenten/spur.ts (`summeVon`, `zoeTempo`), nur Zahlen, nie Personen/Kennungen. */
+export interface LaufSpurLage { laeufe7d: number; fehlerQuote7d: number | null; zoeZuege7d: number; zoeTtftP95Ms: number | null; zoeDauerP95Ms: number | null; zoeCacheQuote: number | null }
+/** Schwellen aus AGENTEN_KONZEPT_V2.md Teil F (Vorschläge — „erster Monat messen, dann festlegen“): deshalb nur gelb, nie rot. */
+export const LAUF_SPUR_SCHWELLEN = { fehlerQuote: 0.03, ttftP95Ms: 5_000, zugP95Ms: 30_000, cacheQuote: 0.6, mindestLaeufe: 10 } as const;
+/** Agenten-Läufe (Fehlerquote) und ZOE (erstes Wort, Zug-Dauer, Cache-Anteil) der letzten 7 Tage. Rein, getestet (tests/agenten-spur.test.ts). */
+export function laufSpurBefunde(l: LaufSpurLage | null | undefined): Befund[] {
+  if (!l || !l.laeufe7d) return [];
+  const S = LAUF_SPUR_SCHWELLEN;
+  const pz = (q: number | null) => (q == null ? '—' : `${Math.round(q * 100)} %`);
+  const s = (ms: number | null) => (ms == null ? '—' : `${(ms / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s`);
+  const genug = l.laeufe7d >= S.mindestLaeufe, zoeGenug = l.zoeZuege7d >= S.mindestLaeufe;
+  const fehler = genug && (l.fehlerQuote7d ?? 0) > S.fehlerQuote;
+  const langsam = zoeGenug && ((l.zoeTtftP95Ms ?? 0) > S.ttftP95Ms || (l.zoeDauerP95Ms ?? 0) > S.zugP95Ms);
+  const cache = zoeGenug && l.zoeCacheQuote != null && l.zoeCacheQuote < S.cacheQuote;
+  return [
+    {
+      id: 'lauf-spur-fehler', bereich: 'app', label: 'Agenten-Läufe · 7 Tage', ampel: fehler ? 'gelb' : 'gruen',
+      wert: `${l.laeufe7d} Läufe · Fehler ${pz(l.fehlerQuote7d)}`,
+      satz: fehler ? `mehr als ${Math.round(S.fehlerQuote * 100)} % der Läufe endeten mit Fehler (Sperren zählen nicht) — Agenten › ⋯ › Kosten je Auftrag zeigt, welche Kette` : 'Läufe enden ohne Fehler (Sperren durch Schalter/Budget zählen nicht)',
+    },
+    ...(l.zoeZuege7d ? [{
+      id: 'lauf-spur-zoe', bereich: 'app' as const, label: 'ZOE · Tempo und Zwischenspeicher', ampel: (langsam || cache ? 'gelb' : 'gruen') as Ampel,
+      wert: `${l.zoeZuege7d} Züge · erstes Wort p95 ${s(l.zoeTtftP95Ms)} · Zug p95 ${s(l.zoeDauerP95Ms)} · Zwischenspeicher ${pz(l.zoeCacheQuote)}`,
+      satz: langsam ? `langsamer als das Ziel (erstes Wort ≤ ${s(S.ttftP95Ms)}, Zug ≤ ${s(S.zugP95Ms)} bei 95 %)` : cache ? `weniger als ${Math.round(S.cacheQuote * 100)} % der Eingabe kam aus dem Zwischenspeicher — wechselt die Werkzeug-Auswahl ständig?` : 'im Ziel',
+    }] : []),
+  ];
 }
 
 /** Ereignisse (09.10., E1) — dieselbe Form wie lib/ereignisse/server.ts `ereignisLage` (nur Zahlen, nie Kennungen). */
@@ -691,6 +721,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...zugangBefunde(innen.zugang, jetzt));
   b.push(...taktRobustBefunde(innen.taktRobust));
   b.push(...ereignisBefunde(innen.ereignisse));
+  b.push(...laufSpurBefunde(innen.laufSpur));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
   b.push(...kettenBefunde(innen.protokollKette, jetzt));

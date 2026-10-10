@@ -98,6 +98,8 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'aenderungsprotokoll--*': 'Protokoll je Haushalt und Monat — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
   'leseprotokoll--*': 'Protokoll je Haushalt und Monat — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
   'ki-protokoll--*': 'KI-Protokoll je Tag (Altbestand je Monat) — im Export die eigenen Einträge, beim Löschen Kennung „[gelöscht]“',
+  'lauf-spur--privat--*': 'Lauf-Spur des Privat-Bereichs je Monat (10.10., nur Metadaten) — im Export die eigenen Abschnitte, beim Löschen Kennung „[gelöscht]“',
+  'lauf-spur--business--*': 'Lauf-Spur des Business-Bereichs je Monat (10.10., nur Metadaten) — im Export die eigenen Abschnitte, beim Löschen Kennung „[gelöscht]“',
   'zoe-entscheidungen--*': 'Entscheidungen je Haushalt und Monat (Rechenschaft)',
   'aufgaben-dateien--*': 'Dateien zu Aufgaben je Haushalt',
   'ki-medien--*': 'Von der KI erzeugte Medien je Haushalt (Marketing-Material des Haushalts; „nur ich“-Medien sieht nur die auslösende Person) — seit Paket 4c nur Auftragsbuch laufender Videos und Altbestand; fertige KI-Medien liegen in medien--*/medien-privat--*',
@@ -159,7 +161,8 @@ async function bestandsNamen(): Promise<string[]> {
 }
 
 // KI-Protokoll seit E3 (09.10.) je Tag (`ki-protokoll--JJJJ-MM-TT`), Altbestand je Monat.
-const PROTOKOLL = /^(aenderungsprotokoll|leseprotokoll)--[a-z0-9-]+--\d{4}-\d{2}$|^ki-protokoll--\d{4}-\d{2}(-\d{2})?$/;
+// Lauf-Spur seit 10.10. je Bereich und Monat (`lauf-spur--privat|business--JJJJ-MM`, nur Metadaten) — Export die eigenen, Löschen „[gelöscht]“.
+const PROTOKOLL = /^(aenderungsprotokoll|leseprotokoll|lauf-spur)--[a-z0-9-]+--\d{4}-\d{2}$|^ki-protokoll--\d{4}-\d{2}(-\d{2})?$/;
 const PERSON_FELDER = ['person', 'speicher', 'betroffen', 'von'] as const;
 
 /** Nennt ein Protokoll-Eintrag die Person (in einem der Personen-Felder)? Rein. */

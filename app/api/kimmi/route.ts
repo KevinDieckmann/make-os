@@ -13,7 +13,9 @@ import { kategorieVonWerkzeug, werkzeugSperre } from '@/lib/datenschutz/ki-werkz
 import { gesundheitStandFuer } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { gruppeVon } from '@/lib/zoe/register';
 import { jetztSatz, localDay } from '@/lib/zeit';
-import { hasAnthropicKey, fremd, FREMD_REGEL, modellFehlerText } from '@/lib/anthropic';
+import { hasAnthropicKey, fremd, FREMD_REGEL, kiGesperrt, modellFehlerText } from '@/lib/anthropic';
+import { mitSpur } from '@/lib/agenten/spur-server';
+import { spurBereichAus, type SpurErgebnis } from '@/lib/agenten/spur';
 import { fuerPrompt, istNutzer, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, SYSTEM_LAEUFE, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
@@ -61,6 +63,9 @@ export const dynamic = 'force-dynamic';
 /** Höchstens so viele Fragen an Heads (`head_fragen`) je ZOE-Zug (Gegenprüfung 09.10., Kosten). */
 const HEAD_FRAGEN_JE_ZUG = 3;
 
+/** Was der Zug für die Lauf-Spur festhält (10.10.): lief die Schleife überhaupt, wie viele Werkzeuge, welcher Ausgang — nur Zahlen und Klassen. */
+interface ZugMeta { lief: boolean; werkzeuge: number; ergebnis: SpurErgebnis }
+
 
 
 // Live-Bewusstsein kommt jetzt aus dem Brain — derselben Kontextschicht, die
@@ -80,15 +85,28 @@ async function liveContext(person: string, bereiche: Record<KiBereich, boolean>)
  * keine privaten Lebenspläne, keine festen Firmen-Fakten mehr — `o.name` ist der Vorname der auslösenden Person aus ihrem
  * Konto, `o.firmen` die eigenen Gesellschaften (lib/einheiten.ts + Register, lib/zoe/grundauftrag.ts). Gesundheits-Werkzeuge
  * nennt der Text nur, wenn sie mit Einwilligung (b) überhaupt angeboten werden (`o.gesundheit`).
+ *
+ * Seit 10.10. (Paket V1 „Messen & sparen“, AGENTEN_KONZEPT_V2.md S6) in ZWEI Teilen — dieselben Sätze wie vorher, nur sortiert:
+ *   `stabil`    Grundauftrag, Regeln, Haltung, Heads, Werkzeug-Hinweise (hängen nur an Person, Bereich, Brain-Anweisung und den Werkzeugen
+ *               dieses Zugs) → geht mit Cache-Marke hinaus (lib/anthropic.ts `systemFuerApi`) und wird von Zug zu Zug wiederverwendet.
+ *   `variabel`  was sich JEDEN Zug ändert: Business-frei, Uhrzeit, Langzeit-Gedächtnis, Live-Zustand, Zusatz des Browsers → dahinter, ohne Marke.
+ * Vorher stand die Uhrzeit oben im Text — damit bezahlte jede Antwort ihre ganzen Grundanweisungen neu. Wächter tests/zoe-cache.test.ts.
  */
-function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, brain: string, space: 'privat' | 'business' | null, o: { name: string; firmen: string; gesundheit: boolean; businessFrei?: string; werkzeuge: ReadonlySet<string>; heads: string }): string {
+function systemPrompt(extra: string | undefined, live: string | undefined, fortsetzung: boolean, gedaechtnis: string, brain: string, space: 'privat' | 'business' | null, o: { name: string; firmen: string; gesundheit: boolean; businessFrei?: string; werkzeuge: ReadonlySet<string>; heads: string }): { stabil: string; variabel: string } {
   const n = o.name;
   // Je Zug höchstens 20 Werkzeuge (Paket 4a, lib/zoe/werkzeug-wahl.ts) — der Text nennt nur, was es in diesem Zug wirklich gibt.
   const hat = (...w: string[]) => w.some(x => o.werkzeuge.has(x));
   const erfassen = ['setze_kontostand', 'erfasse_rechnung', 'erfasse_zahlung', 'setze_meilenstein', 'setze_fokus', 'setze_kunde', 'erfasse_planposten', 'notiere_kontakt'].filter(x => o.werkzeuge.has(x));
-  return [
+  const variabel = [
     // Business-frei (08.10., Lücke 7): ein neutraler Satz — ohne Familieninhalte, ohne Gründe, nur „gerade“ und „bis wann“.
     o.businessFrei ? businessFreiSatz(n, o.businessFrei) : '',
+    // Datum, Wochentag, Uhrzeit und Zone (29.09., #K3) — Werkzeuge verlangen YYYY-MM-DD, „bis Freitag“ muss auf den richtigen Tag fallen.
+    `ZEIT: ${jetztSatz()}`,
+    gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
+    live ? `LIVE-ZUSTAND aus dem Brain (deine echten Daten gerade jetzt — beziehe dich konkret darauf, erfinde nichts dazu):\n${live}` : '',
+    extra ? `\n- Zusatz vom Client: ${extra}` : '',
+  ].filter(Boolean).join('\n');
+  const stabil = [
     space ? `AKTIVER SPACE: ${space === 'privat' ? `PRIVAT (Familie, Haushalt, private Ziele${PRIVAT_EINHEITEN_NAMEN.length ? `, ${PRIVAT_EINHEITEN_NAMEN.join(', ')}` : ''})` : `BUSINESS (${[...BUSINESS_EINHEITEN_NAMEN, 'Markttraktion', 'Mandate'].join(', ')})`}. Die Person schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer sie sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
     // 24.09.: Die Identität kommt live aus dem Obsidian-Brain der Instanz (AGENTS.md §5).
     brain ? `DEINE GRUNDLAGE AUS DEM OBSIDIAN-BRAIN — gilt für jede Antwort. Die Regeln dieser Software unten gehen bei Widerspruch vor (Werkzeuge, Freigaben, Live-Zahlen).\n\n${brain}` : '',
@@ -96,8 +114,6 @@ function systemPrompt(extra: string | undefined, live: string | undefined, forts
       ? `GEDÄCHTNIS: Die vorherigen Züge dieses Gesprächs stehen dir zur Verfügung. Beziehe dich darauf, statt Fragen zu wiederholen — „das", „nochmal", „und für Juli" meint das, worüber ihr gerade geredet habt. Keine erneute Begrüßung, keine Zusammenfassung des bisherigen Gesprächs, es sei denn ${n} fragt danach.`
       : '',
     FREMD_REGEL,
-    // Datum, Wochentag, Uhrzeit und Zone (29.09., #K3) — Werkzeuge verlangen YYYY-MM-DD, „bis Freitag“ muss auf den richtigen Tag fallen.
-    `ZEIT: ${jetztSatz()}`,
     'Du bist ZOE — die zentrale Intelligenz und Chief of Staff von „MAKE OS", dem Betriebssystem dieser Instanz: ruhig, allgegenwärtig, einen Schritt voraus.',
     'WAS DU BIST: ein Begleiter für Alltag und Geschäft der Menschen, die MAKE OS nutzen — der im Hintergrund steuert, mit dem gesprochen wird und dem viel anvertraut wird, damit er wirklich helfen kann. Denke und antworte langfristig, schreibe mit, baue auf Wiederholbarkeit — und behandle Ruhe und Beziehungen gleichrangig neben dem Geschäft.',
     // Anrede (08.10. spät): EINE Regel für alle Konten, Name aus dem Konto — vorher je Person fest im Code.
@@ -123,15 +139,12 @@ function systemPrompt(extra: string | undefined, live: string | undefined, forts
     o.gesundheit ? '- Gesundheitsdaten gehören nur der Person selbst: nie in Business-Briefings, Entwürfe oder Texte nach außen.' : '',
     '',
     // Kein hartkodierter Kontext mehr: Zahlen, Index, Ziele, Team und
-    // Meilensteine kommen ausschließlich aus dem Brain (live) — eine Wahrheit.
-    gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
+    // Meilensteine kommen ausschließlich aus dem Brain (live) — eine Wahrheit. Gedächtnis und Live-Zustand stehen im flüchtigen Teil (oben).
     'DEIN GEHIRN: Das Obsidian-Brain dieser Instanz (der Vault) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku, wenn sie eingerichtet ist. Mit suche_arbeit (Brain und App zugleich) bzw. suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Zoe_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
     `WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es ${n}, wenn dir ein Widerspruch auffällt.`,
     'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („die Steuerkanzlei ist jetzt bei einer anderen Bank", „keine Termine vor 10", „wir haben uns gegen X entschieden"), dann schlag ihn SOFORT mit fakt_merken vor — ohne zu fragen. fakt_merken (wie notiz_anlegen) landet im Gespräch immer als Vorschlag im Stapel; sag knapp, dass er dort auf eine Freigabe wartet. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
     // Wohin ein Fakt gehört (09.10. spät): neutral, aus lib/zoe/grundauftrag.ts — Markttraktion statt nur Merksatz, Bereich je Vorschlag.
     MERKEN_WOHIN,
-    '',
-    live ? `LIVE-ZUSTAND aus dem Brain (deine echten Daten gerade jetzt — beziehe dich konkret darauf, erfinde nichts dazu):\n${live}` : '',
     '',
     // Die Heads statt der alten Agenten-Liste (Paket 4a): nur, die diese Person sieht (serverseitig gefiltert, lib/agenten/sicht.ts).
     o.heads ? `DEINE HEADS — die Leitungen der Bereiche, die ${n} sieht. Du steuerst sie:\n${o.heads}` : '',
@@ -148,8 +161,8 @@ function systemPrompt(extra: string | undefined, live: string | undefined, forts
     erfassen.length ? `ERFASSEN PER ZURUF: Nennt ${n} dir Daten, dann SCHREIBE sie sofort mit den Werkzeugen (${erfassen.join(', ')}) — keine Rückfragen bei eindeutigen Angaben, mehrere Erfassungen gern im selben Zug parallel. Eine Antwort wie „Kontostand 18.500, Rechnung an Beispiel AG ist bezahlt" heißt: ZWEI Werkzeuge parallel, dann ein kurzer Satz — kein Verhör, keine Ratschläge, die niemand wollte. Firmen: ${firmenKennungen()}. Bestätige danach KNAPP, was du geschrieben hast — keine Nacherzählung.` : `ERFASSEN PER ZURUF: Nennt ${n} dir Daten, für die du in diesem Zug kein Werkzeug hast, dann gib sie mit an_head an den Head des Bereichs (oder lege eine Aufgabe an) — sag knapp, wohin es ging.`,
     // Gesundheits-Werkzeuge (Erfassen über ZOE) gibt es nur mit Einwilligung (a)+(b) — dann erklären sie sich in ihrer Beschreibung selbst.
     o.gesundheit ? '- Die Erfassungs-Werkzeuge der Gesundheit (siehe ihre Beschreibung) gelten nur für die sprechende Person selbst — unterstützend, nie wertend.' : '',
-    extra ? `\n- Zusatz vom Client: ${extra}` : '',
   ].filter(Boolean).join('\n');
+  return { stabil, variabel };
 }
 
 export async function POST(req: Request) {
@@ -254,9 +267,22 @@ export async function POST(req: Request) {
   const alleDefs: WerkzeugDef[] = [...defs.values(), ...(oa ? [oa] : [])];
   const verfuegbar = new Set(alleDefs.map(d => d.name).filter(darf));
 
+  // Lauf-Spur (10.10., Paket V1): jeder Zug ist EIN Abschnitt (`mitSpur`) — Kette = dieser Zug; was er anstößt (Frage an einen Head, Auftrag an
+  // einen Head über die Warteschlange, Fach-Agent über einen Sprung) hängt sich als Kind an. Gemessen: Dauer, erstes Wort (im Strom), Modell,
+  // Token inkl. Cache, Kosten, Zahl der Werkzeuge, Ausgang — nie Inhalte. Ein Zug, der gar nicht lief (Thread belegt, Kennung falsch), hinterlässt
+  // keinen Eintrag.
+  const zugAusfuehren = async (strom?: StromArbeit): Promise<{ status: number; body: Record<string, unknown> }> => {
+    const meta: ZugMeta = { lief: false, werkzeuge: 0, ergebnis: 'fehler' };
+    return mitSpur(
+      { art: 'zug', agent: 'zoe', person, bereich: spurBereichAus(gespraechBereich, { nurBusiness }) },
+      o => zugInnen(strom ? { signal: strom.signal, sende: e => { if (e.art === 'text') o.erstesWort(); strom.sende(e); } } : undefined, meta),
+      r => (meta.lief ? { ergebnis: r.status === 499 ? 'abgebrochen' : meta.ergebnis, werkzeuge: meta.werkzeuge } : null),
+    );
+  };
+
   // Der Zug — derselbe Weg mit und ohne Streaming (09.10.): `strom` reicht nur Text-Stücke, Werkzeug-Stände und den Abbruch des Browsers
   // durch; gespeichert wird allein das Endergebnis (Thread wie bisher). Alles oben (Schranke, Person, Haushalt, Thread) antwortet weiter JSON.
-  const zugAusfuehren = async (strom?: StromArbeit): Promise<{ status: number; body: Record<string, unknown> }> => {
+  const zugInnen = async (strom: StromArbeit | undefined, meta: ZugMeta): Promise<{ status: number; body: Record<string, unknown> }> => {
     let zug: ZoeZug | null = null;
     if (mitFaden) {
       const z = await zoeFadenFuer(person, payload.zoeFaden, message, { bereich: payload.space === 'business' ? 'business' : 'privat' });
@@ -273,8 +299,10 @@ export async function POST(req: Request) {
     // dazu (09.10. spät) — so kann ZOE einen Fakt dort vorschlagen, wo er hingehört, statt nur einen Merksatz.
     const crmGenannt = !payload.noTools && crmErlaubt && kiS.bereiche.crm ? await textNenntCrm([message, ...frueher]).catch(() => false) : false;
     const wahl = payload.noTools ? { namen: [] as string[], bereiche: [] as string[] } : zoeWerkzeugWahl({ text: message, frueher, bezug: crmBezug, verfuegbar, crmGenannt });
-    const angeboten = wahl.namen.map(n => alleDefs.find(d => d.name === n)).filter((d): d is WerkzeugDef => !!d);
     const angebotenSet = new Set(wahl.namen);
+    // Feste Reihenfolge (10.10., Paket V1): die Werkzeuge gehen in der Reihenfolge ihrer Definition hinaus, nicht in der Reihenfolge der Wahl —
+    // gleiche Auswahl, gleiche Bytes vor dem System-Text (tools → system → messages), sonst träfe der Prompt-Cache nie über Züge hinweg.
+    const angeboten = alleDefs.filter(d => angebotenSet.has(d.name));
     /** Ein Zug, der nichts bewirkt hat, findet nicht statt: die Frage geht wieder aus dem Thread (das Feld im Browser behält sie). Gibt an, ob der Thread bleibt. */
     const zuruecknehmen = async (): Promise<boolean> => {
       if (!zug) return false;
@@ -304,6 +332,8 @@ export async function POST(req: Request) {
       const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}), werkzeuge: angebotenSet as ReadonlySet<string>, heads: headsImPrompt(heads) };
       if (brain) kategorien.add('brain');
       if (crmBezug) kategorien.add('crm');
+      const sp = systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null, grund);
+      const variabel = [sp.variabel, crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n');
 
       // Budgets je Zug (wie bisher): höchstens 8 Agentenläufe und 14 Werkzeuge.
       let laufBudget = 8;
@@ -316,8 +346,10 @@ export async function POST(req: Request) {
       const FEHLER_TEXT = /fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein|Nicht beantwortet|nicht erfasst|nicht notiert|nicht eingereiht|nicht vermerkt/i;
 
       // Die EINE Schleife (lib/agenten/schleife.ts) — hier nur die Unterschiede des ZOE-Gesprächs: 3 Runden, parallel, Register-Stufe.
+      meta.lief = true;
       const aus = await schleife({
-        system: [systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null, grund), crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n'),
+        // Stabiler Teil vorn (mit Cache-Marke), flüchtiger dahinter (Uhrzeit, Gedächtnis, Live-Zustand, Bezug) — `system` bleibt der ganze Text.
+        system: [sp.stabil, variabel].filter(Boolean).join('\n\n'), systemStabil: sp.stabil,
         user: message,
         messages: [...vorgeschichte, ...(zug ? [] : [{ role: 'user', content: message }])],
         tools: angeboten, runden: 3, parallel: true,
@@ -327,7 +359,7 @@ export async function POST(req: Request) {
         doppeltErkennen: name => !LESEND.has(name),
         weiterBei: name => name === 'run_agent' || !!WERKZEUGE[name],
         zustand: { fremdGelesen, vertraulich, kategorien },
-        ask: { maxTokens: 4000, timeoutMs: 180_000, zweck: 'zoe-gespraech', ki: { lauf: 'gespraech', person } },
+        ask: { maxTokens: 4000, cacheSystem: true, timeoutMs: 180_000, zweck: 'zoe-gespraech', ki: { lauf: 'gespraech', person } },
         ...(strom ? { ereignis: strom.sende, signal: strom.signal } : {}),
         ausfuehren: async (a, z): Promise<AufrufErgebnis> => {
           const name = a.name;
@@ -375,6 +407,10 @@ export async function POST(req: Request) {
           return { inhalt: l.text, ok: !FEHLER_TEXT.test(l.text), name: agentId, ...(quelle ? { quelle } : {}), kategorien: l.kategorien ?? agentKategorien(agentId, false) };
         },
       });
+      // Lauf-Spur: Ausgang als Klasse (nie der Grund als Text). Eine Sperre durch Datenschutz oder Budget ist kein Fehler.
+      meta.werkzeuge = aus.werkzeugAufrufe;
+      meta.ergebnis = aus.status === 'fertig' ? (aus.aufrufe.some(x => x.gestapelt) ? 'gestapelt' : 'ok')
+        : aus.status === 'wartet' ? 'wartet' : aus.status === 'abgebrochen' ? 'abgebrochen' : kiGesperrt(aus.modellFehler) ? 'gesperrt' : 'fehler';
 
       // Mit der Kennung des Vorschlags (09.10. „Agenten live“): die Karte im ZOE-Chat bietet dann Freigeben/Ablehnen an.
       const werkzeuge = aus.aufrufe.map(x => ({ name: x.name, ok: x.ok, ...(x.gestapelt ? { gestapelt: true } : {}), ...(x.vorschlagId ? { vorschlagId: x.vorschlagId } : {}) }));

@@ -76,7 +76,7 @@ describe('1. Nichts geht verloren — jede Aktion hat einen (ruhigeren) Ort', ()
     expect(html).toContain('Fertig / Fehler (3)');
     expect(html).toContain('Kosten diesen Monat');
     expect(html).toContain('aria-label="Not-Aus"');
-    expect(html).toContain('aria-label="Mehr: Leitplanken, Budget, Zeitpläne, bisherige Übersicht"');
+    expect(html).toContain('aria-label="Mehr: Leitplanken, Budget, Kosten je Auftrag, Zeitpläne, bisherige Übersicht"');
     expect(html).toMatch(/aria-label="Hintergrund schließen/);
     const quelle = lies('components/os/agenten/Kopfleiste.tsx');
     const mehr = quelle.slice(quelle.indexOf('export function MehrMenue'));
@@ -91,7 +91,7 @@ describe('1. Nichts geht verloren — jede Aktion hat einen (ruhigeren) Ort', ()
     const html = await rendere(h(AgentenFlaeche, { handyReiter: 'laeuft' }), { form: 'handy' });
     expect(html).toContain('aria-label="Not-Aus"');
     expect(html).toContain('Kosten diesen Monat');
-    expect(html).toContain('aria-label="Mehr: Leitplanken, Budget, Zeitpläne, bisherige Übersicht"');
+    expect(html).toContain('aria-label="Mehr: Leitplanken, Budget, Kosten je Auftrag, Zeitpläne, bisherige Übersicht"');
     expect(html).not.toMatch(/aria-label="Hintergrund schließen/); // am Handy kein ✕ — es ist ein Reiter
   });
 

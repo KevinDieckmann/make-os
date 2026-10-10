@@ -21,6 +21,7 @@ import type {
   SkillAnfrage, SkillAntwort, SkillsAntwort,
 } from '@/lib/agenten/typen';
 import type { KiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
+import type { KostenAntwort } from '@/lib/agenten/spur';
 import { zufallsUuid } from '@/lib/kennung';
 import type { StromEreignis } from '@/lib/http/sse';
 export { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
@@ -45,6 +46,8 @@ export const WEGE = {
   faden: '/api/agenten/faden',
   skills: '/api/agenten/skills',
   laeufe: '/api/agenten/laeufe',
+  /** Kosten je Auftrag aus der Lauf-Spur (10.10., Paket V1) — nur eigene Ketten, Inhaber zusätzlich Summen der Instanz. */
+  kosten: '/api/agenten/kosten',
   stapel: '/api/zoe/stapel',
   zoe: '/api/kimmi',
 } as const;
@@ -166,6 +169,7 @@ export const ladeSkills = (head?: string) => holen<SkillsAntwort>(q(WEGE.skills,
 export const ladeSkill = (id: string) => holen<SkillAntwort>(q(WEGE.skills, { id }));
 export const ladeLaeufe = (space?: string) => holen<LaeufeAntwort>(q(WEGE.laeufe, { space }));
 export const ladeStapel = (space?: string) => holen<StapelAntwort>(q(WEGE.stapel, { space }));
+export const ladeKosten = (space?: string) => holen<KostenAntwort>(q(WEGE.kosten, { space }));
 
 // ── Schreiben ───────────────────────────────────────────────────────────────────────────────────────────────────────
 

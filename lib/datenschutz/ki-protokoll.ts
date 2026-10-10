@@ -71,11 +71,18 @@ export interface KiProtokollEintrag {
   tokenEin?: number;
   tokenAus?: number;
   kostenCent?: number;
+  /**
+   * Lauf-Spur (10.10., Paket V1): Kennung des Abschnitts (`spur`) und der Kette (`kette`), zu denen dieser Aufruf gehört — nur Kennungen
+   * `lauf-<uuid>` (lib/agenten/spur.ts). Damit lässt sich jeder Aufruf einer Kette ZOE → Head → Mitarbeiter zuordnen.
+   */
+  spur?: string;
+  kette?: string;
 }
 export interface KiProtokollDatei { eintraege: KiProtokollEintrag[]; ueberlauf?: number; bereinigt?: { am: string; eintraege: number; grund: string } }
 
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const KENNWORT = /^[a-z0-9][a-z0-9:_.-]{0,59}$/i;
+const LAUF_ID = /^lauf-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Monat (Berlin) als JJJJ-MM. */
 export function monatVon(d = new Date()): string {
@@ -157,6 +164,8 @@ export function eintragSaeubern(e: Omit<KiProtokollEintrag, 'at'> & { at?: strin
     ...(zahl(e.tokenEin) !== undefined ? { tokenEin: zahl(e.tokenEin) } : {}),
     ...(zahl(e.tokenAus) !== undefined ? { tokenAus: zahl(e.tokenAus) } : {}),
     ...(zahl(e.kostenCent) !== undefined ? { kostenCent: zahl(e.kostenCent) } : {}),
+    ...(typeof e.spur === 'string' && LAUF_ID.test(e.spur) ? { spur: e.spur } : {}),
+    ...(typeof e.kette === 'string' && LAUF_ID.test(e.kette) ? { kette: e.kette } : {}),
   };
 }
 

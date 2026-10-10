@@ -8,6 +8,7 @@
 import { resolveAgent } from '@/lib/agent-config';
 import { localDay } from '@/lib/zeit';
 import { hintergrundKopf, laufImKontext } from '@/lib/datenschutz/ki-lauf';
+import { spurKopfFuerSprung } from '@/lib/ki/spur-kontext';
 import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { agentFuerKonto, PRIVAT_AGENTEN, agentKategorien } from './agent-kategorien';
 
@@ -151,7 +152,8 @@ async function agentLaufen(id: Ausfuehrbar, auftrag: string, origin: string, per
   // Datenschutz (05.10.): ein Lauf des Takts trägt `x-make-lauf: hintergrund` mit — die Routen geben das dem KI-Tor weiter
   // (Schalter „Hintergrund-KI“, Pseudonymisierung). Vom Gespräch/Knopf ausgelöst bleibt es ein Aufruf.
   const hintergrund = opt.hintergrund || laufImKontext() === 'hintergrund';
-  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}), ...hintergrundKopf(hintergrund) };
+  // Lauf-Spur (10.10., Paket V1): der Sprung trägt die Kette (`x-make-spur`, nur Kennungen) — die Route gibt sie über `kiAus` dem Modellaufruf mit.
+  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}), ...hintergrundKopf(hintergrund), ...spurKopfFuerSprung() };
   // Ein „person:x“ im Auftragstext darf nur der Takt setzen (Systemlauf ohne Person) — sonst könnte
   // ein Konto als jemand anderes laufen lassen (26.09.).
   const personAusText = (text: string) => person ?? /person:([a-z0-9-]{1,40})/.exec(text)?.[1];

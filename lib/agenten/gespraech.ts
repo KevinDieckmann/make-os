@@ -19,6 +19,7 @@ import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { LESEND, nurVorschlag, WEB_AGENTEN } from '@/lib/zoe/gespraech-schutz';
 import { FREMD_WERKZEUGE } from '@/lib/zoe/fremd';
 import { schleife, type AufrufErgebnis } from './schleife';
+import { spurBereichAus } from './spur';
 import type { StromEreignis } from '@/lib/http/sse';
 import { kiSchalterFuer, type KiSchalter } from '@/lib/datenschutz/ki-einstellungen';
 import { kategorieVonWerkzeug } from '@/lib/datenschutz/ki-werkzeuge';
@@ -38,7 +39,7 @@ import { istUnterlagenWerkzeug, unterlagenAngebotErgaenzen, unterlagenWerkzeugAu
 import { auftragBlock, auftragBrainBlock } from './auftrag';
 import { istWissenWerkzeug, wissenAngebotErgaenzen, wissenAusfuehren, wissenBeschraenkt, wissenSystemSatz, WISSEN_QUELLE } from './wissen-werkzeug';
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
-import { anhaengen, brettText, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
+import { anhaengen, brettText, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, inTeilen, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
 import { bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, zugZuruecknehmenFuer } from './faeden-server';
 
 /** Ein Satz für den Gesundheits-Head (Entscheidung 09.10., Fragerunde Teil 2 Nr. 18): Wellness, nie Diagnose oder Therapie. */
@@ -139,6 +140,8 @@ export interface LaufErgebnis {
   kostenCent: number;
   /** Die KI-Kategorien, die im Lauf an das Modell gingen (Paket 4a: Probelauf, ZOE fragt einen Head). */
   kategorien?: KiKategorie[];
+  /** Der Lauf hielt vor dem Modell an (Not-Aus, Head aus, Budget) — für die Lauf-Spur eine Sperre, kein Fehler (10.10.). */
+  gesperrt?: true;
 }
 
 /** Anlass der Stapel-Vorschläge — beginnt immer mit dem Namen des Heads (Zähler „Freigaben je Head“ im Überblick). */
@@ -186,26 +189,50 @@ function systemText(o: { head: HeadDef; m: Mitarbeiter | null; name: string; kon
   ].filter(Boolean).join('\n\n');
 }
 
-/** Die Schleife eines Agenten auf seinem Thread (Chat oder Lauf). Schreibt selbst nichts in den Thread — das tut der Aufrufer. */
+/**
+ * Die Schleife eines Agenten auf seinem Thread (Chat oder Lauf). Schreibt selbst nichts in den Thread — das tut der Aufrufer.
+ * Lauf-Spur (10.10., Paket V1): jeder Lauf ist EIN Abschnitt (`mitSpur`, lib/agenten/spur-server.ts) — Kette und Eltern aus dem laufenden
+ * Zusammenhang (ZOE-Zug, Head-Lauf, wiederhergestellt aus Warteschlange bzw. `x-make-spur`); `LaufSpan.lauf_id` an der Nachricht ist dieselbe
+ * Kennung wie in der Spur. Nur Metadaten.
+ */
 export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
+  const laufId = e.laufId && /^lauf-[0-9a-f-]{36}$/.test(e.laufId) ? e.laufId : neueKennung('lauf');
+  // Die Spur darf nie einen Lauf verhindern: ist sie nicht ladbar (z. B. eine Attrappe der Datenschicht im Test), läuft er ohne.
+  const mitSpur = await import('./spur-server').then(m => m.mitSpur).catch(() => null);
+  if (!mitSpur) return agentLaufInnen({ ...e, laufId }, laufId);
+  return mitSpur(
+    { art: e.modus === 'chat' ? 'chat' : 'invoke_agent', agent: agentSchluessel(e.faden.agent), person: e.sicht.person, bereich: spurBereichAus(e.faden.bereich), lauf: laufId },
+    o => agentLaufInnen({ ...e, laufId, ...(e.elternLaufId || !o.eltern ? {} : { elternLaufId: o.eltern }) }, o.kette),
+    r => ({ ergebnis: spurErgebnisVon(r), werkzeuge: r.span.werkzeug_aufrufe, ...(r.span.modell !== '-' ? { modell: r.span.modell } : {}) }),
+  );
+}
+
+/** Ausgang eines Laufs für die Spur (rein): Sperren (Not-Aus, Head aus, Budget) zählen nicht als Fehler. */
+export function spurErgebnisVon(r: Pick<LaufErgebnis, 'status' | 'gesperrt' | 'span'>): 'ok' | 'gestapelt' | 'wartet' | 'abgebrochen' | 'gesperrt' | 'fehler' {
+  if (r.gesperrt) return 'gesperrt';
+  if (r.status === 'fertig') return r.span.ergebnis === 'gestapelt' ? 'gestapelt' : 'ok';
+  return r.status;
+}
+
+async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string): Promise<LaufErgebnis> {
   const jetzt = e.jetzt ?? Date.now;
   const start = jetzt();
   const person = e.sicht.person;
-  const laufId = e.laufId ?? neueKennung('lauf');
+  const laufId = e.laufId;
   const leer = (status: LaufErgebnis['status'], grund: string, extra: Partial<LaufErgebnis> = {}): LaufErgebnis => ({
     ok: status === 'fertig', status, text: extra.text ?? grund, ki: false, grund, werkzeuge: [], fremdGelesen: e.faden.fremdGelesen, vertraulich: e.faden.vertraulich, schritte: [], kostenCent: 0,
-    span: { lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent', modell: '-', runden: 0, werkzeug_aufrufe: 0, token: { ein: 0, aus: 0, cache_lesen: 0, cache_schreiben: 0 }, cent: 0, dauer_ms: jetzt() - start, ergebnis: `${status === 'fertig' ? 'ok' : status}:${grund}` },
+    span: { lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), kette_id: kette, agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent', modell: '-', runden: 0, werkzeug_aufrufe: 0, token: { ein: 0, aus: 0, cache_lesen: 0, cache_schreiben: 0 }, cent: 0, dauer_ms: jetzt() - start, ergebnis: `${status === 'fertig' ? 'ok' : status}:${grund}` },
     ...extra,
   });
 
   const a = await agentAufloesen(e.faden.agent, e.umfang);
   if ('ok' in a && a.ok === false) return leer('fehler', a.fehler);
   const { head, mitarbeiter: m, einstellung } = a as Aufgeloest;
-  if (einstellung.notAus) return leer('abgebrochen', 'Not-Aus ist gesetzt — Agenten halten an.');
+  if (einstellung.notAus) return leer('abgebrochen', 'Not-Aus ist gesetzt — Agenten halten an.', { gesperrt: true });
   // Gegenprüfung 09.10.: Not-Aus, „aus“ und Monatsbudget DIESES Heads an der EINEN Stelle jedes Laufs — so gelten sie auch für Wege, die
   // nicht über die Thread-Route kommen (ZOE `head_fragen`, Skill-Testlauf, Zweite Meinung). Vorher prüfte agentLauf nur den Not-Aus für alle.
   const sperre = await (await import('./einstellung')).laufSperre(person, head.id).catch(() => null);
-  if (sperre) return leer(sperre.grund === 'not-aus' ? 'abgebrochen' : 'wartet', sperre.text);
+  if (sperre) return leer(sperre.grund === 'not-aus' ? 'abgebrochen' : 'wartet', sperre.text, { gesperrt: true });
   if (!hasAnthropicKey()) return leer('fehler', 'Kein KI-Schlüssel hinterlegt — der Agent antwortet erst mit Schlüssel.');
   const eh = einstellung.heads[head.id] ?? {};
   const stufe: ModelTier = e.skill?.stufe ?? m?.stufe ?? eh.stufe ?? head.stufe;
@@ -347,7 +374,7 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
   const status = aus.status;
   const grund = aus.grund ?? '';
   const span: LaufSpan = {
-    lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent',
+    lauf_id: laufId, ...(e.elternLaufId ? { eltern_lauf_id: e.elternLaufId } : {}), kette_id: kette, agent: agentSchluessel(e.faden.agent), operation: e.modus === 'chat' ? 'chat' : 'invoke_agent',
     modell, runden: aus.runden, werkzeug_aufrufe: aus.werkzeugAufrufe, token: aus.token, cent: aus.cent, dauer_ms: jetzt() - start,
     ergebnis: status === 'fertig' ? (aus.aufrufe.some(w => w.gestapelt) ? 'gestapelt' : 'ok') : `${status}:${grund}`.slice(0, 120),
   };
@@ -500,12 +527,16 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
     const aktuell = (await eigenerFaden(person, faden.id)) ?? faden;
     return { status: 200, body: { ok: true, faden: aktuell, stand: fadenStand(aktuell), stapelOffen: await stapelOffenFuer(person), hinweis: [e.hinweis, e.grund].filter(Boolean).join(' ') } };
   }
-  const antwort: NachrichtKern = {
-    id: neueKennung('nr'), rolle: 'agent', von: agentSchluessel(agent), text: e.text.slice(0, GRENZEN.nachrichtZeichen), zeit: new Date().toISOString(), ki: true,
-    ...(e.werkzeuge.length ? { werkzeuge: e.werkzeuge } : {}), kosten: { cent: e.kostenCent }, lauf: e.span,
-  };
+  // Nie still kürzen (10.10., Paket V1): eine lange Antwort in Teilen „Teil x von n“; Werkzeuge, Kosten und Lauf-Protokoll am letzten Teil.
+  const zeitA = new Date().toISOString();
+  const teile = inTeilen(e.text);
+  const antworten: NachrichtKern[] = teile.map((t, i) => ({
+    id: neueKennung('nr'), rolle: 'agent', von: agentSchluessel(agent), text: t, zeit: zeitA, ki: true,
+    ...(i === teile.length - 1 ? { ...(e.werkzeuge.length ? { werkzeuge: e.werkzeuge } : {}), kosten: { cent: e.kostenCent }, lauf: e.span } : {}),
+  }));
+  const antwort = antworten[antworten.length - 1];
   const r = await fadenAendern(person, faden.id, f => {
-    const x = anhaengen(f, [antwort], antwort.zeit);
+    const x = anhaengen(f, antworten, antwort.zeit);
     return x.ok ? { ...x.faden, fremdGelesen: f.fremdGelesen || e.fremdGelesen, vertraulich: f.vertraulich || e.vertraulich, gelesenAm: antwort.zeit } : x;
   });
   if (!r.ok) return nein(r.status, r.fehler);
@@ -519,12 +550,14 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
  */
 async function hinweisAnhaengen(person: string, fadenId: string, text: string, e: LaufErgebnis): Promise<boolean> {
   const jetzt = new Date().toISOString();
-  const n: NachrichtKern = {
-    id: neueKennung('nr'), rolle: 'system', von: 'system', text: text.slice(0, GRENZEN.nachrichtZeichen), zeit: jetzt,
-    ...(e.werkzeuge.length ? { werkzeuge: e.werkzeuge } : {}), kosten: { cent: e.kostenCent }, lauf: e.span,
-  };
+  // Nie still kürzen (10.10.): ein langer Hinweis (er trägt den Text des Agenten) in Teilen; Werkzeuge, Kosten und Lauf am letzten Teil.
+  const teile = inTeilen(text);
+  const ns: NachrichtKern[] = teile.map((t, i) => ({
+    id: neueKennung('nr'), rolle: 'system', von: 'system', text: t, zeit: jetzt,
+    ...(i === teile.length - 1 ? { ...(e.werkzeuge.length ? { werkzeuge: e.werkzeuge } : {}), kosten: { cent: e.kostenCent }, lauf: e.span } : {}),
+  }));
   const r = await fadenAendern(person, fadenId, f => {
-    const x = anhaengen(f, [n], jetzt);
+    const x = anhaengen(f, ns, jetzt);
     return x.ok ? { ...x.faden, fremdGelesen: f.fremdGelesen || e.fremdGelesen, vertraulich: f.vertraulich || e.vertraulich } : x;
   });
   return r.ok;

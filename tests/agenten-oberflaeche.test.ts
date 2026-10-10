@@ -101,7 +101,7 @@ describe('Drei Spalten gegen das Fixture', () => {
     expect(html).not.toContain('Nachfassen Kunde A</span><button'); // Fertig bleibt eingeklappt
     expect(html).toContain('Kosten diesen Monat');
     expect(html).toContain('aria-label="Not-Aus"');
-    expect(html).toContain('Mehr: Leitplanken, Budget, Zeitpläne, bisherige Übersicht');
+    expect(html).toContain('Mehr: Leitplanken, Budget, Kosten je Auftrag, Zeitpläne, bisherige Übersicht');
   });
 
   it('Geplant (bis 09.10. „Als Nächstes“) nach Eisenhower: wichtig & dringend → wichtig → dringend → später; kritisch pulsiert; Zeitpläne', async () => {

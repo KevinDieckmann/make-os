@@ -183,6 +183,85 @@ umschalten.“
 8. Im Chat ☰ → „Im Chat antwortet: Immer ZOE“ → überall ZOE, „↔ <Head>“ bleibt zum Umschalten. Zurück auf „Passender Head“.
 9. Am Handy (375 px) dasselbe im unteren Chat.
 
+## 10.10.2026 — Agenten v2 · V1 „Messen & sparen“: ZOE-Prompt-Cache, Lauf-Spur, Kosten je Auftrag, Arbeiter-Wecker (nur lokal — Branch `agenten-v1-messen`, Basis 475bcb06 = `update-0910b`)
+
+Entscheidung 10.10.: F1 = „Fundament zuerst“, F6 = „eigene Lauf-Spur im Server, nur Metadaten, Hash-Kette wie die anderen Protokolle“
+(AGENTEN_KONZEPT_V2.md Teil D › V1, Schwächen S5/S6/S8/S16). Kein Modellwechsel (der kommt erst nach den Prüffällen V4).
+
+**1. ZOE-Prompt-Cache** (`app/api/kimmi/route.ts`, `lib/anthropic.ts` `systemFuerApi`, Wächter `tests/zoe-cache.test.ts`)
+- Der System-Text des Gesprächs hat jetzt zwei Teile — dieselben Sätze wie vorher, nur sortiert: **stabil** (Grundauftrag, Regeln, Haltung, Brain-Anweisung,
+  Heads, Werkzeug-Hinweise) mit Cache-Marke vorn, **flüchtig** (Business-frei, Uhrzeit, Langzeit-Gedächtnis, Live-Zustand, Zusatz des Browsers, Bezug aus
+  „ZOE fragen“) ohne Marke dahinter. Vorher stand die Uhrzeit oben — jede Runde jedes Zugs bezahlte die ganzen Grundanweisungen neu, ZOE nutzte gar keinen Cache.
+- `askText`/`askStream` kennen `systemStabil`: mit `cacheSystem` zwei Blöcke (stabil mit `cache_control`, Rest ohne); `system` bleibt der ganze Text (Prüfmodell,
+  Tests, Protokoll unverändert). Pseudonymisierung ersetzt in beiden Teilen. Ohne `systemStabil` gilt die alte Regel (ein Block) — Heads, Finanzchef unverändert.
+- Werkzeuge gehen in **fester Reihenfolge** hinaus (Reihenfolge der Definition, nicht der Wahl): gleiche Auswahl → gleiche Bytes vor dem System-Text
+  (Reihenfolge der API: tools → system → messages). Die Auswahl selbst (Stichwort-Regeln, ≤ 20) ist unverändert.
+- Datenschutz unverändert: KI-Tor, `fremd()` um den Browser-Zusatz, FREMD_REGEL (jetzt im stabilen Teil), `<daten>`-Rahmen der Brain-Blöcke.
+
+**2. Lauf-Spur** (`lib/agenten/spur.ts` rein, `lib/agenten/spur-server.ts`, `lib/ki/spur-kontext.ts`; Wächter `tests/agenten-spur.test.ts`)
+- EINE Kette je Anstoß (ZOE-Zug, Head-Chat, Lauf aus der Warteschlange); jeder Abschnitt (ZOE-Zug · Head-/Mitarbeiter-Lauf · Modellaufruf über einen Sprung) ist
+  EIN Eintrag: Kette, Lauf, Eltern, Art, Agent (Kennwort), Person (Speichername), Bereich, Start, Dauer, Zeit bis zum ersten Wort, Modell, Token inkl. Cache,
+  geschätzte Kosten (US-Cent wie `ki-verbrauch`), Zahl der Werkzeug- und Modellaufrufe, Ergebnis-Klasse (`ok · gestapelt · wartet · abgebrochen · gesperrt · fehler`).
+  **Nie Inhalte** — `spurSaeubern` lässt nur Kennungen, Kennwörter und Zahlen durch.
+- Weitergabe: im Prozess über AsyncLocalStorage (`mitSpur` öffnet einen Abschnitt mit eigenem Sammler — Kind-Abschnitte zählen nicht doppelt); über die
+  Warteschlange im Feld `Auftrag.spur` (bewusst NICHT in `eingabe`, die zum Idempotenz-Schlüssel gehört); über interne Sprünge im Kopf `x-make-spur`
+  (`runAgent`, nur auf dem Dienstweg geglaubt: `kiAus`, `spurAusAnfrage`). Die Lauf-Routen (`/api/zoe/auftraege/lauf`, `/api/agenten/faden/lauf`) stellen
+  den Zusammenhang wieder her (`mitSpurBezug`). Ergebnis: ZOE → Head (`an_head`/`head_fragen`) → Mitarbeiter hängen an derselben Kette.
+- Jeder Modellaufruf (`kiAufruf` in lib/anthropic.ts) zählt in den offenen Abschnitt; das **KI-Protokoll** trägt `spur` und `kette` (nur Kennungen). `LaufSpan` am
+  Thread trägt `kette_id`; seine `lauf_id` ist dieselbe Kennung wie in der Spur.
+- **Ablage getrennt nach Bereich** (Trennungsregel 09.10. spät): `lauf-spur--privat--JJJJ-MM` (IN_PRIVAT) und `lauf-spur--business--JJJJ-MM` (IN_BUSINESS), nur
+  anhängend über `anhaengenVerkettet` (Familie `lauf-spur` in MONATS_FAMILIEN, Hash-Kette + Siegel), Aufbewahrung 12 Monate (Durchsicht leert, Vermerk bleibt),
+  Speicher-Register mit Angaben, Konto-Export (eigene Abschnitte) und Konto löschen (Speichername → „[gelöscht]“) über das Protokoll-Muster in
+  `lib/datenschutz/konto-daten.ts`, Memo-Rauschen. Ohne erkennbaren Bereich gilt „im Zweifel privat“; ein Konto „nur Business“ läuft immer im Business.
+
+**3. Kosten je Auftrag** — `GET /api/agenten/kosten` (Klasse `person`, `eigenePerson`, Dienstweg 403) + Agenten › ⋯ › „Kosten je Auftrag“
+(`components/os/agenten/KostenSpur.tsx`)
+- Je Person NUR die eigenen Ketten (letzte 30 Tage): wann, welche Agenten (ZOE → Head → Mitarbeiter), Dauer, Kosten in Euro, Werkzeuge, erstes Wort, Anteil aus dem
+  Zwischenspeicher, Ausgang; oben Summen 7/30 Tage und „Zeit bis zum ersten Wort (ZOE)“ (Median, 95 %). Ein **Inhaber** zusätzlich die Summen der Instanz je
+  Bereich — nur Zahlen, nie Personen, Agenten oder Kennungen anderer.
+- Bereiche **serverseitig**: aus der Konto-Sicht (ein Konto „nur Business“ bekommt den Privat-Bestand gar nicht erst geladen), `?space=privat|business` schränkt
+  weiter ein. Wächter „Sicht X bekommt nichts aus Y“ in `tests/agenten-spur.test.ts` (Mitglied, `space`, nur Business, Inhaber, Testkunde, Dienstweg) und die
+  Messlatte (zwei neue Marken: Kevins Spur-Kennungen Privat/Business).
+
+**4. Arbeiter-Wecker** (`lib/zoe/wecker.ts`, `POST /api/zoe/auftraege/nimm { wartenMs }`, `worker.mjs`)
+- Ein untätiger Arbeiter fragt mit einer **langen Abfrage** (bis 15 s, Route deckelt auf 20 s): ist nichts da, hält die Route die Anfrage offen; `reihe()` weckt
+  sie, sobald etwas eingereiht wird (Zustand am `globalThis`, kein Netz). Vorher bis zu 30 s Pause je Sprung (ZOE → Head → Mitarbeiter = zwei Sprünge).
+  Ohne `wartenMs` antwortet die Route wie bisher (alter Arbeiter); ohne `gewartet` in der Antwort pausiert der neue Arbeiter wie bisher (alte App).
+
+**5. Nie still kürzen** (A4/S8): Antworten von Heads, Mitarbeitern, ZOE (Gespräch und Kanal) und „Zweite Meinung“ wurden still auf 8.000 Zeichen gekürzt
+(`e.text.slice(0, GRENZEN.nachrichtZeichen)`). Jetzt `inTeilen` (lib/agenten/faeden.ts): an Absatz-/Zeilen-/Wortgrenzen in Teile ≤ 8.000 Zeichen, jeder Teil
+sagt „Teil x von n“; Werkzeuge, Kosten und Lauf-Protokoll am letzten Teil, KI-Marke und „fremd“ (Mitarbeiter) an jedem Teil. Ist der Thread voll, gilt die
+bisherige 413-Regel (sichtbar „Thread voll“).
+
+**6. Head of IT** (`lib/hoi/lage.ts` `laufSpurBefunde`): „Agenten-Läufe · 7 Tage“ (Fehlerquote ohne Sperren) und „ZOE · Tempo und Zwischenspeicher“
+(erstes Wort p95, Zug p95, Cache-Anteil). Schwellen aus Teil F sind Vorschläge („erster Monat messen“) — deshalb nur gelb, nie rot, und erst ab 10 Läufen.
+
+**Gemessen / erwartet:** Im Test (`tests/zoe-cache.test.ts`, Ausgabe im Protokoll) ist der stabile Teil ≈ 10.400 Zeichen (≈ 3.000 Token, ohne Brain-Anweisung
+des Vaults) und die Werkzeuge eines typischen Zugs ≈ 9.400 Zeichen (≈ 2.700 Token) — zusammen ≈ 5.700 Token, die ab der zweiten Runde eines Zugs und bei jedem
+Zug innerhalb von 5 Minuten mit derselben Werkzeug-Auswahl aus dem Cache kommen (Lesen ≈ 0,1 × Eingabepreis, einmal Schreiben 1,25 ×). Dazu kommen Live-Zustand,
+Gedächtnis und Verlauf (flüchtig). Erwartung: Eingabekosten der gecachten Runden −40 bis −55 %, je Zug insgesamt etwa −25 bis −40 % (Ziel Teil F: −40 %),
+schnelleres erstes Wort. **Der echte Wert steht ab dem ersten Tag in „Kosten je Auftrag“ (Zwischenspeicher-Anteil) und im HOI** — Ziel ≥ 60 %.
+
+**Rückweg:** nur neue Bestände (`lauf-spur--*`) und optionale Felder (`Auftrag.spur`, `KiProtokollEintrag.spur/kette`, `LaufSpan.kette_id`) — der alte Stand
+ignoriert sie. Achtung: das Siegel `protokoll-siegel` kennt dann die Spur-Dateien, der alte Stand nicht (er kennt die Familie `lauf-spur` nicht) → seine
+nächtliche Prüfung meldet „Datei fehlt — das Siegel kennt …“ (HOI rot). Beim Rückweg die Schlüssel `lauf-spur--*` aus `protokoll-siegel` entfernen (oder den roten
+Befund hinnehmen). Lange Antworten, die schon in Teilen im Thread stehen, bleiben Teile.
+
+**So testet ihr**
+1. ZOE (ZoePanel oder Agenten › ZOE) zwei, drei Fragen hintereinander stellen, z. B. „Was steht heute an?“ und „Und morgen?“.
+2. Agenten › „⋯“ (unten im rechten Feld) › **Kosten je Auftrag**: oben Kosten 7/30 Tage, „Zeit bis zum ersten Wort (ZOE)“ und „Aus dem Zwischenspeicher“; darunter
+   je Frage eine Zeile „ZOE“ mit Dauer, Werkzeugen, erstem Wort und Zwischenspeicher-Anteil. Ab der zweiten Frage sollte der Anteil deutlich über 0 % liegen.
+3. ZOE bitten „Gib dem Head of Sales den Auftrag, … vorzubereiten“ — nach dem Bericht steht in „Kosten je Auftrag“ EINE Zeile „ZOE → Sales …“ (bzw. mit
+   Mitarbeiter) mit den Kosten der ganzen Kette; der Bericht kommt ohne die frühere Wartezeit (kein Warten auf die nächste Runde des Arbeiters).
+4. Kopf auf **Business** stellen und das Fenster neu öffnen: nur Business-Ketten. Ein Konto „nur Business“ sieht nie Privat-Ketten. Die zweite Person sieht nur
+   ihre eigenen; der Inhaber zusätzlich „Ganze Instanz (nur Summen)“.
+5. Einen Head um einen sehr langen Text bitten (z. B. „schreib 3 ausführliche Entwürfe“): die Antwort steht vollständig in mehreren Nachrichten „Teil 1 von 2 …“.
+6. Head of IT: Befunde „Agenten-Läufe · 7 Tage“ und „ZOE · Tempo und Zwischenspeicher“ (grün/gelb).
+
+**Offen:** (a) Heads cachen nur innerhalb eines Laufs (ihr System-Text trägt die Uhrzeit oben) — dieselbe Teilung wäre ein kleiner Folgeschritt; (b) Sprünge über
+andere interne Routen als `runAgent` tragen die Spur nur, wenn die Route `kiAus` nutzt (27 Routen tun es); (c) Eintrag im Verarbeitungsverzeichnis (Art. 30)
+für die Lauf-Spur prüfen (heute über das KI-Protokoll beschrieben); (d) `prompt_fassung` (T4) kommt mit V4.
+
 ## 10.10.2026 — Stress nur als Anspannung 1–5 · Brain-Notiz „People“ als Mitarbeiter unter CEO-Office (nur lokal — Branch `stress-people`, Basis 4fd45912)
 
 Zwei kleine Entscheidungen vom 10.10.: „Nur Anspannung 1–5“ und `people.md` (Founder-Care) → als Mitarbeiter unter CEO-Office, Business.
