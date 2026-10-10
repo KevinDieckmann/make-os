@@ -1033,6 +1033,12 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
     Fokus, Termine, Aufgaben, Index, Wachstums-Score als Karte). **Flächen-Kennungen bleiben** (`HEUTE_FLAECHE`: `home`, `uebersicht-privat`,
     `uebersicht-business`) — nie umbenennen, sonst sind gespeicherte Layouts weg. `/os/heute` und `/os/uebersicht` leiten in `next.config.mjs` nach
     `/os` (Parameter wandern mit); Links nur über `WEG.heute(space?)`. `/os/wachstum` bleibt Seite (Score-Karte, Planung).
+  - **Nur zwei Bereiche (09.10. spät, Kevin: „oben der Knopf Alles kann raus, es gibt nur Business oder Privat und die Zeit wird jedesmal
+    gemessen im Hintergrund“) — ersetzt das „Alles“ der Nachbesserung unten:** `SPACE_WAHLEN = ['privat', 'business']`, ohne Merker gilt
+    `SPACE_VORGABE` (Business). Ein altes `?space=alles` zählt wie kein Parameter (`altesAlles`; der Kopf ersetzt die Adresse per `replace`), ein
+    gemerktes „alles“ wird zum zuletzt konkreten Space. Kopf: Schalter Privat · Business. „Privat gegen Business“ zeigt die Zeit-Karte auf Heute
+    in beiden Sichten (`space: 'beide'`, `privatGegenBusiness` in lib/zeitmessung/modell.ts) — gemessen wird immer im Hintergrund. Neues nie
+    mit einer dritten Wahl „alles“ bauen; Sammel-Sichten (Kalender „Alles“, Planung „alle“) setzen ihren Filter selbst.
   - **Nachbesserung (08.10., Branch `aufraeumen-1b`, Kevin: „ein Schalter, oben, mit Alles“):** `SpaceWahl` = `alles` | `privat` | `business`
     (`SPACE_WAHLEN`). `useSpace()` liefert `wahl` (Schalter/Leiste/Heute), `space` (immer konkret: Seite, sonst zuletzt konkret — Suche, ZOE,
     Zeit) und `filter` (Space der Adresse, sonst Wahl; „alle“ bei Alles — Aufgaben, Planung, Ziele, Kalender). Wahl nur über `wahlVon`: `?space=`
@@ -1042,7 +1048,7 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
     `?space=`) + `ALLES_GRUPPEN` (Privat: Gesundheit, Familie · Business: Markttraktion, Mandate & Unternehmen), zusammen ≤ 12. Handy unten
     `HANDY_LEISTE` = Heute · Inbox · Menü · ZOE · Netzwerken (≤ 5, Spalten kürzen mit „…“); „Menü“ = Blatt mit Schalter, allen Punkten der Wahl,
     Einstellungen, Melden. Serverseitige Filter unverändert (nur Darstellung/Adresse).
-  - **Kopf** (`components/os/Kopf.tsx`): nur Schalter Alles · Privat · Business (`wechselZiel`: Gegenstück in der neuen Wahl, schon da → stehen bleiben, sonst deren Heute; am Handy kompakt) ·
+  - **Kopf** (`components/os/Kopf.tsx`): nur Schalter Privat · Business (bis 09.10. mit „Alles“) (`wechselZiel`: Gegenstück in der neuen Wahl, schon da → stehen bleiben, sonst deren Heute; am Handy kompakt) ·
     Suche (⌘K) · Glocke · Fokus-Zähler. Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
   - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute ·
     Inbox · Kalender · Aufgaben · Planung · Finanzen · (Privat: Gesundheit · Familie · Kontakte `/os/menschen` | Business: Markttraktion ·
