@@ -517,6 +517,9 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .flaeche-schmal { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
 .flaeche-schmal > .kachel { width: 100%; }
 .kachel { min-width: 0; position: relative; }
+/* Mehrere Karten in EINER Kachel (z. B. Index-Ansicht: Kopf + Säulen + Verlauf) stehen im selben Abstand wie das Raster (GAP 14 in
+   Flaeche.tsx) — vorher klebten sie aneinander (Markttraktion › Überblick, 10.10.). minmax(0, 1fr): breite Inhalte sprengen die Spalte nicht. */
+.kachel-inhalt { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .kachel-inhalt > .karte { margin: 0; }
 .kachel-bearbeiten .kachel-inhalt { pointer-events: none; user-select: none; -webkit-user-select: none; }
 .kachel-bearbeiten .kachel-inhalt > .karte { outline: 1px dashed rgba(255,255,255,.22); outline-offset: 3px; }

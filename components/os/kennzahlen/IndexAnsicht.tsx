@@ -118,7 +118,7 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
               {gruppen.map(g => (
                 <div key={g} style={{ display: 'grid', gap: 8 }}>
                   {gruppen.length > 1 && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase' }}>{g}</span>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 10 }}>
                     {s.kennzahlen.filter(k => k.gruppe === g).map(k => <KennzahlKachel key={k.id} k={k} onOeffnen={() => setOffen(k.id)} />)}
                   </div>
                 </div>
