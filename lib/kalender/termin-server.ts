@@ -33,6 +33,8 @@ export interface ServerTermin {
    */
   bereich?: KalenderBereich;
   art?: IcsArt; blockArt?: BlockArt; beschaeftigt?: boolean; ort?: string; notiz?: string;
+  /** Routinen 2 (10.10.): `privat` → CLASS:PRIVATE, andere sehen nur „Belegt“ (`maskieren`). Ohne Angabe wie bisher. */
+  sichtbarkeit?: 'privat';
   /** Feste, echte UID für idempotente Vorgänge (siehe icloud.ts `anlegen`). */
   uid?: string;
   /**
@@ -77,6 +79,7 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
     titel: t.titel, kalender, start: t.start, ende: t.ende, ganztags: !!t.ganztags,
     art, ...(art === 'block' && t.blockArt ? { blockArt: t.blockArt } : {}),
     ...(t.beschaeftigt !== undefined ? { beschaeftigt: t.beschaeftigt } : {}),
+    ...(t.sichtbarkeit ? { sichtbarkeit: t.sichtbarkeit } : {}),
     ...(t.ort ? { ort: t.ort } : {}), ...(t.notiz ? { notiz: t.notiz } : {}), ...(t.uid ? { uid: t.uid } : {}),
     erinnerungenMin: [],
   });

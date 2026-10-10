@@ -20,11 +20,15 @@ import { routineImPrivat } from '@/lib/planung/bereich-sicht';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { moduleWirksam, hatEintraege } from '@/lib/gesundheit/module';
 import { koerperLaden } from '@/lib/gesundheit/koerper-server';
+import { heuteFaellig, erledigtTage } from '@/lib/planung/routinen';
+import { routineRhythmusKurz, routineStatistik } from '@/lib/planung/rhythmus';
+import { zaehlerVon } from '@/lib/planung/routinen-haken-server';
+import type { Routine as PlanRoutine } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Routine { id: string; label: string; wann: string; aktiv: boolean; kategorie?: string; owner?: string; space?: string; einheit?: string }
+type Routine = PlanRoutine;
 
 export async function GET(req: Request) {
   const person = ansichtPerson(req);
@@ -32,7 +36,7 @@ export async function GET(req: Request) {
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const ich = personAus(req);
   const heute = localDay();
-  const [vitals, vitalsLog, hautRoh, streakRoh, hl, journal, routinenF, tg, takt, koerper] = await Promise.all([
+  const [vitals, vitalsLog, hautRoh, streakRoh, hl, journal, routinenF, tg, takt, koerper, zaehler] = await Promise.all([
     resolveVitals(heute, person),
     loadJson<VitalsLog>(speicherFuer('vitals', person)),
     loadJson<HautLog>(speicherFuer('haut', person)),
@@ -43,6 +47,8 @@ export async function GET(req: Request) {
     ladeStand(),
     loadJson<TaktStand>('gesundheit-takt'),
     koerperLaden(person).then(r => r.koerper),
+    // Routinen 2 (10.10.): Zähler je Tag („5 von 8“) der angezeigten Person — dasselbe Tor wie ihr Log.
+    zaehlerVon(person),
   ]);
   // Module der Person (09.10.): nur die wirksamen an/aus gehen raus — nie das Körper-Profil selbst (das sieht nur sie).
   const modulStand = moduleWirksam(koerper, { haut: hatEintraege(hautRoh), serie: hatEintraege(streakRoh) });
@@ -57,6 +63,16 @@ export async function GET(req: Request) {
   const t14 = tageZurueck(heute, 14);
   const q = routineQuote(hl ?? {}, routinen.map(r => r.id), heute, 7);
   const je = (id: string) => routineQuote(hl ?? {}, [id], heute, 7).quote;
+  // Routinen 2 (10.10.): „Heute“ nach Rhythmus — nur, was heute dran ist (oder schon erledigt), mit Zähler, Streak und Quote je Regel
+  // (lib/planung/rhythmus.ts). Pausen und Zeitraum nimmt die Fälligkeit mit. `alle` = jede aktive Routine (für „Sätze unter Routinen“).
+  const heuteListe = heuteFaellig(routinen, person, hl ?? {}, heute, 'alle', zaehler).map(x => {
+    const st = routineStatistik(x.routine, erledigtTage(hl ?? {}, x.routine.id), heute);
+    return {
+      ...x.routine, quote7: je(x.routine.id), heute: x.heuteErledigt, ziel: x.ziel, ist: x.ist, ueberfaellig: x.f.ueberfaellig,
+      rhythmus: routineRhythmusKurz(x.routine), streak: st.streak, streakEinheit: st.einheit, quote: st.quote,
+      ...(x.f.proWoche ? { dieseWoche: x.f.dieseWoche ?? 0, proWoche: x.f.proWoche } : {}),
+    };
+  });
 
   return NextResponse.json({
     person, ich, heute,
@@ -66,7 +82,8 @@ export async function GET(req: Request) {
     haut: { trend: hautTrend(haut ?? {}, heute), tage: t14.map(d => ({ d, e: haut?.[d] ?? null })) },
     streak: streakStand(streak ?? {}, heute),
     routinen: {
-      liste: routinen.map(r => ({ ...r, quote7: je(r.id), heute: (hl?.[heute] ?? []).includes(r.id) })),
+      liste: heuteListe,
+      alle: routinen.map(r => ({ id: r.id, label: r.label })),
       quote7: q.quote, tage7: q.tage,
       tage: t14.map(d => ({ d, n: (hl?.[d] ?? []).length })),
     },

@@ -324,6 +324,23 @@ export function faelligkeit(r: FaelligEingabe, erledigtTage: readonly string[], 
   return faelligKern(g, r.naechstesMal, erledigtTage, heute, r.angelegtAm);
 }
 
+/**
+ * Die Tage in [von, bis], an denen die Routine geplant ist (Kalender-Block): täglich jeder Tag, feste Tage ihre Termine, „alle n …“ nur der
+ * nächste fällige Tag (ab heute), x-mal pro Woche keiner (kein fester Tag). Pausen und Tage außerhalb des Zeitraums fallen weg.
+ */
+export function geplanteTage(r: FaelligEingabe, erledigtTage: readonly string[], von: string, bis: string): string[] {
+  const g = regelVon(r);
+  let tage: string[] = [];
+  if (g.art === 'taeglich') { for (let d = von; d <= bis; d = tagePlus(d, 1)) tage.push(d); }
+  else if (istKalenderRegel(g)) tage = termineIm(g, von, bis);
+  else if (g.art === 'intervall') {
+    const n = faelligKern(g, r.naechstesMal, erledigtTage, von, r.angelegtAm).naechstes;
+    const tag = n < von ? von : n;
+    if (tag <= bis) tage = [tag];
+  }
+  return tage.filter(d => !ruhtAm(r, d));
+}
+
 // ── Streak und Erfüllungsquote — je Regel gerecht ────────────────────────────────────────────────────────────────────────────
 
 export interface RoutineStatistik {

@@ -231,6 +231,25 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Wochenplan festhalten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0h2) Routinen-Blöcke (Routinen 2, 10.10.): je Person die eigenen Routinen mit „Kalender-Block“ für die nächsten zwei Wochen nachziehen
+  //      (lib/planung/routinen-takt.ts — feste UIDs, idempotent; entfernt nur eigene, künftige Blöcke). Ohne Kalender bleibt alles, wie es ist.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Routinen-Blöcke', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const [{ alleSpeicher }, { routineBloeckeAbgleichen }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/planung/routinen-takt')]);
+      let an = 0, weg = 0;
+      const fehler: string[] = [];
+      for (const p of await alleSpeicher()) {
+        const r = await routineBloeckeAbgleichen(p, new Date()).catch(e => ({ angelegt: 0, entfernt: 0, fehler: e instanceof Error ? e.message : 'Fehler' }));
+        an += r.angelegt; weg += r.entfernt;
+        if (r.fehler) fehler.push(r.fehler);
+      }
+      schritte.push({ name: 'Routinen-Blöcke', ok: !fehler.length, info: [an ? `${an} angelegt` : '', weg ? `${weg} entfernt` : '', fehler[0] ?? ''].filter(Boolean).join(' · ') || 'nichts zu tun' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Routinen-Blöcke', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0i) Einrichtung festhalten (Onboarding B10, Update 2): je Konto im Haushalt die Schritte mit Prüfung merken, die gerade fertig sind —
   //     fällt einer später auf Rot, zeigt die Karte auf Heute „braucht dich“ (lib/onboarding-status.ts `einrichtungFesthalten`). Nur
   //     Kennungen und Tage, idempotent; Lesen (GET /api/onboarding) schreibt nie.

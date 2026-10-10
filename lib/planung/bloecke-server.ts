@@ -53,6 +53,9 @@ export async function blockAnlegen(person: string, b: BlockNeu, wer: ProtokollWe
   const r = await terminAnlegenServer({
     titel: String(a.titel), start: String(a.start), ende: String(a.ende), wer: kalenderWer, art, ...(blockArt ? { blockArt } : {}), beschaeftigt: true, von: person, eigenesIcloud: true,
     ...(b.taskId ? { bezug: { aufgabeId: b.taskId } } : {}),
+    // Routinen 2 (10.10.): feste UID (idempotent) und „privat“ (andere sehen „Belegt“) — Erholung war schon immer privat.
+    ...(b.uid ? { uid: b.uid } : {}),
+    ...(a.sichtbarkeit === 'privat' ? { sichtbarkeit: 'privat' as const } : {}),
   }, wer);
   return { uid: r.uid };
 }

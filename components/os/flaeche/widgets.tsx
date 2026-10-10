@@ -38,9 +38,10 @@ import type { LeadZeile } from '@/lib/crm/leads';
 import type { Event as CrmEvent } from '@/lib/crm/typen';
 import type { EventZahlen } from '@/lib/crm/events';
 import { MARKE_EVENTS, markeVon, istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, feld, zoneFarbe, prioFarbe } from '../ui';
-import { heuteFaellig, istGemeinsam, spaceVonRoutine } from '@/lib/planung/routinen';
-import { rhythmusKurz } from '@/lib/planung/rhythmus';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, Hinweis, feld, zoneFarbe, prioFarbe } from '../ui';
+import { heuteFaellig, istGemeinsam, spaceVonRoutine, erledigtTage, type ZaehlerLog } from '@/lib/planung/routinen';
+import { routineRhythmusKurz, routineStatistik } from '@/lib/planung/rhythmus';
+import { RoutineSteuer, routineHakenSenden, streakText } from '../routinen/haken';
 import type { Routine as PlanungsRoutine } from '@/lib/planung/typen';
 import { WhoopImport } from '../WhoopImport';
 import { EinheitMarke } from '../aufgaben/Einheit';
@@ -367,53 +368,68 @@ function RoutinenWidget({ titel, i }: WidgetProps) {
 
 // ── Routinen heute (27.09.) ─────────────────────────────────────────────────
 // Was heute für diese Person dran ist — eigene und gemeinsame Routinen, nach
-// Rhythmus fällig (täglich, 3×/Woche, wöchentlich … jährlich), Privat oder
-// Business je Einstellung, abhakbar in den eigenen health-log. `null`, wenn
-// nichts fällig ist. Das Widget „Routinen & Streak“ (Gesundheit) bleibt daneben.
+// Rhythmus fällig (täglich, Werktage, feste Tage, x-mal pro Woche, alle n …,
+// monatlich; Pausen und Zeitraum), Privat oder Business je Einstellung. `null`,
+// wenn nichts fällig ist. Das Widget „Routinen & Streak“ (Gesundheit) bleibt daneben.
+// Routinen 2 (10.10.): Zähler („5 von 8“) und mehrmals täglich zählen mit „− +“; jeder Tipp ist EIN PATCH auf /api/state/health — nie mehr
+// der ganze Log aus dem Browser (zwei Geräte überschreiben sich so nicht). Darunter Rhythmus und Streak der Routine.
 function RoutinenHeuteWidget({ e, titel, i, seite }: WidgetProps) {
   const heute = localDay();
   // Sicht Privat · Business (10.10.): auf einer Fläche mit Bereich gilt deren Bereich — der Server liefert nur ihn (`?space=`).
   const sp = widgetSpace(seite, e);
   const routinen = useDaten<PlanungsRoutine[]>(`/api/state/routinen${sp === 'alle' ? '' : `?space=${sp}`}`, x => (Array.isArray((x as { routinen?: unknown }).routinen) ? (x as { routinen: PlanungsRoutine[] }).routinen : null));
   const ich = useDaten<string>('/api/konto/ich', x => ((x as { ich?: { speicher?: string } }).ich?.speicher ?? null));
-  const geladen = useDaten<Record<string, string[]>>('/api/state/health', x => ((x as { log?: Record<string, string[]> }).log ?? {}));
-  const [log, setLog] = useState<Record<string, string[]> | null>(null);
-  useEffect(() => { if (geladen) setLog(geladen); }, [geladen]);
-  const [speichern] = useState(() => {
-    let t: ReturnType<typeof setTimeout> | undefined;
-    return (next: Record<string, string[]>) => { clearTimeout(t); t = setTimeout(() => { fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {}); datenVergessen(); }, 300); };
-  });
+  const geladen = useDaten<{ log: Record<string, string[]>; zaehler: ZaehlerLog }>('/api/state/health', x => ({ log: (x as { log?: Record<string, string[]> }).log ?? {}, zaehler: (x as { zaehler?: ZaehlerLog }).zaehler ?? {} }));
+  const [stand, setStand] = useState<{ log: Record<string, string[]>; zaehler: ZaehlerLog } | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => { if (geladen) setStand(geladen); }, [geladen]);
   if (routinen === undefined || ich === undefined || geladen === undefined) return null;
   if (!routinen || !ich) return null;
-  const liste = heuteFaellig(routinen, ich, log ?? geladen, heute, sp);
+  const s = stand ?? geladen ?? { log: {}, zaehler: {} };
+  const liste = heuteFaellig(routinen, ich, s.log, heute, sp, s.zaehler);
   if (!liste.length) return null;
   const offen = liste.filter(x => !x.heuteErledigt).length;
-  const toggle = (id: string) => {
-    const basis = log ?? geladen ?? {};
-    const tag = new Set(basis[heute] ?? []);
-    if (tag.has(id)) tag.delete(id); else tag.add(id);
-    const next = { ...basis, [heute]: Array.from(tag) };
-    setLog(next); speichern(next);
+  /** Sofort sichtbar, dann EIN PATCH; die Antwort des Servers gewinnt. */
+  const schritt = async (id: string, ziel: number, ist: number, art: { erledigt: boolean } | { zaehler: 'plus' | 'minus' }) => {
+    const neuIst = 'erledigt' in art ? (art.erledigt ? Math.max(ist, ziel) : 0) : Math.max(0, ist + (art.zaehler === 'plus' ? 1 : -1));
+    const tagListe = new Set(s.log[heute] ?? []);
+    if (neuIst >= ziel) tagListe.add(id); else tagListe.delete(id);
+    setStand({ log: { ...s.log, [heute]: [...tagListe] }, zaehler: { ...s.zaehler, [heute]: { ...(s.zaehler[heute] ?? {}), [id]: neuIst } } });
+    const a = await routineHakenSenden(id, art);
+    if (!a.ok) { setFehler(a.error ?? 'Nicht gespeichert.'); setStand(s); return; }
+    setFehler(null);
+    setStand(alt => {
+      const b = alt ?? s;
+      return { log: { ...b.log, [heute]: a.erledigt ?? [] }, zaehler: { ...b.zaehler, [heute]: { ...(b.zaehler[heute] ?? {}), [id]: a.ist ?? neuIst } } };
+    });
+    datenVergessen();
   };
   const farbe = sp === 'business' ? SPACE_FARBE.business : sp === 'privat' ? SPACE_FARBE.privat : LEUCHT.gut;
   return (
     <Karte i={i} akzent={!offen ? LEUCHT.gut : undefined}>
       <Ueberschrift farbe={farbe} rechts={<Link href="/os/planung/routinen" style={link}>{offen ? `${offen} offen ›` : 'alle erledigt ›'}</Link>}>{titel ?? `Routinen heute${sp !== 'alle' ? ` · ${SPACE_LABEL[sp]}` : ''}`}</Ueberschrift>
+      {fehler && <Hinweis art="achtung">{fehler}</Hinweis>}
       <Liste>
-        {liste.slice(0, 10).map(({ routine: r, f, heuteErledigt }) => (
-          <Zeile key={r.id} onClick={() => toggle(r.id)}
-            links={<Haken an={heuteErledigt} farbe={SPACE_FARBE[spaceVonRoutine(r)]} onChange={() => toggle(r.id)} />}
-            titel={<span style={{ color: heuteErledigt ? C.inkLeise : C.ink, textDecoration: heuteErledigt ? 'line-through' : 'none' }}>{r.label}</span>}
-            unter={[
-              sp === 'alle' ? SPACE_LABEL[spaceVonRoutine(r)] : '',
-              spaceVonRoutine(r) === 'business' ? r.einheit ?? '' : '',
-              istGemeinsam(r) ? 'gemeinsam' : '',
-              (r.rhythmus ?? 'taeglich') !== 'taeglich' ? rhythmusKurz(r.rhythmus) : '',
-              f.ueberfaellig ? `seit ${f.naechstes.slice(8)}.${f.naechstes.slice(5, 7)}.` : '',
-              f.dieseWoche != null ? `${f.dieseWoche}/3 diese Woche` : '',
-            ].filter(Boolean).join(' · ') || undefined}
-            rechts={f.ueberfaellig && !heuteErledigt ? <Chip farbe={LEUCHT.achtung}>überfällig</Chip> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{r.dauerMin} min</span>} />
-        ))}
+        {liste.slice(0, 10).map(({ routine: r, f, heuteErledigt, ziel, ist }) => {
+          const st = routineStatistik(r, erledigtTage(s.log, r.id), heute);
+          return (
+            <Zeile key={r.id} onClick={ziel <= 1 ? () => void schritt(r.id, ziel, ist, { erledigt: !heuteErledigt }) : undefined}
+              links={ziel <= 1 ? <Haken an={heuteErledigt} farbe={SPACE_FARBE[spaceVonRoutine(r)]} onChange={() => void schritt(r.id, ziel, ist, { erledigt: !heuteErledigt })} /> : undefined}
+              titel={<span style={{ color: heuteErledigt ? C.inkLeise : C.ink, textDecoration: heuteErledigt && ziel <= 1 ? 'line-through' : 'none' }}>{r.label}</span>}
+              unter={[
+                sp === 'alle' ? SPACE_LABEL[spaceVonRoutine(r)] : '',
+                spaceVonRoutine(r) === 'business' ? r.einheit ?? '' : '',
+                istGemeinsam(r) ? 'gemeinsam' : '',
+                routineRhythmusKurz(r),
+                f.ueberfaellig ? `seit ${f.naechstes.slice(8)}.${f.naechstes.slice(5, 7)}.` : '',
+                f.proWoche ? `${f.dieseWoche ?? 0}/${f.proWoche} diese Woche` : '',
+                streakText(st.streak, st.einheit),
+              ].filter(Boolean).join(' · ') || undefined}
+              rechts={ziel > 1
+                ? <RoutineSteuer label={r.label} ziel={ziel} ist={ist} erledigt={heuteErledigt} farbe={SPACE_FARBE[spaceVonRoutine(r)]} onHaken={() => void schritt(r.id, ziel, ist, { erledigt: !heuteErledigt })} onZaehlen={z => void schritt(r.id, ziel, ist, { zaehler: z })} />
+                : f.ueberfaellig && !heuteErledigt ? <Chip farbe={LEUCHT.achtung}>überfällig</Chip> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{r.uhrzeiten?.[0] ?? `${r.dauerMin} min`}</span>} />
+          );
+        })}
       </Liste>
       {liste.length > 10 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>+ {liste.length - 10} weitere in der Tagesplanung</div>}
     </Karte>

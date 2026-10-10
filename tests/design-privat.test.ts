@@ -25,7 +25,8 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 
 /** Alle Dateien des Bereichs Privat · ZOE · System. */
 // 10.10.: Kompass und Wachstum sind Abschnitte der Fokus-Seite (components/os/fokus).
-const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche', 'components/os/fokus'];
+// 10.10. (Routinen 2): der Routine-Editor und das Abhaken/Zählen (components/os/routinen).
+const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche', 'components/os/fokus', 'components/os/routinen'];
 const EINZELN = [
   'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'FokusView', 'WissenView',
   'HeuteView', 'ZoeReiter', 'StapelView', 'StapelProtokoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',

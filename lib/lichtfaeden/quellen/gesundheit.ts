@@ -9,8 +9,10 @@
 
 import { BEIDE, gewichtVon, statusVon, tagAus, themaPfad, type Strang } from '../modell';
 import { hatPrivatEinheit } from '@/lib/planung/bereich';
+import { regelVon } from '@/lib/planung/rhythmus';
+import type { Routine } from '@/lib/planung/typen';
 
-export interface GsRoutine { id: string; label: string; kategorie: string; aktiv: boolean; owner?: string; rhythmus?: string; naechstesMal?: string; space?: string; einheit?: string }
+export interface GsRoutine { id: string; label: string; kategorie: string; aktiv: boolean; owner?: string; rhythmus?: string; naechstesMal?: string; space?: string; einheit?: string; regel?: Routine['regel'] }
 export interface GsSportZiel { id: string; titel: string; datum?: string; erledigt?: boolean }
 export interface GesundheitDaten {
   routinen: GsRoutine[];
@@ -20,13 +22,14 @@ export interface GesundheitDaten {
   links: { routinen: string; sport: string };
 }
 
-const TAEGLICH = new Set(['taeglich', '3x-woche']);
+/** Einen Tag hat nur, was „alle n …“ ab dem letzten Mal rechnet (bisher wöchentlich … jährlich) — Routinen 2 (10.10.): über `regelVon`. */
+const mitTag = (r: GsRoutine) => regelVon(r as Pick<Routine, 'rhythmus' | 'regel'>).art === 'intervall';
 
 export function gesundheitStraenge(d: GesundheitDaten): Strang[] {
   const aus: Strang[] = [];
   for (const r of d.routinen) {
     const tag = tagAus(r.naechstesMal);
-    if (!tag || !r.aktiv || TAEGLICH.has(r.rhythmus ?? 'taeglich')) continue;
+    if (!tag || !r.aktiv || !mitTag(r)) continue;
     const person = !r.owner || r.owner === BEIDE ? BEIDE : r.owner;
     const gesundheit = r.kategorie === 'gesundheit' || r.kategorie === 'erholung';
     // 05.10. abends: eine Routine einer Privat-Einheit (Selbstständigkeit) läuft unter Privat, auch mit Kategorie „business“.
