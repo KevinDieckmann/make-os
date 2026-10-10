@@ -321,7 +321,9 @@ describe('Server: Rechte, Kompatibilität, Kalender', () => {
 
   it('ZOE liest das Register nur für den Haushalt des Inhabers (Testkunde/Partner: kein Zugang)', async () => {
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    const lauf = WERKZEUGE.gesellschaften_lesen.lauf;
+    // Seit V3 (Werkzeug-Verträge) liefert das Werkzeug ein typisiertes Ergebnis — der Satz steht in `meldung`.
+    const roh = WERKZEUGE.gesellschaften_lesen.lauf;
+    const lauf = async (...a: Parameters<typeof roh>): Promise<string> => { const r = await roh(...a); return typeof r === 'string' ? r : r.meldung; };
     for (const p of ['testkunde', 'partner']) expect(await lauf({}, '', p)).toMatch(/^Kein Zugang/);
     expect(await lauf({}, '')).toMatch(/^Kein Zugang/);
     const t = await lauf({ name: 'Beispiel' }, '', 'person-b');

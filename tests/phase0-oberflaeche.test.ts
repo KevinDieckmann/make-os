@@ -368,7 +368,7 @@ describe('Freigaben › Protokoll (vorher /os/stapel/voll)', () => {
     expect(v).toContain("router.push(WEG.freigaben(t), { scroll: false })");
     expect(v).not.toMatch(/['"`]\/os\/stapel\/voll/); // kein Link mehr (die Kommentare nennen die alte Adresse)
     const p = lies('components/os/StapelProtokoll.tsx');
-    expect(p).toContain("fetch('/api/zoe/protokoll?anzahl=40')");
+    expect(p).toContain('fetch(`/api/zoe/protokoll?anzahl=40&space=${space}`)'); // seit ZOE-Bereich je Sicht
     expect(p).toContain("fetch('/api/zoe/protokoll', { method: 'POST'"); // Rückgängig
     expect(p).toContain('/api/zoe/gedaechtnis?id='); // vergessen
     expect(p).toContain("fetch('/api/zoe/wissen')");
