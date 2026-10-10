@@ -123,7 +123,7 @@ type BereichOrtKurz = { id: string; name: string };
 type BereichKurz = { bereich: 'business'; ort?: BereichOrtKurz };
 
 /**
- * Bereich einer CRM-Firma (rein): IMMER Business (Kevin 09.10. spät: „Alles aus der Markttraktion → Business, auch wenn Deals/Mandate über eine
+ * Bereich einer CRM-Firma (rein): IMMER Business (Entscheidung 09.10. spät: „Alles aus der Markttraktion → Business, auch wenn Deals/Mandate über eine
  * Privat-Einheit laufen“). Mit aktivem Mandat ist der Ort ihr Mandanten-Space.
  */
 export function firmaBereichAus(crm: Pick<CrmBestand, 'firmen' | 'mandate'>, firmaId: string | undefined): BereichKurz {

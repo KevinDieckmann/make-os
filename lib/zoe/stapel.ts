@@ -87,7 +87,7 @@ export interface Vorschlag {
   /** Steht dauerhaft in `zoe-entscheidungen` — erst dann darf die Arbeitsliste ihn kürzen. */
   protokolliert?: true;
   /**
-   * Bereich (09.10. spät, Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): wohin der Vorschlag
+   * Bereich (09.10. spät, Wunsch: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): wohin der Vorschlag
    * gehört — gesetzt von `lege` über die EINE Regel (lib/zoe/bereich.ts `bereichFuerVorschlag`) bzw. von Hand (`bereichSetzen`). FEHLT das
    * Feld, ist er „unklar“ (auch der Altbestand): er steht in Privat UND Business oben, mit „Bereich wählen“.
    */
@@ -313,7 +313,7 @@ export async function bereichSetzen(id: string, bereich: Bereich, o: { von: stri
 export type Anspruch = { ok: true; v: Vorschlag } | { ok: false; status: 403 | 404 | 409; fehler: string; code?: typeof BEREICH_FEHLT_CODE };
 
 /**
- * Ohne Bereich keine Freigabe (Kevin 09.10. spät: „Unklar erst Bereich wählen“) — auch der Altbestand. Ablehnen geht jederzeit. Geprüft IN
+ * Ohne Bereich keine Freigabe (Entscheidung 09.10. spät: „Unklar erst Bereich wählen“) — auch der Altbestand. Ablehnen geht jederzeit. Geprüft IN
  * `beanspruche`, durch das jede Freigabe läuft (Route, Arten, ZOE-Kanal); die Route antwortet vorher schon mit `code`.
  */
 export const BEREICH_FEHLT_CODE = 'bereich-fehlt' as const;

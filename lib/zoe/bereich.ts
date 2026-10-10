@@ -1,17 +1,17 @@
 // ─── ZOE: Bereich erkennen — Privat oder Business, je Vorschlag und je Merksatz (09.10. spät, rein, client-sicher) ──────────
-// Befund live (Kevin, 09.10.): im Kopf-Schalter „Privat“ stand unter ZOE › Freigaben „Fakt merken — weil du gesagt hast: ‚… gibt es nicht
-// mehr‘“ — über eine Firma aus dem Business. Kevin: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und das dann auch dem
+// Befund live (09.10.): im Kopf-Schalter „Privat“ stand unter ZOE › Freigaben „Fakt merken — weil du gesagt hast: ‚… gibt es nicht
+// mehr‘“ — über eine Firma aus dem Business. Wunsch: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und das dann auch dem
 // richtigen Stapel zuordnen.“
 //
 // EINE Regel `bereichFuerVorschlag` — in dieser Reihenfolge, die erste, die etwas sagt, gewinnt:
 //   (a) der fachliche Bezug: was der Server zum Bezug aufgelöst hat (Aufgabe → ihr Space, CRM-Kontakt/-Firma/-Deal/-Mandat → IMMER Business
-//       (Kevin 09.10. spät), Kalender → Space des Kalenders, Vorschlag eines Heads → Bereich des Heads), sonst die Gruppe des Werkzeugs (Gesundheit,
+//       (Entscheidung 09.10. spät), Kalender → Space des Kalenders, Vorschlag eines Heads → Bereich des Heads), sonst die Gruppe des Werkzeugs (Gesundheit,
 //       Haushalt, Familie → Privat; Markttraktion, Kontakte, Kunden, Business, Bauplan → Business), sonst die ausdrückliche Angabe in der
 //       Eingabe (`space`/`bereich`, `spaceId`/`einheit`/`firma` über den Bereich der Einheit);
 //   (b) der Inhalt nennt einen bekannten Namen aus dem BESTAND (CRM-Firma, CRM-Kontakt mit vollem Namen, eigene Gesellschaft) — nie feste
 //       Namen im Code; widersprechen sich die Treffer, entscheidet (c);
 //   (c) der Bereich, in dem das Gespräch stattfand (der Browser schickt ihn mit, der Server prüft nur die Form);
-//   (d) sonst „unklar“ — der Vorschlag steht in BEIDEN Sichten (Privat und Business) oben mit „Bereich wählen“ (Kevin 09.10. spät: der
+//   (d) sonst „unklar“ — der Vorschlag steht in BEIDEN Sichten (Privat und Business) oben mit „Bereich wählen“ (Entscheidung 09.10. spät: der
 //       Kopf-Schalter kennt nur noch Privat · Business).
 // Gespeichert wird am Vorschlag nur `bereich: 'privat' | 'business'` (+ Quelle, ggf. Ort und genannte CRM-Kennungen); FEHLT das Feld, ist er
 // „unklar“ — so liest sich auch der Altbestand. Merksätze (lib/zoe/gedaechtnis.ts) tragen denselben Bereich; ohne Bereich sind sie neutral.

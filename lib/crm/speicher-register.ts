@@ -676,12 +676,16 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
 
 const IN_PRIVAT: readonly string[] = [
   'familie--*', 'ernaehrung', 'ernaehrung-vorschlag', 'kompass', 'nordstern--*', 'gesundheit-takt',
+  // Fokus · Privat je Haushalt (10.10.)
+  'fokus-privat--*',
 ];
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
   'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
+  'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Business-Postfächer und -Kalender (Google Workspace mit Domain-Prüfung, Microsoft 365, WhatsApp-Nummer nur im Business)
   'gmail-stand--*', 'gmail-text--*', 'kalender-google--*', 'kalender-umzug-sicherung--*', 'm365-postfach', 'microsoft-inbox', 'kemaris-calendar',
   'whatsapp-spiegel', 'whatsapp-zustand', 'whatsapp-medien',
@@ -693,6 +697,8 @@ const JE_PERSON: readonly string[] = [
   'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
   'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*',
+  // Mein Fokus · Privat (10.10.)
+  'fokus-eigen--*',
   // Zugänge und Kanäle der Person
   'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',
   'zoe-kanal--*', 'zoe-whatsapp-medien',

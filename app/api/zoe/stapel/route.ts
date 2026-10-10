@@ -18,13 +18,13 @@
 // S1 (29.09.): Tor `imHaushaltDesInhabers` für GET und POST (403 sonst) — Vorschläge des Systems (ohne Person) sieht und
 // entscheidet nur der Haushalt des Inhabers; ausgeführt wird immer als die ausdrücklich benannte Person (`personStreng`),
 // nie mehr über den Rückfall `personAus` → „kevin“. Schreibaufrufe aus dem Browser prüfen die Bau-Kennung (`bauPruefen`).
-// 09.10. spät (Kevin: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): jeder Vorschlag trägt seinen
+// 09.10. spät (Wunsch: „ZOE muss unterscheiden, wo wir schreiben … und das dem richtigen Stapel zuordnen“): jeder Vorschlag trägt seinen
 // Bereich (lib/zoe/bereich.ts). GET `?space=privat|business` liefert NUR Vorschläge dieses Bereichs und die „unklaren“ (auch Altbestand) —
-// serverseitig, nie nur versteckt: Privat bekommt nie einen Business-Vorschlag und umgekehrt (Kevin: der Kopf kennt nur Privat · Business;
+// serverseitig, nie nur versteckt: Privat bekommt nie einen Business-Vorschlag und umgekehrt (der Kopf kennt nur Privat · Business;
 // ohne `space` bzw. `space=alles` wie bisher alles). Jeder Vorschlag trägt seinen `stand`; POST `{ aktion: 'bereich', id, bereich, stand }` setzt
 // den Bereich von Hand („Bereich wählen“), veraltet → 409. Freigeben mit `stand` prüft ihn ebenso (409 statt einer Entscheidung über etwas, das
 // man so nicht gesehen hat). „Alle freigeben“ mit `space` nimmt nur Vorschläge GENAU dieses Bereichs (unklare brauchen erst ihren Bereich).
-// Ohne Bereich KEINE Freigabe (Kevin 09.10. spät) — einzeln 409 `code: 'bereich-fehlt'`, in der Sammelfreigabe nie dabei; Ablehnen jederzeit.
+// Ohne Bereich KEINE Freigabe (Entscheidung 09.10. spät) — einzeln 409 `code: 'bereich-fehlt'`, in der Sammelfreigabe nie dabei; Ablehnen jederzeit.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';

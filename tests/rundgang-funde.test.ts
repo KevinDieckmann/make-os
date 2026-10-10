@@ -138,7 +138,7 @@ describe('3. „Als Nächstes“: je wiederkehrendem Lauf nur das nächste Vorko
     expect(new Set(z.map(x => x.serie))).toEqual(new Set(['zp:skill:sk-1']));
     const route = lies('app/api/agenten/laeufe/route.ts');
     expect(route).toMatch(/naechstes: naechstesVerdichten\(naechstes\)/);
-    expect(lies('lib/agenten/naechstes.ts')).toMatch(/return naechstesSortieren\(raus\.filter\(x => zeitWert\(x\.wann\) < bis\.getTime\(\)\)\);/);
+    expect(lies('lib/agenten/naechstes.ts')).toMatch(/return naechstesSortieren\(raus\.filter\(x => zeitWert\(x\.wann\) < bis\.getTime\(\)( && naechstesImBereich\(x, space\))?\)\);/);
   });
 
   it('die Oberfläche zeigt den Takt hinter dem Titel (rechts in „Geplant“; der Überblick zeigt die nächsten Tage seit dem Aufräumen 09.10. nicht mehr)', async () => {

@@ -63,7 +63,7 @@ export async function gesellschaftenSatz(): Promise<string> {
 }
 
 /**
- * Wohin ein Fakt gehört (09.10. spät, Kevin: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und das dann auch dem
+ * Wohin ein Fakt gehört (09.10. spät, Wunsch: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und das dann auch dem
  * richtigen Stapel zuordnen“). Neutral — keine Namen, keine Firmen. Steht im ZOE-Prompt bei „MERKEN“ und in der Beschreibung von fakt_merken.
  */
 export const MERKEN_WOHIN = 'WOHIN DAMIT: Betrifft ein Fakt eine Firma oder Person aus der Markttraktion (z. B. „gibt es nicht mehr“, „hat gewechselt“, „kein Interesse mehr“), gehört er DORT hin: schlag mit crm_vorschlag den passenden Eintrag vor (Notiz an der Person bzw. Qualifizierung der Firma mit Status „ruht“ oder „kein Fit“ und dem Satz als Notiz) und sag kurz, warum. Einen Merksatz mit fakt_merken nur zusätzlich, wenn der Fakt darüber hinaus gilt. Privates und Geschäftliches nie in einem Merksatz mischen — der Stapel ordnet jeden Vorschlag seinem Bereich (Privat oder Business) zu; liegt er nicht im Bereich des Gesprächs, sag, wo er wartet.';
