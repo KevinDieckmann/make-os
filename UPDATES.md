@@ -119,6 +119,92 @@ Alles“) zurück: man ist immer in genau einem Bereich.
 Sätze zu `SpaceWahl` = `alles` | …, „Alles“ in Leiste/Kopf, `ALLES_EINTRAEGE`/`ALLES_GRUPPEN`, `filter` „alle“ bei Alles und Heute „ohne Parameter
 Privat + Business zusammen“ durch diesen Stand ersetzen.
 
+## 09.10.2026 — Training sichtbar (WHOOP-Workouts) + Strava-Prüfung + Plan-Baukasten (nur lokal — Branch `training-sichtbar`, Basis a6e6d4ff)
+
+Kevin 09.10. spät: „Kannst du für heute Nacht mal checken, ob wir WHOOP brauchen bzw. Strava? Malins Daten sind glaube ich nicht richtig
+durchgegangen. Die Trainingsdaten fehlen ihr.“ — dann: „… dass sie sich Trainingspläne bauen kann“ und die 20 + Zusatz-Antworten der trainierenden
+Person (Halbmarathon in 8 Tagen, plant selbst, Tage flexibel, Deload nach HRV-Trend, morgens Schlaf zuerst, Strava aktiv).
+
+**Befund (Diagnose, belegt in `tests/sport-training.test.ts`):** WHOOP-Workouts ohne Distanz (Functional Fitness, Krafttraining, Rad, HIIT …) landen
+richtig in `SportStand.training[]` — aber keine Ansicht las diese Liste: Plan/Ist, Sport-Kachel und „Für dich“ zählten nur Läufe, Gym und Hyrox
+(Beispielwoche: alte Zählung 1 von 5 Einheiten). Einen Reiter für Trainings gab es nicht — und ohne abgeschlossenen Sport-Einstieg zeigte die
+ganze Sport-Seite NUR den Einstieg (die Kachel „Sport einrichten“), also gar keine Einheit. Der Gesundheits-Index („Bewegung geplant“) liest Blöcke im
+Kalender, nicht absolvierte Trainings — unverändert. Daten gingen also durch, wurden nur nicht gezeigt. Jetzt: Einstieg nur noch unter „Ziele & Plan“;
+ohne Plan, aber mit Einheiten öffnet Sport das Training (`reiterVon`), die Kachel zeigt „Diese Woche n Einheiten“.
+
+**Gebaut — Teil 1 (Training sichtbar):**
+- EINE Stelle `lib/sport/training.ts` `alleEinheiten`: Läufe, Gym, Hyrox, Trainings aller Quellen. Sportart → Sparte über EINE Tabelle (`SPORT_ZUORDNUNG`,
+  nur offizielle WHOOP-Sportarten — Wächter), eigene Zuordnung je Person (`SportStand.sportArten`), „zählt als“ je Einheit (`TrainingEinheit.art`).
+  Sparten: Laufen · Gym & Kraft · Hyrox & Functional · Rad · Ausdauer · Mobility & Yoga · Anderes Training; Erholung (Sauna, Eisbad …) und
+  Alltagsbewegung (Gehen, „Activity“ …) stehen in der Liste, zählen aber nicht.
+- **Nichts doppelt:** Import am selben Tag in derselben Sparte wie ein Eintrag von Hand = eine Einheit (Hand führt, WHOOP-Messwerte dazu; mit Distanz
+  ±10 %). Zwei Importe (später z. B. Datei) nur mit Startzeit ≤ 20 min und Dauer ±10 %. Neu `uhrzeit` an WHOOP-Läufen/-Trainings.
+- „Zählt als“, Gefühl und Notiz an importierten Einheiten bleiben bei jedem Abgleich stehen (`lib/whoop/abbilden.ts`).
+- **Sport › Training** (neuer Reiter): diese Woche (Einheiten, Zeit, Strain-Summe, kcal, je Sparte, Zonen), 8 Wochen, Liste je Woche (Datum, Uhrzeit,
+  Sportart, Sparte, Dauer, Strain, kcal, Puls, Zonen-Balken, Quelle), aufklappen: „zählt als“, Gefühl, Notiz; „+ Training“ von Hand (Rad, Yoga …);
+  „Sportarten zuordnen“. Hyrox-Reiter zeigt Hyrox-&-Functional-Einheiten mit „Stationszeiten erfassen“.
+- Plan/Ist, Sport-Kachel, „Für dich“ (Fluss) zählen alle Einheiten.
+
+**Gebaut — Teil 3 (Trainingspläne selbst bauen, generisch, je Person einstellbar):**
+- **Wettkampf zuerst** (Sport › Ziele & Plan): Countdown in Tagen, Ziel-Pace, **Prognose als Spanne** aus einer Referenzzeit (Riegel 1,06–1,09 —
+  `lib/sport/wettkampf.ts`; Referenz: Angabe am Ziel → Bestzeit 180 Tage → Ausgangswert), ehrliche Einschätzung (realistisch · ambitioniert · sehr
+  ambitioniert), Zwischenzeiten mit gleichmäßigem Start und negativem Split, **Taper-Woche mit einem Klick** (Plan einzelner Tage, zurücknehmbar).
+- **Diese Woche:** je Tag die geplanten Einheiten mit Status (erledigt · heute · geplant · ausgefallen), Zuordnung der tatsächlichen Einheiten (gleicher
+  Tag, ±1 Tag, Ersatz-Sparte), zusätzlich, Zeit und Strain gegen Plan; an heute der Hinweis der Tagesform (Recovery gelb → harte Einheit leichter, rot →
+  tauschen/locker — EINE Regel `lib/sport/tagesform.ts`); „Erledigt“ mit einem Tipp; verschieben; **als Block in den eigenen Kalender** nur per Klick
+  (`POST /api/sport/kalender` → vorhandener Weg `blockAnlegen`, Art „routine“; Dienstweg 403).
+- **Entlastung nach HRV-Trend** (`lib/sport/entlastung.ts`): ≥ 2 von 3 Tagen HRV unter 90 % des eigenen Bezugs oder Ruhepuls > Bezug + 3 → Vorschlag
+  „Diese Woche leichter“ (Deload 60 %). Alle Zahlen einstellbar, abschaltbar.
+- **Wochenplan bauen:** Einheiten je Tag (Sparte, Art, Minuten, Intensität; Zone/Strain-Ziel/Uhrzeit/Notiz unter „mehr“), bis 4 je Tag; „Tage
+  vorschlagen“ (harte nicht an Folgetagen, langer Lauf am Wochenende — Prüfung + Vorschlag `lib/sport/plan-bau.ts`); eigene Vorlagen; drei
+  Startvorlagen (erfunden, neutral). **Block** über mehrere Wochen (Aufbau → Deload fest oder nach Tagesform → Taper, bis zu einem Ziel).
+- **Einstellungen** der Person: was im Cockpit zuerst steht, Entlastungs-Schwellen, Deload-/Taper-Umfang.
+- **Gesundheit › Heute: Karte „Zuerst“** — Tagesform · Schlaf · Training heute · Countdown, die Person wählt (Vorgabe Tagesform); große Zahl,
+  „Erledigt“ mit einem Tipp. Platz für „Schlaf-Hilfe“ und „Ernährung heute“ (anderes Paket) ist im Code vermerkt.
+- **Teilen:** `/api/sport?fuer=<person>` nur, wenn diese Person ihre Gesundheit mit dir teilt — schreibgeschützt, mit Lese-Protokoll; sonst 403.
+  Kachel „Sport“ in der geteilten Ansicht: Wettkampf + Woche. Coach-Zugang: nicht gebaut.
+- **ZOE / Gesundheits-Agent:** `trainingsplan_lesen` (frei, nur eigene Daten, keine Notizen) und `trainingsplan_vorschlagen` (Freigabe: erst der Klick
+  legt eine EIGENE Vorlage an, nichts wird aktiviert). Gruppe „gesundheit“ → nur mit Einwilligung (a)+(b). Der Mitarbeiter „Training & Sport“ des
+  Gesundheits-Agenten hat beide Werkzeuge; der **morgendliche Tagesvorschlag** = ein Zeitplan dieses Agenten (Agenten › Gesundheit › Training &
+  Sport › Zeitplan täglich, z. B. 07:00).
+
+**Teil 2 — Strava (Prüfung, nicht gebaut):** `research/sport/STRAVA_PRUEFUNG.md`. Die Strava API Policy 2026 (gültig ab 01.06.2026) verbietet
+Speichern über einen 7-Tage-Cache hinaus (§ 6.2), jeden dauerhaften Index (§ 5.5) und **jede KI-Nutzung, auch im Kontextfenster** (§ 5.3); Standard-Tier
+mit Abo-Pflicht. „Strava je Person“ nach Vorbild WHOOP ist damit nicht zulässig → **keine Strava-App anlegen**. Alternativen als Bauplan: Lauf aus
+Datei (GPX/TCX/FIT, empfohlen), Apple Health per Kurzbefehl. **Befund WHOOP** (neue API-Bedingungen ab 06.10.2026, § 4.2): dauerhafte Kopien nur „authorized
+by the data owner“ → Einwilligungstext beim WHOOP-Verbinden um „dauerhaft speichern und auswerten“ ergänzen (Vorschlag, nicht geändert).
+
+Neue optionale Felder im Sport-Bestand (`sport--<person>`): `training[].{uhrzeit, art, gefuehl, notiz}`, `laeufe[].uhrzeit`, `sportArten`, `woche.*.einheiten`,
+`planVorlagen`, `block`, `wochenPhase`, `tage`, `einstellungen`, `ziele[].referenz`; Plan-Arten auch `rad|ausdauer|mobility|sonstiges`. Neue Route
+`app/api/sport/kalender` (Register: `person`). `/api/sport` liefert Vitalwerte jetzt 28 statt 14 Tage (Bezug der Entlastungs-Regel).
+
+Tests: `tests/sport-training.test.ts` (Befund, Zuordnung, Doppel, Person-Felder), `tests/sport-training-sicht.test.ts` (Art. 9: ohne Teilen nichts,
+mit Teilen nur lesen, PUT nie fremd, Fluss nur eigene), `tests/sport-planbau.test.ts`, `tests/sport-wettkampf.test.ts`, `tests/sport-plan-oberflaeche.test.ts`
+(Rendern, Kalender-Route), `tests/zoe-sport.test.ts` (Einwilligung, Freigabe, idempotent); bestehende Sport-/WHOOP-/Gesundheits-/Fluss-/Design-/
+Register-/KI-Tests grün. `tests/agenten-durchstich.test.ts` hat abends (Business-frei-Zeit) 3 rote Fälle — auch auf der Basis a6e6d4ff, nicht von
+diesem Paket.
+
+**So testet ihr:**
+1. Sport → Reiter **Training**: die WHOOP-Einheiten der Woche stehen da (Functional Fitness als „Hyrox & Functional“, Krafttraining als „Gym & Kraft“,
+   Sauna/Gehen mit „zählt nicht“). Eine Einheit antippen → „Zählt als“ ändern → oben ändert sich die Zahl je Sparte. „Sportarten zuordnen“ unten.
+2. Gesundheit → „Für dich“ und Kachel „Sport“ zählen diese Einheiten (nicht mehr „Noch keine Einheiten“).
+3. Sport → Ziele & Plan → „+ Ziel“: Lauf, Halbmarathon, Datum, Zielzeit, Referenz „10 km“ + Zeit → oben die Wettkampf-Karte mit Tagen, Ziel-Pace,
+   Prognose-Spanne, Einschätzung, Zwischenzeiten; „Taper-Woche übernehmen“ → unter „Diese Woche“ stehen die Taper-Tage; „Taper zurücknehmen“ geht.
+4. „Wochenplan bauen“ → „Bauen“ → Startvorlage „In die Woche laden“ → Tage mit „+ Einheit“ ändern → „Tage vorschlagen“ → „Standardwoche speichern“.
+5. „Diese Woche“: an heute „Erledigt“ → Status „erledigt“; eine Einheit „Verschieben · Kalender“ → auf einen anderen Tag; „Als Block eintragen“ →
+   Block im eigenen Kalender (zweiter Klick: „steht schon im Kalender“).
+6. „Block · mehrere Wochen“ → „+ Block“ → bis zum Ziel, Deload nach Tagesform, Taper 1 → Vorschau → speichern → Kästchen je Woche.
+7. Gesundheit → oben Karte „Zuerst“ → unten „Zuerst zeigen: Schlaf“ → Schlaf steht groß oben (bleibt nach Neu laden).
+8. ZOE (mit Einwilligung „An die KI geben“): „Was trainiere ich heute?“ → nennt die Einheit und den Tagesform-Hinweis; „Schlag mir eine Aufbauwoche
+   vor“ → liegt im Freigabe-Stapel; freigeben → unter „Wochenplan bauen“ als eigene Vorlage (nicht aktiv). Ohne Einwilligung: freundliche Absage.
+9. Zweite Person ohne geteilte Gesundheit: sieht nichts davon; mit geteilter Gesundheit: Kachel „Sport“ nur lesend.
+10. Handy (375 px): Listen untereinander, „Erledigt“ 48 px, kein Querscrollen.
+
+**Offen:** Fragen an die trainierende Person in `research/gesundheit/COCKPIT_VORSCHLAG.md` (Nachtrag 09.10. spät). Strava nur auf Kevins Wort und
+nach Lesen der Bedingungen; WHOOP-Einwilligungstext (Befund). **Rückweg:** nur optionale Felder; der alte Stand verwirft beim nächsten Speichern
+des Sports Einheiten je Tag, Vorlagen, Block, Einzeltage, Einstellungen und Plan-Arten außer Lauf/Gym/Hyrox (der Tag wird „frei“) — vor einem
+Rückweg nichts im Baukasten speichern bzw. Sicherung.
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.

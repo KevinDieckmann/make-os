@@ -23,6 +23,7 @@ import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
+import { SPORT_WERKZEUGE } from './sport-werkzeuge';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
 import { CRM_VORSCHLAG_LAUF, ausVorschlag } from './crm-vorschlag';
 import { innen, innenFehler, innenNein } from './innen';
@@ -1087,6 +1088,8 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   ...AUFGABEN_WERKZEUGE,
   // Eine Suche über Brain und App (29.09., B3): suche_arbeit — prüft den Haushalt selbst (lib/zoe/arbeit-werkzeug.ts).
   ...ARBEIT_WERKZEUGE,
+  // Trainingsplan lesen/vorschlagen (09.10., lib/zoe/sport-werkzeuge.ts): nur die eigene Person, Gruppe „gesundheit“ (Einwilligung (a)+(b)).
+  ...SPORT_WERKZEUGE,
   // ZOE steuert die Heads (09.10., Paket 4a, lib/agenten/zoe-heads.ts): Auftrag in einen Thread des Heads bzw. eine kurze Frage —
   // nur Heads, die die AUSLÖSENDE Person sieht (lib/agenten/sicht.ts). Dynamisch geladen (der Agenten-Kern liest dieses Register).
   an_head: { gruppe: 'agenten', lauf: async (i, o, p, k) => (await import('@/lib/agenten/zoe-heads')).anHead(i, o, p, k) },

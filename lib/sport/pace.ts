@@ -102,9 +102,12 @@ export function bestzeiten(laeufe: Lauf[]): Bestzeit[] {
   return r;
 }
 
-/** Riegel: Zeit über d2 aus Zeit über d1 (Ausdauer-Exponent 1,06). */
-export function riegel(sek1: number, d1: number, d2: number): number {
-  return Math.round(sek1 * Math.pow(d2 / d1, 1.06));
+/**
+ * Riegel: Zeit über d2 aus Zeit über d1 (Ausdauer-Exponent 1,06 — Riegel 1981). Ein höherer Exponent (z. B. 1,09) gibt die vorsichtigere
+ * Hochrechnung für weniger Ausdauer-Umfang (Annahme, 09.10.: der Wettkampf-Rechner zeigt die Spanne zwischen beiden — lib/sport/wettkampf.ts).
+ */
+export function riegel(sek1: number, d1: number, d2: number, exponent = 1.06): number {
+  return Math.round(sek1 * Math.pow(d2 / d1, exponent));
 }
 
 /** Zielpace (Sek/km) aus einem Laufziel — null, wenn dem Ziel Zeit oder Distanz fehlt. */

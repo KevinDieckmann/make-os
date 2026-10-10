@@ -4,13 +4,16 @@
 // PUT  { ops } → kleine Schritte (lib/sport/modell.ts wendeAn) in EINER Sperre —
 //        zu zweit am Handy überschreibt so niemand den anderen.
 // Zugang: nur die angemeldete Person (Sitzung → x-make-user; Dienstweg nennt die
-// Person). Kein ?fuer= — Sport ist persönlich, jede Person sieht nur Eigenes.
+// Person). Schreiben NUR die eigene Person. Lesen einer anderen Person (09.10., Wunsch der
+// trainierenden Person: „Teilen mit dem Partner“) nur mit `?fuer=` UND wenn sie ihre Gesundheit
+// mit der anfragenden Person teilt (`darfGesundheitSehen`, dasselbe Tor wie Gesundheit › Heute) —
+// dann schreibgeschützt (`nurLesen`), mit Lese-Protokoll. Ohne Teilen → 403.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
-import { speicherFuer } from '@/lib/zoe/raum';
+import { speicherFuer, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { localDay } from '@/lib/zeit';
@@ -29,10 +32,10 @@ const MAX_OPS = 100;
 
 export interface VitalTag { schlafH?: number; hrv?: number; ruhepuls?: number; recovery?: number }
 
-/** Die Vitalwerte der Person (Whoop-Export oder Morgen-Check) der letzten 14 Tage — nur die, die es gibt. */
+/** Die Vitalwerte der Person (WHOOP oder Morgen-Check) der letzten 28 Tage — nur die, die es gibt. */
 async function vitalsFuer(person: string, heute: string): Promise<Record<string, VitalTag>> {
   const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
-  const ab = tagPlus(heute, -14);
+  const ab = tagPlus(heute, -28); // 28 Tage (09.10.): Bezug für die Entlastungs-Regel (lib/sport/entlastung.ts, 14 Tage vor dem Fenster)
   const r: Record<string, VitalTag> = {};
   for (const [tag, v] of Object.entries(log)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tag) || tag < ab || tag > heute || !v) continue;
@@ -47,16 +50,19 @@ async function vitalsFuer(person: string, heute: string): Promise<Record<string,
 }
 
 export async function GET(req: Request) {
-  const person = personStreng(req);
-  if (!person) return KEINE_PERSON;
+  const ich = personStreng(req);
+  if (!ich) return KEINE_PERSON;
+  const fuer = new URL(req.url).searchParams.get('fuer');
+  const person = fuer && /^[a-z0-9-]{1,40}$/.test(fuer) ? fuer : ich;
+  if (person !== ich && !(await darfGesundheitSehen(req, person))) return NextResponse.json({ ok: false, error: 'Diese Person teilt ihre Gesundheit nicht mit dir.' }, { status: 403 });
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9: Sport mit Körperwerten, 05.10.)
   const heute = localDay();
   const namen = [speicherFuer('sport', person), speicherFuer('vitals', person)];
-  const etag = etagAus('sport', await speicherStand(namen), heute, person);
+  const etag = etagAus('sport', await speicherStand(namen), heute, person, ich);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const stand = saeubere(await loadJson<unknown>(namen[0]));
-  return jsonAntwort(req, { ok: true, ich: person, heute, stand, vitals: await vitalsFuer(person, heute), bibliothek: { uebungen: UEBUNGEN, vorlagen: VORLAGEN } }, etag);
+  return jsonAntwort(req, { ok: true, ich, ...(person !== ich ? { fuer: person, nurLesen: true } : {}), heute, stand, vitals: await vitalsFuer(person, heute), bibliothek: { uebungen: UEBUNGEN, vorlagen: VORLAGEN } }, etag);
 }
 
 export async function PUT(req: Request) {

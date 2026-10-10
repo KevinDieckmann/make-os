@@ -54,3 +54,36 @@ fehlend = „—“; die drei Teal-Töne nie gemeinsam als Serien; Zahlen in Rin
 - Zyklus-Tag: ein WHOOP-Zyklus, der ab 18 Uhr Ortszeit beginnt, zählt zum Folgetag (die Doku sagt nicht, ob er mit dem Einschlafen oder dem
   Aufwachen beginnt) — bitte an einem Abend mit spätem Training prüfen, ob der Strain am richtigen Tag steht.
 - Atemfrequenz in Atemzügen je Minute (die Doku nennt keine Einheit).
+
+---
+
+## Nachtrag 09.10. spät — Antworten umgesetzt (Paket „Training sichtbar + Plan-Baukasten“)
+
+Alles generisch und je Person einstellbar gebaut (keine Inhalte der Person im Code); ihr Fall ist damit abgedeckt:
+
+| Antwort der Person | Umgesetzt |
+|---|---|
+| WHOOP-Trainings fehlten | Sport › **Training**: jede Einheit aller Quellen (WHOOP, von Hand), ohne Doppelte, je Woche; „Für dich“, Sport-Kachel und Plan ↔ Ist zählen sie mit. Sportarten je Person umstellbar („Functional Fitness“ → Hyrox & Functional ist Vorgabe). |
+| Halbmarathon in 8 Tagen, Ziel 2:00 | Wettkampf-Karte oben in Sport › Ziele & Plan: **Countdown**, Ziel-Pace, **Prognose als Spanne** aus einer Referenzzeit (10 km), ehrliche Einschätzung, Zwischenzeiten mit negativem Split, **Taper-Woche mit einem Klick**. |
+| Plant selbst, Tage flexibel | **Wochenplan bauen**: Einheiten je Tag (bis 4), „Tage vorschlagen“ (harte nicht an Folgetagen, langer Lauf am Wochenende), eigene Vorlagen, Startvorlagen; **Diese Woche**: verschieben, abhaken, als Block in den Kalender. **Block** über mehrere Wochen (Aufbau/Deload/Taper). |
+| Recovery rot/gelb → leichter/tauschen | Hinweis an der geplanten Einheit (EINE Regel). |
+| Deload nach HRV-Trend | Regel „mehrere Tage HRV unter Bezug / Ruhepuls darüber → Entlastung vorschlagen“, Schwellen einstellbar; „Diese Woche leichter“ mit einem Klick. |
+| Morgens Schlaf zuerst, Handy/Gym | Karte **„Zuerst“** oben in Gesundheit › Heute: Tagesform · Schlaf · Training heute · Countdown — die Person wählt (Vorgabe Tagesform); große Zahl, „Erledigt“ mit einem Tipp. |
+| Pulszonen eher unwichtig | Zonen nur unter „mehr“ im Baukasten und als schmaler Balken in der Liste. |
+| ZOE morgens + Wochenplan | Werkzeuge `trainingsplan_lesen` / `trainingsplan_vorschlagen` (nur mit Einwilligung (b); ein Plan wird erst nach Freigabe als Vorlage gespeichert); Tagesvorschlag als Zeitplan des Gesundheits-Agenten. |
+| Teilen mit dem Partner, Coach später | Sport lesend nur, wenn die Person ihre Gesundheit teilt (vorhandener Schalter). Coach-Zugang: nicht gebaut (notiert). |
+| Strava aktiv | Geprüft: Strava-API-Bedingungen 2026 verbieten Speichern > 7 Tage und jede KI-Nutzung → nicht angebunden; Alternativen in `research/sport/STRAVA_PRUEFUNG.md`. |
+
+## Fragen für die Pläne (zum Durchgehen)
+
+1. **Feste Trainingstage:** An welchen Tagen geht es in einer normalen Woche sicher, an welchen nur vielleicht? (Heute wählt man die Tage beim „Tage vorschlagen“ — als Einstellung speichern?)
+2. **Langer Lauf:** Samstag oder Sonntag? Und wie lang ist er gerade (Minuten)?
+3. **Taper vor dem Halbmarathon:** passt der Vorschlag (6 Tage vorher locker, 5 kurze Tempoabschnitte, 2 Tage vorher Ruhe, Vortag 20 min locker)? Oder lieber Ruhe am Vortag?
+4. **Referenzzeit:** Welche aktuelle 10-km-Zeit ist ehrlich (für die Prognose)? Gibt es einen gelaufenen Halbmarathon zum Vergleich?
+5. **Renntag:** Startzeit des Halbmarathons (für den Tagesablauf und den Kalender-Block)?
+6. **Hyrox (Pro):** Welche Stationen sind die schwächsten? Sollen Pro-Gewichte im Stationen-Rechner stehen (heute ohne Gewichte)?
+7. **Entlastung:** Erst zwei, drei Wochen Werte sammeln und dann die Schwellen (HRV-Anteil, Ruhepuls) gemeinsam ansehen?
+8. **Kalender:** Sollen geplante Einheiten in den eigenen Kalender — immer zur gleichen Uhrzeit oder je Tag anders?
+9. **Kickboxen:** als „Anderes Training“ zählen oder eine eigene Sparte bekommen?
+10. **Strain-Ziele je Einheit:** nützlich oder weglassen?
+11. **Coach später:** Was soll ein Coach sehen — nur Plan und Ist, oder auch Recovery/Schlaf?

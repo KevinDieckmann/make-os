@@ -16,6 +16,7 @@
 import { CRM_WERKZEUG_DEFS } from './crm-werkzeug-defs';
 import { AUFGABEN_WERKZEUG_DEFS } from './aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUG_DEFS } from './arbeit-werkzeug';
+import { SPORT_WERKZEUG_DEFS } from './sport-werkzeuge';
 import { AGENT_ZWECK } from './agenten';
 import { AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
 import { BUSINESS_EINHEITEN_NAMEN, PRIVAT_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
@@ -462,6 +463,7 @@ export function werkzeugDefs(o: DefOptionen = {}): ReadonlyMap<string, WerkzeugD
     ...headDefs(o.heads ?? []),
     ...(AUFGABEN_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
     ...(ARBEIT_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
+    ...(SPORT_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
     ...(CRM_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
   ];
   return new Map(alle.map(d => [d.name, d]));
