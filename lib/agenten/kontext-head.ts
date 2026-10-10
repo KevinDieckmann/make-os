@@ -87,8 +87,7 @@ export const SEITEN_REGELN: readonly SeitenRegel[] = [
   { muster: '/os/planung', head: { privat: 'assistenz', business: 'strategie' } },
   { muster: '/os/planung/kapazitaet', head: { privat: null, business: 'operations' } },
   { muster: '/os/fokus', head: { privat: 'assistenz', business: 'strategie' } },
-  { muster: '/os/kompass', head: { privat: 'assistenz', business: 'strategie' } },
-  { muster: '/os/wachstum', head: { privat: 'assistenz', business: 'strategie' } },
+  // Kompass und Wachstum sind seit 10.10. Abschnitte der Fokus-Seite (alte Adressen leiten dorthin).
   // Privat
   { muster: '/os/gesundheit', head: 'gesundheit' },
   { muster: '/os/gesundheit?s=ernaehrung', head: 'ernaehrung' },
