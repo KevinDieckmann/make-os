@@ -413,7 +413,8 @@ export interface Zugriff { art: 'voll' | 'puls'; link: KundenLink; mandat: Manda
 export async function formularKunde(z: Zugriff, roh: Record<string, unknown>, jetzt = new Date()): Promise<Ergebnis> {
   const fall = await fallVon(z.mandat.id);
   const b = formulareDesFalls(fall, z.vorlagen.bausteine).filter(x => x.kundeFuellt === true && kundeTauglich(x)).find(x => formularSchluessel(z.mandat.id, x.id) === roh.formular);
-  if (!b) return nein(404, 'Dieses Formular gibt es hier nicht (mehr) — bitte neu laden.');
+  // 409 (nicht 404): der Link selbst ist gültig — die 404 bleibt dem einen Satz „nicht (mehr) gültig“ vorbehalten.
+  if (!b) return nein(409, 'Dieses Formular gibt es hier nicht (mehr) — bitte neu laden.', { neuLaden: true });
   const heute = localDay(jetzt);
   const r = await fulfillmentAendern('kunde', d => {
     const a = antwortenAnwenden(d, {
@@ -458,7 +459,7 @@ export async function pulsKunde(z: Zugriff, roh: Record<string, unknown>, jetzt 
     const g = linkAnwenden(a.datei, { op: 'gesehen', id: z.link.id }, { heute, jetzt: jetzt.toISOString(), person: 'kunde', mandatEnde: mandatsEnde(z.mandat) });
     return g.ok ? { ok: true, datei: g.datei, geaendert: a.geaendert } : a;
   }, { art: 'system' });
-  if (!r.ok) return nein(r.status, r.fehler);
+  if (!r.ok) return nein(r.status === 404 ? 409 : r.status, r.fehler);
   if (neu && pulsStufe(neu.wert, z.vorlagen.einstellungen.pulsSchwelle) === 'kritisch') await pulsAufmerksamkeit(z.mandat, neu, heute).catch(() => { /* Morgenlauf holt es nach */ });
   return ok({ danke: true });
 }

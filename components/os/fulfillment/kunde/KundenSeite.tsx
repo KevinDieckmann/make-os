@@ -42,7 +42,7 @@ export function KundenSeite({ linkId }: { linkId: string }) {
     if (!t) return { r: null, j: { fehler: NICHT_GUELTIG } };
     const r = await fetch(`${basis}/${weg}`, { method: 'POST', body, referrerPolicy: 'no-referrer', headers: { [t.kopf]: t.token, ...(json ? { 'content-type': 'application/json' } : {}) } }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) as Record<string, unknown> : { fehler: 'Keine Verbindung — bitte noch einmal.' };
-    if (r?.status === 404) setZ({ art: 'ungueltig' });
+    if (r?.status === 404 && j.fehler === NICHT_GUELTIG) setZ({ art: 'ungueltig' });
     return { r, j };
   };
   const ergebnis = (r: Response | null, j: Record<string, unknown>): SpeicherErgebnis => (r?.ok && j.ok ? { ok: true } : { ok: false, fehler: String(j.fehler ?? 'Nicht gespeichert.'), ...(j.neuLaden ? { neuLaden: true } : {}) });
