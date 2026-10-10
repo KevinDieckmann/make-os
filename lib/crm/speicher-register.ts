@@ -515,6 +515,28 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Konto-Export (PERSON_BESTAENDE); sichtbar nur der Person selbst und, je Satz geteilt, den anderen vollen Mitgliedern des Haushalts',
     loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand)',
   }),
+  // Fokus-Steuerung (10.10., Entscheidung: „Prio und Fokus geben wir im Fokus-Bereich … Zeit — Privat wie Business einzeln“): Themen je Haushalt
+  // getrennt nach Privat und Business, Soll-Zeit je Person getrennt nach Privat und Business — nur Themen-Namen, Gewichte, Stunden (lib/fokus/steuerung.ts).
+  mit(H('fokus-steuerung-privat--*', 'Prioritäten · Privat je Haushalt — Themen (Name, Rang, Gewicht, Zeit-Quellen), von den Mitgliedern gepflegt; keine Dritten, kein Personen-Feld.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung des Haushalts durch seine Mitglieder',
+    art15: 'die vollen Mitglieder des Haushalts sehen sie unter Fokus › Prioritäten (Privat)',
+    loeschfrist: 'bis der Haushalt sie ändert bzw. die Instanz gelöscht wird',
+  }),
+  mit(H('fokus-steuerung-business--*', 'Prioritäten · Business je Haushalt — Themen (Name, Rang, Gewicht, Zeit-Quellen, je Business-Gesellschaft); keine Dritten, kein Personen-Feld.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der Gesellschaften durch die Mitglieder des Haushalts',
+    art15: 'alle Konten des Haushalts sehen sie unter Fokus › Prioritäten (Business), Konten „nur Business“ lesend',
+    loeschfrist: 'bis der Haushalt sie ändert bzw. die Instanz gelöscht wird',
+  }),
+  mit(H('fokus-soll-privat--*', 'Soll-Zeit · Privat je Person — Stunden je Woche und Thema (nur Zahlen, Kennung des Themas); sieht nur die Person selbst.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die Person plant ihre Zeit selbst',
+    art15: 'Konto-Export (PERSON_BESTAENDE); sichtbar nur der Person selbst (Fokus › Zeit)',
+    loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand)',
+  }),
+  mit(H('fokus-soll-business--*', 'Soll-Zeit · Business je Person — Stunden je Woche und Thema (nur Zahlen, Kennung des Themas); sieht nur die Person selbst.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG — die Person plant ihre Arbeitszeit selbst',
+    art15: 'Konto-Export (PERSON_BESTAENDE); sichtbar nur der Person selbst (Fokus › Zeit)',
+    loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand)',
+  }),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
   // Eigene Meilensteine an eigenen Zielen (10.10., Kevin: „Ja, eigene Meilensteine“ — lib/planung/eigene-meilensteine.ts): je Person, immer
   // Privat, Titel/Datum/Fortschritt der eigenen Planung; keine Dritten, kein Personen-Feld.
@@ -704,8 +726,8 @@ const IN_PRIVAT: readonly string[] = [
   'familie--*', 'ernaehrung', 'ernaehrung-vorschlag', 'kompass', 'nordstern--*', 'gesundheit-takt',
   // Lauf-Spur des Privat-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
   'lauf-spur--privat--*',
-  // Fokus · Privat je Haushalt (10.10.)
-  'fokus-privat--*',
+  // Fokus · Privat je Haushalt (10.10.), Prioritäten · Privat je Haushalt (10.10., Fokus-Steuerung)
+  'fokus-privat--*', 'fokus-steuerung-privat--*',
 ];
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
@@ -716,6 +738,8 @@ const IN_BUSINESS: readonly string[] = [
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
   'lauf-spur--business--*',
+  // Fokus-Steuerung · Business (10.10.): Themen je Haushalt, Soll-Zeit je Person
+  'fokus-steuerung-business--*', 'fokus-soll-business--*',
   // Business-Postfächer und -Kalender (Google Workspace mit Domain-Prüfung, Microsoft 365, WhatsApp-Nummer nur im Business)
   'gmail-stand--*', 'gmail-text--*', 'kalender-google--*', 'kalender-umzug-sicherung--*', 'm365-postfach', 'microsoft-inbox', 'kemaris-calendar',
   'whatsapp-spiegel', 'whatsapp-zustand', 'whatsapp-medien',
@@ -727,8 +751,8 @@ const JE_PERSON: readonly string[] = [
   'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
   'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*', 'erholung--*',
-  // Mein Fokus · Privat (10.10.)
-  'fokus-eigen--*',
+  // Mein Fokus · Privat (10.10.), eigene Soll-Zeit · Privat (10.10., Fokus-Steuerung)
+  'fokus-eigen--*', 'fokus-soll-privat--*',
   // Eigene Meilensteine an eigenen Zielen (10.10.) — immer Privat, je Person
   'meilensteine-eigen--*',
   // Zugänge und Kanäle der Person

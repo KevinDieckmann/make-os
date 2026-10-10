@@ -239,7 +239,7 @@ function FokusWidget({ e, titel, i, seite }: WidgetProps) {
   const wessen = sicht?.darfUnser ? 'unser' : 'mein';
   return (
     <Karte i={i} akzent={gesetzt ? LEUCHT.schlaf : undefined}>
-      <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/fokus" style={link}>Fokus ›</Link>}>{titel ?? `${h === 'woche' ? 'Wochenfokus' : h === 'monat' ? 'Monatsfokus' : 'Fokus'} · ${SPACE_LABEL[bereich]}`} {gesetzt && h === 'auto' ? wann : ''}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.fokus('fokus')} style={link}>Fokus ›</Link>}>{titel ?? `${h === 'woche' ? 'Wochenfokus' : h === 'monat' ? 'Monatsfokus' : 'Fokus'} · ${SPACE_LABEL[bereich]}`} {gesetzt && h === 'auto' ? wann : ''}</Ueberschrift>
       {!sicht ? <Leer>{fehler ?? 'lade …'}</Leer> : gesetzt && v ? (
         <div style={{ display: 'grid', gap: 8 }}>
           {v.unser.text && <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{v.unser.text}</div>}
@@ -550,7 +550,7 @@ function ScoreWidget({ titel, i }: WidgetProps) {
   const delta = letzte != null && davor != null ? letzte - davor : null;
   return (
     <Karte i={i} akzent={p?.index != null ? zone : undefined}>
-      <Ueberschrift farbe={zone} rechts={<Link href={WEG.wachstum()} style={link}>Wachstum ›</Link>}>{titel ?? 'Wachstums-Score'}</Ueberschrift>
+      <Ueberschrift farbe={zone} rechts={<Link href={WEG.wachstum()} style={link}>Wirkung ›</Link>}>{titel ?? 'Wachstums-Score'}</Ueberschrift>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <Link href={WEG.wachstum()} style={{ textDecoration: 'none', color: 'inherit' }}><Ring groesse="klein" label="" wert={p?.index != null ? String(p.index) : undefined} farbe={zone} anteil={p?.index != null ? p.index / 100 : undefined} /></Link>
         <div style={{ minWidth: 0, flex: 1 }}>
@@ -600,7 +600,7 @@ function ZeitBeideWidget({ titel, i }: WidgetProps) {
   };
   return (
     <Karte i={i} akzent={anteil !== null ? C.aktiv : undefined}>
-      <Ueberschrift rechts={<Link href="/os/fokus" style={link}>Fokus ›</Link>}>{titel ?? 'Zeit · Privat und Business'}</Ueberschrift>
+      <Ueberschrift rechts={<Link href={WEG.fokus('zeit')} style={link}>Zeit ›</Link>}>{titel ?? 'Zeit · Privat und Business'}</Ueberschrift>
       {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : anteil === null ? (
         <Leer>Noch nichts gemessen — die Zeit läuft im Hintergrund mit, sobald du in MAKE OS arbeitest: oben Privat oder Business wählen.</Leer>
       ) : (
@@ -630,7 +630,7 @@ function ZeitEinheitWidget({ e, titel, i }: WidgetProps) {
   const farbe = SPACE_FARBE.business;
   return (
     <Karte i={i} akzent={a?.sek ? farbe : undefined}>
-      <Ueberschrift farbe={farbe} rechts={<Link href="/os/fokus" style={link}>Fokus ›</Link>}>{titel ?? `Zeit je Einheit · ${d?.label ?? (zeitraum === 'monat' ? 'Monat' : 'Woche')}`}</Ueberschrift>
+      <Ueberschrift farbe={farbe} rechts={<Link href={WEG.fokus('zeit')} style={link}>Zeit ›</Link>}>{titel ?? `Zeit je Einheit · ${d?.label ?? (zeitraum === 'monat' ? 'Monat' : 'Woche')}`}</Ueberschrift>
       {!a ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : <EinheitBalken a={a} kompakt />}
     </Karte>
   );

@@ -2,6 +2,8 @@
 // GET            → aktueller Index (aus echten Daten) + Verlauf
 // POST {}        → Tages-Schnappschuss festhalten (einmal pro Tag genug)
 // POST {analyse} → zusätzlich: MAKE ordnet die Lage ein und benennt den Hebel
+// GET ?sicht=privat|business (10.10., Fokus › Wirkung) → NUR die Säulen dieses Bereichs (lib/fokus/wirkung.ts), Score und Verlauf daraus;
+//        ein Konto „nur Business“ bekommt immer die Business-Sicht (Privat → 403). Ohne Parameter wie bisher (Gesamt-Score).
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
@@ -20,6 +22,9 @@ import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
+import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { wirkungFuerSicht, verlaufFuerSicht } from '@/lib/fokus/wirkung';
+import { istSteuerBereich, type SteuerBereich } from '@/lib/fokus/steuerung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +60,15 @@ export async function GET(req: Request) {
   // Routinen) — er gehört deshalb der Person, die fragt.
   // Tempo (26.09.): der Score rechnet über viele Bestände — fünf Minuten merken, jede Schreibung setzt zurück.
   const [aktuell, verlauf] = await Promise.all([merken(`performance:${personAus(req)}`, 5 * 60_000, () => computeIndex(undefined, personAus(req))), history(personAus(req))]);
+  // Sicht je Bereich (10.10.): serverseitig gefiltert — die Antwort trägt nie die Säulen des anderen Bereichs.
+  const roh = new URL(req.url).searchParams.get('sicht');
+  const nurBusiness = (await planZugangFuer(personAus(req)))?.sicht === 'business';
+  if (roh !== null && !istSteuerBereich(roh)) return NextResponse.json({ ok: false, error: 'sicht privat|business.' }, { status: 400 });
+  if (roh === 'privat' && nurBusiness) return NextResponse.json({ ok: false, error: 'Mit Business-Zugang gibt es keine Privat-Sicht.' }, { status: 403 });
+  const sicht: SteuerBereich | null = nurBusiness ? 'business' : roh;
+  const ausliefern = (liste: PerfSnapshot[]) => (sicht
+    ? NextResponse.json({ sicht, aktuell: wirkungFuerSicht(aktuell, sicht), verlauf: verlaufFuerSicht(liste, Object.fromEntries(aktuell.saeulen.map(s => [s.key, s.gewicht])), sicht) })
+    : NextResponse.json({ aktuell, verlauf: liste }));
   // Der Verlauf wächst von selbst: der ERSTE Aufruf des Tages hält den Punkt
   // fest (idempotent — spätere GETs schreiben nicht; POST/Analyse erneuert).
   if (aktuell.index != null && !verlauf.some(s => s.date === aktuell.stand)) {
@@ -69,9 +83,9 @@ export async function GET(req: Request) {
       if (list.some(s => s.date === snap.date)) return { snapshots: list };
       return { snapshots: [...list, mitNotiz(snap, aktuell, list)].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
     });
-    return NextResponse.json({ aktuell, verlauf: file.snapshots });
+    return ausliefern(file.snapshots);
   }
-  return NextResponse.json({ aktuell, verlauf });
+  return ausliefern(verlauf);
 }
 
 export async function POST(req: Request) {

@@ -96,3 +96,16 @@ export function erholungStarten(label: string): { art: 'gestartet' } | { art: 'l
   fokusMerken({ von: new Date().toISOString(), schluessel: ERHOLUNG_ZEIT_SCHLUESSEL, label: (label.trim() || 'Erholung').slice(0, 80) });
   return { art: 'gestartet' };
 }
+
+/**
+ * Fokus für ein Thema der Fokus-Seite (10.10., Fokus-Steuerung): ein Block im Bereich des Themas — unter seiner ersten Zeit-Quelle
+ * (`<bereich>:<quelle>`, sonst `<bereich>:fokus`), bei einem Einheiten-Thema mit dieser Einheit (Business: Gesellschaft; Privat: Privat-Arbeit).
+ * Der Bereich kommt aus der Seite, nie gemischt. Läuft schon ein Fokus, wird NICHTS ersetzt.
+ */
+export function fokusFuerThema(t: { bereich: 'privat' | 'business'; label: string; quelle?: string; einheit?: string }): { art: 'gestartet' } | { art: 'laeuft'; label: string } {
+  const l = gemerkterFokus();
+  if (l) return { art: 'laeuft', label: l.label };
+  const quelle = t.quelle && /^[a-z0-9-]{1,40}$/.test(t.quelle) ? t.quelle : 'fokus';
+  fokusMerken({ von: new Date().toISOString(), schluessel: schluesselFuer(t.bereich, quelle), label: (t.label.trim() || 'Fokus').slice(0, 80), ...(t.einheit ? { einheit: t.einheit } : {}) });
+  return { art: 'gestartet' };
+}

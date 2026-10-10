@@ -21,7 +21,8 @@ describe('Spaces', () => {
     expect(aktiverSpaceEintrag('/os/stapel', '')).toMatchObject({ space: null, eintrag: { label: 'ZOE' } });
     expect(aktiverSpaceEintrag('/os/wissen', '')).toMatchObject({ space: null, eintrag: { label: 'ZOE' } });
     expect(aktiverSpaceEintrag('/os/research', '')).toMatchObject({ space: null, eintrag: { label: 'ZOE' } });
-    expect(aktiverSpaceEintrag('/os/wachstum', '')).toMatchObject({ space: null, eintrag: { label: 'Planung' } });
+    // 10.10.: die Fokus-Seite (oben rechts im Kopf) gehört zu keinem Punkt der Leiste — auch nicht zur Planung.
+    expect(aktiverSpaceEintrag('/os/fokus', '')).toMatchObject({ space: null, eintrag: null });
     expect(aktiverSpaceEintrag('/os/inbox', '?space=business')).toMatchObject({ space: 'business', eintrag: { label: 'Inbox' } });
     expect(aktiverSpaceEintrag('/os/unternehmen', '')).toMatchObject({ space: 'business', eintrag: { label: 'Unternehmen' } });
     expect(aktiverSpaceEintrag('/os/mandate', '')).toMatchObject({ space: 'business', eintrag: { label: 'Produkte & Mandate' } });
@@ -53,8 +54,9 @@ describe('Spaces', () => {
     expect(aktiverLeistenPunkt('business', '/os/markttraktion', '?s=kontakte&a=akte&k=c-1')?.label).toBe('Markttraktion');
     expect(aktiverLeistenPunkt('business', '/os/markttraktion', '?s=deals')?.label).toBe('Markttraktion');
     expect(aktiverLeistenPunkt('privat', '/os', '')?.label).toBe('Heute');
-    expect(aktiverLeistenPunkt('privat', '/os/kompass', '')?.label).toBe('Planung');
-    expect(aktiverLeistenPunkt('privat', '/os/fokus', '')?.label).toBe('Planung');
+    expect(aktiverLeistenPunkt('privat', '/os/fokus', '')).toBeNull();
+    expect(aktiverLeistenPunkt('business', '/os/fokus', '?space=business')).toBeNull();
+    expect(aktiverLeistenPunkt('privat', '/os/planung/kapazitaet', '')?.label).toBe('Planung');
     expect(aktiverLeistenPunkt('business', '/os/kalender', '?modus=planen')?.label).toBe('Kalender');
     expect(aktiverLeistenPunkt('business', '/os/board', '')?.label).toBe('ZOE');
     expect(aktiverLeistenPunkt('business', '/os/meeting', '')?.label).toBe('ZOE');

@@ -15,6 +15,8 @@ const FEST: [RegExp, BereichTreffer][] = [
   [/^\/os\/?$/, { id: 'home', label: 'Heute' }],
   [/^\/os\/heute/, { id: 'heute', label: 'Heute' }],
   [/^\/os\/wachstum|^\/os\/saeule/, { id: 'wachstum', label: 'Wachstum' }],
+  // Fokus (10.10.): die Steuerungsseite oben rechts — eigener Bereich, der Space kommt aus der Wahl (wie Heute).
+  [/^\/os\/fokus/, { id: 'fokus', label: 'Fokus' }],
   [/^\/os\/(system|konto|datenbasis|verbindungen|bauplan|onboarding)/, { id: 'system', label: 'Einstellungen' }],
   [/^\/zoe|^\/os\/(stapel|loop)/, { id: 'zoe', label: 'ZOE' }],
   // Agenten und Brain hängen seit 08.10. unter dem einen Leisten-Punkt ZOE — ihre Zeit bleibt unter dem bisherigen Schlüssel.

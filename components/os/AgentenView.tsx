@@ -7,6 +7,7 @@
 // für Autonomie, Modell, Status, Funktionen und Bauplan.
 
 import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { useEffect, useState } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -118,7 +119,7 @@ export function AgentenView() {
       <Spalten verhaeltnis="1:1">
         <Spalte>
       <Karte i={0} ton={LEUCHT.agenten}>
-        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Agenten-Score</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href={WEG.wachstum()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Wirkung ›</Link>}>Agenten-Score</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Ring label="Agenten" wert={score != null ? String(score) : undefined} farbe={LEUCHT.agenten} anteil={score != null ? score / 100 : undefined} />
           <div style={{ flex: 1, minWidth: 220, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>

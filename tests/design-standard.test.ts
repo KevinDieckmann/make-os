@@ -183,7 +183,8 @@ describe('Planung, Fokus und Lichtfäden hängen am Standard (03.10., „Fokus a
     expect(lies('components/os/HorizontView.tsx')).toMatch(/<Lichtfaeden wurzel=\{spaceFilter === 'alle' \? 'gesamt'/);
     expect(lies('components/os/planung/ZielDetail.tsx')).toContain('<Lichtfaeden wurzel={`ziel:');
     expect(lies('components/os/planung/MeilensteinDetail.tsx')).toContain('<Lichtfaeden wurzel={`ms:');
-    expect(lies('components/os/FokusView.tsx')).toContain('<Lichtfaeden wurzel="gesamt"');
+    // 10.10.: die Fokus-Seite folgt dem Bereich — nur die Stränge dieses Bereichs (nie Privat in Business).
+    expect(lies('components/os/FokusView.tsx')).toContain('<Lichtfaeden wurzel={`space:${bereich}`}');
   });
 });
 

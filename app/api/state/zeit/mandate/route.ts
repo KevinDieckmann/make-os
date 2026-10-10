@@ -7,6 +7,8 @@
 // Zugang wie das CRM: nur im Haushalt des Inhabers mit benannter Person (Mandate
 // und Firmennamen sind CRM-Daten). Gemerkt je Haushalt/Zeitraum, Schlüssel mit dem
 // Stand der Blöcke (`zeit` ist Memo-Rauschen) und dem Stand des CRM.
+// `?sicht=privat|business` (10.10., Fokus-Seite): NUR die Arbeit dieses Bereichs — Business ohne Mandate einer Privat-Einheit, Privat nur
+// die Arbeit der Privat-Einheiten; Konto „nur Business“ immer Business (Privat → 403).
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -36,9 +38,12 @@ export async function GET(req: Request) {
   const crmStand = await speicherStand([CRM_SPEICHER]);
   // Konten ohne Privatzugang: nur Business-Blöcke (die Arbeit der Selbstständigkeit gehört zu Privat, 05.10. abends).
   const nurBusiness = (await planZugangFuer(zugang.person))?.sicht === 'business';
-  const daten = await merken(`zeit-mandate:${schluessel}:${nurBusiness ? 'b' : 'p'}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}:${crmStand}`, 60_000, async () => {
+  const sicht = url.searchParams.get('sicht');
+  if (sicht !== null && sicht !== 'privat' && sicht !== 'business') return NextResponse.json({ ok: false, error: 'sicht privat|business.' }, { status: 400 });
+  if (sicht === 'privat' && nurBusiness) return NextResponse.json({ ok: false, error: 'Mit Business-Zugang gibt es keine Privat-Zeit.' }, { status: 403 });
+  const daten = await merken(`zeit-mandate:${schluessel}:${nurBusiness ? 'b' : 'p'}:${sicht ?? '-'}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}:${crmStand}`, 60_000, async () => {
     const [mandate, dateien] = await Promise.all([mandateKurz(), Promise.all(personen.map(p => ladeZeit(p.person)))]);
-    return zeitJeMandat(personen.map((p, i) => ({ ...p, datei: dateien[i] })), mandate, zeitraum, stichtag, nurBusiness);
+    return zeitJeMandat(personen.map((p, i) => ({ ...p, datei: dateien[i] })), mandate, zeitraum, stichtag, nurBusiness, sicht ?? undefined);
   });
   return NextResponse.json({ ok: true, ich: zugang.person, ...daten }, { headers: { 'Cache-Control': 'no-store' } });
 }

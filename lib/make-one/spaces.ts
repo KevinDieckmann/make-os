@@ -58,8 +58,9 @@ const vorn = (s: SpaceId): SpaceEintrag[] => [
   // K5 (29.09.): EIN Kalender — Planen ist dort ein Modus.
   { href: `/os/kalender?space=${s}`, label: 'Kalender', icon: CalendarDays, passt: [`/os/kalender?space=${s}`], auch: ['/os/kalender', '/os/planung/woche'] },
   { href: `/os/aufgaben?space=${s}`, label: 'Aufgaben', icon: ListChecks, passt: [`/os/aufgaben?space=${s}`, `/os/aufgaben?bereich=${s}`], auch: ['/os/aufgaben'] },
-  // Planung: Ziele, Horizonte, Routinen, Kapazität — Fokus, Kompass und Wachstum sind Einstiege darin (PlanerLeiste).
-  { href: `/os/planung/jahr?space=${s}`, label: 'Planung', icon: Target, zeitId: 'ziele-planung', passt: [`/os/planung?space=${s}`, `/os/fokus?space=${s}`, `/os/kompass?space=${s}`], auch: ['/os/planung', '/os/fokus', '/os/kompass', '/os/wachstum', '/os/saeule'] },
+  // Planung: Ziele, Horizonte, Routinen, Kapazität — nur Planung (10.10.). Fokus, Prioritäten, Zeit und Wirkung sind die Fokus-Seite oben
+  // rechts im Kopf (KOPF_SEITEN) — sie gehört zu keinem Punkt der Leiste und folgt dem Schalter.
+  { href: `/os/planung/jahr?space=${s}`, label: 'Planung', icon: Target, zeitId: 'ziele-planung', passt: [`/os/planung?space=${s}`], auch: ['/os/planung'] },
 ];
 
 /** ZOE — gemeinsam für beide Spaces: Freigaben, Agenten (mit Research, Content, Meeting, Board, Prospecting), Loops, Brain. */
@@ -207,7 +208,20 @@ export const SPACE_EREIGNIS = 'make-space-gewechselt';
  * neuen Space schon (z. B. Finanzen › Gesamt unter Privat), bleibt man stehen (null). Eine Seite eines Space ohne Gegenstück
  * führt zu Heute des neuen Space. Gemeinsame Seiten (Konto, Einstellungen, ZOE …) bleiben stehen (null).
  */
+/**
+ * Seiten, die der Kopf öffnet und die dem Schalter folgen, ohne Punkt der Leiste (10.10.: die Fokus-Seite). Der Schalter bleibt dort stehen;
+ * trägt die Adresse ein `?space=`, wird nur dieser Parameter umgeschrieben (sonst gewönne die Adresse gegen die neue Wahl).
+ */
+export const KOPF_SEITEN: readonly string[] = ['/os/fokus'];
+
 export function wechselZiel(pfad: string, suche: string, nach: SpaceWahl): string | null {
+  if (KOPF_SEITEN.some(k => pfad === k || pfad.startsWith(`${k}/`))) {
+    const param = wahlAusParameter(suche);
+    if (!param || param === nach) return null;
+    const q = new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche);
+    q.set('space', nach);
+    return `${pfad}?${q.toString()}`;
+  }
   const reihe: SpaceWahl[] = [...SPACE_WAHLEN.filter(w => w !== nach), nach];
   let punkt: SpaceEintrag | null = null;
   for (const w of reihe) { punkt = aktiverLeistenPunkt(w, pfad, suche); if (punkt) break; }

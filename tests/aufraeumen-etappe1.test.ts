@@ -54,10 +54,13 @@ describe('Aufräumen Etappe 1 — Leiste', () => {
     expect(l).toContain('leisteFuer(wahl).map(');
     for (const raus of ['ALLES_EINTRAEGE', 'ALLES_GRUPPEN', 'leistenBloecke', 'wahlInfo', "'alles'"]) expect(l, raus).not.toContain(raus);
   });
-  it('Fokus, Kompass und Wachstum sind kein eigener Punkt, sondern Einstiege unter Planung (PlanerLeiste)', () => {
+  // 10.10. (Entscheidung: „Planung soll nur Planung sein … den Fokus-Bereich oben rechts aufbauen“): Fokus, Kompass und Wachstum sind
+  // weder ein Punkt der Leiste noch ein Reiter der Planung — sie sind die Fokus-Seite hinter dem Fokus-Knopf im Kopf.
+  it('Fokus, Kompass und Wachstum: kein Punkt der Leiste, kein Reiter der Planung — die Fokus-Seite oben rechts', () => {
     for (const s of SPACES) expect(leisteFuer(s.id).map(e => e.label)).not.toEqual(expect.arrayContaining(['Fokus']));
     const planer = lies('components/os/PlanerLeiste.tsx');
-    for (const h of ["href: '/os/fokus'", "href: '/os/kompass'", "href: '/os/wachstum'"]) expect(planer).toContain(h);
+    for (const h of ["href: '/os/fokus'", "href: '/os/kompass'", "href: '/os/wachstum'"]) expect(planer).not.toContain(h);
+    expect(lies('components/os/Kopf.tsx')).toContain('<Link href={WEG.fokus()}');
   });
 });
 

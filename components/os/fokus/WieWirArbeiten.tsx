@@ -1,24 +1,22 @@
 'use client';
 
-// ─── MAKE OS — Kompass ──────────────────────────────────────────────────────
-// Der Zustand, in dem das System läuft. Vier Ebenen: Lage → Regler → Wirkung
-// → Reichweite. Siehe lib/make-one/kompass-data.ts für das Konzept.
-//
-// Der wichtigste Trick: Der Kompass schreibt in dieselben Speicher, die die
-// übrige Software ohnehin liest (Fokus-Regler, Ordnung). Dadurch wirkt jede
-// Änderung sofort überall — ohne dass eine einzige andere Seite davon weiß.
-// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Chip/Knopf).
+// ─── MAKE OS — Fokus › Wie wir arbeiten (bis 10.10. die Seite „Kompass“) ─────────────────────────────────────────────────────────
+// Der Zustand, in dem das System läuft: Lage → Regler → Wirkung → Reichweite (lib/make-one/kompass-data.ts), dazu eigene Filter,
+// Stichworte und Bezeichnungen. Seit 10.10. (Entscheidung: „Fokus und Kompass zusammenlegen und bei Planung rausnehmen“) ein Abschnitt der
+// Fokus-Seite: die Prioritäten (früher „Unsere Prioritäten“ und die Säulen-Regler) stehen dort je Bereich getrennt (components/os/fokus/
+// Prioritaeten.tsx), der Fokus je Horizont in der Fokus-Tafel. Hier bleibt, WIE das System arbeitet — Tageslast, Postfach-Strenge,
+// Agenten-Leine, Schutz. Der Kompass-Bestand gehört zum Bereich Privat (Speicher-Register) — die Fokus-Seite zeigt den Abschnitt nur dort.
+// Die Lage stellt die Themen-Reihenfolge der Aufgaben (`ordnung`) und die Regler um; den früheren Fokus-Regler setzen seit 10.10. die
+// Prioritäten (sonst überschriebe die Lage sie).
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
-import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, SPACE_FARBE, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { THEMEN, STANDARD_ORDNUNG, sortierteThemen, themenMit, themaVon } from '@/lib/make-one/ordnung-data';
+import { THEMEN, themenMit, themaVon } from '@/lib/make-one/ordnung-data';
 import { ORTE } from '@/lib/make-one/orte';
 import { STICHWORTE, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { FAECHER } from '@/lib/inbox/faecher';
@@ -27,12 +25,10 @@ import {
   MODI, MODUS, STANDARD_MODUS, BEREICHE, REGLER, wertVon, abweichungen, stufeText,
   type ReglerId,
 } from '@/lib/make-one/kompass-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, Wahl, ZielBezug, feld, LEUCHT } from './ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, Wahl, feld, LEUCHT } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import { suchPasst } from '@/lib/text/such-norm';
-import { PlanerLeiste } from './PlanerLeiste';
-import { usePersonen } from './aufgaben/hilfe';
-import { FokusTafel } from './planung/FokusTafel';
+import { usePersonen } from '../aufgaben/hilfe';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -43,6 +39,7 @@ const klein = (aus = false): CSSProperties => ({ width: 40, height: 40, borderRa
 const loeschen: CSSProperties = { background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 4px', flex: '0 0 auto' };
 const verweis: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' };
 
+/** Die Säulen-Regler (fokus-health … fokus-social) setzen seit 10.10. die Prioritäten der Fokus-Seite — hier nicht mehr. */
 const SAEULE_VON_REGLER: Record<string, string> = {
   'fokus-health': 'health', 'fokus-business': 'business', 'fokus-planning': 'planning',
   'fokus-finance': 'finance', 'fokus-social': 'social',
@@ -57,7 +54,10 @@ interface EigenesStichwort { id: string; label: string; thema: string; woerter: 
 
 const PRIOS = [['critical', 'kritisch'], ['high', 'hoch'], ['medium', 'mittel'], ['low', 'niedrig']] as const;
 
-export function KompassView() {
+/** Regler, die hier stehen: alle außer den Säulen-Reglern (die Schwelle „ab wann im Fokus“ bleibt). */
+const SICHTBAR = REGLER.filter(r => !SAEULE_VON_REGLER[r.id]);
+
+export function WieWirArbeiten({ i: start = 0 }: { i?: number }) {
   // Personen des Haushalts aus dem Team (09.10.: keine festen Namen im Filter „Wer“).
   const teamPersonen = usePersonen();
   const { state } = useTasks();
@@ -66,107 +66,43 @@ export function KompassView() {
   const [modus, setModus] = useState<string>(STANDARD_MODUS);
   const [eigene, setEigene] = useState<Partial<Record<ReglerId, number>>>({});
   const [geladen, setGeladen] = useState(false);
-  const [reihenfolge, setReihenfolge] = useState<string[]>(STANDARD_ORDNUNG);
   const [tiefer, setTiefer] = useState(false);
-  // Der Fokus je Horizont liegt in denselben Zielen, aus denen Tag, Woche und
-  // ZOE lesen — hier wird er gesetzt, dort wirkt er.
-  const [fokus, setFokus] = useState<Record<string, string>>({});
-  // Wessen Fokus (26.09., Malin: „selektieren als Kevin, Malin einzeln“): wir · ich · die andere Person (nur lesen)
-  const [wessen, setWessen] = useState<'wir' | 'ich' | string>('wir');
-  const [fokusLesend, setFokusLesend] = useState(false);
-  // Fokus je Space (26.09., Kevin): gemeinsam · Privat · Business — Schlüssel „privat:jahr“ usw.
-  const { ausAdresse: spaceAusAdresse, space: spaceAktiv } = useSpace();
-  const [fokusSpace, setFokusSpace] = useState<SpaceId | null>(null);
-  useEffect(() => { setFokusSpace(spaceAusAdresse); }, [spaceAusAdresse]);
-  const kf = (h: string) => fokusSchluessel(h, fokusSpace);
-  const [personen, setPersonen] = useState<{ ich: string; andere: { speicher: string; name: string }[] }>({ ich: '', andere: [] });
 
+  // Die Säulen des Fokus-Reglers (gespiegelt aus den Prioritäten) — nur für die Wirkung der Schwelle.
+  const [saeulen, setSaeulen] = useState<Record<string, number> | null>(null);
   useEffect(() => {
     fetch('/api/state/kompass').then(r => r.json()).then(d => {
       if (d.modus) setModus(d.modus);
       if (d.eigene) setEigene(d.eigene);
       setGeladen(true);
     }).catch(() => setGeladen(true));
-    fetch('/api/state/ordnung').then(r => r.json()).then(d => {
-      if (Array.isArray(d.reihenfolge) && d.reihenfolge.length) setReihenfolge(d.reihenfolge);
-    }).catch(() => {});
-    // Eigene Ziele (08.10., Kevin): die Fokus-Sätze einer anderen Person nur, wenn sie ihre eigenen Ziele mit mir teilt — der Server
-    // lehnt sonst ab (403); hier erscheint ihr Chip gar nicht erst.
-    fetch('/api/konto/ich').then(r => r.json()).then((d: { ich?: { speicher: string }; andere?: { speicher: string; name?: string; haushalt?: string; teiltZieleMitMir?: boolean }[] }) => {
-      if (d.ich) setPersonen({ ich: d.ich.speicher, andere: (d.andere ?? []).filter(a => a.teiltZieleMitMir).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] })) });
-    }).catch(() => {});
+    fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setSaeulen(d?.regler ?? null)).catch(() => {});
   }, []);
-  useEffect(() => {
-    fetch(`/api/state/ziele?fuer=${encodeURIComponent(wessen)}`).then(r => r.json()).then(d => { setFokus(d.fokus ?? {}); setFokusLesend(d.darfSchreiben === false); }).catch(() => {});
-  }, [wessen]);
-
-  // Die Route nimmt einen Horizont je Aufruf — genau den geänderten.
-  const fokusSpaeter = useNachspeichern<{ h: string; text: string; fuer: string }>(({ h, text, fuer }) => {
-    fetch('/api/state/ziele', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ horizont: h, fokus: text, fuer }), keepalive: true,
-    }).catch(() => {});
-  }, 500);
-
-  /** Fokus-Satz setzen — sofort sichtbar, kurz gebündelt geschrieben. */
-  function fokusSetzen(h: string, text: string) {
-    if (fokusLesend) return;
-    fokusSpaeter({ h, text, fuer: wessen });
-    setFokus(prev => {
-      const next = { ...prev, [h]: text };
-      return next;
-    });
-  }
 
   const wert = (id: ReglerId) => wertVon(id, modus, eigene);
-  const abw = abweichungen(modus, eigene);
-
-  /** Fokuswerte in den Speicher schreiben, den die übrige Software liest. */
-  function fokusSpiegeln(werte: Partial<Record<ReglerId, number>>, basisModus: string) {
-    const regler: Record<string, number> = {};
-    for (const [rid, saeule] of Object.entries(SAEULE_VON_REGLER)) {
-      regler[saeule] = wertVon(rid as ReglerId, basisModus, werte);
-    }
-    fetch('/api/state/fokus-regler', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regler }) }).catch(() => {});
-  }
+  // Nur sichtbare Regler zählen als Abweichung (die Säulen-Regler setzt seit 10.10. die Prioritäten-Liste).
+  const abw = abweichungen(modus, eigene).filter(id => !SAEULE_VON_REGLER[id]);
 
   function reglerSetzen(id: ReglerId, v: number) {
-    const next = { ...eigene, [id]: v };
-    setEigene(next);
+    setEigene({ ...eigene, [id]: v });
     fetch('/api/state/kompass', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eigene: { [id]: v } }) }).catch(() => {});
-    if (SAEULE_VON_REGLER[id]) fokusSpiegeln(next, modus);
   }
 
-  /** Lage wechseln: setzt alle Regler, die Themen-Reihenfolge und den Fokus. */
+  /** Lage wechseln: setzt die Regler und die Themen-Reihenfolge der Aufgaben (nicht mehr die Prioritäten — die stehen je Bereich). */
   function lageWechseln(id: string) {
     const m = MODUS[id];
     if (!m) return;
     setModus(id);
     setEigene({});
     fetch('/api/state/kompass', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modus: id }) }).catch(() => {});
-    setReihenfolge(m.ordnung);
     fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reihenfolge: m.ordnung }) }).catch(() => {});
-    fokusSpiegeln({}, id);
   }
 
   function zuruecksetzen() {
     setEigene({});
     fetch('/api/state/kompass', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zuruecksetzen: true }) }).catch(() => {});
     const m = MODUS[modus];
-    if (m) {
-      setReihenfolge(m.ordnung);
-      fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reihenfolge: m.ordnung }) }).catch(() => {});
-    }
-    fokusSpiegeln({}, modus);
-  }
-
-  function schieben(id: string, richtung: -1 | 1) {
-    const i = reihenfolge.indexOf(id), j = i + richtung;
-    if (i < 0 || j < 0 || j >= reihenfolge.length) return;
-    const next = [...reihenfolge];
-    [next[i], next[j]] = [next[j], next[i]];
-    setReihenfolge(next);
-    fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reihenfolge: next }) }).catch(() => {});
+    if (m) fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reihenfolge: m.ordnung }) }).catch(() => {});
   }
 
   // ── Eigene Bezeichnungen: umbenennen und ergänzen ohne Code ──
@@ -254,9 +190,11 @@ export function KompassView() {
       return `${n} Aufgaben liegen in diesem Fenster`;
     }
     if (id === 'fokus-schwelle') {
-      const drueber = (['health', 'business', 'planning', 'finance', 'social'] as const)
-        .filter(s => wert(`fokus-${s}` as ReglerId) >= v).length;
-      return drueber === 0 ? 'keine Säule hat gerade Vorfahrt' : drueber === 5 ? 'alle fünf Säulen — das ist kein Fokus mehr' : `${drueber} von 5 Säulen haben Vorfahrt`;
+      // Die Säulen-Werte setzen seit 10.10. die Prioritäten (Spiegel im Fokus-Regler).
+      const werte = Object.values(saeulen ?? {});
+      if (!werte.length) return 'noch keine Prioritäten gesetzt';
+      const drueber = werte.filter(x => x >= v).length;
+      return drueber === 0 ? 'keine Säule hat gerade Vorfahrt' : drueber === werte.length ? 'alle Säulen — das ist kein Fokus mehr' : `${drueber} von ${werte.length} Säulen haben Vorfahrt`;
     }
     if (id === 'wochenlast') return `Wochenplaner warnt ab ${v} verplanten Stunden`;
     if (id === 'recovery-gruen') return `grün ab ${v} % · gelb ab ${Math.max(20, v - 26)} % · darunter rot`;
@@ -272,7 +210,6 @@ export function KompassView() {
     return stufeText(v, REGLER.find(r => r.id === id)?.skala);
   };
 
-  const themen = sortierteThemen(reihenfolge, labels.themen);
   /** Themen-Nachschlag mit euren eigenen Bezeichnungen. */
   const THEMA_EIGEN = useMemo(() => themenMit(labels.themen), [labels.themen]);
   const stichListe = useMemo(() => mitEigenen(eigeneSw), [eigeneSw]);
@@ -329,23 +266,20 @@ export function KompassView() {
     </div>
   );
 
-  let k = 0; // laufender Karten-Index fürs gestaffelte Erscheinen
+  let k = start; // laufender Karten-Index fürs gestaffelte Erscheinen
 
   return (
-    <Seite
-      titel="Kompass"
-      unter="Lage → Regler → Wirkung → Reichweite: was hier steht, wirkt in Aufgaben, Tag und Postfach."
-      breit={960}
-      rechts={abw.length > 0 ? <Knopf leise onClick={zuruecksetzen}>↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen</Knopf> : undefined}
-    >
-      {/* Einstieg unter Planung (08.10.): dieselbe Reiterzeile wie Tag · Woche · Monat · Quartal · Jahr. */}
-      <PlanerLeiste aktiv="kompass" />
-      <ZielBezug bereich="privat" />
+    <>
+      {abw.length > 0 && (
+        <div className="os-auf" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Knopf leise onClick={zuruecksetzen}>↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen</Knopf>
+        </div>
+      )}
       {/* ── EBENE 1: DIE LAGE ──
           Kein Zahlenwert, sondern ein Zustand: in welcher Lage läuft das
           System gerade. Alles andere auf dieser Seite justiert nur nach. */}
       <Karte i={k++} ton={aktLage.farbe}>
-        <Ueberschrift farbe={aktLage.farbe} rechts="wirkt in Aufgaben · Tag · Dashboard · Postfach">Lage</Ueberschrift>
+        <Ueberschrift farbe={aktLage.farbe} rechts="wirkt in Aufgaben · Tag · Heute · Postfach">Lage</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <Zahl gross wert={aktLage.label} label="aktuelle Lage" farbe={aktLage.farbe} />
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
@@ -368,71 +302,7 @@ export function KompassView() {
           })}
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12 }}>
-          Ein Klick stellt Fokus, Reihenfolge, Tageslast, Postfach-Strenge und Agenten-Leine gemeinsam um.
-        </div>
-      </Karte>
-
-      {/* ── PRIORITÄTEN: was zuerst zählt, wenn alles wichtig ist ──
-          Kevins Ansage: „Das ist nicht unsere Ordnung, das sind unsere
-          Prioritäten." Diese Reihenfolge sortiert das Taskmanagement, den
-          Tagesplan und ZOE' Vorschläge — deshalb steht sie hier oben. */}
-      <Karte i={k++}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts="Die Lage setzt sie — hier feinjustieren.">Unsere Prioritäten</Ueberschrift>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Was zuerst zählt, wenn alles wichtig ist.</div>
-        <Liste>
-          {themen.map((b, i) => {
-            const n = offen.filter(t => themaVon(t, {}) === b.id).length;
-            return (
-              <Zeile key={b.id}
-                links={<span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.zahl, fontWeight: 700, color: b.farbe, width: 28, textAlign: 'center', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>}
-                titel={<>{b.label} <span style={{ color: C.inkLeise, fontWeight: 400 }}>· {n} offen</span></>}
-                unter={b.satz}
-                rechts={<span style={{ display: 'flex', gap: 6, flex: '0 0 auto' }}>
-                  <button onClick={() => schieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben" style={klein(i === 0)}>▲</button>
-                  <button onClick={() => schieben(b.id, 1)} disabled={i === themen.length - 1} aria-label="Nach unten" style={klein(i === themen.length - 1)}>▼</button>
-                </span>} />
-            );
-          })}
-        </Liste>
-      </Karte>
-
-      {/* ── FOKUS: worauf es je Horizont ankommt ──
-          Kevin: „eine eigene Seite, wo es nur darum geht, welche Prios wir
-          geben und welchen Fokus." Der Satz je Horizont steht in denselben
-          Daten, aus denen ZOE, der Tagesplan und die Wochensicht lesen. */}
-      <Karte i={k++}>
-        <Ueberschrift farbe={LEUCHT.schlaf}>Fokus</Ueberschrift>
-        {/* Seit 09.10. (Kevin: „dass wir selber alle immer Fokusse einstellen können … individuell“): je Horizont Unser + Mein Fokus aus den
-            getrennten Beständen (Privat · Business), Mein Fokus einzeln teilbar — dieselbe Tafel wie Planung › Fokus (FokusTafel). */}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont — gemeinsam und für dich. Was hier steht, taucht auf Heute, im Tag, in der Woche und bei ZOE wieder auf.</div>
-        <FokusTafel vorgabe={fokusSpace ?? spaceAktiv} />
-        <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Je Priorität — wessen und welcher Bereich</div>
-        {/* Wessen Fokus je Priorität (26.09.): gemeinsam, meiner, der der anderen Person (nur lesen) */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-          {([['wir', 'Wir'], ['ich', 'Ich']] as const).map(([id, label]) => chip(wessen === id, LEUCHT.schlaf, label, () => setWessen(id), id))}
-          {personen.andere.map(a => chip(wessen === a.speicher, LEUCHT.beziehung, a.name, () => setWessen(a.speicher), a.speicher))}
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du — andere sehen ihn nur, wenn du deine eigenen Ziele teilst (Konto)'}</span>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-          {chip(fokusSpace === null, C.aktiv, 'Gemeinsam', () => setFokusSpace(null), 'sp-gemeinsam')}
-          {(['privat', 'business'] as const).map(sp => chip(fokusSpace === sp, SPACE_FARBE[sp], SPACE_LABEL[sp], () => setFokusSpace(sp), `sp-${sp}`))}
-        </div>
-        {/* Fokus je Priorität (Malin 26.09.: „die Kreise 1–4“): die vier obersten Prioritäten bekommen je einen Satz. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {themen.slice(0, 4).map((b, i) => (
-            <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.zahl, fontWeight: 700, color: b.farbe, width: 28, textAlign: 'center', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
-              <span style={{ ...MIKRO, width: 110, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.label}>{b.label}</span>
-              <input
-                value={fokus[kf(`prio:${b.id}`)] ?? ''}
-                readOnly={fokusLesend}
-                onChange={e => fokusSetzen(kf(`prio:${b.id}`), e.target.value)}
-                placeholder={fokusLesend ? '—' : `Worauf es bei „${b.label}“ gerade ankommt`}
-                aria-label={`Fokus ${b.label}`}
-                style={{ ...feld, fontWeight: fokus[kf(`prio:${b.id}`)] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
-              />
-            </div>
-          ))}
+          Ein Klick stellt Reihenfolge der Aufgaben-Themen, Tageslast, Postfach-Strenge und Agenten-Leine gemeinsam um. Die Prioritäten je Bereich stehen oben.
         </div>
       </Karte>
 
@@ -440,7 +310,8 @@ export function KompassView() {
       {!geladen ? (
         <Karte i={k++}><Leer>lädt …</Leer></Karte>
       ) : BEREICHE.map(b => {
-        const meine = REGLER.filter(r => r.bereich === b.id);
+        const meine = SICHTBAR.filter(r => r.bereich === b.id);
+        if (!meine.length) return null;
         // Schrittweise Tiefe: Fokus und Zeit stehen offen, der Rest auf Wunsch.
         const immer = b.id === 'fokus' || b.id === 'zeit';
         if (!immer && !tiefer) return null;
@@ -599,7 +470,7 @@ export function KompassView() {
       <Karte i={k++}>
         <Ueberschrift rechts="Wie die Dinge bei euch heißen. Wirkt überall, wo sie auftauchen.">Eigene Bezeichnungen</Ueberschrift>
 
-        <div style={{ ...MIKRO, marginBottom: 8 }}>Prioritäten umbenennen</div>
+        <div style={{ ...MIKRO, marginBottom: 8 }}>Themen der Aufgaben umbenennen</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {THEMEN.map(th => (
             <div key={th.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -661,6 +532,6 @@ export function KompassView() {
           ))}
         </Liste>
       </Karte>
-    </Seite>
+    </>
   );
 }
