@@ -134,7 +134,10 @@ describe('3.13 · EIN Rechnungs-Anleger', () => {
     }
     expect(quelle('components/os/FinanzplanungView.tsx')).not.toMatch(/rechnungen: \[\.\.\.plan\.rechnungen, \{ id: neueKennung\('r'\)/);
     expect(quelle('components/os/crm/Kunden.tsx')).not.toContain('nur planen (ohne PDF)');
-    expect(quelle('components/os/crm/Kunden.tsx')).toContain('Für welche Gesellschaft?');
+    // Seit 10.10. (Produkte & Mandate: „+ Mandat“ immer mit Lead) fragt der Dialog MandatAnlegen die Gesellschaft — „offen“ legt nicht an.
+    expect(quelle('components/os/crm/Kunden.tsx')).toContain('<MandatAnlegen api={api} modus="neu"');
+    expect(quelle('components/os/crm/MandatAnlegen.tsx')).toContain("reihe('Gesellschaft', <GesellschaftWahl wert={ges} onWahl={setGes} />)");
+    expect(quelle('components/os/crm/MandatAnlegen.tsx')).toContain("ges !== 'offen'");
     expect(quelle('components/os/crm/Kunden.tsx')).not.toMatch(/gesellschaft: ges !== 'alle' \? ges : 'offen'/);
   });
 });
