@@ -38,23 +38,26 @@ export function geburtstagsTermine(liste: readonly Geburtstag[]): QuellTermin[] 
   }));
 }
 
-/** Geburtstage eines Zeitraums vom Server (Familie + CRM, ohne Art.-18-Kontakte). */
-export function useGeburtstage(von: string, bis: string, an = true): Geburtstag[] {
+/**
+ * Geburtstage eines Zeitraums vom Server (Familie + CRM, ohne Art.-18-Kontakte). `bereich` (10.10., Sicht Privat · Business): nur Familie
+ * (Privat) bzw. nur Kontakte (Business) — der Server filtert (`?space=`); „alle“ (ausdrücklich gewählt) beide.
+ */
+export function useGeburtstage(von: string, bis: string, an = true, bereich: 'privat' | 'business' | 'alle' = 'alle'): Geburtstag[] {
   const [liste, setListe] = useState<{ schluessel: string; g: Geburtstag[] }>({ schluessel: '', g: [] });
-  const schluessel = `${von}|${bis}`;
+  const schluessel = `${von}|${bis}|${bereich}`;
   useEffect(() => {
     if (!an) return;
     let lebt = true;
-    fetch(`/api/kalender/quellen?von=${von}&bis=${bis}`, { cache: 'no-store' }).then(r => r.json())
+    fetch(`/api/kalender/quellen?von=${von}&bis=${bis}${bereich === 'alle' ? '' : `&space=${bereich}`}`, { cache: 'no-store' }).then(r => r.json())
       .then(d => { if (lebt && d?.ok) setListe({ schluessel, g: Array.isArray(d.geburtstage) ? d.geburtstage : [] }); }).catch(() => {});
     return () => { lebt = false; };
-  }, [von, bis, an, schluessel]);
+  }, [von, bis, an, schluessel, bereich]);
   return an && liste.schluessel === schluessel ? liste.g : [];
 }
 
 /** Beide Quellen für den Zeitraum als Einträge. */
-export function useQuellTermine(von: string, bis: string): QuellTermin[] {
-  const g = useGeburtstage(von, bis);
+export function useQuellTermine(von: string, bis: string, bereich: 'privat' | 'business' | 'alle' = 'alle'): QuellTermin[] {
+  const g = useGeburtstage(von, bis, true, bereich);
   return useMemo(() => [...feiertagsTermine(von, bis), ...geburtstagsTermine(g)], [von, bis, g]);
 }
 

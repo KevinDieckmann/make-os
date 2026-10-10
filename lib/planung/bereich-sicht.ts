@@ -54,6 +54,29 @@ export function zieleDateiOhnePrivat<D extends Partial<ZieleDatei>>(d: D): D {
   return aus;
 }
 
+// ── Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“) ─────────────────────────────────────
+// Mit `?space=` (lib/zugang/sicht-bereich.ts) liefern die Planungs-Routen NUR den Bereich der Sicht — dieselben Regeln wie oben (was nicht
+// privat ist, ist Business). Ohne `?space=` bleibt alles wie bisher (Sammel-Sichten wie „alle“ der Planung, Schreibwege mit Stand).
+export type PlanSicht = 'privat' | 'business' | null | undefined;
+
+/** Nur die Einträge im Bereich der Sicht (rein; dieselben Objekte). */
+export const nurBereich = <E,>(l: readonly E[], sicht: PlanSicht, imPrivat: (e: E) => boolean): E[] =>
+  (sicht ? l.filter(e => imPrivat(e) === (sicht === 'privat')) : [...l]);
+
+/** Fokus-Sätze im Bereich der Sicht (der gemeinsame Satz ohne Präfix gilt als privat — wie oben). */
+export function fokusNurBereich(f: Record<string, string> | null | undefined, sicht: PlanSicht): Record<string, string> {
+  return sicht ? Object.fromEntries(Object.entries(f ?? {}).filter(([k]) => fokusSchluesselImPrivat(k) === (sicht === 'privat'))) : { ...(f ?? {}) };
+}
+
+/** Der Ziele-Bestand (alle Horizonte + Fokus) nur im Bereich der Sicht. */
+export function zieleDateiNurBereich<D extends Partial<ZieleDatei>>(d: D, sicht: PlanSicht): D {
+  if (!sicht) return d;
+  const aus = { ...d } as D & Record<string, unknown>;
+  for (const h of ZIEL_HORIZONTE) if (Array.isArray(d[h])) (aus as Record<string, unknown>)[h] = nurBereich(d[h] as Ziel[], sicht, zielImPrivat);
+  if (d.fokus && typeof d.fokus === 'object') (aus as Record<string, unknown>).fokus = fokusNurBereich(d.fokus, sicht);
+  return aus;
+}
+
 /** Form einer Listen-Änderung (wie `ListenOp` aus lib/store/patch-liste — hier ohne Server-Import). */
 export interface PlanOp<E> { op: 'upsert' | 'delete' | 'teil'; eintrag?: E; id?: string; felder?: Record<string, unknown> }
 

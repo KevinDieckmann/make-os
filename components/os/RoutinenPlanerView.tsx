@@ -1,5 +1,6 @@
 'use client';
 
+import { useSpace } from '@/hooks/useSpace';
 import Link from 'next/link';
 // ─── MAKE OS — Routine-Planer ───────────────────────────────────────────────
 // Positive Routinen für Gesundheit, Leben und Business — HIER werden sie
@@ -80,7 +81,11 @@ export function RoutinenPlanerView() {
   const [ladeFehler, setLadeFehler] = useState(false);
   const [ich, setIch] = useState<string>('');
   const [personen, setPersonen] = useState<Person[]>([]);
-  const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): der Filter folgt dem Kopf-Schalter
+  // (vorher immer „alle“ — Business zeigte Gesundheits- und Familien-Routinen). „Alle“ bleibt als ausdrückliche Wahl.
+  const { space: kopfSpace } = useSpace();
+  const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>(kopfSpace);
+  useEffect(() => { setSpaceFilter(kopfSpace); }, [kopfSpace]);
   const [werFilter, setWerFilter] = useState<string>('alle');
   const [neu, setNeu] = useState({ label: '', wann: 'morgen' as Routine['wann'], kat: 'gesundheit' as Routine['kategorie'], space: 'privat' as SpaceId, owner: OWNER_BEIDE, rhythmus: 'taeglich' as Routine['rhythmus'] | 'taeglich', naechstesMal: '', einheit: undefined as string | undefined });
   // Business-Einheit (27.09.) wie bei Zielen und Aufgaben — nur im Business.

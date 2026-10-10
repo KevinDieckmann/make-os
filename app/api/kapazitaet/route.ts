@@ -16,6 +16,7 @@ import { zuGross } from '@/lib/zugang/umfang';
 import { kapaStandFuer, kapaSchreiben, kapaIdVon, kapaAuskunftLaden } from '@/lib/kapazitaet/server';
 import { localDay } from '@/lib/zeit';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,8 @@ export async function GET(req: Request) {
   if (!wer) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   const auskunft = new URL(req.url).searchParams.get('auskunft');
   if (auskunft !== null) return auskunftAntwort(auskunft, wer.person);
-  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person), istInhaber(wer.person)]);
+  // Sicht Privat · Business (10.10.): `?space=` — Business ohne Erholung/Privat-Titel, Privat ohne Business-Titel und Mandats-Namen (lib/kapazitaet/server.ts).
+  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person, undefined, sichtDerAnfrage(req)), istInhaber(wer.person)]);
   // Lese-Protokoll (Art. 9, 05.10.): der eigene Erholungswert steht nur für die Person selbst in der Antwort (fuerBetrachter).
   if (stand.personen.some(p => p.erholung)) leseZugriff(req, 'erholung', { betroffen: wer.person });
   return NextResponse.json({ ok: true, ich: kapaIdVon(wer.person), inhaber, stand, bezuege }, { headers: { 'Cache-Control': 'no-store' } });
@@ -55,6 +57,6 @@ export async function PATCH(req: Request) {
   try { b = await jsonBegrenzt(req, 64 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const r = await kapaSchreiben(wer.person, b.ops);
   if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
-  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person), istInhaber(wer.person)]);
+  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person, undefined, sichtDerAnfrage(req)), istInhaber(wer.person)]);
   return NextResponse.json({ ok: true, ich: kapaIdVon(wer.person), inhaber, stand, bezuege });
 }

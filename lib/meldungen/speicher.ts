@@ -31,7 +31,9 @@ import { ladeBuchungBestand, buchungHaushalt } from '@/lib/kalender/buchung-spei
 import { OFFEN } from '@/lib/kalender/buchung';
 import { businessFreiJetzt, eigenerRahmenName } from '@/lib/arbeitsrahmen/server';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
-import { businessFreiIdsAufloesen, businessFreiSammeln, istBusinessMeldung, type BusinessFreiLage } from './regeln';
+import { businessFreiIdsAufloesen, businessFreiSammeln, istBusinessMeldung, meldungBereich, type BusinessFreiLage } from './regeln';
+import { aufgabenNurBereich } from '@/lib/aufgaben/bereich-sicht';
+import { anstehendFuerSpace, type Anstehend } from '@/lib/heute/anstehend';
 
 /** Speichername je Person — für alle Konten gleich gebaut (auch „kevin“), nie im Code mit Daten. */
 export function meldungenSpeicher(person: string): string {
@@ -186,19 +188,49 @@ async function businessFreiLage(person: string, aufgaben: unknown[], jetzt: Date
   return { jetzt: jetzt.toISOString(), frei: frei.frei, istBusiness: m => istBusinessMeldung(m, id => bereich.get(id) ?? null) };
 }
 
-/** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute + was ansteht (K6a). */
-export async function meldungenSicht(person: string, jetzt: Date = new Date()): Promise<MeldungenSicht> {
+// ── Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“) ────────────────────────────────────
+// Mit `?space=` zeigt die Glocke nur den Bereich der Sicht: abgeleitete Meldungen aus den Quellen DIESES Bereichs (fällige Aufgaben über
+// `aufgabenNurBereich`, Geburtstage über ihren `space`, „was ansteht“ über `anstehendFuerSpace`), gespeicherte nach `meldungBereich` (ohne
+// Bereich → in beiden). Ohne Sicht wie bisher alles.
+type GlockenSicht = 'privat' | 'business' | null | undefined;
+type Quellen = Awaited<ReturnType<typeof quellenLesen>>;
+function quellenFuerSicht(q: Quellen, sicht: GlockenSicht): Quellen {
+  if (!sicht) return q;
+  const a = q.anstehend;
+  return {
+    ...q,
+    aufgaben: aufgabenNurBereich(q.aufgaben as { id: string; spaceId?: string; parentId?: string }[], sicht),
+    geburtstage: q.geburtstage.filter(g => g.space === sicht),
+    // Die leere Ersatz-Lage (Lesefehler) trägt keine Geburtstage/Vorschläge — dann gibt es nichts zu filtern.
+    anstehend: 'geburtstage' in a ? anstehendFuerSpace(a as Anstehend, sicht) : a,
+  };
+}
+function bestandFuerSicht(b: MeldungenBestand, sicht: GlockenSicht, aufgaben: unknown[]): MeldungenBestand {
+  if (!sicht) return b;
+  const bereich = new Map<string, 'privat' | 'business'>();
+  for (const t of aufgaben as Parameters<typeof spaceVonAufgabe>[0][]) {
+    if (t && typeof t === 'object' && typeof t.id === 'string') { try { bereich.set(t.id, spaceVonAufgabe(t)); } catch { /* unlesbar → privat */ } }
+  }
+  return { ...b, eintraege: b.eintraege.filter(e => { const x = meldungBereich(e, id => bereich.get(id) ?? null); return !x || x === sicht; }) };
+}
+
+/** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute + was ansteht (K6a). `sicht` (10.10.): nur dieser Bereich. */
+export async function meldungenSicht(person: string, jetzt: Date = new Date(), sicht?: GlockenSicht): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const [roh, q] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), quellenLesen(person, heute, jetzt)]);
+  const [roh, q0] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), quellenLesen(person, heute, jetzt)]);
+  const q = quellenFuerSicht(q0, sicht);
   const gespeichert = bestandSaeubern(roh);
   // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke; Restpunkte 29.09.: gelöste Termine auch nicht.
-  const bestand = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
-  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, await businessFreiLage(person, q.aufgaben, jetzt));
+  const bestand = bestandFuerSicht(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)), sicht, q0.aufgaben);
+  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, await businessFreiLage(person, q0.aufgaben, jetzt));
 }
 
 /** „Gelesen“ setzen — nur im eigenen Bestand der Person. Eine Sammelmeldung „aus der freien Zeit“ setzt alle ihre Meldungen. */
-export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, jetzt: Date = new Date()): Promise<MeldungenSicht> {
+export async function meldungenGelesen(person: string, auswahl0: GelesenAuswahl, jetzt: Date = new Date(), sicht?: GlockenSicht): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
+  // „Alle gelesen“ in einer Sicht (10.10.) setzt nur, was diese Sicht zeigt — die Meldungen des anderen Bereichs bleiben ungelesen.
+  const auswahl: GelesenAuswahl = sicht && auswahl0.alle ? { ids: (await meldungenSicht(person, jetzt, sicht)).meldungen.map(m => m.id) } : auswahl0;
+  if (sicht && auswahl0.alle && !auswahl.ids?.length) return meldungenSicht(person, jetzt, sicht);
   const q = await quellenLesen(person, heute, jetzt);
   const lage = await businessFreiLage(person, q.aufgaben, jetzt);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
@@ -208,8 +240,9 @@ export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, 
     const ids = auswahl.ids ? businessFreiIdsAufloesen(auswahl.ids, s.gruppen) : undefined;
     return gelesenSetzen(b, { ...auswahl, ...(ids ? { ids } : {}) }, heute, abg.map(m => m.id), s.ruhen);
   });
-  const sicht = buchungenErledigen(next, await buchungenLage(next, jetzt));
-  return sichtBauen(sicht, abgeleitet(sicht, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, lage);
+  if (sicht) return meldungenSicht(person, jetzt, sicht);
+  const stand = buchungenErledigen(next, await buchungenLage(next, jetzt));
+  return sichtBauen(stand, abgeleitet(stand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute, lage);
 }
 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */

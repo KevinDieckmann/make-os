@@ -49,7 +49,10 @@ export function Lichtfaeden({ wurzel, oben, person: personStart = 'alle', fenste
   const [nav, setNav] = useState<NavStand>(() => navStart(wurzel));
   const [person, setPerson] = useState<string>(personStart);
   const { von, bis } = fenster.fenster;
-  const { daten, laedt, fehler, neu } = useLichtfaeden({ wurzel: nav.wurzel, person, von, bis });
+  // Sicht Privat · Business (10.10.): beginnt die Ansicht in einem Space (`space:privat|business`), bleibt sie dort — der Server liefert den
+  // anderen Space nicht, auch nicht über die Brotkrumen „Gesamt“.
+  const space = wurzel === 'space:privat' ? 'privat' as const : wurzel === 'space:business' ? 'business' as const : undefined;
+  const { daten, laedt, fehler, neu } = useLichtfaeden({ wurzel: nav.wurzel, person, von, bis, space });
   const [hervor, setHervor] = useState<string | null>(null);
   const [offen, setOffen] = useState<string | null>(null);
   // Der Übergang beim Ebenenwechsel gehört zu GENAU einer Antwort (Schlüssel Ebene|Person|Zeitraum, `lichtSchluessel`):

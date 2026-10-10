@@ -271,6 +271,17 @@ export function maskieren<T extends TerminMitBezug & { wer?: string }>(t: T, bet
   return { ...rest, ...kal, id: verdeckt, uid: verdeckt, href: '', titel: 'Belegt', bearbeitbar: false, maskiert: true } as T;
 }
 
+/**
+ * Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): ein Termin des ANDEREN Bereichs nur als
+ * „Belegt“ — ohne Titel, Ort, Notiz, Bezug, Art des Blocks und Kalendernamen (der Name kann den Bereich verraten, z. B. „Familie“). Für
+ * Planungs-Ansichten, die wissen müssen, dass die Zeit belegt ist (Tagesplanung), ohne zu zeigen, womit (`/api/kalender?space=…&belegt=1`).
+ */
+export function alsBelegt<T extends TerminMitBezug & { wer?: string }>(t: T): T {
+  const { ort: _o, notiz: _n, bezug: _b, gastKontakte: _g, teilnehmer: _t, organisator: _og, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, stand: _s, link: _l, blockArt: _ba, ...rest } = t as T & { link?: string };
+  const verdeckt = verdeckteKennung(t.id);
+  return { ...rest, kalender: 'Belegt', kalenderId: '', farbe: undefined, id: verdeckt, uid: verdeckt, href: '', titel: 'Belegt', bearbeitbar: false, maskiert: true } as T;
+}
+
 /** Anzeige-Kennung eines maskierten Termins („belegt-…“) — nie die echte UID (R-K1 #96). */
 export const verdeckteKennung = (id: string): string => `belegt-${fnv(id)}`;
 

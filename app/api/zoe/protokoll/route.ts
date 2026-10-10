@@ -6,6 +6,7 @@
 // Kein Schnappschuss der Datei — das würde fremde Änderungen mitlöschen, die
 // seitdem passiert sind (eine andere Person arbeitet im zweiten Fenster).
 
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
@@ -18,6 +19,12 @@ import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/** Werkzeug-Gruppen, die nur einem Bereich gehören (lib/datenschutz/ki-werkzeuge.ts `GRUPPE_KATEGORIE`); übrige Gruppen stehen in beiden Sichten. */
+const NUR_PRIVAT_GRUPPEN = new Set(['gesundheit', 'haushalt']);
+const NUR_BUSINESS_GRUPPEN = new Set(['kontakte', 'markttraktion', 'crm', 'kunden', 'business']);
+const gruppeInSicht = (gruppe: unknown, sicht: 'privat' | 'business' | null): boolean =>
+  !sicht || typeof gruppe !== 'string' || !(sicht === 'business' ? NUR_PRIVAT_GRUPPEN : NUR_BUSINESS_GRUPPEN).has(gruppe);
+
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const p = new URL(req.url).searchParams;
@@ -27,7 +34,10 @@ export async function GET(req: Request) {
   // Nur die eigenen Einträge und die des Systems — ZOE' Protokoll trägt
   // Journal, Gedächtnis und Mailinhalte der jeweiligen Person (26.09.).
   const person = personStreng(req);
-  const eintraege = (await lies(anzahl)).filter(e => (z || e.gruppe !== 'haushalt') && (!e.person || e.person === person));
+  // Sicht Privat · Business (10.10., Entscheidung: „Business-Themen sind Business-Themen und Privat Privat“): mit `?space=` ohne die Werkzeug-Gruppen
+  // des anderen Bereichs (Business: keine Gesundheit/Haushaltsfinanzen; Privat: keine Markttraktion/Business-Finanzen) — `gruppeInSicht`.
+  const sicht = sichtDerAnfrage(req);
+  const eintraege = (await lies(anzahl)).filter(e => (z || e.gruppe !== 'haushalt') && (!e.person || e.person === person) && gruppeInSicht(e.gruppe, sicht));
   return NextResponse.json({ ok: true, eintraege, werkzeuge: uebersicht() });
 }
 

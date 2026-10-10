@@ -42,9 +42,10 @@ export async function GET(req: Request) {
   const [roh, alleBereiche, absenderAlle] = await Promise.all([stromRoh(z.person), bereichWahlLaden(), absenderListe(z.person)]);
   const demo = demoErlaubt();
   const eigene = roh.postfaecher.filter(p => !p.oeffentlich.fremd);
-  const sicht = postfaecherSicht({ postfaecher: eigene.map(p => p.oeffentlich), gespraeche: roh.gespraeche.filter(g => eigene.some(p => p.id === g.postfachId)), bereiche: alleBereiche, absender: absenderAlle }, space === 'business' ? 'business' : null);
+  // Sicht Privat · Business: beide gefiltert (10.10. auch Privat — ohne die Business-Postfächer; lib/inbox/strom-server.ts `postfaecherSicht`).
+  const sicht = postfaecherSicht({ postfaecher: eigene.map(p => p.oeffentlich), gespraeche: roh.gespraeche.filter(g => eigene.some(p => p.id === g.postfachId)), bereiche: alleBereiche, absender: absenderAlle }, space === 'business' || space === 'privat' ? space : null);
   // Team-Postfächer anderer Personen, die diese Person sieht — dieselbe Bereichs-Sicht (`imBereich` in postfaecherSicht).
-  const mitDirGeteilt = postfaecherSicht({ postfaecher: roh.postfaecher.filter(p => p.oeffentlich.fremd).map(p => p.oeffentlich), gespraeche: [], bereiche: [], absender: [] }, space === 'business' ? 'business' : null).postfaecher
+  const mitDirGeteilt = postfaecherSicht({ postfaecher: roh.postfaecher.filter(p => p.oeffentlich.fremd).map(p => p.oeffentlich), gespraeche: [], bereiche: [], absender: [] }, space === 'business' || space === 'privat' ? space : null).postfaecher
     .map(p => ({ id: p.id, anzeigename: p.anzeigename, bereichName: p.bereichName, adresse: p.adresse, besitzerName: p.fremd?.besitzerName ?? '', zustand: p.zustand }));
   return NextResponse.json({
     ok: true,

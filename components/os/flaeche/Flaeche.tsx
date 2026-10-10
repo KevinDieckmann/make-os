@@ -21,6 +21,7 @@ import { anwenden, wende, ausgeblendet, istStandard, BREITEN, type Layout, type 
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Leer, Knopf, useBreit, feld, useRueckfrage } from '../ui';
 import { WIDGETS, KATALOG, type EinstellungDef } from './widgets';
+import { widgetPasst } from '@/lib/flaeche/sicht';
 
 export interface KachelProps { id: string; titel: string; breite?: Breite; children: ReactNode }
 /** Feste Karte einer Seite — nur als Kind von <Flaeche> gültig. */
@@ -111,6 +112,8 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
 
   const ctx = useMemo<Ctx>(() => ({ bearbeiten, dragId, schmal, tu, starteZug, langerDruck }), [bearbeiten, dragId, schmal, tu, starteZug, langerDruck]);
   const versteckte = ausgeblendet(layout, standard);
+  // Sicht Privat · Business (10.10.): „+ Widget“ bietet nur an, was auf diese Fläche gehört (lib/flaeche/sicht.ts — dieselbe Regel prüft der Server).
+  const katalogHier = useMemo(() => KATALOG.filter(k => widgetPasst(seite, k.art, k.voreinstellung)), [seite]);
   const zuruecksetzbar = !istStandard(layout, standard);
 
   return (
@@ -143,11 +146,11 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
                 </div>
               </div>
             )}
-            {katalog && [...new Set(KATALOG.map(k => k.bereich))].map(bereich => (
+            {katalog && [...new Set(katalogHier.map(k => k.bereich))].map(bereich => (
               <div key={bereich}>
                 <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, marginBottom: 8 }}>{bereich}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
-                  {KATALOG.filter(k => k.bereich === bereich).map((k, n) => (
+                  {katalogHier.filter(k => k.bereich === bereich).map((k, n) => (
                     <button key={`${k.art}-${n}`} type="button" onClick={() => { tu({ op: 'hinzufuegen', art: k.art, breite: k.breite, einstellungen: k.voreinstellung, titel: k.label !== WIDGETS[k.art]?.label ? k.label : undefined }); setMeld(''); }}
                       className="fassbar" style={{ ...nackt, textAlign: 'left', padding: '10px 12px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, display: 'grid', gap: 3 }}>
                       <span style={{ color: C.ink, fontSize: TYP.bedien, fontWeight: 600 }}>+ {k.label}</span>

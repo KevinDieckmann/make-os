@@ -18,6 +18,7 @@ import { personStreng, planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { fokusAbschliessen, fokusZuordnen, fokusUmbuchen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { zuordnungSaeubern, AUFGABE_ID_MAX, type AufgabeKurz } from '@/lib/zeitmessung/einheiten';
 import { bild, bildFuerSicht } from '@/lib/zeitmessung/modell';
+import { sichtAus } from '@/lib/zugang/sicht-bereich';
 import { localDay } from '@/lib/zeit';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 
@@ -28,13 +29,16 @@ export async function GET(req: Request) {
   // S1 #17: nur mit ausdrücklicher Person — nie der Rückfall auf „kevin“ (Regel 5).
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
-  const roh = new URL(req.url).searchParams.get('sicht');
+  // `?space=` (Sicht des Kopf-Schalters, 10.10. — lib/zugang/sicht-bereich.ts) gilt wie `?sicht=`. `summen=beide` (Heute-Karte „Privat gegen
+  // Business“): die Summen je Space bleiben, Bereiche und Blöcke des anderen Bereichs nicht.
+  const q = new URL(req.url).searchParams;
+  const roh = q.get('sicht') ?? sichtAus(q.get('space')) ?? null;
   if (roh !== null && roh !== 'privat' && roh !== 'business') return NextResponse.json({ ok: false, error: 'sicht privat|business.' }, { status: 400 });
   const nurBusiness = (await planZugangFuer(person))?.sicht === 'business';
   if (roh === 'privat' && nurBusiness) return NextResponse.json({ ok: false, error: 'Mit Business-Zugang gibt es keine Privat-Zeit.' }, { status: 403 });
   const sicht = nurBusiness ? 'business' : roh;
   const b = await zeitBildFuer(person);
-  return NextResponse.json({ ok: true, ...(sicht ? { sicht } : {}), bild: sicht ? bildFuerSicht(b, sicht) : b }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ok: true, ...(sicht ? { sicht } : {}), bild: sicht ? bildFuerSicht(b, sicht, { summenBeide: !nurBusiness && q.get('summen') === 'beide' }) : b }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 const SCHLUESSEL = /^(privat|business|gemeinsam):[a-z0-9-]{1,40}$/;

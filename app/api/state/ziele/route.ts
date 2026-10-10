@@ -39,7 +39,8 @@ import { eigeneZieleNachziehen } from '@/lib/planung/eigene-meilensteine-server'
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
 import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
-import { NUR_BUSINESS_PRIVAT, fokusOhnePrivat, fokusSchluesselImPrivat, konflikteOhnePrivat, privatSchreibPruefen, privatStatus, zielImPrivat, zieleOhnePrivat } from '@/lib/planung/bereich-sicht';
+import { NUR_BUSINESS_PRIVAT, fokusOhnePrivat, fokusSchluesselImPrivat, konflikteOhnePrivat, privatSchreibPruefen, privatStatus, zielImPrivat, zieleOhnePrivat, zieleDateiNurBereich } from '@/lib/planung/bereich-sicht';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -97,7 +98,8 @@ export async function GET(req: Request) {
   // Einzeln geteilt (09.10.): NUR die geteilten Ziele/Sätze — ohne etwas Geteiltes dieselbe Antwort wie „nicht geteilt“.
   if (sp.nurGeteilte && !hatGeteiltes(roh)) return nichtGeteilt();
   const f = datei(sp.nurGeteilte ? nurGeteilte(roh) : roh);
-  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...await mitStaenden(f, await ohnePrivatFuer(req)) });
+  // Sicht Privat · Business (10.10.): mit `?space=` nur der Bereich der Sicht (Ziele aller Horizonte + Fokus-Sätze; lib/planung/bereich-sicht.ts).
+  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...zieleDateiNurBereich(await mitStaenden(f, await ohnePrivatFuer(req)), sichtDerAnfrage(req)) });
 }
 
 /** Konto „nur Business“ (09.10., EINE Konto-Sicht)? Systemlauf → nein; Konten unlesbar → ja (fail-closed, nie auf Verdacht zeigen). */

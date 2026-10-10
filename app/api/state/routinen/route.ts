@@ -39,7 +39,8 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { sauberRoutine, sauberBlock, sichtbarFuer, routinenFuerBetrachter, bloeckeFuerBetrachter, routinenSchreibPruefen, routinenVollSchreiben, ROUTINE_FREMD } from '@/lib/planung/routinen';
 import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
-import { routinenOhnePrivat, bloeckeOhnePrivat, routineImPrivat, blockImPrivat, privatSchreibPruefen, privatBehalten, privatStatus, konflikteOhnePrivat } from '@/lib/planung/bereich-sicht';
+import { routinenOhnePrivat, bloeckeOhnePrivat, routineImPrivat, blockImPrivat, privatSchreibPruefen, privatBehalten, privatStatus, konflikteOhnePrivat, nurBereich, type PlanSicht } from '@/lib/planung/bereich-sicht';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,9 +54,10 @@ const bloeckeVon = (f: RoutinenDatei | null | undefined): Block[] => (Array.isAr
  * aus der verdeckten Fassung gerechnet, verrät also nichts und passt nie auf die echte Zeile. `betrachter` null = Systemlauf.
  * `ohnePrivat` (Konto „nur Business“, 09.10.): der Privat-Bereich fällt VOR dem Verdecken ganz weg — auch kein „Belegt“.
  */
-const antwort = (f: RoutinenDatei | null | undefined, betrachter: string | null, ohnePrivat = false) => {
-  const routinen = Array.isArray(f?.routinen) ? f!.routinen : [];
-  const bloecke = bloeckeVon(f);
+const antwort = (f: RoutinenDatei | null | undefined, betrachter: string | null, ohnePrivat = false, sicht: PlanSicht = null) => {
+  // Sicht Privat · Business (10.10.): mit `?space=` nur Routinen und Blöcke dieses Bereichs — VOR dem Verdecken (auch kein „Belegt“ aus dem anderen).
+  const routinen = nurBereich(Array.isArray(f?.routinen) ? f!.routinen : [], sicht, routineImPrivat);
+  const bloecke = nurBereich(bloeckeVon(f), sicht, blockImPrivat);
   return {
     routinen: mitStand(routinenFuerBetrachter(ohnePrivat ? routinenOhnePrivat(routinen) : routinen, betrachter)),
     bloecke: mitStand(bloeckeFuerBetrachter(ohnePrivat ? bloeckeOhnePrivat(bloecke) : bloecke, betrachter)),
@@ -76,11 +78,12 @@ export async function GET(req: Request) {
   const f: RoutinenDatei = (await loadJson<RoutinenDatei>('routinen')) ?? { routinen: [] };
   const ich = personStreng(req);
   const ohnePrivat = await ohnePrivatFuer(ich);
+  const bereich = sichtDerAnfrage(req);
   if (new URL(req.url).searchParams.get('sicht') === 'ich') {
-    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(Array.isArray(f.routinen) ? f.routinen : [], ich ?? '') }, ich ?? '', ohnePrivat));
+    return NextResponse.json(antwort({ ...f, routinen: sichtbarFuer(Array.isArray(f.routinen) ? f.routinen : [], ich ?? '') }, ich ?? '', ohnePrivat, bereich));
   }
   // Ohne Person (Takt, ZOE-Hintergrund) wie bisher der ganze Bestand; mit Person fremde nur als „Belegt“.
-  return NextResponse.json(antwort(f, ich, ohnePrivat));
+  return NextResponse.json(antwort(f, ich, ohnePrivat, bereich));
 }
 
 /** Höchstzahlen — darüber wird abgelehnt, nie gekürzt (28.09.). */

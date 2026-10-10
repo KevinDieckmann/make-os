@@ -289,6 +289,25 @@ export function ohnePrivatSpace<K extends Pick<Knoten, 'id' | 'eltern'>, S exten
   return { knoten: knoten.filter(k => !imPrivat(k)), straenge: straenge.filter(s => s.pfad[1] !== privat) };
 }
 
+/**
+ * Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): nur der Space der Sicht — Knoten unter dem
+ * ANDEREN Space (Themen, Ziele, Meilensteine) und jeder Strang mit diesem Pfad fallen weg, auch kein „Belegt“ (rein; dieselbe Regel wie
+ * `ohnePrivatSpace`, nur in beide Richtungen). Die Wurzel „Gesamt“ bleibt (sie trägt dann nur diesen Space).
+ */
+export function nurSpaceDerSicht<K extends Pick<Knoten, 'id' | 'eltern'>, S extends Pick<Strang, 'pfad'>>(knoten: readonly K[], straenge: readonly S[], sicht: SpaceId): { knoten: K[]; straenge: S[] } {
+  const anderer = knotenId.space(sicht === 'privat' ? 'business' : 'privat');
+  const nachId = new Map(knoten.map(k => [k.id, k]));
+  const imAnderen = (k: K): boolean => {
+    const gesehen = new Set<string>();
+    for (let x: K | undefined = k; x && !gesehen.has(x.id); x = x.eltern ? nachId.get(x.eltern) : undefined) {
+      if (x.id === anderer) return true;
+      gesehen.add(x.id);
+    }
+    return false;
+  };
+  return { knoten: knoten.filter(k => !imAnderen(k)), straenge: straenge.filter(s => s.pfad[1] !== anderer) };
+}
+
 /** Die Knoten, die der Betrachter sehen darf: eigene Ziele der ANDEREN Person (und ihre Meilensteine) fallen weg — Name und
  *  Link stünden sonst in Legende, Brotkrumen und Markierungen (Praxis-Fund 04.10.). Stränge darunter kürzt der Baum. */
 export function knotenFuerBetrachter(knoten: readonly Knoten[], betrachter: string): Knoten[] {

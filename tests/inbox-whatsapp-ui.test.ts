@@ -261,19 +261,23 @@ describe('Postfächer-Verwaltung: Business sieht nie Privat (serverseitig)', () 
     await POST(postfaecher, '/api/inbox/postfaecher', { aktion: 'absender', adresse: `freundin@privat.${D}`, status: 'zugelassen' });
     await POST(postfaecher, '/api/inbox/postfaecher', { aktion: 'absender', adresse: `+${KUNDE}`, status: 'zugelassen' });
   });
-  it('space=business: kein Privat-Postfach, kein Privat-Bereich, keine Privat-Absender — ohne Filter bzw. Privat alles Eigene', async () => {
+  it('space=business: kein Privat-Postfach, kein Privat-Bereich, keine Privat-Absender — ohne Filter alles Eigene, Privat ohne Business (10.10.)', async () => {
     const b = await GET(postfaecher, '/api/inbox/postfaecher?space=business');
     expect(b.status).toBe(200); expect(b.d.nurBusiness).toBe(true);
     expect(b.d.postfaecher.map((p: { quelle: string }) => p.quelle)).toEqual(['whatsapp']);
     expect(JSON.stringify(b.d)).not.toMatch(/PRIVAT-Geburtstag|freundin@|kevin\.privat|Privat · iCloud/);
     expect(b.d.bereiche.some((x: { id: string }) => x.id === 'privat')).toBe(false);
     expect(b.d.absender.map((x: { adresse: string }) => x.adresse)).toEqual([`+${KUNDE}`]);
-    for (const q of ['', '?space=privat']) {
-      const a = await GET(postfaecher, `/api/inbox/postfaecher${q}`);
-      expect(a.d.postfaecher.map((p: { quelle: string }) => p.quelle).sort()).toEqual(['imap', 'whatsapp']);
-      expect(a.d.absender).toHaveLength(2);
-      expect(a.d.bereiche.some((x: { id: string }) => x.id === 'privat')).toBe(true);
-    }
+    const a = await GET(postfaecher, '/api/inbox/postfaecher');
+    expect(a.d.postfaecher.map((p: { quelle: string }) => p.quelle).sort()).toEqual(['imap', 'whatsapp']);
+    expect(a.d.absender).toHaveLength(2);
+    expect(a.d.bereiche.some((x: { id: string }) => x.id === 'privat')).toBe(true);
+    // Sicht Privat (10.10., Kevin: „Business-Themen sind Business-Themen und Privat Privat“): ohne das Business-Postfach (WhatsApp der Firma) und
+    // ohne dessen Absender; zur Wahl alle Bereiche (nur Namen — ein Postfach ohne Bereich muss sich zuordnen lassen).
+    const p = await GET(postfaecher, '/api/inbox/postfaecher?space=privat');
+    expect(p.d.postfaecher.map((x: { quelle: string }) => x.quelle)).toEqual(['imap']);
+    expect(p.d.absender.map((x: { adresse: string }) => x.adresse)).not.toContain(`+${KUNDE}`);
+    expect(p.d.bereiche.some((x: { id: string }) => x.id === 'privat')).toBe(true);
     expect((await GET(postfaecher, '/api/inbox/postfaecher?space=alles')).status).toBe(400);
     // Der Strom unter Business zeigt ebenso nichts Privates (dieselbe Filterstelle).
     expect(JSON.stringify((await GET(inbox, '/api/inbox?space=business')).d)).not.toMatch(/PRIVAT-Geburtstag|freundin@/);
@@ -282,6 +286,10 @@ describe('Postfächer-Verwaltung: Business sieht nie Privat (serverseitig)', () 
     const { postfaecherSicht } = await import('@/lib/inbox/strom-server');
     const r = postfaecherSicht({ postfaecher: [{ id: 'a', bereich: 'ug' }, { id: 'b', bereich: 'privat' }, { id: 'c', bereich: null }], gespraeche: [{ postfachId: 'a', absender: 'X@Y.example' }, { postfachId: 'b', absender: 'p@q.example' }], bereiche: [{ id: 'privat', name: 'Privat' }, { id: 'ug', name: 'MAKE' }], absender: [{ adresse: 'x@y.example' }, { adresse: 'p@q.example' }] }, 'business');
     expect(r).toEqual({ postfaecher: [{ id: 'a', bereich: 'ug' }], bereiche: [{ id: 'ug', name: 'MAKE' }], absender: [{ adresse: 'x@y.example' }] });
+    // Privat (10.10.): das Privat-Postfach und das ohne Bereich (zum Zuordnen), nie das Business-Postfach; Absender nur aus diesen Gesprächen.
+    const pr = postfaecherSicht({ postfaecher: [{ id: 'a', bereich: 'ug' }, { id: 'b', bereich: 'privat' }, { id: 'c', bereich: null }], gespraeche: [{ postfachId: 'a', absender: 'X@Y.example' }, { postfachId: 'b', absender: 'p@q.example' }], bereiche: [{ id: 'privat', name: 'Privat' }, { id: 'ug', name: 'MAKE' }], absender: [{ adresse: 'x@y.example' }, { adresse: 'p@q.example' }] }, 'privat');
+    expect(pr.postfaecher.map(x => x.id)).toEqual(['b', 'c']);
+    expect(pr.absender).toEqual([{ adresse: 'p@q.example' }]);
     expect(postfaecherSicht({ postfaecher: [{ id: 'b', bereich: 'privat' }], gespraeche: [], bereiche: [], absender: [{ adresse: 'p@q.example' }] }, null).postfaecher).toHaveLength(1);
   });
 });
@@ -377,7 +385,7 @@ describe('Oberfläche: WhatsApp in der Inbox', () => {
     expect(lies('components/os/whatsapp/WaMedium.tsx')).toContain("display: 'inline-block'");
     const l = lies('components/os/inbox/InboxZwei.tsx');
     expect(l).toContain('<WaSymbol'); expect(l).toContain('<Postfaecher space={space}');
-    expect(lies('components/os/inbox/Postfaecher.tsx')).toContain("space === 'business' ? '?space=business' : ''");
+    expect(lies('components/os/inbox/Postfaecher.tsx')).toContain("/api/inbox/postfaecher${space ? `?space=${space}` : ''}");
     const teile = lies('components/os/inbox/WhatsappTeile.tsx');
     const effekte = Array.from(teile.matchAll(/useEffect\(([\s\S]*?)\}, \[/g)).map(m => m[1]);
     expect(effekte.some(e => e.includes('/api/whatsapp/senden') || e.includes('/api/inbox/entwurf'))).toBe(false);

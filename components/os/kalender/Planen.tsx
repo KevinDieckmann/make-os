@@ -21,6 +21,7 @@ import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { useSpace } from '@/hooks/useSpace';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { blockAnfrage, wochenStunden, planArtVon } from '@/lib/planung/bloecke';
 import { uebernahmeTexte, type ArchivBlock } from '@/lib/planung/wochenplan-uebernahme';
 import { wandAus } from '@/lib/kalender/zeit';
@@ -71,6 +72,9 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
 }) {
   const { state: aufgabenStand } = useTasks();
   const { ausAdresse: spaceAusAdresse, space: spaceAktiv } = useSpace();
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): Routinen, Aufgaben und Erholung nur aus
+  // dem Bereich der Seite (Adresse, sonst Kopf-Schalter) — Routinen filtert der Server (`?space=`).
+  const bereich = spaceAusAdresse ?? spaceAktiv;
   // Rückfrage-Karte zur Übernahme — `dialog` hängt in der Leiste, wo die Knöpfe sitzen.
   const { bestaetigen, dialog } = useRueckfrage();
   const [gewaehlt, setGewaehlt] = useState<Baustein | null>(null);
@@ -89,9 +93,9 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   useEffect(() => {
     if (!aktiv) return;
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich?.speicher === 'malin') setIch('malin'); }).catch(() => {});
-    fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen(((d.routinen ?? []) as { id: string; label: string; dauerMin: number; aktiv: boolean }[]).filter(x => x.aktiv))).catch(() => {});
+    fetch(`/api/state/routinen?sicht=ich&space=${bereich}`).then(r => r.json()).then(d => setRoutinen(((d.routinen ?? []) as { id: string; label: string; dauerMin: number; aktiv: boolean }[]).filter(x => x.aktiv))).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
-  }, [aktiv]);
+  }, [aktiv, bereich]);
 
   // Archiv (alte, nicht übernommene Blöcke) des Zeitraums — nur lesen. Sicht: die eigenen bzw. die der gewählten Person.
   const von = tage[0], bis = tage.length ? wandAus(tage[tage.length - 1], 24 * 60).slice(0, 10) : '';
@@ -141,8 +145,9 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   // ── Zahlen der Woche ──
   const archivTermine = useMemo(() => (aktiv ? archiv.map(archivAlsTermin) : []), [aktiv, archiv]);
   const stunden = useMemo(() => wochenStunden([...termine, ...archivTermine], tage), [termine, archivTermine, tage]);
-  const offeneN = aufgabenStand.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length;
-  const faelligWoche = aufgabenStand.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && t.dueDate && t.dueDate.slice(0, 10) >= tage[0] && t.dueDate.slice(0, 10) <= tage[tage.length - 1]).length;
+  const aufgabenBereich = useMemo(() => aufgabenStand.tasks.filter(t => spaceVonAufgabe(t) === bereich), [aufgabenStand.tasks, bereich]);
+  const offeneN = aufgabenBereich.filter(t => t.status !== 'done' && t.status !== 'cancelled').length;
+  const faelligWoche = aufgabenBereich.filter(t => t.status !== 'done' && t.status !== 'cancelled' && t.dueDate && t.dueDate.slice(0, 10) >= tage[0] && t.dueDate.slice(0, 10) <= tage[tage.length - 1]).length;
   // Überladen: mehr als 50 h in einer Woche bzw. mehr als 10 h an einem Tag (wie früher im Wochenplaner).
   const ueberladen = stunden.gesamtMin / 60 > (tage.length >= 7 ? 50 : 10 * tage.length);
 
@@ -151,12 +156,12 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     const rank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     const geplant = new Set([...termine.map(t => t.bezug?.aufgabeId).filter(Boolean), ...archiv.map(b => b.taskId).filter(Boolean)]);
     const boost = (t: { projectId?: string }) => regler[SAEULE_VON_PROJEKT[t.projectId ?? ''] ?? ''] ?? 50;
-    return aufgabenStand.tasks
+    return aufgabenBereich
       .filter(t => t.status !== 'done' && t.status !== 'cancelled' && !geplant.has(t.id))
       .sort((a, b) => (rank[a.priority] ?? 9) - (rank[b.priority] ?? 9) || boost(b) - boost(a) || (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'))
       .slice(0, 8)
       .map(t => ({ ...t, imFokus: boost(t) >= FOKUS_SCHWELLE }));
-  }, [aufgabenStand.tasks, termine, archiv, regler]);
+  }, [aufgabenBereich, termine, archiv, regler]);
 
   async function zoeBelegen() {
     setZoeDenkt(true); setVorschlag(null);
@@ -335,7 +340,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       </Karte>
       <ZieleMeilensteine horizont="woche" farbe={LEUCHT.schlaf} i={1} kompakt />
       {/* Erholungs-Ziele der Woche (10.10.) — nur die eigenen, nicht im Business-Bereich; zeichnet nichts ohne Ziel. */}
-      {spaceAusAdresse !== 'business' && <ErholungZielePlanung zeitraum="woche" i={1} />}
+      {bereich === 'privat' && <ErholungZielePlanung zeitraum="woche" i={1} />}
       <Karte i={2} akzent={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>ZOE belegt die Woche</Ueberschrift>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

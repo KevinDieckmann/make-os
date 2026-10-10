@@ -1127,6 +1127,21 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
 - Neue Bereiche: Space aus der Adresse lesen (`useSpace().ausAdresse`), nie stumm mischen; Adressen in `lib/wege.ts` eintragen;
   neue Seite in `lib/make-one/spaces.ts` (Leisten-Punkt `passt`/`auch`, nur wenn wirklich nötig — höchstens zwölf) bzw. als Unterreiter
   anschließen und IMMER in `lib/make-one/seiten.ts`. Keine Weiterleitung in `next.config.mjs` darf eine echte Seite verdecken.
+- **Sicht Business zeigt nie Privat-Themen, Sicht Privat keine reinen Business-Themen (10.10., Branch `sweep-bereiche`; UPDATES.md; Wächter
+  `tests/sicht-business-privat.test.ts` — ALLE lesenden Routen mit `?space=business|privat`, neue fallen automatisch darunter).** Entscheidung 10.10.:
+  „Business-Themen sind Business-Themen und Privat Privat — wir haben im Business-Bereich keinen Bereich, der Familie und Partnerschaft heißt.“
+  - Die Oberfläche schickt den Bereich des Kopf-Schalters bzw. der Seite als `?space=`; gelesen NUR über `sichtDerAnfrage`/`sichtAus`
+    (`lib/zugang/sicht-bereich.ts`). Eine Route mit Inhalten beider Bereiche filtert damit SELBST an ihrer vorhandenen Filterstelle (`nurBereichDerSicht`/
+    `aufgabenNurBereich`, `nurBereich`/`zieleDateiNurBereich`, `bildFuerSicht`, `anstehendFuerSpace`, `meldungenSicht`, `imBereich`, `nurSpaceDerSicht`,
+    `spaceVonKalender` …); ohne `?space=` wie bisher (globale Zustände wie TasksContext brauchen den ganzen Bestand für den Schreibweg).
+  - Routen NUR eines Bereichs (Familie, Gesundheit, Haushalt, Privat-Index, Ernährung, Sport, WHOOP · Markttraktion, Heads, Netzwerken, Business-Index,
+    Gesellschaften …) stehen in `ROUTEN_BEREICH` — die Middleware antwortet mit `?space=` des anderen Bereichs 403 (`andererBereich`). Neue Route: dort
+    eintragen ODER mit `?space=` filtern; Ausnahmen (nur Exporte/Auskünfte) in `BEIDE_GEWOLLT` des Wächters, nie eine Ansicht.
+  - Flächen (Heute …): welches Widget in welche Sicht gehört, steht NUR in `lib/flaeche/sicht.ts` (`widgetSicht`, `widgetPasst`, `widgetSpace`) — Katalog,
+    Standard und gespeicherte Layouts (Server: GET filtert, PUT lehnt ab). Ein neutrales Widget liest auf einer Fläche mit Bereich IMMER deren Bereich.
+  - Ein Termin des anderen Bereichs erscheint höchstens als „Belegt“ (`alsBelegt`, `/api/kalender?…&belegt=1`); ein ZOE-Thread des anderen Bereichs wird nie
+    fortgesetzt (`zoeFadenFuer(…, { sicht })`); ZOE in einer Sicht bekommt Familie/Körper/Haushalt bzw. Markttraktion gar nicht (`lageFuerSicht`) und nur die
+    Aufgaben/Jahresziele/Fokus des Bereichs (`promptBrain(…, { sicht })`).
 
 ## Aufgaben wie Monday/ClickUp (28.09. abends, nur lokal — Plan: AUFGABEN_PLAN.md)
 - **Bauplan-Karte (06.10., Malin; Kevin: „komplett nach Malins Liste“, Branch `aufgaben-struktur`, UPDATES.md 06.10.):** Projekt › Liste ›

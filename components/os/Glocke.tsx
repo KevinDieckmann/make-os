@@ -19,6 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
 import { imArchiv } from '@/lib/aufgaben/neustart';
+import { useSpace } from '@/hooks/useSpace';
 
 /** Was aus der Aufgabe einer Meldung geworden ist (29.09., #45) — null = gibt es noch (oder unbekannt). */
 export type AufgabeLage = 'weg' | 'papierkorb' | 'archiv' | 'erledigt' | null;
@@ -42,26 +43,45 @@ function uebernehmen(sicht: MeldungenSicht) {
   setzen({ sicht, gesperrt: false }, neu);
 }
 
+// Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): die Glocke zeigt nur den Bereich des
+// Kopf-Schalters — der Server filtert (`?space=`, lib/meldungen/speicher.ts `meldungenSicht`), die Glocke schickt nur die Sicht mit.
+let sichtJetzt: 'privat' | 'business' | null = null;
+/** Sicht wechseln: Stand verwerfen und neu holen. */
+function sichtSetzen(s: 'privat' | 'business' | null) {
+  if (s === sichtJetzt) return;
+  sichtJetzt = s;
+  etag = null;
+  void laden();
+}
+const adresse = () => `/api/meldungen${sichtJetzt ? `?space=${sichtJetzt}` : ''}`;
+
 async function laden(): Promise<void> {
-  if (laeuft) return laeuft;
+  if (laeuft) return laeuft.then(() => undefined);
   laeuft = (async () => {
+    const fuer = sichtJetzt;
     try {
-      const r = await fetch('/api/meldungen', { cache: 'no-store', headers: etag ? { 'If-None-Match': etag } : {} });
+      const r = await fetch(adresse(), { cache: 'no-store', headers: etag ? { 'If-None-Match': etag } : {} });
+      if (fuer !== sichtJetzt) return; // inzwischen umgeschaltet — die Antwort gehört zur alten Sicht
       if (r.status === 304) return;
       if (r.status === 401 || r.status === 403) { etag = null; setzen({ sicht: null, gesperrt: true }); return; }
       if (!r.ok) return;
       const d = (await r.json()) as { ok?: boolean } & MeldungenSicht;
-      if (!d.ok || !Array.isArray(d.meldungen)) return;
+      if (!d.ok || !Array.isArray(d.meldungen) || fuer !== sichtJetzt) return;
       etag = r.headers.get('etag');
       uebernehmen(d);
-    } catch { /* offline — beim nächsten Takt wieder */ } finally { laeuft = null; }
+    } catch { /* offline — beim nächsten Takt wieder */ } finally {
+      laeuft = null;
+      if (fuer !== sichtJetzt) void laden();
+    }
   })();
   return laeuft;
 }
 
 async function senden(body: Record<string, unknown>): Promise<void> {
   try {
-    const r = await fetch('/api/meldungen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const fuer = sichtJetzt;
+    const r = await fetch('/api/meldungen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, ...(fuer ? { space: fuer } : {}) }) });
+    if (fuer !== sichtJetzt) return;
     const d = (await r.json().catch(() => null)) as ({ ok?: boolean } & MeldungenSicht) | null;
     if (r.ok && d?.ok && Array.isArray(d.meldungen)) { etag = null; uebernehmen(d); }
   } catch { /* nächster Takt holt den Stand */ }
@@ -208,6 +228,9 @@ export function useGlockenSicht(): { sicht: MeldungenSicht | null; gelesen: (ids
 /** Die Glocke im Kopf. */
 export function Glocke() {
   const aufgaben = useTasks();
+  // Die Sicht des Kopf-Schalters (10.10.) — vor dem ersten Laden gesetzt (Effekte laufen in dieser Reihenfolge).
+  const { space, bereit } = useSpace();
+  useEffect(() => { if (bereit) sichtSetzen(space); }, [space, bereit]);
   const [s, setS] = useState<Stand>(stand);
   const [auf, setAuf] = useState(false);
   const [puls, setPuls] = useState(false);

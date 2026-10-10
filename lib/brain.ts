@@ -17,6 +17,7 @@ import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
+import { aufgabenNurBereich } from '@/lib/aufgaben/bereich-sicht';
 import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
@@ -529,8 +530,11 @@ export function brainKategorien(b: Brain, teile?: { koerper?: boolean; bereiche?
   return k;
 }
 
-export function promptBrain(b: Brain, teile?: { koerper?: boolean; ziele?: boolean; gedaechtnis?: boolean; bereiche?: Partial<Record<KiBereich, boolean>> }): string {
+export function promptBrain(b0: Brain, teile?: { koerper?: boolean; ziele?: boolean; gedaechtnis?: boolean; bereiche?: Partial<Record<KiBereich, boolean>>; sicht?: 'privat' | 'business' | null }): string {
   const t = { koerper: true, ziele: true, gedaechtnis: true, ...teile };
+  // Sicht Privat · Business (10.10., Entscheidung: „Business-Themen sind Business-Themen und Privat Privat“): ZOE in einer Sicht sieht die
+  // Aufgaben, Jahresziele und den Fokus nur dieses Bereichs (dieselben Regeln wie die Routen: `aufgabenNurBereich`, `blockZiele(…, bereich)`).
+  const b = teile?.sicht ? brainNurBereich(b0, teile.sicht) : b0;
   // KI-Schalter je Bereich (05.10., System › Datenschutz): ein ausgeschalteter Bereich steht gar nicht erst im Prompt.
   const an = (x: KiBereich) => teile?.bereiche?.[x] !== false;
   // Die Einwilligung (b) der Person schlägt den Wunsch des Aufrufers (05.10., ersetzt den Kompass-Regler
@@ -548,8 +552,14 @@ export function promptBrain(b: Brain, teile?: { koerper?: boolean; ziele?: boole
     an('finanzen') ? blockIndex(b) : '',
     koerper ? blockVitals(b) : '',
     t.gedaechtnis ? blockGedaechtnis(b) : '',
-    t.ziele ? blockZiele(b) : '',
+    t.ziele ? blockZiele(b, teile?.sicht ?? undefined) : '',
   ].filter(Boolean).join('\n\n');
+}
+
+/** Die Aufgaben-Listen des Brain nur im Bereich der Sicht (rein; Art und Umfang der übrigen Felder unverändert). */
+function brainNurBereich(b: Brain, sicht: 'privat' | 'business'): Brain {
+  const nur = (l: StoredTask[]) => aufgabenNurBereich(l as (StoredTask & { spaceId?: string; parentId?: string })[], sicht);
+  return { ...b, tasks: { ...b.tasks, alle: nur(b.tasks.alle), offen: nur(b.tasks.offen), overdue: nur(b.tasks.overdue), dueToday: nur(b.tasks.dueToday), kritisch: nur(b.tasks.kritisch) } };
 }
 
 // ── Bestände sind Daten (26.09.) ─────────────────────────────────────────────

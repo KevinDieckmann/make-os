@@ -43,6 +43,8 @@ export const HEUTE_FLAECHE_FRUEHER_ALLES = 'home';
 /**
  * Der Standard je Sicht (wird nie gespeichert). Kennungen der bisherigen Übersichts-Standards bleiben gleich. „Zeit“ (09.10.) steht
  * in beiden Sichten gleich hinter dem Index: Privat gegen Business, heute und 7 Tage — so sieht man „das Ganze“ in jedem Bereich.
+ * Jedes Widget hier muss in seine Sicht passen (lib/flaeche/sicht.ts `widgetPasst`, Wächter tests/sicht-business-privat.test.ts) — der Server
+ * zeigt ein gespeichertes Layout nur mit passenden Widgets.
  */
 export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
   privat: [
@@ -77,7 +79,8 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'traktion', art: 'index', breite: 2, einstellungen: { saeule: 'traktion' } },
     { id: 'dran', art: 'dran', breite: 2 },
     { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
-    { id: 'score', art: 'score', breite: 2 },
+    // Kein Wachstums-Score mehr in Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): seine Säulen sind
+    // Gesundheit, Familie & Partnerschaft, Finanzen privat … — er steht in Privat. Business hat den Business-Index (oben).
   ],
 };
 
@@ -100,7 +103,7 @@ export function HeuteView() {
       unter={<span suppressHydrationWarning>{gruss}{vorname ? `, ${vorname}` : ''} · {datum} · <Link href={`/os/ritual?modus=${abend ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{abend ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}
 >
       {/* K2 (29.09.): Feiertag NRW heute/morgen. Geburtstage stehen nur in „Steht an“ (F2 M2, eine Stelle). */}
-      <Anlaesse geburtstage={false} />
+      <Anlaesse geburtstage={false} space={sicht} />
       {/* Business-frei (08.10., Lücke 7): nur die eigene Person, nur solange es gilt. */}
       <BusinessFreiStatus />
       {sicht === 'privat' && <ZielBezug bereich="privat" max={2} />}

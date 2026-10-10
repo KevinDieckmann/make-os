@@ -38,7 +38,8 @@ describe('Routinen-Sicht', () => {
     const w = path.resolve(__dirname, '..');
     for (const f of ['components/os/JournalView.tsx', 'components/os/RitualView.tsx', 'components/os/TagesplanView.tsx', 'components/os/EnergieView.tsx', 'components/os/kalender/Planen.tsx']) {
       const t = readFileSync(path.join(w, f), 'utf8');
-      expect(t, f).toContain("'/api/state/routinen?sicht=ich'");
+      // Seit 10.10. (Sicht Privat · Business) in Tagesplanung und Planen mit dem Bereich: `?sicht=ich&space=…`.
+      expect(t, f).toMatch(/'\/api\/state\/routinen\?sicht=ich'|`\/api\/state\/routinen\?sicht=ich&space=\$\{bereich\}`/);
       expect(t, f).not.toMatch(/'\/api\/state\/routinen'\)/);
     }
     for (const f of ['lib/gesundheit/speicher.ts', 'lib/gesundheit/lauf.ts', 'lib/zoe/werkzeuge.ts', 'app/api/planung/vorschlag/route.ts', 'app/api/gesundheit/stand/route.ts']) {

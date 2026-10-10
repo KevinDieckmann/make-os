@@ -21,7 +21,8 @@ import { localDay } from '@/lib/zeit';
 import { anfrageAus } from '@/lib/lichtfaeden/anfrage';
 import { ansichtText, baueBaum, personenSicht, rechneAnsicht } from '@/lib/lichtfaeden/baum';
 import { engstellen } from '@/lib/lichtfaeden/fokus';
-import { wurzelAufloesen } from '@/lib/lichtfaeden/modell';
+import { wurzelAufloesen, nurSpaceDerSicht, knotenId } from '@/lib/lichtfaeden/modell';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 import { straengeGemerkt } from '@/lib/lichtfaeden/sammeln-server';
 import { abweichungenSammeln } from '@/lib/lichtfaeden/abweichung';
 import { abweichungsQuellen } from '@/lib/lichtfaeden/abweichung-quellen-server';
@@ -40,9 +41,15 @@ export async function GET(req: Request) {
   if (!a.ok) return NextResponse.json({ ok: false, fehler: a.fehler }, { status: 400 });
   const { von, bis } = a.anfrage;
 
-  const sammlung = await straengeGemerkt(ich, von, bis, heute);
+  const gesammelt = await straengeGemerkt(ich, von, bis, heute);
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): mit `?space=` nur der Space der Sicht —
+  // Knoten und Stränge des anderen Space fallen weg (auch kein „Belegt“); eine Wurzel dort (oder „Gesamt“) wird zum Space der Sicht.
+  const bereich = sichtDerAnfrage(req);
+  const sammlung = bereich ? { ...gesammelt, ...nurSpaceDerSicht(gesammelt.knoten, gesammelt.straenge, bereich) } : gesammelt;
   // Ein abgeleitetes Ziel (Kaskade, auch angepasst) zeigt die Fäden seines Jahresziels — aufgelöst NUR hier.
-  const wurzel = wurzelAufloesen(a.anfrage.wurzel, sammlung.zielWurzel);
+  const wurzel0 = wurzelAufloesen(a.anfrage.wurzel, sammlung.zielWurzel);
+  const inSicht = (w: string) => !!bereich && (w === knotenId.space(bereich) || w.startsWith(`thema:${bereich}:`) || sammlung.knoten.some(k => k.id === w));
+  const wurzel = bereich && !inSicht(wurzel0) ? knotenId.space(bereich) : wurzel0;
   const personen = sammlung.personen.map(p => ({ ...p, ich: p.id === ich }));
   // „ich“ = die Person der Sitzung; eine genannte Person muss im Haushalt sein; „alle“ = alle Stränge.
   const sicht = a.anfrage.person === 'ich' ? ich : a.anfrage.person;

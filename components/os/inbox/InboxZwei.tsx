@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, KUGEL, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
+import { useSpace } from '@/hooks/useSpace';
 import { FACH_LABEL, type FachId } from '@/lib/inbox/faecher';
 import { gespraechPfad, sortieren, type LageZeile } from '@/lib/inbox/strom';
 import { bereichFarbe, fuerZeigen, istBereichKennung, istZeigen, nachTagen, ruheText, ZEIGEN, type Zeigen } from '@/lib/inbox/ansicht';
@@ -88,7 +89,9 @@ function Wisch({ children, an, rechts, links }: { children: ReactNode; an: boole
 
 export function InboxZwei() {
   const params = useSearchParams();
-  const space = params.get('space') === 'privat' || params.get('space') === 'business' ? params.get('space') as 'privat' | 'business' : null;
+  // Sicht Privat · Business (10.10.): der Bereich des Kopf-Schalters (die Adresse `?space=` gewinnt dort schon) — vorher nur aus der Adresse,
+  // und ein Link ohne `?space=` zeigte unter „Business“ die Post beider Bereiche. Der Server filtert (`imBereich`).
+  const space: 'privat' | 'business' = useSpace().space;
   const [offenId, setOffenId] = useLinkAuswahl('offen');
   const [ansicht, setAnsicht] = useState<'liste' | 'postfaecher'>(() => (params.get('postfaecher') === '1' ? 'postfaecher' : 'liste'));
   const router = useRouter();

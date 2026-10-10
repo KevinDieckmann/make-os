@@ -265,14 +265,17 @@ export const stunden = (sek: number): number => Math.round((sek / 3600) * 10) / 
 /**
  * Das Bild NUR eines Bereichs (10.10., Fokus-Seite: „Business zeigt nie Privat-Themen, Privat nie Business-Themen“) — rein: Schlüssel,
  * Summen, Fokus-Tage und Blöcke des anderen Bereichs (und ältere Zeit ohne Bereich) fallen heraus. Die Route liefert es mit `?sicht=`.
+ * `summenBeide` (10.10., Heute-Karte „Privat gegen Business“, Entscheidung 09.10.: in beiden Sichten nur Zahlen): die Summen je Space bleiben —
+ * Bereiche, Fokus-Tage und Blöcke (Titel) des anderen Bereichs fallen trotzdem weg.
  */
-export function bildFuerSicht(b: ZeitBild, sicht: SpaceId): ZeitBild {
+export function bildFuerSicht(b: ZeitBild, sicht: SpaceId, o: { summenBeide?: boolean } = {}): ZeitBild {
   const nur = (s: ZeitSumme): ZeitSumme => {
     const passt = (k: string) => teile(k).space === sicht;
     const filter = (r: Record<string, number>) => Object.fromEntries(Object.entries(r).filter(([k]) => passt(k)));
     const leer = { privat: 0, business: 0, gemeinsam: 0 };
     return {
-      gesamt: { ...leer, [sicht]: s.gesamt[sicht] ?? 0 }, bewusst: { ...leer, [sicht]: s.bewusst[sicht] ?? 0 },
+      gesamt: o.summenBeide ? { ...leer, ...s.gesamt } : { ...leer, [sicht]: s.gesamt[sicht] ?? 0 },
+      bewusst: o.summenBeide ? { ...leer, ...s.bewusst } : { ...leer, [sicht]: s.bewusst[sicht] ?? 0 },
       jeSchluessel: filter(s.jeSchluessel), bewusstJeSchluessel: filter(s.bewusstJeSchluessel),
     };
   };

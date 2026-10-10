@@ -26,7 +26,8 @@ import { zieleFuerBezug } from '@/lib/planung/bezuege-server';
 import { meilensteineFuerBetrachter, meilensteinVerborgen } from '@/lib/planung/eigene-ziele-sicht';
 import { verborgeneZieleFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
-import { konflikteOhnePrivat, meilensteinImPrivat, meilensteineOhnePrivat, privatBehalten, privatSchreibPruefen, privatStatus } from '@/lib/planung/bereich-sicht';
+import { konflikteOhnePrivat, meilensteinImPrivat, meilensteineOhnePrivat, nurBereich, privatBehalten, privatSchreibPruefen, privatStatus } from '@/lib/planung/bereich-sicht';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,7 +68,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const [f, verborgen, ohnePrivat] = await Promise.all([loadJson<MeilensteinFile>('meilensteine'), verborgeneZieleFuer(personStreng(req)), ohnePrivatFuer(req)]);
   // Jede Zeile trägt ihren Stand — Änderungen kommen als PATCH mit diesem Stand zurück (28.09.).
-  return NextResponse.json({ meilensteine: sichtbar(f?.meilensteine, verborgen, ohnePrivat) });
+  // Sicht Privat · Business (10.10.): mit `?space=` nur der Bereich der Sicht (`meilensteinSpace`, lib/planung/bereich-sicht.ts).
+  return NextResponse.json({ meilensteine: nurBereich(sichtbar(f?.meilensteine, verborgen, ohnePrivat), sichtDerAnfrage(req), meilensteinImPrivat) });
 }
 
 export async function PUT(req: Request) {

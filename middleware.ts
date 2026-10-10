@@ -17,6 +17,7 @@ import { standPruefen, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
 import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
 import { anfrageIntern, zuliefererSchluessel, zuliefererUmgebung, ZULIEFERUNG, ZULIEFERER_AUS_ANTWORT, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
+import { sichtAus, sichtFremd, sichtFremdText } from '@/lib/zugang/sicht-bereich';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
@@ -89,6 +90,14 @@ export async function middleware(req: NextRequest) {
 
   const pfad = req.nextUrl.pathname;
   const kopf = new Headers(req.headers);
+
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): eine Route, die NUR dem anderen
+  // Bereich dient (Familie, Gesundheit … bzw. Markttraktion, Business-Index …), antwortet mit `?space=` der Sicht 403 — für jeden Weg, bevor
+  // die Route läuft. Die Liste steht EINMAL in lib/zugang/sicht-bereich.ts (Wächter tests/sicht-business-privat.test.ts).
+  if (pfad.startsWith('/api/')) {
+    const sicht = sichtAus(req.nextUrl.searchParams.get('space'));
+    if (sicht && sichtFremd(pfad, sicht)) return NextResponse.json({ ok: false, error: sichtFremdText(sicht), fehler: sichtFremdText(sicht), andererBereich: true }, { status: 403 });
+  }
 
   // Zulieferer per Umgebung abgeschaltet (08.10., Lücke 10): POST /api/zulieferung → 410, vor jeder Schlüsselprüfung — damit ist
   // auch der Übergang (MAKE_OS_KEY von außen) zu. Ist er nur in der Instanz-Einstellung aus, antwortet die Route selbst mit 410.

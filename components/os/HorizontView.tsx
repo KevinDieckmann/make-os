@@ -131,7 +131,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const jahrSichtSetzen = (v: 'seil' | 'faeden') => { setJahrSicht(v); try { localStorage.setItem('make-planung-jahr-sicht', v); } catch { /* egal */ } };
   const sichtWahl = <Segmente liste={[{ id: 'seil' as const, label: 'Seil' }, { id: 'faeden' as const, label: 'Alle Stränge' }]} aktiv={jahrSicht} onWahl={jahrSichtSetzen} />;
   // Kapazität (04.10.): Last je Woche als dezentes Band UNTER dem Strahl (eigene Komponente — der Strahl selbst bleibt unberührt).
-  const kapa = useKapazitaet(istJahr && spaceFilter !== 'privat');
+  const kapa = useKapazitaet(istJahr && spaceFilter !== 'privat', spaceFilter === 'business' ? 'business' : undefined);
   const MON_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
   const p2 = (n: number) => String(n).padStart(2, '0');
   const ticks: StrahlTick[] = (() => {

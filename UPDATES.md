@@ -4,6 +4,61 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Sicht Business zeigt nie Privat-Themen (Sweep über alle Bereiche; nur lokal — Branch `sweep-bereiche`, Basis a51bc21b = `update-0910b`)
+
+Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat — wir haben im Business-Bereich keinen Bereich, der Familie und
+Partnerschaft heißt. Guck, dass das nicht mehr passiert.“ Systematisch geprüft: jede Ansicht, die dem Kopf-Schalter folgt (Heute mit allen Widgets,
+Planung, Kalender, Aufgaben, Inbox, Finanzen, ZOE, Agenten, Suche, Glocke, Lichtfäden, Brain-Kugel, Zeit). Die Fokus-Seite selbst war Paket `fokus-steuerung`.
+
+**Gebaut (serverseitig, die Oberfläche schickt nur `?space=` mit):**
+- **EINE Regel** `lib/zugang/sicht-bereich.ts`: Routen NUR eines Bereichs (Familie, Gesundheit, Haushalt, Privat-Index, Ernährung, Sport, WHOOP · Markttraktion,
+  Heads, Netzwerken, Business-Index, Gesellschaften) antworten mit `?space=` des anderen Bereichs 403 (Middleware). Routen mit beiden Bereichen filtern mit
+  `?space=` selbst: Aufgaben, Ziele (+ Fokus-Sätze), Meilensteine, Routinen (+ Blöcke), Zeit (+ je Einheit), Kalender (+ Jahr, Geburtstage, Altweg
+  Apple-Kalender), Steht an, Glocke, Lichtfäden, Brain-Kugel, Kapazität, ZOE-Protokoll.
+- **Heute:** „+ Widget“ bietet in Business nur Business- und neutrale Widgets an (kein Familie & Partnerschaft, Körper, Erholung, Essen, Privat-Index,
+  Wachstums-Score), in Privat keine Markttraktion; ein gespeichertes Layout zeigt nur, was zur Sicht passt, und ein fremdes Widget wird nie gespeichert
+  (`lib/flaeche/sicht.ts`). Business-Standard ohne Wachstums-Score (seine Säulen sind Gesundheit, Familie …). Aufgaben, Termine, Routinen heute, Ziele, Zeit,
+  Einrichtung und „ZOE & Inbox“ lesen den Bereich ihrer Fläche; „Steht an“ zeigt Termine nur aus Kalendern des Bereichs, Buchungsanfragen nur in Business.
+- **Glocke:** nur die Meldungen der Sicht; „Alle gelesen“ setzt nur, was die Sicht zeigt.
+- **ZOE-Chat unten:** Verlauf nur mit Threads der Sicht, beim Umschalten beginnt die Ansicht neu; ein Thread des anderen Bereichs wird nie fortgesetzt
+  (es beginnt ein neuer). ZOE bekommt in Business Familie, Körperdaten und Haushaltsfinanzen gar nicht, in Privat keine Markttraktion, und nur die Aufgaben,
+  Jahresziele und den Fokus des Bereichs (auch im Empfang). Agenten-Seite öffnet einen Thread nur in seiner Sicht.
+- **Inbox** folgt dem Kopf-Schalter (auch über Links ohne `?space=`); Postfächer-Verwaltung unter Privat ohne Business-Postfächer (die noch ohne Bereich
+  bleiben sichtbar zum Zuordnen).
+- **Kalender:** Privat/Business holt nur den Bereich vom Server („Alles“ bleibt die ausdrückliche Wahl beider), Jahresansicht ebenso, Geburtstage nur
+  Familie bzw. Kontakte, Apple-Erinnerungen nur in Privat. **Tagesplanung:** Termine des anderen Bereichs nur als „Belegt“ (ohne Titel); Routinen,
+  Aufgaben, Checks nur des Bereichs, Erholung nur in Privat. **Planen** ebenso.
+- **Planung:** Routinen-Planer startet im Bereich des Kopfs; Lichtfäden lassen den anderen Space weg (auch über „Gesamt“); Kapazität in Business ohne
+  Erholung (Gesundheit) und Abwesenheits-Titel, in Privat Business-Posten nur als „Business (belegt)“.
+- **Aufgaben-Überblick** unter Privat ohne Firmen/Mandanten. **Brain-Kugel** nur Punkte der Sicht. **Schnellsuche:** Seiten des anderen Bereichs nur mit
+  „Auch in … suchen“. **Finanzen › Business › Rechnungen & Zahlungen** ohne Privat- und Selbstständigkeits-Konten. **Loops** und **ZOE › Freigaben › Protokoll**
+  je Sicht. **Gesundheit** zeigt keine Business-Routinen.
+
+**Wächter:** `tests/sicht-business-privat.test.ts` — Regeln, Middleware, und ALLE lesenden Routen des Routen-Registers mit `?space=business` (keine Privat-Marke)
+bzw. `?space=privat` (keine Business-Marke), Gegenprobe, ZOE-Thread. Angepasst: `aufraeumen-etappe1`, `inbox-whatsapp-ui`, `kugeln`, `routinen-sicht`,
+`ziele-unsere-meine`. CLAUDE.md › Spaces (Regel).
+
+**Offen (nicht in diesem Paket, gemeldet):** Aufgaben-Kontext im Browser lädt weiter beide Bereiche (die Ansichten filtern; Schreibweg braucht den
+ganzen Bestand) · ausdrückliche „Alles“-Wahl in Kalender und Planung · Aufgaben-Navigation zeigt beide Seiten · Kalender-Auswertung (Stunden Privat,
+Zeit je Firma) · ZOE-Wochenvorschlag (Planen) und Lagebericht im Chat ohne Bereich · ältere Finanz-Ansichten (Buchungen, Liquidität, Controlling, Belege)
+filtern im Browser · Aufträge-Liste der Freigaben · Brain-Seite (Notizen) ohne Bereich · Kalender ohne Zuordnung: Name mit „consulting“/„dieckmann“ gilt als
+Business (Selbstständigkeit in den Kalender-Einstellungen Privat zuordnen).
+
+**So testet ihr (in Klicks):**
+1. Kopf auf **Business**, Heute → Stift → „+ Widget“: kein „Familie & Partnerschaft“, „Körper“, „Erholung heute“, „Essen heute“, „Wachstums-Score“. Stand
+   eins davon schon auf eurer Business-Seite, ist es jetzt weg (die Privat-Seite behält ihres).
+2. Business, Heute: „Steht an“ und Termine ohne private Termine/Geburtstage der Familie; Glocke öffnen → keine Gesundheits-/Familien-Meldungen, keine
+   privaten Aufgaben. Auf **Privat** umschalten → Glocke zeigt die privaten, keine Follow-ups/Danke-Mails.
+3. ZOE unten öffnen (Business) → ☰ Verlauf: nur Business-Gespräche. Auf Privat umschalten → das Gespräch wechselt, Verlauf nur Privat.
+4. Inbox über einen Link ohne Bereich öffnen (z. B. Schnellsuche „Inbox“) in Business → nur Post der Business-Postfächer.
+5. Kalender in Business → keine privaten Termine; Jahresansicht ebenso; „Alles“ wählen → beide. Planung › Tag in Business: private Termine als graues
+   „Belegt“, kein Check „Erholung“.
+6. Planung › Routinen in Business → nur Business-Routinen (Filter „Alle“ zeigt beide). Planung › Kapazität in Business → kein „Deine Erholung“.
+7. Brain › Kugel, Schnellsuche „Familie“ in Business → nichts Privates (erst mit „Auch in Privat suchen“).
+
+**Rückweg:** keine neuen Bestände, keine Formänderung — nur Filter und Oberfläche. Ein gespeichertes Heute-Layout verliert beim nächsten Speichern die
+Widgets des anderen Bereichs (sie waren dort ohnehin nicht mehr sichtbar).
+
 ## 10.10.2026 — Fokus-Steuerung: Fokus + Kompass zusammen, oben rechts, Privat und Business getrennt (nur lokal — Branch `fokus-steuerung`, Basis 5249d903 = `update-0910b`)
 
 Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehmen — Planung soll nur Planung sein. Prio und Fokus geben wir im

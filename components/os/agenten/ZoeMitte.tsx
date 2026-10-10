@@ -144,7 +144,7 @@ export function ZoeMitte({ neu = false }: { /** „Neues Gespräch“ (Kopfzeile
   const [ansicht, setAnsicht] = useState<'chat' | 'info'>('chat');
   const fadenId = gewaehlt.neu ? gewaehlt.id : (gewaehlt.id ?? (auswahl.art === 'zoe' ? auswahl.fadenId : undefined) ?? zoeFadenAktuell(faeden.zustand === 'da' ? faeden.daten.faeden : []));
   const vorgegeben = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
-  const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `zoe-faden:${fadenId}` : null, () => ladeFaden(fadenId!));
+  const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `zoe-faden:${fadenId}:${space}` : null, () => ladeFaden(fadenId!, space));
   const thread = vorgegeben ?? (geladen.stand.zustand === 'da' ? geladen.stand.daten : null);
   // Was gerade unterwegs ist (eigene Nachricht, dann die Antwort) — nur bis der Thread vom Server sie zeigt (`basis` = Länge davor).
   const [ausstehend, setAusstehend] = useState<{ basis: number; n: Nachricht[] } | null>(null);

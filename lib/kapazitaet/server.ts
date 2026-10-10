@@ -33,7 +33,7 @@ import { wirksamerSpace, zaehltAlsArbeit } from '@/lib/planung/bereich';
 import { meilensteinVonAufgabe, zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import type { Meilenstein, ZieleDatei } from '@/lib/planung/typen';
-import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit, ohnePrivatePosten, ohneVerborgenePosten, ohnePrivateKennzahlen, postenSchluessel } from './modell';
+import { kapazitaetRechnen, tageAusVerfuegbarkeit, fuerBetrachter, ohneGesundheit, ohnePrivatePosten, ohneVerborgenePosten, ohnePrivateKennzahlen, postenSchluessel, BUSINESS_BELEGT } from './modell';
 import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { sauberKapaDatei, kapaAendern, type Ergebnis } from './aendern';
 import { kapaLoeschPlan, kapaOhnePersonen, kapaAuskunft, kapaVerwaisteKonten, type KapaAuskunft } from './aufraeumen';
@@ -181,11 +181,19 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
 const gemerkt = async (heute: string) => merken(`kapazitaet:${await kapaSpeicher()}:${heute}`, 60_000, () => kapaStandRoh(heute));
 
 /** Der Stand für eine Person (Plattform-Regel: serverseitig gefiltert — Erholung/Titel nur die eigenen). */
-export async function kapaStandFuer(person: string, heute = localDay()) {
+export async function kapaStandFuer(person: string, heute = localDay(), sicht?: 'privat' | 'business' | null) {
   const [{ stand, bezuege, privat }, zugang, verborgen] = await Promise.all([gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person)]);
-  const fuerIhn = ohneVerborgenePosten(fuerBetrachter(stand, kapaIdVon(person)), verborgen);
-  // Konten ohne Privatzugang (finanzRecht „business“): Posten der Selbstständigkeit nur als „Privat (belegt)“ (serverseitig, 05.10. abends).
-  return { stand: zugang?.sicht === 'business' ? ohnePrivatePosten(fuerIhn, privat) : fuerIhn, bezuege };
+  // Sicht Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): ohne Erholung (Gesundheit) und ohne Titel der
+  // Abwesenheiten — auch die eigenen (wie für andere Personen, `fuerBetrachter(…, null)`).
+  const fuerIhn = ohneVerborgenePosten(fuerBetrachter(stand, sicht === 'business' ? null : kapaIdVon(person)), verborgen);
+  // Konten ohne Privatzugang (finanzRecht „business“) und die Sicht Business: Posten der Selbstständigkeit nur als „Privat (belegt)“
+  // (serverseitig, 05.10. abends). Sicht Privat (10.10.): Business-Posten nur als „Business (belegt)“, keine Namen der Mandate/Kunden.
+  if (zugang?.sicht === 'business' || sicht === 'business') return { stand: ohnePrivatePosten(fuerIhn, privat), bezuege };
+  if (sicht === 'privat') {
+    const business = new Set(fuerIhn.posten.map(postenSchluessel).filter(k => !privat.has(k)));
+    return { stand: ohnePrivatePosten(fuerIhn, business, BUSINESS_BELEGT), bezuege: [] };
+  }
+  return { stand: fuerIhn, bezuege };
 }
 
 /**

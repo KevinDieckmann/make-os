@@ -201,7 +201,7 @@ function MeilensteinForm({ m, vorgabe, planung, onSpeichern, onLoeschen, onOeffn
   const business = f.space === 'business' || mitPrivatEinheit(f);
   const einheitPrivat = f.space === 'privat' && PRIVAT_EINHEITEN_NAMEN.length > 0;
   // Kapazität: Personen aus dem Team und die Machbarkeit dieses Meilensteins (nur im Business, nur lesen).
-  const kapa = useKapazitaet(business);
+  const kapa = useKapazitaet(business, 'business');
   const kapaPersonen = (kapa.stand?.personen ?? []).filter(x => !x.ohneKapa || f.personen.includes(x.id));
   const machbar = m ? kapa.stand?.posten.find(x => x.art === 'meilenstein' && x.id === m.id) : undefined;
   const laufend = Number(planung.heute.slice(0, 4));

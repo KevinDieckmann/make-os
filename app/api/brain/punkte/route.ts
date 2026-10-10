@@ -15,6 +15,7 @@ import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { jsonAntwort } from '@/lib/http/json-antwort';
 import { localDay } from '@/lib/zeit';
 import { brainPunkteLaden } from '@/lib/brain/kugel-server';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,10 +27,15 @@ export async function GET(req: Request) {
   if (!zugang || zugang.dienst) return NextResponse.json(GESPERRT, { status: 403 });
   const person = zugang.person;
   // Privates nur mit Privatzugang — entschieden aus dem Konto, nie aus der Anfrage.
-  const privat = (await istInhaber(person)) || (await planZugangFuer(person))?.sicht === 'privat';
+  const darfPrivat = (await istInhaber(person)) || (await planZugangFuer(person))?.sicht === 'privat';
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): `?space=business` = ohne Privates (wie ein
+  // Konto „nur Business“), `?space=privat` = nur Privates (lib/brain/kugel.ts `darfPunktSehen`). Ohne `?space=` wie bisher.
+  const bereich = sichtDerAnfrage(req);
+  const privat = darfPrivat && bereich !== 'business';
+  const nurPrivat = privat && bereich === 'privat';
   try {
-    const k = await brainPunkteLaden({ person, privat }, localDay());
-    return jsonAntwort(req, { ok: true, sicht: privat ? 'voll' : 'business', ...k });
+    const k = await brainPunkteLaden({ person, privat, ...(nurPrivat ? { nurPrivat } : {}) }, localDay());
+    return jsonAntwort(req, { ok: true, sicht: nurPrivat ? 'privat' : privat ? 'voll' : 'business', ...k });
   } catch {
     return NextResponse.json({ ok: false, fehler: 'Die Brain-Kugel konnte nicht geladen werden.' }, { status: 500 });
   }

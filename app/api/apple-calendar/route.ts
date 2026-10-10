@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { spaceVonKalender } from '@/lib/kalender/space';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 import { AUF_DEM_MAC } from '@/lib/mac';
 import { kalenderLesen, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
@@ -112,15 +114,18 @@ function runOsascript(script: string): Promise<string> {
  * Stand roh; jede Person (Sitzung oder Dienstweg mit Person) nur ihre Sicht — privat/Gesundheit der anderen Person als
  * „Belegt“ (`cacheFuerPerson`, dieselbe Regel wie `fuerZoe`). Vorher gingen Rohtitel und Orte an jede Sitzung im Haushalt.
  */
-async function sichtFuer(person: string | null): Promise<(events: object[]) => object[]> {
+async function sichtFuer(person: string | null, bereich: 'privat' | 'business' | null = null): Promise<(events: object[]) => object[]> {
   // iCloud je Person (06.10.): Termine aus der EIGENEN Verbindung einer Person gehen auch an den Systemlauf nur als „Belegt“.
-  if (person === null) return events => (events as CacheEreignis[]).map(e => (e.persoenlich ? cacheFuerPerson(e, '', undefined) : e));
+  if (person === null && !bereich) return events => (events as CacheEreignis[]).map(e => (e.persoenlich ? cacheFuerPerson(e, '', undefined) : e));
   const einst = await ladeEinstellungen().catch(() => null);
+  // Sicht Privat · Business (10.10.): mit `?space=` nur Termine aus Kalendern dieses Bereichs (wie GET /api/kalender, `spaceVonKalender`).
+  const imBereich = (e: CacheEreignis) => !bereich || spaceVonKalender(einst, e.calendarName ?? '') === bereich;
+  if (person === null) return events => (events as CacheEreignis[]).filter(imBereich).map(e => (e.persoenlich ? cacheFuerPerson(e, '', undefined) : e));
   // 08.10. (Sicht-Prüfung Malin): „privat“/Anleger auch aus der Sicherung in `kalender-bezug` — wie GET /api/kalender und ZOE.
   // Fehlt der Neben-Bestand (Lesefehler), gilt jeder Eintrag mit Eigentümer als privat: lieber „Belegt“ als ein Titel zu viel.
   let bezuege: BezugBestand | null = null, bezugFehlt = false;
   try { bezuege = await ladeBezuege(); } catch { bezugFehlt = true; }
-  return events => (events as CacheEreignis[]).map(e => {
+  return events => (events as CacheEreignis[]).filter(imBereich).map(e => {
     const wer = einst && e.calendarName ? wemGehoert(einst, e.calendarName) : e.owner === 'kevin' || e.owner === 'malin' ? e.owner : undefined;
     const mit = cacheMitBezug(e, bezuege);
     return cacheFuerPerson(bezugFehlt ? { ...mit, privat: true } : mit, person, wer);
@@ -131,7 +136,7 @@ export async function GET(req: Request) {
   // Lesen: auch der Systemlauf ohne Person (Zulieferer vom Mac) — Regel 5 gilt über `kalenderLesen` (28.09.).
   const zugang = await kalenderLesen(req);
   if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
-  const sicht = await sichtFuer(zugang.person);
+  const sicht = await sichtFuer(zugang.person, sichtDerAnfrage(req));
   const force = new URL(req.url).searchParams.get('refresh') === '1';
 
   // Seit 25.09.: iCloud direkt (Server) — der Abgleich schreibt den calendar-cache.

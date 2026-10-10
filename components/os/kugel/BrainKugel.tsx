@@ -13,6 +13,7 @@
 // der Liste hebt den Stern hervor. Ohne WebGL bleibt nur die Liste. Beschriftungen, Bögen und Titel folgen dem Takt des
 // Motors (`nachBild`) — kein eigener Lauf, keine React-Zustände je Bild.
 
+import { useSpace } from '@/hooks/useSpace';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -142,12 +143,15 @@ export function BrainKugel() {
   const titelKarte = useRef<HTMLDivElement>(null);
   const schilder = useRef(new Map<KugelBereich, HTMLButtonElement>());
 
+  // Sicht Privat · Business (10.10.): nur die Punkte des Bereichs im Kopf — der Server filtert (`?space=`).
+  const { space, bereit } = useSpace();
   useEffect(() => {
+    if (!bereit) return;
     let weg = false;
-    fetch('/api/brain/punkte').then(r => r.json()).then((d: Antwort) => { if (!weg) setAntwort(d); })
+    fetch(`/api/brain/punkte?space=${space}`).then(r => r.json()).then((d: Antwort) => { if (!weg) setAntwort(d); })
       .catch(() => { if (!weg) setAntwort({ ok: false, fehler: 'Die Brain-Kugel ist gerade nicht erreichbar.' }); });
     return () => { weg = true; };
-  }, []);
+  }, [space, bereit]);
 
   const punkte = useMemo(() => antwort?.punkte ?? [], [antwort]);
   const sichtbar = useMemo(() => punkte.filter(p => !aus.has(p.bereich)), [punkte, aus]);

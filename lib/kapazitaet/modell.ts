@@ -361,6 +361,8 @@ export function fuerBetrachter(stand: KapaStand, betrachter: string | null): Kap
 
 /** Titel eines Postens aus dem Privat-Bereich für Konten ohne Privatzugang (05.10. abends). */
 export const PRIVAT_BELEGT = 'Privat (belegt)';
+/** Titel eines Business-Postens in der Sicht Privat (10.10.) — die Stunden zählen, der Titel bleibt im Business. */
+export const BUSINESS_BELEGT = 'Business (belegt)';
 /** Schlüssel eines Postens für `ohnePrivatePosten` — Meilenstein und Ziel haben getrennte Kennungen. */
 export const postenSchluessel = (p: { art: 'meilenstein' | 'ziel'; id: string }): string => `${p.art}:${p.id}`;
 
@@ -369,14 +371,14 @@ export const postenSchluessel = (p: { art: 'meilenstein' | 'ziel'; id: string })
  * (`finanzRecht: 'business'`) und den Business-Index: die Stunden bleiben in Last und Machbarkeit (die Zeit ist belegt), Titel und Ziel-Bezug
  * nicht; in der Liste „kritisch“ (geht an den Business-Index, ZOE, Berichte) fehlen sie ganz. Rein; `privat` = `postenSchluessel`.
  */
-export function ohnePrivatePosten(stand: KapaStand, privat: ReadonlySet<string>): KapaStand {
+export function ohnePrivatePosten(stand: KapaStand, privat: ReadonlySet<string>, titel: string = PRIVAT_BELEGT): KapaStand {
   if (!privat.size) return stand;
   return {
     ...stand,
     posten: stand.posten.map(p => {
       if (!privat.has(postenSchluessel(p))) return p;
       const { zielId: _z, ...rest } = p;
-      return { ...rest, titel: PRIVAT_BELEGT };
+      return { ...rest, titel };
     }),
     kennzahlen: ohnePrivateKennzahlen(stand.kennzahlen, privat),
   };
