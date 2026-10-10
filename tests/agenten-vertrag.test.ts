@@ -37,6 +37,8 @@ import { KI_KATEGORIEN } from '@/lib/datenschutz/ki-einstellungen';
 import { AUSFUEHRBAR, SYSTEM_LAEUFE } from '@/lib/zoe/agenten';
 import { MODI as HEADS_MODI, HEADS as LIB_HEADS } from '@/lib/heads/prompt';
 import { MODI as FINANZCHEF_MODI } from '@/lib/finanzen/chef/prompt';
+import { RECHT_MODI } from '@/lib/recht/typen';
+import { eingebauteSkills } from '@/lib/agenten/skills';
 import { KENNZAHL as BUSINESS_KENNZAHL } from '@/lib/business/register';
 import { TRAKTION_KENNZAHLEN } from '@/lib/crm/traktion-index';
 import { PRIVAT_KENNZAHLEN } from '@/lib/privat/index';
@@ -192,6 +194,11 @@ describe('Katalog: eingebaute Skills und Kennzahlen', () => {
         const modi = HEADS_MODI[h.id as keyof typeof HEADS_MODI].map(m => m.id);
         for (const m of e.modi) expect(modi, `${h.id}: ${m}`).toContain(m);
         expect(h.kontext).toBe('heads');
+      } else if (e.quelle === 'recht') {
+        // Head of Recht (10.10.): die festen Abläufe aus lib/recht/typen.ts (Regelwerk im Morgenlauf bzw. per Knopf) — jeder mit Beschreibung.
+        expect([...e.modi]).toEqual([...RECHT_MODI]);
+        expect(h.id).toBe('recht');
+        for (const s of eingebauteSkills(h)) expect(s.beschreibung, s.id).not.toBe('Eingebauter Ablauf dieses Heads.');
       } else {
         for (const m of e.modi) expect(FINANZCHEF_MODI as readonly string[], `${h.id}: ${m}`).toContain(m);
         expect(h.kontext).toBe('finanzchef');

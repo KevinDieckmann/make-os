@@ -84,6 +84,11 @@ export interface HeadDef {
   id: string;
   /** Anzeige („Head of Sales“). */
   name: string;
+  /**
+   * Frühere Anzeigenamen (10.10., additiv): Stapel-Vorschläge tragen den Namen im Anlass („<Name>: …“) — so zählen alte Vorschläge nach einer
+   * Umbenennung weiter zu ihrem Head (`headVonVorschlag`). Die Kennung ändert sich nie.
+   */
+  alteNamen?: readonly string[];
   /** Kurzname für Liste und @-Ansprache — im Katalog eindeutig. */
   kurz: string;
   /** Ein Satz: wofür der Head da ist. */
@@ -104,8 +109,11 @@ export interface HeadDef {
    */
   werkzeuge: readonly string[];
   kontext: KontextArt;
-  /** Eingebaute Skills = die vorhandenen Modi (lib/heads/prompt.ts `MODI`, lib/finanzen/chef/prompt.ts `MODI`) — sichtbar, nicht änderbar. */
-  eingebaut?: { quelle: 'heads' | 'finanzchef'; modi: readonly string[] };
+  /**
+   * Eingebaute Skills = die vorhandenen Modi (lib/heads/prompt.ts `MODI`, lib/finanzen/chef/prompt.ts `MODI`, seit 10.10. die festen Abläufe des Head of
+   * Recht lib/recht/typen.ts `RECHT_MODI`) — sichtbar, nicht änderbar.
+   */
+  eingebaut?: { quelle: 'heads' | 'finanzchef' | 'recht'; modi: readonly string[] };
   voraussetzung?: Voraussetzung;
   /** 0–5 Kennzahlen für den Kopf des Heads. Gesundheits-Kennzahlen nur bei Heads mit Kategorie `gesundheit`. */
   kennzahlen: readonly KennzahlBezug[];

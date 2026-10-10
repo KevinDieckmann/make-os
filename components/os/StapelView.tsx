@@ -29,6 +29,7 @@ import { aenderbareFelder, aenderungFehler, anlassText, darfAendern, eingabeMitA
 import { StapelProtokoll } from './StapelProtokoll';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
+import { RechtStapelDetail } from './unternehmen/schild/Recht';
 import { useTasks } from '@/context/TasksContext';
 import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WERKZEUG, type ZoeFeld } from '@/lib/aufgaben/zoe';
 import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
@@ -228,6 +229,8 @@ export function StapelView() {
           )}
           {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
           {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
+          {/* Art „recht“ (10.10., Head of Recht): Checkliste, Aufgabentext bzw. Fundstelle zum Lesen — keine Rechtsberatung. */}
+          {v.bezug?.art === 'recht' && <RechtStapelDetail v={v} />}
           <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
         </div>
       )}

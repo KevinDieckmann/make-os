@@ -37,6 +37,7 @@ import { bezugName, klein, tagText, UnterlagenBleiben, type GAnzeige, type Regis
 import { Detail } from './Detail';
 import { useSchild, useSchildSchreiber, type SEintrag, type SchildDaten } from './schild/daten';
 import { Ueberblick } from './schild/Ueberblick';
+import { RechtBereich } from './schild/Recht';
 import { Pflichten } from './schild/Pflichten';
 import { Dokumente } from './schild/Dokumente';
 import { Risiken } from './schild/Risiken';
@@ -137,7 +138,7 @@ export function UnternehmenView() {
       {sicht === 'struktur' && <Struktur daten={daten} schild={schild.daten?.eintraege ?? []} gewaehlt={params.get('w') ?? undefined} waehle={w => geh({ s: 'struktur', w })} oeffne={id => geh({ g: id })} />}
       {sicht === 'vertraege' && <VertraegeOrgane daten={daten} liste={daten.gesellschaften.filter(x => !x.geloeschtAm && business.some(b => b.id === x.id))} heute={heute} />}
       {sicht !== 'gesellschaften' && sicht !== 'struktur' && sicht !== 'vertraege' && (!lage || !schild.daten ? <Karte><Leer>lädt …</Leer></Karte>
-        : sicht === 'ueberblick' ? <Ueberblick lage={lage} />
+        : sicht === 'ueberblick' ? <><Ueberblick lage={lage} /><RechtBereich lage={lage} gesellschaften={daten.gesellschaften} /></>
           : !gewaehlt ? <Karte><Leerzustand symbol={<Building2 size={22} />} titel="Keine Business-Gesellschaft" aktion={<Knopf leise onClick={() => geh({ s: 'gesellschaften' })}>Zu den Gesellschaften</Knopf>}>Pflichten, Dokumente, Risiken und Schutzrechte gelten je Gesellschaft im Bereich Business.</Leerzustand></Karte>
             : <JeGesellschaft key={gewaehlt} sicht={sicht} lage={lage} id={gewaehlt} schild={schild.daten} ersetzen={schild.ersetzen} personen={daten.personen} waehle={w => geh({ s: sicht, w })} heute={heute} />)}
     </Seite>

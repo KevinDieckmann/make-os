@@ -41,6 +41,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Produkte (10.10., Leistungstreppe): Treppe aus einem Dokument übernehmen (nur die angehakten Teile), Fortschritts-Report erstellen (PDF am
   // Mandat — gesendet wird erst per Klick in der Inbox), nächste Stufe als Follow-up am Mandat (lib/crm/treppe-server.ts).
   produkte: async () => (await import('@/lib/crm/treppe-server')).TREPPE_STAPEL_ART,
+  // Head of Recht (10.10.): Aufgabe aus dem Recht-Check, Katalog-Risiko übernehmen, Checkliste als Entwurf, Vertragsfrist am Vertrag, Anwalts-Mappe
+  // (lib/recht/server.ts) — nur Personen mit Zugang zur Firmen-Akte; über die Schreibstellen von Schild, Register, Aufgaben und Ablage.
+  recht: async () => (await import('@/lib/recht/server')).RECHT_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

@@ -77,7 +77,9 @@ describe('Seite → Head (rein)', () => {
     const b = (p: string, s = '') => kontextHeadFuer(p, s, 'business');
     const pr = (p: string, s = '') => kontextHeadFuer(p, s, 'privat');
     expect([b('/os/finanzen', '?s=business'), pr('/os/finanzen', '?s=privat')]).toEqual(['finanzen', 'finanzen-privat']);
-    expect([b('/os/mandate'), b('/os/unternehmen')]).toEqual(['kundenerfolg', 'strategie']);
+    // 10.10.: Unternehmen (Firmen-Akte, Schild) → Head of Recht; Datenschutz nur in der Business-Sicht.
+    expect([b('/os/mandate'), b('/os/unternehmen'), b('/os/unternehmen', '?s=risiken'), pr('/os/unternehmen')]).toEqual(['kundenerfolg', 'recht', 'recht', null]);
+    expect([b('/os/datenschutz'), pr('/os/datenschutz')]).toEqual(['recht', null]);
     expect([b('/os/aufgaben'), pr('/os/aufgaben')]).toEqual(['operations', 'assistenz']);
     expect([b('/os/planung/jahr'), b('/os/planung/kapazitaet'), pr('/os/planung/kapazitaet')]).toEqual(['strategie', 'operations', null]);
     expect([b('/os/hoi'), b('/os/bauplan'), b('/os/system'), b('/os/datenschutz')]).toEqual(['it', 'it', 'it', 'recht']);

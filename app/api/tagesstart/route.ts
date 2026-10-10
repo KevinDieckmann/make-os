@@ -185,6 +185,21 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0f1) Head of Recht (10.10., lib/recht): einmal je ISO-Woche der Recht-Check (Fristen 4 Wochen, Pflichten-Ampel, was fehlt, Datenschutz-Zähler —
+  //      ohne Modell) mit Vorschlägen in den Stapel, und je Gesellschaft mit fälliger Runde die Vorbereitung der Risikorunde — idempotent, nur Vorschläge.
+  try {
+    const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
+    if (!h) schritte.push({ name: 'Head of Recht', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { rechtMorgenlauf } = await import('@/lib/recht/server');
+      const r = await rechtMorgenlauf(h, today);
+      const was = [r.check ? 'Recht-Check erstellt' : '', r.runden ? `Risikorunde vorbereitet (${r.runden})` : '', r.vorschlaege ? `${r.vorschlaege} Vorschl${r.vorschlaege === 1 ? 'ag' : 'äge'} im Stapel` : ''].filter(Boolean).join(' · ');
+      schritte.push({ name: 'Head of Recht', ok: true, info: was || 'diese Woche schon geprüft' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Head of Recht', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0f2) Mahnvorschläge (08.10., Rechnungen mit PDF): je fälliger Mahnstufe EINE Aufgabe (`mahn-<rechnung>-<stufe>`, idempotent, Titel ohne
   //      Betrag/Namen). Verschickt wird nichts — nur per Klick in Finanzen › Rechnungen & Zahlungen.
   try {

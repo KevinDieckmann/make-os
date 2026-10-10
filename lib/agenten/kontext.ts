@@ -16,6 +16,7 @@
 import { daten } from '@/lib/brain';
 import type { HeadDef, KennzahlWert, KiKategorie } from './typen';
 import { kennzahlAbschnitte } from '@/lib/erklaerungen/kennzahlen';
+import { RECHT_HEAD } from '@/lib/recht/typen';
 import type { KontoSicht } from './sicht';
 
 export interface HeadKontext {
@@ -133,12 +134,14 @@ async function brainKontext(head: HeadDef, person: string, kats: Set<KiKategorie
     teile.push(`POSTFÄCHER IM BEREICH (nur Zähler):\n${s.lage.map(l => lageText(l, l.bereich ? namen[l.bereich] ?? l.bereich : 'Ohne Bereich')).join('\n') || 'keins verbunden'}`);
     genutzt.add('postfach'); vertraulich = true;
   }
-  if (head.id === 'recht') {
-    const p = await datenschutzPunkte(heute).catch(() => null);
-    if (p) teile.push(daten('datenschutz', p));
+  let hinweis: string | undefined;
+  // 10.10.: Head of Recht — Datenschutz-Selbstprüfung (nur Titel/Status/Befund) und die Firmen-Akte (Recht-Check jetzt, vorbereitete Risikorunde).
+  if (head.id === RECHT_HEAD) {
+    const t = await rechtTeil(person, heute, kats);
+    if (t.text) { teile.push(t.text); vertraulich = true; if (t.finanzen) genutzt.add('finanzen'); }
+    hinweis = t.hinweis;
   }
   // Feinschliff 09.10.: Familie und Ernährung bekommen ihren Bestand — je über die EINE Filterstelle ihres Moduls.
-  let hinweis: string | undefined;
   if (head.id === 'familie') {
     const t = await familienTeil(person, heute, kats);
     if (t.text) { teile.push(t.text); genutzt.add('familie'); vertraulich = true; fremd = true; }
@@ -216,7 +219,28 @@ export async function ernaehrungTeil(person: string, kats: ReadonlySet<KiKategor
   return { text: `ERNÄHRUNG & EINKAUF (gemeinsam im Haushalt):\n${daten('ernaehrung', text)}`, gesundheit };
 }
 
-/** Datenschutz-Selbstprüfung (offene Punkte) für den Head Recht & Datenschutz — nur Titel, Status, Befund (keine Personen). */
+/**
+ * Head of Recht (10.10.): Datenschutz-Selbstprüfung (offene Punkte) und — mit Kategorie `finanzen` (Gesellschafts-Daten) und Zugang zur Firmen-Akte
+ * (wie Unternehmen › Schild: Haushalt des Inhabers, nicht „nur Business“, lib/recht/server.ts `rechtZugangFuer`) — der Recht-Check JETZT (dieselbe Lage
+ * wie die Oberfläche, lib/recht/check.ts) und die vorbereitete Risikorunde des laufenden Quartals. Datenschutz nur Zähler und Titel; keine Personen.
+ */
+export async function rechtTeil(person: string, heute: string, kats: ReadonlySet<KiKategorie>): Promise<{ text: string; finanzen: boolean; hinweis?: string }> {
+  const teile: string[] = [];
+  const p = await datenschutzPunkte(heute).catch(() => null);
+  if (p) teile.push(daten('datenschutz', p));
+  if (!kats.has('finanzen')) return { text: teile.join('\n\n'), finanzen: false, hinweis: 'Gesellschafts-Daten sind für die KI ausgeschaltet (System › Datenschutz › KI, Bereich Finanzen) — der Head of Recht sieht die Firmen-Akte nicht.' };
+  const { rechtZugangFuer, rechtCheckJetzt, ladeRechtStand } = await import('@/lib/recht/server');
+  const z = await rechtZugangFuer(person);
+  if (!z) return { text: teile.join('\n\n'), finanzen: false, hinweis: 'Die Firmen-Akte (Unternehmen) ist für dieses Konto nicht freigegeben — der Head of Recht sieht nur die Datenschutz-Zähler.' };
+  const { check } = await rechtCheckJetzt(z.haushalt, heute);
+  teile.push(`FIRMEN-AKTE — RECHT-CHECK JETZT (dieselbe Lage wie Unternehmen › Schild):\n${daten('recht-check', check.text)}`);
+  const { quartal } = await import('@/lib/gesellschaften/schild/zeit');
+  const runden = Object.values((await ladeRechtStand(z.haushalt)).runden ?? {}).filter((r): r is NonNullable<typeof r> => !!r && r.quartal === quartal(heute));
+  if (runden.length) teile.push(`VORBEREITETE RISIKORUNDE (bewertet wird im Schild):\n${daten('risikorunde', runden.map(r => r.vorbereitung.text).join('\n\n'))}`);
+  return { text: teile.join('\n\n'), finanzen: true };
+}
+
+/** Datenschutz-Selbstprüfung (offene Punkte) für den Head of Recht — nur Titel, Status, Befund (keine Personen). */
 async function datenschutzPunkte(heute: string): Promise<string> {
   const [{ kontakteFuerVerarbeitung }, { ladeCrm }, { ladeKonten }, { selbstpruefung }, { LOESCHFRISTEN_SPEICHER, fristenWirksam }, { datenschutzUmfeld }, { loadJson }] = await Promise.all([
     import('@/lib/crm/verarbeitung'), import('@/lib/crm/speicher'), import('@/lib/zugang/konten'), import('@/lib/crm/datenschutz'), import('@/lib/crm/loeschfristen'), import('@/lib/datenschutz/umfeld'), import('@/lib/store/local-db'),

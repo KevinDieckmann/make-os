@@ -113,6 +113,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'familie--*': 'Familie je Haushalt',
   'finanzen-plan--*': 'Finanzplan je Haushalt (Aufbewahrungspflicht)',
   'gesellschaften--*': 'Gesellschafts-Register je Haushalt',
+  'recht-check--*': 'Head of Recht je Haushalt (10.10., nur Business-Gesellschaften) — Wochen-Check, Risikorunden, Marken, Datei-Kennungen; keine Einträge je Person, keine Personendaten',
   'unternehmen-schild--*': 'Unternehmen › Schild je Haushalt (10.10., nur Business-Gesellschaften) — keine Einträge je Person; beim Löschen wird „wer“ (Vermerk, Bewertung, Entwurf, verantwortlich) „[gelöscht]“',
   'inbox-uebergaben--*': 'Übergaben je Haushalt (Inbox teilen, 08.10.) — im Export die eigenen (gegeben/erhalten), beim Konto-Löschen fallen sie ganz weg',
   'inbox-geteilt--*': 'Gemeinsamer Zustand der Team-Postfächer je Haushalt — im Export „wer kümmert sich“ der Person; beim Löschen fällt das weg, ihre eigenen Team-Postfächer verlieren den Zustand',
