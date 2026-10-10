@@ -157,6 +157,15 @@ export const EINORDNUNG: Readonly<Record<string, Einordnung>> = {
   recht_lage: a('lesen', { bereich: 'business', kategorie: 'finanzen' }),
   vertrag_checkliste: a('lesen', { bereich: 'business', kategorie: 'finanzen', fremd: 'crm-ablage', gekapselt: true }),
   recht_vorschlag: a('vorschlag', { bereich: 'business', kategorie: 'finanzen' }),
+  // 10.10.: Fulfillment · Analyse (lib/fulfillment/analyse/werkzeuge.ts) — NUR der Analyse-Handler bietet sie an (nie ZOE, nie die Heads), jeder
+  // Lauf nach dem Klick auf genau diesen Lauf. `web_lesen` liest öffentliche Seiten (Text Dritter, eigener Rahmen); `fall_unterlagen` freigegebene
+  // Unterlagen und Playbook-Antworten DIESES Mandats; `dossier_teile` fertige Abschnitte DIESES Dossiers (Personenteil nur für A11–A13, nie der Leseteil).
+  web_lesen: a('lesen', { bereich: 'business', fremd: 'web', gekapselt: true, kategorie: 'web' }),
+  fall_unterlagen: a('lesen', { bereich: 'business', fremd: 'mandat-unterlagen', gekapselt: true, kategorie: 'crm' }),
+  dossier_teile: a('lesen', { bereich: 'business', fremd: 'dossier', gekapselt: true, kategorie: 'crm' }),
+  // 10.10.: ZOE liest Fulfillment eines Mandats (Fall, Onboarding, Wert-Konto, Dossier-Unternehmensteil; Personenteil nur mit `mitPersonen` und
+  // Zugang; den Leseteil nie) — kapselt selbst (Kopfzeile + eigener Rahmen).
+  fulfillment_lage: z('lesen', { fremd: 'fulfillment', gekapselt: true }),
 };
 
 /**

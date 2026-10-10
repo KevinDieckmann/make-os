@@ -57,6 +57,9 @@ export const ZOE_BEREICHE: readonly ZoeBereich[] = [
     werkzeuge: ['suche_wissen', 'notiz_anlegen', 'notiz_ergaenzen'] },
   { id: 'inbox', muster: W('e-?mails?', `mails?${E}`, 'postfach', 'inbox', 'posteingang', 'nachricht', 'geschrieben'),
     werkzeuge: ['lies_postfach'] },
+  // 10.10. (Fulfillment C3): Lieferung je Mandat — Fall, Onboarding, Wert-Konto, Dossier der Analyse.
+  { id: 'fulfillment', muster: W('fulfillment', 'dossier', 'onboarding', 'wert-?konto', 'quick ?wins?', 'kick-?off', 'diagnose', 'lieferung'),
+    werkzeuge: ['fulfillment_lage', 'mandate_lage'] },
   { id: 'business', muster: W('gesellschaft', 'holding', 'gründung', 'wem gehört', 'beteiligung', 'business'),
     werkzeuge: ['business_index', 'gesellschaften_lesen'] },
   { id: 'bauplan', muster: W('bauplan', 'software', 'feature', 'funktion', 'fehler', `bug${E}`, 'kaputt', `idee${E}`, 'verbesser', 'nervt'),

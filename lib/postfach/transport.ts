@@ -15,7 +15,7 @@
 // Tests und die Demo-Instanz setzen eigene Leitungen (`transportSetzen`); im Betrieb gibt es keinen anderen Weg.
 
 import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { ipIntern } from '@/lib/netz/oeffentlich';
 import type { StrukturKnoten } from './rfc822';
 
 export type FehlerCode = 'anmeldung' | 'netz' | 'tls' | 'zeit' | 'server' | 'ziel' | 'ordner' | 'abgelehnt';
@@ -72,21 +72,8 @@ export type ImapWaechter = (z: ImapZugang, pfad: string, neu: () => void, ende: 
 
 // ── Ziel prüfen ─────────────────────────────────────────────────────────────
 
-/** Ist diese IP-Adresse im eigenen/privaten Netz? Rein. */
-export function ipIntern(ip: string): boolean {
-  const v = isIP(ip);
-  if (v === 4) {
-    const [a, b] = ip.split('.').map(Number);
-    return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
-  }
-  if (v === 6) {
-    const x = ip.toLowerCase();
-    if (x === '::1' || x === '::') return true;
-    if (x.startsWith('::ffff:')) return ipIntern(x.slice(7));
-    return /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || x.startsWith('ff');
-  }
-  return true;
-}
+/** Ist diese IP-Adresse im eigenen/privaten Netz? Rein. Seit 10.10. EINE Regel für Postfächer und den Web-Abruf der Analyse (lib/netz/oeffentlich.ts). */
+export { ipIntern };
 
 /** Hostname auflösen und Ziele im eigenen Netz ablehnen. */
 export async function zielPruefen(host: string): Promise<void> {

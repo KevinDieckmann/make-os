@@ -1142,6 +1142,8 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   ...SPORT_WERKZEUGE,
   // ZOE steuert die Heads (09.10., Paket 4a, lib/agenten/zoe-heads.ts): Auftrag in einen Thread des Heads bzw. eine kurze Frage —
   // nur Heads, die die AUSLÖSENDE Person sieht (lib/agenten/sicht.ts). Dynamisch geladen (der Agenten-Kern liest dieses Register).
+  // Fulfillment eines Mandats lesen (10.10., C3, lib/fulfillment/analyse/zoe-werkzeug.ts) — prüft Haushalt und Personenteil-Zugang selbst.
+  fulfillment_lage: { gruppe: 'crm', lauf: async (i, o, p) => (await import('@/lib/fulfillment/analyse/zoe-werkzeug')).fulfillmentLage(i, o, p) },
   an_head: { gruppe: 'agenten', lauf: async (i, o, p, k) => (await import('@/lib/agenten/zoe-heads')).anHead(i, o, p, k) },
   head_fragen: { gruppe: 'agenten', lauf: async (i, o, p, k) => (await import('@/lib/agenten/zoe-heads')).headFragen(i, o, p, k) },
 };
