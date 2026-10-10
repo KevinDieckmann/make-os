@@ -21,8 +21,9 @@ import { MandantLink } from '../crm/MandantLink';
 import { ZEIT_EREIGNIS } from '../Kopf';
 
 export type ZeitJeMandatAntwort = ZeitJeMandat & { ok: boolean; ich: string };
-export const zeitMandateAdresse = (zeitraum: Zeitraum, stichtag?: string) =>
-  `/api/state/zeit/mandate?zeitraum=${zeitraum}${stichtag ? `&stichtag=${stichtag}` : ''}`;
+/** `sicht` (10.10., Fokus-Seite): nur die Arbeit dieses Bereichs — der Server filtert (Business ohne Mandate einer Privat-Einheit). */
+export const zeitMandateAdresse = (zeitraum: Zeitraum, stichtag?: string, sicht?: 'privat' | 'business') =>
+  `/api/state/zeit/mandate?zeitraum=${zeitraum}${stichtag ? `&stichtag=${stichtag}` : ''}${sicht ? `&sicht=${sicht}` : ''}`;
 
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const satzTitel = (z: MandatZeile) =>
@@ -70,12 +71,12 @@ export function MandatBalken({ a }: { a: MandatAuswertung }) {
 const pfeil = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 16, padding: '2px 8px', borderRadius: 8 } as const;
 
 /** Karte „Zeit je Mandat“: Woche/Monat, blättern, je Person und gesamt. */
-export function ZeitJeMandatKarte({ i = 0 }: { i?: number }) {
+export function ZeitJeMandatKarte({ i = 0, sicht }: { i?: number; sicht?: 'privat' | 'business' }) {
   const [zeitraum, setZeitraum] = useState<Zeitraum>('monat');
   const [stichtag, setStichtag] = useState<string | undefined>(undefined);
   const [wer, setWer] = useState<string>('gesamt');
   const [d, setD] = useState<ZeitJeMandatAntwort | null | undefined>(undefined);
-  const laden = useCallback((frisch = false) => { void holen(zeitMandateAdresse(zeitraum, stichtag), frisch).then(setD); }, [zeitraum, stichtag]);
+  const laden = useCallback((frisch = false) => { void holen(zeitMandateAdresse(zeitraum, stichtag, sicht), frisch).then(setD); }, [zeitraum, stichtag, sicht]);
   useEffect(() => {
     laden();
     const auf = () => laden(true);

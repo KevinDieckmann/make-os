@@ -298,7 +298,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
-          <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>◎ = <Link href="/os/kompass" style={{ color: C.aktiv, textDecoration: 'none' }}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+          <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>◎ = <Link href={WEG.fokus('prioritaeten')} style={{ color: C.aktiv, textDecoration: 'none' }}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {offeneAufgaben.map(t => chip({ art: 'aufgabe', titel: t.title, dauerMin: 60, taskId: t.id }, t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe,
               <>{t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.einheit ? <span style={{ opacity: 0.75 }}>{einheitKurz(t.einheit)} · </span> : null}{t.title}</>, `a-${t.id}`, 240))}
@@ -330,7 +330,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     <div style={{ display: 'grid', gap: 12 }}>
       {/* Wochenfokus (09.10.): Unser + Mein Fokus aus den getrennten Beständen, direkt setzbar (FokusTafel) — dagegen wird geplant. */}
       <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/fokus" style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Alle Horizonte ›</Link>}>Fokus der Woche</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.fokus('fokus')} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Alle Horizonte ›</Link>}>Fokus der Woche</Ueberschrift>
         <FokusTafel horizonte={['woche']} {...(spaceAusAdresse ? { bereich: spaceAusAdresse } : { vorgabe: spaceAktiv })} />
       </Karte>
       <ZieleMeilensteine horizont="woche" farbe={LEUCHT.schlaf} i={1} kompakt />

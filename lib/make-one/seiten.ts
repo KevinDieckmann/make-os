@@ -15,7 +15,11 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('heute', 'Heute · Privat und Business', WEG.heute()),
   s('heute-privat', 'Heute · Privat', WEG.heute('privat'), 'privat'),
   s('heute-business', 'Heute · Business', WEG.heute('business'), 'business'),
-  s('wachstum', 'Wachstum · Score und Säulen', WEG.wachstum()),
+  // Fokus (10.10.): EINE Steuerungsseite oben rechts — Fokus, Prioritäten (früher Kompass), Zeit, Wirkung (früher Wachstum).
+  s('fokus', 'Fokus · Fokus, Prioritäten, Zeit und Wirkung', WEG.fokus()),
+  s('fokus-prioritaeten', 'Fokus · Prioritäten und Kompass', WEG.fokus('prioritaeten')),
+  s('fokus-zeit', 'Fokus · Zeit je Thema (Soll und Ist)', WEG.fokus('zeit')),
+  s('fokus-wirkung', 'Fokus · Wirkung (Wachstums-Score)', WEG.fokus('wirkung')),
   s('ritual', 'Tagesstart & Tagesende', '/os/ritual'),
   s('tageslauf', 'Tageslauf', '/os/tageslauf', 'privat'),
   s('inbox', 'Inbox', WEG.inbox()),
@@ -31,8 +35,6 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('planung-quartal', 'Planung · Quartal', '/os/planung/quartal'),
   s('routinen', 'Planung · Routinen', WEG.routinen()),
   s('kapazitaet', 'Planung · Kapazität, Zeit und Machbarkeit je Person', WEG.kapazitaet(), 'business'),
-  s('fokus', 'Planung · Fokus', '/os/fokus'),
-  s('kompass', 'Planung · Kompass', '/os/kompass'),
   // Finanzen (08.10., Aufräumen Etappe 2: höchstens zwei Ebenen — Aufbau in lib/finanzen/navigation.ts)
   s('finanzen', 'Finanzen · Privat', WEG.privat(), 'privat'),
   s('finanzen-konten', 'Finanzen · Privat · Konten & Buchungen', WEG.privat('buchungen'), 'privat'),

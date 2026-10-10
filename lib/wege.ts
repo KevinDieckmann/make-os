@@ -38,6 +38,9 @@ export type FreigabenReiter = 'offen' | 'protokoll';
 /** Der Reiter aus der Adresse — alles Unbekannte ist „Offen“. */
 export const freigabenReiterAus = (t: string | null | undefined): FreigabenReiter => (t === 'protokoll' ? 'protokoll' : 'offen');
 
+/** Abschnitte der Fokus-Seite (components/os/FokusView.tsx) — Anker `#<abschnitt>`. */
+export type FokusAbschnitt = 'fokus' | 'prioritaeten' | 'zeit' | 'wirkung' | 'tagesform' | 'arbeiten';
+
 export const WEG = {
   /**
    * Heute (08.10., Aufräumen Etappe 1): EINE Startseite unter /os — ohne Space Privat und Business zusammen, mit `space` nur
@@ -145,7 +148,10 @@ export const WEG = {
   // Sport (27.09.): persönlich je Person — Reiter plan (Standard) · hyrox · lauf · gym · erholung.
   sport: (reiter?: 'training' | 'hyrox' | 'lauf' | 'gym' | 'erholung') => q('/os/sport', { s: reiter }),
   verbindungen: () => '/os/verbindungen',
-  wachstum: () => '/os/wachstum',
+  // Fokus (10.10., Entscheidung: Fokus und Kompass zusammen, oben rechts im Kopf): EINE Steuerungsseite je Bereich (folgt dem Kopf-Schalter),
+  // Abschnitte als Anker. Die frühere Seite „Wachstum“ ist der Abschnitt Wirkung, der „Kompass“ die Abschnitte Prioritäten und „Wie wir arbeiten“.
+  fokus: (abschnitt?: FokusAbschnitt) => (abschnitt ? `/os/fokus#${abschnitt}` : '/os/fokus'),
+  wachstum: () => '/os/fokus#wirkung',
 
   // Markttraktion — die Kartei darunter heißt technisch weiter „crm“.
   akte: (id: string) => markttraktion('kontakte', 'akte', id),

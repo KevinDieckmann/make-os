@@ -134,7 +134,7 @@ describe('Altbestand — entfernte Seiten leiten weiter, keine Weiterleitungs-Se
   const ENTFERNT: [string, string][] = [
     ['/os/aufgaben/board', '/os/aufgaben'], ['/os/roadmap', '/os/bauplan?s=phasen'], ['/os/saeule/planning', '/os/aufgaben'],
     ['/os/saeule/finance', '/os/finanzen'], ['/os/saeule/business', '/os/finanzen?s=business&space=business'], ['/os/saeule/agents', '/os/agenten'],
-    ['/os/saeule/:key', '/os/wachstum'], ['/os/crm', '/os/markttraktion'], ['/os/business', '/os/finanzen?s=business&space=business'],
+    ['/os/saeule/:key', '/os/fokus#wirkung'], ['/os/crm', '/os/markttraktion'], ['/os/business', '/os/finanzen?s=business&space=business'],
     ['/os/finanzplan', '/os/finanzen?s=finanzplanung&space=privat'], ['/os/planung/woche', '/os/kalender?modus=planen'],
     ['/os/datenschutz/nachweise', '/os/datenschutz#nachweise'],
     // 08.10. (Phase 0): die Vollansicht des Stapels ist der Reiter „Protokoll“ der Freigaben.

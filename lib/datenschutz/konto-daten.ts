@@ -69,6 +69,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'arbeitsrahmen', nurMitSuffix: true },
   // Mein Fokus (09.10.): Privat und Business getrennt, IMMER mit Suffix (lib/planung/fokus.ts `fokusBestand`).
   { basis: 'fokus-eigen', nurMitSuffix: true }, { basis: 'fokus-eigen-business', nurMitSuffix: true },
+  // Soll-Zeit der Fokus-Steuerung (10.10.): Privat und Business getrennt, IMMER mit Suffix (lib/fokus/steuerung-server.ts).
+  { basis: 'fokus-soll-privat', nurMitSuffix: true }, { basis: 'fokus-soll-business', nurMitSuffix: true },
   // Eigene Meilensteine an eigenen Zielen (10.10.): gehören allein der Person — IMMER mit Suffix (lib/planung/eigene-meilensteine.ts).
   { basis: 'meilensteine-eigen', nurMitSuffix: true },
 
@@ -124,6 +126,8 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
+  'fokus-steuerung-privat--*': 'Prioritäten · Privat je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld) — wer sie geändert hat, steht nur im Änderungsprotokoll',
+  'fokus-steuerung-business--*': 'Prioritäten · Business je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld)',
   'nordstern--*': 'Nordstern je Haushalt (gemeinsames Ziel, Freitext ohne Personen-Feld — kann Vornamen nennen, wird beim Konto-Löschen nicht automatisch getilgt, ändern unter Planung › Jahr) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'team--*': 'Team je Haushalt — der Eintrag des Kontos fällt beim Löschen weg',
   'uebergabe-journal--*': 'Übergaben an Kunden (Kartei)',

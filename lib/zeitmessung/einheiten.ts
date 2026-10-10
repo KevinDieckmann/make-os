@@ -267,15 +267,34 @@ export function zeitJeEinheit(
   stichtag: string,
   mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null,
   nurBusiness = false,
+  /** Nur ein Bereich (10.10., Fokus-Seite): Business = Business-Blöcke ohne Privat-Einheit, Zeilen ohne Privat; Privat = nur die Arbeit der Privat-Einheiten. */
+  sicht?: Bereich,
 ): ZeitJeEinheit {
   const { von, bis, label } = zeitraumVon(zeitraum, stichtag);
   const karte = new Map(aufgaben.map(a => [a.id, a]));
   const alle: FokusBlock[] = [];
-  const istArbeit = nurBusiness ? nurBusinessBloecke : arbeitsPruefer(karte, mandate);
+  const s: Bereich | undefined = nurBusiness ? 'business' : sicht;
+  const istArbeit = s ? sichtPruefer(s, karte, mandate) : nurBusiness ? nurBusinessBloecke : arbeitsPruefer(karte, mandate);
+  const nurSicht = (a: EinheitAuswertung): EinheitAuswertung => (s ? zeilenFuerSicht(a, s) : a);
   const jePerson = personen.map(p => {
     const b = bloeckeImZeitraum(p.datei, von, bis, istArbeit);
     alle.push(...b);
-    return { person: p.person, name: p.name, auswertung: auswerten(b, karte, mandate) };
+    return { person: p.person, name: p.name, auswertung: nurSicht(auswerten(b, karte, mandate)) };
   });
-  return { zeitraum, von, bis, label, personen: jePerson, gesamt: auswerten(alle, karte, mandate) };
+  return { zeitraum, von, bis, label, personen: jePerson, gesamt: nurSicht(auswerten(alle, karte, mandate)) };
+}
+
+/**
+ * Prüfer je Bereich (10.10.): Business = Blöcke im Business, deren Einheit keine Privat-Einheit ist; Privat = Blöcke, deren Einheit (live aus
+ * Aufgabe/Mandat, sonst am Block) eine Privat-Arbeits-Einheit ist (unsere Instanz: die Selbstständigkeit). Jeder Block gehört höchstens einem.
+ */
+export function sichtPruefer(s: Bereich, aufgaben?: ReadonlyMap<string, AufgabeKurz> | null, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): ArbeitsPruefer {
+  const karte = aufgaben ?? new Map<string, AufgabeKurz>();
+  const privat = (b: FokusBlock) => !!privatArbeitsEinheit(einheitVonBlock(b, karte, mandate));
+  return s === 'business' ? b => nurBusinessBloecke(b) && !privat(b) : privat;
+}
+
+/** Nur die Zeilen eines Bereichs (Business: ohne „Privat · …“; Privat: nur die Privat-Einheiten, ohne „ohne Einheit“). Summen bleiben die der Blöcke. */
+export function zeilenFuerSicht(a: EinheitAuswertung, s: Bereich): EinheitAuswertung {
+  return { ...a, zeilen: a.zeilen.filter(z => (s === 'business' ? z.bereich !== 'privat' : z.bereich === 'privat' && z.art !== 'ohne')) };
 }

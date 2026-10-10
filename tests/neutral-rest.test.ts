@@ -69,7 +69,7 @@ describe('1. Quelltext: Prompts, Vorgaben und public/ ohne feste Personen, Firme
     'lib/kalender/zoe-sicht-server.ts', 'lib/performance.ts', 'lib/zoe/vault.ts', 'lib/crm/datenschutz.ts', 'lib/steuern/rechnen.ts', 'lib/mac.ts',
     'app/api/state/liquiplan/route.ts', 'app/api/state/ordnung/route.ts', 'app/api/crm/import/route.ts', 'app/api/state/backlog/route.ts',
     'components/os/TagesplanView.tsx', 'components/os/MeetingView.tsx', 'components/os/ResearchView.tsx',
-    'components/os/JournalView.tsx', 'components/os/KompassView.tsx', 'components/os/TeamKarte.tsx', 'components/os/bauplan/BauplanBoard.tsx',
+    'components/os/JournalView.tsx', 'components/os/fokus/WieWirArbeiten.tsx', 'components/os/TeamKarte.tsx', 'components/os/bauplan/BauplanBoard.tsx',
     'components/os/bauplan/KarteDetail.tsx', 'components/os/bauplan/Phasen.tsx', 'components/os/bauplan/gemeinsam.tsx', 'components/os/crm/Kartei.tsx',
     'components/os/crm/Vernetzen.tsx', 'components/os/crm/Runden.tsx', 'components/os/crm/stammdaten/Verweise.tsx',
     'components/os/GrundlageView.tsx', 'components/os/flaeche/widgets.tsx',
@@ -86,7 +86,7 @@ describe('1. Quelltext: Prompts, Vorgaben und public/ ohne feste Personen, Firme
   const OHNE_KENNUNG = [
     'lib/make-one/team-typen.ts', 'lib/make-one/team-speicher.ts', 'lib/make-one/schnell-anlegen.ts', 'lib/crm/aktivitaeten.ts', 'lib/make-one/backlog-data.ts',
     'lib/bauplan/board.ts', 'app/api/state/backlog/route.ts', 'app/api/tasks/create/route.ts', 'app/api/meeting/route.ts', 'app/api/delegation/route.ts',
-    'app/api/loop/verbesserung/route.ts', 'components/os/aufgaben/hilfe.ts', 'components/os/aufgaben/VorlagenDialog.tsx', 'components/os/KompassView.tsx',
+    'app/api/loop/verbesserung/route.ts', 'components/os/aufgaben/hilfe.ts', 'components/os/aufgaben/VorlagenDialog.tsx', 'components/os/fokus/WieWirArbeiten.tsx',
     'components/os/NutzungsMelder.tsx', 'components/os/WissenView.tsx', 'components/os/flaeche/widgets.tsx', 'components/os/crm/Vernetzen.tsx',
     'components/os/crm/kontakt-teile.tsx', 'components/os/crm/SchnellErfassen.tsx', 'components/os/crm/Kartei.tsx', 'components/os/MeetingView.tsx',
     'components/os/bauplan/BauplanBoard.tsx', 'components/os/bauplan/KarteDetail.tsx', 'components/os/bauplan/Phasen.tsx', 'components/os/bauplan/gemeinsam.tsx',

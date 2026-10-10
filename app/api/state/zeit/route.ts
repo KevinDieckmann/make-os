@@ -1,6 +1,7 @@
 // ─── MAKE OS — Zeit & Fokus ─────────────────────────────────────────────────
 // GET  → das Bild der Person: heute und die letzten 7 Tage je Space und Bereich,
-//        bewusste Fokus-Zeit, Fokus-Tage, die letzten Blöcke.
+//        bewusste Fokus-Zeit, Fokus-Tage, die letzten Blöcke. `?sicht=privat|business` (10.10., Fokus-Seite): NUR dieser Bereich
+//        (`bildFuerSicht`); ein Konto „nur Business“ bekommt immer nur Business (Privat → 403).
 // POST { aktion: 'fokus', von, bis, schluessel, label, aufgabeId?, einheit?, mandatId?, firmaId?, terminUid? } → ein bewusster Block ist zu Ende.
 // POST { aktion: 'zuordnen', von, aufgabeId?, einheit?, mandatId?, firmaId? } → einen eigenen Block nachträglich einer Aufgabe/Einheit/einem Mandat
 //        zuordnen (leer = Zuordnung entfernen). Säuberung: lib/zeitmessung/einheiten.ts `zuordnungSaeubern`.
@@ -13,10 +14,10 @@
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
-import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { personStreng, planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { fokusAbschliessen, fokusZuordnen, fokusUmbuchen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { zuordnungSaeubern, AUFGABE_ID_MAX, type AufgabeKurz } from '@/lib/zeitmessung/einheiten';
-import { bild } from '@/lib/zeitmessung/modell';
+import { bild, bildFuerSicht } from '@/lib/zeitmessung/modell';
 import { localDay } from '@/lib/zeit';
 import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 
@@ -27,7 +28,13 @@ export async function GET(req: Request) {
   // S1 #17: nur mit ausdrücklicher Person — nie der Rückfall auf „kevin“ (Regel 5).
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
-  return NextResponse.json({ ok: true, bild: await zeitBildFuer(person) }, { headers: { 'Cache-Control': 'no-store' } });
+  const roh = new URL(req.url).searchParams.get('sicht');
+  if (roh !== null && roh !== 'privat' && roh !== 'business') return NextResponse.json({ ok: false, error: 'sicht privat|business.' }, { status: 400 });
+  const nurBusiness = (await planZugangFuer(person))?.sicht === 'business';
+  if (roh === 'privat' && nurBusiness) return NextResponse.json({ ok: false, error: 'Mit Business-Zugang gibt es keine Privat-Zeit.' }, { status: 403 });
+  const sicht = nurBusiness ? 'business' : roh;
+  const b = await zeitBildFuer(person);
+  return NextResponse.json({ ok: true, ...(sicht ? { sicht } : {}), bild: sicht ? bildFuerSicht(b, sicht) : b }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 const SCHLUESSEL = /^(privat|business|gemeinsam):[a-z0-9-]{1,40}$/;

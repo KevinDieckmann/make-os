@@ -4,9 +4,12 @@
 // Kevin (08.10.): „Die Software wirkt unaufgeräumt und überladen.“ Seitdem trägt der Kopf nur noch vier Dinge: links den
 // Schalter Privat · Business (EIN Schalter, oben — die Leiste zeigt die Punkte der Wahl, Heute folgt ihm; am Handy kompakt;
 // seit 09.10. ohne „Alles“, Kevin: „es gibt nur Business oder Privat“), in der Mitte die Suche (⌘K), rechts
-// die Glocke und den Fokus-Zähler. Heute, Inbox und Kalender stehen in der Leiste; der Wachstums-Score und der Index des
-// Space sind Karten auf Heute (und unter Planung › Wachstum bzw. Finanzen). Datei hieß bis 26.09. WachstumsKopf.tsx.
+// die Glocke und den Fokus-Knopf. Heute, Inbox und Kalender stehen in der Leiste; der Wachstums-Score und der Index des
+// Space sind Karten auf Heute (und unter Fokus › Wirkung bzw. Finanzen). Datei hieß bis 26.09. WachstumsKopf.tsx.
+// 10.10. (Entscheidung: „Den Fokus-Bereich oben rechts aufbauen“): der Fokus-Knopf öffnet die Fokus-Seite (/os/fokus — Fokus, Prioritäten,
+// Zeit, Wirkung, folgt dem Schalter); läuft ein Fokus, zeigt er die Uhr und beendet ihn per Klick wie bisher (components/os/zeit/fokus-beenden.ts).
 
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,13 +24,14 @@ import { useTasks } from '@/context/TasksContext';
 import { ZuordnungWahl, type Zuordnung } from './zeit/Zuordnung';
 import { useMandate } from './zeit/useMandate';
 import { fokusTitel } from '@/lib/zeitmessung/fokus-regeln';
-import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 import { Glocke } from './Glocke';
 import { UpdateHinweis } from './UpdateHinweis';
 import { useNurBusiness } from './useInhaber';
+import { WEG } from '@/lib/wege';
+import { fokusBeenden, uhr, ZEIT_EREIGNIS } from './zeit/fokus-beenden';
 
-/** Zeit-Ereignis: der Fokus-Zähler meldet einen gespeicherten Block (Zeit je Einheit/Mandat laden dann neu). */
-export const ZEIT_EREIGNIS = 'make-zeit-geaendert';
+/** Zeit-Ereignis: der Fokus-Zähler meldet einen gespeicherten Block (Zeit je Einheit/Mandat laden dann neu) — Quelle: zeit/fokus-beenden.ts. */
+export { ZEIT_EREIGNIS };
 
 /**
  * Der Schalter: zwei Knöpfe Privat · Business in ihrer Farbe — der EINE Ort, an dem der Bereich gewählt wird (Heute hat keinen
@@ -81,10 +85,6 @@ function SpaceSchalter({ wahl, setzen }: { wahl: SpaceWahl; setzen: (s: SpaceWah
 // (/api/state/zeit). Seit 27.09. spät: im Business lässt sich der laufende Block gleich einer
 // Aufgabe oder Einheit zuordnen (Chip neben dem Zähler); das Aufgaben-Detail kann ihn starten.
 // Seit 28.09. auch einem Mandat (Kevin: „Mandat an Zielen und Zeit“ — Zeit je Mandat).
-const uhr = (sek: number) => {
-  const h = Math.floor(sek / 3600), m = Math.floor((sek % 3600) / 60), s = sek % 60;
-  return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
-};
 /**
  * Zuordnen im Kopf (27.09. spät): ein kleiner Knopf neben dem laufenden Zähler öffnet ein Feld mit Aufgabe und Einheit —
  * zwei Chips direkt im Kopf hätten ihn überlaufen lassen. Punkt am Knopf = zugeordnet.
@@ -149,35 +149,13 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
     const t = setInterval(() => setJetzt(Date.now()), 1000);
     return () => clearInterval(t);
   }, [laufend]);
-  const starten = () => {
-    const { schluessel, bereich } = zeitSchluessel(pfad, window.location.search, space);
-    fokusMerken({ von: new Date().toISOString(), schluessel, label: bereich.label });
-  };
   const zuordnen = (z: Zuordnung) => {
     if (!laufend) return;
     const { aufgabeId: _a, einheit: _e, mandatId: _m, ...rest } = laufend;
     fokusMerken({ ...rest, ...(z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(z.einheit ? { einheit: z.einheit } : {}), ...(z.mandatId ? { mandatId: z.mandatId } : {}) });
   };
-  const stoppen = async () => {
-    if (!laufend) return;
-    const l = laufend;
-    // Erst der fertige Block, dann den laufenden löschen (29.09.) — scheitert das Speichern, läuft der Zähler weiter,
-    // statt dass die Fokus-Zeit still verloren geht.
-    let status = 0, grund = '';
-    try {
-      const r = await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit, mandatId: l.mandatId, terminUid: l.terminUid }) });
-      status = r.status;
-      if (!r.ok) grund = String(((await r.json().catch(() => ({}))) as { error?: string }).error ?? '');
-    } catch { status = 0; }
-    if (status < 200 || status >= 300) {
-      // Inhaltlich abgelehnt (400): fragen statt endlos weiterzählen; sonst (Netz, 5xx, Sitzung) weiterlaufen lassen.
-      if (status === 400 && (await bestaetigen({ titel: 'Zähler trotzdem beenden?', text: `Fokus-Block abgelehnt${grund ? `: ${grund}` : ''}.\n\nDiese Zeit wird nicht gezählt.`, ja: 'Beenden', gefahr: true }))) fokusMerken(null);
-      else if (status !== 400) window.alert('Fokus-Zeit nicht gespeichert (keine Verbindung oder Server nicht erreichbar). Der Zähler läuft weiter — bitte gleich noch einmal beenden.');
-      return;
-    }
-    fokusMerken(null);
-    window.dispatchEvent(new Event(ZEIT_EREIGNIS));
-  };
+  // Beenden (10.10.): EINE Stelle für Kopf und Fokus-Seite — erst der fertige Block, dann den laufenden löschen.
+  const stoppen = async () => { if (laufend) await fokusBeenden(laufend, bestaetigen); };
   if (laufend) {
     const sek = Math.max(0, Math.round((jetzt - Date.parse(laufend.von)) / 1000));
     const aufgabe = laufend.aufgabeId ? state.tasks.find(t => t.id === laufend.aufgabeId)?.title : undefined;
@@ -198,11 +176,13 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
       </span>
     );
   }
+  // Kein Fokus läuft: der Knopf öffnet die Fokus-Seite (dort Fokus, Prioritäten, Zeit — und „Fokus starten“ je Thema).
+  const aufFokus = pfad === '/os/fokus';
   return (
     <>
-      <button onClick={starten} title="Fokus starten — bewusste Zeit für diesen Bereich" aria-label="Fokus starten" className="kopf-knopf" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(false)}><Timer size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Fokus</span></div>
-      </button>
+      <Link href={WEG.fokus()} title={`Fokus ${spaceVon(space).label} — Prioritäten, Zeit und Wirkung`} aria-label={`Fokus öffnen (${spaceVon(space).label})`} aria-current={aufFokus ? 'page' : undefined} className="kopf-knopf" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div className="kopf-rund" style={rund(aufFokus)}><Timer size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: TYP.mikro, color: aufFokus ? C.aktiv : C.inkLeise }}>Fokus</span></div>
+      </Link>
       {dialog}
     </>
   );

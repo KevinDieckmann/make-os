@@ -950,7 +950,7 @@ export const SCHRITTE: Schritt[] = [
       'Fokus: je Horizont (Jahr, Quartal, Monat, Woche) einen Satz — gemeinsam oder je Bereich.',
     ],
     danach: 'Geprüft wird, wie viele Horizonte einen Fokus haben (mindestens drei von vier).',
-    wo: { href: '/os/fokus', label: 'Planung › Fokus' },
+    wo: { href: '/os/fokus', label: 'Fokus (Knopf oben rechts)' },
   },
   {
     id: 'finanzplan', privatFinanzen: true, samstag: true, etappe: 5, nr: '5.4', ebene: 'gemeinsam', minuten: 45, pruefung: 'finanzplan',
@@ -1063,7 +1063,8 @@ export const SCHRITTE: Schritt[] = [
     warum: 'Die Regler steuern, wie das System euch behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt. Er gilt vorerst für beide.',
     wie: ['Lage wählen, die Regler durchgehen und die Wirkung mitlesen.', 'Unten die Abweichungen ansehen: dort steht, wo der Alltag dem Kompass widerspricht.'],
     danach: 'ZOE und die Agenten richten sich nach dem Kompass.',
-    wo: { href: '/os/kompass', label: 'Planung › Kompass' },
+    // Seit 10.10. ist der Kompass der Abschnitt „Wie wir arbeiten“ der Fokus-Seite (Knopf oben rechts, nur Privat).
+    wo: { href: '/os/fokus#arbeiten', label: 'Fokus › Wie wir arbeiten' },
   },
   {
     id: 'projekte', spaeter: true, etappe: 5, nr: '5.12', ebene: 'gemeinsam', minuten: 30,
@@ -1197,7 +1198,7 @@ export const SCHRITTE: Schritt[] = [
     warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
       'Oben der Schalter Alles · Privat · Business — die Leiste darunter folgt ihm. Am Handy öffnet „Menü“ unten dasselbe.',
-      'Heute ist die Startseite — über „Anpassen“ gestaltest du sie selbst. Fokus, Kompass und Wachstum liegen unter Planung; Freigaben, Agenten und Brain unter ZOE.',
+      'Heute ist die Startseite — über „Anpassen“ gestaltest du sie selbst. Fokus, Prioritäten, Zeit und Wirkung liegen hinter dem Fokus-Knopf oben rechts; Freigaben, Agenten und Brain unter ZOE.',
       'Unten links Einstellungen. ⌘K (am Handy die Lupe) springt zu jeder Seite. Netzwerken erfasst unterwegs.',
     ],
     danach: 'Du findest dich zurecht.',
@@ -1276,12 +1277,12 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Meine eigenen Ziele',
     warum: 'Neben den gemeinsamen Zielen hat jede Person ihre eigenen — privat, beruflich, für den Körper. Sie gehören nur dir: niemand sieht sie, außer du teilst sie.',
     wie: [
-      'Planung › Kompass: oben dich selbst wählen und je Horizont (Jahr, Quartal, Monat, Woche) deinen Satz eintragen — das sind deine eigenen Ziele.',
+      'Fokus (Knopf oben rechts) › Fokus: je Horizont (Jahr, Quartal, Monat, Woche) unter „Mein Fokus“ deinen Satz eintragen — das sind deine eigenen Ziele.',
       'Was der ganze Haushalt sehen soll, gehört zu den gemeinsamen Jahreszielen (Planung › Jahr) — nicht hierher.',
       'Ob jemand deine eigenen Ziele sieht, entscheidest du unter Konto › „Eigene Ziele teilen“. Vorgabe: niemand.',
     ],
     danach: 'Geprüft wird nur, ob du für das laufende Jahr ein eigenes Ziel oder einen eigenen Satz hast — nie, was drinsteht.',
-    wo: { href: '/os/kompass', label: 'Planung › Kompass' },
+    wo: { href: '/os/fokus#fokus', label: 'Fokus › Mein Fokus' },
   },
   {
     id: 'ich-koerper', nurNeustart: true, samstag: true, etappe: 3, nr: '', ebene: 'ich', minuten: 20, pruefung: 'koerper',

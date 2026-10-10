@@ -23,6 +23,8 @@ import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 /** Die Privat-Einheiten, deren Zeit als Arbeit zählt (unsere Instanz: die Selbstständigkeit). */
 const PRIVAT_ARBEIT = PRIVAT_EINHEITEN_NAMEN.filter(n => !!privatArbeitsEinheit(n));
 const ARBEIT_TEXT = PRIVAT_ARBEIT.length ? `im Business und für ${PRIVAT_ARBEIT.join(', ')} (Privat)` : 'im Business';
+/** Der Text je Bereich (10.10., Fokus-Seite) — Business nennt nie die Privat-Einheit. */
+const ARBEIT_TEXT_JE: Record<'privat' | 'business', string> = { business: 'im Business', privat: PRIVAT_ARBEIT.length ? `für ${PRIVAT_ARBEIT.join(', ')}` : 'unter Privat' };
 import { Karte, Ueberschrift, Leer, Hinweis, Segmente, Fortschritt } from '../ui';
 import { ZEIT_EREIGNIS } from '../Kopf';
 import { ZuordnungWahl, type Zuordnung } from './Zuordnung';
@@ -30,14 +32,15 @@ import { FadenLinie } from '../ui';
 import { summeJeTagZurueck, tageZurueckBeschriftung } from '@/lib/lichtfaeden/reihen';
 
 export type ZeitJeEinheitAntwort = ZeitJeEinheit & { ok: boolean; ich: string };
-export const zeitEinheitenAdresse = (zeitraum: Zeitraum, stichtag?: string) =>
-  `/api/state/zeit/einheiten?zeitraum=${zeitraum}${stichtag ? `&stichtag=${stichtag}` : ''}`;
+/** `sicht` (10.10., Fokus-Seite): nur die Arbeit dieses Bereichs — der Server filtert (Business nie „Privat · …“, Privat nie eine Gesellschaft). */
+export const zeitEinheitenAdresse = (zeitraum: Zeitraum, stichtag?: string, sicht?: 'privat' | 'business') =>
+  `/api/state/zeit/einheiten?zeitraum=${zeitraum}${stichtag ? `&stichtag=${stichtag}` : ''}${sicht ? `&sicht=${sicht}` : ''}`;
 
 /** Die Zeilen je Einheit. `kompakt`: ohne Top-Aufgaben und ohne leere Kerneinheiten (Widget). */
-export function EinheitBalken({ a, kompakt }: { a: EinheitAuswertung; kompakt?: boolean }) {
+export function EinheitBalken({ a, kompakt, sicht }: { a: EinheitAuswertung; kompakt?: boolean; sicht?: 'privat' | 'business' }) {
   const zeilen = kompakt ? a.zeilen.filter(z => z.sek > 0) : a.zeilen;
   const max = Math.max(1, ...a.zeilen.map(z => z.sek));
-  if (!a.sek) return <Leer>Noch keine Fokus-Blöcke der Arbeit ({ARBEIT_TEXT}) in diesem Zeitraum — oben „Fokus“ starten und einer Aufgabe zuordnen.</Leer>;
+  if (!a.sek) return <Leer>Noch keine Fokus-Blöcke der Arbeit ({sicht ? ARBEIT_TEXT_JE[sicht] : ARBEIT_TEXT}) in diesem Zeitraum — „Fokus starten“ und einer Aufgabe zuordnen.</Leer>;
   return (
     <div style={{ display: 'grid', gap: kompakt ? 8 : 12 }}>
       {zeilen.map(z => {
@@ -76,15 +79,15 @@ export function EinheitBalken({ a, kompakt }: { a: EinheitAuswertung; kompakt?: 
 const pfeil = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 16, padding: '2px 8px', borderRadius: 8 } as const;
 
 /** Karte „Zeit je Einheit“: Woche/Monat, blättern, je Person und gesamt. */
-export function ZeitJeEinheitKarte({ i = 0 }: { i?: number }) {
+export function ZeitJeEinheitKarte({ i = 0, sicht }: { i?: number; sicht?: 'privat' | 'business' }) {
   const [zeitraum, setZeitraum] = useState<Zeitraum>('woche');
   const [stichtag, setStichtag] = useState<string | undefined>(undefined);
   const [wer, setWer] = useState<string>('gesamt');
   const [d, setD] = useState<ZeitJeEinheitAntwort | null | undefined>(undefined);
   const laden = useCallback(() => {
-    fetch(zeitEinheitenAdresse(zeitraum, stichtag), { cache: 'no-store' })
+    fetch(zeitEinheitenAdresse(zeitraum, stichtag, sicht), { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null)).then(x => setD(x?.ok ? (x as ZeitJeEinheitAntwort) : null)).catch(() => setD(null));
-  }, [zeitraum, stichtag]);
+  }, [zeitraum, stichtag, sicht]);
   useEffect(() => {
     laden();
     window.addEventListener(ZEIT_EREIGNIS, laden);
@@ -108,8 +111,8 @@ export function ZeitJeEinheitKarte({ i = 0 }: { i?: number }) {
           <Segmente<string> liste={[{ id: 'gesamt', label: 'Gesamt' }, ...d.personen.map(p => ({ id: p.person, label: p.name }))]} aktiv={wer} onWahl={setWer} />
         )}
       </div>
-      {d === undefined ? <Leer>lade …</Leer> : !a ? <Hinweis art="achtung">Die Zeit je Einheit ist gerade nicht erreichbar.</Hinweis> : <EinheitBalken a={a} />}
-      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 12 }}>Gezählt werden bewusste Fokus-Blöcke der Arbeit — {ARBEIT_TEXT}. Die Einheit kommt aus der zugeordneten Aufgabe, sonst aus der Wahl am Block.</div>
+      {d === undefined ? <Leer>lade …</Leer> : !a ? <Hinweis art="achtung">Die Zeit je Einheit ist gerade nicht erreichbar.</Hinweis> : <EinheitBalken a={a} sicht={sicht} />}
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 12 }}>Gezählt werden bewusste Fokus-Blöcke der Arbeit — {sicht ? ARBEIT_TEXT_JE[sicht] : ARBEIT_TEXT}. Die Einheit kommt aus der zugeordneten Aufgabe, sonst aus der Wahl am Block.</div>
     </Karte>
   );
 }
@@ -124,16 +127,17 @@ const wann = (b: FokusBlock) => {
  * abgesetzt die eigenen Privat-Blöcke mit „ins Business“ (Kevin 27.09. spät) — Rückweg „nach Privat“ verwirft die
  * Zuordnung. Das Bild von /api/state/zeit ist immer nur das eigene; die andere Person sieht man hier nie.
  */
-export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
+export function FokusBloeckeKarte({ i = 0, sicht }: { i?: number; sicht?: 'privat' | 'business' }) {
   const [bild, setBild] = useState<ZeitBild | null | undefined>(undefined);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState<string | null>(null);
   useEffect(() => {
-    const laden = () => fetch('/api/state/zeit', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => setBild(x?.bild ?? null)).catch(() => setBild(null));
+    // Mit `sicht` (10.10., Fokus-Seite) liefert der Server nur die Blöcke dieses Bereichs (`bildFuerSicht`).
+    const laden = () => fetch(`/api/state/zeit${sicht ? `?sicht=${sicht}` : ''}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => setBild(x?.bild ?? null)).catch(() => setBild(null));
     void laden();
     window.addEventListener(ZEIT_EREIGNIS, laden);
     return () => window.removeEventListener(ZEIT_EREIGNIS, laden);
-  }, []);
+  }, [sicht]);
   const senden = async (koerper: Record<string, unknown>) => {
     setFehler(null);
     try {
@@ -176,10 +180,10 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
           farbe={LEUCHT.planung} hoehe={40} achse={['vor 6 Tagen', `Fokus · ${reihe.reduce((a, v) => a + v, 0)} min`, 'heute']} style={{ marginBottom: 8 }} />;
       })()}
       {bild === undefined ? <Leer>lade …</Leer>
-        : !alle.length ? <Leer>In den letzten 7 Tagen keine Fokus-Blöcke. Oben „Fokus“ starten — oder aus einer Aufgabe heraus.</Leer>
+        : !alle.length ? <Leer>In den letzten 7 Tagen keine Fokus-Blöcke. „Fokus starten“ — oder aus einer Aufgabe heraus.</Leer>
           : (
             <>
-              {!business.length && <Leer>Keine Business-Blöcke in den letzten 7 Tagen.</Leer>}
+              {!business.length && sicht !== 'privat' && <Leer>Keine Business-Blöcke in den letzten 7 Tagen.</Leer>}
               <div style={{ display: 'grid' }}>
                 {business.map(b => (
                   <div key={b.von} style={zeile}>
@@ -190,8 +194,8 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
                 ))}
               </div>
               {privat.length > 0 && (
-                <div style={{ marginTop: 14, padding: '6px 12px', borderRadius: 12, background: 'rgba(255,255,255,.025)' }}>
-                  <div style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, padding: '6px 0 2px' }}>Privat · nur deine</div>
+                <div style={{ marginTop: sicht === 'privat' ? 0 : 14, padding: '6px 12px', borderRadius: 12, background: 'rgba(255,255,255,.025)' }}>
+                  <div style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, padding: '6px 0 2px' }}>{sicht === 'privat' ? 'Nur deine' : 'Privat · nur deine'}</div>
                   {privat.map(b => (
                     <div key={b.von} style={{ ...zeile, opacity: 0.85 }}>
                       {kopf(b)}

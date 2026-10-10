@@ -62,7 +62,11 @@ const nextConfig = {
   // Adressen bleiben gültig — Lesezeichen und ZOE-Verweise landen richtig.
   async redirects() {
     return [
-      { source: '/os/performance', destination: '/os/wachstum', permanent: false },
+      // 10.10. (Entscheidung: Fokus und Kompass zusammen, oben rechts; „Planung soll nur Planung sein“): Wachstum ist der Abschnitt Wirkung,
+      // der Kompass der Abschnitt Prioritäten der Fokus-Seite. Next reicht die Parameter weiter, der Anker öffnet den Abschnitt.
+      { source: '/os/performance', destination: '/os/fokus#wirkung', permanent: false },
+      { source: '/os/wachstum', destination: '/os/fokus#wirkung', permanent: false },
+      { source: '/os/kompass', destination: '/os/fokus#prioritaeten', permanent: false },
       // 25.09.: „Brain“ heißt in der Leiste so, die Seite liegt unter /os/wissen.
       { source: '/os/brain', destination: '/os/wissen', permanent: false },
       { source: '/os/start', destination: '/os', permanent: false },
@@ -84,8 +88,8 @@ const nextConfig = {
       // 29.09. (K5): das Alt-Dashboard /calendar (Beispieldaten) ist weg — Lesezeichen landen im Kalender.
       { source: '/calendar', destination: '/os/kalender', permanent: false },
       { source: '/calendar/:ansicht*', destination: '/os/kalender', permanent: false },
-      // 02.08.: die Fokus-Regler leben im Kompass.
-      { source: '/os/planung/fokus', destination: '/os/kompass', permanent: false },
+      // 02.08.: die Fokus-Regler lebten im Kompass — seit 10.10. die Prioritäten der Fokus-Seite.
+      { source: '/os/planung/fokus', destination: '/os/fokus#prioritaeten', permanent: false },
       // 04.10. (Aufräumen): die alte Gruppe app/(dashboard) (Beispieldaten, Stubs, eigene Leiste) ist weg — ein Weg statt zwei.
       // Lesezeichen landen auf der passenden /os-Seite. Wächter: tests/aufraeumen-routen.test.ts.
       { source: '/dashboard', destination: '/os', permanent: false },
@@ -133,7 +137,7 @@ const nextConfig = {
       { source: '/os/saeule/agents', destination: '/os/agenten', permanent: false },
       { source: '/os/saeule/planning', destination: '/os/aufgaben', permanent: false },
       { source: '/os/saeule/finance', destination: '/os/finanzen', permanent: false },
-      { source: '/os/saeule/:key', destination: '/os/wachstum', permanent: false },
+      { source: '/os/saeule/:key', destination: '/os/fokus#wirkung', permanent: false },
     ];
   },
 };

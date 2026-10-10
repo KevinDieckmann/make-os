@@ -830,6 +830,28 @@ mit einstellbar sein.“
 - Erholungs-Ziele und Fokus-Satz liegen bewusst im Art.-9-Bestand, nicht in `ziele-eigen`/`fokus-eigen`. Wächter `tests/erholung-{modell,route,ueberall}.test.ts`,
   Messlatte-Marke `erholung--kevin`.
 
+## Fokus-Steuerung — Fokus + Kompass zusammen, oben rechts, Privat und Business getrennt (10.10., Branch `fokus-steuerung`, nur lokal; UPDATES.md)
+Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehmen — Planung soll nur Planung sein … den Fokus-Bereich oben rechts aufbauen
+… Zeit — Privat wie Business einzeln.“ **Business zeigt nie Privat-Themen, Privat nie Business-Themen** — gefiltert auf dem Server.
+- **Planung** (`PlanerLeiste`) = Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen · Kapazität — nie wieder Fokus/Kompass/Wachstum dort.
+- **Fokus-Seite** `/os/fokus` (`components/os/FokusView.tsx` + `components/os/fokus/*`): Einstieg NUR der Fokus-Knopf im Kopf (läuft ein Fokus: Uhr, Klick
+  beendet über `components/os/zeit/fokus-beenden.ts` — dieselbe Stelle für Kopf und Seite). Folgt dem Kopf-Schalter (`KOPF_SEITEN` in lib/make-one/spaces.ts:
+  der Schalter bleibt stehen, ein `?space=` wird umgeschrieben); Konto „nur Business“ immer Business. Abschnitte als `Klappbar` mit Anker (`WEG.fokus(abschnitt)`,
+  `FokusAbschnitt`): Fokus (FokusTafel mit festem Bereich + Lichtfäden `space:<bereich>`) · Prioritäten · Zeit · Wirkung · nur Privat: Tagesform, „Wie wir
+  arbeiten“ (Rest des Kompass, `components/os/fokus/WieWirArbeiten.tsx`). Alte Adressen `/os/wachstum|performance|saeule/*` → `#wirkung`, `/os/kompass`,
+  `/os/planung/fokus` → `#prioritaeten` (next.config.mjs); `WEG.wachstum()` = `#wirkung`.
+- **Prioritäten & Zeit — EINE Regel** `lib/fokus/steuerung.ts` (rein) + EINE Schreib-/Lesestelle `lib/fokus/steuerung-server.ts`, Route `/api/fokus/steuerung`
+  (GET `?bereich=`, PUT `themen|vorgabe` mit Stand/409 nur volle Mitglieder, PUT `soll` jede Person für sich). Bestände getrennt: `fokus-steuerung-privat--<haushalt>`,
+  `fokus-steuerung-business--<haushalt>` (Themen: Rang = Reihenfolge, Gewicht, Zeit-Quellen, optional Einheit des Bereichs), `fokus-soll-privat--<person>`,
+  `fokus-soll-business--<person>` (h/Woche). Vorgabe nur allgemeine Themen (`vorgabeThemen`), Altbestand (`fokus-regler`, `ordnung`) nur gelesen und verteilt
+  (`themenAusAltbestand`, nur im Haushalt des Inhabers). Themen schreiben spiegelt die Gewichte in den Fokus-Regler (`reglerAusThemen`, nur Säulen des Bereichs) —
+  die Lage im Kompass tut das nicht mehr. Ist = eigene Zeitmessung 7 Tage NUR Schlüssel `<bereich>:<quelle>` + Fokus-Blöcke der Einheiten (`istJeThema`), Privat
+  dazu Erholungs-/Reha-Blöcke der Woche; Ampel `passung` (hohe Priorität = Rang 1–2 oder Gewicht ≥ 65, wenig Zeit = kritisch). Neue Zeit-Quelle = Punkt der Leiste
+  bzw. Eintrag in `zeitQuellenFuer`; neue Prüfung/Ampel-Regel nur dort.
+- **Sicht-Parameter** (serverseitig): `/api/performance?sicht=` (`lib/fokus/wirkung.ts` `wirkungFuerSicht`/`verlaufFuerSicht` — Planung/Agenten in keiner Sicht),
+  `/api/state/zeit?sicht=` (`bildFuerSicht`), `/api/state/zeit/einheiten|mandate?sicht=` (`sichtPruefer`, `zeilenFuerSicht`); Konto „nur Business“: Privat 403,
+  ohne Parameter Business. Neue Leser der Fokus-Seite: immer mit Sicht. Wächter `tests/fokus-steuerung.test.ts`.
+
 ## Ziele & Planung — Ziele, Meilensteine, Kaskade, Routinen (27.09. abends, nur lokal)
 - Ein Bauteil für alle Ebenen Tag · Woche · Monat · Quartal · Jahr: `components/os/planung/ZieleMeilensteine.tsx` (Ziele links,
   Meilensteine rechts, „+ neu“ oben, offen nach Rang, Erledigtes unten scrollend) + `usePlanung.ts` (laden/schreiben) +
@@ -1043,7 +1065,7 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   vergeben. Widgets in `components/os/flaeche/widgets.tsx` (selbstladend, `null` wenn es nichts gibt; Einstellungen
   per `EinstellungDef`; Katalog-Einträge dürfen Voreinstellungen tragen).
 - Flächen bisher: Heute (`HEUTE_STANDARD`), `gesundheit-heute`, `gesundheit-koerper`, `ernaehrung`, `zahlen`, `konto`,
-  `wachstum`, `familie-wir`, `familie-orga`, `familie-rahmen`, `fokus`, `journal`, `okr`, `system`, `business`,
+  `wachstum` (seit 10.10. Abschnitt der Fokus-Seite), `familie-wir`, `familie-orga`, `familie-rahmen`, `fokus` (seit 10.10. Klappbar-Abschnitte statt Fläche), `journal`, `okr`, `system`, `business`,
   `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`; seit 27.09. (nur lokal) `markttraktion-sales`, `markttraktion-marketing`,
   `markttraktion-event` — Standardanordnung als Daten in `lib/crm/flaechen.ts` (`KACHELN`, an `<Flaeche standard={…}>` gegeben, getestet);
   Katalog-Widgets `kanal` (Kanal-Leistung) und `event` (Nächstes Event · Make.One). `istStandard` vergleicht Titel gegen den Standard-Titel.
@@ -1089,8 +1111,8 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
     siehe Nachbesserung (fünf Einträge). `SpaceEintrag.passt` legt den Space fest, `auch` hebt nur hervor (gemeinsame
     Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung (Planung = `ziele-planung`).
   - **Unterbereiche:** ZOE-Reiter (`components/os/ZoeReiter.tsx`, `ZOE_BEREICH`: Freigaben · Agenten · Loops · Brain · Empfang) auf allen
-    ZOE-Seiten inkl. Research/Content/Meeting/Board/Prospecting (erreichbar über ZOE › Agenten). Fokus · Kompass · Wachstum = Reiter der
-    `PlanerLeiste`. Mandate-Seite hat „Unternehmen“ als dritten Reiter.
+    ZOE-Seiten inkl. Research/Content/Meeting/Board/Prospecting (erreichbar über ZOE › Agenten). Fokus · Kompass · Wachstum sind seit 10.10.
+    die Fokus-Seite oben rechts (Abschnitt „Fokus-Steuerung“), nicht mehr Reiter der `PlanerLeiste`. Mandate-Seite hat „Unternehmen“ als dritten Reiter.
   - **Einstellungen** (`/os/system`, Titel „Einstellungen“): Gruppen nur in `lib/make-one/einstellungen.ts` (`EINSTELLUNGEN_GRUPPEN`: Konto &
     Sicherheit · Verbindungen · Daten & Datenschutz · Betrieb) — jede Seite genau einmal, keine ZOE-Dinge.
   - **Schnellsuche:** alle Seiten in `lib/make-one/seiten.ts` (`SEITEN_SUCHE`) — jede neue Seite dort eintragen. Namen: „Finanzen“ (nicht
@@ -2169,7 +2191,7 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   nur als Zähler. Speicher: `finanzchef` (Business) · `haushalt-chef--<h>`.
 - **Navigation:** seit 08.10. gilt Abschnitt „Spaces Privat/Business“ › Aufräumen Etappe 1 (Leiste je Space, schlanker Kopf, Heute
   unter `/os`). Die Fassung vom 24.09. (links ZOE · Brain · Markttraktion · Fokus · Aufgaben, `WachstumsKopf`) ist überholt. `/os/fokus`
-  ist eine eigene Seite (Fokus je Horizont, Tagesform, Regler), erreichbar über Planung.
+  ist seit 10.10. die Steuerungsseite hinter dem Fokus-Knopf im Kopf (Abschnitt „Fokus-Steuerung“).
 - **Familie & Partnerschaft (24.09.2026):** `/os/familie`, Logik `lib/familie/`,
   Speicher `familie--<haushalt>` nur über `haushaltVon`. Gemessen wird der
   Pflege-Rhythmus des PAARES (28 Tage, Gewichte in `logik.ts`), nie eine Person,

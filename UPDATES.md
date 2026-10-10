@@ -4,6 +4,62 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Fokus-Steuerung: Fokus + Kompass zusammen, oben rechts, Privat und Business getrennt (nur lokal — Branch `fokus-steuerung`, Basis 5249d903 = `update-0910b`)
+
+Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehmen — Planung soll nur Planung sein. Prio und Fokus geben wir im
+Fokus-Bereich. Den Fokus-Bereich oben rechts aufbauen. Dort auch das Thema Zeit — Privat wie Business einzeln … Eine riesige Steuerungsseite.“
+Befund am Bildschirm: die Business-Sicht zeigte Familie & Partnerschaft, Gesundheit, Tagesform und „Privat · Selbstständigkeit“.
+
+**Gebaut:**
+- **Planung ist nur Planung**: Reiter Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen · Kapazität (`PlanerLeiste`). Fokus, Kompass und
+  Wachstum sind raus; die Leiste „Planung“ leuchtet auf der Fokus-Seite nicht mehr.
+- **Fokus-Seite `/os/fokus`** (Knopf „Fokus“ oben rechts im Kopf öffnet sie; läuft ein Fokus, zeigt der Knopf die Uhr und beendet per Klick wie
+  bisher). Sie folgt dem Kopf-Schalter Privat · Business (Konto „nur Business“: immer Business); der Schalter bleibt dort stehen. Abschnitte zum
+  Auf-/Zuklappen (Anker `#fokus`, `#prioritaeten`, `#zeit`, `#wirkung`, `#tagesform`, `#arbeiten`), Sprungleiste oben, Hauptaktion „Fokus starten“
+  (Thema wählen) bzw. die laufende Uhr mit „Beenden“:
+  - **Fokus** — Unser Fokus · Mein Fokus je Horizont (Fokus-Tafel mit FESTEM Bereich), dazu die Lichtfäden NUR dieses Bereichs (`space:<bereich>`).
+  - **Prioritäten** (früher Kompass: Reihenfolge + Säulen-Regler) — je Bereich EIGENE Themenliste: Rang (▲▼), Gewicht (Regler, ab 65 Vorfahrt), Zeit-
+    Quellen (Seiten des eigenen Bereichs), umbenennen, ergänzen, entfernen, „Vorgabe“. Vorgabe nur allgemein: Privat Familie & Partnerschaft · Gesundheit
+    & Sport · Erholung · Haushalt · Freunde · Lernen (+ Privat-Arbeits-Einheit); Business Sales · Marketing · Produkt · Kunden & Mandate · Finanzen &
+    Admin · Netzwerken + je Business-Gesellschaft. Der Altbestand (`fokus-regler` health/social/business/finance/planning, `ordnung`) wird beim Lesen
+    auf die Bereiche verteilt (nichts geht verloren, nie umgeschrieben). Geänderte Gewichte spiegeln in den Fokus-Regler (nur die Säulen des eigenen
+    Bereichs) — Tagesplan, Planen und Wochenvorschlag gewichten weiter danach.
+  - **Zeit** — je Thema mein Soll (h/Woche, Eingabe) gegen meine Ist-Zeit der letzten 7 Tage (Zeitmessung Seiten + bewusst NUR aus Schlüsseln des
+    Bereichs; Einheiten-Themen aus ihren Fokus-Blöcken; Privat dazu „eingeplant“ aus Erholungs-/Reha-Blöcken der Woche), Ampel „Fokus und Zeit passen
+    (nicht) zusammen“ (hohe Priorität, wenig Zeit = rot), „▶“ startet einen Fokus für das Thema. Darunter Business: Zeit je Einheit, Fokus-Blöcke,
+    Zeit je Mandat — Privat: Fokus-Blöcke (und Zeit je Einheit der Privat-Einheit) — alle mit `?sicht=` vom Server gefiltert.
+  - **Wirkung** (früher Seite „Wachstum“) — der Score NUR mit den Säulen des Bereichs (Privat: Gesundheit, Familie, Privat-Finanzen; Business:
+    Business-Index, Business-Finanzen; Planung/Agenten rechnen über beide Bereiche und stehen in keiner Sicht). Der Gesamt-Score bleibt Karte auf Heute.
+  - **Tagesform** und **Wie wir arbeiten** (Rest des Kompass: Lage, Tageslast, Postfach, Agenten, Schutz, eigene Filter/Stichworte/Bezeichnungen) nur
+    in Privat (der Kompass-Bestand gehört laut Speicher-Register zu Privat). Die Lage setzt den Fokus-Regler nicht mehr (das tun die Prioritäten).
+- **Serverseitig getrennt** (nie nur ausgeblendet): `GET/PUT /api/fokus/steuerung?bereich=` (neu; Themen mit Stand/409, nur volle Mitglieder; Soll je
+  Person), `GET /api/performance?sicht=`, `GET /api/state/zeit?sicht=`, `/api/state/zeit/einheiten?sicht=`, `/api/state/zeit/mandate?sicht=` — Business
+  bekommt nie Familie/Gesundheit/Erholung/Tagesform/Privat-Einheit, Privat nie Business-Themen; Konto „nur Business“ → Privat 403 und ohne Parameter
+  immer Business. Zeit je Einheit im Business ohne die Zeile „Privat · …“ (auch für Konten „nur Business“).
+- **Alte Adressen**: `/os/wachstum`, `/os/performance`, `/os/saeule/*` → `/os/fokus#wirkung`; `/os/kompass`, `/os/planung/fokus` → `/os/fokus#prioritaeten`
+  (`next.config.mjs`; die Seiten unter app/os sind weg). Links nur über `WEG.fokus(abschnitt)` (`WEG.wachstum()` = `#wirkung`); Schnellsuche „Fokus“,
+  „Prioritäten und Kompass“, „Zeit je Thema“, „Wirkung (Wachstums-Score)“.
+
+**Daten & Recht:** neue Bestände `fokus-steuerung-privat--<haushalt>` (Bereich privat), `fokus-steuerung-business--<haushalt>` (business), `fokus-soll-
+privat--<person>` (person), `fokus-soll-business--<person>` (business) — Speicher-Register mit Angaben, Soll in `PERSON_BESTAENDE` (Export + Löschen),
+Themen in `NICHT_PERSOENLICH`. Routen-Register `fokus/steuerung` (haushalt, `planZugangVon`). Nur Namen, Gewichte, Stunden — keine Dritten.
+Tests: `tests/fokus-steuerung.test.ts` (Regel, Routen „Sicht X bekommt nichts aus Y“, Navigation); angepasst: `aufraeumen-etappe1/3`, `spaces`,
+`design-standard`, `design-privat`, `fokus-unser-mein`, `neutral-rest`.
+
+**So testet ihr (in Klicks):**
+1. Oben rechts „Fokus“ antippen → die Fokus-Seite öffnet sich im Bereich des Schalters. Unter Planung gibt es die Reiter Fokus/Kompass/Wachstum nicht mehr.
+2. Schalter auf **Business**: Prioritäten zeigen Sales, Marketing, Produkt, Kunden & Mandate, Finanzen & Admin, Netzwerken und die Gesellschaften — kein
+   Familie, keine Gesundheit, kein Erholung; keine Tagesform, kein „Wie wir arbeiten“; Zeit je Einheit ohne „Privat · Selbstständigkeit“.
+3. Schalter auf **Privat**: Familie & Partnerschaft, Gesundheit & Sport, Erholung, Haushalt, Freunde, Lernen (+ Selbstständigkeit) — keine Business-Themen.
+4. Prioritäten: ein Thema mit ▲ nach oben, Regler ziehen und loslassen, über ⚙ die Zeit-Quellen wählen, „+ Thema“ anlegen, ✕ entfernen → Seite neu laden,
+   alles steht. Im zweiten Browser-Fenster gleichzeitig ändern → „inzwischen geändert“, die neue Fassung ist da.
+5. Zeit: beim Thema „Soll h/Woche“ z. B. `3` eintragen, Enter → Ist/Soll-Balken und Ampel. Die zweite Person sieht dein Soll nicht.
+6. „▶“ bei einem Thema bzw. oben „Fokus starten“ → oben rechts läuft die Uhr; „Beenden“ (Seite oder Kopf) → die Zeit zählt beim Thema.
+7. Alte Lesezeichen `/os/kompass` und `/os/wachstum` landen auf Fokus › Prioritäten bzw. › Wirkung.
+
+**Rückweg:** die neuen Bestände kennt der alte Stand nicht (er liest weiter `fokus-regler`, `ordnung`, `kompass` — sie bleiben bestehen; die Gewichte der
+Prioritäten stehen gespiegelt im Fokus-Regler). Der alte Stand hat die Seiten `/os/kompass` und `/os/wachstum` wieder.
+
 ## 10.10.2026 — Erholung: eigener Reiter unter Gesundheit, überall einstellbar (nur lokal — Branch `erholung`, Basis 475bcb06 = `update-0910b`)
 
 Kevin 10.10.: „Einen Erholungsbereich — manche müssen extrem viel erholen bzw. Reha machen, die zweite Person nach dem Sport. Ein Bereich, wo es

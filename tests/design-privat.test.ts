@@ -24,10 +24,11 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 }
 
 /** Alle Dateien des Bereichs Privat · ZOE · System. */
-const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche'];
+// 10.10.: Kompass und Wachstum sind Abschnitte der Fokus-Seite (components/os/fokus).
+const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche', 'components/os/fokus'];
 const EINZELN = [
-  'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'KompassView', 'WissenView',
-  'HeuteView', 'ZoeReiter', 'WachstumView', 'StapelView', 'StapelProtokoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
+  'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'FokusView', 'WissenView',
+  'HeuteView', 'ZoeReiter', 'StapelView', 'StapelProtokoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
   'KontoView', 'AnmeldeAdressen', 'SystemView', 'VerbindungenView', 'DatenbasisView', 'StammdatenView', 'ZoeStart',
 ].map(n => `components/os/${n}.tsx`);
 const ALLE = [...ORDNER.flatMap(d => dateien(d)), ...EINZELN];

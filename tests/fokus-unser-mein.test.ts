@@ -209,8 +209,9 @@ describe('ZOE/Agenten lesen den Fokus der AUSLÖSENDEN Person — EINE Stelle', 
     expect(lies('lib/brain.ts')).toContain('const fokus = await fokusZeilenFuer(person);');
     expect(lies('lib/zoe/werkzeuge.ts')).toContain("innen('/api/planung/fokus', 'PUT'");
     expect(lies('lib/zoe/innen.ts')).toContain("'/api/planung/fokus'");
-    for (const f of ['components/os/FokusView.tsx', 'components/os/HorizontView.tsx', 'components/os/kalender/Planen.tsx', 'components/os/KompassView.tsx']) expect(lies(f), f).toContain('<FokusTafel');
-    for (const f of ['components/os/FokusView.tsx', 'components/os/HorizontView.tsx', 'components/os/RitualView.tsx', 'components/os/TagesplanView.tsx', 'components/os/kalender/Planen.tsx', 'components/os/WachstumView.tsx']) {
+    // 10.10.: der Kompass ist in der Fokus-Seite aufgegangen — die Tafel steht dort einmal (fester Bereich).
+    for (const f of ['components/os/FokusView.tsx', 'components/os/HorizontView.tsx', 'components/os/kalender/Planen.tsx']) expect(lies(f), f).toContain('<FokusTafel');
+    for (const f of ['components/os/FokusView.tsx', 'components/os/HorizontView.tsx', 'components/os/RitualView.tsx', 'components/os/TagesplanView.tsx', 'components/os/kalender/Planen.tsx', 'components/os/fokus/Wirkung.tsx', 'components/os/fokus/WieWirArbeiten.tsx']) {
       expect(lies(f), f).not.toMatch(/body: JSON\.stringify\(\{ horizont: [^}]*fokus/);
       expect(lies(f), f).not.toContain('fokusFuerSpace(');
     }

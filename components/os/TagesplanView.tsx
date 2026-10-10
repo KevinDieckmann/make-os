@@ -2,6 +2,7 @@
 import { useSpace } from '@/hooks/useSpace';
 
 import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 // ─── MAKE OS — Tagesplanung ─────────────────────────────────────────────────
 // Kevins Tages-Cockpit: oben stehen die FOKUSTHEMEN (Monats-Fokus + Bereiche
 // mit hohem Fokus-Regler), darunter der ganze Tag als Kalender — auch wenn
@@ -276,13 +277,13 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     <Seite titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste aktiv="tag" tag={heute} /></div></div>}>
       {/* ── Die Fokusthemen stehen über dem Tag ── */}
       <Karte i={0} akzent={LEUCHT.schlaf}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/kompass" style={verweis}>Regler ›</Link>}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.fokus('prioritaeten')} style={verweis}>Prioritäten ›</Link>}>
           Fokus{fokusQuelle && fokusQuelle !== 'Tag' ? ` · ${fokusQuelle}` : ''}
         </Ueberschrift>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, lineHeight: 1.35 }}>
           {fokusText
             ? <><span style={{ color: LEUCHT.schlaf }}>◎</span> {fokusText}</>
-            : <>Worauf es heute ankommt <Link href="/os/fokus" style={{ ...verweis, fontSize: TYP.bedien, marginLeft: 6 }}>Fokus setzen ›</Link></>}
+            : <>Worauf es heute ankommt <Link href={WEG.fokus('fokus')} style={{ ...verweis, fontSize: TYP.bedien, marginLeft: 6 }}>Fokus setzen ›</Link></>}
         </div>
         {(fokusSaeulen.size > 0 || ziele.length > 0) && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
@@ -397,7 +398,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
                 </Ziehbar>
               ))}
             </div>
-            <Ueberschrift rechts={<span>◎ = <Link href="/os/kompass" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+            <Ueberschrift rechts={<span>◎ = <Link href={WEG.fokus('prioritaeten')} style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {offeneAufgaben.map(t => (
                 <Ziehbar key={t.id} farbe={t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe} daten={{ aufgabe: { taskId: t.id, titel: t.title } }} breit={240}>
