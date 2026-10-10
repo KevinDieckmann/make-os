@@ -4,6 +4,86 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Agenten-Grundausstattung aus dem Brain, Wissen je Head (nur lokal — Branch `agenten-grundausstattung`, Basis 7e80f4fc)
+
+Kevin 09.10. spät: „Pack bitte schon die vorgefertigten Bots bei ZOE ein — die ganzen Head ofs und alle Mitarbeiter, die wir brauchen. Ich habe
+keinen Bock, die alle nochmal neu einzutragen, da hatten wir ja schon welche. Und das Sales Brain kannst du auch direkt dem Head of Sales zur
+Verfügung stellen.“ Dazu die Regel vom selben Abend: **„Firma und Privat liegen getrennt — auch in der Datenhaltung.“**
+
+**Was es schon gab:** Die Heads und ihre Mitarbeiter-Vorlagen stehen fest im Katalog (`lib/agenten/katalog.ts`: 11 Business-Heads, 5 Privat-Heads,
+rund 40 Vorlagen) — sie sind nach dem Neustart sofort da, niemand muss sie eintragen. Was je Instanz dazukommt: der Auftrag je Head
+(`HeadEinstellung.auftrag`), eigene Mitarbeiter (Werkstatt) und — neu — das Wissen je Business-Head. Die früheren Agenten-Notizen liegen im Vault
+(`01. KD Ventures Brain/Agenten/`: Index + je Abteilung eine Notiz mit Mission, Sub-Agenten, Wissen, Darf, Freigabe-Gate, Modellstufe).
+
+**1. „Aus dem Brain übernehmen“** (Agenten › unten rechts „⋯“ › „Aus dem Brain übernehmen“; nur Inhaber, Dienstweg 403):
+- liest den Agenten-Ordner des Vaults in der **Agenten-Sicht** (nie `privat`) — Ordner gemerkt (Knopf „Als Agenten-Ordner merken“) oder automatisch der
+  Ordner mit `_Agenten_Index`; die Notizen werden **nach Struktur** gelesen (Kopf + Abschnitts-Überschriften), nie nach festen Inhalten.
+- **Vorschau** je Notiz: Ziel-Head (über Kennung, Name, Synonyme wie „finance“ → Finanzen, „ops“ → Operations, „product“ → Produkt, und den Index;
+  Kopf `type: mitarbeiter` + `unter: <head>` → Mitarbeiter), wählbar „anderer Head“, „als Mitarbeiter unter …“ oder „überspringen“. Darunter mit
+  Schaltern: **Auftrag** (aus Mission/Darf/Freigabe; neu · aktualisieren · gleich · „eigener“ = von Hand geschrieben, nur mit ausdrücklichem Ersetzen ·
+  zu lang = nie gekürzt), **Modellstufe** der Notiz (nie von selbst), **Mitarbeiter** je Kürzel aus „Sub-Agenten“ (Vorlage vorhanden · ausgeschaltet →
+  einschalten · gibt es bei einem anderen Head → dort nutzen, nicht doppelt · früherer Fach-Agent → neuer eigener Mitarbeiter mit diesem Fach-Agenten,
+  unter Business nur die ohne private Daten · nur geplant/kein Fach-Agent → übersprungen mit Grund), **Wissen** (Verweise aus dem ersten Absatz von
+  „Wissen“: ein Ordner, wenn er nach der Notiz heißt — z. B. das Sales-Brain —, sonst die Notiz; „Firmen/“ → der Ordner; privat oder nicht da → „nicht
+  gefunden“). Abschnitte ohne Rolle (Werkzeug-Manifest, Rückgabe …) stehen als „nicht übernommen“ da.
+- **Nur Business-Heads.** Eine Notiz, die zu einem Privat-Head passt (Gesundheit …), wird übersprungen — Privat-Agenten richtet jede Person selbst ein.
+- **Übernehmen** schickt nur die Auswahl; die Inhalte liest der Server neu aus dem Vault. Geschrieben wird über die vorhandenen Wege: Einstellungen je Head
+  (`einstellungAendern`, Stand aus der Vorschau → „Inzwischen geändert“), Werkstatt (`mitarbeiterAnlegen`), Wissen (eigener Bestand, s. u.). Der Auftrag
+  trägt `auftragQuelle` (Notiz + Fingerabdruck) und steht im System-Text **gekapselt** (`fremd()`): Text aus dem Vault ist Daten, nie Befehl — wie ein Skill
+  aus fremdem Text; der Lauf gilt dann als „fremd gelesen“. Ein Mitarbeiter aus einer Notiz trägt `ausFremdemText`, einer aus einem früheren Fach-Agenten
+  nicht (Name/Rolle kommen aus der Software). Zweite Übernahme: nichts doppelt (`Mitarbeiter.herkunft`, Fingerabdruck des Auftrags).
+
+**2. Wissen je Business-Head im Brain** (Info › „Wissen im Brain“ am Head, bzw. aus der Vorschau):
+- eigener **Business-Bestand `agenten-wissen--<haushalt>`** (nur Business-Heads — Privat-Heads 400; dort auch der gemerkte Agenten-Ordner) — bewusst NICHT
+  in `agenten-einstellung--<haushalt>`, weil dort auch Familie und die Abschnitte der Privat-Heads liegen. Schreiben `POST /api/agenten { aktion: 'wissen' }`:
+  volle Mitglieder, die den Head sehen; Pfade müssen in der Agenten-Sicht existieren (nie privat; Schreibweise wie im Vault), Stand → 409.
+- Der Head bekommt das Agenten-Werkzeug **`wissen_suchen`** (Suche bzw. eine Notiz ganz — NUR in seinen Ordnern, gekapselt, Kategorie `brain`; nur wenn
+  „Brain“ für die KI an ist; nie bei „ZOE fragt den Head“, nie für Web-Mitarbeiter) und im System-Text „DEIN WISSEN IM BRAIN: …“. Modus „Nur hier
+  suchen“: auch `suche_wissen`/`lies_notiz` des Heads sehen nur diese Ordner. Die Suche filtert in `suche()`/`notiz()` (lib/zoe/vault.ts) und im FTS5-Index
+  **in der Abfrage** (`lib/brain/index.ts`) — Sicht wie immer vor dem Ranking.
+
+**3. Nachholen aus dem Archiv** (`scripts/neustart-nachholen.mjs`): holt NUR `head-sales`, `head-marketing`, `head-event` (Business) — Merksätze,
+entschiedene Vorschläge (= Lernstand: Annahmequote, Muster, Ablehngründe) und die Autonomie. Nicht: Berichte, offene Vorschläge, Takt-Zeiten. Nie:
+`agents-config` (mischt Business und Privat), `agenten-skills--*`/`-einstellung--*` (mischen Business und Familie), `zoe-gedaechtnis` (kann Gesundheit/
+Finanzen enthalten), Verläufe/Protokolle/Stapel, Konten/Zugänge, Gesundheit, Finanzen. Ziel schon da (der Takt hat seit dem Neustart Berichte geschrieben)
+→ zusammengeführt, **das laufende gewinnt**, aus dem Archiv kommt nur, was fehlt; die bisherige Datei liegt danach unverändert unter
+`<daten>/archiv/nachholen-vor-<name>-<zeit>.json`. Dieselbe Krypto wie der Umzug (`textOeffnen`, `huelleImModus`, AAD = Bestandsname), Probelauf zuerst.
+
+**So testet ihr (lokal, mit Wegwerf-Vault):** Agenten öffnen › unten rechts „⋯“ › „Aus dem Brain übernehmen“ → Ordner prüfen → je Notiz Ziel, Auftrag
+(„Auftrag ansehen“), Mitarbeiter, Wissen ansehen → „Übernehmen (n)“ → Ergebnisliste grün. Dann Head of Sales › Info › „Dein Auftrag“: Hinweis „Aus dem
+Brain übernommen“; „Wissen im Brain“: der Sales-Brain-Ordner; Mitarbeiter: neuer „Outreach-Agent“. Im Chat mit Head of Sales eine Frage zum Sales-Brain
+stellen — er nutzt „Wissen suchen“ und nennt die Quelle. Fenster erneut öffnen: alles steht auf „schon da“, „Übernehmen“ ist aus.
+
+**Server-Schritte (mit dem nächsten Upload; erst NACH dem Ausrollen dieses Stands):**
+1. **Probelauf Nachholen** (App und Arbeiter kurz anhalten — das Skript bricht sonst mit Ausgang 3 ab):
+   `cd /srv/make-os/app && docker compose stop arbeiter app && docker compose run --rm --no-deps -T -v /srv/make-os/daten-archiv-2026-10-09:/nachholen/archiv:ro -v /srv/make-os/daten:/nachholen/daten app node scripts/neustart-nachholen.mjs --archiv /nachholen/archiv --daten /nachholen/daten --bestand head-sales,head-marketing,head-event`
+   Lesen: je Head „neu angelegt“ bzw. „zusammengeführt“, Zahlen Archiv/vorher/nachher (Merksätze, entschiedene Vorschläge) — keine Inhalte.
+2. **Ausführen** (derselbe Aufruf mit `--ausfuehren`):
+   `cd /srv/make-os/app && docker compose run --rm --no-deps -T -v /srv/make-os/daten-archiv-2026-10-09:/nachholen/archiv:ro -v /srv/make-os/daten:/nachholen/daten app node scripts/neustart-nachholen.mjs --archiv /nachholen/archiv --daten /nachholen/daten --bestand head-sales,head-marketing,head-event --ausfuehren`
+   Ende: „Geschrieben: … — zurückgelesen und gleich.“ Danach `sudo ls -ln /srv/make-os/daten | grep head-` (dieselbe Nummer wie die anderen Dateien).
+3. **Starten:** `cd /srv/make-os/app && docker compose up -d app arbeiter && docker compose ps` (bis „healthy“).
+4. **Grabsteine anwenden** (die nachgeholten Vorschläge nennen Kontakte — wie nach jedem Restore):
+   `cd /srv/make-os/app && docker compose exec -T app node -e "fetch('http://localhost:3000/api/crm/datenschutz',{method:'POST',headers:{'content-type':'application/json','x-make-key':process.env.MAKE_OS_KEY||''},body:JSON.stringify({aktion:'grabsteine'})}).then(async r=>{console.log(await r.text());process.exit(r.ok?0:1)}).catch(e=>{console.error(e.message);process.exit(1)})"`
+5. **In der App (als Inhaber):** Agenten › „⋯“ › „Aus dem Brain übernehmen“ → der Ordner `01. KD Ventures Brain/Agenten` ist gefunden (sonst wählen und
+   „Als Agenten-Ordner merken“) → Vorschau prüfen: sechs Notizen mit Ziel (Finanzen, Marketing, Operations, Produkt, Sales, CEO-Office), „people“ ohne Ziel
+   (gehört zu Privat — überspringen). Wissensverweise, die nicht passen (z. B. eine ganze Firmen-Notiz für einen Head, der sie nicht braucht), abschalten. →
+   „Übernehmen“.
+6. **Sales-Brain → Head of Sales:** In der Vorschau steht bei der Sales-Notiz „Ordner „01. KD Ventures Brain/02_Sales_Brain““ schon an. Sonst: Head of Sales ›
+   Info › „Wissen im Brain“ › Pfad `01. KD Ventures Brain/02_Sales_Brain` › „Dazu“ › „Speichern“.
+
+**Rückweg:** Übernahme — je Head unter Info › „Dein Auftrag“ leeren bzw. „Wissen im Brain“ leeren, eigene Mitarbeiter ausschalten. Nachholen — die Datei aus
+`/srv/make-os/daten/archiv/nachholen-vor-<name>-<zeit>.json` zurückkopieren (App angehalten) bzw. `head-*.json` löschen, wenn es keine gab. Der alte Stand
+liest `auftragQuelle`, `Mitarbeiter.herkunft` und `agenten-wissen--*` nicht (optionale Felder bzw. eigener Bestand) — nichts bricht.
+
+**Bauteile:** `lib/agenten/brain-agenten.ts` (rein: lesen, zuordnen, planen, Auswahl prüfen) · `brain-agenten-server.ts` · `wissen.ts` (rein) ·
+`wissen-server.ts` (Business-Bestand, Schreibweg, Art. 15/17) · `wissen-werkzeug.ts` (`wissen_suchen`) · Route `app/api/agenten/brain` (Register: inhaber) ·
+`components/os/agenten/BrainUebernahme.tsx` · `lib/neustart/nachholen(-lauf).mjs` + `scripts/neustart-nachholen.mjs`. Tests: `tests/agenten-brain-uebernahme.test.ts`,
+`tests/agenten-wissen.test.ts`, `tests/neustart-nachholen.test.ts` (erfundene Vaults und Daten).
+
+**Offen (bewusst nicht gebaut):** Wissen für Privat-Heads (bräuchte einen eigenen Bestand je Person); `head_fragen` (ZOE fragt einen Head) bekommt
+`wissen_suchen` nicht (dort gibt es keine Agenten-Werkzeuge); `agenten-einstellung--<haushalt>` und `agenten-skills--<haushalt>` mischen weiterhin Business
+und Familie — die Trennung nach der neuen Regel ist ein eigenes Paket; ZOEs Gedächtnis (`zoe-gedaechtnis`) bleibt im Archiv (Entscheidung Kevin).
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.
