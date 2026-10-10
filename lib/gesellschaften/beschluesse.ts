@@ -248,6 +248,33 @@ export function ereignisseVon(b: Pick<Beschluss, 'art' | 'aenderungen'>): Ereign
 /** Braucht der Beschluss eine Eintragung im Handelsregister? (Satzung, Kapital, Geschäftsführung, Sitz, Firmierung, Gegenstand.) */
 export const braucheEintragung = (b: Pick<Beschluss, 'art' | 'aenderungen'>): boolean => ereignisseVon(b).length > 0;
 
+/** Kann ein Beschluss überhaupt Folgen haben (Pflichten, Fassung, Cap-Table)? */
+export const kannFolgenHaben = (b: Pick<Beschluss, 'art' | 'aenderungen'>): boolean => braucheEintragung(b) || (b.aenderungen?.length ?? 0) > 0 || b.art === 'kapitalmassnahme';
+
+/** Nur so junge Beschlüsse bekommen ihre Folgen von selbst vorgeschlagen (Tage seit dem Beschlusstag). */
+export const FOLGEN_TAGE = 90;
+export const AELTER_HINWEIS = 'Älterer Beschluss — keine Folgen vorgeschlagen.';
+
+/**
+ * Schlägt MAKE OS die Folgen von sich aus vor? (rein, Entscheidung 10.10.: „alle historischen Beschlüsse werden nachgetragen — sonst eine Flut alter
+ * Folgen“) Nur, wenn der Beschluss weder Entwurf noch aufgehoben ist und sein Datum höchstens `FOLGEN_TAGE` zurückliegt. Ältere (nachgetragene) Beschlüsse
+ * bekommen Folgen nur, wenn eine Person ausdrücklich „Folgen vorschlagen“ anklickt — dieselbe Regel für Import und Handeingabe.
+ */
+export function folgenFaellig(b: Pick<Beschluss, 'datum' | 'status'>, heute: string): boolean {
+  if (b.status === 'entwurf' || b.status === 'aufgehoben') return false;
+  return tageZwischen(b.datum, heute) <= FOLGEN_TAGE;
+}
+
+/**
+ * Vorbelegung des Formulars aus einem Dokument (rein): liegt das erkannte Datum mehr als `FOLGEN_TAGE` zurück, ist der Beschluss vermutlich längst
+ * erledigt — eintragungspflichtige (Satzung, Kapital, Geschäftsführung …) stehen auf „eingetragen“, die übrigen auf „gefasst“; Folgen schlägt MAKE OS
+ * dann nicht vor (`folgenFaellig`). Sonst „gefasst“.
+ */
+export function dokumentVorbelegung(v: { datum?: string; art?: BeschlussArt; aenderungen?: Beschluss['aenderungen'] }, heute: string): { status: BeschlussStatus; aelter: boolean; hinweis?: string } {
+  if (!v.datum || tageZwischen(v.datum, heute) <= FOLGEN_TAGE) return { status: 'gefasst', aelter: false };
+  return { status: braucheEintragung({ art: v.art ?? 'gesellschafterbeschluss', aenderungen: v.aenderungen }) ? 'eingetragen' : 'gefasst', aelter: true, hinweis: AELTER_HINWEIS };
+}
+
 /**
  * „Gültig ab“ einer Fassung aus dem Beschluss: Wirkung ab, sonst — bei satzungsrelevanten Merkmalen — der Tag der Eintragung (§ 54 Abs. 3 GmbHG),
  * sonst der Beschlusstag. Fehlt die Eintragung noch, gilt vorläufig der Beschlusstag (die Oberfläche sagt es).

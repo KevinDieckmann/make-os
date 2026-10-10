@@ -11,7 +11,7 @@ import { neueKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { istGesellschaft, gehoertZuPrivat, istGesellschaftId, type GesellschaftId } from '@/lib/einheiten';
 import { aktiveEintraege, anzeigeName, gesellschaftVon, type Beschluss, type RegisterDatei, type RegisterGesellschaft } from './modell';
-import { beschlussFolgen, beschlussNummern, buchDokument, fassungAb, nummerText, type BeschlussFolge } from './beschluesse';
+import { AELTER_HINWEIS, beschlussFolgen, beschlussNummern, buchDokument, fassungAb, folgenFaellig, nummerText, type BeschlussFolge } from './beschluesse';
 import { beschlussAusText, type ImportVorschlag } from './beschluss-import';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 
@@ -44,16 +44,19 @@ export async function folgenJetzt(haushalt: string, register: RegisterDatei | nu
 
 /**
  * Nach „gefasst“ (Register-Route): die Folgen des Beschlusses als Vorschläge in den Stapel — für die Person, die ihn gefasst gestellt hat (nur mit
- * Zugang zur Firmen-Akte). Je Beschluss und Folge höchstens einmal (Marke im Bestand des Head of Recht; der Stapel legt offene Doppelte ohnehin nicht
- * zweimal). Wirft nie.
+ * Zugang zur Firmen-Akte). Von selbst nur für junge Beschlüsse (`folgenFaellig`, ≤ 90 Tage) — nachgetragene ältere nur mit `ausdruecklich` (Knopf
+ * „Folgen vorschlagen“, POST /api/gesellschaften/beschluesse). Je Beschluss und Folge höchstens einmal (Marke im Bestand des Head of Recht; der Stapel
+ * legt offene Doppelte ohnehin nicht zweimal). Wirft nie.
  */
-export async function beschlussFolgenLegen(haushalt: string, person: string, gid: string, beschlussId: string, heute = localDay()): Promise<{ gelegt: number; hinweise: string[] }> {
+export async function beschlussFolgenLegen(haushalt: string, person: string, gid: string, beschlussId: string, o: { ausdruecklich?: boolean; heute?: string } = {}): Promise<{ gelegt: number; hinweise: string[]; aelter?: true }> {
+  const heute = o.heute ?? localDay();
   try {
     const r = await import('@/lib/recht/server');
     const z = await r.rechtZugangFuer(person);
     if (!z || z.haushalt !== haushalt) return { gelegt: 0, hinweise: [] };
     const { register, g, b } = await lade(haushalt, gid, beschlussId);
     if (b.status === 'entwurf' || b.status === 'aufgehoben') return { gelegt: 0, hinweise: [] };
+    if (!o.ausdruecklich && !folgenFaellig(b, heute)) return { gelegt: 0, hinweise: [AELTER_HINWEIS], aelter: true };
     const { folgen, hinweise } = await folgenJetzt(haushalt, register, g, b);
     const stand = await r.ladeRechtStand(haushalt);
     const neu = folgen.filter(f => !stand.marken?.[folgeMarke(f.schluessel)]);

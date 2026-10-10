@@ -22,8 +22,8 @@ import {
   type Beschluss, type BeschlussAenderung, type BeschlussArt, type BeschlussStatus, type BeschlussVerweis, type Gremium, type SatzungMerkmal, type Stimme, type Stimmabgabe,
 } from '@/lib/gesellschaften/modell';
 import {
-  BESCHLUSS_HINWEIS, abstimmungsErgebnis, artLabel, beschlussNummern, beteiligtName, braucheEintragung, buchJahre, buchListe, gremiumLabel, gremiumVon,
-  merkmalLabel, nummerText, statusLabelB, type BeschlussFolge,
+  AELTER_HINWEIS, BESCHLUSS_HINWEIS, FOLGEN_TAGE, abstimmungsErgebnis, artLabel, beschlussNummern, beteiligtName, braucheEintragung, buchJahre, buchListe,
+  dokumentVorbelegung, folgenFaellig, gremiumLabel, gremiumVon, kannFolgenHaben, merkmalLabel, nummerText, statusLabelB, type BeschlussFolge,
 } from '@/lib/gesellschaften/beschluesse';
 import { BESCHLUSS_VORLAGEN, BESCHLUSS_VORLAGE_HINWEIS, beschlussAusVorlage } from '@/lib/gesellschaften/beschluss-vorlagen';
 import type { ImportVorschlag, ImportFeld } from '@/lib/gesellschaften/beschluss-import';
@@ -64,7 +64,7 @@ export function BeschluesseBereich({ g, daten, liste, waehle, onNeu, risiken, of
   );
 }
 
-interface Entwurf { art: BeschlussArt; gremium?: Gremium; titel: string; inhalt: string; aenderungen: BeschlussAenderung[]; vorlage?: string; datum?: string; dateiIds?: string[] }
+interface Entwurf { art: BeschlussArt; gremium?: Gremium; titel: string; inhalt: string; aenderungen: BeschlussAenderung[]; vorlage?: string; datum?: string; dateiIds?: string[]; status?: BeschlussStatus; hinweis?: string }
 
 /** Das Buch einer Gesellschaft: Filter, Suche, Liste (neueste oben), Formular, Vorlagen, Dokument-Übernahme, Papierkorb. */
 export function BeschlussBuch({ g, daten, schreibe, risiken = [], offenId }: { g: GAnzeige; daten: RegisterDaten; schreibe: Schreibe; risiken?: { id: string; titel: string }[]; offenId?: string }) {
@@ -79,6 +79,11 @@ export function BeschlussBuch({ g, daten, schreibe, risiken = [], offenId }: { g
   const [form, setForm] = useState<{ alt?: Beschluss; entwurf?: Entwurf } | null>(offenAnfang ? { alt: offenAnfang } : null);
   const [neu, setNeu] = useState<'vorlage' | 'import' | null>(null);
   const handeln = async (id: string, was: Was) => (await schreibe({ liste: 'beschluesse', eintragId: id, aktion: was })).ok;
+  // Ältere (nachgetragene) Beschlüsse bekommen ihre Folgen nur auf ausdrücklichen Klick (`folgenFaellig`, ≤ 90 Tage von selbst).
+  const folgenVorschlagen = async (b: Beschluss) => {
+    const r = await fetch('/api/gesellschaften/beschluesse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'folgen', id: g.id, beschlussId: b.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    melden(!r.ok ? (r.fehler ?? 'Nicht vorgeschlagen.') : r.gelegt ? `${r.gelegt} Folge${r.gelegt === 1 ? '' : 'n'} von „${b.titel}“ in den Freigaben` : `„${b.titel}“: keine neuen Folgen (schon vorgeschlagen oder nichts nötig)`);
+  };
   const nummern = beschlussNummern(g.beschluesse);
   const zeilen = buchListe(g.beschluesse, { ...(jahr !== 'alle' ? { jahr: Number(jahr) } : {}), ...(status !== 'alle' ? { status } : {}), ...(art ? { art } : {}), ...(q.trim() ? { q } : {}) }, suchPasst).reverse();
   const jahre = buchJahre(g.beschluesse);
@@ -124,7 +129,11 @@ export function BeschlussBuch({ g, daten, schreibe, risiken = [], offenId }: { g
                   onLoeschen={async () => { if (await handeln(b.id, 'loeschen')) melden(`„${b.titel}“ im Papierkorb`, () => void handeln(b.id, 'wiederherstellen')); }}>
                   <Zeile titel={b.titel} onClick={() => { setNeu(null); setForm({ alt: b }); }}
                     unter={[nr ? `${nummerText(nr)}${nr.abgeleitet ? '*' : ''}` : 'Entwurf', tagText(b.datum), artLabel(b.art), gremiumLabel(gremiumVon(b)), b.dateiIds?.length ? `${b.dateiIds.length} Unterlage${b.dateiIds.length === 1 ? '' : 'n'}` : undefined].filter(Boolean).join(' · ')}
-                    rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Chip farbe={statusFarbe(b)}>{statusLabelB(b.status)}</Chip><span aria-hidden style={{ color: C.inkLeise }}>›</span></span>} />
+                    rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                      {b.status !== 'entwurf' && b.status !== 'aufgehoben' && !folgenFaellig(b, heute) && kannFolgenHaben(b) && (
+                        <span onClick={ev => ev.stopPropagation()}><Knopf leise onClick={() => folgenVorschlagen(b)}>Folgen vorschlagen</Knopf></span>
+                      )}
+                      <Chip farbe={statusFarbe(b)}>{statusLabelB(b.status)}</Chip><span aria-hidden style={{ color: C.inkLeise }}>›</span></span>} />
                 </ZeileAktionen>
               );
             })}</Liste>
@@ -179,6 +188,8 @@ function ImportKarte({ g, schreibe, heute, fertig }: { g: GAnzeige; schreibe: Sc
     setAb(d.vorschlag.felder.datum ?? heute);
   };
   const vs = v?.vorschlag;
+  // Älter als 90 Tage: Status „eingetragen“ (eintragungspflichtig) bzw. „gefasst“ vorbelegt, keine Folgen von selbst (`dokumentVorbelegung`).
+  const vb = vs ? dokumentVorbelegung({ datum: vs.felder.datum, art: vs.felder.art, aenderungen: vs.satzung ? [] : vs.aenderungen }, heute) : null;
   const alsFassung = async (a: BeschlussAenderung) => {
     if (!v) return;
     const r = await schreibe({ liste: 'fassungen', eintrag: { merkmal: a.merkmal, ab, ...(a.text ? { text: a.text } : {}), ...(a.cent !== undefined ? { cent: a.cent } : {}), ...(a.merkmal === 'gegenstand' || a.merkmal === 'satzung' ? { dateiIds: [v.datei.id] } : {}) } });
@@ -201,6 +212,7 @@ function ImportKarte({ g, schreibe, heute, fertig }: { g: GAnzeige; schreibe: Sc
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={klein}>Gelesen: {v.datei.name}{v.umfang ? ` (${v.umfang})` : ''} · {vs!.zeichen.toLocaleString('de-DE')} Zeichen{vs!.satzung ? ' · sieht aus wie eine Satzung' : ''}</div>
           {vs!.hinweis && <Hinweis art="info">{vs!.hinweis}</Hinweis>}
+          {vb?.aelter && <div style={klein}>{AELTER_HINWEIS} Das Datum liegt mehr als {FOLGEN_TAGE} Tage zurück — das Formular steht auf „{statusLabelB(vb.status)}“.</div>}
           <Liste>
             {vs!.felder.datum && <Zeile titel="Datum" unter={tagText(vs!.felder.datum)} />}
             {vs!.felder.art && <Zeile titel="Art" unter={artLabel(vs!.felder.art)} />}
@@ -223,7 +235,11 @@ function ImportKarte({ g, schreibe, heute, fertig }: { g: GAnzeige; schreibe: Sc
           )}
           {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Knopf onClick={() => fertig({ art: vs!.felder.art ?? 'gesellschafterbeschluss', ...(vs!.felder.gremium ? { gremium: vs!.felder.gremium } : {}), titel: vs!.felder.titel ?? '', inhalt: '', aenderungen: vs!.satzung ? [] : vs!.aenderungen, ...(vs!.felder.datum ? { datum: vs!.felder.datum } : {}), dateiIds: [v.datei.id] })}>Als Beschluss übernehmen</Knopf>
+            <Knopf onClick={() => fertig({
+              art: vs!.felder.art ?? 'gesellschafterbeschluss', ...(vs!.felder.gremium ? { gremium: vs!.felder.gremium } : {}), titel: vs!.felder.titel ?? '', inhalt: '',
+              aenderungen: vs!.satzung ? [] : vs!.aenderungen, ...(vs!.felder.datum ? { datum: vs!.felder.datum } : {}), dateiIds: [v.datei.id],
+              ...(vb ? { status: vb.status, ...(vb.hinweis ? { hinweis: vb.hinweis } : {}) } : {}),
+            })}>Als Beschluss übernehmen</Knopf>
             <Knopf leise onClick={() => { setV(null); setGespeichert([]); }}>Anderes Dokument</Knopf>
           </div>
           {vs!.aenderungen.length > 0 && (
@@ -250,7 +266,7 @@ function BeschlussForm({ g, daten, alt, entwurf, risiken, schreibe, fertig }: { 
   const [gremium, setGremium] = useState<Gremium | ''>(alt?.gremium ?? entwurf?.gremium ?? '');
   const [titel, setTitel] = useState(alt?.titel ?? entwurf?.titel ?? '');
   const [inhalt, setInhalt] = useState(alt?.inhalt ?? entwurf?.inhalt ?? '');
-  const [status, setStatus] = useState<BeschlussStatus>(alt?.status ?? (entwurf?.vorlage ? 'entwurf' : 'gefasst'));
+  const [status, setStatus] = useState<BeschlussStatus>(alt?.status ?? entwurf?.status ?? (entwurf?.vorlage ? 'entwurf' : 'gefasst'));
   const [wirkungAb, setWirkungAb] = useState(alt?.wirkungAb ?? '');
   const [angemeldetAm, setAngemeldetAm] = useState(alt?.angemeldetAm ?? '');
   const [eingetragenAm, setEingetragenAm] = useState(alt?.eingetragenAm ?? '');
@@ -299,6 +315,7 @@ function BeschlussForm({ g, daten, alt, entwurf, risiken, schreibe, fertig }: { 
         <Ueberschrift rechts={nr && <Chip farbe={C.inkDim}>{nummerText(nr)}{nr.abgeleitet ? ' (abgeleitet)' : ''}</Chip>}>{alt ? 'Beschluss ändern' : 'Beschluss eintragen'}</Ueberschrift>
         <form onSubmit={e => { e.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: 14 }}>
           {entwurf?.vorlage && <Hinweis art="info">{BESCHLUSS_VORLAGE_HINWEIS} Die Platzhalter „[…]“ füllst du im Inhalt aus.</Hinweis>}
+          {entwurf?.hinweis && <div style={klein}>{entwurf.hinweis} Bei Bedarf „Folgen vorschlagen“ an der Zeile im Buch.</div>}
           <Felder>
             <Feldzeile label="Datum"><input type="date" value={datum} onChange={e => setDatum(e.target.value)} aria-label="Datum des Beschlusses" style={feld} /></Feldzeile>
             <Feldzeile label="Art"><Auswahl label="Art des Beschlusses" wert={art} liste={BESCHLUSS_ARTEN} onWahl={v => { if (v) setArt(v); }} /></Feldzeile>
@@ -385,7 +402,9 @@ function BeschlussForm({ g, daten, alt, entwurf, risiken, schreibe, fertig }: { 
 
           {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf typ="submit" aus={titel.trim().length < 2}>{alt ? 'Speichern' : 'Eintragen'}</Knopf><Knopf leise onClick={fertig}>Abbrechen</Knopf></div>
-          {status === 'gefasst' && (!alt || alt.status === 'entwurf') && <div style={klein}>Beim Speichern als „gefasst“ vergibt MAKE OS die Nummer und legt die Folgen (Pflichten, Fassung, Cap-Table) als Vorschläge in die Freigaben.</div>}
+          {status === 'gefasst' && (!alt || alt.status === 'entwurf') && (folgenFaellig({ datum, status }, heute)
+            ? <div style={klein}>Beim Speichern als „gefasst“ vergibt MAKE OS die Nummer und legt die Folgen (Pflichten, Fassung, Cap-Table) als Vorschläge in die Freigaben.</div>
+            : <div style={klein}>{AELTER_HINWEIS} Das Datum liegt mehr als {FOLGEN_TAGE} Tage zurück — Folgen nur über „Folgen vorschlagen“ an der Zeile im Buch.</div>)}
         </form>
       </Karte>
       {alt && alt.status !== 'entwurf' && alt.status !== 'aufgehoben' && <FolgenKarte g={g} b={alt} />}
@@ -395,11 +414,11 @@ function BeschlussForm({ g, daten, alt, entwurf, risiken, schreibe, fertig }: { 
 
 /** Folgen eines Beschlusses — was MAKE OS vorschlägt und ob es schon in den Freigaben liegt; „In die Freigaben legen“ für Altbestand. */
 function FolgenKarte({ g, b }: { g: GAnzeige; b: Beschluss }) {
-  const [d, setD] = useState<{ folgen: (BeschlussFolge & { imStapel: boolean })[]; hinweise: string[] } | null>(null);
+  const [d, setD] = useState<{ folgen: (BeschlussFolge & { imStapel: boolean })[]; hinweise: string[]; vonSelbst: boolean } | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const laden = useCallback(async () => {
     const r = await fetch(`/api/gesellschaften/beschluesse?id=${encodeURIComponent(g.id)}&b=${encodeURIComponent(b.id)}`, { cache: 'no-store' }).then(x => x.json()).catch(() => null);
-    if (r?.ok) { setD({ folgen: r.folgen, hinweise: r.hinweise }); setFehler(null); } else setFehler(r?.fehler ?? 'Nicht geladen.');
+    if (r?.ok) { setD({ folgen: r.folgen, hinweise: r.hinweise, vonSelbst: r.vonSelbst !== false }); setFehler(null); } else setFehler(r?.fehler ?? 'Nicht geladen.');
   }, [g.id, b.id]);
   useEffect(() => { void laden(); }, [laden, b.status, b.aenderungen?.length]);
   const legen = async () => {
@@ -415,8 +434,9 @@ function FolgenKarte({ g, b }: { g: GAnzeige; b: Beschluss }) {
       {!d ? <Leer>lädt …</Leer> : !d.folgen.length ? <Leer symbol={<FileText size={16} />}>Keine offenen Folgen — nichts anzumelden oder festzuhalten.</Leer> : (
         <Liste>{d.folgen.map(f => <Zeile key={f.schluessel} umbrechen titel={f.titel} unter={f.text} rechts={<Chip farbe={f.imStapel ? LEUCHT.gut : C.inkDim}>{f.imStapel ? 'in den Freigaben' : 'noch nicht'}</Chip>} />)}</Liste>
       )}
+      {d && !d.vonSelbst && offen > 0 && <div style={{ ...klein, marginTop: 6 }}>{AELTER_HINWEIS} Der Beschluss liegt mehr als {FOLGEN_TAGE} Tage zurück — MAKE OS schlägt nur auf deinen Klick vor.</div>}
       {d?.hinweise.map(h => <div key={h} style={{ ...klein, marginTop: 6 }}>{h}</div>)}
-      {offen > 0 && <div style={{ marginTop: 10 }}><Knopf onClick={legen}>In die Freigaben legen ({offen})</Knopf></div>}
+      {offen > 0 && <div style={{ marginTop: 10 }}><Knopf onClick={legen}>Folgen vorschlagen ({offen})</Knopf></div>}
       <div style={{ ...klein, marginTop: 8 }}>Nichts geschieht ohne deinen Klick in den Freigaben. {BESCHLUSS_HINWEIS}</div>
     </Karte>
   );

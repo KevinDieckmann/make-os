@@ -5,9 +5,10 @@
 // GET  ?id=<gesellschaft>&pdf=1[&jahr=JJJJ]       → das Beschluss-Buch als PDF (Download; verschickt nichts)
 // GET  ?id=<gesellschaft>&datei=<d-…>             → Vorschlag aus einer Unterlage der Gesellschaft (Regelwerk ohne Modell: Felder + wörtliche
 //                                                   Fundstellen mit Seite; Beteiligte nur als Text) — übernommen wird erst per Klick im Formular
-// GET  ?id=<gesellschaft>&b=<bs-…>                → Folgen des Beschlusses jetzt (Pflichten, Fassung, Cap-Table) samt Hinweisen und ob sie schon
-//                                                   im Stapel lagen
-// POST { aktion: 'folgen', id, beschlussId }      → die Folgen (noch einmal) als Vorschläge in den Stapel — nur per Sitzung, je Folge höchstens einmal
+// GET  ?id=<gesellschaft>&b=<bs-…>                → Folgen des Beschlusses jetzt (Pflichten, Fassung, Cap-Table) samt Hinweisen, ob sie schon
+//                                                   im Stapel lagen und ob MAKE OS sie von selbst vorschlägt (`vonSelbst`, ≤ 90 Tage)
+// POST { aktion: 'folgen', id, beschlussId }      → „Folgen vorschlagen“: die Folgen als Vorschläge in den Stapel — auch für ältere, nachgetragene
+//                                                   Beschlüsse (von selbst nur ≤ 90 Tage); nur per Sitzung, je Folge höchstens einmal
 // Zugang wie das Register: NUR der Haushalt des Inhabers mit Person am Konto (Testkunde, fremder Haushalt, Konto „nur Business“ ohne Haushaltszugang,
 // Dienstweg ohne Person → 403). Die Route liegt unter `gesellschaften` = Business (lib/zugang/sicht-bereich.ts). Hinweis, keine Rechtsberatung.
 
@@ -22,7 +23,8 @@ import { dateinameAscii } from '@/lib/dateien/regeln';
 import { istGesellschaftId } from '@/lib/einheiten';
 import { ladeRegister } from '@/lib/gesellschaften/server';
 import { gesellschaftVon, aktiveEintraege } from '@/lib/gesellschaften/modell';
-import { BESCHLUSS_HINWEIS } from '@/lib/gesellschaften/beschluesse';
+import { BESCHLUSS_HINWEIS, folgenFaellig } from '@/lib/gesellschaften/beschluesse';
+import { localDay } from '@/lib/zeit';
 import { BeschlussFehler, buchPdfErstellen, importVorschlag, folgenJetzt, beschlussFolgenLegen, folgeMarke } from '@/lib/gesellschaften/beschluss-server';
 
 export const runtime = 'nodejs';
@@ -73,7 +75,7 @@ export async function GET(req: Request) {
       if (!g || !b) return fehler('Beschluss nicht gefunden.', 404);
       const { folgen, hinweise } = await folgenJetzt(z.haushalt, register, g, b);
       const marken = (await (await import('@/lib/recht/server')).ladeRechtStand(z.haushalt)).marken ?? {};
-      return NextResponse.json({ ok: true, hinweis: BESCHLUSS_HINWEIS, folgen: folgen.map(f => ({ ...f, imStapel: !!marken[folgeMarke(f.schluessel)] })), hinweise }, KOPF);
+      return NextResponse.json({ ok: true, hinweis: BESCHLUSS_HINWEIS, folgen: folgen.map(f => ({ ...f, imStapel: !!marken[folgeMarke(f.schluessel)] })), hinweise, vonSelbst: folgenFaellig(b, localDay()) }, KOPF);
     }
     return fehler('Was soll gelesen werden? (pdf=1, datei=d-… oder b=bs-…)', 400);
   } catch (e) {
@@ -101,6 +103,7 @@ export async function POST(req: Request) {
   if (typeof b.beschlussId !== 'string' || !BESCHLUSS_ID.test(b.beschlussId)) return fehler('beschlussId: Kennung bs-….', 400);
   const g = gesellschaftVon(await ladeRegister(z.haushalt), b.id);
   if (!g || !aktiveEintraege(g.beschluesse).some(x => x.id === b.beschlussId)) return fehler('Beschluss nicht gefunden.', 404);
-  const r = await beschlussFolgenLegen(z.haushalt, z.person, b.id, b.beschlussId);
+  // Ausdrücklicher Klick („Folgen vorschlagen“): auch für ältere, nachgetragene Beschlüsse (sonst nur ≤ 90 Tage, `folgenFaellig`).
+  const r = await beschlussFolgenLegen(z.haushalt, z.person, b.id, b.beschlussId, { ausdruecklich: true });
   return NextResponse.json({ ok: true, ...r });
 }

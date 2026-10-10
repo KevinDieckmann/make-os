@@ -948,8 +948,9 @@ export function beschlussSaeubern(roh: unknown, alt?: Beschluss, g?: Pick<Regist
   const wirkungAb = datumFeld('wirkungAb');
   let angemeldetAm = datumFeld('angemeldetAm'), eingetragenAm = datumFeld('eingetragenAm');
   if (wirkungAb && datum && wirkungAb < datum) fehler.push({ feld: 'wirkungAb', text: 'Die Wirkung kann nicht vor dem Beschluss liegen.' });
-  // Statuswechsel stempelt den Tag, wenn er leer ist (nur beim Wechsel — nie an einem Altbestand, der schon so steht).
-  if (o.heute && alt?.status !== status) {
+  // Statuswechsel stempelt den Tag, wenn er leer ist — nur beim WECHSEL eines vorhandenen Beschlusses (nie an einem Altbestand, der schon so steht,
+  // und nie beim Nachtragen eines alten Beschlusses, der gleich als „eingetragen“ angelegt wird: dessen Tag kennt nur der Mensch).
+  if (o.heute && alt && alt.status !== status) {
     if (status === 'angemeldet' && !angemeldetAm) angemeldetAm = o.heute;
     if (status === 'eingetragen' && !eingetragenAm) eingetragenAm = o.heute;
   }

@@ -36,13 +36,14 @@ afterAll(async () => {
 import { beschlussSaeubern, fassungSaeubern, GRENZEN } from '@/lib/gesellschaften/modell';
 import {
   beschlussNummern, naechsteNummer, braucheNummer, abstimmungsErgebnis, standAm, steckbriefNachziehen, steckbriefAbweichungen, beschlussFolgen,
-  beschluesseOhneEintragung, buchListe, buchDokument, ereignisseVon, fassungAb, EINTRAGUNG_NACHFRAGEN_TAGE,
+  beschluesseOhneEintragung, buchListe, buchDokument, ereignisseVon, fassungAb, EINTRAGUNG_NACHFRAGEN_TAGE, folgenFaellig, dokumentVorbelegung, kannFolgenHaben, FOLGEN_TAGE,
 } from '@/lib/gesellschaften/beschluesse';
 import { beschlussAusText } from '@/lib/gesellschaften/beschluss-import';
 import { BESCHLUSS_VORLAGEN, beschlussAusVorlage } from '@/lib/gesellschaften/beschluss-vorlagen';
 import { beschlussBuchPdf } from '@/lib/gesellschaften/beschluss-pdf';
 import { kontextVon } from '@/lib/gesellschaften/schild/kontext';
 import { tagePlus } from '@/lib/gesellschaften/schild/zeit';
+import { localDay } from '@/lib/zeit';
 
 const GS1 = 'gs-aaaa-0001', GS2 = 'gs-bbbb-0002', GS3 = 'gs-cccc-0003', OG1 = 'og-dddd-0001';
 const UG: RegisterGesellschaft = {
@@ -105,10 +106,12 @@ describe('(a) Säubern: neue Felder, Gewicht zum Zeitpunkt der Abstimmung, nie s
     expect(f({ inhalt: 'x'.repeat(GRENZEN.inhalt + 1) })).toContain('inhalt');
     expect(f({ aenderungen: [{ merkmal: 'gegenstand', text: '' }] })).toContain('aenderungen');
   });
-  it('Statuswechsel stempelt „angemeldet am“ bzw. „eingetragen am“ — nie am Altbestand, der schon so steht', () => {
+  it('Statuswechsel stempelt „angemeldet am“ bzw. „eingetragen am“ — nie am Altbestand, der schon so steht, nie beim Nachtragen', () => {
     const alt = B('st', { status: 'gefasst' });
     expect(beschlussSaeubern({ status: 'angemeldet' }, alt, UG, { heute: '2026-04-01' }).e!.angemeldetAm).toBe('2026-04-01');
     expect(beschlussSaeubern({ titel: 'nur Titel' }, B('st', { status: 'eingetragen' }), UG, { heute: '2026-04-01' }).e!.eingetragenAm).toBeUndefined();
+    // Ein alter Beschluss, gleich als „eingetragen“ nachgetragen: den Tag der Eintragung kennt nur der Mensch — kein Stempel „heute“.
+    expect(beschlussSaeubern({ id: 'bs-nach-0001', datum: '2019-05-01', art: 'gf-bestellung', titel: 'Alt', status: 'eingetragen' }, undefined, UG, { heute: '2026-04-01' }).e!.eingetragenAm).toBeUndefined();
   });
   it('Altbestand ohne neue Felder bleibt lesbar und unverändert, wenn nichts Neues kommt', () => {
     const alt: Beschluss = { id: 'bs-alt-0001', datum: '2025-06-01', art: 'gf-beschluss', titel: 'Alt', status: 'gefasst', inhalt: 'Wortlaut' };
@@ -200,6 +203,25 @@ describe('(a) Folgen eines gefassten Beschlusses — Vorschläge, eine Quelle f�
     expect(fassungAb({ datum: '2026-03-01', eingetragenAm: '2026-04-20' }, 'geschaeftsfuehrung')).toBe('2026-03-01');
     expect(fassungAb({ datum: '2026-03-01', wirkungAb: '2026-07-01', eingetragenAm: '2026-04-20' }, 'gegenstand')).toBe('2026-07-01');
   });
+  it('folgenFaellig: von selbst nur ≤ 90 Tage nach dem Beschluss; Entwurf/aufgehoben nie', () => {
+    const heute = '2026-10-10';
+    expect(FOLGEN_TAGE).toBe(90);
+    expect(folgenFaellig({ datum: tagePlus(heute, -90), status: 'gefasst' }, heute)).toBe(true);
+    expect(folgenFaellig({ datum: tagePlus(heute, -91), status: 'gefasst' }, heute)).toBe(false);
+    expect(folgenFaellig({ datum: tagePlus(heute, 5), status: 'gefasst' }, heute)).toBe(true);
+    expect(folgenFaellig({ datum: heute, status: 'entwurf' }, heute)).toBe(false);
+    expect(folgenFaellig({ datum: heute, status: 'aufgehoben' }, heute)).toBe(false);
+    expect(kannFolgenHaben({ art: 'jahresabschluss' })).toBe(false);
+    expect(kannFolgenHaben({ art: 'gesellschafterbeschluss', aenderungen: [{ merkmal: 'gegenstand', text: 'x' }] })).toBe(true);
+  });
+  it('Dokument älter als 90 Tage: „eingetragen“ (Satzung/Kapital/GF) bzw. „gefasst“, mit Hinweis; jünger: „gefasst“ ohne Hinweis', () => {
+    const heute = '2026-10-10';
+    expect(dokumentVorbelegung({ datum: '2024-02-01', art: 'satzungsaenderung' }, heute)).toEqual({ status: 'eingetragen', aelter: true, hinweis: 'Älterer Beschluss — keine Folgen vorgeschlagen.' });
+    expect(dokumentVorbelegung({ datum: '2024-02-01', art: 'gesellschafterbeschluss', aenderungen: [{ merkmal: 'stammkapital', cent: 1 }] }, heute).status).toBe('eingetragen');
+    expect(dokumentVorbelegung({ datum: '2024-02-01', art: 'jahresabschluss' }, heute)).toMatchObject({ status: 'gefasst', aelter: true });
+    expect(dokumentVorbelegung({ datum: tagePlus(heute, -10), art: 'satzungsaenderung' }, heute)).toEqual({ status: 'gefasst', aelter: false });
+    expect(dokumentVorbelegung({ art: 'satzungsaenderung' }, heute)).toEqual({ status: 'gefasst', aelter: false });
+  });
   it('offene Eintragungen: gefasst ohne Anmeldung; angemeldet erst nach der Nachfrage-Frist', () => {
     const heute = '2026-10-10';
     const g = { ...UG, beschluesse: [
@@ -283,7 +305,10 @@ describe('(b) Server: Zugang, Sicht, Altbestand, Folgen nur per Klick, Import, P
   const patch = (p: string, body: unknown) => reg.PATCH!(new Request('http://test/api/gesellschaften', { method: 'PATCH', headers: kopf(p), body: JSON.stringify(body) }));
   const ug = async () => (await regGet('person-a')).gesellschaften.find(x => x.id === 'ug')!;
   const offeneBeschluss = async () => (await stapel.lies('offen')).filter(v => v.bezug?.art === 'recht' && String(v.werkzeug).startsWith('recht_beschluss_'));
-  const ALT: Beschluss = { id: 'bs-alt-0001', datum: '2026-01-15', art: 'gesellschafterbeschluss', titel: 'Altbestand', status: 'gefasst', inhalt: 'Wortlaut vom Online-Stand' };
+  // Datum des Altbestands und des neuen Beschlusses = heute (beide im selben Jahr, ≤ 90 Tage — die Folgen kommen von selbst; Tests laufen an jedem Tag).
+  const HEUTE = localDay();
+  const JAHR = Number(HEUTE.slice(0, 4));
+  const ALT: Beschluss = { id: 'bs-alt-0001', datum: HEUTE, art: 'gesellschafterbeschluss', titel: 'Altbestand', status: 'gefasst', inhalt: 'Wortlaut vom Online-Stand' };
   const G3 = 'g-33333333-3333-4333-8333-333333333333';
   let heute = '';
 
@@ -324,12 +349,12 @@ describe('(b) Server: Zugang, Sicht, Altbestand, Folgen nur per Klick, Import, P
   it('Nummer vom Server, Altbestand bleibt bit-gleich; gefasst → Folgen NUR im Stapel (nichts geschrieben), idempotent', async () => {
     let g = await ug();
     const tasksVorher = (await db.loadJson<{ tasks: unknown[] }>('tasks'))!.tasks.length;
-    const r = await patch('person-a', { id: 'ug', stand: g.stand, liste: 'beschluesse', eintrag: { datum: '2026-09-01', art: 'kapitalmassnahme', titel: 'Kapitalerhöhung', status: 'gefasst', nummer: { jahr: 2000, nr: 7 },
+    const r = await patch('person-a', { id: 'ug', stand: g.stand, liste: 'beschluesse', eintrag: { datum: HEUTE, art: 'kapitalmassnahme', titel: 'Kapitalerhöhung', status: 'gefasst', nummer: { jahr: 2000, nr: 7 },
       abstimmung: [{ id: GS1, stimme: 'ja' }, { id: GS2, stimme: 'ja' }], aenderungen: [{ merkmal: 'stammkapital', cent: '50.000' }] } });
     expect(r.status).toBe(200);
     g = (await r.json()).gesellschaft;
     const neu = g.beschluesse!.find(b => b.titel === 'Kapitalerhöhung')!;
-    expect(neu.nummer).toEqual({ jahr: 2026, nr: 2 }); // Altbestand (Jan 2026) ist abgeleitet Nr. 1
+    expect(neu.nummer).toEqual({ jahr: JAHR, nr: 2 }); // Altbestand (ohne Nummer) ist abgeleitet Nr. 1
     expect(neu.abstimmung![0].gewichtCent).toBe(1_500_000);
     const roh = (await db.loadJson<RegisterDatei>('gesellschaften--haus'))!.gesellschaften[0];
     expect(roh.beschluesse!.find(b => b.id === ALT.id)).toEqual(ALT);
@@ -366,7 +391,7 @@ describe('(b) Server: Zugang, Sicht, Altbestand, Folgen nur per Klick, Import, P
     const fa = offen.find(v => v.werkzeug === 'recht_beschluss_fassung')!;
     expect((await S.RECHT_STAPEL_ART.freigeben(fa, 'person-a', {})).ok).toBe(true);
     const g = (await db.loadJson<RegisterDatei>('gesellschaften--haus'))!.gesellschaften[0];
-    expect(g.fassungen).toMatchObject([{ merkmal: 'stammkapital', cent: 5_000_000, ab: '2026-09-01', beschlussId: neuId, von: 'person-a' }]);
+    expect(g.fassungen).toMatchObject([{ merkmal: 'stammkapital', cent: 5_000_000, ab: HEUTE, beschlussId: neuId, von: 'person-a' }]);
     expect(g.stammkapitalCent).toBe(5_000_000); // gültige Fassung → Steckbrief
     const ct = offen.find(v => v.werkzeug === 'recht_beschluss_captable')!;
     expect((await S.RECHT_STAPEL_ART.freigeben(ct, 'person-a', {})).ok).toBe(true);
@@ -421,12 +446,32 @@ describe('(b) Server: Zugang, Sicht, Altbestand, Folgen nur per Klick, Import, P
     const roh = WERKZEUGE.gesellschaften_lesen.lauf;
     const lauf = async (...a: Parameters<typeof roh>): Promise<string> => { const r = await roh(...a); return typeof r === 'string' ? r : r.meldung; };
     const t = await lauf({}, '', 'person-b');
-    expect(t).toMatch(/Beschluss Nr\. 2\/2026 vom 2026-09-01: Kapitalerhöhung/);
+    expect(t).toContain(`Beschluss Nr. 2/${JAHR} vom ${HEUTE}: Kapitalerhöhung`);
     expect(t).not.toMatch(/FREMDER-BESCHLUSS|Wortlaut vom Online-Stand/);
     expect(await lauf({}, '', 'testkunde')).toMatch(/^Kein Zugang/);
     const { registerAuskunft } = await import('@/lib/gesellschaften/auskunft');
     const a = registerAuskunft(await db.loadJson('gesellschaften--haus'), 'c-kontakt-0001');
-    expect(a.find(x => x.rolle === 'Beschluss')!.angaben).toMatch(/Nr\. 2\/2026 .*eigene Stimme: Ja/);
+    expect(a.find(x => x.rolle === 'Beschluss')!.angaben).toMatch(new RegExp(`Nr\\. 2/${JAHR} .*eigene Stimme: Ja`));
     expect(JSON.stringify(a)).not.toMatch(/Wortlaut/);
+  });
+
+  it('Nachgetragen (älter als 90 Tage): keine Folgen von selbst — erst der Knopf „Folgen vorschlagen“ legt sie in die Freigaben', async () => {
+    let g = await ug();
+    const alt = tagePlus(HEUTE, -200);
+    const r = await patch('person-a', { id: 'ug', stand: g.stand, liste: 'beschluesse', eintrag: { datum: alt, art: 'satzungsaenderung', titel: 'Satzungsänderung (nachgetragen)', status: 'gefasst' } });
+    expect(r.status).toBe(200);
+    g = (await r.json()).gesellschaft;
+    const b = g.beschluesse!.find(x => x.titel === 'Satzungsänderung (nachgetragen)')!;
+    const fuer = async () => (await offeneBeschluss()).filter(v => v.eingabe.beschlussId === b.id);
+    expect(await fuer()).toEqual([]);
+    const f = await (await get('person-a', `?id=ug&b=${b.id}`)).json();
+    expect(f.vonSelbst).toBe(false);
+    expect(f.folgen.map((x: { art: string; imStapel: boolean }) => [x.art, x.imStapel])).toEqual([['ereignis', false]]);
+    // Ein zweites Speichern legt weiter nichts von selbst.
+    expect((await patch('person-a', { id: 'ug', stand: g.stand, liste: 'beschluesse', eintragId: b.id, eintrag: { titel: 'Satzungsänderung (nachgetragen, geprüft)' } })).status).toBe(200);
+    expect(await fuer()).toEqual([]);
+    // Ausdrücklich: der Knopf.
+    expect(await (await post(kopf('person-a'), { aktion: 'folgen', id: 'ug', beschlussId: b.id })).json()).toMatchObject({ ok: true, gelegt: 1 });
+    expect((await fuer()).map(v => v.werkzeug)).toEqual(['recht_beschluss_ereignis']);
   });
 });

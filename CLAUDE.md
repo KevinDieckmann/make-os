@@ -60,7 +60,8 @@ lokal, Route `/os`, Port 3001.
   Abstimmung fest. Fassungen nie ändern (409) — neue Fassung; eine heute gültige zieht das Steckbrief-Feld im selben Schreiben nach (`steckbriefNachziehen`). Regeln
   rein in `lib/gesellschaften/beschluesse.ts` (Ergebnis, `standAm`, Folgen, offene Eintragungen, Buch), Import ohne Modell `beschluss-import.ts`, Vorlagen
   `beschluss-vorlagen.ts`, PDF `beschluss-pdf.ts`, Server `beschluss-server.ts`, Route `/api/gesellschaften/beschluesse` (PDF, Vorschlag aus Unterlage, Folgen).
-  **Folgen eines gefassten Beschlusses nur als Vorschlag** (Stapel-Art `recht`, Werkzeuge `recht_beschluss_*`, Marke `bf:` im Bestand des Head of Recht): Pflichten
+  **Folgen eines gefassten Beschlusses nur als Vorschlag** (Stapel-Art `recht`, Werkzeuge `recht_beschluss_*`, Marke `bf:` im Bestand des Head of Recht) — von
+  selbst NUR, wenn `folgenFaellig(b, heute)` (≤ 90 Tage; nachgetragene ältere nur per Knopf „Folgen vorschlagen“, POST `aktion: 'folgen'`). Pflichten
   laufen über ein EREIGNIS des Schilds (`EREIGNIS_ARTEN`, `Ereignis.beschlussId`) — nie eigene Pflichten/Fristen daneben bauen. Oberfläche
   `components/os/unternehmen/Beschluesse.tsx` + `Satzung.tsx` (Reiter `?s=beschluesse`, `WEG.beschluss`). Test `tests/beschluss-buch.test.ts`.
 - **Head of Recht (10.10., Branch `head-recht`, nur lokal; UPDATES.md):** Business-Head `recht` (Name „Head of Recht“, `alteNamen` für alte Stapel-Anlässe),

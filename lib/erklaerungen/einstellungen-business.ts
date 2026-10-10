@@ -187,7 +187,7 @@ export const EINSTELLUNGEN_BUSINESS = {
     beispiel: 'Zwei Gesellschafter mit 15.000 € und 10.000 € Nennbetrag: Ja und Enthaltung ergibt 15.000 € Ja und 0 € Nein — angenommen. Bei einer Satzungsänderung braucht es drei Viertel der abgegebenen Stimmen.',
   },
   'unternehmen.beschlussFolgen': {
-    was: 'Was aus einem gefassten Beschluss folgt — als Vorschläge in den Freigaben: Pflichten im Pflichten-Kalender (Handelsregister, Gesellschafterliste, Transparenzregister mit Frist), die neue Fassung von Gegenstand oder Satzung, Cap-Table anpassen. Nichts passiert ohne deinen Klick.',
+    was: 'Was aus einem gefassten Beschluss folgt — als Vorschläge in den Freigaben: Pflichten im Pflichten-Kalender (Handelsregister, Gesellschafterliste, Transparenzregister mit Frist), die neue Fassung von Gegenstand oder Satzung, Cap-Table anpassen. Von selbst nur für Beschlüsse der letzten 90 Tage; nachgetragene ältere nur über „Folgen vorschlagen“. Nichts passiert ohne deinen Klick.',
     beispiel: 'Kapitalerhöhung gefasst: Es kommen „Pflichten anlegen: Kapitalmaßnahme“, „Neue Fassung: Stammkapital“ und „Cap-Table anpassen“ in die Freigaben. Gibst du die Pflichten frei, stehen Notar, Gesellschafterliste und Transparenzregister mit Frist im Kalender.',
   },
   'unternehmen.beschlussImport': {

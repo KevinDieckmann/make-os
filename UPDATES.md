@@ -23,10 +23,14 @@ Nummer, Gremium, Beteiligte, Abstimmung, Wirkung, angemeldet/eingetragen am, Ver
   „Gegenstand & Satzung“; eine heute gültige neue Fassung zieht Sitz/Kapital/GF/Firmierung im selben Schreiben nach, Abweichungen → „Steckbrief angleichen“).
 - **Folgen eines Beschlusses** (nach „gefasst“, Stapel-Art `recht`, nichts automatisch): Ereignis im Pflichten-Kalender des Schilds (daraus Handelsregister-
   Anmeldung, Gesellschafterliste, Transparenzregister mit Frist — EINE Quelle, die vorhandenen Ereignis-Pflichten), neue Fassung, Cap-Table anpassen (Aufgabe).
-  Je Folge höchstens einmal (Marke im Bestand des Head of Recht); die Freigabe rechnet die Folge aus dem jetzigen Bestand neu.
+  Je Folge höchstens einmal (Marke im Bestand des Head of Recht); die Freigabe rechnet die Folge aus dem jetzigen Bestand neu. **Nachtragen ohne Flut:** von
+  selbst nur für Beschlüsse der letzten 90 Tage (`folgenFaellig`); ältere (nachgetragene) — ob von Hand oder aus einem Dokument — nur über den Knopf
+  „Folgen vorschlagen“ an der Zeile bzw. in der Karte „Folgen des Beschlusses“.
 - **Aus Dokument übernehmen:** Beschluss-/Satzungs-PDF hochladen → Text ohne Modell lesen (`lib/gesellschaften/beschluss-import.ts`, Vorbild Vertrags-Checkliste) →
   Datum, Art, Gremium, Titel, Gegenstand-Wortlaut, Stammkapital, Sitz, Firmierung als Vorschlag mit wörtlichen Fundstellen (Seite/Paragraf); Beteiligte nur als Text.
-  „Als Beschluss übernehmen“ füllt nur das Formular; „… als Fassung“ legt je Änderung eine Fassung an.
+  „Als Beschluss übernehmen“ füllt nur das Formular; „… als Fassung“ legt je Änderung eine Fassung an. Liegt das erkannte Datum mehr als 90 Tage zurück, steht
+  der Status auf „eingetragen“ (Satzung/Kapital/GF) bzw. „gefasst“, mit der Zeile „Älterer Beschluss — keine Folgen vorgeschlagen.“ (`dokumentVorbelegung`).
+  Wer einen alten Beschluss gleich als „eingetragen“ anlegt, bekommt keinen Eintragungstag „heute“ gestempelt.
 - **Vorlagen** (`lib/gesellschaften/beschluss-vorlagen.ts`): elf neutrale Startvorlagen mit Platzhaltern aus dem Register, Hinweis „keine Rechtsberatung, vor
   Verwendung prüfen“; allgemeiner Beschluss, Einpersonen-Niederschrift und Jahresabschluss kommen aus der Vorlagen-Bibliothek des Schilds (nichts doppelt).
 - **Head of Recht:** der Recht-Check nennt Beschlüsse ohne Anmeldung bzw. lange ohne Eintragung („was fehlt“, mit Weg ins Buch). ZOE `gesellschaften_lesen` nennt
@@ -44,12 +48,13 @@ Nummer, Gremium, Beteiligte, Abstimmung, Wirkung, angemeldet/eingetragen am, Ver
 4. „Gegenstand & Satzung“: „+ Neue Fassung“ (Gegenstand, gültig ab gestern) → steht als „gilt“; Datum bei „Stand am“ vor diesen Tag stellen → der alte Wortlaut.
    Eine Fassung ändern geht nicht (nur neue anlegen); „Löschen“ legt sie in den Papierkorb.
 5. „Aus Dokument“: ein Beschluss-PDF hochladen → Datum, Art, Titel mit wörtlicher Fundstelle (Seite); „Als Beschluss übernehmen“ → Formular gefüllt, die Datei hängt als
-   Unterlage dran; erst „Eintragen“ speichert.
+   Unterlage dran; erst „Eintragen“ speichert. Ein PDF mit einem Datum von vor einem Jahr (z. B. alte GF-Bestellung): Status steht auf „eingetragen“, Zeile „Älterer
+   Beschluss — keine Folgen vorgeschlagen.“; nach dem Eintragen liegt in den Freigaben nichts Neues. An der Zeile „Folgen vorschlagen“ → jetzt liegen sie dort.
 6. Filter: Jahr, Status, Art, Suche (Titel/Inhalt/Nummer). „PDF“ lädt das Buch (mit Jahresfilter nur das Jahr).
 7. Recht-Check (Unternehmen › Überblick, „Jetzt prüfen“): unter „Was fehlt“ steht die gefasste, nicht angemeldete Kapitalerhöhung mit Weg ins Buch.
 8. Gesellschaft öffnen › Steckbrief: Karte „Gegenstand & Satzung“ mit der gültigen Fassung; Reiter „Organe & Beschlüsse“ zeigt die letzten Beschlüsse mit „Beschluss-Buch ›“.
 
-**Tests:** `tests/beschluss-buch.test.ts` (29: Nummern, Säubern, Ergebnis, Stand am, Folgen, offene Eintragungen, Import, Vorlagen, PDF; Server: 403-Wächter,
+**Tests:** `tests/beschluss-buch.test.ts` (32: Nummern, 90-Tage-Regel, Säubern, Ergebnis, Stand am, Folgen, offene Eintragungen, Import, Vorlagen, PDF; Server: 403-Wächter,
 „Sicht X bekommt nichts aus Y“, Altbestand bit-gleich, Folgen nur im Stapel + idempotent, Freigabe → Schild/Register/Aufgabe, Fassungen nie überschrieben, Recht-Check,
 ZOE, Art. 15); bestehende `gesellschaften-*`, `unternehmen-schild`, `head-recht`, `routen-register`, `erklaerungen`, `demo`, `messlatte-malin`, `datenschutz-register`,
 `trennung-bereiche`, `sicht-business-privat` grün. Neue Erklärungen `unternehmen.beschluss*`, `unternehmen.fassung*`, `unternehmen.standAm`, `unternehmen.abstimmung`.
