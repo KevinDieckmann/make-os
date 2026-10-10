@@ -39,7 +39,9 @@ export type DialogArt =
   | { art: 'leitplanken' }
   | { art: 'geplant' }
   | { art: 'budget' }
-  | { art: 'uebersicht' };
+  | { art: 'uebersicht' }
+  /** 09.10.: „Aus dem Brain übernehmen“ (nur Inhaber — die Route entscheidet). */
+  | { art: 'brain' };
 
 export interface AgentenWert {
   agenten: Abruf<AgentenAntwort>;

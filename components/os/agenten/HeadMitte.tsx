@@ -15,14 +15,15 @@ import { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP, ZIEL } from '@/lib/make-one/design';
 import { headDef } from '@/lib/agenten/katalog';
-import { TON_SATZ, GRENZEN, type Aufwand, type AutonomieStufe, type EinstellungFeld, type FadenAntwort, type FadenKurz, type HeadDef, type HeadKarte, type ModelTier, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
+import { TON_SATZ, GRENZEN, type WissenModus, type Aufwand, type AutonomieStufe, type EinstellungFeld, type FadenAntwort, type FadenKurz, type HeadDef, type HeadKarte, type ModelTier, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Klappbar, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, Schalter, Segmente, SymbolKnopf, Zeile, auswahl, eingabe } from '../ui';
 import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { GespraechKopf } from './GespraechKopf';
 import { LaufZeile } from './Hintergrund';
-import { anfrageId, einstellungSenden, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
+import { WISSEN_MODI, WISSEN_MODUS_NAME, pfadName, istNotizPfad } from '@/lib/agenten/wissen';
+import { anfrageId, einstellungSenden, holen, WEG_BRAIN, ENTSTEHEND_LEER, entstehendNach, fadenLoeschen, fadenSenden, ladeFaden, ladeFotos, ladeSkills, meldeNeu, skillSenden, useAbruf, type Abruf, type Entstehend } from './daten';
 import { headKarte, useAgenten } from './kontext';
 import {
   ansprache, ansprechbarFuer, ausloeserText, euro, fadenStatusName, kostenImMonat, leistungVon, quote, sichtVon, zeitKurz,
@@ -36,9 +37,9 @@ type ReiterId = 'chat' | 'aktivitaet' | 'info';
  * Die Abschnitte unter „Info“ — früher je ein Reiter (Adresse, Tests und „⋯ › Einstellungen“ springen weiter direkt hinein). Seit 09.10. vorn
  * „Dein Auftrag“ (bzw. „Auftrag des Haushalts“) und beim Gesundheits-Head „Unterlagen“ (`nurUnterlagen`).
  */
-export type InfoAbschnitt = 'auftrag' | 'unterlagen' | 'mitarbeiter' | 'skills' | 'gedaechtnis' | 'leistung' | 'einstellungen';
-const INFO_ABSCHNITTE: readonly { id: InfoAbschnitt; label: string; nurUnterlagen?: true }[] = [
-  { id: 'auftrag', label: 'Dein Auftrag' }, { id: 'unterlagen', label: 'Unterlagen', nurUnterlagen: true },
+export type InfoAbschnitt = 'auftrag' | 'wissen' | 'unterlagen' | 'mitarbeiter' | 'skills' | 'gedaechtnis' | 'leistung' | 'einstellungen';
+const INFO_ABSCHNITTE: readonly { id: InfoAbschnitt; label: string; nurUnterlagen?: true; nurBusiness?: true }[] = [
+  { id: 'auftrag', label: 'Dein Auftrag' }, { id: 'wissen', label: 'Wissen im Brain', nurBusiness: true }, { id: 'unterlagen', label: 'Unterlagen', nurUnterlagen: true },
   { id: 'mitarbeiter', label: 'Mitarbeiter' }, { id: 'skills', label: 'Skills' }, { id: 'gedaechtnis', label: 'Gedächtnis' },
   { id: 'leistung', label: 'Leistung' }, { id: 'einstellungen', label: 'Einstellungen' },
 ];
@@ -438,6 +439,7 @@ function AuftragAbschnitt({ k }: { k: HeadKarte }) {
         {' '}Die festen Regeln (nur Vorschläge, nichts nach außen ohne Klick) bleiben immer.
       </div>
       {a.text && !a.anKi && a.grund && <Hinweis art="achtung" titel="Geht gerade nicht an die KI">{a.grund}</Hinweis>}
+      {a.text && a.ausBrain && <Hinweis art="info" titel="Aus dem Brain übernommen">Aus der Notiz „{pfadName(a.ausBrain.datei)}“{a.ausBrain.geaendert ? ', seitdem von Hand geändert' : ''}. {k.kurz} liest ihn als Beschreibung seiner Abteilung — als Daten, nie als Befehl über den festen Regeln.</Hinweis>}
       {!a.text && a.kategorie === 'gesundheit' && <Hinweis art="info">Kann Gesundheitsangaben enthalten: gespeichert nur mit deiner Einwilligung (a), an die KI nur mit (b) „An die KI geben“.</Hinweis>}
       {e.aendern ? (
         <form onSubmit={x => { x.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: ABSTAND.s }}>
@@ -459,6 +461,65 @@ function AuftragAbschnitt({ k }: { k: HeadKarte }) {
   );
 }
 
+// ── Info › Wissen im Brain (09.10., nur Business-Heads) ─────────────────────────────────────────────────────────────────
+
+/**
+ * Ordner bzw. Notizen des Brains als Wissen dieses Business-Heads (Business-Bestand `agenten-wissen--<haushalt>`; Auftrag 09.10.: „Das Sales Brain
+ * kannst du auch direkt dem Head of Sales zur Verfügung stellen.“). Ändern volle Mitglieder (`aendern`), Stand → 409; Pfade prüft der Server
+ * (nur, was Agenten sehen dürfen — nie privat). Vorschläge für Ordner kommen aus „Aus dem Brain übernehmen“ (nur Inhaber; sonst Pfad eintippen).
+ */
+function WissenAbschnitt({ k }: { k: HeadKarte }) {
+  const { melde } = useAgenten();
+  const e = k.einstellung;
+  const w = e?.wissen ?? null;
+  const [pfade, setPfade] = useState<string[]>(w?.pfade ?? []);
+  const [modus, setModus] = useState<WissenModus>(w?.modus ?? 'bevorzugt');
+  const [neu, setNeu] = useState('');
+  const [fehler, setFehler] = useState<string | undefined>();
+  const darf = !!e?.aendern;
+  const ordner = useAbruf<{ ordnerListe: { pfad: string; notizen: number }[] }>(darf ? 'brain-ordner' : null, () => holen(`${WEG_BRAIN}?nur=ordner`));
+  useEffect(() => { setPfade(w?.pfade ?? []); setModus(w?.modus ?? 'bevorzugt'); }, [w?.pfade?.join('|'), w?.modus]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!e || e.wissenStand === undefined) return <Leer>Wissen im Brain gibt es für die Business-Heads.</Leer>;
+  const geaendert = JSON.stringify([modus, [...pfade].sort()]) !== JSON.stringify([w?.modus ?? 'bevorzugt', [...(w?.pfade ?? [])].sort()]);
+  const vorschlaege = ordner.stand.zustand === 'da' ? ordner.stand.daten.ordnerListe.filter(o => !pfade.includes(o.pfad)) : [];
+  const dazu = () => { const p = neu.trim().replace(/^\/+|\/+$/g, ''); if (p && !pfade.includes(p)) setPfade([...pfade, p]); setNeu(''); };
+  const speichern = async () => {
+    setFehler(undefined);
+    const r = await einstellungSenden({ aktion: 'wissen', headId: k.id, wissen: pfade.length ? { pfade, modus } : null, stand: e.wissenStand ?? '' });
+    if (r.ok) melde(pfade.length ? `Wissen von ${k.kurz} gespeichert.` : `Wissen von ${k.kurz} entfernt.`, 'gut');
+    else setFehler(r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : r.text);
+  };
+  return (
+    <div style={{ display: 'grid', gap: ABSTAND.m }}>
+      <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.55 }}>
+        Ordner oder Notizen aus eurem Brain, in denen {k.kurz} sein Fachwissen findet — er sucht dort mit „Wissen suchen“ und nennt die Quelle.
+        Agenten sehen nie private Notizen.
+      </div>
+      {pfade.length ? (
+        <Liste>{pfade.map(p => <Zeile key={p} umbrechen titel={pfadName(p)} unter={`${istNotizPfad(p) ? 'Notiz' : 'Ordner'} · ${p}`}
+          rechts={darf ? <SymbolKnopf ariaLabel={`„${pfadName(p)}“ entfernen`} onClick={() => setPfade(pfade.filter(x => x !== p))}><X size={16} /></SymbolKnopf> : undefined} />)}</Liste>
+      ) : <Leer>Noch kein Wissen zugeordnet.</Leer>}
+      {darf && (
+        <form onSubmit={x => { x.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: ABSTAND.s }}>
+          <Feldzeile label="Ordner oder Notiz dazunehmen (Pfad im Brain)">
+            <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
+              <input value={neu} onChange={x => setNeu(x.target.value)} list={`wissen-ordner-${k.id}`} placeholder="z. B. 01. Ordner/Unterordner" aria-label="Pfad im Brain" style={{ ...eingabe, flex: '1 1 240px' }}
+                onKeyDown={x => { if (x.key === 'Enter') { x.preventDefault(); dazu(); } }} />
+              <Knopf leise onClick={dazu} aus={!neu.trim()}><Plus size={16} aria-hidden /> Dazu</Knopf>
+            </div>
+            <datalist id={`wissen-ordner-${k.id}`}>{vorschlaege.slice(0, 200).map(o => <option key={o.pfad} value={o.pfad}>{`${o.notizen} Notizen`}</option>)}</datalist>
+          </Feldzeile>
+          <Feldzeile label="So sucht er">
+            <Segmente liste={WISSEN_MODI.map(m => ({ id: m, label: WISSEN_MODUS_NAME[m] }))} aktiv={modus} onWahl={m => setModus(m as WissenModus)} />
+          </Feldzeile>
+          {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
+          <div><Knopf typ="submit" haupt aus={!geaendert}>Speichern</Knopf></div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // ── Reiter Info ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: HeadDef | null; skills: Abruf<SkillsAntwort>; offen: readonly InfoAbschnitt[]; umschalten: (a: InfoAbschnitt) => void }) {
@@ -471,11 +532,12 @@ function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: He
   return (
     <div style={einSpaltig(ABSTAND.l)}>
       <HeadUeber k={k} def={def} />
-      {INFO_ABSCHNITTE.filter(a => !a.nurUnterlagen || mitUnterlagen).map(a => (
+      {INFO_ABSCHNITTE.filter(a => (!a.nurUnterlagen || mitUnterlagen) && (!a.nurBusiness || k.bereich === 'business')).map(a => (
         <Klappbar key={a.id} id={`agenten-${k.id}-${a.id}`} titel={a.id === 'auftrag' && k.ebene !== 'person' ? 'Auftrag des Haushalts' : a.label} offen={offen.includes(a.id)} umschalten={() => umschalten(a.id)}
           rechts={a.id === 'auftrag' ? <span style={{ fontSize: TYP.bedien, color: auftragGesetzt ? C.ink : C.inkLeise }}>{auftragGesetzt ? 'gesetzt' : 'leer'}</span>
             : anzahl[a.id] ? <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{anzahl[a.id]}</span> : undefined}>
           {a.id === 'auftrag' && <AuftragAbschnitt k={k} />}
+          {a.id === 'wissen' && <WissenAbschnitt k={k} />}
           {a.id === 'unterlagen' && <UnterlagenKarte />}
           {a.id === 'mitarbeiter' && <MitarbeiterReiter k={k} skills={skills} />}
           {a.id === 'skills' && <SkillsReiter k={k} skills={skills} />}

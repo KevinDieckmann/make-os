@@ -454,6 +454,11 @@ export interface Mitarbeiter {
    * `fremd()` und nennt sie nie „von einem Menschen geschrieben“, ein Lauf damit gilt als „fremd gelesen“. Bleibt auch nach Änderungen stehen.
    */
   ausFremdemText?: true;
+  /**
+   * Aus dem Brain übernommen (09.10., „Aus dem Brain übernehmen“): die Agenten-Notiz (Pfad relativ zum Brain) und — bei einem früheren Fach-
+   * Agenten der Software — sein Kürzel. Setzt nur der Server; damit legt eine zweite Übernahme nichts doppelt an.
+   */
+  herkunft?: { art: 'brain'; datei: string; kuerzel?: string };
 }
 
 /**
@@ -497,10 +502,40 @@ export interface HeadEinstellung {
   /** Wann und von wem der Auftrag zuletzt geschrieben wurde (vom Server gestempelt — nie aus dem Browser). */
   auftragAm?: string;
   auftragVon?: string;
+  /**
+   * Der Auftrag kam (09.10., „Aus dem Brain übernehmen“) per Klick aus einer Agenten-Notiz des Vaults — setzt NUR der Server
+   * (lib/agenten/brain-agenten-server.ts über `einstellungAendern(…, { auftragQuelle })`), nie aus dem Browser. Solange gesetzt, steht der
+   * Auftrag im System-Text gekapselt (`fremd()`: Text aus dem Vault ist Daten, nie Befehl — ein Mensch hat ihn übernommen, nicht
+   * geschrieben). `hash` = Fingerabdruck des übernommenen Texts (weicht der heutige ab, wurde er von Hand geändert). Fällt weg, wenn der
+   * Auftrag entfernt wird.
+   */
+  auftragQuelle?: AuftragQuelle;
   /** Letzte Änderung (vom Server gestempelt). */
   geaendertAm?: string;
   geaendertVon?: string;
 }
+/** Herkunft eines übernommenen Auftrags (09.10., `HeadEinstellung.auftragQuelle`). `datei` = Pfad der Notiz relativ zum Brain. */
+export interface AuftragQuelle { art: 'brain'; datei: string; hash: string; am: string; von: string }
+/**
+ * Wissen eines Business-Heads im Brain (09.10.): Ordner bzw. Notizen des Vaults (Pfade relativ zur Wurzel des Brains, Ordner ohne, Notizen mit
+ * `.md`). Der Head sucht dort über `wissen_suchen` (lib/agenten/wissen-werkzeug.ts) — Sicht wie immer VOR dem Ranking (Business nie `privat`).
+ * `modus`: `bevorzugt` (Vorgabe: eigenes Wissen zuerst, seine übrigen Brain-Werkzeuge bleiben) · `nur` (auch `suche_wissen`/`lies_notiz` des
+ * Heads nur in diesen Pfaden). Gespeichert im BUSINESS-Bestand `agenten-wissen--<haushalt>` (`WissenBestand`) — Firma und Privat getrennt.
+ */
+export type WissenModus = 'bevorzugt' | 'nur';
+export interface HeadWissen { pfade: string[]; modus: WissenModus }
+/**
+ * Bestand `agenten-wissen--<haushalt>` (09.10., Regel: „Firma und Privat liegen getrennt — auch in der Datenhaltung“): NUR Business-Heads —
+ * ihr Wissen im Brain und der Agenten-Ordner des (Firmen-)Brains für „Aus dem Brain übernehmen“. Privat-Heads haben hier nie einen Eintrag
+ * (der Schreibweg lehnt ab, lib/agenten/wissen-server.ts). Wer zuletzt geändert hat: Speichername (Konto löschen → „[gelöscht]“).
+ */
+export interface WissenBestand {
+  v: 1;
+  heads: Partial<Record<string, HeadWissen & { geaendertAm: string; geaendertVon: string }>>;
+  /** Der Vault-Ordner mit den Agenten-Notizen (Pfad relativ zum Brain); fehlt er, gilt der Ordner mit `_Agenten_Index`. */
+  brainAgenten?: { ordner: string; am: string; von: string };
+}
+
 export interface AgentenEinstellung {
   v: 1;
   /** Not-Aus (Antwort 6/12): alle Agenten-Läufe des Haushalts halten an — der Chat zeigt einen ruhigen Hinweis. */
@@ -541,6 +576,10 @@ export interface HeadEinstellungSicht {
   stand: string;
   /** Eigener Auftrag an den Head (09.10.) — Text, ob er gerade an das Modell geht, und warum nicht. */
   auftrag?: AuftragSicht;
+  /** Wissen des Heads im Brain (09.10., nur Business-Heads, Bestand `agenten-wissen--<haushalt>`) — Pfade und Modus; null = keins. */
+  wissen?: HeadWissen | null;
+  /** Stand des Wissens (auch ohne Eintrag) — für `POST /api/agenten { aktion: 'wissen' }` (409). Nur Business-Heads. */
+  wissenStand?: string;
 }
 
 /** Der eigene Auftrag an einen Head, wie ihn die Seite sieht (09.10.) — `anKi`/`grund` rechnet der Server (lib/agenten/auftrag.ts). */
@@ -558,6 +597,8 @@ export interface AuftragSicht {
   ebene: Ebene;
   /** Zuletzt geschrieben (Zeit). Wer, nur bei Heads des Haushalts als Anzeigename der Seite — hier nie. */
   am?: string;
+  /** Aus dem Brain übernommen (09.10.): Datei und ob er seitdem von Hand geändert wurde — er steht dann als Daten im System-Text. */
+  ausBrain?: { datei: string; geaendert: boolean };
 }
 
 /** Instanz-Budget für den Kopf-Balken (Paket 4b, aus lib/ki/tor.ts). */
@@ -576,7 +617,9 @@ export interface BudgetAnzeige {
 /** POST /api/agenten (Paket 4b). */
 export type EinstellungAnfrage =
   | { aktion: 'einstellung'; headId: string; teil: Partial<Record<EinstellungFeld, unknown>>; stand: string }
-  | { aktion: 'not-aus'; an: boolean; headId?: string };
+  | { aktion: 'not-aus'; an: boolean; headId?: string }
+  /** 09.10.: Wissen eines Business-Heads im Brain (Business-Bestand `agenten-wissen--<haushalt>`; `stand` = `HeadEinstellungSicht.wissenStand`). */
+  | { aktion: 'wissen'; headId: string; wissen: HeadWissen | null; stand: string };
 export const EINSTELLUNG_VORGABE: AgentenEinstellung = { v: 1, heads: {} };
 
 // ── Hintergrundaufgaben (Bestand `agenten-plan--<person>`, Paket 3) und Warteschlange ──────────────────────────────────
@@ -718,6 +761,8 @@ export const skillsHaushaltBestand = (haushalt: string) => `agenten-skills--${ha
 export const skillsPersonBestand = (person: string) => `agenten-skills-privat--${person}`;
 export const planBestand = (person: string) => `agenten-plan--${person}`;
 export const einstellungBestand = (haushalt: string) => `agenten-einstellung--${haushalt}`;
+/** Wissen der Business-Heads im Brain + Agenten-Ordner (09.10.) — NUR Business (Firma und Privat getrennt). */
+export const wissenBestand = (haushalt: string) => `agenten-wissen--${haushalt}`;
 export const medienBestand = (haushalt: string) => `medien--${haushalt}`;
 export const medienPrivatBestand = (person: string) => `medien-privat--${person}`;
 /** Werkstatt eines Heads: Ebene `person` → Bestand der Person, sonst der des Haushalts (ohne Haushalt: keiner). */
@@ -758,6 +803,9 @@ export const GRENZEN = {
   auftragZeichen: 4_000,
   /** Eigener Auftrag je Head (09.10., `HeadEinstellung.auftrag`) — darüber 413, nie gekürzt. */
   headAuftragZeichen: 4_000,
+  /** Wissen je Head im Brain (09.10., `HeadEinstellung.wissen`): höchstens so viele Ordner/Notizen, je Pfad höchstens so viele Zeichen. */
+  wissenPfade: 12,
+  wissenPfadZeichen: 300,
   /** „Als Nächstes“ zeigt die nächsten n Tage (C2). */
   naechsteTage: 7,
 } as const;

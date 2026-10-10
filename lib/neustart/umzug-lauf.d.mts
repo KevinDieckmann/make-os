@@ -55,3 +55,6 @@ export interface UmzugBericht {
 }
 
 export function umzugLaufen(opt: UmzugOptionen): Promise<UmzugBericht>;
+
+/** Rohtext einer Bestandsdatei → Klartext (Hülle v1/v2 mit AAD = Bestandsname, Klartext nur ohne Schlüssel). Wirft mit Satz. */
+export function textOeffnen(roh: string, aad: string, ring: unknown, env: NodeJS.ProcessEnv): string;

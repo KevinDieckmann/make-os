@@ -1961,6 +1961,24 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   (`LaufZustand.wartetAuf: 'business-frei'` setzen, sobald der Kern ihn kennt). **Heads-Takt** ohne Kürzel: `powerHourPersonen`.
 - **KI:** `familie` ist ein Bereich (Schalter je Person/Instanz); `finanzen-privat` nur mit `privatFinanzZugangFuer(person)` (KI-Tor). Wächter `tests/agenten-p4b.test.ts`.
 
+## Agenten-Grundausstattung aus dem Brain, Wissen je Business-Head (09.10. spät, Branch `agenten-grundausstattung`, nur lokal; UPDATES.md)
+Kevin: „Pack bitte schon die vorgefertigten Bots bei ZOE ein … Und das Sales Brain kannst du auch direkt dem Head of Sales zur Verfügung stellen.“ Regel
+desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltung.“
+- **„Aus dem Brain übernehmen“** (`/api/agenten/brain`, Register `inhaber`; Oberfläche „⋯“ › Fenster `BrainUebernahme.tsx`): Agenten-Notizen des Vaults
+  in der Agenten-Sicht (nie `privat`) GENERISCH lesen (Kopf + Überschriften, `lib/agenten/brain-agenten.ts` rein: `agentDateiLesen`, `zuordnen` mit `ALIASE` =
+  nur Sprach-Synonyme, `planBauen`, `wahlPruefen`), Vorschau → Klick. NUR Business-Heads. Der Browser schickt nur die Auswahl, die Inhalte liest der Server neu.
+  Geschrieben NUR über `einstellungAendern(…, { auftragQuelle })` (Stand/409), `mitarbeiterAnlegen(…, { agentId, herkunft, ausFremdemText })`, `wissenAendern`.
+- **Auftrag aus dem Brain** = Text aus dem Vault: `HeadEinstellung.auftragQuelle` (nur Server, nur Business-Heads) → im System-Text `auftragBrainBlock` (gekapselt,
+  nie „von einem Menschen geschrieben“), der Lauf gilt als „fremd gelesen“. Ein Mitarbeiter aus einer Notiz trägt `ausFremdemText`; `agentId` für eigene Mitarbeiter
+  setzt nur der Server (ausführbar, unter Business nur `FACH_AGENTEN_BUSINESS`).
+- **Wissen je Business-Head:** EIGENER Business-Bestand `agenten-wissen--<haushalt>` (`WissenBestand`, lib/agenten/wissen-server.ts — EINE Schreibstelle,
+  Privat-Heads 400, nie in `agenten-einstellung--*`). Lauf: `wissenFuerHead` → Agenten-Werkzeug `wissen_suchen` (lib/agenten/wissen-werkzeug.ts; gekapselt,
+  Kategorie `brain`, nur in den Pfaden), Modus `nur` beschränkt auch `suche_wissen`/`lies_notiz`. Pfad-Filter NUR über `suche(…, pfade)`/`notiz(…, pfade)`
+  (lib/zoe/vault.ts, `brainPraefix`) — im FTS5-Index IN der Abfrage, Sicht vor dem Ranking. Neue Wissens-Leser: immer darüber.
+- **Nachholen aus dem Archiv** `scripts/neustart-nachholen.mjs` (lib/neustart/nachholen(-lauf).mjs): NUR `head-sales`/`-marketing`/`-event` (gefiltert: Merksätze,
+  entschiedene Vorschläge, Autonomie), Ziel gewinnt beim Zusammenführen, Sicherung der bisherigen Datei, dieselbe Krypto wie der Umzug (`textOeffnen` exportiert).
+  Nie Bestände, die Business und Privat mischen (`agents-config`, `agenten-skills--*`, `agenten-einstellung--*`), nie Gesundheit/Finanzen/Konten/Verläufe.
+
 ## Head of IT (HOI)
 - Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
 - Drei Quellen: innen (App), Host (`deploy/lage-sammeln.sh` → `<daten>/system/lage.json`, Klartext, nur Zähler), außen (`.github/workflows/hoi-aussenblick.yml`).

@@ -19,10 +19,10 @@
 // Einwilligung (a) gespeichert; `auftragAm`/`auftragVon` stempelt nur der Server; das Protokoll nennt nur den Feldnamen.
 
 import { headDef, KATALOG } from './katalog';
-import { auftragBrauchtEinwilligung, auftragSaeubern, type AuftragKiLage } from './auftrag';
+import { auftragBrauchtEinwilligung, auftragHash, auftragSaeubern, type AuftragKiLage } from './auftrag';
 import {
   EINSTELLUNG_FELDER, einstellungBestand, type AgentenEinstellung, type Aufwand, type AutonomieStufe, type EinstellungFeld, type Faden,
-  type HeadDef, type HeadEinstellung, type HeadEinstellungSicht, type HeadGesperrt, type ModelTier, GRENZEN,
+  type HeadDef, type HeadEinstellung, type HeadEinstellungSicht, type HeadGesperrt, type HeadWissen, type ModelTier, GRENZEN,
 } from './typen';
 import type { KontoSicht } from './sicht';
 
@@ -201,7 +201,7 @@ export function teilAnwenden(alt: HeadEinstellung, teil: unknown, head: Pick<Hea
         if (!a.ok) return fehler(a.status, a.fehler);
         if ((a.text ?? null) === (alt.auftrag ?? null)) break;
         setze(k, a.text);
-        if (a.text === null) { delete neu.auftragAm; delete neu.auftragVon; }
+        if (a.text === null) { delete neu.auftragAm; delete neu.auftragVon; delete neu.auftragQuelle; }
         break;
       }
     }
@@ -212,12 +212,15 @@ export function teilAnwenden(alt: HeadEinstellung, teil: unknown, head: Pick<Hea
 // ── Anzeige (rein) ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Was die Seite je Head erfährt — wirksame Werte, Vorgaben, Kosten, Rechte, Stand. */
-export function einstellungSicht(head: Pick<HeadDef, 'stufe' | 'aufwand'> & Partial<Pick<HeadDef, 'ebene'>>, e: HeadEinstellung, o: { boden: AutonomieStufe; wirksameAutonomie: AutonomieStufe; modelle: Record<ModelTier, string>; kostenCent: number; aendern: boolean; foto: string | null; auftrag?: AuftragKiLage }): HeadEinstellungSicht {
+export function einstellungSicht(head: Pick<HeadDef, 'stufe' | 'aufwand'> & Partial<Pick<HeadDef, 'ebene'>>, e: HeadEinstellung, o: { boden: AutonomieStufe; wirksameAutonomie: AutonomieStufe; modelle: Record<ModelTier, string>; kostenCent: number; aendern: boolean; foto: string | null; auftrag?: AuftragKiLage;
+  /** 09.10.: Wissen im Brain — nur Business-Heads (Bestand `agenten-wissen--<haushalt>`, lib/agenten/wissen-server.ts); fehlt bei Privat-Heads. */ wissen?: { wert: HeadWissen | null; stand: string } }): HeadEinstellungSicht {
   return {
     ...(o.auftrag ? { auftrag: {
       text: e.auftrag ?? null, max: GRENZEN.headAuftragZeichen, anKi: !!e.auftrag && o.auftrag.an, ...(o.auftrag.grund ? { grund: o.auftrag.grund } : {}),
       kategorie: o.auftrag.kategorie, ebene: head.ebene ?? 'haushalt', ...(e.auftrag && e.auftragAm ? { am: e.auftragAm } : {}),
+      ...(e.auftrag && e.auftragQuelle ? { ausBrain: { datei: e.auftragQuelle.datei, geaendert: auftragHash(e.auftrag) !== e.auftragQuelle.hash } } : {}),
     } } : {}),
+    ...(o.wissen ? { wissen: o.wissen.wert ? { pfade: [...o.wissen.wert.pfade], modus: o.wissen.wert.modus } : null, wissenStand: o.wissen.stand } : {}),
     stufe: e.stufe ?? head.stufe, aufwand: e.aufwand ?? head.aufwand, autonomie: o.wirksameAutonomie,
     vorgabe: { stufe: head.stufe, aufwand: head.aufwand, autonomie: o.boden },
     modelle: o.modelle,
@@ -304,7 +307,7 @@ export function einstellungEintraegeVon(e: AgentenEinstellung, speicher: string)
   if (e.notAus?.von === speicher) raus.push({ art: 'not-aus', seit: e.notAus.seit });
   for (const [id, h] of Object.entries(e.heads ?? {})) {
     if (!h) continue;
-    const mein = h.zustaendig === speicher || h.notAus?.von === speicher || h.geaendertVon === speicher || (h as { autonomieVon?: string }).autonomieVon === speicher || h.auftragVon === speicher;
+    const mein = h.zustaendig === speicher || h.notAus?.von === speicher || h.geaendertVon === speicher || (h as { autonomieVon?: string }).autonomieVon === speicher || h.auftragVon === speicher || h.auftragQuelle?.von === speicher;
     // 09.10.: den eigenen Auftrag an einen Head des Haushalts (selbst geschrieben) mit Text — Art. 15/20.
     if (mein) raus.push({ art: 'head', head: id, ...(h.zustaendig === speicher ? { zustaendig: true } : {}), ...(h.notAus?.von === speicher ? { notAus: h.notAus.seit } : {}), ...(h.geaendertVon === speicher ? { geaendertAm: h.geaendertAm } : {}), ...(h.auftragVon === speicher && h.auftrag ? { auftrag: h.auftrag, auftragAm: h.auftragAm } : {}) });
   }
@@ -324,6 +327,7 @@ export function einstellungOhnePerson(e: AgentenEinstellung, speicher: string): 
     if (x.autonomieVon === speicher) { x.autonomieVon = GELOESCHT; n++; }
     // 09.10.: der Auftrag an einen Head des Haushalts bleibt (Arbeitsweise des Haushalts), „wer“ wird „[gelöscht]“.
     if (x.auftragVon === speicher) { x.auftragVon = GELOESCHT; n++; }
+    if (x.auftragQuelle?.von === speicher) { x.auftragQuelle = { ...x.auftragQuelle, von: GELOESCHT }; n++; }
     return x;
   };
   const heads: AgentenEinstellung['heads'] = {};
@@ -543,8 +547,10 @@ async function fotoErlaubt(person: string, head: HeadDef, id: string): Promise<b
 /**
  * Einstellungen eines Heads ändern (Person aus der Sitzung): Rechte über die Sicht, Stand → 409 (mit aktuellem Stand), Prüfung → 400/413,
  * Protokoll nur Kennung + Feldnamen. Privat-Heads schreiben in den Abschnitt der Person.
+ * `opt.auftragQuelle` (09.10., NUR Server — „Aus dem Brain übernehmen“, lib/agenten/brain-agenten-server.ts): der neue Auftrag kommt aus dieser
+ * Agenten-Notiz des Vaults → `auftragQuelle` wird gestempelt (der System-Text kapselt ihn dann). Aus dem Browser gibt es dieses Feld nicht.
  */
-export async function einstellungAendern(person: string, headId: unknown, teil: unknown, stand: unknown): Promise<EinstellungErgebnis> {
+export async function einstellungAendern(person: string, headId: unknown, teil: unknown, stand: unknown, opt: { auftragQuelle?: { datei: string } } = {}): Promise<EinstellungErgebnis> {
   const head = typeof headId === 'string' ? headDef(headId) : null;
   if (!head) return fehler(404, 'Diesen Head gibt es nicht.');
   const sicht = await sichtFuer(person);
@@ -553,6 +559,8 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
   if (!sichtbar) return fehler(403, 'Diesen Head siehst du nicht.');
   if (!einstellungDarf(sicht, head, sichtbar)) return fehler(403, 'Die Einstellungen dieses Heads ändern nur volle Mitglieder des Haushalts.');
   if (typeof stand !== 'string') return fehler(400, 'Stand fehlt.');
+  // 09.10. (Firma und Privat getrennt): ein Auftrag aus dem (Firmen-)Brain nur für Business-Heads.
+  if (opt.auftragQuelle && head.bereich !== 'business') return fehler(400, 'Aus dem Brain übernimmt nur Business-Heads — Privat-Agenten richtet jede Person selbst ein.');
   const haushalt = await haushaltFuerPerson(person);
   if (!haushalt) return fehler(409, 'Ohne Haushalt gibt es keine Einstellungen.');
   const [{ updateJson }, { protokolliere }, leistung, { mitarbeiterFuerHead }, personen] = await Promise.all([
@@ -592,6 +600,9 @@ export async function einstellungAendern(person: string, headId: unknown, teil: 
     if (p.felder.includes('autonomie')) Object.assign(neu, { autonomieAm: jetzt, autonomieVon: person, autonomieGrund: 'hand' });
     // Wer den Auftrag zuletzt schrieb und wann — nur der Server stempelt (nie aus dem Browser; `teilAnwenden` kennt die Felder nicht).
     if (p.felder.includes('auftrag') && neu.auftrag) Object.assign(neu, { auftragAm: jetzt, auftragVon: person });
+    // 09.10.: aus dem Brain übernommen → Herkunft mit Fingerabdruck (nur der Server; ein späterer Auftrag von Hand lässt sie stehen —
+    // der Text bleibt dann gekapselt, bis er entfernt wird).
+    if (p.felder.includes('auftrag') && neu.auftrag && opt.auftragQuelle) neu.auftragQuelle = { art: 'brain', datei: opt.auftragQuelle.datei, hash: auftragHash(neu.auftrag), am: jetzt, von: person };
     raus = { ok: true, headId: head.id, einstellung: neu, stand: einstellungStand(neu), felder: p.felder };
     if (head.ebene === 'person') return { ...e, personen: { ...(e.personen ?? {}), [person]: { heads: { ...(e.personen?.[person]?.heads ?? {}), [head.id]: neu } } } };
     return { ...e, heads: { ...e.heads, [head.id]: neu }, geaendertAm: jetzt, geaendertVon: person };

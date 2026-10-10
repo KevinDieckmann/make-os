@@ -295,3 +295,28 @@ export async function ladeFotos(): Promise<Abruf<{ fotos: FotoWahl[] }>> {
     .map(m => ({ id: m.id, name: m.name ?? 'Bild', vorschau: `${WEGE_4B.medien}/inhalt?id=${m.id}&v=raster` }));
   return { zustand: 'da', daten: { fotos } };
 }
+
+// ── „Aus dem Brain übernehmen“ und Wissen je Business-Head (09.10.) ──────────────────────────────────────────────────────
+//   GET/POST /api/agenten/brain → Vorschau (nur Inhaber), Übernahme (nur die Auswahl — Inhalte liest der Server neu aus dem Vault),
+//   Agenten-Ordner merken. POST /api/agenten { aktion: 'wissen' } → Wissen eines Business-Heads (Business-Bestand, Stand → 409).
+
+export const WEG_BRAIN = '/api/agenten/brain';
+export type BrainVorschau = import('@/lib/agenten/brain-agenten-server').BrainVorschau;
+export type BrainErgebnis = import('@/lib/agenten/brain-agenten-server').UebernahmeErgebnis;
+export type BrainZiele = Record<string, { headId: string | null; als?: 'head' | 'mitarbeiter' }>;
+
+/** Vorschau laden — `ordner` = anderer Agenten-Ordner, `ziele` = in der Vorschau gewählte Heads (dann per POST, schreibt nichts). */
+export async function ladeBrainVorschau(o: { ordner?: string | null; ziele?: BrainZiele } = {}): Promise<Abruf<BrainVorschau>> {
+  if (o.ziele && Object.keys(o.ziele).length) {
+    const r = await senden<BrainVorschau>(WEG_BRAIN, { aktion: 'vorschau', ...(o.ordner ? { ordner: o.ordner } : {}), ziele: o.ziele });
+    return r.ok ? { zustand: 'da', daten: r.daten } : r.status === 403 ? { zustand: 'gesperrt', text: r.text } : { zustand: 'fehler', text: r.text };
+  }
+  return holen<BrainVorschau>(o.ordner ? `${WEG_BRAIN}?ordner=${encodeURIComponent(o.ordner)}` : WEG_BRAIN);
+}
+
+/** Übernehmen bzw. Agenten-Ordner merken. Nach der Übernahme lädt die Seite neu (Heads, Mitarbeiter, Wissen). */
+export async function brainSenden<T>(body: Record<string, unknown>): Promise<Ergebnis<T>> {
+  const r = await senden<T>(WEG_BRAIN, body);
+  if (r.ok && body.aktion === 'uebernehmen') meldeNeu();
+  return r;
+}
