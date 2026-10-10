@@ -4,6 +4,75 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 09.10.2026 — Schlaf-Hilfe, Tages-Check, Ernährung nach WHOOP, Ergänzungen (nur lokal — Branch `schlaf-ernaehrung`, Basis 7e80f4fc)
+
+Anlass: Wünsche aus dem Sport-Fragebogen (09.10., Kevin: „Top 1 % im Sport-Bereich“) — beim Schlaf aktiv helfen, morgens den Schlaf zuerst sehen,
+eine Ziel-Aufstehzeit schrittweise erreichen; Ernährung „gesund & einfach“, nur Plan, kein Tracking, nach den WHOOP-Kalorien; Ergänzungen und Trinken
+im Blick; Fragen „wie im WHOOP-Journal“. Alles als Einstellung JE PERSON, nichts fest im Code (auch keine Werte einer Person in Kommentaren/Doku).
+
+**WHOOP-Journal über die API?** Nein — kein Endpunkt, kein Scope, kein Datentyp (FAKTEN_WHOOP.md › 9, abgerufen 09.10.). Darum fragt MAKE OS selbst.
+
+**Gebaut:**
+- **Einstellungen je Person** `gesundheit-alltag` (Erstkonto) bzw. `gesundheit-alltag--<person>` — rein `lib/gesundheit/alltag.ts`, Server
+  `lib/gesundheit/alltag-server.ts`, Route `GET/PATCH /api/gesundheit/alltag` NUR die Person selbst (kein `?fuer`, Dienstweg 403, Stand/409, 400/413,
+  nie gekürzt). Rechnen und Einstellen nur mit Einwilligung (a); Ausschalten (Erinnerung, Handy, Orientierung, alle Fragen ab) geht immer.
+- **Schlaf-Hilfe** (rein `lib/gesundheit/schlaf.ts`, Nächte `schlaf-naechte.ts`): Aufstehzeit wandert **schrittweise** von „heute“ zum Ziel (Vorgabe
+  15 Min. alle 3 Tage, einstellbar; ändert man Ziel/Schrittweite, geht es von der HEUTIGEN Stufe weiter). Schlafenszeit = Aufstehzeit der Stufe − Ziel −
+  Einschlaf-Puffer (Ø „wach im Bett“). Ziel = WHOOP-Schlafbedarf ohne dessen Schuld-Anteil + Ausgleich der eigenen 7-Tage-Schuld (÷ 4 Nächte, ≤ 1 h,
+  Viertelstunden) — liegt nur der Gesamtbedarf vor, kein Ausgleich (nie doppelt); ohne WHOOP ein eigenes Schlafziel. Konsistenz = Streuung der Einschlaf-/
+  Aufwachzeiten (WHOOP-Spiegel) + WHOOPs Konsistenz %. EIN Tipp nach Vorrang.
+- **Abend-Erinnerung**: Takt (`schlafJobsImTakt` in `/api/zoe/takt`, jede Minute) → zur Erinnerungszeit (Schlafenszeit − Vorlauf, folgt der Stufe) EINE
+  Meldung in die eigene Glocke (neue Art `gesundheit`, Titel „Zeit, den Tag ausklingen zu lassen“ — ohne Uhrzeit, ohne Werte) und nur auf Wunsch über
+  den ZOE-Kanal (`anPersonMelden`, neutral mit Link; `telegramSicher` greift zusätzlich). Einmal je Tag (Riegel `erinnert` im eigenen Bestand, in der
+  Sperre gesetzt, zählt nicht zum Stand), nur mit Einwilligung (a). Die Morgen-Nachricht des Gesundheits-Takts nennt die Schlafenszeit von heute Abend
+  — nur in der vollen Fassung (Inhalts-Ausnahme der Person, wie bisher Recovery/Schlaf); sonst bleibt es beim neutralen Hinweis.
+- **Tages-Check** (rein `lib/gesundheit/tages-check.ts`): Katalog als Daten (8 Fragen), Vorgabe 5 (Koffein spät · Alkohol · genug getrunken · Bildschirm
+  spät · spät gegessen), je Person an/ab, höchstens 6. **Kein Bestand daneben:** Antworten im eigenen Journal (`check` am Tag) über PATCH
+  `/api/state/journal` bzw. ZOE `journal_eintrag` (`check`; ZOE schreibt das Journal jetzt nur mit Einwilligung (a), wie die Oberfläche). Vor 14 Uhr
+  fragt die Karte nach gestern. Auswertung nur eigene Tage: Antwort an Tag D ↔ Schlaf/Recovery der Nacht danach (D+1), ab 3 Tagen mit UND 3 ohne,
+  neutral („Zusammenhang, kein Beweis“). Die Abendnachricht des Gesundheits-Takts nennt die gewählten Fragen (nur mit der Inhalts-Ausnahme, wie bisher).
+- **Essen nach WHOOP** (rein `lib/ernaehrung/orientierung.ts`): „heute eher mehr / wie sonst / eher leichter“ aus Ø kcal der 7 Tage, Strain gestern und
+  bisher heute, Schritten bisher heute (Alltagsbewegung) und dem Trainingsplan des Wochentags — keine Ziel-Zahl, kein Zählen; an Lauftagen der
+  Trink-Hinweis. **Wochenvorschlag** (`/api/ernaehrung/vorschlag`): Belastungstage (Plan, sonst Strain-Ø je Wochentag ≥ 14) NUR aus Personen mit
+  Einwilligung (b), im Prompt nur Wochentage, nie Namen/Werte (`belastungsZeile`, `orientierung-server.ts`); dann Kategorie `gesundheit` im KI-Tor.
+- **Ergänzungen & Trinken**: Vorlagen Protein · Kreatin · Elektrolyte · Trinkziel OHNE Mengenempfehlung → eigene Routine (owner = Person, andere sehen
+  „Belegt“), Zuordnung Routine → Vorlage nur im eigenen Bestand (nie in der Kennung). Abhaken: neues `PATCH /api/state/health { tag?, routine, erledigt }`
+  (eine Routine, in einer Sperre — statt den ganzen Log per PUT).
+- **Karten** (selbstladend, eine Antwort für alle drei, ohne Einwilligung `null` bzw. mit `hinweis` ein Hinweis): `components/os/gesundheit/
+  SchlafHilfeKarte.tsx` (letzte Nacht zuerst, große Zahl), `TagesCheckKarte.tsx` (Ja/Nein, 44-px-Ziele), `ErnaehrungHeuteKarte.tsx`; Daten
+  `alltag-daten.ts`. **Eingebunden werden sie vom Gesundheits-Cockpit-Umbau** (GesundheitView gehört dem anderen Paket).
+- **Recht:** Speicher-Register `gesundheit-alltag(--*)` (Art. 9, nur die Person selbst), `journal(--*)` jetzt mit Gesundheits-Angaben
+  (Altbestand ohne Angaben 91 → 89); `PERSON_BESTAENDE` `gesundheit-alltag`; Routen-Register `gesundheit/alltag`, `state/health` PATCH; Messlatte mit
+  Marke `alltag`.
+
+Tests: `tests/schlaf-hilfe.test.ts` (Regeln: Stufen, Schuld, Ausgleich nie doppelt, Schlafenszeit, Konsistenz über Mitternacht, Erinnerung + Riegel,
+neutraler Text, Einstellungen/Rebase/Grenzen, Tages-Check-Säuberung und Auswertung ab Mindestmenge, Orientierung, Belastungstage ohne Namen, Vorlagen ohne
+Mengen), `tests/schlaf-hilfe-route.test.ts` (B bekommt nichts aus A auch geteilt/?fuer, Dienstweg 403, ohne (a) nichts, Journal-Check/Abhaken nur eigen,
+Erinnerung einmal je Tag neutral, Riegel ohne 409, Belastung nur mit (b)), Messlatte, Register-Wächter.
+
+**So testet ihr:**
+1. Gesundheit öffnen (eigene Ansicht, Einwilligung (a) erteilt) → Karte „Schlaf-Hilfe“ (sobald eingebunden): ohne Einstellung „Trag deine Aufstehzeit ein“.
+2. „Einstellen“ → Aufstehzeit heute 07:30, Ziel 06:45, 15 Min. / alle 3 Tage, Abend-Erinnerung an, 30 Min. vorher → Speichern → „Heute ins Bett“ zeigt
+   eine Uhrzeit, „Aufstehen 07:30 · Ziel 06:45 · nächste Stufe <Datum>“, darunter EIN Tipp.
+3. Mit WHOOP: „Letzte Nacht“ groß mit Bedarf und Balken, „Schuld · 7 Tage“, „Rhythmus ±… Min.“.
+4. Zur Erinnerungszeit (Takt läuft) → Glocke: „Zeit, den Tag ausklingen zu lassen“ (keine Uhrzeit, keine Werte); mit „Auch aufs Handy“ zusätzlich
+   über ZOE (WhatsApp/Telegram), ebenso neutral. Kommt nur einmal am Abend.
+5. Karte „Tages-Check“: vor 14 Uhr steht „Gestern …“, sonst „Heute“; Ja/Nein tippen (nochmal tippen nimmt zurück) → neu laden, bleibt. „Fragen wählen“ →
+   z. B. „Stress“ dazu → speichern; ab der 7. Frage gesperrt.
+6. Nach ein paar Tagen mit und ohne „Alkohol“: Satz „An Tagen mit „Alkohol“ hattest du im Schnitt … Min. weniger Schlaf …“ — auch in der Schlaf-Hilfe.
+7. Karte „Essen & Trinken heute“: ein Satz (eher mehr / wie sonst / eher leichter) mit Gründen, „rund … kcal am Tag (WHOOP)“; „Ergänzung hinzufügen“ →
+   Kreatin → eigene Menge → anlegen → Haken setzen; steht auch unter Routinen. Als zweite Person: die Routine nur als „Belegt“.
+8. Ernährung › Wochenvorschlag mit Einwilligung (b) und hartem Tag im Sport-Plan → der Plan ist an diesem Tag reichhaltiger; Begründung und Gerichte
+   nennen keine Person.
+9. Als zweite Person (auch mit geteilter Gesundheit): eigene, leere Schlaf-Hilfe — nichts von der ersten Person.
+10. Handy (375 px): Karten untereinander, Ja/Nein-Knöpfe ≥ 44 px, kein Querscrollen.
+
+**Offen:** Einbinden der drei Karten in GesundheitView (anderes Paket; Wunsch „Schlaf zuerst“ → Schlaf-Hilfe oben). ZOE-Tagesvorschlag am Morgen mit
+Schlafenszeit/Tages-Check (nur mit (b)) — nicht gebaut. „Stress“ gibt es zweimal (Anspannung 1–5 und Check-Frage) — zusammenführen? Konsistenz nimmt den
+WHOOP-Schlafbeginn als Einschlafzeit (WHOOP misst „im Bett“) — Annahme. **Rückweg:** nur neue Bestände/optionale Felder; der alte Stand ignoriert
+`check` im Journal (bleibt beim Schreiben über PATCH erhalten, ein PUT des ganzen Journals aus dem alten Stand auch) und kennt die Meldungsart
+`gesundheit` nicht (die Glocke verwirft solche Einträge beim Lesen — nur Erinnerungen).
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.

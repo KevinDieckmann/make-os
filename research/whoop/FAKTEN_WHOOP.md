@@ -106,3 +106,14 @@ zum Zurücksetzen). Überschritten → `429`. Ein `Retry-After` nennt die Seite 
 - Ob v1-Token für v2 gelten: der alte gemeinsame Token des Inhabers wird beim Übergang einmal übernommen; scheitert er (401/Scope), muss
   der Inhaber neu verbinden. **Annahme**
 - DPF-Zertifizierung von WHOOP (Drittland USA) — im Empfänger-Register als „zu prüfen“ geführt, nicht behauptet.
+
+## 9. Journal (Tages-Check) — Nachtrag 09.10.2026 (abgerufen am 09.10.2026)
+**Befund: über die API nicht verfügbar (nicht dokumentiert).** Die API-Referenz führt nur die Gruppen Activity-ID-Mapping, Partner,
+User (Profil, Körpermaße, Widerruf), Cycle, Recovery, Sleep und Workout — **kein Journal-Endpunkt, kein Journal-Feld, kein Scope** dafür
+(Scopes: `read:recovery`, `read:cycles`, `read:workout`, `read:sleep`, `read:profile`, `read:body_measurement`). Die „Data Types“ der
+Doku sind Cycle, Sleep, Recovery, Workout, User — das Wort „journal“ kommt auf keiner der gelesenen Seiten vor. **belegt** (als Fehlen)
+- Dass der WHOOP-Datenexport der App eine Datei mit Journal-Einträgen enthält, sagen nur Dritte (nicht die Entwickler-Doku) — MAKE OS
+  liest sie nicht. **Annahme / nicht belegt**
+- **Folge für MAKE OS:** der Tages-Check „wie im WHOOP-Journal“ ist eigene Erfassung (`journal--<person>`, Feld `check`;
+  lib/gesundheit/tages-check.ts), die Auswertung verbindet die Antworten mit den EIGENEN Schlaf-/Recovery-Werten der Nacht danach.
+**Quellen:** https://developer.whoop.com/api · https://developer.whoop.com/docs/introduction · https://developer.whoop.com/docs/developing/user-data/cycle
