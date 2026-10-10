@@ -188,10 +188,42 @@ Reine Darstellung und Struktur; Funktion, Daten und Abgleich (iCloud/Google/Gmai
 **Ziel-Bezug (Kevins Leitidee „immer der Fokus auf die Ziele“):** Wo eine Aufgabe in der Liste eines Meilensteins liegt, zeigt Zeile (Aufgaben-Baum) und Detail einen ruhigen Chip „Ziel · Titel“ in der **Ziel-Farbe der Lichtfäden** (je Space nach Rang durch `FADEN_FARBEN`, `lib/aufgaben/ziel-bezug.ts`). Nichts wird gespeichert, kein Feld kommt dazu — gelesen wird die vorhandene Kette Aufgabe → Meilenstein (`meilensteinVonAufgabe`) → Ziel (`zielVonMeilenstein`); Abfragen nur, wenn überhaupt eine Aufgabe in einer Meilenstein-Liste liegt.
 
 **Aufgaben:** alle Dateien über `../ui`; Abhaken-Kreise `HakenZiel`; ✕/Schließen/Entfernen `SymbolKnopf`; Wahl-Chips (`crm/Wahl`) 32/36 px statt 26/30; Kopf am Handy: Umschalter Kalender|Aufgaben neben dem Titel, Darstellung (Liste · Board · Tabelle · Kalender · ZOE) und „Zeitstrahl ›“ als eigene Zeile im Inhalt (`ui-nur-breit`/`ui-nur-schmal`); Schnellzeile: kurzer Platzhalter + Kürzel-Hinweis darunter, der Ort (Space › Projekt › Liste) am Handy als EINE Zeile mit „ändern“; Platzhalter der Zeilen kurz („+ Aufgabe (Enter)“); Eigenschaften im Detail stehen am Handy übereinander (`ui-eigenschaft`, kein Überlauf der Datumsfelder).
-**Kalender:** Mini-Monat: Vor-/Folgemonat 44 px (vorher 4 × 24), Tage 40/44 px mit Beschriftung („3. Oktober, heute, mit Terminen“); Monatsblatt am Handy: ganze Tage antippen, Termine als Punkte (die Pillen gehören dem Rechner); die sechs Ansichten (Tag … Termine) als wischbare `Reiter`; Einstellungen: freie Tage entfernen 44 px; Kalenderliste mit 44-px-Zeilen. **Rasterzellen** (Zeitraster, Monat, Jahr, 4 Tage, Balken der Aufgaben-Kalenderansicht): der Block/die Zelle ist das Ziel (`.ui-kein-ziel` an Unterknöpfen), Schrift mindestens 12 px — die einzige Ausnahme von der 13-px-Regel.
+**Kalender:** Mini-Monat: Vor-/Folgemonat 44 px (vorher 4 × 24), Tage 40/44 px mit Beschriftung („3. Oktober, heute, mit Terminen“); Monatsblatt am Handy: ganze Tage antippen, Termine als Punkte (die Pillen gehören dem Rechner); die sechs Ansichten (Tag … Termine) seit 10.10. als `Segmente` (breite Kopfzeile) bzw. Menü „Woche ▾“ (schmal) — Abschnitt „Kalender — Ansicht wie Google“; Einstellungen: freie Tage entfernen 44 px; Kalenderliste mit 44-px-Zeilen. **Rasterzellen** (Zeitraster, Monat, Jahr, 4 Tage, Balken der Aufgaben-Kalenderansicht): der Block/die Zelle ist das Ziel (`.ui-kein-ziel` an Unterknöpfen), Schrift mindestens 12 px — die einzige Ausnahme von der 13-px-Regel.
 **Inbox:** Liste, Gmail-Thread, Antwort-Editor (`feld`, 180 px), Meldungen als `Hinweis`; Thread bricht lange Adressen um (kein seitlicher Überlauf), das Mehr-Menü ist eine Fläche mit ganzen Knöpfen, Einzug unter der Zeile am Handy 4 px statt 22.
 
 **Messung (Sandbox, erfundene Daten, 375 px, 42 Ansichten, vorher → nachher):** Tippziele < 44 px — Aufgaben (11 Ansichten) **777 → 0**, Kalender (10) **1.290 → 3**, Inbox (5) **147 → 0**, Shell-Seiten (6) 158 → 75 (Rest: Inhalt von Home/Konto/Heute und das ZOE-Fenster, die anderen Paketen gehören), Regression (10 fremde Seiten) 196 → 106 (nur Shell-Teile besser, nichts schlechter); Eingaben < 16 px Aufgaben 104 → 0, Kalender 23 → 0; seitlicher Überlauf 0 → 0; Konsolenfehler 0 → 0. Vergleich mit Fotos: `scratchpad/design-kern/vergleich.html`.
+
+## Kalender — Ansicht wie Google (10.10.)
+Kevin 10.10.: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im Vergleich zu Google.“
+Befund am Bildschirm (Woche, Business): dieselben mehrtägigen Aufgaben an JEDEM Tag einzeln in der Ganztags-Zeile, vom Raster blieben 2–3 Stunden, oben
+stapelten sich Seitenkopf, „letzter Abgleich …“-Texte je Kalender und zwei Schalterreihen, „Business-frei“ kräftig rot. Gilt für Tag · 4 Tage · Woche · Monat ·
+Planen · Aufgaben-Modus (`components/os/kalender/*`). Termine, Aufgaben und Verhalten (Aufziehen, Ziehen, Rückgängig, Gäste-Rückfrage) sind unverändert.
+
+1. **Volle Höhe:** der Kalender reicht bis zum unteren Fensterrand (`useVolleHoehe` in `components/os/kalender/darstellung.tsx`, Regel `volleHoehe` in
+   `lib/kalender/darstellung.ts`: Fenster − was darüber steht − Handy-Leiste). Raster und linke Spalte rollen JE IN SICH, nie die Seite; Tageskopf und
+   Ganztags-Bereich stehen oben fest (eigene Zeilen mit `scrollbarGutter: 'stable'`, damit die Spalten genau übereinander liegen). Beim Öffnen rollt das Raster
+   auf eine Stunde vor jetzt bzw. auf den Arbeitsbeginn (Ende der eigenen Business-freien Nacht, `arbeitsbeginnAus`, sonst 7:00) — wer selbst rollt, wird nicht
+   zurückgeholt. Monat und Jahr füllen die Höhe ebenso und rollen in sich, wenn sie nicht reicht.
+2. **EINE Kopfzeile, kein sichtbarer Seitenkopf** (`.kalender-seite`: der Titel bleibt für Vorleser): Heute ‹ › · Zeitraum in einer Zeile („5.–11. Okt. 2026 · KW 41“,
+   `zeitraumText`; am Handy kurz „5.–11. Okt.“) · Abgleich als PUNKT je Quelle (`AbgleichPunkte`: grün/gelb/rot nach `abgleichAmpel`, Tooltip, Klick zeigt
+   Einzelheiten + „Jetzt abgleichen“) · Suche als Symbol (Klick oder „/“) · Ansicht · Kalender/Planen · Kalender|Aufgaben · Darstellung. `.kalender-kopf` ist ein
+   Container: ab 1180 px stehen Ansicht und Kalender/Planen als `Segmente`, schmaler als Menü „Woche ▾“ (mit Tasten) bzw. Symbol. Am Handy zwei Zeilen; „Erstellen“
+   ist dort nur „+“. Verbunden steht über dem Raster nichts mehr (`BereichVerbindungen ohneHinweis`) — nur die Karte zum Verbinden, solange es nötig ist.
+3. **Ganztags-Bereich als Bahnen** (`components/os/kalender/Ganztags.tsx`, Lage rein in `lib/kalender/layout.ts` `ganztagsLegen`/`ganztagsSicht`, Tage einer
+   Aufgabe `ganztagsSpanne`): ein mehrtägiger Termin bzw. eine Aufgabe vom Start bis zur Deadline ist EIN durchgehender Balken; höchstens zwei Bahnen
+   (`GANZTAGS_ZEILEN`), darunter „+n“ je Tag; ▾/▴ in der linken Spalte klappt auf (dann rollt der Bereich in sich). Über den Zeitraum hinaus: ‹ bzw. ›. Im Monat sind
+   mehrtägige ganztägige Termine je Woche ebenso ein Balken (am Handy ein schmaler Farbstreifen). „Aufgaben ohne Uhrzeit anzeigen“ ist ein Schalter je Gerät.
+4. **Lesbare Blöcke:** Fläche in der Farbe des Kalenders mit `BLOCK_ALPHA` (0x33 — Titel und Zeitzeile ≥ 4.5:1, Rand ≥ 3:1, Wächter in
+   `tests/kalender-ansicht.test.ts`), Titel 12,5 px/650 und Uhrzeit; kurze Blöcke in EINER Zeile „Titel, 10:00“, hohe dürfen den Titel umbrechen. Ein Block füllt
+   nach rechts, solange dort zur selben Zeit niemand liegt (`spanne` in `spaltenLegen`), Rand im Grundton trennt Nachbarn; Mindesthöhe 24 px bleibt. Jetzt wie Google:
+   roter Punkt + Linie über den heutigen Tag, die Uhrzeit rot in der Stundenspalte.
+5. **Ruhiger:** Business-frei ist eine leise graue Schraffur (`FREI_SCHRAFFUR`), keine Farbe. **Darstellung je Gerät** (Merker `make-kalender-darstellung`, Regeln
+   `lib/kalender/darstellung.ts`, Felder `DarstellungFelder` im Knopf „Darstellung“ der Kopfzeile und unter Einstellungen › Bedienung): Zeilenhöhe Kompakt · Normal ·
+   Groß (`ZEILEN_PX`, Normal = der bisherige Wert), Zoom mit Strg/⌘ + Mausrad bzw. zwei Fingern NUR über dem Raster (die Minute unter dem Zeiger bleibt stehen,
+   `rollAnker`; außerhalb zoomt der Browser wie immer), „Aufgaben ohne Uhrzeit anzeigen“, Bedienungshilfe unter dem Raster (auch über das „?“ oben links).
+6. **Handy:** Vorgabe Tag; „4 Tage“ zeigt am Handy drei Tage (`mehrereTage`, Kennung `vier` und Taste x bleiben), volle Höhe, Wischen wie bisher.
+
+Neue Stellen im Kalender: Farben/Flächen über `BLOCK_HEX`, Lage nur über `lib/kalender/layout.ts`, Gerät-Einstellungen nur über `kalenderDarstellungAendern`.
 
 ## Fokus-Signatur (04.10.)
 Kevin: „Diese Akzente will ich überall drauf haben, wo Fokus ist. Mache das Ganze offline, damit wir da nochmal den Standard heben. Dezent, aber immer

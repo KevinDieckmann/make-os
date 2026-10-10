@@ -187,6 +187,22 @@ export const EINSTELLUNGEN_KONTO = {
     was: 'Tage, die kein gesetzlicher Feiertag sind, an denen ihr aber nicht arbeitet (zum Beispiel 24.12. und 31.12.). Sie sperren Buchungsseite und die Suche nach freier Zeit wie ein Feiertag.',
     beispiel: 'Du trägst „27.12. Betriebsruhe“ ein. Die Buchungsseite bietet an diesem Tag keine Plätze mehr an.',
   },
+  'kalender.zeilenhoehe': {
+    was: 'Wie hoch eine Stunde im Raster von Tag, 4 Tagen und Woche ist. Kompakt zeigt mehr Stunden auf einen Blick, Groß macht kurze Termine besser lesbar. Gilt nur für dieses Gerät; feiner geht es mit Strg/⌘ + Mausrad oder zwei Fingern im Raster.',
+    beispiel: 'Am Laptop wählst du Kompakt und siehst 7 bis 20 Uhr ohne Rollen. Am großen Monitor stellst du Groß ein, damit auch 15-Minuten-Termine ihren Titel zeigen.',
+  },
+  'kalender.aufgabenOhneZeit': {
+    was: 'Aufgaben ohne Uhrzeit stehen in der Ganztags-Zeile über dem Raster und im Monat, Aufgaben mit Start als Balken bis zur Deadline. Aufgaben mit Uhrzeit bleiben immer als Block im Raster. Gilt nur für dieses Gerät.',
+    beispiel: 'In einer vollen Woche liegen zwölf Aufgaben ohne Uhrzeit oben. Du schaltest sie aus und siehst nur noch Termine und eingeplante Aufgaben; abhaken kannst du weiter im Aufgaben-Modus.',
+    an: 'Aufgaben ohne Uhrzeit erscheinen in der Ganztags-Zeile und im Monat.',
+    aus: 'Die Ganztags-Zeile zeigt nur Termine, Feiertage, Geburtstage und Fristen — die Aufgaben selbst ändern sich nicht.',
+  },
+  'kalender.hilfe': {
+    was: 'Eine Zeile unter dem Raster erklärt die Bedienung: Klick in eine Lücke legt an, aufziehen wählt die Zeit, anfassen verschiebt, wischen blättert. Gilt nur für dieses Gerät; das Fragezeichen oben links im Raster schaltet sie ebenso.',
+    beispiel: 'Eine neue Person im Haushalt lernt den Kalender kennen und lässt die Hilfe an. Wer die Griffe kennt, schaltet sie aus und gewinnt eine Zeile für das Raster.',
+    an: 'Die Bedienungshilfe steht unter dem Raster.',
+    aus: 'Das Raster bekommt die Zeile; die Hilfe kommt über das Fragezeichen oben links zurück.',
+  },
   'kalender.google': {
     was: 'Verbindet deinen Google Kalender (Workspace) für Business-Termine, in beide Richtungen. Privat, Familie und Gemeinsam bleiben in MAKE OS und iCloud.',
     beispiel: 'Ein Kunde lädt dich per Google-Kalender ein. Der Termin erscheint in MAKE OS; legst du hier einen Business-Termin an, steht er in deinem Google Kalender.',

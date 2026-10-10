@@ -59,8 +59,10 @@ export function VerbundenHinweis({ text }: { text: string }) {
 /**
  * Im Kalender oben im Hauptbereich: je nach Bereich die Karte bzw. der Hinweis der EIGENEN Verbindung. Lädt beide Stände
  * der eigenen Person; `onGeaendert` lädt den Kalender neu (z. B. nach dem Verbinden von iCloud).
+ * `ohneHinweis` (10.10.): verbunden steht nichts mehr über dem Raster — den Stand zeigen die Abgleich-Punkte der Kopfzeile; die Karte zum
+ * Verbinden bleibt.
  */
-export function BereichVerbindungen({ bereich, onGeaendert }: { bereich: KalenderBereich; onGeaendert?: () => void }) {
+export function BereichVerbindungen({ bereich, onGeaendert, ohneHinweis }: { bereich: KalenderBereich; onGeaendert?: () => void; ohneHinweis?: boolean }) {
   const [google, setGoogle] = useState<GoogleKurz | null>(null);
   const [icloud, setIcloud] = useState<IcloudKurz | null>(null);
   const [arbeit, setArbeit] = useState(false);
@@ -74,13 +76,14 @@ export function BereichVerbindungen({ bereich, onGeaendert }: { bereich: Kalende
 
   const a = verbindenAnzeige(bereich, google, icloud);
   if (!a.google && !a.icloud) return null;
+  if (ohneHinweis && a.google !== 'karte' && a.icloud !== 'karte') return null;
   const verbinden = async () => { setArbeit(true); setFehler(null); const f = await googleKalenderVerbinden(); setArbeit(false); if (f) setFehler(f.fehler); };
   return (
     <div data-bereich-verbindungen={bereich} style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
       {a.google === 'karte' && google && <GoogleVerbindenKarte stand={google} arbeit={arbeit} fehler={fehler} onVerbinden={() => verbinden()} />}
-      {a.google === 'hinweis' && <VerbundenHinweis text={`${FIRMA} · Google verbunden${google?.konto ? ` (${google.konto})` : ''}`} />}
+      {a.google === 'hinweis' && !ohneHinweis && <VerbundenHinweis text={`${FIRMA} · Google verbunden${google?.konto ? ` (${google.konto})` : ''}`} />}
       {a.icloud === 'karte' && <Karte i={0} akzent={LEUCHT.puls}><IcloudVerbindung onGeaendert={() => { void laden(); onGeaendert?.(); }} /></Karte>}
-      {a.icloud === 'hinweis' && <VerbundenHinweis text={`iCloud verbunden${icloud?.konto ? ` (${icloud.konto})` : ''}${icloud?.haupt ? ' · Kalender des Haushalts' : ''}`} />}
+      {a.icloud === 'hinweis' && !ohneHinweis && <VerbundenHinweis text={`iCloud verbunden${icloud?.konto ? ` (${icloud.konto})` : ''}${icloud?.haupt ? ' · Kalender des Haushalts' : ''}`} />}
     </div>
   );
 }

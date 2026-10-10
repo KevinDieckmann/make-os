@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Zahl, Segmente, Chip, feld, LEUCHT, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Leer, Knopf, Segmente, Chip, feld, LEUCHT, useRueckfrage } from '../ui';
 import { ART_FARBE, type PlanArt } from '@/types/planer';
 import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
@@ -43,7 +43,6 @@ const BAUSTEINE: Baustein[] = [
 ];
 const ART_LABEL: Record<PlanArt, string> = { fokus: 'Fokus', reha: 'Erholung', erholung: 'Erholung', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Block' };
 const DAUERN = [15, 30, 60, 90, 120].map(d => ({ id: String(d), label: d < 60 ? `${d} min` : `${(d / 60).toLocaleString('de-DE')} h` }));
-const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const fmtH = (min: number) => (min / 60).toFixed(1).replace('.', ',');
 
 interface VorschlagBlock { date: string; startMin: number; dauerMin: number; titel: string; art: PlanArt; taskId?: string }
@@ -215,27 +214,25 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     );
   };
 
-  /** Über dem Raster: Stunden der Woche, je Tag, Hinweis beim Platzieren. */
+  /**
+   * Über dem Raster (seit 10.10. EINE schmale Zeile statt einer Karte — Kevin: „man sieht einfach nichts“): Stunden des Zeitraums,
+   * offene/fällige Aufgaben, „überladen“; die Stunden je Tag stehen im Tageskopf des Rasters (`tagZusatz`). Darunter der Hinweis beim Platzieren.
+   */
   const zeitraum = tage.length === 1 ? 'Dieser Tag' : tage.length === 7 ? 'Diese Woche' : `Diese ${tage.length} Tage`;
+  const h = (min: number) => (min ? `${fmtH(min)} h` : '—');
   const kopf = !aktiv ? null : (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <Karte i={0} akzent={ueberladen ? LEUCHT.achtung : undefined}>
-        <Ueberschrift farbe={ueberladen ? LEUCHT.achtung : LEUCHT.puls} rechts={ueberladen ? <Chip farbe={LEUCHT.achtung}>überladen, Ruhe braucht Luft</Chip> : 'Termine + Blöcke'}>{zeitraum}</Ueberschrift>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12 }}>
-          <Zahl wert={stunden.gesamtMin ? fmtH(stunden.gesamtMin) : undefined} label="h belegt" farbe={ueberladen ? LEUCHT.achtung : LEUCHT.puls} />
-          <Zahl wert={stunden.terminMin ? fmtH(stunden.terminMin) : undefined} label="h Termine" />
-          <Zahl wert={stunden.blockMin ? fmtH(stunden.blockMin) : undefined} label="h Blöcke" />
-          <Link href={WEG.aufgaben()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={offeneN ? String(offeneN) : undefined} label="Aufgaben offen ›" /></Link>
-          <Link href={WEG.aufgaben()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={faelligWoche ? String(faelligWoche) : undefined} label={tage.length === 1 ? 'fällig an diesem Tag ›' : 'fällig im Zeitraum ›'} farbe={faelligWoche ? LEUCHT.achtung : undefined} /></Link>
-        </div>
-        {tage.length > 1 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-            {tage.map((tag, i) => { const h = (stunden.jeTag[tag] ?? 0) / 60; const f = h > 10 ? LEUCHT.kritisch : h > 8 ? LEUCHT.achtung : C.inkLeise; return (
-              <span key={tag} title={h > 10 ? 'überladen — Ruhe braucht Luft' : h > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'} style={{ fontSize: TYP.bedien, color: f, fontVariantNumeric: 'tabular-nums', background: 'rgba(255,255,255,.04)', borderRadius: 8, padding: '3px 8px' }}>{WD[i] ?? tag.slice(8)} {fmtH(h * 60)} h</span>
-            ); })}
-          </div>
-        )}
-      </Karte>
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div role="group" aria-label={`${zeitraum}: Termine und Blöcke`} title="Termine + Blöcke im Zeitraum"
+        style={{ display: 'flex', alignItems: 'center', gap: '4px 16px', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, padding: '6px 12px', borderRadius: 12, fontVariantNumeric: 'tabular-nums',
+          background: ueberladen ? `${LEUCHT.achtung}12` : 'rgba(255,255,255,.03)', border: `1px solid ${ueberladen ? `${LEUCHT.achtung}44` : 'rgba(255,255,255,.06)'}` }}>
+        <b style={{ color: ueberladen ? LEUCHT.achtung : C.ink }}>{zeitraum}</b>
+        <span><b style={{ color: ueberladen ? LEUCHT.achtung : LEUCHT.puls }}>{h(stunden.gesamtMin)}</b> belegt</span>
+        <span>{h(stunden.terminMin)} Termine</span>
+        <span>{h(stunden.blockMin)} Blöcke</span>
+        <Link href={WEG.aufgaben()} style={{ color: C.inkDim, textDecoration: 'none' }}>{offeneN || '—'} Aufgaben offen ›</Link>
+        <Link href={WEG.aufgaben()} style={{ color: faelligWoche ? LEUCHT.achtung : C.inkDim, textDecoration: 'none' }}>{faelligWoche || '—'} {tage.length === 1 ? 'fällig an diesem Tag' : 'fällig im Zeitraum'} ›</Link>
+        {ueberladen && <Chip farbe={LEUCHT.achtung}>überladen, Ruhe braucht Luft</Chip>}
+      </div>
       {gewaehlt && (
         <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.ink, background: `${ART_FARBE[gewaehlt.art]}1c`, border: `1px solid ${ART_FARBE[gewaehlt.art]}55`, borderRadius: 10, padding: '8px 12px' }}>
           <span><b style={{ color: ART_FARBE[gewaehlt.art] }}>{gewaehlt.titel}</b> · {gewaehlt.dauerMin} Min — jetzt in den Kalender klicken (oder aufziehen). Er landet im Kalender {wer === 'malin' ? 'von Malin' : wer === 'kevin' ? 'von Kevin' : 'Gemeinsam'}.</span>
@@ -244,6 +241,16 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       )}
     </div>
   );
+  /** Stunden je Tag für den Tageskopf des Rasters (nur bei mehreren Tagen; > 8 h gelb, > 10 h rot). */
+  const tagZusatz = useMemo(() => {
+    if (!aktiv || tage.length < 2) return undefined;
+    const raus: Record<string, { text: string; farbe?: string; titel: string }> = {};
+    for (const tag of tage) {
+      const std = (stunden.jeTag[tag] ?? 0) / 60;
+      raus[tag] = { text: std ? `${fmtH(std * 60)} h` : '—', farbe: std > 10 ? LEUCHT.kritisch : std > 8 ? LEUCHT.achtung : undefined, titel: std > 10 ? 'überladen — Ruhe braucht Luft' : std > 8 ? 'voll — Pausen ernst nehmen' : 'Termine + Blöcke an diesem Tag' };
+    }
+    return raus;
+  }, [aktiv, tage, stunden]);
 
   /** Linke Leiste: Bausteine, Routinen, Aufgaben, eigener Block, Übernahme. */
   const leiste = !aktiv ? null : (
@@ -361,5 +368,5 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
     </div>
   );
 
-  return { kopf, leiste, unten, platzieren, gewaehlt, archivTermine };
+  return { kopf, leiste, unten, platzieren, gewaehlt, archivTermine, tagZusatz };
 }

@@ -4,6 +4,46 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Kalender: Ansicht wie Google (nur lokal — Branch `kalender-ansicht`, Basis 7c9e1335 = `update-0910b`)
+
+Entscheidung 10.10.: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im Vergleich zu
+Google.“ Nur Ansicht — keine Logik- oder Datenänderung an Terminen und Aufgaben; Aufziehen, Ziehen, Rückgängig und die Gäste-Rückfrage bleiben, wie sie waren.
+Bestehende Daten unverändert; neu ist nur ein Merker im Browser (`make-kalender-darstellung`, je Gerät, nur Abweichungen von der Vorgabe).
+
+**Gebaut:**
+- **Volle Höhe:** der Kalender reicht bis zum unteren Fensterrand; Raster und linke Spalte rollen je in sich (nicht mehr die Seite). Tageskopf und Ganztags-Bereich
+  bleiben oben stehen. Beim Öffnen rollt das Raster auf eine Stunde vor jetzt bzw. auf den Arbeitsbeginn (Ende der eigenen Business-freien Nacht, sonst 7:00).
+- **EINE schlanke Kopfzeile, kein Seitenkopf mehr:** Heute ‹ › · Zeitraum („5.–11. Okt. 2026 · KW 41“) · Abgleich als kleiner Punkt je Quelle (grün/gelb/rot,
+  Tooltip; Klick zeigt Einzelheiten und „Jetzt abgleichen“) · Suche als Lupe (Klick oder „/“) · Ansicht · Kalender/Planen · Kalender|Aufgaben · Darstellung.
+  Breit stehen Ansicht und Kalender/Planen als Segmente, schmaler als Menü „Woche ▾“ bzw. Symbol. Der Hinweis „… verbunden“ über dem Raster ist weg (steht im Punkt).
+- **Ganztags-Bereich als Bahnen:** eine mehrtägige Aufgabe (Start → Deadline) bzw. ein mehrtägiger Termin ist EIN durchgehender Balken; höchstens zwei Zeilen,
+  darunter „+n“ je Tag, ▾/▴ links klappt auf/zu. Im Monat sind mehrtägige ganztägige Termine je Woche ebenfalls ein Balken.
+- **Lesbare Termine:** Titel und Uhrzeit (kurze Termine „Titel, 10:00“ in einer Zeile), kräftigere Fläche in der Kalenderfarbe (Kontrast geprüft), ein Block füllt
+  nach rechts, wenn dort frei ist; Jetzt-Linie wie Google mit roter Uhrzeit links. Planen: die Stunden stehen als EINE Zeile über dem Raster, je Tag im Tageskopf.
+- **Ruhiger:** „Business-frei“ ist eine leise graue Schraffur statt Rot. **Darstellung je Gerät** (Knopf mit den Reglern oben rechts und Einstellungen › Bedienung ›
+  Kalender): Zeilenhöhe Kompakt · Normal · Groß, Zoom mit Strg/⌘ + Mausrad bzw. zwei Fingern im Raster (die Seite selbst zoomt dort nicht, außerhalb wie immer),
+  „Aufgaben ohne Uhrzeit anzeigen“, Bedienungshilfe unter dem Raster (auch über das „?“ oben links im Raster; Vorgabe zu).
+- **Handy:** Vorgabe Tag; „4 Tage“ heißt am Handy „3 Tage“ und zeigt drei Spalten; volle Höhe; Wischen wie bisher; Kopfzeile in zwei Zeilen, „Erstellen“ als „+“.
+
+**So testet ihr** (Klickdummy `localhost:3001`, Kalender öffnen):
+1. Woche wählen (Taste w): das Raster reicht bis unten, die Seite selbst rollt nicht — mit dem Mausrad rollt nur das Raster; Wochentage und Ganztags-Zeile bleiben oben.
+2. Eine Aufgabe mit Start und Deadline über mehrere Tage anlegen (Aufgaben › Detail: Start Mo, Deadline Do): in der Woche steht EIN Balken von Mo bis Do, nicht vier Pillen.
+   Mehr als zwei solche Einträge am selben Tag → darunter „+n“; ▾ links klappt alles auf, ▴ wieder zu.
+3. Oben: nur noch eine Zeile. Den Punkt neben dem Zeitraum überfahren (Tooltip) und anklicken (Einzelheiten, „Jetzt abgleichen“). Lupe bzw. „/“ öffnet die Suche, Esc schließt.
+4. Knopf mit den Reglern (rechts): Zeilenhöhe Kompakt/Groß umschalten; „Aufgaben ohne Uhrzeit anzeigen“ aus → die Ganztags-Zeile zeigt nur noch Termine, Feiertage,
+   Fristen; Bedienungshilfe an → Zeile unter dem Raster. Im Raster Strg (Mac: ⌘) + Mausrad bzw. am Trackpad zwei Finger auseinander: das Raster zoomt, die Stunde
+   unter dem Zeiger bleibt stehen; „Zurücksetzen“ im Knopf. Neu laden: die Wahl ist gemerkt (nur auf diesem Gerät).
+5. Einen kurzen Termin (30 Min.) ansehen: „Titel, 10:00“ in einer Zeile; zwei Termine, die sich überschneiden, stehen sauber nebeneinander; ein später freier Termin wird breiter.
+6. Business-frei (Familie › Rahmen) gesetzt: im Raster nur eine leise graue Schraffur. Planen (Taste p): Stunden als schmale Zeile, je Tag im Tageskopf (> 8 h gelb, > 10 h rot).
+7. Monat (Taste m): ein Urlaub über mehrere Tage ist je Woche EIN Balken. Am Handy (375 px): Tag als Vorgabe, Ansicht „3 Tage“, zwei Kopfzeilen, Raster in voller Höhe,
+   zwei Finger zoomen im Raster, Wischen über die Tageszeile blättert.
+8. Einstellungen › Bedienung › Kalender: dieselben Felder wie im Kalender.
+
+**Tests:** `tests/kalender-ansicht.test.ts` (Bahnen, Spalten füllen, Zeitraum, Ampel, Darstellung/Merker, Zoom, volle Höhe, Arbeitsbeginn, 3 Tage, Kontrast, Raster/Monat
+gerendert, Quell-Wächter); bestehende `kalender-*`, `design-*`, `erklaerungen` grün. Neue Erklärungen: `kalender.zeilenhoehe`, `kalender.aufgabenOhneZeit`, `kalender.hilfe`.
+**Nicht gebaut / offen:** Sichtprüfung im Browser steht aus (kein Server in dieser Runde — Last auf Kevins Mac); mehrtägige Termine MIT Uhrzeit bleiben im Raster je Tag
+ein Block (wie bisher), im Monat je Tag eine Pille. **Rückweg:** nur Oberfläche + ein Browser-Merker — der alte Stand ignoriert ihn.
+
 ## 10.10.2026 — Unternehmen › Schild: Pflichtdokumente, Pflichten-Kalender, Risiko-Register, Struktur, Marken & Versicherungen (nur lokal — Branch `unternehmen-schild`, Basis 6086ee72 = `update-0910b`)
 
 Entscheidung 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein Schild aufstellen, das Risiko immer wieder mitbewerten,

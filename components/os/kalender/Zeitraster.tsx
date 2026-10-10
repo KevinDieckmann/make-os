@@ -25,30 +25,50 @@
 //   · #89 Klickfläche mindestens 24 px hoch.
 // Seit 08.10. (Business-frei, Lücke 7): die eigenen Business-freien Zeiten (`businessFrei`, Wandzeit-Spannen aus
 // /api/arbeitsrahmen) liegen dezent als Band unter den Terminen — nur Anzeige, Klicks gehen durch.
+// Seit 10.10. (Kevin: „nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts — im Vergleich zu Google“):
+//   · Das Raster füllt die Höhe, die der Kalender ihm gibt, und rollt IN sich; Tageskopf und Ganztags-Bereich stehen oben fest
+//     (eigene Zeilen, gleicher Rollbalken-Rand über `scrollbarGutter`, damit die Spalten genau übereinander liegen).
+//   · Ganztags-Bereich als Bahnen (./Ganztags.tsx): ein mehrtägiger Eintrag = EIN Balken, höchstens zwei Bahnen, „+n“ klappt auf.
+//   · Lesbare Blöcke: Titel und Uhrzeit (kurze Termine in einer Zeile „Titel, 10:00“), Fläche in der Farbe des Kalenders (`BLOCK_HEX`),
+//     ein Block füllt nach rechts, solange dort niemand liegt (`spanne`). Jetzt-Linie wie Google (roter Punkt + Linie, Uhrzeit links).
+//   · Business-frei als ruhige Schraffur statt kräftiger Farbe. Zeilenhöhe Kompakt/Normal/Groß und Zoom (Strg/⌘ + Mausrad bzw. Pinch,
+//     die Minute unter dem Zeiger bleibt stehen) — `px` kommt vom Kalender (Darstellung je Gerät, lib/kalender/darstellung.ts).
+//   · Die Bedienungshilfe unten ist einklappbar (Fragezeichen oben links), beim Öffnen rollt das Raster auf jetzt bzw. den Arbeitsbeginn.
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as RPE, type DragEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE, type DragEvent } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '../ui';
 import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag, startMinute } from '@/lib/kalender/layout';
 import { ART_INFO, ARBEITSORTE } from '@/lib/kalender/arten';
 import { ART_FARBE } from '@/types/planer';
-import { GanztagsZelle, WER_FARBE, WER_LABEL, istVorlaeufig, istGoogleTermin, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
-import { ganztagsAm, mitZeitAm, zeitAusMinuten, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
+import { WER_FARBE, WER_LABEL, istVorlaeufig, istGoogleTermin, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
+import { mitZeitAm, zeitAusMinuten, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { aufgabeZiehStart, aufgabeAusZiehen, ziehtAufgabe } from './aufgaben';
 import { wandAus, wandzeit, minutenVon } from '@/lib/kalender/zeit';
+import { BLOCK_HEX, radZoomFaktor, rollAnker } from '@/lib/kalender/darstellung';
+import { Ganztags } from './Ganztags';
 
+/** Layout-Wirkung nur im Browser (React 18 warnt sonst beim Vorzeichnen auf dem Server). */
+const useLayoutWirkung = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+/** Vorgabe: Pixel je Minute (Zeilenhöhe „Normal“, lib/kalender/darstellung.ts `ZEILEN_PX`). */
 export const PX_MIN = 0.9;
 const RASTER = 15;
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const minVon = (wand: string) => Number(wand.slice(11, 13)) * 60 + Number(wand.slice(14, 16));
 const uhr = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const SCHRAFFUR = `repeating-linear-gradient(135deg, ${LEUCHT.kritisch}2e 0 6px, transparent 6px 12px)`;
+/** Business-frei (10.10.): ruhige graue Schraffur — es ist ein Rahmen, kein Alarm. */
+const FREI_SCHRAFFUR = 'repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 5px, transparent 5px 11px)';
 const LANGES_HALTEN_MS = 350;
 /** Mindesthöhe eines Blocks im Raster (px, #89 — Klickfläche nach WCAG 2.5.8). */
 export const MIN_HOEHE = 24;
+/** Unter dieser Höhe steht ein Termin in EINER Zeile („Titel, 10:00“). */
+const EINZEILIG_UNTER = 38;
 const WD_KURZ = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 /** „Sa 10:00“ — Vorschau beim Ziehen mehrtägiger Termine. */
 const kurz = (wand: string) => `${WD_KURZ[new Date(`${wand.slice(0, 10)}T12:00:00Z`).getUTCDay()]} ${wand.slice(11, 16)}`;
+/** Die Bedienungshilfe (einklappbar unter dem Raster). */
+export const RASTER_HILFE = 'Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen · wischen blättert (zwei Finger, am Handy über die Tageszeile) · Strg/⌘ + Mausrad bzw. zwei Finger zoomen';
 
 /** Business-freie Spannen an einem Tag als Minuten (0–1440) — für das Band im Raster. */
 function bandAm(l: readonly { start: string; ende: string }[] | undefined, tag: string): { von: number; bis: number }[] {
@@ -76,7 +96,10 @@ const mehrtaegig = (t: KTermin) => !t.ganztags && letzterTag(t) > t.start.slice(
 interface Zieh { /** Termin.id (Kalender + UID, R-K1) */ id: string; art: 'move' | 'resize'; y0: number; x0: number; start: number; ende: number; tag: number; neuTag: number; neuStart: number; neuEnde: number; bewegt: boolean; aktiv: boolean; dMin: number; pointerId: number }
 interface Aufzug { tag: number; a: number; b: number; y0: number; bewegt: boolean; pointerId: number; aktiv: boolean }
 
-export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgaben, aufgabeDauer = 30, farbe, onOeffnen, onNeu, onVerschieben, onAufgabe, onAufgabeHaken, onAufgabeEinplanen, onArbeitsortNeu, businessFrei }: {
+/** Kleine Zeile unter dem Datum im Tageskopf (z. B. Stunden im Planen-Modus). */
+export interface TagZusatz { text: string; farbe?: string; titel?: string }
+
+export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgaben, aufgabeDauer = 30, farbe, onOeffnen, onNeu, onVerschieben, onAufgabe, onAufgabeHaken, onAufgabeEinplanen, onArbeitsortNeu, businessFrei, px = PX_MIN, onZoom, aufgabenGanztags = true, hilfe = true, onHilfe, tagZusatz, arbeitsbeginn = null }: {
   tage: string[]; heute: string; termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[];
   /** Eigene Business-freie Zeiten (Lücke 7) — Wandzeit-Spannen; dezent gezeichnet, nie anklickbar. */
   businessFrei?: readonly { start: string; ende: string }[];
@@ -95,6 +118,19 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   onAufgabeEinplanen?: (id: string, tag: string, zeit: string | null) => void;
   /** Klick in eine leere Zelle der Arbeitsort-Leiste. */
   onArbeitsortNeu?: (tag: string, wer: Wer) => void;
+  /** Pixel je Minute (10.10.: Zeilenhöhe × Zoom, Darstellung je Gerät). */
+  px?: number;
+  /** Zoom mit Strg/⌘ + Rad bzw. Pinch: Faktor auf die aktuelle Größe. Ohne: kein Zoom (der Browser zoomt wie immer). */
+  onZoom?: (faktor: number) => void;
+  /** Aufgaben in der Ganztags-Zeile zeigen („Aufgaben ohne Uhrzeit anzeigen“) — Aufgaben mit Uhrzeit stehen immer im Raster. */
+  aufgabenGanztags?: boolean;
+  /** Bedienungshilfe unter dem Raster zeigen; `onHilfe` schaltet sie (Fragezeichen oben links). */
+  hilfe?: boolean;
+  onHilfe?: (an: boolean) => void;
+  /** Zusatzzeile je Tag im Tageskopf. */
+  tagZusatz?: Record<string, TagZusatz>;
+  /** Arbeitsbeginn (Minute) — dorthin rollt das Raster, wenn heute nicht sichtbar ist (sonst eine Stunde vor jetzt). */
+  arbeitsbeginn?: number | null;
 }) {
   const spalten = useRef<HTMLDivElement | null>(null);
   const rollen = useRef<HTMLDivElement | null>(null);
@@ -119,23 +155,102 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
     const t = setInterval(setzen, 60_000);
     return () => clearInterval(t);
   }, []);
-  // Beim ersten Zeichnen auf 7 Uhr rollen (bzw. eine Stunde vor jetzt, wenn heute sichtbar ist).
+
+  // ── Rollen beim Öffnen ──
+  // Beim ersten Zeichnen auf den Arbeitsbeginn rollen (bzw. eine Stunde vor jetzt, wenn heute sichtbar ist).
   // Gesamtprüfung 29.09.: beim ersten Zeichnen ist die Liste oft noch nicht begrenzt (Spalten erst nach `useBreit`) — dann
   // lief `scrollTop` ins Leere und das Raster stand nach jedem Neuladen auf 0 Uhr. Deshalb: rollen, sobald die Liste
   // wirklich rollen kann (ResizeObserver), und nur einmal je Zeitraum (wer selbst gerollt hat, wird nicht zurückgeholt).
+  // 10.10.: kommt der Arbeitsbeginn später (aus den Business-freien Zeiten), rollt das Raster noch einmal — solange niemand selbst gerollt hat.
+  const pxRef = useRef(px);
   const gerollt = useRef(false);
+  const vonHand = useRef(false);
+  const autoTop = useRef<number | null>(null);
   const hinRollen = useRef(() => {});
   hinRollen.current = () => {
-    const r = rollen.current; if (!r || gerollt.current || r.scrollHeight <= r.clientHeight) return;
-    r.scrollTop = startMinute(tage, heute, minutenVon(wandzeit(new Date()))) * PX_MIN;
+    const r = rollen.current; if (!r || gerollt.current || vonHand.current || r.scrollHeight <= r.clientHeight) return;
+    r.scrollTop = startMinute(tage, heute, minutenVon(wandzeit(new Date())), arbeitsbeginn) * pxRef.current;
+    autoTop.current = r.scrollTop;
     gerollt.current = true;
   };
-  useEffect(() => { gerollt.current = false; hinRollen.current(); }, [tage.length]);
+  useEffect(() => { gerollt.current = false; vonHand.current = false; hinRollen.current(); }, [tage.length]);
+  useEffect(() => { if (!vonHand.current) { gerollt.current = false; hinRollen.current(); } }, [arbeitsbeginn]);
   useEffect(() => {
     const r = rollen.current; if (!r || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => hinRollen.current());
     ro.observe(r);
-    return () => ro.disconnect();
+    const gerolltVonHand = () => { if (autoTop.current !== null && Math.abs(r.scrollTop - autoTop.current) > 4) vonHand.current = true; };
+    r.addEventListener('scroll', gerolltVonHand, { passive: true });
+    return () => { ro.disconnect(); r.removeEventListener('scroll', gerolltVonHand); };
+  }, []);
+
+  // ── Zoom (10.10.): neue Größe → die gemerkte Minute (unter dem Zeiger bzw. oben) bleibt an ihrer Stelle ──
+  const zoomAnker = useRef<{ minute: number; versatz: number } | null>(null);
+  useLayoutWirkung(() => {
+    const alt = pxRef.current; pxRef.current = px;
+    const r = rollen.current; if (!r || alt === px) return;
+    const anker = zoomAnker.current ?? { minute: r.scrollTop / alt, versatz: 0 };
+    zoomAnker.current = null;
+    r.scrollTop = rollAnker(anker.minute, px, anker.versatz);
+    if (autoTop.current !== null && !vonHand.current) autoTop.current = r.scrollTop;
+  }, [px]);
+  const onZoomRef = useRef(onZoom); onZoomRef.current = onZoom;
+  /** Abbruch laufender Gesten (Pinch übernimmt): aus den Hörern heraus aufrufbar. */
+  const gestenAbbruch = useRef(() => {});
+  useEffect(() => {
+    const r = rollen.current; if (!r) return;
+    let faktor = 1, bild = 0;
+    const melden = (f: number, minute: number, versatz: number) => {
+      if (!onZoomRef.current) return;
+      zoomAnker.current = { minute, versatz };
+      faktor *= f;
+      if (!bild) bild = requestAnimationFrame(() => { const g = faktor; faktor = 1; bild = 0; if (Math.abs(g - 1) > 0.001) onZoomRef.current?.(g); });
+    };
+    const ankerBei = (clientY: number) => { const v = clientY - r.getBoundingClientRect().top; return { minute: (r.scrollTop + v) / pxRef.current, versatz: v }; };
+    // Strg/⌘ + Rad (am Trackpad kommt Pinch als Rad mit Strg): nur IM Raster abfangen — außerhalb zoomt der Browser wie immer.
+    const rad = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !onZoomRef.current) return;
+      e.preventDefault();
+      const a = ankerBei(e.clientY);
+      melden(radZoomFaktor(e.deltaY, e.deltaMode), a.minute, a.versatz);
+    };
+    // Zwei Finger (Handy, Tablet): Abstand der Finger → Faktor; die Seite selbst zoomt dabei nicht (nur über dem Raster).
+    let pinch: { abstand: number } | null = null;
+    const abstand = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const touchAn = (e: TouchEvent) => { if (e.touches.length === 2 && onZoomRef.current) { pinch = { abstand: abstand(e.touches) || 1 }; gestenAbbruch.current(); } };
+    const touchZug = (e: TouchEvent) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const d = abstand(e.touches) || pinch.abstand;
+      const a = ankerBei((e.touches[0].clientY + e.touches[1].clientY) / 2);
+      melden(d / pinch.abstand, a.minute, a.versatz);
+      pinch.abstand = d;
+    };
+    const touchAus = (e: TouchEvent) => { if (e.touches.length < 2) pinch = null; };
+    // Safari: Pinch am Trackpad bzw. iPhone kommt (auch) als „gesture…“ — die Seite nicht zoomen lassen; am Mac (ohne Touch) zoomt das Raster.
+    let gestenSkala = 1;
+    const gesteAn = (e: Event) => { e.preventDefault(); gestenSkala = 1; };
+    const gesteZug = (e: Event) => {
+      e.preventDefault();
+      const g = e as Event & { scale?: number; clientY?: number };
+      if (pinch || typeof g.scale !== 'number' || !g.scale) return;
+      const a = ankerBei(g.clientY ?? r.getBoundingClientRect().top + r.clientHeight / 2);
+      melden(g.scale / gestenSkala, a.minute, a.versatz);
+      gestenSkala = g.scale;
+    };
+    r.addEventListener('wheel', rad, { passive: false });
+    r.addEventListener('touchstart', touchAn, { passive: true });
+    r.addEventListener('touchmove', touchZug, { passive: false });
+    r.addEventListener('touchend', touchAus, { passive: true });
+    r.addEventListener('touchcancel', touchAus, { passive: true });
+    r.addEventListener('gesturestart', gesteAn, { passive: false } as AddEventListenerOptions);
+    r.addEventListener('gesturechange', gesteZug, { passive: false } as AddEventListenerOptions);
+    return () => {
+      if (bild) cancelAnimationFrame(bild);
+      r.removeEventListener('wheel', rad); r.removeEventListener('touchstart', touchAn); r.removeEventListener('touchmove', touchZug);
+      r.removeEventListener('touchend', touchAus); r.removeEventListener('touchcancel', touchAus);
+      r.removeEventListener('gesturestart', gesteAn); r.removeEventListener('gesturechange', gesteZug);
+    };
   }, []);
   // Touch: solange aufgezogen wird, darf die Liste nicht rollen (nicht-passiver Hörer — React-Hörer sind passiv).
   useEffect(() => {
@@ -153,18 +268,19 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       ...aufgabenMitZeit.map(a => { const v = Number(a.zeit!.slice(0, 2)) * 60 + Number(a.zeit!.slice(3, 5)); return { id: `a:${a.id}`, von: v, bis: Math.min(24 * 60, v + aufgabeDauer) }; }),
     ];
     const gelegt = spaltenLegen(lagen);
-    const plaetze = new Map(gelegt.map(p => [p.id, p]));
     const lagenMap = new Map(lagen.map(l => [l.id, l]));
     // #85: ab 4 Spalten nur die ersten und „+n“ — aufgeklappt alle.
     const { sicht, mehr } = rasterLage(gelegt, lagenMap, aufgeklappt.has(tag));
     // Aufgeklappt: „−“ oben an der ersten breiten Gruppe (sonst null).
     const breit = gelegt.filter(p => p.spalten > 3).map(p => lagenMap.get(p.id)?.von ?? 0);
     const wenigerVon = aufgeklappt.has(tag) && breit.length ? Math.min(...breit) : null;
-    const ganztags = termine.filter(t => t.ganztags && t.art !== 'arbeitsort' && t.start.slice(0, 10) <= tag && t.ende.slice(0, 10) > tag);
-    return { tag, mitZeit, aufgabenMitZeit, lagen: lagenMap, plaetze, sicht, mehr, wenigerVon, umstellung: zeitumstellung(tag),
-      ganztags, abwesendGanz: ganztags.some(t => t.art === 'abwesend'),
-      fristen: fristen.filter(f => f.tag === tag), erinnerungen: erinnerungen.filter(e => e.tag === tag), aufgaben: ganztagsAm(aufgaben, tag) };
-  }), [tage, termine, fristen, erinnerungen, aufgaben, aufgabeDauer, aufgeklappt]);
+    const abwesendGanz = termine.some(t => t.ganztags && t.art === 'abwesend' && t.start.slice(0, 10) <= tag && t.ende.slice(0, 10) > tag);
+    return { tag, mitZeit, aufgabenMitZeit, lagen: lagenMap, sicht, mehr, wenigerVon, umstellung: zeitumstellung(tag), abwesendGanz };
+  }), [tage, termine, aufgaben, aufgabeDauer, aufgeklappt]);
+
+  // Ganztags-Bereich (10.10.): Termine, Fristen, Erinnerungen und — wenn gewünscht — Aufgaben als Bahnen über die Tage.
+  const ganztagsTermine = useMemo(() => termine.filter(t => t.ganztags && t.art !== 'arbeitsort'), [termine]);
+  const ganztagsAufgaben = useMemo(() => (aufgabenGanztags ? aufgaben : []), [aufgaben, aufgabenGanztags]);
 
   // Arbeitsort-Leiste: je Person eine Zeile (nur, wenn im Zeitraum eingetragen).
   const arbeitsorte = useMemo(() => {
@@ -184,7 +300,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   const aufgabeUeber = (e: DragEvent<HTMLDivElement>, ti: number) => {
     if (!onAufgabeEinplanen || !ziehtAufgabe(e)) return;
     e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-    const min = Math.floor((e.clientY - e.currentTarget.getBoundingClientRect().top) / PX_MIN / RASTER) * RASTER;
+    const min = Math.floor((e.clientY - e.currentTarget.getBoundingClientRect().top) / px / RASTER) * RASTER;
     if (!ablage || ablage.tag !== ti || ablage.min !== min) setAblage({ tag: ti, min });
   };
   const aufgabeAb = (e: DragEvent<HTMLDivElement>, tag: string, mitZeit: boolean) => {
@@ -192,9 +308,8 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
     setAblage(null);
     if (!id || !onAufgabeEinplanen) return;
     e.preventDefault();
-    onAufgabeEinplanen(id, tag, mitZeit ? zeitAusMinuten((e.clientY - e.currentTarget.getBoundingClientRect().top) / PX_MIN, RASTER) : null);
+    onAufgabeEinplanen(id, tag, mitZeit ? zeitAusMinuten((e.clientY - e.currentTarget.getBoundingClientRect().top) / px, RASTER) : null);
   };
-  const ganztagsUeber = (e: DragEvent<HTMLDivElement>) => { if (onAufgabeEinplanen && ziehtAufgabe(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } };
 
   const haltenAus = () => { if (ziehHalten.current) clearTimeout(ziehHalten.current); ziehHalten.current = null; };
   const anfassen = (e: RPE<HTMLDivElement>, t: KTermin, tagIdx: number, art: Zieh['art']) => {
@@ -227,7 +342,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       if (Math.abs(e.clientY - zieh.y0) > 8 || Math.abs(e.clientX - zieh.x0) > 8) { haltenAus(); setZieh(null); }
       return;
     }
-    const dMin = Math.round((e.clientY - zieh.y0) / PX_MIN / RASTER) * RASTER;
+    const dMin = Math.round((e.clientY - zieh.y0) / px / RASTER) * RASTER;
     const bewegt = zieh.bewegt || Math.abs(e.clientY - zieh.y0) > 4 || Math.abs(e.clientX - zieh.x0) > 8;
     if (zieh.art === 'move') {
       const dauer = zieh.ende - zieh.start;
@@ -260,7 +375,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   };
 
   // ── Aufziehen in einer Lücke ──
-  const minuteIn = (e: { clientY: number }, el: HTMLElement) => (e.clientY - el.getBoundingClientRect().top) / PX_MIN;
+  const minuteIn = (e: { clientY: number }, el: HTMLElement) => (e.clientY - el.getBoundingClientRect().top) / px;
   const lueckeDruck = (e: RPE<HTMLDivElement>, ti: number) => {
     if (zieh || e.button !== 0) return;
     const el = e.currentTarget, m = minuteIn(e, el), pid = e.pointerId;
@@ -290,26 +405,37 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
     if (!a.bewegt) onNeu(tag, Math.max(0, Math.min(24 * 60 - RASTER, Math.floor(a.a / RASTER) * RASTER)));
   };
   const lueckeAbbruch = () => { if (halten.current) clearTimeout(halten.current); setAufzug(null); };
+  // Zwei Finger = Zoom: ein angefangenes Aufziehen/Ziehen fällt weg (sonst legte das Halten mit zwei Fingern einen Termin an).
+  gestenAbbruch.current = () => { lueckeAbbruch(); ziehAbbruch(); };
 
   const stunden = Array.from({ length: 24 }, (_, i) => i);
-  const kopfBreite = 46;
+  const kopfBreite = 52;
   const vorschau = aufzug && aufzug.aktiv && (aufzug.bewegt || aufzug.b !== aufzug.a) ? { ...ziehSpanne(aufzug.a, aufzug.b, RASTER), tag: aufzug.tag } : null;
+  const heuteSichtbar = jetztMin != null && tage.includes(heute);
+  /** Kopf- und Ganztags-Zeilen reservieren denselben Rollbalken-Rand wie das Raster — die Spalten liegen genau übereinander. */
+  const kopfZeile: React.CSSProperties = { display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, overflowY: 'hidden', scrollbarGutter: 'stable' };
   return (
-    <div data-kalender-zieht={zieh?.aktiv || aufzug?.aktiv || ablage ? '' : undefined} style={{ display: 'grid', gridTemplateRows: 'auto auto auto 1fr auto', minHeight: 0, height: '100%', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, overflow: 'hidden', background: 'rgba(255,255,255,.015)' }}>
+    <div data-kalender-zieht={zieh?.aktiv || aufzug?.aktiv || ablage ? '' : undefined} style={{ display: 'grid', gridTemplateRows: 'auto auto auto minmax(0, 1fr) auto', minHeight: 0, height: '100%', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, overflow: 'hidden', background: 'rgba(255,255,255,.015)' }}>
       {/* Tagesköpfe — am Handy die Wisch-Zeile (ein Finger waagerecht blättert, senkrecht rollt die Seite weiter: wischen.ts). */}
-      <div data-wisch-kopf="" style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.07)', touchAction: 'pan-y' }}>
-        <div />
-        {tage.map(tag => { const d = new Date(`${tag}T12:00:00`); const h = tag === heute; return (
-          <div key={tag} style={{ padding: '8px 6px 6px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,.05)' }}>
+      <div data-wisch-kopf="" style={{ touchAction: 'pan-y', ...kopfZeile, borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 6 }}>
+          {onHilfe && (
+            <button type="button" className="fassbar ui-kein-ziel" onClick={() => onHilfe(!hilfe)} aria-expanded={hilfe} aria-controls="kalender-hilfe" aria-label={hilfe ? 'Bedienungshilfe ausblenden' : 'Bedienungshilfe zeigen'} title={hilfe ? 'Bedienungshilfe ausblenden' : 'Wie bedient man das Raster?'}
+              style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(255,255,255,.1)', background: hilfe ? 'rgba(255,255,255,.08)' : 'transparent', color: C.inkLeise, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>?</button>
+          )}
+        </div>
+        {tage.map(tag => { const d = new Date(`${tag}T12:00:00`); const h = tag === heute; const z = tagZusatz?.[tag]; return (
+          <div key={tag} style={{ padding: '6px 4px 5px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,.05)', minWidth: 0 }}>
             <div style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: h ? LEUCHT.puls : C.inkLeise, fontWeight: 700 }}>{WD[d.getDay()]}</div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', marginTop: 2, fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, background: h ? LEUCHT.puls : 'transparent', color: h ? '#0b0b0c' : C.ink }}>{d.getDate()}</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', marginTop: 1, fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 700, background: h ? LEUCHT.puls : 'transparent', color: h ? '#0b0b0c' : C.ink }}>{d.getDate()}</div>
+            {z && <div title={z.titel} style={{ fontSize: 12, color: z.farbe ?? C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{z.text}</div>}
           </div>
         ); })}
       </div>
       {/* Arbeitsort-Leiste (wie Googles „Home“) — je Person */}
       <div>
         {arbeitsorte.map(z => (
-          <div key={z.wer} style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+          <div key={z.wer} style={{ ...kopfZeile, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
             <div title={`Arbeitsort ${WER_LABEL[z.wer]}`} style={{ fontSize: 12, color: WER_FARBE[z.wer], padding: '4px 4px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{WER_LABEL[z.wer]}</div>
             {tage.map(tag => { const t = z.tage.get(tag); const ort = t?.arbeitsort ? ARBEITSORTE.find(a => a.id === t.arbeitsort!.art) : undefined; return (
               <div key={tag} style={{ borderLeft: '1px solid rgba(255,255,255,.05)', padding: '2px 4px', minWidth: 0 }}>
@@ -326,43 +452,40 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
           </div>
         ))}
       </div>
-      {/* Ganztags-Zeile */}
-      <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.07)', maxHeight: 132, overflowY: 'auto' }}>
-        <div style={{ fontSize: 12, color: C.inkLeise, padding: '6px 4px', textAlign: 'right' }}>ganzt.</div>
-        {jeTag.map(t => (
-          <div key={t.tag} data-ganztags={t.tag} onDragOver={ganztagsUeber} onDrop={e => aufgabeAb(e, t.tag, false)} style={{ padding: 4, borderLeft: '1px solid rgba(255,255,255,.05)', minWidth: 0, minHeight: 28, background: t.abwesendGanz ? SCHRAFFUR : undefined }}>
-            <GanztagsZelle termine={t.ganztags} aufgaben={t.aufgaben} erinnerungen={t.erinnerungen} fristen={t.fristen} onTermin={onOeffnen}
-              onAufgabeHaken={onAufgabeHaken ?? onAufgabe} onAufgabeOeffnen={onAufgabeHaken ? onAufgabe : undefined} aufgabenZiehbar={!!onAufgabeEinplanen} />
-          </div>
-        ))}
-      </div>
-      {/* Stundenraster */}
-      <div ref={rollen} style={{ overflowY: 'auto', minHeight: 0, position: 'relative' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px 1fr`, height: 24 * 60 * PX_MIN }}>
+      {/* Ganztags-Bereich (10.10.): Bahnen statt einer Pille je Tag — ein mehrtägiger Eintrag ist EIN Balken. */}
+      <Ganztags tage={tage} kopfBreite={kopfBreite} termine={ganztagsTermine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={ganztagsAufgaben} farbe={farbe} onTermin={onOeffnen}
+        onAufgabeHaken={onAufgabeHaken ?? onAufgabe} onAufgabeOeffnen={onAufgabeHaken ? onAufgabe : undefined} onAufgabeAblegen={onAufgabeEinplanen ? (id, tag) => onAufgabeEinplanen(id, tag, null) : undefined} />
+      {/* Stundenraster — rollt in sich; Strg/⌘ + Rad bzw. zwei Finger zoomen. */}
+      <div ref={rollen} data-kalender-raster="" style={{ overflowY: 'auto', minHeight: 0, position: 'relative', scrollbarGutter: 'stable', overscrollBehaviorY: 'contain' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px 1fr`, height: 24 * 60 * px }}>
           <div style={{ position: 'relative' }}>
-            {stunden.map(h => <div key={h} style={{ position: 'absolute', top: h * 60 * PX_MIN - 7, right: 6, fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{h > 0 ? `${String(h).padStart(2, '0')}:00` : ''}</div>)}
+            {stunden.map(h => <div key={h} style={{ position: 'absolute', top: h * 60 * px - 7, right: 8, fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{h > 0 ? `${String(h).padStart(2, '0')}:00` : ''}</div>)}
+            {/* Jetzt (10.10., wie Google): die Uhrzeit links in Rot. */}
+            {heuteSichtbar && <div aria-hidden style={{ position: 'absolute', top: jetztMin! * px - 8, right: 4, zIndex: 2, fontSize: 12, fontWeight: 700, color: LEUCHT.kritisch, background: C.grund, borderRadius: 4, padding: '0 3px', fontVariantNumeric: 'tabular-nums' }}>{uhr(jetztMin!)}</div>}
           </div>
           <div ref={spalten} style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${tage.length}, minmax(0, 1fr))` }}>
-            {/* Stundenlinien */}
-            {stunden.map(h => <div key={h} style={{ position: 'absolute', left: 0, right: 0, top: h * 60 * PX_MIN, borderTop: `1px solid rgba(255,255,255,${h % 6 === 0 ? '.09' : '.05'})`, pointerEvents: 'none' }} />)}
+            {/* Stundenlinien, halbe Stunden ganz leise (ab „Normal“). */}
+            {stunden.map(h => <div key={h} style={{ position: 'absolute', left: 0, right: 0, top: h * 60 * px, borderTop: `1px solid rgba(255,255,255,${h % 6 === 0 ? '.09' : '.055'})`, pointerEvents: 'none' }} />)}
+            {px >= 0.8 && stunden.map(h => <div key={`h-${h}`} style={{ position: 'absolute', left: 0, right: 0, top: (h * 60 + 30) * px, borderTop: '1px dashed rgba(255,255,255,.025)', pointerEvents: 'none' }} />)}
             {jeTag.map((t, ti) => {
               const h = t.tag === heute;
               return (
                 <div key={t.tag} data-spalte={t.tag} onPointerDown={e => lueckeDruck(e, ti)} onPointerMove={lueckeZug} onPointerUp={lueckeLos} onPointerCancel={lueckeAbbruch}
                   onDragOver={e => aufgabeUeber(e, ti)} onDragLeave={() => setAblage(a => (a?.tag === ti ? null : a))} onDrop={e => aufgabeAb(e, t.tag, true)}
-                  style={{ position: 'relative', borderLeft: '1px solid rgba(255,255,255,.05)', background: t.abwesendGanz ? SCHRAFFUR : h ? 'rgba(255,255,255,.02)' : undefined, cursor: 'copy', touchAction: aufzug?.aktiv ? 'none' : 'pan-y', userSelect: 'none' }}>
-                  {h && jetztMin != null && <div style={{ position: 'absolute', left: 0, right: 0, top: jetztMin * PX_MIN, borderTop: `2px solid ${LEUCHT.kritisch}`, zIndex: 3, pointerEvents: 'none' }}><span style={{ position: 'absolute', left: -5, top: -5, width: 8, height: 8, borderRadius: '50%', background: LEUCHT.kritisch }} /></div>}
-                  {/* Business-frei (Lücke 7): dezentes Band, Klicks gehen durch (die Rückfrage stellt der Anlege-Dialog). */}
+                  style={{ position: 'relative', borderLeft: '1px solid rgba(255,255,255,.05)', background: t.abwesendGanz ? SCHRAFFUR : h ? 'rgba(79,195,247,.025)' : undefined, cursor: 'copy', touchAction: aufzug?.aktiv ? 'none' : 'pan-y', userSelect: 'none' }}>
+                  {/* Jetzt-Linie (wie Google): Punkt am linken Rand, Linie über den Tag. */}
+                  {h && jetztMin != null && <div style={{ position: 'absolute', left: 0, right: 0, top: jetztMin * px, borderTop: `2px solid ${LEUCHT.kritisch}`, zIndex: 4, pointerEvents: 'none' }}><span style={{ position: 'absolute', left: -6, top: -7, width: 12, height: 12, borderRadius: '50%', background: LEUCHT.kritisch }} /></div>}
+                  {/* Business-frei (Lücke 7, ruhiger seit 10.10.): leise Schraffur, Klicks gehen durch (die Rückfrage stellt der Anlege-Dialog). */}
                   {bandAm(businessFrei, t.tag).map(b => (
                     <div key={`bf-${b.von}`} aria-hidden title="Business-frei" data-business-frei={t.tag}
-                      style={{ position: 'absolute', left: 0, right: 0, top: b.von * PX_MIN, height: (b.bis - b.von) * PX_MIN, background: `${LEUCHT.beziehung}0d`, borderLeft: `2px solid ${LEUCHT.beziehung}55`, pointerEvents: 'none', zIndex: 0 }}>
-                      {(b.bis - b.von) * PX_MIN >= 22 && <span style={{ position: 'absolute', right: 4, top: 2, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: `${LEUCHT.beziehung}aa`, fontFamily: SCHRIFT.text }}>Business-frei</span>}
+                      style={{ position: 'absolute', left: 0, right: 0, top: b.von * px, height: (b.bis - b.von) * px, background: FREI_SCHRAFFUR, pointerEvents: 'none', zIndex: 0 }}>
+                      {(b.bis - b.von) * px >= 40 && <span style={{ position: 'absolute', right: 5, top: 3, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, opacity: .55, fontFamily: SCHRIFT.text }}>Business-frei</span>}
                     </div>
                   ))}
                   {/* #86: Zeitumstellung — Ende Oktober gibt es 02:00–03:00 zweimal, Ende März gar nicht. */}
                   {t.umstellung && (
                     <div role="note" title={t.umstellung === 'doppelt' ? 'Zeitumstellung: 02:00–03:00 gibt es heute zweimal (erst Sommer-, dann Winterzeit). Termine in dieser Stunde können übereinander liegen.' : 'Zeitumstellung: 02:00–03:00 gibt es heute nicht (die Uhr springt von 2 auf 3 Uhr).'}
-                      style={{ position: 'absolute', left: 0, right: 0, top: 120 * PX_MIN, height: 60 * PX_MIN, background: `repeating-linear-gradient(45deg, ${LEUCHT.achtung}1f 0 5px, transparent 5px 10px)`, borderTop: `1px dashed ${LEUCHT.achtung}88`, borderBottom: `1px dashed ${LEUCHT.achtung}88`, pointerEvents: 'none', zIndex: 1, fontSize: 12, color: LEUCHT.achtung, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>
+                      style={{ position: 'absolute', left: 0, right: 0, top: 120 * px, height: 60 * px, background: `repeating-linear-gradient(45deg, ${LEUCHT.achtung}1f 0 5px, transparent 5px 10px)`, borderTop: `1px dashed ${LEUCHT.achtung}88`, borderBottom: `1px dashed ${LEUCHT.achtung}88`, pointerEvents: 'none', zIndex: 1, fontSize: 12, color: LEUCHT.achtung, padding: '1px 4px', overflow: 'hidden', whiteSpace: 'nowrap', fontFamily: SCHRIFT.text }}>
                       {t.umstellung === 'doppelt' ? '2–3 Uhr doppelt' : '2–3 Uhr entfällt'}
                     </div>
                   )}
@@ -370,12 +493,12 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                   {t.mehr.map(m => (
                     <button key={`mehr-${m.gruppe}`} type="button" className="ui-kein-ziel" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setAufgeklappt(a => new Set(a).add(t.tag)); }}
                       aria-label={`${m.n} weitere Einträge zeigen`} title={`${m.n} weitere Einträge — aufklappen`}
-                      style={{ position: 'absolute', top: m.von * PX_MIN, height: MIN_HOEHE, left: `calc(${(200 / 3).toFixed(4)}% + 2px)`, width: `calc(${(100 / 3).toFixed(4)}% - 4px)`, zIndex: 3, border: `1px solid rgba(255,255,255,.14)`, borderRadius: 7, background: C.flaecheHoch, color: C.ink, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>+{m.n}</button>
+                      style={{ position: 'absolute', top: m.von * px, height: MIN_HOEHE, left: `calc(${(200 / 3).toFixed(4)}% + 2px)`, width: `calc(${(100 / 3).toFixed(4)}% - 4px)`, zIndex: 3, border: `1px solid rgba(255,255,255,.14)`, borderRadius: 7, background: C.flaecheHoch, color: C.ink, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>+{m.n}</button>
                   ))}
                   {t.wenigerVon !== null && (
                     <button type="button" className="ui-kein-ziel" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setAufgeklappt(a => { const n = new Set(a); n.delete(t.tag); return n; }); }}
                       aria-label="Weniger Spalten zeigen" title="Wieder zusammenklappen"
-                      style={{ position: 'absolute', top: Math.max(0, t.wenigerVon * PX_MIN - MIN_HOEHE - 2), right: 2, zIndex: 4, minWidth: MIN_HOEHE, height: MIN_HOEHE, border: `1px solid rgba(255,255,255,.14)`, borderRadius: 7, background: C.flaecheHoch, color: C.inkDim, fontSize: 13, cursor: 'pointer', padding: 0 }}>−</button>
+                      style={{ position: 'absolute', top: Math.max(0, t.wenigerVon * px - MIN_HOEHE - 2), right: 2, zIndex: 4, minWidth: MIN_HOEHE, height: MIN_HOEHE, border: `1px solid rgba(255,255,255,.14)`, borderRadius: 7, background: C.flaecheHoch, color: C.inkDim, fontSize: 13, cursor: 'pointer', padding: 0 }}>−</button>
                   )}
                   {t.mitZeit.map(ev => {
                     const l = t.lagen.get(ev.id)!; const s = t.sicht.get(ev.id);
@@ -390,27 +513,42 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                     // J-Zusatz: die Dauer eines mehrtägigen Termins ändert nur sein letztes Segment.
                     const mehr = mehrtaegig(ev);
                     const darfDauer = darfZiehen && (!mehr || letzterTag(ev) === t.tag);
+                    const hoehe = Math.max(MIN_HOEHE, (bis - von) * px - 2);
+                    const einzeilig = hoehe < EINZEILIG_UNTER;
+                    const zeit = mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(von)}–${uhr(bis)}`;
+                    // Hoher Block: der Titel darf umbrechen (so viele Zeilen, wie neben der Zeitzeile Platz haben).
+                    const titelZeilen = Math.max(1, Math.floor((hoehe - 8 - 16) / 16));
+                    const zeichen = (<>
+                      {!ev.bearbeitbar && !ev.maskiert && <span aria-label="nur in Apple" style={{ marginRight: 4 }}>🔒</span>}
+                      {ev.mitTeilnehmern && !ev.maskiert && <span aria-label="mit Gästen" title={ev.ichOrganisator ? 'Du hast eingeladen' : 'Du bist Gast'} style={{ marginRight: 4 }}>👥</span>}
+                      {fokus && <span aria-hidden style={{ marginRight: 4, color: f }}>{laeuftJetzt ? '▶' : '◎'}</span>}
+                      {abwesend && <span aria-hidden style={{ marginRight: 4, color: f }}>⊘</span>}
+                      {ev.art === 'block' && <span aria-hidden style={{ marginRight: 4, color: f }}>▪</span>}
+                    </>);
                     return (
-                      <div key={ev.id} role="button" tabIndex={0} data-termin={ev.id} title={`${ev.art && ev.art !== 'termin' ? `${ART_INFO[ev.art].label}: ` : ''}${ev.titel} · ${mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(l.von)}–${uhr(l.bis)}`} · ${ev.kalender}${ev.bearbeitbar ? '' : ` (nur in ${istGoogleTermin(ev) ? 'Google' : 'Apple'} änderbar)`}`}
+                      <div key={ev.id} role="button" tabIndex={0} data-termin={ev.id} title={`${ev.art && ev.art !== 'termin' ? `${ART_INFO[ev.art].label}: ` : ''}${ev.titel} · ${mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(l.von)}–${uhr(l.bis)}`}${ev.ort ? ` · ${ev.ort}` : ''} · ${ev.kalender}${ev.bearbeitbar ? '' : ` (nur in ${istGoogleTermin(ev) ? 'Google' : 'Apple'} änderbar)`}`}
                         onPointerDown={e => anfassen(e, ev, ti, 'move')} onPointerMove={bewegen} onPointerUp={e => { e.stopPropagation(); loslassen(ev); }} onPointerCancel={ziehAbbruch}
                         onClick={e => { e.stopPropagation(); if (!darfZiehen) onOeffnen(ev); }} onKeyDown={e => { if (e.key === 'Enter') onOeffnen(ev); }}
-                        style={{ position: 'absolute', top: von * PX_MIN, height: Math.max(MIN_HOEHE, (bis - von) * PX_MIN - 2), left: `calc(${s.links}% + 2px)`, width: `calc(${s.breite}% - 4px)`,
-                          background: abwesend ? SCHRAFFUR : ev.maskiert ? 'rgba(255,255,255,.06)' : frei ? `${f}10` : `${f}${versetzt ? '33' : '2a'}`,
+                        style={{ position: 'absolute', top: von * px, height: hoehe, left: `calc(${s.links}% + 2px)`, width: `calc(${s.breite}% - 4px)`, boxSizing: 'border-box',
+                          background: abwesend ? SCHRAFFUR : ev.maskiert ? 'rgba(255,255,255,.06)' : frei ? `${f}12` : `${f}${versetzt ? '40' : BLOCK_HEX}`,
                           border: frei && !abwesend ? `1px dashed ${f}88` : undefined,
                           // Vorläufige Buchung (K4) gestrichelt, Fokuszeit doppelt, sonst durchgezogen.
-                          borderLeft: `3px ${istVorlaeufig(ev) ? 'dashed' : fokus ? 'double' : 'solid'} ${f}`, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', cursor: darfZiehen ? (z ? 'grabbing' : 'grab') : 'pointer',
+                          borderLeft: `3px ${istVorlaeufig(ev) ? 'dashed' : fokus ? 'double' : 'solid'} ${f}`, borderRadius: 7, padding: einzeilig ? '0 6px' : '3px 6px', overflow: 'hidden', cursor: darfZiehen ? (z ? 'grabbing' : 'grab') : 'pointer',
+                          // Ein Block über einem anderen (z. B. nach rechts gefüllt) bekommt einen Rand im Grundton — wie bei Google, man sieht, wo er endet.
+                          boxShadow: z ? `0 8px 24px rgba(0,0,0,.4), 0 0 0 1px ${f}` : `0 0 0 1px ${C.grund}`,
                           // #92: rollen erlaubt, bis der Termin nach langem Drücken am Finger hängt.
-                          boxShadow: z ? `0 8px 24px rgba(0,0,0,.4), 0 0 0 1px ${f}` : undefined, zIndex: z ? 5 : 2, opacity: versetzt ? .45 : 1, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: z ? 'none' : 'pan-y', fontFamily: SCHRIFT.text }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: ev.maskiert ? C.inkDim : C.ink, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {!ev.bearbeitbar && !ev.maskiert && <span aria-label="nur in Apple" style={{ marginRight: 4 }}>🔒</span>}
-                          {ev.mitTeilnehmern && !ev.maskiert && <span aria-label="mit Gästen" title={ev.ichOrganisator ? 'Du hast eingeladen' : 'Du bist Gast'} style={{ marginRight: 4 }}>👥</span>}
-                          {fokus && <span aria-hidden style={{ marginRight: 4, color: f }}>{laeuftJetzt ? '▶' : '◎'}</span>}
-                          {abwesend && <span aria-hidden style={{ marginRight: 4, color: f }}>⊘</span>}
-                          {ev.art === 'block' && <span aria-hidden style={{ marginRight: 4, color: f }}>▪</span>}
-                          {ev.titel}
-                        </div>
+                          zIndex: z ? 5 : 2, opacity: versetzt ? .45 : 1, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: z ? 'none' : 'pan-y', fontFamily: SCHRIFT.text }}>
+                        {einzeilig ? (
+                          <div style={{ fontSize: 12.5, lineHeight: `${hoehe - 2}px`, color: ev.maskiert ? C.inkDim : C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {zeichen}<b style={{ fontWeight: 650 }}>{ev.titel}</b>{!(z && mehr) && <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>, {mehr ? kurz(ev.start) : uhr(von)}</span>}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12.5, fontWeight: 650, color: ev.maskiert ? C.inkDim : C.ink, lineHeight: '16px', overflow: 'hidden', overflowWrap: 'anywhere', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: titelZeilen }}>
+                            {zeichen}{ev.titel}
+                          </div>
+                        )}
                         {z && mehr && z.bewegt && <div aria-live="polite" style={{ fontSize: 12, color: C.ink, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{mehrtaegigVorschau(ev, z)}</div>}
-                        {(bis - von) * PX_MIN >= 30 && !(z && mehr) && <div style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(von)}–${uhr(bis)}`}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}
+                        {!einzeilig && !(z && mehr) && <div style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums', lineHeight: '16px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{zeit}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}
                         {darfDauer && <div onPointerDown={e => anfassen(e, ev, ti, 'resize')} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, cursor: 'ns-resize' }} />}
                       </div>
                     );
@@ -422,31 +560,31 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                     return (
                       <div key={`a:${a.id}`} data-aufgabe={a.id} draggable={!!onAufgabeEinplanen} onDragStart={e => { e.stopPropagation(); aufgabeZiehStart(e, a.id); }} onDragEnd={() => setAblage(null)}
                         onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} title={`Aufgabe${a.eltern ? ` (Unteraufgabe von „${a.eltern}“)` : ''}: ${a.title} · ${a.zeit}${onAufgabeEinplanen ? ' — ziehen verschiebt' : ''}`}
-                        style={{ position: 'absolute', top: l.von * PX_MIN, height: Math.max(MIN_HOEHE, (l.bis - l.von) * PX_MIN - 2), left: `calc(${s.links}% + 2px)`, width: `calc(${s.breite}% - 4px)`, zIndex: 2,
-                          display: 'flex', alignItems: 'flex-start', gap: 5, textAlign: 'left', border: `1px solid ${ART_FARBE.aufgabe}66`, background: `${ART_FARBE.aufgabe}18`, borderRadius: 7, padding: '3px 6px', color: C.ink, fontSize: 12, fontWeight: 600, cursor: onAufgabeEinplanen ? 'grab' : 'pointer', overflow: 'hidden', fontFamily: SCHRIFT.text, textDecoration: a.done ? 'line-through' : 'none' }}>
+                        style={{ position: 'absolute', top: l.von * px, height: Math.max(MIN_HOEHE, (l.bis - l.von) * px - 2), left: `calc(${s.links}% + 2px)`, width: `calc(${s.breite}% - 4px)`, zIndex: 2, boxSizing: 'border-box',
+                          display: 'flex', alignItems: 'flex-start', gap: 5, textAlign: 'left', border: `1px solid ${ART_FARBE.aufgabe}66`, background: `${ART_FARBE.aufgabe}22`, borderRadius: 7, padding: '3px 6px', color: C.ink, fontSize: 12.5, fontWeight: 600, cursor: onAufgabeEinplanen ? 'grab' : 'pointer', overflow: 'hidden', fontFamily: SCHRIFT.text, textDecoration: a.done ? 'line-through' : 'none' }}>
                         {onAufgabeHaken
                           ? <button type="button" className="ui-kein-ziel" onClick={e => { e.stopPropagation(); onAufgabeHaken(a.id); }} aria-label={`„${a.title}“ als erledigt markieren`} title="Abhaken"
-                            style={{ width: 13, height: 13, marginTop: 1, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, background: 'transparent', flex: '0 0 auto', padding: 0, cursor: 'pointer' }} />
-                          : <span aria-hidden style={{ width: 10, height: 10, marginTop: 2, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto' }} />}
+                            style={{ width: 13, height: 13, marginTop: 2, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, background: 'transparent', flex: '0 0 auto', padding: 0, cursor: 'pointer' }} />
+                          : <span aria-hidden style={{ width: 10, height: 10, marginTop: 3, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto' }} />}
                         <button type="button" className="ui-kein-ziel" onClick={e => { e.stopPropagation(); onAufgabe(a.id); }} style={{ all: 'unset', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                          {a.eltern && <span aria-label="Unteraufgabe" style={{ color: C.inkLeise }}>↳ </span>}{a.zeit} {a.title}
+                          {a.eltern && <span aria-label="Unteraufgabe" style={{ color: C.inkLeise }}>↳ </span>}{a.title}<span style={{ color: C.inkDim, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>, {a.zeit}</span>
                         </button>
                       </div>
                     );
                   })}
                   {/* Wohin eine gezogene Aufgabe fällt */}
                   {ablage && ablage.tag === ti && (
-                    <div aria-hidden style={{ position: 'absolute', top: ablage.min * PX_MIN, left: 2, right: 2, height: Math.max(MIN_HOEHE, aufgabeDauer * PX_MIN - 2), borderRadius: 7, border: `2px dashed ${ART_FARBE.aufgabe}`, background: `${ART_FARBE.aufgabe}14`, pointerEvents: 'none', zIndex: 6, fontSize: 12, color: C.inkDim, padding: '2px 6px', fontFamily: SCHRIFT.text }}>{zeitAusMinuten(ablage.min, RASTER)}</div>
+                    <div aria-hidden style={{ position: 'absolute', top: ablage.min * px, left: 2, right: 2, height: Math.max(MIN_HOEHE, aufgabeDauer * px - 2), borderRadius: 7, border: `2px dashed ${ART_FARBE.aufgabe}`, background: `${ART_FARBE.aufgabe}14`, pointerEvents: 'none', zIndex: 6, fontSize: 12, color: C.inkDim, padding: '2px 6px', fontFamily: SCHRIFT.text }}>{zeitAusMinuten(ablage.min, RASTER)}</div>
                   )}
                   {/* Vorschau beim Aufziehen: „(Kein Titel) 4–5 Uhr“ */}
                   {vorschau && vorschau.tag === ti && (
-                    <div aria-live="polite" style={{ position: 'absolute', top: vorschau.von * PX_MIN, height: Math.max(MIN_HOEHE, (vorschau.bis - vorschau.von) * PX_MIN - 2), left: 2, right: 2, borderRadius: 7, background: `${LEUCHT.puls}40`, borderLeft: `3px solid ${LEUCHT.puls}`, pointerEvents: 'none', zIndex: 6, padding: '3px 6px', fontSize: 12, color: C.ink, fontFamily: SCHRIFT.text, boxShadow: '0 8px 24px rgba(0,0,0,.35)' }}>
+                    <div aria-live="polite" style={{ position: 'absolute', top: vorschau.von * px, height: Math.max(MIN_HOEHE, (vorschau.bis - vorschau.von) * px - 2), left: 2, right: 2, borderRadius: 7, background: `${LEUCHT.puls}40`, borderLeft: `3px solid ${LEUCHT.puls}`, pointerEvents: 'none', zIndex: 6, padding: '3px 6px', fontSize: 12, color: C.ink, fontFamily: SCHRIFT.text, boxShadow: '0 8px 24px rgba(0,0,0,.35)' }}>
                       <b>(Kein Titel)</b><div style={{ fontSize: 12, color: C.inkDim }}>{spanneText(vorschau.von, vorschau.bis)}</div>
                     </div>
                   )}
                   {/* Geist in der Zielspalte beim Verschieben auf einen anderen Tag */}
                   {zieh && zieh.aktiv && zieh.art === 'move' && zieh.neuTag === ti && zieh.tag !== ti && (
-                    <div style={{ position: 'absolute', top: zieh.neuStart * PX_MIN, height: (zieh.neuEnde - zieh.neuStart) * PX_MIN - 2, left: 2, right: 2, borderRadius: 7, border: `2px dashed ${WER_FARBE.kevin}`, background: 'rgba(255,255,255,.06)', pointerEvents: 'none', zIndex: 4, fontSize: 12, color: C.inkDim, padding: '3px 6px' }}>{uhr(zieh.neuStart)}–{uhr(zieh.neuEnde)}</div>
+                    <div style={{ position: 'absolute', top: zieh.neuStart * px, height: (zieh.neuEnde - zieh.neuStart) * px - 2, left: 2, right: 2, borderRadius: 7, border: `2px dashed ${WER_FARBE.kevin}`, background: 'rgba(255,255,255,.06)', pointerEvents: 'none', zIndex: 4, fontSize: 12, color: C.inkDim, padding: '3px 6px' }}>{uhr(zieh.neuStart)}–{uhr(zieh.neuEnde)}</div>
                   )}
                 </div>
               );
@@ -454,7 +592,8 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen · wischen blättert (zwei Finger, am Handy über die Tageszeile)</div>
+      {/* Bedienungshilfe (10.10. einklappbar — das Fragezeichen oben links; Darstellung je Gerät). */}
+      {hilfe ? <div id="kalender-hilfe" style={{ fontSize: 12, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text, lineHeight: 1.45 }}>{RASTER_HILFE}</div> : <div id="kalender-hilfe" hidden />}
     </div>
   );
 }

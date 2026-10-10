@@ -918,7 +918,11 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 @media (max-width: 720px) {
   .ui-monat-pillen { display: none !important; }
   .ui-monat-punkte { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 9px; }
-  .ui-monat-zelle { min-height: 56px !important; padding: 4px 2px !important; justify-items: center; }
+  .ui-monat-zelle { min-height: 56px !important; padding: 4px 2px !important; justify-items: center; align-items: center; }
+  /* Mehrtägige Termine (10.10.): am Handy schmale Farbstreifen über die Tage statt Balken mit Text. */
+  .ui-monat-wochen { --monat-zeile: 56px; --monat-balken: 5px; --monat-kopf: 28px; }
+  .ui-monat-balken { font-size: 0 !important; padding: 0 !important; min-height: 0 !important; border-left-width: 0 !important; }
+  .ui-monat-balken > span { display: none; }
 }
 
 /* ─── Zeilen-Aktionen (04.10., neu 10.10. — components/os/ui/zeile-aktionen.tsx, DESIGN_STANDARD.md › Zeilen-Aktionen) ─────────
@@ -980,3 +984,32 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .ui-erkl-panel { font-family: inherit; }
 .ui-zeile-erkl:hover .ui-erkl-zeichen, .ui-kennzahl-erkl:hover .ui-erkl-zeichen { color: #58D9CD !important; }
 .ui-zeile-erkl:focus-visible { outline: 2px solid #58D9CD; outline-offset: 2px; border-radius: 8px; }
+
+/* ─── Kalender (10.10., Kevin: „nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts — im Vergleich zu Google“) ──────────
+   Kein sichtbarer Seitenkopf (der Titel bleibt für Vorleser), wenig Rand — die Kopfzeile des Kalenders trägt Zeitraum und Bedienung, darunter
+   füllt der Kalender die Höhe (components/os/kalender/darstellung.tsx › useVolleHoehe). `.kalender-kopf` ist ein Container: ab 1180 px Kopfzeile
+   stehen Ansicht und Kalender/Planen als Segmente, schmaler als Menü „Woche ▾“ bzw. Symbol. Am Handy zwei Zeilen: Navigation · Zeitraum · Suche,
+   darunter Ansicht · Planen · Kalender|Aufgaben · Darstellung · +. */
+.kalender-seite { padding-top: 10px; padding-bottom: 12px; }
+.kalender-seite > .ui-kopf { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.kalender-seite > .ui-karten { gap: 10px; }
+.kalender-kopf { container-type: inline-size; display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; min-width: 0; }
+.kalender-kopf-links, .kalender-kopf-rechts { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.kalender-kopf-links { flex: 1 1 auto; }
+.kalender-kopf-rechts { flex: 0 1 auto; gap: 6px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.kalender-zeitraum { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 4px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.kalender-suche { width: 200px; }
+.kalender-kopf .kal-breit { display: none; }
+.kalender-kopf .kal-schmal { display: inline-flex; }
+@container (min-width: 1180px) {
+  .kalender-kopf .kal-breit { display: flex; }
+  .kalender-kopf .kal-schmal { display: none; }
+}
+@media (max-width: 720px) {
+  .kalender-seite { padding: 6px 10px 10px; }
+  .kalender-kopf { gap: 6px; }
+  .kalender-kopf-links, .kalender-kopf-rechts { flex: 1 1 100%; }
+  .kalender-kopf-rechts { justify-content: space-between; flex-wrap: nowrap; }
+  .kalender-zeitraum { font-size: 16px; flex: 1 1 auto; margin: 0 2px; }
+  .kalender-suche { width: auto; flex: 1 1 120px; min-width: 0; }
+}
