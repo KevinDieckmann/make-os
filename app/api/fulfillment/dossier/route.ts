@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
-import { leseZugriff, leseKennung } from '@/lib/store/leseprotokoll';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { dossierLage, dossierAktion, dossierListe } from '@/lib/fulfillment/analyse/dossier-server';
 
 export const runtime = 'nodejs';
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   }
   const m = q.get('m') ?? '';
   const r = await dossierLage(m, z.person);
-  if (r.status === 200) leseZugriff(req, 'fulfillment', { ids: [leseKennung(m)] }); // Lese-Protokoll: Dossier eines Mandats (Firma; Personen nur als Verweis)
+  if (r.status === 200) leseZugriff(req, 'fulfillment', { ids: [m] }); // Lese-Protokoll: Dossier eines Mandats (Firma; Personen nur als Verweis)
   return NextResponse.json(r.body, { status: r.status });
 }
 

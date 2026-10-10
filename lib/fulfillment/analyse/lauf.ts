@@ -1,5 +1,5 @@
 // ─── Fulfillment · Analyse — ein Lauf technisch (C3, 10.10.; FULFILLMENT_KONZEPT.md 4.3) — nur Server ──────────────────────────────────────
-// Kevin 22:30: „JEDER Lauf wird einzeln bestätigt — Start erst nach Klick auf genau diesen Lauf. Kein Autostart.“ Deshalb gibt es hier nur
+// Entscheidung 10.10. (22:30): „JEDER Lauf wird einzeln bestätigt — Start erst nach Klick auf genau diesen Lauf. Kein Autostart.“ Deshalb gibt es hier nur
 // `laufStarten` (aus der Route, mit der bestätigten Schätzung der Person) — kein Takt, kein Morgenlauf, keine Kette startet einen Lauf.
 //   1. Start: Mandat (Business), Dossier, Abhängigkeiten, F1, KI-Schalter (Bereich Markttraktion, Web-Suche — nichts wird umgeschaltet), Schätzung
 //      neu (größer als bestätigt → 409 `kostenRueckfrage`), ≤ 2 laufend je Instanz (429), ≤ 3 je Agent (4. nur mit Grund) — die Grenzen in DERSELBEN

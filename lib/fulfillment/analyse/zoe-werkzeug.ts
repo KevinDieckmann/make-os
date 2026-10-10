@@ -1,5 +1,5 @@
 // ─── Fulfillment · Analyse — ZOE-Werkzeug `fulfillment_lage` (C3, 10.10.; FULFILLMENT_KONZEPT.md 4.9) — nur Server ─────────────────────────
-// Kevins „alle Daten in der KI“: eine LESE-Tür für ZOE auf Fulfillment eines Mandats — Fall (Status, Fortschritt, was wartet), Onboarding-Stand,
+// Entscheidung 10.10. („alle Daten in der KI“): eine LESE-Tür für ZOE auf Fulfillment eines Mandats — Fall (Status, Fortschritt, was wartet), Onboarding-Stand,
 // Wert-Konto, Dossier (Unternehmensteil mit Quellen, Diagnose-Entwurf, Freigaben). Regeln:
 //   · nur eine Person im Haushalt des Inhabers, nur Mandate von Business-Gesellschaften (Gruppe `crm`, Bereich Business)
 //   · den Personenteil NUR mit `mitPersonen: true` UND wenn die Person ihn sehen darf (Inhaber oder Mitglied ohne „nur Business“)

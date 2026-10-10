@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { personenteilZugang } from '@/lib/fulfillment/zugang';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
-import { leseZugriff, leseKennung } from '@/lib/store/leseprotokoll';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { personenLage, personenAktion } from '@/lib/fulfillment/analyse/personen-server';
 
 export const runtime = 'nodejs';
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   const z = await personenteilZugang(req);
   if (z instanceof Response) return z;
   const r = await personenLage(new URL(req.url).searchParams.get('m') ?? '');
-  if (r.status === 200) leseZugriff(req, 'personenrecherche', { ids: (r.ids ?? []).map(leseKennung), anzahl: r.ids?.length ?? 0 }); // Lese-Protokoll: berufliche Personenkarten
+  if (r.status === 200) leseZugriff(req, 'personenrecherche', { ids: r.ids ?? [], anzahl: r.ids?.length ?? 0 }); // Lese-Protokoll: berufliche Personenkarten
   return NextResponse.json(r.body, { status: r.status });
 }
 

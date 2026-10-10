@@ -1,5 +1,5 @@
 // ─── Fulfillment · Analyse — Web-Abruf mit Schutz (`web_lesen`, C3, 10.10.; FULFILLMENT_KONZEPT.md 4.8) — nur Server ─────────────────────────
-// Kevin 22:30: „Web-Fetch wird gebaut, mit Schutz (nur öffentliche http/https-Adressen, nur Text, Größen-/Zeitgrenze, alles durch fremd()).“
+// Entscheidung 10.10. (22:30): „Web-Fetch wird gebaut, mit Schutz (nur öffentliche http/https-Adressen, nur Text, Größen-/Zeitgrenze, alles durch fremd()).“
 //   · nur http/https, Port 80/443, keine Zugangsdaten in der Adresse, kein IP-Literal
 //   · DNS EINMAL auflösen und prüfen (lib/netz/oeffentlich.ts — Loopback, privat, link-lokal, CGNAT, Multicast, IPv6 ULA/link-lokal, IPv4-mapped
 //     abgelehnt), dann mit GENAU DIESER Adresse verbinden (eigenes `lookup`) — eine zweite, andere Auflösung (DNS-Rebinding) wirkt nicht

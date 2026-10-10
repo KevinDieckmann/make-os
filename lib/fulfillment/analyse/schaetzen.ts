@@ -1,5 +1,5 @@
 // ─── Fulfillment · Analyse — Kostenschätzung je Lauf (C3, 10.10.; FULFILLMENT_KONZEPT.md 4.2) — rein ──────────────────────────────────────
-// Kevin 22:30: „JEDER Lauf wird einzeln bestätigt — je Lauf Kostenschätzung anzeigen, Start erst nach Klick auf genau diesen Lauf.“
+// Entscheidung 10.10. (22:30): „JEDER Lauf wird einzeln bestätigt — je Lauf Kostenschätzung anzeigen, Start erst nach Klick auf genau diesen Lauf.“
 //   · Token über `kostenSchaetzen` (lib/ki/kosten.ts, Katalogpreise × Kurs der Instanz), Suchen 10 US-Dollar je 1.000 Suchen (MODELLE.md).
 //   · Liegen ≥ 3 gemessene Läufe desselben Agenten vor (Instanz, alle Dossiers), gilt ihr MEDIAN statt der Vorgabe — „die Schätzung lernt“.
 //   · Angezeigt: „ca. x“ und „höchstens y“ mit y = 1,5 × bestätigter Betrag — die harte Kostengrenze des Laufs.
