@@ -3,10 +3,10 @@
 // schon welche.“) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // Ein Ordner im Vault der Instanz beschreibt Agenten als Notizen (je Datei eine Abteilung bzw. ein Mitarbeiter; dazu ein Index). Diese Datei
 // liest solche Notizen GENERISCH — nach Kopf (Front-Matter) und Abschnitts-Überschriften, nie nach festen Inhalten — und plant, was daraus in
-// MAKE OS wird:
+// in der Software wird:
 //   • Datei → Head des Katalogs (lib/agenten/katalog.ts) über Kennung, Kurzname, Name und Sprach-Synonyme (`ALIASE`, z. B. „finance“ →
 //     Finanzen) — der Kopf `head`/`unter` (+ `type: mitarbeiter`) macht daraus einen Mitarbeiter unter diesem Head. Kein Treffer → übersprungen
-//     (in der Vorschau wählbar: anderer Head oder „als Mitarbeiter unter …“). NUR Business-Heads (Kevin 09.10.: „Firma und Privat liegen
+//     (in der Vorschau wählbar: anderer Head oder „als Mitarbeiter unter …“). NUR Business-Heads (Regel 09.10.: „Firma und Privat liegen
 //     getrennt — auch in der Datenhaltung“): eine Datei, die zu einem Privat-Head passt, wird übersprungen — Privat-Agenten richtet jede Person
 //     selbst ein, nie aus dem Firmen-Brain.
 //   • Abschnitte Auftrag/Mission, Darf, Freigabe/Grenzen → EIN Auftrag (`HeadEinstellung.auftrag`, ≤ 4.000 Zeichen — darüber nicht übernommen,
@@ -394,7 +394,7 @@ export function planBauen(p: PlanEingabe): PlanEintrag[] {
     raus.push(eintrag);
     if (d.kopf.scope === 'privat') { eintrag.zielGrund = 'Die Notiz ist privat — sie geht nie an Agenten.'; continue; }
     if (!head) continue;
-    // Firma und Privat liegen getrennt (Kevin 09.10.): aus dem (Firmen-)Brain nur Business-Heads — Privat-Agenten richtet jede Person selbst ein.
+    // Firma und Privat liegen getrennt (Regel 09.10.): aus dem (Firmen-)Brain nur Business-Heads — Privat-Agenten richtet jede Person selbst ein.
     if (head.bereich !== 'business') { eintrag.zielGrund = `${head.name} ist ein Privat-Agent — aus dem Brain werden nur Business-Heads übernommen (Firma und Privat getrennt).`; continue; }
     if (!p.sichtbar.has(head.id)) { eintrag.zielGrund = `${head.name} siehst du nicht (Rechte, Einwilligung oder Modul) — übersprungen.`; continue; }
     eintrag.ziel = { headId: head.id, headName: head.name, als };

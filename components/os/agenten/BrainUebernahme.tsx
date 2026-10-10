@@ -8,7 +8,7 @@
 // Inhaber (die Route entscheidet — sonst steht hier ihr Satz). Die Seite schickt nur die Auswahl; die Inhalte liest der Server neu aus dem Vault.
 
 import { useEffect, useMemo, useState } from 'react';
-import { FARBE as C, ABSTAND, LEUCHT, MIKRO, TYP } from '@/lib/make-one/design';
+import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, TYP } from '@/lib/make-one/design';
 import { vorauswahl, type AuftragAktion, type PlanEintrag, type UebernahmeWahl } from '@/lib/agenten/brain-agenten';
 import { pfadName } from '@/lib/agenten/wissen';
 import { Fenster } from '../Fenster';
@@ -114,7 +114,7 @@ export function BrainUebernahmeFenster({ onZu }: { onZu: () => void }) {
           {v.eintraege.map(e => {
             const w = wahl[e.datei] ?? { datei: e.datei };
             return (
-              <section key={e.datei} aria-label={e.titel} style={{ display: 'grid', gap: ABSTAND.s, padding: ABSTAND.m, borderRadius: 14, background: 'rgba(255,255,255,.035)' }}>
+              <section key={e.datei} aria-label={e.titel} style={{ display: 'grid', gap: ABSTAND.s, padding: ABSTAND.m, borderRadius: ECKE.flach, background: FLAECHE_STIL.flach.background }}>
                 <div style={{ display: 'flex', gap: ABSTAND.s, alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, overflowWrap: 'anywhere' }}>{e.titel}</span>
                   <span style={{ fontSize: TYP.bedien, color: C.inkLeise, overflowWrap: 'anywhere' }}>{pfadName(e.datei)}.md{e.status ? ` · ${e.status}` : ''}</span>

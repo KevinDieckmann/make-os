@@ -1,7 +1,7 @@
 // ─── Agenten-Bereich: „Aus dem Brain übernehmen“ — der Server-Teil (09.10.) ──────────────────────────────────────────────────────────
 // Liest den Agenten-Ordner des Vaults (Einstellung im Business-Bestand `agenten-wissen--<haushalt>` › `brainAgenten`, sonst der Ordner mit
 // `_Agenten_Index`) in der AGENTEN-Sicht (nie `privat`), plant mit den reinen Regeln (lib/agenten/brain-agenten.ts) — NUR für Business-Heads
-// (Kevin 09.10.: „Firma und Privat liegen getrennt — auch in der Datenhaltung“) — und schreibt NUR über die vorhandenen Wege:
+// (Regel 09.10.: „Firma und Privat liegen getrennt — auch in der Datenhaltung“) — und schreibt NUR über die vorhandenen Wege:
 //   • Einstellungen je Head über `einstellungAendern` (Rechte, Stand → 409, Prüfung, Protokoll) — Auftrag mit `auftragQuelle` (gekapselt im
 //     System-Text), Modellstufe, eingeschaltete Mitarbeiter; je Head EIN Aufruf mit dem Stand aus der Vorschau;
 //   • Wissen je Business-Head über `wissenAendern` (Business-Bestand, eigener Stand → 409);

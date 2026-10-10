@@ -1,5 +1,5 @@
 // ─── Agenten-Bereich: Wissen der Business-Heads im Brain — Bestand und Schreibweg (09.10.) ─────────────────────────────────────────────
-// Kevin 09.10. spät: „Firma und Privat liegen getrennt — auch in der Datenhaltung.“ Deshalb ein EIGENER Business-Bestand
+// Regel 09.10. spät: „Firma und Privat liegen getrennt — auch in der Datenhaltung.“ Deshalb ein EIGENER Business-Bestand
 // `agenten-wissen--<haushalt>` (`WissenBestand`, lib/agenten/typen.ts) — nie in `agenten-einstellung--<haushalt>` (dort liegen auch Familie und
 // die Abschnitte der Privat-Heads). Darin NUR:
 //   • je Business-Head sein Wissen im Brain (Ordner/Notizen, Modus) — z. B. das Sales-Brain für den Head of Sales;

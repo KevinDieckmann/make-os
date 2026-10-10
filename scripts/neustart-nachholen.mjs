@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ─── MAKE OS · Neustart: einzelne Bestände aus dem Archiv nachholen (09.10.2026 spät) ──────────────────────────────────────────────
-// Kevin 09.10.: „Pack bitte schon die vorgefertigten Bots bei ZOE ein … da hatten wir ja schon welche.“ — und „Firma und Privat liegen
+// Auftrag 09.10.: „Pack bitte schon die vorgefertigten Bots bei ZOE ein … da hatten wir ja schon welche.“ — und „Firma und Privat liegen
 // getrennt — auch in der Datenhaltung.“ Holt NUR ausdrücklich genannte Bestände der BUSINESS-Heads (head-sales, head-marketing, head-event:
 // Merksätze, entschiedene Vorschläge = Lernstand, Autonomie) aus dem Archiv-Ordner des Neustarts in den LAUFENDEN Datenordner. Regeln:
 // lib/neustart/nachholen.mjs, Ablauf: lib/neustart/nachholen-lauf.mjs. Anleitung: UPDATES.md › 09.10.2026 — Agenten-Grundausstattung.

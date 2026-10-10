@@ -525,7 +525,7 @@ export interface AuftragQuelle { art: 'brain'; datei: string; hash: string; am: 
 export type WissenModus = 'bevorzugt' | 'nur';
 export interface HeadWissen { pfade: string[]; modus: WissenModus }
 /**
- * Bestand `agenten-wissen--<haushalt>` (09.10., Kevin: „Firma und Privat liegen getrennt — auch in der Datenhaltung“): NUR Business-Heads —
+ * Bestand `agenten-wissen--<haushalt>` (09.10., Regel: „Firma und Privat liegen getrennt — auch in der Datenhaltung“): NUR Business-Heads —
  * ihr Wissen im Brain und der Agenten-Ordner des (Firmen-)Brains für „Aus dem Brain übernehmen“. Privat-Heads haben hier nie einen Eintrag
  * (der Schreibweg lehnt ab, lib/agenten/wissen-server.ts). Wer zuletzt geändert hat: Speichername (Konto löschen → „[gelöscht]“).
  */
