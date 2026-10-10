@@ -355,6 +355,19 @@ export function istBusinessMeldung(m: Pick<Meldung, 'art' | 'bezug' | 'business'
   return false;
 }
 
+/**
+ * Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): der Bereich einer GESPEICHERTEN Meldung —
+ * Business wie oben (`istBusinessMeldung`), Privat: Gesundheit und Aufgaben im Privat-Bereich; alles übrige (Sicherheit, Verbindungen, Postfach,
+ * ZOE, Kalender-Hinweise, Sammelmeldungen) gehört keinem Bereich und steht in beiden Sichten. Abgeleitete Meldungen (fällig, Geburtstage, was
+ * ansteht) filtert die Sicht schon an ihren Quellen (lib/meldungen/speicher.ts `meldungenSicht`).
+ */
+export function meldungBereich(m: Pick<Meldung, 'art' | 'bezug' | 'business'>, bereichVonAufgabe: (id: string) => 'privat' | 'business' | null = () => null): 'privat' | 'business' | null {
+  if (istBusinessMeldung(m, bereichVonAufgabe)) return 'business';
+  if (m.art === 'gesundheit') return 'privat';
+  if (m.bezug?.art === 'aufgabe' && bereichVonAufgabe(m.bezug.id) === 'privat') return 'privat';
+  return null;
+}
+
 export interface BusinessFreiLage {
   /** Jetzt (ISO). */
   jetzt: string;

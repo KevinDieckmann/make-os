@@ -1712,6 +1712,17 @@ export function istPrivatSchritt(s: Pick<Schritt, 'privatFinanzen' | 'privat' | 
   return s.ebene !== 'instanz' && (modulVon(s) === 'gesundheit' || modulVon(s) === 'familie');
 }
 
+/**
+ * Gehört der Schritt in die Sicht Privat bzw. Business (10.10., Entscheidung: „Business-Themen sind Business-Themen und Privat Privat“)? Business ohne
+ * die Schritte des Privat-Bereichs (`istPrivatSchritt`: Gesundheit, Familie, Privat-Finanzen, eigene Ziele), Privat ohne Markttraktion und
+ * Unternehmen. Grundlage, Kalender, Postfächer, Planung, ZOE gehören beiden. Für Karten, die einer Sicht folgen (Heute › Einrichtung).
+ */
+export function schrittInSicht(s: Pick<Schritt, 'privatFinanzen' | 'privat' | 'modul' | 'ebene'>, sicht: 'privat' | 'business' | null | undefined): boolean {
+  if (sicht === 'business') return !istPrivatSchritt(s);
+  if (sicht === 'privat') return modulVon(s) !== 'markttraktion' && modulVon(s) !== 'unternehmen';
+  return true;
+}
+
 /** Sieht diese Person den Schritt überhaupt (Privat-Bereich, Altbestand, Neustart)? Gilt auch auf den Ebenen-Seiten. */
 export function sichtbarFuer(s: Schritt, k: Kontext | null): boolean {
   if (s.privatFinanzen && k && k.privatFinanzen === false) return false;

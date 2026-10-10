@@ -36,9 +36,11 @@ import { zuliefererLage } from '@/lib/zulieferer/server';
 import { localDay } from '@/lib/zeit';
 import type { Termin } from '@/lib/kalender/ics';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
-import { mitBezug, maskieren, type BezugBestand } from '@/lib/kalender/bezug';
+import { mitBezug, maskieren, alsBelegt, type BezugBestand } from '@/lib/kalender/bezug';
 import { hauptZugangAuffrischen, ladePersonStand, ladeVerbindung, personAbgleichen, personAbgleichLaeuft, personenMitIcloud } from '@/lib/kalender/icloud-person';
 import { einstellungenFuerPerson } from '@/lib/kalender/einstellungen';
+import { spaceVonKalender } from '@/lib/kalender/space';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -129,6 +131,19 @@ export async function GET(req: Request) {
     haushaltFuer(zugang.person).catch(() => null),
   ]);
   const sicht = fuerPersonFiltern({ fristen: fristenAlle, erinnerungen: erinnerungen(rem?.daten, von, bis, wandzeit) }, { inhaber, privat: !!eigenerHaushalt });
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): mit `?space=` nur Termine und Kalender
+  // aus Kalendern dieses Bereichs (`spaceVonKalender` — die Zuordnung der Kalender-Einstellungen), Fristen nach ihrem `bereich`, die Apple-
+  // Erinnerungen (persönlich, vom Mac) nur im Privat-Bereich. Ohne `?space=` wie bisher alles (Kalender-Sicht „Alles“).
+  // `&belegt=1` (Tagesplanung): Termine des anderen Bereichs kommen nur als „Belegt“ (`alsBelegt`) — die Zeit ist belegt, womit, steht nicht da.
+  const bereich = sichtDerAnfrage(req);
+  const belegtAndere = !!bereich && q.get('belegt') === '1';
+  const imBereich = (name: string) => !bereich || spaceVonKalender(einst, name) === bereich;
+  if (bereich) {
+    if (!belegtAndere) termine = termine.filter(t => imBereich(t.kalender));
+    kalender = kalender.filter(k => imBereich(k.name));
+    sicht.fristen = sicht.fristen.filter(f => f.bereich === bereich);
+    if (bereich === 'business') sicht.erinnerungen = [];
+  }
 
   return NextResponse.json({
     ok: true, von, bis, quelle, stand, ...(fehler ? { fehler } : {}), ...(abgleich ? { abgleich } : {}),
@@ -138,7 +153,7 @@ export async function GET(req: Request) {
     ...(googleAbgleiche.length ? { google: googleAbgleiche } : {}),
     kalender, einstellungen: einstellungenFuerPerson(einst, zugang.person),
     // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
-    termine: termine.map(t => maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person)),
+    termine: termine.map(t => { const m = maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person); return imBereich(t.kalender) ? m : alsBelegt(m); }),
     fristen: sicht.fristen,
     erinnerungen: sicht.erinnerungen,
     erinnerungenStand: inhaber ? rem?.at ?? null : null,

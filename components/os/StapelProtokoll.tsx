@@ -10,6 +10,7 @@
 // „Ändern & freigeben“ steht seitdem direkt an den offenen Vorschlägen (Reiter „Offen“, lib/zoe/stapel-aendern.ts);
 // Freigeben, Ablehnen mit Grund, „alle durcharbeiten“, Selbst machen, der Arbeiter und der Verbrauch ebenfalls dort.
 
+import { useSpace } from '@/hooks/useSpace';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Hinweis, LEUCHT, Spalten, Spalte } from './ui';
@@ -30,6 +31,8 @@ const wann = (iso: string) => {
 const textKnopf: React.CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: 0, minHeight: 44 };
 
 export function StapelProtokoll() {
+  // Sicht Privat · Business (10.10.): Protokoll und Merksätze nur des Bereichs im Kopf (der Server filtert, `?space=`).
+  const { space } = useSpace();
   const [protokoll, setProtokoll] = useState<Eintrag[]>([]);
   const [fakten, setFakten] = useState<Fakt[]>([]);
   const [gehirn, setGehirn] = useState<Gehirn | null>(null);
@@ -40,14 +43,14 @@ export function StapelProtokoll() {
   const laden = useCallback(async () => {
     try {
       const [p, g] = await Promise.all([
-        fetch('/api/zoe/protokoll?anzahl=40').then(r => r.json()),
-        fetch('/api/zoe/gedaechtnis').then(r => r.json()),
+        fetch(`/api/zoe/protokoll?anzahl=40&space=${space}`).then(r => r.json()),
+        fetch(`/api/zoe/gedaechtnis?space=${space}`).then(r => r.json()),
       ]) as [Record<string, unknown>, Record<string, unknown>];
       setProtokoll(Array.isArray(p.eintraege) ? (p.eintraege as Eintrag[]) : []);
       setFakten(Array.isArray(g.fakten) ? (g.fakten as Fakt[]) : []);
     } catch { /* offline — der alte Stand bleibt stehen */ }
     setLaedt(false);
-  }, []);
+  }, [space]);
   useEffect(() => { void laden(); }, [laden]);
   // Der Stand des Gehirns — einmal beim Öffnen, er ändert sich selten.
   useEffect(() => { fetch('/api/zoe/wissen').then(r => r.json()).then(d => { if (d.ok) setGehirn(d); }).catch(() => {}); }, []);

@@ -145,7 +145,10 @@ describe('Aufräumen Etappe 1 — eine Startseite „Heute“', () => {
     const std = v.slice(v.indexOf('export const HEUTE_STANDARD'));
     expect(std.slice(0, std.indexOf('\n};'))).not.toContain('alle: [');
     const teile = [std.slice(std.indexOf('privat: ['), std.indexOf('business: [')), std.slice(std.indexOf('business: ['), std.indexOf('\n};'))];
-    for (const t of teile) for (const art of ['anstehend', 'fokus', 'termine', 'aufgaben', 'score']) expect(t, art).toContain(`art: '${art}'`);
+    for (const t of teile) for (const art of ['anstehend', 'fokus', 'termine', 'aufgaben']) expect(t, art).toContain(`art: '${art}'`);
+    // Wachstums-Score (Säulen Gesundheit, Familie …) nur in Privat — Business zeigt keine Privat-Themen (10.10., tests/sicht-business-privat.test.ts).
+    expect(teile[0]).toContain("art: 'score'");
+    expect(teile[1]).not.toContain("art: 'score'");
     // „Das Ganze“ (Kevin 09.10.): in beiden Sichten die Zeit Privat gegen Business.
     for (const t of teile) expect(t).toContain("{ id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } }");
     expect(lies('app/os/page.tsx')).toContain('<HeuteView />');

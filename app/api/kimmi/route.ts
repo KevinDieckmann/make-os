@@ -39,7 +39,7 @@ import { crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
 import { BUSINESS_EINHEITEN_NAMEN, PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { vornameVon, anredeSatz, firmenKennungen, gesellschaftenSatz, MERKEN_WOHIN } from '@/lib/zoe/grundauftrag';
-import { bereichAus } from '@/lib/zoe/bereich';
+import { bereichAus, lageFuerSicht } from '@/lib/zoe/bereich';
 import { textNenntCrm } from '@/lib/zoe/bereich-server';
 import { businessFreiJetzt } from '@/lib/arbeitsrahmen/server';
 import { bisText, businessFreiSatz } from '@/lib/arbeitsrahmen/regel';
@@ -72,10 +72,11 @@ interface ZugMeta { lief: boolean; werkzeuge: number; ergebnis: SpurErgebnis }
 // auch Loops und Tageslauf nutzen. Eine Wahrheit statt vier Sammler.
 // `kalenderFremd` (29.09., #K1): stehen Termintitel/Namen im Prompt, gilt das Gespräch als „fremd gelesen“.
 // KI-Schalter (05.10.): ausgeschaltete Bereiche stehen nicht im Live-Zustand; `kategorien` = was wirklich drinsteht.
-async function liveContext(person: string, bereiche: Record<KiBereich, boolean>): Promise<{ text: string; kalenderFremd: boolean; kategorien: KiKategorie[] }> {
+async function liveContext(person: string, bereiche: Record<KiBereich, boolean>, koerper = true, sicht: 'privat' | 'business' | null = null): Promise<{ text: string; kalenderFremd: boolean; kategorien: KiKategorie[] }> {
   try {
     const b = await gatherBrain(undefined, person);
-    return { text: promptBrain(b, { bereiche }), kalenderFremd: bereiche.kalender && kalenderImPrompt(b), kategorien: brainKategorien(b, { bereiche }) };
+    const o = { bereiche, ...(koerper ? {} : { koerper: false }), sicht };
+    return { text: promptBrain(b, o), kalenderFremd: bereiche.kalender && kalenderImPrompt(b), kategorien: brainKategorien(b, o) };
   } catch {
     return { text: '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)', kalenderFremd: false, kategorien: ['allgemein'] };
   }
@@ -209,10 +210,15 @@ export async function POST(req: Request) {
   const gesundheitKi = gStand.ki.an && gStand.verarbeitungErlaubt;
   const kategorien = new Set<KiKategorie>(['konto', 'allgemein']);
   // Privat-Finanzen (09.10., Anbieter-Tor): nur, wenn sie an einen erlaubten Zugang dürfen (mit Tor: nur EU) — sonst bleibt der Block draußen.
-  const haushalt = kiS.bereiche.finanzen && (await kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req).catch(() => null) : null;
+  // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): dieselbe Regel wie der Empfang
+  // (lib/zoe/bereich.ts `lageFuerSicht`) — in Business stehen Familie, Körperdaten und Haushaltsfinanzen gar nicht erst im Prompt, in Privat
+  // keine Markttraktion. Ohne Space (Telegram, WhatsApp) wie bisher.
+  const sichtTeile = lageFuerSicht(bereichAus(payload.space));
+  const bereicheSicht = { ...kiS.bereiche, ...Object.fromEntries(sichtTeile.aus.map(x => [x, false])) } as typeof kiS.bereiche;
+  const haushalt = sichtTeile.haushalt && kiS.bereiche.finanzen && (await kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req).catch(() => null) : null;
   const haushaltBlock = haushalt ? await ladeHaushalt(haushalt.haushalt).then(h => blockHaushalt(h)).catch(() => '') : '';
   if (haushaltBlock) { kategorien.add('finanzen'); kategorien.add('finanzen-privat'); }
-  const lage = await liveContext(person, kiS.bereiche);
+  const lage = await liveContext(person, bereicheSicht, sichtTeile.koerper, bereichAus(payload.space));
   lage.kategorien.forEach(k => kategorien.add(k));
   const live = [lage.text, haushaltBlock].filter(Boolean).join('\n\n');
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
@@ -285,7 +291,7 @@ export async function POST(req: Request) {
   const zugInnen = async (strom: StromArbeit | undefined, meta: ZugMeta): Promise<{ status: number; body: Record<string, unknown> }> => {
     let zug: ZoeZug | null = null;
     if (mitFaden) {
-      const z = await zoeFadenFuer(person, payload.zoeFaden, message, { bereich: payload.space === 'business' ? 'business' : 'privat' });
+      const z = await zoeFadenFuer(person, payload.zoeFaden, message, { bereich: payload.space === 'business' ? 'business' : 'privat', ...(payload.space === 'privat' || payload.space === 'business' ? { sicht: payload.space } : {}) });
       if ('ok' in z && z.ok === false) return { status: z.status, body: { ok: false, reply: z.fehler, error: z.fehler, fehler: z.fehler } };
       zug = z as ZoeZug;
     }

@@ -54,7 +54,7 @@ export interface ZoeZug {
  * wird zuerst angehängt (was ZOE im Zug an den Thread schreibt — „An Head … gesendet“ — steht dann dahinter). Ist der Thread voll
  * (400 Nachrichten), entsteht eine Fortsetzung — nie gekürzt.
  */
-export async function zoeFadenFuer(person: string, wunsch: unknown, text: string, o: { bereich: Bereich }): Promise<ZoeZug | Fehler> {
+export async function zoeFadenFuer(person: string, wunsch: unknown, text: string, o: { bereich: Bereich; sicht?: Bereich }): Promise<ZoeZug | Fehler> {
   const jetzt = iso();
   const n = personNachricht(person, text, jetzt);
   const neu = async (titel: string): Promise<ZoeZug | Fehler> => {
@@ -68,8 +68,13 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
   if (wunsch === 'neu') return neu(text);
   if (!istFadenId(wunsch)) return fehler(400, 'Thread-Kennung ungültig.');
   let voll = false;
+  let andererBereich = false;
   const r = await fadenAendern(person, wunsch, f => {
     if (f.agent.art !== 'zoe' || f.besitzer !== person) return fehler(404, 'Diesen ZOE-Thread gibt es nicht.');
+    // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): ein ZOE-Thread des ANDEREN Bereichs
+    // wird nie fortgesetzt (sein Verlauf ginge sonst in einen Zug dieser Sicht) — es beginnt ein neuer Thread in diesem Bereich.
+    // Nur mit einer Sicht des Aufrufers (`sicht` = der Space der Oberfläche) — Wege ohne Sicht (Telegram, WhatsApp, ältere Aufrufer) wie bisher.
+    if (o.sicht && (f.bereich === 'privat' || f.bereich === 'business') && f.bereich !== o.sicht) { andererBereich = true; return fehler(409, 'Dieser Thread gehört zum anderen Bereich.'); }
     // Ein Zug je Thread (Härtetest 09.10.): steht die letzte Nachricht der Person noch unbeantwortet da, läuft ihr Zug gerade (zweiter Tab,
     // Doppelklick) — sonst liefen zwei Züge über denselben Verlauf und die Antworten überkreuzten sich. Nach `ZUG_SPERRE_MS` gilt sie als
     // liegen geblieben (Neustart mitten im Zug) und sperrt nicht mehr.
@@ -78,7 +83,7 @@ export async function zoeFadenFuer(person: string, wunsch: unknown, text: string
     if (!x.ok) { voll = x.status === 413; return x; }
     return { ...x.faden, status: 'offen', gelesenAm: jetzt };
   });
-  if (!r.ok) return voll ? neu(`Fortsetzung: ${text}`) : r;
+  if (!r.ok) return voll ? neu(`Fortsetzung: ${text}`) : andererBereich ? neu(text) : r;
   return { faden: r.faden, prompt: fuerPrompt(r.faden, ZOE, fremd), fortsetzung: r.faden.nachrichten.length > 1, nachrichtId: n.id };
 }
 

@@ -164,7 +164,8 @@ const q = (basis: string, p: Record<string, string | undefined>) => {
 // `space` (09.10. spät): die Sicht des Kopfs — der Server liefert nur Heads, Threads, Läufe und Freigaben dieses Bereichs (lib/agenten/sicht.ts).
 export const ladeAgenten = (space?: string) => holen<AgentenAntwort>(q(WEGE.agenten, { space }));
 export const ladeFaeden = (agent?: string, space?: string) => holen<FadenListeAntwort>(q(WEGE.faden, { agent, space }));
-export const ladeFaden = (id: string) => holen<FadenAntwort>(q(WEGE.faden, { id }));
+// Ein Thread nur aus der Sicht des Kopfs (10.10.): mit `space` liefert der Server einen Thread des anderen Bereichs nicht (404).
+export const ladeFaden = (id: string, space?: string) => holen<FadenAntwort>(q(WEGE.faden, { id, space }));
 export const ladeSkills = (head?: string) => holen<SkillsAntwort>(q(WEGE.skills, { head }));
 export const ladeSkill = (id: string) => holen<SkillAntwort>(q(WEGE.skills, { id }));
 export const ladeLaeufe = (space?: string) => holen<LaeufeAntwort>(q(WEGE.laeufe, { space }));

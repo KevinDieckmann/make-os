@@ -15,19 +15,21 @@ const EREIGNIS = 'make-kapazitaet-neu';
 /** Nach dem Speichern von Meilensteinen/Zielen: alle Kapazitäts-Ansichten laden neu. */
 export function kapazitaetNeu() { if (typeof window !== 'undefined') window.dispatchEvent(new Event(EREIGNIS)); }
 
-export function useKapazitaet(aktiv = true) {
+/** `space` (10.10., Sicht Privat · Business): der Server liefert nur, was in diese Sicht gehört (Business ohne Erholung, Privat ohne Business-Titel). */
+export function useKapazitaet(aktiv = true, space?: 'privat' | 'business') {
+  const q = space ? `?space=${space}` : '';
   const [daten, setDaten] = useState<KapaAntwort | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [zugang, setZugang] = useState(true);
 
   const laden = useCallback(async () => {
     try {
-      const r = await fetch('/api/kapazitaet', { cache: 'no-store' });
+      const r = await fetch(`/api/kapazitaet${q}`, { cache: 'no-store' });
       if (r.status === 403 || r.status === 401) { setZugang(false); return; }
       const j = await r.json() as KapaAntwort;
       if (j.ok) { setDaten(j); setFehler(null); } else setFehler(j.fehler ?? 'Kapazität nicht geladen.');
     } catch { setFehler('Kapazität nicht geladen — Netz?'); }
-  }, []);
+  }, [q]);
 
   useEffect(() => {
     if (!aktiv) return;
@@ -43,13 +45,13 @@ export function useKapazitaet(aktiv = true) {
   /** Ändern — Antwort ist der neue Stand (oder der Fehlertext des Servers). */
   const aendern = useCallback(async (ops: KapaOp[]): Promise<string | null> => {
     try {
-      const r = await fetch('/api/kapazitaet', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops }) });
+      const r = await fetch(`/api/kapazitaet${q}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops }) });
       const j = await r.json() as KapaAntwort;
       if (!j.ok) return j.fehler ?? 'Nicht gespeichert.';
       setDaten(j);
       return null;
     } catch { return 'Nicht gespeichert — Netz?'; }
-  }, []);
+  }, [q]);
 
   return { stand: daten?.stand ?? null, ich: daten?.ich ?? null, inhaber: !!daten?.inhaber, bezuege: daten?.bezuege ?? [], fehler, zugang, laden, aendern };
 }

@@ -201,17 +201,19 @@ export async function stromRoh(person: string, heute = localDay(), zustand?: Inb
  * Die Postfach-Verwaltung in einer Sicht (rein, getestet; 07.10. abends, Kevin-Regel „Business sieht nie Privat“): unter `business` nur
  * Postfächer mit Business-Bereich (wie der Strom: `imBereich`, ein Postfach ohne Bereich zählt nicht), nur Business-Bereiche zur Wahl und
  * nur Absender-Entscheidungen, deren Adresse/Nummer in einem Gespräch dieser Postfächer vorkommt — ein Privat-Absender bleibt draußen.
- * Ohne Sicht (`null`): alles Eigene.
+ * Ohne Sicht (`null`): alles Eigene. Unter `privat` (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“) die Postfächer
+ * mit Privat-Bereich UND die noch ohne Bereich (sonst ließen sie sich nirgends zuordnen) — Business-Postfächer nicht; zur Wahl alle Bereiche
+ * (nur Namen der eigenen Gesellschaften, für die Zuordnung), Absender wie unter Business nur aus Gesprächen dieser Postfächer.
  */
 export function postfaecherSicht<P extends { id: string; bereich: string | null }, A extends { adresse: string }>(
   d: { postfaecher: P[]; gespraeche: readonly Pick<Gespraech, 'postfachId' | 'absender'>[]; bereiche: { id: string; name: string }[]; absender: A[] },
-  space: 'business' | null,
+  space: 'business' | 'privat' | null,
 ): { postfaecher: P[]; bereiche: { id: string; name: string }[]; absender: A[] } {
-  if (space !== 'business') return { postfaecher: d.postfaecher, bereiche: d.bereiche, absender: d.absender };
-  const postfaecher = d.postfaecher.filter(p => imBereich(p.bereich, { space }));
+  if (!space) return { postfaecher: d.postfaecher, bereiche: d.bereiche, absender: d.absender };
+  const postfaecher = d.postfaecher.filter(p => (space === 'privat' && !p.bereich) || imBereich(p.bereich, { space }));
   const ids = new Set(postfaecher.map(p => p.id));
   const bekannt = new Set(d.gespraeche.filter(g => ids.has(g.postfachId)).map(g => absenderSchluessel(g.absender)).filter(Boolean));
-  return { postfaecher, bereiche: d.bereiche.filter(b => imBereich(b.id, { space })), absender: d.absender.filter(a => bekannt.has(absenderSchluessel(a.adresse))) };
+  return { postfaecher, bereiche: space === 'privat' ? d.bereiche : d.bereiche.filter(b => imBereich(b.id, { space })), absender: d.absender.filter(a => bekannt.has(absenderSchluessel(a.adresse))) };
 }
 
 /** Der Strom für die Oberfläche — serverseitig nach Bereich gefiltert. */

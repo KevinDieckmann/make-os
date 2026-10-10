@@ -256,7 +256,7 @@ export function Postfaecher({ onGeaendert, meldung, space }: { onGeaendert: () =
   const [fehler, setFehler] = useState('');
   const [neu, setNeu] = useState(false);
   const laden = useCallback(async () => {
-    const r = await holen<Antwort>(`/api/inbox/postfaecher${space === 'business' ? '?space=business' : ''}`);
+    const r = await holen<Antwort>(`/api/inbox/postfaecher${space ? `?space=${space}` : ''}`);
     if (r.d.ok) { setD(r.d as Antwort); setFehler(''); } else setFehler(String(r.d.fehler ?? 'Die Postfächer ließen sich nicht laden.'));
   }, [space]);
   useEffect(() => { void laden(); }, [laden]);

@@ -112,28 +112,33 @@ export interface ZieleSpalten {
   partner: { person: PlanPerson; ziele: Ziel[]; nichtGeteilt: boolean }[];
 }
 
-/** Hook (nur lesen): die drei Spalten eines Horizonts — Partner NUR mit dem, was der Server ausliefert (einzeln geteilt bzw. alles). */
-export function useZieleSpalten(horizont: ZielHorizont, laufend: number, aktiv = true): ZieleSpalten | null {
+/**
+ * Hook (nur lesen): die drei Spalten eines Horizonts — Partner NUR mit dem, was der Server ausliefert (einzeln geteilt bzw. alles).
+ * `bereich` (10.10., Sicht Privat · Business): ALLE drei Spalten nur aus diesem Bereich — der Server filtert (`?space=`); vorher war nur
+ * „Unsere“ auf Privat begrenzt, „Meine“ und die geteilten Ziele zeigten auch Business-Ziele.
+ */
+export function useZieleSpalten(horizont: ZielHorizont, laufend: number, aktiv = true, bereich: 'privat' | 'business' = 'privat'): ZieleSpalten | null {
   const [d, setD] = useState<ZieleSpalten | null>(null);
   useEffect(() => {
     if (!aktiv) return;
     let lebt = true;
     void (async () => {
       const personen = await planPersonenHolen();
+      const sp = `space=${bereich}`;
       const [wir, ich, ...andere] = await Promise.all([
-        holeJson('/api/state/ziele'), holeJson('/api/state/ziele?fuer=ich'),
-        ...personen.partner.map(p => fetch(`/api/state/ziele?fuer=${encodeURIComponent(p.speicher)}`, { cache: 'no-store' }).then(r => r.json().catch(() => null)).catch(() => null) as Promise<Record<string, unknown> | null>),
+        holeJson(`/api/state/ziele?${sp}`), holeJson(`/api/state/ziele?fuer=ich&${sp}`),
+        ...personen.partner.map(p => fetch(`/api/state/ziele?fuer=${encodeURIComponent(p.speicher)}&${sp}`, { cache: 'no-store' }).then(r => r.json().catch(() => null)).catch(() => null) as Promise<Record<string, unknown> | null>),
       ]);
       const liste = (x: Record<string, unknown> | null) => (Array.isArray(x?.[horizont]) ? (x![horizont] as Ziel[]) : []);
       if (!lebt) return;
       setD({
         personen,
-        unsere: spaltenZiele(liste(wir), horizont, laufend, true),
+        unsere: spaltenZiele(liste(wir), horizont, laufend, bereich === 'privat'),
         meine: spaltenZiele(liste(ich), horizont, laufend),
         partner: personen.partner.map((person, k) => ({ person, ziele: spaltenZiele(liste(andere[k]), horizont, laufend), nichtGeteilt: andere[k]?.geteilt === false })),
       });
     })();
     return () => { lebt = false; };
-  }, [horizont, laufend, aktiv]);
+  }, [horizont, laufend, aktiv, bereich]);
   return d;
 }

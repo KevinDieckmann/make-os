@@ -144,11 +144,13 @@ const ausFaden = (ns: readonly Nachricht[]): Msg[] => ns.map(n => ({
   zeit: n.zeit,
   ...(n.werkzeuge?.length ? { ran: n.werkzeuge.map(w => ({ agent: w.name, ok: w.ok, ...(w.gestapelt ? { gestapelt: true } : {}) })) } : {}),
 }));
-const ZOE_FAEDEN = '/api/agenten/faden?agent=zoe';
-/** Einen eigenen Thread laden (ZOE oder Head) — Nachrichten und Stand. */
-const ladeThread = async (id: string): Promise<{ nachrichten: Nachricht[]; stand: string } | null> => {
+// Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): ZOE-Threads nur des Bereichs im Kopf —
+// der Server filtert (`?space=`, lib/agenten/sicht.ts `fadenImBereich`), auch beim Öffnen eines einzelnen Threads.
+const zoeFaeden = (space: 'privat' | 'business') => `/api/agenten/faden?agent=zoe&space=${space}`;
+/** Einen eigenen Thread laden (ZOE oder Head) — Nachrichten und Stand; nur aus dem Bereich `space`. */
+const ladeThread = async (id: string, space: 'privat' | 'business'): Promise<{ nachrichten: Nachricht[]; stand: string } | null> => {
   try {
-    const r = await fetch(`/api/agenten/faden?id=${encodeURIComponent(id)}`);
+    const r = await fetch(`/api/agenten/faden?id=${encodeURIComponent(id)}&space=${space}`);
     if (!r.ok) return null;
     const d = await r.json() as { faden?: { nachrichten?: Nachricht[] }; stand?: string };
     return d.faden?.nachrichten ? { nachrichten: d.faden.nachrichten, stand: String(d.stand ?? '') } : null;
@@ -161,6 +163,9 @@ export function ZoePanel() {
   // die Merksätze. Der Zähler zeigt dieselbe Sicht wie ZOE › Freigaben (Kopf: Privat · Business).
   const { space: aktiverSpace } = useSpace();
   const stapelSicht = aktiverSpace;
+  // Der Bereich, in dem eine laufende Antwort begonnen hat — wechselt der Kopf, gehört sie nicht mehr in diesen Verlauf (10.10.).
+  const spaceRef = useRef(aktiverSpace);
+  spaceRef.current = aktiverSpace;
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
   const [ask, setAsk] = useState('');
   const [thinking, setThinking] = useState(false);
@@ -267,17 +272,23 @@ export function ZoePanel() {
   }, []);
   useEffect(() => { try { localStorage.setItem(MERKER_STIMME, JSON.stringify({ vorlesen, freihand })); } catch { /* egal */ } }, [vorlesen, freihand]);
 
-  // ── Gedächtnis laden: der jüngste ZOE-Thread kommt zurück (derselbe wie im Empfang und auf der Agenten-Seite), alle in die Liste ──
+  // ── Gedächtnis laden: der jüngste ZOE-Thread DIESES Bereichs kommt zurück (derselbe wie im Empfang und auf der Agenten-Seite), alle des
+  // Bereichs in die Liste. Wechselt der Kopf (10.10.), beginnt die Ansicht neu — ein Gespräch des anderen Bereichs bleibt nie stehen. ──
   useEffect(() => {
-    fetch(ZOE_FAEDEN).then(r => r.json()).then(async (d: { faeden?: FadenKurz[] }) => {
+    let lebt = true;
+    beruehrt.current.delete('zoe');
+    aendere('zoe', () => LEER_G);
+    fetch(zoeFaeden(aktiverSpace)).then(r => r.json()).then(async (d: { faeden?: FadenKurz[] }) => {
+      if (!lebt) return;
       const fs = Array.isArray(d.faeden) ? d.faeden : [];
       aendere('zoe', x => ({ ...x, liste: fs, geladen: true }));
       if (beruehrt.current.has('zoe') || !fs[0]) return;
-      const f = await ladeThread(fs[0].id);
-      if (beruehrt.current.has('zoe') || !f?.nachrichten.length) return;
+      const f = await ladeThread(fs[0].id, aktiverSpace);
+      if (!lebt || beruehrt.current.has('zoe') || !f?.nachrichten.length) return;
       aendere('zoe', x => ({ ...x, convo: ausFaden(f.nachrichten), id: fs[0].id, stand: f.stand }));
     }).catch(() => {});
-  }, [aendere]);
+    return () => { lebt = false; };
+  }, [aendere, aktiverSpace]);
 
   // ── Ein Head als Ansprechpartner (10.10.): sein jüngster Thread dieser Sicht kommt zurück — derselbe wie auf der Agenten-Seite. Threads mit
   // laufendem bzw. eingereihtem Lauf (Hintergrundaufgabe) bleiben dort; ohne passenden Thread beginnt das nächste Senden einen neuen. ──
@@ -296,7 +307,7 @@ export function ZoePanel() {
         aendere(key, x => ({ ...x, liste: fs }));
         const weiter = fs.find(f => f.status !== 'laeuft' && !f.eingereiht);
         if (!weiter || beruehrt.current.has(key)) return;
-        const f = await ladeThread(weiter.id);
+        const f = await ladeThread(weiter.id, h.bereich);
         if (!f || beruehrt.current.has(key)) return;
         aendere(key, x => ({ ...x, convo: ausFaden(f.nachrichten), id: weiter.id, stand: f.stand }));
       } catch {
@@ -425,14 +436,17 @@ export function ZoePanel() {
       // Der Verlauf liegt im ZOE-Thread auf dem Server — hier geht nur die neue Nachricht mit (Paket 4a). Mit Strom (09.10.): der Text
       // erscheint, während er entsteht; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON in lib/http/strom-client.ts).
       // `anfrageId` (Härtetest 09.10.): der Rückfall auf JSON nach einem Netzfehler lässt den Zug auf dem Server nie zweimal laufen.
-      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: gespraechId || 'neu', space: aktiverSpace, anfrageId: zufallsUuid(), ...(bezug ? { bezug } : {}) },
+      const fuer = aktiverSpace;
+      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: gespraechId || 'neu', space: fuer, anfrageId: zufallsUuid(), ...(bezug ? { bezug } : {}) },
         e => setEntsteht(s => entstehendNach(s, e)));
+      // Inzwischen den Bereich gewechselt (10.10.): die Antwort steht im Thread ihres Bereichs — hier (anderer Bereich) nichts anhängen.
+      if (spaceRef.current !== fuer) return;
       if (r.netz) throw new Error('netz');
       // Der Zug hat nicht stattgefunden (Modell, Sperre, Schlüssel — `ok: false`): der Satz erscheint, die Frage kommt zurück ins Feld (nie verloren).
       if ((r.body as { ok?: unknown } | null)?.ok === false) setAsk(a => a || q);
       if (r.unterbrochen) {
         // Abgerissen: der Server hat nichts Halbes gespeichert — den Thread neu laden, statt still noch einmal zu senden (Kosten).
-        const f = gespraechId ? await ladeThread(gespraechId) : null;
+        const f = gespraechId ? await ladeThread(gespraechId, aktiverSpace) : null;
         aendere('zoe', x => ({ ...x, convo: [...(f ? ausFaden(f.nachrichten) : x.convo), { role: 'kimmi', text: 'Die Verbindung ist abgerissen — fehlt meine Antwort, frag bitte noch einmal.', zeit: new Date().toISOString() }] }));
         return;
       }
@@ -481,7 +495,7 @@ export function ZoePanel() {
       if (r.netz) throw new Error('netz');
       const d = (r.body ?? {}) as { ok?: unknown; faden?: { id?: unknown; nachrichten?: Nachricht[] }; stand?: unknown; fehler?: unknown; stapelOffen?: unknown };
       if (r.unterbrochen) {
-        const f = vorher.id ? await ladeThread(vorher.id) : null;
+        const f = vorher.id ? await ladeThread(vorher.id, head.bereich) : null;
         aendere(key, x => ({ ...x, convo: [...(f ? ausFaden(f.nachrichten) : x.convo), hinweis('Die Verbindung ist abgerissen — fehlt die Antwort, frag bitte noch einmal.')], ...(f ? { stand: f.stand } : {}) }));
         return;
       }
@@ -531,13 +545,13 @@ export function ZoePanel() {
     const key = aktiv.key;
     beruehrt.current.add(key);
     setZeigeVerlauf(false);
-    const f = await ladeThread(t.id);
+    const f = await ladeThread(t.id, aktiv.head?.bereich ?? aktiverSpace);
     aendere(key, x => ({ ...x, convo: f ? ausFaden(f.nachrichten) : [], id: t.id, stand: f?.stand ?? '' }));
   };
 
   /** Löschen braucht den Stand des Threads (409 statt still überschreiben) — erst lesen, dann löschen. */
   const loesche = async (id: string) => {
-    const f = await ladeThread(id);
+    const f = await ladeThread(id, aktiv.head?.bereich ?? aktiverSpace);
     if (!f) return;
     const r = await fetch('/api/agenten/faden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'loeschen', fadenId: id, stand: f.stand }) }).catch(() => null);
     if (!r?.ok) return;

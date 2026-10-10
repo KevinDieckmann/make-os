@@ -6,6 +6,7 @@
 // Seit 24.09. im lebendigen Muster: Loop wählen, starten, Ergebnis als
 // Karten; der Verbesserungs-Loop schaut auf die Software selbst.
 
+import { useSpace } from '@/hooks/useSpace';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
@@ -36,6 +37,13 @@ const LOOPS: { id: LoopKind; label: string; sub: string; farbe: string }[] = [
   { id: 'gesundheit', label: 'Gesundheits-Loop', sub: 'privat · Trend × Etappen × Schutz', farbe: LEUCHT.gut },
   { id: 'rueckblick', label: 'Rückblick', sub: 'Was muss das System besser machen?', farbe: LEUCHT.agenten },
 ];
+/**
+ * Sicht Privat · Business (10.10., Entscheidung: „Business-Themen sind Business-Themen und Privat Privat“): welche Loops in welche Sicht gehören —
+ * der Gesundheits-Loop nur in Privat, die Business-Loops (Woche, Finanzen, Sales, Marketing, Operations, Kunden) nur in Business; der Rückblick
+ * (das System selbst) in beiden.
+ */
+const LOOP_SICHT: Record<LoopKind, 'privat' | 'business' | 'beide'> = { woche: 'business', finanzen: 'business', sales: 'business', marketing: 'business', operations: 'business', kunden: 'business', gesundheit: 'privat', rueckblick: 'beide', morgen: 'beide' };
+const loopInSicht = (k: string, sicht: 'privat' | 'business') => { const b = LOOP_SICHT[k as LoopKind]; return !b || b === 'beide' || b === sicht; };
 const formFarbe = (f?: string) => (f === 'gruen' ? LEUCHT.gut : f === 'rot' ? LEUCHT.kritisch : LEUCHT.achtung);
 const formLabel = (f?: string) => (f === 'gruen' ? 'Grün' : f === 'rot' ? 'Rot' : 'Gelb');
 
@@ -50,7 +58,11 @@ function Striche({ liste, farbe }: { liste: string[]; farbe: string }) {
 }
 
 export function LoopView() {
+  const { space } = useSpace();
+  const loops = LOOPS.filter(l => loopInSicht(l.id, space));
   const [kind, setKind] = useState<LoopKind>('woche');
+  // Wechselt die Sicht, steht der gewählte Loop evtl. nicht mehr zur Wahl — dann der erste der Sicht.
+  useEffect(() => { if (!loopInSicht(kind, space)) setKind(loops[0]?.id ?? 'rueckblick'); }, [space]); // eslint-disable-line react-hooks/exhaustive-deps
   const [res, setRes] = useState<Record<string, LoopResult | undefined>>({});
   const [busy, setBusy] = useState(false);
   const [vbBusy, setVbBusy] = useState(false);
@@ -74,6 +86,7 @@ export function LoopView() {
 
   const cur = res[kind];
   const loop = LOOPS.find(l => l.id === kind)!;
+  const historieSicht = history.filter(h => loopInSicht(h.agent.replace(/^loop-/, ''), space));
   const bereich = !['morgen', 'woche', 'rueckblick'].includes(kind);
 
   return (
@@ -84,7 +97,7 @@ export function LoopView() {
       <Karte i={0}>
         <Ueberschrift farbe={loop.farbe} rechts={cur?.stats ? Object.entries(cur.stats).map(([k, v]) => `${v} ${k}`).join(' · ') : undefined}>Welcher Loop</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}>
-          {LOOPS.map(l => (
+          {loops.map(l => (
             <button key={l.id} onClick={() => setKind(l.id)} className="fassbar" style={{ textAlign: 'left', padding: '11px 13px', borderRadius: 12, cursor: 'pointer', border: 'none', background: kind === l.id ? `${l.farbe}1F` : 'rgba(255,255,255,.04)', transition: 'background .15s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Punkt farbe={kind === l.id ? l.farbe : C.inkLeise} /><span style={{ fontSize: TYP.bedien, fontWeight: 700, color: kind === l.id ? C.ink : C.inkDim }}>{l.label}</span></div>
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, lineHeight: 1.35 }}>{l.sub}</div>
@@ -156,11 +169,12 @@ export function LoopView() {
         {vbInfo && <div style={{ fontSize: TYP.bedien, color: vbInfo.includes('Vorschläge') ? LEUCHT.gut : C.inkLeise, marginTop: 8 }}>{vbInfo}</div>}
       </Karte>
       </Kachel>
-      {history.length > 0 && (
+      {/* Frühere Läufe nur der Loops dieser Sicht (Kennung `loop-<art>`). */}
+      {historieSicht.length > 0 && (
         <Kachel id="gedaechtnis" titel="Gedächtnis" breite={2}>
         <Karte i={9}>
-          <Ueberschrift rechts={`${history.length}`}>Gedächtnis · frühere Läufe</Ueberschrift>
-          <Liste>{history.slice(0, 12).map(h => <Zeile key={h.id} links={<span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise, width: 88 }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>} titel={h.title} />)}</Liste>
+          <Ueberschrift rechts={`${historieSicht.length}`}>Gedächtnis · frühere Läufe</Ueberschrift>
+          <Liste>{historieSicht.slice(0, 12).map(h => <Zeile key={h.id} links={<span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise, width: 88 }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>} titel={h.title} />)}</Liste>
         </Karte>
         </Kachel>
       )}

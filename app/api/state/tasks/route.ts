@@ -28,6 +28,8 @@ import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
 import { sichtFuerKonto, neutraleListenStandNamen } from '@/lib/aufgaben/sicht';
+import { nurBereichDerSicht, spacesNurBereich } from '@/lib/aufgaben/bereich-sicht';
+import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -53,20 +55,23 @@ export async function GET(req: Request) {
   const zugang = await imHaushaltOderSystemlauf(req);
   if (!zugang) return GESPERRT();
   const mitPapierkorb = new URL(req.url).searchParams.get('papierkorb') === '1';
+  // Sicht Privat · Business (10.10.): mit `?space=` nur der Bereich der Sicht (Leser mit eigenem Abruf); ohne wie bisher alles, was das Konto
+  // sieht — der Browser-Zustand (TasksContext) braucht den ganzen Bestand für den Schreibweg mit Stand je Zeile.
+  const sicht = sichtDerAnfrage(req);
   // ETag/304 (29.09., #86): Stand von Aufgaben, CRM (Mandanten-Spaces), Orten und Konten (Übernahme) + Person (Sichtfilter
   // „nur ich“ je Person) + Papierkorb ja/nein. Unverändert → 304 ohne Lesen, Übernahme und Fingerabdrücke.
   // Seit 08.10. (eigene Ziele nur geteilt) auch Meilensteine und Ziele: die Liste eines verborgenen Meilensteins trägt nur einen neutralen Namen.
-  const etag = etagAus('aufgaben2', zugang.person ?? 'system', mitPapierkorb ? 'korb' : 'sicht', await speicherStand([AUFGABEN_SPEICHER, 'crm', 'ordnung', 'konten', ...await neutraleListenStandNamen()]));
+  const etag = etagAus('aufgaben2', zugang.person ?? 'system', mitPapierkorb ? 'korb' : 'sicht', sicht ?? 'alle', await speicherStand([AUFGABEN_SPEICHER, 'crm', 'ordnung', 'konten', ...await neutraleListenStandNamen()]));
   const nichts = unveraendert(req, etag);
   if (nichts) return nichts;
   const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
-  if (!roh) return jsonAntwort(req, { state: null, spaces: await spacesFuer({ projects: [], tasks: [] }, zugang.person) }, etag);
+  if (!roh) return jsonAntwort(req, { state: null, spaces: spacesNurBereich(await spacesFuer({ projects: [], tasks: [] }, zugang.person), sicht) }, etag);
   const voll = await ladeAufgaben();
   // Sichtfilter „nur ich“ (29.09.): jede Person sieht nur ihre eigenen „nur ich“-Aufgaben; der Systemlauf keine.
   // Listen verborgener Meilensteine (Altbestand an einem nicht geteilten eigenen Ziel) nur mit neutralem Namen (08.10.).
   // Konto „nur Business“ (09.10., E4): ohne den Privat-Bereich — Aufgaben, Projekte, Listen, Status UND Spaces (`sichtFuerKonto`).
-  const state = await sichtFuerKonto(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person);
-  return jsonAntwort(req, { state: fuerBrowser(state), spaces: await spacesFuer(state, zugang.person) }, etag);
+  const state = nurBereichDerSicht(await sichtFuerKonto(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person), sicht);
+  return jsonAntwort(req, { state: fuerBrowser(state), spaces: spacesNurBereich(await spacesFuer(state, zugang.person), sicht) }, etag);
 }
 
 async function body(req: Request): Promise<Record<string, unknown> | NextResponse> {

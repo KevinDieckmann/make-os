@@ -49,9 +49,10 @@ import { EINHEIT_OHNE, einheitErlaubt, passtEinheitFilter } from '@/lib/aufgaben
 import { BUSINESS_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFTEN, KERN_EINHEITEN_NAMEN, bereichVon, gesellschaftAusEinheit } from '@/lib/einheiten';
 import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
 import { spaceAusFlaeche } from '@/lib/flaeche/space';
+import { widgetSpace } from '@/lib/flaeche/sicht';
 import { dranOhneZusagen } from '@/lib/heute/anstehend';
 import { Anstehend } from '../heute/Anstehend';
-import { fortschrittVon, restzeitText, schritteFuer, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
+import { fortschrittVon, restzeitText, schritteFuer, schrittInSicht, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 import { useZieleSpalten } from '@/lib/planung/ziele-client';
 import { useFokus } from '@/lib/planung/fokus-client';
 import { FOKUS_FRAGE } from '@/lib/planung/fokus';
@@ -106,7 +107,8 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   const personen = usePersonen();
   const [neu, setNeu] = useState('');
   // Ohne Einstellung gilt der Space der Fläche (28.09. abends) — auf Privat-Flächen nie Business-Aufgaben und umgekehrt.
-  const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, spaceAusFlaeche(seite)), eh = str(e.einheit, 'alle');
+  // Sicht Privat · Business (10.10.): auf einer Fläche mit Bereich gilt IMMER deren Bereich (lib/flaeche/sicht.ts `widgetSpace`) — auch ein altes „alle“.
+  const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = widgetSpace(seite, e), eh = str(e.einheit, 'alle');
   // Heute sieht beides (Kevin 26.09.); ein Widget kann auf einen Space begrenzt sein —
   // und im Business auf eine Einheit (27.09.): dann zählen nur Business-Aufgaben dieser Einheit.
   // 05.10.: eine Einheit tragen auch die Firmen-Spaces unter Privat (Selbstständigkeit) — `einheitErlaubt` statt „nur Business“.
@@ -141,7 +143,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
           <Zeile key={t.id} onClick={() => router.push(WEG.aufgabe(t.id))}
             links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
             titel={t.title}
-            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && einheitErlaubt(t) ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), wartetAuf(t, state.tasks).length ? `wartet auf „${wartetAuf(t, state.tasks)[0].title}“` : t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
+            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && einheitErlaubt(t) ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), wartetAuf(t, state.tasks).length ? (sp === 'alle' || spaceVonAufgabe(wartetAuf(t, state.tasks)[0]) === sp ? `wartet auf „${wartetAuf(t, state.tasks)[0].title}“` : 'wartet auf eine andere Aufgabe') : t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
             rechts={<Punkt farbe={prioFarbe(t.priority)} />} />
         ))}
       </Liste>
@@ -160,7 +162,8 @@ interface Termin { id?: string; title?: string; startDate?: string; endDate?: st
 function useTermine(tage: number, space: 'alle' | 'privat' | 'business' = 'alle'): Termin[] | undefined {
   const heute = localDay();
   const bis = plusTage(heute, tage - 1);
-  const kal = useDaten<{ termine: { id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string }[]; einstellungen?: object }>(`/api/kalender?von=${heute}&bis=${plusTage(heute, tage)}`, d => {
+  // Sicht Privat · Business (10.10.): der Server liefert nur Termine aus Kalendern des Bereichs (`?space=`, app/api/kalender).
+  const kal = useDaten<{ termine: { id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string }[]; einstellungen?: object }>(`/api/kalender?von=${heute}&bis=${plusTage(heute, tage)}${space === 'alle' ? '' : `&space=${space}`}`, d => {
     const r = d as { ok?: boolean; termine?: unknown };
     return r?.ok && Array.isArray(r.termine) ? d as { termine: { id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string }[]; einstellungen?: object } : null;
   });
@@ -171,11 +174,12 @@ function useTermine(tage: number, space: 'alle' | 'privat' | 'business' = 'alle'
     return alle.filter(t => { const d = (t.startDate ?? '').slice(0, 10); return d >= heute && d <= bis; }).sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
   }, [kal, heute, bis, space]);
 }
-function TermineWidget({ e, titel, i }: WidgetProps) {
+function TermineWidget({ e, titel, i, seite }: WidgetProps) {
   const router = useRouter();
   const heute = localDay();
   const tage = num(e.tage, 1);
-  const sp = str(e.space, 'alle') as 'alle' | 'privat' | 'business';
+  // Auf einer Fläche mit Bereich deren Bereich (10.10.) — vorher zeigte „Termine heute“ aus dem Katalog auf Heute › Business auch Privates.
+  const sp = widgetSpace(seite, e);
   const termine = useTermine(tage, sp);
   const gruppen = useMemo(() => {
     const m = new Map<string, Termin[]>();
@@ -261,11 +265,14 @@ function FokusWidget({ e, titel, i, seite }: WidgetProps) {
 // gemeinsam (Privat), eigen, je Partner NUR das Geteilte (der Server filtert, lib/planung/ziele-client.ts `useZieleSpalten`). Anlegen/Teilen
 // in Planung › Jahr (bzw. dem gewählten Horizont).
 const ZIELE_HORIZONT_WORT: Record<string, string> = { jahr: 'Jahr', quartal: 'Quartal', monat: 'Monat', woche: 'Woche' };
-function ZieleWidget({ e, titel, i }: WidgetProps) {
+function ZieleWidget({ e, titel, i, seite }: WidgetProps) {
   const h = str(e.horizont, 'jahr') as ZielHorizont;
   const laufend = Number(localDay().slice(0, 4));
-  const d = useZieleSpalten(h, laufend);
-  const planung = `/os/planung/${h === 'woche' ? 'jahr' : h}?space=privat`;
+  // Sicht Privat · Business (10.10.): alle drei Spalten nur aus dem Bereich der Fläche (Server, `?space=`); ohne Bereich wie bisher Privat.
+  const ws = widgetSpace(seite, e);
+  const bereich: 'privat' | 'business' = ws === 'business' ? 'business' : 'privat';
+  const d = useZieleSpalten(h, laufend, true, bereich);
+  const planung = `/os/planung/${h === 'woche' ? 'jahr' : h}?space=${bereich}`;
   const spalte = (name: string, farbe: string, ziele: Ziel[], leer: ReactNode) => {
     const { offen } = offenErledigt(ziele);
     const schnitt = ziele.length ? Math.round(ziele.reduce((a, z) => a + (z.erledigt ? 100 : z.fortschritt), 0) / ziele.length) : null;
@@ -289,11 +296,11 @@ function ZieleWidget({ e, titel, i }: WidgetProps) {
     );
   };
   return (
-    <Karte i={i} akzent={SPACE_FARBE.privat}>
-      <Ueberschrift farbe={SPACE_FARBE.privat} rechts={<Link href={planung} style={link}>Planung ›</Link>}>{titel ?? `Ziele · ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'}`}</Ueberschrift>
+    <Karte i={i} akzent={SPACE_FARBE[bereich]}>
+      <Ueberschrift farbe={SPACE_FARBE[bereich]} rechts={<Link href={planung} style={link}>Planung ›</Link>}>{titel ?? `Ziele · ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'}`}</Ueberschrift>
       {!d ? <Leer>lade …</Leer> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14 }}>
-          {spalte('Unsere', SPACE_FARBE.privat, d.unsere, <Link href={planung} style={{ color: C.inkDim }}>Noch kein gemeinsames Ziel — eintragen ›</Link>)}
+          {spalte('Unsere', SPACE_FARBE[bereich], d.unsere, <Link href={planung} style={{ color: C.inkDim }}>Noch kein gemeinsames Ziel — eintragen ›</Link>)}
           {spalte('Meine', LEUCHT.planung, d.meine, <Link href={planung} style={{ color: C.inkDim }}>Noch kein eigenes Ziel — eintragen ›</Link>)}
           {d.partner.map(x => spalte(x.person.vorname, LEUCHT.schlaf, x.ziele, x.nichtGeteilt ? `${x.person.vorname} hat noch nichts geteilt.` : `Für dieses ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'} nichts geteilt.`))}
         </div>
@@ -363,10 +370,11 @@ function RoutinenWidget({ titel, i }: WidgetProps) {
 // Rhythmus fällig (täglich, 3×/Woche, wöchentlich … jährlich), Privat oder
 // Business je Einstellung, abhakbar in den eigenen health-log. `null`, wenn
 // nichts fällig ist. Das Widget „Routinen & Streak“ (Gesundheit) bleibt daneben.
-function RoutinenHeuteWidget({ e, titel, i }: WidgetProps) {
+function RoutinenHeuteWidget({ e, titel, i, seite }: WidgetProps) {
   const heute = localDay();
-  const sp = str(e.space, 'alle') as 'alle' | 'privat' | 'business';
-  const routinen = useDaten<PlanungsRoutine[]>('/api/state/routinen', x => (Array.isArray((x as { routinen?: unknown }).routinen) ? (x as { routinen: PlanungsRoutine[] }).routinen : null));
+  // Sicht Privat · Business (10.10.): auf einer Fläche mit Bereich gilt deren Bereich — der Server liefert nur ihn (`?space=`).
+  const sp = widgetSpace(seite, e);
+  const routinen = useDaten<PlanungsRoutine[]>(`/api/state/routinen${sp === 'alle' ? '' : `?space=${sp}`}`, x => (Array.isArray((x as { routinen?: unknown }).routinen) ? (x as { routinen: PlanungsRoutine[] }).routinen : null));
   const ich = useDaten<string>('/api/konto/ich', x => ((x as { ich?: { speicher?: string } }).ich?.speicher ?? null));
   const geladen = useDaten<Record<string, string[]>>('/api/state/health', x => ((x as { log?: Record<string, string[]> }).log ?? {}));
   const [log, setLog] = useState<Record<string, string[]> | null>(null);
@@ -498,7 +506,8 @@ function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
   const stapel = useDaten<number>(`/api/zoe/stapel${sicht === 'alle' ? '' : `?space=${sicht}`}`, x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
   const mitInbox = e.inbox === true;
   // Inbox 2 (06.10.): offen = Gespräche in Arbeit ohne Rundschreiben (EIN Strom, nur die eigenen Postfächer, /api/inbox).
-  const inbox = useDaten<number>(mitInbox ? '/api/inbox' : '/api/zoe/stapel', x => (mitInbox ? ((x as { gespraeche?: { inArbeit?: boolean; fach?: string }[] }).gespraeche ?? []).filter(g => g.inArbeit && g.fach !== 'info' && g.fach !== 'warten').length : null));
+  // Inbox nur des Bereichs (10.10.): `?space=` — der Server filtert die Postfächer (lib/inbox/strom-server.ts `imBereich`).
+  const inbox = useDaten<number>(mitInbox ? `/api/inbox${sicht === 'alle' ? '' : `?space=${sicht}`}` : '/api/zoe/stapel', x => (mitInbox ? ((x as { gespraeche?: { inArbeit?: boolean; fach?: string }[] }).gespraeche ?? []).filter(g => g.inArbeit && g.fach !== 'info' && g.fach !== 'warten').length : null));
   const n = stapel ?? null;
   return (
     <Karte i={i} akzent={n ? LEUCHT.achtung : undefined}>
@@ -507,7 +516,7 @@ function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
         <Link href="/os/stapel" style={{ textDecoration: 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: n ? LEUCHT.achtung : C.inkLeise, textShadow: n ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{n == null ? '—' : n}</Link>
         <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>
           {n == null ? 'ZOE' : n === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${n === 1 ? 'ag wartet' : 'äge warten'} auf dich`}
-          {mitInbox && <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 500, marginTop: 4 }}><Link href="/os/inbox" style={{ color: C.inkDim }}>{inbox ? `${inbox} in der Inbox offen ›` : 'Inbox ›'}</Link></div>}
+          {mitInbox && <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 500, marginTop: 4 }}><Link href={sicht === 'alle' ? '/os/inbox' : `/os/inbox?space=${sicht}`} style={{ color: C.inkDim }}>{inbox ? `${inbox} in der Inbox offen ›` : 'Inbox ›'}</Link></div>}
         </div>
       </div>
     </Karte>
@@ -581,8 +590,11 @@ function ZeitWidget(p: WidgetProps) {
   if (str(p.e.nach, 'bereich') === 'einheit') return <ZeitEinheitWidget {...p} />;
   return str(p.e.space, 'privat') === 'beide' ? <ZeitBeideWidget {...p} /> : <ZeitBereichWidget {...p} />;
 }
-function ZeitBeideWidget({ titel, i }: WidgetProps) {
-  const d = useDaten<ZeitBild>('/api/state/zeit', x => ((x as { bild?: ZeitBild }).bild ?? null));
+function ZeitBeideWidget({ titel, i, seite }: WidgetProps) {
+  // Sicht Privat · Business (10.10.): auf einer Fläche mit Bereich nur Summen beider Bereiche — Bereiche und Blöcke des anderen liefert der
+  // Server nicht mit (`?space=`, lib/zeitmessung/modell.ts `bildFuerSicht`). Die Karte zeigt ohnehin nur die Summen (Kevin 09.10.).
+  const fs = spaceAusFlaeche(seite);
+  const d = useDaten<ZeitBild>(`/api/state/zeit${fs === 'alle' ? '' : `?sicht=${fs}&summen=beide`}`, x => ((x as { bild?: ZeitBild }).bild ?? null));
   if (d === null) return null;
   const heute = d ? privatGegenBusiness(d.tagHeute) : null;
   const sieben = d ? privatGegenBusiness(d.sieben) : null;
@@ -623,7 +635,8 @@ function ZeitBeideWidget({ titel, i }: WidgetProps) {
 }
 function ZeitEinheitWidget({ e, titel, i }: WidgetProps) {
   const zeitraum: Zeitraum = str(e.zeitraum, 'woche') === 'monat' ? 'monat' : 'woche';
-  const d = useDaten<ZeitJeEinheitAntwort>(zeitEinheitenAdresse(zeitraum), x => ((x as ZeitJeEinheitAntwort)?.ok ? (x as ZeitJeEinheitAntwort) : null));
+  // Business-Widget (10.10.): nur die Business-Einheiten — die Selbstständigkeit gehört zu Privat (Server, `space=business`).
+  const d = useDaten<ZeitJeEinheitAntwort>(zeitEinheitenAdresse(zeitraum, undefined, 'business'), x => ((x as ZeitJeEinheitAntwort)?.ok ? (x as ZeitJeEinheitAntwort) : null));
   if (d === null) return null;
   const eigene = d?.personen.find(p => p.person === d.ich)?.auswertung;
   const a = str(e.wer, 'ich') === 'gesamt' ? d?.gesamt : eigene ?? d?.gesamt;
@@ -635,9 +648,11 @@ function ZeitEinheitWidget({ e, titel, i }: WidgetProps) {
     </Karte>
   );
 }
-function ZeitBereichWidget({ e, titel, i }: WidgetProps) {
-  const space = (str(e.space, 'privat') === 'business' ? 'business' : 'privat') as 'privat' | 'business';
-  const d = useDaten<ZeitBild>('/api/state/zeit', x => ((x as { bild?: ZeitBild }).bild ?? null));
+function ZeitBereichWidget({ e, titel, i, seite }: WidgetProps) {
+  // Auf einer Fläche mit Bereich deren Bereich (10.10.); sonst die Einstellung (Vorgabe Privat). Der Server liefert nur diesen Bereich.
+  const ws = widgetSpace(seite, e);
+  const space = (ws === 'business' || (ws === 'alle' && str(e.space, 'privat') === 'business') ? 'business' : 'privat') as 'privat' | 'business';
+  const d = useDaten<ZeitBild>(`/api/state/zeit?sicht=${space}`, x => ((x as { bild?: ZeitBild }).bild ?? null));
   if (d === null) return null;
   const farbe = SPACE_FARBE[space];
   const heute = d?.tagHeute.gesamt[space] ?? 0, sieben = d?.sieben.gesamt[space] ?? 0, bewusst = d?.sieben.bewusst[space] ?? 0;
@@ -752,13 +767,16 @@ function EventWidget({ titel, i }: WidgetProps) {
 // B10 (Update 2, „dauerhafte Ampel“): fällt ein Schritt zurück, der schon einmal grün war (`zurueckgefallen` — dieselbe Regel wie die
 // Einrichtung), steht hier „1 Punkt braucht dich“ — auch wenn die Einrichtung sonst fertig ist. Keine zweite Glocke.
 interface EinrichtungBild { z: HakenZustand; ich: OnboardingKontext }
-function EinrichtungWidget({ titel, i }: WidgetProps) {
+function EinrichtungWidget({ titel, i, seite }: WidgetProps) {
   const d = useDaten<EinrichtungBild>('/api/onboarding', x => {
     const r = x as { erledigt?: HakenZustand['erledigt']; befunde?: HakenZustand['befunde']; gruen?: HakenZustand['gruen']; ich?: OnboardingKontext | null };
     return r?.ich ? { z: { erledigt: r.erledigt ?? {}, befunde: r.befunde ?? {}, gruen: r.gruen ?? {} }, ich: r.ich } : null;
   });
   if (!d) return null;
-  const meine = schritteFuer(d.ich);
+  // Sicht Privat · Business (10.10.): auf Heute › Business keine Schritte des Privat-Bereichs (Gesundheit, Familie, Privat-Finanzen), auf
+  // Heute › Privat keine aus Markttraktion/Unternehmen (`schrittInSicht`, lib/make-one/onboarding-data.ts).
+  const fs = spaceAusFlaeche(seite);
+  const meine = schritteFuer(d.ich).filter(s => schrittInSicht(s, fs === 'alle' ? null : fs));
   const zurueck = zurueckgefallen(meine, d.z);
   if (zurueck.length) {
     return (
@@ -839,7 +857,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'termine', label: 'Nächste 7 Tage', beschreibung: 'Was in der Woche ansteht — privat und Business', bereich: 'Tag', breite: 4, voreinstellung: { tage: 7 } },
   { art: 'fokus', label: 'Fokus', beschreibung: 'Der nächste gesetzte Fokus', bereich: 'Tag', breite: 2 },
   { art: 'fokus', label: 'Wochenfokus', beschreibung: 'Worauf es diese Woche ankommt', bereich: 'Tag', breite: 2, voreinstellung: { horizont: 'woche' } },
-  { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },
+  { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'zeit', label: 'Zeit · Privat und Business', beschreibung: 'Wo die Zeit hingeht — Privat gegen Business, heute und 7 Tage, mit Anteil', bereich: 'Tag', breite: 2, voreinstellung: { space: 'beide' } },
   { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${BUSINESS_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },

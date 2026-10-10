@@ -268,8 +268,10 @@ export function AufgabenRaum() {
       {ready && adresse.ansicht === 'ueberblick' && (darstellung === 'zoe'
         ? <>{offen && <div style={{ marginBottom: 14 }}>{detail(offen)}</div>}{zoeSicht}</>
         : darstellung === 'zeitstrahl'
-        ? <Seil ebene="aufgaben" bereich={adresse.bereich ?? 'alle'} titel="Zeitstrahl · Stränge zum Ziel" i={1} schluessel={seilSchluessel} />
-        : <AufgabenUeberblick state={state} dispatch={dispatch} spaces={spaces} ich={ich} heute={heute} gehe={gehe} nur={adresse.bereich === 'business' ? 'business' : undefined} />)}
+        ? <Seil ebene="aufgaben" bereich={adresse.bereich ?? bereichGemerkt} titel="Zeitstrahl · Stränge zum Ziel" i={1} schluessel={seilSchluessel} />
+        // Sicht Privat · Business (10.10.): der Überblick zeigt nur den Bereich der Adresse bzw. des Kopf-Schalters — vorher zeigte Privat auch
+        // Firmen, Mandanten und ihre Aufgaben (nur Business war begrenzt).
+        : <AufgabenUeberblick state={state} dispatch={dispatch} spaces={spaces} ich={ich} heute={heute} gehe={gehe} nur={adresse.bereich ?? bereichGemerkt} />)}
       {ready && adresse.ansicht === 'archiv' && <AufgabenArchiv state={state} dispatch={dispatch} spaces={spaces} heute={heute} gehe={gehe} />}
 
       {ready && raum && <>

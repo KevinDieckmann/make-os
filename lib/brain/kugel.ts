@@ -62,8 +62,12 @@ export interface RohPunkt {
   gehoert?: string;
 }
 
-/** Wer schaut: Person der Sitzung und ob die Rolle Privates sehen darf (`planZugangFuer(...).sicht === 'privat'`). */
-export interface Betrachter { person: string; privat: boolean }
+/**
+ * Wer schaut: Person der Sitzung und ob die Rolle Privates sehen darf (`planZugangFuer(...).sicht === 'privat'`). `nurPrivat` (10.10., Sicht
+ * Privat des Kopf-Schalters): nur Punkte des Privat-Bereichs — Markttraktion, Business-Ziele/-Aufgaben, Gesellschaften fallen weg.
+ * (Sicht Business = `privat: false`.)
+ */
+export interface Betrachter { person: string; privat: boolean; nurPrivat?: boolean }
 
 /** Höchstzahl der Punkte: darüber fallen die ÄLTESTEN weg (sie tragen am wenigsten zur Lage bei) — gemeldet als `gekuerzt`. */
 export const PUNKTE_DECKEL = 3000;
@@ -85,6 +89,7 @@ const tagAus = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-
 /** Darf der Betrachter diesen Rohpunkt sehen? (die eine Regel) */
 export function darfPunktSehen(r: Pick<RohPunkt, 'privat' | 'gehoert'>, b: Betrachter): boolean {
   if (r.privat && !b.privat) return false;
+  if (b.nurPrivat && !r.privat) return false;
   if (r.gehoert && r.gehoert !== 'beide' && r.gehoert !== b.person) return false;
   return true;
 }

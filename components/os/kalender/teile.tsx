@@ -99,21 +99,26 @@ export const EBENEN: { id: Ebene; label: string; farbe: string }[] = [
   { id: 'fristen', label: 'Fristen', farbe: LEUCHT.agenten },
 ];
 
-/** Kalender eines Zeitraums laden, jede Minute abgleichen (Änderungen am iPhone erscheinen von selbst). */
-export function useKalender(von: string, bis: string) {
+/**
+ * Kalender eines Zeitraums laden, jede Minute abgleichen (Änderungen am iPhone erscheinen von selbst). `bereich` (10.10., Sicht Privat ·
+ * Business): Privat bzw. Business holt NUR diesen Bereich vom Server (`?space=`, app/api/kalender) — „Alles“ (ausdrücklich gewählt) alles.
+ * `belegt`: Termine des anderen Bereichs kommen als „Belegt“ (ohne Titel) mit — für Planungs-Ansichten, die die belegte Zeit kennen müssen.
+ */
+export function useKalender(von: string, bis: string, bereich: 'privat' | 'business' | 'alle' = 'alle', o: { belegt?: boolean } = {}) {
+  const belegt = bereich !== 'alle' && o.belegt ? '&belegt=1' : '';
   const [daten, setDaten] = useState<KalenderStand | null>(null);
   const [laedt, setLaedt] = useState(false);
-  const aktuell = useRef(`${von}|${bis}`);
-  aktuell.current = `${von}|${bis}`;
+  const aktuell = useRef(`${von}|${bis}|${bereich}`);
+  aktuell.current = `${von}|${bis}|${bereich}`;
   const laden = useCallback(async () => {
-    const schluessel = `${von}|${bis}`;
+    const schluessel = `${von}|${bis}|${bereich}`;
     setLaedt(true);
     try {
-      const d = await fetch(`/api/kalender?von=${von}&bis=${bis}`, { cache: 'no-store' }).then(r => r.json());
+      const d = await fetch(`/api/kalender?von=${von}&bis=${bis}${bereich === 'alle' ? '' : `&space=${bereich}`}${belegt}`, { cache: 'no-store' }).then(r => r.json());
       if (aktuell.current === schluessel && d?.ok) setDaten(d);
     } catch { /* nächste Runde */ }
     setLaedt(false);
-  }, [von, bis]);
+  }, [von, bis, bereich, belegt]);
   useEffect(() => { void laden(); const t = setInterval(() => { if (document.visibilityState === 'visible') void laden(); }, 60_000); return () => clearInterval(t); }, [laden]);
   return { daten, laedt, laden, setDaten };
 }

@@ -161,5 +161,5 @@ export async function rohPunkteSammeln(person: string, heute: string): Promise<R
 
 /** Die Kugel für den Betrachter — gemerkt je Person, Sicht und Tag (60 s; jede Schreibung in einen Bestand macht es ungültig). */
 export function brainPunkteLaden(b: Betrachter, heute: string): Promise<KugelAntwort> {
-  return merken(`brain-punkte:${b.person}:${b.privat ? 'voll' : 'business'}:${heute}`, 60_000, async () => kugelPunkteFuer(await rohPunkteSammeln(b.person, heute), b));
+  return merken(`brain-punkte:${b.person}:${b.privat ? (b.nurPrivat ? 'privat' : 'voll') : 'business'}:${heute}`, 60_000, async () => kugelPunkteFuer(await rohPunkteSammeln(b.person, heute), b));
 }

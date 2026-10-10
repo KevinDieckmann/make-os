@@ -12,6 +12,7 @@
 
 import { speicherStand } from '@/lib/store/local-db';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
+import { spaceVonKalender } from '@/lib/kalender/space';
 import { termineLesen } from '@/lib/kalender/termine-lesen';
 import { maskieren } from '@/lib/kalender/bezug';
 import { wandzeit, tagPlus, tagVon } from '@/lib/kalender/zeit';
@@ -89,6 +90,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     sicher<Set<string> | null>(eingeschraenkteKennungen(), null),
   ]);
   const sicht = (gelesen?.termine ?? []).map(t => maskieren(t, person));
+  const kalenderVon = new Map(sicht.map(t => [t.id, t.kalender]));
   const mitAufgabe = new Set((crm?.followups ?? []).filter(f => f.aufgabeId).map(f => f.id));
   const zeiten = zeitenAus(sicht);
   // N3 (F2): Zeiten nur für Meetings an Kontakten, deren Nachbereitung bei DIESER Person liegt (wie `nachbereitung` mit `person`).
@@ -96,7 +98,8 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
   const verwiesen = new Set(eigene.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art === 'termin').map(a => a.terminUid).filter((x): x is string => !!x)));
   return {
     heute,
-    termine: termineHeute(sicht, person, heute, jetztWand),
+    // Bereich je Termin (10.10.): aus dem Kalender (Zuordnung der Kalender-Einstellungen) — die Sicht Privat · Business filtert damit.
+    termine: termineHeute(sicht, person, heute, jetztWand).map(t => { const k = kalenderVon.get(t.id); return k ? { ...t, bereich: spaceVonKalender(einst, k) } : t; }),
     // M4 (F2): ein offenes Follow-up am selben Termin (`terminUid`) ist „in Arbeit“ — keine zweite Meldung.
     nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand, crm?.followups)),
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),

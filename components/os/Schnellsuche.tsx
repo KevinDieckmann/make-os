@@ -92,8 +92,9 @@ export function Schnellsuche() {
   useEffect(() => {
     if (!offen) return;
     const t = q.trim();
-    // Im aktiven Space zuerst (Malin 26.09.): Seiten des anderen Space nur, wenn der Begriff sie direkt trifft (oder „auch dort“ an ist).
-    const seiten = SEITEN.filter(s => (!t || suchPasst([s.titel], t)) && (!s.space || s.space === space || !!t || beide));
+    // Im aktiven Space (Malin 26.09.): Seiten des anderen Space nur, wenn „auch dort“ an ist — seit 10.10. auch nicht mehr über einen
+    // Suchbegriff (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“; „Familie“ in Business fand die Familien-Seite).
+    const seiten = SEITEN.filter(s => (!t || suchPasst([s.titel], t)) && (!s.space || s.space === space || beide));
     if (t.length < 2) { setTreffer(seiten.slice(0, 8)); setI(0); return; }
     const ab = new AbortController();
     const timer = setTimeout(() => {

@@ -21,15 +21,16 @@ const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'A
 export type JahrStand = JahrVerdichtet & { jahr: number; kalender: KalenderStand['kalender'] };
 
 /** Das verdichtete Jahr laden. */
-export function useJahr(jahr: number): JahrStand | null {
+export function useJahr(jahr: number, bereich: 'privat' | 'business' | 'alle' = 'alle'): JahrStand | null {
   const [stand, setStand] = useState<JahrStand | null>(null);
   useEffect(() => {
     if (!jahr) return; // 0 = Jahresansicht nicht offen — nichts laden
     let lebt = true;
-    fetch(`/api/kalender/jahr?jahr=${jahr}`, { cache: 'no-store' }).then(r => r.json())
+    // Sicht Privat · Business (10.10.): nur der Bereich (Server filtert) — „Alles“ (ausdrücklich gewählt) beide.
+    fetch(`/api/kalender/jahr?jahr=${jahr}${bereich === 'alle' ? '' : `&space=${bereich}`}`, { cache: 'no-store' }).then(r => r.json())
       .then(d => { if (lebt && d?.ok) setStand({ jahr: d.jahr, tage: d.tage ?? {}, ganztags: d.ganztags ?? [], kalender: d.kalender ?? [] }); }).catch(() => {});
     return () => { lebt = false; };
-  }, [jahr]);
+  }, [jahr, bereich]);
   return stand?.jahr === jahr ? stand : null;
 }
 

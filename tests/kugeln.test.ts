@@ -198,7 +198,8 @@ describe('Einbau und Rückfall', () => {
     expect(lies('components/os/WissenView.tsx')).toContain('<BrainKugel />');
     expect(lies('components/os/ZoeStart.tsx')).toContain('<Aurora />');
     const b = lies('components/os/kugel/BrainKugel.tsx');
-    expect(b).toContain("fetch('/api/brain/punkte')"); expect(b).toContain('Alle Punkte als Liste');
+    // Seit 10.10. mit der Sicht des Kopf-Schalters (`?space=`, Server filtert — tests/sicht-business-privat.test.ts).
+    expect(b).toContain('fetch(`/api/brain/punkte?space=${space}`)'); expect(b).toContain('Alle Punkte als Liste');
     expect(b).toContain('onFocus={() => zeige(p.id)}'); expect(b).toContain('href={wegFuer(p)}');
     expect(b).toContain('<details open={!mitGl}');
   });

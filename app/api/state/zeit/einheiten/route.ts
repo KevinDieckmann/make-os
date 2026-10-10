@@ -17,6 +17,7 @@ import { ladeZeit, aufgabenKurz, zeitBloeckeStand } from '@/lib/zeitmessung/spei
 import { zeitJeEinheit, berlinTag, brauchtMandate, type Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { mandateKurz } from '@/lib/planung/mandat-server';
 import { zeitPersonenVon } from '@/lib/zeitmessung/personen';
+import { sichtAus } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,8 @@ export async function GET(req: Request) {
   const { schluessel, personen } = await zeitPersonenVon(person);
   // Konten ohne Privatzugang (finanzRecht „business“): nur Business-Blöcke — die Arbeit der Selbstständigkeit (Privat-Bereich) geht nie hinaus.
   const nurBusiness = (await planZugangFuer(person))?.sicht === 'business';
-  const sicht = url.searchParams.get('sicht');
+  // `?space=` (Sicht des Kopf-Schalters, 10.10.) gilt wie `?sicht=`.
+  const sicht = url.searchParams.get('sicht') ?? sichtAus(url.searchParams.get('space')) ?? null;
   if (sicht !== null && sicht !== 'privat' && sicht !== 'business') return NextResponse.json({ ok: false, error: 'sicht privat|business.' }, { status: 400 });
   if (sicht === 'privat' && nurBusiness) return NextResponse.json({ ok: false, error: 'Mit Business-Zugang gibt es keine Privat-Zeit.' }, { status: 403 });
   const daten = await merken(`zeit-einheiten:${schluessel}:${nurBusiness ? 'b' : 'p'}:${sicht ?? '-'}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}`, 60_000, async () => {

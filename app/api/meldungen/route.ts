@@ -14,6 +14,7 @@ import { zuGross } from '@/lib/zugang/umfang';
 import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
 import { heuteBerlin, meldungenEinstellen, meldungenGelesen, meldungenSicht, meldungenStand } from '@/lib/meldungen/speicher';
 import { GELESEN_IDS_MAX, MELDUNG_ID_OK } from '@/lib/meldungen/regeln';
+import { sichtAus, sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,10 +33,12 @@ export async function GET(req: Request) {
   const person = await eigenePerson(req);
   if (!person) return NextResponse.json(GESPERRT, { status: 403 });
   const jetzt = new Date();
-  const etag = etagAus('meldungen2', person, heuteBerlin(jetzt), await meldungenStand(person, jetzt));
+  // Sicht Privat · Business (10.10.): mit `?space=` nur die Meldungen dieses Bereichs (lib/meldungen/speicher.ts `meldungenSicht`).
+  const bereich = sichtDerAnfrage(req);
+  const etag = etagAus('meldungen2', person, heuteBerlin(jetzt), bereich ?? 'alle', await meldungenStand(person, jetzt));
   const nichts = unveraendert(req, etag);
   if (nichts) return nichts;
-  const sicht = await meldungenSicht(person, jetzt);
+  const sicht = await meldungenSicht(person, jetzt, bereich);
   return jsonAntwort(req, { ok: true, ...sicht }, etag);
 }
 
@@ -43,7 +46,7 @@ export async function POST(req: Request) {
   const person = await eigenePerson(req);
   if (!person) return NextResponse.json(GESPERRT, { status: 403 });
   if (zuGross(req, 200_000)) return NextResponse.json({ ok: false, fehler: 'Zu groß.' }, { status: 413 });
-  let body: { aktion?: unknown; ids?: unknown; alle?: unknown; telegram?: unknown };
+  let body: { aktion?: unknown; ids?: unknown; alle?: unknown; telegram?: unknown; space?: unknown };
   try { body = await jsonBegrenzt(req, 200_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (body.aktion === 'gelesen') {
@@ -54,7 +57,9 @@ export async function POST(req: Request) {
     if (roh.length > GELESEN_IDS_MAX) return NextResponse.json({ ok: false, fehler: `Höchstens ${GELESEN_IDS_MAX} Meldungen auf einmal — „alle“ nutzen.` }, { status: 413 });
     const ids = roh.filter((x): x is string => typeof x === 'string' && MELDUNG_ID_OK.test(x));
     if (!alle && !ids.length) return NextResponse.json({ ok: false, fehler: 'ids oder alle angeben.' }, { status: 400 });
-    const sicht = await meldungenGelesen(person, { ids, alle });
+    // Sicht (10.10.): `space` im Körper oder in der Adresse — „alle gelesen“ setzt dann nur, was diese Sicht zeigt.
+    const bereich = sichtAus(typeof body.space === 'string' ? body.space : null) ?? sichtDerAnfrage(req);
+    const sicht = await meldungenGelesen(person, { ids, alle }, new Date(), bereich);
     return NextResponse.json({ ok: true, ...sicht });
   }
   if (body.aktion === 'einstellungen') {

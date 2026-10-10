@@ -196,13 +196,14 @@ export function Kalender() {
     if (ansicht === 'monat') { const b = monatsblatt(Number(anker.slice(0, 4)), Number(anker.slice(5, 7))); return { von: b[0], bis: tagPlus(b[41], 1), tage: b, blatt: b }; }
     const t = Array.from({ length: 30 }, (_, i) => tagPlus(anker, i)); return { von: anker, bis: tagPlus(anker, 30), tage: t, blatt: [] as string[] };
   }, [ansicht, anker]);
-  const { daten, laedt, laden, setDaten } = useKalender(von, bis);
+  // Sicht Privat · Business (10.10.): der Bereich geht an den Server — nur „Alles“ (ausdrücklich gewählt) holt beide.
+  const { daten, laedt, laden, setDaten } = useKalender(von, bis, bereich);
   // Business-frei (08.10., Lücke 7): die EIGENEN Business-freien Zeiten des Zeitraums — dezent im Raster.
   const rahmen = useArbeitsrahmen(MIT_RASTER.includes(ansicht) ? von : '', MIT_RASTER.includes(ansicht) ? bis : '');
   // Quellen (K2): Feiertage NRW + Geburtstage — ganztägig, schreibgeschützt, in allen Ansichten; im Jahr das ganze Jahr.
   const jahr = Number(anker.slice(0, 4));
-  const quell = useQuellTermine(ansicht === 'jahr' ? `${jahr}-01-01` : von, ansicht === 'jahr' ? `${jahr + 1}-01-01` : bis);
-  const jahrDaten = useJahr(ansicht === 'jahr' ? jahr : 0);
+  const quell = useQuellTermine(ansicht === 'jahr' ? `${jahr}-01-01` : von, ansicht === 'jahr' ? `${jahr + 1}-01-01` : bis, bereich);
+  const jahrDaten = useJahr(ansicht === 'jahr' ? jahr : 0, bereich);
   // K4 Termine finden: „Mit … planen“ (Überlagerung + freie Zeiten) und Buchungsseiten — ein Haken (components/os/kalender/MitPlanen.tsx).
   const k4 = useTermineFinden({ alle: daten?.termine, onVorschlag: setNeu });
 

@@ -70,3 +70,35 @@ export function aufgabenOhnePrivat<T extends AufgabeKern>(tasks: readonly T[]): 
 
 /** Spaces ohne den Privat-Bereich (Leiste, Überblick, Export). */
 export const spacesOhnePrivat = <S extends { bereich: string }>(spaces: readonly S[]): S[] => spaces.filter(s => s.bereich !== 'privat');
+
+/**
+ * Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): NUR der Bereich der Sicht — dieselben
+ * Regeln wie oben (privat ↔ nicht privat). Vorlagen ohne Space gelten in beiden Bereichen. Rein; dieselben Objekte (Stände bleiben gleich).
+ * Angewandt, wenn eine Leseroute `?space=` bekommt (lib/zugang/sicht-bereich.ts) — ohne `?space=` bleibt der Bestand ganz (TasksContext).
+ */
+export function nurBereichDerSicht<T extends TasksState>(state: T, sicht: 'privat' | 'business' | null | undefined): T {
+  if (!sicht) return state;
+  if (sicht === 'business') return ohnePrivatBereich(state);
+  const nachId = new Map(state.tasks.map(t => [t.id, t]));
+  const projekte = new Map(state.projects.map(p => [p.id, p]));
+  return {
+    ...state,
+    tasks: state.tasks.filter(t => aufgabeImPrivat(t, nachId)),
+    projects: state.projects.filter(p => projektImPrivat(p)),
+    ...(state.listen ? { listen: state.listen.filter(l => listeImPrivat(l, projekte)) } : {}),
+    ...(state.statusEigen ? { statusEigen: state.statusEigen.filter(s => statusImPrivat(s)) } : {}),
+    ...(state.vorlagen ? { vorlagen: state.vorlagen.filter(v => !v.spaceId || vorlageImPrivat(v)) } : {}),
+    ...(state.gruppen ? { gruppen: state.gruppen.filter(g => listeImPrivat({ projektId: g.projektId }, projekte)) } : {}),
+  };
+}
+
+/** Nur die Aufgaben einer Liste im Bereich der Sicht (für Leser, die schon eine Liste haben). */
+export function aufgabenNurBereich<T extends AufgabeKern>(tasks: readonly T[], sicht: 'privat' | 'business' | null | undefined): T[] {
+  if (!sicht) return [...tasks];
+  const nachId = new Map(tasks.map(t => [t.id, t]));
+  return tasks.filter(t => aufgabeImPrivat(t, nachId) === (sicht === 'privat'));
+}
+
+/** Spaces nur des Bereichs der Sicht. */
+export const spacesNurBereich = <S extends { bereich: string }>(spaces: readonly S[], sicht: 'privat' | 'business' | null | undefined): S[] =>
+  (sicht ? spaces.filter(s => (s.bereich === 'privat') === (sicht === 'privat')) : [...spaces]);

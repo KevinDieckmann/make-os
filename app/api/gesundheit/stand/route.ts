@@ -16,6 +16,7 @@ import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type S
 import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import type { TaktStand } from '@/lib/gesundheit/takt';
 import { routinenImUmfang, routinenSichtbarFuer } from '@/lib/planung/bereich-sicht-server';
+import { routineImPrivat } from '@/lib/planung/bereich-sicht';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { moduleWirksam, hatEintraege } from '@/lib/gesundheit/module';
 import { koerperLaden } from '@/lib/gesundheit/koerper-server';
@@ -50,7 +51,9 @@ export async function GET(req: Request) {
   // Nur, was diese Person sieht: eigene und gemeinsame Routinen (27.09.). Seit 09.10. (E4-Rest) im Umfang der Person UND der anfragenden
   // Person (lib/planung/bereich-sicht-server.ts): ein Konto „nur Business“ ohne den Privat-Bereich, außerhalb des Haushalts keine — vorher
   // bekamen auch Testkunde und fremder Haushalt die Routinen „für beide“ (Messlatte 09.10.).
-  const routinen = await routinenImUmfang(await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person), ich);
+  // Gesundheit gehört zu Privat (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): nur Routinen des Privat-Bereichs —
+  // eine Business-Routine (z. B. Wochenplanung) steht nicht unter Körper & Routinen.
+  const routinen = (await routinenImUmfang(await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person), ich)).filter(r => routineImPrivat(r as Parameters<typeof routineImPrivat>[0]));
   const t14 = tageZurueck(heute, 14);
   const q = routineQuote(hl ?? {}, routinen.map(r => r.id), heute, 7);
   const je = (id: string) => routineQuote(hl ?? {}, [id], heute, 7).quote;

@@ -574,7 +574,7 @@ export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }:
   const neu = w.neu?.ziel === headId;
   const fadenId = ausAdresse ?? (neu ? undefined : threads[0]?.id);
   const fadenVorgabe = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
-  const fadenGeladen = useAbruf<FadenAntwort>(fadenId && !fadenVorgabe ? `faden:${fadenId}` : null, () => ladeFaden(fadenId!));
+  const fadenGeladen = useAbruf<FadenAntwort>(fadenId && !fadenVorgabe ? `faden:${fadenId}:${w.space}` : null, () => ladeFaden(fadenId!, w.space));
   const faden: Abruf<FadenAntwort> = fadenVorgabe ? { zustand: 'da', daten: fadenVorgabe } : fadenGeladen.stand;
   const fa = fadenId && faden.zustand === 'da' ? faden.daten : null;
   // „⋯ › Einstellungen“: Info öffnen, den Abschnitt aufklappen und hinscrollen.

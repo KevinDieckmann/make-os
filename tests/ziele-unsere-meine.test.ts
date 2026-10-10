@@ -191,6 +191,7 @@ describe('Oberfläche hängt die Spalten ein', () => {
     // Namen nur aus den Konten — kein Personenname im Code.
     expect(zu).not.toMatch(/['"](kevin|malin)['"]/i);
     expect(lies('components/os/HeuteView.tsx')).toContain("{ id: 'ziele', art: 'ziele', breite: 4 }");
-    expect(lies('components/os/flaeche/widgets.tsx')).toContain('useZieleSpalten(h, laufend)');
+    // Seit 10.10. mit dem Bereich der Fläche (Sicht Privat · Business, tests/sicht-business-privat.test.ts).
+    expect(lies('components/os/flaeche/widgets.tsx')).toContain('useZieleSpalten(h, laufend, true, bereich)');
   });
 });

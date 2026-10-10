@@ -1,5 +1,6 @@
 'use client';
 import { useSpace } from '@/hooks/useSpace';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
@@ -89,8 +90,13 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   // Kevins Ansage: den nächsten Tag angucken können. Ohne Anker ist es heute.
   const heute = tag ?? localDay();
   const istHeute = heute === localDay();
-  const { state: tasksState } = useTasks();
-  const { daten: kal, laden: kalLaden } = useKalender(heute, tagPlus(heute, 1));
+  // Der Bereich der Seite (Adresse, sonst der Kopf-Schalter; Konto „nur Business“ immer Business) — 10.10. (Entscheidung 10.10.: „Business-Themen sind
+  // Business-Themen und Privat Privat“): Termine, Routinen, Aufgaben, Ziele und Checks nur aus diesem Bereich. Termine des anderen Bereichs
+  // kommen nur als „Belegt“ (Server, `belegt`) — die Zeit ist belegt, womit, steht nicht da.
+  const bereich: 'privat' | 'business' = nurBusiness ? 'business' : (spaceAusAdresse ?? spaceAktiv);
+  const { state: tasksAlle } = useTasks();
+  const tasksState = useMemo(() => ({ ...tasksAlle, tasks: tasksAlle.tasks.filter(t => spaceVonAufgabe(t) === bereich) }), [tasksAlle, bereich]);
+  const { daten: kal, laden: kalLaden } = useKalender(heute, tagPlus(heute, 1), bereich, { belegt: true });
   const [ich, setIch] = useState<string | null>(null);
   const [archiv, setArchiv] = useState<PlanBlockSicht[]>([]);
   // Reha zählt im „Durchgeplant“-Check nur, wenn die Person selbst in den letzten Tagen Reha geplant hat (nie fest für alle).
@@ -100,7 +106,6 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const [hlog, setHlog] = useState<Record<string, string[]>>({});
   const [zieleAlle, setZiele] = useState<Ziel[]>([]);
   // Nur die Monatsziele des Bereichs der Seite (10.10., Prüfung: in Privat stand ein Business-Zahlenziel unter „Fokus“) — dieselbe Regel wie überall.
-  const bereich = nurBusiness ? 'business' : (spaceAusAdresse ?? spaceAktiv);
   const ziele = useMemo(() => zieleAlle.filter(z => spaceVonZiel(z) === bereich), [zieleAlle, bereich]);
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
@@ -119,11 +124,11 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         setArchiv(alle.filter(b => b.date === heute && b.quelle === 'archiv' && !b.gespiegelt));
         setRehaVorher(rehaGewohnt(alle, heute));
       }).catch(() => { setArchiv([]); setRehaVorher(false); });
-    fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
+    fetch(`/api/state/routinen?sicht=ich&space=${bereich}`).then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
     fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => { setZiele(((d.monat ?? []) as Ziel[]).filter(z => !z.erledigt)); }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
-  }, [heute]);
+  }, [heute, bereich]);
 
   // Jetzt-Linie erst nach dem Mount setzen (kein Hydration-Versatz), dann mitlaufen lassen.
   useEffect(() => {
@@ -256,14 +261,15 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     }
     const rehaHeute = meine.some(b => istErholungsArt(b.art));
     return [
-      ...(rehaVorher || rehaHeute ? [{ ok: rehaHeute, text: 'Erholung' }] : []),
+      // Erholung ist Gesundheit — nur in der Sicht Privat (10.10.).
+      ...(bereich === 'privat' && (rehaVorher || rehaHeute) ? [{ ok: rehaHeute, text: 'Erholung' }] : []),
       { ok: wochenende || fokusMin >= 90, text: wochenende ? 'Wochenende' : '90 Min Fokus' },
       { ok: faelligHeute.every(t => geplantTasks.has(t.id)), text: 'Fälliges im Plan' },
       { ok: meine.some(b => b.art === 'routine' && b.startMin < 10 * 60) || erledigt.size > 0, text: 'Morgenroutine' },
       { ok: kollisionen === 0, text: kollisionen ? `${kollisionen} Kollision${kollisionen > 1 ? 'en' : ''}` : 'Keine Kollisionen' },
       { ok: meine.length + fix.length <= 10, text: 'Nicht überladen' },
     ];
-  }, [meine, fix, faelligHeute, geplantTasks, erledigt, heute, rehaVorher]);
+  }, [meine, fix, faelligHeute, geplantTasks, erledigt, heute, rehaVorher, bereich]);
   const okN = check.filter(c => c.ok).length;
   const checkFarbe = okN === check.length ? LEUCHT.gut : okN >= 3 ? LEUCHT.achtung : LEUCHT.kritisch;
 
@@ -392,7 +398,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
               {/* Schlüssel ist der Titel, nicht die Art: „block" kommt
                   sechsmal vor — mit `art` verlieren die Bausteine beim
                   Ziehen ihre Identität. */}
-              {BAUSTEINE.map(bs => (
+              {BAUSTEINE.filter(bs => bereich === 'privat' || bs.art !== 'erholung').map(bs => (
                 <Ziehbar key={bs.titel} farbe={ART_FARBE[bs.art]} daten={{ neu: { art: bs.art, titel: bs.titel, dauerMin: bs.dauerMin } }}>
                   {bs.titel} · {bs.dauerMin}m
                 </Ziehbar>

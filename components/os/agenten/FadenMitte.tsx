@@ -98,7 +98,7 @@ export function FadenMitte({ fadenId }: { fadenId?: string }) {
   const w = useAgenten();
   const { entwurf, starteEntwurf, oeffne, stapel, melde, dialog, form } = w;
   const vorgegeben = fadenId ? w.vorlage?.faeden?.[fadenId] : undefined;
-  const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `faden:${fadenId}` : null, () => ladeFaden(fadenId!));
+  const geladen = useAbruf<FadenAntwort>(fadenId && !vorgegeben ? `faden:${fadenId}:${w.space}` : null, () => ladeFaden(fadenId!, w.space));
   const stand: Abruf<FadenAntwort> = vorgegeben ? { zustand: 'da', daten: vorgegeben } : geladen.stand;
   const fa = stand.zustand === 'da' ? stand.daten : null;
   const [wartend, setWartend] = useState<Nachricht | null>(null);
